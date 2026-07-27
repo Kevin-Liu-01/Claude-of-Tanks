@@ -17,8 +17,8 @@ const SHELL_TYPE_COLOR = {
   AP: '#ffd27a', APCR: '#e8f4ff', HEAT: '#ff8a5c', HE: '#ffb02e', APFSDS: '#ffc46b',
 };
 
-// roster maxima for normalized stat bars
-const MAX_HP = 2600, MAX_SPEED = 68, MAX_HPT = 23.5, MAX_PEN = 760;
+// roster maxima for normalized stat bars are computed from the actual specs
+// passed to createGarage (so bars always spread across the roster range).
 
 const GARAGE_CSS = `
 .cot-garage{position:fixed;inset:0;z-index:60;display:none;font-family:${FONT_STACK};
@@ -95,8 +95,9 @@ const GARAGE_CSS = `
 .cot-card .era{float:right;font-size:8.5px;font-weight:700;letter-spacing:.12em;
   color:#8a97a3;padding:2px 0;}
 .cot-card.sel .era{color:#d8a04c;}
-.cot-card .nm{font-size:12.5px;font-weight:600;color:#eef4f9;letter-spacing:.02em;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cot-card canvas{display:block;margin:2px auto 3px;}
+.cot-card .nm{font-size:10.5px;font-weight:600;color:#eef4f9;letter-spacing:-.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 -5px;text-align:center;}
 .cot-card .cls{font-size:9px;font-weight:700;letter-spacing:.18em;color:#8a97a3;
   text-transform:uppercase;margin-top:2px;}
 .cot-garage .hint{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
@@ -110,6 +111,67 @@ function ensureStyle(id, css) {
     s.textContent = css;
     document.head.appendChild(s);
   }
+}
+
+// Small side-view silhouette thumbnail rendered from the spec's dimensions:
+// road wheels, hull with sloped glacis, turret, and gun barrel out to the
+// overall length. Light-on-dark, WoT carousel style.
+function drawSilhouette(canvas, spec) {
+  const dpr = Math.min((typeof window !== 'undefined' && window.devicePixelRatio) || 1, 2);
+  const W = 108, H = 32;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = `${W}px`; canvas.style.height = `${H}px`;
+  const c = canvas.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const d = spec.dims;
+  const overall = Math.max(d.overallLengthM, d.hullLengthM);
+  const s = (W - 8) / overall;
+  const hullLen = d.hullLengthM * s;
+  const x0 = 4 + (W - 8 - overall * s) / 2;
+  const groundY = H - 3;
+  const wheelR = Math.max(2.4, d.heightM * 0.16 * s);
+  const hullH = Math.max(6, d.heightM * 0.34 * s);
+  const hullTop = groundY - wheelR - hullH;
+  const turH = Math.max(4, d.heightM * 0.24 * s);
+  const modern = spec.era !== 'ww2';
+  c.fillStyle = 'rgba(206,220,232,0.88)';
+  // road wheels
+  const n = 5;
+  for (let i = 0; i < n; i++) {
+    c.beginPath();
+    c.arc(x0 + wheelR + ((i + 0.5) / n) * (hullLen - wheelR * 2), groundY - wheelR, wheelR, 0, Math.PI * 2);
+    c.fill();
+  }
+  // hull with sloped glacis (front faces right)
+  c.beginPath();
+  c.moveTo(x0, hullTop + hullH * 0.35);
+  c.lineTo(x0 + hullLen * 0.1, hullTop);
+  c.lineTo(x0 + hullLen * 0.72, hullTop);
+  c.lineTo(x0 + hullLen, hullTop + hullH * (modern ? 0.55 : 0.4));
+  c.lineTo(x0 + hullLen, hullTop + hullH);
+  c.lineTo(x0, hullTop + hullH);
+  c.closePath();
+  c.fill();
+  // turret
+  const tx = x0 + hullLen * (modern ? 0.34 : 0.38);
+  const tw = hullLen * (modern ? 0.34 : 0.3);
+  c.beginPath();
+  if (modern) {
+    c.moveTo(tx, hullTop);
+    c.lineTo(tx + tw * 0.12, hullTop - turH);
+    c.lineTo(tx + tw * 0.96, hullTop - turH);
+    c.lineTo(tx + tw, hullTop);
+  } else {
+    c.moveTo(tx, hullTop);
+    c.lineTo(tx + tw * 0.22, hullTop - turH);
+    c.lineTo(tx + tw * 0.78, hullTop - turH);
+    c.lineTo(tx + tw, hullTop);
+  }
+  c.closePath();
+  c.fill();
+  // gun barrel from turret front to overall length
+  const gy = hullTop - turH * 0.45;
+  c.fillRect(tx + tw * 0.8, gy - 1.1, x0 + overall * s - (tx + tw * 0.8), 2.2);
 }
 
 function frontArmorMm(plates, keys) {
@@ -163,6 +225,18 @@ export function createGarage(opts) {
 
   const emit = (ev, payload) => { if (bus && bus.emit) bus.emit(ev, payload); };
 
+  // roster maxima for normalized stat bars
+  const MAXES = {
+    hp: 1, speed: 1, hpt: 1, pen: 1,
+  };
+  for (const s of specs) {
+    MAXES.hp = Math.max(MAXES.hp, s.hp);
+    MAXES.speed = Math.max(MAXES.speed, s.topSpeedKmh);
+    MAXES.hpt = Math.max(MAXES.hpt, s.enginePowerHp / s.weightTons);
+    const shells = (s.gun && s.gun.shells) || [];
+    for (const sh of shells) MAXES.pen = Math.max(MAXES.pen, sh.pen100Mm || 0);
+  }
+
   // --- build carousel cards ---
   for (const s of specs) {
     const badge = NATION_BADGE[s.nation] || DEFAULT_BADGE;
@@ -171,9 +245,11 @@ export function createGarage(opts) {
     card.innerHTML =
       `<span class="era">${s.era === 'ww2' ? 'WWII' : 'MODERN'}</span>` +
       `<span class="flag" style="background:${badge.bg};color:${badge.fg}">${badge.label}</span>` +
+      `<canvas></canvas>` +
       `<div class="nm"></div>` +
       `<div class="cls">${s.class}</div>`;
     card.querySelector('.nm').textContent = s.name;
+    drawSilhouette(card.querySelector('canvas'), s);
     card.addEventListener('click', () => {
       emit('ui:click', {});
       api.setSelected(s.id);
@@ -194,7 +270,8 @@ export function createGarage(opts) {
     let shellRows = '';
     for (const sh of shells) {
       const col = SHELL_TYPE_COLOR[sh.type] || '#9fb0bf';
-      const pen = sh.type === 'HE' ? `${sh.pen100Mm}` : `${sh.pen100Mm}&#8250;${sh.pen1000Mm}`;
+      // penetration at point blank / at 1 km
+      const pen = sh.type === 'HE' ? `${sh.pen100Mm}` : `${sh.pen100Mm} / ${sh.pen1000Mm}`;
       shellRows += `<div class="shellrow"><span class="ty" style="color:${col}">${sh.type}</span>` +
         `<span class="nm">${sh.name}</span>` +
         `<span class="pd"><b>${pen}</b> mm &nbsp;<b>${sh.dmg}</b> hp</span></div>`;
@@ -204,11 +281,11 @@ export function createGarage(opts) {
     const bestPen = shells.length ? Math.max(...shells.map((s) => s.pen100Mm || 0)) : 0;
     statsEl.innerHTML =
       `<h3></h3><div class="sub">${spec.nation} &middot; ${spec.class} &middot; ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}</div>` +
-      statBar('Hit points', `${spec.hp}`, spec.hp / MAX_HP) +
-      statBar('Top speed', `${spec.topSpeedKmh} km/h`, spec.topSpeedKmh / MAX_SPEED) +
-      statBar('Power / weight', `${hpT.toFixed(1)} hp/t`, hpT / MAX_HPT) +
+      statBar('Hit points', `${spec.hp}`, spec.hp / MAXES.hp) +
+      statBar('Top speed', `${spec.topSpeedKmh} km/h`, spec.topSpeedKmh / MAXES.speed) +
+      statBar('Power / weight', `${hpT.toFixed(1)} hp/t`, hpT / MAXES.hpt) +
       statBar('Reload', `${spec.gun.reloadS.toFixed(1)} s`, 1 - Math.min(1, spec.gun.reloadS / 15)) +
-      statBar('Penetration', `${bestPen} mm`, bestPen / MAX_PEN) +
+      statBar('Penetration', `${bestPen} mm`, bestPen / MAXES.pen) +
       `<div class="sep"></div>` + shellRows +
       `<div class="sep"></div>` +
       `<div class="armorline"><span>Hull front</span><b>${hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;'}</b></div>` +

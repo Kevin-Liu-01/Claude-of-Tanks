@@ -33,7 +33,7 @@ export function createRenderer(container) {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft is deprecated in r185
 
   container.appendChild(renderer.domElement);
   return renderer;

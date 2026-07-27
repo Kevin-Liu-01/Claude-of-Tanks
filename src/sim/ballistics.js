@@ -50,7 +50,9 @@ export function createShell(shellSpec, shooterId, isPlayer, muzzlePos, dir, id) 
     dead: false,
     penRollDone: false,
     remainingPenMm: 0,
+    dmgRoll: 0,
     bounces: 0,
+    carriedThrough: false,
   };
 }
 

@@ -10,15 +10,21 @@
 import * as THREE from 'three';
 import { CSM } from 'three/examples/jsm/csm/CSM.js';
 
-const CASCADES = 3;
-const SHADOW_MAX_FAR_M = 250; // ≲ fog end so shadows never pop in unfogged range
+const CASCADES = 4;
+// Battlefield establishing shots read objects out to ~500 m; with the clearer
+// exp2 fog (sky.js) shadows must hold that far or buildings/trees float.
+const SHADOW_MAX_FAR_M = 520;
 const SHADOW_MAP_SIZE = 2048;
 const SHADOW_BIAS = -0.0002;
-const SHADOW_NORMAL_BIAS = 0.02; // kills acne on terrain slopes (CSM only exposes shadowBias)
-const SUN_INTENSITY = 3; // ACES-friendly high-sun value (physically based r185 lighting)
-const HEMI_SKY_COLOR = 0xbfd5ff;
+const SHADOW_NORMAL_BIAS = 0.035; // kills acne on terrain slopes (CSM only exposes shadowBias)
+// Key-to-fill ratio is THE readability lever: the warm sun must dominate the
+// cool sky ambient ~4-5:1 so cast shadows and form shading actually register
+// after ACES. Ambient fill lives in hemi (below) + sky.js ENV_INTENSITY.
+const SUN_INTENSITY = 3.2;
+const SUN_COLOR = 0xfff1dc; // warm noon-afternoon key
+const HEMI_SKY_COLOR = 0xb4cdf2; // cool sky fill against the warm key
 const HEMI_GROUND_COLOR = 0x8c7a5b;
-const HEMI_INTENSITY = 0.45;
+const HEMI_INTENSITY = 0.26;
 
 /**
  * @typedef {object} Lighting
@@ -60,6 +66,7 @@ export function createLighting(scene, camera, sunDir) {
 
   for (let i = 0; i < csm.lights.length; i++) {
     csm.lights[i].shadow.normalBias = SHADOW_NORMAL_BIAS;
+    csm.lights[i].color.setHex(SUN_COLOR);
   }
 
   const hemi = new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY);

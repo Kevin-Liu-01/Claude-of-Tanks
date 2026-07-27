@@ -77,6 +77,8 @@ const DEFAULT_CREW = ['commander', 'gunner', 'driver', 'loader'];
 // Scratch vectors (module scope — no per-frame allocation).
 const _center = new Vector3();
 const _reflN = new Vector3();
+const _carryDir = new Vector3();
+const _carryV = new Vector3();
 
 /** ±25% uniform roll. @param {function} rng @param {number} avg @returns {number} */
 function rollUniform(rng, avg) {
@@ -291,8 +293,10 @@ function stampImpact(event, hit, effMm, penMm) {
 }
 
 /**
- * Ensure the shell's once-per-shot pen roll exists (±25% on pen at its flown
- * distance). Consumes rng only on the first resolution of this shell.
+ * Ensure the shell's once-per-shot pen AND damage rolls exist (±25% each,
+ * armor doc §6/§12: both made once per shot, in that order). Consumes rng only
+ * on the first resolution of this shell — a ricochet or carry-through reuses
+ * the same rolls against the next victim and costs no extra RNG draws.
  * @param {object} shell ShellEntity
  * @param {function} rng
  * @returns {void}
@@ -301,6 +305,7 @@ function ensurePenRoll(shell, rng) {
   if (shell.penRollDone) return;
   const distM = shell.ageS * shell.spec.velocityMps;
   shell.remainingPenMm = rollUniform(rng, penAtDistanceMm(shell.spec, distM));
+  shell.dmgRoll = rollUniform(rng, shell.spec.dmg);
   shell.penRollDone = true;
 }
 
@@ -311,7 +316,8 @@ function ensurePenRoll(shell, rng) {
  * check, hull damage, then the 10×caliber internal module/crew sweep with
  * saving throws and fire rolls. Mutates `target.combat` and the shell
  * (dead/deflected). Ricochets with bounces < 2 leave the shell alive with a
- * deflected velocity.
+ * deflected velocity; a KE shell that overpenetrates with pen to spare exits
+ * the far side and may strike a second vehicle (one carry-through max).
  *
  * @param {object} shell ShellEntity
  * @param {object} target TankEntity-shaped {id, spec, state, combat}
@@ -323,9 +329,9 @@ export function resolveShellHit(shell, target, hits, rng) {
   const spec = shell.spec;
   const combat = target.combat;
 
-  // Fixed RNG order: pen, dmg, then per-intersection rolls.
+  // Fixed RNG order: pen, dmg (both once per shot), then per-intersection rolls.
   ensurePenRoll(shell, rng);
-  const dmgRoll = rollUniform(rng, spec.dmg);
+  const dmgRoll = shell.dmgRoll;
 
   if (spec.type === 'HE') {
     const event = heDirectHit(shell, target, hits, dmgRoll, rng);
@@ -408,9 +414,11 @@ export function resolveShellHit(shell, target, hits, rng) {
       const penBefore = pen;
       pen -= effMm;
       if (spec.type === 'HEAT' && pen > 0) {
+        // Gap measured to the NEXT armor layer of any kind (spaced or main,
+        // ERA tiles excluded) so stacked screens never double-count a gap.
         let gapM = 0;
         for (const next of hits) {
-          if (next.t > hit.t && next.kind === 'plate' && next.plate.kind === 'main') {
+          if (next.t > hit.t && next.kind === 'plate' && next.plate.kind !== 'era') {
             gapM = hit.point.distanceTo(next.point);
             break;
           }
@@ -463,7 +471,37 @@ export function resolveShellHit(shell, target, hits, rng) {
   }
 
   shell.remainingPenMm = Math.max(0, pen);
-  if (event.kind !== 'ricochet') shell.dead = true;
+
+  // --- Carry-through (armor doc §7): a kinetic shell that fully penetrated,
+  // was not stopped by any deeper layer, and still has pen left may exit and
+  // strike a second vehicle. Capped to one carry-through per shell; HEAT jets
+  // never survive the target.
+  const carries =
+    hullPen &&
+    !shell.dead &&
+    shell.remainingPenMm > 0 &&
+    SHELL_BEHAVIOR[spec.type].kindClass === 'KE' &&
+    !shell.carriedThrough &&
+    entryPoint !== null;
+  if (carries) {
+    shell.carriedThrough = true;
+    // Advance the shell just past the target's broadphase sphere so next
+    // frame's sweep starts outside the victim.
+    _carryDir.copy(shell.vel).normalize();
+    const armor = target.spec.armor;
+    const boundR = (armor && armor.boundingRadiusM) || 4;
+    _center.copy(target.state.pos);
+    _center.y += target.spec.dims ? target.spec.dims.heightM * 0.5 : 1.2;
+    _carryV.subVectors(_center, entryPoint);
+    const proj = _carryV.dot(_carryDir);
+    const d2 = Math.max(0, _carryV.lengthSq() - proj * proj);
+    const half = Math.sqrt(Math.max(0, boundR * boundR - d2));
+    const exitDist = Math.max(0, proj) + half + 0.05;
+    shell.pos.copy(entryPoint).addScaledVector(_carryDir, exitDist);
+    shell.prevPos.copy(shell.pos);
+  } else {
+    shell.dead = true;
+  }
   event.destroyed = finalizeTarget(combat, event.ammoRacked);
   event.targetHpAfter = combat.hp;
   return event;
@@ -530,20 +568,47 @@ function heDirectHit(shell, target, hits, dmgRoll, rng) {
       }
     }
   } else {
-    // Surface burst on the armor: splash formula at dist = 0.
+    // Surface burst on the armor: splash formula at dist = 0. When the burst
+    // sits on a spaced/external screen, the screen eats the blast (armor doc
+    // §7): the absorption term stacks every armor layer down to the first
+    // main plate, and the splash also attenuates over the air gap.
     event.kind = 'he_splash';
-    const dmg = Math.max(0, 0.5 * dmgRoll - HE_ARMOR_ABSORB * plate.physicalMm);
+    const radiusM = blastRadiusM(spec.caliberMm);
+    let armorMm = plate.physicalMm;
+    let distM = 0;
+    if (plate.kind === 'spaced' || plate.kind === 'external') {
+      for (const next of hits) {
+        if (next.t <= plateHit.t || next.kind !== 'plate' || next.plate.kind === 'era') continue;
+        armorMm += next.plate.physicalMm;
+        distM = plateHit.point.distanceTo(next.point);
+        if (next.plate.kind === 'main') break;
+      }
+    }
+    const falloff = Math.max(0, 1 - Math.min(1, distM / radiusM));
+    const dmg = Math.max(0, 0.5 * dmgRoll * falloff - HE_ARMOR_ABSORB * armorMm);
     stampImpact(event, plateHit, effMm, shell.remainingPenMm);
     event.damage = dmg;
     combat.hp -= dmg;
     if (plate.moduleLink) {
+      // The struck screen's own gear (tracks) gets shredded at full odds.
       const r = rollModuleDamage(ctx, plate.moduleLink);
       event.fireStarted = event.fireStarted || r.fireStarted;
       event.ammoRacked = event.ammoRacked || r.ammoRacked;
     }
-    // Blast reaches crew/modules through hatches at reduced odds.
+    // Blast reaches crew/modules through hatches even without hull damage
+    // (armor doc §8 step 3): crew at the reduced HE chance, modules at half
+    // chance and half damage, both limited to the blast sphere.
+    ctx.chanceScale = 0.5;
+    ctx.dmgScale = 0.5;
     for (const hit of hits) {
-      if (hit.kind === 'crew') rollCrewHit(ctx, hit.crew, true);
+      if (hit.point.distanceTo(plateHit.point) > radiusM) continue;
+      if (hit.kind === 'module') {
+        const r = rollModuleDamage(ctx, hit.module);
+        event.fireStarted = event.fireStarted || r.fireStarted;
+        event.ammoRacked = event.ammoRacked || r.ammoRacked;
+      } else if (hit.kind === 'crew') {
+        rollCrewHit(ctx, hit.crew, true);
+      }
     }
   }
 
@@ -570,23 +635,35 @@ function heDirectHit(shell, target, hits, dmgRoll, rng) {
 export function resolveHeBurst(shell, burstPoint, tanks, directTarget, directHits, rng) {
   const spec = shell.spec;
   ensurePenRoll(shell, rng);
-  const dmgRoll = rollUniform(rng, spec.dmg);
+  const dmgRoll = shell.dmgRoll;
   shell.dead = true;
 
   const events = [];
   let directPen = false;
+  let directHadPlate = false;
 
   if (directTarget && directTarget.combat && !directTarget.combat.destroyed && directHits) {
+    for (const h of directHits) {
+      if (h.kind === 'plate' && h.plate.kind !== 'era') {
+        directHadPlate = true;
+        break;
+      }
+    }
+    // A barrel-only graze has no plate to burst on: heDirectHit still pops any
+    // ERA the trace touched, but the target is then splashed like any other
+    // tank in the blast sphere instead of getting a free zero-damage event.
     const ev = heDirectHit(shell, directTarget, directHits, dmgRoll, rng);
-    events.push(ev);
-    directPen = ev.kind === 'he_pen';
+    if (directHadPlate) {
+      events.push(ev);
+      directPen = ev.kind === 'he_pen';
+    }
   }
 
   if (directPen) return events; // blast went inside — no external splash
 
   const radiusM = blastRadiusM(spec.caliberMm);
   for (const tank of tanks || []) {
-    if (!tank || tank === directTarget) continue;
+    if (!tank || (directHadPlate && tank === directTarget)) continue;
     if (!tank.combat || tank.combat.destroyed) continue;
     const armor = tank.spec.armor;
     _center.copy(tank.state.pos);
@@ -628,10 +705,27 @@ export function resolveHeBurst(shell, burstPoint, tanks, directTarget, directHit
       const r = rollModuleDamage(ctx, plateHit.plate.moduleLink);
       event.fireStarted = event.fireStarted || r.fireStarted;
       event.ammoRacked = event.ammoRacked || r.ammoRacked;
+      ctx.chanceScale = 0.5;
+    }
+    // Splash penetrates hatches: crew at the reduced HE chance, internal
+    // modules at half chance / half damage (armor doc §8 step 3, shells doc
+    // §6), limited to the blast sphere around the burst point.
+    for (const hit of hits) {
+      if (hit.kind === 'plate') continue;
+      if (hit.point.distanceTo(burstPoint) > radiusM) continue;
+      if (hit.kind === 'module') {
+        const r = rollModuleDamage(ctx, hit.module);
+        event.fireStarted = event.fireStarted || r.fireStarted;
+        event.ammoRacked = event.ammoRacked || r.ammoRacked;
+      } else if (hit.kind === 'crew') {
+        rollCrewHit(ctx, hit.crew, true);
+      }
     }
     event.destroyed = finalizeTarget(tank.combat, event.ammoRacked);
     event.targetHpAfter = tank.combat.hp;
-    if (event.damage > 0 || event.modulesHit.length > 0) events.push(event);
+    if (event.damage > 0 || event.modulesHit.length > 0 || event.crewHit.length > 0) {
+      events.push(event);
+    }
   }
   return events;
 }

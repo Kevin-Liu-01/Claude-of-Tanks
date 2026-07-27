@@ -3,7 +3,8 @@
  *
  * InstancedBufferGeometry billboards (never THREE.Points) per graphics-aaa §9.
  * Pools (locked sizes): smoke 2048 / fire 1024 / dust 1024 / sparks 512 /
- * debris 256 (instanced shaded boxes). Fully GPU-animated: the CPU only writes
+ * debris 256 (instanced shaded irregular chunks) / flash 128 (star-spike
+ * discharge cards). Fully GPU-animated: the CPU only writes
  * attribute slots into a ring buffer at emit time (partial uploads via
  * addUpdateRange). A single shared `uTime` uniform drives every pool, so
  * setFrozen() deterministically pins the whole system for screenshots.
@@ -17,7 +18,7 @@ import * as THREE from 'three';
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
-const POOL_SIZES = { smoke: 2048, fire: 1024, dust: 1024, sparks: 512, debris: 256 };
+const POOL_SIZES = { smoke: 2048, fire: 1024, dust: 1024, sparks: 512, debris: 256, flash: 128 };
 
 // ---------------------------------------------------------------------------
 // GLSL — shared helpers
@@ -148,18 +149,20 @@ uniform float uTime;
 uniform float uDrag;
 varying vec2 vUv;
 varying vec4 vColor;
+varying float vT;
 ${FOG_PARS_V}
 ${DISPLACE_GLSL}
 void main() {
   float life = aVL.w;
   float age = uTime - aPB.w;
   if ( life <= 0.0 || age < 0.0 || age > life ) {
-    vUv = uv; vColor = vec4( 0.0 );
+    vUv = uv; vColor = vec4( 0.0 ); vT = 0.0;
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
     ${FOG_V.replace('-mvPosition.z','1.0')}
     return;
   }
   float t = age / life;
+  vT = t;
   vec3 grav = vec3( 0.0, aWS.z, 0.0 );
   vec3 wpos = aPB.xyz + particleDisplace( aVL.xyz, aWS.z, age, uDrag );
   vec3 vcur = aVL.xyz * exp( -uDrag * age ) + grav * age;
@@ -184,6 +187,7 @@ const STREAK_FRAG = `
 uniform float uIntensity;
 varying vec2 vUv;
 varying vec4 vColor;
+varying float vT;
 ${FOG_PARS_F}
 void main() {
   float dy = abs( vUv.y * 2.0 - 1.0 );
@@ -193,7 +197,9 @@ void main() {
   float a = profile * vColor.a;
   if ( a < 0.004 ) discard;
   ${FOG_SCALE_F}
-  vec3 col = ( vColor.rgb + vec3( core ) * 0.7 ) * uIntensity;
+  // incandescent cooling ramp: white-hot core fades toward deep red over life
+  vec3 base = mix( vColor.rgb, vec3( 1.0, 0.22, 0.04 ), vT * 0.8 );
+  vec3 col = ( base + vec3( core ) * 0.7 * ( 1.0 - vT * 0.75 ) ) * uIntensity;
   gl_FragColor = vec4( col * ( 1.0 - fogFactor ), a );
 }
 `;
@@ -236,11 +242,18 @@ void main() {
   float spin = aAR.w * age * mix( 1.0, 0.06, grounded );
   mat3 rot = axisAngle( normalize( aAR.xyz ), spin );
   float fade = 1.0 - smoothstep( 0.82, 1.0, t );
-  vec3 wpos = center + rot * ( position * aSG.x * fade );
+  // per-instance irregular chunk: seeded nonuniform scale + shear so no two
+  // fragments read as the same primitive
+  float h1 = fract( aSG.w * 37.719 );
+  float h2 = fract( aSG.w * 61.113 );
+  float h3 = fract( aSG.w * 91.537 );
+  vec3 lp = position * vec3( 0.55 + h1 * 0.95, 0.5 + h2 * 1.0, 0.55 + h3 * 0.95 );
+  lp.x += lp.y * ( h2 - 0.5 ) * 0.8;
+  lp.z += lp.y * ( h1 - 0.5 ) * 0.6;
+  vec3 wpos = center + rot * ( lp * aSG.x * fade );
   vNormalW = rot * normal;
-  float sv = fract( aSG.w * 17.31 );
-  vTint = mix( vec3( 0.16, 0.15, 0.14 ), vec3( 0.32, 0.26, 0.20 ), sv );
-  vHot = aSG.z * exp( -age * 3.2 );
+  vTint = mix( vec3( 0.085, 0.078, 0.072 ), vec3( 0.23, 0.185, 0.145 ), h3 );
+  vHot = aSG.z * exp( -age * 1.7 );
   vFade = fade;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   ${FOG_V}
@@ -261,7 +274,9 @@ void main() {
   float nl = max( dot( n, uSunDir ), 0.0 );
   float hemi = 0.28 + 0.22 * ( n.y * 0.5 + 0.5 );
   vec3 col = vTint * ( hemi + nl * 1.1 );
-  col += vec3( 2.4, 0.85, 0.22 ) * vHot;   // cooling ember glow (bloom feed)
+  // cooling ember glow (bloom feed), strongest along facet edges (grazing sun)
+  float edge = 0.45 + 0.55 * ( 1.0 - nl );
+  col += vec3( 3.0, 0.8, 0.12 ) * vHot * edge;
   ${FOG_SCALE_F}
   #ifdef USE_FOG
     col = mix( col, fogColor, fogFactor );
@@ -328,6 +343,58 @@ function makePuffTexture(rng, blobbiness) {
   return tex; // alpha map, stays linear
 }
 
+/**
+ * Muzzle/detonation star flash: tiny blinding core, radial spikes, soft halo.
+ * Alpha-only payload. Reads as a discharge, not fog.
+ * @param {() => number} rng
+ * @returns {THREE.CanvasTexture}
+ */
+function makeFlashTexture(rng) {
+  const s = 128;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = s;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, s, s);
+  ctx.globalCompositeOperation = 'lighter';
+  const c = s / 2;
+  // soft halo
+  let g = ctx.createRadialGradient(c, c, 0, c, c, s * 0.5);
+  g.addColorStop(0.0, 'rgba(255,255,255,0.75)');
+  g.addColorStop(0.16, 'rgba(255,255,255,0.42)');
+  g.addColorStop(0.45, 'rgba(255,255,255,0.10)');
+  g.addColorStop(1.0, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, s, s);
+  // radial spikes
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2 + rng() * 0.6;
+    const len = s * (0.26 + rng() * 0.2);
+    const w = s * (0.02 + rng() * 0.02);
+    ctx.save();
+    ctx.translate(c, c);
+    ctx.rotate(a);
+    ctx.scale(len, w);
+    const rg = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+    rg.addColorStop(0, 'rgba(255,255,255,0.9)');
+    rg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = rg;
+    ctx.beginPath();
+    ctx.arc(0, 0, 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  // blinding core
+  g = ctx.createRadialGradient(c, c, 0, c, c, s * 0.13);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, s, s);
+  ctx.globalCompositeOperation = 'source-over';
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
+}
+
 // ---------------------------------------------------------------------------
 // Pool plumbing
 // ---------------------------------------------------------------------------
@@ -344,13 +411,28 @@ function makeQuadGeometry(count) {
   return geo;
 }
 
-function makeBoxGeometry(count) {
-  const box = new THREE.BoxGeometry(1, 0.7, 0.55);
+/**
+ * Irregular fractured-chunk hull: a low-poly icosahedron whose corners are
+ * displaced (consistently across shared vertices) then flat-shaded. Combined
+ * with the per-instance nonuniform scale/shear in DEBRIS_VERT this kills the
+ * "axis-aligned box confetti" read.
+ */
+function makeChunkGeometry(count, rng) {
+  const base = new THREE.IcosahedronGeometry(0.62, 0).toNonIndexed();
+  const pos = base.getAttribute('position');
+  const disp = new Map();
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const key = `${x.toFixed(3)}|${y.toFixed(3)}|${z.toFixed(3)}`;
+    let m = disp.get(key);
+    if (m === undefined) { m = 0.5 + rng() * 1.0; disp.set(key, m); }
+    pos.setXYZ(i, x * m, y * m, z * m);
+  }
+  base.computeVertexNormals(); // non-indexed => hard facet normals
   const geo = new THREE.InstancedBufferGeometry();
-  geo.setAttribute('position', box.getAttribute('position'));
-  geo.setAttribute('normal', box.getAttribute('normal'));
-  geo.setAttribute('uv', box.getAttribute('uv'));
-  geo.setIndex(box.getIndex());
+  geo.setAttribute('position', base.getAttribute('position'));
+  geo.setAttribute('normal', base.getAttribute('normal'));
+  geo.setAttribute('uv', base.getAttribute('uv'));
   geo.instanceCount = 0;
   geo._capacity = count;
   return geo;
@@ -439,6 +521,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   const smokeTex = makePuffTexture(texRng, 0.65);
   const fireTex = makePuffTexture(texRng, 0.35);
   const dustTex = makePuffTexture(texRng, 0.8);
+  const flashTex = makeFlashTexture(texRng);
 
   const fogUniforms = () => THREE.UniformsUtils.clone(THREE.UniformsLib.fog);
 
@@ -469,9 +552,13 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     smoke: new Pool('smoke', makeQuadGeometry(POOL_SIZES.smoke),
       puffMaterial(smokeTex, false, 0.9, 1), PUFF_LAYOUT, POOL_SIZES.smoke, 'aVL', 3),
     fire: new Pool('fire', makeQuadGeometry(POOL_SIZES.fire),
-      puffMaterial(fireTex, true, 1.6, 2.0), PUFF_LAYOUT, POOL_SIZES.fire, 'aVL', 3),
+      // intensity 1.45: hot enough to bloom (threshold 1.6 is crossed where
+      // sprites overlap) without the stacked-additive HDR blowing the frame out
+      puffMaterial(fireTex, true, 1.6, 1.45), PUFF_LAYOUT, POOL_SIZES.fire, 'aVL', 3),
     dust: new Pool('dust', makeQuadGeometry(POOL_SIZES.dust),
       puffMaterial(dustTex, false, 1.4, 1), PUFF_LAYOUT, POOL_SIZES.dust, 'aVL', 3),
+    flash: new Pool('flash', makeQuadGeometry(POOL_SIZES.flash),
+      puffMaterial(flashTex, true, 0.6, 2.7), PUFF_LAYOUT, POOL_SIZES.flash, 'aVL', 3),
     sparks: new Pool('sparks', makeQuadGeometry(POOL_SIZES.sparks),
       new THREE.ShaderMaterial({
         vertexShader: STREAK_VERT,
@@ -485,7 +572,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
         side: THREE.DoubleSide,   // streak ribbon winding flips with view direction
         fog: true,
       }), STREAK_LAYOUT, POOL_SIZES.sparks, 'aVL', 3),
-    debris: new Pool('debris', makeBoxGeometry(POOL_SIZES.debris),
+    debris: new Pool('debris', makeChunkGeometry(POOL_SIZES.debris, texRng),
       new THREE.ShaderMaterial({
         vertexShader: DEBRIS_VERT,
         fragmentShader: DEBRIS_FRAG,
@@ -502,6 +589,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   pools.dust.mesh.renderOrder = 20;
   pools.smoke.mesh.renderOrder = 21;
   pools.fire.mesh.renderOrder = 22;
+  pools.flash.mesh.renderOrder = 23;
   pools.sparks.mesh.renderOrder = 23;
   for (const key of Object.keys(pools)) group.add(pools[key].mesh);
 
@@ -553,6 +641,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     smoke: (o) => emitPuff(pools.smoke, o),
     fire: (o) => emitPuff(pools.fire, o),
     dust: (o) => emitPuff(pools.dust, o),
+    flash: (o) => emitPuff(pools.flash, o),
     sparks: (o) => emitStreak(pools.sparks, o),
     debris: (o) => emitDebris(pools.debris, o),
   };
@@ -584,7 +673,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
 
     /**
      * Spawn one particle into a named pool.
-     * @param {'smoke'|'fire'|'dust'|'sparks'|'debris'} poolName
+     * @param {'smoke'|'fire'|'dust'|'flash'|'sparks'|'debris'} poolName
      * @param {object} opts pool-specific fields (pos, vel, life, ...; birthOffset backdates)
      */
     emit(poolName, opts) {

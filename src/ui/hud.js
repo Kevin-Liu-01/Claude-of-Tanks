@@ -1,6 +1,8 @@
-// src/ui/hud.js — battle HUD overlay: reticle, reload ring, shell selector,
-// penetration indicator, sniper scope, enemy HP bars, minimap, kill feed,
-// damage numbers, hit-direction indicator. DOM/canvas only — no scene objects.
+// src/ui/hud.js — battle HUD overlay: dispersion reticle + reload ring, shell
+// selector with ammo counts, consumable slots, penetration indicator, sniper
+// scope, team panels ("ears") + score/timer plate, spotting-driven enemy
+// nameplates and minimap, kill feed, damage log, damage numbers, hit-direction
+// indicator. DOM/canvas only — no scene objects.
 // Contract: docs/ARCHITECTURE.md §3.7.1.
 import * as THREE from 'three';
 
@@ -18,6 +20,12 @@ const _ndc = new THREE.Vector3();
 const _tmp = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
 
+// spotting model (WoT-style): max spot range + persistence after LOS is lost
+const SPOT_RANGE_M = 445;
+const RENDER_RANGE_M = 500; // white square on the minimap
+const SPOT_PERSIST_S = 4;
+const BATTLE_DURATION_S = 900; // 15:00 countdown
+
 // Default shell card data (used only when a forced screenshot aim view arrives
 // before any live frame — matches the m1a2 default player loadout).
 const DEFAULT_SHELLS = [
@@ -29,25 +37,105 @@ const DEFAULT_SHELLS = [
 const SHELL_TYPE_COLOR = {
   AP: '#ffd27a', APCR: '#e8f4ff', HEAT: '#ff8a5c', HE: '#ffb02e', APFSDS: '#ffc46b',
 };
+const SHELL_DEFAULT_COUNT = { AP: 24, APCR: 20, APFSDS: 24, HEAT: 16, HE: 12 };
 
 const CAUSE_LABEL = { shot: '', fire: 'FIRE', ammorack: 'AMMO RACK' };
+
+// minimap grid letters (WoT convention skips "I")
+const GRID_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'];
+
+const CONSUMABLES = [
+  {
+    key: '4', label: 'Repair Kit',
+    svg: '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="#cfd9e2" d="M21.7 6.4a5.4 5.4 0 0 1-7.3 6.5L7 20.3a2.1 2.1 0 0 1-3-3l7.4-7.4a5.4 5.4 0 0 1 6.5-7.3L14.6 6l3.4 3.4 3.7-3Z"/></svg>',
+  },
+  {
+    key: '5', label: 'First Aid Kit',
+    svg: '<svg viewBox="0 0 24 24" width="20" height="20"><rect x="2.5" y="6" width="19" height="14" rx="2" fill="#cfd9e2"/><rect x="9" y="3.5" width="6" height="3" rx="1" fill="#9fb0bf"/><path d="M10.7 9.5h2.6v2.2h2.2v2.6h-2.2v2.2h-2.6v-2.2H8.5v-2.6h2.2Z" fill="#c92f2f"/></svg>',
+  },
+  {
+    key: '6', label: 'Fire Extinguisher',
+    svg: '<svg viewBox="0 0 24 24" width="20" height="20"><rect x="9" y="8" width="6.5" height="13" rx="2.2" fill="#d24a3a"/><rect x="10.7" y="4.5" width="3" height="3.5" fill="#cfd9e2"/><path d="M10.7 6 4.5 3.4v2.2l6.2 2Z" fill="#9fb0bf"/><rect x="9" y="11" width="6.5" height="2" fill="#eef4f9" opacity=".7"/></svg>',
+  },
+];
+
+function classIconSvg(cls, color) {
+  const d = 'M6 1 11 6 6 11 1 6Z';
+  if (cls === 'heavy') {
+    return `<svg width="10" height="10" viewBox="0 0 12 12" style="flex:0 0 auto"><path d="${d}" fill="${color}"/></svg>`;
+  }
+  if (cls === 'mbt') {
+    return `<svg width="10" height="10" viewBox="0 0 12 12" style="flex:0 0 auto"><path d="${d}" fill="${color}"/><rect x="3.6" y="5.1" width="4.8" height="1.8" fill="#0a0e12"/></svg>`;
+  }
+  // medium / light / default: hollow diamond
+  return `<svg width="10" height="10" viewBox="0 0 12 12" style="flex:0 0 auto"><path d="${d}" fill="none" stroke="${color}" stroke-width="1.7"/></svg>`;
+}
 
 const HUD_CSS = `
 .cot-hud{position:fixed;inset:0;pointer-events:none;z-index:40;font-family:${FONT_STACK};
   -webkit-user-select:none;user-select:none;color:#e6edf3;overflow:hidden;}
 .cot-hud *{box-sizing:border-box;margin:0;padding:0;}
+.cot-snipefx{position:absolute;inset:0;display:none;
+  -webkit-backdrop-filter:contrast(1.42) saturate(1.45) brightness(.86);
+  backdrop-filter:contrast(1.42) saturate(1.45) brightness(.86);}
 .cot-ret{position:absolute;inset:0;width:100%;height:100%;display:block;}
-.cot-killfeed{position:absolute;top:16px;right:18px;display:flex;flex-direction:column;
-  gap:5px;align-items:flex-end;max-width:420px;}
-.cot-kf{display:flex;gap:7px;align-items:baseline;padding:5px 12px 5px 16px;font-size:12.5px;
-  letter-spacing:.03em;background:linear-gradient(90deg,rgba(8,12,16,0) 0%,rgba(8,12,16,.82) 26%);
-  border-right:2px solid #f05a5a;text-shadow:0 1px 2px rgba(0,0,0,.8);
+.cot-top{position:absolute;top:0;left:50%;transform:translateX(-50%);display:flex;
+  align-items:center;gap:13px;padding:6px 20px 7px;
+  background:linear-gradient(180deg,rgba(7,10,14,.9),rgba(7,10,14,.62));
+  border:1px solid rgba(146,164,180,.3);border-top:none;
+  box-shadow:0 3px 14px rgba(0,0,0,.45);}
+.cot-top .fg{color:${PEN_GREEN};font-size:21px;font-weight:700;line-height:1;
+  font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.8);}
+.cot-top .fe{color:${PEN_RED};font-size:21px;font-weight:700;line-height:1;
+  font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.8);}
+.cot-top .vs{color:#8a97a3;font-size:14px;font-weight:600;}
+.cot-top .tm{font-size:14px;font-weight:600;color:#d6e2ec;letter-spacing:.08em;
+  font-variant-numeric:tabular-nums;border-left:1px solid rgba(146,164,180,.35);
+  padding-left:13px;line-height:1;}
+.cot-ear{position:absolute;top:52px;width:194px;display:flex;flex-direction:column;gap:2px;}
+.cot-ear.l{left:0;}
+.cot-ear.r{right:0;}
+.cot-ear .hd{font-size:9.5px;font-weight:700;letter-spacing:.2em;color:#8a97a3;
+  text-transform:uppercase;padding:2px 10px 3px;display:flex;justify-content:space-between;
+  background:rgba(7,10,14,.55);}
+.cot-ear.l .hd{border-left:2px solid rgba(126,232,126,.75);}
+.cot-ear.r .hd{border-right:2px solid rgba(240,90,90,.75);text-align:right;}
+.cot-er{display:flex;align-items:center;gap:6px;padding:3px 10px 3px 8px;font-size:11px;
+  font-weight:600;letter-spacing:.02em;color:#d6e2ec;position:relative;
+  text-shadow:0 1px 2px rgba(0,0,0,.85);}
+.cot-ear.l .cot-er{background:linear-gradient(90deg,rgba(7,10,14,.72) 0%,rgba(7,10,14,.15) 100%);
+  border-left:2px solid rgba(126,232,126,.75);}
+.cot-ear.r .cot-er{background:linear-gradient(270deg,rgba(7,10,14,.72) 0%,rgba(7,10,14,.15) 100%);
+  border-right:2px solid rgba(240,90,90,.75);flex-direction:row-reverse;}
+.cot-er .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+.cot-ear.r .cot-er .n{text-align:right;}
+.cot-er.me .n{color:#ffd27a;}
+.cot-er .hpm{position:absolute;left:8px;right:10px;bottom:1px;height:2px;
+  background:rgba(255,255,255,.1);}
+.cot-er .hpm i{display:block;height:100%;background:currentColor;}
+.cot-ear.l .cot-er .hpm i{background:rgba(126,232,126,.8);}
+.cot-ear.r .cot-er .hpm i{background:rgba(240,120,110,.8);}
+.cot-er.dead{opacity:.38;}
+.cot-er.dead .n{text-decoration:line-through;text-decoration-color:rgba(240,90,90,.8);}
+.cot-er.dead .hpm{display:none;}
+.cot-killfeed{position:absolute;top:52px;left:210px;display:flex;flex-direction:column;
+  gap:5px;align-items:flex-start;max-width:420px;}
+.cot-kf{display:flex;gap:7px;align-items:baseline;padding:5px 16px 5px 12px;font-size:12.5px;
+  letter-spacing:.03em;background:linear-gradient(270deg,rgba(8,12,16,0) 0%,rgba(8,12,16,.82) 26%);
+  border-left:2px solid #f05a5a;text-shadow:0 1px 2px rgba(0,0,0,.8);
   transition:opacity .9s ease;opacity:1;}
 .cot-kf.out{opacity:0;}
 .cot-kf .k{color:#cfe3f4;font-weight:600;}
 .cot-kf .v{color:#f28f8f;font-weight:600;}
 .cot-kf .d{color:#8a97a3;font-weight:400;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;}
 .cot-kf .c{color:#f0b04a;font-size:10px;letter-spacing:.1em;font-weight:700;}
+.cot-dlog{position:absolute;left:16px;bottom:328px;display:flex;flex-direction:column;gap:2px;}
+.cot-dl{font-size:11px;font-weight:600;letter-spacing:.03em;padding:2px 10px 2px 8px;
+  background:linear-gradient(90deg,rgba(8,12,16,.75),rgba(8,12,16,.1));
+  border-left:2px solid #f05a5a;color:#f2b1a8;text-shadow:0 1px 2px rgba(0,0,0,.85);
+  transition:opacity .8s ease;}
+.cot-dl b{color:#ff8f80;font-weight:700;font-variant-numeric:tabular-nums;}
+.cot-dl.out{opacity:0;}
 .cot-dmglayer{position:absolute;inset:0;}
 .cot-dmgnum{position:absolute;font-weight:700;font-size:18px;color:#ffd166;white-space:nowrap;
   text-shadow:0 1px 1px rgba(0,0,0,.95),0 0 12px rgba(0,0,0,.5);
@@ -62,37 +150,51 @@ const HUD_CSS = `
 .cot-alert.red{color:#f05a5a;}
 .cot-alert.show{opacity:1;}
 .cot-shells{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;
-  gap:7px;pointer-events:auto;}
-.cot-shell{width:148px;padding:7px 10px 6px;background:linear-gradient(180deg,rgba(14,19,24,.82),rgba(8,11,14,.88));
+  gap:7px;pointer-events:auto;align-items:stretch;}
+.cot-shell{width:170px;padding:7px 8px 6px;background:linear-gradient(180deg,rgba(14,19,24,.82),rgba(8,11,14,.88));
   border:1px solid rgba(146,164,180,.28);border-bottom:2px solid rgba(146,164,180,.28);
-  cursor:pointer;position:relative;transition:border-color .12s,background .12s;}
+  cursor:pointer;position:relative;transition:border-color .12s,background .12s;overflow:hidden;}
 .cot-shell:hover{border-color:rgba(210,225,240,.5);}
 .cot-shell.sel{border-color:#f0a030;border-bottom-color:#f0a030;
   background:linear-gradient(180deg,rgba(34,26,12,.9),rgba(18,13,7,.92));
   box-shadow:0 0 14px rgba(240,160,48,.25);}
-.cot-shell .key{position:absolute;top:4px;left:7px;font-size:10px;font-weight:700;color:#8a97a3;
+.cot-shell .key{position:absolute;top:4px;left:6px;font-size:10px;font-weight:700;color:#8a97a3;
   border:1px solid rgba(146,164,180,.4);padding:0 4px;line-height:14px;}
 .cot-shell.sel .key{color:#f0b04a;border-color:rgba(240,176,74,.6);}
-.cot-shell .nm{font-size:12.5px;font-weight:600;color:#e6edf3;text-align:center;letter-spacing:.02em;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 14px;}
+.cot-shell .cnt{position:absolute;top:4px;right:7px;font-size:11px;font-weight:700;
+  color:#d6e2ec;font-variant-numeric:tabular-nums;letter-spacing:.02em;}
+.cot-shell .nm{font-size:12px;font-weight:600;color:#e6edf3;text-align:center;letter-spacing:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 24px;}
 .cot-shell .ty{font-size:9.5px;font-weight:700;letter-spacing:.14em;text-align:center;margin-top:1px;}
 .cot-shell .st{display:flex;justify-content:space-between;font-size:10px;color:#9fb0bf;
-  margin-top:4px;letter-spacing:.04em;}
+  margin-top:4px;letter-spacing:.04em;padding:0 2px;}
 .cot-shell .st b{color:#d6e2ec;font-weight:600;}
+.cot-shell .cool{position:absolute;left:0;right:0;top:0;height:0;
+  background:rgba(4,6,9,.72);pointer-events:none;}
+.cot-consep{width:1px;background:rgba(146,164,180,.3);margin:2px 3px;}
+.cot-con{width:46px;position:relative;cursor:pointer;
+  background:linear-gradient(180deg,rgba(14,19,24,.82),rgba(8,11,14,.88));
+  border:1px solid rgba(146,164,180,.28);border-bottom:2px solid rgba(146,164,180,.28);
+  display:flex;align-items:center;justify-content:center;transition:border-color .12s;}
+.cot-con:hover{border-color:rgba(210,225,240,.5);}
+.cot-con .key{position:absolute;top:3px;left:4px;font-size:9px;font-weight:700;color:#8a97a3;
+  border:1px solid rgba(146,164,180,.4);padding:0 3px;line-height:12px;}
+.cot-con .cool{position:absolute;inset:0;display:none;
+  background:conic-gradient(rgba(4,6,9,.8) var(--cool,0%),transparent 0);}
 .cot-hpbars{position:absolute;inset:0;}
-.cot-hpb{position:absolute;width:96px;transform:translate(-50%,-100%);text-align:center;will-change:transform;}
+.cot-hpb{position:absolute;width:108px;transform:translate(-50%,-100%);text-align:center;will-change:transform;}
 .cot-hpb .nm{font-size:11px;font-weight:600;letter-spacing:.05em;color:#ffb3b3;
-  text-shadow:0 1px 2px rgba(0,0,0,.95);margin-bottom:2px;white-space:nowrap;}
-.cot-hpb .tr{height:4px;background:rgba(6,8,10,.72);border:1px solid rgba(0,0,0,.6);
-  box-shadow:0 1px 2px rgba(0,0,0,.5);}
+  text-shadow:0 1px 2px rgba(0,0,0,.95);margin-bottom:2px;white-space:nowrap;
+  display:flex;align-items:center;justify-content:center;gap:4px;}
+.cot-hpb .tr{height:5px;background:rgba(6,8,10,.72);border:1px solid rgba(0,0,0,.6);
+  box-shadow:0 1px 2px rgba(0,0,0,.5);position:relative;}
 .cot-hpb .fl{height:100%;background:linear-gradient(180deg,#ff7a6e,#d63a30);transition:width .15s linear;}
+.cot-hpb .sg{position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,transparent 0 12px,rgba(5,7,9,.85) 12px 13px);}
 .cot-minimap{position:absolute;right:16px;bottom:16px;width:220px;height:220px;
   border:1px solid rgba(210,225,240,.28);box-shadow:0 6px 22px rgba(0,0,0,.55);
   background:#0d1310;}
 .cot-minimap canvas{display:block;width:220px;height:220px;}
-.cot-zoom{position:absolute;left:50%;top:calc(50% + 64px);transform:translateX(-50%);
-  font-size:15px;font-weight:600;letter-spacing:.1em;color:rgba(220,232,244,.9);
-  text-shadow:0 1px 3px rgba(0,0,0,.9);display:none;}
 `;
 
 function penColor(r) {
@@ -116,6 +218,11 @@ function el(tag, cls, parent) {
   return e;
 }
 
+function fmtTimer(s) {
+  const t = Math.max(0, Math.floor(s));
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+}
+
 /**
  * Create the battle HUD overlay and subscribe it to the event bus.
  * @param {{on:Function,off:Function,emit:Function}} bus - injected event bus (§1.5).
@@ -127,29 +234,56 @@ export function initHud(bus) {
   const root = el('div', 'cot-hud');
   document.body.appendChild(root);
 
-  // --- layers ---
+  // --- layers (order matters: snipefx sits under everything else) ---
+  const snipeFx = el('div', 'cot-snipefx', root);
   const retCanvas = el('canvas', 'cot-ret', root);
   const ctx = retCanvas.getContext('2d');
   const hpLayer = el('div', 'cot-hpbars', root);
   const dmgLayer = el('div', 'cot-dmglayer', root);
-  const killfeed = el('div', 'cot-killfeed', root);
-  const alertEl = el('div', 'cot-alert', root);
-  const zoomEl = el('div', 'cot-zoom', root);
-  zoomEl.textContent = '×8.0';
 
-  // --- shell selector ---
+  // --- top score/timer plate ---
+  const topPlate = el('div', 'cot-top', root);
+  topPlate.innerHTML = `<b class="fg">0</b><span class="vs">:</span><b class="fe">0</b><span class="tm">15:00</span>`;
+  const fgEl = topPlate.querySelector('.fg');
+  const feEl = topPlate.querySelector('.fe');
+  const tmEl = topPlate.querySelector('.tm');
+
+  // --- team panels ("ears") ---
+  const earL = el('div', 'cot-ear l', root);
+  const earR = el('div', 'cot-ear r', root);
+  earL.innerHTML = `<div class="hd"><span>Allies</span><span class="al"></span></div>`;
+  earR.innerHTML = `<div class="hd"><span class="al"></span><span>Enemies</span></div>`;
+  const earRows = new Map(); // tank id -> { root, hp, dead, name }
+
+  const killfeed = el('div', 'cot-killfeed', root);
+  const dlog = el('div', 'cot-dlog', root);
+  const alertEl = el('div', 'cot-alert', root);
+
+  // --- shell selector + consumables ---
   const shellBox = el('div', 'cot-shells', root);
   const slotEls = [];
   for (let i = 0; i < 3; i++) {
     const s = el('div', 'cot-shell', shellBox);
-    s.innerHTML = `<div class="key">${i + 1}</div><div class="nm"></div><div class="ty"></div>` +
-      `<div class="st"><span>PEN <b class="p"></b></span><span>DMG <b class="d"></b></span></div>`;
+    s.innerHTML = `<div class="key">${i + 1}</div><div class="cnt"></div><div class="nm"></div><div class="ty"></div>` +
+      `<div class="st"><span>PEN <b class="p"></b></span><span>DMG <b class="d"></b></span></div>` +
+      `<div class="cool"></div>`;
     s.addEventListener('click', () => {
       selectSlot(i);
       bus.emit('ui:shellSelect', { slot: i });
       bus.emit('ui:click', {});
     });
     slotEls.push(s);
+  }
+  el('div', 'cot-consep', shellBox);
+  for (let i = 0; i < CONSUMABLES.length; i++) {
+    const c = CONSUMABLES[i];
+    const s = el('div', 'cot-con', shellBox);
+    s.title = c.label;
+    s.innerHTML = `<div class="key">${c.key}</div>${c.svg}<div class="cool"></div>`;
+    s.addEventListener('click', () => {
+      bus.emit('ui:consumable', { slot: i });
+      bus.emit('ui:click', {});
+    });
   }
 
   // --- minimap ---
@@ -174,10 +308,14 @@ export function initHud(bus) {
   let forced = null; // partial FrameInfo.aim override (cleared by next update)
   let lastShells = DEFAULT_SHELLS;
   let alertTimer = null;
+  let heightFieldRef = null; // for spotting line-of-sight tests
   const nameById = new Map();
   const hitDirs = []; // { ang, t0 } — screen-relative hit indicators
   const hpPool = new Map(); // tank id -> { root, fill, nm, lastFrac }
+  const spotById = new Map(); // tank id -> { vis, lastT, lastX, lastZ, ever }
   let mapWorldSize = 1024;
+  let lastScore = '';
+  let lastTimer = '';
 
   function resize() {
     w = root.clientWidth || window.innerWidth;
@@ -224,43 +362,154 @@ export function initHud(bus) {
     return (h * 0.5) / (Math.tan(fov * 0.5) * Math.max(dist, 1));
   }
 
+  // ---------- spotting ----------
+  function hasLOS(x0, y0, z0, x1, y1, z1) {
+    if (!heightFieldRef) return true;
+    const steps = 16;
+    for (let i = 1; i < steps; i++) {
+      const t = i / steps;
+      const gy = y0 + (y1 - y0) * t;
+      const gh = heightFieldRef.getHeightAt(x0 + (x1 - x0) * t, z0 + (z1 - z0) * t);
+      if (gh > gy + 0.9) return false;
+    }
+    return true;
+  }
+
+  function updateSpotting(frame) {
+    const player = frame.player;
+    if (!player || !player.state) return;
+    const pp = player.state.pos;
+    const tanks = frame.tanks || [];
+    for (let i = 0; i < tanks.length; i++) {
+      const t = tanks[i];
+      if (!t || t.isPlayer || !t.state) continue;
+      if (t.team === 'player') continue; // allies always known
+      let sp = spotById.get(t.id);
+      if (!sp) { sp = { vis: false, lastT: -1e9, lastX: 0, lastZ: 0, ever: false }; spotById.set(t.id, sp); }
+      if (t.combat && t.combat.destroyed) {
+        // wrecks are permanently known once dead
+        sp.vis = true; sp.ever = true;
+        sp.lastX = t.state.pos.x; sp.lastZ = t.state.pos.z;
+        continue;
+      }
+      const dx = t.state.pos.x - pp.x;
+      const dz = t.state.pos.z - pp.z;
+      const d = Math.hypot(dx, dz);
+      const seen = d <= SPOT_RANGE_M &&
+        hasLOS(pp.x, pp.y + 2.6, pp.z, t.state.pos.x, t.state.pos.y + 1.9, t.state.pos.z);
+      if (seen) {
+        sp.lastT = frame.timeS;
+        sp.lastX = t.state.pos.x; sp.lastZ = t.state.pos.z;
+        sp.ever = true;
+      }
+      sp.vis = seen || (frame.timeS - sp.lastT) < SPOT_PERSIST_S;
+      if (sp.vis) { sp.lastX = t.state.pos.x; sp.lastZ = t.state.pos.z; }
+    }
+  }
+
+  function isSpotted(id) {
+    const sp = spotById.get(id);
+    return sp ? sp.vis : true;
+  }
+
+  // ---------- team panels + score plate ----------
+  function updateTeams(frame) {
+    const tanks = frame.tanks || [];
+    let allyAlive = 0, allyTotal = 0, enemyAlive = 0, enemyTotal = 0;
+    for (let i = 0; i < tanks.length; i++) {
+      const t = tanks[i];
+      if (!t || !t.spec) continue;
+      const ally = t.team === 'player' || t.isPlayer;
+      const dead = !!(t.combat && t.combat.destroyed);
+      if (ally) { allyTotal++; if (!dead) allyAlive++; }
+      else { enemyTotal++; if (!dead) enemyAlive++; }
+      let row = earRows.get(t.id);
+      if (!row) {
+        const r = el('div', 'cot-er');
+        const color = ally ? PEN_GREEN : PEN_RED;
+        r.innerHTML = `${classIconSvg(t.spec.class, color)}<span class="n"></span><div class="hpm"><i></i></div>`;
+        if (t.isPlayer) r.classList.add('me');
+        r.querySelector('.n').textContent = t.spec.name;
+        (ally ? earL : earR).appendChild(r);
+        row = { root: r, hp: r.querySelector('.hpm i'), lastFrac: -1, wasDead: null };
+        earRows.set(t.id, row);
+      }
+      if (dead !== row.wasDead) { row.root.classList.toggle('dead', dead); row.wasDead = dead; }
+      if (t.combat && !dead) {
+        const frac = Math.max(0, Math.min(1, t.combat.hp / t.combat.maxHp));
+        if (Math.abs(frac - row.lastFrac) > 0.005) {
+          row.hp.style.width = `${(frac * 100).toFixed(1)}%`;
+          row.lastFrac = frac;
+        }
+      }
+    }
+    const score = `${enemyTotal - enemyAlive}:${allyTotal - allyAlive}|${allyAlive}/${allyTotal}|${enemyAlive}/${enemyTotal}`;
+    if (score !== lastScore) {
+      fgEl.textContent = String(enemyTotal - enemyAlive);
+      feEl.textContent = String(allyTotal - allyAlive);
+      earL.querySelector('.al').textContent = `${allyAlive} / ${allyTotal}`;
+      earR.querySelector('.al').textContent = `${enemyAlive} / ${enemyTotal}`;
+      lastScore = score;
+    }
+    const timer = fmtTimer(BATTLE_DURATION_S - frame.timeS);
+    if (timer !== lastTimer) { tmEl.textContent = timer; lastTimer = timer; }
+  }
+
   // ---------- reticle / scope canvas ----------
-  function drawScope() {
+  function drawScope(zoom) {
+    const cx = w / 2, cy = h / 2;
+    const R = Math.min(w, h) * 0.44;
     if (!scopeGrad) {
       const r = Math.hypot(w, h) * 0.5;
-      scopeGrad = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.26, w / 2, h / 2, r);
-      scopeGrad.addColorStop(0, 'rgba(4,6,8,0)');
-      scopeGrad.addColorStop(0.5, 'rgba(4,6,8,0.55)');
-      scopeGrad.addColorStop(0.82, 'rgba(2,3,4,0.9)');
-      scopeGrad.addColorStop(1, 'rgba(1,2,3,0.97)');
+      scopeGrad = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.3, cx, cy, r);
+      scopeGrad.addColorStop(0, 'rgba(3,5,7,0)');
+      scopeGrad.addColorStop(0.42, 'rgba(3,5,7,0.68)');
+      scopeGrad.addColorStop(0.75, 'rgba(2,3,4,0.96)');
+      scopeGrad.addColorStop(1, 'rgba(1,2,3,1)');
     }
     ctx.fillStyle = scopeGrad;
     ctx.fillRect(0, 0, w, h);
-    // scope ring
-    ctx.strokeStyle = 'rgba(180,200,215,0.28)';
+    // scope frame: heavy dark outer ring + crisp inner ring
+    ctx.strokeStyle = 'rgba(8,11,14,0.9)';
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R + 5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(205,222,238,0.6)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(w / 2, h / 2, Math.min(w, h) * 0.42, 0, Math.PI * 2);
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
     ctx.stroke();
     // hairlines with center gap
-    const cx = w / 2, cy = h / 2, gap = 30;
-    ctx.strokeStyle = 'rgba(210,225,240,0.5)';
-    ctx.lineWidth = 1;
+    const gap = 34;
+    ctx.strokeStyle = 'rgba(225,238,248,0.8)';
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.moveTo(0, cy + 0.5); ctx.lineTo(cx - gap, cy + 0.5);
-    ctx.moveTo(cx + gap, cy + 0.5); ctx.lineTo(w, cy + 0.5);
-    ctx.moveTo(cx + 0.5, 0); ctx.lineTo(cx + 0.5, cy - gap);
-    ctx.moveTo(cx + 0.5, cy + gap); ctx.lineTo(cx + 0.5, h);
+    ctx.moveTo(cx - R, cy + 0.5); ctx.lineTo(cx - gap, cy + 0.5);
+    ctx.moveTo(cx + gap, cy + 0.5); ctx.lineTo(cx + R, cy + 0.5);
+    ctx.moveTo(cx + 0.5, cy - R); ctx.lineTo(cx + 0.5, cy - gap);
+    ctx.moveTo(cx + 0.5, cy + gap); ctx.lineTo(cx + 0.5, cy + R);
     ctx.stroke();
-    // mil ticks on horizontal line
-    ctx.strokeStyle = 'rgba(210,225,240,0.35)';
+    // mil ticks on both hairlines
+    ctx.strokeStyle = 'rgba(225,238,248,0.65)';
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
     for (let i = 1; i <= 6; i++) {
-      const d = gap + 26 * i;
-      ctx.moveTo(cx - d, cy - 4); ctx.lineTo(cx - d, cy + 4);
-      ctx.moveTo(cx + d, cy - 4); ctx.lineTo(cx + d, cy + 4);
+      const d = gap + 30 * i;
+      ctx.moveTo(cx - d, cy - 5); ctx.lineTo(cx - d, cy + 5);
+      ctx.moveTo(cx + d, cy - 5); ctx.lineTo(cx + d, cy + 5);
+      ctx.moveTo(cx - 5, cy + d); ctx.lineTo(cx + 5, cy + d);
     }
     ctx.stroke();
+    // magnification anchored to the bottom of the scope frame
+    ctx.fillStyle = 'rgba(222,234,246,0.92)';
+    ctx.font = `600 15px ${FONT_STACK}`;
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(`×${(zoom || 8).toFixed(1)}`, cx, cy + R - 22);
+    ctx.shadowBlur = 0;
+    ctx.textAlign = 'left';
   }
 
   function drawHitIndicators(timeS) {
@@ -285,40 +534,47 @@ export function initHud(bus) {
   function drawReticle(view, dt) {
     const col = penColor(view.penRatio);
     const cx = view.cx, cy = view.cy;
-    // bloom/shrink smoothing toward target pixel radius
+    // bloom/shrink smoothing toward target pixel radius.
+    // Visual scale: WoT's arcade circle is a stylized (enlarged) rendering of
+    // the true dispersion cone — a raw projection is near-invisible at range.
+    const targetR = Math.max(34, view.radPx * 3.0);
     const k = 1 - Math.exp(-14 * dt);
-    smoothRadPx += (view.radPx - smoothRadPx) * k;
-    const r = Math.max(7, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
+    smoothRadPx += (targetR - smoothRadPx) * k;
+    const r = Math.max(20, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
 
     ctx.strokeStyle = col;
     ctx.fillStyle = col;
     ctx.globalAlpha = 0.95;
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 1.8;
+    ctx.shadowColor = 'rgba(0,0,0,0.55)';
+    ctx.shadowBlur = 2;
     // dispersion circle
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.stroke();
     // cardinal ticks (inward)
+    ctx.lineWidth = 2.2;
     ctx.beginPath();
     for (let q = 0; q < 4; q++) {
       const a = q * Math.PI / 2;
       const ca = Math.cos(a), sa = Math.sin(a);
       ctx.moveTo(cx + ca * r, cy + sa * r);
-      ctx.lineTo(cx + ca * (r - 8), cy + sa * (r - 8));
+      ctx.lineTo(cx + ca * (r - 11), cy + sa * (r - 11));
     }
     ctx.stroke();
     // center dot + fine cross
     ctx.beginPath();
     ctx.arc(cx, cy, 2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.3;
     ctx.beginPath();
-    ctx.moveTo(cx - 12, cy + 0.5); ctx.lineTo(cx - 5, cy + 0.5);
-    ctx.moveTo(cx + 5, cy + 0.5); ctx.lineTo(cx + 12, cy + 0.5);
-    ctx.moveTo(cx + 0.5, cy - 12); ctx.lineTo(cx + 0.5, cy - 5);
-    ctx.moveTo(cx + 0.5, cy + 5); ctx.lineTo(cx + 0.5, cy + 12);
+    ctx.moveTo(cx - 14, cy + 0.5); ctx.lineTo(cx - 5, cy + 0.5);
+    ctx.moveTo(cx + 5, cy + 0.5); ctx.lineTo(cx + 14, cy + 0.5);
+    ctx.moveTo(cx + 0.5, cy - 14); ctx.lineTo(cx + 0.5, cy - 5);
+    ctx.moveTo(cx + 0.5, cy + 5); ctx.lineTo(cx + 0.5, cy + 14);
     ctx.stroke();
     ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
 
     // gun marker (where the barrel actually points)
     if (view.gunX != null) {
@@ -331,36 +587,52 @@ export function initHud(bus) {
       ctx.stroke();
     }
 
-    // reload ring + countdown
+    // reload ring: orange progress sweep while loading, subtle full green
+    // "shell loaded" ring when ready (always present, per WoT identity).
     const rl = view.reload;
+    const rr = 23;
     if (rl && rl.totalS > 0 && rl.t > 0.001) {
       const frac = 1 - rl.t / rl.totalS;
-      const rr = 26;
-      ctx.lineWidth = 4.5;
-      ctx.strokeStyle = 'rgba(10,14,18,0.55)';
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = 'rgba(10,14,18,0.6)';
       ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2); ctx.stroke();
       ctx.strokeStyle = '#f0a030';
       ctx.beginPath(); ctx.arc(cx, cy, rr, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.stroke();
       ctx.fillStyle = '#f0b04a';
-      ctx.font = `600 13px ${FONT_STACK}`;
+      ctx.font = `700 15px ${FONT_STACK}`;
       ctx.textAlign = 'center';
-      ctx.fillText(rl.t.toFixed(1), cx, cy + 48);
+      ctx.shadowColor = 'rgba(0,0,0,0.85)';
+      ctx.shadowBlur = 3;
+      ctx.fillText(`${rl.t.toFixed(1)}`, cx, cy + rr + 24);
       ctx.font = `600 9px ${FONT_STACK}`;
-      ctx.fillStyle = 'rgba(240,176,74,0.75)';
-      ctx.fillText('R E L O A D I N G', cx, cy + 61);
+      ctx.fillStyle = 'rgba(240,176,74,0.8)';
+      ctx.fillText('R E L O A D I N G', cx, cy + rr + 37);
+      ctx.shadowBlur = 0;
+    } else {
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(126,232,126,0.5)';
+      ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2); ctx.stroke();
     }
 
-    // distance readout
+    // distance readout: centered below the aim circle (never crowds the cross)
     if (view.distM != null && isFinite(view.distM)) {
-      ctx.fillStyle = 'rgba(214,226,236,0.85)';
-      ctx.font = `600 12px ${FONT_STACK}`;
-      ctx.textAlign = 'left';
-      ctx.fillText(`${Math.round(view.distM)} m`, cx + r + 12, cy + 4);
+      ctx.fillStyle = 'rgba(222,232,242,0.92)';
+      ctx.font = `600 13px ${FONT_STACK}`;
+      ctx.textAlign = 'center';
+      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.shadowBlur = 3;
+      ctx.fillText(`${Math.round(view.distM)} m`, cx, cy + Math.max(r, rr) + 58);
+      ctx.shadowBlur = 0;
     }
     ctx.textAlign = 'left';
   }
 
   // ---------- shell selector ----------
+  function shellCount(sp) {
+    if (sp.count != null) return sp.count;
+    return SHELL_DEFAULT_COUNT[sp.type] != null ? SHELL_DEFAULT_COUNT[sp.type] : 20;
+  }
+
   function renderShells(shells, slot) {
     for (let i = 0; i < 3; i++) {
       const sp = shells && shells[i] ? shells[i] : DEFAULT_SHELLS[i];
@@ -371,12 +643,26 @@ export function initHud(bus) {
       ty.style.color = SHELL_TYPE_COLOR[sp.type] || '#9fb0bf';
       s.querySelector('.p').textContent = sp.penLabel != null ? sp.penLabel : '—';
       s.querySelector('.d').textContent = sp.dmg != null ? String(sp.dmg) : '—';
+      const n = shellCount(sp);
+      s.querySelector('.cnt').textContent = `${n}`;
       s.classList.toggle('sel', i === slot);
     }
     localSlot = slot;
   }
 
-  // ---------- enemy HP bars ----------
+  // dim/sweep the active shell plate during reload (WoT ammo-plate feedback)
+  function updateShellCooldown(reload, slot) {
+    for (let i = 0; i < 3; i++) {
+      const coolEl = slotEls[i].querySelector('.cool');
+      if (i === slot && reload && reload.totalS > 0 && reload.t > 0.001) {
+        coolEl.style.height = `${((reload.t / reload.totalS) * 100).toFixed(1)}%`;
+      } else {
+        coolEl.style.height = '0';
+      }
+    }
+  }
+
+  // ---------- enemy nameplates ----------
   function updateHpBars(frame) {
     const camera = frame.camera;
     const seen = updateHpBars._seen || (updateHpBars._seen = new Set());
@@ -385,6 +671,7 @@ export function initHud(bus) {
     for (let i = 0; i < tanks.length; i++) {
       const t = tanks[i];
       if (!t || t.isPlayer || !t.combat || t.combat.destroyed) continue;
+      if (t.team !== 'player' && !isSpotted(t.id)) continue; // spotting gate
       if (t.visual && t.visual.turretTopWorld) {
         t.visual.turretTopWorld(_tmp);
       } else if (t.state && t.state.pos) {
@@ -392,17 +679,25 @@ export function initHud(bus) {
         _tmp.y += (t.spec && t.spec.dims ? t.spec.dims.heightM : 2.5);
       } else continue;
       project(camera, _tmp.x, _tmp.y + 2, _tmp.z);
-      if (!_sVisible || _sDist > 500) continue;
+      if (!_sVisible || _sDist > SPOT_RANGE_M + 60) continue;
       seen.add(t.id);
       let bar = hpPool.get(t.id);
       if (!bar) {
         const rootEl = el('div', 'cot-hpb', hpLayer);
-        rootEl.innerHTML = `<div class="nm"></div><div class="tr"><div class="fl"></div></div>`;
-        bar = { root: rootEl, nm: rootEl.querySelector('.nm'), fill: rootEl.querySelector('.fl'), lastFrac: -1, lastName: '' };
+        const ally = t.team === 'player';
+        rootEl.innerHTML = `<div class="nm">${classIconSvg(t.spec ? t.spec.class : 'medium', ally ? PEN_GREEN : '#ffb3b3')}<span></span></div>` +
+          `<div class="tr"><div class="fl"></div><div class="sg"></div></div>`;
+        bar = {
+          root: rootEl, nm: rootEl.querySelector('.nm span'),
+          fill: rootEl.querySelector('.fl'), lastFrac: -1, lastName: '', lastOp: -1,
+        };
         hpPool.set(t.id, bar);
       }
-      bar.root.style.transform = `translate(${_sx - 48}px,${_sy - 24}px)`;
+      bar.root.style.transform = `translate(${_sx - 54}px,${_sy - 24}px)`;
       bar.root.style.display = 'block';
+      // fade with distance (fully readable close, ghosted near spot range)
+      const op = Math.max(0.5, Math.min(1, 1.25 - _sDist / SPOT_RANGE_M));
+      if (Math.abs(op - bar.lastOp) > 0.03) { bar.root.style.opacity = op.toFixed(2); bar.lastOp = op; }
       const nm = t.spec ? t.spec.name : t.id;
       if (bar.lastName !== nm) { bar.nm.textContent = nm; bar.lastName = nm; }
       const frac = Math.max(0, Math.min(1, t.combat.hp / t.combat.maxHp));
@@ -424,6 +719,7 @@ export function initHud(bus) {
   }
 
   function buildMinimapBg(heightField, features) {
+    heightFieldRef = heightField;
     mapWorldSize = heightField && heightField.size ? heightField.size : 1024;
     const N = 176; // sample grid
     const bg = document.createElement('canvas');
@@ -515,7 +811,7 @@ export function initHud(bus) {
       }
     }
     // grid 10x10
-    octx.strokeStyle = 'rgba(230,240,250,0.08)';
+    octx.strokeStyle = 'rgba(230,240,250,0.09)';
     octx.lineWidth = 1;
     octx.beginPath();
     for (let i = 1; i < 10; i++) {
@@ -523,11 +819,50 @@ export function initHud(bus) {
       octx.moveTo(0, i * MM / 10 + 0.5); octx.lineTo(MM, i * MM / 10 + 0.5);
     }
     octx.stroke();
+    // grid coordinate labels: letters across the top, numbers down the left
+    octx.font = `600 7px ${FONT_STACK}`;
+    octx.textAlign = 'center';
+    octx.textBaseline = 'middle';
+    for (let i = 0; i < 10; i++) {
+      const c = i * MM / 10 + MM / 20;
+      octx.fillStyle = 'rgba(6,9,12,0.55)';
+      octx.fillRect(c - 4, 1, 8, 8);
+      octx.fillRect(1, c - 4, 8, 8);
+      octx.fillStyle = 'rgba(230,240,250,0.75)';
+      octx.fillText(GRID_LETTERS[i], c, 5.5);
+      octx.fillText(String(i + 1), 5, c + 0.5);
+    }
+    octx.textAlign = 'left';
+    octx.textBaseline = 'alphabetic';
     // inner vignette edge
     octx.strokeStyle = 'rgba(0,0,0,0.45)';
     octx.lineWidth = 2;
     octx.strokeRect(1, 1, MM - 2, MM - 2);
     mmBg = out;
+  }
+
+  // class-shaped minimap blip: filled diamond (heavy), hollow diamond (medium),
+  // filled diamond with slot (mbt)
+  function drawBlip(c, x, y, cls, color, alpha, ghost) {
+    c.save();
+    c.translate(x, y);
+    c.globalAlpha = alpha;
+    c.beginPath();
+    c.moveTo(0, -4.4); c.lineTo(4.4, 0); c.lineTo(0, 4.4); c.lineTo(-4.4, 0);
+    c.closePath();
+    if (ghost || cls === 'medium' || cls === 'light') {
+      c.strokeStyle = color;
+      c.lineWidth = 1.4;
+      c.stroke();
+    } else {
+      c.fillStyle = color;
+      c.fill();
+      if (cls === 'mbt') {
+        c.fillStyle = 'rgba(8,12,16,0.9)';
+        c.fillRect(-2.4, -0.9, 4.8, 1.8);
+      }
+    }
+    c.restore();
   }
 
   function drawMinimap(frame) {
@@ -539,31 +874,55 @@ export function initHud(bus) {
     }
     const tanks = frame.tanks || [];
     const player = frame.player;
-    // enemy / ally blips
+    // enemy / ally blips (spotting-gated for live enemies)
     for (let i = 0; i < tanks.length; i++) {
       const t = tanks[i];
       if (!t || !t.state || t.isPlayer) continue;
-      const [px, py] = worldToMap(t.state.pos.x, t.state.pos.z);
+      const ally = t.team === 'player';
       if (t.combat && t.combat.destroyed) {
+        const [px, py] = worldToMap(t.state.pos.x, t.state.pos.z);
         mmCtx.strokeStyle = 'rgba(140,140,140,0.85)';
         mmCtx.lineWidth = 1.4;
         mmCtx.beginPath();
         mmCtx.moveTo(px - 3.5, py - 3.5); mmCtx.lineTo(px + 3.5, py + 3.5);
         mmCtx.moveTo(px + 3.5, py - 3.5); mmCtx.lineTo(px - 3.5, py + 3.5);
         mmCtx.stroke();
-      } else {
-        mmCtx.fillStyle = t.team === 'player' ? '#7ee87e' : '#f05a5a';
-        mmCtx.save();
-        mmCtx.translate(px, py);
-        mmCtx.rotate(Math.PI / 4);
-        mmCtx.fillRect(-3, -3, 6, 6);
-        mmCtx.restore();
+        continue;
       }
+      const cls = t.spec ? t.spec.class : 'medium';
+      if (ally) {
+        const [px, py] = worldToMap(t.state.pos.x, t.state.pos.z);
+        drawBlip(mmCtx, px, py, cls, PEN_GREEN, 0.95, false);
+        continue;
+      }
+      const sp = spotById.get(t.id);
+      if (sp && sp.vis) {
+        const [px, py] = worldToMap(t.state.pos.x, t.state.pos.z);
+        drawBlip(mmCtx, px, py, cls, PEN_RED, 0.95, false);
+      } else if (sp && sp.ever) {
+        // last-known-position ghost marker
+        const [px, py] = worldToMap(sp.lastX, sp.lastZ);
+        drawBlip(mmCtx, px, py, cls, 'rgba(240,120,110,0.9)', 0.45, true);
+      }
+      // never spotted -> nothing on the map
     }
-    // player: view wedge + arrow
+    // player: render-range square + spot-range circle + view wedge + arrow
     if (player && player.state) {
       const st = player.state;
       const [px, py] = worldToMap(st.pos.x, st.pos.z);
+      const pxPerM = MM / mapWorldSize;
+      // white draw-distance square
+      const rsq = RENDER_RANGE_M * pxPerM;
+      mmCtx.strokeStyle = 'rgba(240,246,252,0.55)';
+      mmCtx.lineWidth = 1;
+      mmCtx.strokeRect(px - rsq, py - rsq, rsq * 2, rsq * 2);
+      // dashed max-spot circle
+      mmCtx.strokeStyle = 'rgba(240,246,252,0.35)';
+      mmCtx.setLineDash([3, 3]);
+      mmCtx.beginPath();
+      mmCtx.arc(px, py, SPOT_RANGE_M * pxPerM, 0, Math.PI * 2);
+      mmCtx.stroke();
+      mmCtx.setLineDash([]);
       if (frame.camera) {
         _fwd.set(0, 0, -1).transformDirection(frame.camera.matrixWorld);
         const camAng = Math.atan2(-_fwd.z, _fwd.x); // canvas angle (y down, +Z up on map)
@@ -609,6 +968,17 @@ export function initHud(bus) {
     while (killfeed.children.length > 5) killfeed.lastChild.remove();
     setTimeout(() => item.classList.add('out'), 5200);
     setTimeout(() => { if (item.parentNode) item.remove(); }, 6200);
+  }
+
+  function pushDamageLog(hit) {
+    const attacker = nameById.get(hit.attackerId) || 'Enemy';
+    const item = el('div', 'cot-dl');
+    if (hit.damage > 0) item.innerHTML = `<b>−${Math.round(hit.damage)}</b>&nbsp; ${attacker}`;
+    else item.innerHTML = `<b>BLOCKED</b>&nbsp; ${attacker}`;
+    dlog.prepend(item);
+    while (dlog.children.length > 4) dlog.lastChild.remove();
+    setTimeout(() => item.classList.add('out'), 5000);
+    setTimeout(() => { if (item.parentNode) item.remove(); }, 6000);
   }
 
   function pushDamageNumber(hit) {
@@ -658,6 +1028,7 @@ export function initHud(bus) {
     }
     if (playerId != null && hit.targetId === playerId) {
       pushHitDirection(hit, playerRef);
+      pushDamageLog(hit);
     }
   });
   bus.on('module:state', (p) => {
@@ -712,14 +1083,15 @@ export function initHud(bus) {
   function renderCanvas(dt) {
     ctx.clearRect(0, 0, w, h);
     if (mode === 'hidden') return;
-    if (mode === 'sniper') drawScope();
+    if (mode === 'sniper') drawScope(aimView.zoom);
     drawHitIndicators(lastTimeS);
     drawReticle(aimView, dt);
   }
 
   function applyMode() {
     root.style.display = mode === 'hidden' ? 'none' : 'block';
-    zoomEl.style.display = mode === 'sniper' ? 'block' : 'none';
+    // sniper contrast/saturation recovery layer (counteracts scene fog wash-out)
+    snipeFx.style.display = mode === 'sniper' ? 'block' : 'none';
   }
 
   // ---------- public API ----------
@@ -731,9 +1103,20 @@ export function initHud(bus) {
      * @param {'battle'|'sniper'|'hidden'} m
      */
     setMode(m) {
+      const wasHidden = mode === 'hidden';
       mode = m;
       applyMode();
       if (m === 'hidden') ctx.clearRect(0, 0, w, h);
+      if (m === 'battle' && wasHidden) {
+        // fresh battle: drop spotting memory and team rosters from the last one
+        spotById.clear();
+        for (const [, row] of earRows) row.root.remove();
+        earRows.clear();
+        for (const [, bar] of hpPool) bar.root.remove();
+        hpPool.clear();
+        lastScore = '';
+        lastTimer = '';
+      }
     },
 
     /**
@@ -757,11 +1140,15 @@ export function initHud(bus) {
       if (mode === 'hidden') { ctx.clearRect(0, 0, w, h); return; }
       if (camera) { camera.updateMatrixWorld(); _mInv.copy(camera.matrixWorld).invert(); }
 
+      updateSpotting(frame);
+      updateTeams(frame);
+
       const aim = frame.aim || {};
       assembleAimView(camera, aim);
       if (aim.shells) lastShells = aim.shells;
-      renderShells(lastShells, aim.shellSlot != null ? aim.shellSlot : localSlot);
-      if (mode === 'sniper') zoomEl.textContent = `×${(aim.zoom || 1).toFixed(1)}`;
+      const slot = aim.shellSlot != null ? aim.shellSlot : localSlot;
+      renderShells(lastShells, slot);
+      updateShellCooldown(aim.reload, slot);
       renderCanvas(dt);
       if (camera) updateHpBars(frame);
       drawMinimap(frame);
@@ -796,10 +1183,11 @@ export function initHud(bus) {
     forceAimDisplay(f) {
       forced = Object.assign({}, f);
       assembleAimView(lastCamera, forced);
-      smoothRadPx = aimView.radPx; // no bloom animation in a forced still
+      smoothRadPx = Math.max(34, aimView.radPx * 3.0); // no bloom animation in a forced still
       if (forced.shells) lastShells = forced.shells;
-      renderShells(lastShells, forced.shellSlot != null ? forced.shellSlot : localSlot);
-      if (mode === 'sniper') zoomEl.textContent = `×${(forced.zoom || 8).toFixed(1)}`;
+      const slot = forced.shellSlot != null ? forced.shellSlot : localSlot;
+      renderShells(lastShells, slot);
+      updateShellCooldown(forced.reload, slot);
       renderCanvas(1);
     },
   };

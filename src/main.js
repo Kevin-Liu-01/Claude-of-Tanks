@@ -154,6 +154,9 @@ const rig = createCameraRig(camera, {
 });
 
 sky.applyFog(scene);
+// High-zoom de-fog (WoT sniper behavior): remember the base density so the
+// render loop can scale it by FOV without mutating the sky's baseline.
+const BASE_FOG_DENSITY = scene.fog.density;
 const post = createPost(renderer, scene, camera);
 
 // ---------------------------------------------------------------------------
@@ -347,8 +350,16 @@ function updateDustAndSync() {
       if (sp > 0.8) {
         const intensity = Math.min(1, sp / (ent.spec.topSpeedKmh / 3.6));
         _fwd.set(Math.sin(ent.state.yaw), 0, Math.cos(ent.state.yaw));
-        _v1.copy(ent.state.pos).addScaledVector(_fwd, -ent.spec.dims.hullLengthM * 0.4);
-        fx.dust(_v1, _fwd, intensity);
+        _v3.set(_fwd.z, 0, -_fwd.x); // right axis
+        // Emit from BOTH rear track contact points; multiple puffs per frame
+        // at speed so a top-speed run reads as a rolling plume (r1 critique).
+        const puffs = intensity > 0.6 ? 3 : 1;
+        for (let side = -1; side <= 1; side += 2) {
+          _v1.copy(ent.state.pos)
+            .addScaledVector(_fwd, -ent.spec.dims.hullLengthM * 0.45)
+            .addScaledVector(_v3, side * ent.spec.dims.widthM * 0.45);
+          for (let i = 0; i < puffs; i++) fx.dust(_v1, _fwd, intensity);
+        }
       }
     }
   }
@@ -359,6 +370,14 @@ function tick(nowMs) {
   if (lastMs < 0) lastMs = nowMs;
   const dtR = Math.min(0.1, Math.max(0, (nowMs - lastMs) / 1000));
   lastMs = nowMs;
+
+  // Sniper-zoom de-fog: at high zoom the exp2 fog + ACES crush distant
+  // contrast to haze; scale density down toward 0.35x as FOV drops below 15
+  // (applies in shot mode too so sniper_view captures stay crisp).
+  if (scene.fog) {
+    const fogScale = camera.fov < 15 ? Math.max(0.35, camera.fov / 15) : 1;
+    scene.fog.density = BASE_FOG_DENSITY * fogScale;
+  }
 
   if (shotMode) {
     // Deterministic screenshot hold: no sim, no rig, frozen fx clock.
@@ -521,7 +540,7 @@ const SHOT_VIEWS = {
     forcedHudFrame('battle', {
       distM: 240,
       penRatio: 1.3,
-      reload: { t: 0, totalS: 6 },
+      reload: { t: 3.4, totalS: 6 }, // mid-reload: sweep ring + countdown visible
       shellSlot: 0,
       dispersionRadM: computeDispersionRadM(game.player.spec, game.player.state, 240),
       shells: shellCards,
@@ -565,6 +584,12 @@ const SHOT_VIEWS = {
     hud.setMode('hidden');
     const p = game.player;
     orbitPose(p, 14, 55, 8, 45);
+    // Recoil in the composed moment: each syncFromState advances the
+    // self-timed recoil one 1/60 step, so 3 syncs ~= ageS 0.05 of kick.
+    p.visual.recoilKick();
+    p.visual.syncFromState(p.state);
+    p.visual.syncFromState(p.state);
+    p.visual.syncFromState(p.state);
     p.visual.gunMuzzleWorld(_v1);
     p.visual.gunPivotWorld(_v2);
     _v3.copy(_v1).sub(_v2).normalize();
@@ -583,11 +608,14 @@ const SHOT_VIEWS = {
     const ent = victims[2];
     _v2.copy(ent.state.pos);
     _v2.y += 1.4;
-    const az = ent.state.yaw + 120 * DEG;
+    // Camera high (sun behind it), looking DOWN ~20 deg so the fogged
+    // near-white horizon stays out of frame and the fireball/smoke column
+    // reads against terrain (r1 critique: frame was mostly white haze).
+    const az = ent.state.yaw + 150 * DEG;
     _v1.set(
-      _v2.x + Math.sin(az) * 25 * Math.cos(10 * DEG),
-      _v2.y + Math.sin(10 * DEG) * 25 + 1.5,
-      _v2.z + Math.cos(az) * 25 * Math.cos(10 * DEG),
+      _v2.x + Math.sin(az) * 22 * Math.cos(24 * DEG),
+      _v2.y + Math.sin(24 * DEG) * 22 + 1.5,
+      _v2.z + Math.cos(az) * 22 * Math.cos(24 * DEG),
     );
     rig.setExternalPose(_v1, _v2, 45);
     fx.composeExplosionMoment({ pos: _v2.clone(), ageS: 0.6 });

@@ -53,9 +53,11 @@ function makePlaster(noi, anisotropy) {
     const i = y * s + x, j = i * 4;
     const n1 = noi.noise(x * 0.045, y * 0.045) * 0.5 + 0.5;
     const n2 = noi.noise(x * 0.16 + 40, y * 0.16 - 21) * 0.5 + 0.5;
-    const stain = smoothstep(0.62, 0.9, noi.noise(x * 0.02 - 90, y * 0.05 + 33) * 0.5 + 0.5);
-    const l = 0.55 + n1 * 0.09 + n2 * 0.05 - stain * 0.12; // kept below bloom threshold in full sun
-    _col.setHSL(0.09, 0.10 - stain * 0.04, l);
+    const stain = smoothstep(0.55, 0.9, noi.noise(x * 0.02 - 90, y * 0.05 + 33) * 0.5 + 0.5);
+    const streak = smoothstep(0.60, 0.92, noi.noise(x * 0.11 + 250, y * 0.018 - 7) * 0.5 + 0.5);
+    // weathered plaster: mid albedo so full sun never blows it to white
+    const l = 0.44 + n1 * 0.08 + n2 * 0.04 - stain * 0.15 - streak * 0.08;
+    _col.setHSL(0.085, 0.13 - stain * 0.05, l);
     px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255; px[j + 3] = 255;
     hgt[i] = n1 * 0.5 + n2 * 0.5;
   }
@@ -96,7 +98,8 @@ function makeStone(noi, anisotropy) {
     const inY = (y % rowH) / rowH, inX = ((x + off) % stoneW) / stoneW;
     const mortar = (inY < 0.12 || inX < 0.09) ? 1 : 0;
     const grain = noi.noise(x * 0.12 + 8, y * 0.12 - 77) * 0.5 + 0.5;
-    _col.setHSL(0.083, 0.06 + tone * 0.05, mortar ? 0.34 : 0.40 + tone * 0.16 + grain * 0.05);
+    const grime = smoothstep(0.5, 0.95, noi.noise(x * 0.03 + 130, y * 0.06 + 71) * 0.5 + 0.5);
+    _col.setHSL(0.083, 0.07 + tone * 0.05, (mortar ? 0.27 : 0.315 + tone * 0.125 + grain * 0.045) - grime * 0.06);
     px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255; px[j + 3] = 255;
     hgt[i] = mortar ? 0.12 : 0.55 + tone * 0.25 + grain * 0.2 - Math.pow(Math.abs(inX - 0.55) * 2, 3) * 0.15;
   }
@@ -461,6 +464,65 @@ export function createProps(heightField, engineCtx, seed = 2002) {
         crate.translate(x, y + cs / 2 - 0.04, z);
         buckets.wood.push(crate);
       }
+    }
+  }
+
+  // --- wooden fence runs + telegraph poles along the roads (visual only) ---
+  {
+    const roadsL = _LAYOUT.roads;
+    function fenceRun(nodes, i0, i1, side) {
+      for (let i = i0; i < i1 && i < nodes.length - 1; i++) {
+        const [ax, az] = nodes[i], [bx, bz] = nodes[i + 1];
+        const dx = bx - ax, dz = bz - az;
+        const len = Math.hypot(dx, dz);
+        const tx = dx / len, tz = dz / len;
+        const ox = -tz * side * 7.6, oz = tx * side * 7.6;
+        const nPost = Math.max(2, Math.floor(len / 2.4));
+        let prev = null;
+        for (let k = 0; k <= nPost; k++) {
+          const x = ax + tx * ((len * k) / nPost) + ox, z = az + tz * ((len * k) / nPost) + oz;
+          if (Math.max(Math.abs(x), Math.abs(z)) > 480) { prev = null; continue; }
+          const y = heightField.getHeightAt(x, z);
+          if (rng() > 0.06) { // the odd missing post
+            const post = box(0.13, 1.2, 0.13, 1.2);
+            post.rotateY(rng() * 0.2 - 0.1);
+            post.translate(x, y + 0.52, z);
+            buckets.wood.push(post);
+          }
+          if (prev) {
+            for (const rh of [0.42, 0.92]) {
+              const mx = (x + prev[0]) / 2, mz = (z + prev[2]) / 2;
+              const my = (y + prev[1]) / 2 + rh;
+              const rl = Math.hypot(x - prev[0], z - prev[2]);
+              const rail = box(rl * 1.02, 0.09, 0.07, 1.2);
+              rail.rotateZ(Math.atan2(prev[1] - y, rl) * 0.9);
+              rail.rotateY(-Math.atan2(z - prev[2], x - prev[0]));
+              rail.translate(mx, my, mz);
+              buckets.wood.push(rail);
+            }
+          }
+          prev = [x, y, z];
+        }
+      }
+    }
+    fenceRun(roadsL[0], 11, 14, -1); // village approach, west side
+    fenceRun(roadsL[0], 20, 23, 1);  // north exit, east side
+    fenceRun(roadsL[1], 9, 12, -1);  // west field edge
+    fenceRun(roadsL[1], 20, 23, 1);  // east field edge
+    // telegraph poles marching along road A
+    for (let i = 8; i < roadsL[0].length - 1; i += 2) {
+      const [ax, az] = roadsL[0][i], [bx, bz] = roadsL[0][i + 1];
+      const tl = Math.hypot(bx - ax, bz - az);
+      const px = ax - ((bz - az) / tl) * 6.9, pz = az + ((bx - ax) / tl) * 6.9;
+      if (Math.max(Math.abs(px), Math.abs(pz)) > 470) continue;
+      const py = heightField.getHeightAt(px, pz);
+      const pole = box(0.15, 5.6, 0.15, 1.4);
+      pole.translate(px, py + 2.7, pz);
+      buckets.wood.push(pole);
+      const arm = box(1.45, 0.12, 0.10, 1.0);
+      arm.rotateY(Math.atan2(bx - ax, bz - az) + Math.PI / 2);
+      arm.translate(px, py + 4.9, pz);
+      buckets.wood.push(arm);
     }
   }
 

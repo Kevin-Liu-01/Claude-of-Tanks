@@ -18,9 +18,13 @@ export const SIM_DT = 1 / 60;
 // ---------------------------------------------------------------------------
 // Tuning constants (movement-physics doc §3–§6, values locked by ARCHITECTURE §3.4)
 // ---------------------------------------------------------------------------
-const K_ACCEL = 0.55;            // m/s² per (hp/t) on resistance-1 ground
+const K_ACCEL = 0.16;            // m/s² per (hp/t) on resistance-1 ground
+const C_DRAG = 0.85;             // quadratic drag fraction — asymptotic crawl to v_max (§3)
 const BRAKE_MULT = 3.5;          // braking is this much stronger than driving
-const TURN_SPEED_LOSS = 0.3;     // fractional speed bleed per second at full yaw rate
+const BRAKE_DECEL_CAP = 9;       // m/s² — total brake decel cap (~2 s stop from 65 km/h)
+const COAST_MULT = 1.75;         // rolling-friction decel ≈ 0.5 × brake when W is released
+const TURN_SPEED_LOSS = 0.35;    // target-speed fraction lost in a full-rate turn
+const TRAVERSE_SPEED_SCALE = 0.4;// hull traverse reduction fraction at top speed
 const GRAVITY = 9.81;            // m/s²
 const MAX_CLIMB_DEG = 28;        // slope (deg) at which the drive stalls
 const DOWNHILL_BONUS_CAP = 0.25; // up to +25% v_target downhill
@@ -226,10 +230,17 @@ export function updateTank(entity, heightField, dt, collide = null) {
   const terrPitch = Math.atan2((hFL + hFR - hRL - hRR) * 0.5, 2 * hl);
   const terrRoll = Math.atan2((hFL + hRL - hFR - hRR) * 0.5, 2 * hw);
 
+  const topMps = spec.topSpeedKmh / 3.6;
+  const revMps = spec.reverseSpeedKmh / 3.6;
+
   // ---- hull traverse (wiki formula reduced: Tr = Tn × Rh/Rx × Pc, + debuffs) ----
   const trMaxHealthy = spec.hullTraverseDegS * DEG2RAD * (Rh / R) *
     (spec.pivotStyle === 'neutral' ? NEUTRAL_TURN_MULT : 1);
-  const trMax = trMaxHealthy * debuff.powerMult * debuff.traverseMult;
+  // Speed-scaled traverse: full rate pivoting, visibly wider turns at speed —
+  // a tracked vehicle, not a rally car.
+  const speedFrac = Math.min(Math.abs(state.speed) / Math.max(topMps, 1e-6), 1);
+  const trMax = trMaxHealthy * debuff.powerMult * debuff.traverseMult *
+    (1 - TRAVERSE_SPEED_SCALE * speedFrac);
   // Reverse-steer flip: while backing up, A/D behave like a reversing car.
   const steerSign = state.speed < -PIVOT_SPEED_EPS ? -1 : 1;
   const yawTarget = steer * trMax * steerSign;
@@ -245,26 +256,39 @@ export function updateTank(entity, heightField, dt, collide = null) {
   // ---- longitudinal speed ----
   const pSpec = (spec.enginePowerHp * debuff.powerMult) / spec.weightTons;
   const accel = K_ACCEL * (pSpec / R) * debuff.accelMult;
-  const topMps = spec.topSpeedKmh / 3.6;
-  const revMps = spec.reverseSpeedKmh / 3.6;
   const moveSign = state.speed !== 0 ? Math.sign(state.speed) : Math.sign(throttle);
   const pitchAlong = terrPitch * (moveSign || 1);
   let vLim = throttle >= 0 ? topMps : revMps;
   vLim *= slopeSpeedFactor(pitchAlong);
   vLim = Math.min(vLim, topMps * OVERSPEED_CAP);
-  const vTarget = (braking || debuff.immobile) ? 0 : vLim * throttle;
-  const decel = braking || debuff.immobile ||
-    (Math.sign(vTarget - state.speed) !== Math.sign(state.speed) && state.speed !== 0);
+  let vTarget = (braking || debuff.immobile) ? 0 : vLim * throttle;
+  // Turning bleeds the TARGET speed (movement doc §4): the steady-state speed
+  // in a full-rate turn settles at ~65% of straight-line speed regardless of
+  // engine power — no free serpentining at v_max.
+  if (trMax > 1e-6 && vTarget !== 0) {
+    vTarget *= 1 - TURN_SPEED_LOSS * Math.min(Math.abs(state.yawRate) / trMax, 1);
+  }
   // Immobilized tanks brake with locked tracks at a healthy rate.
   const baseRate = debuff.immobile ? K_ACCEL * (spec.enginePowerHp / spec.weightTons) / R : accel;
-  state.speed = approach(state.speed, vTarget, (decel ? baseRate * BRAKE_MULT : baseRate) * dt);
+  const brakeRate = Math.min(baseRate * BRAKE_MULT, BRAKE_DECEL_CAP);
+  let rate;
+  if (braking || debuff.immobile || vTarget * state.speed < 0) {
+    rate = brakeRate; // hard brake / direction reversal — capped, ~2 s from top speed
+  } else if (throttle === 0) {
+    rate = Math.min(baseRate * COAST_MULT, BRAKE_DECEL_CAP * 0.5); // rolling friction
+  } else if (Math.abs(vTarget) < Math.abs(state.speed) - 1e-9) {
+    rate = baseRate; // over target (turn bleed / slope / overspeed): drag pulls back
+  } else {
+    // Driving: quadratic drag tapers the accel — fast initial surge, asymptotic
+    // crawl to the transmission limit (§3): a = a_drive × (1 − C_DRAG·(v/v_max)²).
+    const vRef = Math.max(throttle >= 0 ? topMps : revMps, 1e-6);
+    const u = Math.min(Math.abs(state.speed) / vRef, 1);
+    rate = baseRate * (1 - C_DRAG * u * u);
+  }
+  state.speed = approach(state.speed, vTarget, rate * dt);
   if (!debuff.immobile) {
     // Gravity along the track line: stalled tanks slide back, coasting gains downhill.
     state.speed += -GRAVITY * Math.sin(terrPitch) * dt * (throttle !== 0 ? 0.3 : 1.0);
-  }
-  // Turning bleeds speed (kinematic drive turn, movement doc §4).
-  if (trMax > 1e-6) {
-    state.speed *= 1 - TURN_SPEED_LOSS * (Math.abs(state.yawRate) / trMaxHealthy) * dt;
   }
   state.speed = clamp(state.speed, -revMps * OVERSPEED_CAP, topMps * OVERSPEED_CAP);
 

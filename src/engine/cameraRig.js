@@ -282,6 +282,12 @@ export function createCameraRig(camera, deps) {
             PITCH_MIN - aimPitch,
             PITCH_MAX - aimPitch,
           );
+        } else {
+          // SNIPER gun lock: the view still follows the mouse (WoT mantlet
+          // wiggle); the aim raycast below stays skipped, so the gun holds.
+          aimYaw += camInput.mouseDX * sens;
+          aimPitch = THREE.MathUtils.clamp(
+            aimPitch - camInput.mouseDY * sens, PITCH_MIN, PITCH_MAX);
         }
       } else {
         freeYaw = 0;

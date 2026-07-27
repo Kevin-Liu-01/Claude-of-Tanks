@@ -146,12 +146,12 @@ function armorTiger() {
       rf('hull_roof', 30, 1.7, roofY, -3.16, 3.01),
     ],
     turretPlates: [
-      fr('turret_front', 100, 0.78, 0.02, 0.78, 0.75, 0.78),           // vertical slab
-      sR('turret_side_R', 80, 0.92, 0.02, 0.92, 0.75, -0.85, 0.5),
-      sL('turret_side_L', 80, 0.92, 0.02, 0.92, 0.75, -0.85, 0.5),
-      rr('turret_rear', 80, 0.9, 0.02, -0.95, 0.75, -0.95),
-      rf('turret_roof', 30, 0.92, 0.76, -0.95, 0.6),
-      par('mantlet', 120, [-0.8, 0.12, 0.92], [0.8, 0.12, 0.92], [-0.8, 0.68, 0.90],
+      fr('turret_front', 100, 1.05, 0.02, 0.64, 0.78, 0.64),           // vertical slab
+      sR('turret_side_R', 80, 1.16, 0.02, 1.16, 0.78, -1.0, 0.62),
+      sL('turret_side_L', 80, 1.16, 0.02, 1.16, 0.78, -1.0, 0.62),
+      rr('turret_rear', 80, 1.1, 0.02, -1.55, 0.78, -1.62),
+      rf('turret_roof', 30, 1.16, 0.8, -1.6, 0.62),
+      par('mantlet', 120, [-0.95, 0.06, 0.9], [0.95, 0.06, 0.9], [-0.95, 0.74, 0.88],
         { kind: 'spaced', gunFollow: true }),
     ],
     modules: [
@@ -362,20 +362,20 @@ function armorM1A2() {
       rf('hull_roof', 40, 1.6, roofY, -3.96, 1.60),
     ],
     turretPlates: [
-      chR('turret_cheek_R', 800, 0.25, 1.05, 1.10, 0.15, 0.0, 0.8, 0.12, 0, { keMm: 850, ceMm: 1250 }),
-      chL('turret_cheek_L', 800, 0.25, 1.05, 1.10, 0.15, 0.0, 0.8, 0.12, 0, { keMm: 850, ceMm: 1250 }),
-      par('mantlet', 300, [-0.28, 0.05, 1.08], [0.28, 0.05, 1.08], [-0.28, 0.52, 1.05],
+      chR('turret_cheek_R', 800, 0.24, 1.12, 1.48, 0.24, 0.0, 0.85, 0.13, 0, { keMm: 850, ceMm: 1250 }),
+      chL('turret_cheek_L', 800, 0.24, 1.12, 1.48, 0.24, 0.0, 0.85, 0.13, 0, { keMm: 850, ceMm: 1250 }),
+      par('mantlet', 300, [-0.28, 0.05, 1.12], [0.28, 0.05, 1.12], [-0.28, 0.52, 1.09],
         { keMm: 350, ceMm: 450, gunFollow: true }),
-      sR('turret_side_R', 350, 1.12, 0.0, 1.12, 0.8, -1.55, 0.15, { keMm: 380, ceMm: 500 }),
-      sL('turret_side_L', 350, 1.12, 0.0, 1.12, 0.8, -1.55, 0.15, { keMm: 380, ceMm: 500 }),
-      rr('turret_rear', 40, 1.05, 0.0, -1.65, 0.8, -1.65),             // ammo blow-off zone
-      rf('turret_roof', 40, 1.12, 0.82, -1.65, 0.55),
-      rr('bustle_rack', 10, 0.95, 0.1, -1.95, 0.7, -1.95, { kind: 'external' }),
+      sR('turret_side_R', 350, 1.48, 0.0, 1.48, 0.85, -2.3, 0.16, { keMm: 380, ceMm: 500 }),
+      sL('turret_side_L', 350, 1.48, 0.0, 1.48, 0.85, -2.3, 0.16, { keMm: 380, ceMm: 500 }),
+      rr('turret_rear', 40, 1.45, 0.0, -2.3, 0.85, -2.3),              // ammo blow-off zone
+      rf('turret_roof', 40, 1.48, 0.86, -2.3, 0.6),
+      rr('bustle_rack', 10, 1.4, 0.15, -2.68, 0.75, -2.68, { kind: 'external' }),
     ],
     modules: [
       mbox('engine', [-1.0, 0.5, -3.85], [1.0, 1.5, -2.0]),
       mbox('fuelTank', [-1.15, 0.5, 2.4], [-0.45, 1.4, 3.6]),          // front-left fuel cell
-      mbox('ammoRack', [-0.85, 0.0, -1.62], [0.85, 0.75, -0.85], true),// turret bustle
+      mbox('ammoRack', [-0.85, 0.0, -2.25], [0.85, 0.75, -0.9], true),// turret bustle
       mbox('turretRing', [-0.95, 1.37, -1.3], [0.95, 1.57, 0.9]),
       mbox('radio', [-0.6, 0.1, -0.85], [-0.1, 0.5, -0.35], true),
       mbox('optics', [0.35, 0.82, 0.35], [0.8, 1.1, 0.85], true),      // GPS doghouse
@@ -570,6 +570,7 @@ export const TANK_SPECS = {
       scheme: 'stripes', base: '#9b8a55', weather: '#8a7a4e',
       patches: ['#6a713f', '#7a4a35'],
       marking: 'cross', number: '212', zimmerit: true, trackWidthM: 0.725,
+      camoScale: 0.52,
     },
   },
 

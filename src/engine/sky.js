@@ -16,12 +16,12 @@
 import * as THREE from 'three';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 
-const SUN_ELEVATION_DEG = 35;
+const SUN_ELEVATION_DEG = 32; // slightly lower sun → longer, more readable shadows
 const SUN_AZIMUTH_DEG = 140;
 const TURBIDITY = 4; // hazy but not white-out
 const RAYLEIGH = 1.2;
-const MIE_COEFFICIENT = 0.004;
-const MIE_DIRECTIONAL_G = 0.8;
+const MIE_COEFFICIENT = 0.006; // visible sun disc + warm halo at the sun azimuth
+const MIE_DIRECTIONAL_G = 0.82;
 // The Sky shader emits radiance well above 1.0 across the whole dome at
 // exposure 1.0 (the upstream demo runs exposure 0.5). Left unscaled it (a)
 // clamps the horizon-fog readback to pure white and (b) makes UnrealBloom
@@ -31,9 +31,16 @@ const SKY_RADIANCE_SCALE = 0.38;
 const SKY_FRAG_ANCHOR = 'gl_FragColor = vec4( texColor, 1.0 );';
 const SKY_DOME_SCALE = 10000; // must stay inside camera.far
 const ENV_SKY_SCALE = 50; // PMREMGenerator.fromScene far plane = 100
-const ENV_INTENSITY = 1.1;
-const FOG_NEAR_M = 150;
-const FOG_FAR_M = 1200;
+// IBL is fill, not key: at 1.1 it buried the sun's shadows in a flat milky
+// wash. 0.45 keeps specular sky response while letting CSM shadows read.
+const ENV_INTENSITY = 0.45;
+// Exponential fog replaces the old linear Fog(150, 1200) that whited out the
+// midground by ~300 m. Density tuned so ~10% at 400 m, ~50% at 900 m.
+const FOG_DENSITY = 0.00088;
+// Aerial perspective: pull the sampled horizon color toward a desaturated
+// blue so distance reads as cool atmosphere, never as white-out.
+const FOG_BLUE_TINT_HEX = 0x7e97b8;
+const FOG_BLUE_MIX = 0.55;
 const HORIZON_RT_SIZE = 16;
 const FALLBACK_HORIZON_HEX = 0xc4d3dd; // hand-tuned noon-hazy, doc §5 option (b)
 
@@ -185,14 +192,17 @@ export function createSky(scene, renderer) {
     horizonColor,
 
     /**
-     * Install linear fog whose color matches the rendered sky at the horizon,
-     * so the terrain far edge dissolves into atmosphere (doc §5). Distances
-     * cover the full 1024 m map; `csm.maxFar` (250 m) sits well inside.
+     * Install exponential-squared fog: near field stays crisp, distant hills
+     * shift toward a cool desaturated blue (aerial perspective) instead of
+     * washing to white, and the terrain edge still dissolves toward the
+     * sky-sampled horizon color (doc §5).
      * @param {THREE.Scene} targetScene - scene to receive the fog
      * @returns {void}
      */
     applyFog(targetScene) {
-      targetScene.fog = new THREE.Fog(horizonColor, FOG_NEAR_M, FOG_FAR_M);
+      const fogColor = horizonColor.clone()
+        .lerp(new THREE.Color(FOG_BLUE_TINT_HEX), FOG_BLUE_MIX);
+      targetScene.fog = new THREE.FogExp2(fogColor, FOG_DENSITY);
     },
   };
 }

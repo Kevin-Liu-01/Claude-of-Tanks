@@ -258,7 +258,14 @@ function mkShell(shellSpec, distM = 100) {
   near(ev.effectiveMm, 100, 0.01, '§1 effective thickness 100 mm at 0°');
   near(ev.damage, 160, 1e-9, '§1 full damage on pen');
   near(target.combat.hp, 840, 1e-9, '§1 target hp reduced');
-  assert(shell.dead === true, '§1 shell consumed on pen');
+  // Armor doc §7: an overpenetrating KE shell exits with remainingPen and may
+  // hit a second vehicle — one carry-through max.
+  assert(shell.dead === false && shell.carriedThrough === true, '§1 overpen KE shell carries through');
+  near(shell.remainingPenMm, 9.22, 0.6, '§1 remaining pen retained after exit');
+  const target2 = mkTarget();
+  const ev2 = resolveShellHit(shell, target2, [mkPlateHit(0.4, mkPlate({ name: 'thin', physicalMm: 5, keMm: 5, ceMm: 5 }), 0)], rngHalf);
+  assert(ev2.kind === 'pen', 'carry-through shell still resolves vs second tank');
+  assert(shell.dead === true, 'carry-through capped at one exit');
 }
 
 // ---------------------------------------------------- REQUIRED ASSERT §2 ---
@@ -417,6 +424,123 @@ function mkShell(shellSpec, distM = 100) {
   const ev3 = resolveShellHit(shell3, target3, hits3, rng3);
   assert(ev3.crewHit.length === 1 && ev3.crewHit[0] === 'gunner', '§8 gunner knocked out');
   assert(target3.combat.crew.gunner === false, '§8 crew state persisted');
+}
+
+// -------------------------------------------- HE vs spaced armor (doc §7) --
+// A skirted side must take LESS HE damage than a bare side: the absorption
+// term stacks screen + main plate and the splash decays over the air gap.
+{
+  const skirtHits = [
+    mkPlateHit(0.2, mkPlate({ name: 'skirt', kind: 'spaced', physicalMm: 10, keMm: 10, ceMm: 10 }), 0, V(0, 1, 2.5)),
+    mkPlateHit(0.3, mkPlate({ name: 'side', physicalMm: 80, keMm: 80, ceMm: 80 }), 0, V(0, 1, 2.0)),
+  ];
+  const skirted = mkTarget();
+  const evs = resolveHeBurst(mkShell(OF471, 300), V(0, 1, 2.5), [], skirted, skirtHits, rngHalf);
+  assert(evs.length === 1 && evs[0].kind === 'he_splash', 'HE on skirt is a surface burst');
+  // 0.5·450·(1 − 0.5/4.089) − 1.1·(10+80) ≈ 98.5
+  near(evs[0].damage, 98.5, 1.5, 'HE damage attenuated by skirt+side+gap');
+
+  const bare = mkTarget();
+  const bareHits = [mkPlateHit(0.3, mkPlate({ name: 'side', physicalMm: 80, keMm: 80, ceMm: 80 }), 0, V(0, 1, 2.0))];
+  const evsBare = resolveHeBurst(mkShell(OF471, 300), V(0, 1, 2.0), [], bare, bareHits, rngHalf);
+  // 0.5·450 − 1.1·80 = 137
+  near(evsBare[0].damage, 137, 1e-6, 'HE damage on the bare side');
+  assert(evs[0].damage < evsBare[0].damage, 'side skirts EAT HE, never amplify it');
+}
+
+// ------------------------- HE non-pen direct hit reaches internal modules --
+// Armor doc §8 step 3: HE always runs module/crew splash checks even without
+// hull damage — at half chance/half damage for internals.
+{
+  const target = mkTarget();
+  const hits = [
+    mkPlateHit(0.3, mkPlate({ name: 'front', physicalMm: 100, keMm: 100, ceMm: 100 }), 0, V(0, 1, 2)),
+    { t: 0.4, kind: 'module', module: 'engine', point: V(0, 1, 1.0) },
+    { t: 0.5, kind: 'crew', crew: 'driver', point: V(0, 1, 0.5) },
+  ];
+  // pen, dmg, engine save (0.2 < 0.45·0.5), moduleDmg, fire, crew (0.05 < 0.1)
+  const rng = seqRng([0.5, 0.5, 0.2, 0.5, 0.9, 0.05]);
+  const evs = resolveHeBurst(mkShell(OF471, 300), V(0, 1, 2), [], target, hits, rng);
+  assert(rng.consumed() === 6, `HE non-pen rolls internal module+crew (consumed ${rng.consumed()})`);
+  // moduleDmg = 122 · 1.0 · 0.5 (half effect) ⇒ engine 160 − 61 = 99
+  near(target.combat.modules.engine.hp, 99, 1e-6, 'HE non-pen module damage at half effect');
+  assert(evs[0].crewHit.includes('driver'), 'HE non-pen can injure crew at 10%');
+}
+
+// ----------------------------- HE area splash injures crew & modules (§6) --
+{
+  const armorModel = {
+    boundingRadiusM: 4,
+    turretPivot: [0, 1, 0],
+    gunPivot: [0, 0, 0],
+    gunBarrel: null,
+    hullPlates: [mkPlate({ name: 'side38', physicalMm: 38, keMm: 38, ceMm: 38, verts: [[-1.5, 0, 2], [1.5, 0, 2], [1.5, 2, 2], [-1.5, 2, 2]] })],
+    turretPlates: [],
+    modules: [{ module: 'engine', min: [-0.6, 0.3, -0.5], max: [0.6, 1.5, 0.4], turretLocal: false }],
+    crew: [{ crew: 'driver', min: [-0.4, 0.5, 0.5], max: [0.4, 1.2, 1.5], turretLocal: false }],
+  };
+  const spec = mkSpec({ armor: armorModel });
+  const entity = { id: 'splash_victim', spec, state: mkState(), combat: createCombatState(spec) };
+  const shell = mkShell(OF471, 300);
+  // pen, dmg, then trace order: driver crew (0.05 < 0.1), engine save
+  // (0.1 < 0.45·0.5), moduleDmg, fire.
+  const rng = seqRng([0.5, 0.5, 0.05, 0.1, 0.5, 0.9]);
+  const events = resolveHeBurst(shell, V(0, 1, 4), [entity], null, null, rng);
+  assert(events.length === 1, `area splash produces one event (got ${events.length})`);
+  assert(events[0].crewHit.includes('driver'), 'area splash injures crew at 10%');
+  near(entity.combat.modules.engine.hp, 99, 1e-6, 'area splash internal module at half chance/half damage');
+  assert(rng.consumed() === 6, `area splash consumes crew+module rolls (consumed ${rng.consumed()})`);
+}
+
+// ------------------- HE burst on the gun barrel still splashes the target --
+{
+  const armorModel = {
+    boundingRadiusM: 4,
+    turretPivot: [0, 1, 0],
+    gunPivot: [0, 0, 0],
+    gunBarrel: null,
+    hullPlates: [mkPlate({ name: 'side38', physicalMm: 38, keMm: 38, ceMm: 38, verts: [[-1.5, 0, 2], [1.5, 0, 2], [1.5, 2, 2], [-1.5, 2, 2]] })],
+    turretPlates: [],
+    modules: [],
+    crew: [],
+  };
+  const spec = mkSpec({ armor: armorModel });
+  const entity = { id: 'barrel_victim', spec, state: mkState(), combat: createCombatState(spec) };
+  const shell = mkShell(OF471, 300);
+  const barrelOnly = [{ t: 0.3, kind: 'module', module: 'gun', point: V(0, 1.9, 3) }];
+  const events = resolveHeBurst(shell, V(0, 1.9, 3), [entity], entity, barrelOnly, rngHalf);
+  assert(events.length === 1 && events[0].kind === 'he_splash', 'barrel-only HE hit falls back to splash');
+  assert(events[0].damage > 0, `barrel-only HE burst damages the tank (got ${events[0].damage})`);
+}
+
+// ------------------ HEAT gap decay measured to the NEXT layer, not 'main' --
+// skirt → track screen → hull: each gap counted once. (600−10)·(1−0.05·2)
+// = 531; −20 ⇒ 511; ·(1−0.05·3) = 434.35 vs 300 CE ⇒ pen.
+{
+  const target = mkTarget();
+  const shell = mkShell(M830A1, 100);
+  const hits = [
+    mkPlateHit(0.2, mkPlate({ name: 'skirt', kind: 'spaced', physicalMm: 10, keMm: 10, ceMm: 10 }), 0, V(0, 1, 2.5)),
+    mkPlateHit(0.25, mkPlate({ name: 'track', kind: 'spaced', physicalMm: 20, keMm: 20, ceMm: 20 }), 0, V(0, 1, 2.3)),
+    mkPlateHit(0.3, mkPlate({ name: 'side', physicalMm: 80, keMm: 300, ceMm: 300 }), 0, V(0, 1, 2.0)),
+  ];
+  const ev = resolveShellHit(shell, target, hits, rngHalf);
+  assert(ev.kind === 'pen', `stacked-screen HEAT still pens 300 CE (got ${ev.kind})`);
+  near(ev.penRollMm, 434.35, 0.1, 'each air gap decays HEAT exactly once');
+}
+
+// --------------------------- damage roll made once per shot (armor doc §6) --
+{
+  const targetA = mkTarget();
+  const shell = mkShell(PZGR39, 300);
+  const rng = seqRng([0.5, 0.5]); // pen, dmg — nothing more for both tanks
+  const evA = resolveShellHit(shell, targetA, [mkPlateHit(0.4, mkPlate({ name: 'side', physicalMm: 45, keMm: 45, ceMm: 45 }), 75)], rng);
+  assert(evA.kind === 'ricochet', 'first tank ricochets');
+  const targetB = mkTarget();
+  const evB = resolveShellHit(shell, targetB, [mkPlateHit(0.4, mkPlate({ name: 'front50', physicalMm: 50, keMm: 50, ceMm: 50 }), 0)], rng);
+  assert(evB.kind === 'pen', 'deflected shell pens second tank');
+  near(evB.damage, 220, 1e-9, 'cached dmg roll reused after ricochet');
+  assert(rng.consumed() === 2, `no re-rolls on second resolution (consumed ${rng.consumed()})`);
 }
 
 // ------------------------------------------------- combat-state machinery --

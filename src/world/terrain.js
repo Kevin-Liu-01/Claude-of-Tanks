@@ -283,6 +283,21 @@ function torusNoise(noi, u, v, fu, fv, off) {
     Math.cos(b) * r2 + off * 1.3, Math.sin(b) * r2 + off * 0.35);
 }
 
+// CPU twin of the splat shader's uNoise samples (seed 3011 matches
+// makeShaderNoiseTexture in createSplatMaterial). Lets vegetation placement
+// read the same dirt-patch/clump fields the ground shader blends with, so
+// grass thins out exactly where the terrain shows dirt.
+let _splatNoi = null;
+export function sampleSplatNoise(x, z) {
+  if (_splatNoi === null) _splatNoi = new SimplexNoise({ random: mulberry32(3011) });
+  const w = (t) => ((t % 1) + 1) % 1;
+  const u1 = w(x * 0.0117), v1 = w(z * 0.0117);
+  const n1 = torusNoise(_splatNoi, u1, v1, 4, 4, 3) * 0.6 + torusNoise(_splatNoi, u1, v1, 9, 9, 27) * 0.4;
+  const u2 = w(x * 0.0031 + 0.41), v2 = w(z * 0.0031 + 0.13);
+  const n2 = torusNoise(_splatNoi, u2, v2, 2, 2, 55) * 0.7 + torusNoise(_splatNoi, u2, v2, 5, 5, 91) * 0.3;
+  return { n1: n1 * 0.5 + 0.5, n2: n2 * 0.5 + 0.5 };
+}
+
 const _col = new THREE.Color();
 
 function makeGroundLayer(seed, kind, anisotropy) {
@@ -299,20 +314,23 @@ function makeGroundLayer(seed, kind, anisotropy) {
       if (kind === 'grass') {
         const macro = torusNoise(noi, u, v, 3, 3, 11) * 0.65 + torusNoise(noi, u, v, 7, 7, 23) * 0.35;
         const streak = torusNoise(noi, u, v, 9, 34, 5); // anisotropic blade streaks
-        const m01 = macro * 0.5 + 0.5, s01 = streak * 0.5 + 0.5;
-        hn = m01 * 0.5 + s01 * 0.5;
-        const dry = smoothstep(0.62, 0.88, s01);
-        _col.setHSL(0.235 + macro * 0.02 - dry * 0.055, 0.34 - dry * 0.12, 0.245 + hn * 0.10);
-        rough = 0.88 - s01 * 0.10;
-        nStrength = 1.6;
+        const fine = torusNoise(noi, u, v, 41, 47, 61); // close-range blade speckle
+        const m01 = macro * 0.5 + 0.5, s01 = streak * 0.5 + 0.5, f01 = fine * 0.5 + 0.5;
+        hn = m01 * 0.42 + s01 * 0.38 + f01 * 0.20;
+        const dry = smoothstep(0.60, 0.88, s01);
+        _col.setHSL(0.228 + macro * 0.022 - dry * 0.065, 0.42 - dry * 0.15, 0.215 + hn * 0.095);
+        rough = 0.90 - s01 * 0.10;
+        nStrength = 2.0;
       } else if (kind === 'dirt') {
         const clods = torusNoise(noi, u, v, 4, 4, 7) * 0.7 + torusNoise(noi, u, v, 9, 9, 31) * 0.3;
         const grain = torusNoise(noi, u, v, 52, 52, 3);
+        // Voronoi-ish pebbles: ridged high-frequency noise thresholded to specks
+        const peb = smoothstep(0.72, 0.94, 1 - Math.abs(torusNoise(noi, u, v, 27, 27, 83)));
         const c01 = clods * 0.5 + 0.5, g01 = grain * 0.5 + 0.5;
-        hn = c01 * 0.62 + g01 * 0.38;
-        _col.setHSL(0.075 + clods * 0.012, 0.31 - g01 * 0.06, 0.205 + hn * 0.09);
-        rough = 0.96 - g01 * 0.05;
-        nStrength = 2.2;
+        hn = c01 * 0.52 + g01 * 0.30 + peb * 0.18;
+        _col.setHSL(0.079 + clods * 0.012, 0.27 - g01 * 0.05, 0.180 + hn * 0.085 + peb * 0.045);
+        rough = 0.96 - g01 * 0.05 - peb * 0.08;
+        nStrength = 2.6;
       } else if (kind === 'rock') {
         const tone = torusNoise(noi, u, v, 3, 3, 17) * 0.5 + 0.5;
         const r1 = 1 - Math.abs(torusNoise(noi, u, v, 6, 6, 41));
@@ -370,10 +388,13 @@ function makeMaskTexture(seedNoi) {
       const x = tx - HALF, i = tz * s + tx, j = i * 4;
       const d = dist[i];
       if (d < 13) {
-        const wob = seedNoi.noise(x * 0.055, z * 0.055) * 1.1;
-        px[j] = (1 - smoothstep(3.4 + wob, 5.8 + wob, d)) * 255;
-        const rut = Math.exp(-Math.pow((d - 1.55) / 0.55, 2));
-        px[j + 1] = rut * (px[j] / 255) * 215;
+        const wob = seedNoi.noise(x * 0.055, z * 0.055) * 1.6 + seedNoi.noise(x * 0.21, z * 0.21) * 0.5;
+        let core = 1 - smoothstep(2.9 + wob, 4.9 + wob, d);
+        // center grass strip between the wheel tracks
+        core *= 0.42 + 0.58 * smoothstep(0.25, 0.95, d + wob * 0.12);
+        px[j] = core * 255;
+        const rut = Math.exp(-Math.pow((d - 1.55) / 0.50, 2));
+        px[j + 1] = rut * core * 235;
       }
       let marsh = 0;
       for (const m of _MARSHES) {
@@ -435,12 +456,16 @@ void splatCompute() {
   vec3 wp = vWPos;
   vec3 wn = normalize(vWNormal);
   vec4 mk = texture2D(uMask, (wp.xz + 512.0) * (1.0 / 1024.0));
-  float df = smoothstep(22.0, 105.0, distance(wp, cameraPosition));
+  float camDist = distance(wp, cameraPosition);
+  float df = smoothstep(45.0, 160.0, camDist);
   vec2 uv = wp.xz;
   float n1 = texture2D(uNoise, uv * 0.0117).r;
   float n2 = texture2D(uNoise, uv * 0.0031 + vec2(0.41, 0.13)).g;
   float slope = 1.0 - clamp(wn.y, 0.0, 1.0);
-  float fD = clamp(max(smoothstep(0.58, 0.87, n2) * 0.85, max(mk.r, mk.a * (0.35 + 0.65 * n1))), 0.0, 1.0);
+  // dirt patches: noise-broken threshold => smaller worn patches with ragged
+  // edges instead of giant airbrushed blobs
+  float worn = smoothstep(0.60, 0.80, n2 + (n1 - 0.5) * 0.22);
+  float fD = clamp(max(worn * 0.72, max(mk.r, mk.a * (0.35 + 0.65 * n1))), 0.0, 1.0);
   float fM = mk.b;
   float fR = smoothstep(0.095, 0.235, slope + (n1 - 0.5) * 0.07);
   vec4 a = splatSamp(uAlbG, uv * 0.240, df);
@@ -448,9 +473,26 @@ void splatCompute() {
   a = mix(a, splatSamp(uAlbD, uv * 0.210, df), fD); n = mix(n, splatSamp(uNrmD, uv * 0.210, df), fD);
   a = mix(a, splatSamp(uAlbM, uv * 0.190, df), fM); n = mix(n, splatSamp(uNrmM, uv * 0.190, df), fM);
   a = mix(a, splatSamp(uAlbR, uv * 0.155, df), fR); n = mix(n, splatSamp(uNrmR, uv * 0.155, df), fR);
-  a.rgb = mix(a.rgb, a.rgb * vec3(1.55, 1.40, 1.05) + vec3(0.055, 0.045, 0.028), mk.r * 0.9);
-  a.rgb *= 1.0 - mk.g * 0.30;
+  // 0-45 m detail pass: ~1 m tiled micro normal + albedo speckle + road gravel
+  float dNear = 1.0 - smoothstep(18.0, 48.0, camDist);
+  if (dNear > 0.001) {
+    vec3 dn = texture2D(uNrmD, uv * 1.07).xyz * 2.0 - 1.0;
+    n.xy += dn.xy * 0.50 * dNear;
+    float micro = texture2D(uNoise, uv * 0.171).r;
+    a.rgb *= 1.0 + (micro - 0.5) * 0.22 * dNear;
+    vec4 grav = texture2D(uAlbR, uv * 0.83);
+    a.rgb = mix(a.rgb, grav.rgb * vec3(1.02, 0.96, 0.86), mk.r * 0.38 * dNear);
+  }
+  // compacted earth road: modest lightening only — no bleached-white wash
+  a.rgb = mix(a.rgb, a.rgb * vec3(1.20, 1.13, 0.98) + vec3(0.018, 0.014, 0.008), mk.r * 0.85);
+  a.rgb *= 1.0 - mk.g * 0.42; // twin wheel ruts, clearly darker
   a.rgb *= 0.90 + n2 * 0.20;
+  // distant mottling: forest-floor/heather patches keep far hills from reading
+  // as one flat green wash
+  float farM = smoothstep(120.0, 340.0, camDist);
+  float mot = texture2D(uNoise, uv * 0.0022 + vec2(0.17, 0.71)).g;
+  a.rgb *= 1.0 - farM * 0.22 * smoothstep(0.48, 0.82, mot);
+  a.rgb *= 1.0 + farM * 0.10 * smoothstep(0.55, 0.85, n1) * (1.0 - smoothstep(0.48, 0.82, mot));
   gSplatAlbedo = a.rgb;
   gSplatRough = clamp(a.a * (1.0 - mk.r * 0.12), 0.05, 1.0);
   gSplatNrm = n.xyz * 2.0 - 1.0;
@@ -504,7 +546,7 @@ function createSplatMaterial(engineCtx) {
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v1';
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v2';
   return mat;
 }
 

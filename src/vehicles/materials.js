@@ -61,18 +61,37 @@ function paintCamo(canvas, visual, rng) {
 
   const scheme = visual.scheme || 'solid';
   if (scheme === 'stripes' && patches.length) {
-    // Tiger-style soft-edge diagonal stripe bands.
-    for (let i = 0; i < 14; i++) {
-      const col = patches[i % patches.length];
-      const x = rng() * S * 1.4 - S * 0.2, w = S * (0.03 + rng() * 0.05);
-      const tilt = S * (0.25 + rng() * 0.5) * (rng() < 0.5 ? -1 : 1);
-      ctx.strokeStyle = rgb(col, 0.75);
-      ctx.lineWidth = w;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(x, -S * 0.1);
-      ctx.bezierCurveTo(x + tilt * 0.3, S * 0.33, x + tilt * 0.7, S * 0.66, x + tilt, S * 1.1);
-      ctx.stroke();
+    // Documented Dunkelgelb scheme: sparse, thick, low-contrast wavy Olivgruen /
+    // Rotbraun bands, mostly vertical, blended toward the base tone.
+    for (let i = 0; i < 7; i++) {
+      const col = mix(patches[i % patches.length], base, 0.3);
+      const x0 = ((i + 0.15 + rng() * 0.7) / 7) * S * 1.15 - S * 0.07;
+      const w = S * (0.05 + rng() * 0.035);
+      // soft under-stroke then main band
+      for (const [lw, a] of [[w * 1.7, 0.18], [w, 0.5]]) {
+        ctx.strokeStyle = rgb(col, a);
+        ctx.lineWidth = lw;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x0 + (rng() - 0.5) * S * 0.04, -S * 0.05);
+        for (let k = 1; k <= 6; k++) {
+          const y = (k / 6) * S * 1.1;
+          const x = x0 + Math.sin(k * 1.9 + i * 2.1) * S * 0.055 + (rng() - 0.5) * S * 0.05;
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      // short diagonal branch off every other band
+      if (i % 2 === 0) {
+        const by = rng() * S;
+        ctx.strokeStyle = rgb(col, 0.42);
+        ctx.lineWidth = w * 0.8;
+        ctx.beginPath();
+        ctx.moveTo(x0, by);
+        ctx.lineTo(x0 + S * (0.12 + rng() * 0.1) * (rng() < 0.5 ? -1 : 1), by + S * 0.12);
+        ctx.stroke();
+      }
     }
   } else if (scheme === 'ambush' && patches.length) {
     for (let i = 0; i < 16; i++) {
@@ -137,32 +156,70 @@ function paintCamo(canvas, visual, rng) {
   }
   ctx.putImageData(img, 0, 0);
 
-  // Weathering: dust streaks + dark oil streaks + paint chips.
-  for (let i = 0; i < 60; i++) {
-    const x = rng() * S, y = rng() * S, len = S * (0.04 + rng() * 0.12);
-    ctx.strokeStyle = rng() < 0.5 ? 'rgba(30,26,20,0.14)' : `${rgb(scale3(weather, 1.25), 0.12)}`;
+  // Weathering pass 1: soft AO-ish grime blotches (panel recess reading).
+  for (let i = 0; i < 14; i++) {
+    const x = rng() * S, y = rng() * S, r = S * (0.05 + rng() * 0.12);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, 'rgba(18,16,12,0.14)');
+    g.addColorStop(1, 'rgba(18,16,12,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  // Pass 2: faint world-axis panel seams (box-projected UVs keep these straight).
+  for (let i = 0; i < 10; i++) {
+    const horiz = rng() < 0.5;
+    const p = rng() * S;
+    ctx.fillStyle = 'rgba(12,12,10,0.10)';
+    if (horiz) ctx.fillRect(0, p, S, 1); else ctx.fillRect(p, 0, 1, S);
+    ctx.fillStyle = 'rgba(255,252,240,0.05)';
+    if (horiz) ctx.fillRect(0, p + 1, S, 1); else ctx.fillRect(p + 1, 0, 1, S);
+  }
+  // Pass 3: dust + dark oil streaks.
+  for (let i = 0; i < 70; i++) {
+    const x = rng() * S, y = rng() * S, len = S * (0.04 + rng() * 0.14);
+    ctx.strokeStyle = rng() < 0.45 ? 'rgba(30,26,20,0.15)' : `${rgb(scale3(weather, 1.3), 0.14)}`;
     ctx.lineWidth = 1 + rng() * 2.5;
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (rng() - 0.5) * 6, y + len); ctx.stroke();
   }
-  for (let i = 0; i < 90; i++) {
-    ctx.fillStyle = rng() < 0.6 ? 'rgba(25,22,18,0.5)' : 'rgba(120,90,55,0.4)';
-    const r = 0.5 + rng() * 1.6;
-    ctx.beginPath(); ctx.arc(rng() * S, rng() * S, r, 0, Math.PI * 2); ctx.fill();
+  // Pass 4: paint chips — dark pit with a bright bare-metal glint above.
+  for (let i = 0; i < 110; i++) {
+    const x = rng() * S, y = rng() * S, r = 0.5 + rng() * 1.7;
+    ctx.fillStyle = rng() < 0.6 ? 'rgba(25,22,18,0.55)' : 'rgba(110,84,52,0.45)';
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    if (rng() < 0.4) {
+      ctx.fillStyle = 'rgba(190,185,170,0.5)';
+      ctx.fillRect(x - r * 0.5, y - r - 1, r, 1);
+    }
+  }
+  // Pass 5: sparse rust weeps.
+  for (let i = 0; i < 12; i++) {
+    const x = rng() * S, y = rng() * S, len = S * (0.02 + rng() * 0.05);
+    const g = ctx.createLinearGradient(x, y, x, y + len);
+    g.addColorStop(0, 'rgba(120,66,30,0.4)');
+    g.addColorStop(1, 'rgba(120,66,30,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, 1.5 + rng(), len);
   }
   return canvas;
 }
 
-function paintRoughness(canvas, rng, base = 0.72) {
+function paintRoughness(canvas, rng, base = 0.85) {
   const ctx = canvas.getContext('2d');
   const S = canvas.width;
   const v = (base * 255) | 0;
   ctx.fillStyle = `rgb(${v},${v},${v})`;
   ctx.fillRect(0, 0, S, S);
   for (let i = 0; i < 400; i++) {
-    const g = ((base + (rng() - 0.5) * 0.3) * 255) | 0;
+    const g = ((base + (rng() - 0.5) * 0.22) * 255) | 0;
     ctx.fillStyle = `rgba(${g},${g},${g},0.35)`;
     const r = 2 + rng() * 26;
     ctx.beginPath(); ctx.arc(rng() * S, rng() * S, r, 0, Math.PI * 2); ctx.fill();
+  }
+  // Bare-metal scuffs: locally smooth (dark in roughness) small streaks.
+  for (let i = 0; i < 90; i++) {
+    const g = ((0.35 + rng() * 0.15) * 255) | 0;
+    ctx.fillStyle = `rgba(${g},${g},${g},0.6)`;
+    ctx.fillRect(rng() * S, rng() * S, 2 + rng() * 7, 1 + rng() * 2);
   }
   return canvas;
 }
@@ -282,39 +339,47 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
   const camoTex = track(canvasTex(paintCamo(makeCanvas(TEX_SIZE, TEX_SIZE), vis, rng), { aniso, repeat: true }));
   const roughTex = track(canvasTex(paintRoughness(makeCanvas(256, 256), rng), { srgb: false, aniso, repeat: true }));
 
+  // Matte military paint: vertex colors carry the per-vertex dirt/AO pass baked
+  // by tankFactory; bump from the roughness canvas breaks the injection-molded look.
   const hull = track(setup(new THREE.MeshStandardMaterial({
-    map: camoTex, roughnessMap: roughTex, roughness: 1.0, metalness: 0.18,
+    map: camoTex, roughnessMap: roughTex, roughness: 1.0, metalness: 0.05,
+    bumpMap: roughTex, bumpScale: 0.6, vertexColors: true,
   })));
 
   const baseRgb = hexToRgb(vis.base);
+  const dustRgb = mix(scale3(baseRgb, 0.82), [125, 112, 88], 0.35);
   const wheels = track(setup(new THREE.MeshStandardMaterial({
-    color: new THREE.Color(rgb(scale3(baseRgb, 0.8))).getHex(),
-    roughness: 0.62, metalness: 0.3,
+    color: new THREE.Color(rgb(dustRgb)).getHex(),
+    roughness: 0.78, metalness: 0.12,
   })));
   const rubber = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x1b1b1d, roughness: 0.92, metalness: 0.05,
+    color: 0x232324, roughness: 0.95, metalness: 0.02,
   })));
+  // Dark gunmetal, not chrome: fittings, sprockets, idlers, MGs.
   const detail = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x3c3c40, roughness: 0.5, metalness: 0.65,
+    color: 0x34363a, roughness: 0.7, metalness: 0.3,
   })));
   const dark = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x191a1c, roughness: 0.6, metalness: 0.55,
+    color: 0x1a1b1d, roughness: 0.68, metalness: 0.32,
   })));
   const canvasCloth = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x6f6a52, roughness: 0.95, metalness: 0.0,
+    color: 0x59543f, roughness: 0.96, metalness: 0.0,
   })));
   const wood = track(setup(new THREE.MeshStandardMaterial({
     color: 0x6b543a, roughness: 0.88, metalness: 0.0,
   })));
+  // Charred but clearly lit: soot-grey albedo with a faint ember emissive so
+  // wrecks never read as an unlit/missing material (r1 critique).
   const burnt = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x171412, roughness: 0.96, metalness: 0.08,
+    color: 0x3a332c, roughness: 0.94, metalness: 0.12,
+    emissive: 0xff3a00, emissiveIntensity: 0.18,
   })));
 
   // Independent L/R track textures so each side scrolls on its own offset.
   const trackCanvas = paintTrack(mulberry32((camoSeed | 0) + 17));
   const trackTexL = track(canvasTex(trackCanvas, { aniso, repeat: true }));
   const trackTexR = track(canvasTex(trackCanvas, { aniso, repeat: true }));
-  const trackMatOpts = { roughness: 0.78, metalness: 0.5 };
+  const trackMatOpts = { roughness: 0.85, metalness: 0.3 };
   const trackL = track(setup(new THREE.MeshStandardMaterial({ map: trackTexL, ...trackMatOpts })));
   const trackR = track(setup(new THREE.MeshStandardMaterial({ map: trackTexR, ...trackMatOpts })));
 
