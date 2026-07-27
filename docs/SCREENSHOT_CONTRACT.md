@@ -1,0 +1,35 @@
+# Screenshot Contract
+
+The critic pipeline sees the game ONLY through `node tools/screenshot.mjs`. The game
+MUST uphold this contract at all times or the build is considered broken.
+
+## Required globals (set by the game in `src/main.js` or an imported module)
+
+- `window.__GAME_READY` — set to `true` only after the full scene is loaded and the
+  first frame with final lighting/post-processing has rendered.
+- `window.__SHOTS` — object with:
+  - `views: string[]` — list of deterministic camera/scenario presets.
+  - `set(name: string)` — synchronously (or within ~1s) configure the scene for that
+    view: position the camera, spawn/trigger any required state (e.g. an explosion),
+    freeze randomness so repeated captures look comparable.
+
+## Required views (minimum set — add more freely, never remove)
+
+| view | what it must show |
+|---|---|
+| `battlefield` | wide establishing shot of the map: terrain, sky, foliage, several tanks |
+| `player_view` | standard WoT third-person chase camera behind the player tank, HUD visible |
+| `sniper_view` | first-person gunner zoom with reticle, penetration indicator, HUD |
+| `tank_closeup_modern` | close orbit shot of the M1A2 Abrams model, full detail |
+| `tank_closeup_ww2` | close orbit shot of the Tiger I (or T-34-85) model, full detail |
+| `combat_firing` | a tank mid-shot: muzzle flash, smoke, tracer visible |
+| `explosion` | a vehicle destruction: fireball, debris, smoke column |
+| `garage` | the garage/tank-select screen |
+
+## Rules
+
+- No view may depend on user input or wall-clock time; `set(name)` must fully
+  determine what is captured ~1.2s later.
+- Zero console errors during load and capture. The harness exits non-zero on any.
+- Run `node tools/screenshot.mjs` after every change that could affect rendering;
+  shots land in `shots/<view>.png` at 1920x1080.
