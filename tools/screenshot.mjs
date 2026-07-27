@@ -41,7 +41,7 @@ await page.setViewport({ width, height, deviceScaleFactor: 1 });
 
 const consoleErrors = [];
 page.on('console', (msg) => {
-  if (msg.type() === 'error') consoleErrors.push(msg.text());
+  if (msg.type() === 'error' && !msg.text().includes('favicon')) consoleErrors.push(msg.text());
 });
 page.on('pageerror', (err) => consoleErrors.push(String(err)));
 
