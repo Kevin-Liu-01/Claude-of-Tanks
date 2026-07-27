@@ -1,0 +1,731 @@
+/**
+ * damage.js — complete hit resolution per docs/research/armor-penetration.md
+ * §12 and shells-ballistics.md: ricochet, normalization with overmatch,
+ * KE/CE effective thickness with slope exponents, ERA, spaced-armor
+ * absorption with HEAT air-gap decay, ±25% pen/damage rolls, module & crew
+ * saving throws, fires, ammo-rack detonation, HE direct hits and splash.
+ *
+ * Pure-logic module (ARCHITECTURE.md §3.5.3). RNG consumption order is fixed
+ * for determinism: pen roll, damage roll, then per-intersection
+ * (save, moduleDmg, fire).
+ */
+
+import { Vector3 } from 'three';
+import { penAtDistanceMm } from './ballistics.js';
+import { tankPoseFromState, traceTank } from './armor.js';
+
+const DEG_TO_RAD = Math.PI / 180;
+
+/**
+ * Per-shell-type behavior constants (armor doc §1, §11.3).
+ * kindClass: 'KE' kinetic | 'CE' chemical | 'HE' blast.
+ * slopeExp: exponent on cos(effAngle) — 1.4 rewards classic sloped steel,
+ * 1.0 makes long rods and jets see plain line-of-sight thickness.
+ */
+const SHELL_BEHAVIOR = {
+  AP: { kindClass: 'KE', normDeg: 5, ricochetDeg: 70, slopeExp: 1.4 },
+  APCR: { kindClass: 'KE', normDeg: 2, ricochetDeg: 70, slopeExp: 1.4 },
+  APFSDS: { kindClass: 'KE', normDeg: 2, ricochetDeg: 78, slopeExp: 1.0 },
+  HEAT: { kindClass: 'CE', normDeg: 0, ricochetDeg: 85, slopeExp: 1.0 },
+  HE: { kindClass: 'HE', normDeg: 0, ricochetDeg: Infinity, slopeExp: 1.0 },
+};
+
+/** Module HP baselines (armor doc §9); ×2.5 on modern-era tanks. */
+const MODULE_HP = {
+  trackL: 100,
+  trackR: 100,
+  engine: 160,
+  fuelTank: 120,
+  ammoRack: 150,
+  gun: 150,
+  radio: 90,
+  optics: 80,
+  turretRing: 120,
+};
+const MODULE_NAMES = Object.keys(MODULE_HP);
+
+/** Saving-throw table — chance the module takes damage when hit (armor doc §9). */
+const SAVE_CHANCE = {
+  trackL: 1.0,
+  trackR: 1.0,
+  engine: 0.45,
+  fuelTank: 0.45,
+  optics: 0.45,
+  turretRing: 0.45,
+  radio: 0.45,
+  gun: 0.33,
+  ammoRack: 0.27,
+};
+
+const CREW_HIT_CHANCE = 0.33;
+const CREW_HIT_CHANCE_HE = 0.1;
+const ENGINE_FIRE_CHANCE = 0.15;
+const FUEL_FIRE_CHANCE = 0.45;
+const OVERMATCH_NO_RICOCHET = 3.0;
+const OVERMATCH_NORM_BOOST = 2.0; // caliber ≥ 2×T ⇒ norm × 1.4·C/T
+const POSTPEN_CALIBERS = 10; // internal sweep length = 10 × caliber
+const HEAT_GAP_LOSS_PER_M = 0.5; // 5% pen per 10 cm of air gap
+const HE_ARMOR_ABSORB = 1.1;
+const RICOCHET_MAX_BOUNCES = 2;
+const REPAIR_S = 10;
+const FIRE_BASE_TICKS = 10;
+const FIRE_TICK_HP_FRAC = 0.005;
+const FIRE_TICK_MODULE_DMG = 10;
+const FIRE_EXTINGUISH_CHANCE = 0.12;
+const DEFAULT_CREW = ['commander', 'gunner', 'driver', 'loader'];
+
+// Scratch vectors (module scope — no per-frame allocation).
+const _center = new Vector3();
+const _reflN = new Vector3();
+
+/** ±25% uniform roll. @param {function} rng @param {number} avg @returns {number} */
+function rollUniform(rng, avg) {
+  return avg * (0.75 + rng() * 0.5);
+}
+
+/**
+ * Build the CombatState for a fresh tank (ARCHITECTURE.md §2.4). Module HP is
+ * ×2.5 for modern-era tanks; the crew roster comes from the armor model (e.g.
+ * the T-90M carries no loader), defaulting to the classic four.
+ *
+ * @param {object} spec TankSpec
+ * @returns {object} CombatState
+ */
+export function createCombatState(spec) {
+  const scale = spec.era === 'modern' ? 2.5 : 1;
+  const modules = {};
+  for (const name of MODULE_NAMES) {
+    const hp = MODULE_HP[name] * scale;
+    modules[name] = { hp, maxHp: hp, state: 'ok', repairT: 0 };
+  }
+  const crew = {};
+  const roster =
+    spec.armor && Array.isArray(spec.armor.crew) && spec.armor.crew.length
+      ? spec.armor.crew.map((c) => c.crew)
+      : DEFAULT_CREW;
+  for (const name of roster) crew[name] = true;
+  return {
+    hp: spec.hp,
+    maxHp: spec.hp,
+    destroyed: false,
+    modules,
+    crew,
+    fire: { burning: false, tickTimer: 0, ticksLeft: 0 },
+    eraSpent: new Set(),
+    reload: { t: 0, totalS: spec.gun.reloadS },
+    shellSlot: 0,
+  };
+}
+
+/**
+ * Effective thickness of a plate versus a shell: normalization (with the
+ * 2-caliber overmatch boost for KE), then KE/CE RHAe divided by
+ * cos(effAngle)^slopeExponent (armor doc §2–§5, §11).
+ *
+ * @param {object} shellSpec ShellSpec
+ * @param {object} plate Plate
+ * @param {number} impactAngleDeg raw angle from the outward normal
+ * @returns {{effMm: number, effAngleDeg: number}}
+ */
+function effectiveThickness(shellSpec, plate, impactAngleDeg) {
+  const b = SHELL_BEHAVIOR[shellSpec.type];
+  let norm = b.normDeg;
+  const T = plate.physicalMm;
+  if (b.kindClass === 'KE' && T > 0 && shellSpec.caliberMm >= OVERMATCH_NORM_BOOST * T) {
+    norm = norm * 1.4 * (shellSpec.caliberMm / T);
+  }
+  const effAngleDeg = Math.max(0, impactAngleDeg - norm);
+  const clampedDeg = Math.min(effAngleDeg, 89);
+  const base = b.kindClass === 'KE' ? plate.keMm : plate.ceMm;
+  const effMm = base / Math.cos(clampedDeg * DEG_TO_RAD) ** b.slopeExp;
+  return { effMm, effAngleDeg };
+}
+
+/**
+ * Ricochet test on the raw impact angle and physical plate thickness. The
+ * 3-caliber overmatch rule suppresses ricochet for kinetic shells; HE never
+ * ricochets (armor doc §4–§5).
+ *
+ * @param {object} shellSpec ShellSpec
+ * @param {number} impactAngleDeg raw impact angle
+ * @param {object} plate Plate
+ * @returns {boolean}
+ */
+function wouldRicochet(shellSpec, impactAngleDeg, plate) {
+  const b = SHELL_BEHAVIOR[shellSpec.type];
+  if (b.kindClass === 'HE') return false;
+  if (b.kindClass === 'KE' && shellSpec.caliberMm >= OVERMATCH_NO_RICOCHET * plate.physicalMm) {
+    return false;
+  }
+  return impactAngleDeg > b.ricochetDeg;
+}
+
+/**
+ * Update a module's yellow/red state after an HP change; arms the auto-repair
+ * timer on a fresh red.
+ * @param {object} m module record {hp,maxHp,state,repairT}
+ * @returns {'ok'|'yellow'|'red'} the new state
+ */
+function refreshModuleState(m) {
+  const prev = m.state;
+  m.state = m.hp <= 0 ? 'red' : m.hp <= m.maxHp * 0.5 ? 'yellow' : 'ok';
+  if (m.state === 'red' && prev !== 'red') m.repairT = REPAIR_S;
+  if (m.state !== 'red') m.repairT = 0;
+  return m.state;
+}
+
+/**
+ * Shared per-intersection module damage: saving throw, moduleDmg roll, fire
+ * roll (engine/fuel only). RNG order per module: save → moduleDmg → fire.
+ *
+ * @param {object} ctx resolution context {combat, shellSpec, rng, modulesHit, chanceScale, dmgScale}
+ * @param {string} moduleName ModuleName
+ * @returns {{fireStarted: boolean, ammoRacked: boolean}}
+ */
+function rollModuleDamage(ctx, moduleName) {
+  const res = { fireStarted: false, ammoRacked: false };
+  const m = ctx.combat.modules[moduleName];
+  if (!m) return res;
+  const save = ctx.rng(); // always consumed — fixed order
+  const chance = (SAVE_CHANCE[moduleName] ?? 0.45) * (ctx.chanceScale ?? 1);
+  if (save >= Math.min(1, chance) || m.hp <= 0) return res;
+
+  const moduleDmg =
+    rollUniform(ctx.rng, ctx.shellSpec.moduleDmg ?? ctx.shellSpec.caliberMm) * (ctx.dmgScale ?? 1);
+  m.hp = Math.max(0, m.hp - moduleDmg);
+  const newState = refreshModuleState(m);
+  ctx.modulesHit.push({ module: moduleName, newState });
+
+  if (moduleName === 'ammoRack' && newState === 'red') res.ammoRacked = true;
+
+  if (moduleName === 'engine' || moduleName === 'fuelTank') {
+    const fireRoll = ctx.rng();
+    let ignite = fireRoll < (moduleName === 'engine' ? ENGINE_FIRE_CHANCE : FUEL_FIRE_CHANCE);
+    if (moduleName === 'fuelTank' && newState === 'red') ignite = true; // dead fuel tank always burns
+    if (ignite) {
+      const fire = ctx.combat.fire;
+      if (!fire.burning) res.fireStarted = true;
+      fire.burning = true;
+      fire.ticksLeft = FIRE_BASE_TICKS;
+      fire.tickTimer = 0;
+    }
+  }
+  return res;
+}
+
+/**
+ * Crew saving throw. RNG consumed once per crew intersection (fixed order).
+ * @param {object} ctx resolution context
+ * @param {string} crewName CrewName
+ * @param {boolean} isHe use the reduced HE-splash chance
+ * @returns {void}
+ */
+function rollCrewHit(ctx, crewName, isHe) {
+  const roll = ctx.rng();
+  if (!(crewName in ctx.combat.crew) || ctx.combat.crew[crewName] === false) return;
+  if (roll < (isHe ? CREW_HIT_CHANCE_HE : CREW_HIT_CHANCE)) {
+    ctx.combat.crew[crewName] = false;
+    ctx.crewHit.push(crewName);
+  }
+}
+
+/**
+ * Post-damage bookkeeping: clamp HP, ammo-rack detonation, all-crew-dead.
+ * @param {object} combat CombatState
+ * @param {boolean} ammoRacked an ammo rack went red this resolution
+ * @returns {boolean} the tank is (now) destroyed
+ */
+function finalizeTarget(combat, ammoRacked) {
+  if (ammoRacked) combat.hp = 0;
+  if (combat.hp <= 0) {
+    combat.hp = 0;
+    combat.destroyed = true;
+  }
+  const names = Object.keys(combat.crew);
+  if (names.length > 0 && names.every((n) => combat.crew[n] === false)) {
+    combat.destroyed = true;
+    combat.hp = 0;
+  }
+  if (combat.destroyed) combat.fire.burning = false;
+  return combat.destroyed;
+}
+
+/**
+ * Build a HitEvent skeleton (ARCHITECTURE.md §2.6) — payload positions are
+ * plain [x,y,z] so events stay JSON-serializable.
+ * @param {object} shell ShellEntity
+ * @param {string|null} targetId
+ * @returns {object} HitEvent with defaults
+ */
+function baseEvent(shell, targetId) {
+  return {
+    kind: 'nonpen',
+    shellId: shell.id,
+    shellType: shell.spec.type,
+    caliberMm: shell.spec.caliberMm,
+    attackerId: shell.shooterId,
+    targetId,
+    pos: [shell.pos.x, shell.pos.y, shell.pos.z],
+    normal: [0, 1, 0],
+    impactAngleDeg: 0,
+    effectiveMm: 0,
+    penRollMm: 0,
+    damage: 0,
+    targetHpAfter: 0,
+    modulesHit: [],
+    crewHit: [],
+    fireStarted: false,
+    ammoRacked: false,
+    destroyed: false,
+    eraPlate: null,
+  };
+}
+
+/** Stamp a plate intersection onto an event. */
+function stampImpact(event, hit, effMm, penMm) {
+  event.pos = [hit.point.x, hit.point.y, hit.point.z];
+  if (hit.normal) event.normal = [hit.normal.x, hit.normal.y, hit.normal.z];
+  event.impactAngleDeg = hit.impactAngleDeg ?? 0;
+  event.effectiveMm = effMm;
+  event.penRollMm = penMm;
+}
+
+/**
+ * Ensure the shell's once-per-shot pen roll exists (±25% on pen at its flown
+ * distance). Consumes rng only on the first resolution of this shell.
+ * @param {object} shell ShellEntity
+ * @param {function} rng
+ * @returns {void}
+ */
+function ensurePenRoll(shell, rng) {
+  if (shell.penRollDone) return;
+  const distM = shell.ageS * shell.spec.velocityMps;
+  shell.remainingPenMm = rollUniform(rng, penAtDistanceMm(shell.spec, distM));
+  shell.penRollDone = true;
+}
+
+/**
+ * Resolve a kinetic/HEAT (or direct-fire HE) shell against one tank. Walks the
+ * ordered traceTank intersections: ricochet on raw angle (3× overmatch
+ * suppression), ERA tiles, spaced screens (HEAT air-gap decay), main-armor pen
+ * check, hull damage, then the 10×caliber internal module/crew sweep with
+ * saving throws and fire rolls. Mutates `target.combat` and the shell
+ * (dead/deflected). Ricochets with bounces < 2 leave the shell alive with a
+ * deflected velocity.
+ *
+ * @param {object} shell ShellEntity
+ * @param {object} target TankEntity-shaped {id, spec, state, combat}
+ * @param {Array<object>} hits traceTank result for the shell's swept segment
+ * @param {function} rng () => [0,1)
+ * @returns {object} HitEvent
+ */
+export function resolveShellHit(shell, target, hits, rng) {
+  const spec = shell.spec;
+  const combat = target.combat;
+
+  // Fixed RNG order: pen, dmg, then per-intersection rolls.
+  ensurePenRoll(shell, rng);
+  const dmgRoll = rollUniform(rng, spec.dmg);
+
+  if (spec.type === 'HE') {
+    const event = heDirectHit(shell, target, hits, dmgRoll, rng);
+    shell.dead = true;
+    return event;
+  }
+
+  const event = baseEvent(shell, target.id);
+  const ctx = { combat, shellSpec: spec, rng, modulesHit: event.modulesHit, crewHit: event.crewHit };
+
+  let pen = shell.remainingPenMm;
+  let hullPen = false;
+  let entryPoint = null;
+  const limitM = (spec.caliberMm * POSTPEN_CALIBERS) / 1000;
+  let decided = false;
+
+  for (const hit of hits) {
+    if (hullPen && entryPoint && hit.point.distanceTo(entryPoint) > limitM) break;
+
+    if (hit.kind === 'module') {
+      const external = hit.module === 'gun';
+      if (external || hullPen) {
+        const r = rollModuleDamage(ctx, hit.module);
+        event.fireStarted = event.fireStarted || r.fireStarted;
+        event.ammoRacked = event.ammoRacked || r.ammoRacked;
+      }
+      continue;
+    }
+    if (hit.kind === 'crew') {
+      if (hullPen) rollCrewHit(ctx, hit.crew, false);
+      continue;
+    }
+
+    const plate = hit.plate;
+
+    // --- ERA tile: detonates once, cuts pen, never stops processing unless
+    // the remaining pen hits zero (armor doc §11.2).
+    if (plate.kind === 'era') {
+      if (combat.eraSpent.has(plate.name)) continue;
+      combat.eraSpent.add(plate.name);
+      event.eraPlate = plate.name;
+      const b = SHELL_BEHAVIOR[spec.type];
+      const era = plate.era || { keReduction: 0, ceFlatMm: 0 };
+      if (b.kindClass === 'CE') pen = Math.max(0, pen - era.ceFlatMm);
+      else if (b.kindClass === 'KE') pen *= 1 - era.keReduction;
+      if (pen <= 0 && !hullPen) {
+        event.kind = 'era';
+        stampImpact(event, hit, 0, 0);
+        shell.dead = true;
+        decided = true;
+        break;
+      }
+      continue;
+    }
+
+    const angle = hit.impactAngleDeg;
+
+    // --- 1. Ricochet on the raw angle (outer surfaces only).
+    if (!hullPen && wouldRicochet(spec, angle, plate)) {
+      event.kind = 'ricochet';
+      stampImpact(event, hit, 0, pen);
+      shell.bounces += 1;
+      _reflN.copy(hit.normal);
+      const vdotn = shell.vel.dot(_reflN);
+      shell.vel.addScaledVector(_reflN, -2 * vdotn);
+      shell.pos.copy(hit.point).addScaledVector(_reflN, 0.02);
+      shell.prevPos.copy(shell.pos);
+      const isHeat = SHELL_BEHAVIOR[spec.type].kindClass === 'CE';
+      if (isHeat || shell.bounces >= RICOCHET_MAX_BOUNCES) shell.dead = true;
+      shell.remainingPenMm = pen; // full pen retained through the bounce
+      event.targetHpAfter = combat.hp;
+      return event;
+    }
+
+    // --- 2–3. Normalization (+overmatch boost) and effective thickness.
+    const { effMm } = effectiveThickness(spec, plate, angle);
+
+    // --- Spaced / external screens: absorb pen, HEAT decays over the gap.
+    if (plate.kind === 'spaced' || plate.kind === 'external') {
+      const penBefore = pen;
+      pen -= effMm;
+      if (spec.type === 'HEAT' && pen > 0) {
+        let gapM = 0;
+        for (const next of hits) {
+          if (next.t > hit.t && next.kind === 'plate' && next.plate.kind === 'main') {
+            gapM = hit.point.distanceTo(next.point);
+            break;
+          }
+        }
+        pen *= Math.max(0, 1 - HEAT_GAP_LOSS_PER_M * gapM);
+      }
+      if (plate.moduleLink) {
+        const r = rollModuleDamage(ctx, plate.moduleLink);
+        event.fireStarted = event.fireStarted || r.fireStarted;
+        event.ammoRacked = event.ammoRacked || r.ammoRacked;
+      }
+      if (pen <= 0 && !hullPen) {
+        event.kind = 'spaced_absorb';
+        stampImpact(event, hit, effMm, penBefore);
+        shell.dead = true;
+        decided = true;
+        break;
+      }
+      continue;
+    }
+
+    // --- 4. Main armor pen check (±25% roll already folded into pen).
+    if (pen >= effMm) {
+      if (!hullPen) {
+        hullPen = true;
+        entryPoint = hit.point;
+        event.kind = 'pen';
+        stampImpact(event, hit, effMm, pen);
+        event.damage = dmgRoll;
+        combat.hp -= dmgRoll;
+        decided = true;
+      }
+      pen -= effMm;
+    } else {
+      if (!hullPen) {
+        event.kind = 'nonpen';
+        stampImpact(event, hit, effMm, pen);
+        decided = true;
+      }
+      shell.dead = true;
+      break;
+    }
+  }
+
+  if (!decided && hits.length > 0 && !hullPen) {
+    // Only external module hits (e.g. barrel graze) — a clang, no hull damage.
+    const first = hits[0];
+    event.kind = 'nonpen';
+    event.pos = [first.point.x, first.point.y, first.point.z];
+  }
+
+  shell.remainingPenMm = Math.max(0, pen);
+  if (event.kind !== 'ricochet') shell.dead = true;
+  event.destroyed = finalizeTarget(combat, event.ammoRacked);
+  event.targetHpAfter = combat.hp;
+  return event;
+}
+
+/**
+ * HE direct-hit resolution against one tank: full-pen attempt on the struck
+ * plate (LOS thickness, no normalization), else a surface burst using the
+ * splash formula at dist 0 (armor doc §8, shells doc §6).
+ *
+ * @param {object} shell ShellEntity (type 'HE')
+ * @param {object} target {id, spec, state, combat}
+ * @param {Array<object>} hits traceTank result
+ * @param {number} dmgRoll pre-rolled ±25% damage
+ * @param {function} rng
+ * @returns {object} HitEvent (kind 'he_pen' | 'he_splash')
+ */
+function heDirectHit(shell, target, hits, dmgRoll, rng) {
+  const spec = shell.spec;
+  const combat = target.combat;
+  const event = baseEvent(shell, target.id);
+  const ctx = { combat, shellSpec: spec, rng, modulesHit: event.modulesHit, crewHit: event.crewHit };
+
+  let plateHit = null;
+  for (const hit of hits || []) {
+    if (hit.kind !== 'plate') continue;
+    if (hit.plate.kind === 'era') {
+      // HE pops the tile and detonates on it; the tile just soaks blast.
+      if (!combat.eraSpent.has(hit.plate.name)) {
+        combat.eraSpent.add(hit.plate.name);
+        event.eraPlate = hit.plate.name;
+      }
+      continue;
+    }
+    plateHit = hit;
+    break;
+  }
+
+  if (!plateHit) {
+    event.kind = 'he_splash';
+    event.targetHpAfter = combat.hp;
+    return event;
+  }
+
+  const plate = plateHit.plate;
+  const { effMm } = effectiveThickness(spec, plate, plateHit.impactAngleDeg);
+
+  if (plate.kind === 'main' && shell.remainingPenMm >= effMm) {
+    // Full HE penetration: full damage + internal blast sweep.
+    event.kind = 'he_pen';
+    stampImpact(event, plateHit, effMm, shell.remainingPenMm);
+    event.damage = dmgRoll;
+    combat.hp -= dmgRoll;
+    const limitM = (spec.caliberMm * POSTPEN_CALIBERS) / 1000;
+    for (const hit of hits) {
+      if (hit.t <= plateHit.t) continue;
+      if (hit.point.distanceTo(plateHit.point) > limitM) break;
+      if (hit.kind === 'module') {
+        const r = rollModuleDamage(ctx, hit.module);
+        event.fireStarted = event.fireStarted || r.fireStarted;
+        event.ammoRacked = event.ammoRacked || r.ammoRacked;
+      } else if (hit.kind === 'crew') {
+        rollCrewHit(ctx, hit.crew, false);
+      }
+    }
+  } else {
+    // Surface burst on the armor: splash formula at dist = 0.
+    event.kind = 'he_splash';
+    const dmg = Math.max(0, 0.5 * dmgRoll - HE_ARMOR_ABSORB * plate.physicalMm);
+    stampImpact(event, plateHit, effMm, shell.remainingPenMm);
+    event.damage = dmg;
+    combat.hp -= dmg;
+    if (plate.moduleLink) {
+      const r = rollModuleDamage(ctx, plate.moduleLink);
+      event.fireStarted = event.fireStarted || r.fireStarted;
+      event.ammoRacked = event.ammoRacked || r.ammoRacked;
+    }
+    // Blast reaches crew/modules through hatches at reduced odds.
+    for (const hit of hits) {
+      if (hit.kind === 'crew') rollCrewHit(ctx, hit.crew, true);
+    }
+  }
+
+  event.destroyed = finalizeTarget(combat, event.ammoRacked);
+  event.targetHpAfter = combat.hp;
+  return event;
+}
+
+/**
+ * Resolve an HE burst: direct-hit pen attempt on `directTarget` (if any),
+ * otherwise a surface/terrain burst that splashes every tank whose nearest
+ * armor lies inside blastRadiusM(caliber), with the classic
+ * `0.5·dmg·(1 − d/R) − 1.1·armor` absorption (shells doc §6). Marks the shell
+ * dead. RNG order: pen roll, dmg roll, then per-tank rolls in array order.
+ *
+ * @param {object} shell ShellEntity (type 'HE')
+ * @param {Vector3} burstPoint world detonation point
+ * @param {Array<object>} tanks TankEntity[] candidates for splash
+ * @param {object|null} directTarget entity directly struck, or null
+ * @param {Array<object>|null} directHits traceTank result for the direct hit
+ * @param {function} rng
+ * @returns {Array<object>} HitEvent[]
+ */
+export function resolveHeBurst(shell, burstPoint, tanks, directTarget, directHits, rng) {
+  const spec = shell.spec;
+  ensurePenRoll(shell, rng);
+  const dmgRoll = rollUniform(rng, spec.dmg);
+  shell.dead = true;
+
+  const events = [];
+  let directPen = false;
+
+  if (directTarget && directTarget.combat && !directTarget.combat.destroyed && directHits) {
+    const ev = heDirectHit(shell, directTarget, directHits, dmgRoll, rng);
+    events.push(ev);
+    directPen = ev.kind === 'he_pen';
+  }
+
+  if (directPen) return events; // blast went inside — no external splash
+
+  const radiusM = blastRadiusM(spec.caliberMm);
+  for (const tank of tanks || []) {
+    if (!tank || tank === directTarget) continue;
+    if (!tank.combat || tank.combat.destroyed) continue;
+    const armor = tank.spec.armor;
+    _center.copy(tank.state.pos);
+    _center.y += armor.turretPivot ? armor.turretPivot[1] : 1.2;
+    const centerDist = _center.distanceTo(burstPoint);
+    if (centerDist - (armor.boundingRadiusM ?? 4) > radiusM) continue;
+
+    const pose = tankPoseFromState(tank.state);
+    const hits = traceTank(burstPoint, _center, pose, armor, tank.combat.eraSpent);
+    let plateHit = null;
+    for (const hit of hits) {
+      if (hit.kind !== 'plate' || hit.plate.kind === 'era') continue;
+      plateHit = hit;
+      break;
+    }
+    if (!plateHit) continue;
+    const distM = plateHit.point.distanceTo(burstPoint);
+    if (distM >= radiusM) continue;
+
+    const event = baseEvent(shell, tank.id);
+    const ctx = {
+      combat: tank.combat,
+      shellSpec: spec,
+      rng,
+      modulesHit: event.modulesHit,
+      crewHit: event.crewHit,
+      chanceScale: 0.5,
+      dmgScale: 0.5,
+    };
+    event.kind = 'he_splash';
+    const armorMm = plateHit.plate.physicalMm;
+    const dmg = Math.max(0, 0.5 * dmgRoll * (1 - distM / radiusM) - HE_ARMOR_ABSORB * armorMm);
+    stampImpact(event, plateHit, armorMm, shell.remainingPenMm);
+    event.damage = dmg;
+    tank.combat.hp -= dmg;
+    if (plateHit.plate.moduleLink) {
+      // Tracks and other external gear get shredded at full odds.
+      ctx.chanceScale = 1;
+      const r = rollModuleDamage(ctx, plateHit.plate.moduleLink);
+      event.fireStarted = event.fireStarted || r.fireStarted;
+      event.ammoRacked = event.ammoRacked || r.ammoRacked;
+    }
+    event.destroyed = finalizeTarget(tank.combat, event.ammoRacked);
+    event.targetHpAfter = tank.combat.hp;
+    if (event.damage > 0 || event.modulesHit.length > 0) events.push(event);
+  }
+  return events;
+}
+
+/**
+ * One 0.5 s fire tick (armor doc §10): 0.5% max HP hull damage, 10 module HP
+ * off engine/fuel/ammo, per-tick self-extinguish roll, burn-out after the
+ * remaining tick budget. Ammo cooking off to red detonates the tank.
+ *
+ * @param {object} entity TankEntity-shaped {spec, combat}
+ * @param {function} rng
+ * @returns {{damage: number, extinguished: boolean, destroyed: boolean}}
+ */
+export function tickFire(entity, rng) {
+  const combat = entity.combat;
+  if (!combat || !combat.fire.burning || combat.destroyed) {
+    return { damage: 0, extinguished: false, destroyed: combat ? combat.destroyed : false };
+  }
+  const damage = combat.maxHp * FIRE_TICK_HP_FRAC;
+  combat.hp = Math.max(0, combat.hp - damage);
+
+  let ammoRacked = false;
+  for (const name of ['engine', 'fuelTank', 'ammoRack']) {
+    const m = combat.modules[name];
+    if (!m || m.hp <= 0) continue;
+    m.hp = Math.max(0, m.hp - FIRE_TICK_MODULE_DMG);
+    const state = refreshModuleState(m);
+    if (name === 'ammoRack' && state === 'red') ammoRacked = true;
+  }
+
+  combat.fire.ticksLeft -= 1;
+  let extinguished = false;
+  if (rng() < FIRE_EXTINGUISH_CHANCE || combat.fire.ticksLeft <= 0) {
+    combat.fire.burning = false;
+    extinguished = true;
+  }
+  const destroyed = finalizeTarget(combat, ammoRacked);
+  if (destroyed) extinguished = true;
+  return { damage, extinguished, destroyed };
+}
+
+/**
+ * Switch the loaded shell slot. Changing ammunition restarts the load using
+ * the current reload duration (WoT behavior).
+ * @param {object} combatState CombatState
+ * @param {0|1|2} slot shell slot
+ * @returns {void}
+ */
+export function selectShell(combatState, slot) {
+  if (slot === combatState.shellSlot) return;
+  combatState.shellSlot = slot;
+  combatState.reload.t = combatState.reload.totalS;
+}
+
+/**
+ * Begin a reload after firing. Applies the locked crew debuff: a dead loader
+ * multiplies reload time ×1.5 (ARCHITECTURE.md §2.4).
+ * @param {object} combatState CombatState
+ * @param {object} spec TankSpec
+ * @returns {void}
+ */
+export function startReload(combatState, spec) {
+  let mult = 1;
+  if ('loader' in combatState.crew && combatState.crew.loader === false) mult *= 1.5;
+  const totalS = spec.gun.reloadS * mult;
+  combatState.reload.totalS = totalS;
+  combatState.reload.t = totalS;
+}
+
+/**
+ * HUD/AI penetration estimate: average pen at distance divided by the
+ * effective thickness of the aimed plate (normalization + overmatch + slope
+ * exponent, no RNG). Returns 0 when the shot would ricochet outright.
+ * HUD color mapping: ≥1.15 green, 0.85–1.15 orange, <0.85 red.
+ *
+ * @param {object} shellSpec ShellSpec
+ * @param {number} distM range to the aim point in meters
+ * @param {object|null} plateInfo queryAimArmor result
+ * @returns {number} avgPen / effectiveMm (0 with no plate or on ricochet)
+ */
+export function estimatePenRatio(shellSpec, distM, plateInfo) {
+  if (!plateInfo || !plateInfo.plate) return 0;
+  if (wouldRicochet(shellSpec, plateInfo.impactAngleDeg, plateInfo.plate)) return 0;
+  const { effMm } = effectiveThickness(shellSpec, plateInfo.plate, plateInfo.impactAngleDeg);
+  if (!(effMm > 0)) return 99;
+  return penAtDistanceMm(shellSpec, distM) / effMm;
+}
+
+/**
+ * HE blast radius from caliber: 0.66·(caliber/30)^1.3 m, clamped to 1–8 m
+ * (shells doc §6).
+ * @param {number} caliberMm
+ * @returns {number} radius in meters
+ */
+export function blastRadiusM(caliberMm) {
+  return Math.min(8, Math.max(1, 0.66 * Math.pow(caliberMm / 30, 1.3)));
+}
