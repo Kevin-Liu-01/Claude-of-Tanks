@@ -332,29 +332,38 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
 }
 
 /**
- * First armor surface ('main' or 'spaced') a ray would strike — used by the
- * HUD penetration indicator and AI weak-spot probing. ERA and external layers
- * are skipped so the indicator reads the plate that actually gates damage.
+ * Armor stack a ray would strike — used by the HUD penetration indicator and
+ * AI weak-spot probing. `plate` is the first 'main' or 'spaced' surface (the
+ * layer that historically gated the estimate); `layers` is EVERY plate
+ * intersection (ERA tiles, spaced screens, external tracks, main armor) in
+ * ray order up to and including the first 'main' plate, so the estimate can
+ * aggregate the whole stack exactly like damage resolution does.
  *
  * @param {Vector3} from world ray origin
  * @param {Vector3} dir world unit ray direction
  * @param {number} maxDist max query distance in meters
  * @param {object} pose Pose from tankPoseFromState
  * @param {object} armorModel ArmorModel
- * @returns {null | {plate: object, impactAngleDeg: number, point: Vector3, distM: number}}
+ * @param {Set<string>} [eraSpent] names of already-detonated ERA tiles
+ * @returns {null | {plate: object, impactAngleDeg: number, point: Vector3, distM: number, layers: Array<object>}}
  */
-export function queryAimArmor(from, dir, maxDist, pose, armorModel) {
+export function queryAimArmor(from, dir, maxDist, pose, armorModel, eraSpent = EMPTY_SET) {
   _to.copy(from).addScaledVector(dir, maxDist);
-  const hits = traceTank(from, _to, pose, armorModel, EMPTY_SET);
+  const hits = traceTank(from, _to, pose, armorModel, eraSpent);
+  const layers = [];
+  let first = null;
   for (const hit of hits) {
     if (hit.kind !== 'plate') continue;
-    if (hit.plate.kind !== 'main' && hit.plate.kind !== 'spaced') continue;
-    return {
-      plate: hit.plate,
-      impactAngleDeg: hit.impactAngleDeg,
-      point: hit.point,
-      distM: hit.t * maxDist,
-    };
+    layers.push(hit);
+    if (!first && (hit.plate.kind === 'main' || hit.plate.kind === 'spaced')) first = hit;
+    if (hit.plate.kind === 'main') break; // stack ends at the first main plate
   }
-  return null;
+  if (!first) return null;
+  return {
+    plate: first.plate,
+    impactAngleDeg: first.impactAngleDeg,
+    point: first.point,
+    distM: first.t * maxDist,
+    layers,
+  };
 }

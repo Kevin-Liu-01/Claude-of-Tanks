@@ -299,6 +299,179 @@ export function sampleSplatNoise(x, z) {
 }
 
 const _col = new THREE.Color();
+function _css(h, s, l) { _col.setHSL(h, s, l); return _col.getStyle(); }
+
+// draw a canvas path callback at all 9 wrap offsets so the tile stays seamless
+function drawWrapped(ctx, s, fn) {
+  for (const ox of [-s, 0, s]) for (const oy of [-s, 0, s]) {
+    ctx.save();
+    ctx.translate(ox, oy);
+    fn();
+    ctx.restore();
+  }
+}
+
+// Painted grass layer: noise macro base + thousands of individual blade
+// strokes so the near field reads as turf, not single-frequency speckle.
+function makeGrassLayer(seed, anisotropy) {
+  const s = 512;
+  const noi = new SimplexNoise({ random: mulberry32(seed) });
+  const rng = mulberry32(seed ^ 0x7f4a);
+  const c = document.createElement('canvas');
+  c.width = c.height = s;
+  const ctx = c.getContext('2d');
+  // macro base: soil showing through + moss/dry patches at 3-7 tile frequency
+  const base = ctx.createImageData(s, s);
+  for (let y = 0; y < s; y++) {
+    const v = y / s;
+    for (let x = 0; x < s; x++) {
+      const u = x / s, j = (y * s + x) * 4;
+      const macro = torusNoise(noi, u, v, 3, 3, 11) * 0.6 + torusNoise(noi, u, v, 7, 7, 23) * 0.4;
+      const fine = torusNoise(noi, u, v, 43, 43, 61) * 0.5 + 0.5;
+      const m01 = macro * 0.5 + 0.5;
+      const dry = smoothstep(0.62, 0.9, m01);
+      _col.setHSL(0.21 + macro * 0.03 - dry * 0.07, 0.34 - dry * 0.08, 0.16 + m01 * 0.07 + fine * 0.05);
+      base.data[j] = _col.r * 255; base.data[j + 1] = _col.g * 255; base.data[j + 2] = _col.b * 255;
+      base.data[j + 3] = 255;
+    }
+  }
+  ctx.putImageData(base, 0, 0);
+  // blade strokes: short curved tapers in varied greens + scattered dry blades
+  ctx.lineCap = 'round';
+  for (let b = 0; b < 3400; b++) {
+    const x = rng() * s, y = rng() * s;
+    const dry = rng() < 0.14;
+    const lum = 0.16 + rng() * 0.17 + (dry ? 0.12 : 0);
+    ctx.strokeStyle = dry
+      ? _css(0.11 + rng() * 0.02, 0.32, lum)
+      : _css(0.20 + rng() * 0.075, 0.36 + rng() * 0.16, lum);
+    ctx.lineWidth = 1.1 + rng() * 1.4;
+    const len = 7 + rng() * 12;
+    const a = rng() * Math.PI * 2;
+    const bend = (rng() - 0.5) * 8;
+    drawWrapped(ctx, s, () => {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(
+        x + Math.cos(a) * len * 0.5 - Math.sin(a) * bend,
+        y + Math.sin(a) * len * 0.5 + Math.cos(a) * bend,
+        x + Math.cos(a) * len, y + Math.sin(a) * len);
+      ctx.stroke();
+    });
+  }
+  // tiny clover/weed dots
+  for (let b = 0; b < 420; b++) {
+    const x = rng() * s, y = rng() * s, r = 1 + rng() * 2;
+    ctx.fillStyle = _css(0.26 + rng() * 0.05, 0.4, 0.2 + rng() * 0.16);
+    drawWrapped(ctx, s, () => {
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+  const out = ctx.getImageData(0, 0, s, s);
+  const px = new Uint8ClampedArray(out.data);
+  const hgt = new Float32Array(s * s);
+  for (let i = 0; i < s * s; i++) {
+    const g = px[i * 4 + 1] / 255;
+    hgt[i] = g;
+    px[i * 4 + 3] = clamp(0.95 - g * 0.18, 0.03, 1) * 255; // roughness in alpha
+  }
+  return {
+    albedo: canvasToTexture(px, s, { srgb: true, anisotropy }),
+    normal: normalFromHeight(hgt, s, 1.8, anisotropy),
+  };
+}
+
+// Painted dirt layer: clods + drawn pebbles + cracks — real macro structure
+// for the sub-10 m ground and the road gravel pass.
+function makeDirtLayer(seed, anisotropy) {
+  const s = 512;
+  const noi = new SimplexNoise({ random: mulberry32(seed) });
+  const rng = mulberry32(seed ^ 0x2e91);
+  const c = document.createElement('canvas');
+  c.width = c.height = s;
+  const ctx = c.getContext('2d');
+  const base = ctx.createImageData(s, s);
+  for (let y = 0; y < s; y++) {
+    const v = y / s;
+    for (let x = 0; x < s; x++) {
+      const u = x / s, j = (y * s + x) * 4;
+      const clods = torusNoise(noi, u, v, 4, 4, 7) * 0.65 + torusNoise(noi, u, v, 9, 9, 31) * 0.35;
+      const grain = torusNoise(noi, u, v, 47, 47, 3) * 0.5 + 0.5;
+      const c01 = clods * 0.5 + 0.5;
+      _col.setHSL(0.077 + clods * 0.014, 0.25 - grain * 0.05, 0.16 + c01 * 0.10 + grain * 0.045);
+      base.data[j] = _col.r * 255; base.data[j + 1] = _col.g * 255; base.data[j + 2] = _col.b * 255;
+      base.data[j + 3] = 255;
+    }
+  }
+  ctx.putImageData(base, 0, 0);
+  // soft clod shading blobs
+  for (let b = 0; b < 110; b++) {
+    const x = rng() * s, y = rng() * s;
+    const rw = 8 + rng() * 22, rh = rw * (0.5 + rng() * 0.7), rot = rng() * Math.PI;
+    const dark = rng() < 0.5;
+    ctx.globalAlpha = 0.14 + rng() * 0.14;
+    ctx.fillStyle = _css(0.075 + rng() * 0.015, 0.24, dark ? 0.12 : 0.30);
+    drawWrapped(ctx, s, () => {
+      ctx.beginPath();
+      ctx.ellipse(x, y, rw, rh, rot, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+  ctx.globalAlpha = 1;
+  // cracks: dark meandering polylines
+  ctx.lineCap = 'round';
+  for (let k = 0; k < 26; k++) {
+    let x = rng() * s, y = rng() * s;
+    let a = rng() * Math.PI * 2;
+    ctx.strokeStyle = _css(0.07, 0.25, 0.075 + rng() * 0.035);
+    ctx.lineWidth = 0.9 + rng() * 1.2;
+    const segs = 4 + (rng() * 5) | 0;
+    const ptsX = [x], ptsY = [y];
+    for (let q = 0; q < segs; q++) {
+      a += (rng() - 0.5) * 1.2;
+      x += Math.cos(a) * (7 + rng() * 12);
+      y += Math.sin(a) * (7 + rng() * 12);
+      ptsX.push(x); ptsY.push(y);
+    }
+    drawWrapped(ctx, s, () => {
+      ctx.beginPath();
+      ctx.moveTo(ptsX[0], ptsY[0]);
+      for (let q = 1; q < ptsX.length; q++) ctx.lineTo(ptsX[q], ptsY[q]);
+      ctx.stroke();
+    });
+  }
+  // pebbles with a contact-shadow offset
+  for (let b = 0; b < 640; b++) {
+    const x = rng() * s, y = rng() * s, r = 0.8 + Math.pow(rng(), 1.8) * 3.2;
+    const lum = 0.2 + rng() * 0.2;
+    const sh = _css(0.075, 0.2, 0.08);
+    const fill = _css(0.075 + rng() * 0.02, 0.10 + rng() * 0.12, lum);
+    drawWrapped(ctx, s, () => {
+      ctx.beginPath();
+      ctx.arc(x + r * 0.4, y + r * 0.5, r, 0, Math.PI * 2);
+      ctx.fillStyle = sh;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = fill;
+      ctx.fill();
+    });
+  }
+  const out = ctx.getImageData(0, 0, s, s);
+  const px = new Uint8ClampedArray(out.data);
+  const hgt = new Float32Array(s * s);
+  for (let i = 0; i < s * s; i++) {
+    const l = (px[i * 4] * 0.45 + px[i * 4 + 1] * 0.4 + px[i * 4 + 2] * 0.15) / 255;
+    hgt[i] = l;
+    px[i * 4 + 3] = clamp(0.97 - l * 0.16, 0.03, 1) * 255;
+  }
+  return {
+    albedo: canvasToTexture(px, s, { srgb: true, anisotropy }),
+    normal: normalFromHeight(hgt, s, 3.0, anisotropy),
+  };
+}
 
 function makeGroundLayer(seed, kind, anisotropy) {
   const s = 512;
@@ -311,27 +484,7 @@ function makeGroundLayer(seed, kind, anisotropy) {
     for (let x = 0; x < s; x++) {
       const u = x / s, i = y * s + x, j = i * 4;
       let rough = 0.9, hn = 0.5;
-      if (kind === 'grass') {
-        const macro = torusNoise(noi, u, v, 3, 3, 11) * 0.65 + torusNoise(noi, u, v, 7, 7, 23) * 0.35;
-        const streak = torusNoise(noi, u, v, 9, 34, 5); // anisotropic blade streaks
-        const fine = torusNoise(noi, u, v, 41, 47, 61); // close-range blade speckle
-        const m01 = macro * 0.5 + 0.5, s01 = streak * 0.5 + 0.5, f01 = fine * 0.5 + 0.5;
-        hn = m01 * 0.42 + s01 * 0.38 + f01 * 0.20;
-        const dry = smoothstep(0.60, 0.88, s01);
-        _col.setHSL(0.228 + macro * 0.022 - dry * 0.065, 0.42 - dry * 0.15, 0.215 + hn * 0.095);
-        rough = 0.90 - s01 * 0.10;
-        nStrength = 2.0;
-      } else if (kind === 'dirt') {
-        const clods = torusNoise(noi, u, v, 4, 4, 7) * 0.7 + torusNoise(noi, u, v, 9, 9, 31) * 0.3;
-        const grain = torusNoise(noi, u, v, 52, 52, 3);
-        // Voronoi-ish pebbles: ridged high-frequency noise thresholded to specks
-        const peb = smoothstep(0.72, 0.94, 1 - Math.abs(torusNoise(noi, u, v, 27, 27, 83)));
-        const c01 = clods * 0.5 + 0.5, g01 = grain * 0.5 + 0.5;
-        hn = c01 * 0.52 + g01 * 0.30 + peb * 0.18;
-        _col.setHSL(0.079 + clods * 0.012, 0.27 - g01 * 0.05, 0.180 + hn * 0.085 + peb * 0.045);
-        rough = 0.96 - g01 * 0.05 - peb * 0.08;
-        nStrength = 2.6;
-      } else if (kind === 'rock') {
+      if (kind === 'rock') {
         const tone = torusNoise(noi, u, v, 3, 3, 17) * 0.5 + 0.5;
         const r1 = 1 - Math.abs(torusNoise(noi, u, v, 6, 6, 41));
         const r2 = 1 - Math.abs(torusNoise(noi, u, v, 15, 15, 8));
@@ -347,7 +500,7 @@ function makeGroundLayer(seed, kind, anisotropy) {
         const puddle = smoothstep(0.56, 0.76, macro);
         hn = macro * 0.55 + rip * 0.18 - puddle * 0.28 + 0.25;
         _col.setHSL(0.068, 0.27 - puddle * 0.12, 0.145 + (1 - puddle) * 0.075 + rip * 0.028);
-        rough = 0.62 - puddle * 0.34;
+        rough = 0.62 - puddle * 0.16; // floor ~0.46: no white sun-glint pixels at range
         nStrength = 1.5;
       }
       hn = clamp(hn, 0, 1);
@@ -388,13 +541,14 @@ function makeMaskTexture(seedNoi) {
       const x = tx - HALF, i = tz * s + tx, j = i * 4;
       const d = dist[i];
       if (d < 13) {
-        const wob = seedNoi.noise(x * 0.055, z * 0.055) * 1.6 + seedNoi.noise(x * 0.21, z * 0.21) * 0.5;
-        let core = 1 - smoothstep(2.9 + wob, 4.9 + wob, d);
+        // small wobble only: keeps edges crisp instead of smearing into blobs
+        const wob = seedNoi.noise(x * 0.055, z * 0.055) * 0.8 + seedNoi.noise(x * 0.21, z * 0.21) * 0.35;
+        let core = 1 - smoothstep(3.2 + wob, 4.6 + wob, d);
         // center grass strip between the wheel tracks
-        core *= 0.42 + 0.58 * smoothstep(0.25, 0.95, d + wob * 0.12);
+        core *= 0.40 + 0.60 * smoothstep(0.25, 0.95, d + wob * 0.12);
         px[j] = core * 255;
-        const rut = Math.exp(-Math.pow((d - 1.55) / 0.50, 2));
-        px[j + 1] = rut * core * 235;
+        const rut = Math.exp(-Math.pow((d - 1.55) / 0.62, 2));
+        px[j + 1] = rut * core * 245;
       }
       let marsh = 0;
       for (const m of _MARSHES) {
@@ -462,10 +616,10 @@ void splatCompute() {
   float n1 = texture2D(uNoise, uv * 0.0117).r;
   float n2 = texture2D(uNoise, uv * 0.0031 + vec2(0.41, 0.13)).g;
   float slope = 1.0 - clamp(wn.y, 0.0, 1.0);
-  // dirt patches: noise-broken threshold => smaller worn patches with ragged
-  // edges instead of giant airbrushed blobs
-  float worn = smoothstep(0.60, 0.80, n2 + (n1 - 0.5) * 0.22);
-  float fD = clamp(max(worn * 0.72, max(mk.r, mk.a * (0.35 + 0.65 * n1))), 0.0, 1.0);
+  // dirt patches: noise-broken threshold => small worn patches with ragged
+  // edges instead of giant airbrushed smears
+  float worn = smoothstep(0.62, 0.78, n2 + (n1 - 0.5) * 0.45);
+  float fD = clamp(max(worn * 0.62, max(mk.r, mk.a * (0.35 + 0.65 * n1))), 0.0, 1.0);
   float fM = mk.b;
   float fR = smoothstep(0.095, 0.235, slope + (n1 - 0.5) * 0.07);
   vec4 a = splatSamp(uAlbG, uv * 0.240, df);
@@ -473,28 +627,41 @@ void splatCompute() {
   a = mix(a, splatSamp(uAlbD, uv * 0.210, df), fD); n = mix(n, splatSamp(uNrmD, uv * 0.210, df), fD);
   a = mix(a, splatSamp(uAlbM, uv * 0.190, df), fM); n = mix(n, splatSamp(uNrmM, uv * 0.190, df), fM);
   a = mix(a, splatSamp(uAlbR, uv * 0.155, df), fR); n = mix(n, splatSamp(uNrmR, uv * 0.155, df), fR);
-  // 0-45 m detail pass: ~1 m tiled micro normal + albedo speckle + road gravel
+  // meadow macro variation: 15-80 m warm/cool patches so open fields never
+  // read as one continuous green wash at any distance
+  float meadowA = texture2D(uNoise, uv * 0.0121 + vec2(0.63, 0.29)).r;
+  float meadowB = texture2D(uNoise, uv * 0.0043 + vec2(0.11, 0.87)).g;
+  a.rgb = mix(a.rgb, a.rgb * vec3(1.14, 1.07, 0.78), smoothstep(0.56, 0.85, meadowA) * 0.55 * (1.0 - fD));
+  a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.90, 0.74), smoothstep(0.58, 0.85, 1.0 - meadowB) * 0.45 * (1.0 - fD));
+  // 0-48 m detail pass: layered micro normals + albedo speckle + road gravel
   float dNear = 1.0 - smoothstep(18.0, 48.0, camDist);
   if (dNear > 0.001) {
     vec3 dn = texture2D(uNrmD, uv * 1.07).xyz * 2.0 - 1.0;
-    n.xy += dn.xy * 0.50 * dNear;
+    n.xy += dn.xy * 0.85 * dNear;
     float micro = texture2D(uNoise, uv * 0.171).r;
-    a.rgb *= 1.0 + (micro - 0.5) * 0.22 * dNear;
+    a.rgb *= 1.0 + (micro - 0.5) * 0.30 * dNear;
     vec4 grav = texture2D(uAlbR, uv * 0.83);
     a.rgb = mix(a.rgb, grav.rgb * vec3(1.02, 0.96, 0.86), mk.r * 0.38 * dNear);
+    // sub-10 m second octave: clod/blade relief right under the camera
+    float dNear2 = 1.0 - smoothstep(5.0, 15.0, camDist);
+    if (dNear2 > 0.001) {
+      vec3 dn2 = texture2D(uNrmG, uv * 2.71).xyz * 2.0 - 1.0;
+      n.xy += dn2.xy * 0.6 * dNear2;
+    }
   }
   // compacted earth road: modest lightening only — no bleached-white wash
-  a.rgb = mix(a.rgb, a.rgb * vec3(1.20, 1.13, 0.98) + vec3(0.018, 0.014, 0.008), mk.r * 0.85);
-  a.rgb *= 1.0 - mk.g * 0.42; // twin wheel ruts, clearly darker
+  a.rgb = mix(a.rgb, a.rgb * vec3(1.18, 1.11, 0.97) + vec3(0.016, 0.012, 0.007), mk.r * 0.85);
+  a.rgb *= 1.0 - mk.g * 0.52; // twin wheel ruts, clearly darker
+  n.xy += vec2(0.0, 0.35) * mk.g * dNear; // faint rut relief up close
   a.rgb *= 0.90 + n2 * 0.20;
   // distant mottling: forest-floor/heather patches keep far hills from reading
   // as one flat green wash
-  float farM = smoothstep(120.0, 340.0, camDist);
+  float farM = smoothstep(100.0, 320.0, camDist);
   float mot = texture2D(uNoise, uv * 0.0022 + vec2(0.17, 0.71)).g;
-  a.rgb *= 1.0 - farM * 0.22 * smoothstep(0.48, 0.82, mot);
-  a.rgb *= 1.0 + farM * 0.10 * smoothstep(0.55, 0.85, n1) * (1.0 - smoothstep(0.48, 0.82, mot));
+  a.rgb *= 1.0 - farM * 0.30 * smoothstep(0.48, 0.82, mot);
+  a.rgb *= 1.0 + farM * 0.12 * smoothstep(0.55, 0.85, n1) * (1.0 - smoothstep(0.48, 0.82, mot));
   gSplatAlbedo = a.rgb;
-  gSplatRough = clamp(a.a * (1.0 - mk.r * 0.12), 0.05, 1.0);
+  gSplatRough = clamp(a.a * (1.0 - mk.r * 0.12) * (1.0 + mk.g * 0.1), 0.05, 1.0);
   gSplatNrm = n.xyz * 2.0 - 1.0;
 }
 `;
@@ -511,8 +678,8 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
 function createSplatMaterial(engineCtx) {
   const aniso = engineCtx.anisotropy ?? 4;
   const layers = {
-    G: makeGroundLayer(3000, 'grass', aniso),
-    D: makeGroundLayer(3001, 'dirt', aniso),
+    G: makeGrassLayer(3000, aniso),
+    D: makeDirtLayer(3001, aniso),
     R: makeGroundLayer(3002, 'rock', aniso),
     M: makeGroundLayer(3003, 'mud', aniso),
   };
@@ -546,7 +713,7 @@ function createSplatMaterial(engineCtx) {
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v2';
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v3';
   return mat;
 }
 

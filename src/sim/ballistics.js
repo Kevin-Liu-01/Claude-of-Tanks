@@ -47,6 +47,7 @@ export function createShell(shellSpec, shooterId, isPlayer, muzzlePos, dir, id) 
     prevPos: muzzlePos.clone(),
     vel: dir.clone().multiplyScalar(shellSpec.velocityMps),
     ageS: 0,
+    distM: 0,
     dead: false,
     penRollDone: false,
     remainingPenMm: 0,
@@ -69,6 +70,7 @@ export function createShell(shellSpec, shooterId, isPlayer, muzzlePos, dir, id) 
 export function stepShell(shell, dt) {
   shell.prevPos.copy(shell.pos);
   shell.pos.addScaledVector(shell.vel, dt);
+  shell.distM += shell.vel.length() * dt; // true arc length for pen falloff
   shell.vel.y -= G_SHELL * dt;
   shell.ageS += dt;
   if (shell.ageS > SHELL_MAX_LIFETIME_S) shell.dead = true;

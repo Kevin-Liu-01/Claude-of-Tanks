@@ -3,9 +3,9 @@
   "configurations": [
     {
       "name": "tanks-dev",
-      "runtimeExecutable": "/Users/kevinliu/.nvm/versions/node/v24.13.0/bin/npx",
-      "runtimeArgs": ["vite", "--port", "5173"],
-      "port": 5173
+      "runtimeExecutable": "/Users/kevinliu/claude-of-tanks/node_modules/.bin/vite",
+      "runtimeArgs": ["/Users/kevinliu/claude-of-tanks", "--port", "5001", "--strictPort"],
+      "port": 5001
     }
   ]
 }

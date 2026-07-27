@@ -467,6 +467,29 @@ export function createAudio() {
     wire(v, osrc(v, 'sine', 1250, when, 0.06), env(when, 0.001, 0.3, 0.045));
   }
 
+  /**
+   * Non-spatial hit-confirm blip for the PLAYER's own shells (WoT "your shot
+   * connected" feedback, layered on top of the 3-D impact sound at the target).
+   * @param {boolean} pen true = damaging hit (bright two-tone dink);
+   *                      false = bounce/absorb (short dull knock)
+   */
+  function hitConfirmSound(pen) {
+    if (!ctx) return;
+    const when = ctx.currentTime + 0.01;
+    if (pen) {
+      const v = spawnVoice(when, 0.3, 0.5, 0, sfxBus);
+      wire(v, osrc(v, 'triangle', 1560, when, 0.09), env(when, 0.002, 0.5, 0.07));
+      wire(v, osrc(v, 'triangle', 2140, when + 0.055, 0.12), env(when + 0.055, 0.002, 0.42, 0.1));
+      wire(v, nsrc(v, when, 0.03), flt('highpass', 4200, 0.8), env(when, 0.001, 0.25, 0.02));
+    } else {
+      const v = spawnVoice(when, 0.22, 0.42, 0, sfxBus);
+      const o = osrc(v, 'square', 340, when, 0.1);
+      o.frequency.exponentialRampToValueAtTime(210, when + 0.09);
+      wire(v, o, flt('lowpass', 900, 0.8), env(when, 0.002, 0.5, 0.09));
+      wire(v, nsrc(v, when, 0.04), flt('bandpass', 1200, 1.2), env(when, 0.001, 0.3, 0.035));
+    }
+  }
+
   // ----------------------------------------------------------- fire loops ---
 
   function startFireLoop(id) {
@@ -886,5 +909,9 @@ export function createAudio() {
     if (on) ambientStart(); else ambientStop();
   }
 
-  return { resume, bindBus, update, setMasterVolume, mute, playGarageSting, ambientOn };
+  return {
+    resume, bindBus, update, setMasterVolume, mute, playGarageSting, ambientOn,
+    /** Non-spatial player hit-confirm blip. @param {boolean} pen damaging hit */
+    hitConfirm(pen) { if (ctx) hitConfirmSound(pen); },
+  };
 }

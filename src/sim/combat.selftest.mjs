@@ -602,6 +602,197 @@ function mkShell(shellSpec, distM = 100) {
   assert(target.combat.destroyed === true, 'combat state marks destruction');
 }
 
+// ----------------- red modules stay red for the full repair duration -------
+// repairT is a COUNT-UP accumulator (LOCKED, shared with game/state.js
+// tickRepairs: `m.repairT += dt; if (m.repairT >= 10) → yellow`). A fresh red
+// must start at 0 so the module stays red for ~10 s of simulated ticks.
+{
+  const target = mkTarget();
+  const shell = mkShell(AP100, 100);
+  const hits = [
+    mkPlateHit(0.4, mkPlate({ name: 'front50', physicalMm: 50, keMm: 50, ceMm: 50 }), 0, V(0, 1, 2)),
+    { t: 0.45, kind: 'module', module: 'trackL', point: V(0, 1, 1.5) },
+  ];
+  resolveShellHit(shell, target, hits, rngHalf); // moduleDmg 100 ⇒ track 0 HP
+  const m = target.combat.modules.trackL;
+  assert(m.state === 'red', `track destroyed ⇒ red (got ${m.state})`);
+  near(m.repairT, 0, 1e-9, 'fresh red arms repairT at 0 (count-up)');
+
+  // Replicate the game-loop repair ticker exactly (game/state.js).
+  const dt = 1 / 60;
+  const MODULE_REPAIR_S = 10;
+  let repairedAtS = -1;
+  for (let i = 1; i <= 660; i++) {
+    if (m.state !== 'red') break;
+    m.repairT += dt;
+    if (m.repairT >= MODULE_REPAIR_S) {
+      m.repairT = 0;
+      m.hp = m.maxHp * 0.5;
+      m.state = 'yellow';
+      repairedAtS = i * dt;
+    }
+    if (i === 540) assert(m.state === 'red', 'track still red after 9 s of ticks');
+  }
+  assert(m.state === 'yellow', 'track auto-repairs to yellow eventually');
+  assert(repairedAtS >= MODULE_REPAIR_S - dt, `repair takes ~10 s (took ${repairedAtS.toFixed(2)} s)`);
+  near(m.hp, m.maxHp * 0.5, 1e-9, 'repair restores to 50%');
+}
+
+// -------------- overpenetration pays for the exit plate (armor doc §7) -----
+// remainingPen must survive EVERYTHING, including the far-side armor. A shell
+// with 9 mm to spare after the front plate dies inside a 40 mm rear plate; a
+// shell with 100 mm to spare exits with 100 − 40 = 60 mm.
+{
+  const boxModel = {
+    boundingRadiusM: 4,
+    turretPivot: [0, 1.5, 0],
+    gunPivot: [0, 0, 0],
+    gunBarrel: null,
+    hullPlates: [
+      mkPlate({ name: 'front', physicalMm: 100 }),
+      mkPlate({ name: 'rear', physicalMm: 40, keMm: 40, ceMm: 40, verts: [[1, 0, -2], [-1, 0, -2], [-1, 2, -2], [1, 2, -2]] }),
+    ],
+    turretPlates: [],
+    modules: [],
+    crew: [],
+  };
+  const pose0 = tankPoseFromState(mkState());
+
+  // Big pen: exits, minus the rear plate's 40 mm.
+  const targetA = mkTarget({ armor: boxModel });
+  const shellA = mkShell(AP100, 100); // 200 mm pen at 100 m, rngHalf ⇒ ×1.0
+  const hitsA = traceTank(V(0, 1, 10), V(0, 1, -10), pose0, boxModel);
+  const evA = resolveShellHit(shellA, targetA, hitsA, rngHalf);
+  assert(evA.kind === 'pen', `overpen test: front plate penned (got ${evA.kind})`);
+  assert(shellA.dead === false && shellA.carriedThrough === true, 'shell with pen to spare exits the far side');
+  near(shellA.remainingPenMm, 60, 0.5, 'exit costs the rear plate: 100 − 40 = 60 mm');
+
+  // Marginal pen: penetrates the front, dies in the rear plate.
+  const targetB = mkTarget({ armor: boxModel });
+  const shellB = mkShell(BR365K, 500); // 109.2 mm ⇒ 9.2 mm after the front
+  const hitsB = traceTank(V(0, 1, 10), V(0, 1, -10), pose0, boxModel);
+  const evB = resolveShellHit(shellB, targetB, hitsB, rngHalf);
+  assert(evB.kind === 'pen', `marginal overpen still pens the front (got ${evB.kind})`);
+  near(targetB.combat.hp, 840, 1e-9, 'full damage applied inside');
+  assert(shellB.dead === true, '9 mm remaining cannot exit an 80 mm-LOS rear plate');
+  near(shellB.remainingPenMm, 0, 1e-9, 'pen zeroed by the exit plate');
+}
+
+// ------------- pen indicator aggregates the whole layered stack ------------
+// queryAimArmor returns `layers`; estimatePenRatio must price skirt + gap +
+// main (and ERA) exactly like resolution, not just the first spaced plate.
+{
+  const pose0 = tankPoseFromState(mkState());
+  const skirted = {
+    boundingRadiusM: 4,
+    turretPivot: [0, 1.5, 0],
+    gunPivot: [0, 0, 0],
+    gunBarrel: null,
+    hullPlates: [
+      mkPlate({ name: 'skirt', kind: 'spaced', physicalMm: 10, keMm: 10, ceMm: 10, verts: [[-1, 0, 2.5], [1, 0, 2.5], [1, 2, 2.5], [-1, 2, 2.5]] }),
+      mkPlate({ name: 'side', physicalMm: 80, keMm: 80, ceMm: 300 }),
+    ],
+    turretPlates: [],
+    modules: [],
+    crew: [],
+  };
+  const q = queryAimArmor(V(0, 1, 10), V(0, 0, -1), 30, pose0, skirted);
+  assert(!!q && q.plate.name === 'skirt', 'aim query still reports the first solid surface');
+  assert(q.layers && q.layers.length === 2, `aim query carries the full stack (got ${q && q.layers ? q.layers.length : 0})`);
+  // AP: (200 − 10) / 80 = 2.375 — NOT 200/10 = 20 vs the bare skirt.
+  near(estimatePenRatio(AP100, 100, q), 2.375, 0.01, 'AP indicator prices skirt + main');
+  // HEAT: (600 − 10) · (1 − 0.05·5) = 442.5 over the 0.5 m gap, vs 300 CE.
+  near(estimatePenRatio(M830A1, 100, q), 442.5 / 300, 0.01, 'HEAT indicator applies gap decay');
+
+  const eraModel = {
+    ...skirted,
+    hullPlates: [
+      mkPlate({ name: 'era', kind: 'era', physicalMm: 10, keMm: 10, ceMm: 10, era: { keReduction: 0.25, ceFlatMm: 600 }, verts: [[-1, 0, 2.6], [1, 0, 2.6], [1, 2, 2.6], [-1, 2, 2.6]] }),
+      mkPlate({ name: 'glacis', physicalMm: 220, keMm: 490, ceMm: 900 }),
+    ],
+  };
+  const qe = queryAimArmor(V(0, 1, 10), V(0, 0, -1), 30, pose0, eraModel);
+  assert(!!qe && qe.layers.length === 2, 'ERA tile included in the aim stack');
+  // 660 × 0.75 = 495 vs 490 KE ⇒ barely green, matching live resolution.
+  near(estimatePenRatio(BM60, 100, qe), 495 / 490, 0.01, 'indicator prices average ERA cut');
+  // Spent ERA is excluded when the caller passes eraSpent.
+  const qs = queryAimArmor(V(0, 1, 10), V(0, 0, -1), 30, pose0, eraModel, new Set(['era']));
+  near(estimatePenRatio(BM60, 100, qs), 660 / 490, 0.01, 'spent tile drops out of the estimate');
+}
+
+// -------------- APFSDS overmatches with rodDiameter×3, not bore (§11.3) ----
+{
+  // 125 mm bore ⇒ effective overmatch caliber 75 mm: 75 < 3×30 ⇒ a 30 mm
+  // plate at 80° now RICOCHETS a rod (bore-caliber overmatch wrongly ate it).
+  const targetA = mkTarget();
+  const shellA = mkShell(BM60, 100);
+  const evA = resolveShellHit(shellA, targetA, [mkPlateHit(0.4, mkPlate({ name: 'skirt30', physicalMm: 30, keMm: 30, ceMm: 30 }), 80)], rngHalf);
+  assert(evA.kind === 'ricochet', `rod vs 30 mm at 80°: 75 < 90 ⇒ ricochet (got ${evA.kind})`);
+
+  // 20 mm roof: 75 ≥ 60 ⇒ no ricochet, and the 2× norm boost uses 75 mm too:
+  // norm = 2·1.4·75/20 = 10.5° ⇒ eff = 20/cos(69.5°) ≈ 57.1.
+  const targetB = mkTarget();
+  const shellB = mkShell(BM60, 100);
+  const evB = resolveShellHit(shellB, targetB, [mkPlateHit(0.4, mkPlate({ name: 'roof20', physicalMm: 20, keMm: 20, ceMm: 20 }), 80)], rngHalf);
+  assert(evB.kind === 'pen', `rod vs 20 mm roof: 3× overmatch holds (got ${evB.kind})`);
+  near(evB.effectiveMm, 57.1, 0.5, 'norm boost computed from the 75 mm effective caliber');
+
+  // Explicit per-spec override wins.
+  const fatRod = mkShellSpec({ name: 'fat_rod', type: 'APFSDS', caliberMm: 125, pen100Mm: 660, pen1000Mm: 654, dmg: 560, velocityMps: 1750, effectiveOvermatchCaliberMm: 90 });
+  const targetC = mkTarget();
+  const evC = resolveShellHit(mkShell(fatRod, 100), targetC, [mkPlateHit(0.4, mkPlate({ name: 'skirt30', physicalMm: 30, keMm: 30, ceMm: 30 }), 80)], rngHalf);
+  assert(evC.kind === 'pen', `effectiveOvermatchCaliberMm 90 ≥ 90 suppresses ricochet (got ${evC.kind})`);
+}
+
+// -------------- HE on ERA adds the tile's thickness to splash armor --------
+{
+  const target = mkTarget();
+  const shell = mkShell(OF471, 300);
+  const hits = [
+    mkPlateHit(0.2, mkPlate({ name: 'k5_tile', kind: 'era', physicalMm: 10, keMm: 10, ceMm: 10, era: { keReduction: 0.2, ceFlatMm: 400 } }), 0, V(0, 1, 2.5)),
+    mkPlateHit(0.3, mkPlate({ name: 'side80', physicalMm: 80, keMm: 80, ceMm: 80 }), 0, V(0, 1, 2.0)),
+  ];
+  const ev = resolveShellHit(shell, target, hits, rngHalf);
+  assert(ev.kind === 'he_splash', `HE on ERA bursts on the surface (got ${ev.kind})`);
+  assert(ev.eraPlate === 'k5_tile', 'HE pops the tile');
+  assert(target.combat.eraSpent.has('k5_tile'), 'tile recorded as spent');
+  // 0.5·450 − 1.1·(80 + 10) = 126 — the tile thickens the splash armor.
+  near(ev.damage, 126, 1e-6, 'ERA tile thickness joins the absorption term');
+}
+
+// ------- external modules take full odds in the HE blast sweep (§6) --------
+{
+  const target = mkTarget();
+  const shell = mkShell(OF471, 300);
+  const hits = [
+    { t: 0.2, kind: 'module', module: 'gun', point: V(0, 1, 3) },
+    mkPlateHit(0.3, mkPlate({ name: 'front100', physicalMm: 100, keMm: 100, ceMm: 100 }), 0, V(0, 1, 2)),
+  ];
+  // pen, dmg, gun save 0.3 (< 0.33 full odds; ≥ 0.165 at the old half odds),
+  // gun moduleDmg 0.5 ⇒ 122 at FULL damage scale ⇒ gun 150 − 122 = 28.
+  const rng = seqRng([0.5, 0.5, 0.3, 0.5]);
+  const ev = resolveShellHit(shell, target, hits, rng);
+  assert(ev.kind === 'he_splash', `HE non-pen on 100 mm (got ${ev.kind})`);
+  assert(rng.consumed() === 4, `gun rolled in the blast sweep (consumed ${rng.consumed()})`);
+  near(target.combat.modules.gun.hp, 28, 1e-6, 'external gun at full odds/full damage in the blast');
+  assert(ev.modulesHit.some((m) => m.module === 'gun'), 'gun damage reported');
+}
+
+// -------------- pen falloff uses true arc length, not age × muzzleV --------
+{
+  const s = createShell(BR365K, 'a', true, V(0, 50, 0), V(0, 0, -1), 9);
+  const dt = 1 / 60;
+  for (let i = 0; i < 60; i++) stepShell(s, dt);
+  assert(s.distM > 792 && s.distM < 794, `distM accumulates arc length (got ${s.distM.toFixed(2)})`);
+
+  // ensurePenRoll consumes the accumulated distance when present.
+  const target = mkTarget();
+  const shell = mkShell(BR365K, 100);
+  shell.distM = 2000; // lobbed arc: far beyond the straight-line estimate
+  const ev = resolveShellHit(shell, target, [mkPlateHit(0.4, mkPlate({ name: 'thin', physicalMm: 50, keMm: 50, ceMm: 50 }), 0)], rngHalf);
+  near(ev.penRollMm, 97, 0.01, 'pen roll priced at the true 2000 m arc (clamped pen1000)');
+}
+
 // ------------------------------------------------------------------ report --
 if (failures > 0) {
   console.error(`combat.selftest: ${failures}/${checks} assertions FAILED`);

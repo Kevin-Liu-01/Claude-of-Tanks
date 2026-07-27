@@ -21,9 +21,17 @@ export const SIM_DT = 1 / 60;
 const K_ACCEL = 0.16;            // m/s² per (hp/t) on resistance-1 ground
 const C_DRAG = 0.85;             // quadratic drag fraction — asymptotic crawl to v_max (§3)
 const BRAKE_MULT = 3.5;          // braking is this much stronger than driving
-const BRAKE_DECEL_CAP = 9;       // m/s² — total brake decel cap (~2 s stop from 65 km/h)
+// Brake decel cap scales with specific power (weight class): a 12 hp/t heavy
+// caps near 7 m/s² and coasts visibly longer than a 25+ hp/t light/MBT at 9.
+// cap = clamp(BRAKE_CAP_BASE + BRAKE_CAP_PER_HPT × hp/t, BRAKE_CAP_MIN, BRAKE_CAP_MAX)
+const BRAKE_CAP_BASE = 4;        // m/s²
+const BRAKE_CAP_PER_HPT = 0.25;  // m/s² per hp/t
+const BRAKE_CAP_MIN = 5;         // m/s² — even the heaviest sluggard stops eventually
+const BRAKE_CAP_MAX = 9;         // m/s² — ~2 s stop from 65 km/h, the old flat cap
 const COAST_MULT = 1.75;         // rolling-friction decel ≈ 0.5 × brake when W is released
 const TURN_SPEED_LOSS = 0.35;    // target-speed fraction lost in a full-rate turn
+const TURN_DIRECT_BLEED = 0.15;  // per-second multiplicative speed loss at full-rate turn (§4)
+const TURN_POWER_DIVERT = 0.5;   // drive-accel fraction diverted to the tracks at full-rate turn
 const TRAVERSE_SPEED_SCALE = 0.4;// hull traverse reduction fraction at top speed
 const GRAVITY = 9.81;            // m/s²
 const MAX_CLIMB_DEG = 28;        // slope (deg) at which the drive stalls
@@ -270,12 +278,18 @@ export function updateTank(entity, heightField, dt, collide = null) {
   }
   // Immobilized tanks brake with locked tracks at a healthy rate.
   const baseRate = debuff.immobile ? K_ACCEL * (spec.enginePowerHp / spec.weightTons) / R : accel;
-  const brakeRate = Math.min(baseRate * BRAKE_MULT, BRAKE_DECEL_CAP);
+  // Class-scaled brake cap (healthy hp/t — brakes are not the engine): heavies
+  // stop noticeably softer than lights instead of every tank sharing one snap.
+  const brakeCap = clamp(
+    BRAKE_CAP_BASE + BRAKE_CAP_PER_HPT * (spec.enginePowerHp / spec.weightTons),
+    BRAKE_CAP_MIN, BRAKE_CAP_MAX,
+  );
+  const brakeRate = Math.min(baseRate * BRAKE_MULT, brakeCap);
   let rate;
   if (braking || debuff.immobile || vTarget * state.speed < 0) {
     rate = brakeRate; // hard brake / direction reversal — capped, ~2 s from top speed
   } else if (throttle === 0) {
-    rate = Math.min(baseRate * COAST_MULT, BRAKE_DECEL_CAP * 0.5); // rolling friction
+    rate = Math.min(baseRate * COAST_MULT, brakeCap * 0.5); // rolling friction
   } else if (Math.abs(vTarget) < Math.abs(state.speed) - 1e-9) {
     rate = baseRate; // over target (turn bleed / slope / overspeed): drag pulls back
   } else {
@@ -284,8 +298,19 @@ export function updateTank(entity, heightField, dt, collide = null) {
     const vRef = Math.max(throttle >= 0 ? topMps : revMps, 1e-6);
     const u = Math.min(Math.abs(state.speed) / vRef, 1);
     rate = baseRate * (1 - C_DRAG * u * u);
+    // Steering diverts engine power to the tracks (§4): while turning hard the
+    // drive can't refill what the turn bleeds, so serpentining costs momentum.
+    if (trMax > 1e-6) {
+      rate *= 1 - TURN_POWER_DIVERT * Math.min(Math.abs(state.yawRate) / trMax, 1);
+    }
   }
   state.speed = approach(state.speed, vTarget, rate * dt);
+  // Direct multiplicative turn bleed (movement doc §4): every hard turn costs
+  // momentum at ANY speed — v *= 1 − k·|yawRate|/trMax·dt — not only near
+  // v_max where the target-scaling above already bites.
+  if (trMax > 1e-6 && state.yawRate !== 0) {
+    state.speed *= 1 - TURN_DIRECT_BLEED * Math.min(Math.abs(state.yawRate) / trMax, 1) * dt;
+  }
   if (!debuff.immobile) {
     // Gravity along the track line: stalled tanks slide back, coasting gains downhill.
     state.speed += -GRAVITY * Math.sin(terrPitch) * dt * (throttle !== 0 ? 0.3 : 1.0);

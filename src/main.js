@@ -19,13 +19,15 @@ import { createMap } from './world/map.js';
 import { TANK_IDS, getSpec } from './vehicles/specs.js';
 import { createTank } from './vehicles/tankFactory.js';
 import { computeDispersionRadM, SIM_DT } from './sim/movement.js';
-import { tankPoseFromState, queryAimArmor } from './sim/armor.js';
+import { tankPoseFromState, queryAimArmor, traceTank } from './sim/armor.js';
 import { estimatePenRatio, selectShell } from './sim/damage.js';
 import { createFx } from './fx/effects.js';
 import { initHud } from './ui/hud.js';
 import { createDamagePanel } from './ui/damagePanel.js';
 import { createGarage } from './ui/garage.js';
 import { createAudio } from './audio/audio.js';
+import { createInput } from './game/input.js';
+import { createSettings } from './ui/settings.js';
 import {
   createBus, createGameState, spawnTanks, setupBattle, simStep, createCollider,
 } from './game/state.js';
@@ -147,10 +149,52 @@ const audio = createAudio();
 audio.bindBus(bus);
 
 // --- camera rig -----------------------------------------------------------------
+// Server-aim raycast: world geometry PLUS live enemy hulls, so the reticle
+// distance (and the gun's auto-elevation) matches where the shot actually
+// lands when the crosshair rests on a tank (reticle-to-impact alignment).
+const _armEnd = new THREE.Vector3();
+const _armTo = new THREE.Vector3();
+function aimRaycastWithTanks(origin, dir, maxDist) {
+  const wHit = world.raycast(origin, dir, maxDist);
+  let bestD = wHit ? wHit.dist : maxDist;
+  let best = wHit;
+  for (const ent of game.tanks) {
+    if (ent.isPlayer || !ent.state || !ent.combat || ent.combat.destroyed) continue;
+    const r = ent.spec.armor.boundingRadiusM;
+    _armTo.copy(ent.state.pos);
+    _armTo.y += ent.spec.dims.heightM * 0.5;
+    _armTo.sub(origin);
+    const proj = _armTo.dot(dir);
+    if (proj < 0 || proj - r > bestD) continue;
+    if (_armTo.lengthSq() - proj * proj > r * r) continue;
+    _armEnd.copy(origin).addScaledVector(dir, Math.min(bestD, proj + r));
+    const hits = traceTank(origin, _armEnd, tankPoseFromState(ent.state), ent.spec.armor, ent.combat.eraSpent);
+    if (!hits.length) continue;
+    const d = origin.distanceTo(hits[0].point);
+    if (d < bestD) {
+      bestD = d;
+      best = { point: hits[0].point, normal: hits[0].normal, dist: d, kind: 'tank' };
+    }
+  }
+  return best;
+}
+
 const rig = createCameraRig(camera, {
   heightField: world.heightField,
   raycast: world.raycast,
+  aimRaycast: aimRaycastWithTanks,
   getPlayer: () => game.player,
+});
+
+// Player combat feedback: non-spatial hit-confirm blip for own shells that
+// connect (bright = damage, dull = bounce), camera flinch when taking a hit.
+bus.on('shell:hit', (ev) => {
+  if (!game.player) return;
+  if (ev.attackerId === game.player.id && ev.targetId && ev.targetId !== game.player.id) {
+    const pen = ev.kind === 'pen' || ev.kind === 'he_pen' || (ev.damage || 0) > 0;
+    audio.hitConfirm(pen);
+  }
+  if (ev.targetId === game.player.id && (ev.damage || 0) > 0) rig.addTrauma(0.35);
 });
 
 sky.applyFog(scene);
@@ -186,42 +230,50 @@ function showEndOverlay(result) {
 }
 
 // ---------------------------------------------------------------------------
-// Input
+// Input — routed through the rebindable action layer (src/game/input.js) and
+// the settings panel (src/ui/settings.js). Wheel zoom stays a raw axis here.
 // ---------------------------------------------------------------------------
-const keys = Object.create(null);
 const debugFlags = { forceFire: false }; // headless-test hook (window.__DEBUG.flags)
-let mouseDX = 0;
-let mouseDY = 0;
 let wheelStep = 0;
-let fireHeld = false;
-let rmbHeld = false;
+const _mouse = { x: 0, y: 0 };
 
-window.addEventListener('keydown', (e) => { keys[e.code] = true; });
-window.addEventListener('keyup', (e) => { keys[e.code] = false; });
-window.addEventListener('mousemove', (e) => {
-  if (document.pointerLockElement === renderer.domElement) {
-    mouseDX += e.movementX;
-    mouseDY += e.movementY;
-  }
+const input = createInput({ lockElement: renderer.domElement });
+const settings = createSettings({
+  input,
+  bus,
+  isBattleActive: () => game.phase === 'battle' && !game.result,
+  gearVisible: () => game.phase === 'garage',
 });
+
 window.addEventListener('wheel', (e) => {
-  if (game.phase === 'battle') wheelStep = e.deltaY < 0 ? 1 : -1;
+  if (game.phase === 'battle' && !settings.isOpen()) wheelStep = e.deltaY < 0 ? 1 : -1;
 }, { passive: true });
-renderer.domElement.addEventListener('mousedown', (e) => {
+renderer.domElement.addEventListener('mousedown', () => {
   audio.resume();
-  if (game.phase !== 'battle') return;
-  if (document.pointerLockElement !== renderer.domElement) {
-    renderer.domElement.requestPointerLock();
-    return;
-  }
-  if (e.button === 0) fireHeld = true;
-  if (e.button === 2) rmbHeld = true;
+  if (game.phase !== 'battle' || settings.isOpen()) return;
+  if (!input.isLocked()) input.requestLock();
 });
-window.addEventListener('mouseup', (e) => {
-  if (e.button === 0) fireHeld = false;
-  if (e.button === 2) rmbHeld = false;
+
+// Battle start: grab the pointer inside the BATTLE-click gesture and flash the
+// controls hint strip (reflects the CURRENT bindings; fades after 8 s).
+bus.on('ui:battleStart', () => {
+  input.requestLock();
+  settings.showHints();
 });
-window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// Rebindable shell slots. The HUD keeps its own hardcoded Digit1-3 hotkeys, so
+// skip those codes here to avoid double-firing on the default bindings.
+for (let slot = 0; slot < 3; slot++) {
+  input.onAction(`shell${slot + 1}`, (code) => {
+    if (game.phase !== 'battle' || settings.isOpen()) return;
+    if (code === `Digit${slot + 1}`) return; // HUD hotkey path already handled it
+    bus.emit('ui:shellSelect', { slot });
+    bus.emit('ui:click', {});
+  });
+}
+input.onAction('minimapZoom', () => {
+  if (game.phase === 'battle') bus.emit('ui:minimapZoom', {});
+});
 
 bus.on('ui:shellSelect', ({ slot }) => {
   if (game.player && game.player.combat && !game.player.combat.destroyed) {
@@ -389,27 +441,31 @@ function tick(nowMs) {
   }
 
   const inBattle = game.phase === 'battle';
+  const paused = settings.isOpen(); // settings panel freezes the battle
 
-  // 1. poll input
-  if (inBattle && game.player && !game.player.combat.destroyed) {
+  // 1. poll input (action layer: rebindable, Set-based state — no ghosting)
+  if (inBattle && !paused && game.player && !game.player.combat.destroyed) {
+    const st = input.getState();
     const inp = game.player.input;
-    inp.throttle = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
-    inp.steer = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
-    inp.brake = !!keys.Space;
-    inp.fire = fireHeld || debugFlags.forceFire;
+    inp.throttle = (st.forward ? 1 : 0) - (st.back ? 1 : 0);
+    inp.steer = (st.right ? 1 : 0) - (st.left ? 1 : 0);
+    inp.brake = st.handbrake;
+    inp.fire = (st.fire && input.isLocked()) || debugFlags.forceFire;
   } else if (game.player) {
     const inp = game.player.input;
     inp.throttle = 0; inp.steer = 0; inp.brake = false; inp.fire = false;
   }
-  camInput.mouseDX = mouseDX;
-  camInput.mouseDY = mouseDY;
-  camInput.wheel = wheelStep;
-  camInput.rmb = rmbHeld;
-  camInput.shiftPressed = !!(keys.ShiftLeft || keys.ShiftRight);
-  mouseDX = 0; mouseDY = 0; wheelStep = 0;
+  // smoothed + sensitivity/invert-scaled aim delta (extra scale in sniper)
+  input.consumeMouseDelta(_mouse, dtR, rig.mode === 'SNIPER');
+  camInput.mouseDX = paused ? 0 : _mouse.x;
+  camInput.mouseDY = paused ? 0 : _mouse.y;
+  camInput.wheel = paused ? 0 : wheelStep;
+  camInput.rmb = input.isDown('freeCamera');
+  camInput.shiftPressed = input.isDown('sniperToggle');
+  wheelStep = 0;
 
-  // 2. fixed-step simulation
-  if (inBattle) {
+  // 2. fixed-step simulation (held while the settings panel is open)
+  if (inBattle && !paused) {
     simAcc = Math.min(simAcc + dtR, SIM_DT * MAX_SIM_STEPS);
     while (simAcc >= SIM_DT) {
       simStep(game, bus, world, rig, collider);
@@ -425,7 +481,7 @@ function tick(nowMs) {
   }
 
   // 3. camera rig
-  if (inBattle) rig.update(dtR, camInput);
+  if (inBattle && !paused) rig.update(dtR, camInput);
 
   // 4. world LOD/wind
   world.update(dtR, camera.position);
@@ -484,7 +540,8 @@ function zeroInputs() {
     ent.input.brake = false;
     ent.input.fire = false;
   }
-  fireHeld = false;
+  input.setEnabled(true); // also clears any held key/button state
+  if (settings.isOpen()) settings.close();
 }
 
 function orbitPose(ent, distM, azimuthDeg, elevDeg, fovDeg) {
@@ -671,6 +728,131 @@ post.render(SIM_DT);
 post.render(SIM_DT);
 
 requestAnimationFrame(tick);
-// Debug handles for interactive inspection (not part of any contract).
-window.__DEBUG = { scene, camera, renderer, post, lighting, world, game, fx, rig, bus, flags: debugFlags };
+
+// ---------------------------------------------------------------------------
+// Debug / drive-test hooks (not part of the screenshot contract).
+// ---------------------------------------------------------------------------
+
+/**
+ * Deterministically point the player's aim at the nearest live enemy: snaps
+ * the rig into sniper mode with the view ray through the enemy's hull center
+ * so the server-aim raycast lands on the tank. The turret then slews to the
+ * aim point over the next sim steps.
+ * @returns {?{id:string, distM:number}} target picked, or null
+ */
+function debugAimAtNearest() {
+  const p = game.player;
+  if (!p || !p.state || p.combat.destroyed) return null;
+  p.visual.gunPivotWorld(_v1);
+  let best = null;
+  let bestD = Infinity;
+  for (const ent of game.tanks) {
+    if (ent.isPlayer || !ent.state || !ent.combat || ent.combat.destroyed) continue;
+    _v2.copy(ent.state.pos);
+    _v2.y += ent.spec.dims.heightM * 0.5;
+    _v3.copy(_v2).sub(_v1);
+    const d = _v3.length();
+    if (d >= bestD || d < 1e-3) continue;
+    // Only offer LOS-clear targets: the drive test needs a shot that can land.
+    _v3.multiplyScalar(1 / d);
+    const block = world.raycast(_v1, _v3, d);
+    if (block && block.dist < d - ent.spec.armor.boundingRadiusM - 1) continue;
+    bestD = d;
+    best = ent;
+  }
+  if (!best) return null; // nothing visible yet — caller can fast-forward and retry
+  _v2.copy(best.state.pos);
+  _v2.y += best.spec.dims.heightM * 0.5;
+  // Travel-time lead for moving targets (same 2-iteration scheme as the AI).
+  const shell = p.spec.gun.shells[Math.max(0, Math.min(2, p.combat.shellSlot))];
+  const tvx = Math.sin(best.state.yaw) * best.state.speed;
+  const tvz = Math.cos(best.state.yaw) * best.state.speed;
+  let ax = _v2.x;
+  let az = _v2.z;
+  for (let i = 0; i < 2; i++) {
+    const dx = ax - _v1.x;
+    const dy = _v2.y - _v1.y;
+    const dz = az - _v1.z;
+    const t = Math.sqrt(dx * dx + dy * dy + dz * dz) / shell.velocityMps;
+    ax = _v2.x + tvx * t;
+    az = _v2.z + tvz * t;
+  }
+  _v3.set(ax, _v2.y, az).sub(_v1);
+  const yaw = Math.atan2(_v3.x, _v3.z);
+  const pitch = Math.atan2(_v3.y, Math.hypot(_v3.x, _v3.z));
+  rig.snapSniper(4, yaw, pitch);
+  return { id: best.id, distM: bestD };
+}
+
+/**
+ * Angle (radians) between the player's barrel and the vector muzzle→aimPoint.
+ * The drive test polls this to know when the turret finished slewing.
+ * @returns {number} radians, or Infinity when unavailable
+ */
+function debugGunAimError() {
+  const p = game.player;
+  if (!p || !p.state || p.combat.destroyed) return Infinity;
+  p.visual.gunMuzzleWorld(_v1);
+  p.visual.gunPivotWorld(_v2);
+  _v3.copy(_v1).sub(_v2).normalize();
+  _v2.copy(p.input.aimPoint).sub(_v1).normalize();
+  return Math.acos(Math.min(1, Math.max(-1, _v3.dot(_v2))));
+}
+
+/**
+ * Run the fixed-step simulation synchronously for `seconds` of game time
+ * (visuals synced each step so gun/turret chase behaves exactly like the
+ * live loop). Deterministic drive-test accelerator.
+ * @param {number} seconds
+ * @returns {number} game.timeS after the run
+ */
+function debugFastForward(seconds) {
+  const steps = Math.max(0, Math.round(seconds / SIM_DT));
+  for (let i = 0; i < steps; i++) {
+    if (game.phase !== 'battle') break;
+    // The render loop normally maps debugFlags.forceFire onto the player's
+    // input each frame; do the same here so headless volleys can fire.
+    if (game.player && !game.player.combat.destroyed) {
+      game.player.input.fire = debugFlags.forceFire ||
+        (game.player.input.fire && input.isDown('fire'));
+    }
+    simStep(game, bus, world, rig, collider);
+    for (const ent of game.tanks) {
+      if (ent.state) ent.visual.syncFromState(ent.state);
+    }
+  }
+  return game.timeS;
+}
+
+/** Destroy every remaining enemy through the normal announce path (test aid). */
+function debugSlayEnemies() {
+  for (const ent of game.tanks) {
+    if (ent.isPlayer || !ent.combat || ent.combat.destroyed) continue;
+    ent.combat.hp = 0;
+    ent.combat.destroyed = true;
+    ent.combat.fire.burning = false;
+    if (!ent._destroyedAnnounced) {
+      ent._destroyedAnnounced = true;
+      ent.visual.setDestroyed();
+      bus.emit('tank:destroyed', {
+        id: ent.id,
+        specId: ent.specId,
+        pos: [ent.state.pos.x, ent.state.pos.y, ent.state.pos.z],
+        killerId: game.player ? game.player.id : null,
+        cause: 'shot',
+      });
+    }
+  }
+}
+
+window.__DEBUG = {
+  scene, camera, renderer, post, lighting, world, game, fx, rig, bus,
+  flags: debugFlags,
+  frameInfo,
+  aimAtNearest: debugAimAtNearest,
+  gunAimError: debugGunAimError,
+  fastForward: debugFastForward,
+  slayEnemies: debugSlayEnemies,
+  startBattle,
+};
 window.__GAME_READY = true;

@@ -322,19 +322,22 @@ export function createDamagePanel() {
     ctx.fillStyle = 'rgba(200,220,235,0.4)';
     ctx.fillRect(px(tPivot[0]) - 4, py(tPivot[2] + turR * 1.1) - 2, 8, 4);
 
-    // module icons at relaxed anchors (chip background + vector glyph)
+    // module icons at relaxed anchors — WoT behavior: the silhouette stays
+    // clean at full health; an icon appears only when its module is damaged
+    // (orange) or destroyed (red).
     if (!anchors) computeAnchors();
     for (const [name, pt] of anchors) {
       const icon = MODULE_ICON[name];
       if (!icon) continue;
       const st = moduleState(name);
+      if (st === 'ok') continue;
       const col = STATE_COLOR[st];
       ctx.save();
       ctx.translate(pt[0], pt[1]);
       roundRect(ctx, -8.5, -8.5, 17, 17, 3);
-      ctx.fillStyle = st === 'ok' ? 'rgba(12,18,22,0.88)' : 'rgba(30,14,10,0.92)';
+      ctx.fillStyle = 'rgba(30,14,10,0.92)';
       ctx.fill();
-      ctx.strokeStyle = st === 'ok' ? 'rgba(126,232,126,0.55)' : col;
+      ctx.strokeStyle = col;
       ctx.lineWidth = 1.2;
       ctx.stroke();
       icon(ctx, col);

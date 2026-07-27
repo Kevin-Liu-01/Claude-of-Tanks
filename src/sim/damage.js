@@ -67,7 +67,9 @@ const POSTPEN_CALIBERS = 10; // internal sweep length = 10 × caliber
 const HEAT_GAP_LOSS_PER_M = 0.5; // 5% pen per 10 cm of air gap
 const HE_ARMOR_ABSORB = 1.1;
 const RICOCHET_MAX_BOUNCES = 2;
-const REPAIR_S = 10;
+/** Red-module repair duration (seconds) — the count-up target used by the
+ * game-loop repair ticker (game/state.js MODULE_REPAIR_S must match). */
+export const REPAIR_S = 10;
 const FIRE_BASE_TICKS = 10;
 const FIRE_TICK_HP_FRAC = 0.005;
 const FIRE_TICK_MODULE_DMG = 10;
@@ -79,6 +81,7 @@ const _center = new Vector3();
 const _reflN = new Vector3();
 const _carryDir = new Vector3();
 const _carryV = new Vector3();
+const _exitPos = new Vector3();
 
 /** ±25% uniform roll. @param {function} rng @param {number} avg @returns {number} */
 function rollUniform(rng, avg) {
@@ -120,6 +123,22 @@ export function createCombatState(spec) {
 }
 
 /**
+ * Caliber used for the §5 overmatch rules. Long-rod APFSDS overmatches with
+ * `rodDiameter × 3` as its effective caliber (armor doc §11.3), NOT the full
+ * gun bore — a 125 mm gun fires a ~25 mm rod, so its effective overmatch
+ * caliber is ~75 mm. Shell specs may pin an exact value via
+ * `effectiveOvermatchCaliberMm`; otherwise rods default to rodDia ≈ C/5 ⇒
+ * effective caliber 0.6 × bore. All other shells overmatch with full caliber.
+ * @param {object} shellSpec ShellSpec
+ * @returns {number} caliber in mm for overmatch checks
+ */
+function overmatchCaliberMm(shellSpec) {
+  if (shellSpec.effectiveOvermatchCaliberMm > 0) return shellSpec.effectiveOvermatchCaliberMm;
+  if (shellSpec.type === 'APFSDS') return shellSpec.caliberMm * 0.6;
+  return shellSpec.caliberMm;
+}
+
+/**
  * Effective thickness of a plate versus a shell: normalization (with the
  * 2-caliber overmatch boost for KE), then KE/CE RHAe divided by
  * cos(effAngle)^slopeExponent (armor doc §2–§5, §11).
@@ -133,8 +152,9 @@ function effectiveThickness(shellSpec, plate, impactAngleDeg) {
   const b = SHELL_BEHAVIOR[shellSpec.type];
   let norm = b.normDeg;
   const T = plate.physicalMm;
-  if (b.kindClass === 'KE' && T > 0 && shellSpec.caliberMm >= OVERMATCH_NORM_BOOST * T) {
-    norm = norm * 1.4 * (shellSpec.caliberMm / T);
+  const omCal = overmatchCaliberMm(shellSpec);
+  if (b.kindClass === 'KE' && T > 0 && omCal >= OVERMATCH_NORM_BOOST * T) {
+    norm = norm * 1.4 * (omCal / T);
   }
   const effAngleDeg = Math.max(0, impactAngleDeg - norm);
   const clampedDeg = Math.min(effAngleDeg, 89);
@@ -156,7 +176,10 @@ function effectiveThickness(shellSpec, plate, impactAngleDeg) {
 function wouldRicochet(shellSpec, impactAngleDeg, plate) {
   const b = SHELL_BEHAVIOR[shellSpec.type];
   if (b.kindClass === 'HE') return false;
-  if (b.kindClass === 'KE' && shellSpec.caliberMm >= OVERMATCH_NO_RICOCHET * plate.physicalMm) {
+  if (
+    b.kindClass === 'KE' &&
+    overmatchCaliberMm(shellSpec) >= OVERMATCH_NO_RICOCHET * plate.physicalMm
+  ) {
     return false;
   }
   return impactAngleDeg > b.ricochetDeg;
@@ -164,14 +187,17 @@ function wouldRicochet(shellSpec, impactAngleDeg, plate) {
 
 /**
  * Update a module's yellow/red state after an HP change; arms the auto-repair
- * timer on a fresh red.
+ * timer on a fresh red. `repairT` is a COUNT-UP accumulator (LOCKED
+ * convention, shared with game/state.js tickRepairs): it starts at 0 when the
+ * module goes red and the repair loop adds dt until it reaches REPAIR_S — so a
+ * red module stays red for the full repair duration.
  * @param {object} m module record {hp,maxHp,state,repairT}
  * @returns {'ok'|'yellow'|'red'} the new state
  */
 function refreshModuleState(m) {
   const prev = m.state;
   m.state = m.hp <= 0 ? 'red' : m.hp <= m.maxHp * 0.5 ? 'yellow' : 'ok';
-  if (m.state === 'red' && prev !== 'red') m.repairT = REPAIR_S;
+  if (m.state === 'red' && prev !== 'red') m.repairT = 0; // count-up starts now
   if (m.state !== 'red') m.repairT = 0;
   return m.state;
 }
@@ -303,7 +329,9 @@ function stampImpact(event, hit, effMm, penMm) {
  */
 function ensurePenRoll(shell, rng) {
   if (shell.penRollDone) return;
-  const distM = shell.ageS * shell.spec.velocityMps;
+  // True arc length accumulated by stepShell (gravity-bent paths are longer
+  // than age × muzzle velocity); fall back for shells that never stepped.
+  const distM = shell.distM > 0 ? shell.distM : shell.ageS * shell.spec.velocityMps;
   shell.remainingPenMm = rollUniform(rng, penAtDistanceMm(shell.spec, distM));
   shell.dmgRoll = rollUniform(rng, shell.spec.dmg);
   shell.penRollDone = true;
@@ -485,8 +513,8 @@ export function resolveShellHit(shell, target, hits, rng) {
     entryPoint !== null;
   if (carries) {
     shell.carriedThrough = true;
-    // Advance the shell just past the target's broadphase sphere so next
-    // frame's sweep starts outside the victim.
+    // Exit point just past the target's broadphase sphere so next frame's
+    // sweep starts outside the victim.
     _carryDir.copy(shell.vel).normalize();
     const armor = target.spec.armor;
     const boundR = (armor && armor.boundingRadiusM) || 4;
@@ -497,8 +525,37 @@ export function resolveShellHit(shell, target, hits, rng) {
     const d2 = Math.max(0, _carryV.lengthSq() - proj * proj);
     const half = Math.sqrt(Math.max(0, boundR * boundR - d2));
     const exitDist = Math.max(0, proj) + half + 0.05;
-    shell.pos.copy(entryPoint).addScaledVector(_carryDir, exitDist);
-    shell.prevPos.copy(shell.pos);
+    _exitPos.copy(entryPoint).addScaledVector(_carryDir, exitDist);
+
+    // The exit is NOT free (armor doc §7: remainingPen after passing through
+    // everything): re-trace the exit segment from OUTSIDE back toward the
+    // entry point — traceTank only reports front faces, so the reversed ray
+    // sees exactly the far-side plates the shell must punch out through.
+    // Subtract each one's effective thickness; the shell dies inside the tank
+    // if the back armor eats the rest of the pen.
+    if (armor && target.state) {
+      const exitHits = traceTank(
+        _exitPos,
+        entryPoint,
+        tankPoseFromState(target.state),
+        armor,
+        combat.eraSpent
+      );
+      let exitPen = shell.remainingPenMm;
+      for (const eh of exitHits) {
+        if (eh.kind !== 'plate' || eh.plate.kind === 'era') continue;
+        const { effMm } = effectiveThickness(spec, eh.plate, eh.impactAngleDeg);
+        exitPen -= effMm;
+        if (exitPen <= 0) break;
+      }
+      shell.remainingPenMm = Math.max(0, exitPen);
+    }
+    if (shell.remainingPenMm > 0) {
+      shell.pos.copy(_exitPos);
+      shell.prevPos.copy(shell.pos);
+    } else {
+      shell.dead = true; // stopped by the far-side armor
+    }
   } else {
     shell.dead = true;
   }
@@ -526,14 +583,17 @@ function heDirectHit(shell, target, hits, dmgRoll, rng) {
   const ctx = { combat, shellSpec: spec, rng, modulesHit: event.modulesHit, crewHit: event.crewHit };
 
   let plateHit = null;
+  let eraArmorMm = 0; // popped tiles add their thickness to splash armor (§11.2)
   for (const hit of hits || []) {
     if (hit.kind !== 'plate') continue;
     if (hit.plate.kind === 'era') {
-      // HE pops the tile and detonates on it; the tile just soaks blast.
+      // HE pops the tile and detonates on it; the tile soaks blast — its
+      // physical thickness joins the splash absorption term below.
       if (!combat.eraSpent.has(hit.plate.name)) {
         combat.eraSpent.add(hit.plate.name);
         event.eraPlate = hit.plate.name;
       }
+      eraArmorMm += hit.plate.physicalMm;
       continue;
     }
     plateHit = hit;
@@ -574,7 +634,7 @@ function heDirectHit(shell, target, hits, dmgRoll, rng) {
     // main plate, and the splash also attenuates over the air gap.
     event.kind = 'he_splash';
     const radiusM = blastRadiusM(spec.caliberMm);
-    let armorMm = plate.physicalMm;
+    let armorMm = plate.physicalMm + eraArmorMm;
     let distM = 0;
     if (plate.kind === 'spaced' || plate.kind === 'external') {
       for (const next of hits) {
@@ -596,13 +656,15 @@ function heDirectHit(shell, target, hits, dmgRoll, rng) {
       event.ammoRacked = event.ammoRacked || r.ammoRacked;
     }
     // Blast reaches crew/modules through hatches even without hull damage
-    // (armor doc §8 step 3): crew at the reduced HE chance, modules at half
-    // chance and half damage, both limited to the blast sphere.
-    ctx.chanceScale = 0.5;
-    ctx.dmgScale = 0.5;
+    // (armor doc §8 step 3, shells doc §6): EXTERNAL modules (gun) in the
+    // blast sphere roll at full odds/full damage; internal modules at half
+    // chance and half damage; crew at the reduced HE chance.
     for (const hit of hits) {
       if (hit.point.distanceTo(plateHit.point) > radiusM) continue;
       if (hit.kind === 'module') {
+        const external = hit.module === 'gun';
+        ctx.chanceScale = external ? 1 : 0.5;
+        ctx.dmgScale = external ? 1 : 0.5;
         const r = rollModuleDamage(ctx, hit.module);
         event.fireStarted = event.fireStarted || r.fireStarted;
         event.ammoRacked = event.ammoRacked || r.ammoRacked;
@@ -700,20 +762,26 @@ export function resolveHeBurst(shell, burstPoint, tanks, directTarget, directHit
     event.damage = dmg;
     tank.combat.hp -= dmg;
     if (plateHit.plate.moduleLink) {
-      // Tracks and other external gear get shredded at full odds.
+      // Tracks and other external gear get shredded at full odds/full effect.
       ctx.chanceScale = 1;
+      ctx.dmgScale = 1;
       const r = rollModuleDamage(ctx, plateHit.plate.moduleLink);
       event.fireStarted = event.fireStarted || r.fireStarted;
       event.ammoRacked = event.ammoRacked || r.ammoRacked;
       ctx.chanceScale = 0.5;
+      ctx.dmgScale = 0.5;
     }
     // Splash penetrates hatches: crew at the reduced HE chance, internal
-    // modules at half chance / half damage (armor doc §8 step 3, shells doc
-    // §6), limited to the blast sphere around the burst point.
+    // modules at half chance / half damage, EXTERNAL modules (gun) at full
+    // odds (armor doc §8 step 3, shells doc §6), limited to the blast sphere
+    // around the burst point.
     for (const hit of hits) {
       if (hit.kind === 'plate') continue;
       if (hit.point.distanceTo(burstPoint) > radiusM) continue;
       if (hit.kind === 'module') {
+        const external = hit.module === 'gun';
+        ctx.chanceScale = external ? 1 : 0.5;
+        ctx.dmgScale = external ? 1 : 0.5;
         const r = rollModuleDamage(ctx, hit.module);
         event.fireStarted = event.fireStarted || r.fireStarted;
         event.ammoRacked = event.ammoRacked || r.ammoRacked;
@@ -796,22 +864,80 @@ export function startReload(combatState, spec) {
 }
 
 /**
- * HUD/AI penetration estimate: average pen at distance divided by the
- * effective thickness of the aimed plate (normalization + overmatch + slope
- * exponent, no RNG). Returns 0 when the shot would ricochet outright.
+ * HUD/AI penetration estimate over the WHOLE armor stack the aim ray crosses
+ * (no RNG, average rolls): ricochet gate on every non-ERA surface, average
+ * ERA reduction, spaced-screen absorption with HEAT air-gap decay, then the
+ * remaining pen divided by the gating plate's effective thickness — the same
+ * pipeline resolveShellHit runs, so layered sides no longer read as the bare
+ * skirt. Falls back to the single-plate estimate when `plateInfo` carries no
+ * `layers` (hand-built probes). HE reads the first surface it would burst on.
  * HUD color mapping: ≥1.15 green, 0.85–1.15 orange, <0.85 red.
  *
  * @param {object} shellSpec ShellSpec
  * @param {number} distM range to the aim point in meters
  * @param {object|null} plateInfo queryAimArmor result
- * @returns {number} avgPen / effectiveMm (0 with no plate or on ricochet)
+ * @returns {number} remainingAvgPen / effectiveMm (0 with no plate, on
+ *   ricochet, or when a screen/ERA soaks the whole pen)
  */
 export function estimatePenRatio(shellSpec, distM, plateInfo) {
   if (!plateInfo || !plateInfo.plate) return 0;
-  if (wouldRicochet(shellSpec, plateInfo.impactAngleDeg, plateInfo.plate)) return 0;
-  const { effMm } = effectiveThickness(shellSpec, plateInfo.plate, plateInfo.impactAngleDeg);
-  if (!(effMm > 0)) return 99;
-  return penAtDistanceMm(shellSpec, distM) / effMm;
+  const layers = plateInfo.layers;
+  const b = SHELL_BEHAVIOR[shellSpec.type];
+
+  if (!layers || layers.length === 0 || b.kindClass === 'HE') {
+    // Single-plate estimate (legacy probes; HE bursts on the first surface).
+    if (wouldRicochet(shellSpec, plateInfo.impactAngleDeg, plateInfo.plate)) return 0;
+    const { effMm } = effectiveThickness(shellSpec, plateInfo.plate, plateInfo.impactAngleDeg);
+    if (!(effMm > 0)) return 99;
+    return penAtDistanceMm(shellSpec, distM) / effMm;
+  }
+
+  // The gate is the first 'main' plate; with none in the stack (skirt edge,
+  // stowage) the last solid layer gates instead.
+  let gateIdx = -1;
+  for (let i = 0; i < layers.length; i++) {
+    if (layers[i].plate.kind === 'main') {
+      gateIdx = i;
+      break;
+    }
+    if (layers[i].plate.kind !== 'era') gateIdx = i;
+  }
+  if (gateIdx < 0) return 0;
+
+  let pen = penAtDistanceMm(shellSpec, distM);
+  for (let i = 0; i <= gateIdx; i++) {
+    const hit = layers[i];
+    const plate = hit.plate;
+
+    if (plate.kind === 'era') {
+      // Average ERA effect for the selected shell type (armor doc §11.2).
+      const era = plate.era || { keReduction: 0, ceFlatMm: 0 };
+      if (b.kindClass === 'CE') pen = Math.max(0, pen - era.ceFlatMm);
+      else pen *= 1 - era.keReduction;
+      if (pen <= 0) return 0;
+      continue;
+    }
+
+    if (wouldRicochet(shellSpec, hit.impactAngleDeg, plate)) return 0;
+    const { effMm } = effectiveThickness(shellSpec, plate, hit.impactAngleDeg);
+
+    if (i === gateIdx) return effMm > 0 ? Math.max(0, pen) / effMm : 99;
+
+    // Spaced/external screen: absorb, then HEAT decays over the air gap to
+    // the next solid layer (mirrors resolveShellHit).
+    pen -= effMm;
+    if (shellSpec.type === 'HEAT' && pen > 0) {
+      for (let j = i + 1; j <= gateIdx; j++) {
+        if (layers[j].plate.kind !== 'era') {
+          const gapM = hit.point.distanceTo(layers[j].point);
+          pen *= Math.max(0, 1 - HEAT_GAP_LOSS_PER_M * gapM);
+          break;
+        }
+      }
+    }
+    if (pen <= 0) return 0;
+  }
+  return 0;
 }
 
 /**

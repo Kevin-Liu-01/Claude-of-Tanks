@@ -102,6 +102,9 @@ function nearestZoomIndex(zoom, list) {
  */
 export function createCameraRig(camera, deps) {
   const { heightField, raycast, getPlayer } = deps;
+  // Server-aim ray may use a richer raycast (world + enemy tank armor) so the
+  // reticle sticks to vehicles; camera collision keeps the world-only raycast.
+  const aimRaycast = deps.aimRaycast || raycast;
   const noise = new ImprovedNoise();
 
   // Shared aim angles (both modes; switching modes never snaps the view).
@@ -120,6 +123,7 @@ export function createCameraRig(camera, deps) {
   let prevShift = false;
   let trauma = 0;
   let shakeT = 0;
+  let recoil = 0; // gun-fire pitch kick (rad), decays fast — additive like shake
   let lastFov = 0;
 
   /** Resolve the arcade orbit pivot for the current player into `out`. */
@@ -203,7 +207,7 @@ export function createCameraRig(camera, deps) {
   /** Server-aim raycast from the camera through screen center (both modes). */
   function updateAim(player) {
     camera.getWorldDirection(_rayDir);
-    const hit = raycast(camera.position, _rayDir, MAX_AIM_DIST_M);
+    const hit = aimRaycast(camera.position, _rayDir, MAX_AIM_DIST_M);
     if (hit !== null) {
       rig.aimPoint.copy(hit.point);
       rig.aimDist = hit.dist;
@@ -312,6 +316,13 @@ export function createCameraRig(camera, deps) {
         camera.rotation.y += SHAKE_AMP_XY * s * noise.noise(0, shakeT * SHAKE_FREQ, 0);
         camera.rotation.z += SHAKE_AMP_Z * s * noise.noise(0, 0, shakeT * SHAKE_FREQ);
       }
+      // Recoil pitch kick — sharp upward bump on fire, fast exponential return.
+      if (recoil > 1e-4) {
+        camera.rotation.x += recoil * (rig.mode === 'SNIPER' ? 0.35 : 1);
+        recoil *= Math.exp(-dt / 0.09);
+      } else {
+        recoil = 0;
+      }
     },
 
     /**
@@ -321,6 +332,17 @@ export function createCameraRig(camera, deps) {
      */
     addTrauma(x) {
       trauma = Math.min(1, trauma + x);
+    },
+
+    /**
+     * Camera recoil kick when the player's gun fires: an instant upward pitch
+     * impulse (visual only — aim angles are untouched) that eases back in
+     * ~0.25 s. Complements the noise-based trauma shake.
+     * @param {number} [x=0.012] - pitch impulse in radians
+     * @returns {void}
+     */
+    recoilKick(x = 0.012) {
+      recoil = Math.min(0.035, recoil + x);
     },
 
     /**

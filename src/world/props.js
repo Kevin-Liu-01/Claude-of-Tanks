@@ -320,8 +320,9 @@ export function createProps(heightField, engineCtx, seed = 2002) {
     wood: new THREE.MeshStandardMaterial({ map: wood.albedo, normalMap: wood.normal, roughness: 0.8, metalness: 0 }),
     dark: new THREE.MeshStandardMaterial({ color: 0x161a1d, roughness: 0.35, metalness: 0.15 }),
     straw: new THREE.MeshStandardMaterial({ map: straw.albedo, normalMap: straw.normal, roughness: 0.95, metalness: 0 }),
-    rock: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 }),
+    rock: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }),
   };
+  mats.rock.envMapIntensity = 0.35; // no white env-specular sparkle at distance
   for (const m of Object.values(mats)) engineCtx.setupShadowMaterial(m);
 
   const buckets = { plaster: [], stone: [], roof: [], wood: [], dark: [], straw: [] };
@@ -509,20 +510,36 @@ export function createProps(heightField, engineCtx, seed = 2002) {
     fenceRun(roadsL[0], 20, 23, 1);  // north exit, east side
     fenceRun(roadsL[1], 9, 12, -1);  // west field edge
     fenceRun(roadsL[1], 20, 23, 1);  // east field edge
-    // telegraph poles marching along road A
+    // telegraph poles marching along road A — tapered round poles with twin
+    // cross-arms and a brace, planted dead vertical
     for (let i = 8; i < roadsL[0].length - 1; i += 2) {
       const [ax, az] = roadsL[0][i], [bx, bz] = roadsL[0][i + 1];
       const tl = Math.hypot(bx - ax, bz - az);
       const px = ax - ((bz - az) / tl) * 6.9, pz = az + ((bx - ax) / tl) * 6.9;
       if (Math.max(Math.abs(px), Math.abs(pz)) > 470) continue;
       const py = heightField.getHeightAt(px, pz);
-      const pole = box(0.15, 5.6, 0.15, 1.4);
-      pole.translate(px, py + 2.7, pz);
+      const armYaw = Math.atan2(bx - ax, bz - az) + Math.PI / 2;
+      const pole = new THREE.CylinderGeometry(0.09, 0.17, 6.2, 7, 1);
+      scaleUV(pole, 0.8, 3.0);
+      pole.translate(px, py + 3.0, pz);
       buckets.wood.push(pole);
-      const arm = box(1.45, 0.12, 0.10, 1.0);
-      arm.rotateY(Math.atan2(bx - ax, bz - az) + Math.PI / 2);
-      arm.translate(px, py + 4.9, pz);
-      buckets.wood.push(arm);
+      for (const armY of [5.75, 5.15]) {
+        const arm = box(1.5, 0.11, 0.09, 1.0);
+        arm.rotateY(armYaw);
+        arm.translate(px, py + armY, pz);
+        buckets.wood.push(arm);
+        for (const s of [-1, 1]) { // insulator pegs
+          const peg = box(0.07, 0.16, 0.07, 2.0);
+          peg.rotateY(armYaw);
+          peg.translate(px + Math.cos(armYaw) * 0.6 * s, py + armY + 0.13, pz - Math.sin(armYaw) * 0.6 * s);
+          buckets.wood.push(peg);
+        }
+      }
+      const brace = box(0.06, 1.1, 0.06, 1.5);
+      brace.rotateZ(0.6);
+      brace.rotateY(armYaw);
+      brace.translate(px + Math.cos(armYaw) * 0.26, py + 4.8, pz - Math.sin(armYaw) * 0.26);
+      buckets.wood.push(brace);
     }
   }
 
@@ -543,19 +560,21 @@ export function createProps(heightField, engineCtx, seed = 2002) {
     g.computeVertexNormals();
     const col = new Float32Array(p.count * 3);
     for (let i = 0; i < p.count; i++) {
-      const l = 0.42 + vr() * 0.10 + p.getY(i) * 0.06;
-      _col.setHSL(0.083, 0.05, clamp(l, 0.2, 0.62), THREE.SRGBColorSpace);
+      // darker, mossier boulders — the old light-gray tone flashed white at
+      // distance under the sun/env light and read as pixel errors
+      const l = 0.28 + vr() * 0.09 + p.getY(i) * 0.05;
+      _col.setHSL(0.09 + vr() * 0.02, 0.07, clamp(l, 0.16, 0.44), THREE.SRGBColorSpace);
       col[i * 3] = _col.r; col[i * 3 + 1] = _col.g; col[i * 3 + 2] = _col.b;
     }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     rockGeos.push(g);
   }
   const rockPlacements = [[], [], []];
-  for (let i = 0, placed = 0; i < 900 && placed < 120; i++) {
+  for (let i = 0, placed = 0; i < 900 && placed < 110; i++) {
     const x = (rng() * 2 - 1) * 485, z = (rng() * 2 - 1) * 485;
     const vv = (rng() * 3) | 0;
     const yawR = rng() * Math.PI * 2;
-    const sc = 0.5 + Math.pow(rng(), 1.6) * 2.1;
+    const sc = 0.9 + Math.pow(rng(), 1.6) * 1.9;
     if (x > v.x0 - 8 && x < v.x1 + 8 && z > v.z0 - 8 && z < v.z1 + 8) continue;
     if (heightField._roadDist(x, z) < 6) continue;
     if (heightField.getGroundType(x, z) === 'soft') continue;
@@ -565,7 +584,7 @@ export function createProps(heightField, engineCtx, seed = 2002) {
     }
     if (nearSpawn) continue;
     const steep = heightField.getNormalAt(x, z).y < 0.93;
-    if (!steep && rng() > 0.30) continue; // prefer rocky slopes
+    if (!steep && rng() > 0.22) continue; // prefer rocky slopes
     const y = heightField.getHeightAt(x, z) - 0.22 * sc;
     _quat.setFromAxisAngle(_upAxis, yawR);
     _mat4.compose(_posv.set(x, y, z), _quat, new THREE.Vector3(sc, sc * (0.8 + rng() * 0.35), sc));
@@ -586,6 +605,186 @@ export function createProps(heightField, engineCtx, seed = 2002) {
     im.matrixAutoUpdate = false;
     im.computeBoundingSphere();
     group.add(im);
+  }
+
+  // --- field clutter: fallen logs + stumps (visual ground detail) ---
+  for (let i = 0, placed = 0; i < 260 && placed < 26; i++) {
+    const x = (rng() * 2 - 1) * 460, z = (rng() * 2 - 1) * 460;
+    if (x > v.x0 - 6 && x < v.x1 + 6 && z > v.z0 - 6 && z < v.z1 + 6) continue;
+    if (heightField._roadDist(x, z) < 7) continue;
+    if (heightField.getGroundType(x, z) === 'soft') continue;
+    const y = heightField.getHeightAt(x, z);
+    if (rng() < 0.6) { // log
+      const r = 0.16 + rng() * 0.13, len = 2.2 + rng() * 1.9;
+      const log = new THREE.CylinderGeometry(r * 0.85, r, len, 7, 1);
+      scaleUV(log, 1.0, len * 0.5);
+      log.rotateZ(Math.PI / 2 + (rng() - 0.5) * 0.1);
+      log.rotateY(rng() * Math.PI * 2);
+      log.translate(x, y + r * 0.75, z);
+      buckets.wood.push(log);
+    } else { // stump
+      const r = 0.22 + rng() * 0.15, h = 0.35 + rng() * 0.3;
+      const st = new THREE.CylinderGeometry(r * 0.92, r * 1.15, h, 8, 1);
+      scaleUV(st, 1.5, 0.5);
+      st.rotateY(rng() * Math.PI);
+      st.translate(x, y + h / 2 - 0.06, z);
+      buckets.wood.push(st);
+    }
+    placed++;
+  }
+
+  // --- wrecked hay cart near the village edge ---
+  {
+    function buildCart(x, z, yaw) {
+      const y = heightField.getHeightAt(x, z);
+      const parts = { plaster: [], stone: [], roof: [], wood: [], dark: [], straw: [] };
+      const bed = box(1.7, 0.13, 2.7, 0.8);
+      bed.rotateZ(0.13);
+      parts.wood.push(bed.translate(0, 0.62, 0));
+      for (const s of [-1, 1]) {
+        const rail = box(0.09, 0.34, 2.7, 1.2);
+        rail.rotateZ(0.13);
+        parts.wood.push(rail.translate(s * 0.82, 0.85 - s * 0.11, 0));
+      }
+      const wheel = new THREE.CylinderGeometry(0.62, 0.62, 0.09, 12, 1);
+      scaleUV(wheel, 2, 2);
+      wheel.rotateZ(Math.PI / 2);
+      parts.wood.push(wheel.clone().translate(0.98, 0.62, -0.85));
+      parts.wood.push(wheel.clone().translate(0.98, 0.62, 0.85));
+      const fallen = wheel.clone();
+      fallen.rotateX(Math.PI / 2);
+      parts.wood.push(fallen.translate(-1.35, 0.07, 0.7));
+      const shaft = box(0.08, 0.08, 1.9, 1.2);
+      shaft.rotateX(-0.5);
+      parts.wood.push(shaft.translate(-0.5, 0.35, -2.0));
+      _quat.setFromAxisAngle(_upAxis, yaw);
+      _mat4.compose(_posv.set(x, y, z), _quat, _one);
+      mergeInto(buckets, parts, _mat4);
+      obstacles.push({ min: [x - 1.6, y, z - 1.6], max: [x + 1.6, y + 1.1, z + 1.6] });
+      colliders.push({ min: [x - 1.6, y, z - 1.6], max: [x + 1.6, y + 1.1, z + 1.6] });
+    }
+    let carts = 0;
+    for (let i = 4; i < _LAYOUT.roads[1].length - 1 && carts < 2; i += 7) {
+      const [ax, az] = _LAYOUT.roads[1][i];
+      const cxp = ax + 8.5, czp = az + 6.5;
+      if (Math.max(Math.abs(cxp), Math.abs(czp)) > 440) continue;
+      if (heightField._roadDist(cxp, czp) < 6) continue;
+      if (heightField.getGroundType(cxp, czp) === 'soft') continue;
+      buildCart(cxp, czp, rng() * Math.PI * 2);
+      carts++;
+    }
+  }
+
+  // --- ground-blend decals: dirt/AO ring under buildings + shell craters ---
+  {
+    function makeDecalTexture(kind) {
+      const s = 128;
+      const c = document.createElement('canvas');
+      c.width = c.height = s;
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, s, s);
+      const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+      if (kind === 'scorch') {
+        g.addColorStop(0, 'rgba(26,20,14,0.92)');
+        g.addColorStop(0.38, 'rgba(52,38,24,0.85)');
+        g.addColorStop(0.66, 'rgba(84,66,42,0.55)');
+        g.addColorStop(1, 'rgba(90,74,48,0)');
+      } else {
+        g.addColorStop(0, 'rgba(72,58,38,0.8)');
+        g.addColorStop(0.55, 'rgba(76,62,42,0.6)');
+        g.addColorStop(1, 'rgba(80,68,46,0)');
+      }
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, s, s);
+      // ragged edge: punch noise holes in the outer band
+      const id = ctx.getImageData(0, 0, s, s);
+      for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
+        const dx = (x - s / 2) / (s / 2), dy = (y - s / 2) / (s / 2);
+        const rr = Math.hypot(dx, dy);
+        const nse = noi.noise(x * 0.11 + (kind === 'scorch' ? 40 : 0), y * 0.11) * 0.5 + 0.5;
+        const edge = smoothstep(0.55, 1.0, rr);
+        id.data[(y * s + x) * 4 + 3] *= clamp(1 - edge * (0.4 + nse * 1.1), 0, 1);
+      }
+      ctx.putImageData(id, 0, 0);
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = aniso;
+      return t;
+    }
+    // terrain-conformed disc; profile[] lifts each ring above the ground
+    function conformedDisc(x, z, r, profile) {
+      const rings = [0, 0.4, 0.7, 1.0], segs = 18;
+      const nv = 1 + (rings.length - 1) * segs;
+      const pos = new Float32Array(nv * 3);
+      const uv = new Float32Array(nv * 2);
+      pos[0] = x; pos[1] = heightField.getHeightAt(x, z) + profile[0]; pos[2] = z;
+      uv[0] = 0.5; uv[1] = 0.5;
+      let vi = 1;
+      for (let ri = 1; ri < rings.length; ri++) {
+        for (let k = 0; k < segs; k++) {
+          const a = (k / segs) * Math.PI * 2;
+          const px = x + Math.cos(a) * r * rings[ri], pz = z + Math.sin(a) * r * rings[ri];
+          pos[vi * 3] = px;
+          pos[vi * 3 + 1] = heightField.getHeightAt(px, pz) + profile[ri];
+          pos[vi * 3 + 2] = pz;
+          uv[vi * 2] = 0.5 + Math.cos(a) * 0.5 * rings[ri];
+          uv[vi * 2 + 1] = 0.5 + Math.sin(a) * 0.5 * rings[ri];
+          vi++;
+        }
+      }
+      const idx = [];
+      for (let k = 0; k < segs; k++) idx.push(0, 1 + k, 1 + ((k + 1) % segs));
+      for (let ri = 1; ri < rings.length - 1; ri++) {
+        const a0 = 1 + (ri - 1) * segs, b0 = 1 + ri * segs;
+        for (let k = 0; k < segs; k++) {
+          const k1 = (k + 1) % segs;
+          idx.push(a0 + k, b0 + k, a0 + k1, a0 + k1, b0 + k, b0 + k1);
+        }
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+      return geo;
+    }
+    function addDecalMesh(geos, tex) {
+      if (geos.length === 0) return;
+      const mat = new THREE.MeshStandardMaterial({
+        map: tex, transparent: true, depthWrite: false,
+        roughness: 0.97, metalness: 0,
+        polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+      });
+      engineCtx.setupShadowMaterial(mat);
+      const mesh = new THREE.Mesh(mergeGeometries(geos, false), mat);
+      mesh.receiveShadow = true;
+      mesh.castShadow = false;
+      mesh.matrixAutoUpdate = false;
+      mesh.renderOrder = 1;
+      group.add(mesh);
+    }
+    const dirtDiscs = [];
+    for (const b of buildingFeatures) {
+      dirtDiscs.push(conformedDisc(b.x, b.z, Math.max(b.w, b.d) * 0.85, [0.05, 0.05, 0.05, 0.04]));
+    }
+    addDecalMesh(dirtDiscs, makeDecalTexture('dirt'));
+    // craters: scattered shell holes with a raised rim mound
+    const craterDiscs = [];
+    for (let i = 0, placed = 0; i < 200 && placed < 16; i++) {
+      const x = (rng() * 2 - 1) * 420, z = (rng() * 2 - 1) * 420;
+      if (x > v.x0 - 4 && x < v.x1 + 4 && z > v.z0 - 4 && z < v.z1 + 4) continue;
+      if (heightField._roadDist(x, z) < 5.5) continue;
+      if (heightField.getGroundType(x, z) === 'soft') continue;
+      let nearSpawn = false;
+      for (const s of [_LAYOUT.spawns.player, ..._LAYOUT.spawns.enemies]) {
+        if (Math.hypot(x - s.x, z - s.z) < 20) { nearSpawn = true; break; }
+      }
+      if (nearSpawn) continue;
+      const r = 2.2 + rng() * 2.0;
+      craterDiscs.push(conformedDisc(x, z, r, [0.04, 0.06, 0.14 + rng() * 0.12, 0.03]));
+      placed++;
+    }
+    addDecalMesh(craterDiscs, makeDecalTexture('scorch'));
   }
 
   // --- merge buckets into one mesh per material ---

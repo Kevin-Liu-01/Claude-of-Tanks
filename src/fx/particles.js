@@ -71,20 +71,24 @@ attribute vec4 aC0;   // color0.rgb, gravity (+up)
 attribute vec4 aC1;   // color1.rgb, peakAlpha
 uniform float uTime;
 uniform float uDrag;
+uniform vec3 uSunDirW;
 varying vec2 vUv;
 varying vec4 vColor;
+varying float vT;
+varying vec2 vShade;
 ${FOG_PARS_V}
 ${DISPLACE_GLSL}
 void main() {
   float life = aVL.w;
   float age = uTime - aPB.w;
   if ( life <= 0.0 || age < 0.0 || age > life ) {
-    vUv = uv; vColor = vec4( 0.0 );
+    vUv = uv; vColor = vec4( 0.0 ); vT = 0.0; vShade = vec2( 0.0 );
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
     ${FOG_V.replace('-mvPosition.z','1.0')}
     return;
   }
   float t = age / life;
+  vT = t;
   vec3 wpos = aPB.xyz + particleDisplace( aVL.xyz, aC0.w, age, uDrag );
   float size = mix( aSR.x, aSR.y, t );
   float ang = aSR.z + aSR.w * age;
@@ -94,6 +98,8 @@ void main() {
   vec3 camRight = vec3( viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0] );
   vec3 camUp    = vec3( viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1] );
   wpos += camRight * corner.x + camUp * corner.y;
+  // sun direction projected into the billboard plane (fake lit-smoke normal)
+  vShade = vec2( dot( uSunDirW, camRight ), dot( uSunDirW, camUp ) );
   // tier-1 soft handling: alpha-in at birth, long fade-out
   float alpha = aC1.w * smoothstep( 0.0, 0.12, t ) * ( 1.0 - smoothstep( 0.5, 1.0, t ) );
   vColor = vec4( mix( aC0.rgb, aC1.rgb, smoothstep( 0.0, 1.0, t ) ), alpha );
@@ -108,12 +114,19 @@ const PUFF_FRAG_NORMAL = `
 uniform sampler2D uMap;
 varying vec2 vUv;
 varying vec4 vColor;
+varying float vT;
+varying vec2 vShade;
 ${FOG_PARS_F}
 void main() {
   float tex = texture2D( uMap, vUv ).a;
-  float a = tex * vColor.a;
+  // edges thin out with age so old puffs wisp away instead of popping
+  float a = pow( tex, 1.0 + vT * 1.2 ) * vColor.a;
   if ( a < 0.004 ) discard;
-  vec3 col = vColor.rgb;
+  // fake directional lighting: sun-facing side of the billboard brightens,
+  // opposite side falls into shadow — smoke reads volumetric, not flat
+  vec2 p = vUv * 2.0 - 1.0;
+  float light = 0.60 + 0.55 * clamp( 0.55 + 0.7 * dot( p, vShade ), 0.0, 1.0 );
+  vec3 col = vColor.rgb * light;
   ${FOG_SCALE_F}
   #ifdef USE_FOG
     col = mix( col, fogColor, fogFactor );
@@ -127,14 +140,22 @@ uniform sampler2D uMap;
 uniform float uIntensity;
 varying vec2 vUv;
 varying vec4 vColor;
+varying float vT;
+varying vec2 vShade;
 ${FOG_PARS_F}
 void main() {
   float tex = texture2D( uMap, vUv ).a;
-  float a = tex * vColor.a;
+  // age-keyed alpha erosion: dense interior survives, thin edges burn away
+  float er = vT * 0.55;
+  float a = smoothstep( er, er + 0.38, tex ) * vColor.a;
   if ( a < 0.004 ) discard;
   ${FOG_SCALE_F}
-  // HDR push so UnrealBloom (threshold 0.85) catches fire/flash pixels
-  gl_FragColor = vec4( vColor.rgb * uIntensity * ( 1.0 - fogFactor ), a );
+  // interior heat structure: densest texels read white-hot early in life,
+  // whole particle cools toward soot as vT -> 1 (white -> orange -> dark)
+  float hot = 1.0 + pow( tex, 2.2 ) * 1.5 * ( 1.0 - vT * 0.85 );
+  vec3 col = vColor.rgb * hot * ( 1.0 - vT * vT * 0.55 );
+  // HDR push so UnrealBloom catches fire/flash pixels
+  gl_FragColor = vec4( col * uIntensity * ( 1.0 - fogFactor ), a );
 }
 `;
 
@@ -197,9 +218,9 @@ void main() {
   float a = profile * vColor.a;
   if ( a < 0.004 ) discard;
   ${FOG_SCALE_F}
-  // incandescent cooling ramp: white-hot core fades toward deep red over life
-  vec3 base = mix( vColor.rgb, vec3( 1.0, 0.22, 0.04 ), vT * 0.8 );
-  vec3 col = ( base + vec3( core ) * 0.7 * ( 1.0 - vT * 0.75 ) ) * uIntensity;
+  // incandescent cooling ramp: white-hot core -> orange -> deep red over life
+  vec3 base = mix( vColor.rgb, vec3( 1.0, 0.30, 0.04 ), clamp( vT * 1.5, 0.0, 0.92 ) );
+  vec3 col = ( base + vec3( core ) * 0.7 * ( 1.0 - vT * 0.85 ) ) * uIntensity;
   gl_FragColor = vec4( col * ( 1.0 - fogFactor ), a );
 }
 `;
@@ -252,8 +273,11 @@ void main() {
   lp.z += lp.y * ( h1 - 0.5 ) * 0.6;
   vec3 wpos = center + rot * ( lp * aSG.x * fade );
   vNormalW = rot * normal;
-  vTint = mix( vec3( 0.085, 0.078, 0.072 ), vec3( 0.23, 0.185, 0.145 ), h3 );
-  vHot = aSG.z * exp( -age * 1.7 );
+  // charred-metal albedo: near-black soot to dark scorched brown
+  vTint = mix( vec3( 0.045, 0.040, 0.036 ), vec3( 0.145, 0.110, 0.085 ), h3 );
+  // ember glow cools over ~1s (slow enough to still read in composed frames),
+  // scaled per-instance so chunks glow unevenly rather than as flat confetti
+  vHot = aSG.z * exp( -age * 1.1 ) * ( 0.4 + h2 * 0.8 );
   vFade = fade;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   ${FOG_V}
@@ -274,9 +298,12 @@ void main() {
   float nl = max( dot( n, uSunDir ), 0.0 );
   float hemi = 0.28 + 0.22 * ( n.y * 0.5 + 0.5 );
   vec3 col = vTint * ( hemi + nl * 1.1 );
-  // cooling ember glow (bloom feed), strongest along facet edges (grazing sun)
+  // cooling ember glow (bloom feed), strongest along facet edges (grazing
+  // sun) and hashed per-facet so chunks read as unevenly heated metal
+  // instead of flat orange confetti
   float edge = 0.45 + 0.55 * ( 1.0 - nl );
-  col += vec3( 3.0, 0.8, 0.12 ) * vHot * edge;
+  float facet = fract( sin( dot( floor( n * 2.5 + 3.0 ), vec3( 12.9898, 78.233, 37.719 ) ) ) * 43758.55 );
+  col += vec3( 1.8, 0.40, 0.045 ) * vHot * edge * ( 0.30 + 0.85 * facet );
   ${FOG_SCALE_F}
   #ifdef USE_FOG
     col = mix( col, fogColor, fogFactor );
@@ -519,11 +546,14 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   let frozen = false;
 
   const smokeTex = makePuffTexture(texRng, 0.65);
-  const fireTex = makePuffTexture(texRng, 0.35);
+  const fireTex = makePuffTexture(texRng, 0.55);
   const dustTex = makePuffTexture(texRng, 0.8);
   const flashTex = makeFlashTexture(texRng);
 
   const fogUniforms = () => THREE.UniformsUtils.clone(THREE.UniformsLib.fog);
+  // world-space sun direction matching the sky/lighting rig
+  // (elevation 35°, azimuth 140° — see src/engine/sky.js)
+  const sunDirW = new THREE.Vector3(0.527, 0.574, -0.627).normalize();
 
   function puffMaterial(map, additive, drag, intensity) {
     const mat = new THREE.ShaderMaterial({
@@ -534,6 +564,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
         uMap: { value: map },
         uDrag: { value: drag },
         uIntensity: { value: intensity },
+        uSunDirW: { value: sunDirW },
       }),
       transparent: true,
       depthWrite: false,
@@ -552,19 +583,22 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     smoke: new Pool('smoke', makeQuadGeometry(POOL_SIZES.smoke),
       puffMaterial(smokeTex, false, 0.9, 1), PUFF_LAYOUT, POOL_SIZES.smoke, 'aVL', 3),
     fire: new Pool('fire', makeQuadGeometry(POOL_SIZES.fire),
-      // intensity 1.45: hot enough to bloom (threshold 1.6 is crossed where
-      // sprites overlap) without the stacked-additive HDR blowing the frame out
-      puffMaterial(fireTex, true, 1.6, 1.45), PUFF_LAYOUT, POOL_SIZES.fire, 'aVL', 3),
+      // intensity 1.25: hot enough to bloom where sprites overlap without the
+      // stacked-additive HDR clipping the fireball core to a featureless sheet
+      puffMaterial(fireTex, true, 1.6, 1.25), PUFF_LAYOUT, POOL_SIZES.fire, 'aVL', 3),
     dust: new Pool('dust', makeQuadGeometry(POOL_SIZES.dust),
       puffMaterial(dustTex, false, 1.4, 1), PUFF_LAYOUT, POOL_SIZES.dust, 'aVL', 3),
     flash: new Pool('flash', makeQuadGeometry(POOL_SIZES.flash),
-      puffMaterial(flashTex, true, 0.6, 2.7), PUFF_LAYOUT, POOL_SIZES.flash, 'aVL', 3),
+      // 2.1: bright enough to bloom without clipping to a featureless sheet
+      puffMaterial(flashTex, true, 0.6, 2.1), PUFF_LAYOUT, POOL_SIZES.flash, 'aVL', 3),
     sparks: new Pool('sparks', makeQuadGeometry(POOL_SIZES.sparks),
       new THREE.ShaderMaterial({
         vertexShader: STREAK_VERT,
         fragmentShader: STREAK_FRAG,
         uniforms: Object.assign(fogUniforms(), {
-          uTime, uDrag: { value: 1.1 }, uIntensity: { value: 2.6 },
+          // 1.9: sparks bloom but keep their orange hue instead of
+          // tone-mapping to uniform white confetti
+          uTime, uDrag: { value: 1.1 }, uIntensity: { value: 1.9 },
         }),
         transparent: true,
         depthWrite: false,
@@ -578,7 +612,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
         fragmentShader: DEBRIS_FRAG,
         uniforms: Object.assign(fogUniforms(), {
           uTime,
-          uSunDir: { value: new THREE.Vector3(0.45, 0.75, 0.48).normalize() },
+          uSunDir: { value: sunDirW },
         }),
         fog: true,
       }), DEBRIS_LAYOUT, POOL_SIZES.debris, 'aVL', 3),

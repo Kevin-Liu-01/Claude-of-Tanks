@@ -31,7 +31,9 @@ export function createRenderer(container) {
   renderer.setSize(width, height);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  // 1.05 compensates the deeper key:fill rebalance (lighting.js/sky.js r2) so
+  // midtones sit where they did while shadow cores drop.
+  renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft is deprecated in r185
 

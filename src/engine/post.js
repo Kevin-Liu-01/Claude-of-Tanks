@@ -39,12 +39,14 @@ const GTAO_PARAMS = { radius: 1.0, distanceExponent: 2, thickness: 1.2, scale: 1
 const GTAO_BLEND_INTENSITY = 1.0;
 
 // Final grade (applied AFTER OutputPass, i.e. in display sRGB space):
-// gentle S-curve contrast, +12% saturation, subtle corner vignette and a
-// tiny black anchor — the "graded" signature the raw ACES output lacks.
-const GRADE_CONTRAST = 1.06;
-const GRADE_SATURATION = 1.12;
+// S-curve contrast, +15% saturation, subtle corner vignette and a real black
+// anchor — the "graded" signature the raw ACES output lacks. r2 critique:
+// "blacks are grey, greens pastel, looks like unlit viewport preview" — the
+// anchor pulls track/shadow cores to true black and the curve restores punch.
+const GRADE_CONTRAST = 1.11;
+const GRADE_SATURATION = 1.15;
 const GRADE_VIGNETTE = 0.32;
-const GRADE_BLACK_LIFT = 0.006;
+const GRADE_BLACK_LIFT = 0.01;
 
 const GradeShader = {
   name: 'GradeShader',
@@ -118,6 +120,26 @@ export function createPost(renderer, scene, camera) {
   gtao.output = GTAOPass.OUTPUT.Default;
   gtao.updateGtaoMaterial(GTAO_PARAMS);
   gtao.blendIntensity = GTAO_BLEND_INTENSITY;
+  // GTAO renders its depth/normal prepass with a scene-wide overrideMaterial,
+  // which ignores alphaTest — alpha-tested foliage cards would write SOLID
+  // rectangles into the AO buffer and composite as dark floating quads over
+  // the terrain (worst in sniper zoom). Hide objects flagged
+  // `userData.aoExclude` for the duration of the pass only.
+  {
+    const origGtaoRender = gtao.render.bind(gtao);
+    const hidden = [];
+    gtao.render = function aoExcludeRender(...args) {
+      scene.traverse((o) => {
+        if (o.userData.aoExclude === true && o.visible) {
+          o.visible = false;
+          hidden.push(o);
+        }
+      });
+      origGtaoRender(...args);
+      for (let i = 0; i < hidden.length; i++) hidden[i].visible = true;
+      hidden.length = 0;
+    };
+  }
   composer.addPass(gtao);
 
   const bloom = new UnrealBloomPass(size.clone(), BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD);

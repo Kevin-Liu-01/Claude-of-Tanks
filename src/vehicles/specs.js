@@ -568,9 +568,9 @@ export const TANK_SPECS = {
     armor: armorTiger(),
     visual: {
       scheme: 'stripes', base: '#9b8a55', weather: '#8a7a4e',
-      patches: ['#6a713f', '#7a4a35'],
+      patches: ['#5c6636', '#6f4530'],
       marking: 'cross', number: '212', zimmerit: true, trackWidthM: 0.725,
-      camoScale: 0.52,
+      camoScale: 0.6,
     },
   },
 
@@ -670,9 +670,10 @@ export const TANK_SPECS = {
     dims: { hullLengthM: 7.93, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 },
     armor: armorM1A2(),
     visual: {
-      scheme: 'nato', base: '#4c5d43', weather: '#55654b',
-      patches: ['#2e2e2e', '#5f4a37'],
+      scheme: 'nato', base: '#49543c', weather: '#525f45',
+      patches: ['#23261f', '#553d2a'],
       marking: 'number', number: 'B-24', trackWidthM: 0.635,
+      camoScale: 0.5,
     },
   },
 
@@ -722,9 +723,10 @@ export const TANK_SPECS = {
     dims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 3.75, heightM: 2.64 },
     armor: armorLeo2A7(),
     visual: {
-      scheme: 'nato', base: '#4c5d43', weather: '#54644a',
-      patches: ['#2b2b2b', '#5f4a37'],
+      scheme: 'nato', base: '#49543c', weather: '#515e44',
+      patches: ['#23261f', '#553d2a'],
       marking: 'cross', number: '124', trackWidthM: 0.635,
+      camoScale: 0.5,
     },
   },
 };

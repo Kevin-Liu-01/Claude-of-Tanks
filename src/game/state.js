@@ -29,6 +29,7 @@ const FIRE_TICK_S = 0.5;
 const _muzzle = new THREE.Vector3();
 const _pivot = new THREE.Vector3();
 const _dir = new THREE.Vector3();
+const _aimDir = new THREE.Vector3();
 const _upOrtho = new THREE.Vector3();
 const _seg = new THREE.Vector3();
 const _toC = new THREE.Vector3();
@@ -165,6 +166,18 @@ export function setupBattle(game, playerSpecId, world) {
           getEnemies: () => (game.player && !game.player.combat.destroyed ? [game.player] : []),
         },
       });
+      // Open aggressively: advance via a mid-map staging point to a standoff
+      // ring around the player spawn, so contact happens inside the first
+      // minute instead of enemies idling on local patrol loops at their spawn.
+      const pp = sp.player.pos;
+      const dx = pp[0] - spawn.pos[0];
+      const dz = pp[2] - spawn.pos[2];
+      const d = Math.hypot(dx, dz) || 1;
+      const standoff = Math.min(d, 170 + (enemyIdx % 3) * 35);
+      ent.aiCtl.setWaypoints([
+        [spawn.pos[0] + dx * 0.5, spawn.pos[2] + dz * 0.5],
+        [pp[0] - (dx / d) * standoff, pp[2] - (dz / d) * standoff],
+      ]);
     }
     ent.visual.syncFromState(ent.state);
     ent.visual.setVisible(true);
@@ -259,6 +272,19 @@ function tryFire(game, ent, bus, rig) {
   ent.visual.gunPivotWorld(_pivot);
   _dir.copy(_muzzle).sub(_pivot).normalize();
 
+  // Server-gun correction (WoT rule: the shot goes where the GUN is aimed,
+  // i.e. the server aim point — the rendered barrel is cosmetic and can sit a
+  // fraction of a degree off the sim's ideal solution). When the barrel has
+  // settled onto the aim point (within ~2°), fire exactly at it so the impact
+  // matches the reticle at server-aim distance; while still slewing, the shell
+  // follows the barrel.
+  _aimDir.copy(ent.input.aimPoint).sub(_muzzle);
+  const aimLen = _aimDir.length();
+  if (aimLen > 4) {
+    _aimDir.multiplyScalar(1 / aimLen);
+    if (_dir.dot(_aimDir) > 0.99939) _dir.copy(_aimDir); // cos ~2.0°
+  }
+
   // Ballistic elevation for the aimed range (WoT-style auto-elevation).
   const dist = ent.input.aimPoint.distanceTo(_muzzle);
   const elev = aimElevationRad(dist, shellSpec.velocityMps);
@@ -277,7 +303,10 @@ function tryFire(game, ent, bus, rig) {
   game.shells.push(shell);
   fireRecoil(ent.state, ent.spec);
   ent.visual.recoilKick();
-  if (ent.isPlayer && rig) rig.addTrauma(0.25);
+  if (ent.isPlayer && rig) {
+    rig.addTrauma(0.25);
+    if (rig.recoilKick) rig.recoilKick(0.012);
+  }
   bus.emit('shell:fired', {
     shellId: shell.id,
     shooterId: ent.id,
