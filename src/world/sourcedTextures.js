@@ -92,7 +92,10 @@ const TERRAIN_PLAN = {
   urban: {
     G: { set: 'grass', tint: [0.92, 0.92, 0.88], roughMul: 1.25 },
     D: { set: 'dirt', tint: [0.78, 0.77, 0.75], roughMul: 1.3 },
-    R: 'cobble', M: null,
+    // r6: warm the raw PavingStones046 sett (it ships cool grey and read as
+    // canal water under the blue sky fill) and raise the roughness floor so
+    // no residual sheen survives on the carriageway
+    R: { set: 'cobble', tint: [1.0, 0.94, 0.84], roughMul: 1.45 }, M: null,
   },
 };
 

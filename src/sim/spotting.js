@@ -53,7 +53,14 @@ export const SIXTH_SENSE_DELAY_S = 3;
 export const SIXTH_SENSE_SHOW_S = 8;
 export const BUSH_FIRE_TRANSPARENT_M = 15; // 15 m rule radius
 export const CAMO_PAINT_BONUS = 0.035; // equipped camo pattern (+3.5%)
-export const MAX_BUSH_BONUS = 0.6;     // stacked-foliage cap
+// r9 forest-camping balance: 0.6 let any tree clump stack to the cap (canopy
+// discs add 0.13 each) and, with the own-camo term bloom-stripped to ~0.05,
+// a firing tank in forest still carried ~0.65 total — at 250 m+ the WoT
+// fire-reveal moment never happened outside isolated bushes. 0.5 keeps
+// deliberate double-bush play (2 x 0.35 still caps) while bloom-hot forest
+// targets light up. Pairs with vegetation.js canopy add 0.13 -> 0.08
+// (bushes stay 0.35): trees soft-conceal, bushes are the real hides.
+export const MAX_BUSH_BONUS = 0.5;     // stacked-foliage cap
 export const FIRE_CAMO_LOSS = 0.82;    // fallback own-camo loss at full bloom (unknown caliber)
 export const FIRE_BLOOM_TAU_S = 1.7;   // bloom e-folding time
 const FIRE_BLOOM_EPS = 0.03;           // below this the shot is "cold"

@@ -134,6 +134,7 @@ export function createCameraRig(camera, deps) {
   let trauma = 0;
   let shakeT = 0;
   let recoil = 0; // gun-fire pitch kick (rad), decays fast — additive like shake
+  let fovKick = 0; // gun-fire FOV punch (0..1), ~120 ms concussion pulse
   let lastFov = 0;
   // battle-start cinematic flyby state (null when inactive)
   let cine = null;   // { t, dur, endYaw }
@@ -439,6 +440,22 @@ export function createCameraRig(camera, deps) {
       } else {
         recoil = 0;
       }
+      // FOV punch on fire (effects_combat r7: "fire-kick not readable in
+      // motion") — a 2-3 frame wide-angle pulse that reads as concussion.
+      // Applied AFTER the mode solve set the base fov; decays in ~120 ms.
+      // Scoped keeps a fraction so the zoom optics only flinch.
+      if (fovKick > 0.02) {
+        const base = lastFov;
+        setFov(base * (1 + 0.045 * fovKick * (rig.mode === 'SNIPER' ? 0.25 : 1)));
+        lastFov = base; // next solve compares against the UNKICKED base
+        fovKick *= Math.exp(-dt / 0.055);
+      } else if (fovKick !== 0) {
+        // pulse over — snap the projection back to the unkicked base
+        // (setFov would no-op: lastFov already holds the base value)
+        fovKick = 0;
+        camera.fov = lastFov;
+        camera.updateProjectionMatrix();
+      }
     },
 
     /**
@@ -458,7 +475,10 @@ export function createCameraRig(camera, deps) {
      * @returns {void}
      */
     recoilKick(x = 0.012) {
-      recoil = Math.min(0.035, recoil + x);
+      // 1.5x the caller impulse (r7: the 0.012 rad kick read sub-pixel at
+      // chase distance) + arm the FOV punch.
+      recoil = Math.min(0.035, recoil + x * 1.5);
+      fovKick = 1;
     },
 
     /**

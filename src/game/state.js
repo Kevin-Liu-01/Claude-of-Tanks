@@ -133,10 +133,20 @@ export function spawnTanks(game, engineCtx) {
   // COMMUNITY TANKS: build entities for the FULL pool (core roster + sourced
   // community vehicles). A battle fields 8 of them (setupBattle picks the
   // participants); the rest sit hidden with null state/combat.
+  //
+  // PERF (performance_budget r4): visuals are built LAZILY. Baking a vehicle's
+  // texture set is ~250-350 ms of 2048²-canvas painting per spec, and building
+  // all 17 pool vehicles at boot (a) doubled load-to-ready (4.2 s -> 8.4 s)
+  // and (b) parked ~580 MB of generated maps on the GPU for vehicles that are
+  // not even in the battle (scene texture estimate 716.8 MB vs the 512 MB
+  // ratchet target). Only the staged default battle (screenshot contract) is
+  // built at boot; setupBattle builds the picked participants on entry and
+  // EVICTS the visuals of everyone parked (the per-spec texture cache in
+  // materials.js is refcounted, so eviction frees the canvases/GPU maps).
+  game._engineCtx = engineCtx;   // for lazy visual builds (ensureTankVisual)
+  game._groundSampler = null;    // set by main.js; applied to lazy visuals too
   ALL_TANK_IDS.forEach((specId, i) => {
     const spec = getSpec(specId);
-    const visual = createTank(specId, engineCtx, { camoSeed: 4000 + i, quality: 'high' });
-    engineCtx.scene.add(visual.root);
     const ent = {
       id: specId,
       specId,
@@ -149,7 +159,8 @@ export function spawnTanks(game, engineCtx) {
         throttle: 0, steer: 0, brake: false, fire: false,
         aimPoint: new THREE.Vector3(), shellSlot: 0,
       },
-      visual,
+      visual: null,
+      _camoSeed: 4000 + i,
       ai: null,
       aiCtl: null,
       _destroyedAnnounced: false,
@@ -158,7 +169,45 @@ export function spawnTanks(game, engineCtx) {
     game.tankById.set(ent.id, ent);
   });
   game.tanks = game.allTanks.slice(0, TANK_IDS.length); // staged default battle
+  for (const ent of game.tanks) ensureTankVisual(game, ent);
 }
+
+/**
+ * PERF (performance_budget r4): build a pool entity's visual on demand (battle
+ * roster selection). Shares the per-spec texture cache with any live instance
+ * of the same spec (garage pedestal, thumbs booth) via materials.js refcounts.
+ * @param {object} game game state
+ * @param {object} ent TankEntity from game.allTanks
+ * @returns {object} the entity's TankVisual
+ */
+export function ensureTankVisual(game, ent) {
+  if (ent.visual) return ent.visual;
+  const engineCtx = game._engineCtx;
+  ent.visual = createTank(ent.specId, engineCtx, { camoSeed: ent._camoSeed, quality: 'high' });
+  engineCtx.scene.add(ent.visual.root);
+  if (game._groundSampler && ent.visual.setGroundSampler) {
+    ent.visual.setGroundSampler(game._groundSampler);
+  }
+  return ent.visual;
+}
+
+/**
+ * MATCHMAKING TIERS (controls_gunnery r3): WoT-style tier per spec, keyed off
+ * hp/gun class. Random rosters cap the spread at ±2 around the player's tier
+ * — an M1A2 (X) vs a Panzer III (IV) match plinked 20 he_splash hits for
+ * 0 damage across 90 s while nothing on the field could threaten the player.
+ * Tanks beyond the cap only appear when the ±2 pool cannot fill 7 slots, and
+ * then nearest-tier-first (never a tier-II/III vs a tier-X).
+ */
+// numerically mirrors the HUD's roman-numeral badges (hud.js TIER_BY_ID) so
+// the matchmaking the player experiences matches the tiers the roster shows
+const SPEC_TIER = {
+  m4a3e8: 6, tiger1: 7, t34_85: 6, is2: 7, panther_g: 7,
+  m1a2: 10, t90m: 10, leo2a7: 10,
+  strv103: 9, is3: 8, t34_85_cad: 6, newc_tiger: 7,
+  newc_pziii: 4, pziii_konserwa: 3, leichttraktor: 1, recon_tank: 8, q_heavy: 9,
+};
+const specTier = (specId) => SPEC_TIER[specId] != null ? SPEC_TIER[specId] : 6;
 
 /**
  * COMMUNITY TANKS: pick this battle's participants — the player plus 7
@@ -178,6 +227,16 @@ function pickParticipants(game, playerSpecId, randomize) {
       const j = (rng() * (i + 1)) | 0;
       [others[i], others[j]] = [others[j], others[i]];
     }
+    // Tier cap (±2 template): stable partition of the shuffled pool — legal
+    // tiers keep their shuffle order and fill first; the remainder is sorted
+    // by tier distance so an under-filled pool degrades to the NEAREST tiers.
+    const pTier = specTier(playerSpecId);
+    const legal = others.filter((e) => Math.abs(specTier(e.specId) - pTier) <= 2);
+    const rest = others
+      .filter((e) => Math.abs(specTier(e.specId) - pTier) > 2)
+      .sort((a, b) =>
+        Math.abs(specTier(a.specId) - pTier) - Math.abs(specTier(b.specId) - pTier));
+    others = [...legal, ...rest];
   } else {
     // deterministic staged battle (boot, screenshot contract): core roster
     others = TANK_IDS.filter((id) => id !== playerSpecId).map((id) => game.tankById.get(id));
@@ -228,6 +287,10 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   // COMMUNITY TANKS: field the participants; park everyone else (hidden,
   // null state/combat — every sim/HUD/audio consumer guards on those).
   game.tanks = pickParticipants(game, playerSpecId, !!opts.random);
+  // PERF (performance_budget r4): participants get visuals on demand; parked
+  // vehicles' visuals are EVICTED (scene detach + dispose) so only fielded
+  // tanks keep generated texture sets resident — see spawnTanks.
+  for (const ent of game.tanks) ensureTankVisual(game, ent);
   for (const ent of game.allTanks) {
     if (game.tanks.includes(ent)) continue;
     ent.state = null;
@@ -236,8 +299,13 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     ent.aiCtl = null;
     ent.team = 'enemy';
     ent.isPlayer = false;
-    if (ent.visual.resetDestroyed) ent.visual.resetDestroyed();
-    ent.visual.setVisible(false);
+    if (ent.visual) {
+      if (ent.visual.resetDestroyed) ent.visual.resetDestroyed();
+      ent.visual.setVisible(false);
+      game._engineCtx.scene.remove(ent.visual.root);
+      ent.visual.dispose();
+      ent.visual = null;
+    }
   }
 
   // SPOTTING WIRING: fresh concealment/spotting sim bound to this battle's

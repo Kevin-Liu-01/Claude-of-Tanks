@@ -879,8 +879,10 @@ const COMMUNITY_SPECS = {
       tFrontMm: 60, tSideMm: 30, tRearMm: 20, mantletMm: 60, turretless: true,
     }),
     visual: {
-      scheme: 'stripes', base: '#3f5a3a', weather: '#4a6543',
-      patches: ['#2b3a28', '#6b6b47'], marking: 'number', number: '103',
+      // r9: base pulled off the saturated forest green — the S-tank rendered
+      // as the brightest, most toy-like material in the carousel.
+      scheme: 'stripes', base: '#47513c', weather: '#525c46',
+      patches: ['#2d3427', '#5c5a44'], marking: 'number', number: '103',
       trackWidthM: 0.67, camoScale: 0.5,
     },
   },
@@ -950,7 +952,9 @@ const COMMUNITY_SPECS = {
       tFrontMm: 90, tSideMm: 75, tRearMm: 60, mantletMm: 90,
     }),
     visual: {
-      scheme: 'solid', base: '#48522f', weather: '#535e3c', patches: [],
+      // r9: dropped toward the core-roster 4BO — the CAD shell read bare
+      // grey-green next to the procedural T-34.
+      scheme: 'solid', base: '#3e4f22', weather: '#4a5a2e', patches: [],
       marking: 'number', number: '85', trackWidthM: 0.5,
     },
   },
@@ -1021,7 +1025,8 @@ const COMMUNITY_SPECS = {
       tFrontMm: 57, tSideMm: 30, tRearMm: 30, mantletMm: 57,
     }),
     visual: {
-      scheme: 'solid', base: '#5d625f', weather: '#6a6f6a', patches: [],
+      // r9: down to Panzergrau — the light grey thumb read near-white.
+      scheme: 'solid', base: '#40474f', weather: '#4c535a', patches: [],
       marking: 'cross', number: '221', trackWidthM: 0.4,
     },
   },
@@ -1056,7 +1061,8 @@ const COMMUNITY_SPECS = {
       tFrontMm: 30, tSideMm: 30, tRearMm: 30, mantletMm: 30,
     }),
     visual: {
-      scheme: 'solid', base: '#606a63', weather: '#6d766e', patches: [],
+      // r9: down to Panzergrau (critic: '#4a4d4f' class) from near-white.
+      scheme: 'solid', base: '#3d454f', weather: '#49515a', patches: [],
       marking: 'cross', number: '111', trackWidthM: 0.38,
     },
   },
@@ -1224,7 +1230,14 @@ export const MODEL_SOURCE = {
 Object.assign(MODEL_SOURCE, {
   strv103: {
     source: 'glb',
-    glb: { path: '/models/tanks/community/strv103_wesiora.glb', fixedGun: true },
+    // r9: paintUntextured routes the asset through the same material
+    // normalization as the other community GLBs (tiny palette maps stripped,
+    // shell box-UV'd onto the live camo canvas, gear split to dark steel) —
+    // it was the one sourced tank skipping the cohesion pass.
+    glb: {
+      path: '/models/tanks/community/strv103_wesiora.glb', fixedGun: true,
+      paintUntextured: true,
+    },
   },
   is3: {
     source: 'glb',

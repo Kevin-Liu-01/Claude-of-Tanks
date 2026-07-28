@@ -7,8 +7,37 @@
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, rmdirSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
+
+// Exclusive run lock (controls_gunnery r3): parallel harness instances on one
+// machine starve each other's vite/Chromium cold starts into spurious
+// "Navigation timeout" gate failures. mkdir is the atomic primitive; a lock
+// older than 5 min is stale (crashed run) and is reclaimed.
+const LOCK_DIR = '/tmp/cot-shots.lock';
+const LOCK_STALE_MS = 5 * 60 * 1000;
+let lockHeld = false;
+async function acquireLock() {
+  const t0 = Date.now();
+  for (;;) {
+    try { mkdirSync(LOCK_DIR); lockHeld = true; return; } catch (_) { /* held */ }
+    try {
+      if (Date.now() - statSync(LOCK_DIR).mtimeMs > LOCK_STALE_MS) {
+        rmdirSync(LOCK_DIR);
+        continue;
+      }
+    } catch (_) { continue; } // vanished between calls — retry immediately
+    if (Date.now() - t0 > 10 * 60 * 1000) throw new Error('cot-shots lock timeout');
+    await new Promise((r) => setTimeout(r, 2000 + Math.random() * 1000));
+  }
+}
+function releaseLock() {
+  if (!lockHeld) return;
+  lockHeld = false;
+  try { rmdirSync(LOCK_DIR); } catch (_) { /* fine */ }
+}
+await acquireLock();
+process.on('exit', releaseLock);
 
 const args = process.argv.slice(2);
 function opt(name, fallback) {
@@ -26,6 +55,18 @@ const server = await createServer({
   root: process.cwd(),
   logLevel: 'error',
   server: { port, strictPort: false },
+  optimizeDeps: {
+    // tank_models r3: pre-bundle the lazy-loaded modules so dep discovery can
+    // never trigger a mid-capture page reload / stale-chunk 504
+    entries: ['index.html'],
+    include: [
+      'three',
+      'three/examples/jsm/loaders/GLTFLoader.js',
+      'three/examples/jsm/utils/SkeletonUtils.js',
+      'three/examples/jsm/utils/BufferGeometryUtils.js',
+      'three/examples/jsm/geometries/RoundedBoxGeometry.js',
+    ],
+  },
 });
 await server.listen();
 const actualPort = server.config.server.port;
@@ -47,8 +88,21 @@ page.on('pageerror', (err) => consoleErrors.push(String(err)));
 
 let failed = false;
 try {
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+  // tank_models/terrain_environment/hud_ui r3: one retry on navigation/ready
+  // timeout — cold vite transforms under machine load can legitimately exceed
+  // the old 30 s budget, and stale-dep 504s from a failed attempt are not
+  // capture errors.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
+      await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+      break;
+    } catch (err) {
+      if (attempt >= 1) throw err;
+      console.warn(`[shots] load attempt ${attempt + 1} failed (${err.message}) — retrying`);
+      consoleErrors.length = 0;
+    }
+  }
 
   const views = await page.evaluate(() =>
     window.__SHOTS && Array.isArray(window.__SHOTS.views) ? window.__SHOTS.views : []

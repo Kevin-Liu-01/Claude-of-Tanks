@@ -38,7 +38,9 @@ export default {
     // r5: darker packed track — the old near-sand tint made the desert road a
     // faint smear across the dunes
     roadTint: [0.94, 0.87, 0.76],
-    strata: 0.22,           // horizontal rock banding on the mesa cliff walls
+    // r6: 0.22 -> 0.30 — the strata beds must dominate the cliff read so any
+    // residual planar-UV stretch registers as sediment layers, not smear
+    strata: 0.30,
     microAmp: 0.3,          // tame the near-field dot speckle (ripples instead)
     rippleDir: [0.8, 0.6],  // global wind direction for the sand ripples
     rippleAmp: 0.26,        // anisotropic ripple normal strength
@@ -60,20 +62,28 @@ export default {
     clusterCount: 19,
     loneCount: 68,
     rimCount: 30,
-    grassDensity: 0.3,
+    // r6: 0.3 -> 0.42 — compensates the stricter two-scale thicket gating so
+    // scrub concentrates into dense wadis instead of thinning out overall
+    grassDensity: 0.42,
     // pale sun-bleached straw: the old darker olive tufts/scrub read as
     // black pepper speckle against the bright sand in establishing shots
     grassTexTone: (h, s, l) => [0.112, clamp01(s * 0.55), clamp01(l * 1.05 + 0.14)],
     tuftTone: (h, s, l) => [0.115, 0.20, clamp01(l * 0.95 + 0.18)],
-    bushCount: 0.7,
+    bushCount: 0.9, // r6: same budget-compensation as grassDensity
     bushSpecies: 'oak',
     palettes: {
       oak: { // dusty olive scrub, lifted toward sage so it sits on bright sand
         texTone: (h, s, l) => [0.15, clamp01(s * 0.55), clamp01(l * 1.0 + 0.07)],
         canopy: { hue: 0.16, sat: 0.20, l0: 0.26, l1: 0.40 },
       },
-      palm: { // richer frond green for the oasis crowns
-        canopy: { hue: 0.245, sat: 0.34, l0: 0.21, l1: 0.36 },
+      palm: { // r6: fronds desaturated + darkened ~20% — the old bright toy-
+        // plastic green crowns broke the muted sand grade in the foreground;
+        // dusty date-palm olive sits in the scene palette instead
+        texTone: (h, s, l) => [clamp01(h * 0.99), clamp01(s * 0.74), clamp01(l * 0.80)],
+        cardHue: 0.235, cardSat: 0.20,
+        // near-LOD blade vertex tint (buildPalmGeometry pal.frond): khaki-olive
+        frond: { hue: 0.19, sat: 0.19, l: 0.41 },
+        canopy: { hue: 0.24, sat: 0.26, l0: 0.17, l1: 0.29 },
       },
     },
   },
@@ -102,8 +112,10 @@ export default {
     // banding up / grain down (r3): the far canyon walls must read as
     // stratified sandstone beds, not vertical fiber — constant-altitude
     // strata survive grazing angles where granular grain smears
-    baseHex: 0xa87c4e, amp: 1.15, style: 'mesa', banding: 0.24,
-    rockHex: 0x96603a, haze: 0.85, grain: 0.9,
+    // r6: banding up / grain down again — constant-altitude beds are the only
+    // feature that survives grazing-angle minification on the far ring
+    baseHex: 0xa87c4e, amp: 1.15, style: 'mesa', banding: 0.30,
+    rockHex: 0x96603a, haze: 0.85, grain: 0.7,
   },
 
   sky: {

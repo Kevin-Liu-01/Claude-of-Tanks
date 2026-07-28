@@ -122,6 +122,15 @@ const AERIAL_HAZE_DENSITY = 0.00078; // 1/m, slower second curve for scatter-in
 const AERIAL_WARM_TINT = [1.16, 1.035, 0.86];
 const AERIAL_COOL_TINT = [0.86, 0.95, 1.13];
 const AERIAL_SUN_POW = 5.0; // width of the warm forward-scatter lobe
+// r8 highlight rolloff ("horizon haze blows out to clipped pure white — the
+// left half of battlefield_desert loses all sand/mesa contrast into white"):
+// the scatter-in TARGET is the fog color x the warm tint, and on bright-sky
+// maps that product sat near diffuse white in linear space, so every distant
+// pixel converged on white. Cap the scatter-in targets' linear luminance at
+// haze-albedo level (~0.50 → ~210/255 display after ACES + grade): distance
+// still pulls the far field into atmosphere, but the atmosphere itself can
+// never reach the clipped-white band, so mesa/ridge/sand contrast survives.
+const AERIAL_HAZE_LUM_CAP = 0.50;
 
 const AerialShader = {
   name: 'AerialPerspectiveShader',
@@ -261,6 +270,20 @@ const GRADE_GREEN_DESAT = 0.09; // chroma pull-back on green-dominant pixels
 const GRADE_SHADOW_TINT = [0.950, 0.990, 1.070]; // cool blue-grey shadows
 const GRADE_HIGH_TINT = [1.060, 1.008, 0.945]; // warm sun-kissed highlights
 
+// SNIPER SCOPE TREATMENT (r8 — "sniper view has no scope treatment at all: no
+// vignette, no edge blur, it is the raw frame with HUD lines"). Applied in
+// THIS pass (last in the chain) and gated per frame on the rig's live
+// `camera.userData.scoped` flag — the same flag the harness's snapSniper()
+// sets — so the treatment can never miss the capture path again:
+//  - a circular sight-picture vignette (aspect-corrected, so it reads as a
+//    scope tube, not a screen-corner gradient),
+//  - a mild radial blur past ~80% of the picture radius (optics falloff).
+const SCOPE_VIGNETTE_START = 0.66; // radius where darkening begins (1 = mid-edge)
+const SCOPE_VIGNETTE_END = 1.42; // radius of full black (past the corners)
+const SCOPE_VIGNETTE_MAX = 0.82; // darkening at SCOPE_VIGNETTE_END
+const SCOPE_BLUR_START = 0.80; // radius where the radial blur fades in
+const SCOPE_BLUR_STEP = 0.011; // UV step of the 4-tap radial blur at full blur
+
 const GradeShader = {
   name: 'GradeShader',
   uniforms: {
@@ -273,6 +296,8 @@ const GradeShader = {
     uShadowTint: { value: new THREE.Vector3(...GRADE_SHADOW_TINT) },
     uHighTint: { value: new THREE.Vector3(...GRADE_HIGH_TINT) },
     uGreenWarm: { value: new THREE.Vector3(...GRADE_GREEN_WARM) },
+    uScope: { value: 0 }, // 0 = arcade, 1 = sniper (eased by render())
+    uAspect: { value: 16 / 9 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -290,9 +315,30 @@ const GradeShader = {
     uniform vec3 uShadowTint;
     uniform vec3 uHighTint;
     uniform vec3 uGreenWarm;
+    uniform float uScope;
+    uniform float uAspect;
     varying vec2 vUv;
     void main() {
       vec4 texel = texture2D( tDiffuse, vUv );
+      // sniper scope: radial optics blur past ~80% of the sight-picture
+      // radius (aspect-corrected circle) — sampled BEFORE the grade so the
+      // blurred edge goes through the exact same color pipeline
+      float scopeR = 0.0;
+      if ( uScope > 0.001 ) {
+        vec2 sq = ( vUv - 0.5 ) * vec2( uAspect, 1.0 );
+        scopeR = length( sq ) * 2.0;
+        float blurW = uScope * smoothstep( ${SCOPE_BLUR_START.toFixed(3)}, ${(SCOPE_BLUR_START + 0.45).toFixed(3)}, scopeR );
+        if ( blurW > 0.001 ) {
+          vec2 st = ( sq / max( scopeR, 1e-4 ) ) / vec2( uAspect, 1.0 )
+            * ${SCOPE_BLUR_STEP.toFixed(4)} * blurW;
+          vec4 acc = texel;
+          acc += texture2D( tDiffuse, vUv - st * 1.5 );
+          acc += texture2D( tDiffuse, vUv - st * 0.75 );
+          acc += texture2D( tDiffuse, vUv + st * 0.75 );
+          acc += texture2D( tDiffuse, vUv + st * 1.5 );
+          texel = acc * 0.2;
+        }
+      }
       vec3 col = texel.rgb;
       // fixed warm white balance — identical for every camera/shot
       col = clamp( col * uBalance, 0.0, 1.0 );
@@ -322,9 +368,22 @@ const GradeShader = {
       // vignette (radial, corners only)
       vec2 q = vUv - 0.5;
       col *= 1.0 - uVignette * smoothstep( 0.3, 0.72, dot( q, q ) * 2.0 );
+      // sniper scope tube vignette: circular, much heavier than the filmic
+      // corner vignette — the sight picture reads as viewed through optics
+      if ( uScope > 0.001 ) {
+        col *= 1.0 - uScope * ${SCOPE_VIGNETTE_MAX.toFixed(3)}
+          * smoothstep( ${SCOPE_VIGNETTE_START.toFixed(3)}, ${SCOPE_VIGNETTE_END.toFixed(3)}, scopeR );
+      }
       gl_FragColor = vec4( col, texel.a );
     }`,
 };
+
+/** Scale a linear color down so its Rec709 luminance is <= maxLum (hue kept).
+ * @param {THREE.Color} c @param {number} maxLum @returns {void} */
+function capLuminance(c, maxLum) {
+  const lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+  if (lum > maxLum) c.multiplyScalar(maxLum / lum);
+}
 
 /**
  * @typedef {object} Post
@@ -421,7 +480,20 @@ export function createPost(renderer, scene, camera) {
   // instead: full AO to 260 m, gone by 420 m, comfortably past every gameplay
   // camera (sniper zoom included — the aerial haze owns the far field there).
   {
-    const AO_FADE = 'ao = mix( ao, 1., smoothstep( 260., 420., length( viewPos ) ) );';
+    // r8: fade band 260-420 → 300-460. The urban establishing shot framed
+    // whole rowhouse blocks in the 260-420 m band with their wall/ground
+    // junction AO already faded out — facades floated on the grass. The
+    // horizon-ring fence still holds: the nearest ridge faces any harness
+    // camera sees are 500 m+ away (the sub-460 m ring arc is always behind
+    // the establishing cameras).
+    // r8 AO NOISE FLOOR: shallow open-terrain occlusion (rolling turf
+    // concavities at ao 0.8-0.95) survived the pow(ao, 3.3) deepening as
+    // soft dark dapple with no visible caster on open grass. Kill only the
+    // SHALLOW tail — occlusion under 3% vanishes, 20%+ (real contact
+    // corners) passes through untouched — so hull/building grounding keeps
+    // its full depth while open fields come out clean.
+    const AO_FADE = 'ao = 1.0 - ( 1.0 - ao ) * smoothstep( 0.03, 0.20, 1.0 - ao );'
+      + '\n\t\t\tao = mix( ao, 1., smoothstep( 300., 460., length( viewPos ) ) );';
     const AO_ANCHOR = 'ao = pow(ao, scale);';
     const src = gtao.gtaoMaterial.fragmentShader;
     const patched = src.replace(AO_ANCHOR, `${AO_FADE}\n\t\t\t${AO_ANCHOR}`);
@@ -487,7 +559,8 @@ export function createPost(renderer, scene, camera) {
   // sees — which is also where the algorithm was designed to operate.
   composer.addPass(new OutputPass()); // 4. ACES + sRGB
   composer.addPass(new SMAAPass()); // 5. AA in display space, post-tonemap
-  composer.addPass(new ShaderPass(GradeShader)); // 6. display-space grade — LAST
+  const grade = new ShaderPass(GradeShader);
+  composer.addPass(grade); // 6. display-space grade (+ scope treatment) — LAST
 
   // --- Quality-aware sizing --------------------------------------------------
   // The composer's pixel ratio is the renderer's, CAPPED by the preset
@@ -540,6 +613,19 @@ export function createPost(renderer, scene, camera) {
       // aerial distance reconstruction exact
       aerial.uniforms.uNear.value = camera.near;
       aerial.uniforms.uFar.value = camera.far;
+      // scope treatment follows the rig's live scoped flag (snapSniper sets
+      // it too, so harness captures get the exact same treatment). Eased
+      // over ~5 frames so live scope-in reads as a transition, not a pop;
+      // deterministic captures run several settle frames, so they land on
+      // the converged value.
+      {
+        const target = camera.userData.scoped ? 1 : 0;
+        const cur = grade.uniforms.uScope.value;
+        grade.uniforms.uScope.value = Math.abs(target - cur) < 0.01
+          ? target
+          : cur + (target - cur) * 0.45;
+        grade.uniforms.uAspect.value = camera.aspect || (16 / 9);
+      }
       // scatter-in targets follow the sky-sampled fog color (map switches),
       // split into a warm (sunward) and cool (anti-sun) pole
       if (scene.fog) {
@@ -548,6 +634,8 @@ export function createPost(renderer, scene, camera) {
           fc.r * AERIAL_WARM_TINT[0], fc.g * AERIAL_WARM_TINT[1], fc.b * AERIAL_WARM_TINT[2]);
         aerial.uniforms.uHazeCool.value.setRGB(
           fc.r * AERIAL_COOL_TINT[0], fc.g * AERIAL_COOL_TINT[1], fc.b * AERIAL_COOL_TINT[2]);
+        capLuminance(aerial.uniforms.uHazeWarm.value, AERIAL_HAZE_LUM_CAP);
+        capLuminance(aerial.uniforms.uHazeCool.value, AERIAL_HAZE_LUM_CAP);
       }
       // camera basis + sun direction for the per-pixel directional tint
       {

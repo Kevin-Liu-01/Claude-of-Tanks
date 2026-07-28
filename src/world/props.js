@@ -492,23 +492,49 @@ function makeRowhouse(rng, buckets, wallBucket = 'plaster', dims = null) {
     parts.roof.push(slab);
   }
   parts.stone.push(box(0.6, 1.5, 0.6).translate(-w * 0.24, wallH + roofH - 0.1, -d * 0.2)); // chimney
-  // window grids on the long sides
+  // window grids on the long sides.
+  // r6: ground floors get STREET LIFE — one door or shopfront slot per long
+  // side, and ~40% of buildings hang wooden shutters beside their windows.
+  // The critique: two facade materials with identical punched black window
+  // rectangles and "no street-level doors, shutters, or signage visible".
+  const doorK = [(rng() * 97) | 0, (rng() * 97) | 0]; // per-side door slot (mod nwn below)
+  const shutters = rng() < 0.4;
   for (let st = 0; st < stories; st++) {
     const wy = 1.8 + st * 2.9;
     const nwn = Math.max(2, (d / 2.6) | 0);
     for (let k = 0; k < nwn; k++) {
       const zz = -d / 2 + (k + 0.5) * (d / nwn);
       for (const side of [-1, 1]) {
+        const wx = side * (w / 2);
+        if (st === 0 && k === doorK[side < 0 ? 0 : 1] % nwn) {
+          if (rng() < 0.45) {
+            // shopfront: wide display glass, stall riser, lintel + signboard
+            parts.dark.push(box(0.07, 1.55, 1.90).translate(wx + side * 0.02, 1.38, zz));
+            parts.stone.push(box(0.16, 0.42, 2.06).translate(wx + side * 0.05, 0.32, zz));
+            parts.wood.push(box(0.10, 0.15, 2.10).translate(wx + side * 0.055, 2.28, zz));
+            parts.wood.push(box(0.09, 0.44, 1.72).translate(wx + side * 0.065, 2.66, zz));
+          } else {
+            // street door: wood leaf in a proud frame, lintel, stone step
+            parts.wood.push(box(0.10, 2.24, 1.08).translate(wx + side * 0.03, 1.14, zz));
+            parts.dark.push(box(0.06, 2.02, 0.86).translate(wx + side * 0.085, 1.05, zz));
+            parts.wood.push(box(0.11, 0.15, 1.32).translate(wx + side * 0.055, 2.34, zz));
+            parts.stone.push(box(0.36, 0.16, 1.26).translate(wx + side * 0.16, 0.10, zz));
+          }
+          continue;
+        }
         if (rng() < 0.12) continue;
         // framed windows with a faked reveal: the pane sits barely proud of
         // the wall while jambs/lintel stand ~5 cm prouder and a stone sill
         // closes the bottom — the glass reads recessed, not painted on
-        const wx = side * (w / 2);
         parts.dark.push(box(0.05, 1.25, 0.82).translate(wx + side * 0.012, wy, zz));
         parts.wood.push(box(0.09, 1.36, 0.09).translate(wx + side * 0.045, wy, zz - 0.44));
         parts.wood.push(box(0.09, 1.36, 0.09).translate(wx + side * 0.045, wy, zz + 0.44));
         parts.wood.push(box(0.09, 0.09, 0.97).translate(wx + side * 0.045, wy + 0.66, zz));
         parts.stone.push(box(0.14, 0.10, 1.0).translate(wx + side * 0.05, wy - 0.70, zz));
+        if (shutters && rng() < 0.8) {
+          parts.wood.push(box(0.05, 1.24, 0.30).translate(wx + side * 0.03, wy, zz - 0.70));
+          parts.wood.push(box(0.05, 1.24, 0.30).translate(wx + side * 0.03, wy, zz + 0.70));
+        }
       }
     }
     // gable-face windows
@@ -1352,13 +1378,18 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
   }
 
   // --- street rubble piles (urban): heaped masonry chunks + broken beams ---
+  // r6: every 4th candidate may land in a 90 m OUTSKIRT band around the town
+  // rect — shelled approaches carry debris too; the establishing camera used
+  // to frame nothing but clean lawn between itself and the first block
   if (P.rubblePiles > 0) {
     const rrng = mulberry32(seed + 403);
     for (let i = 0, placed = 0; i < P.rubblePiles * 14 && placed < P.rubblePiles; i++) {
-      const x = v.x0 + rrng() * (v.x1 - v.x0);
-      const z = v.z0 + rrng() * (v.z1 - v.z0);
+      const ext = (i % 4 === 0) ? 90 : 0;
+      const x = v.x0 - ext + rrng() * (v.x1 - v.x0 + ext * 2);
+      const z = v.z0 - ext + rrng() * (v.z1 - v.z0 + ext * 2);
+      const outskirt = x < v.x0 || x > v.x1 || z < v.z0 || z > v.z1;
       const rd = heightField._roadDist(x, z);
-      if (rd < 4.5 || rd > 16) continue; // flank the streets, keep lanes open
+      if (rd < 4.5 || rd > (outskirt ? 70 : 16)) continue; // keep lanes open
       let clear = true;
       for (const pb of placedB) if (Math.hypot(x - pb.x, z - pb.z) < pb.rr + 2.5) { clear = false; break; }
       if (!clear) continue;
@@ -1375,6 +1406,10 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
   // --- street curbs (town maps): raised stone kerb lines along both sides of
   // every street inside the town rect, broken at crossings ---
   if (P.curbs) {
+    // r6: urban kerbs/pavements read as CONCRETE, not planks — the urban
+    // stone bucket is Bricks097 and its elongated courses on thin slabs read
+    // as wooden boardwalk; route them to the plaster bucket on urban only
+    const kerbBucket = mapId === 'urban' ? 'plaster' : 'stone';
     for (let ri = 0; ri < roads.length; ri++) {
       const nodes = roads[ri];
       for (let i = 0; i < nodes.length - 1; i++) {
@@ -1398,7 +1433,7 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
             jitterUV(g, rng);
             g.rotateY(yaw);
             g.translate(px, y + 0.06, pz);
-            buckets.stone.push(g);
+            buckets[kerbBucket].push(g);
             // r5: PAVEMENT slab behind the kerb — a 2.2 m sidewalk strip
             // flanking every street, pitched to the terrain per sub-segment.
             // The critique's "town = boxes dropped on a lawn" came straight
@@ -1412,7 +1447,7 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
             walk.rotateZ(Math.atan2(h1 - h0, segLen));
             walk.rotateY(yaw);
             walk.translate((sx0 + sx1) / 2, (h0 + h1) / 2 + 0.10, (sz0 + sz1) / 2);
-            buckets.stone.push(walk);
+            buckets[kerbBucket].push(walk);
           }
         }
       }

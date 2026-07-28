@@ -1,7 +1,9 @@
 // src/ui/damagePanel.js — bottom-left player damage panel, WoT panel
 // language: a single CLEAN side-profile silhouette of the vehicle (its own
-// pre-rendered side_silhouette.png — turret + hull + running gear outline)
-// with NOTHING else while healthy. Module and crew state only APPEARS on
+// pre-rendered side_silhouette.png, whip antenna stripped by a horizontal
+// morphological opening) carrying whisper-contrast INTERNAL structure —
+// track-run separator, module compartment outlines, crew station dots — so
+// it reads as an instrument (hud_ui r3), while loud state only APPEARS on
 // damage: lit orange/red module icons at fixed anchors on the hull, hit-zone
 // floods, and red crew chips. No letterforms inside the silhouette, ever
 // (hud_ui r2: the always-on white glyphs read as illegible glyph soup).
@@ -92,12 +94,56 @@ function hpColor(frac) {
 const silCache = new Map(); // specId -> { img, bbox:[x,y,w,h], body, rim } | 'pending'
 function tintCanvas(img, color) {
   const c = document.createElement('canvas');
-  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  c.width = img.naturalWidth || img.width;
+  c.height = img.naturalHeight || img.height;
   const x = c.getContext('2d');
   x.drawImage(img, 0, 0);
   x.globalCompositeOperation = 'source-in';
   x.fillStyle = color;
   x.fillRect(0, 0, c.width, c.height);
+  return c;
+}
+// Horizontal morphological OPENING on the alpha channel (erode then dilate,
+// X axis only): removes any feature narrower than ~2R+1 px in X — the whip
+// antenna and rooftop MG stalks that rendered as distracting full-height
+// strokes (hud_ui r3) — while the gun barrel, hull and turret (long or wide
+// in X) survive untouched.
+function stripThinVerticals(img) {
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const x = c.getContext('2d');
+  x.drawImage(img, 0, 0);
+  const id = x.getImageData(0, 0, w, h);
+  const a = id.data;
+  const R = Math.max(2, Math.round(w / 128)); // ~2px at 256
+  const er = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    for (let i = 0; i < w; i++) {
+      let m = 255;
+      for (let k = -R; k <= R; k++) {
+        const xi = i + k;
+        const v = xi < 0 || xi >= w ? 0 : a[(row + xi) * 4 + 3];
+        if (v < m) m = v;
+      }
+      er[row + i] = m;
+    }
+  }
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    for (let i = 0; i < w; i++) {
+      let m = 0;
+      for (let k = -R; k <= R; k++) {
+        const xi = i + k;
+        const v = xi < 0 || xi >= w ? 0 : er[row + xi];
+        if (v > m) m = v;
+      }
+      const o = (row + i) * 4;
+      if (m < a[o + 3]) a[o + 3] = m;
+    }
+  }
+  x.putImageData(id, 0, 0);
   return c;
 }
 function sideSilhouette(specId, onReady) {
@@ -107,12 +153,13 @@ function sideSilhouette(specId, onReady) {
   silCache.set(specId, 'pending');
   const img = new Image();
   img.onload = () => {
+    const src = stripThinVerticals(img); // antenna/MG-stalk removal
     // measure the opaque content box on a 128px probe (cheap, alpha only)
     const P = 128;
     const probe = document.createElement('canvas');
     probe.width = P; probe.height = P;
     const px2 = probe.getContext('2d');
-    px2.drawImage(img, 0, 0, P, P);
+    px2.drawImage(src, 0, 0, P, P);
     const d = px2.getImageData(0, 0, P, P).data;
     let x0 = P, y0 = P, x1 = 0, y1 = 0;
     for (let y = 0; y < P; y++) {
@@ -124,12 +171,12 @@ function sideSilhouette(specId, onReady) {
       }
     }
     if (x1 <= x0 || y1 <= y0) { x0 = 0; y0 = 0; x1 = P - 1; y1 = P - 1; }
-    const sx = img.naturalWidth / P, sy = img.naturalHeight / P;
+    const sx = src.width / P, sy = src.height / P;
     const entry = {
-      img,
+      img: src,
       bbox: [x0 * sx, y0 * sy, (x1 - x0 + 1) * sx, (y1 - y0 + 1) * sy],
-      rim: tintCanvas(img, 'rgba(232,242,250,0.96)'),
-      body: tintCanvas(img, '#2c343c'),
+      rim: tintCanvas(src, 'rgba(232,242,250,0.96)'),
+      body: tintCanvas(src, '#2c343c'),
     };
     silCache.set(specId, entry);
     if (onReady) onReady();
@@ -357,22 +404,82 @@ export function createDamagePanel() {
   // tank) projected into the side view, so damage states light up real
   // hit-zones on the silhouette. Zones are INVISIBLE while healthy.
   const REGION_MODULES = ['engine', 'ammoRack', 'fuelTank'];
-  function drawModuleRegions(tPivot) {
+  function drawModuleRegions(tPivot, dimHealthy) {
     const mods = (spec.armor && spec.armor.modules) || [];
     for (const m of mods) {
       if (REGION_MODULES.indexOf(m.module) < 0 || !m.min || !m.max) continue;
       const st = moduleState(m.module);
-      if (st === 'ok') continue;
+      if (st === 'ok' && !dimHealthy) continue;
       let z0 = m.min[2], z1 = m.max[2], y0 = m.min[1], y1 = m.max[1];
       if (m.turretLocal) { z0 += tPivot[2]; z1 += tPivot[2]; y0 += tPivot[1]; y1 += tPivot[1]; }
       const rx = sx(z0), ry = sy(y1);
       const rw = sx(z1) - rx, rh = sy(y0) - ry;
-      ctx.fillStyle = STATE_COLOR[st] + '46';
-      ctx.strokeStyle = STATE_COLOR[st];
+      if (st === 'ok') {
+        // dim placeholder hotspot (hud_ui r3): faint compartment outline so
+        // the healthy silhouette reads as an instrument with internal
+        // structure — it lights orange/red through the branch below on damage
+        ctx.fillStyle = 'rgba(226,238,248,0.05)';
+        ctx.strokeStyle = 'rgba(226,238,248,0.22)';
+      } else {
+        ctx.fillStyle = STATE_COLOR[st] + '46';
+        ctx.strokeStyle = STATE_COLOR[st];
+      }
       ctx.lineWidth = 1;
       ctx.fillRect(rx, ry, rw, rh);
       ctx.strokeRect(rx, ry, rw, rh);
     }
+  }
+
+  // y of the running-gear top edge in canvas space (track module box top,
+  // falling back to a hull-fraction estimate)
+  function trackTopY() {
+    const mods = (spec.armor && spec.armor.modules) || [];
+    for (const m of mods) {
+      if ((m.module === 'trackL' || m.module === 'trackR') && m.max) {
+        return sy(m.max[1]);
+      }
+    }
+    return destY + destH * 0.72;
+  }
+
+  // Dim structural pass (drawn source-atop, i.e. clipped to the silhouette):
+  // track-run separator, module compartments, crew station dots. WoT's panel
+  // earns its space by promising module/crew feedback — the healthy state
+  // shows the same internal geography at whisper contrast.
+  function drawStructure(tPivot) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-atop';
+    // track-run separator: hull floor vs running gear
+    const ty = trackTopY();
+    ctx.strokeStyle = 'rgba(226,238,248,0.26)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(destX + destW * 0.03, ty + 0.5);
+    ctx.lineTo(destX + destW * 0.97, ty + 0.5);
+    ctx.stroke();
+    // module compartments (engine / ammo rack / fuel), dim while healthy
+    drawModuleRegions(tPivot, true);
+    // crew stations: small dots — hollow while alive, red fill when the
+    // member is knocked out (mirrors the crew chip row below the canvas)
+    const crewBoxes = (spec.armor && spec.armor.crew) || [];
+    for (const cb of crewBoxes) {
+      if (!cb.min || !cb.max) continue;
+      let cz = (cb.min[2] + cb.max[2]) / 2;
+      let cy2 = (cb.min[1] + cb.max[1]) / 2;
+      if (cb.turretLocal) { cz += tPivot[2]; cy2 += tPivot[1]; }
+      const dead = combat && combat.crew && combat.crew[cb.crew] === false;
+      ctx.beginPath();
+      ctx.arc(sx(cz), sy(cy2), 2.1, 0, Math.PI * 2);
+      if (dead) {
+        ctx.fillStyle = STATE_COLOR.red;
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = 'rgba(226,238,248,0.30)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
   }
 
   // Vector stand-in for the first few frames while the silhouette PNG
@@ -438,11 +545,12 @@ export function createDamagePanel() {
       destX = (CW - destW) / 2;
       destY = (CH - destH) / 2;
       // crisp bright contour: eight offset passes of the near-white tint at
-      // ~full alpha build a sharp 1.5px outline (WoT's white schematic edge)
+      // ~full alpha build a sharp ~1px outline (WoT's white schematic edge —
+      // r3: the old 1.5px offsets fattened the road wheels into blobs)
       ctx.globalAlpha = 0.92;
       for (const [ox, oy] of [
-        [-1.5, 0], [1.5, 0], [0, -1.5], [0, 1.5],
-        [-1, -1], [1, -1], [-1, 1], [1, 1],
+        [-1, 0], [1, 0], [0, -1], [0, 1],
+        [-0.7, -0.7], [0.7, -0.7], [-0.7, 0.7], [0.7, 0.7],
       ]) {
         ctx.drawImage(sil.rim, bx, by, bw, bh, destX + ox, destY + oy, destW, destH);
       }
@@ -450,6 +558,8 @@ export function createDamagePanel() {
       ctx.globalAlpha = 0.97;
       ctx.drawImage(sil.body, bx, by, bw, bh, destX, destY, destW, destH);
       ctx.globalAlpha = 1;
+      // internal instrument lines, clipped to the silhouette
+      drawStructure(tPivot);
     } else {
       destW = CW - 10; destH = CH - 20;
       destX = 5; destY = 10;

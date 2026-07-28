@@ -87,6 +87,16 @@ const UNDER_FIRE_WINDOW_S = 15;       // chase/engage window after a team hit
 const UNDER_FIRE_RANGE_BONUS_M = 180; // engage-envelope extension toward the shooter
 const PLAYER_THREAT_DIST_MULT = 0.35; // player counts as 35% of its true d² when ranking targets
 
+// HEADING COMMITMENT (controls_gunnery r3): approach/chase legs used to steer
+// at the LIVE target position every tick, so bots wove continuously (speed
+// oscillating 1-14 m/s) and a constant-velocity lead solution NEVER converged
+// — a settled 14-shell volley went 0/14 on a 415 m mover. Bots now commit to
+// a chase point for 3-5 s (re-picked early only if the target displaces far),
+// so leading a distant mover is learnable, exactly like WoT bots.
+const CHASE_COMMIT_MIN_S = 3.0;
+const CHASE_COMMIT_VAR_S = 2.0;
+const CHASE_REPICK_DIST_M = 60;
+
 // Module-scope scratch vectors (no per-frame allocation, §1.3).
 const _vA = new Vector3();
 const _vB = new Vector3();
@@ -305,6 +315,36 @@ export function createAI(entity, opts = {}) {
       if (vis) {
         lastSeen.x = tp.x; lastSeen.z = tp.z;
         lastSeenAtS = timeS;
+      }
+      // PLAYER RE-PRIORITIZATION (controls_gunnery r3): target-keeping was
+      // absolute — a bot that opened on an allied bot never re-ranked, so
+      // tier-X enemies spent whole battles shooting the player's escorts
+      // while the player sat in the open untouched (90 s window: zero hits
+      // on the player from the Leo 2A7 / IS-3). On the LOS cadence, a
+      // SPOTTED player with a clear personal ray steals the slot whenever
+      // its threat-weighted distance (PLAYER_THREAT_DIST_MULT) beats the
+      // current target's — same ranking rule the fresh-scan path uses.
+      if (!target.isPlayer && losClear) {
+        for (let i = 0; i < list.length; i++) {
+          const p = list[i];
+          if (!p || !p.isPlayer || !enemyAlive(p) || !isVisibleToTeam(p)) continue;
+          const pp = p.state.pos;
+          const pdx = pp.x - ex, pdz = pp.z - ez;
+          const cdx = tp.x - ex, cdz = tp.z - ez;
+          const pEff = (pdx * pdx + pdz * pdz) * PLAYER_THREAT_DIST_MULT;
+          if (pEff < cdx * cdx + cdz * cdz &&
+              hasLos(ex, ey, ez, pp.x, eyeY(p), pp.z)) {
+            target = p;
+            losClear = true;
+            acquiredAtS = timeS;
+            lastSeenAtS = timeS;
+            lastSeen.x = pp.x; lastSeen.z = pp.z;
+            nonPenCount = 0;
+            probeTimer = 0;
+          }
+          break;
+        }
+        if (target.isPlayer) return;
       }
       if (timeS - lastSeenAtS <= TARGET_MEMORY_S) return;
       target = null; // memory expired — rescan below
@@ -555,6 +595,23 @@ export function createAI(entity, opts = {}) {
     return false;
   }
 
+  // HEADING COMMITMENT (r3): committed chase point for moving-destination
+  // legs. driveToXZ keeps its per-tick steering; only the DESTINATION is
+  // frozen for the commit window so the hull holds a near-constant velocity.
+  const chasePoint = { x: 0, z: 0 };
+  let chaseUntilS = -1;
+  function chaseToXZ(input, x, z, speedScale) {
+    if (nowS >= chaseUntilS ||
+        Math.hypot(x - chasePoint.x, z - chasePoint.z) > CHASE_REPICK_DIST_M) {
+      chasePoint.x = x;
+      chasePoint.z = z;
+      chaseUntilS = nowS + CHASE_COMMIT_MIN_S + rng() * CHASE_COMMIT_VAR_S;
+    }
+    const arrived = driveToXZ(input, chasePoint.x, chasePoint.z, speedScale);
+    if (arrived) chaseUntilS = -1; // reached the frozen point — re-pick now
+    return arrived;
+  }
+
   /** Pivot in place to face a world yaw. */
   function faceYaw(input, wantYaw) {
     const st = entity.state;
@@ -599,7 +656,7 @@ export function createAI(entity, opts = {}) {
     if (!target) {
       // Chase the last known position, then fall back to patrol.
       if (timeS - lastSeenAtS < TARGET_MEMORY_S + 6 &&
-          !driveToXZ(input, lastSeen.x, lastSeen.z, 0.9)) return;
+          !chaseToXZ(input, lastSeen.x, lastSeen.z, 0.9)) return;
       mode = 'patrol';
       drivePatrol(input);
       return;
@@ -626,14 +683,14 @@ export function createAI(entity, opts = {}) {
         driveToXZ(input, vantage.x, vantage.z, 1.0);
         return;
       }
-      driveToXZ(input, lastSeen.x, lastSeen.z, 0.9);
+      chaseToXZ(input, lastSeen.x, lastSeen.z, 0.9); // committed leg (r3)
       return;
     }
     hasVantage = false; // ray is clear — fight from here
     const engageR = tier.engageRangeM +
       (timeS < underFireUntilS ? UNDER_FIRE_RANGE_BONUS_M : 0);
     if (distToTarget > engageR) {
-      driveToXZ(input, tp.x, tp.z, 1.0);
+      chaseToXZ(input, tp.x, tp.z, 1.0); // committed leg (r3) — leadable mover
       return;
     }
     if (hasMoveTarget) {                          // roll into the hull-down spot
@@ -641,7 +698,7 @@ export function createAI(entity, opts = {}) {
       return;
     }
     if (distToTarget > tier.holdRangeM) {         // creep closer while shooting
-      driveToXZ(input, tp.x, tp.z, 0.45);
+      chaseToXZ(input, tp.x, tp.z, 0.45); // committed leg (r3) — leadable mover
       return;
     }
     // Hold: face the target hull-on and shoot.

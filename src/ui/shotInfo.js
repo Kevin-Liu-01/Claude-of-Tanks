@@ -15,7 +15,7 @@
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
 import { maskIcon } from './icons.js';
-import { getSpec } from '../vehicles/specs.js';
+import { getSpec, ALL_TANK_IDS } from '../vehicles/specs.js';
 import { penAtDistanceMm } from '../sim/ballistics.js';
 
 const ICON_MARGIN = 1.07; // tools/icons-page.html bounding-box framing margin
@@ -291,9 +291,27 @@ function nominalPenFor(ev) {
   try {
     const spec = ev.attackerSpecId ? getSpec(ev.attackerSpecId) : null;
     const shells = spec && spec.gun ? spec.gun.shells : null;
-    if (!shells) return 0;
-    const sh = shells.find((s) => s.name === ev.shellName && s.type === ev.shellType)
-      || shells.find((s) => s.type === ev.shellType);
+    let sh = shells
+      ? (shells.find((s) => s.name === ev.shellName && s.type === ev.shellType)
+        || shells.find((s) => s.type === ev.shellType))
+      : null;
+    if (!sh && ev.shellName) {
+      // Payload carries no attackerSpecId (staged/legacy events): resolve the
+      // shell by exact identity across the whole roster. Only an UNAMBIGUOUS
+      // match is trusted — if two guns ship a same-named shell with different
+      // pen curves the baseline is omitted rather than guessed (the card must
+      // never lie). Same fallback as killcam.js.
+      let pen = -1;
+      for (const id of ALL_TANK_IDS) {
+        const g = getSpec(id).gun;
+        if (!g || !g.shells) continue;
+        for (const c of g.shells) {
+          if (c.name !== ev.shellName || c.type !== ev.shellType) continue;
+          const p = Math.round(penAtDistanceMm(c, ev.flightDistM || 0));
+          if (pen === -1) { pen = p; sh = c; } else if (p !== pen) return 0;
+        }
+      }
+    }
     return sh ? Math.round(penAtDistanceMm(sh, ev.flightDistM || 0)) : 0;
   } catch (_) { return 0; }
 }
@@ -807,6 +825,26 @@ export function createShotInfo(bus) {
       for (const r of ribbons) {
         el('span', 'cot-si-rib', rr).innerHTML = `${r.g}<span>${r.t}</span>`;
       }
+    }
+
+    // per-shot detail (WoT detailed-results depth — fills the dead space
+    // under the ribbons, r5 critique): the in-battle shot log surfaced on
+    // the report, chronological, straight from the same resolved shell:hit
+    // events the floating cards showed. Nothing recomputed.
+    if (shotLog.length) {
+      const sh2 = el('div', 'ph', right);
+      sh2.style.marginTop = '10px';
+      sh2.innerHTML = `<span>Your shots</span><span>last ${shotLog.length}</span>`;
+      for (let i = shotLog.length - 1; i >= 0; i--) {
+        const it = shotLog[i];
+        const r = el('div', 'cot-si-lrow', right);
+        r.innerHTML =
+          `<span class="b" style="color:${it.cls.col}">${it.cls.badge.split(' ')[0].split('·')[0]}</span>` +
+          `<span class="d">${(it.ev.damage || 0) > 0 ? `−${Math.round(it.ev.damage)}` : '·'}</span>` +
+          `<span class="n">${it.ev.targetName || it.ev.targetId || ''}</span>` +
+          `<span class="z">${zoneLabel(it.ev.zone)} · ${Math.round(it.ev.flightDistM || 0)}m</span>`;
+      }
+      statsRoot.dataset.reportShots = String(shotLog.length);
     }
 
     // damage-over-time strip: dealt (gold, up) mirrored vs received (red, down)

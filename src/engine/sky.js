@@ -43,9 +43,18 @@ const SKY_RADIANCE_SCALE = 0.38;
 // actual sun disc (lum >> 100) still reaches ~1.6 → blooms locally, reading
 // as a compact bright disc + halo instead of a screen-edge blowout. Scene
 // emissives (muzzle flash, tracers, fire) are untouched — Sky shader only.
-const SKY_KNEE = 1.2;
-const SKY_KNEE_RANGE = 0.5; // r4: 0.4 → 0.5 — the sun disc blooms a touch brighter
-const SKY_KNEE_FALLOFF = 0.125; // 1/e width of the shoulder in luminance units
+// r8 ("horizon haze blows out to clipped white: milky white-out quarter around
+// the sun azimuth, winter sky a flat white disc — haze + bloom stack with no
+// rolloff"): knee 1.2 → 1.0 and range 0.5 → 0.45 put the dome's ASYMPTOTE at
+// 1.45, safely under post.js's 1.55 bloom threshold — atmospheric scattering
+// can no longer feed the bloom pass at all (the "haze band + bloom" white-out
+// mechanism). Falloff 0.125 → 0.06 compresses the wide Mie halo (lum 2-6)
+// much harder — it lands at 1.03-1.12 instead of 1.25-1.35 — while the true
+// sun disc (lum >> 100) still reaches ~1.44 and keeps reading as the hottest
+// point in the sky.
+const SKY_KNEE = 1.0;
+const SKY_KNEE_RANGE = 0.45;
+const SKY_KNEE_FALLOFF = 0.06; // 1/e width of the shoulder in luminance units
 // Horizon haze treatment (r3 critique: "horizon band blows out to near pure
 // white with no hue — reads as fog-card overexposure"). Inside the low-
 // elevation band the dome's luminance is soft-compressed to sit ~10-15% below
@@ -70,13 +79,19 @@ const SKY_KNEE_FALLOFF = 0.125; // 1/e width of the shoulder in luminance units
 // scatter warm (Mie forward lobe), rays away scatter cool blue, and the
 // luminance ceiling itself dips ~10% on the anti-sun side — the standard
 // single-scattering horizon treatment.
-const HAZE_MAX_LUM = 0.64; // linear pre-ACES luminance ceiling in the band
+// r8: ceiling 0.64 → 0.56 and band top 0.18 → 0.24 — the near-horizon wash
+// still sat at display ~228-238 (a "clipped white" read even though the
+// values never hit 255); 0.56 lands it at ~215-220 with the directional hue
+// clearly legible, and the taller band grades the milky region above the
+// skyline instead of cutting off right at it. Fog + aerial scatter sample
+// this same band, so the far-field wash follows automatically.
+const HAZE_MAX_LUM = 0.56; // linear pre-ACES luminance ceiling in the band
 const HAZE_COMPRESS = 0.18; // slope retained above the ceiling
-const HAZE_BAND_TOP = 0.18; // direction.y where the haze treatment fades out
+const HAZE_BAND_TOP = 0.24; // direction.y where the haze treatment fades out
 const HAZE_TINT_COOL = [0.74, 0.88, 1.13]; // blue hue floor away from the sun
 const HAZE_TINT_WARM = [1.15, 1.00, 0.82]; // warm scatter toward the sun azimuth
 const HAZE_WARM_POW = 3.0; // azimuthal width of the warm lobe
-const HAZE_TINT_MIX = 0.58;
+const HAZE_TINT_MIX = 0.63;
 const SKY_DITHER = 0.004; // linear-space dither amplitude ~1 display LSB
 const SKY_FRAG_ANCHOR = 'gl_FragColor = vec4( texColor, 1.0 );';
 const SKY_DOME_SCALE = 10000; // must stay inside camera.far
@@ -457,28 +472,46 @@ function makeCirrusTexture() {
   const rng = mulberry32(CLOUD_SEED + 11);
   const fbm = makeFbm(rng, 4, 4);
   const fbmW = makeFbm(rng, 2, 3);
+  // r8 ("cirrus smears diagonally with uniform soft edges — no lit/shadowed
+  // cloud faces anywhere"): the veil was a single sheared fbm at one flat
+  // near-white tone. Three additions:
+  //  - a slow BANK mask splits the endless filament field into separate
+  //    cloud banks with real gaps (no more one continuous smear),
+  //  - a second, higher-frequency domain-warp octave crinkles the filament
+  //    edges so they stop being uniformly soft,
+  //  - TWO-TONE shading from the filament field's own directional
+  //    derivative: one edge of every filament is lit warm-white, the other
+  //    falls to the same cool grey-blue the cumulus shade pole uses.
+  const fbmB = makeFbm(rng, 2, 2); // bank mask (~whole-sky patches)
+  const fbmE = makeFbm(rng, 3, 14); // edge-crinkle octave
   const cnv = document.createElement('canvas');
   cnv.width = W;
   cnv.height = H;
   const ctx = cnv.getContext('2d');
   const img = ctx.createImageData(W, H);
   const px = img.data;
+  const LIT = [1.0, 0.99, 0.955];
+  const SHD = [0.66, 0.72, 0.85];
   for (let y = 0; y < H; y++) {
     const v = y / H;
     for (let x = 0; x < W; x++) {
       const u = x / W;
-      let wu = (u + (fbmW(u, v) - 0.5) * 0.16) % 1;
+      let wu = (u + (fbmW(u, v) - 0.5) * 0.16 + (fbmE(u, v) - 0.5) * 0.035) % 1;
       if (wu < 0) wu += 1;
-      // r6: shear x4 → x3 with more warp, threshold raised, alpha 0.85 → 0.6
-      // — the long high-contrast filaments read as smears once the infinite
-      // projection stretched them across the zenith; softer broken veils now.
-      const s = fbm(wu, (v * 3) % 1);
-      const a = smoothstepNum(0.56, 0.88, s);
+      const sv = (v * 3) % 1;
+      const s = fbm(wu, sv);
+      const bank = smoothstepNum(0.34, 0.60, fbmB(u, v));
+      const a = smoothstepNum(0.56, 0.88, s) * bank
+        * (0.62 + 0.38 * smoothstepNum(0.3, 0.7, fbmE(u + 0.31, v + 0.57)));
+      // directional derivative across the shear axis — lit edge vs shaded
+      // body (the deck shader rides this texture perpendicular to the
+      // cumulus sun rotation, so the axis choice reads as oblique sunlight)
+      const s2 = fbm(wu, (sv + 0.018) % 1);
+      const lit = clampNum((s - s2) * 9 + 0.55, 0, 1);
       const o = (y * W + x) * 4;
-      const lum = 0.90 + 0.10 * a;
-      px[o] = Math.round(250 * lum);
-      px[o + 1] = Math.round(252 * lum);
-      px[o + 2] = 255;
+      px[o] = Math.round(255 * (SHD[0] + (LIT[0] - SHD[0]) * lit));
+      px[o + 1] = Math.round(255 * (SHD[1] + (LIT[1] - SHD[1]) * lit));
+      px[o + 2] = Math.round(255 * (SHD[2] + (LIT[2] - SHD[2]) * lit));
       px[o + 3] = Math.round(255 * a * 0.6);
     }
   }
@@ -555,7 +588,26 @@ function sampleHorizonColor(renderer, sunDir, preset = DEFAULT_PRESET) {
   // Guard the degenerate case (context hiccup → black readback): fall back to
   // the hand-tuned preset rather than fogging the world to black.
   if (r + g + b < 0.01) return new THREE.Color(FALLBACK_HORIZON_HEX);
-  return new THREE.Color().setRGB(r, g, b, THREE.LinearSRGBColorSpace);
+  // r8 highlight-rolloff: everything downstream of this sample (FogExp2
+  // color, the aerial scatter-in targets in post.js, the cloud decks' haze
+  // pole) inherits its luminance — cap it below diffuse-white so no amount
+  // of fog/scatter stacking can pull large screen regions to a clipped
+  // white-out (the desert/winter far-field wash). Hue is preserved.
+  return capColorLuminance(
+    new THREE.Color().setRGB(r, g, b, THREE.LinearSRGBColorSpace), HORIZON_LUM_CAP);
+}
+
+// Linear-luminance ceiling for the horizon sample (see sampleHorizonColor).
+// 0.55 linear lands at ~215/255 display after ACES + grade — a bright haze
+// that still reads as atmosphere, never as blown white.
+const HORIZON_LUM_CAP = 0.55;
+
+/** Scale a linear color down so its Rec709 luminance is <= maxLum (hue kept).
+ * @param {THREE.Color} c @param {number} maxLum @returns {THREE.Color} c */
+function capColorLuminance(c, maxLum) {
+  const lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+  if (lum > maxLum) c.multiplyScalar(maxLum / lum);
+  return c;
 }
 
 /**

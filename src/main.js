@@ -113,8 +113,11 @@ fx.bindBus(bus);
 // Per-wheel suspension: give every battle tank the live heightfield so road
 // wheels conform to terrain (garage pedestal tank stays rigid on its disc).
 const groundSampler = (x, z) => hfProxy.getHeightAt(x, z);
+// PERF (performance_budget r4): pool visuals are lazy — remember the sampler
+// on the game state so ensureTankVisual applies it to visuals built later.
+game._groundSampler = groundSampler;
 for (const ent of game.allTanks) {
-  if (ent.visual.setGroundSampler) ent.visual.setGroundSampler(groundSampler);
+  if (ent.visual && ent.visual.setGroundSampler) ent.visual.setGroundSampler(groundSampler);
 }
 
 // De-track visuals: thrown/repaired track bands follow the module state.
@@ -139,6 +142,17 @@ spotTarget.position.set(GARAGE_POS.x, GARAGE_POS.y + 1.2, GARAGE_POS.z);
 scene.add(spotTarget, spotA, spotB);
 spotA.target = spotTarget;
 spotB.target = spotTarget;
+// PERF (performance_budget r4): the garage spots light NOTHING in battle (60 m
+// range, garage is 1500+ m from the battlefield) yet every battle draw paid
+// their per-material spot-light uniform uploads and per-fragment loop
+// (uniform3f measured 3.8 s of a 35 s battle profile). Hide them outside the
+// garage; both light-count shader variants are pre-compiled at boot so the
+// toggle never causes a mid-battle compile storm.
+function setGarageSpots(on) {
+  if (spotA.visible === on) return;
+  spotA.visible = on;
+  spotB.visible = on;
+}
 
 let pedestalVisual = null;
 let selectedSpecId = 'm1a2';
@@ -568,6 +582,7 @@ function startBattle(specId, mapId = null) {
   killcam.cancel(); // KILL-CAM: never carry a replay across battles
   hud.setMode('battle');
   game.phase = 'battle';
+  setGarageSpots(false); // PERF: no spot-light cost on battle draws
   bus.emit('phase:change', { phase: 'battle' });
   for (let i = 0; i < 3; i++) { consumableLeft[i] = CONSUMABLE_STOCK[i]; consumableReadyAt[i] = 0; }
   bus.emit('ui:consumableReset', {});
@@ -585,6 +600,7 @@ function enterGarage() {
   shotMode = false;
   fx.setFrozen(false);
   game.phase = 'garage';
+  setGarageSpots(true);
   bus.emit('phase:change', { phase: 'garage' });
   endOverlay.style.display = 'none';
   if (document.exitPointerLock) document.exitPointerLock();
@@ -926,6 +942,8 @@ const VIEW_TIME = {
   sniper_view: 1.2,
   tank_closeup_modern: 0.8,
   tank_closeup_ww2: 0.9,
+  tank_closeup_t90m: 0.8,
+  tank_closeup_leo2a7: 0.8,
   combat_firing: 0.5,
   explosion: 1.5,
   garage: 0.7,
@@ -1089,6 +1107,16 @@ const SHOT_VIEWS = {
     // sag and camo bands were unreadable in the judged frame.
     orbitPose(game.tankById.get('tiger1'), 9, -35, 12, 50);
   },
+  tank_closeup_t90m() {
+    hud.setMode('hidden');
+    // tank_models r3: every core roster tank gets a judged closeup — the
+    // T-90M shipped unauditable as a carousel thumb.
+    orbitPose(game.tankById.get('t90m'), 8, -38, 10, 45);
+  },
+  tank_closeup_leo2a7() {
+    hud.setMode('hidden');
+    orbitPose(game.tankById.get('leo2a7'), 8, -35, 10, 45);
+  },
   detrack() {
     // effects_combat r2: de-track destruction visuals — slumped band, thrown
     // track ribbon, scattered road wheel + fx burst (rubric item).
@@ -1221,6 +1249,9 @@ const SHOT_VIEWS = {
     }
     if (!ev) ev = tryOne(1.05, 0, 4242); // unreachable fallback, keeps recipe total
     ev.attackerName = shooter.spec.name;
+    // killcam_shotinfo r3: match live events (state.js enriches every hit
+    // with attackerSpecId) so pen-roll annotations can resolve the shell.
+    ev.attackerSpecId = shooter.specId;
     ev.targetName = target.spec.name;
     ev.targetSpecId = target.specId;
     ev.timeS = VIEW_TIME.killcam_xray;
@@ -1255,7 +1286,8 @@ const SHOT_VIEWS = {
 window.__SHOTS = {
   views: [
     'battlefield', 'player_view', 'sniper_view', 'tank_closeup_modern',
-    'tank_closeup_ww2', 'detrack', 'combat_firing', 'explosion', 'garage', 'techtree',
+    'tank_closeup_ww2', 'tank_closeup_t90m', 'tank_closeup_leo2a7',
+    'detrack', 'combat_firing', 'explosion', 'garage', 'techtree',
     'battlefield_desert', 'battlefield_winter', 'battlefield_urban',
     'killcam_xray', // KILL-CAM
   ],
@@ -1264,6 +1296,7 @@ window.__SHOTS = {
     if (!recipe) throw new Error(`Unknown screenshot view: ${name}`);
     shotMode = true;
     game.phase = 'shot';
+    setGarageSpots(true); // shot staging keeps the boot-time light set
     zeroInputs();
     killcam.cancel(); // KILL-CAM: clear any staged/active replay (restores materials)
     ensureShotWorld(VIEW_MAP[name] || 'verdant'); // MAP-CONFIG WIRING
@@ -1311,7 +1344,25 @@ post.render(SIM_DT);
     warm.visual.resetDestroyed();
   }
   warmWreckTextures(renderer);
+  // fx first-use warm: flipbook/atlas textures otherwise upload inside the
+  // first-contact combat frame (muzzle flash, tracer, impact, smoke).
+  fx.group.traverse((o) => {
+    const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
+    for (const m of mats) {
+      for (const k of Object.keys(m)) {
+        const v = m[k];
+        if (v && v.isTexture) { try { renderer.initTexture(v); } catch (_) { /* fine */ } }
+      }
+    }
+  });
 }
+// PERF (performance_budget r4): pre-compile the battle light-set shader
+// variants (garage spots hidden changes the program hash — see
+// setGarageSpots) so entering battle swaps programs instead of compiling ~70
+// of them inside the opening frames.
+setGarageSpots(false);
+try { renderer.compile(scene, camera); } catch (_) { /* fine */ }
+setGarageSpots(true);
 post.render(SIM_DT);
 
 requestAnimationFrame(tick);
@@ -1548,5 +1599,8 @@ window.__DEBUG = {
   // effects_combat r2: shot-mode latch exposed for headless drive tests
   get shotMode() { return shotMode; },
   set shotMode(v) { shotMode = !!v; },
+  // controls_gunnery r3: stage the reticle hit-confirm marker on demand so
+  // captures can verify its weight without landing a live 400 m shot.
+  forceHitMark: (bounced) => hud.forceHitMark(!!bounced),
 };
 window.__GAME_READY = true;

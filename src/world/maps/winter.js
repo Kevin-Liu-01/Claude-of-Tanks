@@ -44,7 +44,7 @@ export default {
     rockTone: (h, s, l) => [0.585, 0.05, clamp01(l * 1.0 + 0.22)],
     mudTone: (h, s, l) => [0.565, 0.24, clamp01(0.60 + l * 0.34)], // (fallback if iceLake off)
     mudRough: 0.18,
-    marshGloss: 0.92,
+    marshGloss: 1.0, // r6: full ice response — the sheet needs a real sheen
     // dedicated ice-sheet layer: blue-grey albedo, bright refrozen pressure
     // cracks, dark depth blotches, glossy clear-ice roughness. Drift LOW:
     // 0.85 buried most of the sheet back under snow albedo and the "lake"
@@ -68,27 +68,31 @@ export default {
     // sparser, FROSTED tufts: the old dark dense scatter read as uniform
     // speckle noise across the snowfield in wide shots. r5: slightly up now
     // that the scatter clumps in hollows instead of pepper-spraying
-    grassDensity: 0.15,
+    // r6: 0.15 -> 0.24 — the two-scale thicket gating (vegetation.js) rejects
+    // far more candidates between clumps; raising density keeps the same
+    // overall growth budget concentrated into dense knots
+    grassDensity: 0.24,
     grassTexTone: (h, s, l) => [0.105, 0.16, clamp01(l * 1.1 + 0.22)], // rimed straw
     tuftTone: (h, s, l) => [0.11, 0.10, clamp01(l * 1.05 + 0.26)],
-    bushCount: 0.30,
+    bushCount: 0.42,
     // pine scrub, not birch twig-balls: the dark leafless bush scatter read
     // as speckle noise against the snow in establishing shots
     bushSpecies: 'pine',
     palettes: {
-      birch: { // bare grey-brown shrubs + crowns — twigs kept DARK so near
-        // crowns read as branch masses, not pale star-glitches
-        cardHue: 0.08, cardSat: 0.08,
-        texTone: (h, s, l) => [h, clamp01(s * 0.7), clamp01(l * 0.55)],
+      birch: { // r6: frosted grey-brown — the old l*0.55 twigs rendered the
+        // shrub/sapling scatter as swarms of BLACK specks against the snow at
+        // 1080p (the 'sensor dust' critique); lifted + desaturated toward
+        // rime-coated brush while staying darker than the snowpack
+        cardHue: 0.08, cardSat: 0.06,
+        texTone: (h, s, l) => [h, clamp01(s * 0.45), clamp01(l * 0.85 + 0.14)],
       },
-      pine: { // winter spruce: near-LOD needles stay dense dark green (the
-        // old l*1.3 wash bleached them to teal confetti / white asterisks).
-        // r3: far canopy desaturated ~40% toward blue-grey-green and dropped
-        // in value — the mint-pastel crowns popped as toy accents against the
-        // overcast grade (critique: 'saturated mint against desaturated snow')
-        texTone: (h, s, l) => [clamp01(h * 0.94), clamp01(s * 0.6), clamp01(l * 0.86 + 0.012)],
-        cardHue: 0.345, cardSat: 0.10,
-        canopy: { hue: 0.40, sat: 0.06, l0: 0.33, l1: 0.55 },
+      pine: { // winter spruce: r6 — needles lifted toward frosted grey-green
+        // (l*0.86 read near-black against snow; scrub-sized bushes were the
+        // worst offenders). Saturation stays LOW so the lift cannot re-create
+        // the old mint-confetti artifact; hue drifts slightly cold.
+        texTone: (h, s, l) => [clamp01(h * 0.96), clamp01(s * 0.42), clamp01(l * 1.04 + 0.075)],
+        cardHue: 0.345, cardSat: 0.08,
+        canopy: { hue: 0.40, sat: 0.06, l0: 0.36, l1: 0.58 },
       },
     },
   },

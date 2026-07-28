@@ -31,7 +31,10 @@ export default {
     marshes: [],
     // Tight core: blocks of ~65 m so the grid actually reads as a town, not
     // farmhouses scattered over 350 m of open grass.
-    village: { x0: -168, x1: 168, z0: -152, z1: 176, cx: 36, cz: -16, feather: 55, flatten: 0.94 },
+    // r6: relief 0.30 (new knob, terrain.js) — keep ~30% of the smooth
+    // terrain drift inside the town rect so the grid rolls over 1-3 m of
+    // elevation instead of sitting on a perfectly flat pancake
+    village: { x0: -168, x1: 168, z0: -152, z1: 176, cx: 36, cz: -16, feather: 55, flatten: 0.92, relief: 0.30 },
     roads: { grid: { xs: [-112, -40, 36, 112], zs: [-96, -16, 60, 136], jitter: 0.8 } },
   },
 
@@ -49,7 +52,13 @@ export default {
     rockTone: (h, s, l) => [0.08, clamp01(s * 0.5), clamp01(l * 1.0)],
     mudTone: (h, s, l) => [0.085, clamp01(s * 0.6), clamp01(l * 0.9)],
     tintA: [1.04, 1.02, 0.92], tintB: [0.86, 0.90, 0.84], tintC: [1.05, 1.03, 0.95],
-    roadTint: [0.62, 0.63, 0.72], // dark grey sett/asphalt streets
+    // r6: [0.62,0.63,0.72] (B > R) over the pale sourced sett sheet + blue sky
+    // fill rendered every street as a bluish-white water channel in the
+    // establishing shot — pull the carriageway DOWN to a neutral warm asphalt
+    // grey (R >= B) so streets read paved, not flooded.
+    // (rebalanced up from 0.445: the splat shader now darkens the sett sheet
+    // itself — 0.72+0.22 pvar — so the two stacked went near-black)
+    roadTint: [0.58, 0.565, 0.53],
     // street paving strength: the splat shader lays the cobble/sett layer
     // across the full carriageway at all distances (uRoadTex uniform)
     roadTexMix: 0.85,
@@ -66,7 +75,7 @@ export default {
     rimCount: 58, // r5: fuller rim forest under the serrated backdrop tree line
     grassDensity: 0.5,
     tuftTone: (h, s, l) => [0.185, clamp01(s * 0.7), clamp01(l * 0.92)],
-    bushCount: 0.5,
+    bushCount: 0.85, // r6: garden hedges/shrubs in the yards and block edges
     bushSpecies: 'oak',
     parks: [ // the hill-park belts where town trees are allowed
       { x: -255, z: -170, r: 95 }, { x: 260, z: -190, r: 85 },
@@ -108,9 +117,21 @@ export default {
       [-150, -60, -96, -60, 2], [64, -130, 64, -76, 1], [96, 88, 152, 88, 3],
       [-120, 152, -60, 152, 2], [-14, 22, 24, 22, 4], [140, -44, 140, 2, 1],
       [-76, -122, -20, -122, 2], [86, 154, 86, 108, 0],
+      // r6: field-boundary walls in the open approaches (the establishing
+      // camera at z~-240 saw nothing but empty lawn between it and the town)
+      [-96, -206, -38, -206, 2], [8, -188, 66, -188, 3],
+      [-46, -236, -46, -178, 1], [104, -172, 152, -172, 2],
+      [-160, -180, -112, -180, 3],
+      // r6: courtyard/garden wall rectangles inside the blocks — the map spec
+      // calls for yards behind the street rows, not bare block interiors
+      [-88, 8, -60, 8, 2], [-88, 8, -88, 38, 1], [-60, 8, -60, 38, 2],
+      [58, -66, 92, -66, 1], [58, -66, 58, -40, 3], [92, -66, 92, -40, 1],
+      [-16, 84, 16, 84, 2], [-16, 84, -16, 116, 1], [16, 84, 16, 116, 3],
+      [64, 96, 96, 96, 1], [96, 96, 96, 126, 2],
     ],
-    well: true, hayCrates: false, fences: false, telegraph: true, carts: true, logs: false,
-    haystacks: 0, rocks: 90, outcrops: 6, craters: 88, rubblePiles: 72,
+    // r6: fences on — split-rail runs break up the open outskirt fields
+    well: true, hayCrates: false, fences: true, telegraph: true, carts: true, logs: false,
+    haystacks: 0, rocks: 110, outcrops: 6, craters: 88, rubblePiles: 96,
   },
 
   horizon: {
@@ -130,7 +151,7 @@ export default {
     base: [98, 104, 90], hard: [92, 92, 98], soft: [70, 84, 72],
     forest: 'rgba(48,72,40,0.85)', forestStroke: 'rgba(30,46,26,0.9)',
     water: 'rgba(70,88,90,0.7)', waterStroke: 'rgba(40,54,56,0.8)',
-    roadCasing: 'rgba(34,34,40,0.9)', roadFill: 'rgba(172,172,182,0.95)',
+    roadCasing: 'rgba(34,34,40,0.9)', roadFill: 'rgba(138,138,142,0.95)',
     buildingFill: '#d9d2c4',
   },
 

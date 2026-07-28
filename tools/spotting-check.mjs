@@ -46,7 +46,10 @@ try {
 
   // ---- 1. garage camo picker + live repaint --------------------------------
   const picker = await page.evaluate(() => {
-    const cards = [...document.querySelectorAll('.cot-camo-card')];
+    // camo_spotting r3: the 3-slot equipment picker reuses .cot-camo-card —
+    // scope the query to the first camo grid (count stays 6)
+    const cards = [...document.querySelectorAll('.cot-camos .cgrid')[0]
+      .querySelectorAll('.cot-camo-card')];
     if (cards.length !== 6) return { n: cards.length };
     cards[4].click(); // winter
     const selAfter = cards[4].classList.contains('sel');
@@ -66,7 +69,9 @@ try {
     const world = D.world;
     const hf = world.heightField;
     const player = g.player;
-    const observer = g.tanks.find((t) => t.id === 'tiger1');
+    // camo_spotting r3: startBattle rolls a RANDOM symmetric roster — tiger1
+    // can spawn allied (or not at all); pick any live enemy-team bot instead
+    const observer = g.tanks.find((t) => !t.isPlayer && t.team === 'enemy');
     // single-observer setup: everything else is a wreck (dead tanks neither
     // spot nor get spotted); we drive the spotting system directly, no simStep
     for (const t of g.tanks) {
@@ -194,7 +199,8 @@ try {
     D.startBattle('m4a3e8', 'verdant'); // fresh battle (resets the wrecks above)
     const g = D.game;
     const hf = D.world.heightField;
-    const en = g.tanks.find((t) => !t.isPlayer && !t.combat.destroyed);
+    // camo_spotting r3: random rosters — the observer must be ENEMY-team
+    const en = g.tanks.find((t) => !t.isPlayer && t.team === 'enemy' && !t.combat.destroyed);
     // park an enemy 60 m away so the 0.5 s proximity checks light the player up
     const px = g.player.state.pos.x, pz = g.player.state.pos.z;
     en.state.pos.x = px + 60; en.state.pos.z = pz;
@@ -202,18 +208,20 @@ try {
     D.fastForward(7); // spot (<1 s) + 3 s sixth-sense fuse + margin
     await new Promise((r) => setTimeout(r, 400)); // let rAF HUD frames run
     const sixth = document.querySelector('.cot-sixth');
+    // camo_spotting r3: the camo indicator is now the eye icon — SPOTTED
+    // state is the 'spotted' class, not a .pct text node (which is gone)
     const camo = document.querySelector('.cot-camoind');
     return {
       spotted: D.spotting.isSpotted(g.player.id, 'enemy'),
       lampOn: !!(sixth && sixth.classList.contains('on')),
       camoShown: !!(camo && camo.style.display !== 'none'),
-      camoText: camo ? camo.querySelector('.pct').textContent : '',
+      camoSpotted: !!(camo && camo.classList.contains('spotted')),
     };
   });
   if (lamp.spotted && lamp.lampOn) pass('sixth-sense lamp lit 3 s after being spotted');
   else fail(`sixth sense: spotted=${lamp.spotted} lampOn=${lamp.lampOn}`);
-  if (lamp.camoShown && lamp.camoText === 'SPOTTED') pass('camo indicator shows SPOTTED state');
-  else fail(`camo indicator: shown=${lamp.camoShown} text='${lamp.camoText}'`);
+  if (lamp.camoShown && lamp.camoSpotted) pass('camo indicator shows SPOTTED state');
+  else fail(`camo indicator: shown=${lamp.camoShown} spotted=${lamp.camoSpotted}`);
 } catch (err) {
   fail(err.message);
 } finally {

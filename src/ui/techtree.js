@@ -102,17 +102,31 @@ const TABS = [
       n('t1c', 'T1 Cunningham', 1, 'light', 'ww2'),
       n('m2', 'M2 Light Tank', 2, 'light', 'ww2', { from: ['t1c'] }),
       n('m3stuart', 'M3 Stuart', 3, 'light', 'ww2', { from: ['m2'] }),
+      // r6: the light line used to dead-end at tier III, leaving the whole
+      // top-right quarter of the canvas blank — continued to IX like the
+      // real US scout line, feeding the MBT ladder at the top tiers
+      n('m5', 'M5 Stuart', 4, 'light', 'ww2', { from: ['m3stuart'] }),
+      n('chaffee', 'M24 Chaffee', 5, 'light', 'ww2', { from: ['m5'] }),
+      n('t37', 'T37', 6, 'light', 'ww2', { from: ['chaffee'] }),
+      n('t71', 'T71 DA', 7, 'light', 'ww2', { from: ['t37'] }),
+      n('m41wb', 'M41 Walker Bulldog', 8, 'light', 'modern', { from: ['t71'] }),
+      n('sheridan', 'M551 Sheridan', 9, 'light', 'modern', { from: ['m41wb'] }),
       n('m3lee', 'M3 Lee', 4, 'medium', 'ww2', { from: ['m3stuart'] }),
       n('m4', 'M4 Sherman', 5, 'medium', 'ww2', { from: ['m3lee'] }),
       n('e8', 'M4A3E8 Sherman', 6, 'medium', 'ww2', { spec: 'm4a3e8', from: ['m4'] }),
+      n('t20', 'T20', 7, 'medium', 'ww2', { from: ['e8'] }),
       n('t29', 'T29', 7, 'heavy', 'ww2', { from: ['e8'] }),
-      n('m103', 'M103', 9, 'heavy', 'ww2', { from: ['t29'] }),
-      n('m26', 'M26 Pershing', 8, 'medium', 'ww2', { spec: 'm26', from: ['e8'] }),
+      n('t32', 'T32', 8, 'heavy', 'ww2', { from: ['t29'] }),
+      n('m103', 'M103', 9, 'heavy', 'ww2', { from: ['t32'] }),
+      n('t110e5', 'T110E5', 10, 'heavy', 'ww2', { from: ['m103'] }),
+      n('m26', 'M26 Pershing', 8, 'medium', 'ww2', { spec: 'm26', from: ['t20'] }),
       n('m60', 'M60 Patton', 9, 'mbt', 'modern', { from: ['m26'] }),
       n('abrams', 'M1A2 Abrams SEPv3', 10, 'mbt', 'modern', { spec: 'm1a2', from: ['m60'] }),
       n('m10', 'M10 Wolverine', 5, 'td', 'ww2', { from: ['m3lee'] }),
       n('hellcat', 'M18 Hellcat', 6, 'td', 'ww2', { from: ['m10'] }),
       n('m36', 'M36 Jackson', 7, 'td', 'ww2', { spec: 'm36', from: ['hellcat'] }),
+      n('t28us', 'T28', 8, 'td', 'ww2', { from: ['m36'] }),
+      n('t30', 'T30', 9, 'td', 'ww2', { from: ['t28us'] }),
     ],
   },
   {
@@ -121,19 +135,32 @@ const TABS = [
       n('ltraktor', 'Leichttraktor', 1, 'light', 'ww2'),
       n('pz2', 'Pz.Kpfw. II', 2, 'light', 'ww2', { from: ['ltraktor'] }),
       n('pz38t', 'Pz.Kpfw. 38 (t)', 3, 'light', 'ww2', { from: ['pz2'] }),
+      // r6: German scout line continued past III (the empty top-right half of
+      // the Germany canvas was a critique item) — ends at Ru 251 which feeds
+      // Leopard 1, the classic WoT light->medium merge
+      n('pz38na', 'Pz.Kpfw. 38 nA', 4, 'light', 'ww2', { from: ['pz38t'] }),
+      n('luchs', 'Pz.Kpfw. II Luchs', 5, 'light', 'ww2', { from: ['pz38na'] }),
+      n('vk1602', 'VK 16.02 Leopard', 6, 'light', 'ww2', { from: ['luchs'] }),
+      n('aufklpanther', 'Aufklärungspanther', 7, 'light', 'ww2', { from: ['vk1602'] }),
+      n('ru251', 'Spähpanzer Ru 251', 8, 'light', 'ww2', { from: ['aufklpanther'] }),
       n('pz3', 'Pz.Kpfw. III', 4, 'medium', 'ww2', { from: ['pz38t'] }),
       n('pz4', 'Pz.Kpfw. IV Ausf. H', 5, 'medium', 'ww2', { from: ['pz3'] }),
-      n('panther', 'Panther Ausf. G', 7, 'medium', 'ww2', { spec: 'panther_g', from: ['pz4'] }),
+      n('vk3002m', 'VK 30.02 (M)', 6, 'medium', 'ww2', { from: ['pz4'] }),
+      n('panther', 'Panther Ausf. G', 7, 'medium', 'ww2', { spec: 'panther_g', from: ['vk3002m'] }),
+      n('panther2', 'Panther II', 8, 'medium', 'ww2', { from: ['panther'] }),
       n('vk3601', 'VK 36.01 (H)', 6, 'heavy', 'ww2', { from: ['pz4'] }),
       n('tiger', 'Tiger I', 7, 'heavy', 'ww2', { spec: 'tiger1', from: ['vk3601'] }),
       n('tiger2', 'Tiger II', 8, 'heavy', 'ww2', { spec: 'tiger2', from: ['tiger'] }),
-      n('maus', 'Maus', 10, 'heavy', 'ww2', { from: ['tiger2'] }),
-      n('leo1', 'Leopard 1', 9, 'mbt', 'modern', { from: ['panther'] }),
+      n('e75', 'E 75', 9, 'heavy', 'ww2', { from: ['tiger2'] }),
+      n('maus', 'Maus', 10, 'heavy', 'ww2', { from: ['e75'] }),
+      n('leo1', 'Leopard 1', 9, 'mbt', 'modern', { from: ['panther2', 'ru251'] }),
       n('leo2', 'Leopard 2A7', 10, 'mbt', 'modern', { spec: 'leo2a7', from: ['leo1'] }),
       n('stug', 'StuG III Ausf. G', 5, 'td', 'ww2', { from: ['pz3'] }),
       n('jpz4', 'Jagdpanzer IV', 6, 'td', 'ww2', { from: ['stug'] }),
       n('jagdpanther', 'Jagdpanther', 7, 'td', 'ww2', { spec: 'jagdpanther', from: ['jpz4'] }),
-      n('jagdtiger', 'Jagdtiger', 9, 'td', 'ww2', { from: ['jagdpanther'] }),
+      n('ferdinand', 'Ferdinand', 8, 'td', 'ww2', { from: ['jagdpanther'] }),
+      n('jagdtiger', 'Jagdtiger', 9, 'td', 'ww2', { from: ['ferdinand'] }),
+      n('jpze100', 'Jagdpanzer E 100', 10, 'td', 'ww2', { from: ['jagdtiger'] }),
     ],
   },
   {
@@ -142,22 +169,34 @@ const TABS = [
       n('ms1', 'MS-1', 1, 'light', 'ww2'),
       n('t26', 'T-26', 2, 'light', 'ww2', { from: ['ms1'] }),
       n('bt7', 'BT-7', 3, 'light', 'ww2', { from: ['t26'] }),
+      // r6: Soviet light line continued past III — ends at LTTB feeding the
+      // T-72B MBT ladder (mirrors the USA/Germany scout-line merges)
+      n('t80l', 'T-80', 4, 'light', 'ww2', { from: ['bt7'] }),
+      n('t50', 'T-50', 5, 'light', 'ww2', { from: ['t80l'] }),
+      n('mt25', 'MT-25', 6, 'light', 'ww2', { from: ['t50'] }),
+      n('ltg', 'LTG', 7, 'light', 'ww2', { from: ['mt25'] }),
+      n('lttb', 'LTTB', 8, 'light', 'ww2', { from: ['ltg'] }),
       n('t28', 'T-28', 4, 'medium', 'ww2', { from: ['bt7'] }),
       n('t34', 'T-34', 5, 'medium', 'ww2', { from: ['t28'] }),
       n('t3485', 'T-34-85', 6, 'medium', 'ww2', { spec: 't34_85', from: ['t34'] }),
       n('t54', 'T-54', 8, 'medium', 'ww2', { spec: 't54', from: ['t3485'] }),
-      n('t72', 'T-72B', 9, 'mbt', 'modern', { from: ['t54'] }),
+      n('t72', 'T-72B', 9, 'mbt', 'modern', { from: ['t54', 'lttb'] }),
       n('t90', 'T-90M Proryv', 10, 'mbt', 'modern', { spec: 't90m', from: ['t72'] }),
       n('kv1', 'KV-1', 5, 'heavy', 'ww2', { from: ['bt7'] }),
-      n('is2', 'IS-2', 7, 'heavy', 'ww2', { spec: 'is2', from: ['kv1'] }),
+      n('kv85', 'KV-85', 6, 'heavy', 'ww2', { from: ['kv1'] }),
+      n('is2', 'IS-2', 7, 'heavy', 'ww2', { spec: 'is2', from: ['kv85'] }),
       // cross-linked to the community-sourced IS-3 (PanzerFactory): the same
       // vehicle must not sit as future research here while being battle-ready
       // on the COMMUNITY tab — the node lights gold and routes to that spec
       n('is3', 'IS-3', 8, 'heavy', 'ww2', { spec: 'is3', from: ['is2'] }),
+      n('t10', 'T-10', 9, 'heavy', 'ww2', { from: ['is3'] }),
+      n('is7', 'IS-7', 10, 'heavy', 'ww2', { from: ['t10'] }),
       n('su76', 'SU-76M', 3, 'td', 'ww2', { from: ['t26'] }),
       n('su85', 'SU-85', 5, 'td', 'ww2', { from: ['su76'] }),
       n('su100', 'SU-100', 6, 'td', 'ww2', { spec: 'su100', from: ['su85'] }),
-      n('isu152', 'ISU-152', 8, 'td', 'ww2', { from: ['su100'] }),
+      n('su152', 'SU-152', 7, 'td', 'ww2', { from: ['su100'] }),
+      n('isu152', 'ISU-152', 8, 'td', 'ww2', { from: ['su152'] }),
+      n('obj704', 'Object 704', 9, 'td', 'ww2', { from: ['isu152'] }),
     ],
   },
 ];
@@ -271,7 +310,7 @@ const TT_CSS = `
 .cot-tt-hint b{color:rgba(240,176,74,.9);font-weight:700;}
 .cot-tt-lane{position:absolute;font-size:10px;font-weight:800;letter-spacing:.30em;
   color:rgba(159,176,191,.38);text-transform:uppercase;white-space:nowrap;
-  pointer-events:none;}
+  pointer-events:none;z-index:3;}
 .cot-tt-lane::after{content:'';display:inline-block;vertical-align:middle;
   width:220px;height:1px;margin-left:14px;
   background:linear-gradient(90deg,rgba(146,164,180,.25),rgba(146,164,180,0));}
@@ -703,13 +742,18 @@ export function createTechTree(opts) {
       world.appendChild(hd);
     }
 
-    // class-lane captions (light / medium·mbt / heavy / td rows)
+    // class-lane captions (light / medium·mbt / heavy / td rows).
+    // r6: on the COMMUNITY tab the taller credit cards (140 px vs ROW_H 152)
+    // reached below the -22 px caption line of the NEXT row and covered all
+    // but the first letter ("...a lone 'M' behind the tier-I card") — lift
+    // the captions clear of the tallest card and z-order them above nodes.
+    const laneYOff = isComm ? 38 : 26;
     const usedRows = new Set(tab.nodes.map((nd) => nd.row));
     for (const r of usedRows) {
       const lb = document.createElement('div');
       lb.className = 'cot-tt-lane';
       lb.style.left = `${content.x0 + 16}px`;
-      lb.style.top = `${HEAD_H + r * ROW_H - 22}px`;
+      lb.style.top = `${HEAD_H + r * ROW_H - laneYOff}px`;
       lb.textContent = LANE_LABEL[r] || '';
       world.appendChild(lb);
     }

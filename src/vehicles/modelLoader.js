@@ -68,14 +68,116 @@ const _resolved = new Map(); // url -> GLTF (parse finished; sync path usable)
 const _stats = { started: 0, settled: 0 };
 if (typeof window !== 'undefined') window.__GLB_STATS = _stats;
 
+// ---------------------------------------------------------------------------
+// PERF (performance_budget r4, docs/perf-r3.json remainingKnownHitch): the
+// GLTF parse + swap + first-render program compile/texture upload used to run
+// the moment the async fetch resolved — a ~200 ms main-thread hitch that
+// landed INSIDE combat frames (probe: 55-773 ms frames t=5-15 s as sourced-GLB
+// textures/programs bound mid-battle). All main-thread GLB work now goes
+// through a battle-safe idle queue:
+//   - the network fetch starts immediately (no main-thread cost),
+//   - parse and swap wait until game.phase !== 'battle', and run at most ONE
+//     job per idle callback so garage/end-screen frames absorb single hitches,
+//   - after a swap lands, its textures are uploaded (renderer.initTexture) and
+//     programs compiled (renderer.compile) in the SAME idle slot, so the next
+//     rendered frame pays no first-use GPU binds.
+// Battles simply keep the procedural stand-in until the next safe moment
+// (garage, end screen, shot staging) — a AAA frame gate never trades a live
+// combat frame for an asset upgrade. Screenshot staging is phase 'shot', so
+// the queue drains during the harness's settle window.
+const _idleQueue = [];
+let _idlePumpScheduled = false;
+
+function inBattle() {
+  try {
+    const D = typeof window !== 'undefined' ? window.__DEBUG : null;
+    return !!(D && D.game && D.game.phase === 'battle');
+  } catch (_) { return false; }
+}
+
+function pumpIdle() {
+  _idlePumpScheduled = false;
+  if (!_idleQueue.length) return;
+  let ran = false;
+  if (!inBattle()) {
+    const job = _idleQueue.shift();
+    ran = true;
+    try { job.res(job.fn()); } catch (e) { job.rej(e); }
+  }
+  scheduleIdlePump(ran);
+}
+
+function scheduleIdlePump(afterJob = false) {
+  if (_idlePumpScheduled || !_idleQueue.length) return;
+  _idlePumpScheduled = true;
+  // After RUNNING a job, space the next one out on wall clock: chained idle
+  // callbacks can run back-to-back inside one rAF gap, and draining a full
+  // queue that way measured a 4.3 s frozen frame at battle end. 300 ms spacing
+  // guarantees rendered frames between jobs (a drain of the whole 9-GLB queue
+  // spreads over ~3 s of end-screen/garage time instead of one freeze).
+  if (afterJob) setTimeout(pumpIdle, 300);
+  else if (typeof requestIdleCallback === 'function') requestIdleCallback(pumpIdle, { timeout: 350 });
+  else setTimeout(pumpIdle, 80);
+}
+
+/** Run `fn` in the next out-of-battle idle slot (one job per slot). */
+function idleGate(fn) {
+  return new Promise((res, rej) => {
+    _idleQueue.push({ fn, res, rej });
+    scheduleIdlePump();
+  });
+}
+
+/** Pre-upload the swapped subtree's textures and compile its programs against
+ * the live scene NOW (inside the idle slot) so the next rendered frame pays
+ * no first-use texture upload / shader compile. Best-effort. */
+function warmSwappedModel(ctx) {
+  try {
+    const D = typeof window !== 'undefined' ? window.__DEBUG : null;
+    if (!D || !D.renderer) return;
+    let root = ctx.hullG;
+    while (root.parent) root = root.parent;
+    ctx.hullG.traverse((o) => {
+      const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
+      for (const m of mats) {
+        for (const k of Object.keys(m)) {
+          const v = m[k];
+          if (v && v.isTexture) { try { D.renderer.initTexture(v); } catch (_) { /* fine */ } }
+        }
+      }
+    });
+    if (root.isScene && D.camera) D.renderer.compile(root, D.camera);
+    else if (D.scene && D.camera) D.renderer.compile(ctx.hullG, D.camera, D.scene);
+  } catch (_) { /* warm-up only — never block the swap */ }
+}
+
 function loadGltf(url) {
   if (!_cache.has(url)) {
     _stats.started++;
-    _cache.set(url, new Promise((res, rej) => _loader.load(url, (g) => {
-      _resolved.set(url, g);
-      _stats.settled++;
-      res(g);
-    }, undefined, (e) => { _stats.settled++; rej(e); })));
+    _cache.set(url, (async () => {
+      let buf;
+      try {
+        // fetch immediately (network only); the parse is the main-thread cost
+        // and waits for a battle-safe idle slot.
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
+        buf = await resp.arrayBuffer();
+      } catch (e) {
+        _stats.settled++;
+        throw e;
+      }
+      try {
+        const g = await idleGate(() => new Promise((res, rej) => {
+          _loader.parse(buf, url.slice(0, url.lastIndexOf('/') + 1), res, rej);
+        }));
+        _resolved.set(url, g);
+        _stats.settled++;
+        return g;
+      } catch (e) {
+        _stats.settled++;
+        throw e;
+      }
+    })());
   }
   return _cache.get(url);
 }
@@ -271,8 +373,11 @@ function applyModelFixes(scene, turret, spec) {
     g.applyMatrix4(new THREE.Matrix4().makeRotationX(Math.PI / 2));
     return g;
   };
+  // r9: front cheek edge pulled back (0.72,-2.66 -> 0.86,-2.50) and its top
+  // dropped a step — the old plate's forward-top corner overhung the mantlet
+  // and read as a pointed slab glitch at closeup (judged critique).
   for (const s of [-1, 1]) {
-    addPart(turret, mat, cheekSeg(s, 0.72, -2.66, 1.72, -1.93, 2.84, 2.92)); // front cheek
+    addPart(turret, mat, cheekSeg(s, 0.86, -2.50, 1.72, -1.93, 2.80, 2.92)); // front cheek
     addPart(turret, mat, cheekSeg(s, 1.70, -1.97, 2.06, -1.26, 2.92, 3.02)); // side shoulder
   }
 
@@ -294,8 +399,9 @@ function applyModelFixes(scene, turret, spec) {
       addPart(turret, mat, g);
     };
     // wings over the cheeks (clockwise plan rings per side)
-    mkCap([[0.58, -2.55], [0.82, -2.55], [1.90, -0.45], [0.58, -0.45]]);
-    mkCap([[-0.82, -2.55], [-0.58, -2.55], [-0.58, -0.45], [-1.90, -0.45]]);
+    // r9: wing tips pulled back with the trimmed cheeks (-2.55 -> -2.42)
+    mkCap([[0.58, -2.42], [0.82, -2.42], [1.90, -0.45], [0.58, -0.45]]);
+    mkCap([[-0.82, -2.42], [-0.58, -2.42], [-0.58, -0.45], [-1.90, -0.45]]);
     // center strip behind the embrasure recess
     mkCap([[-0.58, -1.58], [0.58, -1.58], [0.58, -0.45], [-0.58, -0.45]]);
   }
@@ -317,6 +423,37 @@ function applyModelFixes(scene, turret, spec) {
       .rotateX(Math.PI / 2), cx, cy, 3.38);
     addPart(turret, mat, new THREE.BoxGeometry(0.32, 0.34, 0.28), cx, cy, 3.64);
     addPart(turret, dark, new THREE.BoxGeometry(0.22, 0.05, 0.15), cx, cy - 0.18, 3.64); // mirror window
+  }
+
+  // Bustle-rack soft stowage (r9 minor): the asset's rack contents are bare
+  // rectangular slabs — lay a few rounded tarp/duffel lumps with dark strap
+  // rings over them so the rack reads packed with crew gear. Raw turret-local
+  // coords measured by ray probe: rack wall x ±2.03, contents y 1.7..3.1,
+  // tops z ~2.8.
+  {
+    const cloth = new THREE.MeshStandardMaterial({
+      name: 'AddOnCloth', color: 0x555038, roughness: 0.96, metalness: 0.0 });
+    const cloth2 = new THREE.MeshStandardMaterial({
+      name: 'AddOnCloth2', color: 0x4a4d3a, roughness: 0.96, metalness: 0.0 });
+    const strap = new THREE.MeshStandardMaterial({
+      name: 'AddOnStrap_addon', color: 0x23241f, roughness: 0.9, metalness: 0.05 });
+    const duffels = [
+      // [x, y, z, len, r, yaw, mat]
+      [-1.05, 2.35, 2.88, 1.15, 0.20, 0.10, cloth],
+      [0.35, 2.30, 2.92, 1.30, 0.22, -0.06, cloth2],
+      [1.35, 2.45, 2.84, 0.85, 0.17, 0.22, cloth],
+      [-0.35, 2.95, 2.80, 1.05, 0.18, -0.14, cloth2],
+    ];
+    for (const [dx, dy, dz, len, r, yaw, cm] of duffels) {
+      const cap = new THREE.CapsuleGeometry(r, len, 6, 12).rotateZ(Math.PI / 2).rotateY(yaw);
+      const m = addPart(turret, cm, cap, dx, dy, dz);
+      m.rotation.z = (dx * 7.3) % 0.14 - 0.07;      // slight settle lean
+      for (const f of [-0.28, 0.3]) {
+        addPart(turret, strap,
+          new THREE.CylinderGeometry(r * 1.04, r * 1.04, 0.05, 12).rotateZ(Math.PI / 2).rotateY(yaw),
+          dx + Math.cos(yaw) * f * len, dy - Math.sin(yaw) * f * len, dz);
+      }
+    }
   }
 
   // Rear engine deck: flat rectangular grille panels where the carved-out
@@ -768,6 +905,34 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
     group.add(node);
   };
   if (gun) reparent(gun, recoilG);
+  // ---- muzzle anchor from REAL barrel geometry (effects_combat r3) ---------
+  // The fx muzzle anchor sat at P.muzzleZ = spec barrel length, but the GLB
+  // swap rescales the whole vehicle to hull length — on the m1a2 the anchor
+  // ended ~2 m PAST the visible barrel tip, so every muzzle flash / tracer /
+  // recoil read spawned detached in mid-air (r7 "flash floats 1.5-2
+  // barrel-lengths downrange with a visible gap"). Re-derive the anchor from
+  // the actual gun-mesh vertices in recoilG space (chain product cancels any
+  // stale pose above recoilG). Bone-rigged guns without own meshes keep the
+  // autoPivot/spec anchor.
+  if (gun && muzzle) {
+    recoilG.updateMatrixWorld(true);
+    const invRec = new THREE.Matrix4().copy(recoilG.matrixWorld).invert();
+    const rel = new THREE.Matrix4();
+    const vtx = new THREE.Vector3();
+    let tipZ = -Infinity;
+    gun.traverse((n) => {
+      if (!n.isMesh || !n.geometry || !n.geometry.getAttribute) return;
+      const pa = n.geometry.getAttribute('position');
+      if (!pa) return;
+      rel.multiplyMatrices(invRec, n.matrixWorld);
+      const step = Math.max(1, Math.floor(pa.count / 4000));
+      for (let i = 0; i < pa.count; i += step) {
+        vtx.fromBufferAttribute(pa, i).applyMatrix4(rel);
+        if (vtx.z > tipZ) tipZ = vtx.z;
+      }
+    });
+    if (tipZ > 0.8 && Number.isFinite(tipZ)) muzzle.position.z = tipZ - 0.04;
+  }
   if (turret) reparent(turret, turretG);
   turretG.rotation.y = saved.ty;
   if (gunG) gunG.rotation.x = saved.gx;
@@ -794,7 +959,11 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
 export function applyGlbModelSync(ctx) {
   const gltf = _resolved.get(ctx.cfg.path);
   if (!gltf) return false;
-  return applySwap(gltf, ctx);
+  const ok = applySwap(gltf, ctx);
+  // Sync swaps run inside createTank (garage entry / battle staging, never a
+  // combat frame) — pay the texture uploads + program compiles here too.
+  if (ok) warmSwappedModel(ctx);
+  return ok;
 }
 
 /**
@@ -815,5 +984,19 @@ export function applyGlbModelSync(ctx) {
  */
 export async function applyGlbModel(ctx) {
   const gltf = await loadGltf(ctx.cfg.path);
-  return applySwap(gltf, ctx);
+  // PERF (performance_budget r4): the swap itself (skeleton clone, triangle
+  // surgery, creased normals, camo composite) is also a main-thread chunk —
+  // run it through the same battle-safe idle gate, then pre-upload textures
+  // and compile programs in the same slot so the next frame binds nothing new.
+  return idleGate(() => {
+    // The visual may have been evicted/disposed while the job waited (battle
+    // roster change, thumbs booth teardown): a detached tank root means the
+    // procedural stand-in is gone from the scene — skip the dead swap.
+    let root = ctx.hullG;
+    while (root.parent) root = root.parent;
+    if (!root.isScene) return false;
+    const ok = applySwap(gltf, ctx);
+    if (ok) warmSwappedModel(ctx);
+    return ok;
+  });
 }

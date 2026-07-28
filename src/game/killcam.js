@@ -29,7 +29,7 @@
  */
 import * as THREE from 'three';
 import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.js';
-import { getSpec } from '../vehicles/specs.js';
+import { getSpec, ALL_TANK_IDS } from '../vehicles/specs.js';
 import { penAtDistanceMm } from '../sim/ballistics.js';
 
 const XRAY_HOLD_S = 7.0;
@@ -103,9 +103,28 @@ function nominalPenFor(ev) {
   try {
     const spec = ev.attackerSpecId ? getSpec(ev.attackerSpecId) : null;
     const shells = spec && spec.gun ? spec.gun.shells : null;
-    if (!shells) return 0;
-    const sh = shells.find((s) => s.name === ev.shellName && s.type === ev.shellType)
-      || shells.find((s) => s.type === ev.shellType);
+    let sh = shells
+      ? (shells.find((s) => s.name === ev.shellName && s.type === ev.shellType)
+        || shells.find((s) => s.type === ev.shellType))
+      : null;
+    if (!sh && ev.shellName) {
+      // Payload carries no attackerSpecId (staged frames): resolve the shell
+      // by exact identity across the whole roster instead of printing the
+      // context-free bare roll (r5 critique — 'Pen roll 1027 mm' with no
+      // '/ 885' baseline). Only an UNAMBIGUOUS match is trusted: if two guns
+      // ship a same-named shell with different pen curves, the baseline is
+      // omitted rather than guessed — the panel must never lie.
+      let pen = -1;
+      for (const id of ALL_TANK_IDS) {
+        const g = getSpec(id).gun;
+        if (!g || !g.shells) continue;
+        for (const c of g.shells) {
+          if (c.name !== ev.shellName || c.type !== ev.shellType) continue;
+          const p = Math.round(penAtDistanceMm(c, ev.flightDistM || 0));
+          if (pen === -1) { pen = p; sh = c; } else if (p !== pen) return 0;
+        }
+      }
+    }
     return sh ? Math.round(penAtDistanceMm(sh, ev.flightDistM || 0)) : 0;
   } catch (_) { return 0; }
 }
@@ -118,6 +137,15 @@ function sharedMats() {
   if (S) return S;
   const mesh = (color, opacity, side = THREE.FrontSide) => new THREE.MeshBasicMaterial({
     color, transparent: true, opacity, blending: THREE.AdditiveBlending,
+    depthWrite: false, depthTest: true, side, toneMapped: false, fog: false,
+  });
+  // NORMAL-blended variant for the penetration channel/spall/markers:
+  // additive geometry over the frosted skin's bright regions sums toward
+  // white and vanishes (r5 — the internal path was invisible exactly where
+  // the story happens). Alpha-over REPLACES background color, so the hot
+  // channel stays saturated over any skin density.
+  const nmesh = (color, opacity, side = THREE.FrontSide) => new THREE.MeshBasicMaterial({
+    color, transparent: true, opacity, blending: THREE.NormalBlending,
     depthWrite: false, depthTest: true, side, toneMapped: false, fog: false,
   });
   const line = (color, opacity) => new THREE.LineBasicMaterial({
@@ -156,7 +184,14 @@ function sharedMats() {
     blending: THREE.NormalBlending, depthWrite: false, depthTest: true,
     side: THREE.DoubleSide, toneMapped: false, fog: false,
   });
+  // Per-victim hull bounds for the depth-graded alpha below — beginXray()
+  // writes these every x-ray (uniform VALUE objects shared by reference, so
+  // the shader picks the write up whether it compiled before or after).
+  const ghostCenter = { value: new THREE.Vector3(0, -1e6, 0) };
+  const ghostRad = { value: 6 };
   ghost.onBeforeCompile = (sh) => {
+    sh.uniforms.kcCenter = ghostCenter;
+    sh.uniforms.kcRad = ghostRad;
     sh.vertexShader = `varying vec3 vKcW;\nvarying vec3 vKcN;\n${sh.vertexShader}`.replace(
       '#include <project_vertex>',
       `#include <project_vertex>
@@ -167,27 +202,43 @@ function sharedMats() {
         vKcW = (modelMatrix * vec4(transformed, 1.0)).xyz;
         vKcN = mat3(modelMatrix) * normal;
       #endif`);
-    sh.fragmentShader = `varying vec3 vKcW;\nvarying vec3 vKcN;\n${sh.fragmentShader}`.replace(
-      '#include <color_fragment>',
-      `#include <color_fragment>
+    sh.fragmentShader =
+      `varying vec3 vKcW;\nvarying vec3 vKcN;\nuniform vec3 kcCenter;\nuniform float kcRad;\n${sh.fragmentShader}`.replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
       {
         vec3 kcV = normalize(cameraPosition - vKcW);
         float kcF = 1.0 - abs(dot(normalize(vKcN), kcV));
-        // face-on 0.17 per layer (a single clean GLB skin reads as frosted
-        // hull at ~0.3-0.45 with its skirt/roof layers; a dense procedural
-        // stack saturates ~0.7 instead of blowing to porcelain white),
-        // grazing ~0.75 for the rim silhouette. rgb stays ≤1 (sub-bloom).
-        diffuseColor.a *= 0.17 + 0.58 * pow(kcF, 1.6);
+        // Depth-graded fresnel (WT x-ray read): faces on the CAMERA side of
+        // the hull sit dim, far-side faces brighten — the skin reads as a
+        // volume with a lit back wall instead of a flat slab. kcT is the
+        // fragment's normalized depth through the victim's bounding sphere.
+        float kcNear = distance(cameraPosition, kcCenter) - kcRad;
+        float kcT = clamp((distance(cameraPosition, vKcW) - kcNear)
+          / max(kcRad * 2.0, 0.001), 0.0, 1.0);
+        // Face-on floor 0.06 per layer: the r5 staged Tiger stacked glacis +
+        // wheels + tracks + fenders into 8-12 alpha-over layers up front and
+        // saturated to a featureless porcelain slab at the old 0.17 floor.
+        // 0.06 keeps a dense stack at frost (~0.30-0.45); the grazing term is
+        // gained low with a tight exponent so rims stay THIN luminous lines
+        // instead of the roof/sponson planes (huge near-grazing areas from
+        // the 24-degree vantage) washing out into white sheets.
+        diffuseColor.a *= (0.06 + 0.34 * pow(kcF, 2.6)) * mix(0.55, 1.3, kcT);
         diffuseColor.rgb *= 0.72 + 0.26 * kcF;
       }`);
   };
   S = {
-    ghost,
+    ghost, ghostCenter, ghostRad,
     // Trail intensity is deliberately sub-bloom: additive 1px line at full
     // 0xffb060 pushed the HDR buffer over the bloom threshold and smeared
     // into a screen-wide beam (r2 critique). Halved color × lower alpha keeps
     // the path readable without ever blooming.
     trail: line(0x7d5830, 0.5),
+    // x-ray approach ribbon (glow sheath + hot core tubes over the final
+    // trail arc): the bare 1px GL line read as a laser-pointer thread at
+    // 1080p (r5 critique). Colors stay ≤1 so the ribbon never blooms.
+    trailGlow: mesh(0xcf9a4e, 0.22),
+    trailCore: mesh(0xffd9a0, 0.7),
     edgeDim: line(0x6db4e8, 0.5),
     edgeRed: line(0xff5a4a, 1.0),
     edgeYellow: line(0xffb43c, 1.0),
@@ -197,12 +248,12 @@ function sharedMats() {
     fillRed: mesh(0xff2a1a, 0.14, THREE.FrontSide),
     fillYellow: mesh(0xff9a1c, 0.12, THREE.FrontSide),
     fillCrew: mesh(0xff3a55, 0.14, THREE.FrontSide),
-    pathIn: mesh(0xff5028, 0.4),
+    pathIn: nmesh(0xff4a20, 0.85),
     pathOut: mesh(0xffc27a, 0.6),
-    pathCore: mesh(0xfff3d0, 0.8),
-    spall: mesh(0xffa050, 0.07, THREE.DoubleSide),
-    frag: mesh(0xffc27a, 0.35),
-    marker: mesh(0xffffff, 0.85),
+    pathCore: nmesh(0xffe9b8, 0.95),
+    spall: nmesh(0xff8438, 0.16, THREE.DoubleSide),
+    frag: nmesh(0xffb060, 0.55),
+    marker: nmesh(0xffffff, 0.95),
     core: mesh(0xfff3d0, 1.0),
     streak: mesh(0xffb464, 0.85),
     // Internal proxies: distinct per-kind hues (WT visual language — brass
@@ -216,6 +267,10 @@ function sharedMats() {
     proxGreen: prox(0x2fd98c, 0.8, 0.1, 0.34),
     proxYellow: prox(0xffb43c, 0.88, 0.12, 0.44),
     proxRed: prox(0xff4a38, 0.92, 0.13, 0.52),
+    // neutral crew slump tint: a destroyed tank must not show a thriving
+    // bright-green crew (r5 critique) — survivors of the final blow render
+    // as grey silhouettes, casualties keep the red state tint.
+    proxGrey: prox(0x93a1ad, 0.58, 0.07, 0.16),
   };
   return S;
 }
@@ -521,6 +576,10 @@ export function createKillCam(deps) {
       },
       timeS: ev.timeS || 0,
       trajPts: pts,
+      // post-hit crew roster ({name:alive} from the sim's combat state, taken
+      // AFTER damage resolved): the x-ray colors casualties from EARLIER hits
+      // red too, not just the ones this shell caused.
+      crewAlive: target.combat && target.combat.crew ? { ...target.combat.crew } : null,
       pose: {
         pos: [st.pos.x, st.pos.y, st.pos.z],
         yaw: st.yaw, pitch: st.visualPitch, roll: st.visualRoll,
@@ -830,8 +889,11 @@ export function createKillCam(deps) {
       : new THREE.Vector3().fromArray(snap.ev.normal).negate();
     _s.crossVectors(dirW, UP);
     if (_s.lengthSq() < 1e-6) _s.set(1, 0, 0); else _s.normalize();
-    const R = Math.max(8.5, snap.boundingRadiusM * 2.7);
-    // ~26° three-quarter elevation: the old R*0.68 vantage read near
+    // Orbit radius tightened ~30% from r5's 2.7×: the victim occupied only a
+    // quarter of a mostly-empty frame — WT frames the wreck at 40-60% of
+    // frame height. Labels still deconflict at this framing (projectLabels).
+    const R = Math.max(6.2, snap.boundingRadiusM * 1.9);
+    // ~24° three-quarter elevation: the old R*0.68 vantage read near
     // top-down — the struck hull side was invisible and the silhouette
     // unreadable (r3 critique). Tall grass no longer constrains the
     // sightline: the vegetation layer is hidden for the whole x-ray hold.
@@ -840,7 +902,7 @@ export function createKillCam(deps) {
     const off = new THREE.Vector3()
       .addScaledVector(_s, R * 0.88)
       .addScaledVector(dirW, -R * 0.52);
-    off.y += R * 0.5;
+    off.y += R * 0.44;
     const pos = center.clone().add(off);
     if (heightField) {
       const minY = heightField.getHeightAt(pos.x, pos.z) + 1.0;
@@ -864,6 +926,14 @@ export function createKillCam(deps) {
       const keepFrom = pb.total - 60;
       while (start < pb.pts.length - 2 && pb.cum[start + 1] < keepFrom) start++;
       pb.trailGeo.setDrawRange(start, pb.pts.length - start);
+      // Rebuild that final arc as a glow ribbon (wide additive sheath + hot
+      // core tube per segment): the 1px GL line alone was a dim tan thread
+      // at 1080p (r5 critique). A handful of segments — ~60 m of 60 Hz sim
+      // points — so the cost is a few dozen cylinders for the hold.
+      for (let i = start; i < pb.pts.length - 1; i++) {
+        tube(pb.pts[i], pb.pts[i + 1], 0.085, S.trailGlow, pb.group, pb.disposables);
+        tube(pb.pts[i], pb.pts[i + 1], 0.03, S.trailCore, pb.group, pb.disposables);
+      }
     }
 
     const snap = pb.snap;
@@ -894,6 +964,9 @@ export function createKillCam(deps) {
       }
     });
     pb.group.renderOrder = 12; // internals over the skin (groupOrder sort)
+    // feed the ghost shader's depth grading this victim's bounding sphere
+    S.ghostCenter.value.copy(pb.xcam.center);
+    S.ghostRad.value = Math.max(2, snap.boundingRadiusM || 4);
 
     // 1a. isolate the vehicle for the hold (WT x-ray read): sunlit grass
     // blades under/behind the hull otherwise show straight through the
@@ -981,8 +1054,17 @@ export function createKillCam(deps) {
     for (const mb of armor.modules || []) {
       addModuleProxy(mb, stateMat(modHit.get(mb.module), mb.module), poseGrp, turretGrp, pb.disposables);
     }
+    // Crew state honesty (r5: a corpse tank showed a thriving bright-green
+    // crew): red for casualties — this shell's crewHit plus anyone already
+    // dead in the snapshot's post-hit combat roster — and neutral grey for
+    // survivors when the vehicle is a corpse (every replay this camera plays
+    // ends in a destruction; healthy green is reserved for live crew on a
+    // still-fighting tank).
+    const corpse = !!ev.destroyed || pb.kind === 'death' || pb.kind === 'victory';
+    const crewAlive = snap.crewAlive || null;
     for (const cb of armor.crew || []) {
-      addCrewProxy(cb, crewHit.has(cb.crew) ? S.proxRed : S.proxGreen,
+      const down = crewHit.has(cb.crew) || (crewAlive && crewAlive[cb.crew] === false);
+      addCrewProxy(cb, down ? S.proxRed : corpse ? S.proxGrey : S.proxGreen,
         poseGrp, turretGrp, pb.disposables);
     }
 
@@ -1020,11 +1102,23 @@ export function createKillCam(deps) {
         if (bb) deepest = Math.max(deepest, depthOf(bb));
       }
       const innerLen = Math.max(1.2, (ev.caliberMm || 100) * 10 / 1000 + 0.6, deepest + 0.35);
+      // external approach: wide glow sheath + hot core so the last meters
+      // into the plate read as one continuous channel with the ribbon above
       _a.copy(lp).addScaledVector(ld, -4.5);
-      tube(_a, lp, 0.022, S.pathOut, poseGrp, pb.disposables);
+      tube(_a, lp, 0.06, S.trailGlow, poseGrp, pb.disposables);
+      tube(_a, lp, 0.026, S.pathOut, poseGrp, pb.disposables);
+      // internal penetration channel, carried to the deepest damaged module
+      // (r5: the path dead-ended at the entry dot; thickened + brightened so
+      // it stays legible over the frosted skin)
       _b.copy(lp).addScaledVector(ld, innerLen);
-      tube(lp, _b, 0.075, S.pathIn, poseGrp, pb.disposables);   // hot sheath
-      tube(lp, _b, 0.028, S.pathCore, poseGrp, pb.disposables); // white-hot core
+      tube(lp, _b, 0.11, S.pathIn, poseGrp, pb.disposables);   // hot sheath
+      tube(lp, _b, 0.045, S.pathCore, poseGrp, pb.disposables); // white-hot core
+      // terminal glow where the channel stops (the deepest component hit)
+      const endGeo = new THREE.SphereGeometry(0.09, 10, 8);
+      pb.disposables.push(endGeo);
+      const endDot = new THREE.Mesh(endGeo, S.pathCore);
+      endDot.position.copy(_b);
+      poseGrp.add(endDot);
       // spall cone: apex at the penetration point, opening along the path
       const coneLen = innerLen * 0.8;
       const coneGeo = new THREE.ConeGeometry(coneLen * 0.24, coneLen, 14, 1, true);
@@ -1037,16 +1131,16 @@ export function createKillCam(deps) {
       const side = new THREE.Vector3().crossVectors(ld, UP);
       if (side.lengthSq() < 1e-6) side.set(1, 0, 0); else side.normalize();
       const norm = new THREE.Vector3().crossVectors(ld, side);
-      for (let i = 0; i < 7; i++) {
-        const az = (i / 7) * Math.PI * 2 + 0.45;
-        const spread = 0.13 + 0.1 * (((i * 37) % 5) / 4);
+      for (let i = 0; i < 10; i++) {
+        const az = (i / 10) * Math.PI * 2 + 0.45;
+        const spread = 0.13 + 0.11 * (((i * 37) % 5) / 4);
         const len = innerLen * (0.35 + 0.5 * (((i * 53) % 7) / 6));
         _a.copy(ld)
           .addScaledVector(side, Math.cos(az) * spread)
           .addScaledVector(norm, Math.sin(az) * spread)
           .normalize();
         _b.copy(lp).addScaledVector(_a, len);
-        tube(lp, _b, 0.012, S.frag, poseGrp, pb.disposables);
+        tube(lp, _b, 0.02, S.frag, poseGrp, pb.disposables);
       }
       const mGeo = new THREE.SphereGeometry(0.1, 10, 8);
       pb.disposables.push(mGeo);

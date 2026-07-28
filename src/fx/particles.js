@@ -61,6 +61,32 @@ vec3 particleDisplace( vec3 vel, float grav, float age, float drag ) {
 }
 `;
 
+// Near-camera fade (r7 "scope flood"/"screen-filling wash"): a card within a
+// few meters of the lens subtends most of the frame and — additively stacked —
+// floods it white (peek-fire over cover in sniper, impact sprays at 3-8 m).
+// Fade alpha out as the CARD CENTER approaches the camera; uNearFade =
+// (fullyGoneM, fullOnM) per pool. This is the classic lens-fade half of soft
+// particles (the depth-buffer half is not available mid-pass).
+const NEARFADE_GLSL = `
+uniform vec2 uNearFade;
+float nearFade( vec3 wpos ) {
+  return smoothstep( uNearFade.x, uNearFade.y, distance( wpos, cameraPosition ) );
+}
+`;
+
+// Per-card HDR soft-knee (r7 "diagonal additive wash"): each additive card
+// used to push 2-3.5 into the HDR buffer, so 4-6 overlapping cards stacked to
+// 10+ and ACES clipped the whole footprint to a featureless white sheet.
+// Reinhard-knee each card's contribution so a single card tops out ~2.4 and
+// a deep stack grows sub-linearly — cores still cross the 1.55 bloom
+// threshold, but the stack keeps its color gradient instead of washing out.
+const TONECAP_GLSL = `
+vec3 toneCap( vec3 c ) {
+  float m = max( c.r, max( c.g, c.b ) );
+  return c / ( 1.0 + 0.30 * m );
+}
+`;
+
 // --- puff (smoke / fire / dust) --------------------------------------------
 
 const PUFF_VERT = `
@@ -82,6 +108,7 @@ varying float vT;
 varying vec2 vShade;
 ${FOG_PARS_V}
 ${DISPLACE_GLSL}
+${NEARFADE_GLSL}
 void main() {
   float life = aVL.w;
   float age = uTime - aPB.w;
@@ -115,8 +142,9 @@ void main() {
   vFMix = ff - f0;
   vUvA = ( vec2( mod( f0, uTiles ), floor( f0 / uTiles ) ) + uv ) / uTiles;
   vUvB = ( vec2( mod( f1, uTiles ), floor( f1 / uTiles ) ) + uv ) / uTiles;
-  // tier-1 soft handling: alpha-in at birth, long fade-out
-  float alpha = aC1.w * smoothstep( 0.0, 0.12, t ) * ( 1.0 - smoothstep( 0.5, 1.0, t ) );
+  // tier-1 soft handling: alpha-in at birth, long fade-out (+ lens fade)
+  float alpha = aC1.w * smoothstep( 0.0, 0.12, t ) * ( 1.0 - smoothstep( 0.5, 1.0, t ) )
+    * nearFade( wpos );
   vColor = vec4( mix( aC0.rgb, aC1.rgb, smoothstep( 0.0, 1.0, t ) ), alpha );
   vUv = uv;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
@@ -167,6 +195,7 @@ varying vec4 vColor;
 varying float vT;
 varying vec2 vShade;
 ${FOG_PARS_F}
+${TONECAP_GLSL}
 void main() {
   float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
   // erosion-style dissolve: the alpha threshold rises with age so the noisy
@@ -186,8 +215,9 @@ void main() {
   vec3 col = vColor.rgb * hot * ( 1.0 - vT * vT * 0.45 );
   // rim tint: pixels near the burning front shift toward deep ember red
   col = mix( vec3( 1.0, 0.22, 0.03 ) * ( 0.4 + 0.6 * vColor.r ), col, smoothstep( 0.0, 0.55, heat ) );
-  // HDR push so UnrealBloom catches fire/flash pixels
-  gl_FragColor = vec4( col * uIntensity * ( 1.0 - fogFactor ), a );
+  // HDR push so UnrealBloom catches fire/flash pixels — per-card soft knee
+  // keeps a deep additive stack from clipping to a white sheet
+  gl_FragColor = vec4( toneCap( col * uIntensity ) * ( 1.0 - fogFactor ), a );
 }
 `;
 
@@ -205,6 +235,7 @@ varying vec4 vColor;
 varying float vT;
 ${FOG_PARS_V}
 ${DISPLACE_GLSL}
+${NEARFADE_GLSL}
 void main() {
   float life = aVL.w;
   float age = uTime - aPB.w;
@@ -227,7 +258,7 @@ void main() {
   float sl = length( side );
   side = sl > 1e-4 ? side / sl : vec3( viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0] );
   wpos += axis * ( position.x * 2.0 * halfLen ) + side * ( position.y * 2.0 * aWS.x );
-  float alpha = aC.w * ( 1.0 - smoothstep( 0.55, 1.0, t ) );
+  float alpha = aC.w * ( 1.0 - smoothstep( 0.55, 1.0, t ) ) * nearFade( wpos );
   vColor = vec4( aC.rgb, alpha );
   vUv = uv;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
@@ -242,6 +273,7 @@ varying vec2 vUv;
 varying vec4 vColor;
 varying float vT;
 ${FOG_PARS_F}
+${TONECAP_GLSL}
 void main() {
   float dy = abs( vUv.y * 2.0 - 1.0 );
   float dx = abs( vUv.x * 2.0 - 1.0 );
@@ -252,7 +284,7 @@ void main() {
   ${FOG_SCALE_F}
   // incandescent cooling ramp: white-hot core -> orange -> deep red over life
   vec3 base = mix( vColor.rgb, vec3( 1.0, 0.30, 0.04 ), clamp( vT * 1.5, 0.0, 0.92 ) );
-  vec3 col = ( base + vec3( core ) * 0.7 * ( 1.0 - vT * 0.85 ) ) * uIntensity;
+  vec3 col = toneCap( ( base + vec3( core ) * 0.7 * ( 1.0 - vT * 0.85 ) ) * uIntensity );
   gl_FragColor = vec4( col * ( 1.0 - fogFactor ), a );
 }
 `;
@@ -270,6 +302,7 @@ varying vec4 vColor;
 varying float vT;
 varying float vSeed;
 ${FOG_PARS_V}
+${NEARFADE_GLSL}
 void main() {
   float life = aAL.w;
   float age = uTime - aPB.w;
@@ -294,7 +327,7 @@ void main() {
   // cone envelope: narrow at the brake, widening toward the tip
   float env = 0.30 + 1.05 * u;
   vec3 wpos = tipPos + side * ( position.y * 2.0 * aWL.x * env );
-  float alpha = aC.w * pow( 1.0 - t, 1.3 );
+  float alpha = aC.w * pow( 1.0 - t, 1.3 ) * nearFade( wpos );
   vColor = vec4( aC.rgb, alpha );
   vUv = uv;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
@@ -311,6 +344,7 @@ varying vec4 vColor;
 varying float vT;
 varying float vSeed;
 ${FOG_PARS_F}
+${TONECAP_GLSL}
 void main() {
   // seeded UV jitter so no two jets sample the identical noise
   vec2 uv = vec2( vUv.x * ( 0.82 + 0.18 * fract( vSeed * 7.31 ) ),
@@ -325,7 +359,7 @@ void main() {
   float hot = 0.6 + heat * heat * ( 1.0 - vUv.x * 0.55 ) * 2.2;
   vec3 col = vColor.rgb * hot * ( 1.0 - vT * 0.35 );
   col = mix( vec3( 1.0, 0.30, 0.05 ) * ( 0.5 + 0.5 * vColor.r ), col, smoothstep( 0.0, 0.5, heat ) );
-  gl_FragColor = vec4( col * uIntensity * ( 1.0 - fogFactor ), a );
+  gl_FragColor = vec4( toneCap( col * uIntensity ) * ( 1.0 - fogFactor ), a );
 }
 `;
 
@@ -376,9 +410,12 @@ void main() {
   float h1 = fract( aSG.w * 37.719 );
   float h2 = fract( aSG.w * 61.113 );
   float h3 = fract( aSG.w * 91.537 );
-  vec3 lp = position * vec3( 0.72 + h1 * 0.68, 0.64 + h2 * 0.76, 0.72 + h3 * 0.68 );
-  lp.x += lp.y * ( h2 - 0.5 ) * 0.45;
-  lp.z += lp.y * ( h1 - 0.5 ) * 0.35;
+  // wider anisotropy than r6 (plates vs lumps) + stronger shear: with the
+  // torn-plate composite base this yields shard/scrap silhouettes, never the
+  // r7 "flat orange boxes"
+  vec3 lp = position * vec3( 0.62 + h1 * 0.85, 0.42 + h2 * 0.95, 0.62 + h3 * 0.85 );
+  lp.x += lp.y * ( h2 - 0.5 ) * 0.7;
+  lp.z += lp.y * ( h1 - 0.5 ) * 0.55;
   vec3 wpos = center + rot * ( lp * aSG.x * fade );
   vNormalW = rot * normal;
   vLocal = lp;
@@ -386,10 +423,9 @@ void main() {
   // charred-metal albedo: near-black soot to dark scorched brown
   vTint = mix( vec3( 0.045, 0.040, 0.036 ), vec3( 0.145, 0.110, 0.085 ), h3 );
   // ember glow cools fast (orange -> black), scaled per-instance so chunks
-  // glow unevenly rather than as flat confetti. 2.6 (was 1.7): a chunk that
-  // lands in a tree canopy must be charred-dark within ~1 s, not a lump of
-  // orange popcorn parked in the foliage (r6)
-  vHot = aSG.z * exp( -age * 2.6 ) * ( 0.35 + h2 * 0.75 );
+  // glow unevenly rather than as flat confetti. 3.1 (was 2.6): frozen frames
+  // still showed whole-face orange lumps ~1 s in (r7 "orange boxes")
+  vHot = aSG.z * exp( -age * 3.1 ) * ( 0.30 + h2 * 0.70 );
   vFade = fade;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   ${FOG_V}
@@ -420,8 +456,10 @@ void main() {
   vec3 cellB = floor( vLocal * 4.5 + vSeed * 29.0 + 0.5 );
   float patA = fract( sin( dot( cellA, vec3( 12.9898, 78.233, 37.719 ) ) ) * 43758.5453 );
   float patB = fract( sin( dot( cellB, vec3( 26.6516, 41.339, 59.113 ) ) ) * 24634.6345 );
-  float pat = smoothstep( 0.42, 0.92, max( patA, patB * 0.8 ) );
-  col += vec3( 1.5, 0.38, 0.05 ) * vHot * edge * ( 0.12 + 1.05 * pat );
+  // glow confined to sparse pockets + shadowed rims: most of the chunk stays
+  // charred black even at peak heat (r7: whole-face glow read as orange boxes)
+  float pat = smoothstep( 0.58, 0.95, max( patA, patB * 0.8 ) );
+  col += vec3( 1.5, 0.38, 0.05 ) * vHot * edge * ( 0.05 + 0.95 * pat );
   ${FOG_SCALE_F}
   #ifdef USE_FOG
     col = mix( col, fogColor, fogFactor );
@@ -685,24 +723,68 @@ function makeQuadGeometry(count) {
  * "axis-aligned box confetti" read.
  */
 function makeChunkGeometry(count, rng) {
-  const base = new THREE.IcosahedronGeometry(0.62, 0).toNonIndexed();
-  const pos = base.getAttribute('position');
-  const disp = new Map();
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-    const key = `${x.toFixed(3)}|${y.toFixed(3)}|${z.toFixed(3)}`;
-    let m = disp.get(key);
-    if (m === undefined) { m = 0.5 + rng() * 1.0; disp.set(key, m); }
-    pos.setXYZ(i, x * m, y * m, z * m);
+  // r7 "flat orange boxes": the displaced icosahedron kept a convex, roundish
+  // silhouette that read as a box at range. Scrap armor is a torn CHUNK with
+  // a thin bent PLATE welded off one side — the concave composite silhouette
+  // plus the per-instance shear in DEBRIS_VERT kills the popcorn read.
+  const chunk = new THREE.IcosahedronGeometry(0.52, 0).toNonIndexed();
+  {
+    const pos = chunk.getAttribute('position');
+    const disp = new Map();
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      const key = `${x.toFixed(3)}|${y.toFixed(3)}|${z.toFixed(3)}`;
+      let m = disp.get(key);
+      if (m === undefined) { m = 0.38 + rng() * 1.15; disp.set(key, m); }
+      pos.setXYZ(i, x * m, y * m, z * m);
+    }
   }
-  base.computeVertexNormals(); // non-indexed => hard facet normals
+  // thin torn plate: a squashed, corner-displaced octahedron sticking out
+  const plate = new THREE.IcosahedronGeometry(0.55, 0).toNonIndexed();
+  {
+    const pos = plate.getAttribute('position');
+    const disp = new Map();
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      const key = `${x.toFixed(3)}|${y.toFixed(3)}|${z.toFixed(3)}`;
+      let m = disp.get(key);
+      if (m === undefined) { m = 0.55 + rng() * 0.9; disp.set(key, m); }
+      // flatten to a plate, then offset/tilt off the chunk's flank
+      pos.setXYZ(i, x * m * 1.25, y * m * 0.16, z * m * 0.95);
+    }
+    plate.rotateZ(0.55);
+    plate.rotateX(-0.35);
+    plate.translate(0.34, 0.18, -0.12);
+  }
+  const merged = mergeGeoms([chunk, plate]);
+  merged.computeVertexNormals(); // non-indexed => hard facet normals
   const geo = new THREE.InstancedBufferGeometry();
-  geo.setAttribute('position', base.getAttribute('position'));
-  geo.setAttribute('normal', base.getAttribute('normal'));
-  geo.setAttribute('uv', base.getAttribute('uv'));
+  geo.setAttribute('position', merged.getAttribute('position'));
+  geo.setAttribute('normal', merged.getAttribute('normal'));
+  geo.setAttribute('uv', merged.getAttribute('uv'));
   geo.instanceCount = 0;
   geo._capacity = count;
   return geo;
+}
+
+/** Minimal non-indexed position/normal/uv concat (avoids the examples dep). */
+function mergeGeoms(geoms) {
+  let vcount = 0;
+  for (const g of geoms) vcount += g.getAttribute('position').count;
+  const pos = new Float32Array(vcount * 3);
+  const uv = new Float32Array(vcount * 2);
+  let o3 = 0, o2 = 0;
+  for (const g of geoms) {
+    pos.set(g.getAttribute('position').array, o3);
+    const u = g.getAttribute('uv');
+    if (u) uv.set(u.array, o2);
+    o3 += g.getAttribute('position').count * 3;
+    o2 += g.getAttribute('position').count * 2;
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  return out;
 }
 
 /**
@@ -796,7 +878,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   // (elevation 35°, azimuth 140° — see src/engine/sky.js)
   const sunDirW = new THREE.Vector3(0.527, 0.574, -0.627).normalize();
 
-  function puffMaterial(map, additive, drag, intensity, tiles = 1) {
+  function puffMaterial(map, additive, drag, intensity, tiles = 1, nearFade = [0.5, 2.2]) {
     const mat = new THREE.ShaderMaterial({
       vertexShader: PUFF_VERT,
       fragmentShader: additive ? PUFF_FRAG_ADDITIVE : PUFF_FRAG_NORMAL,
@@ -807,6 +889,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
         uIntensity: { value: intensity },
         uTiles: { value: tiles },
         uSunDirW: { value: sunDirW },
+        uNearFade: { value: new THREE.Vector2(nearFade[0], nearFade[1]) },
       }),
       transparent: true,
       depthWrite: false,
@@ -827,19 +910,22 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
       puffMaterial(smokeTex, false, 0.9, 1, 4), PUFF_LAYOUT, POOL_SIZES.smoke, 'aVL', 3),
     fire: new Pool('fire', makeQuadGeometry(POOL_SIZES.fire),
       // intensity 1.05: hot enough to bloom where sprites overlap without the
-      // stacked-additive HDR clipping the fireball core to a featureless sheet
-      puffMaterial(fireTex, true, 1.6, 1.05, 4), PUFF_LAYOUT, POOL_SIZES.fire, 'aVL', 3),
+      // stacked-additive HDR clipping the fireball core to a featureless sheet.
+      // Additive pools carry a longer lens fade (r7 scope flood): a fire card
+      // 3 m from the eye is a screen-filling wash, not feedback.
+      puffMaterial(fireTex, true, 1.6, 1.05, 4, [1.2, 4.6]), PUFF_LAYOUT, POOL_SIZES.fire, 'aVL', 3),
     dust: new Pool('dust', makeQuadGeometry(POOL_SIZES.dust),
       puffMaterial(dustTex, false, 1.4, 1, 4), PUFF_LAYOUT, POOL_SIZES.dust, 'aVL', 3),
     flash: new Pool('flash', makeQuadGeometry(POOL_SIZES.flash),
       // 1.7: bright enough to bloom without clipping to a featureless sheet
-      puffMaterial(flashTex, true, 0.6, 1.7), PUFF_LAYOUT, POOL_SIZES.flash, 'aVL', 3),
+      puffMaterial(flashTex, true, 0.6, 1.7, 1, [1.2, 4.6]), PUFF_LAYOUT, POOL_SIZES.flash, 'aVL', 3),
     jet: new Pool('jet', makeQuadGeometry(POOL_SIZES.jet),
       new THREE.ShaderMaterial({
         vertexShader: JET_VERT,
         fragmentShader: JET_FRAG,
         uniforms: Object.assign(fogUniforms(), {
           uTime, uMap: { value: jetTex }, uIntensity: { value: 1.6 },
+          uNearFade: { value: new THREE.Vector2(1.2, 4.6) },
         }),
         transparent: true,
         depthWrite: false,
@@ -855,6 +941,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
           // 1.45: sparks bloom but keep their orange hue instead of
           // tone-mapping to uniform white confetti
           uTime, uDrag: { value: 1.1 }, uIntensity: { value: 1.45 },
+          uNearFade: { value: new THREE.Vector2(0.9, 3.4) },
         }),
         transparent: true,
         depthWrite: false,

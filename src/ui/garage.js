@@ -165,15 +165,20 @@ const GARAGE_CSS = `
 .cot-camo-card:hover{border-color:rgba(210,225,240,.5);}
 .cot-camo-card.sel{border-color:#f0a030;border-bottom-color:#f0a030;
   background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
-.cot-camo-card .sw{height:22px;margin:0 auto 3px;border:1px solid rgba(0,0,0,.55);
+.cot-camo-card .sw{height:30px;margin:0 auto 3px;border:1px solid rgba(0,0,0,.55);
   position:relative;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(235,243,250,.10);}
 .cot-camo-card .sw canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
 .cot-camo-card .sw.auto{background:conic-gradient(#4c6b38 0 25%,#c9a86e 0 50%,#cdd6de 0 75%,#5c6066 0);}
+/* equipment tiles: distinct procedural icons on a dark plate (r3: identical
+   stripe bars read as placeholders) */
+.cot-camo-card .sw.eq{display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,#232a31,#12161b);}
+.cot-camo-card .sw.eq svg{display:block;}
 .cot-camo-card .cl{font-size:8px;font-weight:700;letter-spacing:.1em;color:#9fb0bf;
   text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cot-camo-card.sel .cl{color:#d8a04c;}
-.cot-camos .cnote{font-size:12px;font-weight:600;letter-spacing:.05em;
-  color:#aab8c4;text-transform:uppercase;margin-top:6px;line-height:1.25;
+.cot-camos .cnote{font-size:8.5px;font-weight:700;letter-spacing:.14em;
+  color:#8a97a3;text-transform:uppercase;margin-top:6px;white-space:nowrap;
   text-shadow:0 1px 2px rgba(0,0,0,.7);}
 `;
 
@@ -246,7 +251,10 @@ function paintCamoSwatch(canvas, spec, pid) {
   const base = swHex(vis.base || '#5a6b46');
   const weather = swHex(vis.weather || vis.base || '#5a6b46');
   const patches = (vis.patches || []).map(swHex);
-  const S = W; // tile-scale reference dimension (matches paintCamo fractions)
+  // tile-scale reference dimension: 1.6x over the raw canvas width so the
+  // pattern features render BOLDER than on-hull scale — at 62px display width
+  // the true-scale features smeared into flat noise (r3 readability)
+  const S = W * 1.6;
   c.fillStyle = swRgb(base);
   c.fillRect(0, 0, W, H);
   for (let i = 0; i < 10; i++) { // weathered tonal drift
@@ -313,7 +321,7 @@ function paintCamoSwatch(canvas, spec, pid) {
     }
   } else if ((scheme === 'digital' || scheme === 'fleck') && patches.length) {
     if (scheme === 'digital') {
-      const cell = 4;
+      const cell = 6; // coarse enough to read as digital at tile size
       const cols = [base, ...patches];
       for (let y = 0; y < H; y += cell) {
         for (let x = 0; x < W; x += cell) {
@@ -483,7 +491,7 @@ export function createGarage(opts) {
     }
     const note = document.createElement('div');
     note.className = 'cnote';
-    note.textContent = 'Pattern grants +3.5% concealment';
+    note.textContent = 'Pattern +3.5% concealment';
     camosEl.appendChild(note);
   }
   // --- EQUIPMENT PICKER (camo_spotting r1): 3-slot loadout toggles ---------
@@ -500,11 +508,36 @@ export function createGarage(opts) {
     grid.className = 'cgrid';
     camosEl.appendChild(grid);
     const SHORT = { camo_net: 'Camo Net', binoculars: 'Binocs', vents: 'Vents' };
+    // distinct procedural icon per item (r3): net = diamond mesh,
+    // binoculars = twin objectives + bridge, vents = fan rotor
+    const INK = '#cfd9e2';
+    const EQUIP_SVG = {
+      camo_net:
+        `<svg viewBox="0 0 24 18" width="26" height="20">` +
+        `<g stroke="${INK}" stroke-width="1.1" fill="none" opacity=".9">` +
+        `<path d="M2 4 8 14M8 2 16 14M16 2 22 12M22 4 16 14M16 2 8 14M8 2 2 10"/>` +
+        `</g><path d="M1 3q6 -2.5 11 0q6 2.5 11 0" stroke="${INK}" stroke-width="1.4" fill="none"/></svg>`,
+      binoculars:
+        `<svg viewBox="0 0 24 18" width="26" height="20">` +
+        `<circle cx="7" cy="11" r="5" fill="none" stroke="${INK}" stroke-width="1.7"/>` +
+        `<circle cx="17" cy="11" r="5" fill="none" stroke="${INK}" stroke-width="1.7"/>` +
+        `<circle cx="7" cy="11" r="1.6" fill="${INK}"/><circle cx="17" cy="11" r="1.6" fill="${INK}"/>` +
+        `<rect x="10.6" y="9.6" width="2.8" height="2.8" fill="${INK}"/>` +
+        `<rect x="5.4" y="2.6" width="3.2" height="3" fill="${INK}"/>` +
+        `<rect x="15.4" y="2.6" width="3.2" height="3" fill="${INK}"/></svg>`,
+      vents:
+        `<svg viewBox="0 0 24 18" width="26" height="20">` +
+        `<circle cx="12" cy="9" r="7.4" fill="none" stroke="${INK}" stroke-width="1.4"/>` +
+        `<g fill="${INK}"><path d="M12 9 10.4 3.2q1.6-.9 3.2 0Z"/>` +
+        `<path d="M12 9 17.4 11.4q-.2 1.9-1.8 2.7Z"/>` +
+        `<path d="M12 9 8.4 13.9q-1.6-.8-1.8-2.7Z"/></g>` +
+        `<circle cx="12" cy="9" r="1.7" fill="${INK}"/></svg>`,
+    };
     for (const eid of Object.keys(EQUIPMENT)) {
       const card = document.createElement('div');
       card.className = 'cot-camo-card';
       card.title = EQUIPMENT[eid].label;
-      card.innerHTML = `<div class="sw auto"></div><div class="cl"></div>`;
+      card.innerHTML = `<div class="sw eq">${EQUIP_SVG[eid] || ''}</div><div class="cl"></div>`;
       card.querySelector('.cl').textContent = SHORT[eid] || EQUIPMENT[eid].label;
       card.addEventListener('click', () => {
         emit('ui:click', {});
@@ -554,17 +587,22 @@ export function createGarage(opts) {
   }
   // --- END CAMO PICKER SECTION ---------------------------------------------
 
-  // roster maxima for normalized stat bars
+  // roster maxima/minima for normalized stat bars — every bar spreads across
+  // the actual roster range so bar length carries meaning (r3: the old
+  // fixed-scale reload bar sat near-full for every tank)
   const MAXES = {
-    hp: 1, speed: 1, hpt: 1, pen: 1,
+    hp: 1, speed: 1, hpt: 1, dmg: 1, reloadMax: 1, reloadMin: Infinity,
   };
   for (const s of specs) {
     MAXES.hp = Math.max(MAXES.hp, s.hp);
     MAXES.speed = Math.max(MAXES.speed, s.topSpeedKmh);
     MAXES.hpt = Math.max(MAXES.hpt, s.enginePowerHp / s.weightTons);
+    MAXES.reloadMax = Math.max(MAXES.reloadMax, s.gun.reloadS);
+    MAXES.reloadMin = Math.min(MAXES.reloadMin, s.gun.reloadS);
     const shells = (s.gun && s.gun.shells) || [];
-    for (const sh of shells) MAXES.pen = Math.max(MAXES.pen, sh.pen100Mm || 0);
+    for (const sh of shells) MAXES.dmg = Math.max(MAXES.dmg, sh.dmg || 0);
   }
+  if (!isFinite(MAXES.reloadMin)) MAXES.reloadMin = 1;
 
   // --- build carousel cards ---
   for (const s of specs) {
@@ -613,14 +651,20 @@ export function createGarage(opts) {
     }
     const hullMm = frontArmorMm(spec.armor && spec.armor.hullPlates, ['glacis', 'front', 'driver']);
     const turMm = frontArmorMm(spec.armor && spec.armor.turretPlates, ['front', 'cheek', 'mantlet']);
-    const bestPen = shells.length ? Math.max(...shells.map((s) => s.pen100Mm || 0)) : 0;
+    // headline DAMAGE (alpha) — penetration lives in the per-shell rows only
+    // (r3: a vehicle-level pen number duplicated the shell table; no AAA tank
+    // game headlines a single pen figure)
+    const bestDmg = shells.length ? Math.max(...shells.map((s) => s.dmg || 0)) : 0;
+    const reloadSpan = Math.max(0.5, MAXES.reloadMax - MAXES.reloadMin);
+    const reloadFrac = Math.max(0.06,
+      (MAXES.reloadMax - spec.gun.reloadS) / reloadSpan * 0.94 + 0.06);
     statsEl.innerHTML =
       `<h3></h3><div class="sub">${flagSVG(spec.nation, spec.era, 20, 13)}<span>${spec.nation} &middot; ${spec.class} &middot; ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}</span></div>` +
       statBar('Hit points', `${spec.hp}`, spec.hp / MAXES.hp) +
       statBar('Top speed', `${spec.topSpeedKmh} km/h`, spec.topSpeedKmh / MAXES.speed) +
       statBar('Power / weight', `${hpT.toFixed(1)} hp/t`, hpT / MAXES.hpt) +
-      statBar('Reload', `${spec.gun.reloadS.toFixed(1)} s`, 1 - Math.min(1, spec.gun.reloadS / 15)) +
-      statBar('Penetration', `${bestPen} mm`, bestPen / MAXES.pen) +
+      statBar('Reload', `${spec.gun.reloadS.toFixed(1)} s`, reloadFrac) +
+      statBar('Damage', `${bestDmg} hp`, bestDmg / MAXES.dmg) +
       `<div class="sep"></div>` + shellRows +
       `<div class="sep"></div>` +
       `<div class="armorline"><span>Hull front</span><b>${hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;'}</b></div>` +

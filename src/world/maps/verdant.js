@@ -61,7 +61,9 @@ export default {
     // warm green uplands: cooler bases washed the whole wall toward denim
     // once the fog lerp stacked on top
     baseHex: 0x4d6540, amp: 1.0, style: 'rolling', treeline: 0.62,
-    forestHex: 0x33502e, rockHex: 0x77725f, haze: 0.85,
+    // r6: grain 0.7 — the residual granular speckle above the treeline still
+    // smeared under tangential grazing on the highest bald summits
+    forestHex: 0x33502e, rockHex: 0x77725f, haze: 0.85, grain: 0.7,
   },
 
   sky: {

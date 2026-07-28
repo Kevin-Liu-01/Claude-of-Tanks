@@ -24,9 +24,13 @@ const GRASS_FADE_END = 235;            // scale-out ends here (no hard carpet li
 // the midfield scatter carries the 70-235 m band beyond it.
 const CARPET_CELL = 14;
 const CARPET_RING = 5;                 // (2R+1)^2 = 121 cells around the camera
-const CARPET_PER_CELL = 680;           // attempts per cell (filters thin it)
+// r6: 680 -> 880 attempts/cell + cap raise — the 0-25 m ring around the tank
+// must read as continuous 3D turf (AAA tank games run dense instanced grass
+// to 30 m+); at 680 the ground still showed flat albedo between tufts right
+// beside the tracks
+const CARPET_PER_CELL = 880;           // attempts per cell (filters thin it)
 const CARPET_FAR = 95;                 // shader fade distance
-const CARPET_CAP = 40000;              // instances per tuft variant
+const CARPET_CAP = 52000;              // instances per tuft variant
 const TREE_NEAR_IN = 260, TREE_NEAR_OUT = 290; // hysteresis band (full-detail radius)
 
 function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
@@ -211,11 +215,13 @@ function makePalmFrondTexture(rng, tone = null) {
           const lw = 5.5 - t * 2.4 - l * 0.8;
           if (lw <= 0.8) continue;
           const jit = (rng() - 0.5) * 7;
+          // r6: sat 0.40 -> 0.30, hue pulled toward olive — the frond sheet
+          // itself fed the lime-plastic read, not just the vertex tint
           const lum = pass === 0
             ? 0.13 + rng() * 0.05
-            : 0.20 + t * 0.12 + rng() * 0.07 + dry * 0.10;
-          const sat = pass === 0 ? 0.32 : 0.40 - dry * 0.16;
-          const hue = 0.225 - dry * 0.10 + (rng() - 0.5) * 0.02;
+            : 0.19 + t * 0.11 + rng() * 0.07 + dry * 0.10;
+          const sat = pass === 0 ? 0.28 : 0.30 - dry * 0.12;
+          const hue = 0.21 - dry * 0.10 + (rng() - 0.5) * 0.02;
           ctx.strokeStyle = css(hue, sat, lum);
           ctx.lineWidth = lw;
           ctx.lineCap = 'round';
@@ -370,10 +376,14 @@ function buildBroadleafCards(rng, nCards, sizeMul, pal = {}) {
     const wsz = (1.55 + rng() * 0.9) * sizeMul;
     _e.set(rng() * Math.PI, rng() * Math.PI * 2, rng() * Math.PI, 'YXZ');
     const distC = Math.hypot(px, py - cy, pz) / Math.max(rx, ry);
-    const shade = (0.48 + 0.52 * clamp(distC, 0, 1)) // dark core, lit shell
-      * (0.9 + 0.2 * clamp((py - cy) / ry * 0.5 + 0.5, 0, 1));
+    // r6: deeper interior AO + wider hue/value jitter per card — flat
+    // one-tone crowns were the "broccoli blob" mid-distance tell.
+    // lighting_post r3: core floor 0.42 -> 0.50 so oaks meet the shared
+    // 0.30-0.45 linear albedo band pines/palms target (cross-species match)
+    const shade = (0.50 + 0.50 * clamp(distC, 0, 1)) // dark core, lit shell
+      * (0.86 + 0.28 * clamp((py - cy) / ry * 0.5 + 0.5, 0, 1)) * (0.92 + rng() * 0.16);
     parts.push(foliageCard(wsz, wsz * 0.82, px, py, pz, _e, shade,
-      hue0 + (rng() - 0.5) * 0.03, sat0 + rng() * 0.08, 0.30 + rad * 0.65, 0, cy, 0));
+      hue0 + (rng() - 0.5) * 0.05, sat0 + rng() * 0.08, 0.30 + rad * 0.65, 0, cy, 0));
   }
   // a couple of low cards hanging near the branch collar
   for (let i = 0; i < Math.max(2, nCards >> 4); i++) {
@@ -396,7 +406,9 @@ function buildPineTrunk(rng) {
 }
 
 function buildPineCards(rng, tierStep, sizeMul, pal = {}) {
-  const hue0 = pal.cardHue ?? 0.325, sat0 = pal.cardSat ?? 0.23;
+  // lighting_post r3: pine defaults 0.325/0.23 -> 0.30/0.18 — pines sat
+  // brighter + more cyan than oaks (hue0 0.235); pull both into one band
+  const hue0 = pal.cardHue ?? 0.30, sat0 = pal.cardSat ?? 0.18;
   const topY = 6.4;
   const parts = [];
   for (let y = 1.55; y < topY - 0.3; y += tierStep * (0.85 + rng() * 0.3)) {
@@ -409,9 +421,11 @@ function buildPineCards(rng, tierStep, sizeMul, pal = {}) {
       // cap card width — oversized bottom-tier quads mip into solid diamonds
       const w = Math.min(rr * 1.15 + 0.75, 2.4) * sizeMul, h = (0.9 + rr * 0.45) * sizeMul;
       _e.set(-Math.PI / 2 + 0.55 + rng() * 0.25, -a + Math.PI / 2, (rng() - 0.5) * 0.3, 'YXZ');
-      const shade = 0.55 + t * 0.35 + rng() * 0.15;
+      // r6: wider per-card value/hue spread — one uniform saturated green
+      // across every card was the "model railroad pine" tell at 30-80 m
+      const shade = 0.50 + t * 0.35 + rng() * 0.28;
       parts.push(foliageCard(w, h, Math.cos(a) * rr * 0.55, y + rng() * 0.25, Math.sin(a) * rr * 0.55,
-        _e, shade, hue0 + (rng() - 0.5) * 0.02, sat0 + rng() * 0.07, 0.15 + Math.pow(t, 1.5) * 0.65,
+        _e, shade, hue0 + (rng() - 0.5) * 0.045, sat0 + rng() * 0.07, 0.15 + Math.pow(t, 1.5) * 0.65,
         0, y - 0.6, 0));
     }
   }
@@ -426,7 +440,12 @@ function buildPineCards(rng, tierStep, sizeMul, pal = {}) {
 
 // --- palm: curved warm-brown trunk + a crown of ARCHED drooping fronds
 // (bent tapered planes, dense frond texture) + coconut cluster ---
-function buildPalmGeometry(rng) {
+function buildPalmGeometry(rng, pal = {}) {
+  // r6: frond tint is PALETTE-DRIVEN and defaults desaturated olive — the
+  // old hardcoded HSL(0.228, 0.32, 0.5) x 1.55 rendered saturated lime
+  // plastic against the desert sand (top critique item)
+  const fr = pal.frond || {};
+  const frondHue = fr.hue ?? 0.205, frondSat = fr.sat ?? 0.22, frondLum = fr.l ?? 0.44;
   const trunkParts = [];
   const H = 5.6 + rng() * 1.4;
   const leanA = rng() * Math.PI * 2;
@@ -492,11 +511,11 @@ function buildPalmGeometry(rng) {
     const col = new Float32Array(nv * 3);
     const fl = new Float32Array(nv);
     if (dead) _c.setHSL(0.095, 0.30, 0.28, THREE.SRGBColorSpace);
-    else _c.setHSL(0.228 + (rng() - 0.5) * 0.025, 0.32, 0.5, THREE.SRGBColorSpace);
+    else _c.setHSL(frondHue + (rng() - 0.5) * 0.035, frondSat, frondLum, THREE.SRGBColorSpace);
     const uvA = g.attributes.uv;
     for (let i = 0; i < nv; i++) {
       const t = uvA.getY(i); // 0..1 along the frond length
-      const m = dead ? 1 : 1.55 * shade;
+      const m = dead ? 1 : 1.38 * shade;
       col[i * 3] = _c.r * m; col[i * 3 + 1] = _c.g * m; col[i * 3 + 2] = _c.b * m;
       fl[i] = dead ? 0.25 : 0.30 + t * 0.45;
     }
@@ -519,12 +538,15 @@ function buildPalmGeometry(rng) {
     const phiTip = -(0.5 + rng() * 0.7); // tips droop below horizontal
     const len = 3.4 + rng() * 1.2;
     const shade = 0.7 + (steep ? 0.3 : 0.12) + rng() * 0.1;
-    cardParts.push(frond(a, phi0, phiTip, len, 1.9, shade, false));
+    // r6: blade width 1.9 -> 1.4 m — the fat planes read as banana leaves up
+    // close AND cast solid strap shadows (the star-blob shadow tell)
+    cardParts.push(frond(a, phi0, phiTip, len, 1.4, shade, false));
   }
-  // 2-3 hanging dead fronds against the trunk
-  for (let k = 0; k < 2 + ((rng() * 2) | 0); k++) {
+  // r6: 4-5 hanging dead fronds — a proper dry skirt under the crown pulls
+  // the palette toward khaki and breaks the all-green crown ball
+  for (let k = 0; k < 4 + ((rng() * 2) | 0); k++) {
     const a = rng() * Math.PI * 2;
-    cardParts.push(frond(a, -0.9 - rng() * 0.3, -1.45, 2.3, 1.1, 0.6, true));
+    cardParts.push(frond(a, -0.9 - rng() * 0.3, -1.45, 2.3 + rng() * 0.5, 1.05, 0.6, true));
   }
   return { trunk: mergeParts(trunkParts), cards: mergeParts(cardParts) };
 }
@@ -642,7 +664,9 @@ function buildOakFarGeometry(rng, pal = {}) {
   const hue = cp.hue ?? 0.24, sat = cp.sat ?? 0.30, l0 = cp.l0 ?? 0.235, l1 = cp.l1 ?? 0.36;
   const trunkParts = [], canopyParts = [];
   const trunkH = 2.9;
-  const trunk = new THREE.CylinderGeometry(0.20, 0.36, trunkH, 5, 1);
+  // r6: thicker far trunk (0.20/0.36 -> 0.32/0.55) — sub-pixel trunks at
+  // 400 m+ vanished and rim-forest crowns read as floating saucers
+  const trunk = new THREE.CylinderGeometry(0.32, 0.55, trunkH, 5, 1);
   trunk.translate(0, trunkH / 2, 0);
   _c.setHSL(0.07, 0.26, 0.17, THREE.SRGBColorSpace);
   trunkParts.push(paintFlat(trunk, _c, 0));
@@ -669,7 +693,7 @@ function buildPineFarGeometry(rng, pal = {}) {
   const cp = pal.canopy || {};
   const hue = cp.hue ?? 0.315, sat = cp.sat ?? 0.26, l0 = cp.l0 ?? 0.215, l1 = cp.l1 ?? 0.33;
   const trunkParts = [], canopyParts = [];
-  const trunk = new THREE.CylinderGeometry(0.14, 0.28, 2.2, 5, 1);
+  const trunk = new THREE.CylinderGeometry(0.22, 0.40, 2.2, 5, 1); // r6: see oak far trunk
   trunk.translate(0, 1.1, 0);
   _c.setHSL(0.06, 0.28, 0.14, THREE.SRGBColorSpace);
   trunkParts.push(paintFlat(trunk, _c, 0));
@@ -971,7 +995,8 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     if (heightField.getNormalAt(x, z).y < 0.78) return null;
     // splat-aware thinning: drier + thinner on dirt patches, dense in meadows
     const sn = sampleSplatNoise(x, z);
-    const dirtPatch = smoothstepJs(0.62, 0.78, sn.n2 + (sn.n1 - 0.5) * 0.45);
+    // (thresholds track the shader's `worn` band — r6: 0.60/0.82 + warp)
+    const dirtPatch = smoothstepJs(0.60, 0.82, sn.n2 + (sn.n1 - 0.5) * 0.45);
     if (dirtPatch > 0.35 && clJ < dirtPatch * 0.9) dry = Math.max(dry, 0.55);
     if (dirtPatch > 0.55 && roll < (carpet ? 0.6 : 0.75)) return null;
     if (!carpet) { // midfield scatter keeps the clumpy meadow look
@@ -983,13 +1008,19 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     // stray outliers between the clumps
     let sxzMul = 1, syMul = 1;
     if (veg.grassDensity < 0.5) {
-      const clump = smoothstepJs(0.34, 0.60, sn.n2);
-      if (clJ > clump * 0.94 + 0.06) return null;
-      // r5: ~3x size spread keyed to the clump core — big established growth
-      // at clump centers, stunted stragglers at the fringe, so the scatter
-      // stops reading as same-size pepper dots
-      sxzMul = 0.55 + clump * 0.7 + roll * 0.75;
-      syMul = 0.6 + clump * 0.55 + varJ * 0.6;
+      // r6 two-scale Poisson-style clustering: the r5 single macro mask still
+      // passed ~40% of candidates over half the map — near-constant density,
+      // the "pepper noise" critique. Now a BIOME belt (~150 m moisture lines)
+      // gates a THICKET field (~10-20 m clump cores): dense growth knots
+      // inside the belts, clean open ground between, ~3% stray outliers.
+      const biome = smoothstepJs(0.42, 0.70, sn.n2);
+      const thicket = smoothstepJs(0.44, 0.78, sn.n1);
+      const clump = biome * (0.12 + 0.88 * thicket);
+      if (clJ > clump * 0.97 + 0.03) return null;
+      // size keyed to the clump core — big established growth at centers,
+      // stunted stragglers at the fringe
+      sxzMul = 0.5 + clump * 0.85 + roll * 0.7;
+      syMul = 0.55 + clump * 0.65 + varJ * 0.55;
     }
     const vv = varJ < (0.75 - dry * 0.5) ? 0 : 1;
     const y = heightField.getHeightAt(x, z);
@@ -1112,10 +1143,24 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   // any tree standing between the chase camera and the vehicle — without it,
   // forest routes hide the player tank behind full-screen canopy walls, and
   // cards inside the orbit radius degrade to giant flat unlit sheets.
-  const treeWindHook = (shader) => {
+  // camo_spotting r3: per-hook near-camera dissolve — trunks keep the tight
+  // 1.5-4.2 m band (a trunk 5 m away SHOULD block the view), CANOPY fragments
+  // (leaf cards + far-LOD lobes) dissolve out to ~8 m so the in-clump chase
+  // camera is never smothered by unfaded sheets.
+  const makeTreeWindHook = (nearD0, nearD1, wrap = false) => (shader) => {
     shader.uniforms.uWindTime = uWindTime;
+    // SNIPER SCOPE CORRIDOR (controls_gunnery r3): while scoped, EVERY tree
+    // part (trunk, near cards, far canopy — this hook is shared by all of
+    // them, and foliageWindHook chains through it for leaf cards + bushes)
+    // crossing a ~4.5 m radius cylinder along the scope ray for the first
+    // ~60 m dithers down to a 0.16 keep-floor. WoT fades intervening crowns
+    // in sniper mode; without this, leaf cards and trunks 5-60 m out walled
+    // off the whole sight picture (a locked 415 m target was 100% invisible).
+    shader.uniforms.uCamPos = uCamPos;
+    shader.uniforms.uCamFwd = uCamFwd;
+    shader.uniforms.uSniperFade = uSniperFade;
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\nuniform float uWindTime;\nattribute float aFlex;\nattribute float aFadeI;\nvarying float vFadeI;');
+      '#include <common>\nuniform float uWindTime;\nuniform vec3 uCamPos;\nuniform vec3 uCamFwd;\nuniform float uSniperFade;\nattribute float aFlex;\nattribute float aFadeI;\nvarying float vFadeI;\nvarying float vScopeKeep;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`
       #include <begin_vertex>
       {
@@ -1125,34 +1170,58 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
         transformed.x += amp * (sin(uWindTime * 1.15 + ph) + 0.45 * sin(uWindTime * 2.63 + ph * 1.7));
         transformed.z += amp * 0.7 * cos(uWindTime * 0.97 + ph * 1.3);
         vFadeI = aFadeI;
+        // sniper scope-ray corridor keep (per vertex — tall trunks fade only
+        // where they actually cross the sight line)
+        vec4 tvw = instanceMatrix * vec4(transformed, 1.0);
+        vec3 tRel = tvw.xyz - uCamPos;
+        float tAlong = dot(tRel, uCamFwd);
+        float tDRay = length(tRel - uCamFwd * max(tAlong, 0.0));
+        float tCorr = 1.0 - (1.0 - smoothstep(4.5, 8.5, tDRay))
+                          * (1.0 - smoothstep(55.0, 75.0, tAlong));
+        vScopeKeep = mix(1.0, max(tCorr, 0.16), uSniperFade);
       }`);
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\nvarying float vFadeI;');
+      '#include <common>\nvarying float vFadeI;\nvarying float vScopeKeep;');
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <alphatest_fragment>', /* glsl */`
       #include <alphatest_fragment>
       {
-        // camera-occlusion fade (per-instance) + near-camera card dissolve.
-        // Screen-space dither keeps the opaque/alpha-tested pipeline (depth
-        // writes stay correct — no sorting, no blend halos).
+        // camera-occlusion fade (per-instance) + near-camera card dissolve
+        // + sniper scope corridor. Screen-space dither keeps the opaque/
+        // alpha-tested pipeline (depth writes stay correct — no sorting,
+        // no blend halos).
         float fadeKeep = 1.0 - 0.88 * vFadeI;
-        fadeKeep *= smoothstep(1.5, 4.2, length(vViewPosition));
+        fadeKeep *= smoothstep(${nearD0.toFixed(2)}, ${nearD1.toFixed(2)}, length(vViewPosition));
+        fadeKeep = min(fadeKeep, vScopeKeep);
         if (fadeKeep < 0.9995) {
           float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
           if (ign > fadeKeep) discard;
         }
       }`);
+    // lighting_post r3: wrap-diffuse on canopy materials — crowns get a lit
+    // side -> occluded interior ramp under the CSM sun instead of reading as
+    // unshaded texture at distance. Cards carry canopy-outward normals.
+    if (wrap) {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <lights_physical_pars_fragment>',
+        THREE.ShaderChunk.lights_physical_pars_fragment.replace(
+          'float dotNL = saturate( dot( normal, directLight.direction ) );',
+          'float dotNL = saturate( ( dot( normal, directLight.direction ) + 0.45 ) / 1.45 );'));
+    }
   };
+  const treeWindHook = makeTreeWindHook(1.5, 4.2);          // trunks/bark
+  const canopyWindHook = makeTreeWindHook(2.5, 8.0, true);  // canopy sheets + cards
   const foliageWindHook = (shader) => {
-    treeWindHook(shader);
+    canopyWindHook(shader);
     useAttributeNormal(shader);
     // SNIPER FOLIAGE FADE (controls_gunnery r2): WoT fades the bush the
     // player is scoped inside — screen-door-dither leaf fragments within
     // ~10 m of the camera while uSniperFade > 0 (same eased uniforms as the
     // grass suppression; zero cost in arcade mode where vFolKeep == 1.0).
-    shader.uniforms.uCamPos = uCamPos;
-    shader.uniforms.uSniperFade = uSniperFade;
+    // The r3 scope-ray corridor lives in makeTreeWindHook (shared with trunks
+    // and far canopies) — this hook only adds the inside-a-bush dissolve.
+    // (uCamPos/uSniperFade uniforms + declarations already added upstream.)
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\nuniform vec3 uCamPos;\nuniform float uSniperFade;\nvarying float vFolKeep;');
+      '#include <common>\nvarying float vFolKeep;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <project_vertex>', /* glsl */`
       {
         vec4 fiw = instanceMatrix * vec4(transformed, 1.0);
@@ -1171,7 +1240,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   const barkMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0.0 });
   barkMat.envMapIntensity = 0.85;
   engineCtx.setupShadowMaterial(barkMat, treeWindHook);
-  barkMat.customProgramCacheKey = () => 'world-tree-bark-v4';
+  barkMat.customProgramCacheKey = () => 'world-tree-bark-v5';
 
   // far canopy: own material — strong sky/env fill acts as the fake-SSS
   // backlight term so shaded crown sides stay green, never crushed black
@@ -1181,8 +1250,8 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   // unaffected beyond a little overdraw)
   canopyFarMat.side = THREE.DoubleSide;
   canopyFarMat.envMapIntensity = 1.35;
-  engineCtx.setupShadowMaterial(canopyFarMat, treeWindHook);
-  canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v5';
+  engineCtx.setupShadowMaterial(canopyFarMat, canopyWindHook);
+  canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v6';
 
   // species registry: texture + near/far geometry builders, seed bases keep
   // the classic verdant set bit-identical to the pre-config build
@@ -1208,7 +1277,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     palm: {
       texSeed: 53, nearSeed: 81, farSeed: 75,
       tex: (r, pal) => makePalmFrondTexture(r, pal.texTone || null),
-      near: (k, pal) => buildPalmGeometry(mulberry32(seed + 81 + k)),
+      near: (k, pal) => buildPalmGeometry(mulberry32(seed + 81 + k), pal),
       far: (r, pal) => buildPalmFarGeometry(r, pal),
     },
     birch: {
@@ -1233,11 +1302,17 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     });
     fm.envMapIntensity = 0.85; // keep ambient on shaded leaves — no black cards
     engineCtx.setupShadowMaterial(fm, foliageWindHook);
-    fm.customProgramCacheKey = () => 'world-tree-foliage-v5-' + sp;
+    fm.customProgramCacheKey = () => 'world-tree-foliage-v6-' + sp;
     foliageMats[sp] = fm;
-    // alpha-tested shadow casting: without this every card shadows as a quad
+    // alpha-tested shadow casting: without this every card shadows as a quad.
+    // r6: palm gets a HIGHER shadow alphaTest — its frond texture covers most
+    // of the card, so at shadow-map mip levels the averaged alpha stayed
+    // above 0.38 across the whole quad and every frond shadowed as a solid
+    // 1.9 m strap; the crown projected a giant star-shaped blob several times
+    // its own size (desert critique). 0.62 keeps only the dense frond core.
     foliageDepthMats[sp] = new THREE.MeshDepthMaterial({
-      depthPacking: THREE.RGBADepthPacking, map: foliageTex[sp], alphaTest: 0.38,
+      depthPacking: THREE.RGBADepthPacking, map: foliageTex[sp],
+      alphaTest: sp === 'palm' ? 0.62 : 0.38,
     });
   }
 
@@ -1306,7 +1381,11 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     });
     if (withObstacle) {
       treeObstacles.push({ min: [x - 0.55, y, z - 0.55], max: [x + 0.55, y + 3.2 * sc, z + 0.55] });
-      concealers.push({ x, z, r: 2.3 * sc, add: 0.13 }); // canopy soft-conceals
+      // camo_spotting r3 forest balance: 0.13 stacked any clump to the bush
+      // cap — bloom-hot forest campers at 250 m+ never lit up. Canopies
+      // soft-conceal (0.08); bushes (0.35) stay the real hides. Pairs with
+      // MAX_BUSH_BONUS 0.6 -> 0.5 in src/sim/spotting.js (already applied).
+      concealers.push({ x, z, r: 2.3 * sc, add: 0.08 }); // canopy soft-conceals
     }
   }
   function addTree(x, z, species) {
@@ -1419,10 +1498,14 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       if (heightField.getNormalAt(x, z).y < 0.78) return;
       let clump = 1;
       if (veg.bushCount < 1) {
-        // r5: sparse-biome shrubs (desert scrub, winter saplings) cluster in
-        // washes/hollows like the tufts do instead of even pepper noise
-        clump = smoothstepJs(0.34, 0.60, sampleSplatNoise(x, z).n2);
-        if (rng() > clump * 0.9 + 0.1) return;
+        // r6 two-scale clustering (matches makeTuft): biome moisture belts x
+        // thicket cores — shrubs knot into dense washes/hollow thickets with
+        // clean ground between, instead of the r5 near-uniform pepper noise
+        const sb = sampleSplatNoise(x, z);
+        const biome = smoothstepJs(0.42, 0.70, sb.n2);
+        const thicket = smoothstepJs(0.44, 0.78, sb.n1);
+        clump = biome * (0.12 + 0.88 * thicket);
+        if (rng() > clump * 0.95 + 0.05) return;
       }
       const y = heightField.getHeightAt(x, z);
       // hull-height concealers: foliage reaches ~2.5-3 m so a parked tank is
