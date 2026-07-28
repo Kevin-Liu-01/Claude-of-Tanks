@@ -749,13 +749,12 @@ export const TANK_SPECS = {
 // ---------------------------------------------------------------------------
 // Visual source of truth per tank: 'procedural' | 'glb'.
 // 'glb' additionally needs { glb: { path, yawOffset?, turretNode?, gunNode? } }
-// (see src/vehicles/modelLoader.js). Asset-scout verdict 2026-07: no
-// permissively-licensed downloadable model of any of the 8 real tanks passed
-// the bar (recognizable as the specific vehicle + articulable turret node) on
-// the allowed sources — poly.pizza carries only stylized generic tanks (all
-// single fused meshes), opengameart's Tiger I / T-34-85 / Abrams are .blend
-// files, kenney.nl has no realistic tanks, and GitHub hits were ripped
-// World-of-Tanks assets (forbidden). The procedural HD models win everywhere.
+// (see src/vehicles/modelLoader.js). Deep-hunt verdict 2026-07: ONE sourced
+// model beat its procedural counterpart — the dannzjs M1A2 SEPv3 (CC-BY-4.0,
+// docs/ATTRIBUTION.md). The other 7 stay procedural: every other candidate on
+// the allowed sources was either not recognizable as the specific vehicle,
+// had no articulable turret node, had no usable materials, or was a ripped
+// game asset (forbidden).
 // ---------------------------------------------------------------------------
 export const MODEL_SOURCE = {
   m4a3e8: { source: 'procedural' },
@@ -763,7 +762,17 @@ export const MODEL_SOURCE = {
   t34_85: { source: 'procedural' },
   is2: { source: 'procedural' },
   panther_g: { source: 'procedural' },
-  m1a2: { source: 'procedural' },
+  // Deep-hunt winner 2026-07: "Abrams M1A2 SEPv3" by dannzjs, CC-BY-4.0
+  // (docs/ATTRIBUTION.md). Preprocessed offline (texture downscale + webp,
+  // TurretPivot/GunPivot articulation grouping baked into the node tree).
+  m1a2: {
+    source: 'glb',
+    glb: {
+      path: '/models/tanks/m1a2_sepv3_dannzjs.glb',
+      turretNode: 'TurretPivot',
+      gunNode: 'GunPivot',
+    },
+  },
   t90m: { source: 'procedural' },
   leo2a7: { source: 'procedural' },
 };

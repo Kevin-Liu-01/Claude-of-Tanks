@@ -54,6 +54,17 @@ let failed = false;
 try {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForFunction('window.__ICONS_READY === true', { timeout: 60000 });
+  // GLB warm-up: tanks with MODEL_SOURCE 'glb' load their model async on
+  // first createTank. Trigger the loads with a throwaway generation pass,
+  // wait until every started load settles (window.__GLB_STATS, maintained by
+  // src/vehicles/modelLoader.js), then generate for real — the second pass
+  // hits tankFactory's synchronous cached-GLB path so icons show the shipped
+  // model. Zero-GLB rosters settle immediately (started === settled === 0).
+  await page.evaluate((ids) => window.__GEN(ids), onlyTanks);
+  await page.waitForFunction(
+    '!window.__GLB_STATS || window.__GLB_STATS.started === window.__GLB_STATS.settled',
+    { timeout: 60000 },
+  );
   const files = await page.evaluate((ids) => window.__GEN(ids), onlyTanks);
   let n = 0;
   for (const [name, dataUrl] of Object.entries(files)) {

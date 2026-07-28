@@ -476,6 +476,24 @@ export function createSky(scene, renderer) {
   let pmrem = null;
   let envTarget = null;
 
+  // Sourced-HDRI environment override (experiment flag; null = procedural
+  // bake, the shipping configuration). Set to an equirect .hdr URL to test.
+  const HDRI_ENV_URL = null;
+  let hdriPromise = null;
+  const loadHdriEnvironment = (url) => {
+    if (!hdriPromise) {
+      hdriPromise = import('three/examples/jsm/loaders/RGBELoader.js')
+        .then(({ RGBELoader }) => new RGBELoader().loadAsync(url));
+    }
+    hdriPromise.then((tex) => {
+      const nextTarget = pmrem.fromEquirectangular(tex);
+      if (envTarget !== null) envTarget.dispose();
+      envTarget = nextTarget;
+      scene.environment = envTarget.texture;
+      scene.environmentIntensity = preset.envIntensity;
+    }).catch((e) => console.warn('[sky] HDRI env failed, procedural bake kept —', e.message));
+  };
+
   const rig = {
     sunDir,
 
@@ -490,6 +508,16 @@ export function createSky(scene, renderer) {
     bakeEnvironment() {
       if (pmrem === null) pmrem = new THREE.PMREMGenerator(renderer);
 
+      // Deep-hunt IBL experiment (2026-07): sourced Poly Haven HDRI as
+      // scene.environment instead of the procedural-sky bake. Judged worse —
+      // the HDRI's baked-in sun cannot track the per-map sun azimuth /
+      // elevation driving the CSM, so specular highlights detach from the
+      // shadow direction on 3 of 4 maps. Flag kept for future re-testing
+      // with per-map matched HDRIs.
+      if (HDRI_ENV_URL) {
+        loadHdriEnvironment(HDRI_ENV_URL);
+        return;
+      }
       const envScene = new THREE.Scene();
       const envSky = new Sky();
       envSky.scale.setScalar(ENV_SKY_SCALE);

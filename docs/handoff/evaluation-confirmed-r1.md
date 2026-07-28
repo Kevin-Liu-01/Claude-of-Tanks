@@ -72,6 +72,47 @@ current tree first and skip anything already fixed. Priority order.
     exception can't kill the frame loop (must not mask the harness's zero-error gate:
     still surface errors to console).
 
+## CRITICAL (added from live user testing 2026-07-27 evening)
+
+0. **Game is unplayable in embedded browser panes — pointer lock denied.**
+   Reproduced live: in an embedded webview, canvas.requestPointerLock() throws
+   SecurityError ("The root document of this element is not valid for pointer lock"),
+   and the user reported no aiming, no firing, no sniper scope. The game must detect
+   pointer-lock failure (catch the promise rejection AND the pointerlockerror event)
+   and fall back gracefully: cursor-position aim (turret steers toward the cursor ray
+   like WoT's no-lock spectator aim, or hold-LMB drag-to-aim), firing NEVER gated on
+   lock state (LMB click fires whenever a battle is live and no menu is open), Shift
+   sniper toggle unaffected, plus a one-time toast "Mouse capture unavailable — cursor
+   aim enabled". Verify with a puppeteer run where requestPointerLock is stubbed to
+   throw SecurityError: drive, aim at an enemy, fire, hit — all must work.
+
+## CRITICAL (user-reported with screenshot, 2026-07-27 evening)
+
+0b. **Tanks clip INTO terrain — hull buried to the fenders in depressions.**
+   User screenshot shows the player tank sunk hull-deep in a shallow dip (63m view).
+   Root cause class: visual root Y is sampled at ONE point (hull center) while the
+   ground rises around it, and/or suspension conformance doesn't clamp wheels to the
+   surface. REQUIRED FIX: support the hull on its actual contact patch — sample the
+   heightfield at all 4 track-run corners (front-left/right, rear-left/right at the
+   real track footprint), set hull Y so the LOWEST wheel still touches ground while
+   pitch/roll follow the best-fit plane of those samples (not the center normal), and
+   clamp every road wheel's visual travel so no wheel or track link ever renders below
+   the terrain surface. Also apply to AI tanks and wrecks. VERIFY with a puppeteer
+   drive across the roughest terrain on verdant + desert: capture 10 frames, assert
+   (via a debug sampler comparing wheel-bottom world Y vs getHeightAt) zero
+   below-ground penetrations > 3cm, and Read the frames to confirm visually.
+
+0c. **Track runs must be REALISTIC TRAPEZOIDS, not rectangular slabs** (user demand).
+   Every tank's track run profile must follow the real vehicle per
+   docs/research/tank-roster.md: road-wheel contact run flat on the ground, FRONT of
+   the run rising at the correct approach angle over the raised idler (WWII: large
+   visible idler wheel; modern: sloped rise under the glacis), REAR rising over the
+   drive sprocket, return run across the top (with sag between return rollers on
+   WWII tanks; hidden behind side skirts on modern tanks but the profile must still
+   read correctly at the visible front/rear). Track links must wrap this trapezoidal
+   path with guide horns, correct per-tank width, and scroll along the path when
+   moving. Judge each tank's closeup against the roster doc's silhouette description.
+
 ## MINOR (fix opportunistically)
 - WW2 track guide-horns render near-white (tankFactory.js:354 mats.dark specular).
 - Several UI labels at 6-8px at 1080p — bump to legible sizes.

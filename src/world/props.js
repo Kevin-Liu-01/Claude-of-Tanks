@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise.js';
 import { applyTone } from './terrain.js';
+import { applySourcedBuildings } from './sourcedTextures.js';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). Synchronous import keeps the __GAME_READY contract.
 import MODELS from './props-models.json';
@@ -557,6 +558,11 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
   const stone = makeStone(noi, aniso, T.stone || null);
   const wood = makeWood(noi, aniso, T.wood || null);
   const straw = makeStraw(noi, aniso, T.straw || null);
+
+  // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
+  // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
+  // urban) in place when they load; procedural stays the fallback of record.
+  applySourcedBuildings({ plaster, roof: roofT, wood, stone }, mapId);
 
   const mats = {
     plaster: new THREE.MeshStandardMaterial({ map: plaster.albedo, normalMap: plaster.normal, roughness: 0.93, metalness: 0 }),

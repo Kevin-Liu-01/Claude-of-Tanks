@@ -1,0 +1,15 @@
+Asset: "tank (panzer tiger)" by Federx
+Source page: https://opengameart.org/content/tank-panzer-tiger
+License as stated on the asset page at download time (2026-07-27):
+  "CC-BY 3.0" (Creative Commons Attribution 3.0) — https://creativecommons.org/licenses/by/3.0/
+Author note on page: "it's a tank. i rigged the turret and cannon, i'm just using the
+reference as a placeholder texture but it's good enough for what i needed."
+Files kept:
+  panzer tiger/panzer.blend  (original, as distributed in panzer_tiger.zip)
+  panzer_tiger_notex.glb     (Blender 5.2 GLB export, materials/textures stripped)
+Removed deliberately: reference.jpg + the textured GLB export. The placeholder
+texture was a scanned third-party color-profile illustration (Tiger 243,
+s.Pz.Abt. 503) NOT covered by Federx's CC-BY grant. Any use of this model must
+re-material it (the stripped GLB has placeholder material slots only).
+Rig: skinned to 3 bones — bodyTank > turret > cannon (skin joints; rotate the
+"turret"/"cannon" bones for articulation, or split meshes by dominant weight).

@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise.js';
+import { applySourcedTerrain } from './sourcedTextures.js';
 
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -869,7 +870,7 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
 }
 `;
 
-function createSplatMaterial(engineCtx, layout, splatCfg) {
+function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant') {
   const S = splatCfg || {};
   const aniso = engineCtx.anisotropy ?? 4;
   const layers = {
@@ -878,6 +879,11 @@ function createSplatMaterial(engineCtx, layout, splatCfg) {
     R: makeGroundLayer(3002, 'rock', aniso, S.rockTone || null),
     M: makeGroundLayer(3003, 'mud', aniso, S.mudTone || null, S.mudRough ?? 1),
   };
+  // Deep-hunt 2026-07: sourced CC0 PBR sets (ambientCG/Poly Haven, see
+  // docs/ATTRIBUTION.md) replace the procedural layer textures in place when
+  // available; procedural stays the synchronous fallback behind the flag in
+  // sourcedTextures.js and on any load failure.
+  applySourcedTerrain(mapId, layers, S);
   const maskNoi = new SimplexNoise({ random: mulberry32(3010) });
   const mask = makeMaskTexture(maskNoi, layout);
   const noiseTex = makeShaderNoiseTexture(3011);
@@ -998,7 +1004,7 @@ function buildChunkGeometry(hf, cx0, cz0, segs) {
 export function buildTerrainMeshes(heightField, engineCtx, cfg = null) {
   const group = new THREE.Group();
   group.name = 'terrain';
-  const mat = createSplatMaterial(engineCtx, heightField._layout, cfg ? cfg.splat : null);
+  const mat = createSplatMaterial(engineCtx, heightField._layout, cfg ? cfg.splat : null, (cfg && cfg.id) || 'verdant');
   const chunks = [];
   for (let cz = 0; cz < CHUNKS; cz++) for (let cx = 0; cx < CHUNKS; cx++) {
     const cx0 = -HALF + cx * CHUNK_SIZE, cz0 = -HALF + cz * CHUNK_SIZE;
