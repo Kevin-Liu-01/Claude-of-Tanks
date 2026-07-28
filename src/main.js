@@ -34,6 +34,7 @@ import { createFx } from './fx/effects.js';
 import { initHud } from './ui/hud.js';
 import { createDamagePanel } from './ui/damagePanel.js';
 import { createGarage } from './ui/garage.js';
+import { getLastBattleEarnings } from './ui/techtree.js';
 import { createGarageStage } from './ui/garageStage.js';
 import { createAudio } from './audio/audio.js';
 import { createInput } from './game/input.js';
@@ -54,6 +55,8 @@ const _v3 = new THREE.Vector3();
 const _rayO = new THREE.Vector3();
 const _rayD = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
+// chase-camera occlusion focus (player hull center, lifted to turret height)
+const _occlFocus = new THREE.Vector3();
 
 // ---------------------------------------------------------------------------
 // Engine bootstrap (§4 startup order)
@@ -271,6 +274,26 @@ const rig = createCameraRig(camera, {
   getPlayer: () => game.player,
 });
 
+// Sniper close-quarters fill (gameplay_feel r1): with the camera at the gun
+// trunnion, aiming into nearby shadowed/backfacing geometry (a bush wall, a
+// building 5-10 m out) rendered a 100% black scope — zero feedback about the
+// blockage. A small camera-riding point light, active only in SNIPER and only
+// when the server-aim hit is CLOSE, keeps the obstacle readable exactly like
+// WoT's scope does. Range-limited (18 m, quadratic decay) so it can never
+// relight the midfield; intensity eases in below ~20 m aim distance.
+const sniperFill = new THREE.PointLight(0xfff0dc, 0, 18, 2);
+sniperFill.castShadow = false;
+scene.add(sniperFill);
+function updateSniperFill() {
+  if (rig.mode === 'SNIPER' && camera.userData.scoped) {
+    const near = THREE.MathUtils.clamp((20 - rig.aimDist) / 16, 0, 1);
+    sniperFill.intensity = 40 * near * near;
+    if (sniperFill.intensity > 0.01) sniperFill.position.copy(camera.position);
+  } else {
+    sniperFill.intensity = 0;
+  }
+}
+
 // --- KILL-CAM (src/game/killcam.js) -----------------------------------------
 // End-of-battle cinematic: slow-mo tracer replay of the killing shell + x-ray
 // module breakdown. Capture hooks live in the KILL-CAM sections of state.js
@@ -341,19 +364,31 @@ endOverlay.style.cssText =
 endOverlay.className = 'cot-end';
 const endTitle = document.createElement('div');
 endTitle.style.cssText = 'font-size:52px;font-weight:800;letter-spacing:0.3em;text-shadow:0 2px 18px rgba(0,0,0,0.8);';
+// META-GAME: battle payout line (earned XP/credits persist via ui/techtree.js)
+const endEarn = document.createElement('div');
+endEarn.style.cssText =
+  'font-size:15px;font-weight:700;letter-spacing:0.14em;color:#cfd9e2;' +
+  'text-shadow:0 1px 8px rgba(0,0,0,0.8);';
 const endBtn = document.createElement('button');
 endBtn.textContent = 'RETURN TO GARAGE';
 endBtn.style.cssText =
   'font-size:16px;font-weight:700;letter-spacing:0.2em;padding:14px 44px;cursor:pointer;' +
   'color:#fff7ea;border:1px solid #ffc169;background:linear-gradient(180deg,#ffa02e,#d95f00);' +
   "font-family:'Switzer','Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
-endOverlay.append(endTitle, endBtn);
+endOverlay.append(endTitle, endEarn, endBtn);
 document.body.appendChild(endOverlay);
 endBtn.addEventListener('click', () => { bus.emit('ui:click', {}); enterGarage(); });
 
 function showEndOverlay(result) {
   endTitle.textContent = result === 'victory' ? 'VICTORY' : result === 'draw' ? 'DRAW' : 'DEFEAT';
   endTitle.style.color = result === 'victory' ? '#7ee87e' : result === 'draw' ? '#cfd9e2' : '#f05a5a';
+  const earn = getLastBattleEarnings();
+  endEarn.innerHTML = earn
+    ? `<span style="color:#ffd27a">+${earn.xp.toLocaleString('en-US')} XP</span>` +
+      `<span style="margin:0 14px;color:#e9eef3">+${earn.credits.toLocaleString('en-US')} CREDITS</span>` +
+      `<span style="color:#8a97a3">${earn.kills} kill${earn.kills === 1 ? '' : 's'} &middot; ` +
+      `${earn.damage.toLocaleString('en-US')} damage</span>`
+    : '';
   endOverlay.style.display = 'flex';
 }
 
@@ -483,6 +518,7 @@ bus.on('shell:fired', (p) => {
 
 function startBattle(specId, mapId = null) {
   selectedSpecId = specId;
+  debugAimTargetId = null; // sticky drive-test aim never carries across battles
   // MAP-CONFIG WIRING: battle on the picked map ('random' rolls here)
   if (mapId) switchMap(resolveMapId(mapId));
   game.mapId = world.mapId;
@@ -559,7 +595,9 @@ const frameInfo = {
 // gate (minimap/diamonds/nameplates) + the player's own concealment snapshot
 // for the camo/eye indicator. Reused object, refreshed per HUD frame.
 const spotFrame = {
-  isSpotted: (id) => (game.spotting ? game.spotting.isSpotted(id, 'player') : true),
+  // player-team intel with the PLAYER as receiver: an allied spot from a
+  // damaged-radio tank shares over the correct range (simulation_correctness r1)
+  isSpotted: (id) => (game.spotting ? game.spotting.isSpotted(id, 'player', game.player) : true),
   player: null,
 };
 function refreshSpotFrame() {
@@ -622,10 +660,33 @@ let lastFov = camera.fov;
 let endShown = false;
 let shotMode = false;
 
-function updateDustAndSync() {
+function updateDustAndSync(dtFrame) {
   for (const ent of game.tanks) {
     if (!ent.state || !ent.combat) continue;
     ent.visual.syncFromState(ent.state);
+    // SPOTTING WIRING: unspotted live enemies do not render (WoT rule).
+    // Wrecks stay visible; the player is never gated; outside battle
+    // (garage/shot/killcam) everything renders. isSpotted already includes
+    // the 5 s linger, so the eased fade flips out of contact, not mid-fight.
+    if (game.phase === 'battle' && game.spotting && ent.team === 'enemy') {
+      const visible = ent.combat.destroyed ||
+        game.spotting.isSpotted(ent.id, 'player', game.player);
+      const target = visible ? 1 : 0;
+      if (ent._spotFade === undefined) ent._spotFade = target;
+      // eased fade to avoid popping (0 -> 1 in ~0.35 s); no dt (boot) = snap
+      ent._spotFade += (target - ent._spotFade) *
+        (dtFrame === undefined ? 1 : Math.min(1, dtFrame / 0.35));
+      ent.visual.setVisible(ent._spotFade > 0.02);
+    } else if (game.phase === 'battle' && !ent.isPlayer) {
+      // Allies (and enemies in the no-spotting fallback) are force-shown; the
+      // PLAYER's hull visibility is OWNED by the camera rig — it hides the
+      // hull while scoped (sniper). Force-showing it here every frame put the
+      // own tank back IN FRONT of the sniper camera one step after the rig
+      // hid it: the scope rendered the inside of the hull/mantlet (a
+      // near-black frame the grade pass then crushed to pure black at every
+      // zoom).
+      ent.visual.setVisible(true);
+    }
     if (game.phase === 'battle' && !ent.combat.destroyed) {
       const sp = Math.abs(ent.state.speed);
       const throttle = Math.abs(ent.input.throttle || 0);
@@ -670,7 +731,10 @@ function tick(nowMs) {
 
   if (shotMode) {
     // Deterministic screenshot hold: no sim, no rig, frozen fx clock.
-    world.update(0, camera.position);
+    // (dt = 0 also snaps the foliage occlusion fade to zero — see vegetation.)
+    camera.getWorldDirection(_fwd);
+    world.update(0, camera.position, _fwd, null);
+    updateSniperFill(); // same close-scope fill state as live play
     fx.update(dtR, game.shells, camera);
     lighting.update(true); // force ALL shadow cascades — deterministic capture
     post.render(dtR);
@@ -740,10 +804,19 @@ function tick(nowMs) {
   // 3. camera rig (kill-cam drives the camera through rig.setExternalPose)
   if (inBattle && !paused && !kcActive) rig.update(dtR, camInput);
   if (kcActive) killcam.update(dtR);
+  updateSniperFill(); // close-quarters scope readability (see definition)
 
-  // 4. world LOD/wind (+ WoT-style near-grass suppression while scoped)
+  // 4. world LOD/wind (+ WoT-style near-grass suppression while scoped, and
+  // chase-camera foliage occlusion fade along player→camera in arcade)
   world.setSniperFade(rig.mode === 'SNIPER' ? 1 : 0);
-  world.update(dtR, camera.position);
+  camera.getWorldDirection(_fwd);
+  let occlFocus = null;
+  if (inBattle && !kcActive && rig.mode === 'ARCADE' && game.player && game.player.state &&
+      game.player.visual && game.player.visual.root.visible) {
+    occlFocus = _occlFocus.copy(game.player.state.pos);
+    occlFocus.y += game.player.spec.dims.heightM * 0.75;
+  }
+  world.update(dtR, camera.position, _fwd, occlFocus);
 
   // 5. visuals + dust (frozen during the kill-cam replay — tanks hold the
   // pose they died in; the x-ray reads the snapshot, not live state)
@@ -902,15 +975,30 @@ const SHOT_VIEWS = {
     });
   },
   sniper_view() {
-    // aim at the nearest enemy bearing
+    // aim at the nearest enemy bearing WITH a clear sightline — a blocked
+    // bearing framed a village wall at x8 instead of the target tank
     const p = game.player;
     let best = null;
     let bestD = Infinity;
+    let bestClear = null;
+    let bestClearD = Infinity;
+    _v1.copy(p.state.pos);
+    _v1.y += 2.2;
     for (const ent of game.tanks) {
-      if (ent.isPlayer || !ent.state || !ent.combat || ent.combat.destroyed) continue;
+      // SYMMETRIC TEAMS: allies spawn 22-44 m away — scope must frame an ENEMY
+      if (ent.team !== 'enemy' || !ent.state || !ent.combat || ent.combat.destroyed) continue;
       const d = ent.state.pos.distanceTo(p.state.pos);
       if (d < bestD) { bestD = d; best = ent; }
+      _v2.copy(ent.state.pos);
+      _v2.y += ent.spec.dims.heightM * 0.6;
+      _v3.copy(_v2).sub(_v1);
+      const dd = _v3.length();
+      _v3.multiplyScalar(1 / Math.max(dd, 1e-3));
+      const block = world.raycast(_v1, _v3, dd);
+      const clear = !block || block.dist > dd - ent.spec.armor.boundingRadiusM - 1;
+      if (clear && d < bestClearD) { bestClearD = d; bestClear = ent; }
     }
+    if (bestClear) { best = bestClear; bestD = bestClearD; }
     const dx = best.state.pos.x - p.state.pos.x;
     const dz = best.state.pos.z - p.state.pos.z;
     const yaw = Math.atan2(dx, dz);
@@ -933,7 +1021,10 @@ const SHOT_VIEWS = {
   },
   tank_closeup_ww2() {
     hud.setMode('hidden');
-    orbitPose(game.tankById.get('tiger1'), 9, 35, 12, 50);
+    // Sun-lit 3/4 front (tank_models r1): the old azimuth 35 put the running
+    // gear and lower hull in their own shadow — the interleaved wheels, track
+    // sag and camo bands were unreadable in the judged frame.
+    orbitPose(game.tankById.get('tiger1'), 9, -35, 12, 50);
   },
   combat_firing() {
     hud.setMode('hidden');
@@ -958,8 +1049,8 @@ const SHOT_VIEWS = {
   },
   explosion() {
     hud.setMode('hidden');
-    // enemy[2] = third enemy spawn (t34_85 in default roster order)
-    const victims = game.tanks.filter((t) => !t.isPlayer);
+    // enemy[2] = third ENEMY (team-filtered: allies must never be the victim)
+    const victims = game.tanks.filter((t) => t.team === 'enemy');
     const ent = victims[2];
     _v2.copy(ent.state.pos);
     _v2.y += 1.4;
@@ -1139,11 +1230,57 @@ requestAnimationFrame(tick);
 // Debug / drive-test hooks (not part of the screenshot contract).
 // ---------------------------------------------------------------------------
 
+// Sticky drive-test aim: debugAimAtNearest remembers its target and
+// debugFastForward re-leads input.aimPoint every step — exactly like a live
+// player keeping the reticle on a rolling target. Without this the aim point
+// froze in world space during fastForward, so headless volleys "missed"
+// targets that had simply drifted a hull-length while the gun settled.
+let debugAimTargetId = null;
+
+/** Recompute the travel-time-led aim point onto `best`'s hull center. */
+function debugLeadPoint(p, best, out) {
+  p.visual.gunPivotWorld(_v1);
+  _v2.copy(best.state.pos);
+  _v2.y += best.spec.dims.heightM * 0.5;
+  const shell = p.spec.gun.shells[Math.max(0, Math.min(2, p.combat.shellSlot))];
+  const tvx = Math.sin(best.state.yaw) * best.state.speed;
+  const tvz = Math.cos(best.state.yaw) * best.state.speed;
+  let ax = _v2.x;
+  let az = _v2.z;
+  for (let i = 0; i < 2; i++) {
+    const dx = ax - _v1.x;
+    const dy = _v2.y - _v1.y;
+    const dz = az - _v1.z;
+    const t = Math.sqrt(dx * dx + dy * dy + dz * dz) / shell.velocityMps;
+    ax = _v2.x + tvx * t;
+    az = _v2.z + tvz * t;
+  }
+  return out.set(ax, _v2.y, az);
+}
+
+/**
+ * Aim readiness snapshot for drive tests: fire when errMrad is small AND
+ * reticleRadM (the live bloom-scaled dispersion radius at the aim distance)
+ * has settled — that is WoT "fully aimed", not just "gun on target".
+ * @returns {?object}
+ */
+function debugAimState() {
+  const p = game.player;
+  if (!p || !p.state || p.combat.destroyed) return null;
+  return {
+    errMrad: debugGunAimError() * 1000,
+    bloomF: p.state.bloomF,
+    reticleRadM: computeDispersionRadM(p.spec, p.state, rig.aimDist),
+    aimDistM: rig.aimDist,
+    reloadT: p.combat.reload.t,
+  };
+}
+
 /**
  * Deterministically point the player's aim at the nearest live enemy: snaps
  * the rig into sniper mode with the view ray through the enemy's hull center
  * so the server-aim raycast lands on the tank. The turret then slews to the
- * aim point over the next sim steps.
+ * aim point over the next sim steps (fastForward keeps the lead fresh).
  * @returns {?{id:string, distM:number}} target picked, or null
  */
 function debugAimAtNearest() {
@@ -1153,7 +1290,9 @@ function debugAimAtNearest() {
   let best = null;
   let bestD = Infinity;
   for (const ent of game.tanks) {
-    if (ent.isPlayer || !ent.state || !ent.combat || ent.combat.destroyed) continue;
+    // SYMMETRIC TEAMS: only ENEMY-team tanks are valid drive-test targets
+    // (allies now spawn 22-44 m from the player and would win "nearest").
+    if (ent.team !== 'enemy' || !ent.state || !ent.combat || ent.combat.destroyed) continue;
     _v2.copy(ent.state.pos);
     _v2.y += ent.spec.dims.heightM * 0.5;
     _v3.copy(_v2).sub(_v1);
@@ -1187,6 +1326,7 @@ function debugAimAtNearest() {
   const yaw = Math.atan2(_v3.x, _v3.z);
   const pitch = Math.atan2(_v3.y, Math.hypot(_v3.x, _v3.z));
   rig.snapSniper(4, yaw, pitch);
+  debugAimTargetId = best.id; // fastForward re-leads onto this tank per step
   return { id: best.id, distM: bestD };
 }
 
@@ -1221,6 +1361,12 @@ function debugFastForward(seconds) {
     if (game.player && !game.player.combat.destroyed) {
       game.player.input.fire = debugFlags.forceFire ||
         (game.player.input.fire && input.isDown('fire'));
+      // Sticky aim (see debugAimTargetId): track the aimed tank like a live
+      // player's reticle, so settling the gun never goes stale on a mover.
+      const tgt = debugAimTargetId ? game.tankById.get(debugAimTargetId) : null;
+      if (tgt && tgt.state && tgt.combat && !tgt.combat.destroyed) {
+        debugLeadPoint(game.player, tgt, game.player.input.aimPoint);
+      }
     }
     simStep(game, bus, world, rig, collider);
     for (const ent of game.tanks) {
@@ -1240,10 +1386,10 @@ function debugFastForward(seconds) {
 function debugSpawnKillShell() {
   const p = game.player;
   if (!p || !p.state || p.combat.destroyed) return false;
-  const shooter = game.tankById.get('t90m') && !game.tankById.get('t90m').isPlayer
+  const shooter = game.tankById.get('t90m') && game.tankById.get('t90m').team === 'enemy'
     && game.tankById.get('t90m').combat && !game.tankById.get('t90m').combat.destroyed
     ? game.tankById.get('t90m')
-    : game.tanks.find((t) => !t.isPlayer && t.combat && !t.combat.destroyed);
+    : game.tanks.find((t) => t.team === 'enemy' && t.combat && !t.combat.destroyed);
   if (!shooter) return false;
   p.combat.hp = Math.min(p.combat.hp, 1);
   _v2.copy(p.state.pos);
@@ -1301,6 +1447,7 @@ window.__DEBUG = {
   frameInfo,
   aimAtNearest: debugAimAtNearest,
   gunAimError: debugGunAimError,
+  aimState: debugAimState, // {errMrad,bloomF,reticleRadM,aimDistM,reloadT}
   fastForward: debugFastForward,
   slayEnemies: debugSlayEnemies,
   startBattle,

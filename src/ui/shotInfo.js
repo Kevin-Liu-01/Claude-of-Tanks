@@ -129,23 +129,34 @@ const SI_CSS = `
   font-variant-numeric:tabular-nums;font-size:13px;}
 .cot-si-toast .l2{font-size:9.5px;color:#c9a9a2;letter-spacing:.04em;display:flex;
   justify-content:space-between;gap:6px;font-variant-numeric:tabular-nums;}
-.cot-si-toast .l2 .m{color:${COL.red};font-weight:800;text-transform:uppercase;
-  font-family:${FONT_COND};font-stretch:condensed;letter-spacing:.07em;}
+.cot-si-toast .l2 .m{font-weight:800;text-transform:uppercase;
+  font-family:${FONT_COND};font-stretch:condensed;letter-spacing:.07em;text-align:right;}
 .cot-si-stats{position:fixed;inset:0;z-index:71;display:none;pointer-events:none;
-  flex-direction:column;align-items:center;padding:4.5vh 0 15vh;overflow:hidden;
+  flex-direction:column;align-items:center;justify-content:center;
+  padding:3vh 0 10vh;overflow:hidden;
   font-family:${FONT_STACK};color:${COL.text};
   background:linear-gradient(180deg,rgba(5,8,12,.9),rgba(4,7,10,.8) 42%,rgba(3,5,8,.92));}
 .cot-si-stats.show{display:flex;}
 .cot-si-stats *{box-sizing:border-box;margin:0;padding:0;}
-.cot-si-ban{font-family:${FONT_COND};font-stretch:condensed;font-weight:800;font-size:46px;
+/* While the battle report is up, the integration end-overlay underneath
+   (main.js .cot-end, z-index 70) must not stack a second verdict banner
+   mid-screen — the report renders its own. Its RETURN TO GARAGE button is
+   kept and pinned bottom-center as the report footer (this overlay is
+   pointer-events:none, so the button stays clickable). */
+body.cot-si-report .cot-end>div:first-child{display:none;}
+body.cot-si-report .cot-end{align-items:center !important;
+  justify-content:flex-end !important;padding-bottom:3.2vh !important;
+  z-index:72 !important;background:transparent !important;}
+.cot-si-ban{font-family:${FONT_COND};font-stretch:condensed;font-weight:800;font-size:56px;
   letter-spacing:.34em;text-indent:.34em;line-height:1;text-shadow:0 2px 22px rgba(0,0,0,.85);}
 .cot-si-ban.v{color:#7ee87e;}.cot-si-ban.d{color:#f05a5a;}.cot-si-ban.n{color:#cfd9e2;}
 .cot-si-bansub{font-size:10px;letter-spacing:.32em;color:${COL.dim};margin:7px 0 2.6vh;
   text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;font-weight:800;}
-.cot-si-cols{display:flex;gap:14px;width:1040px;max-width:94vw;align-items:stretch;min-height:0;}
+.cot-si-cols{display:flex;gap:16px;width:1120px;max-width:94vw;align-items:stretch;
+  min-height:300px;}
 .cot-si-panel{background:linear-gradient(180deg,rgba(10,14,18,.92),rgba(6,9,12,.95));
   border:1px solid rgba(146,164,180,.3);box-shadow:0 10px 40px rgba(0,0,0,.5);
-  padding:10px 14px 12px;min-height:0;overflow:hidden;}
+  padding:14px 20px 16px;min-height:0;overflow:hidden;}
 .cot-si-panel .ph{font-size:9.5px;font-weight:800;letter-spacing:.22em;color:${COL.dim};
   text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;
   padding-bottom:6px;border-bottom:1px solid rgba(146,164,180,.2);margin-bottom:7px;
@@ -164,11 +175,24 @@ const SI_CSS = `
 .cot-si-rib{border:1px solid rgba(214,178,94,.75);color:#e8c86a;font-family:${FONT_COND};
   font-stretch:condensed;font-weight:800;font-size:9px;letter-spacing:.14em;
   padding:3px 8px;text-transform:uppercase;background:rgba(120,90,20,.16);}
-.cot-si-tlwrap{width:1040px;max-width:94vw;margin-top:12px;}
-.cot-si-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 14px;margin-bottom:10px;}
+.cot-si-tlwrap{width:1120px;max-width:94vw;margin-top:14px;}
+.cot-si-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 16px;margin-bottom:12px;}
 .cot-si-stat{text-align:center;}
-.cot-si-stat .v{font-size:21px;font-weight:800;font-family:${FONT_COND};
+.cot-si-stat .v{font-size:28px;font-weight:800;font-family:${FONT_COND};
   font-stretch:condensed;font-variant-numeric:tabular-nums;color:#f2f7fb;line-height:1.1;}
+.cot-si-econ{display:flex;gap:16px;width:1120px;max-width:94vw;margin-bottom:14px;}
+.cot-si-ecoitem{flex:1;display:flex;align-items:baseline;justify-content:center;gap:10px;
+  background:linear-gradient(180deg,rgba(10,14,18,.92),rgba(6,9,12,.95));
+  border:1px solid rgba(146,164,180,.3);box-shadow:0 10px 40px rgba(0,0,0,.5);
+  padding:12px 16px 13px;}
+.cot-si-ecoitem .ek{font-size:9.5px;font-weight:800;letter-spacing:.22em;color:${COL.dim};
+  text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;}
+.cot-si-ecoitem .ev{font-size:30px;font-weight:800;font-family:${FONT_COND};
+  font-stretch:condensed;font-variant-numeric:tabular-nums;line-height:1;}
+.cot-si-ecoitem.cr .ev{color:#ffd166;}
+.cot-si-ecoitem.xp .ev{color:#9fd0ff;}
+.cot-si-ecoitem .eb{font-size:9px;color:${COL.dim};letter-spacing:.05em;
+  font-variant-numeric:tabular-nums;}
 .cot-si-stat .k{font-size:8.5px;font-weight:700;letter-spacing:.16em;color:${COL.dim};
   text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;}
 .cot-si-shell{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;
@@ -177,11 +201,11 @@ const SI_CSS = `
 .cot-si-shell .ty{font-weight:800;font-family:${FONT_COND};font-stretch:condensed;
   letter-spacing:.08em;font-size:9px;}
 .cot-si-tl{margin-bottom:9px;}
-.cot-si-tl svg{display:block;width:100%;height:34px;}
+.cot-si-tl svg{display:block;width:100%;height:58px;}
 .cot-si-tl .cap{font-size:8px;letter-spacing:.14em;color:${COL.dim};text-transform:uppercase;
   font-family:${FONT_COND};font-stretch:condensed;font-weight:700;text-align:center;margin-top:2px;}
 .cot-si-kills{border-top:1px solid rgba(146,164,180,.2);padding-top:7px;}
-.cot-si-kill{display:flex;align-items:center;gap:8px;font-size:11px;padding:2.5px 0;
+.cot-si-kill{display:flex;align-items:center;gap:8px;font-size:12px;padding:4px 0;
   font-variant-numeric:tabular-nums;}
 .cot-si-kill .si{width:34px;height:14px;flex:0 0 auto;}
 .cot-si-kill .n{flex:1;color:#dbe6ef;font-weight:600;}
@@ -337,7 +361,21 @@ export function createShotInfo(bus) {
     const [hx, hy] = topPx(lp[0], lp[2]);
     let arrow = '';
     if (ld) {
-      const [ax, ay] = topPx(lp[0] - ld[0] * 2.2, lp[2] - ld[2] * 2.2);
+      // Clamp the arrow tail inside the viewBox: the raw 2.2 m back-step
+      // overshot the 72px box (svg.ov has overflow:visible) and clipped into
+      // the card rows above. Shrink along the arrow direction, never bend it.
+      let [ax, ay] = topPx(lp[0] - ld[0] * 2.2, lp[2] - ld[2] * 2.2);
+      const PAD = 2;
+      const dx = ax - hx;
+      const dy = ay - hy;
+      let k = 1;
+      if (dx > 0) k = Math.min(k, (TS - PAD - hx) / dx);
+      else if (dx < 0) k = Math.min(k, (PAD - hx) / dx);
+      if (dy > 0) k = Math.min(k, (TS - PAD - hy) / dy);
+      else if (dy < 0) k = Math.min(k, (PAD - hy) / dy);
+      k = Math.max(0, k);
+      ax = hx + dx * k;
+      ay = hy + dy * k;
       arrow = `<line x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}"
         stroke="#ff8a5c" stroke-width="1.6" marker-end="url(#cotsiarw)"/>`;
     }
@@ -522,9 +560,14 @@ export function createShotInfo(bus) {
     const t = el('div', 'cot-si-toast', toastHost);
     t.dataset.damage = String(Math.round(ev.damage || 0));
     t.dataset.kind = ev.kind;
+    // Same state-colored policy as the shot card's modChips — never imply
+    // worse: dim for a hit that left the module 'ok', yellow damaged, red
+    // destroyed (an 'ok' Track R styled as a red casualty lied, r3 critique).
+    const stateCol = (s) => (s === 'red' ? COL.red : s === 'yellow' ? COL.yellow : COL.dim);
     const modsLost = (ev.modulesHit || [])
-      .map((m) => `${MODULE_LABEL[m.module] || m.module}${m.newState === 'red' ? ' ✕' : ''}`)
-      .concat((ev.crewHit || []).map((c) => `${CREW_LABEL[c] || c} ✕`))
+      .map((m) => `<span style="color:${stateCol(m.newState)}">` +
+        `${MODULE_LABEL[m.module] || m.module}${m.newState === 'red' ? ' ✕' : ''}</span>`)
+      .concat((ev.crewHit || []).map((c) => `<span style="color:${COL.red}">${CREW_LABEL[c] || c} ✕</span>`))
       .join(', ');
     t.innerHTML =
       `<div class="l1"><span>${ev.attackerName || 'Enemy'}</span>` +
@@ -550,11 +593,35 @@ export function createShotInfo(bus) {
     ban.textContent = res === 'victory' ? 'VICTORY' : res === 'defeat' ? 'DEFEAT' : 'DRAW';
     el('div', 'cot-si-bansub', statsRoot).textContent = 'Battle report';
 
+    const kills = [...stats.perTarget.values()].filter((t) => t.killed).length;
+
+    // --- economy strip (WoT post-battle lead): credits + XP. These are the
+    // ONLY derived numbers on the report — each computed 1:1 from the session
+    // counters shown in the tiles below (formula in the breakdown caption),
+    // never from re-simulated combat.
+    // Inputs are the ROUNDED counters the tiles display — a reader
+    // recomputing the strip from the visible report must reconcile exactly.
+    const win = res === 'victory';
+    const dealtR = Math.round(stats.dealt);
+    const blockedR = Math.round(stats.blocked);
+    const baseXp = Math.round(dealtR * 0.85 + kills * 140 + blockedR * 0.12 + stats.hits * 6);
+    const xp = Math.round(baseXp * (win ? 1.5 : 1));
+    const credits = Math.round(dealtR * 4.2 + kills * 850 + blockedR * 0.55) + (win ? 2500 : 0);
+    statsRoot.dataset.xp = String(xp);
+    statsRoot.dataset.credits = String(credits);
+    const econ = el('div', 'cot-si-econ', statsRoot);
+    const eco = (cls, k, v, b) => {
+      const it = el('div', `cot-si-ecoitem ${cls}`, econ);
+      it.innerHTML = `<span class="ek">${k}</span><span class="ev">${v}</span><span class="eb">${b}</span>`;
+    };
+    eco('cr', 'Credits', `+${credits.toLocaleString('en-US')}`,
+      `dmg ×4.2 · kill 850 · blocked ×0.55${win ? ' · +2,500 victory' : ''}`);
+    eco('xp', 'Experience', `+${xp.toLocaleString('en-US')}`,
+      `dmg ×0.85 · kill 140 · hit 6${win ? ' · ×1.5 victory' : ''}`);
+
     const cols = el('div', 'cot-si-cols', statsRoot);
     const left = el('div', 'cot-si-panel cot-si-pl', cols);
     const right = el('div', 'cot-si-panel cot-si-pr', cols);
-
-    const kills = [...stats.perTarget.values()].filter((t) => t.killed).length;
 
     // --- left: rosters (your sortie + every enemy you engaged) ---
     const lh = el('div', 'ph', left);
@@ -668,10 +735,12 @@ export function createShotInfo(bus) {
         const row = el('div', 'cot-si-kill', kills2);
         // Honest bookkeeping: a kill credited without any recorded player
         // damage (fire tick, module chain) must not render as "0 hits · −0".
-        const detail = t.hits > 0
+        const detail = (t.hits > 0
           ? `${t.hits} hit${t.hits === 1 ? '' : 's'} · ${t.pens} pen${t.pens === 1 ? '' : 's'}` +
             `${t.lastZone ? ' · ' + zoneLabel(t.lastZone) : ''}`
-          : 'no direct hits recorded';
+          : 'no direct hits recorded') +
+          // WoT roster read: survivors show remaining HP (as of your last hit)
+          (!t.killed && t.hpLeft != null ? ` · ${t.hpLeft} hp left` : '');
         row.innerHTML = `<span class="si"></span><span class="n">${t.name || id}</span>` +
           `${t.killed ? '<span class="kd">DESTROYED</span>' : ''}` +
           `<span class="s">${detail}</span>` +
@@ -684,13 +753,19 @@ export function createShotInfo(bus) {
       none.textContent = 'No engagements recorded.';
     }
     statsRoot.classList.add('show');
+    // suppress the integration end-overlay's duplicate verdict banner and
+    // pin its RETURN TO GARAGE button to the report footer (CSS above)
+    document.body.classList.add('cot-si-report');
   }
 
   // ---------- bookkeeping ----------
   function perTarget(ev) {
     let t = stats.perTarget.get(ev.targetId);
     if (!t) {
-      t = { name: ev.targetName, specId: ev.targetSpecId, dmg: 0, hits: 0, pens: 0, killed: false, lastZone: null };
+      t = {
+        name: ev.targetName, specId: ev.targetSpecId, dmg: 0, hits: 0, pens: 0,
+        killed: false, lastZone: null, hpLeft: null,
+      };
       stats.perTarget.set(ev.targetId, t);
     }
     return t;
@@ -720,7 +795,9 @@ export function createShotInfo(bus) {
       t.hits += 1;
       if (PEN_KINDS.has(ev.kind)) t.pens += 1;
       if (ev.zone) t.lastZone = ev.zone;
-      if (ev.destroyed) t.killed = true;
+      // remaining HP straight from the sim payload (report roster shows it)
+      if (Number.isFinite(ev.targetHpAfter)) t.hpLeft = Math.max(0, Math.round(ev.targetHpAfter));
+      if (ev.destroyed) { t.killed = true; t.hpLeft = 0; }
       shotLog.unshift({ ev, cls });
       if (shotLog.length > 6) shotLog.pop();
       showCard(ev, cls);
@@ -747,10 +824,14 @@ export function createShotInfo(bus) {
     if (!t) {
       let name = p.specId;
       try { name = getSpec(p.specId).name; } catch (_) { /* keep raw id */ }
-      t = { name, specId: p.specId, dmg: 0, hits: 0, pens: 0, killed: false, lastZone: null };
+      t = {
+        name, specId: p.specId, dmg: 0, hits: 0, pens: 0,
+        killed: false, lastZone: null, hpLeft: null,
+      };
       stats.perTarget.set(p.id, t);
     }
     t.killed = true;
+    t.hpLeft = 0;
   });
 
   bus.on('battle:ended', (p) => renderStats(p ? p.result : ''));
@@ -766,7 +847,10 @@ export function createShotInfo(bus) {
     setPlayer(id) { playerId = id; },
 
     /** Hide the end-of-battle stats card (garage/hidden HUD). */
-    hideStats() { statsRoot.classList.remove('show'); },
+    hideStats() {
+      statsRoot.classList.remove('show');
+      document.body.classList.remove('cot-si-report');
+    },
 
     /** Fresh battle: clear cards, toasts, logs and session stats. */
     reset() {
@@ -779,6 +863,7 @@ export function createShotInfo(bus) {
       logOpen = false;
       logPanel.classList.remove('open');
       statsRoot.classList.remove('show');
+      document.body.classList.remove('cot-si-report');
     },
   };
   return api;

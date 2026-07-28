@@ -34,31 +34,42 @@ export default {
     rockTone: (h, s, l) => [0.045, clamp01(s * 3.2 + 0.12), clamp01(l * 1.02)],
     mudTone: (h, s, l) => [0.078, 0.30, clamp01(l * 1.5 + 0.04)], // cracked dry clay
     mudRough: 1.15,
-    tintA: [1.10, 1.02, 0.85], tintB: [0.90, 0.84, 0.72], tintC: [1.12, 1.06, 0.90],
+    tintA: [1.10, 1.02, 0.85], tintB: [0.94, 0.89, 0.79], tintC: [1.12, 1.06, 0.90],
     roadTint: [1.12, 1.06, 0.94],
     strata: 0.22,           // horizontal rock banding on the mesa cliff walls
-    microAmp: 0.4,          // tame the near-field dot speckle (ripples instead)
+    microAmp: 0.3,          // tame the near-field dot speckle (ripples instead)
     rippleDir: [0.8, 0.6],  // global wind direction for the sand ripples
-    rippleAmp: 0.30,        // anisotropic ripple normal strength
+    rippleAmp: 0.26,        // anisotropic ripple normal strength
+    // bright low-sun sand turned the shared mid-frequency normal dapple into
+    // a leopard-spot shadow field across the whole foreground — run it low
+    // and let the wind ripples carry the mid-range surface interest
+    midRelief: 0.3,
   },
 
   vegetation: {
     species: ['palm', 'oak'],
     clusterMix: [['palm', 1]],
-    loneMix: [['palm', 0.85], ['oak', 0.15]],
+    // all-palm standalone trees: the occasional far-LOD oak read as a pale
+    // olive saucer floating over the oasis
+    loneMix: [['palm', 1]],
     rimMix: [['palm', 1]],
     clusterCount: 13,
     loneCount: 42,
     rimCount: 22,
-    grassDensity: 0.22,
-    grassTexTone: (h, s, l) => [0.105, clamp01(s * 0.75), clamp01(l * 1.15 + 0.04)],
-    tuftTone: (h, s, l) => [0.108, 0.28, clamp01(l * 1.05 + 0.06)],
+    grassDensity: 0.2,
+    // pale sun-bleached straw: the old darker olive tufts/scrub read as
+    // black pepper speckle against the bright sand in establishing shots
+    grassTexTone: (h, s, l) => [0.112, clamp01(s * 0.55), clamp01(l * 1.05 + 0.14)],
+    tuftTone: (h, s, l) => [0.115, 0.20, clamp01(l * 0.95 + 0.18)],
     bushCount: 0.7,
     bushSpecies: 'oak',
     palettes: {
-      oak: { // dusty olive scrub
-        texTone: (h, s, l) => [0.15, clamp01(s * 0.6), clamp01(l * 0.95 + 0.03)],
-        canopy: { hue: 0.16, sat: 0.22, l0: 0.22, l1: 0.34 },
+      oak: { // dusty olive scrub, lifted toward sage so it sits on bright sand
+        texTone: (h, s, l) => [0.15, clamp01(s * 0.55), clamp01(l * 1.0 + 0.07)],
+        canopy: { hue: 0.16, sat: 0.20, l0: 0.26, l1: 0.40 },
+      },
+      palm: { // richer frond green for the oasis crowns
+        canopy: { hue: 0.245, sat: 0.34, l0: 0.21, l1: 0.36 },
       },
     },
   },
@@ -84,8 +95,11 @@ export default {
   },
 
   horizon: {
-    baseHex: 0xa87c4e, amp: 1.15, style: 'mesa', banding: 0.17,
-    rockHex: 0x96603a, haze: 0.85, grain: 1.2,
+    // banding up / grain down (r3): the far canyon walls must read as
+    // stratified sandstone beds, not vertical fiber — constant-altitude
+    // strata survive grazing angles where granular grain smears
+    baseHex: 0xa87c4e, amp: 1.15, style: 'mesa', banding: 0.24,
+    rockHex: 0x96603a, haze: 0.85, grain: 0.9,
   },
 
   sky: {

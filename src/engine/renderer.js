@@ -32,8 +32,11 @@ export function createRenderer(container) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   // 1.05 compensates the deeper key:fill rebalance (lighting.js/sky.js r2) so
-  // midtones sit where they did while shadow cores drop.
-  renderer.toneMappingExposure = 1.05;
+  // midtones sit where they did while shadow cores drop. r6: 1.05 → 1.08 —
+  // the stronger grade S-curve (post.js GRADE_CONTRAST 1.34) pulled midtone
+  // foliage below the WoT reference band; a slight exposure lift restores
+  // midtones while the contrast + black anchor keep shadow cores dense.
+  renderer.toneMappingExposure = 1.08;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft is deprecated in r185
 

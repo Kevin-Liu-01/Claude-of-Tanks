@@ -41,7 +41,11 @@ const MUZZLE_LIGHT_S = 0.12;   // long enough to still kiss the hull at the 50 m
 // 240 still washed the whole hull side to cream-yellow for the fire frame
 // Bright enough to read against the 4.5-intensity sun: a warm kick on
 // hull/ground/grass decaying over ~120 ms (critique: "flash casts no light")
-const MUZZLE_LIGHT_PEAK = 950;
+// 1150 (was 950) + range 18 (was 15): the flash light must reach the turret
+// face and rear hull so the hull roof/glacis warm up visibly at the composed
+// firing frame — NOT wash to cream (that regression lives at peak~240/range 15
+// with the old deep-orange color; the safe window is narrow).
+const MUZZLE_LIGHT_PEAK = 1150;
 const EXPLOSION_LIGHT_S = 1.1; // fireball glow lingers, lights the wreck at 0.6 s
 // 85 (was 190): the 190 peak + burnt-material emissive still cooked the whole
 // wreck to flat red-orange; 85 gives warm falloff without albedo takeover
@@ -294,7 +298,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   // --- dynamic lights (budget: exactly 2 PointLights) -----------------------
   // Muzzle: warm white-amber (was deep orange — the "saturated ground decal"
   // read); tighter range so it kisses the hull rather than floods the field.
-  const muzzleLight = new THREE.PointLight(0xffd9a8, 0, 15, 2);
+  const muzzleLight = new THREE.PointLight(0xffd9a8, 0, 18, 2);
   const explosionLight = new THREE.PointLight(0xffb27a, 0, 26, 2);
   muzzleLight.castShadow = false;
   explosionLight.castShadow = false;
@@ -1608,7 +1612,11 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      */
     muzzleFlash(pos, dir, caliberMm) {
       const lightK = spawnMuzzleFlash(pos, dir, caliberMm, 0);
-      flashLight(lightStates[0], _sv.copy(pos).addScaledVector(dir, 0.7), MUZZLE_LIGHT_PEAK * lightK, 0);
+      // ~0.5 m ABOVE the bore axis: the barrel underside and glacis catch a
+      // rim of warm light instead of being self-shadow black (lighting_post r1)
+      _sv.copy(pos).addScaledVector(dir, 0.7);
+      _sv.y += 0.5;
+      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * lightK, 0);
     },
 
     /**
@@ -1871,7 +1879,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       ]);
       // muzzle light state at ageS — still glowing at 50 ms (dur 90 ms) so the
       // flash visibly kisses the hull, barrel and ground in the composed frame
-      flashLight(lightStates[0], _sv.copy(muzzlePos).addScaledVector(dir, 0.7), MUZZLE_LIGHT_PEAK, ageS);
+      _sv.copy(muzzlePos).addScaledVector(dir, 0.7);
+      _sv.y += 0.5; // above the bore: rim-light barrel underside + glacis
+      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK, ageS);
     },
 
     /**

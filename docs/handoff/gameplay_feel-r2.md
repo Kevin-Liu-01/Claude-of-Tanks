@@ -1,4 +1,11 @@
-# gameplay_feel round-2 handoff v2 — verified render/feel fixes (apply to non-owned files)
+# gameplay_feel round-2 handoff v2 — SUPERSEDED, DO NOT APPLY
+#
+# STATUS (r1 of the new cycle): §2-§6 of this file are already on disk.
+# §1 (tankFactory half-lift removal + flinch mirror) and §7 (cameraRig
+# PITCH_MAX) were NEVER applied — that omission fired the r1 terrain-contact
+# hard gate (12-17 cm float in turns). Both are restated VERBATIM, freshly
+# re-verified, in docs/handoff/gameplay_feel-r1.md §1/§2 — apply THAT file
+# and ignore everything below.
 
 Owner: gameplay_feel. The v1 content of this file (sky soft-knee, GTAO
 aoExclude) was applied/superseded and has been replaced by this round's

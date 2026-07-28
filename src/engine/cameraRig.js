@@ -25,7 +25,12 @@ const SNIPER_ZOOMS_FULL = [2, 4, 8, 16, 25]; // ×16/×25 behind rig._increasedZ
 const BASE_FOV_DEG = 60;
 const BASE_SENS = 0.0022; // rad per mouse px
 const PITCH_MIN = THREE.MathUtils.degToRad(-65); // looking down
-const PITCH_MAX = THREE.MathUtils.degToRad(15); // looking up
+// Looking up: must EXCEED every tank's gun elevation limit (+18..+20° per the
+// class table in movement-physics.md §7) or full elevation is uncommandable —
+// close targets uphill were unaimable at the old +15°. WoT lets the camera
+// look well above the horizon; the gun clamps itself at spec.gunElevationDeg
+// with the atGunLimit reticle pin (movement.js).
+const PITCH_MAX = THREE.MathUtils.degToRad(30);
 const MAX_AIM_DIST_M = 720;
 const PIVOT_ABOVE_TURRET_M = 2.5;
 const PIVOT_FOLLOW_TAU_S = 0.1; // critically-damped-feel position lag
@@ -33,6 +38,11 @@ const DIST_LERP_TAU_S = 0.15; // smooth lerp between orbit steps
 const COLLISION_PAD_M = 0.3;
 const CAMERA_MIN_CLEARANCE_M = 1.0; // auto-height above terrain
 const TRAUMA_DECAY_PER_S = 1.4;
+// Scope-in aim policy (enterSniper): keep the aim point if it is at least
+// this far away; otherwise lift the view to a shallow just-below-horizon
+// scan pitch so the first zoom of a battle opens on the battlefield.
+const SNIPER_KEEP_AIM_M = 50;
+const SNIPER_ENTRY_PITCH_RAD = THREE.MathUtils.degToRad(-1.5);
 const SHAKE_FREQ = 11;
 const SHAKE_AMP_XY = 0.045;
 const SHAKE_AMP_Z = 0.03;
@@ -482,6 +492,33 @@ export function createCameraRig(camera, deps) {
       rig.mode = 'SNIPER';
       freeYaw = 0;
       freePitch = 0;
+      // Scope-in must open on the BATTLEFIELD, not the dirt: the arcade
+      // default pitch (-10 deg from a camera 5+ m up) rests the aim on
+      // ground a dozen meters ahead, so entering sniper at the gun trunnion
+      // stared at grass at 13 m ("aim 13 m" on the first scope of every
+      // battle). Preserve the arcade aim POINT when it is a real target
+      // (beyond SNIPER_KEEP_AIM_M); otherwise lift the view to a shallow
+      // scan pitch just under the horizon.
+      if (rig.aimDist < SNIPER_KEEP_AIM_M) {
+        aimPitch = Math.max(aimPitch, SNIPER_ENTRY_PITCH_RAD);
+      } else {
+        // re-derive the pitch that keeps the current aim point centered
+        // from the sniper anchor (the camera is about to jump from the
+        // orbit position to the gun trunnion — different parallax)
+        const player = getPlayer();
+        if (player) {
+          sniperAnchorFor(player, _desired);
+          const dx = rig.aimPoint.x - _desired.x;
+          const dy = rig.aimPoint.y - _desired.y;
+          const dz = rig.aimPoint.z - _desired.z;
+          const h = Math.hypot(dx, dz);
+          if (h > 1e-3) {
+            aimPitch = THREE.MathUtils.clamp(
+              Math.atan2(dy, h), PITCH_MIN, PITCH_MAX);
+            aimYaw = Math.atan2(dx, dz);
+          }
+        }
+      }
       applyPlayerVisibility(getPlayer(), false);
     },
 

@@ -15,10 +15,13 @@ export default {
     frozenMarshes: true,
     // no soggy marsh bowls — everything frozen reads as a crisp ice sheet
     marshes: [],
+    // shallow depths: the sheet now flattens nearly to the shoreline and the
+    // level tracks the LOWEST bank point, so banks stay ~0.5 m snow lips —
+    // the old 1.0-1.3 m drops read as steep-walled craters, not lakes
     lakes: [
-      { x: 195, z: -120, r: 88, depth: 1.3 },
-      { x: -190, z: -210, r: 62, depth: 1.1 },
-      { x: -265, z: 265, r: 56, depth: 1.0 },
+      { x: 195, z: -120, r: 88, depth: 0.55 },
+      { x: -190, z: -210, r: 62, depth: 0.5 },
+      { x: -265, z: 265, r: 56, depth: 0.45 },
     ],
     // wider settlement footprint: the hamlet reads as a proper village core
     // instead of one lonely building cluster on an empty snowfield
@@ -41,11 +44,13 @@ export default {
     rockTone: (h, s, l) => [0.585, 0.05, clamp01(l * 1.0 + 0.22)],
     mudTone: (h, s, l) => [0.565, 0.24, clamp01(0.60 + l * 0.34)], // (fallback if iceLake off)
     mudRough: 0.18,
-    marshGloss: 0.82,
-    // dedicated ice-sheet layer: pale blue-grey albedo, pressure cracks,
-    // dark depth blotches, wind drift streaks, glossy clear-ice roughness
+    marshGloss: 0.92,
+    // dedicated ice-sheet layer: blue-grey albedo, bright refrozen pressure
+    // cracks, dark depth blotches, glossy clear-ice roughness. Drift LOW:
+    // 0.85 buried most of the sheet back under snow albedo and the "lake"
+    // vanished into the snowfield
     iceLake: true,
-    iceDrift: 0.85,
+    iceDrift: 0.3,
     tintA: [1.03, 1.04, 1.09], tintB: [0.90, 0.93, 1.00], tintC: [1.04, 1.04, 1.07],
     roadTint: [0.74, 0.68, 0.62], // worn dark slush tracks through the snow
   },
@@ -117,9 +122,11 @@ export default {
     turbidity: 13, rayleigh: 3.2, mieCoefficient: 0.002, mieDirectionalG: 0.7,
     // 0.0018 fogged the alpine wall to a flat cutout by 800 m — 0.0013 keeps
     // the overcast depth while letting rock ribs/snow texture survive
-    fogDensity: 0.0013, fogTintHex: 0xb4bcc5, fogMix: 0.88, envIntensity: 0.4,
+    // envIntensity raised for the ice sheet's sky reflection; sun dropped and
+    // hemi raised so light reads flatter/more diffuse (overcast brief)
+    fogDensity: 0.0013, fogTintHex: 0xb4bcc5, fogMix: 0.88, envIntensity: 0.52,
     cloudOpacity: 1.0, cloudOpacity2: 0.95, cloudTintHex: 0xaab2bc,
-    sunIntensity: 1.4, sunColorHex: 0xdfe7f2, hemiIntensity: 0.8,
+    sunIntensity: 1.15, sunColorHex: 0xdfe7f2, hemiIntensity: 0.92,
   },
 
   minimap: {
@@ -130,5 +137,10 @@ export default {
     buildingFill: '#e4e7ec',
   },
 
-  shot: { pos: [16, 42, -302], look: [136, -2, 16] },
+  // camera raised (42 -> 56): from 42 m the frozen lake subtends a few pixels
+  // of near-grazing sliver and its signature ice sheet could not read at all
+  // framed so the frozen lake (the map's signature feature) reads clearly:
+  // slightly raised and shifted vs the old [16,42,-302] which caught the
+  // sheet at a few pixels of near-grazing sliver
+  shot: { pos: [40, 52, -288], look: [175, -4, -75] },
 };

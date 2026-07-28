@@ -45,9 +45,13 @@ const DEFAULT_SEED = 7001;
  *  - probeLevel: index into PROBE_SETS (easy center-mass, hard weak-spot hunting).
  */
 const DIFFICULTY_TIERS = {
-  easy:   { fireFactor: 0.6, reactionS: 1.2, aimErrMult: 2.0, probeLevel: 0, engageRangeM: 260, holdRangeM: 180, coverIQ: 0.35 },
-  normal: { fireFactor: 0.9, reactionS: 0.7, aimErrMult: 1.4, probeLevel: 1, engageRangeM: 330, holdRangeM: 240, coverIQ: 0.7  },
-  hard:   { fireFactor: 1.2, reactionS: 0.3, aimErrMult: 1.0, probeLevel: 2, engageRangeM: 420, holdRangeM: 300, coverIQ: 1.0  },
+  // engageRangeM must exceed the typical spawn-to-spawn LOS distance
+  // (~350-450 m on every map) or bots idle outside it while spotted targets
+  // trade: r7 raised normal 330→400 and hard 420→500 so a known contact is
+  // always worth advancing on at full throttle.
+  easy:   { fireFactor: 0.6, reactionS: 1.2, aimErrMult: 2.0, probeLevel: 0, engageRangeM: 300, holdRangeM: 180, coverIQ: 0.35 },
+  normal: { fireFactor: 0.9, reactionS: 0.7, aimErrMult: 1.4, probeLevel: 1, engageRangeM: 400, holdRangeM: 240, coverIQ: 0.7  },
+  hard:   { fireFactor: 1.2, reactionS: 0.3, aimErrMult: 1.0, probeLevel: 2, engageRangeM: 500, holdRangeM: 300, coverIQ: 1.0  },
 };
 
 /**
@@ -142,7 +146,7 @@ export function createAI(entity, opts = {}) {
   // SPOTTING WIRING: optional concealment gate (absent in headless fixtures)
   const spotting = deps.spotting && typeof deps.spotting.isSpotted === 'function'
     ? deps.spotting : null;
-  const isVisibleToTeam = (e) => !spotting || spotting.isSpotted(e.id);
+  const isVisibleToTeam = (e) => !spotting || spotting.isSpotted(e.id, entity);
 
   // Ensure the shared input record exists (integration normally creates it).
   if (!entity.input) {
@@ -174,6 +178,13 @@ export function createAI(entity, opts = {}) {
 
   const moveTarget = { x: 0, z: 0 };         // hull-down / approach point
   let hasMoveTarget = false;
+  // LOS vantage seek: when the bot KNOWS where the enemy is (team intel)
+  // but its own ray is blocked for a while, beelining lastSeen just parks
+  // it against the blocking building. Sample a ring of candidate positions
+  // around lastSeen and drive to the nearest one with a clear sightline.
+  const vantage = { x: 0, z: 0 };
+  let hasVantage = false;
+  let losBlockedT = 0;
   const coverPoint = { x: 0, z: 0 };
   let hasCoverPoint = false;
   let coverRollPassed = false;               // coverIQ roll for the current reload cycle
@@ -206,6 +217,21 @@ export function createAI(entity, opts = {}) {
   let lowSpeedT = 0;
   let unstickUntilS = -1;
   let unstickSteer = 1;
+  // PROGRESS-based stuck sensing: `state.speed` is the DRIVETRAIN speed and
+  // stays high while the collision pushback exactly cancels the motion
+  // against a wall/rock — the old |speed|<0.3 test never fired and bots
+  // ground against the first obstacle on their opening push for the whole
+  // battle (r7 dead-air root cause). Track actual displacement instead.
+  let progX = entity.state.pos.x;
+  let progZ = entity.state.pos.z;
+  let progressRate = 2; // m/s EMA of real displacement
+  let stuckStrikes = 0; // consecutive unstick cycles without real progress
+  // Blocked-route detour: after repeated strikes the straight line is a
+  // wall/rock face — drive at a sideways-offset ghost target for a few
+  // seconds (side flips on the next strike) so the route bends around the
+  // blocker instead of ramming it forever.
+  let detourUntilS = -1;
+  let detourSide = 1;
   let gunLimitT = 0;
   let nudgeUntilS = -1;
   let arcLimitedT = 0;              // gun pinned at an elevation/depression stop
@@ -398,6 +424,33 @@ export function createAI(entity, opts = {}) {
     return false;
   }
 
+  /**
+   * Find a position with a clear sightline to lastSeen: candidates on two
+   * rings around the contact point, nearest-to-self first. Writes `vantage`.
+   * @returns {boolean} true when a sightline position was found
+   */
+  function findVantage() {
+    const st = entity.state;
+    const ty = hf.getHeightAt(lastSeen.x, lastSeen.z) + 1.5;
+    let bestD2 = Infinity;
+    let found = false;
+    const a0 = rng() * TAU;
+    for (const r of [70, 110]) {
+      for (let k = 0; k < 8; k++) {
+        const a = a0 + (k / 8) * TAU;
+        const cx = lastSeen.x + Math.sin(a) * r;
+        const cz = lastSeen.z + Math.cos(a) * r;
+        const cy = hf.getHeightAt(cx, cz) + selfEyeM;
+        if (!hasLos(cx, cy, cz, lastSeen.x, ty, lastSeen.z)) continue;
+        const dx = cx - st.pos.x, dz = cz - st.pos.z;
+        const d2 = dx * dx + dz * dz;
+        if (d2 < bestD2) { bestD2 = d2; vantage.x = cx; vantage.z = cz; found = true; }
+      }
+      if (found) break;
+    }
+    return found;
+  }
+
   function startFlank(timeS) {
     if (!target) return;
     const st = entity.state;
@@ -455,8 +508,17 @@ export function createAI(entity, opts = {}) {
    */
   function driveToXZ(input, x, z, speedScale) {
     const st = entity.state;
-    const dx = x - st.pos.x, dz = z - st.pos.z;
-    const dist = Math.hypot(dx, dz);
+    let dx = x - st.pos.x, dz = z - st.pos.z;
+    let dist = Math.hypot(dx, dz);
+    // Blocked-route detour (see detourUntilS): steer for a point offset
+    // sideways from the real target so the hull clears the blocking face.
+    if (nowS < detourUntilS && dist > 25) {
+      const px = dz / dist, pz = -dx / dist; // perp of the bearing
+      x += px * 55 * detourSide;
+      z += pz * 55 * detourSide;
+      dx = x - st.pos.x; dz = z - st.pos.z;
+      dist = Math.hypot(dx, dz);
+    }
     if (dist < ARRIVE_DIST_M) {
       input.throttle = 0;
       input.steer = 0;
@@ -507,7 +569,11 @@ export function createAI(entity, opts = {}) {
       if (waypoints.length === 0) { input.throttle = 0; input.steer = 0; return; }
     }
     const wp = waypoints[wpIndex];
-    if (driveToXZ(input, wp.x, wp.z, 0.85)) {
+    // Full throttle before first contact (nowS is sim time): the opening
+    // push is a transit, not a patrol — WoT rounds reach contact in
+    // 30-60 s and every second of dawdling here is dead air. After the
+    // first minute (contact made or not) drop back to patrol pace.
+    if (driveToXZ(input, wp.x, wp.z, nowS < 60 ? 1.0 : 0.85)) {
       wpIndex = (wpIndex + 1) % waypoints.length;
     }
   }
@@ -533,9 +599,21 @@ export function createAI(entity, opts = {}) {
     }
 
     if (!losClear) {
+      // Known contact, blocked ray: chase lastSeen briefly, then circle to
+      // a sightline position instead of parking against the cover.
+      if (hasVantage) {
+        if (driveToXZ(input, vantage.x, vantage.z, 1.0)) hasVantage = false;
+        return;
+      }
+      if (losBlockedT > 5 && findVantage()) {
+        hasVantage = true;
+        driveToXZ(input, vantage.x, vantage.z, 1.0);
+        return;
+      }
       driveToXZ(input, lastSeen.x, lastSeen.z, 0.9);
       return;
     }
+    hasVantage = false; // ray is clear — fight from here
     if (distToTarget > tier.engageRangeM) {
       driveToXZ(input, tp.x, tp.z, 1.0);
       return;
@@ -756,6 +834,10 @@ export function createAI(entity, opts = {}) {
     }
     if (errTimer <= 0) resampleAimError();
 
+    // Blocked-sightline timer for the vantage seek (driveEngage).
+    if (mode === 'engage' && target && !losClear) losBlockedT += dt;
+    else { losBlockedT = 0; if (losClear) hasVantage = false; }
+
     let distToTarget = Infinity;
     if (target) {
       const tp = target.state.pos;
@@ -780,20 +862,49 @@ export function createAI(entity, opts = {}) {
     }
 
     // ---- stuck detection & recovery ----
+    // Real displacement rate (EMA). The drivetrain `st.speed` lies when the
+    // collision pushback cancels the motion against an obstacle, so the
+    // stuck test uses BOTH: no wheel speed OR no ground actually covered.
+    {
+      const dx = st.pos.x - progX;
+      const dz = st.pos.z - progZ;
+      progX = st.pos.x;
+      progZ = st.pos.z;
+      const inst = Math.hypot(dx, dz) / Math.max(dt, 1e-4);
+      progressRate += (inst - progressRate) * Math.min(1, dt * 2.5);
+    }
     if (timeS < unstickUntilS) {
       input.throttle = -0.7;
       input.steer = unstickSteer;
       input.brake = false;
       lowSpeedT = 0;
-    } else if (Math.abs(input.throttle) > 0.25 && Math.abs(st.speed) < 0.3) {
+    } else if (Math.abs(input.throttle) > 0.25 &&
+               (Math.abs(st.speed) < 0.3 || progressRate < 0.45)) {
       lowSpeedT += dt;
       if (lowSpeedT > STUCK_TIME_S) {
         unstickUntilS = timeS + UNSTICK_TIME_S;
         unstickSteer = rng() < 0.5 ? -1 : 1;
         lowSpeedT = 0;
+        // Repeated strikes on the same leg = the straight line is blocked:
+        // detour sideways (side flips per strike), and in patrol also skip
+        // the waypoint, instead of ramming it until the battle clock runs
+        // out.
+        stuckStrikes++;
+        if (stuckStrikes >= 2) {
+          detourSide = -detourSide;
+          detourUntilS = timeS + UNSTICK_TIME_S + 6;
+          if (mode === 'patrol' && waypoints.length > 1) {
+            wpIndex = (wpIndex + 1) % waypoints.length;
+          } else if (hasMoveTarget) {
+            hasMoveTarget = false;
+          }
+          hasVantage = false; // blocked vantage — re-sample a fresh one
+          if (stuckStrikes >= 4) stuckStrikes = 2; // keep flipping sides
+        }
       }
     } else {
       lowSpeedT = 0;
+      if (progressRate > 2.5) stuckStrikes = 0; // moving freely again
     }
 
     aimAndFire(input, dt, timeS);

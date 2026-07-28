@@ -397,12 +397,14 @@ function armorM1A2() {
 // T-90M Proryv (Relikt ERA: consumable tiles, keReduction 0.25 / ceFlat 500)
 // ---------------------------------------------------------------------------
 function armorT90M() {
-  const trkTop = 1.0, floor = 0.43, roofY = 1.45;
+  // r7: hull roof dropped 1.45 -> 1.40 with the barge-hull visual rebuild
+  // (deck band rides just above the fender line; turret scaled up instead).
+  const trkTop = 1.0, floor = 0.43, roofY = 1.40;
   const relikt = { keReduction: 0.25, ceFlatMm: 500 };
   const reliktSkirt = { keReduction: 0.15, ceFlatMm: 350 };
   return {
     boundingRadiusM: 5.1,
-    turretPivot: [0, 1.45, 0.15],
+    turretPivot: [0, 1.40, 0.15],
     gunPivot: [0, 0.32, 0.55],
     gunBarrel: { lengthM: 6.0, radiusM: 0.105 },
     hullPlates: [
@@ -424,18 +426,18 @@ function armorT90M() {
       rf('hull_roof', 40, 1.55, roofY, -3.4, 1.85),
     ],
     turretPlates: [
-      chR('turret_era_R', 15, 0.24, 0.86, 0.94, 0.28, 0.05, 0.60, 0.08, 0, { kind: 'era', era: relikt }),
-      chL('turret_era_L', 15, 0.24, 0.86, 0.94, 0.28, 0.05, 0.60, 0.08, 0, { kind: 'era', era: relikt }),
-      chR('turret_cheek_R', 650, 0.20, 0.72, 0.90, 0.15, 0.0, 0.62, 0.08, 0, { keMm: 550, ceMm: 700 }),
-      chL('turret_cheek_L', 650, 0.20, 0.72, 0.90, 0.15, 0.0, 0.62, 0.08, 0, { keMm: 550, ceMm: 700 }),
-      par('mantlet', 300, [-0.2, 0.08, 0.80], [0.2, 0.08, 0.80], [-0.2, 0.45, 0.77],
+      chR('turret_era_R', 15, 0.28, 1.02, 1.10, 0.32, 0.05, 0.68, 0.08, 0, { kind: 'era', era: relikt }),
+      chL('turret_era_L', 15, 0.28, 1.02, 1.10, 0.32, 0.05, 0.68, 0.08, 0, { kind: 'era', era: relikt }),
+      chR('turret_cheek_R', 650, 0.22, 0.86, 1.06, 0.18, 0.0, 0.70, 0.08, 0, { keMm: 550, ceMm: 700 }),
+      chL('turret_cheek_L', 650, 0.22, 0.86, 1.06, 0.18, 0.0, 0.70, 0.08, 0, { keMm: 550, ceMm: 700 }),
+      par('mantlet', 300, [-0.22, 0.08, 0.92], [0.22, 0.08, 0.92], [-0.22, 0.48, 0.89],
         { keMm: 350, ceMm: 400, gunFollow: true }),
-      sR('side_era_R', 15, 1.0, 0.1, 1.0, 0.5, -0.5, 0.15, { kind: 'era', era: reliktSkirt }),
-      sL('side_era_L', 15, 1.0, 0.1, 1.0, 0.5, -0.5, 0.15, { kind: 'era', era: reliktSkirt }),
-      sR('turret_side_R', 300, 0.95, 0.0, 0.95, 0.62, -0.7, 0.15, { keMm: 300, ceMm: 450 }),
-      sL('turret_side_L', 300, 0.95, 0.0, 0.95, 0.62, -0.7, 0.15, { keMm: 300, ceMm: 450 }),
-      rr('turret_bustle', 45, 0.75, 0.0, -1.3, 0.6, -1.3),
-      rf('turret_roof', 45, 0.9, 0.66, -0.75, 0.5),
+      sR('side_era_R', 15, 1.16, 0.1, 1.16, 0.55, -0.5, 0.2, { kind: 'era', era: reliktSkirt }),
+      sL('side_era_L', 15, 1.16, 0.1, 1.16, 0.55, -0.5, 0.2, { kind: 'era', era: reliktSkirt }),
+      sR('turret_side_R', 300, 1.10, 0.0, 1.10, 0.70, -0.95, 0.2, { keMm: 300, ceMm: 450 }),
+      sL('turret_side_L', 300, 1.10, 0.0, 1.10, 0.70, -0.95, 0.2, { keMm: 300, ceMm: 450 }),
+      rr('turret_bustle', 45, 0.95, 0.0, -1.92, 0.58, -1.92),
+      rf('turret_roof', 45, 1.05, 0.74, -0.95, 0.55),
     ],
     modules: [
       mbox('engine', [-1.0, 0.45, -3.3], [1.0, 1.4, -1.7]),
@@ -483,20 +485,22 @@ function armorLeo2A7() {
       rf('hull_roof', 40, 1.6, roofY, -3.86, 1.00),
     ],
     turretPlates: [
-      chR('turret_wedge_R', 90, 0.12, 1.35, 1.02, 0.40, 0.08, 0.75, 0.39, 0,
+      // r7: wedges/cheeks/sides widened with the visual turret rebuild
+      // (~2.85 m plan, arrowhead apex at z 1.58, body back to -2.3)
+      chR('turret_wedge_R', 90, 0.06, 1.58, 1.40, 0.28, 0.08, 0.90, 0.45, 0,
         { kind: 'spaced', keMm: 220, ceMm: 750 }),
-      chL('turret_wedge_L', 90, 0.12, 1.35, 1.02, 0.40, 0.08, 0.75, 0.39, 0,
+      chL('turret_wedge_L', 90, 0.06, 1.58, 1.40, 0.28, 0.08, 0.90, 0.45, 0,
         { kind: 'spaced', keMm: 220, ceMm: 750 }),
-      chR('turret_cheek_R', 650, 0.2, 0.85, 1.05, 0.30, 0.0, 0.8, 0.1, 0, { keMm: 620, ceMm: 750 }),
-      chL('turret_cheek_L', 650, 0.2, 0.85, 1.05, 0.30, 0.0, 0.8, 0.1, 0, { keMm: 620, ceMm: 750 }),
-      par('turret_sight_recess', 250, [0.4, 0.5, 0.92], [0.75, 0.5, 0.78], [0.4, 0.78, 0.86],
+      chR('turret_cheek_R', 650, 0.2, 1.10, 1.38, 0.20, 0.0, 0.88, 0.1, 0, { keMm: 620, ceMm: 750 }),
+      chL('turret_cheek_L', 650, 0.2, 1.10, 1.38, 0.20, 0.0, 0.88, 0.1, 0, { keMm: 620, ceMm: 750 }),
+      par('turret_sight_recess', 250, [0.5, 0.55, 0.72], [0.92, 0.55, 0.56], [0.5, 0.86, 0.66],
         { keMm: 300, ceMm: 350 }),                                     // EMES 15 weak spot
-      par('mantlet', 350, [-0.26, 0.08, 1.12], [0.26, 0.08, 1.12], [-0.26, 0.52, 1.09],
+      par('mantlet', 350, [-0.26, 0.08, 1.24], [0.26, 0.08, 1.24], [-0.26, 0.52, 1.21],
         { keMm: 420, ceMm: 500, gunFollow: true }),
-      sR('turret_side_R', 320, 1.08, 0.0, 1.08, 0.82, -1.5, 0.3, { keMm: 350, ceMm: 500 }),
-      sL('turret_side_L', 320, 1.08, 0.0, 1.08, 0.82, -1.5, 0.3, { keMm: 350, ceMm: 500 }),
-      rr('turret_rear', 80, 1.0, 0.0, -1.55, 0.82, -1.55),
-      rf('turret_roof', 45, 1.08, 0.85, -1.55, 0.6),
+      sR('turret_side_R', 320, 1.40, 0.0, 1.40, 0.90, -2.28, 0.2, { keMm: 350, ceMm: 500 }),
+      sL('turret_side_L', 320, 1.40, 0.0, 1.40, 0.90, -2.28, 0.2, { keMm: 350, ceMm: 500 }),
+      rr('turret_rear', 80, 1.35, 0.0, -2.32, 0.90, -2.32),
+      rf('turret_roof', 45, 1.40, 0.92, -2.30, 0.65),
     ],
     modules: [
       mbox('engine', [-1.05, 0.5, -3.75], [1.05, 1.55, -1.9]),
@@ -704,10 +708,10 @@ export const TANK_SPECS = {
     dims: { hullLengthM: 6.86, overallLengthM: 9.63, widthM: 3.78, heightM: 2.23 },
     armor: armorT90M(),
     visual: {
-      // 3-tone Russian digital, muted tan (r6: the old bright 2-tone tan
-      // clusters read as cartoon pixels at garage distance)
+      // 3-tone Russian digital, muted khaki/sage (r7: tones pulled darker —
+      // the r6 pair still rendered as minty pastel pixels under garage light)
       scheme: 'digital', base: '#3f5138', weather: '#47593f',
-      patches: ['#2d2f28', '#77704f', '#55624a'],
+      patches: ['#2b2d26', '#655e44', '#48553f'],
       marking: 'number', number: '527', trackWidthM: 0.58,
     },
   },
@@ -1227,11 +1231,17 @@ Object.assign(MODEL_SOURCE, {
       turretNode: '^turret$', autoPivot: true, paintUntextured: true,
     },
   },
+  // r7: the Newc42 assets carry an 8x1 palette atlas — every face samples ONE
+  // texel, so the texture-space camo composite can never show a pattern
+  // (Desert rendered the whole tank flat chocolate). paintUntextured now
+  // strips tiny palette maps and box-UVs the shell onto the live camo canvas,
+  // with node-name material separation for tracks/wheels.
   newc_tiger: {
     source: 'glb',
     glb: {
       path: '/models/tanks/community/tiger_newc42.glb',
       turretNode: '^Turret$', gunNode: '^Barrel$', autoPivot: true,
+      paintUntextured: true,
     },
   },
   newc_pziii: {
@@ -1239,6 +1249,7 @@ Object.assign(MODEL_SOURCE, {
     glb: {
       path: '/models/tanks/community/pziii_newc42.glb',
       turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+      paintUntextured: true,
     },
   },
   pziii_konserwa: {
@@ -1254,6 +1265,7 @@ Object.assign(MODEL_SOURCE, {
     glb: {
       path: '/models/tanks/community/leichttraktor_newc42.glb',
       turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+      paintUntextured: true,
     },
   },
   recon_tank: {
@@ -1270,6 +1282,9 @@ Object.assign(MODEL_SOURCE, {
       path: '/models/tanks/community/tank_quaternius_fa5.glb',
       turretNode: '^Tank_Turret$', gunNode: '^Tank_Gun$',
       yawOffset: Math.PI / 2, autoPivot: true,
+      // r7: restyled with the shared camo canvas + dark gear materials — the
+      // factory banana-cream palette read as a toy from a different game.
+      paintUntextured: true,
     },
   },
 });

@@ -100,17 +100,19 @@ function sharedMats() {
     color, transparent: true, opacity, blending: THREE.AdditiveBlending,
     depthWrite: false, depthTest: true, toneMapped: false, fog: false,
   });
-  // Lit additive material for the internal-component proxies: Lambert shading
-  // gives the shapes 3D form, the emissive floor keeps them readable inside
-  // the ghost hull — internals must never read as flat unlit silhouettes.
-  // Diffuse/emissive are scaled WAY down: the sun runs at intensity ~4.5 and
-  // these are additive, so near-full-strength colors stack to pure white.
+  // Lit NORMAL-blended material for the internal-component proxies: Lambert
+  // shading gives the shapes 3D form, the emissive floor keeps them readable
+  // inside the ghost hull. Additive blending is deliberately NOT used here —
+  // stacked crew capsules / structure shells summed into featureless white
+  // columns that buried the ammo cassettes and engine block (r3 critique);
+  // alpha-over keeps each organ a distinct colored silhouette (WT-style),
+  // whatever the view angle. Diffuse is still scaled down (sun ~4.5).
   const prox = (hex, opacity, ds, es) => {
     const c = new THREE.Color(hex);
     return new THREE.MeshLambertMaterial({
       color: c.clone().multiplyScalar(ds),
       emissive: c.clone().multiplyScalar(es),
-      transparent: true, opacity, blending: THREE.AdditiveBlending,
+      transparent: true, opacity, blending: THREE.NormalBlending,
       depthWrite: false, depthTest: true, toneMapped: false, fog: false,
     });
   };
@@ -137,20 +139,26 @@ function sharedMats() {
     };
     return mat;
   };
-  const ghost = muzzleFadeShader(mesh(0x86c8f2, 0.072, THREE.DoubleSide));
+  // 0.055 (was 0.072): running-gear / structure shells still stacked to
+  // blown-out white columns at oblique angles — trimmed so ≥8 additive
+  // layers stay below full white while a single skin keeps its blue read.
+  const ghost = muzzleFadeShader(mesh(0x86c8f2, 0.055, THREE.DoubleSide));
   // Faint tier for LOD-wrapped detail greebles (track links, stowage, vents):
   // hundreds of small overlapping shells at full ghost opacity stack additive
-  // layers into a milky white mass — they get ~1/3 the alpha instead.
-  const ghostDim = muzzleFadeShader(mesh(0x86c8f2, 0.024, THREE.DoubleSide));
+  // layers into a milky white mass — they get a fraction of the alpha instead.
+  const ghostDim = muzzleFadeShader(mesh(0x86c8f2, 0.014, THREE.DoubleSide));
   // Soft radial blackout billboarded behind the ghost (WT hangar-void read):
   // canvas radial gradient, NormalBlending so it DARKENS the sunlit terrain
   // the additive hull otherwise blows out against. Procedural — no assets.
   const bdCanvas = document.createElement('canvas');
   bdCanvas.width = bdCanvas.height = 256;
   const bdCtx = bdCanvas.getContext('2d');
+  // Capped at ~1/3 luminance knock-down: combined with the DOM veil the total
+  // dim at the hull stays ≤ ~45% (WT dims ~40% — the old 0.52 + 0.44 veil
+  // crushed the replay to a night void at midday, r3 critique).
   const bdGrad = bdCtx.createRadialGradient(128, 128, 24, 128, 128, 128);
-  bdGrad.addColorStop(0, 'rgba(3,7,11,0.52)');
-  bdGrad.addColorStop(0.55, 'rgba(3,7,11,0.4)');
+  bdGrad.addColorStop(0, 'rgba(3,7,11,0.34)');
+  bdGrad.addColorStop(0.55, 'rgba(3,7,11,0.25)');
   bdGrad.addColorStop(1, 'rgba(3,7,11,0)');
   bdCtx.fillStyle = bdGrad;
   bdCtx.fillRect(0, 0, 256, 256);
@@ -190,14 +198,14 @@ function sharedMats() {
     // Internal proxies: distinct per-kind hues (WT visual language — brass
     // ammo, steel-blue engine, amber fuel) for HEALTHY modules; hit ones
     // override to the yellow/red state tints.
-    proxAmmo: prox(0xe0c25e, 0.55, 0.055, 0.13),
-    proxEngine: prox(0x4aa8c8, 0.55, 0.055, 0.13),
-    proxFuel: prox(0xcf7f3a, 0.55, 0.055, 0.13),
-    proxSteel: prox(0x9fb4c4, 0.5, 0.05, 0.11),
-    proxRadio: prox(0x6ad0a8, 0.5, 0.05, 0.11),
-    proxGreen: prox(0x2fd98c, 0.55, 0.055, 0.13),
-    proxYellow: prox(0xffb43c, 0.6, 0.07, 0.17),
-    proxRed: prox(0xff4a38, 0.65, 0.08, 0.2),
+    proxAmmo: prox(0xe0c25e, 0.8, 0.1, 0.34),
+    proxEngine: prox(0x4aa8c8, 0.8, 0.1, 0.34),
+    proxFuel: prox(0xcf7f3a, 0.8, 0.1, 0.34),
+    proxSteel: prox(0x9fb4c4, 0.72, 0.09, 0.28),
+    proxRadio: prox(0x6ad0a8, 0.72, 0.09, 0.28),
+    proxGreen: prox(0x2fd98c, 0.8, 0.1, 0.34),
+    proxYellow: prox(0xffb43c, 0.88, 0.12, 0.44),
+    proxRed: prox(0xff4a38, 0.92, 0.13, 0.52),
   };
   S.disposeTex = bdTex; // kept for completeness; singleton lives app-long
   return S;
@@ -338,7 +346,7 @@ const KC_CSS = `
 .cot-kc.on{display:block;}
 .cot-kc *{box-sizing:border-box;margin:0;padding:0;}
 .cot-kc-veil{position:absolute;inset:0;opacity:0;transition:opacity .5s ease;
-  background:radial-gradient(ellipse 62% 55% at 50% 52%,rgba(3,7,11,.20) 0%,rgba(2,5,8,.44) 100%);}
+  background:radial-gradient(ellipse 62% 55% at 50% 52%,rgba(3,7,11,.08) 0%,rgba(2,5,8,.24) 100%);}
 .cot-kc.xr .cot-kc-veil{opacity:1;}
 @keyframes cotKcIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
 .cot-kc-anim{opacity:0;animation:cotKcIn .35s ease forwards;}
@@ -804,18 +812,24 @@ export function createKillCam(deps) {
     _s.crossVectors(dirW, UP);
     if (_s.lengthSq() < 1e-6) _s.set(1, 0, 0); else _s.normalize();
     const R = Math.max(8.5, snap.boundingRadiusM * 2.7);
-    // higher vantage (~35°) than the old R*0.4: the sightline clears the
-    // tall-grass band instead of dragging bright blades across the ghost
+    // ~26° three-quarter elevation: the old R*0.68 vantage read near
+    // top-down — the struck hull side was invisible and the silhouette
+    // unreadable (r3 critique). Tall grass no longer constrains the
+    // sightline: the vegetation layer is hidden for the whole x-ray hold.
+    // The camera backs off along the shell path (-0.52) so the penetrated
+    // face always faces the lens.
     const off = new THREE.Vector3()
       .addScaledVector(_s, R * 0.88)
-      .addScaledVector(dirW, -R * 0.4);
-    off.y += R * 0.68;
+      .addScaledVector(dirW, -R * 0.52);
+    off.y += R * 0.5;
     const pos = center.clone().add(off);
     if (heightField) {
       const minY = heightField.getHeightAt(pos.x, pos.z) + 1.0;
       if (pos.y < minY) pos.y = minY;
     }
-    return { center, off, pos, look: center.clone() };
+    // look point raised ~6° above hull center: tilts the frame up so the
+    // horizon/sky band stays visible at the top instead of an all-ground void
+    return { center, off, pos, look: center.clone().setY(center.y + R * 0.12) };
   }
 
   function beginXray() {
@@ -881,6 +895,18 @@ export function createKillCam(deps) {
       pb.backdrop.position.set(pose.pos[0], pose.pos[1] + snap.heightM * 0.5, pose.pos[2]);
       pb.backdrop.lookAt(pb.xcam.pos);
       pb.group.add(pb.backdrop);
+
+      // low-intensity ground fill: a cool point light hung above the camera
+      // side of the wreck lifts the terrain the backdrop darkens, so the
+      // ghost sits in a readable pool of ground instead of a void. Removed
+      // with pb.group in finish(); intensity is deliberately sub-sun.
+      const fill = new THREE.PointLight(0xcfe0ee, 30, R * 4.5, 2);
+      fill.position.set(
+        pose.pos[0] + (pb.xcam.pos.x - pose.pos[0]) * 0.35,
+        pose.pos[1] + snap.heightM * 2.4,
+        pose.pos[2] + (pb.xcam.pos.z - pose.pos[2]) * 0.35,
+      );
+      pb.group.add(fill);
     }
 
     // 2. snapshot-posed frame groups (hull + turret), no live-state reads
@@ -1168,7 +1194,7 @@ export function createKillCam(deps) {
       const minY = heightField.getHeightAt(_a.x, _a.z) + 1.0;
       if (_a.y < minY) _a.y = minY;
     }
-    rig.setExternalPose(_a, c, 42);
+    rig.setExternalPose(_a, pb.xcam.look, 42);
     if (pb.backdrop) pb.backdrop.lookAt(_a); // keep the blackout camera-facing
     projectLabels();
     if (pb.xt >= XRAY_HOLD_S) finish(true);

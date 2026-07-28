@@ -268,13 +268,18 @@ export function createHeightField(seed = 1337, cfg = null) {
     }
     const rim = smoothstep(430, HALF, Math.max(Math.abs(x), Math.abs(z)));
     h += rim * rim * T.rimH;
-    // frozen/ice lakes: pull the terrain to a flat sheet at the lake level
+    // frozen/ice lakes: pull the terrain to a flat sheet at the lake level.
+    // The flat sheet runs almost to the shore (0.94 r), and the grade toward
+    // the surrounding terrain extends well OUTSIDE the sheet (1.32 r): the
+    // lake level tracks the lowest shore, so on the uphill side the raw
+    // terrain can sit 10+ m above the sheet — graded over ~35 m that is a
+    // snowy bank; over the old few-meter band it was a sheer quarry wall.
     if (lakesOn) {
       for (let li = 0; li < _LAKES.length; li++) {
         const lk = _LAKES[li];
         const ld = Math.hypot(x - lk.x, z - lk.z);
-        if (ld < lk.r) {
-          const w = smoothstep(lk.r, lk.r * 0.82, ld);
+        if (ld < lk.r * 1.32) {
+          const w = smoothstep(lk.r * 1.32, lk.r * 0.94, ld);
           h += (lakeLevels[li] - h) * w;
         }
       }
@@ -327,9 +332,12 @@ export function createHeightField(seed = 1337, cfg = null) {
   for (let li = 0; li < _LAKES.length; li++) {
     const lk = _LAKES[li];
     let lo = Infinity;
-    for (let a = 0; a < 8; a++) {
-      const hh = heightAt(lk.x + Math.cos(a * 0.785) * lk.r * 0.6,
-        lk.z + Math.sin(a * 0.785) * lk.r * 0.6, false, false, false);
+    // sample the SHORELINE ring (not 0.6 r): the sheet sits just below the
+    // lowest bank point, so bank height stays ~depth everywhere instead of
+    // stacking the full cross-lake terrain drop onto the near shore
+    for (let a = 0; a < 12; a++) {
+      const hh = heightAt(lk.x + Math.cos(a * 0.5236) * lk.r * 0.95,
+        lk.z + Math.sin(a * 0.5236) * lk.r * 0.95, false, false, false);
       if (hh < lo) lo = hh;
     }
     lakeLevels[li] = Math.min(lo, heightAt(lk.x, lk.z, false, false, false)) - (lk.depth ?? 1.4);
@@ -658,9 +666,14 @@ function makeIceLayer(seed, anisotropy) {
       const depth = torusNoise(noi, u, v, 3, 3, 9) * 0.6 + torusNoise(noi, u, v, 7, 7, 41) * 0.4;
       const fine = torusNoise(noi, u, v, 23, 23, 77) * 0.5 + 0.5;
       const d01 = depth * 0.5 + 0.5;
-      const deep = smoothstep(0.58, 0.9, 1 - d01); // dark water under thin ice
-      _col.setHSL(0.565 + depth * 0.015, 0.13 + deep * 0.09,
-        0.76 - deep * 0.15 + fine * 0.04);
+      const deep = smoothstep(0.45, 0.88, 1 - d01); // dark water under thin ice
+      // decisively DARKER + bluer than the snowpack around it: the old 0.76
+      // base lum was within a few % of the snow albedo, so the whole sheet
+      // read as more snowfield (or wet mud under warm sun), never as ice.
+      // Under the overcast hemi+env light a ~0.44 base lum is what actually
+      // lands a visible step down from the 0.8+ snow albedo on screen.
+      _col.setHSL(0.578 + depth * 0.02, 0.15 + deep * 0.10,
+        0.52 - deep * 0.19 + fine * 0.05);
       base.data[j] = _col.r * 255; base.data[j + 1] = _col.g * 255; base.data[j + 2] = _col.b * 255;
       base.data[j + 3] = 255;
     }
@@ -677,16 +690,19 @@ function makeIceLayer(seed, anisotropy) {
       ptsX.push(x); ptsY.push(y);
     }
     drawWrapped(ctx, s, () => {
-      ctx.strokeStyle = _css(0.58, 0.10, 0.78);
-      ctx.lineWidth = w + 1.6;
-      ctx.globalAlpha = 0.35;
+      // dark stress shadow under a BRIGHT refrozen core: from distance real
+      // pressure cracks read as white veins across darker ice (the old dark-
+      // core version read as mud cracks)
+      ctx.strokeStyle = _css(0.60, 0.24, 0.30);
+      ctx.lineWidth = w + 2.2;
+      ctx.globalAlpha = 0.4;
       ctx.beginPath();
       ctx.moveTo(ptsX[0], ptsY[0]);
       for (let q = 1; q < ptsX.length; q++) ctx.lineTo(ptsX[q], ptsY[q]);
       ctx.stroke();
-      ctx.strokeStyle = _css(0.60, 0.22, 0.16);
+      ctx.strokeStyle = _css(0.575, 0.14, 0.92);
       ctx.lineWidth = w;
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = 0.95;
       ctx.beginPath();
       ctx.moveTo(ptsX[0], ptsY[0]);
       for (let q = 1; q < ptsX.length; q++) ctx.lineTo(ptsX[q], ptsY[q]);
@@ -826,8 +842,10 @@ function makeMaskTexture(seedNoi, layout) {
         const md = Math.hypot(x - m.x, z - m.z);
         if (md < m.r + 24) {
           if (m.depth !== undefined) { // lake: ice sheet with a drifted-snow bank
-            const re = m.r * (1 + 0.05 * seedNoi.noise(x * 0.03 + 7, z * 0.03 - 3));
-            marsh = Math.max(marsh, 1 - smoothstep(re * 0.78, re * 1.02, md));
+            // ends AT the flat sheet edge (0.94 r): letting it spill to 1.02 r
+            // dressed the graded snow banks in glossy blue ice
+            const re = m.r * (1 + 0.04 * seedNoi.noise(x * 0.03 + 7, z * 0.03 - 3));
+            marsh = Math.max(marsh, 1 - smoothstep(re * 0.80, re * 0.96, md));
           } else {
             const re = m.r * (1 + 0.18 * seedNoi.noise(x * 0.02 + 7, z * 0.02 - 3));
             marsh = Math.max(marsh, 1 - smoothstep(re * 0.45, re, md));
@@ -844,7 +862,23 @@ function makeMaskTexture(seedNoi, layout) {
       }
     }
   }
-  return canvasToTexture(px, s, { anisotropy: 4, repeat: false });
+  // DataTexture, NOT canvas: this texture carries DATA in its channels with
+  // alpha (village wear) near 0 over most of the map — the 2D canvas backing
+  // store is premultiplied, so putImageData ZEROES the road/rut/marsh RGB
+  // wherever alpha == 0. Every mask-driven feature (road core texture, ruts,
+  // the winter lake ICE channel) silently vanished through the canvas path.
+  const t = new THREE.DataTexture(new Uint8Array(px.buffer), s, s, THREE.RGBAFormat);
+  // flipY=false: row 0 (z=-512) must land at V=0 — mUV.y=(z+512)/1024. (The
+  // old canvas path uploaded flipped, i.e. z-MIRRORED — verified live: the
+  // lake's mask disc rendered at (x,+z) instead of (x,-z).)
+  t.flipY = false;
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.magFilter = THREE.LinearFilter;
+  t.generateMipmaps = true;
+  t.anisotropy = 4;
+  t.needsUpdate = true;
+  return t;
 }
 
 function makeShaderNoiseTexture(seed) {
@@ -880,7 +914,7 @@ uniform sampler2D uNrmG, uNrmD, uNrmR, uNrmM;
 uniform sampler2D uMask, uNoise;
 uniform vec3 uTintA, uTintB, uTintC, uRoadTint;
 uniform float uMarshGloss;
-uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uIceDrift;
+uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uIceDrift, uMidRelief;
 uniform vec3 uRipple; // xy = wind dir, z = ripple normal amplitude
 vec3 gSplatAlbedo; float gSplatRough; vec3 gSplatNrm;
 vec4 splatSamp(sampler2D t, vec2 uv, float df, float mb) {
@@ -915,10 +949,18 @@ void splatCompute() {
   float worn = smoothstep(0.62, 0.78, n2 + (n1 - 0.5) * 0.45);
   float fD = clamp(max(worn * 0.62, max(shoulder, mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
   float fM = mk.b;
+  // marsh/ice sheets only live on near-flat ground: without this the graded
+  // banks around a frozen lake inherit the sheet's glossy blue ice response
+  // and read as icy walls — anything steeper than ~10 deg is snow bank
+  fM *= 1.0 - smoothstep(0.03, 0.08, slope);
   float fR = smoothstep(0.095, 0.235, slope + (n1 - 0.5) * 0.07);
   // hard rock takeover on steep faces (> ~30 deg): cliff walls and cut banks
   // always read as rock regardless of the noise breakup
   fR = max(fR, smoothstep(0.32, 0.50, slope));
+  // ...except inside marsh/ice sheet margins: lake banks are snow/soil
+  // slumps, and the pale winter rock on them read as a glassy blue cliff
+  // wall ringing the frozen lake
+  fR *= 1.0 - mk.b * 0.85;
   vec4 a = splatSamp(uAlbG, uv * 0.240, df, mipB);
   vec4 n = splatSamp(uNrmG, uv * 0.240, df, mipB);
   a = mix(a, splatSamp(uAlbD, uv * 0.210, df, mipB), fD); n = mix(n, splatSamp(uNrmD, uv * 0.210, df, mipB), fD);
@@ -929,7 +971,7 @@ void splatCompute() {
   // — resample the rock layer in the wall's own plane and take it over as
   // the slope rises, so cliffs read as stratified rock instead of dragged
   // paint
-  float steepW = smoothstep(0.34, 0.55, slope);
+  float steepW = smoothstep(0.34, 0.55, slope) * (1.0 - mk.b * 0.85);
   if (steepW > 0.001) {
     float axisW = smoothstep(-0.08, 0.08, abs(wn.x) - abs(wn.z));
     vec2 uvSideA = vec2(wp.z, -wp.y) * 0.155;
@@ -947,9 +989,12 @@ void splatCompute() {
   float meadowC = texture2D(uNoise, uv * 0.0016 + vec2(0.37, 0.55)).r;
   // strength capped ~0.30-0.35 with n1 edge breakup so patch borders are
   // ragged at the ~10 m scale — full-strength smoothstep bands read as a
-  // broken cloud-shadow projector in wide shots
+  // broken cloud-shadow projector in wide shots. DARK-CLOVER (uTintB, the
+  // only darkening tint) capped at ~0.22 (lighting_post r1): stacked with
+  // canopy shadows + grade contrast the old 0.34 max read as amorphous
+  // dark masses / a broken cloud-shadow projector in battlefield.png.
   a.rgb = mix(a.rgb, a.rgb * uTintA, smoothstep(0.54, 0.85, meadowA) * (0.22 + 0.18 * n1) * (1.0 - fD));
-  a.rgb = mix(a.rgb, a.rgb * uTintB, smoothstep(0.58, 0.85, 1.0 - meadowB) * (0.18 + 0.16 * n1) * (1.0 - fD));
+  a.rgb = mix(a.rgb, a.rgb * uTintB, smoothstep(0.58, 0.85, 1.0 - meadowB) * (0.14 + 0.08 * n1) * (1.0 - fD));
   a.rgb = mix(a.rgb, a.rgb * uTintC, smoothstep(0.52, 0.9, meadowC) * (0.16 + 0.14 * n1) * (1.0 - fD));
   a.rgb *= 0.93 + meadowC * 0.14;
   // mid-frequency relief + mottle (25-450 m): stroke-free bump from the
@@ -965,10 +1010,13 @@ void splatCompute() {
     float hb = texture2D(uNoise, uvB).g;
     vec2 gb = vec2(texture2D(uNoise, uvB + vec2(0.005, 0.0)).g - hb,
                    texture2D(uNoise, uvB + vec2(0.0, 0.005)).g - hb);
-    n.xy -= (ga * 1.4 + gb * 2.0) * dMid;
+    // uMidRelief: per-map scale — bright low-sun sand turns this dapple into
+    // a leopard-spot shadow field, so the desert runs it well under 1.0 and
+    // leans on the anisotropic wind ripples for mid-frequency character
+    n.xy -= (ga * 1.4 + gb * 2.0) * dMid * uMidRelief;
     float midN2 = texture2D(uNoise, uv * 0.0089 + vec2(0.71, 0.23)).g;
-    a.rgb *= 1.0 + (ha - 0.5) * 0.09 * dMid
-                 + (midN2 - 0.5) * 0.12 * smoothstep(30.0, 90.0, camDist);
+    a.rgb *= 1.0 + ((ha - 0.5) * 0.09 * dMid
+                 + (midN2 - 0.5) * 0.12 * smoothstep(30.0, 90.0, camDist)) * uMidRelief;
     // rock gets its own coarse relief so cliff faces stay craggy at range
     vec3 dnR = texture2D(uNrmR, uv * 0.041).xyz * 2.0 - 1.0;
     n.xy += dnR.xy * fR * 0.9 * dMid;
@@ -1055,6 +1103,13 @@ void splatCompute() {
   // wind-blown snow drifts across the ice sheet + snowbank shoreline blend
   float driftW = 0.0;
   if (uIceDrift > 0.001 && fM > 0.02) {
+    // macro ice re-projection: the detail ice layer tiles every ~5 m, so its
+    // cracks/depth blotches average away by 150 m and the whole sheet read
+    // as snowfield in establishing shots — overlay the same texture at a
+    // ~75 m tile so pressure cracks and dark clear-ice patches survive at
+    // range and the lake reads as ICE from the wide camera
+    vec4 iceMacro = texture2D(uAlbM, uv * 0.0134);
+    a.rgb = mix(a.rgb, a.rgb * (0.52 + iceMacro.rgb * 0.85), fM * 0.85);
     float drift = smoothstep(0.52, 0.78,
       texture2D(uNoise, uv * 0.021 + vec2(0.31, 0.77)).r + (n1h - 0.5) * 0.30);
     float bank = 1.0 - smoothstep(0.25, 0.75, fM); // shoreline band drifts hardest
@@ -1076,6 +1131,11 @@ void splatCompute() {
   float iceW = clamp(fM * uMarshGloss * 1.3, 0.0, 1.0) * (1.0 - driftW);
   float rough0 = clamp(a.a * (1.0 - roadCore * 0.12) * (1.0 + rut * 0.1)
     * (1.0 - fM * uMarshGloss * (1.0 - driftW)), 0.05, 1.0);
+  // ice roughness floor: at 0.05 the grazing-angle Fresnel term mirrors the
+  // bright sky across the whole sheet and buries the crack/depth albedo —
+  // ~0.45 keeps a satin sheen while the ice texture stays legible from the
+  // near-grazing establishing camera
+  rough0 = max(rough0, iceW * 0.45);
   // matte floor: kills the wet-plastic sheen / white sparkle glints on every
   // ground type except intentionally glossy lake ice
   gSplatRough = max(rough0, 0.78 * (1.0 - iceW) + shoreW * -0.12);
@@ -1139,6 +1199,7 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant') {
     shader.uniforms.uRoadTex = { value: S.pavedRoads ? 1 : clamp(S.roadTexMix ?? 0, 0, 1) };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
     shader.uniforms.uIceDrift = { value: S.iceLake ? (S.iceDrift ?? 0.85) : 0 };
+    shader.uniforms.uMidRelief = { value: S.midRelief ?? 1 };
     {
       const rd = S.rippleDir || [0.8, 0.6];
       const rl = Math.hypot(rd[0], rd[1]) || 1;
@@ -1160,7 +1221,7 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant') {
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v7';
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v9';
   return mat;
 }
 

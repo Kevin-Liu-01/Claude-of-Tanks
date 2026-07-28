@@ -48,7 +48,10 @@ import { clone as cloneWithSkeleton } from 'three/examples/jsm/utils/SkeletonUti
 // over their baked maps (materials.js owns pattern resolution + live
 // re-painting on garage/biome switches); procedural add-on parts wear the
 // shared camo canvas directly.
-import { applyCamoToModel, getSharedCamoTexture, vehicleAmbientFloorHook } from './materials.js';
+import {
+  applyCamoToModel, getSharedCamoTexture, getSharedRoughnessTexture,
+  getCommunityGearMaterials, vehicleAmbientFloorHook,
+} from './materials.js';
 
 const _loader = new GLTFLoader();
 const _cache = new Map();    // url -> Promise<GLTF>
@@ -367,35 +370,95 @@ function boxUVRaw(geo, scale) {
 }
 
 /**
- * COMMUNITY TANKS material-upgrade pass for untextured assets: single-material
- * meshes with no albedo map get the live shared camo canvas (full pattern +
- * repaint support); very dark flat mats (track runs, tires) keep their factory
- * color — the 'addon' marker in the name opts them out of materials.js's
- * plain-tint pass.
+ * COMMUNITY TANKS material-upgrade pass for untextured / palette-atlas
+ * assets (r7 rework):
+ *  - meshes whose NODE name marks them as running gear take shared dark gear
+ *    materials — tracks worn steel, wheel dishes scheme-painted solid — so
+ *    CAD and low-poly models stop rendering "all one green" with zero
+ *    material separation;
+ *  - tiny palette-atlas maps (Newc42 8x1 colorAtlas: every face samples ONE
+ *    texel, so the texture-space camo composite can never show a pattern —
+ *    'Desert' rendered flat chocolate) are STRIPPED and the shell box-UV'd
+ *    onto the live camo canvas;
+ *  - untextured painted materials also take the camo canvas, with the shared
+ *    roughness map for micro variation (the flat constant read waxy);
+ *  - very dark flat mats (bare hardware) keep their factory color — the
+ *    'addon' marker opts them out of materials.js's plain-tint pass.
  */
 function paintUntextured(root, spec, normScale) {
-  const uvScale = (spec.visual && spec.visual.camoScale != null ? spec.visual.camoScale : 0.34) * normScale;
+  const repeatsPerM = spec.visual && spec.visual.camoScale != null ? spec.visual.camoScale : 0.34;
+  // Per-mesh UV density: raw vertex units vary wildly between assets (the
+  // Quaternius rig bakes a large node-chain scale, so its raw verts span
+  // ~0.02 units — a raw-unit UV projection collapsed to ONE texel and the
+  // whole tank sampled flat gold). getWorldScale captures normScale AND any
+  // node-chain scale above the mesh, giving repeats-per-METER everywhere.
+  const _ws = new THREE.Vector3();
+  const meshUvScale = (o) => {
+    o.getWorldScale(_ws);
+    const k = Math.max(Math.abs(_ws.x), Math.abs(_ws.y), Math.abs(_ws.z)) || normScale;
+    return repeatsPerM * k;
+  };
   let camoMat = null;
-  root.traverse((o) => {
-    if (!o.isMesh || Array.isArray(o.material) || !o.material) return;
-    const m = o.material;
-    if (m.map || !m.color) return;
-    const luma = 0.2126 * m.color.r + 0.7152 * m.color.g + 0.0722 * m.color.b;
-    if (luma < 0.045) {
-      // bare hardware / rubber: keep, and exempt from the camo base tint
-      if (!/addon/i.test(m.name || '')) m.name = `${m.name || 'dark'}_addon_keep`;
-      return;
-    }
+  // 'gear' (Wei He merged running-gear mesh) goes with the tracks: the node
+  // carries track runs + wheels in one shell, and dark steel separates it
+  // from the painted hull far better than scheme paint would.
+  const TRACK_RE = /track|tread|gear/i;
+  const WHEEL_RE = /wheel|suspension|sprocket|idler|roller/i;
+  const nodePath = (o) => {
+    let s = '';
+    for (let n = o; n && n !== root; n = n.parent) s += `/${n.name || ''}`;
+    return s;
+  };
+  const isPalette = (m) => m.map && m.map.image &&
+    (m.map.image.width || 0) * (m.map.image.height || 0) <= 4096;
+  const ensureCamoMat = () => {
     if (!camoMat) {
       camoMat = new THREE.MeshStandardMaterial({
         name: 'AddOnCamoHull', map: getSharedCamoTexture(spec),
-        roughness: 0.82, metalness: 0.08,
+        roughness: 0.86, metalness: 0.08,
+        roughnessMap: getSharedRoughnessTexture(spec),
       });
       camoMat.onBeforeCompile = vehicleAmbientFloorHook;
       camoMat.customProgramCacheKey = () => 'veh-ambient-floor-v1';
     }
-    boxUVRaw(o.geometry, uvScale);
-    o.material = camoMat;
+    return camoMat;
+  };
+  // Maps one material slot to its replacement (null = keep). Array-material
+  // meshes are handled per slot — the Quaternius/konserwa assets ship
+  // multi-primitive meshes that the old single-material pass skipped
+  // entirely, which is how the banana-cream factory palette survived r6.
+  const replacement = (o, m) => {
+    if (!m || !m.color) return null;
+    if (m.map && !isPalette(m)) return null;             // real texture: composite path
+    const path = `${nodePath(o)}/${m.name || ''}`;
+    if (TRACK_RE.test(path)) return getCommunityGearMaterials(spec).track;
+    if (WHEEL_RE.test(path)) return getCommunityGearMaterials(spec).wheel;
+    if (!m.map) {
+      const luma = 0.2126 * m.color.r + 0.7152 * m.color.g + 0.0722 * m.color.b;
+      if (luma < 0.11) {
+        // bare hardware / rubber: keep, and exempt from the camo base tint
+        if (!/addon/i.test(m.name || '')) m.name = `${m.name || 'dark'}_addon_keep`;
+        return null;
+      }
+    }
+    return ensureCamoMat();
+  };
+  root.traverse((o) => {
+    if (!o.isMesh || !o.material) return;
+    if (Array.isArray(o.material)) {
+      let anyCamo = false;
+      for (let i = 0; i < o.material.length; i++) {
+        const r = replacement(o, o.material[i]);
+        if (r) { o.material[i] = r; if (r === camoMat) anyCamo = true; }
+      }
+      if (anyCamo) boxUVRaw(o.geometry, meshUvScale(o));
+      return;
+    }
+    const r = replacement(o, o.material);
+    if (r) {
+      if (r === camoMat) boxUVRaw(o.geometry, meshUvScale(o));
+      o.material = r;
+    }
   });
 }
 
@@ -491,7 +554,16 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
   const hullBB = useHullLen ? bboxExcluding(scene, gun) : bboxExcluding(scene, null);
   const size = hullBB.getSize(new THREE.Vector3());
   const targetLen = useHullLen ? spec.dims.hullLengthM : spec.dims.overallLengthM;
-  const s = targetLen / Math.max(size.z, 1e-3);
+  // r7 footprint clamp: length-only normalization let proportionally fat
+  // assets (Quaternius heavy) out-mass every real vehicle on the pedestal —
+  // never exceed the spec width by more than 8%. Height gets 30% headroom:
+  // dims.heightM is to the turret ROOF, while the asset bbox includes RWS /
+  // sights / antennas (the m1a2's CROWS would otherwise shrink the tank).
+  const s = Math.min(
+    targetLen / Math.max(size.z, 1e-3),
+    (spec.dims.widthM * 1.08) / Math.max(size.x, 1e-3),
+    (spec.dims.heightM * 1.30) / Math.max(size.y, 1e-3),
+  );
   scene.scale.setScalar(s);
   scene.position.y = -hullBB.min.y * s;                       // ground at y=0
   scene.position.x = -(hullBB.min.x + hullBB.max.x) / 2 * s;  // center in plan

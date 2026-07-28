@@ -683,22 +683,73 @@ function buildPineFarGeometry(rng, pal = {}) {
 }
 
 function buildPalmFarGeometry(rng, pal = {}) {
+  // The old far palm was a straight pole + one flat jittered disc — at
+  // establishing distance whole oases read as glitched grey scaffolding
+  // topped with green starbursts. Rebuilt: gently curved tapered trunk and a
+  // crown of ARCHED drooping frond blades around a dome core, so the range
+  // silhouette matches the near LOD's real palm shape.
   const cp = pal.canopy || {};
   const trunkParts = [], canopyParts = [];
-  const H = 5.6;
-  const trunk = new THREE.CylinderGeometry(0.13, 0.24, H, 5, 1);
-  trunk.translate(0.25, H / 2, 0);
-  trunk.rotateZ(-0.06);
-  _c.setHSL(0.072, 0.30, 0.27, THREE.SRGBColorSpace);
-  trunkParts.push(paintFlat(trunk, _c, 0));
-  // crown: flattened jittered dome reads as a frond mass at range
-  const disc = new THREE.IcosahedronGeometry(2.2, 1);
-  jitterRadial(disc, rng, 0.3);
-  disc.scale(1.2, 0.32, 1.2);
-  sphereNormals(disc, 0, 0, 0, 1.2);
-  disc.translate(0.35, H + 0.15, 0);
-  canopyParts.push(paintCanopy(disc, cp.hue ?? 0.228, cp.sat ?? 0.30,
-    cp.l0 ?? 0.21, cp.l1 ?? 0.33, H - 0.5, H + 0.8, rng, 0.4));
+  const H = 6.2;
+  const leanA = rng() * Math.PI * 2;
+  const lean = 0.55 + rng() * 0.45; // total top offset in meters
+  const NSEG = 3;
+  let px = 0, pz = 0;
+  for (let i = 0; i < NSEG; i++) {
+    const t0 = i / NSEG, t1 = (i + 1) / NSEG;
+    const x0 = Math.cos(leanA) * lean * t0 * t0, z0 = Math.sin(leanA) * lean * t0 * t0;
+    const x1 = Math.cos(leanA) * lean * t1 * t1, z1 = Math.sin(leanA) * lean * t1 * t1;
+    const segLen = Math.hypot(H / NSEG, x1 - x0, z1 - z0) * 1.04;
+    const seg = new THREE.CylinderGeometry(
+      0.13 + (1 - t1) * 0.11, 0.15 + (1 - t0) * 0.11, segLen, 5, 1);
+    seg.rotateZ(-Math.atan2(x1 - x0, H / NSEG));
+    seg.rotateY(-leanA);
+    seg.translate((x0 + x1) / 2, (t0 + t1) * 0.5 * H, (z0 + z1) / 2);
+    _c.setHSL(0.074, 0.28, 0.28 + (i % 2) * 0.04, THREE.SRGBColorSpace);
+    trunkParts.push(paintFlat(seg, _c.clone(), t1 * 0.15));
+    px = x1; pz = z1;
+  }
+  // crown core: small dome where the frond bases overlap
+  const core = new THREE.IcosahedronGeometry(0.62, 1);
+  jitterRadial(core, rng, 0.2);
+  core.scale(1.2, 0.7, 1.2);
+  sphereNormals(core, 0, 0, 0, 1.2);
+  core.translate(px, H + 0.1, pz);
+  canopyParts.push(paintCanopy(core, cp.hue ?? 0.232, cp.sat ?? 0.30,
+    (cp.l0 ?? 0.21) * 0.85, cp.l1 ?? 0.33, H - 0.5, H + 0.6, rng, 0.25));
+  // radial arched fronds: bent tapered blades that rise, arc over and droop —
+  // the star-of-fronds crown a real palm shows at range (opaque planes; the
+  // far canopy material is DoubleSide for exactly this builder)
+  const nF = 9 + ((rng() * 3) | 0);
+  for (let k = 0; k < nF; k++) {
+    const a = (k / nF) * Math.PI * 2 + rng() * 0.5;
+    const len = 2.7 + rng() * 0.9;
+    const phi0 = 0.55 + rng() * 0.5;            // launch angle up from horizontal
+    const phiTip = -(0.55 + rng() * 0.5);       // tip droops below horizontal
+    const g = new THREE.PlaneGeometry(1, 1, 1, 4);
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const t = p.getY(i) + 0.5; // 0..1 along the frond
+      const w = (0.78 - t * 0.55) * (0.9 + rng() * 0.15); // taper to the tip
+      let ry = 0, rf = 0;
+      const steps = 8, dl = (len * t) / steps;
+      for (let sIt = 0; sIt < steps; sIt++) {
+        const tt = ((sIt + 0.5) / steps) * t;
+        const ph = phi0 + (phiTip - phi0) * tt * tt;
+        rf += Math.cos(ph) * dl;
+        ry += Math.sin(ph) * dl;
+      }
+      p.setXYZ(i, p.getX(i) * w, ry, rf);
+    }
+    g.applyMatrix4(new THREE.Matrix4().makeRotationY(a));
+    g.translate(px, H + 0.14, pz);
+    // outward+up sky-lit normals, matching the near-LOD frond treatment
+    const nrm = g.attributes.normal;
+    _v3.set(Math.sin(a) * 0.5, 1.25, Math.cos(a) * 0.5).normalize();
+    for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, _v3.x, _v3.y, _v3.z);
+    canopyParts.push(paintCanopy(g, (cp.hue ?? 0.232) + (rng() - 0.5) * 0.02,
+      cp.sat ?? 0.32, cp.l0 ?? 0.21, cp.l1 ?? 0.35, H - 1.4, H + 1.5, rng, 0.4));
+  }
   return { trunk: mergeParts(trunkParts), canopy: mergeParts(canopyParts) };
 }
 
@@ -1088,6 +1139,10 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   // far canopy: own material — strong sky/env fill acts as the fake-SSS
   // backlight term so shaded crown sides stay green, never crushed black
   const canopyFarMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1.0, metalness: 0.0 });
+  // DoubleSide: the far palm crown is built from open arched frond blades —
+  // FrontSide culled half of them at any azimuth (closed lobe canopies are
+  // unaffected beyond a little overdraw)
+  canopyFarMat.side = THREE.DoubleSide;
   canopyFarMat.envMapIntensity = 1.35;
   engineCtx.setupShadowMaterial(canopyFarMat, treeWindHook);
   canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v5';

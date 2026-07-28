@@ -7,7 +7,10 @@
  *    docs/research/tank-roster.md (heavies are billboards, mediums sneak,
  *    modern MBTs sit between; smaller silhouettes rate higher).
  *  - Firing bloom: a shot costs most of the tank's OWN camo, decaying
- *    exponentially back over a few seconds.
+ *    exponentially back over a few seconds. The loss fraction scales with
+ *    the gun's caliber (fireCamoLossFor: 76 mm sheds ~64%, 120 mm ~80%).
+ *  - Equipment (EQUIPMENT table): camo net (+still camo), binoculars
+ *    (+still view range), vents — injected via deps.getEquipment.
  *  - Bush/foliage concealment: vegetation discs intersecting the 2D line
  *    spotter→target add camo (capped). The 15 m proximity rule: while a
  *    tank's fire bloom is hot, foliage within 15 m of it turns transparent
@@ -17,6 +20,9 @@
  *    [50 m, MAX_SPOT_RANGE_M].
  *  - Periodic checks (0.5–2 s by proximity, staggered per target — never
  *    per-frame) with a 5 s spotted linger after the last successful check.
+ *  - Armor doc §9 module debuffs: a damaged observation device halves the
+ *    spotter's view range; a damaged radio halves the signal range over which
+ *    a spot is shared to teammates (isSpotted's optional receiver argument).
  *
  * No three.js imports: positions/directions are duck-typed {x,y,z} and the
  * injected `raycast(origin, dir, maxDist)` only ever READS those fields.
@@ -28,11 +34,15 @@
 
 export const MAX_SPOT_RANGE_M = 445;   // matches the HUD minimap spot circle
 export const MIN_SPOT_RANGE_M = 50;    // WoT proximity spotting floor
+// Armor doc §9 module debuffs wired into spotting:
+export const OPTICS_VIEW_FACTOR = 0.5;   // damaged observation device: −50% view range
+export const SIGNAL_RANGE_M = 600;       // healthy radio: team intel share range
+export const RADIO_DAMAGED_FACTOR = 0.5; // damaged radio: share range halved
 export const SPOT_LINGER_S = 5;        // spotted state persists after last pass
 export const BUSH_FIRE_TRANSPARENT_M = 15; // 15 m rule radius
 export const CAMO_PAINT_BONUS = 0.035; // equipped camo pattern (+3.5%)
 export const MAX_BUSH_BONUS = 0.6;     // stacked-foliage cap
-export const FIRE_CAMO_LOSS = 0.82;    // own-camo fraction lost at full bloom
+export const FIRE_CAMO_LOSS = 0.82;    // fallback own-camo loss at full bloom (unknown caliber)
 export const FIRE_BLOOM_TAU_S = 1.7;   // bloom e-folding time
 const FIRE_BLOOM_EPS = 0.03;           // below this the shot is "cold"
 const MOVING_SPEED_MPS = 0.4;
@@ -77,6 +87,41 @@ const CLASS_VIEW_M = { light: 390, medium: 370, heavy: 360, mbt: 440, td: 370, s
 function clamp(x, lo, hi) { return x < lo ? lo : x > hi ? hi : x; }
 
 /**
+ * Module state off a duck-typed entity ('ok' when the entity carries no
+ * combat state — headless fixtures, probes).
+ * @param {object} ent {combat?: {modules?: {[name]: {state}}}}
+ * @param {string} name module name
+ * @returns {'ok'|'yellow'|'red'}
+ */
+function moduleStateOf(ent, name) {
+  const m = ent && ent.combat && ent.combat.modules && ent.combat.modules[name];
+  return m && m.state ? m.state : 'ok';
+}
+
+/**
+ * View range with the armor doc §9 optics debuff: −50% while the observation
+ * device is damaged (yellow or red).
+ * @param {object} ent TankEntity-like ({spec, combat?})
+ * @returns {number} meters
+ */
+export function effectiveViewRangeM(ent) {
+  const vr = viewRangeOf(ent.spec);
+  return moduleStateOf(ent, 'optics') !== 'ok' ? vr * OPTICS_VIEW_FACTOR : vr;
+}
+
+/**
+ * Radio intel share range (armor doc §9: damaged radio = reduced signal /
+ * minimap share range).
+ * @param {object} ent TankEntity-like
+ * @returns {number} meters
+ */
+export function signalRangeM(ent) {
+  return moduleStateOf(ent, 'radio') !== 'ok'
+    ? SIGNAL_RANGE_M * RADIO_DAMAGED_FACTOR
+    : SIGNAL_RANGE_M;
+}
+
+/**
  * View range for a spec (table → class fallback → medium default).
  * @param {object} spec TankSpec-like ({ id, class })
  * @returns {number} meters
@@ -109,6 +154,72 @@ export function fireBloomAt(firedAtS, timeS) {
 }
 
 /**
+ * Caliber-scaled firing camo loss (r7: a 76 mm Sherman and a 120 mm Abrams
+ * shed identical camo when firing — WoT scales the penalty with gun size,
+ * which is what keeps small-caliber scout play viable).
+ * loss = 0.55 + 0.35 × clamp((caliberMm − 50) / 100, 0, 1);
+ * unknown caliber falls back to FIRE_CAMO_LOSS.
+ * @param {?number} caliberMm shooter's gun caliber
+ * @returns {number} own-camo fraction lost at full bloom, in [0.55, 0.90]
+ */
+export function fireCamoLossFor(caliberMm) {
+  if (!(caliberMm > 0)) return FIRE_CAMO_LOSS;
+  return 0.55 + 0.35 * clamp((caliberMm - 50) / 100, 0, 1);
+}
+
+// ---------------------------------------------------------------------------
+// Equipment layer (concealment/vision loadout builds — r7 depth item).
+// deps.getEquipment(ent) returns an array of ids from this table; effects:
+//   camo      — flat own-camo bonus, always active           (vents)
+//   camoStill — own-camo bonus while the TANK sits still     (camo net)
+//   view      — view-range multiplier bonus, always active   (vents)
+//   viewStill — view-range bonus while the SPOTTER is still  (binoculars)
+// Wire-up lives in game/state.js (getEquipment dep) + the garage loadout UI.
+// ---------------------------------------------------------------------------
+export const EQUIPMENT = {
+  camo_net:   { label: 'Camouflage Net',       camoStill: 0.12 },
+  binoculars: { label: 'Binocular Telescope',  viewStill: 0.25 },
+  vents:      { label: 'Improved Ventilation', camo: 0.02, view: 0.02 },
+};
+
+/**
+ * Own-camo bonus from equipment (additive with base + paint, so it is
+ * stripped by fire bloom like the rest of the tank's own camo).
+ * @param {?Array<string>} equipIds ids into EQUIPMENT
+ * @param {boolean} moving hull is moving (disables *Still effects)
+ * @returns {number} camo bonus in [0, ~0.14]
+ */
+export function equipCamoBonus(equipIds, moving) {
+  if (!equipIds) return 0;
+  let b = 0;
+  for (let i = 0; i < equipIds.length; i++) {
+    const e = EQUIPMENT[equipIds[i]];
+    if (!e) continue;
+    if (e.camo) b += e.camo;
+    if (e.camoStill && !moving) b += e.camoStill;
+  }
+  return b;
+}
+
+/**
+ * View-range multiplier from equipment (applied to the spotter).
+ * @param {?Array<string>} equipIds ids into EQUIPMENT
+ * @param {boolean} moving spotter hull is moving (disables *Still effects)
+ * @returns {number} multiplier >= 1
+ */
+export function equipViewMult(equipIds, moving) {
+  if (!equipIds) return 1;
+  let m = 1;
+  for (let i = 0; i < equipIds.length; i++) {
+    const e = EQUIPMENT[equipIds[i]];
+    if (!e) continue;
+    if (e.view) m *= 1 + e.view;
+    if (e.viewStill && !moving) m *= 1 + e.viewStill;
+  }
+  return m;
+}
+
+/**
  * The spotting formula (locked): spotRange = vr − (vr − 50) × camo,
  * clamped to [MIN_SPOT_RANGE_M, MAX_SPOT_RANGE_M].
  * @param {number} viewRangeM spotter view range
@@ -123,13 +234,17 @@ export function spotRangeM(viewRangeM, targetCamo) {
 
 /**
  * Total camo of a target from its parts.
- * Own camo (base + paint) is scaled down by fire bloom; bush bonus rides on
- * top (the 15 m transparency rule is applied when the bonus is computed).
- * @param {{base:number, paint?:number, bloom?:number, bush?:number}} p
+ * Own camo (base + paint + equipment) is scaled down by fire bloom; bush
+ * bonus rides on top (the 15 m transparency rule is applied when the bonus
+ * is computed). `fireLoss` is the caliber-scaled bloom penalty
+ * (fireCamoLossFor) — omitted, it falls back to FIRE_CAMO_LOSS.
+ * @param {{base:number, paint?:number, equip?:number, bloom?:number,
+ *          bush?:number, fireLoss?:number}} p
  * @returns {number} camo in [0, 0.95]
  */
 export function combineCamo(p) {
-  const own = (p.base + (p.paint || 0)) * (1 - FIRE_CAMO_LOSS * (p.bloom || 0));
+  const loss = p.fireLoss != null ? p.fireLoss : FIRE_CAMO_LOSS;
+  const own = (p.base + (p.paint || 0) + (p.equip || 0)) * (1 - loss * (p.bloom || 0));
   return clamp(own + (p.bush || 0), 0, 0.95);
 }
 
@@ -191,6 +306,8 @@ const TEAMS = ['player', 'enemy'];
  * @param {Array<{x:number,z:number,r:number,add:number}>} [deps.concealers]
  *   vegetation concealment discs (world.getConcealment()).
  * @param {(ent:object) => number} [deps.getCamoBonus] equipped-pattern bonus.
+ * @param {(ent:object) => ?Array<string>} [deps.getEquipment] equipped item
+ *   ids (see EQUIPMENT). Omit = no equipment effects.
  * @param {() => number} [deps.rng] deterministic PRNG for check staggering.
  * @returns {object} SpottingSystem
  */
@@ -201,6 +318,7 @@ export function createSpottingSystem(deps) {
   const raycast = typeof deps.raycast === 'function' ? deps.raycast : null;
   const concealers = deps.concealers || [];
   const getCamoBonus = typeof deps.getCamoBonus === 'function' ? deps.getCamoBonus : () => 0;
+  const getEquipment = typeof deps.getEquipment === 'function' ? deps.getEquipment : () => null;
   const rng = typeof deps.rng === 'function' ? deps.rng : Math.random;
 
   /** per-tank record: fire bloom + per-observing-team spotted state */
@@ -218,8 +336,8 @@ export function createSpottingSystem(deps) {
         firedAtS: -1e9,
         nextCheckS: rng() * CHECK_NEAR_S, // stagger initial checks
         byTeam: {
-          player: { spotted: false, lastPassS: -1e9 },
-          enemy: { spotted: false, lastPassS: -1e9 },
+          player: { spotted: false, lastPassS: -1e9, spotter: null },
+          enemy: { spotted: false, lastPassS: -1e9, spotter: null },
         },
       };
       recs.set(ent.id, r);
@@ -266,10 +384,16 @@ export function createSpottingSystem(deps) {
     const camo = combineCamo({
       base: baseCamoOf(target.spec, moving),
       paint: getCamoBonus(target),
+      equip: equipCamoBonus(getEquipment(target), moving),
       bloom,
       bush,
+      fireLoss: rec.fireLoss,
     });
-    if (dist > spotRangeM(viewRangeOf(spotter.spec), camo)) return false;
+    // spotter view range: module damage (optics) x equipment (binocs/vents)
+    const spotterMoving = Math.abs(spotter.state.speed || 0) > MOVING_SPEED_MPS;
+    const vr = effectiveViewRangeM(spotter) *
+      equipViewMult(getEquipment(spotter), spotterMoving);
+    if (dist > spotRangeM(vr, camo)) return false;
     return hardLos(spotter, target);
   }
 
@@ -277,22 +401,34 @@ export function createSpottingSystem(deps) {
   function checkTarget(target, tanks, timeS) {
     const rec = recOf(target);
     let nearest = Infinity;
-    const seenBy = { player: false, enemy: false };
+    // Per team: the best spotter that passed this round (null = not seen).
+    // A healthy-radio spotter shares team-wide (SIGNAL_RANGE_M); a spot known
+    // only through a damaged-radio spotter travels half as far (§9 radio
+    // debuff), so we keep checking spotters until a full-share one passes.
+    const seenVia = { player: null, enemy: null };
     for (let i = 0; i < tanks.length; i++) {
       const sp = tanks[i];
       if (sp === target || !alive(sp) || sp.team === target.team) continue;
       const d = Math.hypot(sp.state.pos.x - target.state.pos.x,
         sp.state.pos.z - target.state.pos.z);
       if (d < nearest) nearest = d;
-      if (!seenBy[sp.team] && canSpot(sp, target, timeS)) seenBy[sp.team] = true;
+      const cur = seenVia[sp.team];
+      if (cur && cur.shareM >= SIGNAL_RANGE_M) continue; // full share already
+      if (canSpot(sp, target, timeS)) {
+        const shareM = signalRangeM(sp);
+        if (!cur || shareM > cur.shareM) {
+          seenVia[sp.team] = { id: sp.id, x: sp.state.pos.x, z: sp.state.pos.z, shareM };
+        }
+      }
     }
     for (const team of TEAMS) {
       if (team === target.team) continue;
       const st = rec.byTeam[team];
-      if (seenBy[team]) {
+      if (seenVia[team]) {
         if (!st.spotted) events.push({ id: target.id, team, timeS });
         st.spotted = true;
         st.lastPassS = timeS;
+        st.spotter = seenVia[team];
       } else if (st.spotted && timeS - st.lastPassS > SPOT_LINGER_S) {
         st.spotted = false;
       }
@@ -302,7 +438,7 @@ export function createSpottingSystem(deps) {
 
   // reused result object for getConcealment (no per-frame allocation)
   const _conc = {
-    camo: 0, base: 0, paint: 0, bush: 0, bloom: 0,
+    camo: 0, base: 0, paint: 0, equip: 0, bush: 0, bloom: 0,
     moving: false, fired: false, inBush: false, spotted: false,
   };
 
@@ -338,28 +474,59 @@ export function createSpottingSystem(deps) {
 
     /**
      * Is tank `id` currently spotted by `team` (linger included)?
+     *
+     * With no `receiver` the answer is team-wide (legacy callers keep full
+     * intel). Passing the receiving entity applies the armor doc §9 radio
+     * debuff: intel from the spotter only reaches teammates within
+     * min(spotter, receiver) signal range — halved for a damaged radio —
+     * while the spotter itself always keeps its own eyes.
      * @param {string} id target tank id
      * @param {'player'|'enemy'} team observing team
+     * @param {object} [receiver] TankEntity-like teammate asking for the intel
      */
-    isSpotted(id, team) {
+    isSpotted(id, team, receiver) {
       const r = recs.get(id);
-      return r ? !!(r.byTeam[team] && r.byTeam[team].spotted) : false;
+      const st = r ? r.byTeam[team] : null;
+      if (!st || !st.spotted) return false;
+      if (!receiver || !st.spotter) return true; // team-wide query (legacy)
+      if (receiver.id === st.spotter.id) return true; // own vision, no radio needed
+      const p = receiver.state && receiver.state.pos;
+      if (!p) return true;
+      const shareM = Math.min(st.spotter.shareM, signalRangeM(receiver));
+      return Math.hypot(p.x - st.spotter.x, p.z - st.spotter.z) <= shareM;
     },
 
-    /** Register a shot for the fire-bloom penalty + 15 m rule. */
-    notifyFired(id, timeS) {
-      const r = recs.get(id);
-      if (r) r.firedAtS = timeS;
-      else recs.set(id, { ...freshRec(), firedAtS: timeS });
-      function freshRec() {
-        return {
+    /**
+     * Register a shot for the fire-bloom penalty + 15 m rule.
+     * The bloom's camo loss scales with the shooter's caliber
+     * (fireCamoLossFor): pass `caliberMm` explicitly, or it is read off the
+     * shooter's `spec.gun.caliberMm` via getTanks(); unknown guns keep the
+     * flat FIRE_CAMO_LOSS fallback.
+     */
+    notifyFired(id, timeS, caliberMm) {
+      let r = recs.get(id);
+      if (!r) {
+        r = {
           firedAtS: -1e9, nextCheckS: 0,
           byTeam: {
-            player: { spotted: false, lastPassS: -1e9 },
-            enemy: { spotted: false, lastPassS: -1e9 },
+            player: { spotted: false, lastPassS: -1e9, spotter: null },
+            enemy: { spotted: false, lastPassS: -1e9, spotter: null },
           },
         };
+        recs.set(id, r);
       }
+      r.firedAtS = timeS;
+      let cal = caliberMm;
+      if (cal == null) {
+        const tanks = deps.getTanks();
+        for (let i = 0; i < tanks.length; i++) {
+          if (tanks[i].id === id) {
+            cal = tanks[i].spec && tanks[i].spec.gun ? tanks[i].spec.gun.caliberMm : null;
+            break;
+          }
+        }
+      }
+      r.fireLoss = fireCamoLossFor(cal);
     },
 
     /**
@@ -383,12 +550,16 @@ export function createSpottingSystem(deps) {
       }
       _conc.base = baseCamoOf(ent.spec, moving);
       _conc.paint = getCamoBonus(ent);
+      _conc.equip = equipCamoBonus(getEquipment(ent), moving);
       _conc.bloom = bloom;
       _conc.bush = bush;
       _conc.moving = moving;
       _conc.fired = bloom > 0;
       _conc.inBush = bush > 0 || (bloom > 0 && bushNearby(p));
-      _conc.camo = combineCamo({ base: _conc.base, paint: _conc.paint, bloom, bush });
+      _conc.camo = combineCamo({
+        base: _conc.base, paint: _conc.paint, equip: _conc.equip,
+        bloom, bush, fireLoss: rec.fireLoss,
+      });
       const opp = ent.team === 'player' ? 'enemy' : 'player';
       _conc.spotted = sys.isSpotted(ent.id, opp);
       return _conc;

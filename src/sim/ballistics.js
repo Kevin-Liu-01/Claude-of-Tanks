@@ -136,7 +136,8 @@ export function applyDispersion(dir, a, b, c) {
   const sigmaRad = typeof c === 'function' ? b : a;
   if (!(sigmaRad > 0)) return;
 
-  // Box-Muller pair in units of sigma. Post-8.6 WoT rule (movement doc §8):
+  // Box-Muller pair in units of sigma. Post-8.6 WoT rule (shells doc §8,
+  // docs/research/shells-ballistics.md):
   // a roll landing OUTSIDE the 2σ reticle circle is re-placed UNIFORMLY inside
   // the circle (r = 2√u — area-uniform), which center-biases the rim
   // distribution exactly like the live game, instead of re-rolling the

@@ -308,6 +308,14 @@ export function createInput(opts = {}) {
   // --- live state ----------------------------------------------------------------
   const down = new Set(); // active codes — Set semantics kill key-ghosting
   const actionHandlers = new Map(); // actionId -> Set<cb(code)>
+  // Sub-frame tap latch (gameplay_feel r1): isDown() samples a LEVEL once per
+  // render frame, so a physical press+release that both land between two
+  // frames (fast Shift tap at low fps; puppeteer keyboard.press) used to
+  // vanish — the sniper toggle randomly ate quick taps. Every press edge
+  // latches its actionId here; isDown() consumes the latch and reports the
+  // action down for that one query even though the key is already up. Held
+  // keys behave exactly as before (the latch is just cleared on first read).
+  const pressLatch = new Set();
   const state = {};
   for (const def of ACTION_DEFS) state[def.id] = false;
   let enabled = true;
@@ -329,6 +337,7 @@ export function createInput(opts = {}) {
          document.pointerLockElement === lockElement)) {
       firePressMs = nowMillis();
     }
+    pressLatch.add(actionId); // consumed by the next isDown(actionId) query
     const set = actionHandlers.get(actionId);
     if (!set) return;
     for (const cb of set) cb(code);
@@ -493,10 +502,22 @@ export function createInput(opts = {}) {
       return state;
     },
 
-    /** @param {string} actionId @returns {boolean} action currently held */
+    /** @param {string} actionId @returns {boolean} action currently held, OR
+     *  tapped since the last query (sub-frame press+release latch — a fast
+     *  Shift tap toggles sniper even when both key events land between two
+     *  render frames; see pressLatch above). */
     isDown(actionId) {
       pollPad();
-      return enabled && isHeld(actionId);
+      if (!enabled) return false;
+      if (isHeld(actionId)) {
+        pressLatch.delete(actionId);
+        return true;
+      }
+      if (pressLatch.has(actionId)) {
+        pressLatch.delete(actionId); // one-shot: report the tap exactly once
+        return true;
+      }
+      return false;
     },
 
     /**
@@ -682,6 +703,7 @@ export function createInput(opts = {}) {
     setEnabled(v) {
       enabled = !!v;
       firePressMs = -Infinity;
+      pressLatch.clear(); // taps must not queue across a menu open/close
       if (!enabled) {
         down.clear();
         padHeld.clear();

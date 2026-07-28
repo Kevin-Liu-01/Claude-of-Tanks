@@ -58,8 +58,12 @@ try {
 
   for (const view of targets) {
     await page.evaluate((v) => window.__SHOTS.set(v), view);
-    // let the scene settle: post-processing, particles, LOD, shadows
-    await new Promise((r) => setTimeout(r, 1200));
+    // let the scene settle: post-processing, particles, LOD, shadows.
+    // Map-switch views rebuild the whole world (terrain bake, props,
+    // vegetation) — on cold vite transforms the fixed 1.2 s could capture
+    // the PREVIOUS screen (terrain_environment r1), so they get ~3 s.
+    const settleMs = view.startsWith('battlefield_') ? 3000 : 1200;
+    await new Promise((r) => setTimeout(r, settleMs));
     const file = `${outDir}/${view}.png`;
     await page.screenshot({ path: file });
     console.log(`[shots] captured ${file}`);

@@ -523,6 +523,43 @@ function mkShell(shellSpec, distM = 100) {
   assert(rng.consumed() === 6, `area splash consumes crew+module rolls (consumed ${rng.consumed()})`);
 }
 
+// ----------- HE AREA splash: side skirts EAT splash on this path too --------
+// Armor doc §7: spaced armor absorbs HE splash almost completely. The area
+// path must stack skirt + main plate and attenuate over the gap exactly like
+// the direct-hit path — a 10 mm skirt must never make a near-miss WORSE than
+// the bare 80 mm side (the pre-fix bug priced absorption off the skirt alone).
+{
+  const sideVerts = [[-1.5, 0, 2], [1.5, 0, 2], [1.5, 2, 2], [-1.5, 2, 2]];
+  const skirtVerts = [[-1.5, 0, 2.5], [1.5, 0, 2.5], [1.5, 2, 2.5], [-1.5, 2, 2.5]];
+  const mkModel = (withSkirt) => ({
+    boundingRadiusM: 4,
+    turretPivot: [0, 1, 0],
+    gunPivot: [0, 0, 0],
+    gunBarrel: null,
+    hullPlates: [
+      ...(withSkirt ? [mkPlate({ name: 'skirt', kind: 'spaced', physicalMm: 10, keMm: 10, ceMm: 10, verts: skirtVerts })] : []),
+      mkPlate({ name: 'side80', physicalMm: 80, keMm: 80, ceMm: 80, verts: sideVerts }),
+    ],
+    turretPlates: [],
+    modules: [],
+    crew: [],
+  });
+  const skirtSpec = mkSpec({ armor: mkModel(true) });
+  const skirted = { id: 'skirted', spec: skirtSpec, state: mkState(), combat: createCombatState(skirtSpec) };
+  const evsS = resolveHeBurst(mkShell(OF471, 300), V(0, 1, 4), [skirted], null, null, rngHalf);
+  assert(evsS.length === 1 && evsS[0].kind === 'he_splash', `skirted area splash resolves (got ${evsS.length && evsS[0] ? evsS[0].kind : 'none'})`);
+  // burst→skirt 1.5 m + 0.5 m gap = 2.0 m; armor 10+80:
+  // 0.5·450·(1 − 2/4.089) − 1.1·90 ≈ 16.0
+  near(evsS[0].damage, 16.0, 1.5, 'area splash stacks skirt + main + gap');
+
+  const bareSpec = mkSpec({ armor: mkModel(false) });
+  const bare = { id: 'bare', spec: bareSpec, state: mkState(), combat: createCombatState(bareSpec) };
+  const evsB = resolveHeBurst(mkShell(OF471, 300), V(0, 1, 4), [bare], null, null, rngHalf);
+  // dist 2.0 m, armor 80: 0.5·450·(1 − 2/4.089) − 1.1·80 ≈ 27.0
+  near(evsB[0].damage, 27.0, 1.5, 'bare-side area splash unchanged');
+  assert(evsS[0].damage < evsB[0].damage, 'AREA path: side skirts EAT HE splash, never amplify it');
+}
+
 // ------------- HE area splash measures to the NEAREST armor point -----------
 // A burst off a hull CORNER whose burst→center ray misses every plate (or
 // crosses a far one) must still splash: the query clamps the burst point to
@@ -1074,6 +1111,89 @@ function mkShell(shellSpec, distM = 100) {
   // Indicator agrees (estimatePenRatio prices tandem the same way).
   const q = { plate: hits[1].plate, impactAngleDeg: 0, point: V(0, 1, 2), distM: 100, layers: hits };
   near(estimatePenRatio(tandem, 100, q), 700 / 650, 0.01, 'pen indicator honors tandem bypass');
+}
+
+// ------- fuel tanks burn ONLY when destroyed (armor doc §9/§10 authority) ----
+// 'No debuff while yellow; red = guaranteed fire (100%)'. The fire draw is
+// still consumed on every damaging fuel hit for fixed replay RNG order, but
+// its value is ignored for fuel tanks: yellow never ignites, red always does.
+{
+  const target = mkTarget();
+  const mkHits = () => [
+    mkPlateHit(0.4, mkPlate({ name: 'front50', physicalMm: 50, keMm: 50, ceMm: 50 }), 0, V(0, 1, 2)),
+    { t: 0.45, kind: 'module', module: 'fuelTank', point: V(0, 1, 1.5) },
+  ];
+  // pen, dmg, save (0.1 < 0.45 ⇒ hit), moduleDmg, fire draw 0.01 (would have
+  // ignited at the old 45% coin flip — must NOT ignite while yellow).
+  const rng1 = seqRng([0.5, 0.5, 0.1, 0.5, 0.01]);
+  const ev1 = resolveShellHit(mkShell(AP100, 100), target, mkHits(), rng1);
+  assert(rng1.consumed() === 5, `fuel hit still consumes the fire draw (consumed ${rng1.consumed()})`);
+  assert(target.combat.modules.fuelTank.state === 'yellow', `fuel tank 120−100 ⇒ yellow (got ${target.combat.modules.fuelTank.state})`);
+  assert(ev1.fireStarted === false && target.combat.fire.burning === false, 'yellow fuel tank NEVER ignites (no 45% coin flip)');
+
+  // Second hit drives it red: guaranteed fire even on a 0.99 fire draw.
+  const rng2 = seqRng([0.5, 0.5, 0.1, 0.5, 0.99]);
+  const ev2 = resolveShellHit(mkShell(AP100, 100), target, mkHits(), rng2);
+  assert(target.combat.modules.fuelTank.state === 'red', 'second hit destroys the fuel tank');
+  assert(ev2.fireStarted === true && target.combat.fire.burning === true, 'destroyed fuel tank ignites at 100%');
+}
+
+// ------------- ammo rack yellow adds +50% reload time (armor doc §9) --------
+{
+  const spec = mkSpec();
+  const cs = createCombatState(spec);
+  cs.modules.ammoRack.hp = cs.modules.ammoRack.maxHp * 0.4;
+  cs.modules.ammoRack.state = 'yellow';
+  startReload(cs, spec);
+  near(cs.reload.t, 9, 1e-9, 'yellow ammo rack ⇒ reload ×1.5');
+  cs.crew.loader = false;
+  startReload(cs, spec);
+  near(cs.reload.t, 13.5, 1e-9, 'dead loader stacks with yellow rack (×2.25)');
+  cs.crew.loader = true;
+  cs.modules.ammoRack.hp = cs.modules.ammoRack.maxHp;
+  cs.modules.ammoRack.state = 'ok';
+  startReload(cs, spec);
+  near(cs.reload.t, 6, 1e-9, 'repaired rack reloads at spec time again');
+}
+
+// ------- shot-info nominalMm reports the rating the pen check used ----------
+// KE events stamp keMm; CE **and HE-class** events stamp ceMm — on a modern
+// composite (ce ≫ ke) the damage log must show the number the math tested.
+{
+  const composite = () => mkPlate({ name: 'comp', physicalMm: 220, keMm: 490, ceMm: 900 });
+  const evK = resolveShellHit(mkShell(BM60, 100), mkTarget({ era: 'modern', hp: 2000 }), [mkPlateHit(0.4, composite(), 0)], rngHalf);
+  near(evK.nominalMm, 490, 1e-9, 'KE shot-info stamps the KE rating');
+  const evC = resolveShellHit(mkShell(M830A1, 100), mkTarget({ era: 'modern', hp: 2000 }), [mkPlateHit(0.4, composite(), 0)], rngHalf);
+  near(evC.nominalMm, 900, 1e-9, 'HEAT shot-info stamps the CE rating');
+  const evH = resolveShellHit(mkShell(OF471, 300), mkTarget({ era: 'modern', hp: 2000 }), [mkPlateHit(0.4, composite(), 0)], rngHalf);
+  near(evH.nominalMm, 900, 1e-9, 'HE-class shot-info stamps the CE rating it tested');
+}
+
+// -------- ERA tiles are ricochet-checked before spending (armor doc §12) ----
+// A HEAT jet grazing a tile past 85° deflects WITHOUT detonating it; KE with
+// 3× overmatch vs the thin tile still suppresses ricochet and spends it.
+{
+  const mkTile = () => mkPlate({ name: 'k5_graze', kind: 'era', physicalMm: 10, keMm: 10, ceMm: 10, era: { keReduction: 0.25, ceFlatMm: 600 }, verts: [[-1, 0, 2.6], [1, 0, 2.6], [1, 2, 2.6], [-1, 2, 2.6]] });
+  const mkMain = () => mkPlate({ name: 'glacis', physicalMm: 220, keMm: 490, ceMm: 900 });
+
+  const targetA = mkTarget({ era: 'modern', hp: 2000 });
+  const jet = mkShell(M830A1, 100);
+  const hitsA = [mkPlateHit(0.2, mkTile(), 86, V(0, 1, 2.6)), mkPlateHit(0.3, mkMain(), 0)];
+  const evA = resolveShellHit(jet, targetA, hitsA, rngHalf);
+  assert(evA.kind === 'ricochet', `HEAT at 86° deflects off the ERA tile (got ${evA.kind})`);
+  assert(evA.eraPlate === null && !targetA.combat.eraSpent.has('k5_graze'), 'grazed tile NOT detonated');
+  assert(jet.dead === true, 'deflected HEAT jet despawns');
+  near(targetA.combat.hp, 2000, 1e-9, 'tile graze deals no damage');
+  // Indicator agrees with resolution on the graze.
+  const q = { plate: hitsA[1].plate, impactAngleDeg: 0, point: V(0, 1, 2), distM: 100, layers: hitsA };
+  near(estimatePenRatio(M830A1, 100, q), 0, 1e-9, 'estimatePenRatio mirrors the tile ricochet');
+
+  // KE: 100 mm ≥ 3×10 mm tile ⇒ no ricochet even at 86°; tile spends as before.
+  const targetB = mkTarget({ era: 'modern', hp: 2000 });
+  const hitsB = [mkPlateHit(0.2, mkTile(), 86, V(0, 1, 2.6)), mkPlateHit(0.3, mkPlate({ name: 'thin_main', physicalMm: 100, keMm: 100, ceMm: 100 }), 0)];
+  const evB = resolveShellHit(mkShell(AP100, 100), targetB, hitsB, rngHalf);
+  assert(targetB.combat.eraSpent.has('k5_graze'), '3× overmatched KE still spends the tile');
+  assert(evB.kind === 'pen', `200·0.75 = 150 vs 100 mm main ⇒ pen (got ${evB.kind})`);
 }
 
 // ------------------------------------------------------------------ report --

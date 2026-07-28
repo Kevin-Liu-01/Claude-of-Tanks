@@ -5,8 +5,10 @@
 import {
   MAX_SPOT_RANGE_M, MIN_SPOT_RANGE_M, SPOT_LINGER_S, CAMO_PAINT_BONUS,
   MAX_BUSH_BONUS, VIEW_RANGE_M, BASE_CAMO,
+  OPTICS_VIEW_FACTOR, SIGNAL_RANGE_M, RADIO_DAMAGED_FACTOR,
   viewRangeOf, baseCamoOf, fireBloomAt, spotRangeM, combineCamo,
   bushBonusBetween, checkIntervalS, createSpottingSystem,
+  effectiveViewRangeM, signalRangeM,
 } from './spotting.js';
 
 let passed = 0;
@@ -206,6 +208,58 @@ console.log('[14] getConcealment snapshot');
   sys.notifyFired('p1', 2);
   const c2 = sys.getConcealment(target, 2.1);
   ok(c2.fired && c2.bush === 0 && c2.camo < c1.camo, 'after firing: bush lit, camo collapsed');
+}
+
+console.log('[15] armor doc §9: damaged optics halve view range');
+{
+  // tiger1 vr 370 vs still m4a3e8 (camo 0.24) at 250 m: healthy spotRange
+  // 293 m ⇒ spotted; damaged optics vr 185 ⇒ spotRange 152.6 m ⇒ hidden.
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  spotter.combat.modules = { optics: { state: 'yellow' } };
+  near(effectiveViewRangeM(spotter), 370 * OPTICS_VIEW_FACTOR, 1e-9, 'yellow optics: −50% view range');
+  const target = tank('p1', 'player', 0, 250);
+  const sys = mkSys([], [spotter, target]);
+  sys.forceCheck(1);
+  ok(!sys.isSpotted('p1', 'enemy'), 'damaged optics: 250 m target hidden');
+  spotter.combat.modules.optics.state = 'ok';
+  near(effectiveViewRangeM(spotter), 370, 1e-9, 'repaired optics restore view range');
+  sys.forceCheck(2);
+  ok(sys.isSpotted('p1', 'enemy'), 'repaired optics: 250 m target spotted again');
+}
+
+console.log('[16] armor doc §9: damaged radio halves intel share range');
+{
+  // e1 spots p1 at 100 m; teammate e2 sits 350 m behind e1 and cannot spot
+  // p1 itself (450 m > 445 max). Healthy radio shares to 600 m; a damaged
+  // radio only to 300 m — e2 loses the intel, e1 keeps its own eyes.
+  const mkE1 = () => tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  const target = () => tank('p1', 'player', 0, 100);
+  const e2 = tank('e2', 'enemy', 0, -350, { specId: 'tiger1', cls: 'heavy' });
+
+  const healthy = mkE1();
+  near(signalRangeM(healthy), SIGNAL_RANGE_M, 1e-9, 'healthy radio: full signal range');
+  const sysH = mkSys([], [healthy, e2, target()]);
+  sysH.forceCheck(1);
+  ok(sysH.isSpotted('p1', 'enemy'), 'team-wide query unchanged (legacy callers)');
+  ok(sysH.isSpotted('p1', 'enemy', e2), 'healthy radio shares to a 350 m teammate');
+
+  const damaged = mkE1();
+  damaged.combat.modules = { radio: { state: 'yellow' } };
+  near(signalRangeM(damaged), SIGNAL_RANGE_M * RADIO_DAMAGED_FACTOR, 1e-9, 'damaged radio: share range halved');
+  const sysD = mkSys([], [damaged, e2, target()]);
+  sysD.forceCheck(1);
+  ok(sysD.isSpotted('p1', 'enemy'), 'spot itself still registers');
+  ok(sysD.isSpotted('p1', 'enemy', damaged), 'the spotter keeps its own eyes');
+  ok(!sysD.isSpotted('p1', 'enemy', e2), 'damaged radio: intel does NOT reach the 350 m teammate');
+
+  // A second, healthy-radio co-spotter restores the full share even when the
+  // damaged-radio tank passes first (checkTarget prefers the wider signal).
+  const damagedFirst = mkE1();
+  damagedFirst.combat.modules = { radio: { state: 'yellow' } };
+  const e3 = tank('e3', 'enemy', 0, 200, { specId: 'tiger1', cls: 'heavy' }); // 100 m from p1, 550 m from e2
+  const sysB = mkSys([], [damagedFirst, e3, e2, target()]);
+  sysB.forceCheck(1);
+  ok(sysB.isSpotted('p1', 'enemy', e2), 'a healthy-radio co-spotter restores team intel');
 }
 
 console.log('');

@@ -60,7 +60,12 @@ const HIGH_PASS_ANCHOR = 'gl_FragColor = mix( outputColor, texel, alpha );';
 // terrain with no visible contact core ("float slightly"); with the r5 fog
 // cut the AO no longer has to fight a milky wash, so the deeper multiply
 // reads as grounding instead of dirt.
-const GTAO_PARAMS = { radius: 1.6, distanceExponent: 2, thickness: 1.8, scale: 2.6, samples: 16 };
+// r6: radius 1.6 → 1.9, thickness 1.8 → 2.0 — "buildings, telegraph poles,
+// and hay bales meet the terrain with no contact darkening"; the wider
+// gather brings prop-base grounding into the clearly-visible range at
+// establishing distance while the 260-420 m view fade still fences the
+// horizon ring from AO slashes.
+const GTAO_PARAMS = { radius: 1.9, distanceExponent: 2, thickness: 2.0, scale: 2.8, samples: 16 };
 const GTAO_BLEND_INTENSITY = 1.0;
 
 // Depth-driven aerial perspective (r3: "distant hills correctly shift
@@ -83,16 +88,26 @@ const GTAO_BLEND_INTENSITY = 1.0;
 //    per-pixel by the view ray's angle to the sun (see uHazeWarm/uHazeCool),
 //    so the far field grades warm→cool across the frame instead of reading
 //    as one gray fog card.
-const AERIAL_DENSITY = 0.0009; // 1/m; f = 1-exp(-(d*k)^2)
-const AERIAL_DESAT = 0.42; // max saturation loss at full distance
-const AERIAL_COOL = [0.91, 0.975, 1.07]; // cool shift multiplier at full distance
+// r6 ("aerial perspective is weak: distant treelines and hills retain
+// near-full green saturation"): r5's pullback overshot the other way — at
+// 0.0009/0.42 a 500 m treeline lost only ~8% saturation, visually nothing.
+// Splitting the difference between r4 (monochrome by 400 m) and r5 (no
+// atmosphere at all): 500 m treelines now shift clearly toward the sky tint
+// (~18% desat + ~15% scatter-in) while 200 m foliage keeps full color.
+const AERIAL_DENSITY = 0.00125; // 1/m; f = 1-exp(-(d*k)^2)
+const AERIAL_DESAT = 0.55; // max saturation loss at full distance
+const AERIAL_COOL = [0.90, 0.97, 1.08]; // cool shift multiplier at full distance
 // Scatter-in term (r4), retuned r5: 0.0009 → 0.00058 — at 0.0009 the horizon
 // mountain ring (r 760-1220 m) was 50-80% swallowed by a single neutral haze
 // color: "flat, untextured, uniform light-gray silhouettes". At 0.00058 the
 // ridges keep their baked slope shading and silhouette (~19% haze @800m,
 // ~38% @1.2km, ~74% @2km) and inherit a BLUE atmospheric cast from the
 // directional tint below instead of flat gray.
-const AERIAL_HAZE_DENSITY = 0.00058; // 1/m, slower second curve for scatter-in
+// r6: 0.00058 → 0.00078 — with the r5 rate the 500-900 m band kept full
+// saturation ("weak aerial perspective"); at 0.00078 the scatter-in reads
+// ~14% @500 m, ~33% @900 m, ~55% @1.3 km, and the directional warm/cool tint
+// keeps the far field atmospheric instead of gray.
+const AERIAL_HAZE_DENSITY = 0.00078; // 1/m, slower second curve for scatter-in
 // Directional in-scatter tints, applied to the live fog color (which is
 // sampled from the sky dome): pixels whose view ray points near the sun
 // azimuth scatter WARM, rays away from the sun scatter COOL BLUE — the
@@ -196,18 +211,28 @@ const AerialShader = {
 // shadow cores reach true display black), and a NEW green-warming term (see
 // uGreenWarm below) that shifts green-dominant terrain/foliage pixels toward
 // warm summer green, unifying them with the warm-key sky like WoT.
-const GRADE_CONTRAST = 1.26;
-const GRADE_SATURATION = 1.08;
-const GRADE_VIGNETTE = 0.23;
-const GRADE_BLACK_LIFT = 0.016;
+// r6 ("tonemapping/color grading is neutral and flat: midtones washed, blacks
+// lifted, no filmic contrast or grade identity"): contrast 1.26 → 1.34,
+// black anchor 0.016 → 0.021 (shadow cores hit true display black),
+// saturation 1.08 → 1.10, vignette 0.23 → 0.27, and both split-tone poles
+// pushed ~40% further apart so the warm-highlight/cool-shadow axis is an
+// unmistakable grade identity rather than a subliminal one. A soft highlight
+// shoulder (GRADE_KNEE*) rolls speculars/sky whites off instead of clipping
+// — the barrel-top hot edge and the horizon band stop slamming to 1.0.
+const GRADE_CONTRAST = 1.34;
+const GRADE_SATURATION = 1.10;
+const GRADE_VIGNETTE = 0.24; // 0.27 stacked with foreground canopy shadow into heavy corners
+const GRADE_BLACK_LIFT = 0.018;
+const GRADE_KNEE = 0.86; // display-space luma where the highlight shoulder starts
+const GRADE_KNEE_SLOPE = 0.55; // slope retained above the knee (1.0 maps to ~0.94)
 // Warm afternoon balance, matching the sun key instead of fighting it.
 const GRADE_BALANCE = [1.02, 1.0, 0.975];
 // Applied only to green-dominant pixels (terrain/foliage): warms hue toward
 // yellow-green without touching sky, tank camo browns, or skin-tone-ish dirt.
 const GRADE_GREEN_WARM = [1.05, 1.0, 0.90];
 // Split-tone poles (multiplied in by shadow/highlight membership).
-const GRADE_SHADOW_TINT = [0.965, 0.995, 1.05]; // cool blue-grey shadows
-const GRADE_HIGH_TINT = [1.055, 1.005, 0.945]; // warm sun-kissed highlights
+const GRADE_SHADOW_TINT = [0.950, 0.990, 1.070]; // cool blue-grey shadows
+const GRADE_HIGH_TINT = [1.075, 1.008, 0.925]; // warm sun-kissed highlights
 
 const GradeShader = {
   name: 'GradeShader',
@@ -255,6 +280,10 @@ const GradeShader = {
       float luma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
       vec3 split = mix( uShadowTint, uHighTint, smoothstep( 0.12, 0.72, luma ) );
       col = clamp( col * split, 0.0, 1.0 );
+      // soft highlight shoulder: roll near-white values off instead of
+      // clipping (metal speculars, horizon band) — filmic top-end
+      vec3 over = max( col - vec3( ${GRADE_KNEE.toFixed(3)} ), vec3( 0.0 ) );
+      col = min( col, vec3( ${GRADE_KNEE.toFixed(3)} ) ) + over * ${GRADE_KNEE_SLOPE.toFixed(3)};
       // saturation
       luma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
       col = clamp( mix( vec3( luma ), col, uSaturation ), 0.0, 1.0 );

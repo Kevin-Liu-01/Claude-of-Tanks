@@ -21,6 +21,70 @@ const CLASS_LABEL = {
 const LANE = { light: 0, medium: 1, mbt: 1, heavy: 2, td: 3 };
 const LANE_LABEL = ['LIGHT', 'MEDIUM · MBT', 'HEAVY', 'TANK DESTROYER'];
 
+// ---------------------------------------------------------------------------
+// META-GAME ECONOMY — persistent XP/credit wallet + researched ghost nodes.
+// Earning is driven entirely by sim bus events (battle entity ids ARE spec
+// ids, and the garage announces the player's spec on 'ui:battleStart'), so
+// no game module needs to know about the economy to feed it; main.js only
+// READS getLastBattleEarnings() to print the payout line on the battle
+// report (see docs/handoff/content_breadth-r1.md).
+// ---------------------------------------------------------------------------
+const ECON_KEY = 'cot_progress_v1';
+// research cost in XP by tier — tier I a formality, tier X a long grind
+const RESEARCH_COST = [0, 300, 700, 1300, 2200, 3600, 5800, 9200, 14500, 22500, 34000];
+// enlistment stipend: enough to research a couple of low-tier nodes right
+// away, so a fresh profile can feel the loop before its first battle
+const SEED_XP = 900;
+const SEED_CREDITS = 20000;
+
+let _prog = null;
+function loadProgress() {
+  if (_prog) return _prog;
+  _prog = { xp: SEED_XP, credits: SEED_CREDITS, researched: {} };
+  try {
+    const raw = localStorage.getItem(ECON_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p && typeof p.xp === 'number') {
+        _prog = {
+          xp: p.xp,
+          credits: typeof p.credits === 'number' ? p.credits : 0,
+          researched: p.researched && typeof p.researched === 'object' ? p.researched : {},
+        };
+      }
+    }
+  } catch (e) { /* storage unavailable (private mode): session-only wallet */ }
+  return _prog;
+}
+function saveProgress() {
+  try { localStorage.setItem(ECON_KEY, JSON.stringify(_prog)); } catch (e) { /* session-only */ }
+}
+const fmt = (n) => Math.round(n).toLocaleString('en-US');
+
+/** Current wallet {xp, credits} (persisted across sessions). */
+export function getWallet() { const p = loadProgress(); return { xp: p.xp, credits: p.credits }; }
+
+let _lastEarnings = null;
+/** Payout of the most recent battle this session (null before the first). */
+export function getLastBattleEarnings() { return _lastEarnings; }
+
+/**
+ * Award the end-of-battle payout and persist it.
+ * @param {{result:string,kills?:number,damage?:number}} o battle summary
+ * @returns {{xp:number,credits:number,kills:number,damage:number,result:string}}
+ */
+export function recordBattleResult({ result, kills = 0, damage = 0 } = {}) {
+  const p = loadProgress();
+  const mult = result === 'victory' ? 1 : result === 'draw' ? 0.6 : 0.4;
+  const xp = Math.round((260 + kills * 170 + damage * 0.24) * mult);
+  const credits = Math.round((5400 + kills * 3600 + damage * 5.2) * mult);
+  p.xp += xp;
+  p.credits += credits;
+  saveProgress();
+  _lastEarnings = { xp, credits, kills, damage: Math.round(damage), result };
+  return _lastEarnings;
+}
+
 // n(key, name, tier, cls, era, opts) — opts: {spec:'realSpecId', from:[keys]}
 // The vertical lane comes from the class, WoT-style.
 function n(key, name, tier, cls, era, o = {}) {
@@ -86,7 +150,10 @@ const TABS = [
       n('t90', 'T-90M Proryv', 10, 'mbt', 'modern', { spec: 't90m', from: ['t72'] }),
       n('kv1', 'KV-1', 5, 'heavy', 'ww2', { from: ['bt7'] }),
       n('is2', 'IS-2', 7, 'heavy', 'ww2', { spec: 'is2', from: ['kv1'] }),
-      n('is3', 'IS-3', 8, 'heavy', 'ww2', { from: ['is2'] }),
+      // cross-linked to the community-sourced IS-3 (PanzerFactory): the same
+      // vehicle must not sit as future research here while being battle-ready
+      // on the COMMUNITY tab — the node lights gold and routes to that spec
+      n('is3', 'IS-3', 8, 'heavy', 'ww2', { spec: 'is3', from: ['is2'] }),
       n('su76', 'SU-76M', 3, 'td', 'ww2', { from: ['t26'] }),
       n('su85', 'SU-85', 5, 'td', 'ww2', { from: ['su76'] }),
       n('su100', 'SU-100', 6, 'td', 'ww2', { spec: 'su100', from: ['su85'] }),
@@ -100,7 +167,7 @@ const PAD_X = 60;
 const HEAD_H = 76;
 const TIER_W = 176;
 const NODE_W = 150;
-const NODE_H = 106;
+const NODE_H = 118; // room for the research-cost / battle-ready footer strip
 const ROW_H = 152;
 const MIN_ZOOM = 0.45;
 const MAX_ZOOM = 1.75;
@@ -173,6 +240,31 @@ const TT_CSS = `
 .cot-tt-node.ghost .tier{margin-right:14px;}
 .cot-tt-node .ready{position:absolute;left:0;right:0;bottom:-1px;height:2px;
   background:linear-gradient(90deg,rgba(240,160,48,0),#f0a030,rgba(240,160,48,0));}
+/* META-GAME: research footer strip on ghost nodes (cost / locked / researched) */
+.cot-tt-node .res{position:absolute;left:0;right:0;bottom:0;padding:3px 4px 4px;
+  text-align:center;font-size:8.5px;font-weight:800;letter-spacing:.14em;
+  color:#67727d;text-transform:uppercase;white-space:nowrap;overflow:hidden;
+  background:linear-gradient(180deg,rgba(146,164,180,.07),rgba(146,164,180,.02));}
+.cot-tt-node.ghost.available{opacity:.78;cursor:pointer;
+  transition:transform .12s,border-color .12s,opacity .12s;}
+.cot-tt-node.ghost.available .res{color:#f0b04a;}
+.cot-tt-node.ghost.available.poor .res{color:#b97a6c;}
+.cot-tt-node.ghost.available:hover{opacity:1;transform:translateY(-2px);
+  border-color:rgba(240,176,74,.55);}
+.cot-tt-node.ghost.researched{border-style:solid;opacity:.85;
+  border-color:rgba(240,160,48,.42);border-top-color:rgba(240,160,48,.85);}
+.cot-tt-node.ghost.researched .res{color:#8fce8f;}
+.cot-tt-node.ghost.researched .nm{color:#d9c9a8;}
+@keyframes cot-tt-deny{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}
+  75%{transform:translateX(4px)}}
+.cot-tt-node.deny{animation:cot-tt-deny .16s linear 2;}
+/* wallet chip in the header */
+.cot-tt-wallet{display:flex;gap:20px;align-items:center;margin-right:8px;}
+.cot-tt-wallet .w{font-size:9px;font-weight:700;letter-spacing:.2em;color:#6d7a86;
+  text-transform:uppercase;white-space:nowrap;text-align:right;}
+.cot-tt-wallet .w b{display:block;font-size:14px;font-weight:800;letter-spacing:.05em;
+  color:#ffd27a;margin-top:1px;}
+.cot-tt-wallet .w.cr b{color:#cfd9e2;}
 .cot-tt-hint{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
   font-size:9.5px;font-weight:600;letter-spacing:.18em;color:rgba(138,151,163,.75);
   text-transform:uppercase;pointer-events:none;white-space:nowrap;}
@@ -184,7 +276,7 @@ const TT_CSS = `
   width:220px;height:1px;margin-left:14px;
   background:linear-gradient(90deg,rgba(146,164,180,.25),rgba(146,164,180,0));}
 /* COMMUNITY TANKS: sourced-asset cards carry a mandatory author credit line */
-.cot-tt-node.comm{height:120px;}
+.cot-tt-node.comm{height:132px;}
 .cot-tt-node .credit{font-size:7.5px;font-weight:600;letter-spacing:.06em;
   color:#7f96a8;text-align:center;margin-top:2px;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;}
@@ -217,19 +309,27 @@ function ensureStyle(id, css) {
 //   fractions), caseH height over hull roof, front/rear rake fractions.
 // ---------------------------------------------------------------------------
 function drawGhostTank(canvas, p, opts = {}) {
-  const W = opts.w || 118, Hpx = opts.h || 36;
+  const W = opts.w || 118, Hpx = opts.h || 38;
   canvas.width = W; canvas.height = Hpx;
   const c = canvas.getContext('2d');
   c.clearRect(0, 0, W, Hpx);
-  c.fillStyle = opts.color || 'rgba(120,134,146,0.55)';
-  const s = Math.min((W - 6) / p.L, (Hpx - 3) / p.H);
+  const hullC = opts.color || 'rgba(126,140,152,0.60)';
+  const gearC = opts.gearColor || 'rgba(92,104,115,0.52)';
+  // ABSOLUTE px-per-meter scale shared by EVERY ghost (capped so the largest
+  // roster hulls — Jagdtiger 10.7 m / Maus 3.6 m tall — still fit the box).
+  // The old per-vehicle fit-to-canvas normalized all size differences away,
+  // which is why four different mediums read as one repeated shape: a
+  // Cunningham must be visibly half a Pershing.
+  const s = opts.pxm || Math.min((W - 6) / 11.5, (Hpx - 3) / 3.7);
   const groundY = Hpx - 1.5;
   const x0 = (W - p.L * s) / 2; // hull rear; the gun overhangs to the right
   const hullL = p.HL * s;
   const wheelR = (p.wheelR ?? 0.34) * s;
   const trackTop = groundY - wheelR * 2;
   const hullTop = groundY - p.hullH * s;
-  // running gear
+  // running gear — its own darker tone, so wheels/tracks separate from the
+  // hull mass instead of merging into one flat blob
+  c.fillStyle = gearC;
   if (p.skirt) {
     c.fillRect(x0 + 1, trackTop - 1, hullL - 2, groundY - trackTop + 1);
   } else {
@@ -243,6 +343,7 @@ function drawGhostTank(canvas, p, opts = {}) {
     }
     c.fillRect(x0 + wheelR * 0.5, trackTop - 1.2, hullL - wheelR, 1.4); // return run
   }
+  c.fillStyle = hullC;
   // hull: sloped glacis front, slightly raked rear plate
   const g = (p.glacis ?? 0.5) * s, rSet = (p.rear ?? 0.25) * s;
   const beltY = groundY - wheelR - 0.8; // sponson/track-guard line
@@ -396,17 +497,60 @@ export function createTechTree(opts) {
     `<div class="cot-tt-hdr">` +
     `<div class="ttl">TECH <b>TREE</b></div>` +
     `<div class="cot-tt-tabs"></div>` +
+    `<div class="cot-tt-wallet">` +
+    `<span class="w xp">Experience<b class="wxp">0 XP</b></span>` +
+    `<span class="w cr">Credits<b class="wcr">0</b></span>` +
+    `</div>` +
     `<button class="cot-tt-close" type="button">&larr;&nbsp; Garage</button>` +
     `</div>` +
     `<div class="cot-tt-view">` +
     `<div class="cot-tt-world"></div>` +
-    `<div class="cot-tt-hint">drag to pan &middot; scroll to zoom &middot; <b>gold nodes</b> are battle-ready &middot; grey silhouettes are future research</div>` +
+    `<div class="cot-tt-hint">drag to pan &middot; scroll to zoom &middot; <b>gold nodes</b> are battle-ready &middot; research grey silhouettes with XP earned in battle</div>` +
     `</div>`;
   document.body.appendChild(root);
 
   const tabsEl = root.querySelector('.cot-tt-tabs');
   const view = root.querySelector('.cot-tt-view');
   const world = root.querySelector('.cot-tt-world');
+  const wxpEl = root.querySelector('.wxp');
+  const wcrEl = root.querySelector('.wcr');
+
+  function refreshWallet() {
+    const w = getWallet();
+    wxpEl.textContent = `${fmt(w.xp)} XP`;
+    wcrEl.textContent = fmt(w.credits);
+  }
+  refreshWallet();
+
+  // Battle tally → payout. Battle entity ids ARE spec ids (state.spawnTanks)
+  // and the garage announces the player's spec id on 'ui:battleStart', so the
+  // whole earning loop rides the existing bus with no sim-side changes.
+  let battleTally = null;
+  if (bus && bus.on) {
+    bus.on('ui:battleStart', (ev) => {
+      battleTally = { playerId: ev && ev.specId, kills: 0, damage: 0 };
+    });
+    bus.on('shell:hit', (ev) => {
+      if (battleTally && ev && ev.attackerId === battleTally.playerId &&
+          ev.targetId && ev.targetId !== battleTally.playerId) {
+        battleTally.damage += ev.damage || 0;
+      }
+    });
+    bus.on('tank:destroyed', (ev) => {
+      if (battleTally && ev && ev.killerId === battleTally.playerId &&
+          ev.id !== battleTally.playerId) battleTally.kills += 1;
+    });
+    bus.on('battle:ended', (ev) => {
+      if (!battleTally) return;
+      recordBattleResult({
+        result: (ev && ev.result) || 'defeat',
+        kills: battleTally.kills,
+        damage: battleTally.damage,
+      });
+      battleTally = null;
+      refreshWallet();
+    });
+  }
 
   let nationId = 'usa';
   let bounds = { w: 1000, h: 600 };
@@ -451,11 +595,20 @@ export function createTechTree(opts) {
   }
 
   // --- tree build ---
-  function nodePos(node) {
-    return {
-      x: PAD_X + (node.tier - 1) * TIER_W + (TIER_W - NODE_W) / 2,
-      y: HEAD_H + node.row * ROW_H,
-    };
+  // A node is "lit" when it can anchor further research: battle-ready (spec
+  // ships) or already researched with XP.
+  const isLit = (nd) => (nd.specId && specById.has(nd.specId)) ||
+    !!loadProgress().researched[nd.key];
+  // Ghost research state: researched | available (a parent is lit, or a root)
+  // | locked (deeper down the line).
+  function ghostState(node, byKey) {
+    if (loadProgress().researched[node.key]) return 'researched';
+    if (!node.from.length) return 'available';
+    for (const fk of node.from) {
+      const par = byKey.get(fk);
+      if (par && isLit(par)) return 'available';
+    }
+    return 'locked';
   }
 
   function buildTree(tab) {
@@ -469,14 +622,30 @@ export function createTechTree(opts) {
       minTier = Math.min(minTier, node.tier);
       maxTier = Math.max(maxTier, node.tier);
     }
+    // COMMUNITY layout compaction: the 9-tank roster spread over the full
+    // tier grid left dead columns (II/V/VII) and a large dead zone — collapse
+    // to only the OCCUPIED tiers; each card keeps its true tier badge.
+    const tiersUsed = isComm
+      ? [...new Set(tab.nodes.map((nd) => nd.tier))].sort((x, y) => x - y)
+      : null;
+    const colOfTier = isComm ? new Map(tiersUsed.map((tv, ci) => [tv, ci])) : null;
+    const colOf = (nd) => (isComm ? colOfTier.get(nd.tier) : nd.tier - 1);
+    const minCol = isComm ? 0 : minTier - 1;
+    const maxCol = isComm ? tiersUsed.length - 1 : maxTier - 1;
+    function nodePos(node) {
+      return {
+        x: PAD_X + colOf(node) * TIER_W + (TIER_W - NODE_W) / 2,
+        y: HEAD_H + node.row * ROW_H,
+      };
+    }
     bounds = {
       w: PAD_X * 2 + 10 * TIER_W,
       h: HEAD_H + maxRow * ROW_H + NODE_H + 60,
     };
     content = {
-      x0: PAD_X + (minTier - 1) * TIER_W - 16,
+      x0: PAD_X + minCol * TIER_W - 16,
       y0: 0,
-      x1: PAD_X + maxTier * TIER_W + 16,
+      x1: PAD_X + (maxCol + 1) * TIER_W + 16,
       y1: HEAD_H + maxRow * ROW_H + NODE_H + 34,
     };
     world.style.width = `${bounds.w}px`;
@@ -502,9 +671,8 @@ export function createTechTree(opts) {
           ? `M${x1} ${y1} L${x2} ${y2}`
           : `M${x1} ${y1} L${mx} ${y1} L${mx} ${y2} L${x2} ${y2}`);
         path.setAttribute('fill', 'none');
-        // gold wire only when BOTH ends are battle-ready (spec actually ships)
-        const gold = node.specId && parent.specId &&
-          specById.has(node.specId) && specById.has(parent.specId);
+        // gold wire when BOTH ends are lit (battle-ready spec OR researched)
+        const gold = isLit(node) && isLit(parent);
         path.setAttribute('stroke', gold ? 'rgba(240,160,48,.45)' : 'rgba(146,164,180,.30)');
         path.setAttribute('stroke-width', '2');
         svg.appendChild(path);
@@ -517,12 +685,16 @@ export function createTechTree(opts) {
     }
     world.appendChild(svg);
 
-    // tier ladder headers — only over the OCCUPIED tier range, so no header
-    // ever floats over an empty column of blank grid
-    for (let t = minTier; t <= maxTier; t++) {
+    // tier ladder headers — only over OCCUPIED tiers (and on the community
+    // tab only over the COLLAPSED columns), so no header ever floats over an
+    // empty stretch of blank grid
+    const headerTiers = isComm ? tiersUsed : [];
+    if (!isComm) for (let t = minTier; t <= maxTier; t++) headerTiers.push(t);
+    for (const t of headerTiers) {
       const hd = document.createElement('div');
       hd.className = 'cot-tt-tierhd';
-      hd.style.left = `${PAD_X + (t - 1) * TIER_W + (TIER_W - NODE_W) / 2}px`;
+      const hc = isComm ? colOfTier.get(t) : t - 1;
+      hd.style.left = `${PAD_X + hc * TIER_W + (TIER_W - NODE_W) / 2}px`;
       hd.innerHTML = `${ROMAN[t]}<i>tier</i>`;
       world.appendChild(hd);
     }
@@ -542,12 +714,21 @@ export function createTechTree(opts) {
     for (const node of tab.nodes) {
       const real = !!node.specId;
       const spec = real ? specById.get(node.specId) : null;
+      // CC-BY: credit rides the node on the COMMUNITY tab, and follows any
+      // cross-linked community spec onto its nation tab (IS-3)
+      const credit = node.credit || (spec && spec.community) || null;
+      const st = real && spec ? 'ready' : ghostState(node, byKey);
+      const cost = RESEARCH_COST[node.tier] || 0;
       const p = nodePos(node);
       const el = document.createElement('div');
-      el.className = `cot-tt-node ${real && spec ? 'real' : 'ghost'}${isComm ? ' comm' : ''}`;
+      el.className = `cot-tt-node ${real && spec ? 'real' : `ghost ${st}`}` +
+        `${credit ? ' comm' : ''}${st === 'available' && loadProgress().xp < cost ? ' poor' : ''}`;
       el.style.left = `${p.x}px`;
       el.style.top = `${p.y}px`;
       const nation = spec ? spec.nation : (tab.id === 'usa' ? 'USA' : tab.id === 'germany' ? 'Germany' : (node.era === 'ww2' ? 'USSR' : 'Russia'));
+      const resLabel = st === 'researched' ? 'Researched'
+        : st === 'available' ? `Research &middot; ${fmt(cost)} XP`
+          : `Locked &middot; ${fmt(cost)} XP`;
       el.innerHTML =
         `<div class="top">${flagSVG(nation, node.era, 20, 13)}` +
         `<span class="tier">${ROMAN[node.tier]}</span></div>` +
@@ -556,20 +737,24 @@ export function createTechTree(opts) {
         (real && spec ? `<img class="ti" data-cot-thumb="${spec.id}" src="${getTankThumb(spec.id) || iconUrl(spec.id, 'angle')}" alt="">` : `<canvas></canvas>`) +
         `<div class="nm"></div>` +
         `<div class="cls">${CLASS_LABEL[node.cls] || node.cls}</div>` +
-        (node.credit ? `<div class="credit"></div>` : '') +
-        (real && spec ? `<div class="ready"></div>` : `<span class="lock">&#128274;</span>`);
+        (credit ? `<div class="credit"></div>` : '') +
+        (real && spec ? `<div class="ready"></div>`
+          : `<div class="res">${resLabel}</div>` +
+            (st === 'locked' ? `<span class="lock">&#128274;</span>` : ''));
       el.querySelector('.nm').textContent = node.name;
-      if (node.credit) {
+      if (credit) {
         const cr = el.querySelector('.credit');
         cr.innerHTML = 'by <b></b> &middot; <span></span>';
-        cr.querySelector('b').textContent = node.credit.author;
-        cr.querySelector('span').textContent = node.credit.license;
-        cr.title = `${node.credit.author} — ${node.credit.license} — ${node.credit.source}`;
+        cr.querySelector('b').textContent = credit.author;
+        cr.querySelector('span').textContent = credit.license;
+        cr.title = `${credit.author} — ${credit.license} — ${credit.source}`;
       }
       if (!(real && spec)) {
         drawGhostTank(el.querySelector('canvas'),
           GHOSTS[node.key] || GHOST_DEFAULT[node.cls] || GHOST_DEFAULT.medium,
-          { w: 118, h: 36, color: 'rgba(120,134,146,0.55)' });
+          st === 'researched'
+            ? { w: 118, h: 38, color: 'rgba(233,177,88,0.75)', gearColor: 'rgba(186,132,58,0.60)' }
+            : { w: 118, h: 38 });
       }
       if (real && spec) {
         el.addEventListener('click', () => {
@@ -577,6 +762,24 @@ export function createTechTree(opts) {
           emit('ui:click', {});
           api.hide();
           if (onPick) onPick(spec.id);
+        });
+      } else if (st === 'available') {
+        // spend XP to research: node (and its outgoing wires) flip gold
+        el.addEventListener('click', () => {
+          if (dragMoved) return;
+          const prog = loadProgress();
+          if (prog.xp >= cost) {
+            emit('ui:click', {});
+            prog.xp -= cost;
+            prog.researched[node.key] = true;
+            saveProgress();
+            buildTree(tab); // relight wires + downstream availability
+            refreshWallet();
+          } else {
+            el.classList.remove('deny');
+            void el.offsetWidth; // restart the shake animation
+            el.classList.add('deny');
+          }
         });
       }
       world.appendChild(el);
@@ -666,6 +869,7 @@ export function createTechTree(opts) {
       root.classList.add('open');
       if (!api.isOpen) window.addEventListener('keydown', onKey, true);
       api.isOpen = true;
+      refreshWallet();
       api.setNation(tabs.some((t) => t.id === nation) ? nation : 'usa');
       if (!rafId) rafId = requestAnimationFrame(frame);
     },

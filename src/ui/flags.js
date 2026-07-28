@@ -61,11 +61,32 @@ const FACES = {
       '<rect x="0" y="6.67" width="30" height="6.67" fill="#2d55a5"/>' +
       '<rect x="0" y="13.33" width="30" height="6.67" fill="#c93b3b"/>';
   },
+  sweden() {
+    // Nordic cross on the 5:2:9 / 4:2:4 spec grid, palette-matched to the
+    // UI's muted golds (raw #FECC00 vibrates against the dark slate chrome)
+    return '<rect x="0" y="0" width="30" height="20" fill="#2f5d9e"/>' +
+      '<rect x="9.38" y="0" width="3.75" height="20" fill="#e7c11c"/>' +
+      '<rect x="0" y="8" width="30" height="4" fill="#e7c11c"/>';
+  },
+  community() {
+    // deliberate COMMUNITY WORKSHOP insignia (gear ring + gold star) — the
+    // sourced roster wears a maker's mark, not a missing-flag grey box
+    let s = '<rect x="0" y="0" width="30" height="20" fill="#3d4650"/>';
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4;
+      const cx = 15 + Math.cos(a) * 6.4, cy = 10 + Math.sin(a) * 6.4;
+      s += `<rect x="${(cx - 1.05).toFixed(2)}" y="${(cy - 1.05).toFixed(2)}" width="2.1" height="2.1" ` +
+        `fill="#9aa7b4" transform="rotate(${((a * 180) / Math.PI).toFixed(1)} ${cx.toFixed(2)} ${cy.toFixed(2)})"/>`;
+    }
+    return s +
+      '<circle cx="15" cy="10" r="5.9" fill="#4a545f" stroke="#9aa7b4" stroke-width="1.4"/>' +
+      star(15, 10.2, 3.9, '#e7b31c');
+  },
 };
 
 /**
  * Render a nation mark as an inline SVG string.
- * @param {string} nation 'USA' | 'Germany' | 'USSR' | 'Russia'
+ * @param {string} nation 'USA' | 'Germany' | 'USSR' | 'Russia' | 'Sweden' | 'Community'
  * @param {?string} era 'ww2' | 'modern' | null — picks era-appropriate marks
  * @param {number} [w=24] css width px
  * @param {number} [h] css height px (defaults to 2:3 ratio)
@@ -78,6 +99,8 @@ export function flagSVG(nation, era, w = 24, h = 0) {
   else if (nation === 'Germany') face = era === 'ww2' ? FACES.germanyWw2() : FACES.germanyModern();
   else if (nation === 'USSR') face = FACES.ussr();
   else if (nation === 'Russia') face = FACES.russia();
+  else if (nation === 'Sweden') face = FACES.sweden();
+  else if (nation === 'Community') face = FACES.community();
   else face = '<rect x="0" y="0" width="30" height="20" fill="#54606b"/>';
   const id = `cotfg${uid++}`;
   return `<svg class="cot-flag" width="${w}" height="${H}" viewBox="0 0 30 20" ` +

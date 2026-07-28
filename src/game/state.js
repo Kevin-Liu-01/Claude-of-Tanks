@@ -163,6 +163,24 @@ function pickParticipants(game, playerSpecId, randomize) {
  *   the deterministic core-8 staging (boot, screenshot contract).
  * @returns {void}
  */
+/**
+ * EQUIPMENT (camo_spotting r1): per-tank loadout persisted in localStorage
+ * (`cot.equip.<specId>` — JSON array of ids from spotting.js EQUIPMENT).
+ * Camo net / binoculars / vents effects are applied inside spotting.js.
+ * @param {string} specId
+ * @returns {?Array<string>} equipped item ids, or null when none saved
+ */
+export function loadEquipment(specId) {
+  try {
+    const raw = localStorage.getItem(`cot.equip.${specId}`);
+    if (!raw) return null;
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : null;
+  } catch {
+    return null;
+  }
+}
+
 export function setupBattle(game, playerSpecId, world, opts = {}) {
   const sp = world.spawnPoints;
   game.shells.length = 0;
@@ -195,6 +213,9 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     raycast: world.raycast,
     concealers: world.getConcealment ? world.getConcealment() : [],
     getCamoBonus: (ent) => (hasCamoPaint(ent.specId) ? CAMO_PAINT_BONUS : 0),
+    // EQUIPMENT layer (camo_spotting r1): camo net (+0.12 still), binoculars
+    // (+25% spotter view still), vents (+2%/+2%) — table in spotting.js.
+    getEquipment: (ent) => loadEquipment(ent.specId),
     rng: mulberry32(9100),
   });
 
@@ -202,19 +223,58 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     heightField: world.heightField,
     raycast: world.raycast,
     getObstacles: () => world.getObstacles(),
-    // AI target acquisition goes THROUGH the spotting sim (§camo charter):
-    // an enemy AI only "knows about" tanks its team has spotted.
-    spotting: {
-      isSpotted: (id) => (game.spotting ? game.spotting.isSpotted(id, 'enemy') : true),
-    },
   };
 
+  // SYMMETRIC TEAMS (hud_ui r1): 3 of the 7 non-player participants fight as
+  // ALLIES on the player's team — WoT identity requires mirrored team panels
+  // (the old 1v7 split rendered an impossible 1/1 vs 7/7 roster). Deterministic
+  // default keeps tiger1 an ENEMY (killcam_xray stages a player shot into it)
+  // and mirrors the tier spread; random rosters take the first 3 shuffled.
+  const nonPlayers = game.tanks.filter((e) => e.specId !== playerSpecId);
+  let allyPick;
+  if (opts.random) {
+    allyPick = nonPlayers.slice(0, 3);
+  } else {
+    const preferred = ['m4a3e8', 't34_85', 'panther_g'];
+    allyPick = nonPlayers.filter((e) => preferred.includes(e.specId));
+    for (const e of nonPlayers) {
+      if (allyPick.length >= 3) break;
+      if (e.specId === 'tiger1' || allyPick.includes(e)) continue;
+      allyPick.push(e);
+    }
+    allyPick = allyPick.slice(0, 3);
+  }
+  const allySet = new Set(allyPick);
+  // Allies spawn AROUND the player spawn: lateral offsets perpendicular to
+  // the player spawn yaw, settled onto the heightfield.
+  const ALLY_OFFSETS_M = [22, -22, 44];
+  const _ppYaw = sp.player.yaw;
+  const _perpX = Math.cos(_ppYaw);
+  const _perpZ = -Math.sin(_ppYaw);
+  // Enemy spawn centroid: the allies' opening push target.
+  let _ecx = 0, _ecz = 0;
+  for (const es of sp.enemies) { _ecx += es.pos[0]; _ecz += es.pos[2]; }
+  _ecx /= sp.enemies.length || 1;
+  _ecz /= sp.enemies.length || 1;
+
   let enemyIdx = 0;
+  let allyIdx = 0;
   game.tanks.forEach((ent, i) => {
     const isPlayer = ent.specId === playerSpecId;
-    const spawn = isPlayer ? sp.player : sp.enemies[enemyIdx++];
+    const isAlly = !isPlayer && allySet.has(ent);
+    let spawn;
+    if (isPlayer) {
+      spawn = sp.player;
+    } else if (isAlly) {
+      const off = ALLY_OFFSETS_M[allyIdx++ % ALLY_OFFSETS_M.length];
+      const ax = sp.player.pos[0] + _perpX * off;
+      const az = sp.player.pos[2] + _perpZ * off;
+      spawn = { pos: [ax, world.heightField.getHeightAt(ax, az), az], yaw: sp.player.yaw };
+    } else {
+      spawn = sp.enemies[enemyIdx++];
+    }
     _spawnPos.set(spawn.pos[0], spawn.pos[1], spawn.pos[2]);
-    ent.team = isPlayer ? 'player' : 'enemy';
+    ent.team = isPlayer || isAlly ? 'player' : 'enemy';
     ent.isPlayer = isPlayer;
     ent.state = createTankState(ent.spec, _spawnPos, spawn.yaw);
     ent.combat = createCombatState(ent.spec);
@@ -238,20 +298,42 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
         rng: mulberry32(7000 + i),
         deps: {
           ...aiDeps,
-          getEnemies: () => (game.player && !game.player.combat.destroyed ? [game.player] : []),
+          // SYMMETRIC TEAMS: every bot fights the OPPOSING team (allied bots
+          // hunt enemies; enemy bots engage the player AND the allies).
+          getEnemies: () => game.tanks.filter(
+            (t) => t.team !== ent.team && t.combat && !t.combat.destroyed),
+          // AI target acquisition goes THROUGH the spotting sim (§camo
+          // charter) from the bot's OWN team's intel, with the bot as the
+          // radio-debuff receiver (simulation_correctness r1).
+          spotting: {
+            isSpotted: (id, receiver) =>
+              (game.spotting ? game.spotting.isSpotted(id, ent.team, receiver) : true),
+          },
         },
       });
       // Open aggressively: advance via a mid-map staging point to a standoff
-      // ring around the player spawn, so contact happens inside the first
-      // minute instead of enemies idling on local patrol loops at their spawn.
-      const pp = sp.player.pos;
+      // ring around the opposing spawn, so contact happens inside the first
+      // 45 s instead of bots idling on local patrol loops at their spawn.
+      // The first enemy of every battle is the FLANKER: it pushes to a much
+      // tighter ring so someone always forces early contact; the rest stage
+      // at 140-190 m. (Bots stuck on obstacles now skip waypoints — ai.js
+      // progress-based unstick — so the push survives walls and rocks.)
+      const pp = ent.team === 'enemy' ? sp.player.pos : [_ecx, 0, _ecz];
       const dx = pp[0] - spawn.pos[0];
       const dz = pp[2] - spawn.pos[2];
       const d = Math.hypot(dx, dz) || 1;
-      const standoff = Math.min(d, 170 + (enemyIdx % 3) * 35);
+      const standoff = Math.min(d, ent.team === 'enemy' && enemyIdx === 1
+        ? 100
+        : 140 + ((ent.team === 'enemy' ? enemyIdx : allyIdx) % 3) * 25);
+      // Final leg sweeps THROUGH the opposing spawn: a patrol that reaches
+      // its standoff ring without contact keeps hunting toward the last
+      // place the opposition was guaranteed to be, so proximity spotting
+      // (50 m floor) eventually forces contact instead of a stare-down
+      // behind cover.
       ent.aiCtl.setWaypoints([
         [spawn.pos[0] + dx * 0.5, spawn.pos[2] + dz * 0.5],
         [pp[0] - (dx / d) * standoff, pp[2] - (dz / d) * standoff],
+        [pp[0], pp[2]],
       ]);
     }
     // Spawn warm-start (r5 terrain-contact gate): run the movement sim for a
@@ -595,7 +677,9 @@ export function simStep(game, bus, world, rig, collider) {
     else {
       let enemiesLeft = 0;
       for (const ent of game.tanks) {
-        if (!ent.isPlayer && ent.combat && !ent.combat.destroyed) enemiesLeft++;
+        // SYMMETRIC TEAMS: only ENEMY-team survivors block victory (allied
+        // survivors are the point of having allies).
+        if (ent.team === 'enemy' && ent.combat && !ent.combat.destroyed) enemiesLeft++;
       }
       if (enemiesLeft === 0) game.result = 'victory';
       else if (game.timeS >= BATTLE_TIME_LIMIT_S) game.result = 'draw';

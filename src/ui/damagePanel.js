@@ -9,7 +9,9 @@
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
 import { iconUrl } from './icons.js';
 
-const STATE_COLOR = { ok: '#7ee87e', yellow: '#f0b04a', red: '#f05a5a' };
+// WoT module-state ramp: WHITE while functional, ORANGE damaged, RED knocked
+// out. (ok-white is what the glyphs render in on a healthy vehicle.)
+const STATE_COLOR = { ok: '#eef4f9', yellow: '#f0952e', red: '#f05a5a' };
 const CREW_ORDER = ['commander', 'gunner', 'driver', 'loader'];
 const CREW_SHORT = { commander: 'CDR', gunner: 'GNR', driver: 'DRV', loader: 'LDR' };
 
@@ -123,8 +125,8 @@ function topSilhouette(specId, onReady) {
     const entry = {
       img,
       bbox: [x0 * sx, y0 * sy, (x1 - x0 + 1) * sx, (y1 - y0 + 1) * sy],
-      rim: tintCanvas(img, 'rgba(205,224,238,0.92)'),
-      body: tintCanvas(img, '#39434c'),
+      rim: tintCanvas(img, 'rgba(232,242,250,0.96)'),
+      body: tintCanvas(img, '#2c343c'),
     };
     topSilCache.set(specId, entry);
     if (onReady) onReady();
@@ -406,13 +408,17 @@ export function createDamagePanel() {
       const destH = bot - top;
       const destW = destH * (bw / bh);
       const destX = cx - destW / 2;
-      // pale rim: four 1px-offset passes of the bright tint = crisp outline
-      ctx.globalAlpha = 0.5;
-      for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      // crisp bright contour: eight offset passes of the near-white tint at
+      // ~full alpha build a sharp 1.5px outline (WoT's white schematic edge)
+      ctx.globalAlpha = 0.92;
+      for (const [ox, oy] of [
+        [-1.5, 0], [1.5, 0], [0, -1.5], [0, 1.5],
+        [-1, -1], [1, -1], [-1, 1], [1, 1],
+      ]) {
         ctx.drawImage(sil.rim, bx, by, bw, bh, destX + ox, top + oy, destW, destH);
       }
-      // dark steel body over the rim passes
-      ctx.globalAlpha = 0.94;
+      // dark steel body over the rim passes — high edge contrast
+      ctx.globalAlpha = 0.97;
       ctx.drawImage(sil.body, bx, by, bw, bh, destX, top, destW, destH);
       ctx.globalAlpha = 1;
     } else {
@@ -448,8 +454,8 @@ export function createDamagePanel() {
     // module hit-zones from the real armor model — invisible until damaged
     drawModuleRegions(tPivot);
 
-    // module icons at relaxed anchors — WoT behavior: a dim ghost of each
-    // module while healthy, a lit plate in yellow/red once damaged.
+    // module icons at relaxed anchors — WoT state ramp: crisp WHITE glyph
+    // while functional, then an orange/red lit plate once damaged/destroyed.
     if (!anchors) computeAnchors();
     for (const [name, pt] of anchors) {
       const icon = MODULE_ICON[name];
@@ -458,8 +464,12 @@ export function createDamagePanel() {
       ctx.save();
       ctx.translate(pt[0], pt[1]);
       if (st === 'ok') {
-        ctx.globalAlpha = 0.30;
-        icon(ctx, 'rgba(178,198,214,0.95)');
+        // white glyph with a dark halo — legible on the dark hull at 1080p
+        ctx.shadowColor = 'rgba(4,7,10,0.95)';
+        ctx.shadowBlur = 3;
+        ctx.globalAlpha = 0.88;
+        icon(ctx, STATE_COLOR.ok);
+        ctx.shadowBlur = 0;
       } else {
         const col = STATE_COLOR[st];
         roundRect(ctx, -8.5, -8.5, 17, 17, 3);

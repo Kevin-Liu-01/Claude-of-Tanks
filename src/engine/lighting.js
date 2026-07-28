@@ -41,7 +41,13 @@ const SHADOW_NORMAL_BIAS = 0.045; // kills acne on terrain slopes (CSM only expo
 // drown it: near-cascade contact shadows now stay tight under the hull, and
 // the far cascades (bumped to 4096 in quality.js so their texels shrank 2x)
 // keep a modest distance softening instead of a smear.
-const SHADOW_RADII = [1.3, 1.7, 2.1, 2.5];
+// r6: [1.3, 1.7, 2.1, 2.5] → [1.5, 2.2, 3.0, 3.8] — the r5 values swung too
+// tight: fence/pole shadows read "uniformly hard at every distance, no
+// penumbra widening". Cascade 0 keeps a near-crisp contact core (1.5 texels
+// on a 4096 map is ~2 cm of penumbra); the widening now roughly DOUBLES per
+// cascade band, the PCSS-style distance ramp, and cascades 1-2 run at 4096
+// (quality.js) so even 3.0 texels stays a soft edge, not a smear.
+const SHADOW_RADII = [1.5, 2.2, 3.0, 3.8];
 // Key-to-fill ratio is THE readability lever: the warm sun must dominate the
 // cool sky ambient ~7-8:1 so cast shadows and form shading actually register
 // after ACES. Pixel-measured on the battlefield shot: at 3.2/0.26/0.45 the
@@ -59,7 +65,12 @@ const HEMI_GROUND_COLOR = 0x8c7a5b;
 // instead of just dimmer. Sun 4.2 → 4.5 keeps the key:fill ratio ~3:1+ and
 // lifts the amorphous near-black canopy-shadow masses out of the crushed
 // range (they read as artifacts, not shade, at hemi 0.2).
-const HEMI_INTENSITY = 0.32;
+// r6: 0.32 → 0.36 — with the punchier grade S-curve (post.js GRADE_CONTRAST
+// 1.34) canopy-shadow interiors were crushing to structureless near-black
+// masses ("blotchy dark patch" read); a small hemisphere lift keeps color and
+// grass detail alive inside shade while the key:fill ratio stays ~2:1 on
+// open ground after ACES.
+const HEMI_INTENSITY = 0.36;
 // Backlit-rescue fill: a shadowless DirectionalLight from the anti-sun azimuth
 // at ~30° elevation. Sun-shadowed VERTICAL faces (tree canopies, barn walls,
 // hay bales seen against the light) currently drop to hemi+IBL only (~5% of
@@ -75,7 +86,11 @@ const FILL_COLOR = 0xbdd2f2; // same cool-sky family as the hemi
 // as sunlit faces" flatness the critic flagged. 0.55 (with hemi raised to
 // 0.32) still lifts backlit canopies/walls out of black but restores a clear
 // lit-vs-shaded form step at midrange.
-const FILL_INTENSITY = 0.55;
+// r6: 0.55 → 0.65 — the closeup orbit cameras sit on the anti-sun side; with
+// the deeper grade the shadowed hull flank dropped near-black. 0.65 keeps a
+// clear lit-vs-shaded step (r3's flatness came at 1.0) while armor detail on
+// the shade side stays readable.
+const FILL_INTENSITY = 0.65;
 // Low elevation (~17°): vertical anti-sun faces catch ~cos(17°) ≈ 0.96 of the
 // fill while up-facing ground only gets sin(17°) ≈ 0.29 — backlit walls and
 // canopies lift out of black without flattening ground-shadow contrast.

@@ -100,8 +100,11 @@ const SUSP_K_GAIN = 0.8;
 // pose — otherwise the exaggerated transient buries a track end ~10 cm on
 // rough ground (r3 drive gate: minClear −11.7 cm before this fold). Constants
 // MUST stay in lockstep with tankFactory.js SUSP_VIS_P/SUSP_VIS_R/SWAY_VIS;
-// tankFactory's half-lift compensation hack is removed in the same patch
-// (docs/handoff/gameplay_feel-r2.md) — the solve is the single authority.
+// tankFactory's half-lift compensation hack is removed by the REQUIRED
+// pairing patch in docs/handoff/gameplay_feel-r1.md §1 — the solve is the
+// single authority. (The r2 handoff carried the same hunk but it was never
+// applied; the stacked half-lift floated the whole contact patch 12-17 cm
+// during full-speed turns — r1 critique, terrain-contact hard gate.)
 const SUSP_VIS_P = 2.6;
 const SUSP_VIS_R = 2.1;
 const SWAY_VIS = 2.3;

@@ -241,17 +241,26 @@ const HUD_CSS = `
 .cot-top .tm{font-size:14px;font-weight:600;color:#d6e2ec;letter-spacing:.1em;
   font-family:${FONT_COND};font-stretch:condensed;text-shadow:0 1px 2px rgba(0,0,0,.8);
   font-variant-numeric:tabular-nums;line-height:1;padding:0 4px;}
-/* frag counter (WoT semantics): both sides render IDENTICAL dim slots that
-   fill with a team-colored chip per kill — same geometry, same stroke. */
+/* frag counter (WoT semantics): both sides render IDENTICAL slots. Empty
+   slots are subtle thin notch outlines (no filled grey plate); each kill a
+   team scores fills one chip in that team's color carrying the destroyed
+   vehicle's class glyph — same geometry, same stroke on both sides. */
 .cot-top .wedge{display:flex;gap:3px;align-items:center;}
-.cot-top .wedge i{display:block;width:13px;height:8px;transform:skewX(-24deg);
-  background:rgba(16,22,28,.78);border:1px solid rgba(146,164,180,.3);
-  box-shadow:inset 0 1px 2px rgba(0,0,0,.5);}
+.cot-top .wedge i{display:block;width:14px;height:9px;transform:skewX(-24deg);
+  background:transparent;border:1px solid rgba(146,164,180,.4);opacity:.42;
+  position:relative;transition:opacity .2s;}
 .cot-top .wedge.r i{transform:skewX(24deg);}
-.cot-top .wedge i.on{background:linear-gradient(180deg,rgba(150,240,150,.95),rgba(84,196,84,.9));
+.cot-top .wedge i svg{position:absolute;inset:0;margin:auto;display:block;}
+.cot-top .wedge i.on{opacity:1;
+  background:linear-gradient(180deg,rgba(150,240,150,.95),rgba(84,196,84,.9));
   border-color:rgba(178,246,178,.8);box-shadow:0 0 6px rgba(126,232,126,.45),0 1px 2px rgba(0,0,0,.5);}
 .cot-top .wedge.r i.on{background:linear-gradient(180deg,rgba(248,120,110,.95),rgba(205,58,48,.92));
   border-color:rgba(252,160,150,.8);box-shadow:0 0 6px rgba(240,90,90,.45),0 1px 2px rgba(0,0,0,.5);}
+/* net/perf readout (WoT battle constant): ping + fps, top-left corner */
+.cot-net{position:absolute;top:5px;left:10px;font-size:11px;font-weight:600;
+  font-family:${FONT_COND};font-stretch:condensed;letter-spacing:.07em;
+  color:#d6e2ec;opacity:.6;font-variant-numeric:tabular-nums;line-height:1;
+  text-shadow:0 1px 2px rgba(0,0,0,.85);}
 .cot-ear{position:absolute;top:52px;width:194px;display:flex;flex-direction:column;gap:2px;}
 .cot-ear.l{left:0;}
 .cot-ear.r{right:0;}
@@ -406,31 +415,16 @@ const HUD_CSS = `
 .cot-sixth .lb{font-size:11px;font-weight:800;letter-spacing:.32em;color:#ffb02e;
   font-family:${FONT_COND};font-stretch:condensed;text-transform:uppercase;
   text-shadow:0 1px 3px rgba(0,0,0,.95);}
-/* SPOTTING SECTION: camo/eye concealment indicator (why: moving/fired/bush) */
+/* SPOTTING SECTION: concealment eye — icon only, WoT-mod style. The eye DIMS
+   with high concealment and brightens as concealment drops; solid red while
+   actively spotted. No numeric readout (a percentage is not WoT HUD grammar). */
 .cot-camoind{position:absolute;bottom:16px;left:50%;
   transform:translateX(calc(-100% - 218px));
-  display:flex;align-items:center;gap:8px;padding:7px 12px 7px 10px;
+  display:flex;align-items:center;justify-content:center;width:36px;height:36px;
   background:linear-gradient(180deg,rgba(14,19,24,.92),rgba(8,11,14,.95));
   border:1px solid rgba(146,164,180,.28);border-bottom:2px solid rgba(146,164,180,.28);}
 .cot-camoind.spotted{border-color:rgba(240,90,90,.55);border-bottom-color:#f05a5a;}
-.cot-camoind svg{display:block;flex:0 0 auto;}
-.cot-camoind .cv{display:flex;flex-direction:column;gap:3px;}
-.cot-camoind .pct{font-size:14px;font-weight:700;line-height:1;color:#9fd6a8;
-  font-family:${FONT_COND};font-stretch:condensed;font-variant-numeric:tabular-nums;
-  text-shadow:0 1px 2px rgba(0,0,0,.9);}
-.cot-camoind.spotted .pct{color:#f28f8f;}
-.cot-camoind .tags{display:flex;gap:4px;min-height:11px;}
-/* modifier chips: only the ACTIVE modifier renders (inactive states are
-   fully hidden — shipped-UI read, not a debug toggle bank) */
-.cot-camoind .tags i{display:none;font-style:normal;font-size:7.5px;font-weight:800;
-  letter-spacing:.1em;padding:1px 4px 1px 3px;
-  font-family:${FONT_COND};font-stretch:condensed;
-  animation:cotTagIn .18s ease;}
-.cot-camoind .tags i::before{content:'';display:inline-block;width:5px;height:5px;
-  border-radius:50%;background:currentColor;margin-right:3px;vertical-align:0.5px;}
-.cot-camoind .tags i.hot{display:inline-block;color:#ffd27a;border:1px solid rgba(240,176,74,.6);}
-.cot-camoind .tags i.good{display:inline-block;color:#8df08d;border:1px solid rgba(126,232,126,.55);}
-@keyframes cotTagIn{from{opacity:0}to{opacity:1}}
+.cot-camoind svg{display:block;flex:0 0 auto;transition:opacity .2s;}
 `;
 
 function penColor(r) {
@@ -493,18 +487,63 @@ export function initHud(bus) {
   const tmEl = topPlate.querySelector('.tm');
   const wedgeL = topPlate.querySelector('.wedge.l');
   const wedgeR = topPlate.querySelector('.wedge.r');
-  // WoT frag-counter: both wedges render the SAME number of identical dim
-  // slots (max team size); each kill a team scores fills one chip in that
-  // team's color, growing outward from the score numerals in the middle.
-  function syncWedge(wEl, slots, kills, reverse) {
+
+  // --- ping/fps readout (WoT battle constant, top-left corner) ---
+  const netEl = el('div', 'cot-net', root);
+  netEl.textContent = '32 ms / 60 fps';
+  let netFrames = 0;       // consecutive live frames since last mode switch
+  let netLastMs = 0;       // wall-clock of previous update (fps EMA only)
+  let netEmaDt = 1 / 60;
+  let netLastTxt = netEl.textContent;
+  function updateNetReadout(timeS) {
+    const now = performance.now();
+    if (netLastMs > 0) {
+      const dt = Math.min(0.25, (now - netLastMs) / 1000);
+      netEmaDt += (dt - netEmaDt) * 0.08;
+    }
+    netLastMs = now;
+    netFrames++;
+    // forced screenshot frames run a single update after setMode — they keep
+    // the deterministic default text; live battles settle onto measured fps.
+    if (netFrames < 30) return;
+    const fps = Math.max(1, Math.min(999, Math.round(1 / netEmaDt)));
+    const ping = 31 + Math.round(Math.sin(timeS * 0.37) * 2 + Math.sin(timeS * 1.7) * 1);
+    const txt = `${ping} ms / ${fps} fps`;
+    if (txt !== netLastTxt) { netEl.textContent = txt; netLastTxt = txt; }
+  }
+
+  // Frag-chip class glyphs (minimap blip language, dark ink on the chip):
+  // light/medium = outline diamond, heavy/td = filled shape, mbt = bar chip.
+  const GLYPH_INK = 'rgba(7,13,10,0.92)';
+  const CLASS_GLYPH = {
+    light: `<svg viewBox="0 0 10 8" width="10" height="8"><path d="M5 .8 8.4 4 5 7.2 1.6 4Z" fill="none" stroke="${GLYPH_INK}" stroke-width="1.1"/></svg>`,
+    medium: `<svg viewBox="0 0 10 8" width="10" height="8"><path d="M5 .8 8.4 4 5 7.2 1.6 4Z" fill="none" stroke="${GLYPH_INK}" stroke-width="1.5"/></svg>`,
+    heavy: `<svg viewBox="0 0 10 8" width="10" height="8"><path d="M5 .5 8.8 4 5 7.5 1.2 4Z" fill="${GLYPH_INK}"/></svg>`,
+    td: `<svg viewBox="0 0 10 8" width="10" height="8"><path d="M1.4 1h7.2L5 7.4Z" fill="${GLYPH_INK}"/></svg>`,
+    mbt: `<svg viewBox="0 0 10 8" width="10" height="8"><path d="M5 .5 8.8 4 5 7.5 1.2 4Z" fill="${GLYPH_INK}"/><rect x="3" y="3.3" width="4" height="1.4" fill="rgba(235,245,240,.9)"/></svg>`,
+  };
+  // WoT frag-counter: both wedges render the SAME number of identical slots
+  // (max team size); each kill a team scores fills one chip in that team's
+  // color — carrying the destroyed vehicle's class glyph — growing outward
+  // from the score numerals in the middle. Empty slots stay subtle notches.
+  function syncWedge(wEl, slots, victims, reverse) {
+    const kills = victims.length;
     if (wEl.children.length !== slots) {
       wEl.textContent = '';
       for (let i = 0; i < slots; i++) el('i', '', wEl);
+      wEl._glyphs = [];
     }
+    const glyphs = wEl._glyphs || (wEl._glyphs = []);
     for (let i = 0; i < slots; i++) {
       // left wedge's inner edge is its last child; right wedge's is its first
       const idx = reverse ? i : slots - 1 - i;
-      wEl.children[i].classList.toggle('on', idx < kills);
+      const on = idx < kills;
+      wEl.children[i].classList.toggle('on', on);
+      const want = on ? (victims[idx] || 'medium') : '';
+      if (glyphs[i] !== want) {
+        wEl.children[i].innerHTML = want ? (CLASS_GLYPH[want] || CLASS_GLYPH.medium) : '';
+        glyphs[i] = want;
+      }
     }
   }
 
@@ -591,26 +630,22 @@ export function initHud(bus) {
     }
   }
 
-  // Camo/eye indicator: current concealment % and WHY it is what it is
-  // (moving / just fired / sitting in a bush). Red open eye while spotted.
+  // Concealment eye (icon only — WoT-mod grammar, no numeric readout): the
+  // eye sits dim while concealment is high and brightens as concealment
+  // drains (moving/firing); solid red wide-open eye while actively spotted.
   const camoInd = el('div', 'cot-camoind', root);
   camoInd.innerHTML =
-    `<svg viewBox="0 0 24 24" width="26" height="26">` +
+    `<svg viewBox="0 0 24 24" width="22" height="22">` +
     `<path class="ceye" fill="none" stroke="#9fd6a8" stroke-width="1.7" ` +
     `d="M2.5 12c2.7-4.4 6-6.6 9.5-6.6s6.8 2.2 9.5 6.6c-2.7 4.4-6 6.6-9.5 6.6S5.2 16.4 2.5 12Z"/>` +
-    `<circle class="cpup" cx="12" cy="12" r="3" fill="#9fd6a8"/></svg>` +
-    `<div class="cv"><div class="pct"></div>` +
-    `<div class="tags"><i data-k="bush">BUSH</i><i data-k="moving">MOVING</i><i data-k="fired">FIRED</i></div></div>`;
+    `<circle class="cpup" cx="12" cy="12" r="3" fill="#9fd6a8"/></svg>`;
   camoInd.style.display = 'none';
-  const camoPctEl = camoInd.querySelector('.pct');
+  const camoSvgEl = camoInd.querySelector('svg');
   const camoEyeEl = camoInd.querySelector('.ceye');
   const camoPupEl = camoInd.querySelector('.cpup');
-  const camoTags = {};
-  for (const i of camoInd.querySelectorAll('.tags i')) camoTags[i.dataset.k] = i;
   let camoIndShown = false;
-  let camoLastTxt = '';
+  let camoLastOp = -1;
   let camoLastSpotted = null;
-  const camoTagState = { bush: '', moving: '', fired: '' };
   function updateCamoIndicator(sp) {
     const show = !!sp;
     if (show !== camoIndShown) {
@@ -619,8 +654,6 @@ export function initHud(bus) {
     }
     if (!sp) return;
     const spotted = !!sp.spotted;
-    const txt = spotted ? 'SPOTTED' : `${Math.round(sp.camo * 100)}%`;
-    if (txt !== camoLastTxt) { camoPctEl.textContent = txt; camoLastTxt = txt; }
     if (spotted !== camoLastSpotted) {
       camoInd.classList.toggle('spotted', spotted);
       const col = spotted ? '#f05a5a' : '#9fd6a8';
@@ -629,17 +662,11 @@ export function initHud(bus) {
       camoPupEl.setAttribute('r', spotted ? '3.6' : '3');
       camoLastSpotted = spotted;
     }
-    const want = {
-      bush: sp.inBush ? (sp.bush > 0 ? 'good' : 'hot') : '',
-      moving: sp.moving ? 'hot' : '',
-      fired: sp.fired ? 'hot' : '',
-    };
-    for (const k of ['bush', 'moving', 'fired']) {
-      if (want[k] !== camoTagState[k]) {
-        camoTags[k].classList.toggle('good', want[k] === 'good');
-        camoTags[k].classList.toggle('hot', want[k] === 'hot');
-        camoTagState[k] = want[k];
-      }
+    // eye brightness tracks EXPOSURE (1 - camo): hidden = dim, exposed = lit
+    const op = spotted ? 1 : Math.max(0.3, Math.min(1, 1.05 - sp.camo));
+    if (Math.abs(op - camoLastOp) > 0.02) {
+      camoSvgEl.style.opacity = op.toFixed(2);
+      camoLastOp = op;
     }
   }
   // ======================= END SPOTTING SECTION =============================
@@ -693,6 +720,8 @@ export function initHud(bus) {
   let mmDirty = true; // force an immediate minimap paint on the next update()
   let w = 1, h = 1, dpr = 1;
   let scopeGrad = null;
+  let scopeFadeMs = -1; // scope-shadow fade-in start (perf.now ms; -1 = settled)
+  let scopePrevMode = 'hidden'; // transition detector for the fade
   let lastCamera = null;
   let lastTimeS = 0;
   let playerId = null;
@@ -834,13 +863,15 @@ export function initHud(bus) {
   function updateTeams(frame) {
     const tanks = frame.tanks || [];
     let allyAlive = 0, allyTotal = 0, enemyAlive = 0, enemyTotal = 0;
+    const deadEnemies = []; // class ids — fill the ALLY frag chips
+    const deadAllies = [];  // class ids — fill the ENEMY frag chips
     for (let i = 0; i < tanks.length; i++) {
       const t = tanks[i];
       if (!t || !t.spec) continue;
       const ally = t.team === 'player' || t.isPlayer;
       const dead = !!(t.combat && t.combat.destroyed);
-      if (ally) { allyTotal++; if (!dead) allyAlive++; }
-      else { enemyTotal++; if (!dead) enemyAlive++; }
+      if (ally) { allyTotal++; if (!dead) allyAlive++; else deadAllies.push(t.spec.class); }
+      else { enemyTotal++; if (!dead) enemyAlive++; else deadEnemies.push(t.spec.class); }
       let row = earRows.get(t.id);
       if (!row) {
         const r = el('div', 'cot-er');
@@ -885,8 +916,8 @@ export function initHud(bus) {
       fgEl.textContent = String(allyKills);
       feEl.textContent = String(enemyKills);
       const slots = Math.max(allyTotal, enemyTotal);
-      syncWedge(wedgeL, slots, allyKills, false);
-      syncWedge(wedgeR, slots, enemyKills, true);
+      syncWedge(wedgeL, slots, deadEnemies, false);
+      syncWedge(wedgeR, slots, deadAllies, true);
       earL.querySelector('.al').textContent = `${allyAlive} / ${allyTotal}`;
       earR.querySelector('.al').textContent = `${enemyAlive} / ${enemyTotal}`;
       lastScore = score;
@@ -904,51 +935,57 @@ export function initHud(bus) {
   function drawScope(zoom) {
     const cx = w / 2, cy = h / 2;
     if (!scopeGrad) {
-      const r = Math.hypot(w, h) * 0.58;
       // WoT scope shadow (movement doc §9.2): black vignette RING — clear
-      // inside ~0.42×min(w,h), rolling to near-black at the frame edge so the
-      // view reads as gun optics, not a plain FOV zoom.
-      scopeGrad = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.42, cx, cy, r);
+      // inside ~0.40×min(w,h), rolling to near-black by ~0.66×min(w,h) so a
+      // CIRCULAR shadow boundary is visible on every frame edge (the old
+      // hypot-based outer radius only darkened the far corners: top/bottom
+      // edges stayed at ~11% and the overlay read as a plain FOV zoom).
+      scopeGrad = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.40,
+        cx, cy, Math.min(w, h) * 0.66);
       scopeGrad.addColorStop(0, 'rgba(2,3,4,0)');
-      scopeGrad.addColorStop(0.35, 'rgba(2,3,4,0.38)');
-      scopeGrad.addColorStop(0.7, 'rgba(2,3,4,0.86)');
-      scopeGrad.addColorStop(1, 'rgba(1,2,3,0.97)');
+      scopeGrad.addColorStop(0.30, 'rgba(2,3,4,0.34)');
+      scopeGrad.addColorStop(0.62, 'rgba(2,3,4,0.80)');
+      scopeGrad.addColorStop(1, 'rgba(1,2,3,0.93)');
     }
+    // scope-shadow fade-in (~0.1 s, movement doc §9.2); forced screenshot
+    // frames snap it complete via forceAimDisplay
+    const fadeK = scopeFadeMs >= 0
+      ? Math.min(1, (performance.now() - scopeFadeMs) / 100) : 1;
+    ctx.globalAlpha = fadeK;
     ctx.fillStyle = scopeGrad;
     ctx.fillRect(0, 0, w, h);
-    // faint green optics tint over the whole view
-    ctx.fillStyle = 'rgba(96,178,110,0.05)';
-    ctx.fillRect(0, 0, w, h);
-    // subtle chromatic fringe hugging the vignette (cool blue ring)
-    const chrom = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.46, cx, cy, Math.hypot(w, h) * 0.52);
+    // NO color tint over the scene: WoT sniper optics keep the arcade
+    // grading — the scope reads from the vignette + reticle furniture alone.
+    // Only a whisper of chromatic fringe survives at the extreme edge.
+    const chrom = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.5, cx, cy, Math.hypot(w, h) * 0.52);
     chrom.addColorStop(0, 'rgba(70,110,190,0)');
-    chrom.addColorStop(0.75, 'rgba(70,110,190,0.05)');
-    chrom.addColorStop(1, 'rgba(90,130,215,0.12)');
+    chrom.addColorStop(1, 'rgba(90,130,215,0.08)');
     ctx.fillStyle = chrom;
     ctx.fillRect(0, 0, w, h);
-    // short etched mil-scale near the center (not a full-screen rule):
-    // stub hairlines with mil ticks, labeled every 2 mils.
+    // minimal etched stadia near the center — deliberately THIN so the
+    // dispersion circle stays the dominant circular element (WoT read):
+    // short hairline stubs with small ticks, single low-contrast numeral.
     const gap = 46;
-    const EXT = 210; // scale half-length in px from center
+    const EXT = 150; // scale half-length in px from center
     const step = 41; // ~1 mil at x8 on this fov
-    ctx.strokeStyle = 'rgba(10,14,12,0.5)';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(10,14,12,0.32)';
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(cx - EXT, cy + 0.5); ctx.lineTo(cx - gap, cy + 0.5);
     ctx.moveTo(cx + gap, cy + 0.5); ctx.lineTo(cx + EXT, cy + 0.5);
     ctx.moveTo(cx + 0.5, cy + gap); ctx.lineTo(cx + 0.5, cy + EXT);
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(214,230,220,0.75)';
+    ctx.strokeStyle = 'rgba(214,230,220,0.48)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(cx - EXT, cy + 0.5); ctx.lineTo(cx - gap, cy + 0.5);
     ctx.moveTo(cx + gap, cy + 0.5); ctx.lineTo(cx + EXT, cy + 0.5);
     ctx.moveTo(cx + 0.5, cy + gap); ctx.lineTo(cx + 0.5, cy + EXT);
     ctx.stroke();
-    // mil ticks + numerals
-    ctx.strokeStyle = 'rgba(214,230,220,0.75)';
-    ctx.fillStyle = 'rgba(214,230,220,0.7)';
-    ctx.font = `600 9px ${FONT_COND}`;
+    // mil ticks + one dim numeral pair
+    ctx.strokeStyle = 'rgba(214,230,220,0.48)';
+    ctx.fillStyle = 'rgba(214,230,220,0.42)';
+    ctx.font = `600 8.5px ${FONT_COND}`;
     ctx.textAlign = 'center';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -956,7 +993,7 @@ export function initHud(bus) {
       const d = gap + step * i;
       if (d > EXT) break;
       const major = i % 2 === 0;
-      const tk = major ? 8 : 4;
+      const tk = major ? 6 : 3;
       ctx.moveTo(cx - d + 0.5, cy - tk); ctx.lineTo(cx - d + 0.5, cy + tk);
       ctx.moveTo(cx + d + 0.5, cy - tk); ctx.lineTo(cx + d + 0.5, cy + tk);
       ctx.moveTo(cx - tk, cy + d + 0.5); ctx.lineTo(cx + tk, cy + d + 0.5);
@@ -965,10 +1002,29 @@ export function initHud(bus) {
     for (let i = 2; i <= 4; i += 2) {
       const d = gap + step * i;
       if (d > EXT) break;
-      ctx.fillText(String(i), cx - d + 0.5, cy + 20);
-      ctx.fillText(String(i), cx + d + 0.5, cy + 20);
-      ctx.fillText(String(i), cx + 14, cy + d + 3);
+      ctx.fillText(String(i), cx - d + 0.5, cy + 18);
+      ctx.fillText(String(i), cx + d + 0.5, cy + 18);
+      ctx.fillText(String(i), cx + 12, cy + d + 3);
     }
+    // NO full-frame crosslines: WoT sniper optics carry only the short
+    // etched stadia stubs above — edge-to-edge hairlines read as the
+    // War-Thunder/sim rangefinder grammar the HUD critic flagged, and they
+    // compete with the dispersion circle (which must stay dominant).
+    // COMPROMISE (movement doc §9.2 "thin crosslines" vs hud_ui r1): faint
+    // hairlines carry the stadia out only to the scope-shadow's inner clear
+    // radius — never to the frame edge.
+    {
+      const R = Math.min(w, h) * 0.40;
+      ctx.strokeStyle = 'rgba(214,230,220,0.20)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx - R, cy + 0.5); ctx.lineTo(cx - EXT, cy + 0.5);
+      ctx.moveTo(cx + EXT, cy + 0.5); ctx.lineTo(cx + R, cy + 0.5);
+      ctx.moveTo(cx + 0.5, cy + EXT); ctx.lineTo(cx + 0.5, cy + R);
+      ctx.moveTo(cx + 0.5, cy - gap); ctx.lineTo(cx + 0.5, cy - R);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
     // magnification plate, top-center under the score bar
     const zTxt = `×${(zoom || 8).toFixed(1)}`;
     ctx.font = `600 14px ${FONT_COND}`;
@@ -1047,15 +1103,31 @@ export function initHud(bus) {
     bounceTimer = setTimeout(() => bounceEl.classList.remove('show'), 2200);
   }
 
+  // WoT dual-element system: a fixed central GUN MARKER (pen-color-coded)
+  // plus a separate DISPERSION CIRCLE that blooms with movement/firing and
+  // converges while holding the aim. The sim already folds hull/turret
+  // movement into dispersionRadM (state.bloomF); the display layer adds the
+  // POST-SHOT bloom read — the circle snaps wide the instant the gun fires
+  // (reload starts) and converges back over the aim time, so a mid-reload
+  // frame always shows a visibly opened circle (WoT's signature element).
+  // Visual scale: WoT's circle is a stylized (enlarged) rendering of the true
+  // cone — a raw projection is near-invisible at range.
+  function reticleTargetR(view) {
+    const base = Math.max(48, view.radPx * 3.2);
+    const rl = view.reload;
+    let fire = 1;
+    if (rl && rl.totalS > 0 && rl.t > 0.001) {
+      const sinceShotS = Math.max(0, rl.totalS - rl.t);
+      fire = 1 + 2.4 * Math.exp(-sinceShotS / 1.9);
+    }
+    return base * fire;
+  }
+
   function drawReticle(view, dt) {
     const col = penColor(view.penRatio);
     const cx = view.cx, cy = view.cy;
-    // WoT dual-element system: a fixed central GUN MARKER (pen-color-coded)
-    // plus a separate DISPERSION CIRCLE that blooms with hull/turret movement
-    // and shrinks while holding the aim. bloom/shrink smoothing toward the
-    // target pixel radius; visual scale: WoT's circle is a stylized (enlarged)
-    // rendering of the true cone — a raw projection is near-invisible at range.
-    const targetR = Math.max(40, view.radPx * 3.0);
+    // bloom/shrink smoothing toward the target pixel radius
+    const targetR = reticleTargetR(view);
     const k = 1 - Math.exp(-14 * dt);
     smoothRadPx += (targetR - smoothRadPx) * k;
     const r = Math.max(26, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
@@ -1154,23 +1226,32 @@ export function initHud(bus) {
       ctx.font = `800 16px ${FONT_COND}`;
       ctx.fillText(rl0.t >= 10 ? `${Math.ceil(rl0.t)} s` : `${rl0.t.toFixed(1)} s`, cx, cy + 39);
     } else {
-      // gun loaded: chambered-shell readout at the same anchor (count in
-      // white, type tag in its ammo color) — identical in arcade and sniper
+      // gun loaded: chambered-shell readout (count in white, type tag in its
+      // ammo color). Arcade anchors it under the aim point; SNIPER offsets it
+      // to the RIGHT of the dispersion circle so nothing floats on the aim
+      // point itself (WoT keeps the sniper center clear for the countdown).
       const sp = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
       const n = shellCount(sp);
       const tType = sp.type || '';
       ctx.font = `700 13px ${FONT_COND}`;
       const wN = ctx.measureText(`${n}`).width;
-      ctx.font = `800 8.5px ${FONT_COND}`;
-      const wT = ctx.measureText(tType).width;
-      const x0 = cx - (wN + 4 + wT) / 2;
+      let x0, y0;
+      if (mode === 'sniper') {
+        x0 = cx + Math.max(r + 24, 70);
+        y0 = cy + 4;
+      } else {
+        ctx.font = `800 8.5px ${FONT_COND}`;
+        const wT = ctx.measureText(tType).width;
+        x0 = cx - (wN + 4 + wT) / 2;
+        y0 = cy + 36;
+      }
       ctx.textAlign = 'left';
       ctx.font = `700 13px ${FONT_COND}`;
       ctx.fillStyle = 'rgba(226,236,244,0.92)';
-      ctx.fillText(`${n}`, x0, cy + 36);
+      ctx.fillText(`${n}`, x0, y0);
       ctx.font = `800 8.5px ${FONT_COND}`;
       ctx.fillStyle = SHELL_TYPE_COLOR[tType] || 'rgba(159,176,191,0.9)';
-      ctx.fillText(tType, x0 + wN + 4, cy + 36);
+      ctx.fillText(tType, x0 + wN + 4, y0);
       ctx.textAlign = 'center';
     }
     // distance readout centered under the aim circle, tracking its bloom
@@ -1601,9 +1682,9 @@ export function initHud(bus) {
       const st = player.state;
       const [px, py] = worldToMap(st.pos.x, st.pos.z);
       const pxPerM = MM / mapWorldSize;
-      // white draw-distance square
+      // white draw-distance square (WoT max-render box around the player)
       const rsq = RENDER_RANGE_M * pxPerM;
-      mmCtx.strokeStyle = 'rgba(240,246,252,0.55)';
+      mmCtx.strokeStyle = 'rgba(240,246,252,0.75)';
       mmCtx.lineWidth = 1;
       mmCtx.strokeRect(px - rsq, py - rsq, rsq * 2, rsq * 2);
       // dashed max-spot circle
@@ -1859,12 +1940,10 @@ export function initHud(bus) {
     drawHitMark(aimView, lastTimeS);
   }
 
-  // Sniper optics grade: the high-zoom view compresses the scene into its
-  // haziest distance band, so the raw render reads washed-out next to the
-  // arcade camera. Grade the WebGL canvas itself (a plain CSS filter — unlike
-  // backdrop-filter it is honored by every compositor, headless included) to
-  // restore the contrast/saturation the fog band eats. Values tuned to match
-  // the third-person tonality, NOT to stylize.
+  // Sniper keeps the ARCADE grading untouched: real WoT sniper mode is the
+  // same scene at a narrow FOV — no saturation/contrast push, no green cast.
+  // (An earlier saturate/contrast CSS filter on the scene canvas made the
+  // verdant sniper frame read acid-green; guard against any stale filter.)
   let sceneCanvasEl = null;
   function sceneCanvas() {
     if (!sceneCanvasEl || !sceneCanvasEl.isConnected) {
@@ -1875,8 +1954,11 @@ export function initHud(bus) {
   }
   function applyMode() {
     root.style.display = mode === 'hidden' ? 'none' : 'block';
+    // scope shadow fades in over ~0.1 s on ENTERING sniper (movement §9.2)
+    if (mode === 'sniper' && scopePrevMode !== 'sniper') scopeFadeMs = performance.now();
+    scopePrevMode = mode;
     const sc = sceneCanvas();
-    if (sc) sc.style.filter = mode === 'sniper' ? 'saturate(1.34) contrast(1.16)' : '';
+    if (sc && sc.style.filter) sc.style.filter = '';
   }
 
   // ---------- public API ----------
@@ -1893,6 +1975,10 @@ export function initHud(bus) {
       mode = m;
       applyMode();
       mmDirty = true; // guarantee a minimap draw on the next update()
+      // net readout: forced screenshot frames (single update after setMode)
+      // must keep the deterministic default text — reset the live counter
+      netFrames = 0;
+      netLastMs = 0;
       if (m === 'hidden') ctx.clearRect(0, 0, w, h);
       // SHOT-INFO SECTION: lifecycle forwarding (reset per battle, hide the
       // end-of-battle stats card when the HUD leaves the battlefield).
@@ -1942,6 +2028,7 @@ export function initHud(bus) {
       if (!spawnFlags) captureSpawnFlags(frame); // tanks still on their spawns
       updateSpotting(frame);
       updateTeams(frame);
+      updateNetReadout(frame.timeS);
       // SPOTTING SECTION: sixth-sense fuse/lamp + camo/eye indicator
       updateSixthSense(frame.timeS);
       updateCamoIndicator(frame.spotting ? frame.spotting.player : null);
@@ -1993,9 +2080,12 @@ export function initHud(bus) {
      * @param {object} f - partial FrameInfo.aim.
      */
     forceAimDisplay(f) {
+      scopeFadeMs = -1; // deterministic still: scope shadow fully settled
       forced = Object.assign({}, f);
       assembleAimView(lastCamera, forced);
-      smoothRadPx = Math.max(40, aimView.radPx * 3.0); // no bloom animation in a forced still
+      // no bloom animation in a forced still — land directly on the target
+      // radius (including the post-shot bloom read from the reload state)
+      smoothRadPx = reticleTargetR(aimView);
       if (forced.shells) lastShells = forced.shells;
       const slot = forced.shellSlot != null ? forced.shellSlot : localSlot;
       renderShells(lastShells, slot);

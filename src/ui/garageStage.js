@@ -282,9 +282,15 @@ export function createGarageStage(engineCtx, pos) {
   const WALL_H = 10;
 
   // --- floor ---------------------------------------------------------------
+  // NOTE ON FILL LIGHT: the hangar previously fell to PURE BLACK at the
+  // ceiling and floor extents. Rather than adding more live lights (every
+  // light costs every shader in the scene), the big static surfaces carry a
+  // whisper of self-illumination — a fake bounce/ambient floor that keeps
+  // structure barely visible without flattening the keyed lighting.
   const floorTex = track(canvasTexture(makeFloorTexture(rng), { aniso }));
   const floorMat = shadowMat(new THREE.MeshStandardMaterial({
     map: floorTex, roughness: 0.62, metalness: 0.08, envMapIntensity: 0.55,
+    emissive: 0x11151a, emissiveIntensity: 0.5,
   }));
   track(floorMat);
   const floor = new THREE.Mesh(track(new THREE.PlaneGeometry(HW * 2, HW * 2)), floorMat);
@@ -329,12 +335,28 @@ export function createGarageStage(engineCtx, pos) {
   podium.receiveShadow = true;
   podium.castShadow = true;
   group.add(podium);
+  // rim light on the turntable edge: a thin self-lit ring along the top lip
+  // keeps the disc's far edge readable where the key lights fall off — the
+  // silhouette of the podium must never dissolve into the floor shadow.
+  const rimRingMat = track(new THREE.MeshStandardMaterial({
+    color: 0x2b2d30, roughness: 0.4, metalness: 0.6,
+    emissive: 0xd9c9a6, emissiveIntensity: 0.55,
+  }));
+  const rimRing = new THREE.Mesh(track(new THREE.TorusGeometry(6.0, 0.035, 8, 96)), rimRingMat);
+  rimRing.rotation.x = Math.PI / 2;
+  rimRing.position.y = 0.362;
+  group.add(rimRing);
+  // faint stripe self-lift so the hazard band reads all the way around
+  podSideMat.emissive = new THREE.Color(0xffffff);
+  podSideMat.emissiveMap = hazTex;
+  podSideMat.emissiveIntensity = 0.07;
 
   // --- walls + ceiling -------------------------------------------------------
   const wallTexBase = makeWallTexture(rng);
   const wallMat = shadowMat(new THREE.MeshStandardMaterial({
     map: track(canvasTexture(wallTexBase, { aniso, repeat: [3, 1] })),
     roughness: 0.78, metalness: 0.25, envMapIntensity: 0.35,
+    emissive: 0x0d1115, emissiveIntensity: 0.45,
   }));
   track(wallMat);
   const wallGeo = track(new THREE.PlaneGeometry(HW * 2, WALL_H));
@@ -352,15 +374,17 @@ export function createGarageStage(engineCtx, pos) {
   }
   const ceilMat = shadowMat(new THREE.MeshStandardMaterial({
     color: 0x1e2124, roughness: 0.95, metalness: 0.1,
+    emissive: 0x151b22, emissiveIntensity: 0.65,
   }));
   track(ceilMat);
   const ceiling = new THREE.Mesh(track(new THREE.PlaneGeometry(HW * 2, HW * 2)), ceilMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = WALL_H;
   group.add(ceiling);
-  // roof trusses
+  // roof trusses (slight self-lift so they silhouette against the ceiling)
   const trussMat = shadowMat(new THREE.MeshStandardMaterial({
     color: 0x33383d, roughness: 0.6, metalness: 0.5,
+    emissive: 0x171c22, emissiveIntensity: 0.45,
   }));
   track(trussMat);
   const trussGeo = track(new THREE.BoxGeometry(HW * 2, 0.5, 0.22));
@@ -392,7 +416,8 @@ export function createGarageStage(engineCtx, pos) {
     const cable = new THREE.Mesh(cableGeo, housingMat);
     cable.position.set(hx, 8.7, hz);
     group.add(shade, glow, cable);
-    const pt = new THREE.PointLight(0xffe9c4, 42, 26, 1.9);
+    // reach the hangar's far corners (~33 m) so the floor never dies to black
+    const pt = new THREE.PointLight(0xffe9c4, 42, 42, 1.9);
     pt.position.set(hx, 7.1, hz);
     group.add(pt);
   }
@@ -500,27 +525,57 @@ export function createGarageStage(engineCtx, pos) {
   valve.position.set(-HW + 0.7, 1.7, 5.6);
   group.add(valve);
 
-  // stenciled bay signs: one big on the north wall's dark left half, a small
-  // one on the west wall — both slightly emissive so they read in the corner
+  // stenciled bay signs, mounted FLUSH to the wall: a soft AO halo painted
+  // directly behind each board plus a proud steel backing plate kill the
+  // "floating billboard" read; glow held low so they look room-lit, not lit.
+  const haloC = document.createElement('canvas');
+  haloC.width = haloC.height = 128;
+  {
+    const hg = haloC.getContext('2d');
+    const hgrad = hg.createRadialGradient(64, 64, 18, 64, 64, 64);
+    hgrad.addColorStop(0, 'rgba(0,0,0,0.5)');
+    hgrad.addColorStop(0.7, 'rgba(0,0,0,0.22)');
+    hgrad.addColorStop(1, 'rgba(0,0,0,0)');
+    hg.fillStyle = hgrad;
+    hg.fillRect(0, 0, 128, 128);
+  }
+  const haloTex = track(canvasTexture(haloC));
+  const haloMat = track(new THREE.MeshBasicMaterial({
+    map: haloTex, transparent: true, depthWrite: false,
+  }));
+  const plateMat = track(shadowMat(new THREE.MeshStandardMaterial({
+    color: 0x1b1e21, roughness: 0.55, metalness: 0.55,
+  })));
   const signGeoBig = track(new THREE.PlaneGeometry(3.6, 1.8));
   const signGeoSmall = track(new THREE.PlaneGeometry(2.2, 1.1));
   const signTex1 = track(canvasTexture(makeSignTexture(rng, 'BAY 01'), { aniso }));
   const signTex2 = track(canvasTexture(makeSignTexture(rng, 'NO SMOKING'), { aniso }));
   const signMat1 = track(shadowMat(new THREE.MeshStandardMaterial({
-    map: signTex1, emissive: 0xffffff, emissiveMap: signTex1, emissiveIntensity: 0.30,
+    map: signTex1, emissive: 0xffffff, emissiveMap: signTex1, emissiveIntensity: 0.16,
     roughness: 0.6, metalness: 0.2,
   })));
   const signMat2 = track(shadowMat(new THREE.MeshStandardMaterial({
-    map: signTex2, emissive: 0xffffff, emissiveMap: signTex2, emissiveIntensity: 0.26,
+    map: signTex2, emissive: 0xffffff, emissiveMap: signTex2, emissiveIntensity: 0.14,
     roughness: 0.6, metalness: 0.2,
   })));
+  // north-wall sign (faces +z): halo on the wall, plate, then the board
+  const halo1 = new THREE.Mesh(track(new THREE.PlaneGeometry(4.6, 2.6)), haloMat);
+  halo1.position.set(-13.5, 5.55, -HW + 0.015);
+  const plate1 = new THREE.Mesh(track(new THREE.BoxGeometry(3.72, 1.92, 0.05)), plateMat);
+  plate1.position.set(-13.5, 5.6, -HW + 0.045);
   const sign1 = new THREE.Mesh(signGeoBig, signMat1);
-  sign1.position.set(-13.5, 5.6, -HW + 0.1);
-  group.add(sign1);
+  sign1.position.set(-13.5, 5.6, -HW + 0.075);
+  group.add(halo1, plate1, sign1);
+  // west-wall sign (faces +x)
+  const halo2 = new THREE.Mesh(track(new THREE.PlaneGeometry(2.9, 1.7)), haloMat);
+  halo2.rotation.y = Math.PI / 2;
+  halo2.position.set(-HW + 0.015, 3.37, -6);
+  const plate2 = new THREE.Mesh(track(new THREE.BoxGeometry(0.05, 1.2, 2.3)), plateMat);
+  plate2.position.set(-HW + 0.045, 3.4, -6);
   const sign2 = new THREE.Mesh(signGeoSmall, signMat2);
   sign2.rotation.y = Math.PI / 2;
-  sign2.position.set(-HW + 0.1, 3.4, -6);
-  group.add(sign2);
+  sign2.position.set(-HW + 0.075, 3.4, -6);
+  group.add(halo2, plate2, sign2);
 
   // second light pool: warm additive splash on the floor under the west-wall
   // flood housing (its lens is emissive) — fakes the third fixture being live

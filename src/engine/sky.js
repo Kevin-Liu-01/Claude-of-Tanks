@@ -63,10 +63,19 @@ const SKY_KNEE_FALLOFF = 0.125; // 1/e width of the shoulder in luminance units
 // that gray ("flat fog-card mountains"). The horizon now sits a solid step
 // below white with an unmistakable blue-atmosphere hue, and distance haze
 // downstream (fog + aerial scatter-in) follows automatically.
+// r6: the SINGLE fixed tint made the band a "uniform white band that abruptly
+// desaturates the sky-terrain junction" — identical in every direction, so
+// the sky read as a two-tone gradient and the BRIGHT anti-sun horizon looked
+// like a second sun. The tint is now DIRECTIONAL: rays near the sun azimuth
+// scatter warm (Mie forward lobe), rays away scatter cool blue, and the
+// luminance ceiling itself dips ~10% on the anti-sun side — the standard
+// single-scattering horizon treatment.
 const HAZE_MAX_LUM = 0.64; // linear pre-ACES luminance ceiling in the band
 const HAZE_COMPRESS = 0.18; // slope retained above the ceiling
 const HAZE_BAND_TOP = 0.18; // direction.y where the haze treatment fades out
-const HAZE_TINT = [0.78, 0.90, 1.10]; // blue hue floor (unit-luma-ish)
+const HAZE_TINT_COOL = [0.74, 0.88, 1.13]; // blue hue floor away from the sun
+const HAZE_TINT_WARM = [1.15, 1.00, 0.82]; // warm scatter toward the sun azimuth
+const HAZE_WARM_POW = 3.0; // azimuthal width of the warm lobe
 const HAZE_TINT_MIX = 0.58;
 const SKY_DITHER = 0.004; // linear-space dither amplitude ~1 display LSB
 const SKY_FRAG_ANCHOR = 'gl_FragColor = vec4( texColor, 1.0 );';
@@ -121,7 +130,7 @@ const FALLBACK_HORIZON_HEX = 0xc4d3dd; // hand-tuned noon-hazy, doc §5 option (
 const CLOUD_SEED = 777;
 const CLOUD_TEX = 1024; // cumulus deck bake, tileable in BOTH axes
 const CIRRUS_TEX = 512; // thin high-veil bake
-const CLOUD_THR = 0.53; // r5: 0.545 → 0.53 — a touch more coverage so the deck reads from every camera
+const CLOUD_THR = 0.505; // r6: 0.53 → 0.505 — the infinite-deck projection spreads the same bake over far more sky; more coverage keeps the mid-elevation band from reading empty
 const CLOUD_EDGE = 0.03; // clear→rim ramp width in FBM units (crisp edge)
 const CLOUD_CORE = 0.16; // rim→opaque-core ramp width in FBM units
 const CLOUD_CLUSTER = 0.09; // macro-noise threshold modulation (cloud grouping)
@@ -137,23 +146,32 @@ const CLOUD_SHADE = [0.50, 0.57, 0.73]; // cool grey-blue shaded bellies
 // r5: per-cloud macro opacity variation — breaks the uniform cotton-blob read
 // (each mass gets its own 0.74-1.0 alpha weight from the clustering noise).
 const CLOUD_ALPHA_VAR = 0.26;
-const CLOUD_ALT = 620; // cumulus deck altitude (m): over terrain, under far plane
+const CLOUD_ALT = 620; // cumulus deck altitude (m) — projection plane height
 const CIRRUS_ALT = 1350;
-const CLOUD_PLANE_SIZE = 9000; // covers the fade radius from any battle camera
-const CLOUD_UV_METERS = 3400; // meters per cumulus texture repeat
+// r6 GEOMETRY REWORK ("sky is a flat two-tone gradient — clouds only exist in
+// the top quarter of the frame, empty gradient from there to a uniform white
+// horizon band"): the r5 FLAT 9000 m planes could physically never reach the
+// horizon — at 620 m altitude the deck needs ~4.4 km of ground distance to sit
+// at 8 degrees of elevation, past both the plane edge and camera.far, so every
+// camera saw a naked gradient below ~15 degrees. Replaced with HORIZON-
+// FLATTENED SKYDOME SHELLS (radius inside camera.far) whose fragment shader
+// analytically intersects the view ray with an INFINITE virtual deck plane at
+// uAlt: uv = (camXZ + dir.xz * (uAlt-camY)/dir.y) / scale. Mathematically an
+// endless cloud deck — cumulus now grades in natural perspective from big
+// masses overhead to fine haze-tinted banks AT the horizon, from every
+// camera, with zero polar pinching (planar UVs by construction).
+const CLOUD_DOME_RADIUS = 3400; // < camera.far 4000; > horizon ring 1290 (mountains occlude correctly)
+const CIRRUS_DOME_RADIUS = 3600;
+const CLOUD_UV_METERS = 4200; // meters per cumulus texture repeat (bigger, calmer masses)
 const CIRRUS_UV_METERS = 5600;
-// Camera-relative dissolve (m). End slant distances stay inside camera.far
-// (4000) so the geometric clip circle is always fully transparent.
-// r5: starts pushed 1400/1700 → 2400/2600 — at 1400 the cumulus deck (620 m
-// altitude) was fully faded below ~26 degrees of elevation, so any camera
-// pitched near the horizon (combat_firing) saw a naked sky while the
-// establishing shot had painted cumulus overhead: "sky is inconsistent
-// between cameras". Clouds now hold down to ~15 degrees, where the horizon
-// haze takes over — one persistent deck from every camera.
-const CLOUD_FADE_START = 2400;
-const CLOUD_FADE_END = 3850;
-const CIRRUS_FADE_START = 2600;
-const CIRRUS_FADE_END = 3950;
+// Slant-distance haze rates (1/m): haze = 1-exp(-(t*k)^2) on the analytic
+// slant range t to the virtual deck. Cumulus: ~8% hazed overhead (30 deg),
+// ~26% at 15 deg, ~65% at 8 deg, ~93% at 5 deg — bases melt into the horizon
+// atmosphere instead of clipping. Cirrus sits higher so its rate is slower.
+const CLOUD_HAZE_K = 0.00023;
+const CIRRUS_HAZE_K = 0.00010;
+// direction.y band where deck alpha melts out at the horizon line itself.
+const CLOUD_Y_FADE = [0.012, 0.055];
 const CLOUD_MAX_ALPHA = 0.94;
 const CLOUD_LAYER2_OPACITY = 0.6; // default for preset field cloudOpacity2 (cirrus)
 
@@ -188,12 +206,14 @@ function configureSkyUniforms(sky, sunDir, preset = DEFAULT_PRESET) {
   const u = sky.material.uniforms;
   u.turbidity.value = preset.turbidity;
   u.rayleigh.value = preset.rayleigh;
-  // r4 ran a x1.5 Mie response so the sun registered off-azimuth; r5 pulls it
+  // r4 ran a x1.5 Mie response so the sun registered off-azimuth; r5 pulled it
   // back to x1.1 — the widened wedge was the "gray haze band swallowing
-  // two-thirds of the sky" in sun-facing frames (combat_firing). At x1.1 the
-  // sun still reads as a warm glow at the frame edge, but blue sky dominates
-  // above ~15-20 degrees of elevation on every camera.
-  u.mieCoefficient.value = preset.mieCoefficient * 1.1;
+  // two-thirds of the sky" in sun-facing frames (combat_firing). r6: x1.25 —
+  // at x1.1 the critic found "no sun disc or scattering glow anywhere"; the
+  // middle setting keeps blue sky above ~20 degrees on every camera while the
+  // sunward frame edge carries a clearly readable warm Mie glow, and the
+  // directional haze tint (below) extends that glow along the horizon.
+  u.mieCoefficient.value = preset.mieCoefficient * 1.25;
   u.mieDirectionalG.value = preset.mieDirectionalG;
   u.sunPosition.value.copy(sunDir);
   // The r180+ Sky shader ships its own screen-projected FBM cloud layer
@@ -206,15 +226,21 @@ function configureSkyUniforms(sky, sunDir, preset = DEFAULT_PRESET) {
       SKY_FRAG_ANCHOR,
       `vec3 skyCol = texColor * ${SKY_RADIANCE_SCALE.toFixed(4)};
 	const vec3 lumW = vec3( 0.2126, 0.7152, 0.0722 );
-	// horizon haze: compress the near-white band ~10-15% below white and mix
-	// in a faint pale-blue hue floor so it reads as atmosphere, not overexposure
+	// horizon haze: compress the near-white band below white and mix in a
+	// DIRECTIONAL hue floor — warm toward the sun azimuth, cool blue away —
+	// so the band reads as scattered sunlight, never as flat overexposure
 	float hazeBand = 1.0 - smoothstep( 0.0, ${HAZE_BAND_TOP.toFixed(3)}, direction.y );
+	float warmAmt = pow( max( dot( normalize( vec3( direction.x, 0.0, direction.z ) ),
+		normalize( vec3( vSunDirection.x, 0.0, vSunDirection.z ) ) ), 0.0 ), ${HAZE_WARM_POW.toFixed(1)} );
 	float hazeL = dot( skyCol, lumW );
-	if ( hazeL > ${HAZE_MAX_LUM.toFixed(3)} && hazeBand > 0.001 ) {
-		float hazeTarget = ${HAZE_MAX_LUM.toFixed(3)} + ( hazeL - ${HAZE_MAX_LUM.toFixed(3)} ) * ${HAZE_COMPRESS.toFixed(3)};
+	float hazeCeil = ${HAZE_MAX_LUM.toFixed(3)} * mix( 0.90, 1.08, warmAmt );
+	if ( hazeL > hazeCeil && hazeBand > 0.001 ) {
+		float hazeTarget = hazeCeil + ( hazeL - hazeCeil ) * ${HAZE_COMPRESS.toFixed(3)};
 		skyCol *= mix( 1.0, hazeTarget / hazeL, hazeBand );
 	}
-	skyCol = mix( skyCol, dot( skyCol, lumW ) * vec3( ${HAZE_TINT[0].toFixed(3)}, ${HAZE_TINT[1].toFixed(3)}, ${HAZE_TINT[2].toFixed(3)} ), hazeBand * ${HAZE_TINT_MIX.toFixed(3)} );
+	vec3 hazeTint = mix( vec3( ${HAZE_TINT_COOL[0].toFixed(3)}, ${HAZE_TINT_COOL[1].toFixed(3)}, ${HAZE_TINT_COOL[2].toFixed(3)} ),
+		vec3( ${HAZE_TINT_WARM[0].toFixed(3)}, ${HAZE_TINT_WARM[1].toFixed(3)}, ${HAZE_TINT_WARM[2].toFixed(3)} ), warmAmt );
+	skyCol = mix( skyCol, dot( skyCol, lumW ) * hazeTint, hazeBand * ${HAZE_TINT_MIX.toFixed(3)} );
 	float skyL = dot( skyCol, lumW );
 	if ( skyL > ${SKY_KNEE.toFixed(3)} ) {
 		skyCol *= ( ${SKY_KNEE.toFixed(3)} + ${SKY_KNEE_RANGE.toFixed(3)} * ( 1.0 - exp( -( skyL - ${SKY_KNEE.toFixed(3)} ) * ${SKY_KNEE_FALLOFF.toFixed(4)} ) ) ) / skyL;
@@ -401,16 +427,19 @@ function makeCirrusTexture() {
     const v = y / H;
     for (let x = 0; x < W; x++) {
       const u = x / W;
-      let wu = (u + (fbmW(u, v) - 0.5) * 0.10) % 1;
+      let wu = (u + (fbmW(u, v) - 0.5) * 0.16) % 1;
       if (wu < 0) wu += 1;
-      const s = fbm(wu, (v * 4) % 1); // v-frequency x4 => horizontal shear streaks
-      const a = smoothstepNum(0.52, 0.86, s);
+      // r6: shear x4 → x3 with more warp, threshold raised, alpha 0.85 → 0.6
+      // — the long high-contrast filaments read as smears once the infinite
+      // projection stretched them across the zenith; softer broken veils now.
+      const s = fbm(wu, (v * 3) % 1);
+      const a = smoothstepNum(0.56, 0.88, s);
       const o = (y * W + x) * 4;
       const lum = 0.90 + 0.10 * a;
       px[o] = Math.round(250 * lum);
       px[o + 1] = Math.round(252 * lum);
       px[o + 2] = 255;
-      px[o + 3] = Math.round(255 * a * 0.85);
+      px[o + 3] = Math.round(255 * a * 0.6);
     }
   }
   ctx.putImageData(img, 0, 0);
@@ -517,10 +546,11 @@ export function createSky(scene, renderer) {
   // chain always sees the current map's sun without an explicit re-wire).
   scene.userData.sunDirWorld = sunDir;
 
-  // Cloud decks: two flat planes (low cumulus + high cirrus veil) between the
-  // terrain and the Sky dome. Transparent (render after opaques, over the Sky
+  // Cloud decks: two horizon-flattened dome shells (low cumulus + high cirrus
+  // veil) whose shader projects an INFINITE virtual deck plane (see the
+  // CLOUD_DOME_* block). Transparent (render after opaques, over the Sky
   // box), never write depth, own their aerial fade (no scene fog). renderOrder
-  // < 0: distance sorting would misplace the huge planes in FRONT of
+  // < 0: distance sorting would misplace the huge shells in FRONT of
   // smoke/flash sprites — force them before all default-order transparents.
   const CLOUD_VERT = /* glsl */ `
     varying vec3 vWPos;
@@ -537,25 +567,41 @@ export function createSky(scene, renderer) {
     uniform vec3 uTint;
     uniform float uOpacity;
     uniform vec3 uHaze;   // horizon haze color (linear) the deck dissolves into
-    uniform vec2 uFade;   // (start, end) camera-relative fade distances (m)
+    uniform float uAlt;   // virtual deck plane altitude (m)
+    uniform float uHazeK; // slant-distance haze rate (1/m)
+    uniform vec2 uYFade;  // direction.y band where alpha melts at the horizon
     varying vec3 vWPos;
     void main() {
-      vec2 p = vWPos.xz;
+      vec3 d = normalize( vWPos - cameraPosition );
+      float dy = max( d.y, 1e-4 );
+      float t = max( uAlt - cameraPosition.y, 1.0 ) / dy; // slant range to the deck (m)
+      vec2 p = cameraPosition.xz + d.xz * t;
       vec2 uv = vec2( p.x * uRot.x - p.y * uRot.y, p.x * uRot.y + p.y * uRot.x ) / uScale + uOff;
       vec4 c = texture2D( uMap, uv );
-      float d = distance( p, cameraPosition.xz );
-      float fade = 1.0 - smoothstep( uFade.x, uFade.y, d );
-      // aerial perspective: distant cloud bases melt toward the horizon haze
-      float haze = smoothstep( uFade.x * 0.35, uFade.y, d );
-      vec3 col = mix( c.rgb * uTint, uHaze, haze * 0.88 );
-      gl_FragColor = vec4( col, c.a * uOpacity * fade );
+      // macro variety mask at an irrational relative scale: with the deck now
+      // visible out to many texture repeats, straight tiling shows periodic
+      // cloud shapes near the horizon — a slow decorrelated mask thins whole
+      // masses per-region so no repeat is readable.
+      vec2 uv2 = vec2( uv.x * 0.31 - uv.y * 0.17, uv.x * 0.17 + uv.y * 0.31 ) + vec2( 0.37, 0.71 );
+      float macro = texture2D( uMap, uv2 ).a;
+      c.a *= 0.62 + 0.38 * smoothstep( 0.05, 0.72, macro );
+      // aerial perspective: slant distance pulls cloud bodies toward the
+      // horizon haze color; deep in the haze they thin but never fully vanish
+      // (hazy silhouettes keep texturing the low sky, WoT-style).
+      float x = t * uHazeK;
+      float haze = 1.0 - exp( -x * x );
+      vec3 col = mix( c.rgb * uTint, uHaze, haze );
+      float a = c.a * uOpacity;
+      a *= smoothstep( uYFade.x, uYFade.y, d.y ); // melt at the horizon line
+      a *= 1.0 - 0.72 * smoothstep( 0.5, 0.96, haze );
+      gl_FragColor = vec4( col, a );
     }`;
   /** (cos,sin) rotation mapping the toward-sun XZ direction onto texture -v. */
   const cloudSunRot = (dir) => {
     const l = Math.hypot(dir.x, dir.z) || 1;
     return [-dir.z / l, -dir.x / l];
   };
-  const mkCloudDeck = (tex, alt, uvMeters, opacity, fadeStart, fadeEnd, off, name) => {
+  const mkCloudDeck = (tex, alt, uvMeters, opacity, radius, hazeK, off, name) => {
     const rot = cloudSunRot(sunDir);
     const mat = new THREE.ShaderMaterial({
       vertexShader: CLOUD_VERT,
@@ -568,14 +614,18 @@ export function createSky(scene, renderer) {
         uTint: { value: new THREE.Color(0xffffff) },
         uOpacity: { value: opacity },
         uHaze: { value: new THREE.Color(0xdde6ee) }, // re-set from horizon sample below
-        uFade: { value: new THREE.Vector2(fadeStart, fadeEnd) },
+        uAlt: { value: alt },
+        uHazeK: { value: hazeK },
+        uYFade: { value: new THREE.Vector2(...CLOUD_Y_FADE) },
       },
       transparent: true,
       depthWrite: false,
+      side: THREE.BackSide, // camera sits inside the shell
     });
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(CLOUD_PLANE_SIZE, CLOUD_PLANE_SIZE), mat);
-    mesh.rotation.x = Math.PI / 2; // face down toward the camera
-    mesh.position.y = alt;
+    // Dome extends well below y=0 (phi 0.65 PI) so horizon-grazing rays from
+    // any battle camera still hit shell geometry; terrain occludes the rest.
+    const geo = new THREE.SphereGeometry(radius, 48, 24, 0, Math.PI * 2, 0, Math.PI * 0.65);
+    const mesh = new THREE.Mesh(geo, mat);
     mesh.name = name;
     mesh.frustumCulled = false;
     mesh.userData.aoExclude = true; // GTAO's override prepass ignores alpha
@@ -584,12 +634,18 @@ export function createSky(scene, renderer) {
   };
   const cloudsFar = mkCloudDeck(
     makeCirrusTexture(), CIRRUS_ALT, CIRRUS_UV_METERS, CLOUD_LAYER2_OPACITY,
-    CIRRUS_FADE_START, CIRRUS_FADE_END, [0.31, 0.77], 'cloudLayerFar',
+    CIRRUS_DOME_RADIUS, CIRRUS_HAZE_K, [0.31, 0.77], 'cloudLayerFar',
   );
   cloudsFar.renderOrder = -3;
+  // NOTE: the cirrus deck rides PERPENDICULAR to the sun-aligned cumulus
+  // rotation (applied in updateCloudDecks): with both decks sun-aligned, the
+  // sheared cirrus filaments ran along the battle cameras' view axis and
+  // foreshortened into VERTICAL WHITE STREAKS through the zenith (the
+  // "stretched billboard artifact" read). Cross-wind cirrus is also the
+  // meteorologically common case.
   const clouds = mkCloudDeck(
     makeCloudTexture(), CLOUD_ALT, CLOUD_UV_METERS, 1.0,
-    CLOUD_FADE_START, CLOUD_FADE_END, [0, 0], 'cloudLayer',
+    CLOUD_DOME_RADIUS, CLOUD_HAZE_K, [0, 0], 'cloudLayer',
   );
   clouds.renderOrder = -2;
 
@@ -603,13 +659,27 @@ export function createSky(scene, renderer) {
     for (const deck of [clouds, cloudsFar]) {
       const u = deck.material.uniforms;
       u.uTint.value.copy(cloudTint);
-      u.uRot.value.set(rot[0], rot[1]);
+      // cirrus rides perpendicular to the sun-aligned cumulus (see the
+      // quarter-turn note at deck construction)
+      if (deck === cloudsFar) u.uRot.value.set(-rot[1], rot[0]);
+      else u.uRot.value.set(rot[0], rot[1]);
       u.uHaze.value.copy(haze);
     }
     clouds.material.uniforms.uOpacity.value = preset.cloudOpacity;
     clouds.visible = preset.cloudOpacity > 0.01;
     cloudsFar.material.uniforms.uOpacity.value = preset.cloudOpacity2;
     cloudsFar.visible = preset.cloudOpacity2 > 0.01;
+    // Per-map deck decorrelation (terrain_environment r1): with a fixed
+    // uOff the SAME cumulus mass recurred at the SAME screen azimuth on
+    // every map ("tall blurry vertical wisp top-center across maps").
+    // Derive a stable pseudo-random UV offset from the preset's sun angles
+    // (unique per map) so each map opens under a different stretch of deck.
+    const h1 = Math.sin(preset.sunAzimuthDeg * 12.9898 + preset.sunElevationDeg * 78.233) * 43758.5453;
+    const h2 = Math.sin(preset.sunAzimuthDeg * 39.4185 + preset.sunElevationDeg * 11.135) * 24634.6345;
+    const ox = h1 - Math.floor(h1);
+    const oz = h2 - Math.floor(h2);
+    clouds.material.uniforms.uOff.value.set(ox, oz);
+    cloudsFar.material.uniforms.uOff.value.set(0.31 + ox * 0.5, 0.77 + oz * 0.5);
   };
   updateCloudDecks();
 

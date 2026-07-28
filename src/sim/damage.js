@@ -91,7 +91,8 @@ const SAVE_CHANCE = {
 const CREW_HIT_CHANCE = 0.33;
 const CREW_HIT_CHANCE_HE = 0.1;
 const ENGINE_FIRE_CHANCE = 0.15;
-const FUEL_FIRE_CHANCE = 0.45;
+/** Reload-time multiplier while the ammo rack is damaged (armor doc §9). */
+const AMMORACK_RELOAD_MULT = 1.5;
 const OVERMATCH_NO_RICOCHET = 3.0;
 const OVERMATCH_NORM_BOOST = 2.0; // caliber ≥ 2×T ⇒ norm × 1.4·C/T
 const POSTPEN_CALIBERS = 10; // internal sweep length = 10 × caliber
@@ -282,9 +283,13 @@ function rollModuleDamage(ctx, moduleName) {
   if (moduleName === 'ammoRack' && newState === 'red') res.ammoRacked = true;
 
   if (moduleName === 'engine' || moduleName === 'fuelTank') {
+    // The draw is ALWAYS consumed to keep the fixed replay RNG order, but the
+    // ignition rules differ (armor doc §9/§10 — the implementation authority):
+    // engines roll ENGINE_FIRE_CHANCE on every damaging hit; fuel tanks have
+    // NO fire chance while yellow and ignite at 100% only when destroyed.
     const fireRoll = ctx.rng();
-    let ignite = fireRoll < (moduleName === 'engine' ? ENGINE_FIRE_CHANCE : FUEL_FIRE_CHANCE);
-    if (moduleName === 'fuelTank' && newState === 'red') ignite = true; // dead fuel tank always burns
+    const ignite =
+      moduleName === 'engine' ? fireRoll < ENGINE_FIRE_CHANCE : newState === 'red';
     if (ignite) {
       const fire = ctx.combat.fire;
       if (!fire.burning) res.fireStarted = true;
@@ -393,8 +398,11 @@ function stampShotInfo(event, hit, shellSpec, target, vel) {
       event.zone = hit.plate.name;
       event.plateKind = hit.plate.kind;
       event.physicalMm = hit.plate.physicalMm;
+      // Must mirror effectiveThickness's base pick: KE tests keMm, everything
+      // else (CE jets AND HE/HESH blast) tests ceMm — an HE event on a
+      // composite plate must report the CE rating the pen check actually used.
       const b = behaviorOf(shellSpec.type);
-      event.nominalMm = b.kindClass === 'CE' ? hit.plate.ceMm : hit.plate.keMm;
+      event.nominalMm = b.kindClass === 'KE' ? hit.plate.keMm : hit.plate.ceMm;
     } else if (hit.barrel) {
       event.zone = 'gun_barrel';
     } else if (hit.kind === 'module') {
@@ -543,12 +551,36 @@ export function resolveShellHit(shell, target, hits, rng) {
     }
 
     const plate = hit.plate;
+    const angle = hit.impactAngleDeg;
+
+    // Spent ERA tiles are gone from the model — nothing to bounce off or spend.
+    if (plate.kind === 'era' && combat.eraSpent.has(plate.name)) continue;
+
+    // --- 1. Ricochet on the raw angle (outer surfaces only). Checked on
+    // EVERY plate — ERA tiles included, per the armor doc §12 consolidated
+    // algorithm: a HEAT jet grazing a tile past 85° deflects WITHOUT
+    // detonating it. The 3× overmatch rule suppresses this for nearly all
+    // KE vs thin tiles, so rods still spend tiles as before.
+    if (!hullPen && wouldRicochet(spec, angle, plate)) {
+      event.kind = 'ricochet';
+      stampImpact(event, hit, 0, pen);
+      stampShotInfo(event, hit, spec, target, shell.vel); // SHOT-INFO (pre-deflection)
+      deflectShell(shell, hit);
+      const isHeat = behavior.kindClass === 'CE';
+      if (isHeat || shell.bounces >= RICOCHET_MAX_BOUNCES) shell.dead = true;
+      shell.remainingPenMm = pen; // full pen retained through the bounce
+      // Screens crossed BEFORE the bouncing plate may have rolled moduleLink
+      // damage (a linked ammoRack/fuelTank can go red on this very trace), so
+      // the destroyed flag must be re-evaluated on this exit path too.
+      event.destroyed = finalizeTarget(combat, event.ammoRacked);
+      event.targetHpAfter = combat.hp;
+      return event;
+    }
 
     // --- ERA tile: detonates once, cuts pen, never stops processing unless
     // the remaining pen hits zero (armor doc §11.2). A tandem warhead's
     // precursor charge pops the tile and the main jet passes uncut.
     if (plate.kind === 'era') {
-      if (combat.eraSpent.has(plate.name)) continue;
       combat.eraSpent.add(plate.name);
       event.eraPlate = plate.name;
       if (spec.tandem) continue;
@@ -564,25 +596,6 @@ export function resolveShellHit(shell, target, hits, rng) {
         break;
       }
       continue;
-    }
-
-    const angle = hit.impactAngleDeg;
-
-    // --- 1. Ricochet on the raw angle (outer surfaces only).
-    if (!hullPen && wouldRicochet(spec, angle, plate)) {
-      event.kind = 'ricochet';
-      stampImpact(event, hit, 0, pen);
-      stampShotInfo(event, hit, spec, target, shell.vel); // SHOT-INFO (pre-deflection)
-      deflectShell(shell, hit);
-      const isHeat = behavior.kindClass === 'CE';
-      if (isHeat || shell.bounces >= RICOCHET_MAX_BOUNCES) shell.dead = true;
-      shell.remainingPenMm = pen; // full pen retained through the bounce
-      // Screens crossed BEFORE the bouncing plate may have rolled moduleLink
-      // damage (a linked ammoRack/fuelTank can go red on this very trace), so
-      // the destroyed flag must be re-evaluated on this exit path too.
-      event.destroyed = finalizeTarget(combat, event.ammoRacked);
-      event.targetHpAfter = combat.hp;
-      return event;
     }
 
     // --- 2–3. Normalization (+overmatch boost) and effective thickness.
@@ -887,6 +900,33 @@ function resolveWreckHit(shell, hits) {
 }
 
 /**
+ * Armor layering behind an HE burst surface (armor doc §7/§8): when the blast
+ * lands on a spaced/external screen, every deeper non-ERA plate down to (and
+ * including) the first 'main' plate joins the absorption term, and the
+ * screen→deepest-counted-plate air gap extends the splash falloff distance.
+ * SHARED by the direct-hit and area-splash paths so side skirts EAT splash
+ * identically whether the shell struck the tank or burst nearby.
+ *
+ * @param {Array<object>} hits ordered traceTank result
+ * @param {object} plateHit the first non-ERA plate the blast reaches
+ * @returns {{armorMm: number, gapM: number}} extra armor behind the screen
+ *   and the air gap to it (both 0 when plateHit is already main armor)
+ */
+function heScreenStack(hits, plateHit) {
+  let armorMm = 0;
+  let gapM = 0;
+  if (plateHit.plate.kind === 'spaced' || plateHit.plate.kind === 'external') {
+    for (const next of hits) {
+      if (next.t <= plateHit.t || next.kind !== 'plate' || next.plate.kind === 'era') continue;
+      armorMm += next.plate.physicalMm;
+      gapM = plateHit.point.distanceTo(next.point);
+      if (next.plate.kind === 'main') break;
+    }
+  }
+  return { armorMm, gapM };
+}
+
+/**
  * HE direct-hit resolution against one tank: full-pen attempt on the struck
  * plate (LOS thickness, no normalization), else a surface burst using the
  * splash formula at dist 0 (armor doc §8, shells doc §6).
@@ -957,16 +997,9 @@ function heDirectHit(shell, target, hits, dmgRoll, rng) {
     // main plate, and the splash also attenuates over the air gap.
     event.kind = 'he_splash';
     const radiusM = blastRadiusM(spec.caliberMm);
-    let armorMm = plate.physicalMm + eraArmorMm;
-    let distM = 0;
-    if (plate.kind === 'spaced' || plate.kind === 'external') {
-      for (const next of hits) {
-        if (next.t <= plateHit.t || next.kind !== 'plate' || next.plate.kind === 'era') continue;
-        armorMm += next.plate.physicalMm;
-        distM = plateHit.point.distanceTo(next.point);
-        if (next.plate.kind === 'main') break;
-      }
-    }
+    const stack = heScreenStack(hits, plateHit);
+    const armorMm = plate.physicalMm + eraArmorMm + stack.armorMm;
+    const distM = stack.gapM;
     const falloff = Math.max(0, 1 - Math.min(1, distM / radiusM));
     const spall = behaviorOf(spec.type).spallBonus ?? 1; // HESH 1.25 (shells doc §6)
     const dmg = Math.max(0, 0.5 * dmgRoll * falloff - HE_ARMOR_ABSORB * armorMm) * spall;
@@ -1153,8 +1186,8 @@ export function resolveHeBurst(shell, burstPoint, tanks, directTarget, directHit
       break;
     }
     if (!plateHit) continue;
-    const distM = plateHit.point.distanceTo(burstPoint);
-    if (distM >= radiusM) continue;
+    const surfaceDistM = plateHit.point.distanceTo(burstPoint);
+    if (surfaceDistM >= radiusM) continue;
 
     const event = baseEvent(shell, tank.id);
     const ctx = {
@@ -1167,10 +1200,17 @@ export function resolveHeBurst(shell, burstPoint, tanks, directTarget, directHit
       dmgScale: 0.5,
     };
     event.kind = 'he_splash';
-    const armorMm = plateHit.plate.physicalMm;
+    // Same layering as the direct-hit path (armor doc §7: spaced armor
+    // absorbs HE splash almost completely): a burst reaching a side skirt
+    // stacks skirt + everything down to the main plate into the absorption
+    // term and attenuates over the extra air gap — screens must EAT splash,
+    // never amplify it relative to a bare hull.
+    const stack = heScreenStack(hits, plateHit);
+    const armorMm = plateHit.plate.physicalMm + stack.armorMm;
+    const distM = surfaceDistM + stack.gapM;
+    const falloff = Math.max(0, 1 - Math.min(1, distM / radiusM));
     const spall = behaviorOf(spec.type).spallBonus ?? 1; // HESH 1.25 (shells doc §6)
-    const dmg =
-      Math.max(0, 0.5 * dmgRoll * (1 - distM / radiusM) - HE_ARMOR_ABSORB * armorMm) * spall;
+    const dmg = Math.max(0, 0.5 * dmgRoll * falloff - HE_ARMOR_ABSORB * armorMm) * spall;
     stampImpact(event, plateHit, armorMm, shell.remainingPenMm);
     // SHOT-INFO (additive): blast direction = burst point toward the plate.
     _siDir.subVectors(plateHit.point, burstPoint);
@@ -1250,8 +1290,11 @@ export function selectShell(combatState, slot) {
 }
 
 /**
- * Begin a reload after firing. Applies the locked crew debuff: a dead loader
- * multiplies reload time ×1.5 (ARCHITECTURE.md §2.4).
+ * Begin a reload after firing. Applies the locked crew debuff — a dead loader
+ * multiplies reload time ×1.5 (ARCHITECTURE.md §2.4) — and the armor doc §9
+ * module debuff: a damaged (yellow) ammo rack adds another ×1.5. The two
+ * stack multiplicatively; both are re-derived on every reload start, so a
+ * repaired rack recovers on the next shell.
  * @param {object} combatState CombatState
  * @param {object} spec TankSpec
  * @returns {void}
@@ -1259,6 +1302,8 @@ export function selectShell(combatState, slot) {
 export function startReload(combatState, spec) {
   let mult = 1;
   if ('loader' in combatState.crew && combatState.crew.loader === false) mult *= 1.5;
+  const rack = combatState.modules && combatState.modules.ammoRack;
+  if (rack && rack.state !== 'ok') mult *= AMMORACK_RELOAD_MULT;
   const totalS = spec.gun.reloadS * mult;
   combatState.reload.totalS = totalS;
   combatState.reload.t = totalS;
@@ -1310,6 +1355,11 @@ export function estimatePenRatio(shellSpec, distM, plateInfo) {
     const hit = layers[i];
     const plate = hit.plate;
 
+    // Ricochet gate on EVERY surface — ERA tiles included, mirroring
+    // resolveShellHit (armor doc §12): a jet grazing a tile deflects
+    // before the tile can spend itself.
+    if (wouldRicochet(shellSpec, hit.impactAngleDeg, plate)) return 0;
+
     if (plate.kind === 'era') {
       // Average ERA effect for the selected shell type (armor doc §11.2);
       // tandem warheads sacrifice the precursor and pass the tile uncut.
@@ -1322,7 +1372,6 @@ export function estimatePenRatio(shellSpec, distM, plateInfo) {
       continue;
     }
 
-    if (wouldRicochet(shellSpec, hit.impactAngleDeg, plate)) return 0;
     const { effMm } = effectiveThickness(shellSpec, plate, hit.impactAngleDeg);
 
     if (i === gateIdx) return effMm > 0 ? Math.max(0, pen) / effMm : 99;

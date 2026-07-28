@@ -68,8 +68,13 @@ const TERRAIN_PLAN = {
     R: 'rock', M: null,
   },
   desert: {
-    G: { set: 'dryGrass', roughMul: 1.2 },
-    D: { set: 'sand', roughMul: 1.25 },
+    // G was 'dryGrass' (withered_grass photo set): its dense dark straw
+    // mottle covered ~80% of the map and read as baked film-grain speckle
+    // across every establishing shot. Sand-on-sand instead — the light base
+    // is the open desert floor, the darker/warmer D variant shows through on
+    // worn patches, and the ripple normals carry the surface character.
+    G: { set: 'sand', tint: [1.04, 1.0, 0.92], roughMul: 1.2 },
+    D: { set: 'sand', tint: [0.86, 0.79, 0.68], roughMul: 1.25 },
     R: 'rockWarm', M: null,
   },
   winter: {

@@ -11,6 +11,7 @@ import { ensureTankThumbs, getTankThumb } from './tankThumbs.js';
 // CAMO PICKER SECTION: swatches preview the REAL resolved pattern (scheme +
 // palette from materials.js) instead of hand-approximated CSS gradients.
 import { resolveCamoVisual } from '../vehicles/materials.js';
+import { EQUIPMENT } from '../sim/spotting.js';
 
 const NATION_LABEL = { USA: 'USA', Germany: 'GER', USSR: 'USSR', Russia: 'RUS', Sweden: 'SWE', Community: 'COM' };
 
@@ -120,7 +121,14 @@ const GARAGE_CSS = `
 .cot-garage .hint{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
   font-size:9.5px;letter-spacing:.14em;color:rgba(138,151,163,.7);text-transform:uppercase;}
 /* MAP-CONFIG WIRING: battlefield picker (4 maps + random) */
-.cot-maps{position:absolute;left:34px;top:168px;width:224px;pointer-events:auto;}
+/* camo_spotting r1: maps + camo picker stack in ONE flex column so they can
+   never overlap at short viewports (the old absolute anchors collided at
+   1600x900 — the RANDOM card's conic-gradient thumb showed through the camo
+   grid's 5px gaps as a phantom "white national cross"). */
+.cot-leftcol{position:absolute;left:34px;top:168px;bottom:calc(36% + 10px);
+  width:224px;display:flex;flex-direction:column;gap:14px;overflow:hidden;pointer-events:auto;}
+.cot-maps{position:static;width:224px;min-height:0;overflow-y:auto;
+  scrollbar-width:none;flex:0 1 auto;pointer-events:auto;}
 .cot-maps .mtitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
   text-transform:uppercase;margin-bottom:7px;}
 .cot-map-card{display:flex;align-items:center;gap:9px;cursor:pointer;margin-bottom:6px;
@@ -146,7 +154,7 @@ const GARAGE_CSS = `
   text-transform:uppercase;margin-top:1px;}
 .cot-map-card.sel .msub{color:#d8a04c;}
 /* CAMO PICKER SECTION: per-tank paint pattern (persisted, +concealment) */
-.cot-camos{position:absolute;left:34px;bottom:calc(36% + 14px);width:196px;pointer-events:auto;}
+.cot-camos{position:static;width:196px;flex:0 0 auto;margin-top:auto;pointer-events:auto;}
 .cot-camos .ctitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
   text-transform:uppercase;margin-bottom:7px;}
 .cot-camos .cgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
@@ -385,8 +393,8 @@ export function createGarage(opts) {
     `<div class="cot-cards"></div>` +
     `<button class="cot-car-arrow next" type="button">&#8250;</button>` +
     `</div>` +
-    `<div class="cot-maps"></div>` +
-    `<div class="cot-camos"></div>` +
+    `<div class="cot-leftcol"><div class="cot-maps"></div>` +
+    `<div class="cot-camos"></div></div>` +
     `<div class="hint">&#8592; &#8594; select &nbsp;&middot;&nbsp; enter to battle</div>`;
   document.body.appendChild(root);
 
@@ -477,6 +485,54 @@ export function createGarage(opts) {
     note.textContent = 'Pattern grants +3.5% concealment';
     camosEl.appendChild(note);
   }
+  // --- EQUIPMENT PICKER (camo_spotting r1): 3-slot loadout toggles ---------
+  // Persistence mirrors the camo picker: localStorage `cot.equip.<specId>`
+  // (read battle-side by game/state.js loadEquipment -> spotting sim).
+  const equipCardById = new Map();
+  {
+    const title = document.createElement('div');
+    title.className = 'ctitle';
+    title.style.marginTop = '10px';
+    title.textContent = 'Equipment';
+    camosEl.appendChild(title);
+    const grid = document.createElement('div');
+    grid.className = 'cgrid';
+    camosEl.appendChild(grid);
+    const SHORT = { camo_net: 'Camo Net', binoculars: 'Binocs', vents: 'Vents' };
+    for (const eid of Object.keys(EQUIPMENT)) {
+      const card = document.createElement('div');
+      card.className = 'cot-camo-card';
+      card.title = EQUIPMENT[eid].label;
+      card.innerHTML = `<div class="sw auto"></div><div class="cl"></div>`;
+      card.querySelector('.cl').textContent = SHORT[eid] || EQUIPMENT[eid].label;
+      card.addEventListener('click', () => {
+        emit('ui:click', {});
+        if (!selectedId) return;
+        const cur = loadEquipIds(selectedId);
+        const i = cur.indexOf(eid);
+        if (i >= 0) cur.splice(i, 1);
+        else cur.push(eid);
+        try { localStorage.setItem(`cot.equip.${selectedId}`, JSON.stringify(cur)); } catch { /* private mode */ }
+        refreshEquipSel();
+      });
+      grid.appendChild(card);
+      equipCardById.set(eid, card);
+    }
+  }
+  function loadEquipIds(specId) {
+    try {
+      const arr = JSON.parse(localStorage.getItem(`cot.equip.${specId}`) || '[]');
+      return Array.isArray(arr) ? arr : [];
+    } catch {
+      return [];
+    }
+  }
+  function refreshEquipSel() {
+    if (!selectedId) return;
+    const cur = loadEquipIds(selectedId);
+    for (const [eid, card] of equipCardById) card.classList.toggle('sel', cur.includes(eid));
+  }
+  // --- END EQUIPMENT PICKER ------------------------------------------------
   let swatchesFor = null; // spec id the swatches are currently painted for
   function refreshCamoSel() {
     if (!camoOpts || !selectedId) return;
@@ -591,6 +647,7 @@ export function createGarage(opts) {
       `${spec.nation} · ${spec.class} · ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}`;
     renderStats(spec);
     refreshCamoSel(); // CAMO PICKER SECTION: highlight this tank's pattern
+    refreshEquipSel(); // EQUIPMENT PICKER: highlight this tank's loadout
     return true;
   }
 
