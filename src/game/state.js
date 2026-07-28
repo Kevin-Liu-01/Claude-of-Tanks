@@ -4,7 +4,7 @@
  * §2.4, §4 step 2). No rendering here; the render loop lives in main.js.
  */
 import * as THREE from 'three';
-import { getSpec, TANK_IDS } from '../vehicles/specs.js';
+import { getSpec, TANK_IDS, ALL_TANK_IDS } from '../vehicles/specs.js';
 import { createTank } from '../vehicles/tankFactory.js';
 import {
   createTankState, updateTank, fireRecoil, computeDispersionRadM, SIM_DT,
@@ -74,7 +74,9 @@ export function createGameState() {
   return {
     phase: 'garage',            // 'garage' | 'battle' | 'ended' | 'shot'
     mapId: 'verdant',           // MAP-CONFIG WIRING: active battlefield id (main.js startBattle)
-    tanks: [],                  // TankEntity[] (all 8, player included)
+    tanks: [],                  // TankEntity[] — THIS battle's participants (player included)
+    allTanks: [],               // COMMUNITY TANKS: full entity pool (core + community)
+    battleCount: 0,             // COMMUNITY TANKS: seeds the per-battle roster shuffle
     tankById: new Map(),
     player: null,
     shells: [],
@@ -95,7 +97,10 @@ export function createGameState() {
  * @returns {void}
  */
 export function spawnTanks(game, engineCtx) {
-  TANK_IDS.forEach((specId, i) => {
+  // COMMUNITY TANKS: build entities for the FULL pool (core roster + sourced
+  // community vehicles). A battle fields 8 of them (setupBattle picks the
+  // participants); the rest sit hidden with null state/combat.
+  ALL_TANK_IDS.forEach((specId, i) => {
     const spec = getSpec(specId);
     const visual = createTank(specId, engineCtx, { camoSeed: 4000 + i, quality: 'high' });
     engineCtx.scene.add(visual.root);
@@ -116,9 +121,35 @@ export function spawnTanks(game, engineCtx) {
       aiCtl: null,
       _destroyedAnnounced: false,
     };
-    game.tanks.push(ent);
+    game.allTanks.push(ent);
     game.tankById.set(ent.id, ent);
   });
+  game.tanks = game.allTanks.slice(0, TANK_IDS.length); // staged default battle
+}
+
+/**
+ * COMMUNITY TANKS: pick this battle's participants — the player plus 7
+ * enemies. Deterministic default (the core 8, adjusted when the player drives
+ * a community tank); `randomize` shuffles the whole pool (seeded per battle)
+ * so random enemy rosters include community vehicles.
+ * @returns {object[]} TankEntity[] (player's entity included)
+ */
+function pickParticipants(game, playerSpecId, randomize) {
+  const player = game.tankById.get(playerSpecId);
+  const enemySlots = 7;
+  let others;
+  if (randomize) {
+    const rng = mulberry32(0x51e57 ^ (game.battleCount * 2654435761));
+    others = game.allTanks.filter((e) => e !== player);
+    for (let i = others.length - 1; i > 0; i--) {       // Fisher-Yates
+      const j = (rng() * (i + 1)) | 0;
+      [others[i], others[j]] = [others[j], others[i]];
+    }
+  } else {
+    // deterministic staged battle (boot, screenshot contract): core roster
+    others = TANK_IDS.filter((id) => id !== playerSpecId).map((id) => game.tankById.get(id));
+  }
+  return [player, ...others.slice(0, enemySlots)];
 }
 
 /**
@@ -127,9 +158,12 @@ export function spawnTanks(game, engineCtx) {
  * @param {object} game game state
  * @param {string} playerSpecId chosen TankId
  * @param {object} world World (§2.7)
+ * @param {{random?:boolean}} [opts] COMMUNITY TANKS: random=true shuffles the
+ *   enemy roster from the full pool (garage-started battles); default keeps
+ *   the deterministic core-8 staging (boot, screenshot contract).
  * @returns {void}
  */
-export function setupBattle(game, playerSpecId, world) {
+export function setupBattle(game, playerSpecId, world, opts = {}) {
   const sp = world.spawnPoints;
   game.shells.length = 0;
   game.nextShellId = 1;
@@ -137,6 +171,22 @@ export function setupBattle(game, playerSpecId, world) {
   game.fireTickAcc = 0;
   game.combatRng = mulberry32(COMBAT_SEED);
   game.result = null;
+  game.battleCount++;
+
+  // COMMUNITY TANKS: field the participants; park everyone else (hidden,
+  // null state/combat — every sim/HUD/audio consumer guards on those).
+  game.tanks = pickParticipants(game, playerSpecId, !!opts.random);
+  for (const ent of game.allTanks) {
+    if (game.tanks.includes(ent)) continue;
+    ent.state = null;
+    ent.combat = null;
+    ent.ai = null;
+    ent.aiCtl = null;
+    ent.team = 'enemy';
+    ent.isPlayer = false;
+    if (ent.visual.resetDestroyed) ent.visual.resetDestroyed();
+    ent.visual.setVisible(false);
+  }
 
   // SPOTTING WIRING: fresh concealment/spotting sim bound to this battle's
   // world (raycast for hard cover, vegetation discs for bush concealment).

@@ -10,7 +10,7 @@
 // { "<id>_<view>.png": dataURL }.
 import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.js';
-import { TANK_IDS } from '/src/vehicles/specs.js';
+import { ALL_TANK_IDS } from '/src/vehicles/specs.js';
 
 const BASE = 512;           // base output resolution (px)
 const SS = 2;               // supersample factor for crisp downscaled edges
@@ -170,7 +170,7 @@ function genOne(id) {
 
 window.__GEN = (ids) => {
   const out = {};
-  for (const id of (ids && ids.length ? ids : TANK_IDS)) {
+  for (const id of (ids && ids.length ? ids : ALL_TANK_IDS)) {
     try {
       Object.assign(out, genOne(id));
     } catch (e) {

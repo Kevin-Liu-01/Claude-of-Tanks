@@ -155,10 +155,14 @@ export function createMap(engineCtx, { mapId = 'verdant', seed = 1337 } = {}) {
      * Per-frame world update: terrain LOD swap + vegetation wind/density.
      * @param {number} dt seconds
      * @param {THREE.Vector3} cameraPos world camera position
+     * @param {THREE.Vector3|null} [cameraFwd] unit camera forward — drives the
+     *   scoped grass center-cone clear-out
+     * @param {THREE.Vector3|null} [focusPos] chase-camera focus — non-null
+     *   enables the tree occlusion fade along focus→camera
      */
-    update(dt, cameraPos) {
+    update(dt, cameraPos, cameraFwd = null, focusPos = null) {
       terrain.userData.updateLOD(cameraPos);
-      vegetation.update(dt, cameraPos);
+      vegetation.update(dt, cameraPos, cameraFwd, focusPos);
     },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
     setWindTime(t) { vegetation.setWindTime(t); },

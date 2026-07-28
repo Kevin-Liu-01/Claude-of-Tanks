@@ -39,12 +39,19 @@
 const LS_KEY = 'cot.gfxPreset';
 
 export const PRESETS = {
+  // r5: cascade 2 (roughly the 130-230 m band where pole/tree/building
+  // shadows are most readable at gameplay camera angles) went 2048 → 4096 on
+  // ultra/high — at 2048 its ~0.15 m texels x the PCF disk radius produced
+  // the "wide over-blurred dark stripes" shadow critique; 4096 halves the
+  // physical penumbra. Cascade 3 (230-520 m) stays 2048: genuinely subpixel.
+  // Far cascades still re-render round-robin (lighting.js), so the fill-rate
+  // cost is amortized; the extra RT memory is ultra/high-only.
   ultra: {
     label: 'Ultra',
     maxPixelRatio: 1.5,
     aoScale: 1.0,
     bloomScale: 1.0,
-    shadowMapSizes: [4096, 4096, 2048, 2048],
+    shadowMapSizes: [4096, 4096, 4096, 2048],
     shadowMaxFar: 520,
   },
   high: {
@@ -52,7 +59,7 @@ export const PRESETS = {
     maxPixelRatio: 1.25,
     aoScale: 0.5,
     bloomScale: 1.0,
-    shadowMapSizes: [4096, 4096, 2048, 2048],
+    shadowMapSizes: [4096, 4096, 4096, 2048],
     shadowMaxFar: 520,
   },
   medium: {

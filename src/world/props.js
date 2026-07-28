@@ -7,6 +7,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise.js';
 import { applyTone } from './terrain.js';
 import { applySourcedBuildings } from './sourcedTextures.js';
+import { URBAN_BUILDERS } from './maps/urbanKit.js';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). Synchronous import keeps the __GAME_READY contract.
 import MODELS from './props-models.json';
@@ -174,17 +175,23 @@ function makeWood(noi, anisotropy, tone = null) {
 }
 
 function makeStraw(noi, anisotropy, tone = null) {
-  const s = 128, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
+  // packed dry straw: long directional stalks with dark inter-stalk gaps and
+  // per-stalk tone variation, graded toward dull ochre — the old bright
+  // low-contrast yellow read as untextured toy cylinders on the hay bales
+  const s = 256, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
   for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
     const i = y * s + x, j = i * 4;
-    const streak = noi.noise(x * 0.03, y * 0.5) * 0.5 + 0.5;
-    const fine = noi.noise(x * 0.4 + 31, y * 0.9 - 12) * 0.5 + 0.5;
-    _col.setHSL(0.115 + streak * 0.02, 0.45, 0.34 + streak * 0.14 + fine * 0.08);
+    const stalk = noi.noise(x * 0.022, y * 0.55) * 0.5 + 0.5;  // stalk-bundle tone
+    const strand = noi.noise(x * 0.10 + 31, y * 1.55 - 12) * 0.5 + 0.5; // fine strands
+    const kink = noi.noise(x * 0.45 + 77, y * 0.35 + 9) * 0.5 + 0.5;    // broken ends
+    const gap = smoothstep(0.74, 0.92, noi.noise(x * 0.06 + 90, y * 0.9 + 55) * 0.5 + 0.5);
+    const l = (0.21 + stalk * 0.13 + strand * 0.10 + kink * 0.04) * (1 - gap * 0.55);
+    _col.setHSL(0.098 + stalk * 0.022, 0.38 - gap * 0.12, l);
     px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255; px[j + 3] = 255;
-    hgt[i] = streak * 0.5 + fine * 0.5;
+    hgt[i] = (stalk * 0.45 + strand * 0.4 + kink * 0.15) * (1 - gap * 0.7);
   }
   applyTone(px, tone);
-  return { albedo: toTexture(px, s, { srgb: true, anisotropy }), normal: normalFromHeight(hgt, s, 1.6, anisotropy) };
+  return { albedo: toTexture(px, s, { srgb: true, anisotropy }), normal: normalFromHeight(hgt, s, 2.4, anisotropy) };
 }
 
 // ---------------------------------------------------------------------------
@@ -485,8 +492,15 @@ function makeRowhouse(rng, buckets, wallBucket = 'plaster', dims = null) {
       const zz = -d / 2 + (k + 0.5) * (d / nwn);
       for (const side of [-1, 1]) {
         if (rng() < 0.12) continue;
-        parts.dark.push(box(0.06, 1.25, 0.82).translate(side * (w / 2 + 0.05), wy, zz));
-        parts.wood.push(box(0.10, 0.09, 0.95).translate(side * (w / 2 + 0.06), wy - 0.72, zz));
+        // framed windows with a faked reveal: the pane sits barely proud of
+        // the wall while jambs/lintel stand ~5 cm prouder and a stone sill
+        // closes the bottom — the glass reads recessed, not painted on
+        const wx = side * (w / 2);
+        parts.dark.push(box(0.05, 1.25, 0.82).translate(wx + side * 0.012, wy, zz));
+        parts.wood.push(box(0.09, 1.36, 0.09).translate(wx + side * 0.045, wy, zz - 0.44));
+        parts.wood.push(box(0.09, 1.36, 0.09).translate(wx + side * 0.045, wy, zz + 0.44));
+        parts.wood.push(box(0.09, 0.09, 0.97).translate(wx + side * 0.045, wy + 0.66, zz));
+        parts.stone.push(box(0.14, 0.10, 1.0).translate(wx + side * 0.05, wy - 0.70, zz));
       }
     }
     // gable-face windows
@@ -542,7 +556,7 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
     wallRuns: null, well: true, hayCrates: true, fences: true,
     telegraph: true, carts: true, logs: true,
     haystacks: 15, rocks: 170, outcrops: 16, craters: 30, rubblePiles: 0,
-    streetRows: false, curbs: false, monument: false,
+    streetRows: false, curbs: false, monument: false, townCraters: false,
     ...((cfg && cfg.props) || {}),
   };
   const mapId = cfg ? cfg.id : 'verdant';
@@ -695,6 +709,7 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
   const BUILDER_BY_NAME = {
     cottage: makeCottage, barn: makeBarn, tower: makeTower, ruin: makeRuin,
     adobe: makeAdobe, rowhouse: makeRowhouse,
+    ...URBAN_BUILDERS, // church / factory landmarks (maps/urbanKit.js)
   };
   const builders = P.plan.map((n) => BUILDER_BY_NAME[n] || makeCottage);
   let bi = 0;
@@ -787,7 +802,9 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
           const [rx, rz, tx, tz] = pointAt(t + w / 2);
           if (rx < v.x0 + 8 || rx > v.x1 - 8 || rz < v.z0 + 8 || rz > v.z1 - 8) { t += w; continue; }
           const nx = -tz * side, nz = tx * side;
-          const off = 6.4 + d / 2; // front wall ~6.4 m off the street centerline
+          // varied setback (5.7-7.5 m) breaks the razor-straight Monopoly
+          // frontage line while keeping the street wall reading
+          const off = 5.7 + srng() * 1.8 + d / 2;
           const px = rx + nx * off, pz = rz + nz * off;
           // keep crossings and the central square open
           if (distToOtherRoads(px, pz, ri) < 9.5
@@ -796,6 +813,7 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
           const roll = srng();
           if (roll < 0.14) { t += 4 + srng() * 7; continue; } // alley / vacant lot
           const rot = Math.atan2(-nx, -nz); // local +z (door face) toward street
+          const ruinChance = P.ruinChance ?? 0.24;
           const cs = Math.abs(Math.cos(rot)), sn = Math.abs(Math.sin(rot));
           const hx = (w * cs + d * sn) / 2, hz = (w * sn + d * cs) / 2;
           let clear = true;
@@ -804,7 +822,7 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
               && Math.abs(pz - sb.z) < hz + sb.hz - 1.0) { clear = false; break; }
           }
           if (!clear) { t += w * 0.6; continue; }
-          const ruined = roll < 0.24; // shell-collapsed slot in the row
+          const ruined = roll < ruinChance; // shell-collapsed slot in the row
           const tmp = { plaster: [], stone: [], roof: [], wood: [], dark: [], straw: [], baked: [] };
           const info = ruined
             ? makeRuin(rng, tmp)
@@ -822,12 +840,73 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
           stripAABBs.push({ x: px, z: pz, hx, hz });
           if (ruined) { // debris spills toward the street
             const rbx = rx + nx * (off - d * 0.55), rbz = rz + nz * (off - d * 0.55);
-            if (heightField._roadDist(rbx, rbz) > 4.2) {
+            if (heightField._roadDist(rbx, rbz) > 3.4) {
               addRubblePile(rbx, rbz, 1.8 + srng() * 1.2, srng);
             }
           }
           t += w - 0.25; // shared wall with the next house
         }
+      }
+    }
+
+    // --- street furniture + battle litter (town maps) --------------------
+    // Cast-iron lampposts march both pavements; small masonry spill, roof-
+    // tile shards and the odd toppled post litter the kerb line — the shelled
+    // town finally carries its own street-level texture instead of bare
+    // asphalt ribbons between facades.
+    {
+      const frng = mulberry32(seed + 606);
+      for (let ri = 0; ri < roads.length; ri++) {
+        const pts = roads[ri];
+        for (let i = 1; i < pts.length - 1; i += 2) {
+          const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
+          const tl = Math.hypot(bx - ax, bz - az) || 1;
+          const txn = (bx - ax) / tl, tzn = (bz - az) / tl;
+          const side = (i % 4 < 2) ? 1 : -1; // alternate pavements
+          const lx = ax - tzn * side * 5.9, lz = az + txn * side * 5.9;
+          if (lx < v.x0 + 4 || lx > v.x1 - 4 || lz < v.z0 + 4 || lz > v.z1 - 4) continue;
+          if (distToOtherRoads(lx, lz, ri) < 7 || noVeg(lx, lz)) continue;
+          const ly = heightField.getHeightAt(lx, lz);
+          if (frng() < 0.18) { // toppled post lying across the pavement
+            const fall = box(0.09, 0.09, 4.6, 1.4);
+            fall.rotateY(frng() * Math.PI * 2);
+            fall.translate(lx, ly + 0.1, lz);
+            buckets.dark.push(fall);
+            continue;
+          }
+          const yawL = -Math.atan2(tzn, txn); // arm reaches over the carriageway
+          const post = new THREE.CylinderGeometry(0.055, 0.10, 4.4, 6, 1);
+          scaleUV(post, 0.5, 2.0);
+          post.translate(lx, ly + 2.2, lz);
+          buckets.dark.push(post);
+          const arm = box(0.07, 0.07, 0.85, 1.2);
+          arm.translate(0, 0, 0.38); // build about the post axis, then swing
+          arm.rotateY(yawL);
+          arm.translate(lx, ly + 4.32, lz);
+          buckets.dark.push(arm);
+          const lampHead = box(0.28, 0.36, 0.28, 1.5);
+          lampHead.translate(0, -0.24, 0.74);
+          lampHead.rotateY(yawL);
+          lampHead.translate(lx, ly + 4.32, lz);
+          buckets.dark.push(lampHead);
+        }
+      }
+      // kerb-line battle litter: masonry chips + slate shards along frontages
+      for (let i = 0, placed = 0; i < 900 && placed < 150; i++) {
+        const x = v.x0 + frng() * (v.x1 - v.x0);
+        const z = v.z0 + frng() * (v.z1 - v.z0);
+        const rd = heightField._roadDist(x, z);
+        if (rd < 3.2 || rd > 7.5) continue; // hugs the kerb/pavement band
+        if (noVeg(x, z)) continue;
+        const y = heightField.getHeightAt(x, z);
+        const cs = 0.14 + frng() * 0.34;
+        const chip = box(cs, cs * (0.4 + frng() * 0.4), cs * (0.5 + frng() * 0.8), 1.6);
+        jitterUV(chip, frng);
+        chip.rotateY(frng() * Math.PI);
+        chip.rotateX((frng() - 0.5) * 0.4);
+        chip.translate(x, y + cs * 0.2, z);
+        if (frng() < 0.72) buckets.stone.push(chip); else buckets.roof.push(chip);
+        placed++;
       }
     }
   }
@@ -1431,12 +1510,23 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
       dirtDiscs.push(conformedDisc(b.x, b.z, Math.max(b.w, b.d) * 1.05, [0.05, 0.05, 0.05, 0.04]));
     }
     addDecalMesh(dirtDiscs, makeDecalTexture('dirt'));
-    // craters: scattered shell holes with a raised rim mound
+    // craters: scattered shell holes with a raised rim mound. Town maps
+    // (P.townCraters) let them pock the streets and squares themselves —
+    // the contract's shelled-town read needs impact scars ON the asphalt,
+    // not just in the fields outside the rect.
     const craterDiscs = [];
     for (let i = 0, placed = 0; i < P.craters * 11 && placed < P.craters; i++) {
       const x = (rng() * 2 - 1) * 420, z = (rng() * 2 - 1) * 420;
-      if (x > v.x0 - 4 && x < v.x1 + 4 && z > v.z0 - 4 && z < v.z1 + 4) continue;
-      if (heightField._roadDist(x, z) < 5.5) continue;
+      const inTown = x > v.x0 - 4 && x < v.x1 + 4 && z > v.z0 - 4 && z < v.z1 + 4;
+      if (inTown && !P.townCraters) continue;
+      if (heightField._roadDist(x, z) < (inTown ? 1.5 : 5.5)) continue;
+      if (inTown) {
+        let onBuilding = false;
+        for (const pb of placedB) {
+          if (Math.hypot(x - pb.x, z - pb.z) < pb.rr + 1.5) { onBuilding = true; break; }
+        }
+        if (onBuilding) continue;
+      }
       if (heightField.getGroundType(x, z) === 'soft' || noVeg(x, z)) continue;
       let nearSpawn = false;
       for (const s of [L.spawns.player, ...L.spawns.enemies]) {

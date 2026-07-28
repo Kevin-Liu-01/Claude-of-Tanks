@@ -93,6 +93,29 @@ const SUSP_P_CLAMP = 0.07;       // rad — terrain-delta pitch authority
 const SUSP_R_CLAMP = 0.06;       // rad — terrain-delta roll authority
 const SUSP_K_SPEED = 4;          // m/s for full rate scale
 const SUSP_K_GAIN = 0.8;
+// Mirror of tankFactory's r6 VISIBLE-dynamics amplification: syncFromState
+// renders the hull at susp.p × SUSP_VIS_P / susp.r × SUSP_VIS_R and sway =
+// _swayEst × SWAY_VIS (readable squat/dive/turn-lean at gameplay camera
+// distance). The support solve therefore clears the terrain at the AMPLIFIED
+// pose — otherwise the exaggerated transient buries a track end ~10 cm on
+// rough ground (r3 drive gate: minClear −11.7 cm before this fold). Constants
+// MUST stay in lockstep with tankFactory.js SUSP_VIS_P/SUSP_VIS_R/SWAY_VIS;
+// tankFactory's half-lift compensation hack is removed in the same patch
+// (docs/handoff/gameplay_feel-r2.md) — the solve is the single authority.
+const SUSP_VIS_P = 2.6;
+const SUSP_VIS_R = 2.1;
+const SWAY_VIS = 2.3;
+// Mirror of tankFactory's hit-flinch rock (FLINCH_W/FLINCH_Z in the visual
+// layer): a large-caliber hit kicks flinchPV up to ~0.36 rad/s ⇒ peak rock
+// ~1.6°, which over a 3.5 m half-length transiently dips a track end ~10 cm —
+// far past the 1.5 cm SUPPORT_MARGIN. The oscillator is therefore integrated
+// HERE (state._flinch, once per sim tick) and folded into the support solve;
+// tankFactory reads state._flinch for rendering and routes its hit/recoil
+// impulses into it (see the pairing note in docs/handoff/gameplay_feel-r2.md).
+// RENDER SIGN: rotation.x = -(visualPitch + suspP) + flinchP, so flinch pitch
+// SUBTRACTS from the movement-space pitch; flinch roll adds like the others.
+const FLINCH_W = 13;
+const FLINCH_Z = 0.32;
 const MUZZLE_CLEARANCE_M = 0.15; // gun-terrain clamp: min muzzle height above ground
 const SPRING_OMEGA = 2 * Math.PI * 3; // hull attitude spring natural frequency (rad/s)
 const SPRING_ZETA = 0.6;         // damping ratio
@@ -116,10 +139,6 @@ const RAD2DEG = 180 / Math.PI;
 
 // Module-scope scratch (no per-frame allocation, ARCHITECTURE §1.3).
 const _push = new Vector3();
-// Support-solve sample buffers: height + hull-local offsets, 2 lines × ≤24.
-const _supH = new Float64Array(SUPPORT_MAX_N * 2);
-const _supX = new Float64Array(SUPPORT_MAX_N * 2);
-const _supZ = new Float64Array(SUPPORT_MAX_N * 2);
 
 // ---------------------------------------------------------------------------
 // Small math helpers
@@ -248,6 +267,7 @@ export function createTankState(spec, pos, yaw) {
     _terr: { pitch: 0, roll: 0 },  // last terrain plane fit (spring target source)
     _swayEst: 0,                   // predicted visual turn-lean sway (rad)
     _susp: { p: 0, r: 0, pv: 0, rv: 0 }, // mirror of the visual susp rock layer
+    _flinch: { p: 0, r: 0, pv: 0, rv: 0 }, // hit-flinch rock (impulses fed by the visual)
     _sup: {                        // static-pose support cache (skip resampling)
       x: NaN, z: NaN, yaw: 0, pitch: 0, roll: 0, y: pos.y,
     },
@@ -410,54 +430,30 @@ export function updateTank(entity, heightField, dt, collide = null) {
   const swayTarget = clamp(state.yawRate * state.speed * SWAY_GAIN, -SWAY_CLAMP, SWAY_CLAMP);
   state._swayEst += (swayTarget - state._swayEst) * SWAY_SMOOTH;
 
-  const sup = state._sup;
-  const susp = state._susp;
-  const pitchEff0 = spr.pitch + susp.p;
-  const rollEff0 = spr.roll + susp.r + state._swayEst;
-  // Static-pose cache: a parked, settled tank re-uses the solved height instead
-  // of re-sampling the (static) heightfield every tick.
-  const supFresh =
-    Math.abs(state.pos.x - sup.x) < 0.004 && Math.abs(state.pos.z - sup.z) < 0.004 &&
-    Math.abs(wrapAngle(state.yaw - sup.yaw)) < 0.0012 &&
-    Math.abs(pitchEff0 - sup.pitch) < 0.0012 && Math.abs(rollEff0 - sup.roll) < 0.0012;
-
-  let nSamp = 0;
-  if (!supFresh) {
-    const sl = SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
-    const nLine = Math.min(SUPPORT_MAX_N, Math.max(5, Math.ceil((2 * sl) / SUPPORT_SPACING_M) + 1));
-    const step = (2 * sl) / (nLine - 1);
-    // Project the hull-local contact points to world XZ with the same YXZ
-    // composition the renderer uses (attitude from the pre-step spring — the
-    // planform foreshortening barely changes within one spring step).
-    const cb = Math.cos(state.yaw), sb = Math.sin(state.yaw);
-    const ca0 = Math.cos(-pitchEff0), sa0 = Math.sin(-pitchEff0);
-    const cr0 = Math.cos(rollEff0), sr0 = Math.sin(rollEff0);
-    const px1 = state.pos.x, pz1 = state.pos.z;
-    let sumHZ = 0, sumZZ = 0, sumL = 0, sumR = 0;
-    for (let side = -1; side <= 1; side += 2) {
-      const x = side * hw;
-      const x1 = x * cr0, y1 = x * sr0;
-      for (let k = 0; k < nLine; k++) {
-        const z = -sl + k * step;
-        const z2 = y1 * sa0 + z * ca0;
-        const h = heightField.getHeightAt(px1 + x1 * cb + z2 * sb, pz1 - x1 * sb + z2 * cb);
-        _supH[nSamp] = h;
-        _supX[nSamp] = x;
-        _supZ[nSamp] = z;
-        nSamp++;
-        sumHZ += h * z;
-        sumZZ += z * z;
-        if (side < 0) sumL += h; else sumR += h;
+  // ---- hit-flinch rock: integrate the visual layer's damped oscillator ------
+  // (constants in lockstep with tankFactory FLINCH_W/FLINCH_Z; impulses arrive
+  // via state._flinch.pv/rv from the visual's hitFlinch/recoil rock). Stepped
+  // once per sim tick BEFORE the support sampling so both the sample pass and
+  // the final clamp see the exact pose syncFromState will render this tick.
+  const fl = state._flinch;
+  let flP = 0;
+  let flR = 0;
+  if (fl) {
+    if (fl.p !== 0 || fl.r !== 0 || fl.pv !== 0 || fl.rv !== 0) {
+      fl.pv += (-FLINCH_W * FLINCH_W * fl.p - 2 * FLINCH_Z * FLINCH_W * fl.pv) * dt;
+      fl.p += fl.pv * dt;
+      fl.rv += (-FLINCH_W * FLINCH_W * fl.r - 2 * FLINCH_Z * FLINCH_W * fl.rv) * dt;
+      fl.r += fl.rv * dt;
+      if (Math.abs(fl.p) + Math.abs(fl.pv) + Math.abs(fl.r) + Math.abs(fl.rv) < 1e-4) {
+        fl.p = fl.r = fl.pv = fl.rv = 0;
       }
     }
-    // Least-squares plane: pitch from the along-track height gradient (Σz = 0
-    // by symmetry), roll from the mean left/right line difference. RENDERER
-    // ROLL SIGN: positive roll lifts the right side, so ground higher on the
-    // RIGHT must give a POSITIVE roll target (the old 4-corner fit used the
-    // opposite sign and leaned the hull INTO every side slope).
-    state._terr.pitch = Math.atan2(sumHZ, sumZZ);
-    state._terr.roll = Math.atan2((sumR - sumL) / nLine, 2 * hw);
+    flP = fl.p;
+    flR = fl.r;
   }
+
+  const sup = state._sup;
+  const susp = state._susp;
 
   // ---- hull attitude spring: terrain target + inertial pitch (nose dip/lift) ----
   const targetPitch = state._terr.pitch + inertialPitch;
@@ -504,16 +500,62 @@ export function updateTank(entity, heightField, dt, collide = null) {
   }
 
   // ---- support solve: no contact sample below ground at the rendered pose ----
-  const pitchEff = spr.pitch + susp.p;
-  const rollEff = spr.roll + susp.r + state._swayEst;
+  // Effective RENDERED attitude (movement space): rotation.x = -(pitch +
+  // suspP×VIS) + flinchP ⇒ flinch pitch enters with a MINUS sign here; roll
+  // adds. The susp/sway layers carry the renderer's visibility amplification.
+  // Sampling, plane fit and clamp all run at THIS post-step attitude in one
+  // pass — sampling at the pre-step attitude left a Δattitude × lever × slope
+  // height error that the ×2.6 visibility amplification turned into multi-cm
+  // track burial on rough ground (r3 drive gate). The fit lands in state._terr
+  // for the NEXT tick's spring targets/slope logic (one-tick-old plane —
+  // imperceptible at 60 Hz, and exactly the pre-existing contract).
+  const pitchEff = spr.pitch + susp.p * SUSP_VIS_P - flP;
+  const rollEff = spr.roll + susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS + flR;
+  // Static-pose cache: a parked, settled tank re-uses the solved height instead
+  // of re-sampling the (static) heightfield every tick.
+  const supFresh =
+    Math.abs(state.pos.x - sup.x) < 0.004 && Math.abs(state.pos.z - sup.z) < 0.004 &&
+    Math.abs(wrapAngle(state.yaw - sup.yaw)) < 0.0012 &&
+    Math.abs(pitchEff - sup.pitch) < 0.0012 && Math.abs(rollEff - sup.roll) < 0.0012;
   if (!supFresh) {
+    const sl = SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
+    const nLine = Math.min(SUPPORT_MAX_N, Math.max(5, Math.ceil((2 * sl) / SUPPORT_SPACING_M) + 1));
+    const step = (2 * sl) / (nLine - 1);
+    // Project the hull-local contact points to world XZ with the same YXZ
+    // composition the renderer uses, at the exact rendered attitude.
+    const cb = Math.cos(state.yaw), sb = Math.sin(state.yaw);
+    const ca0 = Math.cos(-pitchEff), sa0 = Math.sin(-pitchEff);
+    const cr0 = Math.cos(rollEff), sr0 = Math.sin(rollEff);
     const sinP = Math.sin(pitchEff), cosP = Math.cos(pitchEff);
     const sinR = Math.sin(rollEff);
+    const px1 = state.pos.x, pz1 = state.pos.z;
+    let sumHZ = 0, sumZZ = 0, sumL = 0, sumR = 0, nLR = 0;
     let supportY = -Infinity;
-    for (let i = 0; i < nSamp; i++) {
-      const d = _supH[i] - (_supX[i] * sinR * cosP + _supZ[i] * sinP);
-      if (d > supportY) supportY = d;
+    for (let side = -1; side <= 1; side += 2) {
+      const x = side * hw;
+      const x1 = x * cr0, y1 = x * sr0;
+      for (let k = 0; k < nLine; k++) {
+        const z = -sl + k * step;
+        const z2 = y1 * sa0 + z * ca0;
+        const h = heightField.getHeightAt(px1 + x1 * cb + z2 * sb, pz1 - x1 * sb + z2 * cb);
+        sumHZ += h * z;
+        sumZZ += z * z;
+        if (side < 0) sumL += h; else sumR += h;
+        nLR++;
+        // support deficit at the rendered pose (worldY of the contact point
+        // relative to pos.y): pos.y must sit at max over samples of
+        // h − (x·sinR·cosP + z·sinP)
+        const d = h - (x * sinR * cosP + z * sinP);
+        if (d > supportY) supportY = d;
+      }
     }
+    // Least-squares plane: pitch from the along-track height gradient (Σz = 0
+    // by symmetry), roll from the mean left/right line difference. RENDERER
+    // ROLL SIGN: positive roll lifts the right side, so ground higher on the
+    // RIGHT must give a POSITIVE roll target (the old 4-corner fit used the
+    // opposite sign and leaned the hull INTO every side slope).
+    state._terr.pitch = Math.atan2(sumHZ, sumZZ);
+    state._terr.roll = Math.atan2((sumR - sumL) / (nLR / 2), 2 * hw);
     supportY += SUPPORT_MARGIN_M;
     state.pos.y = supportY;
     sup.x = state.pos.x; sup.z = state.pos.z; sup.yaw = state.yaw;

@@ -1,0 +1,19 @@
+Asset: "Stridsvagn 103" by canisferus (Lukasz Wesiora)
+Source page: https://opengameart.org/content/stridsvagn-103
+License as stated on the asset page at download time (2026-07-27):
+  "License(s): CC-BY 3.0"
+Bundled License.txt inside stridsvagn103_0.7z (quoted verbatim):
+  "CC-By 3.0 license.
+   http://creativecommons.org/licenses/by/3.0/
+   Copyrights Lukasz Wesiora.
+   l.Wesiora@gmail.com"
+Attribution required: credit "Lukasz Wesiora (canisferus)".
+Files: stridsvagn103_wesiora.glb — re-export of stridsvagn103.blend with
+materials rebuilt as Principled BSDF (Body_d/Details_d diffuse, _n normal,
+inverted _g gloss -> roughness), textures downscaled 4096->2048, JPEG q80.
+(The 2012 blend used pre-nodes materials; a naive GLB export ships no textures.)
+Articulation: no turret by design (S-tank / casemate). Separable named meshes:
+Body, Gear.L/R, Track.L/R, Wheel1-5.L/R. Track texture scroll animates tracks.
+RENDER.png = standalone harness render (own PBR textures, no re-material).
+Note: supersedes sibling dir stridsvagn103_canisferus/ from a parallel hunt —
+that GLB (921336 bytes) is the untextured naive export.

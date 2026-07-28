@@ -6,12 +6,16 @@
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // Street-wall plan: mostly rowhouses so every block frontage reads built-up,
-// ruins interleaved (~1 in 7) for shelled-town texture, two church/water
-// towers as vertical landmarks.
+// ruins interleaved (1 in 5) for shelled-town texture, plus real vertical
+// landmarks — a church (spire) and a factory (chimney stack) — and two
+// squat towers. 'church'/'factory' come from maps/urbanKit.js (registered
+// in props.js BUILDER_BY_NAME; they degrade to cottages if unregistered).
 const PLAN = [];
 for (let i = 0; i < 108; i++) {
-  if (i === 9 || i === 41 || i === 77) PLAN.push('tower');
-  else if (i % 7 === 3) PLAN.push('ruin');
+  if (i === 4) PLAN.push('church');
+  else if (i === 11) PLAN.push('factory');
+  else if (i === 9 || i === 41) PLAN.push('tower');
+  else if (i % 5 === 2) PLAN.push('ruin');
   else PLAN.push('rowhouse');
 }
 
@@ -80,11 +84,18 @@ export default {
     blockFill: true,
     tones: {
       plaster: (h, s, l) => [0.10, clamp01(s * 0.5), clamp01(l * 0.92)], // sooty render
-      roof: (h, s, l) => [0.60, clamp01(s * 0.18), clamp01(l * 0.66)], // dark slate tile
+      // aged patchwork roofscape: the brighter tiles of the procedural sheet
+      // become replaced clay-red tiles, the rest stays dark slate — breaks
+      // the single maroon tone the whole town used to wear
+      roof: (h, s, l) => (l > 0.35
+        ? [0.045, 0.40, clamp01(l * 0.82)]
+        : [0.60, 0.15, clamp01(l * 0.70)]),
       stone: (h, s, l) => [0.09, clamp01(s * 0.6), clamp01(l * 0.95)],
       wood: null,
       straw: null,
     },
+    ruinChance: 0.30, // street-front collapse rate (streetRows, props.js)
+    townCraters: true, // shell holes pock the streets/squares inside the rect
     rockTone: (h, s, l) => [0.09, 0.04, clamp01(l * 1.05)], // concrete rubble chunks
     wallStoneChance: 0.55,
     buildingLat: [9.5, 1.5], // tight, near-constant setback => street walls
@@ -97,10 +108,13 @@ export default {
       [-76, -122, -20, -122, 2], [86, 154, 86, 108, 0],
     ],
     well: true, hayCrates: false, fences: false, telegraph: true, carts: true, logs: false,
-    haystacks: 0, rocks: 90, outcrops: 6, craters: 64, rubblePiles: 56,
+    haystacks: 0, rocks: 90, outcrops: 6, craters: 88, rubblePiles: 72,
   },
 
-  horizon: { baseHex: 0x4a5546, amp: 0.9 },
+  horizon: {
+    baseHex: 0x525c50, amp: 0.85, style: 'escarpment', treeline: 0.5,
+    forestHex: 0x323f30, haze: 1.15,
+  },
 
   sky: {
     sunElevationDeg: 36, sunAzimuthDeg: 115,

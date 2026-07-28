@@ -1,51 +1,43 @@
-# hud_ui r2 handoff — fixes required outside src/ui/
+# hud_ui r2 handoff — notes for the round verifier (updated after HUD-authenticity pass)
 
-## 1. Grass billboards render as dark rectangles (MAJOR, sniper_view)
+## Status
 
-File: `/Users/kevinliu/claude-of-tanks/src/world/vegetation.js`
+All hud_ui critic items were fixed inside `src/ui/` — no changes required in
+other modules for the fixes to work. Final full `node tools/screenshot.mjs`
+run: exit 0, all 13 views captured, zero console errors.
 
-Symptom: hard dark rectangular quads behind grass tufts, loudest in `sniper_view`
-at 8x. Cause: each grass tuft is two crossed planes (`gp1` + `gp2.rotateY(90°)`,
-lines ~265-269). The plane seen edge-on/at a grazing angle has large UV
-derivatives, so the GPU samples high mip levels of the 256px card texture. In
-those mips the alpha (blades≈1 over gaps≈0, ~35% coverage) averages above the
-current `alphaTest: 0.34` (line ~273), so the ENTIRE quad passes the alpha test
-and renders as a solid rectangle of the flood color rgb(66,82,38) injected at
-lines ~76-81 — which reads darker than the lit terrain behind it.
+Superseded: the previous grass-billboard item (vegetation.js alphaTest) is
+obsolete — the vegetation owner has since reworked the grass/foliage
+materials (alphaTest 0.44/0.38 cutouts as of this round).
 
-Fix (no settings lowered, keep alpha-tested cutout — do NOT switch to sorted
-alpha blending):
+## 1. Concurrent-edit harness flakes (verifier FYI, no action in src/ui)
 
-1. In the `MeshStandardMaterial` at line ~272, raise `alphaTest` from `0.34`
-   to `0.5` and add `alphaToCoverage: true` (renderer already uses MSAA via
-   default antialias; harmless if not).
-2. Raise `t.anisotropy` in `makeGrassCardTexture` (line ~84) from `4` to `16`
-   (clamp with `renderer.capabilities.getMaxAnisotropy()` if accessible, else
-   16 is safe — three clamps internally).
-3. In the flood pass (lines ~78-80) also multiply blade alpha slightly upward
-   is NOT needed; instead prevent high-mip alpha from exceeding the threshold:
-   after creating the texture, no change needed once alphaTest=0.5 because the
-   card's average coverage (~0.35) stays below 0.5, so full-quad passes stop.
-4. Bump `mat.customProgramCacheKey` to `'world-grass-wind-v3'` since material
-   defines change (ALPHATEST value is a shader define — stale program cache
-   would otherwise keep 0.34).
+During this round other owners were live-editing `src/world/props.js`
+(`URBAN_BUILDERS` import landed before `src/world/maps/urbanKit.js` existed
+for a few minutes) and `src/sim/movement.js`; two mid-edit harness runs died
+on those files. Both resolved on their own — the final run is green. If the
+integration run fails in `props.js`/`movement.js`, re-run after that owner's
+session settles; it is not a HUD regression.
 
-Verify: `node tools/screenshot.mjs --views sniper_view` — no rectangular
-plates behind tufts inside the magnified view.
+## 2. Optional screenshot-recipe polish (src/main.js — integration-owned)
 
-## 2. Harness currently fails on `explosion` view (NOT a ui bug)
+Neither is required; the HUD handles all states.
 
-`node tools/screenshot.mjs` (full run) fails with `spawnScorch is not defined`
-thrown from `/Users/kevinliu/claude-of-tanks/src/fx/effects.js:680` — an
-in-flight edit by the fx owner. All HUD views
-(`--views player_view,sniper_view,garage`) pass with exit 0 and zero console
-errors. Whoever integrates this round: re-run the full harness after the fx
-fix lands.
+- `SHOT_VIEWS.player_view` forces `penRatio: 1.3` while aiming at open
+  ground. With the split sight (fixed pale-green dispersion circle +
+  pen-colored center marker) a green center over empty terrain is harmless,
+  but `penRatio: null` would show the WoT-neutral white marker.
+- `SHOT_VIEWS.sniper_view` uses `reload: { t: 0, totalS: 6 }` (loaded), so the
+  sniper still shows the chambered-shell readout ("24 APFSDS") at center.
+  Setting `t: 2.1` instead would showcase the amber reload arc + "2.1 s"
+  countdown in sniper for the critic crop. Both render identically to arcade.
 
-## 3. Optional polish (not blocking)
+## 3. Optional icon-bake alignment (tools/genIcons.mjs — tools-owned)
 
-`src/main.js` `SHOT_VIEWS.player_view` forces `penRatio: 1.3` while aiming at
-open ground; with the new HUD, distance + pen-colored reticle read as "on
-target". Consider `penRatio: null` for player_view so the arcade shot shows
-the neutral white reticle like WoT over terrain (purely a screenshot-recipe
-choice; HUD handles both).
+The garage carousel / tech tree now use RUNTIME portraits (new
+`src/ui/tankThumbs.js`: offscreen WebGL render per vehicle, 3/4 side-profile,
+warm key + cool rim, cached data URLs). The baked `public/icons/<id>_angle.png`
+files remain only as the instant fallback during the first ~2 s of boot. If
+someone wants the fallback to match, regenerate the `_angle` icons with the
+same pose (azimuth −64° from hull forward, elevation 12°, nose screen-right);
+purely cosmetic.

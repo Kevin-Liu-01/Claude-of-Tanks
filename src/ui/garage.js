@@ -7,8 +7,12 @@ import { FONT_STACK, ensureFonts } from './fonts.js';
 import { flagSVG } from './flags.js';
 import { iconUrl } from './icons.js';
 import { createTechTree } from './techtree.js';
+import { ensureTankThumbs, getTankThumb } from './tankThumbs.js';
+// CAMO PICKER SECTION: swatches preview the REAL resolved pattern (scheme +
+// palette from materials.js) instead of hand-approximated CSS gradients.
+import { resolveCamoVisual } from '../vehicles/materials.js';
 
-const NATION_LABEL = { USA: 'USA', Germany: 'GER', USSR: 'USSR', Russia: 'RUS' };
+const NATION_LABEL = { USA: 'USA', Germany: 'GER', USSR: 'USSR', Russia: 'RUS', Sweden: 'SWE', Community: 'COM' };
 
 const SHELL_TYPE_COLOR = {
   AP: '#ffd27a', APCR: '#e8f4ff', HEAT: '#ff8a5c', HE: '#ffb02e', APFSDS: '#ffc46b',
@@ -116,7 +120,7 @@ const GARAGE_CSS = `
 .cot-garage .hint{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
   font-size:9.5px;letter-spacing:.14em;color:rgba(138,151,163,.7);text-transform:uppercase;}
 /* MAP-CONFIG WIRING: battlefield picker (4 maps + random) */
-.cot-maps{position:absolute;left:34px;top:168px;width:196px;pointer-events:auto;}
+.cot-maps{position:absolute;left:34px;top:168px;width:224px;pointer-events:auto;}
 .cot-maps .mtitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
   text-transform:uppercase;margin-bottom:7px;}
 .cot-map-card{display:flex;align-items:center;gap:9px;cursor:pointer;margin-bottom:6px;
@@ -126,8 +130,12 @@ const GARAGE_CSS = `
 .cot-map-card:hover{border-color:rgba(210,225,240,.5);}
 .cot-map-card.sel{border-color:#f0a030;border-left-color:#f0a030;
   background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
-.cot-map-card .mthumb{width:64px;height:36px;flex:0 0 auto;background-size:cover;
-  background-position:center;border:1px solid rgba(0,0,0,.55);}
+.cot-map-card .mthumb{width:86px;height:48px;flex:0 0 auto;background-size:112% auto;
+  background-position:center;border:1px solid rgba(0,0,0,.55);position:relative;
+  box-shadow:inset 0 0 0 1px rgba(235,243,250,.14);
+  transition:background-size .18s ease;}
+.cot-map-card:hover .mthumb{background-size:128% auto;}
+.cot-map-card.sel .mthumb{box-shadow:inset 0 0 0 1px rgba(240,176,74,.45);}
 .cot-map-card .mthumb.verdant{background-color:#3d5a2e;background-image:linear-gradient(135deg,#4c6b38,#2c421f);}
 .cot-map-card .mthumb.desert{background-color:#b3925c;background-image:linear-gradient(135deg,#c9a86e,#8f6f42);}
 .cot-map-card .mthumb.winter{background-color:#aeb9c4;background-image:linear-gradient(135deg,#cdd6de,#7f8d9b);}
@@ -149,19 +157,10 @@ const GARAGE_CSS = `
 .cot-camo-card:hover{border-color:rgba(210,225,240,.5);}
 .cot-camo-card.sel{border-color:#f0a030;border-bottom-color:#f0a030;
   background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
-.cot-camo-card .sw{height:22px;margin:0 auto 3px;border:1px solid rgba(0,0,0,.55);}
+.cot-camo-card .sw{height:22px;margin:0 auto 3px;border:1px solid rgba(0,0,0,.55);
+  position:relative;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(235,243,250,.10);}
+.cot-camo-card .sw canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
 .cot-camo-card .sw.auto{background:conic-gradient(#4c6b38 0 25%,#c9a86e 0 50%,#cdd6de 0 75%,#5c6066 0);}
-.cot-camo-card .sw.factory{background:linear-gradient(135deg,#5a6b46,#4b5320 60%,#6b6b47);}
-.cot-camo-card .sw.summer{background:
-  radial-gradient(circle at 28% 40%,#54402e 0 24%,transparent 25%),
-  radial-gradient(circle at 72% 66%,#26291f 0 22%,transparent 23%),#4d5940;}
-.cot-camo-card .sw.desert{background:
-  radial-gradient(circle at 62% 36%,#8a6f47 0 22%,transparent 23%),#a98f5f;}
-.cot-camo-card .sw.winter{background:
-  radial-gradient(circle at 30% 62%,#a8ad9f 0 20%,transparent 21%),
-  radial-gradient(circle at 70% 30%,#4b5320 0 12%,transparent 13%),#c4c8bf;}
-.cot-camo-card .sw.digital{background:
-  repeating-linear-gradient(90deg,#39492f 0 4px,#57604a 4px 8px,#6b5136 8px 11px,#2b2d26 11px 13px);}
 .cot-camo-card .cl{font-size:8px;font-weight:700;letter-spacing:.1em;color:#9fb0bf;
   text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cot-camo-card.sel .cl{color:#d8a04c;}
@@ -178,6 +177,176 @@ function ensureStyle(id, css) {
   }
 }
 
+
+// --- CAMO PICKER SECTION: swatch painter ------------------------------------
+// Paints a 64px-class preview tile of the ACTUAL resolved pattern — palette
+// and scheme come from materials.resolveCamoVisual, and each scheme branch
+// mirrors the corresponding paintCamo language at tile scale.
+function swRngFactory(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const swHex = (h) => {
+  const n = parseInt(String(h).replace('#', ''), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+};
+const swRgb = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+const swMix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+
+function swBlob(c, rng, x, y, r) {
+  const n = 8;
+  const px = [], py = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const rr = r * (0.62 + rng() * 0.6);
+    px.push(x + Math.cos(a) * rr);
+    py.push(y + Math.sin(a) * rr * 0.85);
+  }
+  c.beginPath();
+  c.moveTo((px[n - 1] + px[0]) / 2, (py[n - 1] + py[0]) / 2);
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    c.quadraticCurveTo(px[i], py[i], (px[i] + px[j]) / 2, (py[i] + py[j]) / 2);
+  }
+  c.closePath();
+}
+
+function swPoly(c, rng, x, y, r, sides) {
+  c.beginPath();
+  for (let i = 0; i < sides; i++) {
+    const a = (i / sides) * Math.PI * 2 + rng() * 0.6;
+    const rr = r * (0.55 + rng() * 0.55);
+    const vx = x + Math.cos(a) * rr, vy = y + Math.sin(a) * rr;
+    if (i === 0) c.moveTo(vx, vy); else c.lineTo(vx, vy);
+  }
+  c.closePath();
+}
+
+function paintCamoSwatch(canvas, spec, pid) {
+  const W = 128, H = 44;
+  canvas.width = W; canvas.height = H;
+  const c = canvas.getContext('2d');
+  let seed = 11;
+  for (const ch of `${spec.id}:${pid}`) seed = (seed * 31 + ch.charCodeAt(0)) | 0;
+  const rng = swRngFactory(seed);
+  const vis = resolveCamoVisual(spec, pid);
+  const base = swHex(vis.base || '#5a6b46');
+  const weather = swHex(vis.weather || vis.base || '#5a6b46');
+  const patches = (vis.patches || []).map(swHex);
+  const S = W; // tile-scale reference dimension (matches paintCamo fractions)
+  c.fillStyle = swRgb(base);
+  c.fillRect(0, 0, W, H);
+  for (let i = 0; i < 10; i++) { // weathered tonal drift
+    const x = rng() * W, y = rng() * H, r = S * (0.06 + rng() * 0.12);
+    const g = c.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, swRgb(swMix(base, weather, 0.3 + rng() * 0.4), 0.5));
+    g.addColorStop(1, swRgb(base, 0));
+    c.fillStyle = g;
+    c.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  const scheme = vis.scheme || 'solid';
+  if (scheme === 'nato' && patches.length) {
+    const black = patches[0], brown = patches[1] || patches[0];
+    for (let i = 0; i < 6; i++) {
+      const r = S * (i < 2 ? 0.085 : 0.04) * (0.8 + rng() * 0.5);
+      swBlob(c, rng, rng() * W, rng() * H, r);
+      c.fillStyle = swRgb(brown, 0.96);
+      c.fill();
+    }
+    for (let i = 0; i < 5; i++) {
+      const r = S * (i < 2 ? 0.06 : 0.032) * (0.8 + rng() * 0.5);
+      swBlob(c, rng, rng() * W, rng() * H, r);
+      c.fillStyle = swRgb(black, 0.94);
+      c.fill();
+    }
+  } else if (scheme === 'desert' && patches.length) {
+    const dark = patches[0], mid = patches[1] || patches[0];
+    const pale = patches[2] || swMix(base, [255, 250, 235], 0.35);
+    for (let i = 0; i < 3; i++) { // wind bands
+      const y0 = rng() * H;
+      c.strokeStyle = swRgb(swMix(rng() < 0.5 ? mid : pale, base, 0.45), 0.3);
+      c.lineWidth = S * (0.05 + rng() * 0.05);
+      c.beginPath();
+      c.moveTo(-4, y0);
+      c.quadraticCurveTo(W / 2, y0 + (rng() - 0.5) * H * 0.8, W + 4, y0 + (rng() - 0.5) * H);
+      c.stroke();
+    }
+    for (let i = 0; i < 5; i++) {
+      swPoly(c, rng, rng() * W, rng() * H, S * (0.05 + rng() * 0.05), 7);
+      c.fillStyle = swRgb(i % 2 ? mid : dark, 0.92);
+      c.fill();
+    }
+    for (let i = 0; i < 8; i++) {
+      swPoly(c, rng, rng() * W, rng() * H, S * (0.012 + rng() * 0.02), 5);
+      c.fillStyle = swRgb([dark, mid, pale][(rng() * 3) | 0], 0.85);
+      c.fill();
+    }
+  } else if (scheme === 'winter') {
+    const under = patches.length ? patches[0] : [70, 80, 55];
+    for (let i = 0; i < 40; i++) { // brushed whitewash strokes
+      const x0 = rng() * W, y0 = rng() * H, len = S * (0.05 + rng() * 0.1);
+      const w2 = S * (0.01 + rng() * 0.02);
+      c.strokeStyle = `rgba(242,245,239,${0.25 + rng() * 0.2})`;
+      c.lineWidth = w2;
+      c.beginPath();
+      c.moveTo(x0, y0);
+      c.quadraticCurveTo(x0 + (rng() - 0.5) * w2 * 3, y0 + len * 0.5, x0 + (rng() - 0.5) * w2 * 4, y0 + len);
+      c.stroke();
+    }
+    for (let i = 0; i < 8; i++) { // worn-through factory paint
+      swBlob(c, rng, rng() * W, rng() * H, S * (0.012 + rng() * 0.025));
+      c.fillStyle = swRgb(under, 0.3 + rng() * 0.35);
+      c.fill();
+    }
+  } else if ((scheme === 'digital' || scheme === 'fleck') && patches.length) {
+    if (scheme === 'digital') {
+      const cell = 4;
+      const cols = [base, ...patches];
+      for (let y = 0; y < H; y += cell) {
+        for (let x = 0; x < W; x += cell) {
+          if (rng() < 0.55) continue; // let base show through in runs
+          c.fillStyle = swRgb(cols[(rng() * cols.length) | 0], 0.9);
+          c.fillRect(x, y, cell * (1 + ((rng() * 2) | 0)), cell);
+        }
+      }
+    } else {
+      for (let i = 0; i < 130; i++) { // flecktarn dot field
+        const col = patches[(rng() * patches.length) | 0];
+        c.fillStyle = swRgb(col, 0.85);
+        c.beginPath();
+        c.arc(rng() * W, rng() * H, S * 0.004 * (0.8 + rng() * 1.6), 0, Math.PI * 2);
+        c.fill();
+      }
+    }
+  } else if ((scheme === 'stripes' || scheme === 'ambush') && patches.length) {
+    for (let i = 0; i < 6; i++) {
+      const col = swMix(patches[i % patches.length], base, 0.1);
+      swBlob(c, rng, rng() * W, rng() * H, S * (0.04 + rng() * 0.05));
+      c.fillStyle = swRgb(col, 0.85);
+      c.fill();
+    }
+    if (scheme === 'ambush') {
+      for (let i = 0; i < 90; i++) {
+        c.fillStyle = swRgb([base, ...patches][(rng() * (patches.length + 1)) | 0], 0.9);
+        c.beginPath();
+        c.arc(rng() * W, rng() * H, 0.8 + rng() * 0.9, 0, Math.PI * 2);
+        c.fill();
+      }
+    }
+  }
+  // faint top-light so the tile reads as painted steel, not a flat chip
+  const g = c.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, 'rgba(255,255,255,0.08)');
+  g.addColorStop(0.5, 'rgba(0,0,0,0)');
+  g.addColorStop(1, 'rgba(0,0,0,0.14)');
+  c.fillStyle = g;
+  c.fillRect(0, 0, W, H);
+}
+// --- END CAMO PICKER SECTION (swatch painter) --------------------------------
 
 function frontArmorMm(plates, keys) {
   if (!plates || !plates.length) return null;
@@ -289,7 +458,9 @@ export function createGarage(opts) {
     for (const pid of camoOpts.patterns) {
       const card = document.createElement('div');
       card.className = 'cot-camo-card';
-      card.innerHTML = `<div class="sw ${pid}"></div><div class="cl"></div>`;
+      card.innerHTML = pid === 'auto'
+        ? `<div class="sw auto"></div><div class="cl"></div>`
+        : `<div class="sw"><canvas></canvas></div><div class="cl"></div>`;
       card.querySelector('.cl').textContent =
         (camoOpts.label && camoOpts.label[pid]) || pid;
       card.addEventListener('click', () => {
@@ -306,10 +477,23 @@ export function createGarage(opts) {
     note.textContent = 'Pattern grants +3.5% concealment';
     camosEl.appendChild(note);
   }
+  let swatchesFor = null; // spec id the swatches are currently painted for
   function refreshCamoSel() {
     if (!camoOpts || !selectedId) return;
     const cur = camoOpts.get(selectedId);
     for (const [pid, card] of camoCardById) card.classList.toggle('sel', pid === cur);
+    // repaint swatch tiles for THIS tank (factory palette + nation digital
+    // differ per vehicle — the preview must show what the hull will wear)
+    if (swatchesFor !== selectedId) {
+      const spec = specById.get(selectedId);
+      if (spec) {
+        for (const [pid, card] of camoCardById) {
+          const cv = card.querySelector('.sw canvas');
+          if (cv) paintCamoSwatch(cv, spec, pid);
+        }
+        swatchesFor = selectedId;
+      }
+    }
   }
   // --- END CAMO PICKER SECTION ---------------------------------------------
 
@@ -329,10 +513,12 @@ export function createGarage(opts) {
   for (const s of specs) {
     const card = document.createElement('div');
     card.className = 'cot-card';
+    // portrait: runtime-rendered 3/4 side-profile (tankThumbs.js) with the
+    // baked hero icon as the instant fallback while portraits render
     card.innerHTML =
       `<span class="era">${s.era === 'ww2' ? 'WWII' : 'MODERN'}</span>` +
       `<span class="flag">${flagSVG(s.nation, s.era, 18, 12)}<i>${NATION_LABEL[s.nation] || s.nation}</i></span>` +
-      `<img class="ti" src="${iconUrl(s.id, 'angle')}" alt="">` +
+      `<img class="ti" data-cot-thumb="${s.id}" src="${getTankThumb(s.id) || iconUrl(s.id, 'angle')}" alt="">` +
       `<div class="nm"></div>` +
       `<div class="cls">${s.class}</div>`;
     card.querySelector('.nm').textContent = s.name;
@@ -343,6 +529,7 @@ export function createGarage(opts) {
     cardsEl.appendChild(card);
     cardById.set(s.id, card);
   }
+  ensureTankThumbs(specs); // renders once, upgrades every data-cot-thumb img
 
   function statBar(label, valueText, frac) {
     const pct = Math.max(2, Math.min(100, frac * 100)).toFixed(1);
@@ -377,8 +564,16 @@ export function createGarage(opts) {
       `<div class="armorline"><span>Hull front</span><b>${hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;'}</b></div>` +
       `<div class="armorline"><span>Turret front</span><b>${turMm != null ? `${Math.round(turMm)} mm` : '&mdash;'}</b></div>` +
       `<div class="armorline"><span>Gun</span><b>${spec.gun.caliberMm} mm</b></div>` +
-      `<div class="armorline"><span>Depression</span><b>&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;</b></div>`;
+      `<div class="armorline"><span>Depression</span><b>&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;</b></div>` +
+      (spec.community
+        ? `<div class="sep"></div><div class="armorline"><span>Community model</span><b class="cr"></b></div>`
+        : '');
     statsEl.querySelector('h3').textContent = spec.name;
+    if (spec.community) {
+      const cr = statsEl.querySelector('.cr');
+      cr.textContent = `${spec.community.author} · ${spec.community.license}`;
+      cr.title = spec.community.source;
+    }
   }
 
   function applySelection(specId) {
@@ -428,7 +623,8 @@ export function createGarage(opts) {
   root.querySelector('.cot-tech').addEventListener('click', () => {
     emit('ui:click', {});
     const sel = specById.get(selectedId);
-    techtree.show(sel ? NATION_TAB[sel.nation] || 'usa' : 'usa');
+    // COMMUNITY TANKS live on their own tech-tree tab
+    techtree.show(sel ? (sel.community ? 'community' : NATION_TAB[sel.nation] || 'usa') : 'usa');
   });
 
   function onKey(e) {

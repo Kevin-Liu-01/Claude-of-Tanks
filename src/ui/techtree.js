@@ -7,19 +7,10 @@
 
 import { FONT_STACK, ensureFonts } from './fonts.js';
 import { flagSVG } from './flags.js';
-import { drawSilhouette } from './silhouette.js';
 import { iconUrl } from './icons.js';
+import { getTankThumb } from './tankThumbs.js';
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-
-// pseudo-dims for placeholder silhouettes (real nodes use their real spec)
-const DIMS = {
-  light: { hullLengthM: 4.2, overallLengthM: 4.7, heightM: 2.2 },
-  medium: { hullLengthM: 6.0, overallLengthM: 7.7, heightM: 2.6 },
-  heavy: { hullLengthM: 6.6, overallLengthM: 8.7, heightM: 3.0 },
-  mbt: { hullLengthM: 7.9, overallLengthM: 9.8, heightM: 2.4 },
-  td: { hullLengthM: 6.2, overallLengthM: 8.8, heightM: 2.3 },
-};
 
 const CLASS_LABEL = {
   light: 'Light tank', medium: 'Medium tank', heavy: 'Heavy tank',
@@ -44,8 +35,10 @@ const TABS = [
   {
     id: 'usa', label: 'USA', flags: [['USA', 'modern']],
     nodes: [
-      n('m2', 'M2 Light Tank', 2, 'light', 'ww2'),
-      n('m3lee', 'M3 Lee', 4, 'medium', 'ww2', { from: ['m2'] }),
+      n('t1c', 'T1 Cunningham', 1, 'light', 'ww2'),
+      n('m2', 'M2 Light Tank', 2, 'light', 'ww2', { from: ['t1c'] }),
+      n('m3stuart', 'M3 Stuart', 3, 'light', 'ww2', { from: ['m2'] }),
+      n('m3lee', 'M3 Lee', 4, 'medium', 'ww2', { from: ['m3stuart'] }),
       n('m4', 'M4 Sherman', 5, 'medium', 'ww2', { from: ['m3lee'] }),
       n('e8', 'M4A3E8 Sherman', 6, 'medium', 'ww2', { spec: 'm4a3e8', from: ['m4'] }),
       n('t29', 'T29', 7, 'heavy', 'ww2', { from: ['e8'] }),
@@ -61,26 +54,32 @@ const TABS = [
   {
     id: 'germany', label: 'Germany', flags: [['Germany', 'ww2'], ['Germany', 'modern']],
     nodes: [
-      n('pz2', 'Pz.Kpfw. II', 2, 'light', 'ww2'),
-      n('pz3', 'Pz.Kpfw. III', 4, 'medium', 'ww2', { from: ['pz2'] }),
+      n('ltraktor', 'Leichttraktor', 1, 'light', 'ww2'),
+      n('pz2', 'Pz.Kpfw. II', 2, 'light', 'ww2', { from: ['ltraktor'] }),
+      n('pz38t', 'Pz.Kpfw. 38 (t)', 3, 'light', 'ww2', { from: ['pz2'] }),
+      n('pz3', 'Pz.Kpfw. III', 4, 'medium', 'ww2', { from: ['pz38t'] }),
       n('pz4', 'Pz.Kpfw. IV Ausf. H', 5, 'medium', 'ww2', { from: ['pz3'] }),
       n('panther', 'Panther Ausf. G', 7, 'medium', 'ww2', { spec: 'panther_g', from: ['pz4'] }),
-      n('tiger', 'Tiger I', 7, 'heavy', 'ww2', { spec: 'tiger1', from: ['pz4'] }),
+      n('vk3601', 'VK 36.01 (H)', 6, 'heavy', 'ww2', { from: ['pz4'] }),
+      n('tiger', 'Tiger I', 7, 'heavy', 'ww2', { spec: 'tiger1', from: ['vk3601'] }),
       n('tiger2', 'Tiger II', 8, 'heavy', 'ww2', { spec: 'tiger2', from: ['tiger'] }),
       n('maus', 'Maus', 10, 'heavy', 'ww2', { from: ['tiger2'] }),
       n('leo1', 'Leopard 1', 9, 'mbt', 'modern', { from: ['panther'] }),
       n('leo2', 'Leopard 2A7', 10, 'mbt', 'modern', { spec: 'leo2a7', from: ['leo1'] }),
       n('stug', 'StuG III Ausf. G', 5, 'td', 'ww2', { from: ['pz3'] }),
-      n('jagdpanther', 'Jagdpanther', 7, 'td', 'ww2', { spec: 'jagdpanther', from: ['stug'] }),
+      n('jpz4', 'Jagdpanzer IV', 6, 'td', 'ww2', { from: ['stug'] }),
+      n('jagdpanther', 'Jagdpanther', 7, 'td', 'ww2', { spec: 'jagdpanther', from: ['jpz4'] }),
       n('jagdtiger', 'Jagdtiger', 9, 'td', 'ww2', { from: ['jagdpanther'] }),
     ],
   },
   {
     id: 'ussr', label: 'USSR · Russia', flags: [['USSR', 'ww2'], ['Russia', 'modern']],
     nodes: [
-      n('t26', 'T-26', 2, 'light', 'ww2'),
+      n('ms1', 'MS-1', 1, 'light', 'ww2'),
+      n('t26', 'T-26', 2, 'light', 'ww2', { from: ['ms1'] }),
       n('bt7', 'BT-7', 3, 'light', 'ww2', { from: ['t26'] }),
-      n('t34', 'T-34', 5, 'medium', 'ww2', { from: ['bt7'] }),
+      n('t28', 'T-28', 4, 'medium', 'ww2', { from: ['bt7'] }),
+      n('t34', 'T-34', 5, 'medium', 'ww2', { from: ['t28'] }),
       n('t3485', 'T-34-85', 6, 'medium', 'ww2', { spec: 't34_85', from: ['t34'] }),
       n('t54', 'T-54', 8, 'medium', 'ww2', { spec: 't54', from: ['t3485'] }),
       n('t72', 'T-72B', 9, 'mbt', 'modern', { from: ['t54'] }),
@@ -184,6 +183,12 @@ const TT_CSS = `
 .cot-tt-lane::after{content:'';display:inline-block;vertical-align:middle;
   width:220px;height:1px;margin-left:14px;
   background:linear-gradient(90deg,rgba(146,164,180,.25),rgba(146,164,180,0));}
+/* COMMUNITY TANKS: sourced-asset cards carry a mandatory author credit line */
+.cot-tt-node.comm{height:120px;}
+.cot-tt-node .credit{font-size:7.5px;font-weight:600;letter-spacing:.06em;
+  color:#7f96a8;text-align:center;margin-top:2px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;}
+.cot-tt-node .credit b{color:#a8bccc;font-weight:700;}
 `;
 
 function ensureStyle(id, css) {
@@ -195,55 +200,158 @@ function ensureStyle(id, css) {
   }
 }
 
-// Casemate tank-destroyer profile (StuG/SU/Jagd-): low hull, sloped fixed
-// superstructure, long gun — drawSilhouette has no turretless class, so ghost
-// TD nodes draw their own here.
-function drawTdSilhouette(canvas, dims, opts = {}) {
-  const W = opts.w || 118, H = opts.h || 36;
-  canvas.width = W; canvas.height = H;
+// ---------------------------------------------------------------------------
+// Ghost-node silhouette painters — parametric side profiles driven by a
+// per-vehicle proportion table (GHOSTS below) instead of one generic hull
+// template, so locked research nodes read as the vehicles they name.
+// Front faces RIGHT. All proportions in meters, auto-scaled to the canvas.
+//
+// Turreted profile fields:
+//   L overall length (incl gun) · HL hull length · H total height ·
+//   hullH ground->hull-roof · wheels/wheelR running gear (skirt: side skirts)
+//   glacis/rear hull roof edge setbacks · tPos turret center (0 rear..1 front)
+//   tLen/tH turret size · taper turret side rake · dome rounded turret ·
+//   cupola commander bump · gunLen from turret front · gunTh barrel Ø ·
+//   brake muzzle brake block · gunUp barrel height in the turret (0..1)
+// Casemate profile ({td:true}): caseX0/caseX1 superstructure extent (hull
+//   fractions), caseH height over hull roof, front/rear rake fractions.
+// ---------------------------------------------------------------------------
+function drawGhostTank(canvas, p, opts = {}) {
+  const W = opts.w || 118, Hpx = opts.h || 36;
+  canvas.width = W; canvas.height = Hpx;
   const c = canvas.getContext('2d');
-  c.clearRect(0, 0, W, H);
-  const overall = Math.max(dims.overallLengthM, dims.hullLengthM);
-  const s = (W - 8) / overall;
-  const hullLen = dims.hullLengthM * s;
-  const x0 = 4 + (W - 8 - overall * s) / 2;
-  const groundY = H - 2;
-  const wheelR = Math.max(2.2, dims.heightM * 0.15 * s);
-  const hullH = Math.max(4.5, dims.heightM * 0.30 * s);
-  const hullTop = groundY - wheelR - hullH;
-  const caseH = Math.max(4, dims.heightM * 0.34 * s);
-  c.fillStyle = opts.color || 'rgba(206,220,232,0.88)';
+  c.clearRect(0, 0, W, Hpx);
+  c.fillStyle = opts.color || 'rgba(120,134,146,0.55)';
+  const s = Math.min((W - 6) / p.L, (Hpx - 3) / p.H);
+  const groundY = Hpx - 1.5;
+  const x0 = (W - p.L * s) / 2; // hull rear; the gun overhangs to the right
+  const hullL = p.HL * s;
+  const wheelR = (p.wheelR ?? 0.34) * s;
+  const trackTop = groundY - wheelR * 2;
+  const hullTop = groundY - p.hullH * s;
   // running gear
-  const nW = 6;
-  for (let i = 0; i < nW; i++) {
+  if (p.skirt) {
+    c.fillRect(x0 + 1, trackTop - 1, hullL - 2, groundY - trackTop + 1);
+  } else {
+    const n = p.wheels ?? 6;
+    const span = hullL - wheelR * 2;
+    for (let i = 0; i < n; i++) {
+      const wx = x0 + wheelR + (n === 1 ? span / 2 : (i / (n - 1)) * span);
+      c.beginPath();
+      c.arc(wx, groundY - wheelR, wheelR, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.fillRect(x0 + wheelR * 0.5, trackTop - 1.2, hullL - wheelR, 1.4); // return run
+  }
+  // hull: sloped glacis front, slightly raked rear plate
+  const g = (p.glacis ?? 0.5) * s, rSet = (p.rear ?? 0.25) * s;
+  const beltY = groundY - wheelR - 0.8; // sponson/track-guard line
+  c.beginPath();
+  c.moveTo(x0, beltY);
+  c.lineTo(x0 + rSet, hullTop);
+  c.lineTo(x0 + hullL - g, hullTop);
+  c.lineTo(x0 + hullL, hullTop + (p.nose ?? 0.42) * (beltY - hullTop));
+  c.lineTo(x0 + hullL, beltY);
+  c.closePath();
+  c.fill();
+  if (p.td) {
+    // fixed casemate superstructure
+    const cx0 = x0 + hullL * (p.caseX0 ?? 0.10), cx1 = x0 + hullL * (p.caseX1 ?? 0.86);
+    const caseH = p.caseH * s;
     c.beginPath();
-    c.arc(x0 + wheelR + ((i + 0.5) / nW) * (hullLen - wheelR * 2), groundY - wheelR, wheelR, 0, Math.PI * 2);
+    c.moveTo(cx0, hullTop);
+    c.lineTo(cx0 + (cx1 - cx0) * (p.caseRear ?? 0.16), hullTop - caseH);
+    c.lineTo(cx1 - (cx1 - cx0) * (p.caseFront ?? 0.26), hullTop - caseH);
+    c.lineTo(cx1, hullTop);
+    c.closePath();
+    c.fill();
+    const gy = hullTop - caseH * (p.gunUp ?? 0.5);
+    const gth = (p.gunTh ?? 0.24) * s * 2.2;
+    c.fillRect(cx1 - 4, gy - gth * 1.4, 4.5, gth * 2.8); // mantlet block
+    c.fillRect(cx1, gy - gth / 2, x0 + p.L * s - cx1, gth);
+    if (p.brake) c.fillRect(x0 + p.L * s - 3.2, gy - gth * 1.1, 3.2, gth * 2.2);
+    return;
+  }
+  // turret
+  const tcx = x0 + (p.tPos ?? 0.55) * hullL;
+  const half = (p.tLen * s) / 2, tH = p.tH * s;
+  if (p.dome) {
+    c.beginPath();
+    c.ellipse(tcx, hullTop + 0.5, half, tH, 0, Math.PI, 0);
+    c.fill();
+  } else {
+    const taper = (p.taper ?? 0.25) * s;
+    c.beginPath();
+    c.moveTo(tcx - half, hullTop);
+    c.lineTo(tcx - half + taper, hullTop - tH);
+    c.lineTo(tcx + half - taper, hullTop - tH);
+    c.lineTo(tcx + half, hullTop);
+    c.closePath();
     c.fill();
   }
-  c.fillRect(x0 + wheelR * 0.4, groundY - wheelR * 2 - 1, hullLen - wheelR * 0.8, 1.6);
-  // low hull
-  c.beginPath();
-  c.moveTo(x0, hullTop + hullH * 0.35);
-  c.lineTo(x0 + hullLen * 0.12, hullTop);
-  c.lineTo(x0 + hullLen, hullTop);
-  c.lineTo(x0 + hullLen, hullTop + hullH);
-  c.lineTo(x0, hullTop + hullH);
-  c.closePath();
-  c.fill();
-  // sloped casemate superstructure (front raked hard, rear stepped)
-  const cx0 = x0 + hullLen * 0.10, cx1 = x0 + hullLen * 0.86;
-  c.beginPath();
-  c.moveTo(cx0, hullTop);
-  c.lineTo(cx0 + (cx1 - cx0) * 0.30, hullTop - caseH);
-  c.lineTo(cx1 - (cx1 - cx0) * 0.10, hullTop - caseH);
-  c.lineTo(cx1, hullTop);
-  c.closePath();
-  c.fill();
-  // hull-mounted gun with a small mantlet block
-  const gy = hullTop - caseH * 0.42;
-  c.fillRect(cx0 + (cx1 - cx0) * 0.52, gy - 2.4, (cx1 - cx0) * 0.2, 4.8);
-  c.fillRect(cx0 + (cx1 - cx0) * 0.6, gy - 1.0, x0 + overall * s - cx0 - (cx1 - cx0) * 0.6, 2.0);
+  if (p.cupola) c.fillRect(tcx - half * 0.55, hullTop - tH - 1.8, half * 0.55, 1.8);
+  // gun from the turret front, with mantlet block + optional muzzle brake
+  const gy = hullTop - tH * (p.gunUp ?? 0.55);
+  const gth = Math.max(1.2, (p.gunTh ?? 0.22) * s * 2.2);
+  const tipX = x0 + p.L * s;
+  c.fillRect(tcx + half - 3.5, gy - gth * 1.3, 4.5, gth * 2.6); // mantlet
+  c.fillRect(tcx + half, gy - gth / 2, tipX - (tcx + half), gth);
+  if (p.brake) c.fillRect(tipX - 3.2, gy - gth * 1.1, 3.2, gth * 2.2);
+  if (p.sponson) { // M3 Lee hull sponson gun
+    c.fillRect(x0 + hullL - 2, hullTop + (beltY - hullTop) * 0.45 - 1, (p.L - p.HL) * s * 0.55 + 2, 2);
+  }
 }
+
+// per-vehicle proportion table (side-profile caricatures of the real tanks)
+const GHOSTS = {
+  // --- USA ---
+  t1c: { L: 4.6, HL: 4.4, H: 2.7, hullH: 1.6, wheels: 4, wheelR: 0.26, tPos: 0.5, tLen: 1.5, tH: 0.9, cupola: true, gunLen: 1, gunTh: 0.14 },
+  m2: { L: 4.8, HL: 4.4, H: 2.6, hullH: 1.55, wheels: 4, wheelR: 0.30, tPos: 0.52, tLen: 1.6, tH: 0.85, gunTh: 0.14 },
+  m3stuart: { L: 5.0, HL: 4.5, H: 2.5, hullH: 1.5, wheels: 4, wheelR: 0.31, tPos: 0.5, tLen: 1.7, tH: 0.9, taper: 0.32, gunTh: 0.16 },
+  m3lee: { L: 6.4, HL: 5.6, H: 3.1, hullH: 2.2, wheels: 6, wheelR: 0.3, tPos: 0.58, tLen: 1.9, tH: 0.85, cupola: true, sponson: true, gunTh: 0.16 },
+  m4: { L: 7.0, HL: 5.9, H: 2.9, hullH: 2.0, wheels: 6, wheelR: 0.3, glacis: 0.8, tPos: 0.58, tLen: 2.2, tH: 0.95, dome: true, gunTh: 0.2 },
+  t29: { L: 10.4, HL: 7.6, H: 3.2, hullH: 1.9, wheels: 7, wheelR: 0.32, tPos: 0.55, tLen: 3.6, tH: 1.25, taper: 0.5, cupola: true, brake: true, gunTh: 0.26 },
+  m103: { L: 11.3, HL: 7.4, H: 2.9, hullH: 1.7, wheels: 7, wheelR: 0.32, tPos: 0.55, tLen: 3.8, tH: 1.15, dome: true, brake: true, gunTh: 0.28 },
+  m26: { L: 8.6, HL: 6.3, H: 2.8, hullH: 1.85, wheels: 6, wheelR: 0.33, tPos: 0.6, tLen: 2.6, tH: 1.0, taper: 0.4, brake: true, gunTh: 0.22 },
+  m60: { L: 9.4, HL: 6.9, H: 2.6, hullH: 1.6, wheels: 6, wheelR: 0.34, glacis: 1.1, tPos: 0.55, tLen: 3.2, tH: 1.1, dome: true, gunTh: 0.24 },
+  m10: { L: 6.8, HL: 5.9, H: 2.5, hullH: 1.7, wheels: 5, wheelR: 0.31, glacis: 0.9, tPos: 0.55, tLen: 2.4, tH: 0.75, taper: 0.5, gunTh: 0.19 },
+  hellcat: { L: 6.7, HL: 5.4, H: 2.3, hullH: 1.5, wheels: 5, wheelR: 0.31, glacis: 0.8, tPos: 0.55, tLen: 2.3, tH: 0.7, taper: 0.45, gunTh: 0.19 },
+  m36: { L: 7.5, HL: 5.9, H: 2.5, hullH: 1.7, wheels: 5, wheelR: 0.31, glacis: 0.9, tPos: 0.55, tLen: 2.5, tH: 0.8, taper: 0.45, brake: true, gunTh: 0.21 },
+  // --- Germany ---
+  ltraktor: { L: 4.4, HL: 4.2, H: 2.6, hullH: 1.7, wheels: 4, wheelR: 0.24, tPos: 0.3, tLen: 1.4, tH: 0.85, gunTh: 0.13 },
+  pz2: { L: 4.9, HL: 4.6, H: 2.2, hullH: 1.4, wheels: 5, wheelR: 0.26, tPos: 0.55, tLen: 1.5, tH: 0.8, gunTh: 0.13 },
+  pz38t: { L: 4.8, HL: 4.5, H: 2.4, hullH: 1.5, wheels: 4, wheelR: 0.32, tPos: 0.52, tLen: 1.6, tH: 0.85, cupola: true, gunTh: 0.15 },
+  pz3: { L: 6.3, HL: 5.5, H: 2.5, hullH: 1.6, wheels: 6, wheelR: 0.28, tPos: 0.55, tLen: 2.0, tH: 0.9, cupola: true, gunTh: 0.17 },
+  pz4: { L: 7.0, HL: 5.9, H: 2.7, hullH: 1.7, wheels: 8, wheelR: 0.24, tPos: 0.56, tLen: 2.2, tH: 0.95, cupola: true, brake: true, gunTh: 0.18 },
+  vk3601: { L: 8.0, HL: 6.2, H: 2.7, hullH: 1.75, wheels: 7, wheelR: 0.34, glacis: 0.3, tPos: 0.55, tLen: 2.5, tH: 0.95, taper: 0.2, cupola: true, brake: true, gunTh: 0.2 },
+  tiger2: { L: 10.3, HL: 7.4, H: 3.0, hullH: 1.85, wheels: 8, wheelR: 0.34, glacis: 1.3, tPos: 0.56, tLen: 3.1, tH: 1.1, taper: 0.55, brake: true, gunTh: 0.23 },
+  maus: { L: 10.1, HL: 9.0, H: 3.6, hullH: 2.4, skirt: true, glacis: 1.2, tPos: 0.42, tLen: 3.6, tH: 1.2, taper: 0.5, cupola: true, gunTh: 0.3 },
+  leo1: { L: 9.5, HL: 7.1, H: 2.6, hullH: 1.55, wheels: 7, wheelR: 0.33, glacis: 1.3, tPos: 0.55, tLen: 2.9, tH: 0.95, dome: true, gunTh: 0.2 },
+  stug: { L: 6.8, HL: 5.9, H: 2.15, hullH: 1.45, wheels: 6, wheelR: 0.28, td: true, caseH: 0.7, caseX0: 0.06, caseX1: 0.8, caseFront: 0.3, brake: true, gunTh: 0.18 },
+  jagdpanther: { L: 9.9, HL: 6.9, H: 2.7, hullH: 1.6, wheels: 8, wheelR: 0.34, td: true, caseH: 1.1, caseX0: 0.05, caseX1: 0.9, caseFront: 0.38, caseRear: 0.2, gunUp: 0.55, brake: true, gunTh: 0.22 },
+  jagdtiger: { L: 10.7, HL: 7.4, H: 3.1, hullH: 1.85, wheels: 8, wheelR: 0.34, td: true, caseH: 1.25, caseX0: 0.2, caseX1: 0.82, caseFront: 0.2, caseRear: 0.14, gunUp: 0.5, brake: true, gunTh: 0.26 },
+  // --- USSR ---
+  ms1: { L: 4.0, HL: 3.5, H: 2.6, hullH: 1.6, wheels: 4, wheelR: 0.24, tPos: 0.42, tLen: 1.3, tH: 0.9, gunTh: 0.13 },
+  t26: { L: 4.9, HL: 4.6, H: 2.4, hullH: 1.5, wheels: 4, wheelR: 0.28, tPos: 0.5, tLen: 1.6, tH: 0.9, gunTh: 0.15 },
+  bt7: { L: 5.7, HL: 5.6, H: 2.4, hullH: 1.5, wheels: 4, wheelR: 0.42, glacis: 1.0, tPos: 0.52, tLen: 1.8, tH: 0.85, taper: 0.4, gunTh: 0.15 },
+  t28: { L: 7.4, HL: 7.2, H: 2.9, hullH: 1.9, wheels: 6, wheelR: 0.28, tPos: 0.68, tLen: 2.3, tH: 1.0, cupola: true, gunTh: 0.17 },
+  t34: { L: 6.7, HL: 6.1, H: 2.5, hullH: 1.6, wheels: 5, wheelR: 0.4, glacis: 1.5, tPos: 0.62, tLen: 2.2, tH: 0.85, dome: true, gunTh: 0.19 },
+  kv1: { L: 6.9, HL: 6.7, H: 2.8, hullH: 1.9, wheels: 6, wheelR: 0.3, tPos: 0.52, tLen: 2.3, tH: 1.0, cupola: true, gunTh: 0.19 },
+  is3: { L: 9.9, HL: 6.8, H: 2.5, hullH: 1.6, wheels: 6, wheelR: 0.32, glacis: 1.4, tPos: 0.6, tLen: 3.0, tH: 0.95, dome: true, brake: true, gunTh: 0.26 },
+  t72: { L: 9.2, HL: 6.6, H: 2.3, hullH: 1.5, wheels: 6, wheelR: 0.36, glacis: 1.4, tPos: 0.55, tLen: 2.6, tH: 0.8, dome: true, gunTh: 0.24 },
+  su76: { L: 5.2, HL: 4.9, H: 2.2, hullH: 1.4, wheels: 5, wheelR: 0.28, td: true, caseH: 0.75, caseX0: 0.3, caseX1: 0.95, caseFront: 0.15, caseRear: 0.25, gunTh: 0.16 },
+  su85: { L: 8.2, HL: 6.1, H: 2.45, hullH: 1.55, wheels: 5, wheelR: 0.4, td: true, caseH: 0.85, caseX0: 0.04, caseX1: 0.78, caseFront: 0.34, caseRear: 0.22, gunTh: 0.19 },
+  isu152: { L: 9.0, HL: 6.8, H: 2.9, hullH: 1.75, wheels: 6, wheelR: 0.33, td: true, caseH: 1.15, caseX0: 0.06, caseX1: 0.82, caseFront: 0.24, caseRear: 0.16, gunUp: 0.45, brake: true, gunTh: 0.34 },
+};
+
+// class fallbacks for any ghost without a table entry
+const GHOST_DEFAULT = {
+  light: { L: 5.0, HL: 4.6, H: 2.4, hullH: 1.5, wheels: 4, wheelR: 0.3, tPos: 0.52, tLen: 1.7, tH: 0.85, gunTh: 0.15 },
+  medium: { L: 7.6, HL: 6.2, H: 2.7, hullH: 1.75, wheels: 6, wheelR: 0.31, tPos: 0.57, tLen: 2.4, tH: 0.95, gunTh: 0.2 },
+  heavy: { L: 9.4, HL: 7.0, H: 3.0, hullH: 1.9, wheels: 7, wheelR: 0.33, tPos: 0.55, tLen: 3.0, tH: 1.1, cupola: true, brake: true, gunTh: 0.24 },
+  mbt: { L: 9.6, HL: 7.0, H: 2.5, hullH: 1.55, wheels: 6, wheelR: 0.34, glacis: 1.2, tPos: 0.55, tLen: 3.0, tH: 1.0, dome: true, gunTh: 0.23 },
+  td: { L: 8.8, HL: 6.4, H: 2.4, hullH: 1.55, wheels: 6, wheelR: 0.32, td: true, caseH: 0.95, brake: true, gunTh: 0.22 },
+};
 
 /**
  * Create the tech tree screen. Appends its root to document.body (hidden).
@@ -259,6 +367,27 @@ export function createTechTree(opts) {
 
   const specById = new Map();
   for (const s of specs || []) specById.set(s.id, s);
+
+  // COMMUNITY TANKS: sourced, permissively-licensed vehicles get their own
+  // tab, built from the shipped specs (spec.community = author/source/license
+  // — the on-card credit satisfies CC-BY attribution alongside
+  // docs/ATTRIBUTION.md).
+  const COMM_TIER = {
+    leichttraktor: 1, pziii_konserwa: 3, newc_pziii: 4, t34_85_cad: 6,
+    newc_tiger: 7, is3: 8, recon_tank: 8, q_heavy: 9, strv103: 9,
+  };
+  const commSpecs = (specs || []).filter((sp) => sp.community);
+  const tabs = TABS.slice();
+  if (commSpecs.length) {
+    tabs.push({
+      id: 'community', label: 'Community', flags: [['Community', 'modern']],
+      nodes: commSpecs.map((sp) => ({
+        ...n(`c_${sp.id}`, sp.name, COMM_TIER[sp.id] || 5, sp.class === 'mbt' ? 'mbt' : sp.class,
+          sp.era, { spec: sp.id }),
+        credit: sp.community,
+      })),
+    });
+  }
   const emit = (ev, p) => { if (bus && bus.emit) bus.emit(ev, p); };
 
   const root = document.createElement('div');
@@ -331,6 +460,7 @@ export function createTechTree(opts) {
 
   function buildTree(tab) {
     world.innerHTML = '';
+    const isComm = tab.id === 'community';
     const byKey = new Map();
     let maxRow = 0, minTier = 10, maxTier = 1;
     for (const node of tab.nodes) {
@@ -387,8 +517,9 @@ export function createTechTree(opts) {
     }
     world.appendChild(svg);
 
-    // tier ladder headers
-    for (let t = 1; t <= 10; t++) {
+    // tier ladder headers — only over the OCCUPIED tier range, so no header
+    // ever floats over an empty column of blank grid
+    for (let t = minTier; t <= maxTier; t++) {
       const hd = document.createElement('div');
       hd.className = 'cot-tt-tierhd';
       hd.style.left = `${PAD_X + (t - 1) * TIER_W + (TIER_W - NODE_W) / 2}px`;
@@ -413,7 +544,7 @@ export function createTechTree(opts) {
       const spec = real ? specById.get(node.specId) : null;
       const p = nodePos(node);
       const el = document.createElement('div');
-      el.className = `cot-tt-node ${real && spec ? 'real' : 'ghost'}`;
+      el.className = `cot-tt-node ${real && spec ? 'real' : 'ghost'}${isComm ? ' comm' : ''}`;
       el.style.left = `${p.x}px`;
       el.style.top = `${p.y}px`;
       const nation = spec ? spec.nation : (tab.id === 'usa' ? 'USA' : tab.id === 'germany' ? 'Germany' : (node.era === 'ww2' ? 'USSR' : 'Russia'));
@@ -422,20 +553,23 @@ export function createTechTree(opts) {
         `<span class="tier">${ROMAN[node.tier]}</span></div>` +
         // battle-ready nodes show the real 3/4 hero icon of the shipped model;
         // ghost research placeholders keep the flat grey vector silhouette
-        (real && spec ? `<img class="ti" src="${iconUrl(spec.id, 'angle')}" alt="">` : `<canvas></canvas>`) +
+        (real && spec ? `<img class="ti" data-cot-thumb="${spec.id}" src="${getTankThumb(spec.id) || iconUrl(spec.id, 'angle')}" alt="">` : `<canvas></canvas>`) +
         `<div class="nm"></div>` +
         `<div class="cls">${CLASS_LABEL[node.cls] || node.cls}</div>` +
+        (node.credit ? `<div class="credit"></div>` : '') +
         (real && spec ? `<div class="ready"></div>` : `<span class="lock">&#128274;</span>`);
       el.querySelector('.nm').textContent = node.name;
+      if (node.credit) {
+        const cr = el.querySelector('.credit');
+        cr.innerHTML = 'by <b></b> &middot; <span></span>';
+        cr.querySelector('b').textContent = node.credit.author;
+        cr.querySelector('span').textContent = node.credit.license;
+        cr.title = `${node.credit.author} — ${node.credit.license} — ${node.credit.source}`;
+      }
       if (!(real && spec)) {
-        if (node.cls === 'td') {
-          drawTdSilhouette(el.querySelector('canvas'), DIMS.td,
-            { w: 118, h: 36, color: 'rgba(120,134,146,0.55)' });
-        } else {
-          drawSilhouette(el.querySelector('canvas'),
-            { dims: DIMS[node.cls] || DIMS.medium, era: node.era, class: node.cls === 'light' ? 'medium' : node.cls },
-            { w: 118, h: 36, color: 'rgba(120,134,146,0.55)' });
-        }
+        drawGhostTank(el.querySelector('canvas'),
+          GHOSTS[node.key] || GHOST_DEFAULT[node.cls] || GHOST_DEFAULT.medium,
+          { w: 118, h: 36, color: 'rgba(120,134,146,0.55)' });
       }
       if (real && spec) {
         el.addEventListener('click', () => {
@@ -451,7 +585,7 @@ export function createTechTree(opts) {
 
   // --- nation tabs ---
   const tabEls = new Map();
-  for (const tab of TABS) {
+  for (const tab of tabs) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'cot-tt-tab';
@@ -532,7 +666,7 @@ export function createTechTree(opts) {
       root.classList.add('open');
       if (!api.isOpen) window.addEventListener('keydown', onKey, true);
       api.isOpen = true;
-      api.setNation(TABS.some((t) => t.id === nation) ? nation : 'usa');
+      api.setNation(tabs.some((t) => t.id === nation) ? nation : 'usa');
       if (!rafId) rafId = requestAnimationFrame(frame);
     },
 
@@ -548,7 +682,7 @@ export function createTechTree(opts) {
     setNation(id) {
       nationId = id;
       for (const [tid, el] of tabEls) el.classList.toggle('sel', tid === id);
-      buildTree(TABS.find((t) => t.id === id));
+      buildTree(tabs.find((t) => t.id === id));
       fitCam();
     },
   };

@@ -57,11 +57,17 @@ const SKY_KNEE_FALLOFF = 0.125; // 1/e width of the shoulder in luminance units
 // junction; it now grades into a clearly blue-grey atmospheric wash, and the
 // fog color (sampled from this same band) follows automatically so distance
 // haze inherits the same hue instead of going white.
-const HAZE_MAX_LUM = 0.72; // linear pre-ACES luminance ceiling in the band
+// r5: ceiling 0.72 → 0.64 and a clearly BLUE tint at mix 0.58 (was a barely
+// blue 0.45) — the band still read as near-white neutral gray, and because
+// the fog color is SAMPLED from this band, the whole far field inherited
+// that gray ("flat fog-card mountains"). The horizon now sits a solid step
+// below white with an unmistakable blue-atmosphere hue, and distance haze
+// downstream (fog + aerial scatter-in) follows automatically.
+const HAZE_MAX_LUM = 0.64; // linear pre-ACES luminance ceiling in the band
 const HAZE_COMPRESS = 0.18; // slope retained above the ceiling
 const HAZE_BAND_TOP = 0.18; // direction.y where the haze treatment fades out
-const HAZE_TINT = [0.87, 0.92, 1.02]; // pale-blue hue floor (unit-luma-ish)
-const HAZE_TINT_MIX = 0.45;
+const HAZE_TINT = [0.78, 0.90, 1.10]; // blue hue floor (unit-luma-ish)
+const HAZE_TINT_MIX = 0.58;
 const SKY_DITHER = 0.004; // linear-space dither amplitude ~1 display LSB
 const SKY_FRAG_ANCHOR = 'gl_FragColor = vec4( texColor, 1.0 );';
 const SKY_DOME_SCALE = 10000; // must stay inside camera.far
@@ -80,6 +86,14 @@ const ENV_INTENSITY = 0.2;
 // the depth-driven aerial-perspective pass in post.js (uniform desaturation),
 // so the fog itself can stay thinner and keep midground color alive.
 const FOG_DENSITY = 0.00074;
+// r5 ("neutral gray fog ramp monochromes everything past 400m — cut density
+// roughly in half"): the engine now interprets a preset's fogDensity as the
+// map's TOTAL atmosphere thickness and splits it between the material-level
+// FogExp2 (this share) and post.js's directional aerial scatter-in, which
+// owns hue. Maps keep their relative art direction (winter stays the
+// foggiest) while every map's ramp thins enough that saturation survives to
+// ~800 m and horizon ridges keep silhouette detail.
+const FOG_EXTINCTION_SHARE = 0.55;
 // Aerial perspective: pull the sampled horizon color toward a desaturated
 // blue so distance reads as cool atmosphere, never as white-out.
 const FOG_BLUE_TINT_HEX = 0x7e97b8;
@@ -107,16 +121,22 @@ const FALLBACK_HORIZON_HEX = 0xc4d3dd; // hand-tuned noon-hazy, doc §5 option (
 const CLOUD_SEED = 777;
 const CLOUD_TEX = 1024; // cumulus deck bake, tileable in BOTH axes
 const CIRRUS_TEX = 512; // thin high-veil bake
-const CLOUD_THR = 0.545; // base FBM coverage threshold that carves cloud shapes
+const CLOUD_THR = 0.53; // r5: 0.545 → 0.53 — a touch more coverage so the deck reads from every camera
 const CLOUD_EDGE = 0.03; // clear→rim ramp width in FBM units (crisp edge)
 const CLOUD_CORE = 0.16; // rim→opaque-core ramp width in FBM units
 const CLOUD_CLUSTER = 0.09; // macro-noise threshold modulation (cloud grouping)
 const CLOUD_WARP = 0.06; // domain-warp strength (cauliflower edge crinkle)
 const CLOUD_MARCH_STEPS = 12; // light-march samples toward the in-texture sun
 const CLOUD_MARCH_STEP_PX = 3;
-const CLOUD_SHADE_K = 0.32; // optical-depth scale: bright rims, dark cores
+// r5: shade K 0.32 → 0.46 and a darker shade pole — the baked sun-lit rim /
+// dark base contrast was too subtle after the distance haze mix, so clouds
+// read as flat alpha blobs; bases now sit ~25% under the lit faces.
+const CLOUD_SHADE_K = 0.46; // optical-depth scale: bright rims, dark cores
 const CLOUD_LIT = [1.0, 0.98, 0.94]; // warm-white sunlit faces
-const CLOUD_SHADE = [0.55, 0.62, 0.76]; // cool grey-blue shaded bellies
+const CLOUD_SHADE = [0.50, 0.57, 0.73]; // cool grey-blue shaded bellies
+// r5: per-cloud macro opacity variation — breaks the uniform cotton-blob read
+// (each mass gets its own 0.74-1.0 alpha weight from the clustering noise).
+const CLOUD_ALPHA_VAR = 0.26;
 const CLOUD_ALT = 620; // cumulus deck altitude (m): over terrain, under far plane
 const CIRRUS_ALT = 1350;
 const CLOUD_PLANE_SIZE = 9000; // covers the fade radius from any battle camera
@@ -124,10 +144,16 @@ const CLOUD_UV_METERS = 3400; // meters per cumulus texture repeat
 const CIRRUS_UV_METERS = 5600;
 // Camera-relative dissolve (m). End slant distances stay inside camera.far
 // (4000) so the geometric clip circle is always fully transparent.
-const CLOUD_FADE_START = 1400;
-const CLOUD_FADE_END = 3100;
-const CIRRUS_FADE_START = 1700;
-const CIRRUS_FADE_END = 3300;
+// r5: starts pushed 1400/1700 → 2400/2600 — at 1400 the cumulus deck (620 m
+// altitude) was fully faded below ~26 degrees of elevation, so any camera
+// pitched near the horizon (combat_firing) saw a naked sky while the
+// establishing shot had painted cumulus overhead: "sky is inconsistent
+// between cameras". Clouds now hold down to ~15 degrees, where the horizon
+// haze takes over — one persistent deck from every camera.
+const CLOUD_FADE_START = 2400;
+const CLOUD_FADE_END = 3850;
+const CIRRUS_FADE_START = 2600;
+const CIRRUS_FADE_END = 3950;
 const CLOUD_MAX_ALPHA = 0.94;
 const CLOUD_LAYER2_OPACITY = 0.6; // default for preset field cloudOpacity2 (cirrus)
 
@@ -162,12 +188,12 @@ function configureSkyUniforms(sky, sunDir, preset = DEFAULT_PRESET) {
   const u = sky.material.uniforms;
   u.turbidity.value = preset.turbidity;
   u.rayleigh.value = preset.rayleigh;
-  // r4: x1.5 Mie response curve — at the preset values the sun's scattering
-  // halo was invisible from cameras 60°+ off the sun azimuth ("no sun disc or
-  // scattering glow anywhere"). The multiplier widens the warm forward-scatter
-  // wedge so the sun's presence registers at the frame edge on every map
-  // while the knee compress below still keeps the halo under bloom threshold.
-  u.mieCoefficient.value = preset.mieCoefficient * 1.5;
+  // r4 ran a x1.5 Mie response so the sun registered off-azimuth; r5 pulls it
+  // back to x1.1 — the widened wedge was the "gray haze band swallowing
+  // two-thirds of the sky" in sun-facing frames (combat_firing). At x1.1 the
+  // sun still reads as a warm glow at the frame edge, but blue sky dominates
+  // above ~15-20 degrees of elevation on every camera.
+  u.mieCoefficient.value = preset.mieCoefficient * 1.1;
   u.mieDirectionalG.value = preset.mieDirectionalG;
   u.sunPosition.value.copy(sunDir);
   // The r180+ Sky shader ships its own screen-projected FBM cloud layer
@@ -338,7 +364,10 @@ function makeCloudTexture() {
       px[o] = Math.round(255 * (CLOUD_SHADE[0] + (CLOUD_LIT[0] - CLOUD_SHADE[0]) * lit));
       px[o + 1] = Math.round(255 * (CLOUD_SHADE[1] + (CLOUD_LIT[1] - CLOUD_SHADE[1]) * lit));
       px[o + 2] = Math.round(255 * (CLOUD_SHADE[2] + (CLOUD_LIT[2] - CLOUD_SHADE[2]) * lit));
-      px[o + 3] = Math.round(255 * CLOUD_MAX_ALPHA * m * (0.42 + 0.58 * core[i]));
+      // per-cloud opacity variation keyed on the macro clustering field: each
+      // mass gets its own density so the deck never reads as uniform cotton
+      const macroA = 1 - CLOUD_ALPHA_VAR * (1 - fbmM(x / W, y / H));
+      px[o + 3] = Math.round(255 * CLOUD_MAX_ALPHA * macroA * m * (0.42 + 0.58 * core[i]));
     }
   }
   ctx.putImageData(img, 0, 0);
@@ -483,6 +512,10 @@ export function createSky(scene, renderer) {
   sky.scale.setScalar(SKY_DOME_SCALE);
   configureSkyUniforms(sky, sunDir, preset);
   scene.add(sky);
+  // Publish the live sun direction for post.js's directional aerial scatter
+  // (same Vector3 instance — applyPreset mutates it in place, so the post
+  // chain always sees the current map's sun without an explicit re-wire).
+  scene.userData.sunDirWorld = sunDir;
 
   // Cloud decks: two flat planes (low cumulus + high cirrus veil) between the
   // terrain and the Sky dome. Transparent (render after opaques, over the Sky
@@ -655,7 +688,10 @@ export function createSky(scene, renderer) {
     applyFog(targetScene) {
       const fogColor = horizonColor.clone()
         .lerp(new THREE.Color(preset.fogTintHex), preset.fogMix);
-      targetScene.fog = new THREE.FogExp2(fogColor, preset.fogDensity);
+      // preset.fogDensity is total atmosphere; the exp2 fog takes only its
+      // extinction share — post.js's aerial pass carries the scatter-in hue
+      // (see FOG_EXTINCTION_SHARE).
+      targetScene.fog = new THREE.FogExp2(fogColor, preset.fogDensity * FOG_EXTINCTION_SHARE);
     },
 
     /**

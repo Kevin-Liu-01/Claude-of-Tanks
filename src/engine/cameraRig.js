@@ -296,6 +296,12 @@ export function createCameraRig(camera, deps) {
     aimDist: MAX_AIM_DIST_M,
     /** Settings flag: unlock ×16/×25 sniper zoom steps ("increased zoom"). */
     _increasedZoom: false,
+    /**
+     * True while the battle-open flyby drives the camera. main.js reads this
+     * to veil the HUD + letterbox the cinematic (a full battle HUD over the
+     * opening sweep reads as a bug, not a cinematic).
+     */
+    get cinematicActive() { return cine !== null; },
 
     /**
      * Per-frame rig update (ARCHITECTURE.md §4 step 3). No-op while an

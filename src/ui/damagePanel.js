@@ -1,9 +1,13 @@
-// src/ui/damagePanel.js — bottom-left player damage panel: top-down tank
-// silhouette with vector module icons (tracks, engine, fuel, ammo, gun,
-// optics, radio, turret ring), crew row, HP bar and fire indicator.
+// src/ui/damagePanel.js — bottom-left player damage panel: the VEHICLE'S OWN
+// top-down silhouette (pre-rendered from the shipped model, public/icons/
+// <id>_top_silhouette.png) with module hit-zones and vector module icons
+// (tracks, engine, fuel, ammo, gun, optics, radio, turret ring) that stay a
+// dim ghost while healthy and light yellow/red when damaged — WoT panel
+// language, no text labels. Crew row, HP bar and fire indicator.
 // Contract: docs/ARCHITECTURE.md §3.7.2.
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
+import { iconUrl } from './icons.js';
 
 const STATE_COLOR = { ok: '#7ee87e', yellow: '#f0b04a', red: '#f05a5a' };
 const CREW_ORDER = ['commander', 'gunner', 'driver', 'loader'];
@@ -72,6 +76,62 @@ function ensureStyle(id, css) {
 
 function hpColor(frac) {
   return frac > 0.5 ? '#7ee87e' : frac > 0.25 ? '#f0b04a' : '#f05a5a';
+}
+
+// ---------------------------------------------------------------------------
+// Vehicle-specific top-down silhouette: the generated <id>_top_silhouette.png
+// (flat white alpha shape of the ACTUAL model) is loaded once per spec, its
+// opaque bounding box measured, and two tinted copies cached — a pale rim
+// pass (drawn with 1px offsets as an outline) and a dark steel body pass.
+// ---------------------------------------------------------------------------
+const topSilCache = new Map(); // specId -> { img, bbox:[x,y,w,h], body, rim } | 'pending'
+function tintCanvas(img, color) {
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  const x = c.getContext('2d');
+  x.drawImage(img, 0, 0);
+  x.globalCompositeOperation = 'source-in';
+  x.fillStyle = color;
+  x.fillRect(0, 0, c.width, c.height);
+  return c;
+}
+function topSilhouette(specId, onReady) {
+  const e = topSilCache.get(specId);
+  if (e === 'pending' || e === 'failed') return null;
+  if (e) return e;
+  topSilCache.set(specId, 'pending');
+  const img = new Image();
+  img.onload = () => {
+    // measure the opaque content box on a 128px probe (cheap, alpha only)
+    const P = 128;
+    const probe = document.createElement('canvas');
+    probe.width = P; probe.height = P;
+    const px2 = probe.getContext('2d');
+    px2.drawImage(img, 0, 0, P, P);
+    const d = px2.getImageData(0, 0, P, P).data;
+    let x0 = P, y0 = P, x1 = 0, y1 = 0;
+    for (let y = 0; y < P; y++) {
+      for (let x = 0; x < P; x++) {
+        if (d[(y * P + x) * 4 + 3] > 24) {
+          if (x < x0) x0 = x; if (x > x1) x1 = x;
+          if (y < y0) y0 = y; if (y > y1) y1 = y;
+        }
+      }
+    }
+    if (x1 <= x0 || y1 <= y0) { x0 = 0; y0 = 0; x1 = P - 1; y1 = P - 1; }
+    const sx = img.naturalWidth / P, sy = img.naturalHeight / P;
+    const entry = {
+      img,
+      bbox: [x0 * sx, y0 * sy, (x1 - x0 + 1) * sx, (y1 - y0 + 1) * sy],
+      rim: tintCanvas(img, 'rgba(205,224,238,0.92)'),
+      body: tintCanvas(img, '#39434c'),
+    };
+    topSilCache.set(specId, entry);
+    if (onReady) onReady();
+  };
+  img.onerror = () => { topSilCache.set(specId, 'failed'); };
+  img.src = iconUrl(specId, 'top_silhouette');
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -268,93 +328,37 @@ export function createDamagePanel() {
 
   // Tint a module's actual armor-model box footprint (engine bay, ammo rack,
   // fuel tank) so damage states light up real hit-zones on the silhouette.
-  // The zones are ALWAYS drawn as defined, labeled regions — healthy = cool
-  // steel, damaged = yellow/orange, destroyed = red (WoT panel language).
+  // WoT panel language: zones are INVISIBLE while healthy — the clean vehicle
+  // shape is the "all systems fine" read — and flood yellow/red on damage.
+  // No text labels anywhere.
   const REGION_MODULES = ['engine', 'ammoRack', 'fuelTank'];
-  const REGION_LABEL = { engine: 'ENG', ammoRack: 'AMMO', fuelTank: 'FUEL' };
   function drawModuleRegions(tPivot) {
     const mods = (spec.armor && spec.armor.modules) || [];
     for (const m of mods) {
       if (REGION_MODULES.indexOf(m.module) < 0 || !m.min || !m.max) continue;
+      const st = moduleState(m.module);
+      if (st === 'ok') continue;
       let x0 = m.min[0], x1 = m.max[0], z0 = m.min[2], z1 = m.max[2];
       if (m.turretLocal) { x0 += tPivot[0]; x1 += tPivot[0]; z0 += tPivot[2]; z1 += tPivot[2]; }
       const rx = px(x0), ry = py(z1);
       const rw = (x1 - x0) * scale, rh = (z1 - z0) * scale;
-      const st = moduleState(m.module);
-      if (st === 'ok') {
-        ctx.fillStyle = 'rgba(126,168,196,0.13)';
-        ctx.strokeStyle = 'rgba(170,196,216,0.45)';
-      } else {
-        ctx.fillStyle = STATE_COLOR[st] + '4a';
-        ctx.strokeStyle = STATE_COLOR[st];
-      }
+      ctx.fillStyle = STATE_COLOR[st] + '46';
+      ctx.strokeStyle = STATE_COLOR[st];
       ctx.lineWidth = 1;
       ctx.fillRect(rx, ry, rw, rh);
       ctx.strokeRect(rx, ry, rw, rh);
-      // micro-label inside the zone (skip if the box is too small for it)
-      if (rw >= 20 && rh >= 8) {
-        ctx.fillStyle = st === 'ok' ? 'rgba(196,216,232,0.66)' : STATE_COLOR[st];
-        ctx.font = `700 6px ${FONT_COND}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(REGION_LABEL[m.module] || '', rx + rw / 2, ry + rh / 2 + 0.5);
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'alphabetic';
-      }
     }
   }
 
-  function draw() {
-    ctx.clearRect(0, 0, CW, CH);
-    if (!spec) return;
-    const d = spec.dims;
-    const L = d.hullLengthM, W = d.widthM;
-    const armor = spec.armor || {};
-    const tPivot = armor.turretPivot || [0, 1.2, 0];
+  // Vector stand-in for the first few frames while the silhouette PNG decodes
+  // (kept minimal: dim hull wedge + turret + gun, no module dressing).
+  function drawVectorFallback(d, L, W, tPivot) {
     const modern = spec.era !== 'ww2';
-
-    // tracks (colored by trackL/trackR state); WW2 shows the exposed
-    // road-wheel train, modern reads as skirted track units with segments
-    const trackW = W * 0.24;
-    const trkTop = py(L / 2), trkBot = py(-L / 2);
-    const stL = moduleState('trackL'), stR = moduleState('trackR');
-    for (const [sideX, st] of [[-W / 2, stL], [W / 2 - trackW, stR]]) {
-      ctx.fillStyle = st === 'ok' ? 'rgba(120,140,155,0.30)' : STATE_COLOR[st] + '55';
-      roundRect(ctx, px(sideX), trkTop, trackW * scale, trkBot - trkTop, modern ? 1.5 : 3);
-      ctx.fill();
-      ctx.strokeStyle = st === 'ok' ? 'rgba(190,210,225,0.5)' : STATE_COLOR[st];
-      ctx.lineWidth = 1.2;
-      ctx.stroke();
-      if (modern) {
-        // side-skirt panel seams
-        ctx.strokeStyle = st === 'ok' ? 'rgba(190,210,225,0.3)' : STATE_COLOR[st] + '99';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        const n = 5;
-        for (let i = 1; i < n; i++) {
-          const y = trkTop + (i / n) * (trkBot - trkTop);
-          ctx.moveTo(px(sideX) + 1.5, y); ctx.lineTo(px(sideX) + trackW * scale - 1.5, y);
-        }
-        ctx.stroke();
-      } else {
-        // exposed road wheels
-        ctx.fillStyle = st === 'ok' ? 'rgba(190,210,225,0.28)' : STATE_COLOR[st] + '77';
-        const n = 6;
-        for (let i = 0; i < n; i++) {
-          const y = trkTop + ((i + 0.5) / n) * (trkBot - trkTop);
-          ctx.beginPath();
-          ctx.arc(px(sideX) + trackW * scale / 2, y, trackW * scale * 0.26, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-    }
-
-    // hull body: pointed glacis, beveled rear (sharper wedge on modern MBTs)
     const hullW = W * 0.56;
     const nose = modern ? 0.19 : 0.12;
-    ctx.fillStyle = 'rgba(150,175,195,0.16)';
-    ctx.strokeStyle = 'rgba(200,220,235,0.75)';
-    ctx.lineWidth = 1.4;
+    ctx.fillStyle = 'rgba(64,76,88,0.8)';
+    ctx.strokeStyle = 'rgba(200,220,235,0.55)';
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.moveTo(px(-hullW / 2), py(L / 2 - L * nose));
     ctx.lineTo(px(-hullW * (modern ? 0.16 : 0.22)), py(L / 2));
@@ -367,20 +371,8 @@ export function createDamagePanel() {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    // engine deck vents
-    ctx.strokeStyle = 'rgba(200,220,235,0.28)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let i = 1; i <= 3; i++) {
-      const y = py(-L / 2 + L * 0.07 * i);
-      ctx.moveTo(px(-hullW * 0.34), y); ctx.lineTo(px(hullW * 0.34), y);
-    }
-    ctx.stroke();
-
-    // gun barrel (from turret pivot to overall-length muzzle)
     const muzzleZ = d.overallLengthM - L / 2;
-    const gunSt = moduleState('gun');
-    ctx.strokeStyle = gunSt === 'ok' ? 'rgba(200,220,235,0.85)' : STATE_COLOR[gunSt];
+    ctx.strokeStyle = 'rgba(200,220,235,0.6)';
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
     ctx.beginPath();
@@ -388,77 +380,96 @@ export function createDamagePanel() {
     ctx.lineTo(px(tPivot[0]), py(muzzleZ));
     ctx.stroke();
     ctx.lineCap = 'butt';
-    if (modern) {
-      // bore-evacuator bulge mid-barrel
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      const bz0 = tPivot[2] + (muzzleZ - tPivot[2]) * 0.52;
-      const bz1 = tPivot[2] + (muzzleZ - tPivot[2]) * 0.64;
-      ctx.moveTo(px(tPivot[0]), py(bz0));
-      ctx.lineTo(px(tPivot[0]), py(bz1));
-      ctx.stroke();
-    }
+    const turR = W * 0.30;
+    ctx.fillStyle = 'rgba(84,98,110,0.85)';
+    ctx.beginPath();
+    ctx.ellipse(px(tPivot[0]), py(tPivot[2]), turR * scale, turR * 1.25 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-    // turret: WW2 = cast ellipse; modern = angular slab with rear bustle
-    // (matches an Abrams-style footprint instead of a generic oval)
-    ctx.fillStyle = 'rgba(150,175,195,0.22)';
-    ctx.strokeStyle = 'rgba(200,220,235,0.85)';
-    ctx.lineWidth = 1.4;
-    if (modern) {
-      const tw = W * 0.34; // half-width
-      const tlf = W * 0.5; // nose length ahead of pivot
-      const tlr = W * 0.52; // bustle length behind pivot
-      const tx0 = tPivot[0];
-      ctx.beginPath();
-      ctx.moveTo(px(tx0 - tw * 0.3), py(tPivot[2] + tlf));
-      ctx.lineTo(px(tx0 + tw * 0.3), py(tPivot[2] + tlf));
-      ctx.lineTo(px(tx0 + tw), py(tPivot[2] + tlf * 0.2));
-      ctx.lineTo(px(tx0 + tw * 0.94), py(tPivot[2] - tlr));
-      ctx.lineTo(px(tx0 - tw * 0.94), py(tPivot[2] - tlr));
-      ctx.lineTo(px(tx0 - tw), py(tPivot[2] + tlf * 0.2));
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      // bustle stowage rack line
-      ctx.strokeStyle = 'rgba(200,220,235,0.4)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(px(tx0 - tw * 0.9), py(tPivot[2] - tlr * 0.7));
-      ctx.lineTo(px(tx0 + tw * 0.9), py(tPivot[2] - tlr * 0.7));
-      ctx.stroke();
+  function draw() {
+    ctx.clearRect(0, 0, CW, CH);
+    if (!spec) return;
+    const d = spec.dims;
+    const L = d.hullLengthM, W = d.widthM;
+    const armor = spec.armor || {};
+    const tPivot = armor.turretPivot || [0, 1.2, 0];
+
+    // --- base: the vehicle's REAL top-down silhouette (own model render) ---
+    // Fit the icon's opaque content box to the dims extent so the armor-model
+    // module anchors line up with the drawn hull (z exact, aspect preserved).
+    const sil = topSilhouette(spec.id, () => draw());
+    if (sil) {
+      const [bx, by, bw, bh] = sil.bbox;
+      const top = py(d.overallLengthM - L / 2);
+      const bot = py(-L / 2);
+      const destH = bot - top;
+      const destW = destH * (bw / bh);
+      const destX = cx - destW / 2;
+      // pale rim: four 1px-offset passes of the bright tint = crisp outline
+      ctx.globalAlpha = 0.5;
+      for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+        ctx.drawImage(sil.rim, bx, by, bw, bh, destX + ox, top + oy, destW, destH);
+      }
+      // dark steel body over the rim passes
+      ctx.globalAlpha = 0.94;
+      ctx.drawImage(sil.body, bx, by, bw, bh, destX, top, destW, destH);
+      ctx.globalAlpha = 1;
     } else {
-      const turR = W * 0.30;
-      ctx.beginPath();
-      ctx.ellipse(px(tPivot[0]), py(tPivot[2]), turR * scale, turR * 1.25 * scale, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(200,220,235,0.4)';
-      ctx.fillRect(px(tPivot[0]) - 4, py(tPivot[2] + turR * 1.1) - 2, 8, 4);
+      drawVectorFallback(d, L, W, tPivot);
     }
 
-    // module hit-zones from the real armor model — drawn OVER the hull and
-    // turret plates so every zone (incl. turret-bustle ammo racks) reads
+    // --- damaged running gear: track strips flood yellow/red over the base --
+    const trackW = W * 0.24;
+    const trkTop = py(L / 2), trkBot = py(-L / 2);
+    for (const [sideX, st] of [[-W / 2, moduleState('trackL')], [W / 2 - trackW, moduleState('trackR')]]) {
+      if (st === 'ok') continue;
+      ctx.fillStyle = STATE_COLOR[st] + '52';
+      ctx.strokeStyle = STATE_COLOR[st];
+      ctx.lineWidth = 1.2;
+      roundRect(ctx, px(sideX), trkTop, trackW * scale, trkBot - trkTop, 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    // damaged gun: the barrel line re-draws in its state color
+    const gunSt = moduleState('gun');
+    if (gunSt !== 'ok') {
+      const muzzleZ = d.overallLengthM - L / 2;
+      ctx.strokeStyle = STATE_COLOR[gunSt];
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(px(tPivot[0]), py(tPivot[2]));
+      ctx.lineTo(px(tPivot[0]), py(muzzleZ));
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
+
+    // module hit-zones from the real armor model — invisible until damaged
     drawModuleRegions(tPivot);
 
-    // module icons at relaxed anchors — WoT behavior: the silhouette stays
-    // clean at full health; an icon appears only when its module is damaged
-    // (orange) or destroyed (red).
+    // module icons at relaxed anchors — WoT behavior: a dim ghost of each
+    // module while healthy, a lit plate in yellow/red once damaged.
     if (!anchors) computeAnchors();
     for (const [name, pt] of anchors) {
       const icon = MODULE_ICON[name];
       if (!icon) continue;
       const st = moduleState(name);
-      if (st === 'ok') continue;
-      const col = STATE_COLOR[st];
       ctx.save();
       ctx.translate(pt[0], pt[1]);
-      roundRect(ctx, -8.5, -8.5, 17, 17, 3);
-      ctx.fillStyle = 'rgba(30,14,10,0.92)';
-      ctx.fill();
-      ctx.strokeStyle = col;
-      ctx.lineWidth = 1.2;
-      ctx.stroke();
-      icon(ctx, col);
+      if (st === 'ok') {
+        ctx.globalAlpha = 0.30;
+        icon(ctx, 'rgba(178,198,214,0.95)');
+      } else {
+        const col = STATE_COLOR[st];
+        roundRect(ctx, -8.5, -8.5, 17, 17, 3);
+        ctx.fillStyle = 'rgba(30,14,10,0.92)';
+        ctx.fill();
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        icon(ctx, col);
+      }
       ctx.restore();
     }
   }

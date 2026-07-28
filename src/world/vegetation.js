@@ -14,14 +14,16 @@ export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math
 
 const HALF = 512;
 const CHUNKS = 8, CHUNK_SIZE = 128;
-const GRASS_PER_CHUNK = 7600;          // midfield scatter (map-wide, cheap)
-const GRASS_FADE_END = 205;            // scale-out ends here (no hard carpet line)
-// near carpet: camera-centred cells, dense
+const GRASS_PER_CHUNK = 9600;          // midfield scatter (map-wide, cheap)
+const GRASS_FADE_END = 235;            // scale-out ends here (no hard carpet line)
+// near carpet: camera-centred cells, dense. Ring 5 pushes the dense band to
+// ~77 m so the ground-level view no longer pops to flat albedo at 30-40 m;
+// the midfield scatter carries the 70-235 m band beyond it.
 const CARPET_CELL = 14;
-const CARPET_RING = 4;                 // (2R+1)^2 = 81 cells around the camera
+const CARPET_RING = 5;                 // (2R+1)^2 = 121 cells around the camera
 const CARPET_PER_CELL = 460;           // attempts per cell (filters thin it)
-const CARPET_FAR = 70;                 // shader fade distance
-const CARPET_CAP = 16000;              // instances per tuft variant
+const CARPET_FAR = 95;                 // shader fade distance
+const CARPET_CAP = 24000;              // instances per tuft variant
 const TREE_NEAR_IN = 260, TREE_NEAR_OUT = 290; // hysteresis band (full-detail radius)
 
 function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
@@ -640,13 +642,19 @@ function buildOakFarGeometry(rng, pal = {}) {
   trunk.translate(0, trunkH / 2, 0);
   _c.setHSL(0.07, 0.26, 0.17, THREE.SRGBColorSpace);
   trunkParts.push(paintFlat(trunk, _c, 0));
-  for (let b = 0; b < 3; b++) {
-    const blob = new THREE.IcosahedronGeometry(1.45 + rng() * 0.5, 1);
-    jitterRadial(blob, rng, 0.26);
-    blob.scale(1.22, 0.85, 1.22);
+  // 4-5 unequal lobes with strong offsets: broken asymmetric broadleaf mass
+  // (the old 3 near-equal blobs read as the same broccoli clone on every
+  // mid-distance tree), with a deeper shade gradient bottom -> crown
+  const nLobes = 4 + ((rng() * 2) | 0);
+  for (let b = 0; b < nLobes; b++) {
+    const big = b === 0 ? 1 : 0.62 + rng() * 0.32;
+    const blob = new THREE.IcosahedronGeometry((1.25 + rng() * 0.6) * big, 1);
+    jitterRadial(blob, rng, 0.34);
+    blob.scale(1.1 + rng() * 0.3, 0.72 + rng() * 0.25, 1.1 + rng() * 0.3);
     sphereNormals(blob, 0, 0, 0, 1.0); // smooth sunlit crown, no black facets
-    blob.translate((rng() - 0.5) * 1.5, 4.1 + (rng() - 0.45) * 1.3, (rng() - 0.5) * 1.5);
-    canopyParts.push(paintCanopy(blob, hue, sat, l0, l1, 2.6, 5.8, rng, 0.3));
+    blob.translate((rng() - 0.5) * 2.2, 4.15 + (rng() - 0.45) * 1.7 - (1 - big) * 0.7,
+      (rng() - 0.5) * 2.2);
+    canopyParts.push(paintCanopy(blob, hue, sat, l0 * 0.82, l1, 2.3, 5.9, rng, 0.3));
   }
   return { trunk: mergeParts(trunkParts), canopy: mergeParts(canopyParts) };
 }
@@ -775,6 +783,8 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   // update() so mode switches don't pop.
   const uSniperFade = { value: 0 };
   let sniperFadeTarget = 0;
+  // Camera forward (unit) — drives the sniper center-cone grass clear-out.
+  const uCamFwd = { value: new THREE.Vector3(0, 0, 1) };
 
   // ---- grass materials (shared hook, per-material fade distance) ----
   const grassWindHook = (farDist) => (shader) => {
@@ -782,8 +792,9 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     shader.uniforms.uCamPos = uCamPos;
     shader.uniforms.uGrassFar = { value: farDist };
     shader.uniforms.uSniperFade = uSniperFade;
+    shader.uniforms.uCamFwd = uCamFwd;
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\nuniform float uWindTime;\nuniform vec3 uCamPos;\nuniform float uGrassFar;\nuniform float uSniperFade;');
+      '#include <common>\nuniform float uWindTime;\nuniform vec3 uCamPos;\nuniform float uGrassFar;\nuniform float uSniperFade;\nuniform vec3 uCamFwd;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`
       #include <begin_vertex>
       {
@@ -792,8 +803,16 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
         // wide scale-out band (last ~third of the range): tufts shrink away
         // gradually instead of cutting to flat albedo on a visible line
         float gfade = 1.0 - smoothstep(uGrassFar * 0.66, uGrassFar, dCam);
-        // sniper scope: suppress the near carpet so the sight picture stays clear
-        gfade *= mix(1.0, smoothstep(7.0, 15.0, dCam), uSniperFade);
+        // sniper scope (WoT keeps the scoped picture clean): the trunnion-
+        // height camera stares OVER meter-tall blades, so the old 7-15 m
+        // suppression still let midfield grass flood 30-60% of the sight at
+        // x2-x8. Widen the near band to 30 m AND clear a center cone — blades
+        // within ~3-6 m of the view ray out to ~90 m shrink away; off-axis
+        // and far grass keeps the meadow context around the scope edges.
+        float nearBand = smoothstep(12.0, 30.0, dCam);
+        float dRay = length(cross(giw.xyz - uCamPos, uCamFwd));
+        float rayBand = 1.0 - (1.0 - smoothstep(2.6, 6.0, dRay)) * (1.0 - smoothstep(90.0, 130.0, dCam));
+        gfade *= mix(1.0, nearBand * rayBand, uSniperFade);
         transformed *= gfade;
         float sway = uv.y * uv.y;
         float phase = giw.x * 0.35 + giw.z * 0.28;
@@ -837,8 +856,8 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     const w = gv === 0 ? 0.92 : 1.14, h = gv === 0 ? 0.60 : 0.48;
     grassVariants.push({
       geo: makeTuftGeometry(w, h),
-      matMid: makeGrassMaterial(grassTex[gv], GRASS_FADE_END, 'world-grass-wind-v4'),
-      matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v4'),
+      matMid: makeGrassMaterial(grassTex[gv], GRASS_FADE_END, 'world-grass-wind-v5'),
+      matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v5'),
     });
   }
 
@@ -875,6 +894,14 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     if (dirtPatch > 0.55 && roll < (carpet ? 0.6 : 0.75)) return null;
     if (!carpet) { // midfield scatter keeps the clumpy meadow look
       if (sn.n1 < 0.42 && clJ > 0.25 + sn.n1) return null;
+    }
+    // sparse-biome ecology (desert scrub / winter litter): confetti-uniform
+    // scatter reads as noise dots — gate placement behind a low-frequency
+    // mask so growth clusters in hollows and along moisture lines, with only
+    // stray outliers between the clumps
+    if (veg.grassDensity < 0.5) {
+      const clump = smoothstepJs(0.38, 0.62, sn.n2);
+      if (clJ > clump * 0.92 + 0.08) return null;
     }
     const vv = varJ < (0.75 - dry * 0.5) ? 0 : 1;
     const y = heightField.getHeightAt(x, z);
@@ -992,10 +1019,15 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   }
 
   // ---- trees ----
+  // Every tree material carries the per-instance occlusion fade (aFadeI,
+  // 0 = solid → 1 = dithered to ~12%) plus a near-camera dissolve: WoT fades
+  // any tree standing between the chase camera and the vehicle — without it,
+  // forest routes hide the player tank behind full-screen canopy walls, and
+  // cards inside the orbit radius degrade to giant flat unlit sheets.
   const treeWindHook = (shader) => {
     shader.uniforms.uWindTime = uWindTime;
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\nuniform float uWindTime;\nattribute float aFlex;');
+      '#include <common>\nuniform float uWindTime;\nattribute float aFlex;\nattribute float aFadeI;\nvarying float vFadeI;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`
       #include <begin_vertex>
       {
@@ -1004,23 +1036,61 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
         float amp = aFlex * 0.14;
         transformed.x += amp * (sin(uWindTime * 1.15 + ph) + 0.45 * sin(uWindTime * 2.63 + ph * 1.7));
         transformed.z += amp * 0.7 * cos(uWindTime * 0.97 + ph * 1.3);
+        vFadeI = aFadeI;
+      }`);
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
+      '#include <common>\nvarying float vFadeI;');
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <alphatest_fragment>', /* glsl */`
+      #include <alphatest_fragment>
+      {
+        // camera-occlusion fade (per-instance) + near-camera card dissolve.
+        // Screen-space dither keeps the opaque/alpha-tested pipeline (depth
+        // writes stay correct — no sorting, no blend halos).
+        float fadeKeep = 1.0 - 0.88 * vFadeI;
+        fadeKeep *= smoothstep(1.5, 4.2, length(vViewPosition));
+        if (fadeKeep < 0.9995) {
+          float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+          if (ign > fadeKeep) discard;
+        }
       }`);
   };
   const foliageWindHook = (shader) => {
     treeWindHook(shader);
     useAttributeNormal(shader);
+    // SNIPER FOLIAGE FADE (controls_gunnery r2): WoT fades the bush the
+    // player is scoped inside — screen-door-dither leaf fragments within
+    // ~10 m of the camera while uSniperFade > 0 (same eased uniforms as the
+    // grass suppression; zero cost in arcade mode where vFolKeep == 1.0).
+    shader.uniforms.uCamPos = uCamPos;
+    shader.uniforms.uSniperFade = uSniperFade;
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
+      '#include <common>\nuniform vec3 uCamPos;\nuniform float uSniperFade;\nvarying float vFolKeep;');
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <project_vertex>', /* glsl */`
+      {
+        vec4 fiw = instanceMatrix * vec4(transformed, 1.0);
+        vFolKeep = mix(1.0, smoothstep(4.0, 10.0, distance(fiw.xyz, uCamPos)), uSniperFade);
+      }
+      #include <project_vertex>`);
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
+      '#include <common>\nvarying float vFolKeep;');
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <alphatest_fragment>', /* glsl */`
+      #include <alphatest_fragment>
+      if (vFolKeep < 0.999) {
+        float fdit = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+        if (fdit >= vFolKeep) discard;
+      }`);
   };
   const barkMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0.0 });
   barkMat.envMapIntensity = 0.85;
   engineCtx.setupShadowMaterial(barkMat, treeWindHook);
-  barkMat.customProgramCacheKey = () => 'world-tree-bark-v3';
+  barkMat.customProgramCacheKey = () => 'world-tree-bark-v4';
 
   // far canopy: own material — strong sky/env fill acts as the fake-SSS
   // backlight term so shaded crown sides stay green, never crushed black
   const canopyFarMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1.0, metalness: 0.0 });
   canopyFarMat.envMapIntensity = 1.35;
   engineCtx.setupShadowMaterial(canopyFarMat, treeWindHook);
-  canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v4';
+  canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v5';
 
   // species registry: texture + near/far geometry builders, seed bases keep
   // the classic verdant set bit-identical to the pre-config build
@@ -1071,7 +1141,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     });
     fm.envMapIntensity = 0.85; // keep ambient on shaded leaves — no black cards
     engineCtx.setupShadowMaterial(fm, foliageWindHook);
-    fm.customProgramCacheKey = () => 'world-tree-foliage-v4-' + sp;
+    fm.customProgramCacheKey = () => 'world-tree-foliage-v5-' + sp;
     foliageMats[sp] = fm;
     // alpha-tested shadow casting: without this every card shadows as a quad
     foliageDepthMats[sp] = new THREE.MeshDepthMaterial({
@@ -1130,8 +1200,18 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     _q.setFromAxisAngle(_up, rng() * Math.PI * 2);
     // height variance clamped tight (no needle-thin scaling-bug giants)
     _m4.compose(_pv.set(x, y - 0.06, z), _q, _sv.set(sc, sc * (0.92 + rng() * 0.16), sc));
-    _c.setRGB(0.70 + rng() * 0.30, 0.76 + rng() * 0.28, 0.68 + rng() * 0.26); // per-tree hue jitter
-    trees.push({ x, z, species, variant: (rng() * 2) | 0, mat: _m4.clone(), tint: _c.clone(), near: false });
+    // per-tree hue/value jitter, WIDE: identical-sibling canopies are the
+    // loudest mid-distance tell, so value swings ~2x and hue drifts between
+    // yellow-green and blue-green per instance
+    const vj = 0.58 + rng() * 0.42;
+    _c.setRGB(vj * (0.88 + rng() * 0.26), vj * (0.96 + rng() * 0.22), vj * (0.84 + rng() * 0.24));
+    trees.push({
+      x, z, species, variant: (rng() * 2) | 0, mat: _m4.clone(), tint: _c.clone(), near: false,
+      // occlusion-fade bookkeeping: canopy proxy sphere (world center/radius,
+      // generous enough for every species' card spread), eased fade 0..1 and
+      // the instance slot assigned by the current near partition (-1 = far).
+      cy: y + 4.4 * sc, cr: 2.9 * sc, fade: 0, slot: -1,
+    });
     if (withObstacle) {
       treeObstacles.push({ min: [x - 0.55, y, z - 0.55], max: [x + 0.55, y + 3.2 * sc, z + 0.55] });
       concealers.push({ x, z, r: 2.3 * sc, add: 0.13 }); // canopy soft-conceals
@@ -1139,7 +1219,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   }
   function addTree(x, z, species) {
     if (!siteOk(x, z, 0)) return false;
-    pushTree(x, z, species, 1.1, 1.55, true);
+    pushTree(x, z, species, 0.95, 1.7, true); // wide size spread per stand
     return true;
   }
   let attempts = 0;
@@ -1190,6 +1270,14 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   // Each LOD is a trunk mesh (opaque bark) + a card mesh (alpha foliage) sharing
   // the same instance matrices.
   function makeTreeMesh(geo, mat, sp, isFoliage) {
+    // per-instance occlusion fade — EVERY geometry drawn with the tree hooks
+    // must carry the attribute (near meshes are updated live; far meshes stay
+    // zero — a tree within camera range is always in the near partition)
+    if (!geo.getAttribute('aFadeI')) {
+      const fadeAttr = new THREE.InstancedBufferAttribute(new Float32Array(trees.length), 1);
+      fadeAttr.setUsage(THREE.DynamicDrawUsage);
+      geo.setAttribute('aFadeI', fadeAttr);
+    }
     const m = new THREE.InstancedMesh(geo, mat, trees.length);
     m.castShadow = true;
     // cards do NOT receive shadows: per-card CSM self-shadowing turns half the
@@ -1262,10 +1350,18 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     }
     for (let bv = 0; bv < 2; bv++) {
       if (bushPlacements[bv].length === 0) continue;
+      // bushes share the hooked foliage material → need the fade attribute
+      // too (all zeros: bushes are hull-height cover, never camera-occluders)
+      bushGeos[bv].setAttribute('aFadeI',
+        new THREE.InstancedBufferAttribute(new Float32Array(bushPlacements[bv].length), 1));
       const m = new THREE.InstancedMesh(bushGeos[bv], foliageMats[bushSpecies], bushPlacements[bv].length);
       for (let i = 0; i < bushPlacements[bv].length; i++) {
         m.setMatrixAt(i, bushPlacements[bv][i]);
-        _c.setRGB(0.80 + rng() * 0.30, 0.84 + rng() * 0.26, 0.78 + rng() * 0.24);
+        // darker, near-neutral multipliers: the old 0.8-1.1 range let lit
+        // bushes glow saturated pure green against the graded terrain and
+        // read as pasted-in — sit them INTO the field tone instead
+        const bj = 0.52 + rng() * 0.34;
+        _c.setRGB(bj * (0.94 + rng() * 0.14), bj * (0.98 + rng() * 0.14), bj * (0.90 + rng() * 0.16));
         m.setColorAt(i, _c);
       }
       m.castShadow = true;
@@ -1275,6 +1371,69 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       m.userData.aoExclude = true; // GTAO override prepass ignores alphaTest
       m.computeBoundingSphere();
       group.add(m);
+    }
+  }
+
+  // ---- chase-camera foliage occlusion fade -------------------------------
+  // WoT behavior: any tree standing between the camera and the player's tank
+  // fades to near-transparency so the third-person loop stays readable on
+  // forest routes. Each frame the pivot→camera segment is swept against every
+  // near tree's canopy proxy sphere; intersecting trees ease toward fade = 1
+  // (dithered to ~12% in the shader), everything else eases back to 0.
+  const OCCL_TAU_S = 0.13;  // ease time constant (≈150 ms feel, like uSniperFade)
+  const OCCL_PAD_M = 1.1;   // canopy-sphere pad — cards jut past the fit sphere
+  const OCCL_BOX_PAD = 12;  // XZ broadphase reject (max near-tree cr + pad)
+  let occlAny = false;      // skip the sweep entirely once everything settled
+  const _dirtyFadeAttrs = new Set();
+  function writeTreeFade(t) {
+    for (const m of nearMeshes[t.species][t.variant]) {
+      const attr = m.geometry.attributes.aFadeI;
+      attr.array[t.slot] = t.fade;
+      _dirtyFadeAttrs.add(attr);
+    }
+  }
+  function updateOcclusionFade(dt, camPos, focusPos) {
+    const active = focusPos !== null && focusPos !== undefined;
+    if (!active && !occlAny) return;
+    // dt = 0 (shot mode / deterministic captures) snaps: harness stays exact.
+    const k = dt > 0 ? 1 - Math.exp(-dt / OCCL_TAU_S) : 1;
+    let any = false;
+    let ax = 0, ay = 0, az = 0, dx = 0, dy = 0, dz = 0, segLen2 = 0;
+    let minX = 0, maxX = 0, minZ = 0, maxZ = 0;
+    if (active) {
+      ax = focusPos.x; ay = focusPos.y; az = focusPos.z;
+      dx = camPos.x - ax; dy = camPos.y - ay; dz = camPos.z - az;
+      segLen2 = dx * dx + dy * dy + dz * dz;
+      minX = Math.min(ax, camPos.x) - OCCL_BOX_PAD;
+      maxX = Math.max(ax, camPos.x) + OCCL_BOX_PAD;
+      minZ = Math.min(az, camPos.z) - OCCL_BOX_PAD;
+      maxZ = Math.max(az, camPos.z) + OCCL_BOX_PAD;
+    }
+    for (const t of trees) {
+      let target = 0;
+      if (active && t.near && t.x > minX && t.x < maxX && t.z > minZ && t.z < maxZ) {
+        // closest point on the pivot→camera segment to the canopy center
+        let s = segLen2 > 1e-6
+          ? ((t.x - ax) * dx + (t.cy - ay) * dy + (t.z - az) * dz) / segLen2
+          : 0;
+        s = s < 0 ? 0 : (s > 1 ? 1 : s);
+        const px = ax + dx * s - t.x;
+        const py = ay + dy * s - t.cy;
+        const pz = az + dz * s - t.z;
+        const rr = t.cr + OCCL_PAD_M;
+        if (px * px + py * py + pz * pz < rr * rr) target = 1;
+      }
+      if (t.fade !== target) {
+        t.fade += (target - t.fade) * k;
+        if (Math.abs(t.fade - target) < 0.02) t.fade = target;
+        if (t.slot >= 0) writeTreeFade(t);
+      }
+      if (t.fade !== 0) any = true;
+    }
+    occlAny = any;
+    if (_dirtyFadeAttrs.size > 0) {
+      for (const attr of _dirtyFadeAttrs) attr.needsUpdate = true;
+      _dirtyFadeAttrs.clear();
     }
   }
 
@@ -1290,11 +1449,14 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     for (const t of trees) {
       if (t.near) {
         const i = counts[t.species][t.variant]++;
+        t.slot = i;
         for (const m of nearMeshes[t.species][t.variant]) {
           m.setMatrixAt(i, t.mat);
           m.setColorAt(i, t.tint);
+          m.geometry.attributes.aFadeI.array[i] = t.fade;
         }
       } else {
+        t.slot = -1;
         const i = farCounts[t.species]++;
         for (const m of farMeshes[t.species]) {
           m.setMatrixAt(i, t.mat);
@@ -1308,6 +1470,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
           m.count = counts[sp][vi];
           m.instanceMatrix.needsUpdate = true;
           if (m.instanceColor) m.instanceColor.needsUpdate = true;
+          m.geometry.attributes.aFadeI.needsUpdate = true;
           m.visible = m.count > 0;
         }
       }
@@ -1320,15 +1483,16 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     }
   }
 
-  function update(dt, camPos) {
+  function update(dt, camPos, camFwd = null, focusPos = null) {
     uWindTime.value += dt;
     uCamPos.value.copy(camPos);
+    if (camFwd) uCamFwd.value.copy(camFwd);
     uSniperFade.value += (sniperFadeTarget - uSniperFade.value) *
       (1 - Math.exp(-(dt || 0) / 0.08));
     for (const gc of grassChunks) {
       const d = Math.max(0, Math.hypot(camPos.x - gc.cx, camPos.z - gc.cz) - CHUNK_SIZE * 0.71);
       // continuous density rolloff (no stepped 1 -> 0.45 pop at 64 m)
-      let frac = d < GRASS_FADE_END ? 1 - 0.62 * smoothstepJs(48, 180, d) : 0;
+      let frac = d < GRASS_FADE_END ? 1 - 0.52 * smoothstepJs(62, 205, d) : 0;
       for (const cm of gc.meshes) {
         const count = Math.floor(cm.total * frac);
         cm.mesh.visible = count > 0;
@@ -1343,6 +1507,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       _lastCam.copy(camPos);
       repartitionTrees(camPos);
     }
+    updateOcclusionFade(dt, camPos, focusPos);
   }
 
   function setWindTime(t) { uWindTime.value = t; }

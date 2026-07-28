@@ -20,7 +20,9 @@ export default {
       { x: -190, z: -210, r: 62, depth: 1.1 },
       { x: -265, z: 265, r: 56, depth: 1.0 },
     ],
-    village: { x0: -60, x1: 80, z0: -40, z1: 120, cx: 10, cz: 40, feather: 42, flatten: 0.85 },
+    // wider settlement footprint: the hamlet reads as a proper village core
+    // instead of one lonely building cluster on an empty snowfield
+    village: { x0: -84, x1: 100, z0: -56, z1: 150, cx: 10, cz: 40, feather: 42, flatten: 0.85 },
   },
 
   spawns: {
@@ -34,7 +36,9 @@ export default {
   splat: {
     grassTone: (h, s, l) => [0.575, 0.05, clamp01(0.62 + l * 0.38)], // snowpack
     dirtTone: (h, s, l) => [0.075, 0.11, clamp01(l * 0.85 + 0.10)], // frozen mud
-    rockTone: (h, s, l) => [0.60, 0.03, clamp01(l * 0.95 + 0.08)],
+    // pale snow-dusted rock: keeps steep lake banks / cut slopes from reading
+    // as dark holes punched into the snowfield
+    rockTone: (h, s, l) => [0.585, 0.05, clamp01(l * 1.0 + 0.22)],
     mudTone: (h, s, l) => [0.565, 0.24, clamp01(0.60 + l * 0.34)], // (fallback if iceLake off)
     mudRough: 0.18,
     marshGloss: 0.82,
@@ -51,14 +55,18 @@ export default {
     clusterMix: [['birch', 0.55], ['pine', 0.45]],
     loneMix: [['birch', 0.6], ['pine', 0.4]],
     rimMix: [['pine', 0.8], ['birch', 0.2]],
-    clusterCount: 40,
-    loneCount: 85,
+    clusterCount: 52, // denser birch/pine stands — forest blocks as landmarks
+    loneCount: 70,
     rimCount: 58,
-    grassDensity: 0.16,
-    grassTexTone: (h, s, l) => [0.105, 0.26, clamp01(l * 1.15 + 0.08)], // dead straw
-    tuftTone: (h, s, l) => [0.10, 0.20, clamp01(l * 1.05 + 0.08)],
-    bushCount: 0.45,
-    bushSpecies: 'birch',
+    // sparser, FROSTED tufts: the old dark dense scatter read as uniform
+    // speckle noise across the snowfield in wide shots
+    grassDensity: 0.10,
+    grassTexTone: (h, s, l) => [0.105, 0.16, clamp01(l * 1.1 + 0.22)], // rimed straw
+    tuftTone: (h, s, l) => [0.11, 0.10, clamp01(l * 1.05 + 0.26)],
+    bushCount: 0.30,
+    // pine scrub, not birch twig-balls: the dark leafless bush scatter read
+    // as speckle noise against the snow in establishing shots
+    bushSpecies: 'pine',
     palettes: {
       birch: { // bare grey-brown shrubs + crowns — twigs kept DARK so near
         // crowns read as branch masses, not pale star-glitches
@@ -77,7 +85,8 @@ export default {
 
   props: {
     plan: ['cottage', 'barn', 'cottage', 'tower', 'cottage', 'ruin',
-      'cottage', 'barn', 'cottage', 'cottage'],
+      'cottage', 'barn', 'cottage', 'cottage', 'barn', 'cottage',
+      'cottage', 'ruin', 'cottage', 'barn'],
     tones: {
       plaster: (h, s, l) => [0.085, clamp01(s * 0.7), clamp01(l * 1.02 + 0.03)],
       roof: (h, s, l) => [0.58, clamp01(s * 0.25), clamp01(l * 1.35 + 0.18)], // snow-capped
@@ -96,14 +105,19 @@ export default {
     haystacks: 4, rocks: 140, outcrops: 12, craters: 22, rubblePiles: 0,
   },
 
-  horizon: { baseHex: 0x9aa6b0, amp: 1.05 },
+  horizon: {
+    baseHex: 0x8b95a2, amp: 1.2, style: 'alpine', snowline: 0.38,
+    rockHex: 0x596170, snowHex: 0xf1f5fb, haze: 0.85,
+  },
 
   sky: {
     // FLAT OVERCAST: higher-but-weak sun (no warm horizon glow), heavy grey
     // cloud deck, raised ambient/env fill so light reads diffuse
     sunElevationDeg: 33, sunAzimuthDeg: 115,
     turbidity: 13, rayleigh: 3.2, mieCoefficient: 0.002, mieDirectionalG: 0.7,
-    fogDensity: 0.0018, fogTintHex: 0xb4bcc5, fogMix: 0.88, envIntensity: 0.4,
+    // 0.0018 fogged the alpine wall to a flat cutout by 800 m — 0.0013 keeps
+    // the overcast depth while letting rock ribs/snow texture survive
+    fogDensity: 0.0013, fogTintHex: 0xb4bcc5, fogMix: 0.88, envIntensity: 0.4,
     cloudOpacity: 1.0, cloudOpacity2: 0.95, cloudTintHex: 0xaab2bc,
     sunIntensity: 1.4, sunColorHex: 0xdfe7f2, hemiIntensity: 0.8,
   },

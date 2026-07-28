@@ -1,0 +1,8 @@
+Asset: Tank
+Author: Quaternius
+Source page: https://poly.pizza/m/FA5daiyZQq
+Downloaded: 2026-07-27 via https://static.poly.pizza/4a40c214-87f9-4cdb-bc72-003c96f49f76.glb
+License line quoted from asset page (window.__SERVER_APP_STATE__ "Licence" field,
+shown on the page as the model's licence): "Licence": "CC0 1.0"
+License: CC0 1.0 (public domain dedication)
+Tris (per asset page): 0

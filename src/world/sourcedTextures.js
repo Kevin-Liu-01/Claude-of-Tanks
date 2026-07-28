@@ -57,11 +57,33 @@ const SETS = {
 // Per-map terrain layer plan (null = keep procedural layer). M (mud/marsh)
 // stays procedural everywhere: its puddle/ice gloss response is authored into
 // the procedural roughness field and drives uMarshGloss.
+// Entries may be a set key or { set, tint, roughMul }: tint multiplies the
+// albedo (Ground071 ships saturated orange — desaturated toward earth brown
+// so dirt roads stop glowing against the graded grass), roughMul raises the
+// packed roughness floor so sourced sets never reintroduce specular sheen.
 const TERRAIN_PLAN = {
-  verdant: { G: 'grass', D: 'dirt', R: 'rock', M: null },
-  desert: { G: 'dryGrass', D: 'sand', R: 'rockWarm', M: null },
-  winter: { G: 'snow', D: 'dirt', R: 'rock', M: null },
-  urban: { G: 'grass', D: 'dirt', R: 'cobble', M: null },
+  verdant: {
+    G: { set: 'grass', roughMul: 1.25 },
+    D: { set: 'dirt', tint: [0.82, 0.80, 0.76], roughMul: 1.3 },
+    R: 'rock', M: null,
+  },
+  desert: {
+    G: { set: 'dryGrass', roughMul: 1.2 },
+    D: { set: 'sand', roughMul: 1.25 },
+    R: 'rockWarm', M: null,
+  },
+  winter: {
+    G: { set: 'snow', roughMul: 1.15 },
+    D: { set: 'dirt', tint: [0.74, 0.73, 0.72], roughMul: 1.3 },
+    // snow-dusted rock: raw Rock058 is near-black here and punched dark
+    // holes into the snowfield wherever a lake bank / cut slope got steep
+    R: { set: 'rock', tint: [1.52, 1.55, 1.62], roughMul: 1.1 }, M: null,
+  },
+  urban: {
+    G: { set: 'grass', tint: [0.92, 0.92, 0.88], roughMul: 1.25 },
+    D: { set: 'dirt', tint: [0.78, 0.77, 0.75], roughMul: 1.3 },
+    R: 'cobble', M: null,
+  },
 };
 
 const _imgCache = new Map();
@@ -155,8 +177,9 @@ export function applySourcedTerrain(mapId, layers, S = {}) {
   const plan = TERRAIN_PLAN[mapId] || TERRAIN_PLAN.verdant;
   for (const key of ['G', 'D', 'R', 'M']) {
     if (!plan[key] || !layers[key]) continue;
-    const roughMul = key === 'M' ? (S.mudRough ?? 1) : 1;
-    applySet(plan[key], layers[key], { roughInAlpha: true, roughMul })
+    const entry = typeof plan[key] === 'string' ? { set: plan[key] } : plan[key];
+    const roughMul = (key === 'M' ? (S.mudRough ?? 1) : 1) * (entry.roughMul ?? 1);
+    applySet(entry.set, layers[key], { roughInAlpha: true, roughMul, tint: entry.tint || null })
       .catch((e) => console.warn(`[sourcedTextures] terrain ${mapId}/${key}:`, e.message));
   }
 }
@@ -180,6 +203,10 @@ export function applySourcedBuildings(sets, mapId) {
   if (!USE_SOURCED_BUILDINGS) return;
   const plan = { plaster: 'plaster', roof: 'roof', wood: 'wood' };
   if (mapId === 'urban' && sets.stone) plan.stone = 'brick';
+  // urban keeps the PROCEDURAL roof sheet: its tone hook bakes a slate/clay
+  // patchwork (cfg.props.tones.roof) that the single-tint sourced set cannot
+  // reproduce — the uniform maroon roofscape was a top critic complaint
+  if (mapId === 'urban') delete plan.roof;
   for (const [bucket, setKey] of Object.entries(plan)) {
     if (!sets[bucket]) continue;
     applySet(setKey, sets[bucket], {

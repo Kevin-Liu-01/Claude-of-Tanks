@@ -51,7 +51,12 @@ export default {
     haystacks: 15, rocks: 170, outcrops: 16, craters: 30, rubblePiles: 0,
   },
 
-  horizon: { baseHex: 0x38542c, amp: 1.0 },
+  horizon: {
+    // warm green uplands: cooler bases washed the whole wall toward denim
+    // once the fog lerp stacked on top
+    baseHex: 0x4d6540, amp: 1.0, style: 'rolling', treeline: 0.62,
+    forestHex: 0x33502e, rockHex: 0x77725f, haze: 0.85,
+  },
 
   sky: {
     sunElevationDeg: 32, sunAzimuthDeg: 115,

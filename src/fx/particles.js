@@ -71,8 +71,12 @@ attribute vec4 aC0;   // color0.rgb, gravity (+up)
 attribute vec4 aC1;   // color1.rgb, peakAlpha
 uniform float uTime;
 uniform float uDrag;
+uniform float uTiles;
 uniform vec3 uSunDirW;
 varying vec2 vUv;
+varying vec2 vUvA;
+varying vec2 vUvB;
+varying float vFMix;
 varying vec4 vColor;
 varying float vT;
 varying vec2 vShade;
@@ -82,7 +86,8 @@ void main() {
   float life = aVL.w;
   float age = uTime - aPB.w;
   if ( life <= 0.0 || age < 0.0 || age > life ) {
-    vUv = uv; vColor = vec4( 0.0 ); vT = 0.0; vShade = vec2( 0.0 );
+    vUv = uv; vUvA = uv; vUvB = uv; vFMix = 0.0;
+    vColor = vec4( 0.0 ); vT = 0.0; vShade = vec2( 0.0 );
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
     ${FOG_V.replace('-mvPosition.z','1.0')}
     return;
@@ -100,6 +105,16 @@ void main() {
   wpos += camRight * corner.x + camUp * corner.y;
   // sun direction projected into the billboard plane (fake lit-smoke normal)
   vShade = vec2( dot( uSunDirW, camRight ), dot( uSunDirW, camUp ) );
+  // flipbook: cycle the uTiles x uTiles atlas over the particle life, with
+  // cross-fade between adjacent frames — media rolls/combusts instead of a
+  // static sprite scaling up (uTiles = 1 degrades to a plain single sample)
+  float frames = uTiles * uTiles;
+  float ff = t * ( frames - 1.0 );
+  float f0 = floor( ff );
+  float f1 = min( f0 + 1.0, frames - 1.0 );
+  vFMix = ff - f0;
+  vUvA = ( vec2( mod( f0, uTiles ), floor( f0 / uTiles ) ) + uv ) / uTiles;
+  vUvB = ( vec2( mod( f1, uTiles ), floor( f1 / uTiles ) ) + uv ) / uTiles;
   // tier-1 soft handling: alpha-in at birth, long fade-out
   float alpha = aC1.w * smoothstep( 0.0, 0.12, t ) * ( 1.0 - smoothstep( 0.5, 1.0, t ) );
   vColor = vec4( mix( aC0.rgb, aC1.rgb, smoothstep( 0.0, 1.0, t ) ), alpha );
@@ -113,19 +128,25 @@ void main() {
 const PUFF_FRAG_NORMAL = `
 uniform sampler2D uMap;
 varying vec2 vUv;
+varying vec2 vUvA;
+varying vec2 vUvB;
+varying float vFMix;
 varying vec4 vColor;
 varying float vT;
 varying vec2 vShade;
 ${FOG_PARS_F}
 void main() {
-  float tex = texture2D( uMap, vUv ).a;
+  float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
   // edges thin out with age so old puffs wisp away instead of popping
   float a = pow( tex, 1.0 + vT * 1.2 ) * vColor.a;
   if ( a < 0.004 ) discard;
   // fake directional lighting: sun-facing side of the billboard brightens,
-  // opposite side falls into shadow — smoke reads volumetric, not flat
+  // opposite side falls into shadow — smoke reads volumetric, not flat.
+  // Density-weighted: thick texels shade deeper, thin rim texels catch a
+  // sun-side rim light so even near-black columns keep internal structure.
   vec2 p = vUv * 2.0 - 1.0;
-  float light = 0.60 + 0.55 * clamp( 0.55 + 0.7 * dot( p, vShade ), 0.0, 1.0 );
+  float sun = clamp( 0.5 + 0.8 * dot( p, vShade ), 0.0, 1.0 );
+  float light = 0.52 + 0.72 * sun + 0.35 * sun * ( 1.0 - tex );
   vec3 col = vColor.rgb * light;
   ${FOG_SCALE_F}
   #ifdef USE_FOG
@@ -139,16 +160,20 @@ const PUFF_FRAG_ADDITIVE = `
 uniform sampler2D uMap;
 uniform float uIntensity;
 varying vec2 vUv;
+varying vec2 vUvA;
+varying vec2 vUvB;
+varying float vFMix;
 varying vec4 vColor;
 varying float vT;
 varying vec2 vShade;
 ${FOG_PARS_F}
 void main() {
-  float tex = texture2D( uMap, vUv ).a;
+  float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
   // erosion-style dissolve: the alpha threshold rises with age so the noisy
   // texture breaks apart from its thin texels inward — edges churn and burn
-  // away instead of the whole card fading uniformly
-  float er = vT * 0.62;
+  // away instead of the whole card fading uniformly (softer now that the
+  // flipbook frames already self-erode over the sequence)
+  float er = vT * 0.45;
   float a = smoothstep( er, er + 0.24, tex ) * vColor.a;
   if ( a < 0.004 ) discard;
   ${FOG_SCALE_F}
@@ -343,14 +368,15 @@ void main() {
   float spin = aAR.w * age * mix( 1.0, 0.06, grounded );
   mat3 rot = axisAngle( normalize( aAR.xyz ), spin );
   float fade = 1.0 - smoothstep( 0.82, 1.0, t );
-  // per-instance irregular chunk: seeded nonuniform scale + shear so no two
-  // fragments read as the same primitive
+  // per-instance irregular chunk: seeded nonuniform scale + mild shear so no
+  // two fragments read alike. Minimum thickness kept high — a chunk squashed
+  // below ~0.6 of its width reads as a flat paper cutout in flight.
   float h1 = fract( aSG.w * 37.719 );
   float h2 = fract( aSG.w * 61.113 );
   float h3 = fract( aSG.w * 91.537 );
-  vec3 lp = position * vec3( 0.55 + h1 * 0.95, 0.5 + h2 * 1.0, 0.55 + h3 * 0.95 );
-  lp.x += lp.y * ( h2 - 0.5 ) * 0.8;
-  lp.z += lp.y * ( h1 - 0.5 ) * 0.6;
+  vec3 lp = position * vec3( 0.72 + h1 * 0.68, 0.64 + h2 * 0.76, 0.72 + h3 * 0.68 );
+  lp.x += lp.y * ( h2 - 0.5 ) * 0.45;
+  lp.z += lp.y * ( h1 - 0.5 ) * 0.35;
   vec3 wpos = center + rot * ( lp * aSG.x * fade );
   vNormalW = rot * normal;
   vLocal = lp;
@@ -382,15 +408,16 @@ void main() {
   float nl = max( dot( n, uSunDir ), 0.0 );
   float hemi = 0.28 + 0.22 * ( n.y * 0.5 + 0.5 );
   vec3 col = vTint * ( hemi + nl * 1.1 );
-  // cooling ember glow (bloom feed): NOT a flat face tint — modulated by a
-  // smooth local-space pattern so only cracks/patches of the scorched chunk
-  // glow orange while the rest stays charred black
+  // cooling ember glow (bloom feed): NOT a flat face tint — seeded cell-hash
+  // blotches so irregular PATCHES of the scorched chunk glow orange while the
+  // rest stays charred black (the old aligned sin-grid read as waffle dots)
   float edge = 0.40 + 0.60 * ( 1.0 - nl );
-  float pat = 0.5 + 0.5 * sin( vLocal.x * 23.0 + vSeed * 61.0 )
-                        * sin( vLocal.y * 19.0 + vSeed * 23.0 )
-                        * sin( vLocal.z * 27.0 + vSeed * 43.0 );
-  pat *= pat;
-  col += vec3( 1.5, 0.38, 0.05 ) * vHot * edge * ( 0.10 + 1.15 * pat );
+  vec3 cellA = floor( vLocal * 4.5 + vSeed * 29.0 );
+  vec3 cellB = floor( vLocal * 4.5 + vSeed * 29.0 + 0.5 );
+  float patA = fract( sin( dot( cellA, vec3( 12.9898, 78.233, 37.719 ) ) ) * 43758.5453 );
+  float patB = fract( sin( dot( cellB, vec3( 26.6516, 41.339, 59.113 ) ) ) * 24634.6345 );
+  float pat = smoothstep( 0.42, 0.92, max( patA, patB * 0.8 ) );
+  col += vec3( 1.5, 0.38, 0.05 ) * vHot * edge * ( 0.12 + 1.05 * pat );
   ${FOG_SCALE_F}
   #ifdef USE_FOG
     col = mix( col, fogColor, fogFactor );
@@ -426,10 +453,11 @@ function makeValueNoise(rng, grid) {
 
 /**
  * 4-octave fbm turbulence built on seeded value noise, output ~[0,1].
+ * (Exported for effects.js procedural canvas textures.)
  * @param {() => number} rng
  * @returns {(x: number, y: number) => number}
  */
-function makeFbm(rng) {
+export function makeFbm(rng) {
   const o1 = makeValueNoise(rng, 4);
   const o2 = makeValueNoise(rng, 8);
   const o3 = makeValueNoise(rng, 16);
@@ -461,38 +489,56 @@ function applyFbmAlpha(cv, rng, strength) {
 }
 
 /**
- * Turbulent combustion sprite: fbm-warped radius gives a ragged silhouette,
- * a second fbm field gives high-contrast interior churn. Built for the
- * erosion dissolve in PUFF_FRAG_ADDITIVE (dense core survives, edges burn
- * away). Alpha-only payload.
+ * Procedural 4x4 flipbook atlas of noise-eroded billow frames (generated on
+ * a canvas at boot). Frame k rotates + advects the fbm domain and raises the
+ * erosion floor, so cycling the tiles over a particle's life reads as
+ * rolling, combusting media instead of a static sprite scaling up.
+ * Alpha-only payload (RGB white); tiles ordered row-major, frame 0 top-left.
  * @param {() => number} rng
+ * @param {'smoke'|'dust'|'fire'} style contrast/churn profile
  * @returns {THREE.CanvasTexture}
  */
-function makeFireTexture(rng) {
-  const s = 160;
+function makeFlipbookTexture(rng, style) {
+  const TILES = 4, T = 128, S = TILES * T;
   const cv = document.createElement('canvas');
-  cv.width = cv.height = s;
+  cv.width = cv.height = S;
   const ctx = cv.getContext('2d');
   const warp = makeFbm(rng);
   const churn = makeFbm(rng);
-  const img = ctx.createImageData(s, s);
+  const img = ctx.createImageData(S, S);
   const d = img.data;
-  for (let y = 0; y < s; y++) {
-    for (let x = 0; x < s; x++) {
-      const nx = x / s, ny = y / s;
-      const dx = nx - 0.5, dy = ny - 0.5;
-      const r = Math.sqrt(dx * dx + dy * dy) * 2; // 0 center -> 1 edge
-      // domain-warped radius: silhouette bulges and bites, never a disc
-      const rw = r + (warp(nx, ny) - 0.5) * 0.75;
-      let a = 1 - (rw - 0.18) / 0.72;             // soft falloff from warped core
-      a = Math.max(0, Math.min(1, a));
-      // interior turbulence: bright filaments and dark pockets
-      const c = churn(nx * 1.7, ny * 1.7);
-      a *= 0.38 + 0.85 * c;
-      a = Math.pow(Math.min(1, a), 1.1);
-      const i = (y * s + x) * 4;
-      d[i] = d[i + 1] = d[i + 2] = 255;
-      d[i + 3] = Math.round(a * 255);
+  const fire = style === 'fire';
+  const churnLo = fire ? 0.26 : (style === 'dust' ? 0.58 : 0.48);
+  const churnHi = fire ? 1.10 : (style === 'dust' ? 0.62 : 0.78);
+  const gamma = fire ? 0.88 : 1.06;
+  for (let k = 0; k < TILES * TILES; k++) {
+    const q = k / (TILES * TILES - 1);          // 0 -> 1 over the sequence
+    const tx = (k % TILES) * T, ty = Math.floor(k / TILES) * T;
+    const rot = q * 1.35;                        // domain rotation = roll
+    const cs = Math.cos(rot), sn = Math.sin(rot);
+    const zoom = 1 / (1 + 0.5 * q);              // features grow as it rolls
+    for (let y = 0; y < T; y++) {
+      for (let x = 0; x < T; x++) {
+        const nx = (x + 0.5) / T - 0.5, ny = (y + 0.5) / T - 0.5;
+        const r = Math.sqrt(nx * nx + ny * ny) * 2;
+        const ux = (nx * cs - ny * sn) * zoom + 0.5 + q * 0.23;
+        const uy = (nx * sn + ny * cs) * zoom + 0.5;
+        const w = warp(ux, uy);
+        const c = churn(ux * 1.9 + 3.7, uy * 1.9 + 1.3);
+        const rw = r + (w - 0.5) * (0.40 + 0.42 * q); // raggedness grows
+        let a = 1 - (rw - 0.14) / (0.76 - 0.14 * q);
+        a = Math.max(0, Math.min(1, a));
+        a *= churnLo + churnHi * c;
+        // erosion floor rises over the sequence: late frames break apart
+        a = Math.max(0, (a - 0.20 * q) / (1 - 0.20 * q));
+        a = Math.pow(Math.min(1, a), gamma);
+        // hard radial cap: tile edges must stay fully transparent (no seams)
+        const capT = Math.max(0, Math.min(1, (r - 0.84) / 0.15));
+        a *= 1 - capT * capT * (3 - 2 * capT);
+        const i = ((ty + y) * S + tx + x) * 4;
+        d[i] = d[i + 1] = d[i + 2] = 255;
+        d[i + 3] = Math.round(a * 255);
+      }
     }
   }
   ctx.putImageData(img, 0, 0);
@@ -539,63 +585,6 @@ function makeJetTexture(rng) {
   const tex = new THREE.CanvasTexture(cv);
   tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
   return tex;
-}
-
-/**
- * Soft puff sprite: radial gradient modulated by seeded blob noise so smoke
- * reads as vapor, not a flat disc. Alpha-only payload (RGB white).
- * @param {() => number} rng
- * @param {number} blobbiness 0..1 — how broken-up the silhouette is
- * @returns {THREE.CanvasTexture}
- */
-function makePuffTexture(rng, blobbiness) {
-  const s = 128;
-  const cv = document.createElement('canvas');
-  cv.width = cv.height = s;
-  const ctx = cv.getContext('2d');
-  ctx.clearRect(0, 0, s, s);
-  // Base radial falloff
-  const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-  g.addColorStop(0.0, 'rgba(255,255,255,0.9)');
-  g.addColorStop(0.45, 'rgba(255,255,255,0.55)');
-  g.addColorStop(0.8, 'rgba(255,255,255,0.12)');
-  g.addColorStop(1.0, 'rgba(255,255,255,0)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, s, s);
-  // Seeded sub-puff blobs (lighten) + bite-outs (destination-out) for texture
-  ctx.globalCompositeOperation = 'lighter';
-  for (let i = 0; i < 14; i++) {
-    const a = rng() * Math.PI * 2;
-    const r = (0.10 + rng() * 0.24) * s;
-    const cx = s / 2 + Math.cos(a) * rng() * s * 0.22;
-    const cy = s / 2 + Math.sin(a) * rng() * s * 0.22;
-    const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    bg.addColorStop(0, 'rgba(255,255,255,0.30)');
-    bg.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, s, s);
-  }
-  ctx.globalCompositeOperation = 'destination-out';
-  const bites = Math.round(6 + blobbiness * 10);
-  for (let i = 0; i < bites; i++) {
-    const a = rng() * Math.PI * 2;
-    const d = (0.28 + rng() * 0.22) * s;
-    const cx = s / 2 + Math.cos(a) * d;
-    const cy = s / 2 + Math.sin(a) * d;
-    const r = (0.06 + rng() * 0.14) * s * (0.5 + blobbiness);
-    const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    bg.addColorStop(0, `rgba(0,0,0,${0.35 + blobbiness * 0.35})`);
-    bg.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, s, s);
-  }
-  ctx.globalCompositeOperation = 'source-over';
-  // fbm pass: per-pixel turbulence so even large screen-covering puffs keep
-  // internal cauliflower structure instead of reading as smooth blobs
-  applyFbmAlpha(cv, rng, 0.5 + blobbiness * 0.25);
-  const tex = new THREE.CanvasTexture(cv);
-  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-  return tex; // alpha map, stays linear
 }
 
 /**
@@ -779,9 +768,9 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   const uTime = { value: 0 };
   let frozen = false;
 
-  const smokeTex = makePuffTexture(texRng, 0.65);
-  const fireTex = makeFireTexture(texRng);
-  const dustTex = makePuffTexture(texRng, 0.8);
+  const smokeTex = makeFlipbookTexture(texRng, 'smoke');
+  const fireTex = makeFlipbookTexture(texRng, 'fire');
+  const dustTex = makeFlipbookTexture(texRng, 'dust');
   const flashTex = makeFlashTexture(texRng);
   const jetTex = makeJetTexture(texRng);
 
@@ -790,7 +779,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   // (elevation 35°, azimuth 140° — see src/engine/sky.js)
   const sunDirW = new THREE.Vector3(0.527, 0.574, -0.627).normalize();
 
-  function puffMaterial(map, additive, drag, intensity) {
+  function puffMaterial(map, additive, drag, intensity, tiles = 1) {
     const mat = new THREE.ShaderMaterial({
       vertexShader: PUFF_VERT,
       fragmentShader: additive ? PUFF_FRAG_ADDITIVE : PUFF_FRAG_NORMAL,
@@ -799,6 +788,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
         uMap: { value: map },
         uDrag: { value: drag },
         uIntensity: { value: intensity },
+        uTiles: { value: tiles },
         uSunDirW: { value: sunDirW },
       }),
       transparent: true,
@@ -817,13 +807,13 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
 
   const pools = {
     smoke: new Pool('smoke', makeQuadGeometry(POOL_SIZES.smoke),
-      puffMaterial(smokeTex, false, 0.9, 1), PUFF_LAYOUT, POOL_SIZES.smoke, 'aVL', 3),
+      puffMaterial(smokeTex, false, 0.9, 1, 4), PUFF_LAYOUT, POOL_SIZES.smoke, 'aVL', 3),
     fire: new Pool('fire', makeQuadGeometry(POOL_SIZES.fire),
       // intensity 1.05: hot enough to bloom where sprites overlap without the
       // stacked-additive HDR clipping the fireball core to a featureless sheet
-      puffMaterial(fireTex, true, 1.6, 1.05), PUFF_LAYOUT, POOL_SIZES.fire, 'aVL', 3),
+      puffMaterial(fireTex, true, 1.6, 1.05, 4), PUFF_LAYOUT, POOL_SIZES.fire, 'aVL', 3),
     dust: new Pool('dust', makeQuadGeometry(POOL_SIZES.dust),
-      puffMaterial(dustTex, false, 1.4, 1), PUFF_LAYOUT, POOL_SIZES.dust, 'aVL', 3),
+      puffMaterial(dustTex, false, 1.4, 1, 4), PUFF_LAYOUT, POOL_SIZES.dust, 'aVL', 3),
     flash: new Pool('flash', makeQuadGeometry(POOL_SIZES.flash),
       // 1.7: bright enough to bloom without clipping to a featureless sheet
       puffMaterial(flashTex, true, 0.6, 1.7), PUFF_LAYOUT, POOL_SIZES.flash, 'aVL', 3),

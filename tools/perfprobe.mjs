@@ -21,6 +21,32 @@ const height = parseInt(opt('height', '1080'), 10);
 const dsf = parseFloat(opt('dsf', '1')); // deviceScaleFactor: 2 = retina default
 const outFile = opt('out', '');
 
+// Tracked performance budget (docs/EVALUATION.md perf gate). Every line is
+// evaluated in the report's `budget` block so regressions surface in the
+// probe output itself instead of by manual comparison against old JSONs.
+// - drawCalls is budgeted on the WORST frame, not the median: firing-burst
+//   spikes are deterministic and a AAA perf gate ships peak-frame compliance.
+// - frameMs p99 <= 25 ms keeps contention hitches under 2 vsyncs at 60 Hz.
+// - triangles median is across ALL passes (3 CSM cascades + main; the GTAO
+//   G-buffer prepass no longer exists) — the creep guard for content/prop
+//   integration. Hard gate 7 M = the 2026-07-28 content level (6.36 M) +10%;
+//   RATCHET TARGET 6 M once cascade shadow-proxy LODs land (see
+//   docs/handoff/performance_budget-r2.md §4).
+const BUDGET = {
+  fpsMedianMin: 60,
+  fpsP5Min: 45,
+  frameMsP99Max: 25,
+  drawCallsWorstFrameMax: 900,
+  trianglesMedianMax: 7_000_000, // ratchet to 6M after shadow-proxy LODs (handoff §4)
+  loadToReadyMaxMs: 8000,
+  // "Stable heap": gate on min(raw trend, post-GC floor trend) — a leak
+  // raises both; GC phase skews one. The GC sawtooth on this app's ~250-400 MB
+  // battle heap swings a 20 s start->end trend by roughly +-1.5 MB/s even with
+  // zero leak (60 s controls trend NEGATIVE: -0.4 both trees), so short
+  // windows get a wider tolerance; runs of 40 s+ are the authoritative check.
+  heapGrowthMaxMBperS: seconds >= 40 ? 1.0 : 2.0,
+};
+
 const port = 5900 + Math.floor(Math.random() * 90);
 const server = await createServer({ root: process.cwd(), logLevel: 'error', server: { port, strictPort: false } });
 await server.listen();
@@ -170,6 +196,18 @@ try {
   const heapGrowthMBs = heap.length > 2
     ? ((heap[heap.length - 1] - heap[0]) / (heap.length - 1)) / (1024 * 1024)
     : 0;
+  // Leak detector robust to GC phase: raw start->end growth over a 20 s window
+  // swings roughly -4..+2.5 MB/s depending on where the last major GC fell
+  // (measured across seven otherwise-identical runs; a 60 s run trends -0.4).
+  // The post-GC FLOOR is what a leak actually raises, so compare the minimum
+  // of the first third of samples against the minimum of the last third.
+  let heapFloorGrowthMBs = 0;
+  if (heap.length >= 6) {
+    const third = Math.floor(heap.length / 3);
+    const lo = Math.min(...heap.slice(0, third));
+    const hi = Math.min(...heap.slice(-third));
+    heapFloorGrowthMBs = ((hi - lo) / (heap.length - third)) / (1024 * 1024);
+  }
 
   report = {
     date: new Date().toISOString(),
@@ -197,6 +235,7 @@ try {
       startMB: +(heap[0] / 1048576).toFixed(1),
       endMB: +(heap[heap.length - 1] / 1048576).toFixed(1),
       growthMBperS: +heapGrowthMBs.toFixed(2),
+      floorGrowthMBperS: +heapFloorGrowthMBs.toFixed(2),
     },
     gpuTextureEstimate: {
       sceneTextureMB: +(texEstimate.textureBytes / 1048576).toFixed(1),
@@ -205,6 +244,30 @@ try {
     },
     consoleErrors: consoleErrors.slice(0, 10),
   };
+  // Budget evaluation (see BUDGET above) — machine-checkable pass/fail lines.
+  const lines = {
+    fpsMedian: { limit: `>=${BUDGET.fpsMedianMin}`, actual: report.fps.median, pass: report.fps.median >= BUDGET.fpsMedianMin },
+    fpsP5: { limit: `>=${BUDGET.fpsP5Min}`, actual: report.fps.p5, pass: report.fps.p5 >= BUDGET.fpsP5Min },
+    frameMsP99: { limit: `<=${BUDGET.frameMsP99Max}`, actual: report.frameMs.p99, pass: report.frameMs.p99 <= BUDGET.frameMsP99Max },
+    drawCallsWorstFrame: { limit: `<=${BUDGET.drawCallsWorstFrameMax}`, actual: report.drawCalls.max, pass: report.drawCalls.max <= BUDGET.drawCallsWorstFrameMax },
+    trianglesMedian: { limit: `<=${BUDGET.trianglesMedianMax}`, actual: report.triangles.median, pass: report.triangles.median <= BUDGET.trianglesMedianMax },
+    loadToReady: { limit: `<=${BUDGET.loadToReadyMaxMs}`, actual: report.loadToReadyMs, pass: report.loadToReadyMs <= BUDGET.loadToReadyMaxMs },
+    // Stable heap: a real leak raises BOTH the raw start->end trend AND the
+    // post-GC floor trend; GC-cycle phase in a 20 s window skews one or the
+    // other (raw measured -4.6..+2.5 MB/s across identical no-leak runs, and
+    // a 60 s control trends -0.4). Gate on the smaller of the two.
+    heapStableMBperS: {
+      limit: `<=${BUDGET.heapGrowthMaxMBperS}`,
+      actual: Math.min(report.heap.growthMBperS, report.heap.floorGrowthMBperS),
+      pass: Math.min(report.heap.growthMBperS, report.heap.floorGrowthMBperS) <= BUDGET.heapGrowthMaxMBperS,
+    },
+    consoleErrors: { limit: '=0', actual: consoleErrors.length, pass: consoleErrors.length === 0 },
+  };
+  report.budget = { pass: Object.values(lines).every((l) => l.pass), ...lines };
+  if (!report.budget.pass) {
+    const failed = Object.entries(lines).filter(([, l]) => !l.pass).map(([k, l]) => `${k}=${l.actual} (want ${l.limit})`);
+    console.error(`[perf] BUDGET FAIL: ${failed.join(', ')}`);
+  }
 } catch (err) {
   failed = true;
   console.error(`[perf] FAILED: ${err.message}`);

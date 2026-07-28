@@ -7,6 +7,7 @@ served locally from `public/`, no CDN or network fetches in game code.
 | Asset | Author | Source | License | Files |
 |---|---|---|---|---|
 | Switzer font family (Regular 400, Medium 500, Semibold 600, Bold 700, Extrabold 800 — woff2 web kit) | Jérémie Hornus / Indian Type Foundry | https://www.fontshare.com/fonts/switzer (downloaded via https://api.fontshare.com/v2/fonts/download/switzer) | Fontshare Free Font License (ITF FF EULA) — free for personal & commercial use; license text committed alongside the fonts | `public/fonts/switzer/Switzer-{Regular,Medium,Semibold,Bold,Extrabold}.woff2`, license: `public/fonts/switzer/LICENSE-FFL.txt` |
+| Switzer Condensed (derivative faces) | derived locally from the hosted Switzer woff2s (glyph outlines and advances condensed to 86% width via fontTools; family renamed to avoid collision) | generated in-repo — no new third-party download | Same license and license file as Switzer: Fontshare Free Font License (ITF FF EULA), permits modification | `public/fonts/switzer/SwitzerCondensed-{Regular,Medium,Semibold,Bold,Extrabold}.woff2`, license: `public/fonts/switzer/LICENSE-FFL.txt` |
 
 ## Vehicles (public/models/tanks/) — 1 shipped asset (M1A2)
 
@@ -319,15 +320,49 @@ CC-BY candidates recorded in the scouting report wishlist instead.
 Verdict: **sourced wins for M1A2 Abrams (pending integration); procedural
 stays the winner for T-90M and Leopard 2A7.**
 
+## Community vehicles (public/models/tanks/community/) — 9 playable sourced tanks
+
+Community-crawl winners (2026-07-27), integrated as PLAYABLE vehicles: garage
+carousel + tech-tree COMMUNITY tab (each card carries the author credit line —
+CC-BY attribution requirement), AI-drivable, random enemy rosters may include
+them. Every license was verified ON the asset page at download time; the
+quoted license line for each asset is preserved in
+`docs/licenses/community/<slug>.LICENSE-RECORD.txt`.
+
+| In-game vehicle (spec id) | Asset | Author | Source | License | File |
+|---|---|---|---|---|---|
+| Stridsvagn 103 (`strv103`) | Stridsvagn 103 | Lukasz Wesiora (canisferus) | https://opengameart.org/content/stridsvagn-103 | CC-BY 3.0 (bundled License.txt: "CC-By 3.0 license... Copyrights Lukasz Wesiora.") | `public/models/tanks/community/strv103_wesiora.glb` (materials rebuilt as Principled BSDF from the 2012 pre-nodes .blend; textures 4096→2048 JPEG; integrated as fixed-gun casemate TD) |
+| IS-3 (`is3`) | IS-3 (Object 703, moving parts) | Nick Tallon (PanzerFactory) | https://www.thingiverse.com/thing:4137773 (via archive.org mirror thingiverse-4137773) | CC-BY 4.0 | `public/models/tanks/community/is3_panzerfactory.glb` (print STLs reassembled: turret peg seated in hull ring, gun in mantlet socket; hull/turret/gun articulation nodes) |
+| T-34-85 (Wei He) (`t34_85_cad`) | T-34-85 detailed CAD | Wei He (Xdhsqj) | https://www.thingiverse.com/thing:4326802 (via archive.org mirror thingiverse-4326802) | CC-BY 4.0 | `public/models/tanks/community/t34_85_weihe.glb` (SolidWorks 1:1 export decimated 3.49M→~220k tris; turret+gun separated at the ring plane, yaw pivot at ring center) |
+| Tiger I (Newc42) (`newc_tiger`) | Panzer VI Tiger I, Low Poly German WWII Tanks | Newc42 | https://newc-42.itch.io/german-low-poly-wwii-tanks | CC0-1.0 (itch.io "Asset license: Creative Commons Zero v1.0 Universal") | `public/models/tanks/community/tiger_newc42.glb` |
+| Panzer III Ausf. J (`newc_pziii`) | Low Poly German WWII Tanks | Newc42 | https://newc-42.itch.io/german-low-poly-wwii-tanks | CC0-1.0 | `public/models/tanks/community/pziii_newc42.glb` |
+| Leichttraktor (`leichttraktor`) | Low Poly German WWII Tanks | Newc42 | https://newc-42.itch.io/german-low-poly-wwii-tanks | CC0-1.0 | `public/models/tanks/community/leichttraktor_newc42.glb` |
+| Panzerkampfwagen III (`pziii_konserwa`) | Panzerkampfwagen III | konserwa | https://opengameart.org/content/panzerkampfwagen-iii | CC0 (stated on asset page) | `public/models/tanks/community/pziii_konserwa.glb` (untextured; painted at load onto the shared camo canvas — modelLoader `paintUntextured`) |
+| Recon Tank (`recon_tank`) | Recon Tank (Update) | Mophs — derivative of "Recon Tank" by MNDV.ecb / Eric Buisson (both credited) | https://opengameart.org/content/recon-tank-update | CC-BY 4.0 | `public/models/tanks/community/recon_tank_mophs.glb` (full PBR set embedded; bone-rigged Turret/Barrel articulation) |
+| Heavy Tank (Quaternius) (`q_heavy`) | Tank (heavy, tan) | Quaternius | https://poly.pizza/m/FA5daiyZQq | CC0 1.0 | `public/models/tanks/community/tank_quaternius_fa5.glb` |
+
+Integration path: `MODEL_SOURCE` community entries in `src/vehicles/specs.js`
+(parametric class-template armor/stats), generalized GLB ingestion in
+`src/vehicles/modelLoader.js` (fixed-gun casemates, sibling gun nodes,
+bone-rigged turrets, auto-derived yaw/pitch pivots, untextured-asset camo
+painting). Icons under `public/icons/<spec id>_*.png` are DERIVATIVE RENDERS
+of the models above (the CC-BY rows' attribution covers them).
+
+Losing crawl candidates (all other `public/models/community-candidates/`
+downloads) were deleted after judging; the two duplicate Stridsvagn 103
+downloads were consolidated into the wesiora re-export above.
+
 ## Generated files (no third-party ownership, listed for completeness)
 
-- `public/icons/*.png` — 40 PNGs (8 tanks × top/angle/side + 2 silhouettes)
+- `public/icons/*.png` — 85 PNGs (17 tanks × top/angle/side + 2 silhouettes)
   rendered from the shipped models by `node tools/genIcons.mjs`
   (tools/icons-page.html studio scene). The five `m1a2_*` icons are
-  DERIVATIVE RENDERS of the CC-BY-4.0 "Abrams M1A2 SEPv3" by dannzjs — the
-  vehicle-table attribution above covers these derived images (CC-BY 4.0
-  attribution carried by this file). All other icons render 100% procedural
-  geometry (no third-party content).
+  DERIVATIVE RENDERS of the CC-BY-4.0 "Abrams M1A2 SEPv3" by dannzjs, and the
+  community-vehicle icons (`strv103_*`, `is3_*`, `t34_85_cad_*`,
+  `newc_tiger_*`, `newc_pziii_*`, `pziii_konserwa_*`, `leichttraktor_*`,
+  `recon_tank_*`, `q_heavy_*`) are derivative renders of the community assets
+  tabled above — those rows' attribution covers the derived images. All other
+  icons render 100% procedural geometry (no third-party content).
 - `public/maps/{verdant,desert,winter,urban}.png` — map-picker thumbnails
   captured from the game's own render; derivative only of this repo's
   procedural world + the CC0 texture sets listed above (no attribution duty

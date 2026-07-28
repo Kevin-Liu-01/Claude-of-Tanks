@@ -39,11 +39,16 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+// COMMUNITY TANKS: bone-rigged assets (recon_tank turret/barrel bones,
+// quaternius track rig) need skeleton-aware cloning — Object3D.clone leaves
+// the cloned SkinnedMeshes bound to the ORIGINAL scene's bones (verts render
+// unscaled at the origin / vanish). SkeletonUtils.clone retargets them.
+import { clone as cloneWithSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
 // CAMO PATTERN SECTION: sourced models get the active camo pattern composited
 // over their baked maps (materials.js owns pattern resolution + live
 // re-painting on garage/biome switches); procedural add-on parts wear the
 // shared camo canvas directly.
-import { applyCamoToModel, getSharedCamoTexture } from './materials.js';
+import { applyCamoToModel, getSharedCamoTexture, vehicleAmbientFloorHook } from './materials.js';
 
 const _loader = new GLTFLoader();
 const _cache = new Map();    // url -> Promise<GLTF>
@@ -211,6 +216,10 @@ function applyModelFixes(scene, turret, spec) {
         // hardware bits belonging to the deleted second RWS
         [-0.85, -0.25, 1.55, 2.10, 3.30, 3.90],
       ]);
+    } else if (mn === 'Radiator') {
+      // two large circular deck fans — no Abrams variant carries these
+      // (r6 critique); replaced by flat rectangular grille panels below
+      o.visible = false;
     } else if (mn === 'MainMetal_LH') {
       if (o.geometry.attributes.position.count <= 32) {
         // headlight lens quads of the deleted towers
@@ -287,7 +296,7 @@ function applyModelFixes(scene, turret, spec) {
   // recessed dark window + shutter brow, seated on the new roof plane.
   {
     const dark = new THREE.MeshStandardMaterial({
-      name: 'AddOnDark', color: 0x15181a, roughness: 0.5, metalness: 0.3 });
+      name: 'AddOnDark', color: 0x15181a, roughness: 0.68, metalness: 0.14 });
     const bx = 0.72, by = -1.75;
     addPart(turret, mat, new THREE.BoxGeometry(0.60, 0.52, 0.40), bx, by, 3.14);
     addPart(turret, mat, new THREE.BoxGeometry(0.64, 0.28, 0.07), bx, by - 0.16, 3.31); // brow
@@ -300,6 +309,23 @@ function applyModelFixes(scene, turret, spec) {
       .rotateX(Math.PI / 2), cx, cy, 3.38);
     addPart(turret, mat, new THREE.BoxGeometry(0.32, 0.34, 0.28), cx, cy, 3.64);
     addPart(turret, dark, new THREE.BoxGeometry(0.22, 0.05, 0.15), cx, cy - 0.18, 3.64); // mirror window
+  }
+
+  // Rear engine deck: flat rectangular grille panels where the carved-out
+  // circular fans sat (real SEPv3 deck is flat panels with transverse louver
+  // grilles). Base plate wears the camo; recessed dark louver bars on top.
+  {
+    const hullParent2 = turret.parent || scene;
+    const grillDark = new THREE.MeshStandardMaterial({
+      name: 'AddOnGrille', color: 0x191c18, roughness: 0.85, metalness: 0.12 });
+    const gx = 0.19, gy = 4.77;                       // carved fan footprint center
+    addPart(hullParent2, mat, new THREE.BoxGeometry(2.5, 1.04, 0.05), gx, gy, 2.22);
+    for (let k = 0; k < 6; k++) {
+      addPart(hullParent2, grillDark, new THREE.BoxGeometry(2.34, 0.09, 0.05),
+        gx, gy - 0.44 + k * 0.176, 2.235);
+    }
+    // panel split seams so the deck reads as serviceable hatches
+    addPart(hullParent2, grillDark, new THREE.BoxGeometry(0.03, 1.0, 0.052), gx, gy, 2.235);
   }
 
   // Fender service lights replacing the deleted towers: small drums with a
@@ -318,6 +344,59 @@ function applyModelFixes(scene, turret, spec) {
       addPart(hullParent, lens, new THREE.CylinderGeometry(0.065, 0.065, 0.03, 12), x, -3.70, 1.86);
     }
   }
+}
+
+// COMMUNITY TANKS: box-projected UVs in the asset's raw frame at the shared
+// camo canvas world density (uv = raw * camoScale * normScale), so untextured
+// CAD/flat-color models sample the live per-spec camo like procedural hulls.
+function boxUVRaw(geo, scale) {
+  if (geo.userData.__cotBoxUV) return;
+  geo.userData.__cotBoxUV = true;
+  if (!geo.attributes.normal) geo.computeVertexNormals();
+  const pos = geo.attributes.position, nor = geo.attributes.normal;
+  const uv = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) {
+    const nx = Math.abs(nor.getX(i)), ny = Math.abs(nor.getY(i)), nz = Math.abs(nor.getZ(i));
+    let u, v;
+    if (ny >= nx && ny >= nz) { u = pos.getX(i); v = pos.getZ(i); }
+    else if (nx >= nz) { u = pos.getZ(i); v = pos.getY(i); }
+    else { u = pos.getX(i); v = pos.getY(i); }
+    uv[i * 2] = u * scale; uv[i * 2 + 1] = v * scale;
+  }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+}
+
+/**
+ * COMMUNITY TANKS material-upgrade pass for untextured assets: single-material
+ * meshes with no albedo map get the live shared camo canvas (full pattern +
+ * repaint support); very dark flat mats (track runs, tires) keep their factory
+ * color — the 'addon' marker in the name opts them out of materials.js's
+ * plain-tint pass.
+ */
+function paintUntextured(root, spec, normScale) {
+  const uvScale = (spec.visual && spec.visual.camoScale != null ? spec.visual.camoScale : 0.34) * normScale;
+  let camoMat = null;
+  root.traverse((o) => {
+    if (!o.isMesh || Array.isArray(o.material) || !o.material) return;
+    const m = o.material;
+    if (m.map || !m.color) return;
+    const luma = 0.2126 * m.color.r + 0.7152 * m.color.g + 0.0722 * m.color.b;
+    if (luma < 0.045) {
+      // bare hardware / rubber: keep, and exempt from the camo base tint
+      if (!/addon/i.test(m.name || '')) m.name = `${m.name || 'dark'}_addon_keep`;
+      return;
+    }
+    if (!camoMat) {
+      camoMat = new THREE.MeshStandardMaterial({
+        name: 'AddOnCamoHull', map: getSharedCamoTexture(spec),
+        roughness: 0.82, metalness: 0.08,
+      });
+      camoMat.onBeforeCompile = vehicleAmbientFloorHook;
+      camoMat.customProgramCacheKey = () => 'veh-ambient-floor-v1';
+    }
+    boxUVRaw(o.geometry, uvScale);
+    o.material = camoMat;
+  });
 }
 
 /**
@@ -350,10 +429,15 @@ function upgradeMaterials(root) {
         m.metalness = 0.16;
         if (!m.map && m.color) m.color.setRGB(0.3, 0.32, 0.26);
       } else if (/^light$/i.test(name)) {
-        // Lens strips: dim glass, no daylight blowout (r5 headlight critique).
-        m.roughness = 0.3;
-        m.metalness = 0.4;
-        if (m.color) m.color.setRGB(0.22, 0.24, 0.22);
+        // Lens strips: fully matte, near-black. The r5 "dim glass" (rough .3
+        // metal .4) still fired a glowing full-width bar off the light strip
+        // under the garage spots (r6 critique) — real lamp clusters read as
+        // dark recessed glass at any distance, so kill the specular entirely.
+        m.roughnessMap = null;
+        m.metalnessMap = null;
+        m.roughness = 0.72;
+        m.metalness = 0.08;
+        if (m.color) m.color.setRGB(0.09, 0.10, 0.09);
       } else if (/rot|armor|shield/i.test(name)) {
         // turret shell / applique / skirts: matte CARC — baked glossy pockets
         // (vision blocks etc.) fired a blinding sky glint off the roof inside
@@ -368,27 +452,45 @@ function upgradeMaterials(root) {
 }
 
 /** Core swap, fully synchronous once the parsed GLTF is in hand. */
-function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG }) {
-  const scene = gltf.scene.clone(true);
+function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
+  const scene = cloneWithSkeleton(gltf.scene);
 
   // ---- articulation gate ----
-  const turret = findNode(scene, new RegExp(cfg.turretNode || 'turret', 'i'));
-  if (!turret) {
+  // COMMUNITY TANKS: cfg.fixedGun marks casemate vehicles (Strv 103) — the
+  // whole model rides the hull and the sim aims a virtual turret through the
+  // (empty) articulation groups; everything else still REQUIRES a turret node.
+  const turret = cfg.fixedGun
+    ? null
+    : findNode(scene, new RegExp(cfg.turretNode || 'turret', 'i'));
+  if (!turret && !cfg.fixedGun) {
     throw new Error(`glb model for ${spec.id} has no articulable turret node — keeping procedural`);
   }
-  const gun = findNode(turret, new RegExp(cfg.gunNode || 'gun|barrel|cannon', 'i'));
+  // Gun node: prefer a child of the turret; community assets often ship the
+  // gun as a turret SIBLING (is3, quaternius), so an explicit cfg.gunNode is
+  // also resolved scene-wide.
+  const gunRe = new RegExp(cfg.gunNode || 'gun|barrel|cannon', 'i');
+  const gun = turret
+    ? (findNode(turret, gunRe) || (cfg.gunNode ? findNode(scene, gunRe) : null))
+    : null;
 
   // ---- fidelity surgery in the raw asset frame (before orient/scale) ----
   if (spec.id === 'm1a2') applyModelFixes(scene, turret, spec);
+
+  // Skinned assets (recon_tank bones, quaternius track rig): bone-driven
+  // verts move outside the mesh's static bounds — never frustum-cull them.
+  scene.traverse((o) => { if (o.isSkinnedMesh) o.frustumCulled = false; });
 
   // ---- orient, then scale/ground to real dimensions ----
   scene.rotation.y = cfg.yawOffset || 0;
   scene.updateMatrixWorld(true);
   // Hull-only box for the scale: the gun overhang would otherwise shrink the
-  // whole vehicle by the barrel length (m1a2: -22%).
-  const hullBB = gun ? bboxExcluding(scene, gun) : bboxExcluding(scene, null);
+  // whole vehicle by the barrel length (m1a2: -22%). cfg.scaleToOverall keeps
+  // the full box for single-skinned-mesh models whose barrel verts cannot be
+  // excluded (the gun "node" is a bone with no meshes of its own).
+  const useHullLen = gun && !cfg.scaleToOverall;
+  const hullBB = useHullLen ? bboxExcluding(scene, gun) : bboxExcluding(scene, null);
   const size = hullBB.getSize(new THREE.Vector3());
-  const targetLen = gun ? spec.dims.hullLengthM : spec.dims.overallLengthM;
+  const targetLen = useHullLen ? spec.dims.hullLengthM : spec.dims.overallLengthM;
   const s = targetLen / Math.max(size.z, 1e-3);
   scene.scale.setScalar(s);
   scene.position.y = -hullBB.min.y * s;                       // ground at y=0
@@ -396,7 +498,54 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG }) {
   scene.position.z = -(hullBB.min.z + hullBB.max.z) / 2 * s;
   scene.updateMatrixWorld(true);
 
+  // ---- COMMUNITY TANKS: derive articulation pivots from the asset ---------
+  // Computed in the scene's normalized frame (== tank-root local: hullG and
+  // turretG are unrotated root children) BEFORE attach, so a posed tank
+  // (async swap mid-battle) cannot skew the boxes.
+  let autoTurretPos = null;
+  let autoGunPos = null;
+  let autoMuzzleLen = null;
+  if (cfg.autoPivot && turret) {
+    const tb = new THREE.Box3().setFromObject(turret);
+    const to = new THREE.Vector3().setFromMatrixPosition(turret.matrixWorld);
+    const tbLoose = tb.clone().expandByScalar(0.6);
+    if (cfg.pivot) {
+      // explicit override, raw (pre-yaw) model units
+      autoTurretPos = new THREE.Vector3(cfg.pivot[0], cfg.pivot[1], cfg.pivot[2])
+        .applyMatrix4(scene.matrixWorld);
+    } else if (tb.isEmpty() || (to.y > 0.25 && tbLoose.containsPoint(to))) {
+      // authored ring-center origin; bone turrets (no meshes of their own —
+      // the skinned hull carries the verts) ALWAYS use the bone origin
+      autoTurretPos = to.clone();
+    } else {
+      // fallback: ring axis at the turret footprint center, ring plane at its base
+      autoTurretPos = new THREE.Vector3(
+        (tb.min.x + tb.max.x) / 2, Math.max(tb.min.y, 0.4), (tb.min.z + tb.max.z) / 2);
+    }
+    if (gun) {
+      const gb = bboxExcluding(gun, null);
+      const go = new THREE.Vector3().setFromMatrixPosition(gun.matrixWorld);
+      if (gb.isEmpty()) {
+        autoGunPos = go.clone();                   // bone gun (skinned rigs)
+      } else if (go.y > 0.25 && gb.clone().expandByScalar(0.8).containsPoint(go)) {
+        autoGunPos = go.clone();                   // authored trunnion origin
+        autoMuzzleLen = gb.max.z - go.z;
+      } else {
+        // trunnion at the breech end of the gun box
+        autoGunPos = new THREE.Vector3(
+          (gb.min.x + gb.max.x) / 2, (gb.min.y + gb.max.y) / 2,
+          gb.min.z + (gb.max.z - gb.min.z) * 0.12);
+        autoMuzzleLen = gb.max.z - autoGunPos.z;
+      }
+    }
+  }
+
   upgradeMaterials(scene);
+  // COMMUNITY TANKS material-upgrade pass: flat-color / CAD assets get their
+  // untextured painted surfaces box-UV'd onto the live shared camo canvas
+  // (full pattern support); very dark untextured mats (tracks, tires) keep
+  // their factory look ('addon' marker opts them out of the camo tint).
+  if (cfg.paintUntextured) paintUntextured(scene, spec, s);
   // camo: texture-space pattern composite onto the asset's baked albedo
   // (materials.js owns it — pattern tile + luminance-normalized grayscale
   // detail overlay + alpha restore; weathering/AO preserved).
@@ -416,6 +565,13 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG }) {
   turretG.rotation.y = 0;
   if (gunG) gunG.rotation.x = 0;
   recoilG.position.z = 0;
+  // COMMUNITY TANKS autoPivot: seat the articulation groups on the pivots
+  // derived from the asset (root-local == the scene's pre-attach frame).
+  if (autoTurretPos) {
+    turretG.position.copy(autoTurretPos);
+    if (autoGunPos && gunG) gunG.position.copy(autoGunPos).sub(autoTurretPos);
+    if (autoMuzzleLen != null && muzzle) muzzle.position.z = Math.max(0.8, autoMuzzleLen + 0.05);
+  }
   // One consistent matrix refresh over the whole tank subtree — any stale
   // world component above the tank root cancels in the inverse product.
   const tankRoot = hullG.parent || hullG;
@@ -428,7 +584,7 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG }) {
     group.add(node);
   };
   if (gun) reparent(gun, recoilG);
-  reparent(turret, turretG);
+  if (turret) reparent(turret, turretG);
   turretG.rotation.y = saved.ty;
   if (gunG) gunG.rotation.x = saved.gx;
   recoilG.position.z = saved.rz;

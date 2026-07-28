@@ -131,16 +131,40 @@ const SI_CSS = `
   justify-content:space-between;gap:6px;font-variant-numeric:tabular-nums;}
 .cot-si-toast .l2 .m{color:${COL.red};font-weight:800;text-transform:uppercase;
   font-family:${FONT_COND};font-stretch:condensed;letter-spacing:.07em;}
-.cot-si-stats{position:fixed;left:50%;bottom:5vh;transform:translateX(-50%);z-index:71;
-  display:none;width:660px;max-width:92vw;pointer-events:none;font-family:${FONT_STACK};
-  color:${COL.text};background:linear-gradient(180deg,rgba(10,14,18,.94),rgba(6,9,12,.96));
-  border:1px solid rgba(146,164,180,.35);box-shadow:0 10px 40px rgba(0,0,0,.6);
-  padding:12px 18px 14px;}
-.cot-si-stats.show{display:block;}
+.cot-si-stats{position:fixed;inset:0;z-index:71;display:none;pointer-events:none;
+  flex-direction:column;align-items:center;padding:4.5vh 0 15vh;overflow:hidden;
+  font-family:${FONT_STACK};color:${COL.text};
+  background:linear-gradient(180deg,rgba(5,8,12,.9),rgba(4,7,10,.8) 42%,rgba(3,5,8,.92));}
+.cot-si-stats.show{display:flex;}
 .cot-si-stats *{box-sizing:border-box;margin:0;padding:0;}
-.cot-si-stats .ttl{font-size:11px;font-weight:800;letter-spacing:.3em;color:${COL.dim};
-  font-family:${FONT_COND};font-stretch:condensed;text-transform:uppercase;
-  text-align:center;margin-bottom:9px;}
+.cot-si-ban{font-family:${FONT_COND};font-stretch:condensed;font-weight:800;font-size:46px;
+  letter-spacing:.34em;text-indent:.34em;line-height:1;text-shadow:0 2px 22px rgba(0,0,0,.85);}
+.cot-si-ban.v{color:#7ee87e;}.cot-si-ban.d{color:#f05a5a;}.cot-si-ban.n{color:#cfd9e2;}
+.cot-si-bansub{font-size:10px;letter-spacing:.32em;color:${COL.dim};margin:7px 0 2.6vh;
+  text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;font-weight:800;}
+.cot-si-cols{display:flex;gap:14px;width:1040px;max-width:94vw;align-items:stretch;min-height:0;}
+.cot-si-panel{background:linear-gradient(180deg,rgba(10,14,18,.92),rgba(6,9,12,.95));
+  border:1px solid rgba(146,164,180,.3);box-shadow:0 10px 40px rgba(0,0,0,.5);
+  padding:10px 14px 12px;min-height:0;overflow:hidden;}
+.cot-si-panel .ph{font-size:9.5px;font-weight:800;letter-spacing:.22em;color:${COL.dim};
+  text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;
+  padding-bottom:6px;border-bottom:1px solid rgba(146,164,180,.2);margin-bottom:7px;
+  display:flex;justify-content:space-between;}
+.cot-si-pl{flex:1.15;}
+.cot-si-pr{flex:1;}
+.cot-si-you{display:flex;align-items:center;gap:8px;font-size:11px;padding:3px 0 6px;
+  font-variant-numeric:tabular-nums;border-bottom:1px solid rgba(146,164,180,.14);
+  margin-bottom:5px;}
+.cot-si-you .n{flex:1;color:#f2f7fb;font-weight:800;font-family:${FONT_COND};
+  font-stretch:condensed;letter-spacing:.1em;}
+.cot-si-you .s{color:${COL.dim};font-size:10px;}
+.cot-si-you .dm{color:#ffd166;font-weight:800;font-family:${FONT_COND};
+  font-stretch:condensed;width:60px;text-align:right;}
+.cot-si-ribbons{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;}
+.cot-si-rib{border:1px solid rgba(214,178,94,.75);color:#e8c86a;font-family:${FONT_COND};
+  font-stretch:condensed;font-weight:800;font-size:9px;letter-spacing:.14em;
+  padding:3px 8px;text-transform:uppercase;background:rgba(120,90,20,.16);}
+.cot-si-tlwrap{width:1040px;max-width:94vw;margin-top:12px;}
 .cot-si-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 14px;margin-bottom:10px;}
 .cot-si-stat{text-align:center;}
 .cot-si-stat .v{font-size:21px;font-weight:800;font-family:${FONT_COND};
@@ -195,6 +219,24 @@ function zoneLabel(zone) {
     .replace(/ (r|l)$/, (m) => m.toUpperCase());
 }
 
+/**
+ * Shell display name with a duplicated type token stripped: specs name rounds
+ * like 'M829A4 APFSDS' and the card already renders the type badge — never
+ * show 'APFSDS M829A4 APFSDS' (same helper as killcam.js).
+ * @param {{shellType?:string, shellName?:string}} ev HitEvent
+ * @returns {string} cleaned name ('' when it collapses to the bare type)
+ */
+function shellDisplayName(ev) {
+  const type = (ev.shellType || '').trim();
+  let name = (ev.shellName || '').trim();
+  if (type) {
+    const esc = type.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    name = name.replace(new RegExp(`^${esc}\\s+|\\s+${esc}$`, 'i'), '');
+    if (name.toUpperCase() === type.toUpperCase()) name = '';
+  }
+  return name;
+}
+
 /** Classify a HitEvent into the WoT-mod result badge. */
 function classify(ev) {
   if (PEN_KINDS.has(ev.kind)) return { badge: 'PENETRATION', col: COL.pen };
@@ -206,6 +248,10 @@ function classify(ev) {
   }
   const crits = (ev.modulesHit && ev.modulesHit.length) || (ev.crewHit && ev.crewHit.length);
   if ((ev.damage || 0) <= 0 && crits) return { badge: 'MODULE ONLY', col: COL.mod };
+  // WoT distinguishes "hit without damage" (screen/track eater, shell flew
+  // on) from a true armor non-pen — showing NON-PEN with em-dash armor rows
+  // read as a bug (r2 critique).
+  if (ev.kind === 'screen_pierce') return { badge: 'SCREEN — NO DAMAGE', col: COL.non };
   if (ev.kind === 'era') return { badge: 'NON-PEN · ERA', col: COL.non };
   if (ev.kind === 'spaced_absorb') return { badge: 'NON-PEN · SPACED', col: COL.non };
   return { badge: 'NON-PEN', col: COL.non };
@@ -345,8 +391,10 @@ export function createShotInfo(bus) {
   function modChips(ev, parent) {
     const items = [];
     for (const m of ev.modulesHit || []) {
-      items.push({ glyph: GLYPH[m.module] || GLYPH.gun, label: MODULE_LABEL[m.module] || m.module,
-        col: m.newState === 'red' ? COL.red : COL.yellow });
+      // chip color tracks the sim's post-hit state: red destroyed, yellow
+      // damaged, dim for a hit that left the module 'ok' (never imply worse)
+      const col = m.newState === 'red' ? COL.red : m.newState === 'yellow' ? COL.yellow : COL.dim;
+      items.push({ glyph: GLYPH[m.module] || GLYPH.gun, label: MODULE_LABEL[m.module] || m.module, col });
     }
     for (const c of ev.crewHit || []) {
       items.push({ glyph: GLYPH.crew, label: CREW_LABEL[c] || c, col: COL.red });
@@ -387,7 +435,7 @@ export function createShotInfo(bus) {
     const sub = el('div', 'cot-si-sub', card);
     const tyCol = SHELL_TYPE_COLOR[ev.shellType] || '#9fb0bf';
     sub.innerHTML =
-      `<span><span class="ty" style="color:${tyCol}">${ev.shellType}</span> ${ev.shellName || ''}</span>` +
+      `<span><span class="ty" style="color:${tyCol}">${ev.shellType}</span> ${shellDisplayName(ev)}</span>` +
       `<span>${ev.targetName || ''}</span>`;
 
     const rows = el('div', 'cot-si-rows', card);
@@ -398,10 +446,17 @@ export function createShotInfo(bus) {
     const hasArmor = (ev.nominalMm || 0) > 0 || (ev.effectiveMm || 0) > 0;
     kv('Distance', `${Math.round(ev.flightDistM || 0)} m`);
     kv('Angle', `${Math.round(ev.impactAngleDeg || 0)}°`);
-    kv('Armor', hasArmor
-      ? `${Math.round(ev.nominalMm || 0)}→${Math.round(ev.effectiveMm || 0)} mm`
-      : '—');
-    kv('Pen roll', (ev.penRollMm || 0) > 0 ? `${Math.round(ev.penRollMm)} mm` : '—');
+    // screen_pierce has no main-armor interaction: show the pierced screen's
+    // physical thickness instead of misleading em-dashes / 0→0
+    if (ev.kind === 'screen_pierce') {
+      kv('Armor', (ev.physicalMm || 0) > 0 ? `${Math.round(ev.physicalMm)} mm screen` : 'screen');
+      kv('Pen roll', 'passed through');
+    } else {
+      kv('Armor', hasArmor
+        ? `${Math.round(ev.nominalMm || 0)}→${Math.round(ev.effectiveMm || 0)} mm`
+        : '—');
+      kv('Pen roll', (ev.penRollMm || 0) > 0 ? `${Math.round(ev.penRollMm)} mm` : '—');
+    }
     kv('Damage', `${Math.round(ev.damage || 0)} / ${Math.round(ev.dmgRoll || 0)}`);
     kv('Result', ev.destroyed ? 'DESTROYED' : `${Math.max(0, Math.round(ev.targetHpAfter || 0))} hp left`);
 
@@ -474,7 +529,7 @@ export function createShotInfo(bus) {
     t.innerHTML =
       `<div class="l1"><span>${ev.attackerName || 'Enemy'}</span>` +
       `<b>${(ev.damage || 0) > 0 ? `−${Math.round(ev.damage)}` : cls.badge}</b></div>` +
-      `<div class="l2"><span>${ev.shellType || ''} ${ev.shellName || ''} · ${zoneLabel(ev.zone)}</span>` +
+      `<div class="l2"><span>${ev.shellType || ''} ${shellDisplayName(ev)} · ${zoneLabel(ev.zone)}</span>` +
       `${modsLost ? `<span class="m">${modsLost}</span>` : ''}</div>`;
     if (!(ev.damage > 0)) {
       t.style.borderLeftColor = COL.green;
@@ -485,12 +540,38 @@ export function createShotInfo(bus) {
     setTimeout(() => { if (t.parentNode) t.remove(); }, 5500);
   }
 
-  // ---------- 4. session stats ----------
+  // ---------- 4. session stats (full-screen battle report) ----------
   function renderStats(result) {
     statsRoot.textContent = '';
-    const ttl = el('div', 'ttl', statsRoot);
-    ttl.textContent = `Battle report — ${result || ''}`;
-    const grid = el('div', 'cot-si-grid', statsRoot);
+    // result banner (AAA results flow: verdict first, data below)
+    const res = result || '';
+    const ban = el('div',
+      `cot-si-ban ${res === 'victory' ? 'v' : res === 'defeat' ? 'd' : 'n'}`, statsRoot);
+    ban.textContent = res === 'victory' ? 'VICTORY' : res === 'defeat' ? 'DEFEAT' : 'DRAW';
+    el('div', 'cot-si-bansub', statsRoot).textContent = 'Battle report';
+
+    const cols = el('div', 'cot-si-cols', statsRoot);
+    const left = el('div', 'cot-si-panel cot-si-pl', cols);
+    const right = el('div', 'cot-si-panel cot-si-pr', cols);
+
+    const kills = [...stats.perTarget.values()].filter((t) => t.killed).length;
+
+    // --- left: rosters (your sortie + every enemy you engaged) ---
+    const lh = el('div', 'ph', left);
+    lh.innerHTML = '<span>Your sortie</span>';
+    const you = el('div', 'cot-si-you', left);
+    you.innerHTML =
+      `<span class="n">YOU</span>` +
+      `<span class="s">${kills} kill${kills === 1 ? '' : 's'} · ${stats.hits}/${stats.fired} shots · ` +
+      `received −${Math.round(stats.received)}</span>` +
+      `<span class="dm">−${Math.round(stats.dealt)}</span>`;
+    const eh = el('div', 'ph', left);
+    eh.innerHTML = `<span>Enemies engaged</span><span>${stats.perTarget.size}</span>`;
+
+    // --- right: performance tiles + per-shell + commendations ---
+    const rh = el('div', 'ph', right);
+    rh.innerHTML = '<span>Performance</span>';
+    const grid = el('div', 'cot-si-grid', right);
     const stat = (v, k) => {
       const s = el('div', 'cot-si-stat', grid);
       s.innerHTML = `<div class="v">${v}</div><div class="k">${k}</div>`;
@@ -499,7 +580,7 @@ export function createShotInfo(bus) {
     stat(Math.round(stats.dealt), 'Damage dealt');
     stat(Math.round(stats.received), 'Damage received');
     stat(Math.round(stats.blocked), 'Damage blocked');
-    stat([...stats.perTarget.values()].filter((t) => t.killed).length, 'Kills');
+    stat(kills, 'Kills');
     stat(stats.fired, 'Shots fired');
     stat(stats.hits, 'Shots hit');
     stat(`${penRate}%`, 'Pen rate');
@@ -514,7 +595,7 @@ export function createShotInfo(bus) {
     // per-shell-type accuracy breakdown (fired / hit / pen / damage)
     const shellTypes = [...stats.perShell.entries()].filter(([, s]) => s.fired > 0 || s.hits > 0);
     if (shellTypes.length) {
-      const row = el('div', 'cot-si-shell', statsRoot);
+      const row = el('div', 'cot-si-shell', right);
       for (const [type, s] of shellTypes) {
         const item = el('span', '', row);
         item.innerHTML =
@@ -524,10 +605,26 @@ export function createShotInfo(bus) {
       }
     }
 
+    // commendation ribbons — every one derives 1:1 from the session counters
+    const ribbons = [];
+    if (kills >= 3) ribbons.push(`ACE — ${kills} kills`);
+    else if (kills >= 1) ribbons.push(`DESTROYER — ${kills} kill${kills === 1 ? '' : 's'}`);
+    if (stats.hits >= 4 && penRate >= 70) ribbons.push(`SHARPSHOOTER — ${penRate}% pen`);
+    if (stats.blocked >= 400) ribbons.push(`STEEL WALL — ${Math.round(stats.blocked)} blocked`);
+    if (stats.fired >= 4 && stats.hits === stats.fired) ribbons.push('EVERY SHOT CONNECTED');
+    if (ribbons.length) {
+      const rr = el('div', 'cot-si-ribbons', right);
+      for (const r of ribbons) el('span', 'cot-si-rib', rr).textContent = r;
+    }
+
     // damage-over-time strip: dealt (gold, up) mirrored vs received (red, down)
     const recvEvents = receivedLog.filter((e) => e.dmg > 0);
+    let tlHost = null;
     if (stats.timeline.length || recvEvents.length) {
-      const tl = el('div', 'cot-si-tl', statsRoot);
+      tlHost = el('div', 'cot-si-panel cot-si-tlwrap', statsRoot);
+      const th = el('div', 'ph', tlHost);
+      th.innerHTML = '<span>Damage over battle</span>';
+      const tl = el('div', 'cot-si-tl', tlHost);
       const BINS = 48;
       const dur = Math.max(
         30,
@@ -560,15 +657,15 @@ export function createShotInfo(bus) {
         `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">` +
         `<line x1="0" y1="${mid}" x2="${W}" y2="${mid}" stroke="rgba(146,164,180,.35)" stroke-width="1"/>` +
         `${bars}</svg>` +
-        `<div class="cap">Damage over battle — dealt ▲ / received ▼ · ${fmtTime(dur)}</div>`;
+        `<div class="cap">dealt ▲ / received ▼ · ${fmtTime(dur)}</div>`;
     }
 
     const engaged = [...stats.perTarget.entries()]
       .sort((a, b) => b[1].dmg - a[1].dmg);
     if (engaged.length) {
-      const kills = el('div', 'cot-si-kills', statsRoot);
+      const kills2 = el('div', 'cot-si-kills', left);
       for (const [id, t] of engaged) {
-        const row = el('div', 'cot-si-kill', kills);
+        const row = el('div', 'cot-si-kill', kills2);
         // Honest bookkeeping: a kill credited without any recorded player
         // damage (fire tick, module chain) must not render as "0 hits · −0".
         const detail = t.hits > 0
@@ -582,6 +679,9 @@ export function createShotInfo(bus) {
         maskIcon(row.querySelector('.si'), t.specId || id, 'side_silhouette',
           t.killed ? '#f28f8f' : 'rgba(206,220,232,0.75)');
       }
+    } else {
+      const none = el('div', 'cot-si-empty', left);
+      none.textContent = 'No engagements recorded.';
     }
     statsRoot.classList.add('show');
   }

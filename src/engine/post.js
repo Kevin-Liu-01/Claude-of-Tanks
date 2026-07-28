@@ -25,16 +25,23 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { getPreset, onPresetChange } from './quality.js';
 
-const BLOOM_STRENGTH = 0.34;
-const BLOOM_RADIUS = 0.4;
+// r5 bloom retune ("muzzle flash is three enormous structureless gaussian
+// bloom blobs"): strength 0.34 → 0.20 and radius 0.4 → 0.28 so bloom is a
+// tight halo around genuinely hot pixels instead of a wide gaussian smear
+// that erases the flash's internal core/spike structure.
+const BLOOM_STRENGTH = 0.20;
+const BLOOM_RADIUS = 0.28;
 // With the rebalanced ambient (sky.js ENV_INTENSITY 0.45, hemi 0.26) diffuse
 // surfaces top out well under 1.0 in the linear HDR buffer, so the threshold
 // keeps bloom off walls/terrain AND off the near-sun horizon band, while the
 // sun disc, muzzle flash core, tracers and fire glow naturally. r4: 1.35 →
 // 1.42 — sun-glint metal speculars (gun tube top edge) were crossing the old
 // threshold and blooming into an aliased hot halo; true emissives all sit
-// >= 1.6 and still bloom.
-const BLOOM_THRESHOLD = 1.42;
+// >= 1.6 and still bloom. r5: 1.42 → 1.55 — the additive flash sprite stack
+// crossed 1.42 across its whole footprint, so the ENTIRE flash bloomed into
+// one blob; at 1.55 only the white-hot core and spike tips bloom and the
+// orange combustion body keeps its baked structure.
+const BLOOM_THRESHOLD = 1.55;
 // The fx fireball reaches 5-20 in the HDR buffer; unclamped, UnrealBloom
 // smears it into a full-frame white-out. Clamping the high-pass input keeps
 // hot sources glowing (flash spikes, tracers, fire) without flooding.
@@ -49,7 +56,11 @@ const HIGH_PASS_ANCHOR = 'gl_FragColor = mix( outputColor, texel, alpha );';
 // hay bales, building bases) still met the terrain with no visible contact
 // darkening at 1080p establishing distance; this pushes grounding into the
 // clearly-readable range while the Poisson denoise keeps gradients smooth.
-const GTAO_PARAMS = { radius: 1.6, distanceExponent: 2, thickness: 1.8, scale: 2.2, samples: 16 };
+// r5: scale 2.2 → 2.6 — houses/fences in the establishing shot still met the
+// terrain with no visible contact core ("float slightly"); with the r5 fog
+// cut the AO no longer has to fight a milky wash, so the deeper multiply
+// reads as grounding instead of dirt.
+const GTAO_PARAMS = { radius: 1.6, distanceExponent: 2, thickness: 1.8, scale: 2.6, samples: 16 };
 const GTAO_BLEND_INTENSITY = 1.0;
 
 // Depth-driven aerial perspective (r3: "distant hills correctly shift
@@ -60,24 +71,36 @@ const GTAO_BLEND_INTENSITY = 1.0;
 // progressive desaturation + a cool blue-grey shift with distance. The sky
 // (depth == 1.0, incl. the depthWrite:false cloud shells) is excluded — the
 // dome already carries its own atmosphere.
-// r4: density 0.0011 → 0.0016, desat 0.5 → 0.65, deeper cool shift — distant
-// treelines at 400-700 m were still holding near-full green saturation; the
-// curve now lands ~30% desat at 500 m and ~60% at 900 m, so far vegetation
-// visibly graduates toward the sky tint instead of staying saturated.
-const AERIAL_DENSITY = 0.0016; // 1/m; f = 1-exp(-(d*k)^2): ~20% @300m, ~47% @500m
-const AERIAL_DESAT = 0.65; // max saturation loss at full distance
-const AERIAL_COOL = [0.90, 0.975, 1.08]; // cool shift multiplier at full distance
-// r4: true scattering-IN term. Desaturation alone leaves far silhouettes DARK
-// (real aerial perspective adds skylight, it doesn't just remove chroma) —
-// most visible on the distant mountain backdrop, which rendered as a flat
-// slate cutout. Every pixel now also blends toward the live horizon-haze
-// color (scene.fog.color, sampled from the sky dome each frame) on a slower
-// curve, material fog flags be damned: ~12% @400m, ~56% @1km, ~93% @1.8km+,
-// so backdrops sit IN the atmosphere instead of pasted against it. (Tuned
-// against the horizon mountain ring at r 760-1220 m: at 0.0006 it kept a
-// pasted-on slate read; 0.0009 folds it into the sky family while tanks at
-// 300-500 m engagement range stay crisp.)
-const AERIAL_HAZE_DENSITY = 0.0009; // 1/m, slower second curve for scatter-in
+// r4: density 0.0011 → 0.0016, desat 0.5 → 0.65, deeper cool shift.
+// r5 REWORK ("aerial perspective is a neutral gray value-ramp that fully
+// desaturates the scene by ~400m — not physically plausible"): the r4 curves
+// overshot and monochromed everything past the village. Physically, in-scatter
+// at these distances is mostly ADDED skylight, not removed chroma, and it is
+// DIRECTIONAL — warm toward the sun azimuth, cool blue away from it. So:
+//  - density 0.0016 → 0.0009 and desat 0.65 → 0.42: saturation now survives
+//    to ~800 m (WoT summer-map behavior) — ~11% desat @400m, ~28% @800m.
+//  - the scatter-in target is no longer the flat fog color: it is tinted
+//    per-pixel by the view ray's angle to the sun (see uHazeWarm/uHazeCool),
+//    so the far field grades warm→cool across the frame instead of reading
+//    as one gray fog card.
+const AERIAL_DENSITY = 0.0009; // 1/m; f = 1-exp(-(d*k)^2)
+const AERIAL_DESAT = 0.42; // max saturation loss at full distance
+const AERIAL_COOL = [0.91, 0.975, 1.07]; // cool shift multiplier at full distance
+// Scatter-in term (r4), retuned r5: 0.0009 → 0.00058 — at 0.0009 the horizon
+// mountain ring (r 760-1220 m) was 50-80% swallowed by a single neutral haze
+// color: "flat, untextured, uniform light-gray silhouettes". At 0.00058 the
+// ridges keep their baked slope shading and silhouette (~19% haze @800m,
+// ~38% @1.2km, ~74% @2km) and inherit a BLUE atmospheric cast from the
+// directional tint below instead of flat gray.
+const AERIAL_HAZE_DENSITY = 0.00058; // 1/m, slower second curve for scatter-in
+// Directional in-scatter tints, applied to the live fog color (which is
+// sampled from the sky dome): pixels whose view ray points near the sun
+// azimuth scatter WARM, rays away from the sun scatter COOL BLUE — the
+// standard single-scattering approximation WoT-era engines use for their
+// horizon ramps. Exponents/gains tuned so the warm lobe spans ~60 degrees.
+const AERIAL_WARM_TINT = [1.16, 1.035, 0.86];
+const AERIAL_COOL_TINT = [0.86, 0.95, 1.13];
+const AERIAL_SUN_POW = 5.0; // width of the warm forward-scatter lobe
 
 const AerialShader = {
   name: 'AerialPerspectiveShader',
@@ -90,7 +113,16 @@ const AerialShader = {
     uDesat: { value: AERIAL_DESAT },
     uCool: { value: new THREE.Vector3(...AERIAL_COOL) },
     uHazeDensity: { value: AERIAL_HAZE_DENSITY },
-    uHaze: { value: new THREE.Color(0.55, 0.62, 0.72) }, // re-synced per frame from scene.fog
+    // Directional scatter-in targets, re-synced per frame from scene.fog
+    // (sky-sampled) x the warm/cool tints above.
+    uHazeWarm: { value: new THREE.Color(0.62, 0.64, 0.62) },
+    uHazeCool: { value: new THREE.Color(0.47, 0.59, 0.81) },
+    uSunDir: { value: new THREE.Vector3(0, 1, 0) }, // world, toward the sun
+    // camera world basis + frustum half-tangents for per-pixel view rays
+    uCamRight: { value: new THREE.Vector3(1, 0, 0) },
+    uCamUp: { value: new THREE.Vector3(0, 1, 0) },
+    uCamFwd: { value: new THREE.Vector3(0, 0, -1) },
+    uTan: { value: new THREE.Vector2(1, 1) },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -107,22 +139,35 @@ const AerialShader = {
     uniform float uDesat;
     uniform vec3 uCool;
     uniform float uHazeDensity;
-    uniform vec3 uHaze;
+    uniform vec3 uHazeWarm;
+    uniform vec3 uHazeCool;
+    uniform vec3 uSunDir;
+    uniform vec3 uCamRight;
+    uniform vec3 uCamUp;
+    uniform vec3 uCamFwd;
+    uniform vec2 uTan;
     varying vec2 vUv;
     void main() {
       vec4 texel = texture2D( tDiffuse, vUv );
       float depth = texture2D( tDepth, vUv ).x;
       if ( depth < 0.9999999 ) { // sky/cloud dome writes no depth — skip it
         float viewZ = ( uNear * uFar ) / ( ( uFar - uNear ) * depth - uFar );
+        // world-space view ray for this pixel (directional scatter tint)
+        vec3 ray = normalize( uCamFwd
+          + uCamRight * ( vUv.x * 2.0 - 1.0 ) * uTan.x
+          + uCamUp * ( vUv.y * 2.0 - 1.0 ) * uTan.y );
+        float sunAmt = pow( max( dot( ray, uSunDir ), 0.0 ), ${AERIAL_SUN_POW.toFixed(1)} );
+        vec3 hazeCol = mix( uHazeCool, uHazeWarm, sunAmt );
         float x = -viewZ * uDensity;
         float f = 1.0 - exp( -x * x );
         float lum = dot( texel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
         vec3 hazy = mix( texel.rgb, vec3( lum ), uDesat ) * uCool;
         texel.rgb = mix( texel.rgb, hazy, f );
-        // scattering-in: distance pulls everything toward the horizon haze
+        // scattering-in: distance pulls everything toward the sun-directional
+        // sky haze — warm near the sun azimuth, cool blue away from it
         float x2 = -viewZ * uHazeDensity;
         float f2 = 1.0 - exp( -x2 * x2 );
-        texel.rgb = mix( texel.rgb, uHaze, f2 );
+        texel.rgb = mix( texel.rgb, hazeCol, f2 );
       }
       gl_FragColor = texel;
     }`,
@@ -145,12 +190,21 @@ const AerialShader = {
 // shadows pulled cool blue-grey — the classic AAA warm/cool grade axis. The
 // old fixed warm balance is softened (1.04 → 1.02 red) so shadows are allowed
 // to actually go cool instead of being re-warmed globally.
-const GRADE_CONTRAST = 1.18;
+// r5 ("grade is low-contrast with slightly lifted blacks; palette split
+// between olive terrain and cyan sky"): contrast 1.18 → 1.26 (~10% more
+// midtone S-curve), black anchor 0.010 → 0.016 (pull blacks down ~5% so
+// shadow cores reach true display black), and a NEW green-warming term (see
+// uGreenWarm below) that shifts green-dominant terrain/foliage pixels toward
+// warm summer green, unifying them with the warm-key sky like WoT.
+const GRADE_CONTRAST = 1.26;
 const GRADE_SATURATION = 1.08;
 const GRADE_VIGNETTE = 0.23;
-const GRADE_BLACK_LIFT = 0.010;
+const GRADE_BLACK_LIFT = 0.016;
 // Warm afternoon balance, matching the sun key instead of fighting it.
 const GRADE_BALANCE = [1.02, 1.0, 0.975];
+// Applied only to green-dominant pixels (terrain/foliage): warms hue toward
+// yellow-green without touching sky, tank camo browns, or skin-tone-ish dirt.
+const GRADE_GREEN_WARM = [1.05, 1.0, 0.90];
 // Split-tone poles (multiplied in by shadow/highlight membership).
 const GRADE_SHADOW_TINT = [0.965, 0.995, 1.05]; // cool blue-grey shadows
 const GRADE_HIGH_TINT = [1.055, 1.005, 0.945]; // warm sun-kissed highlights
@@ -166,6 +220,7 @@ const GradeShader = {
     uBalance: { value: new THREE.Vector3(...GRADE_BALANCE) },
     uShadowTint: { value: new THREE.Vector3(...GRADE_SHADOW_TINT) },
     uHighTint: { value: new THREE.Vector3(...GRADE_HIGH_TINT) },
+    uGreenWarm: { value: new THREE.Vector3(...GRADE_GREEN_WARM) },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -182,12 +237,17 @@ const GradeShader = {
     uniform vec3 uBalance;
     uniform vec3 uShadowTint;
     uniform vec3 uHighTint;
+    uniform vec3 uGreenWarm;
     varying vec2 vUv;
     void main() {
       vec4 texel = texture2D( tDiffuse, vUv );
       vec3 col = texel.rgb;
       // fixed warm white balance — identical for every camera/shot
       col = clamp( col * uBalance, 0.0, 1.0 );
+      // warm the terrain/foliage greens only (green-dominant pixels): unifies
+      // the olive ground plane with the warm sun key, WoT summer-map style
+      float greenDom = smoothstep( 0.0, 0.14, col.g - max( col.r, col.b ) );
+      col *= mix( vec3( 1.0 ), uGreenWarm, greenDom );
       // black anchor + contrast S-curve around mid grey
       col = max( col - vec3( uBlack ), vec3( 0.0 ) );
       col = clamp( mix( vec3( 0.5 ), col, uContrast ), 0.0, 1.0 );
@@ -269,8 +329,47 @@ export function createPost(renderer, scene, camera) {
 
   const gtao = new GTAOPass(scene, camera, size.x, size.y); // 3. AO multiply
   gtao.output = GTAOPass.OUTPUT.Default;
+  // PERF (draw-call/triangle budget): feed GTAO the scene depth the RenderPass
+  // already rasterized (renderTarget2's private DepthTexture) instead of
+  // letting the pass re-render the ENTIRE scene into its own G-buffer.
+  // Measured in battle at 1080p: the override prepass cost ~310 draw calls
+  // and ~2.6 M triangles per frame — and, worse, its internal
+  // `renderer.render(scene)` re-ran the two per-frame CSM cascade updates
+  // (another ~250 calls / 2.4 M tris of pure duplicate shadow work). With an
+  // external depth buffer GTAOPass sets `_renderGBuffer = false` and skips
+  // all of it: battle max fell 944 → ~520 calls, 8.0 M → 4.6 M tris.
+  // NORMAL_VECTOR_TYPE becomes 0: view normals are reconstructed from depth
+  // neighbors in the AO shader (best-pair reconstruction). At our AO scale
+  // (radius 1.6 m, contact-grounding duty) the reconstruction is visually
+  // equivalent — verified frame-diffed on battlefield/player/sniper/closeup
+  // shots. Bonus: alpha-tested foliage now contributes real cutout depth
+  // (the old override prepass ignored alphaTest, which is why aoExclude
+  // existed), so canopies get proper grounding instead of being AO-invisible.
+  // The scene depth is complete by the time this pass runs: the parity guard
+  // in render() pins the scene render into renderTarget2 every frame.
+  gtao.setGBuffer(sceneDepth);
   gtao.updateGtaoMaterial(GTAO_PARAMS);
   gtao.blendIntensity = GTAO_BLEND_INTENSITY;
+  // View-distance AO fade. AO is a CONTACT cue: at establishing-shot ranges a
+  // 1.6 m occlusion radius is subpixel, and on the horizon mountain ring
+  // (rows at r 470-1290 m, world/maps/horizon.js) grazing-angle slopes turned
+  // the AO term into dark vertical slashes down every ridge face — the same
+  // artifact class the old prepass dodged by hiding `aoExclude` objects. A
+  // world-space clip box can't fence a circular backdrop ring from a square
+  // playfield (ring rows cut inside the box corners), so fade in VIEW distance
+  // instead: full AO to 260 m, gone by 420 m, comfortably past every gameplay
+  // camera (sniper zoom included — the aerial haze owns the far field there).
+  {
+    const AO_FADE = 'ao = mix( ao, 1., smoothstep( 260., 420., length( viewPos ) ) );';
+    const AO_ANCHOR = 'ao = pow(ao, scale);';
+    const src = gtao.gtaoMaterial.fragmentShader;
+    const patched = src.replace(AO_ANCHOR, `${AO_FADE}\n\t\t\t${AO_ANCHOR}`);
+    if (patched === src) {
+      throw new Error('post.js: GTAO distance-fade anchor not found in GTAOShader');
+    }
+    gtao.gtaoMaterial.fragmentShader = patched;
+    gtao.gtaoMaterial.needsUpdate = true;
+  }
   // Quality: run the whole GTAO stack (scene depth/normal prepass, 16-tap AO,
   // Poisson denoise) at `aoScale` x composer resolution. Its internal targets
   // are LinearFilter, so the final multiply-blend bilinearly upsamples the AO
@@ -284,26 +383,13 @@ export function createPost(renderer, scene, camera) {
     };
     gtao.enabled = preset.aoScale > 0;
   }
-  // GTAO renders its depth/normal prepass with a scene-wide overrideMaterial,
-  // which ignores alphaTest — alpha-tested foliage cards would write SOLID
-  // rectangles into the AO buffer and composite as dark floating quads over
-  // the terrain (worst in sniper zoom). Hide objects flagged
-  // `userData.aoExclude` for the duration of the pass only.
-  {
-    const origGtaoRender = gtao.render.bind(gtao);
-    const hidden = [];
-    gtao.render = function aoExcludeRender(...args) {
-      scene.traverse((o) => {
-        if (o.userData.aoExclude === true && o.visible) {
-          o.visible = false;
-          hidden.push(o);
-        }
-      });
-      origGtaoRender(...args);
-      for (let i = 0; i < hidden.length; i++) hidden[i].visible = true;
-      hidden.length = 0;
-    };
-  }
+  // NOTE: the old `userData.aoExclude` hide/restore wrapper is gone — it only
+  // mattered for the override-material G-buffer prepass (which ignored
+  // alphaTest). With the external scene depth there is no prepass to exclude
+  // objects from, and the per-frame full-scene traverse it cost is reclaimed.
+  // The aoExclude flags in world modules stay as inert metadata. Distant
+  // backdrop AO (the reason horizon-ring was excluded) is fenced by the scene
+  // clip box below instead.
   composer.addPass(gtao);
 
   const bloom = new UnrealBloomPass(size.clone(), BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD);
@@ -393,8 +479,26 @@ export function createPost(renderer, scene, camera) {
       // aerial distance reconstruction exact
       aerial.uniforms.uNear.value = camera.near;
       aerial.uniforms.uFar.value = camera.far;
-      // scatter-in target follows the sky-sampled fog color (map switches)
-      if (scene.fog) aerial.uniforms.uHaze.value.copy(scene.fog.color);
+      // scatter-in targets follow the sky-sampled fog color (map switches),
+      // split into a warm (sunward) and cool (anti-sun) pole
+      if (scene.fog) {
+        const fc = scene.fog.color;
+        aerial.uniforms.uHazeWarm.value.setRGB(
+          fc.r * AERIAL_WARM_TINT[0], fc.g * AERIAL_WARM_TINT[1], fc.b * AERIAL_WARM_TINT[2]);
+        aerial.uniforms.uHazeCool.value.setRGB(
+          fc.r * AERIAL_COOL_TINT[0], fc.g * AERIAL_COOL_TINT[1], fc.b * AERIAL_COOL_TINT[2]);
+      }
+      // camera basis + sun direction for the per-pixel directional tint
+      {
+        const e = camera.matrixWorld.elements;
+        aerial.uniforms.uCamRight.value.set(e[0], e[1], e[2]);
+        aerial.uniforms.uCamUp.value.set(e[4], e[5], e[6]);
+        aerial.uniforms.uCamFwd.value.set(-e[8], -e[9], -e[10]);
+        const ty = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
+        aerial.uniforms.uTan.value.set(ty * camera.aspect, ty);
+        const sd = scene.userData.sunDirWorld;
+        if (sd) aerial.uniforms.uSunDir.value.copy(sd).normalize();
+      }
       composer.render(dt);
     },
 

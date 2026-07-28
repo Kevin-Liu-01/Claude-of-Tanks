@@ -11,13 +11,16 @@ const PEN_GREEN = '#7ee87e';
 const PEN_ORANGE = '#f0b04a';
 const PEN_RED = '#f05a5a';
 const PEN_NONE = 'rgba(236,242,248,0.95)';
+// WoT sight grammar: the DISPERSION CIRCLE is always the same pale green in
+// every mode — only the central gun marker carries the penetration color.
+const CIRCLE_COL = 'rgba(168,238,168,0.88)';
 // Shared Switzer type system (see src/ui/fonts.js): FONT_COND drives the
 // numeral/label hierarchy with tabular figures.
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
 // Pre-rendered tank icons (tools/genIcons.mjs): tinted top-down silhouettes
 // drive the minimap blips; side silhouettes drive the team panels + kill feed.
 import { tintedIcon, maskIcon } from './icons.js';
-import { TANK_IDS } from '../vehicles/specs.js';
+import { ALL_TANK_IDS } from '../vehicles/specs.js';
 // SHOT-INFO SECTION: combat-intelligence panels (shot cards, armor diagrams,
 // incoming toasts, shot log, session stats) — logic lives in src/ui/shotInfo.js.
 import { createShotInfo } from './shotInfo.js';
@@ -65,6 +68,10 @@ const PLAYER_NICK = 'Claude';
 const TIER_BY_ID = {
   m4a3e8: 'VI', t34_85: 'VI', tiger1: 'VII', is2: 'VII', panther_g: 'VII',
   m1a2: 'X', t90m: 'X', leo2a7: 'X',
+  // COMMUNITY TANKS (sourced roster — see docs/ATTRIBUTION.md)
+  strv103: 'IX', is3: 'VIII', t34_85_cad: 'VI', newc_tiger: 'VII',
+  newc_pziii: 'IV', pziii_konserwa: 'III', leichttraktor: 'I',
+  recon_tank: 'VIII', q_heavy: 'IX',
 };
 function hashStr(s) {
   let h = 2166136261;
@@ -412,13 +419,18 @@ const HUD_CSS = `
   font-family:${FONT_COND};font-stretch:condensed;font-variant-numeric:tabular-nums;
   text-shadow:0 1px 2px rgba(0,0,0,.9);}
 .cot-camoind.spotted .pct{color:#f28f8f;}
-.cot-camoind .tags{display:flex;gap:4px;}
-.cot-camoind .tags i{font-style:normal;font-size:7.5px;font-weight:800;
-  letter-spacing:.1em;padding:1px 4px;color:rgba(146,164,180,.4);
-  border:1px solid rgba(146,164,180,.22);
-  font-family:${FONT_COND};font-stretch:condensed;}
-.cot-camoind .tags i.hot{color:#ffd27a;border-color:rgba(240,176,74,.6);}
-.cot-camoind .tags i.good{color:#8df08d;border-color:rgba(126,232,126,.55);}
+.cot-camoind .tags{display:flex;gap:4px;min-height:11px;}
+/* modifier chips: only the ACTIVE modifier renders (inactive states are
+   fully hidden — shipped-UI read, not a debug toggle bank) */
+.cot-camoind .tags i{display:none;font-style:normal;font-size:7.5px;font-weight:800;
+  letter-spacing:.1em;padding:1px 4px 1px 3px;
+  font-family:${FONT_COND};font-stretch:condensed;
+  animation:cotTagIn .18s ease;}
+.cot-camoind .tags i::before{content:'';display:inline-block;width:5px;height:5px;
+  border-radius:50%;background:currentColor;margin-right:3px;vertical-align:0.5px;}
+.cot-camoind .tags i.hot{display:inline-block;color:#ffd27a;border:1px solid rgba(240,176,74,.6);}
+.cot-camoind .tags i.good{display:inline-block;color:#8df08d;border:1px solid rgba(126,232,126,.55);}
+@keyframes cotTagIn{from{opacity:0}to{opacity:1}}
 `;
 
 function penColor(r) {
@@ -459,7 +471,7 @@ export function initHud(bus) {
   // Warm the tinted-blip cache at boot: the minimap draws synchronously each
   // frame (and exactly once in forced screenshot views), so the roster's
   // top-down silhouettes must already be decoded when a battle starts.
-  for (const id of TANK_IDS) {
+  for (const id of ALL_TANK_IDS) {
     tintedIcon(id, 'top_silhouette', PEN_GREEN);
     tintedIcon(id, 'top_silhouette', PEN_RED);
   }
@@ -701,6 +713,7 @@ export function initHud(bus) {
   let mapWorldSize = 1024;
   let lastScore = '';
   let lastTimer = '';
+  let spawnFlags = null; // [{x,z,color}] — team spawn markers, set per battle
 
   function resize() {
     w = root.clientWidth || window.innerWidth;
@@ -1047,10 +1060,11 @@ export function initHud(bus) {
     smoothRadPx += (targetR - smoothRadPx) * k;
     const r = Math.max(26, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
 
-    // --- dispersion circle: paired arc segments + cardinal ticks (visually
-    // distinct from the solid center marker so the two elements never merge)
-    ctx.strokeStyle = col;
-    ctx.fillStyle = col;
+    // --- dispersion circle: paired arc segments + cardinal ticks in the
+    // fixed WoT circle green — visually distinct from the pen-colored center
+    // marker so the two elements never merge into one composite ring
+    ctx.strokeStyle = CIRCLE_COL;
+    ctx.fillStyle = CIRCLE_COL;
     ctx.shadowColor = 'rgba(0,0,0,0.6)';
     ctx.shadowBlur = 2;
     ctx.globalAlpha = 0.9;
@@ -1076,6 +1090,8 @@ export function initHud(bus) {
 
     // --- central gun marker: dot + fine cross, ALWAYS visible and colored by
     // penetration chance (green/orange/red, neutral off armor)
+    ctx.strokeStyle = col;
+    ctx.fillStyle = col;
     ctx.globalAlpha = 0.97;
     ctx.beginPath();
     ctx.arc(cx, cy, 2, 0, Math.PI * 2);
@@ -1132,10 +1148,30 @@ export function initHud(bus) {
     ctx.shadowColor = 'rgba(0,0,0,0.9)';
     ctx.shadowBlur = 3;
     if (isReloading) {
-      // countdown numeral just under the reload ring
+      // countdown just under the reload ring — heavier weight + explicit
+      // seconds unit so "3.4 s" can never read as a shell counter
       ctx.fillStyle = '#f0a030';
-      ctx.font = `700 15px ${FONT_COND}`;
-      ctx.fillText(rl0.t >= 10 ? `${Math.ceil(rl0.t)}` : rl0.t.toFixed(1), cx, cy + 38);
+      ctx.font = `800 16px ${FONT_COND}`;
+      ctx.fillText(rl0.t >= 10 ? `${Math.ceil(rl0.t)} s` : `${rl0.t.toFixed(1)} s`, cx, cy + 39);
+    } else {
+      // gun loaded: chambered-shell readout at the same anchor (count in
+      // white, type tag in its ammo color) — identical in arcade and sniper
+      const sp = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
+      const n = shellCount(sp);
+      const tType = sp.type || '';
+      ctx.font = `700 13px ${FONT_COND}`;
+      const wN = ctx.measureText(`${n}`).width;
+      ctx.font = `800 8.5px ${FONT_COND}`;
+      const wT = ctx.measureText(tType).width;
+      const x0 = cx - (wN + 4 + wT) / 2;
+      ctx.textAlign = 'left';
+      ctx.font = `700 13px ${FONT_COND}`;
+      ctx.fillStyle = 'rgba(226,236,244,0.92)';
+      ctx.fillText(`${n}`, x0, cy + 36);
+      ctx.font = `800 8.5px ${FONT_COND}`;
+      ctx.fillStyle = SHELL_TYPE_COLOR[tType] || 'rgba(159,176,191,0.9)';
+      ctx.fillText(tType, x0 + wN + 4, cy + 36);
+      ctx.textAlign = 'center';
     }
     // distance readout centered under the aim circle, tracking its bloom
     // (ammo count lives in the shell tray only — no duplicate here)
@@ -1369,20 +1405,25 @@ export function initHud(bus) {
       }
       octx.lineCap = 'butt';
     }
-    // buildings: sharp light-gray footprints with a dark keyline
+    // buildings: light footprints with a dark keyline. Small structures get a
+    // 4px floor so village clusters merge into readable town blocks instead
+    // of scattering into single-pixel white noise; the keyline only draws on
+    // footprints big enough to carry it.
     if (f.buildings) {
-      octx.fillStyle = pal.buildingFill;
-      octx.strokeStyle = 'rgba(24,29,36,0.85)';
+      octx.strokeStyle = 'rgba(24,29,36,0.8)';
       octx.lineWidth = 0.7;
       for (const b of f.buildings) {
         const [px, py] = worldToMap(b.x, b.z);
         octx.save();
         octx.translate(px, py);
         octx.rotate(-(b.rot || 0));
-        const bw = Math.max(3, (b.w / mapWorldSize) * MM);
-        const bd = Math.max(3, (b.d / mapWorldSize) * MM);
+        const bw = Math.max(4, (b.w / mapWorldSize) * MM);
+        const bd = Math.max(4, (b.d / mapWorldSize) * MM);
+        octx.globalAlpha = 0.85;
+        octx.fillStyle = pal.buildingFill;
         octx.fillRect(-bw / 2, -bd / 2, bw, bd);
-        octx.strokeRect(-bw / 2, -bd / 2, bw, bd);
+        octx.globalAlpha = 1;
+        if (bw * bd >= 26) octx.strokeRect(-bw / 2, -bd / 2, bw, bd);
         octx.restore();
       }
     }
@@ -1417,6 +1458,47 @@ export function initHud(bus) {
     octx.lineWidth = 1.5;
     octx.strokeRect(0.75, 0.75, MM - 1.5, MM - 1.5);
     mmBg = out;
+  }
+
+  // Team spawn flags (mode objective markers for annihilation): captured from
+  // the rosters' first battle frame, when every tank still sits on its spawn.
+  function captureSpawnFlags(frame) {
+    const tanks = frame.tanks || [];
+    let ax = 0, az = 0, an = 0, ex = 0, ez = 0, en = 0;
+    for (const t of tanks) {
+      if (!t || !t.state) continue;
+      if (t.team === 'player' || t.isPlayer) { ax += t.state.pos.x; az += t.state.pos.z; an++; }
+      else { ex += t.state.pos.x; ez += t.state.pos.z; en++; }
+    }
+    if (!an || !en) return;
+    spawnFlags = [
+      { x: ax / an, z: az / an, color: '#7ee87e' },
+      { x: ex / en, z: ez / en, color: '#f05a5a' },
+    ];
+  }
+
+  // WoT-style base/spawn glyph: pole + team-colored pennant with a dark halo
+  function drawSpawnFlag(c, x, y, color) {
+    c.save();
+    c.translate(Math.round(x), Math.round(y));
+    c.lineJoin = 'round';
+    c.strokeStyle = 'rgba(6,9,12,0.85)';
+    c.lineWidth = 3;
+    c.beginPath();
+    c.moveTo(0.5, 3); c.lineTo(0.5, -9);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(0.5, -9); c.lineTo(7.5, -6.4); c.lineTo(0.5, -3.6);
+    c.closePath();
+    c.stroke();
+    c.fillStyle = color;
+    c.fill();
+    c.strokeStyle = 'rgba(228,238,246,0.95)';
+    c.lineWidth = 1.2;
+    c.beginPath();
+    c.moveTo(0.5, 3); c.lineTo(0.5, -9);
+    c.stroke();
+    c.restore();
   }
 
   // canvas rotation that makes a forward-up sprite/shape point along hull yaw
@@ -1470,6 +1552,13 @@ export function initHud(bus) {
     }
     const tanks = frame.tanks || [];
     const player = frame.player;
+    // team spawn flags under everything else
+    if (spawnFlags) {
+      for (const fl of spawnFlags) {
+        const [fx, fy] = worldToMap(fl.x, fl.z);
+        drawSpawnFlag(mmCtx, fx, fy, fl.color);
+      }
+    }
     // enemy / ally blips (spotting-gated for live enemies)
     for (let i = 0; i < tanks.length; i++) {
       const t = tanks[i];
@@ -1813,6 +1902,7 @@ export function initHud(bus) {
         // fresh battle: drop spotting memory, nicknames and team rosters
         spotById.clear();
         nickById.clear();
+        spawnFlags = null; // re-capture from the new battle's spawn frame
         // SPOTTING SECTION: disarm the sixth-sense lamp (sim clock restarts)
         sixthPendingS = -1;
         sixthUntilS = -1;
@@ -1849,6 +1939,7 @@ export function initHud(bus) {
       if (mode === 'hidden') { ctx.clearRect(0, 0, w, h); return; }
       if (camera) { camera.updateMatrixWorld(); _mInv.copy(camera.matrixWorld).invert(); }
 
+      if (!spawnFlags) captureSpawnFlags(frame); // tanks still on their spawns
       updateSpotting(frame);
       updateTeams(frame);
       // SPOTTING SECTION: sixth-sense fuse/lamp + camo/eye indicator

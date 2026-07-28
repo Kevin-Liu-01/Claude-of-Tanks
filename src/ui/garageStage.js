@@ -180,13 +180,61 @@ function makeWallTexture(rng) {
     g.fillStyle = lg;
     g.fillRect(x, y0, 2 + rng() * 3, len);
   }
+  // per-panel tonal drift + soft grime blotches: breaks the long smooth
+  // light-falloff gradient that banded on the big flat wall planes
+  for (let x = 0; x < W; x += 128) {
+    g.fillStyle = rng() < 0.5 ? 'rgba(0,0,0,0.05)' : 'rgba(210,220,230,0.04)';
+    g.fillRect(x, 0, 128, H);
+  }
+  for (let i = 0; i < 22; i++) {
+    const x = rng() * W, y = rng() * H, r = 40 + rng() * 120;
+    const bg = g.createRadialGradient(x, y, 0, x, y, r);
+    const dk = rng() < 0.6;
+    bg.addColorStop(0, dk ? 'rgba(12,14,16,0.12)' : 'rgba(150,162,172,0.07)');
+    bg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = bg;
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  }
   // top grime gradient
   const tg = g.createLinearGradient(0, 0, 0, 90);
   tg.addColorStop(0, 'rgba(10,12,14,0.5)');
   tg.addColorStop(1, 'rgba(10,12,14,0)');
   g.fillStyle = tg;
   g.fillRect(0, 0, W, 90);
-  dither(g, W, H, rng, 0.05);
+  dither(g, W, H, rng, 0.09);
+  return c;
+}
+
+// stenciled bay signage plate (dark steel board, worn yellow stencil)
+function makeSignTexture(rng, text) {
+  const W = 256, H = 128;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = '#23282c';
+  g.fillRect(0, 0, W, H);
+  g.strokeStyle = '#c9a22c';
+  g.lineWidth = 6;
+  g.strokeRect(7, 7, W - 14, H - 14);
+  // hazard chevron strip along the bottom
+  g.save();
+  g.beginPath(); g.rect(14, H - 34, W - 28, 20); g.clip();
+  for (let x = 0; x < W + 40; x += 28) {
+    g.fillStyle = (x / 28) % 2 ? '#c9a22c' : '#1c1e20';
+    g.beginPath();
+    g.moveTo(x, H - 14); g.lineTo(x + 14, H - 34); g.lineTo(x + 28, H - 34); g.lineTo(x + 14, H - 14);
+    g.closePath(); g.fill();
+  }
+  g.restore();
+  g.fillStyle = '#d8b23a';
+  g.font = '700 44px "Arial Narrow", Arial, sans-serif';
+  g.textAlign = 'center';
+  g.fillText(text, W / 2, 62);
+  // wear: chips + grime so the stencil never reads as crisp UI text
+  for (let i = 0; i < 260; i++) {
+    g.fillStyle = rng() < 0.6 ? 'rgba(20,22,24,0.35)' : 'rgba(160,150,120,0.12)';
+    g.fillRect(rng() * W, rng() * H, 1 + rng() * 3, 1 + rng() * 2);
+  }
   return c;
 }
 
@@ -411,6 +459,80 @@ export function createGarageStage(engineCtx, pos) {
       group.add(spot);
     }
   }
+
+  // --- wall dressing: pipes, signage, second light pool (west + north) -------
+  // The camera frames the north/west corner; without dressing the upper-left
+  // of the shot is a flat dark gradient. Pipes + a lit stencil sign + a floor
+  // light pool under the west flood fill that region at zero extra light cost.
+  const pipeMat = shadowMat(new THREE.MeshStandardMaterial({
+    color: 0x54584e, roughness: 0.42, metalness: 0.62,
+  }));
+  track(pipeMat);
+  const pipeRunGeo = track(new THREE.CylinderGeometry(0.1, 0.1, HW * 2 - 2, 12));
+  for (const [py2, rr] of [[4.85, 1], [5.35, 0.55]]) {
+    const pipe = new THREE.Mesh(pipeRunGeo, pipeMat);
+    pipe.rotation.x = Math.PI / 2;
+    pipe.position.set(-HW + 0.42, py2, 0);
+    pipe.scale.set(rr, 1, rr);
+    pipe.castShadow = true;
+    group.add(pipe);
+  }
+  // pipe brackets pinning the runs to the wall
+  const pbGeo = track(new THREE.BoxGeometry(0.3, 0.16, 0.5));
+  for (const bz of [-16, -8, 0, 8, 16]) {
+    const b1 = new THREE.Mesh(pbGeo, bracketMat);
+    b1.position.set(-HW + 0.24, 4.85, bz);
+    const b2 = new THREE.Mesh(pbGeo, bracketMat);
+    b2.position.set(-HW + 0.24, 5.35, bz);
+    group.add(b1, b2);
+  }
+  // vertical drop with a valve wheel near the workbench
+  const dropGeo = track(new THREE.CylinderGeometry(0.09, 0.09, 4.3, 10));
+  const drop = new THREE.Mesh(dropGeo, pipeMat);
+  drop.position.set(-HW + 0.42, 2.65, 5.6);
+  drop.castShadow = true;
+  group.add(drop);
+  const valveGeo = track(new THREE.TorusGeometry(0.18, 0.035, 8, 18));
+  const valve = new THREE.Mesh(valveGeo, track(shadowMat(new THREE.MeshStandardMaterial({
+    color: 0x8a2f26, roughness: 0.5, metalness: 0.4,
+  }))));
+  valve.rotation.y = Math.PI / 2;
+  valve.position.set(-HW + 0.7, 1.7, 5.6);
+  group.add(valve);
+
+  // stenciled bay signs: one big on the north wall's dark left half, a small
+  // one on the west wall — both slightly emissive so they read in the corner
+  const signGeoBig = track(new THREE.PlaneGeometry(3.6, 1.8));
+  const signGeoSmall = track(new THREE.PlaneGeometry(2.2, 1.1));
+  const signTex1 = track(canvasTexture(makeSignTexture(rng, 'BAY 01'), { aniso }));
+  const signTex2 = track(canvasTexture(makeSignTexture(rng, 'NO SMOKING'), { aniso }));
+  const signMat1 = track(shadowMat(new THREE.MeshStandardMaterial({
+    map: signTex1, emissive: 0xffffff, emissiveMap: signTex1, emissiveIntensity: 0.30,
+    roughness: 0.6, metalness: 0.2,
+  })));
+  const signMat2 = track(shadowMat(new THREE.MeshStandardMaterial({
+    map: signTex2, emissive: 0xffffff, emissiveMap: signTex2, emissiveIntensity: 0.26,
+    roughness: 0.6, metalness: 0.2,
+  })));
+  const sign1 = new THREE.Mesh(signGeoBig, signMat1);
+  sign1.position.set(-13.5, 5.6, -HW + 0.1);
+  group.add(sign1);
+  const sign2 = new THREE.Mesh(signGeoSmall, signMat2);
+  sign2.rotation.y = Math.PI / 2;
+  sign2.position.set(-HW + 0.1, 3.4, -6);
+  group.add(sign2);
+
+  // second light pool: warm additive splash on the floor under the west-wall
+  // flood housing (its lens is emissive) — fakes the third fixture being live
+  // without adding a real light to every shader
+  const pool2 = new THREE.Mesh(track(new THREE.PlaneGeometry(14, 14)), poolMat);
+  pool2.rotation.x = -Math.PI / 2;
+  pool2.position.set(-15.5, 0.04, 4);
+  pool2.material = track(new THREE.MeshBasicMaterial({
+    map: poolTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    opacity: 0.55,
+  }));
+  group.add(pool2);
 
   // --- props: crates, barrels, tires, tool cabinet, workbench ----------------
   const crateTexC = document.createElement('canvas');

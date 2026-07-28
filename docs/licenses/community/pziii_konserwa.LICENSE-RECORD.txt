@@ -1,0 +1,8 @@
+Asset: "panzerkampfwagen III" by konserwa
+Source page: https://opengameart.org/content/panzerkampfwagen-iii
+License as stated on the asset page at download time (2026-07-27):
+  "CC0" (Creative Commons Zero) — http://creativecommons.org/publicdomain/zero/1.0/
+Files: pzIIIs.blend (original download), panzer_iii.glb (Blender GLB export).
+Geometry: 3737 verts / 7093 tris per the page. Turret+gun exports as its own node
+(Plane.000 primitive cluster) separate from the hull node — turret yaw is re-parentable;
+gun elevation would need splitting the barrel primitive (material slot Material.006).

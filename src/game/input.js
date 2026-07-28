@@ -7,8 +7,10 @@
 // at runtime (settings panel). Key state is a Set of codes, so simultaneous
 // keys never ghost each other. The layer also owns pointer-lock helpers,
 // gameplay feel settings (mouse sensitivity / invert-Y / sniper sensitivity /
-// aim smoothing / pad sensitivity, cot.settings.v1) and a smoothed,
-// sensitivity-scaled mouse-delta accumulator consumed once per render frame.
+// aim smoothing / pad sensitivity / sound mix, cot.settings.v1) and a
+// smoothed, sensitivity-scaled mouse-delta accumulator consumed once per
+// render frame. The `fire` action is special-cased to a consumed press edge
+// (one shot per click / trigger pull — see FIRE_PRESS_BUFFER_MS).
 //
 // Gamepad model (standard mapping): left stick drives (throttle/steer are
 // synthesized as held forward/back/left/right actions past a deadzone),
@@ -119,7 +121,25 @@ const DEFAULT_SETTINGS = {
   aimSmoothing: 0.5, // 0 = raw 1:1 deltas, 1 = heavy (56 ms EMA); 0.5 = classic 28 ms
   padSensitivity: 1, // 0.2x .. 3x multiplier on right-stick aim
   aiDifficulty: 'normal', // bot tier for the NEXT battle: 'easy'|'normal'|'hard'
+  // Sound mix (settings panel SOUND tab). The synth audio stack
+  // (src/audio/audio.js) reads these at graph build and live-follows the
+  // 'ui:volumes' bus event the panel emits on every slider change.
+  volMaster: 0.8, // final output gain 0..1
+  volEngine: 1, // engine loops
+  volCombat: 1, // gunfire / impacts / explosions
+  volAmbience: 1, // wind + birds bed
+  volUi: 1, // UI clicks + garage stings
 };
+
+const VOLUME_KEYS = ['volMaster', 'volEngine', 'volCombat', 'volAmbience', 'volUi'];
+
+// One shot per trigger pull (WoT PC): fire reports a PRESS EDGE through
+// getState() instead of held state, so a button held across the reload can
+// never surprise-fire the instant the next shell seats. The edge is only
+// latched when the press could legitimately fire (pointer locked, or a
+// gamepad pull) and goes stale after this window, so a garage click can't
+// discharge the gun on the first battle frame.
+const FIRE_PRESS_BUFFER_MS = 250;
 
 const AI_DIFFICULTIES = ['easy', 'normal', 'hard'];
 
@@ -280,6 +300,9 @@ export function createInput(opts = {}) {
     if (typeof storedSettings.aimSmoothing === 'number') settings.aimSmoothing = clamp(storedSettings.aimSmoothing, 0, 1);
     if (typeof storedSettings.padSensitivity === 'number') settings.padSensitivity = clamp(storedSettings.padSensitivity, 0.2, 3);
     if (AI_DIFFICULTIES.includes(storedSettings.aiDifficulty)) settings.aiDifficulty = storedSettings.aiDifficulty;
+    for (const k of VOLUME_KEYS) {
+      if (typeof storedSettings[k] === 'number') settings[k] = clamp(storedSettings[k], 0, 1);
+    }
   }
 
   // --- live state ----------------------------------------------------------------
@@ -292,8 +315,20 @@ export function createInput(opts = {}) {
   let rawDY = 0;
   let smDX = 0;
   let smDY = 0;
+  let firePressMs = -Infinity; // last legitimate fire press edge (see FIRE_PRESS_BUFFER_MS)
+
+  const nowMillis = () =>
+    (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
   function firePress(actionId, code) {
+    // Latch the single-shot fire edge. Presses that could never fire anyway —
+    // mouse clicks without pointer lock (menus, the lock-acquiring click
+    // itself) — are ignored, so re-locking after a pause can't pop a shot.
+    if (actionId === 'fire' &&
+        (code.startsWith('Pad') || !lockElement ||
+         document.pointerLockElement === lockElement)) {
+      firePressMs = nowMillis();
+    }
     const set = actionHandlers.get(actionId);
     if (!set) return;
     for (const cb of set) cb(code);
@@ -410,9 +445,12 @@ export function createInput(opts = {}) {
     }
   };
   // Wheel notches fire press edges for whatever action WheelUp/WheelDown maps
-  // to (zoom by default) — rebindable like any key, no held state.
+  // to (zoom by default) — rebindable like any key, no held state. Gated on
+  // pointer lock (like fire): without lock the wheel belongs to whatever UI
+  // sits under the cursor, so scrolling a menu must never step the gun zoom.
   const onWheel = (e) => {
     if (!enabled || e.deltaY === 0) return;
+    if (lockElement && document.pointerLockElement !== lockElement) return;
     const code = e.deltaY < 0 ? 'WheelUp' : 'WheelDown';
     const actionId = codeToAction.get(code);
     if (actionId) firePress(actionId, code);
@@ -443,10 +481,15 @@ export function createInput(opts = {}) {
     /** @param {?number} index @returns {string} display label for a pad button */
     padLabelFor: labelForPadButton,
 
-    /** Snapshot of every action's held state (cached object, no allocation). */
+    /** Snapshot of every action's held state (cached object, no allocation).
+     *  EXCEPTION: `fire` is a consumed press edge, not held state — one shot
+     *  per click / trigger pull (WoT PC), so holding the button through a
+     *  reload never auto-fires when the shell seats. */
     getState() {
       pollPad();
       for (const def of ACTION_DEFS) state[def.id] = enabled && isHeld(def.id);
+      state.fire = enabled && nowMillis() - firePressMs < FIRE_PRESS_BUFFER_MS;
+      firePressMs = -Infinity; // consumed by this read
       return state;
     },
 
@@ -593,6 +636,7 @@ export function createInput(opts = {}) {
       else if (key === 'aimSmoothing') settings.aimSmoothing = clamp(+value || 0, 0, 1);
       else if (key === 'padSensitivity') settings.padSensitivity = clamp(+value || 1, 0.2, 3);
       else if (key === 'aiDifficulty') settings.aiDifficulty = AI_DIFFICULTIES.includes(value) ? value : settings.aiDifficulty;
+      else if (VOLUME_KEYS.includes(key)) settings[key] = clamp(+value || 0, 0, 1);
       saveJson(SETTINGS_KEY, settings);
     },
 
@@ -633,9 +677,11 @@ export function createInput(opts = {}) {
       return out;
     },
 
-    /** Gate the whole layer (settings menu open). Disabling clears held state. */
+    /** Gate the whole layer (settings menu open). Disabling clears held state;
+     *  any pending fire edge dies on either flank of the toggle. */
     setEnabled(v) {
       enabled = !!v;
+      firePressMs = -Infinity;
       if (!enabled) {
         down.clear();
         padHeld.clear();

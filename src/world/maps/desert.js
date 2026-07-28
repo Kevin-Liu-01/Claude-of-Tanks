@@ -36,7 +36,7 @@ export default {
     mudRough: 1.15,
     tintA: [1.10, 1.02, 0.85], tintB: [0.90, 0.84, 0.72], tintC: [1.12, 1.06, 0.90],
     roadTint: [1.12, 1.06, 0.94],
-    strata: 0.12,           // horizontal rock banding on the mesa cliff walls
+    strata: 0.22,           // horizontal rock banding on the mesa cliff walls
     microAmp: 0.4,          // tame the near-field dot speckle (ripples instead)
     rippleDir: [0.8, 0.6],  // global wind direction for the sand ripples
     rippleAmp: 0.30,        // anisotropic ripple normal strength
@@ -83,12 +83,17 @@ export default {
     haystacks: 0, rocks: 210, outcrops: 24, craters: 18, rubblePiles: 0,
   },
 
-  horizon: { baseHex: 0xa27446, amp: 1.1 },
+  horizon: {
+    baseHex: 0xa87c4e, amp: 1.15, style: 'mesa', banding: 0.17,
+    rockHex: 0x96603a, haze: 0.85, grain: 1.2,
+  },
 
   sky: {
     sunElevationDeg: 44, sunAzimuthDeg: 115,
     turbidity: 7, rayleigh: 0.55, mieCoefficient: 0.009, mieDirectionalG: 0.8,
-    fogDensity: 0.00105, fogTintHex: 0xc7ac85, fogMix: 0.72, envIntensity: 0.22,
+    // 0.00105 washed the mesa tablelands to unshaded clay by 900 m — 0.00086
+    // keeps the heat haze but lets the strata banding read on the skyline
+    fogDensity: 0.00086, fogTintHex: 0xc7ac85, fogMix: 0.72, envIntensity: 0.22,
     cloudOpacity: 0.35, cloudOpacity2: 0.18, cloudTintHex: 0xfff2df,
     sunIntensity: 4.9, sunColorHex: 0xffe9c2, hemiIntensity: 0.34,
   },

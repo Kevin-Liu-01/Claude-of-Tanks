@@ -1,46 +1,66 @@
-# effects_combat r2 handoff — changes needed outside src/fx/
+# effects_combat r3 handoff — changes needed outside owned files
 
-All critical/major VFX problems were fixed inside `src/fx/` (see r2 shots).
-The following items from the r2 critique cannot be fixed from `src/fx/` and
-need the owning module (or can be skipped if already handled):
+(Supersedes the previous r2 content of this file — that round's verifier
+already ran; its item 3 resolved as "camera stays as-is, change nothing".)
 
-## 1. Enemy tank identification treatment (vehicles — critique item 9, minor)
+All critical/major items of the r3 critique were fixed inside the owned files
+(`src/fx/effects.js`, `src/fx/particles.js`, `src/vehicles/tankFactory.js`,
+`src/engine/cameraRig.js`). Two minor flyby items need other modules:
 
-The critique called out the victim tank as a "flat solid-red untextured
-placeholder". Requested treatment: give enemy tanks the same PBR/camo
-materials as the player tank with a small red accent (stripe / turret band /
-outline marker) instead of a full team-color albedo. Owner:
-`src/vehicles/materials.js` / `src/vehicles/tankFactory.js`. If enemy camo
-has already landed in the current vehicles pass, skip.
+## 1. Veil HUD + letterbox during the battle-start flyby (src/main.js) — REQUIRED
 
-## 2. Stronger charred-wreck read on `setDestroyed()` (vehicles, optional)
+Critique (minor): "the full battle HUD (rosters, minimap, consumables) stays
+on screen through the cinematic instead of a clean letterboxed pass."
 
-`TankVisual.setDestroyed()` already swaps to `mats.burnt` and knocks the
-turret askew — good. To fully sell the kill next to the fx (scorch decal,
-smoke column, ember debris now in place), consider darkening `mats.burnt`
-toward soot-black with a subtle vertical gradient (darkest around the turret
-ring/engine deck). No fx-side dependency; purely a material tweak.
-
-## 3. combat_firing camera framing (src/main.js, optional but recommended)
-
-In `SHOT_VIEWS.combat_firing` the camera (`orbitPose(p, 14, 55, 8, 45)`)
-leaves only ~1 m of clear down-range space between the muzzle brake and the
-left frame edge. Any realistic forward flash cone / tracer clips the screen
-edge (r1's "blown-out white sheet"). fx r2 works around it: the composer
-calls `spawnMuzzleFlash(..., reach = 0.4)` and caps the composed tracer head
-at 0.85 m (`composeFiringMoment` in `src/fx/effects.js`), so the current
-frame is clean but the tracer is short.
-
-If you want a long WoT-style tracer streaking down-range, change the camera
-to a rear-quarter view so the gun fires INTO the frame, e.g.:
+`cameraRig.js` now exposes **`rig.cinematicActive`** (true while the 3 s
+battle-open flyby drives the camera). main.js already owns the kill-cam
+letterbox veil (`veilHud(on)`, ~line 291). Wire the flyby to the same veil in
+the render loop:
 
 ```js
-orbitPose(p, 16, 145, 10, 45);
+// module scope, near `let endShown`:
+let flybyVeiled = false;
+
+// in the render loop, before step 7 (HUD):
+const flybyActive = inBattle && !game.result && rig.cinematicActive;
+if (flybyActive !== flybyVeiled) { veilHud(flybyActive); flybyVeiled = flybyActive; }
 ```
 
-then in `src/fx/effects.js` `composeFiringMoment` raise:
-- `const headDist = Math.min(vel * ageS, 0.85)` → cap `18`
-- `spawnMuzzleFlash(muzzlePos, dir, caliberMm, -ageS, 0.4)` → `reach 1`
+and add `&& !flybyActive` to the step-7 HUD gate:
 
-Verify with `node tools/screenshot.mjs --views combat_firing`. If the camera
-stays as-is, change nothing — the current composition passes.
+```js
+if (inBattle && game.player && !kcActive && !killcam.isActive() && !flybyActive) {
+```
+
+The flyby is skippable by any camera input, so the veil must be driven by the
+live `rig.cinematicActive` value each frame (as above), not by a timer.
+`veilHud` already provides the letterbox bars for the kill-cam, so the same
+call gives the flyby the letterboxed look for free.
+
+## 2. Grass/terrain specular blowout at grazing sun angles (src/world/) — REQUIRED
+
+Critique (minor): "the entire sun-facing midground is a carpet of blown-out
+white grass specular sparkles during the opening sweep — reads as glitter or
+snow" (flyby frames 00-05; camera low, looking near the sun azimuth).
+
+Likely culprit: the terrain detail-pass roughness floor in
+`src/world/terrain.js` (~line 766):
+
+```js
+px[j + 3] = clamp(rough * roughMul, 0.03, 1) * 255; // roughness packed in albedo alpha
+```
+
+A 0.03 roughness floor is mirror-glossy — at grazing view·sun geometry the
+GGX lobe blows the whole midground to white. Raise the floor to ~0.45:
+
+```js
+px[j + 3] = clamp(rough * roughMul, 0.45, 1) * 255;
+```
+
+Also check the grass-blade material in `src/world/vegetation.js` (~line 826):
+it already has `roughness: 1.0` and `envMapIntensity = 0.35`; if sparkle
+persists after the terrain floor fix, drop blade `envMapIntensity` to 0.15.
+
+Verify with `node tools/screenshot.mjs` (battlefield views must not lose
+their sun-side sheen entirely — the fix targets the white CLIP, not all
+specular) plus a flyby motion capture if available.

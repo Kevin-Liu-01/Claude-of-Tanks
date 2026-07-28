@@ -9,8 +9,10 @@
 // aim smoothing (0 % = raw 1:1 input), invert-Y, AI difficulty (easy/normal/
 // hard segmented picker — consumed by game/state.js via getStoredDifficulty at
 // battle setup), controller aim sensitivity — each slider is paired with a
-// numeric entry field. All state persists via the input layer's localStorage
-// stores. Also owns the fading controls-hint strip
+// numeric entry field. SOUND tab: master/engine/gunfire/ambience/UI volume
+// sliders (persisted with the gameplay settings; broadcast live over the bus
+// as 'ui:volumes' for src/audio/audio.js). All state persists via the input
+// layer's localStorage stores. Also owns the fading controls-hint strip
 // shown on battle start and the garage gear button, and broadcasts
 // 'ui:bindingsChanged' so the HUD's shell/consumable hotkey labels stay honest.
 // Design language mirrors src/ui/hud.js / garage.js (palette, chamfers, type).
@@ -182,6 +184,7 @@ export function createSettings(opts) {
     `<div class="cot-set-tabs">` +
     `<button class="cot-set-tab sel" data-tab="controls" type="button">Controls</button>` +
     `<button class="cot-set-tab" data-tab="gameplay" type="button">Gameplay</button>` +
+    `<button class="cot-set-tab" data-tab="sound" type="button">Sound</button>` +
     `<button class="cot-set-tab" data-tab="graphics" type="button">Graphics</button>` +
     `</div>` +
     `<div class="cot-set-conflict"><span class="msg"></span>` +
@@ -341,13 +344,20 @@ export function createSettings(opts) {
     range.addEventListener('input', () => {
       input.setSetting(key, parseFloat(range.value));
       sync();
+      if (o.onChange) o.onChange();
     });
     num.addEventListener('change', () => {
       const d = parseFloat(num.value);
       if (Number.isFinite(d)) input.setSetting(key, fromD(d));
       sync();
+      if (o.onChange) o.onChange();
       emit('ui:click', {});
     });
+    if (o.blipOnCommit) {
+      // audible reference blip on slider release, so volume changes can be
+      // judged without leaving the panel
+      range.addEventListener('change', () => emit('ui:click', {}));
+    }
   }
 
   function renderGameplay() {
@@ -406,6 +416,44 @@ export function createSettings(opts) {
       'Type exact values in the number fields for precise tuning.';
   }
 
+  // --- SOUND tab ---------------------------------------------------------------
+  const VOLUME_DEFS = [
+    ['volMaster', 'Master volume'],
+    ['volEngine', 'Engine volume'],
+    ['volCombat', 'Gunfire & impacts volume'],
+    ['volAmbience', 'Ambience volume (wind, birds)'],
+    ['volUi', 'Interface volume'],
+  ];
+
+  /** Broadcast the whole mix so the audio graph re-levels its channel buses. */
+  function emitVolumes() {
+    const s = input.getSettings();
+    emit('ui:volumes', {
+      master: s.volMaster,
+      engine: s.volEngine,
+      combat: s.volCombat,
+      ambience: s.volAmbience,
+      ui: s.volUi,
+    });
+  }
+
+  function renderSound() {
+    body.textContent = '';
+    el('div', 'cot-set-group', body).textContent = 'Volume';
+    for (const [key, label] of VOLUME_DEFS) {
+      sliderRow(body, label, key, 0, 1, {
+        step: '0.01', dispStep: '1', unit: '%', digits: 0,
+        toDisp: (v) => v * 100, fromDisp: (v) => v / 100,
+        onChange: emitVolumes, blipOnCommit: true,
+      });
+    }
+    const note = el('div', 'cot-set-note', body);
+    note.textContent =
+      'All audio is synthesized in real time — no samples. Engine, gunfire, ambience and ' +
+      'interface mix under the master fader; changes apply instantly and persist. ' +
+      'Release a slider to hear a reference blip at the new level.';
+  }
+
   // --- GRAPHICS tab -----------------------------------------------------------
   function renderGraphics() {
     body.textContent = '';
@@ -440,9 +488,12 @@ export function createSettings(opts) {
     for (const t of root.querySelectorAll('.cot-set-tab')) {
       t.classList.toggle('sel', t.dataset.tab === activeTab);
     }
-    resetBtn.style.visibility = activeTab === 'controls' || activeTab === 'graphics' ? 'visible' : 'hidden';
+    resetBtn.style.visibility =
+      activeTab === 'controls' || activeTab === 'graphics' || activeTab === 'sound'
+        ? 'visible' : 'hidden';
     if (activeTab === 'controls') renderControls();
     else if (activeTab === 'graphics') renderGraphics();
+    else if (activeTab === 'sound') renderSound();
     else renderGameplay();
   }
 
@@ -686,6 +737,16 @@ export function createSettings(opts) {
       renderTab();
       return;
     }
+    if (activeTab === 'sound') {
+      input.setSetting('volMaster', 0.8);
+      for (const key of ['volEngine', 'volCombat', 'volAmbience', 'volUi']) {
+        input.setSetting(key, 1);
+      }
+      emitVolumes();
+      renderTab();
+      emit('ui:click', {});
+      return;
+    }
     input.resetBindings();
     bindingsMutated();
   });
@@ -765,8 +826,11 @@ export function createSettings(opts) {
     showHints,
   };
 
-  // Let the HUD sync its hotkey labels to the persisted bindings at boot.
+  // Let the HUD sync its hotkey labels to the persisted bindings at boot, and
+  // the audio graph its channel levels (the graph also reads cot.settings.v1
+  // directly at build time — this covers a graph that already exists).
   emitBindings();
+  emitVolumes();
 
   return api;
 }

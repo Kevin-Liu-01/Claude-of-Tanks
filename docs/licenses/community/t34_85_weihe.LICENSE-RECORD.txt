@@ -1,0 +1,16 @@
+Model: T-34 85 Detailed (Thingiverse thing:4326802)
+Author: Wei He (Xdhsqj)
+License: CC-BY 4.0
+Downloaded from (mirror): https://archive.org/details/thingiverse-4326802
+  file: T-34_85_Detailed_4326802.zip
+Original page: https://www.thingiverse.com/thing:4326802
+License line quoted from the archive.org asset item metadata (download source):
+  "licenseurl": "https://creativecommons.org/licenses/by/4.0/"
+Bundled LICENSE.txt inside the zip:
+  "This thing was created by Thingiverse user Xdhsqj, and is licensed under cc."
+Processing: imported 1:1 STL (3.49M tris, SolidWorks CAD export), decimated,
+turret+gun shell separated from hull at ring plane (surgical cut, edge hidden
+under turret skirt), running gear grouped as "gear" node, PBR flat materials
+(soviet green / dark gear), scaled to 1u=1m (~8.0m with gun), floor z=0,
+front = -Y. Nodes: hull, turret (yaw pivot origin at ring center), gear.
+Attribution required in credits: "T-34 85 Detailed" by Wei He (Xdhsqj), CC-BY 4.0.

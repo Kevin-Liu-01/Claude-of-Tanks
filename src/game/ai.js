@@ -153,6 +153,12 @@ export function createAI(entity, opts = {}) {
 
   const spec = entity.spec;
   const selfEyeM = spec.dims.heightM * EYE_FRAC;
+  // Gun trunnion height above ground contact — the movement sim aims the
+  // barrel from here (movement.js gunPivotHeight), so the alignment gate must
+  // measure the wanted pitch from the same origin, not from the eye point.
+  const selfGunM = spec.armor && spec.armor.turretPivot && spec.armor.gunPivot
+    ? spec.armor.turretPivot[1] + spec.armor.gunPivot[1]
+    : spec.dims.heightM * 0.85;
 
   // ---- persistent controller state ----------------------------------------
   let mode = 'patrol';                       // 'patrol'|'engage'|'seekCover'|'flank'
@@ -202,6 +208,7 @@ export function createAI(entity, opts = {}) {
   let unstickSteer = 1;
   let gunLimitT = 0;
   let nudgeUntilS = -1;
+  let arcLimitedT = 0;              // gun pinned at an elevation/depression stop
 
   const scanPhase = rng() * TAU;             // idle turret sweep phase
   let obstacles = deps.getObstacles();
@@ -547,7 +554,7 @@ export function createAI(entity, opts = {}) {
 
   // ---- aiming & firing -----------------------------------------------------
 
-  function aimAndFire(input, timeS) {
+  function aimAndFire(input, dt, timeS) {
     const st = entity.state;
     const cb = entity.combat;
 
@@ -609,19 +616,37 @@ export function createAI(entity, opts = {}) {
       computeDispersionRadM(spec, st, dist) < (tw / 2) * tier.fireFactor;
 
     // Alignment gate: the gun itself (not just the aim point) is on target.
-    const dxA = input.aimPoint.x - ex, dyA = input.aimPoint.y - ey, dzA = input.aimPoint.z - ez;
+    // The wanted pitch is measured from the TRUNNION (movement.js drives the
+    // barrel from pos.y + gunPivotHeight), and the barrel's world pitch uses
+    // the same YXZ pose composition as the movement sim:
+    //   worldPitch ≈ gunPitch + visualPitch·cos(turretYaw) + visualRoll·sin(turretYaw).
+    // The old `gunPitch + visualPitch` ignored turret azimuth and roll, and a
+    // hard `!atGunLimit` veto froze the AI whenever the clamped barrel was
+    // pinned even marginally — on slopes the settled gun could sit exactly ON
+    // target with atGunLimit=true, so an uphill Tiger never fired (r6).
+    const gy = st.pos.y + selfGunM;
+    const dxA = input.aimPoint.x - ex, dyA = input.aimPoint.y - gy, dzA = input.aimPoint.z - ez;
     const horiz = Math.hypot(dxA, dzA) || 1e-6;
     const wantYaw = Math.atan2(dxA, dzA);
     const wantPitch = Math.atan2(dyA, horiz);
     const gunYaw = st.yaw + st.turretYaw;
-    const gunPitch = st.gunPitch + st.visualPitch;
+    const gunPitch = st.gunPitch +
+      (st.visualPitch || 0) * Math.cos(st.turretYaw) +
+      (st.visualRoll || 0) * Math.sin(st.turretYaw);
     const yawErr = Math.abs(wrapAngle(wantYaw - gunYaw));
     const pitchErr = Math.abs(wantPitch - gunPitch);
     const tol = Math.max(0.01, Math.atan2(tw * 0.3, dist));
-    const alignOk = yawErr < tol && pitchErr < tol * 1.5 && !st.atGunLimit;
+    // Arc-limit fallback: when the barrel is pinned at a pitch stop and still
+    // off the solution, repositioning (the reverse nudge) runs in parallel —
+    // but after a few seconds the AI takes the best shot its gun arc allows
+    // instead of holding fire forever (bounded: within ~4x tolerance).
+    const gunReady = losClear && reactionOk && reloadReady && rangeOk;
+    if (st.atGunLimit && gunReady && pitchErr >= tol * 1.5) arcLimitedT += dt;
+    else if (!st.atGunLimit || pitchErr < tol * 1.5) arcLimitedT = 0;
+    const pitchTol = arcLimitedT > 2.5 ? Math.min(0.06, tol * 4) : tol * 1.5;
+    const alignOk = yawErr < tol && pitchErr < pitchTol;
 
-    input.fire = losClear && reactionOk && reloadReady && rangeOk &&
-                 dispersionOk && alignOk && (penGateOk || chosenSlot === 2);
+    input.fire = gunReady && dispersionOk && alignOk && (penGateOk || chosenSlot === 2);
   }
 
   // ---- state machine -------------------------------------------------------
@@ -771,7 +796,7 @@ export function createAI(entity, opts = {}) {
       lowSpeedT = 0;
     }
 
-    aimAndFire(input, timeS);
+    aimAndFire(input, dt, timeS);
     controller.state = mode;
   }
 

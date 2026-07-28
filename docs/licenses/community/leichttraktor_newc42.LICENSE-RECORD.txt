@@ -1,0 +1,9 @@
+Asset: Low Poly German WWII Tanks (newc42-leichttraktor)
+Author: Newc42 (https://newc-42.itch.io)
+Source page: https://newc-42.itch.io/german-low-poly-wwii-tanks
+Downloaded: 2026-07-27 (anonymous free download, name-your-own-price at $0)
+License (verified on asset page, itch.io More Information panel):
+  "Asset license: Creative Commons Zero v1.0 Universal"
+  (links to https://itch.io/game-assets/assets-cc0)
+Page description also states the models can be used "in any project without attribution."
+Files: Low Poly Tanks - Blender (tanks_blender.zip); converted to GLB via blend2glb.sh (Blender 4.x, export_apply=True).

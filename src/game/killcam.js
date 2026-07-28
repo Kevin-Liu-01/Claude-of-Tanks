@@ -29,7 +29,7 @@
 import * as THREE from 'three';
 import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.js';
 
-const XRAY_HOLD_S = 4.0;
+const XRAY_HOLD_S = 7.0;
 const FLIGHT_MIN_S = 1.9;
 const FLIGHT_MAX_S = 3.4;
 const TRAJ_KEEP = 32;          // shell traces retained (oldest evicted)
@@ -66,6 +66,24 @@ function zoneLabel(zone) {
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .toLowerCase()
     .replace(/ (r|l)$/, (m) => m.toUpperCase());
+}
+
+/**
+ * Shell display name with a duplicated type token stripped: specs name rounds
+ * like 'M829A4 APFSDS', and the header already prints the type badge — never
+ * render 'APFSDS · M829A4 APFSDS' (same helper as shotInfo.js).
+ * @param {{shellType?:string, shellName?:string}} ev HitEvent
+ * @returns {string} cleaned display name ('' when it collapses to the type)
+ */
+function shellDisplayName(ev) {
+  const type = (ev.shellType || '').trim();
+  let name = (ev.shellName || '').trim();
+  if (type) {
+    const esc = type.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    name = name.replace(new RegExp(`^${esc}\\s+|\\s+${esc}$`, 'i'), '');
+    if (name.toUpperCase() === type.toUpperCase()) name = '';
+  }
+  return name;
 }
 
 // ---------------------------------------------------------------------------
@@ -119,36 +137,84 @@ function sharedMats() {
     };
     return mat;
   };
-  const ghost = muzzleFadeShader(mesh(0x86c8f2, 0.075, THREE.DoubleSide));
+  const ghost = muzzleFadeShader(mesh(0x86c8f2, 0.072, THREE.DoubleSide));
   // Faint tier for LOD-wrapped detail greebles (track links, stowage, vents):
   // hundreds of small overlapping shells at full ghost opacity stack additive
   // layers into a milky white mass — they get ~1/3 the alpha instead.
-  const ghostDim = muzzleFadeShader(mesh(0x86c8f2, 0.026, THREE.DoubleSide));
+  const ghostDim = muzzleFadeShader(mesh(0x86c8f2, 0.024, THREE.DoubleSide));
+  // Soft radial blackout billboarded behind the ghost (WT hangar-void read):
+  // canvas radial gradient, NormalBlending so it DARKENS the sunlit terrain
+  // the additive hull otherwise blows out against. Procedural — no assets.
+  const bdCanvas = document.createElement('canvas');
+  bdCanvas.width = bdCanvas.height = 256;
+  const bdCtx = bdCanvas.getContext('2d');
+  const bdGrad = bdCtx.createRadialGradient(128, 128, 24, 128, 128, 128);
+  bdGrad.addColorStop(0, 'rgba(3,7,11,0.52)');
+  bdGrad.addColorStop(0.55, 'rgba(3,7,11,0.4)');
+  bdGrad.addColorStop(1, 'rgba(3,7,11,0)');
+  bdCtx.fillStyle = bdGrad;
+  bdCtx.fillRect(0, 0, 256, 256);
+  const bdTex = new THREE.CanvasTexture(bdCanvas);
+  const backdrop = new THREE.MeshBasicMaterial({
+    map: bdTex, color: 0x000000, transparent: true, opacity: 1,
+    blending: THREE.NormalBlending, depthWrite: false, depthTest: true,
+    toneMapped: false, fog: false, side: THREE.DoubleSide,
+  });
   S = {
     ghost,
     ghostDim,
     ghostMuzzle: muzzleFade,
-    trail: line(0xffb060, 0.55),
-    edgeDim: line(0x6db4e8, 0.55),
+    backdrop,
+    // Trail intensity is deliberately sub-bloom: additive 1px line at full
+    // 0xffb060 pushed the HDR buffer over the bloom threshold and smeared
+    // into a screen-wide beam (r2 critique). Halved color × lower alpha keeps
+    // the path readable without ever blooming.
+    trail: line(0x7d5830, 0.5),
+    edgeDim: line(0x6db4e8, 0.5),
     edgeRed: line(0xff5a4a, 1.0),
     edgeYellow: line(0xffb43c, 1.0),
     edgeCrew: line(0xff7d8a, 1.0),
-    fillRed: mesh(0xff2a1a, 0.22, THREE.DoubleSide),
-    fillYellow: mesh(0xff9a1c, 0.2, THREE.DoubleSide),
-    fillCrew: mesh(0xff3a55, 0.22, THREE.DoubleSide),
-    pathIn: mesh(0xff5028, 0.55),
-    pathOut: mesh(0xffc27a, 0.7),
-    pathCore: mesh(0xfff3d0, 0.95),
-    spall: mesh(0xffa050, 0.1, THREE.DoubleSide),
-    frag: mesh(0xffc27a, 0.5),
-    marker: mesh(0xffffff, 0.9),
+    // Front-side only, low alpha: DoubleSide box fills stacked front+back
+    // faces into an opaque red curtain that hid the running gear (r2).
+    fillRed: mesh(0xff2a1a, 0.14, THREE.FrontSide),
+    fillYellow: mesh(0xff9a1c, 0.12, THREE.FrontSide),
+    fillCrew: mesh(0xff3a55, 0.14, THREE.FrontSide),
+    pathIn: mesh(0xff5028, 0.4),
+    pathOut: mesh(0xffc27a, 0.6),
+    pathCore: mesh(0xfff3d0, 0.8),
+    spall: mesh(0xffa050, 0.07, THREE.DoubleSide),
+    frag: mesh(0xffc27a, 0.35),
+    marker: mesh(0xffffff, 0.85),
     core: mesh(0xfff3d0, 1.0),
     streak: mesh(0xffb464, 0.85),
+    // Internal proxies: distinct per-kind hues (WT visual language — brass
+    // ammo, steel-blue engine, amber fuel) for HEALTHY modules; hit ones
+    // override to the yellow/red state tints.
+    proxAmmo: prox(0xe0c25e, 0.55, 0.055, 0.13),
+    proxEngine: prox(0x4aa8c8, 0.55, 0.055, 0.13),
+    proxFuel: prox(0xcf7f3a, 0.55, 0.055, 0.13),
+    proxSteel: prox(0x9fb4c4, 0.5, 0.05, 0.11),
+    proxRadio: prox(0x6ad0a8, 0.5, 0.05, 0.11),
     proxGreen: prox(0x2fd98c, 0.55, 0.055, 0.13),
     proxYellow: prox(0xffb43c, 0.6, 0.07, 0.17),
     proxRed: prox(0xff4a38, 0.65, 0.08, 0.2),
   };
+  S.disposeTex = bdTex; // kept for completeness; singleton lives app-long
   return S;
+}
+
+/** Healthy-state proxy material for a module kind (distinct WT-style hues). */
+function proxMatFor(kind) {
+  switch (kind) {
+    case 'ammoRack': return S.proxAmmo;
+    case 'engine': return S.proxEngine;
+    case 'fuelTank': return S.proxFuel;
+    case 'radio': return S.proxRadio;
+    case 'gun':
+    case 'turretRing': return S.proxSteel;
+    case 'optics': return S.proxSteel;
+    default: return S.proxGreen;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -271,6 +337,17 @@ const KC_CSS = `
   font-family:${FONT_STACK};color:#e6edf3;}
 .cot-kc.on{display:block;}
 .cot-kc *{box-sizing:border-box;margin:0;padding:0;}
+.cot-kc-veil{position:absolute;inset:0;opacity:0;transition:opacity .5s ease;
+  background:radial-gradient(ellipse 62% 55% at 50% 52%,rgba(3,7,11,.20) 0%,rgba(2,5,8,.44) 100%);}
+.cot-kc.xr .cot-kc-veil{opacity:1;}
+@keyframes cotKcIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+.cot-kc-anim{opacity:0;animation:cotKcIn .35s ease forwards;}
+line.cot-kc-anim{animation-name:cotKcInLine;}
+@keyframes cotKcInLine{from{opacity:0;}to{opacity:.85;}}
+.cot-kc-micro{position:absolute;white-space:nowrap;background:rgba(6,9,12,.6);
+  border:1px solid rgba(146,164,180,.25);color:#9fc0da;padding:1px 5px 2px;
+  font-family:${FONT_COND};font-stretch:condensed;font-weight:700;font-size:9px;
+  letter-spacing:.14em;text-transform:uppercase;line-height:1.2;}
 .cot-kc-bart,.cot-kc-barb{position:absolute;left:0;right:0;height:9vh;}
 .cot-kc-bart{top:0;background:linear-gradient(180deg,rgba(0,0,0,.94),rgba(0,0,0,.6) 70%,transparent);}
 .cot-kc-barb{bottom:0;background:linear-gradient(0deg,#000 38%,rgba(0,0,0,.72) 68%,transparent);}
@@ -371,6 +448,7 @@ export function createKillCam(deps) {
     ensureStyle();
     const root = el('div', 'cot-kc');
     document.body.appendChild(root);
+    el('div', 'cot-kc-veil', root); // x-ray backdrop dim (class 'xr' on root)
     el('div', 'cot-kc-bart', root);
     el('div', 'cot-kc-barb', root);
     const title = el('div', 'cot-kc-title', root);
@@ -518,6 +596,18 @@ export function createKillCam(deps) {
       api.cancel();
       begin(snap, 'death', null, true);
       staged = true; // update() never auto-finishes a staged frame
+      // Deterministic capture: strip the label reveal animation — the shot
+      // harness grabs the frame ~1.2 s after set(), and heavy first-frame
+      // work (shader compiles) can delay CSS timelines past the capture.
+      if (pb) {
+        for (const it of pb.labels) {
+          for (const n of [it.label, it.dot, it.line]) {
+            if (!n) continue;
+            n.classList.remove('cot-kc-anim');
+            n.style.animationDelay = '';
+          }
+        }
+      }
     },
 
     /** @returns {boolean} a replay (or staged frame) is on screen */
@@ -565,9 +655,23 @@ export function createKillCam(deps) {
       pts: null, cum: null, total: 0, dur: 0, segIdx: 0,
       core: null, streak: null, trailGeo: null,
       xcam: null,
+      backdrop: null,
+      fxGroup: null, fxWasVisible: true,
+      vegGroup: null, vegWasVisible: true,
     };
     pb.group.name = 'killcam';
     scene.add(pb.group);
+
+    // Suppress live battle FX for the whole replay: the victim's death
+    // fireball/smoke rendered ON TOP of the x-ray ghost, and the dying
+    // shell's neon tracer afterglow cut a bloomed beam across the frame
+    // (r2 critique). The fx module's root group is named 'fx'; hide it and
+    // restore in finish() so the death-cam wreck smoke resumes afterwards.
+    pb.fxGroup = scene.getObjectByName('fx') || null;
+    if (pb.fxGroup) {
+      pb.fxWasVisible = pb.fxGroup.visible;
+      pb.fxGroup.visible = false;
+    }
 
     // annotation block
     const ev = snap.ev;
@@ -575,7 +679,8 @@ export function createKillCam(deps) {
     d.titleS.textContent = kind === 'victory'
       ? `${ev.targetName || ''} destroyed`
       : `destroyed by ${ev.attackerName || 'enemy fire'}`;
-    d.hdK.textContent = `${ev.shellType || ''} · ${ev.shellName || ''}`;
+    const cleanName = shellDisplayName(ev);
+    d.hdK.textContent = cleanName ? `${ev.shellType || ''} · ${cleanName}` : (ev.shellType || '');
     d.hdW.textContent = `${ev.attackerName || 'Enemy'} → ${ev.targetName || ''}`;
     d.rows.textContent = '';
     const kv = (k, v) => {
@@ -699,10 +804,12 @@ export function createKillCam(deps) {
     _s.crossVectors(dirW, UP);
     if (_s.lengthSq() < 1e-6) _s.set(1, 0, 0); else _s.normalize();
     const R = Math.max(8.5, snap.boundingRadiusM * 2.7);
+    // higher vantage (~35°) than the old R*0.4: the sightline clears the
+    // tall-grass band instead of dragging bright blades across the ghost
     const off = new THREE.Vector3()
-      .addScaledVector(_s, R * 0.92)
-      .addScaledVector(dirW, -R * 0.42);
-    off.y += R * 0.4;
+      .addScaledVector(_s, R * 0.88)
+      .addScaledVector(dirW, -R * 0.4);
+    off.y += R * 0.68;
     const pos = center.clone().add(off);
     if (heightField) {
       const minY = heightField.getHeightAt(pos.x, pos.z) + 1.0;
@@ -717,6 +824,14 @@ export function createKillCam(deps) {
     pb.xt = 0;
     // retire the flight tracer (keep the trail arcing into the tank)
     if (pb.core) { pb.group.remove(pb.core, pb.streak); pb.core = pb.streak = null; }
+    // Cap the visible trail to the final ~60 m of arc: the full muzzle-to-hull
+    // polyline read as a beam lasering across the whole map during the hold.
+    if (pb.trailGeo && pb.cum && pb.pts) {
+      let start = 0;
+      const keepFrom = pb.total - 60;
+      while (start < pb.pts.length - 2 && pb.cum[start + 1] < keepFrom) start++;
+      pb.trailGeo.setDrawRange(start, pb.pts.length - start);
+    }
 
     const snap = pb.snap;
     const ev = snap.ev;
@@ -743,6 +858,30 @@ export function createKillCam(deps) {
         o.material = inLod ? S.ghostDim : S.ghost;
       }
     });
+
+    // 1a. isolate the vehicle for the hold (WT x-ray read): sunlit grass
+    // blades under/behind the hull otherwise show straight through the
+    // translucent ghost as bright speckle noise. The vegetation layer comes
+    // back in finish() for the death cam / next battle.
+    pb.vegGroup = scene.getObjectByName('vegetation') || null;
+    if (pb.vegGroup) {
+      pb.vegWasVisible = pb.vegGroup.visible;
+      pb.vegGroup.visible = false;
+    }
+
+    // 1b. radial blackout billboard behind the ghost: the additive hull
+    // washed to white speckle over sunlit grass — the backdrop darkens what
+    // the ghost is composited against (luminance headroom, WT hangar read).
+    {
+      const R = Math.max(9, snap.boundingRadiusM * 3.4);
+      const geo = new THREE.PlaneGeometry(R * 2.4, R * 1.7);
+      pb.disposables.push(geo);
+      pb.backdrop = new THREE.Mesh(geo, S.backdrop);
+      pb.backdrop.renderOrder = -5; // before every additive ghost/proxy layer
+      pb.backdrop.position.set(pose.pos[0], pose.pos[1] + snap.heightM * 0.5, pose.pos[2]);
+      pb.backdrop.lookAt(pb.xcam.pos);
+      pb.group.add(pb.backdrop);
+    }
 
     // 2. snapshot-posed frame groups (hull + turret), no live-state reads
     const poseGrp = new THREE.Group();
@@ -782,7 +921,9 @@ export function createKillCam(deps) {
       const state = modHit.get(mb.module);
       const mat = state === 'red' ? S.edgeRed : state === 'yellow' ? S.edgeYellow : S.edgeDim;
       const fill = state === 'red' ? S.fillRed : state === 'yellow' ? S.fillYellow : null;
-      addBox(mb, state ? `m:${mb.module}` : null, mat, fill);
+      // every module box anchors (hit ones get damage chips, idle key
+      // internals get always-on micro-labels — WT-style AMMO/ENGINE/FUEL)
+      addBox(mb, `m:${mb.module}`, mat, fill);
     }
     for (const cb of armor.crew || []) {
       const hit = crewHit.has(cb.crew);
@@ -790,12 +931,13 @@ export function createKillCam(deps) {
     }
 
     // 3b. recognizable internals inside the boxes — ammo cassette rows, ribbed
-    // engine block, fuel drums, breech, crew capsules — tinted by the
-    // post-hit state: green healthy / yellow damaged / red destroyed.
-    const stateMat = (state) =>
-      state === 'red' ? S.proxRed : state === 'yellow' ? S.proxYellow : S.proxGreen;
+    // engine block, fuel drums, breech, crew capsules. Healthy modules wear
+    // distinct per-kind hues (brass ammo, steel-blue engine, amber fuel);
+    // hit ones override to yellow (damaged) / red (destroyed) state tints.
+    const stateMat = (state, kind) =>
+      state === 'red' ? S.proxRed : state === 'yellow' ? S.proxYellow : proxMatFor(kind);
     for (const mb of armor.modules || []) {
-      addModuleProxy(mb, stateMat(modHit.get(mb.module)), poseGrp, turretGrp, pb.disposables);
+      addModuleProxy(mb, stateMat(modHit.get(mb.module), mb.module), poseGrp, turretGrp, pb.disposables);
     }
     for (const cb of armor.crew || []) {
       addCrewProxy(cb, crewHit.has(cb.crew) ? S.proxRed : S.proxGreen,
@@ -874,8 +1016,12 @@ export function createKillCam(deps) {
 
     // 5. DOM labels anchored to the snapshot (static world positions); each
     // chip gets a leader line to its module dot and joins the vertical
-    // deconfliction pass in projectLabels().
+    // deconfliction pass in projectLabels(). Every number rendered here comes
+    // straight from the sim event — module damage is ev.modulesHit[i].dmg
+    // (the actual rolled value damage.js applied); when a payload predates
+    // that field the number is OMITTED rather than fabricated.
     const d = ensureDom();
+    d.root.classList.add('xr'); // fade in the x-ray backdrop dim
     d.labelHost.textContent = '';
     d.leader.textContent = '';
     pb.labels.length = 0;
@@ -898,14 +1044,23 @@ export function createKillCam(deps) {
       }
       pb.labels.push({ label, dot, line, big: !!big, world: world.clone() });
     };
-    const modDmg = Math.round(ev.caliberMm || 0); // moduleDmg default (§2.2)
+    /** Idle micro-label (no dot/leader): WT-style always-on internals tag. */
+    const addMicro = (world, text) => {
+      const label = el('div', 'cot-kc-micro', d.labelHost);
+      label.textContent = text;
+      pb.labels.push({ label, dot: null, line: null, big: false, micro: true, world: world.clone() });
+    };
+    const MOD_STATE_WORD = { red: 'DESTROYED', yellow: 'DAMAGED', ok: 'HIT' };
+    const MOD_STATE_COLOR = { red: '#ff5a4a', yellow: '#ffb43c', ok: '#8fb8d8' };
     for (const m of ev.modulesHit) {
       const seg = anchors.get(`m:${m.module}`);
       if (!seg) continue;
       seg.getWorldPosition(_p);
-      addLabel(_p, m.newState === 'red' ? '#ff5a4a' : '#ffb43c',
+      // honest damage number: only the sim's rolled value, never the caliber
+      const dmgTxt = Number.isFinite(m.dmg) ? ` −${Math.round(m.dmg)}` : '';
+      addLabel(_p, MOD_STATE_COLOR[m.newState] || MOD_STATE_COLOR.ok,
         MODULE_LABEL[m.module] || m.module,
-        `${m.newState === 'red' ? 'DESTROYED' : 'DAMAGED'} −${modDmg}`);
+        `${MOD_STATE_WORD[m.newState] || 'HIT'}${dmgTxt}`);
     }
     for (const c of ev.crewHit) {
       const seg = anchors.get(`c:${c}`);
@@ -917,6 +1072,31 @@ export function createKillCam(deps) {
       _p.set(ev.pos[0], ev.pos[1], ev.pos[2]);
       addLabel(_p, '', `−${Math.round(ev.damage)} HP`, '', true);
     }
+    // idle micro-labels on the key internals the eye needs to identify
+    const MICRO = { ammoRack: 'AMMO', engine: 'ENGINE', fuelTank: 'FUEL' };
+    for (const key of Object.keys(MICRO)) {
+      if (modHit.has(key)) continue; // hit ones already carry a damage chip
+      const seg = anchors.get(`m:${key}`);
+      if (!seg) continue;
+      seg.getWorldPosition(_p);
+      addMicro(_p, MICRO[key]);
+    }
+
+    // staggered reveal guided from the impact point outward (chips first,
+    // micro tags last) — everything is readable well inside the hold window
+    _p.set(ev.pos[0], ev.pos[1], ev.pos[2]);
+    const ordered = pb.labels.slice().sort((a, b) => {
+      if (!!a.micro !== !!b.micro) return a.micro ? 1 : -1;
+      return a.world.distanceToSquared(_p) - b.world.distanceToSquared(_p);
+    });
+    ordered.forEach((it, i) => {
+      const delay = `${Math.min(0.6, i * 0.1).toFixed(2)}s`;
+      for (const n of [it.label, it.dot, it.line]) {
+        if (!n) continue;
+        n.classList.add('cot-kc-anim');
+        n.style.animationDelay = delay;
+      }
+    });
 
     // 6. camera + first label projection
     rig.setExternalPose(pb.xcam.pos, pb.xcam.look, 42);
@@ -936,7 +1116,9 @@ export function createKillCam(deps) {
       it.lw = it.label.offsetWidth || 60;
       it.lh = it.label.offsetHeight || 18;
       it.left = it.ax - it.lw / 2;
-      it.top = it.big ? it.ay + 14 : it.ay - 30 - it.lh;
+      // micro tags sit right on their component (no leader line); chips
+      // float above their dot; the big damage number hangs below the impact
+      it.top = it.big ? it.ay + 14 : it.micro ? it.ay - it.lh / 2 : it.ay - 30 - it.lh;
     }
     // pass 2: vertical deconfliction — when projected rects overlap, cascade
     // the later chip below the earlier one with a 4px gap
@@ -987,6 +1169,7 @@ export function createKillCam(deps) {
       if (_a.y < minY) _a.y = minY;
     }
     rig.setExternalPose(_a, c, 42);
+    if (pb.backdrop) pb.backdrop.lookAt(_a); // keep the blackout camera-facing
     projectLabels();
     if (pb.xt >= XRAY_HOLD_S) finish(true);
   }
@@ -997,12 +1180,15 @@ export function createKillCam(deps) {
     window.removeEventListener('mousedown', onSkipKey, true);
     if (pb) {
       if (pb.ghostBackup) for (const [mesh, mat] of pb.ghostBackup) mesh.material = mat;
+      if (pb.fxGroup) pb.fxGroup.visible = pb.fxWasVisible; // battle FX resume
+      if (pb.vegGroup) pb.vegGroup.visible = pb.vegWasVisible; // vegetation back
       for (const g of pb.disposables) g.dispose();
       scene.remove(pb.group);
       pb.group.clear();
     }
     if (dom) {
       dom.root.classList.remove('on');
+      dom.root.classList.remove('xr');
       dom.labelHost.textContent = '';
       dom.leader.textContent = '';
     }

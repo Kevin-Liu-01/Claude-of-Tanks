@@ -1,0 +1,14 @@
+Asset: "Recon Tank - Update" by Mophs
+Source page: https://opengameart.org/content/recon-tank-update
+License as stated on the asset page at download time (2026-07-27):
+  "CC-BY 4.0" — https://creativecommons.org/licenses/by/4.0/
+credits.txt inside the archive (quoted verbatim):
+  "Recon Tank (update), by Mophs
+   https://opengameart.org/users/mophs
+   Based on original work, Recon Tank, By MNDV.ecb, 2018 Eric Buisson
+   https://opengameart.org/content/recon-tank
+   CC-BY 4.0"
+Attribution chain: credit BOTH Mophs and MNDV.ecb (Eric Buisson).
+Files: Recon_Tank.zip (original), src/Recon_Tank/* (.blend, .fbx, PBR PNGs: BaseColor/
+Normal/Metallic/Roughness/Emissive/Height), recon_tank.glb (Blender GLB export, textures
+embedded). Rigged: Root > Chasis > Turret > Barrel bones + wheels; 4 animations.

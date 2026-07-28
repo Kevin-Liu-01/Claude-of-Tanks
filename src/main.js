@@ -18,7 +18,7 @@ import { createCameraRig } from './engine/cameraRig.js';
 import { createMap } from './world/map.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
 import { MAP_THUMBS } from './ui/mapThumbs.js';
-import { TANK_IDS, getSpec } from './vehicles/specs.js';
+import { ALL_TANK_IDS, getSpec } from './vehicles/specs.js';
 import { createTank } from './vehicles/tankFactory.js';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
@@ -110,7 +110,7 @@ fx.bindBus(bus);
 // Per-wheel suspension: give every battle tank the live heightfield so road
 // wheels conform to terrain (garage pedestal tank stays rigid on its disc).
 const groundSampler = (x, z) => hfProxy.getHeightAt(x, z);
-for (const ent of game.tanks) {
+for (const ent of game.allTanks) {
   if (ent.visual.setGroundSampler) ent.visual.setGroundSampler(groundSampler);
 }
 
@@ -204,7 +204,7 @@ hud.setDamagePanel(damagePanel);
 hud.buildMinimap(world.heightField, world.getMinimapFeatures(), world.config.minimap);
 
 const garage = createGarage({
-  specs: TANK_IDS.map(getSpec),
+  specs: ALL_TANK_IDS.map(getSpec), // COMMUNITY TANKS: grown carousel
   bus,
   onSelect: (specId) => { selectedSpecId = specId; setPedestalTank(specId); },
   onBattle: (specId, mapId) => startBattle(specId, mapId), // MAP-CONFIG WIRING
@@ -490,7 +490,9 @@ function startBattle(specId, mapId = null) {
   // only tanks whose resolved pattern actually changed get repainted.
   setCamoBiome(world.mapId);
   applyCamoPatterns();
-  setupBattle(game, specId, world);
+  // COMMUNITY TANKS: garage battles roll a random enemy roster from the
+  // full pool (core + community), seeded per battle for reproducibility.
+  setupBattle(game, specId, world, { random: true });
   // Fresh battlefield fx: clear scars/tracers/smoke columns left on (or by)
   // last battle's wrecks — scar decals are parented onto tank hulls and would
   // otherwise carry into the rematch.
@@ -622,7 +624,7 @@ let shotMode = false;
 
 function updateDustAndSync() {
   for (const ent of game.tanks) {
-    if (!ent.state) continue;
+    if (!ent.state || !ent.combat) continue;
     ent.visual.syncFromState(ent.state);
     if (game.phase === 'battle' && !ent.combat.destroyed) {
       const sp = Math.abs(ent.state.speed);
@@ -757,6 +759,7 @@ function tick(nowMs) {
     frameInfo.timeS = game.timeS;
     frameInfo.mode = rig.mode === 'SNIPER' ? 'sniper' : 'battle';
     frameInfo.player = game.player;
+    frameInfo.tanks = game.tanks; // COMMUNITY TANKS: roster varies per battle
     frameInfo.shells = game.shells;
     refreshSpotFrame(); // SPOTTING WIRING
     computeAimInfo();
@@ -810,8 +813,9 @@ const VIEW_MAP = {
 // MAP-CONFIG WIRING: pin the shot to its map, re-seating the staged battle
 // (deterministic spawns) whenever the map actually changes.
 function ensureShotWorld(mapId) {
-  if (world.mapId === mapId) return;
-  switchMap(mapId);
+  if (world.mapId !== mapId) switchMap(mapId);
+  // Always restage deterministically: a prior random-roster battle must not
+  // leak into the screenshot contract (recipes reference tiger1/t90m/etc).
   setupBattle(game, 'm1a2', world);
   buildShellCards(game.player.spec);
   damagePanel.setTank(game.player.spec);
@@ -903,7 +907,7 @@ const SHOT_VIEWS = {
     let best = null;
     let bestD = Infinity;
     for (const ent of game.tanks) {
-      if (ent.isPlayer || ent.combat.destroyed) continue;
+      if (ent.isPlayer || !ent.state || !ent.combat || ent.combat.destroyed) continue;
       const d = ent.state.pos.distanceTo(p.state.pos);
       if (d < bestD) { bestD = d; best = ent; }
     }

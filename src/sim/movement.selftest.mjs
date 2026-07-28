@@ -81,20 +81,27 @@ function makeEntity(field, x = 0, z = 0, yaw = 0) {
 
 // ---------------------------------------------------------------- contact --
 // Dense rendered-geometry contact check. The renderer composes the hull pose
-// as rotation.set(-(visualPitch + suspP), yaw, visualRoll + suspR + sway,
-// 'YXZ') with root at state.pos (tankFactory syncFromState: sim attitude plus
-// the visual susp-rock spring and turn-lean sway, both mirrored by the sim in
-// state._susp/_swayEst) and the track contact plane at hull-local y = 0 — so
-// a contact point at hull-local (x, 0, z) renders at:
+// as rotation.set(-(visualPitch + suspP·SUSP_VIS_P) + flinchP, yaw,
+// visualRoll + suspR·SUSP_VIS_R + sway·SWAY_VIS + flinchR, 'YXZ') with root at
+// state.pos (tankFactory syncFromState: sim attitude plus the VISIBILITY-
+// AMPLIFIED susp-rock spring and turn-lean sway, plus the hit-flinch rock —
+// all mirrored by the sim in state._susp/_swayEst/_flinch; amplification
+// constants in lockstep with tankFactory SUSP_VIS_P/SUSP_VIS_R/SWAY_VIS) and
+// the track contact plane at hull-local y = 0 — so a contact point at
+// hull-local (x, 0, z) renders at:
 //   worldY = pos.y + x·sin(roll)·cos(pitch) + z·sin(pitch)
 //   worldXZ per the same YXZ composition.
 // We sample BOTH track lines at 0.1 m spacing (3.5× denser than the solve) and
 // report the worst penetration (< 0 gap) and the smallest gap (contact proof).
+const SUSP_VIS_P = 2.6;
+const SUSP_VIS_R = 2.1;
+const SWAY_VIS = 2.3;
 function contactStats(state, field) {
   const hw = 0.5 * SPEC.dims.widthM;
   const sl = 0.45 * SPEC.dims.hullLengthM;
-  const pitch = state.visualPitch + state._susp.p;
-  const roll = state.visualRoll + state._susp.r + state._swayEst;
+  const fl = state._flinch || { p: 0, r: 0 };
+  const pitch = state.visualPitch + state._susp.p * SUSP_VIS_P - fl.p;
+  const roll = state.visualRoll + state._susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS + fl.r;
   const cb = Math.cos(state.yaw), sb = Math.sin(state.yaw);
   const ca = Math.cos(-pitch), sa = Math.sin(-pitch);
   const cr = Math.cos(roll), sr = Math.sin(roll);

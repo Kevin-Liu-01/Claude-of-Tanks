@@ -1,0 +1,420 @@
+// src/world/maps/horizon.js — per-map horizon mountain ring.
+//
+// Replaces the old shared low-poly backdrop (one silhouette recolored per
+// biome) with map-authored skylines: each map gets its own ridge GEOMETRY
+// (seed mixed with the map id + a style-specific profile shaper) and its own
+// slope/altitude MATERIAL response baked into vertex colors — snow caps and
+// exposed rock for the winter alpine wall, stratified sandstone tablelands
+// for the desert, soft forested rolling hills for grassland, long hazy
+// escarpments behind the town. A high-frequency albedo grain and a stronger
+// aerial-perspective gradient stop the faces from reading as flat unlit
+// low-poly sheets, and the tuck rows hug the map rim closely enough that no
+// fog-washed floor strip or sky sliver ever shows between rim and mountains.
+//
+// Consumed by src/world/terrain.js: buildHorizonRing(engineCtx, cfg, seed).
+// Config surface (all optional, per map): cfg.horizon = {
+//   baseHex, amp,                    — legacy tint + height scale
+//   style,                           — 'rolling'|'alpine'|'mesa'|'escarpment'
+//   snowline,                        — 0..1 fraction of peak height where snow starts (alpine)
+//   treeline,                        — 0..1 fraction below which forest tint is applied
+//   banding,                         — sandstone strata amplitude on steep faces (mesa)
+//   rockHex, snowHex, forestHex,     — detail palette overrides
+//   haze,                            — aerial-perspective multiplier (default 1)
+//   grain,                           — per-vertex albedo grain amplitude (default 1)
+// }
+
+import * as THREE from 'three';
+import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise.js';
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
+function smoothstep(a, b, x) {
+  const t = clamp((x - a) / (b - a), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+// tiny string hash so every map id lands on its own silhouette seed even
+// when the config omits horizon.seed
+function idHash(s) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return h >>> 0;
+}
+
+const STYLE_BY_MAP = {
+  verdant: 'rolling', desert: 'mesa', winter: 'alpine', urban: 'escarpment',
+};
+
+// ---------------------------------------------------------------------------
+// Ridge profile shapers — a: angle around the ring, noi: per-map noise,
+// row: {f0, f1, base, amp} row tuning. Return meters (pre cfg.amp scale).
+// Each style owns its silhouette language; the same style on two maps still
+// differs because the noise instance is seeded from the map id.
+// ---------------------------------------------------------------------------
+const PROFILES = {
+  // soft overlapping billows — wide wavelengths, no sharp peaks
+  rolling(a, noi, row) {
+    const n1 = noi.noise(Math.cos(a) * row.f0 + 11, Math.sin(a) * row.f0 - 7) * 0.5 + 0.5;
+    const n2 = noi.noise(Math.cos(a) * row.f1 - 3, Math.sin(a) * row.f1 + 9) * 0.5 + 0.5;
+    const billow = Math.pow(n1, 1.4);
+    return row.base + (billow * 0.75 + n2 * 0.25) * row.amp;
+  },
+  // glacial horns: ridged noise cubed for sharp connected peaks + a jagged
+  // high-frequency serration along the crest
+  alpine(a, noi, row) {
+    const r1 = 1 - Math.abs(noi.noise(Math.cos(a) * row.f0 + 21, Math.sin(a) * row.f0 - 17));
+    const r2 = 1 - Math.abs(noi.noise(Math.cos(a) * row.f1 * 1.7 - 31, Math.sin(a) * row.f1 * 1.7 + 13));
+    const jag = noi.noise(Math.cos(a) * 14.0 + 5, Math.sin(a) * 14.0 - 3);
+    const horn = r1 * r1 * r1;
+    return row.base + (horn * 0.8 + r2 * r2 * 0.28) * row.amp + jag * row.amp * 0.05;
+  },
+  // stepped tablelands: noise pushed through plateau terraces -> long flat
+  // caps with cliff edges, plus lone buttes between the tables
+  mesa(a, noi, row) {
+    const n = noi.noise(Math.cos(a) * row.f0 + 41, Math.sin(a) * row.f0 - 27) * 0.5 + 0.5;
+    const n2 = noi.noise(Math.cos(a) * row.f1 * 2.3 - 13, Math.sin(a) * row.f1 * 2.3 + 33) * 0.5 + 0.5;
+    // two terrace levels with tight smoothstep walls => visible flat tops,
+    // over a broad pedestal so inter-table stretches never sag to bare base
+    // (bare-base gaps exposed the fog-washed backslope behind as a white
+    // 'lake' sheet)
+    const table1 = smoothstep(0.36, 0.45, n);
+    const table2 = smoothstep(0.62, 0.70, n);
+    const butte = smoothstep(0.80, 0.86, n2) * (1 - table2);
+    const pedestal = smoothstep(0.14, 0.52, n) * 0.17;
+    const capWobble = 1 + 0.05 * noi.noise(Math.cos(a) * 9 + 3, Math.sin(a) * 9 - 8);
+    return row.base + (pedestal + table1 * 0.45 + table2 * 0.34 + butte * 0.30) * row.amp * capWobble;
+  },
+  // one long low escarpment line with a couple of gentle high points —
+  // reads as far uplands behind a town, distinctly lower than 'rolling'
+  escarpment(a, noi, row) {
+    const n1 = noi.noise(Math.cos(a) * row.f0 * 0.7 + 61, Math.sin(a) * row.f0 * 0.7 - 47) * 0.5 + 0.5;
+    const n2 = noi.noise(Math.cos(a) * row.f1 - 9, Math.sin(a) * row.f1 + 19) * 0.5 + 0.5;
+    const bench = smoothstep(0.30, 0.62, n1); // long connected bench
+    return row.base + (bench * 0.62 + Math.pow(n2, 2.2) * 0.38) * row.amp * 0.72;
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Rock-detail texture — U wraps around the ring (10 repeats), V = absolute
+// altitude (0..1 of the tallest peak, matching the vertex UVs). Carries the
+// HIGH-FREQUENCY material response vertex colors cannot: granular grain, dark
+// drainage gullies elongated downslope, scree fans, sedimentary strata
+// banding (mesa), forest mottle below the treeline, and a flatten-to-white
+// above the snow line so striations never cut through the caps. Luminance-
+// centred on 0.62 (recentred by the material color) — hue stays in the
+// vertex colors, so one texture serves rock, forest, sand and snow zones.
+// ---------------------------------------------------------------------------
+function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyAmp = 1 }) {
+  const su = 1024, sv = 256;
+  const c = document.createElement('canvas');
+  c.width = su; c.height = sv;
+  const ctx = c.getContext('2d');
+  const img = ctx.createImageData(su, sv);
+  const d = img.data;
+  const TAU = Math.PI * 2;
+  // u-wrapping noise: angular loop on a circle, altitude along the 3rd axis
+  const wn = (u, v, fu, fv, off) => noi.noise3d(
+    Math.cos(u * TAU) * fu * 0.5 + off,
+    Math.sin(u * TAU) * fu * 0.5 - off * 0.7,
+    v * fv + off * 1.31,
+  );
+  for (let y = 0; y < sv; y++) {
+    const v = 1 - y / (sv - 1); // canvas row 0 = top of texture (flipY) = v 1
+    for (let x = 0; x < su; x++) {
+      const u = x / su;
+      let L = 1.0;
+      // granular grain, two octaves
+      L += (wn(u, v, 90, 34, 17) * 0.05 + wn(u, v, 34, 13, 5) * 0.06) * grainAmp;
+      // drainage gullies: thin dark chutes elongated down the faces, with
+      // slightly lighter scree fans beside them
+      // per-face strength variation: streaked faces alternate with smooth
+      // ones, so the wall never reads as uniform corduroy
+      const faceVar = smoothstep(0.25, 0.75, wn(u, v * 0.25, 9, 1.1, 77) * 0.5 + 0.5);
+      const g = 1 - Math.abs(wn(u, v, 46, 2.6, 9));
+      const gully = smoothstep(0.86, 0.985, g) * gullyAmp * (0.35 + 0.65 * faceVar);
+      const scree = smoothstep(0.72, 0.92, g) * (1 - gully) * gullyAmp * faceVar;
+      L *= 1 - gully * 0.17 + scree * 0.04;
+      // broad tonal patches so big faces never read as one fill
+      L *= 1 + wn(u, v, 7, 3.5, 41) * 0.06;
+      if (banding > 0.003) {
+        // horizontal sedimentary strata, wobbled and width-varied, plus an
+        // occasional darker marker bed — constant-altitude bands, exactly
+        // how tableland geology reads from a distance
+        const warp = wn(u, v, 6, 1.5, 23) * 1.9;
+        const band = Math.sin(v * 46 + warp) * 0.5 + Math.sin(v * 13.5 + warp * 0.6 + 1.7) * 0.5;
+        L *= 1 + band * banding * 0.9;
+        const marker = smoothstep(0.75, 0.95, Math.sin(v * 6.2 + warp * 0.4 + 0.6));
+        L *= 1 - marker * banding * 0.5;
+      }
+      let r = L, gc = L * 0.995, b = L * 0.975; // faintly warm rock
+      if (treeline > 0 && v < treeline) {
+        // conifer/broadleaf mottle on the lower flanks — dark green-shifted
+        // blotches (two scales) + lighter clearing patches, so vegetated
+        // ranges read as forest texture instead of striped rock
+        const m = smoothstep(0.42, 0.85, wn(u, v, 58, 26, 33) * 0.5 + 0.5)
+          + smoothstep(0.5, 0.9, wn(u, v, 21, 9, 71) * 0.5 + 0.5) * 0.6;
+        const below = 1 - smoothstep(treeline * 0.72, treeline, v);
+        const mw = Math.min(1, m) * below * 0.42;
+        r *= 1 - mw * 1.1; gc *= 1 - mw * 0.45; b *= 1 - mw * 1.0;
+        const clearing = smoothstep(0.62, 0.9, wn(u, v, 13, 5, 141) * 0.5 + 0.5) * below;
+        r *= 1 + clearing * 0.10; gc *= 1 + clearing * 0.13; b *= 1 + clearing * 0.05;
+      }
+      if (snowline <= 1) {
+        const sw = smoothstep(snowline - 0.02, snowline + 0.09, v + wn(u, v, 24, 8, 51) * 0.05);
+        // snow: flatten detail toward a cool white, keep faint wind texture
+        // and let the strongest rock ribs pierce the caps
+        const snowL = 1.03 + wn(u, v, 40, 18, 61) * 0.03 - gully * 0.12;
+        r += (snowL * 0.98 - r) * sw * 0.94;
+        gc += (snowL * 1.0 - gc) * sw * 0.94;
+        b += (snowL * 1.04 - b) * sw * 0.94;
+      }
+      const j = (y * su + x) * 4;
+      d[j] = clamp(r * 159, 0, 255);
+      d[j + 1] = clamp(gc * 159, 0, 255);
+      d[j + 2] = clamp(b * 159, 0, 255);
+      d[j + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.ClampToEdgeWrapping;
+  t.anisotropy = 4;
+  // linear (non-sRGB): authored contrast passes through 1:1 and the 0.62
+  // mid-gray recentres exactly with the material color multiplier below
+  return t;
+}
+
+/**
+ * Build the horizon mountain ring for a map.
+ * @param {object} engineCtx EngineCtx (unused, kept for call-site parity)
+ * @param {?object} cfg map config (uses cfg.horizon, cfg.sky, cfg.id)
+ * @param {number} seed base seed (mixed with the map id hash)
+ * @returns {THREE.Mesh} unlit vertex-colored ring mesh named 'horizon-ring'
+ */
+export function buildHorizonRing(engineCtx, cfg, seed) {
+  const H = (cfg && cfg.horizon) || {};
+  const mapId = (cfg && cfg.id) || 'verdant';
+  const style = H.style || STYLE_BY_MAP[mapId] || 'rolling';
+  const profile = PROFILES[style] || PROFILES.rolling;
+  const amp = H.amp ?? 1;
+  const haze = H.haze ?? 1;
+  const grainAmp = H.grain ?? 1;
+
+  const base = new THREE.Color(H.baseHex ?? 0x4a5a44);
+  const fogC = new THREE.Color((cfg && cfg.sky && cfg.sky.fogTintHex) ?? 0x8fa3bd);
+  // detail palette: sensible per-style defaults, overridable per map
+  const rockC = new THREE.Color(H.rockHex ?? (style === 'mesa' ? 0x8a5a38 : 0x66625e));
+  const snowC = new THREE.Color(H.snowHex ?? 0xeef2f7);
+  const forestC = new THREE.Color(H.forestHex ?? 0x2e4230);
+  const snowline = H.snowline ?? (style === 'alpine' ? 0.42 : 2); // >1 disables
+  const treeline = H.treeline ?? (style === 'rolling' ? 0.55 : style === 'escarpment' ? 0.5 : 0);
+  const banding = H.banding ?? (style === 'mesa' ? 0.16 : 0);
+  // soft vegetated hills carry far less exposed rock / flank contrast than
+  // cliff-forming styles — full strength there reads as curtain striping
+  const rockAmp = style === 'rolling' ? 0.22 : style === 'escarpment' ? 0.3 : 0.78;
+  const shadeAmp = style === 'rolling' ? 0.05 : style === 'escarpment' ? 0.06 : 0.12;
+
+  const noi = new SimplexNoise({ random: mulberry32(((seed ^ 0x7A11) ^ idHash(mapId)) >>> 0) });
+  const gnoi = new SimplexNoise({ random: mulberry32(((seed ^ 0x33C7) ^ idHash(mapId)) >>> 0) });
+  const N = 520; // ~11 m silhouette resolution at the main ridge radius
+
+  // Radial rows. The tuck + skirt rows ride just outside the playable rim and
+  // stay LOW but opaque (ground-toned) so the fog-washed outer floor and the
+  // pale sky band can never peek between the rim crest and the ridges — the
+  // old ring showed exactly that gap as a white 'sea' sheet in wide shots.
+  // Ridge bases sit well above any establishing camera (~50 m).
+  // ANCHOR row: pinned 22 m underground inside the map rim, so the ring's
+  // inner lip is welded to the terrain — without it, any skirt vertex that
+  // rises above a rim dip opens a slot where the cream horizon sky pours
+  // through as flat white 'ponds' behind the rim forest.
+  // Skirt base 26-40 m + first ridge base 50 m keep the wall itself clear of
+  // the rim crest at the map edge.
+  const rows = [
+    { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
+    { r: 470, base: 26, amp: 14, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
+    { r: 585, base: 50, amp: 52, f0: 3.1, f1: 6.2, aer: 0.12 },
+    { r: 760, base: 62, amp: 96, f0: 2.1, f1: 4.6, aer: 0.24 },
+    { r: 990, base: 84, amp: 128, f0: 1.5, f1: 3.3, aer: 0.42 },
+    // outermost row is a REAL fourth range, not a low taper: a low flat lip
+    // here projected as a dead-straight 'shoreline' and its fog-saturated
+    // backslope read as a blown-out white lake wherever the nearer rows
+    // dipped (loudest on the mesa style's low inter-table stretches)
+    { r: 1240, base: 88, amp: 96, f0: 1.1, f1: 2.4, aer: 0.60 },
+  ];
+
+  const nv = N * rows.length;
+  const pos = new Float32Array(nv * 3);
+  const col = new Float32Array(nv * 3);
+  const uvA = new Float32Array(nv * 2);
+  const hs = new Float32Array(nv);
+  let maxH = 1;
+  for (let ri = 0; ri < rows.length; ri++) {
+    const row = rows[ri];
+    for (let k = 0; k < N; k++) {
+      const a = (k / N) * Math.PI * 2;
+      const jr = row.r * (1 + 0.03 * noi.noise(Math.cos(a) * 4 + ri * 13, Math.sin(a) * 4 - ri * 7));
+      let hh;
+      if (row.skirt) {
+        hh = row.base + (noi.noise(Math.cos(a) * row.f0, Math.sin(a) * row.f0) * 0.5 + 0.5) * row.amp;
+      } else {
+        hh = profile(a, noi, row);
+      }
+      hh *= amp;
+      const i = ri * N + k;
+      hs[i] = hh;
+      if (!row.skirt && hh > maxH) maxH = hh;
+      pos[i * 3] = Math.cos(a) * jr;
+      pos[i * 3 + 1] = hh;
+      pos[i * 3 + 2] = Math.sin(a) * jr;
+    }
+  }
+  // detail-texture UVs: u wraps the ring, v = absolute altitude fraction so
+  // strata/snow features in the texture land at constant world height
+  for (let ri = 0; ri < rows.length; ri++) {
+    for (let k = 0; k < N; k++) {
+      const i = ri * N + k;
+      uvA[i * 2] = (k / N) * 10;
+      uvA[i * 2 + 1] = clamp(hs[i] / maxH, 0, 1);
+    }
+  }
+
+  // --- vertex shading -------------------------------------------------------
+  // Baked, unlit: sun-facing ridge flanks lighter (real azimuth from cfg.sky),
+  // steep faces expose rock, snow above the snowline on gentler slopes, forest
+  // tint below the treeline, sandstone strata on mesa cliffs, fine albedo
+  // grain, then the aerial-perspective haze ramp toward the fog color.
+  const sunAz = ((cfg && cfg.sky && cfg.sky.sunAzimuthDeg) ?? 115) * Math.PI / 180;
+  const sunX = Math.sin(sunAz), sunZ = Math.cos(sunAz);
+  // SMOOTHED height series for the shading derivatives only (silhouette keeps
+  // its sharp vertices): raw per-vertex differences bake into alternating
+  // light/dark column striping on the ridge faces.
+  const hsS = new Float32Array(hs);
+  for (let pass = 0; pass < 3; pass++) {
+    for (let ri = 0; ri < rows.length; ri++) {
+      const prev = hsS.slice(ri * N, ri * N + N);
+      for (let k = 0; k < N; k++) {
+        hsS[ri * N + k] = prev[(k - 1 + N) % N] * 0.27 + prev[k] * 0.46 + prev[(k + 1) % N] * 0.27;
+      }
+    }
+  }
+  const c = new THREE.Color();
+  const tmp = new THREE.Color();
+  for (let ri = 0; ri < rows.length; ri++) {
+    const row = rows[ri];
+    for (let k = 0; k < N; k++) {
+      const a = (k / N) * Math.PI * 2;
+      const i = ri * N + k;
+      const t = clamp(hs[i] / maxH, 0, 1);
+      // local slope along the ring (silhouette flank) + radial tilt
+      const hPrev = hsS[ri * N + ((k - 1 + N) % N)];
+      const hNext = hsS[ri * N + ((k + 1) % N)];
+      const dTang = (hNext - hPrev) / (2 * Math.PI * row.r / N * 2); // dh/darc
+      const hIn = ri > 0 ? hsS[(ri - 1) * N + k] : hsS[i];
+      const hOut = ri < rows.length - 1 ? hsS[(ri + 1) * N + k] : hsS[i];
+      const dRad = (hOut - hIn) / (((ri < rows.length - 1 ? rows[ri + 1].r : row.r) -
+        (ri > 0 ? rows[ri - 1].r : row.r)) || 1);
+      const slope = clamp(Math.hypot(dTang, dRad * 2.2) * 1.6, 0, 1);
+      // sun response: horizontal normal component along the ring tangent is
+      // -dh/darc — continuous, so flanks shade smoothly instead of flipping
+      const st = -Math.sin(a) * sunX + Math.cos(a) * sunZ; // sun · tangent
+      const sunFace = clamp(-dTang * st * 2.4, -1, 1);
+
+      c.copy(base);
+      // altitude tone drift: valleys slightly deeper, crests lighter
+      c.multiplyScalar(0.82 + t * 0.34);
+      // steep faces expose rock
+      const rockW = smoothstep(0.34, 0.8, slope) * (row.skirt ? 0.25 : rockAmp);
+      c.lerp(rockC, rockW);
+      // forest band on the lower flanks (rolling / escarpment)
+      if (treeline > 0) {
+        const fw = (1 - smoothstep(treeline * 0.55, treeline, t)) * (1 - slope * 0.4) *
+          (0.5 + 0.5 * (gnoi.noise(Math.cos(a) * 7 + 3, Math.sin(a) * 7 + ri) * 0.5 + 0.5));
+        c.lerp(forestC, clamp(fw, 0, 1) * 0.6);
+      }
+      // iron-oxide flush on the steepest mesa walls — the strata BANDS are
+      // painted by the altitude-mapped detail texture (per-vertex sin bands
+      // aliased into mush at this vertex spacing)
+      if (banding > 0.001) {
+        const steepW = smoothstep(0.3, 0.7, slope);
+        tmp.setRGB(c.r * 1.08, c.g * 0.89, c.b * 0.75);
+        c.lerp(tmp, steepW * 0.55);
+      }
+      // snow above the snowline (gentler slopes hold snow; cliffs shed it)
+      if (snowline <= 1) {
+        const sn = smoothstep(snowline, snowline + 0.16, t +
+          gnoi.noise(Math.cos(a) * 6 - 9, Math.sin(a) * 6 + 4) * 0.07) * (1 - smoothstep(0.45, 0.9, slope));
+        c.lerp(snowC, sn * 0.92);
+      }
+      // baked sun/shade on the ridge flanks
+      c.multiplyScalar(1 + sunFace * (row.skirt ? 0.04 : shadeAmp));
+      // low-frequency tone drift only — fine grain now lives in the detail
+      // texture where it can't bake into triangle-sized shading facets
+      const g1 = gnoi.noise(Math.cos(a) * 5.5 + ri * 0.7, Math.sin(a) * 5.5 - ri * 0.4);
+      c.multiplyScalar(1 + g1 * 0.045 * grainAmp);
+      // aerial perspective: row depth + valley haze + gentle base fade that
+      // melts the ring into the scene fog instead of a hard color step
+      let hazeW = row.aer * haze + (1 - t) * 0.07;
+      if (row.skirt) hazeW = row.aer * haze; // ground band stays ground-toned
+      c.lerp(fogC, clamp(hazeW, 0, 0.94));
+      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+    }
+  }
+
+  // DEBUG: paint each row a flat color to identify geometry in screenshots
+  if (globalThis.__HORIZON_DEBUG) {
+    const dbg = [[1, 0.4, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 0, 1], [1, 0, 1]];
+    for (let ri = 0; ri < rows.length; ri++) {
+      const dc = dbg[ri % dbg.length];
+      for (let k = 0; k < N; k++) {
+        const i = ri * N + k;
+        col[i * 3] = dc[0]; col[i * 3 + 1] = dc[1]; col[i * 3 + 2] = dc[2];
+      }
+    }
+  }
+  const idx = [];
+  for (let ri = 0; ri < rows.length - 1; ri++) {
+    for (let k = 0; k < N; k++) {
+      const k1 = (k + 1) % N;
+      const a0 = ri * N + k, a1 = ri * N + k1;
+      const b0 = (ri + 1) * N + k, b1 = (ri + 1) * N + k1;
+      idx.push(a0, b0, a1, a1, b0, b1);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('uv', new THREE.BufferAttribute(uvA, 2));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  // DoubleSide: the shallow inner skirt annulus is seen from ABOVE by raised
+  // establishing cameras — with default FrontSide it backface-culls and the
+  // sky shows through as a pale 'sea sheet' between rim and ridges (the old
+  // ring's desert artifact).
+  // Detail texture is authored around mid-gray 0.62 (linear); the material
+  // color 1.61 recentres it so vertex colors keep their intended tone while
+  // the map layers rock grain / gullies / strata / snow flatten on top.
+  // gullies belong on cliff-forming styles; vegetated hills at 700 m don't
+  // show drainage chutes, they show forest texture
+  const gullyAmp = style === 'alpine' ? 1 : style === 'mesa' ? 0.85 : 0.14;
+  const detailTex = makeHorizonTexture(gnoi, { banding, snowline, treeline, grainAmp, gullyAmp });
+  const mat = new THREE.MeshBasicMaterial({
+    vertexColors: true, side: THREE.DoubleSide, map: detailTex,
+  }); // unlit; scene fog still applies
+  mat.color.setRGB(1.61, 1.61, 1.61);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.name = 'horizon-ring';
+  mesh.castShadow = false;
+  mesh.receiveShadow = false;
+  mesh.matrixAutoUpdate = false;
+  // GTAO's depth-edge pass draws dark halo slashes along distant ridge
+  // silhouettes — exclude the backdrop like the other flat-lit world layers
+  mesh.userData.aoExclude = true;
+  return mesh;
+}

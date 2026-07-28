@@ -34,11 +34,14 @@ const SHADOW_NORMAL_BIAS = 0.045; // kills acne on terrain slopes (CSM only expo
 // by interleaved gradient noise, and its disk radius comes straight from
 // `shadow.radius` (in shadow-map texels). The default 1.0 produced razor-hard
 // edges at every distance ("single untuned shadow map" read). Radii widen per
-// cascade — near-cascade contact shadows stay tight (2.2 texels ≈ 2-3 cm at
-// cascade-0 density) while far-cascade texels already span ~0.5 m, so 4 texels
-// there gives the broad soft penumbra distant tree/building shadows should
-// have: a cheap PCSS-style distance-widening approximation.
-const SHADOW_RADII = [2.2, 3.0, 3.6, 4.2];
+// cascade — a cheap PCSS-style distance-widening approximation.
+// r5: [2.2, 3.0, 3.6, 4.2] → [1.3, 1.7, 2.1, 2.5] — pole/tree shadows read as
+// "extremely wide, over-blurred dark stripes" and the tank shadow had no
+// crisp contact core. Penumbra width must track occluder thickness, not
+// drown it: near-cascade contact shadows now stay tight under the hull, and
+// the far cascades (bumped to 4096 in quality.js so their texels shrank 2x)
+// keep a modest distance softening instead of a smear.
+const SHADOW_RADII = [1.3, 1.7, 2.1, 2.5];
 // Key-to-fill ratio is THE readability lever: the warm sun must dominate the
 // cool sky ambient ~7-8:1 so cast shadows and form shading actually register
 // after ACES. Pixel-measured on the battlefield shot: at 3.2/0.26/0.45 the

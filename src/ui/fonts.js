@@ -17,7 +17,7 @@ export const FONT_STACK = "'Switzer','Segoe UI',Roboto,Helvetica,Arial,sans-seri
  * typography. Every rule that uses this stack also sets tabular numerals
  * (fonts.css block below), so timers and counters never jitter.
  */
-export const FONT_COND = "'Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif";
+export const FONT_COND = "'Switzer Condensed','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif";
 
 // Type scale tokens (px) — one modular scale for every overlay.
 export const TYPE = {
@@ -42,6 +42,10 @@ const WEIGHTS = [
 const FONT_CSS = WEIGHTS.map(([file, w]) => `@font-face{
   font-family:'Switzer';
   src:url('/fonts/switzer/Switzer-${file}.woff2') format('woff2');
+  font-weight:${w};font-style:normal;font-display:swap;}
+@font-face{
+  font-family:'Switzer Condensed';
+  src:url('/fonts/switzer/SwitzerCondensed-${file}.woff2') format('woff2');
   font-weight:${w};font-style:normal;font-display:swap;}`).join('\n') + `
 /* stats and timers line up: lining tabular figures across every overlay */
 .cot-garage,.cot-hud,.cot-settings,.cot-dp,.cot-tt,.cot-hints,.cot-end{
@@ -64,6 +68,7 @@ export function ensureFonts() {
     warmed = true;
     for (const [, w] of WEIGHTS) {
       document.fonts.load(`${w} 16px Switzer`).catch(() => {});
+      document.fonts.load(`${w} 16px 'Switzer Condensed'`).catch(() => {});
     }
   }
 }

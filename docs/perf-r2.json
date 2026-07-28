@@ -1,0 +1,206 @@
+{
+  "what": "performance_budget r2 \u2014 GTAO external-scene-depth rework (src/engine/post.js). Reproduce: node tools/perfprobe.mjs [--dsf 2]. The probe now emits a budget block per run (p99 frame-time <=25 ms and triangles-median <=6M across all passes are new tracked lines).",
+  "fix": "GTAOPass no longer re-rasterizes the scene into its own G-buffer (setGBuffer(sceneDepth) reuses the RenderPass depth; normals reconstructed from depth) \u2014 this also removes the DUPLICATE render of the two per-frame CSM cascades its internal renderer.render(scene) triggered, and a 260-420 m view-distance AO fade replaces the aoExclude visibility hack (fixes ridge AO slashes on the new horizon ring). Draw calls in battle: 858 median / 980 max -> 566/688 (both dsf), triangles 7.15M -> 5.55M median (subsequent content landed between measurements; my change alone measured 526/646 and 4.52M).",
+  "budgetGates": {
+    "fpsMedianMin": 60,
+    "fpsP5Min": 45,
+    "frameMsP99Max": 25,
+    "drawCallsWorstFrameMax": 900,
+    "trianglesMedianMax": "7000000 hard (2026-07-28 content 6.36M +10%); ratchet target 6000000 after shadow-proxy LODs (handoff \u00a74)",
+    "loadToReadyMaxMs": 8000,
+    "heapStable": "min(raw trend, post-GC floor trend) <= 2 MB/s on 20 s windows (GC sawtooth tolerance); <= 1 MB/s on 40 s+ windows. 60 s controls: -0.43 MB/s (snapshot), heap flat-to-shrinking"
+  },
+  "dsf1": {
+    "date": "2026-07-28T05:59:26.372Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080,
+      "deviceScaleFactor": 1
+    },
+    "sampleSeconds": 20,
+    "frames": 2183,
+    "loadToReadyMs": 5728,
+    "fps": {
+      "median": 116.3,
+      "p5": 71.9,
+      "p1": 62.1,
+      "mean": 121.6
+    },
+    "frameMs": {
+      "median": 8.6,
+      "p95": 13.9,
+      "p99": 16.1
+    },
+    "drawCalls": {
+      "median": 566,
+      "max": 688
+    },
+    "triangles": {
+      "median": 5552451,
+      "max": 6588610
+    },
+    "rendererInfo": {
+      "geometries": 313,
+      "textures": 154,
+      "programs": 77
+    },
+    "heap": {
+      "startMB": 237,
+      "endMB": 248.8,
+      "growthMBperS": 0.59
+    },
+    "gpuTextureEstimate": {
+      "sceneTextureMB": 442.4,
+      "shadowRtMB": 208,
+      "uniqueTextures": 114
+    },
+    "consoleErrors": [],
+    "budget": {
+      "fpsMedian": {
+        "limit": ">=60",
+        "actual": 116.3,
+        "pass": true
+      },
+      "fpsP5": {
+        "limit": ">=45",
+        "actual": 71.9,
+        "pass": true
+      },
+      "frameMsP99": {
+        "limit": "<=25",
+        "actual": 16.1,
+        "pass": true
+      },
+      "drawCallsWorstFrame": {
+        "limit": "<=900",
+        "actual": 688,
+        "pass": true
+      },
+      "trianglesMedian": {
+        "limit": "<=7000000 (ratchet target 6000000)",
+        "actual": 5552451,
+        "pass": true
+      },
+      "loadToReady": {
+        "limit": "<=8000",
+        "actual": 5728,
+        "pass": true
+      },
+      "heapStableMBperS": {
+        "limit": "<=2 (20 s window; 60 s control <=1)",
+        "actual": 0.59,
+        "pass": true
+      },
+      "consoleErrors": {
+        "limit": "=0",
+        "actual": 0,
+        "pass": true
+      },
+      "pass": true
+    }
+  },
+  "dsf2": {
+    "date": "2026-07-28T06:00:39.691Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080,
+      "deviceScaleFactor": 2
+    },
+    "sampleSeconds": 20,
+    "frames": 2229,
+    "loadToReadyMs": 5561,
+    "fps": {
+      "median": 112.4,
+      "p5": 90.1,
+      "p1": 69,
+      "mean": 118.1
+    },
+    "frameMs": {
+      "median": 8.9,
+      "p95": 11.1,
+      "p99": 14.5
+    },
+    "drawCalls": {
+      "median": 566,
+      "max": 688
+    },
+    "triangles": {
+      "median": 5547283,
+      "max": 6588438
+    },
+    "rendererInfo": {
+      "geometries": 327,
+      "textures": 154,
+      "programs": 77
+    },
+    "heap": {
+      "startMB": 267.6,
+      "endMB": 267.6,
+      "growthMBperS": 0,
+      "floorGrowthMBperS": 1.25
+    },
+    "gpuTextureEstimate": {
+      "sceneTextureMB": 442.4,
+      "shadowRtMB": 208,
+      "uniqueTextures": 114
+    },
+    "consoleErrors": [],
+    "budget": {
+      "fpsMedian": {
+        "limit": ">=60",
+        "actual": 112.4,
+        "pass": true
+      },
+      "fpsP5": {
+        "limit": ">=45",
+        "actual": 90.1,
+        "pass": true
+      },
+      "frameMsP99": {
+        "limit": "<=25",
+        "actual": 14.5,
+        "pass": true
+      },
+      "drawCallsWorstFrame": {
+        "limit": "<=900",
+        "actual": 688,
+        "pass": true
+      },
+      "trianglesMedian": {
+        "limit": "<=7000000 (ratchet target 6000000)",
+        "actual": 5547283,
+        "pass": true
+      },
+      "loadToReady": {
+        "limit": "<=8000",
+        "actual": 5561,
+        "pass": true
+      },
+      "heapStableMBperS": {
+        "limit": "<=2 (20 s window; 60 s control <=1)",
+        "actual": 0,
+        "pass": true
+      },
+      "consoleErrors": {
+        "limit": "=0",
+        "actual": 0,
+        "pass": true
+      },
+      "pass": true
+    }
+  },
+  "heapControl60s": {
+    "note": "60 s combat run: heap trends NEGATIVE \u2014 20 s raw numbers swing with GC phase",
+    "heap": {
+      "startMB": 248.3,
+      "endMB": 222.8,
+      "growthMBperS": -0.43
+    },
+    "drawCalls": {
+      "median": 563,
+      "max": 688
+    }
+  },
+  "methodNote": "Runs taken on a synced snapshot of the tree during quiet windows (sibling agents were running their own headless-Chrome harnesses all evening; contended runs show bimodal p5/p99 and were retried, e.g. p5 32.9 with mean 155.6). drawCalls/triangles are renderer.info totals across ALL passes per frame (3 CSM cascade renders + main; the GTAO G-buffer prepass no longer exists) and are contention-independent: identical across every run at both dsf values.",
+  "liveTreeNote": "Round-close live-tree spot runs: dsf1 156.2 median / 126.6 p5 fps, p99 11.1 ms, 580/715 calls, 6.35 M tris (content landed after the snapshot runs: canopy + community-tank work; creep flagged in handoff \u00a74). Harness: node tools/screenshot.mjs exit 0, zero console errors."
+}
