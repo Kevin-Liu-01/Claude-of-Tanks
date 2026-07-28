@@ -1,0 +1,81 @@
+{
+ "id": "925804",
+ "slug": "is-1-russian-heavy-tank",
+ "name": "IS-1 Russian heavy tank",
+ "description": "<p>The IS-1 is the first variant of the IS heavy tank family. The new IS-1 was intended to overcome the lack of firepower and protection issues of the KV series with a whole new sloped hull design. This was a strong armour design intended to deflect or withstand projectiles from all sides. The only major design requirement was that the weight not surpass that of the interim KV-85. The new armament was the same as the KV-85, an outstanding 85 mm D-5T tank gun with significantly higher range and muzzle velocity than prior Soviet heavy tanks.</p>",
+ "summary": "Its a tank",
+ "datePublished": "2024-06-27T21:29:21.223699+00:00",
+ "downloadCount": 152,
+ "likesCount": 20,
+ "excludeCommercialUsage": false,
+ "authorship": "author",
+ "aiGenerated": false,
+ "license": {
+  "id": "1",
+  "name": "Creative Commons \u2014 Attribution",
+  "disallowRemixing": false
+ },
+ "user": {
+  "id": "924346",
+  "handle": "AaronTMG_924346",
+  "publicUsername": "AaronTMG"
+ },
+ "stls": [
+  {
+   "id": "3882453",
+   "name": "IS-1.stl",
+   "folder": "",
+   "fileSize": 7800684
+  }
+ ],
+ "otherFiles": [],
+ "downloadPacks": [
+  {
+   "id": "4030734",
+   "name": "",
+   "fileSize": 2570313,
+   "fileType": "MODEL_FILES"
+  },
+  {
+   "id": "4030735",
+   "name": "",
+   "fileSize": 2570313,
+   "fileType": "OTHER_FILES"
+  }
+ ],
+ "remixParents": [],
+ "tags": [
+  {
+   "name": "tank"
+  },
+  {
+   "name": "history"
+  },
+  {
+   "name": "army"
+  },
+  {
+   "name": "ww2"
+  },
+  {
+   "name": "russian"
+  }
+ ],
+ "image": {
+  "filePath": "media/prints/925804/images/7061350_c4397d33-2016-45ae-a2c2-44c6eef24586_500d5bf6-b4e1-4ebf-b3b7-24f8121342a6/screenshot-2024-06-27-172701.png"
+ },
+ "images": [
+  {
+   "filePath": "media/prints/925804/images/7061350_c4397d33-2016-45ae-a2c2-44c6eef24586_500d5bf6-b4e1-4ebf-b3b7-24f8121342a6/screenshot-2024-06-27-172701.png"
+  },
+  {
+   "filePath": "media/prints/925804/images/7061351_6bd3b73a-5fcf-4a92-8a76-2081ec93229f_da66aa31-2d3e-4d0e-ae44-6e01d0e0c258/screenshot-2024-06-27-172615.png"
+  },
+  {
+   "filePath": "media/prints/925804/images/7061352_25e73cac-18ae-4f45-9272-8915c083d8d6_6f76e2d8-40ff-44d2-a54b-d186924b5707/screenshot-2024-06-27-172623.png"
+  },
+  {
+   "filePath": "media/prints/925804/images/7061353_69733227-6595-477b-a5ee-d415a1267a01_251677ff-f614-4509-b92d-e8239eea6b43/screenshot-2024-06-27-172631.png"
+  }
+ ]
+}

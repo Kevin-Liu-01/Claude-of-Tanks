@@ -50,7 +50,7 @@ function makeFloorTexture(rng) {
   const c = document.createElement('canvas');
   c.width = S; c.height = S;
   const g = c.getContext('2d');
-  g.fillStyle = '#585b5e';
+  g.fillStyle = '#4e5154'; // r5: a step darker — keeps the key-spot pool below clip
   g.fillRect(0, 0, S, S);
   // large tonal blotches
   for (let i = 0; i < 90; i++) {
@@ -323,8 +323,10 @@ export function createGarageStage(engineCtx, pos) {
   const podSideMat = shadowMat(new THREE.MeshStandardMaterial({
     map: hazTex, roughness: 0.7, metalness: 0.05,
   }));
+  // r5: darker/rougher top — at 0x54575b/rough .5 the integration key spot
+  // clipped the whole turntable to a uniform white disc with a hard edge
   const podTopMat = shadowMat(new THREE.MeshStandardMaterial({
-    color: 0x54575b, roughness: 0.5, metalness: 0.1, envMapIntensity: 0.7,
+    color: 0x45484c, roughness: 0.64, metalness: 0.1, envMapIntensity: 0.5,
   }));
   track(podSideMat); track(podTopMat);
   const podium = new THREE.Mesh(
@@ -420,6 +422,40 @@ export function createGarageStage(engineCtx, pos) {
     const pt = new THREE.PointLight(0xffe9c4, 42, 42, 1.9);
     pt.position.set(hx, 7.1, hz);
     group.add(pt);
+  }
+
+  // hud_ui r5: third highbay DIRECTLY over the turntable (dressing only — no
+  // extra live light) carrying a faint volumetric cone down to the podium, so
+  // the bright pool under the tank reads as a physical spotlight beam instead
+  // of an emissive floor decal. The cone is an open cylinder with a vertical
+  // alpha-gradient texture (dense at the fixture, zero at the floor),
+  // additive, double-sided, non-depth-writing.
+  {
+    const shade = new THREE.Mesh(shadeGeo, housingMat);
+    shade.position.set(0, 7.6, 0);
+    const glow = new THREE.Mesh(glowGeo, lampMat);
+    glow.position.set(0, 7.32, 0);
+    const cable = new THREE.Mesh(cableGeo, housingMat);
+    cable.position.set(0, 8.7, 0);
+    group.add(shade, glow, cable);
+    const gradC = document.createElement('canvas');
+    gradC.width = 8; gradC.height = 128;
+    const gg = gradC.getContext('2d');
+    const vg = gg.createLinearGradient(0, 0, 0, 128);
+    vg.addColorStop(0, 'rgba(255,236,200,0.32)');
+    vg.addColorStop(0.45, 'rgba(255,236,200,0.12)');
+    vg.addColorStop(1, 'rgba(255,236,200,0)');
+    gg.fillStyle = vg;
+    gg.fillRect(0, 0, 8, 128);
+    const coneTex = track(canvasTexture(gradC));
+    const coneMat = track(new THREE.MeshBasicMaterial({
+      map: coneTex, transparent: true, blending: THREE.AdditiveBlending,
+      depthWrite: false, side: THREE.DoubleSide, opacity: 0.5,
+    }));
+    const cone = new THREE.Mesh(
+      track(new THREE.CylinderGeometry(0.68, 5.6, 6.9, 40, 1, true)), coneMat);
+    cone.position.y = 7.3 - 6.9 / 2;
+    group.add(cone);
   }
 
   // three wall floods on the visible (north/west) walls, aimed at the podium.

@@ -15,6 +15,16 @@ import { EQUIPMENT } from '../sim/spotting.js';
 
 const NATION_LABEL = { USA: 'USA', Germany: 'GER', USSR: 'USSR', Russia: 'RUS', Sweden: 'SWE', Community: 'COM' };
 
+// WoT-style tier numerals per vehicle (mirrors hud.js TIER_BY_ID — r5: the
+// carousel cards carried no tier at all, a core piece of WoT card info)
+const TIER_BY_ID = {
+  m4a3e8: 'VI', t34_85: 'VI', tiger1: 'VII', is2: 'VII', panther_g: 'VII',
+  m1a2: 'X', t90m: 'X', leo2a7: 'X',
+  strv103: 'IX', is3: 'VIII', t34_85_cad: 'VI', newc_tiger: 'VII',
+  newc_pziii: 'IV', pziii_konserwa: 'III', leichttraktor: 'I',
+  recon_tank: 'VIII', q_heavy: 'IX',
+};
+
 const SHELL_TYPE_COLOR = {
   AP: '#ffd27a', APCR: '#e8f4ff', HEAT: '#ff8a5c', HE: '#ffb02e', APFSDS: '#ffc46b',
 };
@@ -52,16 +62,20 @@ const GARAGE_CSS = `
   transition:color .12s,border-color .12s;}
 .cot-tech:hover{color:#ffd27a;border-color:rgba(240,176,74,.65);}
 .cot-tech .tt-ico{font-size:12px;line-height:1;color:#f0b04a;}
+/* r5: FLAT two-stop plate with a crisp 1px bevel — the old three-stop glossy
+   gradient + orange glow + fuzzy text shadow read as a 2012 Flash-game web
+   button, not a shipped client's battle CTA */
 .cot-battle{position:absolute;top:26px;left:50%;transform:translateX(-50%);
   pointer-events:auto;cursor:pointer;border:none;outline:none;
   font-family:${FONT_STACK};font-size:19px;font-weight:800;letter-spacing:.30em;
-  color:#fff7ea;text-shadow:0 1px 2px rgba(90,40,0,.6);
+  color:#fff8ee;text-shadow:0 1px 0 rgba(96,44,0,.85);
   padding:13px 66px 13px 74px;
-  background:linear-gradient(180deg,#ffa02e 0%,#f07800 52%,#d95f00 100%);
-  border:1px solid #ffc169;border-bottom:2px solid #a34700;
-  box-shadow:0 4px 22px rgba(240,120,0,.45),inset 0 1px 0 rgba(255,255,255,.35);
+  background:linear-gradient(180deg,#f5921c 0%,#dd6f04 100%);
+  border:1px solid #8f4a06;
+  box-shadow:inset 0 1px 0 rgba(255,224,170,.55),inset 0 -1px 0 rgba(90,42,0,.55),
+  0 2px 8px rgba(0,0,0,.45);
   transition:filter .12s,transform .06s;clip-path:polygon(4% 0,96% 0,100% 50%,96% 100%,4% 100%,0 50%);}
-.cot-battle:hover{filter:brightness(1.12);}
+.cot-battle:hover{filter:brightness(1.08);}
 .cot-battle:active{transform:translateX(-50%) translateY(1px);}
 .cot-garage .stats{position:absolute;right:26px;top:110px;width:300px;
   background:linear-gradient(180deg,rgba(11,15,20,.88),rgba(7,10,13,.92));
@@ -116,10 +130,20 @@ const GARAGE_CSS = `
   object-fit:contain;filter:drop-shadow(0 3px 5px rgba(0,0,0,.5));}
 .cot-card .nm{font-size:10.5px;font-weight:600;color:#eef4f9;letter-spacing:-.01em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 -5px;text-align:center;}
+.cot-card .nm .tiern{font-weight:800;color:#d8a04c;margin-right:4px;letter-spacing:.02em;}
+.cot-card.sel .nm .tiern{color:#f0b04a;}
 .cot-card .cls{font-size:9px;font-weight:700;letter-spacing:.18em;color:#8a97a3;
   text-transform:uppercase;margin-top:2px;}
 .cot-garage .hint{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
   font-size:9.5px;letter-spacing:.14em;color:rgba(138,151,163,.7);text-transform:uppercase;}
+/* r5: top-right currency/XP strip (WoT garage constant — the screen read as
+   a demo shell without an economy bar; values are session-stubbed) */
+.cot-topbar{position:absolute;top:20px;right:26px;display:flex;gap:8px;}
+.cot-topbar .res{display:flex;align-items:center;gap:7px;padding:7px 12px 6px;
+  background:rgba(11,15,20,.82);border:1px solid rgba(146,164,180,.28);
+  font-size:12.5px;font-weight:600;color:#e6edf3;letter-spacing:.03em;
+  font-variant-numeric:tabular-nums;line-height:1;}
+.cot-topbar .res svg{display:block;flex:0 0 auto;}
 /* MAP-CONFIG WIRING: battlefield picker (4 maps + random) */
 /* camo_spotting r1: maps + camo picker stack in ONE flex column so they can
    never overlap at short viewports (the old absolute anchors collided at
@@ -401,6 +425,19 @@ export function createGarage(opts) {
     `<div class="band-top"></div><div class="band-bot"></div>` +
     `<div class="band-l"></div><div class="band-r"></div>` +
     `<div class="title">CLAUDE <b>OF TANKS</b></div>` +
+    `<div class="cot-topbar">` +
+    `<div class="res"><svg viewBox="0 0 14 14" width="13" height="13">` +
+    `<circle cx="7" cy="7" r="6" fill="#c8d2dc"/><circle cx="7" cy="7" r="4.4" fill="none" stroke="#8f9aa4" stroke-width="1"/>` +
+    `<path d="M7 3.6v6.8M5 5.4h4M5 8.6h4" stroke="#6d7883" stroke-width="1.1"/></svg>` +
+    `<span>2 458 300</span></div>` +
+    `<div class="res"><svg viewBox="0 0 14 14" width="13" height="13">` +
+    `<circle cx="7" cy="7" r="6" fill="#f0c04a"/><circle cx="7" cy="7" r="4.4" fill="none" stroke="#b98a1e" stroke-width="1"/>` +
+    `<circle cx="7" cy="7" r="1.9" fill="#b98a1e"/></svg>` +
+    `<span>6 750</span></div>` +
+    `<div class="res"><svg viewBox="0 0 14 14" width="13" height="13">` +
+    `<path d="M7 .8 8.7 5.3 13.2 7 8.7 8.7 7 13.2 5.3 8.7 .8 7 5.3 5.3Z" fill="#9fd8ec"/></svg>` +
+    `<span>48 250</span></div>` +
+    `</div>` +
     `<div class="selname"></div><div class="selsub"></div>` +
     `<button class="cot-tech" type="button"><span class="tt-ico">&#9776;</span>TECH TREE</button>` +
     `<button class="cot-battle" type="button">BATTLE</button>` +
@@ -624,9 +661,9 @@ export function createGarage(opts) {
       `<span class="era">${s.era === 'ww2' ? 'WWII' : 'MODERN'}</span>` +
       `<span class="flag">${flagSVG(s.nation, s.era, 18, 12)}<i>${NATION_LABEL[s.nation] || s.nation}</i></span>` +
       `<img class="ti" data-cot-thumb="${s.id}" src="${getTankThumb(s.id) || iconUrl(s.id, 'angle')}" alt="">` +
-      `<div class="nm"></div>` +
+      `<div class="nm"><b class="tiern">${TIER_BY_ID[s.id] || ''}</b><span class="nmt"></span></div>` +
       `<div class="cls">${s.class}</div>`;
-    card.querySelector('.nm').textContent = s.name;
+    card.querySelector('.nmt').textContent = s.name;
     card.addEventListener('click', () => {
       emit('ui:click', {});
       api.setSelected(s.id);

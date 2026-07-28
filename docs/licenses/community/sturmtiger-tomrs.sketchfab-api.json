@@ -1,0 +1,186 @@
+{
+ "animationCount": 0,
+ "categories": [
+  {
+   "uid": "22a2f677efad4d7bbca5ad45f9b5868e",
+   "name": "Cars & Vehicles",
+   "slug": "cars-vehicles",
+   "uri": "https://api.sketchfab.com/v3/categories/22a2f677efad4d7bbca5ad45f9b5868e",
+   "icon": "https://static.sketchfab.com/static/builds/web/dist/static/assets/images/icons/categories/45dd0cc0860ac57fcd63bde1cc3f2b7c-v2.svg",
+   "thumbnails": [
+    {
+     "width": "512",
+     "height": "288",
+     "url": "https://static.sketchfab.com/categories/22a2f677efad4d7bbca5ad45f9b5868e/512x288.png"
+    },
+    {
+     "width": "800",
+     "height": "450",
+     "url": "https://static.sketchfab.com/categories/22a2f677efad4d7bbca5ad45f9b5868e/800x450.png"
+    }
+   ]
+  },
+  {
+   "uid": "3badf36bd9f549bdba295334d75e04d3",
+   "name": "Weapons & Military",
+   "slug": "weapons-military",
+   "uri": "https://api.sketchfab.com/v3/categories/3badf36bd9f549bdba295334d75e04d3",
+   "icon": "https://static.sketchfab.com/static/builds/web/dist/static/assets/images/icons/categories/6f71af8dadcca706c7404c9a0f82c1a3-v2.svg",
+   "thumbnails": [
+    {
+     "width": "512",
+     "height": "288",
+     "url": "https://static.sketchfab.com/categories/3badf36bd9f549bdba295334d75e04d3/512x288.png"
+    },
+    {
+     "width": "800",
+     "height": "450",
+     "url": "https://static.sketchfab.com/categories/3badf36bd9f549bdba295334d75e04d3/800x450.png"
+    }
+   ]
+  }
+ ],
+ "commentCount": 8,
+ "createdAt": "2020-07-10T02:22:32.979393",
+ "embedUrl": "https://sketchfab.com/models/a1e6aa988ddf4275931fd30e7b5bd088/embed",
+ "faceCount": 9050,
+ "isAgeRestricted": false,
+ "license": {
+  "uri": "https://api.sketchfab.com/v3/licenses/322a749bcfa841b29dff1e8a1bb74b0b",
+  "label": "CC Attribution",
+  "fullName": "Creative Commons Attribution",
+  "requirements": "Author must be credited. Commercial use is allowed.",
+  "url": "http://creativecommons.org/licenses/by/4.0/",
+  "slug": "by"
+ },
+ "likeCount": 114,
+ "name": "Sturmtiger Tank",
+ "publishedAt": "2020-07-10T02:24:39.920878",
+ "soundCount": 0,
+ "staffpickedAt": null,
+ "tags": [
+  {
+   "name": "ww2",
+   "slug": "ww2",
+   "uri": "https://api.sketchfab.com/v3/tags/ww2"
+  },
+  {
+   "name": "germany",
+   "slug": "germany",
+   "uri": "https://api.sketchfab.com/v3/tags/germany"
+  },
+  {
+   "name": "Tank",
+   "slug": "tank",
+   "uri": "https://api.sketchfab.com/v3/tags/tank"
+  },
+  {
+   "name": "worldoftanks",
+   "slug": "worldoftanks",
+   "uri": "https://api.sketchfab.com/v3/tags/worldoftanks"
+  },
+  {
+   "name": "sturmtiger",
+   "slug": "sturmtiger",
+   "uri": "https://api.sketchfab.com/v3/tags/sturmtiger"
+  }
+ ],
+ "thumbnails": {
+  "images": [
+   {
+    "uid": "7970a8e8e3124df486ffc66aaebdcec9",
+    "width": 1920,
+    "height": 1080,
+    "size": 295300,
+    "url": "https://media.sketchfab.com/models/a1e6aa988ddf4275931fd30e7b5bd088/thumbnails/2dec15a9f71c4c589105db3af5bd0641/f7ca30fa36cf4a7f9d9ec7454b4e3652.jpeg"
+   },
+   {
+    "uid": "3b69d4d27b014574a6ada50c0e3200c8",
+    "width": 1024,
+    "height": 576,
+    "size": 80576,
+    "url": "https://media.sketchfab.com/models/a1e6aa988ddf4275931fd30e7b5bd088/thumbnails/2dec15a9f71c4c589105db3af5bd0641/26f3ec7bcd0b4932a8f772a158900602.jpeg"
+   },
+   {
+    "uid": "ddc283d546584cc1b14f12e0a9646775",
+    "width": 720,
+    "height": 405,
+    "size": 37922,
+    "url": "https://media.sketchfab.com/models/a1e6aa988ddf4275931fd30e7b5bd088/thumbnails/2dec15a9f71c4c589105db3af5bd0641/8c401e551ea24520b565e0a3d08f5d21.jpeg"
+   },
+   {
+    "uid": "f7640aac8859421f95fb30f74a21463e",
+    "width": 256,
+    "height": 144,
+    "size": 5004,
+    "url": "https://media.sketchfab.com/models/a1e6aa988ddf4275931fd30e7b5bd088/thumbnails/2dec15a9f71c4c589105db3af5bd0641/d783329bb53c4535bfca7c1bddfc0a7f.jpeg"
+   },
+   {
+    "uid": "a380b0f2cfe3439ebc472ce8e90de206",
+    "width": 64,
+    "height": 36,
+    "size": 1012,
+    "url": "https://media.sketchfab.com/models/a1e6aa988ddf4275931fd30e7b5bd088/thumbnails/2dec15a9f71c4c589105db3af5bd0641/42bc06f6fc624467b43fe7f99e024016.jpeg"
+   }
+  ]
+ },
+ "uid": "a1e6aa988ddf4275931fd30e7b5bd088",
+ "uri": "https://api.sketchfab.com/v3/models/a1e6aa988ddf4275931fd30e7b5bd088",
+ "user": {
+  "uid": "aacb1293a931444292d6a1d113f7298a",
+  "username": "Tomrs",
+  "displayName": "Herdyn",
+  "account": "basic",
+  "profileUrl": "https://sketchfab.com/Tomrs",
+  "avatar": {
+   "uid": "afde969fe04a48fbb925830b6d47af34",
+   "uri": "https://api.sketchfab.com/v3/avatars/afde969fe04a48fbb925830b6d47af34",
+   "images": [
+    {
+     "width": 32,
+     "height": 32,
+     "size": 713,
+     "url": "https://media.sketchfab.com/avatars/afde969fe04a48fbb925830b6d47af34/250e44e9a3dd4d3f9bab90c567c9bc41.jpeg"
+    },
+    {
+     "width": 48,
+     "height": 48,
+     "size": 1128,
+     "url": "https://media.sketchfab.com/avatars/afde969fe04a48fbb925830b6d47af34/5ebeb528b913415ea38b1e7317afee2d.jpeg"
+    },
+    {
+     "width": 90,
+     "height": 90,
+     "size": 3258,
+     "url": "https://media.sketchfab.com/avatars/afde969fe04a48fbb925830b6d47af34/b821eedc1802471584ad4543965045a2.jpeg"
+    },
+    {
+     "width": 100,
+     "height": 100,
+     "size": 3780,
+     "url": "https://media.sketchfab.com/avatars/afde969fe04a48fbb925830b6d47af34/527e065223ae4bfa987741e8e3cff8dd.jpeg"
+    }
+   ]
+  },
+  "uri": "https://api.sketchfab.com/v3/users/aacb1293a931444292d6a1d113f7298a"
+ },
+ "vertexCount": 5838,
+ "viewCount": 16964,
+ "viewerUrl": "https://sketchfab.com/3d-models/sturmtiger-tank-a1e6aa988ddf4275931fd30e7b5bd088",
+ "isDownloadable": true,
+ "isProtected": false,
+ "description": "",
+ "price": null,
+ "downloadCount": 1133,
+ "editorUrl": "https://sketchfab.com/models/a1e6aa988ddf4275931fd30e7b5bd088/edit",
+ "status": {
+  "warning": {},
+  "processing": "SUCCEEDED"
+ },
+ "source": "website",
+ "hasCommentsDisabled": false,
+ "updatedAt": "2022-10-29T15:22:07.720370",
+ "pbrType": null,
+ "textureCount": 7,
+ "materialCount": 52
+}

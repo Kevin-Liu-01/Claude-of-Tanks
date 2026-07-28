@@ -1,0 +1,13 @@
+Model: KV-2 heavy tank 1940
+Author: Comrade1280
+Author profile: https://sketchfab.com/comrade1280
+Original source: https://sketchfab.com/3d-models/kv-2-heavy-tank-1940-ba8b84d78c0a42038cf2eaa4210ef296
+License: CC Attribution (Creative Commons Attribution) - http://creativecommons.org/licenses/by/4.0/
+License verified: 2026-07-28 via public Sketchfab API (https://api.sketchfab.com/v3/models/ba8b84d78c0a42038cf2eaa4210ef296), snapshot saved as sketchfab-api.json
+Downloaded from mirror: https://github.com/Tsukimi125/Kaiser-Ray-Tracer/tree/main/Assets/Models/kv-2_heavy_tank_1940
+Mirror provenance: Full Sketchfab download bundle mirrored in public GitHub repo with original license.txt preserved verbatim (copied alongside as sketchfab-license.txt).
+Provenance check: author portfolio reviewed on Sketchfab 2026-07-28; consistent original artist portfolio, no game-rip signals.
+Processing: imported in Blender 5.2, junk/diorama geometry stripped where noted in pipeline-stats.json, decimated to <=150k tris where needed, scale-normalized to real-world meters, exported GLB (Y-up).
+
+Required attribution line:
+This work is based on "KV-2 heavy tank 1940" (https://sketchfab.com/3d-models/kv-2-heavy-tank-1940-ba8b84d78c0a42038cf2eaa4210ef296) by Comrade1280 (https://sketchfab.com/comrade1280) licensed under CC Attribution (http://creativecommons.org/licenses/by/4.0/)

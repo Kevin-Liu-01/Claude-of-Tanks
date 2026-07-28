@@ -172,9 +172,11 @@ export function createMap(engineCtx, { mapId = 'verdant', seed = 1337 } = {}) {
      * @param {boolean} [immediate=false] snap instead of easing
      * @param {number} [fovDeg] live camera FOV — high zoom (≤15°) switches the
      *   scope-corridor foliage fade from screen-door dither to a binary cut
+     * @param {number} [aimDistM] live server-aim distance (rig.aimDist) — the
+     *   scope-ray foliage corridor is culled out to this distance (r5)
      */
-    setSniperFade(f, immediate = false, fovDeg = null) {
-      vegetation.setSniperFade(f, immediate, fovDeg);
+    setSniperFade(f, immediate = false, fovDeg = null, aimDistM = null) {
+      vegetation.setSniperFade(f, immediate, fovDeg, aimDistM);
     },
     group,
   };

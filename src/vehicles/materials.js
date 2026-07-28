@@ -132,17 +132,42 @@ function strokeWrapped(ctx, S, path, style, width) {
   }
 }
 
-// Fast inline-LCG per-pixel grain (rng() call per pixel is too slow at 2048²).
-function applyGrain(ctx, S, seed, amp) {
-  const img = ctx.getImageData(0, 0, S, S);
+// PERF (performance_budget r5): the per-pixel LCG grain pass was the single
+// largest boot cost — bootprobe self-time 2.5 s across the staged vehicle
+// bakes (16 MB getImageData + a 4.2 M-iteration clamped-add loop +
+// putImageData, per map, per vehicle). Grain is per-texel stochastic noise,
+// not a per-vehicle signature, so ONE cached 50 %-gray noise tile per
+// (size, amp) bucket composited in 'hard-light' reads identically (at
+// mid-tones hard-light adds exactly the same +-128*amp jitter; shadows and
+// highlights grain proportionally less, which reads slightly cleaner) and
+// runs ~10x faster on the GPU drawImage path.
+const _grainTiles = new Map(); // "S:amp" -> canvas
+function grainTile(S, amp) {
+  const key = S + ':' + amp;
+  let cnv = _grainTiles.get(key);
+  if (cnv) return cnv;
+  cnv = document.createElement('canvas');
+  cnv.width = cnv.height = S;
+  const c = cnv.getContext('2d');
+  const img = c.createImageData(S, S);
   const d = img.data;
-  let s0 = (seed >>> 0) || 1;
+  let s0 = 0x9e3779b9;
   for (let i = 0; i < d.length; i += 4) {
     s0 = (s0 * 1664525 + 1013904223) >>> 0;
-    const n = (((s0 >>> 16) & 255) - 128) * amp;
-    d[i] += n; d[i + 1] += n; d[i + 2] += n;
+    const v = 128 + (((s0 >>> 16) & 255) - 128) * amp;
+    d[i] = v; d[i + 1] = v; d[i + 2] = v;
+    d[i + 3] = 255;
   }
-  ctx.putImageData(img, 0, 0);
+  c.putImageData(img, 0, 0);
+  _grainTiles.set(key, cnv);
+  return cnv;
+}
+function applyGrain(ctx, S, seed, amp) {
+  // `seed` is intentionally unused now — see grainTile note above.
+  const prevOp = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'hard-light';
+  ctx.drawImage(grainTile(S, amp), 0, 0);
+  ctx.globalCompositeOperation = prevOp;
 }
 
 // ---------------------------------------------------------------------------
@@ -626,7 +651,10 @@ function paintCamo(canvas, visual, rng, feats, seed) {
 
   // r10: grain trimmed 0.075 -> 0.055 — part of the "flour-dust white
   // speckle" read on top plates under the warm garage key.
-  applyGrain(ctx, S, seed ^ 0x51ab, 0.055);
+  // tank_models r5: 0.055 -> 0.034 — at pedestal range the survivors still
+  // read as rendering noise, not paint. Weathering now leans on the darker
+  // low-frequency grime passes below instead of per-pixel salt.
+  applyGrain(ctx, S, seed ^ 0x51ab, 0.034);
 
   // ---- plate feature overlay (matches height/roughness maps) --------------
   const px = (v) => v * S;
@@ -1549,7 +1577,12 @@ function acquireGlbShare(srcTex) {
         // (92 -> 106) — the surviving dot rows still read as red-tinted rivet
         // noise over brown pattern patches at closeup; broad AO shading sits
         // well above this floor so panel depth survives.
-        v = v < 106 ? 106 : (v > 178 ? 178 : v);
+        // tank_models r5 (sandblasted-Abrams major): ceiling 178 -> 150 — the
+        // asset's baked pale dust/wear texels overlay-brightened the pattern
+        // up to ~2x, reading as a coarse white stipple across decks and cheeks
+        // at closeup. 150 keeps highlights a gentle lift (<~1.35x) while AO
+        // still darkens; the paint reads as one matte scheme.
+        v = v < 106 ? 106 : (v > 150 ? 150 : v);
         dd[i] = dd[i + 1] = dd[i + 2] = v;
       }
       dctx.putImageData(dimg, 0, 0);
@@ -1694,8 +1727,12 @@ export function applyCamoToModel(root, spec) {
       }
       const share = own.map ? acquireGlbShare(own.map) : null;
       // very dark sheets are bare hardware/track runs — leave them unpainted
-      // (recoloring them is what created bright pips on the skirts in r1)
-      if (share && share.meanLuma < 0.10) {
+      // (recoloring them is what created bright pips on the skirts in r1).
+      // Wave-2 (jagdtiger): assets whose whole PAINTED hull bakes near-black
+      // opt into a lower skip threshold via visual.glbDarkPaintLuma — named
+      // gear (GLB_SKIP_RE above) still keeps its factory look.
+      const skipLuma = (spec.visual && spec.visual.glbDarkPaintLuma) ?? 0.10;
+      if (share && share.meanLuma < skipLuma) {
         entry.mats.push({ m: own, kind: 'skip' });
         continue;
       }
@@ -1855,6 +1892,19 @@ export function vehicleAmbientFloorHook(shader) {
 		// resulting indirect floor never exceeds ~0.30 linear luminance.
 		float vehLuma = max( dot( material.diffuseColor, vec3( 0.2126, 0.7152, 0.0722 ) ), 0.001 );
 		vehFill = min( vehFill, 0.30 / vehLuma );
+		// tank_models r5 (frosted/clay GLB major): the fill is a SHADE
+		// readability device, but it ran unconditionally — under the garage
+		// spots / field sun it stacked a 0.35-0.55×albedo ambient on top of the
+		// full direct response, washing every sourced-GLB tank toward flat
+		// pastel clay (light-grey Panzer III, frosted IS-3/Wei He, sandblasted
+		// Abrams decks, blown q_heavy turret) and erasing camo pattern contrast
+		// at pedestal range. Gate it by RECEIVED direct light, normalized by
+		// albedo so dark paint gates the same as light paint: fully lit
+		// surfaces keep only 12% of the fill, shaded surfaces (the calibrated
+		// gameplay_feel case) keep 100%. The deep-shade floors below are
+		// untouched.
+		float vehIrrad = dot( reflectedLight.directDiffuse, vec3( 0.2126, 0.7152, 0.0722 ) ) / vehLuma;
+		vehFill *= mix( 1.0, 0.12, smoothstep( 0.10, 0.55, vehIrrad ) );
 		reflectedLight.indirectDiffuse = max( reflectedLight.indirectDiffuse, material.diffuseColor * vehFill );
 		// >>> gameplay_feel r4: shadow-band luminance floor. The albedo-scaled
 		// fill above still crushes to near-black when a dark-olive skin
@@ -1868,7 +1918,28 @@ export function vehicleAmbientFloorHook(shader) {
 		// sits ~4x under the lit response and only engages in deep shade.
 		vec3 vehDiff = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;
 		float vehOutL = dot( vehDiff, vec3( 0.2126, 0.7152, 0.0722 ) );
-		float vehFloorL = 0.115 * ( 0.40 + 0.60 * vehFacing );
+		// >>> gameplay_feel r5: adaptive deep-canopy lift. At the 0.115 floor a
+		// hull parked/driving in DENSE forest shade (direct term ~0) still read
+		// as a light-swallowing black silhouette against sunlit foliage at the
+		// 13 m chase distance (r5 drive critique, drive_a_uphill/drive_c_rough).
+		// Blend the floor toward 0.21 as the received direct light collapses —
+		// a camera-anchored hemispheric bounce, WoT-style: sunlit and dappled
+		// response (direct luminance > ~0.10) is completely untouched, so the
+		// lighting_post r4 directional-modeling calibration holds in the open.
+		float vehDirL = dot( reflectedLight.directDiffuse, vec3( 0.2126, 0.7152, 0.0722 ) );
+		// tank_models r5 (clay-lift root cause): the shade estimate compared
+		// REFLECTED luminance to an absolute 0.02-0.10 window, so dark paint
+		// (0.05-0.08 albedo: Panzergrau, 4BO green) tested as "deep shade" even
+		// in full sun/garage light, and the absolute 0.115-0.21 output floor
+		// then clamped the whole hull to flat light-grey clay, erasing texture
+		// contrast (light-grey Panzer III, frosted IS-3 / Wei He, washed GLB
+		// decks). Normalize by albedo (-> incident-irradiance estimate, same
+		// for dark and light paints) and fade the WHOLE floor out when lit —
+		// the deep-shade/canopy behavior gameplay_feel calibrated (direct ~ 0)
+		// keeps its 0.21 lift exactly; lit surfaces keep their real shading.
+		float vehShade = 1.0 - smoothstep( 0.10, 0.45, vehDirL / vehLuma );
+		float vehFloorL = mix( 0.02, 0.21, vehShade ) * ( 0.40 + 0.60 * vehFacing );
+		// <<< gameplay_feel r5
 		if ( vehOutL < vehFloorL ) {
 			vec3 vehTint = material.diffuseColor / vehLuma;
 			vehTint = mix( vec3( 1.0 ), vehTint, 0.75 );

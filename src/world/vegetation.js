@@ -136,18 +136,34 @@ function makeLeafClusterTexture(rng, tone = null) {
   const ctx = c.getContext('2d');
   ctx.clearRect(0, 0, s, s);
   const cx = s / 2, cy = s / 2;
+  // r8: three distinct clump FAMILIES on the one atlas (sun-bleached yellow-
+  // green tips / mid olive / dark blue-green shadow foliage) with varied leaf
+  // sizes — the single-family clumps read as "one repeated leaf texture"
+  // stamped across every crown (critique). Family mix keyed per clump so
+  // cards cut from different atlas regions carry visibly different foliage.
   for (let k = 0; k < 105; k++) {
     const a = rng() * Math.PI * 2;
     const rr = Math.pow(rng(), 0.62) * 0.45 * s;
     const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
     const sun = 1 - y / s;
-    const l = 0.17 + sun * 0.15 + rng() * 0.10;
-    const hue = 0.215 + rng() * 0.045; // olive ramp — matches the far-canopy set
-    ctx.fillStyle = css(hue, 0.19 + rng() * 0.08, l); // r7: desat (lime puffball fix)
+    const famRoll = rng();
+    let hue, sat, l;
+    if (famRoll < 0.30) {        // sun-bleached tips
+      hue = 0.170 + rng() * 0.035; sat = 0.24 + rng() * 0.08;
+      l = 0.24 + sun * 0.15 + rng() * 0.09;
+    } else if (famRoll < 0.78) { // mid olive body
+      hue = 0.215 + rng() * 0.045; sat = 0.19 + rng() * 0.08;
+      l = 0.17 + sun * 0.15 + rng() * 0.10;
+    } else {                     // dark shadow foliage
+      hue = 0.26 + rng() * 0.045; sat = 0.15 + rng() * 0.06;
+      l = 0.12 + sun * 0.10 + rng() * 0.07;
+    }
+    ctx.fillStyle = css(hue, sat, l);
+    const sizeMul = 0.7 + rng() * 0.9; // per-clump leaf scale spread
     const nl = 5 + (rng() * 6) | 0;
     for (let j = 0; j < nl; j++) {
       const lx = x + (rng() - 0.5) * 15, ly = y + (rng() - 0.5) * 15;
-      const lw = 3.2 + rng() * 4.2, lh = 2.0 + rng() * 2.8;
+      const lw = (3.2 + rng() * 4.2) * sizeMul, lh = (2.0 + rng() * 2.8) * sizeMul;
       ctx.save();
       ctx.translate(lx, ly);
       ctx.rotate(rng() * Math.PI);
@@ -338,16 +354,36 @@ function buildBroadleafTrunk(rng) {
   trunk.translate(0, trunkH / 2, 0);
   _c.setHSL(0.07, 0.26, 0.16 + rng() * 0.05, THREE.SRGBColorSpace);
   parts.push(paintFlat(trunk, _c.clone(), 0));
-  const nBr = 3 + (rng() * 2) | 0;
+  // r8: more + BIGGER primary branches reaching well into the canopy volume
+  // (critique: "bare cylinder trunks that never connect to the canopy via
+  // branches") — 4-6 limbs, thicker and longer (up to ~3.4 m, canopy center
+  // sits at 4.35 m), plus a forked secondary on most of them so the trunk-to-
+  // crown transition reads as real branch structure through card gaps.
+  const nBr = 4 + (rng() * 3) | 0;
   for (let b = 0; b < nBr; b++) {
-    const len = 1.5 + rng() * 1.1;
-    const br = new THREE.CylinderGeometry(0.045, 0.10, len, 5, 1);
+    const len = 2.0 + rng() * 1.4;
+    const rotZ = 0.45 + rng() * 0.6;
+    const rotY = (b / nBr) * Math.PI * 2 + rng() * 0.8;
+    const y0 = trunkH * (0.58 + rng() * 0.34);
+    const br = new THREE.CylinderGeometry(0.05, 0.13, len, 5, 1);
     br.translate(0, len / 2, 0);
-    br.rotateZ(0.55 + rng() * 0.55);
-    br.rotateY(rng() * Math.PI * 2);
-    br.translate(0, trunkH * (0.62 + rng() * 0.3), 0);
+    br.rotateZ(rotZ);
+    br.rotateY(rotY);
+    br.translate(0, y0, 0);
     _c.setHSL(0.07, 0.24, 0.15 + rng() * 0.04, THREE.SRGBColorSpace);
     parts.push(paintFlat(br, _c.clone(), 0.15));
+    if (rng() < 0.75) { // forked secondary off the limb tip
+      const len2 = 0.9 + rng() * 0.8;
+      const br2 = new THREE.CylinderGeometry(0.03, 0.055, len2, 4, 1);
+      br2.translate(0, len2 / 2, 0);
+      br2.rotateZ(rotZ + (rng() - 0.2) * 0.7);
+      br2.rotateY(rotY + (rng() - 0.5) * 0.9);
+      // limb tip position (approx): rotate (0,len,0) by Z then Y
+      const tx = Math.sin(rotZ) * len, ty = Math.cos(rotZ) * len;
+      br2.translate(Math.cos(rotY) * tx, y0 + ty, -Math.sin(rotY) * tx);
+      _c.setHSL(0.07, 0.22, 0.17 + rng() * 0.04, THREE.SRGBColorSpace);
+      parts.push(paintFlat(br2, _c.clone(), 0.25));
+    }
   }
   return mergeParts(parts);
 }
@@ -392,10 +428,16 @@ function buildBroadleafCards(rng, nCards, sizeMul, pal = {}) {
     // r7: vertical gradient deepened (0.86+0.28 -> 0.72+0.42) — the canopy
     // darkens toward the ground plane like a real shaded understory, so the
     // crown reads grounded instead of a uniformly lit floating ball
-    const shade = (0.50 + 0.50 * clamp(distC, 0, 1)) // dark core, lit shell
-      * (0.72 + 0.42 * clamp((py - cy) / ry * 0.5 + 0.5, 0, 1)) * (0.92 + rng() * 0.16);
+    // r8: floors lifted (core 0.50 -> 0.58, vertical 0.72 -> 0.80) — the
+    // stacked AO gradients drove shadowed canopy undersides to near-black
+    // paint blobs in the chase view (critique); real crowns keep skylight
+    // bounce in the skirt. Hue jitter widened ±0.025 -> ±0.045: with one
+    // shared leaf atlas, per-card hue/value spread is what breaks the
+    // "single repeated leaf texture" read.
+    const shade = (0.58 + 0.42 * clamp(distC, 0, 1)) // dark core, lit shell
+      * (0.80 + 0.34 * clamp((py - cy) / ry * 0.5 + 0.5, 0, 1)) * (0.92 + rng() * 0.16);
     parts.push(foliageCard(wsz, wsz * 0.82, px, py, pz, _e, shade,
-      hue0 + (rng() - 0.5) * 0.05, sat0 + rng() * 0.08, l0 + rad * 0.65, 0, cy, 0));
+      hue0 + (rng() - 0.5) * 0.09, sat0 + rng() * 0.08, l0 + rad * 0.65, 0, cy, 0));
   }
   // a couple of low cards hanging near the branch collar
   for (let i = 0; i < Math.max(2, nCards >> 4); i++) {
@@ -437,7 +479,8 @@ function buildPineCards(rng, tierStep, sizeMul, pal = {}) {
       // r6: wider per-card value/hue spread — one uniform saturated green
       // across every card was the "model railroad pine" tell at 30-80 m
       // r7: base 0.50 -> 0.42 — lower tiers shade toward the ground plane
-      const shade = 0.42 + t * 0.43 + rng() * 0.28;
+      // r8: 0.42 -> 0.48 — bottom tiers went to black paint in chase shadow
+      const shade = 0.48 + t * 0.40 + rng() * 0.26;
       parts.push(foliageCard(w, h, Math.cos(a) * rr * 0.55, y + rng() * 0.25, Math.sin(a) * rr * 0.55,
         _e, shade, hue0 + (rng() - 0.5) * 0.045, sat0 + rng() * 0.07, l0 + Math.pow(t, 1.5) * 0.65,
         0, y - 0.6, 0));
@@ -914,6 +957,12 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   // corridor fade goes BINARY — faded fragments discard cleanly, kept ones
   // render full-opacity — so the zoomed sight picture is crisp edge to edge.
   const uScopeHard = { value: 0 };
+  // SCOPE CORRIDOR LENGTH (controls_gunnery r5): how far along the scope ray
+  // the foliage cull reaches, in meters. Driven from the live server-aim
+  // distance (rig.aimDist) through setSniperFade — the r4 corridor died at a
+  // fixed 40-70 m, so any bush 100-320 m out on the sight line still blinded
+  // the x4/x8 scope (r5 critique: target IS-2 100% hidden at 320 m).
+  const uScopeDist = { value: 70 };
   // Camera forward (unit) — drives the sniper center-cone grass clear-out.
   const uCamFwd = { value: new THREE.Vector3(0, 0, 1) };
 
@@ -1113,17 +1162,39 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   }
 
   // ---- near grass carpet (camera-centred, dense, cell-cached) ----
-  const carpetMeshes = [];
+  // PERF (performance_budget r5): DOUBLE-BUFFERED. A rebuild used to
+  // bufferSubData 3.9 MB into the instance buffers the GPU was still reading
+  // — on ANGLE's Metal backend that is a fence wait, profiled at 22-224 ms
+  // per rebuild while driving (the certification p99/p1 killer). Each rebuild
+  // now writes the INACTIVE mesh pair (idle for >=180 ms, no in-flight
+  // references, so the upload is a plain memcpy) and flips visibility. Ranged
+  // uploads keep the transfer at the live prefix, not the 52 k cap.
+  const carpetSets = []; // per variant: { meshes: [a, b], active: 0 }
+  const _zeroScaleM4 = new THREE.Matrix4().makeScale(0, 0, 0);
   for (let vv = 0; vv < 2; vv++) {
-    const mesh = new THREE.InstancedMesh(grassVariants[vv].geo, grassVariants[vv].matNear, CARPET_CAP);
-    mesh.castShadow = false;
-    mesh.receiveShadow = true;
-    mesh.frustumCulled = false;
-    mesh.count = 0;
-    mesh.matrixAutoUpdate = false;
-    mesh.userData.aoExclude = true; // GTAO override prepass ignores alphaTest
-    group.add(mesh);
-    carpetMeshes.push(mesh);
+    const pair = [];
+    for (let half = 0; half < 2; half++) {
+      const mesh = new THREE.InstancedMesh(grassVariants[vv].geo, grassVariants[vv].matNear, CARPET_CAP);
+      mesh.castShadow = false;
+      mesh.receiveShadow = true;
+      mesh.frustumCulled = false;
+      // boot with ONE zero-scale instance visible: an invisible mesh never
+      // reaches WebGLAttributes.update, so its 3.3 MB GPU buffer would
+      // otherwise be created by the FIRST in-battle flip — a one-shot
+      // bufferData hitch inside the certification window. Zero scale
+      // rasterizes nothing; the first real rebuild overwrites slot 0.
+      mesh.count = 1;
+      mesh.visible = true;
+      mesh.setMatrixAt(0, _zeroScaleM4);
+      mesh.matrixAutoUpdate = false;
+      mesh.userData.aoExclude = true; // GTAO override prepass ignores alphaTest
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      mesh.setColorAt(0, new THREE.Color(1, 1, 1)); // allocate instanceColor now
+      mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+      group.add(mesh);
+      pair.push(mesh);
+    }
+    carpetSets.push({ meshes: pair, active: 0 });
   }
   // PERF (GC): each cached cell is ONE flat Float32Array (10 floats per tuft)
   // instead of ~a hundred small JS arrays — cell streaming while driving was
@@ -1151,25 +1222,46 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     return cell;
   }
   const _carpetLast = new THREE.Vector3(1e9, 0, 0);
+  let _carpetLastMs = -1e9;
   function rebuildCarpet(camPos) {
     const cix = Math.floor(camPos.x / CARPET_CELL), ciz = Math.floor(camPos.z / CARPET_CELL);
     const counts = [0, 0];
+    // write into the inactive half of each variant's A/B pair (see above)
+    const targets = [
+      carpetSets[0].meshes[1 - carpetSets[0].active],
+      carpetSets[1].meshes[1 - carpetSets[1].active],
+    ];
     for (let dz = -CARPET_RING; dz <= CARPET_RING; dz++) {
       for (let dx = -CARPET_RING; dx <= CARPET_RING; dx++) {
         const cell = carpetCell(cix + dx, ciz + dz);
         for (let o = 0; o < cell.length; o += 10) {
           const vv = cell[o + 9];
           if (counts[vv] >= CARPET_CAP) continue;
-          writeTuftAt(carpetMeshes[vv], counts[vv]++, cell, o);
+          writeTuftAt(targets[vv], counts[vv]++, cell, o);
         }
       }
     }
     for (let vv = 0; vv < 2; vv++) {
-      const mesh = carpetMeshes[vv];
-      mesh.count = counts[vv];
-      mesh.visible = counts[vv] > 0;
-      mesh.instanceMatrix.needsUpdate = true;
-      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      const set = carpetSets[vv];
+      const fresh = targets[vv];
+      const stale = set.meshes[set.active];
+      fresh.count = counts[vv];
+      fresh.visible = counts[vv] > 0;
+      // upload only the written prefix — the 52 k cap is rarely full
+      fresh.instanceMatrix.clearUpdateRanges();
+      fresh.instanceMatrix.addUpdateRange(0, counts[vv] * 16);
+      fresh.instanceMatrix.needsUpdate = true;
+      if (fresh.instanceColor) {
+        fresh.instanceColor.clearUpdateRanges();
+        fresh.instanceColor.addUpdateRange(0, counts[vv] * 3);
+        fresh.instanceColor.needsUpdate = true;
+      }
+      // A never-filled half holds only the boot zero-scale instance (draws
+      // nothing) — LEAVE it visible so its GPU buffers get created by the
+      // next rendered frame instead of by its first mid-battle flip.
+      if (stale.userData.carpetFilled) stale.visible = false;
+      fresh.userData.carpetFilled = true;
+      set.active = 1 - set.active;
     }
   }
 
@@ -1196,8 +1288,9 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     shader.uniforms.uCamFwd = uCamFwd;
     shader.uniforms.uSniperFade = uSniperFade;
     shader.uniforms.uScopeHard = uScopeHard;
+    shader.uniforms.uScopeDist = uScopeDist; // r5: corridor length = aim dist
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\nuniform float uWindTime;\nuniform vec3 uCamPos;\nuniform vec3 uCamFwd;\nuniform float uSniperFade;\nattribute float aFlex;\nattribute float aFadeI;\nvarying float vFadeI;\nvarying float vScopeKeep;');
+      '#include <common>\nuniform float uWindTime;\nuniform vec3 uCamPos;\nuniform vec3 uCamFwd;\nuniform float uSniperFade;\nuniform float uScopeDist;\nattribute float aFlex;\nattribute float aFadeI;\nvarying float vFadeI;\nvarying float vScopeKeep;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`
       #include <begin_vertex>
       {
@@ -1213,18 +1306,23 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
         vec3 tRel = tvw.xyz - uCamPos;
         float tAlong = dot(tRel, uCamFwd);
         float tDRay = length(tRel - uCamFwd * max(tAlong, 0.0));
-        // >>> gameplay_feel r4: FULL suppression inside the aiming corridor.
-        // The old 0.16 keep-floor screen-door-dithered every crown crossing
-        // the sight line — at x8 the stipple buried the target plate and the
-        // dispersion circle itself (r4 critique, shots/sniper_view.png).
-        // Canopy within ~5.5 m of the scope ray is now fully culled out to
-        // 40 m along it, ramping back to solid by ~70 m; no dither floor
-        // over the sight picture. Composes with the fragment-side uScopeHard
-        // high-zoom binary cut (hud specialist): keep 0 discards under both.
-        float tCorr = 1.0 - (1.0 - smoothstep(5.5, 9.0, tDRay))
-                          * (1.0 - smoothstep(40.0, 70.0, tAlong));
+        // >>> gameplay_feel r4 / controls_gunnery r5: FULL suppression inside
+        // the aiming corridor. The r4 corridor culled canopy within ~5.5 m of
+        // the scope ray but only for the first 40-70 m along it — a bush
+        // sitting at 100-320 m on the sight line still hid an aimed-at,
+        // SPOTTED target completely (r5 critique: IS-2 at 320 m, 100% blind
+        // x4 scope). The corridor now runs the whole way to the server-aim
+        // distance (uScopeDist, from rig.aimDist): near foliage keeps the
+        // wide 5.5-9 m clearance, far foliage narrows to a 2.5-5 m tunnel so
+        // long shots open a scope-sized window instead of carving a canyon
+        // through the forest. Composes with the fragment-side uScopeHard
+        // high-zoom binary cut: keep 0 discards under both.
+        float tBand = smoothstep(30.0, 60.0, tAlong);
+        float tCorr = 1.0 - (1.0 - smoothstep(mix(5.5, 2.5, tBand),
+                                              mix(9.0, 5.0, tBand), tDRay))
+                          * (1.0 - smoothstep(uScopeDist, uScopeDist + 30.0, tAlong));
         vScopeKeep = mix(1.0, tCorr, uSniperFade);
-        // <<< gameplay_feel r4
+        // <<< gameplay_feel r4 / controls_gunnery r5
       }`);
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
       '#include <common>\nuniform float uScopeHard;\nvarying float vFadeI;\nvarying float vScopeKeep;');
@@ -1235,7 +1333,10 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
         // + sniper scope corridor. Screen-space dither keeps the opaque/
         // alpha-tested pipeline (depth writes stay correct — no sorting,
         // no blend halos).
-        float fadeKeep = 1.0 - 0.88 * vFadeI;
+        // gameplay_feel r5: canopy fades FULLY (WoT fades the whole occluder
+        // corridor — the old 0.12 keep-floor stippled a haze over the tank);
+        // trunks keep the 12% ghost so the forest still reads.
+        float fadeKeep = 1.0 - ${wrap ? '1.0' : '0.88'} * vFadeI;
         fadeKeep *= smoothstep(${nearD0.toFixed(2)}, ${nearD1.toFixed(2)}, length(vViewPosition));
         fadeKeep = min(fadeKeep, vScopeKeep);
         if (uScopeHard > 0.5) {
@@ -1252,11 +1353,14 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     // side -> occluded interior ramp under the CSM sun instead of reading as
     // unshaded texture at distance. Cards carry canopy-outward normals.
     if (wrap) {
+      // r8: wrap 0.45 -> 0.62 — shadowed canopy undersides still crushed to
+      // black paint in the chase view; the stronger wrap plays the leaf
+      // translucency/skylight bounce a real crown skirt shows
       shader.fragmentShader = shader.fragmentShader.replace(
         '#include <lights_physical_pars_fragment>',
         THREE.ShaderChunk.lights_physical_pars_fragment.replace(
           'float dotNL = saturate( dot( normal, directLight.direction ) );',
-          'float dotNL = saturate( ( dot( normal, directLight.direction ) + 0.45 ) / 1.45 );'));
+          'float dotNL = saturate( ( dot( normal, directLight.direction ) + 0.62 ) / 1.62 );'));
     }
   };
   const treeWindHook = makeTreeWindHook(1.5, 4.2);          // trunks/bark
@@ -1304,7 +1408,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   canopyFarMat.side = THREE.DoubleSide;
   canopyFarMat.envMapIntensity = 1.35;
   engineCtx.setupShadowMaterial(canopyFarMat, canopyWindHook);
-  canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v6';
+  canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v7';
 
   // species registry: texture + near/far geometry builders, seed bases keep
   // the classic verdant set bit-identical to the pre-config build
@@ -1355,7 +1459,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     });
     fm.envMapIntensity = 0.85; // keep ambient on shaded leaves — no black cards
     engineCtx.setupShadowMaterial(fm, foliageWindHook);
-    fm.customProgramCacheKey = () => 'world-tree-foliage-v6-' + sp;
+    fm.customProgramCacheKey = () => 'world-tree-foliage-v7-' + sp;
     foliageMats[sp] = fm;
     // alpha-tested shadow casting: without this every card shadows as a quad.
     // r6: palm gets a HIGHER shadow alphaTest — its frond texture covers most
@@ -1436,7 +1540,8 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       // occlusion-fade bookkeeping: canopy proxy sphere (world center/radius,
       // generous enough for every species' card spread), eased fade 0..1 and
       // the instance slot assigned by the current near partition (-1 = far).
-      cy: y + 4.4 * sc, cr: 2.9 * sc, fade: 0, slot: -1,
+      // fslot mirrors slot for the far partition (incremental repartition).
+      cy: y + 4.4 * sc, cr: 2.9 * sc, fade: 0, slot: -1, fslot: -1,
       dr: (species === 'pine' || species === 'birch' ? 1.3 : 1.8) * sc, // root-decal radius
     });
     if (withObstacle) {
@@ -1505,6 +1610,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   // near/far instanced meshes (partition rewritten on camera movement, hysteresis).
   // Each LOD is a trunk mesh (opaque bark) + a card mesh (alpha foliage) sharing
   // the same instance matrices.
+  const _whiteScratch = new THREE.Color(1, 1, 1);
   function makeTreeMesh(geo, mat, sp, isFoliage) {
     // per-instance occlusion fade — EVERY geometry drawn with the tree hooks
     // must carry the attribute (near meshes are updated live; far meshes stay
@@ -1515,6 +1621,13 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       geo.setAttribute('aFadeI', fadeAttr);
     }
     const m = new THREE.InstancedMesh(geo, mat, trees.length);
+    // PERF (performance_budget r5): near/far partitions are rewritten while
+    // the camera drives (repartitionTrees) — StaticDrawUsage instance buffers
+    // sync-stall ANGLE-Metal on re-upload (see carpet note). Dynamic usage on
+    // everything repartition touches.
+    m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    m.setColorAt(0, _whiteScratch);
+    m.instanceColor.setUsage(THREE.DynamicDrawUsage);
     m.castShadow = true;
     // cards do NOT receive shadows: per-card CSM self-shadowing turns half the
     // canopy pitch-black; the baked vertex-colour AO carries that job instead
@@ -1532,6 +1645,15 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     return m;
   }
   const nearMeshes = {}, farMeshes = {};
+  // PERF NOTE (performance_budget r5): a cascade shadow-proxy LOD for the
+  // near-tree canopy cards was prototyped here and MEASURED NET-NEGATIVE:
+  // the cards' whole cascade share is only ~0.29 M tris/frame, while a
+  // colorWrite-off proxy (three r185 has no shadow-only flag — an invisible
+  // material skips the shadow pass too, verified) re-renders its geometry
+  // into the main pass AND every cascade for +0.9 M (far-LOD lobes) or ~±0
+  // (low-poly blobs, with a visible dappled->solid shadow change). The real
+  // shadow-triangle mass is props/buildings (-0.66 M measured with props
+  // castShadow off) — see docs/handoff/performance_budget-r5.md §3.
   for (const sp of speciesList) {
     nearMeshes[sp] = treeGeo[sp].map((g) => [
       makeTreeMesh(g.trunk, barkMat, sp, false),
@@ -1705,14 +1827,22 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   // near tree's canopy proxy sphere; intersecting trees ease toward fade = 1
   // (dithered to ~12% in the shader), everything else eases back to 0.
   const OCCL_TAU_S = 0.13;  // ease time constant (≈150 ms feel, like uSniperFade)
-  const OCCL_PAD_M = 1.1;   // canopy-sphere pad — cards jut past the fit sphere
-  const OCCL_BOX_PAD = 12;  // XZ broadphase reject (max near-tree cr + pad)
+  // gameplay_feel r5: 1.1 → 2.6. The thin segment-vs-sphere test only faded
+  // crowns whose proxy sphere the exact camera→pivot line pierced — driving a
+  // forest corridor left mid-corridor crowns just off the line filling 60-90%
+  // of the frame (drive_b_turn: tank fully hidden for seconds). The wider pad
+  // turns the test into a fat occlusion capsule, WoT-style.
+  const OCCL_PAD_M = 2.6;   // capsule radius pad around camera→pivot
+  const OCCL_BOX_PAD = 14;  // XZ broadphase reject (max near-tree cr + pad)
   let occlAny = false;      // skip the sweep entirely once everything settled
   const _dirtyFadeAttrs = new Set();
   function writeTreeFade(t) {
     for (const m of nearMeshes[t.species][t.variant]) {
       const attr = m.geometry.attributes.aFadeI;
       attr.array[t.slot] = t.fade;
+      // PERF (performance_budget r5): ranged upload — the full 20 KB fade
+      // array re-upload was fence-stalling with the rest (see repartition).
+      attr.addUpdateRange(t.slot, 1);
       _dirtyFadeAttrs.add(attr);
     }
   }
@@ -1762,50 +1892,131 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   }
 
   const _lastCam = new THREE.Vector3(1e9, 0, 0);
+  let _partitionBuilt = false;
+  // PERF (performance_budget r5): repartition is now INCREMENTAL. The old
+  // full rewrite flagged every near/far instance buffer for re-upload on any
+  // camera step that moved one tree across the hysteresis band — with the
+  // buffers allocated at trees.length capacity that was ~12 MB of
+  // gl.bufferSubData per event, and on ANGLE's Metal backend each upload into
+  // a buffer still referenced by in-flight GPU work is a fence wait (profiled
+  // 22-224 ms — the certification p99/p1 killer). Now a crossing tree is
+  // swap-removed from its old group and appended to its new one, and only the
+  // two touched slots upload via addUpdateRange (tens of floats, no stall).
+  const nearSlots = {}, farSlots = {};
+  for (const sp of speciesList) {
+    nearSlots[sp] = Array.from({ length: NEAR_VARIANTS }, () => []);
+    farSlots[sp] = Array.from({ length: FAR_VARIANTS }, () => []);
+  }
+  /** Flag one instance slot's matrix/color/fade for a ranged GPU upload. */
+  function markSlotDirty(m, slot) {
+    m.instanceMatrix.addUpdateRange(slot * 16, 16);
+    m.instanceMatrix.needsUpdate = true;
+    if (m.instanceColor) {
+      m.instanceColor.addUpdateRange(slot * 3, 3);
+      m.instanceColor.needsUpdate = true;
+    }
+    const fa = m.geometry.attributes.aFadeI;
+    if (fa) { fa.addUpdateRange(slot, 1); fa.needsUpdate = true; }
+  }
+  /** Write tree t into `slot` of every mesh in the group. Far groups render
+   * fade 0 (opaque): occlusion fade only ever applies inside camera range. */
+  function writeTreeSlot(meshes, slot, t, fade) {
+    for (const m of meshes) {
+      m.setMatrixAt(slot, t.mat);
+      m.setColorAt(slot, t.tint);
+      const fa = m.geometry.attributes.aFadeI;
+      if (fa) fa.array[slot] = fade;
+      markSlotDirty(m, slot);
+    }
+  }
+  function removeFromGroup(meshes, slots, t, key, fade) {
+    const i = t[key];
+    const last = slots.pop();
+    if (last !== t) {
+      slots[i] = last;
+      last[key] = i;
+      writeTreeSlot(meshes, i, last, fade ? last.fade : 0);
+    }
+    t[key] = -1;
+    for (const m of meshes) { m.count = slots.length; m.visible = slots.length > 0; }
+  }
+  function addToGroup(meshes, slots, t, key, fade) {
+    const i = slots.length;
+    slots.push(t);
+    t[key] = i;
+    writeTreeSlot(meshes, i, t, fade ? t.fade : 0);
+    for (const m of meshes) { m.count = slots.length; m.visible = true; }
+  }
   function repartitionTrees(camPos) {
+    if (!_partitionBuilt) { rebuildPartitionFull(camPos); return; }
     for (const t of trees) {
       const d = Math.hypot(t.x - camPos.x, t.z - camPos.z);
-      if (t.near) { if (d > TREE_NEAR_OUT) t.near = false; }
-      else if (d < TREE_NEAR_IN) t.near = true;
+      if (t.near) {
+        if (d > TREE_NEAR_OUT) {
+          t.near = false;
+          removeFromGroup(nearMeshes[t.species][t.variant], nearSlots[t.species][t.variant], t, 'slot', true);
+          addToGroup(farMeshes[t.species][t.fv], farSlots[t.species][t.fv], t, 'fslot', false);
+        }
+      } else if (d < TREE_NEAR_IN) {
+        t.near = true;
+        removeFromGroup(farMeshes[t.species][t.fv], farSlots[t.species][t.fv], t, 'fslot', false);
+        addToGroup(nearMeshes[t.species][t.variant], nearSlots[t.species][t.variant], t, 'slot', true);
+      }
     }
-    const counts = {}, farCounts = {};
+  }
+  /** One-time full partition build (map load / world rebuild): plain full
+   * uploads, and seeds the slot bookkeeping the incremental path maintains. */
+  function rebuildPartitionFull(camPos) {
+    _partitionBuilt = true;
     for (const sp of speciesList) {
-      counts[sp] = new Array(NEAR_VARIANTS).fill(0);
-      farCounts[sp] = new Array(FAR_VARIANTS).fill(0);
+      for (const a of nearSlots[sp]) a.length = 0;
+      for (const a of farSlots[sp]) a.length = 0;
     }
     for (const t of trees) {
+      const d = Math.hypot(t.x - camPos.x, t.z - camPos.z);
+      t.near = d < TREE_NEAR_IN || (t.near && d <= TREE_NEAR_OUT);
       if (t.near) {
-        const i = counts[t.species][t.variant]++;
-        t.slot = i;
+        const slots = nearSlots[t.species][t.variant];
+        t.slot = slots.length;
+        t.fslot = -1;
+        slots.push(t);
         for (const m of nearMeshes[t.species][t.variant]) {
-          m.setMatrixAt(i, t.mat);
-          m.setColorAt(i, t.tint);
-          m.geometry.attributes.aFadeI.array[i] = t.fade;
+          m.setMatrixAt(t.slot, t.mat);
+          m.setColorAt(t.slot, t.tint);
+          m.geometry.attributes.aFadeI.array[t.slot] = t.fade;
         }
       } else {
+        const slots = farSlots[t.species][t.fv];
+        t.fslot = slots.length;
         t.slot = -1;
-        const i = farCounts[t.species][t.fv]++;
+        slots.push(t);
         for (const m of farMeshes[t.species][t.fv]) {
-          m.setMatrixAt(i, t.mat);
-          m.setColorAt(i, t.tint);
+          m.setMatrixAt(t.fslot, t.mat);
+          m.setColorAt(t.fslot, t.tint);
+          const fa = m.geometry.attributes.aFadeI;
+          if (fa) fa.array[t.fslot] = 0;
         }
       }
     }
     for (const sp of speciesList) {
       for (let vi = 0; vi < NEAR_VARIANTS; vi++) {
         for (const m of nearMeshes[sp][vi]) {
-          m.count = counts[sp][vi];
+          m.count = nearSlots[sp][vi].length;
+          m.instanceMatrix.clearUpdateRanges();
           m.instanceMatrix.needsUpdate = true;
-          if (m.instanceColor) m.instanceColor.needsUpdate = true;
-          m.geometry.attributes.aFadeI.needsUpdate = true;
+          if (m.instanceColor) { m.instanceColor.clearUpdateRanges(); m.instanceColor.needsUpdate = true; }
+          const fa = m.geometry.attributes.aFadeI;
+          fa.clearUpdateRanges();
+          fa.needsUpdate = true;
           m.visible = m.count > 0;
         }
       }
       for (let fi = 0; fi < FAR_VARIANTS; fi++) {
         for (const m of farMeshes[sp][fi]) {
-          m.count = farCounts[sp][fi];
+          m.count = farSlots[sp][fi].length;
+          m.instanceMatrix.clearUpdateRanges();
           m.instanceMatrix.needsUpdate = true;
-          if (m.instanceColor) m.instanceColor.needsUpdate = true;
+          if (m.instanceColor) { m.instanceColor.clearUpdateRanges(); m.instanceColor.needsUpdate = true; }
           m.visible = m.count > 0;
         }
       }
@@ -1829,11 +2040,20 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
         if (count > 0) cm.mesh.count = count;
       }
     }
-    if (_carpetLast.distanceToSquared(camPos) > 49) {
+    // PERF (performance_budget r5): stagger the two rebuild classes so a
+    // carpet re-upload and a tree repartition never land on the same frame
+    // (each is a multi-MB instance-buffer upload; pairing them doubled the
+    // spike). Carpet additionally rate-limits on wall clock — at top speed the
+    // 7 m trigger fired ~2x/s and each rebuild is the priciest upload we have.
+    const nowMs = (typeof performance !== 'undefined' ? performance.now() : 0);
+    let uploadedThisFrame = false;
+    if (_carpetLast.distanceToSquared(camPos) > 49 && nowMs - _carpetLastMs > 180) {
       _carpetLast.copy(camPos);
+      _carpetLastMs = nowMs;
       rebuildCarpet(camPos);
+      uploadedThisFrame = true;
     }
-    if (_lastCam.distanceToSquared(camPos) > 9) {
+    if (!uploadedThisFrame && _lastCam.distanceToSquared(camPos) > 9) {
       _lastCam.copy(camPos);
       repartitionTrees(camPos);
     }
@@ -1851,11 +2071,15 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
    *   the corridor/bush fades switch from screen-door dither to a binary
    *   cut (uScopeHard) so the magnified picture carries no stipple.
    */
-  function setSniperFade(f, immediate = false, fovDeg = null) {
+  function setSniperFade(f, immediate = false, fovDeg = null, aimDistM = null) {
     sniperFadeTarget = clamp(f, 0, 1);
     if (immediate) uSniperFade.value = sniperFadeTarget;
     if (sniperFadeTarget < 0.5) uScopeHard.value = 0;
     else if (fovDeg != null) uScopeHard.value = fovDeg <= 15 ? 1 : 0;
+    // r5: scope-ray corridor reaches the aimed point (see uScopeDist). The
+    // 70 m floor keeps the r4 near-field behavior when aiming at a close
+    // wall; the 640 m cap covers the max fire range with margin.
+    if (aimDistM != null) uScopeDist.value = clamp(Math.max(70, aimDistM - 4), 70, 640);
   }
 
   return { group, update, setWindTime, setSniperFade, treeObstacles, concealers, _clusters: clusters };

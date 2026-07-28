@@ -96,6 +96,20 @@ const PLAYER_THREAT_DIST_MULT = 0.35; // player counts as 35% of its true d² wh
 // + tracer are intel) — a firing player at 400 m is otherwise unspottable by
 // 350-380 m-view WW2 bots and could farm whole teams for free.
 const PLAYER_AGGRO_WINDOW_S = 25;
+// PLAYER MUZZLE-FLASH INTEL (controls_gunnery r5): r4's playerAggro only
+// armed on a LANDED player hit (shell:hit) — a player sniping from outside
+// the bots' 350-380 m view range was revealed for one aggro window and then
+// went dark again while the aggro'd bot stalled in a losBlockedT>5 chase.
+// Decisive r5 probe: 3 penetrating player hits, 29+ enemy shells over two
+// 60 s runs, ZERO aimed within 4° of the player — functionally invulnerable.
+// Now every player SHOT (state.js fans out shell:fired to notifyPlayerFired)
+// re-reveals the player to all enemies within earshot for this window, the
+// aggro'd bots hard-commit (2 s vantage threshold, unconditional engage-range
+// bonus), and a stalemate breaker forces silent bots with a known contact to
+// push a firing position instead of idling in patrol/seekCover.
+const MUZZLE_INTEL_WINDOW_S = 18;
+const STALEMATE_SILENT_S = 12;   // no shot fired this long w/ contact → push
+const STALEMATE_PUSH_S = 8;      // duration of one forced push window
 
 // HEADING COMMITMENT (controls_gunnery r3): approach/chase legs used to steer
 // at the LIVE target position every tick, so bots wove continuously (speed
@@ -280,6 +294,18 @@ export function createAI(entity, opts = {}) {
   let gunLimitT = 0;
   let nudgeUntilS = -1;
   let arcLimitedT = 0;              // gun pinned at an elevation/depression stop
+  // STALEMATE BREAKER (controls_gunnery r5): mid-battle enemy fire rate
+  // collapsed to 1-2 shells/10 s (bots posturing in patrol/seekCover with
+  // live contacts). Track the last time the trigger was actually pulled;
+  // a long silent stretch WITH a contact forces a vantage push and
+  // suspends cover-seeking for STALEMATE_PUSH_S.
+  let lastFiredAtS = 0;
+  let pressUntilS = -1;
+  let dispGateT = 0; // time spent otherwise-ready but dispersion-gated (r5)
+  // coverIQ hesitation decays over the battle so late-game bots commit
+  // instead of endlessly rolling hull-down/cover searches between shots.
+  const effCoverIQ = () =>
+    nowS < pressUntilS ? 0 : tier.coverIQ * clamp(1.15 - nowS / 240, 0.35, 1);
 
   const scanPhase = rng() * TAU;             // idle turret sweep phase
   let obstacles = deps.getObstacles();
@@ -726,17 +752,28 @@ export function createAI(entity, opts = {}) {
         if (driveToXZ(input, vantage.x, vantage.z, 1.0)) hasVantage = false;
         return;
       }
-      if (losBlockedT > 5 && findVantage()) {
+      // r5: a PLAYER target (or a forced stalemate push) hard-commits — the
+      // r4 aggro'd bot sat in the blocked chase for 5+ s per attempt and
+      // never converted aggro into a firing position (probe: zero shells at
+      // the player across 90 s while "chasing" it).
+      const vantageAfterS =
+        (target.isPlayer || timeS < pressUntilS) ? 2 : 5;
+      if (losBlockedT > vantageAfterS && findVantage()) {
         hasVantage = true;
         driveToXZ(input, vantage.x, vantage.z, 1.0);
         return;
       }
-      chaseToXZ(input, lastSeen.x, lastSeen.z, 0.9); // committed leg (r3)
+      chaseToXZ(input, lastSeen.x, lastSeen.z, target.isPlayer ? 1.0 : 0.9);
       return;
     }
     hasVantage = false; // ray is clear — fight from here
+    // r5: the engage envelope extends unconditionally toward a PLAYER
+    // attacker-of-record and during a stalemate push — not only while the
+    // 15 s underFire window happens to be live.
     const engageR = tier.engageRangeM +
-      (timeS < underFireUntilS ? UNDER_FIRE_RANGE_BONUS_M : 0);
+      ((timeS < underFireUntilS ||
+        (target.isPlayer && timeS < playerAggroUntilS) ||
+        timeS < pressUntilS) ? UNDER_FIRE_RANGE_BONUS_M : 0);
     if (distToTarget > engageR) {
       chaseToXZ(input, tp.x, tp.z, 1.0); // committed leg (r3) — leadable mover
       return;
@@ -745,8 +782,20 @@ export function createAI(entity, opts = {}) {
       if (driveToXZ(input, moveTarget.x, moveTarget.z, 0.6)) hasMoveTarget = false;
       return;
     }
-    if (distToTarget > tier.holdRangeM) {         // creep closer while shooting
-      chaseToXZ(input, tp.x, tp.z, 0.45); // committed leg (r3) — leadable mover
+    if (distToTarget > tier.holdRangeM) {
+      // HALT-AND-VOLLEY (controls_gunnery r5): the old branch crept at 0.45
+      // throttle the whole way from engageR down to holdRange — movement
+      // bloom kept computeDispersionRadM above the fire gate for the entire
+      // 240-580 m band, so mid-range bots with clear LOS simply never shot
+      // (diag: 60 s, two live enemies staring at contacts, zero shells; only
+      // sub-holdRange bots ever fired). WoT bots stop-shoot-move: advance
+      // while the gun is loading, HALT and settle the moment it is ready.
+      const rl = entity.combat && entity.combat.reload;
+      if (rl && rl.t > 1.2) {
+        chaseToXZ(input, tp.x, tp.z, 0.6); // close distance during the reload
+        return;
+      }
+      faceYaw(input, Math.atan2(tp.x - st.pos.x, tp.z - st.pos.z));
       return;
     }
     // Hold: face the target hull-on and shoot.
@@ -815,6 +864,14 @@ export function createAI(entity, opts = {}) {
     // Dispersion gate: reticle smaller than half the target width × difficulty factor.
     const dispersionOk =
       computeDispersionRadM(spec, st, dist) < (tw / 2) * tier.fireFactor;
+    // r5 SETTLED-SHOT TIMEOUT: at 350-620 m many guns can NEVER shrink the
+    // reticle under (tw/2)×fireFactor — the gate is bloom DISCIPLINE, not a
+    // range cap, yet it hard-vetoed every long shot: the r5 diag showed two
+    // halted, aligned, loaded, LOS-clear bots staring at the player at
+    // 400/416 m for 20+ s with dispersionOk false the whole time (this is
+    // the "one-directional combat" critical). A bot that stays otherwise
+    // ready for >2.5 s takes the fully-aimed shot anyway, exactly like a
+    // WoT player firing on a settled-but-wide reticle.
 
     // Alignment gate: the gun itself (not just the aim point) is on target.
     // The wanted pitch is measured from the TRUNNION (movement.js drives the
@@ -847,8 +904,26 @@ export function createAI(entity, opts = {}) {
     const pitchTol = arcLimitedT > 2.5 ? Math.min(0.06, tol * 4) : tol * 1.5;
     const alignOk = yawErr < tol && pitchErr < pitchTol;
 
-    input.fire = gunReady && dispersionOk && alignOk && (penGateOk || chosenSlot === 2);
+    // (r5 settled-shot timeout — see the dispersion-gate note above)
+    if (gunReady && alignOk && !dispersionOk) dispGateT += dt;
+    else dispGateT = 0;
+    const dispersionPass = dispersionOk || dispGateT > 2.5;
+
+    input.fire = gunReady && dispersionPass && alignOk && (penGateOk || chosenSlot === 2);
+    if (input.fire) lastFiredAtS = timeS; // STALEMATE BREAKER bookkeeping (r5)
+    // controls_gunnery r5 debug surface (headless probes): why is/isn't this
+    // bot firing right now? Plain snapshot object — no live references.
+    _dbg.losClear = losClear; _dbg.reactionOk = reactionOk;
+    _dbg.reloadReady = reloadReady; _dbg.rangeOk = rangeOk;
+    _dbg.dispersionOk = dispersionOk; _dbg.dispGateT = +dispGateT.toFixed(1);
+    _dbg.alignOk = alignOk;
+    _dbg.penGateOk = penGateOk; _dbg.slot = chosenSlot;
+    _dbg.penRatio = +cachedPenRatio.toFixed(2);
+    _dbg.yawErrMrad = +(yawErr * 1000).toFixed(1);
+    _dbg.pitchErrMrad = +(pitchErr * 1000).toFixed(1);
+    _dbg.distM = Math.round(dist);
   }
+  const _dbg = {};
 
   // ---- state machine -------------------------------------------------------
 
@@ -869,14 +944,15 @@ export function createAI(entity, opts = {}) {
           mode = 'patrol';
           break;
         }
-        // Hull-down search on a slow cadence (coverIQ gates how often it happens).
+        // Hull-down search on a slow cadence (coverIQ gates how often it
+        // happens; r5 — decays over the battle + zero during a forced push).
         if (target && losClear && coverTimer <= 0) {
           coverTimer = COVER_INTERVAL_S;
-          if (rng() < tier.coverIQ && findCrest(moveTarget, false)) hasMoveTarget = true;
+          if (rng() < effCoverIQ() && findCrest(moveTarget, false)) hasMoveTarget = true;
         }
         // Long reload + low commitment → duck into full cover.
         if (target && cb && cb.reload && cb.reload.t > 2.0) {
-          if (!coverRolled) { coverRolled = true; coverRollPassed = rng() < tier.coverIQ; }
+          if (!coverRolled) { coverRolled = true; coverRollPassed = rng() < effCoverIQ(); }
           if (coverRollPassed && findCrest(coverPoint, true)) {
             hasCoverPoint = true;
             mode = 'seekCover';
@@ -960,6 +1036,52 @@ export function createAI(entity, opts = {}) {
     // Blocked-sightline timer for the vantage seek (driveEngage).
     if (mode === 'engage' && target && !losClear) losBlockedT += dt;
     else { losBlockedT = 0; if (losClear) hasVantage = false; }
+
+    // STALEMATE BREAKER (controls_gunnery r5): a bot with a known living
+    // contact that has not pulled the trigger for STALEMATE_SILENT_S is
+    // posturing (cover loop / blocked vantage / patrol drift) — force a
+    // push: abandon hull-down/cover intentions, re-engage, and if the ray
+    // is blocked sample a fresh vantage immediately. Keeps mid-battle
+    // tracer traffic alive instead of decaying to 1-2 shells/10 s.
+    {
+      const hasContact = (target && enemyAlive(target)) ||
+        (timeS - lastSeenAtS < TARGET_MEMORY_S + 6);
+      if (hasContact && timeS - lastFiredAtS > STALEMATE_SILENT_S &&
+          timeS >= pressUntilS) {
+        pressUntilS = timeS + STALEMATE_PUSH_S;
+        hasMoveTarget = false;
+        hasCoverPoint = false;
+        if (mode === 'seekCover' || mode === 'patrol') mode = 'engage';
+        if (target && !losClear && findVantage()) hasVantage = true;
+      } else if (!hasContact && timeS - lastFiredAtS > 25 &&
+                 timeS >= pressUntilS) {
+        // NO contact and a long quiet stretch: re-route the patrol toward
+        // the nearest living opponent's AREA (route intel only — spotting
+        // still gates acquisition), so late battles never decay into two
+        // survivors idling on opposite map rims with dead airwaves.
+        const list = deps.getEnemies();
+        let bestE = null, bestD2 = Infinity;
+        for (let i = 0; i < list.length; i++) {
+          const e = list[i];
+          if (!enemyAlive(e)) continue;
+          const dx = e.state.pos.x - st.pos.x, dz = e.state.pos.z - st.pos.z;
+          const d2 = dx * dx + dz * dz;
+          if (d2 < bestD2) { bestD2 = d2; bestE = e; }
+        }
+        if (bestE) {
+          pressUntilS = timeS + STALEMATE_PUSH_S;
+          waypoints.length = 0;
+          waypoints.push({
+            x: (st.pos.x + bestE.state.pos.x) / 2,
+            z: (st.pos.z + bestE.state.pos.z) / 2,
+          });
+          waypoints.push({ x: bestE.state.pos.x, z: bestE.state.pos.z });
+          wpIndex = 0;
+          autoPatrolBuilt = true;
+          if (mode === 'seekCover') mode = 'engage';
+        }
+      }
+    }
 
     let distToTarget = Infinity;
     if (target) {
@@ -1098,11 +1220,47 @@ export function createAI(entity, opts = {}) {
     }
   }
 
+  /**
+   * PLAYER MUZZLE-FLASH INTEL (controls_gunnery r5): the player FIRED within
+   * earshot (state.js fans this out to enemies within 420 m on every player
+   * shell:fired). Muzzle flash + tracer reveal the shooter — the player
+   * claims the sticky attacker-of-record slot (bypassing the spotting gate
+   * via isVisibleToTeam) and idle bots commit to the contact immediately.
+   * Unlike notifyUnderFire this never steals an ENGAGED bot's living target
+   * outright — acquireTarget's aggro path (clear personal ray) and the
+   * threat-weighted re-rank handle that on the next LOS tick.
+   * @param {object} shooterEnt the player TankEntity that fired
+   */
+  function notifyPlayerFired(shooterEnt) {
+    if (!shooterEnt || !shooterEnt.state || !shooterEnt.combat ||
+        shooterEnt.combat.destroyed || shooterEnt.team === entity.team) return;
+    playerAggro = shooterEnt;
+    playerAggroUntilS = Math.max(playerAggroUntilS, nowS + MUZZLE_INTEL_WINDOW_S);
+    lastSeen.x = shooterEnt.state.pos.x;
+    lastSeen.z = shooterEnt.state.pos.z;
+    lastSeenAtS = nowS;
+    if (!target || !enemyAlive(target)) {
+      target = shooterEnt;
+      acquiredAtS = nowS;
+      nonPenCount = 0;
+      probeTimer = 0;
+      if (mode === 'patrol') mode = 'engage';
+    }
+  }
+
   const controller = {
     update,
     setWaypoints,
     notifyShellResult,
     notifyUnderFire,
+    notifyPlayerFired,
+    /** Headless-probe introspection (controls_gunnery r5): gate snapshot. */
+    debugInfo: () => ({
+      mode, targetId: target ? target.id : null,
+      targetIsPlayer: !!(target && target.isPlayer),
+      losBlockedT: +losBlockedT.toFixed(1), hasVantage,
+      pressing: nowS < pressUntilS, ..._dbg,
+    }),
     state: mode,
   };
   entity.ai = controller;

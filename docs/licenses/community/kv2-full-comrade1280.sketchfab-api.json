@@ -1,0 +1,222 @@
+{
+ "animationCount": 0,
+ "categories": [
+  {
+   "uid": "22a2f677efad4d7bbca5ad45f9b5868e",
+   "name": "Cars & Vehicles",
+   "slug": "cars-vehicles",
+   "uri": "https://api.sketchfab.com/v3/categories/22a2f677efad4d7bbca5ad45f9b5868e",
+   "icon": "https://static.sketchfab.com/static/builds/web/dist/static/assets/images/icons/categories/45dd0cc0860ac57fcd63bde1cc3f2b7c-v2.svg",
+   "thumbnails": [
+    {
+     "width": "512",
+     "height": "288",
+     "url": "https://static.sketchfab.com/categories/22a2f677efad4d7bbca5ad45f9b5868e/512x288.png"
+    },
+    {
+     "width": "800",
+     "height": "450",
+     "url": "https://static.sketchfab.com/categories/22a2f677efad4d7bbca5ad45f9b5868e/800x450.png"
+    }
+   ]
+  }
+ ],
+ "commentCount": 44,
+ "createdAt": "2016-08-22T08:49:30.728322",
+ "embedUrl": "https://sketchfab.com/models/ba8b84d78c0a42038cf2eaa4210ef296/embed",
+ "faceCount": 583413,
+ "isAgeRestricted": false,
+ "license": {
+  "uri": "https://api.sketchfab.com/v3/licenses/322a749bcfa841b29dff1e8a1bb74b0b",
+  "label": "CC Attribution",
+  "fullName": "Creative Commons Attribution",
+  "requirements": "Author must be credited. Commercial use is allowed.",
+  "url": "http://creativecommons.org/licenses/by/4.0/",
+  "slug": "by"
+ },
+ "likeCount": 1262,
+ "name": "KV-2 heavy tank 1940",
+ "publishedAt": "2016-08-22T08:51:08.182110",
+ "soundCount": 0,
+ "staffpickedAt": "2016-08-23T05:37:29.711981",
+ "tags": [
+  {
+   "name": "armored",
+   "slug": "armored",
+   "uri": "https://api.sketchfab.com/v3/tags/armored"
+  },
+  {
+   "name": "ww2",
+   "slug": "ww2",
+   "uri": "https://api.sketchfab.com/v3/tags/ww2"
+  },
+  {
+   "name": "heavy",
+   "slug": "heavy",
+   "uri": "https://api.sketchfab.com/v3/tags/heavy"
+  },
+  {
+   "name": "turret",
+   "slug": "turret",
+   "uri": "https://api.sketchfab.com/v3/tags/turret"
+  },
+  {
+   "name": "caterpillar",
+   "slug": "caterpillar",
+   "uri": "https://api.sketchfab.com/v3/tags/caterpillar"
+  },
+  {
+   "name": "Tank",
+   "slug": "tank",
+   "uri": "https://api.sketchfab.com/v3/tags/tank"
+  },
+  {
+   "name": "heavytank",
+   "slug": "heavytank",
+   "uri": "https://api.sketchfab.com/v3/tags/heavytank"
+  },
+  {
+   "name": "soviet-army",
+   "slug": "soviet-army",
+   "uri": "https://api.sketchfab.com/v3/tags/soviet-army"
+  },
+  {
+   "name": "ww2weapons",
+   "slug": "ww2weapons",
+   "uri": "https://api.sketchfab.com/v3/tags/ww2weapons"
+  },
+  {
+   "name": "russian-weapon",
+   "slug": "russian-weapon",
+   "uri": "https://api.sketchfab.com/v3/tags/russian-weapon"
+  },
+  {
+   "name": "substancepainter",
+   "slug": "substancepainter",
+   "uri": "https://api.sketchfab.com/v3/tags/substancepainter"
+  },
+  {
+   "name": "substance",
+   "slug": "substance",
+   "uri": "https://api.sketchfab.com/v3/tags/substance"
+  },
+  {
+   "name": "vehicle",
+   "slug": "vehicle",
+   "uri": "https://api.sketchfab.com/v3/tags/vehicle"
+  },
+  {
+   "name": "gun",
+   "slug": "gun",
+   "uri": "https://api.sketchfab.com/v3/tags/gun"
+  },
+  {
+   "name": "textured",
+   "slug": "textured",
+   "uri": "https://api.sketchfab.com/v3/tags/textured"
+  },
+  {
+   "name": "highpoly",
+   "slug": "highpoly",
+   "uri": "https://api.sketchfab.com/v3/tags/highpoly"
+  }
+ ],
+ "thumbnails": {
+  "images": [
+   {
+    "uid": "6d932e3df4724ea7b74a25d33f994a0e",
+    "width": 1920,
+    "height": 1080,
+    "size": 369713,
+    "url": "https://media.sketchfab.com/models/ba8b84d78c0a42038cf2eaa4210ef296/thumbnails/b4347fc91dc64432b9fabf5a9a7943de/74dc71d234064f0986d81d5ff909127f.jpeg"
+   },
+   {
+    "uid": "c97ebba26e194c91beb1f00bf9db0e5e",
+    "width": 1024,
+    "height": 576,
+    "size": 76072,
+    "url": "https://media.sketchfab.com/models/ba8b84d78c0a42038cf2eaa4210ef296/thumbnails/b4347fc91dc64432b9fabf5a9a7943de/38e4ecead2064bb097e22ee8eba5ca12.jpeg"
+   },
+   {
+    "uid": "f526cd959723462fb4e452121e99a467",
+    "width": 720,
+    "height": 405,
+    "size": 37728,
+    "url": "https://media.sketchfab.com/models/ba8b84d78c0a42038cf2eaa4210ef296/thumbnails/b4347fc91dc64432b9fabf5a9a7943de/1fb56ea5250347f0b4093e713c276e31.jpeg"
+   },
+   {
+    "uid": "2a136a8c7bcb490eab4bd89e09e2fc91",
+    "width": 256,
+    "height": 144,
+    "size": 5578,
+    "url": "https://media.sketchfab.com/models/ba8b84d78c0a42038cf2eaa4210ef296/thumbnails/b4347fc91dc64432b9fabf5a9a7943de/c26cfd63d9c241fd8fa12b4237d0619b.jpeg"
+   },
+   {
+    "uid": "b95b1d8198fc465b95fadbba62783565",
+    "width": 64,
+    "height": 36,
+    "size": 788,
+    "url": "https://media.sketchfab.com/models/ba8b84d78c0a42038cf2eaa4210ef296/thumbnails/b4347fc91dc64432b9fabf5a9a7943de/9815bd1775404905a9d3130b1887e728.jpeg"
+   }
+  ]
+ },
+ "uid": "ba8b84d78c0a42038cf2eaa4210ef296",
+ "uri": "https://api.sketchfab.com/v3/models/ba8b84d78c0a42038cf2eaa4210ef296",
+ "user": {
+  "uid": "b3d557b8090940e69b5ca9524e9681b7",
+  "username": "comrade1280",
+  "displayName": "Comrade1280",
+  "account": "basic",
+  "profileUrl": "https://sketchfab.com/comrade1280",
+  "avatar": {
+   "uid": "7aba38aaae894511ba4610deadabed78",
+   "uri": "https://api.sketchfab.com/v3/avatars/7aba38aaae894511ba4610deadabed78",
+   "images": [
+    {
+     "width": 100,
+     "height": 100,
+     "size": 1023,
+     "url": "https://media.sketchfab.com/avatars/7aba38aaae894511ba4610deadabed78/8f8849c89018414b96acfb14a952e743.jpeg"
+    },
+    {
+     "width": 32,
+     "height": 32,
+     "size": 474,
+     "url": "https://media.sketchfab.com/avatars/7aba38aaae894511ba4610deadabed78/07e9955e3bef4f35a8b4c06fc22df3b1.jpeg"
+    },
+    {
+     "width": 48,
+     "height": 48,
+     "size": 599,
+     "url": "https://media.sketchfab.com/avatars/7aba38aaae894511ba4610deadabed78/2e54f6bd81524be9862b1eae58bb76b6.jpeg"
+    },
+    {
+     "width": 90,
+     "height": 90,
+     "size": 916,
+     "url": "https://media.sketchfab.com/avatars/7aba38aaae894511ba4610deadabed78/5e94c52e8aa14be290cd03627652572b.jpeg"
+    }
+   ]
+  },
+  "uri": "https://api.sketchfab.com/v3/users/b3d557b8090940e69b5ca9524e9681b7"
+ },
+ "vertexCount": 310742,
+ "viewCount": 90484,
+ "viewerUrl": "https://sketchfab.com/3d-models/kv-2-heavy-tank-1940-ba8b84d78c0a42038cf2eaa4210ef296",
+ "isDownloadable": true,
+ "isProtected": false,
+ "description": "Some little tweaking made for my old model. Now, with PBR textures.\n\nDownloadable",
+ "price": null,
+ "downloadCount": 16493,
+ "editorUrl": "https://sketchfab.com/models/ba8b84d78c0a42038cf2eaa4210ef296/edit",
+ "status": {
+  "warning": {},
+  "processing": "SUCCEEDED"
+ },
+ "source": "SubstancePainter",
+ "hasCommentsDisabled": false,
+ "updatedAt": "2023-01-06T17:12:31.792381",
+ "pbrType": "metalness",
+ "textureCount": 25,
+ "materialCount": 5
+}

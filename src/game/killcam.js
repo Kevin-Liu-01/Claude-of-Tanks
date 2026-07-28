@@ -52,6 +52,8 @@ const _proj = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 const _e = new THREE.Euler();
 const _Y = new THREE.Vector3(0, 1, 0);
+// scratch camera for the x-ray framing solve (fov/aspect set per solve)
+const _fitCam = new THREE.PerspectiveCamera(42, 16 / 9, 0.5, 4000);
 
 const MODULE_LABEL = {
   trackL: 'Track L', trackR: 'Track R', engine: 'Engine', fuelTank: 'Fuel Tank',
@@ -358,46 +360,74 @@ function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables) {
     return m;
   };
   if (kind === 'ammoRack') {
-    // cassette rows of standing rounds
+    // cassette rows of standing rounds: brass case + ogive tip per round
+    // (r7 critique: bare cylinders read as extruded crates, not shells) over
+    // a thin rack tray
     const nx = Math.max(2, Math.min(5, Math.floor(sx / 0.24)));
     const nz = Math.max(2, Math.min(7, Math.floor(sz / 0.24)));
     const r = Math.min(0.055, (sx / nx) * 0.3, (sz / nz) * 0.3);
-    const h = sy * 0.82;
-    const geo = new THREE.CylinderGeometry(r, r, h, 8);
-    disposables.push(geo);
-    const im = new THREE.InstancedMesh(geo, mat, nx * nz);
-    disposables.push(im);
+    const h = sy * 0.62;
+    const tipH = Math.min(sy * 0.26, r * 5.5);
+    const caseGeo = new THREE.CylinderGeometry(r, r, h, 8);
+    const tipGeo = new THREE.CylinderGeometry(r * 0.18, r * 0.94, tipH, 8);
+    disposables.push(caseGeo, tipGeo);
+    const im = new THREE.InstancedMesh(caseGeo, mat, nx * nz);
+    const it = new THREE.InstancedMesh(tipGeo, mat, nx * nz);
+    disposables.push(im, it);
     const m4 = new THREE.Matrix4();
     let i = 0;
     for (let ix = 0; ix < nx; ix++) {
       for (let iz = 0; iz < nz; iz++) {
-        m4.makeTranslation(
-          -sx / 2 + (ix + 0.5) * (sx / nx),
-          -sy / 2 + h / 2,
-          -sz / 2 + (iz + 0.5) * (sz / nz),
-        );
-        im.setMatrixAt(i++, m4);
+        const x = -sx / 2 + (ix + 0.5) * (sx / nx);
+        const z = -sz / 2 + (iz + 0.5) * (sz / nz);
+        m4.makeTranslation(x, -sy / 2 + sy * 0.06 + h / 2, z);
+        im.setMatrixAt(i, m4);
+        m4.makeTranslation(x, -sy / 2 + sy * 0.06 + h + tipH / 2, z);
+        it.setMatrixAt(i++, m4);
       }
     }
-    g.add(im);
+    g.add(im, it);
+    put(new THREE.BoxGeometry(sx * 0.98, sy * 0.08, sz * 0.98), 0, -sy / 2 + sy * 0.03, 0);
   } else if (kind === 'engine') {
-    // block + cooling ribs + fan disc
-    put(new THREE.BoxGeometry(sx * 0.78, sy * 0.58, sz * 0.8), 0, -sy * 0.14, 0);
-    for (let i = 0; i < 4; i++) {
-      put(new THREE.BoxGeometry(sx * 0.84, sy * 0.18, sz * 0.09),
-        0, sy * 0.18, -sz * 0.32 + i * (sz * 0.64 / 3));
+    // machinery read (r7 critique: flat slab stack): crankcase + narrower
+    // head block, transverse cylinder-bank ribs, shrouded cooling fan and
+    // twin exhaust manifolds along the flanks
+    put(new THREE.BoxGeometry(sx * 0.82, sy * 0.46, sz * 0.84), 0, -sy * 0.2, 0);
+    put(new THREE.BoxGeometry(sx * 0.58, sy * 0.34, sz * 0.64), 0, sy * 0.08, 0);
+    for (let i = 0; i < 5; i++) {
+      put(new THREE.BoxGeometry(sx * 0.66, sy * 0.42, sz * 0.05),
+        0, sy * 0.1, -sz * 0.28 + i * (sz * 0.56 / 4));
     }
-    put(new THREE.CylinderGeometry(Math.min(sx, sz) * 0.2, Math.min(sx, sz) * 0.2, sy * 0.1, 14),
-      -sx * 0.18, sy * 0.32, 0);
+    const fr = Math.min(sx, sz) * 0.2;
+    put(new THREE.CylinderGeometry(fr, fr, sy * 0.09, 16), -sx * 0.2, sy * 0.31, 0);
+    put(new THREE.TorusGeometry(fr * 1.15, fr * 0.14, 8, 20),
+      -sx * 0.2, sy * 0.31, 0, Math.PI / 2, 0, 0);
+    put(new THREE.CylinderGeometry(sy * 0.08, sy * 0.08, sz * 0.72, 8),
+      sx * 0.37, sy * 0.04, 0, Math.PI / 2, 0, 0);
+    put(new THREE.CylinderGeometry(sy * 0.08, sy * 0.08, sz * 0.72, 8),
+      -sx * 0.37, sy * 0.04, 0, Math.PI / 2, 0, 0);
   } else if (kind === 'fuelTank') {
     const r = Math.max(0.05, Math.min(sy * 0.42, sx * 0.21));
     put(new THREE.CylinderGeometry(r, r, sz * 0.85, 10), -sx * 0.22, 0, 0, Math.PI / 2, 0, 0);
     put(new THREE.CylinderGeometry(r, r, sz * 0.85, 10), sx * 0.22, 0, 0, Math.PI / 2, 0, 0);
+    // filler caps + connecting manifold so the drums read as plumbing
+    put(new THREE.CylinderGeometry(r * 0.3, r * 0.3, r * 0.5, 8), -sx * 0.22, r * 1.05, 0);
+    put(new THREE.CylinderGeometry(r * 0.3, r * 0.3, r * 0.5, 8), sx * 0.22, r * 1.05, 0);
+    put(new THREE.CylinderGeometry(r * 0.16, r * 0.16, sx * 0.44, 6),
+      0, 0, sz * 0.28, 0, 0, Math.PI / 2);
   } else if (kind === 'gun') {
-    // breech block + recoil cylinder pointing out the front of the box
-    put(new THREE.BoxGeometry(sx * 0.72, sy * 0.72, sz * 0.55), 0, 0, -sz * 0.12);
-    put(new THREE.CylinderGeometry(Math.min(sx, sy) * 0.2, Math.min(sx, sy) * 0.2, sz * 0.5, 10),
-      0, 0, sz * 0.28, Math.PI / 2, 0, 0);
+    // breech assembly behind the mantlet (r7 critique: turret interior read
+    // empty): breech ring where the barrel enters, block with a sliding
+    // wedge tail, gun cradle and twin recoil cylinders riding above it
+    const br = Math.min(sx, sy);
+    put(new THREE.BoxGeometry(sx * 0.6, sy * 0.74, sz * 0.4), 0, 0, -sz * 0.2);
+    put(new THREE.BoxGeometry(sx * 0.36, sy * 0.48, sz * 0.16), 0, -sy * 0.04, -sz * 0.46);
+    put(new THREE.CylinderGeometry(br * 0.28, br * 0.28, sz * 0.42, 12),
+      0, 0, sz * 0.2, Math.PI / 2, 0, 0);
+    put(new THREE.CylinderGeometry(br * 0.11, br * 0.11, sz * 0.62, 8),
+      sx * 0.24, sy * 0.3, sz * 0.06, Math.PI / 2, 0, 0);
+    put(new THREE.CylinderGeometry(br * 0.11, br * 0.11, sz * 0.62, 8),
+      -sx * 0.24, sy * 0.3, sz * 0.06, Math.PI / 2, 0, 0);
   } else if (kind === 'radio') {
     put(new THREE.BoxGeometry(sx * 0.75, sy * 0.55, sz * 0.7), 0, -sy * 0.12, 0);
     put(new THREE.CylinderGeometry(0.012, 0.012, sy * 0.7, 6), sx * 0.2, sy * 0.24, 0);
@@ -436,6 +466,64 @@ function addCrewProxy(bb, mat, poseGrp, turretGrp, disposables) {
   const hm = new THREE.Mesh(head, mat);
   hm.position.y = -sy / 2 + bodyH + headR * 0.8;
   g.add(bm, hm);
+}
+
+/**
+ * Hull anatomy dressing between the module boxes (r7 critique: the ghost
+ * hull read as colored crates, not tank anatomy): a driveshaft spine with
+ * u-joint collars running from the engine bay to the opposite hull end,
+ * finished with a ribbed transmission block and final-drive stubs. Direction
+ * is picked from where the engine sits (rear engine → front drive and vice
+ * versa). Pure geometry in the neutral steel tint — it carries no damage
+ * state and no label, so it can never contradict the sim.
+ * @param {object} armor snapshot armor block (modules bbs, hull frame)
+ */
+function addDrivetrainProxy(armor, poseGrp, disposables) {
+  const mods = armor.modules || [];
+  const eng = mods.find((m) => m.module === 'engine' && !m.turretLocal);
+  const trk = mods.find((m) => m.module === 'trackL') || mods.find((m) => m.module === 'trackR');
+  if (!eng || !trk) return;
+  const g = new THREE.Group();
+  g.renderOrder = 12; // nested Groups reset groupOrder — keep organs over the skin
+  poseGrp.add(g);
+  const mat = S.proxSteel;
+  const put = (geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => {
+    disposables.push(geo);
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.rotation.set(rx, ry, rz);
+    g.add(m);
+  };
+  const ex = (eng.min[0] + eng.max[0]) / 2;
+  const ey = (eng.min[1] + eng.max[1]) / 2;
+  const ez = (eng.min[2] + eng.max[2]) / 2;
+  const hullFwd = trk.max[2];
+  const hullRear = trk.min[2];
+  const rearEngine = ez < (hullFwd + hullRear) / 2;
+  const face = rearEngine ? eng.max[2] : eng.min[2];   // engine face the shaft leaves
+  const endZ = rearEngine
+    ? hullFwd - (hullFwd - hullRear) * 0.12
+    : hullRear + (hullFwd - hullRear) * 0.12;
+  const len = Math.abs(endZ - face);
+  if (len < 0.8) return; // engine already spans the hull — nothing to connect
+  const shaftY = Math.max(trk.min[1] + 0.3, ey - (eng.max[1] - eng.min[1]) * 0.2);
+  const midZ = (face + endZ) / 2;
+  put(new THREE.CylinderGeometry(0.07, 0.07, len, 8), ex, shaftY, midZ, Math.PI / 2, 0, 0);
+  put(new THREE.CylinderGeometry(0.14, 0.14, 0.12, 10),
+    ex, shaftY, face + (rearEngine ? 0.06 : -0.06), Math.PI / 2, 0, 0);
+  put(new THREE.CylinderGeometry(0.14, 0.14, 0.12, 10),
+    ex, shaftY, endZ + (rearEngine ? -0.06 : 0.06), Math.PI / 2, 0, 0);
+  // transmission block + rib fins + final-drive stubs out toward the sprockets
+  const tw = (eng.max[0] - eng.min[0]) * 0.92;
+  const th = Math.max(0.3, (eng.max[1] - eng.min[1]) * 0.58);
+  const tl = Math.min(0.75, len * 0.34);
+  put(new THREE.BoxGeometry(tw, th, tl), ex, shaftY + th * 0.14, endZ);
+  for (let i = 0; i < 3; i++) {
+    put(new THREE.BoxGeometry(tw * 1.06, th * 0.74, tl * 0.09),
+      ex, shaftY + th * 0.18, endZ - tl * 0.3 + i * tl * 0.3);
+  }
+  put(new THREE.CylinderGeometry(th * 0.28, th * 0.28, tw * 1.5, 10),
+    ex, shaftY, endZ, 0, 0, Math.PI / 2);
 }
 
 // ---------------------------------------------------------------------------
@@ -974,14 +1062,20 @@ export function createKillCam(deps) {
         //    is not a second black silhouette at the start of the chase
         pb.halo = new THREE.Sprite(S.halo);
         pb.halo.scale.set(3.1, 3.1, 1);
+        S.halo.opacity = 0.95; // shared mats: undo any axis fade left behind
+        S.tail.opacity = 0.17;
         const tailGeo = new THREE.ConeGeometry(0.42, 13, 10, 1, true);
         pb.disposables.push(tailGeo);
         pb.tail = new THREE.Mesh(tailGeo, S.tail);
         pb.group.add(pb.halo, pb.tail);
+        // Soft LOCAL pool only: at 120 int / 60 m the ground track lit a
+        // long orange carpet across the grass that read as a decal/god-ray
+        // (r7 critique) — the tracer core + halo carry the brightness, the
+        // light just kisses nearby terrain/fences as the shell passes.
         pb.shellLight = kcLights[1];
         pb.shellLight.color.setHex(0xffc48a);
-        pb.shellLight.intensity = 120;
-        pb.shellLight.distance = 60;
+        pb.shellLight.intensity = 48;
+        pb.shellLight.distance = 30;
         pb.muzzleLight = kcLights[2];
         pb.muzzleLight.color.setHex(0xe8f0fa);
         pb.muzzleLight.intensity = 70;
@@ -1044,6 +1138,20 @@ export function createKillCam(deps) {
       const minY = heightField.getHeightAt(_a.x, _a.z) + 0.8;
       if (_a.y < minY) _a.y = minY;
     }
+    // axis-aligned view fade: within ~25° of the trajectory axis the 13 m
+    // tail cone stops reading as a tracer and sweeps a wide orange sheet
+    // across the ground (r7 critique — the chase cam itself sits ~13° off
+    // axis, so the ribbon showed in every flight frame). The tail is a
+    // SIDE-view garnish: it dies entirely near the axis while the halo keeps
+    // a floor so the shell stays a glowing ball, and the trail polyline
+    // keeps the path a LINE. |dot| covers chasing and head-on alike.
+    if (pb.halo) {
+      const align = Math.abs(_s.copy(_p).sub(_a).normalize().dot(_d));
+      const f = 1 - THREE.MathUtils.smoothstep(align, 0.9, 0.972);
+      S.halo.opacity = 0.95 * (0.35 + 0.65 * f);
+      S.tail.opacity = 0.17 * f;
+      pb.shellLight.intensity = 48 * (0.3 + 0.7 * f);
+    }
     rig.setExternalPose(_a, _b, 50 - 8 * k);
     if (u >= 1) beginXray();
   }
@@ -1080,7 +1188,114 @@ export function createKillCam(deps) {
     }
     // look point raised ~6° above hull center: tilts the frame up so the
     // horizon/sky band stays visible at the top instead of an all-ground void
-    return { center, off, pos, look: center.clone().setY(center.y + R * 0.12) };
+    const xcam = { center, off, pos, look: center.clone().setY(center.y + R * 0.12) };
+    fitXrayFrame(snap, xcam);
+    return xcam;
+  }
+
+  /**
+   * Screen-fit solve for the x-ray vantage (r7 critique: the live Abrams
+   * x-ray cut the hull off the bottom/right frame edges). The fixed R×1.9
+   * orbit radius has no idea how the hull's LONG diagonal projects when the
+   * shell path runs nearly along the hull axis, and the terrain clamp can
+   * shove the camera up after the framing was chosen. Projects the victim's
+   * world bounding box through a scratch camera at the exact poses
+   * updateXray() will use — both ends of the orbit drift — then iterates
+   * orbit radius (distance) and look height (pitch) until every hull corner
+   * sits inside the ~80% safe area with its midline near frame center.
+   * Mutates xcam.off / xcam.pos / xcam.look in place; center is untouched
+   * (the veil + ghost-shader uniforms key off it).
+   */
+  function fitXrayFrame(snap, xcam) {
+    // Victim bbox from SNAPSHOT pose + spec dims — deliberately not
+    // Box3.setFromObject(visual.root): the live visual carries helper nodes
+    // (fx anchors, hidden LOD shells) that inflate the box and shoved the
+    // solve into a wide empty frame on the staged probe. The oriented hull
+    // box (yaw only — pitch/roll are degrees at rest) is what must read.
+    const pose = snap.pose;
+    let hw;
+    let hl;
+    try {
+      const dims = snap.targetEnt.spec.dims;
+      hw = dims.widthM * 0.5 + 0.2;
+      // HULL length, not overall: the gun barrel may leave the frame (WT
+      // crops barrels too) — fitting the barrel-inclusive box backed the
+      // camera off the r5-approved staged framing for nothing
+      hl = (dims.hullLengthM || dims.overallLengthM * 0.8) * 0.55;
+    } catch (_) {
+      hw = hl = Math.max(2, snap.boundingRadiusM || 4);
+    }
+    const hh = Math.max(1.5, snap.heightM || 2.4) + 0.25;
+    const cy = Math.cos(pose.yaw);
+    const sy = Math.sin(pose.yaw);
+    const corners = [];
+    for (let i = 0; i < 8; i++) {
+      const lx = i & 1 ? hw : -hw;
+      const ly = i & 2 ? hh : 0;
+      const lz = i & 4 ? hl : -hl;
+      corners.push(new THREE.Vector3(
+        pose.pos[0] + lx * cy + lz * sy,
+        pose.pos[1] + ly,
+        pose.pos[2] - lx * sy + lz * cy,
+      ));
+    }
+    _fitCam.fov = 42; // matches every rig.setExternalPose fov of the hold
+    _fitCam.aspect = camera.aspect;
+    _fitCam.updateProjectionMatrix();
+    const SAFE = 0.8;                          // corners kept inside ±0.8 NDC
+    const endAng = ORBIT_RAD_S * XRAY_HOLD_S;  // full drift of the hold
+    const tanHalf = Math.tan(THREE.MathUtils.degToRad(21));
+    let scale = 1;
+    for (let iter = 0; iter < 12; iter++) {
+      let worst = 0;
+      let midY = 0;
+      for (const ang of [0, endAng]) {
+        const ca = Math.cos(ang);
+        const sa = Math.sin(ang);
+        _a.set(
+          xcam.center.x + (xcam.off.x * ca + xcam.off.z * sa) * scale,
+          xcam.center.y + xcam.off.y * scale,
+          xcam.center.z + (-xcam.off.x * sa + xcam.off.z * ca) * scale,
+        );
+        if (heightField) {
+          const minY = heightField.getHeightAt(_a.x, _a.z) + 1.0;
+          if (_a.y < minY) _a.y = minY;
+        }
+        _fitCam.position.copy(_a);
+        _fitCam.lookAt(xcam.look);
+        _fitCam.updateMatrixWorld(true);
+        let lo = Infinity;
+        let hi = -Infinity;
+        for (const c of corners) {
+          _proj.copy(c).project(_fitCam);
+          worst = Math.max(worst, Math.abs(_proj.x), Math.abs(_proj.y));
+          lo = Math.min(lo, _proj.y);
+          hi = Math.max(hi, _proj.y);
+        }
+        if (ang === 0) midY = (lo + hi) / 2;
+      }
+      const centered = Math.abs(midY) <= 0.3;
+      if (worst <= SAFE && worst >= SAFE * 0.72 && centered) break;
+      if (worst <= SAFE && centered && scale <= 1) break; // artistic vantage already fits
+      // pitch: steer the look height so the hull's projected midline sits
+      // near frame center — a terrain-raised camera otherwise dumps the
+      // hull off the bottom edge however far the orbit backs off
+      if (!centered) {
+        xcam.look.y += THREE.MathUtils.clamp(midY, -0.5, 0.5)
+          * tanHalf * xcam.off.length() * scale;
+      }
+      // distance: track worst -> SAFE in BOTH directions (never closer than
+      // the artistic default) — a grow-only step ratcheted on early
+      // iterations while the pitch was still settling and locked the staged
+      // Tiger into a wide empty frame
+      scale = Math.max(1, scale * THREE.MathUtils.clamp(worst / SAFE, 0.72, 1.6));
+    }
+    if (scale !== 1) xcam.off.multiplyScalar(scale);
+    xcam.pos.copy(xcam.center).add(xcam.off);
+    if (heightField) {
+      const minY = heightField.getHeightAt(xcam.pos.x, xcam.pos.z) + 1.0;
+      if (xcam.pos.y < minY) xcam.pos.y = minY;
+    }
   }
 
   function beginXray() {
@@ -1220,6 +1435,8 @@ export function createKillCam(deps) {
     for (const mb of armor.modules || []) {
       addModuleProxy(mb, stateMat(modHit.get(mb.module), mb.module), poseGrp, turretGrp, pb.disposables);
     }
+    // hull anatomy between the boxes: driveshaft spine + transmission block
+    addDrivetrainProxy(armor, poseGrp, pb.disposables);
     // Crew state honesty (r5: a corpse tank showed a thriving bright-green
     // crew): red for casualties — this shell's crewHit plus anyone already
     // dead in the snapshot's post-hit combat roster — and neutral grey for
@@ -1436,15 +1653,30 @@ export function createKillCam(deps) {
       it.top = it.big ? it.ay + 14 : it.micro ? it.ay - it.lh / 2 : it.ay - 30 - it.lh;
     }
     // pass 2: vertical deconfliction — when projected rects overlap, cascade
-    // the later chip below the earlier one with a 4px gap
-    const items = pb.labels.filter((it) => !it.hidden).sort((a, b) => a.top - b.top);
+    // the later chip below the earlier one with a 4px gap. Anchor DOTS join
+    // as immovable obstacles so the big damage numeral can never sit on a
+    // module's leader-dot cluster (r7: −519 HP muddied TRACK R's dot right
+    // at the penetration point); a second sweep settles cascades that land
+    // a chip on a dot further down.
+    const items = [];
+    for (const it of pb.labels) {
+      if (it.hidden) continue;
+      items.push(it);
+      if (it.dot) items.push({ left: it.ax - 6, top: it.ay - 6, lw: 12, lh: 12, fixed: true });
+    }
+    items.sort((a, b) => a.top - b.top);
     for (let i = 0; i < items.length; i++) {
       const a = items[i];
-      for (let j = 0; j < i; j++) {
-        const b = items[j];
-        if (a.left < b.left + b.lw + 6 && b.left < a.left + a.lw + 6 &&
-            a.top < b.top + b.lh + 4 && b.top < a.top + a.lh + 4) {
-          a.top = b.top + b.lh + 4;
+      if (a.fixed) continue;
+      for (let sweep = 0; sweep < 2; sweep++) {
+        for (let j = 0; j < items.length; j++) {
+          if (j === i) continue;
+          const b = items[j];
+          if (!b.fixed && j > i) continue; // later movables resolve on their own turn
+          if (a.left < b.left + b.lw + 6 && b.left < a.left + a.lw + 6 &&
+              a.top < b.top + b.lh + 4 && b.top < a.top + a.lh + 4) {
+            a.top = b.top + b.lh + 4;
+          }
         }
       }
     }

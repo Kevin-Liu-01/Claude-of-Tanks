@@ -284,10 +284,22 @@ function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyA
         const ribMask = smoothstep(0.50, 0.80, wn(u, v * 0.4, 13, 2.0, 533) * 0.5 + 0.5);
         const crag = smoothstep(0.70, 0.92, wn(u, v, 26, 6.5, 601) * 0.5 + 0.5)
           * smoothstep(0.30, 0.55, v) * (1 - smoothstep(0.80, 0.95, v));
-        const snowL = 1.03 + sast * 0.09 + basin * 0.09 - gully * 0.16 - ribRaw * ribMask * 0.30;
+        // r8: amplitudes ~2x + one extra mid octave. At the r7 strengths the
+        // whole structure pass washed out under fog/haze and the ring read as
+        // an untextured smooth-gradient sheet with visible geometry facets
+        // (critique: "flat-shaded untextured low-poly"). Broad-in-v scales
+        // only, so tangential grazing still cannot comb them into stripes.
+        const spur = wn(u, v, 11, 4.8, 861); // shoulder/spur shading between basins
+        // r8b: measured std of the r8 pass was only ±9% luminance — after the
+        // ~50% scene-fog wash that rendered as a smooth gradient. Broad basins
+        // and spur shading carry most of the boost (they survive distance);
+        // combined std lands ~±19% pre-fog, and the alpine material darkening
+        // (1.61 -> 1.26 recenter) keeps it out of the tonemap shoulder.
+        const snowL = 1.03 + sast * 0.26 + basin * 0.34 + spur * 0.18
+          - gully * 0.22 - ribRaw * ribMask * 0.60;
         let sr = snowL * 0.98, sg = snowL * 1.0, sb = snowL * 1.04;
         // crag windows: bare cool rock showing through the mid-flank snow
-        sr += (0.60 - sr) * crag * 0.75; sg += (0.63 - sg) * crag * 0.75; sb += (0.70 - sb) * crag * 0.75;
+        sr += (0.60 - sr) * crag * 0.85; sg += (0.63 - sg) * crag * 0.85; sb += (0.70 - sb) * crag * 0.85;
         r += (sr - r) * sw * 0.94;
         gc += (sg - gc) * sw * 0.94;
         b += (sb - b) * sw * 0.94;
@@ -317,6 +329,59 @@ function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyA
 }
 
 // ---------------------------------------------------------------------------
+// High-zoom detail overlay (controls_gunnery r5) — a small TILEABLE value-
+// noise texture multiplied into the ring at ~6 m and ~22 m feature scales.
+// The base detail texture spans one u-repeat over ~370-800 m of ridge arc, so
+// an x8 scope frame (~60-100 m of arc) sees at most a few dozen texels: the
+// magnified walls read as an airbrushed matte gradient ("flat green
+// matte-painting backdrop", r5 critique). This overlay carries the crown
+// mottle / rock granulation the base texture cannot, mips away to nothing in
+// wide shots, and is built from a WRAPPED-lattice noise so
+// it tiles with no seam. Isotropic features + low anisotropy keep it from
+// combing into down-slope fiber at grazing angles (the r3/r6 curtain bug).
+// ---------------------------------------------------------------------------
+function makeDetailNoiseTexture(rng) {
+  const S = 256;
+  const c = document.createElement('canvas');
+  c.width = S; c.height = S;
+  const ctx = c.getContext('2d');
+  const img = ctx.createImageData(S, S);
+  const d = img.data;
+  // wrapped-lattice value noise, three octaves (cells wrap → texture tiles)
+  const octaves = [[8, 0.5], [24, 0.32], [64, 0.18]];
+  const lattices = octaves.map(([cells]) => {
+    const g = new Float32Array(cells * cells);
+    for (let i = 0; i < g.length; i++) g[i] = rng();
+    return g;
+  });
+  const smooth = (t) => t * t * (3 - 2 * t);
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      let v = 0;
+      for (let o = 0; o < octaves.length; o++) {
+        const cells = octaves[o][0], amp = octaves[o][1], g = lattices[o];
+        const fx = (x / S) * cells, fy = (y / S) * cells;
+        const x0 = Math.floor(fx) % cells, y0 = Math.floor(fy) % cells;
+        const x1 = (x0 + 1) % cells, y1 = (y0 + 1) % cells;
+        const tx = smooth(fx - Math.floor(fx)), ty = smooth(fy - Math.floor(fy));
+        const a = g[y0 * cells + x0], b = g[y0 * cells + x1];
+        const e = g[y1 * cells + x0], f = g[y1 * cells + x1];
+        v += ((a + (b - a) * tx) + ((e + (f - e) * tx) - (a + (b - a) * tx)) * ty - 0.5) * amp;
+      }
+      const L = clamp(128 + v * 255, 0, 255);
+      const j = (y * S + x) * 4;
+      d[j] = L; d[j + 1] = L; d[j + 2] = L; d[j + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 2; // grazing walls mip to a soft blend, never fiber streaks
+  return t;
+}
+
+// ---------------------------------------------------------------------------
 // Ridgeline tree-line texture (r5) — a repeating strip of conifer/broadleaf
 // SILHOUETTES with alpha. Planted along the crest of the nearer ridge rows on
 // vegetated styles: the loudest tell of the old backdrop was a perfectly
@@ -325,45 +390,87 @@ function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyA
 // multiplied by per-vertex crest colors so haze/sun grading matches the ridge.
 // ---------------------------------------------------------------------------
 function makeTreeLineTexture(rng) {
-  const w = 1024, h = 256;
+  // controls_gunnery r5: 1024x256 -> 2048x320 (2x u-resolution — at x8 one
+  // 56 m repeat spans several hundred screen px and the old texels smeared),
+  // and every tree carries INTERNAL shading — sun-lit upper tiers/crown lobes
+  // over a darker shadow core — so the magnified skyline reads as lit forest
+  // depth instead of flat paper cutouts.
+  const w = 2048, h = 320;
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   const ctx = c.getContext('2d');
   ctx.clearRect(0, 0, w, h);
   const base = h - 2;
+  const ink = (tone) =>
+    `rgb(${Math.round(126 * tone)},${Math.round(148 * tone)},${Math.round(116 * tone)})`;
+  // r8 FOREST MASS BAND: two depth layers of overlapping crown lobes filling
+  // the lower ~35% of the strip as a CONTINUOUS closed-canopy mass. Spaced
+  // individual silhouettes alone minify to isolated 1-2 px "toothpick" dashes
+  // along every distant ridgeline (critique: "model-railway diorama, no
+  // coherent forest mass past ~800 m"); a real forested crest is a solid
+  // serrated band with emergent crowns — the trees drawn after this become
+  // those emergents. Band height wanders and dips (never to zero) so
+  // clearings read as low scrub saddles, not bald crest.
+  for (let layer = 0; layer < 2; layer++) {
+    const tone0 = layer === 0 ? 0.52 : 0.72; // back layer darker (depth)
+    const hTop = layer === 0 ? 0.50 : 0.36;  // fraction of strip height
+    let bx = -20;
+    let bh = h * hTop * (0.75 + rng() * 0.4);
+    while (bx < w + 20) {
+      const cw = 30 + rng() * 52;
+      bh = clamp(bh + (rng() - 0.5) * h * 0.09, h * 0.09, h * hTop);
+      const rY = bh * 0.55;
+      ctx.fillStyle = ink(tone0 * (0.82 + rng() * 0.36));
+      ctx.beginPath();
+      ctx.ellipse(bx + cw / 2, base - bh + rY, cw * 0.72, rY, 0, 0, Math.PI * 2);
+      ctx.fill();
+      bx += cw * (0.48 + rng() * 0.34);
+    }
+  }
   let x = 2;
-  while (x < w - 12) {
+  while (x < w - 24) {
     const conifer = rng() < 0.62;
     const tj = 0.62 + rng() * 0.55; // per-tree value jitter
-    ctx.fillStyle = `rgb(${Math.round(126 * tj)},${Math.round(148 * tj)},${Math.round(116 * tj)})`;
     if (conifer) {
-      const th = 80 + rng() * 150, tw = 18 + rng() * 26;
+      const th = 100 + rng() * 188, tw = 23 + rng() * 32;
       const tiers = 3 + (rng() * 2 | 0);
       for (let t = 0; t < tiers; t++) {
         const ty = base - (th * (t + 1)) / tiers;
         const twt = tw * (1 - (t / tiers) * 0.72);
+        // shading: shadowed lower skirts -> lit upper tiers (top-down sun)
+        ctx.fillStyle = ink(tj * (0.74 + 0.42 * (t / Math.max(1, tiers - 1))));
         ctx.beginPath();
         ctx.moveTo(x + tw / 2 - twt / 2, ty + (th / tiers) * 1.45);
         ctx.lineTo(x + tw / 2 + twt / 2, ty + (th / tiers) * 1.45);
-        ctx.lineTo(x + tw / 2 + (rng() - 0.5) * 4, ty);
+        ctx.lineTo(x + tw / 2 + (rng() - 0.5) * 5, ty);
         ctx.closePath();
         ctx.fill();
       }
-      ctx.fillRect(x + tw / 2 - 2, base - th * 0.3, 4, th * 0.3 + 2);
+      // dark interior core keeps the silhouette from reading as a flat wash
+      ctx.fillStyle = ink(tj * 0.6);
+      ctx.fillRect(x + tw / 2 - tw * 0.09, base - th * 0.72, tw * 0.18, th * 0.5);
+      ctx.fillStyle = ink(tj * 0.62);
+      ctx.fillRect(x + tw / 2 - 2.5, base - th * 0.3, 5, th * 0.3 + 2);
       x += tw * (0.55 + rng() * 0.75);
     } else {
-      const th = 66 + rng() * 104, tw = 28 + rng() * 42;
+      const th = 82 + rng() * 130, tw = 35 + rng() * 52;
       const cy = base - th * 0.62;
-      for (let k = 0; k < 5; k++) {
+      for (let k = 0; k < 6; k++) {
+        const ox = (rng() - 0.5) * tw * 0.5;
+        const oy = (rng() - 0.5) * th * 0.38;
+        // shading: upper/left lobes lit, lower lobes in crown shadow
+        const lit = 0.78 - (oy / (th * 0.38)) * 0.28 - (ox / (tw * 0.5)) * 0.10;
+        ctx.fillStyle = ink(tj * clamp(lit, 0.5, 1.15));
         ctx.beginPath();
-        ctx.ellipse(x + tw / 2 + (rng() - 0.5) * tw * 0.5, cy + (rng() - 0.5) * th * 0.38,
+        ctx.ellipse(x + tw / 2 + ox, cy + oy,
           tw * (0.26 + rng() * 0.22), th * (0.18 + rng() * 0.14), rng() * Math.PI, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.fillRect(x + tw / 2 - 2.5, base - th * 0.35, 5, th * 0.35 + 2);
+      ctx.fillStyle = ink(tj * 0.58);
+      ctx.fillRect(x + tw / 2 - 3, base - th * 0.35, 6, th * 0.35 + 2);
       x += tw * (0.6 + rng() * 0.7);
     }
-    if (rng() < 0.12) x += 18 + rng() * 46; // occasional clearing gap
+    if (rng() < 0.12) x += 22 + rng() * 58; // occasional clearing gap
   }
   // flood transparent texels with the mean tone so mips never halo dark
   const id = ctx.getImageData(0, 0, w, h);
@@ -644,7 +751,10 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
         // every face snowbound and the whole ring flattened into uniform
         // cream pyramids; steep flanks now expose cool rock ribs, giving the
         // slope-based snow/rock banding a real range shows
-        const hold = 1 - smoothstep(0.30, 0.68, slope);
+        // r8: 0.30-0.68 -> 0.22-0.56 — even so the winter shot still rendered
+        // a near-uniform grey-white wall; more shed rock = more slope-keyed
+        // material contrast to mask the facet shading
+        const hold = 1 - smoothstep(0.22, 0.56, slope);
         c.lerp(snowC, clamp(band * 0.95 + (1 - band) * 0.38, 0, 1) * hold);
       }
       // lighting_post r3: real N·L against the map sun — sun-facing slopes
@@ -733,6 +843,41 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
     vertexColors: true, side: THREE.DoubleSide, map: detailTex,
   }); // unlit; scene fog still applies
   mat.color.setRGB(1.61, 1.61, 1.61);
+  // r8: the alpine wall's product (0.62-gray texture x 1.61 recenter x snow
+  // vertex colors x sun-side relight) landed at 0.9-1.4 LINEAR — squarely on
+  // the ACES shoulder, where the (boosted) sastrugi/rib/crag texture contrast
+  // compressed to a flat untextured gradient (the critique's "flat-shaded
+  // low-poly" winter ring). Pull the whole alpine ring ~22% down into the
+  // midtones; under the overcast sky a real range reads darker than the
+  // foreground snowfield anyway, and the surface structure finally resolves.
+  if (style === 'alpine') mat.color.setRGB(1.26, 1.26, 1.26);
+  // controls_gunnery r5: high-zoom detail overlay (see makeDetailNoiseTexture)
+  // — two extra octaves of isotropic mottle at ~6 m / ~22 m feature scales so
+  // the x8 sniper frame reads textured hillsides instead of a flat gradient.
+  // One u-repeat of the BASE uv covers ~370-800 m of arc and the full v range
+  // ~130-200 m of altitude, so (64, 26) lands both overlay axes near 6-8 m.
+  {
+    const detail2 = makeDetailNoiseTexture(
+      mulberry32(((seed ^ 0x0D37) ^ idHash(mapId)) >>> 0));
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uDetail2 = { value: detail2 };
+      // onBeforeCompile uniforms are NOT auto-declared in the GLSL —
+      // declared at global scope ahead of the injected block.
+      shader.fragmentShader = 'uniform sampler2D uDetail2;\n' +
+        shader.fragmentShader.replace(
+          '#include <map_fragment>', /* glsl */`#include <map_fragment>
+        {
+          float dA = texture2D(uDetail2, vMapUv * vec2(64.0, 26.0)).r - 0.5;
+          float dB = texture2D(uDetail2, vMapUv * vec2(17.0, 7.0) + vec2(0.37, 0.11)).r - 0.5;
+          // amplitudes sized to SURVIVE the baked haze lerp + scene fog: the
+          // wall multiplies this onto an already fog-flattened vertex color,
+          // so ±0.1 authored contrast reads as ~±0.04 on screen (still-flat
+          // first cut). ±0.29 lands at the crown-mottle read real hills give.
+          diffuseColor.rgb *= 1.0 + dA * 0.28 + dB * 0.30;
+        }`);
+    };
+    mat.customProgramCacheKey = () => 'horizon-ring-detail2-r5';
+  }
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = 'horizon-ring';
   mesh.castShadow = false;
@@ -759,7 +904,14 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
     const tlH = treeline * maxH;
     const cPos = [], cCol = [], cUv = [], cIdx = [];
     let vBase = 0;
-    for (const ri of combRows) {
+    // controls_gunnery r5: every comb row plants TWO ranks — the crest ribbon
+    // plus a BACK rank just outside and below the crest (u phase-shifted,
+    // hazier, ~15% shorter). Its crowns peek through the front rank's gaps
+    // and dips, so at x8 the skyline reads as layered forest DEPTH instead of
+    // one paper-cutout strip glued to the ridge line.
+    const ranks = [];
+    for (const ri of combRows) ranks.push([ri, 0], [ri, 1]);
+    for (const [ri, back] of ranks) {
       const row = rows[ri];
       // r6: 92 -> 72 m per texture repeat — denser tree combs so the crest
       // reads as closed forest, not scattered lollipops along a bare rim
@@ -774,24 +926,27 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
         // to a hidden zero-height line where faded out
         const fade = 1 - smoothstep(tlH * 0.8, tlH * 1.12, hh);
         const a = (kk / N) * Math.PI * 2;
-        const hn = gnoi.noise(Math.cos(a) * 5.3 + ri * 9, Math.sin(a) * 5.3 - ri * 5) * 0.5 + 0.5;
+        const hn = gnoi.noise(Math.cos(a) * 5.3 + ri * 9 + back * 3.7,
+          Math.sin(a) * 5.3 - ri * 5 - back * 2.9) * 0.5 + 0.5;
         // r7: crown span scales with row radius so far-ring combs keep their
         // angular weight — distant ridges must read forested, not stubbled
-        const span = (5 + (8 + hn * 12) * (0.85 + row.r / 2600)) * fade;
-        const inw = 0.995; // plant just inside the crest line
-        cPos.push(x * inw, hh - 5, z * inw, x * inw, hh - 5 + span, z * inw);
+        const span = (5 + (8 + hn * 12) * (0.85 + row.r / 2600)) * fade *
+          (back ? 0.85 : 1);
+        const inw = back ? 1.004 : 0.995; // back rank behind the crest line
+        const drop = back ? 5 + span * 0.4 : 5;
+        cPos.push(x * inw, hh - drop, z * inw, x * inw, hh - drop + span, z * inw);
         // lighting_post r3: combs inherit extra aerial haze (row.aer * 0.5)
         // so distant tree lines melt into the ridge instead of popping darker
-        // in front of it
-        const hz = row.aer * 0.5;
-        let cr = Math.min(1.4, col[i * 3] * 1.5);
-        let cg = Math.min(1.4, col[i * 3 + 1] * 1.5);
-        let cb = Math.min(1.4, col[i * 3 + 2] * 1.5);
+        // in front of it (r5: the back rank gets an extra step of haze)
+        const hz = Math.min(0.9, row.aer * 0.5 + (back ? 0.22 : 0));
+        let cr = Math.min(1.4, col[i * 3] * (back ? 1.32 : 1.5));
+        let cg = Math.min(1.4, col[i * 3 + 1] * (back ? 1.32 : 1.5));
+        let cb = Math.min(1.4, col[i * 3 + 2] * (back ? 1.32 : 1.5));
         cr += (fogC.r - cr) * hz;
         cg += (fogC.g - cg) * hz;
         cb += (fogC.b - cb) * hz;
         cCol.push(cr, cg, cb, cr, cg, cb);
-        const u = (k / N) * repeats;
+        const u = (k / N) * repeats + (back ? 0.5 : 0); // de-correlate ranks
         cUv.push(u, 0, u, 1);
       }
       for (let k = 0; k < N; k++) {

@@ -325,7 +325,30 @@ function applyModelFixes(scene, turret, spec) {
       carveTriangles(o.geometry, [
         // hardware bits belonging to the deleted second RWS
         [-0.85, -0.25, 1.55, 2.10, 3.30, 3.90],
+        // r5 (critic minor): flat shelf plate floating off the LEFT turret
+        // cheek with no mounting — a stray prop cluster the real SEPv3
+        // doesn't carry at that station
+        [-1.62, -0.55, -1.95, -1.15, 2.25, 2.95],
       ]);
+      // r5 (critic minor): the two whip antennas ran to ceiling height
+      // (raw z 4.0 -> 7.0 ≈ 2.4 m of whip). Compress the whip columns to
+      // ~45% length; bases/mounts below z 4.0 are untouched. Geometry is
+      // shared between clones — run once.
+      if (!o.geometry.userData.__cotAntennaTrim) {
+        o.geometry.userData.__cotAntennaTrim = true;
+        const pos = o.geometry.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          const z = pos.getZ(i);
+          if (z <= 4.0) continue;
+          const x = pos.getX(i), y = pos.getY(i);
+          const antL = (x + 1.4) * (x + 1.4) + (y - 3.1) * (y - 3.1) < 0.16;
+          const antR = (x - 1.3) * (x - 1.3) + (y - 3.15) * (y - 3.15) < 0.16;
+          if (antL || antR) pos.setZ(i, 4.0 + (z - 4.0) * 0.45);
+        }
+        pos.needsUpdate = true;
+        o.geometry.computeBoundingBox();
+        o.geometry.computeBoundingSphere();
+      }
     } else if (mn === 'Radiator') {
       // two large circular deck fans — no Abrams variant carries these
       // (r6 critique); replaced by flat rectangular grille panels below
@@ -503,7 +526,9 @@ function applyModelFixes(scene, turret, spec) {
         addPart(gun, mat, new THREE.CylinderGeometry(0.205, 0.205, 0.60, seg), cx, evacY, cz);
         addPart(gun, mat, new THREE.CylinderGeometry(0.205, 0.150, 0.17, seg), cx, evacY - 0.38, cz);
         addPart(gun, mat, new THREE.CylinderGeometry(0.150, 0.205, 0.17, seg), cx, evacY + 0.38, cz);
-        addPart(gun, mat, new THREE.CylinderGeometry(0.175, 0.175, 0.15, seg), cx, minY + 0.32, cz); // MRS collar
+        // r5: MRS collar slimmed 0.175 -> 0.142 (~1.2x tube) — at 0.175 it
+        // read as a grenade launcher can on the barrel tip (critic minor)
+        addPart(gun, mat, new THREE.CylinderGeometry(0.142, 0.142, 0.11, seg), cx, minY + 0.30, cz); // MRS collar
       }
     }
   }
@@ -810,6 +835,81 @@ function applyCommunityFixes(scene, spec, gun) {
       const thresh = maxY * 0.60;
       splitTrianglesToGroups(o, (i) => Math.abs(pos.getY(i)) > thresh, gear.track);
     });
+    // r5 (critic major: "track loops grossly oversized — the near track reads
+    // like a standalone vehicle"): shrink the whole track assembly relative
+    // to the hull. In the normalized frame the loops ran ground->1.17 m tall
+    // and 0.78 m wide EACH on a 1.58 m hull — WWII heavies carry ~0.9 m gear.
+    // World-space remap shared by every running-gear piece: height compressed
+    // 24% toward the ground line, each loop's cross-section pulled 34% toward
+    // its own side axis (|x| 1.53).
+    {
+      const yBot = 0.04, kY = 0.76, xSide = 1.53, kX = 0.66;
+      const fWorld = (p) => {
+        p.y = yBot + (p.y - yBot) * kY;
+        const s = p.x < 0 ? -1 : 1;
+        p.x = s * (xSide + (Math.abs(p.x) - xSide) * kX);
+        return p;
+      };
+      // (a) cleat-link rings: 154 static bones per side, flat under 'Root' —
+      // remap each bone's world position and shrink the pads with it.
+      const seenBones = new Set();
+      const wp = new THREE.Vector3();
+      const parentInv = new THREE.Matrix4();
+      scene.traverse((o) => {
+        if (!o.isSkinnedMesh || !o.skeleton) return;
+        for (const b of o.skeleton.bones) {
+          if (seenBones.has(b) || !/TankTrack/i.test(b.name || '')) continue;
+          seenBones.add(b);
+          b.getWorldPosition(wp);
+          fWorld(wp);
+          parentInv.copy(b.parent.matrixWorld).invert();
+          b.position.copy(wp.applyMatrix4(parentInv));
+          b.scale.multiplyScalar(0.78);
+          b.updateMatrixWorld(true);
+        }
+      });
+      // (b) fairing capsule / stud band / wheels: separate one-bone (Root)
+      // skinned meshes — bake the bone transform T from 4 probe points, then
+      // remap geometry as v' = T^-1 * fWorld(T * v). Exact for single-bone
+      // rigid bindings; meshes with mixed bindings are left alone.
+      const isRigid = (o) => {
+        const si = o.geometry.attributes.skinIndex;
+        if (!si) return false;
+        const first = si.getX(0);
+        for (let i = 0; i < si.count; i += 37) if (si.getX(i) !== first) return false;
+        return true;
+      };
+      scene.traverse((o) => {
+        if (!o.isSkinnedMesh || !o.geometry || !o.material) return;
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        const gearish = mats.every((mm) => mm && /AddOnTrack|AddOnWheel|CommunityTrack|CommunityWheel/i.test(mm.name || ''));
+        if (!gearish || !isRigid(o) || o.geometry.userData.__cotGearShrunk) return;
+        o.geometry.userData.__cotGearShrunk = true;
+        o.updateWorldMatrix(true, false);
+        // single-bone rigid binding: bind->world is one affine matrix,
+        // assembled straight from the skinning chain (matrixWorld ×
+        // bindMatrixInverse × boneWorld × inverseBind × bindMatrix).
+        const T = new THREE.Matrix4();
+        const bi = o.geometry.attributes.skinIndex.getX(0);
+        const bone = o.skeleton.bones[bi];
+        T.multiplyMatrices(o.matrixWorld, o.bindMatrixInverse);
+        T.multiply(bone.matrixWorld);
+        T.multiply(o.skeleton.boneInverses[bi]);
+        T.multiply(o.bindMatrix);
+        const Tinv = T.clone().invert();
+        const pos = o.geometry.attributes.position;
+        const v = new THREE.Vector3();
+        for (let i = 0; i < pos.count; i++) {
+          v.fromBufferAttribute(pos, i).applyMatrix4(T);
+          fWorld(v);
+          v.applyMatrix4(Tinv);
+          pos.setXYZ(i, v.x, v.y, v.z);
+        }
+        pos.needsUpdate = true;
+        o.geometry.computeBoundingBox();
+        o.geometry.computeBoundingSphere();
+      });
+    }
   } else if (spec.id === 'recon_tank') {
     const gear = getCommunityGearMaterials(spec);
     scene.traverse((o) => {
@@ -1057,6 +1157,7 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
     const rel = new THREE.Matrix4();
     const vtx = new THREE.Vector3();
     let tipZ = -Infinity;
+    const tipPts = [];
     gun.traverse((n) => {
       if (!n.isMesh || !n.geometry || !n.geometry.getAttribute) return;
       const pa = n.geometry.getAttribute('position');
@@ -1065,10 +1166,23 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
       const step = Math.max(1, Math.floor(pa.count / 4000));
       for (let i = 0; i < pa.count; i += step) {
         vtx.fromBufferAttribute(pa, i).applyMatrix4(rel);
+        tipPts.push(vtx.x, vtx.y, vtx.z);
         if (vtx.z > tipZ) tipZ = vtx.z;
       }
     });
-    if (tipZ > 0.8 && Number.isFinite(tipZ)) muzzle.position.z = tipZ - 0.04;
+    if (tipZ > 0.8 && Number.isFinite(tipZ)) {
+      // lighting_post r5: bore-line centroid over the last 0.35 units of tube
+      // — anchors the flash to the ACTUAL tube axis, not the procedural
+      // barrel's origin. The r3 pass re-derived only Z; X/Y stayed at the
+      // procedural (0,0), which floats ~0.3-0.5 m off any GLB whose tube
+      // centerline is not at recoilG-local y=0 (m1a2: flash ~0.4 m above the
+      // bore tip, combat_firing 07:28 batch).
+      let cx = 0, cy = 0, cn = 0;
+      for (let i = 0; i < tipPts.length; i += 3) {
+        if (tipPts[i + 2] > tipZ - 0.35) { cx += tipPts[i]; cy += tipPts[i + 1]; cn++; }
+      }
+      muzzle.position.set(cn ? cx / cn : 0, cn ? cy / cn : 0, tipZ - 0.04);
+    }
   }
   if (turret) reparent(turret, turretG);
   turretG.rotation.y = saved.ty;

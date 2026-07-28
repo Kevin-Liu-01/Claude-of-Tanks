@@ -48,7 +48,13 @@ const SHADOW_NORMAL_BIAS = 0.045; // kills acne on terrain slopes (CSM only expo
 // on a 4096 map is ~2 cm of penumbra); the widening now roughly DOUBLES per
 // cascade band, the PCSS-style distance ramp, and cascades 1-2 run at 4096
 // (quality.js) so even 3.0 texels stays a soft edge, not a smear.
-const SHADOW_RADII = [1.5, 2.2, 3.0, 3.8];
+// r5 (critique: "the player tank's cast shadow edge shows stair-step
+// shadow-map aliasing at standard chase distance"): cascade 0/1 radii
+// 1.5/2.2 → 2.1/2.7 — the 5-tap Vogel disk at 1.5 texels leaves visible
+// per-texel steps on a 4096 map at chase range; ~2.1 texels is the smallest
+// radius whose rotated taps fully bridge a texel edge (soft, not smeared —
+// the r5 "over-blurred stripes" failure started at ~3+ texels near).
+const SHADOW_RADII = [2.1, 2.7, 3.2, 3.8];
 // The radii above are tuned in TEXELS of these reference map sizes (ultra's
 // ladder). When a quality preset allocates a smaller map for a cascade, the
 // texel is proportionally larger — an uncompensated radius would widen the
@@ -67,7 +73,7 @@ const SHADOW_RADII_REF_SIZES = [4096, 4096, 4096, 2048];
 const SUN_INTENSITY = 4.5;
 const SUN_COLOR = 0xfff1dc; // warm noon-afternoon key
 const HEMI_SKY_COLOR = 0xaac8f5; // cool sky fill against the warm key
-const HEMI_GROUND_COLOR = 0x8c7a5b;
+const HEMI_GROUND_COLOR = 0x94815f; // r5: +6% ground-bounce (foliage shadow floor)
 // r3 rebalance: fill shifted FROM the omnidirectional IBL (sky.js
 // ENV_INTENSITY 0.28 → 0.20 — omni fill is what flattened building/hull form
 // at midrange) TO the hemisphere (0.20 → 0.32), whose sky-above/ground-below
@@ -92,7 +98,12 @@ const HEMI_INTENSITY = 0.36;
 // sky<->ground multiple-bounce term the single hemisphere layer misses;
 // sunny maps gain ~35% ambient (shadow interiors + hull flanks lift out of
 // black), winter gains only ~13%.
-const HEMI_BOUNCE_FLOOR = 0.12;
+// r5 ("foliage on the left third crushes to near-black — no ambient floor in
+// tree shadow cores"): +0.12 → +0.15, paired with a slightly lighter ground
+// pole below — the canopy-shadow interiors need ~15% more bounce to keep
+// leaf-color legible without lifting open-ground shadow contrast (the sun:
+// fill ratio on open grass moves <4%).
+const HEMI_BOUNCE_FLOOR = 0.15;
 // Backlit-rescue fill: a shadowless DirectionalLight from the anti-sun azimuth
 // at ~30° elevation. Sun-shadowed VERTICAL faces (tree canopies, barn walls,
 // hay bales seen against the light) currently drop to hemi+IBL only (~5% of
@@ -117,7 +128,13 @@ const FILL_COLOR = 0xbdd2f2; // same cool-sky family as the hemi
 // The fill mostly hits exactly those faces (cos-weighted against verticals),
 // so this is the cheapest targeted lift for vehicle readability; ground
 // shadow contrast moves <6% (sin 17 deg incidence).
-const FILL_INTENSITY = 0.80;
+// r5 ("battlefield_urban: building walls facing opposite directions have
+// near-identical luminance — no readable sun direction"): 0.80 → 0.66. The
+// r7 bump to 0.80 rescued the hull flank, but on architecture it erased the
+// lit-vs-shaded wall step that sells the sun at establishing distance. The
+// hemisphere bounce floor rose 0.12 → 0.15 in the same pass, so vehicle
+// flanks keep their floor while anti-sun facades drop a readable ~20%.
+const FILL_INTENSITY = 0.66;
 // Low elevation (~17°): vertical anti-sun faces catch ~cos(17°) ≈ 0.96 of the
 // fill while up-facing ground only gets sin(17°) ≈ 0.29 — backlit walls and
 // canopies lift out of black without flattening ground-shadow contrast.

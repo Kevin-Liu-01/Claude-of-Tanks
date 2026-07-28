@@ -143,8 +143,11 @@ export default {
 
   sky: {
     sunElevationDeg: 36, sunAzimuthDeg: 115,
-    turbidity: 5.5, rayleigh: 1.4, mieCoefficient: 0.007, mieDirectionalG: 0.8,
-    fogDensity: 0.00092, fogTintHex: 0x8d99a8, fogMix: 0.62, envIntensity: 0.2,
+    // lighting_post r5: turbidity 5.5->4.0, mie 0.007->0.005, fog 0.00092->
+    // 0.00078 — finishes the engine-side haze-cap/far-shadow work; the urban
+    // horizon share read as bleached white.
+    turbidity: 4.0, rayleigh: 1.4, mieCoefficient: 0.005, mieDirectionalG: 0.8,
+    fogDensity: 0.00078, fogTintHex: 0x8d99a8, fogMix: 0.62, envIntensity: 0.2,
     cloudOpacity: 0.85, cloudOpacity2: 0.5, cloudTintHex: 0xe8e4dc,
     sunIntensity: 4.2, sunColorHex: 0xffedd6, hemiIntensity: 0.36,
   },

@@ -133,9 +133,13 @@ const garageStage = createGarageStage(engineCtx, GARAGE_POS);
 scene.add(garageStage.group);
 // hud_ui r2: key 160 → 112, penumbra 0.45 → 0.6 — the warm key stacked with
 // the stage floods and clipped the turntable floor right of the tank to 255.
-const spotA = new THREE.SpotLight(0xfff1d8, 112, 60, 0.5, 0.6, 1.6);
+// hud_ui r5 (+ tank_models r5 garage-key rolloff): 112 → 78 / 80 → 58 with
+// wider penumbras — the light pool under the turntable was a blown-out
+// uniform white disc with a hard rim; lower peak stops the clip to paper
+// white, wider penumbra turns the pool edge into a radial falloff.
+const spotA = new THREE.SpotLight(0xfff1d8, 78, 60, 0.5, 0.85, 1.6);
 spotA.position.set(GARAGE_POS.x + 9, GARAGE_POS.y + 11, GARAGE_POS.z + 7);
-const spotB = new THREE.SpotLight(0xcfe0ff, 80, 60, 0.6, 0.5, 1.6);
+const spotB = new THREE.SpotLight(0xcfe0ff, 58, 60, 0.6, 0.8, 1.6);
 spotB.position.set(GARAGE_POS.x - 10, GARAGE_POS.y + 8, GARAGE_POS.z - 6);
 const spotTarget = new THREE.Object3D();
 spotTarget.position.set(GARAGE_POS.x, GARAGE_POS.y + 1.2, GARAGE_POS.z);
@@ -722,6 +726,11 @@ let lastMs = -1;
 let lastFov = camera.fov;
 let endShown = false;
 let shotMode = false;
+// controls_gunnery r5: true while the current __SHOTS view staged a live HUD
+// frame (player_view / sniper_view) — those views re-run hud.update each
+// shot-mode frame so the reticle canvas stays live (forceHitMark etc.).
+let shotHudFrame = false;
+let lastCineActive = false; // battle-open flyby HUD veil edge latch
 
 function updateDustAndSync(dtFrame) {
   for (const ent of game.tanks) {
@@ -812,6 +821,14 @@ function tick(nowMs) {
     world.update(0, camera.position, _fwd, null);
     updateSniperFill(); // same close-scope fill state as live play
     fx.update(dtR, game.shells, camera);
+    // controls_gunnery r5: staged HUD views redraw the reticle canvas every
+    // frame from the FROZEN frameInfo — the old early-return skipped
+    // hud.update entirely, so any post-set() canvas state change (e.g. the
+    // __DEBUG.forceHitMark hook, r3) never rendered and staged captures
+    // could under-report the live sight picture. Only views that staged a
+    // HUD frame (forcedHudFrame sets the latch) redraw; establishing shots
+    // stay hidden.
+    if (shotHudFrame) hud.update(frameInfo);
     lighting.update(true); // force ALL shadow cascades — deterministic capture
     post.render(dtR);
     return;
@@ -881,11 +898,21 @@ function tick(nowMs) {
   // 3. camera rig (kill-cam drives the camera through rig.setExternalPose)
   if (inBattle && !paused && !kcActive) rig.update(dtR, camInput);
   if (kcActive) killcam.update(dtR);
+
+  // Battle-open flyby: hide the battle HUD while the rig owns the camera
+  // (the rig itself shows the letterbox bars — cameraRig.setLetterbox).
+  // Edge-triggered so the kill-cam's own veilHud calls are never fought.
+  if (!kcActive && rig.cinematicActive !== lastCineActive) {
+    lastCineActive = rig.cinematicActive;
+    veilHud(lastCineActive);
+  }
   updateSniperFill(); // close-quarters scope readability (see definition)
 
   // 4. world LOD/wind (+ WoT-style near-grass suppression while scoped, and
-  // chase-camera foliage occlusion fade along player→camera in arcade)
-  world.setSniperFade(rig.mode === 'SNIPER' ? 1 : 0, false, camera.fov);
+  // chase-camera foliage occlusion fade along player→camera in arcade).
+  // r5: rig.aimDist drives the scope-ray foliage corridor length so the cull
+  // opens the sight line all the way to the aimed target, not just 70 m.
+  world.setSniperFade(rig.mode === 'SNIPER' ? 1 : 0, false, camera.fov, rig.aimDist);
   camera.getWorldDirection(_fwd);
   let occlFocus = null;
   if (inBattle && !kcActive && rig.mode === 'ARCADE' && game.player && game.player.state &&
@@ -1008,7 +1035,10 @@ function orbitPose(ent, distM, azimuthDeg, elevDeg, fovDeg) {
 
 function forcedHudFrame(mode, forcedAim) {
   // One deterministic hud.update (minimap + bars + selector), then the forced
-  // aim display per contract (persists because shot mode skips hud.update).
+  // aim display per contract. r5: shot-mode frames now RE-RUN hud.update from
+  // this frozen frameInfo every tick (see shotHudFrame in tick()) so the
+  // reticle canvas stays live for capture hooks like __DEBUG.forceHitMark.
+  shotHudFrame = true;
   hud.setMode(mode);
   frameInfo.timeS = VIEW_TIME.player_view;
   frameInfo.mode = mode;
@@ -1426,6 +1456,7 @@ window.__SHOTS = {
     const recipe = SHOT_VIEWS[name];
     if (!recipe) throw new Error(`Unknown screenshot view: ${name}`);
     shotMode = true;
+    shotHudFrame = false; // r5: recipes with a HUD frame re-latch this
     game.phase = 'shot';
     setGarageSpots(true); // shot staging keeps the boot-time light set
     zeroInputs();
@@ -1440,7 +1471,8 @@ window.__SHOTS = {
     recipe();
     // Shot mode runs world.update with dt=0 (frozen), so the eased sniper
     // grass fade would never move — snap it to match the rig mode instead.
-    world.setSniperFade(rig.mode === 'SNIPER' ? 1 : 0, true, camera.fov);
+    // (r5: aim distance opens the scope-ray corridor to the staged target.)
+    world.setSniperFade(rig.mode === 'SNIPER' ? 1 : 0, true, camera.fov, rig.aimDist);
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld(true);
     lighting.updateFrustums();

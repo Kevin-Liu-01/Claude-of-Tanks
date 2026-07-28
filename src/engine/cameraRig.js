@@ -305,6 +305,32 @@ export function createCameraRig(camera, deps) {
 
   const _cineLook = new THREE.Vector3();
 
+  // --- cinematic letterbox (rig-owned DOM) ----------------------------------
+  // The flyby must READ as an authored cinematic, not a camera bug: two black
+  // bars own the frame while cine is active. Created lazily (headless-safe),
+  // torn between by every path that cancels the cinematic. main.js
+  // additionally veils the battle HUD while rig.cinematicActive (see the
+  // cinematicActive getter note).
+  let letterboxEl = null;
+  function setLetterbox(on) {
+    if (typeof document === 'undefined') return;
+    if (!letterboxEl) {
+      if (!on) return;
+      letterboxEl = document.createElement('div');
+      letterboxEl.className = 'cot-cine-letterbox';
+      letterboxEl.style.cssText =
+        'position:fixed;inset:0;z-index:59;pointer-events:none;display:none;';
+      for (const side of ['top:0', 'bottom:0']) {
+        const bar = document.createElement('div');
+        bar.style.cssText =
+          `position:absolute;left:0;right:0;${side};height:11vh;background:#000;`;
+        letterboxEl.appendChild(bar);
+      }
+      document.body.appendChild(letterboxEl);
+    }
+    letterboxEl.style.display = on ? 'block' : 'none';
+  }
+
   /**
    * Solve the battle-start flyby at cine.t; returns false when finished.
    * r5 rebuild: the old quintic crane-down parked at the chase pose by 1 s of
@@ -326,11 +352,17 @@ export function createCameraRig(camera, deps) {
     if (_desired.y < minY) _desired.y = minY;
     camera.position.copy(_desired);
     camera.up.set(0, 1, 0);
-    // look: 40 m down the advance route -> the hero tank (converged by k=0.72)
-    const s = THREE.MathUtils.smoothstep(k, 0.12, 0.72);
+    // look: a SHORT lead down the advance route converging onto the hero tank
+    // from the very first frame. r5 motion capture: the old 40 m lead (held
+    // until k=0.12, converged at 0.72) pointed the camera at empty road for
+    // ~1.4 s of the 3 s sweep with the hull fully off-screen — every battle
+    // opened on what read as a camera bug. A 14 m lead keeps the hull inside
+    // the left third at k=0 (camera opens 45 m out) while still revealing the
+    // battle line; converged fully by k=0.6.
+    const s = THREE.MathUtils.smoothstep(k, 0.0, 0.6);
     _cineLook.copy(_pivotTarget)
-      .addScaledVector(cine.fwd, 40 * (1 - s))
-      .addScaledVector(_UPV, -1.6 * (1 - s));
+      .addScaledVector(cine.fwd, 14 * (1 - s))
+      .addScaledVector(_UPV, -1.0 * (1 - s));
     camera.lookAt(_cineLook);
     // FOV 72 -> 60: wide establishing breath tightening onto gameplay FOV
     setFov(BASE_FOV_DEG + 12 * (1 - k));
@@ -343,6 +375,7 @@ export function createCameraRig(camera, deps) {
     aimYaw = cine.endYaw;
     aimPitch = THREE.MathUtils.degToRad(-10);
     cine = null;
+    setLetterbox(false);
     freeYaw = 0;
     freePitch = 0;
     rig.mode = 'ARCADE';
@@ -370,9 +403,10 @@ export function createCameraRig(camera, deps) {
     /** Settings flag: unlock ×16/×25 sniper zoom steps ("increased zoom"). */
     _increasedZoom: false,
     /**
-     * True while the battle-open flyby drives the camera. main.js reads this
-     * to veil the HUD + letterbox the cinematic (a full battle HUD over the
-     * opening sweep reads as a bug, not a cinematic).
+     * True while the battle-open flyby drives the camera. The rig owns the
+     * cinematic LETTERBOX bars itself (setLetterbox); main.js reads this flag
+     * to veil the battle HUD for the sweep's duration (a full battle HUD over
+     * the opening cinematic reads as a bug — see effects_combat-r5 handoff).
      */
     get cinematicActive() { return cine !== null; },
 
@@ -500,9 +534,12 @@ export function createCameraRig(camera, deps) {
       // Scoped keeps a fraction so the zoom optics only flinch.
       if (fovKick > 0.02) {
         const base = lastFov;
-        setFov(base * (1 + 0.045 * fovKick * (rig.mode === 'SNIPER' ? 0.25 : 1)));
+        // 0.075 (was 0.045) over ~0.08 s: a 4.5-deg concussion pulse that
+        // survives 3-5 rendered frames (r5: the shot was a non-event from the
+        // chase camera — flash sub-100 ms, kick sub-pixel).
+        setFov(base * (1 + 0.075 * fovKick * (rig.mode === 'SNIPER' ? 0.25 : 1)));
         lastFov = base; // next solve compares against the UNKICKED base
-        fovKick *= Math.exp(-dt / 0.055);
+        fovKick *= Math.exp(-dt / 0.08);
       } else if (fovKick !== 0) {
         // pulse over — snap the projection back to the unkicked base
         // (setFov would no-op: lastFov already holds the base value)
@@ -529,9 +566,10 @@ export function createCameraRig(camera, deps) {
      * @returns {void}
      */
     recoilKick(x = 0.012) {
-      // 1.5x the caller impulse (r7: the 0.012 rad kick read sub-pixel at
-      // chase distance) + arm the FOV punch.
-      recoil = Math.min(0.035, recoil + x * 1.5);
+      // 2.4x the caller impulse (r5 motion capture: even the r7 1.5x kick was
+      // imperceptible across a 13-frame burst from the 13 m chase orbit — a
+      // 120 mm shot must visibly punch the camera) + arm the FOV punch.
+      recoil = Math.min(0.055, recoil + x * 2.4);
       fovKick = 1;
     },
 
@@ -575,6 +613,7 @@ export function createCameraRig(camera, deps) {
         fwd,
         curve,
       };
+      setLetterbox(true);
       rig.mode = 'ARCADE';
       applyPlayerVisibility(player, true);
     },
@@ -586,6 +625,7 @@ export function createCameraRig(camera, deps) {
      */
     startDeathCam() {
       cine = null;
+      setLetterbox(false);
       trauma = 0;
       const player = getPlayer();
       death = { az: player && player.state ? player.state.yaw + Math.PI * 0.75 : 0 };
@@ -674,6 +714,7 @@ export function createCameraRig(camera, deps) {
     setExternalPose(pos, lookAt, fovDeg = 50) {
       external = true;
       cine = null;
+      setLetterbox(false);
       death = null;
       trauma = 0;
       camera.userData.scoped = false;
@@ -696,6 +737,7 @@ export function createCameraRig(camera, deps) {
     snapArcade(step_, orbitYaw, orbitPitch) {
       external = false;
       cine = null;
+      setLetterbox(false);
       death = null;
       rig.mode = 'ARCADE';
       step = THREE.MathUtils.clamp(step_ | 0, 0, ORBIT_STEPS.length - 1);
@@ -724,6 +766,7 @@ export function createCameraRig(camera, deps) {
     snapSniper(zoom, aimYaw_, aimPitch_) {
       external = false;
       cine = null;
+      setLetterbox(false);
       death = null;
       rig.mode = 'SNIPER';
       rig.zoom = zoom;

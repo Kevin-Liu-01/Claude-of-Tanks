@@ -1,0 +1,13 @@
+Model: Jagdtiger 8.8 cm
+Author: Adi Priatna (adipriatna)
+Author profile: https://sketchfab.com/adipriatna
+Original source: https://sketchfab.com/3d-models/jagdtiger-88-cm-0a1e08cf55ab476582ce19ff8d30155a
+License: CC Attribution (Creative Commons Attribution) - http://creativecommons.org/licenses/by/4.0/
+License verified: 2026-07-28 via public Sketchfab API (https://api.sketchfab.com/v3/models/0a1e08cf55ab476582ce19ff8d30155a), snapshot saved as sketchfab-api.json
+Downloaded from mirror: https://huggingface.co/datasets/allenai/objaverse/resolve/main/glbs/000-081/0a1e08cf55ab476582ce19ff8d30155a.glb
+Mirror provenance: Objaverse (AllenAI) mirror of the original Sketchfab upload; Objaverse preserves per-object license metadata; license independently verified via public Sketchfab API (snapshot in sketchfab-api.json).
+Provenance check: author portfolio reviewed on Sketchfab 2026-07-28; consistent original artist portfolio, no game-rip signals.
+Processing: imported in Blender 5.2, junk/diorama geometry stripped where noted in pipeline-stats.json, decimated to <=150k tris where needed, scale-normalized to real-world meters, exported GLB (Y-up).
+
+Required attribution line:
+This work is based on "Jagdtiger 8.8 cm" (https://sketchfab.com/3d-models/jagdtiger-88-cm-0a1e08cf55ab476582ce19ff8d30155a) by Adi Priatna (adipriatna) (https://sketchfab.com/adipriatna) licensed under CC Attribution (http://creativecommons.org/licenses/by/4.0/)

@@ -155,6 +155,39 @@ function countForeignHeadless(ownBrowserPid) {
     return -1; // detection unavailable — never blocks certification by itself
   }
 }
+// Interactive GPU-contention guard (r5): the foreign-HEADLESS stamp misses
+// the third GPU sharer on a dev box — the user's own browser. Measured
+// 2026-07-28: three back-to-back valid-stamped 60 s dsf-2 runs on an
+// IDENTICAL build swung p99 14.4 -> 16.5 -> 30.3 ms; during the 30.3 run the
+// interactive Chrome GPU helper was burning 24 % CPU (video/WebGL), during
+// the 14.4 run it idled at <3 %. A window where a foreground app is actively
+// feeding the shared GPU can certify NEITHER outcome — sample the summed
+// %CPU of every non-headless browser gpu-process during the run and stamp
+// the report contended past a threshold comfortably above idle (~0-5 %).
+const GPU_CONTENDER_CPU_LIMIT = 15;
+function foreignGpuProcessCpu(ownBrowserPid) {
+  try {
+    const rows = execSync('ps -axo pid=,ppid=,pcpu=,command=', { encoding: 'utf8' })
+      .split('\n')
+      .map((l) => l.match(/^\s*(\d+)\s+(\d+)\s+([\d.]+)\s+(.*)$/))
+      .filter(Boolean);
+    const ppidOf = new Map(rows.map((m) => [+m[1], +m[2]]));
+    let cpu = 0;
+    for (const m of rows) {
+      if (!/--type=gpu-process/.test(m[4])) continue;
+      let pid = +m[1];
+      let ours = false;
+      for (let hop = 0; hop < 12 && pid; hop++) {
+        if (pid === ownBrowserPid || pid === process.pid) { ours = true; break; }
+        pid = ppidOf.get(pid) || 0;
+      }
+      if (!ours) cpu += +m[3];
+    }
+    return +cpu.toFixed(1);
+  } catch (_) {
+    return -1; // detection unavailable — never blocks certification by itself
+  }
+}
 
 const port = 5900 + Math.floor(Math.random() * 90);
 const server = await createServer({ root: process.cwd(), logLevel: 'error', server: { port, strictPort: false } });
@@ -175,8 +208,10 @@ const browser = await puppeteer.launch({
 });
 const ownBrowserPid = browser.process() ? browser.process().pid : -1;
 let foreignHeadlessMax = countForeignHeadless(ownBrowserPid);
+let foreignGpuCpuMax = foreignGpuProcessCpu(ownBrowserPid);
 const foreignSampler = setInterval(() => {
   foreignHeadlessMax = Math.max(foreignHeadlessMax, countForeignHeadless(ownBrowserPid));
+  foreignGpuCpuMax = Math.max(foreignGpuCpuMax, foreignGpuProcessCpu(ownBrowserPid));
 }, 10000);
 
 const page = await browser.newPage();
@@ -389,9 +424,11 @@ try {
   clearInterval(foreignSampler);
   load1Max = Math.max(load1Max, load1End);
   foreignHeadlessMax = Math.max(foreignHeadlessMax, countForeignHeadless(ownBrowserPid));
+  foreignGpuCpuMax = Math.max(foreignGpuCpuMax, foreignGpuProcessCpu(ownBrowserPid));
   const contended = load1Start > CONTENTION_LOAD_LIMIT
     || load1Max > CONTENTION_LOAD_LIMIT + PROBE_SELF_LOAD
-    || foreignHeadlessMax > 0;
+    || foreignHeadlessMax > 0
+    || foreignGpuCpuMax > GPU_CONTENDER_CPU_LIMIT;
   report.machine = {
     cores: CORES,
     load1Start: +load1Start.toFixed(2),
@@ -400,6 +437,9 @@ try {
     // foreign headless-Chromium render processes seen during the run (another
     // agent's probe/harness sharing this GPU); -1 = detection unavailable
     foreignHeadlessMax,
+    // summed %CPU of non-headless browser gpu-processes (the user's own
+    // browser actively using the shared GPU); -1 = detection unavailable
+    foreignGpuCpuMax,
     contended,
   };
   // Budget evaluation (see BUDGET above) — machine-checkable pass/fail lines.
@@ -429,7 +469,7 @@ try {
   report.budget = { pass: Object.values(lines).every((l) => l.pass), ...lines };
   // Certification validity: a contended machine cannot certify EITHER outcome.
   report.budget.certification = contended
-    ? `REFUSED — machine contended (load1 ${report.machine.load1Start}->${report.machine.load1End}, mid-run max ${report.machine.load1Max}, foreign headless-GPU procs ${foreignHeadlessMax}, on ${CORES} cores, load limit ${CONTENTION_LOAD_LIMIT}); re-run quiet`
+    ? `REFUSED — machine contended (load1 ${report.machine.load1Start}->${report.machine.load1End}, mid-run max ${report.machine.load1Max}, foreign headless-GPU procs ${foreignHeadlessMax}, interactive-browser GPU cpu ${foreignGpuCpuMax}% (limit ${GPU_CONTENDER_CPU_LIMIT}), on ${CORES} cores, load limit ${CONTENTION_LOAD_LIMIT}); re-run quiet`
     : (report.budget.pass ? 'PASS' : 'FAIL');
   if (contended) {
     console.error(`[perf] CONTENDED MACHINE: load1 ${report.machine.load1Start} -> ${report.machine.load1End} (mid-run max ${report.machine.load1Max}), foreign headless-GPU procs ${foreignHeadlessMax}, on ${CORES} cores (load limit ${CONTENTION_LOAD_LIMIT}). Numbers are for iteration only — certification refused.`);

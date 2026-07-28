@@ -14,7 +14,7 @@
 // Mounted by the clearly-marked SHOT-INFO section in src/ui/hud.js.
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
-import { maskIcon } from './icons.js';
+import { maskIcon, iconUrl } from './icons.js';
 import { getSpec, ALL_TANK_IDS } from '../vehicles/specs.js';
 import { penAtDistanceMm } from '../sim/ballistics.js';
 
@@ -70,7 +70,7 @@ GLYPH.skull = '<svg viewBox="0 0 12 12"><path d="M6 .9a4.2 4.2 0 0 0-4.2 4.2c0 1
 const SI_CSS = `
 .cot-si{position:absolute;inset:0;pointer-events:none;font-family:${FONT_STACK};color:${COL.text};}
 .cot-si *{box-sizing:border-box;margin:0;padding:0;}
-.cot-si-cardhost{position:absolute;right:16px;top:288px;width:262px;display:flex;
+.cot-si-cardhost{position:absolute;right:16px;top:288px;width:286px;display:flex;
   flex-direction:column;gap:6px;align-items:stretch;}
 .cot-si-card{background:linear-gradient(180deg,rgba(10,14,18,.88),rgba(6,9,12,.9));
   border:1px solid rgba(146,164,180,.3);border-right:2px solid rgba(146,164,180,.3);
@@ -93,6 +93,13 @@ const SI_CSS = `
 .cot-si-diag{display:flex;gap:8px;align-items:center;padding:6px 9px 0;}
 .cot-si-diag .box{position:relative;flex:0 0 auto;}
 .cot-si-diag .sil{position:absolute;inset:0;}
+/* shaded per-tank plan-form render (icons pipeline <id>_top/_side.png)
+   layered over the silhouette base: grayscale + brighten turns the camo
+   render into a light schematic that carries the turret/barrel/fender read
+   the flat mask lacked (r7: top view parsed as a generic rounded box) */
+.cot-si-diag .pf{position:absolute;inset:0;background-size:contain;
+  background-position:center;background-repeat:no-repeat;
+  filter:grayscale(.85) brightness(1.8) contrast(1.05);}
 .cot-si-diag svg.ov{position:absolute;inset:0;overflow:visible;}
 .cot-si-zone{font-size:10px;color:#f0c987;font-weight:700;letter-spacing:.06em;
   text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;flex:1;
@@ -104,7 +111,7 @@ const SI_CSS = `
   letter-spacing:.06em;font-family:${FONT_COND};font-stretch:condensed;text-transform:uppercase;
   border:1px solid currentColor;padding:1.5px 4px 1.5px 3px;line-height:1;}
 .cot-si-mod svg{width:11px;height:11px;display:block;}
-.cot-si-log{position:absolute;right:16px;top:288px;width:262px;display:none;
+.cot-si-log{position:absolute;right:16px;top:288px;width:286px;display:none;
   pointer-events:auto;background:linear-gradient(180deg,rgba(10,14,18,.92),rgba(6,9,12,.94));
   border:1px solid rgba(146,164,180,.3);box-shadow:0 6px 22px rgba(0,0,0,.55);
   max-height:calc(100vh - 560px);min-height:120px;overflow-y:auto;}
@@ -138,7 +145,7 @@ const SI_CSS = `
   font-family:${FONT_COND};font-stretch:condensed;letter-spacing:.07em;text-align:right;}
 .cot-si-stats{position:fixed;inset:0;z-index:71;display:none;pointer-events:none;
   flex-direction:column;align-items:center;justify-content:center;
-  padding:3vh 0 10vh;overflow:hidden;
+  padding:2vh 0 4vh;overflow:hidden;
   font-family:${FONT_STACK};color:${COL.text};
   background:linear-gradient(180deg,rgba(5,8,12,.9),rgba(4,7,10,.8) 42%,rgba(3,5,8,.92));}
 .cot-si-stats.show{display:flex;}
@@ -167,7 +174,8 @@ body.cot-si-report .cot-sixth,body.cot-si-report .cot-tgt,
 body.cot-si-report .cot-net,body.cot-si-report .cot-camoind,
 body.cot-si-report .cot-shells,body.cot-si-report .cot-minimap,
 body.cot-si-report .cot-hpbars,body.cot-si-report .cot-dmglayer,
-body.cot-si-report .cot-dp,body.cot-si-report .cot-si-log{display:none !important;}
+body.cot-si-report .cot-dp,body.cot-si-report .cot-si-log,
+body.cot-si-report .cot-ret{display:none !important;}
 .cot-si-ban{font-family:${FONT_COND};font-stretch:condensed;font-weight:800;font-size:56px;
   letter-spacing:.34em;text-indent:.34em;line-height:1;text-shadow:0 2px 22px rgba(0,0,0,.85);}
 .cot-si-ban.v{color:#7ee87e;}.cot-si-ban.d{color:#f05a5a;}.cot-si-ban.n{color:#cfd9e2;}
@@ -187,8 +195,12 @@ body.cot-si-report .cot-dp,body.cot-si-report .cot-si-log{display:none !importan
 .cot-si-you{display:flex;align-items:center;gap:8px;font-size:11px;padding:3px 0 6px;
   font-variant-numeric:tabular-nums;border-bottom:1px solid rgba(146,164,180,.14);
   margin-bottom:5px;}
+.cot-si-you .si{width:62px;height:24px;flex:0 0 auto;}
 .cot-si-you .n{flex:1;color:#f2f7fb;font-weight:800;font-family:${FONT_COND};
   font-stretch:condensed;letter-spacing:.1em;}
+.cot-si-meta{margin-top:12px;font-size:9.5px;letter-spacing:.2em;color:${COL.dim};
+  text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;
+  font-weight:700;text-align:center;}
 .cot-si-you .s{color:${COL.dim};font-size:10px;}
 .cot-si-you .dm{color:#ffd166;font-weight:800;font-family:${FONT_COND};
   font-stretch:condensed;width:60px;text-align:right;}
@@ -493,18 +505,22 @@ export function createShotInfo(bus) {
         `${badgeCol}d9 0%,${badgeCol}66 55%,${badgeCol}00 100%)`;
     };
 
-    // --- top view (72x72; icon: forward = up, screen right = -X world) ---
-    const TS = 72;
+    // --- top view (84x84; icon: forward = up, screen right = -X world) ---
+    const TS = 84;
     const top = el('div', 'box', wrap);
     top.style.width = `${TS}px`; top.style.height = `${TS}px`;
     const topSil = el('div', 'sil', top);
     maskIcon(topSil, specId, 'top_silhouette', SIL_FILL);
     topSil.style.filter = SIL_OUTLINE;
+    // per-tank plan-form over the mask (r7: the flat silhouette read as a
+    // generic rounded box) — the icons pipeline's shaded top render carries
+    // the real turret/barrel/fender detail; CSS declutters it to schematic
+    el('div', 'pf', top).style.backgroundImage = `url(${iconUrl(specId, 'top')})`;
     const halfT = (Math.max(dims.widthM, dims.overallLengthM) / 2) * ICON_MARGIN;
     const sT = (TS / 2) / halfT;
     const topPx = (x, z) => [TS / 2 - x * sT, TS / 2 - (z - czOff) * sT];
     const [hx, hy] = topPx(lp[0], lp[2]);
-    zoneTint(top, 'top_silhouette', hx, hy, 15);
+    zoneTint(top, 'top_silhouette', hx, hy, 18);
     let arrow = '';
     if (ld) {
       // Clamp the arrow tail inside the viewBox: the raw 2.2 m back-step
@@ -523,7 +539,7 @@ export function createShotInfo(bus) {
       ax = hx + dx * k;
       ay = hy + dy * k;
       arrow = `<line x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}"
-        stroke="#ff8a5c" stroke-width="1.6" marker-end="url(#cotsiarw)"/>`;
+        stroke="#ff8a5c" stroke-width="2.2" marker-end="url(#cotsiarw)"/>`;
     }
     // facing cues over the (turretless-reading) baked mask: turret ring +
     // gun-barrel line so the top view communicates orientation at a glance
@@ -548,28 +564,29 @@ export function createShotInfo(bus) {
         markerHeight="5" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ff8a5c"/></marker></defs>` +
       facing +
       arrow +
-      `<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="3.4" fill="none" stroke="#fff" stroke-width="1"/>` +
-      `<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="1.7" fill="#ff8a5c"/>`;
+      `<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="5" fill="none" stroke="#fff" stroke-width="1.3"/>` +
+      `<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="2.6" fill="#ff8a5c"/>`;
     top.appendChild(ovT);
 
     // --- side view (aspect 2:1; icon: front = right, up = +Y) ---
-    const SW = 96, SH = 48;
+    const SW = 116, SH = 58;
     const side = el('div', 'box', wrap);
     side.style.width = `${SW}px`; side.style.height = `${SH}px`;
     const sideSil = el('div', 'sil', side);
     maskIcon(sideSil, specId, 'side_silhouette', SIL_FILL);
     sideSil.style.filter = SIL_OUTLINE;
+    el('div', 'pf', side).style.backgroundImage = `url(${iconUrl(specId, 'side')})`;
     const halfS = Math.max(dims.heightM / 2, dims.overallLengthM / 4) * ICON_MARGIN;
     const sS = (SH / 2) / halfS;
     const sx = SW / 2 + (lp[2] - czOff) * sS;
     const sy = SH / 2 - (lp[1] - dims.heightM / 2) * sS;
-    zoneTint(side, 'side_silhouette', sx, sy, 13);
+    zoneTint(side, 'side_silhouette', sx, sy, 16);
     const ovS = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     ovS.setAttribute('class', 'ov');
     ovS.setAttribute('viewBox', `0 0 ${SW} ${SH}`);
     ovS.innerHTML =
-      `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="3.2" fill="none" stroke="#fff" stroke-width="1"/>` +
-      `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="1.6" fill="#ff8a5c"/>`;
+      `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="4.6" fill="none" stroke="#fff" stroke-width="1.3"/>` +
+      `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="2.4" fill="#ff8a5c"/>`;
     side.appendChild(ovS);
     return wrap;
   }
@@ -786,11 +803,26 @@ export function createShotInfo(bus) {
     const lh = el('div', 'ph', left);
     lh.innerHTML = '<span>Your sortie</span>';
     const you = el('div', 'cot-si-you', left);
+    // player vehicle thumb + name (r7: the sortie row was a bare YOU label
+    // over an empty composition) — specId straight from the event roster
+    let youSpec = (combatants.get(playerId) || {}).specId || null;
+    let youName = (combatants.get(playerId) || {}).name || '';
+    if (endRoster) {
+      const me = endRoster.find((r) => r.isPlayer);
+      if (me) {
+        if (!youSpec && me.specId) youSpec = me.specId;
+        if (!youName && (me.vehicle || me.name)) youName = me.vehicle || me.name;
+      }
+    }
     you.innerHTML =
-      `<span class="n">YOU</span>` +
+      (youSpec ? '<span class="si"></span>' : '') +
+      `<span class="n">YOU${youName ? ` — ${youName}` : ''}</span>` +
       `<span class="s">${kills} kill${kills === 1 ? '' : 's'} · ${stats.hits}/${stats.fired} shots · ` +
       `received −${Math.round(stats.received)}</span>` +
       `<span class="dm">−${Math.round(stats.dealt)}</span>`;
+    if (youSpec) {
+      maskIcon(you.querySelector('.si'), youSpec, 'side_silhouette', 'rgba(255,209,102,0.9)');
+    }
 
     // --- right: performance tiles + per-shell + commendations ---
     const rh = el('div', 'ph', right);
@@ -948,7 +980,14 @@ export function createShotInfo(bus) {
     statsRoot.dataset.rosterAllies = String(allies.length);
     statsRoot.dataset.rosterEnemies = String(enemies.length);
 
-    const teamBlock = (title, list) => {
+    // per-enemy interaction ledger: damage each combatant dealt TO THE PLAYER
+    // (r7: enemy rows carried no two-way story) — summed from the same
+    // receivedLog entries the toasts rendered, never re-simulated
+    const recvBy = new Map();
+    for (const e of receivedLog) {
+      if (e.aid != null && e.dmg > 0) recvBy.set(e.aid, (recvBy.get(e.aid) || 0) + e.dmg);
+    }
+    const teamBlock = (title, list, hostile) => {
       if (!list.length) return;
       const hd = el('div', 'ph', left);
       const alive = list.filter((r) => !r.dead).length;
@@ -956,15 +995,20 @@ export function createShotInfo(bus) {
       const host = el('div', 'cot-si-kills', left);
       for (const r of list) {
         const row = el('div', 'cot-si-kill', host);
-        // engagement detail for enemies the PLAYER fought (perTarget log)
-        const t = stats.perTarget.get(r.id);
-        const detail = t
-          ? (t.hits > 0
-            ? `${t.hits} hit${t.hits === 1 ? '' : 's'} · ${t.pens} pen${t.pens === 1 ? '' : 's'}` +
-              `${t.lastZone ? ' · ' + zoneLabel(t.lastZone) : ''}`
-            : 'no direct hits recorded') +
-            (!t.killed && t.hpLeft != null ? ` · ${t.hpLeft} hp left` : '')
-          : '';
+        // engagement detail is an ENEMY story (your hits on them, their
+        // damage on you) — ally rows stay clean (r7: every ally reading
+        // 'no direct hits recorded' was noise, the player never shoots them)
+        const t = hostile ? stats.perTarget.get(r.id) : null;
+        const took = hostile ? Math.round(recvBy.get(r.id) || 0) : 0;
+        const parts = [];
+        if (t && t.hits > 0) {
+          parts.push(`you: ${t.hits} hit${t.hits === 1 ? '' : 's'} · ${t.pens} pen${t.pens === 1 ? '' : 's'}` +
+            `${t.lastZone ? ' · ' + zoneLabel(t.lastZone) : ''}`);
+          if (!t.killed && t.hpLeft != null) parts.push(`${t.hpLeft} hp left`);
+        }
+        if (took > 0) parts.push(`hit you −${took}`);
+        const detail = parts.length ? parts.join(' · ')
+          : hostile ? 'no engagement with you' : '';
         row.innerHTML =
           `<span class="si"></span>` +
           `<span class="n">${r.isPlayer ? '<b class="you">YOU</b> ' : ''}${r.name || r.id}</span>` +
@@ -976,12 +1020,22 @@ export function createShotInfo(bus) {
           r.dead ? '#f28f8f' : 'rgba(206,220,232,0.75)');
       }
     };
-    teamBlock('Your team', allies);
-    teamBlock('Enemy team', enemies);
-    teamBlock('Contacts — side unconfirmed', unknown);
+    teamBlock('Your team', allies, false);
+    teamBlock('Enemy team', enemies, true);
+    teamBlock('Contacts — side unconfirmed', unknown, true);
     if (!rows.size) {
       const none = el('div', 'cot-si-empty', left);
       none.textContent = 'No engagements recorded.';
+    }
+    // meta footer: battle length from the latest event timestamp seen (a
+    // lower bound straight off the payload clocks — nothing invented)
+    const durS = Math.max(0,
+      ...stats.timeline.map((e) => e.t), ...receivedLog.map((e) => e.t));
+    if (rows.size || durS > 0) {
+      const meta = el('div', 'cot-si-meta', statsRoot);
+      meta.textContent = `${rows.size} combatant${rows.size === 1 ? '' : 's'}` +
+        (durS >= 30 ? ` · last engagement ${fmtTime(durS)}` : '') +
+        ` · ${stats.fired} shell${stats.fired === 1 ? '' : 's'} fired`;
     }
     statsRoot.classList.add('show');
     // suppress the integration end-overlay's duplicate verdict banner, hide
@@ -1090,7 +1144,7 @@ export function createShotInfo(bus) {
       const mods = (ev.modulesHit || []).filter((m) => m.newState === 'red')
         .map((m) => MODULE_LABEL[m.module] || m.module).join(', ');
       receivedLog.push({
-        t: ev.timeS || 0, dmg: ev.damage || 0, kind: ev.kind,
+        t: ev.timeS || 0, dmg: ev.damage || 0, kind: ev.kind, aid: ev.attackerId,
         attacker: ev.attackerName || 'Enemy', shellType: ev.shellType || '', mods,
       });
       showToast(ev, cls);

@@ -58,21 +58,39 @@ export const PRESETS = {
   // median (r4 cert) to 12.3 ms — a budget fail; this retune (ratio 1.25 →
   // 1.1, bloomScale 1.0 → 0.6, cascade 2 → 2048) brings it back to ~10 ms
   // (100 fps median) with every feature still on.
+  // r5 (lighting_post: "battlefield_urban has zero cast-shadow volumes from
+  // buildings onto streets at establishing-shot distance"): shadowMaxFar
+  // 520 → 700 on ultra/high. The urban establishing camera reads town rows
+  // out to ~500 m, and CSM's fade=true starts dissolving the last cascade
+  // well before maxFar — at 520 the far half of the town rendered shadowless.
+  // 700 keeps the whole town inside solid shadow range; the far cascades
+  // still re-render round-robin (lighting.js), so the per-frame fill cost is
+  // amortized, and the r7 penumbra compensation keeps edge softness constant.
   ultra: {
     label: 'Ultra',
     maxPixelRatio: 1.5,
     aoScale: 1.0,
     bloomScale: 1.0,
     shadowMapSizes: [4096, 4096, 4096, 2048],
-    shadowMaxFar: 520,
+    shadowMaxFar: 700,
   },
+  // r5 (perf recert): maxPixelRatio 1.1 -> 1.0 on 'high'. The r4 content round
+  // (near-camera 3D grass, forested far hills, tree variants) raised the dpr2
+  // battle median from 9.5 ms (r7 cert) to 12.5-13.5 ms and the p99 tail to
+  // 27-32 ms vs the 25 ms gate in THREE valid uncontended 60 s windows — the
+  // 1.1 ratio's 3.24 Mpx no longer fits the frame budget on the reference
+  // GPU. 1.0 = native 1080p logical resolution (2.07 Mpx, -17 % raster) and
+  // is the ONLY knob with ZERO effect at dpr 1 (the renderer ratio is already
+  // 1.0 there): every dpr-1 screenshot-contract capture is bit-identical.
+  // Ultra (explicit opt-in) keeps 1.5. Same playbook as the accepted r7
+  // retune (1.25 -> 1.1) when the r5/r6 content rounds outgrew the budget.
   high: {
     label: 'High',
-    maxPixelRatio: 1.1,
+    maxPixelRatio: 1.0,
     aoScale: 0.5,
     bloomScale: 0.6,
     shadowMapSizes: [4096, 4096, 2048, 2048],
-    shadowMaxFar: 520,
+    shadowMaxFar: 700,
   },
   medium: {
     label: 'Medium',

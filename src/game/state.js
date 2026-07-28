@@ -618,6 +618,21 @@ function tryFire(game, ent, bus, rig) {
   // SPOTTING WIRING: firing blooms the shooter's camo (with decay) and lights
   // up any concealing foliage within 15 m (see src/sim/spotting.js).
   if (game.spotting) game.spotting.notifyFired(ent.id, game.timeS);
+  // PLAYER MUZZLE-FLASH INTEL (controls_gunnery r5): a firing player is
+  // visible intel — muzzle flash + tracer — to every enemy within 420 m,
+  // even while camo keeps them formally unspotted. WW2 bots (350-380 m view
+  // range) could otherwise never acquire a 400 m sniping player: the r5
+  // probe measured 29+ enemy shells across two 60 s runs with ZERO aimed at
+  // the player. ai.js notifyPlayerFired re-reveals the player for
+  // MUZZLE_INTEL_WINDOW_S and hard-commits idle bots onto the shooter.
+  if (ent.isPlayer) {
+    for (const e of game.tanks) {
+      if (e === ent || e.team === ent.team || !e.aiCtl || !e.state ||
+          !e.combat || e.combat.destroyed) continue;
+      if (e.state.pos.distanceToSquared(ent.state.pos) > 420 * 420) continue;
+      if (e.aiCtl.notifyPlayerFired) e.aiCtl.notifyPlayerFired(ent);
+    }
+  }
 }
 
 /** Advance all live shells one step and resolve collisions. */

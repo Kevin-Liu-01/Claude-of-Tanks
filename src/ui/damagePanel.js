@@ -1,7 +1,8 @@
 // src/ui/damagePanel.js — bottom-left player damage panel, WoT panel
-// language: a single CLEAN side-profile silhouette of the vehicle (its own
-// pre-rendered side_silhouette.png, whip antenna stripped by a horizontal
-// morphological opening) carrying whisper-contrast INTERNAL structure —
+// language: a single SOLID light-steel side-profile silhouette of the vehicle
+// (its own pre-rendered side_silhouette.png, whip antenna stripped by a
+// horizontal morphological opening, r5: filled ~80%-alpha #9aa5ad — not a
+// wireframe) carrying whisper-contrast INTERNAL structure —
 // track-run separator, module compartment outlines, crew station dots — so
 // it reads as an instrument (hud_ui r3), while loud state only APPEARS on
 // damage: lit orange/red module icons at fixed anchors on the hull, hit-zone
@@ -175,8 +176,11 @@ function sideSilhouette(specId, onReady) {
     const entry = {
       img: src,
       bbox: [x0 * sx, y0 * sy, (x1 - x0 + 1) * sx, (y1 - y0 + 1) * sy],
-      rim: tintCanvas(src, 'rgba(232,242,250,0.96)'),
-      body: tintCanvas(src, '#2c343c'),
+      // r5: SOLID light-steel silhouette (WoT's filled tinted profile) over a
+      // thin dark contour — the old bright-rim + near-black body pair read as
+      // a wireframe outline with sawtooth roadwheels.
+      rim: tintCanvas(src, 'rgba(9,14,19,0.9)'),
+      body: tintCanvas(src, '#9aa5ad'),
     };
     silCache.set(specId, entry);
     if (onReady) onReady();
@@ -306,8 +310,12 @@ export function createDamagePanel() {
   const fireEl = root.querySelector('.fire');
 
   // single compact SIDE-PROFILE silhouette (WoT panel scale — one clean
-  // vehicle profile; module state lights up ON it, never beside it)
-  const CW = 132, CH = 74;
+  // vehicle profile; module state lights up ON it, never beside it).
+  // r5: CH is the CURRENT canvas height — it tightens to the artwork once
+  // the silhouette's aspect is known (the fixed 74px box left ~40% dead air
+  // around long low hulls like the Abrams).
+  const CW = 132, CH_MAX = 74;
+  let CH = CH_MAX;
   const dprC = 2; // fixed 2x internal resolution — crisp at devicePixelRatio 1
   const canvas = document.createElement('canvas');
   canvas.width = CW * dprC; canvas.height = CH * dprC;
@@ -315,6 +323,15 @@ export function createDamagePanel() {
   root.appendChild(canvas);
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dprC, 0, 0, dprC, 0, 0);
+  function fitCanvasHeight(hgt) {
+    const want = Math.round(Math.max(34, Math.min(CH_MAX, hgt)));
+    if (want === CH) return;
+    CH = want;
+    canvas.height = CH * dprC; // resize clears — callers redraw right after
+    canvas.style.height = `${CH}px`;
+    ctx.setTransform(dprC, 0, 0, dprC, 0, 0);
+    anchors = null;
+  }
 
   const crewRow = document.createElement('div');
   crewRow.className = 'crew';
@@ -418,10 +435,11 @@ export function createDamagePanel() {
         // dim placeholder hotspot (hud_ui r3): faint compartment outline so
         // the healthy silhouette reads as an instrument with internal
         // structure — it lights orange/red through the branch below on damage
-        ctx.fillStyle = 'rgba(226,238,248,0.05)';
-        ctx.strokeStyle = 'rgba(226,238,248,0.22)';
+        // (r5: dark ink — the structure now sits on a LIGHT solid fill)
+        ctx.fillStyle = 'rgba(10,16,22,0.06)';
+        ctx.strokeStyle = 'rgba(10,16,22,0.28)';
       } else {
-        ctx.fillStyle = STATE_COLOR[st] + '46';
+        ctx.fillStyle = STATE_COLOR[st] + '5c';
         ctx.strokeStyle = STATE_COLOR[st];
       }
       ctx.lineWidth = 1;
@@ -451,7 +469,7 @@ export function createDamagePanel() {
     ctx.globalCompositeOperation = 'source-atop';
     // track-run separator: hull floor vs running gear
     const ty = trackTopY();
-    ctx.strokeStyle = 'rgba(226,238,248,0.26)';
+    ctx.strokeStyle = 'rgba(10,16,22,0.32)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(destX + destW * 0.03, ty + 0.5);
@@ -474,7 +492,7 @@ export function createDamagePanel() {
         ctx.fillStyle = STATE_COLOR.red;
         ctx.fill();
       } else {
-        ctx.strokeStyle = 'rgba(226,238,248,0.30)';
+        ctx.strokeStyle = 'rgba(10,16,22,0.38)';
         ctx.lineWidth = 1;
         ctx.stroke();
       }
@@ -490,8 +508,8 @@ export function createDamagePanel() {
     const Hm = d.heightM || 2.6;
     const tPivot = (spec.armor && spec.armor.turretPivot) || [0, 1.2, 0];
     const hullTop = Hm * 0.62;
-    ctx.fillStyle = 'rgba(64,76,88,0.85)';
-    ctx.strokeStyle = 'rgba(210,226,240,0.75)';
+    ctx.fillStyle = 'rgba(154,165,173,0.82)';
+    ctx.strokeStyle = 'rgba(9,14,19,0.6)';
     ctx.lineWidth = 1.2;
     // hull side profile with glacis nose
     ctx.beginPath();
@@ -504,7 +522,7 @@ export function createDamagePanel() {
     ctx.fill();
     ctx.stroke();
     // turret + gun
-    ctx.fillStyle = 'rgba(84,98,110,0.9)';
+    ctx.fillStyle = 'rgba(154,165,173,0.9)';
     ctx.beginPath();
     ctx.moveTo(sx(tPivot[2] - d.hullLengthM * 0.18), sy(hullTop));
     ctx.lineTo(sx(tPivot[2] - d.hullLengthM * 0.10), sy(Hm * 0.97));
@@ -512,14 +530,14 @@ export function createDamagePanel() {
     ctx.lineTo(sx(tPivot[2] + d.hullLengthM * 0.20), sy(hullTop));
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = 'rgba(210,226,240,0.75)';
+    ctx.strokeStyle = 'rgba(154,165,173,0.9)';
     ctx.lineWidth = 2.4;
     ctx.beginPath();
     ctx.moveTo(sx(tPivot[2]), sy(Hm * 0.78));
     ctx.lineTo(sx(d.overallLengthM - d.hullLengthM / 2), sy(Hm * 0.78));
     ctx.stroke();
-    // running gear: wheels
-    ctx.fillStyle = 'rgba(52,62,72,0.9)';
+    // running gear: circular road wheels in the same light fill
+    ctx.fillStyle = 'rgba(140,151,160,0.9)';
     for (let i = 0; i < 5; i++) {
       const z = -d.hullLengthM * 0.38 + i * d.hullLengthM * 0.19;
       ctx.beginPath();
@@ -541,21 +559,20 @@ export function createDamagePanel() {
       // fit the content box inside the canvas with a small margin
       destW = CW - 10;
       destH = destW * (bh / bw);
-      if (destH > CH - 8) { destH = CH - 8; destW = destH * (bw / bh); }
+      if (destH > CH_MAX - 8) { destH = CH_MAX - 8; destW = destH * (bw / bh); }
+      fitCanvasHeight(destH + 8); // r5: tighten the box to the artwork
+      ctx.clearRect(0, 0, CW, CH);
       destX = (CW - destW) / 2;
       destY = (CH - destH) / 2;
-      // crisp bright contour: eight offset passes of the near-white tint at
-      // ~full alpha build a sharp ~1px outline (WoT's white schematic edge —
-      // r3: the old 1.5px offsets fattened the road wheels into blobs)
-      ctx.globalAlpha = 0.92;
-      for (const [ox, oy] of [
-        [-1, 0], [1, 0], [0, -1], [0, 1],
-        [-0.7, -0.7], [0.7, -0.7], [-0.7, 0.7], [0.7, 0.7],
-      ]) {
+      // thin dark contour (four 1px offset passes) grounds the light fill
+      ctx.globalAlpha = 0.6;
+      for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
         ctx.drawImage(sil.rim, bx, by, bw, bh, destX + ox, destY + oy, destW, destH);
       }
-      // dark steel body over the rim passes — high edge contrast
-      ctx.globalAlpha = 0.97;
+      // r5: SOLID light-steel body at ~80% alpha — WoT's filled tinted
+      // profile (damage states recolor zones ON this fill below); the old
+      // wireframe rim + near-black body read as unfinished line art
+      ctx.globalAlpha = 0.82;
       ctx.drawImage(sil.body, bx, by, bw, bh, destX, destY, destW, destH);
       ctx.globalAlpha = 1;
       // internal instrument lines, clipped to the silhouette

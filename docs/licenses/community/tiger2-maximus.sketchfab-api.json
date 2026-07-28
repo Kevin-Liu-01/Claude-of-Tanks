@@ -1,0 +1,201 @@
+{
+ "animationCount": 0,
+ "categories": [
+  {
+   "uid": "22a2f677efad4d7bbca5ad45f9b5868e",
+   "name": "Cars & Vehicles",
+   "slug": "cars-vehicles",
+   "uri": "https://api.sketchfab.com/v3/categories/22a2f677efad4d7bbca5ad45f9b5868e",
+   "icon": "https://static.sketchfab.com/static/builds/web/dist/static/assets/images/icons/categories/45dd0cc0860ac57fcd63bde1cc3f2b7c-v2.svg",
+   "thumbnails": [
+    {
+     "width": "512",
+     "height": "288",
+     "url": "https://static.sketchfab.com/categories/22a2f677efad4d7bbca5ad45f9b5868e/512x288.png"
+    },
+    {
+     "width": "800",
+     "height": "450",
+     "url": "https://static.sketchfab.com/categories/22a2f677efad4d7bbca5ad45f9b5868e/800x450.png"
+    }
+   ]
+  },
+  {
+   "uid": "3badf36bd9f549bdba295334d75e04d3",
+   "name": "Weapons & Military",
+   "slug": "weapons-military",
+   "uri": "https://api.sketchfab.com/v3/categories/3badf36bd9f549bdba295334d75e04d3",
+   "icon": "https://static.sketchfab.com/static/builds/web/dist/static/assets/images/icons/categories/6f71af8dadcca706c7404c9a0f82c1a3-v2.svg",
+   "thumbnails": [
+    {
+     "width": "512",
+     "height": "288",
+     "url": "https://static.sketchfab.com/categories/3badf36bd9f549bdba295334d75e04d3/512x288.png"
+    },
+    {
+     "width": "800",
+     "height": "450",
+     "url": "https://static.sketchfab.com/categories/3badf36bd9f549bdba295334d75e04d3/800x450.png"
+    }
+   ]
+  }
+ ],
+ "commentCount": 5,
+ "createdAt": "2022-03-03T16:48:54.425889",
+ "embedUrl": "https://sketchfab.com/models/f23650309a294143a7811737ca314219/embed",
+ "faceCount": 462437,
+ "isAgeRestricted": false,
+ "license": {
+  "uri": "https://api.sketchfab.com/v3/licenses/322a749bcfa841b29dff1e8a1bb74b0b",
+  "label": "CC Attribution",
+  "fullName": "Creative Commons Attribution",
+  "requirements": "Author must be credited. Commercial use is allowed.",
+  "url": "http://creativecommons.org/licenses/by/4.0/",
+  "slug": "by"
+ },
+ "likeCount": 215,
+ "name": "Tank Tiger 2",
+ "publishedAt": "2022-03-03T17:30:02.251496",
+ "soundCount": 0,
+ "staffpickedAt": null,
+ "tags": [
+  {
+   "name": "tanks",
+   "slug": "tanks",
+   "uri": "https://api.sketchfab.com/v3/tags/tanks"
+  },
+  {
+   "name": "Tank",
+   "slug": "tank",
+   "uri": "https://api.sketchfab.com/v3/tags/tank"
+  },
+  {
+   "name": "TigerTank",
+   "slug": "tigertank",
+   "uri": "https://api.sketchfab.com/v3/tags/tigertank"
+  },
+  {
+   "name": "tiger2",
+   "slug": "tiger2",
+   "uri": "https://api.sketchfab.com/v3/tags/tiger2"
+  },
+  {
+   "name": "tank-military",
+   "slug": "tank-military",
+   "uri": "https://api.sketchfab.com/v3/tags/tank-military"
+  },
+  {
+   "name": "tiger-tank",
+   "slug": "tiger-tank",
+   "uri": "https://api.sketchfab.com/v3/tags/tiger-tank"
+  },
+  {
+   "name": "substancepainter",
+   "slug": "substancepainter",
+   "uri": "https://api.sketchfab.com/v3/tags/substancepainter"
+  },
+  {
+   "name": "blender",
+   "slug": "blender",
+   "uri": "https://api.sketchfab.com/v3/tags/blender"
+  }
+ ],
+ "thumbnails": {
+  "images": [
+   {
+    "uid": "b7471552ac774e6a8eeff3c196dfde64",
+    "width": 1920,
+    "height": 1080,
+    "size": 196822,
+    "url": "https://media.sketchfab.com/models/f23650309a294143a7811737ca314219/thumbnails/bb5452d63cfc413caf8af4dd6d52ff84/fa2431b331ec47169c2b76178f26a407.jpeg"
+   },
+   {
+    "uid": "6186b3fb852b400197cbb358a7860a11",
+    "width": 1024,
+    "height": 576,
+    "size": 56868,
+    "url": "https://media.sketchfab.com/models/f23650309a294143a7811737ca314219/thumbnails/bb5452d63cfc413caf8af4dd6d52ff84/9291e4537dac40f5bf9c8233123490e5.jpeg"
+   },
+   {
+    "uid": "3d3e27304156402b8b3a941ac10acd1e",
+    "width": 720,
+    "height": 405,
+    "size": 31221,
+    "url": "https://media.sketchfab.com/models/f23650309a294143a7811737ca314219/thumbnails/bb5452d63cfc413caf8af4dd6d52ff84/76295c826b8a41e2b8d0421351a662ca.jpeg"
+   },
+   {
+    "uid": "7be7318b7a9e41fabb0ba560e6e4648d",
+    "width": 256,
+    "height": 144,
+    "size": 5480,
+    "url": "https://media.sketchfab.com/models/f23650309a294143a7811737ca314219/thumbnails/bb5452d63cfc413caf8af4dd6d52ff84/eb5f3c7ad1d24c5e9c016bb8a990dc3a.jpeg"
+   },
+   {
+    "uid": "5c28b8cca16841c79a9dae6d066cfbde",
+    "width": 64,
+    "height": 36,
+    "size": 1122,
+    "url": "https://media.sketchfab.com/models/f23650309a294143a7811737ca314219/thumbnails/bb5452d63cfc413caf8af4dd6d52ff84/2bf5721da67349438e0aaa46395b6ef9.jpeg"
+   }
+  ]
+ },
+ "uid": "f23650309a294143a7811737ca314219",
+ "uri": "https://api.sketchfab.com/v3/models/f23650309a294143a7811737ca314219",
+ "user": {
+  "uid": "f680ca7c2513472a81656916d2e2482b",
+  "username": "maximus0075550",
+  "displayName": "TimeTo3D",
+  "account": "basic",
+  "profileUrl": "https://sketchfab.com/maximus0075550",
+  "avatar": {
+   "uid": "2789579aa17e43e6a0d4ad02ed341620",
+   "uri": "https://api.sketchfab.com/v3/avatars/2789579aa17e43e6a0d4ad02ed341620",
+   "images": [
+    {
+     "width": 32,
+     "height": 32,
+     "size": 1033,
+     "url": "https://media.sketchfab.com/avatars/2789579aa17e43e6a0d4ad02ed341620/e1c672052adc4fb481120e8401b2e96c.jpeg"
+    },
+    {
+     "width": 48,
+     "height": 48,
+     "size": 1467,
+     "url": "https://media.sketchfab.com/avatars/2789579aa17e43e6a0d4ad02ed341620/e97b117f4ce34da69877eda318bef76c.jpeg"
+    },
+    {
+     "width": 90,
+     "height": 90,
+     "size": 3211,
+     "url": "https://media.sketchfab.com/avatars/2789579aa17e43e6a0d4ad02ed341620/23767bab504e4a2895aa86bff8a022c9.jpeg"
+    },
+    {
+     "width": 100,
+     "height": 100,
+     "size": 3740,
+     "url": "https://media.sketchfab.com/avatars/2789579aa17e43e6a0d4ad02ed341620/b9b02f3becd645ab999ae16a0f25955b.jpeg"
+    }
+   ]
+  },
+  "uri": "https://api.sketchfab.com/v3/users/f680ca7c2513472a81656916d2e2482b"
+ },
+ "vertexCount": 239298,
+ "viewCount": 35718,
+ "viewerUrl": "https://sketchfab.com/3d-models/tank-tiger-2-f23650309a294143a7811737ca314219",
+ "isDownloadable": true,
+ "isProtected": false,
+ "description": "3d model of a German heavy tank of the final period of the Second World War. It was produced serially from January 1944 to March 1945. In total, three experimental and 489 production tanks were produced. \nThe model is made in blender. \nTextures are made in Substance Painter.",
+ "price": null,
+ "downloadCount": 5861,
+ "editorUrl": "https://sketchfab.com/models/f23650309a294143a7811737ca314219/edit",
+ "status": {
+  "warning": {},
+  "processing": "SUCCEEDED"
+ },
+ "source": "website",
+ "hasCommentsDisabled": false,
+ "updatedAt": "2022-07-21T11:42:15.437483",
+ "pbrType": "metalness",
+ "textureCount": 17,
+ "materialCount": 4
+}

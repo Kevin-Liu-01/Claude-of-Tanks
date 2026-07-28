@@ -1,0 +1,231 @@
+{
+ "animationCount": 0,
+ "categories": [
+  {
+   "uid": "22a2f677efad4d7bbca5ad45f9b5868e",
+   "name": "Cars & Vehicles",
+   "slug": "cars-vehicles",
+   "uri": "https://api.sketchfab.com/v3/categories/22a2f677efad4d7bbca5ad45f9b5868e",
+   "icon": "https://static.sketchfab.com/static/builds/web/dist/static/assets/images/icons/categories/45dd0cc0860ac57fcd63bde1cc3f2b7c-v2.svg",
+   "thumbnails": [
+    {
+     "width": "512",
+     "height": "288",
+     "url": "https://static.sketchfab.com/categories/22a2f677efad4d7bbca5ad45f9b5868e/512x288.png"
+    },
+    {
+     "width": "800",
+     "height": "450",
+     "url": "https://static.sketchfab.com/categories/22a2f677efad4d7bbca5ad45f9b5868e/800x450.png"
+    }
+   ]
+  },
+  {
+   "uid": "3badf36bd9f549bdba295334d75e04d3",
+   "name": "Weapons & Military",
+   "slug": "weapons-military",
+   "uri": "https://api.sketchfab.com/v3/categories/3badf36bd9f549bdba295334d75e04d3",
+   "icon": "https://static.sketchfab.com/static/builds/web/dist/static/assets/images/icons/categories/6f71af8dadcca706c7404c9a0f82c1a3-v2.svg",
+   "thumbnails": [
+    {
+     "width": "512",
+     "height": "288",
+     "url": "https://static.sketchfab.com/categories/3badf36bd9f549bdba295334d75e04d3/512x288.png"
+    },
+    {
+     "width": "800",
+     "height": "450",
+     "url": "https://static.sketchfab.com/categories/3badf36bd9f549bdba295334d75e04d3/800x450.png"
+    }
+   ]
+  }
+ ],
+ "commentCount": 14,
+ "createdAt": "2018-03-09T07:59:28.983438",
+ "embedUrl": "https://sketchfab.com/models/0a1e08cf55ab476582ce19ff8d30155a/embed",
+ "faceCount": 532764,
+ "isAgeRestricted": false,
+ "license": {
+  "uri": "https://api.sketchfab.com/v3/licenses/322a749bcfa841b29dff1e8a1bb74b0b",
+  "label": "CC Attribution",
+  "fullName": "Creative Commons Attribution",
+  "requirements": "Author must be credited. Commercial use is allowed.",
+  "url": "http://creativecommons.org/licenses/by/4.0/",
+  "slug": "by"
+ },
+ "likeCount": 324,
+ "name": "Jagdtiger 8.8 cm",
+ "publishedAt": "2018-03-09T08:48:15.821048",
+ "soundCount": 0,
+ "staffpickedAt": null,
+ "tags": [
+  {
+   "name": "ww2",
+   "slug": "ww2",
+   "uri": "https://api.sketchfab.com/v3/tags/ww2"
+  },
+  {
+   "name": "german",
+   "slug": "german",
+   "uri": "https://api.sketchfab.com/v3/tags/german"
+  },
+  {
+   "name": "wwii",
+   "slug": "wwii",
+   "uri": "https://api.sketchfab.com/v3/tags/wwii"
+  },
+  {
+   "name": "Tank",
+   "slug": "tank",
+   "uri": "https://api.sketchfab.com/v3/tags/tank"
+  },
+  {
+   "name": "Cannon",
+   "slug": "cannon",
+   "uri": "https://api.sketchfab.com/v3/tags/cannon"
+  },
+  {
+   "name": "ww1",
+   "slug": "ww1",
+   "uri": "https://api.sketchfab.com/v3/tags/ww1"
+  },
+  {
+   "name": "Blender-3D",
+   "slug": "blender-3d",
+   "uri": "https://api.sketchfab.com/v3/tags/blender-3d"
+  },
+  {
+   "name": "freedownload",
+   "slug": "freedownload",
+   "uri": "https://api.sketchfab.com/v3/tags/freedownload"
+  },
+  {
+   "name": "weapon-3dmodel",
+   "slug": "weapon-3dmodel",
+   "uri": "https://api.sketchfab.com/v3/tags/weapon-3dmodel"
+  },
+  {
+   "name": "military-vehicle",
+   "slug": "military-vehicle",
+   "uri": "https://api.sketchfab.com/v3/tags/military-vehicle"
+  },
+  {
+   "name": "freemodel",
+   "slug": "freemodel",
+   "uri": "https://api.sketchfab.com/v3/tags/freemodel"
+  },
+  {
+   "name": "bigweapon",
+   "slug": "bigweapon",
+   "uri": "https://api.sketchfab.com/v3/tags/bigweapon"
+  },
+  {
+   "name": "blender_eevee",
+   "slug": "blender_eevee",
+   "uri": "https://api.sketchfab.com/v3/tags/blender_eevee"
+  },
+  {
+   "name": "blender",
+   "slug": "blender",
+   "uri": "https://api.sketchfab.com/v3/tags/blender"
+  }
+ ],
+ "thumbnails": {
+  "images": [
+   {
+    "uid": "236368c8b3934adcba59887af1ae5311",
+    "width": 1920,
+    "height": 1080,
+    "size": 252866,
+    "url": "https://media.sketchfab.com/models/0a1e08cf55ab476582ce19ff8d30155a/thumbnails/47aa6fecb2b84a4e97a86faf6a49d348/9a928c012d5242abba44ea8a9987897a.jpeg"
+   },
+   {
+    "uid": "ad1bb6f869ff4724b40d8eff1032a82c",
+    "width": 1024,
+    "height": 576,
+    "size": 46332,
+    "url": "https://media.sketchfab.com/models/0a1e08cf55ab476582ce19ff8d30155a/thumbnails/47aa6fecb2b84a4e97a86faf6a49d348/ead00793c3434011a79677cc2a4c6f4e.jpeg"
+   },
+   {
+    "uid": "7c72da277e70497f8c774ca28671a1fb",
+    "width": 720,
+    "height": 405,
+    "size": 23422,
+    "url": "https://media.sketchfab.com/models/0a1e08cf55ab476582ce19ff8d30155a/thumbnails/47aa6fecb2b84a4e97a86faf6a49d348/c0075fb4c8fe47828d4a1ee0a20bc5a0.jpeg"
+   },
+   {
+    "uid": "bac8e9877f174383a2e72c78f1d1d21c",
+    "width": 256,
+    "height": 144,
+    "size": 4205,
+    "url": "https://media.sketchfab.com/models/0a1e08cf55ab476582ce19ff8d30155a/thumbnails/47aa6fecb2b84a4e97a86faf6a49d348/4550f621bbc8458295e1da32d4ac801d.jpeg"
+   },
+   {
+    "uid": "bc4f58098cd74d4bb2241a2d23e31580",
+    "width": 64,
+    "height": 36,
+    "size": 760,
+    "url": "https://media.sketchfab.com/models/0a1e08cf55ab476582ce19ff8d30155a/thumbnails/47aa6fecb2b84a4e97a86faf6a49d348/bf0088c474394b42b01d6d170868a3dd.jpeg"
+   }
+  ]
+ },
+ "uid": "0a1e08cf55ab476582ce19ff8d30155a",
+ "uri": "https://api.sketchfab.com/v3/models/0a1e08cf55ab476582ce19ff8d30155a",
+ "user": {
+  "uid": "ef08a07e6afd46138ecd0989e9a19ca1",
+  "username": "adipriatna",
+  "displayName": "Adipriatna",
+  "account": "pro",
+  "profileUrl": "https://sketchfab.com/adipriatna",
+  "avatar": {
+   "uid": "ca9d819339294cf28192a88c6d637a3b",
+   "uri": "https://api.sketchfab.com/v3/avatars/ca9d819339294cf28192a88c6d637a3b",
+   "images": [
+    {
+     "width": 32,
+     "height": 32,
+     "size": 871,
+     "url": "https://media.sketchfab.com/avatars/ca9d819339294cf28192a88c6d637a3b/2eaf5ed279ef43dd9e0e6e55ff3ca487.jpeg"
+    },
+    {
+     "width": 48,
+     "height": 48,
+     "size": 1477,
+     "url": "https://media.sketchfab.com/avatars/ca9d819339294cf28192a88c6d637a3b/8ebc7010323844f080fef3d2835a8bd9.jpeg"
+    },
+    {
+     "width": 90,
+     "height": 90,
+     "size": 3975,
+     "url": "https://media.sketchfab.com/avatars/ca9d819339294cf28192a88c6d637a3b/e2211c21919a417f83defd5a3e6cf699.jpeg"
+    },
+    {
+     "width": 100,
+     "height": 100,
+     "size": 4590,
+     "url": "https://media.sketchfab.com/avatars/ca9d819339294cf28192a88c6d637a3b/ce8c6395b1d24256b925a4404ea8a6cd.jpeg"
+    }
+   ]
+  },
+  "uri": "https://api.sketchfab.com/v3/users/ef08a07e6afd46138ecd0989e9a19ca1"
+ },
+ "vertexCount": 277123,
+ "viewCount": 15385,
+ "viewerUrl": "https://sketchfab.com/3d-models/jagdtiger-88-cm-0a1e08cf55ab476582ce19ff8d30155a",
+ "isDownloadable": true,
+ "isProtected": false,
+ "description": "![](https://cdna.artstation.com/p/assets/images/images/009/739/808/large/adi-priatna-28928214-1812119218838324-2007778871-o.jpg?1520618753http://)\nJagdtiger (\"Hunting Tiger\") is the common nameof a German turretless heavy tank destroyer of World War II\n\nThe official German designation was Panzerj\u00e4ger Tiger Ausf. B as it was based on a lengthened Tiger II chassisThe ordnance inventory designation was Sd. Kfz. 186. The 71-tonne Jagdtiger was the heaviest armored fighting vehicle used operationally during World War II and is the heaviest armored vehicle of any type to achieve series production\n\nthree Jagdtigers survive in museums\n\nhttps://en.wikipedia.org/wiki/Jagdtiger",
+ "price": null,
+ "downloadCount": 3425,
+ "editorUrl": "https://sketchfab.com/models/0a1e08cf55ab476582ce19ff8d30155a/edit",
+ "status": {
+  "warning": {},
+  "processing": "SUCCEEDED"
+ },
+ "source": "website-archived",
+ "hasCommentsDisabled": false,
+ "updatedAt": "2022-07-20T12:26:25.361186",
+ "pbrType": "metalness",
+ "textureCount": 34,
+ "materialCount": 9
+}

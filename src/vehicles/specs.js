@@ -489,22 +489,22 @@ function armorLeo2A7() {
       rf('hull_roof', 40, 1.6, roofY, -3.86, 1.00),
     ],
     turretPlates: [
-      // r7: wedges/cheeks/sides widened with the visual turret rebuild
-      // (~2.85 m plan, arrowhead apex at z 1.58, body back to -2.3)
-      chR('turret_wedge_R', 90, 0.06, 1.58, 1.40, 0.28, 0.08, 0.90, 0.45, 0,
+      // r5: resized with the visual turret rebuild (thin proud wedge shells
+      // meeting at z 1.52, 2.44 m flat-roofed base box back to -2.05)
+      chR('turret_wedge_R', 90, 0.04, 1.52, 1.30, 0.14, 0.08, 0.90, 0.52, 0,
         { kind: 'spaced', keMm: 220, ceMm: 750 }),
-      chL('turret_wedge_L', 90, 0.06, 1.58, 1.40, 0.28, 0.08, 0.90, 0.45, 0,
+      chL('turret_wedge_L', 90, 0.04, 1.52, 1.30, 0.14, 0.08, 0.90, 0.52, 0,
         { kind: 'spaced', keMm: 220, ceMm: 750 }),
-      chR('turret_cheek_R', 650, 0.2, 1.10, 1.38, 0.20, 0.0, 0.88, 0.1, 0, { keMm: 620, ceMm: 750 }),
-      chL('turret_cheek_L', 650, 0.2, 1.10, 1.38, 0.20, 0.0, 0.88, 0.1, 0, { keMm: 620, ceMm: 750 }),
-      par('turret_sight_recess', 250, [0.5, 0.55, 0.72], [0.92, 0.55, 0.56], [0.5, 0.86, 0.66],
+      chR('turret_cheek_R', 650, 0.18, 0.68, 1.22, 0.10, 0.0, 0.88, 0.06, 0, { keMm: 620, ceMm: 750 }),
+      chL('turret_cheek_L', 650, 0.18, 0.68, 1.22, 0.10, 0.0, 0.88, 0.06, 0, { keMm: 620, ceMm: 750 }),
+      par('turret_sight_recess', 250, [0.46, 0.76, 0.76], [1.02, 0.76, 0.55], [0.46, 1.02, 0.70],
         { keMm: 300, ceMm: 350 }),                                     // EMES 15 weak spot
       par('mantlet', 350, [-0.26, 0.08, 1.24], [0.26, 0.08, 1.24], [-0.26, 0.52, 1.21],
         { keMm: 420, ceMm: 500, gunFollow: true }),
-      sR('turret_side_R', 320, 1.40, 0.0, 1.40, 0.90, -2.28, 0.2, { keMm: 350, ceMm: 500 }),
-      sL('turret_side_L', 320, 1.40, 0.0, 1.40, 0.90, -2.28, 0.2, { keMm: 350, ceMm: 500 }),
-      rr('turret_rear', 80, 1.35, 0.0, -2.32, 0.90, -2.32),
-      rf('turret_roof', 45, 1.40, 0.92, -2.30, 0.65),
+      sR('turret_side_R', 320, 1.22, 0.0, 1.22, 0.88, -2.05, 0.14, { keMm: 350, ceMm: 500 }),
+      sL('turret_side_L', 320, 1.22, 0.0, 1.22, 0.88, -2.05, 0.14, { keMm: 350, ceMm: 500 }),
+      rr('turret_rear', 80, 1.20, 0.0, -2.08, 0.88, -2.08),
+      rf('turret_roof', 45, 1.22, 0.90, -2.05, 0.58),
     ],
     modules: [
       mbox('engine', [-1.05, 0.5, -3.75], [1.05, 1.55, -1.9]),
@@ -844,6 +844,11 @@ function communityArmor(o) {
 export const COMMUNITY_TANK_IDS = [
   'strv103', 'is3', 't34_85_cad', 'newc_tiger', 'newc_pziii',
   'pziii_konserwa', 'leichttraktor', 'recon_tank', 'q_heavy',
+  // wave 2 (print-model crawl, 2026-07-28)
+  'kv2', 'tiger2', 'sherman_jumbo', 'jagdtiger',
+  'jpz_e100', 'sturmtiger', 't95', 't30',
+  // wave 3 (IS-series hunt, 2026-07-28)
+  'is7', 'object279', 'is6b', 'is1',
 ];
 
 const COMMUNITY_SPECS = {
@@ -952,10 +957,13 @@ const COMMUNITY_SPECS = {
       tFrontMm: 90, tSideMm: 75, tRearMm: 60, mantletMm: 90,
     }),
     visual: {
-      // r9: dropped toward the core-roster 4BO — the CAD shell read bare
-      // grey-green next to the procedural T-34.
-      scheme: 'solid', base: '#3e4f22', weather: '#4a5a2e', patches: [],
-      marking: 'number', number: '85', trackWidthM: 0.5,
+      // r5 content_breadth: the solid 4BO canvas rendered the CAD shell as a
+      // flat untextured export in battle next to the weathered first-party
+      // fleet — two-tone Soviet disruptive (same language as the IS-3
+      // community Soviet) so it sits in one material world.
+      scheme: 'stripes', base: '#3e4f22', weather: '#4a5a2e',
+      patches: ['#2c3a20', '#57503a'],
+      marking: 'number', number: '85', trackWidthM: 0.5, camoScale: 0.5,
     },
   },
 
@@ -1173,6 +1181,451 @@ const COMMUNITY_SPECS = {
       trackWidthM: 0.7, camoScale: 0.55,
     },
   },
+
+  // =========================================================================
+  // COMMUNITY WAVE 2 (print-model crawl, integrated 2026-07-28)
+  // =========================================================================
+
+  kv2: {
+    id: 'kv2', name: 'KV-2', nation: 'USSR', era: 'ww2', class: 'heavy',
+    community: {
+      author: 'Comrade1280',
+      source: 'https://sketchfab.com/3d-models/kv-2-heavy-tank-1940-ba8b84d78c0a42038cf2eaa4210ef296',
+      license: 'CC-BY 4.0',
+    },
+    hp: 1150,
+    enginePowerHp: 600, weightTons: 52, topSpeedKmh: 34, reverseSpeedKmh: 5,
+    hullTraverseDegS: 18,
+    terrainResistance: { hard: 1.25, medium: 1.45, soft: 2.6 },
+    pivotStyle: 'pivot',
+    // the giant slab turret slews painfully slowly — signature KV-2 feel
+    turretTraverseDegS: 9, gunPitchDegS: 9, gunElevationDeg: 12, gunDepressionDeg: 5,
+    gun: {
+      caliberMm: 152, reloadS: 22.0, baseAccuracy: 0.60, aimTimeS: 4.0,
+      bloom: BLOOM_WW2,
+      shells: [
+        shell('OF-530 HE', 'HE', 152, 86, 86, 860, 508),
+        shell('BR-540 APHE', 'AP', 152, 125, 110, 640, 436),
+        shell('G-530 semi-AP', 'AP', 152, 110, 98, 700, 436),
+      ],
+    },
+    dims: { hullLengthM: 6.95, overallLengthM: 6.95, widthM: 3.32, heightM: 3.25 },
+    armor: communityArmor({
+      lenM: 6.95, widM: 3.32, hgtM: 3.25, turretPivot: [0, 1.75, -0.1],
+      gunPivot: [0, 0.4, 0.4], barrelLenM: 3.2, barrelRadM: 0.1,
+      frontMm: 75, sideMm: 75, rearMm: 60, roofMm: 30,
+      tFrontMm: 75, tSideMm: 75, tRearMm: 75, mantletMm: 110,
+    }),
+    visual: {
+      scheme: 'solid', base: '#3e4a2e', weather: '#4a563a', patches: [],
+      marking: 'number', number: '2', trackWidthM: 0.7,
+    },
+  },
+
+  tiger2: {
+    id: 'tiger2', name: 'Tiger II', nation: 'Germany', era: 'ww2', class: 'heavy',
+    community: {
+      author: 'maximus0075550',
+      source: 'https://sketchfab.com/3d-models/tank-tiger-2',
+      license: 'CC-BY 4.0',
+    },
+    hp: 1350,
+    enginePowerHp: 700, weightTons: 69.8, topSpeedKmh: 38, reverseSpeedKmh: 7,
+    hullTraverseDegS: 20,
+    terrainResistance: { hard: 1.15, medium: 1.35, soft: 2.4 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 13, gunPitchDegS: 11, gunElevationDeg: 15, gunDepressionDeg: 8,
+    gun: {
+      caliberMm: 88, reloadS: 8.0, baseAccuracy: 0.30, aimTimeS: 2.2,
+      bloom: BLOOM_WW2,
+      shells: [
+        shell('PzGr. 39/43 APCBC', 'AP', 88, 185, 165, 240, 1000),
+        shell('PzGr. 40/43 APCR', 'APCR', 88, 217, 193, 215, 1130),
+        shell('Sprgr. 43 HE', 'HE', 88, 44, 44, 295, 750),
+      ],
+    },
+    dims: { hullLengthM: 7.38, overallLengthM: 10.29, widthM: 3.76, heightM: 3.09 },
+    armor: communityArmor({
+      lenM: 7.38, widM: 3.76, hgtM: 3.09, turretPivot: [0, 1.9, 0.1],
+      gunPivot: [0, 0.35, 0.5], barrelLenM: 5.9, barrelRadM: 0.08,
+      frontMm: 150, sideMm: 80, rearMm: 80, roofMm: 40,
+      tFrontMm: 185, tSideMm: 80, tRearMm: 80, mantletMm: 200,
+    }),
+    visual: {
+      // baked ambush-camo PBR carries the identity; solid dunkelgelb tint
+      // keeps the composite from fighting the factory 3-tone pattern.
+      scheme: 'solid', base: '#8a7a52', weather: '#7e7049', patches: [],
+      marking: 'cross', number: '204', trackWidthM: 0.8,
+    },
+  },
+
+  sherman_jumbo: {
+    id: 'sherman_jumbo', name: 'M4A3E2 Sherman Jumbo', nation: 'USA', era: 'ww2', class: 'heavy',
+    community: {
+      author: 'manifold_destiny (split by ZEUS_0815)',
+      source: 'https://www.thingiverse.com/thing:1065360',
+      license: 'CC-BY 4.0',
+    },
+    hp: 900,
+    enginePowerHp: 450, weightTons: 38, topSpeedKmh: 35, reverseSpeedKmh: 7,
+    hullTraverseDegS: 30,
+    terrainResistance: { hard: 1.05, medium: 1.25, soft: 2.3 },
+    pivotStyle: 'pivot',
+    turretTraverseDegS: 20, gunPitchDegS: 18, gunElevationDeg: 25, gunDepressionDeg: 10,
+    gun: {
+      caliberMm: 75, reloadS: 4.2, baseAccuracy: 0.40, aimTimeS: 2.1,
+      bloom: BLOOM_WW2,
+      shells: [
+        shell('M61 APCBC', 'AP', 75, 92, 76, 110, 618),
+        shell('M72 AP', 'AP', 75, 84, 66, 110, 619),
+        shell('M48 HE', 'HE', 75, 38, 38, 175, 625),
+      ],
+    },
+    dims: { hullLengthM: 6.27, overallLengthM: 6.35, widthM: 2.95, heightM: 2.95 },
+    armor: communityArmor({
+      lenM: 6.27, widM: 2.95, hgtM: 2.95, turretPivot: [0, 1.85, 0.0],
+      gunPivot: [0, 0.35, 0.4], barrelLenM: 2.8, barrelRadM: 0.06,
+      frontMm: 102, sideMm: 76, rearMm: 51, roofMm: 25,
+      tFrontMm: 152, tSideMm: 152, tRearMm: 152, mantletMm: 178,
+    }),
+    visual: {
+      scheme: 'solid', base: '#4b5320', weather: '#6b6b47', patches: [],
+      marking: 'star', number: 'C-12', trackWidthM: 0.58,
+    },
+  },
+
+  jagdtiger: {
+    id: 'jagdtiger', name: 'Jagdtiger', nation: 'Germany', era: 'ww2', class: 'td',
+    community: {
+      author: 'Adi Priatna',
+      source: 'https://sketchfab.com/adipriatna',
+      license: 'CC-BY 4.0',
+    },
+    hp: 1400,
+    enginePowerHp: 700, weightTons: 71.7, topSpeedKmh: 34, reverseSpeedKmh: 6,
+    hullTraverseDegS: 18,
+    terrainResistance: { hard: 1.2, medium: 1.4, soft: 2.5 },
+    pivotStyle: 'neutral',
+    // fixed casemate gun: the sim's virtual turret models the traverse arc
+    turretTraverseDegS: 22, gunPitchDegS: 12, gunElevationDeg: 14, gunDepressionDeg: 7,
+    gun: {
+      caliberMm: 128, reloadS: 11.0, baseAccuracy: 0.35, aimTimeS: 2.6,
+      bloom: BLOOM_WW2,
+      shells: [
+        shell('PzGr. 43 APCBC', 'AP', 128, 200, 173, 460, 920),
+        shell('PzGr. 40/43 APCR', 'APCR', 128, 237, 205, 400, 1080),
+        shell('Sprgr. L/5 HE', 'HE', 128, 64, 64, 570, 920),
+      ],
+    },
+    dims: { hullLengthM: 7.8, overallLengthM: 10.65, widthM: 3.7, heightM: 2.95 },
+    armor: communityArmor({
+      lenM: 7.8, widM: 3.7, hgtM: 2.95, turretPivot: [0, 1.8, 0.2],
+      gunPivot: [0, 0.35, 0.4], barrelLenM: 4.7, barrelRadM: 0.09,
+      frontMm: 150, sideMm: 80, rearMm: 80, roofMm: 40,
+      tFrontMm: 250, tSideMm: 80, tRearMm: 80, mantletMm: 250, turretless: true,
+    }),
+    visual: {
+      // solid steel-grey: the baked weathered texture carries the character;
+      // a dunkelgelb stripe composite split the vehicle into a two-tone
+      // sand-top / black-hull read (icon audit 2026-07-28).
+      scheme: 'solid', base: '#5a6054', weather: '#666c60', patches: [],
+      marking: 'cross', number: '314', trackWidthM: 0.8,
+      // baked hull albedo is near-black — without this the composite skips
+      // the hull sheets and the vehicle reads two-tone (tinted casemate over
+      // a black hull). Named track/wheel mats still keep factory look.
+      glbDarkPaintLuma: 0.03,
+    },
+  },
+
+  jpz_e100: {
+    id: 'jpz_e100', name: 'Jagdpanzer E100', nation: 'Germany', era: 'ww2', class: 'td',
+    community: {
+      author: 'Haphazard0587',
+      source: 'https://www.thingiverse.com/thing:2624802',
+      license: 'CC-BY 4.0',
+    },
+    hp: 1800,
+    enginePowerHp: 1200, weightTons: 130, topSpeedKmh: 23, reverseSpeedKmh: 5,
+    hullTraverseDegS: 14,
+    terrainResistance: { hard: 1.3, medium: 1.5, soft: 2.7 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 18, gunPitchDegS: 10, gunElevationDeg: 14, gunDepressionDeg: 6,
+    gun: {
+      caliberMm: 170, reloadS: 18.0, baseAccuracy: 0.42, aimTimeS: 3.2,
+      bloom: BLOOM_WW2,
+      shells: [
+        shell('17cm PzGr APCBC', 'AP', 170, 230, 200, 850, 880),
+        shell('17cm PzGr 40 APCR', 'APCR', 170, 268, 230, 750, 1020),
+        shell('17cm Sprgr HE', 'HE', 170, 85, 85, 1000, 850),
+      ],
+    },
+    dims: { hullLengthM: 8.7, overallLengthM: 11.1, widthM: 4.3, heightM: 3.29 },
+    armor: communityArmor({
+      lenM: 8.7, widM: 4.3, hgtM: 3.29, turretPivot: [0, 2.0, 0.2],
+      gunPivot: [0, 0.4, 0.4], barrelLenM: 4.95, barrelRadM: 0.11,
+      frontMm: 200, sideMm: 120, rearMm: 150, roofMm: 40,
+      tFrontMm: 350, tSideMm: 120, tRearMm: 150, mantletMm: 350, turretless: true,
+    }),
+    visual: {
+      scheme: 'ambush', base: '#8d7a4a', weather: '#80704a',
+      patches: ['#6a713f', '#7a4a35'], marking: 'cross', number: '100',
+      trackWidthM: 0.9, camoScale: 0.55,
+    },
+  },
+
+  sturmtiger: {
+    id: 'sturmtiger', name: 'Sturmtiger', nation: 'Germany', era: 'ww2', class: 'td',
+    community: {
+      author: 'Tomrs',
+      source: 'https://sketchfab.com/Tomrs',
+      license: 'CC-BY 4.0',
+    },
+    hp: 1250,
+    enginePowerHp: 700, weightTons: 65, topSpeedKmh: 40, reverseSpeedKmh: 6,
+    hullTraverseDegS: 22,
+    terrainResistance: { hard: 1.15, medium: 1.35, soft: 2.4 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 20, gunPitchDegS: 10, gunElevationDeg: 20, gunDepressionDeg: 4,
+    gun: {
+      caliberMm: 380, reloadS: 30.0, baseAccuracy: 0.55, aimTimeS: 3.6,
+      bloom: BLOOM_WW2,
+      shells: [
+        shell('RW61 38cm rocket HE', 'HE', 380, 95, 95, 1150, 250),
+        shell('Raketen Hohlladung', 'HEAT', 380, 350, 350, 900, 250),
+      ],
+    },
+    dims: { hullLengthM: 6.28, overallLengthM: 6.28, widthM: 3.57, heightM: 3.2 },
+    armor: communityArmor({
+      lenM: 6.28, widM: 3.57, hgtM: 3.2, turretPivot: [0, 2.0, 0.3],
+      gunPivot: [0, 0.4, 0.3], barrelLenM: 2.5, barrelRadM: 0.19,
+      frontMm: 150, sideMm: 80, rearMm: 80, roofMm: 40,
+      tFrontMm: 150, tSideMm: 80, tRearMm: 80, mantletMm: 150, turretless: true,
+    }),
+    visual: {
+      // factory dunkelgelb 3-tone + zimmerit is baked into the asset
+      scheme: 'solid', base: '#8d7a4a', weather: '#7e6e44', patches: [],
+      marking: 'cross', number: '1001', trackWidthM: 0.725,
+    },
+  },
+
+  t95: {
+    id: 't95', name: 'T95 Doomturtle', nation: 'USA', era: 'ww2', class: 'td',
+    community: {
+      author: 'Haphazard0587',
+      source: 'https://www.thingiverse.com/thing:2326342',
+      license: 'CC-BY 4.0',
+    },
+    hp: 1700,
+    enginePowerHp: 500, weightTons: 86.2, topSpeedKmh: 14, reverseSpeedKmh: 4,
+    hullTraverseDegS: 12,
+    terrainResistance: { hard: 1.35, medium: 1.55, soft: 2.8 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 20, gunPitchDegS: 10, gunElevationDeg: 12, gunDepressionDeg: 5,
+    gun: {
+      caliberMm: 105, reloadS: 9.0, baseAccuracy: 0.36, aimTimeS: 2.8,
+      bloom: BLOOM_WW2,
+      shells: [
+        shell('T13 AP (105mm T5E1)', 'AP', 105, 210, 185, 400, 945),
+        shell('T29E3 APCR', 'APCR', 105, 260, 230, 360, 1128),
+        shell('105mm HE', 'HE', 105, 53, 53, 500, 945),
+      ],
+    },
+    dims: { hullLengthM: 7.6, overallLengthM: 10.7, widthM: 3.8, heightM: 2.9 },
+    armor: communityArmor({
+      lenM: 7.6, widM: 3.8, hgtM: 2.9, turretPivot: [0, 2.0, 0.3],
+      gunPivot: [0, 0.35, 0.4], barrelLenM: 4.6, barrelRadM: 0.08,
+      frontMm: 305, sideMm: 64, rearMm: 51, roofMm: 38,
+      tFrontMm: 305, tSideMm: 64, tRearMm: 51, mantletMm: 305, turretless: true,
+    }),
+    visual: {
+      scheme: 'solid', base: '#4b5320', weather: '#6b6b47', patches: [],
+      marking: 'star', number: '95', trackWidthM: 0.5,
+    },
+  },
+
+  t30: {
+    id: 't30', name: 'T30', nation: 'USA', era: 'ww2', class: 'td',
+    community: {
+      author: 'Haphazard0587',
+      source: 'https://www.thingiverse.com/thing:2363711',
+      license: 'CC-BY 4.0',
+    },
+    hp: 1550,
+    enginePowerHp: 704, weightTons: 64.7, topSpeedKmh: 35, reverseSpeedKmh: 6,
+    hullTraverseDegS: 22,
+    terrainResistance: { hard: 1.15, medium: 1.35, soft: 2.4 },
+    pivotStyle: 'neutral',
+    // fused print model: the cast turret ships welded to the hull, so the
+    // T30 plays as a fixed-gun assault TD (same class rule as the casemates)
+    turretTraverseDegS: 18, gunPitchDegS: 10, gunElevationDeg: 15, gunDepressionDeg: 6,
+    gun: {
+      caliberMm: 155, reloadS: 16.0, baseAccuracy: 0.42, aimTimeS: 3.0,
+      bloom: BLOOM_WW2,
+      shells: [
+        shell('T35E1 APCBC (155mm)', 'AP', 155, 180, 160, 700, 723),
+        shell('T29E1 APCR', 'APCR', 155, 220, 195, 620, 861),
+        shell('M107 HE', 'HE', 155, 78, 78, 920, 723),
+      ],
+    },
+    dims: { hullLengthM: 7.6, overallLengthM: 10.9, widthM: 3.8, heightM: 3.25 },
+    armor: communityArmor({
+      lenM: 7.6, widM: 3.8, hgtM: 3.25, turretPivot: [0, 2.3, 0.0],
+      gunPivot: [0, 0.35, 0.5], barrelLenM: 4.9, barrelRadM: 0.1,
+      frontMm: 102, sideMm: 76, rearMm: 51, roofMm: 38,
+      tFrontMm: 203, tSideMm: 127, tRearMm: 102, mantletMm: 203, turretless: true,
+    }),
+    visual: {
+      scheme: 'solid', base: '#4b5320', weather: '#6b6b47', patches: [],
+      marking: 'star', number: '30', trackWidthM: 0.71,
+    },
+  },
+
+  // =========================================================================
+  // COMMUNITY WAVE 3 (IS-series hunt, integrated 2026-07-28)
+  // =========================================================================
+
+  is7: {
+    id: 'is7', name: 'IS-7', nation: 'USSR', era: 'ww2', class: 'heavy',
+    community: {
+      author: 'Jt Steele (SnowLeopard101)',
+      source: 'https://www.thingiverse.com/thing:4597176',
+      license: 'CC-BY 4.0',
+    },
+    hp: 1550,
+    enginePowerHp: 1050, weightTons: 68, topSpeedKmh: 59, reverseSpeedKmh: 8,
+    hullTraverseDegS: 26,
+    terrainResistance: { hard: 1.1, medium: 1.3, soft: 2.3 },
+    pivotStyle: 'pivot',
+    turretTraverseDegS: 16, gunPitchDegS: 12, gunElevationDeg: 15, gunDepressionDeg: 6,
+    gun: {
+      caliberMm: 130, reloadS: 12.5, baseAccuracy: 0.40, aimTimeS: 3.0,
+      bloom: BLOOM_WW2,
+      shells: [
+        shell('BR-482 APCBC (130mm S-70)', 'AP', 130, 240, 210, 530, 900),
+        shell('BR-482B APCR', 'APCR', 130, 280, 245, 470, 1030),
+        shell('OF-482 HE', 'HE', 130, 65, 65, 640, 900),
+      ],
+    },
+    dims: { hullLengthM: 7.38, overallLengthM: 11.17, widthM: 3.4, heightM: 2.6 },
+    armor: communityArmor({
+      lenM: 7.38, widM: 3.4, hgtM: 2.6, turretPivot: [0, 1.7, -0.3],
+      gunPivot: [0, 0.35, 0.5], barrelLenM: 5.6, barrelRadM: 0.1,
+      frontMm: 150, sideMm: 105, rearMm: 70, roofMm: 30,
+      tFrontMm: 240, tSideMm: 185, tRearMm: 94, mantletMm: 250,
+    }),
+    visual: {
+      scheme: 'solid', base: '#445032', weather: '#4f5b3e', patches: [],
+      marking: 'number', number: '7', trackWidthM: 0.71,
+    },
+  },
+
+  object279: {
+    id: 'object279', name: 'Object 279', nation: 'USSR', era: 'ww2', class: 'heavy',
+    community: {
+      author: 'Jt Steele (SnowLeopard101)',
+      source: 'https://www.thingiverse.com/thing:4598065',
+      license: 'CC-BY 4.0',
+    },
+    hp: 1500,
+    enginePowerHp: 950, weightTons: 60, topSpeedKmh: 55, reverseSpeedKmh: 7,
+    // quad-track chassis: superb flotation on soft ground, ponderous traverse
+    hullTraverseDegS: 16,
+    terrainResistance: { hard: 1.2, medium: 1.3, soft: 1.9 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 14, gunPitchDegS: 10, gunElevationDeg: 15, gunDepressionDeg: 5,
+    gun: {
+      caliberMm: 130, reloadS: 13.5, baseAccuracy: 0.40, aimTimeS: 3.1,
+      bloom: BLOOM_WW2,
+      shells: [
+        shell('BR-482M APCBC (130mm M-65)', 'AP', 130, 258, 225, 530, 950),
+        shell('BR-482P APCR', 'APCR', 130, 305, 265, 470, 1080),
+        shell('OF-482M HE', 'HE', 130, 65, 65, 640, 950),
+      ],
+    },
+    dims: { hullLengthM: 6.99, overallLengthM: 10.24, widthM: 3.4, heightM: 2.6 },
+    armor: communityArmor({
+      lenM: 6.99, widM: 3.4, hgtM: 2.6, turretPivot: [0, 1.75, -0.2],
+      gunPivot: [0, 0.35, 0.5], barrelLenM: 5.4, barrelRadM: 0.1,
+      frontMm: 220, sideMm: 130, rearMm: 80, roofMm: 40,
+      tFrontMm: 305, tSideMm: 217, tRearMm: 94, mantletMm: 305,
+    }),
+    visual: {
+      scheme: 'solid', base: '#445032', weather: '#4f5b3e', patches: [],
+      marking: 'number', number: '279', trackWidthM: 0.58,
+    },
+  },
+
+  is6b: {
+    id: 'is6b', name: 'IS-6B', nation: 'USSR', era: 'ww2', class: 'heavy',
+    community: {
+      author: 'Jt Steele (SnowLeopard101)',
+      source: 'https://www.thingiverse.com/thing:4849489',
+      license: 'CC-BY 4.0',
+    },
+    hp: 1300,
+    enginePowerHp: 700, weightTons: 54, topSpeedKmh: 43, reverseSpeedKmh: 6,
+    hullTraverseDegS: 20,
+    terrainResistance: { hard: 1.15, medium: 1.35, soft: 2.4 },
+    pivotStyle: 'pivot',
+    turretTraverseDegS: 16, gunPitchDegS: 12, gunElevationDeg: 18, gunDepressionDeg: 4,
+    gun: {
+      caliberMm: 122, reloadS: 12.0, baseAccuracy: 0.43, aimTimeS: 3.0,
+      bloom: BLOOM_WW2,
+      shells: [
+        shell('BR-471D APBC (122mm D-30)', 'AP', 122, 190, 165, 390, 850),
+        shell('BR-471 APHE', 'AP', 122, 175, 150, 390, 800),
+        shell('OF-471 HE', 'HE', 122, 61, 61, 450, 800),
+      ],
+    },
+    dims: { hullLengthM: 6.9, overallLengthM: 9.1, widthM: 3.2, heightM: 2.5 },
+    armor: communityArmor({
+      lenM: 6.9, widM: 3.2, hgtM: 2.5, turretPivot: [0, 1.65, -0.2],
+      gunPivot: [0, 0.32, 0.5], barrelLenM: 4.8, barrelRadM: 0.09,
+      frontMm: 100, sideMm: 100, rearMm: 60, roofMm: 30,
+      tFrontMm: 150, tSideMm: 150, tRearMm: 100, mantletMm: 160,
+    }),
+    visual: {
+      scheme: 'solid', base: '#445032', weather: '#4f5b3e', patches: [],
+      marking: 'number', number: '6', trackWidthM: 0.65,
+    },
+  },
+
+  is1: {
+    // fused single-mesh print model: plays as a fixed-gun assault TD (same
+    // class rule as the other welded-turret prints — see t30)
+    id: 'is1', name: 'IS-1', nation: 'USSR', era: 'ww2', class: 'td',
+    community: {
+      author: 'AaronTMG',
+      source: 'https://www.printables.com/model/925804-is-1-russian-heavy-tank',
+      license: 'CC-BY 4.0',
+    },
+    hp: 1000,
+    enginePowerHp: 520, weightTons: 44, topSpeedKmh: 37, reverseSpeedKmh: 5,
+    hullTraverseDegS: 24,
+    terrainResistance: { hard: 1.1, medium: 1.3, soft: 2.3 },
+    pivotStyle: 'pivot',
+    turretTraverseDegS: 24, gunPitchDegS: 14, gunElevationDeg: 20, gunDepressionDeg: 5,
+    gun: {
+      caliberMm: 85, reloadS: 5.5, baseAccuracy: 0.40, aimTimeS: 2.4,
+      bloom: BLOOM_WW2,
+      shells: [
+        shell('BR-365 APCBC (85mm D-5T)', 'AP', 85, 120, 102, 220, 792),
+        shell('BR-365P APCR', 'APCR', 85, 140, 120, 195, 1050),
+        shell('O-365 HE', 'HE', 85, 43, 43, 280, 785),
+      ],
+    },
+    dims: { hullLengthM: 6.77, overallLengthM: 8.56, widthM: 3.07, heightM: 2.73 },
+    armor: communityArmor({
+      lenM: 6.77, widM: 3.07, hgtM: 2.73, turretPivot: [0, 1.75, -0.1],
+      gunPivot: [0, 0.35, 0.4], barrelLenM: 4.0, barrelRadM: 0.07,
+      frontMm: 100, sideMm: 90, rearMm: 60, roofMm: 30,
+      tFrontMm: 100, tSideMm: 100, tRearMm: 100, mantletMm: 120, turretless: true,
+    }),
+    visual: {
+      scheme: 'solid', base: '#445032', weather: '#4f5b3e', patches: [],
+      marking: 'number', number: '113', trackWidthM: 0.65,
+    },
+  },
 };
 
 Object.assign(TANK_SPECS, COMMUNITY_SPECS);
@@ -1307,6 +1760,120 @@ Object.assign(MODEL_SOURCE, {
       // r7: restyled with the shared camo canvas + dark gear materials — the
       // factory banana-cream palette read as a toy from a different game.
       paintUntextured: true,
+    },
+  },
+
+  // -------------------------------------------------------------------------
+  // COMMUNITY WAVE 2 (2026-07-28). Node names / orientations verified offline
+  // against each GLB's node tree (scratch probe renders). Fused single-mesh
+  // print models ship as fixed-gun TD-class vehicles per the integration rule.
+  // -------------------------------------------------------------------------
+  kv2: {
+    source: 'glb',
+    // named hull/turret/tracks/wheels groups; gun fused into the turret mesh
+    // (yaw articulates, pitch stays virtual). Authored ring-center origin.
+    glb: {
+      path: '/models/tanks/community/kv2-full-comrade1280.glb',
+      turretNode: '^turret$', autoPivot: true,
+    },
+  },
+  tiger2: {
+    source: 'glb',
+    // 20 flat sibling meshes; Object_2 = turret + gun (verified by isolation
+    // render). Explicit pivot: the turret bbox includes the long 88 L/71, so
+    // the footprint-center fallback would land ~1.3 m too far forward.
+    glb: {
+      path: '/models/tanks/community/tiger2-maximus.glb',
+      turretNode: '^Object_2$', autoPivot: true, pivot: [0, 1.9, -1.3],
+    },
+  },
+  sherman_jumbo: {
+    source: 'glb',
+    // print plates re-assembled by the scout: hull/turret/tracks_l/tracks_r
+    // named nodes. Explicit pivot from the turret base-rim centroid (the
+    // fused 75mm tube drags the bbox-center fallback forward).
+    glb: {
+      path: '/models/tanks/community/sherman-jumbo.glb',
+      turretNode: '^turret$', autoPivot: true, pivot: [0, 1.25, 0.0],
+      paintUntextured: true,
+    },
+  },
+  jagdtiger: {
+    source: 'glb',
+    glb: { path: '/models/tanks/community/jagdtiger-adipriatna.glb', fixedGun: true },
+  },
+  jpz_e100: {
+    source: 'glb',
+    glb: {
+      path: '/models/tanks/community/jagdpanzer_e100_haphazard.glb',
+      fixedGun: true, paintUntextured: true,
+    },
+  },
+  sturmtiger: {
+    source: 'glb',
+    // asset faces +x — rotate to the +z convention
+    glb: {
+      path: '/models/tanks/community/sturmtiger-tomrs.glb',
+      fixedGun: true, yawOffset: -Math.PI / 2,
+    },
+  },
+  t95: {
+    source: 'glb',
+    glb: {
+      path: '/models/tanks/community/t95_doomturtle_haphazard.glb',
+      fixedGun: true, yawOffset: Math.PI, paintUntextured: true,
+    },
+  },
+  t30: {
+    source: 'glb',
+    glb: {
+      path: '/models/tanks/community/t30_haphazard.glb',
+      fixedGun: true, yawOffset: Math.PI, paintUntextured: true,
+    },
+  },
+
+  // -------------------------------------------------------------------------
+  // COMMUNITY WAVE 3 (IS-series hunt, 2026-07-28). Print STLs re-assembled
+  // and normalized offline (Blender pipeline — see the LICENSE-RECORDs):
+  // real-meter scale, grounded at y=0, gun facing +z, Hull/Turret node splits
+  // preserved. Turret node origins are mesh offsets (not ring centers) and
+  // the turret bboxes include the fused gun tube, so the footprint-center
+  // fallback would seat the ring too far forward — explicit pivots below come
+  // from base-band centroid probes (tools/tmp-glbprobe.html, tiger2 rule).
+  // Guns are fused into the turret meshes: yaw articulates, pitch stays
+  // virtual (kv2 rule). All untextured prints ride the shared camo canvas.
+  // -------------------------------------------------------------------------
+  is7: {
+    source: 'glb',
+    glb: {
+      path: '/models/tanks/community/is7-snowleopard.glb',
+      turretNode: '^Turret$', autoPivot: true, pivot: [0, 1.08, -1.37],
+      paintUntextured: true,
+    },
+  },
+  object279: {
+    source: 'glb',
+    // quad-track pods live under Hull (TracksL/TracksR nodes stay hull-fixed)
+    glb: {
+      path: '/models/tanks/community/object279-snowleopard.glb',
+      turretNode: '^Turret$', autoPivot: true, pivot: [0, 1.4, -1.3],
+      paintUntextured: true,
+    },
+  },
+  is6b: {
+    source: 'glb',
+    glb: {
+      path: '/models/tanks/community/is6b-snowleopard.glb',
+      turretNode: '^Turret$', autoPivot: true, pivot: [0, 1.02, -0.37],
+      paintUntextured: true,
+    },
+  },
+  is1: {
+    source: 'glb',
+    // single fused mesh (turret welded) — fixed-gun assault TD per class rule
+    glb: {
+      path: '/models/tanks/community/is1-aarontmg.glb',
+      fixedGun: true, paintUntextured: true,
     },
   },
 });

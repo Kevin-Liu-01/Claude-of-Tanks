@@ -1,0 +1,9 @@
+Model: Jagdpanzer E100
+Author: Haphazard0587
+Source: https://www.thingiverse.com/thing:2624802
+License: CC-BY 4.0 (http://creativecommons.org/licenses/by/4.0/)
+Files used: Jagdpanzer_E100_Complete.obj (download:4286403)
+Downloaded: 2026-07-28 via public Thingiverse file CDN (download:<id>)
+Provenance: Author's original portfolio (29+ consistent print-oriented designs incl. naval guns; watertight CAD-style solids, no game-rip texture/UV topology). Vehicle subject is a historical prototype/paper design.
+Conversion: Blender 4.x headless import -> weld+normals -> decimate <=150k tris -> scale to real-world meters, ground Z=0, front -Y -> procedural re-material (steel-green camo noise overlay + low-band track darkening) -> GLB (Y-up).
+Attribution line: "Jagdpanzer E100" by Haphazard0587 (https://www.thingiverse.com/thing:2624802), licensed CC-BY 4.0.

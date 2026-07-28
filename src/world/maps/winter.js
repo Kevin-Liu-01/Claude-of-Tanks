@@ -37,7 +37,8 @@ export default {
   },
 
   splat: {
-    grassTone: (h, s, l) => [0.575, 0.05, clamp01(0.62 + l * 0.38)], // snowpack
+    // lighting_post r5: saturation 0.05 -> 0.03 — shadowed snow read as blue paint
+    grassTone: (h, s, l) => [0.575, 0.03, clamp01(0.62 + l * 0.38)], // snowpack
     dirtTone: (h, s, l) => [0.075, 0.11, clamp01(l * 0.85 + 0.10)], // frozen mud
     // pale snow-dusted rock: keeps steep lake banks / cut slopes from reading
     // as dark holes punched into the snowfield
@@ -53,7 +54,8 @@ export default {
     // 0.45 (r5): more windblown snow encroaching from the shores — the sheet
     // grades into the snowfield instead of sitting as a clean punched ellipse
     iceDrift: 0.45,
-    tintA: [1.03, 1.04, 1.09], tintB: [0.90, 0.93, 1.00], tintC: [1.04, 1.04, 1.07],
+    // lighting_post r5: tintB desaturated toward neutral (was [0.90,0.93,1.00])
+    tintA: [1.03, 1.04, 1.09], tintB: [0.95, 0.965, 1.005], tintC: [1.04, 1.04, 1.07],
     roadTint: [0.74, 0.68, 0.62], // worn dark slush tracks through the snow
   },
 
@@ -71,10 +73,15 @@ export default {
     // r7: 0.24 -> 0.10 — even clumped, the scatter read as high-contrast
     // dark speckle ("scattered dirt") across the snowfield in wide shots;
     // winter growth stays sparse and hugs features, with LIGHTER rime tones
-    grassDensity: 0.10,
-    grassTexTone: (h, s, l) => [0.105, 0.12, clamp01(l * 1.1 + 0.30)], // rimed straw
-    tuftTone: (h, s, l) => [0.11, 0.08, clamp01(l * 1.0 + 0.34)],
-    bushCount: 0.22,
+    // r8 (critique: "leafless scrub renders as tiny insect-like scribbles
+    // scattered on the snow"): density 0.10 -> 0.07 and bushes 0.22 -> 0.15
+    // cull the smallest scatter class that degenerates into mid-field
+    // speckle, and the surviving tufts ride even lighter/waxier rime tones
+    // so they read as frost-bound straw, not debris.
+    grassDensity: 0.07,
+    grassTexTone: (h, s, l) => [0.105, 0.10, clamp01(l * 1.0 + 0.36)], // rimed straw
+    tuftTone: (h, s, l) => [0.11, 0.07, clamp01(l * 0.9 + 0.40)],
+    bushCount: 0.15,
     // pine scrub, not birch twig-balls: the dark leafless bush scatter read
     // as speckle noise against the snow in establishing shots
     bushSpecies: 'pine',
@@ -130,7 +137,13 @@ export default {
     // r7: haze 0.8 -> 0.68 — the aerial ramp buried the rebuilt ridge detail
     // (sastrugi/rib texture) under fog by the second row; the overcast scene
     // fog still softens the ring, the bake just stops double-fogging it
-    rockHex: 0x49536b, snowHex: 0xf4f8fe, haze: 0.68,
+    // r8: snowHex 0xf4f8fe -> 0xdfe7f1 and haze 0.68 -> 0.60. The near-white
+    // snow wall sat on the tonemap shoulder where the (boosted) sastrugi/rib
+    // texture contrast compressed to nothing — the ring rendered as a flat
+    // untextured gradient (critique). A step darker drops the wall into the
+    // midtones where surface structure actually reads, and the lighter haze
+    // stops double-washing it; the scene fog still provides depth recession.
+    rockHex: 0x424c66, snowHex: 0xdfe7f1, haze: 0.60,
   },
 
   sky: {
@@ -149,7 +162,13 @@ export default {
     // r7: 0.0011 -> 0.00088 — with the rebuilt fractal alpine ring the fog
     // was still averaging the 4 ridge rows into one flat cream wall; the
     // lighter fog keeps per-row aerial separation legible
-    fogDensity: 0.00088, fogTintHex: 0xb9c4d2, fogMix: 0.94, envIntensity: 0.52,
+    // r8: 0.00088 -> 0.00064. Debug-painting the ring rows proved the wall's
+    // baked snow/rock texture is ~70-90% buried under the white wash stack
+    // (scene fog + post.js aerial scatter-in + desat) — no amount of baked
+    // contrast survives it. Halving the scene-fog share (0.47 -> 0.27 at
+    // 900 m) lets the rebuilt sastrugi/rib/crag structure and the darker
+    // alpine recenter finally read; the aerial pass still owns depth grading.
+    fogDensity: 0.00064, fogTintHex: 0xb9c4d2, fogMix: 0.94, envIntensity: 0.52,
     cloudOpacity: 1.0, cloudOpacity2: 0.95, cloudTintHex: 0xaab2bc,
     sunIntensity: 1.15, sunColorHex: 0xdfe7f2, hemiIntensity: 0.92,
   },

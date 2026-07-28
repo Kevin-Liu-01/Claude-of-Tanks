@@ -225,6 +225,14 @@ tau = aimTimeS / ln(3)                       // ≈ aimTime / 1.0986
 currentBloom += (targetBloom - currentBloom) * (1 - exp(-dt / tau))
 ```
 
+> IMPLEMENTATION NOTE (locked by controls_gunnery r2, do not re-tune against
+> the ln 3 text above): src/sim/movement.js uses `tau = aimTimeS / ln 6` for
+> the SHRINK path, deliberately paired with reduced `bloom.afterShot`
+> multipliers in specs.js so the post-shot re-settle under the fire gate
+> lands ≈ 2.3 s on modern MBTs. The stat-card `aimTimeS` therefore reads as
+> "time to shrink to 1/6" in this codebase. Renormalizing back to ln 3
+> requires restoring the spec afterShot values in the same change.
+
   (`targetBloom` recomputed every tick from current motion; bloom therefore grows instantly
   with motion — use a much shorter tau, ~0.05 s, when target > current — and decays with the
   aim-time tau when target < current. WoT bloom-up is effectively instant.)

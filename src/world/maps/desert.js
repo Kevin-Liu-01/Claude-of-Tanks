@@ -35,7 +35,10 @@ export default {
     // already-red, so no retint hook (the old s*3.2 hook targeted the grey
     // generic rock and would push the beds to neon)
     sandstone: true,
-    rockTone: null,
+    // r8: mild desaturation + slight lift on the authored beds — the full-
+    // saturation ochre banding read as "candy taffy" stripes from 200-800 m
+    // (critique); ~28% sat cut keeps the sedimentary read without the neon
+    rockTone: (h, s, l) => [h, clamp01(s * 0.72), clamp01(l * 1.03)],
     mudTone: (h, s, l) => [0.078, 0.30, clamp01(l * 1.5 + 0.04)], // cracked dry clay
     mudRough: 1.15,
     tintA: [1.10, 1.02, 0.85], tintB: [0.94, 0.89, 0.79], tintC: [1.12, 1.06, 0.90],
@@ -45,7 +48,9 @@ export default {
     // r7: 0.30 -> 0.20 — the R layer albedo is now REAL sedimentary strata
     // (makeSandstoneLayer); the world-Y shader bands only reinforce at range
     // so the two never stack into over-banded stripes
-    strata: 0.20,
+    // r8: 0.20 -> 0.15 — even with the per-cliff de-sync the constant-
+    // frequency shader bands stacked on the desaturated beds read over-striped
+    strata: 0.15,
     microAmp: 0.3,          // tame the near-field dot speckle (ripples instead)
     rippleDir: [0.8, 0.6],  // global wind direction for the sand ripples
     // r7: 0.26 -> 0.34 — with the darker sand albedo the dune-face ripple
@@ -66,9 +71,12 @@ export default {
     rimMix: [['palm', 1]],
     // r5: denser oases + more standalone palms — the sparse-stick read was a
     // top critique item; scrub density up with the new clump-gated scatter
-    clusterCount: 19,
-    loneCount: 68,
-    rimCount: 30,
+    // r8: fewer LONE palms, more oasis clusters — uniformly scattered far
+    // palms rendered as thin spider silhouettes of inconsistent scale across
+    // the open flats (critique); date palms grow at water, i.e. in clumps
+    clusterCount: 27,
+    loneCount: 30,
+    rimCount: 22,
     // r6: 0.3 -> 0.42 — compensates the stricter two-scale thicket gating so
     // scrub concentrates into dense wadis instead of thinning out overall
     grassDensity: 0.42,

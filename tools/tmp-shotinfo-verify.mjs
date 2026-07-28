@@ -1,4 +1,11 @@
-// TEMP killcam_shotinfo r4 verification probe (delete after review).
+// TEMP killcam_shotinfo r5 verification probe (delete after review).
+// r5 additions over the r4 probe:
+//   - exits sniper mode (rig.exitSniper) before card captures so the scope's
+//     ×N magnification plate can no longer leak into probe screenshots
+//   - PHASE B measures the live x-ray FRAMING: the victim's oriented hull
+//     box is projected through the actual camera and every corner must sit
+//     inside the frame with margin (the r7 critique's cut-off Abrams)
+//
 // Fires a real shot via __DEBUG hooks, captures the resolved shell:hit sim
 // payload off the bus, and verifies EVERY number rendered on:
 //   1. the floating shot-info card (.cot-si-card)
@@ -229,8 +236,16 @@ async function runAll() {
       check('card', 'module chips', wantChips.join('|'), card.chips.join('|'));
       check('card', 'target name', ev.targetName || '', (card.zoneTank || '').trim());
     }
+    // r5: leave sniper aim before capturing — the probe's aimAtNearest snaps
+    // the rig to sniper and the scope's ×N plate then leaked into every
+    // capture as a phantom "debug chip" (r7 critique)
+    await page.evaluate(() => {
+      const D = window.__DEBUG;
+      if (D.rig && D.rig.exitSniper) D.rig.exitSniper();
+    });
+    await sleep(350);
     await page.screenshot({ path: `${outDir}/a_card_full.png` });
-    await page.screenshot({ path: `${outDir}/a_card_crop.png`, clip: { x: 1920 - 300, y: 270, width: 300, height: 430 } });
+    await page.screenshot({ path: `${outDir}/a_card_crop.png`, clip: { x: 1920 - 320, y: 270, width: 320, height: 430 } });
   }
 
   // ============ PHASE A2: STAGED non-lethal incoming hit -> toast ============
@@ -361,6 +376,50 @@ async function runAll() {
       }
     }
     notes.push(`killcam labels: ${kc.labels.join(' | ')} big: ${kc.big.join(',')}`);
+    // r5: live x-ray FRAMING gate — project the victim's oriented hull box
+    // (yaw-aligned, hull length without barrel) through the live camera;
+    // every corner must sit inside the frame with margin (r7: the Abrams
+    // ghost hull ran off the bottom/right edges)
+    const fit = await page.evaluate(() => {
+      const D = window.__DEBUG;
+      const cam = D.camera;
+      cam.updateMatrixWorld(true);
+      const t = D.game.player; // defeat replay: victim is the player
+      const dims = t.spec.dims;
+      const hw = dims.widthM * 0.5;
+      const hl = (dims.hullLengthM || dims.overallLengthM * 0.8) * 0.5;
+      const hh = dims.heightM;
+      const cy = Math.cos(t.state.yaw);
+      const sy = Math.sin(t.state.yaw);
+      const P = cam.projectionMatrix.elements;
+      const V = cam.matrixWorldInverse.elements;
+      let worst = 0;
+      const ext = { minX: 1e9, maxX: -1e9, minY: 1e9, maxY: -1e9 };
+      for (let i = 0; i < 8; i++) {
+        const lx = i & 1 ? hw : -hw;
+        const ly = i & 2 ? hh : 0;
+        const lz = i & 4 ? hl : -hl;
+        const x = t.state.pos.x + lx * cy + lz * sy;
+        const y = t.state.pos.y + ly;
+        const z = t.state.pos.z - lx * sy + lz * cy;
+        const vx = V[0] * x + V[4] * y + V[8] * z + V[12];
+        const vy = V[1] * x + V[5] * y + V[9] * z + V[13];
+        const vz = V[2] * x + V[6] * y + V[10] * z + V[14];
+        const cx = P[0] * vx + P[4] * vy + P[8] * vz + P[12];
+        const cyy = P[1] * vx + P[5] * vy + P[9] * vz + P[13];
+        const cw = P[3] * vx + P[7] * vy + P[11] * vz + P[15];
+        const nx = cx / cw;
+        const ny = cyy / cw;
+        worst = Math.max(worst, Math.abs(nx), Math.abs(ny));
+        ext.minX = Math.min(ext.minX, nx); ext.maxX = Math.max(ext.maxX, nx);
+        ext.minY = Math.min(ext.minY, ny); ext.maxY = Math.max(ext.maxY, ny);
+      }
+      return { worst: +worst.toFixed(3), ...ext };
+    });
+    notes.push(`x-ray framing: worst |ndc| ${fit.worst} x[${fit.minX.toFixed(2)},${fit.maxX.toFixed(2)}] y[${fit.minY.toFixed(2)},${fit.maxY.toFixed(2)}]`);
+    if (fit.worst > 0.95) {
+      failures.push({ where: 'killcam', name: 'x-ray hull framing (80% safe area)', expected: 'hull corners inside ±0.95 NDC', actual: `worst ${fit.worst}` });
+    }
     await page.screenshot({ path: `${outDir}/b_killcam_xray.png` });
     // skip 2: xray -> finish (skippability)
     await page.keyboard.press('Space');

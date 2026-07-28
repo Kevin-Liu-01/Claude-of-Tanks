@@ -1,0 +1,13 @@
+Model: Sherman jumbo tank (M4A3E2)
+Source: https://www.printables.com/model/3992-sherman-jumbo-tank
+Uploader: ZEUS_0815 (@ZEUS_0815_21199) — CC-BY split/repack of:
+Original: "M4A3E2 Sherman Jumbo" by manifold_destiny, https://www.thingiverse.com/thing:1065360
+Original license: CC-BY 4.0 (verified on Thingiverse page 2026-07-28)
+Printables license: CC-BY (license id 1); remix relationship declared on the Printables page.
+Attribution required: "M4A3E2 Sherman Jumbo by manifold_destiny (thingiverse.com/thing:1065360),
+  CC-BY; split for printing by ZEUS_0815 (printables.com/model/3992)"
+Provenance: clean CC-BY chain (Thingiverse original -> declared remix on Printables).
+Files used: jumbo_sherman_hull_v4.stl, jmbo_sherman_turret.stl, jmbo_sherman_tracks.stl (split L/R)
+Downloaded: 2026-07-28 via Printables getDownloadLink (no account required)
+Processing: print-plate parts re-assembled (turret seated on ring, tracks stood up + mirrored),
+  scale-normalized to 6.3 m, hull/turret/tracks_l/tracks_r exported as named nodes sherman-jumbo.glb.

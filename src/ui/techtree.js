@@ -519,6 +519,9 @@ export function createTechTree(opts) {
   const COMM_TIER = {
     leichttraktor: 1, pziii_konserwa: 3, newc_pziii: 4, t34_85_cad: 6,
     newc_tiger: 7, is3: 8, recon_tank: 8, q_heavy: 9, strv103: 9,
+    // wave 2 (print-model crawl)
+    kv2: 6, sherman_jumbo: 6, tiger2: 8, sturmtiger: 8,
+    jagdtiger: 9, t30: 9, t95: 9, jpz_e100: 10,
   };
   const commSpecs = (specs || []).filter((sp) => sp.community);
   const tabs = TABS.slice();
@@ -658,10 +661,11 @@ export function createTechTree(opts) {
     world.innerHTML = '';
     const isComm = tab.id === 'community';
     const byKey = new Map();
-    let maxRow = 0, minTier = 10, maxTier = 1;
+    let maxRow = 0, minRow = 3, minTier = 10, maxTier = 1;
     for (const node of tab.nodes) {
       byKey.set(node.key, node);
       maxRow = Math.max(maxRow, node.row);
+      minRow = Math.min(minRow, node.row);
       minTier = Math.min(minTier, node.tier);
       maxTier = Math.max(maxTier, node.tier);
     }
@@ -685,11 +689,16 @@ export function createTechTree(opts) {
       w: PAD_X * 2 + 10 * TIER_W,
       h: HEAD_H + maxRow * ROW_H + NODE_H + 60,
     };
+    // r8: fit the camera to the OCCUPIED row band vertically (was y0:0 — the
+    // fixed head zone above the first class row counted as content, so nation
+    // tabs rendered their rows low with a dead band above the LIGHT lane).
+    // The COMMUNITY credit cards run ~22 px taller than NODE_H; include them.
+    const cardH = isComm ? NODE_H + 22 : NODE_H;
     content = {
       x0: PAD_X + minCol * TIER_W - 16,
-      y0: 0,
+      y0: HEAD_H + minRow * ROW_H - 24,
       x1: PAD_X + (maxCol + 1) * TIER_W + 16,
-      y1: HEAD_H + maxRow * ROW_H + NODE_H + 34,
+      y1: HEAD_H + maxRow * ROW_H + cardH + 24,
     };
     world.style.width = `${bounds.w}px`;
     world.style.height = `${bounds.h}px`;
@@ -738,6 +747,10 @@ export function createTechTree(opts) {
       hd.className = 'cot-tt-tierhd';
       const hc = isComm ? colOfTier.get(t) : t - 1;
       hd.style.left = `${PAD_X + hc * TIER_W + (TIER_W - NODE_W) / 2}px`;
+      // r8: anchor the ladder just above the TOP OCCUPIED row instead of the
+      // world's absolute top — with the row-band camera fit the old top:14px
+      // strip drifted into the dead zone above the frame
+      hd.style.top = `${HEAD_H + minRow * ROW_H - 56}px`;
       hd.innerHTML = `${ROMAN[t]}<i>tier</i>`;
       world.appendChild(hd);
     }

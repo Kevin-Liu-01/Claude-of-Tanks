@@ -91,7 +91,13 @@ const SKY_KNEE_FALLOFF = 0.11; // 1/e width of the shoulder in luminance units
 // clearly legible, and the taller band grades the milky region above the
 // skyline instead of cutting off right at it. Fog + aerial scatter sample
 // this same band, so the far-field wash follows automatically.
-const HAZE_MAX_LUM = 0.56; // linear pre-ACES luminance ceiling in the band
+// r5 ("battlefield_urban: featureless bleached horizon band occupying ~25%
+// of frame height"): 0.56 → 0.50 — the band still averaged ~230 display
+// with 18% of texels over 235. 0.50 lands it ~205-215 with the directional
+// warm/cool hue unmistakably legible. Paired with HORIZON_LUM_CAP 0.55 →
+// 0.48 (fog + scatter-in + cloud haze pole inherit that sample) and post.js
+// AERIAL_HAZE_LUM_CAP 0.50 → 0.44.
+const HAZE_MAX_LUM = 0.50; // linear pre-ACES luminance ceiling in the band
 const HAZE_COMPRESS = 0.18; // slope retained above the ceiling
 const HAZE_BAND_TOP = 0.24; // direction.y where the haze treatment fades out
 const HAZE_TINT_COOL = [0.74, 0.88, 1.13]; // blue hue floor away from the sun
@@ -217,7 +223,11 @@ const CIRRUS_UV_METERS = 5600;
 const CLOUD_HAZE_K = 0.00023;
 const CIRRUS_HAZE_K = 0.00010;
 // direction.y band where deck alpha melts out at the horizon line itself.
-const CLOUD_Y_FADE = [0.012, 0.055];
+// r5: [0.012, 0.055] → [0.007, 0.034] — the deck used to vanish ~3 deg above
+// the skyline, leaving the bleached band with zero texture; hazed cloud
+// bases now grade all the way into the horizon wash (they inherit the haze
+// color, so no hard silhouettes against the terrain edge).
+const CLOUD_Y_FADE = [0.007, 0.034];
 const CLOUD_MAX_ALPHA = 0.94;
 const CLOUD_LAYER2_OPACITY = 0.6; // default for preset field cloudOpacity2 (cirrus)
 
@@ -606,7 +616,7 @@ function sampleHorizonColor(renderer, sunDir, preset = DEFAULT_PRESET) {
 // Linear-luminance ceiling for the horizon sample (see sampleHorizonColor).
 // 0.55 linear lands at ~215/255 display after ACES + grade — a bright haze
 // that still reads as atmosphere, never as blown white.
-const HORIZON_LUM_CAP = 0.55;
+const HORIZON_LUM_CAP = 0.48; // r5: 0.55 → 0.48 — see HAZE_MAX_LUM note
 
 /** Scale a linear color down so its Rec709 luminance is <= maxLum (hue kept).
  * @param {THREE.Color} c @param {number} maxLum @returns {THREE.Color} c */

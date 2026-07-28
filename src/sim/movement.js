@@ -85,6 +85,30 @@ const HALF_WID_FRAC = 0.5;       // contact-line half-width = 0.5 × widthM (tra
 const SUPPORT_LEN_FRAC = 0.45;   // support line half-length = 0.45 × hullLengthM
 const SUPPORT_SPACING_M = 0.35;  // max gap between contact samples along a line
 const SUPPORT_MAX_N = 24;        // per-line sample cap (Maus-length hulls)
+// r5 terrain-contact hard gate (round critique): the solve sampled ONLY the
+// two outer track-edge lines (±0.5 × width). Terrain bumps cresting BETWEEN
+// them — under the road wheels (xc ≈ 0.6–0.8 × hw) and the hull belly — were
+// never resolved: parked on an open meadow the worst visible vertex sat
+// -16.0 cm below the heightfield (a settled wheel rim -18.3 cm) while the two
+// sampled lines held a perfect +1.0…+1.5 cm all run. The solve now samples a
+// LATERAL FAN of longitudinal lines per side covering the whole track width,
+// plus a hull-belly guard pair at the ground-clearance height:
+//   ×hw   yOff  covers
+//   1.00  0     track outer edge + skirts (the original pair — also the fit)
+//   0.80  0     track centerline / road-wheel run
+//   0.63  0     track inner edge (roster range 0.47–0.65 × hw)
+//   0.32  0.34  hull belly (guard: every roster hull bottom is ≥ 0.40 m —
+//   0.00  0.34  fires only on knife crests that would otherwise clip the pan)
+// The added lines are support-only (the plane FIT stays on the outer pair —
+// identical feel on smooth ground) and sample at 2× coarser longitudinal
+// spacing: lateral crests vary slowly along z, and the fan costs ~2.4× the
+// old two-line pass instead of 4×.
+const SUPPORT_FAN = [
+  { f: 0.80, yOff: 0 },
+  { f: 0.63, yOff: 0 },
+  { f: 0.32, yOff: 0.34 },
+  { f: 0.00, yOff: 0.34 },
+];
 // Contact margin: the solved plane rides this far above the highest contact
 // sample. Covers (a) the sub-sample terrain bulge between support points and
 // (b) the bounded phase error between this sim-tick susp mirror and the
@@ -596,6 +620,30 @@ export function updateTank(entity, heightField, dt, collide = null) {
         // h − (x·sinR·cosP + z·sinP)
         const d = h - (x * sinR * cosP + z * sinP);
         if (d > supportY) supportY = d;
+      }
+    }
+    // r5 lateral fan (see SUPPORT_FAN): support-only lines between the outer
+    // track edges — road-wheel run, track inner edge, hull-belly guard. A
+    // hull-local point (x, yOff, z) renders (YXZ compose) at
+    //   worldY  = pos.y + (x·sinR + yOff·cosR)·cosP + z·sinP
+    //   worldXZ = yaw-rotate of (x·cosR − yOff·sinR,  (x·sinR + yOff·cosR)·
+    //             sin(−pitch) + z·cos(−pitch))
+    // so pos.y must also sit at max of h − ((x·sinR + yOff·cosR)·cosP + z·sinP)
+    // over these lines. Coarse spacing (every other z sample, endpoints kept).
+    for (const ln of SUPPORT_FAN) {
+      for (let side = -1; side <= 1; side += 2) {
+        const x = side * hw * ln.f;
+        const x1 = x * cr0 - ln.yOff * sr0;
+        const y1 = x * sr0 + ln.yOff * cr0;
+        const lift = (x * sinR + ln.yOff * cr0) * cosP;
+        for (let k = 0; k < nLine; k += 2) {
+          const z = k === nLine - 2 ? sl : -sl + k * step; // keep the far end
+          const z2 = y1 * sa0 + z * ca0;
+          const h = heightField.getHeightAt(px1 + x1 * cb + z2 * sb, pz1 - x1 * sb + z2 * cb);
+          const d = h - (lift + z * sinP);
+          if (d > supportY) supportY = d;
+        }
+        if (ln.f === 0) break; // centerline: one line, not two
       }
     }
     // Least-squares plane: pitch from the along-track height gradient (Σz = 0

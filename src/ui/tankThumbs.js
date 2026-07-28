@@ -69,18 +69,20 @@ function renderAll(specs) {
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  // r5: brighter booth — the old 1.05 exposure / 3.4 key rendered murky,
+  // low-contrast card thumbs against the dark carousel plates
+  renderer.toneMappingExposure = 1.16;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(24, THUMB_W / THUMB_H, 0.1, 200);
   // studio rig: warm key from the camera side, cool sky fill, hard white-blue
   // rim from behind-above so the silhouette pops off the dark card
-  const hemi = new THREE.HemisphereLight(0xc4d4e4, 0x3a362e, 1.15);
-  const key = new THREE.DirectionalLight(0xfff0d6, 3.4);
+  const hemi = new THREE.HemisphereLight(0xc4d4e4, 0x3a362e, 1.35);
+  const key = new THREE.DirectionalLight(0xfff0d6, 4.1);
   key.position.set(-7, 8, 4);
-  const fill = new THREE.DirectionalLight(0x9fb4cc, 0.8);
+  const fill = new THREE.DirectionalLight(0x9fb4cc, 1.0);
   fill.position.set(6, 2, 6);
-  const rim = new THREE.DirectionalLight(0xeaf3ff, 3.6);
+  const rim = new THREE.DirectionalLight(0xeaf3ff, 3.8);
   rim.position.set(6, 7, -8);
   scene.add(hemi, key, fill, rim);
 

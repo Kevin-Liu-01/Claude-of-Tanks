@@ -221,6 +221,17 @@ void main() {
   vec3 col = vColor.rgb * hot * ( 1.0 - vT * vT * 0.45 );
   // rim tint: pixels near the burning front shift toward deep ember red
   col = mix( vec3( 1.0, 0.22, 0.03 ) * ( 0.4 + 0.6 * vColor.r ), col, smoothstep( 0.0, 0.55, heat ) );
+  // r5 combustion chemistry: saturation must fall BEFORE value. The old ramp
+  // held saturated deep red through the whole back half of a fire card's
+  // life, so 1.5-2.9 s post-blast the dying flare rendered as a floating
+  // maroon/dried-blood fog puff mid-column. Real fire desaturates to sooty
+  // grey-orange fast once it stops burning — pull the late-life color toward
+  // its own luma (grey) and dim it, so flame hands off to the smoke pool's
+  // grey-black instead of holding red.
+  float soot = smoothstep( 0.42, 0.9, vT );
+  float luma = dot( col, vec3( 0.299, 0.587, 0.114 ) );
+  col = mix( col, vec3( luma * 0.5 ), soot );
+  a *= 1.0 - soot * 0.45;
   // HDR push so UnrealBloom catches fire/flash pixels — per-card soft knee
   // keeps a deep additive stack from clipping to a white sheet
   gl_FragColor = vec4( toneCap( col * uIntensity ) * ( 1.0 - fogFactor ), a );
@@ -385,6 +396,7 @@ varying float vHot;
 varying float vFade;
 varying vec3 vLocal;
 varying float vSeed;
+varying vec3 vWorldPos;
 ${FOG_PARS_V}
 ${DISPLACE_GLSL}
 mat3 axisAngle( vec3 axis, float ang ) {
@@ -400,7 +412,7 @@ void main() {
   float age = uTime - aPB.w;
   if ( life <= 0.0 || age < 0.0 || age > life ) {
     vNormalW = vec3( 0.0, 1.0, 0.0 ); vTint = vec3( 0.0 ); vHot = 0.0; vFade = 0.0;
-    vLocal = vec3( 0.0 ); vSeed = 0.0;
+    vLocal = vec3( 0.0 ); vSeed = 0.0; vWorldPos = vec3( 0.0 );
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
     ${FOG_V.replace('-mvPosition.z','1.0')}
     return;
@@ -424,16 +436,27 @@ void main() {
   vec3 lp = position * vec3( 0.62 + h1 * 0.85, 0.42 + h2 * 0.95, 0.62 + h3 * 0.85 );
   lp.x += lp.y * ( h2 - 0.5 ) * 0.7;
   lp.z += lp.y * ( h1 - 0.5 ) * 0.55;
-  vec3 wpos = center + rot * ( lp * aSG.x * fade );
+  vec3 off = rot * ( lp * aSG.x * fade );
+  // r5 motion cue: velocity-aligned stretch on fast airborne chunks — a
+  // tumbling slab frozen against the sky read as a static 2D card; smearing
+  // the silhouette along the flight path reads as speed in every still.
+  vec3 vcur = aVL.xyz * exp( -0.12 * age ) + vec3( 0.0, -21.6 * age, 0.0 );
+  float spd = length( vcur );
+  if ( spd > 1.0 && grounded < 0.5 ) {
+    vec3 vdir = vcur / spd;
+    off += vdir * dot( off, vdir ) * clamp( spd * 0.045, 0.0, 0.85 );
+  }
+  vec3 wpos = center + off;
   vNormalW = rot * normal;
   vLocal = lp;
   vSeed = aSG.w;
+  vWorldPos = wpos;
   // charred-metal albedo: near-black soot to dark scorched brown
   vTint = mix( vec3( 0.045, 0.040, 0.036 ), vec3( 0.145, 0.110, 0.085 ), h3 );
-  // ember glow cools fast (orange -> black), scaled per-instance so chunks
-  // glow unevenly rather than as flat confetti. 3.1 (was 2.6): frozen frames
-  // still showed whole-face orange lumps ~1 s in (r7 "orange boxes")
-  vHot = aSG.z * exp( -age * 3.1 ) * ( 0.30 + h2 * 0.70 );
+  // ember glow: airborne wreckage leaves the fireball HOT — near-full glow
+  // through the first ~0.5 s (the r5 "flat matte-black slabs against sky"
+  // window), then cools fast so grounded chunks never read orange popcorn.
+  vHot = aSG.z * exp( -max( age - 0.45, 0.0 ) * 3.4 ) * ( 0.40 + h2 * 0.60 );
   vFade = fade;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   ${FOG_V}
@@ -443,19 +466,29 @@ void main() {
 
 const DEBRIS_FRAG = `
 uniform vec3 uSunDir;
+// NOTE (hud_ui r5 build fix): no cameraPosition redeclaration here — three's
+// ShaderMaterial prefixes 'uniform vec3 cameraPosition;' into FRAGMENT
+// shaders too, so an explicit declaration is a GLSL redefinition error.
 varying vec3 vNormalW;
 varying vec3 vTint;
 varying float vHot;
 varying float vFade;
 varying vec3 vLocal;
 varying float vSeed;
+varying vec3 vWorldPos;
 ${FOG_PARS_F}
 void main() {
   if ( vFade <= 0.001 ) discard;
   vec3 n = normalize( vNormalW );
   float nl = max( dot( n, uSunDir ), 0.0 );
-  float hemi = 0.28 + 0.22 * ( n.y * 0.5 + 0.5 );
+  // r5: hemisphere ambient raised + a view-dependent sky rim so a chunk
+  // tumbling against the bright sky reads as a LIT 3D object with a cool
+  // rim-lit edge, never an unlit matte-black 2D card.
+  float hemi = 0.34 + 0.30 * ( n.y * 0.5 + 0.5 );
   vec3 col = vTint * ( hemi + nl * 1.1 );
+  vec3 viewDir = normalize( cameraPosition - vWorldPos );
+  float rim = pow( 1.0 - abs( dot( n, viewDir ) ), 2.2 );
+  col += vec3( 0.36, 0.42, 0.50 ) * rim * ( 0.18 + 0.22 * ( n.y * 0.5 + 0.5 ) );
   // cooling ember glow (bloom feed): NOT a flat face tint — seeded cell-hash
   // blotches so irregular PATCHES of the scorched chunk glow orange while the
   // rest stays charred black (the old aligned sin-grid read as waffle dots)
@@ -705,6 +738,17 @@ function makeFlashTexture(rng) {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, s, s);
   ctx.globalCompositeOperation = 'source-over';
+  // r5 lighting_post: alpha^1.8 falloff — no visible disc boundary can
+  // survive on an additive card (frozen mid-life composed frames showed a
+  // translucent circle edge over the road)
+  {
+    const id = ctx.getImageData(0, 0, s, s);
+    const d = id.data;
+    for (let i = 3; i < d.length; i += 4) {
+      d[i] = Math.round(255 * Math.pow(d[i] / 255, 1.8));
+    }
+    ctx.putImageData(id, 0, 0);
+  }
   // ragged silhouette: turbulence bites the halo rim so the frozen frame
   // never shows a clean radial-gradient disc
   applyFbmAlpha(cv, rng, 0.32);

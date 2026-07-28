@@ -77,7 +77,14 @@ const HIGH_PASS_ANCHOR = 'gl_FragColor = mix( outputColor, texel, alpha );';
 // multiply needs more depth to survive the brighter field. The 260-420 m
 // view fade below still fences the far field, so the deeper term stays a
 // contact cue, not a dirt wash.
-const GTAO_PARAMS = { radius: 2.3, distanceExponent: 2, thickness: 2.0, scale: 3.3, samples: 16 };
+// r5: scale 3.3 → 3.0 + a NEW mid-distance ease (45% AO give-back over
+// 110-250 m, injected below with the view fade) — the half-res 16-tap gather
+// is undersampled at mid-range (AO radius ~3 px in the AO buffer), so real
+// rolling-turf concavities resolved as high-variance dot ROWS instead of
+// smooth shading; blatant on snow ("ordered dot-grid halftone" critical).
+// Near-field contact grounding (hulls, walls, props < 110 m) is untouched,
+// and deep corners keep ~55% depth through the mid band.
+const GTAO_PARAMS = { radius: 2.3, distanceExponent: 2, thickness: 2.0, scale: 3.0, samples: 16 };
 const GTAO_BLEND_INTENSITY = 1.0;
 
 // Depth-driven aerial perspective (r3: "distant hills correctly shift
@@ -136,7 +143,13 @@ const AERIAL_SUN_POW = 5.0; // width of the warm forward-scatter lobe
 // haze-albedo level (~0.50 → ~210/255 display after ACES + grade): distance
 // still pulls the far field into atmosphere, but the atmosphere itself can
 // never reach the clipped-white band, so mesa/ridge/sand contrast survives.
-const AERIAL_HAZE_LUM_CAP = 0.50;
+// r5 ("battlefield_urban: featureless bleached-white zone occupying ~25% of
+// frame height"): 0.50 still landed the far-field convergence color at ~215
+// display once the haze band + fog + scatter stacked. 0.44 puts the wash at
+// ~200-205 with its hue clearly legible — atmosphere, not blowout. Paired
+// with sky.js HAZE_MAX_LUM 0.56 -> 0.50 and HORIZON_LUM_CAP 0.55 -> 0.48 so
+// all three haze sources agree on the same sub-white ceiling.
+const AERIAL_HAZE_LUM_CAP = 0.44;
 // r9 SNIPER DE-HAZE: main.js already scales the FogExp2 density down at high
 // zoom (fov < 15), but the aerial pass kept FULL density, so the x8 sight
 // picture stayed a desaturated teal wash — a 450 m hillside at x8 subtends
@@ -145,6 +158,21 @@ const AERIAL_HAZE_LUM_CAP = 0.50;
 // uses; arcade/establishing cameras (fov >= 15) are untouched.
 const AERIAL_ZOOM_FOV = 15; // deg — below this the aerial curves scale down
 const AERIAL_ZOOM_FLOOR = 0.26; // density multiplier floor at max zoom
+// r5 SNIPER FAR-FIELD DETAIL ("x8 magnifies the horizon ring into a flat
+// untextured smooth green wall filling ~60% of the frame"): backdrop meshes
+// (horizon ring, far hills) carry only low-frequency bakes — at x8 their
+// texel footprint is tens of screen pixels and the wall reads as smooth
+// vinyl. When the FOV drops toward scope range, the aerial pass now overlays
+// a WORLD-SPACE two-octave value noise (reconstructed from scene depth + the
+// per-pixel view ray) onto far pixels: a luminance-only modulation, so the
+// backdrop's hue/art direction is untouched but the surface reads as forest/
+// meadow texture at any magnification. World-anchored => no screen-door
+// shimmer while panning, deterministic for captures. Zero effect in arcade
+// cameras (fov >= AERIAL_DETAIL_FOV) and on near geometry (< 220 m).
+const AERIAL_DETAIL_FOV = 20; // deg — detail fades in below this FOV
+const AERIAL_DETAIL_NEAR = 180; // m — never touches gameplay-range geometry
+const AERIAL_DETAIL_FAR = 430; // m — full strength by here
+const AERIAL_DETAIL_AMP = 0.24; // peak luminance modulation (+/-12%)
 // r9 PRE-TONEMAP EMISSIVE SHOULDER ("fireball core is fully clipped: flat
 // blown white-yellow disc — the tonemapper has no highlight shoulder on
 // emissives"): the additive fire/flash sprite stacks reach 5-20 in linear
@@ -182,6 +210,8 @@ const AerialShader = {
     uCamUp: { value: new THREE.Vector3(0, 1, 0) },
     uCamFwd: { value: new THREE.Vector3(0, 0, -1) },
     uTan: { value: new THREE.Vector2(1, 1) },
+    uCamPos: { value: new THREE.Vector3() },
+    uDetailW: { value: 0 }, // sniper far-field detail weight (0 in arcade)
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -205,7 +235,22 @@ const AerialShader = {
     uniform vec3 uCamUp;
     uniform vec3 uCamFwd;
     uniform vec2 uTan;
+    uniform vec3 uCamPos;
+    uniform float uDetailW;
     varying vec2 vUv;
+    // 2D value noise on a hashed integer lattice — smooth (quintic fade),
+    // tileless, cheap enough for a fullscreen pass that only pays it while
+    // scoped (uDetailW gates the whole block).
+    float vhash( vec2 p ) {
+      return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 );
+    }
+    float vnoise( vec2 p ) {
+      vec2 i = floor( p );
+      vec2 f = fract( p );
+      vec2 u = f * f * f * ( f * ( f * 6.0 - 15.0 ) + 10.0 );
+      return mix( mix( vhash( i ), vhash( i + vec2( 1.0, 0.0 ) ), u.x ),
+                  mix( vhash( i + vec2( 0.0, 1.0 ) ), vhash( i + vec2( 1.0, 1.0 ) ), u.x ), u.y );
+    }
     void main() {
       vec4 texel = texture2D( tDiffuse, vUv );
       float depth = texture2D( tDepth, vUv ).x;
@@ -227,6 +272,23 @@ const AerialShader = {
         float x2 = -viewZ * uHazeDensity;
         float f2 = 1.0 - exp( -x2 * x2 );
         texel.rgb = mix( texel.rgb, hazeCol, f2 );
+        // sniper far-field detail (see AERIAL_DETAIL_* const block): world-
+        // anchored two-octave value noise re-textures backdrop surfaces that
+        // the x8 scope magnifies past their bake frequency. Luminance-only.
+        if ( uDetailW > 0.001 ) {
+          float rayT = -viewZ / max( dot( ray, uCamFwd ), 0.05 );
+          float dw = uDetailW * smoothstep( ${AERIAL_DETAIL_NEAR.toFixed(1)}, ${AERIAL_DETAIL_FAR.toFixed(1)}, rayT );
+          if ( dw > 0.003 ) {
+            vec3 wp = uCamPos + ray * rayT;
+            // slope-aware planar coords: xz carries flat ground, the y term
+            // keeps texture alive on the near-vertical horizon-ring faces
+            vec2 dp = wp.xz + vec2( wp.y * 0.85, wp.y * 0.37 );
+            float dn = vnoise( dp * ( 1.0 / 23.0 ) ) * 0.55
+                     + vnoise( dp * ( 1.0 / 6.1 ) + vec2( 7.3, 2.9 ) ) * 0.30
+                     + vnoise( dp * ( 1.0 / 1.9 ) + vec2( 3.1, 9.7 ) ) * 0.15;
+            texel.rgb *= 1.0 + ( dn - 0.5 ) * ${AERIAL_DETAIL_AMP.toFixed(3)} * dw;
+          }
+        }
       }
       // pre-tonemap emissive shoulder (see EM_SHOULDER_* const block): hue-
       // preserving rational rolloff on very hot pixels (additive fire/flash
@@ -326,9 +388,19 @@ const GRADE_HIGH_TINT = [1.060, 1.008, 0.945]; // warm sun-kissed highlights
 // burning wreck on the frame edge. Blur now only touches the outer ~10% of
 // the sight picture at half the radius, and the tube vignette starts past
 // the mid-field so situational awareness while scoped matches WoT.
-const SCOPE_VIGNETTE_START = 0.85; // radius where darkening begins (1 = mid-edge)
-const SCOPE_VIGNETTE_END = 1.60; // radius of max darkening (past the corners)
-const SCOPE_VIGNETTE_MAX = 0.15; // darkening at SCOPE_VIGNETTE_END
+// gameplay_feel r5: the r4 tube vignette (0.15 max out at r=1.6) left the
+// scope reading as a plain zoomed FOV — movement-physics.md §9.2 calls for a
+// "full-screen black vignette ring (scope shadow)". The sight picture now
+// eases to ×0.85 by the shadow lip and cuts to opaque black outside a
+// 0.92-radius circle with a 0.06 feather (WoT scope shadow). The circle
+// touches the top/bottom frame edges (scopeR is aspect-corrected), so the
+// far left/right thirds carry the black ring while the sight circle stays
+// full-height — HUD overlays (reticle, plates, minimap) are DOM and unaffected.
+const SCOPE_VIGNETTE_START = 0.55; // radius where the inner falloff begins
+const SCOPE_VIGNETTE_END = 0.92; // shadow lip: inner falloff reaches max here
+const SCOPE_VIGNETTE_MAX = 0.15; // picture is ×0.85 at the shadow lip
+const SCOPE_SHADOW_R = 0.92; // scope-shadow circle radius (1 = frame half-height ×2)
+const SCOPE_SHADOW_FEATHER = 0.06; // soft edge width of the black ring
 const SCOPE_BLUR_START = 0.90; // radius where the radial blur fades in
 const SCOPE_BLUR_RAMP = 0.28; // blur reaches full strength at START+RAMP
 const SCOPE_BLUR_STEP = 0.0055; // UV step of the 4-tap radial blur at full blur
@@ -441,11 +513,13 @@ const GradeShader = {
       // vignette (radial, corners only)
       vec2 q = vUv - 0.5;
       col *= 1.0 - uVignette * smoothstep( 0.3, 0.72, dot( q, q ) * 2.0 );
-      // sniper scope tube vignette: circular, much heavier than the filmic
-      // corner vignette — the sight picture reads as viewed through optics
+      // sniper scope shadow (movement-physics.md §9.2): gentle inner optics
+      // falloff to the shadow lip, then opaque black outside the sight circle
       if ( uScope > 0.001 ) {
         col *= 1.0 - uScope * ${SCOPE_VIGNETTE_MAX.toFixed(3)}
           * smoothstep( ${SCOPE_VIGNETTE_START.toFixed(3)}, ${SCOPE_VIGNETTE_END.toFixed(3)}, scopeR );
+        col *= 1.0 - uScope * smoothstep( ${SCOPE_SHADOW_R.toFixed(3)},
+          ${(SCOPE_SHADOW_R + SCOPE_SHADOW_FEATHER).toFixed(3)}, scopeR );
       }
       gl_FragColor = vec4( col, texel.a );
     }`,
@@ -565,8 +639,24 @@ export function createPost(renderer, scene, camera) {
     // SHALLOW tail — occlusion under 3% vanishes, 20%+ (real contact
     // corners) passes through untouched — so hull/building grounding keeps
     // its full depth while open fields come out clean.
-    const AO_FADE = 'ao = 1.0 - ( 1.0 - ao ) * smoothstep( 0.03, 0.20, 1.0 - ao );'
-      + '\n\t\t\tao = mix( ao, 1., smoothstep( 300., 460., length( viewPos ) ) );';
+    // r5 ("battlefield_winter: entire snowfield carpeted in an ordered dot-grid
+    // halftone"): BISECTED to this pass — the half-res GTAO's shallow
+    // rolling-turf occlusion (5-15%) survived the 0.03-0.20 floor, and after
+    // the pow(ao, 3.3) deepening + bilinear upsample it printed as ordered
+    // blue dot ROWS on any bright albedo (blatant on snow, hidden on dark
+    // grass). Raise the kill band to 0.09-0.28: open-field micro-dapple
+    // vanishes on every map while genuine contact corners (>30% occlusion —
+    // hulls, building bases, prop feet) keep their full grounding depth.
+    const AO_FADE = 'ao = 1.0 - ( 1.0 - ao ) * smoothstep( 0.16, 0.44, 1.0 - ao );'
+      + '\n\t\t\tao = mix( ao, 1., 0.45 * smoothstep( 110., 250., length( viewPos ) ) );'
+      // terrain_environment r5: length(viewPos) here reads ~3-4x smaller than
+      // true camera distance (see handoff doc) — 35-90 in this metric is a
+      // ~130-330 m real fade. AO is a contact cue; past ~130 m the 2.3 m
+      // radius is subpixel and the depth-reconstructed AO prints a rectangular
+      // patchwork + stipple rows over open sand/snow (the r5 critical).
+      // Verified A/B: pattern gone at 35-90, urban rowhouse-base grounding
+      // preserved (inside the fade start in this metric).
+      + '\n\t\t\tao = mix( ao, 1., smoothstep( 35., 90., length( viewPos ) ) );';
     const AO_ANCHOR = 'ao = pow(ao, scale);';
     const src = gtao.gtaoMaterial.fragmentShader;
     const patched = src.replace(AO_ANCHOR, `${AO_FADE}\n\t\t\t${AO_ANCHOR}`);
@@ -695,6 +785,10 @@ export function createPost(renderer, scene, camera) {
           : 1;
         aerial.uniforms.uDensity.value = AERIAL_DENSITY * fovK;
         aerial.uniforms.uHazeDensity.value = AERIAL_HAZE_DENSITY * fovK;
+        // far-field detail fades in as the FOV drops through scope range
+        // (x2 ~ fov 27 stays clean; x4 ~ fov 12 partial; x8 ~ fov 6.9 full)
+        aerial.uniforms.uDetailW.value = THREE.MathUtils.clamp(
+          (AERIAL_DETAIL_FOV - camera.fov) / (AERIAL_DETAIL_FOV - 8), 0, 1);
       }
       // scope treatment follows the rig's live scoped flag (snapSniper sets
       // it too, so harness captures get the exact same treatment). Eased
@@ -730,6 +824,7 @@ export function createPost(renderer, scene, camera) {
         aerial.uniforms.uCamRight.value.set(e[0], e[1], e[2]);
         aerial.uniforms.uCamUp.value.set(e[4], e[5], e[6]);
         aerial.uniforms.uCamFwd.value.set(-e[8], -e[9], -e[10]);
+        aerial.uniforms.uCamPos.value.set(e[12], e[13], e[14]);
         const ty = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
         aerial.uniforms.uTan.value.set(ty * camera.aspect, ty);
         const sd = scene.userData.sunDirWorld;

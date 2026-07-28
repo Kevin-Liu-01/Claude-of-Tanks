@@ -320,7 +320,7 @@ CC-BY candidates recorded in the scouting report wishlist instead.
 Verdict: **sourced wins for M1A2 Abrams (pending integration); procedural
 stays the winner for T-90M and Leopard 2A7.**
 
-## Community vehicles (public/models/tanks/community/) — 9 playable sourced tanks
+## Community vehicles (public/models/tanks/community/) — 17 playable sourced tanks
 
 Community-crawl winners (2026-07-27), integrated as PLAYABLE vehicles: garage
 carousel + tech-tree COMMUNITY tab (each card carries the author credit line —
@@ -352,17 +352,67 @@ Losing crawl candidates (all other `public/models/community-candidates/`
 downloads) were deleted after judging; the two duplicate Stridsvagn 103
 downloads were consolidated into the wesiora re-export above.
 
+### Community wave 2 (print-model crawl, integrated 2026-07-28) — 8 more playables
+
+Second sourcing wave (Sketchfab-mirror + Thingiverse/Printables print models,
+panel-judged on re-materialed renders). Same integration rules: garage
+carousel + tech-tree COMMUNITY tab credit cards, AI rosters may draw them,
+license lines verified on the asset/mirror page at download time and preserved
+in `docs/licenses/community/<slug>.LICENSE-RECORD.txt` (Sketchfab assets also
+keep the original `license.txt` / API license snapshot alongside). Fused
+single-mesh print models ship as fixed-gun TD-class vehicles.
+
+| In-game vehicle (spec id) | Asset | Author | Source | License | File |
+|---|---|---|---|---|---|
+| KV-2 (`kv2`) | KV-2 heavy tank 1940 | Comrade1280 (https://sketchfab.com/comrade1280) | https://sketchfab.com/3d-models/kv-2-heavy-tank-1940-ba8b84d78c0a42038cf2eaa4210ef296 (via GitHub mirror Tsukimi125/Kaiser-Ray-Tracer, full bundle with original license.txt) | CC-BY 4.0 | `public/models/tanks/community/kv2-full-comrade1280.glb` (583k→150k tris, textures capped 2K/1K; named hull/turret/tracks/wheels nodes — turret yaw articulates) |
+| Tiger II (`tiger2`) | Tank Tiger 2 | maximus0075550 (https://sketchfab.com/maximus0075550) | Sketchfab via Objaverse (AllenAI) mirror | CC-BY 4.0 | `public/models/tanks/community/tiger2-maximus.glb` (461k→150k tris; turret+gun mesh isolated for yaw articulation, explicit ring pivot) |
+| M4A3E2 Sherman Jumbo (`sherman_jumbo`) | Sherman Jumbo Tank | Original: manifold_destiny (thingiverse thing:1065360, CC-BY 4.0 verified); print split by ZEUS_0815 | https://www.printables.com/model/3992-sherman-jumbo-tank (original: https://www.thingiverse.com/thing:1065360) | CC-BY 4.0 (chain verified) | `public/models/tanks/community/sherman-jumbo.glb` (print plates re-assembled: turret seated on ring, tracks split L/R; hull/turret/tracks_l/tracks_r nodes) |
+| Jagdtiger (`jagdtiger`) | Jagdtiger 8.8 cm | Adi Priatna (https://sketchfab.com/adipriatna) | Sketchfab via Objaverse (AllenAI) mirror | CC-BY 4.0 | `public/models/tanks/community/jagdtiger-adipriatna.glb` (533k→150k tris; fixed-gun casemate TD) |
+| Jagdpanzer E100 (`jpz_e100`) | Jagdpanzer E100 | Haphazard0587 | https://www.thingiverse.com/thing:2624802 | CC-BY 4.0 | `public/models/tanks/community/jagdpanzer_e100_haphazard.glb` (print STL fused; fixed-gun casemate TD, camo-painted at load) |
+| Sturmtiger (`sturmtiger`) | Sturmtiger | Tomrs (https://sketchfab.com/Tomrs) | Sketchfab via Objaverse (AllenAI) mirror | CC-BY 4.0 | `public/models/tanks/community/sturmtiger-tomrs.glb` (9k tris, baked dunkelgelb 3-tone + zimmerit; fixed-gun assault TD) |
+| T95 Doomturtle (`t95`) | T95/T28 super-heavy TD | Haphazard0587 | https://www.thingiverse.com/thing:2326342 | CC-BY 4.0 | `public/models/tanks/community/t95_doomturtle_haphazard.glb` (print STL fused, quad-track casemate; camo-painted at load) |
+| T30 (`t30`) | T30 US heavy (155mm) | Haphazard0587 | https://www.thingiverse.com/thing:2363711 | CC-BY 4.0 | `public/models/tanks/community/t30_haphazard.glb` (print STL fused — turret welded, ships as fixed-gun assault TD; camo-painted at load) |
+
+Wave-2 losing candidates (all other wave-2
+`public/models/community-candidates/` downloads) were deleted after judging.
+Notable near-miss: a CC-BY T28 by AtomicArdvark (thingiverse thing:3223947)
+ships as an unassembled print plate and was dropped in favor of the T95.
+
+### Community wave 3 (IS-series hunt, integrated 2026-07-28) — 4 more playables
+
+Targeted Soviet heavy-line hunt (Thingiverse via archive.org mirrors +
+Printables public API). Same integration rules as wave 2; print STLs were
+re-assembled/normalized offline in Blender (turrets auto-seated on rings,
+Hull/Turret articulation nodes preserved, re-materialed — the sources are
+untextured print models — and camo-painted at load). Full provenance and
+license verification per model in
+`docs/licenses/community/<slug>.LICENSE-RECORD.txt`.
+
+| In-game vehicle (spec id) | Asset | Author | Source | License | File |
+|---|---|---|---|---|---|
+| IS-7 (`is7`) | 1-100 IS-7 tank | Jt Steele (SnowLeopard101) (https://www.thingiverse.com/snowleopard101) | https://www.thingiverse.com/thing:4597176 | CC-BY 4.0 | `public/models/tanks/community/is7-snowleopard.glb` (hull + turret STLs assembled; turret yaw articulates, explicit ring pivot) |
+| Object 279 (`object279`) | 1-100 Object 279 (early) tank | Jt Steele (SnowLeopard101) | https://www.thingiverse.com/thing:4598065 | CC-BY 4.0 | `public/models/tanks/community/object279-snowleopard.glb` (quad-track pods slotted under hull; turret yaw articulates) |
+| IS-6B (`is6b`) | IS-6 B tank | Jt Steele (SnowLeopard101) | https://www.thingiverse.com/thing:4849489 | CC-BY 4.0 | `public/models/tanks/community/is6b-snowleopard.glb` (hull + turret STLs assembled; turret yaw articulates) |
+| IS-1 (`is1`) | IS-1 Russian heavy tank | AaronTMG (https://www.printables.com/@AaronTMG) | https://www.printables.com/model/925804-is-1-russian-heavy-tank | CC-BY 4.0 | `public/models/tanks/community/is1-aarontmg.glb` (single fused print mesh — ships as fixed-gun assault TD; camo-painted at load) |
+
+Wave-3 losing candidates (`is2-aarontmg`, `is6-wotturret-lawrenceft`) were
+deleted after judging along with the rest of
+`public/models/community-candidates/`.
+
 ## Generated files (no third-party ownership, listed for completeness)
 
-- `public/icons/*.png` — 85 PNGs (17 tanks × top/angle/side + 2 silhouettes)
+- `public/icons/*.png` — 5 PNGs per roster tank (top/angle/side + 2 silhouettes)
   rendered from the shipped models by `node tools/genIcons.mjs`
   (tools/icons-page.html studio scene). The five `m1a2_*` icons are
   DERIVATIVE RENDERS of the CC-BY-4.0 "Abrams M1A2 SEPv3" by dannzjs, and the
   community-vehicle icons (`strv103_*`, `is3_*`, `t34_85_cad_*`,
   `newc_tiger_*`, `newc_pziii_*`, `pziii_konserwa_*`, `leichttraktor_*`,
-  `recon_tank_*`, `q_heavy_*`) are derivative renders of the community assets
-  tabled above — those rows' attribution covers the derived images. All other
-  icons render 100% procedural geometry (no third-party content).
+  `recon_tank_*`, `q_heavy_*`, plus wave 2: `kv2_*`, `tiger2_*`,
+  `sherman_jumbo_*`, `jagdtiger_*`, `jpz_e100_*`, `sturmtiger_*`, `t95_*`,
+  `t30_*`, plus wave 3: `is7_*`, `object279_*`, `is6b_*`, `is1_*`) are
+  derivative renders of the community assets tabled above —
+  those rows' attribution covers the derived images. All other icons render
+  100% procedural geometry (no third-party content).
 - `public/maps/{verdant,desert,winter,urban}.png` — map-picker thumbnails
   captured from the game's own render; derivative only of this repo's
   procedural world + the CC0 texture sets listed above (no attribution duty

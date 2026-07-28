@@ -1,0 +1,13 @@
+Model: IS-1 Russian heavy tank
+Author: AaronTMG
+Author profile: https://www.printables.com/@AaronTMG
+Original source: https://www.printables.com/model/925804-is-1-russian-heavy-tank
+License: Creative Commons - Attribution 4.0 (CC-BY 4.0) - http://creativecommons.org/licenses/by/4.0/
+Obtained via: downloaded directly from Printables via public GraphQL getDownloadLink (no account)
+Source files used: IS-1.stl (single assembled mesh)
+Assembly/processing: none; single fused mesh, no articulation nodes; imported in Blender 5.x headless (is_process.py), welded, decimated to <=150k tris where needed, re-materialed (procedural olive camo + dark tracks - source STLs are untextured print models), scale-normalized to real-world meters, grounded at z=0, exported GLB (Y-up, length axis = model Y / GLB Z, gun faces -Y). Stats in pipeline-stats.json.
+License verified: 2026-07-28 - Thingiverse zips include LICENSE.txt; archive.org mirror metadata records licenseurl CC-BY 4.0; Printables items verified via public API (license id 1 = CC Attribution).
+Provenance check: Same original author as the IS-2 candidate; same API evidence. API snapshot saved as printables-api.json.
+
+Required attribution line:
+This work is based on "IS-1 Russian heavy tank" (https://www.printables.com/model/925804-is-1-russian-heavy-tank) by AaronTMG (https://www.printables.com/@AaronTMG) licensed under CC-BY 4.0 (http://creativecommons.org/licenses/by/4.0/)
