@@ -51,6 +51,8 @@ export default {
     haystacks: 15, rocks: 170, outcrops: 16, craters: 30, rubblePiles: 0,
   },
 
+  horizon: { baseHex: 0x38542c, amp: 1.0 },
+
   sky: {
     sunElevationDeg: 32, sunAzimuthDeg: 115,
     turbidity: 4, rayleigh: 1.2, mieCoefficient: 0.006, mieDirectionalG: 0.82,
@@ -67,5 +69,5 @@ export default {
     buildingFill: '#ccd1d9',
   },
 
-  shot: { pos: [-60, 26, -140], look: [80, 4, 160] },
+  shot: { pos: [-64, 34, -148], look: [80, 0, 156] },
 };

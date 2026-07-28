@@ -11,11 +11,13 @@ export default {
   terrain: {
     hillScale: 1.0,
     microScale: 0.9,
-    rimH: 18,
+    rimH: 25,
     frozenMarshes: true,
-    marshes: [{ x: -190, z: -210, r: 40 }],
+    // no soggy marsh bowls — everything frozen reads as a crisp ice sheet
+    marshes: [],
     lakes: [
       { x: 195, z: -120, r: 88, depth: 1.3 },
+      { x: -190, z: -210, r: 62, depth: 1.1 },
       { x: -265, z: 265, r: 56, depth: 1.0 },
     ],
     village: { x0: -60, x1: 80, z0: -40, z1: 120, cx: 10, cz: 40, feather: 42, flatten: 0.85 },
@@ -33,9 +35,13 @@ export default {
     grassTone: (h, s, l) => [0.575, 0.05, clamp01(0.62 + l * 0.38)], // snowpack
     dirtTone: (h, s, l) => [0.075, 0.11, clamp01(l * 0.85 + 0.10)], // frozen mud
     rockTone: (h, s, l) => [0.60, 0.03, clamp01(l * 0.95 + 0.08)],
-    mudTone: (h, s, l) => [0.555, 0.20, clamp01(0.52 + l * 0.42)], // lake ice
-    mudRough: 0.32,
-    marshGloss: 0.55,
+    mudTone: (h, s, l) => [0.565, 0.24, clamp01(0.60 + l * 0.34)], // (fallback if iceLake off)
+    mudRough: 0.18,
+    marshGloss: 0.82,
+    // dedicated ice-sheet layer: pale blue-grey albedo, pressure cracks,
+    // dark depth blotches, wind drift streaks, glossy clear-ice roughness
+    iceLake: true,
+    iceDrift: 0.85,
     tintA: [1.03, 1.04, 1.09], tintB: [0.90, 0.93, 1.00], tintC: [1.04, 1.04, 1.07],
     roadTint: [0.74, 0.68, 0.62], // worn dark slush tracks through the snow
   },
@@ -54,10 +60,16 @@ export default {
     bushCount: 0.45,
     bushSpecies: 'birch',
     palettes: {
-      birch: { cardHue: 0.08, cardSat: 0.08 }, // bare grey-brown shrubs + crowns
-      pine: { // snow-dusted spruce
-        texTone: (h, s, l) => [h, clamp01(s * 0.4), clamp01(l * 1.3 + 0.12)],
-        cardHue: 0.35, cardSat: 0.05,
+      birch: { // bare grey-brown shrubs + crowns — twigs kept DARK so near
+        // crowns read as branch masses, not pale star-glitches
+        cardHue: 0.08, cardSat: 0.08,
+        texTone: (h, s, l) => [h, clamp01(s * 0.7), clamp01(l * 0.55)],
+      },
+      pine: { // winter spruce: near-LOD needles stay dense dark green (the
+        // old l*1.3 wash bleached them to teal confetti / white asterisks);
+        // the far canopy keeps its snow-dusted pale tone
+        texTone: (h, s, l) => [clamp01(h * 0.94), clamp01(s * 0.72), clamp01(l * 0.9 + 0.015)],
+        cardHue: 0.325, cardSat: 0.16,
         canopy: { hue: 0.36, sat: 0.10, l0: 0.40, l1: 0.68 },
       },
     },
@@ -71,7 +83,7 @@ export default {
       roof: (h, s, l) => [0.58, clamp01(s * 0.25), clamp01(l * 1.35 + 0.18)], // snow-capped
       stone: (h, s, l) => [0.60, clamp01(s * 0.35), clamp01(l * 1.05 + 0.05)],
       wood: (h, s, l) => [h, clamp01(s * 0.7), clamp01(l * 0.95 + 0.02)],
-      straw: (h, s, l) => [0.105, clamp01(s * 0.55), clamp01(l * 1.1 + 0.06)],
+      straw: (h, s, l) => [0.575, clamp01(s * 0.14), clamp01(l * 1.2 + 0.22)], // snowed-over stacks
     },
     rockTone: (h, s, l) => [0.60, 0.02, clamp01(l * 1.25 + 0.12)], // snowy boulders
     wallStoneChance: 0.25,
@@ -81,15 +93,19 @@ export default {
       [-266, 66, -212, 66, 1],
     ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
-    haystacks: 6, rocks: 140, outcrops: 12, craters: 22, rubblePiles: 0,
+    haystacks: 4, rocks: 140, outcrops: 12, craters: 22, rubblePiles: 0,
   },
 
+  horizon: { baseHex: 0x9aa6b0, amp: 1.05 },
+
   sky: {
-    sunElevationDeg: 23, sunAzimuthDeg: 115,
-    turbidity: 10, rayleigh: 2.6, mieCoefficient: 0.003, mieDirectionalG: 0.7,
-    fogDensity: 0.00165, fogTintHex: 0xaebac6, fogMix: 0.78, envIntensity: 0.3,
-    cloudOpacity: 1.0, cloudOpacity2: 0.85, cloudTintHex: 0xc3cad4,
-    sunIntensity: 2.5, sunColorHex: 0xdfe7f2, hemiIntensity: 0.52,
+    // FLAT OVERCAST: higher-but-weak sun (no warm horizon glow), heavy grey
+    // cloud deck, raised ambient/env fill so light reads diffuse
+    sunElevationDeg: 33, sunAzimuthDeg: 115,
+    turbidity: 13, rayleigh: 3.2, mieCoefficient: 0.002, mieDirectionalG: 0.7,
+    fogDensity: 0.0018, fogTintHex: 0xb4bcc5, fogMix: 0.88, envIntensity: 0.4,
+    cloudOpacity: 1.0, cloudOpacity2: 0.95, cloudTintHex: 0xaab2bc,
+    sunIntensity: 1.4, sunColorHex: 0xdfe7f2, hemiIntensity: 0.8,
   },
 
   minimap: {
@@ -100,5 +116,5 @@ export default {
     buildingFill: '#e4e7ec',
   },
 
-  shot: { pos: [30, 30, -290], look: [150, 2, 10] },
+  shot: { pos: [16, 42, -302], look: [136, -2, 16] },
 };

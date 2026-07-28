@@ -90,7 +90,17 @@ try {
     // find a bush + observer placement at 250 m with hard LOS, plus an open
     // control spot near the bush with zero foliage on the line
     const DIST = 250;
-    const bushes = world.getConcealment().filter((c) => c.add >= 0.3);
+    const allConceal = world.getConcealment();
+    const bushes = allConceal.filter((c) => c.add >= 0.3);
+    // segment (sx,sz)->(tx,tz) crosses disc c?
+    const segCross = (sx, sz, tx, tz, c) => {
+      const dx = tx - sx, dz = tz - sz;
+      const len2 = dx * dx + dz * dz;
+      let t = len2 > 1e-9 ? ((c.x - sx) * dx + (c.z - sz) * dz) / len2 : 0;
+      t = Math.max(0, Math.min(1, t));
+      const px = sx + dx * t, pz = sz + dz * t;
+      return (c.x - px) ** 2 + (c.z - pz) ** 2 <= c.r * c.r;
+    };
     let setup = null;
     outer:
     for (const b of bushes) {
@@ -100,6 +110,13 @@ try {
         const ox = b.x + Math.sin(ang) * DIST;
         const oz = b.z + Math.cos(ang) * DIST;
         if (Math.max(Math.abs(ox), Math.abs(oz)) > 430) continue;
+        // the firing test needs a reveal-capable line: every concealer on the
+        // observer->bush segment must sit within 15 m of the target so the
+        // muzzle-flash rule clears them ALL (a second bush/canopy further up
+        // the line legitimately keeps concealing after a shot — authentic
+        // WoT double-bush — but it would fail check 3 by design)
+        if (allConceal.some((c) => segCross(ox, oz, b.x, b.z, c) &&
+            Math.hypot(c.x - b.x, c.z - b.z) - c.r >= 14)) continue;
         place(player, b.x, b.z);
         place(observer, ox, oz);
         if (!los(eyeOf(observer, 0.9), eyeOf(player, 0.85))) continue;

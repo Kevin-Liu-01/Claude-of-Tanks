@@ -50,6 +50,28 @@ const SHELL_DEFAULT_COUNT = { AP: 24, APCR: 20, APFSDS: 24, HEAT: 16, HE: 12 };
 
 const CAUSE_LABEL = { shot: '', fire: 'FIRE', ammorack: 'AMMO RACK' };
 
+// Roster identity: WoT rows read "Nickname (Vehicle)" with a tier numeral.
+// Bot nicknames are assigned deterministically per battle from this pool
+// (hashed off the entity id, collisions probe forward), the player is Claude.
+const BOT_NICKS = [
+  'IronMaus', 'SteppeWolf_71', 'Kranvagn', 'DustDevil', 'Bogatyr',
+  'HullDown_Hank', 'PzKpfwPete', 'Kettenkrad', 'RicochetRita', 'TokTokkie',
+  'GeneralLee42', 'Zaseka', 'MudCrawler', 'BiaTheBear', 'SabotSally',
+  'Feldwebel_K', 'OldNikolai', 'TinCanAlly', 'GrilleGuy', 'VodkaVanya',
+  'CamoNet', 'LongStop', 'DerbyDozer', 'PakWagen',
+];
+const PLAYER_NICK = 'Claude';
+// vehicle tier (WoT-style roman numeral badge) per spec id
+const TIER_BY_ID = {
+  m4a3e8: 'VI', t34_85: 'VI', tiger1: 'VII', is2: 'VII', panther_g: 'VII',
+  m1a2: 'X', t90m: 'X', leo2a7: 'X',
+};
+function hashStr(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
 // minimap grid letters (WoT convention skips "I")
 const GRID_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'];
 
@@ -68,11 +90,12 @@ const CONSUMABLES = [
   },
 ];
 
-// Procedural shell artwork for the ammo slots: brass casing + projectile with
-// a distinct nose profile per type, and a type-colored driving band.
-// APFSDS: long thin fin-stabilized dart in a sabot. HEAT: cylindrical body
-// with a standoff probe nose. HE: fat body, blunt rounded nose. AP/APCR:
-// classic sharp ogive.
+// Procedural shell artwork for the ammo slots: one consistent silhouette
+// language across the loadout — every icon is a vertical projectile of the
+// SAME height, filled with the same steel gradient, tinted and banded in its
+// type color. Only the nose/body profile differs (the WoT read):
+//   AP/APCR  sharp ogive           HEAT  tapered cone + standoff probe
+//   APFSDS   finned dart in sabot  HE    fat blunt round-nose
 function drawShellIcon(canvas, type) {
   const S = 46;
   const dpr = 2; // fixed 2x internal resolution — crisp even at devicePixelRatio 1
@@ -83,97 +106,107 @@ function drawShellIcon(canvas, type) {
   c.clearRect(0, 0, S, S);
   const cx = S / 2;
   const band = SHELL_TYPE_COLOR[type] || '#9fb0bf';
-  const steel = c.createLinearGradient(cx - 7, 0, cx + 7, 0);
-  steel.addColorStop(0, '#4c565e'); steel.addColorStop(0.4, '#a4b2bc');
-  steel.addColorStop(0.6, '#cdd9e2'); steel.addColorStop(1, '#525c64');
+  const TOP = 4, BOT = 42; // shared silhouette extents — uniform set
+  const steel = c.createLinearGradient(cx - 8, 0, cx + 8, 0);
+  steel.addColorStop(0, '#454e56'); steel.addColorStop(0.38, '#9dabb5');
+  steel.addColorStop(0.58, '#c7d3dc'); steel.addColorStop(1, '#4a545c');
 
-  if (type === 'APFSDS' || type === 'APCR') {
-    // long-rod dart: needle tip, thin rod full height, sabot petals flaring
-    // mid-body, fin cone at the base. No fat casing — reads "dart" instantly.
-    const rw = type === 'APFSDS' ? 3.4 : 4.6;
-    c.fillStyle = steel;
-    c.beginPath(); // rod with needle tip
-    c.moveTo(cx, 2);
-    c.lineTo(cx + rw / 2, 10); c.lineTo(cx + rw / 2, 36);
-    c.lineTo(cx - rw / 2, 36); c.lineTo(cx - rw / 2, 10);
-    c.closePath(); c.fill();
-    // sabot petals (discarding shoes) flaring off both sides
-    c.fillStyle = '#8b959e';
+  // body path per type (projectile silhouette, tip at TOP, base at BOT)
+  function bodyPath() {
     c.beginPath();
-    c.moveTo(cx - rw / 2 - 0.5, 18); c.lineTo(cx - rw / 2 - 6.5, 26);
-    c.lineTo(cx - rw / 2 - 7.5, 33); c.lineTo(cx - rw / 2 - 2.5, 29);
-    c.lineTo(cx - rw / 2 - 0.5, 24);
-    c.closePath(); c.fill();
-    c.beginPath();
-    c.moveTo(cx + rw / 2 + 0.5, 18); c.lineTo(cx + rw / 2 + 6.5, 26);
-    c.lineTo(cx + rw / 2 + 7.5, 33); c.lineTo(cx + rw / 2 + 2.5, 29);
-    c.lineTo(cx + rw / 2 + 0.5, 24);
-    c.closePath(); c.fill();
-    // tail fins
-    c.fillStyle = steel;
-    c.beginPath();
-    c.moveTo(cx - rw / 2, 36); c.lineTo(cx - rw / 2 - 5, 44); c.lineTo(cx - rw / 2, 44);
-    c.closePath(); c.fill();
-    c.beginPath();
-    c.moveTo(cx + rw / 2, 36); c.lineTo(cx + rw / 2 + 5, 44); c.lineTo(cx + rw / 2, 44);
-    c.closePath(); c.fill();
-    c.fillRect(cx - rw / 2 - 1, 43, rw + 2, 1.6);
-    // tracer band at the base
-    c.fillStyle = band;
-    c.fillRect(cx - rw / 2 - 1, 40, rw + 2, 2.4);
-  } else if (type === 'HEAT') {
-    // blunt-nose parallel cylinder with standoff probe + boat-tail; stubby.
-    c.fillStyle = steel;
-    c.fillRect(cx - 6.5, 15, 13, 24); // straight cylinder body
-    c.beginPath(); // flat-ish blunt nose cap
-    c.moveTo(cx - 6.5, 15); c.lineTo(cx - 3, 10.5); c.lineTo(cx + 3, 10.5); c.lineTo(cx + 6.5, 15);
-    c.closePath(); c.fill();
-    c.fillRect(cx - 1.6, 3.5, 3.2, 7.5); // standoff probe
-    c.fillRect(cx - 3, 2, 6, 2.4); // probe cap
-    // boat-tail
-    c.beginPath();
-    c.moveTo(cx - 6.5, 39); c.lineTo(cx - 4.5, 44); c.lineTo(cx + 4.5, 44); c.lineTo(cx + 6.5, 39);
-    c.closePath(); c.fill();
-    // twin type bands around the cylinder
-    c.fillStyle = band;
-    c.fillRect(cx - 6.5, 18, 13, 3);
-    c.fillRect(cx - 6.5, 33, 13, 2);
-  } else if (type === 'HE') {
-    // wide round-nose shell: fat ogive body, painted nose ring, flat base.
-    c.fillStyle = steel;
-    c.beginPath();
-    c.moveTo(cx - 8, 44);
-    c.lineTo(cx - 8, 20);
-    c.quadraticCurveTo(cx - 7.5, 8, cx, 4.5);
-    c.quadraticCurveTo(cx + 7.5, 8, cx + 8, 20);
-    c.lineTo(cx + 8, 44);
-    c.closePath(); c.fill();
-    // fuze tip
-    c.fillStyle = '#39424a';
-    c.fillRect(cx - 2, 3, 4, 3.5);
-    // painted HE nose band + body ring
-    c.fillStyle = band;
-    c.beginPath();
-    c.moveTo(cx - 7.1, 12); c.quadraticCurveTo(cx, 7, cx + 7.1, 12);
-    c.lineTo(cx + 7.6, 16); c.quadraticCurveTo(cx, 10.5, cx - 7.6, 16);
-    c.closePath(); c.fill();
-    c.fillRect(cx - 8, 36, 16, 2.6);
-  } else {
-    // AP: classic sharp ogive over a short case
-    c.fillStyle = steel;
-    c.beginPath();
-    c.moveTo(cx - 7, 44);
-    c.lineTo(cx - 7, 18);
-    c.quadraticCurveTo(cx - 6, 8, cx, 3);
-    c.quadraticCurveTo(cx + 6, 8, cx + 7, 18);
-    c.lineTo(cx + 7, 44);
-    c.closePath(); c.fill();
-    c.fillStyle = band;
-    c.fillRect(cx - 7, 34, 14, 3);
+    if (type === 'APFSDS') {
+      const rw = 2.0; // rod half-width
+      c.moveTo(cx, TOP);                       // needle tip
+      c.lineTo(cx + rw, TOP + 7);
+      c.lineTo(cx + rw, BOT - 7);
+      c.lineTo(cx + rw + 4.5, BOT);            // right fin
+      c.lineTo(cx + rw + 4.5, BOT); c.lineTo(cx + 1, BOT - 1.5);
+      c.lineTo(cx - 1, BOT - 1.5); c.lineTo(cx - rw - 4.5, BOT); // left fin
+      c.lineTo(cx - rw, BOT - 7);
+      c.lineTo(cx - rw, TOP + 7);
+    } else if (type === 'HEAT') {
+      // continuous cone from probe shoulder to a full-caliber base — no
+      // bottle shoulder anywhere
+      c.moveTo(cx - 1.4, TOP);                 // probe cap
+      c.lineTo(cx + 1.4, TOP);
+      c.lineTo(cx + 1.4, TOP + 6);             // standoff probe
+      c.lineTo(cx + 3.4, TOP + 8.5);           // cone shoulder
+      c.lineTo(cx + 7, BOT - 12);              // straight taper out
+      c.lineTo(cx + 7, BOT - 3);               // short full-caliber skirt
+      c.lineTo(cx + 5.4, BOT);                 // boat-tail
+      c.lineTo(cx - 5.4, BOT);
+      c.lineTo(cx - 7, BOT - 3);
+      c.lineTo(cx - 7, BOT - 12);
+      c.lineTo(cx - 3.4, TOP + 8.5);
+      c.lineTo(cx - 1.4, TOP + 6);
+    } else if (type === 'HE') {
+      c.moveTo(cx - 8, BOT);
+      c.lineTo(cx - 8, TOP + 14);
+      c.quadraticCurveTo(cx - 7.6, TOP + 3.5, cx, TOP + 0.5); // blunt dome
+      c.quadraticCurveTo(cx + 7.6, TOP + 3.5, cx + 8, TOP + 14);
+      c.lineTo(cx + 8, BOT);
+    } else {
+      // AP / APCR: classic sharp ogive
+      const hw = type === 'APCR' ? 6 : 7;
+      c.moveTo(cx - hw, BOT);
+      c.lineTo(cx - hw, TOP + 13);
+      c.quadraticCurveTo(cx - hw * 0.82, TOP + 4, cx, TOP);
+      c.quadraticCurveTo(cx + hw * 0.82, TOP + 4, cx + hw, TOP + 13);
+      c.lineTo(cx + hw, BOT);
+    }
+    c.closePath();
   }
-  // shared soft left highlight
-  c.fillStyle = 'rgba(255,255,255,0.13)';
-  c.fillRect(cx - 1.5, 12, 1.6, 26);
+
+  // fill: shared steel gradient, tinted toward the type color (source-atop
+  // keeps the tint inside the silhouette)
+  bodyPath();
+  c.fillStyle = steel;
+  c.fill();
+  c.save();
+  c.clip();
+  c.fillStyle = band;
+  c.globalAlpha = 0.22;
+  c.fillRect(0, 0, S, S);
+  c.globalAlpha = 1;
+  // driving band near the base + nose accent in the full type color
+  c.fillStyle = band;
+  if (type === 'APFSDS') {
+    c.fillRect(cx - 3.5, BOT - 10.5, 7, 2.6);  // tracer band on the rod
+  } else if (type === 'HEAT') {
+    c.fillRect(cx - 7.2, BOT - 9, 14.4, 2.6);
+    c.fillRect(cx - 4.6, TOP + 10.5, 9.2, 2);  // cone ring
+  } else if (type === 'HE') {
+    c.fillRect(cx - 8.2, BOT - 8, 16.4, 2.8);
+    c.beginPath();                             // painted nose ring
+    c.moveTo(cx - 7.4, TOP + 9); c.quadraticCurveTo(cx, TOP + 4, cx + 7.4, TOP + 9);
+    c.lineTo(cx + 7.8, TOP + 12.4); c.quadraticCurveTo(cx, TOP + 7.4, cx - 7.8, TOP + 12.4);
+    c.closePath(); c.fill();
+  } else {
+    c.fillRect(cx - 7.2, BOT - 8.5, 14.4, 2.8);
+    c.fillRect(cx - 5.2, TOP + 7.5, 10.4, 1.8); // AP cap seam
+  }
+  // shared soft specular streak
+  c.fillStyle = 'rgba(255,255,255,0.16)';
+  c.fillRect(cx - 2.2, TOP + 7, 1.7, BOT - TOP - 15);
+  c.restore();
+  // APFSDS: sabot petals OUTSIDE the clip so the dart reads through them
+  if (type === 'APFSDS') {
+    c.fillStyle = 'rgba(139,149,158,0.95)';
+    for (const s of [-1, 1]) {
+      c.beginPath();
+      c.moveTo(cx + s * 2.6, 17);
+      c.lineTo(cx + s * 7.2, 24);
+      c.lineTo(cx + s * 7.2, 31);
+      c.lineTo(cx + s * 3.2, 27.5);
+      c.closePath();
+      c.fill();
+    }
+  }
+  // crisp dark keyline unifies the set against the slot plate
+  bodyPath();
+  c.strokeStyle = 'rgba(10,14,18,0.85)';
+  c.lineWidth = 1;
+  c.stroke();
 }
 
 // Team-panel row icon: the tank's actual side-profile silhouette (generated
@@ -185,9 +218,6 @@ const HUD_CSS = `
 .cot-hud{position:fixed;inset:0;pointer-events:none;z-index:40;font-family:${FONT_STACK};
   -webkit-user-select:none;user-select:none;color:#e6edf3;overflow:hidden;}
 .cot-hud *{box-sizing:border-box;margin:0;padding:0;}
-.cot-snipefx{position:absolute;inset:0;display:none;
-  -webkit-backdrop-filter:contrast(1.42) saturate(1.45) brightness(.86);
-  backdrop-filter:contrast(1.42) saturate(1.45) brightness(.86);}
 .cot-ret{position:absolute;inset:0;width:100%;height:100%;display:block;}
 .cot-top{position:absolute;top:0;left:50%;transform:translateX(-50%);display:flex;
   align-items:center;gap:11px;padding:6px 30px 7px;
@@ -204,15 +234,17 @@ const HUD_CSS = `
 .cot-top .tm{font-size:14px;font-weight:600;color:#d6e2ec;letter-spacing:.1em;
   font-family:${FONT_COND};font-stretch:condensed;text-shadow:0 1px 2px rgba(0,0,0,.8);
   font-variant-numeric:tabular-nums;line-height:1;padding:0 4px;}
+/* frag counter (WoT semantics): both sides render IDENTICAL dim slots that
+   fill with a team-colored chip per kill — same geometry, same stroke. */
 .cot-top .wedge{display:flex;gap:3px;align-items:center;}
 .cot-top .wedge i{display:block;width:13px;height:8px;transform:skewX(-24deg);
-  background:rgba(126,232,126,.85);box-shadow:0 1px 2px rgba(0,0,0,.5);}
-.cot-top .wedge.r i{transform:skewX(24deg);background:rgba(240,90,90,.85);}
-.cot-top .wedge i.off{background:rgba(126,232,126,.16);box-shadow:none;}
-.cot-top .wedge.r i.off{background:rgba(240,90,90,.16);box-shadow:none;}
-.cot-top .wedge i.ghost{background:transparent;box-shadow:none;
-  border:1px solid rgba(146,164,180,.22);}
-.cot-top .wedge.r i.ghost{background:transparent;border:1px solid rgba(146,164,180,.22);}
+  background:rgba(16,22,28,.78);border:1px solid rgba(146,164,180,.3);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.5);}
+.cot-top .wedge.r i{transform:skewX(24deg);}
+.cot-top .wedge i.on{background:linear-gradient(180deg,rgba(150,240,150,.95),rgba(84,196,84,.9));
+  border-color:rgba(178,246,178,.8);box-shadow:0 0 6px rgba(126,232,126,.45),0 1px 2px rgba(0,0,0,.5);}
+.cot-top .wedge.r i.on{background:linear-gradient(180deg,rgba(248,120,110,.95),rgba(205,58,48,.92));
+  border-color:rgba(252,160,150,.8);box-shadow:0 0 6px rgba(240,90,90,.45),0 1px 2px rgba(0,0,0,.5);}
 .cot-ear{position:absolute;top:52px;width:194px;display:flex;flex-direction:column;gap:2px;}
 .cot-ear.l{left:0;}
 .cot-ear.r{right:0;}
@@ -222,25 +254,35 @@ const HUD_CSS = `
   background:rgba(7,10,14,.55);}
 .cot-ear.l .hd{border-left:2px solid rgba(126,232,126,.75);}
 .cot-ear.r .hd{border-right:2px solid rgba(240,90,90,.75);text-align:right;}
-.cot-er{display:flex;align-items:center;gap:6px;padding:3px 10px 3px 8px;font-size:11px;
+.cot-er{display:flex;align-items:center;gap:5px;padding:3px 10px 4px 8px;font-size:11px;
   font-weight:600;letter-spacing:.02em;color:#d6e2ec;position:relative;
   text-shadow:0 1px 2px rgba(0,0,0,.85);}
 .cot-ear.l .cot-er{background:linear-gradient(90deg,rgba(7,10,14,.72) 0%,rgba(7,10,14,.15) 100%);
   border-left:2px solid rgba(126,232,126,.75);}
 .cot-ear.r .cot-er{background:linear-gradient(270deg,rgba(7,10,14,.72) 0%,rgba(7,10,14,.15) 100%);
   border-right:2px solid rgba(240,90,90,.75);flex-direction:row-reverse;}
-.cot-er .ic{width:30px;height:12px;flex:0 0 auto;}
+.cot-er .ic{width:28px;height:12px;flex:0 0 auto;}
 .cot-ear.r .cot-er .ic{transform:scaleX(-1);}
-.cot-er .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
-.cot-ear.r .cot-er .n{text-align:right;}
-.cot-er.me .n{color:#ffd27a;}
+.cot-er .tier{flex:0 0 auto;font-size:8.5px;font-weight:800;line-height:1;color:#9fb0bf;
+  font-family:${FONT_COND};font-stretch:condensed;letter-spacing:.04em;
+  padding:1.5px 3px;border:1px solid rgba(146,164,180,.35);background:rgba(10,14,18,.5);}
+.cot-er .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;
+  display:flex;flex-direction:column;gap:0;line-height:1.15;}
+.cot-ear.r .cot-er .n{text-align:right;align-items:flex-end;}
+.cot-er .n .nick{font-size:10.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;max-width:100%;}
+.cot-er .n .veh{font-size:8.5px;font-weight:600;color:#8a97a3;letter-spacing:.05em;
+  font-family:${FONT_COND};font-stretch:condensed;text-transform:uppercase;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}
+.cot-er.me .n .nick{color:#ffd27a;}
 .cot-er .hpm{position:absolute;left:8px;right:10px;bottom:1px;height:2px;
   background:rgba(255,255,255,.1);}
 .cot-er .hpm i{display:block;height:100%;background:currentColor;}
 .cot-ear.l .cot-er .hpm i{background:rgba(126,232,126,.8);}
 .cot-ear.r .cot-er .hpm i{background:rgba(240,120,110,.8);}
+.cot-er.unlit{opacity:.45;filter:saturate(.5);}
 .cot-er.dead{opacity:.38;}
-.cot-er.dead .n{text-decoration:line-through;text-decoration-color:rgba(240,90,90,.8);}
+.cot-er.dead .n .nick{text-decoration:line-through;text-decoration-color:rgba(240,90,90,.8);}
 .cot-er.dead .hpm{display:none;}
 .cot-killfeed{position:absolute;top:52px;left:210px;display:flex;flex-direction:column;
   gap:5px;align-items:flex-start;max-width:420px;}
@@ -254,7 +296,7 @@ const HUD_CSS = `
 .cot-kf .d{color:#8a97a3;font-weight:400;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;}
 .cot-kf .c{color:#f0b04a;font-size:10px;letter-spacing:.1em;font-weight:700;}
 .cot-kf .si{width:30px;height:12px;flex:0 0 auto;align-self:center;display:inline-block;}
-.cot-dlog{position:absolute;left:16px;bottom:362px;display:flex;flex-direction:column;gap:2px;}
+.cot-dlog{position:absolute;left:12px;bottom:248px;display:flex;flex-direction:column;gap:2px;}
 .cot-dl{font-size:11px;font-weight:600;letter-spacing:.03em;padding:2px 10px 2px 8px;
   background:linear-gradient(90deg,rgba(8,12,16,.75),rgba(8,12,16,.1));
   border-left:2px solid #f05a5a;color:#f2b1a8;text-shadow:0 1px 2px rgba(0,0,0,.85);
@@ -324,6 +366,9 @@ const HUD_CSS = `
   font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.9);}
 .cot-con .cool{position:absolute;inset:0;display:none;
   background:conic-gradient(rgba(4,6,9,.8) var(--cool,0%),transparent 0);}
+.cot-con.used{opacity:.35;filter:grayscale(1);}
+.cot-con.deny{animation:cotConDeny .3s;}
+@keyframes cotConDeny{0%,100%{border-color:rgba(146,164,180,.28);}50%{border-color:rgba(240,90,90,.9);}}
 .cot-hpbars{position:absolute;inset:0;}
 .cot-hpb{position:absolute;width:108px;transform:translate(-50%,-100%);text-align:center;will-change:transform;}
 .cot-hpb .nm{font-size:11.5px;font-weight:700;letter-spacing:.04em;color:#ff5555;
@@ -342,7 +387,7 @@ const HUD_CSS = `
 .cot-minimap{position:absolute;right:16px;bottom:16px;width:220px;height:220px;
   border:1px solid rgba(210,225,240,.28);box-shadow:0 6px 22px rgba(0,0,0,.55);
   background:#0d1310;}
-.cot-minimap canvas{display:block;width:220px;height:220px;}
+.cot-minimap canvas{display:block;width:100%;height:100%;}
 /* SPOTTING SECTION: sixth-sense lamp (lights 3 s after you are spotted) */
 .cot-sixth{position:absolute;top:14%;left:50%;transform:translateX(-50%);
   display:flex;flex-direction:column;align-items:center;gap:2px;
@@ -422,8 +467,6 @@ export function initHud(bus) {
   const root = el('div', 'cot-hud');
   document.body.appendChild(root);
 
-  // --- layers (order matters: snipefx sits under everything else) ---
-  const snipeFx = el('div', 'cot-snipefx', root);
   const retCanvas = el('canvas', 'cot-ret', root);
   const ctx = retCanvas.getContext('2d');
   const hpLayer = el('div', 'cot-hpbars', root);
@@ -438,20 +481,18 @@ export function initHud(bus) {
   const tmEl = topPlate.querySelector('.tm');
   const wedgeL = topPlate.querySelector('.wedge.l');
   const wedgeR = topPlate.querySelector('.wedge.r');
-  // Symmetric pip rows: both wedges render the SAME number of slots
-  // (max team size) so the two sides read as one visual language.
-  // lit = alive, dim = dead, ghost outline = slot beyond that team's size.
-  function syncWedge(wEl, slots, total, alive, reverse) {
+  // WoT frag-counter: both wedges render the SAME number of identical dim
+  // slots (max team size); each kill a team scores fills one chip in that
+  // team's color, growing outward from the score numerals in the middle.
+  function syncWedge(wEl, slots, kills, reverse) {
     if (wEl.children.length !== slots) {
       wEl.textContent = '';
       for (let i = 0; i < slots; i++) el('i', '', wEl);
     }
     for (let i = 0; i < slots; i++) {
-      // left wedge fills from the outside in, right mirrors it
+      // left wedge's inner edge is its last child; right wedge's is its first
       const idx = reverse ? i : slots - 1 - i;
-      const g = idx >= total;
-      wEl.children[i].classList.toggle('ghost', g);
-      wEl.children[i].classList.toggle('off', !g && idx >= alive);
+      wEl.children[i].classList.toggle('on', idx < kills);
     }
   }
 
@@ -609,6 +650,7 @@ export function initHud(bus) {
     slotEls.push(s);
   }
   el('div', 'cot-consep', shellBox);
+  const conEls = [];
   for (let i = 0; i < CONSUMABLES.length; i++) {
     const c = CONSUMABLES[i];
     const s = el('div', 'cot-con', shellBox);
@@ -617,8 +659,8 @@ export function initHud(bus) {
       `<div class="cnt">${c.count != null ? c.count : ''}</div><div class="cool"></div>`;
     s.addEventListener('click', () => {
       bus.emit('ui:consumable', { slot: i });
-      bus.emit('ui:click', {});
     });
+    conEls.push(s);
   }
 
   // --- minimap ---
@@ -651,6 +693,7 @@ export function initHud(bus) {
   const nameById = new Map();
   const specIdById = new Map(); // entity id -> tank spec id (icon lookups)
   const hitDirs = []; // { ang, t0 } — screen-relative hit indicators
+  const liveNums = []; // { x, y, until } — active damage-number rects (stacking)
   let hitMark = null; // { t0, bounced } — reticle hit-confirm marker (own shots)
   let bounceTimer = null;
   const hpPool = new Map(); // tank id -> { root, fill, nm, lastFrac }
@@ -671,16 +714,6 @@ export function initHud(bus) {
   window.addEventListener('resize', resize);
   resize();
   root.style.display = 'none'; // starts hidden until setMode/update
-
-  window.addEventListener('keydown', (e) => {
-    if (mode === 'hidden') return;
-    if (e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3') {
-      const slot = Number(e.code.slice(-1)) - 1;
-      selectSlot(slot);
-      bus.emit('ui:shellSelect', { slot });
-      bus.emit('ui:click', {});
-    }
-  });
 
   function selectSlot(i) {
     localSlot = i;
@@ -768,6 +801,23 @@ export function initHud(bus) {
   }
 
   // ---------- team panels + score plate ----------
+  const nickById = new Map(); // entity id -> stable bot nickname (per battle)
+  function nickFor(t) {
+    if (t.isPlayer) return PLAYER_NICK;
+    let nick = nickById.get(t.id);
+    if (!nick) {
+      const used = new Set(nickById.values());
+      let i = hashStr(String(t.id) + (t.spec ? t.spec.id : '')) % BOT_NICKS.length;
+      for (let n = 0; n < BOT_NICKS.length; n++) {
+        const cand = BOT_NICKS[(i + n) % BOT_NICKS.length];
+        if (!used.has(cand)) { nick = cand; break; }
+      }
+      nick = nick || `Bot_${(hashStr(String(t.id)) % 90) + 10}`;
+      nickById.set(t.id, nick);
+    }
+    return nick;
+  }
+
   function updateTeams(frame) {
     const tanks = frame.tanks || [];
     let allyAlive = 0, allyTotal = 0, enemyAlive = 0, enemyTotal = 0;
@@ -782,10 +832,14 @@ export function initHud(bus) {
       if (!row) {
         const r = el('div', 'cot-er');
         const color = ally ? PEN_GREEN : PEN_RED;
-        r.innerHTML = `<span class="ic"></span><span class="n"></span><div class="hpm"><i></i></div>`;
+        r.innerHTML = `<span class="ic"></span><span class="tier"></span>` +
+          `<span class="n"><span class="nick"></span><span class="veh"></span></span>` +
+          `<div class="hpm"><i></i></div>`;
         maskIcon(r.querySelector('.ic'), t.spec.id, 'side_silhouette', color);
         if (t.isPlayer) r.classList.add('me');
-        r.querySelector('.n').textContent = t.spec.name;
+        r.querySelector('.tier').textContent = TIER_BY_ID[t.spec.id] || '–';
+        r.querySelector('.nick').textContent = nickFor(t);
+        r.querySelector('.veh').textContent = t.spec.name;
         (ally ? earL : earR).appendChild(r);
         row = {
           root: r, hp: r.querySelector('.hpm i'), ic: r.querySelector('.ic'),
@@ -794,11 +848,12 @@ export function initHud(bus) {
         earRows.set(t.id, row);
       }
       if (dead !== row.wasDead) { row.root.classList.toggle('dead', dead); row.wasDead = dead; }
-      // enemy silhouettes: solid while spotted, dimmed ghost while unspotted
+      // enemy rows: full-brightness while spotted, whole row dims + desaturates
+      // while unspotted (mirrors the minimap spotting gate)
       if (!ally) {
         const sp = dead || isSpotted(t.id);
         if (sp !== row.wasSpotted) {
-          row.ic.style.opacity = sp ? '' : '0.35';
+          row.root.classList.toggle('unlit', !sp);
           row.wasSpotted = sp;
         }
       }
@@ -812,11 +867,13 @@ export function initHud(bus) {
     }
     const score = `${enemyTotal - enemyAlive}:${allyTotal - allyAlive}|${allyAlive}/${allyTotal}|${enemyAlive}/${enemyTotal}`;
     if (score !== lastScore) {
-      fgEl.textContent = String(enemyTotal - enemyAlive);
-      feEl.textContent = String(allyTotal - allyAlive);
+      const allyKills = enemyTotal - enemyAlive;
+      const enemyKills = allyTotal - allyAlive;
+      fgEl.textContent = String(allyKills);
+      feEl.textContent = String(enemyKills);
       const slots = Math.max(allyTotal, enemyTotal);
-      syncWedge(wedgeL, slots, allyTotal, allyAlive, false);
-      syncWedge(wedgeR, slots, enemyTotal, enemyAlive, true);
+      syncWedge(wedgeL, slots, allyKills, false);
+      syncWedge(wedgeR, slots, enemyKills, true);
       earL.querySelector('.al').textContent = `${allyAlive} / ${allyTotal}`;
       earR.querySelector('.al').textContent = `${enemyAlive} / ${enemyTotal}`;
       lastScore = score;
@@ -835,11 +892,14 @@ export function initHud(bus) {
     const cx = w / 2, cy = h / 2;
     if (!scopeGrad) {
       const r = Math.hypot(w, h) * 0.58;
-      scopeGrad = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.34, cx, cy, r);
-      scopeGrad.addColorStop(0, 'rgba(3,5,7,0)');
-      scopeGrad.addColorStop(0.5, 'rgba(3,5,7,0.18)');
-      scopeGrad.addColorStop(0.8, 'rgba(2,3,4,0.45)');
-      scopeGrad.addColorStop(1, 'rgba(2,3,4,0.82)');
+      // WoT scope shadow (movement doc §9.2): black vignette RING — clear
+      // inside ~0.42×min(w,h), rolling to near-black at the frame edge so the
+      // view reads as gun optics, not a plain FOV zoom.
+      scopeGrad = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.42, cx, cy, r);
+      scopeGrad.addColorStop(0, 'rgba(2,3,4,0)');
+      scopeGrad.addColorStop(0.35, 'rgba(2,3,4,0.38)');
+      scopeGrad.addColorStop(0.7, 'rgba(2,3,4,0.86)');
+      scopeGrad.addColorStop(1, 'rgba(1,2,3,0.97)');
     }
     ctx.fillStyle = scopeGrad;
     ctx.fillRect(0, 0, w, h);
@@ -977,46 +1037,76 @@ export function initHud(bus) {
   function drawReticle(view, dt) {
     const col = penColor(view.penRatio);
     const cx = view.cx, cy = view.cy;
-    // bloom/shrink smoothing toward target pixel radius.
-    // Visual scale: WoT's arcade circle is a stylized (enlarged) rendering of
-    // the true dispersion cone — a raw projection is near-invisible at range.
-    const targetR = Math.max(34, view.radPx * 3.0);
+    // WoT dual-element system: a fixed central GUN MARKER (pen-color-coded)
+    // plus a separate DISPERSION CIRCLE that blooms with hull/turret movement
+    // and shrinks while holding the aim. bloom/shrink smoothing toward the
+    // target pixel radius; visual scale: WoT's circle is a stylized (enlarged)
+    // rendering of the true cone — a raw projection is near-invisible at range.
+    const targetR = Math.max(40, view.radPx * 3.0);
     const k = 1 - Math.exp(-14 * dt);
     smoothRadPx += (targetR - smoothRadPx) * k;
-    const r = Math.max(20, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
+    const r = Math.max(26, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
 
+    // --- dispersion circle: paired arc segments + cardinal ticks (visually
+    // distinct from the solid center marker so the two elements never merge)
     ctx.strokeStyle = col;
     ctx.fillStyle = col;
-    ctx.globalAlpha = 0.95;
-    ctx.lineWidth = 1.8;
-    ctx.shadowColor = 'rgba(0,0,0,0.55)';
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
     ctx.shadowBlur = 2;
-    // dispersion circle (bloom/shrink — independent of the central marker)
+    ctx.globalAlpha = 0.9;
+    ctx.lineWidth = 1.6;
     ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    // four long arcs with small gaps at the cardinals (WoT circle look)
+    for (let q = 0; q < 4; q++) {
+      const a0 = q * Math.PI / 2 + 0.10;
+      ctx.moveTo(cx + Math.cos(a0) * r, cy + Math.sin(a0) * r);
+      ctx.arc(cx, cy, r, a0, a0 + Math.PI / 2 - 0.20);
+    }
     ctx.stroke();
-    // cardinal ticks (inward)
-    ctx.lineWidth = 2.2;
+    // cardinal ticks bridging the gaps (inward, slightly heavier)
+    ctx.lineWidth = 2.4;
     ctx.beginPath();
     for (let q = 0; q < 4; q++) {
       const a = q * Math.PI / 2;
       const ca = Math.cos(a), sa = Math.sin(a);
-      ctx.moveTo(cx + ca * r, cy + sa * r);
-      ctx.lineTo(cx + ca * (r - 11), cy + sa * (r - 11));
+      ctx.moveTo(cx + ca * (r + 4), cy + sa * (r + 4));
+      ctx.lineTo(cx + ca * (r - 9), cy + sa * (r - 9));
     }
     ctx.stroke();
-    // central aim marker: dot + fine cross, ALWAYS visible (WoT keeps the
-    // aim point clear — the reload timer lives below, never on the marker)
+
+    // --- central gun marker: dot + fine cross, ALWAYS visible and colored by
+    // penetration chance (green/orange/red, neutral off armor)
+    ctx.globalAlpha = 0.97;
     ctx.beginPath();
     ctx.arc(cx, cy, 2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.lineWidth = 1.3;
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.moveTo(cx - 14, cy + 0.5); ctx.lineTo(cx - 5, cy + 0.5);
-    ctx.moveTo(cx + 5, cy + 0.5); ctx.lineTo(cx + 14, cy + 0.5);
-    ctx.moveTo(cx + 0.5, cy - 14); ctx.lineTo(cx + 0.5, cy - 5);
-    ctx.moveTo(cx + 0.5, cy + 5); ctx.lineTo(cx + 0.5, cy + 14);
+    ctx.moveTo(cx - 13, cy + 0.5); ctx.lineTo(cx - 5, cy + 0.5);
+    ctx.moveTo(cx + 5, cy + 0.5); ctx.lineTo(cx + 13, cy + 0.5);
+    ctx.moveTo(cx + 0.5, cy - 13); ctx.lineTo(cx + 0.5, cy - 5);
+    ctx.moveTo(cx + 0.5, cy + 5); ctx.lineTo(cx + 0.5, cy + 13);
     ctx.stroke();
+
+    // --- radial reload sweep hugging the center marker (WoT reload ring):
+    // dim full track + amber arc that closes clockwise as the load completes
+    const rl0 = view.reload;
+    const isReloading = rl0 && rl0.totalS > 0 && rl0.t > 0.001;
+    if (isReloading) {
+      const RING = 19;
+      const frac = Math.max(0, Math.min(1, 1 - rl0.t / rl0.totalS));
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(10,14,18,0.55)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, RING, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = '#f0a030';
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(cx, cy, RING, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    }
     ctx.globalAlpha = 1;
     ctx.shadowBlur = 0;
 
@@ -1036,42 +1126,23 @@ export function initHud(bus) {
       ctx.shadowBlur = 0;
     }
 
-    // --- under-center info stack (WoT layout: timer sits BELOW the aim
-    // point, never on it) -------------------------------------------------
-    const rl = view.reload;
-    const reloading = rl && rl.totalS > 0 && rl.t > 0.001;
-    const infoY = cy + Math.max(44, Math.min(r * 0.62, 86)); // clear of the marker, tracks bloom
+    // --- under-center readouts (WoT layout: numerals sit BELOW the aim
+    // point, centered on the reticle's vertical axis) ----------------------
     ctx.textAlign = 'center';
     ctx.shadowColor = 'rgba(0,0,0,0.9)';
     ctx.shadowBlur = 3;
-    if (reloading) {
-      // countdown numeral + thin sweep bar beneath it
+    if (isReloading) {
+      // countdown numeral just under the reload ring
       ctx.fillStyle = '#f0a030';
-      ctx.font = `700 17px ${FONT_COND}`;
-      ctx.fillText(rl.t >= 10 ? `${Math.ceil(rl.t)}` : `${rl.t.toFixed(1)}`, cx, infoY);
-      const frac = 1 - rl.t / rl.totalS;
-      const bw = 46;
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = 'rgba(8,11,14,0.72)';
-      ctx.fillRect(cx - bw / 2, infoY + 6, bw, 3);
-      ctx.fillStyle = '#f0a030';
-      ctx.fillRect(cx - bw / 2, infoY + 6, bw * frac, 3);
-      ctx.shadowBlur = 3;
+      ctx.font = `700 15px ${FONT_COND}`;
+      ctx.fillText(rl0.t >= 10 ? `${Math.ceil(rl0.t)}` : rl0.t.toFixed(1), cx, cy + 38);
     }
-    // selected shell count right of the timer spot (always visible)
-    const shSp = lastShells && lastShells[localSlot];
-    if (shSp) {
-      ctx.font = `700 13px ${FONT_COND}`;
-      ctx.textAlign = 'left';
-      ctx.fillStyle = SHELL_TYPE_COLOR[shSp.type] || 'rgba(222,232,242,0.9)';
-      ctx.fillText(`${shellCount(shSp)}`, cx + 32, infoY);
-      ctx.textAlign = 'center';
-    }
-    // distance readout under the timer line
+    // distance readout centered under the aim circle, tracking its bloom
+    // (ammo count lives in the shell tray only — no duplicate here)
     if (view.distM != null && isFinite(view.distM)) {
-      ctx.fillStyle = 'rgba(214,226,236,0.88)';
-      ctx.font = `600 12px ${FONT_COND}`;
-      ctx.fillText(`${Math.round(view.distM)} m`, cx, infoY + (reloading ? 24 : 2));
+      ctx.fillStyle = 'rgba(220,231,240,0.92)';
+      ctx.font = `600 12.5px ${FONT_COND}`;
+      ctx.fillText(`${Math.round(view.distM)} m`, cx, cy + Math.max(58, r + 19));
     }
     ctx.shadowBlur = 0;
     ctx.textAlign = 'left';
@@ -1538,8 +1609,22 @@ export function initHud(bus) {
         c.textContent = 'CRIT';
       }
     } else { d.remove(); return; }
-    d.style.left = `${_sx.toFixed(0)}px`;
-    d.style.top = `${_sy.toFixed(0)}px`;
+    // WoT-style stacking: new labels step upward off any live label near the
+    // same projected point (slight x-jitter) instead of overlapping.
+    let x = _sx, y = _sy;
+    const nowMs = performance.now();
+    for (let i = liveNums.length - 1; i >= 0; i--) {
+      if (liveNums[i].until < nowMs) liveNums.splice(i, 1);
+    }
+    for (let guard = 0; guard < 8; guard++) {
+      const clash = liveNums.find((n) => Math.abs(n.x - x) < 72 && Math.abs(n.y - y) < 24);
+      if (!clash) break;
+      y = clash.y - 26;
+      x += (Math.random() - 0.5) * 12;
+    }
+    liveNums.push({ x, y, until: nowMs + 900 });
+    d.style.left = `${x.toFixed(0)}px`;
+    d.style.top = `${y.toFixed(0)}px`;
     setTimeout(() => { if (d.parentNode) d.remove(); }, 1800);
   }
 
@@ -1564,6 +1649,56 @@ export function initHud(bus) {
 
   let playerRef = null;
   bus.on('tank:destroyed', (p) => { pushKill(p); });
+  // Shell hotkeys route through input.js actions only (main.js emits this) —
+  // the HUD renders selection state from the bus instead of its own listener.
+  bus.on('ui:shellSelect', ({ slot }) => selectSlot(slot));
+  // Live hotkey labels — settings.js broadcasts at boot and after every
+  // rebind/clear/reset, so the tray never lies about the player's keys.
+  bus.on('ui:bindingsChanged', (p) => {
+    if (!p) return;
+    if (Array.isArray(p.shells)) {
+      for (let i = 0; i < 3 && i < p.shells.length; i++) {
+        const k = slotEls[i].querySelector('.key');
+        if (k) k.textContent = p.shells[i];
+      }
+    }
+    if (Array.isArray(p.consumables)) {
+      for (let i = 0; i < conEls.length && i < p.consumables.length; i++) {
+        const k = conEls[i].querySelector('.key');
+        if (k) k.textContent = p.consumables[i];
+      }
+    }
+  });
+  bus.on('ui:consumableUsed', ({ slot, left }) => {
+    const s = conEls[slot];
+    if (!s) return;
+    s.querySelector('.cnt').textContent = String(left);
+    s.classList.toggle('used', left <= 0);
+    showAlert(`${CONSUMABLES[slot].label.toUpperCase()} USED`, false);
+  });
+  bus.on('ui:consumableDenied', ({ slot, reason }) => {
+    if (reason === 'NOTHING') {
+      showAlert(slot === 2 ? 'NO FIRE TO EXTINGUISH' : slot === 1 ? 'CREW UNHARMED' : 'NOTHING TO REPAIR', false);
+    }
+    const s = conEls[slot];
+    if (s) { s.classList.remove('deny'); void s.offsetWidth; s.classList.add('deny'); }
+  });
+  bus.on('ui:consumableReset', () => {
+    for (let i = 0; i < conEls.length; i++) {
+      conEls[i].querySelector('.cnt').textContent = String(CONSUMABLES[i].count);
+      conEls[i].classList.remove('used', 'deny');
+    }
+  });
+  // Minimap size cycle (3 steps) — the canvas keeps its fixed 2x internal
+  // resolution; CSS scales it, so blips/labels stay proportionate.
+  const MM_SIZES = [160, 220, 300];
+  let mmSizeIdx = 1;
+  bus.on('ui:minimapZoom', () => {
+    mmSizeIdx = (mmSizeIdx + 1) % MM_SIZES.length;
+    const px = `${MM_SIZES[mmSizeIdx]}px`;
+    mmWrap.style.width = px;
+    mmWrap.style.height = px;
+  });
   bus.on('shell:hit', (hit) => {
     if (playerId != null && hit.attackerId === playerId && hit.targetId && hit.targetId !== playerId) {
       pushDamageNumber(hit);
@@ -1635,10 +1770,24 @@ export function initHud(bus) {
     drawHitMark(aimView, lastTimeS);
   }
 
+  // Sniper optics grade: the high-zoom view compresses the scene into its
+  // haziest distance band, so the raw render reads washed-out next to the
+  // arcade camera. Grade the WebGL canvas itself (a plain CSS filter — unlike
+  // backdrop-filter it is honored by every compositor, headless included) to
+  // restore the contrast/saturation the fog band eats. Values tuned to match
+  // the third-person tonality, NOT to stylize.
+  let sceneCanvasEl = null;
+  function sceneCanvas() {
+    if (!sceneCanvasEl || !sceneCanvasEl.isConnected) {
+      const app = document.getElementById('app');
+      sceneCanvasEl = app ? app.querySelector('canvas') : null;
+    }
+    return sceneCanvasEl;
+  }
   function applyMode() {
     root.style.display = mode === 'hidden' ? 'none' : 'block';
-    // sniper contrast/saturation recovery layer (counteracts scene fog wash-out)
-    snipeFx.style.display = mode === 'sniper' ? 'block' : 'none';
+    const sc = sceneCanvas();
+    if (sc) sc.style.filter = mode === 'sniper' ? 'saturate(1.34) contrast(1.16)' : '';
   }
 
   // ---------- public API ----------
@@ -1661,8 +1810,9 @@ export function initHud(bus) {
       if (m === 'hidden') shotInfo.hideStats();
       if (m === 'battle' && wasHidden) shotInfo.reset();
       if (m === 'battle' && wasHidden) {
-        // fresh battle: drop spotting memory and team rosters from the last one
+        // fresh battle: drop spotting memory, nicknames and team rosters
         spotById.clear();
+        nickById.clear();
         // SPOTTING SECTION: disarm the sixth-sense lamp (sim clock restarts)
         sixthPendingS = -1;
         sixthUntilS = -1;
@@ -1754,7 +1904,7 @@ export function initHud(bus) {
     forceAimDisplay(f) {
       forced = Object.assign({}, f);
       assembleAimView(lastCamera, forced);
-      smoothRadPx = Math.max(34, aimView.radPx * 3.0); // no bloom animation in a forced still
+      smoothRadPx = Math.max(40, aimView.radPx * 3.0); // no bloom animation in a forced still
       if (forced.shells) lastShells = forced.shells;
       const slot = forced.shellSlot != null ? forced.shellSlot : localSlot;
       renderShells(lastShells, slot);

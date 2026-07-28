@@ -18,6 +18,7 @@ function opt(name, fallback) {
 const seconds = parseFloat(opt('seconds', '20'));
 const width = parseInt(opt('width', '1920'), 10);
 const height = parseInt(opt('height', '1080'), 10);
+const dsf = parseFloat(opt('dsf', '1')); // deviceScaleFactor: 2 = retina default
 const outFile = opt('out', '');
 
 const port = 5900 + Math.floor(Math.random() * 90);
@@ -36,7 +37,7 @@ const browser = await puppeteer.launch({
   ],
 });
 const page = await browser.newPage();
-await page.setViewport({ width, height, deviceScaleFactor: 1 });
+await page.setViewport({ width, height, deviceScaleFactor: dsf });
 
 const consoleErrors = [];
 page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('favicon')) consoleErrors.push(m.text()); });
@@ -172,7 +173,7 @@ try {
 
   report = {
     date: new Date().toISOString(),
-    viewport: { width, height },
+    viewport: { width, height, deviceScaleFactor: dsf },
     sampleSeconds: seconds,
     frames: perf.deltas.length,
     loadToReadyMs: Math.round(loadToReadyMs),

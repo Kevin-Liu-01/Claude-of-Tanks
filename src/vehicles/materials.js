@@ -64,6 +64,21 @@ function blobPath2D(rng, x, y, r, lobes = 9, jitter = 0.55) {
   return p;
 }
 
+// Angular straight-edged blob (Path2D) — desert/splinter patch language.
+// Same wrap contract as blobPath2D but with hard polygonal facets.
+function polyPath2D(rng, x, y, r, lobes = 6, jitter = 0.6) {
+  const sx = 1.2 + rng() * 0.9;
+  const p = new Path2D();
+  for (let i = 0; i < lobes; i++) {
+    const a = (i / lobes) * Math.PI * 2 + (rng() - 0.5) * (Math.PI / lobes);
+    const rr = r * (1 - jitter / 2 + rng() * jitter);
+    const px = x + Math.cos(a) * rr * sx, py = y + Math.sin(a) * rr * 0.8;
+    if (i === 0) p.moveTo(px, py); else p.lineTo(px, py);
+  }
+  p.closePath();
+  return p;
+}
+
 // Fill a Path2D 9 times (3x3 tile offsets) so the pattern wraps seamlessly.
 function fillWrapped(ctx, S, path, style) {
   ctx.fillStyle = style;
@@ -189,31 +204,31 @@ function paintCamo(canvas, visual, rng, feats, seed) {
 
   const scheme = visual.scheme || 'solid';
   if (scheme === 'stripes' && patches.length) {
-    // Dunkelgelb with sprayed Olivgruen/Rotbraun bands: broad soft-edged
-    // strokes (layered decreasing widths emulate overspray), mostly vertical.
-    for (let i = 0; i < 26; i++) {
+    // Dunkelgelb with sprayed Olivgruen/Rotbraun camo: large soft-edged
+    // organic patches linked by sprayed bands at VARIED angles. (The old
+    // mostly-vertical stroke field read as paint dripping down the plates —
+    // r5 "camo smears vertically" critique.)
+    for (let i = 0; i < 9; i++) {
+      const col = mix(patches[i % patches.length], base, 0.10);
+      const r = S * (0.055 + rng() * 0.075);
+      const x = rng() * S, y = rng() * S;
+      fillWrapped(ctx, S, blobPath2D(rng, x, y, r * 1.1), rgb(col, 0.30)); // overspray rim
+      fillWrapped(ctx, S, blobPath2D(rng, x, y, r), rgb(col, 0.85));
+    }
+    for (let i = 0; i < 14; i++) {
       const col = mix(patches[(rng() * patches.length) | 0], base, 0.12);
       const x0 = rng() * S, y0 = rng() * S;
-      const ang = Math.PI / 2 + (rng() - 0.5) * 1.1;
-      const len = S * (0.16 + rng() * 0.26);
-      const w = S * (0.03 + rng() * 0.035);
-      const mx = x0 + Math.cos(ang) * len * 0.5 + (rng() - 0.5) * w * 2.2;
-      const my = y0 + Math.sin(ang) * len * 0.5;
-      const x1 = x0 + Math.cos(ang) * len + (rng() - 0.5) * w * 2.6;
-      const y1 = y0 + Math.sin(ang) * len;
+      const ang = rng() * Math.PI;                       // any direction
+      const len = S * (0.10 + rng() * 0.16);
+      const w = S * (0.028 + rng() * 0.03);
+      const mx = x0 + Math.cos(ang) * len * 0.5 + (rng() - 0.5) * w * 3;
+      const my = y0 + Math.sin(ang) * len * 0.5 + (rng() - 0.5) * w * 3;
+      const x1 = x0 + Math.cos(ang) * len, y1 = y0 + Math.sin(ang) * len;
       const path = new Path2D();
       path.moveTo(x0, y0);
       path.quadraticCurveTo(mx, my, x1, y1);
-      strokeWrapped(ctx, S, path, rgb(col, 0.20), w * 1.7);      // overspray halo
-      strokeWrapped(ctx, S, path, rgb(col, 0.45), w * 1.25);
-      strokeWrapped(ctx, S, path, rgb(col, 0.85), w);
-      if (rng() < 0.45) {
-        const b = new Path2D();
-        b.moveTo(mx, my);
-        b.lineTo(mx + (rng() - 0.5) * len * 0.9, my + len * (0.3 + rng() * 0.35));
-        strokeWrapped(ctx, S, b, rgb(col, 0.35), w * 1.05);
-        strokeWrapped(ctx, S, b, rgb(col, 0.8), w * 0.7);
-      }
+      strokeWrapped(ctx, S, path, rgb(col, 0.22), w * 1.6);      // overspray halo
+      strokeWrapped(ctx, S, path, rgb(col, 0.75), w);
     }
   } else if (scheme === 'ambush' && patches.length) {
     for (let i = 0; i < 18; i++) {
@@ -231,19 +246,60 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     }
   } else if (scheme === 'nato' && patches.length) {
     // NATO 3-colour: organic ROUNDED splotches — brown then sparse black over
-    // the green base. Hard edge with a thin soft rim so it reads sprayed.
+    // the green base, painted at 2-3 distinct scales (uniform same-size spots
+    // read procedural — r1 camo critique). Hard edge, thin soft rim.
     const black = patches[0], brown = patches[1] || patches[0];
-    for (let i = 0; i < 13; i++) {
-      const r = S * (0.055 + rng() * 0.075);
+    for (let i = 0; i < 15; i++) {
+      const r = S * (i < 4 ? 0.10 + rng() * 0.06 : 0.035 + rng() * 0.05);
       const x = rng() * S, y = rng() * S;
       fillWrapped(ctx, S, blobPath2D(rng, x, y, r * 1.06), rgb(mix(brown, base, 0.4), 0.5));
       fillWrapped(ctx, S, blobPath2D(rng, x, y, r), rgb(brown, 0.97));
     }
-    for (let i = 0; i < 10; i++) {
-      const r = S * (0.038 + rng() * 0.05);
+    for (let i = 0; i < 12; i++) {
+      const r = S * (i < 3 ? 0.07 + rng() * 0.045 : 0.028 + rng() * 0.035);
       const x = rng() * S, y = rng() * S;
       fillWrapped(ctx, S, blobPath2D(rng, x, y, r * 1.06), rgb(mix(black, base, 0.4), 0.5));
       fillWrapped(ctx, S, blobPath2D(rng, x, y, r), rgb(black, 0.95));
+    }
+  } else if (scheme === 'desert' && patches.length) {
+    // Desert: hard-edged multi-scale 3-tone geometry — broad low-contrast
+    // diagonal wind bands under angular polygon patches at three scales plus
+    // thin dark streaks. Replaces the r1 same-size-ellipse "cheetah print".
+    const dark = patches[0], mid2 = patches[1] || patches[0];
+    const pale = patches[2] || mix(base, [255, 250, 235], 0.35);
+    for (let i = 0; i < 5; i++) {                                 // band layer
+      const y0 = rng() * S, slope = (rng() - 0.5) * 0.6;
+      const w = S * (0.10 + rng() * 0.10);
+      const path = new Path2D();
+      path.moveTo(-S * 0.1, y0);
+      path.quadraticCurveTo(S * 0.5, y0 + slope * S * 0.5 + (rng() - 0.5) * S * 0.09,
+        S * 1.1, y0 + slope * S);
+      strokeWrapped(ctx, S, path, rgb(mix(rng() < 0.5 ? mid2 : pale, base, 0.45), 0.30), w);
+    }
+    for (let i = 0; i < 5; i++) {                                 // large angular patches
+      const r = S * (0.09 + rng() * 0.07);
+      const x = rng() * S, y = rng() * S;
+      const col = i % 2 ? mid2 : dark;
+      fillWrapped(ctx, S, polyPath2D(rng, x, y, r * 1.05, 7, 0.55), rgb(mix(col, base, 0.5), 0.5));
+      fillWrapped(ctx, S, polyPath2D(rng, x, y, r, 7, 0.55), rgb(col, 0.92));
+    }
+    for (let i = 0; i < 9; i++) {                                 // mid shards
+      const r = S * (0.035 + rng() * 0.035);
+      const col = [dark, mid2, pale][(rng() * 3) | 0];
+      fillWrapped(ctx, S, polyPath2D(rng, rng() * S, rng() * S, r, 5, 0.7), rgb(col, 0.88));
+    }
+    for (let i = 0; i < 26; i++) {                                // small flecks
+      const r = S * (0.008 + rng() * 0.014);
+      fillWrapped(ctx, S, polyPath2D(rng, rng() * S, rng() * S, r, 4, 0.8),
+        rgb(rng() < 0.5 ? dark : pale, 0.75));
+    }
+    for (let i = 0; i < 14; i++) {                                // thin streaks
+      const x0 = rng() * S, y0 = rng() * S, len = S * (0.05 + rng() * 0.1);
+      const a2 = rng() * Math.PI;
+      const path = new Path2D();
+      path.moveTo(x0, y0);
+      path.lineTo(x0 + Math.cos(a2) * len, y0 + Math.sin(a2) * len * 0.5);
+      strokeWrapped(ctx, S, path, rgb(dark, 0.6), 1.5 + rng() * 3);
     }
   } else if (scheme === 'winter') {
     // ===================== CAMO PATTERN SECTION =====================
@@ -309,14 +365,22 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     }
   }
 
-  // Zimmerit: fine horizontal ridge modulation (relief lives in the heightmap).
+  // Zimmerit: barely-there albedo modulation only — the ridge relief lives in
+  // the normal map. (Strong albedo stripes read as corduroy/knit fabric at
+  // closeup range — r5 critique.)
   if (visual.zimmerit) {
     const pitch = Math.max(3, (S / 340) | 0);
     for (let y = 0; y < S; y += pitch) {
-      ctx.fillStyle = `rgba(0,0,0,${0.05 + 0.05 * rng()})`;
+      ctx.fillStyle = `rgba(0,0,0,${0.015 + 0.02 * rng()})`;
       ctx.fillRect(0, y, S, Math.max(1, pitch >> 2));
-      ctx.fillStyle = 'rgba(255,255,255,0.045)';
-      ctx.fillRect(0, y + (pitch >> 1), S, 1);
+    }
+    // faint vertical trowel-section seams so the coating reads as applied
+    // in hand-worked strips rather than machine-knit rows
+    let x = 0;
+    while (x < S) {
+      x += (S / 13) * (0.7 + rng() * 0.8);
+      ctx.fillStyle = 'rgba(0,0,0,0.04)';
+      ctx.fillRect(x, 0, 1.5, S);
     }
   }
 
@@ -457,14 +521,29 @@ function paintHeight(canvas, visual, rng, feats, seed) {
     }
   }
 
-  // zimmerit: strong fine horizontal ridging with random patch breaks
+  // zimmerit: fine horizontal ridging broken into hand-worked vertical strips
+  // (waffle sections with phase offsets), plus chipped-off patches — subtle
+  // high-frequency normal relief, not albedo stripes (r5 critique)
   if (visual.zimmerit) {
     const pitch = Math.max(3, (S / 340) | 0);
-    for (let y = 0; y < S; y += pitch) {
-      ctx.fillStyle = 'rgba(255,255,255,0.30)';
-      ctx.fillRect(0, y, S, Math.max(1, pitch >> 1));
-      ctx.fillStyle = 'rgba(0,0,0,0.32)';
-      ctx.fillRect(0, y + (pitch >> 1), S, Math.max(1, pitch >> 1));
+    // vertical strip plan: ~13 wide hand-worked columns (~25 cm at hull scale)
+    const cols = [];
+    let cx = 0;
+    while (cx < S) {
+      const w = (S / 13) * (0.7 + rng() * 0.8);
+      cols.push([cx, Math.min(cx + w, S), (rng() * pitch) | 0]);
+      cx += w;
+    }
+    for (const [x0, x1, phase] of cols) {
+      for (let y = -pitch; y < S; y += pitch) {
+        ctx.fillStyle = 'rgba(255,255,255,0.16)';
+        ctx.fillRect(x0, y + phase, x1 - x0, Math.max(1, pitch >> 1));
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.fillRect(x0, y + phase + (pitch >> 1), x1 - x0, Math.max(1, pitch >> 1));
+      }
+      // groove between strips
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(x1 - 1, 0, 2, S);
     }
     for (let i = 0; i < 14; i++) {                      // chipped-off patches
       ctx.fillStyle = 'rgba(110,110,110,0.9)';
@@ -607,18 +686,18 @@ function paintTrack(rng) {
   const S = 512;
   const c = makeCanvas(S, S);
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#2d2d32';
+  ctx.fillStyle = '#37373d';
   ctx.fillRect(0, 0, S, S);
   const rows = 4, rh = S / rows;
   for (let r = 0; r < rows; r++) {
     const y = r * rh;
     // link body shading
     const g = ctx.createLinearGradient(0, y, 0, y + rh);
-    g.addColorStop(0, '#46464c');
-    g.addColorStop(0.45, '#35353a');
-    g.addColorStop(0.5, '#1d1d21');
-    g.addColorStop(0.55, '#37373c');
-    g.addColorStop(1, '#2b2b2f');
+    g.addColorStop(0, '#53535a');
+    g.addColorStop(0.45, '#404046');
+    g.addColorStop(0.5, '#232327');
+    g.addColorStop(0.55, '#424248');
+    g.addColorStop(1, '#35353a');
     ctx.fillStyle = g;
     ctx.fillRect(0, y + 4, S, rh - 8);
     // pin gap + end-connector bumps
@@ -748,8 +827,11 @@ function acquireSharedTextures(spec, aniso) {
     entry = {
       refs: 0,
       // CAMO PATTERN SECTION: kept so applyCamoPatterns() can repaint the
-      // shared albedo in place (all live instances update through the texture)
-      spec, seed, feats, camoCanvas, patternId,
+      // shared albedo in place (all live instances update through the texture).
+      // paintable: per-instance solid-color materials (road-wheel dishes,
+      // fittings) that must follow the scheme on repaint (r1: lime-green
+      // wheels under winter whitewash).
+      spec, seed, feats, camoCanvas, patternId, paintable: new Set(),
       camoTex: canvasTex(camoCanvas, { aniso, repeat: true }),
       normalTex: canvasTex(normalCanvas, { srgb: false, aniso, repeat: true }),
       roughTex: canvasTex(roughCanvas, { srgb: false, aniso, repeat: true }),
@@ -768,8 +850,73 @@ function releaseSharedTextures(spec) {
     entry.camoTex.dispose();
     entry.normalTex.dispose();
     entry.roughTex.dispose();
+    if (entry.burntTex) entry.burntTex.dispose();
+    if (entry.emberTex) entry.emberTex.dispose();
     TEX_CACHE.delete(spec.id);
   }
+}
+
+/**
+ * Charred variant of the shared camo albedo + a patchy ember emissive map,
+ * built lazily and cached with the per-spec textures. The wreck keeps faint
+ * camo/panel variation under heavy char with noise blotches and rising soot
+ * streaks — never a flat clay color swap.
+ * @param {object} entry TEX_CACHE entry @param {number} aniso
+ */
+function ensureBurntTextures(entry, aniso) {
+  if (entry.burntTex) return;
+  const S = 1024;
+  const cv = makeCanvas(S, S);
+  const ctx = cv.getContext('2d');
+  ctx.drawImage(entry.camoCanvas, 0, 0, S, S);
+  // char the paint toward scorched near-black, camo faintly readable under it
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.fillStyle = '#5a5049';
+  ctx.fillRect(0, 0, S, S);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = 'rgba(22,19,16,0.42)';
+  ctx.fillRect(0, 0, S, S);
+  const rng = mulberry32((entry.seed ^ 0xb0217) >>> 0);
+  // sooty blotches: char-black pockets and ash-grey burn-through patches
+  for (let i = 0; i < 80; i++) {
+    const x = rng() * S, y = rng() * S, r = (0.03 + rng() * 0.12) * S;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    if (rng() < 0.62) g.addColorStop(0, `rgba(12,10,9,${0.26 + rng() * 0.3})`);
+    else g.addColorStop(0, `rgba(104,96,84,${0.08 + rng() * 0.15})`);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  // rising soot streaks (heat streaking up plates from hatches/seams)
+  for (let i = 0; i < 52; i++) {
+    const x = rng() * S;
+    const y0 = rng() * S * 0.75;
+    const len = (0.10 + rng() * 0.30) * S;
+    const w = (0.005 + rng() * 0.020) * S;
+    const g = ctx.createLinearGradient(x, y0 + len, x, y0);
+    g.addColorStop(0, `rgba(8,7,6,${0.18 + rng() * 0.30})`);
+    g.addColorStop(1, 'rgba(8,7,6,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - w / 2, y0, w, len);
+  }
+  entry.burntTex = canvasTex(cv, { aniso, repeat: true });
+  // ember emissive mask: mostly black with a few soft hot pockets — the glow
+  // reads as embers smoldering in seams, never a uniform lava dip
+  const E = 256;
+  const ec = makeCanvas(E, E);
+  const ectx = ec.getContext('2d');
+  ectx.fillStyle = '#000';
+  ectx.fillRect(0, 0, E, E);
+  for (let i = 0; i < 6; i++) {
+    const x = rng() * E, y = rng() * E, r = 22 + rng() * 34;
+    const g = ectx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(255,132,48,${0.35 + rng() * 0.35})`);
+    g.addColorStop(0.5, 'rgba(140,36,8,0.22)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ectx.fillStyle = g;
+    ectx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  entry.emberTex = canvasTex(ec, { aniso: 2, repeat: true });
 }
 
 // ===========================================================================
@@ -796,7 +943,11 @@ export const CAMO_PATTERN_LABEL = {
 };
 
 const CAMO_LS_PREFIX = 'cot.camo.';
-const BIOME_PATTERN = { verdant: 'summer', desert: 'desert', winter: 'winter', urban: 'digital' };
+// 'urban' is an INTERNAL pattern id (gray digital) reachable only through
+// AUTO biome resolution — a green flecktarn in a gray rubble city defeated
+// the point of biome matching (r1). Direct picker selection keeps the
+// nation-flavored green 'digital'.
+const BIOME_PATTERN = { verdant: 'summer', desert: 'desert', winter: 'winter', urban: 'urban' };
 let activeBiome = 'verdant';
 
 /** Persisted camo pattern selection for a tank ('factory' when unset). */
@@ -839,9 +990,14 @@ function patternVisual(spec, patternId) {
   if (patternId === 'summer') {
     o = { scheme: 'nato', base: '#4d5940', weather: '#59664a', patches: ['#26291f', '#54402e'] };
   } else if (patternId === 'desert') {
-    o = { scheme: 'nato', base: '#a98f5f', weather: '#bda87a', patches: ['#8a6f47', '#c4b085'] };
+    // 3-tone hard-edged desert geometry (scheme 'desert' in paintCamo):
+    // patches = [dark shadow tan, mid earth, pale sand highlight]
+    o = { scheme: 'desert', base: '#b09466', weather: '#c4ad7d', patches: ['#7c6644', '#96805a', '#d8c69c'] };
   } else if (patternId === 'winter') {
     o = { scheme: 'winter', base: '#c4c8bf', weather: '#a8ad9f', patches: [v.base || '#4b5320'] };
+  } else if (patternId === 'urban') {
+    // biome-resolved only (see BIOME_PATTERN): gray urban digital
+    o = { scheme: 'digital', base: '#63665f', weather: '#71746c', patches: ['#3f423d', '#8b8e86', '#26282a'] };
   } else if (patternId === 'digital') {
     const nation = spec.nation;
     if (nation === 'Germany') {
@@ -860,6 +1016,16 @@ export function resolveCamoVisual(spec, patternId = resolveCamoPattern(spec.id))
   return patternVisual(spec, patternId);
 }
 
+// Scheme-painted running gear + fittings: real crews paint wheels and hull
+// hardware in the vehicle scheme, so these solid colors derive from the
+// ACTIVE pattern base, not the authored factory palette.
+const cssRGB = (c) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
+const wheelRgbOf = (v) => mix(scale3(hexToRgb(v.base), 0.92), [118, 110, 86], 0.22);
+// Recessed interleaved-row wheels bake their own occlusion: same scheme paint
+// dropped well toward shadow so the Schachtellaufwerk rows separate (r5).
+const wheelDarkRgbOf = (v) => scale3(wheelRgbOf(v), 0.5);
+const detailRgbOf = (v) => mix([65, 70, 58], hexToRgb(v.base), 0.5);
+
 function repaintEntry(entry, patternId) {
   const vis = patternVisual(entry.spec, patternId);
   // pattern-specific rng stream; the shared `feats` plan keeps panel lines,
@@ -869,6 +1035,12 @@ function repaintEntry(entry, patternId) {
   paintCamo(entry.camoCanvas, vis, mulberry32(entry.seed ^ ph), entry.feats, entry.seed);
   entry.camoTex.needsUpdate = true;
   entry.patternId = patternId;
+  // wheels / sprockets / fittings follow the repaint live
+  for (const rec of entry.paintable) {
+    const c = rec.kind === 'wheels' ? wheelRgbOf(vis)
+      : rec.kind === 'wheelsDark' ? wheelDarkRgbOf(vis) : detailRgbOf(vis);
+    rec.m.color.set(cssRGB(c));
+  }
 }
 
 /**
@@ -886,29 +1058,152 @@ export function applyCamoPatterns(onlySpecId = null) {
 }
 
 // ---- sourced-GLB hook (modelLoader.js) ------------------------------------
-// GLB assets arrive with their own baked textures; painting a full camo UV
-// over an arbitrary unwrap is not robust, so sourced models take a TINT
-// overlay: hull-ish materials are lerped toward the pattern base color
-// (stronger when the material is untextured). Registered so later pattern
-// switches re-tint live.
-const GLB_TINTED = []; // { specId, mats: [{ m, orig: THREE.Color }] }
+// GLB assets arrive with their own baked albedo maps. The old approach — a
+// 0.45 color lerp over the map — was invisible (summer/desert/winter were
+// pixel-identical) and blew bright pips out of dark hardware, so patterns are
+// now COMPOSITED in texture space:
+//   albedo' = camo pattern tile (full paintCamo language, no plate features)
+//             ⊕ overlay( grayscale(albedo), mean-luma normalized )  — keeps
+//               the asset's baked AO / panel shading / weathering
+//             ∩ alpha(albedo)                                        — keeps cutouts
+// Composited canvases are shared per source texture (every instance of a spec
+// reuses one GPU texture) and recomposed in place on pattern switches.
+// Materials are classified by GLB name: rubber / lights / optics / radiators /
+// screws / tracks keep their factory look (tinting those produced the r1
+// "LED fairy light" bolt-pip artifacts); untextured hull-paint materials fall
+// back to a strong base tint; 'factory' restores the original maps/colors.
+const GLB_TINTED = [];            // registered models: { specId, spec, mats: [rec] }
+const GLB_MAP_SHARE = new Map();  // srcTex.uuid -> { src, meanLuma, canvas, tex, key } | null
+const GLB_TILE_CACHE = new Map(); // nation:patternId -> pattern tile canvas
+// 'addon' covers modelLoader's procedural correction parts — they already
+// carry the shared camo canvas directly and must not be re-composited.
+const GLB_SKIP_RE = /rubber|tire|light|lens|glass|optic|radiator|screw|track|wheel|gear|addon/i;
 
-function tintGlbEntry(entry) {
-  const vis = patternVisual(entry.spec, resolveCamoPattern(entry.specId));
+function glbPatternTile(spec, patternId) {
+  const key = `${spec.nation || 'x'}:${patternId}`;
+  let tile = GLB_TILE_CACHE.get(key);
+  if (!tile) {
+    let ph = 7;
+    for (const ch of key) ph = (ph * 31 + ch.charCodeAt(0)) | 0;
+    // no plate features on the tile — the GLB carries its own panel detail
+    const feats = { hLines: [], vLines: [], rings: [], chips: [], streaks: [] };
+    tile = paintCamo(makeCanvas(1024, 1024), patternVisual(spec, patternId),
+      mulberry32(ph), feats, ph);
+    GLB_TILE_CACHE.set(key, tile);
+  }
+  return tile;
+}
+
+// Bake one source texture to a canvas (≤1024) + measure mean luminance.
+// Returns null when the image is unreadable (compressed formats) — those
+// materials degrade to the plain-tint path.
+function acquireGlbShare(srcTex) {
+  if (GLB_MAP_SHARE.has(srcTex.uuid)) return GLB_MAP_SHARE.get(srcTex.uuid);
+  let share = null;
+  const img = srcTex.image;
+  if (img && img.width > 0 && img.height > 0) {
+    try {
+      const w = Math.min(img.width, 1024), h = Math.min(img.height, 1024);
+      const src = makeCanvas(w, h);
+      src.getContext('2d').drawImage(img, 0, 0, w, h);
+      const probe = makeCanvas(16, 16);
+      const pctx = probe.getContext('2d');
+      pctx.drawImage(src, 0, 0, 16, 16);
+      const d = pctx.getImageData(0, 0, 16, 16).data;
+      let lum = 0, n = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] < 8) continue;
+        lum += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+        n++;
+      }
+      const canvas = makeCanvas(w, h);
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.flipY = srcTex.flipY;                    // GLTF textures: flipY=false
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = srcTex.wrapS; tex.wrapT = srcTex.wrapT;
+      tex.anisotropy = srcTex.anisotropy || 4;
+      tex.offset.copy(srcTex.offset); tex.repeat.copy(srcTex.repeat);
+      tex.rotation = srcTex.rotation; tex.center.copy(srcTex.center);
+      tex.channel = srcTex.channel;
+      share = { src, meanLuma: n ? lum / (n * 255) : 0.5, canvas, tex, key: null };
+    } catch (e) { share = null; }
+  }
+  GLB_MAP_SHARE.set(srcTex.uuid, share);
+  return share;
+}
+
+function composeGlbShare(share, spec, patternId) {
+  const key = `${spec.id}:${patternId}`;
+  if (share.key === key) return;                   // already composed for this pattern
+  const { src, canvas } = share;
+  const w = canvas.width, h = canvas.height;
+  const ctx = canvas.getContext('2d');
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  ctx.filter = 'none';
+  // 1. pattern base — ~2 tile repeats across the atlas so blobs land at
+  //    believable hull scale through arbitrary UV islands
+  const tile = glbPatternTile(spec, patternId);
+  const tw = Math.ceil(w / 2), th = Math.ceil(h / 2);
+  for (const ox of [0, tw]) for (const oy of [0, th]) ctx.drawImage(tile, ox, oy, tw, th);
+  // 2. the asset's baked detail back on top: grayscale, brightness-normalized
+  //    to a sub-neutral mean (~0.42) — AO/shading/weathering modulate the
+  //    pattern instead of replacing it, and the composite stays under the
+  //    bloom threshold (a 0.5-neutral overlay cooked winter/desert into a
+  //    blown-out glow under the garage spots)
+  const f = Math.min(2.0, Math.max(0.5, 0.42 / Math.max(share.meanLuma, 0.08)));
+  ctx.globalCompositeOperation = 'overlay';
+  // contrast() pivots near the normalized mean: squash baked extremes so
+  // white decals (CIP panels) and pit-black pockets modulate the camo instead
+  // of punching through it as glowing/void patches (r5 glint triangle)
+  ctx.filter = `saturate(0) brightness(${f.toFixed(3)}) contrast(0.7)`;
+  ctx.drawImage(src, 0, 0, w, h);
+  // 3. global exposure trim — matches the vertex-dirt darkening the
+  //    procedural fleet gets from bakeDirt, keeps paint out of bloom range
+  ctx.filter = 'none';
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.fillStyle = 'rgb(214,212,206)';
+  ctx.fillRect(0, 0, w, h);
+  // 4. restore the source alpha exactly (cutout skirts, decal sheets)
+  ctx.globalCompositeOperation = 'destination-in';
+  ctx.drawImage(src, 0, 0, w, h);
+  ctx.restore();
+  share.key = key;
+  share.tex.needsUpdate = true;
+}
+
+function applyGlbEntry(entry) {
+  const pid = resolveCamoPattern(entry.specId);
+  const vis = patternVisual(entry.spec, pid);
   const target = new THREE.Color(vis.base || '#5a6b46');
   for (const rec of entry.mats) {
-    rec.m.color.copy(rec.orig).lerp(target, rec.m.map ? 0.45 : 0.8);
+    if (rec.kind === 'skip') continue;
+    if (rec.kind === 'tex') {
+      // 'factory' composites too: the raw asset's baked albedo mixes a
+      // woodland hull with a flat-olive turret and a bare-metal gun tube —
+      // only the generated pattern makes the vehicle read as ONE paint job
+      // (r5: "two different tanks welded together").
+      composeGlbShare(rec.share, entry.spec, pid);
+      rec.m.map = rec.share.tex;
+      rec.m.color.copy(rec.orig);                  // never tint textured mats
+      rec.m.needsUpdate = true;
+    } else {                                       // 'plain': untextured hull paint
+      if (pid === 'factory') rec.m.color.copy(rec.orig);
+      else rec.m.color.copy(rec.orig).lerp(target, 0.8);
+    }
   }
 }
 
 function retintGlbModels() {
-  for (const e of GLB_TINTED) tintGlbEntry(e);
+  for (const e of GLB_TINTED) applyGlbEntry(e);
 }
 
 /**
- * Apply the active camo pattern to a sourced-GLB tank model (tint overlay,
- * weathering/AO baked into the asset's own maps is preserved). Called by
- * modelLoader.applyGlbModel after its material upgrade pass.
+ * Apply the active camo pattern to a sourced-GLB tank model (texture-space
+ * pattern composite; the asset's baked AO/weathering is preserved as an
+ * overlay layer). Called by modelLoader.applyGlbModel after its material
+ * upgrade pass; registered so later pattern switches recompose live.
  * @param {THREE.Object3D} root normalized GLB scene
  * @param {object} spec TankSpec
  */
@@ -923,11 +1218,36 @@ export function applyCamoToModel(root, spec) {
       // clone: GLTF clones share materials with the loader cache
       const own = m.clone();
       if (Array.isArray(o.material)) o.material[i] = own; else o.material = own;
-      entry.mats.push({ m: own, orig: own.color.clone() });
+      if (GLB_SKIP_RE.test(own.name || '')) {
+        entry.mats.push({ m: own, kind: 'skip' });
+        continue;
+      }
+      const share = own.map ? acquireGlbShare(own.map) : null;
+      // very dark sheets are bare hardware/track runs — leave them unpainted
+      // (recoloring them is what created bright pips on the skirts in r1)
+      if (share && share.meanLuma < 0.10) {
+        entry.mats.push({ m: own, kind: 'skip' });
+        continue;
+      }
+      entry.mats.push(share
+        ? { m: own, kind: 'tex', share, origMap: own.map, orig: own.color.clone() }
+        : { m: own, kind: 'plain', orig: own.color.clone() });
     }
   });
   GLB_TINTED.push(entry);
-  tintGlbEntry(entry);
+  applyGlbEntry(entry);
+}
+
+/**
+ * Shared per-spec generated camo albedo for external consumers (modelLoader's
+ * procedural add-on parts wear it directly, so they restyle live with pattern
+ * switches exactly like the composited GLB plates and the procedural fleet).
+ * @param {object} spec TankSpec
+ * @returns {THREE.Texture} the live repaintable camo canvas texture
+ */
+export function getSharedCamoTexture(spec) {
+  const entry = TEX_CACHE.get(spec.id) || acquireSharedTextures(spec, 4);
+  return entry.camoTex;
 }
 
 // ======================= END CAMO PATTERN SECTION ==========================
@@ -945,7 +1265,6 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
     ? (m) => engineCtx.setupShadowMaterial(m)
     : (m) => m;
   const aniso = (engineCtx && engineCtx.anisotropy) || 8;
-  const vis = spec.visual || { base: '#5a6b46', weather: '#6f7d55', scheme: 'solid', patches: [] };
 
   const disposables = [];
   const track = (r) => { disposables.push(r); return r; };
@@ -963,29 +1282,51 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
     vertexColors: true,
   })));
 
-  const baseRgb = hexToRgb(vis.base);
-  const dustRgb = mix(scale3(baseRgb, 0.95), [118, 110, 86], 0.22);
+  // CAMO PATTERN SECTION: wheel dishes and fittings are scheme-painted — the
+  // colors derive from the ACTIVE pattern (not the factory palette) and the
+  // materials register on the shared entry so pattern switches re-tint them
+  // live (r1: lime-green road wheels under winter whitewash).
+  const patVis = patternVisual(spec, shared.patternId);
   const wheels = track(setup(new THREE.MeshStandardMaterial({
-    color: new THREE.Color(rgb(dustRgb)).getHex(),
+    color: new THREE.Color(cssRGB(wheelRgbOf(patVis))),
     roughness: 0.8, metalness: 0.1, roughnessMap: roughTex,
+    normalMap: normalTex, normalScale: new THREE.Vector2(0.4, 0.4),
+  })));
+  // Recessed rows of an interleaved (Schachtellaufwerk) wheel stack: same
+  // scheme paint pushed into shadow so the layers separate visually (r5).
+  const wheelsRecessed = track(setup(new THREE.MeshStandardMaterial({
+    color: new THREE.Color(cssRGB(wheelDarkRgbOf(patVis))),
+    roughness: 0.88, metalness: 0.08, roughnessMap: roughTex,
     normalMap: normalTex, normalScale: new THREE.Vector2(0.4, 0.4),
   })));
   const rubber = track(setup(new THREE.MeshStandardMaterial({
     color: 0x1d1d1f, roughness: 0.96, metalness: 0.0,
   })));
-  // Accessories must never read as raw #000 blockout: dark olive-drab fittings
+  // Accessories must never read as raw #000 blockout: scheme-tinted fittings
   // and gunmetal hardware, both with roughness variation.
   const detail = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x41463a, roughness: 0.66, metalness: 0.28, roughnessMap: roughTex,
+    color: new THREE.Color(cssRGB(detailRgbOf(patVis))),
+    roughness: 0.66, metalness: 0.28, roughnessMap: roughTex,
     normalMap: normalTex, normalScale: new THREE.Vector2(0.35, 0.35),
   })));
+  // Wheel-bay / sponson-underside ambient occlusion: near-black matte panels
+  // that give running gear a shadowed pocket to read against (r5 hard gate).
+  const shadow = track(setup(new THREE.MeshStandardMaterial({
+    color: 0x0b0c0a, roughness: 0.98, metalness: 0.0,
+  })));
+  const paintableRecs = [
+    { m: wheels, kind: 'wheels' },
+    { m: wheelsRecessed, kind: 'wheelsDark' },
+    { m: detail, kind: 'detail' },
+  ];
+  for (const rec of paintableRecs) shared.paintable.add(rec);
   const dark = track(setup(new THREE.MeshStandardMaterial({
     color: 0x33383a, roughness: 0.55, metalness: 0.45, roughnessMap: roughTex,
   })));
   // Individual track-link pads: worn dusty steel, clearly lighter than the
   // shadowed band behind them so the run reads as articulated links up close.
   const trackLink = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x4d4e4f, roughness: 0.72, metalness: 0.4, roughnessMap: roughTex,
+    color: 0x585a56, roughness: 0.7, metalness: 0.38, roughnessMap: roughTex,
   })));
   // Optics / headlight lenses: smooth glass with a dark blue-grey tint.
   const glass = track(setup(new THREE.MeshStandardMaterial({
@@ -996,7 +1337,7 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
   // Uses the same box-projected camo map as the shell so it never reads as an
   // untextured black prop, with a gentle normal so sleeve clamps still catch.
   const barrel = track(setup(new THREE.MeshStandardMaterial({
-    map: camoTex, roughness: 0.58, metalness: 0.14, roughnessMap: roughTex,
+    map: camoTex, roughness: 0.72, metalness: 0.10, roughnessMap: roughTex,
     normalMap: normalTex, normalScale: new THREE.Vector2(0.5, 0.5),
     vertexColors: true,
   })));
@@ -1008,13 +1349,15 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
     color: 0x6b543a, roughness: 0.88, metalness: 0.0,
     bumpMap: roughTex, bumpScale: 0.3,
   })));
-  // Charred but clearly lit: soot-grey albedo with a faint ember emissive so
-  // wrecks never read as an unlit/missing material (r1 critique). Emissive
-  // kept very low — 0.18 + the explosion light cooked wrecks to flat
-  // red-orange ("dipped in lava", effects r2 handoff item 2).
+  // Charred wreck: a baked scorched variant of the CAMO map (soot blotches +
+  // rising streaks over the darkened pattern) instead of the r2 flat clay
+  // color — plus a patchy ember emissiveMap that tankFactory pulses/cools
+  // over the first ~20 s of the wreck (emissiveIntensity is animated there).
+  ensureBurntTextures(shared, aniso);
   const burnt = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x3b352e, roughness: 0.95, metalness: 0.1,
-    emissive: 0xff3a00, emissiveIntensity: 0.018,
+    map: shared.burntTex, roughness: 0.94, metalness: 0.16, roughnessMap: roughTex,
+    normalMap: normalTex, normalScale: new THREE.Vector2(0.9, 0.9),
+    emissive: 0xff5a18, emissiveIntensity: 0.018, emissiveMap: shared.emberTex,
   })));
 
   // Independent L/R track textures so each side scrolls on its own offset.
@@ -1042,11 +1385,13 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
   };
 
   return {
-    hull, wheels, rubber, detail, dark, trackLink, glass, barrel, canvasCloth, wood, burnt,
+    hull, wheels, wheelsRecessed, rubber, detail, dark, shadow, trackLink, glass, barrel,
+    canvasCloth, wood, burnt,
     trackL, trackR, trackTexL, trackTexR,
     trackLinkM: 0.165 * 4, // meters of track per full texture repeat (4 links)
     decal,
     dispose() {
+      for (const rec of paintableRecs) shared.paintable.delete(rec);
       for (const r of disposables) r.dispose();
       releaseSharedTextures(spec);
     },

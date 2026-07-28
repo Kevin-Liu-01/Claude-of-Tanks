@@ -72,30 +72,30 @@ CC-BY 3.0: https://creativecommons.org/licenses/by/3.0/ (attribution below)
 | Sandbags | J-Toastie | https://poly.pizza/m/xClPIEQJdX | CC-BY 3.0 | public/models/props/sandbags_jtoastie.glb |
 | Sack Trench | Quaternius | https://poly.pizza/m/LW3jwpPfiN | CC0 1.0 | public/models/props/sack_trench_quaternius.glb |
 | Sack Trench Small | Quaternius | https://poly.pizza/m/iHyRewQQcN | CC0 1.0 | public/models/props/sack_trench_small_quaternius.glb |
-| Tank | Poly by Google | https://poly.pizza/m/4t0RMXCl_Ud | CC-BY 3.0 | public/models/props/tank_polygoogle.glb |
-| Light Tank | Zsky | https://poly.pizza/m/S1jUTRmAjD | CC-BY 3.0 | public/models/props/light_tank_zsky.glb |
-| Tank | Quaternius | https://poly.pizza/m/Dc4k4CooN3 | CC0 1.0 | public/models/props/tank_quaternius.glb |
-| Barrel | Quaternius | https://poly.pizza/m/MraIiFnpAY | CC0 1.0 | public/models/props/barrel_quaternius.glb |
-| Oil Drum | Zsky | https://poly.pizza/m/TLsXd9efLC | CC-BY 3.0 | public/models/props/oil_drum_zsky.glb |
-| Hay | Quaternius | https://poly.pizza/m/Yu8TOERkpw | CC0 1.0 | public/models/props/hay_quaternius.glb |
-| Haystack | Poly by Google | https://poly.pizza/m/6LeCqyw00RK | CC-BY 3.0 | public/models/props/haystack_polygoogle.glb |
-| Fence | Quaternius | https://poly.pizza/m/U7g0Wxpt63 | CC0 1.0 | public/models/props/fence_quaternius.glb |
-| Fence | Quaternius | https://poly.pizza/m/UXmKfG81fG | CC0 1.0 | public/models/props/fence2_quaternius.glb |
+| Tank | Poly by Google | https://poly.pizza/m/4t0RMXCl_Ud | CC-BY 3.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Light Tank | Zsky | https://poly.pizza/m/S1jUTRmAjD | CC-BY 3.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Tank | Quaternius | https://poly.pizza/m/Dc4k4CooN3 | CC0 1.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Barrel | Quaternius | https://poly.pizza/m/MraIiFnpAY | CC0 1.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Oil Drum | Zsky | https://poly.pizza/m/TLsXd9efLC | CC-BY 3.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Hay | Quaternius | https://poly.pizza/m/Yu8TOERkpw | CC0 1.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Haystack | Poly by Google | https://poly.pizza/m/6LeCqyw00RK | CC-BY 3.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Fence | Quaternius | https://poly.pizza/m/U7g0Wxpt63 | CC0 1.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Fence | Quaternius | https://poly.pizza/m/UXmKfG81fG | CC0 1.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
 | Telephone pole | Poly by Google | https://poly.pizza/m/7YIloiV4cAt | CC-BY 3.0 | public/models/props/telephone_pole_polygoogle.glb |
-| Barn | CreativeTrio | https://poly.pizza/m/A6UkPq33aZ | CC0 1.0 | public/models/props/barn_creativetrio.glb |
-| Big Barn | Quaternius | https://poly.pizza/m/q1N3xn2SpC | CC0 1.0 | public/models/props/big_barn_quaternius.glb |
-| Church | CreativeTrio | https://poly.pizza/m/GHzPfvoyzX | CC0 1.0 | public/models/props/church_creativetrio.glb |
-| Church | Poly by Google | https://poly.pizza/m/6vzTphxL9w4 | CC-BY 3.0 | public/models/props/church_polygoogle.glb |
-| Bridge | Poly by Google | https://poly.pizza/m/9oToSb_rBKY | CC-BY 3.0 | public/models/props/bridge_polygoogle.glb |
-| Rock Large | Quaternius | https://poly.pizza/m/54jZKTAt5p | CC0 1.0 | public/models/props/rock_large_quaternius.glb |
-| Boulder | Poly by Google | https://poly.pizza/m/3jql0qtape- | CC-BY 3.0 | public/models/props/boulder_polygoogle.glb |
-| Pine | Quaternius | https://poly.pizza/m/igSu0cPoBz | CC0 1.0 | public/models/props/pine_quaternius.glb |
-| Pine Tree | Danni Bittman | https://poly.pizza/m/2Qo-fmVKuSG | CC-BY 3.0 | public/models/props/pine_dannibittman.glb |
-| Dead Tree | Quaternius | https://poly.pizza/m/Mcd2zYqyww | CC0 1.0 | public/models/props/dead_tree_quaternius.glb |
-| WW2 Ammo box | Carwyn Pelley | https://poly.pizza/m/4QQwW16WZZT | CC-BY 3.0 | public/models/props/ammo_box_carwynpelley.glb |
-| Debris Pile | Quaternius | https://poly.pizza/m/WrIiMMxyEP | CC0 1.0 | public/models/props/debris_pile_quaternius.glb |
-| Ruin | nha pham | https://poly.pizza/m/6eGK7_Kbswf | CC-BY 3.0 | public/models/props/ruin_nhapham.glb |
-| M939 Truck | J-Toastie | https://poly.pizza/m/y8lBpvMlim | CC-BY 3.0 | public/models/props/m939_truck_jtoastie.glb |
+| Barn | CreativeTrio | https://poly.pizza/m/A6UkPq33aZ | CC0 1.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Big Barn | Quaternius | https://poly.pizza/m/q1N3xn2SpC | CC0 1.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Church | CreativeTrio | https://poly.pizza/m/GHzPfvoyzX | CC0 1.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Church | Poly by Google | https://poly.pizza/m/6vzTphxL9w4 | CC-BY 3.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Bridge | Poly by Google | https://poly.pizza/m/9oToSb_rBKY | CC-BY 3.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Rock Large | Quaternius | https://poly.pizza/m/54jZKTAt5p | CC0 1.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Boulder | Poly by Google | https://poly.pizza/m/3jql0qtape- | CC-BY 3.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Pine | Quaternius | https://poly.pizza/m/igSu0cPoBz | CC0 1.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Pine Tree | Danni Bittman | https://poly.pizza/m/2Qo-fmVKuSG | CC-BY 3.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Dead Tree | Quaternius | https://poly.pizza/m/Mcd2zYqyww | CC0 1.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| WW2 Ammo box | Carwyn Pelley | https://poly.pizza/m/4QQwW16WZZT | CC-BY 3.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Debris Pile | Quaternius | https://poly.pizza/m/WrIiMMxyEP | CC0 1.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| Ruin | nha pham | https://poly.pizza/m/6eGK7_Kbswf | CC-BY 3.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
+| M939 Truck | J-Toastie | https://poly.pizza/m/y8lBpvMlim | CC-BY 3.0 | (provenance record — file removed at judging cleanup 2026-07-27) |
 
 (Judging record appended below once the per-category screenshot verdicts are in.)
 
@@ -318,3 +318,17 @@ CC-BY candidates recorded in the scouting report wishlist instead.
 
 Verdict: **sourced wins for M1A2 Abrams (pending integration); procedural
 stays the winner for T-90M and Leopard 2A7.**
+
+## Generated files (no third-party ownership, listed for completeness)
+
+- `public/icons/*.png` — 40 PNGs (8 tanks × top/angle/side + 2 silhouettes)
+  rendered from the shipped models by `node tools/genIcons.mjs`
+  (tools/icons-page.html studio scene). The five `m1a2_*` icons are
+  DERIVATIVE RENDERS of the CC-BY-4.0 "Abrams M1A2 SEPv3" by dannzjs — the
+  vehicle-table attribution above covers these derived images (CC-BY 4.0
+  attribution carried by this file). All other icons render 100% procedural
+  geometry (no third-party content).
+- `public/maps/{verdant,desert,winter,urban}.png` — map-picker thumbnails
+  captured from the game's own render; derivative only of this repo's
+  procedural world + the CC0 texture sets listed above (no attribution duty
+  for CC0).

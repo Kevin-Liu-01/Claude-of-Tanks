@@ -6,14 +6,17 @@
 // (or pad button for the pad column) to rebind; tap Esc to cancel, HOLD Esc to
 // bind Escape itself; right-click a chip to clear it. Conflicts highlight both
 // rows and offer a swap. GAMEPLAY tab: mouse sensitivity, sniper sensitivity,
-// aim smoothing (0 % = raw 1:1 input), invert-Y, controller aim sensitivity —
-// each slider is paired with a numeric entry field. All state persists via the
-// input layer's localStorage stores. Also owns the fading controls-hint strip
+// aim smoothing (0 % = raw 1:1 input), invert-Y, AI difficulty (easy/normal/
+// hard segmented picker — consumed by game/state.js via getStoredDifficulty at
+// battle setup), controller aim sensitivity — each slider is paired with a
+// numeric entry field. All state persists via the input layer's localStorage
+// stores. Also owns the fading controls-hint strip
 // shown on battle start and the garage gear button, and broadcasts
 // 'ui:bindingsChanged' so the HUD's shell/consumable hotkey labels stay honest.
 // Design language mirrors src/ui/hud.js / garage.js (palette, chamfers, type).
 
 import { FONT_STACK, ensureFonts } from './fonts.js';
+import { getStoredChoice, setPresetName, PRESET_ORDER, PRESETS } from '../engine/quality.js';
 
 const SETTINGS_CSS = `
 .cot-settings{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
@@ -90,6 +93,15 @@ const SETTINGS_CSS = `
 .cot-set-slider input[type=number]:focus{outline:none;border-color:rgba(240,176,74,.65);}
 .cot-set-slider input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
 .cot-set-slider .unit{width:16px;font-size:11px;font-weight:700;color:#8a97a3;}
+.cot-set-seg{display:flex;gap:4px;}
+.cot-set-seg button{cursor:pointer;font-family:${FONT_STACK};font-size:10px;font-weight:700;
+  letter-spacing:.16em;text-transform:uppercase;color:#8a97a3;padding:6px 16px;
+  background:linear-gradient(180deg,rgba(30,38,46,.9),rgba(16,21,26,.95));
+  border:1px solid rgba(146,164,180,.42);border-bottom:2px solid rgba(146,164,180,.55);
+  transition:color .12s,border-color .12s;}
+.cot-set-seg button:hover{color:#c6d2dc;}
+.cot-set-seg button.sel{color:#ffd27a;border-color:rgba(240,176,74,.75);
+  background:linear-gradient(180deg,rgba(90,54,10,.9),rgba(46,28,8,.95));}
 .cot-set-toggle{position:relative;width:44px;height:20px;cursor:pointer;
   background:rgba(11,15,20,.9);border:1px solid rgba(146,164,180,.4);transition:background .15s;}
 .cot-set-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;
@@ -170,6 +182,7 @@ export function createSettings(opts) {
     `<div class="cot-set-tabs">` +
     `<button class="cot-set-tab sel" data-tab="controls" type="button">Controls</button>` +
     `<button class="cot-set-tab" data-tab="gameplay" type="button">Gameplay</button>` +
+    `<button class="cot-set-tab" data-tab="graphics" type="button">Graphics</button>` +
     `</div>` +
     `<div class="cot-set-conflict"><span class="msg"></span>` +
     `<button class="cot-set-btn swap" type="button">Swap</button>` +
@@ -357,6 +370,29 @@ export function createSettings(opts) {
       emit('ui:click', {});
     });
 
+    el('div', 'cot-set-group', body).textContent = 'Battle';
+    const diffRow = el('div', 'cot-set-row', body);
+    el('span', 'lb', diffRow).textContent = 'AI difficulty (next battle)';
+    const seg = el('div', 'cot-set-seg', diffRow);
+    const diffBtns = [];
+    for (const tier of ['easy', 'normal', 'hard']) {
+      const b = el('button', '', seg);
+      b.type = 'button';
+      b.textContent = tier;
+      b.addEventListener('click', () => {
+        input.setSetting('aiDifficulty', tier);
+        for (const x of diffBtns) x.classList.toggle('sel', x.textContent === tier);
+        emit('ui:difficulty', { difficulty: tier });
+        emit('ui:click', {});
+      });
+      diffBtns.push(b);
+    }
+    for (const x of diffBtns) x.classList.toggle('sel', x.textContent === input.getSettings().aiDifficulty);
+    const diffNote = el('div', 'cot-set-note', body);
+    diffNote.textContent =
+      'Easy bots aim slower, react later and engage closer; Hard bots hunt weak spots. ' +
+      'Takes effect when the next battle starts.';
+
     el('div', 'cot-set-group', body).textContent = 'Controller';
     sliderRow(body, 'Controller aim sensitivity', 'padSensitivity', 0.2, 3);
     const padNote = el('div', 'cot-set-note', body);
@@ -370,14 +406,43 @@ export function createSettings(opts) {
       'Type exact values in the number fields for precise tuning.';
   }
 
+  // --- GRAPHICS tab -----------------------------------------------------------
+  function renderGraphics() {
+    body.textContent = '';
+    el('div', 'cot-set-group', body).textContent = 'Quality';
+    const row = el('div', 'cot-set-row', body);
+    el('span', 'lb', row).textContent = 'Graphics quality';
+    const seg = el('div', 'cot-set-seg', row);
+    const btns = [];
+    for (const name of ['auto', ...PRESET_ORDER]) {
+      const b = el('button', '', seg);
+      b.type = 'button';
+      b.textContent = name === 'auto' ? 'auto' : PRESETS[name].label.toLowerCase();
+      b.dataset.name = name;
+      b.addEventListener('click', () => {
+        setPresetName(name); // persists + live-applies (post chain resize, shadow RT realloc)
+        for (const x of btns) x.classList.toggle('sel', x.dataset.name === name);
+        emit('ui:click', {});
+      });
+      btns.push(b);
+    }
+    for (const x of btns) x.classList.toggle('sel', x.dataset.name === getStoredChoice());
+    const note = el('div', 'cot-set-note', body);
+    note.textContent =
+      'Auto picks High on retina/HiDPI displays and Ultra otherwise. High renders the 3D scene at a ' +
+      'capped internal resolution with half-resolution ambient occlusion; Medium/Low also reduce bloom ' +
+      'and shadow resolution. Applies instantly, no restart.';
+  }
+
   function renderTab() {
     cancelCapture();
     clearConflict();
     for (const t of root.querySelectorAll('.cot-set-tab')) {
       t.classList.toggle('sel', t.dataset.tab === activeTab);
     }
-    resetBtn.style.visibility = activeTab === 'controls' ? 'visible' : 'hidden';
+    resetBtn.style.visibility = activeTab === 'controls' || activeTab === 'graphics' ? 'visible' : 'hidden';
     if (activeTab === 'controls') renderControls();
+    else if (activeTab === 'graphics') renderGraphics();
     else renderGameplay();
   }
 
@@ -616,6 +681,11 @@ export function createSettings(opts) {
   resetBtn.addEventListener('click', () => {
     cancelCapture();
     clearConflict();
+    if (activeTab === 'graphics') {
+      setPresetName('auto');
+      renderTab();
+      return;
+    }
     input.resetBindings();
     bindingsMutated();
   });

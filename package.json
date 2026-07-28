@@ -7,7 +7,7 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node src/sim/movement.selftest.mjs && node src/sim/combat.selftest.mjs && node src/sim/spotting.selftest.mjs",
     "icons": "node tools/genIcons.mjs",
     "shots": "node tools/screenshot.mjs"
   },

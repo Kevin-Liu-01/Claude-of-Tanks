@@ -455,9 +455,11 @@ function makeAdobe(rng, buckets) {
   return { w: w + 0.3, d: d + 0.3, h: wallH + 1.2 };
 }
 
-// 2-3 story town rowhouse (urban maps): window grids, shopfront, gable roof
-function makeRowhouse(rng, buckets, wallBucket = 'plaster') {
-  const w = 8.0 + rng() * 3.0, d = 9.0 + rng() * 4.0;
+// 2-3 story town rowhouse (urban maps): window grids, shopfront, gable roof.
+// dims {w,d} pins the footprint so street strips can butt shared walls.
+function makeRowhouse(rng, buckets, wallBucket = 'plaster', dims = null) {
+  const w = (dims && dims.w) || 8.0 + rng() * 3.0;
+  const d = (dims && dims.d) || 9.0 + rng() * 4.0;
   const stories = 2 + ((rng() * 2) | 0);
   const wallH = stories * 2.9 + 0.6;
   const roofH = 1.4 + rng() * 0.6, over = 0.3;
@@ -540,6 +542,7 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
     wallRuns: null, well: true, hayCrates: true, fences: true,
     telegraph: true, carts: true, logs: true,
     haystacks: 15, rocks: 170, outcrops: 16, craters: 30, rubblePiles: 0,
+    streetRows: false, curbs: false, monument: false,
     ...((cfg && cfg.props) || {}),
   };
   const mapId = cfg ? cfg.id : 'verdant';
@@ -653,6 +656,29 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
       }
     }
   }
+  // point-to-segment distance (local twin of terrain.js segDist)
+  function segD(px, pz, ax, az, bx, bz) {
+    const dx = bx - ax, dz = bz - az;
+    const l2 = dx * dx + dz * dz;
+    let t = l2 > 0 ? ((px - ax) * dx + (pz - az) * dz) / l2 : 0;
+    t = clamp(t, 0, 1);
+    const ex = ax + dx * t - px, ez = az + dz * t - pz;
+    return Math.hypot(ex, ez);
+  }
+  // distance to the nearest road EXCLUDING index `skip` (keeps crossings open)
+  function distToOtherRoads(x, z, skip = -1) {
+    let best = 1e9;
+    for (let ri = 0; ri < roads.length; ri++) {
+      if (ri === skip) continue;
+      const nodes = roads[ri];
+      for (let sg = 0; sg < nodes.length - 1; sg++) {
+        const d = segD(x, z, nodes[sg][0], nodes[sg][1], nodes[sg + 1][0], nodes[sg + 1][1]);
+        if (d < best) best = d;
+      }
+    }
+    return best;
+  }
+
   const candidates = [];
   for (const nodes of roads) {
     for (let i = 1; i < nodes.length - 1; i++) {
@@ -674,6 +700,7 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
   let bi = 0;
   const placedB = [];
   for (const cand of candidates) {
+    if (P.streetRows) break; // town maps: strips own the street frontage
     if (bi >= builders.length) break;
     for (const side of [-1, 1]) {
       if (bi >= builders.length) break;
@@ -701,6 +728,107 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
       buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot });
       placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
       bi++;
+    }
+  }
+
+  // heaped masonry chunks + a jutting charred beam (shared by the street
+  // rubble scatter and the collapsed rowhouse slots)
+  function addRubblePile(x, z, pr, rrng) {
+    const y = heightField.getHeightAt(x, z);
+    const n = 6 + ((rrng() * 5) | 0);
+    for (let k = 0; k < n; k++) {
+      const a = rrng() * Math.PI * 2, rr = Math.sqrt(rrng()) * pr;
+      const cs = 0.35 + rrng() * 0.8;
+      const chunk = box(cs, cs * (0.5 + rrng() * 0.5), cs * (0.6 + rrng() * 0.6), 0.9);
+      jitterUV(chunk, rrng);
+      chunk.rotateY(rrng() * Math.PI);
+      chunk.rotateX((rrng() - 0.5) * 0.5);
+      chunk.translate(x + Math.cos(a) * rr, y + 0.12 + (1 - rr / pr) * pr * 0.35, z + Math.sin(a) * rr);
+      buckets.stone.push(chunk);
+    }
+    if (rrng() < 0.6) { // charred beam jutting out
+      const beam = box(0.14, 0.14, 2.2 + rrng() * 1.4, 1.0);
+      beam.rotateX(-0.5 - rrng() * 0.4);
+      beam.rotateY(rrng() * Math.PI * 2);
+      beam.translate(x, y + pr * 0.4, z);
+      buckets.wood.push(beam);
+    }
+    obstacles.push({ min: [x - pr, y, z - pr], max: [x + pr, y + pr * 0.7, z + pr] });
+    colliders.push({ min: [x - pr, y, z - pr], max: [x + pr, y + pr * 0.7, z + pr] });
+  }
+
+  // --- contiguous rowhouse strips along the streets (town maps): buildings
+  // butt against each other with shared walls, doors on the street, varied
+  // heights/facades, the odd collapsed slot spilling rubble into the street ---
+  if (P.streetRows) {
+    const srng = mulberry32(seed + 505);
+    const stripAABBs = []; // {x,z,hx,hz} world-AABB approximations
+    for (let ri = 0; ri < roads.length; ri++) {
+      const pts = roads[ri];
+      const cum = [0];
+      for (let i = 1; i < pts.length; i++) {
+        cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+      }
+      const total = cum[cum.length - 1];
+      const pointAt = (t) => {
+        let i = 1;
+        while (i < cum.length - 1 && cum[i] < t) i++;
+        const f = (t - cum[i - 1]) / Math.max(1e-6, cum[i] - cum[i - 1]);
+        const x = pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * f;
+        const z = pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * f;
+        let tx = pts[i][0] - pts[i - 1][0], tz = pts[i][1] - pts[i - 1][1];
+        const tl = Math.hypot(tx, tz) || 1;
+        return [x, z, tx / tl, tz / tl];
+      };
+      for (const side of [-1, 1]) {
+        let t = 3 + srng() * 9;
+        while (t < total - 10) {
+          const w = 8.2 + srng() * 3.0, d = 8.5 + srng() * 3.5;
+          const [rx, rz, tx, tz] = pointAt(t + w / 2);
+          if (rx < v.x0 + 8 || rx > v.x1 - 8 || rz < v.z0 + 8 || rz > v.z1 - 8) { t += w; continue; }
+          const nx = -tz * side, nz = tx * side;
+          const off = 6.4 + d / 2; // front wall ~6.4 m off the street centerline
+          const px = rx + nx * off, pz = rz + nz * off;
+          // keep crossings and the central square open
+          if (distToOtherRoads(px, pz, ri) < 9.5
+            || Math.hypot(px - junction.x, pz - junction.z) < 26
+            || noVeg(px, pz)) { t += 6; continue; }
+          const roll = srng();
+          if (roll < 0.14) { t += 4 + srng() * 7; continue; } // alley / vacant lot
+          const rot = Math.atan2(-nx, -nz); // local +z (door face) toward street
+          const cs = Math.abs(Math.cos(rot)), sn = Math.abs(Math.sin(rot));
+          const hx = (w * cs + d * sn) / 2, hz = (w * sn + d * cs) / 2;
+          let clear = true;
+          for (const sb of stripAABBs) {
+            if (Math.abs(px - sb.x) < hx + sb.hx - 1.0
+              && Math.abs(pz - sb.z) < hz + sb.hz - 1.0) { clear = false; break; }
+          }
+          if (!clear) { t += w * 0.6; continue; }
+          const ruined = roll < 0.24; // shell-collapsed slot in the row
+          const tmp = { plaster: [], stone: [], roof: [], wood: [], dark: [], straw: [], baked: [] };
+          const info = ruined
+            ? makeRuin(rng, tmp)
+            : makeRowhouse(rng, tmp, srng() < 0.5 ? 'plaster' : 'stone', { w, d });
+          const fit = groundFit(px, pz, info.w, info.d, rot);
+          if (fit.spread > 3.2) { t += w; continue; }
+          for (const bk of Object.keys(tmp)) for (const g of tmp[bk]) jitterUV(g, rng);
+          _quat.setFromAxisAngle(_upAxis, rot);
+          _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
+          mergeInto(buckets, tmp, _mat4);
+          addFootprintAABB(obstacles, px, pz, fit.y, fit.hx, fit.hz, info.h);
+          addFootprintAABB(colliders, px, pz, fit.y, fit.hx, fit.hz, info.h);
+          buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot });
+          placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
+          stripAABBs.push({ x: px, z: pz, hx, hz });
+          if (ruined) { // debris spills toward the street
+            const rbx = rx + nx * (off - d * 0.55), rbz = rz + nz * (off - d * 0.55);
+            if (heightField._roadDist(rbx, rbz) > 4.2) {
+              addRubblePile(rbx, rbz, 1.8 + srng() * 1.2, srng);
+            }
+          }
+          t += w - 0.25; // shared wall with the next house
+        }
+      }
     }
   }
 
@@ -1152,30 +1280,59 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
         if (Math.hypot(x - s.x, z - s.z) < 20) { nearSpawn = true; break; }
       }
       if (nearSpawn || Math.hypot(x - junction.x, z - junction.z) < 16) continue;
-      const y = heightField.getHeightAt(x, z);
-      const pr = 1.6 + rrng() * 1.3;
-      const n = 6 + ((rrng() * 5) | 0);
-      for (let k = 0; k < n; k++) {
-        const a = rrng() * Math.PI * 2, rr = Math.sqrt(rrng()) * pr;
-        const cs = 0.35 + rrng() * 0.8;
-        const chunk = box(cs, cs * (0.5 + rrng() * 0.5), cs * (0.6 + rrng() * 0.6), 0.9);
-        jitterUV(chunk, rrng);
-        chunk.rotateY(rrng() * Math.PI);
-        chunk.rotateX((rrng() - 0.5) * 0.5);
-        chunk.translate(x + Math.cos(a) * rr, y + 0.12 + (1 - rr / pr) * pr * 0.35, z + Math.sin(a) * rr);
-        buckets.stone.push(chunk);
-      }
-      if (rrng() < 0.6) { // charred beam jutting out
-        const beam = box(0.14, 0.14, 2.2 + rrng() * 1.4, 1.0);
-        beam.rotateX(-0.5 - rrng() * 0.4);
-        beam.rotateY(rrng() * Math.PI * 2);
-        beam.translate(x, y + pr * 0.4, z);
-        buckets.wood.push(beam);
-      }
-      obstacles.push({ min: [x - pr, y, z - pr], max: [x + pr, y + pr * 0.7, z + pr] });
-      colliders.push({ min: [x - pr, y, z - pr], max: [x + pr, y + pr * 0.7, z + pr] });
+      addRubblePile(x, z, 1.6 + rrng() * 1.3, rrng);
       placed++;
     }
+  }
+
+  // --- street curbs (town maps): raised stone kerb lines along both sides of
+  // every street inside the town rect, broken at crossings ---
+  if (P.curbs) {
+    for (let ri = 0; ri < roads.length; ri++) {
+      const nodes = roads[ri];
+      for (let i = 0; i < nodes.length - 1; i++) {
+        const [ax, az] = nodes[i], [bx, bz] = nodes[i + 1];
+        const mx = (ax + bx) / 2, mz = (az + bz) / 2;
+        if (mx < v.x0 - 6 || mx > v.x1 + 6 || mz < v.z0 - 6 || mz > v.z1 + 6) continue;
+        const dx = bx - ax, dz = bz - az;
+        const len = Math.hypot(dx, dz);
+        const tx = dx / len, tz = dz / len;
+        const nSub = Math.max(1, Math.ceil(len / 5.2));
+        for (let k = 0; k < nSub; k++) {
+          const tt = (k + 0.5) / nSub;
+          const cx = ax + dx * tt, cz = az + dz * tt;
+          for (const side of [-1, 1]) {
+            const px = cx - tz * side * 5.05, pz = cz + tx * side * 5.05;
+            if (distToOtherRoads(px, pz, ri) < 6.8) continue; // open corners
+            const y = heightField.getHeightAt(px, pz);
+            const g = box((len / nSub) * 1.03, 0.26, 0.34, 1.3);
+            jitterUV(g, rng);
+            g.rotateY(-Math.atan2(tz, tx));
+            g.translate(px, y + 0.06, pz);
+            buckets.stone.push(g);
+          }
+        }
+      }
+    }
+  }
+
+  // --- central-square monument (town maps): stepped stone obelisk ---
+  if (P.monument) {
+    let ox = junction.x - 8, oz = junction.z - 9;
+    for (let i = 0; i < 24 && heightField._roadDist(ox, oz) < 6; i++) { ox -= 1.5; oz -= 1; }
+    const oy = heightField.getHeightAt(ox, oz);
+    buckets.stone.push(box(2.4, 0.5, 2.4, 0.8).translate(ox, oy + 0.2, oz));
+    buckets.stone.push(box(1.5, 0.6, 1.5, 0.8).translate(ox, oy + 0.72, oz));
+    const shaft = box(0.72, 3.4, 0.72, 1.2);
+    jitterUV(shaft, rng);
+    buckets.stone.push(shaft.translate(ox, oy + 2.7, oz));
+    const tip = new THREE.ConeGeometry(0.5, 0.7, 4, 1);
+    tip.rotateY(Math.PI / 4);
+    scaleUV(tip, 1, 1);
+    tip.translate(ox, oy + 4.75, oz);
+    buckets.stone.push(tip);
+    obstacles.push({ min: [ox - 1.3, oy, oz - 1.3], max: [ox + 1.3, oy + 5.1, oz + 1.3] });
+    colliders.push({ min: [ox - 1.3, oy, oz - 1.3], max: [ox + 1.3, oy + 5.1, oz + 1.3] });
   }
 
   // --- ground-blend decals: dirt/AO ring under buildings + shell craters ---

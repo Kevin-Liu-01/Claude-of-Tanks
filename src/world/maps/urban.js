@@ -1,21 +1,34 @@
-// src/world/maps/urban.js — Himmelsdorf vibes: a dense town grid on flattened
-// ground, cobbled streets, rubble barricades and shell craters, a hilly park
-// belt outside the blocks.
+// src/world/maps/urban.js — Himmelsdorf/Ensk vibes: a DENSE town core on
+// flattened ground — a tight street grid walled with rowhouses, a central
+// plaza, ruined shells and rubble at the intersections, park hills outside
+// the blocks.
 
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+
+// Street-wall plan: mostly rowhouses so every block frontage reads built-up,
+// ruins interleaved (~1 in 7) for shelled-town texture, two church/water
+// towers as vertical landmarks.
+const PLAN = [];
+for (let i = 0; i < 108; i++) {
+  if (i === 9 || i === 41 || i === 77) PLAN.push('tower');
+  else if (i % 7 === 3) PLAN.push('ruin');
+  else PLAN.push('rowhouse');
+}
 
 export default {
   id: 'urban',
   name: 'Steinburg',
-  blurb: 'Dense town grid — cobbled streets, rubble cover, park hills',
+  blurb: 'Dense town grid — paved streets, rowhouse blocks, rubble cover',
 
   terrain: {
     hillScale: 0.55,
-    microScale: 0.5,
-    rimH: 20,
+    microScale: 0.45,
+    rimH: 25,
     marshes: [],
-    village: { x0: -170, x1: 170, z0: -150, z1: 175, cx: 0, cz: 12, feather: 60, flatten: 0.93 },
-    roads: { grid: { xs: [-112, 0, 116], zs: [-98, 12, 122], jitter: 2 } },
+    // Tight core: blocks of ~65 m so the grid actually reads as a town, not
+    // farmhouses scattered over 350 m of open grass.
+    village: { x0: -168, x1: 168, z0: -152, z1: 176, cx: 36, cz: -16, feather: 55, flatten: 0.94 },
+    roads: { grid: { xs: [-112, -40, 36, 112], zs: [-96, -16, 60, 136], jitter: 0.8 } },
   },
 
   spawns: {
@@ -27,12 +40,16 @@ export default {
   },
 
   splat: {
-    grassTone: (h, s, l) => [0.19, clamp01(s * 0.55), clamp01(l * 0.88)], // worn town green
-    dirtTone: (h, s, l) => [0.09, clamp01(s * 0.4), clamp01(l * 1.0 + 0.02)], // ash-grey rubble dust
+    grassTone: (h, s, l) => [0.19, clamp01(s * 0.5), clamp01(l * 0.86)], // worn town green
+    dirtTone: (h, s, l) => [0.09, clamp01(s * 0.35), clamp01(l * 1.02 + 0.03)], // ash-grey rubble dust
     rockTone: (h, s, l) => [0.08, clamp01(s * 0.5), clamp01(l * 1.0)],
     mudTone: (h, s, l) => [0.085, clamp01(s * 0.6), clamp01(l * 0.9)],
-    tintA: [1.06, 1.03, 0.90], tintB: [0.86, 0.90, 0.84], tintC: [1.05, 1.03, 0.95],
-    roadTint: [0.84, 0.86, 1.02], // grey cobble/sett streets
+    tintA: [1.04, 1.02, 0.92], tintB: [0.86, 0.90, 0.84], tintC: [1.05, 1.03, 0.95],
+    roadTint: [0.62, 0.63, 0.72], // dark grey sett/asphalt streets
+    // street paving strength: the splat shader lays the cobble/sett layer
+    // across the full carriageway at all distances (uRoadTex uniform)
+    roadTexMix: 0.85,
+    townWear: 1.8, // town-core ground reads packed dirt/rubble dust, not lawn
   },
 
   vegetation: {
@@ -48,43 +65,42 @@ export default {
     bushCount: 0.5,
     bushSpecies: 'oak',
     parks: [ // the hill-park belts where town trees are allowed
-      { x: -240, z: -150, r: 95 }, { x: 250, z: -180, r: 85 },
-      { x: -60, z: 250, r: 80 }, { x: 230, z: 250, r: 70 },
+      { x: -255, z: -170, r: 95 }, { x: 260, z: -190, r: 85 },
+      { x: -80, z: 275, r: 80 }, { x: 250, z: 265, r: 70 },
     ],
   },
 
   props: {
-    plan: [
-      'rowhouse', 'rowhouse', 'rowhouse', 'ruin', 'rowhouse', 'rowhouse',
-      'tower', 'rowhouse', 'rowhouse', 'ruin', 'rowhouse', 'rowhouse',
-      'rowhouse', 'ruin', 'rowhouse', 'rowhouse', 'rowhouse', 'rowhouse',
-      'rowhouse', 'ruin', 'rowhouse', 'rowhouse', 'rowhouse', 'rowhouse',
-      'rowhouse', 'rowhouse', 'ruin', 'rowhouse', 'rowhouse', 'rowhouse',
-      'rowhouse', 'rowhouse', 'rowhouse', 'rowhouse', 'rowhouse', 'ruin',
-      'rowhouse', 'rowhouse', 'rowhouse', 'rowhouse', 'rowhouse', 'rowhouse',
-      'ruin', 'rowhouse', 'rowhouse', 'rowhouse', 'rowhouse', 'rowhouse',
-    ],
+    plan: PLAN, // consumed by blockFill for the block interiors
+    // street frontage is built by CONTIGUOUS rowhouse strips (shared walls,
+    // varied heights, collapsed slots spilling rubble) + kerbed pavements
+    streetRows: true,
+    curbs: true,
+    monument: true,
     blockFill: true,
     tones: {
-      plaster: (h, s, l) => [0.10, clamp01(s * 0.6), clamp01(l * 0.95)], // sooty render
-      roof: (h, s, l) => [0.02, clamp01(s * 0.55), clamp01(l * 0.85)], // dark slate-ish tile
+      plaster: (h, s, l) => [0.10, clamp01(s * 0.5), clamp01(l * 0.92)], // sooty render
+      roof: (h, s, l) => [0.60, clamp01(s * 0.18), clamp01(l * 0.66)], // dark slate tile
       stone: (h, s, l) => [0.09, clamp01(s * 0.6), clamp01(l * 0.95)],
       wood: null,
       straw: null,
     },
     rockTone: (h, s, l) => [0.09, 0.04, clamp01(l * 1.05)], // concrete rubble chunks
-    wallStoneChance: 0.6,
-    buildingLat: [11, 2],
-    sideSkip: 0.06,
-    spacingPad: 3,
-    maxSpread: 2.2,
+    wallStoneChance: 0.55,
+    buildingLat: [9.5, 1.5], // tight, near-constant setback => street walls
+    sideSkip: 0.04,
+    spacingPad: 2,
+    maxSpread: 2.4,
     wallRuns: [
-      [-150, -60, -96, -60, 2], [40, -130, 40, -76, 1], [96, 60, 152, 60, 3],
-      [-120, 140, -60, 140, 2], [-40, -20, 20, -20, 4], [130, -40, 130, 6, 1],
+      [-150, -60, -96, -60, 2], [64, -130, 64, -76, 1], [96, 88, 152, 88, 3],
+      [-120, 152, -60, 152, 2], [-14, 22, 24, 22, 4], [140, -44, 140, 2, 1],
+      [-76, -122, -20, -122, 2], [86, 154, 86, 108, 0],
     ],
     well: true, hayCrates: false, fences: false, telegraph: true, carts: true, logs: false,
-    haystacks: 0, rocks: 60, outcrops: 6, craters: 48, rubblePiles: 30,
+    haystacks: 0, rocks: 90, outcrops: 6, craters: 64, rubblePiles: 56,
   },
+
+  horizon: { baseHex: 0x4a5546, amp: 0.9 },
 
   sky: {
     sunElevationDeg: 36, sunAzimuthDeg: 115,
@@ -102,5 +118,5 @@ export default {
     buildingFill: '#d9d2c4',
   },
 
-  shot: { pos: [-150, 34, -215], look: [40, 6, 55] },
+  shot: { pos: [-58, 26, -238], look: [44, 6, 28] },
 };

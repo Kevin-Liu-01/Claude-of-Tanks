@@ -14,9 +14,10 @@ import {
 } from '../sim/ballistics.js';
 import { tankPoseFromState, traceTank } from '../sim/armor.js';
 import {
-  createCombatState, resolveShellHit, resolveHeBurst, tickFire, startReload,
+  createCombatState, resolveShellHit, resolveHeBurst, tickFire, startReload, isHeClass,
 } from '../sim/damage.js';
 import { createAI } from './ai.js';
+import { getStoredDifficulty } from './input.js';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.js';
 import { hasCamoPaint } from '../vehicles/materials.js';
@@ -27,6 +28,7 @@ export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math
 const COMBAT_SEED = 6000;
 const MODULE_REPAIR_S = 10;
 const FIRE_TICK_S = 0.5;
+const BATTLE_TIME_LIMIT_S = 900; // 15:00 clock (HUD counts it down) — timeout = draw
 
 // module-scope scratch — no per-frame allocation
 const _muzzle = new THREE.Vector3();
@@ -182,7 +184,7 @@ export function setupBattle(game, playerSpecId, world) {
       ent.aiCtl = null;
     } else {
       ent.aiCtl = createAI(ent, {
-        difficulty: 'normal',
+        difficulty: getStoredDifficulty(),
         rng: mulberry32(7000 + i),
         deps: {
           ...aiDeps,
@@ -202,6 +204,12 @@ export function setupBattle(game, playerSpecId, world) {
         [pp[0] - (dx / d) * standoff, pp[2] - (dz / d) * standoff],
       ]);
     }
+    // Spawn warm-start (r5 terrain-contact gate): run the movement sim for a
+    // few ticks so the attitude spring settles and the terrain support solve
+    // owns pos.y BEFORE the first rendered frame — the raw spawn pose (flat
+    // attitude, pad-center height) rendered one frame with a track end
+    // clipped ~0.3 m into the pad-edge slope.
+    for (let k = 0; k < 30; k++) updateTank(ent, world.heightField, SIM_DT);
     ent.visual.syncFromState(ent.state);
     ent.visual.setVisible(true);
   });
@@ -288,8 +296,9 @@ function emitHitOutcome(game, bus, ev) {
 
 function announceDestroyed(game, bus, ent, killerId, cause) {
   ent._destroyedAnnounced = true;
-  // pop: ammo-rack turret launch (physics arc + spin, settles askew)
-  ent.visual.setDestroyed({ pop: true });
+  // turret toss is RESERVED for ammo-rack detonations (WoT spectacle);
+  // plain HP kills / burn-outs keep the turret seated (gun droop + smoke)
+  ent.visual.setDestroyed({ pop: cause === 'ammorack' });
   bus.emit('tank:destroyed', {
     id: ent.id,
     specId: ent.specId,
@@ -388,7 +397,9 @@ function stepShells(game, bus, world) {
     let bestEnt = null;
     let bestHits = null;
     for (const ent of game.tanks) {
-      if (!ent.state || !ent.combat || ent.combat.destroyed) continue;
+      // Wrecks stay in the broadphase: resolveShellHit branches to
+      // resolveWreckHit for destroyed hulls (cover tactics — WoT core).
+      if (!ent.state || !ent.combat) continue;
       if (ent.id === shell.shooterId) continue;
       const r = ent.spec.armor.boundingRadiusM;
       _toC.copy(ent.state.pos);
@@ -405,7 +416,7 @@ function stepShells(game, bus, world) {
     }
 
     if (bestEnt && bestT <= worldT) {
-      if (shell.spec.type === 'HE') {
+      if (isHeClass(shell.spec.type)) {
         const burst = bestHits[0].point;
         const events = resolveHeBurst(shell, burst, game.tanks, bestEnt, bestHits, game.combatRng);
         for (const ev of events) emitHitOutcome(game, bus, ev);
@@ -414,7 +425,7 @@ function stepShells(game, bus, world) {
         emitHitOutcome(game, bus, ev);
       }
     } else if (worldHit) {
-      if (shell.spec.type === 'HE') {
+      if (isHeClass(shell.spec.type)) {
         const events = resolveHeBurst(shell, worldHit.point, game.tanks, null, null, game.combatRng);
         for (const ev of events) emitHitOutcome(game, bus, ev);
       } else {
@@ -528,7 +539,7 @@ export function simStep(game, bus, world, rig, collider) {
   }
   tickRepairs(game, bus, dt);
 
-  // win/lose
+  // win/lose (plus draw when the 15:00 battle clock runs out)
   if (game.result === null && game.player) {
     if (game.player.combat.destroyed) game.result = 'defeat';
     else {
@@ -537,6 +548,7 @@ export function simStep(game, bus, world, rig, collider) {
         if (!ent.isPlayer && ent.combat && !ent.combat.destroyed) enemiesLeft++;
       }
       if (enemiesLeft === 0) game.result = 'victory';
+      else if (game.timeS >= BATTLE_TIME_LIMIT_S) game.result = 'draw';
     }
     // SHOT-INFO ENRICHMENT (additive): announce the decision once so results
     // UIs (src/ui/shotInfo.js session stats) can render without polling.

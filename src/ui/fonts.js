@@ -11,11 +11,13 @@
 export const FONT_STACK = "'Switzer','Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 
 /**
- * Numeral / label stack (HUD counters, damage panel). Switzer's tabular
- * figures replace the old Arial Narrow hack; narrow fallbacks retained for
- * environments where the woff2 has not arrived yet.
+ * Numeral / label stack (HUD counters, timers, stat labels, damage panel).
+ * Condensed grotesque first — WoT and AAA military HUDs set their numeric/
+ * label layer in a condensed face, which is what separates them from web-app
+ * typography. Every rule that uses this stack also sets tabular numerals
+ * (fonts.css block below), so timers and counters never jitter.
  */
-export const FONT_COND = "'Switzer','Arial Narrow','Helvetica Neue','Roboto Condensed',Arial,sans-serif";
+export const FONT_COND = "'Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif";
 
 // Type scale tokens (px) — one modular scale for every overlay.
 export const TYPE = {

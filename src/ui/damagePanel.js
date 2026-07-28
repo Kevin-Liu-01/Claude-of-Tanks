@@ -4,7 +4,6 @@
 // Contract: docs/ARCHITECTURE.md §3.7.2.
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
-import { maskIcon } from './icons.js';
 
 const STATE_COLOR = { ok: '#7ee87e', yellow: '#f0b04a', red: '#f05a5a' };
 const CREW_ORDER = ['commander', 'gunner', 'driver', 'loader'];
@@ -35,29 +34,28 @@ const CREW_SVG = {
 };
 
 const DP_CSS = `
-.cot-dp{position:absolute;left:16px;bottom:16px;width:196px;pointer-events:none;
+.cot-dp{position:absolute;left:12px;bottom:12px;width:148px;pointer-events:none;
   font-family:${FONT_STACK};color:#e6edf3;background:linear-gradient(180deg,rgba(10,14,18,.72),rgba(6,9,12,.8));
   border:1px solid rgba(146,164,180,.25);box-shadow:0 6px 22px rgba(0,0,0,.5);
-  padding:8px 10px 9px;-webkit-user-select:none;user-select:none;}
+  padding:7px 8px 8px;-webkit-user-select:none;user-select:none;}
 .cot-dp *{box-sizing:border-box;margin:0;padding:0;}
-.cot-dp .hprow{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;}
-.cot-dp .hplabel{font-size:10px;font-weight:700;letter-spacing:.16em;color:#8a97a3;
+.cot-dp .hprow{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;}
+.cot-dp .hplabel{font-size:9px;font-weight:700;letter-spacing:.14em;color:#8a97a3;
   font-family:${FONT_COND};font-stretch:condensed;}
-.cot-dp .hpnum{font-size:13px;font-weight:700;color:#d6e2ec;font-variant-numeric:tabular-nums;
+.cot-dp .hpnum{font-size:12px;font-weight:700;color:#d6e2ec;font-variant-numeric:tabular-nums;
   font-family:${FONT_COND};font-stretch:condensed;}
-.cot-dp .hptrack{height:6px;background:rgba(4,6,8,.75);border:1px solid rgba(0,0,0,.6);margin-bottom:6px;}
+.cot-dp .hptrack{height:5px;background:rgba(4,6,8,.75);border:1px solid rgba(0,0,0,.6);margin-bottom:5px;}
 .cot-dp .hpfill{height:100%;width:100%;transition:width .15s linear;}
 .cot-dp canvas{display:block;margin:0 auto;}
-.cot-dp .tanksil{height:30px;margin:1px auto 3px;width:160px;}
-.cot-dp .crew{display:flex;justify-content:center;gap:5px;margin-top:6px;}
-.cot-dp .cm{width:26px;height:26px;border-radius:3px;border:1px solid rgba(146,164,180,.45);
+.cot-dp .crew{display:flex;justify-content:center;gap:4px;margin-top:5px;}
+.cot-dp .cm{width:24px;height:24px;border-radius:3px;border:1px solid rgba(146,164,180,.45);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
   color:#a9c3d8;background:rgba(20,28,34,.7);}
-.cot-dp .cm svg{display:block;}
+.cot-dp .cm svg{display:block;width:11px;height:11px;}
 .cot-dp .cm .rl{font-size:6px;font-weight:800;letter-spacing:.08em;color:#7d8b98;line-height:1;margin-top:1px;}
 .cot-dp .cm.dead{color:#f05a5a;border-color:rgba(240,90,90,.7);background:rgba(46,14,14,.7);}
 .cot-dp .cm.dead .rl{color:#f28f8f;}
-.cot-dp .fire{position:absolute;top:40px;right:12px;font-size:9.5px;font-weight:800;
+.cot-dp .fire{position:absolute;top:34px;right:10px;font-size:9px;font-weight:800;
   letter-spacing:.14em;color:#ff6a3c;text-shadow:0 0 8px rgba(255,80,30,.8);display:none;
   animation:cotFirePulse .7s ease-in-out infinite alternate;}
 @keyframes cotFirePulse{from{opacity:.55}to{opacity:1}}
@@ -174,14 +172,14 @@ export function createDamagePanel() {
   root.innerHTML =
     `<div class="hprow"><span class="hplabel">HIT POINTS</span><span class="hpnum">—</span></div>` +
     `<div class="hptrack"><div class="hpfill"></div></div>` +
-    `<div class="tanksil"></div>` +
     `<div class="fire">ON FIRE</div>`;
-  const silEl = root.querySelector('.tanksil');
   const hpNum = root.querySelector('.hpnum');
   const hpFill = root.querySelector('.hpfill');
   const fireEl = root.querySelector('.fire');
 
-  const CW = 150, CH = 200;
+  // single compact top-down silhouette (WoT panel scale — one vehicle map,
+  // module hit-zones drawn onto it; no redundant second profile)
+  const CW = 118, CH = 152;
   const dprC = 2; // fixed 2x internal resolution — crisp at devicePixelRatio 1
   const canvas = document.createElement('canvas');
   canvas.width = CW * dprC; canvas.height = CH * dprC;
@@ -270,7 +268,10 @@ export function createDamagePanel() {
 
   // Tint a module's actual armor-model box footprint (engine bay, ammo rack,
   // fuel tank) so damage states light up real hit-zones on the silhouette.
+  // The zones are ALWAYS drawn as defined, labeled regions — healthy = cool
+  // steel, damaged = yellow/orange, destroyed = red (WoT panel language).
   const REGION_MODULES = ['engine', 'ammoRack', 'fuelTank'];
+  const REGION_LABEL = { engine: 'ENG', ammoRack: 'AMMO', fuelTank: 'FUEL' };
   function drawModuleRegions(tPivot) {
     const mods = (spec.armor && spec.armor.modules) || [];
     for (const m of mods) {
@@ -281,18 +282,24 @@ export function createDamagePanel() {
       const rw = (x1 - x0) * scale, rh = (z1 - z0) * scale;
       const st = moduleState(m.module);
       if (st === 'ok') {
-        // faint zone outline: the hit-zones exist even at full health
-        ctx.strokeStyle = 'rgba(190,210,225,0.16)';
-        ctx.lineWidth = 0.8;
-        ctx.setLineDash([2.5, 2.5]);
-        ctx.strokeRect(rx, ry, rw, rh);
-        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(126,168,196,0.13)';
+        ctx.strokeStyle = 'rgba(170,196,216,0.45)';
       } else {
-        ctx.fillStyle = STATE_COLOR[st] + '3d';
+        ctx.fillStyle = STATE_COLOR[st] + '4a';
         ctx.strokeStyle = STATE_COLOR[st];
-        ctx.lineWidth = 1;
-        ctx.fillRect(rx, ry, rw, rh);
-        ctx.strokeRect(rx, ry, rw, rh);
+      }
+      ctx.lineWidth = 1;
+      ctx.fillRect(rx, ry, rw, rh);
+      ctx.strokeRect(rx, ry, rw, rh);
+      // micro-label inside the zone (skip if the box is too small for it)
+      if (rw >= 20 && rh >= 8) {
+        ctx.fillStyle = st === 'ok' ? 'rgba(196,216,232,0.66)' : STATE_COLOR[st];
+        ctx.font = `700 6px ${FONT_COND}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(REGION_LABEL[m.module] || '', rx + rw / 2, ry + rh / 2 + 0.5);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
       }
     }
   }
@@ -370,9 +377,6 @@ export function createDamagePanel() {
     }
     ctx.stroke();
 
-    // module hit-zones from the real armor model (under the turret/gun)
-    drawModuleRegions(tPivot);
-
     // gun barrel (from turret pivot to overall-length muzzle)
     const muzzleZ = d.overallLengthM - L / 2;
     const gunSt = moduleState('gun');
@@ -431,6 +435,10 @@ export function createDamagePanel() {
       ctx.fillStyle = 'rgba(200,220,235,0.4)';
       ctx.fillRect(px(tPivot[0]) - 4, py(tPivot[2] + turR * 1.1) - 2, 8, 4);
     }
+
+    // module hit-zones from the real armor model — drawn OVER the hull and
+    // turret plates so every zone (incl. turret-bustle ammo racks) reads
+    drawModuleRegions(tPivot);
 
     // module icons at relaxed anchors — WoT behavior: the silhouette stays
     // clean at full health; an icon appears only when its module is damaged
@@ -515,9 +523,6 @@ export function createDamagePanel() {
      */
     setTank(s) {
       spec = s;
-      // side-profile silhouette of the shipped model (tools/genIcons.mjs)
-      // identifies the vehicle above the top-down module map
-      maskIcon(silEl, s.id, 'side_silhouette', 'rgba(206,220,232,0.82)');
       combat = healthyCombat();
       lastHpText = '';
       lastFireOn = null;

@@ -167,13 +167,25 @@ export function applySourcedTerrain(mapId, layers, S = {}) {
  * @param {object} sets { plaster?, roof?, wood?, stone? } of { albedo, normal }
  * @param {string} mapId map id (urban swaps the stone bucket to brick)
  */
+// Per-map albedo tints for the sourced building sets (multiplies RGB after
+// AO) — the raw CC0 sets ignore cfg.props.tones, so urban kept terracotta
+// roofs and desert adobe stayed white without these.
+const BUILDING_TINTS = {
+  urban:  { roof: [0.52, 0.55, 0.62], plaster: [0.88, 0.86, 0.82] }, // slate / sooty render
+  desert: { plaster: [1.08, 0.92, 0.70], wood: [1.05, 0.95, 0.80] }, // sand-plaster adobe
+  winter: { roof: [1.25, 1.28, 1.35] },                              // snow-caked tiles
+};
+
 export function applySourcedBuildings(sets, mapId) {
   if (!USE_SOURCED_BUILDINGS) return;
   const plan = { plaster: 'plaster', roof: 'roof', wood: 'wood' };
   if (mapId === 'urban' && sets.stone) plan.stone = 'brick';
   for (const [bucket, setKey] of Object.entries(plan)) {
     if (!sets[bucket]) continue;
-    applySet(setKey, sets[bucket], { roughInAlpha: false })
+    applySet(setKey, sets[bucket], {
+      roughInAlpha: false,
+      tint: (BUILDING_TINTS[mapId] || {})[bucket] || null,
+    })
       .catch((e) => console.warn(`[sourcedTextures] building ${bucket}:`, e.message));
   }
 }

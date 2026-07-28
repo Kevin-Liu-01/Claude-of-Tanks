@@ -147,6 +147,15 @@ const SI_CSS = `
   font-stretch:condensed;font-variant-numeric:tabular-nums;color:#f2f7fb;line-height:1.1;}
 .cot-si-stat .k{font-size:8.5px;font-weight:700;letter-spacing:.16em;color:${COL.dim};
   text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;}
+.cot-si-shell{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;
+  font-size:9.5px;color:${COL.dim};font-variant-numeric:tabular-nums;letter-spacing:.05em;}
+.cot-si-shell b{color:#dbe6ef;font-family:${FONT_COND};font-stretch:condensed;font-weight:800;}
+.cot-si-shell .ty{font-weight:800;font-family:${FONT_COND};font-stretch:condensed;
+  letter-spacing:.08em;font-size:9px;}
+.cot-si-tl{margin-bottom:9px;}
+.cot-si-tl svg{display:block;width:100%;height:34px;}
+.cot-si-tl .cap{font-size:8px;letter-spacing:.14em;color:${COL.dim};text-transform:uppercase;
+  font-family:${FONT_COND};font-stretch:condensed;font-weight:700;text-align:center;margin-top:2px;}
 .cot-si-kills{border-top:1px solid rgba(146,164,180,.2);padding-top:7px;}
 .cot-si-kill{display:flex;align-items:center;gap:8px;font-size:11px;padding:2.5px 0;
   font-variant-numeric:tabular-nums;}
@@ -234,7 +243,18 @@ export function createShotInfo(bus) {
     return {
       fired: 0, hits: 0, pens: 0, dealt: 0, received: 0, blocked: 0,
       modulesDestroyed: 0, perTarget: new Map(),
+      perShell: new Map(),   // shellType -> {fired,hits,pens,dmg}
+      timeline: [],          // dealt-damage events [{t, d}] (battle report strip)
     };
+  }
+
+  function perShell(type) {
+    let s = stats.perShell.get(type);
+    if (!s) {
+      s = { fired: 0, hits: 0, pens: 0, dmg: 0 };
+      stats.perShell.set(type, s);
+    }
+    return s;
   }
 
   // ---------- armor mini-diagram ----------
@@ -244,7 +264,12 @@ export function createShotInfo(bus) {
   function diagramFor(ev) {
     const specId = ev.targetSpecId || ev.targetId;
     let dims = null;
-    try { dims = specId ? getSpec(specId).dims : null; } catch (_) { dims = null; }
+    let arm = null;
+    try {
+      const spec = specId ? getSpec(specId) : null;
+      dims = spec ? spec.dims : null;
+      arm = spec ? spec.armor : null;
+    } catch (_) { dims = null; }
     const wrap = el('div', 'cot-si-diag');
     if (!dims || !ev.localPos) {
       wrap.remove();
@@ -270,12 +295,28 @@ export function createShotInfo(bus) {
       arrow = `<line x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}"
         stroke="#ff8a5c" stroke-width="1.6" marker-end="url(#cotsiarw)"/>`;
     }
+    // facing cues over the (turretless-reading) baked mask: turret ring +
+    // gun-barrel line so the top view communicates orientation at a glance
+    let facing = '';
+    if (arm && arm.turretPivot) {
+      const [tcx, tcy] = topPx(arm.turretPivot[0], arm.turretPivot[2]);
+      const ringR = Math.min(dims.widthM * 0.3, 1.05) * sT;
+      const barrelLen = (arm.gunBarrel && arm.gunBarrel.lengthM)
+        ? arm.gunBarrel.lengthM : dims.overallLengthM * 0.45;
+      const [gx, gy] = topPx(arm.turretPivot[0], arm.turretPivot[2] + barrelLen);
+      facing =
+        `<circle cx="${tcx.toFixed(1)}" cy="${tcy.toFixed(1)}" r="${ringR.toFixed(1)}"
+          fill="none" stroke="rgba(228,240,250,0.55)" stroke-width="1.2"/>` +
+        `<line x1="${tcx.toFixed(1)}" y1="${tcy.toFixed(1)}" x2="${gx.toFixed(1)}" y2="${gy.toFixed(1)}"
+          stroke="rgba(228,240,250,0.55)" stroke-width="1.8" stroke-linecap="round"/>`;
+    }
     const ovT = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     ovT.setAttribute('class', 'ov');
     ovT.setAttribute('viewBox', `0 0 ${TS} ${TS}`);
     ovT.innerHTML =
       `<defs><marker id="cotsiarw" viewBox="0 0 8 8" refX="6.5" refY="4" markerWidth="5"
         markerHeight="5" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ff8a5c"/></marker></defs>` +
+      facing +
       arrow +
       `<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="3.4" fill="none" stroke="#fff" stroke-width="1"/>` +
       `<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="1.7" fill="#ff8a5c"/>`;
@@ -470,17 +511,74 @@ export function createShotInfo(bus) {
     statsRoot.dataset.hits = String(stats.hits);
     statsRoot.dataset.pens = String(stats.pens);
 
+    // per-shell-type accuracy breakdown (fired / hit / pen / damage)
+    const shellTypes = [...stats.perShell.entries()].filter(([, s]) => s.fired > 0 || s.hits > 0);
+    if (shellTypes.length) {
+      const row = el('div', 'cot-si-shell', statsRoot);
+      for (const [type, s] of shellTypes) {
+        const item = el('span', '', row);
+        item.innerHTML =
+          `<span class="ty" style="color:${SHELL_TYPE_COLOR[type] || '#9fb0bf'}">${type}</span> ` +
+          `<b>${s.fired}</b> fired · <b>${s.hits}</b> hit · <b>${s.pens}</b> pen` +
+          `${s.dmg > 0 ? ` · <b>${Math.round(s.dmg)}</b> dmg` : ''}`;
+      }
+    }
+
+    // damage-over-time strip: dealt (gold, up) mirrored vs received (red, down)
+    const recvEvents = receivedLog.filter((e) => e.dmg > 0);
+    if (stats.timeline.length || recvEvents.length) {
+      const tl = el('div', 'cot-si-tl', statsRoot);
+      const BINS = 48;
+      const dur = Math.max(
+        30,
+        ...stats.timeline.map((e) => e.t),
+        ...recvEvents.map((e) => e.t),
+      );
+      const up = new Float32Array(BINS);
+      const dn = new Float32Array(BINS);
+      for (const e of stats.timeline) up[Math.min(BINS - 1, Math.floor((e.t / dur) * BINS))] += e.d;
+      for (const e of recvEvents) dn[Math.min(BINS - 1, Math.floor((e.t / dur) * BINS))] += e.dmg;
+      let peak = 1;
+      for (let i = 0; i < BINS; i++) peak = Math.max(peak, up[i], dn[i]);
+      const W = 480;
+      const H = 34;
+      const mid = H / 2;
+      const bw = W / BINS;
+      let bars = '';
+      for (let i = 0; i < BINS; i++) {
+        const x = (i * bw + 0.5).toFixed(1);
+        if (up[i] > 0) {
+          const bh = Math.max(1.5, (up[i] / peak) * (mid - 2));
+          bars += `<rect x="${x}" y="${(mid - bh).toFixed(1)}" width="${(bw - 1).toFixed(1)}" height="${bh.toFixed(1)}" fill="#ffd166"/>`;
+        }
+        if (dn[i] > 0) {
+          const bh = Math.max(1.5, (dn[i] / peak) * (mid - 2));
+          bars += `<rect x="${x}" y="${mid + 1}" width="${(bw - 1).toFixed(1)}" height="${bh.toFixed(1)}" fill="#f05a5a"/>`;
+        }
+      }
+      tl.innerHTML =
+        `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">` +
+        `<line x1="0" y1="${mid}" x2="${W}" y2="${mid}" stroke="rgba(146,164,180,.35)" stroke-width="1"/>` +
+        `${bars}</svg>` +
+        `<div class="cap">Damage over battle — dealt ▲ / received ▼ · ${fmtTime(dur)}</div>`;
+    }
+
     const engaged = [...stats.perTarget.entries()]
       .sort((a, b) => b[1].dmg - a[1].dmg);
     if (engaged.length) {
       const kills = el('div', 'cot-si-kills', statsRoot);
       for (const [id, t] of engaged) {
         const row = el('div', 'cot-si-kill', kills);
+        // Honest bookkeeping: a kill credited without any recorded player
+        // damage (fire tick, module chain) must not render as "0 hits · −0".
+        const detail = t.hits > 0
+          ? `${t.hits} hit${t.hits === 1 ? '' : 's'} · ${t.pens} pen${t.pens === 1 ? '' : 's'}` +
+            `${t.lastZone ? ' · ' + zoneLabel(t.lastZone) : ''}`
+          : 'no direct hits recorded';
         row.innerHTML = `<span class="si"></span><span class="n">${t.name || id}</span>` +
           `${t.killed ? '<span class="kd">DESTROYED</span>' : ''}` +
-          `<span class="s">${t.hits} hit${t.hits === 1 ? '' : 's'} · ${t.pens} pen${t.pens === 1 ? '' : 's'}` +
-          `${t.lastZone ? ' · ' + zoneLabel(t.lastZone) : ''}</span>` +
-          `<span class="dm">−${Math.round(t.dmg)}</span>`;
+          `<span class="s">${detail}</span>` +
+          `<span class="dm">${t.dmg > 0 ? `−${Math.round(t.dmg)}` : '—'}</span>`;
         maskIcon(row.querySelector('.si'), t.specId || id, 'side_silhouette',
           t.killed ? '#f28f8f' : 'rgba(206,220,232,0.75)');
       }
@@ -498,7 +596,11 @@ export function createShotInfo(bus) {
     return t;
   }
 
-  bus.on('shell:fired', (p) => { if (p.isPlayer) stats.fired += 1; });
+  bus.on('shell:fired', (p) => {
+    if (!p.isPlayer) return;
+    stats.fired += 1;
+    perShell(p.shellType || '—').fired += 1;
+  });
 
   bus.on('shell:hit', (ev) => {
     if (playerId == null) return;
@@ -507,6 +609,11 @@ export function createShotInfo(bus) {
       stats.hits += 1;
       if (PEN_KINDS.has(ev.kind)) stats.pens += 1;
       stats.dealt += ev.damage || 0;
+      const sh = perShell(ev.shellType || '—');
+      sh.hits += 1;
+      if (PEN_KINDS.has(ev.kind)) sh.pens += 1;
+      sh.dmg += ev.damage || 0;
+      if ((ev.damage || 0) > 0) stats.timeline.push({ t: ev.timeS || 0, d: ev.damage });
       stats.modulesDestroyed += (ev.modulesHit || []).filter((m) => m.newState === 'red').length;
       const t = perTarget(ev);
       t.dmg += ev.damage || 0;

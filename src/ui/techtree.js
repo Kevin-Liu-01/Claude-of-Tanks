@@ -18,59 +18,80 @@ const DIMS = {
   medium: { hullLengthM: 6.0, overallLengthM: 7.7, heightM: 2.6 },
   heavy: { hullLengthM: 6.6, overallLengthM: 8.7, heightM: 3.0 },
   mbt: { hullLengthM: 7.9, overallLengthM: 9.8, heightM: 2.4 },
+  td: { hullLengthM: 6.2, overallLengthM: 8.8, heightM: 2.3 },
 };
 
 const CLASS_LABEL = {
-  light: 'Light tank', medium: 'Medium tank', heavy: 'Heavy tank', mbt: 'Main battle tank',
+  light: 'Light tank', medium: 'Medium tank', heavy: 'Heavy tank',
+  mbt: 'Main battle tank', td: 'Tank destroyer',
 };
 
-// n(key, name, tier, row, cls, era, opts) — opts: {spec:'realSpecId', from:[keys]}
-function n(key, name, tier, row, cls, era, o = {}) {
-  return { key, name, tier, row, cls, era, specId: o.spec || null, from: o.from || [] };
+// WoT-style class lanes (top to bottom). MBTs continue the medium line.
+const LANE = { light: 0, medium: 1, mbt: 1, heavy: 2, td: 3 };
+const LANE_LABEL = ['LIGHT', 'MEDIUM · MBT', 'HEAVY', 'TANK DESTROYER'];
+
+// n(key, name, tier, cls, era, opts) — opts: {spec:'realSpecId', from:[keys]}
+// The vertical lane comes from the class, WoT-style.
+function n(key, name, tier, cls, era, o = {}) {
+  return { key, name, tier, row: LANE[cls] ?? 1, cls, era, specId: o.spec || null, from: o.from || [] };
 }
 
+// NOTE on spec wiring: nodes may carry a specId that is not shipped yet
+// (m26 / tiger2 / t54 and the TD line tips). They render as ghost research
+// nodes until the spec lands in src/vehicles/specs.js, then light up gold
+// automatically — see docs/handoff/content_breadth-r1.md.
 const TABS = [
   {
     id: 'usa', label: 'USA', flags: [['USA', 'modern']],
     nodes: [
-      n('m2', 'M2 Light Tank', 2, 0, 'light', 'ww2'),
-      n('m3lee', 'M3 Lee', 4, 0, 'medium', 'ww2', { from: ['m2'] }),
-      n('m4', 'M4 Sherman', 5, 0, 'medium', 'ww2', { from: ['m3lee'] }),
-      n('e8', 'M4A3E8 Sherman', 6, 0, 'medium', 'ww2', { spec: 'm4a3e8', from: ['m4'] }),
-      n('t29', 'T29', 7, 1, 'heavy', 'ww2', { from: ['e8'] }),
-      n('m103', 'M103', 9, 1, 'heavy', 'ww2', { from: ['t29'] }),
-      n('m26', 'M26 Pershing', 8, 0, 'medium', 'ww2', { from: ['e8'] }),
-      n('m60', 'M60 Patton', 9, 0, 'mbt', 'modern', { from: ['m26'] }),
-      n('abrams', 'M1A2 Abrams SEPv3', 10, 0, 'mbt', 'modern', { spec: 'm1a2', from: ['m60'] }),
+      n('m2', 'M2 Light Tank', 2, 'light', 'ww2'),
+      n('m3lee', 'M3 Lee', 4, 'medium', 'ww2', { from: ['m2'] }),
+      n('m4', 'M4 Sherman', 5, 'medium', 'ww2', { from: ['m3lee'] }),
+      n('e8', 'M4A3E8 Sherman', 6, 'medium', 'ww2', { spec: 'm4a3e8', from: ['m4'] }),
+      n('t29', 'T29', 7, 'heavy', 'ww2', { from: ['e8'] }),
+      n('m103', 'M103', 9, 'heavy', 'ww2', { from: ['t29'] }),
+      n('m26', 'M26 Pershing', 8, 'medium', 'ww2', { spec: 'm26', from: ['e8'] }),
+      n('m60', 'M60 Patton', 9, 'mbt', 'modern', { from: ['m26'] }),
+      n('abrams', 'M1A2 Abrams SEPv3', 10, 'mbt', 'modern', { spec: 'm1a2', from: ['m60'] }),
+      n('m10', 'M10 Wolverine', 5, 'td', 'ww2', { from: ['m3lee'] }),
+      n('hellcat', 'M18 Hellcat', 6, 'td', 'ww2', { from: ['m10'] }),
+      n('m36', 'M36 Jackson', 7, 'td', 'ww2', { spec: 'm36', from: ['hellcat'] }),
     ],
   },
   {
     id: 'germany', label: 'Germany', flags: [['Germany', 'ww2'], ['Germany', 'modern']],
     nodes: [
-      n('pz2', 'Pz.Kpfw. II', 2, 0, 'light', 'ww2'),
-      n('pz3', 'Pz.Kpfw. III', 4, 0, 'medium', 'ww2', { from: ['pz2'] }),
-      n('pz4', 'Pz.Kpfw. IV Ausf. H', 5, 0, 'medium', 'ww2', { from: ['pz3'] }),
-      n('panther', 'Panther Ausf. G', 7, 0, 'medium', 'ww2', { spec: 'panther_g', from: ['pz4'] }),
-      n('tiger', 'Tiger I', 7, 1, 'heavy', 'ww2', { spec: 'tiger1', from: ['pz4'] }),
-      n('tiger2', 'Tiger II', 8, 1, 'heavy', 'ww2', { from: ['tiger'] }),
-      n('maus', 'Maus', 10, 1, 'heavy', 'ww2', { from: ['tiger2'] }),
-      n('leo1', 'Leopard 1', 9, 0, 'mbt', 'modern', { from: ['panther'] }),
-      n('leo2', 'Leopard 2A7', 10, 0, 'mbt', 'modern', { spec: 'leo2a7', from: ['leo1'] }),
+      n('pz2', 'Pz.Kpfw. II', 2, 'light', 'ww2'),
+      n('pz3', 'Pz.Kpfw. III', 4, 'medium', 'ww2', { from: ['pz2'] }),
+      n('pz4', 'Pz.Kpfw. IV Ausf. H', 5, 'medium', 'ww2', { from: ['pz3'] }),
+      n('panther', 'Panther Ausf. G', 7, 'medium', 'ww2', { spec: 'panther_g', from: ['pz4'] }),
+      n('tiger', 'Tiger I', 7, 'heavy', 'ww2', { spec: 'tiger1', from: ['pz4'] }),
+      n('tiger2', 'Tiger II', 8, 'heavy', 'ww2', { spec: 'tiger2', from: ['tiger'] }),
+      n('maus', 'Maus', 10, 'heavy', 'ww2', { from: ['tiger2'] }),
+      n('leo1', 'Leopard 1', 9, 'mbt', 'modern', { from: ['panther'] }),
+      n('leo2', 'Leopard 2A7', 10, 'mbt', 'modern', { spec: 'leo2a7', from: ['leo1'] }),
+      n('stug', 'StuG III Ausf. G', 5, 'td', 'ww2', { from: ['pz3'] }),
+      n('jagdpanther', 'Jagdpanther', 7, 'td', 'ww2', { spec: 'jagdpanther', from: ['stug'] }),
+      n('jagdtiger', 'Jagdtiger', 9, 'td', 'ww2', { from: ['jagdpanther'] }),
     ],
   },
   {
     id: 'ussr', label: 'USSR · Russia', flags: [['USSR', 'ww2'], ['Russia', 'modern']],
     nodes: [
-      n('t26', 'T-26', 2, 0, 'light', 'ww2'),
-      n('bt7', 'BT-7', 3, 0, 'light', 'ww2', { from: ['t26'] }),
-      n('t34', 'T-34', 5, 0, 'medium', 'ww2', { from: ['bt7'] }),
-      n('t3485', 'T-34-85', 6, 0, 'medium', 'ww2', { spec: 't34_85', from: ['t34'] }),
-      n('t54', 'T-54', 8, 0, 'medium', 'ww2', { from: ['t3485'] }),
-      n('t72', 'T-72B', 9, 0, 'mbt', 'modern', { from: ['t54'] }),
-      n('t90', 'T-90M Proryv', 10, 0, 'mbt', 'modern', { spec: 't90m', from: ['t72'] }),
-      n('kv1', 'KV-1', 5, 1, 'heavy', 'ww2', { from: ['bt7'] }),
-      n('is2', 'IS-2', 7, 1, 'heavy', 'ww2', { spec: 'is2', from: ['kv1'] }),
-      n('is3', 'IS-3', 8, 1, 'heavy', 'ww2', { from: ['is2'] }),
+      n('t26', 'T-26', 2, 'light', 'ww2'),
+      n('bt7', 'BT-7', 3, 'light', 'ww2', { from: ['t26'] }),
+      n('t34', 'T-34', 5, 'medium', 'ww2', { from: ['bt7'] }),
+      n('t3485', 'T-34-85', 6, 'medium', 'ww2', { spec: 't34_85', from: ['t34'] }),
+      n('t54', 'T-54', 8, 'medium', 'ww2', { spec: 't54', from: ['t3485'] }),
+      n('t72', 'T-72B', 9, 'mbt', 'modern', { from: ['t54'] }),
+      n('t90', 'T-90M Proryv', 10, 'mbt', 'modern', { spec: 't90m', from: ['t72'] }),
+      n('kv1', 'KV-1', 5, 'heavy', 'ww2', { from: ['bt7'] }),
+      n('is2', 'IS-2', 7, 'heavy', 'ww2', { spec: 'is2', from: ['kv1'] }),
+      n('is3', 'IS-3', 8, 'heavy', 'ww2', { from: ['is2'] }),
+      n('su76', 'SU-76M', 3, 'td', 'ww2', { from: ['t26'] }),
+      n('su85', 'SU-85', 5, 'td', 'ww2', { from: ['su76'] }),
+      n('su100', 'SU-100', 6, 'td', 'ww2', { spec: 'su100', from: ['su85'] }),
+      n('isu152', 'ISU-152', 8, 'td', 'ww2', { from: ['su100'] }),
     ],
   },
 ];
@@ -81,9 +102,10 @@ const HEAD_H = 76;
 const TIER_W = 176;
 const NODE_W = 150;
 const NODE_H = 106;
-const ROW_H = 168;
+const ROW_H = 152;
 const MIN_ZOOM = 0.45;
 const MAX_ZOOM = 1.75;
+const MAX_FIT_ZOOM = 1.32; // fit-to-content may zoom IN this far on sparse trees
 
 const TT_CSS = `
 .cot-tt{position:fixed;inset:0;z-index:66;display:none;flex-direction:column;
@@ -156,6 +178,12 @@ const TT_CSS = `
   font-size:9.5px;font-weight:600;letter-spacing:.18em;color:rgba(138,151,163,.75);
   text-transform:uppercase;pointer-events:none;white-space:nowrap;}
 .cot-tt-hint b{color:rgba(240,176,74,.9);font-weight:700;}
+.cot-tt-lane{position:absolute;font-size:10px;font-weight:800;letter-spacing:.30em;
+  color:rgba(159,176,191,.38);text-transform:uppercase;white-space:nowrap;
+  pointer-events:none;}
+.cot-tt-lane::after{content:'';display:inline-block;vertical-align:middle;
+  width:220px;height:1px;margin-left:14px;
+  background:linear-gradient(90deg,rgba(146,164,180,.25),rgba(146,164,180,0));}
 `;
 
 function ensureStyle(id, css) {
@@ -165,6 +193,56 @@ function ensureStyle(id, css) {
     s.textContent = css;
     document.head.appendChild(s);
   }
+}
+
+// Casemate tank-destroyer profile (StuG/SU/Jagd-): low hull, sloped fixed
+// superstructure, long gun — drawSilhouette has no turretless class, so ghost
+// TD nodes draw their own here.
+function drawTdSilhouette(canvas, dims, opts = {}) {
+  const W = opts.w || 118, H = opts.h || 36;
+  canvas.width = W; canvas.height = H;
+  const c = canvas.getContext('2d');
+  c.clearRect(0, 0, W, H);
+  const overall = Math.max(dims.overallLengthM, dims.hullLengthM);
+  const s = (W - 8) / overall;
+  const hullLen = dims.hullLengthM * s;
+  const x0 = 4 + (W - 8 - overall * s) / 2;
+  const groundY = H - 2;
+  const wheelR = Math.max(2.2, dims.heightM * 0.15 * s);
+  const hullH = Math.max(4.5, dims.heightM * 0.30 * s);
+  const hullTop = groundY - wheelR - hullH;
+  const caseH = Math.max(4, dims.heightM * 0.34 * s);
+  c.fillStyle = opts.color || 'rgba(206,220,232,0.88)';
+  // running gear
+  const nW = 6;
+  for (let i = 0; i < nW; i++) {
+    c.beginPath();
+    c.arc(x0 + wheelR + ((i + 0.5) / nW) * (hullLen - wheelR * 2), groundY - wheelR, wheelR, 0, Math.PI * 2);
+    c.fill();
+  }
+  c.fillRect(x0 + wheelR * 0.4, groundY - wheelR * 2 - 1, hullLen - wheelR * 0.8, 1.6);
+  // low hull
+  c.beginPath();
+  c.moveTo(x0, hullTop + hullH * 0.35);
+  c.lineTo(x0 + hullLen * 0.12, hullTop);
+  c.lineTo(x0 + hullLen, hullTop);
+  c.lineTo(x0 + hullLen, hullTop + hullH);
+  c.lineTo(x0, hullTop + hullH);
+  c.closePath();
+  c.fill();
+  // sloped casemate superstructure (front raked hard, rear stepped)
+  const cx0 = x0 + hullLen * 0.10, cx1 = x0 + hullLen * 0.86;
+  c.beginPath();
+  c.moveTo(cx0, hullTop);
+  c.lineTo(cx0 + (cx1 - cx0) * 0.30, hullTop - caseH);
+  c.lineTo(cx1 - (cx1 - cx0) * 0.10, hullTop - caseH);
+  c.lineTo(cx1, hullTop);
+  c.closePath();
+  c.fill();
+  // hull-mounted gun with a small mantlet block
+  const gy = hullTop - caseH * 0.42;
+  c.fillRect(cx0 + (cx1 - cx0) * 0.52, gy - 2.4, (cx1 - cx0) * 0.2, 4.8);
+  c.fillRect(cx0 + (cx1 - cx0) * 0.6, gy - 1.0, x0 + overall * s - cx0 - (cx1 - cx0) * 0.6, 2.0);
 }
 
 /**
@@ -203,6 +281,8 @@ export function createTechTree(opts) {
 
   let nationId = 'usa';
   let bounds = { w: 1000, h: 600 };
+  // bbox of the active nation's actual nodes (+ lane labels), for fit-to-content
+  let content = { x0: 0, y0: 0, x1: 1000, y1: 600 };
 
   // --- pan/zoom state (current eased toward target each frame) ---
   const cam = { x: 0, y: 0, s: 1 };
@@ -227,14 +307,17 @@ export function createTechTree(opts) {
 
   function snapCam() { cam.x = tgt.x; cam.y = tgt.y; cam.s = tgt.s; applyCam(); }
 
+  // Fit-and-center the ACTIVE nation's node bounding box (not the full 10-tier
+  // canvas): sparse rosters fill the screen instead of floating in dead space.
   function fitCam() {
     const vw = view.clientWidth || window.innerWidth;
     const vh = view.clientHeight || (window.innerHeight - 70);
-    const s = Math.max(MIN_ZOOM, Math.min(1,
-      (vw - 40) / bounds.w, (vh - 40) / bounds.h));
+    const cw = content.x1 - content.x0, ch = content.y1 - content.y0;
+    const s = Math.max(MIN_ZOOM, Math.min(MAX_FIT_ZOOM,
+      (vw - 36) / cw, (vh - 36) / ch));
     tgt.s = s;
-    tgt.x = (vw - bounds.w * s) / 2;
-    tgt.y = Math.max(10, (vh - bounds.h * s) / 2);
+    tgt.x = (vw - cw * s) / 2 - content.x0 * s;
+    tgt.y = (vh - ch * s) / 2 - content.y0 * s;
     snapCam();
   }
 
@@ -242,18 +325,29 @@ export function createTechTree(opts) {
   function nodePos(node) {
     return {
       x: PAD_X + (node.tier - 1) * TIER_W + (TIER_W - NODE_W) / 2,
-      y: HEAD_H + node.row * ROW_H + (node.row > 0 ? 26 : 0),
+      y: HEAD_H + node.row * ROW_H,
     };
   }
 
   function buildTree(tab) {
     world.innerHTML = '';
     const byKey = new Map();
-    let maxRow = 0;
-    for (const node of tab.nodes) { byKey.set(node.key, node); maxRow = Math.max(maxRow, node.row); }
+    let maxRow = 0, minTier = 10, maxTier = 1;
+    for (const node of tab.nodes) {
+      byKey.set(node.key, node);
+      maxRow = Math.max(maxRow, node.row);
+      minTier = Math.min(minTier, node.tier);
+      maxTier = Math.max(maxTier, node.tier);
+    }
     bounds = {
       w: PAD_X * 2 + 10 * TIER_W,
-      h: HEAD_H + maxRow * ROW_H + 26 + NODE_H + 60,
+      h: HEAD_H + maxRow * ROW_H + NODE_H + 60,
+    };
+    content = {
+      x0: PAD_X + (minTier - 1) * TIER_W - 16,
+      y0: 0,
+      x1: PAD_X + maxTier * TIER_W + 16,
+      y1: HEAD_H + maxRow * ROW_H + NODE_H + 34,
     };
     world.style.width = `${bounds.w}px`;
     world.style.height = `${bounds.h}px`;
@@ -278,7 +372,9 @@ export function createTechTree(opts) {
           ? `M${x1} ${y1} L${x2} ${y2}`
           : `M${x1} ${y1} L${mx} ${y1} L${mx} ${y2} L${x2} ${y2}`);
         path.setAttribute('fill', 'none');
-        const gold = node.specId && parent.specId;
+        // gold wire only when BOTH ends are battle-ready (spec actually ships)
+        const gold = node.specId && parent.specId &&
+          specById.has(node.specId) && specById.has(parent.specId);
         path.setAttribute('stroke', gold ? 'rgba(240,160,48,.45)' : 'rgba(146,164,180,.30)');
         path.setAttribute('stroke-width', '2');
         svg.appendChild(path);
@@ -298,6 +394,17 @@ export function createTechTree(opts) {
       hd.style.left = `${PAD_X + (t - 1) * TIER_W + (TIER_W - NODE_W) / 2}px`;
       hd.innerHTML = `${ROMAN[t]}<i>tier</i>`;
       world.appendChild(hd);
+    }
+
+    // class-lane captions (light / medium·mbt / heavy / td rows)
+    const usedRows = new Set(tab.nodes.map((nd) => nd.row));
+    for (const r of usedRows) {
+      const lb = document.createElement('div');
+      lb.className = 'cot-tt-lane';
+      lb.style.left = `${content.x0 + 16}px`;
+      lb.style.top = `${HEAD_H + r * ROW_H - 22}px`;
+      lb.textContent = LANE_LABEL[r] || '';
+      world.appendChild(lb);
     }
 
     // nodes
@@ -321,9 +428,14 @@ export function createTechTree(opts) {
         (real && spec ? `<div class="ready"></div>` : `<span class="lock">&#128274;</span>`);
       el.querySelector('.nm').textContent = node.name;
       if (!(real && spec)) {
-        drawSilhouette(el.querySelector('canvas'),
-          { dims: DIMS[node.cls] || DIMS.medium, era: node.era, class: node.cls === 'light' ? 'medium' : node.cls },
-          { w: 118, h: 36, color: 'rgba(120,134,146,0.55)' });
+        if (node.cls === 'td') {
+          drawTdSilhouette(el.querySelector('canvas'), DIMS.td,
+            { w: 118, h: 36, color: 'rgba(120,134,146,0.55)' });
+        } else {
+          drawSilhouette(el.querySelector('canvas'),
+            { dims: DIMS[node.cls] || DIMS.medium, era: node.era, class: node.cls === 'light' ? 'medium' : node.cls },
+            { w: 118, h: 36, color: 'rgba(120,134,146,0.55)' });
+        }
       }
       if (real && spec) {
         el.addEventListener('click', () => {

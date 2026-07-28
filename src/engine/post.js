@@ -2,16 +2,18 @@
  * post.js — the full post-processing chain.
  *
  * Chain (extends ARCHITECTURE.md §3.1.4 / graphics-aaa.md §4 with a grade):
- *   RenderPass → GTAOPass → AerialPass → UnrealBloomPass → SMAAPass →
- *   OutputPass → GradePass
+ *   RenderPass → AerialPass → GTAOPass → UnrealBloomPass → OutputPass →
+ *   SMAAPass → GradePass
  *
  * The composer runs on a custom HalfFloat HDR target that owns a DepthTexture
- * (so fx can later sample scene depth for soft particles). SMAA operates in
- * linear space so it sits BEFORE OutputPass; OutputPass applies ACES tone
- * mapping + sRGB conversion (reading renderer.toneMapping/outputColorSpace).
- * GradePass runs after it, in display sRGB space (contrast/saturation/vignette
- * are perceptual ops). Bloom thresholds against the linear HDR buffer — sun,
- * muzzle flash and fire exceed 1.0 and bloom naturally.
+ * (so fx can later sample scene depth for soft particles). OutputPass applies
+ * ACES tone mapping + sRGB conversion (reading renderer.toneMapping/
+ * outputColorSpace); SMAA runs AFTER it, in display space, so edge blending
+ * happens on the values the eye sees (AA on linear HDR is defeated by the
+ * tone map on hot speculars). GradePass runs last, in display sRGB space
+ * (contrast/split-tone/vignette are perceptual ops). Bloom thresholds against
+ * the linear HDR buffer — sun, muzzle flash and fire exceed 1.0 and bloom
+ * naturally.
  */
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -21,14 +23,18 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { getPreset, onPresetChange } from './quality.js';
 
 const BLOOM_STRENGTH = 0.34;
 const BLOOM_RADIUS = 0.4;
 // With the rebalanced ambient (sky.js ENV_INTENSITY 0.45, hemi 0.26) diffuse
-// surfaces top out well under 1.0 in the linear HDR buffer, so 1.35 keeps
-// bloom off walls/terrain AND off the near-sun horizon band, while the sun
-// disc, muzzle flash core, tracers and fire (all >1.35) glow naturally.
-const BLOOM_THRESHOLD = 1.35;
+// surfaces top out well under 1.0 in the linear HDR buffer, so the threshold
+// keeps bloom off walls/terrain AND off the near-sun horizon band, while the
+// sun disc, muzzle flash core, tracers and fire glow naturally. r4: 1.35 →
+// 1.42 — sun-glint metal speculars (gun tube top edge) were crossing the old
+// threshold and blooming into an aliased hot halo; true emissives all sit
+// >= 1.6 and still bloom.
+const BLOOM_THRESHOLD = 1.42;
 // The fx fireball reaches 5-20 in the HDR buffer; unclamped, UnrealBloom
 // smears it into a full-frame white-out. Clamping the high-pass input keeps
 // hot sources glowing (flash spikes, tracers, fire) without flooding.
@@ -39,7 +45,11 @@ const HIGH_PASS_ANCHOR = 'gl_FragColor = mix( outputColor, texel, alpha );';
 // scale 1.3 → 1.7, thickness 1.2 → 1.6 — the critic read the shots as having
 // "no ambient occlusion anywhere"; contact darkening under hulls, building
 // bases and canopies has to survive ACES + fog to register at 1080p.
-const GTAO_PARAMS = { radius: 1.3, distanceExponent: 2, thickness: 1.6, scale: 1.7, samples: 16 };
+// r4: radius 1.3 → 1.6, scale 1.7 → 2.2, thickness 1.6 → 1.8 — props (poles,
+// hay bales, building bases) still met the terrain with no visible contact
+// darkening at 1080p establishing distance; this pushes grounding into the
+// clearly-readable range while the Poisson denoise keeps gradients smooth.
+const GTAO_PARAMS = { radius: 1.6, distanceExponent: 2, thickness: 1.8, scale: 2.2, samples: 16 };
 const GTAO_BLEND_INTENSITY = 1.0;
 
 // Depth-driven aerial perspective (r3: "distant hills correctly shift
@@ -50,9 +60,24 @@ const GTAO_BLEND_INTENSITY = 1.0;
 // progressive desaturation + a cool blue-grey shift with distance. The sky
 // (depth == 1.0, incl. the depthWrite:false cloud shells) is excluded — the
 // dome already carries its own atmosphere.
-const AERIAL_DENSITY = 0.0011; // 1/m; f = 1-exp(-(d*k)^2): ~10% @300m, ~70% @1km
-const AERIAL_DESAT = 0.5; // max saturation loss at full distance
-const AERIAL_COOL = [0.93, 0.985, 1.06]; // cool shift multiplier at full distance
+// r4: density 0.0011 → 0.0016, desat 0.5 → 0.65, deeper cool shift — distant
+// treelines at 400-700 m were still holding near-full green saturation; the
+// curve now lands ~30% desat at 500 m and ~60% at 900 m, so far vegetation
+// visibly graduates toward the sky tint instead of staying saturated.
+const AERIAL_DENSITY = 0.0016; // 1/m; f = 1-exp(-(d*k)^2): ~20% @300m, ~47% @500m
+const AERIAL_DESAT = 0.65; // max saturation loss at full distance
+const AERIAL_COOL = [0.90, 0.975, 1.08]; // cool shift multiplier at full distance
+// r4: true scattering-IN term. Desaturation alone leaves far silhouettes DARK
+// (real aerial perspective adds skylight, it doesn't just remove chroma) —
+// most visible on the distant mountain backdrop, which rendered as a flat
+// slate cutout. Every pixel now also blends toward the live horizon-haze
+// color (scene.fog.color, sampled from the sky dome each frame) on a slower
+// curve, material fog flags be damned: ~12% @400m, ~56% @1km, ~93% @1.8km+,
+// so backdrops sit IN the atmosphere instead of pasted against it. (Tuned
+// against the horizon mountain ring at r 760-1220 m: at 0.0006 it kept a
+// pasted-on slate read; 0.0009 folds it into the sky family while tanks at
+// 300-500 m engagement range stay crisp.)
+const AERIAL_HAZE_DENSITY = 0.0009; // 1/m, slower second curve for scatter-in
 
 const AerialShader = {
   name: 'AerialPerspectiveShader',
@@ -64,6 +89,8 @@ const AerialShader = {
     uDensity: { value: AERIAL_DENSITY },
     uDesat: { value: AERIAL_DESAT },
     uCool: { value: new THREE.Vector3(...AERIAL_COOL) },
+    uHazeDensity: { value: AERIAL_HAZE_DENSITY },
+    uHaze: { value: new THREE.Color(0.55, 0.62, 0.72) }, // re-synced per frame from scene.fog
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -79,6 +106,8 @@ const AerialShader = {
     uniform float uDensity;
     uniform float uDesat;
     uniform vec3 uCool;
+    uniform float uHazeDensity;
+    uniform vec3 uHaze;
     varying vec2 vUv;
     void main() {
       vec4 texel = texture2D( tDiffuse, vUv );
@@ -90,6 +119,10 @@ const AerialShader = {
         float lum = dot( texel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
         vec3 hazy = mix( texel.rgb, vec3( lum ), uDesat ) * uCool;
         texel.rgb = mix( texel.rgb, hazy, f );
+        // scattering-in: distance pulls everything toward the horizon haze
+        float x2 = -viewZ * uHazeDensity;
+        float f2 = 1.0 - exp( -x2 * x2 );
+        texel.rgb = mix( texel.rgb, uHaze, f2 );
       }
       gl_FragColor = texel;
     }`,
@@ -105,12 +138,22 @@ const AerialShader = {
 // masses), saturation 1.15 → 1.08 (distance desat now comes from the aerial
 // pass; global oversaturation was amplifying the foliage albedo clash),
 // black anchor 0.01 → 0.006.
-const GRADE_CONTRAST = 1.12;
+// r4 grade identity pass ("neutral washed tonemapping, no grade identity"):
+// contrast 1.12 → 1.18 for a punchier midtone S-curve, black anchor 0.006 →
+// 0.010 so shadow cores actually reach display black, vignette 0.17 → 0.23,
+// and a NEW luminance-keyed split-tone — highlights pulled warm (sun family),
+// shadows pulled cool blue-grey — the classic AAA warm/cool grade axis. The
+// old fixed warm balance is softened (1.04 → 1.02 red) so shadows are allowed
+// to actually go cool instead of being re-warmed globally.
+const GRADE_CONTRAST = 1.18;
 const GRADE_SATURATION = 1.08;
-const GRADE_VIGNETTE = 0.17;
-const GRADE_BLACK_LIFT = 0.006;
+const GRADE_VIGNETTE = 0.23;
+const GRADE_BLACK_LIFT = 0.010;
 // Warm afternoon balance, matching the sun key instead of fighting it.
-const GRADE_BALANCE = [1.04, 1.0, 0.955];
+const GRADE_BALANCE = [1.02, 1.0, 0.975];
+// Split-tone poles (multiplied in by shadow/highlight membership).
+const GRADE_SHADOW_TINT = [0.965, 0.995, 1.05]; // cool blue-grey shadows
+const GRADE_HIGH_TINT = [1.055, 1.005, 0.945]; // warm sun-kissed highlights
 
 const GradeShader = {
   name: 'GradeShader',
@@ -121,6 +164,8 @@ const GradeShader = {
     uVignette: { value: GRADE_VIGNETTE },
     uBlack: { value: GRADE_BLACK_LIFT },
     uBalance: { value: new THREE.Vector3(...GRADE_BALANCE) },
+    uShadowTint: { value: new THREE.Vector3(...GRADE_SHADOW_TINT) },
+    uHighTint: { value: new THREE.Vector3(...GRADE_HIGH_TINT) },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -135,6 +180,8 @@ const GradeShader = {
     uniform float uVignette;
     uniform float uBlack;
     uniform vec3 uBalance;
+    uniform vec3 uShadowTint;
+    uniform vec3 uHighTint;
     varying vec2 vUv;
     void main() {
       vec4 texel = texture2D( tDiffuse, vUv );
@@ -144,8 +191,12 @@ const GradeShader = {
       // black anchor + contrast S-curve around mid grey
       col = max( col - vec3( uBlack ), vec3( 0.0 ) );
       col = clamp( mix( vec3( 0.5 ), col, uContrast ), 0.0, 1.0 );
-      // saturation
+      // split-tone: cool shadows / warm highlights, keyed on luminance
       float luma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
+      vec3 split = mix( uShadowTint, uHighTint, smoothstep( 0.12, 0.72, luma ) );
+      col = clamp( col * split, 0.0, 1.0 );
+      // saturation
+      luma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
       col = clamp( mix( vec3( luma ), col, uSaturation ), 0.0, 1.0 );
       // vignette (radial, corners only)
       vec2 q = vUv - 0.5;
@@ -174,6 +225,13 @@ const GradeShader = {
  * @returns {Post}
  */
 export function createPost(renderer, scene, camera) {
+  // Quality preset (src/engine/quality.js): caps the composer's internal
+  // pixel ratio (render scale — the final pass upscales to the native canvas)
+  // and scales the AO/bloom buffers. At devicePixelRatio 1 the renderer ratio
+  // is 1.0 (below every cap) and aoScale is 1 on the auto tier, so nothing
+  // changes vs. the original chain; on retina (dpr >= 2) the 'high' tier is
+  // what keeps the >=60 median / >=45 p5 fps budget (see quality.js header).
+  let preset = getPreset();
   const size = renderer.getDrawingBufferSize(new THREE.Vector2());
 
   const target = new THREE.WebGLRenderTarget(size.x, size.y, {
@@ -213,6 +271,19 @@ export function createPost(renderer, scene, camera) {
   gtao.output = GTAOPass.OUTPUT.Default;
   gtao.updateGtaoMaterial(GTAO_PARAMS);
   gtao.blendIntensity = GTAO_BLEND_INTENSITY;
+  // Quality: run the whole GTAO stack (scene depth/normal prepass, 16-tap AO,
+  // Poisson denoise) at `aoScale` x composer resolution. Its internal targets
+  // are LinearFilter, so the final multiply-blend bilinearly upsamples the AO
+  // buffer — the standard half-res-AO scheme. aoScale 1 (ultra) is unchanged
+  // full-res; aoScale 0 disables the pass entirely.
+  {
+    const origSetSize = gtao.setSize.bind(gtao);
+    gtao.setSize = (w, h) => {
+      const s = preset.aoScale || 1;
+      origSetSize(Math.max(1, Math.round(w * s)), Math.max(1, Math.round(h * s)));
+    };
+    gtao.enabled = preset.aoScale > 0;
+  }
   // GTAO renders its depth/normal prepass with a scene-wide overrideMaterial,
   // which ignores alphaTest — alpha-tested foliage cards would write SOLID
   // rectangles into the AO buffer and composite as dark floating quads over
@@ -249,11 +320,54 @@ export function createPost(renderer, scene, camera) {
     hp.fragmentShader = patched;
     hp.needsUpdate = true;
   }
+  // Quality: scale the bloom chain input (its mip pyramid is already built
+  // from input/2, so bloomScale 0.5 = quarter-res blurs; the additive
+  // composite into the frame stays at composer resolution either way).
+  {
+    const origSetSize = bloom.setSize.bind(bloom);
+    bloom.setSize = (w, h) => {
+      const s = preset.bloomScale || 1;
+      origSetSize(Math.max(1, Math.round(w * s)), Math.max(1, Math.round(h * s)));
+    };
+  }
   composer.addPass(bloom); // 3. HDR bloom — muzzle flash / fire pop here
 
-  composer.addPass(new SMAAPass()); // 4. AA in linear space, pre-output
-  composer.addPass(new OutputPass()); // 5. ACES + sRGB
+  // r4 ORDER CHANGE: SMAA moved AFTER OutputPass. Anti-aliasing computed on
+  // linear HDR values is defeated by the tone map: a 6.0-vs-0.4 edge blended
+  // 50/50 in linear space still tone-maps to ~white against mid-grey, so hot
+  // speculars (gun tube top edge vs sky) kept a jagged 1px stair. SMAA's edge
+  // detection and blend now run in display sRGB space — the space the eye
+  // sees — which is also where the algorithm was designed to operate.
+  composer.addPass(new OutputPass()); // 4. ACES + sRGB
+  composer.addPass(new SMAAPass()); // 5. AA in display space, post-tonemap
   composer.addPass(new ShaderPass(GradeShader)); // 6. display-space grade — LAST
+
+  // --- Quality-aware sizing --------------------------------------------------
+  // The composer's pixel ratio is the renderer's, CAPPED by the preset
+  // (render scale). Every buffer in the chain — scene HDR target, its private
+  // DepthTexture, GTAO (further scaled above), bloom, SMAA — follows through
+  // EffectComposer.setSize; the final renderToScreen pass upscales bilinearly
+  // to the native-resolution canvas, so the DOM/canvas HUD keeps full
+  // sharpness and only the 3D frame pays the reduced raster cost.
+  let cssW = 0;
+  let cssH = 0;
+  function applySize(w, h) {
+    cssW = w;
+    cssH = h;
+    composer.setPixelRatio(Math.min(renderer.getPixelRatio(), preset.maxPixelRatio));
+    composer.setSize(w, h);
+  }
+  {
+    const css = renderer.getSize(new THREE.Vector2());
+    applySize(css.x, css.y);
+  }
+  // Live preset switching (settings UI writes quality.setPresetName): retarget
+  // every buffer without rebuilding the chain.
+  onPresetChange((p) => {
+    preset = p;
+    gtao.enabled = preset.aoScale > 0;
+    if (cssW > 0 && cssH > 0) applySize(cssW, cssH);
+  });
 
   return {
     composer,
@@ -279,6 +393,8 @@ export function createPost(renderer, scene, camera) {
       // aerial distance reconstruction exact
       aerial.uniforms.uNear.value = camera.near;
       aerial.uniforms.uFar.value = camera.far;
+      // scatter-in target follows the sky-sampled fog color (map switches)
+      if (scene.fog) aerial.uniforms.uHaze.value.copy(scene.fog.color);
       composer.render(dt);
     },
 
@@ -292,8 +408,7 @@ export function createPost(renderer, scene, camera) {
      * @returns {void}
      */
     setSize(w, h) {
-      composer.setPixelRatio(renderer.getPixelRatio());
-      composer.setSize(w, h);
+      applySize(w, h);
     },
 
     bloom,
@@ -306,7 +421,7 @@ export function createPost(renderer, scene, camera) {
      * @returns {void}
      */
     setQuality(level) {
-      gtao.enabled = level !== 'low';
+      gtao.enabled = level !== 'low' && preset.aoScale > 0;
     },
   };
 }

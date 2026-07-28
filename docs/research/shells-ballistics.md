@@ -1,5 +1,8 @@
 # Shells & Ballistics Spec — claude-of-tanks
 
+NOTE: on any conflict with armor-penetration.md, armor-penetration.md wins —
+it is the implementation authority for damage.js.
+
 Research-backed, implementable spec for shell types, ballistics, gun accuracy, reload,
 and tracer visuals for a World of Tanks-style arcade tank game. All formulas are the
 gameplay abstractions used by WoT-class games (not full exterior ballistics), tuned with
@@ -75,7 +78,8 @@ vel.y -= G_SHELL * dt          // no drag; muzzle speed is constant horizontally
 On impact, compute in this order (WoT model):
 
 1. **Impact angle** `alpha` = angle between shell velocity and armor surface normal.
-2. **Ricochet check** (before pen roll): AP/APCR/APFSDS auto-bounce at `alpha > 70°`;
+2. **Ricochet check** (before pen roll): AP/APCR auto-bounce at `alpha > 70°`;
+   APFSDS at `alpha > 78°` (long rods are slope-resistant, armor-penetration.md §11.3);
    HEAT at `alpha > 85°`; HE/HESH never ricochet (they detonate).
    Overmatch: if `caliber >= 3 * armorNominal`, no ricochet possible (AP-family only).
 3. **Normalization**: reduce effective angle: `alpha -= normalizationDeg`.
@@ -128,6 +132,8 @@ All damage rolls are `baseDamage * random(0.75, 1.25)` (±25%, all types — WoT
   No pen falloff, no normalization, 85° ricochet, spaced-armor penalty (§3).
 - **HE** — see §6. Highest alpha of any type for a given gun (~1.5–2× AP alpha),
   lowest pen (~0.5× caliber in mm as a rule of thumb: 105 mm HE ≈ 53 mm pen).
+  (Shipped roster values follow this rule as of r1: 76→38, 85→43, 88→44,
+  122→61, 75→38 mm.)
 - **HESH** — HE mechanics with roughly 2× HE's penetration and slightly lower splash.
   Real HESH spalls without penetrating; abstract that as: on non-pen, HESH uses the HE
   non-pen formula but with `spallBonus = 1.25` multiplier (it is *better* than HE at
@@ -340,7 +346,7 @@ export const SHELL_TYPES = {
   },
   APFSDS: {
     velMult: 1.75, penMult: 1.60, dmgMult: 0.90,
-    normalizationDeg: 2, ricochetDeg: 70,
+    normalizationDeg: 2, ricochetDeg: 78,
     penLossPer100m: 0.01, penFloorFrac: 0.85,
     overmatch: true, explodes: false, blastRadiusMult: 0,
     spacedArmorPenalty: 0.05,
@@ -358,7 +364,7 @@ export const BALLISTICS = {
   SHELL_MAX_LIFETIME_S: 6,
   OVERMATCH_NO_RICOCHET: 3.0,       // caliber >= 3x armor: never bounces
   OVERMATCH_NORM: 2.0,              // caliber >= 2x armor: norm*1.4*cal/armor
-  RICOCHET_PEN_KEEP: 0.75,          // pen kept after a ricochet continues
+  RICOCHET_PEN_KEEP: 1.0,           // WoT ≥9.14: full pen retained (armor-penetration.md §4)
   HE_ARMOR_ABSORB: 1.1,             // §6 absorb coefficient
   HE_MIN_DIRECT_HIT_FRAC: 0.05,     // floor dmg on direct non-pen HE hit
 };

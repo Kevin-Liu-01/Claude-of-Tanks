@@ -170,23 +170,29 @@ function trackBandGeo(points, width, th, linkM) {
 
 function trackLoopPoints({ idler, sprocket, botY, topY, sag = 0.03 }) {
   const pts = [];
+  // CLEAR: the band rides OUTSIDE the sprocket teeth / idler rim — without
+  // this radial clearance the wrap is buried in the wheel geometry and the
+  // front/rear rises never read (r5 track-gate critique).
+  const CLEAR = 0.045;
   const arc = (c, from, to, steps) => {
     for (let k = 0; k <= steps; k++) {
       const a = (from + ((to - from) * k) / steps) * D2R;
-      pts.push([c.z + Math.sin(a) * c.r, c.y + Math.cos(a) * c.r]);
+      pts.push([c.z + Math.sin(a) * (c.r + CLEAR), c.y + Math.cos(a) * (c.r + CLEAR)]);
     }
   };
   // top run: sprocket top -> idler top, held up to the roller line with
   // catenary-style sag between support points
   const zs = sprocket.z, zi = idler.z;
-  const ys = sprocket.y + sprocket.r, yi = idler.y + idler.r;
-  const TOP_STEPS = 8;
+  const ys = sprocket.y + sprocket.r + CLEAR, yi = idler.y + idler.r + CLEAR;
+  // multiple catenary dips between support points (dead track droops every
+  // wheel span, not one long bow — r5 sag readability)
+  const TOP_STEPS = 16;
   for (let k = 0; k <= TOP_STEPS; k++) {
     const t = k / TOP_STEPS;
     const base = ys + (yi - ys) * t;
     const y = k === 0 || k === TOP_STEPS
       ? base
-      : Math.max(topY, base) - Math.sin(t * Math.PI) * sag - Math.abs(Math.sin(t * Math.PI * 3)) * sag * 0.25;
+      : Math.max(topY, base) - sag * (0.4 + 0.6 * Math.abs(Math.sin(t * Math.PI * 4.5))) * Math.min(1, Math.sin(t * Math.PI) * 3);
     pts.push([zs + (zi - zs) * t, y]);
   }
   arc(idler, 0, 170, 7);                       // around the idler (front)
@@ -224,13 +230,18 @@ function wheelGeo(style, r, w, seg) {
     boltRing(discs, r, w, 6);
     return { tire: null, disc: mergeAll(discs) };
   }
-  const tire = cylX(r, w, seg);                          // rubber band (separate material)
-  // Painted dish stands PROUD of the tire caps and covers 94% of the radius —
-  // real road wheels read as painted steel discs with a thin dark rim, never
-  // as solid black rubber circles (r3 running-gear critique).
-  discs.push(cylX(r * 0.94, w * 1.14, seg));
-  discs.push(cylX(r * 0.22, w * 1.34, 10));              // hub
-  discs.push(cylX(r * 0.13, w * 1.5, 8));                // hub cap
+  // Rubber band + a dark hub-well ring: the well sits between dish and hub so
+  // the hub reads against shadow (r5: wheels merged into one flat plate).
+  const tire = mergeAll([
+    cylX(r, w, seg),
+    cylX(r * 0.40, w * 1.2, seg),                        // hub shadow well
+  ]);
+  // Painted dish stands PROUD of the tire caps and covers 82% of the radius —
+  // real road wheels read as painted steel discs with a clearly visible dark
+  // rubber rim, never as full-face painted circles (r3 + r5 critiques).
+  discs.push(cylX(r * 0.82, w * 1.14, seg));
+  discs.push(cylX(r * 0.24, w * 1.38, 10));              // hub
+  discs.push(cylX(r * 0.14, w * 1.54, 8));               // hub cap
   boltRing(discs, r, w, 8);
   if (style === 'holes') {
     for (let k = 0; k < 6; k++) {
@@ -284,13 +295,33 @@ function buildRunningGear(P, cfg) {
     });
   }
   const entries = [];
+  const maxOff = layers ? Math.max(...layers.flat()) : 0;
   wheelZs.forEach((z, i) => {
     const offs = layers ? layers[i % layers.length] : [0];
     for (const side of [-1, 1]) {
       // off: per-wheel suspension travel from terrain conformance (smoothed)
-      for (const o of offs) entries.push({ x: side * (xc + o * side), y: wheelY, z, r: wheelR, road: true, i, off: 0 });
+      // rec: recessed interleave row — rendered with the shadowed wheel
+      // material so the Schachtellaufwerk layers read as depth (r5 hard gate)
+      for (const o of offs) {
+        entries.push({
+          x: side * (xc + o * side), y: wheelY, z, r: wheelR, road: true, i, off: 0,
+          // only rows well behind the proud face bake shadow (middle rows of a
+          // triple interleave keep paint; HVSS inner pair wheels go dark)
+          rec: layers ? o < maxOff - 0.15 : false,
+        });
+      }
     }
   });
+  // Schachtellaufwerk depth cue: a near-black AO wall inside the wheel bay so
+  // recessed rows separate from the hull side instead of camo-on-camo.
+  if (layers) {
+    const z0 = Math.min(...wheelZs) - wheelR, z1 = Math.max(...wheelZs) + wheelR;
+    const shadowH = topY + 0.1;
+    for (const side of [-1, 1]) {
+      P.add('hullShadow', new THREE.BoxGeometry(0.02, shadowH, z1 - z0),
+        side * (xc - wheelW * 2.0), shadowH / 2 + 0.03, (z0 + z1) / 2);
+    }
+  }
   const rollerEntries = [];
   for (const rl of rollers) {
     for (const side of [-1, 1]) rollerEntries.push({ x: side * xc, y: rl.y, z: rl.z, r: rl.r ?? rollerR, road: false, i: 0 });
@@ -312,7 +343,13 @@ function buildRunningGear(P, cfg) {
     return im;
   };
   if (tire) mkInst(tire, mats.rubber, entries);
-  mkInst(disc, style === 'rubber' || style === 'holes' ? mats.wheels : mats.detail, entries);
+  const dishMat = style === 'rubber' || style === 'holes' ? mats.wheels : mats.detail;
+  const proudList = entries.filter((e) => !e.rec);
+  const recList = entries.filter((e) => e.rec);
+  if (proudList.length) mkInst(disc, dishMat, proudList);
+  // recessed interleave rows share the disc geometry but take the shadowed
+  // wheel material (own InstancedMesh — one extra draw call on 2 tanks)
+  if (recList.length) mkInst(disc, mats.wheelsRecessed || dishMat, recList);
   if (rollerEntries.length) {
     const rg = mergeAll([cylX(rollerR, trackW * 0.55, Math.max(8, seg - 6)), cylX(rollerR * 0.4, trackW * 0.62, 8)]);
     mkInst(rg, mats.detail, rollerEntries);
@@ -336,7 +373,8 @@ function buildRunningGear(P, cfg) {
   }
 
   // tracks — visible sag on the top run when there are no return rollers
-  const sag = rollers.length ? 0.022 : 0.055;
+  // (WW2 dead-track runs droop hard between supports — r5 track gate)
+  const sag = rollers.length ? 0.022 : 0.075;
   const pts = trackLoopPoints({ idler: { ...idler, y: idler.y }, sprocket, botY, topY, sag });
   const tg = trackBandGeo(pts, trackW, trackTh, mats.trackLinkM);
   P.disposables.push(tg);
@@ -409,7 +447,7 @@ function buildRunningGear(P, cfg) {
         for (let i = 0; i < list.length; i++) {
           const e = list[i];
           const scroll = e.x < 0 ? l : r;
-          const bob = e.road ? Math.sin(scroll * 2.7 + e.i * 1.93) * 0.012 : 0;
+          const bob = e.road ? Math.sin(scroll * 2.7 + e.i * 1.93) * 0.02 : 0;
           _q.setFromAxisAngle(_X, scroll / e.r);
           _v.set(e.x, e.y + bob + (e.off || 0), e.z);
           _s.set(1, 1, 1);
@@ -447,8 +485,10 @@ function buildRunningGear(P, cfg) {
           const wy = py + y2;
           const wz = pz - x1 * sb + z2 * cb;
           const dev = sampler(wx, wz) - wy;
-          const target = dev < -0.07 ? -0.07 : (dev > 0.09 ? 0.09 : dev);
-          e.off += (target - e.off) * 0.30;
+          // ±0.13 m travel, snappy response: wheels visibly drop into ruts
+          // and ride crests instead of the r2 near-rigid ±7 cm creep
+          const target = dev < -0.13 ? -0.13 : (dev > 0.13 ? 0.13 : dev);
+          e.off += (target - e.off) * 0.45;
         }
       }
     },
@@ -492,21 +532,21 @@ function buildGun(P, cfg) {
   }
   if (collar) g.push(xform(cylZ(r * 1.35, 0.09, seg), 0, 0, len - 0.55));    // MRS collar
   if (brake) {
-    // Proper cylindrical baffle drums with a stepped profile — never flat
-    // discs. Bare gun steel (gunDark bucket): only the brake stays unpainted.
-    const bp = [];
-    const br = r * 1.75;
-    bp.push(xform(cylZ(r * 0.95, 0.6, seg), 0, 0, len - 0.3));               // core tube through the brake
-    bp.push(xform(cylZ(br * 0.92, 0.09, seg, r * 1.1), 0, 0, len - 0.5));    // tapered lead-in cone
-    bp.push(xform(cylZ(br * 0.92, 0.17, seg), 0, 0, len - 0.38));            // rear baffle drum
+    // Two-chamber baffle brake, CAMO-PAINTED with the tube — crews painted
+    // brakes with the vehicle, and the old bare-black drums at 1.75x tube
+    // read as a rubber toy part (r5). Diameter held to ~1.35x the tube
+    // (~2x bore on the 8.8 cm), with a visible slot between the chambers.
+    const br = r * 1.35;
+    g.push(xform(cylZ(r * 0.72, 0.62, seg), 0, 0, len - 0.31));              // core tube through the brake
+    g.push(xform(cylZ(br * 0.9, 0.1, seg, r * 1.08), 0, 0, len - 0.52));     // tapered lead-in cone
     if (brake === 'double') {
-      bp.push(xform(cylZ(br, 0.2, seg), 0, 0, len - 0.11));                  // front baffle drum
-      bp.push(xform(cylZ(br * 0.6, 0.06, seg), 0, 0, len - 0.01));           // exit washer step
+      g.push(xform(cylZ(br, 0.15, seg), 0, 0, len - 0.37));                  // rear baffle chamber
+      g.push(xform(cylZ(br, 0.16, seg), 0, 0, len - 0.10));                  // front baffle chamber
+      g.push(xform(cylZ(br * 0.55, 0.05, seg), 0, 0, len - 0.005));          // exit washer
     } else {
-      bp.push(xform(cylZ(br, 0.18, seg), 0, 0, len - 0.1));
-      bp.push(xform(cylZ(br * 0.55, 0.05, seg), 0, 0, len - 0.01));
+      g.push(xform(cylZ(br, 0.2, seg), 0, 0, len - 0.13));
+      g.push(xform(cylZ(br * 0.5, 0.05, seg), 0, 0, len - 0.005));
     }
-    for (const geo of bp) P.add('gunDark', geo);
   }
   for (const geo of g) P.add('gun', geo);
   P.muzzleZ = len;
@@ -613,11 +653,12 @@ function shovelTool(P, x, y, z, len = 0.95) {
   P.add('hullDark', box(0.11, 0.03, 0.22), x, y, z + len * 0.55);
 }
 function spareTrackStrip(P, bucket, x, y, z, links, rx = 0, ry = 0) {
-  // stack of individual link slabs so the strip reads segmented
-  const dark = bucket.startsWith('turret') ? 'turretDark' : 'hullDark';
+  // stack of individual link slabs so the strip reads segmented — worn track
+  // steel (trackLink material), never flat blockout black (r5)
+  const steel = bucket.startsWith('turret') ? 'turretTrack' : 'hullTrack';
   for (let k = 0; k < links; k++) {
-    P.add(dark, box(0.5, 0.045, 0.15), x, y, z + (k - (links - 1) / 2) * 0.165, rx, ry, 0);
-    P.add(dark, box(0.44, 0.06, 0.05), x, y + 0.02, z + (k - (links - 1) / 2) * 0.165, rx, ry, 0);
+    P.add(steel, box(0.5, 0.045, 0.15), x, y, z + (k - (links - 1) / 2) * 0.165, rx, ry, 0);
+    P.add(steel, box(0.44, 0.06, 0.05), x, y + 0.02, z + (k - (links - 1) / 2) * 0.165, rx, ry, 0);
   }
 }
 
@@ -645,7 +686,7 @@ function buildM4A3E8(P) {
   liftEye(P, 'hullDetail', 0.95, 1.6, 2.5);
   periscope(P, 'hullDetail', -0.55, 1.96, 1.7);
   periscope(P, 'hullDetail', 0.55, 1.96, 1.7);
-  P.add('hullDark', box(0.5, 0.05, 0.24), -0.6, 1.42, 2.72, -0.82, 0, 0);       // spare track links
+  P.add('hullTrack', box(0.5, 0.05, 0.24), -0.6, 1.42, 2.72, -0.82, 0, 0);      // spare track links
   towCable(P, [[-1.1, 1.62, 2.28], [-0.5, 1.4, 2.62], [0.5, 1.4, 2.62], [1.1, 1.62, 2.28]]);
   stowage(P, 'hullCloth', rng, [[-1.25, 2.03, -1.0, 0.4, 0.18, 1.2], [1.25, 2.03, -0.6, 0.4, 0.2, 1.6]]);
   P.add('hullDetail', box(0.06, 0.5, 0.06), -1.35, 2.2, -2.9);                  // antenna base
@@ -691,35 +732,54 @@ function buildTiger(P) {
   P.add('hull', box(2.26, 0.68, 6.32), 0, 0.81, 0);                             // lower hull
   // ONE continuous overhanging superstructure box reaching down to the track
   // top run — the real Tiger side is a single flat plate from deck to tracks,
-  // never a stack of stepped slabs (r3 silhouette critique).
-  P.add('hull', box(3.71, 0.91, 6.17), 0, 1.505, -0.075);
-  P.add('hull', frustum(1.5, 2.92, 2.7, 1.5, 3.16, 2.7, 0.47, 1.0));            // lower front
-  // 9° driver plate (top ring keeps a sliver of depth — a zero-area face
-  // would produce NaN normals and poison the bloom chain)
-  P.add('hull', frustum(1.855, 3.16, 2.98, 1.855, 3.04, 2.98, 1.0, 1.96));
-  fenders(P, 1.13, 1.87, 1.99, -3.16, 3.16, 0.04);
-  // bow MG ball mount: hemispherical ball + MG stub in a bolted collar plate
-  P.add('hullDetail', sph(0.14, P.q ? 22 : 12), 0.55, 1.62, 3.08);
-  P.add('hullDark', cylZ(0.032, 0.3, 8), 0.55, 1.62, 3.24);
-  P.add('hullDetail', cylZ(0.19, 0.05, P.q ? 22 : 12), 0.55, 1.62, 3.03);
-  // driver's visor block: armored slab with a dark vision slit under a brow
-  P.add('hullDetail', box(0.56, 0.22, 0.1), -0.5, 1.66, 3.10);
-  P.add('hullDark', box(0.42, 0.05, 0.04), -0.5, 1.63, 3.15);
-  P.add('hullDetail', box(0.56, 0.06, 0.14), -0.5, 1.76, 3.11);
+  // never a stack of stepped slabs (r3 silhouette critique). Front face pulled
+  // back to 2.56 so the bow reads as THREE distinct plates (r5): 24° nose ->
+  // near-horizontal glacis shelf -> 9°-leaning full-width driver plate that
+  // stands proud of the superstructure with the fender line running under it.
+  P.add('hull', box(3.71, 0.91, 5.72), 0, 1.505, -0.30);
+  P.add('hull', frustum(1.5, 2.92, 2.7, 1.5, 3.16, 2.7, 0.47, 0.95));           // nose plate (24°)
+  P.add('hull', frustum(1.855, 3.16, 2.5, 1.855, 2.68, 2.5, 0.95, 1.07));       // glacis shelf (~78°)
+  P.add('hull', frustum(1.855, 2.68, 2.5, 1.855, 2.62, 2.5, 1.07, 1.96));       // driver plate (9°)
+  // sponson underside AO: dark occluded ceiling above the track run (r5)
+  for (const s of [-1, 1]) {
+    P.add('hullShadow', new THREE.BoxGeometry(0.7, 0.026, 5.7), s * 1.49, 1.032, -0.30);
+  }
+  // full-length mudguards AT THE SPONSON LINE with a shadow gap over the
+  // tracks — the missing fender line was flagged as "cardboard hull" (r5)
+  fenders(P, 1.16, 1.95, 1.09, -3.16, 3.16, 0.045);
+  for (const z of [3.11, -3.11]) {                                              // flared fender tips
+    P.add('hull', box(0.79, 0.04, 0.12), 1.555, 1.13, z, z > 0 ? -0.5 : 0.5, 0, 0);
+    P.add('hull', box(0.79, 0.04, 0.12), -1.555, 1.13, z, z > 0 ? -0.5 : 0.5, 0, 0);
+  }
+  // bow MG ball mount: hemispherical ball + MG stub in a bolted collar plate,
+  // ball and collar painted in the hull scheme (only the MG muzzle is steel)
+  P.add('hull', sph(0.14, P.q ? 22 : 12), 0.55, 1.62, 2.72);
+  P.add('hullDark', cylZ(0.032, 0.3, 8), 0.55, 1.62, 2.88);
+  P.add('hull', cylZ(0.19, 0.05, P.q ? 22 : 12), 0.55, 1.62, 2.67);
+  // driver's visor block: scheme-painted armored slab, dark slit only
+  P.add('hull', box(0.56, 0.22, 0.1), -0.5, 1.62, 2.72);
+  P.add('hullDark', box(0.42, 0.05, 0.04), -0.5, 1.59, 2.77);
+  P.add('hull', box(0.56, 0.06, 0.14), -0.5, 1.72, 2.73);
   // exhausts + Feifel canisters
   for (const s of [-1, 1]) {
     P.add('hullDark', cylY(0.085, 0.085, 0.75, 10), s * 0.5, 2.2, -3.24);
     P.add('hullDetail', cylY(0.11, 0.11, 0.5, 10, false), s * 0.5, 2.05, -3.28);
     P.add('hullDetail', cylY(0.12, 0.12, 0.62, 10), s * 1.45, 1.9, -3.22);
   }
-  headlight(P, 0, 1.99, 3.02, -0.9);                                            // headlight
-  for (const s of [-1, 1]) P.add('hullDetail', cylY(0.045, 0.045, 0.12, 10), s * 1.7, 2.0, 3.0); // S-mine stubs
-  liftEye(P, 'hullDetail', -1.5, 2.02, 2.9);
-  liftEye(P, 'hullDetail', 1.5, 2.02, 2.9);
-  periscope(P, 'hullDetail', -0.5, 1.98, 2.55);                                 // driver roof periscope
-  towCable(P, [[-1.7, 1.9, -2.2], [-1.82, 1.95, 0], [-1.7, 1.9, 2.4]]);
-  towCable(P, [[1.7, 1.9, -2.2], [1.82, 1.95, 0], [1.7, 1.9, 2.4]]);
-  P.add('hullDark', box(0.55, 0.05, 0.26), 0.7, 1.45, 3.19, -0.1, 0, 0);        // spare links, bow
+  headlight(P, 0, 1.14, 2.95, -0.55);                                           // headlight, center glacis
+  for (const s of [-1, 1]) P.add('hullDetail', cylY(0.045, 0.045, 0.12, 10), s * 1.7, 2.0, 2.44); // S-mine stubs
+  liftEye(P, 'hullDetail', -1.5, 2.02, 2.4);
+  liftEye(P, 'hullDetail', 1.5, 2.02, 2.4);
+  periscope(P, 'hullDetail', -0.5, 1.98, 2.3);                                  // driver roof periscope
+  towCable(P, [[-1.7, 1.9, -2.2], [-1.82, 1.95, 0], [-1.7, 1.9, 2.3]]);
+  towCable(P, [[1.7, 1.9, -2.2], [1.82, 1.95, 0], [1.7, 1.9, 2.3]]);
+  // spare links hung on the driver plate in a hull-color mounting frame —
+  // worn track steel, seated instead of floating black boxes (r5)
+  P.add('hull', box(0.62, 0.5, 0.04), 0.85, 1.30, 2.68);                        // mounting frame
+  for (let k = 0; k < 3; k++) {
+    P.add('hullTrack', box(0.16, 0.44, 0.05), 0.64 + k * 0.21, 1.30, 2.71);
+    P.add('hullTrack', box(0.05, 0.13, 0.07), 0.64 + k * 0.21, 1.30, 2.72);
+  }
   // pioneer tools + jack on the deck (the Tiger carried its toolbox outside)
   shovelTool(P, 1.05, 2.0, 1.4);
   shovelTool(P, -1.05, 2.0, 0.2, 0.8);
@@ -727,7 +787,7 @@ function buildTiger(P) {
   P.add('hullDark', box(0.1, 0.05, 0.28), -1.45, 2.0, 1.65);
   P.add('hullDark', box(0.5, 0.14, 0.2), 1.35, 2.05, -2.35);                    // 20t jack
   P.add('hullWood', box(0.28, 0.12, 0.34), 1.0, 2.03, -2.7);                    // jack block
-  P.add('hullDetail', cylZ(0.06, 0.4, 8), -0.95, 2.0, 2.55);                    // fire extinguisher
+  P.add('hullDetail', cylZ(0.06, 0.4, 8), -0.95, 2.0, 2.25);                    // fire extinguisher
   P.add('hullDark', box(0.6, 0.1, 0.14), 0.15, 2.0, -0.9);                      // wire cutters / crank
   spareTrackStrip(P, 'hull', 1.55, 1.98, 0.0, 3);                               // deck-edge spare links
   // turret: the iconic horseshoe — ONE extruded profile: flat front plate,
@@ -753,11 +813,13 @@ function buildTiger(P) {
   liftEye(P, 'turretDetail', -0.9, TH + 0.05, -0.9);
   liftEye(P, 'turretDetail', 0.9, TH + 0.05, -0.9);
   P.add('turretDark', box(0.1, 0.1, 0.3), TW - 0.04, 0.55, -0.2, 0, 0.35, 0);   // side pistol port
-  // spare track links hung on the turret side walls (late-war signature)
+  // spare track links hung on the turret side walls (late-war signature) —
+  // worn track steel with a scheme-painted hanger rail, not blockout black
   for (const s of [-1, 1]) {
+    P.add('turret', box(0.03, 0.06, 0.72), s * (TW + 0.01), 0.58, -0.30);       // hanger rail
     for (let k = 0; k < 3; k++) {
-      P.add('turretDark', box(0.05, 0.44, 0.16), s * (TW + 0.02), 0.34, -0.10 - k * 0.20);
-      P.add('turretDark', box(0.11, 0.13, 0.05), s * (TW + 0.05), 0.34, -0.10 - k * 0.20);
+      P.add('turretTrack', box(0.05, 0.44, 0.16), s * (TW + 0.02), 0.34, -0.10 - k * 0.20);
+      P.add('turretTrack', box(0.11, 0.13, 0.05), s * (TW + 0.05), 0.34, -0.10 - k * 0.20);
     }
   }
   // rear Gepaeckkasten stowage bin
@@ -774,15 +836,18 @@ function buildTiger(P) {
   // 8.8cm L/56: muzzle at ~5.3m from hull center = 8.45m overall (the old
   // 4.93m tube read as the Tiger II's L/71 — r3 gun critique)
   buildGun(P, { len: 4.5, r: 0.085, brake: 'double' });
-  // Schachtellaufwerk: 16 axles/side at half pitch, alternating proud/recessed
-  // rows to read as the interleaved wheel stack
+  // Schachtellaufwerk: 16 axles/side at half pitch cycling through THREE
+  // interleave rows (proud / recessed / middle, >=0.13 m between rows) — the
+  // recessed rows render with the shadowed wheel material and a near-black AO
+  // wall sits behind the stack so the layers read as depth (r5 hard gate).
+  // Sprocket/idler raised + enlarged for a readable front wrap and rear rise.
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.4, wheelW: 0.12, xc: 1.42,
     wheelZs: [2.55, 2.21, 1.87, 1.53, 1.19, 0.85, 0.51, 0.17,
       -0.17, -0.51, -0.85, -1.19, -1.53, -1.87, -2.21, -2.55],
-    layers: [[0.20], [-0.02]],
-    sprocket: { z: 2.9, y: 0.46, r: 0.35 }, idler: { z: -2.9, y: 0.44, r: 0.33 },
-    trackW: 0.725, topY: 0.92,
+    layers: [[0.22], [-0.04], [0.09]],
+    sprocket: { z: 2.92, y: 0.50, r: 0.40 }, idler: { z: -2.92, y: 0.48, r: 0.36 },
+    trackW: 0.725, trackTh: 0.13, topY: 0.92,
   });
   stowage(P, 'hullCloth', rng, [[0, 2.02, -2.6, 1.6, 0.16, 0.7]]);
   tarpRoll(P, 'hullCloth', -1.5, 2.06, -1.6, 1.0, 0.09, false);
@@ -1250,6 +1315,9 @@ const BUCKET_DEF = {
   turretCloth: ['turretG', 'canvasCloth'], turretGlass: ['turretG', 'glass'],
   gun: ['recoilG', 'barrel'], gunDark: ['recoilG', 'dark'], gunMount: ['gunG', 'hull'],
   gunMountDark: ['gunG', 'dark'],
+  // spare track links (worn steel) + baked-shadow AO panels
+  hullTrack: ['hullG', 'trackLink'], turretTrack: ['turretG', 'trackLink'],
+  hullShadow: ['hullG', 'shadow'],
 };
 const CAMO_BUCKETS = new Set(['hull', 'turret', 'gun', 'gunMount']);
 // Buckets that survive past LOD1 — everything else is greeble-class and
@@ -1420,9 +1488,12 @@ export function createTank(specId, engineCtx, opts = {}) {
   // ---- state ----
   let destroyed = false;
   let recoilT = 1e9;
-  // Recuperator profile: sharp 90 ms slide back in the cradle, then a damped
-  // hydraulic return over ~0.55 s (≈0.64 s total — real recuperator cadence).
-  const REC_BACK = 0.09, REC_RETURN = 0.55, REC_AMP = 0.24;
+  let recoilPending = false;         // hull-rock impulse queued by recoilKick
+  // Recuperator profile: sharp 60 ms slide back in the cradle, then a damped
+  // hydraulic return over ~0.5 s. Travel scales with caliber — a 120 mm gun
+  // recoils 30-40 cm and WoT exaggerates it; the r2 0.24 m read as pixels.
+  const REC_BACK = 0.06, REC_RETURN = 0.5;
+  const REC_AMP = 0.36 * Math.min(1.25, Math.max(0.55, ((spec.gun && spec.gun.caliberMm) || 100) / 120));
   const originalMats = [];
   root.traverse((o) => { if (o.isMesh) originalMats.push([o, o.material]); });
 
@@ -1432,6 +1503,15 @@ export function createTank(specId, engineCtx, opts = {}) {
   let flinchP = 0, flinchR = 0;      // hit-reaction damped oscillator
   let flinchPV = 0, flinchRV = 0;
   const FLINCH_W = 13, FLINCH_Z = 0.32;
+  // suspension spring: underdamped pitch/roll rock layered on the sim's stiff
+  // 4-corner attitude — squat on accel, dive on braking, bounce over ruts.
+  // Works in visualPitch/visualRoll space (nose-up positive / right-down
+  // positive) and is ADDED to the sim attitude before the root rotation.
+  let suspP = 0, suspR = 0, suspPV = 0, suspRV = 0;
+  let prevSpeed = 0;
+  const SUSP_W = 7.5, SUSP_Z = 0.30;
+  let wreckAge = -1;                 // >= 0 while destroyed (ember pulse timer)
+  const emberPhase = rng() * Math.PI * 2;
   // ammo-rack turret pop (physics arc + spin, settles askew on the hull)
   let popActive = false;
   let popT = 0;
@@ -1443,6 +1523,15 @@ export function createTank(specId, engineCtx, opts = {}) {
     turretG.rotation.z = 0.16;
     turretG.rotation.y = popYaw0 + 0.5;
     turretG.position.y = armor.turretPivot[1] + POP_SETTLE_Y;
+    turretG.position.x = 0;
+    popActive = false;
+  }
+
+  /** Plain-kill wreck pose: turret stays seated, just knocked a touch loose. */
+  function settleSubtle() {
+    turretG.rotation.z = 0.045;
+    turretG.rotation.y = popYaw0 + 0.09;
+    turretG.position.y = armor.turretPivot[1] - 0.05;
     turretG.position.x = 0;
     popActive = false;
   }
@@ -1470,8 +1559,18 @@ export function createTank(specId, engineCtx, opts = {}) {
       root.position.copy(state.pos);
       // Turn-lean sway: the hull banks INTO speed × yaw-rate (visual layer on
       // top of the sim's 4-corner attitude spring).
-      const swayTarget = destroyed ? 0 : Math.max(-0.035, Math.min(0.035, state.yawRate * state.speed * 0.011));
-      sway += (swayTarget - sway) * 0.12;
+      const swayTarget = destroyed ? 0 : Math.max(-0.055, Math.min(0.055, state.yawRate * state.speed * 0.016));
+      sway += (swayTarget - sway) * 0.10;
+      // Gun-fire hull rock: recoil reaction fed through the flinch spring —
+      // firing forward pitches the nose up 1-2 deg then settles.
+      if (recoilPending) {
+        recoilPending = false;
+        if (!destroyed) {
+          const yawW = state.yaw + state.turretYaw;
+          const mag = 1.2 * Math.min(1.4, ((spec.gun && spec.gun.caliberMm) || 100) / 100);
+          visual.hitFlinch(-Math.sin(yawW), -Math.cos(yawW), mag, state.yaw);
+        }
+      }
       // Hit-flinch: caliber-scaled damped rock layered onto pitch/roll.
       if (flinchP !== 0 || flinchR !== 0 || flinchPV !== 0 || flinchRV !== 0) {
         flinchPV += (-FLINCH_W * FLINCH_W * flinchP - 2 * FLINCH_Z * FLINCH_W * flinchPV) * SIM_STEP;
@@ -1482,10 +1581,32 @@ export function createTank(specId, engineCtx, opts = {}) {
           flinchP = flinchR = flinchPV = flinchRV = 0;
         }
       }
-      root.rotation.set(-state.visualPitch + flinchP, state.yaw, state.visualRoll + sway + flinchR, 'YXZ');
+      // r5 terrain-contact gate: the rock/settle suspension spring is now
+      // integrated by the SIM (movement.js state._susp — the same spring,
+      // same constants, stepped once per fixed sim tick) so the terrain
+      // SUPPORT SOLVE can raise pos.y against the EXACT rendered attitude.
+      // A second self-timed copy here desynced from the sim at any render
+      // rate != 60 fps and re-buried the tracks 5-10 cm. Read the sim's
+      // values (guards: killcam ghosts / staged poses may pass states
+      // without the mirror fields).
+      if (!destroyed) {
+        suspP = state._susp ? state._susp.p : suspP;
+        suspR = state._susp ? state._susp.r : suspR;
+        if (state._swayEst !== undefined) sway = state._swayEst;
+      }
+      prevSpeed = state.speed;
+      root.rotation.set(-(state.visualPitch + suspP) + flinchP, state.yaw,
+        state.visualRoll + suspR + sway + flinchR, 'YXZ');
       if (destroyed) {
         // wreck: turret pose owned by the pop/settle animation, gun droops
         if (popActive) { popT += SIM_STEP; applyPop(); }
+        // ember pulse: engine-deck glow throbs and cools over the first ~20 s
+        if (wreckAge >= 0) {
+          wreckAge += SIM_STEP;
+          const decay = Math.exp(-wreckAge / 8);
+          mats.burnt.emissiveIntensity =
+            0.02 + 0.65 * decay * (0.55 + 0.45 * Math.sin(wreckAge * 2.4 + emberPhase));
+        }
       } else {
         turretG.rotation.y = state.turretYaw;
         gunG.rotation.x = -state.gunPitch;
@@ -1518,8 +1639,8 @@ export function createTank(specId, engineCtx, opts = {}) {
     /** @param {THREE.Vector3} out @returns {THREE.Vector3} world-space turret roof anchor */
     turretTopWorld(out) { return turretTop.getWorldPosition(out); },
 
-    /** Kick the barrel back (visual only; self-timed). */
-    recoilKick() { recoilT = 0; },
+    /** Kick the barrel back (visual only; self-timed) + queue the hull rock. */
+    recoilKick() { recoilT = 0; recoilPending = true; },
 
     /**
      * Give the visual a terrain sampler for per-wheel suspension conformance.
@@ -1538,7 +1659,8 @@ export function createTank(specId, engineCtx, opts = {}) {
       const cy = Math.cos(yaw), sy = Math.sin(yaw);
       const f = nx * sy + nz * cy;   // forward component of the normal
       const r = nx * cy - nz * sy;   // right component
-      const imp = Math.min(mag, 2) * 0.10;
+      // 0.18 (was 0.10): the r2 rock was sub-pixel at gameplay framing
+      const imp = Math.min(mag, 2) * 0.18;
       flinchPV += f * imp;           // frontal hit rocks the nose up/back
       flinchRV += r * imp * 0.8;
     },
@@ -1582,15 +1704,19 @@ export function createTank(specId, engineCtx, opts = {}) {
         mesh.material = mats.burnt;
       }
       for (const d of decalMeshes) d.visible = false;
-      // WoT ammo-rack signature: gun droops, turret pops then lands askew.
-      gunG.rotation.x = 0.12;
+      // fresh wreck: embers glow bright, then pulse and cool via syncFromState
+      wreckAge = Math.max(0, (opts && opts.ageS) || 0);
+      mats.burnt.emissiveIntensity = 0.02 + 0.65 * Math.exp(-wreckAge / 8);
+      gunG.rotation.x = 0.12; // gun droops on any death
       popYaw0 = turretG.rotation.y;
       if (opts && opts.pop) {
+        // WoT ammo-rack signature: turret pops, spins, lands askew.
         popActive = true;
         popT = Math.max(0, opts.ageS || 0);
         applyPop();
       } else {
-        settleTurret();
+        // plain HP kill: no turret toss — it stays seated, slightly loose
+        settleSubtle();
       }
     },
 
@@ -1615,9 +1741,14 @@ export function createTank(specId, engineCtx, opts = {}) {
       popActive = false;
       popT = 0;
       recoilT = 1e9;
+      recoilPending = false;
       recoilG.position.z = 0;
       sway = 0;
+      wreckAge = -1;
+      mats.burnt.emissiveIntensity = 0.018;
       flinchP = flinchR = flinchPV = flinchRV = 0;
+      suspP = suspR = suspPV = suspRV = 0;
+      prevSpeed = 0;
       if (P.gear && P.gear.setBroken) {
         P.gear.setBroken('trackL', false);
         P.gear.setBroken('trackR', false);

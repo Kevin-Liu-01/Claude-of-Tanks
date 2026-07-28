@@ -9,18 +9,19 @@
  */
 import * as THREE from 'three';
 import { CSM } from 'three/examples/jsm/csm/CSM.js';
+import { getPreset, onPresetChange } from './quality.js';
 
 const CASCADES = 4;
 // Battlefield establishing shots read objects out to ~500 m; with the clearer
 // exp2 fog (sky.js) shadows must hold that far or buildings/trees float.
-const SHADOW_MAX_FAR_M = 520;
-const SHADOW_MAP_SIZE = 4096;
-// PERF: per-cascade shadow map sizes. The two FAR cascades cover 100s of
-// meters — one texel is already subpixel on a 1080p screen out there, so
-// halving their resolution is visually free and saves 96 MB of GPU RTs plus
-// shadow fill rate. (CSM's texel-snap uses the uniform 4096 grid; the finer
-// snap on a 2048 map is a <1-texel offset at 250m+ — subpixel.)
-const SHADOW_MAP_SIZES = [SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, 2048, 2048];
+// PERF: shadow range and per-cascade map sizes now come from the graphics
+// quality preset (src/engine/quality.js — ultra/high keep the tuned
+// 520 m / [4096,4096,2048,2048]; medium/low trade range+resolution for fill
+// rate). The two FAR cascades cover 100s of meters — one texel is already
+// subpixel on a 1080p screen out there, so halving their resolution is
+// visually free and saves 96 MB of GPU RTs plus shadow fill rate. (CSM's
+// texel-snap uses the uniform near-cascade grid; the finer snap on a smaller
+// far map is a <1-texel offset at 250m+ — subpixel.)
 // PERF: far cascades re-render every OTHER frame (round-robin, one per frame)
 // — they hold ~2/3 of all shadow draw calls, and one frame of staleness at
 // 250-520 m is a fraction of a texel of camera motion. Near cascades (player
@@ -28,7 +29,16 @@ const SHADOW_MAP_SIZES = [SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, 2048, 2048];
 // cascades (shot mode / map switch / FOV change) for deterministic captures.
 const FAR_CASCADE_START = 2;
 const SHADOW_BIAS = -0.0002;
-const SHADOW_NORMAL_BIAS = 0.035; // kills acne on terrain slopes (CSM only exposes shadowBias)
+const SHADOW_NORMAL_BIAS = 0.045; // kills acne on terrain slopes (CSM only exposes shadowBias)
+// r4 penumbra: r185's PCF getShadow() is a 5-tap Vogel disk rotated per-pixel
+// by interleaved gradient noise, and its disk radius comes straight from
+// `shadow.radius` (in shadow-map texels). The default 1.0 produced razor-hard
+// edges at every distance ("single untuned shadow map" read). Radii widen per
+// cascade — near-cascade contact shadows stay tight (2.2 texels ≈ 2-3 cm at
+// cascade-0 density) while far-cascade texels already span ~0.5 m, so 4 texels
+// there gives the broad soft penumbra distant tree/building shadows should
+// have: a cheap PCSS-style distance-widening approximation.
+const SHADOW_RADII = [2.2, 3.0, 3.6, 4.2];
 // Key-to-fill ratio is THE readability lever: the warm sun must dominate the
 // cool sky ambient ~7-8:1 so cast shadows and form shading actually register
 // after ACES. Pixel-measured on the battlefield shot: at 3.2/0.26/0.45 the
@@ -180,13 +190,14 @@ function buildCoverageMipmaps(tex, cutoff) {
  * @returns {Lighting}
  */
 export function createLighting(scene, camera, sunDir) {
+  const preset = getPreset();
   const csm = new CSM({
     camera,
     parent: scene,
     cascades: CASCADES,
-    maxFar: SHADOW_MAX_FAR_M,
+    maxFar: preset.shadowMaxFar,
     mode: 'practical',
-    shadowMapSize: SHADOW_MAP_SIZE,
+    shadowMapSize: preset.shadowMapSizes[0],
     shadowBias: SHADOW_BIAS,
     lightDirection: sunDir.clone().negate().normalize(), // CSM wants FROM-sun direction
     lightIntensity: SUN_INTENSITY,
@@ -194,18 +205,44 @@ export function createLighting(scene, camera, sunDir) {
   csm.fade = true;
   csm.updateFrustums(); // required after changing fade
 
+  /** Apply per-cascade shadow map sizes; dispose old RTs so three reallocates. */
+  function applyShadowSizes(sizes) {
+    for (let i = 0; i < csm.lights.length; i++) {
+      const size = sizes[Math.min(i, sizes.length - 1)];
+      const shadow = csm.lights[i].shadow;
+      if (shadow.mapSize.x !== size) {
+        shadow.mapSize.set(size, size);
+        if (shadow.map) {
+          shadow.map.dispose();
+          shadow.map = null;
+        }
+        shadow.needsUpdate = true;
+      }
+    }
+    csm.shadowMapSize = sizes[0]; // texel-snap grid follows the near cascades
+  }
+
   for (let i = 0; i < csm.lights.length; i++) {
     csm.lights[i].shadow.normalBias = SHADOW_NORMAL_BIAS;
+    csm.lights[i].shadow.radius = SHADOW_RADII[Math.min(i, SHADOW_RADII.length - 1)];
     csm.lights[i].color.setHex(SUN_COLOR);
-    // PERF: per-cascade map size (before the first render allocates the RT)
-    const size = SHADOW_MAP_SIZES[Math.min(i, SHADOW_MAP_SIZES.length - 1)];
-    csm.lights[i].shadow.mapSize.set(size, size);
     // PERF: far cascades update round-robin via needsUpdate (see update())
     if (i >= FAR_CASCADE_START) {
       csm.lights[i].shadow.autoUpdate = false;
       csm.lights[i].shadow.needsUpdate = true; // first frame renders all
     }
   }
+  // PERF: per-cascade map size (before the first render allocates the RTs)
+  applyShadowSizes(preset.shadowMapSizes);
+  // Live quality switching (settings UI → quality.setPresetName)
+  onPresetChange((p) => {
+    applyShadowSizes(p.shadowMapSizes);
+    if (csm.maxFar !== p.shadowMaxFar) {
+      csm.maxFar = p.shadowMaxFar;
+      csm.updateFrustums();
+    }
+    forceFarCascades();
+  });
   let rrIndex = 0; // round-robin cursor over the far cascades
 
   /** Mark every throttled (far) cascade for re-render on the next frame. */

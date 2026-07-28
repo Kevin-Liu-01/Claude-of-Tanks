@@ -44,7 +44,7 @@ const SKY_RADIANCE_SCALE = 0.38;
 // as a compact bright disc + halo instead of a screen-edge blowout. Scene
 // emissives (muzzle flash, tracers, fire) are untouched — Sky shader only.
 const SKY_KNEE = 1.2;
-const SKY_KNEE_RANGE = 0.4;
+const SKY_KNEE_RANGE = 0.5; // r4: 0.4 → 0.5 — the sun disc blooms a touch brighter
 const SKY_KNEE_FALLOFF = 0.125; // 1/e width of the shoulder in luminance units
 // Horizon haze treatment (r3 critique: "horizon band blows out to near pure
 // white with no hue — reads as fog-card overexposure"). Inside the low-
@@ -52,11 +52,16 @@ const SKY_KNEE_FALLOFF = 0.125; // 1/e width of the shoulder in luminance units
 // white after ACES, and a faint luminance-preserving pale-blue hue floor is
 // mixed in so the haze reads as atmosphere, never as blown white. A tiny
 // screen-space dither breaks up banding on these low-frequency ramps.
-const HAZE_MAX_LUM = 0.80; // linear pre-ACES luminance ceiling in the band
-const HAZE_COMPRESS = 0.22; // slope retained above the ceiling
-const HAZE_BAND_TOP = 0.14; // direction.y where the haze treatment fades out
+// r4: ceiling 0.80 → 0.72 and tint mix 0.30 → 0.45 — the band still read as a
+// uniform near-white stripe that abruptly desaturated the sky-terrain
+// junction; it now grades into a clearly blue-grey atmospheric wash, and the
+// fog color (sampled from this same band) follows automatically so distance
+// haze inherits the same hue instead of going white.
+const HAZE_MAX_LUM = 0.72; // linear pre-ACES luminance ceiling in the band
+const HAZE_COMPRESS = 0.18; // slope retained above the ceiling
+const HAZE_BAND_TOP = 0.18; // direction.y where the haze treatment fades out
 const HAZE_TINT = [0.87, 0.92, 1.02]; // pale-blue hue floor (unit-luma-ish)
-const HAZE_TINT_MIX = 0.30;
+const HAZE_TINT_MIX = 0.45;
 const SKY_DITHER = 0.004; // linear-space dither amplitude ~1 display LSB
 const SKY_FRAG_ANCHOR = 'gl_FragColor = vec4( texColor, 1.0 );';
 const SKY_DOME_SCALE = 10000; // must stay inside camera.far
@@ -81,43 +86,50 @@ const FOG_BLUE_TINT_HEX = 0x7e97b8;
 const FOG_BLUE_MIX = 0.55;
 const HORIZON_RT_SIZE = 16;
 const FALLBACK_HORIZON_HEX = 0xc4d3dd; // hand-tuned noon-hazy, doc §5 option (b)
-// Procedural cumulus layer, rebuilt for r3 ("clouds read as blurred airbrush
-// smears — no lit tops, no shadowed undersides, no crisp edges"). The old
-// soft-ramp emboss is replaced by: domain-warped 5-octave FBM carved by a
-// HARD coverage threshold (crisp cauliflower edges), a macro-noise threshold
-// modulation so clouds cluster into distinct masses with clear-sky gaps, and
-// a per-texel vertical light march toward the sun that yields bright warm
-// tops, grey-blue shaded bellies and naturally silver-lined rims. Baked once
-// (fixed seed, deterministic) into a canvas and draped on two inside-out
-// sphere shells for parallax depth. NOTE: the Sky shader's own built-in cloud
-// noise is force-disabled in configureSkyUniforms (cloudCoverage = 0) — it
-// was the main source of the airbrush smears.
+// Procedural cloud system, rebuilt AGAIN for r4. The r3 implementation draped
+// an equirect-baked cumulus texture over two inside-out sphere shells; the
+// equirect u-axis pinches toward the zenith, so any cloud mass overhead
+// smeared into a tall VERTICAL WHITE STREAK (the "stretched billboard
+// artifact" in battlefield.png), and isolated mid-elevation blobs read as
+// cotton-puff sprites. Replaced with the standard approach for fair-weather
+// decks: two FLAT CLOUD PLANES (low cumulus + high wind-sheared cirrus) with
+// world-XZ planar UVs — no polar pinching by construction, natural
+// perspective foreshortening toward the horizon — sampling both-axes-tileable
+// baked textures, dissolved into the horizon haze with a camera-relative
+// distance fade + aerial-perspective tint (distant bases go haze-grey, never
+// clip against the terrain silhouette). The cumulus bake keeps the r3 shading
+// recipe: domain-warped FBM carved by a hard coverage threshold (crisp
+// cauliflower edges), macro clustering, and a per-texel light march toward
+// the sun (bright sun-facing rims, grey-blue shaded cores); the march
+// direction is fixed in texture space and the SAMPLING is rotated per map so
+// shading always agrees with the sun azimuth. NOTE: the Sky shader's own
+// built-in cloud noise stays force-disabled in configureSkyUniforms.
 const CLOUD_SEED = 777;
-const CLOUD_TEX_W = 2048;
-const CLOUD_TEX_H = 1024;
-const CLOUD_THR = 0.535; // base FBM coverage threshold that carves cloud shapes
+const CLOUD_TEX = 1024; // cumulus deck bake, tileable in BOTH axes
+const CIRRUS_TEX = 512; // thin high-veil bake
+const CLOUD_THR = 0.545; // base FBM coverage threshold that carves cloud shapes
 const CLOUD_EDGE = 0.03; // clear→rim ramp width in FBM units (crisp edge)
 const CLOUD_CORE = 0.16; // rim→opaque-core ramp width in FBM units
-const CLOUD_CLUSTER = 0.08; // macro-noise threshold modulation (cloud grouping)
-const CLOUD_WARP = 0.05; // domain-warp strength (cauliflower edge crinkle)
-const CLOUD_MARCH_STEPS = 12; // light-march samples toward the zenith/sun
+const CLOUD_CLUSTER = 0.09; // macro-noise threshold modulation (cloud grouping)
+const CLOUD_WARP = 0.06; // domain-warp strength (cauliflower edge crinkle)
+const CLOUD_MARCH_STEPS = 12; // light-march samples toward the in-texture sun
 const CLOUD_MARCH_STEP_PX = 3;
-const CLOUD_SHADE_K = 0.30; // optical-depth scale: bright tops, dark bellies
+const CLOUD_SHADE_K = 0.32; // optical-depth scale: bright rims, dark cores
 const CLOUD_LIT = [1.0, 0.98, 0.94]; // warm-white sunlit faces
 const CLOUD_SHADE = [0.55, 0.62, 0.76]; // cool grey-blue shaded bellies
-const CLOUD_DOME_RADIUS = 3400; // inside camera.far (4000), outside the map
-const CLOUD_DOME_RADIUS_2 = 3800; // second, farther shell for layered depth
-const CLOUD_LAYER2_OPACITY = 0.6;
-const CLOUD_LAYER2_YAW = 2.4; // radians — decorrelates the two shells
-// Repeats MUST be integers: the cloud texture tiles in X, and a fractional
-// repeat puts a mid-texture discontinuity at the sphere's UV wrap — a hard
-// vertical seam across the sky. Repeat 2 on the near shell doubles effective
-// angular resolution (a 1080p frame sees a ~55° slice of the dome — at
-// repeat 1 that is only ~300 texture px stretched across 1920 screen px,
-// which reads as airbrush blur no matter how sharp the texture is).
-const CLOUD_LAYER1_REPEAT = 2;
-const CLOUD_LAYER2_REPEAT = 3; // finer tiling on the far shell
+const CLOUD_ALT = 620; // cumulus deck altitude (m): over terrain, under far plane
+const CIRRUS_ALT = 1350;
+const CLOUD_PLANE_SIZE = 9000; // covers the fade radius from any battle camera
+const CLOUD_UV_METERS = 3400; // meters per cumulus texture repeat
+const CIRRUS_UV_METERS = 5600;
+// Camera-relative dissolve (m). End slant distances stay inside camera.far
+// (4000) so the geometric clip circle is always fully transparent.
+const CLOUD_FADE_START = 1400;
+const CLOUD_FADE_END = 3100;
+const CIRRUS_FADE_START = 1700;
+const CIRRUS_FADE_END = 3300;
 const CLOUD_MAX_ALPHA = 0.94;
+const CLOUD_LAYER2_OPACITY = 0.6; // default for preset field cloudOpacity2 (cirrus)
 
 /**
  * @typedef {object} SkyRig
@@ -150,7 +162,12 @@ function configureSkyUniforms(sky, sunDir, preset = DEFAULT_PRESET) {
   const u = sky.material.uniforms;
   u.turbidity.value = preset.turbidity;
   u.rayleigh.value = preset.rayleigh;
-  u.mieCoefficient.value = preset.mieCoefficient;
+  // r4: x1.5 Mie response curve — at the preset values the sun's scattering
+  // halo was invisible from cameras 60°+ off the sun azimuth ("no sun disc or
+  // scattering glow anywhere"). The multiplier widens the warm forward-scatter
+  // wedge so the sun's presence registers at the frame edge on every map
+  // while the knee compress below still keeps the halo under bloom threshold.
+  u.mieCoefficient.value = preset.mieCoefficient * 1.5;
   u.mieDirectionalG.value = preset.mieDirectionalG;
   u.sunPosition.value.copy(sunDir);
   // The r180+ Sky shader ships its own screen-projected FBM cloud layer
@@ -200,19 +217,20 @@ function mulberry32(a) {
 }
 
 /**
- * Build an X-tileable multi-octave value-noise FBM sampler.
+ * Build a multi-octave value-noise FBM sampler tileable in BOTH axes
+ * (period 1 in u and v) — required so the planar cloud decks repeat
+ * seamlessly across the world with no visible tile boundary.
  *
  * @param {() => number} rng - seeded PRNG that fills the per-octave lattices
  * @param {number} octaves
  * @param {number} base - lattice resolution of octave 0 (doubles per octave)
- * @returns {(u: number, v: number) => number} fbm in ~[0,1], tileable in u
+ * @returns {(u: number, v: number) => number} fbm in ~[0,1], tileable in u AND v
  */
 function makeFbm(rng, octaves, base) {
   const lattices = [];
   for (let o = 0; o < octaves; o++) {
     const n = base << o;
-    const rows = (n >> 1) + 2;
-    const grid = new Float32Array(n * rows);
+    const grid = new Float32Array(n * n);
     for (let i = 0; i < grid.length; i++) grid[i] = rng();
     lattices.push({ n, grid });
   }
@@ -223,19 +241,20 @@ function makeFbm(rng, octaves, base) {
     let tot = 0;
     for (let o = 0; o < octaves; o++) {
       const { n, grid } = lattices[o];
-      const rows = (n >> 1) + 1;
       let uu = (u + o * 0.37) % 1;
       if (uu < 0) uu += 1;
+      let vv = (v + o * 0.61) % 1;
+      if (vv < 0) vv += 1;
       const x = uu * n;
-      const y = clampNum(v, 0, 1) * (rows - 1);
+      const y = vv * n;
       const x0 = Math.floor(x);
       const y0 = Math.floor(y);
       const fx = smooth(x - x0);
       const fy = smooth(y - y0);
       const xa = x0 % n;
       const xb = (x0 + 1) % n;
-      const ya = Math.min(y0, rows - 1);
-      const yb = Math.min(y0 + 1, rows - 1);
+      const ya = y0 % n;
+      const yb = (y0 + 1) % n;
       const g00 = grid[ya * n + xa];
       const g10 = grid[ya * n + xb];
       const g01 = grid[yb * n + xa];
@@ -249,20 +268,18 @@ function makeFbm(rng, octaves, base) {
 }
 
 /**
- * Bake the cumulus texture (see the CLOUD_* constant block for the recipe):
- * domain-warped FBM carved by a hard coverage threshold into distinct cloud
- * masses, then shaded per-texel by a vertical light march toward the sun —
- * warm-white lit tops, cool grey-blue shaded bellies, silver-lined rims.
- *
- * The light march is vertical (texture v == dome elevation, sun is high):
- * a longitude-dependent march would need a sign flip at the anti-sun
- * meridian, which bakes a visible vertical seam into the dome.
+ * Bake the cumulus deck texture (see the CLOUD_* constant block for the
+ * recipe): domain-warped FBM carved by a hard coverage threshold into
+ * distinct cloud masses, then shaded per-texel by a light march toward -v —
+ * warm-white sun-facing rims, cool grey-blue shaded cores. Tileable in both
+ * axes (the march wraps too); the deck shader rotates its sampling so the
+ * baked -v march direction always points at the map's sun azimuth.
  *
  * @returns {THREE.CanvasTexture}
  */
 function makeCloudTexture() {
-  const W = CLOUD_TEX_W;
-  const H = CLOUD_TEX_H;
+  const W = CLOUD_TEX;
+  const H = CLOUD_TEX;
   const rng = mulberry32(CLOUD_SEED);
   const fbmD = makeFbm(rng, 6, 8); // density field — primary cloud forms
   const fbmWX = makeFbm(rng, 3, 5); // domain warp u
@@ -275,12 +292,13 @@ function makeCloudTexture() {
   const core = new Float32Array(W * H);
   const sigma = new Float32Array(W * H);
   for (let y = 0; y < H; y++) {
-    const v = y / (H - 1);
+    const v = y / H;
     for (let x = 0; x < W; x++) {
       const u = x / W;
       let wu = (u + (fbmWX(u, v) - 0.5) * CLOUD_WARP) % 1;
       if (wu < 0) wu += 1;
-      const wv = clampNum(v + (fbmWY(u, v) - 0.5) * CLOUD_WARP, 0, 1);
+      let wv = (v + (fbmWY(u, v) - 0.5) * CLOUD_WARP) % 1;
+      if (wv < 0) wv += 1;
       const d = fbmD(wu, wv);
       const thr = CLOUD_THR + (fbmM(u, v) - 0.5) * 2 * CLOUD_CLUSTER;
       const i = y * W + x;
@@ -293,8 +311,8 @@ function makeCloudTexture() {
   }
 
   // Pass 2 — shade + write pixels. Transmittance from the accumulated density
-  // above each texel: tops and thin rims stay near 1 (bright, silver-lined),
-  // texels under thick cloud fall toward 0 (shaded belly).
+  // toward -v (the in-texture sun): thin rims facing the sun stay near 1
+  // (bright, silver-lined), texels behind thick cloud fall toward 0.
   const cnv = document.createElement('canvas');
   cnv.width = W;
   cnv.height = H;
@@ -302,41 +320,75 @@ function makeCloudTexture() {
   const img = ctx.createImageData(W, H);
   const px = img.data;
   for (let y = 0; y < H; y++) {
-    const v = y / (H - 1);
-    // fade clouds out toward the horizon band so they melt into the haze
-    // instead of clipping against the terrain silhouette. The band is kept
-    // low (v 0.80+ ≈ elevation < 13°) so cumulus visibly march toward the
-    // horizon in gameplay-pitch framing instead of hiding at the zenith.
-    const horizonFade = 1 - smoothstepNum(0.80, 0.965, v);
-    // and thin them near the zenith pole to hide UV pinching
-    const zenithFade = smoothstepNum(0.02, 0.10, v);
     for (let x = 0; x < W; x++) {
       const i = y * W + x;
       const o = i * 4;
       const m = mask[i];
-      if (m <= 0 || horizonFade <= 0 || zenithFade <= 0) {
+      if (m <= 0) {
         px[o + 3] = 0;
         continue;
       }
       let occl = 0;
       for (let s = 1; s <= CLOUD_MARCH_STEPS; s++) {
-        const yy = y - s * CLOUD_MARCH_STEP_PX;
-        if (yy < 0) break;
+        let yy = (y - s * CLOUD_MARCH_STEP_PX) % H; // wraps: tileable shading
+        if (yy < 0) yy += H;
         occl += sigma[yy * W + x];
       }
       const lit = Math.pow(Math.exp(-CLOUD_SHADE_K * occl), 0.85);
       px[o] = Math.round(255 * (CLOUD_SHADE[0] + (CLOUD_LIT[0] - CLOUD_SHADE[0]) * lit));
       px[o + 1] = Math.round(255 * (CLOUD_SHADE[1] + (CLOUD_LIT[1] - CLOUD_SHADE[1]) * lit));
       px[o + 2] = Math.round(255 * (CLOUD_SHADE[2] + (CLOUD_LIT[2] - CLOUD_SHADE[2]) * lit));
-      px[o + 3] = Math.round(
-        255 * CLOUD_MAX_ALPHA * m * (0.42 + 0.58 * core[i]) * horizonFade * zenithFade,
-      );
+      px[o + 3] = Math.round(255 * CLOUD_MAX_ALPHA * m * (0.42 + 0.58 * core[i]));
     }
   }
   ctx.putImageData(img, 0, 0);
   const tex = new THREE.CanvasTexture(cnv);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+/**
+ * Bake the thin high-altitude veil: wind-sheared streaks (fbm sampled with a
+ * 4x faster v frequency elongates features along u), low alpha, near-white.
+ * Tileable in both axes.
+ *
+ * @returns {THREE.CanvasTexture}
+ */
+function makeCirrusTexture() {
+  const W = CIRRUS_TEX;
+  const H = CIRRUS_TEX;
+  const rng = mulberry32(CLOUD_SEED + 11);
+  const fbm = makeFbm(rng, 4, 4);
+  const fbmW = makeFbm(rng, 2, 3);
+  const cnv = document.createElement('canvas');
+  cnv.width = W;
+  cnv.height = H;
+  const ctx = cnv.getContext('2d');
+  const img = ctx.createImageData(W, H);
+  const px = img.data;
+  for (let y = 0; y < H; y++) {
+    const v = y / H;
+    for (let x = 0; x < W; x++) {
+      const u = x / W;
+      let wu = (u + (fbmW(u, v) - 0.5) * 0.10) % 1;
+      if (wu < 0) wu += 1;
+      const s = fbm(wu, (v * 4) % 1); // v-frequency x4 => horizontal shear streaks
+      const a = smoothstepNum(0.52, 0.86, s);
+      const o = (y * W + x) * 4;
+      const lum = 0.90 + 0.10 * a;
+      px[o] = Math.round(250 * lum);
+      px[o + 1] = Math.round(252 * lum);
+      px[o + 2] = 255;
+      px[o + 3] = Math.round(255 * a * 0.85);
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(cnv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
   return tex;
 }
 
@@ -432,46 +484,101 @@ export function createSky(scene, renderer) {
   configureSkyUniforms(sky, sunDir, preset);
   scene.add(sky);
 
-  // Cumulus layers: two inside-out sphere shells between the terrain and the
-  // Sky dome (near shell full-strength, far shell thinner + decorrelated for
-  // layered depth). Transparent (render after opaques, over the Sky box),
-  // never write depth, ignore fog (they fade into the horizon band instead).
-  // renderOrder < 0: both spheres are centered at the origin, so distance
-  // sorting would misplace them in FRONT of smoke/flash sprites — force them
-  // to draw before all default-order transparents.
-  const cloudTex = makeCloudTexture();
-  const mkCloudShell = (radius, opacity, name) => {
-    const mat = new THREE.MeshBasicMaterial({
-      map: cloudTex,
+  // Cloud decks: two flat planes (low cumulus + high cirrus veil) between the
+  // terrain and the Sky dome. Transparent (render after opaques, over the Sky
+  // box), never write depth, own their aerial fade (no scene fog). renderOrder
+  // < 0: distance sorting would misplace the huge planes in FRONT of
+  // smoke/flash sprites — force them before all default-order transparents.
+  const CLOUD_VERT = /* glsl */ `
+    varying vec3 vWPos;
+    void main() {
+      vec4 wp = modelMatrix * vec4( position, 1.0 );
+      vWPos = wp.xyz;
+      gl_Position = projectionMatrix * viewMatrix * wp;
+    }`;
+  const CLOUD_FRAG = /* glsl */ `
+    uniform sampler2D uMap;
+    uniform vec2 uRot;    // (cos, sin): rotates world XZ so -v faces the sun azimuth
+    uniform float uScale; // meters per texture repeat
+    uniform vec2 uOff;    // per-deck decorrelation offset
+    uniform vec3 uTint;
+    uniform float uOpacity;
+    uniform vec3 uHaze;   // horizon haze color (linear) the deck dissolves into
+    uniform vec2 uFade;   // (start, end) camera-relative fade distances (m)
+    varying vec3 vWPos;
+    void main() {
+      vec2 p = vWPos.xz;
+      vec2 uv = vec2( p.x * uRot.x - p.y * uRot.y, p.x * uRot.y + p.y * uRot.x ) / uScale + uOff;
+      vec4 c = texture2D( uMap, uv );
+      float d = distance( p, cameraPosition.xz );
+      float fade = 1.0 - smoothstep( uFade.x, uFade.y, d );
+      // aerial perspective: distant cloud bases melt toward the horizon haze
+      float haze = smoothstep( uFade.x * 0.35, uFade.y, d );
+      vec3 col = mix( c.rgb * uTint, uHaze, haze * 0.88 );
+      gl_FragColor = vec4( col, c.a * uOpacity * fade );
+    }`;
+  /** (cos,sin) rotation mapping the toward-sun XZ direction onto texture -v. */
+  const cloudSunRot = (dir) => {
+    const l = Math.hypot(dir.x, dir.z) || 1;
+    return [-dir.z / l, -dir.x / l];
+  };
+  const mkCloudDeck = (tex, alt, uvMeters, opacity, fadeStart, fadeEnd, off, name) => {
+    const rot = cloudSunRot(sunDir);
+    const mat = new THREE.ShaderMaterial({
+      vertexShader: CLOUD_VERT,
+      fragmentShader: CLOUD_FRAG,
+      uniforms: {
+        uMap: { value: tex },
+        uRot: { value: new THREE.Vector2(rot[0], rot[1]) },
+        uScale: { value: uvMeters },
+        uOff: { value: new THREE.Vector2(...off) },
+        uTint: { value: new THREE.Color(0xffffff) },
+        uOpacity: { value: opacity },
+        uHaze: { value: new THREE.Color(0xdde6ee) }, // re-set from horizon sample below
+        uFade: { value: new THREE.Vector2(fadeStart, fadeEnd) },
+      },
       transparent: true,
-      opacity,
-      side: THREE.BackSide,
       depthWrite: false,
-      fog: false,
     });
-    const mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(radius, 48, 24, 0, Math.PI * 2, 0, Math.PI * 0.52),
-      mat,
-    );
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(CLOUD_PLANE_SIZE, CLOUD_PLANE_SIZE), mat);
+    mesh.rotation.x = Math.PI / 2; // face down toward the camera
+    mesh.position.y = alt;
     mesh.name = name;
     mesh.frustumCulled = false;
     mesh.userData.aoExclude = true; // GTAO's override prepass ignores alpha
     scene.add(mesh);
     return mesh;
   };
-  const cloudsFar = mkCloudShell(CLOUD_DOME_RADIUS_2, CLOUD_LAYER2_OPACITY, 'cloudLayerFar');
-  cloudsFar.rotation.y = CLOUD_LAYER2_YAW;
+  const cloudsFar = mkCloudDeck(
+    makeCirrusTexture(), CIRRUS_ALT, CIRRUS_UV_METERS, CLOUD_LAYER2_OPACITY,
+    CIRRUS_FADE_START, CIRRUS_FADE_END, [0.31, 0.77], 'cloudLayerFar',
+  );
   cloudsFar.renderOrder = -3;
-  cloudsFar.material.map = cloudTex.clone();
-  cloudsFar.material.map.repeat.x = CLOUD_LAYER2_REPEAT;
-  cloudsFar.material.map.needsUpdate = true;
-  const clouds = mkCloudShell(CLOUD_DOME_RADIUS, 1.0, 'cloudLayer');
+  const clouds = mkCloudDeck(
+    makeCloudTexture(), CLOUD_ALT, CLOUD_UV_METERS, 1.0,
+    CLOUD_FADE_START, CLOUD_FADE_END, [0, 0], 'cloudLayer',
+  );
   clouds.renderOrder = -2;
-  clouds.material.map = cloudTex.clone();
-  clouds.material.map.repeat.x = CLOUD_LAYER1_REPEAT;
-  clouds.material.map.needsUpdate = true;
 
   const horizonColor = sampleHorizonColor(renderer, sunDir, preset);
+
+  /** Sync deck uniforms to the current preset + horizon sample. */
+  const updateCloudDecks = () => {
+    const cloudTint = new THREE.Color(preset.cloudTintHex);
+    const rot = cloudSunRot(sunDir);
+    const haze = horizonColor.clone().lerp(new THREE.Color(preset.fogTintHex), preset.fogMix);
+    for (const deck of [clouds, cloudsFar]) {
+      const u = deck.material.uniforms;
+      u.uTint.value.copy(cloudTint);
+      u.uRot.value.set(rot[0], rot[1]);
+      u.uHaze.value.copy(haze);
+    }
+    clouds.material.uniforms.uOpacity.value = preset.cloudOpacity;
+    clouds.visible = preset.cloudOpacity > 0.01;
+    cloudsFar.material.uniforms.uOpacity.value = preset.cloudOpacity2;
+    cloudsFar.visible = preset.cloudOpacity2 > 0.01;
+  };
+  updateCloudDecks();
 
   let pmrem = null;
   let envTarget = null;
@@ -568,14 +675,8 @@ export function createSky(scene, renderer) {
         THREE.MathUtils.degToRad(preset.sunAzimuthDeg),
       );
       configureSkyUniforms(sky, sunDir, preset);
-      const cloudTint = new THREE.Color(preset.cloudTintHex);
-      clouds.material.opacity = preset.cloudOpacity;
-      clouds.material.color.copy(cloudTint);
-      clouds.visible = preset.cloudOpacity > 0.01;
-      cloudsFar.material.opacity = preset.cloudOpacity2;
-      cloudsFar.material.color.copy(cloudTint);
-      cloudsFar.visible = preset.cloudOpacity2 > 0.01;
       horizonColor.copy(sampleHorizonColor(renderer, sunDir, preset));
+      updateCloudDecks(); // tint/opacity/sun-rotation/haze follow the preset
       rig.bakeEnvironment();
       rig.applyFog(targetScene);
     },

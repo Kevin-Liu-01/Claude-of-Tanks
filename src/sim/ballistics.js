@@ -80,11 +80,20 @@ export function stepShell(shell, dt) {
  * Penetration at a given flight distance: linear interpolation from pen@100m
  * to pen@1000m, clamped outside that range (ARCHITECTURE.md §3.5.1).
  *
- * @param {object} shellSpec ShellSpec
+ * Specs quoting a far anchor (`pen2000Mm`, optional — modern APFSDS roster
+ * values are quoted at 2 km) get a second linear segment 1000 m → 2000 m and
+ * clamp beyond it, so the quoted long-range figure lands where it was quoted
+ * instead of the falloff freezing at the 1000 m value.
+ *
+ * @param {object} shellSpec ShellSpec ({pen100Mm, pen1000Mm, [pen2000Mm]})
  * @param {number} distM flight distance in meters
  * @returns {number} average penetration in mm RHAe at that distance
  */
 export function penAtDistanceMm(shellSpec, distM) {
+  if (distM > 1000 && shellSpec.pen2000Mm > 0) {
+    const f2 = Math.min(1, (distM - 1000) / 1000);
+    return shellSpec.pen1000Mm + (shellSpec.pen2000Mm - shellSpec.pen1000Mm) * f2;
+  }
   const f = Math.min(1, Math.max(0, (distM - 100) / 900));
   return shellSpec.pen100Mm + (shellSpec.pen1000Mm - shellSpec.pen100Mm) * f;
 }

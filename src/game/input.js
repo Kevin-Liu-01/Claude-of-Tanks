@@ -118,7 +118,22 @@ const DEFAULT_SETTINGS = {
   sniperSensScale: 1, // extra multiplier while in sniper mode (0.2x .. 3x)
   aimSmoothing: 0.5, // 0 = raw 1:1 deltas, 1 = heavy (56 ms EMA); 0.5 = classic 28 ms
   padSensitivity: 1, // 0.2x .. 3x multiplier on right-stick aim
+  aiDifficulty: 'normal', // bot tier for the NEXT battle: 'easy'|'normal'|'hard'
 };
+
+const AI_DIFFICULTIES = ['easy', 'normal', 'hard'];
+
+/**
+ * AI difficulty persisted with the other gameplay settings (cot.settings.v1,
+ * editable in the settings panel's GAMEPLAY tab). Pure localStorage read — no
+ * input instance needed, so game/state.js can call it at battle setup.
+ * @returns {'easy'|'normal'|'hard'}
+ */
+export function getStoredDifficulty() {
+  const s = loadJson(SETTINGS_KEY);
+  const d = s && s.aiDifficulty;
+  return AI_DIFFICULTIES.includes(d) ? d : 'normal';
+}
 
 const LABEL_SPECIAL = {
   Space: 'SPACE', Escape: 'ESC', Tab: 'TAB', CapsLock: 'CAPS',
@@ -264,6 +279,7 @@ export function createInput(opts = {}) {
     if (typeof storedSettings.sniperSensScale === 'number') settings.sniperSensScale = clamp(storedSettings.sniperSensScale, 0.2, 3);
     if (typeof storedSettings.aimSmoothing === 'number') settings.aimSmoothing = clamp(storedSettings.aimSmoothing, 0, 1);
     if (typeof storedSettings.padSensitivity === 'number') settings.padSensitivity = clamp(storedSettings.padSensitivity, 0.2, 3);
+    if (AI_DIFFICULTIES.includes(storedSettings.aiDifficulty)) settings.aiDifficulty = storedSettings.aiDifficulty;
   }
 
   // --- live state ----------------------------------------------------------------
@@ -566,7 +582,7 @@ export function createInput(opts = {}) {
     },
 
     /** @returns {{sensitivity:number,invertY:boolean,sniperSensScale:number,
-     *  aimSmoothing:number,padSensitivity:number}} live settings object */
+     *  aimSmoothing:number,padSensitivity:number,aiDifficulty:string}} live settings object */
     getSettings() { return settings; },
 
     /** Set + clamp + persist one gameplay setting. */
@@ -576,6 +592,7 @@ export function createInput(opts = {}) {
       else if (key === 'sniperSensScale') settings.sniperSensScale = clamp(+value || 1, 0.2, 3);
       else if (key === 'aimSmoothing') settings.aimSmoothing = clamp(+value || 0, 0, 1);
       else if (key === 'padSensitivity') settings.padSensitivity = clamp(+value || 1, 0.2, 3);
+      else if (key === 'aiDifficulty') settings.aiDifficulty = AI_DIFFICULTIES.includes(value) ? value : settings.aiDifficulty;
       saveJson(SETTINGS_KEY, settings);
     },
 

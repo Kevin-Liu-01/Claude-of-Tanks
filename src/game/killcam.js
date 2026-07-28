@@ -13,11 +13,15 @@
  *   1. FLIGHT — slow-mo tracer chase along the captured trajectory from the
  *      killer's muzzle to the victim.
  *   2. X-RAY  — the victim rendered ghost-translucent (shared additive,
- *      depth-tested material set), the shell path drawn through the hull
- *      (hull-local entry point + direction from the HitEvent), every module /
- *      crew box outlined, hit ones highlighted + DOM-labeled with damage, and
- *      an annotation block (shell, distance, angle, nominal→effective armor,
- *      pen roll, damage). Holds XRAY_HOLD_S, any key/click skips.
+ *      depth-tested material set, muzzle-faded so the barrel tip never blows
+ *      out), recognizable internal proxies (ammo cassettes, engine block,
+ *      fuel drums, crew capsules) tinted green/yellow/red by post-hit state,
+ *      the shell path drawn through the hull all the way to the deepest
+ *      damaged component with a spall cone at the penetration point, every
+ *      module / crew box outlined, hit ones highlighted + DOM-labeled with
+ *      leader lines and overlap deconfliction, and an annotation block
+ *      (shell, distance, angle, nominal→effective armor, pen roll, damage).
+ *      Holds XRAY_HOLD_S, any key/click skips.
  *
  * The camera is driven exclusively through rig.setExternalPose (the rig's
  * external-pose API) — the rig is used, never modified.
@@ -78,8 +82,52 @@ function sharedMats() {
     color, transparent: true, opacity, blending: THREE.AdditiveBlending,
     depthWrite: false, depthTest: true, toneMapped: false, fog: false,
   });
+  // Lit additive material for the internal-component proxies: Lambert shading
+  // gives the shapes 3D form, the emissive floor keeps them readable inside
+  // the ghost hull — internals must never read as flat unlit silhouettes.
+  // Diffuse/emissive are scaled WAY down: the sun runs at intensity ~4.5 and
+  // these are additive, so near-full-strength colors stack to pure white.
+  const prox = (hex, opacity, ds, es) => {
+    const c = new THREE.Color(hex);
+    return new THREE.MeshLambertMaterial({
+      color: c.clone().multiplyScalar(ds),
+      emissive: c.clone().multiplyScalar(es),
+      transparent: true, opacity, blending: THREE.AdditiveBlending,
+      depthWrite: false, depthTest: true, toneMapped: false, fog: false,
+    });
+  };
+  // Ghost hull with a muzzle fade: thin stacked barrel/brake shells otherwise
+  // sum (additive, DoubleSide) to a blown-out white stub at the gun tip. The
+  // fragment alpha fades to 0 within ~1.4 m of the muzzle point (uniform set
+  // per replay in beginXray from the victim's live muzzle anchor).
+  const muzzleFade = { value: new THREE.Vector3(0, -1e6, 0) };
+  const muzzleFadeShader = (mat) => {
+    mat.onBeforeCompile = (sh) => {
+      sh.uniforms.uKcMuzzle = muzzleFade;
+      sh.vertexShader = `varying vec3 vKcWorld;\n${sh.vertexShader}`.replace(
+        '#include <project_vertex>',
+        `#include <project_vertex>
+        #ifdef USE_INSTANCING
+          vKcWorld = (modelMatrix * instanceMatrix * vec4(position, 1.0)).xyz;
+        #else
+          vKcWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;
+        #endif`);
+      sh.fragmentShader = `varying vec3 vKcWorld;\nuniform vec3 uKcMuzzle;\n${sh.fragmentShader}`.replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        diffuseColor.a *= smoothstep(0.12, 1.4, distance(vKcWorld, uKcMuzzle));`);
+    };
+    return mat;
+  };
+  const ghost = muzzleFadeShader(mesh(0x86c8f2, 0.075, THREE.DoubleSide));
+  // Faint tier for LOD-wrapped detail greebles (track links, stowage, vents):
+  // hundreds of small overlapping shells at full ghost opacity stack additive
+  // layers into a milky white mass — they get ~1/3 the alpha instead.
+  const ghostDim = muzzleFadeShader(mesh(0x86c8f2, 0.026, THREE.DoubleSide));
   S = {
-    ghost: mesh(0x86c8f2, 0.11, THREE.DoubleSide),
+    ghost,
+    ghostDim,
+    ghostMuzzle: muzzleFade,
     trail: line(0xffb060, 0.55),
     edgeDim: line(0x6db4e8, 0.55),
     edgeRed: line(0xff5a4a, 1.0),
@@ -88,13 +136,131 @@ function sharedMats() {
     fillRed: mesh(0xff2a1a, 0.22, THREE.DoubleSide),
     fillYellow: mesh(0xff9a1c, 0.2, THREE.DoubleSide),
     fillCrew: mesh(0xff3a55, 0.22, THREE.DoubleSide),
-    pathIn: mesh(0xff3020, 1.0),
+    pathIn: mesh(0xff5028, 0.55),
     pathOut: mesh(0xffc27a, 0.7),
+    pathCore: mesh(0xfff3d0, 0.95),
+    spall: mesh(0xffa050, 0.1, THREE.DoubleSide),
+    frag: mesh(0xffc27a, 0.5),
     marker: mesh(0xffffff, 0.9),
     core: mesh(0xfff3d0, 1.0),
     streak: mesh(0xffb464, 0.85),
+    proxGreen: prox(0x2fd98c, 0.55, 0.055, 0.13),
+    proxYellow: prox(0xffb43c, 0.6, 0.07, 0.17),
+    proxRed: prox(0xff4a38, 0.65, 0.08, 0.2),
   };
   return S;
+}
+
+// ---------------------------------------------------------------------------
+// Internal-component proxies (recognizable shapes inside the module boxes)
+// ---------------------------------------------------------------------------
+
+/** Group centered on a module/crew bounding box, parented to its frame. */
+function proxyGroup(bb, poseGrp, turretGrp) {
+  const g = new THREE.Group();
+  g.position.set(
+    (bb.min[0] + bb.max[0]) / 2,
+    (bb.min[1] + bb.max[1]) / 2,
+    (bb.min[2] + bb.max[2]) / 2,
+  );
+  (bb.turretLocal ? turretGrp : poseGrp).add(g);
+  return g;
+}
+
+/**
+ * War Thunder-style recognizable internals: ammo cassette rows, ribbed engine
+ * block, fuel drums, breech, ring, periscope — tinted by post-hit state.
+ * @param {{module:string,min:number[],max:number[],turretLocal:boolean}} bb
+ * @param {THREE.Material} mat state-tinted proxy material
+ */
+function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables) {
+  const kind = bb.module;
+  if (kind === 'trackL' || kind === 'trackR') return; // real track geometry reads already
+  const sx = bb.max[0] - bb.min[0];
+  const sy = bb.max[1] - bb.min[1];
+  const sz = bb.max[2] - bb.min[2];
+  const g = proxyGroup(bb, poseGrp, turretGrp);
+  const put = (geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => {
+    disposables.push(geo);
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.rotation.set(rx, ry, rz);
+    g.add(m);
+    return m;
+  };
+  if (kind === 'ammoRack') {
+    // cassette rows of standing rounds
+    const nx = Math.max(2, Math.min(5, Math.floor(sx / 0.24)));
+    const nz = Math.max(2, Math.min(7, Math.floor(sz / 0.24)));
+    const r = Math.min(0.055, (sx / nx) * 0.3, (sz / nz) * 0.3);
+    const h = sy * 0.82;
+    const geo = new THREE.CylinderGeometry(r, r, h, 8);
+    disposables.push(geo);
+    const im = new THREE.InstancedMesh(geo, mat, nx * nz);
+    disposables.push(im);
+    const m4 = new THREE.Matrix4();
+    let i = 0;
+    for (let ix = 0; ix < nx; ix++) {
+      for (let iz = 0; iz < nz; iz++) {
+        m4.makeTranslation(
+          -sx / 2 + (ix + 0.5) * (sx / nx),
+          -sy / 2 + h / 2,
+          -sz / 2 + (iz + 0.5) * (sz / nz),
+        );
+        im.setMatrixAt(i++, m4);
+      }
+    }
+    g.add(im);
+  } else if (kind === 'engine') {
+    // block + cooling ribs + fan disc
+    put(new THREE.BoxGeometry(sx * 0.78, sy * 0.58, sz * 0.8), 0, -sy * 0.14, 0);
+    for (let i = 0; i < 4; i++) {
+      put(new THREE.BoxGeometry(sx * 0.84, sy * 0.18, sz * 0.09),
+        0, sy * 0.18, -sz * 0.32 + i * (sz * 0.64 / 3));
+    }
+    put(new THREE.CylinderGeometry(Math.min(sx, sz) * 0.2, Math.min(sx, sz) * 0.2, sy * 0.1, 14),
+      -sx * 0.18, sy * 0.32, 0);
+  } else if (kind === 'fuelTank') {
+    const r = Math.max(0.05, Math.min(sy * 0.42, sx * 0.21));
+    put(new THREE.CylinderGeometry(r, r, sz * 0.85, 10), -sx * 0.22, 0, 0, Math.PI / 2, 0, 0);
+    put(new THREE.CylinderGeometry(r, r, sz * 0.85, 10), sx * 0.22, 0, 0, Math.PI / 2, 0, 0);
+  } else if (kind === 'gun') {
+    // breech block + recoil cylinder pointing out the front of the box
+    put(new THREE.BoxGeometry(sx * 0.72, sy * 0.72, sz * 0.55), 0, 0, -sz * 0.12);
+    put(new THREE.CylinderGeometry(Math.min(sx, sy) * 0.2, Math.min(sx, sy) * 0.2, sz * 0.5, 10),
+      0, 0, sz * 0.28, Math.PI / 2, 0, 0);
+  } else if (kind === 'radio') {
+    put(new THREE.BoxGeometry(sx * 0.75, sy * 0.55, sz * 0.7), 0, -sy * 0.12, 0);
+    put(new THREE.CylinderGeometry(0.012, 0.012, sy * 0.7, 6), sx * 0.2, sy * 0.24, 0);
+  } else if (kind === 'optics') {
+    put(new THREE.CylinderGeometry(Math.min(sx, sz) * 0.2, Math.min(sx, sz) * 0.2, sy * 0.7, 8),
+      0, -sy * 0.05, 0);
+    put(new THREE.BoxGeometry(sx * 0.5, sy * 0.22, sz * 0.5), 0, sy * 0.34, 0);
+  } else if (kind === 'turretRing') {
+    const R = Math.min(sx, sz) * 0.44;
+    put(new THREE.TorusGeometry(R, Math.min(sy * 0.3, 0.06), 8, 28), 0, 0, 0, Math.PI / 2, 0, 0);
+  } else {
+    put(new THREE.BoxGeometry(sx * 0.6, sy * 0.6, sz * 0.6));
+  }
+}
+
+/** Crew proxy: seated capsule (tapered body cylinder + head sphere). */
+function addCrewProxy(bb, mat, poseGrp, turretGrp, disposables) {
+  const sx = bb.max[0] - bb.min[0];
+  const sy = bb.max[1] - bb.min[1];
+  const sz = bb.max[2] - bb.min[2];
+  const g = proxyGroup(bb, poseGrp, turretGrp);
+  const r = Math.min(sx, sz) * 0.3;
+  const headR = Math.max(0.05, Math.min(r * 0.85, sy * 0.2));
+  const bodyH = sy * 0.6;
+  const body = new THREE.CylinderGeometry(r * 0.8, r, bodyH, 10);
+  const head = new THREE.SphereGeometry(headR, 10, 8);
+  disposables.push(body, head);
+  const bm = new THREE.Mesh(body, mat);
+  bm.position.y = -sy / 2 + bodyH / 2;
+  const hm = new THREE.Mesh(head, mat);
+  hm.position.y = -sy / 2 + bodyH + headR * 0.85;
+  g.add(bm, hm);
 }
 
 // ---------------------------------------------------------------------------
@@ -107,13 +273,13 @@ const KC_CSS = `
 .cot-kc *{box-sizing:border-box;margin:0;padding:0;}
 .cot-kc-bart,.cot-kc-barb{position:absolute;left:0;right:0;height:9vh;}
 .cot-kc-bart{top:0;background:linear-gradient(180deg,rgba(0,0,0,.94),rgba(0,0,0,.6) 70%,transparent);}
-.cot-kc-barb{bottom:0;background:linear-gradient(0deg,rgba(0,0,0,.94),rgba(0,0,0,.6) 70%,transparent);}
+.cot-kc-barb{bottom:0;background:linear-gradient(0deg,#000 38%,rgba(0,0,0,.72) 68%,transparent);}
 .cot-kc-title{position:absolute;top:2.4vh;left:50%;transform:translateX(-50%);text-align:center;}
 .cot-kc-title .t{font-family:${FONT_COND};font-stretch:condensed;font-weight:800;
   font-size:17px;letter-spacing:.46em;color:#ffd9a0;text-shadow:0 1px 10px rgba(0,0,0,.9);}
 .cot-kc-title .s{font-size:10.5px;letter-spacing:.18em;color:#aeb9c4;margin-top:3px;
   font-variant-numeric:tabular-nums;}
-.cot-kc-skip{position:absolute;bottom:3.1vh;right:30px;font-family:${FONT_COND};
+.cot-kc-skip{position:absolute;bottom:1.6vh;right:30px;font-family:${FONT_COND};
   font-stretch:condensed;font-weight:700;font-size:10.5px;letter-spacing:.26em;color:#93a1ad;}
 .cot-kc-annot{position:absolute;left:28px;bottom:11.5vh;width:272px;
   background:linear-gradient(180deg,rgba(10,14,18,.9),rgba(6,9,12,.92));
@@ -132,7 +298,7 @@ const KC_CSS = `
   letter-spacing:.2em;color:#ff6a5a;border:1px solid rgba(255,106,90,.7);
   background:rgba(120,20,10,.35);}
 .cot-kc-banner.on{display:block;}
-.cot-kc-label{position:absolute;transform:translate(-50%,-135%);white-space:nowrap;
+.cot-kc-label{position:absolute;white-space:nowrap;
   background:rgba(6,9,12,.86);border:1px solid currentColor;padding:3px 8px 4px;
   font-family:${FONT_COND};font-stretch:condensed;font-weight:800;font-size:11.5px;
   letter-spacing:.09em;text-transform:uppercase;line-height:1.25;
@@ -141,9 +307,10 @@ const KC_CSS = `
   color:#e8f0f6;font-variant-numeric:tabular-nums;}
 .cot-kc-dot{position:absolute;width:7px;height:7px;border-radius:50%;
   transform:translate(-50%,-50%);background:currentColor;box-shadow:0 0 9px currentColor;}
-.cot-kc-dmg{position:absolute;transform:translate(-50%,30%);font-family:${FONT_COND};
+.cot-kc-dmg{position:absolute;font-family:${FONT_COND};
   font-stretch:condensed;font-weight:800;font-size:24px;color:#ffd166;
   letter-spacing:.04em;text-shadow:0 2px 12px rgba(0,0,0,.9);font-variant-numeric:tabular-nums;}
+.cot-kc-leader{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
 `;
 
 function ensureStyle() {
@@ -218,8 +385,12 @@ export function createKillCam(deps) {
     const rows = el('div', 'cot-kc-rows', annot);
     const banner = el('div', 'cot-kc-banner', annot);
     banner.textContent = 'AMMO RACK DETONATION';
+    // leader-line layer sits under the label chips
+    const leader = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    leader.setAttribute('class', 'cot-kc-leader');
+    root.appendChild(leader);
     const labelHost = el('div', '', root);
-    dom = { root, titleT, titleS, hdK, hdW, rows, banner, labelHost };
+    dom = { root, titleT, titleS, hdK, hdW, rows, banner, labelHost, leader };
     return dom;
   }
 
@@ -421,6 +592,7 @@ export function createKillCam(deps) {
     kv('Zone', zoneLabel(ev.zone));
     d.banner.classList.toggle('on', !!ev.ammoRacked);
     d.labelHost.textContent = '';
+    d.leader.textContent = '';
     d.root.classList.add('on');
 
     window.addEventListener('keydown', onSkipKey, true);
@@ -554,11 +726,21 @@ export function createKillCam(deps) {
     // 1. ghost-translucent victim — shared additive/depth-tested material set
     const vis = snap.targetEnt.visual;
     vis.setVisible(true); // player may have died while scoped (hull hidden)
+    // fade the ghost out toward the muzzle tip (kills the additive blow-out stub)
+    if (vis.gunMuzzleWorld) S.ghostMuzzle.value.copy(vis.gunMuzzleWorld(_p));
+    else S.ghostMuzzle.value.set(0, -1e6, 0);
     pb.ghostBackup = [];
+    // Ghost EVERY mesh, including currently-hidden LOD detail levels: the
+    // x-ray camera sits close enough to flip LODs mid-hold, and a skipped
+    // mesh would pop in with its original dark non-additive material and
+    // read as a black hole in the hull. LOD-wrapped detail greebles get the
+    // faint tier so their dense stacking never washes the hull to white.
     vis.root.traverse((o) => {
-      if (o.isMesh && o.visible) {
+      if (o.isMesh) {
         pb.ghostBackup.push([o, o.material]);
-        o.material = S.ghost;
+        let inLod = false;
+        for (let p = o.parent; p && !inLod; p = p.parent) inLod = !!p.isLOD;
+        o.material = inLod ? S.ghostDim : S.ghost;
       }
     });
 
@@ -607,15 +789,81 @@ export function createKillCam(deps) {
       addBox(cb, hit ? `c:${cb.crew}` : null, hit ? S.edgeCrew : S.edgeDim, hit ? S.fillCrew : null);
     }
 
-    // 4. shell path through the hull (hull-local entry point + direction)
+    // 3b. recognizable internals inside the boxes — ammo cassette rows, ribbed
+    // engine block, fuel drums, breech, crew capsules — tinted by the
+    // post-hit state: green healthy / yellow damaged / red destroyed.
+    const stateMat = (state) =>
+      state === 'red' ? S.proxRed : state === 'yellow' ? S.proxYellow : S.proxGreen;
+    for (const mb of armor.modules || []) {
+      addModuleProxy(mb, stateMat(modHit.get(mb.module)), poseGrp, turretGrp, pb.disposables);
+    }
+    for (const cb of armor.crew || []) {
+      addCrewProxy(cb, crewHit.has(cb.crew) ? S.proxRed : S.proxGreen,
+        poseGrp, turretGrp, pb.disposables);
+    }
+
+    // 4. shell path through the hull: approach tracer, penetration marker, a
+    // bright internal segment carried all the way to the DEEPEST damaged
+    // component (entry -> ammo rack is the story), and a spall cone with
+    // deterministic fragment rays opening from the penetration point.
     if (ev.localPos && ev.localDir) {
       const lp = new THREE.Vector3().fromArray(ev.localPos);
       const ld = new THREE.Vector3().fromArray(ev.localDir).normalize();
-      const innerLen = Math.max(1.2, (ev.caliberMm || 100) * 10 / 1000 + 0.6);
+      // deepest damaged module/crew center along the internal ray (hull frame)
+      const tyaw = pose.turretYaw || 0;
+      const tc = Math.cos(tyaw);
+      const ts = Math.sin(tyaw);
+      let deepest = 0;
+      const depthOf = (bb) => {
+        let cx = (bb.min[0] + bb.max[0]) / 2;
+        const cyy = (bb.min[1] + bb.max[1]) / 2;
+        let cz = (bb.min[2] + bb.max[2]) / 2;
+        if (bb.turretLocal) { // turret frame -> hull frame
+          const rx = cx * tc + cz * ts;
+          const rz = -cx * ts + cz * tc;
+          cx = rx + armor.turretPivot[0];
+          cz = rz + armor.turretPivot[2];
+          return _a.set(cx, cyy + armor.turretPivot[1], cz).sub(lp).dot(ld);
+        }
+        return _a.set(cx, cyy, cz).sub(lp).dot(ld);
+      };
+      for (const m of ev.modulesHit) {
+        const bb = (armor.modules || []).find((b) => b.module === m.module);
+        if (bb) deepest = Math.max(deepest, depthOf(bb));
+      }
+      for (const c of ev.crewHit) {
+        const bb = (armor.crew || []).find((b) => b.crew === c);
+        if (bb) deepest = Math.max(deepest, depthOf(bb));
+      }
+      const innerLen = Math.max(1.2, (ev.caliberMm || 100) * 10 / 1000 + 0.6, deepest + 0.35);
       _a.copy(lp).addScaledVector(ld, -4.5);
       tube(_a, lp, 0.022, S.pathOut, poseGrp, pb.disposables);
       _b.copy(lp).addScaledVector(ld, innerLen);
-      tube(lp, _b, 0.055, S.pathIn, poseGrp, pb.disposables);
+      tube(lp, _b, 0.075, S.pathIn, poseGrp, pb.disposables);   // hot sheath
+      tube(lp, _b, 0.028, S.pathCore, poseGrp, pb.disposables); // white-hot core
+      // spall cone: apex at the penetration point, opening along the path
+      const coneLen = innerLen * 0.8;
+      const coneGeo = new THREE.ConeGeometry(coneLen * 0.24, coneLen, 14, 1, true);
+      pb.disposables.push(coneGeo);
+      const cone = new THREE.Mesh(coneGeo, S.spall);
+      cone.position.copy(lp).addScaledVector(ld, coneLen * 0.5);
+      cone.quaternion.setFromUnitVectors(_Y, _s.copy(ld).negate());
+      poseGrp.add(cone);
+      // deterministic fragment rays fanned inside the cone
+      const side = new THREE.Vector3().crossVectors(ld, UP);
+      if (side.lengthSq() < 1e-6) side.set(1, 0, 0); else side.normalize();
+      const norm = new THREE.Vector3().crossVectors(ld, side);
+      for (let i = 0; i < 7; i++) {
+        const az = (i / 7) * Math.PI * 2 + 0.45;
+        const spread = 0.13 + 0.1 * (((i * 37) % 5) / 4);
+        const len = innerLen * (0.35 + 0.5 * (((i * 53) % 7) / 6));
+        _a.copy(ld)
+          .addScaledVector(side, Math.cos(az) * spread)
+          .addScaledVector(norm, Math.sin(az) * spread)
+          .normalize();
+        _b.copy(lp).addScaledVector(_a, len);
+        tube(lp, _b, 0.012, S.frag, poseGrp, pb.disposables);
+      }
       const mGeo = new THREE.SphereGeometry(0.1, 10, 8);
       pb.disposables.push(mGeo);
       const marker = new THREE.Mesh(mGeo, S.marker);
@@ -624,22 +872,31 @@ export function createKillCam(deps) {
     }
     poseGrp.updateMatrixWorld(true);
 
-    // 5. DOM labels anchored to the snapshot (static world positions)
+    // 5. DOM labels anchored to the snapshot (static world positions); each
+    // chip gets a leader line to its module dot and joins the vertical
+    // deconfliction pass in projectLabels().
     const d = ensureDom();
     d.labelHost.textContent = '';
+    d.leader.textContent = '';
     pb.labels.length = 0;
     const addLabel = (world, color, main, sub, big) => {
       const label = el('div', big ? 'cot-kc-dmg' : 'cot-kc-label', d.labelHost);
       let dot = null;
+      let line = null;
       if (!big) {
         label.style.color = color;
         label.innerHTML = `${main}<span class="s">${sub}</span>`;
         dot = el('div', 'cot-kc-dot', d.labelHost);
         dot.style.color = color;
+        line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('stroke', color);
+        line.setAttribute('stroke-width', '1');
+        line.setAttribute('opacity', '0.85');
+        d.leader.appendChild(line);
       } else {
         label.textContent = main;
       }
-      pb.labels.push({ label, dot, world: world.clone() });
+      pb.labels.push({ label, dot, line, big: !!big, world: world.clone() });
     };
     const modDmg = Math.round(ev.caliberMm || 0); // moduleDmg default (§2.2)
     for (const m of ev.modulesHit) {
@@ -669,18 +926,50 @@ export function createKillCam(deps) {
   function projectLabels() {
     const w = window.innerWidth;
     const h = window.innerHeight;
+    // pass 1: project anchors, compute each chip's desired rect
     for (const it of pb.labels) {
       _proj.copy(it.world).project(camera);
-      const behind = _proj.z > 1;
-      const x = (_proj.x * 0.5 + 0.5) * w;
-      const y = (-_proj.y * 0.5 + 0.5) * h;
-      it.label.style.display = behind ? 'none' : 'block';
-      it.label.style.left = `${x.toFixed(1)}px`;
-      it.label.style.top = `${y.toFixed(1)}px`;
+      it.hidden = _proj.z > 1;
+      if (it.hidden) continue;
+      it.ax = (_proj.x * 0.5 + 0.5) * w;
+      it.ay = (-_proj.y * 0.5 + 0.5) * h;
+      it.lw = it.label.offsetWidth || 60;
+      it.lh = it.label.offsetHeight || 18;
+      it.left = it.ax - it.lw / 2;
+      it.top = it.big ? it.ay + 14 : it.ay - 30 - it.lh;
+    }
+    // pass 2: vertical deconfliction — when projected rects overlap, cascade
+    // the later chip below the earlier one with a 4px gap
+    const items = pb.labels.filter((it) => !it.hidden).sort((a, b) => a.top - b.top);
+    for (let i = 0; i < items.length; i++) {
+      const a = items[i];
+      for (let j = 0; j < i; j++) {
+        const b = items[j];
+        if (a.left < b.left + b.lw + 6 && b.left < a.left + a.lw + 6 &&
+            a.top < b.top + b.lh + 4 && b.top < a.top + a.lh + 4) {
+          a.top = b.top + b.lh + 4;
+        }
+      }
+    }
+    // pass 3: write DOM positions + leader lines dot -> chip edge
+    for (const it of pb.labels) {
+      const off = it.hidden;
+      it.label.style.display = off ? 'none' : 'block';
+      if (it.dot) it.dot.style.display = off ? 'none' : 'block';
+      if (it.line) it.line.style.display = off ? 'none' : 'block';
+      if (off) continue;
+      it.label.style.left = `${it.left.toFixed(1)}px`;
+      it.label.style.top = `${it.top.toFixed(1)}px`;
       if (it.dot) {
-        it.dot.style.display = behind ? 'none' : 'block';
-        it.dot.style.left = `${x.toFixed(1)}px`;
-        it.dot.style.top = `${y.toFixed(1)}px`;
+        it.dot.style.left = `${it.ax.toFixed(1)}px`;
+        it.dot.style.top = `${it.ay.toFixed(1)}px`;
+      }
+      if (it.line) {
+        const below = it.top > it.ay; // chip was cascaded under its anchor
+        it.line.setAttribute('x1', it.ax.toFixed(1));
+        it.line.setAttribute('y1', it.ay.toFixed(1));
+        it.line.setAttribute('x2', (it.left + it.lw / 2).toFixed(1));
+        it.line.setAttribute('y2', (below ? it.top : it.top + it.lh).toFixed(1));
       }
     }
   }
@@ -715,6 +1004,7 @@ export function createKillCam(deps) {
     if (dom) {
       dom.root.classList.remove('on');
       dom.labelHost.textContent = '';
+      dom.leader.textContent = '';
     }
     const done = pb ? pb.onDone : null;
     pb = null;

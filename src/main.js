@@ -145,7 +145,7 @@ function setPedestalTank(specId) {
   }
   pedestalVisual = createTank(specId, engineCtx, { camoSeed: 4200, quality: 'high' });
   pedestalVisual.root.position.set(GARAGE_POS.x, GARAGE_POS.y + 0.35, GARAGE_POS.z);
-  pedestalVisual.root.rotation.y = 145 * DEG;
+  pedestalVisual.root.rotation.y = 162 * DEG;
   scene.add(pedestalVisual.root);
 }
 setPedestalTank(selectedSpecId);
@@ -352,14 +352,14 @@ document.body.appendChild(endOverlay);
 endBtn.addEventListener('click', () => { bus.emit('ui:click', {}); enterGarage(); });
 
 function showEndOverlay(result) {
-  endTitle.textContent = result === 'victory' ? 'VICTORY' : 'DEFEAT';
-  endTitle.style.color = result === 'victory' ? '#7ee87e' : '#f05a5a';
+  endTitle.textContent = result === 'victory' ? 'VICTORY' : result === 'draw' ? 'DRAW' : 'DEFEAT';
+  endTitle.style.color = result === 'victory' ? '#7ee87e' : result === 'draw' ? '#cfd9e2' : '#f05a5a';
   endOverlay.style.display = 'flex';
 }
 
 // ---------------------------------------------------------------------------
 // Input — routed through the rebindable action layer (src/game/input.js) and
-// the settings panel (src/ui/settings.js). Wheel zoom stays a raw axis here.
+// the settings panel (src/ui/settings.js). Zoom is the zoomIn/zoomOut actions (wheel by default).
 // ---------------------------------------------------------------------------
 const debugFlags = { forceFire: false }; // headless-test hook (window.__DEBUG.flags)
 let wheelStep = 0;
@@ -373,9 +373,8 @@ const settings = createSettings({
   gearVisible: () => game.phase === 'garage',
 });
 
-window.addEventListener('wheel', (e) => {
-  if (game.phase === 'battle' && !settings.isOpen()) wheelStep = e.deltaY < 0 ? 1 : -1;
-}, { passive: true });
+input.onAction('zoomIn', () => { if (game.phase === 'battle' && !settings.isOpen()) wheelStep = 1; });
+input.onAction('zoomOut', () => { if (game.phase === 'battle' && !settings.isOpen()) wheelStep = -1; });
 renderer.domElement.addEventListener('mousedown', () => {
   audio.resume();
   if (game.phase !== 'battle' || settings.isOpen()) return;
@@ -389,16 +388,64 @@ bus.on('ui:battleStart', () => {
   settings.showHints();
 });
 
-// Rebindable shell slots. The HUD keeps its own hardcoded Digit1-3 hotkeys, so
-// skip those codes here to avoid double-firing on the default bindings.
+// Rebindable shell slots — the ONLY hotkey path (HUD renders from ui:shellSelect).
 for (let slot = 0; slot < 3; slot++) {
-  input.onAction(`shell${slot + 1}`, (code) => {
+  input.onAction(`shell${slot + 1}`, () => {
     if (game.phase !== 'battle' || settings.isOpen()) return;
-    if (code === `Digit${slot + 1}`) return; // HUD hotkey path already handled it
     bus.emit('ui:shellSelect', { slot });
     bus.emit('ui:click', {});
   });
 }
+
+// Consumables — rebindable actions (Digit4/5/6 + pad X/Y/B default; HUD tray
+// clickable, which emits the same 'ui:consumable'). 0 = Repair Kit (all
+// damaged modules to full), 1 = First Aid (revive crew), 2 = Fire
+// Extinguisher. Per-battle stock 2/2/1, 5 s per-slot cooldown, and a kit is
+// NOT consumed when there is nothing for it to fix.
+const CONSUMABLE_STOCK = [2, 2, 1];
+const CONSUMABLE_COOLDOWN_S = 5;
+const consumableLeft = [...CONSUMABLE_STOCK];
+const consumableReadyAt = [0, 0, 0];
+for (let slot = 0; slot < 3; slot++) {
+  input.onAction(`consumable${slot + 1}`, () => {
+    if (game.phase !== 'battle' || settings.isOpen()) return;
+    bus.emit('ui:consumable', { slot });
+  });
+}
+bus.on('ui:consumable', ({ slot }) => {
+  const p = game.player;
+  if (game.phase !== 'battle' || settings.isOpen() || !p || !p.combat || p.combat.destroyed) return;
+  if (slot < 0 || slot > 2) return;
+  if (consumableLeft[slot] <= 0) { bus.emit('ui:consumableDenied', { slot, reason: 'EMPTY' }); return; }
+  if (game.timeS < consumableReadyAt[slot]) { bus.emit('ui:consumableDenied', { slot, reason: 'COOLDOWN' }); return; }
+  const c = p.combat;
+  let ok = false;
+  if (slot === 0) {
+    for (const name of Object.keys(c.modules)) {
+      const m = c.modules[name];
+      if (m.state !== 'ok') {
+        m.hp = m.maxHp; m.state = 'ok'; m.repairT = 0;
+        bus.emit('module:state', { id: p.id, module: name, state: 'ok' });
+        ok = true;
+      }
+    }
+  } else if (slot === 1) {
+    for (const name of Object.keys(c.crew)) {
+      if (c.crew[name] === false) { c.crew[name] = true; ok = true; }
+    }
+  } else if (slot === 2 && c.fire.burning) {
+    c.fire.burning = false;
+    c.fire.ticksLeft = 0;
+    c.fire.tickTimer = 0;
+    bus.emit('tank:fire', { id: p.id, burning: false });
+    ok = true;
+  }
+  if (!ok) { bus.emit('ui:consumableDenied', { slot, reason: 'NOTHING' }); return; }
+  consumableLeft[slot] -= 1;
+  consumableReadyAt[slot] = game.timeS + CONSUMABLE_COOLDOWN_S;
+  bus.emit('ui:consumableUsed', { slot, left: consumableLeft[slot] });
+  bus.emit('ui:click', {});
+});
 input.onAction('minimapZoom', () => {
   if (game.phase === 'battle') bus.emit('ui:minimapZoom', {});
 });
@@ -417,12 +464,22 @@ bus.on('ui:shellSelect', ({ slot }) => {
 // ---------------------------------------------------------------------------
 // Game flow
 // ---------------------------------------------------------------------------
+// Per-battle loadout (rounds carried per shell type) — the HUD tray renders
+// card.count live, and firing is gated on the slot having rounds left.
+const SHELL_LOADOUT = { AP: 24, APCR: 20, APFSDS: 24, HEAT: 16, HE: 12 };
 let shellCards = [];
 function buildShellCards(spec) {
   shellCards = spec.gun.shells.map((sh) => ({
     name: sh.name, type: sh.type, dmg: sh.dmg, penLabel: `${Math.round(sh.pen100Mm)} mm`,
+    count: SHELL_LOADOUT[sh.type] != null ? SHELL_LOADOUT[sh.type] : 20,
   }));
 }
+// Real ammo depletion: the player's fired shells consume the active slot.
+bus.on('shell:fired', (p) => {
+  if (!p.isPlayer || !game.player || !game.player.combat) return;
+  const card = shellCards[game.player.combat.shellSlot];
+  if (card && card.count > 0) card.count -= 1;
+});
 
 function startBattle(specId, mapId = null) {
   selectedSpecId = specId;
@@ -446,6 +503,9 @@ function startBattle(specId, mapId = null) {
   killcam.cancel(); // KILL-CAM: never carry a replay across battles
   hud.setMode('battle');
   game.phase = 'battle';
+  bus.emit('phase:change', { phase: 'battle' });
+  for (let i = 0; i < 3; i++) { consumableLeft[i] = CONSUMABLE_STOCK[i]; consumableReadyAt[i] = 0; }
+  bus.emit('ui:consumableReset', {});
   rig.release();
   rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
   // Battle-open cinematic: 3 s flyby sweeping onto the chase camera
@@ -457,6 +517,7 @@ function startBattle(specId, mapId = null) {
 
 function enterGarage() {
   game.phase = 'garage';
+  bus.emit('phase:change', { phase: 'garage' });
   endOverlay.style.display = 'none';
   if (document.exitPointerLock) document.exitPointerLock();
   hud.setMode('hidden');
@@ -601,7 +662,7 @@ function tick(nowMs) {
   // contrast to haze; scale density down toward 0.35x as FOV drops below 15
   // (applies in shot mode too so sniper_view captures stay crisp).
   if (scene.fog) {
-    const fogScale = camera.fov < 15 ? Math.max(0.35, camera.fov / 15) : 1;
+    const fogScale = camera.fov < 15 ? Math.max(0.22, Math.pow(camera.fov / 15, 1.6)) : 1;
     scene.fog.density = baseFogDensity * fogScale;
   }
 
@@ -627,7 +688,8 @@ function tick(nowMs) {
     inp.throttle = (st.forward ? 1 : 0) - (st.back ? 1 : 0);
     inp.steer = (st.right ? 1 : 0) - (st.left ? 1 : 0);
     inp.brake = st.handbrake;
-    inp.fire = (st.fire && input.isLocked()) || debugFlags.forceFire;
+    const haveAmmo = !shellCards.length || ((shellCards[inp.shellSlot | 0] || {}).count | 0) > 0;
+    inp.fire = ((st.fire && (input.isLocked() || input.padActive())) || debugFlags.forceFire) && haveAmmo;
   } else if (game.player) {
     const inp = game.player.input;
     inp.throttle = 0; inp.steer = 0; inp.brake = false; inp.fire = false;

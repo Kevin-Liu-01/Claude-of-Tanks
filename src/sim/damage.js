@@ -48,6 +48,19 @@ function behaviorOf(type) {
   return b;
 }
 
+/**
+ * True when a shell type resolves as a blast round (kind class 'HE'): direct
+ * hits and terrain impacts must route through resolveHeBurst. Game-loop
+ * routing MUST use this instead of comparing `type === 'HE'` strings so HESH
+ * (and any future blast type) detonates instead of silently dying on terrain
+ * (shells doc §5–§6).
+ * @param {string} type ShellSpec.type
+ * @returns {boolean}
+ */
+export function isHeClass(type) {
+  return behaviorOf(type).kindClass === 'HE';
+}
+
 /** Module HP baselines (armor doc §9); ×2.5 on modern-era tanks. */
 const MODULE_HP = {
   trackL: 100,
@@ -114,6 +127,16 @@ const _reflN = new Vector3();
 const _carryDir = new Vector3();
 const _carryV = new Vector3();
 const _exitPos = new Vector3();
+
+// HE nearest-point splash scratch (resolveHeBurst).
+const _heMat = new Matrix4();
+const _heInv = new Matrix4();
+const _heLocal = new Vector3();
+const _heNearest = new Vector3();
+const _heTo = new Vector3();
+/** Inset (m) pulling the clamped point off AABB edges so the splash trace
+ * strikes plate interiors instead of grazing mathematically exact edges. */
+const HE_NEAREST_INSET_M = 0.01;
 
 /** ±25% uniform roll. @param {function} rng @param {number} avg @returns {number} */
 function rollUniform(rng, avg) {
@@ -554,6 +577,10 @@ export function resolveShellHit(shell, target, hits, rng) {
       const isHeat = behavior.kindClass === 'CE';
       if (isHeat || shell.bounces >= RICOCHET_MAX_BOUNCES) shell.dead = true;
       shell.remainingPenMm = pen; // full pen retained through the bounce
+      // Screens crossed BEFORE the bouncing plate may have rolled moduleLink
+      // damage (a linked ammoRack/fuelTank can go red on this very trace), so
+      // the destroyed flag must be re-evaluated on this exit path too.
+      event.destroyed = finalizeTarget(combat, event.ammoRacked);
       event.targetHpAfter = combat.hp;
       return event;
     }
@@ -965,6 +992,88 @@ function heDirectHit(shell, target, hits, dmgRoll, rng) {
 }
 
 /**
+ * Hull-local AABB over a tank's solid hull plates (ERA tiles excluded),
+ * lazily computed once and cached on the armor model. Used by the HE splash
+ * nearest-point query. Returns null when the model has no solid hull plates
+ * (hand-built probes fall back to the center-ray path).
+ * @param {object} armor ArmorModel
+ * @returns {null | {min: number[], max: number[]}}
+ */
+function hullAabbOf(armor) {
+  if (armor.__hullAabb !== undefined) return armor.__hullAabb;
+  let aabb = null;
+  if (Array.isArray(armor.hullPlates)) {
+    for (const plate of armor.hullPlates) {
+      if (plate.kind === 'era' || !Array.isArray(plate.verts)) continue;
+      for (const v of plate.verts) {
+        if (!aabb) {
+          aabb = { min: [v[0], v[1], v[2]], max: [v[0], v[1], v[2]] };
+        } else {
+          for (let a = 0; a < 3; a++) {
+            if (v[a] < aabb.min[a]) aabb.min[a] = v[a];
+            if (v[a] > aabb.max[a]) aabb.max[a] = v[a];
+          }
+        }
+      }
+    }
+  }
+  armor.__hullAabb = aabb;
+  return aabb;
+}
+
+/**
+ * Find the plate an HE burst reaches on the NEAREST face of the target
+ * (armor doc §8 nearest-point approximation): clamp the burst point to the
+ * hull AABB in hull-local space (inset off exact edges), then trace
+ * burstPoint → just past that surface point. A burst off a rear corner now
+ * measures splash to the closest armor instead of wherever a burst→center
+ * ray happens to cross — the center ray both overstated distance and could
+ * miss wide hulls entirely. Returns null (caller falls back to the center
+ * ray) when there is no AABB, the burst sits inside the hull volume, or the
+ * trace finds no plate.
+ * @param {Vector3} burstPoint world detonation point
+ * @param {object} tank {spec, state, combat}
+ * @param {object} pose tankPoseFromState result
+ * @returns {Array<object>|null} traceTank hits toward the nearest point
+ */
+function nearestPointTrace(burstPoint, tank, pose) {
+  const armor = tank.spec.armor;
+  const aabb = hullAabbOf(armor);
+  if (!aabb) return null;
+  const st = tank.state;
+  _siEuler.set(-st.visualPitch, st.yaw, st.visualRoll, 'YXZ');
+  _siQuat.setFromEuler(_siEuler);
+  _heMat.compose(st.pos, _siQuat, _siOne);
+  _heInv.copy(_heMat).invert();
+  _heLocal.copy(burstPoint).applyMatrix4(_heInv);
+
+  let outside = false;
+  for (let a = 0; a < 3; a++) {
+    let lo = aabb.min[a] + HE_NEAREST_INSET_M;
+    let hi = aabb.max[a] - HE_NEAREST_INSET_M;
+    if (lo > hi) lo = hi = (aabb.min[a] + aabb.max[a]) * 0.5;
+    const c = _heLocal.getComponent(a);
+    const clamped = Math.min(hi, Math.max(lo, c));
+    if (clamped !== c) outside = true;
+    _heNearest.setComponent(a, clamped);
+  }
+  if (!outside) return null; // burst inside the hull volume — center ray
+
+  _heNearest.applyMatrix4(_heMat);
+  _heTo.subVectors(_heNearest, burstPoint);
+  const dLen = _heTo.length();
+  if (dLen < 1e-6) return null;
+  // Extend 1 m past the nearest surface point so the segment fully crosses
+  // the plate it lands on.
+  _heTo.multiplyScalar((dLen + 1) / dLen).add(burstPoint);
+  const hits = traceTank(burstPoint, _heTo, pose, tank.spec.armor, tank.combat.eraSpent);
+  for (const hit of hits) {
+    if (hit.kind === 'plate' && hit.plate.kind !== 'era') return hits;
+  }
+  return null;
+}
+
+/**
  * Resolve an HE burst: direct-hit pen attempt on `directTarget` (if any),
  * otherwise a surface/terrain burst that splashes every tank whose nearest
  * armor lies inside blastRadiusM(caliber), with the classic
@@ -1031,7 +1140,12 @@ export function resolveHeBurst(shell, burstPoint, tanks, directTarget, directHit
     if (centerDist - (armor.boundingRadiusM ?? 4) > radiusM) continue;
 
     const pose = tankPoseFromState(tank.state);
-    const hits = traceTank(burstPoint, _center, pose, armor, tank.combat.eraSpent);
+    // Nearest-point query first (armor doc §8): splash distance is measured
+    // to the closest reachable armor, not to wherever the burst→center ray
+    // crosses. Center ray remains the fallback for probes without hull
+    // plates or bursts inside the hull volume.
+    let hits = nearestPointTrace(burstPoint, tank, pose);
+    if (!hits) hits = traceTank(burstPoint, _center, pose, armor, tank.combat.eraSpent);
     let plateHit = null;
     for (const hit of hits) {
       if (hit.kind !== 'plate' || hit.plate.kind === 'era') continue;

@@ -349,12 +349,27 @@ export function createGarageStage(engineCtx, pos) {
     group.add(pt);
   }
 
-  // three wall floods on the visible (north/west) walls, aimed at the podium
-  const floodGeo = track(new THREE.BoxGeometry(0.7, 0.42, 0.3));
-  const floodLensGeo = track(new THREE.PlaneGeometry(0.56, 0.3));
-  const armGeo = track(new THREE.BoxGeometry(0.1, 0.1, 0.5));
+  // three wall floods on the visible (north/west) walls, aimed at the podium.
+  // Proper industrial fixtures: wall bracket + finned housing shell + framed
+  // emissive lens behind guard bars — never a bare glowing quad on the wall.
   // (the third housing is dressing only — keeps the scene's total live light
   // count low since three.js evaluates every light in every shader)
+  const bracketMat = shadowMat(new THREE.MeshStandardMaterial({
+    color: 0x4b5158, roughness: 0.45, metalness: 0.7,
+  }));
+  track(bracketMat);
+  const lensMat = track(new THREE.MeshStandardMaterial({
+    color: 0x0c0d0e, emissive: 0xffe2b0, emissiveIntensity: 2.4,
+    roughness: 0.4, metalness: 0,
+  }));
+  const plateGeo = track(new THREE.BoxGeometry(0.5, 0.62, 0.07)); // wall plate
+  const armGeo = track(new THREE.BoxGeometry(0.09, 0.09, 0.42));
+  const shellGeo = track(new THREE.BoxGeometry(0.92, 0.58, 0.34)); // housing shell
+  const rimGeo = track(new THREE.BoxGeometry(0.98, 0.64, 0.06));   // face rim
+  const finGeo = track(new THREE.BoxGeometry(0.92, 0.05, 0.4));    // cooling fins
+  const hoodGeo = track(new THREE.BoxGeometry(0.98, 0.07, 0.5));   // top visor
+  const lensGeo = track(new THREE.PlaneGeometry(0.72, 0.4));
+  const barGeo = track(new THREE.BoxGeometry(0.03, 0.62, 0.03));   // lens guard
   const floods = [
     { p: new THREE.Vector3(-6, 6.8, -HW + 0.3), i: 55 },
     { p: new THREE.Vector3(7, 6.8, -HW + 0.3), i: 55 },
@@ -363,13 +378,29 @@ export function createGarageStage(engineCtx, pos) {
   for (const f of floods) {
     const holder = new THREE.Group();
     holder.position.copy(f.p);
-    const arm = new THREE.Mesh(armGeo, housingMat);
-    arm.position.z = 0.2;
-    const box = new THREE.Mesh(floodGeo, housingMat);
-    box.position.z = 0.5;
-    const lens = new THREE.Mesh(floodLensGeo, lampMat);
-    lens.position.z = 0.66;
-    holder.add(arm, box, lens);
+    const plate = new THREE.Mesh(plateGeo, bracketMat);
+    plate.position.z = 0.0;
+    const arm = new THREE.Mesh(armGeo, bracketMat);
+    arm.position.z = 0.24;
+    const shell = new THREE.Mesh(shellGeo, bracketMat);
+    shell.position.z = 0.55;
+    const rim = new THREE.Mesh(rimGeo, housingMat);
+    rim.position.z = 0.72;
+    const hood = new THREE.Mesh(hoodGeo, bracketMat);
+    hood.position.set(0, 0.33, 0.6);
+    const lens = new THREE.Mesh(lensGeo, lensMat);
+    lens.position.z = 0.755;
+    holder.add(plate, arm, shell, rim, hood, lens);
+    for (let fi = 0; fi < 4; fi++) { // heat-sink fins along the shell top
+      const fin = new THREE.Mesh(finGeo, bracketMat);
+      fin.position.set(0, 0.3, 0.42 + fi * 0.09);
+      holder.add(fin);
+    }
+    for (const bx of [-0.18, 0.18]) { // guard bars across the lens
+      const bar = new THREE.Mesh(barGeo, bracketMat);
+      bar.position.set(bx, 0, 0.78);
+      holder.add(bar);
+    }
     group.add(holder);
     // aim the housing at the podium (lookAt works in world space)
     holder.lookAt(new THREE.Vector3(0, 1.2, 0).add(group.position));
@@ -439,14 +470,72 @@ export function createGarageStage(engineCtx, pos) {
     tire.castShadow = true;
     group.add(tire);
   }
-  // red tool cabinet + workbench along the west wall
-  const cabMat = shadowMat(new THREE.MeshStandardMaterial({ color: 0x8c2f28, roughness: 0.4, metalness: 0.45 }));
-  track(cabMat);
-  const cab = new THREE.Mesh(track(new THREE.BoxGeometry(1.4, 1.7, 0.8)), cabMat);
-  cab.position.set(-21.8, 0.85, -4);
-  cab.castShadow = true;
-  cab.receiveShadow = true;
-  group.add(cab);
+  // red rolling tool chest along the west wall — drawer bank with real drawer
+  // faces/handles and a worn painted-steel texture (was: a bare red box)
+  const cabTexC = document.createElement('canvas');
+  cabTexC.width = 256; cabTexC.height = 256;
+  {
+    const g = cabTexC.getContext('2d');
+    g.fillStyle = '#7e2a24'; // worn signal red
+    g.fillRect(0, 0, 256, 256);
+    // panel shading top->bottom
+    const lg = g.createLinearGradient(0, 0, 0, 256);
+    lg.addColorStop(0, 'rgba(255,220,200,0.10)');
+    lg.addColorStop(0.5, 'rgba(0,0,0,0)');
+    lg.addColorStop(1, 'rgba(0,0,0,0.22)');
+    g.fillStyle = lg;
+    g.fillRect(0, 0, 256, 256);
+    // scuffs and chips
+    for (let i = 0; i < 160; i++) {
+      g.fillStyle = rng() < 0.5 ? 'rgba(40,16,12,0.25)' : 'rgba(220,190,180,0.10)';
+      g.fillRect(rng() * 256, rng() * 256, 1 + rng() * 4, 1 + rng() * 2);
+    }
+    g.fillStyle = 'rgba(30,12,10,0.35)'; // grime at the base
+    g.fillRect(0, 236, 256, 20);
+  }
+  const cabTex = track(canvasTexture(cabTexC, { aniso }));
+  const cabMat = shadowMat(new THREE.MeshStandardMaterial({
+    map: cabTex, roughness: 0.42, metalness: 0.45,
+  }));
+  const cabDark = shadowMat(new THREE.MeshStandardMaterial({
+    color: 0x571d18, roughness: 0.5, metalness: 0.4,
+  }));
+  const cabSteel = shadowMat(new THREE.MeshStandardMaterial({
+    color: 0xb9c2ca, roughness: 0.3, metalness: 0.85,
+  }));
+  track(cabMat); track(cabDark); track(cabSteel);
+  const chest = new THREE.Group();
+  chest.position.set(-21.8, 0, -4);
+  chest.rotation.y = Math.PI / 2; // drawers face the bay
+  // body + slightly proud top lip and base plinth (reads as beveled trim)
+  const cabBody = new THREE.Mesh(track(new THREE.BoxGeometry(1.35, 1.34, 0.78)), cabMat);
+  cabBody.position.y = 0.82;
+  const cabTop = new THREE.Mesh(track(new THREE.BoxGeometry(1.43, 0.07, 0.86)), cabDark);
+  cabTop.position.y = 1.53;
+  const cabBase = new THREE.Mesh(track(new THREE.BoxGeometry(1.39, 0.1, 0.82)), cabDark);
+  cabBase.position.y = 0.2;
+  chest.add(cabBody, cabTop, cabBase);
+  // drawer faces (proud of the body) with steel pull handles
+  const drawerGeo = track(new THREE.BoxGeometry(1.23, 0.24, 0.05));
+  const handleGeo = track(new THREE.BoxGeometry(0.6, 0.035, 0.035));
+  for (let di = 0; di < 4; di++) {
+    const dy = 1.36 - di * 0.3;
+    const face = new THREE.Mesh(drawerGeo, cabMat);
+    face.position.set(0, dy, 0.415);
+    const handle = new THREE.Mesh(handleGeo, cabSteel);
+    handle.position.set(0, dy + 0.055, 0.455);
+    chest.add(face, handle);
+  }
+  // caster wheels
+  const castGeo = track(new THREE.CylinderGeometry(0.075, 0.075, 0.05, 10));
+  for (const [wx, wz] of [[-0.55, -0.3], [0.55, -0.3], [-0.55, 0.3], [0.55, 0.3]]) {
+    const wheel = new THREE.Mesh(castGeo, cabDark);
+    wheel.rotation.z = Math.PI / 2;
+    wheel.position.set(wx, 0.08, wz);
+    chest.add(wheel);
+  }
+  chest.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  group.add(chest);
   const benchTopMat = shadowMat(new THREE.MeshStandardMaterial({ color: 0x6d5a38, roughness: 0.8 }));
   const benchLegMat = shadowMat(new THREE.MeshStandardMaterial({ color: 0x2c2f32, roughness: 0.55, metalness: 0.5 }));
   track(benchTopMat); track(benchLegMat);

@@ -1,0 +1,167 @@
+{
+  "what": "Retina (deviceScaleFactor 2) perf budget fix \u2014 graphics quality tier system (src/engine/quality.js). Reproduce with: node tools/perfprobe.mjs --dsf 2",
+  "budget": {
+    "fpsMedianMin": 60,
+    "fpsP5Min": 45,
+    "drawCallsMax": 900,
+    "loadToReadyMaxMs": 8000
+  },
+  "autoTier": "devicePixelRatio >= 2 auto-selects 'high': composer pixel ratio capped 1.25 (renderer canvas stays 1.5), GTAO at half composer res. dpr 1 auto-selects 'ultra' \u2014 output bit-identical to the pre-quality-system chain.",
+  "dsf2_before_fix": {
+    "date": "2026-07-28T03:41:03.703Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080,
+      "deviceScaleFactor": 2
+    },
+    "fps": {
+      "median": 65.4,
+      "p5": 31.7,
+      "p1": 30.1,
+      "mean": 197
+    },
+    "frameMs": {
+      "median": 15.3,
+      "p95": 31.5,
+      "p99": 33.2
+    },
+    "drawCalls": {
+      "median": 740,
+      "max": 837
+    },
+    "triangles": {
+      "median": 6741519,
+      "max": 7772069
+    },
+    "loadToReadyMs": 4147,
+    "heap": {
+      "startMB": 276.1,
+      "endMB": 294.3,
+      "growthMBperS": 0.96
+    },
+    "gpuTextureEstimate": {
+      "sceneTextureMB": 477,
+      "shadowRtMB": 160,
+      "uniqueTextures": 124
+    },
+    "consoleErrors": []
+  },
+  "dsf2_after_runB": {
+    "date": "2026-07-28T04:03:37.711Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080,
+      "deviceScaleFactor": 2
+    },
+    "fps": {
+      "median": 126.6,
+      "p5": 65.8,
+      "p1": 34.4,
+      "mean": 131.7
+    },
+    "frameMs": {
+      "median": 7.9,
+      "p95": 15.2,
+      "p99": 29.1
+    },
+    "drawCalls": {
+      "median": 758,
+      "max": 855
+    },
+    "triangles": {
+      "median": 7184957,
+      "max": 8206095
+    },
+    "loadToReadyMs": 4130,
+    "heap": {
+      "startMB": 263.7,
+      "endMB": 198.7,
+      "growthMBperS": -3.25
+    },
+    "gpuTextureEstimate": {
+      "sceneTextureMB": 335,
+      "shadowRtMB": 160,
+      "uniqueTextures": 87
+    },
+    "consoleErrors": []
+  },
+  "dsf2_after_runC_quiet": {
+    "date": "2026-07-28T04:12:14.682Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080,
+      "deviceScaleFactor": 2
+    },
+    "fps": {
+      "median": 149.3,
+      "p5": 112.4,
+      "p1": 93.5,
+      "mean": 153
+    },
+    "frameMs": {
+      "median": 6.7,
+      "p95": 8.9,
+      "p99": 10.7
+    },
+    "drawCalls": {
+      "median": 754,
+      "max": 855
+    },
+    "triangles": {
+      "median": 7232153,
+      "max": 8207687
+    },
+    "loadToReadyMs": 4164,
+    "heap": {
+      "startMB": 285.5,
+      "endMB": 193,
+      "growthMBperS": -4.63
+    },
+    "gpuTextureEstimate": {
+      "sceneTextureMB": 334.7,
+      "shadowRtMB": 160,
+      "uniqueTextures": 86
+    },
+    "consoleErrors": []
+  },
+  "dsf1_after": {
+    "date": "2026-07-28T04:13:09.986Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080,
+      "deviceScaleFactor": 1
+    },
+    "fps": {
+      "median": 128.2,
+      "p5": 68.5,
+      "p1": 38,
+      "mean": 136.9
+    },
+    "frameMs": {
+      "median": 7.8,
+      "p95": 14.6,
+      "p99": 26.3
+    },
+    "drawCalls": {
+      "median": 755,
+      "max": 855
+    },
+    "triangles": {
+      "median": 7239397,
+      "max": 8207687
+    },
+    "loadToReadyMs": 4090,
+    "heap": {
+      "startMB": 253.7,
+      "endMB": 198.5,
+      "growthMBperS": -2.76
+    },
+    "gpuTextureEstimate": {
+      "sceneTextureMB": 334.7,
+      "shadowRtMB": 160,
+      "uniqueTextures": 86
+    },
+    "consoleErrors": []
+  },
+  "methodNote": "before-fix run measured on the live tree at 2026-07-28T03:41Z (median 65.4 under transient light load; independent critic runs measured 53.2/52.4 median, 29.6/34.8 p5 \u2014 same fail). After-fix runs B/C on an identical synced tree; run B overlapped a sibling agent's headless-Chrome screenshot harness (GPU contention) and still passed; run C ran on a quiet machine. drawCalls/triangles are renderer.info totals across ALL passes per frame (3 shadow cascade renders + main render + GTAO g-buffer prepass), not unique scene geometry."
+}

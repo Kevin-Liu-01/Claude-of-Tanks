@@ -197,6 +197,7 @@ export function createCameraRig(camera, deps) {
     camera.up.set(0, 1, 0);
     camera.lookAt(pivot);
     setFov(BASE_FOV_DEG);
+    camera.userData.scoped = false;
   }
 
   /** Place the sniper camera: glued to the gun, view = aim angles instantly. */
@@ -206,6 +207,9 @@ export function createCameraRig(camera, deps) {
     const viewPitch = THREE.MathUtils.clamp(aimPitch, PITCH_MIN, PITCH_MAX);
     camera.rotation.set(viewPitch, aimYaw + Math.PI, 0, 'YXZ');
     setFov(BASE_FOV_DEG / rig.zoom);
+    // fx reads this: own-gun muzzle-flash geometry is hidden in the scope
+    // (WoT behavior) and replaced by the light flash + reticle kick
+    camera.userData.scoped = true;
   }
 
   /** Server-aim raycast from the camera through screen center (both modes). */
@@ -240,12 +244,16 @@ export function createCameraRig(camera, deps) {
   /** Solve the battle-start flyby at cine.t; returns false when finished. */
   function solveCinematic(player, dt) {
     cine.t += dt;
+    camera.userData.scoped = false;
     const k = smoother(THREE.MathUtils.clamp(cine.t / cine.dur, 0, 1));
     pivotTargetFor(player, _pivotTarget);
-    // sweep: high front-quarter arc decaying onto the arcade chase pose
+    // sweep: front-quarter arc decaying onto the arcade chase pose. Kept LOW
+    // (-0.24 rad start pitch, was -0.40): the steep opening angle put the
+    // camera right in the terrain's specular sun-glint lobe and blew ~40% of
+    // the frame to near-white glare for the first 1.5 s.
     const yawOff = 2.3 * (1 - k);
-    const pitch = THREE.MathUtils.lerp(-0.40, THREE.MathUtils.degToRad(-10), k);
-    const d = THREE.MathUtils.lerp(30, ORBIT_STEPS[2], k);
+    const pitch = THREE.MathUtils.lerp(-0.12, THREE.MathUtils.degToRad(-10), k);
+    const d = THREE.MathUtils.lerp(23, ORBIT_STEPS[2], k);
     dirFromAngles(cine.endYaw + yawOff, pitch, _viewDir);
     _desired.copy(_pivotTarget).addScaledVector(_viewDir, -d);
     const minY = heightField.getHeightAt(_desired.x, _desired.z) + CAMERA_MIN_CLEARANCE_M;
@@ -308,6 +316,7 @@ export function createCameraRig(camera, deps) {
 
       // Death-cam: slow orbit of the wreck (input ignored until released).
       if (death) {
+        camera.userData.scoped = false;
         death.az += 0.22 * dt;
         pivotTargetFor(player, _pivotTarget);
         _pivotTarget.y -= PIVOT_ABOVE_TURRET_M * 0.6;
@@ -385,14 +394,18 @@ export function createCameraRig(camera, deps) {
         camera.rotation.y += 0.0013 * noise.noise(4.2, shakeT * 0.38, 0);
       }
       if (trauma > 0) {
-        const s = trauma * trauma * (rig.mode === 'SNIPER' ? SNIPER_SHAKE_SCALE : 1);
+        // t^1.6 (was t^2): a 0.35-trauma hit now lands a clearly readable
+        // ~0.7 deg flinch instead of a sub-pixel wobble
+        const s = Math.pow(trauma, 1.6) * (rig.mode === 'SNIPER' ? SNIPER_SHAKE_SCALE : 1);
         camera.rotation.x += SHAKE_AMP_XY * s * noise.noise(shakeT * SHAKE_FREQ, 0, 0);
         camera.rotation.y += SHAKE_AMP_XY * s * noise.noise(0, shakeT * SHAKE_FREQ, 0);
         camera.rotation.z += SHAKE_AMP_Z * s * noise.noise(0, 0, shakeT * SHAKE_FREQ);
       }
       // Recoil pitch kick — sharp upward bump on fire, fast exponential return.
+      // Sniper keeps a STRONG reticle kick (0.55): with own-gun flash geometry
+      // hidden in the scope, the kick is what sells the shot.
       if (recoil > 1e-4) {
-        camera.rotation.x += recoil * (rig.mode === 'SNIPER' ? 0.35 : 1);
+        camera.rotation.x += recoil * (rig.mode === 'SNIPER' ? 0.55 : 1);
         recoil *= Math.exp(-dt / 0.09);
       } else {
         recoil = 0;
@@ -509,6 +522,7 @@ export function createCameraRig(camera, deps) {
       cine = null;
       death = null;
       trauma = 0;
+      camera.userData.scoped = false;
       applyPlayerVisibility(getPlayer(), true);
       camera.position.copy(pos);
       camera.up.set(0, 1, 0);

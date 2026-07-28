@@ -25,6 +25,7 @@ import {
   startReload,
   estimatePenRatio,
   blastRadiusM,
+  isHeClass,
 } from './damage.js';
 
 // ---------------------------------------------------------------- harness --
@@ -160,6 +161,16 @@ function mkShell(shellSpec, distM = 100) {
   near(penAtDistanceMm(BR365K, 50), 119, 1e-9, 'pen clamped below 100 m');
   near(penAtDistanceMm(BR365K, 2000), 97, 1e-9, 'pen clamped beyond 1000 m');
 
+  // Optional far anchor: modern rods quote pen at 2 km (M829A4: 750 mm).
+  // Specs carrying pen2000Mm get a second linear segment 1000→2000 m so the
+  // quoted value lands at 2 km instead of freezing at the 1000 m figure.
+  const m829a4 = mkShellSpec({ name: 'M829A4', type: 'APFSDS', caliberMm: 120, pen100Mm: 916, pen1000Mm: 833, pen2000Mm: 750, velocityMps: 1670 });
+  near(penAtDistanceMm(m829a4, 100), 916, 1e-9, 'far-anchor spec: 100 m anchor intact');
+  near(penAtDistanceMm(m829a4, 1000), 833, 1e-9, 'far-anchor spec: 1000 m anchor intact');
+  near(penAtDistanceMm(m829a4, 1500), 791.5, 1e-9, 'far-anchor spec: 1.5 km interpolates 1000→2000');
+  near(penAtDistanceMm(m829a4, 2000), 750, 1e-9, 'far-anchor spec: quoted 2 km pen delivered at 2 km');
+  near(penAtDistanceMm(m829a4, 3000), 750, 1e-9, 'far-anchor spec: clamped beyond 2 km');
+
   const g = 9.81 * GRAVITY_SCALE;
   near(
     aimElevationRad(500, 792),
@@ -294,6 +305,26 @@ function mkShell(shellSpec, distM = 100) {
   assert(shell.vel.z > 0, '§3 velocity deflected off the +Z plate');
   near(ev.damage, 0, 1e-9, '§3 ricochet deals no damage');
   assert(shell.penRollDone && shell.remainingPenMm > 0, '§3 full pen retained through bounce');
+}
+
+// ------------- ricochet exit still finalizes earlier module damage ----------
+// A spaced screen with a moduleLink crossed BEFORE the bouncing plate can
+// red-line an ammo rack on this very trace; the ricochet return path must
+// re-evaluate destruction instead of leaving a detonated tank alive.
+{
+  const target = mkTarget();
+  target.combat.modules.ammoRack.hp = 40; // one hit from cooking off
+  const shell = mkShell(PZGR39, 300);
+  const hits = [
+    mkPlateHit(0.2, mkPlate({ name: 'sponson_screen', kind: 'spaced', physicalMm: 10, keMm: 10, ceMm: 10, moduleLink: 'ammoRack' }), 0, V(0, 1, 2.5)),
+    mkPlateHit(0.4, mkPlate({ name: 'side45', physicalMm: 45, keMm: 45, ceMm: 45 }), 75),
+  ];
+  const rng = seqRng([0.5, 0.5, 0.1, 0.5]); // pen, dmg, rack save (0.1 < 0.27), rack moduleDmg
+  const ev = resolveShellHit(shell, target, hits, rng);
+  assert(ev.kind === 'ricochet', `screen-then-steep-plate still ricochets (got ${ev.kind})`);
+  assert(ev.ammoRacked === true, 'linked rack went red before the bounce');
+  assert(ev.destroyed === true && target.combat.destroyed === true, 'ricochet exit finalizes the detonation');
+  near(target.combat.hp, 0, 1e-9, 'detonation zeroes HP on the ricochet path');
 }
 
 // ---------------------------------------------------- REQUIRED ASSERT §4 ---
@@ -490,6 +521,43 @@ function mkShell(shellSpec, distM = 100) {
   assert(events[0].crewHit.includes('driver'), 'area splash injures crew at 10%');
   near(entity.combat.modules.engine.hp, 99, 1e-6, 'area splash internal module at half chance/half damage');
   assert(rng.consumed() === 6, `area splash consumes crew+module rolls (consumed ${rng.consumed()})`);
+}
+
+// ------------- HE area splash measures to the NEAREST armor point -----------
+// A burst off a hull CORNER whose burst→center ray misses every plate (or
+// crosses a far one) must still splash: the query clamps the burst point to
+// the hull AABB and traces toward that nearest surface point.
+{
+  const armorModel = {
+    boundingRadiusM: 4,
+    turretPivot: [0, 1, 0],
+    gunPivot: [0, 0, 0],
+    gunBarrel: null,
+    hullPlates: [mkPlate({ name: 'side38', physicalMm: 38, keMm: 38, ceMm: 38, verts: [[-1.5, 0, 2], [1.5, 0, 2], [1.5, 2, 2], [-1.5, 2, 2]] })],
+    turretPlates: [],
+    modules: [],
+    crew: [{ crew: 'driver', min: [-0.4, 0.5, 0.5], max: [0.4, 1.2, 1.5], turretLocal: false }],
+  };
+  const spec = mkSpec({ armor: armorModel });
+  const entity = { id: 'corner_victim', spec, state: mkState(), combat: createCombatState(spec) };
+  // Burst off the front-right corner: the ray to the hull center (0,1,0)
+  // crosses z=2 at x≈1.67 — OUTSIDE the plate — so the old center-ray query
+  // produced no splash at all. Nearest point on the AABB is (≈1.49, 1, 2),
+  // 1.42 m away: 0.5·450·(1 − 1.42/4.089) − 1.1·38 ≈ 105.
+  const shell = mkShell(OF471, 300);
+  const events = resolveHeBurst(shell, V(2.5, 1, 3), [entity], null, null, rngHalf);
+  assert(events.length === 1, `corner burst splashes via nearest point (got ${events.length} events)`);
+  if (events.length === 1) {
+    assert(events[0].kind === 'he_splash', `corner burst kind he_splash (got ${events[0].kind})`);
+    near(events[0].damage, 105, 2.0, 'corner splash damage priced at the nearest plate');
+  }
+
+  // Sanity: a straight-on burst must match the classic formula exactly
+  // (nearest-point and center-ray agree when the burst faces the plate).
+  const entityB = { id: 'front_victim', spec: mkSpec({ armor: armorModel }), state: mkState(), combat: null };
+  entityB.combat = createCombatState(entityB.spec);
+  const evsB = resolveHeBurst(mkShell(OF471, 300), V(0, 1, 4), [entityB], null, null, rngHalf);
+  near(evsB[0].damage, 73.2, 1.0, 'head-on splash unchanged by the nearest-point query');
 }
 
 // ------------------- HE burst on the gun barrel still splashes the target --
@@ -975,6 +1043,21 @@ function mkShell(shellSpec, distM = 100) {
     threw = /unknown shell type/.test(String(e && e.message));
   }
   assert(threw, 'unknown shell type raises a clear error');
+
+  // isHeClass is the LOCKED game-loop routing predicate (game/state.js must
+  // burst-resolve any type where this is true — string-comparing 'HE' would
+  // leave HESH detonating nowhere and splashing no one).
+  assert(isHeClass('HE') === true, 'isHeClass: HE routes to burst resolution');
+  assert(isHeClass('HESH') === true, 'isHeClass: HESH routes to burst resolution');
+  assert(isHeClass('AP') === false && isHeClass('APCR') === false, 'isHeClass: kinetic rounds excluded');
+  assert(isHeClass('APFSDS') === false && isHeClass('HEAT') === false, 'isHeClass: rods and jets excluded');
+  let threwHe = false;
+  try {
+    isHeClass('BEEHIVE');
+  } catch (e) {
+    threwHe = /unknown shell type/.test(String(e && e.message));
+  }
+  assert(threwHe, 'isHeClass fails loudly on unknown types');
 }
 
 // ------------------- tandem warheads bypass ERA (armor doc §11.2) -----------

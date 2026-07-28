@@ -5,7 +5,14 @@
  *
  * Conventions (ARCHITECTURE §1.1): meters / seconds / radians, +Y up,
  * forwardAxis(yaw) = [sin(yaw), 0, cos(yaw)], rightAxis(yaw) = [cos(yaw), 0, -sin(yaw)],
- * yaw = 0 faces +Z, positive pitch = nose up, positive roll = right side down.
+ * yaw = 0 faces +Z, positive pitch = nose up.
+ * ROLL SIGN (locked by the renderer): every consumer composes the pose as
+ * rotation.set(-visualPitch, yaw, visualRoll, 'YXZ') (tankFactory syncFromState,
+ * armor buildFrames, damage.js, killcam) — under that composition POSITIVE roll
+ * lifts the RIGHT side (worldY of a hull-local point = pos.y
+ * + x·sin(roll)·cos(pitch) + z·sin(pitch)). The r5 terrain-contact gate traced
+ * one track buried ~1 m while the other floated at rest to the old fit using
+ * the opposite ("right side down") sign: the hull leaned INTO every side slope.
  *
  * No rendering, no DOM, no top-level side effects — runs under plain node.
  */
@@ -50,8 +57,43 @@ const YAW_SPOOL_S = 0.15;        // track spool-up time toward target yaw rate
 const NEUTRAL_TURN_MULT = 0.95;  // Pc term of the wiki traverse formula
 const PIVOT_OFFSET_M = 1.2;      // locked-track orbit offset for 'pivot' style turns
 const PIVOT_SPEED_EPS = 0.1;     // m/s — below this a stationary pivot turn engages
-const HALF_LEN_FRAC = 0.35;      // corner sampling half-length = 0.35 × hullLengthM
-const HALF_WID_FRAC = 0.5;       // corner sampling half-width  = 0.5  × widthM
+const HALF_WID_FRAC = 0.5;       // contact-line half-width = 0.5 × widthM (track outer edge)
+// Terrain-contact support solve (r5 hard gate): the hull pose is resolved so
+// that NO point along either track contact line renders below the heightfield.
+// Line half-length 0.45 × hullLengthM matches the rendered track bottom run
+// (tankFactory places idler/sprocket at ~±0.45 L; the arcs curve up past them).
+const SUPPORT_LEN_FRAC = 0.45;   // support line half-length = 0.45 × hullLengthM
+const SUPPORT_SPACING_M = 0.35;  // max gap between contact samples along a line
+const SUPPORT_MAX_N = 24;        // per-line sample cap (Maus-length hulls)
+// Contact margin: the solved plane rides this far above the highest contact
+// sample. Covers (a) the sub-sample terrain bulge between support points and
+// (b) the bounded phase error between this sim-tick susp mirror and the
+// renderer's per-frame integration at non-60 fps — while staying under the
+// track link pads, which hang ~1–2 cm below the hull-local contact plane.
+const SUPPORT_MARGIN_M = 0.015;
+// Mirror of tankFactory's turn-lean sway (visual layer adds it to rotation.z):
+// the support solve folds the predicted sway into the effective roll so a hard
+// fast turn cannot dip the leaned-into track edge below the terrain.
+const SWAY_GAIN = 0.011;
+const SWAY_CLAMP = 0.035;
+const SWAY_SMOOTH = 0.12;
+// Mirror of tankFactory's visual suspension rock layer (suspP/suspR in
+// syncFromState): the renderer adds a self-timed under-damped spring to the
+// hull rotation on top of visualPitch/visualRoll, so the support solve must
+// clear the terrain at THAT pose. Constants must stay in lockstep with
+// tankFactory.js (SUSP_W/SUSP_Z, accel squat, 4-corner fit, clamps) — see
+// docs/handoff/gameplay_feel-r1.md for the pairing note.
+const SUSP_W = 7.5;
+const SUSP_Z = 0.30;
+const SUSP_ACCEL_CLAMP = 9;      // m/s²
+const SUSP_ACCEL_GAIN = 0.0052;  // rad per m/s² (nose up under accel)
+const SUSP_FIT_LEN = 0.36;       // × hullLengthM (their corner fit)
+const SUSP_FIT_WID = 0.42;       // × widthM
+const SUSP_P_CLAMP = 0.07;       // rad — terrain-delta pitch authority
+const SUSP_R_CLAMP = 0.06;       // rad — terrain-delta roll authority
+const SUSP_K_SPEED = 4;          // m/s for full rate scale
+const SUSP_K_GAIN = 0.8;
+const MUZZLE_CLEARANCE_M = 0.15; // gun-terrain clamp: min muzzle height above ground
 const SPRING_OMEGA = 2 * Math.PI * 3; // hull attitude spring natural frequency (rad/s)
 const SPRING_ZETA = 0.6;         // damping ratio
 const K_INERTIA = 0.006;         // rad of pitch target per m/s² of longitudinal accel
@@ -74,6 +116,10 @@ const RAD2DEG = 180 / Math.PI;
 
 // Module-scope scratch (no per-frame allocation, ARCHITECTURE §1.3).
 const _push = new Vector3();
+// Support-solve sample buffers: height + hull-local offsets, 2 lines × ≤24.
+const _supH = new Float64Array(SUPPORT_MAX_N * 2);
+const _supX = new Float64Array(SUPPORT_MAX_N * 2);
+const _supZ = new Float64Array(SUPPORT_MAX_N * 2);
 
 // ---------------------------------------------------------------------------
 // Small math helpers
@@ -199,6 +245,12 @@ export function createTankState(spec, pos, yaw) {
       recoilVX: 0, recoilVZ: 0,               // decaying hull translation impulse
     },
     _prevSpeed: 0,
+    _terr: { pitch: 0, roll: 0 },  // last terrain plane fit (spring target source)
+    _swayEst: 0,                   // predicted visual turn-lean sway (rad)
+    _susp: { p: 0, r: 0, pv: 0, rv: 0 }, // mirror of the visual susp rock layer
+    _sup: {                        // static-pose support cache (skip resampling)
+      x: NaN, z: NaN, yaw: 0, pitch: 0, roll: 0, y: pos.y,
+    },
   };
 }
 
@@ -233,19 +285,14 @@ export function updateTank(entity, heightField, dt, collide = null) {
   const R = res[ground] || res.medium;
   const Rh = res.hard;
 
-  // ---- terrain pitch/roll from 4-corner sampling at the track contact rect ----
-  const hl = HALF_LEN_FRAC * spec.dims.hullLengthM;
+  // ---- terrain pitch/roll: previous tick's contact-line plane fit ----
+  // The fit itself is computed at the settled post-integration pose below (so
+  // the support solve and the fit share one sampling pass); the speed/slope
+  // logic reads the one-tick-old plane, which is imperceptible at 60 Hz.
   const hw = HALF_WID_FRAC * spec.dims.widthM;
   const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);   // forwardAxis
   const rx = Math.cos(state.yaw), rz = -Math.sin(state.yaw);  // rightAxis
-  const px = state.pos.x, pz = state.pos.z;
-  const hFL = heightField.getHeightAt(px + fx * hl - rx * hw, pz + fz * hl - rz * hw);
-  const hFR = heightField.getHeightAt(px + fx * hl + rx * hw, pz + fz * hl + rz * hw);
-  const hRL = heightField.getHeightAt(px - fx * hl - rx * hw, pz - fz * hl - rz * hw);
-  const hRR = heightField.getHeightAt(px - fx * hl + rx * hw, pz - fz * hl + rz * hw);
-  // Positive pitch = nose up; positive roll = right side down.
-  const terrPitch = Math.atan2((hFL + hFR - hRL - hRR) * 0.5, 2 * hl);
-  const terrRoll = Math.atan2((hFL + hRL - hFR - hRR) * 0.5, 2 * hw);
+  const terrPitch = state._terr.pitch;
 
   const topMps = spec.topSpeedKmh / 3.6;
   const revMps = spec.reverseSpeedKmh / 3.6;
@@ -341,13 +388,80 @@ export function updateTank(entity, heightField, dt, collide = null) {
     _push.set(0, 0, 0);
     if (collide(state.pos, radiusM, _push)) state.pos.add(_push);
   }
-  state.pos.y = heightField.getHeightAt(state.pos.x, state.pos.z);
 
-  // ---- hull attitude spring: terrain target + inertial pitch (nose dip/lift) ----
+  // ---- terrain contact: line sampling, plane fit, attitude spring, SUPPORT ----
+  // r5 hard-gate fix. The old model snapped pos.y to the height under the hull
+  // CENTER and tilted a rigid plane from 4 corner samples — on 2–8 m terrain
+  // features that buried the rendered tracks up to 1.7 m (and levitated the
+  // whole contact patch on crests) because nothing ever resolved penetration.
+  // Now: (1) sample N points along BOTH track contact lines at the settled
+  // post-integration pose, (2) least-squares fit the terrain plane for the
+  // spring targets, (3) after the spring step, raise pos.y to the LARGEST
+  // height deficit over all contact samples (support-polygon clamp) so no
+  // contact point renders below the heightfield and — since the max deficit
+  // point sits exactly ON the ground — the patch can never fully levitate.
   const dvdt = clamp((state.speed - state._prevSpeed) / dt, -DVDT_CLAMP, DVDT_CLAMP);
   const inertialPitch = clamp(K_INERTIA * dvdt, -INERTIA_CLAMP, INERTIA_CLAMP);
-  const targetPitch = terrPitch + inertialPitch;
-  const targetRoll = terrRoll;
+  state._prevSpeed = state.speed;
+
+  // Predicted visual turn-lean sway (tankFactory adds it to rotation.z): fold
+  // it into the effective roll so hard fast turns keep the leaned track edge
+  // above ground too.
+  const swayTarget = clamp(state.yawRate * state.speed * SWAY_GAIN, -SWAY_CLAMP, SWAY_CLAMP);
+  state._swayEst += (swayTarget - state._swayEst) * SWAY_SMOOTH;
+
+  const sup = state._sup;
+  const susp = state._susp;
+  const pitchEff0 = spr.pitch + susp.p;
+  const rollEff0 = spr.roll + susp.r + state._swayEst;
+  // Static-pose cache: a parked, settled tank re-uses the solved height instead
+  // of re-sampling the (static) heightfield every tick.
+  const supFresh =
+    Math.abs(state.pos.x - sup.x) < 0.004 && Math.abs(state.pos.z - sup.z) < 0.004 &&
+    Math.abs(wrapAngle(state.yaw - sup.yaw)) < 0.0012 &&
+    Math.abs(pitchEff0 - sup.pitch) < 0.0012 && Math.abs(rollEff0 - sup.roll) < 0.0012;
+
+  let nSamp = 0;
+  if (!supFresh) {
+    const sl = SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
+    const nLine = Math.min(SUPPORT_MAX_N, Math.max(5, Math.ceil((2 * sl) / SUPPORT_SPACING_M) + 1));
+    const step = (2 * sl) / (nLine - 1);
+    // Project the hull-local contact points to world XZ with the same YXZ
+    // composition the renderer uses (attitude from the pre-step spring — the
+    // planform foreshortening barely changes within one spring step).
+    const cb = Math.cos(state.yaw), sb = Math.sin(state.yaw);
+    const ca0 = Math.cos(-pitchEff0), sa0 = Math.sin(-pitchEff0);
+    const cr0 = Math.cos(rollEff0), sr0 = Math.sin(rollEff0);
+    const px1 = state.pos.x, pz1 = state.pos.z;
+    let sumHZ = 0, sumZZ = 0, sumL = 0, sumR = 0;
+    for (let side = -1; side <= 1; side += 2) {
+      const x = side * hw;
+      const x1 = x * cr0, y1 = x * sr0;
+      for (let k = 0; k < nLine; k++) {
+        const z = -sl + k * step;
+        const z2 = y1 * sa0 + z * ca0;
+        const h = heightField.getHeightAt(px1 + x1 * cb + z2 * sb, pz1 - x1 * sb + z2 * cb);
+        _supH[nSamp] = h;
+        _supX[nSamp] = x;
+        _supZ[nSamp] = z;
+        nSamp++;
+        sumHZ += h * z;
+        sumZZ += z * z;
+        if (side < 0) sumL += h; else sumR += h;
+      }
+    }
+    // Least-squares plane: pitch from the along-track height gradient (Σz = 0
+    // by symmetry), roll from the mean left/right line difference. RENDERER
+    // ROLL SIGN: positive roll lifts the right side, so ground higher on the
+    // RIGHT must give a POSITIVE roll target (the old 4-corner fit used the
+    // opposite sign and leaned the hull INTO every side slope).
+    state._terr.pitch = Math.atan2(sumHZ, sumZZ);
+    state._terr.roll = Math.atan2((sumR - sumL) / nLine, 2 * hw);
+  }
+
+  // ---- hull attitude spring: terrain target + inertial pitch (nose dip/lift) ----
+  const targetPitch = state._terr.pitch + inertialPitch;
+  const targetRoll = state._terr.roll;
   spr.pitchV += (SPRING_OMEGA * SPRING_OMEGA * (targetPitch - spr.pitch) -
                  2 * SPRING_ZETA * SPRING_OMEGA * spr.pitchV) * dt;
   spr.pitch += spr.pitchV * dt;
@@ -356,7 +470,57 @@ export function updateTank(entity, heightField, dt, collide = null) {
   spr.roll += spr.rollV * dt;
   state.visualPitch = spr.pitch;
   state.visualRoll = spr.roll;
-  state._prevSpeed = state.speed;
+
+  // ---- mirror of tankFactory's visual susp rock layer -----------------------
+  // syncFromState (which runs right after this tick) will render the hull at
+  // rotation.set(-(visualPitch + suspP), yaw, visualRoll + suspR + sway) —
+  // replicate its spring tick-for-tick so the support solve below clears the
+  // terrain at the pose that actually reaches the screen.
+  {
+    const accel = clamp(dvdt, -SUSP_ACCEL_CLAMP, SUSP_ACCEL_CLAMP);
+    let pT = accel * SUSP_ACCEL_GAIN;
+    let rT = 0;
+    const hl2 = SUSP_FIT_LEN * spec.dims.hullLengthM;
+    const hw2 = SUSP_FIT_WID * spec.dims.widthM;
+    const fx2 = Math.sin(state.yaw), fz2 = Math.cos(state.yaw);
+    const rx2 = Math.cos(state.yaw), rz2 = -Math.sin(state.yaw);
+    const px2 = state.pos.x, pz2 = state.pos.z;
+    const hFL = heightField.getHeightAt(px2 + fx2 * hl2 - rx2 * hw2, pz2 + fz2 * hl2 - rz2 * hw2);
+    const hFR = heightField.getHeightAt(px2 + fx2 * hl2 + rx2 * hw2, pz2 + fz2 * hl2 + rz2 * hw2);
+    const hRL = heightField.getHeightAt(px2 - fx2 * hl2 - rx2 * hw2, pz2 - fz2 * hl2 - rz2 * hw2);
+    const hRR = heightField.getHeightAt(px2 - fx2 * hl2 + rx2 * hw2, pz2 - fz2 * hl2 + rz2 * hw2);
+    const terrP2 = Math.atan2((hFL + hFR - hRL - hRR) * 0.5, 2 * hl2);
+    // Renderer-consistent roll sign (positive lifts the right side): the rock
+    // layer's roll delta now measures the true conformance error instead of
+    // fighting the main spring on side slopes.
+    const terrR2 = Math.atan2((hFR + hRR - hFL - hRL) * 0.5, 2 * hw2);
+    const kf = Math.min(1, Math.abs(state.speed) / SUSP_K_SPEED) * SUSP_K_GAIN;
+    pT += clamp((terrP2 - state.visualPitch) * kf, -SUSP_P_CLAMP, SUSP_P_CLAMP);
+    rT += clamp((terrR2 - state.visualRoll) * kf, -SUSP_R_CLAMP, SUSP_R_CLAMP);
+    susp.pv += (SUSP_W * SUSP_W * (pT - susp.p) - 2 * SUSP_Z * SUSP_W * susp.pv) * dt;
+    susp.p += susp.pv * dt;
+    susp.rv += (SUSP_W * SUSP_W * (rT - susp.r) - 2 * SUSP_Z * SUSP_W * susp.rv) * dt;
+    susp.r += susp.rv * dt;
+  }
+
+  // ---- support solve: no contact sample below ground at the rendered pose ----
+  const pitchEff = spr.pitch + susp.p;
+  const rollEff = spr.roll + susp.r + state._swayEst;
+  if (!supFresh) {
+    const sinP = Math.sin(pitchEff), cosP = Math.cos(pitchEff);
+    const sinR = Math.sin(rollEff);
+    let supportY = -Infinity;
+    for (let i = 0; i < nSamp; i++) {
+      const d = _supH[i] - (_supX[i] * sinR * cosP + _supZ[i] * sinP);
+      if (d > supportY) supportY = d;
+    }
+    supportY += SUPPORT_MARGIN_M;
+    state.pos.y = supportY;
+    sup.x = state.pos.x; sup.z = state.pos.z; sup.yaw = state.yaw;
+    sup.pitch = pitchEff; sup.roll = rollEff; sup.y = supportY;
+  } else {
+    state.pos.y = sup.y;
+  }
 
   // ---- turret & gun chase the world aim point (limits in hull space) ----
   const aim = input.aimPoint;
@@ -383,9 +547,33 @@ export function updateTank(entity, heightField, dt, collide = null) {
     const lo = -spec.gunDepressionDeg * DEG2RAD;
     const hi = spec.gunElevationDeg * DEG2RAD;
     const desiredGun = wantPitchWorld - hullPitchAtGun;
-    state.atGunLimit = desiredGun < lo - 1e-4 || desiredGun > hi + 1e-4;
+    // Gun-terrain clamp (r5 minor): auto-depression onto close server-aim hits
+    // used to sink the muzzle up to ~1.4 m into rising ground. Keep the muzzle
+    // (and mid-barrel) at least MUZZLE_CLEARANCE_M above the heightfield by
+    // raising the effective depression floor; the reticle pins via atGunLimit.
+    let loEff = lo;
+    const barrelLen = spec.armor && spec.armor.gunBarrel ? spec.armor.gunBarrel.lengthM : 0;
+    if (barrelLen > 1) {
+      const a = spec.armor;
+      const trunnionFwd = (a.turretPivot ? a.turretPivot[2] : 0) + (a.gunPivot ? a.gunPivot[2] : 0);
+      const gunYawW = state.yaw + state.turretYaw;
+      const gyw = Math.sin(gunYawW), gzw = Math.cos(gunYawW);
+      const cosWP = Math.cos(state.gunPitch + hullPitchAtGun); // planform reach, ~current pose
+      let needSin = -1;
+      for (const frac of [1, 0.55]) { // muzzle tip + mid-barrel
+        const reach = trunnionFwd + barrelLen * frac * cosWP;
+        const hMuz = heightField.getHeightAt(state.pos.x + gyw * reach, state.pos.z + gzw * reach);
+        const s = (hMuz + MUZZLE_CLEARANCE_M - gy) / (barrelLen * frac);
+        if (s > needSin) needSin = s;
+      }
+      if (needSin > -1) {
+        const loTerr = Math.asin(Math.min(needSin, 1)) - hullPitchAtGun;
+        if (loTerr > loEff) loEff = Math.min(loTerr, hi);
+      }
+    }
+    state.atGunLimit = desiredGun < loEff - 1e-4 || desiredGun > hi + 1e-4;
     state.gunPitch = clamp(
-      approach(state.gunPitch, clamp(desiredGun, lo, hi), spec.gunPitchDegS * DEG2RAD * dt),
+      approach(state.gunPitch, clamp(desiredGun, loEff, hi), spec.gunPitchDegS * DEG2RAD * dt),
       lo, hi,
     );
   }
@@ -429,10 +617,12 @@ export function fireRecoil(state, spec) {
     * DEG2RAD;
   const spr = state._spring;
   // Split the kick onto hull axes from the gun's hull-relative azimuth:
-  // firing forward lifts the nose; firing over the right side rolls left-side-down.
+  // firing forward lifts the nose; firing over the right side rocks the hull
+  // left-side-down (= right side UP: positive roll under the renderer's
+  // rotation.z = +visualRoll composition — see the roll-sign note up top).
   const ct = Math.cos(state.turretYaw), st = Math.sin(state.turretYaw);
   spr.pitchV += kick * ct;
-  spr.rollV -= kick * st;
+  spr.rollV += kick * st;
   // Backward translation impulse along the horizontal gun direction.
   const gunYawWorld = state.yaw + state.turretYaw;
   const v = RECOIL_VEL_MPS * (0.7 + 0.6 * heavy);

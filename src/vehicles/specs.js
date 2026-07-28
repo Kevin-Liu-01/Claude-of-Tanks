@@ -53,18 +53,19 @@ const mbox = (module, min, max, turretLocal = false) => ({ module, min, max, tur
 const cbox = (crew, min, max, turretLocal = false) => ({ crew, min, max, turretLocal });
 
 // Shell factory. Types: roster APHE/APCBC/APBC -> 'AP'; HVAP -> 'APCR'.
-const shell = (name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps) => ({
+const shell = (name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps, extra) => ({
   name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps,
-  moduleDmg: caliberMm, tracer: type,
+  moduleDmg: caliberMm, tracer: type, ...(extra || {}),
 });
 
 // Modern pens are roster-quoted @2 km (ARCHITECTURE §2.2):
 //   pen1000Mm = quoted2km / (1 - lossPer100m*10); pen100Mm = pen1000Mm / (1 - lossPer100m*9).
-// APFSDS lossPer100m = 0.01 -> pen1000 = q/0.90, pen100 = pen1000/0.91.
-// HEAT / HE have zero falloff -> pen100 = pen1000 = quoted.
+// APFSDS: pen1000Mm = quoted2km / 0.90 (1%/100 m falloff anchored at 1 km);
+// pen2000Mm = the quoted value itself — ballistics.js interpolates
+// 1000→2000 m and clamps beyond. HEAT / HE have zero falloff.
 const apfsdsPens = (quoted2km) => {
   const pen1000 = quoted2km / 0.90;
-  return [Math.round(pen1000 / 0.91), Math.round(pen1000)];
+  return [Math.round(pen1000 / 0.91), Math.round(pen1000), quoted2km];
 };
 
 const BLOOM_WW2 = { move: 0.20, hullRot: 0.20, turret: 0.12, afterShot: 4 };
@@ -536,7 +537,7 @@ export const TANK_SPECS = {
       shells: [
         shell('M62 APCBC', 'AP', 76, 128, 96, 115, 792),
         shell('M93 HVAP', 'APCR', 76, 208, 150, 115, 1036),
-        shell('M42A1 HE', 'HE', 76, 10, 10, 155, 800),
+        shell('M42A1 HE', 'HE', 76, 38, 38, 155, 800),
       ],
     },
     dims: { hullLengthM: 6.27, overallLengthM: 7.52, widthM: 3.0, heightM: 2.97 },
@@ -561,7 +562,7 @@ export const TANK_SPECS = {
       shells: [
         shell('PzGr. 39 APCBC', 'AP', 88, 120, 100, 220, 773),
         shell('PzGr. 40 APCR', 'APCR', 88, 171, 138, 190, 930),
-        shell('Sprgr. 18 HE', 'HE', 88, 12, 12, 270, 770),
+        shell('Sprgr. 18 HE', 'HE', 88, 44, 44, 270, 770),
       ],
     },
     dims: { hullLengthM: 6.32, overallLengthM: 8.45, widthM: 3.71, heightM: 3.0 },
@@ -588,7 +589,7 @@ export const TANK_SPECS = {
       shells: [
         shell('BR-365K APHE', 'AP', 85, 119, 97, 180, 792),
         shell('BR-365P APCR', 'APCR', 85, 167, 110, 160, 1030),
-        shell('O-365K HE', 'HE', 85, 11, 11, 240, 790),
+        shell('O-365K HE', 'HE', 85, 43, 43, 240, 790),
       ],
     },
     dims: { hullLengthM: 6.10, overallLengthM: 8.10, widthM: 3.0, heightM: 2.72 },
@@ -613,7 +614,7 @@ export const TANK_SPECS = {
       shells: [
         shell('BR-471 APHE', 'AP', 122, 165, 143, 390, 795),
         shell('BR-471B APBC', 'AP', 122, 175, 152, 390, 800),
-        shell('OF-471 HE', 'HE', 122, 15, 15, 450, 770),
+        shell('OF-471 HE', 'HE', 122, 61, 61, 450, 770),
       ],
     },
     dims: { hullLengthM: 6.77, overallLengthM: 9.90, widthM: 3.09, heightM: 2.73 },
@@ -638,7 +639,7 @@ export const TANK_SPECS = {
       shells: [
         shell('PzGr. 39/42 APCBC', 'AP', 75, 138, 111, 135, 935),
         shell('PzGr. 40/42 APCR', 'APCR', 75, 194, 149, 135, 1120),
-        shell('Sprgr. 42 HE', 'HE', 75, 9, 9, 175, 700),
+        shell('Sprgr. 42 HE', 'HE', 75, 38, 38, 175, 700),
       ],
     },
     dims: { hullLengthM: 6.87, overallLengthM: 8.66, widthM: 3.42, heightM: 2.99 },
@@ -665,7 +666,7 @@ export const TANK_SPECS = {
       caliberMm: 120, reloadS: 6.0, baseAccuracy: 0.30, aimTimeS: 1.8,
       bloom: BLOOM_MODERN,
       shells: [
-        shell('M829A4 APFSDS', 'APFSDS', 120, apfsdsPens(750)[0], apfsdsPens(750)[1], 540, 1670),
+        shell('M829A4 APFSDS', 'APFSDS', 120, apfsdsPens(750)[0], apfsdsPens(750)[1], 540, 1670, { pen2000Mm: apfsdsPens(750)[2] }),
         shell('M830A1 MPAT', 'HEAT', 120, 600, 600, 480, 1400),
         shell('M1147 AMP', 'HE', 120, 60, 60, 600, 1000),
       ],
@@ -692,7 +693,7 @@ export const TANK_SPECS = {
       caliberMm: 125, reloadS: 7.5, baseAccuracy: 0.35, aimTimeS: 2.2,
       bloom: BLOOM_MODERN,
       shells: [
-        shell('3BM60 Svinets-2', 'APFSDS', 125, apfsdsPens(640)[0], apfsdsPens(640)[1], 520, 1750),
+        shell('3BM60 Svinets-2', 'APFSDS', 125, apfsdsPens(640)[0], apfsdsPens(640)[1], 520, 1750, { pen2000Mm: apfsdsPens(640)[2] }),
         shell('3BK31 HEAT', 'HEAT', 125, 675, 675, 470, 905),
         shell('3OF82 HE-Frag', 'HE', 125, 50, 50, 580, 850),
       ],
@@ -719,7 +720,7 @@ export const TANK_SPECS = {
       caliberMm: 120, reloadS: 6.0, baseAccuracy: 0.28, aimTimeS: 1.6,
       bloom: BLOOM_MODERN,
       shells: [
-        shell('DM63 APFSDS', 'APFSDS', 120, apfsdsPens(730)[0], apfsdsPens(730)[1], 530, 1750),
+        shell('DM63 APFSDS', 'APFSDS', 120, apfsdsPens(730)[0], apfsdsPens(730)[1], 530, 1750, { pen2000Mm: apfsdsPens(730)[2] }),
         shell('DM12A2 HEAT-MP', 'HEAT', 120, 600, 600, 480, 1400),
         shell('DM11 HE', 'HE', 120, 40, 40, 590, 1000),
       ],

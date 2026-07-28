@@ -15,7 +15,7 @@ export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math
 const HALF = 512;
 const CHUNKS = 8, CHUNK_SIZE = 128;
 const GRASS_PER_CHUNK = 7600;          // midfield scatter (map-wide, cheap)
-const GRASS_FADE_END = 128;
+const GRASS_FADE_END = 205;            // scale-out ends here (no hard carpet line)
 // near carpet: camera-centred cells, dense
 const CARPET_CELL = 14;
 const CARPET_RING = 4;                 // (2R+1)^2 = 81 cells around the camera
@@ -164,7 +164,7 @@ function makeNeedleSprayTexture(rng, tone = null) {
     const sun = 1 - y / s;
     const dir = rng() * Math.PI * 2;
     const n = 8 + (rng() * 8) | 0;
-    ctx.strokeStyle = css(0.30 + rng() * 0.035, 0.20 + rng() * 0.10, 0.17 + sun * 0.15 + rng() * 0.09);
+    ctx.strokeStyle = css(0.30 + rng() * 0.035, 0.18 + rng() * 0.08, 0.15 + sun * 0.12 + rng() * 0.07);
     ctx.lineWidth = 1.5 + rng() * 0.9;
     for (let j = 0; j < n; j++) {
       const na = dir + (rng() - 0.5) * 1.5;
@@ -178,45 +178,60 @@ function makeNeedleSprayTexture(rng, tone = null) {
   return finishAlphaTexture(c, ctx, 52, 68, 48, true, tone);
 }
 
-// Palm frond card: central rib with paired leaflets, v axis = frond length
-// (base at the bottom of the card). Warm green with a dry-tip gradient.
+// Palm frond card: ONE feather-shaped frond filling the card, v axis = frond
+// length (base at the bottom). Dense overlapping leaflets fill a contiguous
+// silhouette with a serrated edge so the frond reads as a mass, not sparse
+// scribbles; dry tips, darker underside strokes for depth.
 function makePalmFrondTexture(rng, tone = null) {
   const s = 256;
   const c = document.createElement('canvas');
   c.width = c.height = s;
   const ctx = c.getContext('2d');
   ctx.clearRect(0, 0, s, s);
-  ctx.lineCap = 'round';
-  for (let f = 0; f < 3; f++) { // 3 slightly offset fronds per card
-    const bx = s / 2 + (f - 1) * 26;
-    const tipX = bx + (rng() - 0.5) * 40;
-    // rib
-    ctx.strokeStyle = css(0.13 + rng() * 0.03, 0.35, 0.20 + rng() * 0.06);
-    ctx.lineWidth = 4.5 - f;
-    ctx.beginPath();
-    ctx.moveTo(bx, s - 2);
-    ctx.quadraticCurveTo(bx, s * 0.5, tipX, 6);
-    ctx.stroke();
-    // leaflets marching up the rib
-    const n = 26;
-    for (let i = 1; i < n; i++) {
-      const t = i / n;
-      const rx = bx + (tipX - bx) * t * t;
-      const ry = s - 2 - (s - 8) * t;
-      const len = 34 * (1 - Math.abs(t - 0.45) * 1.3) + 8;
-      const dry = t > 0.8 ? (t - 0.8) * 3 : 0;
-      ctx.strokeStyle = css(0.20 - dry * 0.09 + rng() * 0.03, 0.38 - dry * 0.1,
-        0.20 + t * 0.16 + rng() * 0.06);
-      ctx.lineWidth = 2.6 - t * 1.2;
+  const bx = s / 2;
+  // two passes: dark under-layer slightly wider, lit top layer
+  for (let pass = 0; pass < 2; pass++) {
+    const n = 42;
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      const ry = s - 4 - (s - 12) * t;
+      const rx = bx + Math.sin(t * 2.6) * 5;
+      // feather envelope: widest just below mid, tapering to the tip
+      const env = Math.sin(Math.min(1, t * 1.12) * Math.PI);
+      const len = (14 + env * 88) * (pass === 0 ? 1.08 : 1.0);
+      const dry = t > 0.78 ? (t - 0.78) * 3.6 : 0;
+      const droop = 18 + t * 26;
       for (const side of [-1, 1]) {
-        ctx.beginPath();
-        ctx.moveTo(rx, ry);
-        ctx.lineTo(rx + side * len * (0.85 + rng() * 0.3), ry - len * 0.42 + rng() * 6);
-        ctx.stroke();
+        for (let l = 0; l < 3; l++) { // overlapping leaflets per station
+          const lw = 5.5 - t * 2.4 - l * 0.8;
+          if (lw <= 0.8) continue;
+          const jit = (rng() - 0.5) * 7;
+          const lum = pass === 0
+            ? 0.13 + rng() * 0.05
+            : 0.20 + t * 0.12 + rng() * 0.07 + dry * 0.10;
+          const sat = pass === 0 ? 0.32 : 0.40 - dry * 0.16;
+          const hue = 0.225 - dry * 0.10 + (rng() - 0.5) * 0.02;
+          ctx.strokeStyle = css(hue, sat, lum);
+          ctx.lineWidth = lw;
+          ctx.lineCap = 'round';
+          const ex = rx + side * len * (0.9 + rng() * 0.2);
+          const ey = ry - len * 0.30 + droop * (0.4 + rng() * 0.3) + jit;
+          ctx.beginPath();
+          ctx.moveTo(rx, ry + l * 2.2);
+          ctx.quadraticCurveTo(rx + side * len * 0.5, ry - len * 0.24 + jit * 0.5, ex, ey);
+          ctx.stroke();
+        }
       }
     }
   }
-  return finishAlphaTexture(c, ctx, 60, 82, 40, false, tone);
+  // central rib on top
+  ctx.strokeStyle = css(0.13, 0.34, 0.30);
+  ctx.lineWidth = 4.2;
+  ctx.beginPath();
+  ctx.moveTo(bx, s - 2);
+  ctx.quadraticCurveTo(bx + 4, s * 0.5, bx + Math.sin(2.6) * 5, 10);
+  ctx.stroke();
+  return finishAlphaTexture(c, ctx, 55, 76, 38, false, tone);
 }
 
 // Bare-twig card (winter birch crowns / bare shrubs): dark branching strokes.
@@ -326,17 +341,32 @@ function buildBroadleafTrunk(rng) {
 function buildBroadleafCards(rng, nCards, sizeMul, pal = {}) {
   const hue0 = pal.cardHue ?? 0.235, sat0 = pal.cardSat ?? 0.24;
   const cy = 4.35, rx = 2.35, ry = 1.75, rz = 2.35;
+  // multi-lobe crown: cards cluster around 2-3 offset sub-lobes so the canopy
+  // silhouette reads as a broken broadleaf mass, not one lollipop ball
+  const lobes = [[0, cy, 0]];
+  const nLobes = 2 + ((rng() * 2) | 0);
+  for (let li = 1; li < nLobes; li++) {
+    const la = rng() * Math.PI * 2;
+    lobes.push([Math.cos(la) * (1.2 + rng() * 0.7), cy + (rng() - 0.35) * 1.3,
+      Math.sin(la) * (1.2 + rng() * 0.7)]);
+  }
   const parts = [];
   for (let i = 0; i < nCards; i++) {
+    const lobe = lobes[(rng() * lobes.length) | 0];
+    const lr = lobe === lobes[0] ? 1.0 : 0.62; // satellites are smaller
     // direction on a squashed sphere, radius biased outward
     let dx = rng() * 2 - 1, dy = rng() * 2 - 1, dz = rng() * 2 - 1;
     const dl = Math.hypot(dx, dy, dz) || 1;
     dx /= dl; dy /= dl; dz /= dl;
     const rad = Math.pow(0.22 + 0.78 * rng(), 0.75);
-    const px = dx * rad * rx, py = cy + dy * rad * ry * (dy > 0 ? 1 : 0.8), pz = dz * rad * rz;
+    const px = lobe[0] + dx * rad * rx * lr;
+    const py = lobe[1] + dy * rad * ry * lr * (dy > 0 ? 1 : 0.8);
+    const pz = lobe[2] + dz * rad * rz * lr;
     const wsz = (1.55 + rng() * 0.9) * sizeMul;
     _e.set(rng() * Math.PI, rng() * Math.PI * 2, rng() * Math.PI, 'YXZ');
-    const shade = (0.55 + 0.45 * rad) * (0.9 + 0.2 * clamp((py - cy) / ry * 0.5 + 0.5, 0, 1));
+    const distC = Math.hypot(px, py - cy, pz) / Math.max(rx, ry);
+    const shade = (0.48 + 0.52 * clamp(distC, 0, 1)) // dark core, lit shell
+      * (0.9 + 0.2 * clamp((py - cy) / ry * 0.5 + 0.5, 0, 1));
     parts.push(foliageCard(wsz, wsz * 0.82, px, py, pz, _e, shade,
       hue0 + (rng() - 0.5) * 0.03, sat0 + rng() * 0.08, 0.30 + rad * 0.65, 0, cy, 0));
   }
@@ -367,7 +397,7 @@ function buildPineCards(rng, tierStep, sizeMul, pal = {}) {
   for (let y = 1.55; y < topY - 0.3; y += tierStep * (0.85 + rng() * 0.3)) {
     const t = (y - 1.2) / (topY - 1.2);
     const rr = (1.0 - t) * 1.65 + 0.30;
-    const m = Math.max(3, Math.round(2 + rr * 2.2));
+    const m = Math.max(4, Math.round(2.8 + rr * 2.7)); // denser tiers: no see-through crowns
     const a0 = rng() * Math.PI * 2;
     for (let k = 0; k < m; k++) {
       const a = a0 + (k / m) * Math.PI * 2 + (rng() - 0.5) * 0.7;
@@ -389,84 +419,107 @@ function buildPineCards(rng, tierStep, sizeMul, pal = {}) {
   return mergeParts(parts);
 }
 
-// --- palm: curved trunk + radiating frond cards from the crown ---
+// --- palm: curved warm-brown trunk + a crown of ARCHED drooping fronds
+// (bent tapered planes, dense frond texture) + coconut cluster ---
 function buildPalmGeometry(rng) {
   const trunkParts = [];
-  const H = 5.8 + rng() * 1.6;
+  const H = 5.6 + rng() * 1.4;
   const leanA = rng() * Math.PI * 2;
   const lean = 0.5 + rng() * 0.5; // total top offset in meters
-  const NSEG = 5;
+  const NSEG = 6;
   let px = 0, pz = 0;
   for (let i = 0; i < NSEG; i++) {
     const t0 = i / NSEG, t1 = (i + 1) / NSEG;
     const x0 = Math.cos(leanA) * lean * t0 * t0, z0 = Math.sin(leanA) * lean * t0 * t0;
     const x1 = Math.cos(leanA) * lean * t1 * t1, z1 = Math.sin(leanA) * lean * t1 * t1;
-    const segLen = Math.hypot(H / NSEG, x1 - x0, z1 - z0);
-    const seg = new THREE.CylinderGeometry(0.11 + (1 - t1) * 0.08, 0.12 + (1 - t0) * 0.08, segLen, 6, 1);
-    // ring texture illusion: alternate slightly darker segments
-    _c.setHSL(0.095, 0.18, (i % 2 ? 0.46 : 0.55) + rng() * 0.04, THREE.SRGBColorSpace);
+    const segLen = Math.hypot(H / NSEG, x1 - x0, z1 - z0) * 1.04;
+    const seg = new THREE.CylinderGeometry(
+      0.13 + (1 - t1) * 0.10, 0.14 + (1 - t0) * 0.10, segLen, 7, 1);
+    // ring-band illusion: alternating leaf-scar bands in warm brown
+    _c.setHSL(0.072, 0.30, (i % 2 ? 0.255 : 0.325) + rng() * 0.03, THREE.SRGBColorSpace);
     seg.rotateZ(Math.atan2(x1 - x0, H / NSEG) * -1);
     seg.rotateY(-leanA);
     seg.translate((x0 + x1) / 2, (t0 + t1) * 0.5 * H, (z0 + z1) / 2);
-    trunkParts.push(paintFlat(seg, _c.clone(), t1 * 0.25));
+    trunkParts.push(paintFlat(seg, _c.clone(), t1 * 0.2));
     px = x1; pz = z1;
   }
   // fiber collar under the crown
-  const collar = new THREE.CylinderGeometry(0.24, 0.16, 0.5, 6, 1);
-  collar.translate(px, H - 0.2, pz);
-  _c.setHSL(0.09, 0.28, 0.26, THREE.SRGBColorSpace);
-  trunkParts.push(paintFlat(collar, _c.clone(), 0.25));
+  const collar = new THREE.CylinderGeometry(0.30, 0.19, 0.6, 7, 1);
+  collar.translate(px, H - 0.15, pz);
+  _c.setHSL(0.082, 0.32, 0.22, THREE.SRGBColorSpace);
+  trunkParts.push(paintFlat(collar, _c.clone(), 0.2));
+  // coconut cluster nestled at the crown base
+  for (let k = 0; k < 4 + ((rng() * 3) | 0); k++) {
+    const a = rng() * Math.PI * 2;
+    const nut = new THREE.IcosahedronGeometry(0.13 + rng() * 0.05, 0);
+    nut.translate(px + Math.cos(a) * (0.22 + rng() * 0.14), H + 0.02 + rng() * 0.16,
+      pz + Math.sin(a) * (0.22 + rng() * 0.14));
+    _c.setHSL(0.09, 0.38, 0.22 + rng() * 0.08, THREE.SRGBColorSpace);
+    trunkParts.push(paintFlat(nut, _c.clone(), 0.3));
+  }
+
+  // arched frond: tapered plane bent along its length — rises from the crown,
+  // arcs over and droops at the tip. Built per-frond so the canopy is a mass.
+  function frond(a, phi0, phiTip, len, wBase, shade, dead) {
+    const SEGS = 6;
+    const g = new THREE.PlaneGeometry(1, 1, 1, SEGS);
+    const p = g.attributes.position;
+    // bend: integrate the frond direction along the arc; x stays width axis
+    for (let i = 0; i < p.count; i++) {
+      const t = p.getY(i) + 0.5; // 0..1 along the frond
+      const w = (1 - t * 0.8) * wBase; // taper toward the tip
+      let ry = 0, rf = 0;
+      const steps = 12;
+      const dl = (len * t) / steps;
+      for (let sIt = 0; sIt < steps; sIt++) {
+        const tt = ((sIt + 0.5) / steps) * t;
+        const ph = phi0 + (phiTip - phi0) * tt * tt;
+        rf += Math.cos(ph) * dl;
+        ry += Math.sin(ph) * dl;
+      }
+      p.setXYZ(i, p.getX(i) * w, ry, rf);
+    }
+    g.computeVertexNormals();
+    const rotY = new THREE.Matrix4().makeRotationY(a);
+    g.applyMatrix4(rotY);
+    g.translate(px, H + 0.18, pz);
+    const nv = p.count;
+    const col = new Float32Array(nv * 3);
+    const fl = new Float32Array(nv);
+    if (dead) _c.setHSL(0.095, 0.30, 0.28, THREE.SRGBColorSpace);
+    else _c.setHSL(0.228 + (rng() - 0.5) * 0.025, 0.32, 0.5, THREE.SRGBColorSpace);
+    const uvA = g.attributes.uv;
+    for (let i = 0; i < nv; i++) {
+      const t = uvA.getY(i); // 0..1 along the frond length
+      const m = dead ? 1 : 1.55 * shade;
+      col[i * 3] = _c.r * m; col[i * 3 + 1] = _c.g * m; col[i * 3 + 2] = _c.b * m;
+      fl[i] = dead ? 0.25 : 0.30 + t * 0.45;
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    g.setAttribute('aFlex', new THREE.BufferAttribute(fl, 1));
+    // sky-lit normals: outward + strong up bias, like the other canopies
+    const nrm = g.attributes.normal;
+    _v3.set(Math.sin(a) * 0.45, 1.35, Math.cos(a) * 0.45).normalize();
+    for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, _v3.x, _v3.y, _v3.z);
+    return g;
+  }
 
   const cardParts = [];
-  const n = 13 + ((rng() * 4) | 0);
+  const n = 11 + ((rng() * 4) | 0);
   for (let k = 0; k < n; k++) {
-    const a = (k / n) * Math.PI * 2 + rng() * 0.5;
-    const droop = 0.42 + rng() * 0.42; // 0 = horizontal, 1 = hanging
-    const len = 3.2 + rng() * 1.1;
-    const g = new THREE.PlaneGeometry(1.5, len);
-    g.translate(0, len / 2, 0); // pivot at frond base
-    _qq.setFromEuler(_e.set(-Math.PI / 2 + (1 - droop) * 1.25, 0, 0, 'YXZ'));
-    const m = new THREE.Matrix4().compose(new THREE.Vector3(0, 0, 0), _qq, new THREE.Vector3(1, 1, 1));
-    g.applyMatrix4(m);
-    const yq = new THREE.Matrix4().makeRotationY(a);
-    g.applyMatrix4(yq);
-    g.translate(px, H + 0.15, pz);
-    // paint: brighter upper fronds
-    const nv = g.attributes.position.count;
-    _c.setHSL(0.23 + (rng() - 0.5) * 0.03, 0.30, 0.5, THREE.SRGBColorSpace);
-    const col = new Float32Array(nv * 3);
-    const fl = new Float32Array(nv);
-    const shade = 0.75 + (1 - droop) * 0.35;
-    for (let i = 0; i < nv; i++) {
-      col[i * 3] = _c.r * 1.6 * shade; col[i * 3 + 1] = _c.g * 1.6 * shade; col[i * 3 + 2] = _c.b * 1.6 * shade;
-      fl[i] = 0.55;
-    }
-    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    g.setAttribute('aFlex', new THREE.BufferAttribute(fl, 1));
-    const nrm = g.attributes.normal;
-    _v3.set(Math.sin(a) * 0.4, 1.35, Math.cos(a) * 0.4).normalize();
-    for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, _v3.x, _v3.y, _v3.z);
-    cardParts.push(g);
+    const a = (k / n) * Math.PI * 2 + rng() * 0.45;
+    // alternate steep/shallow launch angles => layered dome-shaped crown
+    const steep = k % 2 === 0;
+    const phi0 = steep ? 0.95 + rng() * 0.25 : 0.55 + rng() * 0.25; // up from horizontal
+    const phiTip = -(0.5 + rng() * 0.7); // tips droop below horizontal
+    const len = 3.4 + rng() * 1.2;
+    const shade = 0.7 + (steep ? 0.3 : 0.12) + rng() * 0.1;
+    cardParts.push(frond(a, phi0, phiTip, len, 1.9, shade, false));
   }
-  // 2 hanging dead fronds
-  for (let k = 0; k < 2; k++) {
+  // 2-3 hanging dead fronds against the trunk
+  for (let k = 0; k < 2 + ((rng() * 2) | 0); k++) {
     const a = rng() * Math.PI * 2;
-    const g = new THREE.PlaneGeometry(0.9, 2.2);
-    g.translate(0, -1.1 + 0.2, 0);
-    g.rotateX(0.35);
-    g.rotateY(a);
-    g.translate(px + Math.sin(a) * 0.3, H - 0.1, pz + Math.cos(a) * 0.3);
-    _c.setHSL(0.10, 0.28, 0.30, THREE.SRGBColorSpace);
-    const nv = g.attributes.position.count;
-    const col = new Float32Array(nv * 3);
-    const fl = new Float32Array(nv);
-    for (let i = 0; i < nv; i++) {
-      col[i * 3] = _c.r; col[i * 3 + 1] = _c.g; col[i * 3 + 2] = _c.b;
-      fl[i] = 0.3;
-    }
-    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    g.setAttribute('aFlex', new THREE.BufferAttribute(fl, 1));
-    cardParts.push(g);
+    cardParts.push(frond(a, -0.9 - rng() * 0.3, -1.45, 2.3, 1.1, 0.6, true));
   }
   return { trunk: mergeParts(trunkParts), cards: mergeParts(cardParts) };
 }
@@ -625,19 +678,19 @@ function buildPalmFarGeometry(rng, pal = {}) {
   const cp = pal.canopy || {};
   const trunkParts = [], canopyParts = [];
   const H = 5.6;
-  const trunk = new THREE.CylinderGeometry(0.11, 0.20, H, 5, 1);
+  const trunk = new THREE.CylinderGeometry(0.13, 0.24, H, 5, 1);
   trunk.translate(0.25, H / 2, 0);
   trunk.rotateZ(-0.06);
-  _c.setHSL(0.085, 0.24, 0.22, THREE.SRGBColorSpace);
+  _c.setHSL(0.072, 0.30, 0.27, THREE.SRGBColorSpace);
   trunkParts.push(paintFlat(trunk, _c, 0));
-  // crown: flattened jittered disc reads as a frond star at range
-  const disc = new THREE.IcosahedronGeometry(1.9, 1);
+  // crown: flattened jittered dome reads as a frond mass at range
+  const disc = new THREE.IcosahedronGeometry(2.2, 1);
   jitterRadial(disc, rng, 0.3);
-  disc.scale(1.15, 0.28, 1.15);
+  disc.scale(1.2, 0.32, 1.2);
   sphereNormals(disc, 0, 0, 0, 1.2);
   disc.translate(0.35, H + 0.15, 0);
-  canopyParts.push(paintCanopy(disc, cp.hue ?? 0.235, cp.sat ?? 0.30,
-    cp.l0 ?? 0.22, cp.l1 ?? 0.34, H - 0.5, H + 0.8, rng, 0.4));
+  canopyParts.push(paintCanopy(disc, cp.hue ?? 0.228, cp.sat ?? 0.30,
+    cp.l0 ?? 0.21, cp.l1 ?? 0.33, H - 0.5, H + 0.8, rng, 0.4));
   return { trunk: mergeParts(trunkParts), canopy: mergeParts(canopyParts) };
 }
 
@@ -771,7 +824,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   ];
   function makeGrassMaterial(tex, farDist, cacheKey) {
     const mat = new THREE.MeshStandardMaterial({
-      map: tex, alphaTest: 0.47, side: THREE.DoubleSide,
+      map: tex, alphaTest: 0.44, side: THREE.DoubleSide,
       roughness: 1.0, metalness: 0.0,
     });
     mat.envMapIntensity = 0.35; // kill white env-specular sparkle on distant blades
@@ -784,8 +837,8 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     const w = gv === 0 ? 0.92 : 1.14, h = gv === 0 ? 0.60 : 0.48;
     grassVariants.push({
       geo: makeTuftGeometry(w, h),
-      matMid: makeGrassMaterial(grassTex[gv], GRASS_FADE_END, 'world-grass-wind-v3'),
-      matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v3'),
+      matMid: makeGrassMaterial(grassTex[gv], GRASS_FADE_END, 'world-grass-wind-v4'),
+      matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v4'),
     });
   }
 
@@ -825,9 +878,11 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     }
     const vv = varJ < (0.75 - dry * 0.5) ? 0 : 1;
     const y = heightField.getHeightAt(x, z);
+    // toned to sit on the terrain grass albedo so the far scale-out is
+    // invisible (tufts must NOT read brighter than the ground they stand on)
     let th = 0.225 + (hueJ - 0.5) * 0.045 - dry * 0.08;
-    let ts = 0.335 - dry * 0.12;
-    let tl = 0.465 + (lumJ - 0.5) * 0.16 + dry * 0.04;
+    let ts = 0.30 - dry * 0.11;
+    let tl = 0.425 + (lumJ - 0.5) * 0.15 + dry * 0.04;
     if (veg.tuftTone) [th, ts, tl] = veg.tuftTone(th, ts, tl);
     _c.setHSL(((th % 1) + 1) % 1, clamp(ts, 0, 1), clamp(tl, 0, 1));
     const t = _tuftScratch;
@@ -975,7 +1030,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       tex: (r, pal) => makeNeedleSprayTexture(r, pal.texTone || null),
       near: (k, pal) => ({
         trunk: buildPineTrunk(mulberry32(seed + 61 + k)),
-        cards: buildPineCards(mulberry32(seed + 63 + k), 0.72, 1.0, pal),
+        cards: buildPineCards(mulberry32(seed + 63 + k), 0.60, 1.0, pal),
       }),
       far: (r, pal) => buildPineFarGeometry(r, pal),
     },
@@ -984,7 +1039,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       tex: (r, pal) => makeLeafClusterTexture(r, pal.texTone || null),
       near: (k, pal) => ({
         trunk: buildBroadleafTrunk(mulberry32(seed + 65 + k)),
-        cards: buildBroadleafCards(mulberry32(seed + 67 + k), 46, 1.0, pal),
+        cards: buildBroadleafCards(mulberry32(seed + 67 + k), 58, 1.0, pal),
       }),
       far: (r, pal) => buildOakFarGeometry(r, pal),
     },
@@ -1011,16 +1066,16 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   for (const sp of speciesList) {
     foliageTex[sp] = SPECIES[sp].tex(mulberry32(seed + SPECIES[sp].texSeed), palOf(sp));
     const fm = new THREE.MeshStandardMaterial({
-      map: foliageTex[sp], alphaTest: 0.45, side: THREE.DoubleSide,
+      map: foliageTex[sp], alphaTest: 0.38, side: THREE.DoubleSide,
       vertexColors: true, roughness: 1.0, metalness: 0.0,
     });
     fm.envMapIntensity = 0.85; // keep ambient on shaded leaves — no black cards
     engineCtx.setupShadowMaterial(fm, foliageWindHook);
-    fm.customProgramCacheKey = () => 'world-tree-foliage-v3-' + sp;
+    fm.customProgramCacheKey = () => 'world-tree-foliage-v4-' + sp;
     foliageMats[sp] = fm;
     // alpha-tested shadow casting: without this every card shadows as a quad
     foliageDepthMats[sp] = new THREE.MeshDepthMaterial({
-      depthPacking: THREE.RGBADepthPacking, map: foliageTex[sp], alphaTest: 0.45,
+      depthPacking: THREE.RGBADepthPacking, map: foliageTex[sp], alphaTest: 0.38,
     });
   }
 
@@ -1073,8 +1128,9 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     const y = heightField.getHeightAt(x, z);
     const sc = scMin + rng() * (scMax - scMin);
     _q.setFromAxisAngle(_up, rng() * Math.PI * 2);
-    _m4.compose(_pv.set(x, y - 0.06, z), _q, _sv.set(sc, sc * (0.9 + rng() * 0.2), sc));
-    _c.setRGB(0.80 + rng() * 0.34, 0.84 + rng() * 0.30, 0.78 + rng() * 0.28); // per-tree tint
+    // height variance clamped tight (no needle-thin scaling-bug giants)
+    _m4.compose(_pv.set(x, y - 0.06, z), _q, _sv.set(sc, sc * (0.92 + rng() * 0.16), sc));
+    _c.setRGB(0.70 + rng() * 0.30, 0.76 + rng() * 0.28, 0.68 + rng() * 0.26); // per-tree hue jitter
     trees.push({ x, z, species, variant: (rng() * 2) | 0, mat: _m4.clone(), tint: _c.clone(), near: false });
     if (withObstacle) {
       treeObstacles.push({ min: [x - 0.55, y, z - 0.55], max: [x + 0.55, y + 3.2 * sc, z + 0.55] });
@@ -1083,7 +1139,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   }
   function addTree(x, z, species) {
     if (!siteOk(x, z, 0)) return false;
-    pushTree(x, z, species, 1.15, 1.9, true);
+    pushTree(x, z, species, 1.1, 1.55, true);
     return true;
   }
   let attempts = 0;
@@ -1126,7 +1182,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     for (let i = 0; i < n; i++) {
       const x = cx + (rng() - 0.5) * 56, z = cz + (rng() - 0.5) * 56;
       if (Math.max(Math.abs(x), Math.abs(z)) > 506) continue;
-      pushTree(x, z, rng() < 0.85 ? species : pickSpecies(veg.rimMix, rng()), 1.6, 2.7, false);
+      pushTree(x, z, rng() < 0.85 ? species : pickSpecies(veg.rimMix, rng()), 1.5, 2.1, false);
     }
   }
 
@@ -1174,9 +1230,11 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       if (heightField.getGroundType(x, z) === 'soft' || noVeg(x, z)) return;
       if (heightField.getNormalAt(x, z).y < 0.78) return;
       const y = heightField.getHeightAt(x, z);
-      const sc = 0.9 + rng() * 1.3;
+      // hull-height concealers: foliage reaches ~2.5-3 m so a parked tank is
+      // genuinely occluded (knee-high shrubs sold zero visual concealment)
+      const sc = 1.6 + rng() * 1.6;
       _q.setFromAxisAngle(_up, rng() * Math.PI * 2);
-      _m4.compose(_pv.set(x, y - 0.05, z), _q, _sv.set(sc, sc * (0.8 + rng() * 0.3), sc));
+      _m4.compose(_pv.set(x, y - 0.05, z), _q, _sv.set(sc, sc * (1.05 + rng() * 0.35), sc));
       bushPlacements[(rng() * 2) | 0].push(_m4.clone());
       concealers.push({ x, z, r: 2.0 * sc, add: 0.35 }); // SPOTTING WIRING: bush cover
     }
@@ -1187,18 +1245,19 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
         addBush(c.x + Math.cos(a) * rr, c.z + Math.sin(a) * rr);
       }
     }
-    for (let i = 0; i < 340; i++) { // scattered field bushes, mild roadside bias
+    for (let i = 0; i < 470; i++) { // scattered field bushes, mild roadside bias
       const x = (rng() * 2 - 1) * 455, z = (rng() * 2 - 1) * 455;
       const rd = heightField._roadDist(x, z);
       if (rd > 26 && rng() > 0.55) continue;
       addBush(x, z);
     }
-    // midfield concealment clumps: 2-4 bushes together read as usable cover
-    for (let c = 0; c < 42; c++) {
+    // midfield concealment clumps: 4-6 bushes over a ~10-12 m spread so a
+    // parked tank is at least half-occluded from ground level
+    for (let c = 0; c < 58; c++) {
       const x = (rng() * 2 - 1) * 420, z = (rng() * 2 - 1) * 420;
-      const n = 2 + (rng() * 3) | 0;
+      const n = 4 + (rng() * 3) | 0;
       for (let i = 0; i < n; i++) {
-        addBush(x + (rng() - 0.5) * 7, z + (rng() - 0.5) * 7);
+        addBush(x + (rng() - 0.5) * 11, z + (rng() - 0.5) * 11);
       }
     }
     for (let bv = 0; bv < 2; bv++) {
@@ -1269,7 +1328,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     for (const gc of grassChunks) {
       const d = Math.max(0, Math.hypot(camPos.x - gc.cx, camPos.z - gc.cz) - CHUNK_SIZE * 0.71);
       // continuous density rolloff (no stepped 1 -> 0.45 pop at 64 m)
-      let frac = d < GRASS_FADE_END ? 1 - 0.6 * smoothstepJs(44, 112, d) : 0;
+      let frac = d < GRASS_FADE_END ? 1 - 0.62 * smoothstepJs(48, 180, d) : 0;
       for (const cm of gc.meshes) {
         const count = Math.floor(cm.total * frac);
         cm.mesh.visible = count > 0;
