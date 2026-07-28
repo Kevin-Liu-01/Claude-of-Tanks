@@ -115,7 +115,12 @@ function gauss(rng) {
  * @param {'easy'|'normal'|'hard'} [opts.difficulty='normal'] behavior tier
  * @param {() => number} [opts.rng] deterministic PRNG in [0,1); defaults to mulberry32(7001)
  * @param {object} opts.deps injected world access:
- *   `{ heightField, raycast(origin,dir,maxDist), getEnemies(): TankEntity[], getObstacles(): AABB[] }`
+ *   `{ heightField, raycast(origin,dir,maxDist), getEnemies(): TankEntity[], getObstacles(): AABB[],
+ *      spotting?: { isSpotted(id): boolean } }`
+ *   When `spotting` is provided, target ACQUISITION goes through the
+ *   concealment sim (src/sim/spotting.js): tanks the AI's team has not
+ *   spotted are invisible to it — exactly like the player's minimap/HUD.
+ *   Raw raycast LOS is still required to actually FIRE.
  * @returns {{ update(dt:number, timeS:number): void,
  *             setWaypoints(points: Array<[number, number]>): void,
  *             notifyShellResult(hitEvent: object): void,
@@ -134,6 +139,10 @@ export function createAI(entity, opts = {}) {
   if (!tier) throw new Error(`createAI: unknown difficulty '${opts.difficulty}'`);
   const rng = typeof opts.rng === 'function' ? opts.rng : mulberry32(DEFAULT_SEED);
   const hf = deps.heightField;
+  // SPOTTING WIRING: optional concealment gate (absent in headless fixtures)
+  const spotting = deps.spotting && typeof deps.spotting.isSpotted === 'function'
+    ? deps.spotting : null;
+  const isVisibleToTeam = (e) => !spotting || spotting.isSpotted(e.id);
 
   // Ensure the shared input record exists (integration normally creates it).
   if (!entity.input) {
@@ -239,11 +248,14 @@ export function createAI(entity, opts = {}) {
     const list = aliveEnemies();
     const ex = st.pos.x, ey = st.pos.y + selfEyeM, ez = st.pos.z;
 
-    // Keep the current target while it lives; just refresh its LOS.
+    // Keep the current target while it lives; refresh visibility through the
+    // spotting sim (team intel keeps lastSeen fresh even without personal
+    // LOS), but firing still demands a clear personal ray (losClear).
     if (target && enemyAlive(target)) {
       const tp = target.state.pos;
-      losClear = hasLos(ex, ey, ez, tp.x, eyeY(target), tp.z);
-      if (losClear) {
+      const vis = isVisibleToTeam(target);
+      losClear = vis && hasLos(ex, ey, ez, tp.x, eyeY(target), tp.z);
+      if (vis) {
         lastSeen.x = tp.x; lastSeen.z = tp.z;
         lastSeenAtS = timeS;
       }
@@ -254,11 +266,13 @@ export function createAI(entity, opts = {}) {
       losClear = false;
     }
 
-    // Nearest visible enemy becomes the target.
+    // Nearest SPOTTED enemy with personal LOS becomes the target — tanks the
+    // team has not lit up are ghosts, exactly like the player's minimap.
     let best = null, bestD2 = Infinity;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!enemyAlive(e)) continue;
+      if (!isVisibleToTeam(e)) continue; // concealment gate (spotting sim)
       const tp = e.state.pos;
       const dx = tp.x - ex, dz = tp.z - ez;
       const d2 = dx * dx + dz * dz;

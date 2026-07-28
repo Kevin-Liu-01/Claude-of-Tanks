@@ -1,0 +1,216 @@
+// Selftest for src/sim/spotting.js — run: node src/sim/spotting.selftest.mjs
+// Pure-logic checks: formula/clamps, camo tables, fire bloom decay, bush
+// concealment + the 15 m rule, spotted linger, camo-paint bonus, staggering.
+
+import {
+  MAX_SPOT_RANGE_M, MIN_SPOT_RANGE_M, SPOT_LINGER_S, CAMO_PAINT_BONUS,
+  MAX_BUSH_BONUS, VIEW_RANGE_M, BASE_CAMO,
+  viewRangeOf, baseCamoOf, fireBloomAt, spotRangeM, combineCamo,
+  bushBonusBetween, checkIntervalS, createSpottingSystem,
+} from './spotting.js';
+
+let passed = 0;
+let failed = 0;
+function ok(cond, label) {
+  if (cond) { passed++; console.log(`  ok  ${label}`); }
+  else { failed++; console.error(`FAIL  ${label}`); }
+}
+function near(a, b, eps, label) { ok(Math.abs(a - b) <= eps, `${label} (${a} ~ ${b})`); }
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+function tank(id, team, x, z, opts = {}) {
+  return {
+    id, team,
+    spec: opts.spec || { id: opts.specId || 'm4a3e8', class: opts.cls || 'medium', dims: { heightM: 2.7 } },
+    state: { pos: { x, y: 0, z }, speed: opts.speed || 0 },
+    combat: { destroyed: !!opts.destroyed },
+  };
+}
+
+// ---------------------------------------------------------------------------
+console.log('[1] spotting formula + clamps');
+near(spotRangeM(400, 0), 400, 1e-9, 'camo 0 -> full view range');
+near(spotRangeM(400, 0.5), 400 - 350 * 0.5, 1e-9, 'camo 0.5 midpoint');
+ok(spotRangeM(400, 1) === MIN_SPOT_RANGE_M, 'camo 1 clamps to 50 m');
+ok(spotRangeM(600, 0) === MAX_SPOT_RANGE_M, 'view range clamps to max render');
+ok(spotRangeM(400, 2) === MIN_SPOT_RANGE_M, 'camo > 1 clamps');
+
+console.log('[2] camo & view tables plausible per class');
+for (const id of Object.keys(BASE_CAMO)) {
+  const c = BASE_CAMO[id];
+  ok(c.moving <= c.still, `${id}: moving camo <= stationary`);
+  ok(c.still > 0 && c.still < 0.5, `${id}: stationary camo in (0, 0.5)`);
+}
+ok(BASE_CAMO.tiger1.still < BASE_CAMO.m4a3e8.still, 'heavy rates below medium');
+ok(BASE_CAMO.is2.still < BASE_CAMO.t34_85.still, 'IS-2 below T-34-85');
+ok(VIEW_RANGE_M.m1a2 > VIEW_RANGE_M.tiger1, 'modern optics out-spot WW2');
+ok(viewRangeOf({ id: 'nope', class: 'heavy' }) === 360, 'class view fallback');
+near(baseCamoOf({ id: 'nope', class: 'td' }, false), 0.30, 1e-9, 'class camo fallback');
+
+console.log('[3] fire bloom decays');
+ok(fireBloomAt(10, 10) === 1, 'bloom = 1 at the shot');
+ok(fireBloomAt(10, 11) < fireBloomAt(10, 10.2), 'bloom decays');
+ok(fireBloomAt(10, 20) === 0, 'bloom fully cold after ~10 s');
+ok(fireBloomAt(10, 9) === 0, 'no bloom before the shot');
+const base = combineCamo({ base: 0.24 });
+const fired = combineCamo({ base: 0.24, bloom: 1 });
+ok(fired < base * 0.3, 'full bloom strips most own camo');
+ok(combineCamo({ base: 0.24, bloom: 1, bush: 0.4 }) >= 0.4, 'bush bonus survives bloom');
+
+console.log('[4] bush bonus geometry');
+const bushes = [{ x: 0, z: 100, r: 3, add: 0.35 }];
+near(bushBonusBetween(bushes, 0, 0, 0, 200, false), 0.35, 1e-9, 'bush on the LOS counts');
+ok(bushBonusBetween(bushes, 50, 0, 50, 200, false) === 0, 'bush off the LOS ignored');
+const stack = [
+  { x: 0, z: 80, r: 3, add: 0.35 }, { x: 0, z: 120, r: 3, add: 0.35 }, { x: 0, z: 160, r: 3, add: 0.35 },
+];
+ok(bushBonusBetween(stack, 0, 0, 0, 200, false) === MAX_BUSH_BONUS, 'stacked bushes cap');
+
+console.log('[5] 15 m proximity rule');
+const nearBush = [{ x: 0, z: 195, r: 3, add: 0.35 }];  // 5 m from target at z=200
+const farBush = [{ x: 0, z: 160, r: 3, add: 0.35 }];   // 40 m from target
+ok(bushBonusBetween(nearBush, 0, 0, 0, 200, true) === 0, 'firing: bush <15 m turns transparent');
+near(bushBonusBetween(farBush, 0, 0, 0, 200, true), 0.35, 1e-9, 'firing: bush >15 m keeps concealing');
+near(bushBonusBetween(nearBush, 0, 0, 0, 200, false), 0.35, 1e-9, 'not firing: near bush conceals');
+
+console.log('[6] system: open ground vs bush');
+// spotter tiger1 (vr 370) vs m4a3e8 target (still camo 0.24) at 250 m.
+// open: spotRange = 370 - 320*0.24 = 293 > 250 -> spotted
+// bush (+0.35): camo 0.59 -> spotRange = 181 < 250 -> hidden
+function mkSys(concealers, tanks, extra = {}) {
+  return createSpottingSystem({
+    getTanks: () => tanks,
+    raycast: extra.raycast !== undefined ? extra.raycast : null,
+    concealers,
+    getCamoBonus: extra.getCamoBonus,
+    rng: mulberry32(42),
+  });
+}
+{
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  const target = tank('p1', 'player', 0, 250);
+  const sys = mkSys([], [spotter, target]);
+  sys.forceCheck(1);
+  ok(sys.isSpotted('p1', 'enemy'), 'open ground @250 m: spotted');
+  const sys2 = mkSys([{ x: 0, z: 250, r: 3, add: 0.35 }], [spotter, target]);
+  sys2.forceCheck(1);
+  ok(!sys2.isSpotted('p1', 'enemy'), 'in bush @250 m: NOT spotted');
+  // fire from the bush -> bush lights up (15 m rule) + bloom -> spotted
+  sys2.notifyFired('p1', 2);
+  sys2.forceCheck(2.1);
+  ok(sys2.isSpotted('p1', 'enemy'), 'firing from the bush reveals');
+}
+
+console.log('[7] paint bonus shifts the margin');
+{
+  // panther_g still camo 0.20; spotter vr 370 -> spotRange = 306.
+  // at 304 m: spotted bare, hidden with +3.5% paint (spotRange 294.8).
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  const target = tank('p1', 'player', 0, 304, { specId: 'panther_g' });
+  const bare = mkSys([], [spotter, target]);
+  bare.forceCheck(1);
+  ok(bare.isSpotted('p1', 'enemy'), 'no paint @304 m: spotted');
+  const painted = mkSys([], [spotter, target], { getCamoBonus: () => CAMO_PAINT_BONUS });
+  painted.forceCheck(1);
+  ok(!painted.isSpotted('p1', 'enemy'), `+${CAMO_PAINT_BONUS} paint @304 m: hidden`);
+}
+
+console.log('[8] moving penalty');
+{
+  // m4a3e8 moving camo 0.18 -> spotRange 312.4; still 0.24 -> 293.
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  const still = tank('p1', 'player', 0, 300);
+  const sysA = mkSys([], [spotter, still]);
+  sysA.forceCheck(1);
+  ok(!sysA.isSpotted('p1', 'enemy'), 'stationary @300 m: hidden');
+  const moving = tank('p1', 'player', 0, 300, { speed: 5 });
+  const sysB = mkSys([], [spotter, moving]);
+  sysB.forceCheck(1);
+  ok(sysB.isSpotted('p1', 'enemy'), 'moving @300 m: spotted');
+}
+
+console.log('[9] hard cover blocks; proximity spotting floor');
+{
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  const target = tank('p1', 'player', 0, 200);
+  const wall = mkSys([], [spotter, target], { raycast: () => ({ dist: 100 }) });
+  wall.forceCheck(1);
+  ok(!wall.isSpotted('p1', 'enemy'), 'blocked raycast: not spotted');
+  const close = tank('p1', 'player', 0, 40);
+  const prox = mkSys([{ x: 0, z: 40, r: 3, add: 0.35 }], [spotter, close]);
+  prox.forceCheck(1);
+  ok(prox.isSpotted('p1', 'enemy'), 'inside 50 m: bushes cannot save you');
+}
+
+console.log('[10] linger 5 s');
+{
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  const target = tank('p1', 'player', 0, 250);
+  const tanks = [spotter, target];
+  const sys = mkSys([], tanks);
+  sys.forceCheck(1);
+  ok(sys.isSpotted('p1', 'enemy'), 'spotted at t=1');
+  target.state.pos.z = 2000; // teleport far out of range
+  sys.forceCheck(3);
+  ok(sys.isSpotted('p1', 'enemy'), 'still spotted at t=3 (linger)');
+  sys.forceCheck(1 + SPOT_LINGER_S + 0.2);
+  ok(!sys.isSpotted('p1', 'enemy'), 'linger expires after 5 s');
+}
+
+console.log('[11] newly-spotted events + team separation');
+{
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  const target = tank('p1', 'player', 0, 100);
+  const sys = mkSys([], [spotter, target]);
+  const evs = sys.forceCheck(1).slice();
+  ok(evs.some((e) => e.id === 'p1' && e.team === 'enemy'), 'rising edge event for p1/enemy');
+  ok(evs.some((e) => e.id === 'e1' && e.team === 'player'), 'both directions checked');
+  const evs2 = sys.forceCheck(1.5);
+  ok(evs2.length === 0, 'no duplicate event while continuously spotted');
+  ok(!sys.isSpotted('p1', 'player'), 'own team never "spots" its own tank');
+}
+
+console.log('[12] checks are staggered, not per-frame');
+{
+  ok(checkIntervalS(50) === 0.5 && checkIntervalS(200) === 1.0 && checkIntervalS(400) === 2.0,
+    'cadence 0.5–2 s by distance');
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  const target = tank('p1', 'player', 0, 200);
+  let rays = 0;
+  const sys = mkSys([], [spotter, target], { raycast: () => { rays++; return null; } });
+  const dt = 1 / 60;
+  for (let t = 0; t <= 4; t += dt) sys.update(dt, t);
+  // 4 s @1 s cadence, 2 tanks, <=2 rays per LOS -> handful of rays, never 240/frame-pair
+  ok(rays > 0 && rays <= 40, `raycast work staggered (${rays} rays over 4 s / 240 frames)`);
+}
+
+console.log('[13] destroyed tanks neither spot nor get spotted');
+{
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy', destroyed: true });
+  const target = tank('p1', 'player', 0, 100);
+  const sys = mkSys([], [spotter, target]);
+  sys.forceCheck(1);
+  ok(!sys.isSpotted('p1', 'enemy'), 'dead observers see nothing');
+}
+
+console.log('[14] getConcealment snapshot');
+{
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  const target = tank('p1', 'player', 0, 250);
+  const sys = mkSys([{ x: 0, z: 250, r: 3, add: 0.35 }], [spotter, target]);
+  const c1 = { ...sys.getConcealment(target, 1) }; // snapshot object is reused — copy
+  ok(c1.inBush && c1.bush > 0 && !c1.moving && !c1.fired, 'in-bush stationary snapshot');
+  near(c1.camo, combineCamo({ base: 0.24, bush: 0.35 }), 1e-9, 'snapshot camo matches formula');
+  sys.notifyFired('p1', 2);
+  const c2 = sys.getConcealment(target, 2.1);
+  ok(c2.fired && c2.bush === 0 && c2.camo < c1.camo, 'after firing: bush lit, camo collapsed');
+}
+
+console.log('');
+if (failed > 0) {
+  console.error(`spotting.selftest: ${failed} FAILED, ${passed} passed`);
+  process.exit(1);
+}
+console.log(`spotting.selftest: all ${passed} checks passed`);

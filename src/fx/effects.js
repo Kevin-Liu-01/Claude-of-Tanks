@@ -31,11 +31,13 @@ const COMPOSE_VELOCITY = { AP: 800, APCR: 1050, HEAT: 780, HE: 750, HESH: 780, A
 
 const MAX_TRACERS = 96;
 const MUZZLE_LIGHT_S = 0.09;   // long enough to still kiss the hull at the 50 ms composed frame
-const MUZZLE_LIGHT_PEAK = 520; // hot enough to visibly light barrel, hull front and ground
+// 240 (was 520): a brief WARM point light that kisses barrel/hull/ground —
+// the 520 peak painted a saturated orange decal onto the terrain
+const MUZZLE_LIGHT_PEAK = 240;
 const EXPLOSION_LIGHT_S = 1.1; // fireball glow lingers, lights the wreck at 0.6 s
-// 190 (was 480): warm falloff on terrain/wreck WITHOUT saturating the whole
-// hull to emissive orange ("dipped in lava" r1 critique)
-const EXPLOSION_LIGHT_PEAK = 190;
+// 85 (was 190): the 190 peak + burnt-material emissive still cooked the whole
+// wreck to flat red-orange; 85 gives warm falloff without albedo takeover
+const EXPLOSION_LIGHT_PEAK = 85;
 const SMOKE_COLUMN_S = 30;
 
 // ---------------------------------------------------------------------------
@@ -243,8 +245,10 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   let frozen = false;
 
   // --- dynamic lights (budget: exactly 2 PointLights) -----------------------
-  const muzzleLight = new THREE.PointLight(0xffb45a, 0, 24, 2);
-  const explosionLight = new THREE.PointLight(0xff9550, 0, 42, 2);
+  // Muzzle: warm white-amber (was deep orange — the "saturated ground decal"
+  // read); tighter range so it kisses the hull rather than floods the field.
+  const muzzleLight = new THREE.PointLight(0xffd9a8, 0, 17, 2);
+  const explosionLight = new THREE.PointLight(0xffb27a, 0, 26, 2);
   muzzleLight.castShadow = false;
   explosionLight.castShadow = false;
   group.add(muzzleLight, explosionLight);
@@ -382,6 +386,88 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     applyShockRing(r);
   }
 
+  // --- muzzle shock rings (pooled, bore-axis aligned, first ~200 ms) ---------
+  // Cheap "refraction ring" read: a soft additive annulus perpendicular to
+  // the bore that expands away from the brake and fades fast.
+  const MUZZLE_RING_DUR = 0.2;
+  const muzzleRingGeo = new THREE.PlaneGeometry(2, 2);
+  const muzzleRings = [];
+  for (let i = 0; i < 2; i++) {
+    const mat = new THREE.MeshBasicMaterial({
+      map: shockTex,
+      color: 0xfff3dd,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+    });
+    const m = new THREE.Mesh(muzzleRingGeo, mat);
+    m.visible = false;
+    m.renderOrder = 23;
+    group.add(m);
+    muzzleRings.push({ mesh: m, mat, age: Infinity, dir: new THREE.Vector3(0, 0, 1), origin: new THREE.Vector3() });
+  }
+  let muzzleRingCursor = 0;
+  const _Z = new THREE.Vector3(0, 0, 1); // read-only
+
+  function applyMuzzleRing(r) {
+    const t = r.age / MUZZLE_RING_DUR;
+    if (t >= 1) { r.mesh.visible = false; r.mat.opacity = 0; return; }
+    const k = 1 - Math.pow(1 - t, 2.2);
+    r.mesh.position.copy(r.origin).addScaledVector(r.dir, 0.25 + 1.7 * k);
+    r.mesh.scale.setScalar(0.35 + 1.5 * k);
+    // view-angle fade: full strength looking down the bore, vanishing
+    // edge-on (a flat card seen side-on reads as a vertical spike)
+    let align = 1;
+    const cam = engineCtx && engineCtx.camera;
+    if (cam) {
+      _v4.copy(cam.position).sub(r.mesh.position);
+      const len = _v4.length();
+      if (len > 1e-4) align = Math.abs(_v4.dot(r.dir)) / len;
+    }
+    r.mat.opacity = 0.42 * Math.pow(1 - t, 1.7) * Math.pow(align, 1.6);
+    r.mesh.visible = true;
+  }
+
+  /** Expanding pressure ring blown out along the bore axis. */
+  function spawnMuzzleRing(pos, dir, s, ageS = 0) {
+    const r = muzzleRings[muzzleRingCursor];
+    muzzleRingCursor = (muzzleRingCursor + 1) % muzzleRings.length;
+    r.origin.copy(pos);
+    r.dir.copy(dir);
+    r.mesh.quaternion.setFromUnitVectors(_Z, dir);
+    r.mesh.scale.setScalar(s);
+    r.age = ageS;
+    applyMuzzleRing(r);
+  }
+
+  // --- armor scar decals (pooled quads re-parented onto struck hulls) --------
+  const MAX_SCARS = 14;
+  const scarTex = makeScorchTexture(mulberry32((seed ^ 0x51f7a3) >>> 0));
+  const scarMat = new THREE.MeshBasicMaterial({
+    map: scarTex,
+    color: 0x141110,
+    transparent: true,
+    opacity: 0.92,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -4,
+    polygonOffsetUnits: -4,
+  });
+  const scarGeo = new THREE.PlaneGeometry(1, 1);
+  const scarMeshes = [];
+  let scarCursor = 0;
+  for (let i = 0; i < MAX_SCARS; i++) {
+    const m = new THREE.Mesh(scarGeo, scarMat);
+    m.visible = false;
+    m.renderOrder = 3;
+    m.castShadow = m.receiveShadow = false;
+    scarMeshes.push(m); // parented lazily onto whichever tank is struck
+  }
+  const _scarQ = new THREE.Quaternion();
+  const _scarQ2 = new THREE.Quaternion();
+
   const _coreArr = [0, 0, 0];
   const _glowArr = [0, 0, 0];
 
@@ -428,11 +514,14 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     _puffO.pos[0] = pos.x + dir.x * 0.12; _puffO.pos[1] = pos.y + dir.y * 0.12; _puffO.pos[2] = pos.z + dir.z * 0.12;
     _puffO.vel[0] = dir.x * 1.5; _puffO.vel[1] = dir.y * 1.5; _puffO.vel[2] = dir.z * 1.5;
     _puffO.life = 0.08;
-    _puffO.size0 = 0.38 * s; _puffO.size1 = 0.72 * s;
+    _puffO.size0 = 0.30 * s; _puffO.size1 = 0.58 * s;
     _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
     col3(0xffffff, _puffO.col0); col3(0xffc558, _puffO.col1);
     _puffO.alpha = 1.0; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
     particles.emit('flash', _puffO);
+    // 1b. pressure "refraction" ring snapping out along the bore axis
+    spawnMuzzleRing(_sv.set(pos.x + dir.x * 0.3, pos.y + dir.y * 0.3, pos.z + dir.z * 0.3),
+      dir, s, Math.max(0, -birthOffset));
     // 2. volumetric blast cone: layered noisy jet quads oriented ALONG THE
     //    BORE AXIS (not camera-facing) — one long primary jet dead on axis
     //    plus two shorter jets kicked a few degrees off it.
@@ -843,6 +932,40 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       _puffO.alpha = 0.55; _puffO.grav = 1.5; _puffO.birthOffset = birthOffset - rng() * 0.15;
       particles.emit('fire', _puffO);
     }
+    // ammo-rack geyser: a violent vertical fire column blasting out of the
+    // turret ring — the signature of the rack cook-off that pops the turret
+    for (let i = 0; i < 9; i++) {
+      _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.5;
+      _puffO.pos[1] = cy + 0.4 + rng() * 0.6;
+      _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.5;
+      _puffO.vel[0] = (rng() - 0.5) * 2.2;
+      _puffO.vel[1] = 9 + rng() * 7;
+      _puffO.vel[2] = (rng() - 0.5) * 2.2;
+      _puffO.life = 0.55 + rng() * 0.55;
+      _puffO.size0 = 0.8 + rng() * 0.5; _puffO.size1 = 2.0 + rng() * 1.0;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 5;
+      col3(0xffe9a0, _puffO.col0); col3(0xff4a06, _puffO.col1);
+      _puffO.alpha = 0.7; _puffO.grav = -2; _puffO.birthOffset = birthOffset - rng() * 0.12;
+      particles.emit('fire', _puffO);
+    }
+    // hatch blowouts: sharp angled jets venting from crew hatches as the
+    // overpressure escapes — short, directional, incandescent
+    for (let i = 0; i < 3; i++) {
+      const a = rng() * Math.PI * 2;
+      const tilt = 0.25 + rng() * 0.45; // off-vertical
+      _sv.set(Math.cos(a) * Math.sin(tilt), Math.cos(tilt), Math.sin(a) * Math.sin(tilt)).normalize();
+      _jetO.pos[0] = pos.x + (rng() - 0.5) * 1.0;
+      _jetO.pos[1] = cy + 0.3;
+      _jetO.pos[2] = pos.z + (rng() - 0.5) * 1.0;
+      _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
+      _jetO.life = 0.14 + rng() * 0.08;
+      _jetO.width = 0.30 + rng() * 0.12;
+      _jetO.len0 = 0.5; _jetO.len1 = 2.6 + rng() * 1.4;
+      _jetO.seed = rng();
+      col3(0xffd98c, _jetO.col);
+      _jetO.alpha = 0.85; _jetO.birthOffset = birthOffset - rng() * 0.05;
+      particles.emit('jet', _jetO);
+    }
     // rising fire licks feeding the base of the smoke column
     for (let i = 0; i < 8; i++) {
       const a = rng() * Math.PI * 2;
@@ -895,7 +1018,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     // spark shower — glowing streaks emitted radially, arcing under gravity,
     // with randomized length/width/brightness AND staggered births so the
     // frozen frame mixes fresh leaders with drooping, dying arcs
-    sparkFan(_sv.set(pos.x, cy, pos.z), _UP, 44, 21, 1.2, 0xffc470, 1.5, 0.05, 0.085, birthOffset, 0.3);
+    sparkFan(_sv.set(pos.x, cy, pos.z), _UP, 28, 16, 1.1, 0xffc470, 1.4, 0.05, 0.085, birthOffset, 0.35);
     // debris shower (irregular scorched chunks, some glowing hot) — high
     // radial speed + strong gravity so chunks read ballistic, never floating
     for (let i = 0; i < 34; i++) {
@@ -942,42 +1065,64 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         particles.emit('smoke', _puffO);
       }
     }
-    // turret pop — two heavy slabs arcing high
-    for (let i = 0; i < 2; i++) {
-      _debO.pos[0] = pos.x; _debO.pos[1] = cy + 0.6; _debO.pos[2] = pos.z;
-      _debO.vel[0] = (rng() - 0.5) * 6; _debO.vel[1] = 14 + rng() * 8; _debO.vel[2] = (rng() - 0.5) * 6;
-      _debO.life = 3.5; _debO.scale = 0.55 + rng() * 0.3; _debO.spin = 3 + rng() * 5;
-      _debO.axis[0] = rng() - 0.5; _debO.axis[1] = 0.2; _debO.axis[2] = rng() - 0.5;
-      _debO.groundY = gy; _debO.hot = true; _debO.seed = rng(); _debO.birthOffset = birthOffset;
-      particles.emit('debris', _debO);
+    // one heavy hatch slab arcing high (the REAL turret pops via
+    // visual.setDestroyed's physics arc — see tankFactory)
+    _debO.pos[0] = pos.x; _debO.pos[1] = cy + 0.6; _debO.pos[2] = pos.z;
+    _debO.vel[0] = (rng() - 0.5) * 6; _debO.vel[1] = 14 + rng() * 8; _debO.vel[2] = (rng() - 0.5) * 6;
+    _debO.life = 3.5; _debO.scale = 0.45 + rng() * 0.2; _debO.spin = 5 + rng() * 6;
+    _debO.axis[0] = rng() - 0.5; _debO.axis[1] = 0.2; _debO.axis[2] = rng() - 0.5;
+    _debO.groundY = gy; _debO.hot = true; _debO.seed = rng(); _debO.birthOffset = birthOffset;
+    particles.emit('debris', _debO);
+    // settling dust: a delayed low blanket that drifts in AFTER the fireball
+    // dies (positive birthOffset relative to the blast = future birth)
+    for (let i = 0; i < 12; i++) {
+      const a = rng() * Math.PI * 2;
+      const d = 1.5 + rng() * 3.5;
+      _puffO.pos[0] = pos.x + Math.cos(a) * d;
+      _puffO.pos[1] = gy + 0.35;
+      _puffO.pos[2] = pos.z + Math.sin(a) * d;
+      _puffO.vel[0] = Math.cos(a) * (0.5 + rng() * 0.6);
+      _puffO.vel[1] = 0.25 + rng() * 0.3;
+      _puffO.vel[2] = Math.sin(a) * (0.5 + rng() * 0.6);
+      _puffO.life = 3.5 + rng() * 2.5;
+      _puffO.size0 = 1.2; _puffO.size1 = 4.2 + rng() * 1.6;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 0.6;
+      col3(0x8f8168, _puffO.col0); col3(0x7b7059, _puffO.col1);
+      _puffO.alpha = 0.22 + rng() * 0.08; _puffO.grav = -0.25;
+      _puffO.birthOffset = birthOffset + 1.2 + rng() * 1.2;
+      particles.emit('dust', _puffO);
     }
     // explosion light + persistent smoke column + burnt hull swap. Light sits
     // 2.4 m above the hull: warm falloff over wreck/terrain without nuking
     // the hull albedo to flat orange.
-    flashLight(lightStates[1], _sv.set(pos.x, cy + 2.4, pos.z), EXPLOSION_LIGHT_PEAK, Math.max(0, -birthOffset));
+    flashLight(lightStates[1], _sv.set(pos.x, cy + 3.6, pos.z), EXPLOSION_LIGHT_PEAK, Math.max(0, -birthOffset));
     columns.push({ key: null, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0, ttl: SMOKE_COLUMN_S, scale: 1.3 });
     if (visual) {
       const delay = 0.15 + birthOffset; // birthOffset ≤ 0 when backdated
-      if (delay <= 0) visual.setDestroyed();
-      else timers.push({ t: delay, fn: () => visual.setDestroyed() });
+      if (delay <= 0) visual.setDestroyed({ pop: true, ageS: -delay });
+      else timers.push({ t: delay, fn: () => visual.setDestroyed({ pop: true }) });
     }
   }
 
-  /** One tick of a persistent smoke column emitter. */
+  /** One tick of a persistent smoke column emitter (stage-decayed). */
   function emitColumnPuff(col, birthOffset = 0) {
-    const s = col.scale;
+    // Stage decay: a fresh kill pumps thick black smoke; over the column's
+    // 30 s life it thins toward pale grey wisps instead of cutting off.
+    const stage = Math.min(1, Math.max(0, col.ttl / SMOKE_COLUMN_S));
+    const s = col.scale * (0.55 + 0.45 * stage);
     _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2 * s;
     _puffO.pos[1] = col.pos[1] + 1.6 + rng() * 0.8;
     _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.2 * s;
-    _puffO.vel[0] = (rng() - 0.5) * 0.8; _puffO.vel[1] = 2.2 + rng() * 1.8; _puffO.vel[2] = (rng() - 0.5) * 0.8;
+    _puffO.vel[0] = (rng() - 0.5) * 0.8; _puffO.vel[1] = (1.6 + 0.9 * stage) + rng() * 1.8; _puffO.vel[2] = (rng() - 0.5) * 0.8;
     _puffO.life = 6 + rng() * 3;
     _puffO.size0 = 1.4 * s; _puffO.size1 = (6 + rng() * 3) * s;
     _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 0.8;
-    col3(0x161413, _puffO.col0); col3(0x504e4a, _puffO.col1);
-    _puffO.alpha = 0.72; _puffO.grav = 0.35; _puffO.birthOffset = birthOffset;
+    if (stage > 0.5) { col3(0x161413, _puffO.col0); col3(0x504e4a, _puffO.col1); }
+    else { col3(0x2e2c29, _puffO.col0); col3(0x6a6862, _puffO.col1); }
+    _puffO.alpha = 0.30 + 0.44 * stage; _puffO.grav = 0.35; _puffO.birthOffset = birthOffset;
     particles.emit('smoke', _puffO);
-    // occasional flame lick at the base
-    if (rng() < 0.4) {
+    // occasional flame lick at the base (rarer as the fire burns down)
+    if (rng() < 0.15 + 0.3 * stage) {
       _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 0.9; _puffO.pos[1] = col.pos[1] + 1.0; _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 0.9;
       _puffO.vel[0] = (rng() - 0.5); _puffO.vel[1] = 2 + rng() * 2; _puffO.vel[2] = (rng() - 0.5);
       _puffO.life = 0.35 + rng() * 0.3;
@@ -1023,6 +1168,20 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         for (const r of shockRings) {
           if (r.age < SHOCK_DUR) { r.age += dt; applyShockRing(r); }
           else if (r.mesh.visible) { r.mesh.visible = false; r.mat.opacity = 0; }
+        }
+        // muzzle pressure rings
+        for (const r of muzzleRings) {
+          if (r.age < MUZZLE_RING_DUR) { r.age += dt; applyMuzzleRing(r); }
+          else if (r.mesh.visible) { r.mesh.visible = false; r.mat.opacity = 0; }
+        }
+        // burning-wreck flicker: while the explosion light is idle, park it
+        // over the newest smoke column so fires read as living light sources
+        const exSt = lightStates[1];
+        if (exSt.age >= exSt.dur && columns.length) {
+          const col = columns[columns.length - 1];
+          explosionLight.position.set(col.pos[0], col.pos[1] + 2.2, col.pos[2]);
+          const t = particles.getTime();
+          explosionLight.intensity = (4.6 + 2.4 * Math.sin(t * 13.7) + 1.7 * Math.sin(t * 7.1 + 1.9)) * col.scale;
         }
         // smoke columns
         if (columns.length) {
@@ -1089,6 +1248,38 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         lastKnownPos.set(e.id, [e.pos[0], e.pos[1], e.pos[2]]);
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
         fx.destruction(_v3, null);
+      });
+      bus.on('module:state', (e) => {
+        // de-track moment: link fragments + a grinding dust burst at the hit
+        if ((e.module === 'trackL' || e.module === 'trackR') && e.state === 'red') {
+          const p = lastKnownPos.get(e.id);
+          if (!p) return;
+          _v3.set(p[0], p[1], p[2]);
+          sparkFan(_v3, _UP, 10, 9, 1.2, 0xffce8a, 0.5, 0.03, 0.03);
+          for (let i = 0; i < 5; i++) {
+            const a = rng() * Math.PI * 2;
+            _debO.pos[0] = p[0]; _debO.pos[1] = p[1] + 0.3; _debO.pos[2] = p[2];
+            _debO.vel[0] = Math.cos(a) * (3 + rng() * 4);
+            _debO.vel[1] = 3.5 + rng() * 4;
+            _debO.vel[2] = Math.sin(a) * (3 + rng() * 4);
+            _debO.life = 1.6; _debO.scale = 0.07 + rng() * 0.07; _debO.spin = 12 + rng() * 14;
+            _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+            _debO.groundY = groundY(p[0], p[2]); _debO.hot = false; _debO.seed = rng(); _debO.birthOffset = 0;
+            particles.emit('debris', _debO);
+          }
+          for (let i = 0; i < 6; i++) {
+            _puffO.pos[0] = p[0] + (rng() - 0.5) * 0.8;
+            _puffO.pos[1] = p[1] + 0.25;
+            _puffO.pos[2] = p[2] + (rng() - 0.5) * 0.8;
+            _puffO.vel[0] = (rng() - 0.5) * 2.5; _puffO.vel[1] = 0.8 + rng(); _puffO.vel[2] = (rng() - 0.5) * 2.5;
+            _puffO.life = 1.2 + rng() * 0.8;
+            _puffO.size0 = 0.5; _puffO.size1 = 2.0 + rng() * 0.8;
+            _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+            col3(0x9a8a68, _puffO.col0); col3(0x857a60, _puffO.col1);
+            _puffO.alpha = 0.4; _puffO.grav = -0.4; _puffO.birthOffset = 0;
+            particles.emit('dust', _puffO);
+          }
+        }
       });
       bus.on('tank:fire', (e) => {
         if (e.burning) {
@@ -1193,6 +1384,35 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     },
 
     /**
+     * Stamp a persistent armor-scar decal onto a struck vehicle at a
+     * penetration (or heavy non-pen) point. The pooled quad is re-parented
+     * into the tank's root so it rides the hull afterwards.
+     * @param {object} visual TankVisual (needs .root)
+     * @param {THREE.Vector3} pos world impact point
+     * @param {THREE.Vector3} normal outward surface normal (world)
+     * @param {number} caliberMm scales the scar
+     */
+    armorScar(visual, pos, normal, caliberMm) {
+      if (!visual || !visual.root) return;
+      const m = scarMeshes[scarCursor];
+      scarCursor = (scarCursor + 1) % MAX_SCARS;
+      const root = visual.root;
+      root.updateMatrixWorld(true);
+      if (m.parent !== root) { if (m.parent) m.parent.remove(m); root.add(m); }
+      // world -> hull-local position, lifted slightly off the plate
+      _v1.copy(pos).addScaledVector(normal, 0.04);
+      root.worldToLocal(m.position.copy(_v1));
+      // world normal -> hull-local orientation (plane faces +Z)
+      _scarQ.copy(root.quaternion).invert();
+      _v2.copy(normal).applyQuaternion(_scarQ).normalize();
+      m.quaternion.setFromUnitVectors(_Z, _v2);
+      _scarQ2.setFromAxisAngle(_v2, rng() * Math.PI * 2);
+      m.quaternion.premultiply(_scarQ2);
+      m.scale.setScalar(0.30 * calScale(caliberMm) * (0.8 + rng() * 0.5));
+      m.visible = true;
+    },
+
+    /**
      * Vehicle destruction: fireball, turret pop, debris, persistent smoke
      * column; calls visual.setDestroyed() at t ≈ 0.15 s when visual given.
      * @param {THREE.Vector3} pos hull center (world)
@@ -1277,6 +1497,10 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       scorchCursor = 0;
       for (const r of shockRings) { r.age = Infinity; r.mesh.visible = false; r.mat.opacity = 0; }
       shockCursor = 0;
+      for (const r of muzzleRings) { r.age = Infinity; r.mesh.visible = false; r.mat.opacity = 0; }
+      muzzleRingCursor = 0;
+      for (const m of scarMeshes) { m.visible = false; if (m.parent) m.parent.remove(m); }
+      scarCursor = 0;
       for (const st of lightStates) { st.age = Infinity; st.light.intensity = 0; }
     },
 
@@ -1330,7 +1554,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       }
       // light above the hull: terrain and wreck catch warm falloff without
       // the hull saturating to flat emissive orange
-      flashLight(lightStates[1], _sv.set(pos.x, pos.y + 2.6, pos.z), EXPLOSION_LIGHT_PEAK, ageS);
+      flashLight(lightStates[1], _sv.set(pos.x, pos.y + 3.8, pos.z), EXPLOSION_LIGHT_PEAK, ageS);
     },
   };
 

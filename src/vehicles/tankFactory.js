@@ -15,6 +15,11 @@ function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a
 const D2R = Math.PI / 180;
 const SIM_STEP = 1 / 60;
 
+// modelLoader.js module ref, captured after the first dynamic import so later
+// createTank calls can apply an already-parsed GLB synchronously (icons,
+// garage re-entry) instead of one-frame-late.
+let _modelLoaderMod = null;
+
 // ---- module-scope scratch (no per-frame allocation) ------------------------
 const _m = new THREE.Matrix4();
 const _q = new THREE.Quaternion();
@@ -282,7 +287,8 @@ function buildRunningGear(P, cfg) {
   wheelZs.forEach((z, i) => {
     const offs = layers ? layers[i % layers.length] : [0];
     for (const side of [-1, 1]) {
-      for (const o of offs) entries.push({ x: side * (xc + o * side), y: wheelY, z, r: wheelR, road: true, i });
+      // off: per-wheel suspension travel from terrain conformance (smoothed)
+      for (const o of offs) entries.push({ x: side * (xc + o * side), y: wheelY, z, r: wheelR, road: true, i, off: 0 });
     }
   });
   const rollerEntries = [];
@@ -392,6 +398,11 @@ function buildRunningGear(P, cfg) {
     linkIM.instanceMatrix.needsUpdate = true;
   };
 
+  // de-track state: 0 = healthy, 1 = thrown (band slumps, links sag)
+  let brokenL = 0;
+  let brokenR = 0;
+  const tlY0 = tl.position.y, trY0 = tr.position.y;
+
   P.gear = {
     update(l, r) {
       for (const { im, list } of made) {
@@ -400,7 +411,7 @@ function buildRunningGear(P, cfg) {
           const scroll = e.x < 0 ? l : r;
           const bob = e.road ? Math.sin(scroll * 2.7 + e.i * 1.93) * 0.012 : 0;
           _q.setFromAxisAngle(_X, scroll / e.r);
-          _v.set(e.x, e.y + bob, e.z);
+          _v.set(e.x, e.y + bob + (e.off || 0), e.z);
           _s.set(1, 1, 1);
           _m.compose(_v, _q, _s);
           im.setMatrixAt(i, _m);
@@ -411,6 +422,45 @@ function buildRunningGear(P, cfg) {
       placeLinks(l, r);
       mats.trackTexL.offset.y = -(l / mats.trackLinkM) % 1;
       mats.trackTexR.offset.y = -(r / mats.trackLinkM) % 1;
+    },
+
+    /**
+     * Per-wheel terrain conformance: sample the heightfield under every road
+     * wheel and let it drop into hollows / ride bumps relative to the rigid
+     * 4-corner hull plane. Smoothed per wheel — reads as suspension travel.
+     * @param {object} state TankState (pos/yaw/visualPitch/visualRoll)
+     * @param {(x:number, z:number) => number} sampler world ground height
+     */
+    conform(state, sampler) {
+      const cb = Math.cos(state.yaw), sb = Math.sin(state.yaw);
+      const ca = Math.cos(-state.visualPitch), sa = Math.sin(-state.visualPitch);
+      const cr = Math.cos(state.visualRoll), sr = Math.sin(state.visualRoll);
+      const px = state.pos.x, py = state.pos.y, pz = state.pos.z;
+      for (const { list } of made) {
+        for (let i = 0; i < list.length; i++) {
+          const e = list[i];
+          if (!e.road) continue;
+          // world position of the hull-plane point under this wheel (YXZ)
+          const x1 = e.x * cr, y1 = e.x * sr, z1 = e.z;
+          const y2 = y1 * ca - z1 * sa, z2 = y1 * sa + z1 * ca;
+          const wx = px + x1 * cb + z2 * sb;
+          const wy = py + y2;
+          const wz = pz - x1 * sb + z2 * cb;
+          const dev = sampler(wx, wz) - wy;
+          const target = dev < -0.07 ? -0.07 : (dev > 0.09 ? 0.09 : dev);
+          e.off += (target - e.off) * 0.30;
+        }
+      }
+    },
+
+    /**
+     * De-track visual: the thrown band slumps off the wheels and the link
+     * chain sags with it; restored when the module repairs.
+     * @param {'trackL'|'trackR'} module @param {boolean} broken
+     */
+    setBroken(module, broken) {
+      if (module === 'trackL') { brokenL = broken ? 1 : 0; tl.position.y = tlY0 - brokenL * 0.09; tl.rotation.x = brokenL * 0.02; }
+      else { brokenR = broken ? 1 : 0; tr.position.y = trY0 - brokenR * 0.09; tr.rotation.x = -brokenR * 0.02; }
     },
   };
 }
@@ -1334,18 +1384,29 @@ export function createTank(specId, engineCtx, opts = {}) {
       if (!items.length) continue;
       const im = new THREE.InstancedMesh(brick, mats.hull, items.length);
       im.castShadow = im.receiveShadow = true;
-      items.forEach((e, i) => {
-        _q.setFromEuler(new THREE.Euler(e.rx, e.ry, e.rz, 'YXZ'));
-        _v.set(e.x, turretLocal ? e.y - armor.turretPivot[1] : e.y, turretLocal ? e.z - armor.turretPivot[2] : e.z);
-        _s.set(1, 1, 1);
-        _m.compose(_v, _q, _s);
-        im.setMatrixAt(i, _m);
-        e._mesh = im; e._index = i;
-      });
+      items.forEach((e, i) => { e._mesh = im; e._index = i; });
       (turretLocal ? turretG : hullG).add(im);
       eraLocal.push(im);
       if (!eraMesh) eraMesh = im;
     }
+    seatEraBricks();
+  }
+
+  /** (Re)compose every ERA brick at its as-built placement (undoes stripEra). */
+  function seatEraBricks() {
+    for (const e of eraPlacements) {
+      if (!e._mesh) continue;
+      _q.setFromEuler(new THREE.Euler(e.rx, e.ry, e.rz, 'YXZ'));
+      _v.set(
+        e.x,
+        e.turretLocal ? e.y - armor.turretPivot[1] : e.y,
+        e.turretLocal ? e.z - armor.turretPivot[2] : e.z,
+      );
+      _s.set(1, 1, 1);
+      _m.compose(_v, _q, _s);
+      e._mesh.setMatrixAt(e._index, _m);
+    }
+    for (const im of eraLocal) im.instanceMatrix.needsUpdate = true;
   }
 
   // ---- anchors ----
@@ -1359,9 +1420,44 @@ export function createTank(specId, engineCtx, opts = {}) {
   // ---- state ----
   let destroyed = false;
   let recoilT = 1e9;
-  const REC_BACK = 0.12, REC_RETURN = 0.5, REC_AMP = 0.22;
+  // Recuperator profile: sharp 90 ms slide back in the cradle, then a damped
+  // hydraulic return over ~0.55 s (≈0.64 s total — real recuperator cadence).
+  const REC_BACK = 0.09, REC_RETURN = 0.55, REC_AMP = 0.24;
   const originalMats = [];
   root.traverse((o) => { if (o.isMesh) originalMats.push([o, o.material]); });
+
+  // ---- animation-layer state (visual only, self-timed at SIM_STEP) ---------
+  let groundSampler = null;          // (x, z) => terrain height, set by integration
+  let sway = 0;                      // turn-lean roll (rad), smoothed
+  let flinchP = 0, flinchR = 0;      // hit-reaction damped oscillator
+  let flinchPV = 0, flinchRV = 0;
+  const FLINCH_W = 13, FLINCH_Z = 0.32;
+  // ammo-rack turret pop (physics arc + spin, settles askew on the hull)
+  let popActive = false;
+  let popT = 0;
+  let popYaw0 = 0;
+  const POP_V0 = 6.2, POP_G = 13.5, POP_SPIN = 3.6, POP_SETTLE_Y = -0.18;
+
+  /** Settled wreck pose: turret knocked askew and dropped into the hull. */
+  function settleTurret() {
+    turretG.rotation.z = 0.16;
+    turretG.rotation.y = popYaw0 + 0.5;
+    turretG.position.y = armor.turretPivot[1] + POP_SETTLE_Y;
+    turretG.position.x = 0;
+    popActive = false;
+  }
+
+  /** Evaluate the turret-pop arc at popT (also used frozen by composers). */
+  function applyPop() {
+    const t = popT;
+    const h = POP_V0 * t - 0.5 * POP_G * t * t;
+    if (h <= POP_SETTLE_Y && t > 0.2) { settleTurret(); return; }
+    turretG.position.y = armor.turretPivot[1] + Math.max(h, POP_SETTLE_Y);
+    turretG.position.x = Math.min(t * 0.35, 0.3);
+    turretG.rotation.y = popYaw0 + POP_SPIN * t;
+    turretG.rotation.z = Math.min(0.16 + t * 0.4, 0.55);
+    gunG.rotation.x = Math.min(0.12 + t * 0.25, 0.3);
+  }
 
   const visual = {
     root,
@@ -1372,15 +1468,44 @@ export function createTank(specId, engineCtx, opts = {}) {
     /** Apply a TankState (§2.4) to the visual hierarchy. */
     syncFromState(state) {
       root.position.copy(state.pos);
-      root.rotation.set(-state.visualPitch, state.yaw, state.visualRoll, 'YXZ');
-      turretG.rotation.y = state.turretYaw;
-      gunG.rotation.x = destroyed ? 0.12 : -state.gunPitch;
+      // Turn-lean sway: the hull banks INTO speed × yaw-rate (visual layer on
+      // top of the sim's 4-corner attitude spring).
+      const swayTarget = destroyed ? 0 : Math.max(-0.035, Math.min(0.035, state.yawRate * state.speed * 0.011));
+      sway += (swayTarget - sway) * 0.12;
+      // Hit-flinch: caliber-scaled damped rock layered onto pitch/roll.
+      if (flinchP !== 0 || flinchR !== 0 || flinchPV !== 0 || flinchRV !== 0) {
+        flinchPV += (-FLINCH_W * FLINCH_W * flinchP - 2 * FLINCH_Z * FLINCH_W * flinchPV) * SIM_STEP;
+        flinchP += flinchPV * SIM_STEP;
+        flinchRV += (-FLINCH_W * FLINCH_W * flinchR - 2 * FLINCH_Z * FLINCH_W * flinchRV) * SIM_STEP;
+        flinchR += flinchRV * SIM_STEP;
+        if (Math.abs(flinchP) + Math.abs(flinchPV) + Math.abs(flinchR) + Math.abs(flinchRV) < 1e-4) {
+          flinchP = flinchR = flinchPV = flinchRV = 0;
+        }
+      }
+      root.rotation.set(-state.visualPitch + flinchP, state.yaw, state.visualRoll + sway + flinchR, 'YXZ');
+      if (destroyed) {
+        // wreck: turret pose owned by the pop/settle animation, gun droops
+        if (popActive) { popT += SIM_STEP; applyPop(); }
+      } else {
+        turretG.rotation.y = state.turretYaw;
+        gunG.rotation.x = -state.gunPitch;
+      }
+      // per-wheel suspension conformance before the gear placement pass
+      if (P.gear && groundSampler && !destroyed) P.gear.conform(state, groundSampler);
       if (P.gear) P.gear.update(state.trackScroll.l, state.trackScroll.r);
       if (recoilT < REC_BACK + REC_RETURN) {
         recoilT += SIM_STEP;
         const t = recoilT;
-        const k = t < REC_BACK ? t / REC_BACK : Math.max(0, 1 - (t - REC_BACK) / REC_RETURN);
+        let k;
+        if (t < REC_BACK) {
+          k = Math.sin((t / REC_BACK) * Math.PI * 0.5);      // sharp slide back
+        } else {
+          const u = Math.min((t - REC_BACK) / REC_RETURN, 1);
+          k = Math.pow(1 - u, 1.7);                          // hydraulic return
+        }
         recoilG.position.z = -REC_AMP * k;
+        // cradle rock: the trunnion mount lifts a hair with the impulse
+        if (!destroyed) gunG.rotation.x -= 0.014 * k;
       } else if (recoilG.position.z !== 0) {
         recoilG.position.z = 0;
       }
@@ -1395,6 +1520,36 @@ export function createTank(specId, engineCtx, opts = {}) {
 
     /** Kick the barrel back (visual only; self-timed). */
     recoilKick() { recoilT = 0; },
+
+    /**
+     * Give the visual a terrain sampler for per-wheel suspension conformance.
+     * @param {?(x:number, z:number) => number} fn ground height query (null disables)
+     */
+    setGroundSampler(fn) { groundSampler = fn; },
+
+    /**
+     * Receiving-end hull flinch: a caliber-scaled damped rock away from the
+     * impact. Visual only.
+     * @param {number} nx world impact-normal x @param {number} nz world z
+     * @param {number} mag impulse scale (≈ caliberMm / 100)
+     */
+    hitFlinch(nx, nz, mag, stateYaw) {
+      const yaw = stateYaw !== undefined ? stateYaw : root.rotation.y;
+      const cy = Math.cos(yaw), sy = Math.sin(yaw);
+      const f = nx * sy + nz * cy;   // forward component of the normal
+      const r = nx * cy - nz * sy;   // right component
+      const imp = Math.min(mag, 2) * 0.10;
+      flinchPV += f * imp;           // frontal hit rocks the nose up/back
+      flinchRV += r * imp * 0.8;
+    },
+
+    /**
+     * De-track / repair visual per side.
+     * @param {'trackL'|'trackR'} module @param {boolean} broken
+     */
+    setTrackState(module, broken) {
+      if (P.gear && P.gear.setBroken) P.gear.setBroken(module, broken);
+    },
 
     /** Remove one ERA brick cluster (t90m). */
     stripEra(plateName) {
@@ -1412,8 +1567,14 @@ export function createTank(specId, engineCtx, opts = {}) {
       }
     },
 
-    /** Burnt-out wreck look. Idempotent. */
-    setDestroyed() {
+    /**
+     * Burnt-out wreck look. Idempotent.
+     * @param {{pop?: boolean, ageS?: number}} [opts] pop=true launches the
+     *   ammo-rack turret pop (physics arc + spin, self-timed through
+     *   syncFromState, settles askew); ageS evaluates the arc at that age
+     *   (screenshot composers freeze mid-flight). Default: settled pose.
+     */
+    setDestroyed(opts) {
       if (destroyed) return;
       destroyed = true;
       for (const [mesh, mat] of originalMats) {
@@ -1421,12 +1582,47 @@ export function createTank(specId, engineCtx, opts = {}) {
         mesh.material = mats.burnt;
       }
       for (const d of decalMeshes) d.visible = false;
-      // WoT ammo-rack signature: turret knocked askew and dropped into the
-      // hull, gun drooping (r1 critique — previous pose was invisible).
+      // WoT ammo-rack signature: gun droops, turret pops then lands askew.
       gunG.rotation.x = 0.12;
-      turretG.rotation.z = 0.16;
-      turretG.rotation.y += 0.5;
-      turretG.position.y = armor.turretPivot[1] - 0.18;
+      popYaw0 = turretG.rotation.y;
+      if (opts && opts.pop) {
+        popActive = true;
+        popT = Math.max(0, opts.ageS || 0);
+        applyPop();
+      } else {
+        settleTurret();
+      }
+    },
+
+    /** @returns {boolean} the wreck look is currently applied */
+    isDestroyed() { return destroyed; },
+
+    /**
+     * Restore the live (pre-wreck) visual for a rematch: original materials,
+     * decals, neutral turret/gun pose, re-seated ERA bricks and track bands,
+     * cleared flinch/recoil/pop animation state. Safe on a never-destroyed
+     * tank (ERA/track restore still runs — a survivor may have lost both).
+     */
+    resetDestroyed() {
+      if (destroyed) {
+        destroyed = false;
+        for (const [mesh, mat] of originalMats) { mesh.material = mat; mesh.visible = true; }
+        for (const d of decalMeshes) d.visible = true;
+        turretG.position.set(armor.turretPivot[0], armor.turretPivot[1], armor.turretPivot[2]);
+        turretG.rotation.set(0, 0, 0);
+        gunG.rotation.x = 0;
+      }
+      popActive = false;
+      popT = 0;
+      recoilT = 1e9;
+      recoilG.position.z = 0;
+      sway = 0;
+      flinchP = flinchR = flinchPV = flinchRV = 0;
+      if (P.gear && P.gear.setBroken) {
+        P.gear.setBroken('trackL', false);
+        P.gear.setBroken('trackR', false);
+      }
+      if (eraPlacements.length) seatEraBricks();
     },
 
     setVisible(v) { root.visible = v; },
@@ -1450,9 +1646,17 @@ export function createTank(specId, engineCtx, opts = {}) {
   // simply remains — it is the fallback of record.
   const modelCfg = MODEL_SOURCE[specId];
   if (modelCfg && modelCfg.source === 'glb' && modelCfg.glb) {
-    import('./modelLoader.js')
-      .then((m) => m.applyGlbModel({ spec, cfg: modelCfg.glb, hullG, turretG, recoilG }))
-      .catch((e) => console.warn(`[tankFactory] ${specId}: glb swap failed, procedural retained —`, e.message));
+    const ctx = { spec, cfg: modelCfg.glb, hullG, turretG, recoilG };
+    if (_modelLoaderMod && _modelLoaderMod.hasCachedGlb(modelCfg.glb.path)) {
+      // GLB already parsed (garage re-entry, icon generation): swap in the
+      // same frame so the first render never shows the procedural model.
+      try { _modelLoaderMod.applyGlbModelSync(ctx); }
+      catch (e) { console.warn(`[tankFactory] ${specId}: glb swap failed, procedural retained —`, e.message); }
+    } else {
+      import('./modelLoader.js')
+        .then((m) => { _modelLoaderMod = m; return m.applyGlbModel(ctx); })
+        .catch((e) => console.warn(`[tankFactory] ${specId}: glb swap failed, procedural retained —`, e.message));
+    }
   }
 
   return visual;

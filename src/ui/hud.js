@@ -18,6 +18,9 @@ import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
 // drive the minimap blips; side silhouettes drive the team panels + kill feed.
 import { tintedIcon, maskIcon } from './icons.js';
 import { TANK_IDS } from '../vehicles/specs.js';
+// SHOT-INFO SECTION: combat-intelligence panels (shot cards, armor diagrams,
+// incoming toasts, shot log, session stats) — logic lives in src/ui/shotInfo.js.
+import { createShotInfo } from './shotInfo.js';
 
 // module-scope scratch (no per-frame allocation)
 const _mInv = new THREE.Matrix4();
@@ -340,6 +343,37 @@ const HUD_CSS = `
   border:1px solid rgba(210,225,240,.28);box-shadow:0 6px 22px rgba(0,0,0,.55);
   background:#0d1310;}
 .cot-minimap canvas{display:block;width:220px;height:220px;}
+/* SPOTTING SECTION: sixth-sense lamp (lights 3 s after you are spotted) */
+.cot-sixth{position:absolute;top:14%;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  opacity:0;transition:opacity .15s ease;pointer-events:none;}
+.cot-sixth.on{opacity:1;}
+.cot-sixth svg{filter:drop-shadow(0 0 12px rgba(255,186,60,.9)) drop-shadow(0 2px 4px rgba(0,0,0,.7));
+  animation:cotSixthPulse 1.1s ease-in-out infinite;}
+@keyframes cotSixthPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+.cot-sixth .lb{font-size:11px;font-weight:800;letter-spacing:.32em;color:#ffb02e;
+  font-family:${FONT_COND};font-stretch:condensed;text-transform:uppercase;
+  text-shadow:0 1px 3px rgba(0,0,0,.95);}
+/* SPOTTING SECTION: camo/eye concealment indicator (why: moving/fired/bush) */
+.cot-camoind{position:absolute;bottom:16px;left:50%;
+  transform:translateX(calc(-100% - 218px));
+  display:flex;align-items:center;gap:8px;padding:7px 12px 7px 10px;
+  background:linear-gradient(180deg,rgba(14,19,24,.92),rgba(8,11,14,.95));
+  border:1px solid rgba(146,164,180,.28);border-bottom:2px solid rgba(146,164,180,.28);}
+.cot-camoind.spotted{border-color:rgba(240,90,90,.55);border-bottom-color:#f05a5a;}
+.cot-camoind svg{display:block;flex:0 0 auto;}
+.cot-camoind .cv{display:flex;flex-direction:column;gap:3px;}
+.cot-camoind .pct{font-size:14px;font-weight:700;line-height:1;color:#9fd6a8;
+  font-family:${FONT_COND};font-stretch:condensed;font-variant-numeric:tabular-nums;
+  text-shadow:0 1px 2px rgba(0,0,0,.9);}
+.cot-camoind.spotted .pct{color:#f28f8f;}
+.cot-camoind .tags{display:flex;gap:4px;}
+.cot-camoind .tags i{font-style:normal;font-size:7.5px;font-weight:800;
+  letter-spacing:.1em;padding:1px 4px;color:rgba(146,164,180,.4);
+  border:1px solid rgba(146,164,180,.22);
+  font-family:${FONT_COND};font-stretch:condensed;}
+.cot-camoind .tags i.hot{color:#ffd27a;border-color:rgba(240,176,74,.6);}
+.cot-camoind .tags i.good{color:#8df08d;border-color:rgba(126,232,126,.55);}
 `;
 
 function penColor(r) {
@@ -430,8 +464,132 @@ export function initHud(bus) {
 
   const killfeed = el('div', 'cot-killfeed', root);
   const dlog = el('div', 'cot-dlog', root);
+
+  // ========================= SHOT-INFO SECTION ==============================
+  // Combat intelligence (WoT damage-log mod class): shot cards with armor
+  // diagrams for the player's connecting shots, incoming-hit toasts, a
+  // collapsible last-6-shots + received-damage log (rebindable 'shotLog'
+  // action -> bus 'ui:shotLog'), and the end-of-battle session stats.
+  // All rendering/bookkeeping lives in src/ui/shotInfo.js; the HUD only
+  // mounts the layer and forwards player identity + lifecycle below.
+  const shotInfo = createShotInfo(bus);
+  root.appendChild(shotInfo.root);
+  // ======================= END SHOT-INFO SECTION ============================
   const alertEl = el('div', 'cot-alert', root);
   const bounceEl = el('div', 'cot-bounce', root); // WoT-style "Ricochet!" line
+
+  // ========================= SPOTTING SECTION ===============================
+  // Sixth-sense lamp: 'player:spotted' (src/game/state.js spotting wiring)
+  // arms a 3 s fuse; when it burns down the bulb lights for 8 s with a short
+  // synthesized two-tone sting. Battle restarts reset the lamp (sim clock
+  // restarts at 0).
+  const sixthEl = el('div', 'cot-sixth', root);
+  sixthEl.innerHTML =
+    `<svg viewBox="0 0 24 24" width="42" height="42">` +
+    `<path fill="#ffc94d" d="M12 2.2a6.6 6.6 0 0 0-3.7 12.06c.7.5 1.1 1.24 1.2 2.04h5c.1-.8.5-1.55 1.2-2.04A6.6 6.6 0 0 0 12 2.2Z"/>` +
+    `<rect x="9.4" y="17.2" width="5.2" height="1.6" rx="0.8" fill="#c8933a"/>` +
+    `<rect x="9.9" y="19.4" width="4.2" height="1.5" rx="0.75" fill="#a87828"/>` +
+    `<path stroke="#ffd98a" stroke-width="1.3" stroke-linecap="round" fill="none" ` +
+    `d="M12 0.2v-0.1M3.4 3.9l1.2 1.2M20.6 3.9l-1.2 1.2M1.2 10.5h1.7M21.1 10.5h1.7"/>` +
+    `</svg><div class="lb">Spotted</div>`;
+  let sixthPendingS = -1; // sim time the lamp should light (spot time + 3 s)
+  let sixthUntilS = -1;
+  let sixthOn = false;
+  const SIXTH_DELAY_S = 3;
+  const SIXTH_SHOW_S = 8;
+  let stingCtx = null;
+  function playSixthSting() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      stingCtx = stingCtx || new AC();
+      if (stingCtx.state === 'suspended') stingCtx.resume();
+      const t0 = stingCtx.currentTime + 0.01;
+      // two falling tones — the classic "you are seen" sting
+      for (const [freq, at] of [[1244.5, 0], [830.6, 0.13]]) {
+        const osc = stingCtx.createOscillator();
+        const g = stingCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+        g.gain.setValueAtTime(0.0001, t0 + at);
+        g.gain.exponentialRampToValueAtTime(0.16, t0 + at + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + 0.3);
+        osc.connect(g).connect(stingCtx.destination);
+        osc.start(t0 + at);
+        osc.stop(t0 + at + 0.32);
+      }
+    } catch (e) { /* audio unavailable (headless/autoplay) — lamp still shows */ }
+  }
+  bus.on('player:spotted', ({ timeS }) => {
+    if (sixthPendingS < 0 && !(sixthOn && timeS < sixthUntilS - SIXTH_DELAY_S)) {
+      sixthPendingS = timeS + SIXTH_DELAY_S;
+    }
+  });
+  function updateSixthSense(timeS) {
+    if (sixthPendingS >= 0 && timeS >= sixthPendingS) {
+      sixthPendingS = -1;
+      sixthUntilS = timeS + SIXTH_SHOW_S;
+      if (!sixthOn) { sixthOn = true; sixthEl.classList.add('on'); }
+      playSixthSting();
+    }
+    if (sixthOn && (timeS > sixthUntilS || timeS < sixthUntilS - SIXTH_SHOW_S - 1)) {
+      sixthOn = false;
+      sixthEl.classList.remove('on');
+    }
+  }
+
+  // Camo/eye indicator: current concealment % and WHY it is what it is
+  // (moving / just fired / sitting in a bush). Red open eye while spotted.
+  const camoInd = el('div', 'cot-camoind', root);
+  camoInd.innerHTML =
+    `<svg viewBox="0 0 24 24" width="26" height="26">` +
+    `<path class="ceye" fill="none" stroke="#9fd6a8" stroke-width="1.7" ` +
+    `d="M2.5 12c2.7-4.4 6-6.6 9.5-6.6s6.8 2.2 9.5 6.6c-2.7 4.4-6 6.6-9.5 6.6S5.2 16.4 2.5 12Z"/>` +
+    `<circle class="cpup" cx="12" cy="12" r="3" fill="#9fd6a8"/></svg>` +
+    `<div class="cv"><div class="pct"></div>` +
+    `<div class="tags"><i data-k="bush">BUSH</i><i data-k="moving">MOVING</i><i data-k="fired">FIRED</i></div></div>`;
+  camoInd.style.display = 'none';
+  const camoPctEl = camoInd.querySelector('.pct');
+  const camoEyeEl = camoInd.querySelector('.ceye');
+  const camoPupEl = camoInd.querySelector('.cpup');
+  const camoTags = {};
+  for (const i of camoInd.querySelectorAll('.tags i')) camoTags[i.dataset.k] = i;
+  let camoIndShown = false;
+  let camoLastTxt = '';
+  let camoLastSpotted = null;
+  const camoTagState = { bush: '', moving: '', fired: '' };
+  function updateCamoIndicator(sp) {
+    const show = !!sp;
+    if (show !== camoIndShown) {
+      camoInd.style.display = show ? 'flex' : 'none';
+      camoIndShown = show;
+    }
+    if (!sp) return;
+    const spotted = !!sp.spotted;
+    const txt = spotted ? 'SPOTTED' : `${Math.round(sp.camo * 100)}%`;
+    if (txt !== camoLastTxt) { camoPctEl.textContent = txt; camoLastTxt = txt; }
+    if (spotted !== camoLastSpotted) {
+      camoInd.classList.toggle('spotted', spotted);
+      const col = spotted ? '#f05a5a' : '#9fd6a8';
+      camoEyeEl.setAttribute('stroke', col);
+      camoPupEl.setAttribute('fill', col);
+      camoPupEl.setAttribute('r', spotted ? '3.6' : '3');
+      camoLastSpotted = spotted;
+    }
+    const want = {
+      bush: sp.inBush ? (sp.bush > 0 ? 'good' : 'hot') : '',
+      moving: sp.moving ? 'hot' : '',
+      fired: sp.fired ? 'hot' : '',
+    };
+    for (const k of ['bush', 'moving', 'fired']) {
+      if (want[k] !== camoTagState[k]) {
+        camoTags[k].classList.toggle('good', want[k] === 'good');
+        camoTags[k].classList.toggle('hot', want[k] === 'hot');
+        camoTagState[k] = want[k];
+      }
+    }
+  }
+  // ======================= END SPOTTING SECTION =============================
 
   // --- shell selector + consumables ---
   const shellBox = el('div', 'cot-shells', root);
@@ -576,17 +734,30 @@ export function initHud(bus) {
         sp.lastX = t.state.pos.x; sp.lastZ = t.state.pos.z;
         continue;
       }
-      const dx = t.state.pos.x - pp.x;
-      const dz = t.state.pos.z - pp.z;
-      const d = Math.hypot(dx, dz);
-      const seen = d <= SPOT_RANGE_M &&
-        hasLOS(pp.x, pp.y + 2.6, pp.z, t.state.pos.x, t.state.pos.y + 1.9, t.state.pos.z);
+      // SPOTTING SECTION: when the concealment sim is wired in (frame.spotting
+      // from src/sim/spotting.js via main.js) it is the single source of truth
+      // — camo values, bushes, fire bloom and the 5 s linger all live there.
+      // The legacy range+terrain-LOS model below stays as the fallback for
+      // forced screenshot frames and headless fixtures.
+      const sys = frame.spotting && typeof frame.spotting.isSpotted === 'function'
+        ? frame.spotting : null;
+      let seen;
+      if (sys) {
+        seen = sys.isSpotted(t.id);
+      } else {
+        const dx = t.state.pos.x - pp.x;
+        const dz = t.state.pos.z - pp.z;
+        const d = Math.hypot(dx, dz);
+        seen = d <= SPOT_RANGE_M &&
+          hasLOS(pp.x, pp.y + 2.6, pp.z, t.state.pos.x, t.state.pos.y + 1.9, t.state.pos.z);
+      }
       if (seen) {
         sp.lastT = frame.timeS;
         sp.lastX = t.state.pos.x; sp.lastZ = t.state.pos.z;
         sp.ever = true;
       }
-      sp.vis = seen || (frame.timeS - sp.lastT) < SPOT_PERSIST_S;
+      // the sim already includes the spotted linger; legacy adds its own
+      sp.vis = sys ? seen : (seen || (frame.timeS - sp.lastT) < SPOT_PERSIST_S);
       if (sp.vis) { sp.lastX = t.state.pos.x; sp.lastZ = t.state.pos.z; }
     }
   }
@@ -1473,6 +1644,7 @@ export function initHud(bus) {
   // ---------- public API ----------
   const hud = {
     root,
+    shotInfo, // SHOT-INFO SECTION: exposed for tests/debug hooks
 
     /**
      * Switch overall HUD mode.
@@ -1484,9 +1656,18 @@ export function initHud(bus) {
       applyMode();
       mmDirty = true; // guarantee a minimap draw on the next update()
       if (m === 'hidden') ctx.clearRect(0, 0, w, h);
+      // SHOT-INFO SECTION: lifecycle forwarding (reset per battle, hide the
+      // end-of-battle stats card when the HUD leaves the battlefield).
+      if (m === 'hidden') shotInfo.hideStats();
+      if (m === 'battle' && wasHidden) shotInfo.reset();
       if (m === 'battle' && wasHidden) {
         // fresh battle: drop spotting memory and team rosters from the last one
         spotById.clear();
+        // SPOTTING SECTION: disarm the sixth-sense lamp (sim clock restarts)
+        sixthPendingS = -1;
+        sixthUntilS = -1;
+        sixthOn = false;
+        sixthEl.classList.remove('on');
         for (const [, row] of earRows) row.root.remove();
         earRows.clear();
         for (const [, bar] of hpPool) bar.root.remove();
@@ -1509,6 +1690,7 @@ export function initHud(bus) {
       if (frame.mode && frame.mode !== mode) { mode = frame.mode; applyMode(); mmDirty = true; }
       playerRef = frame.player || playerRef;
       if (frame.player) playerId = frame.player.id;
+      shotInfo.setPlayer(playerId); // SHOT-INFO SECTION: identity forwarding
       const tanks = frame.tanks || [];
       for (let i = 0; i < tanks.length; i++) {
         const t = tanks[i];
@@ -1519,6 +1701,9 @@ export function initHud(bus) {
 
       updateSpotting(frame);
       updateTeams(frame);
+      // SPOTTING SECTION: sixth-sense fuse/lamp + camo/eye indicator
+      updateSixthSense(frame.timeS);
+      updateCamoIndicator(frame.spotting ? frame.spotting.player : null);
 
       const aim = frame.aim || {};
       assembleAimView(camera, aim);

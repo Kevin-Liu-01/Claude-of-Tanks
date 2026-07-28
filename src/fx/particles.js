@@ -599,8 +599,9 @@ function makePuffTexture(rng, blobbiness) {
 }
 
 /**
- * Muzzle/detonation star flash: tiny blinding core, radial spikes, soft halo.
- * Alpha-only payload. Reads as a discharge, not fog.
+ * Muzzle/detonation flash: layered SOFT-core discharge — compact blinding
+ * core, feathered combustion halo whose silhouette is fbm-ragged, and a few
+ * faint irregular petals (never hard cartoon star spikes). Alpha-only.
  * @param {() => number} rng
  * @returns {THREE.CanvasTexture}
  */
@@ -612,25 +613,26 @@ function makeFlashTexture(rng) {
   ctx.clearRect(0, 0, s, s);
   ctx.globalCompositeOperation = 'lighter';
   const c = s / 2;
-  // soft halo
+  // wide soft halo (fast falloff — reads as air-glow, not a sticker)
   let g = ctx.createRadialGradient(c, c, 0, c, c, s * 0.5);
-  g.addColorStop(0.0, 'rgba(255,255,255,0.75)');
-  g.addColorStop(0.16, 'rgba(255,255,255,0.42)');
-  g.addColorStop(0.45, 'rgba(255,255,255,0.10)');
+  g.addColorStop(0.0, 'rgba(255,255,255,0.62)');
+  g.addColorStop(0.18, 'rgba(255,255,255,0.30)');
+  g.addColorStop(0.45, 'rgba(255,255,255,0.07)');
   g.addColorStop(1.0, 'rgba(255,255,255,0)');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, s, s);
-  // radial spikes
-  for (let i = 0; i < 7; i++) {
-    const a = (i / 7) * Math.PI * 2 + rng() * 0.6;
-    const len = s * (0.26 + rng() * 0.2);
-    const w = s * (0.02 + rng() * 0.02);
+  // faint irregular combustion petals — broad soft lobes, randomized length
+  // and width, alpha low enough that they read as unburnt-powder flare
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 + rng() * 1.2;
+    const len = s * (0.18 + rng() * 0.14);
+    const w = s * (0.07 + rng() * 0.06);
     ctx.save();
     ctx.translate(c, c);
     ctx.rotate(a);
     ctx.scale(len, w);
-    const rg = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
-    rg.addColorStop(0, 'rgba(255,255,255,0.9)');
+    const rg = ctx.createRadialGradient(0.35, 0, 0, 0.35, 0, 1);
+    rg.addColorStop(0, 'rgba(255,255,255,0.34)');
     rg.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = rg;
     ctx.beginPath();
@@ -638,13 +640,17 @@ function makeFlashTexture(rng) {
     ctx.fill();
     ctx.restore();
   }
-  // blinding core
-  g = ctx.createRadialGradient(c, c, 0, c, c, s * 0.13);
+  // compact blinding core with a soft shoulder
+  g = ctx.createRadialGradient(c, c, 0, c, c, s * 0.16);
   g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.45, 'rgba(255,255,255,0.7)');
   g.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, s, s);
   ctx.globalCompositeOperation = 'source-over';
+  // ragged silhouette: turbulence bites the halo rim so the frozen frame
+  // never shows a clean radial-gradient disc
+  applyFbmAlpha(cv, rng, 0.32);
   const tex = new THREE.CanvasTexture(cv);
   tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
   return tex;

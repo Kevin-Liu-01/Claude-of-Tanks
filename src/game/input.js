@@ -51,6 +51,7 @@ export const ACTION_DEFS = [
   { id: 'zoomIn', label: 'Zoom In', group: 'Camera' },
   { id: 'zoomOut', label: 'Zoom Out', group: 'Camera' },
   { id: 'minimapZoom', label: 'Minimap Zoom', group: 'Interface' },
+  { id: 'shotLog', label: 'Shot Info Log', group: 'Interface' }, // SHOT-INFO (shotInfo.js)
   { id: 'settingsMenu', label: 'Settings Menu', group: 'Interface' },
 ];
 
@@ -76,6 +77,7 @@ export const DEFAULT_BINDINGS = {
   zoomIn: 'WheelUp',
   zoomOut: 'WheelDown',
   minimapZoom: 'KeyM',
+  shotLog: 'KeyL', // SHOT-INFO: toggle the shot-info / received-damage log
   settingsMenu: 'Escape',
 };
 

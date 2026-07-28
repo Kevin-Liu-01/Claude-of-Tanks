@@ -17,6 +17,9 @@ import {
   createCombatState, resolveShellHit, resolveHeBurst, tickFire, startReload,
 } from '../sim/damage.js';
 import { createAI } from './ai.js';
+// SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
+import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.js';
+import { hasCamoPaint } from '../vehicles/materials.js';
 
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -78,6 +81,7 @@ export function createGameState() {
     fireTickAcc: 0,
     combatRng: mulberry32(COMBAT_SEED),
     result: null,               // null | 'victory' | 'defeat'
+    spotting: null,             // SPOTTING WIRING: SpottingSystem (per battle)
   };
 }
 
@@ -132,10 +136,25 @@ export function setupBattle(game, playerSpecId, world) {
   game.combatRng = mulberry32(COMBAT_SEED);
   game.result = null;
 
+  // SPOTTING WIRING: fresh concealment/spotting sim bound to this battle's
+  // world (raycast for hard cover, vegetation discs for bush concealment).
+  game.spotting = createSpottingSystem({
+    getTanks: () => game.tanks,
+    raycast: world.raycast,
+    concealers: world.getConcealment ? world.getConcealment() : [],
+    getCamoBonus: (ent) => (hasCamoPaint(ent.specId) ? CAMO_PAINT_BONUS : 0),
+    rng: mulberry32(9100),
+  });
+
   const aiDeps = {
     heightField: world.heightField,
     raycast: world.raycast,
     getObstacles: () => world.getObstacles(),
+    // AI target acquisition goes THROUGH the spotting sim (§camo charter):
+    // an enemy AI only "knows about" tanks its team has spotted.
+    spotting: {
+      isSpotted: (id) => (game.spotting ? game.spotting.isSpotted(id, 'enemy') : true),
+    },
   };
 
   let enemyIdx = 0;
@@ -155,6 +174,9 @@ export function setupBattle(game, playerSpecId, world) {
     ent.input.aimPoint.copy(ent.state.aimPoint);
     ent._destroyedAnnounced = false;
     ent.ai = null;
+    // Rematch: undo any wreck look / thrown tracks / stripped ERA from the
+    // previous battle (visuals only — combat state above is already fresh).
+    if (ent.visual.resetDestroyed) ent.visual.resetDestroyed();
     if (isPlayer) {
       game.player = ent;
       ent.aiCtl = null;
@@ -230,8 +252,25 @@ function makeCollide(game, world) {
 
 /** Emit the derived bus events flagged inside one HitEvent. */
 function emitHitOutcome(game, bus, ev) {
-  bus.emit('shell:hit', ev);
   const target = ev.targetId ? game.tankById.get(ev.targetId) : null;
+  // SHOT-INFO ENRICHMENT (ADDITIVE ONLY — consumed by src/ui/shotInfo.js):
+  // resolve ids to names/spec ids + stamp sim time. Existing fields untouched.
+  ev.timeS = game.timeS;
+  const attacker = ev.attackerId ? game.tankById.get(ev.attackerId) : null;
+  if (attacker && attacker.spec) {
+    ev.attackerName = attacker.spec.name;
+    ev.attackerSpecId = attacker.specId;
+  }
+  if (target && target.spec) {
+    ev.targetName = target.spec.name;
+    ev.targetSpecId = target.specId;
+    ev.targetMaxHp = target.combat ? target.combat.maxHp : 0;
+  }
+  // KILL-CAM CAPTURE (ADDITIVE — src/game/killcam.js): snapshot the fully
+  // resolved event chain + victim pose for lethal-shot replays. main.js
+  // assigns game.killcam; nothing here changes when it is absent.
+  if (game.killcam) game.killcam.onShellHit(ev, target);
+  bus.emit('shell:hit', ev);
   if (ev.modulesHit && ev.modulesHit.length && ev.targetId) {
     for (const m of ev.modulesHit) {
       bus.emit('module:state', { id: ev.targetId, module: m.module, state: m.newState });
@@ -249,7 +288,8 @@ function emitHitOutcome(game, bus, ev) {
 
 function announceDestroyed(game, bus, ent, killerId, cause) {
   ent._destroyedAnnounced = true;
-  ent.visual.setDestroyed();
+  // pop: ammo-rack turret launch (physics arc + spin, settles askew)
+  ent.visual.setDestroyed({ pop: true });
   bus.emit('tank:destroyed', {
     id: ent.id,
     specId: ent.specId,
@@ -313,11 +353,15 @@ function tryFire(game, ent, bus, rig) {
     shooterId: ent.id,
     isPlayer: ent.isPlayer,
     shellType: shellSpec.type,
+    shellName: shellSpec.name, // SHOT-INFO ENRICHMENT (additive)
     caliberMm: shellSpec.caliberMm,
     muzzlePos: [_muzzle.x, _muzzle.y, _muzzle.z],
     dir: [_dir.x, _dir.y, _dir.z],
   });
   startReload(c, ent.spec);
+  // SPOTTING WIRING: firing blooms the shooter's camo (with decay) and lights
+  // up any concealing foliage within 15 m (see src/sim/spotting.js).
+  if (game.spotting) game.spotting.notifyFired(ent.id, game.timeS);
 }
 
 /** Advance all live shells one step and resolve collisions. */
@@ -424,6 +468,19 @@ export function simStep(game, bus, world, rig, collider) {
   const dt = SIM_DT;
   game.timeS += dt;
 
+  // a0. SPOTTING WIRING: periodic concealment checks (staggered inside the
+  // system — 0.5-2 s cadence, never per-frame). Newly-spotted events feed the
+  // sixth-sense lamp when the player is the one lit up.
+  if (game.spotting) {
+    const spotEvents = game.spotting.update(dt, game.timeS);
+    for (const ev of spotEvents) {
+      bus.emit('tank:spotted', ev);
+      if (game.player && ev.id === game.player.id && ev.team === 'enemy') {
+        bus.emit('player:spotted', { timeS: game.timeS });
+      }
+    }
+  }
+
   // a. AI writes inputs
   for (const ent of game.tanks) {
     if (ent.aiCtl && !ent.combat.destroyed) ent.aiCtl.update(dt, game.timeS);
@@ -446,6 +503,11 @@ export function simStep(game, bus, world, rig, collider) {
     }
     tryFire(game, ent, bus, rig);
   }
+
+  // KILL-CAM CAPTURE (ADDITIVE — src/game/killcam.js): record trajectory
+  // points for every live shell (new shells contribute their muzzle position;
+  // the impact point is appended at capture time from the HitEvent).
+  if (game.killcam) game.killcam.recordSimStep(game);
 
   // d. shells
   stepShells(game, bus, world);
@@ -475,6 +537,11 @@ export function simStep(game, bus, world, rig, collider) {
         if (!ent.isPlayer && ent.combat && !ent.combat.destroyed) enemiesLeft++;
       }
       if (enemiesLeft === 0) game.result = 'victory';
+    }
+    // SHOT-INFO ENRICHMENT (additive): announce the decision once so results
+    // UIs (src/ui/shotInfo.js session stats) can render without polling.
+    if (game.result !== null) {
+      bus.emit('battle:ended', { result: game.result, timeS: game.timeS });
     }
   }
 }

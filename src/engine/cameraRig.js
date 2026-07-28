@@ -125,6 +125,10 @@ export function createCameraRig(camera, deps) {
   let shakeT = 0;
   let recoil = 0; // gun-fire pitch kick (rad), decays fast — additive like shake
   let lastFov = 0;
+  // battle-start cinematic flyby state (null when inactive)
+  let cine = null;   // { t, dur, endYaw }
+  // death-cam slow orbit state (null when inactive)
+  let death = null;  // { az }
 
   /** Resolve the arcade orbit pivot for the current player into `out`. */
   function pivotTargetFor(player, out) {
@@ -230,6 +234,41 @@ export function createCameraRig(camera, deps) {
     }
   }
 
+  /** Quintic ease for the cinematic sweep. */
+  function smoother(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+
+  /** Solve the battle-start flyby at cine.t; returns false when finished. */
+  function solveCinematic(player, dt) {
+    cine.t += dt;
+    const k = smoother(THREE.MathUtils.clamp(cine.t / cine.dur, 0, 1));
+    pivotTargetFor(player, _pivotTarget);
+    // sweep: high front-quarter arc decaying onto the arcade chase pose
+    const yawOff = 2.3 * (1 - k);
+    const pitch = THREE.MathUtils.lerp(-0.40, THREE.MathUtils.degToRad(-10), k);
+    const d = THREE.MathUtils.lerp(30, ORBIT_STEPS[2], k);
+    dirFromAngles(cine.endYaw + yawOff, pitch, _viewDir);
+    _desired.copy(_pivotTarget).addScaledVector(_viewDir, -d);
+    const minY = heightField.getHeightAt(_desired.x, _desired.z) + CAMERA_MIN_CLEARANCE_M;
+    if (_desired.y < minY) _desired.y = minY;
+    camera.position.copy(_desired);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(_pivotTarget);
+    setFov(BASE_FOV_DEG - 8 * (1 - k));
+    return cine.t < cine.dur;
+  }
+
+  /** Hand control back to the arcade rig exactly where the flyby lands. */
+  function endCinematic(player) {
+    aimYaw = cine.endYaw;
+    aimPitch = THREE.MathUtils.degToRad(-10);
+    cine = null;
+    freeYaw = 0;
+    freePitch = 0;
+    rig.mode = 'ARCADE';
+    step = 2;
+    if (player) { solveArcade(player, 0, true); updateAim(player); }
+  }
+
   function stepZoom(dir) {
     if (rig.mode === 'ARCADE') {
       if (dir > 0 && step === ORBIT_STEPS.length - 1) rig.enterSniper();
@@ -266,6 +305,34 @@ export function createCameraRig(camera, deps) {
       if (external) return;
       const player = getPlayer();
       if (!player) return;
+
+      // Death-cam: slow orbit of the wreck (input ignored until released).
+      if (death) {
+        death.az += 0.22 * dt;
+        pivotTargetFor(player, _pivotTarget);
+        _pivotTarget.y -= PIVOT_ABOVE_TURRET_M * 0.6;
+        const d = 15 + Math.sin(death.az * 0.7) * 1.5;
+        _desired.set(
+          _pivotTarget.x + Math.sin(death.az) * d * 0.93,
+          _pivotTarget.y + d * 0.36,
+          _pivotTarget.z + Math.cos(death.az) * d * 0.93,
+        );
+        const minY = heightField.getHeightAt(_desired.x, _desired.z) + CAMERA_MIN_CLEARANCE_M;
+        if (_desired.y < minY) _desired.y = minY;
+        camera.position.copy(_desired);
+        camera.up.set(0, 1, 0);
+        camera.lookAt(_pivotTarget);
+        setFov(50);
+        return;
+      }
+
+      // Battle-start cinematic flyby — skippable with any input.
+      if (cine) {
+        const skip = Math.abs(camInput.mouseDX) > 2 || Math.abs(camInput.mouseDY) > 2 ||
+          camInput.wheel !== 0 || camInput.shiftPressed || camInput.rmb;
+        if (skip || !solveCinematic(player, dt)) endCinematic(player);
+        return;
+      }
 
       // Shift toggles sniper on the rising edge.
       if (camInput.shiftPressed && !prevShift) {
@@ -310,6 +377,13 @@ export function createCameraRig(camera, deps) {
       // Trauma shake — additive rotational only, after the solve.
       trauma = Math.max(0, trauma - TRAUMA_DECAY_PER_S * dt);
       shakeT += dt;
+      // Sniper idle drift: subtle low-frequency handheld wander + breathing
+      // bob, additive AFTER the aim raycast so the reticle stays truthful.
+      if (rig.mode === 'SNIPER') {
+        camera.rotation.x += 0.0011 * noise.noise(shakeT * 0.45, 11.7, 0) +
+          0.0004 * Math.sin(shakeT * 1.9);
+        camera.rotation.y += 0.0013 * noise.noise(4.2, shakeT * 0.38, 0);
+      }
       if (trauma > 0) {
         const s = trauma * trauma * (rig.mode === 'SNIPER' ? SNIPER_SHAKE_SCALE : 1);
         camera.rotation.x += SHAKE_AMP_XY * s * noise.noise(shakeT * SHAKE_FREQ, 0, 0);
@@ -343,6 +417,40 @@ export function createCameraRig(camera, deps) {
      */
     recoilKick(x = 0.012) {
       recoil = Math.min(0.035, recoil + x);
+    },
+
+    /**
+     * Start the battle-open cinematic: a ~3 s flyby sweeping from a high
+     * front-quarter arc down onto the arcade chase pose behind the player
+     * tank. Any camera input skips it instantly.
+     * @param {number} [durS=3] sweep duration in seconds
+     * @returns {void}
+     */
+    startCinematic(durS = 3) {
+      const player = getPlayer();
+      death = null;
+      trauma = 0;
+      cine = {
+        t: 0,
+        dur: Math.max(0.5, durS),
+        endYaw: player && player.state ? player.state.yaw : aimYaw,
+      };
+      rig.mode = 'ARCADE';
+      applyPlayerVisibility(player, true);
+    },
+
+    /**
+     * Start the death-cam: a slow orbit around the player's wreck. Runs until
+     * a snap/external pose or a new cinematic takes over.
+     * @returns {void}
+     */
+    startDeathCam() {
+      cine = null;
+      trauma = 0;
+      const player = getPlayer();
+      death = { az: player && player.state ? player.state.yaw + Math.PI * 0.75 : 0 };
+      rig.mode = 'ARCADE';
+      applyPlayerVisibility(player, true);
     },
 
     /**
@@ -398,6 +506,8 @@ export function createCameraRig(camera, deps) {
      */
     setExternalPose(pos, lookAt, fovDeg = 50) {
       external = true;
+      cine = null;
+      death = null;
       trauma = 0;
       applyPlayerVisibility(getPlayer(), true);
       camera.position.copy(pos);
@@ -417,6 +527,8 @@ export function createCameraRig(camera, deps) {
      */
     snapArcade(step_, orbitYaw, orbitPitch) {
       external = false;
+      cine = null;
+      death = null;
       rig.mode = 'ARCADE';
       step = THREE.MathUtils.clamp(step_ | 0, 0, ORBIT_STEPS.length - 1);
       aimYaw = orbitYaw;
@@ -443,6 +555,8 @@ export function createCameraRig(camera, deps) {
      */
     snapSniper(zoom, aimYaw_, aimPitch_) {
       external = false;
+      cine = null;
+      death = null;
       rig.mode = 'SNIPER';
       rig.zoom = zoom;
       aimYaw = aimYaw_;

@@ -1049,6 +1049,9 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   const clusters = [];
   const trees = []; // { x,z,species,variant, mat: Matrix4, tint: Color, near: bool }
   const treeObstacles = [];
+  // SPOTTING WIRING: concealment discs {x,z,r,add} sampled by the spotting
+  // sim (src/sim/spotting.js) — bushes conceal strongly, tree canopies mildly.
+  const concealers = [];
   function siteOk(x, z, margin) {
     if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
     if (x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24) return false;
@@ -1075,6 +1078,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     trees.push({ x, z, species, variant: (rng() * 2) | 0, mat: _m4.clone(), tint: _c.clone(), near: false });
     if (withObstacle) {
       treeObstacles.push({ min: [x - 0.55, y, z - 0.55], max: [x + 0.55, y + 3.2 * sc, z + 0.55] });
+      concealers.push({ x, z, r: 2.3 * sc, add: 0.13 }); // canopy soft-conceals
     }
   }
   function addTree(x, z, species) {
@@ -1174,6 +1178,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       _q.setFromAxisAngle(_up, rng() * Math.PI * 2);
       _m4.compose(_pv.set(x, y - 0.05, z), _q, _sv.set(sc, sc * (0.8 + rng() * 0.3), sc));
       bushPlacements[(rng() * 2) | 0].push(_m4.clone());
+      concealers.push({ x, z, r: 2.0 * sc, add: 0.35 }); // SPOTTING WIRING: bush cover
     }
     for (const c of clusters) { // fringe bushes around each tree cluster
       const n = 5 + (rng() * 6) | 0;
@@ -1294,5 +1299,5 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     if (immediate) uSniperFade.value = sniperFadeTarget;
   }
 
-  return { group, update, setWindTime, setSniperFade, treeObstacles, _clusters: clusters };
+  return { group, update, setWindTime, setSniperFade, treeObstacles, concealers, _clusters: clusters };
 }

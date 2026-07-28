@@ -245,6 +245,56 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       fillWrapped(ctx, S, blobPath2D(rng, x, y, r * 1.06), rgb(mix(black, base, 0.4), 0.5));
       fillWrapped(ctx, S, blobPath2D(rng, x, y, r), rgb(black, 0.95));
     }
+  } else if (scheme === 'winter') {
+    // ===================== CAMO PATTERN SECTION =====================
+    // Winter wash: streaky hand-brushed whitewash over the factory paint.
+    // patches[0] carries the underlying factory color that shows through
+    // worn edges; broad translucent vertical strokes read as brush work.
+    const under = patches.length ? patches[0] : [70, 80, 55];
+    for (let i = 0; i < 90; i++) {
+      const x0 = rng() * S, y0 = rng() * S;
+      const len = S * (0.08 + rng() * 0.2);
+      const w = S * (0.012 + rng() * 0.03);
+      const path = new Path2D();
+      path.moveTo(x0, y0);
+      path.quadraticCurveTo(x0 + (rng() - 0.5) * w * 3, y0 + len * 0.5, x0 + (rng() - 0.5) * w * 4, y0 + len);
+      strokeWrapped(ctx, S, path, 'rgba(235,238,232,0.22)', w * 1.5);
+      strokeWrapped(ctx, S, path, 'rgba(244,246,240,0.30)', w);
+    }
+    // worn-through patches revealing the base vehicle paint
+    for (let i = 0; i < 26; i++) {
+      const r = S * (0.012 + rng() * 0.035);
+      const p = blobPath2D(rng, rng() * S, rng() * S, r);
+      fillWrapped(ctx, S, p, rgb(under, 0.28 + rng() * 0.4));
+    }
+    // cold grey-blue shadow washes so the wash never reads as flat white
+    for (let i = 0; i < 18; i++) {
+      const x = rng() * S, y = rng() * S, r = S * (0.05 + rng() * 0.12);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, 'rgba(120,130,138,0.14)');
+      g.addColorStop(1, 'rgba(120,130,138,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+  } else if (scheme === 'fleck' && patches.length) {
+    // Flecktarn: dense small hard-edged dapples of every patch color, with a
+    // sparse second pass of larger blotches to break the dot uniformity.
+    for (let pass = 0; pass < patches.length; pass++) {
+      const col = patches[pass];
+      ctx.fillStyle = rgb(col, 0.9);
+      for (let i = 0; i < 620; i++) {
+        const x = rng() * S, y = rng() * S;
+        const r = S * (0.0035 + rng() * 0.007);
+        ctx.beginPath();
+        ctx.ellipse(x, y, r * (0.7 + rng() * 0.8), r * (0.6 + rng() * 0.7), rng() * Math.PI, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      for (let i = 0; i < 14; i++) {
+        const r = S * (0.016 + rng() * 0.03);
+        fillWrapped(ctx, S, blobPath2D(rng, rng() * S, rng() * S, r), rgb(col, 0.75));
+      }
+    }
+    // ===================== END CAMO PATTERN SECTION =================
   } else if (scheme === 'digital' && patches.length) {
     // Blocky digital-edge clusters.
     const cell = S / 96;
@@ -685,7 +735,8 @@ function acquireSharedTextures(spec, aniso) {
   const key = spec.id;
   let entry = TEX_CACHE.get(key);
   if (!entry) {
-    const vis = spec.visual || { base: '#5a6b46', weather: '#6f7d55', scheme: 'solid', patches: [] };
+    const patternId = resolveCamoPattern(key);
+    const vis = resolveCamoVisual(spec, patternId);
     const seed = 0x5eed ^ (key.split('').reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) | 0, 7));
     const rng = mulberry32(seed);
     const feats = genPlateFeatures(rng);
@@ -696,6 +747,9 @@ function acquireSharedTextures(spec, aniso) {
     const trackCanvas = paintTrack(mulberry32(seed + 17));
     entry = {
       refs: 0,
+      // CAMO PATTERN SECTION: kept so applyCamoPatterns() can repaint the
+      // shared albedo in place (all live instances update through the texture)
+      spec, seed, feats, camoCanvas, patternId,
       camoTex: canvasTex(camoCanvas, { aniso, repeat: true }),
       normalTex: canvasTex(normalCanvas, { srgb: false, aniso, repeat: true }),
       roughTex: canvasTex(roughCanvas, { srgb: false, aniso, repeat: true }),
@@ -717,6 +771,166 @@ function releaseSharedTextures(spec) {
     TEX_CACHE.delete(spec.id);
   }
 }
+
+// ===========================================================================
+// CAMO PATTERN SECTION — per-tank paintable camo schemes (garage picker).
+//
+// Selection is persisted per tank id in localStorage ('cot.camo.<specId>'):
+//   'factory' — the authored historical spec.visual (default)
+//   'summer'  — 3-color NATO/olive summer
+//   'desert'  — desert tan wash
+//   'winter'  — whitewash over the factory paint
+//   'digital' — nation-flavored digital/flecktarn
+//   'auto'    — resolves per active battlefield biome (set via setCamoBiome)
+//
+// Patterns repaint the SHARED per-spec albedo canvas in place, so the garage
+// pedestal, battle tanks, and any sourced-GLB overlay all update live without
+// rebuilding geometry. Non-factory patterns grant a small concealment bonus
+// (see src/sim/spotting.js CAMO_PAINT_BONUS) via hasCamoPaint().
+// ===========================================================================
+
+export const CAMO_PATTERN_IDS = ['auto', 'factory', 'summer', 'desert', 'winter', 'digital'];
+export const CAMO_PATTERN_LABEL = {
+  auto: 'Auto (map)', factory: 'Factory', summer: 'Summer',
+  desert: 'Desert', winter: 'Winter', digital: 'Digital',
+};
+
+const CAMO_LS_PREFIX = 'cot.camo.';
+const BIOME_PATTERN = { verdant: 'summer', desert: 'desert', winter: 'winter', urban: 'digital' };
+let activeBiome = 'verdant';
+
+/** Persisted camo pattern selection for a tank ('factory' when unset). */
+export function getCamoSelection(specId) {
+  try {
+    const v = localStorage.getItem(CAMO_LS_PREFIX + specId);
+    return CAMO_PATTERN_IDS.includes(v) ? v : 'factory';
+  } catch (e) { return 'factory'; }
+}
+
+/** Persist a camo pattern selection for a tank. */
+export function setCamoSelection(specId, patternId) {
+  if (!CAMO_PATTERN_IDS.includes(patternId)) return;
+  try { localStorage.setItem(CAMO_LS_PREFIX + specId, patternId); } catch (e) { /* private mode */ }
+}
+
+/** Point 'auto' selections at a battlefield biome (call before a battle). */
+export function setCamoBiome(mapId) {
+  activeBiome = BIOME_PATTERN[mapId] ? mapId : 'verdant';
+}
+
+/** Concrete pattern id for a tank right now ('auto' resolved per biome). */
+export function resolveCamoPattern(specId) {
+  const sel = getCamoSelection(specId);
+  return sel === 'auto' ? BIOME_PATTERN[activeBiome] : sel;
+}
+
+/** True when the tank wears a non-factory pattern (spotting camo bonus). */
+export function hasCamoPaint(specId) {
+  return resolveCamoPattern(specId) !== 'factory';
+}
+
+// Nation-flavored palettes. Marking/number/zimmerit/camoScale stay authored —
+// only scheme/base/weather/patches are overridden, so the plate-feature and
+// weathering layers (painted by paintCamo on top) are fully respected.
+function patternVisual(spec, patternId) {
+  const v = spec.visual || { base: '#5a6b46', weather: '#6f7d55', scheme: 'solid', patches: [] };
+  if (patternId === 'factory') return v;
+  let o = null;
+  if (patternId === 'summer') {
+    o = { scheme: 'nato', base: '#4d5940', weather: '#59664a', patches: ['#26291f', '#54402e'] };
+  } else if (patternId === 'desert') {
+    o = { scheme: 'nato', base: '#a98f5f', weather: '#bda87a', patches: ['#8a6f47', '#c4b085'] };
+  } else if (patternId === 'winter') {
+    o = { scheme: 'winter', base: '#c4c8bf', weather: '#a8ad9f', patches: [v.base || '#4b5320'] };
+  } else if (patternId === 'digital') {
+    const nation = spec.nation;
+    if (nation === 'Germany') {
+      o = { scheme: 'fleck', base: '#57604a', weather: '#616a53', patches: ['#39492f', '#6b5136', '#2b2d26'] };
+    } else if (nation === 'USSR' || nation === 'Russia') {
+      o = { scheme: 'digital', base: '#3f5138', weather: '#47593f', patches: ['#2b2b2b', '#8a7f5a'] };
+    } else {
+      o = { scheme: 'digital', base: '#4a5442', weather: '#525c49', patches: ['#333d30', '#79806a', '#23261f'] };
+    }
+  }
+  return o ? { ...v, ...o } : v;
+}
+
+/** Resolved visual (spec.visual with the active pattern applied). */
+export function resolveCamoVisual(spec, patternId = resolveCamoPattern(spec.id)) {
+  return patternVisual(spec, patternId);
+}
+
+function repaintEntry(entry, patternId) {
+  const vis = patternVisual(entry.spec, patternId);
+  // pattern-specific rng stream; the shared `feats` plan keeps panel lines,
+  // welds and bolts aligned with the (unchanged) normal/roughness maps.
+  let ph = 0;
+  for (const ch of patternId) ph = (ph * 31 + ch.charCodeAt(0)) | 0;
+  paintCamo(entry.camoCanvas, vis, mulberry32(entry.seed ^ ph), entry.feats, entry.seed);
+  entry.camoTex.needsUpdate = true;
+  entry.patternId = patternId;
+}
+
+/**
+ * Repaint every cached tank albedo whose resolved pattern changed (after a
+ * selection change or a biome switch). Cheap when nothing changed.
+ * @param {?string} onlySpecId limit to one tank
+ */
+export function applyCamoPatterns(onlySpecId = null) {
+  for (const [key, entry] of TEX_CACHE) {
+    if (onlySpecId && key !== onlySpecId) continue;
+    const pid = resolveCamoPattern(key);
+    if (entry.patternId !== pid) repaintEntry(entry, pid);
+  }
+  retintGlbModels();
+}
+
+// ---- sourced-GLB hook (modelLoader.js) ------------------------------------
+// GLB assets arrive with their own baked textures; painting a full camo UV
+// over an arbitrary unwrap is not robust, so sourced models take a TINT
+// overlay: hull-ish materials are lerped toward the pattern base color
+// (stronger when the material is untextured). Registered so later pattern
+// switches re-tint live.
+const GLB_TINTED = []; // { specId, mats: [{ m, orig: THREE.Color }] }
+
+function tintGlbEntry(entry) {
+  const vis = patternVisual(entry.spec, resolveCamoPattern(entry.specId));
+  const target = new THREE.Color(vis.base || '#5a6b46');
+  for (const rec of entry.mats) {
+    rec.m.color.copy(rec.orig).lerp(target, rec.m.map ? 0.45 : 0.8);
+  }
+}
+
+function retintGlbModels() {
+  for (const e of GLB_TINTED) tintGlbEntry(e);
+}
+
+/**
+ * Apply the active camo pattern to a sourced-GLB tank model (tint overlay,
+ * weathering/AO baked into the asset's own maps is preserved). Called by
+ * modelLoader.applyGlbModel after its material upgrade pass.
+ * @param {THREE.Object3D} root normalized GLB scene
+ * @param {object} spec TankSpec
+ */
+export function applyCamoToModel(root, spec) {
+  const entry = { specId: spec.id, spec, mats: [] };
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (let i = 0; i < mats.length; i++) {
+      const m = mats[i];
+      if (!m || !m.color) continue;
+      // clone: GLTF clones share materials with the loader cache
+      const own = m.clone();
+      if (Array.isArray(o.material)) o.material[i] = own; else o.material = own;
+      entry.mats.push({ m: own, orig: own.color.clone() });
+    }
+  });
+  GLB_TINTED.push(entry);
+  tintGlbEntry(entry);
+}
+
+// ======================= END CAMO PATTERN SECTION ==========================
 
 /**
  * Build the full material set for one tank.
@@ -795,10 +1009,12 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
     bumpMap: roughTex, bumpScale: 0.3,
   })));
   // Charred but clearly lit: soot-grey albedo with a faint ember emissive so
-  // wrecks never read as an unlit/missing material (r1 critique).
+  // wrecks never read as an unlit/missing material (r1 critique). Emissive
+  // kept very low — 0.18 + the explosion light cooked wrecks to flat
+  // red-orange ("dipped in lava", effects r2 handoff item 2).
   const burnt = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x3a332c, roughness: 0.94, metalness: 0.12,
-    emissive: 0xff3a00, emissiveIntensity: 0.18,
+    color: 0x3b352e, roughness: 0.95, metalness: 0.1,
+    emissive: 0xff3a00, emissiveIntensity: 0.018,
   })));
 
   // Independent L/R track textures so each side scrolls on its own offset.

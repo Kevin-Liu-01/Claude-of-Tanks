@@ -14,7 +14,7 @@
  * pen/dmg rolls.
  */
 
-import { Vector3 } from 'three';
+import { Vector3, Matrix4, Quaternion, Euler } from 'three';
 import { penAtDistanceMm } from './ballistics.js';
 import { tankPoseFromState, traceTank, blastTargets } from './armor.js';
 
@@ -99,6 +99,14 @@ const FIRE_TICK_HP_FRAC = 0.005;
 const FIRE_TICK_MODULE_DMG = 10;
 const FIRE_EXTINGUISH_CHANCE = 0.12;
 const DEFAULT_CREW = ['commander', 'gunner', 'driver', 'loader'];
+
+// --- SHOT-INFO ENRICHMENT scratch (additive UI metadata; src/ui/shotInfo.js).
+const _siEuler = new Euler();
+const _siQuat = new Quaternion();
+const _siMat = new Matrix4();
+const _siV = new Vector3();
+const _siDir = new Vector3();
+const _siOne = new Vector3(1, 1, 1);
 
 // Scratch vectors (module scope — no per-frame allocation).
 const _center = new Vector3();
@@ -330,7 +338,57 @@ function baseEvent(shell, targetId) {
     ammoRacked: false,
     destroyed: false,
     eraPlate: null,
+    // --- SHOT-INFO ENRICHMENT (ADDITIVE ONLY — consumed by src/ui/shotInfo.js;
+    // existing fields/math above are untouched) ------------------------------
+    shellName: shell.spec.name || shell.spec.type, // display name of the round
+    flightDistM: shell.distM > 0 ? shell.distM : shell.ageS * shell.spec.velocityMps,
+    dmgRoll: shell.dmgRoll || 0,   // once-per-shot ±25% damage roll (pre-mitigation)
+    zone: null,                    // armor-model plate/box name, e.g. 'lower_glacis'
+    plateKind: null,               // 'main' | 'spaced' | 'external' | 'era'
+    physicalMm: 0,                 // struck plate physical thickness
+    nominalMm: 0,                  // nominal RHAe the shell class sees (ke/ce base)
+    localPos: null,                // hit point in HULL-LOCAL space [x,y,z]
+    localDir: null,                // shell direction in HULL-LOCAL space [x,y,z]
   };
+}
+
+/**
+ * SHOT-INFO ENRICHMENT (additive): stamp zone id, nominal armor and the hit
+ * point/shell direction transformed into the target's HULL-LOCAL frame (exact
+ * inverse of the tankFactory 'YXZ' visual mapping, same convention as
+ * armor.js buildFrames). Never touches pre-existing event fields.
+ * @param {object} event HitEvent being built (event.pos already stamped)
+ * @param {object|null} hit the decisive traceTank intersection (plate/module)
+ * @param {object} shellSpec ShellSpec
+ * @param {object|null} target {state,...} — null skips localization
+ * @param {Vector3|null} vel world shell velocity (pre-deflection) or blast dir
+ * @returns {void}
+ */
+function stampShotInfo(event, hit, shellSpec, target, vel) {
+  if (hit) {
+    if (hit.plate) {
+      event.zone = hit.plate.name;
+      event.plateKind = hit.plate.kind;
+      event.physicalMm = hit.plate.physicalMm;
+      const b = behaviorOf(shellSpec.type);
+      event.nominalMm = b.kindClass === 'CE' ? hit.plate.ceMm : hit.plate.keMm;
+    } else if (hit.barrel) {
+      event.zone = 'gun_barrel';
+    } else if (hit.kind === 'module') {
+      event.zone = hit.module;
+    }
+  }
+  const st = target ? target.state : null;
+  if (!st || !st.pos) return;
+  _siEuler.set(-st.visualPitch, st.yaw, st.visualRoll, 'YXZ');
+  _siQuat.setFromEuler(_siEuler);
+  _siMat.compose(st.pos, _siQuat, _siOne).invert();
+  _siV.set(event.pos[0], event.pos[1], event.pos[2]).applyMatrix4(_siMat);
+  event.localPos = [_siV.x, _siV.y, _siV.z];
+  if (vel && vel.lengthSq() > 1e-9) {
+    _siDir.copy(vel).normalize().applyQuaternion(_siQuat.invert());
+    event.localDir = [_siDir.x, _siDir.y, _siDir.z];
+  }
 }
 
 /** Stamp a plate intersection onto an event. */
@@ -448,6 +506,7 @@ export function resolveShellHit(shell, target, hits, rng) {
         if (pen <= 0) {
           event.kind = 'nonpen';
           event.pos = [hit.point.x, hit.point.y, hit.point.z];
+          stampShotInfo(event, hit, spec, target, shell.vel); // SHOT-INFO (additive)
           shell.dead = true;
           decided = true;
           break;
@@ -476,6 +535,7 @@ export function resolveShellHit(shell, target, hits, rng) {
       if (pen <= 0 && !hullPen) {
         event.kind = 'era';
         stampImpact(event, hit, 0, 0);
+        stampShotInfo(event, hit, spec, target, shell.vel); // SHOT-INFO (additive)
         shell.dead = true;
         decided = true;
         break;
@@ -489,6 +549,7 @@ export function resolveShellHit(shell, target, hits, rng) {
     if (!hullPen && wouldRicochet(spec, angle, plate)) {
       event.kind = 'ricochet';
       stampImpact(event, hit, 0, pen);
+      stampShotInfo(event, hit, spec, target, shell.vel); // SHOT-INFO (pre-deflection)
       deflectShell(shell, hit);
       const isHeat = behavior.kindClass === 'CE';
       if (isHeat || shell.bounces >= RICOCHET_MAX_BOUNCES) shell.dead = true;
@@ -524,6 +585,7 @@ export function resolveShellHit(shell, target, hits, rng) {
       if (pen <= 0 && !hullPen) {
         event.kind = 'spaced_absorb';
         stampImpact(event, hit, effMm, penBefore);
+        stampShotInfo(event, hit, spec, target, shell.vel); // SHOT-INFO (additive)
         shell.dead = true;
         decided = true;
         break;
@@ -538,6 +600,7 @@ export function resolveShellHit(shell, target, hits, rng) {
         entryPoint = hit.point;
         event.kind = 'pen';
         stampImpact(event, hit, effMm, pen);
+        stampShotInfo(event, hit, spec, target, shell.vel); // SHOT-INFO (additive)
         event.damage = dmgRoll;
         combat.hp -= dmgRoll;
         decided = true;
@@ -547,6 +610,7 @@ export function resolveShellHit(shell, target, hits, rng) {
       if (!hullPen) {
         event.kind = 'nonpen';
         stampImpact(event, hit, effMm, pen);
+        stampShotInfo(event, hit, spec, target, shell.vel); // SHOT-INFO (additive)
         decided = true;
       }
       shell.dead = true;
@@ -566,6 +630,9 @@ export function resolveShellHit(shell, target, hits, rng) {
   if (!decided && !hullPen && !shell.dead) {
     const first = hits.length > 0 ? hits[0] : null;
     if (first) event.pos = [first.point.x, first.point.y, first.point.z];
+    // SHOT-INFO (additive): zone from the first plate the trace crossed.
+    const firstPlate = hits.find((h) => h.kind === 'plate') || first;
+    if (firstPlate) stampShotInfo(event, firstPlate, spec, target, shell.vel);
     if (behavior.kindClass === 'KE' && shell.remainingPenMm > 0) {
       event.kind = 'screen_pierce';
       event.destroyed = finalizeTarget(combat, event.ammoRacked);
@@ -841,6 +908,7 @@ function heDirectHit(shell, target, hits, dmgRoll, rng) {
     // Full HE penetration: full damage + internal blast sweep.
     event.kind = 'he_pen';
     stampImpact(event, plateHit, effMm, shell.remainingPenMm);
+    stampShotInfo(event, plateHit, spec, target, shell.vel); // SHOT-INFO (additive)
     event.damage = dmgRoll;
     combat.hp -= dmgRoll;
     const limitM = (spec.caliberMm * POSTPEN_CALIBERS) / 1000;
@@ -876,6 +944,7 @@ function heDirectHit(shell, target, hits, dmgRoll, rng) {
     const spall = behaviorOf(spec.type).spallBonus ?? 1; // HESH 1.25 (shells doc §6)
     const dmg = Math.max(0, 0.5 * dmgRoll * falloff - HE_ARMOR_ABSORB * armorMm) * spall;
     stampImpact(event, plateHit, effMm, shell.remainingPenMm);
+    stampShotInfo(event, plateHit, spec, target, shell.vel); // SHOT-INFO (additive)
     event.damage = dmg;
     combat.hp -= dmg;
     if (plate.moduleLink) {
@@ -989,6 +1058,9 @@ export function resolveHeBurst(shell, burstPoint, tanks, directTarget, directHit
     const dmg =
       Math.max(0, 0.5 * dmgRoll * (1 - distM / radiusM) - HE_ARMOR_ABSORB * armorMm) * spall;
     stampImpact(event, plateHit, armorMm, shell.remainingPenMm);
+    // SHOT-INFO (additive): blast direction = burst point toward the plate.
+    _siDir.subVectors(plateHit.point, burstPoint);
+    stampShotInfo(event, plateHit, spec, tank, _siDir);
     event.damage = dmg;
     tank.combat.hp -= dmg;
     if (plateHit.plate.moduleLink) {

@@ -137,6 +137,36 @@ const GARAGE_CSS = `
 .cot-map-card .msub{font-size:8.5px;font-weight:700;letter-spacing:.14em;color:#8a97a3;
   text-transform:uppercase;margin-top:1px;}
 .cot-map-card.sel .msub{color:#d8a04c;}
+/* CAMO PICKER SECTION: per-tank paint pattern (persisted, +concealment) */
+.cot-camos{position:absolute;left:34px;bottom:calc(36% + 14px);width:196px;pointer-events:auto;}
+.cot-camos .ctitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
+  text-transform:uppercase;margin-bottom:7px;}
+.cot-camos .cgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
+.cot-camo-card{cursor:pointer;text-align:center;padding:4px 3px 3px;
+  background:linear-gradient(180deg,rgba(13,18,23,.82),rgba(8,11,14,.9));
+  border:1px solid rgba(146,164,180,.24);border-bottom:2px solid rgba(146,164,180,.24);
+  transition:border-color .12s,background .12s;}
+.cot-camo-card:hover{border-color:rgba(210,225,240,.5);}
+.cot-camo-card.sel{border-color:#f0a030;border-bottom-color:#f0a030;
+  background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
+.cot-camo-card .sw{height:22px;margin:0 auto 3px;border:1px solid rgba(0,0,0,.55);}
+.cot-camo-card .sw.auto{background:conic-gradient(#4c6b38 0 25%,#c9a86e 0 50%,#cdd6de 0 75%,#5c6066 0);}
+.cot-camo-card .sw.factory{background:linear-gradient(135deg,#5a6b46,#4b5320 60%,#6b6b47);}
+.cot-camo-card .sw.summer{background:
+  radial-gradient(circle at 28% 40%,#54402e 0 24%,transparent 25%),
+  radial-gradient(circle at 72% 66%,#26291f 0 22%,transparent 23%),#4d5940;}
+.cot-camo-card .sw.desert{background:
+  radial-gradient(circle at 62% 36%,#8a6f47 0 22%,transparent 23%),#a98f5f;}
+.cot-camo-card .sw.winter{background:
+  radial-gradient(circle at 30% 62%,#a8ad9f 0 20%,transparent 21%),
+  radial-gradient(circle at 70% 30%,#4b5320 0 12%,transparent 13%),#c4c8bf;}
+.cot-camo-card .sw.digital{background:
+  repeating-linear-gradient(90deg,#39492f 0 4px,#57604a 4px 8px,#6b5136 8px 11px,#2b2d26 11px 13px);}
+.cot-camo-card .cl{font-size:8px;font-weight:700;letter-spacing:.1em;color:#9fb0bf;
+  text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cot-camo-card.sel .cl{color:#d8a04c;}
+.cot-camos .cnote{font-size:8.5px;letter-spacing:.08em;color:rgba(138,151,163,.75);
+  text-transform:uppercase;margin-top:5px;}
 `;
 
 function ensureStyle(id, css) {
@@ -187,6 +217,7 @@ export function createGarage(opts) {
     `<button class="cot-car-arrow next" type="button">&#8250;</button>` +
     `</div>` +
     `<div class="cot-maps"></div>` +
+    `<div class="cot-camos"></div>` +
     `<div class="hint">&#8592; &#8594; select &nbsp;&middot;&nbsp; enter to battle</div>`;
   document.body.appendChild(root);
 
@@ -237,6 +268,50 @@ export function createGarage(opts) {
       mapCardById.set(m.id, card);
     }
   }
+
+  // --- CAMO PICKER SECTION: per-tank paint pattern -------------------------
+  // opts.camo = { patterns: string[], label: {id:label}, get(specId),
+  //               set(specId, patternId) } (main.js injects the materials.js
+  //               persistence + live-repaint hooks). Selection is per tank,
+  //               shown on the pedestal immediately, and persists via
+  //               localStorage inside opts.camo.set.
+  const camoOpts = opts.camo || null;
+  const camosEl = root.querySelector('.cot-camos');
+  const camoCardById = new Map();
+  if (camoOpts && camoOpts.patterns && camoOpts.patterns.length) {
+    const title = document.createElement('div');
+    title.className = 'ctitle';
+    title.textContent = 'Camouflage';
+    camosEl.appendChild(title);
+    const grid = document.createElement('div');
+    grid.className = 'cgrid';
+    camosEl.appendChild(grid);
+    for (const pid of camoOpts.patterns) {
+      const card = document.createElement('div');
+      card.className = 'cot-camo-card';
+      card.innerHTML = `<div class="sw ${pid}"></div><div class="cl"></div>`;
+      card.querySelector('.cl').textContent =
+        (camoOpts.label && camoOpts.label[pid]) || pid;
+      card.addEventListener('click', () => {
+        emit('ui:click', {});
+        if (!selectedId) return;
+        camoOpts.set(selectedId, pid);
+        refreshCamoSel();
+      });
+      grid.appendChild(card);
+      camoCardById.set(pid, card);
+    }
+    const note = document.createElement('div');
+    note.className = 'cnote';
+    note.textContent = 'Pattern grants +3.5% concealment';
+    camosEl.appendChild(note);
+  }
+  function refreshCamoSel() {
+    if (!camoOpts || !selectedId) return;
+    const cur = camoOpts.get(selectedId);
+    for (const [pid, card] of camoCardById) card.classList.toggle('sel', pid === cur);
+  }
+  // --- END CAMO PICKER SECTION ---------------------------------------------
 
   // roster maxima for normalized stat bars
   const MAXES = {
@@ -320,6 +395,7 @@ export function createGarage(opts) {
     selSub.querySelector('span').textContent =
       `${spec.nation} · ${spec.class} · ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}`;
     renderStats(spec);
+    refreshCamoSel(); // CAMO PICKER SECTION: highlight this tank's pattern
     return true;
   }
 

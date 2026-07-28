@@ -138,6 +138,11 @@ export function createMap(engineCtx, { mapId = 'verdant', seed = 1337 } = {}) {
     raycast,
     /** @returns {Array<{min:number[],max:number[]}>} static obstacle AABBs */
     getObstacles: () => obstacles,
+    /**
+     * SPOTTING WIRING: vegetation concealment discs for src/sim/spotting.js.
+     * @returns {Array<{x:number,z:number,r:number,add:number}>}
+     */
+    getConcealment: () => vegetation.concealers || [],
     spawnPoints,
     /** @returns {{roads:Array, buildings:Array, treeClusters:Array, waterOrSoft:Array}} minimap features */
     getMinimapFeatures: () => ({

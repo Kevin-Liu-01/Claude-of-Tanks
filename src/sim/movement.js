@@ -373,7 +373,13 @@ export function updateTank(entity, heightField, dt, collide = null) {
     state.turretYaw = chaseAngle(state.turretYaw, wantYawWorld - state.yaw, turretRate * dt);
     // Hull-plane elevation along the gun azimuth: pitch and roll both tilt the gun.
     const ct = Math.cos(state.turretYaw), st = Math.sin(state.turretYaw);
-    const hullPitchAtGun = state.visualPitch * ct - state.visualRoll * st;
+    // Hull attitude's contribution to the barrel's WORLD pitch at turret
+    // azimuth θ, matching the visual/armor YXZ pose composition
+    // (root.rotation.set(-visualPitch, yaw, visualRoll, 'YXZ')):
+    //   worldPitch ≈ gunPitch + visualPitch·cosθ + visualRoll·sinθ.
+    // The roll term was previously subtracted, which pushed the settled gun
+    // ~2·|roll·sinθ| off the aim point on rolled terrain (shots fell short).
+    const hullPitchAtGun = state.visualPitch * ct + state.visualRoll * st;
     const lo = -spec.gunDepressionDeg * DEG2RAD;
     const hi = spec.gunElevationDeg * DEG2RAD;
     const desiredGun = wantPitchWorld - hullPitchAtGun;
