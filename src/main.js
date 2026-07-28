@@ -2017,6 +2017,11 @@ function startBattle(specId, mapId = null, opts = {}) {
   // the audio buses). noRelock — this close must never fire a gesture-less
   // pointer-lock request that could bump the denial streak.
   if (settings.isOpen()) settings.close({ noRelock: true });
+  // KILL-CAM: never carry a replay across battles — and cancel BEFORE
+  // setupBattle, not after: finish() restores the victim's materials from the
+  // ghost backup captured at x-ray start (a wreck's burnt set), which would
+  // clobber the pristine materials resetDestroyed() just put back.
+  killcam.cancel();
   selectedSpecId = specId;
   debugAimTargetId = null; // sticky drive-test aim never carries across battles
   // MAP-CONFIG WIRING: battle on the picked map ('random' rolls here)
@@ -2070,7 +2075,6 @@ function startBattle(specId, mapId = null, opts = {}) {
   endShown = false; // KILL-CAM: fresh battle — re-arm the end-of-battle gate
   deathCamShown = false; // killcam_shotinfo r1: re-arm the at-death replay
   kcPending = null; // killcam r2: a scheduled death replay dies with the battle
-  killcam.cancel(); // KILL-CAM: never carry a replay across battles
   hud.setMode('battle');
   game.phase = 'battle';
   setGarageSpots(false); // PERF: no spot-light cost on battle draws
