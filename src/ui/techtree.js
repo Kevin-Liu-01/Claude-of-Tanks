@@ -116,6 +116,11 @@ const TABS = [
       n('t71', 'T71 DA', 7, 'light', 'ww2', { from: ['t37'] }),
       // MODERN EXPANSION: the scout line tops out in the Bradley IFV
       n('bradley', 'M2A2 Bradley', 8, 'ifv', 'modern', { spec: 'm2a2_bradley', from: ['t71'] }),
+      // USER DROPS wave 2 (recovered batch): the Stryker branch — the 8x8
+      // Dragoon IFV feeding the glass-cannon MGS in the TD lane (both
+      // m_bergman quarantine GLBs, userdrops2.js)
+      n('m1296', 'M1296 Stryker Dragoon', 7, 'ifv', 'modern', { spec: 'm1296', from: ['t71'] }),
+      n('m1128', 'M1128 Stryker MGS', 8, 'td', 'modern', { spec: 'm1128', from: ['m1296'] }),
       n('sheridan', 'M551 Sheridan', 9, 'light', 'modern', { from: ['bradley'] }),
       n('m3lee', 'M3 Lee', 4, 'medium', 'ww2', { from: ['m3stuart'] }),
       n('m4', 'M4 Sherman', 5, 'medium', 'ww2', { from: ['m3lee'] }),
@@ -192,7 +197,10 @@ const TABS = [
       n('mt25', 'MT-25', 6, 'light', 'ww2', { from: ['t50'] }),
       // MODERN EXPANSION: the scout lane flows into the flanker IFV, the
       // turbine hot-rod T-80U and tops out at the T-14 Armata flagship
-      n('bmp2', 'BMP-2', 7, 'ifv', 'modern', { spec: 'bmp2', from: ['mt25'] }),
+      // USER DROPS wave 2: BMP-1 slots in ahead of the BMP-2 (bergman GLB);
+      // bmp2 gains it as an alternate parent (either lights the path)
+      n('bmp1', 'BMP-1', 6, 'ifv', 'modern', { spec: 'bmp1', from: ['t50'] }),
+      n('bmp2', 'BMP-2', 7, 'ifv', 'modern', { spec: 'bmp2', from: ['mt25', 'bmp1'] }),
       n('t80u', 'T-80U', 8, 'mbt', 'modern', { spec: 't80u', from: ['bmp2'], row: 0 }),
       n('t14', 'T-14 Armata', 10, 'mbt', 'modern', { spec: 't14', from: ['t80u'], row: 0 }),
       n('t28', 'T-28', 4, 'medium', 'ww2', { from: ['bt7'] }),

@@ -61,9 +61,25 @@ try {
   // hits tankFactory's synchronous cached-GLB path so icons show the shipped
   // model. Zero-GLB rosters settle immediately (started === settled === 0).
   await page.evaluate((ids) => window.__GEN(ids), onlyTanks);
+  // The load-deferral idle gate (performance_budget r1) made this wait racy
+  // in TWO ways: modelLoader.js is dynamic-imported (window.__GLB_STATS may
+  // not exist yet on the first poll, so "no stats" used to pass vacuously
+  // while loads were still queueing), and the parses themselves now drain
+  // through spaced idle slots. Require the stats object to exist and stay
+  // settled across two consecutive polls before trusting the cache.
   await page.waitForFunction(
-    '!window.__GLB_STATS || window.__GLB_STATS.started === window.__GLB_STATS.settled',
-    { timeout: 60000 },
+    () => {
+      window.__GLB_POLLS = (window.__GLB_POLLS || 0) + 1;
+      const s = window.__GLB_STATS;
+      // stats object missing: modelLoader.js was never imported — a truly
+      // procedural-only roster. Give the dynamic import ~4 s to appear
+      // before accepting that read.
+      if (!s) return window.__GLB_POLLS >= 10;
+      const settled = s.started === s.settled;
+      window.__GLB_SETTLE_STREAK = settled ? (window.__GLB_SETTLE_STREAK || 0) + 1 : 0;
+      return window.__GLB_SETTLE_STREAK >= 2;
+    },
+    { timeout: 120000, polling: 400 },
   );
   const files = await page.evaluate((ids) => window.__GEN(ids), onlyTanks);
   let n = 0;

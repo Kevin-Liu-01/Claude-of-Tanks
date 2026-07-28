@@ -92,6 +92,8 @@ const TIER_BY_ID = {
   m2a2_bradley: 'VIII', bmp2: 'VII', ariete: 'VIII',
   // user drops (2026-07-28)
   type74: 'VIII',
+  // user drops wave 2 (recovered batch)
+  bmp1: 'VI', m1128: 'VIII', m1296: 'VII',
 };
 function hashStr(s) {
   let h = 2166136261;

@@ -1,0 +1,17 @@
+Model: Char Leclerc ("Leclerc retextured 2024_9_21")
+Author: andertan
+Source: https://sketchfab.com/3d-models/char-leclerc-84a0918d2f534c2eb003ab3cb3029c03
+License: CC Attribution 4.0 (CC-BY 4.0)
+Verified: 2026-07-28 via Sketchfab model page (batch user-drops-recovered / nato).
+Provenance: Original artist work — author states it is "a retextured model of my
+old Leclerc model". Blender-authored (glTF Blender I/O v3.6.28 generator, Blender
+material/node names: 'tank body', 'turret', 'Cylinder.086', 'Nato black',
+'Leclerc camo'). No game-engine node schemes, no game texture ids. Triangle
+count 120,227 matches the Sketchfab listing (120.2k).
+Contents: char-leclerc.glb — normalized GLB (Blender import/re-export of the
+source GLB; 120,227 tris, textures kept: 1024x1024 PNG paint + 800x1137 JPEG
+color/normal — no downscale needed). Articulation: separate 'turret' node
+(yaw) with child gun mesh 'Cylinder.086' (elevation); authored animations
+'Fire' and 'turret traverse' retained. Facing +X, grounded at z~0.08m,
+hull length 6.10m.
+Attribution required if shipped: "Char Leclerc" by andertan, CC-BY 4.0.

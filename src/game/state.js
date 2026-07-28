@@ -217,6 +217,8 @@ const SPEC_TIER = {
   chieftain_mk10: 7, k2: 9, type10: 9, m2a2_bradley: 8, bmp2: 7, ariete: 8,
   // USER DROPS (2026-07-28): Type 74 fills the Japan tier-8 ghost
   type74: 8,
+  // USER DROPS wave 2 (recovered batch): Stryker pair + BMP-1
+  bmp1: 6, m1128: 8, m1296: 7,
 };
 const specTier = (specId) => SPEC_TIER[specId] != null ? SPEC_TIER[specId] : 6;
 

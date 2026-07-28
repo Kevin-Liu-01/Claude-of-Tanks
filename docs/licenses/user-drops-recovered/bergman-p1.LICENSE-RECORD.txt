@@ -1,0 +1,26 @@
+Pack: 1-100 Modern Tanks and Vehicles (Duplicate)
+Author: m_bergman (Thingiverse)
+Source: https://www.thingiverse.com/thing:4718232
+License: CC-BY-NC-SA (Creative Commons Attribution - NonCommercial -
+ShareAlike, per the pack's LICENSE.txt — copy kept beside this record). The
+author's README narrows their personal enforcement of "commercial" to selling
+prints, but the CC-BY-NC-SA grant is what we rely on: PERSONAL-USE QUARANTINE
+(docs/ATTRIBUTION.md quarantine section).
+Verified: 2026-07-28 (batch user-drops-recovered; pack zip part 1 of 2).
+Provenance: Original wargame print masters drawn in Solidworks by the author
+(README states all models are the author's own work, reworked from their
+1:200 set or newly drawn; Parasolid sources included in the pack). No game
+extractions: clean two-mesh hull/turret STL pairs, no engine node schemes,
+no textures at all.
+Contents converted for judging (12 modern vehicles, Blender STL->GLB with an
+authored ring-center 'Turret' pivot, <=150k tris each): leo2a4, leo2a5,
+leo2a6, m1a1_aim, bmp1, bmp2, brdm2, btr70, cougar_6x6, lav25, m1128_mgs,
+m1296_dragoon.
+Winners shipped (quarantine): leo2a4 (replaces procedural Leopard 2A4), bmp2
+(replaces procedural BMP-2), bmp1 / m1128_mgs / m1296_dragoon (new playables)
+-> public/models/tanks/community/quarantine/*_bergman.glb.
+Losers deleted with the source archives: leo2a5/leo2a6/m1a1_aim (redundant
+with better shipped models), brdm2/btr70/cougar_6x6/lav25 (below the playable
+bar — AI-filler quality on judging renders).
+Attribution: "1-100 Modern Tanks and Vehicles" by m_bergman, CC-BY-NC-SA,
+thingiverse.com/thing:4718232.

@@ -1,0 +1,20 @@
+Model: T-90M
+Author: minehffd (https://sketchfab.com/minehffd)
+Source: https://sketchfab.com/3d-models/t-90m-2e31a3cf16b04f0180b9387df5198c9a
+License: CC Attribution 4.0 (CC-BY 4.0) — stamped in the shipped GLB's
+asset.copyright and scene extras.
+Verified: 2026-07-28 via Sketchfab model page (batch user-drops-recovered).
+Provenance: Original artist work — Blender-authored FBX source (semantic
+Blender node names: 'Hull chassis', 'Driver Hatch', 'Main barrel', Bezier
+curves; no game-engine node schemes, no hash-named _dds textures, no
+WT/Wargame texture ids).
+Contents: t90m-minehffd.glb — normalized GLB converted from the author FBX:
+122,516 tris (tracks decimated 0.4, large meshes 0.6), 14.2 MB, WEBP textures
+(basecolor 2k, normal/ORM 1k). Articulation: 'Turret' yaw node parenting all
+46 turret meshes (Kord RWS, ERA, baskets); 'Main barrel' gun pitch node
+(child of Turret). Known blemishes as shipped by the author: gun mantlet has
+no basecolor texture (flat russian-green fallback), Thread/Turret-basket sets
+lack normal maps, factory paint reads gray-blue parade tone.
+Shipped as: public/models/tanks/t90m_minehffd.glb (model source for spec
+'t90m'; gameplay stats unchanged).
+Attribution: "T-90M" by minehffd, CC-BY 4.0.

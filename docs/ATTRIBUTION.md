@@ -463,6 +463,34 @@ were not part of this integration round — the m1a2-abrams CC-BY-NC-ND
 candidate is tabled in the quarantine section below; the rest stay in
 `community-candidates/` pending their own integration decisions.
 
+### User drops wave 2 (batch `user-drops-recovered`, integrated 2026-07-28) — 7 winners
+
+Source archives are the user's own downloads recovered after a permissions
+issue (`public/models/community-candidates/user-drops-recovered/` —
+gitignored working area; only the normalized GLBs below ship). Provenance +
+license records for the shipped assets live in
+`docs/licenses/user-drops-recovered/`. The m_bergman 1:100 pack
+(Thingiverse thing:4718232) is an original Solidworks-drawn wargame print
+collection — 12 modern vehicles were converted for judging and the 5 below
+won (untextured print masters: they ship through the paintUntextured camo
+pipeline; guns are fused into the turret shells, so gun pitch stays virtual
+— kv2 rule; the Stryker/BMP wheels are modeled into the hulls and do not
+spin).
+
+| Vehicle (spec id) | Author | Source | License | Shipped file | Role |
+|---|---|---|---|---|---|
+| T-90M (`t90m`) | minehffd | https://sketchfab.com/3d-models/t-90m-2e31a3cf16b04f0180b9387df5198c9a (user-supplied download) | CC-BY 4.0 (stamped in asset.copyright + scene extras) | `public/models/tanks/t90m_minehffd.glb` | REPLACES the procedural T-90M Proryv model (specs.js gameplay stats unchanged). Turret yaw node + `Main barrel` pitch node; mantlet is a turret sibling (stays put on elevation — known minor). 122,516 tris, WEBP textures. |
+| Char Leclerc (`leclerc`) | andertan | https://sketchfab.com/3d-models/char-leclerc-84a0918d2f534c2eb003ab3cb3029c03 (user-supplied download) | CC-BY 4.0 | `public/models/tanks/char_leclerc_andertan.glb` | REPLACES the procedural Leclerc S2 model (modern2.js gameplay stats unchanged). Authored `turret` node + child gun mesh; authored Fire/traverse animations retained (unused). |
+| Leopard 2A4 (`leo2a4`) | m_bergman | https://www.thingiverse.com/thing:4718232 (user-supplied download) | CC-BY-NC-SA — QUARANTINE (below) | `public/models/tanks/community/quarantine/leo2a4_bergman.glb` | REPLACES the procedural Leopard 2A4 model (modern2.js gameplay stats unchanged). Ring-center turret pivot authored offline. |
+| BMP-2 (`bmp2`) | m_bergman | same pack | CC-BY-NC-SA — QUARANTINE (below) | `public/models/tanks/community/quarantine/bmp2_bergman.glb` | REPLACES the procedural BMP-2 model (modern3.js gameplay stats unchanged). |
+| BMP-1 (`bmp1`) | m_bergman | same pack | CC-BY-NC-SA — QUARANTINE (below) | `public/models/tanks/community/quarantine/bmp1_bergman.glb` | NEW playable: USSR tier-VI IFV (class-template spec, userdrops2.js). |
+| M1128 Stryker MGS (`m1128`) | m_bergman | same pack | CC-BY-NC-SA — QUARANTINE (below) | `public/models/tanks/community/quarantine/m1128_mgs_bergman.glb` | NEW playable: USA tier-VIII TD (slat-armor configuration; class-template spec). |
+| M1296 Stryker Dragoon (`m1296`) | m_bergman | same pack | CC-BY-NC-SA — QUARANTINE (below) | `public/models/tanks/community/quarantine/m1296_dragoon_bergman.glb` | NEW playable: USA tier-VII IFV (class-template spec). |
+
+Losing wave-2 candidates (m_bergman leo2a5/leo2a6/m1a1_aim — redundant with
+better shipped models — and brdm2/btr70/cougar_6x6/lav25, judged below the
+playable bar) were deleted with the source archives after extraction.
+
 - `public/icons/*.png` — 5 PNGs per roster tank (top/angle/side + 2 silhouettes)
   rendered from the shipped models by `node tools/genIcons.mjs`
   (tools/icons-page.html studio scene). The five `m1a2_*` icons are
@@ -473,7 +501,9 @@ candidate is tabled in the quarantine section below; the rest stay in
   `sherman_jumbo_*`, `jagdtiger_*`, `jpz_e100_*`, `sturmtiger_*`, `t95_*`,
   `t30_*`, plus wave 3: `is7_*`, `object279_*`, `is6b_*`, `is1_*`, plus user
   drops 2026-07-28: `leo2a6_*` (CC-BY buh), `type74_*` and `ariete_*`
-  (QUARANTINE — see the section below)) are
+  (QUARANTINE — see the section below), plus user drops wave 2 (recovered):
+  `t90m_*` (CC-BY minehffd), `leclerc_*` (CC-BY andertan), and `leo2a4_*`,
+  `bmp2_*`, `bmp1_*`, `m1128_*`, `m1296_*` (m_bergman — QUARANTINE)) are
   derivative renders of the community assets tabled above —
   those rows' attribution covers the derived images. All other icons render
   100% procedural geometry (no third-party content).
@@ -494,4 +524,5 @@ distributed publicly or commercialized.
 | M1A2 Abrams (user drop, batch abrams-suspects 2026-07-28) | Tejas V. (@tejasv_) | https://sketchfab.com/3d-models/m1a2-abrams-c85846177bfc4018b6a8f3b40754655c | CC BY-NC-ND 4.0 | `public/models/community-candidates/user-drops/m1a2-abrams/{m1a2-abrams.glb,RENDER.png,LICENSE-RECORD.txt}` | Original artist work (Blender + Substance, ArtStation-linked; identity confirmed by exact 1,253,928 face-count match vs Sketchfab API). ND: the decimated GLB is an adaptation — never redistribute. Candidate to replace the shipped CC-BY dannzjs `m1a2` GLB in-game; if adopted, the CC-BY model remains the only one shippable publicly. |
 | Type 74 (user drop, integrated 2026-07-28 as spec `type74`) | NullOps | https://sketchfab.com/nullops (user-supplied download) | Sketchfab Standard (free download; author states 'feel free to use however you like' but the license is not CC) | `public/models/tanks/community/quarantine/type74-nullops.glb`, `public/icons/type74_*.png` (derivative renders), judging copies in `public/models/community-candidates/user-drops/type-74/` | SHIPPED PLAYABLE in this private build (Japan tier-VIII tech-tree slot). Remove the GLB + icons + spec registration (src/vehicles/userdrops.js) before any public distribution or commercialization. |
 | C1 Ariete (user drop, integrated 2026-07-28 as model source for spec `ariete`) | DustyMojito | https://sketchfab.com/DustyMojito (user-supplied download) | Sketchfab Standard (free download; use-in-project OK, no raw redistribution — not CC) | `public/models/tanks/community/quarantine/ariete-dustymojito.glb`, `public/icons/ariete_*.png` (derivative renders), judging copies in `public/models/community-candidates/user-drops/c1-ariete-mbt/` | SHIPPED MODEL SWAP in this private build (visual replacement for the procedural C1 Ariete). Remove the GLB + icons and revert `MODEL_SOURCE.ariete` to procedural (src/vehicles/userdrops.js) before any public distribution or commercialization. |
+| 1:100 Modern Tanks and Vehicles pack — 5 vehicles (user drops wave 2, integrated 2026-07-28 as specs `leo2a4`, `bmp2`, `bmp1`, `m1128`, `m1296`) | m_bergman (Thingiverse) | https://www.thingiverse.com/thing:4718232 (user-supplied download; original Solidworks-drawn wargame print masters — author's own custom license note ONLY narrows "commercial" to selling the prints, the CC-BY-NC-SA grant itself stands) | CC-BY-NC-SA | `public/models/tanks/community/quarantine/{leo2a4_bergman,bmp2_bergman,bmp1_bergman,m1128_mgs_bergman,m1296_dragoon_bergman}.glb`, `public/icons/{leo2a4,bmp2,bmp1,m1128,m1296}_*.png` (derivative renders) | SHIPPED in this private build: 2 model swaps (leo2a4/bmp2 — revert their `MODEL_SOURCE` rows) + 3 new playables (bmp1/m1128/m1296 — remove the specs, tech-tree nodes, and tier-table rows in src/vehicles/userdrops2.js, src/ui/techtree.js, src/game/state.js, src/ui/{garage,hud}.js). Remove GLBs + icons before any public distribution or commercialization; NC-SA also bars selling the game while these ship. |
 | 1:100 Modern Tanks and Vehicles pack, part 1 (user drop, batch bergman 2026-07-28) | m_bergman (Thingiverse) | https://www.thingiverse.com/thing:4718232 (user-supplied download; LICENSE.txt + README.txt in archive) | CC BY-NC-SA (Thingiverse license marker in archive) | 12 converted candidate GLBs + renders in `public/models/community-candidates/user-drops-recovered/bergman-p1/{glb,renders}/` (leo2a4, leo2a5, leo2a6, m1a1_aim, bmp1, bmp2, m1128_mgs, m1296_dragoon, lav25, cougar_6x6, btr70, brdm2 — `*_bergman.glb`) | Original Solidworks-drawn wargame print minis (author ships Parasolid `.x_t` sources alongside every STL — not a game rip). Untextured single-material CAD; hull + yaw-articulated `Turret` pivot authored at ring center, gun fused (virtual pitch). NC-SA: candidates for this private build only — delete all GLBs/renders (and any icons if integrated) before public distribution or commercialization. |
