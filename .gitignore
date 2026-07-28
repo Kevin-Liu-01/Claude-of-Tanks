@@ -2,3 +2,4 @@ node_modules/
 dist/
 shots/
 .DS_Store
+public/models/community-candidates/user-drops-recovered/

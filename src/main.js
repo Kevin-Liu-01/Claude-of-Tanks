@@ -18,7 +18,7 @@ import { createCameraRig } from './engine/cameraRig.js';
 import { createMap } from './world/map.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
 import { MAP_THUMBS } from './ui/mapThumbs.js';
-import { ALL_TANK_IDS, getSpec } from './vehicles/specs.js';
+import { ALL_TANK_IDS, getSpec, MODEL_SOURCE } from './vehicles/specs.js';
 import { createTank } from './vehicles/tankFactory.js';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
@@ -160,16 +160,45 @@ function setGarageSpots(on) {
 
 let pedestalVisual = null;
 let selectedSpecId = 'm1a2';
+let pedestalPollToken = 0; // content_breadth r1: cancels stale GLB polls
 function setPedestalTank(specId) {
   if (pedestalVisual) {
     if (pedestalVisual.specId === specId) return;
     pedestalVisual.dispose();
     pedestalVisual = null;
   }
+  pedestalPollToken++;
   pedestalVisual = createTank(specId, engineCtx, { camoSeed: 4200, quality: 'high' });
   pedestalVisual.root.position.set(GARAGE_POS.x, GARAGE_POS.y + 0.35, GARAGE_POS.z);
   pedestalVisual.root.rotation.y = 162 * DEG;
   scene.add(pedestalVisual.root);
+  // content_breadth r1: never show the three-box procedural placeholder on
+  // the garage pedestal while the hero's GLB parses (the hard pop landed
+  // directly above the model's CC-BY credit line). createTank already kicked
+  // the async GLB swap for THIS visual — the swap lands IN PLACE on the same
+  // hull/turret groups, so we only hide the stand-in and poll the loader
+  // bookkeeping (~150 ms) until every started job settled, then reveal the
+  // real model. No dispose/re-create: tearing the visual down mid-swap races
+  // three's compileAsync material poll (unhandled TypeError). Dynamic import
+  // keeps GLTFLoader off the boot-critical bundle path (perf-budget rule).
+  const src = MODEL_SOURCE[specId];
+  if (src && src.source === 'glb' && src.glb) {
+    const token = pedestalPollToken;
+    const vis = pedestalVisual;
+    import('./vehicles/modelLoader.js').then((m) => {
+      if (token !== pedestalPollToken || m.hasCachedGlb(src.glb.path)) return;
+      if (vis.setVisible) vis.setVisible(false);
+      const stats = (typeof window !== 'undefined' && window.__GLB_STATS) || null;
+      const poll = () => {
+        if (token !== pedestalPollToken) return; // superseded — new hero owns the stage
+        const settled = m.hasCachedGlb(src.glb.path) &&
+          (!stats || stats.settled >= stats.started);
+        if (!settled) { setTimeout(poll, 150); return; }
+        if (vis.setVisible) vis.setVisible(true); // swap landed in place
+      };
+      setTimeout(poll, 150);
+    }).catch(() => { /* loader unavailable — keep the procedural stand-in */ });
+  }
 }
 setPedestalTank(selectedSpecId);
 
@@ -215,16 +244,28 @@ function switchMap(mapId) {
   sky.applyPreset(skyCfg, scene);
   lighting.setSun(sky.sunDir, skyCfg);
   baseFogDensity = scene.fog.density;
-  hud.buildMinimap(world.heightField, world.getMinimapFeatures(), world.config.minimap);
+  hud.buildMinimap(world.heightField, world.getMinimapFeatures(), world.config.minimap,
+    minimapSnapCtx()); // hud_ui r6: real top-down capture as the map underlay
   placeGarage();
   return world;
+}
+
+// hud_ui r6: live-scene handles for the minimap's one-time orthographic
+// top-down capture (tanks hidden during the capture; ui falls back to the
+// procedural cartography when absent).
+function minimapSnapCtx() {
+  return {
+    renderer, scene,
+    exclude: (game.tanks || []).map((t) => t.visual && t.visual.root).filter(Boolean),
+  };
 }
 
 // --- HUD / garage / panels ----------------------------------------------------
 const hud = initHud(bus);
 const damagePanel = createDamagePanel();
 hud.setDamagePanel(damagePanel);
-hud.buildMinimap(world.heightField, world.getMinimapFeatures(), world.config.minimap);
+hud.buildMinimap(world.heightField, world.getMinimapFeatures(), world.config.minimap,
+  minimapSnapCtx()); // hud_ui r6: real top-down capture as the map underlay
 
 const garage = createGarage({
   specs: ALL_TANK_IDS.map(getSpec), // COMMUNITY TANKS: grown carousel
@@ -270,19 +311,41 @@ audio.bindBus(bus);
 // lands when the crosshair rests on a tank (reticle-to-impact alignment).
 const _armEnd = new THREE.Vector3();
 const _armTo = new THREE.Vector3();
+// controls_gunnery r6: STICKY SERVER RETICLE. The aim ray was exact-hit-or-
+// nothing against enemy hulls, so with a mover near the crosshair the anchor
+// (range readout, pen indicator, lead reference AND the gun's auto-elevation
+// distance) flickered to background terrain the instant the ray slipped off
+// the silhouette (critic: reticle printed 694 m with a T-72B3 at ~341 m under
+// it). WoT's server reticle is deliberately sticky on vehicles:
+//  - the intersection gate is INFLATED (bounding sphere ×1.15) — a ray that
+//    grazes the silhouette without an exact armor-trace hit still anchors at
+//    the tank's range (soft anchor at the closest-approach point);
+//  - a held tank anchor persists ~0.3 s after the ray slips fully off, so
+//    tracking jitter across a mover never drops the range/pen readout.
+const AIM_STICKY_INFLATE = 1.15;
+const AIM_STICKY_HOLD_MS = 300;
+let aimStickyUntilMs = -Infinity;
+let aimStickyDistM = 0;
+const _aimSoft = { point: new THREE.Vector3(), normal: null, dist: 0, kind: 'tank-soft' };
 function aimRaycastWithTanks(origin, dir, maxDist) {
   const wHit = world.raycast(origin, dir, maxDist);
   let bestD = wHit ? wHit.dist : maxDist;
   let best = wHit;
+  let exactTank = false;
+  let softDist = Infinity; // nearest inflated-silhouette crossing (soft anchor)
   for (const ent of game.tanks) {
     if (ent.isPlayer || !ent.state || !ent.combat || ent.combat.destroyed) continue;
     const r = ent.spec.armor.boundingRadiusM;
+    const rInf = r * AIM_STICKY_INFLATE;
     _armTo.copy(ent.state.pos);
     _armTo.y += ent.spec.dims.heightM * 0.5;
     _armTo.sub(origin);
     const proj = _armTo.dot(dir);
-    if (proj < 0 || proj - r > bestD) continue;
-    if (_armTo.lengthSq() - proj * proj > r * r) continue;
+    if (proj < 0 || proj - rInf > bestD) continue;
+    const lat2 = _armTo.lengthSq() - proj * proj;
+    if (lat2 > rInf * rInf) continue;
+    if (proj < bestD && proj < softDist) softDist = proj;
+    if (lat2 > r * r) continue; // the inflated shell only feeds the soft anchor
     _armEnd.copy(origin).addScaledVector(dir, Math.min(bestD, proj + r));
     const hits = traceTank(origin, _armEnd, tankPoseFromState(ent.state), ent.spec.armor, ent.combat.eraSpent);
     if (!hits.length) continue;
@@ -290,7 +353,29 @@ function aimRaycastWithTanks(origin, dir, maxDist) {
     if (d < bestD) {
       bestD = d;
       best = { point: hits[0].point, normal: hits[0].normal, dist: d, kind: 'tank' };
+      exactTank = true;
     }
+  }
+  const nowMs = performance.now();
+  if (exactTank) {
+    aimStickyUntilMs = nowMs + AIM_STICKY_HOLD_MS;
+    aimStickyDistM = bestD;
+    return best;
+  }
+  if (softDist < Infinity) {
+    // ray crosses a live enemy's inflated silhouette in front of the terrain
+    // hit — anchor at the tank instead of the background (and refresh hold)
+    aimStickyUntilMs = nowMs + AIM_STICKY_HOLD_MS;
+    aimStickyDistM = softDist;
+    _aimSoft.point.copy(origin).addScaledVector(dir, softDist);
+    _aimSoft.dist = softDist;
+    return _aimSoft;
+  }
+  if (nowMs < aimStickyUntilMs && aimStickyDistM < bestD) {
+    // hysteresis: ride out a brief slip off the hull at the held range
+    _aimSoft.point.copy(origin).addScaledVector(dir, aimStickyDistM);
+    _aimSoft.dist = aimStickyDistM;
+    return _aimSoft;
   }
   return best;
 }
@@ -373,6 +458,101 @@ bus.on('shell:hit', (ev) => {
     audio.hitConfirm(pen);
   }
   if (ev.targetId === game.player.id && (ev.damage || 0) > 0) rig.addTrauma(0.35);
+});
+
+// ---------------------------------------------------------------------------
+// controls_gunnery r6: PLAYER SHELL TERMINAL TELEMETRY. Every player shell's
+// terminal event is recorded with the intended target and the miss distance
+// to that target's hull center at the terminal instant, so whiffs are
+// attributable (lead error / drop / blocked path / collider gap) instead of
+// vanishing. Ring buffer on __DEBUG.playerShellLog; consumed by the
+// tools/gunnery_gate.mjs hull-hit-rate gate and free to read in live debug.
+// ---------------------------------------------------------------------------
+const playerShellLog = [];
+const _tele = new THREE.Vector3();
+function teleTargetFor(muzzle, dir) {
+  // intended target: the live enemy whose hull center passes nearest the
+  // fire ray (drive tests also pin debugAimTargetId — prefer it when live)
+  const pinned = debugAimTargetId ? game.tankById.get(debugAimTargetId) : null;
+  if (pinned && pinned.state && pinned.combat && !pinned.combat.destroyed) return pinned;
+  let best = null;
+  let bestLat = 40; // ignore shells not aimed near any tank
+  for (const ent of game.tanks) {
+    if (ent.isPlayer || ent.team !== 'enemy' || !ent.state || !ent.combat || ent.combat.destroyed) continue;
+    _tele.copy(ent.state.pos);
+    _tele.y += ent.spec.dims.heightM * 0.5;
+    _tele.x -= muzzle[0]; _tele.y -= muzzle[1]; _tele.z -= muzzle[2];
+    const proj = _tele.x * dir[0] + _tele.y * dir[1] + _tele.z * dir[2];
+    if (proj < 0) continue;
+    const lat = Math.sqrt(Math.max(0, _tele.lengthSq() - proj * proj));
+    if (lat < bestLat) { bestLat = lat; best = ent; }
+  }
+  return best;
+}
+function teleMissM(rec, pos) {
+  const tgt = rec.targetId ? game.tankById.get(rec.targetId) : null;
+  if (!tgt || !tgt.state || !pos) return null;
+  const cy = tgt.state.pos.y + tgt.spec.dims.heightM * 0.5;
+  return Math.round(Math.hypot(pos[0] - tgt.state.pos.x, pos[1] - cy, pos[2] - tgt.state.pos.z) * 100) / 100;
+}
+bus.on('shell:fired', (ev) => {
+  if (!ev.isPlayer) return;
+  const tgt = teleTargetFor(ev.muzzlePos, ev.dir);
+  playerShellLog.push({
+    shellId: ev.shellId, t: Math.round(game.timeS * 100) / 100,
+    targetId: tgt ? tgt.id : null,
+    targetDistM: tgt ? Math.round(tgt.state.pos.distanceTo(game.player.state.pos)) : null,
+    targetSpeed: tgt ? Math.round((tgt.state.speed || 0) * 10) / 10 : null,
+    blockedDistM: frameInfo.aim.blockedDistM ? Math.round(frameInfo.aim.blockedDistM) : null,
+    terminal: null, hitKind: null, damage: 0, missM: null,
+  });
+  if (playerShellLog.length > 64) playerShellLog.shift();
+});
+bus.on('shell:hit', (ev) => {
+  if (!game.player || ev.attackerId !== game.player.id) return;
+  const rec = playerShellLog.find((r) => r.shellId === ev.shellId);
+  if (!rec) return;
+  rec.terminal = 'tank';
+  rec.hitTankId = ev.targetId;
+  rec.hitKind = ev.kind;
+  rec.damage = Math.round(ev.damage || 0);
+  rec.missM = teleMissM(rec, ev.pos);
+});
+bus.on('shell:expired', (ev) => {
+  const rec = playerShellLog.find((r) => r.shellId === ev.shellId);
+  if (!rec || rec.terminal) return;
+  rec.terminal = ev.hitTerrain ? 'terrain' : 'air';
+  rec.missM = teleMissM(rec, ev.pos);
+});
+// Bot-vs-player pressure telemetry (same round, minor #4): per-battle
+// counters for enemy shells whose fire ray passes near the player (aimed at
+// us) vs those that connect, so return-fire consistency is measurable per
+// roster instead of anecdotal. Reset on battle start; __DEBUG.botPressure.
+const botPressure = { enemyShells: 0, aimedAtPlayer: 0, hitsOnPlayer: 0, dmgOnPlayer: 0 };
+bus.on('phase:change', (ev) => {
+  if (ev.phase === 'battle') {
+    botPressure.enemyShells = 0; botPressure.aimedAtPlayer = 0;
+    botPressure.hitsOnPlayer = 0; botPressure.dmgOnPlayer = 0;
+  }
+});
+bus.on('shell:fired', (ev) => {
+  if (ev.isPlayer || !game.player || !game.player.state) return;
+  botPressure.enemyShells += 1;
+  const p = game.player.state.pos;
+  const cy = p.y + game.player.spec.dims.heightM * 0.5;
+  const rx = p.x - ev.muzzlePos[0];
+  const ry = cy - ev.muzzlePos[1];
+  const rz = p.z - ev.muzzlePos[2];
+  const proj = rx * ev.dir[0] + ry * ev.dir[1] + rz * ev.dir[2];
+  if (proj <= 0) return;
+  const lat2 = rx * rx + ry * ry + rz * rz - proj * proj;
+  if (lat2 < 36) botPressure.aimedAtPlayer += 1; // within 6 m of hull center
+});
+bus.on('shell:hit', (ev) => {
+  if (game.player && ev.targetId === game.player.id) {
+    botPressure.hitsOnPlayer += 1;
+    botPressure.dmgOnPlayer += ev.damage || 0;
+  }
 });
 
 sky.applyFog(scene);
@@ -557,6 +737,9 @@ bus.on('shell:fired', (p) => {
 });
 
 function startBattle(specId, mapId = null) {
+  // PERF (performance_budget r1): first-combat fallback for the post-ready
+  // idle warm — no-op when the idle callback already ran (the common case).
+  warmCombatPipeline();
   // SHOT-MODE RESET (effects_combat/content_breadth r2): __SHOTS.set() freezes
   // fx and stops the sim tick; any UI path out of shot mode (garage BATTLE
   // button) must resume it or the battle is permanently frozen.
@@ -585,6 +768,7 @@ function startBattle(specId, mapId = null) {
   garage.hide();
   endOverlay.style.display = 'none';
   endShown = false; // KILL-CAM: fresh battle — re-arm the end-of-battle gate
+  deathCamShown = false; // killcam_shotinfo r1: re-arm the at-death replay
   killcam.cancel(); // KILL-CAM: never carry a replay across battles
   hud.setMode('battle');
   game.phase = 'battle';
@@ -697,7 +881,11 @@ function computeAimInfo() {
     if (blk) aim.blockedDistM = blk.dist;
   }
 
-  // penetration indicator: first enemy plate under the aim ray
+  // penetration indicator: first enemy plate under the aim ray.
+  // controls_gunnery r6: matches the sticky server reticle — the bounding
+  // gate is inflated ×1.15 like aimRaycastWithTanks, and the last resolved
+  // pen ratio is HELD for a short hysteresis window when the ray briefly
+  // slips off a mover, so the pen color never strobes while tracking.
   aim.penRatio = null;
   rig.getAimRay(_rayO, _rayD);
   const shellSpec = p.spec.gun.shells[p.combat.shellSlot];
@@ -710,13 +898,21 @@ function computeAimInfo() {
     _v1.sub(_rayO);
     const proj = _v1.dot(_rayD);
     if (proj < 0 || proj > 800) continue;
-    const r = ent.spec.armor.boundingRadiusM;
+    const r = ent.spec.armor.boundingRadiusM * AIM_STICKY_INFLATE;
     if (_v1.lengthSq() - proj * proj > r * r) continue;
     const q = queryAimArmor(_rayO, _rayD, 800, tankPoseFromState(ent.state), ent.spec.armor);
     if (q && q.distM < bestDist) { bestDist = q.distM; bestInfo = q; }
   }
-  if (bestInfo) aim.penRatio = estimatePenRatio(shellSpec, bestDist, bestInfo);
+  if (bestInfo) {
+    aim.penRatio = estimatePenRatio(shellSpec, bestDist, bestInfo);
+    lastPenRatio = aim.penRatio;
+    lastPenUntilMs = performance.now() + AIM_STICKY_HOLD_MS;
+  } else if (performance.now() < lastPenUntilMs) {
+    aim.penRatio = lastPenRatio; // sticky-reticle hysteresis (see above)
+  }
 }
+let lastPenRatio = null;
+let lastPenUntilMs = -Infinity;
 
 // ---------------------------------------------------------------------------
 // Render loop
@@ -727,6 +923,7 @@ let simAcc = 0;
 let lastMs = -1;
 let lastFov = camera.fov;
 let endShown = false;
+let deathCamShown = false; // killcam_shotinfo r1: death replay played at death
 let shotMode = false;
 // controls_gunnery r5: true while the current __SHOTS view staged a live HUD
 // frame (player_view / sniper_view) — those views re-run hud.update each
@@ -737,7 +934,10 @@ let lastCineActive = false; // battle-open flyby HUD veil edge latch
 function updateDustAndSync(dtFrame) {
   for (const ent of game.tanks) {
     if (!ent.state || !ent.combat) continue;
-    ent.visual.syncFromState(ent.state);
+    // effects_combat r1: pass the real frame dt so self-timed visual
+    // timelines (recuperator recoil, turret-pop arc, ember cooldown) play at
+    // wall-clock speed on 120 Hz displays (undefined at boot -> 1/60 default).
+    ent.visual.syncFromState(ent.state, dtFrame);
     // SPOTTING WIRING: unspotted live enemies do not render (WoT rule).
     // Wrecks stay visible; the player is never gated; outside battle
     // (garage/shot/killcam) everything renders. isSpotted already includes
@@ -791,12 +991,29 @@ function updateDustAndSync(dtFrame) {
       // effects_combat r2: the stationary hero tank idles visibly during the
       // opening flyby (motion accent), and era picks the exhaust character —
       // WW2 diesels puff sooty, modern turbines emit a fast thin haze.
-      if (throttle > 0.1 || sp > 0.8 || (ent.isPlayer && rig.cinematicActive)) {
-        const load = Math.max((rig.cinematicActive && ent.isPlayer) ? 0.3 : 0,
+      // effects_combat r1: always emit — a parked idling tank still breathes
+      // (idle floor 0.10; fx.exhaust is probability-gated so idle stays wispy)
+      {
+        const load = Math.max(0.10, (rig.cinematicActive && ent.isPlayer) ? 0.3 : 0,
           Math.min(1, throttle * 0.7 + (sp / (ent.spec.topSpeedKmh / 3.6)) * 0.5));
         _v1.copy(ent.state.pos).addScaledVector(_fwd, -ent.spec.dims.hullLengthM * 0.42);
         _v1.y += ent.spec.dims.heightM * 0.72;
         fx.exhaust(_v1, load, ent.spec.era === 'ww2');
+      }
+      // effects_combat r1: crushable props — pole vs hull overlap triggers
+      // the hinge-topple (world.crushProp) + wood-splinter burst.
+      if (sp > 1.2 && world.crushables && world.crushables.length) {
+        const hl = ent.spec.dims.hullLengthM * 0.5 + 0.5;
+        for (let ci = 0; ci < world.crushables.length; ci++) {
+          const c = world.crushables[ci];
+          if (c.toppled) continue;
+          const dx = c.x - ent.state.pos.x, dz = c.z - ent.state.pos.z;
+          if (dx * dx + dz * dz > hl * hl) continue;
+          if (world.crushProp(ci, _fwd.x, _fwd.z)) {
+            _v1.set(c.x, c.y, c.z);
+            fx.propCrush(_v1, _fwd, c.h);
+          }
+        }
       }
     }
   }
@@ -884,7 +1101,10 @@ function tick(nowMs) {
         // Death-cam: slow orbit of the player's wreck behind the overlay.
         if (game.result === 'defeat' && rig.startDeathCam) rig.startDeathCam();
       };
-      const played = killcam.playForResult(game.result, game.timeS, finishBattle);
+      // killcam_shotinfo r1: never replay an already-shown death — when the
+      // player died earlier (battle continued), a later team 'defeat' would
+      // re-run the stale death replay without this guard.
+      const played = !deathCamShown && killcam.playForResult(game.result, game.timeS, finishBattle);
       debugFlags.lastEndFlow = { played, result: game.result, timeS: game.timeS,
         resultWallMs: performance.now(), kcBeginWallMs: killcam.lastBeginWallMs }; // KILL-CAM debug
       if (played) {
@@ -894,6 +1114,20 @@ function tick(nowMs) {
       }
     } else if (!game.result) {
       endShown = false;
+    }
+    // killcam_shotinfo r1: the player died but the battle continues (allies
+    // still fighting) — play the death replay NOW, then spectate the wreck
+    // with the death cam until the team result resolves.
+    if (!game.result && game.player && game.player.combat.destroyed && !deathCamShown) {
+      deathCamShown = true;
+      if (document.exitPointerLock) document.exitPointerLock();
+      const afterDeath = () => {
+        veilHud(false);
+        rig.release();
+        if (rig.startDeathCam) rig.startDeathCam();
+      };
+      if (killcam.playForResult('defeat', game.timeS, afterDeath)) veilHud(true);
+      else afterDeath();
     }
   }
 
@@ -1286,8 +1520,11 @@ const SHOT_VIEWS = {
     hud.setMode('hidden');
     const ent = game.tankById.get('tiger1');
     orbitPose(ent, 10, 120, 10, 45);           // rear-quarter, running gear side
-    ent.visual.setTrackState('trackL', true);
-    bus.emit('module:state', { id: ent.id, module: 'trackL', state: 'red' });
+    // effects_combat r1: break the RIGHT track — the 120-deg orbit frames the
+    // right flank, and the de-track rework removes the band from the broken
+    // side (bare road wheels + ground ribbon must be the side on camera).
+    ent.visual.setTrackState('trackR', true);
+    bus.emit('module:state', { id: ent.id, module: 'trackR', state: 'red' });
   },
   combat_firing() {
     hud.setMode('hidden');
@@ -1318,15 +1555,16 @@ const SHOT_VIEWS = {
     const victims = game.tanks.filter((t) => t.team === 'enemy');
     const ent = victims[2];
     _v2.copy(ent.state.pos);
-    _v2.y += 1.4;
-    // Camera high (sun behind it), looking DOWN ~20 deg so the fogged
-    // near-white horizon stays out of frame and the fireball/smoke column
-    // reads against terrain (r1 critique: frame was mostly white haze).
+    // effects_combat r1: frame center raised (was +1.4) and camera pulled
+    // back to 26 m at a shallower 18 deg so fireball + leaning smoke column
+    // + debris all fit — the old 22 m / 24 deg framing cropped everything
+    // above ~6 m and cut the column.
+    _v2.y += 3.2;
     const az = ent.state.yaw + 150 * DEG;
     _v1.set(
-      _v2.x + Math.sin(az) * 22 * Math.cos(24 * DEG),
-      _v2.y + Math.sin(24 * DEG) * 22 + 1.5,
-      _v2.z + Math.cos(az) * 22 * Math.cos(24 * DEG),
+      _v2.x + Math.sin(az) * 26 * Math.cos(18 * DEG),
+      _v2.y + Math.sin(18 * DEG) * 26 + 1.5,
+      _v2.z + Math.cos(az) * 26 * Math.cos(18 * DEG),
     );
     rig.setExternalPose(_v1, _v2, 45);
     fx.composeExplosionMoment({ pos: _v2.clone(), ageS: 0.6 });
@@ -1457,6 +1695,9 @@ window.__SHOTS = {
   set(name) {
     const recipe = SHOT_VIEWS[name];
     if (!recipe) throw new Error(`Unknown screenshot view: ${name}`);
+    // PERF (performance_budget r1): shot recipes must never race the deferred
+    // post-ready warm — run it now (idempotent, no-op once idle fired).
+    warmCombatPipeline();
     shotMode = true;
     shotHudFrame = false; // r5: recipes with a HUD frame re-latch this
     game.phase = 'shot';
@@ -1496,12 +1737,26 @@ world.update(0, camera.position);
 updateDustAndSync();
 lighting.update(true); // boot: render every cascade before first present
 post.render(SIM_DT);
-// PERF (perf-budget): warm the wreck path BEFORE readiness — the first kill
-// of a battle otherwise pays the burnt-material program compile + burnt/ember
-// texture uploads inside a combat frame (probe measured 125 ms at first
-// blood). Compile the program against a temporarily-destroyed staged tank
-// (renderer.compile is view-independent), then pre-upload every spec's maps.
-{
+// PERF (performance_budget r1): the combat-pipeline warms below are needed
+// before FIRST COMBAT, not before readiness — they used to run synchronously
+// ahead of __GAME_READY and billed ~120 ms straight onto load-to-ready.
+// Deferred to post-ready idle; warmCombatPipeline() is idempotent and
+// startBattle() runs it synchronously as a first-combat fallback if no idle
+// slice arrived first (immediate battle entry, backgrounded tab).
+//
+// - wreck warm: the first kill of a battle otherwise pays the burnt-material
+//   program compile + burnt/ember texture uploads inside a combat frame
+//   (probe measured 125 ms at first blood). renderer.compile is
+//   view-independent, so compiling against the garage-staged pool is valid.
+// - fx warm: flipbook/atlas textures otherwise upload inside the
+//   first-contact combat frame (muzzle flash, tracer, impact, smoke).
+// - light-set warm (r4): garage spots hidden changes the program hash (see
+//   setGarageSpots), so entering battle swaps programs instead of compiling
+//   ~70 of them inside the opening frames.
+let combatPipelineWarmed = false;
+function warmCombatPipeline() {
+  if (combatPipelineWarmed) return;
+  combatPipelineWarmed = true;
   const warm = game.tanks.find((e) => !e.isPlayer && e.visual);
   if (warm) {
     warm.visual.setDestroyed({});
@@ -1509,8 +1764,6 @@ post.render(SIM_DT);
     warm.visual.resetDestroyed();
   }
   warmWreckTextures(renderer);
-  // fx first-use warm: flipbook/atlas textures otherwise upload inside the
-  // first-contact combat frame (muzzle flash, tracer, impact, smoke).
   fx.group.traverse((o) => {
     const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
     for (const m of mats) {
@@ -1520,15 +1773,14 @@ post.render(SIM_DT);
       }
     }
   });
+  const spotsWereOn = game.phase !== 'battle';
+  if (spotsWereOn) setGarageSpots(false);
+  try { renderer.compile(scene, camera); } catch (_) { /* fine */ }
+  if (spotsWereOn) setGarageSpots(true);
 }
-// PERF (performance_budget r4): pre-compile the battle light-set shader
-// variants (garage spots hidden changes the program hash — see
-// setGarageSpots) so entering battle swaps programs instead of compiling ~70
-// of them inside the opening frames.
-setGarageSpots(false);
-try { renderer.compile(scene, camera); } catch (_) { /* fine */ }
-setGarageSpots(true);
-post.render(SIM_DT);
+(window.requestIdleCallback || ((fn) => setTimeout(fn, 250)))(
+  () => warmCombatPipeline(), { timeout: 2000 },
+);
 
 requestAnimationFrame(tick);
 
@@ -1544,24 +1796,48 @@ requestAnimationFrame(tick);
 let debugAimTargetId = null;
 
 /** Recompute the travel-time-led aim point onto `best`'s hull center. */
+// controls_gunnery r6: the old version always led the hull CENTER
+// (heightM·0.5). On undulating ground a micro-crest 20-30 m short of a
+// hull-down target sat centimeters above that line — the LOS ray grazed
+// over it but a shell 0.5-1 m into the dispersion cone died in the dirt
+// just short of the hull ("fully-settled shot, terrain terminal, miss
+// ~20 m"). A real player aims at what is VISIBLE: probe hull center first,
+// then upper hull, then turret, and lead the first aim height whose
+// muzzle→impact path is clear. All heights blocked = keep center (the
+// live reticle shows the red blocked warning for that shot).
 function debugLeadPoint(p, best, out) {
   p.visual.gunPivotWorld(_v1);
-  _v2.copy(best.state.pos);
-  _v2.y += best.spec.dims.heightM * 0.5;
   const shell = p.spec.gun.shells[Math.max(0, Math.min(2, p.combat.shellSlot))];
   const tvx = Math.sin(best.state.yaw) * best.state.speed;
   const tvz = Math.cos(best.state.yaw) * best.state.speed;
-  let ax = _v2.x;
-  let az = _v2.z;
-  for (let i = 0; i < 2; i++) {
-    const dx = ax - _v1.x;
-    const dy = _v2.y - _v1.y;
-    const dz = az - _v1.z;
-    const t = Math.sqrt(dx * dx + dy * dy + dz * dz) / shell.velocityMps;
-    ax = _v2.x + tvx * t;
-    az = _v2.z + tvz * t;
+  const solveAt = (hFrac) => {
+    _v2.copy(best.state.pos);
+    _v2.y += best.spec.dims.heightM * hFrac;
+    let ax = _v2.x;
+    let az = _v2.z;
+    for (let i = 0; i < 2; i++) {
+      const dx = ax - _v1.x;
+      const dy = _v2.y - _v1.y;
+      const dz = az - _v1.z;
+      const t = Math.sqrt(dx * dx + dy * dy + dz * dz) / shell.velocityMps;
+      ax = _v2.x + tvx * t;
+      az = _v2.z + tvz * t;
+    }
+    out.set(ax, _v2.y, az);
+  };
+  p.visual.gunMuzzleWorld(_v3); // blocked-reticle test origin (muzzle path)
+  for (const hFrac of [0.5, 0.72, 0.88]) {
+    solveAt(hFrac);
+    _rayD.copy(out).sub(_v3);
+    const d = _rayD.length();
+    if (d < 12) return out;
+    _rayD.multiplyScalar(1 / d);
+    const margin = Math.min(6, best.spec.armor.boundingRadiusM);
+    const blk = world.raycast(_v3, _rayD, d - margin);
+    if (!blk) return out;
   }
-  return out.set(ax, _v2.y, az);
+  solveAt(0.5); // everything masked — center lead; reticle reads BLOCKED
+  return out;
 }
 
 /**
@@ -1726,8 +2002,11 @@ function debugSpawnKillShell() {
 
 /** Destroy every remaining enemy through the normal announce path (test aid). */
 function debugSlayEnemies() {
+  // killcam_shotinfo r1: skip ALLIES — the old guard killed the whole roster
+  // and credited all 7 kills to the player (fabricated ACE report, dead
+  // allies in a VICTORY).
   for (const ent of game.tanks) {
-    if (ent.isPlayer || !ent.combat || ent.combat.destroyed) continue;
+    if (ent.isPlayer || ent.team !== 'enemy' || !ent.combat || ent.combat.destroyed) continue;
     ent.combat.hp = 0;
     ent.combat.destroyed = true;
     ent.combat.fire.burning = false;
@@ -1753,6 +2032,11 @@ window.__DEBUG = {
   frameInfo,
   aimAtNearest: debugAimAtNearest,
   gunAimError: debugGunAimError,
+  // controls_gunnery r6: attributable terminal event per player shell
+  // (tank/terrain/air + miss distance to the intended target's hull center)
+  playerShellLog,
+  // controls_gunnery r6: per-battle bot-vs-player pressure counters
+  botPressure,
   aimState: debugAimState, // {errMrad,bloomF,reticleRadM,aimDistM,reloadT}
   fastForward: debugFastForward,
   slayEnemies: debugSlayEnemies,

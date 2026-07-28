@@ -41,6 +41,11 @@ export function createRenderer(container) {
   // against the hazy far field. Paired with the post.js grade-pivot fix
   // (0.5 → 0.33) so the lift lands in the midtones instead of being crushed
   // back down by the old above-pivot-only contrast.
+  // r6: A/B'd 1.20 alongside the deeper grade S-curve (post.js 1.36) — the
+  // lift blew the high-albedo maps out (desert sand + winter snowfield went
+  // textureless near-white) while buying almost nothing on verdant. Stays
+  // 1.16; the grade pivot (0.33) keeps the lit playfield stable under the
+  // stronger contrast on its own.
   renderer.toneMappingExposure = 1.16;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft is deprecated in r185

@@ -99,7 +99,7 @@ const SI_CSS = `
    the flat mask lacked (r7: top view parsed as a generic rounded box) */
 .cot-si-diag .pf{position:absolute;inset:0;background-size:contain;
   background-position:center;background-repeat:no-repeat;
-  filter:grayscale(.85) brightness(1.8) contrast(1.05);}
+  filter:grayscale(.85) brightness(2) contrast(1.55);}
 .cot-si-diag svg.ov{position:absolute;inset:0;overflow:visible;}
 .cot-si-zone{font-size:10px;color:#f0c987;font-weight:700;letter-spacing:.06em;
   text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;flex:1;
@@ -550,11 +550,13 @@ export function createShotInfo(bus) {
       const barrelLen = (arm.gunBarrel && arm.gunBarrel.lengthM)
         ? arm.gunBarrel.lengthM : dims.overallLengthM * 0.45;
       const [gx, gy] = topPx(arm.turretPivot[0], arm.turretPivot[2] + barrelLen);
+      // 2.5px barrel + brighter ring (r6 minor: at 84px the facing cue was
+      // the only readable orientation signal and it sat too faint to carry)
       facing =
         `<circle cx="${tcx.toFixed(1)}" cy="${tcy.toFixed(1)}" r="${ringR.toFixed(1)}"
-          fill="none" stroke="rgba(228,240,250,0.55)" stroke-width="1.2"/>` +
+          fill="none" stroke="rgba(232,242,252,0.8)" stroke-width="1.6"/>` +
         `<line x1="${tcx.toFixed(1)}" y1="${tcy.toFixed(1)}" x2="${gx.toFixed(1)}" y2="${gy.toFixed(1)}"
-          stroke="rgba(228,240,250,0.55)" stroke-width="1.8" stroke-linecap="round"/>`;
+          stroke="rgba(232,242,252,0.8)" stroke-width="2.5" stroke-linecap="round"/>`;
     }
     const ovT = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     ovT.setAttribute('class', 'ov');
@@ -764,9 +766,31 @@ export function createShotInfo(bus) {
     statsRoot.textContent = '';
     // result banner (AAA results flow: verdict first, data below)
     const res = result || '';
+    // Banner honesty (r6 major): the sim currently hard-resolves 'defeat' the
+    // moment the PLAYER dies, even with allies still fighting — a 'DEFEAT'
+    // banner directly above 'YOUR TEAM 3/4 ALIVE' is internally contradictory.
+    // When the roster shows living non-player allies the headline states the
+    // player's actual fate ('YOU WERE DESTROYED'), which is true under either
+    // sim behavior; a team-wipe defeat keeps the team verdict. Alive counts
+    // come from the authoritative battle:ended roster when present, else the
+    // same event-evidence bookkeeping the roster panels render — never invented.
+    let alliesAlive = 0;
+    if (endRoster) {
+      for (const r of endRoster) {
+        if (!r.isPlayer && r.team && r.team !== 'enemy' && r.alive !== false) alliesAlive++;
+      }
+    } else {
+      for (const [id, c] of combatants) {
+        if (id !== playerId && !c.dead && sideOf(id) === 'ally') alliesAlive++;
+      }
+    }
+    const youDestroyed = res === 'defeat' && alliesAlive > 0;
     const ban = el('div',
       `cot-si-ban ${res === 'victory' ? 'v' : res === 'defeat' ? 'd' : 'n'}`, statsRoot);
-    ban.textContent = res === 'victory' ? 'VICTORY' : res === 'defeat' ? 'DEFEAT' : 'DRAW';
+    ban.textContent = res === 'victory' ? 'VICTORY'
+      : youDestroyed ? 'YOU WERE DESTROYED'
+        : res === 'defeat' ? 'DEFEAT' : 'DRAW';
+    statsRoot.dataset.banner = ban.textContent;
     el('div', 'cot-si-bansub', statsRoot).textContent = 'Battle report';
 
     const kills = [...stats.perTarget.values()].filter((t) => t.killed).length;
@@ -1174,6 +1198,64 @@ export function createShotInfo(bus) {
     t.hpLeft = 0;
   });
 
+  // --- REPORT GATE: battle-report rendering deferred past the kill-cam ------
+  // state.js emits battle:ended in the very sim step the player dies, but
+  // main.js starts the kill-cam replay LATER in the same JS task — rendering
+  // the report synchronously buried the still-playing slow-mo flight and the
+  // whole 7 s x-ray hold under the full-screen DEFEAT panel (z 71 over the
+  // replay's z 60; r6 critical). Stat ACCUMULATION stays on battle:ended;
+  // RENDERING is buffered and flushed when the replay releases the screen
+  // (killcam:done — emitted by src/game/killcam.js on finish, skip and cancel
+  // alike). The no-replay path flushes after one animation frame + macrotask:
+  // killcam:begin is emitted synchronously inside begin(), which runs either
+  // in the same task as battle:ended (live loop) or in the next main-loop
+  // frame (debug fastForward emitted the event outside the loop), so by
+  // decision time "a replay owns the screen" is a settled fact, never a race.
+  // A watchdog past the longest possible replay (3.4 s flight + 7 s hold +
+  // slack) guarantees a stuck replay can never eat the report.
+  let kcReplayActive = false;
+  let pendingReport = null; // buffered battle:ended result ('' is a valid result)
+  let reportFlushTimer = null;
+  let reportWatchdog = null;
+  const REPORT_MAX_WAIT_MS = 16000;
+
+  function clearReportBuffer() {
+    pendingReport = null;
+    if (reportFlushTimer) { clearTimeout(reportFlushTimer); reportFlushTimer = null; }
+    if (reportWatchdog) { clearTimeout(reportWatchdog); reportWatchdog = null; }
+  }
+
+  function flushReport() {
+    if (pendingReport === null) return;
+    const result = pendingReport;
+    clearReportBuffer();
+    renderStats(result);
+  }
+
+  function scheduleReportFlush() {
+    const decide = () => {
+      if (pendingReport === null) return;
+      if (reportFlushTimer) { clearTimeout(reportFlushTimer); reportFlushTimer = null; }
+      if (!kcReplayActive) { flushReport(); return; }
+      // replay owns the screen: killcam:done flushes; watchdog backstops
+      if (!reportWatchdog) reportWatchdog = setTimeout(flushReport, REPORT_MAX_WAIT_MS);
+    };
+    // one full frame first (the main loop's end-flow, which starts the
+    // replay, runs inside the next animation frame), then a macrotask so the
+    // decision runs after that frame's synchronous work completes
+    requestAnimationFrame(() => setTimeout(decide, 0));
+    // rAF-throttled fallback (hidden tab): decide anyway — a throttled tab
+    // renders no replay frames either, so flushing early shows nothing wrong
+    if (reportFlushTimer) clearTimeout(reportFlushTimer);
+    reportFlushTimer = setTimeout(decide, 600);
+  }
+
+  bus.on('killcam:begin', () => { kcReplayActive = true; });
+  bus.on('killcam:done', () => {
+    kcReplayActive = false;
+    if (pendingReport !== null) flushReport();
+  });
+
   bus.on('battle:ended', (p) => {
     // the floating shot card and incoming toasts must never linger behind the
     // results screen — a dimmed PENETRATION card double-reported the final
@@ -1182,7 +1264,8 @@ export function createShotInfo(bus) {
     while (toastHost.firstChild) toastHost.firstChild.remove();
     // authoritative team roster when the sim provides one (additive payload)
     if (p && Array.isArray(p.roster)) endRoster = p.roster;
-    renderStats(p ? p.result : '');
+    pendingReport = p ? (p.result || '') : '';
+    scheduleReportFlush();
   });
   bus.on('ui:shotLog', () => toggleLog());
   bus.on('ui:battleStart', () => api.reset());
@@ -1197,6 +1280,7 @@ export function createShotInfo(bus) {
 
     /** Hide the end-of-battle stats card (garage/hidden HUD). */
     hideStats() {
+      clearReportBuffer();
       statsRoot.classList.remove('show');
       document.body.classList.remove('cot-si-report');
       unpinFooter();
@@ -1204,6 +1288,7 @@ export function createShotInfo(bus) {
 
     /** Fresh battle: clear cards, toasts, logs and session stats. */
     reset() {
+      clearReportBuffer();
       while (cardHost.firstChild) cardHost.firstChild.remove();
       while (toastHost.firstChild) toastHost.firstChild.remove();
       shotLog.length = 0;

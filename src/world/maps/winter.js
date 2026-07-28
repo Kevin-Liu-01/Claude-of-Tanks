@@ -53,7 +53,12 @@ export default {
     iceLake: true,
     // 0.45 (r5): more windblown snow encroaching from the shores — the sheet
     // grades into the snowfield instead of sitting as a clean punched ellipse
-    iceDrift: 0.45,
+    // r9: 0.45 -> 0.30 — at 0.45 the drift + bright macro buried the clear-
+    // ice fields and the signature lake read as a snow-swept depression from
+    // the establishing camera; 0.30 keeps the drifted shore band but exposes
+    // the darker glossy ice interior (pairs with the makeIceLayer value-
+    // contrast push and the 0.20 ice roughness floor in terrain.js)
+    iceDrift: 0.30,
     // lighting_post r5: tintB desaturated toward neutral (was [0.90,0.93,1.00])
     tintA: [1.03, 1.04, 1.09], tintB: [0.95, 0.965, 1.005], tintC: [1.04, 1.04, 1.07],
     roadTint: [0.74, 0.68, 0.62], // worn dark slush tracks through the snow
@@ -93,6 +98,10 @@ export default {
         // winter brush, clearly darker than snow but no longer ink blots
         cardHue: 0.08, cardSat: 0.05, cardL0: 0.42, // r4: luminance floor
         texTone: (h, s, l) => [h, clamp01(s * 0.38), clamp01(l * 0.80 + 0.20)],
+        // r9: far-LOD crown lobes get an explicit rime-grey palette — the
+        // builder defaults were authored for autumn brush and minified to
+        // ink blots against the snow
+        canopy: { hue: 0.07, sat: 0.06, l0: 0.30, l1: 0.44 },
       },
       pine: { // winter spruce: r7 — lift again (+0.075 -> +0.13): minified
         // scrub cards still mip-averaged toward near-black dots against the

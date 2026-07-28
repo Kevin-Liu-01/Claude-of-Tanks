@@ -438,22 +438,38 @@ export function createGarageStage(engineCtx, pos) {
     const cable = new THREE.Mesh(cableGeo, housingMat);
     cable.position.set(0, 8.7, 0);
     group.add(shade, glow, cable);
-    const gradC = document.createElement('canvas');
-    gradC.width = 8; gradC.height = 128;
-    const gg = gradC.getContext('2d');
-    const vg = gg.createLinearGradient(0, 0, 0, 128);
-    vg.addColorStop(0, 'rgba(255,236,200,0.32)');
-    vg.addColorStop(0.45, 'rgba(255,236,200,0.12)');
-    vg.addColorStop(1, 'rgba(255,236,200,0)');
-    gg.fillStyle = vg;
-    gg.fillRect(0, 0, 8, 128);
-    const coneTex = track(canvasTexture(gradC));
-    const coneMat = track(new THREE.MeshBasicMaterial({
-      map: coneTex, transparent: true, blending: THREE.AdditiveBlending,
-      depthWrite: false, side: THREE.DoubleSide, opacity: 0.5,
+    // r6: the flat alpha-gradient texture put HARD STRAIGHT EDGES on the
+    // beam's silhouette against the back wall (critique: "flat alpha
+    // triangle"). A view-dependent fresnel term feathers the tube's sides to
+    // zero exactly at the silhouette, while the vertical ramp keeps the beam
+    // dense at the fixture and dissolved before the floor — a soft
+    // volumetric cone from every orbit angle.
+    const coneMat = track(new THREE.ShaderMaterial({
+      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+      side: THREE.DoubleSide,
+      uniforms: { uColor: { value: new THREE.Color(1.0, 0.925, 0.784) } },
+      vertexShader: /* glsl */ `
+        varying float vV; varying vec3 vN; varying vec3 vE;
+        void main() {
+          vV = uv.y;
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          vN = normalMatrix * normal;
+          vE = -mv.xyz;
+          gl_Position = projectionMatrix * mv;
+        }`,
+      fragmentShader: /* glsl */ `
+        uniform vec3 uColor; varying float vV; varying vec3 vN; varying vec3 vE;
+        void main() {
+          // silhouette feather: surface normal ⟂ view at the tube's edge
+          float fres = abs(dot(normalize(vE), normalize(vN)));
+          float edge = pow(fres, 1.8);
+          // dense at the fixture (uv.y 1), fully dissolved toward the floor
+          float grad = pow(clamp(vV, 0.0, 1.0), 1.7);
+          gl_FragColor = vec4(uColor, edge * grad * 0.22);
+        }`,
     }));
     const cone = new THREE.Mesh(
-      track(new THREE.CylinderGeometry(0.68, 5.6, 6.9, 40, 1, true)), coneMat);
+      track(new THREE.CylinderGeometry(0.68, 5.6, 6.9, 48, 1, true)), coneMat);
     cone.position.y = 7.3 - 6.9 / 2;
     group.add(cone);
   }
@@ -468,7 +484,7 @@ export function createGarageStage(engineCtx, pos) {
   }));
   track(bracketMat);
   const lensMat = track(new THREE.MeshStandardMaterial({
-    color: 0x0c0d0e, emissive: 0xffe2b0, emissiveIntensity: 2.4,
+    color: 0x0c0d0e, emissive: 0xffe2b0, emissiveIntensity: 2.0,
     roughness: 0.4, metalness: 0,
   }));
   const plateGeo = track(new THREE.BoxGeometry(0.5, 0.62, 0.07)); // wall plate
@@ -477,7 +493,26 @@ export function createGarageStage(engineCtx, pos) {
   const rimGeo = track(new THREE.BoxGeometry(0.98, 0.64, 0.06));   // face rim
   const finGeo = track(new THREE.BoxGeometry(0.92, 0.05, 0.4));    // cooling fins
   const hoodGeo = track(new THREE.BoxGeometry(0.98, 0.07, 0.5));   // top visor
-  const lensGeo = track(new THREE.PlaneGeometry(0.72, 0.4));
+  // r6: CIRCULAR lens disc + radial-gradient halo sprite — the old bare
+  // 0.72x0.4 emissive plane bloomed into a square glow patch on the wall
+  // (critique: "the wall lamp is a square glow sprite")
+  const lensGeo = track(new THREE.CircleGeometry(0.22, 24));
+  const lampHaloC = document.createElement('canvas');
+  lampHaloC.width = 128; lampHaloC.height = 128;
+  {
+    const hg = lampHaloC.getContext('2d');
+    const hgrad = hg.createRadialGradient(64, 64, 2, 64, 64, 62);
+    hgrad.addColorStop(0, 'rgba(255,232,190,0.85)');
+    hgrad.addColorStop(0.22, 'rgba(255,226,176,0.40)');
+    hgrad.addColorStop(0.55, 'rgba(255,220,168,0.12)');
+    hgrad.addColorStop(1, 'rgba(255,220,168,0)');
+    hg.fillStyle = hgrad;
+    hg.fillRect(0, 0, 128, 128);
+  }
+  const lampHaloMat = track(new THREE.SpriteMaterial({
+    map: track(canvasTexture(lampHaloC)), transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  }));
   const barGeo = track(new THREE.BoxGeometry(0.03, 0.62, 0.03));   // lens guard
   const floods = [
     // hud_ui r2: floor peak right of the tank clipped to pure white with the
@@ -502,7 +537,10 @@ export function createGarageStage(engineCtx, pos) {
     hood.position.set(0, 0.33, 0.6);
     const lens = new THREE.Mesh(lensGeo, lensMat);
     lens.position.z = 0.755;
-    holder.add(plate, arm, shell, rim, hood, lens);
+    const halo = new THREE.Sprite(lampHaloMat); // circular camera-facing glow
+    halo.scale.set(1.7, 1.7, 1);
+    halo.position.z = 0.80;
+    holder.add(plate, arm, shell, rim, hood, lens, halo);
     for (let fi = 0; fi < 4; fi++) { // heat-sink fins along the shell top
       const fin = new THREE.Mesh(finGeo, bracketMat);
       fin.position.set(0, 0.3, 0.42 + fi * 0.09);

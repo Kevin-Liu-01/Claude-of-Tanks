@@ -143,6 +143,10 @@ export function createMap(engineCtx, { mapId = 'verdant', seed = 1337 } = {}) {
      * @returns {Array<{x:number,z:number,r:number,add:number}>}
      */
     getConcealment: () => vegetation.concealers || [],
+    // effects_combat r1: crushable props (telegraph poles) — hull overlap in
+    // main.js triggers crushProp (hinge-topple) + fx.propCrush splinters.
+    crushables: props.crushables || [],
+    crushProp: (i, dx, dz) => props.crushProp && props.crushProp(i, dx, dz),
     spawnPoints,
     /** @returns {{roads:Array, buildings:Array, treeClusters:Array, waterOrSoft:Array}} minimap features */
     getMinimapFeatures: () => ({
@@ -163,6 +167,7 @@ export function createMap(engineCtx, { mapId = 'verdant', seed = 1337 } = {}) {
     update(dt, cameraPos, cameraFwd = null, focusPos = null) {
       terrain.userData.updateLOD(cameraPos);
       vegetation.update(dt, cameraPos, cameraFwd, focusPos);
+      if (props.updateProps) props.updateProps(dt); // pole hinge-topple anims
     },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
     setWindTime(t) { vegetation.setWindTime(t); },

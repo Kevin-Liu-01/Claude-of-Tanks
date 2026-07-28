@@ -689,6 +689,7 @@ export function createKillCam(deps) {
   scene.add(warmRig);
 
   // ---- capture state ----
+  let busRef = null;      // bound in bindBus — replay lifecycle announcements
   const traj = new Map(); // shellId -> { pts:number[], muzzle:[3] }
   let pendingDeath = null;    // lethal shell snapshot, target = player
   let pendingVictory = null;  // lethal shell snapshot, attacker = player
@@ -778,6 +779,7 @@ export function createKillCam(deps) {
      * @param {{on:Function}} bus the game event bus
      */
     bindBus(bus) {
+      busRef = bus;
       bus.on('shell:fired', (p) => {
         if (traj.size >= TRAJ_KEEP) traj.delete(traj.keys().next().value);
         traj.set(p.shellId, {
@@ -924,6 +926,13 @@ export function createKillCam(deps) {
     active = true;
     staged = false;
     lastBeginWallMs = performance.now();
+    // REPORT GATE (r6 critical): announce that the replay owns the screen.
+    // state.js emits battle:ended in the same JS task begin() runs in, and
+    // shotInfo.js used to render its full-screen battle report on that event
+    // immediately — the z-71 DEFEAT panel buried the still-playing z-60
+    // flight + x-ray hold. shotInfo now BUFFERS the report while a replay is
+    // live and flushes it on killcam:done (emitted in finish() below).
+    if (busRef) busRef.emit('killcam:begin', { kind });
     pb = {
       snap, kind, onDone,
       phase: 'flight', t: 0, xt: 0,
@@ -1750,6 +1759,11 @@ export function createKillCam(deps) {
     active = false;
     staged = false;
     if (runCallback && done) done();
+    // REPORT GATE: release — emitted on natural finish, skip AND cancel alike
+    // so a buffered battle report can never be lost with the replay. Emitted
+    // AFTER onDone so the integration end-overlay (.cot-end) already exists
+    // when shotInfo's report renders and pins its footer to it.
+    if (busRef) busRef.emit('killcam:done', {});
   }
 
   return api;

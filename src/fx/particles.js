@@ -18,7 +18,7 @@ import * as THREE from 'three';
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
-const POOL_SIZES = { smoke: 2048, fire: 1024, dust: 1024, sparks: 512, debris: 256, flash: 128, jet: 64 };
+const POOL_SIZES = { smoke: 2048, fire: 1024, billow: 256, dust: 1024, sparks: 512, debris: 256, flash: 128, jet: 64 };
 
 // ---------------------------------------------------------------------------
 // GLSL — shared helpers
@@ -210,7 +210,11 @@ void main() {
   // alpha-dither speckle instead of soft billowing lobes. A widening band
   // keeps the front torn early yet dissolves late edges as translucent
   // gradients, so lobes billow away instead of pixel-popping.
-  float er = vT * 0.34;
+  // r1 anti-ordered-dither: per-pixel hash jitter on the erosion threshold —
+  // whatever residual banding the flipbook quantization leaves resolves as
+  // sub-pixel film grain instead of ordered stipple at 1080p.
+  float jn = fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
+  float er = vT * 0.34 + ( jn - 0.5 ) * 0.045;
   float a = smoothstep( er, er + 0.40 + 0.52 * vT, tex ) * vColor.a;
   if ( a < 0.004 ) discard;
   ${FOG_SCALE_F}
@@ -235,6 +239,63 @@ void main() {
   // HDR push so UnrealBloom catches fire/flash pixels — per-card soft knee
   // keeps a deep additive stack from clipping to a white sheet
   gl_FragColor = vec4( toneCap( col * uIntensity ) * ( 1.0 - fogFactor ), a );
+}
+`;
+
+// --- billow (fireball body: depth-sorted normal-blended fire-in-smoke) ------
+// r1 fireball structure rebuild: the additive fire pool alone stacked into a
+// translucent orange haze wall with the background showing through the
+// "core". Billow cards are NORMAL-blended (they OCCLUDE what is behind them)
+// with an erosion-dissolve mask and a blackbody ramp — white-hot pockets
+// inside rolling sooty lobes — so the fireball mass owns a silhouette. The
+// smoke pool draws before, the additive fire/flash pools glow on top.
+const PUFF_FRAG_BILLOW = `
+uniform sampler2D uMap;
+uniform float uIntensity;
+varying vec2 vUv;
+varying vec2 vUvA;
+varying vec2 vUvB;
+varying float vFMix;
+varying vec4 vColor;
+varying float vT;
+varying vec2 vShade;
+${FOG_PARS_F}
+void main() {
+  float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
+  float jn = fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
+  float er = vT * 0.30 + ( jn - 0.5 ) * 0.05;
+  float a = smoothstep( er, er + 0.30 + 0.45 * vT, tex ) * vColor.a;
+  if ( a < 0.004 ) discard;
+  // blackbody interior: dense texels above the erosion front burn white-hot,
+  // cooling through orange -> deep ember red -> soot as the card ages and
+  // its rim dissolves. vColor supplies the SOOT base (col0 -> col1 over life)
+  // so the burnt-out card hands off seamlessly to the smoke pool's greys.
+  // r1 tune: white reserved for the very densest texels (the first pass sent
+  // most of the crown into the white band — cotton-ball read); the body of
+  // the lobe lives in ember-red/orange with sooty shoulders.
+  float heat = clamp( ( tex - er ) * ( 2.0 - 0.9 * vT ), 0.0, 1.0 );
+  float h2 = heat * ( 1.0 - vT * 0.85 );
+  vec3 col = mix( vColor.rgb, vec3( 0.42, 0.06, 0.015 ), smoothstep( 0.06, 0.32, h2 ) );
+  col = mix( col, vec3( 1.0, 0.38, 0.04 ), smoothstep( 0.30, 0.72, h2 ) );
+  col = mix( col, vec3( 1.35, 1.15, 0.85 ), smoothstep( 0.80, 0.985, h2 ) );
+  // combustion chemistry: saturation falls BEFORE value — past mid-life the
+  // card desaturates to sooty grey and dims, handing off to the smoke pool
+  // (without this the aged billow mass froze as a translucent MAROON wall
+  // over the trees at 1.6 s — the exact r5 dried-blood-fog regression)
+  float sootF = smoothstep( 0.35, 0.8, vT );
+  float luma = dot( col, vec3( 0.299, 0.587, 0.114 ) );
+  col = mix( col, vec3( luma ), sootF * 0.9 );
+  col *= 1.0 - 0.3 * sootF;
+  // sooty outer shell catches sun-side shading so the crown reads volumetric;
+  // burning pockets stay self-lit
+  vec2 p = vUv * 2.0 - 1.0;
+  float sun = clamp( 0.5 + 0.8 * dot( p, vShade ), 0.0, 1.0 );
+  col *= mix( 0.58 + 0.62 * sun, 1.0, smoothstep( 0.12, 0.5, h2 ) );
+  ${FOG_SCALE_F}
+  #ifdef USE_FOG
+    col = mix( col, fogColor, fogFactor );
+  #endif
+  gl_FragColor = vec4( col * uIntensity, a );
 }
 `;
 
@@ -367,7 +428,12 @@ void main() {
   vec2 uv = vec2( vUv.x * ( 0.82 + 0.18 * fract( vSeed * 7.31 ) ),
                   clamp( vUv.y + ( fract( vSeed * 13.7 ) - 0.5 ) * 0.16, 0.0, 1.0 ) );
   float tex = texture2D( uMap, uv ).a;
-  float er = 0.06 + vT * 0.6;
+  // r1 detached-bolt fix: erosion is biased DOWNRANGE (vUv.x) so a dying jet
+  // burns off from the tip back toward the bore — the surviving bright mass
+  // stays welded to the muzzle instead of freezing as a detached mid-cone
+  // blob 1.5-2 m downrange while the bore is already dark.
+  float jn = fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
+  float er = 0.06 + vT * ( 0.45 + 0.75 * vUv.x ) + ( jn - 0.5 ) * 0.04;
   // 0.28 -> 0.46 band (r5): jet tips dissolved into hard noise speckle at
   // the flash frame edges — wider band keeps the cone ragged but soft
   float a = smoothstep( er, er + 0.46, tex ) * vColor.a;
@@ -489,18 +555,24 @@ void main() {
   vec3 viewDir = normalize( cameraPosition - vWorldPos );
   float rim = pow( 1.0 - abs( dot( n, viewDir ) ), 2.2 );
   col += vec3( 0.36, 0.42, 0.50 ) * rim * ( 0.18 + 0.22 * ( n.y * 0.5 + 0.5 ) );
-  // cooling ember glow (bloom feed): NOT a flat face tint — seeded cell-hash
-  // blotches so irregular PATCHES of the scorched chunk glow orange while the
-  // rest stays charred black (the old aligned sin-grid read as waffle dots)
+  // cooling ember glow (bloom feed): NOT a flat face tint — SMOOTH seeded
+  // noise blotches so irregular PATCHES of the scorched chunk glow orange
+  // while the rest stays charred black. r1: the old floor()-cell hash read as
+  // a hard checkerboard-dither texture on chunks near the camera — value
+  // noise (hashed lattice corners, smoothstep-interpolated) keeps the pockets
+  // irregular but CONTINUOUS.
   float edge = 0.40 + 0.60 * ( 1.0 - nl );
-  vec3 cellA = floor( vLocal * 4.5 + vSeed * 29.0 );
-  vec3 cellB = floor( vLocal * 4.5 + vSeed * 29.0 + 0.5 );
-  float patA = fract( sin( dot( cellA, vec3( 12.9898, 78.233, 37.719 ) ) ) * 43758.5453 );
-  float patB = fract( sin( dot( cellB, vec3( 26.6516, 41.339, 59.113 ) ) ) * 24634.6345 );
-  // glow confined to sparse pockets + shadowed rims: most of the chunk stays
-  // charred black even at peak heat (r7: whole-face glow read as orange boxes)
-  float pat = smoothstep( 0.58, 0.95, max( patA, patB * 0.8 ) );
-  col += vec3( 1.5, 0.38, 0.05 ) * vHot * edge * ( 0.05 + 0.95 * pat );
+  vec3 lp3 = vLocal * 3.6 + vSeed * 29.0;
+  vec3 c0 = floor( lp3 );
+  vec3 f3 = lp3 - c0;
+  f3 = f3 * f3 * ( 3.0 - 2.0 * f3 );
+  #define DHASH(o) fract( sin( dot( c0 + o, vec3( 12.9898, 78.233, 37.719 ) ) ) * 43758.5453 )
+  float n00 = mix( DHASH(vec3(0.,0.,0.)), DHASH(vec3(1.,0.,0.)), f3.x );
+  float n10 = mix( DHASH(vec3(0.,1.,0.)), DHASH(vec3(1.,1.,0.)), f3.x );
+  float n01 = mix( DHASH(vec3(0.,0.,1.)), DHASH(vec3(1.,0.,1.)), f3.x );
+  float n11 = mix( DHASH(vec3(0.,1.,1.)), DHASH(vec3(1.,1.,1.)), f3.x );
+  float pat = smoothstep( 0.52, 0.88, mix( mix( n00, n10, f3.y ), mix( n01, n11, f3.y ), f3.z ) );
+  col += vec3( 1.5, 0.38, 0.05 ) * vHot * edge * ( 0.06 + 0.94 * pat );
   ${FOG_SCALE_F}
   #ifdef USE_FOG
     col = mix( col, fogColor, fogFactor );
@@ -971,6 +1043,14 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
       // Additive pools carry a longer lens fade (r7 scope flood): a fire card
       // 3 m from the eye is a screen-filling wash, not feedback.
       puffMaterial(fireTex, true, 1.6, 0.66, 4, [1.2, 4.6]), PUFF_LAYOUT, POOL_SIZES.fire, 'aVL', 3),
+    billow: new Pool('billow', makeQuadGeometry(POOL_SIZES.billow),
+      // normal-blended fireball body (see PUFF_FRAG_BILLOW): occluding
+      // fire-in-smoke lobes that give the blast a rolling silhouette
+      (() => {
+        const m = puffMaterial(fireTex, false, 1.4, 1.0, 4, [1.2, 4.6]);
+        m.fragmentShader = PUFF_FRAG_BILLOW;
+        return m;
+      })(), PUFF_LAYOUT, POOL_SIZES.billow, 'aVL', 3),
     dust: new Pool('dust', makeQuadGeometry(POOL_SIZES.dust),
       puffMaterial(dustTex, false, 1.4, 1, 4), PUFF_LAYOUT, POOL_SIZES.dust, 'aVL', 3),
     flash: new Pool('flash', makeQuadGeometry(POOL_SIZES.flash),
@@ -1018,10 +1098,13 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
       }), DEBRIS_LAYOUT, POOL_SIZES.debris, 'aVL', 3),
   };
 
-  // Draw order: opaque debris first (default), then dust → smoke → fire → sparks
+  // Draw order: opaque debris first (default), then dust → smoke → billow →
+  // fire → sparks (the occluding billow body draws over the smoke mass; the
+  // additive fire/flash glow layers on top of it)
   pools.debris.mesh.renderOrder = 0;
   pools.dust.mesh.renderOrder = 20;
   pools.smoke.mesh.renderOrder = 21;
+  pools.billow.mesh.renderOrder = 21.5;
   pools.fire.mesh.renderOrder = 22;
   pools.jet.mesh.renderOrder = 23;
   pools.flash.mesh.renderOrder = 23;
@@ -1068,7 +1151,11 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     pb[j] = o.pos[0]; pb[j + 1] = o.pos[1]; pb[j + 2] = o.pos[2]; pb[j + 3] = birth;
     vl[j] = o.vel[0]; vl[j + 1] = o.vel[1]; vl[j + 2] = o.vel[2]; vl[j + 3] = o.life;
     ar[j] = o.axis[0]; ar[j + 1] = o.axis[1]; ar[j + 2] = o.axis[2]; ar[j + 3] = o.spin;
-    sg[j] = o.scale; sg[j + 1] = o.groundY; sg[j + 2] = o.hot ? 1 : 0; sg[j + 3] = o.seed || 0;
+    // hot accepts a float (0..1) — fractional heat lets blast wreckage carry
+    // a faint fire-rim glow so airborne chunks never read matte-black cards
+    sg[j] = o.scale; sg[j + 1] = o.groundY;
+    sg[j + 2] = typeof o.hot === 'number' ? o.hot : (o.hot ? 1 : 0);
+    sg[j + 3] = o.seed || 0;
     pool.dirty(i);
   }
 
@@ -1088,6 +1175,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   const EMITTERS = {
     smoke: (o) => emitPuff(pools.smoke, o),
     fire: (o) => emitPuff(pools.fire, o),
+    billow: (o) => emitPuff(pools.billow, o),
     dust: (o) => emitPuff(pools.dust, o),
     flash: (o) => emitPuff(pools.flash, o),
     jet: (o) => emitJet(pools.jet, o),
@@ -1122,7 +1210,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
 
     /**
      * Spawn one particle into a named pool.
-     * @param {'smoke'|'fire'|'dust'|'flash'|'jet'|'sparks'|'debris'} poolName
+     * @param {'smoke'|'fire'|'billow'|'dust'|'flash'|'jet'|'sparks'|'debris'} poolName
      * @param {object} opts pool-specific fields (pos, vel, life, ...; birthOffset backdates)
      */
     emit(poolName, opts) {

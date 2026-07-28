@@ -310,17 +310,25 @@ const TT_CSS = `
     linear-gradient(180deg,#070b0f 0%,#0a0f14 55%,#06090c 100%);}
 .cot-tt.open{display:flex;}
 .cot-tt *{box-sizing:border-box;margin:0;padding:0;}
-.cot-tt-hdr{display:flex;align-items:center;gap:26px;padding:16px 30px 12px;
+.cot-tt-hdr{display:flex;align-items:center;gap:16px;padding:16px 24px 12px;
   border-bottom:1px solid rgba(146,164,180,.22);
   background:linear-gradient(180deg,rgba(9,13,17,.95),rgba(7,10,13,.88));flex:0 0 auto;}
 .cot-tt-hdr .ttl{font-size:17px;font-weight:800;letter-spacing:.30em;color:#9fb0bf;
-  text-transform:uppercase;white-space:nowrap;}
+  text-transform:uppercase;white-space:nowrap;flex:0 0 auto;}
 .cot-tt-hdr .ttl b{color:#f0a030;}
-.cot-tt-tabs{display:flex;gap:4px;flex:1;justify-content:center;}
-.cot-tt-tab{display:flex;align-items:center;gap:9px;cursor:pointer;border:1px solid transparent;
-  border-bottom:2px solid transparent;background:none;padding:8px 20px 7px;
+/* r1 (content_breadth): the tab strip must SHRINK (min-width:0) and scroll
+   internally instead of pushing the wallet + GARAGE button off the right
+   screen edge — at 1920x1080 the 11-tab row clipped the exit button to
+   '<- G'. justify-content:safe center keeps the strip centered while it
+   fits and left-anchors it once it overflows (never-clipped start edge). */
+.cot-tt-tabs{display:flex;gap:2px;flex:1 1 auto;min-width:0;
+  justify-content:safe center;overflow-x:auto;scrollbar-width:none;}
+.cot-tt-tabs::-webkit-scrollbar{display:none;}
+.cot-tt-tab{display:flex;align-items:center;gap:8px;cursor:pointer;border:1px solid transparent;
+  border-bottom:2px solid transparent;background:none;padding:8px 13px 7px;flex:0 0 auto;
   font-family:${FONT_STACK};font-size:12px;font-weight:700;letter-spacing:.18em;
-  color:#8a97a3;text-transform:uppercase;transition:color .12s,border-color .12s;}
+  color:#8a97a3;text-transform:uppercase;transition:color .12s,border-color .12s;
+  white-space:nowrap;}
 .cot-tt-tab svg{display:block;box-shadow:0 1px 4px rgba(0,0,0,.5);}
 .cot-tt-tab:hover{color:#c6d2dc;}
 .cot-tt-tab.sel{color:#ffd27a;border-bottom-color:#f0a030;
@@ -765,49 +773,83 @@ export function createTechTree(opts) {
       minTier = Math.min(minTier, node.tier);
       maxTier = Math.max(maxTier, node.tier);
     }
-    // COMMUNITY layout compaction: the 9-tank roster spread over the full
-    // tier grid left dead columns (II/V/VII) and a large dead zone — collapse
-    // to only the OCCUPIED tiers; each card keeps its true tier badge.
-    const tiersUsed = isComm
-      ? [...new Set(tab.nodes.map((nd) => nd.tier))].sort((x, y) => x - y)
-      : null;
-    const colOfTier = isComm ? new Map(tiersUsed.map((tv, ci) => [tv, ci])) : null;
-    const colOf = (nd) => (isComm ? colOfTier.get(nd.tier) : nd.tier - 1);
-    const minCol = isComm ? 0 : minTier - 1;
-    // Collision-safe placement (modern expansion): two nodes sharing a
-    // (lane,tier) cell — e.g. two community heavies at the same tier — shift
-    // right to the next free column instead of stacking on top of each other.
-    // Each card keeps its true tier badge, so a shifted card stays honest.
+    // The COMMUNITY credit cards run ~22 px taller than NODE_H.
+    const cardH = isComm ? NODE_H + 22 : NODE_H;
+    // COMMUNITY layout (content_breadth r1): a TRUE tier ladder. The old
+    // collapsed-column + shift-right packing detached cards from their tier
+    // columns (a VIII card could sit right of a IX card) and the tab read as
+    // a loose card pile (critique). Cards now keep their REAL tier column;
+    // same class+tier cards stack VERTICALLY into sub-rows inside their
+    // class band, and each band carries subtle rail lines so the roster
+    // reads as labeled class rows on a continuous I..X ladder.
+    const COMM_SUB_H = cardH + 40;   // sub-row pitch inside a class band
+    const COMM_BAND_GAP = 42;        // gap between class bands
+    const commSub = isComm ? new Map() : null;   // node.key -> sub-row index
+    const commBandY = isComm ? new Map() : null; // lane -> band top Y
+    const commBands = [];            // {lane, y0, depth, t0, t1}
+    if (isComm) {
+      const lanes = [...new Set(tab.nodes.map((nd) => nd.row))].sort((a, b) => a - b);
+      let by = HEAD_H;
+      for (const ln of lanes) {
+        const perTier = new Map();
+        let depth = 1, t0 = 11, t1 = 0;
+        for (const nd of tab.nodes) {
+          if (nd.row !== ln) continue;
+          const k = perTier.get(nd.tier) || 0;
+          perTier.set(nd.tier, k + 1);
+          commSub.set(nd.key, k);
+          depth = Math.max(depth, k + 1);
+          t0 = Math.min(t0, nd.tier);
+          t1 = Math.max(t1, nd.tier);
+        }
+        commBandY.set(ln, by);
+        commBands.push({ lane: ln, y0: by, depth, t0, t1 });
+        by += depth * COMM_SUB_H + COMM_BAND_GAP;
+      }
+    }
+    // Collision-safe placement (modern expansion, NATION tabs): two nodes
+    // sharing a (lane,tier) cell shift right to the next free column instead
+    // of stacking. Community cards never shift — their column IS their tier.
+    const minCol = minTier - 1;
     const colByKey = new Map();
     const cellTaken = new Set();
-    let maxCol = isComm ? tiersUsed.length - 1 : maxTier - 1;
+    let maxCol = maxTier - 1;
     for (const nd of tab.nodes) {
-      let c = colOf(nd);
-      while (cellTaken.has(`${nd.row}:${c}`)) c++;
-      cellTaken.add(`${nd.row}:${c}`);
+      let c = nd.tier - 1;
+      if (!isComm) {
+        while (cellTaken.has(`${nd.row}:${c}`)) c++;
+        cellTaken.add(`${nd.row}:${c}`);
+      }
       colByKey.set(nd.key, c);
       if (c > maxCol) maxCol = c;
     }
     function nodePos(node) {
       return {
         x: PAD_X + colByKey.get(node.key) * TIER_W + (TIER_W - NODE_W) / 2,
-        y: HEAD_H + node.row * ROW_H,
+        y: isComm
+          ? commBandY.get(node.row) + commSub.get(node.key) * COMM_SUB_H
+          : HEAD_H + node.row * ROW_H,
       };
     }
+    const commBottom = isComm
+      ? commBands[commBands.length - 1].y0 +
+        commBands[commBands.length - 1].depth * COMM_SUB_H
+      : 0;
     bounds = {
       w: PAD_X * 2 + Math.max(10, maxCol + 1) * TIER_W,
-      h: HEAD_H + maxRow * ROW_H + NODE_H + 60,
+      h: isComm ? commBottom + 60 : HEAD_H + maxRow * ROW_H + NODE_H + 60,
     };
     // r8: fit the camera to the OCCUPIED row band vertically (was y0:0 — the
     // fixed head zone above the first class row counted as content, so nation
     // tabs rendered their rows low with a dead band above the LIGHT lane).
-    // The COMMUNITY credit cards run ~22 px taller than NODE_H; include them.
-    const cardH = isComm ? NODE_H + 22 : NODE_H;
+    // r1: community bounds hug the band stack (headers included) so the tab
+    // centers tight instead of floating in dead space.
     content = {
       x0: PAD_X + minCol * TIER_W - 16,
-      y0: HEAD_H + minRow * ROW_H - 24,
+      y0: isComm ? HEAD_H - 64 : HEAD_H + minRow * ROW_H - 24,
       x1: PAD_X + (maxCol + 1) * TIER_W + 16,
-      y1: HEAD_H + maxRow * ROW_H + cardH + 24,
+      y1: isComm ? commBottom - COMM_SUB_H + cardH + 24
+        : HEAD_H + maxRow * ROW_H + cardH + 24,
     };
     world.style.width = `${bounds.w}px`;
     world.style.height = `${bounds.h}px`;
@@ -818,6 +860,38 @@ export function createTechTree(opts) {
     svg.setAttribute('class', 'wire');
     svg.setAttribute('width', bounds.w);
     svg.setAttribute('height', bounds.h);
+    // COMMUNITY rails (content_breadth r1): the curated cards carry no
+    // research links, so each class-band sub-row gets a subtle horizontal
+    // rail spanning the band's occupied tier range — the tab reads as
+    // organized class rows instead of cards floating on blank grid.
+    if (isComm) {
+      for (const b of commBands) {
+        const rx0 = PAD_X + (b.t0 - 1) * TIER_W + 10;
+        const rx1 = PAD_X + b.t1 * TIER_W - 10;
+        for (let s = 0; s < b.depth; s++) {
+          const ry = b.y0 + s * COMM_SUB_H + cardH / 2;
+          const rail = document.createElementNS(svgNS, 'line');
+          rail.setAttribute('x1', rx0);
+          rail.setAttribute('y1', ry);
+          rail.setAttribute('x2', rx1);
+          rail.setAttribute('y2', ry);
+          rail.setAttribute('stroke', 'rgba(146,164,180,.16)');
+          rail.setAttribute('stroke-width', '2');
+          svg.appendChild(rail);
+        }
+        // faint band frame ticks at both ends tie the sub-rows together
+        for (const rx of [rx0, rx1]) {
+          const tick = document.createElementNS(svgNS, 'line');
+          tick.setAttribute('x1', rx);
+          tick.setAttribute('y1', b.y0 + cardH / 2);
+          tick.setAttribute('x2', rx);
+          tick.setAttribute('y2', b.y0 + (b.depth - 1) * COMM_SUB_H + cardH / 2);
+          tick.setAttribute('stroke', 'rgba(146,164,180,.12)');
+          tick.setAttribute('stroke-width', '2');
+          svg.appendChild(tick);
+        }
+      }
+    }
     for (const node of tab.nodes) {
       const p2 = nodePos(node);
       for (const fk of node.from) {
@@ -846,20 +920,18 @@ export function createTechTree(opts) {
     }
     world.appendChild(svg);
 
-    // tier ladder headers — only over OCCUPIED tiers (and on the community
-    // tab only over the COLLAPSED columns), so no header ever floats over an
-    // empty stretch of blank grid
-    const headerTiers = isComm ? tiersUsed : [];
-    if (!isComm) for (let t = minTier; t <= maxTier; t++) headerTiers.push(t);
-    for (const t of headerTiers) {
+    // tier ladder headers — the full CONTINUOUS occupied range (r1: the
+    // community tab's collapsed occupied-only headers skipped tiers
+    // inconsistently; a ladder must read I, II, III… without gaps even when
+    // a column is empty)
+    for (let t = minTier; t <= maxTier; t++) {
       const hd = document.createElement('div');
       hd.className = 'cot-tt-tierhd';
-      const hc = isComm ? colOfTier.get(t) : t - 1;
-      hd.style.left = `${PAD_X + hc * TIER_W + (TIER_W - NODE_W) / 2}px`;
+      hd.style.left = `${PAD_X + (t - 1) * TIER_W + (TIER_W - NODE_W) / 2}px`;
       // r8: anchor the ladder just above the TOP OCCUPIED row instead of the
       // world's absolute top — with the row-band camera fit the old top:14px
       // strip drifted into the dead zone above the frame
-      hd.style.top = `${HEAD_H + minRow * ROW_H - 56}px`;
+      hd.style.top = `${isComm ? HEAD_H - 56 : HEAD_H + minRow * ROW_H - 56}px`;
       hd.innerHTML = `${ROMAN[t]}<i>tier</i>`;
       world.appendChild(hd);
     }
@@ -869,13 +941,15 @@ export function createTechTree(opts) {
     // reached below the -22 px caption line of the NEXT row and covered all
     // but the first letter ("...a lone 'M' behind the tier-I card") — lift
     // the captions clear of the tallest card and z-order them above nodes.
-    const laneYOff = isComm ? 38 : 26;
+    const laneYOff = isComm ? 30 : 26;
     const usedRows = new Set(tab.nodes.map((nd) => nd.row));
     for (const r of usedRows) {
       const lb = document.createElement('div');
       lb.className = 'cot-tt-lane';
       lb.style.left = `${content.x0 + 16}px`;
-      lb.style.top = `${HEAD_H + r * ROW_H - laneYOff}px`;
+      // r1: community captions sit at their class BAND top (bands stack with
+      // variable depth, so the fixed row pitch no longer applies there)
+      lb.style.top = `${isComm ? commBandY.get(r) - laneYOff : HEAD_H + r * ROW_H - laneYOff}px`;
       lb.textContent = LANE_LABEL[r] || '';
       world.appendChild(lb);
     }

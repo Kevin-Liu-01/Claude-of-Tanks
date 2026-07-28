@@ -340,6 +340,19 @@ async function runAll() {
     }
     await sleep(700);
     await page.screenshot({ path: `${outDir}/b_killcam_flight.png` });
+    // r6 CRITICAL regression gate: the full-screen battle report must NOT
+    // render while the replay owns the screen. battle:ended fires in the very
+    // sim step the player dies, so an unbuffered report would be burying this
+    // flight frame right now (probe_r6 captures showed exactly that).
+    const duringFlight = await page.evaluate(() => ({
+      ended: !!window.__CAP.ended,
+      reportShown: !!document.querySelector('.cot-si-stats.show'),
+    }));
+    if (duringFlight.ended) {
+      check('report-gate', 'report hidden during killcam flight', false, duringFlight.reportShown);
+    } else {
+      notes.push('report-gate: battle:ended not fired at flight check — battle continues after death (handoff applied)');
+    }
     // skip 1: flight -> xray
     await page.keyboard.press('Space');
     await sleep(1300); // let labels animate in
@@ -420,12 +433,46 @@ async function runAll() {
     if (fit.worst > 0.95) {
       failures.push({ where: 'killcam', name: 'x-ray hull framing (80% safe area)', expected: 'hull corners inside ±0.95 NDC', actual: `worst ${fit.worst}` });
     }
+    // r6 CRITICAL regression gate, part 2: still no report over the x-ray hold
+    const duringXray = await page.evaluate(() => !!document.querySelector('.cot-si-stats.show'));
+    check('report-gate', 'report hidden during x-ray hold', false, duringXray);
     await page.screenshot({ path: `${outDir}/b_killcam_xray.png` });
     // skip 2: xray -> finish (skippability)
     await page.keyboard.press('Space');
     await sleep(400);
     const done = await page.evaluate(() => window.__DEBUG.killcam.phase);
     check('killcam', 'skip ends replay', 'null', String(done));
+    // r6 CRITICAL regression gate, part 3: once the replay releases the
+    // screen the BUFFERED report must flush (defeat path) — and it must be
+    // honest about a solo death: living allies on the roster mean the banner
+    // reads YOU WERE DESTROYED, never a DEFEAT above 'YOUR TEAM 3/4 ALIVE'.
+    if (duringFlight.ended) {
+      try {
+        await page.waitForFunction('document.querySelector(".cot-si-stats.show") !== null', { timeout: 6000 });
+      } catch (_) { /* asserted below */ }
+      const after = await page.evaluate(() => {
+        const stats = document.querySelector('.cot-si-stats.show');
+        const roster = (window.__CAP.ended && window.__CAP.ended.roster) || null;
+        return {
+          reportShown: !!stats,
+          banner: stats ? (stats.querySelector('.cot-si-ban') || {}).textContent : null,
+          kcDomOn: !!document.querySelector('.cot-kc.on'),
+          kcLabels: document.querySelectorAll('.cot-kc-label,.cot-kc-micro').length,
+          alliesAlive: roster
+            ? roster.filter((r) => !r.isPlayer && r.team !== 'enemy' && r.alive !== false).length
+            : -1,
+        };
+      });
+      check('report-gate', 'report flushes after replay ends', true, after.reportShown);
+      check('report-gate', 'killcam DOM released before report', false, after.kcDomOn);
+      check('report-gate', 'no killcam labels bleed into report', 0, after.kcLabels);
+      if (after.alliesAlive >= 0) {
+        const wantBanner = after.alliesAlive > 0 ? 'YOU WERE DESTROYED' : 'DEFEAT';
+        check('report-gate', `banner honest with ${after.alliesAlive} allies alive`, wantBanner, after.banner);
+      }
+      await sleep(400);
+      await page.screenshot({ path: `${outDir}/b2_report_after_replay.png` });
+    }
   }
 
   // ======================= PHASE C: battle report ============================

@@ -9,6 +9,11 @@
  *  - Firing bloom: a shot costs most of the tank's OWN camo, decaying
  *    exponentially back over a few seconds. The loss fraction scales with
  *    the gun's caliber (fireCamoLossFor: 76 mm sheds ~64%, 120 mm ~80%).
+ *  - Fire reveal resolves THROUGH the formula (r2): notifyFired pulls the
+ *    shooter's next check to `now`, and while the bloom is flash-hot a
+ *    shooter with no real foliage on the sightline is revealed by its
+ *    muzzle flash past the camo-formula range (never past 445 m, hard LOS
+ *    still gates). The old AI-side spotting-gate bypass is gone (ai.js).
  *  - Equipment (EQUIPMENT table): camo net (+still camo), binoculars
  *    (+still view range), vents — injected via deps.getEquipment.
  *  - Bush/foliage concealment: vegetation discs intersecting the 2D line
@@ -52,6 +57,18 @@ export const SPOT_LINGER_S = 5;        // spotted state persists after last pass
 export const SIXTH_SENSE_DELAY_S = 3;
 export const SIXTH_SENSE_SHOW_S = 8;
 export const BUSH_FIRE_TRANSPARENT_M = 15; // 15 m rule radius
+// MUZZLE-FLASH REVEAL (r2 — replaces the AI-side spotting-gate bypass):
+// fire reveal is resolved THROUGH the camo math. notifyFired pulls the
+// shooter's next check to `now`, so the bloom-stripped camo (+ the 15 m
+// bush-transparency rule) is evaluated immediately; a shooter the formula
+// STILL hides gets one extra concession — while the bloom is flash-hot and
+// no real foliage covers the sightline, the muzzle flash itself is visible
+// past the camo-formula spot range (never past MAX_SPOT_RANGE_M, and hard
+// LOS still applies). A deep double-bush ambush (bush bonus on the line
+// >= MUZZLE_FLASH_BUSH_MAX) survives its own shot exactly like WoT; an
+// open-field sniper beyond static view range draws return fire.
+export const MUZZLE_FLASH_BLOOM_MIN = 0.45; // flash window ~1.4 s after the shot
+export const MUZZLE_FLASH_BUSH_MAX = 0.2;   // line foliage that defeats the flash
 export const CAMO_PAINT_BONUS = 0.035; // equipped camo pattern (+3.5%)
 // r9 forest-camping balance: 0.6 let any tree clump stack to the cap (canopy
 // discs add 0.13 each) and, with the own-camo term bloom-stripped to ~0.05,
@@ -421,7 +438,15 @@ export function createSpottingSystem(deps) {
     const spotterMoving = Math.abs(spotter.state.speed || 0) > MOVING_SPEED_MPS;
     const vr = effectiveViewRangeM(spotter) *
       equipViewMult(getEquipment(spotter), spotterMoving);
-    if (dist > spotRangeM(vr, camo)) return false;
+    if (dist > spotRangeM(vr, camo)) {
+      // Muzzle-flash reveal (see the constants block): the formula hides the
+      // target, but a flash-hot shooter with no meaningful foliage on this
+      // sightline is given away by its own muzzle flash. Range is already
+      // inside MAX_SPOT_RANGE_M (early reject above) and hardLos still gates.
+      if (!(bloom >= MUZZLE_FLASH_BLOOM_MIN && bush < MUZZLE_FLASH_BUSH_MAX)) {
+        return false;
+      }
+    }
     return hardLos(spotter, target);
   }
 
@@ -549,6 +574,12 @@ export function createSpottingSystem(deps) {
         recs.set(id, r);
       }
       r.firedAtS = timeS;
+      // Fire forces an immediate re-check THROUGH the formula (r2): the next
+      // update() evaluates the shooter with bloom = 1 (own camo stripped,
+      // near bushes fire-transparent, flash reveal armed) instead of waiting
+      // out the 0.5-2 s cadence; the following natural check still lands
+      // inside the flash window, giving the "two cycles" resolution.
+      r.nextCheckS = Math.min(r.nextCheckS, timeS);
       let cal = caliberMm;
       if (cal == null) {
         const tanks = deps.getTanks();

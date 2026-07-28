@@ -387,9 +387,22 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     if (isPlayer) {
       spawn = sp.player;
     } else if (isAlly) {
-      const off = ALLY_OFFSETS_M[allyIdx++ % ALLY_OFFSETS_M.length];
-      const ax = sp.player.pos[0] + _perpX * off;
-      const az = sp.player.pos[2] + _perpZ * off;
+      // content_breadth r1: slope-reject ally cells. A lateral offset can
+      // land on a mesa/cliff wall (terrain normal.y < 0.85) and the tank
+      // renders fused into the rock; walk outward along the perp axis in
+      // 9 m steps until a drivable cell is found (worst case: keep the
+      // original offset rather than stack on the player).
+      const base = ALLY_OFFSETS_M[allyIdx++ % ALLY_OFFSETS_M.length];
+      let ax = sp.player.pos[0] + _perpX * base;
+      let az = sp.player.pos[2] + _perpZ * base;
+      if (world.heightField.getNormalAt) {
+        for (let k = 0; k < 8; k++) {
+          const off = base + Math.sign(base || 1) * k * 9;
+          const cx = sp.player.pos[0] + _perpX * off;
+          const cz = sp.player.pos[2] + _perpZ * off;
+          if (world.heightField.getNormalAt(cx, cz).y >= 0.85) { ax = cx; az = cz; break; }
+        }
+      }
       spawn = { pos: [ax, world.heightField.getHeightAt(ax, az), az], yaw: sp.player.yaw };
     } else {
       spawn = sp.enemies[enemyIdx++];
@@ -824,19 +837,24 @@ export function simStep(game, bus, world, rig, collider) {
   }
   tickRepairs(game, bus, dt);
 
-  // win/lose (plus draw when the 15:00 battle clock runs out)
+  // win/lose (plus draw when the 15:00 battle clock runs out).
+  // killcam_shotinfo r1: the player's death no longer hard-ends the battle —
+  // WoT-style, the team fights on (main.js plays the death replay at the
+  // moment of death and drops into the wreck-orbit spectate cam). DEFEAT is
+  // a TEAM verdict: player dead AND no allies left standing.
   if (game.result === null && game.player) {
-    if (game.player.combat.destroyed) game.result = 'defeat';
-    else {
-      let enemiesLeft = 0;
-      for (const ent of game.tanks) {
-        // SYMMETRIC TEAMS: only ENEMY-team survivors block victory (allied
-        // survivors are the point of having allies).
-        if (ent.team === 'enemy' && ent.combat && !ent.combat.destroyed) enemiesLeft++;
-      }
-      if (enemiesLeft === 0) game.result = 'victory';
-      else if (game.timeS >= BATTLE_TIME_LIMIT_S) game.result = 'draw';
+    let enemiesLeft = 0;
+    let alliesLeft = 0;
+    for (const ent of game.tanks) {
+      if (!ent.combat || ent.combat.destroyed) continue;
+      // SYMMETRIC TEAMS: only ENEMY-team survivors block victory (allied
+      // survivors are the point of having allies).
+      if (ent.team === 'enemy') enemiesLeft++;
+      else if (!game.player || ent.id !== game.player.id) alliesLeft++;
     }
+    if (enemiesLeft === 0) game.result = 'victory';
+    else if (game.player.combat.destroyed && alliesLeft === 0) game.result = 'defeat';
+    else if (game.timeS >= BATTLE_TIME_LIMIT_S) game.result = 'draw';
     // SHOT-INFO ENRICHMENT (additive): announce the decision once so results
     // UIs (src/ui/shotInfo.js session stats) can render without polling.
     if (game.result !== null) {

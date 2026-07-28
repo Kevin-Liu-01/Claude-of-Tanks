@@ -71,7 +71,9 @@ function renderAll(specs) {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   // r5: brighter booth — the old 1.05 exposure / 3.4 key rendered murky,
   // low-contrast card thumbs against the dark carousel plates
-  renderer.toneMappingExposure = 1.16;
+  // (r6: BASE only — a per-thumb exposure lift below normalizes dark camo)
+  const BASE_EXPOSURE = 1.16;
+  renderer.toneMappingExposure = BASE_EXPOSURE;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(24, THUMB_W / THUMB_H, 0.1, 200);
@@ -122,12 +124,16 @@ function renderAll(specs) {
     const rowX0 = new Int32Array(THUMB_H).fill(THUMB_W);
     const rowX1 = new Int32Array(THUMB_H).fill(-1);
     let maxRow = 0;
+    let lumSum = 0, lumN = 0; // r6: silhouette mean luminance (exposure lift)
     for (let y = 0; y < THUMB_H; y++) {
       for (let x = 0; x < THUMB_W; x++) {
-        if (d[(y * THUMB_W + x) * 4 + 3] > 12) {
+        const o = (y * THUMB_W + x) * 4;
+        if (d[o + 3] > 12) {
           rowCount[y]++;
           if (x < rowX0[y]) rowX0[y] = x;
           if (x > rowX1[y]) rowX1[y] = x;
+          lumSum += 0.2126 * d[o] + 0.7152 * d[o + 1] + 0.0722 * d[o + 2];
+          lumN++;
         }
       }
       if (rowCount[y] > maxRow) maxRow = rowCount[y];
@@ -142,7 +148,11 @@ function renderAll(specs) {
       if (rowX0[y] < x0) x0 = rowX0[y];
       if (rowX1[y] > x1) x1 = rowX1[y];
     }
-    return x1 < 0 ? null : { x0, y0, x1, y1, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+    if (x1 < 0) return null;
+    return {
+      x0, y0, x1, y1, w: x1 - x0 + 1, h: y1 - y0 + 1,
+      meanLuma: lumN ? lumSum / (255 * lumN) : 0,
+    };
   }
   for (const spec of specs) {
     let visual = null;
@@ -194,7 +204,23 @@ function renderAll(specs) {
         frame();
         if (Math.abs(1 - k) < 0.04 && Math.abs(dxPx) < 4 && Math.abs(dyPx) < 4) break;
       }
+      // r6 EXPOSURE NORMALIZATION: dark camo schemes (T-90M Proryv, T-80U,
+      // Leclerc, BMP-2) rendered as near-black olive smudges on the dark
+      // carousel cards while the Abrams read fine. Lift the tone-map
+      // exposure until the silhouette's mean luminance reaches a common
+      // floor — every thumb separates from its card at 1080p. Two passes
+      // because ACES responds sub-linearly to exposure.
+      const TARGET_LUMA = 0.30;
+      for (let ep = 0; ep < 2; ep++) {
+        const bb = measureAlphaBox();
+        if (!bb || bb.meanLuma <= 0.02 || bb.meanLuma >= TARGET_LUMA * 0.97) break;
+        renderer.toneMappingExposure = Math.min(BASE_EXPOSURE * 2.1,
+          renderer.toneMappingExposure * Math.min(1.65, TARGET_LUMA / bb.meanLuma));
+        if (renderer.toneMappingExposure >= BASE_EXPOSURE * 2.1) { frame(); break; }
+        frame();
+      }
       cache.set(spec.id, renderer.domElement.toDataURL('image/png'));
+      renderer.toneMappingExposure = BASE_EXPOSURE; // reset for the next card
     } catch (e) {
       /* keep the baked icon for this vehicle */
     }

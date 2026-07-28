@@ -17,7 +17,8 @@
 
 import { Vector3 } from 'three';
 import { computeDispersionRadM } from '../sim/movement.js';
-import { aimElevationRad } from '../sim/ballistics.js';
+// controls_gunnery r6: aimElevationRad import removed — tryFire (state.js)
+// owns the ballistic solution; see the aim-point comment in aimAndFire().
 import { tankPoseFromState, queryAimArmor } from '../sim/armor.js';
 import { estimatePenRatio } from '../sim/damage.js';
 
@@ -92,9 +93,10 @@ const PLAYER_THREAT_DIST_MULT = 0.35; // player counts as 35% of its true d² wh
 // LOS tick — measured live: 3 player hits, underFire pointing at an allied
 // Leo 2A7 on every snapshot, zero shells returned at the player across 90 s.
 // A PLAYER shooter now also claims a dedicated sticky slot with a longer
-// window; it bypasses the spotting gate exactly like underFire (muzzle flash
-// + tracer are intel) — a firing player at 400 m is otherwise unspottable by
-// 350-380 m-view WW2 bots and could farm whole teams for free.
+// window (muzzle flash + tracer are intel). camo_spotting r2: the slot no
+// longer bypasses the spotting gate — the firing-player reveal itself now
+// lives in the sim (spotting.js muzzle-flash branch resolves it through the
+// camo formula); the slot keeps the position intel + priority sticky.
 const PLAYER_AGGRO_WINDOW_S = 25;
 // PLAYER MUZZLE-FLASH INTEL (controls_gunnery r5): r4's playerAggro only
 // armed on a LANDED player hit (shell:hit) — a player sniping from outside
@@ -188,12 +190,17 @@ export function createAI(entity, opts = {}) {
   // SPOTTING WIRING: optional concealment gate (absent in headless fixtures)
   const spotting = deps.spotting && typeof deps.spotting.isSpotted === 'function'
     ? deps.spotting : null;
-  // Being hit is intel (tracer + muzzle flash): a shooter that just landed a
-  // shell on us/a nearby teammate bypasses the spotting gate for the reaction
-  // window. losClear still demands a personal ray before firing.
-  const isVisibleToTeam = (e) => !spotting || spotting.isSpotted(e.id, entity) ||
-    (e === underFire && nowS < underFireUntilS) ||
-    (e === playerAggro && nowS < playerAggroUntilS);
+  // camo_spotting r2: the under-fire/muzzle-intel windows NO LONGER bypass
+  // the concealment formula. Fire reveal now resolves INSIDE the spotting sim
+  // (spotting.js: notifyFired pulls the shooter's next check in, and the
+  // muzzle-flash branch of canSpot reveals a bloom-hot shooter with no real
+  // foliage cover even beyond the camo-formula spot range) — so a revealed
+  // shooter arrives through isSpotted like any other contact, while a deep
+  // double-bush ambusher the formula still hides STAYS hidden (WoT
+  // bush-sniper play). The underFire/playerAggro slots keep only their
+  // POSITIONAL roles: lastSeen chase intel, target priority, and the
+  // engage-envelope extension.
+  const isVisibleToTeam = (e) => !spotting || spotting.isSpotted(e.id, entity);
 
   // Ensure the shared input record exists (integration normally creates it).
   if (!entity.input) {
@@ -366,7 +373,11 @@ export function createAI(entity, opts = {}) {
           ? underFire : null;
     if (aggro && aggro !== target) {
       const up = aggro.state.pos;
-      if (hasLos(ex, ey, ez, up.x, eyeY(aggro), up.z)) {
+      // camo_spotting r2: the aggro slot only takes the target slot when the
+      // spotting sim actually shows the shooter (fire reveal now resolves
+      // through the formula there) — a raw geometric ray alone must never
+      // acquire a concealment-hidden ambusher.
+      if (isVisibleToTeam(aggro) && hasLos(ex, ey, ez, up.x, eyeY(aggro), up.z)) {
         target = aggro;
         losClear = true;
         acquiredAtS = timeS;
@@ -844,9 +855,14 @@ export function createAI(entity, opts = {}) {
       _vD.set(_vC.x + tvx * t, _vC.y, _vC.z + tvz * t);
     }
 
-    // Gravity compensation: raise the aim point by the ballistic elevation.
-    const elev = aimElevationRad(dist, shell.velocityMps);
-    _vD.y += Math.tan(elev) * dist;
+    // controls_gunnery r6: NO gravity compensation here — tryFire (state.js)
+    // already auto-elevates every shell for the aim-point distance (WoT-style
+    // server elevation). Raising the aim point by tan(elev)·dist on top of
+    // that DOUBLE-compensated: every settled bot shell flew ~tan(elev)·dist
+    // HIGH at the target (a 750 m/s WW2 gun at 300 m = +1.7 m — clean over
+    // the turret), which is exactly the "bots fired 20-27 shells and landed
+    // zero" streaky-pressure failure. The aim point is the intended IMPACT
+    // point; state.js owns the ballistic solution.
 
     // Difficulty aim error (persistent, resampled periodically).
     _vD.x += px * errYawRad * dist;
@@ -991,8 +1007,17 @@ export function createAI(entity, opts = {}) {
     }
 
     // Gun pinned at a limit while wanting to shoot → schedule a reverse nudge.
+    // Casemate YAW pins are excluded: movement.js's §7 auto hull-traverse is
+    // already swinging the hull onto the target, and a reverse pulse during
+    // that rotation would just wander the bot. The nudge answers PITCH pins
+    // (gun depression over a crest), so it requires the aim azimuth to be
+    // essentially on the gun already.
     const st = entity.state;
-    if (mode === 'engage' && target && losClear && st.atGunLimit) {
+    const aimP = entity.input.aimPoint;
+    const yawPinned = st.atGunLimit && aimP &&
+      Math.abs(wrapAngle(
+        Math.atan2(aimP.x - st.pos.x, aimP.z - st.pos.z) - st.yaw - st.turretYaw)) > 0.02;
+    if (mode === 'engage' && target && losClear && st.atGunLimit && !yawPinned) {
       gunLimitT += dt;
       if (gunLimitT > GUN_LIMIT_NUDGE_S && timeS >= nudgeUntilS) {
         nudgeUntilS = timeS + 1.2;
@@ -1224,8 +1249,11 @@ export function createAI(entity, opts = {}) {
    * PLAYER MUZZLE-FLASH INTEL (controls_gunnery r5): the player FIRED within
    * earshot (state.js fans this out to enemies within 420 m on every player
    * shell:fired). Muzzle flash + tracer reveal the shooter — the player
-   * claims the sticky attacker-of-record slot (bypassing the spotting gate
-   * via isVisibleToTeam) and idle bots commit to the contact immediately.
+   * claims the sticky attacker-of-record slot and idle bots commit to the
+   * contact immediately. camo_spotting r2: actual VISIBILITY of the shooter
+   * resolves through the spotting sim (notifyFired forces a bloom-hot check;
+   * canSpot's flash branch covers beyond-view-range open-ground shots), so
+   * this slot carries position intel and priority, never gate immunity.
    * Unlike notifyUnderFire this never steals an ENGAGED bot's living target
    * outright — acquireTarget's aggro path (clear personal ray) and the
    * threat-weighted re-rank handle that on the next LOS tick.

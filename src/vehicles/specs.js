@@ -866,7 +866,7 @@ const COMMUNITY_SPECS = {
     pivotStyle: 'neutral',
     // fixed gun (casemate): the sim's virtual turret slews fast — the S-tank
     // aims with the hull, so the "turret" is really the fire-control solution.
-    turretTraverseDegS: 34, gunPitchDegS: 24, gunElevationDeg: 12, gunDepressionDeg: 6,
+    turretTraverseDegS: 34, gunPitchDegS: 24, gunElevationDeg: 12, gunDepressionDeg: 6, gunArcDeg: 4,
     gun: {
       caliberMm: 105, reloadS: 4.0, baseAccuracy: 0.30, aimTimeS: 1.9,
       bloom: BLOOM_MODERN,
@@ -1307,7 +1307,7 @@ const COMMUNITY_SPECS = {
     terrainResistance: { hard: 1.2, medium: 1.4, soft: 2.5 },
     pivotStyle: 'neutral',
     // fixed casemate gun: the sim's virtual turret models the traverse arc
-    turretTraverseDegS: 22, gunPitchDegS: 12, gunElevationDeg: 14, gunDepressionDeg: 7,
+    turretTraverseDegS: 22, gunPitchDegS: 12, gunElevationDeg: 14, gunDepressionDeg: 7, gunArcDeg: 10,
     gun: {
       caliberMm: 128, reloadS: 11.0, baseAccuracy: 0.35, aimTimeS: 2.6,
       bloom: BLOOM_WW2,
@@ -1349,7 +1349,7 @@ const COMMUNITY_SPECS = {
     hullTraverseDegS: 14,
     terrainResistance: { hard: 1.3, medium: 1.5, soft: 2.7 },
     pivotStyle: 'neutral',
-    turretTraverseDegS: 18, gunPitchDegS: 10, gunElevationDeg: 14, gunDepressionDeg: 6,
+    turretTraverseDegS: 18, gunPitchDegS: 10, gunElevationDeg: 14, gunDepressionDeg: 6, gunArcDeg: 10,
     gun: {
       caliberMm: 170, reloadS: 18.0, baseAccuracy: 0.42, aimTimeS: 3.2,
       bloom: BLOOM_WW2,
@@ -1385,7 +1385,7 @@ const COMMUNITY_SPECS = {
     hullTraverseDegS: 22,
     terrainResistance: { hard: 1.15, medium: 1.35, soft: 2.4 },
     pivotStyle: 'neutral',
-    turretTraverseDegS: 20, gunPitchDegS: 10, gunElevationDeg: 20, gunDepressionDeg: 4,
+    turretTraverseDegS: 20, gunPitchDegS: 10, gunElevationDeg: 20, gunDepressionDeg: 4, gunArcDeg: 10,
     gun: {
       caliberMm: 380, reloadS: 30.0, baseAccuracy: 0.55, aimTimeS: 3.6,
       bloom: BLOOM_WW2,
@@ -1420,7 +1420,7 @@ const COMMUNITY_SPECS = {
     hullTraverseDegS: 12,
     terrainResistance: { hard: 1.35, medium: 1.55, soft: 2.8 },
     pivotStyle: 'neutral',
-    turretTraverseDegS: 20, gunPitchDegS: 10, gunElevationDeg: 12, gunDepressionDeg: 5,
+    turretTraverseDegS: 20, gunPitchDegS: 10, gunElevationDeg: 12, gunDepressionDeg: 5, gunArcDeg: 10,
     gun: {
       caliberMm: 105, reloadS: 9.0, baseAccuracy: 0.36, aimTimeS: 2.8,
       bloom: BLOOM_WW2,
@@ -1457,7 +1457,7 @@ const COMMUNITY_SPECS = {
     pivotStyle: 'neutral',
     // fused print model: the cast turret ships welded to the hull, so the
     // T30 plays as a fixed-gun assault TD (same class rule as the casemates)
-    turretTraverseDegS: 18, gunPitchDegS: 10, gunElevationDeg: 15, gunDepressionDeg: 6,
+    turretTraverseDegS: 18, gunPitchDegS: 10, gunElevationDeg: 15, gunDepressionDeg: 6, gunArcDeg: 11,
     gun: {
       caliberMm: 155, reloadS: 16.0, baseAccuracy: 0.42, aimTimeS: 3.0,
       bloom: BLOOM_WW2,
@@ -1604,7 +1604,7 @@ const COMMUNITY_SPECS = {
     hullTraverseDegS: 24,
     terrainResistance: { hard: 1.1, medium: 1.3, soft: 2.3 },
     pivotStyle: 'pivot',
-    turretTraverseDegS: 24, gunPitchDegS: 14, gunElevationDeg: 20, gunDepressionDeg: 5,
+    turretTraverseDegS: 24, gunPitchDegS: 14, gunElevationDeg: 20, gunDepressionDeg: 5, gunArcDeg: 11,
     gun: {
       caliberMm: 85, reloadS: 5.5, baseAccuracy: 0.40, aimTimeS: 2.4,
       bloom: BLOOM_WW2,
@@ -1772,9 +1772,14 @@ Object.assign(MODEL_SOURCE, {
     source: 'glb',
     // named hull/turret/tracks/wheels groups; gun fused into the turret mesh
     // (yaw articulates, pitch stays virtual). Authored ring-center origin.
+    // tank_models r1: paintUntextured + stripBakedTextures — the baked
+    // rust-orange/carnival albedo and silver grille moiré read as a different
+    // game next to the repainted fleet ("two material worlds" critique).
+    // Baked normal maps are kept; tracks/wheels nodes take the gear split.
     glb: {
       path: '/models/tanks/community/kv2-full-comrade1280.glb',
       turretNode: '^turret$', autoPivot: true,
+      paintUntextured: true, stripBakedTextures: true,
     },
   },
   tiger2: {

@@ -113,8 +113,15 @@ const GTAO_BLEND_INTENSITY = 1.0;
 // Splitting the difference between r4 (monochrome by 400 m) and r5 (no
 // atmosphere at all): 500 m treelines now shift clearly toward the sky tint
 // (~18% desat + ~15% scatter-in) while 200 m foliage keeps full color.
-const AERIAL_DENSITY = 0.00125; // 1/m; f = 1-exp(-(d*k)^2)
-const AERIAL_DESAT = 0.55; // max saturation loss at full distance
+// r6 AGAIN ("aerial perspective is weak: distant treelines and hills retain
+// near-full green saturation; horizon haze abruptly desaturates the junction
+// instead of graduating with distance"): 0.00125 → 0.00145 and desat 0.55 →
+// 0.62. Measured on the curve: a 500 m treeline now loses ~25% saturation
+// (was ~15%) and picks up ~19% sky-tinted scatter-in (was ~12%) — clearly
+// atmospheric, while 200 m foliage stays under 6% shift (no monochrome-by-
+// 400m regression: full desat now lands at 1.3 km+, not 400 m).
+const AERIAL_DENSITY = 0.00145; // 1/m; f = 1-exp(-(d*k)^2)
+const AERIAL_DESAT = 0.62; // max saturation loss at full distance
 const AERIAL_COOL = [0.90, 0.97, 1.08]; // cool shift multiplier at full distance
 // Scatter-in term (r4), retuned r5: 0.0009 → 0.00058 — at 0.0009 the horizon
 // mountain ring (r 760-1220 m) was 50-80% swallowed by a single neutral haze
@@ -126,7 +133,8 @@ const AERIAL_COOL = [0.90, 0.97, 1.08]; // cool shift multiplier at full distanc
 // saturation ("weak aerial perspective"); at 0.00078 the scatter-in reads
 // ~14% @500 m, ~33% @900 m, ~55% @1.3 km, and the directional warm/cool tint
 // keeps the far field atmospheric instead of gray.
-const AERIAL_HAZE_DENSITY = 0.00078; // 1/m, slower second curve for scatter-in
+// r6: 0.00078 → 0.00092 (see AERIAL_DENSITY note — same critique round).
+const AERIAL_HAZE_DENSITY = 0.00092; // 1/m, slower second curve for scatter-in
 // Directional in-scatter tints, applied to the live fog color (which is
 // sampled from the sky dome): pixels whose view ray points near the sun
 // azimuth scatter WARM, rays away from the sun scatter COOL BLUE — the
@@ -170,9 +178,9 @@ const AERIAL_ZOOM_FLOOR = 0.26; // density multiplier floor at max zoom
 // shimmer while panning, deterministic for captures. Zero effect in arcade
 // cameras (fov >= AERIAL_DETAIL_FOV) and on near geometry (< 220 m).
 const AERIAL_DETAIL_FOV = 20; // deg — detail fades in below this FOV
-const AERIAL_DETAIL_NEAR = 180; // m — never touches gameplay-range geometry
-const AERIAL_DETAIL_FAR = 430; // m — full strength by here
-const AERIAL_DETAIL_AMP = 0.24; // peak luminance modulation (+/-12%)
+const AERIAL_DETAIL_NEAR = 150; // m — never touches gameplay-range geometry (hud_ui r6: was 180)
+const AERIAL_DETAIL_FAR = 380; // m — full strength by here (hud_ui r6: was 430)
+const AERIAL_DETAIL_AMP = 0.30; // peak luminance modulation (+/-15%) (hud_ui r6: was 0.24)
 // r9 PRE-TONEMAP EMISSIVE SHOULDER ("fireball core is fully clipped: flat
 // blown white-yellow disc — the tonemapper has no highlight shoulder on
 // emissives"): the additive fire/flash sprite stacks reach 5-20 in linear
@@ -356,10 +364,18 @@ const AerialShader = {
 // green-dominant highlight. GREEN_WARM softened to a hue nudge, a dedicated
 // ~9% green desaturation term (uGreenDesat) pulls foliage chroma back to the
 // WoT olive band, and global saturation eases 1.10 → 1.06.
-const GRADE_CONTRAST = 1.30;
+// r6 grade-identity push ("tonemapping/color grading is neutral and flat —
+// AAA tank games ship a strong LUT: warm highlights, cooled shadows, punchy
+// contrast, subtle vignette"): contrast 1.30 → 1.36 around the same measured
+// 0.33 pivot, saturation 1.06 → 1.09, vignette 0.24 → 0.26, and the split-
+// tone poles pushed ~20% further apart (below). Paired with renderer.js
+// exposure 1.16 → 1.20 so the midtone band holds its WoT-reference level
+// while lit-vs-shadow separation deepens (contrast alone would drag the
+// sub-pivot playfield darker — the r7 failure mode).
+const GRADE_CONTRAST = 1.36;
 const GRADE_PIVOT = 0.33;
-const GRADE_SATURATION = 1.06;
-const GRADE_VIGNETTE = 0.24; // 0.27 stacked with foreground canopy shadow into heavy corners
+const GRADE_SATURATION = 1.09;
+const GRADE_VIGNETTE = 0.26; // 0.27 stacked with foreground canopy shadow into heavy corners
 const GRADE_BLACK_LIFT = 0.012;
 const GRADE_KNEE = 0.86; // display-space luma where the highlight shoulder starts
 // (r9: the linear GRADE_KNEE_SLOPE 0.55 knee was replaced by a rational
@@ -371,8 +387,8 @@ const GRADE_BALANCE = [1.02, 1.0, 0.975];
 const GRADE_GREEN_WARM = [1.03, 1.0, 0.96];
 const GRADE_GREEN_DESAT = 0.09; // chroma pull-back on green-dominant pixels
 // Split-tone poles (multiplied in by shadow/highlight membership).
-const GRADE_SHADOW_TINT = [0.950, 0.990, 1.070]; // cool blue-grey shadows
-const GRADE_HIGH_TINT = [1.060, 1.008, 0.945]; // warm sun-kissed highlights
+const GRADE_SHADOW_TINT = [0.936, 0.986, 1.084]; // cool blue-grey shadows
+const GRADE_HIGH_TINT = [1.074, 1.010, 0.930]; // warm sun-kissed highlights
 
 // SNIPER SCOPE TREATMENT (r8 — "sniper view has no scope treatment at all: no
 // vignette, no edge blur, it is the raw frame with HUD lines"). Applied in
@@ -388,22 +404,22 @@ const GRADE_HIGH_TINT = [1.060, 1.008, 0.945]; // warm sun-kissed highlights
 // burning wreck on the frame edge. Blur now only touches the outer ~10% of
 // the sight picture at half the radius, and the tube vignette starts past
 // the mid-field so situational awareness while scoped matches WoT.
-// gameplay_feel r5: the r4 tube vignette (0.15 max out at r=1.6) left the
-// scope reading as a plain zoomed FOV — movement-physics.md §9.2 calls for a
-// "full-screen black vignette ring (scope shadow)". The sight picture now
-// eases to ×0.85 by the shadow lip and cuts to opaque black outside a
-// 0.92-radius circle with a 0.06 feather (WoT scope shadow). The circle
-// touches the top/bottom frame edges (scopeR is aspect-corrected), so the
-// far left/right thirds carry the black ring while the sight circle stays
-// full-height — HUD overlays (reticle, plates, minimap) are DOM and unaffected.
-const SCOPE_VIGNETTE_START = 0.55; // radius where the inner falloff begins
-const SCOPE_VIGNETTE_END = 0.92; // shadow lip: inner falloff reaches max here
-const SCOPE_VIGNETTE_MAX = 0.15; // picture is ×0.85 at the shadow lip
-const SCOPE_SHADOW_R = 0.92; // scope-shadow circle radius (1 = frame half-height ×2)
-const SCOPE_SHADOW_FEATHER = 0.06; // soft edge width of the black ring
-const SCOPE_BLUR_START = 0.90; // radius where the radial blur fades in
-const SCOPE_BLUR_RAMP = 0.28; // blur reaches full strength at START+RAMP
-const SCOPE_BLUR_STEP = 0.0055; // UV step of the 4-tap radial blur at full blur
+// hud_ui r6 (MAJOR): the r5 opaque scope-shadow circle blacked out ~40-45%
+// of the 1920x1080 frame — PC WoT sniper mode is FULL-SCREEN with only a
+// subtle corner vignette (the hard tube mask is budget-WT scope-shadow
+// grammar, and it left the team panels/minimap floating in a void). The
+// black cut is gone: the treatment is now a gentle inner falloff plus a
+// ~13% CORNER-ONLY darkening (scopeR ~2.0 at the frame corners), with the
+// radial optics blur pushed out so it only kisses the frame edges.
+const SCOPE_VIGNETTE_START = 0.62; // radius where the inner falloff begins
+const SCOPE_VIGNETTE_END = 1.05; // inner falloff reaches max at the frame edge
+const SCOPE_VIGNETTE_MAX = 0.10; // picture is ×0.90 by the frame edge band
+const SCOPE_CORNER_START = 1.12; // corner shade begins past the edge midpoints
+const SCOPE_CORNER_END = 2.02; // ~frame corner (aspect-corrected radius)
+const SCOPE_CORNER_MAX = 0.13; // extra ×0.87 in the extreme corners only
+const SCOPE_BLUR_START = 1.02; // radial blur only past the frame-edge band
+const SCOPE_BLUR_RAMP = 0.55; // blur reaches full strength at START+RAMP
+const SCOPE_BLUR_STEP = 0.0048; // UV step of the 4-tap radial blur at full blur
 
 const GradeShader = {
   name: 'GradeShader',
@@ -489,9 +505,17 @@ const GradeShader = {
       float gLuma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
       col = mix( col, vec3( gLuma ), ${GRADE_GREEN_DESAT.toFixed(3)} * greenDom );
       // black anchor + linear contrast around the scene's measured midtone
-      // band (uPivot ~0.33, NOT display 0.5 — see the r7 note above)
+      // band (uPivot ~0.33, NOT display 0.5 — see the r7 note above).
+      // r6 HIGH-LUMA TAPER: the above-pivot expansion is what shoved snow
+      // fields, desert sand and the horizon haze band toward clipped white
+      // when contrast rose to 1.36 (a 0.80-luma snow pixel stretched to
+      // 0.97). The contrast gain now eases back to 1.0 across 0.60-0.95
+      // luma, so the S-curve buys its lit-vs-shadow punch in the playfield
+      // band while brights keep their measured level and texture.
       col = max( col - vec3( uBlack ), vec3( 0.0 ) );
-      col = clamp( mix( vec3( ${GRADE_PIVOT.toFixed(3)} ), col, uContrast ), 0.0, 1.0 );
+      float cLuma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
+      float cGain = uContrast - ( uContrast - 1.0 ) * smoothstep( 0.60, 0.95, cLuma );
+      col = clamp( mix( vec3( ${GRADE_PIVOT.toFixed(3)} ), col, cGain ), 0.0, 1.0 );
       // split-tone: cool shadows / warm highlights, keyed on luminance
       float luma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
       vec3 split = mix( uShadowTint, uHighTint, smoothstep( 0.12, 0.72, luma ) );
@@ -513,13 +537,14 @@ const GradeShader = {
       // vignette (radial, corners only)
       vec2 q = vUv - 0.5;
       col *= 1.0 - uVignette * smoothstep( 0.3, 0.72, dot( q, q ) * 2.0 );
-      // sniper scope shadow (movement-physics.md §9.2): gentle inner optics
-      // falloff to the shadow lip, then opaque black outside the sight circle
+      // sniper optics (hud_ui r6): FULL-SCREEN sight picture — a gentle
+      // inner falloff toward the frame edge plus a corner-only shade. No
+      // opaque scope-tube cut (WoT sniper never masks the frame).
       if ( uScope > 0.001 ) {
         col *= 1.0 - uScope * ${SCOPE_VIGNETTE_MAX.toFixed(3)}
           * smoothstep( ${SCOPE_VIGNETTE_START.toFixed(3)}, ${SCOPE_VIGNETTE_END.toFixed(3)}, scopeR );
-        col *= 1.0 - uScope * smoothstep( ${SCOPE_SHADOW_R.toFixed(3)},
-          ${(SCOPE_SHADOW_R + SCOPE_SHADOW_FEATHER).toFixed(3)}, scopeR );
+        col *= 1.0 - uScope * ${SCOPE_CORNER_MAX.toFixed(3)}
+          * smoothstep( ${SCOPE_CORNER_START.toFixed(3)}, ${SCOPE_CORNER_END.toFixed(3)}, scopeR );
       }
       gl_FragColor = vec4( col, texel.a );
     }`,

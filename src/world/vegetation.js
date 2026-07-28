@@ -230,9 +230,14 @@ function makePalmFrondTexture(rng, tone = null) {
       const dry = t > 0.78 ? (t - 0.78) * 3.6 : 0;
       const droop = 18 + t * 26;
       for (const side of [-1, 1]) {
-        for (let l = 0; l < 3; l++) { // overlapping leaflets per station
-          const lw = 5.5 - t * 2.4 - l * 0.8;
-          if (lw <= 0.8) continue;
+        for (let l = 0; l < 4; l++) { // overlapping leaflets per station
+          // r9: thicker, one extra leaflet per station — the frond silhouette
+          // must stay a CONTIGUOUS feather through minification; the old thin
+          // strokes mip-averaged below the alpha test by ~150 m and whole
+          // crowns degenerated into sparse scribble stars (critique: "jagged
+          // green starburst scribbles")
+          const lw = 7.2 - t * 2.6 - l * 0.9;
+          if (lw <= 1.0) continue;
           const jit = (rng() - 0.5) * 7;
           // r6: sat 0.40 -> 0.30, hue pulled toward olive — the frond sheet
           // itself fed the lime-plastic read, not just the vertex tint
@@ -272,10 +277,39 @@ function makeTwigTexture(rng, tone = null) {
   const ctx = c.getContext('2d');
   ctx.clearRect(0, 0, s, s);
   ctx.lineCap = 'round';
+  // r9: soft twig-HAZE underlay first — real winter birch crowns read as a
+  // purple-brown gauze of thousands of sub-pixel twigs, not as separable
+  // black scribbles on the sky. Translucent blobs + a dense pass of fine
+  // strokes give the card body; the branch skeleton draws on top.
+  for (let b = 0; b < 18; b++) {
+    const x = s / 2 + (rng() - 0.5) * 130, y = s / 2 + (rng() - 0.5) * 130;
+    const r = 16 + rng() * 30;
+    const gr = ctx.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, 'rgba(88,84,86,0.22)'); // cool grey — brown read autumnal
+    gr.addColorStop(1, 'rgba(88,84,86,0)');
+    ctx.fillStyle = gr;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  }
+  for (let f = 0; f < 150; f++) { // fine-twig strokes: the haze texture
+    const x = s / 2 + (rng() - 0.5) * 150, y = s / 2 + (rng() - 0.5) * 150;
+    const a = rng() * Math.PI * 2, len = 8 + rng() * 16;
+    ctx.strokeStyle = css(0.045 + rng() * 0.03, 0.05 + rng() * 0.05, 0.26 + rng() * 0.16);
+    ctx.lineWidth = 0.8 + rng() * 0.9;
+    ctx.globalAlpha = 0.55 + rng() * 0.35;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(x + Math.cos(a) * len * 0.5 + (rng() - 0.5) * 5,
+      y + Math.sin(a) * len * 0.5 - rng() * 4, x + Math.cos(a) * len, y + Math.sin(a) * len - len * 0.2);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
   function branch(x, y, a, len, w, depth) {
     if (depth <= 0 || len < 5) return;
     const nx = x + Math.cos(a) * len, ny = y + Math.sin(a) * len;
-    ctx.strokeStyle = css(0.06 + rng() * 0.02, 0.14, 0.14 + rng() * 0.10);
+    // r9: lifted from near-black (0.14-0.24 -> 0.22-0.34) — pure-dark strokes
+    // against snow albedo read as glitch scribbles at any distance; sat cut
+    // toward grey so the crown reads winter-purple-grey, not autumn brown
+    ctx.strokeStyle = css(0.05 + rng() * 0.02, 0.08, 0.22 + rng() * 0.12);
     ctx.lineWidth = w;
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(nx, ny); ctx.stroke();
     const forks = 2 + ((rng() * 2) | 0);
@@ -283,11 +317,11 @@ function makeTwigTexture(rng, tone = null) {
       branch(nx, ny, a + (rng() - 0.5) * 1.5, len * (0.55 + rng() * 0.25), w * 0.62, depth - 1);
     }
   }
-  for (let b = 0; b < 7; b++) {
+  for (let b = 0; b < 9; b++) {
     const a = rng() * Math.PI * 2;
-    branch(s / 2 + (rng() - 0.5) * 60, s / 2 + (rng() - 0.5) * 60, a, 26 + rng() * 22, 2.6, 4);
+    branch(s / 2 + (rng() - 0.5) * 60, s / 2 + (rng() - 0.5) * 60, a, 26 + rng() * 22, 2.4, 4);
   }
-  return finishAlphaTexture(c, ctx, 58, 52, 48, true, tone);
+  return finishAlphaTexture(c, ctx, 82, 72, 66, true, tone);
 }
 
 // ---------------------------------------------------------------------------
@@ -586,7 +620,9 @@ function buildPalmGeometry(rng, pal = {}) {
   }
 
   const cardParts = [];
-  const n = 11 + ((rng() * 4) | 0);
+  // r9: 13-17 fronds (was 11-14) — the crown must read as one massed canopy
+  // dome at mid distance, not separable spikes
+  const n = 13 + ((rng() * 5) | 0);
   for (let k = 0; k < n; k++) {
     const a = (k / n) * Math.PI * 2 + rng() * 0.45;
     // alternate steep/shallow launch angles => layered dome-shaped crown
@@ -597,7 +633,8 @@ function buildPalmGeometry(rng, pal = {}) {
     const shade = 0.7 + (steep ? 0.3 : 0.12) + rng() * 0.1;
     // r6: blade width 1.9 -> 1.4 m — the fat planes read as banana leaves up
     // close AND cast solid strap shadows (the star-blob shadow tell)
-    cardParts.push(frond(a, phi0, phiTip, len, 1.4, shade, false));
+    // r9: 1.4 -> 1.55 with the denser frond texture — coverage, not strap
+    cardParts.push(frond(a, phi0, phiTip, len, 1.55, shade, false));
   }
   // r6: 4-5 hanging dead fronds — a proper dry skirt under the crown pulls
   // the palette toward khaki and breaks the all-green crown ball
@@ -633,30 +670,34 @@ function buildBirchGeometry(rng) {
     trunk.setAttribute('aFlex', new THREE.BufferAttribute(fl, 1));
     trunkParts.push(trunk);
   }
-  const nBr = 9 + ((rng() * 4) | 0); // r5: doubled — "white pole with 3 twigs" tell
+  const nBr = 12 + ((rng() * 5) | 0); // r5: doubled — "white pole with 3 twigs" tell
   for (let b = 0; b < nBr; b++) {
-    const len = 1.2 + rng() * 1.7;
+    // r9: shorter, paler branches that stay INSIDE the twig-card cloud — the
+    // long dark 3 m limbs poked past the crown as black antenna spikes
+    const len = 0.9 + rng() * 1.2;
     const br = new THREE.CylinderGeometry(0.015, 0.045, len, 4, 1);
     br.translate(0, len / 2, 0);
     br.rotateZ(0.35 + rng() * 0.55); // reach upward
     br.rotateY(rng() * Math.PI * 2);
-    br.translate(0, H * (0.45 + rng() * 0.47), 0);
-    _c.setHSL(0.07, 0.10, 0.22 + rng() * 0.08, THREE.SRGBColorSpace);
+    br.translate(0, H * (0.45 + rng() * 0.42), 0);
+    _c.setHSL(0.06, 0.07, 0.30 + rng() * 0.08, THREE.SRGBColorSpace);
     trunkParts.push(paintFlat(br, _c.clone(), 0.3));
   }
-  // twig cards forming the bare crown silhouette (r5: ~2x density so the
-  // crown reads as a branch haze, not a pole with stickers)
+  // twig cards forming the bare crown silhouette. r9: ~1.7x density AND
+  // bigger cards on a wider crown — the r5 count still resolved as a white
+  // pole with a few dark stickers in the winter establishing shot; the crown
+  // must read as one continuous twig-haze volume
   const cardParts = [];
-  const cy = H * 0.78;
-  const nc = 17 + ((rng() * 7) | 0);
+  const cy = H * 0.76;
+  const nc = 30 + ((rng() * 9) | 0);
   for (let i = 0; i < nc; i++) {
     let dx = rng() * 2 - 1, dy = rng() * 2 - 1, dz = rng() * 2 - 1;
     const dl = Math.hypot(dx, dy, dz) || 1;
     dx /= dl; dy /= dl; dz /= dl;
     const rad = Math.pow(0.3 + 0.7 * rng(), 0.8);
-    const w = 1.2 + rng() * 0.8;
+    const w = 1.5 + rng() * 1.0;
     _e.set(rng() * Math.PI, rng() * Math.PI * 2, rng() * Math.PI, 'YXZ');
-    cardParts.push(foliageCard(w, w * 0.9, dx * rad * 1.3, cy + dy * rad * H * 0.2, dz * rad * 1.3,
+    cardParts.push(foliageCard(w, w * 0.9, dx * rad * 1.6, cy + dy * rad * H * 0.22, dz * rad * 1.6,
       _e, 0.9 + rng() * 0.3, 0.08, 0.06, 0.45, 0, cy, 0));
   }
   return { trunk: mergeParts(trunkParts), cards: mergeParts(cardParts) };
@@ -814,14 +855,26 @@ function buildPalmFarGeometry(rng, pal = {}) {
     trunkParts.push(paintFlat(seg, _c.clone(), t1 * 0.15));
     px = x1; pz = z1;
   }
-  // crown core: small dome where the frond bases overlap
-  const core = new THREE.IcosahedronGeometry(0.62, 1);
-  jitterRadial(core, rng, 0.2);
-  core.scale(1.2, 0.7, 1.2);
+  // crown core: dome where the frond bases overlap. r9: MUCH bigger (0.62 ->
+  // 1.15 radius, wider squash) — at 300+ m the blades are sub-pixel and the
+  // core is all that survives; a real date-palm crown reads as a ~3 m fluffy
+  // mass, and the tiny r8 core left only a spiky star (the "glitched
+  // scaffolding" establishing-shot read)
+  const core = new THREE.IcosahedronGeometry(1.15, 1);
+  jitterRadial(core, rng, 0.28);
+  core.scale(1.35, 0.62, 1.35);
   sphereNormals(core, 0, 0, 0, 1.2);
   core.translate(px, H + 0.1, pz);
   canopyParts.push(paintCanopy(core, cp.hue ?? 0.232, cp.sat ?? 0.30,
     (cp.l0 ?? 0.21) * 0.85, cp.l1 ?? 0.33, H - 0.5, H + 0.6, rng, 0.25));
+  // dead-frond skirt: a ring of drooping khaki mass under the crown — the
+  // second value the range silhouette needs so it reads palm, not asterisk
+  const skirt = new THREE.IcosahedronGeometry(0.85, 1);
+  jitterRadial(skirt, rng, 0.3);
+  skirt.scale(1.25, 0.45, 1.25);
+  sphereNormals(skirt, 0, 0, 0, 0.7);
+  skirt.translate(px, H - 0.45, pz);
+  canopyParts.push(paintCanopy(skirt, 0.10, 0.20, 0.20, 0.30, H - 0.9, H + 0.1, rng, 0.2));
   // radial arched fronds: bent tapered blades that rise, arc over and droop —
   // the star-of-fronds crown a real palm shows at range (opaque planes; the
   // far canopy material is DoubleSide for exactly this builder)
@@ -835,7 +888,8 @@ function buildPalmFarGeometry(rng, pal = {}) {
     const p = g.attributes.position;
     for (let i = 0; i < p.count; i++) {
       const t = p.getY(i) + 0.5; // 0..1 along the frond
-      const w = (1.0 - t * 0.68) * (0.9 + rng() * 0.15); // taper to the tip
+      // r9: blades widened ~40% — sub-pixel blades were the starburst tell
+      const w = (1.0 - t * 0.62) * (1.28 + rng() * 0.2); // taper to the tip
       let ry = 0, rf = 0;
       const steps = 8, dl = (len * t) / steps;
       for (let sIt = 0; sIt < steps; sIt++) {
@@ -879,14 +933,16 @@ function buildBirchFarGeometry(rng, pal = {}) {
     _c.setHSL(0.08, 0.06, 0.42 + rng() * 0.1, THREE.SRGBColorSpace);
     trunkParts.push(paintFlat(br, _c.clone(), 0.25));
   }
-  for (let b = 0; b < 4 + ((rng() * 2) | 0); b++) {
+  // r9: more lobes, lifted default luminance (0.16/0.26 -> 0.26/0.38) — far
+  // birch crowns minified to near-black ink blots against the snowfield
+  for (let b = 0; b < 5 + ((rng() * 3) | 0); b++) {
     const blob = new THREE.IcosahedronGeometry(0.65 + rng() * 0.45, 1);
     jitterRadial(blob, rng, 0.45);
     blob.scale(0.9, 1.35 + rng() * 0.4, 0.9);
     sphereNormals(blob, 0, 0, 0, 1.0);
-    blob.translate((rng() - 0.5) * 1.9, H * 0.74 + (rng() - 0.4) * 1.6, (rng() - 0.5) * 1.9);
-    canopyParts.push(paintCanopy(blob, cp.hue ?? 0.06, cp.sat ?? 0.08,
-      cp.l0 ?? 0.16, cp.l1 ?? 0.26, H * 0.4, H, rng, 0.35));
+    blob.translate((rng() - 0.5) * 2.1, H * 0.74 + (rng() - 0.4) * 1.7, (rng() - 0.5) * 2.1);
+    canopyParts.push(paintCanopy(blob, cp.hue ?? 0.06, cp.sat ?? 0.07,
+      cp.l0 ?? 0.26, cp.l1 ?? 0.38, H * 0.4, H, rng, 0.35));
   }
   return { trunk: mergeParts(trunkParts), canopy: mergeParts(canopyParts) };
 }
@@ -1893,6 +1949,25 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
 
   const _lastCam = new THREE.Vector3(1e9, 0, 0);
   let _partitionBuilt = false;
+  // hud_ui r6 (MAJOR): while scoped at high zoom, far-LOD billboard trees
+  // inside the AIM CORRIDOR promote to full meshes — the x8 sight picture
+  // magnified the cross-quad impostors on the target ridge into obvious
+  // paper-cutout forests. Radius scales with zoom (capped at the 640 m max
+  // engagement range); the corridor hugs the scope frustum, so the extra
+  // full-detail trees stay in the low hundreds and only exist while scoped.
+  let scopeZoomR = 0; // promotion radius in m (0 = arcade, no promotion)
+  let scopeRepartitionPending = false;
+  function scopePromoted(t, camPos) {
+    if (scopeZoomR <= 0) return false;
+    let fx = uCamFwd.value.x, fz = uCamFwd.value.z;
+    const fl = Math.hypot(fx, fz) || 1;
+    fx /= fl; fz /= fl;
+    const dx = t.x - camPos.x, dz = t.z - camPos.z;
+    const along = dx * fx + dz * fz;
+    if (along < 0 || along > scopeZoomR) return false;
+    // corridor half-width: x8 horizontal half-FOV (~0.107 rad) plus margin
+    return Math.abs(dx * fz - dz * fx) < 24 + along * 0.14;
+  }
   // PERF (performance_budget r5): repartition is now INCREMENTAL. The old
   // full rewrite flagged every near/far instance buffer for re-upload on any
   // camera step that moved one tree across the hysteresis band — with the
@@ -1951,13 +2026,14 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     if (!_partitionBuilt) { rebuildPartitionFull(camPos); return; }
     for (const t of trees) {
       const d = Math.hypot(t.x - camPos.x, t.z - camPos.z);
+      const promo = scopePromoted(t, camPos); // scope corridor mesh promotion
       if (t.near) {
-        if (d > TREE_NEAR_OUT) {
+        if (d > TREE_NEAR_OUT && !promo) {
           t.near = false;
           removeFromGroup(nearMeshes[t.species][t.variant], nearSlots[t.species][t.variant], t, 'slot', true);
           addToGroup(farMeshes[t.species][t.fv], farSlots[t.species][t.fv], t, 'fslot', false);
         }
-      } else if (d < TREE_NEAR_IN) {
+      } else if (d < TREE_NEAR_IN || promo) {
         t.near = true;
         removeFromGroup(farMeshes[t.species][t.fv], farSlots[t.species][t.fv], t, 'fslot', false);
         addToGroup(nearMeshes[t.species][t.variant], nearSlots[t.species][t.variant], t, 'slot', true);
@@ -1974,7 +2050,8 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     }
     for (const t of trees) {
       const d = Math.hypot(t.x - camPos.x, t.z - camPos.z);
-      t.near = d < TREE_NEAR_IN || (t.near && d <= TREE_NEAR_OUT);
+      t.near = d < TREE_NEAR_IN || (t.near && d <= TREE_NEAR_OUT) ||
+        scopePromoted(t, camPos);
       if (t.near) {
         const slots = nearSlots[t.species][t.variant];
         t.slot = slots.length;
@@ -2053,7 +2130,9 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       rebuildCarpet(camPos);
       uploadedThisFrame = true;
     }
-    if (!uploadedThisFrame && _lastCam.distanceToSquared(camPos) > 9) {
+    if (!uploadedThisFrame &&
+        (_lastCam.distanceToSquared(camPos) > 9 || scopeRepartitionPending)) {
+      scopeRepartitionPending = false;
       _lastCam.copy(camPos);
       repartitionTrees(camPos);
     }
@@ -2080,6 +2159,11 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     // 70 m floor keeps the r4 near-field behavior when aiming at a close
     // wall; the 640 m cap covers the max fire range with margin.
     if (aimDistM != null) uScopeDist.value = clamp(Math.max(70, aimDistM - 4), 70, 640);
+    // hud_ui r6: zoom-scaled impostor→mesh promotion radius (aim corridor)
+    const wasR = scopeZoomR;
+    scopeZoomR = (sniperFadeTarget >= 0.5 && fovDeg != null && fovDeg <= 15)
+      ? Math.min(640, TREE_NEAR_IN * clamp(24 / fovDeg, 1, 2.5)) : 0;
+    if (Math.abs(scopeZoomR - wasR) > 1) scopeRepartitionPending = true;
   }
 
   return { group, update, setWindTime, setSniperFade, treeObstacles, concealers, _clusters: clusters };

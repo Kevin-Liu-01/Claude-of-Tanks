@@ -7,6 +7,7 @@ import {
   MAX_BUSH_BONUS, VIEW_RANGE_M, BASE_CAMO,
   OPTICS_VIEW_FACTOR, SIGNAL_RANGE_M, RADIO_DAMAGED_FACTOR,
   SIXTH_SENSE_DELAY_S, SIXTH_SENSE_SHOW_S,
+  MUZZLE_FLASH_BLOOM_MIN, MUZZLE_FLASH_BUSH_MAX,
   viewRangeOf, baseCamoOf, fireBloomAt, spotRangeM, combineCamo,
   bushBonusBetween, checkIntervalS, createSpottingSystem,
   effectiveViewRangeM, signalRangeM,
@@ -294,6 +295,74 @@ console.log('[16] armor doc §9: damaged radio halves intel share range');
   const sysB = mkSys([], [damagedFirst, e3, e2, target()]);
   sysB.forceCheck(1);
   ok(sysB.isSpotted('p1', 'enemy', e2), 'a healthy-radio co-spotter restores team intel');
+}
+
+console.log('[17] muzzle-flash reveal resolves fire intel THROUGH the formula');
+{
+  // m4a3e8 (still camo 0.24) at 400 m from a tiger1 spotter (vr 370):
+  // cold: spotRange 293 < 400 -> hidden. Firing bloom-strips own camo to
+  // 0.0432 -> spotRange 356.2, STILL < 400 — the formula alone never reveals
+  // this shooter, which is exactly where the old ai.js hard bypass lived.
+  // The flash branch now reveals it (open ground, bloom hot, LOS clear).
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  const shooter = tank('p1', 'player', 0, 400);
+  const open = mkSys([], [spotter, shooter]);
+  open.forceCheck(1);
+  ok(!open.isSpotted('p1', 'enemy'), 'open @400 m, cold gun: hidden (beyond formula range)');
+  open.notifyFired('p1', 2);
+  open.forceCheck(2.05);
+  ok(open.isSpotted('p1', 'enemy'), 'open @400 m, firing: muzzle flash reveals');
+
+  // Deep bush ambush: a bush 40 m up the line (> 15 m rule radius) keeps
+  // concealing while the bloom is hot — the ambush SURVIVES its own shot.
+  const spotter2 = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  const ambusher = tank('p1', 'player', 0, 400);
+  const bush = mkSys([{ x: 0, z: 360, r: 3, add: 0.35 }], [spotter2, ambusher]);
+  bush.notifyFired('p1', 2);
+  bush.forceCheck(2.05);
+  ok(!bush.isSpotted('p1', 'enemy'), 'bush ambush @400 m survives its own shot');
+
+  // The flash respects hard cover and the 445 m clamp.
+  const spotter3 = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  const walled = mkSys([], [spotter3, tank('p1', 'player', 0, 400)],
+    { raycast: () => ({ dist: 100 }) });
+  walled.notifyFired('p1', 2);
+  walled.forceCheck(2.05);
+  ok(!walled.isSpotted('p1', 'enemy'), 'flash reveal still blocked by hard cover');
+  const spotter4 = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  const far = mkSys([], [spotter4, tank('p1', 'player', 0, MAX_SPOT_RANGE_M + 30)]);
+  far.notifyFired('p1', 2);
+  far.forceCheck(2.05);
+  ok(!far.isSpotted('p1', 'enemy'), 'flash reveal never crosses MAX_SPOT_RANGE_M');
+
+  // The flash window is short: a first check AFTER the bloom cooled past
+  // MUZZLE_FLASH_BLOOM_MIN (~1.4 s) no longer benefits from the flash.
+  ok(fireBloomAt(0, 1.3) >= MUZZLE_FLASH_BLOOM_MIN &&
+     fireBloomAt(0, 2.5) < MUZZLE_FLASH_BLOOM_MIN, 'flash window ~1.4 s');
+  const spotter5 = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  const cold = mkSys([], [spotter5, tank('p1', 'player', 0, 400)]);
+  cold.notifyFired('p1', 2);
+  cold.forceCheck(4.6); // bloom 0.22 — still bloom-hot camo-wise, flash gone
+  ok(!cold.isSpotted('p1', 'enemy'), 'flash expired: shooter back to formula-hidden');
+  ok(MUZZLE_FLASH_BUSH_MAX > 0.1 && MUZZLE_FLASH_BUSH_MAX <= 0.35,
+    'bush-protection threshold sits between canopy soft-conceal and a real bush');
+}
+
+console.log('[18] notifyFired pulls the shooter\'s next check in (no cadence wait)');
+{
+  // At 400 m the check cadence is 2 s. Without the pull-in, a shot fired
+  // right after a scheduled check would stay unresolved for up to 2 s; the
+  // reveal must land on the very next update() tick.
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  const shooter = tank('p1', 'player', 0, 400);
+  const sys = mkSys([], [spotter, shooter]);
+  const dt = 1 / 60;
+  for (let t = 0; t <= 1; t += dt) sys.update(dt, t); // settle the stagger
+  ok(!sys.isSpotted('p1', 'enemy'), 'pre-shot: hidden at 400 m');
+  sys.notifyFired('p1', 1.02);
+  const evs = sys.update(dt, 1.03);
+  ok(evs.some((e) => e.id === 'p1' && e.team === 'enemy'),
+    'reveal lands on the next update tick after the shot');
 }
 
 console.log('');

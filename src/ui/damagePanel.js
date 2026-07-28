@@ -4,10 +4,12 @@
 // horizontal morphological opening, r5: filled ~80%-alpha #9aa5ad — not a
 // wireframe) carrying whisper-contrast INTERNAL structure —
 // track-run separator, module compartment outlines, crew station dots — so
-// it reads as an instrument (hud_ui r3), while loud state only APPEARS on
-// damage: lit orange/red module icons at fixed anchors on the hull, hit-zone
-// floods, and red crew chips. No letterforms inside the silhouette, ever
-// (hud_ui r2: the always-on white glyphs read as illegible glyph soup).
+// it reads as an instrument (hud_ui r3). r6: the panel now carries PERSISTENT
+// affordances like WoT's — a fixed row of low-alpha module icon slots
+// (tracks/engine/ammo/fuel/optics) and an always-visible ghosted crew row —
+// which light orange/red on damage, alongside the on-hull anchored icons and
+// hit-zone floods. No letterforms inside the silhouette, ever (hud_ui r2:
+// the always-on white glyphs read as illegible glyph soup).
 // Crew row, HP bar and fire indicator.
 // Contract: docs/ARCHITECTURE.md §3.7.2.
 
@@ -57,14 +59,26 @@ const DP_CSS = `
 .cot-dp .hptrack{height:5px;background:rgba(4,6,8,.75);border:1px solid rgba(0,0,0,.6);margin-bottom:5px;}
 .cot-dp .hpfill{height:100%;width:100%;transition:width .15s linear;}
 .cot-dp canvas{display:block;margin:0 auto;}
-/* crew strip: EMPTY (collapsed) while the crew is unharmed — WoT only
-   surfaces crew state on injury. Dead members appear as red icon chips. */
-.cot-dp .crew{display:none;justify-content:center;gap:4px;margin-top:5px;}
-.cot-dp .crew.someharm{display:flex;}
-.cot-dp .cm{width:24px;height:24px;border-radius:3px;display:none;
+/* module slot row (r6): PERSISTENT low-alpha icon slots — tracks / engine /
+   ammo rack / fuel / optics — so the panel promises module feedback even at
+   full health (WoT's most recognizable HUD affordance). Slots light orange
+   (damaged) or red (knocked out) through the same canvas icons. */
+.cot-dp .mods{display:flex;justify-content:center;gap:3px;margin-top:6px;}
+.cot-dp .ms{width:24px;height:22px;display:flex;align-items:center;
+  justify-content:center;border:1px solid rgba(146,164,180,.16);
+  background:rgba(10,14,18,.35);}
+.cot-dp .ms.yellow{border-color:rgba(240,149,46,.7);background:rgba(46,30,10,.8);}
+.cot-dp .ms.red{border-color:rgba(240,90,90,.75);background:rgba(46,14,14,.8);}
+.cot-dp .ms canvas{display:block;margin:0;}
+/* crew strip (r6): ALWAYS visible — ghosted role icons while the crew is
+   unharmed, red chips for knocked-out members. */
+.cot-dp .crew{display:flex;justify-content:center;gap:4px;margin-top:5px;}
+.cot-dp .cm{width:24px;height:22px;border-radius:2px;display:flex;
   align-items:center;justify-content:center;
-  color:#f05a5a;border:1px solid rgba(240,90,90,.7);background:rgba(46,14,14,.75);}
-.cot-dp .cm.dead{display:flex;}
+  color:rgba(238,244,250,.24);border:1px solid rgba(146,164,180,.16);
+  background:rgba(10,14,18,.35);}
+.cot-dp .cm.dead{color:#f05a5a;border-color:rgba(240,90,90,.7);
+  background:rgba(46,14,14,.75);}
 .cot-dp .cm svg{display:block;width:14px;height:14px;}
 .cot-dp .fire{position:absolute;top:34px;right:10px;font-size:9px;font-weight:800;
   letter-spacing:.14em;color:#ff6a3c;text-shadow:0 0 8px rgba(255,80,30,.8);display:none;
@@ -333,6 +347,49 @@ export function createDamagePanel() {
     anchors = null;
   }
 
+  // --- persistent module slot row (r6): fixed WoT set, dim while healthy ---
+  const MOD_SLOTS = ['track', 'engine', 'ammoRack', 'fuelTank', 'optics'];
+  const MOD_INK = { ok: 'rgba(238,244,250,0.20)', yellow: '#f0952e', red: '#f05a5a' };
+  const modRow = document.createElement('div');
+  modRow.className = 'mods';
+  root.appendChild(modRow);
+  const modSlots = new Map(); // name -> { el, ctx, lastState }
+  for (const name of MOD_SLOTS) {
+    const slot = document.createElement('div');
+    slot.className = 'ms';
+    slot.title = name === 'ammoRack' ? 'ammo rack'
+      : name === 'fuelTank' ? 'fuel tank' : name;
+    const mc = document.createElement('canvas');
+    const MS = 20, msDpr = 2;
+    mc.width = MS * msDpr; mc.height = MS * msDpr;
+    mc.style.width = `${MS}px`; mc.style.height = `${MS}px`;
+    slot.appendChild(mc);
+    modRow.appendChild(slot);
+    const mcx = mc.getContext('2d');
+    modSlots.set(name, { el: slot, ctx: mcx, lastState: null, size: MS, dpr: msDpr });
+  }
+  function paintModSlot(entry, name, state) {
+    const { ctx: c, size, dpr } = entry;
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.clearRect(0, 0, size, size);
+    c.save();
+    c.translate(size / 2, size / 2);
+    c.scale(1.2, 1.2);
+    const icon = MODULE_ICON[name];
+    if (icon) icon(c, MOD_INK[state] || MOD_INK.ok);
+    c.restore();
+  }
+  function syncModSlots() {
+    for (const [name, entry] of modSlots) {
+      const st = name === 'track' ? combinedTrackState() : moduleState(name);
+      if (st === entry.lastState) continue;
+      entry.el.classList.toggle('yellow', st === 'yellow');
+      entry.el.classList.toggle('red', st === 'red');
+      paintModSlot(entry, name, st);
+      entry.lastState = st;
+    }
+  }
+
   const crewRow = document.createElement('div');
   crewRow.className = 'crew';
   root.appendChild(crewRow);
@@ -372,6 +429,13 @@ export function createDamagePanel() {
   function moduleState(name) {
     if (!combat || !combat.modules || !combat.modules[name]) return 'ok';
     return combat.modules[name].state || 'ok';
+  }
+
+  // running gear reads as ONE state (worst of the two track sides)
+  function combinedTrackState() {
+    const stL = moduleState('trackL'), stR = moduleState('trackR');
+    return stL === 'red' || stR === 'red' ? 'red'
+      : stL === 'yellow' || stR === 'yellow' ? 'yellow' : 'ok';
   }
 
   // Compute module icon anchors from the armor model projected into the side
@@ -584,9 +648,7 @@ export function createDamagePanel() {
     }
 
     // --- damaged running gear: the track band floods yellow/red ------------
-    const stL = moduleState('trackL'), stR = moduleState('trackR');
-    const trackSt = stL === 'red' || stR === 'red' ? 'red'
-      : stL === 'yellow' || stR === 'yellow' ? 'yellow' : 'ok';
+    const trackSt = combinedTrackState();
     if (trackSt !== 'ok') {
       ctx.fillStyle = STATE_COLOR[trackSt] + '52';
       ctx.strokeStyle = STATE_COLOR[trackSt];
@@ -666,15 +728,14 @@ export function createDamagePanel() {
       fireEl.style.display = burning ? 'block' : 'none';
       lastFireOn = burning;
     }
-    // crew chips: only knocked-out members surface (red icon chip); the whole
-    // strip collapses while everyone is fine
-    let anyDead = false;
+    // crew chips (r6): the whole row stays visible — alive members read as
+    // ghosted role icons, knocked-out members light up as red chips
     for (const [name, e] of crewEls) {
       const alive = !combat.crew || combat.crew[name] !== false;
       e.classList.toggle('dead', !alive);
-      if (!alive) anyDead = true;
     }
-    crewRow.classList.toggle('someharm', anyDead);
+    // persistent module slot row: dim while healthy, orange/red on damage
+    syncModSlots();
   }
 
   /** Build a fully-healthy CombatState-shaped object for this spec. */

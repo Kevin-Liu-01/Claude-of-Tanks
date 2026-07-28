@@ -730,6 +730,7 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
   const buckets = { plaster: [], stone: [], roof: [], wood: [], dark: [], straw: [], baked: [] };
   const obstacles = [];
   const colliders = [];
+  const crushables = []; // [{x,y,z,r,h,index,toppled}] — telegraph poles (effects_combat r1)
   const buildingFeatures = [];
   // sourced-model instancing: name -> { geo, list: [Matrix4, ...] }
   const bakedInstances = new Map();
@@ -1191,6 +1192,13 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
       const armYaw = Math.atan2(bx - ax, bz - az) + Math.PI / 2;
       if (SOURCED.poles) {
         addBakedInstance('pole', poleGeo, px, py - 0.05, pz, armYaw, 1);
+        // effects_combat r1: poles are CRUSHABLE — record the instance index
+        // so a driving tank can hinge-topple it (crushProp) instead of
+        // ghosting through.
+        crushables.push({
+          x: px, y: py, z: pz, r: 0.45, h: 7.4,
+          index: bakedInstances.get('pole').list.length - 1, toppled: false,
+        });
         continue;
       }
       const pole = new THREE.CylinderGeometry(0.09, 0.17, 6.2, 7, 1);
@@ -1776,7 +1784,8 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
   }
 
   // --- sourced-model InstancedMeshes (one per model, shared baked material) ---
-  for (const [, e] of bakedInstances) {
+  let poleIM = null; // effects_combat r1: kept for hinge-topple matrix writes
+  for (const [name, e] of bakedInstances) {
     if (e.list.length === 0) continue;
     const im = new THREE.InstancedMesh(e.geo, mats.baked, e.list.length);
     for (let i = 0; i < e.list.length; i++) im.setMatrixAt(i, e.list[i]);
@@ -1785,6 +1794,7 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
     im.matrixAutoUpdate = false;
     im.computeBoundingSphere();
     group.add(im);
+    if (name === 'pole') { poleIM = im; im.frustumCulled = false; }
   }
 
   // --- merge buckets into one mesh per material ---
@@ -1799,5 +1809,50 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
     group.add(mesh);
   }
 
-  return { group, obstacles, colliders, features: { buildings: buildingFeatures } };
+  // effects_combat r1: hinge-topple animation state for crushed poles. A
+  // toppled pole eases to ~83deg from vertical (falling AWAY from the
+  // vehicle's travel direction) with a small end bounce; the instance matrix
+  // is rebuilt every tick from the ORIGINAL placement so the hinge never
+  // compounds.
+  const crushAnims = [];
+  const _cm = new THREE.Matrix4(), _cq = new THREE.Quaternion();
+  const _cax = new THREE.Vector3();
+  function crushProp(i, dx, dz) {
+    const c = crushables[i];
+    if (!c || c.toppled || !poleIM) return false;
+    c.toppled = true;
+    const l = Math.hypot(dx, dz) || 1;
+    // hinge axis: horizontal, perpendicular to travel — pole falls AWAY
+    crushAnims.push({ c, t: 0, ax: -dz / l, az: dx / l, placement: null });
+    return true;
+  }
+  function updateProps(dt) {
+    if (!crushAnims.length || !poleIM) return;
+    for (let k = crushAnims.length - 1; k >= 0; k--) {
+      const a = crushAnims[k];
+      a.t = Math.min(a.t + dt, 1.1);
+      // eased fall to ~83deg with a small end bounce
+      const u = Math.min(a.t / 0.8, 1);
+      let ang = 1.45 * u * u * (3 - 2 * u);
+      if (a.t > 0.8) ang = 1.45 - 0.06 * Math.sin((a.t - 0.8) * 18) * Math.exp(-(a.t - 0.8) * 6);
+      const c = a.c;
+      if (!a.placement) {
+        // capture the ORIGINAL placement on the first tick so the hinge
+        // composes against it, never an already-rotated matrix
+        poleIM.getMatrixAt(c.index, _cm);
+        a.placement = _cm.clone();
+      }
+      _cax.set(a.ax, 0, a.az).normalize();
+      _cq.setFromAxisAngle(_cax, ang);
+      const m = new THREE.Matrix4().makeTranslation(c.x, c.y, c.z)
+        .multiply(new THREE.Matrix4().makeRotationFromQuaternion(_cq))
+        .multiply(new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z))
+        .multiply(a.placement);
+      poleIM.setMatrixAt(c.index, m);
+      poleIM.instanceMatrix.needsUpdate = true;
+      if (a.t >= 1.1) crushAnims.splice(k, 1);
+    }
+  }
+  return { group, obstacles, colliders, crushables, crushProp, updateProps,
+    features: { buildings: buildingFeatures } };
 }

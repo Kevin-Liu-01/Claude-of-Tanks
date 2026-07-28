@@ -54,7 +54,15 @@ const SHADOW_NORMAL_BIAS = 0.045; // kills acne on terrain slopes (CSM only expo
 // per-texel steps on a 4096 map at chase range; ~2.1 texels is the smallest
 // radius whose rotated taps fully bridge a texel edge (soft, not smeared —
 // the r5 "over-blurred stripes" failure started at ~3+ texels near).
-const SHADOW_RADII = [2.1, 2.7, 3.2, 3.8];
+// r6 ("shadow edges uniformly hard at every distance — fence/pole shadows
+// show no penumbra widening" + "blotchy amorphous canopy-shadow masses"):
+// cascades 0/1 widen (2.1/2.7 → 2.4/3.1) so the near-to-mid penumbra step is
+// actually visible on fence/pole shadows, while cascade 2 TIGHTENS (3.2 →
+// 2.9) so mid-range canopy shadow masses keep structured, readable edges
+// instead of smearing amorphous. Physical penumbra still widens per cascade
+// (cascade texel size roughly doubles each band), so the PCSS-style distance
+// ordering is preserved.
+const SHADOW_RADII = [2.4, 3.1, 2.9, 3.4];
 // The radii above are tuned in TEXELS of these reference map sizes (ultra's
 // ladder). When a quality preset allocates a smaller map for a cascade, the
 // texel is proportionally larger — an uncompensated radius would widen the

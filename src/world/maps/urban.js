@@ -15,7 +15,11 @@ for (let i = 0; i < 108; i++) {
   if (i === 4) PLAN.push('church');
   else if (i === 11) PLAN.push('factory');
   else if (i === 9 || i === 41) PLAN.push('tower');
-  else if (i % 5 === 2) PLAN.push('ruin');
+  // r1 (content_breadth): second ruin cadence — the town read too intact for
+  // a battle-ready map ("rubble/destruction dressing too sparse"); ~1 in 3.5
+  // interior slots is now a shelled ruin, clustering into visibly collapsed
+  // blocks where the two cadences overlap
+  else if (i % 5 === 2 || i % 9 === 5) PLAN.push('ruin');
   else PLAN.push('rowhouse');
 }
 
@@ -105,9 +109,12 @@ export default {
       wood: null,
       straw: null,
     },
-    ruinChance: 0.30, // street-front collapse rate (streetRows, props.js)
+    ruinChance: 0.38, // r1: street-front collapse rate up (war-torn read)
     townCraters: true, // shell holes pock the streets/squares inside the rect
-    rockTone: (h, s, l) => [0.09, 0.04, clamp01(l * 1.05)], // concrete rubble chunks
+    // r1 (content_breadth): darker, slightly warm-grey rubble — the old pale
+    // near-white smooth boulders read as "grey tent blobs" in the foreground
+    // fields (critique); dropping the value keeps them below the grass tone
+    rockTone: (h, s, l) => [0.085, 0.09, clamp01(l * 0.80)], // concrete rubble chunks
     wallStoneChance: 0.55,
     buildingLat: [9.5, 1.5], // tight, near-constant setback => street walls
     sideSkip: 0.04,
@@ -131,7 +138,8 @@ export default {
     ],
     // r6: fences on — split-rail runs break up the open outskirt fields
     well: true, hayCrates: false, fences: true, telegraph: true, carts: true, logs: false,
-    haystacks: 0, rocks: 110, outcrops: 6, craters: 88, rubblePiles: 96,
+    // r1: fewer bare boulders (they read as blobs on lawn), more rubble piles
+    haystacks: 0, rocks: 70, outcrops: 6, craters: 88, rubblePiles: 132,
   },
 
   horizon: {
@@ -160,5 +168,8 @@ export default {
     buildingFill: '#d9d2c4',
   },
 
-  shot: { pos: [-58, 26, -238], look: [44, 6, 28] },
+  // r9: camera pulled ~30 m closer and 8 m higher — from z=-238 nearly half
+  // the establishing frame was the empty grass approach field; the town brief
+  // is "street grid, rowhouses, rubble", so the grid should fill the frame
+  shot: { pos: [-48, 34, -208], look: [46, 2, 20] },
 };

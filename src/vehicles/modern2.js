@@ -780,15 +780,19 @@ function buildLeclerc(P) {
 
   // ---- turret: home-plate pentagon plan — narrow front, angled cheeks,
   // slab sides running straight back (§20.5)
-  const LH = 0.85;
-  P.add('turret', frustum(1.18, -0.15, -1.95, 1.10, -0.18, -1.92, 0.0, LH));    // rear box
+  // tank_models r1 (critic: "Leclerc — whose real identity is the SHORTEST
+  // hull with a proportionally big turret — reads as a huge hull with a
+  // pillbox"): plan-form audit vs §20.5 — home-plate pentagon widened to
+  // 2.64 m, stretched to the full bustle-autoloader length, walls raised.
+  const LH = 0.92;
+  P.add('turret', frustum(1.32, -0.15, -2.15, 1.22, -0.18, -2.10, 0.0, LH));    // rear box
   P.add('turret', slab(                                                          // right angled cheek
-    [0.30, 0, 1.02], [1.18, 0, -0.13], [1.18, 0, -0.5], [0.30, 0, 0.62],
-    [0.28, LH, 0.92], [1.10, LH, -0.20], [1.10, LH, -0.5], [0.28, LH, 0.54]));
+    [0.34, 0, 1.14], [1.32, 0, -0.13], [1.32, 0, -0.5], [0.34, 0, 0.70],
+    [0.31, LH, 1.03], [1.22, LH, -0.20], [1.22, LH, -0.5], [0.31, LH, 0.60]));
   P.add('turret', slab(                                                          // left angled cheek
-    [-1.18, 0, -0.13], [-0.30, 0, 1.02], [-0.30, 0, 0.62], [-1.18, 0, -0.5],
-    [-1.10, LH, -0.20], [-0.28, LH, 0.92], [-0.28, LH, 0.54], [-1.10, LH, -0.5]));
-  P.add('turret', box(0.58, LH, 0.5), 0, LH / 2, 0.72);                         // narrow front face
+    [-1.32, 0, -0.13], [-0.34, 0, 1.14], [-0.34, 0, 0.70], [-1.32, 0, -0.5],
+    [-1.22, LH, -0.20], [-0.31, LH, 1.03], [-0.31, LH, 0.60], [-1.22, LH, -0.5]));
+  P.add('turret', box(0.64, LH, 0.55), 0, LH / 2, 0.82);                        // narrow front face
   // SAVAN gunner sight boxed into the right cheek top
   P.add('turretDark', box(0.4, 0.2, 0.34), 0.55, LH - 0.12, 0.42);
   P.add('turret', box(0.46, 0.06, 0.4), 0.55, LH + 0.01, 0.40);
@@ -799,29 +803,29 @@ function buildLeclerc(P) {
   P.add('turretDark', box(0.22, 0.26, 0.24), -0.55, LH + 0.63, -1.05);
   P.add('turretGlass', box(0.14, 0.13, 0.02), -0.55, LH + 0.65, -0.92);
   // commander + gunner hatches, periscope ring
-  P.add('turret', cylY(0.23, 0.23, 0.045, 14), 0.52, LH + 0.02, -0.85);
-  P.add('turret', cylY(0.20, 0.20, 0.04, 14), -0.5, LH + 0.02, -0.35);
+  P.add('turret', cylY(0.23, 0.23, 0.045, 14), 0.60, LH + 0.02, -0.95);
+  P.add('turret', cylY(0.20, 0.20, 0.04, 14), -0.56, LH + 0.02, -0.40);
   periscope(P, 'turretDetail', 0.52, LH + 0.06, -0.52);
   periscope(P, 'turretDetail', 0.30, LH + 0.06, -0.85, 0.6);
   // bustle autoloader: flat roof aft with ammo hatch PANEL LINES
-  P.add('turretDark', box(0.9, 0.014, 1.0), 0, LH + 0.006, -1.4);
-  for (let k = 0; k < 3; k++) P.add('turretDetail', box(0.85, 0.02, 0.02), 0, LH + 0.012, -1.1 - k * 0.3);
+  P.add('turretDark', box(0.9, 0.014, 1.2), 0, LH + 0.006, -1.5);
+  for (let k = 0; k < 4; k++) P.add('turretDetail', box(0.85, 0.02, 0.02), 0, LH + 0.012, -1.1 - k * 0.3);
   // GALIX dischargers: 9 short tubes splayed along each rear corner (5+4 rows)
-  galix(P, KIT, 1.05, 0.55, -1.5, 1);
-  galix(P, KIT, -1.05, 0.55, -1.5, -1);
+  galix(P, KIT, 1.20, 0.58, -1.65, 1);
+  galix(P, KIT, -1.20, 0.58, -1.65, -1);
   // stowage baskets both sides + rear rack
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.05, 0.05, 1.25), s * 1.24, 0.55, -1.0);
-    P.add('turretDetail', box(0.05, 0.05, 1.25), s * 1.24, 0.15, -1.0);
+    P.add('turretDetail', box(0.05, 0.05, 1.25), s * 1.38, 0.55, -1.1);
+    P.add('turretDetail', box(0.05, 0.05, 1.25), s * 1.38, 0.15, -1.1);
     for (let k = 0; k < 5; k++) {
-      P.add('turretDetail', box(0.03, 0.4, 0.03), s * 1.24, 0.35, -0.5 - k * 0.25);
+      P.add('turretDetail', box(0.03, 0.4, 0.03), s * 1.38, 0.35, -0.6 - k * 0.25);
     }
-    stowage(P, 'turretCloth', rng, [[s * 1.17, 0.36, -1.0, 0.16, 0.3, 1.0]]);
+    stowage(P, 'turretCloth', rng, [[s * 1.31, 0.36, -1.1, 0.16, 0.3, 1.0]]);
   }
   const bkT = 0.62, bkB = 0.12;
-  P.add('turretDetail', box(2.2, 0.05, 0.05), 0, bkT, -2.42);
-  P.add('turretDetail', box(2.2, 0.05, 0.05), 0, bkB, -2.42);
-  for (let k = 0; k < 10; k++) P.add('turretDetail', box(0.035, bkT - bkB, 0.035), -1.0 + k * 0.22, (bkT + bkB) / 2, -2.42);
+  P.add('turretDetail', box(2.5, 0.05, 0.05), 0, bkT, -2.62);
+  P.add('turretDetail', box(2.5, 0.05, 0.05), 0, bkB, -2.62);
+  for (let k = 0; k < 11; k++) P.add('turretDetail', box(0.035, bkT - bkB, 0.035), -1.15 + k * 0.23, (bkT + bkB) / 2, -2.62);
   stowage(P, 'turretCloth', rng, [
     [-0.6, 0.32, -2.2, 0.6, 0.36, 0.35], [0.35, 0.3, -2.22, 0.55, 0.32, 0.33],
   ]);
@@ -839,9 +843,12 @@ function buildLeclerc(P) {
     style: 'rubber', wheelR: 0.36, wheelW: 0.22, xc: 1.5,
     wheelZs: [2.35, 1.41, 0.47, -0.47, -1.41, -2.35],
     sprocket: { z: -2.95, y: 0.50, r: 0.30 }, idler: { z: 2.9, y: 0.48, r: 0.28 },
-    rollers: [1.9, 0.95, 0, -0.95, -1.9].map((z) => ({ z, y: 0.94, r: 0.08 })),
-    trackW: 0.635, topY: 0.9, paintedEnds: true,
+    rollers: [1.9, 0.95, 0, -0.95, -1.9].map((z) => ({ z, y: 0.87, r: 0.08 })),
+    trackW: 0.635, topY: 0.9, paintedEnds: true, coveredTop: 0.99,
   });
+  for (const s of [-1, 1]) {                                                    // sponson gap covers (r1 zipper)
+    P.add('hullShadow', new THREE.BoxGeometry(0.34, 0.03, 6.4), s * 1.66, 1.09, -0.05);
+  }
   P.decal('turret', 'number', '33', 0.3, [1.19, 0.35, -1.0], Math.PI / 2);
   P.decal('turret', 'number', '33', 0.3, [-1.19, 0.35, -1.0], -Math.PI / 2);
   P.decal('hull', 'number', '6-33', 0.28, [1.84, 0.95, 2.5], Math.PI / 2);
@@ -851,13 +858,16 @@ function buildLeclerc(P) {
 
 // GALIX bank: 9 stubby tubes splayed in two rows on a rear turret corner
 function galix(P, kit, x, y, z, s) {
-  const { cylZ } = kit;
+  const { cylZ, box } = kit;
+  // r1: tubes enlarged + darkened on a visible mount wedge — the old
+  // scheme-painted stubs vanished into the wall ("GALIX splays missing").
+  P.add('turret', box(0.10, 0.34, 0.72), x - s * 0.02, y - 0.06, z + 0.05, 0, s * 0.5, 0);
   for (let k = 0; k < 5; k++) {
-    P.add('turretDetail', cylZ(0.042, 0.2, 8), x + s * k * 0.02, y, z + 0.3 - k * 0.14,
+    P.add('turretDark', cylZ(0.052, 0.26, 8), x + s * k * 0.02, y, z + 0.3 - k * 0.14,
       -0.45, s * (0.9 + k * 0.16), 0);
   }
   for (let k = 0; k < 4; k++) {
-    P.add('turretDetail', cylZ(0.042, 0.2, 8), x - s * 0.06, y - 0.15, z + 0.24 - k * 0.14,
+    P.add('turretDark', cylZ(0.052, 0.26, 8), x - s * 0.06, y - 0.17, z + 0.24 - k * 0.14,
       -0.35, s * (1.0 + k * 0.16), 0);
   }
 }
@@ -954,9 +964,12 @@ function buildType99A(P) {
     style: 'rubber', wheelR: 0.37, wheelW: 0.21, xc: 1.55,
     wheelZs: [2.6, 1.56, 0.52, -0.52, -1.56, -2.6],
     sprocket: { z: -3.2, y: 0.54, r: 0.28 }, idler: { z: 3.15, y: 0.52, r: 0.26 },
-    rollers: [1.6, 0, -1.6].map((z) => ({ z, y: 0.95, r: 0.09 })),
-    trackW: 0.58, topY: 0.9, arms: true, paintedEnds: true,
+    rollers: [1.6, 0, -1.6].map((z) => ({ z, y: 0.88, r: 0.09 })),
+    trackW: 0.58, topY: 0.9, arms: true, paintedEnds: true, coveredTop: 1.0,
   });
+  for (const s of [-1, 1]) {                                                    // sponson gap covers (r1 zipper)
+    P.add('hullShadow', new THREE.BoxGeometry(0.34, 0.03, 6.9), s * 1.68, 1.06, -0.05);
+  }
   // ---- FY-4 ERA: raked chevron glacis + skirt + turret tiles ---------------
   const t99GlacisZ = (y) => 2.0 + (1.42 - y) * 2.93 + 0.05;
   const chevron = (put, sx) => {

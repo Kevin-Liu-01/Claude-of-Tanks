@@ -21,7 +21,12 @@ export default {
   },
 
   spawns: {
-    player: { x: 14, z: -86 },
+    // r1 (content_breadth): player spawn moved off the mesa flank (14,-86 sat
+    // on a 0.60-normal slope and the ally lateral offsets ±22/44 m landed ON
+    // the striated cliff wall — the establishing shot framed a tank fused
+    // into the mesa). (68,-82) scans flat (min normal.y 0.98 over the whole
+    // ±55 m ally arc, max Δh 2.4 m — tools: scan over createHeightField).
+    player: { x: 68, z: -82 },
     enemies: [
       { x: -40, z: 315 }, { x: 130, z: 350 }, { x: 262, z: 230 }, { x: -210, z: 268 },
       { x: -325, z: 135 }, { x: 328, z: 128 }, { x: 20, z: 428 },
@@ -38,7 +43,12 @@ export default {
     // r8: mild desaturation + slight lift on the authored beds — the full-
     // saturation ochre banding read as "candy taffy" stripes from 200-800 m
     // (critique); ~28% sat cut keeps the sedimentary read without the neon
-    rockTone: (h, s, l) => [h, clamp01(s * 0.72), clamp01(l * 1.03)],
+    // r1 (content_breadth): luminance COMPRESSED toward the bed mean (0.70
+    // contrast) on top of a deeper sat cut — the alternating chocolate/cream
+    // beds still read as a layer-cake print on the near mesas; squeezing the
+    // per-bed value swing keeps the sedimentary structure while the wall
+    // finally reads as one weathered rock mass
+    rockTone: (h, s, l) => [h, clamp01(s * 0.55), clamp01(0.53 + (l - 0.5) * 0.70)],
     mudTone: (h, s, l) => [0.078, 0.30, clamp01(l * 1.5 + 0.04)], // cracked dry clay
     mudRough: 1.15,
     tintA: [1.10, 1.02, 0.85], tintB: [0.94, 0.89, 0.79], tintC: [1.12, 1.06, 0.90],
@@ -50,7 +60,9 @@ export default {
     // so the two never stack into over-banded stripes
     // r8: 0.20 -> 0.15 — even with the per-cliff de-sync the constant-
     // frequency shader bands stacked on the desaturated beds read over-striped
-    strata: 0.15,
+    // r1 (content_breadth): 0.15 -> 0.10 — pairs with the compressed bed
+    // contrast above; the shader bands only whisper at range now
+    strata: 0.10,
     microAmp: 0.3,          // tame the near-field dot speckle (ripples instead)
     rippleDir: [0.8, 0.6],  // global wind direction for the sand ripples
     // r7: 0.26 -> 0.34 — with the darker sand albedo the dune-face ripple
@@ -106,11 +118,15 @@ export default {
       palm: { // r6: fronds desaturated + darkened ~20% — the old bright toy-
         // plastic green crowns broke the muted sand grade in the foreground;
         // dusty date-palm olive sits in the scene palette instead
-        texTone: (h, s, l) => [clamp01(h * 0.99), clamp01(s * 0.74), clamp01(l * 0.80)],
+        // r9: mid-range lift (texTone 0.80 -> 0.90, canopy l0/l1 up ~50%) —
+        // against ~0.85-luminance sand the r6 crowns collapsed to near-black
+        // spiky silhouettes at range ("glitched scaffolding" critique); dusty
+        // olive with real value keeps the crown a readable green mass
+        texTone: (h, s, l) => [clamp01(h * 0.99), clamp01(s * 0.74), clamp01(l * 0.90)],
         cardHue: 0.235, cardSat: 0.20,
         // near-LOD blade vertex tint (buildPalmGeometry pal.frond): khaki-olive
         frond: { hue: 0.19, sat: 0.19, l: 0.41 },
-        canopy: { hue: 0.24, sat: 0.26, l0: 0.17, l1: 0.29 },
+        canopy: { hue: 0.24, sat: 0.22, l0: 0.26, l1: 0.40 },
       },
     },
   },
@@ -150,7 +166,11 @@ export default {
     turbidity: 7, rayleigh: 0.55, mieCoefficient: 0.009, mieDirectionalG: 0.8,
     // 0.00105 washed the mesa tablelands to unshaded clay by 900 m — 0.00086
     // keeps the heat haze but lets the strata banding read on the skyline
-    fogDensity: 0.00086, fogTintHex: 0xc7ac85, fogMix: 0.72, envIntensity: 0.22,
+    // r1 (content_breadth): 0.00086 -> 0.00066 — even at 0.00086 everything
+    // past ~40% frame height in the establishing shot washed to one blown
+    // cream tone; the lighter haze keeps dune-shadow value separation alive
+    // through the midground while the warm tint still sells the heat
+    fogDensity: 0.00066, fogTintHex: 0xc7ac85, fogMix: 0.72, envIntensity: 0.22,
     cloudOpacity: 0.35, cloudOpacity2: 0.18, cloudTintHex: 0xfff2df,
     // lighting_post r4: sun 4.9 → 4.15 — the hottest sun in the game over the
     // brightest albedo pushed open sand to ~1.5 linear, high on the ACES
@@ -158,7 +178,11 @@ export default {
     // desert sand areas blow out to textureless near-white, overexposed ~1
     // stop"). 4.15 drops open sand to ~1.25 — still clearly the sun-hammered
     // map, but dune ripples and track marks survive the tonemap.
-    sunIntensity: 4.15, sunColorHex: 0xffe9c2, hemiIntensity: 0.34,
+    // r1 (content_breadth): 4.15 -> 3.55 — pairs with the fogDensity cut AND
+    // the lighting_post r8 global exposure raise (renderer 1.16 -> 1.20,
+    // grade contrast 1.36): the brightest-albedo map must come down a notch
+    // so midground dune faces keep readable shading instead of blowing out
+    sunIntensity: 3.55, sunColorHex: 0xffe9c2, hemiIntensity: 0.34,
   },
 
   minimap: {

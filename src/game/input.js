@@ -665,15 +665,23 @@ export function createInput(opts = {}) {
      *  aimSmoothing:number,padSensitivity:number,aiDifficulty:string}} live settings object */
     getSettings() { return settings; },
 
-    /** Set + clamp + persist one gameplay setting. */
+    /** Set + clamp + persist one gameplay setting. Numeric input is parsed
+     *  with Number() and CLAMPED into range — typing 0 into a 0.2-minimum
+     *  field lands on 0.2, never on the silent default (the old `+value || 1`
+     *  treated 0 as falsy and quietly reset the field to 1.0×). The default
+     *  is reserved for genuinely non-numeric input (NaN). */
     setSetting(key, value) {
+      const num = (fallback, lo, hi) => {
+        const n = Number(value);
+        return clamp(Number.isFinite(n) ? n : fallback, lo, hi);
+      };
       if (key === 'invertY') settings.invertY = !!value;
-      else if (key === 'sensitivity') settings.sensitivity = clamp(+value || 1, 0.2, 3);
-      else if (key === 'sniperSensScale') settings.sniperSensScale = clamp(+value || 1, 0.2, 3);
-      else if (key === 'aimSmoothing') settings.aimSmoothing = clamp(+value || 0, 0, 1);
-      else if (key === 'padSensitivity') settings.padSensitivity = clamp(+value || 1, 0.2, 3);
+      else if (key === 'sensitivity') settings.sensitivity = num(1, 0.2, 3);
+      else if (key === 'sniperSensScale') settings.sniperSensScale = num(1, 0.2, 3);
+      else if (key === 'aimSmoothing') settings.aimSmoothing = num(0.5, 0, 1);
+      else if (key === 'padSensitivity') settings.padSensitivity = num(1, 0.2, 3);
       else if (key === 'aiDifficulty') settings.aiDifficulty = AI_DIFFICULTIES.includes(value) ? value : settings.aiDifficulty;
-      else if (VOLUME_KEYS.includes(key)) settings[key] = clamp(+value || 0, 0, 1);
+      else if (VOLUME_KEYS.includes(key)) settings[key] = num(0, 0, 1);
       saveJson(SETTINGS_KEY, settings);
     },
 

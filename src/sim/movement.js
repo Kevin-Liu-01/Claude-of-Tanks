@@ -115,6 +115,14 @@ const SUPPORT_FAN = [
 // renderer's per-frame integration at non-60 fps — while staying under the
 // track link pads, which hang ~1–2 cm below the hull-local contact plane.
 const SUPPORT_MARGIN_M = 0.015;
+// r6 hard-gate headroom: the margin GROWS with the rendered attitude. The
+// track link pads hang 1–2 cm below the hull-local contact plane by design,
+// and at combined attitude extremes they approached the 3 cm burial gate
+// (-2.4 cm transient at 24° pitch with -17° roll — 60% of the gate). Up to
+// +SUPPORT_MARGIN_ATT_M is blended in linearly, saturating at
+// |pitch|+|roll| = SUPPORT_MARGIN_ATT_RAD; exactly zero cost on flat ground.
+const SUPPORT_MARGIN_ATT_M = 0.010;
+const SUPPORT_MARGIN_ATT_RAD = 35 * (Math.PI / 180);
 // Mirror of tankFactory's turn-lean sway (visual layer adds it to rotation.z):
 // the support solve folds the predicted sway into the effective roll so a hard
 // fast turn cannot dip the leaned-into track edge below the terrain.
@@ -151,7 +159,7 @@ const SUSP_K_GAIN = 0.8;
 // during full-speed turns — r1 critique, terrain-contact hard gate.)
 const SUSP_VIS_P = 2.6;
 const SUSP_VIS_R = 2.1;
-const SWAY_VIS = 2.3;
+const SWAY_VIS = 3.2; // effects_combat r1: pairs with tankFactory SWAY_VIS 3.2
 // Mirror of tankFactory's hit-flinch rock (FLINCH_W/FLINCH_Z in the visual
 // layer): a large-caliber hit kicks flinchPV up to ~0.36 rad/s ⇒ peak rock
 // ~1.6°, which over a 3.5 m half-length transiently dips a track end ~10 cm —
@@ -187,6 +195,41 @@ const ENGINE_YELLOW_POWER_MULT = 0.5;
 
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
+
+// Casemate TDs (movement doc §7 + the §1 class-table note): the gun yaw is
+// limited to ±arc instead of a full turret — when the aim point exceeds the
+// arc, hull traverse toward the target auto-engages (WoT does exactly this in
+// sniper mode). `spec.gunArcDeg` overrides per vehicle; any spec whose armor
+// carries `turretless: true` (every fixed-gun vehicle in the roster: strv103,
+// jagdtiger, jpz_e100, sturmtiger, t95, t30, is1) defaults to ±CASEMATE_ARC_DEG
+// per the doc's ±10–15° band. Turreted tanks (arc = Infinity) are untouched.
+const CASEMATE_ARC_DEG = 11;
+// Excess-over-arc that commands a FULL-RATE hull traverse; below it the
+// synthesized steer is proportional (a P-controller on the excess), so the
+// hull eases onto the target and the residual decays exponentially
+// (tau = ramp / traverse-rate ≈ 0.2 s) instead of parking a fixed error —
+// the settled gun lands ON the aim point, not a deadband short of it.
+const AUTO_TRAVERSE_RAMP_RAD = 8 * DEG2RAD;
+
+// Fallback arcs by spec id: specs.js's communityArmor() consumes its
+// `turretless` input for turret-box sizing WITHOUT carrying the flag onto the
+// built armor object, so the runtime spec has no casemate marker yet. This
+// table makes the §7 mechanic real today; docs/handoff/gameplay_feel-r1.md §1
+// moves these values into specs.js as explicit `gunArcDeg` fields, after
+// which this fallback is dead code and should be deleted.
+const CASEMATE_ARC_FALLBACK_DEG = {
+  strv103: 4,      // true fixed gun — hull-aimed (S-tank)
+  jagdtiger: 10, jpz_e100: 10, sturmtiger: 10, t95: 10,
+  t30: 11, is1: 11, // fused print turrets — class default
+};
+
+/** Gun-yaw half-arc in radians for a spec (Infinity = full turret). */
+function gunArcRadFor(spec) {
+  if (typeof spec.gunArcDeg === 'number') return spec.gunArcDeg * DEG2RAD;
+  if (spec.armor && spec.armor.turretless) return CASEMATE_ARC_DEG * DEG2RAD;
+  const fb = CASEMATE_ARC_FALLBACK_DEG[spec.id];
+  return fb != null ? fb * DEG2RAD : Infinity;
+}
 
 // Module-scope scratch (no per-frame allocation, ARCHITECTURE §1.3).
 const _push = new Vector3();
@@ -380,12 +423,28 @@ export function updateTank(entity, heightField, dt, collide = null) {
     (1 - TRAVERSE_SPEED_SCALE * speedFrac * speedFrac);
   // Reverse-steer flip: while backing up, A/D behave like a reversing car.
   const steerSign = state.speed < -PIVOT_SPEED_EPS ? -1 : 1;
-  const yawTarget = steer * trMax * steerSign;
+  // Casemate auto hull-traverse (§7): with the gun yaw clamped to ±gunArc in
+  // the turret chase below, an aim point beyond the arc feeds the EXCESS into
+  // a synthesized steer input — the hull traverses toward the target, exactly
+  // WoT's sniper-mode behavior for turretless TDs. Explicit steer (player or
+  // AI) always wins, and the reverse-steer flip does NOT apply: the hull must
+  // rotate toward the target in world space regardless of drive direction.
+  const gunArc = gunArcRadFor(spec);
+  let steerCmd = steer * steerSign;
+  if (steer === 0 && gunArc !== Infinity && input.aimPoint && !debuff.immobile) {
+    const wantRel = wrapAngle(Math.atan2(
+      input.aimPoint.x - state.pos.x, input.aimPoint.z - state.pos.z) - state.yaw);
+    const excess = Math.abs(wantRel) - gunArc;
+    if (excess > 0) {
+      steerCmd = clamp(excess / AUTO_TRAVERSE_RAMP_RAD, 0, 1) * Math.sign(wantRel);
+    }
+  }
+  const yawTarget = steerCmd * trMax;
   state.yawRate = approach(state.yawRate, yawTarget, (Math.max(trMax, 1e-6) / YAW_SPOOL_S) * dt);
   state.yaw = wrapAngle(state.yaw + state.yawRate * dt);
   // 'pivot' tanks rotate about the locked track: the hull center orbits sideways.
-  if (Math.abs(state.speed) < PIVOT_SPEED_EPS && spec.pivotStyle === 'pivot' && steer !== 0) {
-    const drift = Math.sign(steer) * PIVOT_OFFSET_M * Math.abs(state.yawRate) * dt;
+  if (Math.abs(state.speed) < PIVOT_SPEED_EPS && spec.pivotStyle === 'pivot' && steerCmd !== 0) {
+    const drift = Math.sign(steerCmd) * PIVOT_OFFSET_M * Math.abs(state.yawRate) * dt;
     state.pos.x += rx * drift;
     state.pos.z += rz * drift;
   }
@@ -653,7 +712,11 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // opposite sign and leaned the hull INTO every side slope).
     state._terr.pitch = Math.atan2(sumHZ, sumZZ);
     state._terr.roll = Math.atan2((sumR - sumL) / (nLR / 2), 2 * hw);
-    supportY += SUPPORT_MARGIN_M;
+    // Attitude-scaled margin (see SUPPORT_MARGIN_ATT_M): worst-case combined
+    // pitch+roll lifts the plane an extra centimeter so the track link pads
+    // (1–2 cm below the contact plane) can never approach the 3 cm gate.
+    supportY += SUPPORT_MARGIN_M + SUPPORT_MARGIN_ATT_M *
+      Math.min(1, (Math.abs(pitchEff) + Math.abs(rollEff)) / SUPPORT_MARGIN_ATT_RAD);
     state.pos.y = supportY;
     sup.x = state.pos.x; sup.z = state.pos.z; sup.yaw = state.yaw;
     sup.pitch = pitchEff; sup.roll = rollEff; sup.y = supportY;
@@ -674,6 +737,16 @@ export function updateTank(entity, heightField, dt, collide = null) {
     const wantPitchWorld = Math.atan2(dy, Math.max(horiz, 1e-6));
     const turretRate = spec.turretTraverseDegS * DEG2RAD * debuff.turretMult;
     state.turretYaw = chaseAngle(state.turretYaw, wantYawWorld - state.yaw, turretRate * dt);
+    // Casemate gun-arc clamp (§7): the "virtual turret" (fire-control fine
+    // lay) only slews inside ±gunArc of the hull; the reticle pins red
+    // (atGunLimit) while the auto hull-traverse above swings the excess onto
+    // the target.
+    let yawPinned = false;
+    if (gunArc !== Infinity) {
+      if (state.turretYaw > gunArc) state.turretYaw = gunArc;
+      else if (state.turretYaw < -gunArc) state.turretYaw = -gunArc;
+      yawPinned = Math.abs(wrapAngle(wantYawWorld - state.yaw)) > gunArc + 1e-4;
+    }
     // Hull-plane elevation along the gun azimuth: pitch and roll both tilt the gun.
     const ct = Math.cos(state.turretYaw), st = Math.sin(state.turretYaw);
     // Hull attitude's contribution to the barrel's WORLD pitch at turret
@@ -710,7 +783,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
         if (loTerr > loEff) loEff = Math.min(loTerr, hi);
       }
     }
-    state.atGunLimit = desiredGun < loEff - 1e-4 || desiredGun > hi + 1e-4;
+    state.atGunLimit = yawPinned || desiredGun < loEff - 1e-4 || desiredGun > hi + 1e-4;
     state.gunPitch = clamp(
       approach(state.gunPitch, clamp(desiredGun, loEff, hi), spec.gunPitchDegS * DEG2RAD * dt),
       lo, hi,

@@ -652,6 +652,22 @@ export function createCameraRig(camera, deps) {
       // scan pitch just under the horizon.
       if (rig.aimDist < SNIPER_KEEP_AIM_M) {
         aimPitch = Math.max(aimPitch, SNIPER_ENTRY_PITCH_RAD);
+        // gameplay_feel r1: facing RISING ground the flat-ground scan pitch
+        // still ray-hits the slope a few meters out (full-screen grass at
+        // 6 m). Raise the entry pitch in 2-degree steps until the scope
+        // opens at least SNIPER_KEEP_AIM_M into the battlefield (PITCH_MAX
+        // stops the loop when a genuine wall fills the view).
+        const player = getPlayer();
+        if (player) {
+          sniperAnchorFor(player, _desired);
+          const stepR = THREE.MathUtils.degToRad(2);
+          for (let i = 0; i < 20 && aimPitch < PITCH_MAX; i++) {
+            dirFromAngles(aimYaw, aimPitch, _rayDir);
+            const hit = aimRaycast(_desired, _rayDir, SNIPER_KEEP_AIM_M);
+            if (hit === null) break;
+            aimPitch = Math.min(aimPitch + stepR, PITCH_MAX);
+          }
+        }
       } else {
         // re-derive the pitch that keeps the current aim point centered
         // from the sniper anchor (the camera is about to jump from the

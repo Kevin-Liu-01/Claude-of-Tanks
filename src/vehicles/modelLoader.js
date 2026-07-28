@@ -88,10 +88,18 @@ if (typeof window !== 'undefined') window.__GLB_STATS = _stats;
 const _idleQueue = [];
 let _idlePumpScheduled = false;
 
+// Battle STAGING window: startBattle resets game.timeS to 0 and plays a 3 s
+// opening flyby before the player has control. Draining the GLB queue inside
+// the first BATTLE_STAGE_GRACE_S seconds lands every roster model during the
+// cinematic sweep instead of leaving community/variant AI tanks as
+// procedural box stacks for the whole match (content_breadth r1 CRITICAL).
+const BATTLE_STAGE_GRACE_S = 6;
+
 function inBattle() {
   try {
     const D = typeof window !== 'undefined' ? window.__DEBUG : null;
-    return !!(D && D.game && D.game.phase === 'battle');
+    if (!(D && D.game && D.game.phase === 'battle')) return false;
+    return !(typeof D.game.timeS === 'number' && D.game.timeS < BATTLE_STAGE_GRACE_S);
   } catch (_) { return false; }
 }
 
@@ -115,7 +123,10 @@ function scheduleIdlePump(afterJob = false) {
   // queue that way measured a 4.3 s frozen frame at battle end. 300 ms spacing
   // guarantees rendered frames between jobs (a drain of the whole 9-GLB queue
   // spreads over ~3 s of end-screen/garage time instead of one freeze).
-  if (afterJob) setTimeout(pumpIdle, 300);
+  // Inside the battle staging window drain fast (the flyby hides the work);
+  // everywhere else keep the 300 ms spacing that guarantees rendered frames
+  // between jobs.
+  if (afterJob) setTimeout(pumpIdle, inBattle() ? 300 : 120);
   else if (typeof requestIdleCallback === 'function') requestIdleCallback(pumpIdle, { timeout: 350 });
   else setTimeout(pumpIdle, 80);
 }
@@ -240,6 +251,52 @@ function carveTriangles(geo, boxes) {
     : new THREE.BufferAttribute(new Uint16Array(keep), 1));
 }
 
+/**
+ * tank_models r1: delete whole CONNECTED COMPONENTS that lie fully inside one
+ * of the AABBs (union-find over the index buffer). Centroid carves can't
+ * remove the asset's dagger-fin "smoke launcher" blades without also holing
+ * the turret shell they overlap — components are exact: the blade prisms are
+ * separate islands, the shell is one huge island that never fits in the box.
+ */
+function carveComponents(geo, boxes, flag) {
+  if (!geo.index || geo.userData[flag]) return;
+  geo.userData[flag] = true;
+  const idx = geo.index.array;
+  const pos = geo.attributes.position;
+  const n = pos.count;
+  const parent = new Int32Array(n);
+  for (let i = 0; i < n; i++) parent[i] = i;
+  const find = (a) => { while (parent[a] !== a) { parent[a] = parent[parent[a]]; a = parent[a]; } return a; };
+  for (let t = 0; t < idx.length; t += 3) {
+    const ra = find(idx[t]), rb = find(idx[t + 1]), rc = find(idx[t + 2]);
+    if (rb !== ra) parent[rb] = ra;
+    if (rc !== ra) parent[rc] = ra;
+  }
+  // component bboxes
+  const bb = new Map();
+  for (let i = 0; i < n; i++) {
+    const r = find(i);
+    let e = bb.get(r);
+    if (!e) { e = [Infinity, -Infinity, Infinity, -Infinity, Infinity, -Infinity, false]; bb.set(r, e); }
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    if (x < e[0]) e[0] = x; if (x > e[1]) e[1] = x;
+    if (y < e[2]) e[2] = y; if (y > e[3]) e[3] = y;
+    if (z < e[4]) e[4] = z; if (z > e[5]) e[5] = z;
+  }
+  for (const e of bb.values()) {
+    for (const [x0, x1, y0, y1, z0, z1] of boxes) {
+      if (e[0] >= x0 && e[1] <= x1 && e[2] >= y0 && e[3] <= y1 && e[4] >= z0 && e[5] <= z1) { e[6] = true; break; }
+    }
+  }
+  const keep = [];
+  for (let t = 0; t < idx.length; t += 3) {
+    if (!bb.get(find(idx[t]))[6]) keep.push(idx[t], idx[t + 1], idx[t + 2]);
+  }
+  geo.setIndex(keep.length > 65535
+    ? new THREE.BufferAttribute(new Uint32Array(keep), 1)
+    : new THREE.BufferAttribute(new Uint16Array(keep), 1));
+}
+
 // 8-corner solid (plan rings bottom then top); normals from the flat faces.
 function slab8(b0, b1, b2, b3, t0, t1, t2, t3) {
   const P = [];
@@ -353,6 +410,16 @@ function applyModelFixes(scene, turret, spec) {
       // two large circular deck fans — no Abrams variant carries these
       // (r6 critique); replaced by flat rectangular grille panels below
       o.visible = false;
+    } else if (/rot/i.test(mn)) {
+      // tank_models r1 (critic: "turret-cheek smoke launcher reads as a
+      // dagger-shaped fin"): the asset simplifies each M250 cluster into two
+      // long blade prisms hugging the cheek. Component-exact removal (they
+      // overlap the shell in x, so a centroid carve would hole the turret);
+      // proper angled 6-tube fans are added below.
+      carveComponents(o.geometry, [
+        [1.45, 2.10, -2.35, -0.65, 1.98, 2.95],
+        [-2.10, -1.45, -2.35, -0.65, 1.98, 2.95],
+      ], '__cotBladeCarve');
     } else if (mn === 'MainMetal_LH') {
       if (o.geometry.attributes.position.count <= 32) {
         // headlight lens quads of the deleted towers
@@ -448,6 +515,28 @@ function applyModelFixes(scene, turret, spec) {
     addPart(turret, dark, new THREE.BoxGeometry(0.22, 0.05, 0.15), cx, cy - 0.18, 3.64); // mirror window
   }
 
+  // M250 smoke launcher clusters (tank_models r1): angled 6-tube fans on the
+  // cheek shoulders replacing the carved dagger-blade simplification. Dark
+  // steel tubes on a scheme-painted wedge mount (§6.5 recognition item).
+  {
+    const dark250 = new THREE.MeshStandardMaterial({
+      name: 'AddOnM250_addon', color: 0x1c1f1c, roughness: 0.8, metalness: 0.18 });
+    for (const s of [-1, 1]) {
+      const bx = s * 1.78, by = -1.82, bz = 2.80;
+      addPart(turret, mat, new THREE.BoxGeometry(0.30, 0.22, 0.16)
+        .rotateZ(s * 0.62), bx, by, bz);
+      for (let k = 0; k < 6; k++) {
+        const a = 0.26 + k * 0.13;               // fan spread, outward from bore line
+        const tilt = 0.24;                        // muzzle-up cant
+        const tube = new THREE.CylinderGeometry(0.030, 0.034, 0.30, 10)
+          .rotateX(-tilt)                         // axis y -> forward, tipped up
+          .rotateZ(-s * a);                       // fanned outboard
+        const dx = Math.sin(a) * 0.17, dy = -Math.cos(a) * 0.17;
+        addPart(turret, dark250, tube, bx + s * dx, by + dy, bz + 0.10 + Math.sin(tilt) * 0.1);
+      }
+    }
+  }
+
   // Bustle-rack soft stowage (r9 minor): the asset's rack contents are bare
   // rectangular slabs — lay a few rounded tarp/duffel lumps with dark strap
   // rings over them so the rack reads packed with crew gear. Raw turret-local
@@ -522,6 +611,34 @@ function applyModelFixes(scene, turret, spec) {
           }
         });
         const cx = sn ? sx / sn : 0, cz = sn ? sz / sn : 3.0;
+        // tank_models r1 (critic: "the barrel's thermal-sleeve step is
+        // drainpipe-fat"): the asset's mid-tube sleeve section runs r≈0.26
+        // (0.42 m dia) against a 0.144 forward tube. Radially compress the
+        // sleeve band toward the bore axis to a credible ~0.20 step.
+        gun.traverse((o) => {
+          if (!o.isMesh || !o.geometry) return;
+          const g2 = o.geometry;
+          if (g2.userData.__cotSleeveSlim) return;
+          g2.userData.__cotSleeveSlim = true;
+          const p2 = g2.attributes.position;
+          let touched = false;
+          for (let i = 0; i < p2.count; i++) {
+            const y2 = p2.getY(i);
+            if (y2 < -4.6 || y2 > -3.05) continue;
+            const dx2 = p2.getX(i) - cx, dz2 = p2.getZ(i) - cz;
+            const r2 = Math.hypot(dx2, dz2);
+            if (r2 <= 0.17 || r2 > 0.32) continue;   // keep bore + rotor hardware
+            const k2 = (0.17 + (r2 - 0.17) * 0.35) / r2;
+            p2.setX(i, cx + dx2 * k2);
+            p2.setZ(i, cz + dz2 * k2);
+            touched = true;
+          }
+          if (touched) {
+            p2.needsUpdate = true;
+            g2.computeBoundingBox();
+            g2.computeBoundingSphere();
+          }
+        });
         const evacY = minY + 0.42 * (-2.7 - minY);   // ~42% back from the muzzle
         addPart(gun, mat, new THREE.CylinderGeometry(0.205, 0.205, 0.60, seg), cx, evacY, cz);
         addPart(gun, mat, new THREE.CylinderGeometry(0.205, 0.150, 0.17, seg), cx, evacY - 0.38, cz);
@@ -636,7 +753,15 @@ function refineCommunityGeometry(o) {
   }
 }
 
-function paintUntextured(root, spec, normScale) {
+function paintUntextured(root, spec, normScale, cfg = {}) {
+  // tank_models r1 (kv2 "two material worlds"): stripBakedTextures treats the
+  // asset's REAL baked textures as paint to replace — hull/turret route onto
+  // the shared camo canvas (keeping the baked normal map for surface detail),
+  // named gear nodes take the dark gear materials. For the kv2 the baked
+  // rust-orange carnival albedo + silver grille moiré could never cohere with
+  // the repainted fleet.
+  const strip = !!cfg.stripBakedTextures;
+  const stripCache = new Map();
   const repeatsPerM = spec.visual && spec.visual.camoScale != null ? spec.visual.camoScale : 0.34;
   // Per-mesh UV density: raw vertex units vary wildly between assets (the
   // Quaternius rig bakes a large node-chain scale, so its raw verts span
@@ -682,7 +807,7 @@ function paintUntextured(root, spec, normScale) {
         envMapIntensity: 0.55,
       });
       camoMat.onBeforeCompile = vehicleAmbientFloorHook;
-      camoMat.customProgramCacheKey = () => 'veh-ambient-floor-v1';
+      camoMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     }
     return camoMat;
   };
@@ -692,10 +817,24 @@ function paintUntextured(root, spec, normScale) {
   // entirely, which is how the banana-cream factory palette survived r6.
   const replacement = (o, m) => {
     if (!m || !m.color) return null;
-    if (m.map && !isPalette(m)) return null;             // real texture: composite path
+    if (m.map && !isPalette(m) && !strip) return null;   // real texture: composite path
     const path = `${nodePath(o)}/${m.name || ''}`;
     if (TRACK_RE.test(path)) return getCommunityGearMaterials(spec).track;
     if (WHEEL_RE.test(path)) return getCommunityGearMaterials(spec).wheel;
+    if (m.map && !isPalette(m) && strip) {
+      // painted shell with a stripped baked albedo: camo canvas + the
+      // asset's own normal map (per-source-material clone, cached)
+      let sm = stripCache.get(m.uuid);
+      if (!sm) {
+        sm = ensureCamoMat().clone();
+        sm.name = 'AddOnCamoHullStrip';
+        if (m.normalMap) { sm.normalMap = m.normalMap; sm.normalScale = new THREE.Vector2(0.8, 0.8); }
+        sm.onBeforeCompile = vehicleAmbientFloorHook;
+        sm.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+        stripCache.set(m.uuid, sm);
+      }
+      return sm;
+    }
     // q_heavy (Quaternius): 'Main_Light' + 'Main_Details' cover the giant
     // smooth wheel-fairing capsule and stud band BETWEEN the track runs —
     // as camo/keep they read as a blank tan band with no wheels (r7
@@ -940,6 +1079,60 @@ function applyCommunityFixes(scene, spec, gun) {
     gun.scale.x *= 1.5;
     gun.scale.y *= 1.5;
     gun.updateMatrixWorld(true);
+  } else if (spec.id === 'is7') {
+    // tank_models r1 (critic: "IS-7 is one coat of waxy monochrome green
+    // including its tracks and wheels"): the print asset fuses the whole
+    // running gear into the hull mesh with a single untextured material, so
+    // the node-name gear split never fires. Split the HULL mesh's triangles
+    // by position — everything outboard of the sponson line and below the
+    // fender level is track/wheel steel.
+    const gear = getCommunityGearMaterials(spec);
+    scene.traverse((o) => {
+      if (!o.isMesh || !o.geometry || /turret/i.test(o.name || '')) return;
+      const m = Array.isArray(o.material) ? o.material[0] : o.material;
+      if (!m || !/AddOnCamoHull/.test(m.name || '')) return;
+      const pos = o.geometry.attributes.position;
+      if (!pos) return;
+      splitTrianglesToGroups(o,
+        (i) => Math.abs(pos.getX(i)) > 1.15 && pos.getY(i) < 1.18, gear.track);
+    });
+  }
+}
+
+/**
+ * tank_models r1: white tactical number quads for sourced-GLB turrets (the
+ * procedural fleet gets numbers via tankFactory decals; GLB variants shipped
+ * bare — modern-roster.md §13.5 explicitly specs the T-90A's "112").
+ */
+function addGlbTurretNumber(turret, text, spots, size = 0.6) {
+  const cnv = document.createElement('canvas');
+  cnv.width = cnv.height = 256;
+  const c2 = cnv.getContext('2d');
+  c2.clearRect(0, 0, 256, 256);
+  c2.font = `bold ${Math.min(150, Math.floor(430 / Math.max(1, text.length)))}px sans-serif`;
+  c2.textAlign = 'center';
+  c2.textBaseline = 'middle';
+  c2.lineWidth = 12;
+  c2.strokeStyle = 'rgba(20,20,20,0.6)';
+  c2.strokeText(text, 128, 128);
+  c2.fillStyle = 'rgba(216,214,206,0.95)';
+  c2.fillText(text, 128, 128);
+  const tex = new THREE.CanvasTexture(cnv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  const mat = new THREE.MeshStandardMaterial({
+    name: 'AddOnNumber_addon', map: tex, transparent: true,
+    roughness: 0.85, metalness: 0.05,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    depthWrite: false,
+  });
+  for (const [x, y, z, ry] of spots) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), mat);
+    m.position.set(x, y, z);
+    m.rotation.y = ry;
+    m.castShadow = false;
+    m.receiveShadow = true;
+    turret.add(m);
   }
 }
 
@@ -1098,12 +1291,20 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
   // untextured painted surfaces box-UV'd onto the live shared camo canvas
   // (full pattern support); very dark untextured mats (tracks, tires) keep
   // their factory look ('addon' marker opts them out of the camo tint).
-  if (cfg.paintUntextured) paintUntextured(scene, spec, s);
+  if (cfg.paintUntextured) paintUntextured(scene, spec, s, cfg);
   // r10: camo-paint the m1a2's untextured gun tube (flat-green prop critique)
   if (spec.id === 'm1a2' && gun) paintGlbGunTube(gun, spec);
   // r10: per-spec community cohesion surgery (q_heavy loops, recon wheels
   // + barrel, newc_pziii gun) — see applyCommunityFixes
   applyCommunityFixes(scene, spec, gun);
+  // tank_models r1: T-90A '112' turret number (modern-roster.md §13.5) —
+  // coords are TurretPivot-local (raw frame minus the pivot translation).
+  if (spec.id === 't90a' && turret) {
+    addGlbTurretNumber(turret, '112', [
+      [1.38, 0.55, -1.05, Math.PI / 2],
+      [-1.38, 0.55, -1.05, -Math.PI / 2],
+    ], 0.55);
+  }
   // camo: texture-space pattern composite onto the asset's baked albedo
   // (materials.js owns it — pattern tile + luminance-normalized grayscale
   // detail overlay + alpha restore; weathering/AO preserved).
@@ -1200,6 +1401,10 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
       }
     }
   }
+  // tank_models r1: flag the swap so later visibility toggles on procedural
+  // gear (tankFactory setBroken repair path) never resurrect the hidden
+  // stand-in meshes beside the GLB.
+  hullG.userData.__glbSwapped = true;
   return true;
 }
 

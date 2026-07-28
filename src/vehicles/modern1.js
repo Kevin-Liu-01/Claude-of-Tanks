@@ -628,8 +628,13 @@ function buildChallenger2(P) {
   liftEye(P, 'hullDetail', 1.45, 1.58, -1.6);
   stowage(P, 'hullCloth', rng, [[-1.35, 1.66, -2.9, 0.5, 0.22, 1.0], [1.4, 1.64, -3.3, 0.4, 0.2, 0.8]]);
   // turret: rounded-off trapezoid — swept-back plan-view arrow front (§18.5).
-  const CTW = 1.26, CTH = 0.90;
-  P.add('turret', frustum(CTW, 0.10, -1.95, CTW * 0.92, -0.02, -1.92, 0.0, CTH)); // main body
+  // tank_models r1 (critic: "Challenger turret is roughly half its correct
+  // width ... undersized generic turret"): plan-form audit vs §18.5 — the
+  // body widens to 2.80 m (0.80 of the 3.52 hull, the real CR2 read with its
+  // Dorchester side arrays) and runs longer aft; the swept cheeks scale out
+  // with CTW automatically.
+  const CTW = 1.40, CTH = 0.92;
+  P.add('turret', frustum(CTW, 0.10, -2.15, CTW * 0.92, -0.02, -2.10, 0.0, CTH)); // main body
   // swept cheeks: top ring pulled back 0.55 m — the real CR2 front is a
   // strongly raked wedge, not a vertical slab (first-pass 0.28 setback read
   // as a Tiger II face at the judged angle)
@@ -643,6 +648,12 @@ function buildChallenger2(P) {
   for (const s of [-1, 1]) {
     P.add('turret', box(0.10, CTH * 0.94, 0.10), s * 0.17, CTH / 2, 1.06, 0, s * 0.5, 0);
     P.add('turretDark', box(0.55, 0.03, 0.03), s * 0.7, 0.34, 0.62, 0, s * 0.72, 0); // module seam
+  }
+  // Dorchester side armor arrays: big rectangular module slabs proud of the
+  // side walls (the CR2's boxy cheek-to-bustle side read — §18.5)
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.14, CTH * 0.72, 1.55), s * (CTW + 0.03), CTH * 0.42, -0.90, 0, s * 0.03, 0);
+    P.add('turretDark', box(0.145, 0.03, 1.5), s * (CTW + 0.035), CTH * 0.42, -0.90, 0, s * 0.03, 0); // module seam
   }
   // gun slot: NARROW mantlet-less notch — scheme plate closes it, dark walls
   P.add('turret', box(0.44, 0.62, 0.42), 0, 0.32, 0.92);                        // embrasure block
@@ -664,40 +675,46 @@ function buildChallenger2(P) {
   P.add('turretDetail', box(0.03, 0.55, 0.03), -0.95, CTH + 0.3, -1.5, 0, 0, 0.1); // antenna
   P.add('turretDetail', box(0.025, 0.42, 0.025), 0.95, CTH + 0.25, -1.55);      // met sensor
   // HUGE rear stowage bin + full-width basket spanning the bustle (§18.5)
-  P.add('turret', box(2.3, 0.5, 0.55), 0, 0.30, -2.18);                         // welded bustle bin
-  P.add('turretDetail', box(2.32, 0.05, 0.57), 0, 0.57, -2.18);                 // bin lid lip
-  for (const f of [-0.8, 0, 0.8]) P.add('turretDark', box(0.03, 0.52, 0.57), f, 0.30, -2.18); // straps
-  const bkT = 0.72, bkB = 0.12, bkZ = -2.72;
-  P.add('turretDetail', box(2.6, 0.05, 0.05), 0, bkT, bkZ);                     // basket rails
-  P.add('turretDetail', box(2.6, 0.05, 0.05), 0, bkB, bkZ);
-  for (let k = 0; k < 12; k++) P.add('turretDetail', box(0.035, bkT - bkB, 0.035), -1.25 + k * 0.227, (bkT + bkB) / 2, bkZ);
-  P.add('turretDark', box(2.5, 0.02, 0.42), 0, bkB + 0.03, -2.5);               // mesh floor
+  P.add('turret', box(2.6, 0.5, 0.55), 0, 0.30, -2.38);                         // welded bustle bin
+  P.add('turretDetail', box(2.62, 0.05, 0.57), 0, 0.57, -2.38);                 // bin lid lip
+  for (const f of [-0.9, 0, 0.9]) P.add('turretDark', box(0.03, 0.52, 0.57), f, 0.30, -2.38); // straps
+  const bkT = 0.56, bkB = 0.12, bkZ = -2.92;
+  P.add('turretDetail', box(2.9, 0.05, 0.05), 0, bkT, bkZ);                     // basket rails
+  P.add('turretDetail', box(2.9, 0.05, 0.05), 0, bkB, bkZ);
+  for (let k = 0; k < 13; k++) P.add('turretDetail', box(0.035, bkT - bkB, 0.035), -1.40 + k * 0.233, (bkT + bkB) / 2, bkZ);
+  P.add('turretDark', box(2.8, 0.02, 0.42), 0, bkB + 0.03, -2.7);               // mesh floor
   stowage(P, 'turretCloth', rng, [
-    [-0.75, 0.38, -2.5, 0.6, 0.4, 0.38], [0.15, 0.35, -2.52, 0.5, 0.34, 0.36],
+    [-0.75, 0.38, -2.7, 0.6, 0.4, 0.38], [0.15, 0.35, -2.72, 0.5, 0.34, 0.36],
   ]);
   // camo net roll bungeed to the basket — CR2 identity prop (§18.5)
-  tarpRoll(P, 'turretCloth', 0.7, 0.52, -2.48, 1.05, 0.13, true);
-  jerryCan(P, 'turretCloth', -1.15, 0.36, -2.5, 0.15);
-  ammoCan(P, 'turretDark', 1.1, 0.32, -2.52, 0.25);
+  tarpRoll(P, 'turretCloth', 0.7, 0.52, -2.68, 1.05, 0.13, true);
+  jerryCan(P, 'turretCloth', -1.15, 0.36, -2.7, 0.15);
+  ammoCan(P, 'turretDark', 1.1, 0.32, -2.72, 0.25);
   // twin 5-tube smoke banks on the cheeks (§18.5)
   smokeCluster(P, 0.98, 0.42, 0.72, 5, 0.85, 0.7);
   smokeCluster(P, -0.98, 0.42, 0.72, 5, -0.85, 0.7);
   // side stowage baskets along the turret walls
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.04, 0.26, 1.1), s * (CTW + 0.08), 0.40, -1.15);
-    stowage(P, 'turretCloth', rng, [[s * (CTW + 0.03), 0.42, -1.1, 0.14, 0.24, 0.85]]);
+    P.add('turretDetail', box(0.04, 0.26, 1.1), s * (CTW + 0.075), 0.40, -1.65);
+    stowage(P, 'turretCloth', rng, [[s * (CTW + 0.02), 0.42, -1.6, 0.14, 0.24, 0.85]]);
   }
   // fat thermal-sleeved L30 with MRS at the muzzle: collar:true adds the MRS
   // ring; the 0.082 tube + sleeve reads smooth/fat per §18.5
   buildGun(P, { len: 6.7, r: 0.082, sleeve: true, evac: 0.58, collar: true, baseR: 0.15 });
   // 6 large evenly-spaced wheels (Hydrogas), 4 return rollers, sprocket rear
+  // r1 (exposed-zipper critique): return rollers dropped below the fender
+  // line and the covered top run's link pads suppressed — the real CR2's
+  // return run is fully enclosed.
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.36, wheelW: 0.22, xc: 1.52,
     wheelZs: [2.95, 1.81, 0.67, -0.47, -1.61, -2.75],
     sprocket: { z: -3.62, y: 0.47, r: 0.33 }, idler: { z: 3.58, y: 0.45, r: 0.31 },
-    rollers: [2.3, 1.0, -0.55, -1.95].map((z) => ({ z, y: 0.98, r: 0.085 })),
-    trackW: 0.65, topY: 0.95, paintedEnds: true,
+    rollers: [2.3, 1.0, -0.55, -1.95].map((z) => ({ z, y: 0.90, r: 0.085 })),
+    trackW: 0.65, topY: 0.95, paintedEnds: true, coveredTop: 1.02,
   });
+  for (const s of [-1, 1]) {                                                    // sponson gap covers
+    P.add('hullShadow', new THREE.BoxGeometry(0.30, 0.03, 7.4), s * 1.70, 1.10, -0.05);
+  }
   // ZAP plate front + squadron number on turret sides
   P.decal('hull', 'number', 'KC91AA', 0.34, [0.85, 1.28, 3.62], 0, -1.2);
   P.decal('turret', 'number', '22', 0.36, [1.20, 0.42, -0.9], Math.PI / 2, 0, 0.06);
@@ -779,41 +796,47 @@ function buildMerkava4(P) {
   }
   // turret: the ARROWHEAD — small frontal cross-section widening rearward in
   // flat diamond facets, long tail bustle (§21.5)
+  // tank_models r1 (critic: "undersized generic turret"): plan-form audit vs
+  // §21.5 — the arrowhead scales to ~2.57 m wide x 3.1 m long (real Merkava
+  // IVm turret dominates the hull), walls taller; roof kit repositioned with
+  // it below.
   P.add('turret', KIT.polyTurret([
-    [0.15, 1.32], [0.62, 0.72], [1.02, -0.15], [0.85, -0.95], [0.45, -1.32],
-    [-0.45, -1.32], [-0.85, -0.95], [-1.02, -0.15], [-0.62, 0.72], [-0.15, 1.32],
-  ], 0.78, 1.04, 0.74), 0, 0, 0);
-  const MKH = 0.78;
+    [0.19, 1.56], [0.78, 0.85], [1.285, -0.18], [1.07, -1.12], [0.57, -1.56],
+    [-0.57, -1.56], [-1.07, -1.12], [-1.285, -0.18], [-0.78, 0.85], [-0.19, 1.56],
+  ], 0.86, 1.04, 0.74), 0, 0, 0);
+  const MKH = 0.86;
   // NO exposed mantlet: gun pokes from a narrow V-notch (§21.5)
-  P.add('turret', box(0.40, 0.46, 0.34), 0, 0.22, 1.02);                        // notch closer plate
-  P.add('turretDark', box(0.46, 0.36, 0.05), 0, 0.22, 1.20);                    // notch shadow
+  P.add('turret', box(0.44, 0.50, 0.38), 0, 0.24, 1.24);                        // notch closer plate
+  P.add('turretDark', box(0.50, 0.38, 0.05), 0, 0.24, 1.44);                    // notch shadow
   // Trophy APS: flat angled slab boxes each side with vent lines + radar
   // squares at the corners (§21.5)
   for (const s of [-1, 1]) {
-    P.add('turret', box(0.14, 0.44, 1.0), s * 1.00, 0.28, -0.62, 0, -s * 0.12, 0);
+    P.add('turret', box(0.16, 0.50, 1.25), s * 1.26, 0.32, -0.72, 0, -s * 0.12, 0);
     for (let k = 0; k < 3; k++) {
-      P.add('turretDark', box(0.15, 0.03, 0.8), s * 1.01, 0.16 + k * 0.14, -0.62, 0, -s * 0.12, 0);
+      P.add('turretDark', box(0.17, 0.03, 1.0), s * 1.27, 0.18 + k * 0.15, -0.72, 0, -s * 0.12, 0);
     }
-    P.add('turretDark', box(0.03, 0.20, 0.20), s * 0.92, 0.32, 0.28, 0, s * 0.35, 0);   // fwd radar face
-    P.add('turretGlass', box(0.012, 0.16, 0.16), s * 0.945, 0.32, 0.29, 0, s * 0.35, 0);
-    P.add('turretDark', box(0.03, 0.20, 0.20), s * 0.90, 0.32, -1.30, 0, -s * 0.35, 0); // rear radar face
+    P.add('turretDark', box(0.03, 0.20, 0.20), s * 1.16, 0.36, 0.36, 0, s * 0.35, 0);   // fwd radar face
+    P.add('turretGlass', box(0.012, 0.16, 0.16), s * 1.185, 0.36, 0.37, 0, s * 0.35, 0);
+    P.add('turretDark', box(0.03, 0.20, 0.20), s * 1.13, 0.36, -1.52, 0, -s * 0.35, 0); // rear radar face
   }
   // signature ball-and-chain curtain along the bustle underside (§21.5)
-  P.add('turret', box(1.35, 0.30, 0.65), 0, 0.16, -1.55);                       // tail bustle box
-  P.add('turretDetail', box(1.42, 0.04, 0.04), 0, 0.02, -1.88);                 // chain rail
-  for (let k = 0; k < 13; k++) {
-    const x = -0.66 + k * 0.11;
-    P.add('turretDark', cylY(0.008, 0.008, 0.14, 6), x, -0.07, -1.90);
-    P.add('turretDark', sph(0.030, 8), x, -0.16, -1.90);
+  P.add('turret', box(1.60, 0.34, 0.75), 0, 0.18, -1.80);                       // tail bustle box
+  // signature ball-and-chain curtain (§21.5) — r1: enlarged + densified so it
+  // actually reads as the Merkava's fringe at garage distance
+  P.add('turretDetail', box(1.72, 0.05, 0.05), 0, 0.02, -2.18);                 // chain rail
+  for (let k = 0; k < 17; k++) {
+    const x = -0.80 + k * 0.10;
+    P.add('turretDark', cylY(0.010, 0.010, 0.20, 6), x, -0.09, -2.20);
+    P.add('turretDark', sph(0.042, 8), x, -0.22, -2.20);
   }
   // roof set: Rafael pano sight center-roof, gunner sight brow right-front,
   // 12.7 mm over the gun, 60 mm mortar hatch left (§21.5)
-  P.add('turretDetail', cylY(0.07, 0.085, 0.18, 10), 0.20, MKH + 0.09, -0.45);  // pano pedestal
-  P.add('turretDark', box(0.24, 0.24, 0.24), 0.20, MKH + 0.30, -0.45);          // pano head
-  P.add('turretGlass', box(0.15, 0.11, 0.02), 0.20, MKH + 0.31, -0.32);
-  P.add('turret', box(0.36, 0.22, 0.34), 0.38, MKH + 0.06, 0.30);               // gunner sight box
-  P.add('turretDark', box(0.28, 0.14, 0.04), 0.38, MKH + 0.08, 0.48);
-  P.add('turretGlass', box(0.22, 0.09, 0.02), 0.38, MKH + 0.08, 0.505);
+  P.add('turretDetail', cylY(0.07, 0.085, 0.18, 10), 0.24, MKH + 0.09, -0.55);  // pano pedestal
+  P.add('turretDark', box(0.24, 0.24, 0.24), 0.24, MKH + 0.30, -0.55);          // pano head
+  P.add('turretGlass', box(0.15, 0.11, 0.02), 0.24, MKH + 0.31, -0.42);
+  P.add('turret', box(0.36, 0.22, 0.34), 0.46, MKH + 0.06, 0.42);               // gunner sight box
+  P.add('turretDark', box(0.28, 0.14, 0.04), 0.46, MKH + 0.08, 0.60);
+  P.add('turretGlass', box(0.22, 0.09, 0.02), 0.46, MKH + 0.08, 0.625);
   P.add('turretDark', box(0.09, 0.11, 0.44), 0.10, MKH + 0.16, 0.62);           // .50cal receiver
   P.add('turretDark', cylZ(0.022, 0.55, 8), 0.10, MKH + 0.16, 1.10);            // .50cal barrel
   P.add('turretDetail', box(0.10, 0.13, 0.18), -0.08, MKH + 0.13, 0.55);        // ammo box
@@ -826,15 +849,15 @@ function buildMerkava4(P) {
   P.add('turretDetail', box(0.03, 0.5, 0.03), 0.85, MKH + 0.16, -1.15, 0, 0, -0.1);  // antenna R
   // stowage baskets across the full turret rear (§21.5) + IDF clutter
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.04, 0.04, 0.9), s * 0.98, 0.46, -1.35);
-    P.add('turretDetail', box(0.04, 0.04, 0.9), s * 0.98, 0.12, -1.35);
-    for (let k = 0; k < 4; k++) P.add('turretDetail', box(0.03, 0.34, 0.03), s * 0.98, 0.29, -1.0 - k * 0.25);
-    stowage(P, 'turretCloth', rng, [[s * 0.88, 0.35, -1.35, 0.2, 0.3, 0.8]]);
+    P.add('turretDetail', box(0.04, 0.04, 0.9), s * 1.16, 0.46, -1.55);
+    P.add('turretDetail', box(0.04, 0.04, 0.9), s * 1.16, 0.12, -1.55);
+    for (let k = 0; k < 4; k++) P.add('turretDetail', box(0.03, 0.34, 0.03), s * 1.16, 0.29, -1.2 - k * 0.25);
+    stowage(P, 'turretCloth', rng, [[s * 1.05, 0.35, -1.55, 0.2, 0.3, 0.8]]);
   }
-  stowage(P, 'turretCloth', rng, [[0, 0.40, -1.60, 1.1, 0.26, 0.5]]);
-  tarpRoll(P, 'turretCloth', -0.35, 0.52, -1.45, 0.9, 0.09, true);
-  smokeCluster(P, 0.72, 0.30, 0.85, 4, 0.95, 0.6);                              // CL-3030 launchers
-  smokeCluster(P, -0.72, 0.30, 0.85, 4, -0.95, 0.6);
+  stowage(P, 'turretCloth', rng, [[0, 0.44, -1.85, 1.25, 0.26, 0.5]]);
+  tarpRoll(P, 'turretCloth', -0.35, 0.56, -1.70, 0.9, 0.09, true);
+  smokeCluster(P, 0.88, 0.32, 1.02, 4, 0.95, 0.6);                              // CL-3030 launchers
+  smokeCluster(P, -0.88, 0.32, 1.02, 4, -0.95, 0.6);
   // MG253 L/44: sleeve + evacuator NEAR THE MANTLET (§21.1 — evac at 28%)
   buildGun(P, { len: 5.3, r: 0.080, sleeve: true, evac: 0.28, baseR: 0.14 });
   // 6 large wheels, 5 return rollers, sprocket FRONT (front engine — §21.5)
@@ -842,9 +865,12 @@ function buildMerkava4(P) {
     style: 'rubber', wheelR: 0.37, wheelW: 0.22, xc: 1.58,
     wheelZs: [2.62, 1.60, 0.68, -0.36, -1.44, -2.52],
     sprocket: { z: 3.32, y: 0.52, r: 0.31 }, idler: { z: -3.28, y: 0.48, r: 0.28 },
-    rollers: [2.2, 1.1, 0.05, -1.1, -2.2].map((z) => ({ z, y: 0.96, r: 0.08 })),
-    trackW: 0.64, topY: 0.92, paintedEnds: true,
+    rollers: [2.2, 1.1, 0.05, -1.1, -2.2].map((z) => ({ z, y: 0.88, r: 0.08 })),
+    trackW: 0.64, topY: 0.92, paintedEnds: true, coveredTop: 1.0,
   });
+  for (const s of [-1, 1]) {                                                    // sponson gap covers (r1 zipper)
+    P.add('hullShadow', new THREE.BoxGeometry(0.34, 0.03, 6.8), s * 1.68, 1.07, -0.05);
+  }
   // white unit stencils on the slat skirts (§21.5 paint paragraph)
   P.decal('hull', 'number', '11', 0.34, [1.90, 0.84, 1.2], Math.PI / 2);
   P.decal('hull', 'number', '11', 0.34, [-1.90, 0.84, 1.2], -Math.PI / 2);
@@ -873,7 +899,9 @@ function buildLeo2A6(P) {
   // rear deck: twin cooling fans + radiator louver + exhaust louvres
   for (const s of [-1, 1]) {
     P.add('hullDark', cylY(0.40, 0.40, 0.025, P.q ? 28 : 14), s * 0.80, 1.725, -2.55);
-    P.add('hullDetail', torus(0.40, 0.025, P.q ? 26 : 14), s * 0.80, 1.73, -2.55);
+    P.add('hullDetail', torus(0.40, 0.035, P.q ? 26 : 14), s * 0.80, 1.735, -2.55);
+    P.add('hullDetail', torus(0.24, 0.02, P.q ? 22 : 12), s * 0.80, 1.732, -2.55); // inner ring
+    P.add('hullDetail', cylY(0.07, 0.08, 0.05, 10), s * 0.80, 1.74, -2.55);        // hub cap
     P.add('hullDetail', box(0.76, 0.02, 0.05), s * 0.80, 1.74, -2.55);
     P.add('hullDetail', box(0.05, 0.02, 0.76), s * 0.80, 1.74, -2.55);
     for (let k = 0; k < 5; k++) {
@@ -999,10 +1027,13 @@ function buildLeo2A6(P) {
     stowage(P, 'turretCloth', rng, [[s * (LTW + 0.05), 0.40, -1.3, 0.16, 0.3, 1.05]]);
   }
   // 2x8 smoke dischargers in curved rows on the rear sides (family kit)
-  smokeCluster(P, 1.16, 0.56, -1.68, 4, 1.15, 0.85);
-  smokeCluster(P, 1.20, 0.42, -1.86, 4, 1.3, 0.85);
-  smokeCluster(P, -1.16, 0.56, -1.68, 4, -1.15, 0.85);
-  smokeCluster(P, -1.20, 0.42, -1.86, 4, -1.3, 0.85);
+  // r1: banks lifted clear of the basket stowage on a visible mount plate
+  // (mirror of the buildLeo2A7 fix — "missing 2x8 smoke rows" critique)
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.06, 0.30, 0.72), s * (LTW + 0.05), 0.62, -1.42, 0, s * 0.28, 0);
+    smokeCluster(P, s * (LTW + 0.10), 0.74, -1.24, 4, s * 1.05, 0.9);
+    smokeCluster(P, s * (LTW + 0.12), 0.56, -1.44, 4, s * 1.2, 0.9);
+  }
   // crosswind mast rear RIGHT (§8.5 — mirrored from the A7), antenna left
   P.add('turretDetail', box(0.03, 0.45, 0.03), 1.02, LTH + 0.3, -1.9);
   P.add('turretDetail', box(0.03, 0.55, 0.03), -1.02, LTH + 0.32, -1.95, 0, 0, -0.1);
@@ -1022,7 +1053,9 @@ function buildLeo2A6(P) {
   P.decal('turret', 'crossgrey', null, 0.38, [-1.23, 0.44, -0.22], -Math.PI / 2);
   P.decal('turret', 'number', '24', 0.32, [1.23, 0.40, -1.05], Math.PI / 2);
   P.decal('turret', 'number', '24', 0.32, [-1.23, 0.40, -1.05], -Math.PI / 2);
-  P.decal('hull', 'number', 'Y-224', 0.34, [0.9, 1.36, 2.59], 0, -1.2);
+  // r1: Y-plate moved off the engine deck onto the vertical hull rear plate
+  P.decal('hull', 'number', 'Y-224', 0.30, [0.62, 1.44, -3.775], Math.PI, 0);
+  P.decal('hull', 'number', 'Y-224', 0.26, [-1.05, 0.72, 3.79], 0, -0.35);
   P.topY = 1.08;
 }
 

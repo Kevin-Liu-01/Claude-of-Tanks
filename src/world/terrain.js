@@ -241,10 +241,21 @@ export function createHeightField(seed = 1337, cfg = null) {
     }
     // map-specific macro forms: long ridged sand dunes / flat-topped mesas —
     // both attenuated on drive corridors and in the village so play flows.
+    // r9 SPAWN CLEARANCE: macro landforms also fade out around every spawn
+    // pad — a mesa wall rising through the 9-22 m pad blend used to notch a
+    // flat shelf into the cliff face with the spawned tank half-EMBEDDED in
+    // the rock (desert establishing shot: green hull sunk in the mesa flank).
+    let spawnClear = 1;
+    if (T.dunes || T.mesas) {
+      for (let p = 0; p < padPts.length; p++) {
+        const pd = Math.hypot(x - padPts[p].x, z - padPts[p].z);
+        if (pd < 90) spawnClear = Math.min(spawnClear, smoothstep(36, 90, pd));
+      }
+    }
     if (T.dunes) {
       const dn = 1 - Math.abs(noi.noise(x * 0.0021 + 402, z * 0.0046 + 91));
       const dn2 = noi.noise(x * 0.0064 - 55, z * 0.0064 + 233) * 0.5 + 0.5;
-      h += dn * dn * dn * T.dunes.amp * (0.7 + dn2 * 0.5) * (1 - cw * 0.7) * (1 - vm);
+      h += dn * dn * dn * T.dunes.amp * (0.7 + dn2 * 0.5) * (1 - cw * 0.7) * (1 - vm) * spawnClear;
     }
     if (T.mesas) {
       // domain-warped mesa field (r5): unwarped blobs read as lumpy noise
@@ -261,7 +272,7 @@ export function createHeightField(seed = 1337, cfg = null) {
       const wall = smoothstep(T.mesas.thr0, T.mesas.thr0 + band * 0.42, mn);
       const tier2 = smoothstep(T.mesas.thr1 + 0.04, T.mesas.thr1 + 0.085, mn);
       const capNoise = 0.97 + 0.03 * noi.noise(x * 0.012 + 31, z * 0.012 - 74);
-      h += (wall + tier2 * 0.45) * T.mesas.amp * capNoise * (1 - cw) * (1 - vm) * (1 - marshW);
+      h += (wall + tier2 * 0.45) * T.mesas.amp * capNoise * (1 - cw) * (1 - vm) * (1 - marshW) * spawnClear;
     }
     // tactical micro-terrain: berm crests + shallow scrapes every ~70-110 m so
     // the open midfield offers hull-down folds instead of a flat golf course.
@@ -696,8 +707,12 @@ function makeIceLayer(seed, anisotropy) {
       // the 0.8+ snow albedo so the sheet still reads as a lake.
       // r6: saturation halved again (0.045+0.05 -> 0.025+0.03) — even the
       // r5 sheet compounded into garish blue speckle at range
-      _col.setHSL(0.548 + depth * 0.012, 0.025 + deep * 0.03,
-        0.62 - deep * 0.15 + fine * 0.03);
+      // r9: VALUE contrast up, saturation still low — the sheet read as a
+      // slightly-blue snow patch; darker clear-ice fields (0.58 base, deeper
+      // 0.19 depth drop) separate ICE from the 0.8+ snow albedo around it
+      // while staying grey enough to sit under the overcast sky
+      _col.setHSL(0.548 + depth * 0.012, 0.035 + deep * 0.045,
+        0.58 - deep * 0.19 + fine * 0.03);
       base.data[j] = _col.r * 255; base.data[j + 1] = _col.g * 255; base.data[j + 2] = _col.b * 255;
       base.data[j + 3] = 255;
     }
@@ -1536,7 +1551,10 @@ void splatCompute() {
   // r6: 0.45 -> 0.30 — under the overcast winter sky the 0.45 floor killed
   // the sheet's specular response entirely (flat noise disc critique); 0.30
   // gives a believable satin ice sheen while the macro cracks stay legible
-  rough0 = max(rough0, iceW * 0.30);
+  // r9: 0.30 -> 0.20 — with the raised winter envIntensity the sheet still
+  // read matte from the establishing camera; 0.20 picks up a real sky sheen
+  // on the clear-ice fields while drifted snow (driftW) stays matte
+  rough0 = max(rough0, iceW * 0.20);
   // matte floor: kills the wet-plastic sheen / white sparkle glints on every
   // ground type except intentionally glossy lake ice
   gSplatRough = max(rough0, 0.78 * (1.0 - iceW) + shoreW * -0.12);
@@ -1643,7 +1661,7 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant') {
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v13';
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v14';
   return mat;
 }
 

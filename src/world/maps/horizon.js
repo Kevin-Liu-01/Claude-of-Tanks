@@ -295,8 +295,12 @@ function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyA
         // and spur shading carry most of the boost (they survive distance);
         // combined std lands ~±19% pre-fog, and the alpine material darkening
         // (1.61 -> 1.26 recenter) keeps it out of the tonemap shoulder.
+        // r1 (content_breadth): rib strength 0.60 -> 0.30 and SEGMENTED by
+        // the same offset-run mask the gullies use — the full-height 0.60
+        // rib chutes were the "vertical texture smearing" the critique saw
+        // on the winter wall (dark top-to-bottom streaks magnified at range)
         const snowL = 1.03 + sast * 0.26 + basin * 0.34 + spur * 0.18
-          - gully * 0.22 - ribRaw * ribMask * 0.60;
+          - gully * 0.18 - ribRaw * ribMask * seg * 0.30;
         let sr = snowL * 0.98, sg = snowL * 1.0, sb = snowL * 1.04;
         // crag windows: bare cool rock showing through the mid-flank snow
         sr += (0.60 - sr) * crag * 0.85; sg += (0.63 - sg) * crag * 0.85; sb += (0.70 - sb) * crag * 0.85;
@@ -322,7 +326,11 @@ function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyA
   // coherent fiber streaks down every tangentially-grazed wall (the residual
   // felt read). Low aniso lets those faces mip to a soft hazy blend instead —
   // the tree combs and stand patchwork carry the forest read.
-  t.anisotropy = treeline > 0 ? 2 : 16;
+  // r1 (content_breadth): alpine drops to 4 — unlike the mesa's constant-
+  // altitude beds, the snow/rock structure is stochastic, and 16x resolved it
+  // into the same down-slope fiber on tangentially-grazed winter walls.
+  // Only the banded (mesa) style keeps 16.
+  t.anisotropy = treeline > 0 ? 2 : (banding > 0.003 ? 16 : 4);
   // linear (non-sRGB): authored contrast passes through 1:1 and the 0.62
   // mid-gray recentres exactly with the material color multiplier below
   return t;
@@ -420,11 +428,21 @@ function makeTreeLineTexture(rng) {
       const cw = 30 + rng() * 52;
       bh = clamp(bh + (rng() - 0.5) * h * 0.09, h * 0.09, h * hTop);
       const rY = bh * 0.55;
-      ctx.fillStyle = ink(tone0 * (0.82 + rng() * 0.36));
-      ctx.beginPath();
-      ctx.ellipse(bx + cw / 2, base - bh + rY, cw * 0.72, rY, 0, 0, Math.PI * 2);
-      ctx.fill();
-      bx += cw * (0.48 + rng() * 0.34);
+      // hud_ui r6: each canopy cell is 3 overlapping jittered lobes instead
+      // of ONE clean ellipse — at x8 sniper magnification the single-ellipse
+      // band read as smooth paper-cutout blobs; broken lobed edges read as
+      // crown texture.
+      for (let lb = 0; lb < 3; lb++) {
+        const ox = (rng() - 0.5) * cw * 0.5;
+        const oy = (rng() - 0.3) * rY * 0.5;
+        ctx.fillStyle = ink(tone0 * (0.78 + rng() * 0.44));
+        ctx.beginPath();
+        ctx.ellipse(bx + cw / 2 + ox, base - bh + rY + oy,
+          cw * (0.34 + rng() * 0.30), rY * (0.55 + rng() * 0.40),
+          rng() * Math.PI, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      bx += cw * (0.42 + rng() * 0.30);
     }
   }
   let x = 2;
@@ -432,7 +450,11 @@ function makeTreeLineTexture(rng) {
     const conifer = rng() < 0.62;
     const tj = 0.62 + rng() * 0.55; // per-tree value jitter
     if (conifer) {
-      const th = 100 + rng() * 188, tw = 23 + rng() * 32;
+      // hud_ui r6: cap the height/width aspect near 4:1 (was up to ~12:1) —
+      // the old needle spires magnified into bare flagpoles poking out of
+      // the canopy at x8 sniper zoom, the single loudest cardboard tell.
+      const tw = 30 + rng() * 40;
+      const th = Math.min(84 + rng() * 132, tw * (3.4 + rng() * 0.9));
       const tiers = 3 + (rng() * 2 | 0);
       for (let t = 0; t < tiers; t++) {
         const ty = base - (th * (t + 1)) / tiers;
@@ -754,8 +776,19 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
         // r8: 0.30-0.68 -> 0.22-0.56 — even so the winter shot still rendered
         // a near-uniform grey-white wall; more shed rock = more slope-keyed
         // material contrast to mask the facet shading
-        const hold = 1 - smoothstep(0.22, 0.56, slope);
-        c.lerp(snowC, clamp(band * 0.95 + (1 - band) * 0.38, 0, 1) * hold);
+        // r1 (content_breadth): the r8 shed OVERSHOT — the fractal alpine
+        // profile's slope metric sits >0.56 on virtually the whole wall, so
+        // hold≈0 everywhere and the ring rendered as a BARE grey rock curtain
+        // with zero snow on the peaks (critique). Two-part fix: widen the
+        // shed band back to 0.38-0.78 (only true cliff faces shed), and force
+        // a crest hold — the upper ~third of every summit stays snowbound
+        // regardless of slope, exactly how a winter range reads. Shed rock
+        // survives on the steep mid-flanks, giving the slope-keyed contrast
+        // WITHOUT trading the caps away.
+        const hold = 1 - smoothstep(0.38, 0.78, slope);
+        const crest = smoothstep(0.52, 0.80, t);
+        const holdEff = Math.min(1, hold + crest * 0.9);
+        c.lerp(snowC, clamp(band * 0.95 + (1 - band) * 0.38, 0, 1) * holdEff);
       }
       // lighting_post r3: real N·L against the map sun — sun-facing slopes
       // lift warm, back slopes drop cool, exactly like the terrain-side
@@ -835,7 +868,9 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
   // reads as curtain fabric on a forested hill)
   // r7: alpine 0.24 -> 0.12 — the residual chutes still striped the big
   // near walls with vertical fiber under the winter overcast
-  const gullyAmp = style === 'alpine' ? 0.12 : style === 'mesa' ? 0.14 : 0.0;
+  // r1 (content_breadth): alpine 0.12 -> 0.06 — pairs with the segmented rib
+  // cut in the snow pass; kills the last of the vertical smear on the wall
+  const gullyAmp = style === 'alpine' ? 0.06 : style === 'mesa' ? 0.14 : 0.0;
   const detailTex = makeHorizonTexture(gnoi, {
     banding, snowline, treeline, grainAmp, gullyAmp, coolRock: style === 'alpine',
   });

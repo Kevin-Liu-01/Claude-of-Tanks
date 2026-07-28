@@ -40,6 +40,9 @@ const _fwd = new THREE.Vector3();
 // hardcoded copies drifted on every retune (persist 4 vs the sim's 5).
 import { MAX_SPOT_RANGE_M as SPOT_RANGE_M, SPOT_LINGER_S as SPOT_PERSIST_S }
   from '../sim/spotting.js';
+// SPOTTING SECTION: single source of truth for the sixth-sense timing —
+// the lamp fuse/window MUST match the sim's getConcealment display gate.
+import { SIXTH_SENSE_DELAY_S, SIXTH_SENSE_SHOW_S } from '../sim/spotting.js';
 const RENDER_RANGE_M = 500; // white square on the minimap
 const BATTLE_DURATION_S = 900; // 15:00 countdown
 
@@ -289,7 +292,7 @@ const HUD_CSS = `
 .cot-ear.r .cot-er{background:rgba(7,10,14,.62);
   border-right:2px solid rgba(240,90,90,.75);flex-direction:row-reverse;
   box-shadow:0 1px 0 rgba(0,0,0,.45);}
-.cot-er .ic{width:13px;height:11px;flex:0 0 auto;display:flex;
+.cot-er .ic{width:14px;height:12px;flex:0 0 auto;display:flex;
   align-items:center;justify-content:center;
   filter:drop-shadow(0 1px 1px rgba(0,0,0,.7));}
 .cot-er .ic svg{display:block;}
@@ -467,15 +470,20 @@ const HUD_CSS = `
 .cot-sixth .lb{font-size:11px;font-weight:800;letter-spacing:.32em;color:#ffb02e;
   font-family:${FONT_COND};font-stretch:condensed;text-transform:uppercase;
   text-shadow:0 1px 3px rgba(0,0,0,.95);}
-/* SPOTTING SECTION: spotted-eye lamp — r5: DOCKED to the damage-panel
-   cluster (bottom-left) on a small framed plate, and shown ONLY while the
-   player is actively spotted (lit red eye). The old free-floating pale-green
-   eye hovering over the ammo tray read as a context-free debug marker. */
+/* SPOTTING SECTION: spotted-eye lamp — r2: three states. Red wide-open eye
+   while actively spotted (sixth-sense gated), dim green closed eye while the
+   sim says the player is concealed (in bush / high camo), faint neutral
+   outline while merely exposed. The player's OWN concealment is not secret —
+   only the spotted state stays behind the 3 s lamp gate. */
 .cot-camoind{position:absolute;bottom:12px;left:166px;
   display:flex;align-items:center;justify-content:center;width:36px;height:30px;
   background:linear-gradient(180deg,rgba(14,19,24,.92),rgba(8,11,14,.95));
-  border:1px solid rgba(240,90,90,.55);
+  border:1px solid rgba(146,164,180,.28);
+  box-shadow:0 2px 8px rgba(0,0,0,.5);}
+.cot-camoind.spotted{border-color:rgba(240,90,90,.55);
   box-shadow:0 2px 8px rgba(0,0,0,.5),0 0 10px rgba(240,90,90,.25);}
+.cot-camoind.hidden-in-bush{border-color:rgba(120,200,130,.45);
+  box-shadow:0 2px 8px rgba(0,0,0,.5),0 0 8px rgba(90,190,110,.18);}
 .cot-camoind svg{display:block;flex:0 0 auto;transition:opacity .2s;}
 `;
 
@@ -580,24 +588,30 @@ export function initHud(bus) {
     if (txt !== netLastTxt) { netEl.textContent = txt; netLastTxt = txt; }
   }
 
-  // Vehicle-class glyphs — WoT's diamond-family symbol set (r5: the chevron
-  // counts read as identical double-chevrons across the roster — any WoT
-  // player expects rhombus variants): light = hollow diamond, medium =
-  // hollow diamond with a filled core, heavy = solid diamond, TD = inverted
-  // filled wedge, MBT = solid diamond with a light center bar. Parameterized
-  // by ink so team rows tint green/red.
+  // Vehicle-class glyphs (r6): FIVE clearly distinct silhouettes — the r5 set
+  // was four rhombus variants that all collapsed into "the same diamond" at
+  // row size (critique: Tiger I, IS-2, T-90M and Leopard 2A7 all wore one
+  // glyph). Now only the WoT classic trio stays in the diamond family
+  // (light = hollow, medium = hollow + filled core, heavy = solid), TD is the
+  // inverted filled wedge, and the modern classes leave the family entirely:
+  // MBT = wide solid hull hexagon with a dark slot, IFV = the same hexagon
+  // hollow with a core dot. Parameterized by ink so team rows tint green/red.
   function classGlyphSVG(cls, ink, w = 10, h = 8) {
-    const dia = 'M5 .6 8.9 4 5 7.4 1.1 4Z';
+    const dia = 'M6 .7 11.2 5 6 9.3 .8 5Z';
+    const hex = 'M2.6 1.6h6.8L11.5 5l-2.1 3.4H2.6L.5 5Z';
     const body = {
-      light: `<path d="${dia}" fill="none" stroke="${ink}" stroke-width="1.25" stroke-linejoin="round"/>`,
-      medium: `<path d="${dia}" fill="none" stroke="${ink}" stroke-width="1.25" stroke-linejoin="round"/>` +
-        `<path d="M5 2.7 6.5 4 5 5.3 3.5 4Z" fill="${ink}"/>`,
+      light: `<path d="${dia}" fill="none" stroke="${ink}" stroke-width="1.5" stroke-linejoin="round"/>`,
+      medium: `<path d="${dia}" fill="none" stroke="${ink}" stroke-width="1.5" stroke-linejoin="round"/>` +
+        `<path d="M6 3.2 8.2 5 6 6.8 3.8 5Z" fill="${ink}"/>`,
       heavy: `<path d="${dia}" fill="${ink}"/>`,
-      td: `<path d="M1.4 1h7.2L5 7.4Z" fill="${ink}"/>`,
-      mbt: `<path d="${dia}" fill="${ink}"/>` +
-        `<rect x="3" y="3.3" width="4" height="1.4" fill="rgba(235,245,240,.9)"/>`,
+      td: `<path d="M1 1.2h10L6 9.3Z" fill="${ink}"/>`,
+      mbt: `<path d="${hex}" fill="${ink}"/>` +
+        `<rect x="3.4" y="4.2" width="5.2" height="1.6" fill="rgba(8,12,16,.85)"/>`,
+      ifv: `<path d="${hex}" fill="none" stroke="${ink}" stroke-width="1.4" stroke-linejoin="round"/>` +
+        `<circle cx="6" cy="5" r="1.6" fill="${ink}"/>`,
+      spg: `<rect x="1.8" y="1.6" width="8.4" height="6.8" fill="${ink}"/>`,
     };
-    return `<svg viewBox="0 0 10 8" width="${w}" height="${h}">${body[cls] || body.medium}</svg>`;
+    return `<svg viewBox="0 0 12 10" width="${w}" height="${h}">${body[cls] || body.medium}</svg>`;
   }
   // WoT frag-counter (r4): both wedges render the SAME number of identical
   // segment ticks (max team size), always visible as slim dark notches; each
@@ -656,8 +670,6 @@ export function initHud(bus) {
   let sixthPendingS = -1; // sim time the lamp should light (spot time + 3 s)
   let sixthUntilS = -1;
   let sixthOn = false;
-  const SIXTH_DELAY_S = 3;
-  const SIXTH_SHOW_S = 8;
   let stingCtx = null;
   function playSixthSting() {
     try {
@@ -682,57 +694,78 @@ export function initHud(bus) {
     } catch (e) { /* audio unavailable (headless/autoplay) — lamp still shows */ }
   }
   bus.on('player:spotted', ({ timeS }) => {
-    if (sixthPendingS < 0 && !(sixthOn && timeS < sixthUntilS - SIXTH_DELAY_S)) {
-      sixthPendingS = timeS + SIXTH_DELAY_S;
+    if (sixthPendingS < 0 && !(sixthOn && timeS < sixthUntilS - SIXTH_SENSE_DELAY_S)) {
+      sixthPendingS = timeS + SIXTH_SENSE_DELAY_S;
     }
   });
   function updateSixthSense(timeS) {
     if (sixthPendingS >= 0 && timeS >= sixthPendingS) {
       sixthPendingS = -1;
-      sixthUntilS = timeS + SIXTH_SHOW_S;
+      sixthUntilS = timeS + SIXTH_SENSE_SHOW_S;
       if (!sixthOn) { sixthOn = true; sixthEl.classList.add('on'); }
       playSixthSting();
     }
-    if (sixthOn && (timeS > sixthUntilS || timeS < sixthUntilS - SIXTH_SHOW_S - 1)) {
+    if (sixthOn && (timeS > sixthUntilS || timeS < sixthUntilS - SIXTH_SENSE_SHOW_S - 1)) {
       sixthOn = false;
       sixthEl.classList.remove('on');
     }
   }
 
   // Spotted-eye lamp (icon only — WoT-mod grammar, no numeric readout).
-  // r5: visible ONLY while actively spotted — a solid red wide-open eye on
-  // its framed plate beside the damage panel; hidden entirely otherwise.
+  // r2 (camo_spotting): three states driven by the getConcealment snapshot —
+  // red open eye while SPOTTED (sixth-sense gated, unchanged), dim green
+  // closed eye while the sim says we are concealed (bush working / high
+  // camo), faint neutral outline otherwise. The richer snapshot fields
+  // (inBush, camo, fired) are the player's own information; only 'spotted'
+  // stays behind the lamp gate.
   const camoInd = el('div', 'cot-camoind', root);
   camoInd.innerHTML =
     `<svg viewBox="0 0 24 24" width="22" height="22">` +
-    `<path class="ceye" fill="none" stroke="#9fd6a8" stroke-width="1.7" ` +
+    `<path class="ceye" fill="none" stroke="#8a97a3" stroke-width="1.7" ` +
     `d="M2.5 12c2.7-4.4 6-6.6 9.5-6.6s6.8 2.2 9.5 6.6c-2.7 4.4-6 6.6-9.5 6.6S5.2 16.4 2.5 12Z"/>` +
-    `<circle class="cpup" cx="12" cy="12" r="3" fill="#9fd6a8"/></svg>`;
+    `<path class="clid" fill="none" stroke="#7dbd88" stroke-width="1.7" stroke-linecap="round" ` +
+    `d="M2.5 12c2.7 3.6 6 5.4 9.5 5.4s6.8-1.8 9.5-5.4M6 15.6l-1.5 2M12 17.6v2.3M18 15.6l1.5 2" ` +
+    `style="display:none"/>` +
+    `<circle class="cpup" cx="12" cy="12" r="3" fill="#8a97a3"/></svg>`;
   camoInd.style.display = 'none';
   const camoSvgEl = camoInd.querySelector('svg');
   const camoEyeEl = camoInd.querySelector('.ceye');
+  const camoLidEl = camoInd.querySelector('.clid');
   const camoPupEl = camoInd.querySelector('.cpup');
-  let camoIndShown = false;
-  let camoLastOp = -1;
-  let camoLastSpotted = null;
+  let camoIndState = 'off'; // 'off'|'spotted'|'concealed'|'exposed'
   function updateCamoIndicator(sp) {
-    // r5: the lamp exists ONLY in its lit state — framed red eye while the
-    // player is actively spotted, nothing at all otherwise
-    const show = !!(sp && sp.spotted);
-    if (show !== camoIndShown) {
-      camoInd.style.display = show ? 'flex' : 'none';
-      camoIndShown = show;
+    let state = 'off';
+    if (sp) {
+      if (sp.spotted) state = 'spotted';
+      else if ((sp.inBush && !sp.fired) || sp.camo >= 0.40) state = 'concealed';
+      else state = 'exposed';
     }
-    if (!show) return;
-    if (camoLastSpotted !== true) {
+    if (state === camoIndState) return;
+    camoIndState = state;
+    camoInd.style.display = state === 'off' ? 'none' : 'flex';
+    camoInd.classList.toggle('spotted', state === 'spotted');
+    camoInd.classList.toggle('hidden-in-bush', state === 'concealed');
+    if (state === 'spotted') {
+      camoEyeEl.style.display = '';
+      camoLidEl.style.display = 'none';
+      camoPupEl.style.display = '';
       camoEyeEl.setAttribute('stroke', '#f05a5a');
       camoPupEl.setAttribute('fill', '#f05a5a');
       camoPupEl.setAttribute('r', '3.6');
-      camoLastSpotted = true;
-    }
-    if (camoLastOp !== 1) {
       camoSvgEl.style.opacity = '1';
-      camoLastOp = 1;
+    } else if (state === 'concealed') {
+      camoEyeEl.style.display = 'none';   // closed eye: lid arc + lashes only
+      camoLidEl.style.display = '';
+      camoPupEl.style.display = 'none';
+      camoSvgEl.style.opacity = '0.85';
+    } else if (state === 'exposed') {
+      camoEyeEl.style.display = '';
+      camoLidEl.style.display = 'none';
+      camoPupEl.style.display = '';
+      camoEyeEl.setAttribute('stroke', '#8a97a3');
+      camoPupEl.setAttribute('fill', '#8a97a3');
+      camoPupEl.setAttribute('r', '3');
+      camoSvgEl.style.opacity = '0.45';
     }
   }
   // ======================= END SPOTTING SECTION =============================
@@ -948,7 +981,7 @@ export function initHud(bus) {
         // class glyph, team-tinted (r3: per-vehicle side silhouettes at
         // 28x12 all read as the same tank — WoT parses the roster by CLASS)
         r.querySelector('.ic').innerHTML =
-          classGlyphSVG(t.spec.class, color, 13, 11);
+          classGlyphSVG(t.spec.class, color, 14, 12);
         if (t.isPlayer) r.classList.add('me');
         r.querySelector('.tier').textContent = TIER_BY_ID[t.spec.id] || '–';
         r.querySelector('.nick').textContent = nickFor(t);
@@ -1056,24 +1089,10 @@ export function initHud(bus) {
       }
     }
     ctx.globalAlpha = 1;
-    // magnification plate, top-center under the score bar — probes set
-    // window.__HUD_HIDE_ZOOM_PLATE to keep staged captures clean
-    // (killcam_shotinfo r5: aimAtNearest snaps the rig to sniper and the
-    // plate leaked into third-person probe screenshots as a phantom chip)
-    if (!window.__HUD_HIDE_ZOOM_PLATE) {
-      const zTxt = `×${(zoom || 8).toFixed(1)}`;
-      ctx.font = `600 14px ${FONT_COND}`;
-      ctx.textAlign = 'center';
-      const tw2 = ctx.measureText(zTxt).width + 22;
-      ctx.fillStyle = 'rgba(7,10,14,0.62)';
-      ctx.fillRect(cx - tw2 / 2, 52, tw2, 22);
-      ctx.strokeStyle = 'rgba(146,164,180,0.35)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(cx - tw2 / 2 + 0.5, 52.5, tw2 - 1, 21);
-      ctx.fillStyle = 'rgba(222,234,246,0.92)';
-      ctx.fillText(zTxt, cx, 68);
-      ctx.textAlign = 'left';
-    }
+    // (r6: the magnification readout moved out of this top-center plate to
+    // the reticle's left flank — see the readout block in drawReticle. WoT
+    // shows the zoom factor adjacent to the aim circle, not under the score
+    // plate. Probes still hide it via window.__HUD_HIDE_ZOOM_PLATE.)
   }
 
   function drawHitIndicators(timeS) {
@@ -1175,43 +1194,39 @@ export function initHud(bus) {
     smoothRadPx += (targetR - smoothRadPx) * k;
     const r = Math.max(26, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
 
-    // --- dispersion circle: paired arc segments + cardinal ticks in the
-    // fixed WoT circle green — visually distinct from the pen-colored center
-    // marker so the two elements never merge into one composite ring.
-    // Every stroke draws TWICE: a dark outer contour pass under the 2px
-    // green pass, so the sight never vanishes over bright grass/sky
-    // (hud_ui r2: the old 1.6px unlined stroke washed out in player_view).
-    function circlePass() {
+    // --- dispersion circle: ONE thin CONTINUOUS circle with 8 fine tick
+    // marks (WoT PC's aim circle) in the fixed pale green — visually distinct
+    // from the pen-colored center marker so the two elements never merge.
+    // r6: the r5 four-arc build read as thick dashes with large gaps
+    // (critique: "chunky dashes make the bloom/shrink animation illegible");
+    // a continuous ~1.5px stroke keeps the circle's motion readable while the
+    // dark halo under-pass keeps it visible over sunlit grass/sky.
+    function circlePass(tickBump) {
       ctx.beginPath();
-      // four long arcs with small gaps at the cardinals (WoT circle look)
-      for (let q = 0; q < 4; q++) {
-        const a0 = q * Math.PI / 2 + 0.10;
-        ctx.moveTo(cx + Math.cos(a0) * r, cy + Math.sin(a0) * r);
-        ctx.arc(cx, cy, r, a0, a0 + Math.PI / 2 - 0.20);
-      }
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.stroke();
-      // cardinal ticks bridging the gaps (inward, slightly heavier — square
-      // butt ends, r4: the +1.0 bump made fat rounded-looking caps)
-      ctx.lineWidth += 0.5;
+      // 8 short tick marks (cardinals slightly longer than the diagonals),
+      // pointing inward off the stroke — square butt ends
+      ctx.lineWidth += tickBump;
       ctx.beginPath();
-      for (let q = 0; q < 4; q++) {
-        const a = q * Math.PI / 2;
+      for (let q = 0; q < 8; q++) {
+        const a = q * Math.PI / 4;
         const ca = Math.cos(a), sa = Math.sin(a);
-        ctx.moveTo(cx + ca * (r + 3), cy + sa * (r + 3));
-        ctx.lineTo(cx + ca * (r - 8), cy + sa * (r - 8));
+        const len = q % 2 === 0 ? 8 : 5;
+        ctx.moveTo(cx + ca * (r + 2), cy + sa * (r + 2));
+        ctx.lineTo(cx + ca * (r - len), cy + sa * (r - len));
       }
       ctx.stroke();
+      ctx.lineWidth -= tickBump;
     }
-    // hud_ui r5 MAJOR: the r4 ~1px hairline had NO read against sunlit grass
-    // at x8 — the circle must be unmistakable at a glance. 2px light pass
-    // over a wider 60%-black halo pass (heavier still in sniper, where the
-    // whole sight identity hangs on this circle), square butt caps.
-    const circleLw = mode === 'sniper' ? 2.2 : 1.8;
+    // thin continuous stroke (a touch heavier in sniper, where the whole
+    // sight identity hangs on this circle) over a 62%-black halo under-pass
+    const circleLw = mode === 'sniper' ? 1.7 : 1.5;
     ctx.lineCap = 'butt';
     ctx.globalAlpha = 0.68;
     ctx.strokeStyle = 'rgba(0,0,0,0.62)'; // dark halo under-pass
-    ctx.lineWidth = circleLw + 2.2;
-    circlePass();
+    ctx.lineWidth = circleLw + 2.0;
+    circlePass(0.4);
     ctx.globalAlpha = 0.95;
     // BLOCKED-SHOT INDICATOR (controls_gunnery r2): the muzzle→aim path is
     // obstructed short of the aim point — WoT's red reticle on a blocked gun
@@ -1222,7 +1237,7 @@ export function initHud(bus) {
     ctx.shadowColor = 'rgba(0,0,0,0.6)';
     ctx.shadowBlur = 1;
     ctx.lineWidth = circleLw;
-    circlePass();
+    circlePass(0.4);
 
     // --- central gun marker: dot + cross, ALWAYS visible and colored by
     // penetration chance (green/orange/red, neutral off armor). Heavier than
@@ -1301,32 +1316,46 @@ export function initHud(bus) {
     ctx.shadowColor = 'rgba(0,0,0,0.9)';
     ctx.shadowBlur = 3;
     if (isReloading) {
-      // countdown just under the reload ring — heavier weight + explicit
-      // seconds unit so "3.4 s" can never read as a shell counter
-      ctx.fillStyle = '#f0a030';
-      ctx.font = `800 16px ${FONT_COND}`;
+      // countdown just under the reload ring — r6: SMALL secondary numeral
+      // (the sweep arc is the primary reload cue; the old 800-weight 16px
+      // orange read as a mod/Blitz-style countdown, not PC WoT vanilla)
+      ctx.fillStyle = 'rgba(240,160,48,0.9)';
+      ctx.font = `600 11.5px ${FONT_COND}`;
       ctx.fillText(rl0.t >= 10 ? `${Math.ceil(rl0.t)} s` : `${rl0.t.toFixed(1)} s`,
-        cx, cy + Math.max(39, 19 + (zs - 1) * 14 + 21));
+        cx, cy + Math.max(37, 19 + (zs - 1) * 14 + 19));
     }
     // side tag: shell count (white) + type (ammo color) with the range in a
-    // smaller line beneath — anchored right of the circle, tracking bloom
+    // smaller line beneath. r6: anchored on a DOWN-RIGHT diagonal OUTSIDE the
+    // dispersion circle's edge (min 132px radial) — the old cx+(r+24) tag at
+    // center height parked the text on the target's hull at mid sniper zoom.
     {
       const sp = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
       const n = shellCount(sp);
       const tType = sp.type || '';
-      const x0 = cx + Math.max(r + 24, 70);
+      const RT = Math.max(r * 1.18 + 26, 132);
+      const x0 = cx + RT * 0.79;  // cos ~38°
+      const y0 = cy + RT * 0.62;  // sin ~38° — clears the hull center-line
       ctx.textAlign = 'left';
       ctx.font = `700 13px ${FONT_COND}`;
       const wN = ctx.measureText(`${n}`).width;
       ctx.fillStyle = 'rgba(226,236,244,0.92)';
-      ctx.fillText(`${n}`, x0, cy + 4);
+      ctx.fillText(`${n}`, x0, y0);
       ctx.font = `800 8.5px ${FONT_COND}`;
       ctx.fillStyle = SHELL_TYPE_COLOR[tType] || 'rgba(159,176,191,0.9)';
-      ctx.fillText(tType, x0 + wN + 4, cy + 4);
+      ctx.fillText(tType, x0 + wN + 4, y0);
       if (view.distM != null && isFinite(view.distM)) {
         ctx.fillStyle = 'rgba(208,221,232,0.80)';
         ctx.font = `600 11.5px ${FONT_COND}`;
-        ctx.fillText(`${Math.round(view.distM)} m`, x0, cy + 20);
+        ctx.fillText(`${Math.round(view.distM)} m`, x0, y0 + 16);
+      }
+      // zoom factor: adjacent to the reticle on its LEFT at center height
+      // (WoT sniper placement — r6: it lived top-center under the score
+      // plate, a spot no WoT player expects it in)
+      if (mode === 'sniper' && !window.__HUD_HIDE_ZOOM_PLATE) {
+        ctx.textAlign = 'right';
+        ctx.font = `700 14px ${FONT_COND}`;
+        ctx.fillStyle = 'rgba(222,234,246,0.92)';
+        ctx.fillText(`×${(view.zoom || 8).toFixed(1)}`, cx - Math.max(r + 30, 110), cy + 5);
       }
       ctx.textAlign = 'center';
     }
@@ -1519,6 +1548,88 @@ export function initHud(bus) {
     return _wm;
   }
 
+  // r6 (hud_ui): REAL top-down capture of the battle scene as the minimap
+  // underlay — WoT minimaps are stylized orthographic renders of the actual
+  // map, and the hand-authored blob cartography read as painted dabs next to
+  // it. One ortho render into an offscreen target at map load (main.js passes
+  // {renderer, scene, exclude} through buildMinimap); any failure falls back
+  // to the procedural cartography below, so the harness can never go dark.
+  function renderTopDownSnap(snap, N) {
+    try {
+      if (!snap || !snap.renderer || !snap.scene) return null;
+      const { renderer, scene, exclude } = snap;
+      const half = mapWorldSize / 2;
+      // NOTE: a straight down-look with +Z (north) as screen-up puts world +X
+      // on screen-LEFT (three's lookAt basis). Do NOT mirror the projection —
+      // a negative-determinant projection flips face winding and the whole
+      // front-face-culled terrain disappears. Render as-is and flip the
+      // image horizontally in the 2D copy below.
+      const cam = new THREE.OrthographicCamera(-half, half, half, -half, 10, 2400);
+      cam.position.set(0, 900, 0);
+      cam.up.set(0, 0, 1);
+      cam.lookAt(0, 0, 0);
+      cam.updateMatrixWorld(true);
+      const rt = new THREE.WebGLRenderTarget(N, N, { depthBuffer: true });
+      rt.texture.colorSpace = THREE.SRGBColorSpace;
+      const oldFog = scene.fog;
+      scene.fog = null;
+      const hidden = [];
+      if (Array.isArray(exclude)) {
+        for (const o of exclude) {
+          if (o && o.visible !== false) { o.visible = false; hidden.push(o); }
+        }
+      }
+      // auto-hide sky-scale shells (sky dome, cloud decks, horizon ring):
+      // their infinite-deck shaders happily paint clouds/haze OVER the map
+      // in a straight-down render (depth-independent transparents). Anything
+      // whose world-space bounding radius rivals the whole map is scenery
+      // shell, not map content.
+      const _ws = new THREE.Vector3();
+      scene.traverse((o) => {
+        if (!o.visible || (!o.isMesh && !o.isSprite)) return;
+        const g = o.geometry;
+        if (!g) return;
+        if (!g.boundingSphere && g.computeBoundingSphere) g.computeBoundingSphere();
+        const bs = g.boundingSphere;
+        if (!bs || !isFinite(bs.radius)) return;
+        o.getWorldScale(_ws);
+        const rw = bs.radius * Math.max(Math.abs(_ws.x), Math.abs(_ws.y), Math.abs(_ws.z));
+        if (rw > mapWorldSize * 0.9) { o.visible = false; hidden.push(o); }
+      });
+      const oldTarget = renderer.getRenderTarget();
+      renderer.setRenderTarget(rt);
+      renderer.render(scene, cam);
+      const buf = new Uint8Array(N * N * 4);
+      renderer.readRenderTargetPixels(rt, 0, 0, N, N, buf);
+      renderer.setRenderTarget(oldTarget);
+      scene.fog = oldFog;
+      for (const o of hidden) o.visible = true;
+      rt.dispose();
+      const c = document.createElement('canvas');
+      c.width = N; c.height = N;
+      const x2 = c.getContext('2d');
+      const img = x2.createImageData(N, N);
+      // GL pixel rows come bottom-up (vertical flip) and the down-look basis
+      // mirrors east-west (horizontal flip) — undo both while copying, and
+      // force opaque alpha (background texels write alpha 0)
+      const dd = img.data;
+      for (let y = 0; y < N; y++) {
+        const src = (N - 1 - y) * N * 4;
+        const dst = y * N * 4;
+        for (let x3 = 0; x3 < N; x3++) {
+          const s = src + (N - 1 - x3) * 4;
+          const o = dst + x3 * 4;
+          dd[o] = buf[s]; dd[o + 1] = buf[s + 1]; dd[o + 2] = buf[s + 2];
+          dd[o + 3] = 255;
+        }
+      }
+      x2.putImageData(img, 0, 0);
+      return c;
+    } catch (e) {
+      return null; // procedural cartography fallback
+    }
+  }
+
   // MAP-CONFIG WIRING: per-map minimap palette (src/world/maps/*.js cfg.minimap)
   const MM_PALETTE_DEFAULT = {
     base: [70, 94, 52], hard: [104, 96, 78], soft: [48, 70, 54],
@@ -1527,16 +1638,34 @@ export function initHud(bus) {
     roadCasing: 'rgba(46,40,28,0.9)', roadFill: 'rgba(196,178,140,0.95)',
     buildingFill: '#ccd1d9',
   };
-  function buildMinimapBg(heightField, features, palette) {
+  function buildMinimapBg(heightField, features, palette, snap) {
     const pal = { ...MM_PALETTE_DEFAULT, ...(palette || {}) };
     heightFieldRef = heightField;
     mapWorldSize = heightField && heightField.size ? heightField.size : 1024;
-    // terrain underlay sampled at full device resolution and POSTERIZED into
-    // flat tone bands — reads as cartography, not a blurred aerial photo
     const N = MM * mmDpr;
+    // r6: preferred underlay is the one-time ortho capture of the REAL scene
+    // (terrain, forests, roads, buildings as actually rendered); the sampled
+    // procedural cartography below survives as the no-renderer fallback.
+    const snapBg = snap ? renderTopDownSnap(snap, N) : null;
+    // Fallback path only: terrain underlay sampled at full device resolution
+    // and POSTERIZED into flat tone bands (cartography, not a blurred photo).
+    // With a snap the real capture is the underlay, and the vector feature
+    // overlays below still draw on top — the tree billboards are edge-on
+    // (invisible) in a straight-down render, so the forest polygons carry
+    // canopy just like WoT's stylized aerial tiles.
     const bg = document.createElement('canvas');
     bg.width = N; bg.height = N;
     const bctx = bg.getContext('2d');
+    if (snapBg) {
+      // slight contrast/saturation shape + a whisper of dark veil so white
+      // grid/blips/rings always separate from sunlit terrain
+      bctx.filter = 'saturate(1.16) brightness(0.97) contrast(1.06)';
+      bctx.drawImage(snapBg, 0, 0);
+      bctx.filter = 'none';
+      bctx.fillStyle = 'rgba(6,10,8,0.15)';
+      bctx.fillRect(0, 0, N, N);
+    }
+    if (!snapBg) {
     const img = bctx.createImageData(N, N);
     const data = img.data;
     const half = mapWorldSize / 2;
@@ -1566,6 +1695,7 @@ export function initHud(bus) {
       }
     }
     bctx.putImageData(img, 0, 0);
+    }
 
     // compose feature layers at device resolution (vector coords in CSS px)
     const out = document.createElement('canvas');
@@ -1655,6 +1785,13 @@ export function initHud(bus) {
         octx.restore();
       }
     }
+    drawMinimapChrome(octx);
+    mmBg = out;
+  }
+
+  // Shared minimap chrome: 10x10 grid, coordinate strips, inner vignette —
+  // drawn over BOTH underlay styles (ortho capture and procedural fallback).
+  function drawMinimapChrome(octx) {
     // grid 10x10
     octx.strokeStyle = 'rgba(230,240,250,0.11)';
     octx.lineWidth = 0.7;
@@ -1689,7 +1826,6 @@ export function initHud(bus) {
     octx.strokeStyle = 'rgba(0,0,0,0.45)';
     octx.lineWidth = 1.5;
     octx.strokeRect(0.75, 0.75, MM - 1.5, MM - 1.5);
-    mmBg = out;
   }
 
   // Team spawn flags (mode objective markers for annihilation): captured from
@@ -1819,19 +1955,23 @@ export function initHud(bus) {
     // team bases under everything else: WoT convention — a white circle
     // outline (the base perimeter) with the team-colored flag at its center
     if (spawnFlags) {
+      // r6: BOTH bases carry the identical-weight WoT flag+circle treatment —
+      // team-tinted cap fill, team-colored ring over a dark keyline, flag.
+      // (The own base's white ring + weak fill used to vanish under the
+      // ally blip cluster while the enemy flag read at full strength.)
       for (const fl of spawnFlags) {
         const [fx, fy] = worldToMap(fl.x, fl.z);
+        mmCtx.strokeStyle = 'rgba(6,9,12,0.72)'; // dark keyline under the ring
+        mmCtx.lineWidth = 2.8;
+        mmCtx.beginPath();
+        mmCtx.arc(fx, fy, 10, 0, Math.PI * 2);
+        mmCtx.stroke();
         mmCtx.fillStyle = fl.fill || 'rgba(240,246,252,0.07)';
-        mmCtx.strokeStyle = 'rgba(240,246,252,0.85)';
-        mmCtx.lineWidth = 1.2;
+        mmCtx.strokeStyle = fl.color;
+        mmCtx.lineWidth = 1.4;
         mmCtx.beginPath();
         mmCtx.arc(fx, fy, 10, 0, Math.PI * 2);
         mmCtx.fill();
-        mmCtx.stroke();
-        mmCtx.strokeStyle = 'rgba(6,9,12,0.5)'; // dark keyline under the ring
-        mmCtx.lineWidth = 0.8;
-        mmCtx.beginPath();
-        mmCtx.arc(fx, fy, 11, 0, Math.PI * 2);
         mmCtx.stroke();
         drawSpawnFlag(mmCtx, fx, fy + 3, fl.color);
       }
@@ -2342,9 +2482,13 @@ export function initHud(bus) {
      * Render the static minimap background once at battle start.
      * @param {HeightField} heightField
      * @param {{roads:Array,buildings:Array,treeClusters:Array,waterOrSoft:Array}} features - World.getMinimapFeatures() result.
+     * @param {object} [palette] per-map minimap palette override.
+     * @param {{renderer:THREE.WebGLRenderer,scene:THREE.Scene,exclude?:THREE.Object3D[]}} [snap]
+     *   optional live-scene handles for the one-time top-down ortho capture
+     *   (tank roots in `exclude` are hidden during the capture).
      */
-    buildMinimap(heightField, features, palette) {
-      buildMinimapBg(heightField, features, palette);
+    buildMinimap(heightField, features, palette, snap) {
+      buildMinimapBg(heightField, features, palette, snap);
       mmCtx.drawImage(mmBg, 0, 0, MM, MM);
       mmDirty = true;
     },

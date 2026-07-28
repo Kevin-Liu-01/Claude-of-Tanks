@@ -101,8 +101,14 @@ const HAZE_MAX_LUM = 0.50; // linear pre-ACES luminance ceiling in the band
 const HAZE_COMPRESS = 0.18; // slope retained above the ceiling
 const HAZE_BAND_TOP = 0.24; // direction.y where the haze treatment fades out
 const HAZE_TINT_COOL = [0.74, 0.88, 1.13]; // blue hue floor away from the sun
-const HAZE_TINT_WARM = [1.15, 1.00, 0.82]; // warm scatter toward the sun azimuth
-const HAZE_WARM_POW = 3.0; // azimuthal width of the warm lobe
+// r6 ("no sun disc or scattering glow anywhere"): the warm lobe was a barely
+// warm near-white — golden it up and widen it (pow 3.0 → 2.4) so the sunward
+// frame edge carries an unmistakable low-sun scattering glow in every shot
+// that looks within ~70 deg of the sun azimuth.
+const HAZE_TINT_WARM = [1.24, 1.02, 0.70]; // warm scatter toward the sun azimuth
+// 2.4 washed a quarter of the sky milky on the bright maps; 2.9 keeps the
+// golden glow readable ~50 deg around the sun azimuth without the white wash.
+const HAZE_WARM_POW = 2.9; // azimuthal width of the warm lobe
 const HAZE_TINT_MIX = 0.63;
 const SKY_DITHER = 0.004; // linear-space dither amplitude ~1 display LSB
 const SKY_FRAG_ANCHOR = 'gl_FragColor = vec4( texColor, 1.0 );';
@@ -178,18 +184,25 @@ const CLOUD_THR = 0.505; // r6: 0.53 → 0.505 — the infinite-deck projection 
 // - the light march got a deeper optical depth (K 0.46 → 0.62) + darker
 //   shade pole, and thin sun-facing rims get an explicit silver-lining
 //   boost, so masses read modeled instead of airbrushed.
+// r6 (lighting_post, "clouds read as airbrushed lenticular smears; one mass
+// stretches into a vertical white streak top-center"): the wisp edge at 0.11
+// FBM units blurred most mass boundaries into soft gradient fringes, and the
+// weak macro clustering left the whole deck as ONE connected branching mass
+// (its along-view arm projects as the vertical streak). Wisp edge halved so
+// fringes tear instead of airbrush, clustering +33% so the field breaks into
+// separate masses with real blue gaps between them.
 const CLOUD_EDGE = 0.022; // clear→rim ramp width in FBM units (cumulus cores)
-const CLOUD_EDGE_WISP = 0.11; // edge width for sparse wispy fringes
+const CLOUD_EDGE_WISP = 0.055; // edge width for sparse wispy fringes
 const CLOUD_CORE = 0.16; // rim→opaque-core ramp width in FBM units
-const CLOUD_CLUSTER = 0.09; // macro-noise threshold modulation (cloud grouping)
+const CLOUD_CLUSTER = 0.12; // macro-noise threshold modulation (cloud grouping)
 const CLOUD_WARP = 0.075; // domain-warp strength (cauliflower edge crinkle)
 const CLOUD_MARCH_STEPS = 12; // light-march samples toward the in-texture sun
 const CLOUD_MARCH_STEP_PX = 3;
 const CLOUD_SHADE_K = 0.62; // optical-depth scale: bright rims, dark cores
 const CLOUD_LIT = [1.0, 0.98, 0.94]; // warm-white sunlit faces
 const CLOUD_SHADE = [0.44, 0.52, 0.70]; // cool grey-blue shaded bellies
-const CLOUD_SILVER = 0.30; // extra silver-lining gain on thin sun-facing rims
-const CLOUD_DETAIL_AMP = 0.30; // high-frequency alpha modulation inside masses
+const CLOUD_SILVER = 0.38; // extra silver-lining gain on thin sun-facing rims
+const CLOUD_DETAIL_AMP = 0.42; // high-frequency alpha modulation inside masses
 // Cloud decks are viewed at extreme grazing angles (the infinite-plane
 // projection): with the default anisotropy of 1 the mip filter smears every
 // horizonward cloud into a streak — the single biggest "blurred canvas blit"
@@ -214,7 +227,11 @@ const CIRRUS_ALT = 1350;
 // camera, with zero polar pinching (planar UVs by construction).
 const CLOUD_DOME_RADIUS = 3400; // < camera.far 4000; > horizon ring 1290 (mountains occlude correctly)
 const CIRRUS_DOME_RADIUS = 3600;
-const CLOUD_UV_METERS = 4200; // meters per cumulus texture repeat (bigger, calmer masses)
+// r6: 4200 → 3200 — at 4200 m/repeat a single connected mass spanned several
+// km of deck and projected as a frame-tall smear from the battle cameras;
+// 3200 shrinks individual masses to WoT-scale cumulus and shows ~1.7x more
+// distinct clouds per frame.
+const CLOUD_UV_METERS = 3200; // meters per cumulus texture repeat
 const CIRRUS_UV_METERS = 5600;
 // Slant-distance haze rates (1/m): haze = 1-exp(-(t*k)^2) on the analytic
 // slant range t to the virtual deck. Cumulus: ~8% hazed overhead (30 deg),
@@ -289,7 +306,7 @@ function configureSkyUniforms(sky, sunDir, preset = DEFAULT_PRESET) {
 	float warmAmt = pow( max( dot( normalize( vec3( direction.x, 0.0, direction.z ) ),
 		normalize( vec3( vSunDirection.x, 0.0, vSunDirection.z ) ) ), 0.0 ), ${HAZE_WARM_POW.toFixed(1)} );
 	float hazeL = dot( skyCol, lumW );
-	float hazeCeil = ${HAZE_MAX_LUM.toFixed(3)} * mix( 0.90, 1.08, warmAmt );
+	float hazeCeil = ${HAZE_MAX_LUM.toFixed(3)} * mix( 0.90, 1.00, warmAmt );
 	if ( hazeL > hazeCeil && hazeBand > 0.001 ) {
 		float hazeTarget = hazeCeil + ( hazeL - hazeCeil ) * ${HAZE_COMPRESS.toFixed(3)};
 		skyCol *= mix( 1.0, hazeTarget / hazeL, hazeBand );
@@ -297,9 +314,19 @@ function configureSkyUniforms(sky, sunDir, preset = DEFAULT_PRESET) {
 	vec3 hazeTint = mix( vec3( ${HAZE_TINT_COOL[0].toFixed(3)}, ${HAZE_TINT_COOL[1].toFixed(3)}, ${HAZE_TINT_COOL[2].toFixed(3)} ),
 		vec3( ${HAZE_TINT_WARM[0].toFixed(3)}, ${HAZE_TINT_WARM[1].toFixed(3)}, ${HAZE_TINT_WARM[2].toFixed(3)} ), warmAmt );
 	skyCol = mix( skyCol, dot( skyCol, lumW ) * hazeTint, hazeBand * ${HAZE_TINT_MIX.toFixed(3)} );
+	// sun-disc knee exemption (r6 "no sun disc or scattering glow anywhere"):
+	// the dome-wide soft knee kept the WHOLE sky under the bloom threshold —
+	// including the sun itself, which rendered as a flat matte circle. Exempt
+	// a ~1.7x-disc-radius spot around the sun direction so the disc + its
+	// immediate Mie peak keep true HDR values: the post chain's emissive
+	// shoulder rolls them to <= 4.55 and they bloom into a compact glowing
+	// disc + halo, while the WIDE halo (the old white-out mechanism) stays
+	// fully knee-compressed.
+	float sunDisc = smoothstep( 0.99988, 0.99996, dot( direction, vSunDirection ) );
 	float skyL = dot( skyCol, lumW );
 	if ( skyL > ${SKY_KNEE.toFixed(3)} ) {
-		skyCol *= ( ${SKY_KNEE.toFixed(3)} + ${SKY_KNEE_RANGE.toFixed(3)} * ( 1.0 - exp( -( skyL - ${SKY_KNEE.toFixed(3)} ) * ${SKY_KNEE_FALLOFF.toFixed(4)} ) ) ) / skyL;
+		float kneeScale = ( ${SKY_KNEE.toFixed(3)} + ${SKY_KNEE_RANGE.toFixed(3)} * ( 1.0 - exp( -( skyL - ${SKY_KNEE.toFixed(3)} ) * ${SKY_KNEE_FALLOFF.toFixed(4)} ) ) ) / skyL;
+		skyCol *= mix( kneeScale, 1.0, sunDisc );
 	}
 	// break up gradient banding on the low-frequency sky ramps
 	skyCol += ( fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) - 0.5 ) * ${SKY_DITHER.toFixed(4)};
@@ -463,7 +490,9 @@ function makeCloudTexture() {
       // a high-frequency octave breaks the smooth interior alpha gradients
       const macroA = 1 - CLOUD_ALPHA_VAR * (1 - fbmM(x / W, y / H));
       const hfA = 1 - CLOUD_DETAIL_AMP * (1 - core[i]) * fbmHF(x / W, y / H);
-      px[o + 3] = Math.round(255 * CLOUD_MAX_ALPHA * macroA * hfA * m * (0.42 + 0.58 * core[i]));
+      // r6: rim floor 0.42 → 0.30 — denser cores against thinner rims give
+      // the masses a modeled 3D read instead of one flat translucency.
+      px[o + 3] = Math.round(255 * CLOUD_MAX_ALPHA * macroA * hfA * m * (0.30 + 0.70 * core[i]));
     }
   }
   ctx.putImageData(img, 0, 0);
