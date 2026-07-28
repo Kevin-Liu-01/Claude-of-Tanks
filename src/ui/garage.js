@@ -3,15 +3,12 @@
 // bottom tank carousel, right stats card, top-center BATTLE button.
 // Contract: docs/ARCHITECTURE.md §3.7.3.
 
-const FONT_STACK = "'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+import { FONT_STACK, ensureFonts } from './fonts.js';
+import { flagSVG } from './flags.js';
+import { iconUrl } from './icons.js';
+import { createTechTree } from './techtree.js';
 
-const NATION_BADGE = {
-  USA: { bg: '#2f5d8f', fg: '#dce9f7', label: 'USA' },
-  Germany: { bg: '#4a4f55', fg: '#e3e7ea', label: 'GER' },
-  USSR: { bg: '#8f3030', fg: '#f7dcdc', label: 'USSR' },
-  Russia: { bg: '#7a2d35', fg: '#f7dcdc', label: 'RUS' },
-};
-const DEFAULT_BADGE = { bg: '#54606b', fg: '#e3e7ea', label: '—' };
+const NATION_LABEL = { USA: 'USA', Germany: 'GER', USSR: 'USSR', Russia: 'RUS' };
 
 const SHELL_TYPE_COLOR = {
   AP: '#ffd27a', APCR: '#e8f4ff', HEAT: '#ff8a5c', HE: '#ffb02e', APFSDS: '#ffc46b',
@@ -32,16 +29,27 @@ const GARAGE_CSS = `
   background:linear-gradient(90deg,rgba(5,8,11,.8),rgba(5,8,11,0));}
 .cot-garage .band-r{position:absolute;right:0;top:0;bottom:0;width:30%;
   background:linear-gradient(270deg,rgba(5,8,11,.85) 0%,rgba(5,8,11,.35) 60%,rgba(5,8,11,0) 100%);}
-.cot-garage .title{position:absolute;top:22px;left:34px;font-size:17px;font-weight:700;
-  letter-spacing:.34em;color:#9fb0bf;text-transform:uppercase;}
+.cot-garage .title{position:absolute;top:22px;left:34px;font-size:17px;font-weight:800;
+  letter-spacing:.30em;color:#9fb0bf;text-transform:uppercase;}
 .cot-garage .title b{color:#f0a030;}
-.cot-garage .selname{position:absolute;top:46px;left:34px;font-size:30px;font-weight:300;
-  letter-spacing:.06em;color:#eef4f9;}
-.cot-garage .selsub{position:absolute;top:86px;left:36px;font-size:11.5px;font-weight:600;
-  letter-spacing:.22em;color:#8a97a3;text-transform:uppercase;}
+.cot-garage .selname{position:absolute;top:46px;left:34px;font-size:30px;font-weight:500;
+  letter-spacing:-.01em;color:#eef4f9;}
+.cot-garage .selsub{position:absolute;top:88px;left:36px;font-size:11px;font-weight:600;
+  letter-spacing:.18em;color:#8a97a3;text-transform:uppercase;display:flex;
+  align-items:center;gap:8px;}
+.cot-garage .selsub svg{display:block;box-shadow:0 1px 4px rgba(0,0,0,.5);}
+.cot-tech{position:absolute;top:118px;left:34px;pointer-events:auto;cursor:pointer;
+  display:flex;align-items:center;gap:8px;
+  font-family:${FONT_STACK};font-size:10.5px;font-weight:800;letter-spacing:.20em;
+  color:#c6d2dc;text-transform:uppercase;padding:8px 16px 7px;
+  background:rgba(11,15,20,.82);border:1px solid rgba(146,164,180,.35);
+  border-bottom:2px solid rgba(146,164,180,.45);
+  transition:color .12s,border-color .12s;}
+.cot-tech:hover{color:#ffd27a;border-color:rgba(240,176,74,.65);}
+.cot-tech .tt-ico{font-size:12px;line-height:1;color:#f0b04a;}
 .cot-battle{position:absolute;top:26px;left:50%;transform:translateX(-50%);
   pointer-events:auto;cursor:pointer;border:none;outline:none;
-  font-family:${FONT_STACK};font-size:19px;font-weight:800;letter-spacing:.3em;
+  font-family:${FONT_STACK};font-size:19px;font-weight:800;letter-spacing:.30em;
   color:#fff7ea;text-shadow:0 1px 2px rgba(90,40,0,.6);
   padding:13px 66px 13px 74px;
   background:linear-gradient(180deg,#ffa02e 0%,#f07800 52%,#d95f00 100%);
@@ -54,9 +62,10 @@ const GARAGE_CSS = `
   background:linear-gradient(180deg,rgba(11,15,20,.88),rgba(7,10,13,.92));
   border:1px solid rgba(146,164,180,.28);box-shadow:0 8px 30px rgba(0,0,0,.55);
   padding:16px 18px 14px;pointer-events:auto;}
-.cot-garage .stats h3{font-size:15px;font-weight:600;letter-spacing:.05em;color:#eef4f9;}
+.cot-garage .stats h3{font-size:15px;font-weight:700;letter-spacing:.02em;color:#eef4f9;}
 .cot-garage .stats .sub{font-size:10px;font-weight:700;letter-spacing:.18em;color:#8a97a3;
-  text-transform:uppercase;margin:3px 0 12px;}
+  text-transform:uppercase;margin:4px 0 12px;display:flex;align-items:center;gap:7px;}
+.cot-garage .stats .sub svg{display:block;box-shadow:0 1px 3px rgba(0,0,0,.5);}
 .cot-garage .srow{margin-bottom:9px;}
 .cot-garage .srow .lr{display:flex;justify-content:space-between;font-size:11px;
   letter-spacing:.08em;color:#9fb0bf;text-transform:uppercase;margin-bottom:3px;}
@@ -90,18 +99,44 @@ const GARAGE_CSS = `
 .cot-card.sel{border-color:#f0a030;border-top-color:#f0a030;transform:translateY(-6px);
   box-shadow:0 8px 26px rgba(240,140,20,.28);
   background:linear-gradient(180deg,rgba(32,24,12,.92),rgba(14,10,6,.94));}
-.cot-card .flag{display:inline-block;font-size:8.5px;font-weight:800;letter-spacing:.12em;
-  padding:2px 6px;border-radius:2px;margin-bottom:5px;}
+.cot-card .flag{display:inline-flex;align-items:center;gap:5px;margin-bottom:5px;
+  font-size:8.5px;font-weight:800;letter-spacing:.14em;color:#9fb0bf;}
+.cot-card .flag svg{display:block;box-shadow:0 1px 3px rgba(0,0,0,.55);}
+.cot-card .flag i{font-style:normal;}
+.cot-card.sel .flag{color:#d8c39a;}
 .cot-card .era{float:right;font-size:8.5px;font-weight:700;letter-spacing:.12em;
   color:#8a97a3;padding:2px 0;}
 .cot-card.sel .era{color:#d8a04c;}
-.cot-card canvas{display:block;margin:2px auto 3px;}
+.cot-card .ti{display:block;margin:1px auto 2px;width:106px;height:64px;
+  object-fit:contain;filter:drop-shadow(0 3px 5px rgba(0,0,0,.5));}
 .cot-card .nm{font-size:10.5px;font-weight:600;color:#eef4f9;letter-spacing:-.01em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 -5px;text-align:center;}
 .cot-card .cls{font-size:9px;font-weight:700;letter-spacing:.18em;color:#8a97a3;
   text-transform:uppercase;margin-top:2px;}
 .cot-garage .hint{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
   font-size:9.5px;letter-spacing:.14em;color:rgba(138,151,163,.7);text-transform:uppercase;}
+/* MAP-CONFIG WIRING: battlefield picker (4 maps + random) */
+.cot-maps{position:absolute;left:34px;top:168px;width:196px;pointer-events:auto;}
+.cot-maps .mtitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
+  text-transform:uppercase;margin-bottom:7px;}
+.cot-map-card{display:flex;align-items:center;gap:9px;cursor:pointer;margin-bottom:6px;
+  background:linear-gradient(180deg,rgba(13,18,23,.82),rgba(8,11,14,.9));
+  border:1px solid rgba(146,164,180,.24);border-left:2px solid rgba(146,164,180,.24);
+  padding:5px 8px 5px 6px;transition:border-color .12s,background .12s;}
+.cot-map-card:hover{border-color:rgba(210,225,240,.5);}
+.cot-map-card.sel{border-color:#f0a030;border-left-color:#f0a030;
+  background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
+.cot-map-card .mthumb{width:64px;height:36px;flex:0 0 auto;background-size:cover;
+  background-position:center;border:1px solid rgba(0,0,0,.55);}
+.cot-map-card .mthumb.verdant{background-color:#3d5a2e;background-image:linear-gradient(135deg,#4c6b38,#2c421f);}
+.cot-map-card .mthumb.desert{background-color:#b3925c;background-image:linear-gradient(135deg,#c9a86e,#8f6f42);}
+.cot-map-card .mthumb.winter{background-color:#aeb9c4;background-image:linear-gradient(135deg,#cdd6de,#7f8d9b);}
+.cot-map-card .mthumb.urban{background-color:#5c6066;background-image:linear-gradient(135deg,#75797e,#3e4247);}
+.cot-map-card .mthumb.random{background-image:conic-gradient(#4c6b38 0 25%,#c9a86e 0 50%,#cdd6de 0 75%,#5c6066 0);}
+.cot-map-card .mname{font-size:11px;font-weight:600;color:#e6edf3;letter-spacing:.02em;}
+.cot-map-card .msub{font-size:8.5px;font-weight:700;letter-spacing:.14em;color:#8a97a3;
+  text-transform:uppercase;margin-top:1px;}
+.cot-map-card.sel .msub{color:#d8a04c;}
 `;
 
 function ensureStyle(id, css) {
@@ -113,124 +148,6 @@ function ensureStyle(id, css) {
   }
 }
 
-// Small side-view silhouette thumbnail rendered from the spec's dimensions
-// AND class/era so vehicles read differently in the carousel:
-//  - modern MBT: long low hull, side skirts, flat angular turret, slim long
-//    gun with a thermal-sleeve bulge
-//  - WWII heavy: tall slab-sided hull, exposed overlapped wheels, big boxy
-//    centered turret with cupola, thick gun with muzzle brake
-//  - WWII medium: sloped glacis, rounded dome turret, plain medium gun
-// Light-on-dark, WoT carousel style.
-function drawSilhouette(canvas, spec) {
-  const dpr = Math.min((typeof window !== 'undefined' && window.devicePixelRatio) || 1, 2);
-  const W = 108, H = 34;
-  canvas.width = W * dpr; canvas.height = H * dpr;
-  canvas.style.width = `${W}px`; canvas.style.height = `${H}px`;
-  const c = canvas.getContext('2d');
-  c.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const d = spec.dims;
-  const overall = Math.max(d.overallLengthM, d.hullLengthM);
-  const s = (W - 8) / overall;
-  const hullLen = d.hullLengthM * s;
-  const x0 = 4 + (W - 8 - overall * s) / 2;
-  const groundY = H - 2;
-  const modern = spec.era !== 'ww2';
-  const heavy = spec.class === 'heavy';
-  const wheelR = Math.max(2.2, d.heightM * (heavy ? 0.19 : 0.15) * s);
-  // modern hulls sit low; ww2 heavies are tall slabs
-  const hullH = Math.max(5, d.heightM * (modern ? 0.30 : heavy ? 0.44 : 0.36) * s);
-  const hullTop = groundY - wheelR - hullH;
-  const turH = Math.max(3.5, d.heightM * (modern ? 0.20 : heavy ? 0.30 : 0.26) * s);
-  c.fillStyle = 'rgba(206,220,232,0.88)';
-  // running gear
-  if (modern) {
-    // side skirt covering the wheel tops, wheels peeking below
-    const n = 7;
-    for (let i = 0; i < n; i++) {
-      c.beginPath();
-      c.arc(x0 + wheelR + ((i + 0.5) / n) * (hullLen - wheelR * 2), groundY - wheelR, wheelR, 0, Math.PI * 2);
-      c.fill();
-    }
-    c.fillRect(x0 + 1, groundY - wheelR * 1.7, hullLen - 2, wheelR * 0.9);
-  } else {
-    const n = heavy ? 8 : 5; // overlapped wheel train on heavies
-    for (let i = 0; i < n; i++) {
-      c.beginPath();
-      c.arc(x0 + wheelR + ((i + 0.5) / n) * (hullLen - wheelR * 2), groundY - wheelR, wheelR, 0, Math.PI * 2);
-      c.fill();
-    }
-    // track return run
-    c.fillRect(x0 + wheelR * 0.4, groundY - wheelR * 2 - 1, hullLen - wheelR * 0.8, 1.6);
-  }
-  // hull (front faces right)
-  c.beginPath();
-  if (modern) {
-    // long wedge: sharply raked glacis, low profile
-    c.moveTo(x0, hullTop + hullH * 0.3);
-    c.lineTo(x0 + hullLen * 0.08, hullTop);
-    c.lineTo(x0 + hullLen * 0.62, hullTop);
-    c.lineTo(x0 + hullLen, hullTop + hullH * 0.72);
-    c.lineTo(x0 + hullLen, hullTop + hullH);
-    c.lineTo(x0, hullTop + hullH);
-  } else if (heavy) {
-    // near-vertical slab box (Tiger/IS profile)
-    c.moveTo(x0, hullTop + hullH * 0.12);
-    c.lineTo(x0 + hullLen * 0.05, hullTop);
-    c.lineTo(x0 + hullLen * 0.95, hullTop);
-    c.lineTo(x0 + hullLen, hullTop + hullH * 0.28);
-    c.lineTo(x0 + hullLen, hullTop + hullH);
-    c.lineTo(x0, hullTop + hullH);
-  } else {
-    // medium: long sloped glacis (T-34 profile)
-    c.moveTo(x0, hullTop + hullH * 0.4);
-    c.lineTo(x0 + hullLen * 0.14, hullTop);
-    c.lineTo(x0 + hullLen * 0.68, hullTop);
-    c.lineTo(x0 + hullLen, hullTop + hullH * 0.95);
-    c.lineTo(x0 + hullLen, hullTop + hullH);
-    c.lineTo(x0, hullTop + hullH);
-  }
-  c.closePath();
-  c.fill();
-  // turret
-  const tx = x0 + hullLen * (modern ? 0.30 : heavy ? 0.30 : 0.36);
-  const tw = hullLen * (modern ? 0.40 : heavy ? 0.40 : 0.28);
-  c.beginPath();
-  if (modern) {
-    // flat angular slab turret with bustle overhang at the rear
-    c.moveTo(tx - tw * 0.08, hullTop);
-    c.lineTo(tx + tw * 0.06, hullTop - turH);
-    c.lineTo(tx + tw * 0.86, hullTop - turH);
-    c.lineTo(tx + tw, hullTop);
-    c.closePath();
-    c.fill();
-  } else if (heavy) {
-    // big box turret + commander cupola
-    c.rect(tx, hullTop - turH, tw, turH);
-    c.fill();
-    c.fillRect(tx + tw * 0.18, hullTop - turH - 2.4, tw * 0.3, 2.6);
-  } else {
-    // rounded dome turret
-    c.moveTo(tx, hullTop);
-    c.quadraticCurveTo(tx + tw * 0.1, hullTop - turH * 1.15, tx + tw * 0.55, hullTop - turH);
-    c.quadraticCurveTo(tx + tw * 0.95, hullTop - turH * 0.85, tx + tw, hullTop);
-    c.closePath();
-    c.fill();
-  }
-  // gun barrel from turret front to overall length
-  const gy = hullTop - turH * 0.45;
-  const gunX0 = tx + tw * 0.8;
-  const gunX1 = x0 + overall * s;
-  const gunTh = modern ? 2.0 : heavy ? 2.6 : 1.8;
-  c.fillRect(gunX0, gy - gunTh / 2, gunX1 - gunX0, gunTh);
-  if (modern) {
-    // thermal sleeve / bore evacuator bulge mid-barrel
-    const bx = gunX0 + (gunX1 - gunX0) * 0.45;
-    c.fillRect(bx, gy - gunTh / 2 - 1, (gunX1 - gunX0) * 0.18, gunTh + 2);
-  } else if (heavy) {
-    // muzzle brake block at the tip
-    c.fillRect(gunX1 - 4.5, gy - gunTh / 2 - 1.2, 4.5, gunTh + 2.4);
-  }
-}
 
 function frontArmorMm(plates, keys) {
   if (!plates || !plates.length) return null;
@@ -251,6 +168,7 @@ function frontArmorMm(plates, keys) {
  */
 export function createGarage(opts) {
   const { specs, bus, onSelect, onBattle } = opts;
+  ensureFonts();
   ensureStyle('cot-garage-style', GARAGE_CSS);
 
   const root = document.createElement('div');
@@ -260,6 +178,7 @@ export function createGarage(opts) {
     `<div class="band-l"></div><div class="band-r"></div>` +
     `<div class="title">CLAUDE <b>OF TANKS</b></div>` +
     `<div class="selname"></div><div class="selsub"></div>` +
+    `<button class="cot-tech" type="button"><span class="tt-ico">&#9776;</span>TECH TREE</button>` +
     `<button class="cot-battle" type="button">BATTLE</button>` +
     `<div class="stats"></div>` +
     `<div class="cot-carousel">` +
@@ -267,6 +186,7 @@ export function createGarage(opts) {
     `<div class="cot-cards"></div>` +
     `<button class="cot-car-arrow next" type="button">&#8250;</button>` +
     `</div>` +
+    `<div class="cot-maps"></div>` +
     `<div class="hint">&#8592; &#8594; select &nbsp;&middot;&nbsp; enter to battle</div>`;
   document.body.appendChild(root);
 
@@ -275,6 +195,7 @@ export function createGarage(opts) {
   const statsEl = root.querySelector('.stats');
   const cardsEl = root.querySelector('.cot-cards');
   const battleBtn = root.querySelector('.cot-battle');
+  const mapsEl = root.querySelector('.cot-maps');
 
   let selectedId = specs.length ? specs[0].id : null;
   const cardById = new Map();
@@ -282,6 +203,40 @@ export function createGarage(opts) {
   for (const s of specs) specById.set(s.id, s);
 
   const emit = (ev, payload) => { if (bus && bus.emit) bus.emit(ev, payload); };
+
+  // --- MAP-CONFIG WIRING: battlefield picker (maps come from createGarage
+  // opts.maps = [{id,name,blurb,thumb}]; 'random' rolls at battle start) ---
+  const maps = opts.maps || [];
+  let selectedMapId = maps.length ? maps[0].id : 'verdant';
+  const mapCardById = new Map();
+  if (maps.length) {
+    const title = document.createElement('div');
+    title.className = 'mtitle';
+    title.textContent = 'Battlefield';
+    mapsEl.appendChild(title);
+    for (const m of maps) {
+      const card = document.createElement('div');
+      card.className = 'cot-map-card';
+      const thumb = document.createElement('div');
+      thumb.className = `mthumb ${m.id}`;
+      if (m.thumb) thumb.style.backgroundImage = `url(${m.thumb})`;
+      const label = document.createElement('div');
+      const nm = document.createElement('div');
+      nm.className = 'mname';
+      nm.textContent = m.name;
+      const sub = document.createElement('div');
+      sub.className = 'msub';
+      sub.textContent = m.sub || '';
+      label.append(nm, sub);
+      card.append(thumb, label);
+      card.addEventListener('click', () => {
+        emit('ui:click', {});
+        api.setSelectedMap(m.id);
+      });
+      mapsEl.appendChild(card);
+      mapCardById.set(m.id, card);
+    }
+  }
 
   // roster maxima for normalized stat bars
   const MAXES = {
@@ -297,17 +252,15 @@ export function createGarage(opts) {
 
   // --- build carousel cards ---
   for (const s of specs) {
-    const badge = NATION_BADGE[s.nation] || DEFAULT_BADGE;
     const card = document.createElement('div');
     card.className = 'cot-card';
     card.innerHTML =
       `<span class="era">${s.era === 'ww2' ? 'WWII' : 'MODERN'}</span>` +
-      `<span class="flag" style="background:${badge.bg};color:${badge.fg}">${badge.label}</span>` +
-      `<canvas></canvas>` +
+      `<span class="flag">${flagSVG(s.nation, s.era, 18, 12)}<i>${NATION_LABEL[s.nation] || s.nation}</i></span>` +
+      `<img class="ti" src="${iconUrl(s.id, 'angle')}" alt="">` +
       `<div class="nm"></div>` +
       `<div class="cls">${s.class}</div>`;
     card.querySelector('.nm').textContent = s.name;
-    drawSilhouette(card.querySelector('canvas'), s);
     card.addEventListener('click', () => {
       emit('ui:click', {});
       api.setSelected(s.id);
@@ -338,7 +291,7 @@ export function createGarage(opts) {
     const turMm = frontArmorMm(spec.armor && spec.armor.turretPlates, ['front', 'cheek', 'mantlet']);
     const bestPen = shells.length ? Math.max(...shells.map((s) => s.pen100Mm || 0)) : 0;
     statsEl.innerHTML =
-      `<h3></h3><div class="sub">${spec.nation} &middot; ${spec.class} &middot; ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}</div>` +
+      `<h3></h3><div class="sub">${flagSVG(spec.nation, spec.era, 20, 13)}<span>${spec.nation} &middot; ${spec.class} &middot; ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}</span></div>` +
       statBar('Hit points', `${spec.hp}`, spec.hp / MAXES.hp) +
       statBar('Top speed', `${spec.topSpeedKmh} km/h`, spec.topSpeedKmh / MAXES.speed) +
       statBar('Power / weight', `${hpT.toFixed(1)} hp/t`, hpT / MAXES.hpt) +
@@ -363,7 +316,9 @@ export function createGarage(opts) {
       card.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
     }
     selName.textContent = spec.name;
-    selSub.textContent = `${spec.nation} · ${spec.class} · ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}`;
+    selSub.innerHTML = `${flagSVG(spec.nation, spec.era, 22, 14)}<span></span>`;
+    selSub.querySelector('span').textContent =
+      `${spec.nation} · ${spec.class} · ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}`;
     renderStats(spec);
     return true;
   }
@@ -378,16 +333,30 @@ export function createGarage(opts) {
   function battle() {
     if (!selectedId) return;
     emit('ui:click', {});
-    emit('ui:battleStart', { specId: selectedId });
-    if (onBattle) onBattle(selectedId);
+    emit('ui:battleStart', { specId: selectedId, mapId: selectedMapId });
+    if (onBattle) onBattle(selectedId, selectedMapId); // MAP-CONFIG WIRING
   }
 
   battleBtn.addEventListener('click', battle);
   root.querySelector('.prev').addEventListener('click', () => step(-1));
   root.querySelector('.next').addEventListener('click', () => step(1));
 
+  // --- tech tree (research screen layered over the garage) ---
+  const techtree = createTechTree({
+    specs,
+    bus,
+    onPick: (specId) => { api.setSelected(specId); },
+    onClose: () => {},
+  });
+  const NATION_TAB = { USA: 'usa', Germany: 'germany', USSR: 'ussr', Russia: 'ussr' };
+  root.querySelector('.cot-tech').addEventListener('click', () => {
+    emit('ui:click', {});
+    const sel = specById.get(selectedId);
+    techtree.show(sel ? NATION_TAB[sel.nation] || 'usa' : 'usa');
+  });
+
   function onKey(e) {
-    if (!api.isOpen) return;
+    if (!api.isOpen || techtree.isOpen) return;
     if (e.code === 'ArrowLeft') { step(-1); e.preventDefault(); }
     else if (e.code === 'ArrowRight') { step(1); e.preventDefault(); }
     else if (e.code === 'Enter' || e.code === 'NumpadEnter') { battle(); e.preventDefault(); }
@@ -408,11 +377,23 @@ export function createGarage(opts) {
       api.setSelected(specById.has(selected) ? selected : selectedId);
     },
 
-    /** Close the garage screen. */
+    /** Close the garage screen (and any tech tree layered over it). */
     hide() {
       root.style.display = 'none';
+      if (techtree.isOpen) techtree.hide();
       if (api.isOpen) window.removeEventListener('keydown', onKey);
       api.isOpen = false;
+    },
+
+    /** The research screen (created/owned by the garage). */
+    techtree,
+
+    /**
+     * Open the tech tree over the garage (used by the screenshot harness).
+     * @param {string} [nation='usa'] 'usa' | 'germany' | 'ussr'
+     */
+    showTechTree(nation = 'usa') {
+      techtree.show(nation);
     },
 
     /**
@@ -422,7 +403,23 @@ export function createGarage(opts) {
     setSelected(specId) {
       if (applySelection(specId) && onSelect) onSelect(specId);
     },
+
+    // --- MAP-CONFIG WIRING ---
+    /** Currently selected battlefield id ('random' allowed). @returns {string} */
+    getSelectedMap() { return selectedMapId; },
+
+    /**
+     * Highlight a battlefield in the map picker.
+     * @param {string} mapId map id or 'random'
+     */
+    setSelectedMap(mapId) {
+      if (!mapCardById.has(mapId)) return;
+      selectedMapId = mapId;
+      for (const [id, card] of mapCardById) card.classList.toggle('sel', id === mapId);
+    },
   };
+
+  if (mapCardById.size) api.setSelectedMap(selectedMapId);
 
   if (selectedId) applySelection(selectedId);
   return api;

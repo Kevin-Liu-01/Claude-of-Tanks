@@ -18,8 +18,12 @@ export const SIM_DT = 1 / 60;
 // ---------------------------------------------------------------------------
 // Tuning constants (movement-physics doc §3–§6, values locked by ARCHITECTURE §3.4)
 // ---------------------------------------------------------------------------
-const K_ACCEL = 0.16;            // m/s² per (hp/t) on resistance-1 ground
-const C_DRAG = 0.85;             // quadratic drag fraction — asymptotic crawl to v_max (§3)
+// K_ACCEL 0.16 gave a good 0-30 km/h surge but a lazy top half (r-crit: the
+// 22.5 hp/t Abrams needed ~3 s for 43→60 km/h and never reached its 67 limit
+// in 6.5 s). 0.20 with a softer C_DRAG (0.85→0.72) keeps the initial surge in
+// the same band while high hp/t tanks close the last 30% with WoT authority.
+const K_ACCEL = 0.20;            // m/s² per (hp/t) on resistance-1 ground
+const C_DRAG = 0.72;             // quadratic drag fraction — asymptotic crawl to v_max (§3)
 const BRAKE_MULT = 3.5;          // braking is this much stronger than driving
 // Brake decel cap scales with specific power (weight class): a 12 hp/t heavy
 // caps near 7 m/s² and coasts visibly longer than a 25+ hp/t light/MBT at 9.
@@ -32,7 +36,12 @@ const COAST_MULT = 1.75;         // rolling-friction decel ≈ 0.5 × brake when
 const TURN_SPEED_LOSS = 0.35;    // target-speed fraction lost in a full-rate turn
 const TURN_DIRECT_BLEED = 0.15;  // per-second multiplicative speed loss at full-rate turn (§4)
 const TURN_POWER_DIVERT = 0.5;   // drive-accel fraction diverted to the tracks at full-rate turn
-const TRAVERSE_SPEED_SCALE = 0.4;// hull traverse reduction fraction at top speed
+// Hull-traverse reduction at speed. The research doc's traverse formula (§4)
+// scales only by terrain resistance — WoT tanks hold near-nominal yaw rate
+// while moving — so this stays SMALL and QUADRATIC: ~nominal through the
+// mid band, only the last ~20% of the speed band widens turns (r-crit: the
+// linear 0.4 cut the M1A2 to ~22°/s of its 44°/s spec at 60+ km/h).
+const TRAVERSE_SPEED_SCALE = 0.2;// hull traverse reduction fraction at top speed (× speedFrac²)
 const GRAVITY = 9.81;            // m/s²
 const MAX_CLIMB_DEG = 28;        // slope (deg) at which the drive stalls
 const DOWNHILL_BONUS_CAP = 0.25; // up to +25% v_target downhill
@@ -244,11 +253,12 @@ export function updateTank(entity, heightField, dt, collide = null) {
   // ---- hull traverse (wiki formula reduced: Tr = Tn × Rh/Rx × Pc, + debuffs) ----
   const trMaxHealthy = spec.hullTraverseDegS * DEG2RAD * (Rh / R) *
     (spec.pivotStyle === 'neutral' ? NEUTRAL_TURN_MULT : 1);
-  // Speed-scaled traverse: full rate pivoting, visibly wider turns at speed —
-  // a tracked vehicle, not a rally car.
+  // Speed-scaled traverse, quadratic: near-nominal yaw rate through the whole
+  // mid band (WoT tanks steer at spec rate while moving), a gentle widening
+  // only near the transmission limit.
   const speedFrac = Math.min(Math.abs(state.speed) / Math.max(topMps, 1e-6), 1);
   const trMax = trMaxHealthy * debuff.powerMult * debuff.traverseMult *
-    (1 - TRAVERSE_SPEED_SCALE * speedFrac);
+    (1 - TRAVERSE_SPEED_SCALE * speedFrac * speedFrac);
   // Reverse-steer flip: while backing up, A/D behave like a reversing car.
   const steerSign = state.speed < -PIVOT_SPEED_EPS ? -1 : 1;
   const yawTarget = steer * trMax * steerSign;

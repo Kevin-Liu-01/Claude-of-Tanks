@@ -5,7 +5,20 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise.js';
-import { _LAYOUT } from './terrain.js';
+import { applyTone } from './terrain.js';
+// Build-time-baked licensed models (see tools/bake-props-models.mjs +
+// docs/ATTRIBUTION.md). Synchronous import keeps the __GAME_READY contract.
+import MODELS from './props-models.json';
+
+// Per-category switch: sourced model vs procedural, set from side-by-side
+// screenshot judging on 2026-07-27 (record in docs/ATTRIBUTION.md). Only the
+// two winners survive; every losing category (buildings, ruin, rocks, fences,
+// hay, haystacks, barrels, trees, tank wrecks) stays procedural and its
+// models were removed from the repo.
+const SOURCED = {
+  sandbags: true, // sandbag emplacements — no procedural equivalent, fits the palette
+  poles: true,    // telephone poles with crossarms/insulators/wire beat the plain cylinders
+};
 
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -47,7 +60,7 @@ function normalFromHeight(h, s, strength, anisotropy) {
 
 const _col = new THREE.Color();
 
-function makePlaster(noi, anisotropy) {
+function makePlaster(noi, anisotropy, tone = null) {
   const s = 256, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
   for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
     const i = y * s + x, j = i * 4;
@@ -61,10 +74,11 @@ function makePlaster(noi, anisotropy) {
     px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255; px[j + 3] = 255;
     hgt[i] = n1 * 0.5 + n2 * 0.5;
   }
+  applyTone(px, tone);
   return { albedo: toTexture(px, s, { srgb: true, anisotropy }), normal: normalFromHeight(hgt, s, 1.2, anisotropy) };
 }
 
-function makeRoofTiles(noi, anisotropy) {
+function makeRoofTiles(noi, anisotropy, tone = null) {
   const s = 256, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
   const rowH = 32, tileW = 42;
   for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
@@ -82,31 +96,65 @@ function makeRoofTiles(noi, anisotropy) {
     px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255; px[j + 3] = 255;
     hgt[i] = gap ? 0.1 : 0.4 + curve * 0.5 + (1 - inRowY) * 0.15;
   }
+  applyTone(px, tone);
   return { albedo: toTexture(px, s, { srgb: true, anisotropy }), normal: normalFromHeight(hgt, s, 2.4, anisotropy) };
 }
 
-function makeStone(noi, anisotropy) {
-  const s = 256, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
-  const rowH = 36;
-  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
-    const i = y * s + x, j = i * 4;
-    const row = Math.floor(y / rowH);
-    const stoneW = 52;
-    const off = (row % 2) * stoneW * 0.5;
-    const st = Math.floor((x + off) / stoneW);
-    const tone = noi.noise(st * 17.1 + row * 5.3, row * 11.7 - st * 3.1) * 0.5 + 0.5;
-    const inY = (y % rowH) / rowH, inX = ((x + off) % stoneW) / stoneW;
-    const mortar = (inY < 0.12 || inX < 0.09) ? 1 : 0;
-    const grain = noi.noise(x * 0.12 + 8, y * 0.12 - 77) * 0.5 + 0.5;
-    const grime = smoothstep(0.5, 0.95, noi.noise(x * 0.03 + 130, y * 0.06 + 71) * 0.5 + 0.5);
-    _col.setHSL(0.083, 0.07 + tone * 0.05, (mortar ? 0.27 : 0.315 + tone * 0.125 + grain * 0.045) - grime * 0.06);
-    px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255; px[j + 3] = 255;
-    hgt[i] = mortar ? 0.12 : 0.55 + tone * 0.25 + grain * 0.2 - Math.pow(Math.abs(inX - 0.55) * 2, 3) * 0.15;
+function makeStone(noi, anisotropy, tone = null) {
+  // Irregular fieldstone coursing (512 px, ~0.35-0.9 m blocks at uvScale 0.5):
+  // variable row heights, per-row variable stone widths, wobbled mortar lines
+  // and per-stone tone — kills the perfect repeating grid the old texture had.
+  const s = 512, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
+  const srng = mulberry32(0x51a7);
+  const rowE = [0];
+  while (rowE[rowE.length - 1] < s) {
+    let nxt = rowE[rowE.length - 1] + 88 + ((srng() * 72) | 0);
+    if (s - nxt < 70) nxt = s;
+    rowE.push(nxt);
   }
-  return { albedo: toTexture(px, s, { srgb: true, anisotropy }), normal: normalFromHeight(hgt, s, 2.6, anisotropy) };
+  const nRows = rowE.length - 1;
+  const stoneE = [];
+  for (let r = 0; r < nRows; r++) {
+    const e = [0];
+    while (e[e.length - 1] < s) {
+      let nxt = e[e.length - 1] + 105 + ((srng() * 125) | 0);
+      if (s - nxt < 88) nxt = s;
+      e.push(nxt);
+    }
+    stoneE.push(e);
+  }
+  for (let y = 0; y < s; y++) {
+    let r = 0;
+    while (rowE[r + 1] <= y) r++;
+    const e = stoneE[r];
+    for (let x = 0; x < s; x++) {
+      const i = y * s + x, j = i * 4;
+      const wob = noi.noise(x * 0.085 + r * 31, y * 0.085 - 17) * 3.4;
+      const dRow = Math.min(y - rowE[r], rowE[r + 1] - y) + wob * 0.6;
+      let k = 0;
+      while (e[k + 1] <= x) k++;
+      const dCol = Math.min(x - e[k], e[k + 1] - x) + wob;
+      const edgeD = Math.min(dRow, dCol * 0.9);
+      const mortar = edgeD < 3.6 ? 1 : 0;
+      const tone = noi.noise(r * 13.3 + k * 29.7 + 3.1, r * 7.7 - k * 11.9) * 0.5 + 0.5;
+      const grain = noi.noise(x * 0.11 + 8, y * 0.11 - 77) * 0.5 + 0.5;
+      const grime = smoothstep(0.5, 0.95, noi.noise(x * 0.016 + 130, y * 0.028 + 71) * 0.5 + 0.5);
+      const bevel = clamp((edgeD - 3.6) / 15, 0, 1);
+      _col.setHSL(
+        0.081 + tone * 0.014,
+        0.06 + tone * 0.055 - grime * 0.02,
+        (mortar ? 0.25 + grain * 0.04
+          : (0.305 + tone * 0.14 + grain * 0.05) * (0.82 + bevel * 0.18)) - grime * 0.07,
+      );
+      px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255; px[j + 3] = 255;
+      hgt[i] = mortar ? 0.12 : (0.48 + tone * 0.26 + grain * 0.16) * (0.55 + 0.45 * bevel);
+    }
+  }
+  applyTone(px, tone);
+  return { albedo: toTexture(px, s, { srgb: true, anisotropy }), normal: normalFromHeight(hgt, s, 3.0, anisotropy) };
 }
 
-function makeWood(noi, anisotropy) {
+function makeWood(noi, anisotropy, tone = null) {
   const s = 256, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
   const plankW = 42;
   for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
@@ -120,10 +168,11 @@ function makeWood(noi, anisotropy) {
     px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255; px[j + 3] = 255;
     hgt[i] = gapped ? 0.1 : 0.5 + grain * 0.4;
   }
+  applyTone(px, tone);
   return { albedo: toTexture(px, s, { srgb: true, anisotropy }), normal: normalFromHeight(hgt, s, 1.8, anisotropy) };
 }
 
-function makeStraw(noi, anisotropy) {
+function makeStraw(noi, anisotropy, tone = null) {
   const s = 128, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
   for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
     const i = y * s + x, j = i * 4;
@@ -133,6 +182,7 @@ function makeStraw(noi, anisotropy) {
     px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255; px[j + 3] = 255;
     hgt[i] = streak * 0.5 + fine * 0.5;
   }
+  applyTone(px, tone);
   return { albedo: toTexture(px, s, { srgb: true, anisotropy }), normal: normalFromHeight(hgt, s, 1.6, anisotropy) };
 }
 
@@ -144,6 +194,43 @@ function scaleUV(geo, su, sv) {
   const uv = geo.attributes.uv;
   for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
   return geo;
+}
+
+// per-part random UV phase: with RepeatWrapping this de-syncs the texture grid
+// between wall segments / buildings so no two surfaces tile identically
+function jitterUV(geo, rng) {
+  const uv = geo.attributes.uv;
+  if (!uv) return geo;
+  const ou = rng() * 7.31, ov = rng() * 5.17;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) + ou, uv.getY(i) + ov);
+  return geo;
+}
+
+function _mustReplace(src, anchor, replacement) {
+  const out = src.replace(anchor, replacement);
+  if (out === src) throw new Error(`world/props: shader anchor missing: ${anchor}`);
+  return out;
+}
+
+// tileable simplex on a torus (same trick as terrain.js)
+function torusN(noi, u, v, fu, fv, off) {
+  const a = u * Math.PI * 2 * fu, b = v * Math.PI * 2 * fv;
+  const r1 = fu * 0.55, r2 = fv * 0.55;
+  return noi.noise4d(Math.cos(a) * r1 + off, Math.sin(a) * r1 - off * 0.7,
+    Math.cos(b) * r2 + off * 1.3, Math.sin(b) * r2 + off * 0.35);
+}
+
+function makeGrimeTexture(noi, anisotropy) {
+  const s = 256, px = new Uint8ClampedArray(s * s * 4);
+  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
+    const u = x / s, v = y / s, j = (y * s + x) * 4;
+    const a = torusN(noi, u, v, 3, 3, 5) * 0.6 + torusN(noi, u, v, 7, 7, 19) * 0.4;
+    const b = torusN(noi, u, v, 5, 5, 47) * 0.55 + torusN(noi, u, v, 13, 13, 91) * 0.45;
+    px[j] = (a * 0.5 + 0.5) * 255;
+    px[j + 1] = (b * 0.5 + 0.5) * 255;
+    px[j + 2] = 128; px[j + 3] = 255;
+  }
+  return toTexture(px, s, { anisotropy });
 }
 
 function box(w, h, d, uvScale = 0.5) {
@@ -161,6 +248,61 @@ function gablePrism(w, h, t) {
   const g = new THREE.ExtrudeGeometry(shape, { depth: t, bevelEnabled: false });
   g.translate(0, 0, -t / 2);
   return scaleUV(g, 0.4, 0.4);
+}
+
+// ---------------------------------------------------------------------------
+// Baked sourced models (vertex-colored, welded at bake time)
+// ---------------------------------------------------------------------------
+
+const _bakedCache = new Map();
+
+/**
+ * Build a BufferGeometry from a baked model: uniform scale to a target size,
+ * XZ-centered, base at y=0, optional color grading (burn/darken for wrecks).
+ * @param {string} name key in props-models.json
+ * @param {{targetH?:number,targetW?:number,scale?:number,burn?:number,
+ *   mul?:number,sink?:number}} [opts]
+ * @returns {THREE.BufferGeometry} indexed geometry with position/normal/color
+ */
+function bakedGeometry(name, opts = {}) {
+  const key = name + JSON.stringify(opts);
+  const hit = _bakedCache.get(key);
+  if (hit) return hit;
+  const m = MODELS[name];
+  if (!m) throw new Error('world/props: missing baked model ' + name);
+  const [minX, minY, minZ] = m.bbox.min, [maxX, maxY, maxZ] = m.bbox.max;
+  let s = opts.scale ?? 1;
+  if (opts.targetH) s = opts.targetH / Math.max(1e-6, maxY - minY);
+  else if (opts.targetW) s = opts.targetW / Math.max(1e-6, Math.max(maxX - minX, maxZ - minZ));
+  const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
+  const n = m.positions.length / 3;
+  const pos = new Float32Array(m.positions.length);
+  for (let i = 0; i < n; i++) {
+    pos[i * 3] = (m.positions[i * 3] - cx) * s;
+    pos[i * 3 + 1] = (m.positions[i * 3 + 1] - minY) * s - (opts.sink ?? 0);
+    pos[i * 3 + 2] = (m.positions[i * 3 + 2] - cz) * s;
+  }
+  const col = new Float32Array(m.colors.length);
+  const burn = opts.burn ?? 0, mul = opts.mul ?? 1;
+  for (let i = 0; i < m.colors.length; i += 3) {
+    let r = m.colors[i] * mul, g = m.colors[i + 1] * mul, b = m.colors[i + 2] * mul;
+    if (burn > 0) { // char toward scorched brown-black, flatten saturation
+      r = (r + (0.045 - r) * burn) * (1 - burn * 0.25);
+      g = (g + (0.038 - g) * burn) * (1 - burn * 0.25);
+      b = (b + (0.032 - b) * burn) * (1 - burn * 0.25);
+    }
+    col[i] = r; col[i + 1] = g; col[i + 2] = b;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(m.normals), 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.setIndex(m.indices);
+  geo.userData.size = {
+    w: (maxX - minX) * s, h: (maxY - minY) * s, d: (maxZ - minZ) * s,
+  };
+  _bakedCache.set(key, geo);
+  return geo;
 }
 
 // ---------------------------------------------------------------------------
@@ -272,6 +414,94 @@ function makeRuin(rng, buckets) {
   return { w: w + 0.3, d: d + 0.3, h: 3.0 };
 }
 
+// flat-roofed adobe house (desert maps): parapet, wood roof beams, viga ends
+function makeAdobe(rng, buckets) {
+  const w = 5.4 + rng() * 1.8, d = 5.8 + rng() * 2.6;
+  const wallH = 3.0 + rng() * 0.5;
+  const parts = { plaster: [], stone: [], roof: [], wood: [], dark: [] };
+  parts.stone.push(box(w + 0.3, 0.8, d + 0.3).translate(0, -0.15, 0));
+  parts.plaster.push(box(w, wallH, d).translate(0, wallH / 2, 0));
+  // parapet rim
+  parts.plaster.push(box(w, 0.45, 0.18).translate(0, wallH + 0.22, d / 2 - 0.09));
+  parts.plaster.push(box(w, 0.45, 0.18).translate(0, wallH + 0.22, -d / 2 + 0.09));
+  parts.plaster.push(box(0.18, 0.45, d - 0.36).translate(w / 2 - 0.09, wallH + 0.22, 0));
+  parts.plaster.push(box(0.18, 0.45, d - 0.36).translate(-w / 2 + 0.09, wallH + 0.22, 0));
+  parts.wood.push(box(w - 0.2, 0.1, d - 0.2, 0.35).translate(0, wallH + 0.02, 0)); // roof deck
+  // viga beam ends over the door face
+  const nBeam = Math.max(3, (w / 0.9) | 0);
+  for (let k = 0; k < nBeam; k++) {
+    const bx = -w / 2 + (k + 0.5) * (w / nBeam);
+    const beam = new THREE.CylinderGeometry(0.07, 0.07, 0.55, 5, 1);
+    scaleUV(beam, 0.5, 0.5);
+    beam.rotateX(Math.PI / 2);
+    beam.translate(bx, wallH - 0.28, d / 2 + 0.18);
+    parts.wood.push(beam);
+  }
+  parts.wood.push(box(1.0, 2.0, 0.10).translate(w * 0.1, 1.0, d / 2 + 0.08));
+  parts.dark.push(box(0.8, 1.8, 0.06).translate(w * 0.1, 0.95, d / 2 + 0.13));
+  const nw = 1 + ((rng() * 2) | 0);
+  for (let k = 0; k < nw; k++) {
+    const zz = -d / 2 + (k + 0.5) * (d / nw);
+    for (const side of [-1, 1]) {
+      if (rng() < 0.3) continue;
+      parts.dark.push(box(0.06, 0.7, 0.6).translate(side * (w / 2 + 0.05), 1.9, zz));
+    }
+  }
+  if (rng() < 0.45) { // rooftop stair block
+    parts.plaster.push(box(w * 0.35, 1.0, d * 0.3).translate(-w * 0.18, wallH + 0.5, -d * 0.18));
+  }
+  mergeInto(buckets, parts);
+  return { w: w + 0.3, d: d + 0.3, h: wallH + 1.2 };
+}
+
+// 2-3 story town rowhouse (urban maps): window grids, shopfront, gable roof
+function makeRowhouse(rng, buckets, wallBucket = 'plaster') {
+  const w = 8.0 + rng() * 3.0, d = 9.0 + rng() * 4.0;
+  const stories = 2 + ((rng() * 2) | 0);
+  const wallH = stories * 2.9 + 0.6;
+  const roofH = 1.4 + rng() * 0.6, over = 0.3;
+  const parts = { plaster: [], stone: [], roof: [], wood: [], dark: [] };
+  parts.stone.push(box(w + 0.3, 1.2, d + 0.3).translate(0, -0.1, 0));
+  parts[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
+  parts[wallBucket].push(gablePrism(w, roofH, 0.32).translate(0, wallH, d / 2 - 0.16));
+  parts[wallBucket].push(gablePrism(w, roofH, 0.32).translate(0, wallH, -d / 2 + 0.16));
+  const slope = Math.hypot(w / 2 + over, roofH + 0.1);
+  const ang = Math.atan2(roofH + 0.1, w / 2 + over);
+  for (const side of [-1, 1]) {
+    const slab = box(slope + 0.15, 0.13, d + over * 2, 0.35);
+    slab.rotateZ(side * ang);
+    slab.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + 0.06, 0);
+    parts.roof.push(slab);
+  }
+  parts.stone.push(box(0.6, 1.5, 0.6).translate(-w * 0.24, wallH + roofH - 0.1, -d * 0.2)); // chimney
+  // window grids on the long sides
+  for (let st = 0; st < stories; st++) {
+    const wy = 1.8 + st * 2.9;
+    const nwn = Math.max(2, (d / 2.6) | 0);
+    for (let k = 0; k < nwn; k++) {
+      const zz = -d / 2 + (k + 0.5) * (d / nwn);
+      for (const side of [-1, 1]) {
+        if (rng() < 0.12) continue;
+        parts.dark.push(box(0.06, 1.25, 0.82).translate(side * (w / 2 + 0.05), wy, zz));
+        parts.wood.push(box(0.10, 0.09, 0.95).translate(side * (w / 2 + 0.06), wy - 0.72, zz));
+      }
+    }
+    // gable-face windows
+    if (st > 0) {
+      for (const gz of [d / 2 + 0.05, -d / 2 - 0.05]) {
+        parts.dark.push(box(0.82, 1.25, 0.06).translate(w * 0.18, wy, gz));
+        parts.dark.push(box(0.82, 1.25, 0.06).translate(-w * 0.18, wy, gz));
+      }
+    }
+  }
+  // street door + shopfront on the +z gable face
+  parts.wood.push(box(1.2, 2.3, 0.12).translate(-w * 0.15, 1.15, d / 2 + 0.08));
+  parts.dark.push(box(1.0, 2.1, 0.06).translate(-w * 0.15, 1.1, d / 2 + 0.14));
+  if (rng() < 0.55) parts.dark.push(box(2.3, 1.5, 0.06).translate(w * 0.18, 1.5, d / 2 + 0.10));
+  mergeInto(buckets, parts);
+  return { w: w + 0.3, d: d + 0.3, h: wallH + roofH };
+}
+
 const _mat4 = new THREE.Matrix4();
 const _quat = new THREE.Quaternion();
 const _upAxis = new THREE.Vector3(0, 1, 0);
@@ -296,22 +526,37 @@ function mergeInto(buckets, parts, transform = null) {
  * @param {object} heightField HeightField from terrain.createHeightField
  * @param {object} engineCtx EngineCtx (ARCHITECTURE §2.8)
  * @param {number} [seed=2002] props seed
+ * @param {?object} [cfg=null] map config (uses cfg.props); null = classic verdant set
  * @returns {{group:THREE.Group, obstacles:Array<{min:number[],max:number[]}>,
  *   colliders:Array<{min:number[],max:number[]}>, features:{buildings:Array<object>}}}
  */
-export function createProps(heightField, engineCtx, seed = 2002) {
+export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
+  const P = {
+    plan: ['cottage', 'barn', 'cottage', 'tower', 'cottage', 'ruin',
+      'cottage', 'barn', 'cottage', 'cottage'],
+    tones: {}, rockTone: null, wallStoneChance: 0.25,
+    buildingLat: [10, 4], sideSkip: 0.25, maxSpread: 1.7, spacingPad: 9,
+    wallRuns: null, well: true, hayCrates: true, fences: true,
+    telegraph: true, carts: true, logs: true,
+    haystacks: 15, rocks: 170, outcrops: 16, craters: 30, rubblePiles: 0,
+    ...((cfg && cfg.props) || {}),
+  };
+  const mapId = cfg ? cfg.id : 'verdant';
   const rng = mulberry32(seed);
+  const L = heightField._layout;
+  const noVeg = heightField._noVeg || (() => false);
   const noi = new SimplexNoise({ random: mulberry32(seed + 7) });
   const aniso = engineCtx.anisotropy ?? 4;
   const group = new THREE.Group();
   group.name = 'props';
-  const v = _LAYOUT.village;
+  const v = L.village;
 
-  const plaster = makePlaster(noi, aniso);
-  const roofT = makeRoofTiles(noi, aniso);
-  const stone = makeStone(noi, aniso);
-  const wood = makeWood(noi, aniso);
-  const straw = makeStraw(noi, aniso);
+  const T = P.tones || {};
+  const plaster = makePlaster(noi, aniso, T.plaster || null);
+  const roofT = makeRoofTiles(noi, aniso, T.roof || null);
+  const stone = makeStone(noi, aniso, T.stone || null);
+  const wood = makeWood(noi, aniso, T.wood || null);
+  const straw = makeStraw(noi, aniso, T.straw || null);
 
   const mats = {
     plaster: new THREE.MeshStandardMaterial({ map: plaster.albedo, normalMap: plaster.normal, roughness: 0.93, metalness: 0 }),
@@ -321,14 +566,55 @@ export function createProps(heightField, engineCtx, seed = 2002) {
     dark: new THREE.MeshStandardMaterial({ color: 0x161a1d, roughness: 0.35, metalness: 0.15 }),
     straw: new THREE.MeshStandardMaterial({ map: straw.albedo, normalMap: straw.normal, roughness: 0.95, metalness: 0 }),
     rock: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }),
+    baked: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 }),
   };
   mats.rock.envMapIntensity = 0.35; // no white env-specular sparkle at distance
-  for (const m of Object.values(mats)) engineCtx.setupShadowMaterial(m);
+  mats.baked.envMapIntensity = 0.5; // flat-shaded sourced models: no spec sparkle
 
-  const buckets = { plaster: [], stone: [], roof: [], wood: [], dark: [], straw: [] };
+  // world-space grime/variation overlay: a second noise-masked albedo layer
+  // (macro tone breakup + streaky weathering) that de-grids every tiled
+  // hard-surface texture — walls stop reading as a repeated stamp at zoom
+  const grimeTex = makeGrimeTexture(noi, aniso);
+  const grimeHook = (shader) => {
+    shader.uniforms.uGrime = { value: grimeTex };
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
+      '#include <common>\nvarying vec3 vGrimeW;');
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <worldpos_vertex>', /* glsl */`#include <worldpos_vertex>
+{
+  vec4 gw = vec4(transformed, 1.0);
+  #ifdef USE_INSTANCING
+  gw = instanceMatrix * gw;
+  #endif
+  vGrimeW = (modelMatrix * gw).xyz;
+}`);
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
+      '#include <common>\nvarying vec3 vGrimeW;\nuniform sampler2D uGrime;');
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <map_fragment>', /* glsl */`#include <map_fragment>
+{
+  float gA = texture2D(uGrime, vGrimeW.xz * 0.021 + vGrimeW.y * 0.013).r;
+  float gB = texture2D(uGrime, vec2(vGrimeW.x + vGrimeW.z, vGrimeW.y * 1.7) * 0.055).g;
+  diffuseColor.rgb *= 0.84 + gA * 0.30;
+  diffuseColor.rgb *= 1.0 - smoothstep(0.58, 0.95, gB) * 0.20;
+}`);
+  };
+  for (const [mk, m] of Object.entries(mats)) {
+    engineCtx.setupShadowMaterial(m, mk === 'dark' ? null : grimeHook);
+    m.customProgramCacheKey = () => 'world-props-' + mk + '-v4';
+  }
+
+  const buckets = { plaster: [], stone: [], roof: [], wood: [], dark: [], straw: [], baked: [] };
   const obstacles = [];
   const colliders = [];
   const buildingFeatures = [];
+  // sourced-model instancing: name -> { geo, list: [Matrix4, ...] }
+  const bakedInstances = new Map();
+  function addBakedInstance(name, geo, x, y, z, yaw, sc = 1, tiltX = 0, tiltZ = 0) {
+    let e = bakedInstances.get(name);
+    if (!e) { e = { geo, list: [] }; bakedInstances.set(name, e); }
+    _quat.setFromEuler(new THREE.Euler(tiltX, yaw, tiltZ, 'YXZ'));
+    _mat4.compose(_posv.set(x, y, z), _quat, new THREE.Vector3(sc, sc, sc));
+    e.list.push(_mat4.clone());
+  }
 
   function groundFit(x, z, w, d, rot) {
     const cs = Math.abs(Math.cos(rot)), sn = Math.abs(Math.sin(rot));
@@ -346,8 +632,21 @@ export function createProps(heightField, engineCtx, seed = 2002) {
   }
 
   // --- village buildings along the roads ---
-  const roads = _LAYOUT.roads;
-  const junction = { x: 20, z: 73 };
+  const roads = L.roads;
+  // junction/plaza: the road crossing nearest the village/town center
+  let junction = { x: 20, z: 73 }; // classic verdant plaza
+  if (mapId !== 'verdant') {
+    let best = 1e9;
+    junction = { x: v.cx, z: v.cz };
+    for (let ra = 0; ra < roads.length; ra++) for (let rb = ra + 1; rb < roads.length; rb++) {
+      for (const [ax, az] of roads[ra]) for (const [bx, bz] of roads[rb]) {
+        if (Math.hypot(ax - bx, az - bz) > 18) continue;
+        const jx = (ax + bx) / 2, jz = (az + bz) / 2;
+        const d = Math.hypot(jx - v.cx, jz - v.cz);
+        if (d < best) { best = d; junction = { x: jx, z: jz }; }
+      }
+    }
+  }
   const candidates = [];
   for (const nodes of roads) {
     for (let i = 1; i < nodes.length - 1; i++) {
@@ -359,28 +658,35 @@ export function createProps(heightField, engineCtx, seed = 2002) {
       candidates.push({ x: nx, z: nz, tx: tx / tl, tz: tz / tl });
     }
   }
-  const builders = [makeCottage, makeBarn, makeCottage, makeTower, makeCottage, makeRuin,
-    makeCottage, makeBarn, makeCottage, makeCottage];
+  // NOTE: sourced barn/church models were trialed here and lost the
+  // side-by-side judging to the procedural set (docs/ATTRIBUTION.md).
+  const BUILDER_BY_NAME = {
+    cottage: makeCottage, barn: makeBarn, tower: makeTower, ruin: makeRuin,
+    adobe: makeAdobe, rowhouse: makeRowhouse,
+  };
+  const builders = P.plan.map((n) => BUILDER_BY_NAME[n] || makeCottage);
   let bi = 0;
   const placedB = [];
   for (const cand of candidates) {
     if (bi >= builders.length) break;
     for (const side of [-1, 1]) {
       if (bi >= builders.length) break;
-      if (rng() < 0.25) continue;
-      const lat = 10 + rng() * 4;
+      if (rng() < P.sideSkip) continue;
+      const lat = P.buildingLat[0] + rng() * P.buildingLat[1];
       const px = cand.x + -cand.tz * side * lat;
       const pz = cand.z + cand.tx * side * lat;
       if (px < v.x0 || px > v.x1 || pz < v.z0 || pz > v.z1) continue;
-      if (heightField._roadDist(px, pz) < 7.5) continue;
+      if (heightField._roadDist(px, pz) < 7.5 || noVeg(px, pz)) continue;
       let clear = true;
-      for (const pb of placedB) if (Math.hypot(px - pb.x, pz - pb.z) < pb.rr + 9) { clear = false; break; }
+      for (const pb of placedB) if (Math.hypot(px - pb.x, pz - pb.z) < pb.rr + P.spacingPad) { clear = false; break; }
       if (!clear) continue;
       const rot = Math.atan2(cand.tx, cand.tz) + (rng() - 0.5) * 0.10;
-      const tmp = { plaster: [], stone: [], roof: [], wood: [], dark: [], straw: [] };
-      const info = builders[bi](rng, tmp, rng() < 0.75 ? 'plaster' : 'stone');
+      const tmp = { plaster: [], stone: [], roof: [], wood: [], dark: [], straw: [], baked: [] };
+      const info = builders[bi](rng, tmp, rng() < 1 - P.wallStoneChance ? 'plaster' : 'stone');
       const fit = groundFit(px, pz, info.w, info.d, rot);
-      if (fit.spread > 1.7) continue;
+      if (fit.spread > P.maxSpread) continue;
+      // per-building texture phase: no two facades repeat the same grid
+      for (const bk of Object.keys(tmp)) for (const g of tmp[bk]) jitterUV(g, rng);
       _quat.setFromAxisAngle(_upAxis, rot);
       _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
       mergeInto(buckets, tmp, _mat4);
@@ -392,6 +698,39 @@ export function createProps(heightField, engineCtx, seed = 2002) {
     }
   }
 
+  // --- town block fill (urban): place remaining plan buildings on a coarse
+  // grid BETWEEN the streets so blocks read built-up, not just road-fronted ---
+  if (P.blockFill && bi < builders.length) {
+    const brng = mulberry32(seed + 404);
+    const step = 27;
+    for (let gz = v.z0 + 14; gz < v.z1 - 14 && bi < builders.length; gz += step) {
+      for (let gx = v.x0 + 14; gx < v.x1 - 14 && bi < builders.length; gx += step) {
+        const px = gx + (brng() - 0.5) * 10, pz = gz + (brng() - 0.5) * 10;
+        const rd = heightField._roadDist(px, pz);
+        if (rd < 11 || rd > 60) continue; // off the frontage, inside the block
+        if (noVeg(px, pz)) continue;
+        if (Math.hypot(px - junction.x, pz - junction.z) < 24) continue;
+        let clear = true;
+        for (const pb of placedB) if (Math.hypot(px - pb.x, pz - pb.z) < pb.rr + P.spacingPad) { clear = false; break; }
+        if (!clear) continue;
+        const rot = (brng() < 0.5 ? 0 : Math.PI / 2) + (brng() - 0.5) * 0.06;
+        const tmp = { plaster: [], stone: [], roof: [], wood: [], dark: [], straw: [], baked: [] };
+        const info = builders[bi](rng, tmp, rng() < 1 - P.wallStoneChance ? 'plaster' : 'stone');
+        const fit = groundFit(px, pz, info.w, info.d, rot);
+        if (fit.spread > P.maxSpread) continue;
+        for (const bk of Object.keys(tmp)) for (const g of tmp[bk]) jitterUV(g, rng);
+        _quat.setFromAxisAngle(_upAxis, rot);
+        _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
+        mergeInto(buckets, tmp, _mat4);
+        addFootprintAABB(obstacles, px, pz, fit.y, fit.hx, fit.hz, info.h);
+        addFootprintAABB(colliders, px, pz, fit.y, fit.hx, fit.hz, info.h);
+        buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot });
+        placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
+        bi++;
+      }
+    }
+  }
+
   // --- low stone walls (cover) — axis-aligned runs for tight AABBs ---
   function addWallRun(x0, z0, x1, z1, gapAt = -1) {
     const along = Math.hypot(x1 - x0, z1 - z0);
@@ -400,12 +739,13 @@ export function createProps(heightField, engineCtx, seed = 2002) {
     for (let k = 0; k < nSeg; k++) {
       if (k === gapAt) continue;
       const cx = x0 + dx * (k + 0.5), cz = z0 + dz * (k + 0.5);
-      if (heightField._roadDist(cx, cz) < 5.5) continue;
+      if (heightField._roadDist(cx, cz) < 5.5 || noVeg(cx, cz)) continue;
       const y = heightField.getHeightAt(cx, cz) - 0.15;
       const h = 1.0 + rng() * 0.25;
       const horizontal = Math.abs(dx) > Math.abs(dz);
       const len = Math.abs(horizontal ? dx : dz) * 0.96;
       const g = box(horizontal ? len : 0.45, h, horizontal ? 0.45 : len, 0.7);
+      jitterUV(g, rng); // de-sync coursing between segments
       g.translate(cx, y + h / 2, cz);
       buckets.stone.push(g);
       const hx = (horizontal ? len : 0.45) / 2, hz = (horizontal ? 0.45 : len) / 2;
@@ -413,15 +753,26 @@ export function createProps(heightField, engineCtx, seed = 2002) {
       colliders.push({ min: [cx - hx, y, cz - hz], max: [cx + hx, y + h, cz + hz] });
     }
   }
-  addWallRun(v.x0 + 4, 8, v.x0 + 4, 64, 2);
-  addWallRun(v.x0 + 4, 8, v.x0 + 40, 8, 3);
-  addWallRun(v.x1 - 6, 30, v.x1 - 6, 96, 4);
-  addWallRun(-8, v.z1 - 10, 52, v.z1 - 10, 2);
-  addWallRun(38, v.z0 + 6, 74, v.z0 + 6, 1);
-  addWallRun(-44, 108, -10, 108, 0);
+  const wallRuns = P.wallRuns || [
+    [v.x0 + 4, 8, v.x0 + 4, 64, 2],
+    [v.x0 + 4, 8, v.x0 + 40, 8, 3],
+    [v.x1 - 6, 30, v.x1 - 6, 96, 4],
+    [-8, v.z1 - 10, 52, v.z1 - 10, 2],
+    [38, v.z0 + 6, 74, v.z0 + 6, 1],
+    [-44, 108, -10, 108, 0],
+    // midfield field-boundary walls: hull-down/cover lines in the open ground
+    [-186, -62, -118, -62, 3],
+    [-118, -62, -118, -14, 1],
+    [148, -196, 148, -132, 2],
+    [-64, 218, 8, 218, 4],
+    [196, 108, 258, 108, 2],
+    [-266, 66, -212, 66, 1],
+    [96, -320, 158, -320, 3],
+  ];
+  for (const wr of wallRuns) addWallRun(wr[0], wr[1], wr[2], wr[3], wr[4] ?? -1);
 
   // --- village well near the junction ---
-  {
+  if (P.well) {
     let wx = junction.x + 9, wz = junction.z + 7;
     for (let i = 0; i < 20 && heightField._roadDist(wx, wz) < 6.5; i++) { wx += 2; wz += 1; }
     const wy = heightField.getHeightAt(wx, wz);
@@ -443,7 +794,7 @@ export function createProps(heightField, engineCtx, seed = 2002) {
   }
 
   // --- hay bales + crates near buildings ---
-  for (let i = 0; i < Math.min(5, placedB.length); i++) {
+  for (let i = 0; P.hayCrates && i < Math.min(5, placedB.length); i++) {
     const pb = placedB[i];
     const n = 1 + ((rng() * 3) | 0);
     for (let k = 0; k < n; k++) {
@@ -470,7 +821,7 @@ export function createProps(heightField, engineCtx, seed = 2002) {
 
   // --- wooden fence runs + telegraph poles along the roads (visual only) ---
   {
-    const roadsL = _LAYOUT.roads;
+    const roadsL = L.roads;
     function fenceRun(nodes, i0, i1, side) {
       for (let i = i0; i < i1 && i < nodes.length - 1; i++) {
         const [ax, az] = nodes[i], [bx, bz] = nodes[i + 1];
@@ -506,19 +857,27 @@ export function createProps(heightField, engineCtx, seed = 2002) {
         }
       }
     }
-    fenceRun(roadsL[0], 11, 14, -1); // village approach, west side
-    fenceRun(roadsL[0], 20, 23, 1);  // north exit, east side
-    fenceRun(roadsL[1], 9, 12, -1);  // west field edge
-    fenceRun(roadsL[1], 20, 23, 1);  // east field edge
+    if (P.fences && roadsL.length >= 2) {
+      fenceRun(roadsL[0], 11, 14, -1); // village approach, west side
+      fenceRun(roadsL[0], 20, 23, 1);  // north exit, east side
+      fenceRun(roadsL[1], 9, 12, -1);  // west field edge
+      fenceRun(roadsL[1], 20, 23, 1);  // east field edge
+    }
     // telegraph poles marching along road A — tapered round poles with twin
     // cross-arms and a brace, planted dead vertical
-    for (let i = 8; i < roadsL[0].length - 1; i += 2) {
+    const poleGeo = SOURCED.poles && P.telegraph
+      ? bakedGeometry('telephone_pole_polygoogle', { targetH: 7.4, sink: 0.15 }) : null;
+    for (let i = 8; P.telegraph && i < roadsL[0].length - 1; i += 2) {
       const [ax, az] = roadsL[0][i], [bx, bz] = roadsL[0][i + 1];
       const tl = Math.hypot(bx - ax, bz - az);
       const px = ax - ((bz - az) / tl) * 6.9, pz = az + ((bx - ax) / tl) * 6.9;
-      if (Math.max(Math.abs(px), Math.abs(pz)) > 470) continue;
+      if (Math.max(Math.abs(px), Math.abs(pz)) > 470 || noVeg(px, pz)) continue;
       const py = heightField.getHeightAt(px, pz);
       const armYaw = Math.atan2(bx - ax, bz - az) + Math.PI / 2;
+      if (SOURCED.poles) {
+        addBakedInstance('pole', poleGeo, px, py - 0.05, pz, armYaw, 1);
+        continue;
+      }
       const pole = new THREE.CylinderGeometry(0.09, 0.17, 6.2, 7, 1);
       scaleUV(pole, 0.8, 3.0);
       pole.translate(px, py + 3.0, pz);
@@ -563,28 +922,30 @@ export function createProps(heightField, engineCtx, seed = 2002) {
       // darker, mossier boulders — the old light-gray tone flashed white at
       // distance under the sun/env light and read as pixel errors
       const l = 0.28 + vr() * 0.09 + p.getY(i) * 0.05;
-      _col.setHSL(0.09 + vr() * 0.02, 0.07, clamp(l, 0.16, 0.44), THREE.SRGBColorSpace);
+      let rh = 0.09 + vr() * 0.02, rs = 0.07, rl = clamp(l, 0.16, 0.44);
+      if (P.rockTone) { const t = P.rockTone(rh, rs, rl); rh = t[0]; rs = t[1]; rl = clamp(t[2], 0, 1); }
+      _col.setHSL(rh, rs, rl, THREE.SRGBColorSpace);
       col[i * 3] = _col.r; col[i * 3 + 1] = _col.g; col[i * 3 + 2] = _col.b;
     }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     rockGeos.push(g);
   }
   const rockPlacements = [[], [], []];
-  for (let i = 0, placed = 0; i < 900 && placed < 110; i++) {
-    const x = (rng() * 2 - 1) * 485, z = (rng() * 2 - 1) * 485;
+  function tryRock(x, z, scMin, scMax, slopePref) {
     const vv = (rng() * 3) | 0;
     const yawR = rng() * Math.PI * 2;
-    const sc = 0.9 + Math.pow(rng(), 1.6) * 1.9;
-    if (x > v.x0 - 8 && x < v.x1 + 8 && z > v.z0 - 8 && z < v.z1 + 8) continue;
-    if (heightField._roadDist(x, z) < 6) continue;
-    if (heightField.getGroundType(x, z) === 'soft') continue;
-    let nearSpawn = false;
-    for (const s of [_LAYOUT.spawns.player, ..._LAYOUT.spawns.enemies]) {
-      if (Math.hypot(x - s.x, z - s.z) < 16) { nearSpawn = true; break; }
+    const sc = scMin + Math.pow(rng(), 1.6) * (scMax - scMin);
+    if (Math.max(Math.abs(x), Math.abs(z)) > 485) return false;
+    if (x > v.x0 - 8 && x < v.x1 + 8 && z > v.z0 - 8 && z < v.z1 + 8) return false;
+    if (heightField._roadDist(x, z) < 6) return false;
+    if (heightField.getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
+    for (const s of [L.spawns.player, ...L.spawns.enemies]) {
+      if (Math.hypot(x - s.x, z - s.z) < 16) return false;
     }
-    if (nearSpawn) continue;
-    const steep = heightField.getNormalAt(x, z).y < 0.93;
-    if (!steep && rng() > 0.22) continue; // prefer rocky slopes
+    if (slopePref) {
+      const steep = heightField.getNormalAt(x, z).y < 0.93;
+      if (!steep && rng() > 0.30) return false; // prefer rocky slopes
+    }
     const y = heightField.getHeightAt(x, z) - 0.22 * sc;
     _quat.setFromAxisAngle(_upAxis, yawR);
     _mat4.compose(_posv.set(x, y, z), _quat, new THREE.Vector3(sc, sc * (0.8 + rng() * 0.35), sc));
@@ -594,7 +955,22 @@ export function createProps(heightField, engineCtx, seed = 2002) {
       obstacles.push({ min: [x - e, y, z - e], max: [x + e, y + sc * 1.1, z + e] });
       colliders.push({ min: [x - e, y, z - e], max: [x + e, y + sc * 1.1, z + e] });
     }
-    placed++;
+    return true;
+  }
+  for (let i = 0, placed = 0; i < P.rocks * 9 && placed < P.rocks; i++) {
+    if (tryRock((rng() * 2 - 1) * 485, (rng() * 2 - 1) * 485, 0.9, 2.8, true)) placed++;
+  }
+  // boulder outcrop clusters: chunky hull-down cover groups in the open field
+  for (let c = 0, made = 0; c < P.outcrops * 8 && made < P.outcrops; c++) {
+    const cx = (rng() * 2 - 1) * 420, cz = (rng() * 2 - 1) * 420;
+    if (heightField._roadDist(cx, cz) < 12) continue;
+    const n = 3 + (rng() * 3) | 0;
+    let got = 0;
+    for (let i = 0; i < n; i++) {
+      const a = rng() * Math.PI * 2, rr = 1.5 + rng() * 6;
+      if (tryRock(cx + Math.cos(a) * rr, cz + Math.sin(a) * rr, 1.3, 3.2, false)) got++;
+    }
+    if (got > 0) made++;
   }
   for (let vi = 0; vi < 3; vi++) {
     if (rockPlacements[vi].length === 0) continue;
@@ -607,12 +983,47 @@ export function createProps(heightField, engineCtx, seed = 2002) {
     group.add(im);
   }
 
+  // --- field haystacks: classic WoT soft-cover silhouettes in the open ---
+  for (let i = 0, placed = 0; i < P.haystacks * 22 && placed < P.haystacks; i++) {
+    const x = (rng() * 2 - 1) * 430, z = (rng() * 2 - 1) * 430;
+    if (x > v.x0 - 10 && x < v.x1 + 10 && z > v.z0 - 10 && z < v.z1 + 10) continue;
+    if (heightField._roadDist(x, z) < 9) continue;
+    if (heightField.getGroundType(x, z) === 'soft' || noVeg(x, z)) continue;
+    if (heightField.getNormalAt(x, z).y < 0.92) continue;
+    let nearSpawn = false;
+    for (const s of [L.spawns.player, ...L.spawns.enemies]) {
+      if (Math.hypot(x - s.x, z - s.z) < 18) { nearSpawn = true; break; }
+    }
+    if (nearSpawn) continue;
+    const y = heightField.getHeightAt(x, z);
+    const hr = 1.7 + rng() * 0.9, hh = 2.1 + rng() * 1.0;
+    const stack = new THREE.ConeGeometry(hr, hh, 9, 2);
+    { // slouch the profile so it reads as piled hay, not a geometric cone
+      const sp = stack.attributes.position;
+      for (let k = 0; k < sp.count; k++) {
+        const rr2 = Math.hypot(sp.getX(k), sp.getZ(k));
+        if (rr2 > 1e-4) {
+          const f = 1 + (rng() - 0.5) * 0.24;
+          sp.setX(k, sp.getX(k) * f); sp.setZ(k, sp.getZ(k) * f);
+        }
+      }
+      stack.computeVertexNormals();
+    }
+    scaleUV(stack, 3, 1.5);
+    stack.rotateY(rng() * Math.PI * 2);
+    stack.translate(x, y + hh / 2 - 0.12, z);
+    buckets.straw.push(stack);
+    obstacles.push({ min: [x - hr * 0.9, y, z - hr * 0.9], max: [x + hr * 0.9, y + hh, z + hr * 0.9] });
+    colliders.push({ min: [x - hr * 0.9, y, z - hr * 0.9], max: [x + hr * 0.9, y + hh, z + hr * 0.9] });
+    placed++;
+  }
+
   // --- field clutter: fallen logs + stumps (visual ground detail) ---
-  for (let i = 0, placed = 0; i < 260 && placed < 26; i++) {
+  for (let i = 0, placed = 0; P.logs && i < 260 && placed < 26; i++) {
     const x = (rng() * 2 - 1) * 460, z = (rng() * 2 - 1) * 460;
     if (x > v.x0 - 6 && x < v.x1 + 6 && z > v.z0 - 6 && z < v.z1 + 6) continue;
     if (heightField._roadDist(x, z) < 7) continue;
-    if (heightField.getGroundType(x, z) === 'soft') continue;
+    if (heightField.getGroundType(x, z) === 'soft' || noVeg(x, z)) continue;
     const y = heightField.getHeightAt(x, z);
     if (rng() < 0.6) { // log
       const r = 0.16 + rng() * 0.13, len = 2.2 + rng() * 1.9;
@@ -664,14 +1075,100 @@ export function createProps(heightField, engineCtx, seed = 2002) {
       colliders.push({ min: [x - 1.6, y, z - 1.6], max: [x + 1.6, y + 1.1, z + 1.6] });
     }
     let carts = 0;
-    for (let i = 4; i < _LAYOUT.roads[1].length - 1 && carts < 2; i += 7) {
-      const [ax, az] = _LAYOUT.roads[1][i];
+    for (let i = 4; P.carts && L.roads.length >= 2 && i < L.roads[1].length - 1 && carts < 2; i += 7) {
+      const [ax, az] = L.roads[1][i];
       const cxp = ax + 8.5, czp = az + 6.5;
       if (Math.max(Math.abs(cxp), Math.abs(czp)) > 440) continue;
       if (heightField._roadDist(cxp, czp) < 6) continue;
-      if (heightField.getGroundType(cxp, czp) === 'soft') continue;
+      if (heightField.getGroundType(cxp, czp) === 'soft' || noVeg(cxp, czp)) continue;
       buildCart(cxp, czp, rng() * Math.PI * 2);
       carts++;
+    }
+  }
+
+  // --- sandbag emplacements: defensive clusters along the main road + plaza ---
+  if (SOURCED.sandbags) {
+    const srng = mulberry32(seed + 401);
+    const sbBig = bakedGeometry('sack_trench_quaternius', { targetH: 1.35, sink: 0.12 });
+    const sbSmall = bakedGeometry('sack_trench_small_quaternius', { targetH: 1.05, sink: 0.1 });
+    const sbWall = bakedGeometry('sandbags_jtoastie', { targetH: 1.0, sink: 0.1 });
+    let placedS = 0;
+    const roadA = L.roads[0];
+    for (let i = 6; i < roadA.length - 2 && placedS < 9; i += 3) {
+      const [ax, az] = roadA[i], [bx, bz] = roadA[i + 1];
+      if (Math.abs(az) > 330) continue;
+      const tl = Math.hypot(bx - ax, bz - az);
+      const side = (i % 2) ? 1 : -1;
+      const sx = ax - ((bz - az) / tl) * 8.6 * side, sz = az + ((bx - ax) / tl) * 8.6 * side;
+      if (Math.max(Math.abs(sx), Math.abs(sz)) > 460) continue;
+      if (heightField._roadDist(sx, sz) < 5.5) continue;
+      if (heightField.getGroundType(sx, sz) === 'soft' || noVeg(sx, sz)) continue;
+      if (heightField.getNormalAt(sx, sz).y < 0.9) continue;
+      let clearB = true;
+      for (const pb of placedB) if (Math.hypot(sx - pb.x, sz - pb.z) < pb.rr + 4) { clearB = false; break; }
+      if (!clearB) continue;
+      const y = heightField.getHeightAt(sx, sz);
+      // face the road: bags run perpendicular to the offset direction
+      const yaw = Math.atan2(bx - ax, bz - az) + (srng() - 0.5) * 0.3;
+      const pick = srng();
+      const geo = pick < 0.45 ? sbBig : pick < 0.8 ? sbSmall : sbWall;
+      const name = pick < 0.45 ? 'sbBig' : pick < 0.8 ? 'sbSmall' : 'sbWall';
+      addBakedInstance(name, geo, sx, y - 0.04, sz, yaw, 1.25 + srng() * 0.3);
+      const e = 2.6;
+      obstacles.push({ min: [sx - e, y, sz - e], max: [sx + e, y + 1.3, sz + e] });
+      colliders.push({ min: [sx - e, y, sz - e], max: [sx + e, y + 1.3, sz + e] });
+      placedS++;
+    }
+    // plaza corner nest by the well
+    {
+      const nx = junction.x - 11, nz = junction.z - 8;
+      const y = heightField.getHeightAt(nx, nz);
+      addBakedInstance('sbBig', sbBig, nx, y - 0.04, nz, Math.PI * 0.7, 1.4);
+      addBakedInstance('sbSmall', sbSmall, nx + 3.4, y - 0.04, nz + 1.6, Math.PI * 0.25, 1.3);
+      obstacles.push({ min: [nx - 3, y, nz - 2.5], max: [nx + 4.5, y + 1.4, nz + 3] });
+      colliders.push({ min: [nx - 3, y, nz - 2.5], max: [nx + 4.5, y + 1.4, nz + 3] });
+    }
+  }
+
+  // --- street rubble piles (urban): heaped masonry chunks + broken beams ---
+  if (P.rubblePiles > 0) {
+    const rrng = mulberry32(seed + 403);
+    for (let i = 0, placed = 0; i < P.rubblePiles * 14 && placed < P.rubblePiles; i++) {
+      const x = v.x0 + rrng() * (v.x1 - v.x0);
+      const z = v.z0 + rrng() * (v.z1 - v.z0);
+      const rd = heightField._roadDist(x, z);
+      if (rd < 4.5 || rd > 16) continue; // flank the streets, keep lanes open
+      let clear = true;
+      for (const pb of placedB) if (Math.hypot(x - pb.x, z - pb.z) < pb.rr + 2.5) { clear = false; break; }
+      if (!clear) continue;
+      let nearSpawn = false;
+      for (const s of [L.spawns.player, ...L.spawns.enemies]) {
+        if (Math.hypot(x - s.x, z - s.z) < 20) { nearSpawn = true; break; }
+      }
+      if (nearSpawn || Math.hypot(x - junction.x, z - junction.z) < 16) continue;
+      const y = heightField.getHeightAt(x, z);
+      const pr = 1.6 + rrng() * 1.3;
+      const n = 6 + ((rrng() * 5) | 0);
+      for (let k = 0; k < n; k++) {
+        const a = rrng() * Math.PI * 2, rr = Math.sqrt(rrng()) * pr;
+        const cs = 0.35 + rrng() * 0.8;
+        const chunk = box(cs, cs * (0.5 + rrng() * 0.5), cs * (0.6 + rrng() * 0.6), 0.9);
+        jitterUV(chunk, rrng);
+        chunk.rotateY(rrng() * Math.PI);
+        chunk.rotateX((rrng() - 0.5) * 0.5);
+        chunk.translate(x + Math.cos(a) * rr, y + 0.12 + (1 - rr / pr) * pr * 0.35, z + Math.sin(a) * rr);
+        buckets.stone.push(chunk);
+      }
+      if (rrng() < 0.6) { // charred beam jutting out
+        const beam = box(0.14, 0.14, 2.2 + rrng() * 1.4, 1.0);
+        beam.rotateX(-0.5 - rrng() * 0.4);
+        beam.rotateY(rrng() * Math.PI * 2);
+        beam.translate(x, y + pr * 0.4, z);
+        buckets.wood.push(beam);
+      }
+      obstacles.push({ min: [x - pr, y, z - pr], max: [x + pr, y + pr * 0.7, z + pr] });
+      colliders.push({ min: [x - pr, y, z - pr], max: [x + pr, y + pr * 0.7, z + pr] });
+      placed++;
     }
   }
 
@@ -690,9 +1187,12 @@ export function createProps(heightField, engineCtx, seed = 2002) {
         g.addColorStop(0.66, 'rgba(84,66,42,0.55)');
         g.addColorStop(1, 'rgba(90,74,48,0)');
       } else {
-        g.addColorStop(0, 'rgba(72,58,38,0.8)');
-        g.addColorStop(0.55, 'rgba(76,62,42,0.6)');
-        g.addColorStop(1, 'rgba(80,68,46,0)');
+        // foundation skirt: dark packed-earth AO ring so buildings sit IN the
+        // ground instead of floating on the grass
+        g.addColorStop(0, 'rgba(52,42,27,0.94)');
+        g.addColorStop(0.4, 'rgba(66,53,34,0.82)');
+        g.addColorStop(0.72, 'rgba(78,64,42,0.5)');
+        g.addColorStop(1, 'rgba(82,68,45,0)');
       }
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, s, s);
@@ -765,26 +1265,38 @@ export function createProps(heightField, engineCtx, seed = 2002) {
     }
     const dirtDiscs = [];
     for (const b of buildingFeatures) {
-      dirtDiscs.push(conformedDisc(b.x, b.z, Math.max(b.w, b.d) * 0.85, [0.05, 0.05, 0.05, 0.04]));
+      dirtDiscs.push(conformedDisc(b.x, b.z, Math.max(b.w, b.d) * 1.05, [0.05, 0.05, 0.05, 0.04]));
     }
     addDecalMesh(dirtDiscs, makeDecalTexture('dirt'));
     // craters: scattered shell holes with a raised rim mound
     const craterDiscs = [];
-    for (let i = 0, placed = 0; i < 200 && placed < 16; i++) {
+    for (let i = 0, placed = 0; i < P.craters * 11 && placed < P.craters; i++) {
       const x = (rng() * 2 - 1) * 420, z = (rng() * 2 - 1) * 420;
       if (x > v.x0 - 4 && x < v.x1 + 4 && z > v.z0 - 4 && z < v.z1 + 4) continue;
       if (heightField._roadDist(x, z) < 5.5) continue;
-      if (heightField.getGroundType(x, z) === 'soft') continue;
+      if (heightField.getGroundType(x, z) === 'soft' || noVeg(x, z)) continue;
       let nearSpawn = false;
-      for (const s of [_LAYOUT.spawns.player, ..._LAYOUT.spawns.enemies]) {
+      for (const s of [L.spawns.player, ...L.spawns.enemies]) {
         if (Math.hypot(x - s.x, z - s.z) < 20) { nearSpawn = true; break; }
       }
       if (nearSpawn) continue;
-      const r = 2.2 + rng() * 2.0;
+      const r = 2.4 + rng() * 2.6;
       craterDiscs.push(conformedDisc(x, z, r, [0.04, 0.06, 0.14 + rng() * 0.12, 0.03]));
       placed++;
     }
     addDecalMesh(craterDiscs, makeDecalTexture('scorch'));
+  }
+
+  // --- sourced-model InstancedMeshes (one per model, shared baked material) ---
+  for (const [, e] of bakedInstances) {
+    if (e.list.length === 0) continue;
+    const im = new THREE.InstancedMesh(e.geo, mats.baked, e.list.length);
+    for (let i = 0; i < e.list.length; i++) im.setMatrixAt(i, e.list[i]);
+    im.castShadow = true;
+    im.receiveShadow = true;
+    im.matrixAutoUpdate = false;
+    im.computeBoundingSphere();
+    group.add(im);
   }
 
   // --- merge buckets into one mesh per material ---

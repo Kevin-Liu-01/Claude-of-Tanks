@@ -18,7 +18,7 @@ import * as THREE from 'three';
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
-const POOL_SIZES = { smoke: 2048, fire: 1024, dust: 1024, sparks: 512, debris: 256, flash: 128 };
+const POOL_SIZES = { smoke: 2048, fire: 1024, dust: 1024, sparks: 512, debris: 256, flash: 128, jet: 64 };
 
 // ---------------------------------------------------------------------------
 // GLSL — shared helpers
@@ -145,15 +145,20 @@ varying vec2 vShade;
 ${FOG_PARS_F}
 void main() {
   float tex = texture2D( uMap, vUv ).a;
-  // age-keyed alpha erosion: dense interior survives, thin edges burn away
-  float er = vT * 0.55;
-  float a = smoothstep( er, er + 0.38, tex ) * vColor.a;
+  // erosion-style dissolve: the alpha threshold rises with age so the noisy
+  // texture breaks apart from its thin texels inward — edges churn and burn
+  // away instead of the whole card fading uniformly
+  float er = vT * 0.62;
+  float a = smoothstep( er, er + 0.24, tex ) * vColor.a;
   if ( a < 0.004 ) discard;
   ${FOG_SCALE_F}
-  // interior heat structure: densest texels read white-hot early in life,
-  // whole particle cools toward soot as vT -> 1 (white -> orange -> dark)
-  float hot = 1.0 + pow( tex, 2.2 ) * 1.5 * ( 1.0 - vT * 0.85 );
-  vec3 col = vColor.rgb * hot * ( 1.0 - vT * vT * 0.55 );
+  // blackbody interior: texels well above the erosion front read white-hot,
+  // the dissolving rim cools through orange to deep red as vT -> 1
+  float heat = clamp( ( tex - er ) * 2.6, 0.0, 1.0 );
+  float hot = 0.45 + heat * heat * ( 2.2 - vT * 1.6 );
+  vec3 col = vColor.rgb * hot * ( 1.0 - vT * vT * 0.45 );
+  // rim tint: pixels near the burning front shift toward deep ember red
+  col = mix( vec3( 1.0, 0.22, 0.03 ) * ( 0.4 + 0.6 * vColor.r ), col, smoothstep( 0.0, 0.55, heat ) );
   // HDR push so UnrealBloom catches fire/flash pixels
   gl_FragColor = vec4( col * uIntensity * ( 1.0 - fogFactor ), a );
 }
@@ -225,6 +230,78 @@ void main() {
 }
 `;
 
+// --- jet (axis-oriented muzzle-blast cones, NOT camera-facing) ---------------
+
+const JET_VERT = `
+attribute vec4 aPB;   // origin.xyz, birth
+attribute vec4 aAL;   // axis.xyz (unit), life
+attribute vec4 aWL;   // width, len0, len1, seed
+attribute vec4 aC;    // color.rgb, peakAlpha
+uniform float uTime;
+varying vec2 vUv;
+varying vec4 vColor;
+varying float vT;
+varying float vSeed;
+${FOG_PARS_V}
+void main() {
+  float life = aAL.w;
+  float age = uTime - aPB.w;
+  if ( life <= 0.0 || age < 0.0 || age > life ) {
+    vUv = uv; vColor = vec4( 0.0 ); vT = 0.0; vSeed = 0.0;
+    gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
+    ${FOG_V.replace('-mvPosition.z', '1.0')}
+    return;
+  }
+  float t = age / life;
+  vT = t;
+  vSeed = aWL.w;
+  vec3 axis = aAL.xyz;
+  // fast initial expansion, then hold while alpha decays (sub-100ms flash)
+  float len = mix( aWL.y, aWL.z, pow( t, 0.3 ) );
+  float u = position.x + 0.5;               // 0 at muzzle -> 1 at tip
+  vec3 tipPos = aPB.xyz + axis * ( u * len );
+  vec3 viewDir = normalize( cameraPosition - tipPos );
+  vec3 side = cross( axis, viewDir );
+  float sl = length( side );
+  side = sl > 1e-4 ? side / sl : vec3( viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0] );
+  // cone envelope: narrow at the brake, widening toward the tip
+  float env = 0.30 + 1.05 * u;
+  vec3 wpos = tipPos + side * ( position.y * 2.0 * aWL.x * env );
+  float alpha = aC.w * pow( 1.0 - t, 1.3 );
+  vColor = vec4( aC.rgb, alpha );
+  vUv = uv;
+  vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
+  ${FOG_V}
+  gl_Position = projectionMatrix * mvPosition;
+}
+`;
+
+const JET_FRAG = `
+uniform sampler2D uMap;
+uniform float uIntensity;
+varying vec2 vUv;
+varying vec4 vColor;
+varying float vT;
+varying float vSeed;
+${FOG_PARS_F}
+void main() {
+  // seeded UV jitter so no two jets sample the identical noise
+  vec2 uv = vec2( vUv.x * ( 0.82 + 0.18 * fract( vSeed * 7.31 ) ),
+                  clamp( vUv.y + ( fract( vSeed * 13.7 ) - 0.5 ) * 0.16, 0.0, 1.0 ) );
+  float tex = texture2D( uMap, uv ).a;
+  float er = 0.06 + vT * 0.6;
+  float a = smoothstep( er, er + 0.28, tex ) * vColor.a;
+  if ( a < 0.004 ) discard;
+  ${FOG_SCALE_F}
+  // incandescent core near the muzzle end, cooling toward the ragged tip
+  float heat = clamp( ( tex - er ) * 2.4, 0.0, 1.0 );
+  float hot = 0.6 + heat * heat * ( 1.0 - vUv.x * 0.55 ) * 2.2;
+  vec3 col = vColor.rgb * hot * ( 1.0 - vT * 0.35 );
+  col = mix( vec3( 1.0, 0.30, 0.05 ) * ( 0.5 + 0.5 * vColor.r ), col, smoothstep( 0.0, 0.5, heat ) );
+  gl_FragColor = vec4( col * uIntensity * ( 1.0 - fogFactor ), a );
+}
+`;
+
 // --- debris (instanced shaded boxes) ----------------------------------------
 
 const DEBRIS_VERT = `
@@ -237,6 +314,8 @@ varying vec3 vNormalW;
 varying vec3 vTint;
 varying float vHot;
 varying float vFade;
+varying vec3 vLocal;
+varying float vSeed;
 ${FOG_PARS_V}
 ${DISPLACE_GLSL}
 mat3 axisAngle( vec3 axis, float ang ) {
@@ -252,6 +331,7 @@ void main() {
   float age = uTime - aPB.w;
   if ( life <= 0.0 || age < 0.0 || age > life ) {
     vNormalW = vec3( 0.0, 1.0, 0.0 ); vTint = vec3( 0.0 ); vHot = 0.0; vFade = 0.0;
+    vLocal = vec3( 0.0 ); vSeed = 0.0;
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
     ${FOG_V.replace('-mvPosition.z','1.0')}
     return;
@@ -273,11 +353,13 @@ void main() {
   lp.z += lp.y * ( h1 - 0.5 ) * 0.6;
   vec3 wpos = center + rot * ( lp * aSG.x * fade );
   vNormalW = rot * normal;
+  vLocal = lp;
+  vSeed = aSG.w;
   // charred-metal albedo: near-black soot to dark scorched brown
   vTint = mix( vec3( 0.045, 0.040, 0.036 ), vec3( 0.145, 0.110, 0.085 ), h3 );
-  // ember glow cools over ~1s (slow enough to still read in composed frames),
-  // scaled per-instance so chunks glow unevenly rather than as flat confetti
-  vHot = aSG.z * exp( -age * 1.1 ) * ( 0.4 + h2 * 0.8 );
+  // ember glow cools fast (orange -> black), scaled per-instance so chunks
+  // glow unevenly rather than as flat confetti
+  vHot = aSG.z * exp( -age * 1.7 ) * ( 0.35 + h2 * 0.75 );
   vFade = fade;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   ${FOG_V}
@@ -291,6 +373,8 @@ varying vec3 vNormalW;
 varying vec3 vTint;
 varying float vHot;
 varying float vFade;
+varying vec3 vLocal;
+varying float vSeed;
 ${FOG_PARS_F}
 void main() {
   if ( vFade <= 0.001 ) discard;
@@ -298,12 +382,15 @@ void main() {
   float nl = max( dot( n, uSunDir ), 0.0 );
   float hemi = 0.28 + 0.22 * ( n.y * 0.5 + 0.5 );
   vec3 col = vTint * ( hemi + nl * 1.1 );
-  // cooling ember glow (bloom feed), strongest along facet edges (grazing
-  // sun) and hashed per-facet so chunks read as unevenly heated metal
-  // instead of flat orange confetti
-  float edge = 0.45 + 0.55 * ( 1.0 - nl );
-  float facet = fract( sin( dot( floor( n * 2.5 + 3.0 ), vec3( 12.9898, 78.233, 37.719 ) ) ) * 43758.55 );
-  col += vec3( 1.8, 0.40, 0.045 ) * vHot * edge * ( 0.30 + 0.85 * facet );
+  // cooling ember glow (bloom feed): NOT a flat face tint — modulated by a
+  // smooth local-space pattern so only cracks/patches of the scorched chunk
+  // glow orange while the rest stays charred black
+  float edge = 0.40 + 0.60 * ( 1.0 - nl );
+  float pat = 0.5 + 0.5 * sin( vLocal.x * 23.0 + vSeed * 61.0 )
+                        * sin( vLocal.y * 19.0 + vSeed * 23.0 )
+                        * sin( vLocal.z * 27.0 + vSeed * 43.0 );
+  pat *= pat;
+  col += vec3( 1.5, 0.38, 0.05 ) * vHot * edge * ( 0.10 + 1.15 * pat );
   ${FOG_SCALE_F}
   #ifdef USE_FOG
     col = mix( col, fogColor, fogFactor );
@@ -315,6 +402,144 @@ void main() {
 // ---------------------------------------------------------------------------
 // Procedural textures (canvas, seeded)
 // ---------------------------------------------------------------------------
+
+/**
+ * Seeded 2D value noise (bilinear, smoothstep-eased, tileable).
+ * @param {() => number} rng @param {number} grid lattice size
+ * @returns {(x: number, y: number) => number} sampler, x/y in [0,1)
+ */
+function makeValueNoise(rng, grid) {
+  const g = new Float32Array(grid * grid);
+  for (let i = 0; i < g.length; i++) g[i] = rng();
+  return (x, y) => {
+    const fx = (x - Math.floor(x)) * grid;
+    const fy = (y - Math.floor(y)) * grid;
+    const x0 = Math.floor(fx) % grid, y0 = Math.floor(fy) % grid;
+    const x1 = (x0 + 1) % grid, y1 = (y0 + 1) % grid;
+    let tx = fx - Math.floor(fx), ty = fy - Math.floor(fy);
+    tx = tx * tx * (3 - 2 * tx); ty = ty * ty * (3 - 2 * ty);
+    const a = g[y0 * grid + x0], b = g[y0 * grid + x1];
+    const c = g[y1 * grid + x0], d = g[y1 * grid + x1];
+    return a + (b - a) * tx + (c - a) * ty + (a - b - c + d) * tx * ty;
+  };
+}
+
+/**
+ * 4-octave fbm turbulence built on seeded value noise, output ~[0,1].
+ * @param {() => number} rng
+ * @returns {(x: number, y: number) => number}
+ */
+function makeFbm(rng) {
+  const o1 = makeValueNoise(rng, 4);
+  const o2 = makeValueNoise(rng, 8);
+  const o3 = makeValueNoise(rng, 16);
+  const o4 = makeValueNoise(rng, 32);
+  return (x, y) =>
+    (o1(x, y) * 0.5 + o2(x, y) * 0.25 + o3(x, y) * 0.125 + o4(x, y) * 0.0625) / 0.9375;
+}
+
+/**
+ * Multiply a canvas's alpha channel by seeded fbm turbulence — breaks the
+ * "smooth untextured blob" read on every particle that samples it.
+ * @param {HTMLCanvasElement} cv @param {() => number} rng
+ * @param {number} strength 0..1 how deep the turbulence cuts
+ */
+function applyFbmAlpha(cv, rng, strength) {
+  const fbm = makeFbm(rng);
+  const ctx = cv.getContext('2d');
+  const img = ctx.getImageData(0, 0, cv.width, cv.height);
+  const d = img.data;
+  const w = cv.width, h = cv.height;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const n = fbm(x / w, y / h);
+      const m = 1 - strength + strength * Math.min(1, n * 1.7);
+      d[(y * w + x) * 4 + 3] = Math.min(255, d[(y * w + x) * 4 + 3] * m);
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+/**
+ * Turbulent combustion sprite: fbm-warped radius gives a ragged silhouette,
+ * a second fbm field gives high-contrast interior churn. Built for the
+ * erosion dissolve in PUFF_FRAG_ADDITIVE (dense core survives, edges burn
+ * away). Alpha-only payload.
+ * @param {() => number} rng
+ * @returns {THREE.CanvasTexture}
+ */
+function makeFireTexture(rng) {
+  const s = 160;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = s;
+  const ctx = cv.getContext('2d');
+  const warp = makeFbm(rng);
+  const churn = makeFbm(rng);
+  const img = ctx.createImageData(s, s);
+  const d = img.data;
+  for (let y = 0; y < s; y++) {
+    for (let x = 0; x < s; x++) {
+      const nx = x / s, ny = y / s;
+      const dx = nx - 0.5, dy = ny - 0.5;
+      const r = Math.sqrt(dx * dx + dy * dy) * 2; // 0 center -> 1 edge
+      // domain-warped radius: silhouette bulges and bites, never a disc
+      const rw = r + (warp(nx, ny) - 0.5) * 0.75;
+      let a = 1 - (rw - 0.18) / 0.72;             // soft falloff from warped core
+      a = Math.max(0, Math.min(1, a));
+      // interior turbulence: bright filaments and dark pockets
+      const c = churn(nx * 1.7, ny * 1.7);
+      a *= 0.38 + 0.85 * c;
+      a = Math.pow(Math.min(1, a), 1.1);
+      const i = (y * s + x) * 4;
+      d[i] = d[i + 1] = d[i + 2] = 255;
+      d[i + 3] = Math.round(a * 255);
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
+}
+
+/**
+ * Horizontal muzzle-blast jet: bright attached base, expanding noisy cone,
+ * ragged dissolving tip (+x is downrange). Alpha-only payload.
+ * @param {() => number} rng
+ * @returns {THREE.CanvasTexture}
+ */
+function makeJetTexture(rng) {
+  const w = 256, h = 96;
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d');
+  const fbm = makeFbm(rng);
+  const img = ctx.createImageData(w, h);
+  const d = img.data;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const u = x / w;                 // along the jet
+      const v = (y / h) * 2 - 1;       // across, -1..1
+      const n = fbm(u * 1.6, y / h);
+      // expanding cone envelope with noisy boundary
+      const half = 0.20 + 0.72 * u;
+      const dcone = Math.abs(v) / half + (n - 0.5) * 0.55;
+      let a = 1 - Math.max(0, Math.min(1, (dcone - 0.25) / 0.75));
+      // ragged tip fade + hard attach at the muzzle end
+      a *= 1 - Math.max(0, Math.min(1, (u + (n - 0.5) * 0.4 - 0.55) / 0.42));
+      a *= Math.min(1, u / 0.05);
+      // filament structure along the flow
+      a *= 0.45 + 0.75 * fbm(u * 3.2 + 7.1, (y / h) * 1.3 + 3.3);
+      a = Math.pow(Math.max(0, Math.min(1, a)), 0.95);
+      const i = (y * w + x) * 4;
+      d[i] = d[i + 1] = d[i + 2] = 255;
+      d[i + 3] = Math.round(a * 255);
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
+}
 
 /**
  * Soft puff sprite: radial gradient modulated by seeded blob noise so smoke
@@ -365,6 +590,9 @@ function makePuffTexture(rng, blobbiness) {
     ctx.fillRect(0, 0, s, s);
   }
   ctx.globalCompositeOperation = 'source-over';
+  // fbm pass: per-pixel turbulence so even large screen-covering puffs keep
+  // internal cauliflower structure instead of reading as smooth blobs
+  applyFbmAlpha(cv, rng, 0.5 + blobbiness * 0.25);
   const tex = new THREE.CanvasTexture(cv);
   tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
   return tex; // alpha map, stays linear
@@ -546,9 +774,10 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   let frozen = false;
 
   const smokeTex = makePuffTexture(texRng, 0.65);
-  const fireTex = makePuffTexture(texRng, 0.55);
+  const fireTex = makeFireTexture(texRng);
   const dustTex = makePuffTexture(texRng, 0.8);
   const flashTex = makeFlashTexture(texRng);
+  const jetTex = makeJetTexture(texRng);
 
   const fogUniforms = () => THREE.UniformsUtils.clone(THREE.UniformsLib.fog);
   // world-space sun direction matching the sky/lighting rig
@@ -578,27 +807,41 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   const PUFF_LAYOUT = { aPB: 4, aVL: 4, aSR: 4, aC0: 4, aC1: 4 };
   const STREAK_LAYOUT = { aPB: 4, aVL: 4, aWS: 4, aC: 4 };
   const DEBRIS_LAYOUT = { aPB: 4, aVL: 4, aAR: 4, aSG: 4 };
+  const JET_LAYOUT = { aPB: 4, aAL: 4, aWL: 4, aC: 4 };
 
   const pools = {
     smoke: new Pool('smoke', makeQuadGeometry(POOL_SIZES.smoke),
       puffMaterial(smokeTex, false, 0.9, 1), PUFF_LAYOUT, POOL_SIZES.smoke, 'aVL', 3),
     fire: new Pool('fire', makeQuadGeometry(POOL_SIZES.fire),
-      // intensity 1.25: hot enough to bloom where sprites overlap without the
+      // intensity 1.05: hot enough to bloom where sprites overlap without the
       // stacked-additive HDR clipping the fireball core to a featureless sheet
-      puffMaterial(fireTex, true, 1.6, 1.25), PUFF_LAYOUT, POOL_SIZES.fire, 'aVL', 3),
+      puffMaterial(fireTex, true, 1.6, 1.05), PUFF_LAYOUT, POOL_SIZES.fire, 'aVL', 3),
     dust: new Pool('dust', makeQuadGeometry(POOL_SIZES.dust),
       puffMaterial(dustTex, false, 1.4, 1), PUFF_LAYOUT, POOL_SIZES.dust, 'aVL', 3),
     flash: new Pool('flash', makeQuadGeometry(POOL_SIZES.flash),
-      // 2.1: bright enough to bloom without clipping to a featureless sheet
-      puffMaterial(flashTex, true, 0.6, 2.1), PUFF_LAYOUT, POOL_SIZES.flash, 'aVL', 3),
+      // 1.7: bright enough to bloom without clipping to a featureless sheet
+      puffMaterial(flashTex, true, 0.6, 1.7), PUFF_LAYOUT, POOL_SIZES.flash, 'aVL', 3),
+    jet: new Pool('jet', makeQuadGeometry(POOL_SIZES.jet),
+      new THREE.ShaderMaterial({
+        vertexShader: JET_VERT,
+        fragmentShader: JET_FRAG,
+        uniforms: Object.assign(fogUniforms(), {
+          uTime, uMap: { value: jetTex }, uIntensity: { value: 1.6 },
+        }),
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,   // cone quad winding flips with view direction
+        fog: true,
+      }), JET_LAYOUT, POOL_SIZES.jet, 'aAL', 3),
     sparks: new Pool('sparks', makeQuadGeometry(POOL_SIZES.sparks),
       new THREE.ShaderMaterial({
         vertexShader: STREAK_VERT,
         fragmentShader: STREAK_FRAG,
         uniforms: Object.assign(fogUniforms(), {
-          // 1.9: sparks bloom but keep their orange hue instead of
+          // 1.45: sparks bloom but keep their orange hue instead of
           // tone-mapping to uniform white confetti
-          uTime, uDrag: { value: 1.1 }, uIntensity: { value: 1.9 },
+          uTime, uDrag: { value: 1.1 }, uIntensity: { value: 1.45 },
         }),
         transparent: true,
         depthWrite: false,
@@ -623,6 +866,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   pools.dust.mesh.renderOrder = 20;
   pools.smoke.mesh.renderOrder = 21;
   pools.fire.mesh.renderOrder = 22;
+  pools.jet.mesh.renderOrder = 23;
   pools.flash.mesh.renderOrder = 23;
   pools.sparks.mesh.renderOrder = 23;
   for (const key of Object.keys(pools)) group.add(pools[key].mesh);
@@ -671,11 +915,25 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     pool.dirty(i);
   }
 
+  function emitJet(pool, o) {
+    const i = pool.claim();
+    const birth = uTime.value + (o.birthOffset || 0);
+    const A = pool.attrs;
+    const pb = A.aPB.array, al = A.aAL.array, wl = A.aWL.array, c = A.aC.array;
+    const j = i * 4;
+    pb[j] = o.pos[0]; pb[j + 1] = o.pos[1]; pb[j + 2] = o.pos[2]; pb[j + 3] = birth;
+    al[j] = o.axis[0]; al[j + 1] = o.axis[1]; al[j + 2] = o.axis[2]; al[j + 3] = o.life;
+    wl[j] = o.width; wl[j + 1] = o.len0; wl[j + 2] = o.len1; wl[j + 3] = o.seed || 0;
+    c[j] = o.col[0]; c[j + 1] = o.col[1]; c[j + 2] = o.col[2]; c[j + 3] = o.alpha;
+    pool.dirty(i);
+  }
+
   const EMITTERS = {
     smoke: (o) => emitPuff(pools.smoke, o),
     fire: (o) => emitPuff(pools.fire, o),
     dust: (o) => emitPuff(pools.dust, o),
     flash: (o) => emitPuff(pools.flash, o),
+    jet: (o) => emitJet(pools.jet, o),
     sparks: (o) => emitStreak(pools.sparks, o),
     debris: (o) => emitDebris(pools.debris, o),
   };
@@ -707,7 +965,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
 
     /**
      * Spawn one particle into a named pool.
-     * @param {'smoke'|'fire'|'dust'|'flash'|'sparks'|'debris'} poolName
+     * @param {'smoke'|'fire'|'dust'|'flash'|'jet'|'sparks'|'debris'} poolName
      * @param {object} opts pool-specific fields (pos, vel, life, ...; birthOffset backdates)
      */
     emit(poolName, opts) {

@@ -1,0 +1,45 @@
+{
+  "date": "2026-07-28T00:57:48.730Z",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "sampleSeconds": 20,
+  "frames": 4035,
+  "loadToReadyMs": 4159,
+  "fps": {
+    "median": 204.1,
+    "p5": 169.5,
+    "p1": 156.3,
+    "mean": 205.1
+  },
+  "frameMs": {
+    "median": 4.9,
+    "p95": 5.9,
+    "p99": 6.4
+  },
+  "drawCalls": {
+    "median": 1201,
+    "max": 1227
+  },
+  "triangles": {
+    "median": 7708315,
+    "max": 7796145
+  },
+  "rendererInfo": {
+    "geometries": 216,
+    "textures": 124,
+    "programs": 70
+  },
+  "heap": {
+    "startMB": 153.7,
+    "endMB": 175.5,
+    "growthMBperS": 1.09
+  },
+  "gpuTextureEstimate": {
+    "sceneTextureMB": 325.7,
+    "shadowRtMB": 256,
+    "uniqueTextures": 87
+  },
+  "consoleErrors": []
+}

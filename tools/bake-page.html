@@ -1,0 +1,125 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>props model baker</title></head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+
+const loader = new GLTFLoader();
+const texCanvasCache = new Map();
+
+function textureSampler(tex) {
+  if (!tex || !tex.image) return null;
+  let entry = texCanvasCache.get(tex);
+  if (!entry) {
+    const img = tex.image;
+    const w = img.width, h = img.height;
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, w, h);
+    entry = { data: ctx.getImageData(0, 0, w, h).data, w, h };
+    texCanvasCache.set(tex, entry);
+  }
+  const { data, w, h } = entry;
+  return (u, v) => {
+    // GLTFLoader sets texture.flipY = false and samples with v as-is
+    let uu = u - Math.floor(u), vv = v - Math.floor(v);
+    const x = Math.min(w - 1, Math.max(0, Math.round(uu * (w - 1))));
+    const y = Math.min(h - 1, Math.max(0, Math.round(vv * (h - 1))));
+    const i = (y * w + x) * 4;
+    // canvas gives sRGB bytes; convert to linear floats like vertex colors
+    const s2l = (b) => {
+      const cs = b / 255;
+      return cs <= 0.04045 ? cs / 12.92 : Math.pow((cs + 0.055) / 1.055, 2.4);
+    };
+    return [s2l(data[i]), s2l(data[i + 1]), s2l(data[i + 2])];
+  };
+}
+
+async function bakeOne(url) {
+  const gltf = await loader.loadAsync(url);
+  const scene = gltf.scene;
+  scene.updateMatrixWorld(true);
+  const parts = [];
+  scene.traverse((obj) => {
+    if (!obj.isMesh || !obj.geometry) return;
+    let g = obj.geometry.clone();
+    if (g.index) g = g.toNonIndexed();
+    g.applyMatrix4(obj.matrixWorld);
+    if (!g.attributes.normal) g.computeVertexNormals();
+    const n = g.attributes.position.count;
+    const col = new Float32Array(n * 3);
+    const mat = Array.isArray(obj.material) ? obj.material[0] : obj.material;
+    const base = (mat && mat.color) ? mat.color : { r: 1, g: 1, b: 1 };
+    const sample = mat && mat.map ? textureSampler(mat.map) : null;
+    const uv = g.attributes.uv;
+    const vc = g.attributes.color;
+    for (let i = 0; i < n; i++) {
+      let r = base.r, gg = base.g, b = base.b;
+      if (vc) {
+        r *= vc.getX(i); gg *= vc.getY(i); b *= vc.getZ(i);
+      } else if (sample && uv) {
+        const t = sample(uv.getX(i), uv.getY(i));
+        r *= t[0]; gg *= t[1]; b *= t[2];
+      }
+      col[i * 3] = r; col[i * 3 + 1] = gg; col[i * 3 + 2] = b;
+    }
+    const out = new THREE.BufferGeometry();
+    out.setAttribute('position', g.attributes.position);
+    out.setAttribute('normal', g.attributes.normal);
+    out.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    parts.push(out);
+  });
+  if (parts.length === 0) throw new Error('no meshes in ' + url);
+  let merged = mergeGeometries(parts, false);
+  // weld duplicate vertices to shrink the payload (positions quantized 0.5 mm)
+  const pos = merged.attributes.position, nrm = merged.attributes.normal, col = merged.attributes.color;
+  const map = new Map();
+  const idx = [];
+  const P = [], N = [], C = [];
+  const q = (x, k) => Math.round(x * k) / k;
+  for (let i = 0; i < pos.count; i++) {
+    const px = q(pos.getX(i), 2000), py = q(pos.getY(i), 2000), pz = q(pos.getZ(i), 2000);
+    const nx = q(nrm.getX(i), 100), ny = q(nrm.getY(i), 100), nz = q(nrm.getZ(i), 100);
+    const cr = q(col.getX(i), 500), cg = q(col.getY(i), 500), cb = q(col.getZ(i), 500);
+    const key = px + ',' + py + ',' + pz + ',' + nx + ',' + ny + ',' + nz + ',' + cr + ',' + cg + ',' + cb;
+    let vi = map.get(key);
+    if (vi === undefined) {
+      vi = P.length / 3;
+      map.set(key, vi);
+      P.push(px, py, pz); N.push(nx, ny, nz); C.push(cr, cg, cb);
+    }
+    idx.push(vi);
+  }
+  // bbox
+  let minX = 1e9, minY = 1e9, minZ = 1e9, maxX = -1e9, maxY = -1e9, maxZ = -1e9;
+  for (let i = 0; i < P.length; i += 3) {
+    minX = Math.min(minX, P[i]); maxX = Math.max(maxX, P[i]);
+    minY = Math.min(minY, P[i + 1]); maxY = Math.max(maxY, P[i + 1]);
+    minZ = Math.min(minZ, P[i + 2]); maxZ = Math.max(maxZ, P[i + 2]);
+  }
+  return {
+    positions: P, normals: N, colors: C, indices: idx,
+    bbox: { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] },
+    tris: idx.length / 3,
+  };
+}
+
+window.__BAKE = async (files) => {
+  const out = {};
+  for (const f of files) {
+    try {
+      out[f.name] = await bakeOne(f.url);
+    } catch (e) {
+      out[f.name] = { error: String(e) };
+    }
+  }
+  return out;
+};
+window.__BAKE_READY = true;
+</script>
+</body>
+</html>

@@ -127,21 +127,24 @@ export function applyDispersion(dir, a, b, c) {
   const sigmaRad = typeof c === 'function' ? b : a;
   if (!(sigmaRad > 0)) return;
 
-  // Box-Muller pair in units of sigma, re-rolled while outside the 2σ circle.
+  // Box-Muller pair in units of sigma. Post-8.6 WoT rule (movement doc §8):
+  // a roll landing OUTSIDE the 2σ reticle circle is re-placed UNIFORMLY inside
+  // the circle (r = 2√u — area-uniform), which center-biases the rim
+  // distribution exactly like the live game, instead of re-rolling the
+  // Gaussian (truncation keeps the Gaussian rim shape).
   let x = 0;
   let y = 0;
-  for (let i = 0; i < 16; i++) {
+  {
     const u1 = Math.max(rng(), 1e-12);
     const u2 = rng();
     const r = Math.sqrt(-2 * Math.log(u1));
     x = r * Math.cos(2 * Math.PI * u2);
     y = r * Math.sin(2 * Math.PI * u2);
-    if (x * x + y * y <= 4) break;
-    if (i === 15) {
-      // Degenerate rng guard: project the last sample onto the 2σ circle.
-      const s = 2 / Math.sqrt(x * x + y * y);
-      x *= s;
-      y *= s;
+    if (x * x + y * y > 4) {
+      const rr = 2 * Math.sqrt(rng());
+      const th = 2 * Math.PI * rng();
+      x = rr * Math.cos(th);
+      y = rr * Math.sin(th);
     }
   }
 

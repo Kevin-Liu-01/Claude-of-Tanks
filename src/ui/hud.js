@@ -11,7 +11,13 @@ const PEN_GREEN = '#7ee87e';
 const PEN_ORANGE = '#f0b04a';
 const PEN_RED = '#f05a5a';
 const PEN_NONE = 'rgba(236,242,248,0.95)';
-const FONT_STACK = "'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+// Shared Switzer type system (see src/ui/fonts.js): FONT_COND drives the
+// numeral/label hierarchy with tabular figures.
+import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
+// Pre-rendered tank icons (tools/genIcons.mjs): tinted top-down silhouettes
+// drive the minimap blips; side silhouettes drive the team panels + kill feed.
+import { tintedIcon, maskIcon } from './icons.js';
+import { TANK_IDS } from '../vehicles/specs.js';
 
 // module-scope scratch (no per-frame allocation)
 const _mInv = new THREE.Matrix4();
@@ -46,15 +52,15 @@ const GRID_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'];
 
 const CONSUMABLES = [
   {
-    key: '4', label: 'Repair Kit',
+    key: '4', label: 'Repair Kit', count: 2,
     svg: '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="#cfd9e2" d="M21.7 6.4a5.4 5.4 0 0 1-7.3 6.5L7 20.3a2.1 2.1 0 0 1-3-3l7.4-7.4a5.4 5.4 0 0 1 6.5-7.3L14.6 6l3.4 3.4 3.7-3Z"/></svg>',
   },
   {
-    key: '5', label: 'First Aid Kit',
+    key: '5', label: 'First Aid Kit', count: 2,
     svg: '<svg viewBox="0 0 24 24" width="20" height="20"><rect x="2.5" y="6" width="19" height="14" rx="2" fill="#cfd9e2"/><rect x="9" y="3.5" width="6" height="3" rx="1" fill="#9fb0bf"/><path d="M10.7 9.5h2.6v2.2h2.2v2.6h-2.2v2.2h-2.6v-2.2H8.5v-2.6h2.2Z" fill="#c92f2f"/></svg>',
   },
   {
-    key: '6', label: 'Fire Extinguisher',
+    key: '6', label: 'Fire Extinguisher', count: 1,
     svg: '<svg viewBox="0 0 24 24" width="20" height="20"><rect x="9" y="8" width="6.5" height="13" rx="2.2" fill="#d24a3a"/><rect x="10.7" y="4.5" width="3" height="3.5" fill="#cfd9e2"/><path d="M10.7 6 4.5 3.4v2.2l6.2 2Z" fill="#9fb0bf"/><rect x="9" y="11" width="6.5" height="2" fill="#eef4f9" opacity=".7"/></svg>',
   },
 ];
@@ -65,8 +71,8 @@ const CONSUMABLES = [
 // with a standoff probe nose. HE: fat body, blunt rounded nose. AP/APCR:
 // classic sharp ogive.
 function drawShellIcon(canvas, type) {
-  const S = 44;
-  const dpr = Math.min((typeof window !== 'undefined' && window.devicePixelRatio) || 1, 2);
+  const S = 46;
+  const dpr = 2; // fixed 2x internal resolution — crisp even at devicePixelRatio 1
   canvas.width = S * dpr; canvas.height = S * dpr;
   canvas.style.width = `${S}px`; canvas.style.height = `${S}px`;
   const c = canvas.getContext('2d');
@@ -74,95 +80,103 @@ function drawShellIcon(canvas, type) {
   c.clearRect(0, 0, S, S);
   const cx = S / 2;
   const band = SHELL_TYPE_COLOR[type] || '#9fb0bf';
-  const caseTop = 27, caseBot = 42, caseW = type === 'HE' ? 13 : 12;
-  // brass casing (slight taper + rim)
-  const brass = c.createLinearGradient(cx - caseW / 2, 0, cx + caseW / 2, 0);
-  brass.addColorStop(0, '#6d5a2e'); brass.addColorStop(0.35, '#b99a52');
-  brass.addColorStop(0.55, '#d8bc74'); brass.addColorStop(1, '#7a662f');
-  c.fillStyle = brass;
-  c.beginPath();
-  c.moveTo(cx - caseW / 2 + 1, caseTop); c.lineTo(cx + caseW / 2 - 1, caseTop);
-  c.lineTo(cx + caseW / 2, caseBot - 2); c.lineTo(cx - caseW / 2, caseBot - 2);
-  c.closePath(); c.fill();
-  c.fillRect(cx - caseW / 2 - 1, caseBot - 2, caseW + 2, 2);
-  // projectile body per type (steel gradient)
-  const steel = c.createLinearGradient(cx - 6, 0, cx + 6, 0);
-  steel.addColorStop(0, '#4c565e'); steel.addColorStop(0.4, '#9aa8b2');
-  steel.addColorStop(0.6, '#c3cfd8'); steel.addColorStop(1, '#525c64');
-  c.fillStyle = steel;
+  const steel = c.createLinearGradient(cx - 7, 0, cx + 7, 0);
+  steel.addColorStop(0, '#4c565e'); steel.addColorStop(0.4, '#a4b2bc');
+  steel.addColorStop(0.6, '#cdd9e2'); steel.addColorStop(1, '#525c64');
+
   if (type === 'APFSDS' || type === 'APCR') {
-    // thin penetrator rod with sharp tip + fins at base
-    const rw = type === 'APFSDS' ? 3.2 : 4.4;
-    c.beginPath();
+    // long-rod dart: needle tip, thin rod full height, sabot petals flaring
+    // mid-body, fin cone at the base. No fat casing — reads "dart" instantly.
+    const rw = type === 'APFSDS' ? 3.4 : 4.6;
+    c.fillStyle = steel;
+    c.beginPath(); // rod with needle tip
     c.moveTo(cx, 2);
-    c.lineTo(cx + rw / 2, 8); c.lineTo(cx + rw / 2, 24);
-    c.lineTo(cx - rw / 2, 24); c.lineTo(cx - rw / 2, 8);
+    c.lineTo(cx + rw / 2, 10); c.lineTo(cx + rw / 2, 36);
+    c.lineTo(cx - rw / 2, 36); c.lineTo(cx - rw / 2, 10);
     c.closePath(); c.fill();
-    // fins
+    // sabot petals (discarding shoes) flaring off both sides
+    c.fillStyle = '#8b959e';
     c.beginPath();
-    c.moveTo(cx - rw / 2, 18); c.lineTo(cx - rw / 2 - 4, 24); c.lineTo(cx - rw / 2, 24);
-    c.moveTo(cx + rw / 2, 18); c.lineTo(cx + rw / 2 + 4, 24); c.lineTo(cx + rw / 2, 24);
-    c.closePath(); c.fill();
-    // sabot shoulders at the case mouth
-    c.fillStyle = '#77828b';
-    c.beginPath();
-    c.moveTo(cx - caseW / 2 + 1, caseTop); c.lineTo(cx - 1.6, 21); c.lineTo(cx - 1.6, caseTop);
+    c.moveTo(cx - rw / 2 - 0.5, 18); c.lineTo(cx - rw / 2 - 6.5, 26);
+    c.lineTo(cx - rw / 2 - 7.5, 33); c.lineTo(cx - rw / 2 - 2.5, 29);
+    c.lineTo(cx - rw / 2 - 0.5, 24);
     c.closePath(); c.fill();
     c.beginPath();
-    c.moveTo(cx + caseW / 2 - 1, caseTop); c.lineTo(cx + 1.6, 21); c.lineTo(cx + 1.6, caseTop);
+    c.moveTo(cx + rw / 2 + 0.5, 18); c.lineTo(cx + rw / 2 + 6.5, 26);
+    c.lineTo(cx + rw / 2 + 7.5, 33); c.lineTo(cx + rw / 2 + 2.5, 29);
+    c.lineTo(cx + rw / 2 + 0.5, 24);
     c.closePath(); c.fill();
+    // tail fins
+    c.fillStyle = steel;
+    c.beginPath();
+    c.moveTo(cx - rw / 2, 36); c.lineTo(cx - rw / 2 - 5, 44); c.lineTo(cx - rw / 2, 44);
+    c.closePath(); c.fill();
+    c.beginPath();
+    c.moveTo(cx + rw / 2, 36); c.lineTo(cx + rw / 2 + 5, 44); c.lineTo(cx + rw / 2, 44);
+    c.closePath(); c.fill();
+    c.fillRect(cx - rw / 2 - 1, 43, rw + 2, 1.6);
+    // tracer band at the base
+    c.fillStyle = band;
+    c.fillRect(cx - rw / 2 - 1, 40, rw + 2, 2.4);
   } else if (type === 'HEAT') {
-    // cylinder body + thin standoff probe
-    c.fillRect(cx - 5, 12, 10, caseTop - 12);
-    c.beginPath();
-    c.moveTo(cx - 5, 12); c.lineTo(cx - 1.4, 7); c.lineTo(cx + 1.4, 7); c.lineTo(cx + 5, 12);
+    // blunt-nose parallel cylinder with standoff probe + boat-tail; stubby.
+    c.fillStyle = steel;
+    c.fillRect(cx - 6.5, 15, 13, 24); // straight cylinder body
+    c.beginPath(); // flat-ish blunt nose cap
+    c.moveTo(cx - 6.5, 15); c.lineTo(cx - 3, 10.5); c.lineTo(cx + 3, 10.5); c.lineTo(cx + 6.5, 15);
     c.closePath(); c.fill();
-    c.fillRect(cx - 1.4, 3, 2.8, 5);
-    c.fillRect(cx - 2.4, 2, 4.8, 2);
+    c.fillRect(cx - 1.6, 3.5, 3.2, 7.5); // standoff probe
+    c.fillRect(cx - 3, 2, 6, 2.4); // probe cap
+    // boat-tail
+    c.beginPath();
+    c.moveTo(cx - 6.5, 39); c.lineTo(cx - 4.5, 44); c.lineTo(cx + 4.5, 44); c.lineTo(cx + 6.5, 39);
+    c.closePath(); c.fill();
+    // twin type bands around the cylinder
+    c.fillStyle = band;
+    c.fillRect(cx - 6.5, 18, 13, 3);
+    c.fillRect(cx - 6.5, 33, 13, 2);
   } else if (type === 'HE') {
-    // fat body, blunt round nose
-    c.fillRect(cx - 6, 13, 12, caseTop - 13);
+    // wide round-nose shell: fat ogive body, painted nose ring, flat base.
+    c.fillStyle = steel;
     c.beginPath();
-    c.moveTo(cx - 6, 13);
-    c.quadraticCurveTo(cx - 6, 4, cx, 4);
-    c.quadraticCurveTo(cx + 6, 4, cx + 6, 13);
+    c.moveTo(cx - 8, 44);
+    c.lineTo(cx - 8, 20);
+    c.quadraticCurveTo(cx - 7.5, 8, cx, 4.5);
+    c.quadraticCurveTo(cx + 7.5, 8, cx + 8, 20);
+    c.lineTo(cx + 8, 44);
     c.closePath(); c.fill();
-    c.fillStyle = 'rgba(20,24,28,0.6)';
-    c.fillRect(cx - 2, 4, 4, 2); // fuze
+    // fuze tip
+    c.fillStyle = '#39424a';
+    c.fillRect(cx - 2, 3, 4, 3.5);
+    // painted HE nose band + body ring
+    c.fillStyle = band;
+    c.beginPath();
+    c.moveTo(cx - 7.1, 12); c.quadraticCurveTo(cx, 7, cx + 7.1, 12);
+    c.lineTo(cx + 7.6, 16); c.quadraticCurveTo(cx, 10.5, cx - 7.6, 16);
+    c.closePath(); c.fill();
+    c.fillRect(cx - 8, 36, 16, 2.6);
   } else {
-    // AP: sharp ogive
+    // AP: classic sharp ogive over a short case
+    c.fillStyle = steel;
     c.beginPath();
-    c.moveTo(cx - 5.5, caseTop);
-    c.lineTo(cx - 5.5, 16);
-    c.quadraticCurveTo(cx - 5, 7, cx, 3);
-    c.quadraticCurveTo(cx + 5, 7, cx + 5.5, 16);
-    c.lineTo(cx + 5.5, caseTop);
+    c.moveTo(cx - 7, 44);
+    c.lineTo(cx - 7, 18);
+    c.quadraticCurveTo(cx - 6, 8, cx, 3);
+    c.quadraticCurveTo(cx + 6, 8, cx + 7, 18);
+    c.lineTo(cx + 7, 44);
     c.closePath(); c.fill();
+    c.fillStyle = band;
+    c.fillRect(cx - 7, 34, 14, 3);
   }
-  // type-colored driving band at the case mouth
-  c.fillStyle = band;
-  c.fillRect(cx - caseW / 2 + 1, caseTop - 3, caseW - 2, 3);
-  // soft highlight down the left of the casing
-  c.fillStyle = 'rgba(255,255,255,0.14)';
-  c.fillRect(cx - caseW / 2 + 2, caseTop, 2, caseBot - caseTop - 3);
+  // shared soft left highlight
+  c.fillStyle = 'rgba(255,255,255,0.13)';
+  c.fillRect(cx - 1.5, 12, 1.6, 26);
 }
 
-// Class diamond. `spotted=false` renders the WoT unspotted state: outline
-// only, regardless of class; spotted renders the class-coded solid variants.
-function classIconSvg(cls, color, spotted = true) {
-  const d = 'M6 1 11 6 6 11 1 6Z';
-  if (!spotted) {
-    return `<svg width="10" height="10" viewBox="0 0 12 12" style="flex:0 0 auto"><path d="${d}" fill="none" stroke="${color}" stroke-width="1.4" opacity="0.75"/></svg>`;
-  }
-  if (cls === 'heavy') {
-    return `<svg width="10" height="10" viewBox="0 0 12 12" style="flex:0 0 auto"><path d="${d}" fill="${color}"/></svg>`;
-  }
-  if (cls === 'mbt') {
-    return `<svg width="10" height="10" viewBox="0 0 12 12" style="flex:0 0 auto"><path d="${d}" fill="${color}"/><rect x="3.6" y="5.1" width="4.8" height="1.8" fill="#0a0e12"/></svg>`;
-  }
-  // medium / light / default: filled with a lighter core notch
-  return `<svg width="10" height="10" viewBox="0 0 12 12" style="flex:0 0 auto"><path d="${d}" fill="${color}"/><path d="M6 4 8 6 6 8 4 6Z" fill="#0a0e12"/></svg>`;
-}
+// Team-panel row icon: the tank's actual side-profile silhouette (generated
+// from the shipped model by tools/genIcons.mjs), tinted via CSS mask.
+// Unspotted enemies dim to a ghost of the same shape (WoT reads "known but
+// not visible").
 
 const HUD_CSS = `
 .cot-hud{position:fixed;inset:0;pointer-events:none;z-index:40;font-family:${FONT_STACK};
@@ -178,22 +192,29 @@ const HUD_CSS = `
   border:1px solid rgba(146,164,180,.3);border-top:none;
   box-shadow:0 3px 14px rgba(0,0,0,.45);
   clip-path:polygon(0 0,100% 0,calc(100% - 16px) 100%,16px 100%);}
-.cot-top .fg{color:${PEN_GREEN};font-size:21px;font-weight:700;line-height:1;
+.cot-top .fg{color:${PEN_GREEN};font-size:23px;font-weight:700;line-height:1;
+  font-family:${FONT_COND};font-stretch:condensed;
   font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.8);}
-.cot-top .fe{color:${PEN_RED};font-size:21px;font-weight:700;line-height:1;
+.cot-top .fe{color:${PEN_RED};font-size:23px;font-weight:700;line-height:1;
+  font-family:${FONT_COND};font-stretch:condensed;
   font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.8);}
-.cot-top .tm{font-size:14px;font-weight:600;color:#d6e2ec;letter-spacing:.08em;
+.cot-top .tm{font-size:14px;font-weight:600;color:#d6e2ec;letter-spacing:.1em;
+  font-family:${FONT_COND};font-stretch:condensed;text-shadow:0 1px 2px rgba(0,0,0,.8);
   font-variant-numeric:tabular-nums;line-height:1;padding:0 4px;}
 .cot-top .wedge{display:flex;gap:3px;align-items:center;}
 .cot-top .wedge i{display:block;width:13px;height:8px;transform:skewX(-24deg);
   background:rgba(126,232,126,.85);box-shadow:0 1px 2px rgba(0,0,0,.5);}
 .cot-top .wedge.r i{transform:skewX(24deg);background:rgba(240,90,90,.85);}
-.cot-top .wedge i.off{background:rgba(126,232,126,.16);}
-.cot-top .wedge.r i.off{background:rgba(240,90,90,.16);}
+.cot-top .wedge i.off{background:rgba(126,232,126,.16);box-shadow:none;}
+.cot-top .wedge.r i.off{background:rgba(240,90,90,.16);box-shadow:none;}
+.cot-top .wedge i.ghost{background:transparent;box-shadow:none;
+  border:1px solid rgba(146,164,180,.22);}
+.cot-top .wedge.r i.ghost{background:transparent;border:1px solid rgba(146,164,180,.22);}
 .cot-ear{position:absolute;top:52px;width:194px;display:flex;flex-direction:column;gap:2px;}
 .cot-ear.l{left:0;}
 .cot-ear.r{right:0;}
-.cot-ear .hd{font-size:9.5px;font-weight:700;letter-spacing:.2em;color:#8a97a3;
+.cot-ear .hd{font-size:10px;font-weight:700;letter-spacing:.2em;color:#8a97a3;
+  font-family:${FONT_COND};font-stretch:condensed;
   text-transform:uppercase;padding:2px 10px 3px;display:flex;justify-content:space-between;
   background:rgba(7,10,14,.55);}
 .cot-ear.l .hd{border-left:2px solid rgba(126,232,126,.75);}
@@ -205,6 +226,8 @@ const HUD_CSS = `
   border-left:2px solid rgba(126,232,126,.75);}
 .cot-ear.r .cot-er{background:linear-gradient(270deg,rgba(7,10,14,.72) 0%,rgba(7,10,14,.15) 100%);
   border-right:2px solid rgba(240,90,90,.75);flex-direction:row-reverse;}
+.cot-er .ic{width:30px;height:12px;flex:0 0 auto;}
+.cot-ear.r .cot-er .ic{transform:scaleX(-1);}
 .cot-er .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
 .cot-ear.r .cot-er .n{text-align:right;}
 .cot-er.me .n{color:#ffd27a;}
@@ -227,7 +250,8 @@ const HUD_CSS = `
 .cot-kf .v{color:#f28f8f;font-weight:600;}
 .cot-kf .d{color:#8a97a3;font-weight:400;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;}
 .cot-kf .c{color:#f0b04a;font-size:10px;letter-spacing:.1em;font-weight:700;}
-.cot-dlog{position:absolute;left:16px;bottom:328px;display:flex;flex-direction:column;gap:2px;}
+.cot-kf .si{width:30px;height:12px;flex:0 0 auto;align-self:center;display:inline-block;}
+.cot-dlog{position:absolute;left:16px;bottom:362px;display:flex;flex-direction:column;gap:2px;}
 .cot-dl{font-size:11px;font-weight:600;letter-spacing:.03em;padding:2px 10px 2px 8px;
   background:linear-gradient(90deg,rgba(8,12,16,.75),rgba(8,12,16,.1));
   border-left:2px solid #f05a5a;color:#f2b1a8;text-shadow:0 1px 2px rgba(0,0,0,.85);
@@ -242,8 +266,9 @@ const HUD_CSS = `
 .cot-dmgnum .crit{font-size:10px;letter-spacing:.14em;color:#ff8a5c;vertical-align:super;margin-left:4px;}
 @keyframes cotFloat{0%{opacity:0;transform:translate(-50%,-30%)}10%{opacity:1}
   70%{opacity:.95}100%{opacity:0;transform:translate(-50%,-190%)}}
-.cot-alert{position:absolute;left:50%;bottom:23%;transform:translateX(-50%);font-size:14px;
-  font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#f0b04a;
+.cot-alert{position:absolute;left:50%;bottom:23%;transform:translateX(-50%);font-size:15px;
+  font-family:${FONT_COND};font-stretch:condensed;
+  font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#f0b04a;
   text-shadow:0 1px 3px rgba(0,0,0,.9);opacity:0;transition:opacity .25s ease;}
 .cot-alert.red{color:#f05a5a;}
 .cot-alert.show{opacity:1;}
@@ -254,7 +279,7 @@ const HUD_CSS = `
 .cot-bounce.show{opacity:1;}
 .cot-shells{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;
   gap:6px;pointer-events:auto;align-items:stretch;}
-.cot-shell{width:64px;height:64px;background:linear-gradient(180deg,rgba(14,19,24,.84),rgba(8,11,14,.9));
+.cot-shell{width:64px;height:64px;background:linear-gradient(180deg,rgba(14,19,24,.92),rgba(8,11,14,.95));
   border:1px solid rgba(146,164,180,.28);border-bottom:2px solid rgba(146,164,180,.28);
   cursor:pointer;position:relative;transition:border-color .12s,background .12s;}
 .cot-shell:hover{border-color:rgba(210,225,240,.5);}
@@ -263,12 +288,15 @@ const HUD_CSS = `
   box-shadow:0 0 14px rgba(240,160,48,.25);}
 .cot-shell canvas{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);}
 .cot-shell .key{position:absolute;top:2px;left:3px;font-size:9.5px;font-weight:700;color:#8a97a3;
+  font-family:${FONT_COND};font-stretch:condensed;
   border:1px solid rgba(146,164,180,.4);padding:0 3.5px;line-height:13px;z-index:2;}
 .cot-shell.sel .key{color:#f0b04a;border-color:rgba(240,176,74,.6);}
-.cot-shell .cnt{position:absolute;bottom:1px;right:4px;font-size:12px;font-weight:700;
+.cot-shell .cnt{position:absolute;bottom:1px;right:4px;font-size:13px;font-weight:700;
+  font-family:${FONT_COND};font-stretch:condensed;
   color:#e6edf3;font-variant-numeric:tabular-nums;letter-spacing:.02em;z-index:2;
   text-shadow:0 1px 2px rgba(0,0,0,.9);}
-.cot-shell .ty{position:absolute;bottom:2px;left:4px;font-size:7.5px;font-weight:800;
+.cot-shell .ty{position:absolute;bottom:2px;left:4px;font-size:8px;font-weight:800;
+  font-family:${FONT_COND};font-stretch:condensed;
   letter-spacing:.08em;z-index:2;text-shadow:0 1px 2px rgba(0,0,0,.9);}
 .cot-shell .cool{position:absolute;left:0;right:0;top:0;height:0;
   background:rgba(4,6,9,.72);pointer-events:none;z-index:3;}
@@ -281,22 +309,31 @@ const HUD_CSS = `
 .cot-shell:hover .tip{display:block;}
 .cot-consep{width:1px;background:rgba(146,164,180,.3);margin:2px 3px;}
 .cot-con{width:46px;position:relative;cursor:pointer;
-  background:linear-gradient(180deg,rgba(14,19,24,.82),rgba(8,11,14,.88));
+  background:linear-gradient(180deg,rgba(14,19,24,.92),rgba(8,11,14,.95));
   border:1px solid rgba(146,164,180,.28);border-bottom:2px solid rgba(146,164,180,.28);
   display:flex;align-items:center;justify-content:center;transition:border-color .12s;}
 .cot-con:hover{border-color:rgba(210,225,240,.5);}
 .cot-con .key{position:absolute;top:3px;left:4px;font-size:9px;font-weight:700;color:#8a97a3;
+  font-family:${FONT_COND};font-stretch:condensed;
   border:1px solid rgba(146,164,180,.4);padding:0 3px;line-height:12px;}
+.cot-con .cnt{position:absolute;bottom:2px;right:4px;font-size:11px;font-weight:700;
+  font-family:${FONT_COND};font-stretch:condensed;color:#cfd9e2;
+  font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.9);}
 .cot-con .cool{position:absolute;inset:0;display:none;
   background:conic-gradient(rgba(4,6,9,.8) var(--cool,0%),transparent 0);}
 .cot-hpbars{position:absolute;inset:0;}
 .cot-hpb{position:absolute;width:108px;transform:translate(-50%,-100%);text-align:center;will-change:transform;}
-.cot-hpb .nm{font-size:11px;font-weight:600;letter-spacing:.05em;color:#ffb3b3;
-  text-shadow:0 1px 2px rgba(0,0,0,.95);margin-bottom:2px;white-space:nowrap;
+.cot-hpb .nm{font-size:11.5px;font-weight:700;letter-spacing:.04em;color:#ff5555;
+  font-family:${FONT_COND};font-stretch:condensed;
+  text-shadow:0 0 3px #000,0 1px 2px #000,1px 0 2px #000,-1px 0 2px #000,0 -1px 2px #000;
+  margin-bottom:2px;white-space:nowrap;
   display:flex;align-items:center;justify-content:center;gap:4px;}
-.cot-hpb .tr{height:5px;background:rgba(6,8,10,.72);border:1px solid rgba(0,0,0,.6);
-  box-shadow:0 1px 2px rgba(0,0,0,.5);position:relative;}
+.cot-hpb.ally .nm{color:#8df08d;}
+.cot-hpb .nm .si{width:24px;height:10px;flex:0 0 auto;display:block;}
+.cot-hpb .tr{height:5px;background:rgba(4,6,8,.9);border:1px solid rgba(0,0,0,.85);
+  box-shadow:0 1px 3px rgba(0,0,0,.8);position:relative;}
 .cot-hpb .fl{height:100%;background:linear-gradient(180deg,#ff7a6e,#d63a30);transition:width .15s linear;}
+.cot-hpb.ally .fl{background:linear-gradient(180deg,#9df09d,#3fae3f);}
 .cot-hpb .sg{position:absolute;inset:0;
   background:repeating-linear-gradient(90deg,transparent 0 12px,rgba(5,7,9,.85) 12px 13px);}
 .cot-minimap{position:absolute;right:16px;bottom:16px;width:220px;height:220px;
@@ -337,7 +374,16 @@ function fmtTimer(s) {
  * @returns {{setMode:Function,update:Function,buildMinimap:Function,setDamagePanel:Function,forceAimDisplay:Function,root:HTMLElement}} Hud
  */
 export function initHud(bus) {
+  ensureFonts();
   ensureStyle('cot-hud-style', HUD_CSS);
+
+  // Warm the tinted-blip cache at boot: the minimap draws synchronously each
+  // frame (and exactly once in forced screenshot views), so the roster's
+  // top-down silhouettes must already be decoded when a battle starts.
+  for (const id of TANK_IDS) {
+    tintedIcon(id, 'top_silhouette', PEN_GREEN);
+    tintedIcon(id, 'top_silhouette', PEN_RED);
+  }
 
   const root = el('div', 'cot-hud');
   document.body.appendChild(root);
@@ -358,16 +404,20 @@ export function initHud(bus) {
   const tmEl = topPlate.querySelector('.tm');
   const wedgeL = topPlate.querySelector('.wedge.l');
   const wedgeR = topPlate.querySelector('.wedge.r');
-  // one skewed tick per tank; lit while that many tanks survive
-  function syncWedge(wEl, total, alive, reverse) {
-    if (wEl.children.length !== total) {
+  // Symmetric pip rows: both wedges render the SAME number of slots
+  // (max team size) so the two sides read as one visual language.
+  // lit = alive, dim = dead, ghost outline = slot beyond that team's size.
+  function syncWedge(wEl, slots, total, alive, reverse) {
+    if (wEl.children.length !== slots) {
       wEl.textContent = '';
-      for (let i = 0; i < total; i++) el('i', '', wEl);
+      for (let i = 0; i < slots; i++) el('i', '', wEl);
     }
-    for (let i = 0; i < total; i++) {
+    for (let i = 0; i < slots; i++) {
       // left wedge fills from the outside in, right mirrors it
-      const idx = reverse ? i : total - 1 - i;
-      wEl.children[i].classList.toggle('off', idx >= alive);
+      const idx = reverse ? i : slots - 1 - i;
+      const g = idx >= total;
+      wEl.children[i].classList.toggle('ghost', g);
+      wEl.children[i].classList.toggle('off', !g && idx >= alive);
     }
   }
 
@@ -405,7 +455,8 @@ export function initHud(bus) {
     const c = CONSUMABLES[i];
     const s = el('div', 'cot-con', shellBox);
     s.title = c.label;
-    s.innerHTML = `<div class="key">${c.key}</div>${c.svg}<div class="cool"></div>`;
+    s.innerHTML = `<div class="key">${c.key}</div>${c.svg}` +
+      `<div class="cnt">${c.count != null ? c.count : ''}</div><div class="cool"></div>`;
     s.addEventListener('click', () => {
       bus.emit('ui:consumable', { slot: i });
       bus.emit('ui:click', {});
@@ -416,7 +467,9 @@ export function initHud(bus) {
   const mmWrap = el('div', 'cot-minimap', root);
   const mmCanvas = el('canvas', '', mmWrap);
   const MM = 220;
-  const mmDpr = Math.min(window.devicePixelRatio || 1, 2);
+  // fixed 2x internal resolution: the map must stay crisp even when the
+  // real devicePixelRatio is 1 (e.g. the screenshot harness)
+  const mmDpr = 2;
   mmCanvas.width = MM * mmDpr; mmCanvas.height = MM * mmDpr;
   const mmCtx = mmCanvas.getContext('2d');
   mmCtx.setTransform(mmDpr, 0, 0, mmDpr, 0, 0);
@@ -424,6 +477,8 @@ export function initHud(bus) {
 
   // --- internal state ---
   let mode = 'hidden';
+  let mmFrame = 0;    // minimap redraw throttle counter (PERF: 20 Hz repaint)
+  let mmDirty = true; // force an immediate minimap paint on the next update()
   let w = 1, h = 1, dpr = 1;
   let scopeGrad = null;
   let lastCamera = null;
@@ -436,6 +491,7 @@ export function initHud(bus) {
   let alertTimer = null;
   let heightFieldRef = null; // for spotting line-of-sight tests
   const nameById = new Map();
+  const specIdById = new Map(); // entity id -> tank spec id (icon lookups)
   const hitDirs = []; // { ang, t0 } — screen-relative hit indicators
   let hitMark = null; // { t0, bounced } — reticle hit-confirm marker (own shots)
   let bounceTimer = null;
@@ -555,7 +611,8 @@ export function initHud(bus) {
       if (!row) {
         const r = el('div', 'cot-er');
         const color = ally ? PEN_GREEN : PEN_RED;
-        r.innerHTML = `<span class="ic">${classIconSvg(t.spec.class, color, ally)}</span><span class="n"></span><div class="hpm"><i></i></div>`;
+        r.innerHTML = `<span class="ic"></span><span class="n"></span><div class="hpm"><i></i></div>`;
+        maskIcon(r.querySelector('.ic'), t.spec.id, 'side_silhouette', color);
         if (t.isPlayer) r.classList.add('me');
         r.querySelector('.n').textContent = t.spec.name;
         (ally ? earL : earR).appendChild(r);
@@ -566,11 +623,11 @@ export function initHud(bus) {
         earRows.set(t.id, row);
       }
       if (dead !== row.wasDead) { row.root.classList.toggle('dead', dead); row.wasDead = dead; }
-      // enemy diamonds: filled while spotted, outline while unspotted
+      // enemy silhouettes: solid while spotted, dimmed ghost while unspotted
       if (!ally) {
         const sp = dead || isSpotted(t.id);
         if (sp !== row.wasSpotted) {
-          row.ic.innerHTML = classIconSvg(row.cls, PEN_RED, sp);
+          row.ic.style.opacity = sp ? '' : '0.35';
           row.wasSpotted = sp;
         }
       }
@@ -586,8 +643,9 @@ export function initHud(bus) {
     if (score !== lastScore) {
       fgEl.textContent = String(enemyTotal - enemyAlive);
       feEl.textContent = String(allyTotal - allyAlive);
-      syncWedge(wedgeL, allyTotal, allyAlive, false);
-      syncWedge(wedgeR, enemyTotal, enemyAlive, true);
+      const slots = Math.max(allyTotal, enemyTotal);
+      syncWedge(wedgeL, slots, allyTotal, allyAlive, false);
+      syncWedge(wedgeR, slots, enemyTotal, enemyAlive, true);
       earL.querySelector('.al').textContent = `${allyAlive} / ${allyTotal}`;
       earR.querySelector('.al').textContent = `${enemyAlive} / ${enemyTotal}`;
       lastScore = score;
@@ -597,66 +655,79 @@ export function initHud(bus) {
   }
 
   // ---------- reticle / scope canvas ----------
-  // WoT sniper mode: FULL-SCREEN view. No circular telescope mask — only a
-  // subtle corner scope-shadow vignette, a faint optics tint, full-width
-  // etched hairlines with mil ticks, and a zoom plate. The dispersion circle
-  // (drawReticle) stays the only circular element.
+  // WoT sniper mode: FULL-SCREEN view, no telescope mask and no full-width
+  // sim-style rule. A firm corner scope-shadow vignette (~25% darkening), a
+  // faint optics tint with a cool chromatic fringe at the edges, a SHORT
+  // labeled mil-scale near the center, and a zoom plate. The dispersion
+  // circle (drawReticle) stays the only circular element.
   function drawScope(zoom) {
     const cx = w / 2, cy = h / 2;
     if (!scopeGrad) {
-      const r = Math.hypot(w, h) * 0.62;
-      scopeGrad = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.52, cx, cy, r);
+      const r = Math.hypot(w, h) * 0.58;
+      scopeGrad = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.34, cx, cy, r);
       scopeGrad.addColorStop(0, 'rgba(3,5,7,0)');
-      scopeGrad.addColorStop(0.55, 'rgba(3,5,7,0.16)');
-      scopeGrad.addColorStop(1, 'rgba(2,3,4,0.58)');
+      scopeGrad.addColorStop(0.5, 'rgba(3,5,7,0.18)');
+      scopeGrad.addColorStop(0.8, 'rgba(2,3,4,0.45)');
+      scopeGrad.addColorStop(1, 'rgba(2,3,4,0.82)');
     }
     ctx.fillStyle = scopeGrad;
     ctx.fillRect(0, 0, w, h);
     // faint green optics tint over the whole view
     ctx.fillStyle = 'rgba(96,178,110,0.05)';
     ctx.fillRect(0, 0, w, h);
-    // full-width hairlines (dark etched line + light core), gap at center
+    // subtle chromatic fringe hugging the vignette (cool blue ring)
+    const chrom = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.46, cx, cy, Math.hypot(w, h) * 0.52);
+    chrom.addColorStop(0, 'rgba(70,110,190,0)');
+    chrom.addColorStop(0.75, 'rgba(70,110,190,0.05)');
+    chrom.addColorStop(1, 'rgba(90,130,215,0.12)');
+    ctx.fillStyle = chrom;
+    ctx.fillRect(0, 0, w, h);
+    // short etched mil-scale near the center (not a full-screen rule):
+    // stub hairlines with mil ticks, labeled every 2 mils.
     const gap = 46;
-    ctx.strokeStyle = 'rgba(8,12,10,0.55)';
+    const EXT = 210; // scale half-length in px from center
+    const step = 41; // ~1 mil at x8 on this fov
+    ctx.strokeStyle = 'rgba(10,14,12,0.5)';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(0, cy + 0.5); ctx.lineTo(cx - gap, cy + 0.5);
-    ctx.moveTo(cx + gap, cy + 0.5); ctx.lineTo(w, cy + 0.5);
-    ctx.moveTo(cx + 0.5, 0); ctx.lineTo(cx + 0.5, cy - gap);
-    ctx.moveTo(cx + 0.5, cy + gap); ctx.lineTo(cx + 0.5, h);
+    ctx.moveTo(cx - EXT, cy + 0.5); ctx.lineTo(cx - gap, cy + 0.5);
+    ctx.moveTo(cx + gap, cy + 0.5); ctx.lineTo(cx + EXT, cy + 0.5);
+    ctx.moveTo(cx + 0.5, cy + gap); ctx.lineTo(cx + 0.5, cy + EXT);
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(214,230,220,0.8)';
+    ctx.strokeStyle = 'rgba(214,230,220,0.75)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(0, cy + 0.5); ctx.lineTo(cx - gap, cy + 0.5);
-    ctx.moveTo(cx + gap, cy + 0.5); ctx.lineTo(w, cy + 0.5);
-    ctx.moveTo(cx + 0.5, 0); ctx.lineTo(cx + 0.5, cy - gap);
-    ctx.moveTo(cx + 0.5, cy + gap); ctx.lineTo(cx + 0.5, h);
+    ctx.moveTo(cx - EXT, cy + 0.5); ctx.lineTo(cx - gap, cy + 0.5);
+    ctx.moveTo(cx + gap, cy + 0.5); ctx.lineTo(cx + EXT, cy + 0.5);
+    ctx.moveTo(cx + 0.5, cy + gap); ctx.lineTo(cx + 0.5, cy + EXT);
     ctx.stroke();
-    // mil ticks along both hairlines: small every step, tall every 5th
-    ctx.strokeStyle = 'rgba(214,230,220,0.7)';
+    // mil ticks + numerals
+    ctx.strokeStyle = 'rgba(214,230,220,0.75)';
+    ctx.fillStyle = 'rgba(214,230,220,0.7)';
+    ctx.font = `600 9px ${FONT_COND}`;
+    ctx.textAlign = 'center';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    const step = 56;
-    const nx = Math.ceil((w / 2) / step);
-    for (let i = 1; i <= nx; i++) {
+    for (let i = 1; i <= 4; i++) {
       const d = gap + step * i;
-      if (d > w / 2) break;
-      const tk = i % 5 === 0 ? 9 : 5;
+      if (d > EXT) break;
+      const major = i % 2 === 0;
+      const tk = major ? 8 : 4;
       ctx.moveTo(cx - d + 0.5, cy - tk); ctx.lineTo(cx - d + 0.5, cy + tk);
       ctx.moveTo(cx + d + 0.5, cy - tk); ctx.lineTo(cx + d + 0.5, cy + tk);
-    }
-    const ny = Math.ceil((h / 2) / step);
-    for (let i = 1; i <= ny; i++) {
-      const d = gap + step * i;
-      const tk = i % 5 === 0 ? 9 : 5;
-      if (cy + d < h) { ctx.moveTo(cx - tk, cy + d + 0.5); ctx.lineTo(cx + tk, cy + d + 0.5); }
-      if (cy - d > 0) { ctx.moveTo(cx - tk, cy - d + 0.5); ctx.lineTo(cx + tk, cy - d + 0.5); }
+      ctx.moveTo(cx - tk, cy + d + 0.5); ctx.lineTo(cx + tk, cy + d + 0.5);
     }
     ctx.stroke();
+    for (let i = 2; i <= 4; i += 2) {
+      const d = gap + step * i;
+      if (d > EXT) break;
+      ctx.fillText(String(i), cx - d + 0.5, cy + 20);
+      ctx.fillText(String(i), cx + d + 0.5, cy + 20);
+      ctx.fillText(String(i), cx + 14, cy + d + 3);
+    }
     // magnification plate, top-center under the score bar
     const zTxt = `×${(zoom || 8).toFixed(1)}`;
-    ctx.font = `600 14px ${FONT_STACK}`;
+    ctx.font = `600 14px ${FONT_COND}`;
     ctx.textAlign = 'center';
     const tw2 = ctx.measureText(zTxt).width + 22;
     ctx.fillStyle = 'rgba(7,10,14,0.62)';
@@ -749,7 +820,7 @@ export function initHud(bus) {
     ctx.lineWidth = 1.8;
     ctx.shadowColor = 'rgba(0,0,0,0.55)';
     ctx.shadowBlur = 2;
-    // dispersion circle
+    // dispersion circle (bloom/shrink — independent of the central marker)
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.stroke();
@@ -763,86 +834,75 @@ export function initHud(bus) {
       ctx.lineTo(cx + ca * (r - 11), cy + sa * (r - 11));
     }
     ctx.stroke();
-    // center dot + fine cross (suppressed while the reload numeral occupies
-    // the ring center)
-    const _rl = view.reload;
-    const _reloading = _rl && _rl.totalS > 0 && _rl.t > 0.001;
-    if (!_reloading) {
-      ctx.beginPath();
-      ctx.arc(cx, cy, 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.lineWidth = 1.3;
-      ctx.beginPath();
-      ctx.moveTo(cx - 14, cy + 0.5); ctx.lineTo(cx - 5, cy + 0.5);
-      ctx.moveTo(cx + 5, cy + 0.5); ctx.lineTo(cx + 14, cy + 0.5);
-      ctx.moveTo(cx + 0.5, cy - 14); ctx.lineTo(cx + 0.5, cy - 5);
-      ctx.moveTo(cx + 0.5, cy + 5); ctx.lineTo(cx + 0.5, cy + 14);
-      ctx.stroke();
-    }
+    // central aim marker: dot + fine cross, ALWAYS visible (WoT keeps the
+    // aim point clear — the reload timer lives below, never on the marker)
+    ctx.beginPath();
+    ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(cx - 14, cy + 0.5); ctx.lineTo(cx - 5, cy + 0.5);
+    ctx.moveTo(cx + 5, cy + 0.5); ctx.lineTo(cx + 14, cy + 0.5);
+    ctx.moveTo(cx + 0.5, cy - 14); ctx.lineTo(cx + 0.5, cy - 5);
+    ctx.moveTo(cx + 0.5, cy + 5); ctx.lineTo(cx + 0.5, cy + 14);
+    ctx.stroke();
     ctx.globalAlpha = 1;
     ctx.shadowBlur = 0;
 
-    // gun marker (where the barrel actually points)
-    if (view.gunX != null) {
-      ctx.strokeStyle = view.atGunLimit ? PEN_RED : 'rgba(215,228,240,0.8)';
+    // gun marker (where the barrel actually points) — drawn as a distinct
+    // small cross whenever it has diverged from the aim point
+    if (view.gunX != null && Math.hypot(view.gunX - cx, view.gunY - cy) > 6) {
+      ctx.strokeStyle = view.atGunLimit ? PEN_RED : 'rgba(215,228,240,0.85)';
       ctx.lineWidth = 1.4;
+      ctx.shadowColor = 'rgba(0,0,0,0.6)';
+      ctx.shadowBlur = 2;
       ctx.beginPath();
-      ctx.arc(view.gunX, view.gunY, 5, 0, Math.PI * 2);
+      ctx.arc(view.gunX, view.gunY, 4.5, 0, Math.PI * 2);
       ctx.moveTo(view.gunX - 9, view.gunY); ctx.lineTo(view.gunX - 3, view.gunY);
       ctx.moveTo(view.gunX + 3, view.gunY); ctx.lineTo(view.gunX + 9, view.gunY);
+      ctx.moveTo(view.gunX, view.gunY - 9); ctx.lineTo(view.gunX, view.gunY - 3);
       ctx.stroke();
-    }
-
-    // reload ring: orange progress sweep with the countdown numeral INSIDE the
-    // ring (WoT identity — no floating "RELOADING" label), subtle full green
-    // "shell loaded" ring when ready.
-    const rl = view.reload;
-    const rr = 23;
-    const reloading = rl && rl.totalS > 0 && rl.t > 0.001;
-    if (reloading) {
-      const frac = 1 - rl.t / rl.totalS;
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = 'rgba(10,14,18,0.6)';
-      ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2); ctx.stroke();
-      ctx.strokeStyle = '#f0a030';
-      ctx.beginPath(); ctx.arc(cx, cy, rr, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = '#f0b04a';
-      ctx.font = `700 15px ${FONT_STACK}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.shadowColor = 'rgba(0,0,0,0.85)';
-      ctx.shadowBlur = 3;
-      ctx.fillText(rl.t >= 10 ? `${Math.ceil(rl.t)}` : `${rl.t.toFixed(1)}`, cx, cy + 1);
-      ctx.textBaseline = 'alphabetic';
       ctx.shadowBlur = 0;
-    } else {
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(126,232,126,0.5)';
-      ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2); ctx.stroke();
     }
 
-    // selected shell count next to the reticle ring
+    // --- under-center info stack (WoT layout: timer sits BELOW the aim
+    // point, never on it) -------------------------------------------------
+    const rl = view.reload;
+    const reloading = rl && rl.totalS > 0 && rl.t > 0.001;
+    const infoY = cy + Math.max(44, Math.min(r * 0.62, 86)); // clear of the marker, tracks bloom
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = 3;
+    if (reloading) {
+      // countdown numeral + thin sweep bar beneath it
+      ctx.fillStyle = '#f0a030';
+      ctx.font = `700 17px ${FONT_COND}`;
+      ctx.fillText(rl.t >= 10 ? `${Math.ceil(rl.t)}` : `${rl.t.toFixed(1)}`, cx, infoY);
+      const frac = 1 - rl.t / rl.totalS;
+      const bw = 46;
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(8,11,14,0.72)';
+      ctx.fillRect(cx - bw / 2, infoY + 6, bw, 3);
+      ctx.fillStyle = '#f0a030';
+      ctx.fillRect(cx - bw / 2, infoY + 6, bw * frac, 3);
+      ctx.shadowBlur = 3;
+    }
+    // selected shell count right of the timer spot (always visible)
     const shSp = lastShells && lastShells[localSlot];
     if (shSp) {
-      ctx.font = `600 12px ${FONT_STACK}`;
+      ctx.font = `700 13px ${FONT_COND}`;
       ctx.textAlign = 'left';
-      ctx.shadowColor = 'rgba(0,0,0,0.9)';
-      ctx.shadowBlur = 3;
       ctx.fillStyle = SHELL_TYPE_COLOR[shSp.type] || 'rgba(222,232,242,0.9)';
-      ctx.fillText(`${shellCount(shSp)}`, cx + rr + 12, cy + 4);
-      ctx.shadowBlur = 0;
-    }
-
-    // distance readout: small type attached just under the aim-point marker
-    if (view.distM != null && isFinite(view.distM)) {
-      ctx.fillStyle = 'rgba(214,226,236,0.85)';
-      ctx.font = `600 11px ${FONT_STACK}`;
+      ctx.fillText(`${shellCount(shSp)}`, cx + 32, infoY);
       ctx.textAlign = 'center';
-      ctx.shadowColor = 'rgba(0,0,0,0.9)';
-      ctx.shadowBlur = 3;
-      ctx.fillText(`${Math.round(view.distM)} m`, cx, cy + rr + 20);
-      ctx.shadowBlur = 0;
     }
+    // distance readout under the timer line
+    if (view.distM != null && isFinite(view.distM)) {
+      ctx.fillStyle = 'rgba(214,226,236,0.88)';
+      ctx.font = `600 12px ${FONT_COND}`;
+      ctx.fillText(`${Math.round(view.distM)} m`, cx, infoY + (reloading ? 24 : 2));
+    }
+    ctx.shadowBlur = 0;
     ctx.textAlign = 'left';
   }
 
@@ -906,20 +966,32 @@ export function initHud(bus) {
       seen.add(t.id);
       let bar = hpPool.get(t.id);
       if (!bar) {
-        const rootEl = el('div', 'cot-hpb', hpLayer);
         const ally = t.team === 'player';
-        rootEl.innerHTML = `<div class="nm">${classIconSvg(t.spec ? t.spec.class : 'medium', ally ? PEN_GREEN : '#ffb3b3')}<span></span></div>` +
+        const rootEl = el('div', ally ? 'cot-hpb ally' : 'cot-hpb', hpLayer);
+        rootEl.innerHTML = `<div class="nm"><i class="si"></i><span></span></div>` +
           `<div class="tr"><div class="fl"></div><div class="sg"></div></div>`;
+        if (t.spec) {
+          maskIcon(rootEl.querySelector('.si'), t.spec.id, 'side_silhouette',
+            ally ? PEN_GREEN : '#ff5555');
+        }
         bar = {
           root: rootEl, nm: rootEl.querySelector('.nm span'),
           fill: rootEl.querySelector('.fl'), lastFrac: -1, lastName: '', lastOp: -1,
         };
         hpPool.set(t.id, bar);
       }
-      bar.root.style.transform = `translate(${_sx - 54}px,${_sy - 24}px)`;
+      // keep the plate clear of the dispersion circle: if it would overlap
+      // the reticle region, lift it above the circle's top arc.
+      let plateY = _sy - 34;
+      const rNow = Math.max(20, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
+      if (Math.abs(_sx - aimView.cx) < rNow + 58 &&
+          plateY + 30 > aimView.cy - rNow - 4 && plateY < aimView.cy + rNow) {
+        plateY = aimView.cy - rNow - 38;
+      }
+      bar.root.style.transform = `translate(${_sx - 54}px,${plateY.toFixed(1)}px)`;
       bar.root.style.display = 'block';
-      // fade with distance (fully readable close, ghosted near spot range)
-      const op = Math.max(0.5, Math.min(1, 1.25 - _sDist / SPOT_RANGE_M));
+      // fade with distance (fully readable close, slightly ghosted near spot range)
+      const op = Math.max(0.72, Math.min(1, 1.25 - _sDist / SPOT_RANGE_M));
       if (Math.abs(op - bar.lastOp) > 0.03) { bar.root.style.opacity = op.toFixed(2); bar.lastOp = op; }
       const nm = t.spec ? t.spec.name : t.id;
       if (bar.lastName !== nm) { bar.nm.textContent = nm; bar.lastName = nm; }
@@ -941,10 +1013,21 @@ export function initHud(bus) {
     return [((x + half) / mapWorldSize) * MM, ((half - z) / mapWorldSize) * MM];
   }
 
-  function buildMinimapBg(heightField, features) {
+  // MAP-CONFIG WIRING: per-map minimap palette (src/world/maps/*.js cfg.minimap)
+  const MM_PALETTE_DEFAULT = {
+    base: [70, 94, 52], hard: [104, 96, 78], soft: [48, 70, 54],
+    forest: 'rgba(36,64,30,0.82)', forestStroke: 'rgba(22,40,18,0.9)',
+    water: 'rgba(50,84,82,0.7)', waterStroke: 'rgba(28,48,48,0.8)',
+    roadCasing: 'rgba(46,40,28,0.9)', roadFill: 'rgba(196,178,140,0.95)',
+    buildingFill: '#ccd1d9',
+  };
+  function buildMinimapBg(heightField, features, palette) {
+    const pal = { ...MM_PALETTE_DEFAULT, ...(palette || {}) };
     heightFieldRef = heightField;
     mapWorldSize = heightField && heightField.size ? heightField.size : 1024;
-    const N = 176; // sample grid
+    // terrain underlay sampled at full device resolution and POSTERIZED into
+    // flat tone bands — reads as cartography, not a blurred aerial photo
+    const N = MM * mmDpr;
     const bg = document.createElement('canvas');
     bg.width = N; bg.height = N;
     const bctx = bg.getContext('2d');
@@ -959,113 +1042,161 @@ export function initHud(bus) {
       for (let i = 0; i < N; i++) {
         const x = -half + (i + 0.5) * step;
         const hgt = heightField.getHeightAt(x, z);
-        // hillshade via central differences, light from NW-above
-        const hx = heightField.getHeightAt(x + step, z) - heightField.getHeightAt(x - step, z);
-        const hz = heightField.getHeightAt(x, z + step) - heightField.getHeightAt(x, z - step);
-        const shade = Math.max(0.35, Math.min(1.25, 0.85 - hx * 0.06 + hz * 0.06));
-        const tone = (hgt - minY) / range;
+        // hillshade via central differences (light from NW), quantized so
+        // slopes read as clean facets instead of smeared gradients
+        const hx = heightField.getHeightAt(x + step * 2, z) - heightField.getHeightAt(x - step * 2, z);
+        const hz = heightField.getHeightAt(x, z + step * 2) - heightField.getHeightAt(x, z - step * 2);
+        let shade = Math.max(0.55, Math.min(1.2, 0.88 - hx * 0.05 + hz * 0.05));
+        shade = Math.round(shade * 5) / 5;
+        const tone = Math.round(((hgt - minY) / range) * 5) / 5; // 6 flat bands
         const gt = heightField.getGroundType(x, z);
         let r, g, b;
-        if (gt === 'hard') { r = 96; g = 88; b = 74; }
-        else if (gt === 'soft') { r = 44; g = 62; b = 48; }
-        else { r = 62; g = 82; b = 50; }
-        r = (r + tone * 46) * shade; g = (g + tone * 46) * shade; b = (b + tone * 34) * shade;
+        if (gt === 'hard') { [r, g, b] = pal.hard; }
+        else if (gt === 'soft') { [r, g, b] = pal.soft; }
+        else { [r, g, b] = pal.base; }
+        r = (r + tone * 42) * shade; g = (g + tone * 42) * shade; b = (b + tone * 30) * shade;
         const o = (j * N + i) * 4;
         data[o] = r; data[o + 1] = g; data[o + 2] = b; data[o + 3] = 255;
       }
     }
     bctx.putImageData(img, 0, 0);
 
-    // compose at display resolution with features + grid
+    // compose feature layers at device resolution (vector coords in CSS px)
     const out = document.createElement('canvas');
     out.width = MM * mmDpr; out.height = MM * mmDpr;
     const octx = out.getContext('2d');
+    octx.drawImage(bg, 0, 0); // 1:1 device pixels — no resampling blur
     octx.setTransform(mmDpr, 0, 0, mmDpr, 0, 0);
-    octx.imageSmoothingEnabled = true;
-    octx.drawImage(bg, 0, 0, MM, MM);
 
     const f = features || {};
-    // soft/water patches
+    // soft/water patches: flat hard-edged pools
     if (f.waterOrSoft) {
-      octx.fillStyle = 'rgba(46,74,72,0.55)';
+      octx.fillStyle = pal.water;
+      octx.strokeStyle = pal.waterStroke;
+      octx.lineWidth = 0.8;
       for (const p of f.waterOrSoft) {
         const [px, py] = worldToMap(p.x, p.z);
         octx.beginPath();
         octx.arc(px, py, (p.r / mapWorldSize) * MM, 0, Math.PI * 2);
         octx.fill();
-      }
-    }
-    // tree clusters
-    if (f.treeClusters) {
-      octx.fillStyle = 'rgba(30,58,30,0.6)';
-      for (const p of f.treeClusters) {
-        const [px, py] = worldToMap(p.x, p.z);
-        octx.beginPath();
-        octx.arc(px, py, Math.max(2, (p.r / mapWorldSize) * MM), 0, Math.PI * 2);
-        octx.fill();
-      }
-    }
-    // roads
-    if (f.roads) {
-      octx.strokeStyle = 'rgba(178,164,132,0.85)';
-      octx.lineWidth = 1.6;
-      octx.lineJoin = 'round';
-      for (const line of f.roads) {
-        octx.beginPath();
-        for (let i = 0; i < line.length; i++) {
-          const [px, py] = worldToMap(line[i][0], line[i][1]);
-          if (i === 0) octx.moveTo(px, py); else octx.lineTo(px, py);
-        }
         octx.stroke();
       }
     }
-    // buildings
+    // tree clusters: hard-edged irregular forest polygons (WoT flat style)
+    if (f.treeClusters) {
+      octx.fillStyle = pal.forest;
+      octx.strokeStyle = pal.forestStroke;
+      octx.lineWidth = 0.8;
+      octx.lineJoin = 'round';
+      for (const p of f.treeClusters) {
+        const [px, py] = worldToMap(p.x, p.z);
+        const pr = Math.max(2.5, (p.r / mapWorldSize) * MM);
+        // deterministic lumpy octagon seeded from the cluster position
+        const seed = Math.abs(Math.sin(p.x * 12.9898 + p.z * 78.233) * 43758.5453);
+        octx.beginPath();
+        for (let k = 0; k < 8; k++) {
+          const a = (k / 8) * Math.PI * 2;
+          const jr = pr * (0.72 + 0.38 * Math.abs(Math.sin(seed + k * 2.3)));
+          const vx = px + Math.cos(a) * jr;
+          const vy = py + Math.sin(a) * jr * 0.9;
+          if (k === 0) octx.moveTo(vx, vy); else octx.lineTo(vx, vy);
+        }
+        octx.closePath();
+        octx.fill();
+        octx.stroke();
+      }
+    }
+    // roads: dark casing pass + solid 2px tan centerline pass
+    if (f.roads) {
+      octx.lineJoin = 'round';
+      octx.lineCap = 'round';
+      for (const pass of [
+        { c: pal.roadCasing, lw: 3.2 },
+        { c: pal.roadFill, lw: 1.8 },
+      ]) {
+        octx.strokeStyle = pass.c;
+        octx.lineWidth = pass.lw;
+        for (const line of f.roads) {
+          octx.beginPath();
+          for (let i = 0; i < line.length; i++) {
+            const [px, py] = worldToMap(line[i][0], line[i][1]);
+            if (i === 0) octx.moveTo(px, py); else octx.lineTo(px, py);
+          }
+          octx.stroke();
+        }
+      }
+      octx.lineCap = 'butt';
+    }
+    // buildings: sharp light-gray footprints with a dark keyline
     if (f.buildings) {
-      octx.fillStyle = 'rgba(200,200,205,0.9)';
+      octx.fillStyle = pal.buildingFill;
+      octx.strokeStyle = 'rgba(24,29,36,0.85)';
+      octx.lineWidth = 0.7;
       for (const b of f.buildings) {
         const [px, py] = worldToMap(b.x, b.z);
         octx.save();
         octx.translate(px, py);
         octx.rotate(-(b.rot || 0));
-        const bw = Math.max(2, (b.w / mapWorldSize) * MM);
-        const bd = Math.max(2, (b.d / mapWorldSize) * MM);
+        const bw = Math.max(3, (b.w / mapWorldSize) * MM);
+        const bd = Math.max(3, (b.d / mapWorldSize) * MM);
         octx.fillRect(-bw / 2, -bd / 2, bw, bd);
+        octx.strokeRect(-bw / 2, -bd / 2, bw, bd);
         octx.restore();
       }
     }
     // grid 10x10
-    octx.strokeStyle = 'rgba(230,240,250,0.09)';
-    octx.lineWidth = 1;
+    octx.strokeStyle = 'rgba(230,240,250,0.11)';
+    octx.lineWidth = 0.7;
     octx.beginPath();
     for (let i = 1; i < 10; i++) {
       octx.moveTo(i * MM / 10 + 0.5, 0); octx.lineTo(i * MM / 10 + 0.5, MM);
       octx.moveTo(0, i * MM / 10 + 0.5); octx.lineTo(MM, i * MM / 10 + 0.5);
     }
     octx.stroke();
-    // grid coordinate labels: letters across the top, numbers down the left
-    octx.font = `600 7px ${FONT_STACK}`;
+    // grid coordinates in slim inset strips (letters top, numbers left) —
+    // no per-cell tabs eating map area, and the K column stays clear of the
+    // panel edge because labels sit at cell centers inside a full-width strip
+    octx.fillStyle = 'rgba(5,8,11,0.55)';
+    octx.fillRect(0, 0, MM, 8);
+    octx.fillRect(0, 8, 8, MM - 8);
+    octx.font = `700 6.5px ${FONT_COND}`;
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
+    octx.fillStyle = 'rgba(228,238,248,0.82)';
     for (let i = 0; i < 10; i++) {
       const c = i * MM / 10 + MM / 20;
-      octx.fillStyle = 'rgba(6,9,12,0.55)';
-      octx.fillRect(c - 4, 1, 8, 8);
-      octx.fillRect(1, c - 4, 8, 8);
-      octx.fillStyle = 'rgba(230,240,250,0.75)';
-      octx.fillText(GRID_LETTERS[i], c, 5.5);
-      octx.fillText(String(i + 1), 5, c + 0.5);
+      octx.fillText(GRID_LETTERS[i], c, 4.5);
+      octx.fillText(String(i + 1), 4, Math.max(c, 14) + 0.5);
     }
     octx.textAlign = 'left';
     octx.textBaseline = 'alphabetic';
     // inner vignette edge
     octx.strokeStyle = 'rgba(0,0,0,0.45)';
-    octx.lineWidth = 2;
-    octx.strokeRect(1, 1, MM - 2, MM - 2);
+    octx.lineWidth = 1.5;
+    octx.strokeRect(0.75, 0.75, MM - 1.5, MM - 1.5);
     mmBg = out;
   }
 
-  // class-shaped minimap blip: filled diamond (heavy), hollow diamond (medium),
-  // filled diamond with slot (mbt)
+  // canvas rotation that makes a forward-up sprite/shape point along hull yaw
+  // (same mapping the player arrow has always used)
+  const blipAngle = (yaw) => Math.atan2(-Math.cos(yaw), Math.sin(yaw)) + Math.PI / 2;
+
+  // minimap blip: the tank's actual top-down silhouette (tools/genIcons.mjs),
+  // tinted green (allies/self) or red (enemies) and rotated to hull heading
+  function drawIconBlip(c, x, y, yaw, specId, color, alpha, sizePx = 15) {
+    const icon = specId ? tintedIcon(specId, 'top_silhouette', color) : null;
+    if (!icon) return false;
+    c.save();
+    c.translate(x, y);
+    c.rotate(blipAngle(yaw));
+    c.globalAlpha = alpha;
+    c.drawImage(icon, -sizePx / 2, -sizePx / 2, sizePx, sizePx);
+    c.restore();
+    return true;
+  }
+
+  // vector fallback (first frames while a silhouette PNG is still loading) and
+  // last-known-position ghost marker: class-shaped diamond
   function drawBlip(c, x, y, cls, color, alpha, ghost) {
     c.save();
     c.translate(x, y);
@@ -1113,15 +1244,20 @@ export function initHud(bus) {
         continue;
       }
       const cls = t.spec ? t.spec.class : 'medium';
+      const specId = t.spec ? t.spec.id : null;
       if (ally) {
         const [px, py] = worldToMap(t.state.pos.x, t.state.pos.z);
-        drawBlip(mmCtx, px, py, cls, PEN_GREEN, 0.95, false);
+        if (!drawIconBlip(mmCtx, px, py, t.state.yaw, specId, PEN_GREEN, 0.95)) {
+          drawBlip(mmCtx, px, py, cls, PEN_GREEN, 0.95, false);
+        }
         continue;
       }
       const sp = spotById.get(t.id);
       if (sp && sp.vis) {
         const [px, py] = worldToMap(t.state.pos.x, t.state.pos.z);
-        drawBlip(mmCtx, px, py, cls, PEN_RED, 0.95, false);
+        if (!drawIconBlip(mmCtx, px, py, t.state.yaw, specId, PEN_RED, 0.95)) {
+          drawBlip(mmCtx, px, py, cls, PEN_RED, 0.95, false);
+        }
       } else if (sp && sp.ever) {
         // last-known-position ghost marker
         const [px, py] = worldToMap(sp.lastX, sp.lastZ);
@@ -1156,16 +1292,20 @@ export function initHud(bus) {
         mmCtx.closePath();
         mmCtx.fill();
       }
-      const yawAng = Math.atan2(-Math.cos(st.yaw), Math.sin(st.yaw)); // canvas angle of hull forward
-      mmCtx.save();
-      mmCtx.translate(px, py);
-      mmCtx.rotate(yawAng + Math.PI / 2);
-      mmCtx.fillStyle = '#7ee87e';
-      mmCtx.beginPath();
-      mmCtx.moveTo(0, -5.5); mmCtx.lineTo(4, 4.5); mmCtx.lineTo(-4, 4.5);
-      mmCtx.closePath();
-      mmCtx.fill();
-      mmCtx.restore();
+      // self marker: own top-down silhouette in green, oriented to hull heading
+      const selfSpecId = (player.spec && player.spec.id) || specIdById.get(player.id);
+      if (!drawIconBlip(mmCtx, px, py, st.yaw, selfSpecId, '#7ee87e', 1, 17)) {
+        const yawAng = Math.atan2(-Math.cos(st.yaw), Math.sin(st.yaw)); // canvas angle of hull forward
+        mmCtx.save();
+        mmCtx.translate(px, py);
+        mmCtx.rotate(yawAng + Math.PI / 2);
+        mmCtx.fillStyle = '#7ee87e';
+        mmCtx.beginPath();
+        mmCtx.moveTo(0, -5.5); mmCtx.lineTo(4, 4.5); mmCtx.lineTo(-4, 4.5);
+        mmCtx.closePath();
+        mmCtx.fill();
+        mmCtx.restore();
+      }
       // turret direction line
       const tAng = st.yaw + st.turretYaw;
       mmCtx.strokeStyle = 'rgba(126,232,126,0.7)';
@@ -1183,8 +1323,16 @@ export function initHud(bus) {
     const victim = nameById.get(payload.id) || payload.specId || 'Tank';
     const item = el('div', 'cot-kf', killfeed);
     const cause = CAUSE_LABEL[payload.cause] || '';
-    item.innerHTML = `<span class="k"></span><span class="d">destroyed</span><span class="v"></span>` +
+    // side-profile silhouettes of the actual tanks flank the names
+    const kSpec = specIdById.get(payload.killerId);
+    const vSpec = specIdById.get(payload.id) || payload.specId;
+    item.innerHTML =
+      (kSpec ? `<span class="si ksi"></span>` : '') + `<span class="k"></span>` +
+      `<span class="d">destroyed</span>` +
+      (vSpec ? `<span class="si vsi"></span>` : '') + `<span class="v"></span>` +
       (cause ? `<span class="c">${cause}</span>` : '');
+    if (kSpec) maskIcon(item.querySelector('.ksi'), kSpec, 'side_silhouette', '#cfe3f4');
+    if (vSpec) maskIcon(item.querySelector('.vsi'), vSpec, 'side_silhouette', '#f28f8f');
     item.querySelector('.k').textContent = killer;
     item.querySelector('.v').textContent = victim;
     killfeed.prepend(item);
@@ -1334,6 +1482,7 @@ export function initHud(bus) {
       const wasHidden = mode === 'hidden';
       mode = m;
       applyMode();
+      mmDirty = true; // guarantee a minimap draw on the next update()
       if (m === 'hidden') ctx.clearRect(0, 0, w, h);
       if (m === 'battle' && wasHidden) {
         // fresh battle: drop spotting memory and team rosters from the last one
@@ -1357,13 +1506,13 @@ export function initHud(bus) {
       lastCamera = camera || lastCamera;
       const dt = Math.max(0, Math.min(0.1, frame.timeS - lastTimeS)) || 1 / 60;
       lastTimeS = frame.timeS;
-      if (frame.mode && frame.mode !== mode) { mode = frame.mode; applyMode(); }
+      if (frame.mode && frame.mode !== mode) { mode = frame.mode; applyMode(); mmDirty = true; }
       playerRef = frame.player || playerRef;
       if (frame.player) playerId = frame.player.id;
       const tanks = frame.tanks || [];
       for (let i = 0; i < tanks.length; i++) {
         const t = tanks[i];
-        if (t && t.spec) nameById.set(t.id, t.spec.name);
+        if (t && t.spec) { nameById.set(t.id, t.spec.name); specIdById.set(t.id, t.spec.id); }
       }
       if (mode === 'hidden') { ctx.clearRect(0, 0, w, h); return; }
       if (camera) { camera.updateMatrixWorld(); _mInv.copy(camera.matrixWorld).invert(); }
@@ -1379,7 +1528,15 @@ export function initHud(bus) {
       updateShellCooldown(aim.reload, slot);
       renderCanvas(dt);
       if (camera) updateHpBars(frame);
-      drawMinimap(frame);
+      // PERF: the minimap is a full 2D-canvas repaint (bg blit + blips +
+      // ranges); 20 Hz is visually indistinguishable for map blips. mmDirty
+      // (mode switches, forced screenshot frames, minimap rebuilds) always
+      // paints immediately so single-shot updates never show a stale map.
+      mmFrame++;
+      if (mmDirty || mmFrame % 3 === 0) {
+        drawMinimap(frame);
+        mmDirty = false;
+      }
     },
 
     /**
@@ -1387,9 +1544,10 @@ export function initHud(bus) {
      * @param {HeightField} heightField
      * @param {{roads:Array,buildings:Array,treeClusters:Array,waterOrSoft:Array}} features - World.getMinimapFeatures() result.
      */
-    buildMinimap(heightField, features) {
-      buildMinimapBg(heightField, features);
+    buildMinimap(heightField, features, palette) {
+      buildMinimapBg(heightField, features, palette);
       mmCtx.drawImage(mmBg, 0, 0, MM, MM);
+      mmDirty = true;
     },
 
     /**

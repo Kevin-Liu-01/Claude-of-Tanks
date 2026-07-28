@@ -2,7 +2,8 @@
  * post.js — the full post-processing chain.
  *
  * Chain (extends ARCHITECTURE.md §3.1.4 / graphics-aaa.md §4 with a grade):
- *   RenderPass → GTAOPass → UnrealBloomPass → SMAAPass → OutputPass → GradePass
+ *   RenderPass → GTAOPass → AerialPass → UnrealBloomPass → SMAAPass →
+ *   OutputPass → GradePass
  *
  * The composer runs on a custom HalfFloat HDR target that owns a DepthTexture
  * (so fx can later sample scene depth for soft particles). SMAA operates in
@@ -34,19 +35,82 @@ const BLOOM_THRESHOLD = 1.35;
 const BLOOM_INPUT_CLAMP = 2.0;
 const HIGH_PASS_ANCHOR = 'gl_FragColor = mix( outputColor, texel, alpha );';
 // AO radius must be vehicle-scale (~1 m) to ground hulls/building bases;
-// 0.3 m read as nothing at gameplay camera distances.
-const GTAO_PARAMS = { radius: 1.0, distanceExponent: 2, thickness: 1.2, scale: 1.3, samples: 16 };
+// 0.3 m read as nothing at gameplay camera distances. r3: radius 1.0 → 1.3,
+// scale 1.3 → 1.7, thickness 1.2 → 1.6 — the critic read the shots as having
+// "no ambient occlusion anywhere"; contact darkening under hulls, building
+// bases and canopies has to survive ACES + fog to register at 1080p.
+const GTAO_PARAMS = { radius: 1.3, distanceExponent: 2, thickness: 1.6, scale: 1.7, samples: 16 };
 const GTAO_BLEND_INTENSITY = 1.0;
 
+// Depth-driven aerial perspective (r3: "distant hills correctly shift
+// grey-blue but distant grass/trees at the same depth keep full saturation").
+// Per-material `fog` flags and vertex-color choices made distance response
+// incoherent across terrain/foliage/props; this pass applies ONE curve to
+// every pixel from the scene depth buffer, in linear HDR space before bloom:
+// progressive desaturation + a cool blue-grey shift with distance. The sky
+// (depth == 1.0, incl. the depthWrite:false cloud shells) is excluded — the
+// dome already carries its own atmosphere.
+const AERIAL_DENSITY = 0.0011; // 1/m; f = 1-exp(-(d*k)^2): ~10% @300m, ~70% @1km
+const AERIAL_DESAT = 0.5; // max saturation loss at full distance
+const AERIAL_COOL = [0.93, 0.985, 1.06]; // cool shift multiplier at full distance
+
+const AerialShader = {
+  name: 'AerialPerspectiveShader',
+  uniforms: {
+    tDiffuse: { value: null },
+    tDepth: { value: null },
+    uNear: { value: 0.1 },
+    uFar: { value: 4000 },
+    uDensity: { value: AERIAL_DENSITY },
+    uDesat: { value: AERIAL_DESAT },
+    uCool: { value: new THREE.Vector3(...AERIAL_COOL) },
+  },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+    }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    uniform sampler2D tDepth;
+    uniform float uNear;
+    uniform float uFar;
+    uniform float uDensity;
+    uniform float uDesat;
+    uniform vec3 uCool;
+    varying vec2 vUv;
+    void main() {
+      vec4 texel = texture2D( tDiffuse, vUv );
+      float depth = texture2D( tDepth, vUv ).x;
+      if ( depth < 0.9999999 ) { // sky/cloud dome writes no depth — skip it
+        float viewZ = ( uNear * uFar ) / ( ( uFar - uNear ) * depth - uFar );
+        float x = -viewZ * uDensity;
+        float f = 1.0 - exp( -x * x );
+        float lum = dot( texel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
+        vec3 hazy = mix( texel.rgb, vec3( lum ), uDesat ) * uCool;
+        texel.rgb = mix( texel.rgb, hazy, f );
+      }
+      gl_FragColor = texel;
+    }`,
+};
+
 // Final grade (applied AFTER OutputPass, i.e. in display sRGB space):
-// S-curve contrast, +15% saturation, subtle corner vignette and a real black
-// anchor — the "graded" signature the raw ACES output lacks. r2 critique:
-// "blacks are grey, greens pastel, looks like unlit viewport preview" — the
-// anchor pulls track/shadow cores to true black and the curve restores punch.
-const GRADE_CONTRAST = 1.11;
-const GRADE_SATURATION = 1.15;
-const GRADE_VIGNETTE = 0.32;
-const GRADE_BLACK_LIFT = 0.01;
+// S-curve contrast, saturation, subtle corner vignette, a real black anchor
+// and ONE fixed warm white balance — the same grade for every camera, so the
+// battlefield establishing shot and the combat closeup read as one game
+// (r3: "battlefield is cool and washed out while combat_firing is warm and
+// punchy — looks like two different games"). r3 tuning: vignette 0.32 → 0.17
+// (the old strength stacked with canopy shadows into unmotivated black corner
+// masses), saturation 1.15 → 1.08 (distance desat now comes from the aerial
+// pass; global oversaturation was amplifying the foliage albedo clash),
+// black anchor 0.01 → 0.006.
+const GRADE_CONTRAST = 1.12;
+const GRADE_SATURATION = 1.08;
+const GRADE_VIGNETTE = 0.17;
+const GRADE_BLACK_LIFT = 0.006;
+// Warm afternoon balance, matching the sun key instead of fighting it.
+const GRADE_BALANCE = [1.04, 1.0, 0.955];
 
 const GradeShader = {
   name: 'GradeShader',
@@ -56,6 +120,7 @@ const GradeShader = {
     uSaturation: { value: GRADE_SATURATION },
     uVignette: { value: GRADE_VIGNETTE },
     uBlack: { value: GRADE_BLACK_LIFT },
+    uBalance: { value: new THREE.Vector3(...GRADE_BALANCE) },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -69,10 +134,13 @@ const GradeShader = {
     uniform float uSaturation;
     uniform float uVignette;
     uniform float uBlack;
+    uniform vec3 uBalance;
     varying vec2 vUv;
     void main() {
       vec4 texel = texture2D( tDiffuse, vUv );
       vec3 col = texel.rgb;
+      // fixed warm white balance — identical for every camera/shot
+      col = clamp( col * uBalance, 0.0, 1.0 );
       // black anchor + contrast S-curve around mid grey
       col = max( col - vec3( uBlack ), vec3( 0.0 ) );
       col = clamp( mix( vec3( 0.5 ), col, uContrast ), 0.0, 1.0 );
@@ -113,10 +181,35 @@ export function createPost(renderer, scene, camera) {
     depthTexture: new THREE.DepthTexture(size.x, size.y),
   });
   const composer = new EffectComposer(renderer, target);
+  // Scene depth plumbing — the topology is load-bearing. The composer keeps
+  // `target` as renderTarget1 but renders the SCENE into renderTarget2 (the
+  // initial readBuffer), which is a clone of `target`. A cloned DepthTexture
+  // shares its GL storage (same Source), so a depth-reading pass ends up
+  // sampling a texture that is ALSO the depth attachment of whichever
+  // ping-pong buffer it writes to: a framebuffer feedback loop
+  // (GL_INVALID_OPERATION spam + intermittent all-black frames on ANGLE).
+  // Give the scene buffer (renderTarget2) its own private DepthTexture, strip
+  // the twin's, and sample only that private texture in the aerial pass —
+  // which, running at even parity, always writes the OTHER buffer.
+  const sceneDepth = new THREE.DepthTexture(size.x, size.y);
+  composer.renderTarget1.depthTexture = null;
+  composer.renderTarget2.depthTexture = sceneDepth;
 
   composer.addPass(new RenderPass(scene, camera)); // 1. scene, linear HDR
 
-  const gtao = new GTAOPass(scene, camera, size.x, size.y); // 2. AO multiply
+  // 2. depth-driven aerial perspective — one distance curve for every
+  // material (see AerialShader above). Runs in linear HDR space, pre-bloom.
+  // ORDER IS LOAD-BEARING: this pass samples `target.depthTexture` (the depth
+  // attachment of composer renderTarget1). It must run at EVEN swap parity so
+  // it writes into renderTarget2 — placed after GTAO (odd parity) it renders
+  // INTO renderTarget1 while sampling renderTarget1's depth attachment, a
+  // framebuffer feedback loop (GL_INVALID_OPERATION spam + intermittent
+  // all-black frames on ANGLE).
+  const aerial = new ShaderPass(AerialShader);
+  aerial.uniforms.tDepth.value = sceneDepth;
+  composer.addPass(aerial);
+
+  const gtao = new GTAOPass(scene, camera, size.x, size.y); // 3. AO multiply
   gtao.output = GTAOPass.OUTPUT.Default;
   gtao.updateGtaoMaterial(GTAO_PARAMS);
   gtao.blendIntensity = GTAO_BLEND_INTENSITY;
@@ -173,6 +266,19 @@ export function createPost(renderer, scene, camera) {
      * @returns {void}
      */
     render(dt) {
+      // Parity guard — the pass chain swaps the ping-pong buffers an ODD
+      // number of times per frame (5 with GTAO enabled), so without this the
+      // scene render (and its depth) lands in ALTERNATING buffers frame to
+      // frame; every other frame the aerial pass then writes into the buffer
+      // whose depth attachment it is sampling — a framebuffer feedback loop
+      // (GL_INVALID_OPERATION spam + intermittent all-black frames on ANGLE).
+      // Pin the canonical start-of-frame state: scene renders into
+      // renderTarget2 (readBuffer, owns sceneDepth), aerial writes rt1.
+      if (composer.readBuffer !== composer.renderTarget2) composer.swapBuffers();
+      // sniper zoom / rig changes can retune the camera planes — keep the
+      // aerial distance reconstruction exact
+      aerial.uniforms.uNear.value = camera.near;
+      aerial.uniforms.uFar.value = camera.far;
       composer.render(dt);
     },
 

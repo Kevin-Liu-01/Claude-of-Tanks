@@ -18,11 +18,12 @@ function smoothstep(a, b, x) {
 function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
 
 // ---------------------------------------------------------------------------
-// Map layout — seed-independent composition constants (roads, village, spawns,
-// marshes, drivable corridors). Shared by the other world modules.
+// Map layout — seed-independent composition (roads, village, spawns, marshes,
+// lakes, drivable corridors), built from a map config (src/world/maps/*).
+// Shared by the other world modules via heightField._layout.
 // ---------------------------------------------------------------------------
 
-function buildRoadNodes() {
+function buildCountryRoads() {
   const roadA = []; // roughly N-S, curving through the village
   for (let z = -HALF; z <= HALF; z += 32) {
     roadA.push([10 + 26 * Math.sin(z * 0.0062) + 8 * Math.sin(z * 0.017 + 2.1), z]);
@@ -34,28 +35,80 @@ function buildRoadNodes() {
   return [roadA, roadB];
 }
 
-const _VILLAGE = { x0: -60, x1: 80, z0: -40, z1: 120, cx: 10, cz: 40, feather: 42 };
-const _MARSHES = [
-  { x: 220, z: -140, r: 38 },
-  { x: -190, z: -210, r: 48 },
-  { x: -330, z: 330, r: 30 },
-];
-const _SPAWN_PLAYER = { x: 14, z: -78 };
-const _SPAWN_ENEMIES = [
-  { x: -30, z: 320 }, { x: 140, z: 350 }, { x: 265, z: 235 }, { x: -215, z: 270 },
-  { x: -330, z: 140 }, { x: 330, z: 130 }, { x: 15, z: 430 },
-];
-for (const s of [_SPAWN_PLAYER, ..._SPAWN_ENEMIES]) {
-  s.yaw = Math.atan2(_VILLAGE.cx - s.x, _VILLAGE.cz - s.z); // face the village
+// straight-ish grid streets (urban): N-S lines at xs[], E-W lines at zs[]
+function buildGridRoads(grid) {
+  const roads = [];
+  const jit = grid.jitter ?? 2.5;
+  for (let gi = 0; gi < grid.xs.length; gi++) {
+    const gx = grid.xs[gi];
+    const line = [];
+    for (let z = -HALF; z <= HALF; z += 32) {
+      line.push([gx + Math.sin(z * 0.011 + gi * 2.3) * jit, z]);
+    }
+    roads.push(line);
+  }
+  for (let gi = 0; gi < grid.zs.length; gi++) {
+    const gz = grid.zs[gi];
+    const line = [];
+    for (let x = -HALF; x <= HALF; x += 32) {
+      line.push([x, gz + Math.sin(x * 0.011 + gi * 1.7) * jit]);
+    }
+    roads.push(line);
+  }
+  return roads;
 }
 
-/** Internal shared layout (roads/village/marsh/spawn geometry). @type {object} */
-export const _LAYOUT = {
-  village: _VILLAGE,
-  marshes: _MARSHES,
-  spawns: { player: _SPAWN_PLAYER, enemies: _SPAWN_ENEMIES },
-  roads: buildRoadNodes(), // [ [ [x,z], ... ], [ [x,z], ... ] ]
+const DEFAULT_TERRAIN = {
+  hillScale: 1.0,
+  microScale: 1.0,
+  rimH: 17,
+  village: { x0: -60, x1: 80, z0: -40, z1: 120, cx: 10, cz: 40, feather: 42, flatten: 0.85 },
+  marshes: [
+    { x: 220, z: -140, r: 38 },
+    { x: -190, z: -210, r: 48 },
+    { x: -330, z: 330, r: 30 },
+  ],
+  lakes: [],           // [{x,z,r,depth}] — flattened frozen/ice sheets
+  frozenMarshes: false, // marsh/lake ground reads 'hard' (ice) instead of 'soft'
+  dunes: null,          // {amp} — long ridged sand dunes
+  mesas: null,          // {amp, thr0, thr1} — flat-topped plateaus
+  roads: 'country',     // 'country' | {grid:{xs:[],zs:[],jitter}}
 };
+
+const DEFAULT_SPAWNS = {
+  player: { x: 14, z: -78 },
+  enemies: [
+    { x: -30, z: 320 }, { x: 140, z: 350 }, { x: 265, z: 235 }, { x: -215, z: 270 },
+    { x: -330, z: 140 }, { x: 330, z: 130 }, { x: 15, z: 430 },
+  ],
+};
+
+/**
+ * Build the seed-independent layout object for a map config.
+ * @param {?object} cfg map config (src/world/maps/*) or null for defaults
+ * @returns {{village:object,marshes:Array,lakes:Array,spawns:object,roads:Array}}
+ */
+export function createLayout(cfg) {
+  const t = { ...DEFAULT_TERRAIN, ...(cfg && cfg.terrain ? cfg.terrain : {}) };
+  const village = { ...DEFAULT_TERRAIN.village, ...(t.village || {}) };
+  const spawnsSrc = (cfg && cfg.spawns) || DEFAULT_SPAWNS;
+  const player = { ...spawnsSrc.player };
+  const enemies = spawnsSrc.enemies.map((e) => ({ ...e }));
+  for (const s of [player, ...enemies]) {
+    s.yaw = Math.atan2(village.cx - s.x, village.cz - s.z); // face the village/town
+  }
+  const roads = t.roads === 'country' || !t.roads
+    ? buildCountryRoads()
+    : buildGridRoads(t.roads.grid);
+  return {
+    village,
+    marshes: (t.marshes || []).map((m) => ({ ...m })),
+    lakes: (t.lakes || []).map((l) => ({ ...l })),
+    spawns: { player, enemies },
+    roads,
+    terrain: t,
+  };
+}
 
 // squared point-to-segment distance, returning t of the projection
 function segDist(px, pz, ax, az, bx, bz) {
@@ -74,12 +127,20 @@ function segDist(px, pz, ax, az, bx, bz) {
 /**
  * Build the deterministic heightfield for the 1024 m map.
  * @param {number} [seed=1337] terrain seed (mulberry32)
+ * @param {?object} [cfg=null] map config (src/world/maps/*); null = classic verdant
  * @returns {{getHeightAt:function(number,number):number,
  *   getNormalAt:function(number,number):THREE.Vector3,
  *   getGroundType:function(number,number):('hard'|'medium'|'soft'),
  *   size:number, minY:number, maxY:number}} HeightField (ARCHITECTURE §2.7)
  */
-export function createHeightField(seed = 1337) {
+export function createHeightField(seed = 1337, cfg = null) {
+  const layout = createLayout(cfg);
+  const T = layout.terrain;
+  const _VILLAGE = layout.village;
+  const _MARSHES = layout.marshes;
+  const _LAKES = layout.lakes;
+  const _SPAWN_PLAYER = layout.spawns.player;
+  const _SPAWN_ENEMIES = layout.spawns.enemies;
   const noi = new SimplexNoise({ random: mulberry32((seed ^ 0x9e3779b9) >>> 0) });
 
   // --- base noise: fBm detail + domain-warped ridge, and a smooth variant ---
@@ -108,7 +169,7 @@ export function createHeightField(seed = 1337) {
   const gSegT = new Float32Array(GN * GN);
   const gCorridor = new Float32Array(GN * GN);
 
-  const roads = _LAYOUT.roads;
+  const roads = layout.roads;
   const corridors = [_SPAWN_PLAYER, ..._SPAWN_ENEMIES].map(
     (s) => [s.x, s.z, _VILLAGE.cx, _VILLAGE.cz]
   );
@@ -149,25 +210,69 @@ export function createHeightField(seed = 1337) {
   function villageMask(x, z) {
     const dx = Math.max(_VILLAGE.x0 - x, x - _VILLAGE.x1, 0);
     const dz = Math.max(_VILLAGE.z0 - z, z - _VILLAGE.z1, 0);
-    return (1 - smoothstep(0, _VILLAGE.feather, Math.hypot(dx, dz))) * 0.85;
+    return (1 - smoothstep(0, _VILLAGE.feather, Math.hypot(dx, dz))) * (_VILLAGE.flatten ?? 0.85);
   }
 
   const padYs = new Float64Array(8); // filled below (player + 7 enemies)
   const padPts = [_SPAWN_PLAYER, ..._SPAWN_ENEMIES];
+  const lakeLevels = new Float64Array(Math.max(1, _LAKES.length)); // filled below
 
-  function heightAt(x, z, padsOn, roadsOn) {
+  function heightAt(x, z, padsOn, roadsOn, lakesOn = true) {
     x = clamp(x, -HALF, HALF); z = clamp(z, -HALF, HALF);
     const { d, s } = core(x, z);
     const cw = gridSample(gCorridor, x, z);
-    let h = d + (s - d) * (cw * 0.72);
+    let h = (d + (s - d) * (cw * 0.72)) * T.hillScale;
     const vm = villageMask(x, z);
-    if (vm > 0) h += (villageY + (s - villageY) * 0.10 - h) * vm;
+    if (vm > 0) h += (villageY * T.hillScale + (s - villageY) * 0.10 - h) * vm;
+    let marshW = 0;
     for (const m of _MARSHES) {
       const md = Math.hypot(x - m.x, z - m.z);
-      if (md < m.r) { const t = 1 - md / m.r; h -= 2.6 * t * t * (3 - 2 * t); }
+      if (md < m.r) {
+        const t = 1 - md / m.r;
+        h -= 2.6 * t * t * (3 - 2 * t);
+        marshW = Math.max(marshW, t);
+      }
+    }
+    // map-specific macro forms: long ridged sand dunes / flat-topped mesas —
+    // both attenuated on drive corridors and in the village so play flows.
+    if (T.dunes) {
+      const dn = 1 - Math.abs(noi.noise(x * 0.0021 + 402, z * 0.0046 + 91));
+      const dn2 = noi.noise(x * 0.0064 - 55, z * 0.0064 + 233) * 0.5 + 0.5;
+      h += dn * dn * dn * T.dunes.amp * (0.7 + dn2 * 0.5) * (1 - cw * 0.7) * (1 - vm);
+    }
+    if (T.mesas) {
+      const mn = noi.noise(x * 0.0014 - 310, z * 0.0014 + 208) * 0.5 + 0.5;
+      const plateau = smoothstep(T.mesas.thr0, T.mesas.thr1, mn);
+      const capNoise = 0.9 + 0.1 * noi.noise(x * 0.012 + 31, z * 0.012 - 74);
+      h += plateau * T.mesas.amp * capNoise * (1 - cw) * (1 - vm) * (1 - marshW);
+    }
+    // tactical micro-terrain: berm crests + shallow scrapes every ~70-110 m so
+    // the open midfield offers hull-down folds instead of a flat golf course.
+    // Attenuated (not zeroed) on drive corridors so they stay drivable, and
+    // suppressed in the village/marshes.
+    {
+      const f1 = noi.noise(x * 0.0104 + 610, z * 0.0104 - 320);
+      const f2 = noi.noise(x * 0.0233 - 105, z * 0.0233 + 77);
+      let crest = 1 - Math.abs(f1);
+      crest *= crest;
+      let micro = smoothstep(0.42, 0.92, crest) * (2.1 + f2 * 0.8) // berms/ridgelines
+        - smoothstep(0.55, 0.92, f2) * 1.5;                        // shallow depressions
+      micro *= (1 - cw * 0.55) * (1 - vm) * (1 - marshW) * T.microScale;
+      h += micro;
     }
     const rim = smoothstep(430, HALF, Math.max(Math.abs(x), Math.abs(z)));
-    h += rim * rim * 17;
+    h += rim * rim * T.rimH;
+    // frozen/ice lakes: pull the terrain to a flat sheet at the lake level
+    if (lakesOn) {
+      for (let li = 0; li < _LAKES.length; li++) {
+        const lk = _LAKES[li];
+        const ld = Math.hypot(x - lk.x, z - lk.z);
+        if (ld < lk.r) {
+          const w = smoothstep(lk.r, lk.r * 0.82, ld);
+          h += (lakeLevels[li] - h) * w;
+        }
+      }
+    }
     if (padsOn) {
       for (let p = 0; p < padPts.length; p++) {
         const pd = Math.hypot(x - padPts[p].x, z - padPts[p].z);
@@ -189,17 +294,19 @@ export function createHeightField(seed = 1337) {
       for (let i = 1; i < elev.length - 1; i++) elev[i] = prev[i - 1] * 0.25 + prev[i] * 0.5 + prev[i + 1] * 0.25;
     }
   }
-  { // blend both roads to a common elevation at their crossing
+  // blend every road pair to a common elevation at their crossing
+  for (let ra = 0; ra < roads.length; ra++) for (let rb = ra + 1; rb < roads.length; rb++) {
     let jA = 0, jB = 0, best = 1e9;
-    for (let a = 0; a < roads[0].length; a++) for (let b = 0; b < roads[1].length; b++) {
-      const dd = Math.hypot(roads[0][a][0] - roads[1][b][0], roads[0][a][1] - roads[1][b][1]);
+    for (let a = 0; a < roads[ra].length; a++) for (let b = 0; b < roads[rb].length; b++) {
+      const dd = Math.hypot(roads[ra][a][0] - roads[rb][b][0], roads[ra][a][1] - roads[rb][b][1]);
       if (dd < best) { best = dd; jA = a; jB = b; }
     }
-    const jElev = (nodeElev[0][jA] + nodeElev[1][jB]) * 0.5;
+    if (best > 40) continue; // roads never actually cross
+    const jElev = (nodeElev[ra][jA] + nodeElev[rb][jB]) * 0.5;
     for (let k = -3; k <= 3; k++) {
       const w = (1 - Math.abs(k) / 4) * 0.85;
-      if (nodeElev[0][jA + k] !== undefined) nodeElev[0][jA + k] += (jElev - nodeElev[0][jA + k]) * w;
-      if (nodeElev[1][jB + k] !== undefined) nodeElev[1][jB + k] += (jElev - nodeElev[1][jB + k]) * w;
+      if (nodeElev[ra][jA + k] !== undefined) nodeElev[ra][jA + k] += (jElev - nodeElev[ra][jA + k]) * w;
+      if (nodeElev[rb][jB + k] !== undefined) nodeElev[rb][jB + k] += (jElev - nodeElev[rb][jB + k]) * w;
     }
   }
   for (let i = 0; i < GN * GN; i++) {
@@ -208,7 +315,17 @@ export function createHeightField(seed = 1337) {
     gRoadElev[i] = e[s] + (e[s + 1] - e[s]) * gSegT[i];
   }
 
-  // --- spawn pad target heights (pipeline without pads) ---
+  // --- lake sheet levels (pipeline without lakes/pads), then spawn pads ---
+  for (let li = 0; li < _LAKES.length; li++) {
+    const lk = _LAKES[li];
+    let lo = Infinity;
+    for (let a = 0; a < 8; a++) {
+      const hh = heightAt(lk.x + Math.cos(a * 0.785) * lk.r * 0.6,
+        lk.z + Math.sin(a * 0.785) * lk.r * 0.6, false, false, false);
+      if (hh < lo) lo = hh;
+    }
+    lakeLevels[li] = Math.min(lo, heightAt(lk.x, lk.z, false, false, false)) - (lk.depth ?? 1.4);
+  }
   for (let p = 0; p < padPts.length; p++) padYs[p] = heightAt(padPts[p].x, padPts[p].z, false, true);
 
   const getHeightAt = (x, z) => heightAt(x, z, true, true);
@@ -223,11 +340,25 @@ export function createHeightField(seed = 1337) {
 
   function getGroundType(x, z) {
     if (gridSample(gRoadDist, x, z) < 4.3) return 'hard';
+    for (const lk of _LAKES) {
+      if (Math.hypot(x - lk.x, z - lk.z) < lk.r * 0.95) return 'hard'; // ice sheet
+    }
     for (const m of _MARSHES) {
       const md = Math.hypot(x - m.x, z - m.z);
-      if (md < m.r && 1 - md / m.r > 0.35) return 'soft';
+      if (md < m.r && 1 - md / m.r > 0.35) return T.frozenMarshes ? 'hard' : 'soft';
     }
     return 'medium';
+  }
+
+  // vegetation/prop exclusion: open water/ice + marsh cores
+  function noVeg(x, z) {
+    for (const lk of _LAKES) {
+      if (Math.hypot(x - lk.x, z - lk.z) < lk.r * 1.04) return true;
+    }
+    for (const m of _MARSHES) {
+      if (T.frozenMarshes && Math.hypot(x - m.x, z - m.z) < m.r) return true;
+    }
+    return false;
   }
 
   // --- min/max over a coarse scan ---
@@ -242,8 +373,33 @@ export function createHeightField(seed = 1337) {
     size: MAP_SIZE, minY, maxY,
     _roadDist: (x, z) => gridSample(gRoadDist, x, z),
     _villageMask: villageMask,
-    _layout: _LAYOUT,
+    _noVeg: noVeg,
+    _layout: layout,
   };
+}
+
+// ---------------------------------------------------------------------------
+// applyTone — per-map HSL retint of a generated RGBA pixel buffer (alpha kept:
+// it packs roughness in the terrain layers, coverage in foliage cards).
+// ---------------------------------------------------------------------------
+const _toneCol = new THREE.Color();
+const _toneHsl = { h: 0, s: 0, l: 0 };
+/**
+ * Retint pixels in place through an HSL transform.
+ * @param {Uint8ClampedArray} px RGBA buffer
+ * @param {?function(number,number,number):number[]} fn (h,s,l) => [h,s,l]
+ * @returns {Uint8ClampedArray} the same buffer
+ */
+export function applyTone(px, fn) {
+  if (!fn) return px;
+  for (let i = 0; i < px.length; i += 4) {
+    _toneCol.setRGB(px[i] / 255, px[i + 1] / 255, px[i + 2] / 255);
+    _toneCol.getHSL(_toneHsl);
+    const [h, s, l] = fn(_toneHsl.h, _toneHsl.s, _toneHsl.l);
+    _toneCol.setHSL(((h % 1) + 1) % 1, clamp(s, 0, 1), clamp(l, 0, 1));
+    px[i] = _toneCol.r * 255; px[i + 1] = _toneCol.g * 255; px[i + 2] = _toneCol.b * 255;
+  }
+  return px;
 }
 
 // ---------------------------------------------------------------------------
@@ -313,7 +469,7 @@ function drawWrapped(ctx, s, fn) {
 
 // Painted grass layer: noise macro base + thousands of individual blade
 // strokes so the near field reads as turf, not single-frequency speckle.
-function makeGrassLayer(seed, anisotropy) {
+function makeGrassLayer(seed, anisotropy, tone = null) {
   const s = 512;
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const rng = mulberry32(seed ^ 0x7f4a);
@@ -377,6 +533,7 @@ function makeGrassLayer(seed, anisotropy) {
     hgt[i] = g;
     px[i * 4 + 3] = clamp(0.95 - g * 0.18, 0.03, 1) * 255; // roughness in alpha
   }
+  applyTone(px, tone);
   return {
     albedo: canvasToTexture(px, s, { srgb: true, anisotropy }),
     normal: normalFromHeight(hgt, s, 1.8, anisotropy),
@@ -385,7 +542,7 @@ function makeGrassLayer(seed, anisotropy) {
 
 // Painted dirt layer: clods + drawn pebbles + cracks — real macro structure
 // for the sub-10 m ground and the road gravel pass.
-function makeDirtLayer(seed, anisotropy) {
+function makeDirtLayer(seed, anisotropy, tone = null) {
   const s = 512;
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const rng = mulberry32(seed ^ 0x2e91);
@@ -467,13 +624,14 @@ function makeDirtLayer(seed, anisotropy) {
     hgt[i] = l;
     px[i * 4 + 3] = clamp(0.97 - l * 0.16, 0.03, 1) * 255;
   }
+  applyTone(px, tone);
   return {
     albedo: canvasToTexture(px, s, { srgb: true, anisotropy }),
     normal: normalFromHeight(hgt, s, 3.0, anisotropy),
   };
 }
 
-function makeGroundLayer(seed, kind, anisotropy) {
+function makeGroundLayer(seed, kind, anisotropy, tone = null, roughMul = 1) {
   const s = 512;
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const px = new Uint8ClampedArray(s * s * 4);
@@ -507,28 +665,33 @@ function makeGroundLayer(seed, kind, anisotropy) {
       hgt[i] = hn;
       const cav = 0.72 + 0.28 * hn; // cavity darkening baked into albedo
       px[j] = _col.r * cav * 255; px[j + 1] = _col.g * cav * 255; px[j + 2] = _col.b * cav * 255;
-      px[j + 3] = clamp(rough, 0.03, 1) * 255; // roughness packed in albedo alpha
+      px[j + 3] = clamp(rough * roughMul, 0.03, 1) * 255; // roughness packed in albedo alpha
     }
   }
+  applyTone(px, tone);
   return {
     albedo: canvasToTexture(px, s, { srgb: true, anisotropy }),
     normal: normalFromHeight(hgt, s, nStrength, anisotropy),
   };
 }
 
-// R = road core, G = wheel ruts, B = marsh wetness, A = village worn ground
-function makeMaskTexture(seedNoi) {
-  const s = 1024;
+// R = road core, G = wheel ruts, B = marsh wetness, A = village worn ground.
+// 2 texels/m: the rut lanes and road borders actually resolve instead of
+// smearing into 1-texel airbrush mush.
+function makeMaskTexture(seedNoi, layout) {
+  const _VILLAGE = layout.village;
+  const _MARSHES = [...layout.marshes, ...layout.lakes]; // lakes share the wet/ice channel
+  const s = 2048, T = s / MAP_SIZE;
   const dist = new Float32Array(s * s).fill(1e9);
-  for (const nodes of _LAYOUT.roads) {
+  for (const nodes of layout.roads) {
     for (let sg = 0; sg < nodes.length - 1; sg++) {
       const [ax, az] = nodes[sg], [bx, bz] = nodes[sg + 1];
-      const x0 = clamp(Math.floor(Math.min(ax, bx) - 14 + HALF), 0, s - 1);
-      const x1 = clamp(Math.ceil(Math.max(ax, bx) + 14 + HALF), 0, s - 1);
-      const z0 = clamp(Math.floor(Math.min(az, bz) - 14 + HALF), 0, s - 1);
-      const z1 = clamp(Math.ceil(Math.max(az, bz) + 14 + HALF), 0, s - 1);
+      const x0 = clamp(Math.floor((Math.min(ax, bx) - 14 + HALF) * T), 0, s - 1);
+      const x1 = clamp(Math.ceil((Math.max(ax, bx) + 14 + HALF) * T), 0, s - 1);
+      const z0 = clamp(Math.floor((Math.min(az, bz) - 14 + HALF) * T), 0, s - 1);
+      const z1 = clamp(Math.ceil((Math.max(az, bz) + 14 + HALF) * T), 0, s - 1);
       for (let tz = z0; tz <= z1; tz++) for (let tx = x0; tx <= x1; tx++) {
-        const { d } = segDist(tx - HALF, tz - HALF, ax, az, bx, bz);
+        const { d } = segDist(tx / T - HALF, tz / T - HALF, ax, az, bx, bz);
         const i = tz * s + tx;
         if (d < dist[i]) dist[i] = d;
       }
@@ -536,26 +699,32 @@ function makeMaskTexture(seedNoi) {
   }
   const px = new Uint8ClampedArray(s * s * 4);
   for (let tz = 0; tz < s; tz++) {
-    const z = tz - HALF;
+    const z = tz / T - HALF;
     for (let tx = 0; tx < s; tx++) {
-      const x = tx - HALF, i = tz * s + tx, j = i * 4;
+      const x = tx / T - HALF, i = tz * s + tx, j = i * 4;
       const d = dist[i];
       if (d < 13) {
         // small wobble only: keeps edges crisp instead of smearing into blobs
         const wob = seedNoi.noise(x * 0.055, z * 0.055) * 0.8 + seedNoi.noise(x * 0.21, z * 0.21) * 0.35;
-        let core = 1 - smoothstep(3.2 + wob, 4.6 + wob, d);
+        let core = 1 - smoothstep(3.3 + wob, 4.4 + wob, d);
         // center grass strip between the wheel tracks
-        core *= 0.40 + 0.60 * smoothstep(0.25, 0.95, d + wob * 0.12);
+        core *= 0.34 + 0.66 * smoothstep(0.25, 0.95, d + wob * 0.12);
         px[j] = core * 255;
-        const rut = Math.exp(-Math.pow((d - 1.55) / 0.62, 2));
+        // twin compacted wheel ruts, gaussian profile at +-1.55 m
+        const rut = Math.exp(-Math.pow((d - 1.55) / 0.55, 2));
         px[j + 1] = rut * core * 245;
       }
       let marsh = 0;
       for (const m of _MARSHES) {
         const md = Math.hypot(x - m.x, z - m.z);
         if (md < m.r + 24) {
-          const re = m.r * (1 + 0.18 * seedNoi.noise(x * 0.02 + 7, z * 0.02 - 3));
-          marsh = Math.max(marsh, 1 - smoothstep(re * 0.45, re, md));
+          if (m.depth !== undefined) { // lake: solid sheet with a crisp shoreline
+            const re = m.r * (1 + 0.03 * seedNoi.noise(x * 0.03 + 7, z * 0.03 - 3));
+            marsh = Math.max(marsh, 1 - smoothstep(re * 0.9, re, md));
+          } else {
+            const re = m.r * (1 + 0.18 * seedNoi.noise(x * 0.02 + 7, z * 0.02 - 3));
+            marsh = Math.max(marsh, 1 - smoothstep(re * 0.45, re, md));
+          }
         }
       }
       px[j + 2] = marsh * 255;
@@ -602,37 +771,53 @@ varying vec3 vWNormal;
 uniform sampler2D uAlbG, uAlbD, uAlbR, uAlbM;
 uniform sampler2D uNrmG, uNrmD, uNrmR, uNrmM;
 uniform sampler2D uMask, uNoise;
+uniform vec3 uTintA, uTintB, uTintC, uRoadTint;
+uniform float uMarshGloss;
 vec3 gSplatAlbedo; float gSplatRough; vec3 gSplatNrm;
-vec4 splatSamp(sampler2D t, vec2 uv, float df) {
-  return mix(texture2D(t, uv), texture2D(t, uv * 0.2317 + vec2(0.5)), df);
+vec4 splatSamp(sampler2D t, vec2 uv, float df, float mb) {
+  return mix(texture2D(t, uv, mb), texture2D(t, uv * 0.2317 + vec2(0.5), mb), df);
 }
 void splatCompute() {
   vec3 wp = vWPos;
   vec3 wn = normalize(vWNormal);
-  vec4 mk = texture2D(uMask, (wp.xz + 512.0) * (1.0 / 1024.0));
+  vec2 mUV = (wp.xz + 512.0) * (1.0 / 1024.0);
+  vec4 mk = texture2D(uMask, mUV);
   float camDist = distance(wp, cameraPosition);
   float df = smoothstep(45.0, 160.0, camDist);
+  float farM = smoothstep(90.0, 330.0, camDist);
+  // detail fade: positive mip bias at range kills the single-frequency
+  // speckle shimmer that anisotropic filtering keeps resolving
+  float mipB = farM * 2.5;
   vec2 uv = wp.xz;
   float n1 = texture2D(uNoise, uv * 0.0117).r;
+  float n1h = texture2D(uNoise, uv * 0.047).r; // high-freq edge breaker
   float n2 = texture2D(uNoise, uv * 0.0031 + vec2(0.41, 0.13)).g;
   float slope = 1.0 - clamp(wn.y, 0.0, 1.0);
+  // road masks: crisp noise-broken compacted core + wider soft dirt shoulder
+  float roadCore = smoothstep(0.38, 0.70, mk.r + (n1h - 0.5) * 0.30);
+  float shoulder = smoothstep(0.04, 0.60, mk.r + (n1h - 0.5) * 0.20);
+  float rut = mk.g * (0.62 + 0.38 * n1h);
   // dirt patches: noise-broken threshold => small worn patches with ragged
   // edges instead of giant airbrushed smears
   float worn = smoothstep(0.62, 0.78, n2 + (n1 - 0.5) * 0.45);
-  float fD = clamp(max(worn * 0.62, max(mk.r, mk.a * (0.35 + 0.65 * n1))), 0.0, 1.0);
+  float fD = clamp(max(worn * 0.62, max(shoulder, mk.a * (0.35 + 0.65 * n1))), 0.0, 1.0);
   float fM = mk.b;
   float fR = smoothstep(0.095, 0.235, slope + (n1 - 0.5) * 0.07);
-  vec4 a = splatSamp(uAlbG, uv * 0.240, df);
-  vec4 n = splatSamp(uNrmG, uv * 0.240, df);
-  a = mix(a, splatSamp(uAlbD, uv * 0.210, df), fD); n = mix(n, splatSamp(uNrmD, uv * 0.210, df), fD);
-  a = mix(a, splatSamp(uAlbM, uv * 0.190, df), fM); n = mix(n, splatSamp(uNrmM, uv * 0.190, df), fM);
-  a = mix(a, splatSamp(uAlbR, uv * 0.155, df), fR); n = mix(n, splatSamp(uNrmR, uv * 0.155, df), fR);
-  // meadow macro variation: 15-80 m warm/cool patches so open fields never
-  // read as one continuous green wash at any distance
+  vec4 a = splatSamp(uAlbG, uv * 0.240, df, mipB);
+  vec4 n = splatSamp(uNrmG, uv * 0.240, df, mipB);
+  a = mix(a, splatSamp(uAlbD, uv * 0.210, df, mipB), fD); n = mix(n, splatSamp(uNrmD, uv * 0.210, df, mipB), fD);
+  a = mix(a, splatSamp(uAlbM, uv * 0.190, df, mipB), fM); n = mix(n, splatSamp(uNrmM, uv * 0.190, df, mipB), fM);
+  a = mix(a, splatSamp(uAlbR, uv * 0.155, df, mipB), fR); n = mix(n, splatSamp(uNrmR, uv * 0.155, df, mipB), fR);
+  // meadow macro variation, three scales (~80 m, ~230 m, ~600 m): dry-straw
+  // patches, dark clover, and broad field-to-field tone shifts so open ground
+  // never reads as one continuous green wash at any distance
   float meadowA = texture2D(uNoise, uv * 0.0121 + vec2(0.63, 0.29)).r;
   float meadowB = texture2D(uNoise, uv * 0.0043 + vec2(0.11, 0.87)).g;
-  a.rgb = mix(a.rgb, a.rgb * vec3(1.14, 1.07, 0.78), smoothstep(0.56, 0.85, meadowA) * 0.55 * (1.0 - fD));
-  a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.90, 0.74), smoothstep(0.58, 0.85, 1.0 - meadowB) * 0.45 * (1.0 - fD));
+  float meadowC = texture2D(uNoise, uv * 0.0016 + vec2(0.37, 0.55)).r;
+  a.rgb = mix(a.rgb, a.rgb * uTintA, smoothstep(0.54, 0.85, meadowA) * 0.6 * (1.0 - fD));
+  a.rgb = mix(a.rgb, a.rgb * uTintB, smoothstep(0.58, 0.85, 1.0 - meadowB) * 0.5 * (1.0 - fD));
+  a.rgb = mix(a.rgb, a.rgb * uTintC, smoothstep(0.52, 0.9, meadowC) * 0.45 * (1.0 - fD));
+  a.rgb *= 0.93 + meadowC * 0.14;
   // 0-48 m detail pass: layered micro normals + albedo speckle + road gravel
   float dNear = 1.0 - smoothstep(18.0, 48.0, camDist);
   if (dNear > 0.001) {
@@ -641,7 +826,7 @@ void splatCompute() {
     float micro = texture2D(uNoise, uv * 0.171).r;
     a.rgb *= 1.0 + (micro - 0.5) * 0.30 * dNear;
     vec4 grav = texture2D(uAlbR, uv * 0.83);
-    a.rgb = mix(a.rgb, grav.rgb * vec3(1.02, 0.96, 0.86), mk.r * 0.38 * dNear);
+    a.rgb = mix(a.rgb, grav.rgb * vec3(1.02, 0.96, 0.86), roadCore * 0.42 * dNear);
     // sub-10 m second octave: clod/blade relief right under the camera
     float dNear2 = 1.0 - smoothstep(5.0, 15.0, camDist);
     if (dNear2 > 0.001) {
@@ -649,19 +834,28 @@ void splatCompute() {
       n.xy += dn2.xy * 0.6 * dNear2;
     }
   }
-  // compacted earth road: modest lightening only — no bleached-white wash
-  a.rgb = mix(a.rgb, a.rgb * vec3(1.18, 1.11, 0.97) + vec3(0.016, 0.012, 0.007), mk.r * 0.85);
-  a.rgb *= 1.0 - mk.g * 0.52; // twin wheel ruts, clearly darker
-  n.xy += vec2(0.0, 0.35) * mk.g * dNear; // faint rut relief up close
+  // compacted earth road: two-track profile — lightened compacted core, dark
+  // wheel ruts readable at every distance, damp darkened borders
+  a.rgb = mix(a.rgb, a.rgb * uRoadTint + vec3(0.018, 0.013, 0.007), roadCore * 0.9);
+  a.rgb *= 1.0 - rut * 0.55;
+  float edgeBand = shoulder * (1.0 - roadCore);
+  a.rgb *= 1.0 - edgeBand * 0.15;
+  // rut relief from the mask G gradient (visible well past the near ring)
+  {
+    float texel = 1.4 / 1024.0;
+    vec2 rutG;
+    rutG.x = texture2D(uMask, mUV + vec2(texel, 0.0)).g - texture2D(uMask, mUV - vec2(texel, 0.0)).g;
+    rutG.y = texture2D(uMask, mUV + vec2(0.0, texel)).g - texture2D(uMask, mUV - vec2(0.0, texel)).g;
+    n.xy += rutG * 0.9 * (1.0 - df);
+  }
   a.rgb *= 0.90 + n2 * 0.20;
   // distant mottling: forest-floor/heather patches keep far hills from reading
   // as one flat green wash
-  float farM = smoothstep(100.0, 320.0, camDist);
   float mot = texture2D(uNoise, uv * 0.0022 + vec2(0.17, 0.71)).g;
-  a.rgb *= 1.0 - farM * 0.30 * smoothstep(0.48, 0.82, mot);
-  a.rgb *= 1.0 + farM * 0.12 * smoothstep(0.55, 0.85, n1) * (1.0 - smoothstep(0.48, 0.82, mot));
+  a.rgb *= 1.0 - farM * 0.32 * smoothstep(0.48, 0.82, mot);
+  a.rgb *= 1.0 + farM * 0.13 * smoothstep(0.55, 0.85, n1) * (1.0 - smoothstep(0.48, 0.82, mot));
   gSplatAlbedo = a.rgb;
-  gSplatRough = clamp(a.a * (1.0 - mk.r * 0.12) * (1.0 + mk.g * 0.1), 0.05, 1.0);
+  gSplatRough = clamp(a.a * (1.0 - roadCore * 0.12) * (1.0 + rut * 0.1) * (1.0 - fM * uMarshGloss), 0.05, 1.0);
   gSplatNrm = n.xyz * 2.0 - 1.0;
 }
 `;
@@ -675,17 +869,22 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
 }
 `;
 
-function createSplatMaterial(engineCtx) {
+function createSplatMaterial(engineCtx, layout, splatCfg) {
+  const S = splatCfg || {};
   const aniso = engineCtx.anisotropy ?? 4;
   const layers = {
-    G: makeGrassLayer(3000, aniso),
-    D: makeDirtLayer(3001, aniso),
-    R: makeGroundLayer(3002, 'rock', aniso),
-    M: makeGroundLayer(3003, 'mud', aniso),
+    G: makeGrassLayer(3000, aniso, S.grassTone || null),
+    D: makeDirtLayer(3001, aniso, S.dirtTone || null),
+    R: makeGroundLayer(3002, 'rock', aniso, S.rockTone || null),
+    M: makeGroundLayer(3003, 'mud', aniso, S.mudTone || null, S.mudRough ?? 1),
   };
   const maskNoi = new SimplexNoise({ random: mulberry32(3010) });
-  const mask = makeMaskTexture(maskNoi);
+  const mask = makeMaskTexture(maskNoi, layout);
   const noiseTex = makeShaderNoiseTexture(3011);
+  const tintA = S.tintA || [1.16, 1.08, 0.76];
+  const tintB = S.tintB || [0.78, 0.90, 0.72];
+  const tintC = S.tintC || [1.10, 1.04, 0.84];
+  const roadTint = S.roadTint || [1.20, 1.12, 0.96];
 
   const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0, metalness: 0.0 });
   const splatHook = (shader) => {
@@ -699,6 +898,11 @@ function createSplatMaterial(engineCtx) {
     shader.uniforms.uNrmM = { value: layers.M.normal };
     shader.uniforms.uMask = { value: mask };
     shader.uniforms.uNoise = { value: noiseTex };
+    shader.uniforms.uTintA = { value: new THREE.Vector3(...tintA) };
+    shader.uniforms.uTintB = { value: new THREE.Vector3(...tintB) };
+    shader.uniforms.uTintC = { value: new THREE.Vector3(...tintC) };
+    shader.uniforms.uRoadTint = { value: new THREE.Vector3(...roadTint) };
+    shader.uniforms.uMarshGloss = { value: S.marshGloss ?? 0 };
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
       '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNormal;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <worldpos_vertex>',
@@ -713,7 +917,7 @@ function createSplatMaterial(engineCtx) {
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v3';
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v5';
   return mat;
 }
 
@@ -788,12 +992,13 @@ function buildChunkGeometry(hf, cx0, cz0, segs) {
  * The returned group exposes `group.userData.updateLOD(camPos)` for map.js.
  * @param {object} heightField HeightField from createHeightField
  * @param {object} engineCtx EngineCtx (ARCHITECTURE §2.8)
+ * @param {?object} [cfg=null] map config (uses cfg.splat for the palette)
  * @returns {THREE.Group} terrain chunk group
  */
-export function buildTerrainMeshes(heightField, engineCtx) {
+export function buildTerrainMeshes(heightField, engineCtx, cfg = null) {
   const group = new THREE.Group();
   group.name = 'terrain';
-  const mat = createSplatMaterial(engineCtx);
+  const mat = createSplatMaterial(engineCtx, heightField._layout, cfg ? cfg.splat : null);
   const chunks = [];
   for (let cz = 0; cz < CHUNKS; cz++) for (let cx = 0; cx < CHUNKS; cx++) {
     const cx0 = -HALF + cx * CHUNK_SIZE, cz0 = -HALF + cz * CHUNK_SIZE;

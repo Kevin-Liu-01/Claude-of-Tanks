@@ -1,10 +1,13 @@
 // src/world/map.js — composes terrain meshes + vegetation + props into the World.
 // Contract: docs/ARCHITECTURE.md §2.7 (World shape), §3.2 (layout rules).
+// Which battlefield gets built is driven by a map config (src/world/maps/*):
+// createMap(engineCtx, { mapId }) — 'verdant' | 'desert' | 'winter' | 'urban'.
 
 import * as THREE from 'three';
-import { createHeightField, buildTerrainMeshes, _LAYOUT } from './terrain.js';
+import { createHeightField, buildTerrainMeshes } from './terrain.js';
 import { createVegetation } from './vegetation.js';
 import { createProps } from './props.js';
+import { getMapConfig } from './maps/index.js';
 
 const _pt = new THREE.Vector3();
 const _bisA = new THREE.Vector3();
@@ -39,25 +42,27 @@ function rayAABB(origin, dir, aabb, maxDist, outNormal) {
 }
 
 /**
- * Build the full battlefield world and add it to the scene.
+ * Build the full battlefield world for a map config and add it to the scene.
  * @param {object} engineCtx EngineCtx (ARCHITECTURE §2.8)
- * @param {{seed?:number}} [opts] world options
- * @returns {object} World (ARCHITECTURE §2.7)
+ * @param {{mapId?:string, seed?:number}} [opts] world options
+ * @returns {object} World (ARCHITECTURE §2.7) + {mapId, config}
  */
-export function createMap(engineCtx, { seed = 1337 } = {}) {
-  const heightField = createHeightField(seed);
-  const terrain = buildTerrainMeshes(heightField, engineCtx);
-  const vegetation = createVegetation(heightField, engineCtx, 2001);
-  const props = createProps(heightField, engineCtx, 2002);
+export function createMap(engineCtx, { mapId = 'verdant', seed = 1337 } = {}) {
+  const config = getMapConfig(mapId);
+  const heightField = createHeightField(seed, config);
+  const terrain = buildTerrainMeshes(heightField, engineCtx, config);
+  const vegetation = createVegetation(heightField, engineCtx, 2001, config);
+  const props = createProps(heightField, engineCtx, 2002, config);
+  const layout = heightField._layout;
 
   const group = new THREE.Group();
-  group.name = 'world';
+  group.name = 'world-' + config.id;
   group.add(terrain, vegetation.group, props.group);
   engineCtx.scene.add(group);
 
   const obstacles = [...props.obstacles, ...vegetation.treeObstacles];
 
-  const sp = _LAYOUT.spawns;
+  const sp = layout.spawns;
   const spawnPoints = {
     player: {
       pos: [sp.player.x, heightField.getHeightAt(sp.player.x, sp.player.z), sp.player.z],
@@ -127,6 +132,8 @@ export function createMap(engineCtx, { seed = 1337 } = {}) {
   }
 
   return {
+    mapId: config.id,
+    config,
     heightField,
     raycast,
     /** @returns {Array<{min:number[],max:number[]}>} static obstacle AABBs */
@@ -134,10 +141,10 @@ export function createMap(engineCtx, { seed = 1337 } = {}) {
     spawnPoints,
     /** @returns {{roads:Array, buildings:Array, treeClusters:Array, waterOrSoft:Array}} minimap features */
     getMinimapFeatures: () => ({
-      roads: _LAYOUT.roads.map((nodes) => nodes.map(([x, z]) => [x, z])),
+      roads: layout.roads.map((nodes) => nodes.map(([x, z]) => [x, z])),
       buildings: props.features.buildings.map((b) => ({ ...b })),
       treeClusters: vegetation._clusters.map((c) => ({ x: c.x, z: c.z, r: c.r })),
-      waterOrSoft: _LAYOUT.marshes.map((m) => ({ x: m.x, z: m.z, r: m.r })),
+      waterOrSoft: [...layout.marshes, ...layout.lakes].map((m) => ({ x: m.x, z: m.z, r: m.r })),
     }),
     /**
      * Per-frame world update: terrain LOD swap + vegetation wind/density.
@@ -150,6 +157,12 @@ export function createMap(engineCtx, { seed = 1337 } = {}) {
     },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
     setWindTime(t) { vegetation.setWindTime(t); },
+    /**
+     * Sniper near-grass suppression passthrough (see vegetation.setSniperFade).
+     * @param {number} f target fade 0..1
+     * @param {boolean} [immediate=false] snap instead of easing
+     */
+    setSniperFade(f, immediate = false) { vegetation.setSniperFade(f, immediate); },
     group,
   };
 }

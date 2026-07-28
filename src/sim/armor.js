@@ -292,6 +292,9 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
         t,
         kind: 'module',
         module: box.module,
+        // Damageable without hull penetration (armor doc §12: viewports are
+        // external). Explicit box.external overrides the by-name default.
+        external: box.external !== undefined ? !!box.external : box.module === 'optics',
         point: _pt.copy(_fromL[fr]).addScaledVector(_dirL[fr], t).clone().applyMatrix4(_forward[fr]),
       });
     }
@@ -318,6 +321,11 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
         t,
         kind: 'module',
         module: 'gun',
+        external: true,
+        // The barrel doubles as spaced armor (armor doc §4/§7): damage.js
+        // charges a radius-scaled screen thickness against crossing shells.
+        barrel: true,
+        barrelRadiusM: armorModel.gunBarrel.radiusM,
         point: _pt
           .copy(_fromL[FR_BARREL])
           .addScaledVector(_dirL[FR_BARREL], t)
@@ -366,4 +374,60 @@ export function queryAimArmor(from, dir, maxDist, pose, armorModel, eraSpent = E
     distM: first.t * maxDist,
     layers,
   };
+}
+
+/**
+ * Enumerate every module/crew box of an armor model with its world-space
+ * center. The HE blast sweep (damage.js) distance-tests these against the
+ * blast sphere so boxes OFF the flight/burst ray — tracks beside a ground
+ * burst, the rear engine on a turret hit — are still reachable, per shells
+ * doc §6 / armor doc §8 step 3. Order is fixed for RNG determinism: modules
+ * in model order, then crew in model order.
+ *
+ * `external` marks boxes damageable at full blast odds: explicit
+ * box.external wins; by default optics and tracks count as external here
+ * (armor doc §12 — for penetration rays the track PLATE's moduleLink already
+ * provides the external track path, so traceTank keeps track boxes internal).
+ *
+ * @param {object} pose Pose from tankPoseFromState
+ * @param {object} armorModel ArmorModel
+ * @returns {Array<{kind: ('module'|'crew'), name: string, external: boolean, point: Vector3}>}
+ */
+export function blastTargets(pose, armorModel) {
+  buildFrames(pose, armorModel);
+  const out = [];
+  if (armorModel.modules) {
+    for (const box of armorModel.modules) {
+      const m = box.turretLocal ? _turretM : _hullM;
+      out.push({
+        kind: 'module',
+        name: box.module,
+        external:
+          box.external !== undefined
+            ? !!box.external
+            : box.module === 'optics' || box.module === 'trackL' || box.module === 'trackR',
+        point: new Vector3(
+          (box.min[0] + box.max[0]) * 0.5,
+          (box.min[1] + box.max[1]) * 0.5,
+          (box.min[2] + box.max[2]) * 0.5
+        ).applyMatrix4(m),
+      });
+    }
+  }
+  if (armorModel.crew) {
+    for (const box of armorModel.crew) {
+      const m = box.turretLocal ? _turretM : _hullM;
+      out.push({
+        kind: 'crew',
+        name: box.crew,
+        external: false,
+        point: new Vector3(
+          (box.min[0] + box.max[0]) * 0.5,
+          (box.min[1] + box.max[1]) * 0.5,
+          (box.min[2] + box.max[2]) * 0.5
+        ).applyMatrix4(m),
+      });
+    }
+  }
+  return out;
 }

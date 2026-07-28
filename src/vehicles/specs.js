@@ -132,12 +132,12 @@ function armorTiger() {
     boundingRadiusM: 4.55,
     turretPivot: [0, 1.96, 0.25],
     gunPivot: [0, 0.40, 0.55],
-    gunBarrel: { lengthM: 4.93, radiusM: 0.085 },
+    gunBarrel: { lengthM: 4.5, radiusM: 0.085 },
     hullPlates: [
       fr('lower_front', 100, 1.5, floor, 2.92, 1.0, 3.16),             // 24 deg
       fr('driver_plate', 100, 1.5, 1.0, 3.16, roofY, 3.01),            // ~9 deg
-      sR('hull_side_upper_R', 80, hw, trkTop, hw, roofY, -3.16, 3.01),
-      sL('hull_side_upper_L', 80, hw, trkTop, hw, roofY, -3.16, 3.01),
+      sR('hull_side_upper_R', 80, hw, 1.05, hw, roofY, -3.16, 3.01),
+      sL('hull_side_upper_L', 80, hw, 1.05, hw, roofY, -3.16, 3.01),
       sR('hull_side_lower_R', 60, inW, floor, inW, trkTop, -3.05, 2.95),
       sL('hull_side_lower_L', 60, inW, floor, inW, trkTop, -3.05, 2.95),
       sR('track_R', 20, 1.49, 0.15, 1.49, trkTop, -3.16, 3.1, { kind: 'external', moduleLink: 'trackR' }),
@@ -146,12 +146,12 @@ function armorTiger() {
       rf('hull_roof', 30, 1.7, roofY, -3.16, 3.01),
     ],
     turretPlates: [
-      fr('turret_front', 100, 1.05, 0.02, 0.64, 0.78, 0.64),           // vertical slab
-      sR('turret_side_R', 80, 1.16, 0.02, 1.16, 0.78, -1.0, 0.62),
-      sL('turret_side_L', 80, 1.16, 0.02, 1.16, 0.78, -1.0, 0.62),
-      rr('turret_rear', 80, 1.1, 0.02, -1.55, 0.78, -1.62),
-      rf('turret_roof', 30, 1.16, 0.8, -1.6, 0.62),
-      par('mantlet', 120, [-0.95, 0.06, 0.9], [0.95, 0.06, 0.9], [-0.95, 0.74, 0.88],
+      fr('turret_front', 100, 1.15, 0.02, 0.64, 0.80, 0.64),           // vertical slab
+      sR('turret_side_R', 80, 1.26, 0.02, 1.26, 0.80, -1.1, 0.62),
+      sL('turret_side_L', 80, 1.26, 0.02, 1.26, 0.80, -1.1, 0.62),
+      rr('turret_rear', 80, 1.2, 0.02, -1.72, 0.80, -1.78),
+      rf('turret_roof', 30, 1.26, 0.84, -1.78, 0.62),
+      par('mantlet', 120, [-1.05, 0.06, 0.9], [1.05, 0.06, 0.9], [-1.05, 0.74, 0.88],
         { kind: 'spaced', gunFollow: true }),
     ],
     modules: [
@@ -339,10 +339,10 @@ function armorPanther() {
 // M1A2 Abrams SEPv3 (composite: keMm/ceMm are RHAe estimates; physicalMm for geometry)
 // ---------------------------------------------------------------------------
 function armorM1A2() {
-  const trkTop = 1.05, floor = 0.45, roofY = 1.55;
+  const trkTop = 1.05, floor = 0.45, roofY = 1.47;
   return {
     boundingRadiusM: 5.2,
-    turretPivot: [0, 1.55, -0.2],
+    turretPivot: [0, 1.47, -0.2],
     gunPivot: [0, 0.30, 0.75],
     gunBarrel: { lengthM: 5.28, radiusM: 0.11 },
     hullPlates: [
@@ -352,30 +352,30 @@ function armorM1A2() {
       sL('hull_side_upper_L', 40, 1.83, trkTop, 1.83, roofY, -3.9, 1.6),
       sR('hull_side_lower_R', 40, 1.19, floor, 1.19, trkTop, -3.8, 3.5),
       sL('hull_side_lower_L', 40, 1.19, floor, 1.19, trkTop, -3.8, 3.5),
-      sR('skirt_front_R', 70, 1.86, 0.5, 1.86, 1.1, 0.9, 3.9, { kind: 'spaced', keMm: 150, ceMm: 450 }),
-      sL('skirt_front_L', 70, 1.86, 0.5, 1.86, 1.1, 0.9, 3.9, { kind: 'spaced', keMm: 150, ceMm: 450 }),
-      sR('skirt_rear_R', 10, 1.86, 0.5, 1.86, 1.1, -3.9, 0.9, { kind: 'spaced' }),
-      sL('skirt_rear_L', 10, 1.86, 0.5, 1.86, 1.1, -3.9, 0.9, { kind: 'spaced' }),
+      sR('skirt_front_R', 70, 1.86, 0.6, 1.86, 1.07, 0.9, 3.9, { kind: 'spaced', keMm: 150, ceMm: 450 }),
+      sL('skirt_front_L', 70, 1.86, 0.6, 1.86, 1.07, 0.9, 3.9, { kind: 'spaced', keMm: 150, ceMm: 450 }),
+      sR('skirt_rear_R', 10, 1.86, 0.6, 1.86, 1.07, -3.9, 0.9, { kind: 'spaced' }),
+      sL('skirt_rear_L', 10, 1.86, 0.6, 1.86, 1.07, -3.9, 0.9, { kind: 'spaced' }),
       sR('track_R', 25, 1.51, 0.15, 1.51, trkTop, -3.96, 3.96, { kind: 'external', moduleLink: 'trackR' }),
       sL('track_L', 25, 1.51, 0.15, 1.51, trkTop, -3.96, 3.96, { kind: 'external', moduleLink: 'trackL' }),
       rr('hull_rear', 30, 1.6, floor, -3.96, roofY, -3.96),
       rf('hull_roof', 40, 1.6, roofY, -3.96, 1.60),
     ],
     turretPlates: [
-      chR('turret_cheek_R', 800, 0.24, 1.12, 1.48, 0.24, 0.0, 0.85, 0.13, 0, { keMm: 850, ceMm: 1250 }),
-      chL('turret_cheek_L', 800, 0.24, 1.12, 1.48, 0.24, 0.0, 0.85, 0.13, 0, { keMm: 850, ceMm: 1250 }),
+      chR('turret_cheek_R', 800, 0.24, 1.12, 1.66, 0.26, 0.0, 0.85, 0.13, 0, { keMm: 850, ceMm: 1250 }),
+      chL('turret_cheek_L', 800, 0.24, 1.12, 1.66, 0.26, 0.0, 0.85, 0.13, 0, { keMm: 850, ceMm: 1250 }),
       par('mantlet', 300, [-0.28, 0.05, 1.12], [0.28, 0.05, 1.12], [-0.28, 0.52, 1.09],
         { keMm: 350, ceMm: 450, gunFollow: true }),
-      sR('turret_side_R', 350, 1.48, 0.0, 1.48, 0.85, -2.3, 0.16, { keMm: 380, ceMm: 500 }),
-      sL('turret_side_L', 350, 1.48, 0.0, 1.48, 0.85, -2.3, 0.16, { keMm: 380, ceMm: 500 }),
-      rr('turret_rear', 40, 1.45, 0.0, -2.3, 0.85, -2.3),              // ammo blow-off zone
-      rf('turret_roof', 40, 1.48, 0.86, -2.3, 0.6),
-      rr('bustle_rack', 10, 1.4, 0.15, -2.68, 0.75, -2.68, { kind: 'external' }),
+      sR('turret_side_R', 350, 1.66, 0.0, 1.66, 0.85, -2.62, 0.12, { keMm: 380, ceMm: 500 }),
+      sL('turret_side_L', 350, 1.66, 0.0, 1.66, 0.85, -2.62, 0.12, { keMm: 380, ceMm: 500 }),
+      rr('turret_rear', 40, 1.62, 0.0, -2.62, 0.85, -2.62),            // ammo blow-off zone
+      rf('turret_roof', 40, 1.62, 0.86, -2.62, 0.6),
+      rr('bustle_rack', 10, 1.58, 0.15, -3.34, 0.75, -3.34, { kind: 'external' }),
     ],
     modules: [
       mbox('engine', [-1.0, 0.5, -3.85], [1.0, 1.5, -2.0]),
       mbox('fuelTank', [-1.15, 0.5, 2.4], [-0.45, 1.4, 3.6]),          // front-left fuel cell
-      mbox('ammoRack', [-0.85, 0.0, -2.25], [0.85, 0.75, -0.9], true),// turret bustle
+      mbox('ammoRack', [-0.85, 0.0, -2.55], [0.85, 0.75, -0.9], true),// turret bustle
       mbox('turretRing', [-0.95, 1.37, -1.3], [0.95, 1.57, 0.9]),
       mbox('radio', [-0.6, 0.1, -0.85], [-0.1, 0.5, -0.35], true),
       mbox('optics', [0.35, 0.82, 0.35], [0.8, 1.1, 0.85], true),      // GPS doghouse
@@ -653,7 +653,10 @@ export const TANK_SPECS = {
   m1a2: {
     id: 'm1a2', name: 'M1A2 Abrams SEPv3', nation: 'USA', era: 'modern', class: 'mbt',
     hp: 2600,
-    enginePowerHp: 1500, weightTons: 66.8, topSpeedKmh: 67, reverseSpeedKmh: 40,
+    // Real SEPv3 reverses at ~40 km/h, but that reads arcade-y next to the
+    // 5-8 km/h WW2 roster and sits far outside the WoT-feel envelope
+    // (10-20 km/h reverse across all classes) — cap modern MBTs at 25.
+    enginePowerHp: 1500, weightTons: 66.8, topSpeedKmh: 67, reverseSpeedKmh: 25,
     hullTraverseDegS: 44,
     terrainResistance: { hard: 0.7, medium: 0.8, soft: 1.5 },
     pivotStyle: 'neutral',
@@ -671,7 +674,7 @@ export const TANK_SPECS = {
     armor: armorM1A2(),
     visual: {
       scheme: 'nato', base: '#49543c', weather: '#525f45',
-      patches: ['#23261f', '#553d2a'],
+      patches: ['#23261f', '#4a3a2c'],
       marking: 'number', number: 'B-24', trackWidthM: 0.635,
       camoScale: 0.5,
     },
@@ -706,7 +709,8 @@ export const TANK_SPECS = {
   leo2a7: {
     id: 'leo2a7', name: 'Leopard 2A7', nation: 'Germany', era: 'modern', class: 'mbt',
     hp: 2500,
-    enginePowerHp: 1500, weightTons: 67.5, topSpeedKmh: 68, reverseSpeedKmh: 31,
+    // 2A7 reverses at ~31 km/h IRL — capped at 25 with the M1A2 (see above).
+    enginePowerHp: 1500, weightTons: 67.5, topSpeedKmh: 68, reverseSpeedKmh: 25,
     hullTraverseDegS: 44,
     terrainResistance: { hard: 0.7, medium: 0.8, soft: 1.5 },
     pivotStyle: 'neutral',
@@ -724,7 +728,7 @@ export const TANK_SPECS = {
     armor: armorLeo2A7(),
     visual: {
       scheme: 'nato', base: '#49543c', weather: '#515e44',
-      patches: ['#23261f', '#553d2a'],
+      patches: ['#23261f', '#4a3a2c'],
       marking: 'cross', number: '124', trackWidthM: 0.635,
       camoScale: 0.5,
     },
@@ -741,6 +745,28 @@ export const TANK_SPECS = {
     { kind: 'era', era: l.era });
   t90.hullPlates.splice(0, 1, mk('glacis_era_L', -1.5, -0.02), mk('glacis_era_R', 0.02, 1.5));
 }
+
+// ---------------------------------------------------------------------------
+// Visual source of truth per tank: 'procedural' | 'glb'.
+// 'glb' additionally needs { glb: { path, yawOffset?, turretNode?, gunNode? } }
+// (see src/vehicles/modelLoader.js). Asset-scout verdict 2026-07: no
+// permissively-licensed downloadable model of any of the 8 real tanks passed
+// the bar (recognizable as the specific vehicle + articulable turret node) on
+// the allowed sources — poly.pizza carries only stylized generic tanks (all
+// single fused meshes), opengameart's Tiger I / T-34-85 / Abrams are .blend
+// files, kenney.nl has no realistic tanks, and GitHub hits were ripped
+// World-of-Tanks assets (forbidden). The procedural HD models win everywhere.
+// ---------------------------------------------------------------------------
+export const MODEL_SOURCE = {
+  m4a3e8: { source: 'procedural' },
+  tiger1: { source: 'procedural' },
+  t34_85: { source: 'procedural' },
+  is2: { source: 'procedural' },
+  panther_g: { source: 'procedural' },
+  m1a2: { source: 'procedural' },
+  t90m: { source: 'procedural' },
+  leo2a7: { source: 'procedural' },
+};
 
 /**
  * Look up a tank spec by id.

@@ -482,9 +482,9 @@ function mkShell(shellSpec, distM = 100) {
   const spec = mkSpec({ armor: armorModel });
   const entity = { id: 'splash_victim', spec, state: mkState(), combat: createCombatState(spec) };
   const shell = mkShell(OF471, 300);
-  // pen, dmg, then trace order: driver crew (0.05 < 0.1), engine save
-  // (0.1 < 0.45·0.5), moduleDmg, fire.
-  const rng = seqRng([0.5, 0.5, 0.05, 0.1, 0.5, 0.9]);
+  // pen, dmg, then blast-SPHERE order (modules in model order, then crew):
+  // engine save (0.1 < 0.45·0.5), moduleDmg, fire, driver crew (0.05 < 0.1).
+  const rng = seqRng([0.5, 0.5, 0.1, 0.5, 0.9, 0.05]);
   const events = resolveHeBurst(shell, V(0, 1, 4), [entity], null, null, rng);
   assert(events.length === 1, `area splash produces one event (got ${events.length})`);
   assert(events[0].crewHit.includes('driver'), 'area splash injures crew at 10%');
@@ -791,6 +791,206 @@ function mkShell(shellSpec, distM = 100) {
   shell.distM = 2000; // lobbed arc: far beyond the straight-line estimate
   const ev = resolveShellHit(shell, target, [mkPlateHit(0.4, mkPlate({ name: 'thin', physicalMm: 50, keMm: 50, ceMm: 50 }), 0)], rngHalf);
   near(ev.penRollMm, 97, 0.01, 'pen roll priced at the true 2000 m arc (clamped pen1000)');
+}
+
+// ---------------- wrecks are inert cover: absorb, deflect, no damage --------
+// Destroyed hulls stay in the broadphase; shells must NOT pass through them.
+// Wreck hits deal no damage, roll no modules/crew (only the once-per-shot
+// pen+dmg rolls are consumed) and carry targetId null.
+{
+  const mkWreck = () => {
+    const t = mkTarget();
+    t.combat.destroyed = true;
+    t.combat.hp = 0;
+    return t;
+  };
+
+  // Main plate swallows the shell with a clang.
+  const wreckA = mkWreck();
+  const shellA = mkShell(BM60, 100); // 660 mm pen — still absorbed
+  const rngA = seqRng([0.5, 0.5]);
+  const evA = resolveShellHit(shellA, wreckA, [mkPlateHit(0.4, mkPlate({ name: 'dead_front' }), 0)], rngA);
+  assert(evA.kind === 'nonpen', `wreck main plate absorbs the shell (got ${evA.kind})`);
+  assert(evA.targetId === null, 'wreck events carry no targetId');
+  near(evA.damage, 0, 1e-9, 'wreck takes no damage');
+  assert(shellA.dead === true, 'shell dies in the wreck');
+  assert(rngA.consumed() === 2, `wreck hit rolls nothing beyond pen+dmg (consumed ${rngA.consumed()})`);
+  assert(evA.modulesHit.length === 0 && evA.crewHit.length === 0, 'no module/crew rolls on a wreck');
+
+  // Steep plates still deflect off dead hulls.
+  const wreckB = mkWreck();
+  const shellB = mkShell(PZGR39, 300);
+  const evB = resolveShellHit(shellB, wreckB, [mkPlateHit(0.4, mkPlate({ name: 'dead_side', physicalMm: 45, keMm: 45, ceMm: 45 }), 75)], rngHalf);
+  assert(evB.kind === 'ricochet' && evB.targetId === null, `shells ricochet off wrecks (got ${evB.kind})`);
+  assert(shellB.dead === false && shellB.bounces === 1, 'deflected shell keeps flying');
+
+  // A kinetic shell clipping only a wreck's skirt keeps flying minus the screen.
+  const wreckC = mkWreck();
+  const shellC = mkShell(AP100, 100); // 200 mm pen
+  const evC = resolveShellHit(shellC, wreckC, [mkPlateHit(0.2, mkPlate({ name: 'dead_skirt', kind: 'spaced', physicalMm: 10, keMm: 10, ceMm: 10 }), 0, V(0, 1, 2.5))], rngHalf);
+  assert(evC.kind === 'screen_pierce', `wreck skirt graze pierces (got ${evC.kind})`);
+  assert(shellC.dead === false, 'shell survives the wreck skirt');
+  near(shellC.remainingPenMm, 190, 0.01, 'wreck screen still costs its thickness');
+
+  // HE detonates ON the wreck surface and splashes live tanks around it.
+  const armorModel = {
+    boundingRadiusM: 4,
+    turretPivot: [0, 1, 0],
+    gunPivot: [0, 0, 0],
+    gunBarrel: null,
+    hullPlates: [mkPlate({ name: 'side38', physicalMm: 38, keMm: 38, ceMm: 38, verts: [[-1.5, 0, 2], [1.5, 0, 2], [1.5, 2, 2], [-1.5, 2, 2]] })],
+    turretPlates: [],
+    modules: [],
+    crew: [],
+  };
+  const wreckSpec = mkSpec({ armor: armorModel });
+  const wreckD = { id: 'wreck_d', spec: wreckSpec, state: mkState(), combat: createCombatState(wreckSpec) };
+  wreckD.combat.destroyed = true;
+  wreckD.combat.hp = 0;
+  const liveSpec = mkSpec({ armor: armorModel });
+  const live = { id: 'live_bystander', spec: liveSpec, state: mkState({ pos: V(0, 0, -2) }), combat: createCombatState(liveSpec) };
+  const heShell = mkShell(OF471, 300);
+  const wreckHits = traceTank(V(0, 1, 10), V(0, 1, -10), tankPoseFromState(wreckD.state), armorModel);
+  const events = resolveHeBurst(heShell, V(0, 1, 2), [wreckD, live], wreckD, wreckHits, rngHalf);
+  assert(events.length === 2, `wreck detonation + live splash (got ${events.length})`);
+  assert(events[0].kind === 'he_splash' && events[0].targetId === null && events[0].damage === 0, 'burst on the wreck is a zero-damage detonation event');
+  near(events[1].damage, 73.2, 1.0, 'live bystander splashed from the wreck-surface burst');
+  near(wreckD.combat.hp, 0, 1e-9, 'wreck takes no splash damage');
+  assert(heShell.dead === true, 'HE shell consumed on the wreck');
+}
+
+// -------- kinetic screen pierce: skirt-only grazes do not eat the shell -----
+// Armor doc §7: the shell subtracts the screen and continues. Only a 'main'
+// plate (or exhausted pen) may despawn a kinetic round; HEAT jets are spent
+// by the first surface they strike.
+{
+  const target = mkTarget();
+  const shell = mkShell(AP100, 100); // 200 mm pen
+  const rng = seqRng([0.5, 0.5]);
+  const ev = resolveShellHit(shell, target, [mkPlateHit(0.2, mkPlate({ name: 'skirt_edge', kind: 'spaced', physicalMm: 10, keMm: 10, ceMm: 10 }), 0, V(0, 1, 2.5))], rng);
+  assert(ev.kind === 'screen_pierce', `skirt-only KE graze pierces (got ${ev.kind})`);
+  assert(shell.dead === false, 'kinetic shell keeps flying past the skirt');
+  near(shell.remainingPenMm, 190, 0.01, 'screen thickness subtracted from the live shell');
+  near(target.combat.hp, 1000, 1e-9, 'screen pierce deals no hull damage');
+
+  const targetB = mkTarget();
+  const heat = mkShell(M830A1, 100);
+  const evB = resolveShellHit(heat, targetB, [mkPlateHit(0.2, mkPlate({ name: 'skirt_edge', kind: 'spaced', physicalMm: 10, keMm: 10, ceMm: 10 }), 0, V(0, 1, 2.5))], rngHalf);
+  assert(evB.kind === 'spaced_absorb', `HEAT jet is spent on the screen (got ${evB.kind})`);
+  assert(heat.dead === true, 'HEAT does not survive a screen-only crossing');
+}
+
+// ------------- gun barrel acts as spaced armor (armor doc §4/§7) ------------
+{
+  // Barrel graze + marginal plate: 200 − 40 (r=0.08 ⇒ 40 mm) = 160 < 170 ⇒
+  // the barrel screen turns a would-be pen into a nonpen.
+  const target = mkTarget();
+  const shell = mkShell(AP100, 100);
+  const hits = [
+    { t: 0.2, kind: 'module', module: 'gun', external: true, barrel: true, barrelRadiusM: 0.08, point: V(0, 1.9, 3) },
+    mkPlateHit(0.5, mkPlate({ name: 'front170', physicalMm: 170, keMm: 170, ceMm: 170 }), 0, V(0, 1, 2)),
+  ];
+  const ev = resolveShellHit(shell, target, hits, rngHalf); // gun save 0.5 ≥ 0.33 ⇒ no gun dmg
+  assert(ev.kind === 'nonpen', `barrel screen absorbs 40 mm before the plate (got ${ev.kind})`);
+  near(target.combat.hp, 1000, 1e-9, 'no damage through the barrel-screened plate');
+
+  // Barrel-only graze with pen to spare: shell survives (no misleading clang).
+  const targetB = mkTarget();
+  const shellB = mkShell(AP100, 100);
+  const rngB = seqRng([0.5, 0.5, 0.1, 0.5]); // pen, dmg, gun save (hit), gun dmg
+  const evB = resolveShellHit(shellB, targetB, [
+    { t: 0.2, kind: 'module', module: 'gun', external: true, barrel: true, barrelRadiusM: 0.08, point: V(0, 1.9, 3) },
+  ], rngB);
+  assert(evB.kind === 'screen_pierce', `barrel graze pierces, shell flies on (got ${evB.kind})`);
+  assert(shellB.dead === false, 'shell alive after clipping the barrel');
+  near(shellB.remainingPenMm, 160, 0.01, 'barrel costs its screen value');
+  assert(evB.modulesHit.some((m) => m.module === 'gun'), 'gun-damage save still rolls on the graze');
+}
+
+// ----- external module boxes (optics) damageable without penetration --------
+// Armor doc §12: tracks, gun, viewports are external. traceTank flags optics
+// boxes external by default; damage.js honors hit.external.
+{
+  const target = mkTarget();
+  const shell = mkShell(AP100, 100);
+  const hits = [
+    { t: 0.2, kind: 'module', module: 'optics', external: true, point: V(0, 2.2, 1) },
+  ];
+  const rng = seqRng([0.5, 0.5, 0.2, 0.5]); // pen, dmg, optics save (0.2 < 0.45), moduleDmg
+  const ev = resolveShellHit(shell, target, hits, rng);
+  assert(ev.modulesHit.some((m) => m.module === 'optics'), 'optics damaged without hull penetration');
+  assert(target.combat.modules.optics.state === 'red', 'periscope shot knocks out the viewport');
+  near(target.combat.hp, 1000, 1e-9, 'external optics hit deals no hull damage');
+}
+
+// ---------------- HE blast sweep is sphere-based, not ray-based -------------
+// An engine box OFF the burst→center ray but inside blastRadius must still
+// roll its save (shells doc §6, armor doc §8 step 3).
+{
+  const armorModel = {
+    boundingRadiusM: 4,
+    turretPivot: [0, 1, 0],
+    gunPivot: [0, 0, 0],
+    gunBarrel: null,
+    hullPlates: [mkPlate({ name: 'side38', physicalMm: 38, keMm: 38, ceMm: 38, verts: [[-1.5, 0, 2], [1.5, 0, 2], [1.5, 2, 2], [-1.5, 2, 2]] })],
+    turretPlates: [],
+    // Offset to +X: the burst→center ray runs along x=0 and misses this box;
+    // its center (1.1, 0.9, 1.0) is ~3.2 m from the burst — inside 4.09 m.
+    modules: [{ module: 'engine', min: [0.8, 0.3, 0.5], max: [1.4, 1.5, 1.5], turretLocal: false }],
+    crew: [],
+  };
+  const spec = mkSpec({ armor: armorModel });
+  const entity = { id: 'sphere_victim', spec, state: mkState(), combat: createCombatState(spec) };
+  const rng = seqRng([0.5, 0.5, 0.1, 0.5, 0.9]); // pen, dmg, engine save, moduleDmg, fire
+  const events = resolveHeBurst(mkShell(OF471, 300), V(0, 1, 4), [entity], null, null, rng);
+  assert(events.length === 1, `off-ray sphere splash produced an event (got ${events.length})`);
+  near(entity.combat.modules.engine.hp, 99, 1e-6, 'off-ray engine rolled at half chance/half damage');
+  assert(rng.consumed() === 5, `sphere sweep consumed the engine rolls (consumed ${rng.consumed()})`);
+}
+
+// --------------------------- HESH (shells doc §1, §5, §6) -------------------
+{
+  const L31 = mkShellSpec({ name: 'L31A7', type: 'HESH', caliberMm: 120, pen100Mm: 150, pen1000Mm: 150, dmg: 480, velocityMps: 670 });
+
+  // Never ricochets; non-pen splash gets the 1.25 spall bonus:
+  // (0.5·480 − 1.1·200) · 1.25 = 25.
+  const target = mkTarget();
+  const shell = mkShell(L31, 300);
+  const ev = resolveShellHit(shell, target, [mkPlateHit(0.4, mkPlate({ name: 'thick', physicalMm: 200, keMm: 200, ceMm: 200 }), 80)], rngHalf);
+  assert(ev.kind === 'he_splash', `HESH bursts instead of ricocheting at 80° (got ${ev.kind})`);
+  near(ev.damage, 25, 1e-6, 'HESH spall bonus ×1.25 on the through-armor splash');
+  assert(shell.dead === true, 'HESH consumed on impact');
+
+  // Full pen on thin armor behaves like HE full pen: full alpha.
+  const targetB = mkTarget();
+  const evB = resolveShellHit(mkShell(L31, 300), targetB, [mkPlateHit(0.4, mkPlate({ name: 'thin', physicalMm: 100, keMm: 100, ceMm: 100 }), 0)], rngHalf);
+  assert(evB.kind === 'he_pen', `150 mm HESH pens 100 mm (got ${evB.kind})`);
+  near(targetB.combat.hp, 520, 1e-9, 'full HESH alpha on penetration');
+
+  // Unknown shell types fail loudly instead of TypeError-ing mid-battle.
+  let threw = false;
+  try {
+    resolveShellHit(mkShell(mkShellSpec({ type: 'BEEHIVE' }), 100), mkTarget(), [mkPlateHit(0.4, mkPlate({}), 0)], rngHalf);
+  } catch (e) {
+    threw = /unknown shell type/.test(String(e && e.message));
+  }
+  assert(threw, 'unknown shell type raises a clear error');
+}
+
+// ------------------- tandem warheads bypass ERA (armor doc §11.2) -----------
+{
+  const tandem = mkShellSpec({ name: 'tandem_atgm', type: 'HEAT', caliberMm: 152, pen100Mm: 700, pen1000Mm: 700, dmg: 600, velocityMps: 300, tandem: true });
+  const eraPlate = mkPlate({ name: 'k5_glacis', kind: 'era', physicalMm: 10, keMm: 10, ceMm: 10, era: { keReduction: 0.2, ceFlatMm: 600 }, verts: [[-1, 0, 2.6], [1, 0, 2.6], [1, 2, 2.6], [-1, 2, 2.6]] });
+  const target = mkTarget({ era: 'modern', hp: 2000 });
+  const hits = [mkPlateHit(0.2, eraPlate, 0, V(0, 1, 2.6)), mkPlateHit(0.3, mkPlate({ name: 'glacis', physicalMm: 220, keMm: 490, ceMm: 650 }), 0)];
+  const ev = resolveShellHit(mkShell(tandem, 100), target, hits, rngHalf);
+  assert(ev.kind === 'pen', `tandem HEAT ignores the ERA cut: 700 vs 650 CE (got ${ev.kind})`);
+  near(ev.penRollMm, 700, 0.01, 'precursor pops the tile, main charge keeps full pen');
+  assert(target.combat.eraSpent.has('k5_glacis') && ev.eraPlate === 'k5_glacis', 'tile still detonates once');
+
+  // Indicator agrees (estimatePenRatio prices tandem the same way).
+  const q = { plate: hits[1].plate, impactAngleDeg: 0, point: V(0, 1, 2), distM: 100, layers: hits };
+  near(estimatePenRatio(tandem, 100, q), 700 / 650, 0.01, 'pen indicator honors tandem bypass');
 }
 
 // ------------------------------------------------------------------ report --

@@ -1,34 +1,52 @@
 /**
  * damage.js — complete hit resolution per docs/research/armor-penetration.md
  * §12 and shells-ballistics.md: ricochet, normalization with overmatch,
- * KE/CE effective thickness with slope exponents, ERA, spaced-armor
- * absorption with HEAT air-gap decay, ±25% pen/damage rolls, module & crew
- * saving throws, fires, ammo-rack detonation, HE direct hits and splash.
+ * KE/CE effective thickness with slope exponents, ERA (incl. tandem bypass),
+ * spaced-armor absorption with HEAT air-gap decay, the gun barrel as a
+ * spaced layer, ±25% pen/damage rolls, module & crew saving throws, fires,
+ * ammo-rack detonation, HE/HESH direct hits and blast-sphere splash, and
+ * destroyed hulls acting as inert shell-absorbing cover.
  *
  * Pure-logic module (ARCHITECTURE.md §3.5.3). RNG consumption order is fixed
  * for determinism: pen roll, damage roll, then per-intersection
- * (save, moduleDmg, fire).
+ * (save, moduleDmg, fire). HE blast sweeps roll modules (model order) then
+ * crew (model order). Wreck hits consume no RNG beyond the once-per-shot
+ * pen/dmg rolls.
  */
 
 import { Vector3 } from 'three';
 import { penAtDistanceMm } from './ballistics.js';
-import { tankPoseFromState, traceTank } from './armor.js';
+import { tankPoseFromState, traceTank, blastTargets } from './armor.js';
 
 const DEG_TO_RAD = Math.PI / 180;
 
 /**
- * Per-shell-type behavior constants (armor doc §1, §11.3).
+ * Per-shell-type behavior constants (armor doc §1, §11.3; shells doc §1, §5).
  * kindClass: 'KE' kinetic | 'CE' chemical | 'HE' blast.
  * slopeExp: exponent on cos(effAngle) — 1.4 rewards classic sloped steel,
  * 1.0 makes long rods and jets see plain line-of-sight thickness.
+ * spallBonus: through-armor splash multiplier (shells doc §6 — HESH 1.25).
  */
 const SHELL_BEHAVIOR = {
   AP: { kindClass: 'KE', normDeg: 5, ricochetDeg: 70, slopeExp: 1.4 },
   APCR: { kindClass: 'KE', normDeg: 2, ricochetDeg: 70, slopeExp: 1.4 },
   APFSDS: { kindClass: 'KE', normDeg: 2, ricochetDeg: 78, slopeExp: 1.0 },
   HEAT: { kindClass: 'CE', normDeg: 0, ricochetDeg: 85, slopeExp: 1.0 },
-  HE: { kindClass: 'HE', normDeg: 0, ricochetDeg: Infinity, slopeExp: 1.0 },
+  HE: { kindClass: 'HE', normDeg: 0, ricochetDeg: Infinity, slopeExp: 1.0, spallBonus: 1.0 },
+  HESH: { kindClass: 'HE', normDeg: 0, ricochetDeg: Infinity, slopeExp: 1.0, spallBonus: 1.25 },
 };
+
+/**
+ * Behavior lookup that fails loudly on unknown shell types instead of
+ * surfacing later as `undefined.kindClass` deep in a ricochet check.
+ * @param {string} type ShellSpec.type
+ * @returns {object} SHELL_BEHAVIOR entry
+ */
+function behaviorOf(type) {
+  const b = SHELL_BEHAVIOR[type];
+  if (!b) throw new Error(`damage.js: unknown shell type '${type}' — add it to SHELL_BEHAVIOR`);
+  return b;
+}
 
 /** Module HP baselines (armor doc §9); ×2.5 on modern-era tanks. */
 const MODULE_HP = {
@@ -67,6 +85,12 @@ const POSTPEN_CALIBERS = 10; // internal sweep length = 10 × caliber
 const HEAT_GAP_LOSS_PER_M = 0.5; // 5% pen per 10 cm of air gap
 const HE_ARMOR_ABSORB = 1.1;
 const RICOCHET_MAX_BOUNCES = 2;
+// Gun barrel as spaced armor (armor doc §4/§7): crossing the cylinder costs
+// a radius-scaled slice of pen (two steel walls), clamped 30–60 mm.
+const BARREL_SCREEN_MIN_MM = 30;
+const BARREL_SCREEN_MAX_MM = 60;
+const BARREL_SCREEN_MM_PER_RADIUS_M = 500;
+const BARREL_DEFAULT_RADIUS_M = 0.08;
 /** Red-module repair duration (seconds) — the count-up target used by the
  * game-loop repair ticker (game/state.js MODULE_REPAIR_S must match). */
 export const REPAIR_S = 10;
@@ -149,7 +173,7 @@ function overmatchCaliberMm(shellSpec) {
  * @returns {{effMm: number, effAngleDeg: number}}
  */
 function effectiveThickness(shellSpec, plate, impactAngleDeg) {
-  const b = SHELL_BEHAVIOR[shellSpec.type];
+  const b = behaviorOf(shellSpec.type);
   let norm = b.normDeg;
   const T = plate.physicalMm;
   const omCal = overmatchCaliberMm(shellSpec);
@@ -174,7 +198,7 @@ function effectiveThickness(shellSpec, plate, impactAngleDeg) {
  * @returns {boolean}
  */
 function wouldRicochet(shellSpec, impactAngleDeg, plate) {
-  const b = SHELL_BEHAVIOR[shellSpec.type];
+  const b = behaviorOf(shellSpec.type);
   if (b.kindClass === 'HE') return false;
   if (
     b.kindClass === 'KE' &&
@@ -318,6 +342,32 @@ function stampImpact(event, hit, effMm, penMm) {
   event.penRollMm = penMm;
 }
 
+/** Spaced-armor value of a gun-barrel crossing (armor doc §4/§7). */
+function barrelScreenMm(hit) {
+  const r = hit.barrelRadiusM > 0 ? hit.barrelRadiusM : BARREL_DEFAULT_RADIUS_M;
+  return Math.min(
+    BARREL_SCREEN_MAX_MM,
+    Math.max(BARREL_SCREEN_MIN_MM, r * BARREL_SCREEN_MM_PER_RADIUS_M)
+  );
+}
+
+/**
+ * Reflect a shell off a plate intersection (shared by live and wreck
+ * ricochets): mirror the velocity about the outward normal and restart the
+ * swept segment just outside the surface.
+ * @param {object} shell ShellEntity
+ * @param {object} hit plate intersection with point + normal
+ * @returns {void}
+ */
+function deflectShell(shell, hit) {
+  shell.bounces += 1;
+  _reflN.copy(hit.normal);
+  const vdotn = shell.vel.dot(_reflN);
+  shell.vel.addScaledVector(_reflN, -2 * vdotn);
+  shell.pos.copy(hit.point).addScaledVector(_reflN, 0.02);
+  shell.prevPos.copy(shell.pos);
+}
+
 /**
  * Ensure the shell's once-per-shot pen AND damage rolls exist (±25% each,
  * armor doc §6/§12: both made once per shot, in that order). Consumes rng only
@@ -356,12 +406,17 @@ function ensurePenRoll(shell, rng) {
 export function resolveShellHit(shell, target, hits, rng) {
   const spec = shell.spec;
   const combat = target.combat;
+  const behavior = behaviorOf(spec.type);
 
   // Fixed RNG order: pen, dmg (both once per shot), then per-intersection rolls.
   ensurePenRoll(shell, rng);
   const dmgRoll = shell.dmgRoll;
 
-  if (spec.type === 'HE') {
+  // Destroyed hulls are inert cover: they absorb, deflect or screen the shell
+  // with zero damage events and zero extra RNG draws.
+  if (combat.destroyed) return resolveWreckHit(shell, hits);
+
+  if (behavior.kindClass === 'HE') {
     const event = heDirectHit(shell, target, hits, dmgRoll, rng);
     shell.dead = true;
     return event;
@@ -380,11 +435,23 @@ export function resolveShellHit(shell, target, hits, rng) {
     if (hullPen && entryPoint && hit.point.distanceTo(entryPoint) > limitM) break;
 
     if (hit.kind === 'module') {
-      const external = hit.module === 'gun';
+      const external = hit.external === true || hit.module === 'gun';
       if (external || hullPen) {
         const r = rollModuleDamage(ctx, hit.module);
         event.fireStarted = event.fireStarted || r.fireStarted;
         event.ammoRacked = event.ammoRacked || r.ammoRacked;
+      }
+      // The barrel doubles as a spaced layer (armor doc §4/§7): crossing the
+      // cylinder costs pen whether or not the gun-damage save landed.
+      if (hit.barrel && !hullPen) {
+        pen -= barrelScreenMm(hit);
+        if (pen <= 0) {
+          event.kind = 'nonpen';
+          event.pos = [hit.point.x, hit.point.y, hit.point.z];
+          shell.dead = true;
+          decided = true;
+          break;
+        }
       }
       continue;
     }
@@ -396,15 +463,16 @@ export function resolveShellHit(shell, target, hits, rng) {
     const plate = hit.plate;
 
     // --- ERA tile: detonates once, cuts pen, never stops processing unless
-    // the remaining pen hits zero (armor doc §11.2).
+    // the remaining pen hits zero (armor doc §11.2). A tandem warhead's
+    // precursor charge pops the tile and the main jet passes uncut.
     if (plate.kind === 'era') {
       if (combat.eraSpent.has(plate.name)) continue;
       combat.eraSpent.add(plate.name);
       event.eraPlate = plate.name;
-      const b = SHELL_BEHAVIOR[spec.type];
+      if (spec.tandem) continue;
       const era = plate.era || { keReduction: 0, ceFlatMm: 0 };
-      if (b.kindClass === 'CE') pen = Math.max(0, pen - era.ceFlatMm);
-      else if (b.kindClass === 'KE') pen *= 1 - era.keReduction;
+      if (behavior.kindClass === 'CE') pen = Math.max(0, pen - era.ceFlatMm);
+      else if (behavior.kindClass === 'KE') pen *= 1 - era.keReduction;
       if (pen <= 0 && !hullPen) {
         event.kind = 'era';
         stampImpact(event, hit, 0, 0);
@@ -421,13 +489,8 @@ export function resolveShellHit(shell, target, hits, rng) {
     if (!hullPen && wouldRicochet(spec, angle, plate)) {
       event.kind = 'ricochet';
       stampImpact(event, hit, 0, pen);
-      shell.bounces += 1;
-      _reflN.copy(hit.normal);
-      const vdotn = shell.vel.dot(_reflN);
-      shell.vel.addScaledVector(_reflN, -2 * vdotn);
-      shell.pos.copy(hit.point).addScaledVector(_reflN, 0.02);
-      shell.prevPos.copy(shell.pos);
-      const isHeat = SHELL_BEHAVIOR[spec.type].kindClass === 'CE';
+      deflectShell(shell, hit);
+      const isHeat = behavior.kindClass === 'CE';
       if (isHeat || shell.bounces >= RICOCHET_MAX_BOUNCES) shell.dead = true;
       shell.remainingPenMm = pen; // full pen retained through the bounce
       event.targetHpAfter = combat.hp;
@@ -491,14 +554,27 @@ export function resolveShellHit(shell, target, hits, rng) {
     }
   }
 
-  if (!decided && hits.length > 0 && !hullPen) {
-    // Only external module hits (e.g. barrel graze) — a clang, no hull damage.
-    const first = hits[0];
-    event.kind = 'nonpen';
-    event.pos = [first.point.x, first.point.y, first.point.z];
-  }
-
   shell.remainingPenMm = Math.max(0, pen);
+
+  // --- Screen pierce (armor doc §7): the trace crossed ONLY spaced/external
+  // layers, ERA tiles and/or the barrel (skirt overhang, track-plate edge,
+  // bustle rack) without reaching main armor. A kinetic shell with pen to
+  // spare subtracts the screens and keeps flying — its swept segment already
+  // exits the model, so no teleport is needed and no misleading 'nonpen'
+  // clang is emitted. HEAT jets form on the first surface and are spent;
+  // anything without pen left is likewise done.
+  if (!decided && !hullPen && !shell.dead) {
+    const first = hits.length > 0 ? hits[0] : null;
+    if (first) event.pos = [first.point.x, first.point.y, first.point.z];
+    if (behavior.kindClass === 'KE' && shell.remainingPenMm > 0) {
+      event.kind = 'screen_pierce';
+      event.destroyed = finalizeTarget(combat, event.ammoRacked);
+      event.targetHpAfter = combat.hp;
+      return event; // shell stays alive on its unchanged trajectory
+    }
+    event.kind = hits.some((h) => h.kind === 'plate') ? 'spaced_absorb' : 'nonpen';
+    shell.dead = true;
+  }
 
   // --- Carry-through (armor doc §7): a kinetic shell that fully penetrated,
   // was not stopped by any deeper layer, and still has pen left may exit and
@@ -508,7 +584,7 @@ export function resolveShellHit(shell, target, hits, rng) {
     hullPen &&
     !shell.dead &&
     shell.remainingPenMm > 0 &&
-    SHELL_BEHAVIOR[spec.type].kindClass === 'KE' &&
+    behavior.kindClass === 'KE' &&
     !shell.carriedThrough &&
     entryPoint !== null;
   if (carries) {
@@ -561,6 +637,158 @@ export function resolveShellHit(shell, target, hits, rng) {
   }
   event.destroyed = finalizeTarget(combat, event.ammoRacked);
   event.targetHpAfter = combat.hp;
+  return event;
+}
+
+/**
+ * HE blast module/crew sweep over the blast SPHERE (armor doc §8 step 3,
+ * shells doc §6): every module/crew box of the armor model whose world-space
+ * center lies inside `radiusM` of the burst gets a roll — external boxes
+ * (gun, optics, tracks) at full odds/full damage, internal boxes at half,
+ * crew at the reduced HE chance. Boxes are enumerated from the armor model —
+ * NOT the flight ray — so off-axis tracks and engines are reachable, which is
+ * what makes HE the reliable de-tracking round. Hand-built probes without an
+ * armor model fall back to the ray-intersection sweep.
+ *
+ * RNG order (fixed): modules in model order, then crew in model order (ray
+ * order on the fallback path). `skipModule` dedupes a module already rolled
+ * via the struck plate's moduleLink.
+ *
+ * @param {object} ctx resolution context (chanceScale/dmgScale overwritten)
+ * @param {object} event HitEvent being built
+ * @param {object} target {spec, state, combat}
+ * @param {Vector3} center world burst point
+ * @param {number} radiusM blast radius
+ * @param {Array<object>|null} hits traceTank result (fallback path)
+ * @param {string|null} skipModule module already rolled at full odds
+ * @returns {void}
+ */
+function sweepHeBlast(ctx, event, target, center, radiusM, hits, skipModule) {
+  const armor = target.spec ? target.spec.armor : null;
+  const rolled = new Set(skipModule ? [skipModule] : []);
+  const useBoxes =
+    armor && target.state && ((armor.modules && armor.modules.length) || (armor.crew && armor.crew.length));
+  if (useBoxes) {
+    const boxes = blastTargets(tankPoseFromState(target.state), armor);
+    for (const box of boxes) {
+      if (box.point.distanceTo(center) > radiusM) continue;
+      if (box.kind === 'module') {
+        if (rolled.has(box.name)) continue;
+        rolled.add(box.name);
+        const external = box.external || box.name === 'gun';
+        ctx.chanceScale = external ? 1 : 0.5;
+        ctx.dmgScale = external ? 1 : 0.5;
+        const r = rollModuleDamage(ctx, box.name);
+        event.fireStarted = event.fireStarted || r.fireStarted;
+        event.ammoRacked = event.ammoRacked || r.ammoRacked;
+      } else {
+        rollCrewHit(ctx, box.name, true);
+      }
+    }
+  } else {
+    for (const hit of hits || []) {
+      if (hit.point.distanceTo(center) > radiusM) continue;
+      if (hit.kind === 'module') {
+        if (rolled.has(hit.module)) continue;
+        rolled.add(hit.module);
+        const external = hit.external === true || hit.module === 'gun';
+        ctx.chanceScale = external ? 1 : 0.5;
+        ctx.dmgScale = external ? 1 : 0.5;
+        const r = rollModuleDamage(ctx, hit.module);
+        event.fireStarted = event.fireStarted || r.fireStarted;
+        event.ammoRacked = event.ammoRacked || r.ammoRacked;
+      } else if (hit.kind === 'crew') {
+        rollCrewHit(ctx, hit.crew, true);
+      }
+    }
+  }
+  ctx.chanceScale = 1;
+  ctx.dmgScale = 1;
+}
+
+/**
+ * Resolve a shell against a DESTROYED tank: the wreck is inert cover. Plates
+ * still deflect (raw-angle ricochet) and absorb, but nothing takes damage, no
+ * module/crew/fire rolls run (zero RNG draws) and every event carries
+ * `targetId: null` so HUD damage feedback and AI nonpen counting ignore it.
+ * KE/CE shells die with a clang on the first main plate; screens subtract as
+ * usual (a kinetic round may pierce a wreck's skirt edge and keep flying);
+ * HE-class shells burst on the surface with zero damage.
+ *
+ * @param {object} shell ShellEntity
+ * @param {Array<object>} hits traceTank result against the wreck
+ * @returns {object} HitEvent (targetId null, damage 0)
+ */
+function resolveWreckHit(shell, hits) {
+  const spec = shell.spec;
+  const b = behaviorOf(spec.type);
+  const event = baseEvent(shell, null);
+  let pen = shell.remainingPenMm;
+
+  if (b.kindClass === 'HE') {
+    // Detonates on the first surface of the wreck — fireball, no victims here
+    // (the caller's burst resolution splashes live tanks around the point).
+    const first = hits.find((h) => h.kind === 'plate') || hits[0] || null;
+    event.kind = 'he_splash';
+    if (first) event.pos = [first.point.x, first.point.y, first.point.z];
+    if (first && first.normal) event.normal = [first.normal.x, first.normal.y, first.normal.z];
+    shell.dead = true;
+    return event;
+  }
+
+  for (const hit of hits) {
+    if (hit.kind !== 'plate') {
+      if (hit.barrel) {
+        pen -= barrelScreenMm(hit);
+        if (pen <= 0) {
+          event.kind = 'nonpen';
+          event.pos = [hit.point.x, hit.point.y, hit.point.z];
+          shell.dead = true;
+          return event;
+        }
+      }
+      continue; // dead modules/crew: nothing to roll
+    }
+    const plate = hit.plate;
+    const angle = hit.impactAngleDeg;
+
+    if (wouldRicochet(spec, angle, plate)) {
+      event.kind = 'ricochet';
+      stampImpact(event, hit, 0, pen);
+      deflectShell(shell, hit);
+      shell.remainingPenMm = pen;
+      if (b.kindClass === 'CE' || shell.bounces >= RICOCHET_MAX_BOUNCES) shell.dead = true;
+      return event;
+    }
+
+    const { effMm } = effectiveThickness(spec, plate, angle);
+    if (plate.kind === 'main') {
+      // Wreck hull swallows the shell outright — spark/clang, no damage.
+      event.kind = 'nonpen';
+      stampImpact(event, hit, effMm, pen);
+      shell.dead = true;
+      return event;
+    }
+    // Spaced/external/ERA layers on a wreck are plain inert steel.
+    pen -= effMm;
+    if (pen <= 0) {
+      event.kind = 'spaced_absorb';
+      stampImpact(event, hit, effMm, shell.remainingPenMm);
+      shell.dead = true;
+      return event;
+    }
+  }
+
+  // Crossed only screens/barrel with pen to spare.
+  shell.remainingPenMm = Math.max(0, pen);
+  const first = hits.length > 0 ? hits[0] : null;
+  if (first) event.pos = [first.point.x, first.point.y, first.point.z];
+  if (b.kindClass === 'KE' && shell.remainingPenMm > 0) {
+    event.kind = 'screen_pierce'; // shell keeps flying
+    return event;
+  }
+  event.kind = hits.some((h) => h.kind === 'plate') ? 'spaced_absorb' : 'nonpen';
+  shell.dead = true;
   return event;
 }
 
@@ -645,7 +873,8 @@ function heDirectHit(shell, target, hits, dmgRoll, rng) {
       }
     }
     const falloff = Math.max(0, 1 - Math.min(1, distM / radiusM));
-    const dmg = Math.max(0, 0.5 * dmgRoll * falloff - HE_ARMOR_ABSORB * armorMm);
+    const spall = behaviorOf(spec.type).spallBonus ?? 1; // HESH 1.25 (shells doc §6)
+    const dmg = Math.max(0, 0.5 * dmgRoll * falloff - HE_ARMOR_ABSORB * armorMm) * spall;
     stampImpact(event, plateHit, effMm, shell.remainingPenMm);
     event.damage = dmg;
     combat.hp -= dmg;
@@ -655,23 +884,10 @@ function heDirectHit(shell, target, hits, dmgRoll, rng) {
       event.fireStarted = event.fireStarted || r.fireStarted;
       event.ammoRacked = event.ammoRacked || r.ammoRacked;
     }
-    // Blast reaches crew/modules through hatches even without hull damage
-    // (armor doc §8 step 3, shells doc §6): EXTERNAL modules (gun) in the
-    // blast sphere roll at full odds/full damage; internal modules at half
-    // chance and half damage; crew at the reduced HE chance.
-    for (const hit of hits) {
-      if (hit.point.distanceTo(plateHit.point) > radiusM) continue;
-      if (hit.kind === 'module') {
-        const external = hit.module === 'gun';
-        ctx.chanceScale = external ? 1 : 0.5;
-        ctx.dmgScale = external ? 1 : 0.5;
-        const r = rollModuleDamage(ctx, hit.module);
-        event.fireStarted = event.fireStarted || r.fireStarted;
-        event.ammoRacked = event.ammoRacked || r.ammoRacked;
-      } else if (hit.kind === 'crew') {
-        rollCrewHit(ctx, hit.crew, true);
-      }
-    }
+    // Blast reaches crew/modules through hatches even without hull damage —
+    // every box inside the blast SPHERE rolls, not just those on the flight
+    // ray (armor doc §8 step 3, shells doc §6).
+    sweepHeBlast(ctx, event, target, plateHit.point, radiusM, hits, plate.moduleLink);
   }
 
   event.destroyed = finalizeTarget(combat, event.ammoRacked);
@@ -704,7 +920,19 @@ export function resolveHeBurst(shell, burstPoint, tanks, directTarget, directHit
   let directPen = false;
   let directHadPlate = false;
 
-  if (directTarget && directTarget.combat && !directTarget.combat.destroyed && directHits) {
+  if (directTarget && directTarget.combat && directTarget.combat.destroyed) {
+    // Direct hit on a wreck: HE detonates on the dead hull's surface (inert
+    // cover, no damage there) and the burst splashes live tanks around it.
+    // The zero-damage event (targetId null) still drives fireball FX/audio.
+    const ev = baseEvent(shell, null);
+    ev.kind = 'he_splash';
+    ev.pos = [burstPoint.x, burstPoint.y, burstPoint.z];
+    const firstPlate = directHits ? directHits.find((h) => h.kind === 'plate') : null;
+    if (firstPlate && firstPlate.normal) {
+      ev.normal = [firstPlate.normal.x, firstPlate.normal.y, firstPlate.normal.z];
+    }
+    events.push(ev);
+  } else if (directTarget && directTarget.combat && directHits) {
     for (const h of directHits) {
       if (h.kind === 'plate' && h.plate.kind !== 'era') {
         directHadPlate = true;
@@ -757,7 +985,9 @@ export function resolveHeBurst(shell, burstPoint, tanks, directTarget, directHit
     };
     event.kind = 'he_splash';
     const armorMm = plateHit.plate.physicalMm;
-    const dmg = Math.max(0, 0.5 * dmgRoll * (1 - distM / radiusM) - HE_ARMOR_ABSORB * armorMm);
+    const spall = behaviorOf(spec.type).spallBonus ?? 1; // HESH 1.25 (shells doc §6)
+    const dmg =
+      Math.max(0, 0.5 * dmgRoll * (1 - distM / radiusM) - HE_ARMOR_ABSORB * armorMm) * spall;
     stampImpact(event, plateHit, armorMm, shell.remainingPenMm);
     event.damage = dmg;
     tank.combat.hp -= dmg;
@@ -768,27 +998,12 @@ export function resolveHeBurst(shell, burstPoint, tanks, directTarget, directHit
       const r = rollModuleDamage(ctx, plateHit.plate.moduleLink);
       event.fireStarted = event.fireStarted || r.fireStarted;
       event.ammoRacked = event.ammoRacked || r.ammoRacked;
-      ctx.chanceScale = 0.5;
-      ctx.dmgScale = 0.5;
     }
-    // Splash penetrates hatches: crew at the reduced HE chance, internal
-    // modules at half chance / half damage, EXTERNAL modules (gun) at full
-    // odds (armor doc §8 step 3, shells doc §6), limited to the blast sphere
-    // around the burst point.
-    for (const hit of hits) {
-      if (hit.kind === 'plate') continue;
-      if (hit.point.distanceTo(burstPoint) > radiusM) continue;
-      if (hit.kind === 'module') {
-        const external = hit.module === 'gun';
-        ctx.chanceScale = external ? 1 : 0.5;
-        ctx.dmgScale = external ? 1 : 0.5;
-        const r = rollModuleDamage(ctx, hit.module);
-        event.fireStarted = event.fireStarted || r.fireStarted;
-        event.ammoRacked = event.ammoRacked || r.ammoRacked;
-      } else if (hit.kind === 'crew') {
-        rollCrewHit(ctx, hit.crew, true);
-      }
-    }
+    // Splash penetrates hatches: every module/crew box inside the blast
+    // sphere rolls — crew at the reduced HE chance, internal modules at half
+    // chance / half damage, external ones (gun, optics, tracks) at full odds
+    // (armor doc §8 step 3, shells doc §6).
+    sweepHeBlast(ctx, event, tank, burstPoint, radiusM, hits, plateHit.plate.moduleLink);
     event.destroyed = finalizeTarget(tank.combat, event.ammoRacked);
     event.targetHpAfter = tank.combat.hp;
     if (event.damage > 0 || event.modulesHit.length > 0 || event.crewHit.length > 0) {
@@ -882,7 +1097,7 @@ export function startReload(combatState, spec) {
 export function estimatePenRatio(shellSpec, distM, plateInfo) {
   if (!plateInfo || !plateInfo.plate) return 0;
   const layers = plateInfo.layers;
-  const b = SHELL_BEHAVIOR[shellSpec.type];
+  const b = behaviorOf(shellSpec.type);
 
   if (!layers || layers.length === 0 || b.kindClass === 'HE') {
     // Single-plate estimate (legacy probes; HE bursts on the first surface).
@@ -910,10 +1125,13 @@ export function estimatePenRatio(shellSpec, distM, plateInfo) {
     const plate = hit.plate;
 
     if (plate.kind === 'era') {
-      // Average ERA effect for the selected shell type (armor doc §11.2).
-      const era = plate.era || { keReduction: 0, ceFlatMm: 0 };
-      if (b.kindClass === 'CE') pen = Math.max(0, pen - era.ceFlatMm);
-      else pen *= 1 - era.keReduction;
+      // Average ERA effect for the selected shell type (armor doc §11.2);
+      // tandem warheads sacrifice the precursor and pass the tile uncut.
+      if (!shellSpec.tandem) {
+        const era = plate.era || { keReduction: 0, ceFlatMm: 0 };
+        if (b.kindClass === 'CE') pen = Math.max(0, pen - era.ceFlatMm);
+        else pen *= 1 - era.keReduction;
+      }
       if (pen <= 0) return 0;
       continue;
     }

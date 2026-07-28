@@ -25,6 +25,9 @@ MUST uphold this contract at all times or the build is considered broken.
 | `combat_firing` | a tank mid-shot: muzzle flash, smoke, tracer visible |
 | `explosion` | a vehicle destruction: fireball, debris, smoke column |
 | `garage` | the garage/tank-select screen |
+| `battlefield_desert` | wide establishing shot of the desert map (dunes, mesas, adobe village, palms) |
+| `battlefield_winter` | wide establishing shot of the winter map (snow, frozen lake, birches, overcast) |
+| `battlefield_urban` | wide establishing shot of the town map (street grid, rowhouses, rubble) |
 
 ## Rules
 

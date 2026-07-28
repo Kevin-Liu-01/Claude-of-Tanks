@@ -15,6 +15,18 @@ const CASCADES = 4;
 // exp2 fog (sky.js) shadows must hold that far or buildings/trees float.
 const SHADOW_MAX_FAR_M = 520;
 const SHADOW_MAP_SIZE = 4096;
+// PERF: per-cascade shadow map sizes. The two FAR cascades cover 100s of
+// meters — one texel is already subpixel on a 1080p screen out there, so
+// halving their resolution is visually free and saves 96 MB of GPU RTs plus
+// shadow fill rate. (CSM's texel-snap uses the uniform 4096 grid; the finer
+// snap on a 2048 map is a <1-texel offset at 250m+ — subpixel.)
+const SHADOW_MAP_SIZES = [SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, 2048, 2048];
+// PERF: far cascades re-render every OTHER frame (round-robin, one per frame)
+// — they hold ~2/3 of all shadow draw calls, and one frame of staleness at
+// 250-520 m is a fraction of a texel of camera motion. Near cascades (player
+// tank, closeups) still update every frame. `update(true)` forces both far
+// cascades (shot mode / map switch / FOV change) for deterministic captures.
+const FAR_CASCADE_START = 2;
 const SHADOW_BIAS = -0.0002;
 const SHADOW_NORMAL_BIAS = 0.035; // kills acne on terrain slopes (CSM only exposes shadowBias)
 // Key-to-fill ratio is THE readability lever: the warm sun must dominate the
@@ -23,14 +35,39 @@ const SHADOW_NORMAL_BIAS = 0.035; // kills acne on terrain slopes (CSM only expo
 // lit:shadow luma ratio on open grass was only ~1.3:1 (shadows read as faint
 // smudges); at 4.2/0.14/0.22 it lands ~2.3:1 — the WoT footage ballpark.
 // Ambient fill lives in hemi (below) + sky.js ENV_INTENSITY.
-const SUN_INTENSITY = 4.2;
+const SUN_INTENSITY = 4.5;
 const SUN_COLOR = 0xfff1dc; // warm noon-afternoon key
-const HEMI_SKY_COLOR = 0xb4cdf2; // cool sky fill against the warm key
+const HEMI_SKY_COLOR = 0xaac8f5; // cool sky fill against the warm key
 const HEMI_GROUND_COLOR = 0x8c7a5b;
-// 0.14 measured best-case shadow contrast but crushed backlit hull sides and
-// conifer canopies to undifferentiated black; 0.20 keeps ~2:1 ground shadows
-// while shaded armor still shows camo readably.
-const HEMI_INTENSITY = 0.2;
+// r3 rebalance: fill shifted FROM the omnidirectional IBL (sky.js
+// ENV_INTENSITY 0.28 → 0.20 — omni fill is what flattened building/hull form
+// at midrange) TO the hemisphere (0.20 → 0.32), whose sky-above/ground-below
+// split keeps form shading directional: shadowed faces go cooler AND darker
+// instead of just dimmer. Sun 4.2 → 4.5 keeps the key:fill ratio ~3:1+ and
+// lifts the amorphous near-black canopy-shadow masses out of the crushed
+// range (they read as artifacts, not shade, at hemi 0.2).
+const HEMI_INTENSITY = 0.32;
+// Backlit-rescue fill: a shadowless DirectionalLight from the anti-sun azimuth
+// at ~30° elevation. Sun-shadowed VERTICAL faces (tree canopies, barn walls,
+// hay bales seen against the light) currently drop to hemi+IBL only (~5% of
+// sky luminance) and render as pure black cutouts in sniper view. A counter
+// fill mostly hits exactly those anti-sun-facing surfaces (dot ≈ 0 for
+// ground/up-facing geometry), so ground-shadow contrast — the 2.3:1 luma
+// ratio tuned above — is preserved while backlit silhouettes lift to ~15-20%.
+// CSM-safe: three's CSMShader lights all directionals beyond
+// NUM_DIR_LIGHT_SHADOWS through a dedicated non-shadow loop.
+const FILL_COLOR = 0xbdd2f2; // same cool-sky family as the hemi
+// r3: 1.0 → 0.55. At 1.0 the anti-sun fill lit shadowed building walls and
+// hull sides to ~25% of key — the "shadowed faces nearly the same luminance
+// as sunlit faces" flatness the critic flagged. 0.55 (with hemi raised to
+// 0.32) still lifts backlit canopies/walls out of black but restores a clear
+// lit-vs-shaded form step at midrange.
+const FILL_INTENSITY = 0.55;
+// Low elevation (~17°): vertical anti-sun faces catch ~cos(17°) ≈ 0.96 of the
+// fill while up-facing ground only gets sin(17°) ≈ 0.29 — backlit walls and
+// canopies lift out of black without flattening ground-shadow contrast.
+const FILL_ELEV_Y = 70;
+const FILL_HORIZ_M = 230;
 
 /**
  * Build a coverage-preserving mip chain for an alpha-tested foliage texture.
@@ -160,10 +197,41 @@ export function createLighting(scene, camera, sunDir) {
   for (let i = 0; i < csm.lights.length; i++) {
     csm.lights[i].shadow.normalBias = SHADOW_NORMAL_BIAS;
     csm.lights[i].color.setHex(SUN_COLOR);
+    // PERF: per-cascade map size (before the first render allocates the RT)
+    const size = SHADOW_MAP_SIZES[Math.min(i, SHADOW_MAP_SIZES.length - 1)];
+    csm.lights[i].shadow.mapSize.set(size, size);
+    // PERF: far cascades update round-robin via needsUpdate (see update())
+    if (i >= FAR_CASCADE_START) {
+      csm.lights[i].shadow.autoUpdate = false;
+      csm.lights[i].shadow.needsUpdate = true; // first frame renders all
+    }
+  }
+  let rrIndex = 0; // round-robin cursor over the far cascades
+
+  /** Mark every throttled (far) cascade for re-render on the next frame. */
+  function forceFarCascades() {
+    for (let i = FAR_CASCADE_START; i < csm.lights.length; i++) {
+      csm.lights[i].shadow.needsUpdate = true;
+    }
   }
 
   const hemi = new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY);
   scene.add(hemi);
+
+  // Anti-sun sky fill (see FILL_* above): castShadow stays false — it must
+  // sort AFTER the CSM cascade lights so the CSM shader treats it as a plain
+  // directional light.
+  const fill = new THREE.DirectionalLight(FILL_COLOR, FILL_INTENSITY);
+  fill.castShadow = false;
+  {
+    const fx = -sunDir.x;
+    const fz = -sunDir.z;
+    const fl = Math.hypot(fx, fz) || 1;
+    fill.position.set((fx / fl) * FILL_HORIZ_M, FILL_ELEV_Y, (fz / fl) * FILL_HORIZ_M);
+  }
+  fill.target.position.set(0, 0, 0);
+  scene.add(fill);
+  scene.add(fill.target);
 
   return {
     csm,
@@ -201,10 +269,22 @@ export function createLighting(scene, camera, sunDir) {
     /**
      * Per-frame cascade refit. Call after the camera's world matrix is final
      * for the frame (ARCHITECTURE.md §4 step 9) and before `post.render`.
+     * @param {boolean} [force=false] - re-render ALL cascades this frame
+     *   (deterministic screenshot captures); otherwise the two far cascades
+     *   alternate, one per frame.
      * @returns {void}
      */
-    update() {
+    update(force = false) {
       csm.update();
+      if (force) {
+        forceFarCascades();
+      } else {
+        const span = csm.lights.length - FAR_CASCADE_START;
+        if (span > 0) {
+          rrIndex = (rrIndex + 1) % span;
+          csm.lights[FAR_CASCADE_START + rrIndex].shadow.needsUpdate = true;
+        }
+      }
     },
 
     /**
@@ -214,6 +294,7 @@ export function createLighting(scene, camera, sunDir) {
      */
     updateFrustums() {
       csm.updateFrustums();
+      forceFarCascades(); // cascade boxes jumped — stale far maps would smear
     },
 
     /**
@@ -225,6 +306,31 @@ export function createLighting(scene, camera, sunDir) {
     setSunIntensity(i) {
       csm.lightIntensity = i;
       for (let k = 0; k < csm.lights.length; k++) csm.lights[k].intensity = i;
+    },
+
+    /**
+     * Re-target the light rig to a map's sky preset (map switch): sun
+     * direction (CSM cascades follow on the next update()), sun color +
+     * intensity, hemisphere fill, and the anti-sun rescue fill position.
+     * @param {THREE.Vector3} dir unit vector FROM origin TOWARD the sun
+     * @param {{sunIntensity?:number, sunColorHex?:number, hemiIntensity?:number}} [opts]
+     * @returns {void}
+     */
+    setSun(dir, opts = {}) {
+      csm.lightDirection.copy(dir).negate().normalize();
+      const intensity = opts.sunIntensity ?? SUN_INTENSITY;
+      const colorHex = opts.sunColorHex ?? SUN_COLOR;
+      csm.lightIntensity = intensity;
+      for (let k = 0; k < csm.lights.length; k++) {
+        csm.lights[k].intensity = intensity;
+        csm.lights[k].color.setHex(colorHex);
+      }
+      hemi.intensity = opts.hemiIntensity ?? HEMI_INTENSITY;
+      const fx = -dir.x, fz = -dir.z;
+      const fl = Math.hypot(fx, fz) || 1;
+      fill.position.set((fx / fl) * FILL_HORIZ_M, FILL_ELEV_Y, (fz / fl) * FILL_HORIZ_M);
+      csm.update();
+      forceFarCascades(); // sun moved — every cascade must re-render
     },
 
     hemi,

@@ -68,6 +68,7 @@ export function createBus() {
 export function createGameState() {
   return {
     phase: 'garage',            // 'garage' | 'battle' | 'ended' | 'shot'
+    mapId: 'verdant',           // MAP-CONFIG WIRING: active battlefield id (main.js startBattle)
     tanks: [],                  // TankEntity[] (all 8, player included)
     tankById: new Map(),
     player: null,

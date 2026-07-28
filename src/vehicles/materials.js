@@ -351,11 +351,11 @@ function paintCamo(canvas, visual, rng, feats, seed) {
   // paint chips — dark pit with a bright bare-metal glint above (from plan).
   for (const c of feats.chips) {
     const x = px(c.x), y = px(c.y), r = Math.max(0.8, px(c.r));
-    ctx.fillStyle = c.metal ? 'rgba(96,94,88,0.6)' : 'rgba(25,22,18,0.55)';
+    ctx.fillStyle = c.metal ? 'rgba(112,110,102,0.72)' : 'rgba(25,22,18,0.55)';
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     if (c.metal) {
-      ctx.fillStyle = 'rgba(198,193,178,0.55)';
-      ctx.fillRect(x - r * 0.5, y - r - 1, r, 1.4);
+      ctx.fillStyle = 'rgba(205,200,185,0.75)';
+      ctx.fillRect(x - r * 0.55, y - r - 1.2, r * 1.1, 1.8);
     }
   }
   // rust weeps from plan sources + below some bolts.
@@ -557,27 +557,27 @@ function paintTrack(rng) {
   const S = 512;
   const c = makeCanvas(S, S);
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#26262a';
+  ctx.fillStyle = '#2d2d32';
   ctx.fillRect(0, 0, S, S);
   const rows = 4, rh = S / rows;
   for (let r = 0; r < rows; r++) {
     const y = r * rh;
     // link body shading
     const g = ctx.createLinearGradient(0, y, 0, y + rh);
-    g.addColorStop(0, '#3b3b40');
-    g.addColorStop(0.45, '#2c2c30');
-    g.addColorStop(0.5, '#17171a');
-    g.addColorStop(0.55, '#2e2e33');
-    g.addColorStop(1, '#232327');
+    g.addColorStop(0, '#46464c');
+    g.addColorStop(0.45, '#35353a');
+    g.addColorStop(0.5, '#1d1d21');
+    g.addColorStop(0.55, '#37373c');
+    g.addColorStop(1, '#2b2b2f');
     ctx.fillStyle = g;
     ctx.fillRect(0, y + 4, S, rh - 8);
     // pin gap + end-connector bumps
     ctx.fillStyle = '#0d0d0f';
     ctx.fillRect(0, y, S, 6);
-    ctx.fillStyle = '#38383e';
+    ctx.fillStyle = '#48484f';
     for (let x = 0; x < S; x += S / 8) ctx.fillRect(x + 4, y, S / 16, 5);
     // chevron grouser
-    ctx.strokeStyle = '#4a4a50';
+    ctx.strokeStyle = '#5c5c64';
     ctx.lineWidth = 14;
     ctx.beginPath();
     ctx.moveTo(S * 0.08, y + rh * 0.72);
@@ -595,8 +595,8 @@ function paintTrack(rng) {
     ctx.fillStyle = '#101012';
     ctx.fillRect(S * 0.46, y + rh * 0.15, S * 0.08, rh * 0.5);
     // wear highlights on contact ridge
-    ctx.fillStyle = 'rgba(150,148,140,0.35)';
-    for (let i = 0; i < 26; i++) ctx.fillRect(rng() * S, y + rh * (0.28 + rng() * 0.1), 5 + rng() * 14, 3);
+    ctx.fillStyle = 'rgba(168,166,158,0.5)';
+    for (let i = 0; i < 34; i++) ctx.fillRect(rng() * S, y + rh * (0.28 + rng() * 0.1), 5 + rng() * 14, 3);
     // mud/rust
     ctx.fillStyle = 'rgba(96,74,48,0.25)';
     for (let i = 0; i < 40; i++) {
@@ -627,6 +627,24 @@ function paintDecal(kind, text) {
     ctx.fillRect(28, 96, 200, 64); ctx.fillRect(96, 28, 64, 200);
     ctx.fillStyle = 'rgba(20,20,20,0.95)';
     ctx.fillRect(52, 116, 152, 24); ctx.fillRect(116, 52, 24, 152);
+  } else if (kind === 'soot') {
+    // Exhaust soot smudge: dark core fading out plus streak fingers running
+    // down the plate. Deterministic (no rng needed — decals are cached).
+    const g = ctx.createRadialGradient(128, 108, 8, 128, 116, 118);
+    g.addColorStop(0, 'rgba(22,20,17,0.72)');
+    g.addColorStop(0.55, 'rgba(26,23,19,0.36)');
+    g.addColorStop(1, 'rgba(26,23,19,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 12; i++) {
+      const x = 34 + i * 17 + ((i * 37) % 9);
+      const len = 60 + ((i * 53) % 78);
+      const sg = ctx.createLinearGradient(0, 110, 0, 110 + len);
+      sg.addColorStop(0, 'rgba(20,18,15,0.5)');
+      sg.addColorStop(1, 'rgba(20,18,15,0)');
+      ctx.fillStyle = sg;
+      ctx.fillRect(x, 110, 4 + (i % 3) * 3, len);
+    }
   } else if (kind === 'crossgrey') {
     ctx.strokeStyle = 'rgba(40,40,40,0.9)';
     ctx.lineWidth = 20;
@@ -750,16 +768,23 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
   const dark = track(setup(new THREE.MeshStandardMaterial({
     color: 0x33383a, roughness: 0.55, metalness: 0.45, roughnessMap: roughTex,
   })));
+  // Individual track-link pads: worn dusty steel, clearly lighter than the
+  // shadowed band behind them so the run reads as articulated links up close.
+  const trackLink = track(setup(new THREE.MeshStandardMaterial({
+    color: 0x4d4e4f, roughness: 0.72, metalness: 0.4, roughnessMap: roughTex,
+  })));
   // Optics / headlight lenses: smooth glass with a dark blue-grey tint.
   const glass = track(setup(new THREE.MeshStandardMaterial({
     color: 0x2a3540, roughness: 0.12, metalness: 0.85,
   })));
-  // Gun tube: solid paint over steel — semi-gloss, plain (a camo-mapped barrel
-  // reads as a broom handle), still takes the baked dirt vertex pass.
-  const barrelRgb = mix(baseRgb, [66, 68, 62], 0.42);
+  // Gun tube: painted in the vehicle scheme like the hull — crews paint the
+  // tube, only the muzzle brake stays bare steel (routed to the dark bucket).
+  // Uses the same box-projected camo map as the shell so it never reads as an
+  // untextured black prop, with a gentle normal so sleeve clamps still catch.
   const barrel = track(setup(new THREE.MeshStandardMaterial({
-    color: new THREE.Color(rgb(barrelRgb)).getHex(),
-    roughness: 0.5, metalness: 0.3, roughnessMap: roughTex, vertexColors: true,
+    map: camoTex, roughness: 0.58, metalness: 0.14, roughnessMap: roughTex,
+    normalMap: normalTex, normalScale: new THREE.Vector2(0.5, 0.5),
+    vertexColors: true,
   })));
   const canvasCloth = track(setup(new THREE.MeshStandardMaterial({
     color: 0x59543f, roughness: 0.96, metalness: 0.0,
@@ -801,7 +826,7 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
   };
 
   return {
-    hull, wheels, rubber, detail, dark, glass, barrel, canvasCloth, wood, burnt,
+    hull, wheels, rubber, detail, dark, trackLink, glass, barrel, canvasCloth, wood, burnt,
     trackL, trackR, trackTexL, trackTexR,
     trackLinkM: 0.165 * 4, // meters of track per full texture repeat (4 links)
     decal,

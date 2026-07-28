@@ -16,6 +16,8 @@ import { createLighting } from './engine/lighting.js';
 import { createPost } from './engine/post.js';
 import { createCameraRig } from './engine/cameraRig.js';
 import { createMap } from './world/map.js';
+import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
+import { MAP_THUMBS } from './ui/mapThumbs.js';
 import { TANK_IDS, getSpec } from './vehicles/specs.js';
 import { createTank } from './vehicles/tankFactory.js';
 import { computeDispersionRadM, SIM_DT } from './sim/movement.js';
@@ -25,6 +27,7 @@ import { createFx } from './fx/effects.js';
 import { initHud } from './ui/hud.js';
 import { createDamagePanel } from './ui/damagePanel.js';
 import { createGarage } from './ui/garage.js';
+import { createGarageStage } from './ui/garageStage.js';
 import { createAudio } from './audio/audio.js';
 import { createInput } from './game/input.js';
 import { createSettings } from './ui/settings.js';
@@ -68,38 +71,38 @@ const engineCtx = {
   quality: 'high',
 };
 
-const world = createMap(engineCtx, { seed: 1337 });
+// --- MAP-CONFIG WIRING: worlds are lazy-built per map config and cached;
+// `world` always points at the active one. Long-lived systems (camera rig,
+// fx) reach terrain through the stable proxy below so a map switch never
+// leaves them holding a stale heightfield.
+const worldCache = new Map();
+let world = createMap(engineCtx, { mapId: 'verdant', seed: 1337 });
+worldCache.set('verdant', world);
+const hfProxy = {
+  getHeightAt: (x, z) => world.heightField.getHeightAt(x, z),
+  getNormalAt: (x, z) => world.heightField.getNormalAt(x, z),
+  getGroundType: (x, z) => world.heightField.getGroundType(x, z),
+  get size() { return world.heightField.size; },
+  get minY() { return world.heightField.minY; },
+  get maxY() { return world.heightField.maxY; },
+};
 
 // --- game state + tanks -----------------------------------------------------
 const bus = createBus();
 const game = createGameState();
 spawnTanks(game, engineCtx);
 setupBattle(game, 'm1a2', world); // battle scene staged behind the garage screen
-const collider = createCollider(game, world);
+let collider = createCollider(game, world);
 
 // --- fx ----------------------------------------------------------------------
-const fx = createFx(engineCtx, world.heightField, { seed: 5000 });
+const fx = createFx(engineCtx, hfProxy, { seed: 5000 });
 scene.add(fx.group);
 fx.bindBus(bus);
 
 // --- garage stage (12 m disc pad + 2 integration-owned spotlights) -----------
 GARAGE_POS.y = world.heightField.getHeightAt(GARAGE_POS.x, GARAGE_POS.z);
-const padMat = new THREE.MeshStandardMaterial({ color: 0x3c4046, roughness: 0.85, metalness: 0.15 });
-engineCtx.setupShadowMaterial(padMat);
-const pad = new THREE.Mesh(new THREE.CylinderGeometry(6, 6.6, 0.35, 48), padMat);
-pad.position.set(GARAGE_POS.x, GARAGE_POS.y + 0.175, GARAGE_POS.z);
-pad.receiveShadow = true;
-scene.add(pad);
-// The battle terrain meshes stop at the map border, so at the garage stage the
-// backdrop would be the sky dome below the horizon (blinding white). A wide
-// matte ground disc catches the fog gradient instead.
-const apronMat = new THREE.MeshStandardMaterial({ color: 0x2e3330, roughness: 1.0, metalness: 0 });
-engineCtx.setupShadowMaterial(apronMat);
-const apron = new THREE.Mesh(new THREE.CircleGeometry(880, 40), apronMat); // stays outside the 1024 m map
-apron.rotation.x = -Math.PI / 2;
-apron.position.set(GARAGE_POS.x, GARAGE_POS.y - 0.02, GARAGE_POS.z);
-apron.receiveShadow = true;
-scene.add(apron);
+const garageStage = createGarageStage(engineCtx, GARAGE_POS);
+scene.add(garageStage.group);
 const spotA = new THREE.SpotLight(0xfff1d8, 160, 60, 0.5, 0.45, 1.6);
 spotA.position.set(GARAGE_POS.x + 9, GARAGE_POS.y + 11, GARAGE_POS.z + 7);
 const spotB = new THREE.SpotLight(0xcfe0ff, 80, 60, 0.6, 0.5, 1.6);
@@ -131,17 +134,66 @@ function garageCameraPose() {
   rig.setExternalPose(_v1, _v2, 42);
 }
 
+// --- MAP-CONFIG WIRING: map switching --------------------------------------
+// Re-seat the garage stage on the active map's edge terrain height.
+function placeGarage() {
+  GARAGE_POS.y = world.heightField.getHeightAt(GARAGE_POS.x, GARAGE_POS.z);
+  garageStage.group.position.copy(GARAGE_POS);
+  spotA.position.set(GARAGE_POS.x + 9, GARAGE_POS.y + 11, GARAGE_POS.z + 7);
+  spotB.position.set(GARAGE_POS.x - 10, GARAGE_POS.y + 8, GARAGE_POS.z - 6);
+  spotTarget.position.set(GARAGE_POS.x, GARAGE_POS.y + 1.2, GARAGE_POS.z);
+  if (pedestalVisual) {
+    pedestalVisual.root.position.set(GARAGE_POS.x, GARAGE_POS.y + 0.35, GARAGE_POS.z);
+  }
+  if (game.phase === 'garage') garageCameraPose();
+}
+
+/**
+ * Activate a battlefield: lazily build + cache its world, hide the old one,
+ * re-target atmosphere/lighting to the map's sky preset, rebuild the minimap
+ * and re-seat the garage stage. Synchronous (screenshot-contract safe).
+ * @param {string} mapId concrete map id (never 'random' — resolve first)
+ * @returns {object} the active World
+ */
+function switchMap(mapId) {
+  if (world.mapId === mapId) return world;
+  let next = worldCache.get(mapId);
+  if (!next) {
+    next = createMap(engineCtx, { mapId, seed: 1337 });
+    worldCache.set(mapId, next);
+  }
+  world.group.visible = false;
+  world = next;
+  world.group.visible = true;
+  collider = createCollider(game, world);
+  const skyCfg = world.config.sky || {};
+  sky.applyPreset(skyCfg, scene);
+  lighting.setSun(sky.sunDir, skyCfg);
+  baseFogDensity = scene.fog.density;
+  hud.buildMinimap(world.heightField, world.getMinimapFeatures(), world.config.minimap);
+  placeGarage();
+  return world;
+}
+
 // --- HUD / garage / panels ----------------------------------------------------
 const hud = initHud(bus);
 const damagePanel = createDamagePanel();
 hud.setDamagePanel(damagePanel);
-hud.buildMinimap(world.heightField, world.getMinimapFeatures());
+hud.buildMinimap(world.heightField, world.getMinimapFeatures(), world.config.minimap);
 
 const garage = createGarage({
   specs: TANK_IDS.map(getSpec),
   bus,
   onSelect: (specId) => { selectedSpecId = specId; setPedestalTank(specId); },
-  onBattle: (specId) => startBattle(specId),
+  onBattle: (specId, mapId) => startBattle(specId, mapId), // MAP-CONFIG WIRING
+  // MAP-CONFIG WIRING: battlefield picker cards (4 maps + Random)
+  maps: [
+    ...MAP_IDS.map((id) => {
+      const c = getMapConfig(id);
+      return { id, name: c.name, sub: c.sub || '', thumb: MAP_THUMBS[id] || '' };
+    }),
+    { id: 'random', name: 'Random', sub: 'Any battlefield', thumb: '' },
+  ],
 });
 
 // --- audio --------------------------------------------------------------------
@@ -180,8 +232,8 @@ function aimRaycastWithTanks(origin, dir, maxDist) {
 }
 
 const rig = createCameraRig(camera, {
-  heightField: world.heightField,
-  raycast: world.raycast,
+  heightField: hfProxy,
+  raycast: (o, d, m) => world.raycast(o, d, m),
   aimRaycast: aimRaycastWithTanks,
   getPlayer: () => game.player,
 });
@@ -200,7 +252,7 @@ bus.on('shell:hit', (ev) => {
 sky.applyFog(scene);
 // High-zoom de-fog (WoT sniper behavior): remember the base density so the
 // render loop can scale it by FOV without mutating the sky's baseline.
-const BASE_FOG_DENSITY = scene.fog.density;
+let baseFogDensity = scene.fog.density; // updated on map switch (sky preset)
 const post = createPost(renderer, scene, camera);
 
 // ---------------------------------------------------------------------------
@@ -210,7 +262,8 @@ const endOverlay = document.createElement('div');
 endOverlay.style.cssText =
   'position:fixed;inset:0;display:none;z-index:70;align-items:center;justify-content:center;' +
   'flex-direction:column;gap:22px;background:rgba(4,7,10,0.55);' +
-  "font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#eef4f9;";
+  "font-family:'Switzer','Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#eef4f9;";
+endOverlay.className = 'cot-end';
 const endTitle = document.createElement('div');
 endTitle.style.cssText = 'font-size:52px;font-weight:800;letter-spacing:0.3em;text-shadow:0 2px 18px rgba(0,0,0,0.8);';
 const endBtn = document.createElement('button');
@@ -218,7 +271,7 @@ endBtn.textContent = 'RETURN TO GARAGE';
 endBtn.style.cssText =
   'font-size:16px;font-weight:700;letter-spacing:0.2em;padding:14px 44px;cursor:pointer;' +
   'color:#fff7ea;border:1px solid #ffc169;background:linear-gradient(180deg,#ffa02e,#d95f00);' +
-  "font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
+  "font-family:'Switzer','Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
 endOverlay.append(endTitle, endBtn);
 document.body.appendChild(endOverlay);
 endBtn.addEventListener('click', () => { bus.emit('ui:click', {}); enterGarage(); });
@@ -292,8 +345,11 @@ function buildShellCards(spec) {
   }));
 }
 
-function startBattle(specId) {
+function startBattle(specId, mapId = null) {
   selectedSpecId = specId;
+  // MAP-CONFIG WIRING: battle on the picked map ('random' rolls here)
+  if (mapId) switchMap(resolveMapId(mapId));
+  game.mapId = world.mapId;
   setupBattle(game, specId, world);
   buildShellCards(game.player.spec);
   damagePanel.setTank(game.player.spec);
@@ -387,6 +443,7 @@ function computeAimInfo() {
 // Render loop
 // ---------------------------------------------------------------------------
 const camInput = { mouseDX: 0, mouseDY: 0, wheel: 0, rmb: false, shiftPressed: false };
+const _listenerPose = { pos: null, forward: _fwd }; // reused — no per-frame literal
 let simAcc = 0;
 let lastMs = -1;
 let lastFov = camera.fov;
@@ -428,14 +485,14 @@ function tick(nowMs) {
   // (applies in shot mode too so sniper_view captures stay crisp).
   if (scene.fog) {
     const fogScale = camera.fov < 15 ? Math.max(0.35, camera.fov / 15) : 1;
-    scene.fog.density = BASE_FOG_DENSITY * fogScale;
+    scene.fog.density = baseFogDensity * fogScale;
   }
 
   if (shotMode) {
     // Deterministic screenshot hold: no sim, no rig, frozen fx clock.
     world.update(0, camera.position);
     fx.update(dtR, game.shells, camera);
-    lighting.update();
+    lighting.update(true); // force ALL shadow cascades — deterministic capture
     post.render(dtR);
     return;
   }
@@ -483,7 +540,8 @@ function tick(nowMs) {
   // 3. camera rig
   if (inBattle && !paused) rig.update(dtR, camInput);
 
-  // 4. world LOD/wind
+  // 4. world LOD/wind (+ WoT-style near-grass suppression while scoped)
+  world.setSniperFade(rig.mode === 'SNIPER' ? 1 : 0);
   world.update(dtR, camera.position);
 
   // 5. visuals + dust
@@ -505,7 +563,8 @@ function tick(nowMs) {
 
   // 8. audio
   camera.getWorldDirection(_fwd);
-  audio.update(dtR, { pos: camera.position, forward: _fwd }, game.tanks);
+  _listenerPose.pos = camera.position;
+  audio.update(dtR, _listenerPose, game.tanks);
 
   // 9-10. shadows + post
   if (camera.fov !== lastFov) { lighting.updateFrustums(); lastFov = camera.fov; }
@@ -531,7 +590,37 @@ const VIEW_TIME = {
   combat_firing: 0.5,
   explosion: 1.5,
   garage: 0.7,
+  techtree: 0.7,
+  battlefield_desert: 2.0,
+  battlefield_winter: 2.0,
+  battlefield_urban: 2.0,
 };
+
+// which world a screenshot view must be captured on (default: verdant)
+const VIEW_MAP = {
+  battlefield_desert: 'desert',
+  battlefield_winter: 'winter',
+  battlefield_urban: 'urban',
+};
+
+// MAP-CONFIG WIRING: pin the shot to its map, re-seating the staged battle
+// (deterministic spawns) whenever the map actually changes.
+function ensureShotWorld(mapId) {
+  if (world.mapId === mapId) return;
+  switchMap(mapId);
+  setupBattle(game, 'm1a2', world);
+  buildShellCards(game.player.spec);
+  damagePanel.setTank(game.player.spec);
+}
+
+// wide establishing shot from the map config's deterministic camera preset
+function mapEstablishingShot() {
+  hud.setMode('hidden');
+  const s = world.config.shot;
+  _v1.set(s.pos[0], world.heightField.getHeightAt(s.pos[0], s.pos[2]) + s.pos[1], s.pos[2]);
+  _v2.set(s.look[0], world.heightField.getHeightAt(s.look[0], s.look[2]) + s.look[1], s.look[2]);
+  rig.setExternalPose(_v1, _v2, 55);
+}
 
 function zeroInputs() {
   for (const ent of game.tanks) {
@@ -684,12 +773,25 @@ const SHOT_VIEWS = {
     garage.show('m1a2');
     garageCameraPose();
   },
+  techtree() {
+    // research screen over the garage: Germany tab shows both eras
+    // (WWII insignia + modern flag) and three unlocked roster tanks.
+    hud.setMode('hidden');
+    setPedestalTank('m1a2');
+    garage.show('m1a2');
+    garageCameraPose();
+    garage.showTechTree('germany');
+  },
+  battlefield_desert() { mapEstablishingShot(); },
+  battlefield_winter() { mapEstablishingShot(); },
+  battlefield_urban() { mapEstablishingShot(); },
 };
 
 window.__SHOTS = {
   views: [
     'battlefield', 'player_view', 'sniper_view', 'tank_closeup_modern',
-    'tank_closeup_ww2', 'combat_firing', 'explosion', 'garage',
+    'tank_closeup_ww2', 'combat_firing', 'explosion', 'garage', 'techtree',
+    'battlefield_desert', 'battlefield_winter', 'battlefield_urban',
   ],
   set(name) {
     const recipe = SHOT_VIEWS[name];
@@ -697,17 +799,21 @@ window.__SHOTS = {
     shotMode = true;
     game.phase = 'shot';
     zeroInputs();
-    if (name !== 'garage') garage.hide();
+    ensureShotWorld(VIEW_MAP[name] || 'verdant'); // MAP-CONFIG WIRING
+    garage.hide(); // also closes the tech tree; recipes re-show what they need
     endOverlay.style.display = 'none';
     fx.resetAll();
     fx.resetSeed(5000);
     fx.setFrozen(true, VIEW_TIME[name]);
     world.setWindTime(VIEW_TIME[name]);
     recipe();
+    // Shot mode runs world.update with dt=0 (frozen), so the eased sniper
+    // grass fade would never move — snap it to match the rig mode instead.
+    world.setSniperFade(rig.mode === 'SNIPER' ? 1 : 0, true);
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld(true);
     lighting.updateFrustums();
-    lighting.update();
+    lighting.update(true);
     lastFov = camera.fov;
   },
 };
@@ -723,7 +829,7 @@ hud.setMode('hidden');
 
 world.update(0, camera.position);
 updateDustAndSync();
-lighting.update();
+lighting.update(true); // boot: render every cascade before first present
 post.render(SIM_DT);
 post.render(SIM_DT);
 
@@ -846,7 +952,9 @@ function debugSlayEnemies() {
 }
 
 window.__DEBUG = {
-  scene, camera, renderer, post, lighting, world, game, fx, rig, bus,
+  scene, camera, renderer, post, lighting, game, fx, rig, bus,
+  get world() { return world; },
+  switchMap,
   flags: debugFlags,
   frameInfo,
   aimAtNearest: debugAimAtNearest,

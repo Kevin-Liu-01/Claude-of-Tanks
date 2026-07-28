@@ -46,36 +46,78 @@ const SKY_RADIANCE_SCALE = 0.38;
 const SKY_KNEE = 1.2;
 const SKY_KNEE_RANGE = 0.4;
 const SKY_KNEE_FALLOFF = 0.125; // 1/e width of the shoulder in luminance units
+// Horizon haze treatment (r3 critique: "horizon band blows out to near pure
+// white with no hue — reads as fog-card overexposure"). Inside the low-
+// elevation band the dome's luminance is soft-compressed to sit ~10-15% below
+// white after ACES, and a faint luminance-preserving pale-blue hue floor is
+// mixed in so the haze reads as atmosphere, never as blown white. A tiny
+// screen-space dither breaks up banding on these low-frequency ramps.
+const HAZE_MAX_LUM = 0.80; // linear pre-ACES luminance ceiling in the band
+const HAZE_COMPRESS = 0.22; // slope retained above the ceiling
+const HAZE_BAND_TOP = 0.14; // direction.y where the haze treatment fades out
+const HAZE_TINT = [0.87, 0.92, 1.02]; // pale-blue hue floor (unit-luma-ish)
+const HAZE_TINT_MIX = 0.30;
+const SKY_DITHER = 0.004; // linear-space dither amplitude ~1 display LSB
 const SKY_FRAG_ANCHOR = 'gl_FragColor = vec4( texColor, 1.0 );';
 const SKY_DOME_SCALE = 10000; // must stay inside camera.far
 const ENV_SKY_SCALE = 50; // PMREMGenerator.fromScene far plane = 100
 // IBL is fill, not key: at 1.1 it buried the sun's shadows in a flat milky
 // wash, and even 0.45 diluted open-ground shadows to a ~1.3:1 luma ratio.
-// 0.28 (with hemi 0.20, sun 4.2) keeps ~2:1 shadows — enough to anchor
-// objects — without crushing backlit armor/foliage to black.
-const ENV_INTENSITY = 0.28;
+// r3: 0.28 → 0.20 — omnidirectional IBL fill is the flattest of the three
+// ambient layers (it lights shadowed and lit faces identically), so the fill
+// budget moved to the directional HemisphereLight (lighting.js hemi 0.32),
+// which keeps shadowed faces cooler AND darker. Total fill is unchanged-ish;
+// form readability at midrange is not.
+const ENV_INTENSITY = 0.2;
 // Exponential fog replaces the old linear Fog(150, 1200) that whited out the
-// midground by ~300 m. Density tuned so ~10% at 400 m, ~50% at 900 m.
-const FOG_DENSITY = 0.00088;
+// midground by ~300 m. r3: density dropped 0.00088 → 0.00074 — the milky wash
+// was flattening the battlefield shot; the distance cue is now shared with
+// the depth-driven aerial-perspective pass in post.js (uniform desaturation),
+// so the fog itself can stay thinner and keep midground color alive.
+const FOG_DENSITY = 0.00074;
 // Aerial perspective: pull the sampled horizon color toward a desaturated
 // blue so distance reads as cool atmosphere, never as white-out.
 const FOG_BLUE_TINT_HEX = 0x7e97b8;
 const FOG_BLUE_MIX = 0.55;
 const HORIZON_RT_SIZE = 16;
 const FALLBACK_HORIZON_HEX = 0xc4d3dd; // hand-tuned noon-hazy, doc §5 option (b)
-// Procedural cumulus layer (r2 critique: "sky is a bare blue gradient, cloud
-// noise reads as banding smears"). A seeded 3-octave FBM field, thresholded
-// into clump shapes and lit by an emboss toward the sun, is baked once into a
-// canvas and draped on an inside-out sphere between the terrain and the Sky
-// dome. Deterministic (fixed seed), self-contained, tone-mapped with the
-// scene, and always below the bloom threshold.
+// Procedural cumulus layer, rebuilt for r3 ("clouds read as blurred airbrush
+// smears — no lit tops, no shadowed undersides, no crisp edges"). The old
+// soft-ramp emboss is replaced by: domain-warped 5-octave FBM carved by a
+// HARD coverage threshold (crisp cauliflower edges), a macro-noise threshold
+// modulation so clouds cluster into distinct masses with clear-sky gaps, and
+// a per-texel vertical light march toward the sun that yields bright warm
+// tops, grey-blue shaded bellies and naturally silver-lined rims. Baked once
+// (fixed seed, deterministic) into a canvas and draped on two inside-out
+// sphere shells for parallax depth. NOTE: the Sky shader's own built-in cloud
+// noise is force-disabled in configureSkyUniforms (cloudCoverage = 0) — it
+// was the main source of the airbrush smears.
 const CLOUD_SEED = 777;
-const CLOUD_TEX_W = 1024;
-const CLOUD_TEX_H = 512;
-const CLOUD_COVER_LO = 0.55; // fbm threshold where cloud alpha starts
-const CLOUD_COVER_HI = 0.70; // fbm value of a fully opaque cloud core
+const CLOUD_TEX_W = 2048;
+const CLOUD_TEX_H = 1024;
+const CLOUD_THR = 0.535; // base FBM coverage threshold that carves cloud shapes
+const CLOUD_EDGE = 0.03; // clear→rim ramp width in FBM units (crisp edge)
+const CLOUD_CORE = 0.16; // rim→opaque-core ramp width in FBM units
+const CLOUD_CLUSTER = 0.08; // macro-noise threshold modulation (cloud grouping)
+const CLOUD_WARP = 0.05; // domain-warp strength (cauliflower edge crinkle)
+const CLOUD_MARCH_STEPS = 12; // light-march samples toward the zenith/sun
+const CLOUD_MARCH_STEP_PX = 3;
+const CLOUD_SHADE_K = 0.30; // optical-depth scale: bright tops, dark bellies
+const CLOUD_LIT = [1.0, 0.98, 0.94]; // warm-white sunlit faces
+const CLOUD_SHADE = [0.55, 0.62, 0.76]; // cool grey-blue shaded bellies
 const CLOUD_DOME_RADIUS = 3400; // inside camera.far (4000), outside the map
-const CLOUD_MAX_ALPHA = 0.9;
+const CLOUD_DOME_RADIUS_2 = 3800; // second, farther shell for layered depth
+const CLOUD_LAYER2_OPACITY = 0.6;
+const CLOUD_LAYER2_YAW = 2.4; // radians — decorrelates the two shells
+// Repeats MUST be integers: the cloud texture tiles in X, and a fractional
+// repeat puts a mid-texture discontinuity at the sphere's UV wrap — a hard
+// vertical seam across the sky. Repeat 2 on the near shell doubles effective
+// angular resolution (a 1080p frame sees a ~55° slice of the dome — at
+// repeat 1 that is only ~300 texture px stretched across 1920 screen px,
+// which reads as airbrush blur no matter how sharp the texture is).
+const CLOUD_LAYER1_REPEAT = 2;
+const CLOUD_LAYER2_REPEAT = 3; // finer tiling on the far shell
+const CLOUD_MAX_ALPHA = 0.94;
 
 /**
  * @typedef {object} SkyRig
@@ -85,23 +127,58 @@ const CLOUD_MAX_ALPHA = 0.9;
  * @property {(scene: THREE.Scene) => void} applyFog - installs horizon-matched linear fog
  */
 
-/** Apply the shared atmosphere parameters to a Sky instance. @param {Sky} sky @param {THREE.Vector3} sunDir */
-function configureSkyUniforms(sky, sunDir) {
+// Per-map sky preset defaults — map configs (src/world/maps/*) override any
+// subset via createSky(...).applyPreset(preset, scene).
+const DEFAULT_PRESET = Object.freeze({
+  sunElevationDeg: SUN_ELEVATION_DEG,
+  sunAzimuthDeg: SUN_AZIMUTH_DEG,
+  turbidity: TURBIDITY,
+  rayleigh: RAYLEIGH,
+  mieCoefficient: MIE_COEFFICIENT,
+  mieDirectionalG: MIE_DIRECTIONAL_G,
+  fogDensity: FOG_DENSITY,
+  fogTintHex: FOG_BLUE_TINT_HEX,
+  fogMix: FOG_BLUE_MIX,
+  envIntensity: ENV_INTENSITY,
+  cloudOpacity: 1.0,
+  cloudOpacity2: CLOUD_LAYER2_OPACITY,
+  cloudTintHex: 0xffffff,
+});
+
+/** Apply the shared atmosphere parameters to a Sky instance. @param {Sky} sky @param {THREE.Vector3} sunDir @param {object} [preset] */
+function configureSkyUniforms(sky, sunDir, preset = DEFAULT_PRESET) {
   const u = sky.material.uniforms;
-  u.turbidity.value = TURBIDITY;
-  u.rayleigh.value = RAYLEIGH;
-  u.mieCoefficient.value = MIE_COEFFICIENT;
-  u.mieDirectionalG.value = MIE_DIRECTIONAL_G;
+  u.turbidity.value = preset.turbidity;
+  u.rayleigh.value = preset.rayleigh;
+  u.mieCoefficient.value = preset.mieCoefficient;
+  u.mieDirectionalG.value = preset.mieDirectionalG;
   u.sunPosition.value.copy(sunDir);
+  // The r180+ Sky shader ships its own screen-projected FBM cloud layer
+  // (cloudCoverage defaults to 0.4!) — soft 30%-smoothstep blobs with no
+  // shading, the exact "airbrush smear" the critic flagged. Kill it; the
+  // shaped cumulus dome below owns clouds.
+  if (u.cloudCoverage) u.cloudCoverage.value = 0;
   sky.material.onBeforeCompile = (shader) => {
     const patched = shader.fragmentShader.replace(
       SKY_FRAG_ANCHOR,
       `vec3 skyCol = texColor * ${SKY_RADIANCE_SCALE.toFixed(4)};
-	float skyL = dot( skyCol, vec3( 0.2126, 0.7152, 0.0722 ) );
+	const vec3 lumW = vec3( 0.2126, 0.7152, 0.0722 );
+	// horizon haze: compress the near-white band ~10-15% below white and mix
+	// in a faint pale-blue hue floor so it reads as atmosphere, not overexposure
+	float hazeBand = 1.0 - smoothstep( 0.0, ${HAZE_BAND_TOP.toFixed(3)}, direction.y );
+	float hazeL = dot( skyCol, lumW );
+	if ( hazeL > ${HAZE_MAX_LUM.toFixed(3)} && hazeBand > 0.001 ) {
+		float hazeTarget = ${HAZE_MAX_LUM.toFixed(3)} + ( hazeL - ${HAZE_MAX_LUM.toFixed(3)} ) * ${HAZE_COMPRESS.toFixed(3)};
+		skyCol *= mix( 1.0, hazeTarget / hazeL, hazeBand );
+	}
+	skyCol = mix( skyCol, dot( skyCol, lumW ) * vec3( ${HAZE_TINT[0].toFixed(3)}, ${HAZE_TINT[1].toFixed(3)}, ${HAZE_TINT[2].toFixed(3)} ), hazeBand * ${HAZE_TINT_MIX.toFixed(3)} );
+	float skyL = dot( skyCol, lumW );
 	if ( skyL > ${SKY_KNEE.toFixed(3)} ) {
 		skyCol *= ( ${SKY_KNEE.toFixed(3)} + ${SKY_KNEE_RANGE.toFixed(3)} * ( 1.0 - exp( -( skyL - ${SKY_KNEE.toFixed(3)} ) * ${SKY_KNEE_FALLOFF.toFixed(4)} ) ) ) / skyL;
 	}
-	gl_FragColor = vec4( skyCol, 1.0 );`,
+	// break up gradient banding on the low-frequency sky ramps
+	skyCol += ( fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) - 0.5 ) * ${SKY_DITHER.toFixed(4)};
+	gl_FragColor = vec4( max( skyCol, vec3( 0.0 ) ), 1.0 );`,
     );
     if (patched === shader.fragmentShader) {
       throw new Error('sky.js: radiance-scale injection anchor not found in Sky shader');
@@ -123,68 +200,101 @@ function mulberry32(a) {
 }
 
 /**
- * Bake the cumulus texture: X-tileable value-noise FBM → clump threshold →
- * sun-side emboss lighting → warm-lit tops / cool shaded bellies.
+ * Build an X-tileable multi-octave value-noise FBM sampler.
  *
- * @param {THREE.Vector3} sunDir - unit toward-sun vector (for the lit side)
- * @returns {THREE.CanvasTexture}
+ * @param {() => number} rng - seeded PRNG that fills the per-octave lattices
+ * @param {number} octaves
+ * @param {number} base - lattice resolution of octave 0 (doubles per octave)
+ * @returns {(u: number, v: number) => number} fbm in ~[0,1], tileable in u
  */
-function makeCloudTexture(sunDir) {
-  const W = CLOUD_TEX_W;
-  const H = CLOUD_TEX_H;
-  const rng = mulberry32(CLOUD_SEED);
-
-  // X-tileable value noise lattices, one per octave
-  const OCTAVES = 4;
-  const BASE = 6;
+function makeFbm(rng, octaves, base) {
   const lattices = [];
-  for (let o = 0; o < OCTAVES; o++) {
-    const n = BASE << o;
-    const grid = new Float32Array(n * (n / 2 + 2));
+  for (let o = 0; o < octaves; o++) {
+    const n = base << o;
+    const rows = (n >> 1) + 2;
+    const grid = new Float32Array(n * rows);
     for (let i = 0; i < grid.length; i++) grid[i] = rng();
     lattices.push({ n, grid });
   }
   const smooth = (t) => t * t * (3 - 2 * t);
-  function noise(o, u, v) {
-    const { n, grid } = lattices[o];
-    const rows = n / 2 + 1;
-    const x = u * n;
-    const y = v * (rows - 1);
-    const x0 = Math.floor(x);
-    const y0 = Math.floor(y);
-    const fx = smooth(x - x0);
-    const fy = smooth(y - y0);
-    const xa = x0 % n;
-    const xb = (x0 + 1) % n;
-    const ya = Math.min(y0, rows - 1);
-    const yb = Math.min(y0 + 1, rows - 1);
-    const g00 = grid[ya * n + xa];
-    const g10 = grid[ya * n + xb];
-    const g01 = grid[yb * n + xa];
-    const g11 = grid[yb * n + xb];
-    return g00 + (g10 - g00) * fx + (g01 - g00) * fy + (g00 - g10 - g01 + g11) * fx * fy;
-  }
-  function fbm(u, v) {
+  return function fbm(u, v) {
     let sum = 0;
     let amp = 0.55;
     let tot = 0;
-    for (let o = 0; o < OCTAVES; o++) {
-      sum += noise(o, (u + o * 0.37) % 1, v) * amp;
+    for (let o = 0; o < octaves; o++) {
+      const { n, grid } = lattices[o];
+      const rows = (n >> 1) + 1;
+      let uu = (u + o * 0.37) % 1;
+      if (uu < 0) uu += 1;
+      const x = uu * n;
+      const y = clampNum(v, 0, 1) * (rows - 1);
+      const x0 = Math.floor(x);
+      const y0 = Math.floor(y);
+      const fx = smooth(x - x0);
+      const fy = smooth(y - y0);
+      const xa = x0 % n;
+      const xb = (x0 + 1) % n;
+      const ya = Math.min(y0, rows - 1);
+      const yb = Math.min(y0 + 1, rows - 1);
+      const g00 = grid[ya * n + xa];
+      const g10 = grid[ya * n + xb];
+      const g01 = grid[yb * n + xa];
+      const g11 = grid[yb * n + xb];
+      sum += (g00 + (g10 - g00) * fx + (g01 - g00) * fy + (g00 - g10 - g01 + g11) * fx * fy) * amp;
       tot += amp;
-      amp *= 0.55;
+      amp *= 0.5;
     }
     return sum / tot;
-  }
-  const density = (u, v) => {
-    const d = (fbm(u, v) - CLOUD_COVER_LO) / (CLOUD_COVER_HI - CLOUD_COVER_LO);
-    return d < 0 ? 0 : (d > 1 ? 1 : d);
   };
+}
 
-  // Lighting emboss is vertical (sample slightly toward the zenith): cloud
-  // tops/sun-facing shoulders read lit, bellies read shaded. A longitude-
-  // dependent emboss would need a sign flip at the anti-sun meridian, which
-  // bakes a visible vertical seam into the dome — vertical-only is seamless.
+/**
+ * Bake the cumulus texture (see the CLOUD_* constant block for the recipe):
+ * domain-warped FBM carved by a hard coverage threshold into distinct cloud
+ * masses, then shaded per-texel by a vertical light march toward the sun —
+ * warm-white lit tops, cool grey-blue shaded bellies, silver-lined rims.
+ *
+ * The light march is vertical (texture v == dome elevation, sun is high):
+ * a longitude-dependent march would need a sign flip at the anti-sun
+ * meridian, which bakes a visible vertical seam into the dome.
+ *
+ * @returns {THREE.CanvasTexture}
+ */
+function makeCloudTexture() {
+  const W = CLOUD_TEX_W;
+  const H = CLOUD_TEX_H;
+  const rng = mulberry32(CLOUD_SEED);
+  const fbmD = makeFbm(rng, 6, 8); // density field — primary cloud forms
+  const fbmWX = makeFbm(rng, 3, 5); // domain warp u
+  const fbmWY = makeFbm(rng, 3, 5); // domain warp v
+  const fbmM = makeFbm(rng, 2, 3); // macro clustering (masses + clear gaps)
 
+  // Pass 1 — carve the coverage field. mask = alpha shape (hard edge),
+  // core = interior opacity ramp, sigma = optical density for the light march.
+  const mask = new Float32Array(W * H);
+  const core = new Float32Array(W * H);
+  const sigma = new Float32Array(W * H);
+  for (let y = 0; y < H; y++) {
+    const v = y / (H - 1);
+    for (let x = 0; x < W; x++) {
+      const u = x / W;
+      let wu = (u + (fbmWX(u, v) - 0.5) * CLOUD_WARP) % 1;
+      if (wu < 0) wu += 1;
+      const wv = clampNum(v + (fbmWY(u, v) - 0.5) * CLOUD_WARP, 0, 1);
+      const d = fbmD(wu, wv);
+      const thr = CLOUD_THR + (fbmM(u, v) - 0.5) * 2 * CLOUD_CLUSTER;
+      const i = y * W + x;
+      const m = smoothstepNum(thr, thr + CLOUD_EDGE, d);
+      const c = smoothstepNum(thr + CLOUD_EDGE, thr + CLOUD_EDGE + CLOUD_CORE, d);
+      mask[i] = m;
+      core[i] = c;
+      sigma[i] = m * (0.3 + 0.7 * c);
+    }
+  }
+
+  // Pass 2 — shade + write pixels. Transmittance from the accumulated density
+  // above each texel: tops and thin rims stay near 1 (bright, silver-lined),
+  // texels under thick cloud fall toward 0 (shaded belly).
   const cnv = document.createElement('canvas');
   cnv.width = W;
   cnv.height = H;
@@ -194,26 +304,33 @@ function makeCloudTexture(sunDir) {
   for (let y = 0; y < H; y++) {
     const v = y / (H - 1);
     // fade clouds out toward the horizon band so they melt into the haze
-    // instead of clipping against the terrain silhouette (r2: "abrupt")
-    const horizonFade = 1 - smoothstepNum(0.62, 0.97, v);
+    // instead of clipping against the terrain silhouette. The band is kept
+    // low (v 0.80+ ≈ elevation < 13°) so cumulus visibly march toward the
+    // horizon in gameplay-pitch framing instead of hiding at the zenith.
+    const horizonFade = 1 - smoothstepNum(0.80, 0.965, v);
     // and thin them near the zenith pole to hide UV pinching
-    const zenithFade = smoothstepNum(0.02, 0.14, v);
+    const zenithFade = smoothstepNum(0.02, 0.10, v);
     for (let x = 0; x < W; x++) {
-      const u = x / W;
-      const d = density(u, v);
-      const o = (y * W + x) * 4;
-      if (d <= 0) {
+      const i = y * W + x;
+      const o = i * 4;
+      const m = mask[i];
+      if (m <= 0 || horizonFade <= 0 || zenithFade <= 0) {
         px[o + 3] = 0;
         continue;
       }
-      const lit = density(u, Math.max(0, v - 5 / H)) - d;
-      const bright = clampNum(0.9 + lit * 2.4 - d * 0.38, 0.5, 1.0);
-      // warm-white lit faces, cool grey-blue shaded bellies
-      const cool = clampNum(1 - bright, 0, 1);
-      px[o] = Math.round(255 * bright * (1 - 0.06 * cool));
-      px[o + 1] = Math.round(255 * bright * (1 - 0.03 * cool));
-      px[o + 2] = Math.round(255 * Math.min(1, bright * (1 + 0.10 * cool)));
-      px[o + 3] = Math.round(255 * CLOUD_MAX_ALPHA * d * horizonFade * zenithFade);
+      let occl = 0;
+      for (let s = 1; s <= CLOUD_MARCH_STEPS; s++) {
+        const yy = y - s * CLOUD_MARCH_STEP_PX;
+        if (yy < 0) break;
+        occl += sigma[yy * W + x];
+      }
+      const lit = Math.pow(Math.exp(-CLOUD_SHADE_K * occl), 0.85);
+      px[o] = Math.round(255 * (CLOUD_SHADE[0] + (CLOUD_LIT[0] - CLOUD_SHADE[0]) * lit));
+      px[o + 1] = Math.round(255 * (CLOUD_SHADE[1] + (CLOUD_LIT[1] - CLOUD_SHADE[1]) * lit));
+      px[o + 2] = Math.round(255 * (CLOUD_SHADE[2] + (CLOUD_LIT[2] - CLOUD_SHADE[2]) * lit));
+      px[o + 3] = Math.round(
+        255 * CLOUD_MAX_ALPHA * m * (0.42 + 0.58 * core[i]) * horizonFade * zenithFade,
+      );
     }
   }
   ctx.putImageData(img, 0, 0);
@@ -242,7 +359,7 @@ function clampNum(x, lo, hi) {
  * @param {THREE.Vector3} sunDir - unit toward-sun vector
  * @returns {THREE.Color} linear-space horizon color
  */
-function sampleHorizonColor(renderer, sunDir) {
+function sampleHorizonColor(renderer, sunDir, preset = DEFAULT_PRESET) {
   const rt = new THREE.WebGLRenderTarget(HORIZON_RT_SIZE, HORIZON_RT_SIZE, {
     depthBuffer: false,
     stencilBuffer: false,
@@ -250,7 +367,7 @@ function sampleHorizonColor(renderer, sunDir) {
   const sampleScene = new THREE.Scene();
   const sampleSky = new Sky();
   sampleSky.scale.setScalar(ENV_SKY_SCALE);
-  configureSkyUniforms(sampleSky, sunDir);
+  configureSkyUniforms(sampleSky, sunDir, preset);
   sampleScene.add(sampleSky);
 
   // Horizontal camera looking directly away from the sun's azimuth, at the horizon.
@@ -303,43 +420,63 @@ function sampleHorizonColor(renderer, sunDir) {
  * @returns {SkyRig}
  */
 export function createSky(scene, renderer) {
+  let preset = { ...DEFAULT_PRESET };
   const sunDir = new THREE.Vector3().setFromSphericalCoords(
     1,
-    THREE.MathUtils.degToRad(90 - SUN_ELEVATION_DEG),
-    THREE.MathUtils.degToRad(SUN_AZIMUTH_DEG),
+    THREE.MathUtils.degToRad(90 - preset.sunElevationDeg),
+    THREE.MathUtils.degToRad(preset.sunAzimuthDeg),
   );
 
   const sky = new Sky();
   sky.scale.setScalar(SKY_DOME_SCALE);
-  configureSkyUniforms(sky, sunDir);
+  configureSkyUniforms(sky, sunDir, preset);
   scene.add(sky);
 
-  // Cumulus layer: inside-out sphere between the terrain and the Sky dome.
-  // Transparent (renders after opaques, over the Sky box), never writes
-  // depth, ignores fog (it fades itself into the horizon band instead).
-  const cloudTex = makeCloudTexture(sunDir);
-  const cloudMat = new THREE.MeshBasicMaterial({
-    map: cloudTex,
-    transparent: true,
-    side: THREE.BackSide,
-    depthWrite: false,
-    fog: false,
-  });
-  const clouds = new THREE.Mesh(
-    new THREE.SphereGeometry(CLOUD_DOME_RADIUS, 48, 24, 0, Math.PI * 2, 0, Math.PI * 0.52),
-    cloudMat,
-  );
-  clouds.name = 'cloudLayer';
-  clouds.frustumCulled = false;
-  clouds.userData.aoExclude = true; // GTAO's override prepass ignores alpha
-  scene.add(clouds);
+  // Cumulus layers: two inside-out sphere shells between the terrain and the
+  // Sky dome (near shell full-strength, far shell thinner + decorrelated for
+  // layered depth). Transparent (render after opaques, over the Sky box),
+  // never write depth, ignore fog (they fade into the horizon band instead).
+  // renderOrder < 0: both spheres are centered at the origin, so distance
+  // sorting would misplace them in FRONT of smoke/flash sprites — force them
+  // to draw before all default-order transparents.
+  const cloudTex = makeCloudTexture();
+  const mkCloudShell = (radius, opacity, name) => {
+    const mat = new THREE.MeshBasicMaterial({
+      map: cloudTex,
+      transparent: true,
+      opacity,
+      side: THREE.BackSide,
+      depthWrite: false,
+      fog: false,
+    });
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(radius, 48, 24, 0, Math.PI * 2, 0, Math.PI * 0.52),
+      mat,
+    );
+    mesh.name = name;
+    mesh.frustumCulled = false;
+    mesh.userData.aoExclude = true; // GTAO's override prepass ignores alpha
+    scene.add(mesh);
+    return mesh;
+  };
+  const cloudsFar = mkCloudShell(CLOUD_DOME_RADIUS_2, CLOUD_LAYER2_OPACITY, 'cloudLayerFar');
+  cloudsFar.rotation.y = CLOUD_LAYER2_YAW;
+  cloudsFar.renderOrder = -3;
+  cloudsFar.material.map = cloudTex.clone();
+  cloudsFar.material.map.repeat.x = CLOUD_LAYER2_REPEAT;
+  cloudsFar.material.map.needsUpdate = true;
+  const clouds = mkCloudShell(CLOUD_DOME_RADIUS, 1.0, 'cloudLayer');
+  clouds.renderOrder = -2;
+  clouds.material.map = cloudTex.clone();
+  clouds.material.map.repeat.x = CLOUD_LAYER1_REPEAT;
+  clouds.material.map.needsUpdate = true;
 
-  const horizonColor = sampleHorizonColor(renderer, sunDir);
+  const horizonColor = sampleHorizonColor(renderer, sunDir, preset);
 
   let pmrem = null;
   let envTarget = null;
 
-  return {
+  const rig = {
     sunDir,
 
     /**
@@ -356,7 +493,7 @@ export function createSky(scene, renderer) {
       const envScene = new THREE.Scene();
       const envSky = new Sky();
       envSky.scale.setScalar(ENV_SKY_SCALE);
-      configureSkyUniforms(envSky, sunDir);
+      configureSkyUniforms(envSky, sunDir, preset);
       envScene.add(envSky);
 
       const nextTarget = pmrem.fromScene(envScene);
@@ -364,7 +501,7 @@ export function createSky(scene, renderer) {
       envTarget = nextTarget;
 
       scene.environment = envTarget.texture;
-      scene.environmentIntensity = ENV_INTENSITY;
+      scene.environmentIntensity = preset.envIntensity;
 
       envSky.geometry.dispose();
       envSky.material.dispose();
@@ -382,8 +519,38 @@ export function createSky(scene, renderer) {
      */
     applyFog(targetScene) {
       const fogColor = horizonColor.clone()
-        .lerp(new THREE.Color(FOG_BLUE_TINT_HEX), FOG_BLUE_MIX);
-      targetScene.fog = new THREE.FogExp2(fogColor, FOG_DENSITY);
+        .lerp(new THREE.Color(preset.fogTintHex), preset.fogMix);
+      targetScene.fog = new THREE.FogExp2(fogColor, preset.fogDensity);
+    },
+
+    /**
+     * Re-target the whole atmosphere to a map's sky preset (map switch):
+     * sun direction + dome uniforms + cloud opacity/tint + horizon resample +
+     * environment rebake + fog rebuild. `sunDir` is mutated IN PLACE so
+     * lighting rigs holding the reference stay correct.
+     * @param {?object} p partial preset (fields of DEFAULT_PRESET)
+     * @param {THREE.Scene} targetScene scene whose fog is replaced
+     * @returns {void}
+     */
+    applyPreset(p, targetScene) {
+      preset = { ...DEFAULT_PRESET, ...(p || {}) };
+      sunDir.setFromSphericalCoords(
+        1,
+        THREE.MathUtils.degToRad(90 - preset.sunElevationDeg),
+        THREE.MathUtils.degToRad(preset.sunAzimuthDeg),
+      );
+      configureSkyUniforms(sky, sunDir, preset);
+      const cloudTint = new THREE.Color(preset.cloudTintHex);
+      clouds.material.opacity = preset.cloudOpacity;
+      clouds.material.color.copy(cloudTint);
+      clouds.visible = preset.cloudOpacity > 0.01;
+      cloudsFar.material.opacity = preset.cloudOpacity2;
+      cloudsFar.material.color.copy(cloudTint);
+      cloudsFar.visible = preset.cloudOpacity2 > 0.01;
+      horizonColor.copy(sampleHorizonColor(renderer, sunDir, preset));
+      rig.bakeEnvironment();
+      rig.applyFog(targetScene);
     },
   };
+  return rig;
 }
