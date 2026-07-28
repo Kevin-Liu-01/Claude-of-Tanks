@@ -13,7 +13,9 @@ const PEN_RED = '#f05a5a';
 const PEN_NONE = 'rgba(236,242,248,0.95)';
 // WoT sight grammar: the DISPERSION CIRCLE is always the same pale green in
 // every mode — only the central gun marker carries the penetration color.
-const CIRCLE_COL = 'rgba(168,238,168,0.88)';
+// r4: desaturated toward pale white-green + thinner strokes — the old
+// saturated mint at 2px read as WoT Blitz/mobile, not the PC client.
+const CIRCLE_COL = 'rgba(208,233,211,0.85)';
 // Shared Switzer type system (see src/ui/fonts.js): FONT_COND drives the
 // numeral/label hierarchy with tabular figures.
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
@@ -21,7 +23,7 @@ import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
 // kill feed + ambient nameplates. Minimap blips and team-panel rows use the
 // vector class-glyph/arrow language instead (WoT reads class + heading, not
 // per-vehicle profiles, at those sizes).
-import { maskIcon } from './icons.js';
+import { maskIcon, tintedIcon } from './icons.js';
 // SHOT-INFO SECTION: combat-intelligence panels (shot cards, armor diagrams,
 // incoming toasts, shot log, session stats) — logic lives in src/ui/shotInfo.js.
 import { createShotInfo } from './shotInfo.js';
@@ -245,21 +247,21 @@ const HUD_CSS = `
 .cot-top .tm{font-size:14px;font-weight:600;color:#d6e2ec;letter-spacing:.1em;
   font-family:${FONT_COND};font-stretch:condensed;text-shadow:0 1px 2px rgba(0,0,0,.8);
   font-variant-numeric:tabular-nums;line-height:1;padding:0 4px;}
-/* frag counter (WoT semantics): empty slots render NOTHING — at 0:0 the
-   plate is a compact score/timer chip (r3: persistent empty slot boxes read
-   as wireframe checkboxes left in shipping). Each kill POPS IN one filled
-   chip in that team's color carrying the destroyed vehicle's class glyph,
-   growing outward from the score numerals — WoT's kill-tick behavior. */
-.cot-top .wedge{display:flex;gap:3px;align-items:center;}
-.cot-top .wedge i{display:none;width:14px;height:9px;transform:skewX(-24deg);
-  position:relative;}
+/* frag counter (r4, WoT tug-of-war semantics): a row of slim segment ticks
+   sits UNDER each score numeral — empty slots are subtle dark notches (one
+   per opposing vehicle), and each kill fills one in the scoring team's
+   color, growing outward from the timer. Deliberately thin (3.5px) so the
+   idle plate reads as engraved segments, not wireframe checkboxes (r3). */
+.cot-top .sc{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.cot-top .wedge{display:flex;gap:2px;align-items:center;}
+.cot-top .wedge i{display:block;width:10px;height:3.5px;transform:skewX(-24deg);
+  background:rgba(146,164,180,.22);box-shadow:0 1px 1px rgba(0,0,0,.35) inset;}
 .cot-top .wedge.r i{transform:skewX(24deg);}
-.cot-top .wedge i svg{position:absolute;inset:0;margin:auto;display:block;}
-.cot-top .wedge i.on{display:block;animation:cotChipIn .18s ease-out;
+.cot-top .wedge i.on{animation:cotChipIn .18s ease-out;
   background:linear-gradient(180deg,rgba(150,240,150,.95),rgba(84,196,84,.9));
-  border:1px solid rgba(178,246,178,.8);box-shadow:0 0 6px rgba(126,232,126,.45),0 1px 2px rgba(0,0,0,.5);}
+  box-shadow:0 0 5px rgba(126,232,126,.4),0 1px 2px rgba(0,0,0,.5);}
 .cot-top .wedge.r i.on{background:linear-gradient(180deg,rgba(248,120,110,.95),rgba(205,58,48,.92));
-  border-color:rgba(252,160,150,.8);box-shadow:0 0 6px rgba(240,90,90,.45),0 1px 2px rgba(0,0,0,.5);}
+  box-shadow:0 0 5px rgba(240,90,90,.4),0 1px 2px rgba(0,0,0,.5);}
 @keyframes cotChipIn{from{opacity:0}to{opacity:1}}
 /* net/perf readout (WoT battle constant): ping + fps, top-left corner */
 .cot-net{position:absolute;top:5px;left:10px;font-size:11px;font-weight:600;
@@ -522,9 +524,13 @@ export function initHud(bus) {
   let forcedStill = false;  // true between forceAimDisplay and the next update
 
   // --- top score/timer plate ---
+  // r4: each score numeral carries a row of per-team frag SEGMENT ticks under
+  // it (WoT's tug-of-war read) — empty slots are slim dark notches, each kill
+  // fills one in the scoring team's color.
   const topPlate = el('div', 'cot-top', root);
-  topPlate.innerHTML = `<div class="wedge l"></div><b class="fg">0</b>` +
-    `<span class="tm">15:00</span><b class="fe">0</b><div class="wedge r"></div>`;
+  topPlate.innerHTML = `<div class="sc"><b class="fg">0</b><div class="wedge l"></div></div>` +
+    `<span class="tm">15:00</span>` +
+    `<div class="sc"><b class="fe">0</b><div class="wedge r"></div></div>`;
   const fgEl = topPlate.querySelector('.fg');
   const feEl = topPlate.querySelector('.fe');
   const tmEl = topPlate.querySelector('.tm');
@@ -578,29 +584,20 @@ export function initHud(bus) {
     };
     return `<svg viewBox="0 0 10 8" width="${w}" height="${h}">${body[cls] || body.medium}</svg>`;
   }
-  const GLYPH_INK = 'rgba(7,13,10,0.92)';
-  // WoT frag-counter: both wedges render the SAME number of identical slots
-  // (max team size); each kill a team scores fills one chip in that team's
-  // color — carrying the destroyed vehicle's class glyph — growing outward
-  // from the score numerals in the middle. Empty slots stay subtle notches.
+  // WoT frag-counter (r4): both wedges render the SAME number of identical
+  // segment ticks (max team size), always visible as slim dark notches; each
+  // kill a team scores fills one tick in that team's color, growing outward
+  // from the timer in the middle (tug-of-war read at a glance).
   function syncWedge(wEl, slots, victims, reverse) {
     const kills = victims.length;
     if (wEl.children.length !== slots) {
       wEl.textContent = '';
       for (let i = 0; i < slots; i++) el('i', '', wEl);
-      wEl._glyphs = [];
     }
-    const glyphs = wEl._glyphs || (wEl._glyphs = []);
     for (let i = 0; i < slots; i++) {
       // left wedge's inner edge is its last child; right wedge's is its first
       const idx = reverse ? i : slots - 1 - i;
-      const on = idx < kills;
-      wEl.children[i].classList.toggle('on', on);
-      const want = on ? (victims[idx] || 'medium') : '';
-      if (glyphs[i] !== want) {
-        wEl.children[i].innerHTML = want ? classGlyphSVG(want, GLYPH_INK) : '';
-        glyphs[i] = want;
-      }
+      wEl.children[i].classList.toggle('on', idx < kills);
     }
   }
 
@@ -863,7 +860,7 @@ export function initHud(bus) {
       if (t.combat && t.combat.destroyed) {
         // wrecks are permanently known once dead
         sp.vis = true; sp.ever = true;
-        sp.lastX = t.state.pos.x; sp.lastZ = t.state.pos.z;
+        sp.lastX = t.state.pos.x; sp.lastZ = t.state.pos.z; sp.lastYaw = t.state.yaw;
         continue;
       }
       // SPOTTING SECTION: when the concealment sim is wired in (frame.spotting
@@ -885,12 +882,12 @@ export function initHud(bus) {
       }
       if (seen) {
         sp.lastT = frame.timeS;
-        sp.lastX = t.state.pos.x; sp.lastZ = t.state.pos.z;
+        sp.lastX = t.state.pos.x; sp.lastZ = t.state.pos.z; sp.lastYaw = t.state.yaw;
         sp.ever = true;
       }
       // the sim already includes the spotted linger; legacy adds its own
       sp.vis = sys ? seen : (seen || (frame.timeS - sp.lastT) < SPOT_PERSIST_S);
-      if (sp.vis) { sp.lastX = t.state.pos.x; sp.lastZ = t.state.pos.z; }
+      if (sp.vis) { sp.lastX = t.state.pos.x; sp.lastZ = t.state.pos.z; sp.lastYaw = t.state.yaw; }
     }
   }
 
@@ -1152,6 +1149,7 @@ export function initHud(bus) {
     nonpen: 'That one did not penetrate.',
     spaced_absorb: 'The spaced armor absorbed it.',
     era: 'Their reactive armor ate that shell.',
+    screen_pierce: 'The spaced armor absorbed it.', // 0-damage pierce (r4)
   };
 
   function showBounceMessage(kind) {
@@ -1209,20 +1207,25 @@ export function initHud(bus) {
         ctx.arc(cx, cy, r, a0, a0 + Math.PI / 2 - 0.20);
       }
       ctx.stroke();
-      // cardinal ticks bridging the gaps (inward, slightly heavier)
-      ctx.lineWidth += 1.0;
+      // cardinal ticks bridging the gaps (inward, slightly heavier — square
+      // butt ends, r4: the +1.0 bump made fat rounded-looking caps)
+      ctx.lineWidth += 0.5;
       ctx.beginPath();
       for (let q = 0; q < 4; q++) {
         const a = q * Math.PI / 2;
         const ca = Math.cos(a), sa = Math.sin(a);
-        ctx.moveTo(cx + ca * (r + 4), cy + sa * (r + 4));
-        ctx.lineTo(cx + ca * (r - 9), cy + sa * (r - 9));
+        ctx.moveTo(cx + ca * (r + 3), cy + sa * (r + 3));
+        ctx.lineTo(cx + ca * (r - 8), cy + sa * (r - 8));
       }
       ctx.stroke();
     }
-    ctx.globalAlpha = 0.62;
+    // r4: WoT PC circle weight — ~1px hairline with a slim contour (the old
+    // 2px/3.6px pair read as the Blitz/mobile client's fat ring), square
+    // (butt) tick caps, no rounded terminators.
+    ctx.lineCap = 'butt';
+    ctx.globalAlpha = 0.55;
     ctx.strokeStyle = 'rgba(6,10,8,0.9)'; // dark contour under-pass
-    ctx.lineWidth = 3.6;
+    ctx.lineWidth = 2.2;
     circlePass();
     ctx.globalAlpha = 0.92;
     // BLOCKED-SHOT INDICATOR (controls_gunnery r2): the muzzle→aim path is
@@ -1232,8 +1235,8 @@ export function initHud(bus) {
     ctx.strokeStyle = blocked ? PEN_RED : CIRCLE_COL;
     ctx.fillStyle = blocked ? PEN_RED : CIRCLE_COL;
     ctx.shadowColor = 'rgba(0,0,0,0.6)';
-    ctx.shadowBlur = 2;
-    ctx.lineWidth = 2;
+    ctx.shadowBlur = 1;
+    ctx.lineWidth = 1.1;
     circlePass();
 
     // --- central gun marker: dot + cross, ALWAYS visible and colored by
@@ -1300,8 +1303,10 @@ export function initHud(bus) {
       ctx.shadowBlur = 0;
     }
 
-    // --- under-center readouts (WoT layout: numerals sit BELOW the aim
-    // point, centered on the reticle's vertical axis) ----------------------
+    // --- readouts (r4, WoT PC layout): ONLY the reload countdown lives on
+    // the reticle's vertical axis; the chambered-shell count and the range
+    // sit together in a small side tag beside the dispersion circle in BOTH
+    // modes (the old center-under "240 m" occupied WoT's reload-timer slot).
     ctx.textAlign = 'center';
     ctx.shadowColor = 'rgba(0,0,0,0.9)';
     ctx.shadowBlur = 3;
@@ -1311,47 +1316,34 @@ export function initHud(bus) {
       ctx.fillStyle = '#f0a030';
       ctx.font = `800 16px ${FONT_COND}`;
       ctx.fillText(rl0.t >= 10 ? `${Math.ceil(rl0.t)} s` : `${rl0.t.toFixed(1)} s`, cx, cy + 39);
-    } else {
-      // gun loaded: chambered-shell readout (count in white, type tag in its
-      // ammo color). Arcade anchors it under the aim point; SNIPER offsets it
-      // to the RIGHT of the dispersion circle so nothing floats on the aim
-      // point itself (WoT keeps the sniper center clear for the countdown).
+    }
+    // side tag: shell count (white) + type (ammo color) with the range in a
+    // smaller line beneath — anchored right of the circle, tracking bloom
+    {
       const sp = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
       const n = shellCount(sp);
       const tType = sp.type || '';
-      ctx.font = `700 13px ${FONT_COND}`;
-      const wN = ctx.measureText(`${n}`).width;
-      let x0, y0;
-      if (mode === 'sniper') {
-        x0 = cx + Math.max(r + 24, 70);
-        y0 = cy + 4;
-      } else {
-        ctx.font = `800 8.5px ${FONT_COND}`;
-        const wT = ctx.measureText(tType).width;
-        x0 = cx - (wN + 4 + wT) / 2;
-        y0 = cy + 36;
-      }
+      const x0 = cx + Math.max(r + 24, 70);
       ctx.textAlign = 'left';
       ctx.font = `700 13px ${FONT_COND}`;
+      const wN = ctx.measureText(`${n}`).width;
       ctx.fillStyle = 'rgba(226,236,244,0.92)';
-      ctx.fillText(`${n}`, x0, y0);
+      ctx.fillText(`${n}`, x0, cy + 4);
       ctx.font = `800 8.5px ${FONT_COND}`;
       ctx.fillStyle = SHELL_TYPE_COLOR[tType] || 'rgba(159,176,191,0.9)';
-      ctx.fillText(tType, x0 + wN + 4, y0);
+      ctx.fillText(tType, x0 + wN + 4, cy + 4);
+      if (view.distM != null && isFinite(view.distM)) {
+        ctx.fillStyle = 'rgba(208,221,232,0.80)';
+        ctx.font = `600 11.5px ${FONT_COND}`;
+        ctx.fillText(`${Math.round(view.distM)} m`, x0, cy + 20);
+      }
       ctx.textAlign = 'center';
     }
-    // distance readout centered under the aim circle, tracking its bloom
-    // (ammo count lives in the shell tray only — no duplicate here)
-    if (view.distM != null && isFinite(view.distM)) {
-      ctx.fillStyle = 'rgba(220,231,240,0.92)';
-      ctx.font = `600 12.5px ${FONT_COND}`;
-      ctx.fillText(`${Math.round(view.distM)} m`, cx, cy + Math.max(58, r + 19));
-    }
     if (blocked) {
-      // blocking distance under the range numeral (controls_gunnery r2)
+      // blocking distance under the aim circle (controls_gunnery r2)
       ctx.fillStyle = PEN_RED;
       ctx.font = `700 12.5px ${FONT_COND}`;
-      ctx.fillText(`PATH BLOCKED ${Math.round(view.blockedDistM)} m`, cx, cy + Math.max(58, r + 19) + 16);
+      ctx.fillText(`PATH BLOCKED ${Math.round(view.blockedDistM)} m`, cx, cy + Math.max(58, r + 19));
     }
     ctx.shadowBlur = 0;
     ctx.textAlign = 'left';
@@ -1682,19 +1674,20 @@ export function initHud(bus) {
     // no per-cell tabs eating map area, and the K column stays clear of the
     // panel edge because labels sit at cell centers inside a full-width
     // strip. Row numbers get the SAME size/alpha as the column letters and
-    // an inset gutter so "1"–"10" all render whole (r2: the old 8px gutter
-    // cropped every row label except "10").
+    // a 17px inset gutter with labels centered at x=9 so the two-digit "10"
+    // renders whole (r4: the 11px gutter's x=5.5 center cropped the "1" of
+    // "10" against the panel's left edge).
     octx.fillStyle = 'rgba(5,8,11,0.55)';
     octx.fillRect(0, 0, MM, 10);
-    octx.fillRect(0, 10, 11, MM - 10);
+    octx.fillRect(0, 10, 17, MM - 10);
     octx.font = `700 7.5px ${FONT_COND}`;
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
     octx.fillStyle = 'rgba(255,255,255,0.72)';
     for (let i = 0; i < 10; i++) {
       const c = i * MM / 10 + MM / 20;
-      octx.fillText(GRID_LETTERS[i], c, 5.5);
-      octx.fillText(String(i + 1), 5.5, Math.max(c, 17) + 0.5);
+      octx.fillText(GRID_LETTERS[i], Math.max(c, 21), 5.5);
+      octx.fillText(String(i + 1), 9, Math.max(c, 17) + 0.5);
     }
     octx.textAlign = 'left';
     octx.textBaseline = 'alphabetic';
@@ -1716,13 +1709,18 @@ export function initHud(bus) {
       else { ex += t.state.pos.x; ez += t.state.pos.z; en++; }
     }
     if (!an || !en) return;
+    // r4: each base carries a team-tinted cap fill so BOTH bases read on the
+    // map (the old white 7% fill made the own-base marker invisible under
+    // the ally blip cluster at spawn — the map read one-sided).
     spawnFlags = [
-      { x: ax / an, z: az / an, color: '#7ee87e' },
-      { x: ex / en, z: ez / en, color: '#f05a5a' },
+      { x: ax / an, z: az / an, color: '#7ee87e', fill: 'rgba(126,232,126,0.16)' },
+      { x: ex / en, z: ez / en, color: '#f05a5a', fill: 'rgba(240,90,90,0.16)' },
     ];
   }
 
-  // WoT-style base/spawn glyph: pole + team-colored pennant with a dark halo
+  // WoT-style base/spawn glyph: pole + team-colored pennant with a dark halo.
+  // r4: taller pole (pennant at -14..-8) so the own-base pennant clears the
+  // player/ally arrow blips parked on top of it at battle start.
   function drawSpawnFlag(c, x, y, color) {
     c.save();
     c.translate(Math.round(x), Math.round(y));
@@ -1730,10 +1728,10 @@ export function initHud(bus) {
     c.strokeStyle = 'rgba(6,9,12,0.85)';
     c.lineWidth = 3;
     c.beginPath();
-    c.moveTo(0.5, 3); c.lineTo(0.5, -9);
+    c.moveTo(0.5, 4); c.lineTo(0.5, -14);
     c.stroke();
     c.beginPath();
-    c.moveTo(0.5, -9); c.lineTo(7.5, -6.4); c.lineTo(0.5, -3.6);
+    c.moveTo(0.5, -14); c.lineTo(8.5, -11.2); c.lineTo(0.5, -8.4);
     c.closePath();
     c.stroke();
     c.fillStyle = color;
@@ -1741,7 +1739,7 @@ export function initHud(bus) {
     c.strokeStyle = 'rgba(228,238,246,0.95)';
     c.lineWidth = 1.2;
     c.beginPath();
-    c.moveTo(0.5, 3); c.lineTo(0.5, -9);
+    c.moveTo(0.5, 4); c.lineTo(0.5, -14);
     c.stroke();
     c.restore();
   }
@@ -1776,9 +1774,19 @@ export function initHud(bus) {
 
   // deterministic per-entity blip jitter (±2 px): keeps co-located spawn
   // markers individually visible instead of merging into one blob
+  // performance_budget r4: memoized per id — the fresh 2-element array per
+  // blip per 20 Hz repaint (~320 small arrays/s in a 16-tank battle) was the
+  // last steady per-frame allocation in the hot loop. Jitter is deterministic
+  // per id, so the memo is exact.
+  const _bj = new Map(); // id -> [dx, dy]
   function blipJitter(id) {
-    const j = hashStr(String(id));
-    return [((j % 5) - 2) * 0.9, (((j >> 3) % 5) - 2) * 0.9];
+    let v = _bj.get(id);
+    if (!v) {
+      const j = hashStr(String(id));
+      v = [((j % 5) - 2) * 0.9, (((j >> 3) % 5) - 2) * 0.9];
+      _bj.set(id, v);
+    }
+    return v;
   }
 
   // vector fallback (first frames while a silhouette PNG is still loading) and
@@ -1819,7 +1827,7 @@ export function initHud(bus) {
     if (spawnFlags) {
       for (const fl of spawnFlags) {
         const [fx, fy] = worldToMap(fl.x, fl.z);
-        mmCtx.fillStyle = 'rgba(240,246,252,0.07)';
+        mmCtx.fillStyle = fl.fill || 'rgba(240,246,252,0.07)';
         mmCtx.strokeStyle = 'rgba(240,246,252,0.85)';
         mmCtx.lineWidth = 1.2;
         mmCtx.beginPath();
@@ -1864,7 +1872,21 @@ export function initHud(bus) {
         // last-known-position ghost marker (class diamond — deliberately a
         // DIFFERENT shape from the live arrows: "stale intel" at a glance)
         const [px, py] = worldToMap(sp.lastX, sp.lastZ);
-        drawBlip(mmCtx, px, py, cls, 'rgba(240,120,110,0.9)', 0.45, true);
+        // content_breadth r4: ghost markers use the real _top silhouette at
+        // last-known heading — stale intel gains vehicle identity like WoT's
+        // last-seen markers (live blips stay arrows for readability).
+        const ic = tintedIcon(t.spec ? t.spec.id : 'm4a3e8', 'top_silhouette', 'rgb(242,140,132)');
+        if (ic) {
+          mmCtx.save();
+          mmCtx.globalAlpha = 0.55;
+          mmCtx.translate(px, py);
+          mmCtx.rotate(blipAngle(sp.lastYaw || 0));
+          const iw = 21, ih = Math.max(10, iw * (ic.height / ic.width));
+          mmCtx.drawImage(ic, -iw / 2, -ih / 2, iw, ih);
+          mmCtx.restore();
+        } else {
+          drawBlip(mmCtx, px, py, cls, 'rgba(240,120,110,0.9)', 0.45, true);
+        }
       }
       // never spotted -> nothing on the map
     }
@@ -1963,7 +1985,8 @@ export function initHud(bus) {
     const d = el('div', 'cot-dmgnum', dmgLayer);
     if (hit.kind === 'ricochet') { d.classList.add('miss'); d.textContent = 'RICOCHET'; }
     else if (hit.kind === 'nonpen') { d.classList.add('miss'); d.textContent = 'NO PENETRATION'; }
-    else if (hit.kind === 'spaced_absorb' || hit.kind === 'era') { d.classList.add('miss'); d.textContent = 'ABSORBED'; }
+    else if (hit.kind === 'spaced_absorb' || hit.kind === 'era' ||
+      (hit.kind === 'screen_pierce' && !(hit.damage > 0))) { d.classList.add('miss'); d.textContent = 'ABSORBED'; }
     else if (hit.damage > 0) {
       d.textContent = `-${Math.round(hit.damage)}`;
       if (hit.modulesHit && hit.modulesHit.length) {
@@ -2064,8 +2087,13 @@ export function initHud(bus) {
   bus.on('shell:hit', (hit) => {
     if (playerId != null && hit.attackerId === playerId && hit.targetId && hit.targetId !== playerId) {
       pushDamageNumber(hit);
+      // r4: a screen_pierce that dealt 0 damage (skirt ate the shell) used to
+      // flash the ORANGE damage confirm with no number and no message —
+      // contradictory feedback. Zero-damage hits are bounces: grey ticks +
+      // ABSORBED label + bounce message.
       const bounced = hit.kind === 'ricochet' || hit.kind === 'nonpen' ||
-        hit.kind === 'spaced_absorb' || hit.kind === 'era';
+        hit.kind === 'spaced_absorb' || hit.kind === 'era' ||
+        (hit.kind === 'screen_pierce' && !(hit.damage > 0));
       hitMark = { t0: lastTimeS, bounced };
       if (bounced) showBounceMessage(hit.kind);
     }

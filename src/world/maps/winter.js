@@ -68,30 +68,31 @@ export default {
     // sparser, FROSTED tufts: the old dark dense scatter read as uniform
     // speckle noise across the snowfield in wide shots. r5: slightly up now
     // that the scatter clumps in hollows instead of pepper-spraying
-    // r6: 0.15 -> 0.24 — the two-scale thicket gating (vegetation.js) rejects
-    // far more candidates between clumps; raising density keeps the same
-    // overall growth budget concentrated into dense knots
-    grassDensity: 0.24,
-    grassTexTone: (h, s, l) => [0.105, 0.16, clamp01(l * 1.1 + 0.22)], // rimed straw
-    tuftTone: (h, s, l) => [0.11, 0.10, clamp01(l * 1.05 + 0.26)],
-    bushCount: 0.42,
+    // r7: 0.24 -> 0.10 — even clumped, the scatter read as high-contrast
+    // dark speckle ("scattered dirt") across the snowfield in wide shots;
+    // winter growth stays sparse and hugs features, with LIGHTER rime tones
+    grassDensity: 0.10,
+    grassTexTone: (h, s, l) => [0.105, 0.12, clamp01(l * 1.1 + 0.30)], // rimed straw
+    tuftTone: (h, s, l) => [0.11, 0.08, clamp01(l * 1.0 + 0.34)],
+    bushCount: 0.22,
     // pine scrub, not birch twig-balls: the dark leafless bush scatter read
     // as speckle noise against the snow in establishing shots
     bushSpecies: 'pine',
     palettes: {
-      birch: { // r6: frosted grey-brown — the old l*0.55 twigs rendered the
-        // shrub/sapling scatter as swarms of BLACK specks against the snow at
-        // 1080p (the 'sensor dust' critique); lifted + desaturated toward
-        // rime-coated brush while staying darker than the snowpack
-        cardHue: 0.08, cardSat: 0.06,
-        texTone: (h, s, l) => [h, clamp01(s * 0.45), clamp01(l * 0.85 + 0.14)],
+      birch: { // r7: pushed further toward rime-grey — even the r6 lift left
+        // midground birch stands rendering as near-black pixel clusters where
+        // the far cards minify against the bright ring base (critique: "noisy
+        // dark pixel clusters"); +6 pts floor and lower sat keep them legible
+        // winter brush, clearly darker than snow but no longer ink blots
+        cardHue: 0.08, cardSat: 0.05, cardL0: 0.42, // r4: luminance floor
+        texTone: (h, s, l) => [h, clamp01(s * 0.38), clamp01(l * 0.80 + 0.20)],
       },
-      pine: { // winter spruce: r6 — needles lifted toward frosted grey-green
-        // (l*0.86 read near-black against snow; scrub-sized bushes were the
-        // worst offenders). Saturation stays LOW so the lift cannot re-create
-        // the old mint-confetti artifact; hue drifts slightly cold.
-        texTone: (h, s, l) => [clamp01(h * 0.96), clamp01(s * 0.42), clamp01(l * 1.04 + 0.075)],
-        cardHue: 0.345, cardSat: 0.08,
+      pine: { // winter spruce: r7 — lift again (+0.075 -> +0.13): minified
+        // scrub cards still mip-averaged toward near-black dots against the
+        // snowpack (the 'scattered dirt' speckle critique). Saturation LOW so
+        // the lift cannot re-create the old mint-confetti artifact.
+        texTone: (h, s, l) => [clamp01(h * 0.96), clamp01(s * 0.38), clamp01(l * 1.04 + 0.13)],
+        cardHue: 0.345, cardSat: 0.08, cardL0: 0.38, // r4: luminance floor
         canopy: { hue: 0.40, sat: 0.06, l0: 0.36, l1: 0.58 },
       },
     },
@@ -126,7 +127,10 @@ export default {
     // rock only piercing on cliffs), base/rock pushed cold blue-grey and the
     // caps near-white so the ring still reads FROZEN through fog + warm grade.
     baseHex: 0x76839a, amp: 1.2, style: 'alpine', snowline: 0.18,
-    rockHex: 0x49536b, snowHex: 0xf4f8fe, haze: 0.8,
+    // r7: haze 0.8 -> 0.68 — the aerial ramp buried the rebuilt ridge detail
+    // (sastrugi/rib texture) under fog by the second row; the overcast scene
+    // fog still softens the ring, the bake just stops double-fogging it
+    rockHex: 0x49536b, snowHex: 0xf4f8fe, haze: 0.68,
   },
 
   sky: {
@@ -142,7 +146,10 @@ export default {
     // envIntensity raised for the ice sheet's sky reflection; sun dropped and
     // hemi raised so light reads flatter/more diffuse (overcast brief)
     // fogMix 0.88 → 0.94: scene fog locks to the COLD tint, not the sky sample
-    fogDensity: 0.0011, fogTintHex: 0xb9c4d2, fogMix: 0.94, envIntensity: 0.52,
+    // r7: 0.0011 -> 0.00088 — with the rebuilt fractal alpine ring the fog
+    // was still averaging the 4 ridge rows into one flat cream wall; the
+    // lighter fog keeps per-row aerial separation legible
+    fogDensity: 0.00088, fogTintHex: 0xb9c4d2, fogMix: 0.94, envIntensity: 0.52,
     cloudOpacity: 1.0, cloudOpacity2: 0.95, cloudTintHex: 0xaab2bc,
     sunIntensity: 1.15, sunColorHex: 0xdfe7f2, hemiIntensity: 0.92,
   },

@@ -73,14 +73,16 @@ const TERRAIN_PLAN = {
     // across every establishing shot. Sand-on-sand instead — the light base
     // is the open desert floor, the darker/warmer D variant shows through on
     // worn patches, and the ripple normals carry the surface character.
-    G: { set: 'sand', tint: [1.04, 1.0, 0.92], roughMul: 1.2 },
-    D: { set: 'sand', tint: [0.86, 0.79, 0.68], roughMul: 1.25 },
-    // Rock063 ships olive-khaki — retinted toward red sandstone so the mesa
-    // walls keep the 'red mesas' brief without the procedural maroon rockTone
-    // (which only ever showed because the sourced swap was silently failing).
-    // r5: blue must go DOWN, not up — the earlier [1.22,0.86,1.28] rendered
-    // the whole escarpment purple-magenta; iron-oxide sandstone is r>g>b.
-    R: { set: 'rockWarm', tint: [1.30, 0.94, 0.72], roughMul: 1.1 }, M: null,
+    // r7: sand albedo -7% — pairs with the desert.js sun drop (4.9 -> 4.15,
+    // lighting r4) to pull the blown-out center valley off the tonemap
+    // shoulder without going muddy
+    G: { set: 'sand', tint: [0.96, 0.92, 0.85], roughMul: 1.2 },
+    D: { set: 'sand', tint: [0.80, 0.73, 0.63], roughMul: 1.25 },
+    // r7: R stays PROCEDURAL (terrain.js makeSandstoneLayer). Rock063's wavy
+    // metamorphic veining — magnified by the warm tint — was the swirly
+    // "wet-sand" smear on every mesa/canyon wall; the procedural layer is
+    // authored as true horizontal sedimentary strata instead.
+    R: null, M: null,
   },
   winter: {
     G: { set: 'snow', roughMul: 1.15 },

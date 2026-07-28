@@ -700,7 +700,9 @@ export function createSettings(opts) {
     input.setEnabled(false); // menu owns the keyboard; also clears held keys
     input.releaseLock();
     hideHints();
-    activeTab = 'controls';
+    // Reopen on the tab the player was last tuning (session-sticky): closing
+    // the panel mid-iteration on sensitivity or volume no longer bounces the
+    // player back to CONTROLS every time.
     renderTab();
     root.classList.add('open');
     window.addEventListener('keydown', onPanelKey, true);

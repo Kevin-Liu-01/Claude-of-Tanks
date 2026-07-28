@@ -866,7 +866,8 @@ function tick(nowMs) {
         if (game.result === 'defeat' && rig.startDeathCam) rig.startDeathCam();
       };
       const played = killcam.playForResult(game.result, game.timeS, finishBattle);
-      debugFlags.lastEndFlow = { played, result: game.result, timeS: game.timeS }; // KILL-CAM debug
+      debugFlags.lastEndFlow = { played, result: game.result, timeS: game.timeS,
+        resultWallMs: performance.now(), kcBeginWallMs: killcam.lastBeginWallMs }; // KILL-CAM debug
       if (played) {
         veilHud(true); // cinematic letterbox owns the screen
       } else {
@@ -884,7 +885,7 @@ function tick(nowMs) {
 
   // 4. world LOD/wind (+ WoT-style near-grass suppression while scoped, and
   // chase-camera foliage occlusion fade along player→camera in arcade)
-  world.setSniperFade(rig.mode === 'SNIPER' ? 1 : 0);
+  world.setSniperFade(rig.mode === 'SNIPER' ? 1 : 0, false, camera.fov);
   camera.getWorldDirection(_fwd);
   let occlFocus = null;
   if (inBattle && !kcActive && rig.mode === 'ARCADE' && game.player && game.player.state &&
@@ -1054,39 +1055,169 @@ const SHOT_VIEWS = {
     });
   },
   sniper_view() {
-    // aim at the nearest enemy bearing WITH a clear sightline — a blocked
-    // bearing framed a village wall at x8 instead of the target tank
+    // aim at the nearest enemy bearing WITH a clear sightline. r4: the old
+    // check raycast ONE point (heightM*0.6) and accepted any blocker within
+    // boundingRadius+1 m of the center — a wall 3 m in front of the hull
+    // passed, so the flagship shot framed a nameplate floating over stone.
+    // Now turret top, hull center AND both flank edges must all be reachable
+    // (no static blocker more than 1 m short of the sample); when no living
+    // enemy qualifies, the nearest one is RESTAGED onto surveyed open ground
+    // so the contract ("aimed at an enemy") can never capture blind.
     const p = game.player;
-    let best = null;
-    let bestD = Infinity;
-    let bestClear = null;
-    let bestClearD = Infinity;
     _v1.copy(p.state.pos);
     _v1.y += 2.2;
-    for (const ent of game.tanks) {
-      // SYMMETRIC TEAMS: allies spawn 22-44 m away — scope must frame an ENEMY
-      if (ent.team !== 'enemy' || !ent.state || !ent.combat || ent.combat.destroyed) continue;
-      const d = ent.state.pos.distanceTo(p.state.pos);
-      if (d < bestD) { bestD = d; best = ent; }
-      _v2.copy(ent.state.pos);
-      _v2.y += ent.spec.dims.heightM * 0.6;
-      _v3.copy(_v2).sub(_v1);
-      const dd = _v3.length();
-      _v3.multiplyScalar(1 / Math.max(dd, 1e-3));
-      const block = world.raycast(_v1, _v3, dd);
-      const clear = !block || block.dist > dd - ent.spec.armor.boundingRadiusM - 1;
-      if (clear && d < bestClearD) { bestClearD = d; bestClear = ent; }
+    // Canopy/bush proxies: world.raycast only sees terrain + prop AABBs, so a
+    // bearing through a FOREST passed as "clear" (the r3 shot framed exactly
+    // that). Sweep the concealer circles along the sight line too — anything
+    // past the scope-corridor fade (~60 m) and short of the tank blocks.
+    const conceal = world.getConcealment ? world.getConcealment() : [];
+    const clearTo = (ent) => {
+      const tp = ent.state.pos;
+      const h = ent.spec.dims.heightM;
+      const w = (ent.spec.dims.widthM || ent.spec.armor.boundingRadiusM) * 0.42;
+      const bx = tp.x - p.state.pos.x;
+      const bz = tp.z - p.state.pos.z;
+      const flat = Math.max(Math.hypot(bx, bz), 1e-3);
+      const inv = 1 / flat;
+      const ux = bx * inv, uz = bz * inv;  // bearing unit (XZ)
+      const lx = -uz, lz = ux;             // lateral unit ⟂ bearing
+      for (const c of conceal) {
+        const wx = c.x - _v1.x, wz = c.z - _v1.z;
+        const t = wx * ux + wz * uz;
+        if (t < 60 || t > flat - 8) continue;
+        if (Math.abs(wx * uz - wz * ux) < c.r + 1.2) return false;
+      }
+      const samples = [
+        [0, h * 0.92, 0],                 // turret top
+        [0, h * 0.50, 0],                 // hull center
+        [0, h * 0.25, 0],                 // lower hull (r4 hud_ui: a crest 2 m
+        // short of the hull passed the old -1 m tolerance and hid the tank)
+        [lx * w, h * 0.55, lz * w],       // left flank edge
+        [-lx * w, h * 0.55, -lz * w],     // right flank edge
+      ];
+      for (const [ox, oy, oz] of samples) {
+        _v2.set(tp.x + ox, tp.y + oy, tp.z + oz);
+        _v3.copy(_v2).sub(_v1);
+        const dd = _v3.length();
+        _v3.multiplyScalar(1 / Math.max(dd, 1e-3));
+        const block = world.raycast(_v1, _v3, dd);
+        if (block && block.dist < dd - 0.25) return false;
+      }
+      return true;
+    };
+    // r4 hud_ui: the x8 frame must catch NO free-standing prop inside ~60 m
+    // of the trunnion — a roadside pole or crop-row post crossing the frame
+    // edge smears across the optics (scope-edge blur + vignette) and reads
+    // as a corrupted capture. Many of these props are VISUAL-ONLY (planted
+    // without colliders), so raycasts cannot see them: collect every
+    // non-foliage instanced-prop origin near the eye once, then reject any
+    // bearing that keeps one inside the near view cone. Foliage/grass is
+    // excluded (the scope corridor fade already clears it); tank visuals are
+    // excluded via their roots. Colliders get a dense ray fan on top.
+    const nearProps = [];
+    {
+      const tankRoots = new Set();
+      for (const t of game.tanks) if (t.visual && t.visual.root) tankRoots.add(t.visual.root);
+      scene.traverse((o) => {
+        if (!o.isInstancedMesh) return;
+        for (let anc = o; anc; anc = anc.parent) if (tankRoots.has(anc)) return;
+        const mat = Array.isArray(o.material) ? o.material[0] : o.material;
+        const key = mat && mat.customProgramCacheKey ? mat.customProgramCacheKey() : '';
+        if (/^world-(tree|grass)/.test(key)) return; // corridor fade covers foliage
+        o.updateMatrixWorld();
+        const arr = o.instanceMatrix.array;
+        for (let i = 0; i < o.count; i++) {
+          _v2.set(arr[i * 16 + 12], arr[i * 16 + 13], arr[i * 16 + 14])
+            .applyMatrix4(o.matrixWorld);
+          const d = Math.hypot(_v2.x - _v1.x, _v2.z - _v1.z);
+          if (d > 1 && d < 60) nearProps.push([_v2.x, _v2.z, d]);
+        }
+      });
     }
-    if (bestClear) { best = bestClear; bestD = bestClearD; }
+    const nearClear = (yaw, pitch) => {
+      const hv = (55 / 8) * DEG * 0.55; // half vertical FOV at x8 + pad
+      const hh = hv * (16 / 9);         // half horizontal
+      for (const [pxp, pzp, d] of nearProps) {
+        let da = Math.atan2(pxp - _v1.x, pzp - _v1.z) - yaw;
+        da = Math.atan2(Math.sin(da), Math.cos(da));
+        if (Math.abs(da) < hh * 1.6 + 3 / d) return false; // prop in the x8 cone
+      }
+      for (let s = -4; s <= 4; s++) {
+        for (const op of [0, -hv, hv]) {
+          const oy = (s / 4) * hh;
+          const cp = Math.cos(pitch + op);
+          _v3.set(Math.sin(yaw + oy) * cp, Math.sin(pitch + op), Math.cos(yaw + oy) * cp);
+          if (world.raycast(_v1, _v3, 15)) return false;
+        }
+      }
+      return true;
+    };
+    const aimTo = (ent) => {
+      const adx = ent.state.pos.x - p.state.pos.x;
+      const adz = ent.state.pos.z - p.state.pos.z;
+      const ady = (ent.state.pos.y + ent.spec.dims.heightM * 0.55) - (p.state.pos.y + 2.2);
+      return [Math.atan2(adx, adz), Math.atan2(ady, Math.hypot(adx, adz))];
+    };
+    const enemies = game.tanks.filter((ent) =>
+      // SYMMETRIC TEAMS: allies spawn 22-44 m away — scope must frame an ENEMY
+      ent.team === 'enemy' && ent.state && ent.combat && !ent.combat.destroyed);
+    let best = null;
+    let bestD = Infinity;
+    for (const ent of enemies) {
+      const d = ent.state.pos.distanceTo(p.state.pos);
+      if (d < bestD && clearTo(ent) && nearClear(...aimTo(ent))) { bestD = d; best = ent; }
+    }
+    if (!best) {
+      // No enemy is genuinely visible from the trunnion: restage the nearest
+      // one onto open ground along a surveyed bearing (deterministic sweep —
+      // ±75° around the player's hull nose at WoT engagement ranges).
+      let near = enemies[0];
+      let nearD = Infinity;
+      for (const ent of enemies) {
+        const d = ent.state.pos.distanceTo(p.state.pos);
+        if (d < nearD) { nearD = d; near = ent; }
+      }
+      const obstacles = world.getObstacles ? world.getObstacles() : [];
+      const groundFree = (x, z) => {
+        for (const c of conceal) {
+          const dx = c.x - x, dz = c.z - z;
+          if (dx * dx + dz * dz < (c.r + 4) * (c.r + 4)) return false;
+        }
+        for (const o of obstacles) {
+          if (x > o.min[0] - 3 && x < o.max[0] + 3 &&
+              z > o.min[2] - 3 && z < o.max[2] + 3) return false;
+        }
+        return true;
+      };
+      outer:
+      for (const distM of [300, 240, 360, 190, 150, 420]) {
+        for (let k = 0; k < 29; k++) {
+          const ang = p.state.yaw +
+            (k % 2 ? -1 : 1) * Math.ceil(k / 2) * (Math.PI / 24);
+          const x = p.state.pos.x + Math.sin(ang) * distM;
+          const z = p.state.pos.z + Math.cos(ang) * distM;
+          if (Math.abs(x) > 460 || Math.abs(z) > 460 || !groundFree(x, z)) continue;
+          near.state.pos.set(x, world.heightField.getHeightAt(x, z), z);
+          near.state.yaw = ang + Math.PI * 0.72; // 3/4 aspect to the player
+          if (clearTo(near) && nearClear(...aimTo(near))) { best = near; break outer; }
+        }
+      }
+      if (!best) best = near; // last resort: original staging
+      best.visual.syncFromState(best.state);
+      bestD = best.state.pos.distanceTo(p.state.pos);
+    }
     const dx = best.state.pos.x - p.state.pos.x;
     const dz = best.state.pos.z - p.state.pos.z;
     const yaw = Math.atan2(dx, dz);
-    const dy = (best.state.pos.y + 1.5) - (p.state.pos.y + 2.2);
+    const dy = (best.state.pos.y + best.spec.dims.heightM * 0.55) - (p.state.pos.y + 2.2);
     const pitch = Math.atan2(dy, Math.hypot(dx, dz));
     rig.snapSniper(8, yaw, pitch);
     forcedHudFrame('sniper', {
       distM: Math.round(bestD),
-      penRatio: 0.95,
+      // r4 hud_ui: M829A4 vs a Tiger flank is a guaranteed pen — the flagship
+      // shot must demonstrate the GREEN indicator state (0.95 showed
+      // permanent ambiguous orange).
+      penRatio: 1.5,
       reload: { t: 0, totalS: 6 },
       shellSlot: 0,
       zoom: 8,
@@ -1309,7 +1440,7 @@ window.__SHOTS = {
     recipe();
     // Shot mode runs world.update with dt=0 (frozen), so the eased sniper
     // grass fade would never move — snap it to match the rig mode instead.
-    world.setSniperFade(rig.mode === 'SNIPER' ? 1 : 0, true);
+    world.setSniperFade(rig.mode === 'SNIPER' ? 1 : 0, true, camera.fov);
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld(true);
     lighting.updateFrustums();

@@ -664,8 +664,18 @@ function buildRunningGear(P, cfg) {
   let brokenR = 0;
   const tlY0 = tl.position.y, trY0 = tr.position.y;
 
+  // r5 wheel-bounce state: speed-gated so parked closeups stay clean while a
+  // moving tank shows readable per-wheel travel (the r4 motion sheets showed
+  // rigid road wheels on straight ground — only whole-hull pitch).
+  let bobPrevL = 0, bobPrevR = 0, bobAmpL = 0, bobAmpR = 0;
+
   P.gear = {
     update(l, r) {
+      const dl = Math.abs(l - bobPrevL), dr = Math.abs(r - bobPrevR);
+      bobPrevL = l; bobPrevR = r;
+      // ~1 at full speed, eases to 0 within ~0.3 s of stopping
+      bobAmpL += (Math.min(1, dl * 7) - bobAmpL) * 0.2;
+      bobAmpR += (Math.min(1, dr * 7) - bobAmpR) * 0.2;
       for (const { im, list } of made) {
         for (let i = 0; i < list.length; i++) {
           const e = list[i];
@@ -682,7 +692,14 @@ function buildRunningGear(P, cfg) {
             continue;
           }
           const scroll = e.x < 0 ? l : r;
-          const bob = e.road ? Math.sin(scroll * 2.7 + e.i * 1.93) * 0.02 : 0;
+          // r5: two incommensurate harmonics at 2.6x the old amplitude, gated
+          // by track speed — wheels visibly chatter over ground in motion,
+          // sit perfectly seated when parked (garage/closeup safe).
+          const amp = e.x < 0 ? bobAmpL : bobAmpR;
+          const bob = e.road
+            ? (Math.sin(scroll * 2.7 + e.i * 1.93) * 0.034 +
+               Math.sin(scroll * 6.3 + e.i * 3.17) * 0.018) * amp
+            : 0;
           _q.setFromAxisAngle(_X, scroll / e.r);
           _v.set(e.x, e.y + bob + (e.off || 0), e.z);
           _s.set(1, 1, 1);
@@ -722,8 +739,10 @@ function buildRunningGear(P, cfg) {
           const dev = sampler(wx, wz) - wy;
           // ±0.13 m travel, snappy response: wheels visibly drop into ruts
           // and ride crests instead of the r2 near-rigid ±7 cm creep
-          const target = dev < -0.13 ? -0.13 : (dev > 0.13 ? 0.13 : dev);
-          e.off += (target - e.off) * 0.45;
+          // r5: ±0.17 m travel (+30%) with snappier response so articulation
+          // reads at mid-distance framing, not just in macro closeups
+          const target = dev < -0.17 ? -0.17 : (dev > 0.17 ? 0.17 : dev);
+          e.off += (target - e.off) * 0.55;
         }
       }
     },
@@ -1030,20 +1049,35 @@ function buildTiger(P) {
   // with it — the r8 sponson swallowed the whole track top run, so the new
   // dead-track sag scallops (buildRunningGear r9) can actually show between
   // the fender lip and the wheel tops.
-  P.add('hull', box(3.71, 0.86, 5.72), 0, 1.535, -0.30);
+  // r10 (critic: hull side band too tall / wheels ~25% undersized): the
+  // road wheels grew to the real 0.94 m near-fender diameter, so the
+  // superstructure bottom + fender line rise with the wheel tops (1.165 /
+  // 1.175) and the visible side band shrinks to scale.
+  P.add('hull', box(3.71, 0.80, 5.72), 0, 1.565, -0.30);
   P.add('hull', frustum(1.5, 2.92, 2.7, 1.5, 3.16, 2.7, 0.47, 0.95));           // nose plate (24°)
-  P.add('hull', frustum(1.855, 3.16, 2.5, 1.855, 2.68, 2.5, 0.95, 1.11));       // glacis shelf (~78°)
-  P.add('hull', frustum(1.855, 2.68, 2.5, 1.855, 2.62, 2.5, 1.11, 1.96));       // driver plate (9°)
+  P.add('hull', frustum(1.855, 3.16, 2.5, 1.855, 2.68, 2.5, 0.95, 1.17));       // glacis shelf (~78°)
+  P.add('hull', frustum(1.855, 2.68, 2.5, 1.855, 2.62, 2.5, 1.17, 1.96));       // driver plate (9°)
   // sponson underside AO: dark occluded ceiling above the track run (r5)
   for (const s of [-1, 1]) {
-    P.add('hullShadow', new THREE.BoxGeometry(0.7, 0.026, 5.7), s * 1.49, 1.088, -0.30);
+    P.add('hullShadow', new THREE.BoxGeometry(0.7, 0.026, 5.7), s * 1.49, 1.148, -0.30);
   }
   // full-length mudguards AT THE SPONSON LINE with a shadow gap over the
   // tracks — the missing fender line was flagged as "cardboard hull" (r5)
-  fenders(P, 1.16, 1.95, 1.115, -3.16, 3.16, 0.045);
+  fenders(P, 1.16, 1.95, 1.175, -3.16, 3.16, 0.045);
   for (const z of [3.11, -3.11]) {                                              // flared fender tips
-    P.add('hull', box(0.79, 0.04, 0.12), 1.555, 1.155, z, z > 0 ? -0.5 : 0.5, 0, 0);
-    P.add('hull', box(0.79, 0.04, 0.12), -1.555, 1.155, z, z > 0 ? -0.5 : 0.5, 0, 0);
+    P.add('hull', box(0.79, 0.04, 0.12), 1.555, 1.215, z, z > 0 ? -0.5 : 0.5, 0, 0);
+    P.add('hull', box(0.79, 0.04, 0.12), -1.555, 1.215, z, z > 0 ? -0.5 : 0.5, 0, 0);
+  }
+  // r10 (critic: "hollow black void under the front hull overhang"): close
+  // the lower bow with tow-shackle brackets + clevis pins seated on the 24°
+  // nose plate — the real Tiger's bolted shackle mounts fill exactly this
+  // corner of the silhouette.
+  for (const s of [-1, 1]) {
+    for (const off of [-0.09, 0.09]) {
+      P.add('hullDetail', box(0.055, 0.30, 0.16), s * 0.95 + off, 0.74, 3.055, -0.42, 0, 0);
+    }
+    P.add('hullDetail', cylX(0.038, 0.30, 8), s * 0.95, 0.76, 3.10);            // clevis pin
+    P.add('hullDetail', box(0.26, 0.07, 0.07), s * 0.95, 0.60, 3.02, -0.42, 0, 0); // shackle bow
   }
   // bow MG ball mount: hemispherical ball + MG stub in a bolted collar plate,
   // ball and collar painted in the hull scheme (only the MG muzzle is steel)
@@ -1063,7 +1097,7 @@ function buildTiger(P) {
     P.add('hull', box(0.36, 0.06, 0.20), s * 0.55, 2.15, -3.28);              // shroud cap lip
     P.add('hullDark', cylY(0.075, 0.085, 0.28, 10), s * 0.55, 2.42, -3.26);   // soot-black tip
   }
-  headlight(P, 0, 1.14, 2.95, -0.55);                                           // headlight, center glacis
+  headlight(P, 0, 1.22, 2.72, -0.55);                                           // headlight, center glacis (r10: rides the raised shelf)
   for (const s of [-1, 1]) P.add('hullDetail', cylY(0.045, 0.045, 0.12, 10), s * 1.7, 2.0, 2.44); // S-mine stubs
   liftEye(P, 'hullDetail', -1.5, 2.02, 2.4);
   liftEye(P, 'hullDetail', 1.5, 2.02, 2.4);
@@ -1166,13 +1200,19 @@ function buildTiger(P) {
   // the proud row), middle row pulled forward to 0.10 so it renders in scheme
   // paint, and only the deepest row takes the shadowed material — the old
   // 0.4 m wheels left black gaps that read as missing wheels at closeup.
+  // r10 (critic: wheels ~25% undersized + wheelless stretch before the
+  // sprocket): road wheels up to the real 0.94 m diameter — tops now ride
+  // just under the (raised) fender line — and the drive sprocket grows to
+  // road-wheel scale (real 0.84 m) and moves closer to the first axle so the
+  // approach run rises straight off the last wheel instead of crossing a
+  // bare flat stretch.
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.44, wheelW: 0.12, xc: 1.42,
-    wheelZs: [2.55, 2.21, 1.87, 1.53, 1.19, 0.85, 0.51, 0.17,
-      -0.17, -0.51, -0.85, -1.19, -1.53, -1.87, -2.21, -2.55],
+    style: 'rubber', wheelR: 0.47, wheelW: 0.12, xc: 1.42,
+    wheelZs: [2.58, 2.24, 1.90, 1.56, 1.22, 0.88, 0.54, 0.20,
+      -0.14, -0.48, -0.82, -1.16, -1.50, -1.84, -2.18, -2.52],
     layers: [[0.22], [-0.02], [0.10]],
-    sprocket: { z: 2.92, y: 0.52, r: 0.42 }, idler: { z: -2.92, y: 0.50, r: 0.38 },
-    trackW: 0.725, trackTh: 0.13, topY: 0.97,
+    sprocket: { z: 2.95, y: 0.55, r: 0.44 }, idler: { z: -2.95, y: 0.53, r: 0.40 },
+    trackW: 0.725, trackTh: 0.13, topY: 1.03,
   });
   stowage(P, 'hullCloth', rng, [[0, 2.02, -2.6, 1.6, 0.16, 0.7]]);
   tarpRoll(P, 'hullCloth', -1.5, 2.06, -1.6, 1.0, 0.09, false);
@@ -1582,55 +1622,56 @@ function buildT90M(P) {
     for (let k = 0; k < 5; k++) P.add('hullDetail', box(0.05, 0.55, 0.02), s * 1.72, 0.9, -2.7 - k * 0.18);
   }
   for (let k = 0; k < 10; k++) P.add('hullDetail', box(0.02, 0.55, 0.05), -1.35 + k * 0.3, 0.9, -3.58);
-  // turret (r8 rebuild pass 2): wider, FLATTER dome (~2.9 m across, low-dome
-  // profile per roster doc) with LARGER angular Relikt wedge cheeks forming
-  // the V nose — the r7 dome still read as an undersized generic polygon
-  // with the wedges lost under the digital speckle.
+  // turret (r10 rebuild — critic: "tall boxy slab-cheeked turret, reads
+  // Armata-knockoff"): the shell is now the T-90M's LOW rounded dome — wide
+  // flat-crowned lathe, cheeks carried by slim Relikt WEDGE PLATES that
+  // follow the dome silhouette (the tile clusters ride their faces), a
+  // shorter rounded bustle bin, and every piece of roof furniture pulled
+  // down onto the flatter crown so nothing stacks into a slab tower.
   P.add('turret', xform(lathe([
-    [1.38, 0.0], [1.37, 0.10], [1.30, 0.26], [1.16, 0.40], [0.97, 0.52],
-    [0.72, 0.61], [0.42, 0.665], [0.0, 0.69],
-  ], P.q ? 34 : 14, 1.08), 0, 0, -0.10));
-  // Relikt wedge cheek blocks (angled ~40° back in plan, leaning slightly):
-  // two stacked courses per side so the cheek reads as an armored WEDGE with
-  // a visible upper chamfer, not a thin sill
+    [1.34, 0.0], [1.33, 0.09], [1.28, 0.21], [1.17, 0.33], [1.00, 0.44],
+    [0.78, 0.53], [0.48, 0.60], [0.0, 0.64],
+  ], P.q ? 36 : 16, 1.02), 0, 0, -0.14));
+  // Relikt wedge cheeks: thin angled PLATES (not armor blocks) with a hard
+  // chamfer course on top — the V nose that defines the Proryv turret.
   for (const s of [-1, 1]) {
-    P.add('turret', box(1.48, 0.50, 0.36), s * 0.78, 0.27, 0.80, -0.10, s * 0.72, 0);
-    P.add('turret', box(1.30, 0.20, 0.30), s * 0.72, 0.57, 0.74, -0.34, s * 0.72, 0); // chamfer course
-    P.add('turret', box(0.78, 0.46, 0.30), s * 1.20, 0.26, -0.10, -0.10, s * 1.30, 0); // side shoulder block
+    P.add('turret', box(1.42, 0.40, 0.24), s * 0.78, 0.22, 0.84, -0.12, s * 0.72, 0);   // wedge plate
+    P.add('turret', box(1.26, 0.15, 0.20), s * 0.73, 0.46, 0.77, -0.42, s * 0.72, 0);   // chamfer course
+    P.add('turret', box(0.72, 0.34, 0.22), s * 1.16, 0.19, -0.08, -0.12, s * 1.30, 0);  // side shoulder
   }
-  P.add('turret', box(2.0, 0.55, 0.95), 0, 0.29, -1.45);                        // full-width bustle box
-  P.add('turretDetail', box(1.86, 0.04, 0.9), 0, 0.585, -1.45);                 // bustle lid rail
+  P.add('turret', box(1.78, 0.42, 0.85), 0, 0.21, -1.48);                       // bustle stowage bin
+  P.add('turretDetail', box(1.64, 0.04, 0.8), 0, 0.435, -1.48);                 // bustle lid rail
   for (let k = 0; k < 10; k++) {                                                // bustle slat screen
-    P.add('turretDetail', box(0.02, 0.46, 0.05), -0.9 + k * 0.2, 0.26, -1.97);
+    P.add('turretDetail', box(0.02, 0.36, 0.05), -0.9 + k * 0.2, 0.20, -1.94);
   }
-  P.add('turretDetail', cylX(0.07, 1.7, 10), 0, 0.68, -1.55);                   // snorkel tube
+  P.add('turretDetail', cylX(0.07, 1.7, 10), 0, 0.50, -1.58);                   // snorkel tube
   // roof set: Sosna-U gunner sight (left of gun) with shutter brow,
   // commander's pano periscope, T05BV-1 RWS with Kord MG, met mast
-  P.add('turret', box(0.52, 0.36, 0.42), -0.46, 0.86, 0.46);                    // Sosna-U housing
-  P.add('turret', box(0.56, 0.10, 0.10), -0.46, 1.06, 0.64);                    // brow
-  P.add('turretDark', box(0.4, 0.22, 0.06), -0.46, 0.86, 0.66);
-  P.add('turretGlass', box(0.32, 0.15, 0.02), -0.46, 0.86, 0.695);              // Sosna-U lens
-  P.add('turretDetail', cylY(0.06, 0.065, 0.30, 10), 0.22, 0.84, -0.42);        // pano stalk
-  P.add('turretDark', cylY(0.115, 0.115, 0.20, 12), 0.22, 1.08, -0.42);         // pano head
-  P.add('turretGlass', box(0.12, 0.06, 0.02), 0.22, 1.10, -0.31);
+  P.add('turret', box(0.52, 0.34, 0.42), -0.46, 0.70, 0.46);                    // Sosna-U housing
+  P.add('turret', box(0.56, 0.10, 0.10), -0.46, 0.89, 0.64);                    // brow
+  P.add('turretDark', box(0.4, 0.20, 0.06), -0.46, 0.70, 0.66);
+  P.add('turretGlass', box(0.32, 0.13, 0.02), -0.46, 0.70, 0.695);              // Sosna-U lens
+  P.add('turretDetail', cylY(0.06, 0.065, 0.28, 10), 0.22, 0.70, -0.42);        // pano stalk
+  P.add('turretDark', cylY(0.115, 0.115, 0.20, 12), 0.22, 0.92, -0.42);         // pano head
+  P.add('turretGlass', box(0.12, 0.06, 0.02), 0.22, 0.94, -0.31);
   // T05BV-1 RWS: ring + pedestal + cradle + Kord with ammo box
-  P.add('turretDetail', cylY(0.17, 0.19, 0.07, 12), 0.55, 0.76, -0.05);
-  P.add('turretDetail', cylY(0.07, 0.09, 0.20, 10), 0.55, 0.89, -0.05);
-  P.add('turretDetail', box(0.26, 0.24, 0.34), 0.55, 1.08, -0.05);
-  P.add('turretDark', box(0.16, 0.1, 0.05), 0.55, 1.05, 0.14);                  // RWS optics
-  P.add('turretDark', box(0.09, 0.1, 0.44), 0.63, 1.24, 0.02);                  // Kord receiver
-  P.add('turretDark', cylZ(0.024, 0.6, 8), 0.63, 1.24, 0.55);                   // Kord barrel
-  P.add('turretDetail', box(0.11, 0.14, 0.2), 0.43, 1.20, -0.02);               // ammo box
-  P.add('turretDetail', box(0.025, 0.4, 0.025), -0.6, 0.92, -0.75);             // met mast
-  P.add('turretDetail', box(0.03, 0.55, 0.03), -0.85, 0.86, -1.1, 0, 0, 0.12);  // whip antenna
+  P.add('turretDetail', cylY(0.17, 0.19, 0.07, 12), 0.55, 0.60, -0.05);
+  P.add('turretDetail', cylY(0.07, 0.09, 0.20, 10), 0.55, 0.73, -0.05);
+  P.add('turretDetail', box(0.26, 0.24, 0.34), 0.55, 0.92, -0.05);
+  P.add('turretDark', box(0.16, 0.1, 0.05), 0.55, 0.89, 0.14);                  // RWS optics
+  P.add('turretDark', box(0.09, 0.1, 0.44), 0.63, 1.08, 0.02);                  // Kord receiver
+  P.add('turretDark', cylZ(0.024, 0.6, 8), 0.63, 1.08, 0.55);                   // Kord barrel
+  P.add('turretDetail', box(0.11, 0.14, 0.2), 0.43, 1.04, -0.02);               // ammo box
+  P.add('turretDetail', box(0.025, 0.4, 0.025), -0.6, 0.76, -0.75);             // met mast
+  P.add('turretDetail', box(0.03, 0.55, 0.03), -0.85, 0.72, -1.1, 0, 0, 0.12);  // whip antenna
   // grab rails along the bustle sides
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.025, 0.025, 0.7), s * 1.02, 0.48, -1.3);
-    P.add('turretDetail', box(0.025, 0.08, 0.025), s * 1.02, 0.44, -1.0);
-    P.add('turretDetail', box(0.025, 0.08, 0.025), s * 1.02, 0.44, -1.6);
+    P.add('turretDetail', box(0.025, 0.025, 0.7), s * 0.92, 0.40, -1.35);
+    P.add('turretDetail', box(0.025, 0.08, 0.025), s * 0.92, 0.36, -1.05);
+    P.add('turretDetail', box(0.025, 0.08, 0.025), s * 0.92, 0.36, -1.65);
   }
-  smokeCluster(P, 0.98, 0.44, 0.62, 6, 0.7);
-  smokeCluster(P, -0.98, 0.44, 0.62, 6, -0.7);
+  smokeCluster(P, 0.98, 0.40, 0.62, 6, 0.7);
+  smokeCluster(P, -0.98, 0.40, 0.62, 6, -0.7);
   P.addGunExtra(box(0.44, 0.40, 0.26), 0, 0.02, 0.55);                          // embrasure block
   P.addGunExtra(cylZ(0.14, 0.34, 12, 0.17), 0, 0, 0.78);                        // mantlet collar
   buildGun(P, { len: 6.0, r: 0.068, sleeve: true, evac: 0.5, baseR: 0.15 });
@@ -1662,12 +1703,14 @@ function buildT90M(P) {
   // Turret cheek tiles ride ON the (r7 scaled-up) wedge block faces — 2 rows
   // x 5 cols per side, faces parallel to the ~41° wedge plane.
   const t90Cheek = (put, s) => {
+    // r10: tiles ride the slimmer wedge PLATE faces (offset 0.16, rows on the
+    // 1.42-1.82 hull-frame span of the rebuilt cheeks)
     const dx = Math.cos(0.72), dz = -Math.sin(0.72);
     const nx = Math.sin(0.72), nz = Math.cos(0.72);
     for (let row = 0; row < 2; row++) for (let c = 0; c < 5; c++) {
       const t = -0.52 + c * 0.26;
-      put(s * (0.78 + dx * t + nx * 0.215), 1.58 + row * 0.19,
-        0.80 + dz * t + nz * 0.215, -0.10, s * 0.72, 0);
+      put(s * (0.78 + dx * t + nx * 0.16), 1.50 + row * 0.17,
+        0.84 + dz * t + nz * 0.16, -0.12, s * 0.72, 0);
     }
   };
   P.eraCluster('turret_era_R', (put) => t90Cheek(put, 1), true);
@@ -1677,8 +1720,8 @@ function buildT90M(P) {
     const nx = Math.sin(1.30), nz = Math.cos(1.30);
     for (let row = 0; row < 2; row++) for (let c = 0; c < 4; c++) {
       const t = -0.24 + c * 0.16;
-      put(s * (1.20 + dx * t + nx * 0.185), 1.58 + row * 0.16,
-        0.05 + dz * t + nz * 0.185, -0.10, s * 1.30, 0);
+      put(s * (1.16 + dx * t + nx * 0.15), 1.48 + row * 0.15,
+        -0.08 + dz * t + nz * 0.15, -0.12, s * 1.30, 0);
     }
   };
   P.eraCluster('side_era_R', (put) => t90Side(put, 1), true);
@@ -1693,9 +1736,9 @@ function buildT90M(P) {
     for (let c = 0; c < 12; c++) for (let row = 0; row < 2; row++)
       put(-1.92, 0.755 + row * 0.225, 3.05 - c * 0.44, 0, -Math.PI / 2, 0);
   });
-  P.decal('turret', 'number', '527', 0.38, [0.96, 0.3, -1.4], Math.PI / 2);
-  P.decal('turret', 'number', '527', 0.38, [-0.96, 0.3, -1.4], -Math.PI / 2);
-  P.topY = 0.95;
+  P.decal('turret', 'number', '527', 0.34, [0.90, 0.22, -1.45], Math.PI / 2);
+  P.decal('turret', 'number', '527', 0.34, [-0.90, 0.22, -1.45], -Math.PI / 2);
+  P.topY = 0.85;
 }
 
 function buildLeo2A7(P) {
@@ -1714,18 +1757,47 @@ function buildLeo2A7(P) {
   P.add('hull', frustum(1.72, 3.45, 3.55, 1.72, 3.83, 3.55, 0.5, 1.0));         // lower front
   // vertical rear plate flush with the hull end — no overhang box
   P.add('hull', box(3.1, 0.52, 0.12), 0, 1.46, -3.70);
-  // rear DECK: twin circular cooling fans flat on the engine deck; rear
-  // plate carries the twin exhaust grilles.
+  // rear DECK (r10 rework — critic: "completely flat engine deck with zero
+  // grilles, blank rear plate, unrecognizable from behind"): twin circular
+  // cooling fans with ALWAYS-ON radial slat bars, a full-width transverse
+  // radiator louver inset across the rearmost deck, torsion-bar access caps
+  // along the side strips, and a rear plate carrying exhaust louvres, tow
+  // shackles, taillights and a convoy-light cluster.
   for (const s of [-1, 1]) {
     P.add('hullDark', cylY(0.40, 0.40, 0.025, P.q ? 28 : 14), s * 0.80, 1.725, -2.55);
     P.add('hullDetail', torus(0.40, 0.025, P.q ? 26 : 14), s * 0.80, 1.73, -2.55);
     P.add('hullDetail', box(0.76, 0.02, 0.05), s * 0.80, 1.74, -2.55);          // fan cross brace
     P.add('hullDetail', box(0.05, 0.02, 0.76), s * 0.80, 1.74, -2.55);
-    P.add('hullDark', box(0.7, 0.4, 0.04), s * 0.95, 1.15, -3.78);              // exhaust grille
-    if (P.q) for (let k = 0; k < 4; k++) {
-      P.add('hullDetail', box(0.7, 0.05, 0.05), s * 0.95, 1.0 + k * 0.11, -3.79);
+    for (let k = 0; k < 5; k++) {                                               // fan slat bars
+      P.add('hullDetail', box(0.66 - Math.abs(k - 2) * 0.14, 0.018, 0.05),
+        s * 0.80, 1.737, -2.75 + k * 0.10);
     }
+    P.add('hullDark', box(0.7, 0.4, 0.04), s * 0.95, 1.15, -3.78);              // exhaust grille
+    for (let k = 0; k < 4; k++) {                                               // exhaust louvres (always)
+      P.add('hullDetail', box(0.7, 0.05, 0.05), s * 0.95, 1.0 + k * 0.11, -3.795);
+    }
+    // torsion-bar / fuel access caps along the exposed side deck strips
+    for (const zc of [-2.0, -1.15, -0.35]) {
+      P.add('hullDetail', cylY(0.10, 0.10, 0.028, 12), s * 1.44, 1.728, zc);
+      P.add('hullDark', torus(0.10, 0.012, 12), s * 1.44, 1.733, zc);
+    }
+    // rear tow shackle brackets + clevis bows on the lower plate
+    for (const off of [-0.08, 0.08]) {
+      P.add('hullDetail', box(0.05, 0.24, 0.14), s * 1.12 + off, 0.98, -3.82);
+    }
+    P.add('hullDetail', cylX(0.034, 0.26, 8), s * 1.12, 1.0, -3.87);
+    P.add('hullDetail', box(0.24, 0.06, 0.06), s * 1.12, 0.86, -3.84);
+    P.add('hullDark', box(0.16, 0.09, 0.05), s * 1.38, 1.32, -3.775);           // taillight clusters
+    P.add('hullRubber', box(0.56, 0.34, 0.03), s * 1.5, 0.52, -3.86, 0.12, 0, 0); // rear mud flaps
   }
+  // full-width transverse radiator louver inset across the rearmost deck
+  P.add('hullDark', box(2.9, 0.022, 0.56), 0, 1.717, -3.32);
+  for (let k = 0; k < 5; k++) {
+    P.add('hullDetail', box(2.74, 0.032, 0.07), 0, 1.732, -3.52 + k * 0.10);
+  }
+  P.add('hullDark', box(0.16, 0.10, 0.05), 0, 1.55, -3.77);                     // convoy light
+  P.add('hullDetail', box(0.20, 0.03, 0.07), 0, 1.62, -3.79);                   // convoy light hood
+  P.add('hullWood', box(0.34, 0.14, 0.22), -0.62, 1.60, -3.78);                 // jack block on rear plate
   // fender-underside AO pocket over the running gear
   for (const s of [-1, 1]) {
     P.add('hullShadow', new THREE.BoxGeometry(0.5, 0.026, 7.0), s * 1.5, 1.27, 0);
@@ -1818,6 +1890,11 @@ function buildLeo2A7(P) {
     [0.95, 0.46, -2.7, 0.55, 0.42, 0.36],
   ]);
   jerryCan(P, 'turretCloth', -1.35, 0.44, -2.74, 0.15);
+  // r10: pack the bustle rack — bare rack slats read as an empty shelf from
+  // the rear three-quarter (the judged angle)
+  tarpRoll(P, 'turretCloth', 0.62, 0.68, -2.70, 1.15, 0.10, true);
+  ammoCan(P, 'turretDark', 1.32, 0.40, -2.74, 0.22);
+  spareTrackStrip(P, 'turret', -0.42, 0.70, -2.72, 2, 0, 0);
   // side stowage baskets along the rear flanks
   for (const s of [-1, 1]) {
     P.add('turretDetail', box(0.05, 0.3, 1.2), s * (LTW + 0.08), 0.44, -1.65);
@@ -2072,8 +2149,11 @@ export function createTank(specId, engineCtx, opts = {}) {
   // 60 ms slide landed BETWEEN frames ("barrel appears static through the
   // shot") — 90 ms back + 0.65 s return guarantees 3+ readable frames of
   // travel at 30 fps.
-  const REC_BACK = 0.09, REC_RETURN = 0.65;
-  const REC_AMP = 0.42 * Math.min(1.25, Math.max(0.55, ((spec.gun && spec.gun.caliberMm) || 100) / 120));
+  // r5: 0.65 -> 0.78 s return + amp 0.42 -> 0.55 — the r4 motion sheet showed
+  // no readable out-of-battery travel one 300 ms frame after the shot; the
+  // longer hydraulic return guarantees the stroke survives 3-4 capture frames.
+  const REC_BACK = 0.09, REC_RETURN = 0.78;
+  const REC_AMP = 0.55 * Math.min(1.25, Math.max(0.55, ((spec.gun && spec.gun.caliberMm) || 100) / 120));
   // Burnt-swap bookkeeping. CAPTURED LAZILY at setDestroyed time, NOT here:
   // GLB-sourced tanks (m1a2, community winners) swap their meshes in AFTER
   // construction, so a construction-time traverse missed every GLB mesh and
@@ -2115,14 +2195,18 @@ export function createTank(specId, engineCtx, opts = {}) {
   let popActive = false;
   let popT = 0;
   let popYaw0 = 0;
-  const POP_V0 = 6.2, POP_G = 13.5, POP_SPIN = 3.6, POP_SETTLE_Y = -0.18;
+  // r5: V0 6.2 -> 12.2 — the old toss peaked 1.4 m above the ring and never
+  // cleared the fireball crown; across 14 live destruction frames the
+  // signature turret pop was invisible. 12.2 m/s peaks ~5.5 m up (two hull
+  // heights over the crown) with a ~1.8 s tumble the camera can't miss.
+  const POP_V0 = 12.2, POP_G = 13.5, POP_SPIN = 3.6, POP_SETTLE_Y = -0.18;
 
   /** Settled wreck pose: turret knocked askew and dropped into the hull. */
   function settleTurret() {
-    turretG.rotation.z = 0.16;
+    turretG.rotation.z = 0.24;
     turretG.rotation.y = popYaw0 + 0.5;
     turretG.position.y = armor.turretPivot[1] + POP_SETTLE_Y;
-    turretG.position.x = 0;
+    turretG.position.x = 0.55; // lands half-off the ring, clearly dismounted
     popActive = false;
   }
 
@@ -2141,9 +2225,11 @@ export function createTank(specId, engineCtx, opts = {}) {
     const h = POP_V0 * t - 0.5 * POP_G * t * t;
     if (h <= POP_SETTLE_Y && t > 0.2) { settleTurret(); return; }
     turretG.position.y = armor.turretPivot[1] + Math.max(h, POP_SETTLE_Y);
-    turretG.position.x = Math.min(t * 0.35, 0.3);
+    // r5: lateral drift 0.3 -> 0.6 m over the longer flight — the tumbling
+    // silhouette separates from the smoke column instead of riding inside it
+    turretG.position.x = Math.min(t * 0.5, 0.6);
     turretG.rotation.y = popYaw0 + POP_SPIN * t;
-    turretG.rotation.z = Math.min(0.16 + t * 0.4, 0.55);
+    turretG.rotation.z = Math.min(0.16 + t * 0.45, 0.7);
     gunG.rotation.x = Math.min(0.12 + t * 0.25, 0.3);
   }
 
@@ -2167,7 +2253,9 @@ export function createTank(specId, engineCtx, opts = {}) {
         recoilPending = false;
         if (!destroyed) {
           const yawW = state.yaw + state.turretYaw;
-          const mag = 2.6 * Math.min(1.4, ((spec.gun && spec.gun.caliberMm) || 100) / 100);
+          // r5: 2.6 -> 3.4 — the fire rock-back must survive 2-3 frames at 60
+          // fps from a profile camera (r4: no hull reaction visible post-shot)
+          const mag = 3.4 * Math.min(1.4, ((spec.gun && spec.gun.caliberMm) || 100) / 100);
           visual.hitFlinch(-Math.sin(yawW), -Math.cos(yawW), mag, state.yaw);
         }
       }
@@ -2235,8 +2323,12 @@ export function createTank(specId, engineCtx, opts = {}) {
           // 1.05 amplitude (was 0.65) + 0.05 floor: with the lifted burnt
           // albedo the ember pockets must visibly throb on the fresh wreck
           // (r6: hull read as a light-swallowing black hole with no glow)
-          mats.burnt.emissiveIntensity =
-            0.05 + 1.05 * decay * (0.55 + 0.45 * Math.sin(wreckAge * 2.4 + emberPhase));
+          // r5: while the popped turret is airborne, hold the ember emissive
+          // near zero — the shared burnt material otherwise bloomed the
+          // tumbling turret into an unrecognizable white ghost inside the
+          // fireball (r4 "signature pop effectively does not exist").
+          mats.burnt.emissiveIntensity = (popActive ? 0.12 : 1) *
+            (0.035 + 0.62 * decay * (0.55 + 0.45 * Math.sin(wreckAge * 2.4 + emberPhase)));
         }
       } else {
         turretG.rotation.y = state.turretYaw;
@@ -2336,14 +2428,17 @@ export function createTank(specId, engineCtx, opts = {}) {
       // meshes are included in the burnt swap and restorable on rematch
       originalMats.length = 0;
       root.traverse((o) => { if (o.isMesh) originalMats.push([o, o.material]); });
-      for (const [mesh, mat] of originalMats) {
-        if (mat.transparent) { mesh.visible = false; continue; }
-        mesh.material = mats.burnt;
-      }
+      // r5: swap EVERY mesh to the charred material — the old rule hid any
+      // transparent-material mesh outright, which amputated whole assemblies
+      // on GLB tanks (the Recon Tank's gun barrel vanished, r4 wreck-closeup
+      // major). Charred glass reads fine; missing barrels do not.
+      for (const [mesh] of originalMats) mesh.material = mats.burnt;
       for (const d of decalMeshes) d.visible = false;
       // fresh wreck: embers glow bright, then pulse and cool via syncFromState
       wreckAge = Math.max(0, (opts && opts.ageS) || 0);
-      mats.burnt.emissiveIntensity = 0.05 + 1.05 * Math.exp(-wreckAge / 8);
+      // r5: 1.05 -> 0.62 amplitude — with the triplanar ember sampling the
+      // old peak read as saturated red spotlight blobs at close range
+      mats.burnt.emissiveIntensity = 0.035 + 0.62 * Math.exp(-wreckAge / 8);
       gunG.rotation.x = 0.12; // gun droops on any death
       popYaw0 = turretG.rotation.y;
       if (opts && opts.pop) {

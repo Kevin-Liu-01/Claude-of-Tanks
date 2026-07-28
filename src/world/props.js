@@ -491,7 +491,47 @@ function makeRowhouse(rng, buckets, wallBucket = 'plaster', dims = null) {
     slab.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + 0.06, 0);
     parts.roof.push(slab);
   }
-  parts.stone.push(box(0.6, 1.5, 0.6).translate(-w * 0.24, wallH + roofH - 0.1, -d * 0.2)); // chimney
+  // r7 ROOFSCAPE: ridge chimney stacks with cap slabs (1-2 per house, real
+  // masonry proportions) — the old lone 0.6 m stub on the slope was invisible
+  // at gameplay distance and the roofs read as bare extruded caps
+  {
+    const nChim = 1 + (rng() < 0.55 ? 1 : 0);
+    for (let ci = 0; ci < nChim; ci++) {
+      const cz = -d * 0.38 + rng() * d * 0.76;
+      const cx = (rng() - 0.5) * w * 0.12; // hugs the ridge line
+      const ch = 1.1 + rng() * 0.7;
+      const stack = box(0.66, ch, 0.66, 0.8);
+      jitterUV(stack, rng);
+      parts.stone.push(stack.translate(cx, wallH + roofH + ch / 2 - 0.35, cz));
+      parts.stone.push(box(0.82, 0.14, 0.82).translate(cx, wallH + roofH + ch - 0.30, cz));
+      if (rng() < 0.5) { // clay pot
+        const pot = new THREE.CylinderGeometry(0.10, 0.13, 0.34, 6, 1);
+        pot.translate(cx + (rng() - 0.5) * 0.3, wallH + roofH + ch - 0.06, cz + (rng() - 0.5) * 0.3);
+        parts.roof.push(pot);
+      }
+    }
+  }
+  // r7 DORMERS on ~40% of houses: boxed body half-sunk into the slope, dark
+  // attic window on the vertical face, pitched cap slab — breaks the bare
+  // roof planes the critique flagged
+  if (rng() < 0.4 && roofH > 1.45) {
+    const nd = 1 + ((rng() * 2) | 0);
+    for (let di = 0; di < nd; di++) {
+      const dside = rng() < 0.5 ? -1 : 1;
+      const dz = -d * 0.30 + rng() * d * 0.60;
+      const yc = wallH + roofH * 0.40;
+      // roof-surface x at the dormer belt: body straddles the slope plane
+      const dx = dside * (w / 2 + over) * 0.55;
+      parts[wallBucket].push(box(0.98, 1.0, 0.88).translate(dx, yc + 0.08, dz));
+      parts.dark.push(box(0.07, 0.60, 0.52).translate(dx + dside * 0.50, yc + 0.14, dz));
+      parts.wood.push(box(0.05, 0.72, 0.10).translate(dx + dside * 0.51, yc + 0.14, dz - 0.31));
+      parts.wood.push(box(0.05, 0.72, 0.10).translate(dx + dside * 0.51, yc + 0.14, dz + 0.31));
+      const cap = box(1.24, 0.09, 1.04, 0.4);
+      cap.rotateZ(dside * ang * 0.5);
+      cap.translate(dx - dside * 0.06, yc + 0.72, dz);
+      parts.roof.push(cap);
+    }
+  }
   // window grids on the long sides.
   // r6: ground floors get STREET LIFE — one door or shopfront slot per long
   // side, and ~40% of buildings hang wooden shutters beside their windows.
@@ -499,11 +539,21 @@ function makeRowhouse(rng, buckets, wallBucket = 'plaster', dims = null) {
   // rectangles and "no street-level doors, shutters, or signage visible".
   const doorK = [(rng() * 97) | 0, (rng() * 97) | 0]; // per-side door slot (mod nwn below)
   const shutters = rng() < 0.4;
+  // r7 PER-BUILDING WINDOW LANGUAGE: bay pitch, opening size and a rhythm
+  // phase all vary house-to-house — the critique's "repeated identical
+  // window spacing across facades" came from every facade computing the same
+  // d/2.6 grid with the same 1.25 x 0.82 opening
+  const bayPitch = 2.3 + rng() * 0.9;              // m between window bays
+  const winW = 0.72 + rng() * 0.22;                // opening width
+  const winH = 1.10 + rng() * 0.30;                // opening height
+  const wPhase = (rng() - 0.5) * 0.5;              // whole-facade rhythm shift
+  const trimBucket = rng() < 0.5 ? 'stone' : wallBucket === 'plaster' ? 'stone' : 'plaster';
   for (let st = 0; st < stories; st++) {
     const wy = 1.8 + st * 2.9;
-    const nwn = Math.max(2, (d / 2.6) | 0);
+    const nwn = Math.max(2, Math.round(d / bayPitch));
     for (let k = 0; k < nwn; k++) {
-      const zz = -d / 2 + (k + 0.5) * (d / nwn);
+      const zz = -d / 2 + (k + 0.5) * (d / nwn) + wPhase;
+      if (zz < -d / 2 + 0.75 || zz > d / 2 - 0.75) continue;
       for (const side of [-1, 1]) {
         const wx = side * (w / 2);
         if (st === 0 && k === doorK[side < 0 ? 0 : 1] % nwn) {
@@ -523,27 +573,44 @@ function makeRowhouse(rng, buckets, wallBucket = 'plaster', dims = null) {
           continue;
         }
         if (rng() < 0.12) continue;
-        // framed windows with a faked reveal: the pane sits barely proud of
-        // the wall while jambs/lintel stand ~5 cm prouder and a stone sill
-        // closes the bottom — the glass reads recessed, not painted on
-        parts.dark.push(box(0.05, 1.25, 0.82).translate(wx + side * 0.012, wy, zz));
-        parts.wood.push(box(0.09, 1.36, 0.09).translate(wx + side * 0.045, wy, zz - 0.44));
-        parts.wood.push(box(0.09, 1.36, 0.09).translate(wx + side * 0.045, wy, zz + 0.44));
-        parts.wood.push(box(0.09, 0.09, 0.97).translate(wx + side * 0.045, wy + 0.66, zz));
-        parts.stone.push(box(0.14, 0.10, 1.0).translate(wx + side * 0.05, wy - 0.70, zz));
+        // r7 REAL WINDOW REVEALS: pane near-flush, jambs/lintel/sill stand a
+        // full 12-16 cm proud with masonry-scale sections — deep trim that
+        // still casts shadow lines at gameplay camera distance (the old 5 cm
+        // sticks vanished and the glass read painted-on)
+        parts.dark.push(box(0.05, winH, winW).translate(wx + side * 0.012, wy, zz));
+        const jw = 0.14, jp = side * 0.065; // jamb section / proudness
+        parts[trimBucket].push(box(jw, winH + 0.14, 0.13).translate(wx + jp, wy, zz - winW / 2 - 0.06));
+        parts[trimBucket].push(box(jw, winH + 0.14, 0.13).translate(wx + jp, wy, zz + winW / 2 + 0.06));
+        // lintel: deeper + taller than the jambs, reads as a structural head
+        parts[trimBucket].push(box(0.17, 0.16, winW + 0.34).translate(wx + side * 0.08, wy + winH / 2 + 0.09, zz));
+        // projecting sill with a drip shadow under it
+        parts.stone.push(box(0.22, 0.11, winW + 0.30).translate(wx + side * 0.10, wy - winH / 2 - 0.07, zz));
+        // mid-rail cross bar keeps the pane from reading as one black slab
+        parts.wood.push(box(0.07, 0.07, winW).translate(wx + side * 0.038, wy + winH * 0.12, zz));
         if (shutters && rng() < 0.8) {
-          parts.wood.push(box(0.05, 1.24, 0.30).translate(wx + side * 0.03, wy, zz - 0.70));
-          parts.wood.push(box(0.05, 1.24, 0.30).translate(wx + side * 0.03, wy, zz + 0.70));
+          parts.wood.push(box(0.05, winH, 0.30).translate(wx + side * 0.03, wy, zz - winW / 2 - 0.30));
+          parts.wood.push(box(0.05, winH, 0.30).translate(wx + side * 0.03, wy, zz + winW / 2 + 0.30));
         }
       }
     }
-    // gable-face windows
+    // gable-face windows (jittered per house, framed like the long sides)
     if (st > 0) {
+      const gx = w * (0.14 + rng() * 0.08);
       for (const gz of [d / 2 + 0.05, -d / 2 - 0.05]) {
-        parts.dark.push(box(0.82, 1.25, 0.06).translate(w * 0.18, wy, gz));
-        parts.dark.push(box(0.82, 1.25, 0.06).translate(-w * 0.18, wy, gz));
+        for (const gs of [-1, 1]) {
+          parts.dark.push(box(winW, winH, 0.06).translate(gs * gx, wy, gz));
+          parts.stone.push(box(winW + 0.28, 0.10, 0.16).translate(gs * gx, wy - winH / 2 - 0.06, gz));
+        }
       }
     }
+  }
+  // string course between ground and first floor on masonry facades: cheap
+  // horizontal relief that kills the single-extrusion read from the street
+  if (rng() < 0.55) {
+    parts[trimBucket].push(box(w + 0.16, 0.14, 0.10).translate(0, 3.32, d / 2 + 0.04));
+    parts[trimBucket].push(box(w + 0.16, 0.14, 0.10).translate(0, 3.32, -d / 2 - 0.04));
+    parts[trimBucket].push(box(0.10, 0.14, d + 0.16).translate(w / 2 + 0.04, 3.32, 0));
+    parts[trimBucket].push(box(0.10, 0.14, d + 0.16).translate(-w / 2 - 0.04, 3.32, 0));
   }
   // street door + shopfront on the +z gable face
   parts.wood.push(box(1.2, 2.3, 0.12).translate(-w * 0.15, 1.15, d / 2 + 0.08));
@@ -590,6 +657,7 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
     wallRuns: null, well: true, hayCrates: true, fences: true,
     telegraph: true, carts: true, logs: true,
     haystacks: 15, rocks: 170, outcrops: 16, craters: 30, rubblePiles: 0,
+    wrecks: 4, // r7: burned-out vehicle hulks along the roads (contested read)
     streetRows: false, curbs: false, monument: false, townCraters: false,
     ...((cfg && cfg.props) || {}),
   };
@@ -1377,6 +1445,106 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
     }
   }
 
+  // --- burned-out vehicle wrecks (r7): charred hulks along the roads -------
+  // Every map read PEACEFUL (critique: "no wrecks... maps read uncontested").
+  // Generic knocked-out hulks — low hull with collapsed running gear, skewed
+  // turret, drooped gun — in charred vertex colors with rust bloom, one merged
+  // mesh on the rock material (matte, no spec sparkle), plus a scorch decal
+  // pushed into the crater decal pass below.
+  const wreckScorch = [];
+  if ((P.wrecks ?? 0) > 0) {
+    const wrng = mulberry32(seed + 909);
+    const wreckGeos = [];
+    function charPaint(geo, rustBias) {
+      const n = geo.attributes.position.count;
+      const col = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        const v = 0.055 + wrng() * 0.05;
+        if (wrng() < rustBias) { // rust bloom patches
+          const rl = 0.10 + wrng() * 0.10;
+          col[i * 3] = rl * 1.9; col[i * 3 + 1] = rl * 0.95; col[i * 3 + 2] = rl * 0.55;
+        } else {
+          col[i * 3] = v * 1.06; col[i * 3 + 1] = v; col[i * 3 + 2] = v * 0.94;
+        }
+      }
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      return geo;
+    }
+    function buildWreck(x, z, yaw) {
+      const y = heightField.getHeightAt(x, z);
+      const parts = [];
+      const rust = 0.22 + wrng() * 0.25;
+      // hull, settled low on dead suspension
+      parts.push(charPaint(box(2.9, 0.95, 5.4, 0.6).translate(0, 0.78, 0), rust));
+      // glacis wedge
+      const gl = box(2.9, 0.9, 1.3, 0.6);
+      gl.rotateX(-0.6);
+      parts.push(charPaint(gl.translate(0, 0.86, 2.55), rust));
+      // track runs (thrown/collapsed): one side sags, one spills forward
+      parts.push(charPaint(box(0.55, 0.62, 5.7, 0.8).translate(-1.68, 0.42, 0), rust + 0.1));
+      parts.push(charPaint(box(0.55, 0.5, 4.6, 0.8).rotateY(0.06).translate(1.7, 0.34, -0.4), rust + 0.1));
+      // skewed turret + drooped gun (knocked out, not parked)
+      const tYaw = (wrng() - 0.5) * 1.6;
+      const tur = new THREE.CylinderGeometry(1.12, 1.28, 0.62, 10, 1);
+      scaleUV(tur, 1, 1);
+      tur.rotateY(tYaw);
+      parts.push(charPaint(tur.translate(-0.15, 1.55, -0.5), rust));
+      const gun = new THREE.CylinderGeometry(0.075, 0.10, 3.3, 6, 1);
+      scaleUV(gun, 1, 1);
+      gun.rotateX(Math.PI / 2 + 0.10); // droops toward the ground
+      gun.rotateY(tYaw);
+      parts.push(charPaint(gun.translate(-0.15 + Math.sin(tYaw) * 2.2, 1.28, -0.5 + Math.cos(tYaw) * 2.2), rust * 0.6));
+      // blown-open hatch leaning on the turret roof
+      parts.push(charPaint(box(0.62, 0.07, 0.62, 1).rotateZ(0.9).translate(0.42, 1.98, -0.7), rust));
+      const tilt = (wrng() - 0.5) * 0.12;
+      for (const g of parts) {
+        g.rotateZ(tilt);
+        g.rotateY(yaw);
+        g.translate(x, y - 0.06, z);
+        wreckGeos.push(g);
+      }
+      obstacles.push({ min: [x - 3.1, y, z - 3.1], max: [x + 3.1, y + 2.0, z + 3.1] });
+      colliders.push({ min: [x - 3.1, y, z - 3.1], max: [x + 3.1, y + 2.0, z + 3.1] });
+      wreckScorch.push([x, z]);
+    }
+    let placedW = 0;
+    for (let ri = 0; ri < roads.length && placedW < P.wrecks; ri++) {
+      const nodes = roads[ri];
+      for (let i = 5; i < nodes.length - 1 && placedW < P.wrecks; i += 4 + ((wrng() * 3) | 0)) {
+        const [ax, az] = nodes[i], [bx, bz] = nodes[i + 1];
+        const tl = Math.hypot(bx - ax, bz - az) || 1;
+        const side = wrng() < 0.5 ? -1 : 1;
+        const off = 6.5 + wrng() * 4.5;
+        const px = ax - ((bz - az) / tl) * off * side;
+        const pz = az + ((bx - ax) / tl) * off * side;
+        if (Math.max(Math.abs(px), Math.abs(pz)) > 440) continue;
+        if (heightField._roadDist(px, pz) < 5.2) continue;
+        if (heightField.getGroundType(px, pz) === 'soft' || noVeg(px, pz)) continue;
+        if (heightField.getNormalAt(px, pz).y < 0.88) continue;
+        let bad = false;
+        for (const s of [L.spawns.player, ...L.spawns.enemies]) {
+          if (Math.hypot(px - s.x, pz - s.z) < 30) { bad = true; break; }
+        }
+        if (bad) continue;
+        for (const pb of placedB) {
+          if (Math.hypot(px - pb.x, pz - pb.z) < pb.rr + 4) { bad = true; break; }
+        }
+        if (bad || Math.hypot(px - junction.x, pz - junction.z) < 20) continue;
+        buildWreck(px, pz, Math.atan2(bx - ax, bz - az) + (wrng() - 0.5) * 0.9);
+        placedW++;
+      }
+    }
+    if (wreckGeos.length > 0) {
+      const wm = new THREE.Mesh(
+        mergeGeometries(wreckGeos.map((g) => (g.index ? g.toNonIndexed() : g)), false),
+        mats.rock);
+      wm.castShadow = true;
+      wm.receiveShadow = true;
+      wm.matrixAutoUpdate = false;
+      group.add(wm);
+    }
+  }
+
   // --- street rubble piles (urban): heaped masonry chunks + broken beams ---
   // r6: every 4th candidate may land in a 90 m OUTSKIRT band around the town
   // rect — shelled approaches carry debris too; the establishing camera used
@@ -1409,7 +1577,10 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
     // r6: urban kerbs/pavements read as CONCRETE, not planks — the urban
     // stone bucket is Bricks097 and its elongated courses on thin slabs read
     // as wooden boardwalk; route them to the plaster bucket on urban only
-    const kerbBucket = mapId === 'urban' ? 'plaster' : 'stone';
+    // lighting_post r4: urban plaster (~0.88 albedo) on sun-facing horizontal
+    // slabs rendered ~100% white ("sidewalks read emissive") — stone reads as
+    // concrete-gray on every map.
+    const kerbBucket = 'stone';
     for (let ri = 0; ri < roads.length; ri++) {
       const nodes = roads[ri];
       for (let i = 0; i < nodes.length - 1; i++) {
@@ -1595,6 +1766,11 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
       const r = 2.4 + rng() * 2.6;
       craterDiscs.push(conformedDisc(x, z, r, [0.04, 0.06, 0.14 + rng() * 0.12, 0.03]));
       placed++;
+    }
+    // r7: burn scar under every vehicle wreck — grounds the hulk and sells
+    // the kill site (flat profile: no rim, just scorched earth)
+    for (const [wx, wz] of wreckScorch) {
+      craterDiscs.push(conformedDisc(wx, wz, 4.4, [0.03, 0.04, 0.05, 0.02]));
     }
     addDecalMesh(craterDiscs, makeDecalTexture('scorch'));
   }

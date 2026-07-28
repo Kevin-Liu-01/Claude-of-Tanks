@@ -180,7 +180,9 @@ function genPlateFeatures(rng) {
   // chips clustered near lines and edges
   // r8: 260 chips with bright glints read as white speckle noise at
   // garage distance — halved, and the glint rectangle dimmed below.
-  for (let i = 0; i < 140; i++) {
+  // r10: halved again (140 -> 72) — the survivors still read as flour dust
+  // on the IS-3 / Panzer III / M1A2 roof plates under the garage key.
+  for (let i = 0; i < 72; i++) {
     let x = rng(), y = rng();
     if (rng() < 0.55) {                     // snap toward a random line
       if (rng() < 0.5 && f.hLines.length) { y = f.hLines[(rng() * f.hLines.length) | 0].p + (rng() - 0.5) * 0.02; }
@@ -355,24 +357,31 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // NATO 3-colour (Bundeswehr Gefechtstarnung / MERDC family): angular
     // ELONGATED patches swept along one per-vehicle direction at 2-3 scales —
     // brown field patches first, then sparse black riding the brown
-    // boundaries the way the real scheme shadows them. Hard cores with a
-    // tight sprayed rim. (r7: same-size rounded soft blobs read leopard-print
-    // at garage distance.)
+    // boundaries the way the real scheme shadows them. (r7: same-size rounded
+    // soft blobs read leopard-print at garage distance.)
+    // r10 (critic: "sharp polygonal shards / confetti-sized black chips read
+    // as vinyl stickers"): boundaries are FEATHERED like the stripes/ambush
+    // schemes (sprayed paint has soft flanks), patch count drops ~30% with
+    // larger cores so blobs flow across panel seams, and the minimum black
+    // patch is ~2x bigger so no black lands as a confetti chip.
     const black = patches[0], brown = patches[1] || patches[0];
     const dirA = rng() * Math.PI;
     const centers = [];
-    const nBrown = Math.round(11 * nK);
+    const feather = `blur(${Math.max(2.5, S * 0.0022).toFixed(1)}px)`;
+    const nBrown = Math.round(8 * nK);
     for (let i = 0; i < nBrown; i++) {
-      const r = S * wk * (i < nBrown * 0.4 ? 0.080 + rng() * 0.050 : 0.036 + rng() * 0.034);
+      const r = S * wk * (i < nBrown * 0.4 ? 0.095 + rng() * 0.055 : 0.052 + rng() * 0.038);
       const x = rng() * S, y = rng() * S;
       const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.55);
-      strokeWrapped(ctx, S, p, rgb(mix(brown, base, 0.30), 0.45), S * 0.0045);
-      fillWrapped(ctx, S, p, rgb(brown, 0.97));
+      ctx.filter = feather;
+      strokeWrapped(ctx, S, p, rgb(mix(brown, base, 0.35), 0.35), S * 0.008);
+      fillWrapped(ctx, S, p, rgb(brown, 0.92));
+      ctx.filter = 'none';
       centers.push([x, y, r]);
     }
-    const nBlack = Math.round(8 * nK);
+    const nBlack = Math.round(5 * nK);
     for (let i = 0; i < nBlack; i++) {
-      const r = S * wk * (i < nBlack * 0.3 ? 0.055 + rng() * 0.035 : 0.026 + rng() * 0.026);
+      const r = S * wk * (i < nBlack * 0.4 ? 0.065 + rng() * 0.035 : 0.048 + rng() * 0.028);
       let x = rng() * S, y = rng() * S;
       if ((i & 1) && centers.length) {           // ride a brown patch boundary
         const c2 = centers[(rng() * centers.length) | 0];
@@ -381,8 +390,10 @@ function paintCamo(canvas, visual, rng, feats, seed) {
         y = c2[1] + Math.sin(a2) * c2[2] * 0.9;
       }
       const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.7);
-      strokeWrapped(ctx, S, p, rgb(mix(black, base, 0.30), 0.45), S * 0.0045);
-      fillWrapped(ctx, S, p, rgb(black, 0.95));
+      ctx.filter = feather;
+      strokeWrapped(ctx, S, p, rgb(mix(black, base, 0.35), 0.35), S * 0.008);
+      fillWrapped(ctx, S, p, rgb(black, 0.9));
+      ctx.filter = 'none';
     }
   } else if (scheme === 'desert' && patches.length) {
     // Desert: hard-edged multi-scale 3-tone geometry — broad low-contrast
@@ -471,22 +482,28 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // base coat — brighter brushed streaks sit BETWEEN visible grey-green
     // gaps, worn edges show real paint, and the shadow washes went neutral
     // grey (the old blue-tinted radials read as stray pale-blue patches).
-    for (let i = 0; i < 80; i++) {
+    // r10 (critic: winter M1A2 still rendered as blown-out unlit white clay):
+    // whitewash albedo is CLAMPED to the ~0.60-0.65 matte-paint band — the
+    // palette base dropped a step (see patternVisual 'winter'), the bright
+    // brushed strokes are dimmer, worn-through base paint doubles, and a
+    // dust-ochre grime pass keyed to the under color masses toward the lower
+    // plates so the wash keeps form under the warm garage key.
+    for (let i = 0; i < 74; i++) {
       const x0 = rng() * S, y0 = rng() * S;
       const len = S * (0.08 + rng() * 0.2);
       const w = S * (0.012 + rng() * 0.03);
       const path = new Path2D();
       path.moveTo(x0, y0);
       path.quadraticCurveTo(x0 + (rng() - 0.5) * w * 3, y0 + len * 0.5, x0 + (rng() - 0.5) * w * 4, y0 + len);
-      strokeWrapped(ctx, S, path, 'rgba(228,231,223,0.20)', w * 1.5);
-      strokeWrapped(ctx, S, path, 'rgba(238,240,233,0.26)', w);
+      strokeWrapped(ctx, S, path, 'rgba(214,217,207,0.16)', w * 1.5);
+      strokeWrapped(ctx, S, path, 'rgba(226,228,219,0.20)', w);
     }
     // worn-through patches revealing the base vehicle paint (heavier at r8 —
     // the wash needs visible green bones to avoid the white-mass read)
-    for (let i = 0; i < 34; i++) {
-      const r = S * (0.012 + rng() * 0.04);
+    for (let i = 0; i < 52; i++) {
+      const r = S * (0.012 + rng() * 0.045);
       const p = blobPath2D(rng, rng() * S, rng() * S, r);
-      fillWrapped(ctx, S, p, rgb(under, 0.24 + rng() * 0.38));
+      fillWrapped(ctx, S, p, rgb(under, 0.26 + rng() * 0.40));
     }
     // grey streaking down the plates (rain-washed whitewash)
     for (let i = 0; i < 70; i++) {
@@ -495,6 +512,16 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       path.moveTo(x0, y0);
       path.lineTo(x0 + (rng() - 0.5) * 6, y0 + len);
       strokeWrapped(ctx, S, path, `rgba(118,122,110,${0.10 + rng() * 0.12})`, 1.5 + rng() * 4);
+    }
+    // dust-ochre grime keyed to the under color (mud-splashed whitewash)
+    const grime = mix(under, [96, 84, 58], 0.5);
+    for (let i = 0; i < 26; i++) {
+      const x = rng() * S, y = rng() * S, r = S * (0.03 + rng() * 0.08);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, rgb(grime, 0.10 + rng() * 0.12));
+      g.addColorStop(1, rgb(grime, 0));
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
     }
     // neutral shadow washes so the wash never reads as flat white
     for (let i = 0; i < 18; i++) {
@@ -597,7 +624,9 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     }
   }
 
-  applyGrain(ctx, S, seed ^ 0x51ab, 0.075);
+  // r10: grain trimmed 0.075 -> 0.055 — part of the "flour-dust white
+  // speckle" read on top plates under the warm garage key.
+  applyGrain(ctx, S, seed ^ 0x51ab, 0.055);
 
   // ---- plate feature overlay (matches height/roughness maps) --------------
   const px = (v) => v * S;
@@ -627,8 +656,10 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     for (let t = 0; t < S; t += step) {
       if (inGap(l, t / S)) continue;
       const jit = (rng() - 0.5) * step * 0.3;
-      const a = 0.16 + rng() * 0.14;
-      ctx.fillStyle = `rgba(225,220,205,${a})`;
+      // r10: stitch highlight halved — the bright dashes read as white
+      // speckle rows on roof plates ("flour dust" critique).
+      const a = 0.09 + rng() * 0.09;
+      ctx.fillStyle = `rgba(214,206,188,${a})`;
       if (horiz) ctx.fillRect(t + jit, px(p) - S / 700, step * 0.55, S / 350);
       else ctx.fillRect(px(p) - S / 700, t + jit, S / 350, step * 0.55);
       ctx.fillStyle = `rgba(20,18,14,${a * 0.8})`;
@@ -642,15 +673,19 @@ function paintCamo(canvas, visual, rng, feats, seed) {
   const bolt = (x, y, r) => {
     ctx.fillStyle = 'rgba(8,8,6,0.5)';
     ctx.beginPath(); ctx.arc(x + r * 0.25, y + r * 0.4, r, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(230,226,210,0.32)';
+    ctx.fillStyle = 'rgba(216,208,186,0.20)';   // r10: dome glint dimmed (speckle)
     ctx.beginPath(); ctx.arc(x - r * 0.2, y - r * 0.28, r * 0.62, 0, Math.PI * 2); ctx.fill();
   };
   const boltR = Math.max(3, S / 340);
-  for (const l of feats.hLines) if (l.bolts) {
+  // r10: modern MBTs are welded composite — full-length rivet/bolt rows made
+  // the T-90M read "riveted flat panels" (critic). Rows are WW2-only; hatch
+  // bolt RINGS stay for everyone.
+  const lineBolts = !visual.modernWelds;
+  for (const l of feats.hLines) if (l.bolts && lineBolts) {
     const step = S / 26;
     for (let t = step / 2; t < S; t += step) if (!inGap(l, t / S)) bolt(t, px(l.p) + boltR * 2.4, boltR);
   }
-  for (const l of feats.vLines) if (l.bolts) {
+  for (const l of feats.vLines) if (l.bolts && lineBolts) {
     const step = S / 26;
     for (let t = step / 2; t < S; t += step) if (!inGap(l, t / S)) bolt(px(l.p) + boltR * 2.4, t, boltR);
   }
@@ -681,13 +716,17 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     ctx.lineWidth = 1 + rng() * 3;
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (rng() - 0.5) * 8, y + len); ctx.stroke();
   }
-  // paint chips — dark pit with a bright bare-metal glint above (from plan).
+  // paint chips — dark pit with a worn-metal glint above (from plan).
+  // r10 ("flour dust" critique): glints tinted toward dust ochre keyed to the
+  // base color and cut ~50% — the old cool near-white pips read as a uniform
+  // white powder stipple across every top plate under the garage key.
+  const glintCol = rgb(mix(scale3(base, 1.35), [168, 156, 128], 0.55), 0.24);
   for (const c of feats.chips) {
     const x = px(c.x), y = px(c.y), r = Math.max(0.8, px(c.r));
-    ctx.fillStyle = c.metal ? 'rgba(112,110,102,0.72)' : 'rgba(25,22,18,0.55)';
+    ctx.fillStyle = c.metal ? 'rgba(96,92,82,0.55)' : 'rgba(25,22,18,0.55)';
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     if (c.metal) {
-      ctx.fillStyle = 'rgba(196,190,174,0.45)';
+      ctx.fillStyle = glintCol;
       ctx.fillRect(x - r * 0.55, y - r - 1.2, r * 1.1, 1.8);
     }
   }
@@ -811,11 +850,12 @@ function paintHeight(canvas, visual, rng, feats, seed) {
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
     ctx.beginPath(); ctx.arc(x, y, boltR * 0.7, 0, Math.PI * 2); ctx.fill();
   };
-  for (const l of feats.hLines) if (l.bolts) {
+  const lineBolts = !visual.modernWelds;   // r10: no rivet rows on modern MBTs
+  for (const l of feats.hLines) if (l.bolts && lineBolts) {
     const step = S / 26;
     for (let t = step / 2; t < S; t += step) if (!inGap(l, t / S)) bolt(t, px(l.p) + boltR * 2.4);
   }
-  for (const l of feats.vLines) if (l.bolts) {
+  for (const l of feats.vLines) if (l.bolts && lineBolts) {
     const step = S / 26;
     for (let t = step / 2; t < S; t += step) if (!inGap(l, t / S)) bolt(px(l.p) + boltR * 2.4, t);
   }
@@ -1052,7 +1092,8 @@ function acquireSharedTextures(spec, aniso) {
   let entry = TEX_CACHE.get(key);
   if (!entry) {
     const patternId = resolveCamoPattern(key);
-    const vis = resolveCamoVisual(spec, patternId);
+    // modernWelds: welded-composite hulls draw no rivet/bolt rows (r10)
+    const vis = { ...resolveCamoVisual(spec, patternId), modernWelds: spec.era === 'modern' };
     const seed = 0x5eed ^ (key.split('').reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) | 0, 7));
     const rng = mulberry32(seed);
     const feats = genPlateFeatures(rng);
@@ -1166,11 +1207,14 @@ function ensureBurntTextures(entry, aniso) {
   ectx.fillRect(0, 0, E, E);
   // 11 pockets (was 6) at varied radii/heat so the smolder reads as scattered
   // embers in seams — more variation kills the r6 "featureless black" hull
-  for (let i = 0; i < 11; i++) {
-    const x = rng() * E, y = rng() * E, r = 14 + rng() * 40;
+  // r5: pockets shrunk (14-54 px -> 8-28 px) and dimmed — under the wreck's
+  // world-space triplanar sampling the old radii blew up into 0.5-1 m soft
+  // red "spotlight" blobs at close range; embers must read as seams/pockets.
+  for (let i = 0; i < 13; i++) {
+    const x = rng() * E, y = rng() * E, r = 8 + rng() * 20;
     const g = ectx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, `rgba(255,${118 + Math.floor(rng() * 60)},48,${0.32 + rng() * 0.42})`);
-    g.addColorStop(0.5, 'rgba(140,36,8,0.22)');
+    g.addColorStop(0, `rgba(255,${118 + Math.floor(rng() * 60)},48,${0.26 + rng() * 0.32})`);
+    g.addColorStop(0.5, 'rgba(140,36,8,0.16)');
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ectx.fillStyle = g;
     ectx.fillRect(x - r, y - r, r * 2, r * 2);
@@ -1306,7 +1350,11 @@ function patternVisual(spec, patternId) {
     // r8: base dropped off near-white — '#c4c8bf' blew out to a featureless
     // white mass under the garage key (r7 winter critique); a worn grey-green
     // whitewash keeps panel definition and stays inside matte-paint range.
-    o = { scheme: 'winter', base: '#b2b7aa', weather: '#8f9486', patches: [v.base || '#4b5320'] };
+    // r10 (critic: winter still blew out to unlit near-white on the M1A2):
+    // base clamped into the ~0.62 dirty-whitewash band — real winter wash is
+    // chalky grey over dark paint, never near-white; the painter adds worn
+    // base bleed + ochre grime (see the winter scheme in paintCamo).
+    o = { scheme: 'winter', base: '#9ba18f', weather: '#7e8476', patches: [v.base || '#4b5320'] };
   } else if (patternId === 'urban') {
     // biome-resolved only (see BIOME_PATTERN): gray-biased GREEN NATO blend.
     // Pure concrete digital read conspicuously alien on the green approach
@@ -1357,7 +1405,7 @@ const wheelDarkRgbOf = (v) => scale3(wheelRgbOf(v), 0.66);
 const detailRgbOf = (v) => scale3(mix([65, 70, 58], hexToRgb(v.base), 0.5), 0.9);
 
 function repaintEntry(entry, patternId) {
-  const vis = patternVisual(entry.spec, patternId);
+  const vis = { ...patternVisual(entry.spec, patternId), modernWelds: entry.spec.era === 'modern' };
   // pattern-specific rng stream; the shared `feats` plan keeps panel lines,
   // welds and bolts aligned with the (unchanged) normal/roughness maps.
   let ph = 0;
@@ -1547,7 +1595,7 @@ function composeGlbShare(share, spec, patternId) {
   //     encoded luma exceeds LUMA_MAX so no paint texel can feed the bloom
   //     pass under the garage spots. One ImageData pass, pattern switches only.
   {
-    const LUMA_MAX = 214;                          // ~0.84 encoded
+    const LUMA_MAX = 198;                          // ~0.78 encoded (r10: winter clay)
     const img = ctx.getImageData(0, 0, w, h);
     const d = img.data;
     for (let i = 0; i < d.length; i += 4) {
@@ -1660,7 +1708,7 @@ export function applyCamoToModel(root, spec) {
       own.metalnessMap = null;
       own.roughnessMap = null;
       own.metalness = 0.08;
-      own.roughness = 0.82;
+      own.roughness = 0.62; // lighting_post r4: directional sheen on painted GLB plates
       if ('envMapIntensity' in own) own.envMapIntensity = 0.6;
       // The asset also bakes KHR_materials_clearcoat 0.37-1.0 into its
       // MeshPhysicalMaterials — a near-mirror lacquer lobe that ignores the
@@ -1735,10 +1783,10 @@ export function getCommunityGearMaterials(spec) {
     wheel.onBeforeCompile = vehicleAmbientFloorHook;
     wheel.customProgramCacheKey = () => 'veh-ambient-floor-v1';
     const track = new THREE.MeshStandardMaterial({
-      name: 'AddOnTrack', color: 0x43453f, roughness: 0.88, metalness: 0.14,
+      name: 'AddOnTrack', color: 0x43453f, roughness: 0.9, metalness: 0.12,
       roughnessMap: entry.roughTex,
       vertexColors: true,   // r8: baked dust/AO (modelLoader.refineCommunityGeometry)
-      envMapIntensity: 0.55,
+      envMapIntensity: 0.25, // r10: no blue-sky sheen on community track runs
     });
     track.onBeforeCompile = vehicleAmbientFloorHook;
     track.customProgramCacheKey = () => 'veh-ambient-floor-v1';
@@ -1775,7 +1823,14 @@ const VEHICLE_AMBIENT_FLOOR = 0.35;
 // terrain/props keep their deep shadows for contrast. Sunlit response
 // (~4.5×albedo direct) still dominates ~3:1, so lit-vs-shade hull form
 // survives — verified no washout in tank_closeup_modern/garage/player_view.
-const VEHICLE_VIEW_FILL = 1.45; // fill at full camera-facing (linear, ×albedo)
+// lighting_post r4: 1.45 → 0.55. At 1.45 the camera-facing floor EQUALED the
+// full sun response (sun 4.5/π ≈ 1.43×albedo at N·L=1) — "the camera fill has
+// erased directional modeling" (critic major). 0.55 ≈ 0.38× sun keeps the
+// readability lift while N·L form shading reads again from every bearing.
+// NOTE: the tank_models r10 high-albedo rolloff and the gameplay_feel r4
+// shadow-band floor below are calibrated against THIS value ("~4x under the
+// lit response") — do not raise it back.
+const VEHICLE_VIEW_FILL = 0.55; // fill at full camera-facing (linear, ×albedo)
 const VEHICLE_VIEW_WRAP = 0.40; // fraction kept at grazing angles (wrap term)
 
 /**
@@ -1794,7 +1849,32 @@ export function vehicleAmbientFloorHook(shader) {
 		float vehFacing = saturate( dot( normal, geometryViewDir ) );
 		float vehFill = max( ${VEHICLE_AMBIENT_FLOOR.toFixed(3)},
 			${VEHICLE_VIEW_FILL.toFixed(3)} * ( ${VEHICLE_VIEW_WRAP.toFixed(3)} + ${(1 - VEHICLE_VIEW_WRAP).toFixed(3)} * vehFacing ) );
+		// tank_models r10: high-albedo rolloff — on light paints (winter wash,
+		// light greys) a flat albedo-scaled floor pushes the whole hull toward
+		// clip and flattens form ("unlit near-white clay"). Cap the fill so the
+		// resulting indirect floor never exceeds ~0.30 linear luminance.
+		float vehLuma = max( dot( material.diffuseColor, vec3( 0.2126, 0.7152, 0.0722 ) ), 0.001 );
+		vehFill = min( vehFill, 0.30 / vehLuma );
 		reflectedLight.indirectDiffuse = max( reflectedLight.indirectDiffuse, material.diffuseColor * vehFill );
+		// >>> gameplay_feel r4: shadow-band luminance floor. The albedo-scaled
+		// fill above still crushes to near-black when a dark-olive skin
+		// (~0.05-0.09 linear albedo) sits sun-opposed inside a terrain/cloud
+		// shadow band (r4 drive critique: the hull reads as an unreadable
+		// black blob in drive_aim/drive_turn/drive_stop). Clamp the OUTGOING
+		// diffuse luminance to a small normal-modulated floor applied along
+		// the albedo hue: plates at different angles keep different floors so
+		// hull attitude and plate separation survive full shade, and the
+		// lighting_post r4 directional-modeling fix is untouched — the floor
+		// sits ~4x under the lit response and only engages in deep shade.
+		vec3 vehDiff = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;
+		float vehOutL = dot( vehDiff, vec3( 0.2126, 0.7152, 0.0722 ) );
+		float vehFloorL = 0.115 * ( 0.40 + 0.60 * vehFacing );
+		if ( vehOutL < vehFloorL ) {
+			vec3 vehTint = material.diffuseColor / vehLuma;
+			vehTint = mix( vec3( 1.0 ), vehTint, 0.75 );
+			reflectedLight.indirectDiffuse += vehTint * ( vehFloorL - vehOutL );
+		}
+		// <<< gameplay_feel r4
 	}`,
   );
 }
@@ -1832,9 +1912,11 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
   // (whose composite runs at 0.6), the core of the "CAD clay" cohesion
   // critique. Clearcoat trimmed with it.
   const hull = track(setup(new THREE.MeshPhysicalMaterial({
-    map: camoTex, roughnessMap: roughTex, roughness: 1.0, metalness: 0.06,
+    map: camoTex, roughnessMap: roughTex, roughness: 0.95, metalness: 0.06,
     normalMap: normalTex, normalScale: new THREE.Vector2(1.3, 1.3),
-    clearcoat: 0.05, clearcoatRoughness: 0.6, clearcoatRoughnessMap: roughTex,
+    // lighting_post r4: sheen without white-deck — NO clearcoatRoughnessMap
+    // (map dips spike the lobe and blow flat rear fenders to mirror-white).
+    clearcoat: 0.12, clearcoatRoughness: 0.60,
     vertexColors: true, envMapIntensity: 0.55,
   })));
 
@@ -1908,14 +1990,20 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
   // r7: metalness dropped 0.38 -> 0.16 and roughness raised — under the field
   // sun the old values fired a glossy-black-plastic specular off sprockets
   // and link pads; worn track steel is dusty and near-diffuse.
+  // r10 (critic: "blue-violet specular tint on sprocket/idler wraps — reads
+  // anodized"): the default envMapIntensity 1.0 mirrored the blue PMREM sky
+  // off every link/sprocket. Worn track steel is dusty near-diffuse — env
+  // response cut hard, metalness trimmed, color nudged toward dust brown.
   const trackLink = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x50524d, roughness: 0.85, metalness: 0.16, roughnessMap: roughTex,
+    color: 0x53504a, roughness: 0.88, metalness: 0.10, roughnessMap: roughTex,
+    envMapIntensity: 0.22,
   })));
   // Spare track links carried as stowage/armor: dark oily track steel — the
   // light-grey trackLink shade read as unpainted plastic sprue racked on the
   // Tiger turret sides (r6); the live run needs the lighter tone, spares don't.
   const spareTrack = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x3a3d38, roughness: 0.78, metalness: 0.32, roughnessMap: roughTex,
+    color: 0x3a3d38, roughness: 0.8, metalness: 0.2, roughnessMap: roughTex,
+    envMapIntensity: 0.25,   // r10: kill the blue sky sheen (see trackLink)
   })));
   // Optics / headlight lenses: smooth glass with a dark blue-grey tint.
   const glass = track(setup(new THREE.MeshStandardMaterial({
@@ -1948,11 +2036,55 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
     normalMap: normalTex, normalScale: new THREE.Vector2(0.9, 0.9),
     emissive: 0xff5a18, emissiveIntensity: 0.018, emissiveMap: shared.emberTex,
   })));
+  // r5 WORLD-SPACE TRIPLANAR charred sampling: the burnt swap must work on
+  // ANY mesh, including sourced GLBs whose palette-atlas UVs collapse whole
+  // faces to a few texels — with plain UV sampling those wrecks rendered as
+  // a featureless black slab with the ember pockets magnified into giant
+  // soft red "spotlight" blobs (r4 wreck-closeup major). Triplanar in world
+  // space gives every wreck the same soot/char frequency regardless of UV
+  // layout or model unit scale; wrecks are static, so no texture swim.
+  burnt.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vBwPos;\nvarying vec3 vBwNrm;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+{
+  vec4 bwp = vec4( transformed, 1.0 );
+  vec3 bwn = objectNormal;
+  #ifdef USE_INSTANCING
+    bwp = instanceMatrix * bwp;
+    bwn = mat3( instanceMatrix ) * bwn;
+  #endif
+  vBwPos = ( modelMatrix * bwp ).xyz;
+  vBwNrm = normalize( mat3( modelMatrix ) * bwn );
+}`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>
+varying vec3 vBwPos;
+varying vec3 vBwNrm;
+vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
+  vec3 w = pow( abs( n ), vec3( 3.0 ) );
+  w /= ( w.x + w.y + w.z + 1e-4 );
+  return texture2D( m, p.zy * sc ) * w.x +
+         texture2D( m, p.xz * sc ) * w.y +
+         texture2D( m, p.xy * sc ) * w.z;
+}`)
+      .replace('#include <map_fragment>', `{
+  vec4 sampledDiffuseColor = burntTri( map, vBwPos, vBwNrm, 0.34 );
+  diffuseColor *= sampledDiffuseColor;
+}`)
+      .replace('#include <emissivemap_fragment>', `{
+  vec4 emissiveColor = burntTri( emissiveMap, vBwPos + vec3( 3.7, 1.3, 8.1 ), vBwNrm, 0.21 );
+  totalEmissiveRadiance *= emissiveColor.rgb;
+}`);
+  };
+  burnt.customProgramCacheKey = () => 'burnt-triplanar-r5';
 
   // Independent L/R track textures so each side scrolls on its own offset.
   const trackTexL = track(canvasTex(shared.trackCanvas, { aniso, repeat: true }));
   const trackTexR = track(canvasTex(shared.trackCanvas, { aniso, repeat: true }));
-  const trackMatOpts = { roughness: 0.85, metalness: 0.3 };
+  // r10: metalness 0.3 + full env fired the blue-sky mirror off the band's
+  // grazing faces (anodized-purple wrap critique) — dusty steel instead.
+  const trackMatOpts = { roughness: 0.9, metalness: 0.12, envMapIntensity: 0.22 };
   const trackL = track(setup(new THREE.MeshStandardMaterial({
     map: trackTexL, bumpMap: trackTexL, bumpScale: 0.5, ...trackMatOpts })));
   const trackR = track(setup(new THREE.MeshStandardMaterial({

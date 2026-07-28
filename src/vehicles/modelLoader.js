@@ -711,6 +711,138 @@ function paintUntextured(root, spec, normScale) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// r10 per-spec GLB touch-ups (tank_models r10 critique items)
+// ---------------------------------------------------------------------------
+
+/** Split a geometry's triangles into [keep, alt] index groups by a per-vertex
+ * predicate (triangle goes 'alt' when >=2 of its verts match), then assign
+ * [originalMat, altMat]. Geometry is shared between clones — the index
+ * surgery runs once (userData flag); the material array is set per clone. */
+function splitTrianglesToGroups(o, vertPred, altMat) {
+  const g = o.geometry;
+  if (!g.userData.__cotSplitDone) {
+    const pos = g.attributes.position;
+    const src = g.index ? Array.from(g.index.array) : [...Array(pos.count).keys()];
+    const keep = [], alt = [];
+    for (let t = 0; t + 2 < src.length; t += 3) {
+      const a = src[t], b = src[t + 1], c = src[t + 2];
+      const n = (vertPred(a) ? 1 : 0) + (vertPred(b) ? 1 : 0) + (vertPred(c) ? 1 : 0);
+      (n >= 2 ? alt : keep).push(a, b, c);
+    }
+    const arr = keep.concat(alt);
+    g.setIndex(pos.count > 65535
+      ? new THREE.BufferAttribute(new Uint32Array(arr), 1)
+      : new THREE.BufferAttribute(new Uint16Array(arr), 1));
+    g.clearGroups();
+    g.addGroup(0, keep.length, 0);
+    g.addGroup(keep.length, alt.length, 1);
+    g.userData.__cotSplitDone = true;
+  }
+  const base = Array.isArray(o.material) ? o.material[0] : o.material;
+  o.material = [base, altMat];
+}
+
+/**
+ * m1a2: the asset's gun tube ('DMainMetal_Guns') is an UNTEXTURED material —
+ * the plain-tint pass left it a flat green plastic prop while hull/turret
+ * carry the camo composite (r10 critique). Box-UV the tube onto the live
+ * shared camo canvas so the barrel restyles with every garage pattern; the
+ * 'AddOn' name opts it out of applyCamoToModel's plain-tint path.
+ */
+function paintGlbGunTube(gun, spec) {
+  const tube = new THREE.MeshStandardMaterial({
+    name: 'AddOnGunCamo', map: getSharedCamoTexture(spec),
+    roughness: 0.8, metalness: 0.08,
+    roughnessMap: getSharedRoughnessTexture(spec),
+    envMapIntensity: 0.4,
+  });
+  const ws = new THREE.Vector3();
+  gun.updateWorldMatrix(true, true);
+  gun.traverse((o) => {
+    if (!o.isMesh || !o.material) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (let i = 0; i < mats.length; i++) {
+      const m = mats[i];
+      if (!m || m.map || !/guns/i.test(m.name || '')) continue;
+      o.getWorldScale(ws);
+      boxUVRaw(o.geometry, 0.5 * (Math.max(Math.abs(ws.x), Math.abs(ws.y), Math.abs(ws.z)) || 1));
+      if (Array.isArray(o.material)) o.material[i] = tube; else o.material = tube;
+    }
+  });
+}
+
+/**
+ * COMMUNITY TANKS r10 cohesion surgery (runs after paintUntextured, before
+ * the camo composite — replacement materials carry 'AddOn' names so
+ * applyCamoToModel treats them as gear, not paint):
+ *  - q_heavy: the giant smooth track-loop fairing is part of the same 'Main'
+ *    material as the hull, so the material-level pass could never separate it
+ *    ("pool-toy beige track loops"). Split its triangles by lateral position:
+ *    everything outboard of 60% half-width goes dark worn track steel.
+ *  - recon_tank: the composite camo painted brown pattern patches across the
+ *    wheel drums, reading as cartoon hub decals. Split the single skinned
+ *    mesh by bone binding — verts weighted to Wheel_* bones repaint as
+ *    scheme-solid running gear. The bone-driven barrel also slims to a
+ *    57 mm-credible tube.
+ *  - newc_pziii: the 5 cm KwK barrel was a camo-colored pencil that vanished
+ *    at garage distance — thicken laterally and hand it the dark gear steel.
+ */
+function applyCommunityFixes(scene, spec, gun) {
+  if (spec.id === 'q_heavy') {
+    const gear = getCommunityGearMaterials(spec);
+    scene.traverse((o) => {
+      if (!o.isMesh || !o.geometry) return;
+      const m = Array.isArray(o.material) ? o.material[0] : o.material;
+      if (!m || !/AddOnCamoHull/.test(m.name || '')) return;
+      const pos = o.geometry.attributes.position;
+      if (!pos) return;
+      // lateral axis for this asset's skinned body geometry is Y (verified
+      // against the rig's bind pose); the fairing capsules live outboard.
+      let maxY = 0;
+      for (let i = 0; i < pos.count; i++) maxY = Math.max(maxY, Math.abs(pos.getY(i)));
+      const bb = o.geometry.boundingBox || (o.geometry.computeBoundingBox(), o.geometry.boundingBox);
+      const spanY = bb.max.y - bb.min.y;
+      const spanX = bb.max.x - bb.min.x;
+      const spanZ = bb.max.z - bb.min.z;
+      // only the low wide body band carries the fairing (skip turret shells)
+      if (spanY < spanZ || spanY > spanX) return;
+      const thresh = maxY * 0.60;
+      splitTrianglesToGroups(o, (i) => Math.abs(pos.getY(i)) > thresh, gear.track);
+    });
+  } else if (spec.id === 'recon_tank') {
+    const gear = getCommunityGearMaterials(spec);
+    scene.traverse((o) => {
+      if (!o.isSkinnedMesh || !o.skeleton) return;
+      const wheelBone = o.skeleton.bones.map((b) => /wheel/i.test(b.name || ''));
+      if (!wheelBone.some(Boolean)) return;
+      const si = o.geometry.attributes.skinIndex;
+      const sw = o.geometry.attributes.skinWeight;
+      if (!si || !sw) return;
+      refineCommunityGeometry(o);   // bake the vertex dust/AO the gear mats expect
+      const isWheelVert = (i) => {
+        let best = 0, bestW = -1;
+        for (let k = 0; k < 4; k++) {
+          const w = sw.getComponent(i, k);
+          if (w > bestW) { bestW = w; best = si.getComponent(i, k); }
+        }
+        return !!wheelBone[best];
+      };
+      splitTrianglesToGroups(o, isWheelVert, gear.wheel);
+    });
+    // 57 mm gun: bone-driven tube, slim laterally (bone Y runs along the bore)
+    if (gun) { gun.scale.x *= 0.62; gun.scale.z *= 0.62; gun.updateMatrixWorld(true); }
+  } else if (spec.id === 'newc_pziii' && gun) {
+    const gear = getCommunityGearMaterials(spec);
+    gun.traverse((o) => {
+      if (o.isMesh) o.material = gear.track;
+    });
+    gun.scale.x *= 1.5;
+    gun.scale.y *= 1.5;
+    gun.updateMatrixWorld(true);
+  }
+}
+
 /**
  * Material upgrade pass: correct color space, roughness/metalness sanity,
  * shadow flags. Sourced low-poly assets frequently arrive with metalness 1 /
@@ -867,6 +999,11 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
   // (full pattern support); very dark untextured mats (tracks, tires) keep
   // their factory look ('addon' marker opts them out of the camo tint).
   if (cfg.paintUntextured) paintUntextured(scene, spec, s);
+  // r10: camo-paint the m1a2's untextured gun tube (flat-green prop critique)
+  if (spec.id === 'm1a2' && gun) paintGlbGunTube(gun, spec);
+  // r10: per-spec community cohesion surgery (q_heavy loops, recon wheels
+  // + barrel, newc_pziii gun) — see applyCommunityFixes
+  applyCommunityFixes(scene, spec, gun);
   // camo: texture-space pattern composite onto the asset's baked albedo
   // (materials.js owns it — pattern tile + luminance-normalized grayscale
   // detail overlay + alpha restore; weathering/AO preserved).

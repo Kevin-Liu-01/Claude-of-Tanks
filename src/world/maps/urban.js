@@ -72,7 +72,7 @@ export default {
     rimMix: [['pine', 0.6], ['oak', 0.4]],
     clusterCount: 14,
     loneCount: 40,
-    rimCount: 58, // r5: fuller rim forest under the serrated backdrop tree line
+    rimCount: 72, // r7: fuller rim forest under the serrated backdrop tree line
     grassDensity: 0.5,
     tuftTone: (h, s, l) => [0.185, clamp01(s * 0.7), clamp01(l * 0.92)],
     bushCount: 0.85, // r6: garden hedges/shrubs in the yards and block edges
@@ -135,7 +135,9 @@ export default {
   },
 
   horizon: {
-    baseHex: 0x525c50, amp: 0.85, style: 'escarpment', treeline: 0.5,
+    // r7: treeline 0.5 -> 0.92 — kills the bald-ramp band above the forest
+    // cutoff (see verdant.js note)
+    baseHex: 0x525c50, amp: 0.85, style: 'escarpment', treeline: 0.92,
     forestHex: 0x323f30, haze: 1.15,
   },
 

@@ -204,8 +204,14 @@ void main() {
   // 0.42 (r6): the narrow band binarized the noise into hard-edged speckle
   // by mid-life — coarse GIF-dither confetti over the trees instead of
   // half-transparent churn.
-  float er = vT * 0.42;
-  float a = smoothstep( er, er + 0.42, tex ) * vColor.a;
+  // r5 anti-stipple: the erosion band now WIDENS with age (0.40 -> 0.92).
+  // The fixed 0.42 band binarized the flipbook's high-frequency octaves by
+  // mid-life — at 100% zoom the fireball boundary resolved to discrete
+  // alpha-dither speckle instead of soft billowing lobes. A widening band
+  // keeps the front torn early yet dissolves late edges as translucent
+  // gradients, so lobes billow away instead of pixel-popping.
+  float er = vT * 0.34;
+  float a = smoothstep( er, er + 0.40 + 0.52 * vT, tex ) * vColor.a;
   if ( a < 0.004 ) discard;
   ${FOG_SCALE_F}
   // blackbody interior: texels well above the erosion front read white-hot,
@@ -351,7 +357,9 @@ void main() {
                   clamp( vUv.y + ( fract( vSeed * 13.7 ) - 0.5 ) * 0.16, 0.0, 1.0 ) );
   float tex = texture2D( uMap, uv ).a;
   float er = 0.06 + vT * 0.6;
-  float a = smoothstep( er, er + 0.28, tex ) * vColor.a;
+  // 0.28 -> 0.46 band (r5): jet tips dissolved into hard noise speckle at
+  // the flash frame edges — wider band keeps the cone ragged but soft
+  float a = smoothstep( er, er + 0.46, tex ) * vColor.a;
   if ( a < 0.004 ) discard;
   ${FOG_SCALE_F}
   // incandescent core near the muzzle end, cooling toward the ragged tip
@@ -563,8 +571,13 @@ function makeFlipbookTexture(rng, style) {
   const churn = makeFbm(rng, fire ? 5 : 4);
   const img = ctx.createImageData(S, S);
   const d = img.data;
-  const churnLo = fire ? 0.26 : (style === 'dust' ? 0.58 : 0.48);
-  const churnHi = fire ? 1.10 : (style === 'dust' ? 0.62 : 0.78);
+  // r5 anti-stipple: fire churn contrast 0.26/1.10 -> 0.44/0.72 and smoke
+  // 0.48/0.78 -> 0.52/0.62 — the old per-texel contrast is what the erosion
+  // front binarized into GIF-dither confetti on 5-7 m cards at 100% zoom.
+  // Billow structure now comes from the low octaves; the fine octaves only
+  // modulate, never gate.
+  const churnLo = fire ? 0.44 : (style === 'dust' ? 0.58 : 0.52);
+  const churnHi = fire ? 0.72 : (style === 'dust' ? 0.62 : 0.62);
   const gamma = fire ? 0.88 : 1.06;
   for (let k = 0; k < TILES * TILES; k++) {
     const q = k / (TILES * TILES - 1);          // 0 -> 1 over the sequence
@@ -913,7 +926,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
       // stacked-additive HDR clipping the fireball core to a featureless sheet.
       // Additive pools carry a longer lens fade (r7 scope flood): a fire card
       // 3 m from the eye is a screen-filling wash, not feedback.
-      puffMaterial(fireTex, true, 1.6, 1.05, 4, [1.2, 4.6]), PUFF_LAYOUT, POOL_SIZES.fire, 'aVL', 3),
+      puffMaterial(fireTex, true, 1.6, 0.66, 4, [1.2, 4.6]), PUFF_LAYOUT, POOL_SIZES.fire, 'aVL', 3),
     dust: new Pool('dust', makeQuadGeometry(POOL_SIZES.dust),
       puffMaterial(dustTex, false, 1.4, 1, 4), PUFF_LAYOUT, POOL_SIZES.dust, 'aVL', 3),
     flash: new Pool('flash', makeQuadGeometry(POOL_SIZES.flash),

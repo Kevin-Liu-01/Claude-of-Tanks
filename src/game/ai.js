@@ -86,6 +86,16 @@ const MAX_FIRE_RANGE_M  = 620;
 const UNDER_FIRE_WINDOW_S = 15;       // chase/engage window after a team hit
 const UNDER_FIRE_RANGE_BONUS_M = 180; // engage-envelope extension toward the shooter
 const PLAYER_THREAT_DIST_MULT = 0.35; // player counts as 35% of its true d² when ranking targets
+// PLAYER ATTACKER-OF-RECORD (controls_gunnery r4): the single underFire slot
+// was overwritten within a second or two by whichever ALLIED bot landed the
+// next teammate hit, so the player's aggro claim evaporated before the next
+// LOS tick — measured live: 3 player hits, underFire pointing at an allied
+// Leo 2A7 on every snapshot, zero shells returned at the player across 90 s.
+// A PLAYER shooter now also claims a dedicated sticky slot with a longer
+// window; it bypasses the spotting gate exactly like underFire (muzzle flash
+// + tracer are intel) — a firing player at 400 m is otherwise unspottable by
+// 350-380 m-view WW2 bots and could farm whole teams for free.
+const PLAYER_AGGRO_WINDOW_S = 25;
 
 // HEADING COMMITMENT (controls_gunnery r3): approach/chase legs used to steer
 // at the LIVE target position every tick, so bots wove continuously (speed
@@ -168,7 +178,8 @@ export function createAI(entity, opts = {}) {
   // shell on us/a nearby teammate bypasses the spotting gate for the reaction
   // window. losClear still demands a personal ray before firing.
   const isVisibleToTeam = (e) => !spotting || spotting.isSpotted(e.id, entity) ||
-    (e === underFire && nowS < underFireUntilS);
+    (e === underFire && nowS < underFireUntilS) ||
+    (e === playerAggro && nowS < playerAggroUntilS);
 
   // Ensure the shared input record exists (integration normally creates it).
   if (!entity.input) {
@@ -218,6 +229,16 @@ export function createAI(entity, opts = {}) {
   let nonPenCount = 0;
   let underFire = null;            // shooter entity revealed by hitting us/a teammate
   let underFireUntilS = -Infinity; // reaction window end (sim seconds)
+  let playerAggro = null;          // sticky PLAYER attacker-of-record (r4)
+  let playerAggroUntilS = -Infinity;
+  // PLAYER-HUNTER BIAS (controls_gunnery r4): r3's flat 0.35 d² weighting
+  // still let every bot farm the closer allied escorts while the player
+  // plinked from 350 m (probe: 26 enemy shells, zero at the player). A
+  // persistent fraction of controllers (~40%) now treats a SPOTTED player
+  // as a priority mark — 0.12 d² ranks a 350 m player like a 121 m bot —
+  // so somebody always turns on the human without the whole team tunneling.
+  const playerHunter = rng() < 0.4;
+  const playerDistMult = playerHunter ? 0.12 : PLAYER_THREAT_DIST_MULT;
 
   // Aim solution (updated by probes at PROBE_INTERVAL_S).
   let aimHFrac = 0.48;
@@ -305,6 +326,32 @@ export function createAI(entity, opts = {}) {
     const list = aliveEnemies();
     const ex = st.pos.x, ey = st.pos.y + selfEyeM, ez = st.pos.z;
 
+    // ATTACKER-OF-RECORD AGGRO (controls_gunnery r4): a shooter that just
+    // landed a shell on us or a nearby teammate takes the target slot
+    // OUTRIGHT for its reaction window whenever we can draw a clear personal
+    // ray — return fire is core WoT feel. The sticky PLAYER slot is checked
+    // FIRST: r3's shared slot was overwritten by allied-bot fire within
+    // seconds, so the player's claim never survived to an LOS tick (probe:
+    // 5 player shots, 3 hits, zero shells back in 90 s).
+    const aggro =
+      (playerAggro && timeS < playerAggroUntilS && enemyAlive(playerAggro))
+        ? playerAggro
+        : (underFire && timeS < underFireUntilS && enemyAlive(underFire))
+          ? underFire : null;
+    if (aggro && aggro !== target) {
+      const up = aggro.state.pos;
+      if (hasLos(ex, ey, ez, up.x, eyeY(aggro), up.z)) {
+        target = aggro;
+        losClear = true;
+        acquiredAtS = timeS;
+        lastSeenAtS = timeS;
+        lastSeen.x = up.x; lastSeen.z = up.z;
+        nonPenCount = 0;
+        probeTimer = 0;
+        return;
+      }
+    }
+
     // Keep the current target while it lives; refresh visibility through the
     // spotting sim (team intel keeps lastSeen fresh even without personal
     // LOS), but firing still demands a clear personal ray (losClear).
@@ -331,7 +378,7 @@ export function createAI(entity, opts = {}) {
           const pp = p.state.pos;
           const pdx = pp.x - ex, pdz = pp.z - ez;
           const cdx = tp.x - ex, cdz = tp.z - ez;
-          const pEff = (pdx * pdx + pdz * pdz) * PLAYER_THREAT_DIST_MULT;
+          const pEff = (pdx * pdx + pdz * pdz) * playerDistMult;
           if (pEff < cdx * cdx + cdz * cdz &&
               hasLos(ex, ey, ez, pp.x, eyeY(p), pp.z)) {
             target = p;
@@ -363,8 +410,9 @@ export function createAI(entity, opts = {}) {
       const tp = e.state.pos;
       const dx = tp.x - ex, dz = tp.z - ez;
       const d2 = dx * dx + dz * dz;
-      // Threat weighting: the player ranks as if 0.59x its true distance.
-      const eff = e.isPlayer ? d2 * PLAYER_THREAT_DIST_MULT : d2;
+      // Threat weighting: the player ranks as if 0.59x its true distance
+      // (0.35x for the playerHunter fraction — controls_gunnery r4).
+      const eff = e.isPlayer ? d2 * playerDistMult : d2;
       if (eff >= bestD2) continue;
       if (!hasLos(ex, ey, ez, tp.x, eyeY(e), tp.z)) continue;
       best = e; bestD2 = eff;
@@ -1030,6 +1078,11 @@ export function createAI(entity, opts = {}) {
   function notifyUnderFire(shooterEnt) {
     if (!shooterEnt || !shooterEnt.state || !shooterEnt.combat ||
         shooterEnt.combat.destroyed || shooterEnt.team === entity.team) return;
+    if (shooterEnt.isPlayer) {
+      // sticky attacker-of-record slot (r4) — teammate hits can't erase it
+      playerAggro = shooterEnt;
+      playerAggroUntilS = nowS + PLAYER_AGGRO_WINDOW_S;
+    }
     underFire = shooterEnt;
     underFireUntilS = nowS + UNDER_FIRE_WINDOW_S;
     lastSeen.x = shooterEnt.state.pos.x;

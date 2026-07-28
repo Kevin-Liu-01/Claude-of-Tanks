@@ -146,12 +146,28 @@ const SI_CSS = `
 /* While the battle report is up, the integration end-overlay underneath
    (main.js .cot-end, z-index 70) must not stack a second verdict banner
    mid-screen — the report renders its own. Its RETURN TO GARAGE button is
-   kept and pinned bottom-center as the report footer (this overlay is
-   pointer-events:none, so the button stays clickable). */
+   kept and pinned as the report footer, directly under the last panel
+   (--cot-si-endpad is measured in pinFooter(); the r6 report left the button
+   floating in an empty black bottom half). The earnings line is hidden too:
+   the econ strip above renders the same payout with its formula caption. */
 body.cot-si-report .cot-end>div:first-child{display:none;}
+body.cot-si-report .cot-end>div:nth-child(2){display:none;}
 body.cot-si-report .cot-end{align-items:center !important;
-  justify-content:flex-end !important;padding-bottom:3.2vh !important;
+  justify-content:flex-end !important;
+  padding-bottom:var(--cot-si-endpad,3.2vh) !important;
   z-index:72 !important;background:transparent !important;}
+/* Clean cinematic results screen: no battle-HUD chrome may bleed through the
+   report backdrop (r6: kill-feed rows and dimmed team panels overlapped the
+   VICTORY banner). Hidden only while body.cot-si-report is set — hideStats()
+   and reset() restore everything for the next battle. */
+body.cot-si-report .cot-killfeed,body.cot-si-report .cot-ear,
+body.cot-si-report .cot-top,body.cot-si-report .cot-dlog,
+body.cot-si-report .cot-alert,body.cot-si-report .cot-bounce,
+body.cot-si-report .cot-sixth,body.cot-si-report .cot-tgt,
+body.cot-si-report .cot-net,body.cot-si-report .cot-camoind,
+body.cot-si-report .cot-shells,body.cot-si-report .cot-minimap,
+body.cot-si-report .cot-hpbars,body.cot-si-report .cot-dmglayer,
+body.cot-si-report .cot-dp,body.cot-si-report .cot-si-log{display:none !important;}
 .cot-si-ban{font-family:${FONT_COND};font-stretch:condensed;font-weight:800;font-size:56px;
   letter-spacing:.34em;text-indent:.34em;line-height:1;text-shadow:0 2px 22px rgba(0,0,0,.85);}
 .cot-si-ban.v{color:#7ee87e;}.cot-si-ban.d{color:#f05a5a;}.cot-si-ban.n{color:#cfd9e2;}
@@ -847,10 +863,13 @@ export function createShotInfo(bus) {
       statsRoot.dataset.reportShots = String(shotLog.length);
     }
 
-    // damage-over-time strip: dealt (gold, up) mirrored vs received (red, down)
+    // damage-over-time strip: dealt (gold, up) mirrored vs received (red, down).
+    // Collapsed entirely for very short battles — a single lonely bar in a
+    // full-width panel read as wasted space (r6 critique); the shot log above
+    // already carries the per-event story at that scale.
     const recvEvents = receivedLog.filter((e) => e.dmg > 0);
     let tlHost = null;
-    if (stats.timeline.length || recvEvents.length) {
+    if (stats.timeline.length + recvEvents.length >= 3) {
       tlHost = el('div', 'cot-si-panel cot-si-tlwrap', statsRoot);
       const th = el('div', 'ph', tlHost);
       th.innerHTML = '<span>Damage over battle</span>';
@@ -965,9 +984,49 @@ export function createShotInfo(bus) {
       none.textContent = 'No engagements recorded.';
     }
     statsRoot.classList.add('show');
-    // suppress the integration end-overlay's duplicate verdict banner and
-    // pin its RETURN TO GARAGE button to the report footer (CSS above)
+    // suppress the integration end-overlay's duplicate verdict banner, hide
+    // the battle-HUD chrome, and pin its RETURN TO GARAGE button directly
+    // under the last report panel (CSS above + measured pad below)
     document.body.classList.add('cot-si-report');
+    pinFooter();
+  }
+
+  // Measure the report's real content bottom and set --cot-si-endpad so the
+  // end-overlay's RETURN TO GARAGE button sits directly under the last panel
+  // instead of floating at the screen bottom across an empty black band
+  // (r6: the report wasted the bottom ~45% of a 1080p frame). Retried on an
+  // interval because the .cot-end overlay only appears once the kill-cam
+  // replay releases the screen (veilHud) — up to ~15 s later.
+  let pinTimer = null;
+  function pinFooter() {
+    if (pinTimer) clearInterval(pinTimer);
+    let tries = 0;
+    const tick = () => {
+      tries += 1;
+      if (!document.body.classList.contains('cot-si-report') || tries > 140) {
+        clearInterval(pinTimer);
+        pinTimer = null;
+        return;
+      }
+      const last = statsRoot.lastElementChild;
+      const btn = document.querySelector('.cot-end button');
+      if (!last || !btn || !btn.offsetHeight) return; // overlay not up yet
+      const bottom = last.getBoundingClientRect().bottom;
+      const pad = Math.max(18, window.innerHeight - bottom - 26 - btn.offsetHeight);
+      document.body.style.setProperty('--cot-si-endpad', `${pad.toFixed(0)}px`);
+      clearInterval(pinTimer);
+      pinTimer = null;
+    };
+    pinTimer = setInterval(tick, 120);
+    tick();
+  }
+
+  function unpinFooter() {
+    if (pinTimer) {
+      clearInterval(pinTimer);
+      pinTimer = null;
+    }
+    document.body.style.removeProperty('--cot-si-endpad');
   }
 
   // ---------- bookkeeping ----------
@@ -1086,6 +1145,7 @@ export function createShotInfo(bus) {
     hideStats() {
       statsRoot.classList.remove('show');
       document.body.classList.remove('cot-si-report');
+      unpinFooter();
     },
 
     /** Fresh battle: clear cards, toasts, logs and session stats. */
@@ -1103,6 +1163,7 @@ export function createShotInfo(bus) {
       logPanel.classList.remove('open');
       statsRoot.classList.remove('show');
       document.body.classList.remove('cot-si-report');
+      unpinFooter();
     },
   };
   return api;

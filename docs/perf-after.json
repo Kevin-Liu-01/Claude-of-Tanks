@@ -1,45 +1,225 @@
 {
-  "date": "2026-07-28T01:14:42.681Z",
-  "viewport": {
-    "width": 1920,
-    "height": 1080
+  "note": "POST-FIX certification at base ad4ca6d + performance_budget r7 changes: quality.js high retune (maxPixelRatio 1.1, bloomScale 0.6, cascade2 2048 — 4096 ultra-only) + auto now resolves to high on every display (ultra measured p99 27 ms vs the 25 ms gate at dpr1 in valid windows — too little tail headroom); lighting.js penumbra-compensated PCF radii keep the r5 shadow-stripe fix at 2048. Both 60 s runs below certified PASS with the contention stamp GREEN (load valid, zero foreign headless-GPU processes). Measured in a clean worktree at ad4ca6d + these changes because sibling agent sessions were live-editing the shared checkout.",
+  "dsf1": {
+    "date": "2026-07-28T13:58:08.261Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080,
+      "deviceScaleFactor": 1
+    },
+    "sampleSeconds": 60,
+    "frames": 7052,
+    "loadToReadyMs": 7171,
+    "fps": {
+      "median": 117.6,
+      "p5": 93.5,
+      "p1": 67.6,
+      "mean": 126.3
+    },
+    "frameMs": {
+      "median": 8.5,
+      "p95": 10.7,
+      "p99": 14.8
+    },
+    "drawCalls": {
+      "median": 444,
+      "max": 540
+    },
+    "triangles": {
+      "median": 5669105,
+      "max": 6373727
+    },
+    "rendererInfo": {
+      "geometries": 253,
+      "textures": 127,
+      "programs": 133
+    },
+    "heap": {
+      "startMB": 232.6,
+      "endMB": 252.7,
+      "growthMBperS": 0.33,
+      "floorGrowthMBperS": 0.24
+    },
+    "gpuTextureEstimate": {
+      "sceneTextureMB": 291.2,
+      "shadowRtMB": 160,
+      "uniqueTextures": 73
+    },
+    "consoleErrors": [],
+    "machine": {
+      "cores": 18,
+      "load1Start": 7.04,
+      "load1End": 7.61,
+      "load1Max": 7.91,
+      "foreignHeadlessMax": 0,
+      "contended": false
+    },
+    "budget": {
+      "pass": true,
+      "fpsMedian": {
+        "limit": ">=60",
+        "actual": 117.6,
+        "pass": true
+      },
+      "fpsP5": {
+        "limit": ">=45",
+        "actual": 93.5,
+        "pass": true
+      },
+      "frameMsP99": {
+        "limit": "<=25",
+        "actual": 14.8,
+        "pass": true
+      },
+      "drawCallsWorstFrame": {
+        "limit": "<=900",
+        "actual": 540,
+        "pass": true
+      },
+      "trianglesMedian": {
+        "limit": "<=7000000",
+        "actual": 5669105,
+        "pass": true
+      },
+      "loadToReady": {
+        "limit": "<=8000",
+        "actual": 7171,
+        "pass": true
+      },
+      "sceneTextureMB": {
+        "limit": "<=512 (frozen; holdable via parked-pool visual eviction)",
+        "actual": 291.2,
+        "pass": true
+      },
+      "heapStableMBperS": {
+        "limit": "<=1",
+        "actual": 0.24,
+        "pass": true
+      },
+      "consoleErrors": {
+        "limit": "=0",
+        "actual": 0,
+        "pass": true
+      },
+      "certification": "PASS"
+    },
+    "ratchet": {
+      "trianglesMedian": {
+        "target": 6000000,
+        "actual": 5669105,
+        "met": true
+      }
+    }
   },
-  "sampleSeconds": 20,
-  "frames": 3135,
-  "loadToReadyMs": 4707,
-  "fps": {
-    "median": 166.7,
-    "p5": 107.5,
-    "p1": 93.5,
-    "mean": 164.9
-  },
-  "frameMs": {
-    "median": 6,
-    "p95": 9.3,
-    "p99": 10.7
-  },
-  "drawCalls": {
-    "median": 657,
-    "max": 677
-  },
-  "triangles": {
-    "median": 5124489,
-    "max": 5259391
-  },
-  "rendererInfo": {
-    "geometries": 221,
-    "textures": 122,
-    "programs": 67
-  },
-  "heap": {
-    "startMB": 168.8,
-    "endMB": 173,
-    "growthMBperS": 0.21
-  },
-  "gpuTextureEstimate": {
-    "sceneTextureMB": 325.7,
-    "shadowRtMB": 160,
-    "uniqueTextures": 87
-  },
-  "consoleErrors": []
+  "dsf2": {
+    "date": "2026-07-28T13:52:16.842Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080,
+      "deviceScaleFactor": 2
+    },
+    "sampleSeconds": 60,
+    "frames": 6343,
+    "loadToReadyMs": 7157,
+    "fps": {
+      "median": 105.3,
+      "p5": 87,
+      "p1": 61.3,
+      "mean": 116.3
+    },
+    "frameMs": {
+      "median": 9.5,
+      "p95": 11.5,
+      "p99": 16.3
+    },
+    "drawCalls": {
+      "median": 443,
+      "max": 536
+    },
+    "triangles": {
+      "median": 5669157,
+      "max": 6373757
+    },
+    "rendererInfo": {
+      "geometries": 252,
+      "textures": 127,
+      "programs": 133
+    },
+    "heap": {
+      "startMB": 232.5,
+      "endMB": 251.5,
+      "growthMBperS": 0.32,
+      "floorGrowthMBperS": 0.13
+    },
+    "gpuTextureEstimate": {
+      "sceneTextureMB": 291.2,
+      "shadowRtMB": 160,
+      "uniqueTextures": 73
+    },
+    "consoleErrors": [],
+    "machine": {
+      "cores": 18,
+      "load1Start": 7.78,
+      "load1End": 8.08,
+      "load1Max": 8.11,
+      "foreignHeadlessMax": 0,
+      "contended": false
+    },
+    "budget": {
+      "pass": true,
+      "fpsMedian": {
+        "limit": ">=60",
+        "actual": 105.3,
+        "pass": true
+      },
+      "fpsP5": {
+        "limit": ">=45",
+        "actual": 87,
+        "pass": true
+      },
+      "frameMsP99": {
+        "limit": "<=25",
+        "actual": 16.3,
+        "pass": true
+      },
+      "drawCallsWorstFrame": {
+        "limit": "<=900",
+        "actual": 536,
+        "pass": true
+      },
+      "trianglesMedian": {
+        "limit": "<=7000000",
+        "actual": 5669157,
+        "pass": true
+      },
+      "loadToReady": {
+        "limit": "<=8000",
+        "actual": 7157,
+        "pass": true
+      },
+      "sceneTextureMB": {
+        "limit": "<=512 (frozen; holdable via parked-pool visual eviction)",
+        "actual": 291.2,
+        "pass": true
+      },
+      "heapStableMBperS": {
+        "limit": "<=1",
+        "actual": 0.13,
+        "pass": true
+      },
+      "consoleErrors": {
+        "limit": "=0",
+        "actual": 0,
+        "pass": true
+      },
+      "certification": "PASS"
+    },
+    "ratchet": {
+      "trianglesMedian": {
+        "target": 6000000,
+        "actual": 5669157,
+        "met": true
+      }
+    }
+  }
 }

@@ -170,8 +170,12 @@ export function createMap(engineCtx, { mapId = 'verdant', seed = 1337 } = {}) {
      * Sniper near-grass suppression passthrough (see vegetation.setSniperFade).
      * @param {number} f target fade 0..1
      * @param {boolean} [immediate=false] snap instead of easing
+     * @param {number} [fovDeg] live camera FOV — high zoom (≤15°) switches the
+     *   scope-corridor foliage fade from screen-door dither to a binary cut
      */
-    setSniperFade(f, immediate = false) { vegetation.setSniperFade(f, immediate); },
+    setSniperFade(f, immediate = false, fovDeg = null) {
+      vegetation.setSniperFade(f, immediate, fovDeg);
+    },
     group,
   };
 }

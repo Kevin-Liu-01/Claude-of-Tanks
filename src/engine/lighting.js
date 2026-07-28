@@ -15,9 +15,10 @@ const CASCADES = 4;
 // Battlefield establishing shots read objects out to ~500 m; with the clearer
 // exp2 fog (sky.js) shadows must hold that far or buildings/trees float.
 // PERF: shadow range and per-cascade map sizes now come from the graphics
-// quality preset (src/engine/quality.js — ultra/high keep the tuned
-// 520 m / [4096,4096,2048,2048]; medium/low trade range+resolution for fill
-// rate). The two FAR cascades cover 100s of meters — one texel is already
+// quality preset (src/engine/quality.js — ultra [4096,4096,4096,2048], high
+// [4096,4096,2048,2048]; medium/low trade range+resolution for fill rate,
+// and PCF radii are penumbra-compensated per size — see applyShadowSizes).
+// The two FAR cascades cover 100s of meters — one texel is already
 // subpixel on a 1080p screen out there, so halving their resolution is
 // visually free and saves 96 MB of GPU RTs plus shadow fill rate. (CSM's
 // texel-snap uses the uniform near-cascade grid; the finer snap on a smaller
@@ -48,6 +49,15 @@ const SHADOW_NORMAL_BIAS = 0.045; // kills acne on terrain slopes (CSM only expo
 // cascade band, the PCSS-style distance ramp, and cascades 1-2 run at 4096
 // (quality.js) so even 3.0 texels stays a soft edge, not a smear.
 const SHADOW_RADII = [1.5, 2.2, 3.0, 3.8];
+// The radii above are tuned in TEXELS of these reference map sizes (ultra's
+// ladder). When a quality preset allocates a smaller map for a cascade, the
+// texel is proportionally larger — an uncompensated radius would widen the
+// physical penumbra right back into the r5 "over-blurred dark stripes"
+// failure. Scale each cascade's radius by (size / reference) so the PHYSICAL
+// penumbra width is identical on every preset; only texture resolution drops.
+// (At ultra, size == reference on every cascade — the compensation is a no-op
+// and the screenshot-contract dpr-1 captures are bit-identical.)
+const SHADOW_RADII_REF_SIZES = [4096, 4096, 4096, 2048];
 // Key-to-fill ratio is THE readability lever: the warm sun must dominate the
 // cool sky ambient ~7-8:1 so cast shadows and form shading actually register
 // after ACES. Pixel-measured on the battlefield shot: at 3.2/0.26/0.45 the
@@ -245,6 +255,9 @@ export function createLighting(scene, camera, sunDir) {
     for (let i = 0; i < csm.lights.length; i++) {
       const size = sizes[Math.min(i, sizes.length - 1)];
       const shadow = csm.lights[i].shadow;
+      // physical-penumbra-preserving PCF radius (see SHADOW_RADII_REF_SIZES)
+      const ref = SHADOW_RADII_REF_SIZES[Math.min(i, SHADOW_RADII_REF_SIZES.length - 1)];
+      shadow.radius = SHADOW_RADII[Math.min(i, SHADOW_RADII.length - 1)] * (size / ref);
       if (shadow.mapSize.x !== size) {
         shadow.mapSize.set(size, size);
         if (shadow.map) {

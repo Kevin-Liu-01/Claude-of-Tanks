@@ -1,45 +1,221 @@
 {
-  "date": "2026-07-28T00:57:48.730Z",
-  "viewport": {
-    "width": 1920,
-    "height": 1080
+  "note": "PRE-FIX baseline at commit ad4ca6d (r5/r6 content rounds included), 60 s certification windows. dsf1 measured on the checked-out tree in a quiet window (load1 5.6); dsf2 measured in a clean worktree pinned at ad4ca6d because sibling agent sessions were live-editing the shared checkout. Replaces the archived 20 s files (perf-archive-20s-*.json) — 20 s slices are NOT certification evidence per the probe header.",
+  "dsf1": {
+    "date": "2026-07-28T12:37:13.500Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080,
+      "deviceScaleFactor": 1
+    },
+    "sampleSeconds": 60,
+    "frames": 6165,
+    "loadToReadyMs": 7109,
+    "fps": {
+      "median": 103.1,
+      "p5": 83.3,
+      "p1": 60.2,
+      "mean": 113.9
+    },
+    "frameMs": {
+      "median": 9.7,
+      "p95": 12,
+      "p99": 16.6
+    },
+    "drawCalls": {
+      "median": 444,
+      "max": 536
+    },
+    "triangles": {
+      "median": 5668889,
+      "max": 6373783
+    },
+    "rendererInfo": {
+      "geometries": 252,
+      "textures": 127,
+      "programs": 133
+    },
+    "heap": {
+      "startMB": 232.6,
+      "endMB": 250.2,
+      "growthMBperS": 0.29,
+      "floorGrowthMBperS": 0.19
+    },
+    "gpuTextureEstimate": {
+      "sceneTextureMB": 291.2,
+      "shadowRtMB": 208,
+      "uniqueTextures": 73
+    },
+    "consoleErrors": [],
+    "machine": {
+      "cores": 18,
+      "load1Start": 5.61,
+      "load1End": 7.14,
+      "contended": false
+    },
+    "budget": {
+      "pass": true,
+      "fpsMedian": {
+        "limit": ">=60",
+        "actual": 103.1,
+        "pass": true
+      },
+      "fpsP5": {
+        "limit": ">=45",
+        "actual": 83.3,
+        "pass": true
+      },
+      "frameMsP99": {
+        "limit": "<=25",
+        "actual": 16.6,
+        "pass": true
+      },
+      "drawCallsWorstFrame": {
+        "limit": "<=900",
+        "actual": 536,
+        "pass": true
+      },
+      "trianglesMedian": {
+        "limit": "<=7000000",
+        "actual": 5668889,
+        "pass": true
+      },
+      "loadToReady": {
+        "limit": "<=8000",
+        "actual": 7109,
+        "pass": true
+      },
+      "sceneTextureMB": {
+        "limit": "<=512 (frozen; holdable via parked-pool visual eviction)",
+        "actual": 291.2,
+        "pass": true
+      },
+      "heapStableMBperS": {
+        "limit": "<=1",
+        "actual": 0.19,
+        "pass": true
+      },
+      "consoleErrors": {
+        "limit": "=0",
+        "actual": 0,
+        "pass": true
+      },
+      "certification": "PASS"
+    },
+    "ratchet": {
+      "trianglesMedian": {
+        "target": 6000000,
+        "actual": 5668889,
+        "met": true
+      }
+    }
   },
-  "sampleSeconds": 20,
-  "frames": 4035,
-  "loadToReadyMs": 4159,
-  "fps": {
-    "median": 204.1,
-    "p5": 169.5,
-    "p1": 156.3,
-    "mean": 205.1
-  },
-  "frameMs": {
-    "median": 4.9,
-    "p95": 5.9,
-    "p99": 6.4
-  },
-  "drawCalls": {
-    "median": 1201,
-    "max": 1227
-  },
-  "triangles": {
-    "median": 7708315,
-    "max": 7796145
-  },
-  "rendererInfo": {
-    "geometries": 216,
-    "textures": 124,
-    "programs": 70
-  },
-  "heap": {
-    "startMB": 153.7,
-    "endMB": 175.5,
-    "growthMBperS": 1.09
-  },
-  "gpuTextureEstimate": {
-    "sceneTextureMB": 325.7,
-    "shadowRtMB": 256,
-    "uniqueTextures": 87
-  },
-  "consoleErrors": []
+  "dsf2": {
+    "date": "2026-07-28T12:43:31.252Z",
+    "viewport": {
+      "width": 1920,
+      "height": 1080,
+      "deviceScaleFactor": 2
+    },
+    "sampleSeconds": 60,
+    "frames": 4618,
+    "loadToReadyMs": 7466,
+    "fps": {
+      "median": 81.3,
+      "p5": 35.8,
+      "p1": 30.1,
+      "mean": 115.3
+    },
+    "frameMs": {
+      "median": 12.3,
+      "p95": 27.9,
+      "p99": 33.2
+    },
+    "drawCalls": {
+      "median": 444,
+      "max": 540
+    },
+    "triangles": {
+      "median": 5671107,
+      "max": 6371855
+    },
+    "rendererInfo": {
+      "geometries": 253,
+      "textures": 127,
+      "programs": 133
+    },
+    "heap": {
+      "startMB": 232.5,
+      "endMB": 276.4,
+      "growthMBperS": 0.74,
+      "floorGrowthMBperS": 0.81
+    },
+    "gpuTextureEstimate": {
+      "sceneTextureMB": 309.5,
+      "shadowRtMB": 208,
+      "uniqueTextures": 74
+    },
+    "consoleErrors": [],
+    "machine": {
+      "cores": 18,
+      "load1Start": 8.85,
+      "load1End": 9.9,
+      "contended": false
+    },
+    "budget": {
+      "pass": false,
+      "fpsMedian": {
+        "limit": ">=60",
+        "actual": 81.3,
+        "pass": true
+      },
+      "fpsP5": {
+        "limit": ">=45",
+        "actual": 35.8,
+        "pass": false
+      },
+      "frameMsP99": {
+        "limit": "<=25",
+        "actual": 33.2,
+        "pass": false
+      },
+      "drawCallsWorstFrame": {
+        "limit": "<=900",
+        "actual": 540,
+        "pass": true
+      },
+      "trianglesMedian": {
+        "limit": "<=7000000",
+        "actual": 5671107,
+        "pass": true
+      },
+      "loadToReady": {
+        "limit": "<=8000",
+        "actual": 7466,
+        "pass": true
+      },
+      "sceneTextureMB": {
+        "limit": "<=512 (frozen; holdable via parked-pool visual eviction)",
+        "actual": 309.5,
+        "pass": true
+      },
+      "heapStableMBperS": {
+        "limit": "<=1",
+        "actual": 0.74,
+        "pass": true
+      },
+      "consoleErrors": {
+        "limit": "=0",
+        "actual": 0,
+        "pass": true
+      },
+      "certification": "FAIL"
+    },
+    "ratchet": {
+      "trianglesMedian": {
+        "target": 6000000,
+        "actual": 5671107,
+        "met": true
+      }
+    }
+  }
 }

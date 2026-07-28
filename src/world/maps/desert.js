@@ -29,21 +29,28 @@ export default {
   },
 
   splat: {
-    grassTone: (h, s, l) => [0.094, 0.36, clamp01(0.26 + l * 1.15)],
+    grassTone: (h, s, l) => [0.094, 0.36, clamp01(0.24 + l * 1.08)], // r7: -7% (pairs with sun 4.15)
     dirtTone: (h, s, l) => [0.083, 0.34, clamp01(l * 1.3 + 0.05)],
-    rockTone: (h, s, l) => [0.045, clamp01(s * 3.2 + 0.12), clamp01(l * 1.02)],
+    // r7: R layer is the dedicated stratified-sandstone painter — authored
+    // already-red, so no retint hook (the old s*3.2 hook targeted the grey
+    // generic rock and would push the beds to neon)
+    sandstone: true,
+    rockTone: null,
     mudTone: (h, s, l) => [0.078, 0.30, clamp01(l * 1.5 + 0.04)], // cracked dry clay
     mudRough: 1.15,
     tintA: [1.10, 1.02, 0.85], tintB: [0.94, 0.89, 0.79], tintC: [1.12, 1.06, 0.90],
     // r5: darker packed track — the old near-sand tint made the desert road a
     // faint smear across the dunes
     roadTint: [0.94, 0.87, 0.76],
-    // r6: 0.22 -> 0.30 — the strata beds must dominate the cliff read so any
-    // residual planar-UV stretch registers as sediment layers, not smear
-    strata: 0.30,
+    // r7: 0.30 -> 0.20 — the R layer albedo is now REAL sedimentary strata
+    // (makeSandstoneLayer); the world-Y shader bands only reinforce at range
+    // so the two never stack into over-banded stripes
+    strata: 0.20,
     microAmp: 0.3,          // tame the near-field dot speckle (ripples instead)
     rippleDir: [0.8, 0.6],  // global wind direction for the sand ripples
-    rippleAmp: 0.26,        // anisotropic ripple normal strength
+    // r7: 0.26 -> 0.34 — with the darker sand albedo the dune-face ripple
+    // waves must carry the directional detail in the sunlit center valley
+    rippleAmp: 0.34,
     // bright low-sun sand turned the shared mid-frequency normal dapple into
     // a leopard-spot shadow field across the whole foreground — run it low
     // and let the wind ripples carry the mid-range surface interest
@@ -68,13 +75,25 @@ export default {
     // pale sun-bleached straw: the old darker olive tufts/scrub read as
     // black pepper speckle against the bright sand in establishing shots
     grassTexTone: (h, s, l) => [0.112, clamp01(s * 0.55), clamp01(l * 1.05 + 0.14)],
-    tuftTone: (h, s, l) => [0.115, 0.20, clamp01(l * 0.95 + 0.18)],
-    bushCount: 0.9, // r6: same budget-compensation as grassDensity
+    // r7: lum capped (0.95+0.18 -> 0.72+0.16, max ~0.58) — the brightest dry
+    // tufts on sunlit dune crests tonemapped to pure WHITE blades that read
+    // as untextured geometry slivers in the establishing shot
+    tuftTone: (h, s, l) => [0.115, 0.20, clamp01(l * 0.72 + 0.16)],
+    // r7: 0.9 -> 0.78 — thins the isolated mid-field scrub dots (each casts a
+    // hard shadow speck at establishing distance) while the clump-gated wadi
+    // thickets keep their density
+    bushCount: 0.78,
     bushSpecies: 'oak',
     palettes: {
-      oak: { // dusty olive scrub, lifted toward sage so it sits on bright sand
-        texTone: (h, s, l) => [0.15, clamp01(s * 0.55), clamp01(l * 1.0 + 0.07)],
-        canopy: { hue: 0.16, sat: 0.20, l0: 0.26, l1: 0.40 },
+      oak: { // r7: sun-bleached sage scrub — the r6 olive still bottomed out
+        // at ~0.26 luminance in the far cards, and against ~0.85-luminance
+        // sand every bush collapsed to a black pepper speck by 250 m (the
+        // establishing-shot noise critique). Lift + desaturate hard toward
+        // the sand palette: dusty khaki-sage that keeps ~2:1 contrast near
+        // the camera but melts toward the dune tone at range.
+        texTone: (h, s, l) => [0.145, clamp01(s * 0.42), clamp01(l * 0.95 + 0.17)],
+        cardHue: 0.14, cardSat: 0.16,
+        canopy: { hue: 0.15, sat: 0.15, l0: 0.36, l1: 0.50 },
       },
       palm: { // r6: fronds desaturated + darkened ~20% — the old bright toy-
         // plastic green crowns broke the muted sand grade in the foreground;
@@ -125,7 +144,13 @@ export default {
     // keeps the heat haze but lets the strata banding read on the skyline
     fogDensity: 0.00086, fogTintHex: 0xc7ac85, fogMix: 0.72, envIntensity: 0.22,
     cloudOpacity: 0.35, cloudOpacity2: 0.18, cloudTintHex: 0xfff2df,
-    sunIntensity: 4.9, sunColorHex: 0xffe9c2, hemiIntensity: 0.34,
+    // lighting_post r4: sun 4.9 → 4.15 — the hottest sun in the game over the
+    // brightest albedo pushed open sand to ~1.5 linear, high on the ACES
+    // shoulder where its texture variation compressed to nothing ("large
+    // desert sand areas blow out to textureless near-white, overexposed ~1
+    // stop"). 4.15 drops open sand to ~1.25 — still clearly the sun-hammered
+    // map, but dune ripples and track marks survive the tonemap.
+    sunIntensity: 4.15, sunColorHex: 0xffe9c2, hemiIntensity: 0.34,
   },
 
   minimap: {

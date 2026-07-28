@@ -772,6 +772,79 @@ function makeIceLayer(seed, anisotropy) {
   };
 }
 
+// Stratified sandstone layer (r7, desert cliffs). The generic rock layer —
+// and the sourced Rock063 set that replaced it — both read as swirly
+// Perlin-marble smears on the canyon walls ("wet-sand swirls" critique).
+// This layer is authored as SEDIMENT: near-horizontal beds of variable
+// thickness with per-bed tone/hue, thin dark marker beds, ledge relief at
+// the bed boundaries and only granular (never swirly) fine texture. The
+// splat shader's wall projection maps v to world height, so the beds land
+// horizontal on every cliff face regardless of orientation.
+function makeSandstoneLayer(seed, anisotropy, tone = null) {
+  const s = 512;
+  const noi = new SimplexNoise({ random: mulberry32(seed) });
+  const rng = mulberry32(seed ^ 0x5a4d);
+  // bed table: resistant ledges, soft recessed beds, occasional dark markers
+  const beds = [];
+  {
+    let y = 0;
+    while (y < s) {
+      const marker = rng() < 0.16;
+      const th = marker ? 4 + rng() * 6 : 20 + rng() * 60;
+      beds.push({
+        y0: y, y1: y + th, marker,
+        tone: rng(),            // per-bed lightness
+        hueJ: rng(),            // per-bed hue drift (tan <-> rust)
+        hard: rng(),            // resistance -> ledge relief
+      });
+      y += th;
+    }
+  }
+  function bedAt(yw) {
+    for (const b of beds) if (yw >= b.y0 && yw < b.y1) return b;
+    return beds[beds.length - 1];
+  }
+  const px = new Uint8ClampedArray(s * s * 4);
+  const hgt = new Float32Array(s * s);
+  for (let yy = 0; yy < s; yy++) {
+    for (let xx = 0; xx < s; xx++) {
+      const u = xx / s, v = yy / s, i = yy * s + xx, j = i * 4;
+      // gentle boundary wobble — LOW turbulence, long wavelength; this is
+      // the only warp in the layer, so beds stay legible strata
+      const wob = torusNoise(noi, u, v, 2, 2, 7) * 4.2 + torusNoise(noi, u, v, 6, 6, 33) * 1.6;
+      const yw = ((yy + wob) % s + s) % s;
+      const bed = bedAt(yw);
+      const bedT = (yw - bed.y0) / Math.max(1, bed.y1 - bed.y0);
+      // distance to nearest bed boundary (px) -> recess/shadow line
+      const dEdge = Math.min(yw - bed.y0, bed.y1 - yw);
+      const seam = 1 - clamp(dEdge / 3.2, 0, 1);
+      // granular grain only — isotropic, two octaves, small amplitude
+      const grain = torusNoise(noi, u, v, 38, 38, 61) * 0.5 + 0.5;
+      const grain2 = torusNoise(noi, u, v, 13, 13, 99) * 0.5 + 0.5;
+      // broad along-bed tone drift so a bed is not one flat stripe
+      const drift = torusNoise(noi, u, v * 0.15, 3, 1, 145) * 0.5 + 0.5;
+      let hue = 0.062 + bed.hueJ * 0.022 - 0.006 * grain2;
+      let sat = 0.42 + bed.hueJ * 0.12 - grain * 0.06;
+      let lum = bed.marker
+        ? 0.185 + bed.tone * 0.05
+        : 0.315 + bed.tone * 0.20 + (bedT - 0.5) * 0.03 + grain * 0.05 + (drift - 0.5) * 0.07;
+      lum *= 1 - seam * 0.38; // shadowed parting line at every bed boundary
+      _col.setHSL(hue, clamp(sat, 0, 1), clamp(lum, 0.04, 0.75));
+      px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255;
+      // relief: hard beds ledge out, soft/marker beds recess, seams notch
+      let hn = 0.40 + bed.hard * 0.42 + grain * 0.10 - (bed.marker ? 0.26 : 0);
+      hn -= seam * 0.30;
+      hgt[i] = clamp(hn, 0, 1);
+      px[j + 3] = clamp(0.86 - grain * 0.06, 0.45, 1) * 255; // matte rough
+    }
+  }
+  applyTone(px, tone);
+  return {
+    albedo: canvasToTexture(px, s, { srgb: true, anisotropy }),
+    normal: normalFromHeight(hgt, s, 2.6, anisotropy),
+  };
+}
+
 function makeGroundLayer(seed, kind, anisotropy, tone = null, roughMul = 1) {
   const s = 512;
   const noi = new SimplexNoise({ random: mulberry32(seed) });
@@ -947,8 +1020,23 @@ uniform float uMarshGloss;
 uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uIceDrift, uMidRelief;
 uniform vec3 uRipple; // xy = wind dir, z = ripple normal amplitude
 vec3 gSplatAlbedo; float gSplatRough; vec3 gSplatNrm; float gSplatFar; float gSplatSteepAtt;
+// r7 axis-triplanar wall basis (set in splatCompute): two FIXED world-axis
+// projections + a pow-sharpened blend weight. The r6 tangent projection built
+// its U axis from the interpolated normal — on undulating cliff walls that
+// frame rotated per-fragment, dragging the sample coordinate back and forth
+// across the face (the melted-taffy smear on the desert mesas).
+vec2 gWallUVx; vec2 gWallUVz; float gWallW;
 vec4 splatSamp(sampler2D t, vec2 uv, float df, float mb) {
   return mix(texture2D(t, uv, mb), texture2D(t, uv * 0.2317 + vec2(0.5), mb), df);
+}
+vec4 wallSamp(sampler2D t, float sc, float df, float mb) {
+  return mix(splatSamp(t, gWallUVx * sc, df, mb), splatSamp(t, gWallUVz * sc, df, mb), gWallW);
+}
+vec3 wallTex(sampler2D t, float sc) {
+  return mix(texture2D(t, gWallUVx * sc).xyz, texture2D(t, gWallUVz * sc).xyz, gWallW);
+}
+float wallNoiseG(float sc, vec2 off) {
+  return mix(texture2D(uNoise, gWallUVx * sc + off).g, texture2D(uNoise, gWallUVz * sc + off).g, gWallW);
 }
 void splatCompute() {
   vec3 wp = vWPos;
@@ -992,6 +1080,13 @@ void splatCompute() {
   float roadCore = smoothstep(0.38, 0.70, mk.r + (n1hs - 0.5) * 0.30);
   float shoulder = smoothstep(0.04, 0.60, mk.r + (n1hs - 0.5) * 0.20);
   float rut = mk.g * (0.62 + 0.38 * n1hs);
+  // r7: the road mask is an XZ projection — where a road runs along a mesa
+  // rim it painted its compacted-earth tint DOWN the cliff face below as a
+  // vertical light streak; no road holds on a >30-deg face
+  {
+    float notCliff = 1.0 - smoothstep(0.28, 0.45, slope);
+    roadCore *= notCliff; shoulder *= notCliff; rut *= notCliff;
+  }
   // dirt patches: noise-broken threshold => small worn patches with ragged
   // edges instead of giant airbrushed smears. r6: warped samples + slightly
   // softer band — the hard 0.62-0.78 step on unwarped texels was the
@@ -1048,18 +1143,25 @@ void splatCompute() {
   // kept planar XZ UVs and smeared like melted wax; wall-plane projection now
   // starts at ~32 deg and owns the face by ~51 deg.
   float steepW = smoothstep(0.18, 0.40, slope) * (1.0 - mk.b * 0.85);
-  // r6: TANGENT wall projection replaces the two axis-aligned projections.
-  // The old axisW 50/50 blend double-exposed both projections on every
-  // DIAGONAL wall (any face not axis-aligned) — that ghosted overlay, not
-  // planar stretch, was the residual melted-wax smear on the mesa flanks.
-  // Projecting along the face's own horizontal tangent keeps one crisp
-  // sample everywhere; the projection bends smoothly around curved rims.
-  // wall-plane UV basis in meters (shared by every steep-face resample below)
-  vec2 hnrm = wn.xz / max(length(wn.xz), 1e-4);
-  vec2 uvSide = vec2(dot(wp.xz, vec2(-hnrm.y, hnrm.x)), -wp.y);
+  // r7: SHARPENED AXIS TRIPLANAR replaces the r6 tangent projection. The
+  // tangent frame was derived from the interpolated normal, so on undulating
+  // walls it rotated per-fragment and the sample coordinate wandered — the
+  // melted-taffy smear. Two fixed world-axis projections keep every texel
+  // anchored in world space; pow(|n|,6) weights keep the crossover band on
+  // diagonal faces narrow enough to be invisible on self-similar rock.
+  {
+    float wSx = pow(abs(wn.x) + 1e-5, 6.0);
+    float wSz = pow(abs(wn.z) + 1e-5, 6.0);
+    gWallW = wSz / (wSx + wSz);
+    gWallUVx = vec2(wp.z * sign(wn.x), -wp.y);
+    gWallUVz = vec2(-wp.x * sign(wn.z), -wp.y);
+  }
+  // wall-coherent low-freq noise: the planar n2 field is near-degenerate down
+  // a vertical face (grazing-angle gradient = wavy banding along cliff tops)
+  float n2Wall = wallNoiseG(0.0031, vec2(0.41, 0.13));
   if (steepW > 0.001) {
-    vec4 aS = splatSamp(uAlbR, uvSide * 0.155, df, mipB);
-    vec4 nS = splatSamp(uNrmR, uvSide * 0.155, df, mipB);
+    vec4 aS = wallSamp(uAlbR, 0.155, df, mipB);
+    vec4 nS = wallSamp(uNrmR, 0.155, df, mipB);
     a = mix(a, aS, steepW);
     n = mix(n, nS, steepW);
   }
@@ -1075,10 +1177,14 @@ void splatCompute() {
   // only darkening tint) capped at ~0.22 (lighting_post r1): stacked with
   // canopy shadows + grade contrast the old 0.34 max read as amorphous
   // dark masses / a broken cloud-shadow projector in battlefield.png.
-  a.rgb = mix(a.rgb, a.rgb * uTintA, smoothstep(0.54, 0.85, meadowA) * (0.22 + 0.18 * n1) * (1.0 - fD));
-  a.rgb = mix(a.rgb, a.rgb * uTintB, smoothstep(0.58, 0.85, 1.0 - meadowB) * (0.14 + 0.08 * n1) * (1.0 - fD));
-  a.rgb = mix(a.rgb, a.rgb * uTintC, smoothstep(0.52, 0.9, meadowC) * (0.16 + 0.14 * n1) * (1.0 - fD));
-  a.rgb *= 0.93 + meadowC * 0.14;
+  // r7: meadow tints are planar-projected — on cliff walls they stretched
+  // into full-height tint stripes (a big taffy-smear contributor); gate them
+  // off steep faces and let the wall macro octave below carry the variation
+  float meadowG = (1.0 - fD) * (1.0 - steepW);
+  a.rgb = mix(a.rgb, a.rgb * uTintA, smoothstep(0.54, 0.85, meadowA) * (0.22 + 0.18 * n1) * meadowG);
+  a.rgb = mix(a.rgb, a.rgb * uTintB, smoothstep(0.58, 0.85, 1.0 - meadowB) * (0.14 + 0.08 * n1) * meadowG);
+  a.rgb = mix(a.rgb, a.rgb * uTintC, smoothstep(0.52, 0.9, meadowC) * (0.16 + 0.14 * n1) * meadowG);
+  a.rgb *= mix(0.93 + meadowC * 0.14, 1.0, steepW);
   // mid-frequency relief + mottle (25-450 m): stroke-free bump from the
   // SMOOTH noise field gradient (texture normals reused at giant scales read
   // as scratch marks), so the midground never collapses into smooth felt
@@ -1104,25 +1210,30 @@ void splatCompute() {
     // the coordinates: coordinate blending smeared diagonal fur across every
     // partially-steep slope.
     vec3 dnRa = texture2D(uNrmR, uv * 0.041).xyz;
-    vec3 dnRb = texture2D(uNrmR, uvSide * 0.041).xyz;
+    vec3 dnRb = wallTex(uNrmR, 0.041);
     vec3 dnR = mix(dnRa, dnRb, steepW) * 2.0 - 1.0;
     n.xy += dnR.xy * fR * 0.9 * dMid;
   }
   // horizontal strata banding on steep faces (mesa cliff walls), world-Y driven
   if (uStrata > 0.001) {
     float steep = smoothstep(0.24, 0.50, slope);
-    // COHERENT beds (r3): phase-warped by the LOW-freq n2 only — the old n1
-    // warp scrambled the bands into the same fuzz as the rock texture, so the
-    // walls read as shag noise instead of sedimentary rock
-    float band = sin(wp.y * 1.9 + n2 * 2.2) * 0.55 + sin(wp.y * 0.57 + n2 * 1.9) * 0.45;
+    // r7: bed phase warped by the WALL-plane noise, not planar n2 — planar
+    // n2 is sampled at grazing angles down a vertical face, so its rapid
+    // horizontal gradient sheared the beds into wavy taffy along cliff tops.
+    // n2Wall drifts slowly ALONG the wall: beds wander gently, stay bedded.
+    float band = sin(wp.y * 1.9 + n2Wall * 2.2) * 0.55 + sin(wp.y * 0.57 + n2Wall * 1.9) * 0.45;
     a.rgb *= 1.0 + band * uStrata * steep;
     // pale caprock marker beds: wide constant-altitude stripes that survive
     // distance where the fine beds mip away
-    float bed = smoothstep(0.55, 0.9, sin(wp.y * 0.23 + n2 * 1.1 + 0.8));
+    float bed = smoothstep(0.55, 0.9, sin(wp.y * 0.23 + n2Wall * 1.1 + 0.8));
     a.rgb = mix(a.rgb, a.rgb * vec3(1.16, 1.12, 1.04), bed * steep * 0.4);
     // iron-oxide flush desaturated toward the Rock063 reference (r3: the old
     // 1.05/0.90/0.78 at 0.35 pushed every wall to saturated maroon)
     a.rgb = mix(a.rgb, a.rgb * vec3(1.03, 0.95, 0.88), steep * 0.22); // baked iron-oxide faces
+    // r7 macro-variation octave (wall-space): breaks the uniform band print
+    // into distinct rock masses / weathered faces along the wall run
+    float wallMac = wallNoiseG(0.011, vec2(0.19, 0.67));
+    a.rgb *= 1.0 + (wallMac - 0.5) * 0.30 * steep;
   }
   // far-cliff detail rescue: the mip-biased macro fade flattens steep rock
   // faces past ~300 m into featureless sheets — re-project the rock layer at
@@ -1133,13 +1244,13 @@ void splatCompute() {
       // wall-plane sample takes over on steep faces (r5). Mix SAMPLES, not
       // coordinates — coordinate blending smeared diagonal fur streaks across
       // every partially-steep slope (the gold "furry" mesa flanks).
-      vec4 rr = mix(texture2D(uAlbR, uv * 0.031), texture2D(uAlbR, uvSide * 0.031), steepW);
+      vec4 rr = vec4(mix(texture2D(uAlbR, uv * 0.031).rgb, wallTex(uAlbR, 0.031), steepW), 1.0);
       // LUMINANCE-only modulation at reduced strength (r3): the rgb multiply
       // compounded the rock tint with itself and saturated far walls toward
       // maroon; value-only variation keeps the crag without the color drift
       float rrL = dot(rr.rgb, vec3(0.36, 0.42, 0.22));
       a.rgb = mix(a.rgb, a.rgb * (0.80 + rrL * 0.40), farRock * 0.45);
-      vec3 rn = mix(texture2D(uNrmR, uv * 0.019).xyz, texture2D(uNrmR, uvSide * 0.019).xyz, steepW) * 2.0 - 1.0;
+      vec3 rn = mix(texture2D(uNrmR, uv * 0.019).xyz, wallTex(uNrmR, 0.019), steepW) * 2.0 - 1.0;
       // 0.55 (r5, was 0.9): under a low sun the full-strength coarse normals
       // rendered far flanks as glittery fur instead of crag
       n.xy += rn.xy * farRock * 0.55;
@@ -1273,7 +1384,10 @@ void splatCompute() {
       }
     }
   }
-  a.rgb *= 0.90 + n2 * 0.20;
+  // r7: the unconditional macro term reads the PLANAR n2 field — degenerate
+  // down vertical faces, it printed full-height value stripes (taffy smear);
+  // steep faces take the wall-coherent sample instead
+  a.rgb *= 0.90 + mix(n2, n2Wall, steepW) * 0.20;
   // wet/dark shoreline band where ground meets a marsh or ice sheet: the
   // sheet blends into darkened damp banks instead of ending on a hard seam
   float shoreW = smoothstep(0.04, 0.30, fM) * (1.0 - smoothstep(0.55, 0.95, fM));
@@ -1281,8 +1395,64 @@ void splatCompute() {
   // distant mottling: forest-floor/heather patches keep far hills from reading
   // as one flat green wash
   float mot = texture2D(uNoise, uv * 0.0022 + vec2(0.17, 0.71)).g;
-  a.rgb *= 1.0 - farM * 0.20 * smoothstep(0.48, 0.82, mot);
-  a.rgb *= 1.0 + farM * 0.13 * smoothstep(0.55, 0.85, n1) * (1.0 - smoothstep(0.48, 0.82, mot));
+  // r7: planar-projected far mottling gated off steep faces (vertical stripes)
+  float motG = farM * (1.0 - steepW);
+  a.rgb *= 1.0 - motG * 0.20 * smoothstep(0.48, 0.82, mot);
+  a.rgb *= 1.0 + motG * 0.13 * smoothstep(0.55, 0.85, n1) * (1.0 - smoothstep(0.48, 0.82, mot));
+  // >>> gameplay_feel r4: grazing-view meadow rescue. ------------------------
+  // Driving toward rising ground the chase/scope camera sees the meadow at a
+  // few degrees of incidence: the projected pixel footprint stretches far
+  // past the 16x aniso budget, the sampler mip-blurs everything along the
+  // compressed (view) axis, and the smooth-noise meadow tint bands smear
+  // into kilometer-long "aurora" streaks — the whole face collapses to a
+  // featureless green wall (r4 drive critique, drive_chase.png: 85% of the
+  // frame). Slope alone is NOT the trigger (the r4 wall measures ~6-15 deg);
+  // VIEW GRAZING is. Fix: where the view grazes the surface, resample the
+  // grass layer in a view-aligned surface basis with the texture COUNTER-
+  // STRETCHED along the compressed axis — content elongates toward the
+  // camera exactly like real grass read at grazing, and its cross-view
+  // frequency stays resolvable by the sampler at any incidence. Gated off
+  // roads/dirt/marsh/rock and off the near field (< ~35 m resolves fine).
+  {
+    vec3 vDirN = normalize(cameraPosition - wp);
+    float dNV = saturate(dot(vDirN, wn));
+    float grazeW = (1.0 - smoothstep(0.16, 0.40, dNV))
+                 * smoothstep(30.0, 70.0, camDist)
+                 * (1.0 - smoothstep(320.0, 480.0, camDist))
+                 * (1.0 - steepW)
+                 * (1.0 - fD) * (1.0 - fM) * (1.0 - roadCore) * (1.0 - fR);
+    if (grazeW > 0.004) {
+      // surface basis: e1 = cross-view tangent (fine axis), e2 = down-view
+      // tangent (compressed axis, counter-stretched ~4.5:1)
+      vec3 e1 = normalize(cross(wn, vDirN));
+      vec3 e2 = cross(e1, wn);
+      vec2 uvG = vec2(dot(wp, e1), dot(wp, e2) * 0.22);
+      vec4 aG = splatSamp(uAlbG, uvG * 0.240, df, 0.0);
+      vec4 nG = splatSamp(uNrmG, uvG * 0.240, df, 0.0);
+      // value breakup in the SAME stretched space (replaces the smeared
+      // planar tint bands instead of re-projecting them)
+      float n1G = texture2D(uNoise, uvG * 0.0117).r;
+      float n2G = texture2D(uNoise, uvG * 0.0031 + vec2(0.41, 0.13)).g;
+      aG.rgb *= (0.88 + n1G * 0.18) * (0.94 + n2G * 0.12);
+      float gMix = grazeW * 0.80;
+      a = mix(a, aG, gMix);
+      n = mix(n, nG, gMix);
+    }
+    // steep NEAR faces (a genuine 15-30 deg climb face inside ~60 m) also
+    // get their blade/clod relief back in the face's own plane — this is
+    // what restores grass detail right in front of the hull on a climb.
+    float faceW = smoothstep(0.02, 0.085, slope) * (1.0 - steepW)
+                * (1.0 - smoothstep(20.0, 60.0, camDist))
+                * (1.0 - fD) * (1.0 - fM) * (1.0 - roadCore) * (1.0 - fR);
+    if (faceW > 0.004) {
+      vec2 hn2 = wn.xz / max(length(wn.xz), 1e-4);
+      vec2 uvFace = vec2(dot(wp.xz, vec2(-hn2.y, hn2.x)),
+                         dot(wp.xz, hn2) / max(wn.y, 0.30));
+      vec3 dnF = texture2D(uNrmD, uvFace * 1.07).xyz * 2.0 - 1.0;
+      n.xy += dnF.xy * 0.85 * faceW;
+    }
+  }
+  // <<< gameplay_feel r4 -----------------------------------------------------
   gSplatAlbedo = a.rgb;
   float iceW = clamp(fM * uMarshGloss * 1.3, 0.0, 1.0) * (1.0 - driftW);
   float rough0 = clamp(a.a * (1.0 - roadCore * 0.12) * (1.0 + rut * 0.1)
@@ -1332,7 +1502,13 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant') {
   const layers = {
     G: makeGrassLayer(3000, aniso, S.grassTone || null),
     D: makeDirtLayer(3001, aniso, S.dirtTone || null),
-    R: makeGroundLayer(3002, 'rock', aniso, S.rockTone || null),
+    // r7: cfg.splat.sandstone routes the R layer to the stratified
+    // sedimentary painter (desert cliffs). The sourced Rock063 set is
+    // disabled for that map in sourcedTextures.js — its wavy metamorphic
+    // structure was the "wet-sand swirl" artifact on every canyon wall.
+    R: S.sandstone
+      ? makeSandstoneLayer(3002, aniso, S.rockTone || null)
+      : makeGroundLayer(3002, 'rock', aniso, S.rockTone || null),
     M: S.iceLake
       ? makeIceLayer(3003, aniso)
       : makeGroundLayer(3003, 'mud', aniso, S.mudTone || null, S.mudRough ?? 1),
@@ -1395,7 +1571,7 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant') {
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v11';
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v12';
   return mat;
 }
 

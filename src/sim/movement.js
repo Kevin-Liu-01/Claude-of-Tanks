@@ -27,10 +27,20 @@ export const SIM_DT = 1 / 60;
 // ---------------------------------------------------------------------------
 // K_ACCEL 0.16 gave a good 0-30 km/h surge but a lazy top half (r-crit: the
 // 22.5 hp/t Abrams needed ~3 s for 43→60 km/h and never reached its 67 limit
-// in 6.5 s). 0.20 with a softer C_DRAG (0.85→0.72) keeps the initial surge in
-// the same band while high hp/t tanks close the last 30% with WoT authority.
-const K_ACCEL = 0.20;            // m/s² per (hp/t) on resistance-1 ground
-const C_DRAG = 0.72;             // quadratic drag fraction — asymptotic crawl to v_max (§3)
+// in 6.5 s). 0.20/0.72 fixed the top half but made the launch arcade-hot
+// (r4 crit: 0-30 in 1.74 s vs the 2.2-2.8 s WoT-medium band). 0.17/0.65 +
+// the SPOOL_S torque ramp below lands flat-sim 0-30 ≈ 2.0 s (~2.2 s on live
+// rough ground) while 43→60 stays well under 2 s (the r-crit authority
+// requirement — verified by scratchpad/gf-r4-tune.mjs).
+const K_ACCEL = 0.17;            // m/s² per (hp/t) on resistance-1 ground
+const C_DRAG = 0.65;             // quadratic drag fraction — asymptotic crawl to v_max (§3)
+// Engine torque spool (r4 crit "initial surge a touch hot"): drive force ramps
+// from SPOOL_FLOOR to 1 over SPOOL_S when the throttle opens, so a 60-ton
+// launch reads heavy (tracks bite, hull squats, THEN it surges) without
+// materially changing 0-40 times. Decays quickly when the throttle closes.
+const SPOOL_S = 0.35;            // s to full drive torque from a standing start
+const SPOOL_FLOOR = 0.25;        // torque fraction available instantly
+const SPOOL_DECAY_S = 0.15;      // s for the spool to unwind at closed throttle
 const BRAKE_MULT = 3.5;          // braking is this much stronger than driving
 // Brake decel cap scales with specific power (weight class): a 12 hp/t heavy
 // caps near 7 m/s² and coasts visibly longer than a 25+ hp/t light/MBT at 9.
@@ -41,7 +51,17 @@ const BRAKE_CAP_MIN = 5;         // m/s² — even the heaviest sluggard stops e
 const BRAKE_CAP_MAX = 9;         // m/s² — ~2 s stop from 65 km/h, the old flat cap
 const COAST_MULT = 1.75;         // rolling-friction decel ≈ 0.5 × brake when W is released
 const TURN_SPEED_LOSS = 0.35;    // target-speed fraction lost in a full-rate turn
-const TURN_DIRECT_BLEED = 0.15;  // per-second multiplicative speed loss at full-rate turn (§4)
+// r4 crit: the three turn penalties STACKED (0.35 target scale + 0.5 power
+// divert + 0.15/s direct bleed + full-force over-target drag) shed 73→33.6
+// km/h in 1.7 s — WoT fast mediums carry ~60-65% through a sweeping turn.
+// The target-scale bleed stays the dominant term (research doc §4); the
+// direct bleed drops to 0.08/s AND fades out below ~half top speed so
+// mid-speed serpentining stays fluid, and the pull-down onto a turn-bled
+// target uses TURN_OVER_RATE × drive force instead of full engine braking.
+const TURN_DIRECT_BLEED = 0.08;  // per-second multiplicative speed loss at full-rate turn (§4)
+const TURN_BLEED_FADE_LO = 0.45; // × top speed — direct bleed is zero below this
+const TURN_BLEED_FADE_HI = 0.75; // × top speed — full direct bleed above this
+const TURN_OVER_RATE = 0.45;     // × drive accel used to scrub down to a TURN-bled target
 const TURN_POWER_DIVERT = 0.5;   // drive-accel fraction diverted to the tracks at full-rate turn
 // Hull-traverse reduction at speed. The research doc's traverse formula (§4)
 // scales only by terrain resistance — WoT tanks hold near-nominal yaw rate
@@ -271,6 +291,7 @@ export function createTankState(spec, pos, yaw) {
       recoilVX: 0, recoilVZ: 0,               // decaying hull translation impulse
     },
     _prevSpeed: 0,
+    _spool: 0,                     // engine torque spool 0..1 (SPOOL_S ramp)
     _terr: { pitch: 0, roll: 0 },  // last terrain plane fit (spring target source)
     _swayEst: 0,                   // predicted visual turn-lean sway (rad)
     _susp: { p: 0, r: 0, pv: 0, rv: 0 }, // mirror of the visual susp rock layer
@@ -370,30 +391,51 @@ export function updateTank(entity, heightField, dt, collide = null) {
   );
   const brakeRate = Math.min(baseRate * BRAKE_MULT, brakeCap);
   let rate;
+  let spoolTarget = 0; // closed throttle unwinds the torque spool
   if (braking || debuff.immobile || vTarget * state.speed < 0) {
     rate = brakeRate; // hard brake / direction reversal — capped, ~2 s from top speed
   } else if (throttle === 0) {
     rate = Math.min(baseRate * COAST_MULT, brakeCap * 0.5); // rolling friction
   } else if (Math.abs(vTarget) < Math.abs(state.speed) - 1e-9) {
-    rate = baseRate; // over target (turn bleed / slope / overspeed): drag pulls back
+    // Over target. TWO regimes (r4 crit — turn bleed stacked too harshly):
+    // past the slope/transmission limit itself, drag pulls back at full drive
+    // force (post-8.0 overspeed snaps back hard); but when the overage exists
+    // only because turning scaled the TARGET down, the scrub is a gentle
+    // TURN_OVER_RATE fraction — momentum carries through a sweeping turn.
+    const vLimAbs = Math.abs(vLim * throttle);
+    rate = Math.abs(state.speed) > vLimAbs + 1e-9 ? baseRate : baseRate * TURN_OVER_RATE;
+    spoolTarget = 1; // throttle is open — keep the engine spooled
   } else {
     // Driving: quadratic drag tapers the accel — fast initial surge, asymptotic
     // crawl to the transmission limit (§3): a = a_drive × (1 − C_DRAG·(v/v_max)²).
     const vRef = Math.max(throttle >= 0 ? topMps : revMps, 1e-6);
     const u = Math.min(Math.abs(state.speed) / vRef, 1);
     rate = baseRate * (1 - C_DRAG * u * u);
+    // Engine torque spool: the launch reads heavy — SPOOL_FLOOR of the force
+    // bites instantly, the rest builds over SPOOL_S.
+    const spool = state._spool || 0;
+    rate *= SPOOL_FLOOR + (1 - SPOOL_FLOOR) * spool;
+    spoolTarget = 1;
     // Steering diverts engine power to the tracks (§4): while turning hard the
     // drive can't refill what the turn bleeds, so serpentining costs momentum.
     if (trMax > 1e-6) {
       rate *= 1 - TURN_POWER_DIVERT * Math.min(Math.abs(state.yawRate) / trMax, 1);
     }
   }
+  state._spool = spoolTarget > 0
+    ? Math.min(1, (state._spool || 0) + dt / SPOOL_S)
+    : Math.max(0, (state._spool || 0) - dt / SPOOL_DECAY_S);
   state.speed = approach(state.speed, vTarget, rate * dt);
   // Direct multiplicative turn bleed (movement doc §4): every hard turn costs
-  // momentum at ANY speed — v *= 1 − k·|yawRate|/trMax·dt — not only near
-  // v_max where the target-scaling above already bites.
+  // momentum — v *= 1 − k·|yawRate|/trMax·dt. r4 crit: fades out below
+  // ~half top speed so mid-speed serpentining stays fluid; the target-scale
+  // bleed above remains the dominant term.
   if (trMax > 1e-6 && state.yawRate !== 0) {
-    state.speed *= 1 - TURN_DIRECT_BLEED * Math.min(Math.abs(state.yawRate) / trMax, 1) * dt;
+    const bleedFade = clamp(
+      (Math.abs(state.speed) / Math.max(topMps, 1e-6) - TURN_BLEED_FADE_LO) /
+        (TURN_BLEED_FADE_HI - TURN_BLEED_FADE_LO), 0, 1);
+    state.speed *= 1 -
+      TURN_DIRECT_BLEED * bleedFade * Math.min(Math.abs(state.yawRate) / trMax, 1) * dt;
   }
   if (!debuff.immobile) {
     // Gravity along the track line: stalled tanks slide back, coasting gains downhill.

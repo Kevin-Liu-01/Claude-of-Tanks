@@ -41,7 +41,13 @@ const BLOOM_RADIUS = 0.28;
 // crossed 1.42 across its whole footprint, so the ENTIRE flash bloomed into
 // one blob; at 1.55 only the white-hot core and spike tips bloom and the
 // orange combustion body keeps its baked structure.
-const BLOOM_THRESHOLD = 1.55;
+// r9 ("large desert sand areas blow out to textureless near-white / urban
+// sidewalks read emissive"): sunlit high-albedo DIFFUSE surfaces (sand ~0.9
+// albedo under the 4.9 desert sun) reach ~1.5 linear and were crossing 1.55
+// at grazing-boost pixels — albedo alone must NEVER bloom. 1.78 fences all
+// diffuse response (theoretical max ~1.6) while true emissives — flash core,
+// tracers, fire (2.5-4.5 after the pre-tonemap shoulder below) — still bloom.
+const BLOOM_THRESHOLD = 1.78;
 // The fx fireball reaches 5-20 in the HDR buffer; unclamped, UnrealBloom
 // smears it into a full-frame white-out. Clamping the high-pass input keeps
 // hot sources glowing (flash spikes, tracers, fire) without flooding.
@@ -131,6 +137,29 @@ const AERIAL_SUN_POW = 5.0; // width of the warm forward-scatter lobe
 // still pulls the far field into atmosphere, but the atmosphere itself can
 // never reach the clipped-white band, so mesa/ridge/sand contrast survives.
 const AERIAL_HAZE_LUM_CAP = 0.50;
+// r9 SNIPER DE-HAZE: main.js already scales the FogExp2 density down at high
+// zoom (fov < 15), but the aerial pass kept FULL density, so the x8 sight
+// picture stayed a desaturated teal wash — a 450 m hillside at x8 subtends
+// the screen like a 60 m object and must read correspondingly clear (WoT
+// zoom behavior). Both aerial curves now follow the same FOV ramp the fog
+// uses; arcade/establishing cameras (fov >= 15) are untouched.
+const AERIAL_ZOOM_FOV = 15; // deg — below this the aerial curves scale down
+const AERIAL_ZOOM_FLOOR = 0.26; // density multiplier floor at max zoom
+// r9 PRE-TONEMAP EMISSIVE SHOULDER ("fireball core is fully clipped: flat
+// blown white-yellow disc — the tonemapper has no highlight shoulder on
+// emissives"): the additive fire/flash sprite stacks reach 5-20 in linear
+// HDR, and ACES maps EVERYTHING >= 5 to >= 0.93 display — a featureless
+// white disc with a hard saturation band where the stack count steps. A
+// rational luminance rolloff above EM_SHOULDER_START (hue-preserving —
+// channels scale together, so the fire keeps its orange chroma instead of
+// ACES' per-channel bleach-to-white) re-spreads the 2-20 range across
+// 1.55-4.4, restoring interior gradient before ACES ever sees it. The sky
+// dome self-caps at ~1.45 (sky.js SKY_KNEE) and diffuse surfaces top out
+// ~1.6, so the start only catches true emissives; asymptote 4.55 still
+// tonemaps to ~0.92 so hot cores stay hot, and still crosses the 1.78 bloom
+// threshold so fire/flash keep their halo.
+const EM_SHOULDER_START = 1.55;
+const EM_SHOULDER_RANGE = 3.0; // asymptote = START + RANGE
 
 const AerialShader = {
   name: 'AerialPerspectiveShader',
@@ -199,6 +228,18 @@ const AerialShader = {
         float f2 = 1.0 - exp( -x2 * x2 );
         texel.rgb = mix( texel.rgb, hazeCol, f2 );
       }
+      // pre-tonemap emissive shoulder (see EM_SHOULDER_* const block): hue-
+      // preserving rational rolloff on very hot pixels (additive fire/flash
+      // stacks) so ACES receives a gradient instead of a 5-20 clipped plateau.
+      // Applied to every pixel: sky self-caps below the start, diffuse cannot
+      // reach it, so only true emissives are touched.
+      float emL = dot( texel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
+      if ( emL > ${EM_SHOULDER_START.toFixed(3)} ) {
+        float emOver = emL - ${EM_SHOULDER_START.toFixed(3)};
+        float emTarget = ${EM_SHOULDER_START.toFixed(3)}
+          + emOver / ( 1.0 + emOver / ${EM_SHOULDER_RANGE.toFixed(3)} );
+        texel.rgb *= emTarget / emL;
+      }
       gl_FragColor = texel;
     }`,
 };
@@ -259,7 +300,8 @@ const GRADE_SATURATION = 1.06;
 const GRADE_VIGNETTE = 0.24; // 0.27 stacked with foreground canopy shadow into heavy corners
 const GRADE_BLACK_LIFT = 0.012;
 const GRADE_KNEE = 0.86; // display-space luma where the highlight shoulder starts
-const GRADE_KNEE_SLOPE = 0.55; // slope retained above the knee (1.0 maps to ~0.94)
+// (r9: the linear GRADE_KNEE_SLOPE 0.55 knee was replaced by a rational
+// shoulder in the shader — see the "soft highlight shoulder" note there.)
 // Warm afternoon balance, matching the sun key instead of fighting it.
 const GRADE_BALANCE = [1.02, 1.0, 0.975];
 // Applied only to green-dominant pixels (terrain/foliage): warms hue toward
@@ -278,11 +320,18 @@ const GRADE_HIGH_TINT = [1.060, 1.008, 0.945]; // warm sun-kissed highlights
 //  - a circular sight-picture vignette (aspect-corrected, so it reads as a
 //    scope tube, not a screen-corner gradient),
 //  - a mild radial blur past ~80% of the picture radius (optics falloff).
-const SCOPE_VIGNETTE_START = 0.66; // radius where darkening begins (1 = mid-edge)
-const SCOPE_VIGNETTE_END = 1.42; // radius of full black (past the corners)
-const SCOPE_VIGNETTE_MAX = 0.82; // darkening at SCOPE_VIGNETTE_END
-const SCOPE_BLUR_START = 0.80; // radius where the radial blur fades in
-const SCOPE_BLUR_STEP = 0.011; // UV step of the 4-tap radial blur at full blur
+// r4 (controls_gunnery): WoT's sniper vignette is near-invisible and its edge
+// blur barely perceptible — the r3 treatment (start 0.66/0.80, step 0.011)
+// smeared the outer ~25% of the frame into tilt-shift mush and swallowed a
+// burning wreck on the frame edge. Blur now only touches the outer ~10% of
+// the sight picture at half the radius, and the tube vignette starts past
+// the mid-field so situational awareness while scoped matches WoT.
+const SCOPE_VIGNETTE_START = 0.85; // radius where darkening begins (1 = mid-edge)
+const SCOPE_VIGNETTE_END = 1.60; // radius of max darkening (past the corners)
+const SCOPE_VIGNETTE_MAX = 0.15; // darkening at SCOPE_VIGNETTE_END
+const SCOPE_BLUR_START = 0.90; // radius where the radial blur fades in
+const SCOPE_BLUR_RAMP = 0.28; // blur reaches full strength at START+RAMP
+const SCOPE_BLUR_STEP = 0.0055; // UV step of the 4-tap radial blur at full blur
 
 const GradeShader = {
   name: 'GradeShader',
@@ -297,6 +346,11 @@ const GradeShader = {
     uHighTint: { value: new THREE.Vector3(...GRADE_HIGH_TINT) },
     uGreenWarm: { value: new THREE.Vector3(...GRADE_GREEN_WARM) },
     uScope: { value: 0 }, // 0 = arcade, 1 = sniper (eased by render())
+    // r4: zoom-scaled center unsharp while scoped — the x8 picture magnifies
+    // terrain/horizon texels far past their mip frequency and the far field
+    // reads as watercolor smear; a mild radius-1 unsharp restores edge
+    // definition. 0 at x2 and in arcade; driven from camera.fov in render().
+    uSharp: { value: 0 },
     uAspect: { value: 16 / 9 },
   },
   vertexShader: /* glsl */ `
@@ -316,18 +370,19 @@ const GradeShader = {
     uniform vec3 uHighTint;
     uniform vec3 uGreenWarm;
     uniform float uScope;
+    uniform float uSharp;
     uniform float uAspect;
     varying vec2 vUv;
     void main() {
       vec4 texel = texture2D( tDiffuse, vUv );
-      // sniper scope: radial optics blur past ~80% of the sight-picture
-      // radius (aspect-corrected circle) — sampled BEFORE the grade so the
-      // blurred edge goes through the exact same color pipeline
+      // sniper scope: radial optics blur on the outer ~10% of the sight-
+      // picture radius (aspect-corrected circle) — sampled BEFORE the grade
+      // so the blurred edge goes through the exact same color pipeline
       float scopeR = 0.0;
       if ( uScope > 0.001 ) {
         vec2 sq = ( vUv - 0.5 ) * vec2( uAspect, 1.0 );
         scopeR = length( sq ) * 2.0;
-        float blurW = uScope * smoothstep( ${SCOPE_BLUR_START.toFixed(3)}, ${(SCOPE_BLUR_START + 0.45).toFixed(3)}, scopeR );
+        float blurW = uScope * smoothstep( ${SCOPE_BLUR_START.toFixed(3)}, ${(SCOPE_BLUR_START + SCOPE_BLUR_RAMP).toFixed(3)}, scopeR );
         if ( blurW > 0.001 ) {
           vec2 st = ( sq / max( scopeR, 1e-4 ) ) / vec2( uAspect, 1.0 )
             * ${SCOPE_BLUR_STEP.toFixed(4)} * blurW;
@@ -337,6 +392,17 @@ const GradeShader = {
           acc += texture2D( tDiffuse, vUv + st * 0.75 );
           acc += texture2D( tDiffuse, vUv + st * 1.5 );
           texel = acc * 0.2;
+        }
+        // high-zoom center unsharp (r4): counteracts the mip-frequency
+        // watercolor smear on the magnified far field; skips the blur ring.
+        float sharpW = uSharp * ( 1.0 - smoothstep( ${(SCOPE_BLUR_START - 0.08).toFixed(3)}, ${SCOPE_BLUR_START.toFixed(3)}, scopeR ) );
+        if ( sharpW > 0.001 ) {
+          vec2 px = vec2( 0.0011 / uAspect, 0.0011 ); // ~1.2 px at 1080p
+          vec3 nb = texture2D( tDiffuse, vUv + vec2( px.x, 0.0 ) ).rgb
+                  + texture2D( tDiffuse, vUv - vec2( px.x, 0.0 ) ).rgb
+                  + texture2D( tDiffuse, vUv + vec2( 0.0, px.y ) ).rgb
+                  + texture2D( tDiffuse, vUv - vec2( 0.0, px.y ) ).rgb;
+          texel.rgb = max( texel.rgb + ( texel.rgb - nb * 0.25 ) * sharpW, 0.0 );
         }
       }
       vec3 col = texel.rgb;
@@ -359,9 +425,16 @@ const GradeShader = {
       vec3 split = mix( uShadowTint, uHighTint, smoothstep( 0.12, 0.72, luma ) );
       col = clamp( col * split, 0.0, 1.0 );
       // soft highlight shoulder: roll near-white values off instead of
-      // clipping (metal speculars, horizon band) — filmic top-end
+      // clipping (metal speculars, horizon band) — filmic top-end.
+      // r9: the old LINEAR knee (slope 0.55) mapped the whole 0.86-1.0 input
+      // band into 0.86-0.94 at constant slope — desert sand and urban
+      // sidewalk fields all collapsed into one flat "textureless near-white"
+      // band. Rational shoulder instead: smooth derivative at the knee,
+      // asymptote 1.0, monotone spread — top-end texture stays ordered and
+      // visible instead of quantizing into a plateau.
       vec3 over = max( col - vec3( ${GRADE_KNEE.toFixed(3)} ), vec3( 0.0 ) );
-      col = min( col, vec3( ${GRADE_KNEE.toFixed(3)} ) ) + over * ${GRADE_KNEE_SLOPE.toFixed(3)};
+      col = min( col, vec3( ${GRADE_KNEE.toFixed(3)} ) )
+        + over / ( 1.0 + over / ${(1 - GRADE_KNEE).toFixed(3)} );
       // saturation
       luma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
       col = clamp( mix( vec3( luma ), col, uSaturation ), 0.0, 1.0 );
@@ -613,6 +686,16 @@ export function createPost(renderer, scene, camera) {
       // aerial distance reconstruction exact
       aerial.uniforms.uNear.value = camera.near;
       aerial.uniforms.uFar.value = camera.far;
+      // sniper de-haze (r9): scale BOTH aerial curves down with zoom, same
+      // ramp main.js applies to the FogExp2 density — at x8 the far field
+      // must read magnified-clear, not teal-washed (see AERIAL_ZOOM_*).
+      {
+        const fovK = camera.fov < AERIAL_ZOOM_FOV
+          ? Math.max(AERIAL_ZOOM_FLOOR, Math.pow(camera.fov / AERIAL_ZOOM_FOV, 1.5))
+          : 1;
+        aerial.uniforms.uDensity.value = AERIAL_DENSITY * fovK;
+        aerial.uniforms.uHazeDensity.value = AERIAL_HAZE_DENSITY * fovK;
+      }
       // scope treatment follows the rig's live scoped flag (snapSniper sets
       // it too, so harness captures get the exact same treatment). Eased
       // over ~5 frames so live scope-in reads as a transition, not a pop;
@@ -625,6 +708,10 @@ export function createPost(renderer, scene, camera) {
           ? target
           : cur + (target - cur) * 0.45;
         grade.uniforms.uAspect.value = camera.aspect || (16 / 9);
+        // r4: zoom-scaled unsharp — 0 below x3 (fov ≥ ~16°), ~0.5 at x8
+        // (fov 6.25°). Follows the eased uScope so scope-in has no pop.
+        grade.uniforms.uSharp.value = grade.uniforms.uScope.value *
+          0.55 * Math.min(1, Math.max(0, (16 - camera.fov) / 10));
       }
       // scatter-in targets follow the sky-sampled fog color (map switches),
       // split into a warm (sunward) and cool (anti-sun) pole

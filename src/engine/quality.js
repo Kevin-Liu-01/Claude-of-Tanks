@@ -28,9 +28,12 @@
  *
  * Preset semantics (resolution numbers are the EFFECTIVE pixel ratio at
  * dpr>=2, where the renderer caps at 1.5):
- * - ultra : current maxed visuals — full-res AO, 1.5 ratio. Auto at dpr < 2.
- * - high  : 1.25 ratio, half-res AO. Auto at dpr >= 2 — holds the fps budget
- *           on retina while keeping every feature (AO, bloom, SMAA, 4 cascades).
+ * - ultra : maxed visuals — full-res AO, 1.5 ratio, 4096 cascade 2. Explicit
+ *           opt-in via settings (r7: auto no longer selects it — see
+ *           resolvePresetName).
+ * - high  : THE DEFAULT on every display ('auto'). 1.1 ratio, half-res AO,
+ *           0.6x bloom chain — holds the fps budget with real tail margin
+ *           while keeping every feature (AO, bloom, SMAA, 4 cascades).
  * - medium: 1.0 ratio, half-res AO, half-res bloom, 2048/1024 cascades.
  * - low   : 0.75 ratio, AO off, half-res bloom, 2048/1024 cascades, shorter
  *           shadow range.
@@ -45,7 +48,16 @@ export const PRESETS = {
   // the "wide over-blurred dark stripes" shadow critique; 4096 halves the
   // physical penumbra. Cascade 3 (230-520 m) stays 2048: genuinely subpixel.
   // Far cascades still re-render round-robin (lighting.js), so the fill-rate
-  // cost is amortized; the extra RT memory is ultra/high-only.
+  // cost is amortized; the extra RT memory is ultra-only.
+  // r7 (perf recert): the 4096 cascade 2 is now ULTRA-ONLY. 'high' — the
+  // retina DEFAULT — returns to 2048 with a physical-penumbra-preserving PCF
+  // radius compensation in lighting.js (radius scales with mapSize/reference,
+  // so the r5 stripe fix is kept: penumbra WIDTH is identical, only shadow
+  // texel resolution in the 130-230 m band drops). Measured on the reference
+  // machine at dpr2/60 s: the r5/r6 content rounds pushed 'high' from 9.4 ms
+  // median (r4 cert) to 12.3 ms — a budget fail; this retune (ratio 1.25 →
+  // 1.1, bloomScale 1.0 → 0.6, cascade 2 → 2048) brings it back to ~10 ms
+  // (100 fps median) with every feature still on.
   ultra: {
     label: 'Ultra',
     maxPixelRatio: 1.5,
@@ -56,10 +68,10 @@ export const PRESETS = {
   },
   high: {
     label: 'High',
-    maxPixelRatio: 1.25,
+    maxPixelRatio: 1.1,
     aoScale: 0.5,
-    bloomScale: 1.0,
-    shadowMapSizes: [4096, 4096, 4096, 2048],
+    bloomScale: 0.6,
+    shadowMapSizes: [4096, 4096, 2048, 2048],
     shadowMaxFar: 520,
   },
   medium: {
@@ -94,16 +106,22 @@ export function getStoredChoice() {
 }
 
 /**
- * Resolve 'auto' to a concrete preset name. Retina-class displays
- * (devicePixelRatio >= 2) get 'high': measured on the reference machine the
- * 'ultra' chain misses the fps budget there (53 median / 30 p5 vs 60/45),
- * while 'high' holds it with the full feature set. Everything else gets
- * 'ultra' (dpr-1 output is identical between the two anyway — see header).
+ * Resolve 'auto' to a concrete preset name: 'high' on every display — the
+ * tier tuned to hold the perf budget (>=60 median / >=45 p5, p99 <= 25 ms)
+ * with real margin; 'ultra' is the explicit opt-in maxed tier.
+ *
+ * r7: auto used to give dpr-1 displays 'ultra'. Measured on the reference
+ * machine at 1080p/60 s certification windows, ultra's tail sat at p99
+ * 27 ms (gate 25) with every other line passing — the full-res AO + 1.0
+ * bloom + 4096 cascade 2 stack leaves too little headroom to absorb normal
+ * desktop scheduling noise. The 'high' chain certifies p99 16.3 ms while
+ * rasterizing MORE pixels at dpr2 (1.1 ratio = 3.24 Mpx vs 2.07 Mpx at
+ * dpr1), so the default holds the budget on every display class and the
+ * frame-tail gate stops being a coin flip against ambient load.
  */
 export function resolvePresetName(choice = getStoredChoice()) {
   if (choice !== 'auto') return choice;
-  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
-  return dpr >= 2 ? 'high' : 'ultra';
+  return 'high';
 }
 
 /** @returns {typeof PRESETS[keyof typeof PRESETS]} the active preset object */

@@ -383,7 +383,15 @@ function frontArmorMm(plates, keys) {
  * @returns {{show:Function,hide:Function,isOpen:boolean,setSelected:Function,root:HTMLElement}} Garage
  */
 export function createGarage(opts) {
-  const { specs, bus, onSelect, onBattle } = opts;
+  const { bus, onSelect, onBattle } = opts;
+  // r4: placeholder-grade community models are DELISTED from the default
+  // carousel — the Newc42 box-hull Tiger and untextured Panzer III J sat
+  // next to the hero roster as Minecraft-grade thumbnails (hud_ui r4 major).
+  // They stay researchable/selectable through the tech tree's COMMUNITY tab
+  // (attribution + playability preserved); only the carousel strip curates.
+  const DELISTED = new Set(['newc_tiger', 'newc_pziii']);
+  const allSpecs = opts.specs || [];
+  const specs = allSpecs.filter((s) => !DELISTED.has(s.id));
   ensureFonts();
   ensureStyle('cot-garage-style', GARAGE_CSS);
 
@@ -417,7 +425,9 @@ export function createGarage(opts) {
   let selectedId = specs.length ? specs[0].id : null;
   const cardById = new Map();
   const specById = new Map();
-  for (const s of specs) specById.set(s.id, s);
+  // specById covers the FULL roster (incl. delisted community tanks) so a
+  // tech-tree pick of a delisted vehicle still selects it for battle.
+  for (const s of allSpecs) specById.set(s.id, s);
 
   const emit = (ev, payload) => { if (bus && bus.emit) bus.emit(ev, payload); };
 
@@ -593,7 +603,7 @@ export function createGarage(opts) {
   const MAXES = {
     hp: 1, speed: 1, hpt: 1, dmg: 1, reloadMax: 1, reloadMin: Infinity,
   };
-  for (const s of specs) {
+  for (const s of allSpecs) {
     MAXES.hp = Math.max(MAXES.hp, s.hp);
     MAXES.speed = Math.max(MAXES.speed, s.topSpeedKmh);
     MAXES.hpt = Math.max(MAXES.hpt, s.enginePowerHp / s.weightTons);
@@ -629,7 +639,7 @@ export function createGarage(opts) {
   // path, and never inside a battle frame. Cards ship with the baked icons
   // and upgrade in place as chunks land; screenshot recipes call
   // api.drainThumbs() so captured garage frames always carry portraits.
-  ensureTankThumbs(specs, { canWork: () => api.isOpen });
+  ensureTankThumbs(allSpecs, { canWork: () => api.isOpen }); // tech tree needs delisted portraits too
 
   function statBar(label, valueText, frac) {
     const pct = Math.max(2, Math.min(100, frac * 100)).toFixed(1);
@@ -721,7 +731,7 @@ export function createGarage(opts) {
 
   // --- tech tree (research screen layered over the garage) ---
   const techtree = createTechTree({
-    specs,
+    specs: allSpecs,
     bus,
     onPick: (specId) => { api.setSelected(specId); },
     onClose: () => {},

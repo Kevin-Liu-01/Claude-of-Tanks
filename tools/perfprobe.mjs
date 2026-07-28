@@ -1,5 +1,7 @@
 // Performance probe harness (perf engineer tooling).
-// Usage: node tools/perfprobe.mjs [--seconds 60] [--width 1920] [--height 1080] [--out -]
+// Usage: node tools/perfprobe.mjs [--seconds 60] [--width 1920] [--height 1080]
+//        [--dsf 1|2] [--out file] [--preset low|medium|high|ultra] [--dump file]
+//        [--note tag] [--no-trend]
 // Starts vite, loads the game headless, measures load-to-__GAME_READY, enters
 // battle on the verdant map, simulates combat (drive via synthetic keys +
 // forceFire debug flag) for N seconds while sampling rAF deltas, renderer.info,
@@ -18,6 +20,7 @@ import puppeteer from 'puppeteer';
 import { writeFileSync, appendFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import os from 'node:os';
+import { execSync } from 'node:child_process';
 
 const args = process.argv.slice(2);
 function opt(name, fallback) {
@@ -30,6 +33,13 @@ const height = parseInt(opt('height', '1080'), 10);
 const dsf = parseFloat(opt('dsf', '1')); // deviceScaleFactor: 2 = retina default
 const outFile = opt('out', '');
 const noTrend = args.includes('--no-trend'); // skip the perf-trend.jsonl append
+// A/B tooling: --preset forces a quality tier (writes localStorage before
+// load, exactly what the settings UI persists); --dump writes the raw
+// per-frame {t, ms} series for temporal tail bucketing; --note tags the
+// trend row so experiment rows never read as regressions.
+const forcePreset = opt('preset', '');
+const dumpFile = opt('dump', '');
+const trendNote = opt('note', '');
 
 // Tracked performance budget (docs/EVALUATION.md perf gate). Every line is
 // evaluated in the report's `budget` block so regressions surface in the
@@ -95,6 +105,56 @@ const CORES = os.cpus().length;
 const CONTENTION_LOAD_LIMIT = CORES * 0.5;
 const PROBE_SELF_LOAD = 5; // measured own footprint headroom for the end check
 const load1Start = os.loadavg()[0];
+// Mid-run sampling (r7): the start/end checks missed 1-minute-scale load
+// BURSTS from sibling agent sessions (2026-07-28 12:17 dsf1 run: start 8.2,
+// certified FAIL with p99 40.4 ms — yet slow frames carried IDENTICAL draw
+// calls/triangles to fast ones, the signature of external GPU/CPU contention,
+// and the same tree certified PASS with p99 16.6 ms in a quiet window).
+// Sample the 1-min load every 5 s while the probe runs and apply the SAME
+// end-check formula to the true maximum — strictly better sampling, no limit
+// change. A contended stamp refuses certification of BOTH outcomes.
+let load1Max = load1Start;
+const loadSampler = setInterval(() => {
+  load1Max = Math.max(load1Max, os.loadavg()[0]);
+}, 5000);
+// GPU-contention guard (r7): CPU load average CANNOT see a sibling harness
+// hammering the shared GPU — measured 2026-07-28: a 60 s run at load1Max 8.9
+// (CPU-valid) produced mean fps 153 vs MEDIAN 60 with p99 63 ms, the bimodal
+// burst/stall signature of GPU time-slicing, while scene draw calls/triangles
+// on slow frames were identical to fast ones. Detect the actual contender:
+// any FOREIGN headless-Chromium render process (another agent's
+// puppeteer/vite probe or screenshot harness) alive during the run. Ours are
+// excluded by walking each candidate's parent chain up to our browser PID.
+// Symmetric like the load stamp: a foreign-GPU-contended run certifies
+// NEITHER pass nor fail.
+function countForeignHeadless(ownBrowserPid) {
+  try {
+    const rows = execSync('ps -axo pid=,ppid=,pcpu=,command=', { encoding: 'utf8' })
+      .split('\n')
+      .map((l) => l.match(/^\s*(\d+)\s+(\d+)\s+([\d.]+)\s+(.*)$/))
+      .filter(Boolean);
+    const ppidOf = new Map(rows.map((m) => [+m[1], +m[2]]));
+    let foreign = 0;
+    for (const m of rows) {
+      const cmd = m[4];
+      if (!/Chrome for Testing|--headless/.test(cmd) || !/[Cc]hrom/.test(cmd)) continue;
+      // idle corpses (a crashed run's leaked browser at ~0% CPU) are not GPU
+      // contenders and must not block certification forever; only count
+      // processes actually burning CPU (renderer/GPU helpers of a live run).
+      if (+m[3] < 5) continue;
+      let pid = +m[1];
+      let ours = false;
+      for (let hop = 0; hop < 12 && pid; hop++) {
+        if (pid === ownBrowserPid || pid === process.pid) { ours = true; break; }
+        pid = ppidOf.get(pid) || 0;
+      }
+      if (!ours) foreign++;
+    }
+    return foreign;
+  } catch (_) {
+    return -1; // detection unavailable — never blocks certification by itself
+  }
+}
 
 const port = 5900 + Math.floor(Math.random() * 90);
 const server = await createServer({ root: process.cwd(), logLevel: 'error', server: { port, strictPort: false } });
@@ -113,6 +173,12 @@ const browser = await puppeteer.launch({
     '--js-flags=--expose-gc',
   ],
 });
+const ownBrowserPid = browser.process() ? browser.process().pid : -1;
+let foreignHeadlessMax = countForeignHeadless(ownBrowserPid);
+const foreignSampler = setInterval(() => {
+  foreignHeadlessMax = Math.max(foreignHeadlessMax, countForeignHeadless(ownBrowserPid));
+}, 10000);
+
 const page = await browser.newPage();
 await page.setViewport({ width, height, deviceScaleFactor: dsf });
 
@@ -127,6 +193,11 @@ await page.evaluateOnNewDocument(() => {
     if (window.__GAME_READY === true) { window.__READY_AT = performance.now(); clearInterval(iv); }
   }, 25);
 });
+if (forcePreset) {
+  await page.evaluateOnNewDocument((p) => {
+    try { window.localStorage.setItem('cot.gfxPreset', p); } catch (_) { /* ok */ }
+  }, forcePreset);
+}
 
 let failed = false;
 let report = null;
@@ -174,7 +245,7 @@ try {
     // renderer.info auto-resets after every internal render pass; take manual
     // control so each rAF sample sees the FULL frame (shadow + composer passes).
     R.info.autoReset = false;
-    window.__PERF = { deltas: [], calls: [], tris: [], heap: [], done: false };
+    window.__PERF = { deltas: [], times: [], calls: [], tris: [], heap: [], done: false };
     const P = window.__PERF;
     let last = -1;
     const t0 = performance.now();
@@ -195,6 +266,7 @@ try {
       }
       if (last >= 0) {
         P.deltas.push(now - last);
+        P.times.push(now - t0);
         // counters accumulated since our reset at the previous rAF = one frame
         P.calls.push(R.info.render.calls);
         P.tris.push(R.info.render.triangles);
@@ -251,6 +323,10 @@ try {
   });
 
   const perf = await page.evaluate(() => window.__PERF);
+  if (dumpFile) {
+    writeFileSync(resolve(dumpFile), JSON.stringify({ times: perf.times, deltas: perf.deltas, calls: perf.calls, tris: perf.tris }));
+    console.error(`[perf] raw frame series dumped to ${dumpFile}`);
+  }
   const deltas = perf.deltas.slice().sort((a, b) => a - b);
   const fpsList = perf.deltas.map((d) => 1000 / d).sort((a, b) => a - b);
   const q = (arr, p) => arr[Math.min(arr.length - 1, Math.floor(arr.length * p))];
@@ -273,6 +349,7 @@ try {
 
   report = {
     date: new Date().toISOString(),
+    ...(forcePreset ? { forcedPreset: forcePreset } : {}),
     viewport: { width, height, deviceScaleFactor: dsf },
     sampleSeconds: seconds,
     frames: perf.deltas.length,
@@ -308,12 +385,21 @@ try {
   };
   // Machine contention stamp (see CONTENTION_LOAD_LIMIT above).
   const load1End = os.loadavg()[0];
+  clearInterval(loadSampler);
+  clearInterval(foreignSampler);
+  load1Max = Math.max(load1Max, load1End);
+  foreignHeadlessMax = Math.max(foreignHeadlessMax, countForeignHeadless(ownBrowserPid));
   const contended = load1Start > CONTENTION_LOAD_LIMIT
-    || load1End > CONTENTION_LOAD_LIMIT + PROBE_SELF_LOAD;
+    || load1Max > CONTENTION_LOAD_LIMIT + PROBE_SELF_LOAD
+    || foreignHeadlessMax > 0;
   report.machine = {
     cores: CORES,
     load1Start: +load1Start.toFixed(2),
     load1End: +load1End.toFixed(2),
+    load1Max: +load1Max.toFixed(2),
+    // foreign headless-Chromium render processes seen during the run (another
+    // agent's probe/harness sharing this GPU); -1 = detection unavailable
+    foreignHeadlessMax,
     contended,
   };
   // Budget evaluation (see BUDGET above) — machine-checkable pass/fail lines.
@@ -343,10 +429,10 @@ try {
   report.budget = { pass: Object.values(lines).every((l) => l.pass), ...lines };
   // Certification validity: a contended machine cannot certify EITHER outcome.
   report.budget.certification = contended
-    ? `REFUSED — machine contended (load1 ${report.machine.load1Start}->${report.machine.load1End} on ${CORES} cores, limit ${CONTENTION_LOAD_LIMIT}); re-run quiet`
+    ? `REFUSED — machine contended (load1 ${report.machine.load1Start}->${report.machine.load1End}, mid-run max ${report.machine.load1Max}, foreign headless-GPU procs ${foreignHeadlessMax}, on ${CORES} cores, load limit ${CONTENTION_LOAD_LIMIT}); re-run quiet`
     : (report.budget.pass ? 'PASS' : 'FAIL');
   if (contended) {
-    console.error(`[perf] CONTENDED MACHINE: load1 ${report.machine.load1Start} -> ${report.machine.load1End} on ${CORES} cores (limit ${CONTENTION_LOAD_LIMIT}). Numbers are for iteration only — certification refused.`);
+    console.error(`[perf] CONTENDED MACHINE: load1 ${report.machine.load1Start} -> ${report.machine.load1End} (mid-run max ${report.machine.load1Max}), foreign headless-GPU procs ${foreignHeadlessMax}, on ${CORES} cores (load limit ${CONTENTION_LOAD_LIMIT}). Numbers are for iteration only — certification refused.`);
   }
   if (!report.budget.pass) {
     const failed = Object.entries(lines).filter(([, l]) => l && l.pass === false).map(([k, l]) => `${k}=${l.actual} (want ${l.limit})`);
@@ -377,8 +463,9 @@ try {
         sceneTextureMB: report.gpuTextureEstimate.sceneTextureMB,
         heapFloorMBperS: report.heap.floorGrowthMBperS,
         budgetPass: report.budget.pass,
+        ...(forcePreset ? { preset: forcePreset } : {}),
         // contaminated rows must never read as regressions (see machine stamp)
-        ...(contended ? { note: 'contended', load1: report.machine.load1End, cores: CORES } : {}),
+        ...(contended ? { note: trendNote ? `contended; ${trendNote}` : 'contended', load1: report.machine.load1End, cores: CORES } : (trendNote ? { note: trendNote } : {})),
       })}\n`);
     } catch (err) {
       console.error(`[perf] trend append skipped: ${err.message}`);
@@ -388,6 +475,8 @@ try {
   failed = true;
   console.error(`[perf] FAILED: ${err.message}`);
 } finally {
+  clearInterval(loadSampler);
+  clearInterval(foreignSampler);
   await browser.close();
   await server.close();
 }

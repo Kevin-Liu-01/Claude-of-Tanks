@@ -54,7 +54,13 @@ const SKY_RADIANCE_SCALE = 0.38;
 // point in the sky.
 const SKY_KNEE = 1.0;
 const SKY_KNEE_RANGE = 0.45;
-const SKY_KNEE_FALLOFF = 0.06; // 1/e width of the shoulder in luminance units
+// r9 ("the sun quadrant of battlefield_urban is a huge structureless white
+// wash"): falloff 0.06 compressed the entire Mie halo (lum 2-6) into a
+// 1.03-1.12 sliver — mathematically un-clipped but visually ONE flat band.
+// 0.11 re-spreads the halo across 1.04-1.19 so the wash carries a readable
+// radial gradient again, while the asymptote (1.45) stays under the bloom
+// threshold and the true sun disc still tops the range.
+const SKY_KNEE_FALLOFF = 0.11; // 1/e width of the shoulder in luminance units
 // Horizon haze treatment (r3 critique: "horizon band blows out to near pure
 // white with no hue — reads as fog-card overexposure"). Inside the low-
 // elevation band the dome's luminance is soft-compressed to sit ~10-15% below

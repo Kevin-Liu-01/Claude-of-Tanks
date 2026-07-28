@@ -35,6 +35,19 @@ const MAX_AIM_DIST_M = 720;
 const PIVOT_ABOVE_TURRET_M = 2.5;
 const PIVOT_FOLLOW_TAU_S = 0.1; // critically-damped-feel position lag
 const DIST_LERP_TAU_S = 0.15; // smooth lerp between orbit steps
+// >>> gameplay_feel r4: uphill framing assist -------------------------------
+// Climbing toward rising ground the naive orbit buries ~85% of the frame in
+// the hill face (r4 drive critique — "green wall"): WoT slides the camera up
+// so the vehicle and some crest/sky stay in frame. We probe how steeply the
+// terrain ahead of the pivot rises above the turret line within ~1.6 orbit
+// distances and blend extra camera height (plus a small look-target lift).
+const CLIMB_PROBE_N = 5;      // heightfield samples along the view azimuth
+const CLIMB_PROBE_RANGE = 1.6; // × orbit distance probed ahead of the pivot
+const CLIMB_FULL_RAD = 0.30;  // apparent terrain rise (rad) for full assist
+const CLIMB_LIFT_MAX = 0.55;  // max extra camera height, × orbit distance
+const CLIMB_LOOK_FRAC = 0.45; // look-target lift as a fraction of camera lift
+const CLIMB_TAU_S = 0.35;     // assist ease time constant
+// <<< gameplay_feel r4 ------------------------------------------------------
 const COLLISION_PAD_M = 0.3;
 const CAMERA_MIN_CLEARANCE_M = 1.0; // auto-height above terrain
 const TRAUMA_DECAY_PER_S = 1.4;
@@ -52,6 +65,9 @@ const _pivotTarget = new THREE.Vector3();
 const _desired = new THREE.Vector3();
 const _viewDir = new THREE.Vector3();
 const _rayDir = new THREE.Vector3();
+// >>> gameplay_feel r4: uphill framing assist scratch
+const _lookTarget = new THREE.Vector3();
+// <<< gameplay_feel r4
 
 /** Forward direction from view yaw/pitch (yaw 0 → +Z, positive pitch → up). */
 function dirFromAngles(yaw, pitch, out) {
@@ -128,6 +144,9 @@ export function createCameraRig(camera, deps) {
   let dist = ORBIT_STEPS[step];
   const pivot = new THREE.Vector3();
   let pivotInitialized = false;
+  // >>> gameplay_feel r4: current uphill camera lift in meters (eased)
+  let climbLift = 0;
+  // <<< gameplay_feel r4
 
   let external = false;
   let prevShift = false;
@@ -179,6 +198,9 @@ export function createCameraRig(camera, deps) {
       pivot.copy(_pivotTarget);
       pivotInitialized = true;
       dist = ORBIT_STEPS[step];
+      // >>> gameplay_feel r4: snaps are deterministic screenshot poses — no lift
+      climbLift = 0;
+      // <<< gameplay_feel r4
     } else {
       pivot.lerp(_pivotTarget, 1 - Math.exp(-dt / PIVOT_FOLLOW_TAU_S));
       dist += (ORBIT_STEPS[step] - dist) * (1 - Math.exp(-dt / DIST_LERP_TAU_S));
@@ -188,6 +210,26 @@ export function createCameraRig(camera, deps) {
     const viewPitch = THREE.MathUtils.clamp(aimPitch + freePitch, PITCH_MIN, PITCH_MAX);
     dirFromAngles(viewYaw, viewPitch, _viewDir);
     _desired.copy(pivot).addScaledVector(_viewDir, -dist);
+
+    // >>> gameplay_feel r4: uphill framing assist ---------------------------
+    // How steeply does the ground ahead rise above the turret roof line
+    // within CLIMB_PROBE_RANGE orbits? (0 on flat/downhill ground — the
+    // reference point sits above the hull, so level terrain never engages.)
+    if (!snap && dt > 0) {
+      const fx = Math.sin(viewYaw), fz = Math.cos(viewYaw);
+      const refY = pivot.y - PIVOT_ABOVE_TURRET_M * 0.5; // ~turret roof line
+      let rise = 0;
+      for (let i = 1; i <= CLIMB_PROBE_N; i++) {
+        const d = (i / CLIMB_PROBE_N) * dist * CLIMB_PROBE_RANGE;
+        const a = Math.atan2(heightField.getHeightAt(pivot.x + fx * d, pivot.z + fz * d) - refY, d);
+        if (a > rise) rise = a;
+      }
+      const liftTarget =
+        THREE.MathUtils.clamp(rise / CLIMB_FULL_RAD, 0, 1) * dist * CLIMB_LIFT_MAX;
+      climbLift += (liftTarget - climbLift) * (1 - Math.exp(-dt / CLIMB_TAU_S));
+    }
+    if (climbLift > 1e-3) _desired.y += climbLift;
+    // <<< gameplay_feel r4 ---------------------------------------------------
 
     // Collision pull-in: pivot → desired camera position.
     _rayDir.copy(_desired).sub(pivot);
@@ -206,7 +248,13 @@ export function createCameraRig(camera, deps) {
 
     camera.position.copy(_desired);
     camera.up.set(0, 1, 0);
-    camera.lookAt(pivot);
+    // >>> gameplay_feel r4: tip the look target up with the lift so the crest
+    // and some sky come down into frame while the tank stays in the lower
+    // third (plain lookAt(pivot) when the assist is idle).
+    _lookTarget.copy(pivot);
+    if (climbLift > 1e-3) _lookTarget.y += climbLift * CLIMB_LOOK_FRAC;
+    camera.lookAt(_lookTarget);
+    // <<< gameplay_feel r4
     setFov(BASE_FOV_DEG);
     camera.userData.scoped = false;
   }
@@ -249,40 +297,46 @@ export function createCameraRig(camera, deps) {
     }
   }
 
-  /** Quintic ease for the cinematic sweep. */
-  function smoother(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
-
   // Sun azimuth of the fixed lighting rig (sky.js: elevation 35°, azimuth
-  // 140° — world sun dir ≈ (0.527, 0.574, -0.627)). The flyby biases its
-  // opening arc so the CAMERA sits on the sun side of the hero tank: the r6
-  // flyby opened on an unlit black silhouette in its own terrain shadow.
-  const SUN_AZ = Math.atan2(0.527, -0.627); // ≈ 2.443 rad
-  const CINE_START_YAW = SUN_AZ - Math.PI;  // camera azimuth = viewYaw + π
+  // 140° — world sun dir ≈ (0.527, 0.574, -0.627)). The flyby keeps the
+  // camera on the sun side of the hero tank: the r6 flyby opened on an unlit
+  // black silhouette in its own terrain shadow.
+  const SUN_DIR_X = 0.527, SUN_DIR_Z = -0.627;
 
-  /** Solve the battle-start flyby at cine.t; returns false when finished. */
+  const _cineLook = new THREE.Vector3();
+
+  /**
+   * Solve the battle-start flyby at cine.t; returns false when finished.
+   * r5 rebuild: the old quintic crane-down parked at the chase pose by 1 s of
+   * a "3 s" cinematic (r4: static for frames 3-10 of 10). Now a real authored
+   * path — open 45 m out low over the advance route, sweep laterally past the
+   * hull (terrain parallax, nonzero velocity throughout), then swing onto the
+   * chase pose over the last beat. The camera LOOK starts down the battle
+   * line and converges onto the tank, so the sweep reveals the objective.
+   */
   function solveCinematic(player, dt) {
     cine.t += dt;
     camera.userData.scoped = false;
-    const k = smoother(THREE.MathUtils.clamp(cine.t / cine.dur, 0, 1));
+    const k = THREE.MathUtils.clamp(cine.t / cine.dur, 0, 1);
     pivotTargetFor(player, _pivotTarget);
-    // sweep: SUN-SIDE arc decaying onto the arcade chase pose. The start yaw
-    // is pinned near CINE_START_YAW (wrapped adjacent to endYaw, minimum
-    // sweep enforced) so the opening frame shows a sun-lit hero tank; pitch
-    // kept LOW (-0.12 start) to stay out of the terrain sun-glint lobe.
-    const pitch = THREE.MathUtils.lerp(-0.12, THREE.MathUtils.degToRad(-10), k);
-    const d = THREE.MathUtils.lerp(23, ORBIT_STEPS[2], k);
-    dirFromAngles(THREE.MathUtils.lerp(cine.startYaw, cine.endYaw, k), pitch, _viewDir);
-    _desired.copy(_pivotTarget).addScaledVector(_viewDir, -d);
-    const minY = heightField.getHeightAt(_desired.x, _desired.z) + CAMERA_MIN_CLEARANCE_M;
+    // path position: world-frame offsets from the (moving) pivot
+    cine.curve.getPoint(k < 0.97 ? k : 0.97 + (k - 0.97) * 0.999, _desired);
+    _desired.add(_pivotTarget);
+    const minY = heightField.getHeightAt(_desired.x, _desired.z) + 1.3;
     if (_desired.y < minY) _desired.y = minY;
     camera.position.copy(_desired);
     camera.up.set(0, 1, 0);
-    camera.lookAt(_pivotTarget);
-    // FOV animation 72 -> 60 (r6: sweep was cinematically flat): a wide
-    // establishing breath tightening onto the gameplay FOV as the arc lands
+    // look: 40 m down the advance route -> the hero tank (converged by k=0.72)
+    const s = THREE.MathUtils.smoothstep(k, 0.12, 0.72);
+    _cineLook.copy(_pivotTarget)
+      .addScaledVector(cine.fwd, 40 * (1 - s))
+      .addScaledVector(_UPV, -1.6 * (1 - s));
+    camera.lookAt(_cineLook);
+    // FOV 72 -> 60: wide establishing breath tightening onto gameplay FOV
     setFov(BASE_FOV_DEG + 12 * (1 - k));
     return cine.t < cine.dur;
   }
+  const _UPV = new THREE.Vector3(0, 1, 0);
 
   /** Hand control back to the arcade rig exactly where the flyby lands. */
   function endCinematic(player) {
@@ -493,17 +547,33 @@ export function createCameraRig(camera, deps) {
       death = null;
       trauma = 0;
       const endYaw = player && player.state ? player.state.yaw : aimYaw;
-      // start the arc on the SUN side of the tank (wrapped adjacent to
-      // endYaw), enforcing a minimum sweep so the flyby always travels
-      let delta = (CINE_START_YAW - endYaw) % (Math.PI * 2);
-      if (delta > Math.PI) delta -= Math.PI * 2;
-      if (delta < -Math.PI) delta += Math.PI * 2;
-      if (Math.abs(delta) < 1.1) delta = (delta < 0 ? -1 : 1) * 1.1;
+      // r5 authored path (world-frame offsets from the pivot, Catmull-Rom):
+      // open 45 m ahead over the advance route on the SUN side, sweep
+      // laterally past the hull at speed (parallax against terrain), then
+      // swing behind onto the exact arcade chase pose. Camera velocity stays
+      // nonzero until the final blend — no parked frames.
+      const fwd = new THREE.Vector3(Math.sin(endYaw), 0, Math.cos(endYaw));
+      const right = new THREE.Vector3(Math.cos(endYaw), 0, -Math.sin(endYaw));
+      // pick the lateral side the sun lives on so the hero hull is lit
+      const side = (right.x * SUN_DIR_X + right.z * SUN_DIR_Z) >= 0 ? 1 : -1;
+      const P = (rx, y, fz, out = new THREE.Vector3()) =>
+        out.set(0, y, 0).addScaledVector(right, rx * side).addScaledVector(fwd, fz);
+      // exact chase-pose offset (solveArcade: pivot - dir(endYaw, -10deg) * 13 m)
+      dirFromAngles(endYaw, THREE.MathUtils.degToRad(-10), _viewDir);
+      const chase = new THREE.Vector3().addScaledVector(_viewDir, -ORBIT_STEPS[2]);
+      const curve = new THREE.CatmullRomCurve3([
+        P(24, 2.6, 45),
+        P(16, 0.6, 22),
+        P(10, -0.2, 4),
+        P(7.5, 0.6, -9),
+        chase,
+      ], false, 'centripetal', 0.5);
       cine = {
         t: 0,
         dur: Math.max(0.5, durS),
         endYaw,
-        startYaw: endYaw + delta,
+        fwd,
+        curve,
       };
       rig.mode = 'ARCADE';
       applyPlayerVisibility(player, true);

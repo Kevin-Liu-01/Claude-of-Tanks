@@ -184,6 +184,22 @@ function sharedMats() {
     blending: THREE.NormalBlending, depthWrite: false, depthTest: true,
     side: THREE.DoubleSide, toneMapped: false, fog: false,
   });
+  // Soft radial glow texture (canvas-generated, fully procedural) for the
+  // flight tracer: the r6 flight frame read as a bare white ball on an
+  // orange stick — no bloom halo, no motion stretch. A sprite with this
+  // gradient fakes a bloomed tracer core at any exposure without pushing
+  // the HDR buffer over the bloom threshold (the r2 screen-wide-beam trap).
+  const glowCanvas = document.createElement('canvas');
+  glowCanvas.width = glowCanvas.height = 64;
+  const gctx = glowCanvas.getContext('2d');
+  const grad = gctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0.0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.22, 'rgba(255,224,168,0.9)');
+  grad.addColorStop(0.55, 'rgba(255,176,96,0.30)');
+  grad.addColorStop(1.0, 'rgba(255,150,60,0)');
+  gctx.fillStyle = grad;
+  gctx.fillRect(0, 0, 64, 64);
+  const glowTex = new THREE.CanvasTexture(glowCanvas);
   // Per-victim hull bounds for the depth-graded alpha below — beginXray()
   // writes these every x-ray (uniform VALUE objects shared by reference, so
   // the shader picks the write up whether it compiled before or after).
@@ -239,7 +255,19 @@ function sharedMats() {
     // 1080p (r5 critique). Colors stay ≤1 so the ribbon never blooms.
     trailGlow: mesh(0xcf9a4e, 0.22),
     trailCore: mesh(0xffd9a0, 0.7),
-    edgeDim: line(0x6db4e8, 0.5),
+    // flight-phase tracer dressing: bloomed-looking halo sprite around the
+    // core + a velocity-stretched glow cone trailing it (see begin())
+    halo: new THREE.SpriteMaterial({
+      map: glowTex, color: 0xffdfae, transparent: true, opacity: 0.95,
+      blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
+      fog: false,
+    }),
+    tail: mesh(0xffa050, 0.17, THREE.DoubleSide),
+    // Un-hit module outlines dropped to a whisper (0.15): the full-bright
+    // white wireframe lattice on EVERY box competed with the shell path and
+    // read as an engineering debug view (r6 critique). Bright outlines are
+    // reserved for hit/destroyed modules and crew casualties.
+    edgeDim: line(0x6db4e8, 0.15),
     edgeRed: line(0xff5a4a, 1.0),
     edgeYellow: line(0xffb43c, 1.0),
     edgeCrew: line(0xff7d8a, 1.0),
@@ -269,8 +297,10 @@ function sharedMats() {
     proxRed: prox(0xff4a38, 0.92, 0.13, 0.52),
     // neutral crew slump tint: a destroyed tank must not show a thriving
     // bright-green crew (r5 critique) — survivors of the final blow render
-    // as grey silhouettes, casualties keep the red state tint.
-    proxGrey: prox(0x93a1ad, 0.58, 0.07, 0.16),
+    // as soft steel-blue silhouettes (matching the module color language,
+    // r6: opaque gray busts read as untextured mannequins), casualties keep
+    // the red state tint.
+    proxGrey: prox(0x9fb8cc, 0.42, 0.05, 0.13),
   };
   return S;
 }
@@ -383,22 +413,28 @@ function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables) {
   }
 }
 
-/** Crew proxy: seated capsule (tapered body cylinder + head sphere). */
+/**
+ * Crew proxy: soft rounded-capsule torso + head sphere. Slimmer and rounder
+ * than the r6 flat-topped cylinder busts (which read as untextured gray
+ * mannequins) — a quiet tinted silhouette in the same material language as
+ * the module proxies.
+ */
 function addCrewProxy(bb, mat, poseGrp, turretGrp, disposables) {
   const sx = bb.max[0] - bb.min[0];
   const sy = bb.max[1] - bb.min[1];
   const sz = bb.max[2] - bb.min[2];
   const g = proxyGroup(bb, poseGrp, turretGrp);
-  const r = Math.min(sx, sz) * 0.3;
-  const headR = Math.max(0.05, Math.min(r * 0.85, sy * 0.2));
-  const bodyH = sy * 0.6;
-  const body = new THREE.CylinderGeometry(r * 0.8, r, bodyH, 10);
+  const r = Math.min(sx, sz) * 0.26;
+  const headR = Math.max(0.05, Math.min(r * 0.8, sy * 0.17));
+  const bodyH = sy * 0.58;
+  const capR = Math.max(0.04, r * 0.9);
+  const body = new THREE.CapsuleGeometry(capR, Math.max(0.02, bodyH - capR * 2), 4, 12);
   const head = new THREE.SphereGeometry(headR, 10, 8);
   disposables.push(body, head);
   const bm = new THREE.Mesh(body, mat);
   bm.position.y = -sy / 2 + bodyH / 2;
   const hm = new THREE.Mesh(head, mat);
-  hm.position.y = -sy / 2 + bodyH + headR * 0.85;
+  hm.position.y = -sy / 2 + bodyH + headR * 0.8;
   g.add(bm, hm);
 }
 
@@ -509,6 +545,61 @@ function tube(a, b, radius, mat, parent, disposables) {
 export function createKillCam(deps) {
   const { scene, camera, rig, heightField, getPlayer } = deps;
 
+  // ---- LIGHT-COUNT / PROGRAM STABILITY --------------------------------------
+  // three.js recompiles EVERY lit material program when the renderer's light
+  // count changes, and compiles brand-new material programs on first render.
+  // The r6 replay added point lights at begin()/beginXray() and hid the fx
+  // group (whose 2 pooled lights left the count) — a live probe measured a
+  // 6.3 s stall between begin() and the first painted kill-cam frame, pure
+  // shader recompile. Fix, following the effects.js "dynamic light budget"
+  // pattern: a PERMANENT pool of 3 point lights added once at creation
+  // (before the first frame ever renders, so the count never changes), plus
+  // a one-shot warmup rig that renders every kill-cam material for a few
+  // seconds of the first battle so playback always hits the program cache.
+  const kcLights = [];
+  for (let i = 0; i < 3; i++) {
+    const L = new THREE.PointLight(0xffffff, 0, 10, 2);
+    L.castShadow = false;
+    L.name = `killcamLight${i}`;
+    L.position.set(0, -80, 0);
+    scene.add(L);
+    kcLights.push(L);
+  }
+  let warmRig = null;
+  let warmSteps = 0;
+  function buildWarmRig() {
+    sharedMats();
+    const g = new THREE.Group();
+    g.name = 'killcamWarmup';
+    g.position.set(0, -80, 0);
+    const box = new THREE.BoxGeometry(0.01, 0.01, 0.01);
+    const lineGeo = new THREE.BufferGeometry();
+    lineGeo.setAttribute('position',
+      new THREE.BufferAttribute(new Float32Array([0, 0, 0, 0.01, 0, 0]), 3));
+    g.userData.disposables = [box, lineGeo];
+    const meshMats = [S.trailGlow, S.trailCore, S.core, S.streak, S.tail,
+      S.ghost, S.pathIn, S.pathOut, S.pathCore, S.spall, S.frag, S.marker,
+      S.fillRed, S.fillYellow, S.fillCrew, S.proxAmmo, S.proxEngine,
+      S.proxFuel, S.proxSteel, S.proxRadio, S.proxGreen, S.proxYellow,
+      S.proxRed, S.proxGrey];
+    for (const m of meshMats) g.add(new THREE.Mesh(box, m));
+    // instanced Lambert variant (ammo cassettes) compiles a separate program
+    for (const m of [S.proxAmmo, S.proxYellow, S.proxRed]) {
+      const im = new THREE.InstancedMesh(box, m, 1);
+      im.setMatrixAt(0, new THREE.Matrix4());
+      g.add(im);
+    }
+    for (const m of [S.trail, S.edgeDim, S.edgeRed, S.edgeYellow, S.edgeCrew]) {
+      g.add(new THREE.Line(lineGeo, m));
+    }
+    g.add(new THREE.Sprite(S.halo));
+    // must actually RENDER to compile — frustum-culled objects compile nothing
+    g.traverse((o) => { o.frustumCulled = false; });
+    return g;
+  }
+  warmRig = buildWarmRig();
+  scene.add(warmRig);
+
   // ---- capture state ----
   const traj = new Map(); // shellId -> { pts:number[], muzzle:[3] }
   let pendingDeath = null;    // lethal shell snapshot, target = player
@@ -520,6 +611,7 @@ export function createKillCam(deps) {
   let staged = false;
   let pb = null; // playback bundle
   let dom = null;
+  let lastBeginWallMs = 0; // onset instrumentation (dead-air audit, r6)
 
   function ensureDom() {
     if (dom) return dom;
@@ -619,6 +711,13 @@ export function createKillCam(deps) {
      * @param {object} game game state ({shells})
      */
     recordSimStep(game) {
+      // retire the one-shot program-warmup rig once the first battle has
+      // rendered it for ~1.5 s (sim stepping implies frames are flowing)
+      if (warmRig && ++warmSteps > 90) {
+        scene.remove(warmRig);
+        for (const gm of warmRig.userData.disposables) gm.dispose();
+        warmRig = null;
+      }
       for (const shell of game.shells) {
         if (shell.dead) continue;
         const rec = traj.get(shell.id);
@@ -711,6 +810,14 @@ export function createKillCam(deps) {
 
     /** Debug/testing introspection. */
     get phase() { return pb ? pb.phase : null; },
+
+    /**
+     * Wall-clock timestamp (performance.now()) of the last begin() — lets
+     * probes measure dead air between game.result being set and the replay
+     * owning the screen (r6: headless fastForward starved RAF and faked a
+     * 4.9 s onset; live runs must start the same frame).
+     */
+    get lastBeginWallMs() { return lastBeginWallMs; },
   };
 
   // -------------------------------------------------------------------------
@@ -728,6 +835,7 @@ export function createKillCam(deps) {
     sharedMats();
     active = true;
     staged = false;
+    lastBeginWallMs = performance.now();
     pb = {
       snap, kind, onDone,
       phase: 'flight', t: 0, xt: 0,
@@ -737,8 +845,9 @@ export function createKillCam(deps) {
       labels: [],
       pts: null, cum: null, total: 0, dur: 0, segIdx: 0,
       core: null, streak: null, trailGeo: null,
+      halo: null, tail: null, shellLight: null, muzzleLight: null,
       xcam: null,
-      fxGroup: null, fxWasVisible: true,
+      fxGroup: null, fxHidden: null,
       vegGroup: null, vegWasVisible: true,
     };
     pb.group.name = 'killcam';
@@ -747,12 +856,20 @@ export function createKillCam(deps) {
     // Suppress live battle FX for the whole replay: the victim's death
     // fireball/smoke rendered ON TOP of the x-ray ghost, and the dying
     // shell's neon tracer afterglow cut a bloomed beam across the frame
-    // (r2 critique). The fx module's root group is named 'fx'; hide it and
-    // restore in finish() so the death-cam wreck smoke resumes afterwards.
+    // (r2 critique). Hide the fx group's CHILDREN, not the group: its 2
+    // pooled PointLights must stay in the renderer's light count or every
+    // lit material recompiles at replay start (the 6.3 s first-frame stall,
+    // see LIGHT-COUNT note). Restored in finish() so the death-cam wreck
+    // smoke resumes afterwards.
     pb.fxGroup = scene.getObjectByName('fx') || null;
+    pb.fxHidden = null;
     if (pb.fxGroup) {
-      pb.fxWasVisible = pb.fxGroup.visible;
-      pb.fxGroup.visible = false;
+      pb.fxHidden = [];
+      for (const child of pb.fxGroup.children) {
+        if (child.isLight || !child.visible) continue;
+        child.visible = false;
+        pb.fxHidden.push(child);
+      }
     }
 
     // annotation block
@@ -792,6 +909,27 @@ export function createKillCam(deps) {
     // precompute the x-ray camera (flight blends into it)
     pb.xcam = computeXrayCam(snap);
 
+    // Key light on the victim for the WHOLE replay (hoisted out of the x-ray
+    // phase, r6: during flight the chased tank sat at frame center as a pure
+    // unlit black silhouette). Cool camera-side fill; the fresnel skin is
+    // self-lit but the internal proxies (Lambert) and the ground pool under
+    // the hull need it, and in flight it lifts the victim out of silhouette.
+    // All replay lights come from the PERMANENT kcLights pool (never
+    // added/removed — see LIGHT-COUNT note), only retuned here.
+    {
+      const pose = snap.pose;
+      const R = Math.max(9, snap.boundingRadiusM * 3.4);
+      const fill = kcLights[0];
+      fill.color.setHex(0xdfeaf4);
+      fill.intensity = 55;
+      fill.distance = R * 4.5;
+      fill.position.set(
+        pose.pos[0] + (pb.xcam.pos.x - pose.pos[0]) * 0.4,
+        pose.pos[1] + snap.heightM * 2.6,
+        pose.pos[2] + (pb.xcam.pos.z - pose.pos[2]) * 0.4,
+      );
+    }
+
     // flight setup
     const raw = snap.trajPts;
     if (!xrayOnly && raw && raw.length >= 6) {
@@ -825,6 +963,30 @@ export function createKillCam(deps) {
         pb.core = new THREE.Mesh(coreGeo, S.core);
         pb.streak = new THREE.Mesh(streakGeo, S.streak);
         pb.group.add(pb.core, pb.streak);
+        // Flight dressing (r6: 'white ball on an orange stick'):
+        //  - halo sprite — soft canvas-gradient glow, reads as tracer bloom
+        //    without touching the post chain's bloom threshold
+        //  - tail cone — velocity-stretched additive glow trailing the core
+        //    (base at the shell, apex ~13 m behind), motion-stretch read
+        //  - shell light — warm point light dragged with the tracer so it
+        //    actually illuminates terrain/fences/vehicles it passes (WT-style)
+        //  - muzzle light — brief cool fill at the shooter so the firing tank
+        //    is not a second black silhouette at the start of the chase
+        pb.halo = new THREE.Sprite(S.halo);
+        pb.halo.scale.set(3.1, 3.1, 1);
+        const tailGeo = new THREE.ConeGeometry(0.42, 13, 10, 1, true);
+        pb.disposables.push(tailGeo);
+        pb.tail = new THREE.Mesh(tailGeo, S.tail);
+        pb.group.add(pb.halo, pb.tail);
+        pb.shellLight = kcLights[1];
+        pb.shellLight.color.setHex(0xffc48a);
+        pb.shellLight.intensity = 120;
+        pb.shellLight.distance = 60;
+        pb.muzzleLight = kcLights[2];
+        pb.muzzleLight.color.setHex(0xe8f0fa);
+        pb.muzzleLight.intensity = 70;
+        pb.muzzleLight.distance = 55;
+        pb.muzzleLight.position.set(pts[0].x, pts[0].y + 2.5, pts[0].z);
         pb.phase = 'flight';
         updateFlight(0); // solve the first camera frame immediately
         return;
@@ -858,6 +1020,14 @@ export function createKillCam(deps) {
     pb.core.position.copy(_p);
     pb.streak.position.copy(_p).addScaledVector(_d, -2.6);
     pb.streak.quaternion.setFromUnitVectors(_Y, _d);
+    // glow dressing rides the core: halo on it, tail cone stretched back
+    // along the velocity (ConeGeometry apex = +Y -> point it at -_d), warm
+    // light slightly above the shell so the ground track picks it up
+    pb.halo.position.copy(_p);
+    pb.tail.position.copy(_p).addScaledVector(_d, -6.4);
+    pb.tail.quaternion.setFromUnitVectors(_Y, _s.copy(_d).negate());
+    pb.shellLight.position.set(_p.x, _p.y + 0.5, _p.z);
+    pb.muzzleLight.intensity = 70 * Math.max(0, 1 - u * 2.2); // fades early
 
     // chase camera: behind + beside the tracer, blending into the x-ray pose
     _s.crossVectors(_d, UP);
@@ -917,8 +1087,16 @@ export function createKillCam(deps) {
     if (pb.phase === 'xray') return;
     pb.phase = 'xray';
     pb.xt = 0;
-    // retire the flight tracer (keep the trail arcing into the tank)
-    if (pb.core) { pb.group.remove(pb.core, pb.streak); pb.core = pb.streak = null; }
+    // retire the flight tracer + its glow dressing (keep the trail arcing
+    // into the tank; the victim fill light stays for the hold). Pool lights
+    // are only DIMMED, never removed — removal changes the light count and
+    // recompiles every lit material mid-replay (LIGHT-COUNT note).
+    if (pb.core) {
+      pb.group.remove(pb.core, pb.streak, pb.halo, pb.tail);
+      pb.shellLight.intensity = 0;
+      pb.muzzleLight.intensity = 0;
+      pb.core = pb.streak = pb.halo = pb.tail = pb.shellLight = pb.muzzleLight = null;
+    }
     // Cap the visible trail to the final ~60 m of arc: the full muzzle-to-hull
     // polyline read as a beam lasering across the whole map during the hold.
     if (pb.trailGeo && pb.cum && pb.pts) {
@@ -978,23 +1156,11 @@ export function createKillCam(deps) {
       pb.vegGroup.visible = false;
     }
 
-    // 1b. key light on the wreck: the fresnel skin is self-lit, but the
-    // internal proxies (Lambert) and the ground pool under the hull get a
-    // cool camera-side fill so the vehicle stays the brightest element in
-    // frame (the world-space blackout billboard is GONE — the r4 staged
-    // frame read as a lighting bug: crushed terrain with one sunlit road
-    // stripe. Scene focus now comes only from the screen-space DOM veil,
-    // which is centered on the victim in projectLabels()).
-    {
-      const R = Math.max(9, snap.boundingRadiusM * 3.4);
-      const fill = new THREE.PointLight(0xdfeaf4, 55, R * 4.5, 2);
-      fill.position.set(
-        pose.pos[0] + (pb.xcam.pos.x - pose.pos[0]) * 0.4,
-        pose.pos[1] + snap.heightM * 2.6,
-        pose.pos[2] + (pb.xcam.pos.z - pose.pos[2]) * 0.4,
-      );
-      pb.group.add(fill);
-    }
+    // 1b. key light on the wreck: created in begin() for the whole replay
+    // (flight included) — cool camera-side fill so the vehicle stays the
+    // brightest element in frame; the world-space blackout billboard is GONE
+    // (r4: read as a lighting bug). Scene focus comes only from the
+    // screen-space DOM veil, centered on the victim in projectLabels().
 
     // 2. snapshot-posed frame groups (hull + turret), no live-state reads
     const poseGrp = new THREE.Group();
@@ -1334,8 +1500,9 @@ export function createKillCam(deps) {
           mesh.castShadow = !!cs;
         }
       }
-      if (pb.fxGroup) pb.fxGroup.visible = pb.fxWasVisible; // battle FX resume
+      if (pb.fxHidden) for (const c of pb.fxHidden) c.visible = true; // FX resume
       if (pb.vegGroup) pb.vegGroup.visible = pb.vegWasVisible; // vegetation back
+      for (const L of kcLights) L.intensity = 0; // pool dimmed, never removed
       for (const g of pb.disposables) g.dispose();
       scene.remove(pb.group);
       pb.group.clear();

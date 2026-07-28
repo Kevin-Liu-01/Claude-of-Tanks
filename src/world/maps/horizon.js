@@ -65,37 +65,43 @@ const PROFILES = {
     const billow = Math.pow(n1, 1.4);
     return row.base + (billow * 0.75 + n2 * 0.25) * row.amp;
   },
-  // glacial ranges: ridged-noise horns blended per-stretch with rounded domes
-  // and long shoulder benches, under a low-frequency massif envelope — real
-  // alpine walls read as distinct massifs split by lower saddle country, not
-  // one uniform comb of identical sharp teeth (the r2 sawtooth critique)
+  // glacial ranges REBUILT (r7): multi-octave ridged FBM under a massif
+  // envelope. The r6 profile shaped every summit from ONE ridged frequency
+  // cubed — straight-flanked triangles at near-even spacing, the critic's
+  // "1990s midpoint-displacement sawtooth". Four ridged octaves, each with
+  // its own domain warp and each riding ON the main ridge, give fractal
+  // flanks with secondary spurs, couloirs and shoulder benches; peak
+  // sharpness, height and spacing all wander independently around the ring
+  // so no two summits repeat.
   alpine(a, noi, row) {
-    // DOMAIN WARP (r5): the raw ridged field put near-identical teeth at
-    // near-identical spacing — warp the angular coordinate before every peak
-    // sample so wavelength and spacing wander around the ring
-    const warp = noi.noise(Math.cos(a) * 1.9 + 55, Math.sin(a) * 1.9 - 41) * 0.16;
-    const aw = a + warp;
+    // per-octave domain warp: wavelength/spacing wander around the ring
+    const w1 = noi.noise(Math.cos(a) * 1.9 + 55, Math.sin(a) * 1.9 - 41) * 0.16;
+    const w2 = noi.noise(Math.cos(a) * 3.1 - 12, Math.sin(a) * 3.1 + 29) * 0.07;
+    const aw = a + w1, aw2 = a + w1 * 0.6 + w2;
     // massif envelope (~2 wavelengths around the ring): tall ranges vs
     // saddle stretches at ~55% height
     const env = noi.noise(Math.cos(a) * 0.62 + 3.1, Math.sin(a) * 0.62 - 8.7) * 0.5 + 0.5;
-    const mass = 0.58 + 0.62 * smoothstep(0.22, 0.82, env);
+    const mass = 0.55 + 0.65 * smoothstep(0.20, 0.84, env);
     // peak-shape selector, independent slow noise: 0 = rounded shoulder
     // domes, 1 = sharp glacial horns — so neighbouring summits differ
-    const sel = smoothstep(0.3, 0.7, noi.noise(Math.cos(a) * 1.15 - 14.2, Math.sin(a) * 1.15 + 6.4) * 0.5 + 0.5);
-    const r1 = 1 - Math.abs(noi.noise(Math.cos(aw) * row.f0 + 21, Math.sin(aw) * row.f0 - 17));
-    const r2 = 1 - Math.abs(noi.noise(Math.cos(aw) * row.f1 * 1.7 - 31, Math.sin(aw) * row.f1 * 1.7 + 13));
-    const horn = r1 * r1 * r1;
-    // dome variant: same ridged field, softened exponent + slight widening
-    const dome = Math.pow(r1, 1.35) * 0.72;
-    const peak = dome + (horn - dome) * sel;
+    const sel = smoothstep(0.28, 0.72, noi.noise(Math.cos(a) * 1.15 - 14.2, Math.sin(a) * 1.15 + 6.4) * 0.5 + 0.5);
+    const R = (ang, f, off) => 1 - Math.abs(noi.noise(Math.cos(ang) * f + off, Math.sin(ang) * f - off * 0.7));
+    const o1 = R(aw, row.f0, 21);
+    const o2 = R(aw2, row.f0 * 2.15, 57);
+    const o3 = R(aw, row.f0 * 4.4, 93);
+    const o4 = R(aw2, row.f0 * 8.9, 131);
+    // main ridge NEVER cubed (pow 1.5 dome country -> 2.4 horn country);
+    // finer octaves are amplitude-keyed to the main ridge so spurs grow out
+    // of the massifs instead of filling the saddles with even chop
+    const main = Math.pow(o1, 1.5 + sel * 0.9);
+    const h = main * 0.60
+      + o2 * o2 * 0.20 * (0.45 + 0.55 * o1)
+      + o3 * 0.10 * (0.35 + 0.65 * o1)
+      + o4 * 0.05 * (0.30 + 0.70 * o1);
     // per-peak amplitude jitter: neighbouring summits differ in height, not
     // just shape, so the ring never settles into an even-spaced comb
-    const ampJit = 0.78 + 0.44 * (noi.noise(Math.cos(a) * 2.6 - 44, Math.sin(a) * 2.6 + 71) * 0.5 + 0.5);
-    // crest serration only survives on the sharp stretches; dome country
-    // carries a longer soft undulation instead
-    const jag = noi.noise(Math.cos(aw) * 14.0 + 5, Math.sin(aw) * 14.0 - 3) * sel;
-    const swell = noi.noise(Math.cos(a) * 3.3 + 27, Math.sin(a) * 3.3 - 19) * (1 - sel);
-    return row.base + ((peak * 0.8 * ampJit + r2 * r2 * 0.28) * mass + jag * 0.05 + swell * 0.06) * row.amp;
+    const ampJit = 0.76 + 0.48 * (noi.noise(Math.cos(a) * 2.6 - 44, Math.sin(a) * 2.6 + 71) * 0.5 + 0.5);
+    return row.base + h * mass * ampJit * row.amp * 1.15;
   },
   // stepped tablelands: noise pushed through plateau terraces -> long flat
   // caps with cliff edges, plus lone buttes between the tables
@@ -262,12 +268,29 @@ function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyA
       }
       if (snowline <= 1) {
         const sw = smoothstep(snowline - 0.02, snowline + 0.09, v + wn(u, v, 24, 24, 51) * 0.05);
-        // snow: flatten detail toward a cool white, keep faint wind texture
-        // and let the strongest rock ribs pierce the caps
-        const snowL = 1.03 + wn(u, v, 40, 50, 61) * 0.03 - gully * 0.12;
-        r += (snowL * 0.98 - r) * sw * 0.94;
-        gc += (snowL * 1.0 - gc) * sw * 0.94;
-        b += (snowL * 1.04 - b) * sw * 0.94;
+        // r7 SNOW SURFACE DETAIL: the near-constant 0.03 wind noise left every
+        // snowed face reading as an untextured smooth sheet (the "faceted
+        // low-poly with untextured faces" critique). Three structure scales:
+        //  - sastrugi: wind-carved drift banding, gently diagonal, broad in v
+        //  - drift shadows: large soft accumulation basins between spurs
+        //  - rock ribs: dark spur lines piercing the caps where gullies run,
+        //    plus sparse crag windows on the steeper mid-band (broad in v so
+        //    tangential grazing cannot comb them into stripes)
+        const sast = wn(u, v, 52, 17, 361) * 0.5 + wn(u, v, 21, 7, 409) * 0.5;
+        const basin = wn(u, v, 5.5, 3.2, 477);
+        // rib lines from the RAW ridged field (the gullyAmp-scaled `gully` is
+        // ~0.12 on alpine — far too faint to survive the ring fog)
+        const ribRaw = smoothstep(0.90, 0.99, g);
+        const ribMask = smoothstep(0.50, 0.80, wn(u, v * 0.4, 13, 2.0, 533) * 0.5 + 0.5);
+        const crag = smoothstep(0.70, 0.92, wn(u, v, 26, 6.5, 601) * 0.5 + 0.5)
+          * smoothstep(0.30, 0.55, v) * (1 - smoothstep(0.80, 0.95, v));
+        const snowL = 1.03 + sast * 0.09 + basin * 0.09 - gully * 0.16 - ribRaw * ribMask * 0.30;
+        let sr = snowL * 0.98, sg = snowL * 1.0, sb = snowL * 1.04;
+        // crag windows: bare cool rock showing through the mid-flank snow
+        sr += (0.60 - sr) * crag * 0.75; sg += (0.63 - sg) * crag * 0.75; sb += (0.70 - sb) * crag * 0.75;
+        r += (sr - r) * sw * 0.94;
+        gc += (sg - gc) * sw * 0.94;
+        b += (sb - b) * sw * 0.94;
       }
       const j = (y * su + x) * 4;
       d[j] = clamp(r * 159, 0, 255);
@@ -383,7 +406,12 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
   const snowC = new THREE.Color(H.snowHex ?? 0xeef2f7);
   const forestC = new THREE.Color(H.forestHex ?? 0x2e4230);
   const snowline = H.snowline ?? (style === 'alpine' ? 0.42 : 2); // >1 disables
-  const treeline = H.treeline ?? (style === 'rolling' ? 0.55 : style === 'escarpment' ? 0.5 : 0);
+  // r7: vegetated default treelines pushed near the crests (0.55/0.5 ->
+  // 0.90/0.88). The old constant-altitude cutoff drew a horizontal band
+  // across every hill where forest texture gave way to smooth bald ramp —
+  // the critic's "artificial terrace band" + "bald gradient slopes". At
+  // these view distances real hill country reads forested to the summit.
+  const treeline = H.treeline ?? (style === 'rolling' ? 0.90 : style === 'escarpment' ? 0.88 : 0);
   const banding = H.banding ?? (style === 'mesa' ? 0.16 : 0);
   // soft vegetated hills carry far less exposed rock / flank contrast than
   // cliff-forming styles — full strength there reads as curtain striping
@@ -450,11 +478,34 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
   const uvA = new Float32Array(nv * 2);
   const hs = new Float32Array(nv);
   let maxH = 1;
+  // >>> gameplay_feel r4: keep every ring row OUTSIDE the playable square. --
+  // The rows are circles but the map is a SQUARE (half-width ~512): a
+  // 428/470 m skirt circle lies entirely INSIDE that square, so anywhere the
+  // player drives past radius ~430 from map center (the r4 critique's rough
+  // drive spot sat at r=474) the opaque 22-38 m skirt wall stood in the
+  // MIDDLE of the playfield and filled the whole chase/scope frame as a
+  // featureless smeared "green wall" (drive_chase.png; reproduced and
+  // isolated by hiding horizon-* meshes — scratchpad/gfdiag). Warp each
+  // row's radius to hug the square rim instead:
+  //   rEff(a) = max(row.r, rimDist(a) + margin_row)
+  // with rimDist(a) = HALF_W / max(|cos a|, |sin a|) the distance from map
+  // center to the square rim along that azimuth. Axis-facing stretches are
+  // unchanged (row.r already clears the rim there); the edge/corner wedges
+  // push outward, so the backdrop becomes a rounded square that can never
+  // enter the playfield. The treeline combs follow automatically (they read
+  // the warped crest vertices).
+  const RIM_HALF_W = 512;
+  const ROW_RIM_MARGIN = [-34, 22, 95, 280, 520, 800];
+  // <<< gameplay_feel r4 ------------------------------------------------------
   for (let ri = 0; ri < rows.length; ri++) {
     const row = rows[ri];
     for (let k = 0; k < N; k++) {
       const a = (k / N) * Math.PI * 2;
-      const jr = row.r * (1 + 0.03 * noi.noise(Math.cos(a) * 4 + ri * 13, Math.sin(a) * 4 - ri * 7));
+      // >>> gameplay_feel r4: square-rim radius clamp (see note above)
+      const rim = RIM_HALF_W / Math.max(Math.abs(Math.cos(a)), Math.abs(Math.sin(a)));
+      const rEff = Math.max(row.r, rim + (ROW_RIM_MARGIN[ri] ?? 300));
+      const jr = rEff * (1 + 0.03 * noi.noise(Math.cos(a) * 4 + ri * 13, Math.sin(a) * 4 - ri * 7));
+      // <<< gameplay_feel r4
       let hh;
       if (row.skirt) {
         hh = row.base + (noi.noise(Math.cos(a) * row.f0, Math.sin(a) * row.f0) * 0.5 + 0.5) * row.amp;
@@ -589,7 +640,11 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
       if (snowline <= 1) {
         const band = smoothstep(snowline, snowline + 0.16, t +
           gnoi.noise(Math.cos(a) * 6 - 9, Math.sin(a) * 6 + 4) * 0.07);
-        const hold = 1 - smoothstep(0.45, 0.9, slope); // cliffs shed snow
+        // r7: shed band 0.45-0.9 -> 0.30-0.68 — the old hold kept nearly
+        // every face snowbound and the whole ring flattened into uniform
+        // cream pyramids; steep flanks now expose cool rock ribs, giving the
+        // slope-based snow/rock banding a real range shows
+        const hold = 1 - smoothstep(0.30, 0.68, slope);
         c.lerp(snowC, clamp(band * 0.95 + (1 - band) * 0.38, 0, 1) * hold);
       }
       // lighting_post r3: real N·L against the map sun — sun-facing slopes
@@ -668,7 +723,9 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
   // sheared strata into vertical melt on the far walls; vegetated styles get
   // ZERO (the canopy texture owns those faces, and any downslope streak
   // reads as curtain fabric on a forested hill)
-  const gullyAmp = style === 'alpine' ? 0.24 : style === 'mesa' ? 0.14 : 0.0;
+  // r7: alpine 0.24 -> 0.12 — the residual chutes still striped the big
+  // near walls with vertical fiber under the winter overcast
+  const gullyAmp = style === 'alpine' ? 0.12 : style === 'mesa' ? 0.14 : 0.0;
   const detailTex = makeHorizonTexture(gnoi, {
     banding, snowline, treeline, grainAmp, gullyAmp, coolRock: style === 'alpine',
   });
@@ -718,7 +775,9 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
         const fade = 1 - smoothstep(tlH * 0.8, tlH * 1.12, hh);
         const a = (kk / N) * Math.PI * 2;
         const hn = gnoi.noise(Math.cos(a) * 5.3 + ri * 9, Math.sin(a) * 5.3 - ri * 5) * 0.5 + 0.5;
-        const span = (5 + 8 + hn * 12) * fade; // buried 5 m + 8-20 m of crowns
+        // r7: crown span scales with row radius so far-ring combs keep their
+        // angular weight — distant ridges must read forested, not stubbled
+        const span = (5 + (8 + hn * 12) * (0.85 + row.r / 2600)) * fade;
         const inw = 0.995; // plant just inside the crest line
         cPos.push(x * inw, hh - 5, z * inw, x * inw, hh - 5 + span, z * inw);
         // lighting_post r3: combs inherit extra aerial haze (row.aer * 0.5)

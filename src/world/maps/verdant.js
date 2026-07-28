@@ -35,7 +35,7 @@ export default {
     // lines in establishing shots, not loose orchards
     clusterCount: 64,
     loneCount: 130,
-    rimCount: 74,
+    rimCount: 92, // r7: closed rim tree line bridging field -> horizon ring
     grassDensity: 1,
     bushCount: 1,
     bushSpecies: 'oak',
@@ -60,7 +60,10 @@ export default {
   horizon: {
     // warm green uplands: cooler bases washed the whole wall toward denim
     // once the fog lerp stacked on top
-    baseHex: 0x4d6540, amp: 1.0, style: 'rolling', treeline: 0.62,
+    // r7: treeline 0.62 -> 0.94 — the constant-altitude forest cutoff drew a
+    // horizontal terrace band across every hill and left the outer domes
+    // bald; hills at this distance read forested to the crest
+    baseHex: 0x4d6540, amp: 1.0, style: 'rolling', treeline: 0.94,
     // r6: grain 0.7 — the residual granular speckle above the treeline still
     // smeared under tangential grazing on the highest bald summits
     forestHex: 0x33502e, rockHex: 0x77725f, haze: 0.85, grain: 0.7,
