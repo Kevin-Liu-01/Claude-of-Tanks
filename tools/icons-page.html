@@ -1,0 +1,185 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>tank icon generator</title></head>
+<body>
+<script type="module">
+// Offscreen studio for tools/genIcons.mjs: renders every roster tank's FINAL
+// shipped model (createTank — same code path as the game, procedural or GLB
+// per specs.MODEL_SOURCE) on a transparent background with neutral studio
+// lighting, from three canonical angles. Exposes window.__GEN(ids) returning
+// { "<id>_<view>.png": dataURL }.
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+import { TANK_IDS } from '/src/vehicles/specs.js';
+
+const BASE = 512;           // base output resolution (px)
+const SS = 2;               // supersample factor for crisp downscaled edges
+const MARGIN = 1.07;        // bounding-box normalized margin (same for all tanks)
+
+const renderer = new THREE.WebGLRenderer({
+  antialias: true, alpha: true, preserveDrawingBuffer: true,
+});
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05; // matches src/engine/renderer.js
+renderer.setClearColor(0x000000, 0);
+
+const scene = new THREE.Scene();
+// Neutral studio: soft white hemisphere + warm-neutral key from front-left-top,
+// cool fill from the right, rim from behind for edge separation.
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a929c, 1.15));
+const key = new THREE.DirectionalLight(0xfff6ea, 2.5);
+key.position.set(-4, 6, 5);
+const fill = new THREE.DirectionalLight(0xe8f0ff, 0.9);
+fill.position.set(5, 2.5, 1);
+const rim = new THREE.DirectionalLight(0xffffff, 1.3);
+rim.position.set(1.5, 4, -6);
+scene.add(key, fill, rim);
+
+// Capture the current scene with `cam` into a w x h PNG dataURL.
+// Renders at SS x supersample and downscales for clean edges.
+function capture(cam, w, h) {
+  renderer.setSize(w * SS, h * SS, false);
+  renderer.render(scene, cam);
+  const out = document.createElement('canvas');
+  out.width = w; out.height = h;
+  const c = out.getContext('2d');
+  c.imageSmoothingEnabled = true;
+  c.imageSmoothingQuality = 'high';
+  c.drawImage(renderer.domElement, 0, 0, w, h);
+  return out;
+}
+
+// Flat single-color (white) silhouette of a rendered canvas, at outW x outH.
+// White + boosted alpha keeps antialiased edges; consumers tint via
+// source-in composite or CSS mask (green self / red enemies on the minimap).
+function silhouette(srcCanvas, outW, outH) {
+  const full = document.createElement('canvas');
+  full.width = srcCanvas.width; full.height = srcCanvas.height;
+  const fc = full.getContext('2d');
+  fc.drawImage(srcCanvas, 0, 0);
+  const img = fc.getImageData(0, 0, full.width, full.height);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const a = d[i + 3];
+    d[i] = 255; d[i + 1] = 255; d[i + 2] = 255;
+    d[i + 3] = a < 8 ? 0 : Math.min(255, a * 1.8);
+  }
+  fc.putImageData(img, 0, 0);
+  const out = document.createElement('canvas');
+  out.width = outW; out.height = outH;
+  const c = out.getContext('2d');
+  c.imageSmoothingEnabled = true;
+  c.imageSmoothingQuality = 'high';
+  c.drawImage(full, 0, 0, outW, outH);
+  return out;
+}
+
+// Tight square crop around the rendered content (alpha scan) with a fixed
+// margin fraction — normalizes the hero framing across tanks regardless of
+// how conservative the bounding-sphere fit was.
+function autoCropSquare(src, outSize, marginFrac = 0.05) {
+  const c = src.getContext('2d');
+  const img = c.getImageData(0, 0, src.width, src.height);
+  const d = img.data;
+  let x0 = src.width, y0 = src.height, x1 = 0, y1 = 0;
+  for (let y = 0; y < src.height; y++) {
+    for (let x = 0; x < src.width; x++) {
+      if (d[(y * src.width + x) * 4 + 3] > 8) {
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
+    }
+  }
+  if (x1 <= x0) return src; // nothing rendered — leave as-is
+  const w = x1 - x0 + 1, h = y1 - y0 + 1;
+  const side = Math.max(w, h) * (1 + marginFrac * 2);
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const out = document.createElement('canvas');
+  out.width = outSize; out.height = outSize;
+  const oc = out.getContext('2d');
+  oc.imageSmoothingEnabled = true;
+  oc.imageSmoothingQuality = 'high';
+  oc.drawImage(src, cx - side / 2, cy - side / 2, side, side, 0, 0, outSize, outSize);
+  return out;
+}
+
+function orthoCam(center, size, dir, up, halfW, halfH) {
+  const dist = Math.max(size.x, size.y, size.z) * 2 + 6; // well inside LOD0 range
+  const cam = new THREE.OrthographicCamera(-halfW, halfW, halfH, -halfH, 0.1, dist * 3);
+  cam.up.set(up[0], up[1], up[2]);
+  cam.position.set(center.x + dir[0] * dist, center.y + dir[1] * dist, center.z + dir[2] * dist);
+  cam.lookAt(center);
+  cam.updateMatrixWorld();
+  return cam;
+}
+
+function genOne(id) {
+  const visual = createTank(id, null, { camoSeed: 4100, quality: 'high' });
+  const root = visual.root;
+  scene.add(root);
+  root.updateMatrixWorld(true);
+  // Force LOD selection off camera distance ambiguity: bounding box of the
+  // full-detail model (level-0 children carry all geometry).
+  const box = new THREE.Box3().setFromObject(root);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const out = {};
+
+  // --- top: orthographic top-down, hull forward (+Z) pointing UP ------------
+  {
+    const half = (Math.max(size.x, size.z) / 2) * MARGIN;
+    const cam = orthoCam(center, size, [0, 1, 0], [0, 0, 1], half, half);
+    const c = capture(cam, BASE, BASE);
+    out[`${id}_top.png`] = c.toDataURL('image/png');
+    out[`${id}_top_silhouette.png`] = silhouette(c, 128, 128).toDataURL('image/png');
+  }
+
+  // --- side: orthographic profile, front facing RIGHT (view from -X) --------
+  {
+    const aspect = 2; // 512x256
+    const halfH = Math.max(size.y / 2, size.z / 2 / aspect) * MARGIN;
+    const halfW = halfH * aspect;
+    const cam = orthoCam(center, size, [-1, 0, 0], [0, 1, 0], halfW, halfH);
+    const c = capture(cam, BASE, BASE / 2);
+    out[`${id}_side.png`] = c.toDataURL('image/png');
+    out[`${id}_side_silhouette.png`] = silhouette(c, 256, 128).toDataURL('image/png');
+  }
+
+  // --- angle: 3/4 hero from slightly above-front-left (perspective) ---------
+  {
+    const fov = 30;
+    const sphere = box.getBoundingSphere(new THREE.Sphere());
+    const dist = (sphere.radius * MARGIN) / Math.sin((fov / 2) * Math.PI / 180);
+    const dir = new THREE.Vector3(-0.62, 0.30, 1.0).normalize();
+    const cam = new THREE.PerspectiveCamera(fov, 1, 0.1, dist * 4);
+    cam.position.copy(center).addScaledVector(dir, dist);
+    cam.lookAt(center);
+    cam.updateMatrixWorld();
+    // render loose at high res, then normalize framing by alpha auto-crop
+    const c = autoCropSquare(capture(cam, BASE * 2, BASE * 2), BASE, 0.05);
+    out[`${id}_angle.png`] = c.toDataURL('image/png');
+  }
+
+  scene.remove(root);
+  visual.dispose();
+  return out;
+}
+
+window.__GEN = (ids) => {
+  const out = {};
+  for (const id of (ids && ids.length ? ids : TANK_IDS)) {
+    try {
+      Object.assign(out, genOne(id));
+    } catch (e) {
+      out[`${id}.error`] = String(e && e.stack || e);
+    }
+  }
+  return out;
+};
+window.__ICONS_READY = true;
+</script>
+</body>
+</html>
