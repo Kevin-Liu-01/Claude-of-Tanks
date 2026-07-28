@@ -14,11 +14,12 @@ const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 
 const CLASS_LABEL = {
   light: 'Light tank', medium: 'Medium tank', heavy: 'Heavy tank',
-  mbt: 'Main battle tank', td: 'Tank destroyer',
+  mbt: 'Main battle tank', td: 'Tank destroyer', ifv: 'Infantry fighting vehicle',
 };
 
-// WoT-style class lanes (top to bottom). MBTs continue the medium line.
-const LANE = { light: 0, medium: 1, mbt: 1, heavy: 2, td: 3 };
+// WoT-style class lanes (top to bottom). MBTs continue the medium line;
+// IFVs ride the scout (light) lane.
+const LANE = { light: 0, medium: 1, mbt: 1, heavy: 2, td: 3, ifv: 0 };
 const LANE_LABEL = ['LIGHT', 'MEDIUM · MBT', 'HEAVY', 'TANK DESTROYER'];
 
 // ---------------------------------------------------------------------------
@@ -85,10 +86,14 @@ export function recordBattleResult({ result, kills = 0, damage = 0 } = {}) {
   return _lastEarnings;
 }
 
-// n(key, name, tier, cls, era, opts) — opts: {spec:'realSpecId', from:[keys]}
-// The vertical lane comes from the class, WoT-style.
+// n(key, name, tier, cls, era, opts) — opts: {spec:'realSpecId', from:[keys],
+// row: lane override} — row lets a second same-class line use a free lane
+// (e.g. the USA M1A1/TUSK ladder rides the HEAVY lane next to the SEPv3 line).
 function n(key, name, tier, cls, era, o = {}) {
-  return { key, name, tier, row: LANE[cls] ?? 1, cls, era, specId: o.spec || null, from: o.from || [] };
+  return {
+    key, name, tier, row: o.row != null ? o.row : (LANE[cls] ?? 1),
+    cls, era, specId: o.spec || null, from: o.from || [],
+  };
 }
 
 // NOTE on spec wiring: nodes may carry a specId that is not shipped yet
@@ -109,24 +114,29 @@ const TABS = [
       n('chaffee', 'M24 Chaffee', 5, 'light', 'ww2', { from: ['m5'] }),
       n('t37', 'T37', 6, 'light', 'ww2', { from: ['chaffee'] }),
       n('t71', 'T71 DA', 7, 'light', 'ww2', { from: ['t37'] }),
-      n('m41wb', 'M41 Walker Bulldog', 8, 'light', 'modern', { from: ['t71'] }),
-      n('sheridan', 'M551 Sheridan', 9, 'light', 'modern', { from: ['m41wb'] }),
+      // MODERN EXPANSION: the scout line tops out in the Bradley IFV
+      n('bradley', 'M2A2 Bradley', 8, 'ifv', 'modern', { spec: 'm2a2_bradley', from: ['t71'] }),
+      n('sheridan', 'M551 Sheridan', 9, 'light', 'modern', { from: ['bradley'] }),
       n('m3lee', 'M3 Lee', 4, 'medium', 'ww2', { from: ['m3stuart'] }),
       n('m4', 'M4 Sherman', 5, 'medium', 'ww2', { from: ['m3lee'] }),
       n('e8', 'M4A3E8 Sherman', 6, 'medium', 'ww2', { spec: 'm4a3e8', from: ['m4'] }),
       n('t20', 'T20', 7, 'medium', 'ww2', { from: ['e8'] }),
       n('t29', 'T29', 7, 'heavy', 'ww2', { from: ['e8'] }),
       n('t32', 'T32', 8, 'heavy', 'ww2', { from: ['t29'] }),
-      n('m103', 'M103', 9, 'heavy', 'ww2', { from: ['t32'] }),
-      n('t110e5', 'T110E5', 10, 'heavy', 'ww2', { from: ['m103'] }),
+      // MODERN EXPANSION: second Abrams ladder rides the free heavy lane —
+      // M1A1 (variant GLB) into the TUSK survivability flagship
+      n('m1a1', 'M1A1 Abrams', 9, 'mbt', 'modern', { spec: 'm1a1', from: ['m26'], row: 2 }),
+      n('m1a2tusk', 'M1A2 Abrams TUSK', 10, 'mbt', 'modern', { spec: 'm1a2_tusk', from: ['m1a1'], row: 2 }),
       n('m26', 'M26 Pershing', 8, 'medium', 'ww2', { spec: 'm26', from: ['t20'] }),
-      n('m60', 'M60 Patton', 9, 'mbt', 'modern', { from: ['m26'] }),
+      // ghost carries the roster's sourced-ready M60A3 spec id — lights up
+      // automatically the moment the toshueyi GLB integration lands
+      n('m60', 'M60A3 Patton', 9, 'mbt', 'modern', { spec: 'm60a3', from: ['m26'] }),
       n('abrams', 'M1A2 Abrams SEPv3', 10, 'mbt', 'modern', { spec: 'm1a2', from: ['m60'] }),
       n('m10', 'M10 Wolverine', 5, 'td', 'ww2', { from: ['m3lee'] }),
       n('hellcat', 'M18 Hellcat', 6, 'td', 'ww2', { from: ['m10'] }),
       n('m36', 'M36 Jackson', 7, 'td', 'ww2', { spec: 'm36', from: ['hellcat'] }),
       n('t28us', 'T28', 8, 'td', 'ww2', { from: ['m36'] }),
-      n('t30', 'T30', 9, 'td', 'ww2', { from: ['t28us'] }),
+      n('t30', 'T30', 9, 'td', 'ww2', { spec: 't30', from: ['t28us'] }),
     ],
   },
   {
@@ -143,24 +153,30 @@ const TABS = [
       n('vk1602', 'VK 16.02 Leopard', 6, 'light', 'ww2', { from: ['luchs'] }),
       n('aufklpanther', 'Aufklärungspanther', 7, 'light', 'ww2', { from: ['vk1602'] }),
       n('ru251', 'Spähpanzer Ru 251', 8, 'light', 'ww2', { from: ['aufklpanther'] }),
+      // MODERN EXPANSION: the paper-armor speedster continues the scout lane
+      n('leo1a5', 'Leopard 1A5', 9, 'mbt', 'modern', { spec: 'leo1a5', from: ['ru251'], row: 0 }),
+      // ghost carries the sourced-ready KF51 spec id (kf51-grip420 GLB) —
+      // lights up automatically when that integration lands
+      n('kf51', 'KF51 Panther', 10, 'mbt', 'modern', { spec: 'kf51', from: ['leo1a5'], row: 0 }),
       n('pz3', 'Pz.Kpfw. III', 4, 'medium', 'ww2', { from: ['pz38t'] }),
       n('pz4', 'Pz.Kpfw. IV Ausf. H', 5, 'medium', 'ww2', { from: ['pz3'] }),
       n('vk3002m', 'VK 30.02 (M)', 6, 'medium', 'ww2', { from: ['pz4'] }),
       n('panther', 'Panther Ausf. G', 7, 'medium', 'ww2', { spec: 'panther_g', from: ['vk3002m'] }),
-      n('panther2', 'Panther II', 8, 'medium', 'ww2', { from: ['panther'] }),
+      // MODERN EXPANSION: the full Leopard 2 family ladder (2A4 -> 2A6 -> 2A7)
+      n('leo2a4', 'Leopard 2A4', 8, 'mbt', 'modern', { spec: 'leo2a4', from: ['panther'] }),
+      n('leo2a6', 'Leopard 2A6', 9, 'mbt', 'modern', { spec: 'leo2a6', from: ['leo2a4'] }),
+      n('leo2', 'Leopard 2A7', 10, 'mbt', 'modern', { spec: 'leo2a7', from: ['leo2a6'] }),
       n('vk3601', 'VK 36.01 (H)', 6, 'heavy', 'ww2', { from: ['pz4'] }),
       n('tiger', 'Tiger I', 7, 'heavy', 'ww2', { spec: 'tiger1', from: ['vk3601'] }),
       n('tiger2', 'Tiger II', 8, 'heavy', 'ww2', { spec: 'tiger2', from: ['tiger'] }),
       n('e75', 'E 75', 9, 'heavy', 'ww2', { from: ['tiger2'] }),
       n('maus', 'Maus', 10, 'heavy', 'ww2', { from: ['e75'] }),
-      n('leo1', 'Leopard 1', 9, 'mbt', 'modern', { from: ['panther2', 'ru251'] }),
-      n('leo2', 'Leopard 2A7', 10, 'mbt', 'modern', { spec: 'leo2a7', from: ['leo1'] }),
       n('stug', 'StuG III Ausf. G', 5, 'td', 'ww2', { from: ['pz3'] }),
       n('jpz4', 'Jagdpanzer IV', 6, 'td', 'ww2', { from: ['stug'] }),
       n('jagdpanther', 'Jagdpanther', 7, 'td', 'ww2', { spec: 'jagdpanther', from: ['jpz4'] }),
       n('ferdinand', 'Ferdinand', 8, 'td', 'ww2', { from: ['jagdpanther'] }),
-      n('jagdtiger', 'Jagdtiger', 9, 'td', 'ww2', { from: ['ferdinand'] }),
-      n('jpze100', 'Jagdpanzer E 100', 10, 'td', 'ww2', { from: ['jagdtiger'] }),
+      n('jagdtiger', 'Jagdtiger', 9, 'td', 'ww2', { spec: 'jagdtiger', from: ['ferdinand'] }),
+      n('jpze100', 'Jagdpanzer E 100', 10, 'td', 'ww2', { spec: 'jpz_e100', from: ['jagdtiger'] }),
     ],
   },
   {
@@ -174,14 +190,18 @@ const TABS = [
       n('t80l', 'T-80', 4, 'light', 'ww2', { from: ['bt7'] }),
       n('t50', 'T-50', 5, 'light', 'ww2', { from: ['t80l'] }),
       n('mt25', 'MT-25', 6, 'light', 'ww2', { from: ['t50'] }),
-      n('ltg', 'LTG', 7, 'light', 'ww2', { from: ['mt25'] }),
-      n('lttb', 'LTTB', 8, 'light', 'ww2', { from: ['ltg'] }),
+      // MODERN EXPANSION: the scout lane flows into the flanker IFV, the
+      // turbine hot-rod T-80U and tops out at the T-14 Armata flagship
+      n('bmp2', 'BMP-2', 7, 'ifv', 'modern', { spec: 'bmp2', from: ['mt25'] }),
+      n('t80u', 'T-80U', 8, 'mbt', 'modern', { spec: 't80u', from: ['bmp2'], row: 0 }),
+      n('t14', 'T-14 Armata', 10, 'mbt', 'modern', { spec: 't14', from: ['t80u'], row: 0 }),
       n('t28', 'T-28', 4, 'medium', 'ww2', { from: ['bt7'] }),
       n('t34', 'T-34', 5, 'medium', 'ww2', { from: ['t28'] }),
       n('t3485', 'T-34-85', 6, 'medium', 'ww2', { spec: 't34_85', from: ['t34'] }),
-      n('t54', 'T-54', 8, 'medium', 'ww2', { spec: 't54', from: ['t3485'] }),
-      n('t72', 'T-72B', 9, 'mbt', 'modern', { from: ['t54', 'lttb'] }),
-      n('t90', 'T-90M Proryv', 10, 'mbt', 'modern', { spec: 't90m', from: ['t72'] }),
+      // MODERN EXPANSION: T-72B3 (procedural) -> T-90A (variant GLB) -> T-90M
+      n('t72b3', 'T-72B3', 8, 'mbt', 'modern', { spec: 't72b3', from: ['t3485'] }),
+      n('t90a', 'T-90A', 9, 'mbt', 'modern', { spec: 't90a', from: ['t72b3'] }),
+      n('t90', 'T-90M Proryv', 10, 'mbt', 'modern', { spec: 't90m', from: ['t90a'] }),
       n('kv1', 'KV-1', 5, 'heavy', 'ww2', { from: ['bt7'] }),
       n('kv85', 'KV-85', 6, 'heavy', 'ww2', { from: ['kv1'] }),
       n('is2', 'IS-2', 7, 'heavy', 'ww2', { spec: 'is2', from: ['kv85'] }),
@@ -190,13 +210,82 @@ const TABS = [
       // on the COMMUNITY tab — the node lights gold and routes to that spec
       n('is3', 'IS-3', 8, 'heavy', 'ww2', { spec: 'is3', from: ['is2'] }),
       n('t10', 'T-10', 9, 'heavy', 'ww2', { from: ['is3'] }),
-      n('is7', 'IS-7', 10, 'heavy', 'ww2', { from: ['t10'] }),
+      // cross-linked to the community-sourced IS-7 (same rule as IS-3 above)
+      n('is7', 'IS-7', 10, 'heavy', 'ww2', { spec: 'is7', from: ['t10'] }),
       n('su76', 'SU-76M', 3, 'td', 'ww2', { from: ['t26'] }),
       n('su85', 'SU-85', 5, 'td', 'ww2', { from: ['su76'] }),
       n('su100', 'SU-100', 6, 'td', 'ww2', { spec: 'su100', from: ['su85'] }),
       n('su152', 'SU-152', 7, 'td', 'ww2', { from: ['su100'] }),
       n('isu152', 'ISU-152', 8, 'td', 'ww2', { from: ['su152'] }),
       n('obj704', 'Object 704', 9, 'td', 'ww2', { from: ['isu152'] }),
+    ],
+  },
+  // -------------------------------------------------------------------------
+  // MODERN EXPANSION nation tabs (docs/research/modern-roster.md): compact
+  // ladders — a couple of era-bridging ghost ancestors feeding each shipped
+  // modern vehicle, so every new nation reads as a tree, not a lone card.
+  // -------------------------------------------------------------------------
+  {
+    id: 'uk', label: 'UK', flags: [['UK', 'modern']],
+    nodes: [
+      n('cromwell', 'Cromwell', 4, 'medium', 'ww2'),
+      n('comet', 'Comet', 5, 'medium', 'ww2', { from: ['cromwell'] }),
+      n('centurion', 'Centurion Mk 7', 6, 'medium', 'modern', { from: ['comet'] }),
+      n('chieftain', 'Chieftain Mk 10', 7, 'mbt', 'modern', { spec: 'chieftain_mk10', from: ['centurion'] }),
+      n('challenger1', 'Challenger 1', 8, 'mbt', 'modern', { from: ['chieftain'] }),
+      n('challenger2', 'Challenger 2', 9, 'mbt', 'modern', { spec: 'challenger2', from: ['challenger1'] }),
+    ],
+  },
+  {
+    id: 'france', label: 'France', flags: [['France', 'modern']],
+    nodes: [
+      n('amx13', 'AMX-13', 6, 'light', 'modern'),
+      n('amx30', 'AMX-30B', 8, 'mbt', 'modern', { from: ['amx13'] }),
+      n('leclerc', 'Leclerc S2', 9, 'mbt', 'modern', { spec: 'leclerc', from: ['amx30'] }),
+    ],
+  },
+  {
+    id: 'israel', label: 'Israel', flags: [['Israel', 'modern']],
+    nodes: [
+      n('m50sherman', 'M-50 Super Sherman', 6, 'medium', 'ww2'),
+      n('magach', 'Magach 6B', 7, 'mbt', 'modern', { from: ['m50sherman'] }),
+      n('merkava1', 'Merkava Mk 1', 8, 'mbt', 'modern', { from: ['magach'] }),
+      n('merkava4', 'Merkava IVm Windbreaker', 9, 'mbt', 'modern', { spec: 'merkava4', from: ['merkava1'] }),
+    ],
+  },
+  {
+    id: 'china', label: 'China', flags: [['China', 'modern']],
+    nodes: [
+      n('type59', 'Type 59', 7, 'mbt', 'modern'),
+      n('type88', 'Type 88 (ZTZ-88)', 8, 'mbt', 'modern', { from: ['type59'] }),
+      n('type99a', 'Type 99A (ZTZ-99A)', 9, 'mbt', 'modern', { spec: 'type99a', from: ['type88'] }),
+    ],
+  },
+  {
+    id: 'korea', label: 'S. Korea', flags: [['South Korea', 'modern']],
+    nodes: [
+      n('m48k', 'M48A5K', 7, 'mbt', 'modern'),
+      n('k1', 'K1 88-Tank', 8, 'mbt', 'modern', { from: ['m48k'] }),
+      n('k2', 'K2 Black Panther', 9, 'mbt', 'modern', { spec: 'k2', from: ['k1'] }),
+    ],
+  },
+  {
+    id: 'japan', label: 'Japan', flags: [['Japan', 'modern']],
+    nodes: [
+      n('type61', 'Type 61', 7, 'mbt', 'modern'),
+      // ghost carries the roster Type 74 spec id — blocked on the STB-1 base
+      // provenance conflict (docs/ATTRIBUTION.md evaluation record); lights
+      // up automatically if a clean variant ever ships
+      n('type74', 'Type 74', 8, 'mbt', 'modern', { spec: 'type74', from: ['type61'] }),
+      n('type10', 'Type 10', 9, 'mbt', 'modern', { spec: 'type10', from: ['type74'] }),
+    ],
+  },
+  {
+    id: 'italy', label: 'Italy', flags: [['Italy', 'modern']],
+    nodes: [
+      n('m47i', 'M47 Patton (EI)', 6, 'mbt', 'modern'),
+      n('of40', 'OF-40', 7, 'mbt', 'modern', { from: ['m47i'] }),
+      n('ariete', 'C1 Ariete', 8, 'mbt', 'modern', { spec: 'ariete', from: ['of40'] }),
     ],
   },
 ];
@@ -522,8 +611,14 @@ export function createTechTree(opts) {
     // wave 2 (print-model crawl)
     kv2: 6, sherman_jumbo: 6, tiger2: 8, sturmtiger: 8,
     jagdtiger: 9, t30: 9, t95: 9, jpz_e100: 10,
+    // wave 3 (IS-series hunt)
+    is1: 5, is6b: 8, is7: 10, object279: 10,
   };
-  const commSpecs = (specs || []).filter((sp) => sp.community);
+  // Variant vehicles (spec.variantOf — CC-BY derivatives of nation-roster
+  // bases like the M1A1/TUSK/T-90A) live on their NATION tabs; the community
+  // tab curates the sourced third-party pool only. Their credit line still
+  // renders on the nation-tab node via spec.community.
+  const commSpecs = (specs || []).filter((sp) => sp.community && !sp.variantOf);
   const tabs = TABS.slice();
   if (commSpecs.length) {
     tabs.push({
@@ -678,15 +773,28 @@ export function createTechTree(opts) {
     const colOfTier = isComm ? new Map(tiersUsed.map((tv, ci) => [tv, ci])) : null;
     const colOf = (nd) => (isComm ? colOfTier.get(nd.tier) : nd.tier - 1);
     const minCol = isComm ? 0 : minTier - 1;
-    const maxCol = isComm ? tiersUsed.length - 1 : maxTier - 1;
+    // Collision-safe placement (modern expansion): two nodes sharing a
+    // (lane,tier) cell — e.g. two community heavies at the same tier — shift
+    // right to the next free column instead of stacking on top of each other.
+    // Each card keeps its true tier badge, so a shifted card stays honest.
+    const colByKey = new Map();
+    const cellTaken = new Set();
+    let maxCol = isComm ? tiersUsed.length - 1 : maxTier - 1;
+    for (const nd of tab.nodes) {
+      let c = colOf(nd);
+      while (cellTaken.has(`${nd.row}:${c}`)) c++;
+      cellTaken.add(`${nd.row}:${c}`);
+      colByKey.set(nd.key, c);
+      if (c > maxCol) maxCol = c;
+    }
     function nodePos(node) {
       return {
-        x: PAD_X + colOf(node) * TIER_W + (TIER_W - NODE_W) / 2,
+        x: PAD_X + colByKey.get(node.key) * TIER_W + (TIER_W - NODE_W) / 2,
         y: HEAD_H + node.row * ROW_H,
       };
     }
     bounds = {
-      w: PAD_X * 2 + 10 * TIER_W,
+      w: PAD_X * 2 + Math.max(10, maxCol + 1) * TIER_W,
       h: HEAD_H + maxRow * ROW_H + NODE_H + 60,
     };
     // r8: fit the camera to the OCCUPIED row band vertically (was y0:0 — the
@@ -786,7 +894,13 @@ export function createTechTree(opts) {
         `${credit ? ' comm' : ''}${st === 'available' && loadProgress().xp < cost ? ' poor' : ''}`;
       el.style.left = `${p.x}px`;
       el.style.top = `${p.y}px`;
-      const nation = spec ? spec.nation : (tab.id === 'usa' ? 'USA' : tab.id === 'germany' ? 'Germany' : (node.era === 'ww2' ? 'USSR' : 'Russia'));
+      const TAB_NATION = {
+        usa: 'USA', germany: 'Germany', uk: 'UK', france: 'France',
+        israel: 'Israel', china: 'China', korea: 'South Korea',
+        japan: 'Japan', italy: 'Italy', community: 'Community',
+      };
+      const nation = spec ? spec.nation
+        : (TAB_NATION[tab.id] || (node.era === 'ww2' ? 'USSR' : 'Russia'));
       const resLabel = st === 'researched' ? 'Researched'
         : st === 'available' ? `Research &middot; ${fmt(cost)} XP`
           : `Locked &middot; ${fmt(cost)} XP`;

@@ -573,7 +573,9 @@ function startBattle(specId, mapId = null) {
   applyCamoPatterns();
   // COMMUNITY TANKS: garage battles roll a random enemy roster from the
   // full pool (core + community), seeded per battle for reproducibility.
-  setupBattle(game, specId, world, { random: true });
+  // MODERN EXPANSION: rosters are era-matched to the player's vehicle —
+  // mixed-era battles happen only on the RANDOM battlefield card.
+  setupBattle(game, specId, world, { random: true, mixedEra: mapId === 'random' });
   // Fresh battlefield fx: clear scars/tracers/smoke columns left on (or by)
   // last battle's wrecks — scar decals are parented onto tank hulls and would
   // otherwise carry into the rematch.

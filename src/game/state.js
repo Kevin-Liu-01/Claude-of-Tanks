@@ -206,6 +206,15 @@ const SPEC_TIER = {
   m1a2: 10, t90m: 10, leo2a7: 10,
   strv103: 9, is3: 8, t34_85_cad: 6, newc_tiger: 7,
   newc_pziii: 4, pziii_konserwa: 3, leichttraktor: 1, recon_tank: 8, q_heavy: 9,
+  // community waves 2+3 (print-model crawl / IS-series hunt)
+  kv2: 6, tiger2: 8, sherman_jumbo: 6, jagdtiger: 9, jpz_e100: 10,
+  sturmtiger: 8, t95: 9, t30: 9, is7: 10, object279: 10, is6b: 8, is1: 5,
+  // MODERN EXPANSION (docs/research/modern-roster.md Appendix A ladder):
+  // cold-war 7 · 1st-gen 8 · 2nd-gen 9 · flagship 10 · IFV support 7-8
+  m1a1: 9, t90a: 9, m1a2_tusk: 10,
+  t72b3: 8, challenger2: 9, merkava4: 9, leo2a6: 9,
+  leo2a4: 8, t80u: 8, leclerc: 9, type99a: 9, leo1a5: 7, t14: 10,
+  chieftain_mk10: 7, k2: 9, type10: 9, m2a2_bradley: 8, bmp2: 7, ariete: 8,
 };
 const specTier = (specId) => SPEC_TIER[specId] != null ? SPEC_TIER[specId] : 6;
 
@@ -216,7 +225,7 @@ const specTier = (specId) => SPEC_TIER[specId] != null ? SPEC_TIER[specId] : 6;
  * so random enemy rosters include community vehicles.
  * @returns {object[]} TankEntity[] (player's entity included)
  */
-function pickParticipants(game, playerSpecId, randomize) {
+function pickParticipants(game, playerSpecId, randomize, mixedEra = false) {
   const player = game.tankById.get(playerSpecId);
   const enemySlots = 7;
   let others;
@@ -227,15 +236,23 @@ function pickParticipants(game, playerSpecId, randomize) {
       const j = (rng() * (i + 1)) | 0;
       [others[i], others[j]] = [others[j], others[i]];
     }
+    // MODERN EXPANSION — era-matched matchmaking: a modern battle draws its
+    // roster from the modern pool, a WWII battle from the WWII pool. Only the
+    // RANDOM battlefield card rolls mixed-era rosters (mixedEra=true from
+    // main.js). Era mismatches still back-fill an under-populated pool
+    // (never fewer than 7 enemies), nearest-tier first.
+    const pEra = player && player.spec ? player.spec.era : null;
+    const eraOk = (e) => mixedEra || !pEra || e.spec.era === pEra;
     // Tier cap (±2 template): stable partition of the shuffled pool — legal
     // tiers keep their shuffle order and fill first; the remainder is sorted
     // by tier distance so an under-filled pool degrades to the NEAREST tiers.
     const pTier = specTier(playerSpecId);
-    const legal = others.filter((e) => Math.abs(specTier(e.specId) - pTier) <= 2);
+    const legal = others.filter((e) => eraOk(e) && Math.abs(specTier(e.specId) - pTier) <= 2);
     const rest = others
-      .filter((e) => Math.abs(specTier(e.specId) - pTier) > 2)
+      .filter((e) => !(eraOk(e) && Math.abs(specTier(e.specId) - pTier) <= 2))
       .sort((a, b) =>
-        Math.abs(specTier(a.specId) - pTier) - Math.abs(specTier(b.specId) - pTier));
+        (eraOk(a) === eraOk(b) ? 0 : eraOk(a) ? -1 : 1) ||
+        (Math.abs(specTier(a.specId) - pTier) - Math.abs(specTier(b.specId) - pTier)));
     others = [...legal, ...rest];
   } else {
     // deterministic staged battle (boot, screenshot contract): core roster
@@ -286,7 +303,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
 
   // COMMUNITY TANKS: field the participants; park everyone else (hidden,
   // null state/combat — every sim/HUD/audio consumer guards on those).
-  game.tanks = pickParticipants(game, playerSpecId, !!opts.random);
+  game.tanks = pickParticipants(game, playerSpecId, !!opts.random, !!opts.mixedEra);
   // PERF (performance_budget r4): participants get visuals on demand; parked
   // vehicles' visuals are EVICTED (scene detach + dispose) so only fielded
   // tanks keep generated texture sets resident — see spawnTanks.

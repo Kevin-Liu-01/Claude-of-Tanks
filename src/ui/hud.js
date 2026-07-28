@@ -77,6 +77,16 @@ const TIER_BY_ID = {
   strv103: 'IX', is3: 'VIII', t34_85_cad: 'VI', newc_tiger: 'VII',
   newc_pziii: 'IV', pziii_konserwa: 'III', leichttraktor: 'I',
   recon_tank: 'VIII', q_heavy: 'IX',
+  // community waves 2+3
+  kv2: 'VI', tiger2: 'VIII', sherman_jumbo: 'VI', jagdtiger: 'IX',
+  jpz_e100: 'X', sturmtiger: 'VIII', t95: 'IX', t30: 'IX',
+  is7: 'X', object279: 'X', is6b: 'VIII', is1: 'V',
+  // MODERN EXPANSION (mirrors state.js SPEC_TIER / garage.js TIER_BY_ID)
+  m1a1: 'IX', t90a: 'IX', m1a2_tusk: 'X',
+  t72b3: 'VIII', challenger2: 'IX', merkava4: 'IX', leo2a6: 'IX',
+  leo2a4: 'VIII', t80u: 'VIII', leclerc: 'IX', type99a: 'IX',
+  leo1a5: 'VII', t14: 'X', chieftain_mk10: 'VII', k2: 'IX', type10: 'IX',
+  m2a2_bradley: 'VIII', bmp2: 'VII', ariete: 'VIII',
 };
 function hashStr(s) {
   let h = 2166136261;

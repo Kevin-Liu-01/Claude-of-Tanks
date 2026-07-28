@@ -16,6 +16,13 @@ import { MODERN2_BUILDERS } from './modern2.js'; // EXTENSION HOOK (see BUILDERS
 // modern1.js and merge into BUILDERS below. Deliberate module cycle — that
 // module reads our KIT bindings only at build time, never at module scope.
 import { MODERN1_BUILDERS } from './modern1.js';
+// EXTENSION HOOK (modern expansion integration): importing variants.js
+// registers the CC-BY derivative vehicles (m1a1 / t90a / m1a2_tusk) into the
+// shared spec tables (TANK_SPECS / MODEL_SOURCE / ALL_TANK_IDS) — the same
+// side-effect registration pattern the modern packs use. tankFactory is the
+// one module every tank consumer (game, garage thumbs, icon generator,
+// perf probes) already imports, so registration is guaranteed everywhere.
+import './variants.js';
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}

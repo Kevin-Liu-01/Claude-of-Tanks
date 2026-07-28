@@ -68,6 +68,62 @@ const FACES = {
       '<rect x="9.38" y="0" width="3.75" height="20" fill="#e7c11c"/>' +
       '<rect x="0" y="8" width="30" height="4" fill="#e7c11c"/>';
   },
+  uk() {
+    // simplified Union Jack: blue field, white diagonals, red cross + saltire
+    return '<rect x="0" y="0" width="30" height="20" fill="#2b4a8b"/>' +
+      '<path d="M0 0 30 20M30 0 0 20" stroke="#e8edf2" stroke-width="4"/>' +
+      '<path d="M0 0 30 20M30 0 0 20" stroke="#c9302a" stroke-width="1.6"/>' +
+      '<rect x="12" y="0" width="6" height="20" fill="#e8edf2"/>' +
+      '<rect x="0" y="7" width="30" height="6" fill="#e8edf2"/>' +
+      '<rect x="13.4" y="0" width="3.2" height="20" fill="#c9302a"/>' +
+      '<rect x="0" y="8.4" width="30" height="3.2" fill="#c9302a"/>';
+  },
+  france() {
+    return '<rect x="0" y="0" width="10" height="20" fill="#2d55a5"/>' +
+      '<rect x="10" y="0" width="10" height="20" fill="#e8edf2"/>' +
+      '<rect x="20" y="0" width="10" height="20" fill="#c93b3b"/>';
+  },
+  israel() {
+    // white field, two blue bands, Star of David (two overlaid triangles)
+    const tri = (dir) => {
+      const y0 = dir > 0 ? 6.4 : 13.6;
+      const y1 = dir > 0 ? 13.6 : 6.4;
+      return `<polygon points="15,${y0} 11.2,${y1} 18.8,${y1}" fill="none" ` +
+        `stroke="#2f5d9e" stroke-width="1.1"/>`;
+    };
+    return '<rect x="0" y="0" width="30" height="20" fill="#eef2f5"/>' +
+      '<rect x="0" y="1.6" width="30" height="2.6" fill="#2f5d9e"/>' +
+      '<rect x="0" y="15.8" width="30" height="2.6" fill="#2f5d9e"/>' +
+      tri(1) + tri(-1);
+  },
+  china() {
+    return '<rect x="0" y="0" width="30" height="20" fill="#c8352b"/>' +
+      star(6, 7, 4.2, '#f2c14e') +
+      star(12.5, 2.6, 1.3, '#f2c14e') + star(14.8, 5.4, 1.3, '#f2c14e') +
+      star(14.8, 9.0, 1.3, '#f2c14e') + star(12.5, 11.8, 1.3, '#f2c14e');
+  },
+  southKorea() {
+    // white field + taegeuk roundel (red over blue) + corner trigram bars
+    let s = '<rect x="0" y="0" width="30" height="20" fill="#eef2f5"/>' +
+      '<circle cx="15" cy="10" r="5" fill="#c9302a"/>' +
+      '<path d="M10 10a5 5 0 0 0 10 0a2.5 2.5 0 0 0 -5 0a2.5 2.5 0 0 1 -5 0Z" fill="#2d55a5"/>';
+    for (const [cx, cy, a] of [[4.6, 4.4, -33], [25.4, 4.4, 33], [4.6, 15.6, 33], [25.4, 15.6, -33]]) {
+      s += `<g transform="rotate(${a} ${cx} ${cy})" fill="#1b1b1e">` +
+        `<rect x="${cx - 2.4}" y="${cy - 1.9}" width="4.8" height="1"/>` +
+        `<rect x="${cx - 2.4}" y="${cy - 0.5}" width="4.8" height="1"/>` +
+        `<rect x="${cx - 2.4}" y="${cy + 0.9}" width="4.8" height="1"/></g>`;
+    }
+    return s;
+  },
+  japan() {
+    return '<rect x="0" y="0" width="30" height="20" fill="#eef2f5"/>' +
+      '<circle cx="15" cy="10" r="6" fill="#c9302a"/>';
+  },
+  italy() {
+    return '<rect x="0" y="0" width="10" height="20" fill="#2f7d4f"/>' +
+      '<rect x="10" y="0" width="10" height="20" fill="#e8edf2"/>' +
+      '<rect x="20" y="0" width="10" height="20" fill="#c93b3b"/>';
+  },
   community() {
     // deliberate COMMUNITY WORKSHOP insignia (gear ring + gold star) — the
     // sourced roster wears a maker's mark, not a missing-flag grey box
@@ -98,8 +154,15 @@ export function flagSVG(nation, era, w = 24, h = 0) {
   if (nation === 'USA') face = FACES.usa();
   else if (nation === 'Germany') face = era === 'ww2' ? FACES.germanyWw2() : FACES.germanyModern();
   else if (nation === 'USSR') face = FACES.ussr();
-  else if (nation === 'Russia') face = FACES.russia();
+  else if (nation === 'Russia' || nation === 'USSR/Russia') face = FACES.russia();
   else if (nation === 'Sweden') face = FACES.sweden();
+  else if (nation === 'UK') face = FACES.uk();
+  else if (nation === 'France') face = FACES.france();
+  else if (nation === 'Israel') face = FACES.israel();
+  else if (nation === 'China') face = FACES.china();
+  else if (nation === 'South Korea') face = FACES.southKorea();
+  else if (nation === 'Japan') face = FACES.japan();
+  else if (nation === 'Italy') face = FACES.italy();
   else if (nation === 'Community') face = FACES.community();
   else face = '<rect x="0" y="0" width="30" height="20" fill="#54606b"/>';
   const id = `cotfg${uid++}`;

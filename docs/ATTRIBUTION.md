@@ -399,7 +399,45 @@ Wave-3 losing candidates (`is2-aarontmg`, `is6-wotturret-lawrenceft`) were
 deleted after judging along with the rest of
 `public/models/community-candidates/`.
 
-## Generated files (no third-party ownership, listed for completeness)
+## Variant vehicles (public/models/tanks/community/variants/) — CC-BY 4.0 derivatives
+
+Modified versions of on-disk CC-BY 4.0 base models ("variant" sourcing route,
+docs/research/modern-roster.md Part 0). Each file is an offline Blender
+re-export of the base with the modifications listed below — recorded here per
+CC-BY 4.0 §3(a)(1)(B) ("indicate if You modified the Licensed Material").
+Specs + registration: `src/vehicles/variants.js`.
+
+| In-game vehicle (spec id) | Base asset | Author | Source | License | File + modifications |
+|---|---|---|---|---|---|
+| M1A1 Abrams (`m1a1`) | Abrams M1A2 SEPv3 | dannzjs | https://sketchfab.com/3d-models/abrams-m1a2-sepv3-eb6f5560198740269507e9948376414c | CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/) — original license records in `docs/licenses/m1a2_sepv3_dannzjs/` | `public/models/tanks/community/variants/m1a1_dannzjs_variant.glb` — MODIFIED: SEP kit stripped (both RWS bodies incl. CROWS, mast/fin, bustle-rack extension carved; no CITV), manual cupola ring + pintle M2 .50 added; the shipped m1a2's runtime fidelity fixes baked in (stovepipe/headlight-tower carves, DU cheek plates, roofline caps, GPS doghouse, deck grille panels, bore evacuator + MRS collar, fender lights, whip antennas shortened). Attribution line: "This work is based on \"Abrams M1A2 SEPv3\" by dannzjs, licensed under CC-BY-4.0 — modified (SEP kit removed, M1A1 kit added)." |
+| M1A2 Abrams TUSK (`m1a2_tusk`) | Abrams M1A2 SEPv3 | dannzjs | (same as above) | CC-BY 4.0 | `public/models/tanks/community/variants/m1a2_tusk_dannzjs_variant.glb` — MODIFIED: TUSK kit added (2 stacked ARAT-1 ERA tile rows on both skirts + ARAT-2 wedges forward, loader's three-sided shield with smoked-glass top, CITV pedestal, Tank Infantry Phone box, rear slat cage, belly appliqué plate) over the same baked fidelity fixes; CROWS retained. Attribution line: "…by dannzjs, licensed under CC-BY-4.0 — modified (TUSK kit added)." |
+| T-90A (`t90a`) | T-90 | alexxx_xarchenko | https://sketchfab.com/3d-models/t-90-9bb8af8876a6478aa92089eff058d4db (license verified via Sketchfab API record 2026-07-28: "CC Attribution", creativecommons.org/licenses/by/4.0) | CC-BY 4.0 | `public/models/tanks/community/variants/t90a_xarchenko_variant.glb` — MODIFIED: decimated 304k→148k tris, scale/ground normalized (9.53 m overall, front −Y→glTF +Z), merged by-material meshes split into hull / running-gear / turret / gun with authored TurretPivot→GunPivot articulation nodes, whip antennas compressed, untextured clay re-materialed (mid-green paint + dark gear; camo-canvas painted at runtime via `paintUntextured`). Attribution line: "This work is based on \"T-90\" by alexxx_xarchenko, licensed under CC-BY-4.0 — modified (decimated, re-materialed, turret/gun articulation split)." |
+
+Derivative renders (icons `public/icons/m1a1_*`, `t90a_*`, `m1a2_tusk_*`,
+generated 2026-07-28 by tools/genIcons.mjs) are covered by the rows above.
+All three variants are registered playables (src/vehicles/variants.js,
+imported by tankFactory.js) and carry their credit line on the garage stats
+card and their nation-tab tech-tree node (spec.community), satisfying the
+CC-BY 4.0 attribution + "modified" indication requirements in-product as well
+as in this file. The remaining 16 modern-expansion vehicles (modern1/2/3.js
+builder packs) are procedural first-party models — no third-party assets, no
+attribution required.
+
+### Evaluation record — Type 74 variant (2026-07-28): built, NOT shipped
+
+The roster plans Type 74 (#24) as a variant of `stb1_haphazard` ("STB-1" by
+Haphazard0587, https://www.thingiverse.com/thing:2626560, CC-BY label). The
+variant WAS built (IR searchlight + .50 cal kit, turret/gun split) but is
+withheld from the repo on provenance: the thing's own description presents it
+as the tank "from the game World of Tanks" — the same wording that failed the
+Maus recovery (thing:2329090, rejected 2026-07-28 as a WoT game rip;
+CC-BY label treated as invalid). This conflicts with the earlier wave-2
+clearance of the same author's T30/T95/Jagdpanzer E 100 deposits ("original
+print-oriented CAD, no game-rip topology" — see
+`docs/licenses/community/t30_haphazard.LICENSE-RECORD.txt`). Until the
+round verifier reconciles the Haphazard0587 provenance question, no
+Haphazard0587 model is used as a variant base. No STB-1-derived file ships in
+`public/`; the build script + artifacts remain in the session scratchpad only.
 
 - `public/icons/*.png` — 5 PNGs per roster tank (top/angle/side + 2 silhouettes)
   rendered from the shipped models by `node tools/genIcons.mjs`

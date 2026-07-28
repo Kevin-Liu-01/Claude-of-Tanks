@@ -13,7 +13,11 @@ import { ensureTankThumbs, drainTankThumbs, getTankThumb } from './tankThumbs.js
 import { resolveCamoVisual } from '../vehicles/materials.js';
 import { EQUIPMENT } from '../sim/spotting.js';
 
-const NATION_LABEL = { USA: 'USA', Germany: 'GER', USSR: 'USSR', Russia: 'RUS', Sweden: 'SWE', Community: 'COM' };
+const NATION_LABEL = {
+  USA: 'USA', Germany: 'GER', USSR: 'USSR', Russia: 'RUS', 'USSR/Russia': 'RUS',
+  Sweden: 'SWE', Community: 'COM', UK: 'UK', France: 'FRA', Israel: 'ISR',
+  China: 'CHN', 'South Korea': 'KOR', Japan: 'JPN', Italy: 'ITA',
+};
 
 // WoT-style tier numerals per vehicle (mirrors hud.js TIER_BY_ID — r5: the
 // carousel cards carried no tier at all, a core piece of WoT card info)
@@ -23,6 +27,16 @@ const TIER_BY_ID = {
   strv103: 'IX', is3: 'VIII', t34_85_cad: 'VI', newc_tiger: 'VII',
   newc_pziii: 'IV', pziii_konserwa: 'III', leichttraktor: 'I',
   recon_tank: 'VIII', q_heavy: 'IX',
+  // community waves 2+3
+  kv2: 'VI', tiger2: 'VIII', sherman_jumbo: 'VI', jagdtiger: 'IX',
+  jpz_e100: 'X', sturmtiger: 'VIII', t95: 'IX', t30: 'IX',
+  is7: 'X', object279: 'X', is6b: 'VIII', is1: 'V',
+  // modern expansion (state.js SPEC_TIER mirrors these numerically)
+  m1a1: 'IX', t90a: 'IX', m1a2_tusk: 'X',
+  t72b3: 'VIII', challenger2: 'IX', merkava4: 'IX', leo2a6: 'IX',
+  leo2a4: 'VIII', t80u: 'VIII', leclerc: 'IX', type99a: 'IX',
+  leo1a5: 'VII', t14: 'X', chieftain_mk10: 'VII', k2: 'IX', type10: 'IX',
+  m2a2_bradley: 'VIII', bmp2: 'VII', ariete: 'VIII',
 };
 
 const SHELL_TYPE_COLOR = {
@@ -102,6 +116,21 @@ const GARAGE_CSS = `
 .cot-garage .armorline{font-size:10.5px;letter-spacing:.06em;color:#9fb0bf;
   text-transform:uppercase;display:flex;justify-content:space-between;padding:2px 0;}
 .cot-garage .armorline b{color:#e6edf3;font-weight:600;font-variant-numeric:tabular-nums;}
+/* MODERN EXPANSION: era filter chips — 35+ vehicles need grouping to stay
+   navigable; the carousel shows one era group at a time (WWII/MODERN/COMMUNITY) */
+.cot-era-chips{position:absolute;left:50%;bottom:172px;transform:translateX(-50%);
+  display:flex;gap:6px;pointer-events:auto;}
+.cot-era-chip{cursor:pointer;border:1px solid rgba(146,164,180,.3);
+  border-bottom:2px solid rgba(146,164,180,.4);background:rgba(11,15,20,.82);
+  color:#9fb0bf;font-family:${FONT_STACK};font-size:10px;font-weight:800;
+  letter-spacing:.20em;text-transform:uppercase;padding:7px 18px 6px;
+  transition:color .12s,border-color .12s;outline:none;}
+.cot-era-chip:hover{color:#c6d2dc;border-color:rgba(210,225,240,.5);}
+.cot-era-chip.sel{color:#ffd27a;border-color:rgba(240,176,74,.65);
+  border-bottom-color:#f0a030;
+  background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
+.cot-era-chip .ct{margin-left:7px;font-weight:600;color:#6d7a86;letter-spacing:.05em;}
+.cot-era-chip.sel .ct{color:#d8a04c;}
 .cot-carousel{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);
   display:flex;align-items:stretch;gap:8px;pointer-events:auto;max-width:96vw;}
 .cot-car-arrow{width:34px;border:1px solid rgba(146,164,180,.3);cursor:pointer;
@@ -442,6 +471,7 @@ export function createGarage(opts) {
     `<button class="cot-tech" type="button"><span class="tt-ico">&#9776;</span>TECH TREE</button>` +
     `<button class="cot-battle" type="button">BATTLE</button>` +
     `<div class="stats"></div>` +
+    `<div class="cot-era-chips"></div>` +
     `<div class="cot-carousel">` +
     `<button class="cot-car-arrow prev" type="button">&#8249;</button>` +
     `<div class="cot-cards"></div>` +
@@ -651,6 +681,51 @@ export function createGarage(opts) {
   }
   if (!isFinite(MAXES.reloadMin)) MAXES.reloadMin = 1;
 
+  // --- MODERN EXPANSION: era filter chips (WWII / MODERN / COMMUNITY) ------
+  // The carousel shows ONE group at a time so a 35+ vehicle roster stays
+  // navigable. Nation-roster variants (spec.variantOf) count as MODERN;
+  // sourced third-party vehicles (spec.community without variantOf) are
+  // COMMUNITY regardless of era.
+  const groupOf = (s) =>
+    (s.community && !s.variantOf) ? 'community' : (s.era === 'ww2' ? 'ww2' : 'modern');
+  const ERA_GROUPS = [
+    { id: 'ww2', label: 'WWII' },
+    { id: 'modern', label: 'Modern' },
+    { id: 'community', label: 'Community' },
+  ];
+  let eraFilter = specs.length ? groupOf(specs[0]) : 'modern';
+  const chipsEl = root.querySelector('.cot-era-chips');
+  const chipById = new Map();
+  for (const g of ERA_GROUPS) {
+    const count = specs.filter((s) => groupOf(s) === g.id).length;
+    if (!count) continue;
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'cot-era-chip';
+    chip.innerHTML = `${g.label}<span class="ct">${count}</span>`;
+    chip.addEventListener('click', () => {
+      emit('ui:click', {});
+      applyEraFilter(g.id);
+      // moving to a new group: select its first vehicle so the pedestal,
+      // stats card and highlighted card stay in sync with the visible strip
+      const first = specs.find((s) => groupOf(s) === g.id);
+      if (first && groupOf(specById.get(selectedId) || first) !== g.id) {
+        api.setSelected(first.id);
+      }
+    });
+    chipsEl.appendChild(chip);
+    chipById.set(g.id, chip);
+  }
+  function applyEraFilter(gid) {
+    eraFilter = gid;
+    for (const [id, chip] of chipById) chip.classList.toggle('sel', id === gid);
+    for (const s of specs) {
+      const card = cardById.get(s.id);
+      if (card) card.style.display = groupOf(s) === gid ? '' : 'none';
+    }
+  }
+  // --- END era filter chips -------------------------------------------------
+
   // --- build carousel cards ---
   for (const s of specs) {
     const card = document.createElement('div');
@@ -733,6 +808,11 @@ export function createGarage(opts) {
     const spec = specById.get(specId);
     if (!spec) return false;
     selectedId = specId;
+    // era filter chips: selecting a vehicle from another group (tech tree
+    // pick, harness setSelected) switches the visible strip to its group
+    if (cardById.has(specId) && groupOf(spec) !== eraFilter) {
+      applyEraFilter(groupOf(spec));
+    }
     for (const [id, card] of cardById) card.classList.toggle('sel', id === specId);
     const card = cardById.get(specId);
     if (card && card.scrollIntoView) {
@@ -749,8 +829,11 @@ export function createGarage(opts) {
   }
 
   function step(dir) {
-    const idx = specs.findIndex((s) => s.id === selectedId);
-    const next = specs[(idx + dir + specs.length) % specs.length];
+    // arrows walk the ACTIVE era group only (era filter chips)
+    const pool = specs.filter((s) => groupOf(s) === eraFilter);
+    if (!pool.length) return;
+    const idx = pool.findIndex((s) => s.id === selectedId);
+    const next = pool[(idx + dir + pool.length) % pool.length];
     emit('ui:click', {});
     api.setSelected(next.id);
   }
@@ -773,12 +856,19 @@ export function createGarage(opts) {
     onPick: (specId) => { api.setSelected(specId); },
     onClose: () => {},
   });
-  const NATION_TAB = { USA: 'usa', Germany: 'germany', USSR: 'ussr', Russia: 'ussr' };
+  const NATION_TAB = {
+    USA: 'usa', Germany: 'germany', USSR: 'ussr', Russia: 'ussr',
+    'USSR/Russia': 'ussr', UK: 'uk', France: 'france', Israel: 'israel',
+    China: 'china', 'South Korea': 'korea', Japan: 'japan', Italy: 'italy',
+  };
   root.querySelector('.cot-tech').addEventListener('click', () => {
     emit('ui:click', {});
     const sel = specById.get(selectedId);
-    // COMMUNITY TANKS live on their own tech-tree tab
-    techtree.show(sel ? (sel.community ? 'community' : NATION_TAB[sel.nation] || 'usa') : 'usa');
+    // COMMUNITY TANKS live on their own tech-tree tab; nation-roster
+    // variants (spec.variantOf) stay on their nation tab
+    techtree.show(sel
+      ? (sel.community && !sel.variantOf ? 'community' : NATION_TAB[sel.nation] || 'usa')
+      : 'usa');
   });
 
   function onKey(e) {
@@ -851,6 +941,7 @@ export function createGarage(opts) {
 
   if (mapCardById.size) api.setSelectedMap(selectedMapId);
 
+  applyEraFilter(eraFilter); // era chips: initial group visibility
   if (selectedId) applySelection(selectedId);
   return api;
 }
