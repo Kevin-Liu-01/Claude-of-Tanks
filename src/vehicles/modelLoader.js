@@ -44,6 +44,11 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 // the cloned SkinnedMeshes bound to the ORIGINAL scene's bones (verts render
 // unscaled at the origin / vanish). SkeletonUtils.clone retargets them.
 import { clone as cloneWithSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
+// COMMUNITY TANKS r8: crease-aware normal smoothing for faceted low-poly
+// assets (Newc42 octagonal road wheels shaded as hard 45° facets — "octagon
+// wheels" critique). 47° crease smooths wheel rims/cylinders while keeping
+// hull plate corners (>=60°) sharp.
+import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 // CAMO PATTERN SECTION: sourced models get the active camo pattern composited
 // over their baked maps (materials.js owns pattern resolution + live
 // re-painting on garage/biome switches); procedural add-on parts wear the
@@ -331,6 +336,41 @@ function applyModelFixes(scene, turret, spec) {
     addPart(hullParent2, grillDark, new THREE.BoxGeometry(0.03, 1.0, 0.052), gx, gy, 2.235);
   }
 
+  // M256 bore evacuator + muzzle reference sensor collar (r8 minor critique:
+  // the asset's tube is a bare smooth cylinder — the evacuator bulge is the
+  // first thing a WoT remodel audience checks on an Abrams gun). Built from
+  // the measured gun-subtree bbox in the raw frame (barrel runs along -y),
+  // parented to the gun node so it pitches/recoils with the tube.
+  {
+    const gun = findNode(turret, /GunPivot/i) || findNode(scene, /GunPivot/i);
+    if (gun) {
+      const bb = new THREE.Box3();
+      gun.traverse((o) => {
+        if (!o.isMesh || !o.geometry) return;
+        if (o.geometry.boundingBox === null) o.geometry.computeBoundingBox();
+        bb.union(o.geometry.boundingBox);
+      });
+      if (!bb.isEmpty()) {
+        const minY = bb.min.y;
+        // tube center at the muzzle: average the verts of the last half-unit
+        let sx = 0, sz = 0, sn = 0;
+        gun.traverse((o) => {
+          if (!o.isMesh || !o.geometry) return;
+          const pos = o.geometry.attributes.position;
+          for (let i = 0; i < pos.count; i += 5) {
+            if (pos.getY(i) < minY + 0.5) { sx += pos.getX(i); sz += pos.getZ(i); sn++; }
+          }
+        });
+        const cx = sn ? sx / sn : 0, cz = sn ? sz / sn : 3.0;
+        const evacY = minY + 0.42 * (-2.7 - minY);   // ~42% back from the muzzle
+        addPart(gun, mat, new THREE.CylinderGeometry(0.205, 0.205, 0.60, seg), cx, evacY, cz);
+        addPart(gun, mat, new THREE.CylinderGeometry(0.205, 0.150, 0.17, seg), cx, evacY - 0.38, cz);
+        addPart(gun, mat, new THREE.CylinderGeometry(0.150, 0.205, 0.17, seg), cx, evacY + 0.38, cz);
+        addPart(gun, mat, new THREE.CylinderGeometry(0.175, 0.175, 0.15, seg), cx, minY + 0.32, cz); // MRS collar
+      }
+    }
+  }
+
   // Fender service lights replacing the deleted towers: small drums with a
   // dim lens on each front fender corner. Parented next to the turret pivot's
   // sibling meshes (node inside the Z-up fix) so raw coords apply.
@@ -385,6 +425,55 @@ function boxUVRaw(geo, scale) {
  *  - very dark flat mats (bare hardware) keep their factory color — the
  *    'addon' marker opts them out of materials.js's plain-tint pass.
  */
+// r8 cohesion pass shared by all paintUntextured (CAD / low-poly) assets:
+//  - crease-aware smooth normals (faceted octagon wheels -> round shading);
+//  - baked per-vertex dust/AO gradient in WORLD y (the same language as the
+//    procedural fleet's bakeDirt) so community models stop reading as
+//    pristine pastel clay next to the weathered core roster.
+// Geometry is shared between clones — process once, flag via userData.
+const CREASE_ANGLE = (47 * Math.PI) / 180;
+function refineCommunityGeometry(o) {
+  const src = o.geometry;
+  if (!src) return;
+  // clones share the source GLTF geometry: reuse the refined copy
+  if (src.userData.__cotRefinedGeo) { o.geometry = src.userData.__cotRefinedGeo; return; }
+  if (src.userData.__cotRefinedSelf) return;
+  let geo = src;
+  if (!o.isSkinnedMesh && src.attributes.position.count < 200000) {
+    try {
+      geo = toCreasedNormals(src, CREASE_ANGLE);
+      geo.userData = {};
+    } catch (e) { geo = src; /* exotic attribute layout — keep original shading */ }
+  }
+  // vertex dirt: world-space vertical dust gradient + downward-face AO
+  const pos = geo.attributes.position;
+  const nor = geo.attributes.normal;
+  const col = new Float32Array(pos.count * 3);
+  o.updateWorldMatrix(true, false);
+  const m = o.matrixWorld;
+  const e = m.elements;
+  const sy = Math.hypot(e[1], e[5], e[9]) || 1;   // world scale of local y (approx)
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const wy = e[1] * x + e[5] * y + e[9] * z + e[13];
+    const t = Math.min(1, Math.max(0, (1.45 - wy) / 1.45));
+    const d = Math.min(0.8, Math.pow(t, 1.7) * 1.05);
+    const nyw = nor ? (e[1] * nor.getX(i) + e[5] * nor.getY(i) + e[9] * nor.getZ(i)) / sy : 0;
+    const ao = 1 - Math.max(0, -nyw) * 0.26;
+    const h = Math.sin(x * 12.9898 + z * 78.233 + y * 37.719) * 43758.5453;
+    const n = ((h - Math.floor(h)) - 0.5) * 0.08;
+    col[i * 3] = ((1 - d) + d * 0.7 + n) * ao;
+    col[i * 3 + 1] = ((1 - d) + d * 0.62 + n) * ao;
+    col[i * 3 + 2] = ((1 - d) + d * 0.5 + n) * ao;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.userData.__cotRefinedSelf = true;
+  if (geo !== src) {
+    src.userData.__cotRefinedGeo = geo;
+    o.geometry = geo;
+  }
+}
+
 function paintUntextured(root, spec, normScale) {
   const repeatsPerM = spec.visual && spec.visual.camoScale != null ? spec.visual.camoScale : 0.34;
   // Per-mesh UV density: raw vertex units vary wildly between assets (the
@@ -394,6 +483,16 @@ function paintUntextured(root, spec, normScale) {
   // node-chain scale above the mesh, giving repeats-per-METER everywhere.
   const _ws = new THREE.Vector3();
   const meshUvScale = (o) => {
+    // r8: SKINNED meshes carry their scale in the armature bones, not the
+    // mesh node — getWorldScale missed it and the quaternius Tank_body
+    // sampled ~one texel (the "blank tan band" side). Derive meters-per-
+    // local-unit from the rest-pose bbox span vs the vehicle's real length.
+    if (o.isSkinnedMesh) {
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      o.geometry.boundingBox.getSize(_ws);
+      const span = Math.max(_ws.x, _ws.y, _ws.z) || 1;
+      return repeatsPerM * (spec.dims.hullLengthM / span);
+    }
     o.getWorldScale(_ws);
     const k = Math.max(Math.abs(_ws.x), Math.abs(_ws.y), Math.abs(_ws.z)) || normScale;
     return repeatsPerM * k;
@@ -417,6 +516,8 @@ function paintUntextured(root, spec, normScale) {
         name: 'AddOnCamoHull', map: getSharedCamoTexture(spec),
         roughness: 0.86, metalness: 0.08,
         roughnessMap: getSharedRoughnessTexture(spec),
+        vertexColors: true,   // r8: baked dust/AO gradient (refineCommunityGeometry)
+        envMapIntensity: 0.55,
       });
       camoMat.onBeforeCompile = vehicleAmbientFloorHook;
       camoMat.customProgramCacheKey = () => 'veh-ambient-floor-v1';
@@ -433,6 +534,14 @@ function paintUntextured(root, spec, normScale) {
     const path = `${nodePath(o)}/${m.name || ''}`;
     if (TRACK_RE.test(path)) return getCommunityGearMaterials(spec).track;
     if (WHEEL_RE.test(path)) return getCommunityGearMaterials(spec).wheel;
+    // q_heavy (Quaternius): 'Main_Light' + 'Main_Details' cover the giant
+    // smooth wheel-fairing capsule and stud band BETWEEN the track runs —
+    // as camo/keep they read as a blank tan band with no wheels (r7
+    // critique, verified by per-primitive hide bisect). They are running
+    // gear: paint them like the tracks.
+    if (spec.id === 'q_heavy' && /Main_Light|Main_Details/i.test(m.name || '')) {
+      return getCommunityGearMaterials(spec).track;
+    }
     if (!m.map) {
       const luma = 0.2126 * m.color.r + 0.7152 * m.color.g + 0.0722 * m.color.b;
       if (luma < 0.11) {
@@ -447,15 +556,18 @@ function paintUntextured(root, spec, normScale) {
     if (!o.isMesh || !o.material) return;
     if (Array.isArray(o.material)) {
       let anyCamo = false;
+      let anyReplaced = false;
       for (let i = 0; i < o.material.length; i++) {
         const r = replacement(o, o.material[i]);
-        if (r) { o.material[i] = r; if (r === camoMat) anyCamo = true; }
+        if (r) { o.material[i] = r; anyReplaced = true; if (r === camoMat) anyCamo = true; }
       }
+      if (anyReplaced) refineCommunityGeometry(o);   // r8: smooth normals + vertex dirt
       if (anyCamo) boxUVRaw(o.geometry, meshUvScale(o));
       return;
     }
     const r = replacement(o, o.material);
     if (r) {
+      refineCommunityGeometry(o);                    // r8: smooth normals + vertex dirt
       if (r === camoMat) boxUVRaw(o.geometry, meshUvScale(o));
       o.material = r;
     }

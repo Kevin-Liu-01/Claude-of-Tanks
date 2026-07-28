@@ -50,7 +50,9 @@ export default {
     // 0.85 buried most of the sheet back under snow albedo and the "lake"
     // vanished into the snowfield
     iceLake: true,
-    iceDrift: 0.3,
+    // 0.45 (r5): more windblown snow encroaching from the shores — the sheet
+    // grades into the snowfield instead of sitting as a clean punched ellipse
+    iceDrift: 0.45,
     tintA: [1.03, 1.04, 1.09], tintB: [0.90, 0.93, 1.00], tintC: [1.04, 1.04, 1.07],
     roadTint: [0.74, 0.68, 0.62], // worn dark slush tracks through the snow
   },
@@ -60,12 +62,13 @@ export default {
     clusterMix: [['birch', 0.55], ['pine', 0.45]],
     loneMix: [['birch', 0.6], ['pine', 0.4]],
     rimMix: [['pine', 0.8], ['birch', 0.2]],
-    clusterCount: 52, // denser birch/pine stands — forest blocks as landmarks
-    loneCount: 70,
-    rimCount: 58,
+    clusterCount: 66, // denser birch/pine stands — forest blocks as landmarks (r5)
+    loneCount: 92,
+    rimCount: 64,
     // sparser, FROSTED tufts: the old dark dense scatter read as uniform
-    // speckle noise across the snowfield in wide shots
-    grassDensity: 0.10,
+    // speckle noise across the snowfield in wide shots. r5: slightly up now
+    // that the scatter clumps in hollows instead of pepper-spraying
+    grassDensity: 0.15,
     grassTexTone: (h, s, l) => [0.105, 0.16, clamp01(l * 1.1 + 0.22)], // rimed straw
     tuftTone: (h, s, l) => [0.11, 0.10, clamp01(l * 1.05 + 0.26)],
     bushCount: 0.30,
@@ -79,11 +82,13 @@ export default {
         texTone: (h, s, l) => [h, clamp01(s * 0.7), clamp01(l * 0.55)],
       },
       pine: { // winter spruce: near-LOD needles stay dense dark green (the
-        // old l*1.3 wash bleached them to teal confetti / white asterisks);
-        // the far canopy keeps its snow-dusted pale tone
-        texTone: (h, s, l) => [clamp01(h * 0.94), clamp01(s * 0.72), clamp01(l * 0.9 + 0.015)],
-        cardHue: 0.325, cardSat: 0.16,
-        canopy: { hue: 0.36, sat: 0.10, l0: 0.40, l1: 0.68 },
+        // old l*1.3 wash bleached them to teal confetti / white asterisks).
+        // r3: far canopy desaturated ~40% toward blue-grey-green and dropped
+        // in value — the mint-pastel crowns popped as toy accents against the
+        // overcast grade (critique: 'saturated mint against desaturated snow')
+        texTone: (h, s, l) => [clamp01(h * 0.94), clamp01(s * 0.6), clamp01(l * 0.86 + 0.012)],
+        cardHue: 0.345, cardSat: 0.10,
+        canopy: { hue: 0.40, sat: 0.06, l0: 0.33, l1: 0.55 },
       },
     },
   },
@@ -111,20 +116,29 @@ export default {
   },
 
   horizon: {
-    baseHex: 0x8b95a2, amp: 1.2, style: 'alpine', snowline: 0.38,
-    rockHex: 0x596170, snowHex: 0xf1f5fb, haze: 0.85,
+    // r3: the 0.38 snowline left every foothill and the whole near wall bare
+    // — with the warm grade on top the range read as tan desert dunes framing
+    // a snow map. Snowline dropped to 0.18 (snow-bound to the valley floor,
+    // rock only piercing on cliffs), base/rock pushed cold blue-grey and the
+    // caps near-white so the ring still reads FROZEN through fog + warm grade.
+    baseHex: 0x76839a, amp: 1.2, style: 'alpine', snowline: 0.18,
+    rockHex: 0x49536b, snowHex: 0xf4f8fe, haze: 0.8,
   },
 
   sky: {
     // FLAT OVERCAST: higher-but-weak sun (no warm horizon glow), heavy grey
     // cloud deck, raised ambient/env fill so light reads diffuse
     sunElevationDeg: 33, sunAzimuthDeg: 115,
-    turbidity: 13, rayleigh: 3.2, mieCoefficient: 0.002, mieDirectionalG: 0.7,
-    // 0.0018 fogged the alpine wall to a flat cutout by 800 m — 0.0013 keeps
-    // the overcast depth while letting rock ribs/snow texture survive
+    // turbidity 13 → 8.5: the mie-loaded sky sampled a warm CREAM horizon
+    // color that leaked into the fog mix + aerial scatter and tanned the
+    // whole alpine ring; 8.5 keeps the milky overcast without the sepia cast
+    turbidity: 8.5, rayleigh: 2.6, mieCoefficient: 0.002, mieDirectionalG: 0.7,
+    // 0.0018 fogged the alpine wall to a flat cutout by 800 m — 0.0011 keeps
+    // the overcast depth while letting snow/rock contrast survive to the ridge
     // envIntensity raised for the ice sheet's sky reflection; sun dropped and
     // hemi raised so light reads flatter/more diffuse (overcast brief)
-    fogDensity: 0.0013, fogTintHex: 0xb4bcc5, fogMix: 0.88, envIntensity: 0.52,
+    // fogMix 0.88 → 0.94: scene fog locks to the COLD tint, not the sky sample
+    fogDensity: 0.0011, fogTintHex: 0xb9c4d2, fogMix: 0.94, envIntensity: 0.52,
     cloudOpacity: 1.0, cloudOpacity2: 0.95, cloudTintHex: 0xaab2bc,
     sunIntensity: 1.15, sunColorHex: 0xdfe7f2, hemiIntensity: 0.92,
   },

@@ -17,9 +17,15 @@
  *    (muzzle flash lights it up) — bushes further back keep concealing.
  *  - Per-tank view range; camo paint pattern adds a flat bonus (+3–4%).
  *  - spotRange = viewRange − (viewRange − 50) × targetCamo, clamped to
- *    [50 m, MAX_SPOT_RANGE_M].
+ *    [50 m, MAX_SPOT_RANGE_M]. Inside 50 m the spot is unconditional —
+ *    WoT's proximity rule detects THROUGH houses/terrain (no LOS test).
  *  - Periodic checks (0.5–2 s by proximity, staggered per target — never
  *    per-frame) with a 5 s spotted linger after the last successful check.
+ *  - Sixth sense (r8): the raw per-team spotted state (isSpotted) flips the
+ *    instant a check passes — enemies aim/fire on it — but the PLAYER only
+ *    learns of it SIXTH_SENSE_DELAY_S later, and only for the lamp's display
+ *    window. getConcealment() (the HUD snapshot source) reports that gated
+ *    state so no HUD element can leak the information the 3 s fuse hides.
  *  - Armor doc §9 module debuffs: a damaged observation device halves the
  *    spotter's view range; a damaged radio halves the signal range over which
  *    a spot is shared to teammates (isSpotted's optional receiver argument).
@@ -39,6 +45,12 @@ export const OPTICS_VIEW_FACTOR = 0.5;   // damaged observation device: −50% v
 export const SIGNAL_RANGE_M = 600;       // healthy radio: team intel share range
 export const RADIO_DAMAGED_FACTOR = 0.5; // damaged radio: share range halved
 export const SPOT_LINGER_S = 5;        // spotted state persists after last pass
+// Sixth sense: how long after the enemy's check passes the player LEARNS of
+// it, and how long that knowledge stays displayed (mirrors the HUD lamp's
+// 3 s fuse + 8 s bulb — src/ui/hud.js SIXTH_DELAY_S/SIXTH_SHOW_S). Only the
+// getConcealment() display state uses these; isSpotted stays instant.
+export const SIXTH_SENSE_DELAY_S = 3;
+export const SIXTH_SENSE_SHOW_S = 8;
 export const BUSH_FIRE_TRANSPARENT_M = 15; // 15 m rule radius
 export const CAMO_PAINT_BONUS = 0.035; // equipped camo pattern (+3.5%)
 export const MAX_BUSH_BONUS = 0.6;     // stacked-foliage cap
@@ -336,8 +348,8 @@ export function createSpottingSystem(deps) {
         firedAtS: -1e9,
         nextCheckS: rng() * CHECK_NEAR_S, // stagger initial checks
         byTeam: {
-          player: { spotted: false, lastPassS: -1e9, spotter: null },
-          enemy: { spotted: false, lastPassS: -1e9, spotter: null },
+          player: { spotted: false, lastPassS: -1e9, spottedAtS: -1e9, spotter: null },
+          enemy: { spotted: false, lastPassS: -1e9, spottedAtS: -1e9, spotter: null },
         },
       };
       recs.set(ent.id, r);
@@ -370,25 +382,34 @@ export function createSpottingSystem(deps) {
     return false;
   }
 
+  // PERF: reused arg/result objects for the staggered checks (same pattern as
+  // _conc below) — checkTarget/canSpot ran every 0.5-2 s per tank and were the
+  // last steady allocation sites in the spotting path.
+  const _camoArgs = { base: 0, paint: 0, equip: 0, bloom: 0, bush: 0, fireLoss: 0 };
+  const _seenVia = { player: null, enemy: null };
+
   /** Full spot test: does `spotter` see `target` right now? */
   function canSpot(spotter, target, timeS) {
     const sp = spotter.state.pos, tp = target.state.pos;
     const dx = tp.x - sp.x, dy = tp.y - sp.y, dz = tp.z - sp.z;
     const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    if (dist <= MIN_SPOT_RANGE_M) return hardLos(spotter, target); // proximity
+    // Proximity rule: inside 50 m the spot is UNCONDITIONAL — WoT's proximity
+    // detection works through obstacles (a tank idling 30 m away behind a
+    // house lights up; r8: the old hardLos gate here read as a spotting bug
+    // when brawling around the Steinburg blocks).
+    if (dist <= MIN_SPOT_RANGE_M) return true;
     if (dist > MAX_SPOT_RANGE_M) return false;
     const rec = recOf(target);
     const bloom = fireBloomAt(rec.firedAtS, timeS);
     const moving = Math.abs(target.state.speed || 0) > MOVING_SPEED_MPS;
     const bush = bushBonusBetween(concealers, sp.x, sp.z, tp.x, tp.z, bloom > 0);
-    const camo = combineCamo({
-      base: baseCamoOf(target.spec, moving),
-      paint: getCamoBonus(target),
-      equip: equipCamoBonus(getEquipment(target), moving),
-      bloom,
-      bush,
-      fireLoss: rec.fireLoss,
-    });
+    _camoArgs.base = baseCamoOf(target.spec, moving);
+    _camoArgs.paint = getCamoBonus(target);
+    _camoArgs.equip = equipCamoBonus(getEquipment(target), moving);
+    _camoArgs.bloom = bloom;
+    _camoArgs.bush = bush;
+    _camoArgs.fireLoss = rec.fireLoss;
+    const camo = combineCamo(_camoArgs);
     // spotter view range: module damage (optics) x equipment (binocs/vents)
     const spotterMoving = Math.abs(spotter.state.speed || 0) > MOVING_SPEED_MPS;
     const vr = effectiveViewRangeM(spotter) *
@@ -405,7 +426,9 @@ export function createSpottingSystem(deps) {
     // A healthy-radio spotter shares team-wide (SIGNAL_RANGE_M); a spot known
     // only through a damaged-radio spotter travels half as far (§9 radio
     // debuff), so we keep checking spotters until a full-share one passes.
-    const seenVia = { player: null, enemy: null };
+    const seenVia = _seenVia;
+    seenVia.player = null;
+    seenVia.enemy = null;
     for (let i = 0; i < tanks.length; i++) {
       const sp = tanks[i];
       if (sp === target || !alive(sp) || sp.team === target.team) continue;
@@ -425,7 +448,10 @@ export function createSpottingSystem(deps) {
       if (team === target.team) continue;
       const st = rec.byTeam[team];
       if (seenVia[team]) {
-        if (!st.spotted) events.push({ id: target.id, team, timeS });
+        if (!st.spotted) {
+          st.spottedAtS = timeS; // rising edge — starts the sixth-sense fuse
+          events.push({ id: target.id, team, timeS });
+        }
         st.spotted = true;
         st.lastPassS = timeS;
         st.spotter = seenVia[team];
@@ -509,8 +535,8 @@ export function createSpottingSystem(deps) {
         r = {
           firedAtS: -1e9, nextCheckS: 0,
           byTeam: {
-            player: { spotted: false, lastPassS: -1e9, spotter: null },
-            enemy: { spotted: false, lastPassS: -1e9, spotter: null },
+            player: { spotted: false, lastPassS: -1e9, spottedAtS: -1e9, spotter: null },
+            enemy: { spotted: false, lastPassS: -1e9, spottedAtS: -1e9, spotter: null },
           },
         };
         recs.set(id, r);
@@ -531,6 +557,8 @@ export function createSpottingSystem(deps) {
 
     /**
      * Live concealment snapshot for one tank (HUD camo/eye indicator).
+     * `spotted` is the sixth-sense DISPLAY state (3 s fuse + 8 s window),
+     * NOT the raw team intel — use isSpotted() for the server truth.
      * Returns a REUSED object — copy if you must keep it.
      */
     getConcealment(ent, timeS) {
@@ -556,12 +584,25 @@ export function createSpottingSystem(deps) {
       _conc.moving = moving;
       _conc.fired = bloom > 0;
       _conc.inBush = bush > 0 || (bloom > 0 && bushNearby(p));
-      _conc.camo = combineCamo({
-        base: _conc.base, paint: _conc.paint, equip: _conc.equip,
-        bloom, bush, fireLoss: rec.fireLoss,
-      });
+      _camoArgs.base = _conc.base;
+      _camoArgs.paint = _conc.paint;
+      _camoArgs.equip = _conc.equip;
+      _camoArgs.bloom = bloom;
+      _camoArgs.bush = bush;
+      _camoArgs.fireLoss = rec.fireLoss;
+      _conc.camo = combineCamo(_camoArgs);
+      // Sixth-sense display gate (r8 major): the HUD eye flipped red the
+      // instant the enemy check passed, leaking exactly the information the
+      // 3 s lamp fuse exists to hide. The snapshot's `spotted` is now the
+      // player's KNOWLEDGE, not the server state: it lights SIXTH_SENSE_DELAY_S
+      // after the rising edge and holds only for the lamp's SIXTH_SENSE_SHOW_S
+      // window (WoT: after the bulb dies you do NOT know you are still seen).
+      // Raw state stays on isSpotted() for enemies/minimap/AI.
       const opp = ent.team === 'player' ? 'enemy' : 'player';
-      _conc.spotted = sys.isSpotted(ent.id, opp);
+      const st = rec.byTeam[opp];
+      const knownAge = st.spotted ? timeS - st.spottedAtS : -1;
+      _conc.spotted = knownAge >= SIXTH_SENSE_DELAY_S &&
+        knownAge <= SIXTH_SENSE_DELAY_S + SIXTH_SENSE_SHOW_S;
       return _conc;
     },
 

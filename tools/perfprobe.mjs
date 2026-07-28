@@ -1,13 +1,21 @@
 // Performance probe harness (perf engineer tooling).
-// Usage: node tools/perfprobe.mjs [--seconds 20] [--width 1920] [--height 1080] [--out -]
+// Usage: node tools/perfprobe.mjs [--seconds 60] [--width 1920] [--height 1080] [--out -]
 // Starts vite, loads the game headless, measures load-to-__GAME_READY, enters
 // battle on the verdant map, simulates combat (drive via synthetic keys +
 // forceFire debug flag) for N seconds while sampling rAF deltas, renderer.info,
-// and JS heap. Prints a JSON report to stdout (and --out file if given).
+// and JS heap. Prints a JSON report to stdout (and --out file if given), and
+// appends a one-line summary to docs/perf-trend.jsonl so per-commit creep
+// (load-to-ready, texture MB, triangles) is visible as a series.
+//
+// THE CERTIFICATION WINDOW IS 60 s (default). Real battles run 5-7 minutes and
+// the frame-time tail only develops as wrecks/smoke columns/end-flow
+// accumulate: a 20 s slice measured p95 ~10 ms on the same build where the
+// 40-60 s window hit p99 30+ ms. Short runs (--seconds 20) are fine for quick
+// iteration but are NOT evidence the budget holds.
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, appendFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const args = process.argv.slice(2);
@@ -15,11 +23,12 @@ function opt(name, fallback) {
   const i = args.indexOf(`--${name}`);
   return i >= 0 ? args[i + 1] : fallback;
 }
-const seconds = parseFloat(opt('seconds', '20'));
+const seconds = parseFloat(opt('seconds', '60'));
 const width = parseInt(opt('width', '1920'), 10);
 const height = parseInt(opt('height', '1080'), 10);
 const dsf = parseFloat(opt('dsf', '1')); // deviceScaleFactor: 2 = retina default
 const outFile = opt('out', '');
+const noTrend = args.includes('--no-trend'); // skip the perf-trend.jsonl append
 
 // Tracked performance budget (docs/EVALUATION.md perf gate). Every line is
 // evaluated in the report's `budget` block so regressions surface in the
@@ -39,12 +48,23 @@ const BUDGET = {
   drawCallsWorstFrameMax: 900,
   trianglesMedianMax: 7_000_000, // ratchet to 6M after shadow-proxy LODs (handoff §4)
   loadToReadyMaxMs: 8000,
+  // GPU texture creep guard: the scene-material texture estimate DOUBLED in
+  // one content round (442 MB -> 806 MB, r2 -> r3; ~30 MB of generated canvas
+  // maps per vehicle x a 17-vehicle pool resident at boot). This headless Mac
+  // can't observe the consequence, but on 2-4 GB VRAM cards eviction thrash
+  // collapses fps entirely. Hard gate = the observed 2026-07-28 level +10%;
+  // RATCHET TARGET 512 MB once the parked-pool texture eviction + community
+  // camo downsize lands (handoff §7).
+  sceneTextureMBMax: 896,
   // "Stable heap": gate on min(raw trend, post-GC floor trend) — a leak
   // raises both; GC phase skews one. The GC sawtooth on this app's ~250-400 MB
   // battle heap swings a 20 s start->end trend by roughly +-1.5 MB/s even with
-  // zero leak (60 s controls trend NEGATIVE: -0.4 both trees), so short
-  // windows get a wider tolerance; runs of 40 s+ are the authoritative check.
-  heapGrowthMaxMBperS: seconds >= 40 ? 1.0 : 2.0,
+  // zero leak (60 s controls trend NEGATIVE: -0.4 both trees). The 1.0 MB/s
+  // line applies only at the 60 s certification window: 40-59 s runs sit in a
+  // no-man's land where a single rising GC phase can dominate a thirds-floor
+  // comparison (measured: a 45 s run flagged +1.18 MB/s "growth" while both
+  // 60 s controls trended NEGATIVE), so anything below 60 s gets 2.0.
+  heapGrowthMaxMBperS: seconds >= 60 ? 1.0 : 2.0,
 };
 
 const port = 5900 + Math.floor(Math.random() * 90);
@@ -252,6 +272,11 @@ try {
     drawCallsWorstFrame: { limit: `<=${BUDGET.drawCallsWorstFrameMax}`, actual: report.drawCalls.max, pass: report.drawCalls.max <= BUDGET.drawCallsWorstFrameMax },
     trianglesMedian: { limit: `<=${BUDGET.trianglesMedianMax}`, actual: report.triangles.median, pass: report.triangles.median <= BUDGET.trianglesMedianMax },
     loadToReady: { limit: `<=${BUDGET.loadToReadyMaxMs}`, actual: report.loadToReadyMs, pass: report.loadToReadyMs <= BUDGET.loadToReadyMaxMs },
+    sceneTextureMB: {
+      limit: `<=${BUDGET.sceneTextureMBMax} (ratchet target 512 — handoff §7)`,
+      actual: report.gpuTextureEstimate.sceneTextureMB,
+      pass: report.gpuTextureEstimate.sceneTextureMB <= BUDGET.sceneTextureMBMax,
+    },
     // Stable heap: a real leak raises BOTH the raw start->end trend AND the
     // post-GC floor trend; GC-cycle phase in a 20 s window skews one or the
     // other (raw measured -4.6..+2.5 MB/s across identical no-leak runs, and
@@ -267,6 +292,29 @@ try {
   if (!report.budget.pass) {
     const failed = Object.entries(lines).filter(([, l]) => !l.pass).map(([k, l]) => `${k}=${l.actual} (want ${l.limit})`);
     console.error(`[perf] BUDGET FAIL: ${failed.join(', ')}`);
+  }
+  // Per-commit trend line (docs/perf-trend.jsonl): the load-to-ready and
+  // texture-footprint regressions crept in ~15% per round without tripping any
+  // gate — a series makes the creep visible at review time, not at cert time.
+  if (!noTrend) {
+    try {
+      appendFileSync(resolve('docs/perf-trend.jsonl'), `${JSON.stringify({
+        date: report.date,
+        dsf,
+        seconds,
+        loadToReadyMs: report.loadToReadyMs,
+        fpsMedian: report.fps.median,
+        fpsP5: report.fps.p5,
+        frameMsP99: report.frameMs.p99,
+        drawCallsMax: report.drawCalls.max,
+        trianglesMedian: report.triangles.median,
+        sceneTextureMB: report.gpuTextureEstimate.sceneTextureMB,
+        heapFloorMBperS: report.heap.floorGrowthMBperS,
+        budgetPass: report.budget.pass,
+      })}\n`);
+    } catch (err) {
+      console.error(`[perf] trend append skipped: ${err.message}`);
+    }
   }
 } catch (err) {
   failed = true;

@@ -42,6 +42,39 @@ const _push2 = new THREE.Vector3();
 const _spawnPos = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
 
+// PERF (steady-churn): shell objects + the shell:fired payload were the last
+// per-shot allocations in the combat hot path (8 tanks firing every 4-8 s for
+// minutes feeds the major-GC cycle whose ~30 ms pauses show up in the 60 s
+// frame-time tail). Dead shells return to a free list in stepShells; the
+// fired-event payload is a reused scratch object (every consumer — fx muzzle
+// flash, audio gunshot/whizz, HUD ammo counter, killcam traj-start, shot-info
+// counters — reads it synchronously inside emit; verified 2026-07-28).
+const _shellPool = [];
+function acquireShell(shellSpec, shooterId, isPlayer, muzzlePos, dir, id) {
+  const sh = _shellPool.pop();
+  if (!sh) return createShell(shellSpec, shooterId, isPlayer, muzzlePos, dir, id);
+  sh.id = id;
+  sh.shooterId = shooterId;
+  sh.isPlayer = isPlayer;
+  sh.spec = shellSpec;
+  sh.pos.copy(muzzlePos);
+  sh.prevPos.copy(muzzlePos);
+  sh.vel.copy(dir).multiplyScalar(shellSpec.velocityMps);
+  sh.ageS = 0;
+  sh.distM = 0;
+  sh.dead = false;
+  sh.penRollDone = false;
+  sh.remainingPenMm = 0;
+  sh.dmgRoll = 0;
+  sh.bounces = 0;
+  sh.carriedThrough = false;
+  return sh;
+}
+const _firedEv = {
+  shellId: 0, shooterId: '', isPlayer: false, shellType: '', shellName: '',
+  caliberMm: 0, muzzlePos: [0, 0, 0], dir: [0, 0, 0],
+};
+
 /**
  * Reference event bus (ARCHITECTURE.md §1.5).
  * @returns {{on:Function, off:Function, emit:Function}}
@@ -183,6 +216,7 @@ export function loadEquipment(specId) {
 
 export function setupBattle(game, playerSpecId, world, opts = {}) {
   const sp = world.spawnPoints;
+  for (const sh of game.shells) { if (_shellPool.length < 64) _shellPool.push(sh); }
   game.shells.length = 0;
   game.nextShellId = 1;
   game.timeS = 0;
@@ -424,6 +458,20 @@ function emitHitOutcome(game, bus, ev) {
   }
   const shooter = game.tankById.get(ev.attackerId);
   if (shooter && shooter.aiCtl) shooter.aiCtl.notifyShellResult(ev);
+  // UNDER-FIRE REACTION (controls_gunnery r2): being shot reveals the shooter
+  // (tracer + muzzle flash). The victim and teammates within 200 m turn on
+  // the attacker even when the shot came from outside their normal spotting
+  // and engage envelopes — return fire pressure is core WoT feel.
+  if (shooter && target && target.state && target.combat &&
+      shooter.team !== target.team) {
+    for (const ent of game.tanks) {
+      if (ent.team !== target.team || !ent.aiCtl || !ent.state ||
+          !ent.combat || ent.combat.destroyed) continue;
+      if (ent !== target &&
+          ent.state.pos.distanceToSquared(target.state.pos) > 200 * 200) continue;
+      if (ent.aiCtl.notifyUnderFire) ent.aiCtl.notifyUnderFire(shooter);
+    }
+  }
 }
 
 function announceDestroyed(game, bus, ent, killerId, cause) {
@@ -481,7 +529,7 @@ function tryFire(game, ent, bus, rig) {
   if (c.modules.gun && c.modules.gun.state === 'yellow') sigmaRad *= 2;
   applyDispersion(_dir, sigmaRad, game.combatRng);
 
-  const shell = createShell(shellSpec, ent.id, ent.isPlayer, _muzzle, _dir, game.nextShellId++);
+  const shell = acquireShell(shellSpec, ent.id, ent.isPlayer, _muzzle, _dir, game.nextShellId++);
   game.shells.push(shell);
   fireRecoil(ent.state, ent.spec);
   ent.visual.recoilKick();
@@ -489,16 +537,15 @@ function tryFire(game, ent, bus, rig) {
     rig.addTrauma(0.25);
     if (rig.recoilKick) rig.recoilKick(0.012);
   }
-  bus.emit('shell:fired', {
-    shellId: shell.id,
-    shooterId: ent.id,
-    isPlayer: ent.isPlayer,
-    shellType: shellSpec.type,
-    shellName: shellSpec.name, // SHOT-INFO ENRICHMENT (additive)
-    caliberMm: shellSpec.caliberMm,
-    muzzlePos: [_muzzle.x, _muzzle.y, _muzzle.z],
-    dir: [_dir.x, _dir.y, _dir.z],
-  });
+  _firedEv.shellId = shell.id;
+  _firedEv.shooterId = ent.id;
+  _firedEv.isPlayer = ent.isPlayer;
+  _firedEv.shellType = shellSpec.type;
+  _firedEv.shellName = shellSpec.name; // SHOT-INFO ENRICHMENT (additive)
+  _firedEv.caliberMm = shellSpec.caliberMm;
+  _firedEv.muzzlePos[0] = _muzzle.x; _firedEv.muzzlePos[1] = _muzzle.y; _firedEv.muzzlePos[2] = _muzzle.z;
+  _firedEv.dir[0] = _dir.x; _firedEv.dir[1] = _dir.y; _firedEv.dir[2] = _dir.z;
+  bus.emit('shell:fired', _firedEv);
   startReload(c, ent.spec);
   // SPOTTING WIRING: firing blooms the shooter's camo (with decay) and lights
   // up any concealing foliage within 15 m (see src/sim/spotting.js).
@@ -573,9 +620,13 @@ function stepShells(game, bus, world) {
       bus.emit('shell:expired', { shellId: shell.id, pos: [shell.pos.x, shell.pos.y, shell.pos.z], hitTerrain: false });
     }
   }
-  // compact
+  // compact + recycle (nothing retains a shell past its death: killcam copies
+  // positions, fx trails copy into their own arrays, damage events copy fields)
   for (let i = shells.length - 1; i >= 0; i--) {
-    if (shells[i].dead) shells.splice(i, 1);
+    if (shells[i].dead) {
+      if (_shellPool.length < 64) _shellPool.push(shells[i]);
+      shells.splice(i, 1);
+    }
   }
 }
 
@@ -687,7 +738,17 @@ export function simStep(game, bus, world, rig, collider) {
     // SHOT-INFO ENRICHMENT (additive): announce the decision once so results
     // UIs (src/ui/shotInfo.js session stats) can render without polling.
     if (game.result !== null) {
-      bus.emit('battle:ended', { result: game.result, timeS: game.timeS });
+      bus.emit('battle:ended', {
+        result: game.result, timeS: game.timeS,
+        // SHOT-INFO ENRICHMENT (additive): full team roster for the report
+        roster: game.tanks.map((t) => ({
+          id: t.id, specId: t.specId,
+          vehicle: t.spec ? t.spec.name : t.specId,
+          team: t.team,                                  // 'player' | 'enemy'
+          alive: !(t.combat && t.combat.destroyed),
+          isPlayer: !!(game.player && t.id === game.player.id),
+        })),
+      });
     }
   }
 }

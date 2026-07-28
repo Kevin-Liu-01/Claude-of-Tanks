@@ -243,12 +243,19 @@ export function createHeightField(seed = 1337, cfg = null) {
       h += dn * dn * dn * T.dunes.amp * (0.7 + dn2 * 0.5) * (1 - cw * 0.7) * (1 - vm);
     }
     if (T.mesas) {
-      const mn = noi.noise(x * 0.0014 - 310, z * 0.0014 + 208) * 0.5 + 0.5;
-      // real mesa profile: near-vertical cliff wall (tight threshold band),
-      // flat cap, plus a smaller second tier so big buttes read stepped
+      // domain-warped mesa field (r5): unwarped blobs read as lumpy noise
+      // mounds; the warp stretches outlines into the irregular embayed
+      // escarpment plan real tablelands show from above
+      const mwp = noi.noise(x * 0.0009 + 77, z * 0.0009 - 31) * 95;
+      const mn = noi.noise((x + mwp) * 0.0014 - 310, (z - mwp * 0.8) * 0.0014 + 208) * 0.5 + 0.5;
+      // real mesa profile: near-vertical cliff wall, flat cap, plus a smaller
+      // second tier so big buttes read stepped. Wall band widened 0.28 -> 0.42
+      // and tier2 widened (r5): the old widths crossed the full 38 m rise
+      // within ~one far-LOD vertex (5.3 m), leaving single-vertex facet
+      // spikes on the escarpment edges (the crimson spike artifact).
       const band = (T.mesas.thr1 - T.mesas.thr0);
-      const wall = smoothstep(T.mesas.thr0, T.mesas.thr0 + band * 0.28, mn);
-      const tier2 = smoothstep(T.mesas.thr1 + 0.045, T.mesas.thr1 + 0.072, mn);
+      const wall = smoothstep(T.mesas.thr0, T.mesas.thr0 + band * 0.42, mn);
+      const tier2 = smoothstep(T.mesas.thr1 + 0.04, T.mesas.thr1 + 0.085, mn);
       const capNoise = 0.97 + 0.03 * noi.noise(x * 0.012 + 31, z * 0.012 - 74);
       h += (wall + tier2 * 0.45) * T.mesas.amp * capNoise * (1 - cw) * (1 - vm) * (1 - marshW);
     }
@@ -667,13 +674,14 @@ function makeIceLayer(seed, anisotropy) {
       const fine = torusNoise(noi, u, v, 23, 23, 77) * 0.5 + 0.5;
       const d01 = depth * 0.5 + 0.5;
       const deep = smoothstep(0.45, 0.88, 1 - d01); // dark water under thin ice
-      // decisively DARKER + bluer than the snowpack around it: the old 0.76
-      // base lum was within a few % of the snow albedo, so the whole sheet
-      // read as more snowfield (or wet mud under warm sun), never as ice.
-      // Under the overcast hemi+env light a ~0.44 base lum is what actually
-      // lands a visible step down from the 0.8+ snow albedo on screen.
-      _col.setHSL(0.578 + depth * 0.02, 0.15 + deep * 0.10,
-        0.52 - deep * 0.19 + fine * 0.05);
+      // r5: GRAY-WHITE ice, not swimming-pool blue. Real lake ice under an
+      // overcast sky is a desaturated gray sheet with faint blue-green depth
+      // cues — the old s=0.15..0.25 base (then squared by the shader's
+      // self-multiplying macro overlay) rendered a garish saturated blue
+      // ellipse that clashed with the sepia sky. Keep the value step below
+      // the 0.8+ snow albedo so the sheet still reads as a lake.
+      _col.setHSL(0.548 + depth * 0.015, 0.045 + deep * 0.05,
+        0.60 - deep * 0.17 + fine * 0.04);
       base.data[j] = _col.r * 255; base.data[j + 1] = _col.g * 255; base.data[j + 2] = _col.b * 255;
       base.data[j + 3] = 255;
     }
@@ -692,15 +700,15 @@ function makeIceLayer(seed, anisotropy) {
     drawWrapped(ctx, s, () => {
       // dark stress shadow under a BRIGHT refrozen core: from distance real
       // pressure cracks read as white veins across darker ice (the old dark-
-      // core version read as mud cracks)
-      ctx.strokeStyle = _css(0.60, 0.24, 0.30);
+      // core version read as mud cracks). Both desaturated (r5).
+      ctx.strokeStyle = _css(0.58, 0.10, 0.36);
       ctx.lineWidth = w + 2.2;
       ctx.globalAlpha = 0.4;
       ctx.beginPath();
       ctx.moveTo(ptsX[0], ptsY[0]);
       for (let q = 1; q < ptsX.length; q++) ctx.lineTo(ptsX[q], ptsY[q]);
       ctx.stroke();
-      ctx.strokeStyle = _css(0.575, 0.14, 0.92);
+      ctx.strokeStyle = _css(0.575, 0.05, 0.93);
       ctx.lineWidth = w;
       ctx.globalAlpha = 0.95;
       ctx.beginPath();
@@ -893,7 +901,11 @@ function makeShaderNoiseTexture(seed) {
     px[j + 1] = (b * 0.5 + 0.5) * 255;
     px[j + 2] = 128; px[j + 3] = 255;
   }
-  return canvasToTexture(px, s, { anisotropy: 1 });
+  // r5: aniso 16 (was 1) — this texture feeds UNCONDITIONAL albedo terms
+  // (0.90 + n2*0.20, far mottling, meadow tints). At aniso 1 every steep face
+  // seen at a grazing angle smeared those terms into long downslope "rain
+  // streak" strands — the furry mesa-flank artifact.
+  return canvasToTexture(px, s, { anisotropy: 16 });
 }
 
 // ---------------------------------------------------------------------------
@@ -916,7 +928,7 @@ uniform vec3 uTintA, uTintB, uTintC, uRoadTint;
 uniform float uMarshGloss;
 uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uIceDrift, uMidRelief;
 uniform vec3 uRipple; // xy = wind dir, z = ripple normal amplitude
-vec3 gSplatAlbedo; float gSplatRough; vec3 gSplatNrm;
+vec3 gSplatAlbedo; float gSplatRough; vec3 gSplatNrm; float gSplatFar; float gSplatSteepAtt;
 vec4 splatSamp(sampler2D t, vec2 uv, float df, float mb) {
   return mix(texture2D(t, uv, mb), texture2D(t, uv * 0.2317 + vec2(0.5), mb), df);
 }
@@ -926,8 +938,15 @@ void splatCompute() {
   vec2 mUV = (wp.xz + 512.0) * (1.0 / 1024.0);
   vec4 mk = texture2D(uMask, mUV);
   float camDist = distance(wp, cameraPosition);
-  float df = smoothstep(45.0, 160.0, camDist);
-  float farM = smoothstep(90.0, 330.0, camDist);
+  // FOV-aware detail distance: meters-per-pixel footprint normalized to the
+  // 60-deg/1080p arcade view, so x8 sniper zoom re-resolves near-scale
+  // detail instead of magnifying the blurred far variant (hud_ui r2).
+  // min() keeps wide establishing shots byte-identical (footprint >= camDist
+  // there); only narrow-FOV (zoomed) frames take the shorter effective
+  // distance.
+  float effDist = min(camDist, length(fwidth(wp.xz)) * 935.0);
+  float df = smoothstep(45.0, 160.0, effDist);
+  float farM = smoothstep(90.0, 330.0, effDist);
   // detail fade: positive mip bias at range kills the single-frequency
   // speckle shimmer that anisotropic filtering keeps resolving
   float mipB = farM * 2.0;
@@ -953,16 +972,34 @@ void splatCompute() {
   // banks around a frozen lake inherit the sheet's glossy blue ice response
   // and read as icy walls — anything steeper than ~10 deg is snow bank
   fM *= 1.0 - smoothstep(0.03, 0.08, slope);
-  float fR = smoothstep(0.095, 0.235, slope + (n1 - 0.5) * 0.07);
-  // hard rock takeover on steep faces (> ~30 deg): cliff walls and cut banks
-  // always read as rock regardless of the noise breakup
-  fR = max(fR, smoothstep(0.32, 0.50, slope));
+  // r5: breakup widened 0.07 -> 0.16 — the moderate-slope band used to hold
+  // 30-60% rock alpha EVERYWHERE, dusting whole hill flanks with uniform
+  // speckle fur; with stronger noise the same band resolves into distinct
+  // rock outcrop patches separated by clean ground
+  float fR = smoothstep(0.095, 0.235, slope + (n1 - 0.5) * 0.16);
+  // rock takeover on steep faces: cliff walls and cut banks always read as
+  // rock. r3: WIDE, noise-dithered band — the old razor 0.32-0.50 threshold
+  // cut giant hard-edged maroon swaths diagonally across the dunes; the low-
+  // freq n1 term wanders the boundary while n1hs keeps near-field raggedness
+  fR = max(fR, smoothstep(0.28, 0.58, slope + (n1 - 0.5) * 0.10 + (n1hs - 0.5) * 0.08));
   // ...except inside marsh/ice sheet margins: lake banks are snow/soil
   // slumps, and the pale winter rock on them read as a glassy blue cliff
   // wall ringing the frozen lake
   fR *= 1.0 - mk.b * 0.85;
   vec4 a = splatSamp(uAlbG, uv * 0.240, df, mipB);
   vec4 n = splatSamp(uNrmG, uv * 0.240, df, mipB);
+  // r5 anti-tiling: the ground texture's clump pattern repeats at ONE fixed
+  // world scale, so every distance ring shows same-size dark blobs — the
+  // "camo carpet" read. Re-sample the same layer at a ~2.3x coarser scale and
+  // blend it in over ~35 m noise patches: the characteristic pattern scale
+  // now wanders across the map instead of stamping uniformly.
+  {
+    float scMix = smoothstep(0.40, 0.78, texture2D(uNoise, uv * 0.0071 + vec2(0.23, 0.51)).g);
+    if (scMix > 0.003) {
+      a = mix(a, splatSamp(uAlbG, uv * 0.1043, df, mipB), scMix * 0.7);
+      n = mix(n, splatSamp(uNrmG, uv * 0.1043, df, mipB), scMix * 0.7);
+    }
+  }
   a = mix(a, splatSamp(uAlbD, uv * 0.210, df, mipB), fD); n = mix(n, splatSamp(uNrmD, uv * 0.210, df, mipB), fD);
   a = mix(a, splatSamp(uAlbM, uv * 0.190, df, mipB), fM); n = mix(n, splatSamp(uNrmM, uv * 0.190, df, mipB), fM);
   a = mix(a, splatSamp(uAlbR, uv * 0.155, df, mipB), fR); n = mix(n, splatSamp(uNrmR, uv * 0.155, df, mipB), fR);
@@ -972,8 +1009,10 @@ void splatCompute() {
   // the slope rises, so cliffs read as stratified rock instead of dragged
   // paint
   float steepW = smoothstep(0.34, 0.55, slope) * (1.0 - mk.b * 0.85);
+  float axisW = smoothstep(-0.08, 0.08, abs(wn.x) - abs(wn.z));
+  // wall-plane UV basis in meters (shared by every steep-face resample below)
+  vec2 uvSide = mix(vec2(wp.z, -wp.y), vec2(wp.x, -wp.y), axisW);
   if (steepW > 0.001) {
-    float axisW = smoothstep(-0.08, 0.08, abs(wn.x) - abs(wn.z));
     vec2 uvSideA = vec2(wp.z, -wp.y) * 0.155;
     vec2 uvSideB = vec2(wp.x, -wp.y) * 0.155;
     vec4 aS = mix(splatSamp(uAlbR, uvSideA, df, mipB), splatSamp(uAlbR, uvSideB, df, mipB), axisW);
@@ -1001,7 +1040,7 @@ void splatCompute() {
   // SMOOTH noise field gradient (texture normals reused at giant scales read
   // as scratch marks), so the midground never collapses into smooth felt
   {
-    float dMid = smoothstep(20.0, 55.0, camDist) * (1.0 - smoothstep(220.0, 480.0, camDist));
+    float dMid = smoothstep(20.0, 55.0, effDist) * (1.0 - smoothstep(220.0, 480.0, effDist));
     vec2 uvA = uv * 0.017;
     float ha = texture2D(uNoise, uvA).r;
     vec2 ga = vec2(texture2D(uNoise, uvA + vec2(0.006, 0.0)).r - ha,
@@ -1017,16 +1056,30 @@ void splatCompute() {
     float midN2 = texture2D(uNoise, uv * 0.0089 + vec2(0.71, 0.23)).g;
     a.rgb *= 1.0 + ((ha - 0.5) * 0.09 * dMid
                  + (midN2 - 0.5) * 0.12 * smoothstep(30.0, 90.0, camDist)) * uMidRelief;
-    // rock gets its own coarse relief so cliff faces stay craggy at range
-    vec3 dnR = texture2D(uNrmR, uv * 0.041).xyz * 2.0 - 1.0;
+    // rock gets its own coarse relief so cliff faces stay craggy at range —
+    // wall-plane sample takes over on steep faces (r5). Mix the SAMPLES, not
+    // the coordinates: coordinate blending smeared diagonal fur across every
+    // partially-steep slope.
+    vec3 dnRa = texture2D(uNrmR, uv * 0.041).xyz;
+    vec3 dnRb = texture2D(uNrmR, uvSide * 0.041).xyz;
+    vec3 dnR = mix(dnRa, dnRb, steepW) * 2.0 - 1.0;
     n.xy += dnR.xy * fR * 0.9 * dMid;
   }
   // horizontal strata banding on steep faces (mesa cliff walls), world-Y driven
   if (uStrata > 0.001) {
-    float steep = smoothstep(0.28, 0.52, slope);
-    float band = sin(wp.y * 1.9 + n1 * 2.4) * 0.6 + sin(wp.y * 0.57 + n2 * 1.9) * 0.4;
+    float steep = smoothstep(0.24, 0.50, slope);
+    // COHERENT beds (r3): phase-warped by the LOW-freq n2 only — the old n1
+    // warp scrambled the bands into the same fuzz as the rock texture, so the
+    // walls read as shag noise instead of sedimentary rock
+    float band = sin(wp.y * 1.9 + n2 * 2.2) * 0.55 + sin(wp.y * 0.57 + n2 * 1.9) * 0.45;
     a.rgb *= 1.0 + band * uStrata * steep;
-    a.rgb = mix(a.rgb, a.rgb * vec3(1.05, 0.90, 0.78), steep * 0.35); // baked iron-oxide faces
+    // pale caprock marker beds: wide constant-altitude stripes that survive
+    // distance where the fine beds mip away
+    float bed = smoothstep(0.55, 0.9, sin(wp.y * 0.23 + n2 * 1.1 + 0.8));
+    a.rgb = mix(a.rgb, a.rgb * vec3(1.16, 1.12, 1.04), bed * steep * 0.4);
+    // iron-oxide flush desaturated toward the Rock063 reference (r3: the old
+    // 1.05/0.90/0.78 at 0.35 pushed every wall to saturated maroon)
+    a.rgb = mix(a.rgb, a.rgb * vec3(1.03, 0.95, 0.88), steep * 0.22); // baked iron-oxide faces
   }
   // far-cliff detail rescue: the mip-biased macro fade flattens steep rock
   // faces past ~300 m into featureless sheets — re-project the rock layer at
@@ -1034,10 +1087,19 @@ void splatCompute() {
   {
     float farRock = fR * farM;
     if (farRock > 0.003) {
-      vec4 rr = texture2D(uAlbR, uv * 0.031);
-      a.rgb = mix(a.rgb, a.rgb * (0.74 + rr.rgb * 0.48), farRock * 0.55);
-      vec3 rn = texture2D(uNrmR, uv * 0.019).xyz * 2.0 - 1.0;
-      n.xy += rn.xy * farRock * 0.9;
+      // wall-plane sample takes over on steep faces (r5). Mix SAMPLES, not
+      // coordinates — coordinate blending smeared diagonal fur streaks across
+      // every partially-steep slope (the gold "furry" mesa flanks).
+      vec4 rr = mix(texture2D(uAlbR, uv * 0.031), texture2D(uAlbR, uvSide * 0.031), steepW);
+      // LUMINANCE-only modulation at reduced strength (r3): the rgb multiply
+      // compounded the rock tint with itself and saturated far walls toward
+      // maroon; value-only variation keeps the crag without the color drift
+      float rrL = dot(rr.rgb, vec3(0.36, 0.42, 0.22));
+      a.rgb = mix(a.rgb, a.rgb * (0.80 + rrL * 0.40), farRock * 0.45);
+      vec3 rn = mix(texture2D(uNrmR, uv * 0.019).xyz, texture2D(uNrmR, uvSide * 0.019).xyz, steepW) * 2.0 - 1.0;
+      // 0.55 (r5, was 0.9): under a low sun the full-strength coarse normals
+      // rendered far flanks as glittery fur instead of crag
+      n.xy += rn.xy * farRock * 0.55;
     }
   }
   // wind-aligned sand ripples: anisotropic normal waves instead of dot noise.
@@ -1082,12 +1144,21 @@ void splatCompute() {
     a.rgb = mix(a.rgb, roadCol, dW);
     a.rgb *= 1.0 - rut * mix(0.55, 0.10, uRoadTex);
     if (uRoadTex > 0.01) {
-      float paveCore = smoothstep(0.14, 0.40, mk.r + (n1hs - 0.5) * 0.10) * uRoadTex;
+      // r5: HARDER pavement edge (0.10-0.26 with less noise wobble) — paved
+      // town streets end at a kerb line, they do not alpha-fade into lawn.
+      // Patch/repair tone variation breaks the uniform sett sheet.
+      float paveCore = smoothstep(0.10, 0.26, mk.r + (n1hs - 0.5) * 0.05) * uRoadTex;
       vec4 pav = splatSamp(uAlbR, uv * 0.31, df, mipB);
       vec4 pnn = splatSamp(uNrmR, uv * 0.31, df, mipB);
+      float pvar = texture2D(uNoise, uv * 0.037 + vec2(0.77, 0.19)).r; // NB: "patch" is a reserved word in GLSL ES
+      pav.rgb *= 0.86 + smoothstep(0.35, 0.75, pvar) * 0.26;
       a.rgb = mix(a.rgb, pav.rgb * uRoadTint, paveCore * 0.94);
       a.a = mix(a.a, pav.a, paveCore * 0.85);
       n = mix(n, pnn, paveCore * 0.85);
+      // gutter shading: a darkened seam just inside the pavement edge gives
+      // the street a built profile even before the kerb geometry resolves
+      float gutter = smoothstep(0.06, 0.20, mk.r) * (1.0 - smoothstep(0.22, 0.42, mk.r));
+      a.rgb *= 1.0 - gutter * 0.18 * uRoadTex;
     }
   }
   float edgeBand = shoulder * (1.0 - roadCore);
@@ -1108,8 +1179,13 @@ void splatCompute() {
     // as snowfield in establishing shots — overlay the same texture at a
     // ~75 m tile so pressure cracks and dark clear-ice patches survive at
     // range and the lake reads as ICE from the wide camera
+    // LUMINANCE-only macro modulation (r5): multiplying the sheet by its own
+    // RGB squared the blue saturation — the garish swimming-pool ellipse.
+    // Value variation alone keeps the gray-white ice albedo authored in the
+    // layer while the cracks/depth blotches still read at range.
     vec4 iceMacro = texture2D(uAlbM, uv * 0.0134);
-    a.rgb = mix(a.rgb, a.rgb * (0.52 + iceMacro.rgb * 0.85), fM * 0.85);
+    float iceLum = dot(iceMacro.rgb, vec3(0.30, 0.45, 0.25));
+    a.rgb = mix(a.rgb, a.rgb * (0.55 + iceLum * 0.80), fM * 0.85);
     float drift = smoothstep(0.52, 0.78,
       texture2D(uNoise, uv * 0.021 + vec2(0.31, 0.77)).r + (n1h - 0.5) * 0.30);
     float bank = 1.0 - smoothstep(0.25, 0.75, fM); // shoreline band drifts hardest
@@ -1140,6 +1216,11 @@ void splatCompute() {
   // ground type except intentionally glossy lake ice
   gSplatRough = max(rough0, 0.78 * (1.0 - iceW) + shoreW * -0.12);
   gSplatNrm = n.xyz * 2.0 - 1.0;
+  gSplatFar = farM;
+  // steep faces beyond gameplay range: their per-texel normal shading is the
+  // strand-noise generator under a low sun — hand the shading to the
+  // geometric normal early (from ~50 m out) on cliffs specifically
+  gSplatSteepAtt = smoothstep(0.20, 0.45, slope) * smoothstep(50.0, 160.0, camDist) * 0.62;
 }
 `;
 
@@ -1147,14 +1228,24 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
 {
   vec3 dN = gSplatNrm;
   vec3 gN = normalize(vWNormal);
-  vec3 wN = normalize(vec3(gN.x + dN.x * 0.9, max(gN.y, 0.02), gN.z + dN.y * 0.9));
+  // r5: detail-normal strength falls off with distance (0.9 -> ~0.30 by the
+  // far band). Past ~300 m per-texel normal shading cannot resolve — on
+  // steep faces under a low sun it rendered as high-contrast bright/dark
+  // strand noise ("furry" mesa flanks); the geometric normal carries the
+  // far shading instead.
+  float dk = 0.9 * (1.0 - max(gSplatFar * 0.68, gSplatSteepAtt));
+  vec3 wN = normalize(vec3(gN.x + dN.x * dk, max(gN.y, 0.02), gN.z + dN.y * dk));
   normal = normalize((viewMatrix * vec4(wN, 0.0)).xyz);
 }
 `;
 
 function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant') {
   const S = splatCfg || {};
-  const aniso = engineCtx.anisotropy ?? 4;
+  // r5: terrain layers get the FULL 16x anisotropy regardless of the global
+  // default — the 4x cap was the root of the long "rain streak" smears down
+  // every steep face seen at grazing angles (mesa flanks, cut banks): past a
+  // 4:1 footprint the sampler can only blur along the compressed axis.
+  const aniso = Math.max(16, engineCtx.anisotropy ?? 4);
   const layers = {
     G: makeGrassLayer(3000, aniso, S.grassTone || null),
     D: makeDirtLayer(3001, aniso, S.dirtTone || null),
@@ -1221,7 +1312,7 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant') {
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v9';
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v10';
   return mat;
 }
 

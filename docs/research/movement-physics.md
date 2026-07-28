@@ -245,7 +245,11 @@ switching modes never snaps the view.
 - Orbit pivot: a point ~2–3 m **above the turret**, spring-following the tank
   (position lag ~0.1 s critically damped; the camera floats through hull bounce, it does not
   inherit suspension shake).
-- Mouse X/Y: orbit yaw (unlimited) and pitch, pitch clamped ≈ `[-65° (looking down), +15°]`.
+- Mouse X/Y: orbit yaw (unlimited) and pitch, pitch clamped ≈ `[-65° (looking down), +30°]`.
+  (v1 spec said +15°, but the view clamp must EXCEED every tank's gun elevation limit —
+  +18..+20° per the §7 class table — or full elevation is uncommandable on close uphill
+  targets; the gun still clamps itself at `spec.gunElevationDeg`. The implementation in
+  `src/engine/cameraRig.js` (`PITCH_MAX`) deliberately uses +30°.)
 - **Zoom steps**: mouse wheel moves through discrete orbit distances, e.g.
   `[24, 18, 13, 9, 6, 4] m` with a smooth lerp (~0.15 s) between steps. Wheeling in past the
   closest step **enters sniper mode**; wheeling out of sniper's lowest zoom returns to arcade.

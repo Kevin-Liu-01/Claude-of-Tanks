@@ -278,7 +278,9 @@ function rollModuleDamage(ctx, moduleName) {
     rollUniform(ctx.rng, ctx.shellSpec.moduleDmg ?? ctx.shellSpec.caliberMm) * (ctx.dmgScale ?? 1);
   m.hp = Math.max(0, m.hp - moduleDmg);
   const newState = refreshModuleState(m);
-  ctx.modulesHit.push({ module: moduleName, newState });
+  // dmg is ADDITIVE (killcam_shotinfo r2): the killcam renders the value the
+  // sim actually applied instead of fabricating one from the caliber.
+  ctx.modulesHit.push({ module: moduleName, newState, dmg: Math.round(moduleDmg) });
 
   if (moduleName === 'ammoRack' && newState === 'red') res.ammoRacked = true;
 
@@ -497,13 +499,28 @@ export function resolveShellHit(shell, target, hits, rng) {
   const combat = target.combat;
   const behavior = behaviorOf(spec.type);
 
+  // Arc-length correction (killcam_shotinfo r2): stepShell accumulated the
+  // FULL step before this sweep resolved — trim the unused remainder past the
+  // first intersection (up to velocity/60 ≈ 28 m for APFSDS). prevPos-based so
+  // synthetic shells that never stepped (prevPos === pos, e.g. the staged
+  // killcam_xray shot) are untouched. Restored on the screen-pierce exits
+  // where the shell truly keeps flying from shell.pos.
+  const overshootM = hits.length > 0
+    ? Math.max(0, shell.prevPos.distanceTo(shell.pos) - shell.prevPos.distanceTo(hits[0].point))
+    : 0;
+  if (overshootM > 0) shell.distM = Math.max(0, shell.distM - overshootM);
+
   // Fixed RNG order: pen, dmg (both once per shot), then per-intersection rolls.
   ensurePenRoll(shell, rng);
   const dmgRoll = shell.dmgRoll;
 
   // Destroyed hulls are inert cover: they absorb, deflect or screen the shell
   // with zero damage events and zero extra RNG draws.
-  if (combat.destroyed) return resolveWreckHit(shell, hits);
+  if (combat.destroyed) {
+    const wev = resolveWreckHit(shell, hits);
+    if (!shell.dead && wev.kind === 'screen_pierce') shell.distM += overshootM;
+    return wev;
+  }
 
   if (behavior.kindClass === 'HE') {
     const event = heDirectHit(shell, target, hits, dmgRoll, rng);
@@ -677,6 +694,7 @@ export function resolveShellHit(shell, target, hits, rng) {
       event.kind = 'screen_pierce';
       event.destroyed = finalizeTarget(combat, event.ammoRacked);
       event.targetHpAfter = combat.hp;
+      shell.distM += overshootM; // shell keeps flying from shell.pos
       return event; // shell stays alive on its unchanged trajectory
     }
     event.kind = hits.some((h) => h.kind === 'plate') ? 'spaced_absorb' : 'nonpen';
@@ -1123,6 +1141,12 @@ function nearestPointTrace(burstPoint, tank, pose) {
  */
 export function resolveHeBurst(shell, burstPoint, tanks, directTarget, directHits, rng) {
   const spec = shell.spec;
+  // Arc-length correction (killcam_shotinfo r2): HE shells always die at the
+  // burst — trim the unused remainder of the final integration step.
+  shell.distM = Math.max(
+    0,
+    shell.distM - Math.max(0, shell.prevPos.distanceTo(shell.pos) - shell.prevPos.distanceTo(burstPoint)),
+  );
   ensurePenRoll(shell, rng);
   const dmgRoll = shell.dmgRoll;
   shell.dead = true;

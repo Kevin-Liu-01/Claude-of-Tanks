@@ -65,7 +65,13 @@ const HIGH_PASS_ANCHOR = 'gl_FragColor = mix( outputColor, texel, alpha );';
 // gather brings prop-base grounding into the clearly-visible range at
 // establishing distance while the 260-420 m view fade still fences the
 // horizon ring from AO slashes.
-const GTAO_PARAMS = { radius: 1.9, distanceExponent: 2, thickness: 2.0, scale: 2.8, samples: 16 };
+// r7: radius 1.9 → 2.3, scale 2.8 → 3.3 — the frozen combat_firing crop
+// still showed the Abrams hull meeting bright grass with no readable contact
+// core ("floats above the grass"); with the r7 exposure/ambient lift the AO
+// multiply needs more depth to survive the brighter field. The 260-420 m
+// view fade below still fences the far field, so the deeper term stays a
+// contact cue, not a dirt wash.
+const GTAO_PARAMS = { radius: 2.3, distanceExponent: 2, thickness: 2.0, scale: 3.3, samples: 16 };
 const GTAO_BLEND_INTENSITY = 1.0;
 
 // Depth-driven aerial perspective (r3: "distant hills correctly shift
@@ -219,20 +225,41 @@ const AerialShader = {
 // unmistakable grade identity rather than a subliminal one. A soft highlight
 // shoulder (GRADE_KNEE*) rolls speculars/sky whites off instead of clipping
 // — the barrel-top hot edge and the horizon band stop slamming to 1.0.
-const GRADE_CONTRAST = 1.34;
-const GRADE_SATURATION = 1.10;
+// r7 PIVOT FIX ("midtone contrast is low, highlights and midtones compress
+// into the same band; foreground reads underexposed"): the contrast op was a
+// linear expansion around DISPLAY 0.5 — but pixel-measuring the frozen shots
+// put the entire lit playfield at 0.20-0.30 display luma, i.e. the whole
+// scene sat BELOW the pivot, so "more contrast" only dragged every midtone
+// darker (lit grass 0.21, hull flank 0.09) while the hazy hills/sky (0.45+)
+// stretched brighter — the exact "dark flat foreground under a bright far
+// field" split the critic flagged. The pivot now sits at 0.33, inside the
+// scene's actual midtone band: contrast separates lit-vs-shadow around the
+// playfield instead of crushing all of it, and the light-rig lift
+// (lighting.js hemi bounce floor + renderer exposure 1.08 → 1.16) moves the
+// lit field up toward the WoT ~0.35 reference. Black anchor eases 0.021 →
+// 0.012 (the anchor no longer needs to fake density the pivot now provides).
+// Greens: measured lit grass rgb was (0.25,0.21,0.04) — blue channel ~zero,
+// the "lime-yellow drift" — because GREEN_WARM 0.90-blue x high-tint
+// 0.925-blue x balance 0.975-blue compounded to a 0.81 blue kill on every
+// green-dominant highlight. GREEN_WARM softened to a hue nudge, a dedicated
+// ~9% green desaturation term (uGreenDesat) pulls foliage chroma back to the
+// WoT olive band, and global saturation eases 1.10 → 1.06.
+const GRADE_CONTRAST = 1.30;
+const GRADE_PIVOT = 0.33;
+const GRADE_SATURATION = 1.06;
 const GRADE_VIGNETTE = 0.24; // 0.27 stacked with foreground canopy shadow into heavy corners
-const GRADE_BLACK_LIFT = 0.018;
+const GRADE_BLACK_LIFT = 0.012;
 const GRADE_KNEE = 0.86; // display-space luma where the highlight shoulder starts
 const GRADE_KNEE_SLOPE = 0.55; // slope retained above the knee (1.0 maps to ~0.94)
 // Warm afternoon balance, matching the sun key instead of fighting it.
 const GRADE_BALANCE = [1.02, 1.0, 0.975];
 // Applied only to green-dominant pixels (terrain/foliage): warms hue toward
 // yellow-green without touching sky, tank camo browns, or skin-tone-ish dirt.
-const GRADE_GREEN_WARM = [1.05, 1.0, 0.90];
+const GRADE_GREEN_WARM = [1.03, 1.0, 0.96];
+const GRADE_GREEN_DESAT = 0.09; // chroma pull-back on green-dominant pixels
 // Split-tone poles (multiplied in by shadow/highlight membership).
 const GRADE_SHADOW_TINT = [0.950, 0.990, 1.070]; // cool blue-grey shadows
-const GRADE_HIGH_TINT = [1.075, 1.008, 0.925]; // warm sun-kissed highlights
+const GRADE_HIGH_TINT = [1.060, 1.008, 0.945]; // warm sun-kissed highlights
 
 const GradeShader = {
   name: 'GradeShader',
@@ -270,12 +297,17 @@ const GradeShader = {
       // fixed warm white balance — identical for every camera/shot
       col = clamp( col * uBalance, 0.0, 1.0 );
       // warm the terrain/foliage greens only (green-dominant pixels): unifies
-      // the olive ground plane with the warm sun key, WoT summer-map style
+      // the olive ground plane with the warm sun key, WoT summer-map style;
+      // then pull their chroma back ~9% so foliage sits in the olive band
+      // instead of drifting lime-yellow (r7 — measured blue channel ~0.04)
       float greenDom = smoothstep( 0.0, 0.14, col.g - max( col.r, col.b ) );
       col *= mix( vec3( 1.0 ), uGreenWarm, greenDom );
-      // black anchor + contrast S-curve around mid grey
+      float gLuma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
+      col = mix( col, vec3( gLuma ), ${GRADE_GREEN_DESAT.toFixed(3)} * greenDom );
+      // black anchor + linear contrast around the scene's measured midtone
+      // band (uPivot ~0.33, NOT display 0.5 — see the r7 note above)
       col = max( col - vec3( uBlack ), vec3( 0.0 ) );
-      col = clamp( mix( vec3( 0.5 ), col, uContrast ), 0.0, 1.0 );
+      col = clamp( mix( vec3( ${GRADE_PIVOT.toFixed(3)} ), col, uContrast ), 0.0, 1.0 );
       // split-tone: cool shadows / warm highlights, keyed on luminance
       float luma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
       vec3 split = mix( uShadowTint, uHighTint, smoothstep( 0.12, 0.72, luma ) );

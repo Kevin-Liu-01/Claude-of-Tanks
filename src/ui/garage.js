@@ -7,7 +7,7 @@ import { FONT_STACK, ensureFonts } from './fonts.js';
 import { flagSVG } from './flags.js';
 import { iconUrl } from './icons.js';
 import { createTechTree } from './techtree.js';
-import { ensureTankThumbs, getTankThumb } from './tankThumbs.js';
+import { ensureTankThumbs, drainTankThumbs, getTankThumb } from './tankThumbs.js';
 // CAMO PICKER SECTION: swatches preview the REAL resolved pattern (scheme +
 // palette from materials.js) instead of hand-approximated CSS gradients.
 import { resolveCamoVisual } from '../vehicles/materials.js';
@@ -172,8 +172,9 @@ const GARAGE_CSS = `
 .cot-camo-card .cl{font-size:8px;font-weight:700;letter-spacing:.1em;color:#9fb0bf;
   text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cot-camo-card.sel .cl{color:#d8a04c;}
-.cot-camos .cnote{font-size:8.5px;letter-spacing:.08em;color:rgba(138,151,163,.75);
-  text-transform:uppercase;margin-top:5px;}
+.cot-camos .cnote{font-size:12px;font-weight:600;letter-spacing:.05em;
+  color:#aab8c4;text-transform:uppercase;margin-top:6px;line-height:1.25;
+  text-shadow:0 1px 2px rgba(0,0,0,.7);}
 `;
 
 function ensureStyle(id, css) {
@@ -585,7 +586,12 @@ export function createGarage(opts) {
     cardsEl.appendChild(card);
     cardById.set(s.id, card);
   }
-  ensureTankThumbs(specs); // renders once, upgrades every data-cot-thumb img
+  // PERF (load-to-ready): portraits render as idle-time chunks while the
+  // garage is VISIBLE (see tankThumbs.js) — off the __GAME_READY critical
+  // path, and never inside a battle frame. Cards ship with the baked icons
+  // and upgrade in place as chunks land; screenshot recipes call
+  // api.drainThumbs() so captured garage frames always carry portraits.
+  ensureTankThumbs(specs, { canWork: () => api.isOpen });
 
   function statBar(label, valueText, frac) {
     const pct = Math.max(2, Math.min(100, frac * 100)).toFixed(1);
@@ -717,6 +723,9 @@ export function createGarage(opts) {
     /** The research screen (created/owned by the garage). */
     techtree,
 
+    /** Synchronously finish queued tank portraits (screenshot determinism). */
+    drainThumbs() { drainTankThumbs(); },
+
     /**
      * Open the tech tree over the garage (used by the screenshot harness).
      * @param {string} [nation='usa'] 'usa' | 'germany' | 'ussr'
@@ -745,6 +754,7 @@ export function createGarage(opts) {
       if (!mapCardById.has(mapId)) return;
       selectedMapId = mapId;
       for (const [id, card] of mapCardById) card.classList.toggle('sel', id === mapId);
+      if (opts.onMapSelect) opts.onMapSelect(mapId);   // CAMO WIRING: AUTO preview
     },
   };
 

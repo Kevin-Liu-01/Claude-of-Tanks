@@ -23,7 +23,7 @@ import { createTank } from './vehicles/tankFactory.js';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
   CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, getCamoSelection, setCamoSelection,
-  setCamoBiome, applyCamoPatterns,
+  setCamoBiome, applyCamoPatterns, warmWreckTextures,
 } from './vehicles/materials.js';
 import { computeDispersionRadM, SIM_DT } from './sim/movement.js';
 import { tankPoseFromState, queryAimArmor, traceTank } from './sim/armor.js';
@@ -128,7 +128,9 @@ bus.on('module:state', (ev) => {
 GARAGE_POS.y = world.heightField.getHeightAt(GARAGE_POS.x, GARAGE_POS.z);
 const garageStage = createGarageStage(engineCtx, GARAGE_POS);
 scene.add(garageStage.group);
-const spotA = new THREE.SpotLight(0xfff1d8, 160, 60, 0.5, 0.45, 1.6);
+// hud_ui r2: key 160 → 112, penumbra 0.45 → 0.6 — the warm key stacked with
+// the stage floods and clipped the turntable floor right of the tank to 255.
+const spotA = new THREE.SpotLight(0xfff1d8, 112, 60, 0.5, 0.6, 1.6);
 spotA.position.set(GARAGE_POS.x + 9, GARAGE_POS.y + 11, GARAGE_POS.z + 7);
 const spotB = new THREE.SpotLight(0xcfe0ff, 80, 60, 0.6, 0.5, 1.6);
 spotB.position.set(GARAGE_POS.x - 10, GARAGE_POS.y + 8, GARAGE_POS.z - 6);
@@ -229,6 +231,14 @@ const garage = createGarage({
       setCamoSelection(specId, patternId);
       applyCamoPatterns(specId);
     },
+  },
+  // CAMO WIRING (r8): AUTO(map) tanks preview the pattern they will actually
+  // wear on the highlighted battlefield. 'random' falls back to verdant
+  // inside setCamoBiome; startBattle re-calls setCamoBiome(world.mapId) after
+  // the roll, so battle state is always correct regardless.
+  onMapSelect: (mapId) => {
+    setCamoBiome(mapId);
+    applyCamoPatterns();
   },
 });
 
@@ -389,6 +399,14 @@ function showEndOverlay(result) {
       `<span style="color:#8a97a3">${earn.kills} kill${earn.kills === 1 ? '' : 's'} &middot; ` +
       `${earn.damage.toLocaleString('en-US')} damage</span>`
     : '';
+  // killcam_shotinfo r2: the shot-info battle report renders its own
+  // full-screen VICTORY/DEFEAT banner + backdrop (z 71) and reserves the
+  // bottom 15vh — hide the duplicate center title/dim and anchor the button
+  // in the reserved band.
+  endTitle.style.display = 'none';               // report banner owns the verdict
+  endOverlay.style.background = 'none';          // report backdrop owns the dim
+  endOverlay.style.justifyContent = 'flex-end';  // button in the reserved band
+  endOverlay.style.paddingBottom = '5vh';
   endOverlay.style.display = 'flex';
 }
 
@@ -408,8 +426,12 @@ const settings = createSettings({
   gearVisible: () => game.phase === 'garage',
 });
 
-input.onAction('zoomIn', () => { if (game.phase === 'battle' && !settings.isOpen()) wheelStep = 1; });
-input.onAction('zoomOut', () => { if (game.phase === 'battle' && !settings.isOpen()) wheelStep = -1; });
+// Accumulate wheel notches (clamped ±3) instead of a single ±1 latch: two
+// physical notches inside one render frame used to collapse to ONE zoom step
+// (WoT steps once per notch; at 30 fps fast flicks felt like dropped zooms).
+// The rig consumes the whole accumulated value each update (cameraRig.js).
+input.onAction('zoomIn', () => { if (game.phase === 'battle' && !settings.isOpen()) wheelStep = Math.min(wheelStep + 1, 3); });
+input.onAction('zoomOut', () => { if (game.phase === 'battle' && !settings.isOpen()) wheelStep = Math.max(wheelStep - 1, -3); });
 renderer.domElement.addEventListener('mousedown', () => {
   audio.resume();
   if (game.phase !== 'battle' || settings.isOpen()) return;
@@ -517,6 +539,11 @@ bus.on('shell:fired', (p) => {
 });
 
 function startBattle(specId, mapId = null) {
+  // SHOT-MODE RESET (effects_combat/content_breadth r2): __SHOTS.set() freezes
+  // fx and stops the sim tick; any UI path out of shot mode (garage BATTLE
+  // button) must resume it or the battle is permanently frozen.
+  shotMode = false;
+  fx.setFrozen(false);
   selectedSpecId = specId;
   debugAimTargetId = null; // sticky drive-test aim never carries across battles
   // MAP-CONFIG WIRING: battle on the picked map ('random' rolls here)
@@ -554,6 +581,9 @@ function startBattle(specId, mapId = null) {
 }
 
 function enterGarage() {
+  // SHOT-MODE RESET: see startBattle — the garage is a live-mode entry too.
+  shotMode = false;
+  fx.setFrozen(false);
   game.phase = 'garage';
   bus.emit('phase:change', { phase: 'garage' });
   endOverlay.style.display = 'none';
@@ -580,6 +610,7 @@ const frameInfo = {
     distM: 0,
     dispersionRadM: 1,
     penRatio: null,
+    blockedDistM: null,
     gunMarker: new THREE.Vector3(),
     atGunLimit: false,
     reload: { t: 0, totalS: 1 },
@@ -627,6 +658,22 @@ function computeAimInfo() {
   p.visual.gunPivotWorld(_v2);
   _v3.copy(_v1).sub(_v2).normalize();
   aim.gunMarker.copy(_v1).addScaledVector(_v3, Math.max(rig.aimDist - 2, 6));
+
+  // BLOCKED-SHOT INDICATOR (controls_gunnery r2): the reticle ray comes from
+  // the camera, the shell leaves the muzzle — near crests/walls/poles they
+  // disagree and shells silently die meters out while the reticle reads
+  // clear. Raycast the actual muzzle→aimPoint path every HUD frame; the
+  // reticle turns red + prints the blocking distance when obstructed short
+  // of the aim point.
+  aim.blockedDistM = null;
+  p.visual.gunMuzzleWorld(_v1);
+  _v2.copy(aim.point).sub(_v1);
+  const pathLen = _v2.length();
+  if (pathLen > 12) {
+    _v2.multiplyScalar(1 / pathLen);
+    const blk = world.raycast(_v1, _v2, pathLen - 6);
+    if (blk) aim.blockedDistM = blk.dist;
+  }
 
   // penetration indicator: first enemy plate under the aim ray
   aim.penRatio = null;
@@ -688,6 +735,15 @@ function updateDustAndSync(dtFrame) {
       ent.visual.setVisible(true);
     }
     if (game.phase === 'battle' && !ent.combat.destroyed) {
+      // PERF (perf-budget): dust/exhaust emission was per-FRAME — an unlocked
+      // 120 fps client emitted 2x the particles the fx were tuned for at 60,
+      // rotating the smoke/dust pools twice as fast late-battle. Fixed 60 Hz
+      // cadence (up to 2 catch-up ticks) keeps the tuned 60 fps look identical
+      // and makes emission frame-rate-independent.
+      ent._fxAcc = (ent._fxAcc || 0) + (dtFrame === undefined ? 1 / 60 : dtFrame);
+      if (ent._fxAcc < 1 / 60) continue;
+      const fxTicks = Math.min(2, Math.floor(ent._fxAcc * 60));
+      ent._fxAcc -= fxTicks / 60;
       const sp = Math.abs(ent.state.speed);
       const throttle = Math.abs(ent.input.throttle || 0);
       _fwd.set(Math.sin(ent.state.yaw), 0, Math.cos(ent.state.yaw));
@@ -696,7 +752,7 @@ function updateDustAndSync(dtFrame) {
         _v3.set(_fwd.z, 0, -_fwd.x); // right axis
         // Emit from BOTH rear track contact points; multiple puffs per frame
         // at speed so a top-speed run reads as a rolling plume (r1 critique).
-        const puffs = intensity > 0.6 ? 3 : 1;
+        const puffs = (intensity > 0.6 ? 3 : 1) * fxTicks;
         for (let side = -1; side <= 1; side += 2) {
           _v1.copy(ent.state.pos)
             .addScaledVector(_fwd, -ent.spec.dims.hullLengthM * 0.45)
@@ -705,11 +761,15 @@ function updateDustAndSync(dtFrame) {
         }
       }
       // Exhaust puffs off the engine deck whenever the engine is under load.
-      if (throttle > 0.1 || sp > 0.8) {
-        const load = Math.min(1, throttle * 0.7 + (sp / (ent.spec.topSpeedKmh / 3.6)) * 0.5);
+      // effects_combat r2: the stationary hero tank idles visibly during the
+      // opening flyby (motion accent), and era picks the exhaust character —
+      // WW2 diesels puff sooty, modern turbines emit a fast thin haze.
+      if (throttle > 0.1 || sp > 0.8 || (ent.isPlayer && rig.cinematicActive)) {
+        const load = Math.max((rig.cinematicActive && ent.isPlayer) ? 0.3 : 0,
+          Math.min(1, throttle * 0.7 + (sp / (ent.spec.topSpeedKmh / 3.6)) * 0.5));
         _v1.copy(ent.state.pos).addScaledVector(_fwd, -ent.spec.dims.hullLengthM * 0.42);
         _v1.y += ent.spec.dims.heightM * 0.72;
-        fx.exhaust(_v1, load);
+        fx.exhaust(_v1, load, ent.spec.era === 'ww2');
       }
     }
   }
@@ -820,7 +880,7 @@ function tick(nowMs) {
 
   // 5. visuals + dust (frozen during the kill-cam replay — tanks hold the
   // pose they died in; the x-ray reads the snapshot, not live state)
-  if (!kcActive) updateDustAndSync();
+  if (!kcActive) updateDustAndSync(dtR);
 
   // 6. fx
   fx.update(dtR, game.shells, camera);
@@ -940,6 +1000,7 @@ function forcedHudFrame(mode, forcedAim) {
   aim.distM = forcedAim.distM;
   aim.dispersionRadM = forcedAim.dispersionRadM;
   aim.penRatio = forcedAim.penRatio;
+  aim.blockedDistM = null; // screenshot views never show the blocked warning
   aim.atGunLimit = false;
   aim.reload.t = forcedAim.reload.t;
   aim.reload.totalS = forcedAim.reload.totalS;
@@ -1017,7 +1078,9 @@ const SHOT_VIEWS = {
   },
   tank_closeup_modern() {
     hud.setMode('hidden');
-    orbitPose(game.tankById.get('m1a2'), 9, 35, 12, 50);
+    // tank_models r2: sun-side close orbit (negative azimuth) — fills the
+    // frame and keeps the running gear/M256 collar/skirt panels readable.
+    orbitPose(game.tankById.get('m1a2'), 7, -38, 9, 45);
   },
   tank_closeup_ww2() {
     hud.setMode('hidden');
@@ -1026,10 +1089,21 @@ const SHOT_VIEWS = {
     // sag and camo bands were unreadable in the judged frame.
     orbitPose(game.tankById.get('tiger1'), 9, -35, 12, 50);
   },
+  detrack() {
+    // effects_combat r2: de-track destruction visuals — slumped band, thrown
+    // track ribbon, scattered road wheel + fx burst (rubric item).
+    hud.setMode('hidden');
+    const ent = game.tankById.get('tiger1');
+    orbitPose(ent, 10, 120, 10, 45);           // rear-quarter, running gear side
+    ent.visual.setTrackState('trackL', true);
+    bus.emit('module:state', { id: ent.id, module: 'trackL', state: 'red' });
+  },
   combat_firing() {
     hud.setMode('hidden');
     const p = game.player;
-    orbitPose(p, 14, 55, 8, 45);
+    // effects_combat r2: pitch 8 → 14 lifts the barrel line onto the sunlit
+    // road so the dark tube no longer vanishes against the shadowed bank.
+    orbitPose(p, 13, 55, 14, 45);
     // Recoil in the composed moment: each syncFromState advances the
     // self-timed recoil one 1/60 step, so 3 syncs ~= ageS 0.05 of kick.
     p.visual.recoilKick();
@@ -1073,6 +1147,7 @@ const SHOT_VIEWS = {
     hud.setMode('hidden');
     setPedestalTank('m1a2');
     garage.show('m1a2');
+    if (garage.drainThumbs) garage.drainThumbs(); // portraits finished for the capture
     garageCameraPose();
   },
   techtree() {
@@ -1081,6 +1156,7 @@ const SHOT_VIEWS = {
     hud.setMode('hidden');
     setPedestalTank('m1a2');
     garage.show('m1a2');
+    if (garage.drainThumbs) garage.drainThumbs(); // portraits finished for the capture
     garageCameraPose();
     garage.showTechTree('germany');
   },
@@ -1179,7 +1255,7 @@ const SHOT_VIEWS = {
 window.__SHOTS = {
   views: [
     'battlefield', 'player_view', 'sniper_view', 'tank_closeup_modern',
-    'tank_closeup_ww2', 'combat_firing', 'explosion', 'garage', 'techtree',
+    'tank_closeup_ww2', 'detrack', 'combat_firing', 'explosion', 'garage', 'techtree',
     'battlefield_desert', 'battlefield_winter', 'battlefield_urban',
     'killcam_xray', // KILL-CAM
   ],
@@ -1222,6 +1298,20 @@ world.update(0, camera.position);
 updateDustAndSync();
 lighting.update(true); // boot: render every cascade before first present
 post.render(SIM_DT);
+// PERF (perf-budget): warm the wreck path BEFORE readiness — the first kill
+// of a battle otherwise pays the burnt-material program compile + burnt/ember
+// texture uploads inside a combat frame (probe measured 125 ms at first
+// blood). Compile the program against a temporarily-destroyed staged tank
+// (renderer.compile is view-independent), then pre-upload every spec's maps.
+{
+  const warm = game.tanks.find((e) => !e.isPlayer && e.visual);
+  if (warm) {
+    warm.visual.setDestroyed({});
+    try { renderer.compile(warm.visual.root, camera, scene); } catch (_) { /* fine */ }
+    warm.visual.resetDestroyed();
+  }
+  warmWreckTextures(renderer);
+}
 post.render(SIM_DT);
 
 requestAnimationFrame(tick);
@@ -1455,5 +1545,8 @@ window.__DEBUG = {
   get spotting() { return game.spotting; },
   killcam,                             // KILL-CAM introspection (phase, cancel)
   spawnKillShell: debugSpawnKillShell, // KILL-CAM: die on purpose
+  // effects_combat r2: shot-mode latch exposed for headless drive tests
+  get shotMode() { return shotMode; },
+  set shotMode(v) { shotMode = !!v; },
 };
 window.__GAME_READY = true;

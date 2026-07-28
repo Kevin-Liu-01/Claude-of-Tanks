@@ -444,8 +444,11 @@ export function createGarageStage(engineCtx, pos) {
   const lensGeo = track(new THREE.PlaneGeometry(0.72, 0.4));
   const barGeo = track(new THREE.BoxGeometry(0.03, 0.62, 0.03));   // lens guard
   const floods = [
-    { p: new THREE.Vector3(-6, 6.8, -HW + 0.3), i: 55 },
-    { p: new THREE.Vector3(7, 6.8, -HW + 0.3), i: 55 },
+    // hud_ui r2: floor peak right of the tank clipped to pure white with the
+    // stage floods at 55 stacked on the integration key spot — held to 44
+    // so the turntable pool stays below clipping
+    { p: new THREE.Vector3(-6, 6.8, -HW + 0.3), i: 44 },
+    { p: new THREE.Vector3(7, 6.8, -HW + 0.3), i: 44 },
     { p: new THREE.Vector3(-HW + 0.3, 6.8, 4), i: 0 },
   ];
   for (const f of floods) {
@@ -576,6 +579,14 @@ export function createGarageStage(engineCtx, pos) {
   sign2.rotation.y = Math.PI / 2;
   sign2.position.set(-HW + 0.075, 3.4, -6);
   group.add(halo2, plate2, sign2);
+
+  // low hangar fill (hud_ui r2): the west-wall props (tool chest, bench,
+  // tires, pipes) crushed to near-black under the podium-keyed lighting. One
+  // wide dim point light lifts that corner ~a stop without flattening the
+  // key — finite range keeps it out of the battlefield shaders' hot path.
+  const fill = new THREE.PointLight(0xc2cedd, 13, 32, 1.7);
+  fill.position.set(-15, 5.6, -1);
+  group.add(fill);
 
   // second light pool: warm additive splash on the floor under the west-wall
   // flood housing (its lens is emissive) — fakes the third fixture being live

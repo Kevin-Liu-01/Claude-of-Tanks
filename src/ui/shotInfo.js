@@ -16,6 +16,7 @@
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
 import { maskIcon } from './icons.js';
 import { getSpec } from '../vehicles/specs.js';
+import { penAtDistanceMm } from '../sim/ballistics.js';
 
 const ICON_MARGIN = 1.07; // tools/icons-page.html bounding-box framing margin
 
@@ -61,6 +62,10 @@ const GLYPH = {
   crew: '<svg viewBox="0 0 12 12"><circle cx="6" cy="3.6" r="2.6" fill="currentColor"/><path d="M1.6 11.2a4.4 4.4 0 0 1 8.8 0z" fill="currentColor"/></svg>',
 };
 GLYPH.trackR = GLYPH.trackL;
+// commendation-ribbon glyphs (same 12px currentColor language)
+GLYPH.star = '<svg viewBox="0 0 12 12"><path d="M6 .7l1.55 3.25 3.55.42-2.62 2.44.7 3.5L6 8.6l-3.18 1.71.7-3.5L.9 4.37l3.55-.42z" fill="currentColor"/></svg>';
+GLYPH.shield = '<svg viewBox="0 0 12 12"><path d="M6 .7l4.7 1.6v3.3c0 2.9-1.9 4.7-4.7 5.7C3.2 10.3 1.3 8.5 1.3 5.6V2.3z" fill="currentColor"/></svg>';
+GLYPH.skull = '<svg viewBox="0 0 12 12"><path d="M6 .9a4.2 4.2 0 0 0-4.2 4.2c0 1.6.9 3 2.2 3.7v1.6h4V8.8a4.2 4.2 0 0 0 2.2-3.7A4.2 4.2 0 0 0 6 .9z" fill="currentColor"/><circle cx="4.3" cy="5" r="1.1" fill="#10161c"/><circle cx="7.7" cy="5" r="1.1" fill="#10161c"/><rect x="5.5" y="6.9" width="1" height="1.6" fill="#10161c"/></svg>';
 
 const SI_CSS = `
 .cot-si{position:absolute;inset:0;pointer-events:none;font-family:${FONT_STACK};color:${COL.text};}
@@ -153,7 +158,7 @@ body.cot-si-report .cot-end{align-items:center !important;
 .cot-si-bansub{font-size:10px;letter-spacing:.32em;color:${COL.dim};margin:7px 0 2.6vh;
   text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;font-weight:800;}
 .cot-si-cols{display:flex;gap:16px;width:1120px;max-width:94vw;align-items:stretch;
-  min-height:300px;}
+  min-height:220px;}
 .cot-si-panel{background:linear-gradient(180deg,rgba(10,14,18,.92),rgba(6,9,12,.95));
   border:1px solid rgba(146,164,180,.3);box-shadow:0 10px 40px rgba(0,0,0,.5);
   padding:14px 20px 16px;min-height:0;overflow:hidden;}
@@ -174,7 +179,9 @@ body.cot-si-report .cot-end{align-items:center !important;
 .cot-si-ribbons{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;}
 .cot-si-rib{border:1px solid rgba(214,178,94,.75);color:#e8c86a;font-family:${FONT_COND};
   font-stretch:condensed;font-weight:800;font-size:9px;letter-spacing:.14em;
-  padding:3px 8px;text-transform:uppercase;background:rgba(120,90,20,.16);}
+  padding:3px 8px;text-transform:uppercase;background:rgba(120,90,20,.16);
+  display:inline-flex;align-items:center;gap:5px;}
+.cot-si-rib svg{width:12px;height:12px;display:block;flex:0 0 auto;}
 .cot-si-tlwrap{width:1120px;max-width:94vw;margin-top:14px;}
 .cot-si-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 16px;margin-bottom:12px;}
 .cot-si-stat{text-align:center;}
@@ -204,16 +211,25 @@ body.cot-si-report .cot-end{align-items:center !important;
 .cot-si-tl svg{display:block;width:100%;height:58px;}
 .cot-si-tl .cap{font-size:8px;letter-spacing:.14em;color:${COL.dim};text-transform:uppercase;
   font-family:${FONT_COND};font-stretch:condensed;font-weight:700;text-align:center;margin-top:2px;}
-.cot-si-kills{border-top:1px solid rgba(146,164,180,.2);padding-top:7px;}
-.cot-si-kill{display:flex;align-items:center;gap:8px;font-size:12px;padding:4px 0;
-  font-variant-numeric:tabular-nums;}
+.cot-si-kills{padding-top:2px;margin-bottom:6px;}
+.cot-si-kill{display:flex;align-items:center;gap:8px;font-size:11.5px;padding:3px 0;
+  font-variant-numeric:tabular-nums;border-bottom:1px solid rgba(146,164,180,.08);}
 .cot-si-kill .si{width:34px;height:14px;flex:0 0 auto;}
-.cot-si-kill .n{flex:1;color:#dbe6ef;font-weight:600;}
+.cot-si-kill .n{flex:1;color:#dbe6ef;font-weight:600;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;}
+.cot-si-kill .n .you{color:#ffd166;font-family:${FONT_COND};font-stretch:condensed;
+  font-weight:800;font-size:9px;letter-spacing:.12em;border:1px solid rgba(255,209,102,.6);
+  padding:0 4px 1px;margin-right:4px;vertical-align:1px;}
 .cot-si-kill .kd{color:${COL.red};font-weight:800;font-size:9px;letter-spacing:.12em;
-  font-family:${FONT_COND};font-stretch:condensed;}
+  font-family:${FONT_COND};font-stretch:condensed;width:38px;text-align:right;flex:0 0 auto;}
+.cot-si-kill .al{color:${COL.green};font-weight:800;font-size:9px;letter-spacing:.12em;
+  font-family:${FONT_COND};font-stretch:condensed;width:38px;text-align:right;flex:0 0 auto;
+  opacity:.75;}
 .cot-si-kill .s{color:${COL.dim};font-size:10px;}
+.cot-si-kill .k{color:#dbe6ef;font-weight:800;font-family:${FONT_COND};
+  font-stretch:condensed;width:30px;text-align:right;font-size:10px;flex:0 0 auto;}
 .cot-si-kill .dm{color:#ffd166;font-weight:800;font-family:${FONT_COND};
-  font-stretch:condensed;width:52px;text-align:right;}
+  font-stretch:condensed;width:48px;text-align:right;flex:0 0 auto;}
 `;
 
 function ensureStyle(id, css) {
@@ -259,6 +275,27 @@ function shellDisplayName(ev) {
     if (name.toUpperCase() === type.toUpperCase()) name = '';
   }
   return name;
+}
+
+/**
+ * Nominal (un-rolled) penetration of the event's shell at the event's flight
+ * distance — the exact baseline the sim's ±25% pen roll came from
+ * (ensurePenRoll: rollUniform(rng, penAtDistanceMm(spec, distM))). Lets the
+ * card print 'roll / nominal' instead of a context-free roll that reads as a
+ * bug beside a thin plate (same helper as killcam.js).
+ * @param {{attackerSpecId?:string, shellName?:string, shellType?:string,
+ *   flightDistM?:number}} ev HitEvent
+ * @returns {number} nominal pen in mm (0 when unresolvable)
+ */
+function nominalPenFor(ev) {
+  try {
+    const spec = ev.attackerSpecId ? getSpec(ev.attackerSpecId) : null;
+    const shells = spec && spec.gun ? spec.gun.shells : null;
+    if (!shells) return 0;
+    const sh = shells.find((s) => s.name === ev.shellName && s.type === ev.shellType)
+      || shells.find((s) => s.type === ev.shellType);
+    return sh ? Math.round(penAtDistanceMm(sh, ev.flightDistM || 0)) : 0;
+  } catch (_) { return 0; }
 }
 
 /** Classify a HitEvent into the WoT-mod result badge. */
@@ -309,6 +346,65 @@ export function createShotInfo(bus) {
   const receivedLog = [];  // per-battle incoming entries (full battle)
   const stats = newStats();
 
+  // --- team-wide roster bookkeeping (battle report) -------------------------
+  // Every combatant seen in ANY bus event (shell:hit fires for AI-vs-AI hits
+  // too, enriched with names/specIds by state.js) — dmg/kills/dead are pure
+  // event sums, never re-simulated. Team split: every shell:hit /
+  // tank:destroyed edge asserts attacker and target are on OPPOSING teams
+  // (symmetric-teams charter: no friendly targeting), so a parity union-find
+  // anchored at the player resolves ally/enemy for the whole battle graph.
+  // A `battle:ended` payload roster (additive state.js enrichment, see
+  // docs/handoff) overrides with authoritative teams when present.
+  const combatants = new Map(); // id -> {name,specId,dmg,kills,dead}
+  let endRoster = null;         // battle:ended payload roster (if provided)
+  const tg = new Map();         // parity union-find: id -> {p:parent, r:0|1}
+
+  function combatant(id, name, specId) {
+    let c = combatants.get(id);
+    if (!c) {
+      c = { name: null, specId: null, dmg: 0, kills: 0, dead: false };
+      combatants.set(id, c);
+    }
+    if (name && !c.name) c.name = name;
+    if (specId && !c.specId) {
+      c.specId = specId;
+      if (!c.name) { try { c.name = getSpec(specId).name; } catch (_) { /* raw id */ } }
+    }
+    return c;
+  }
+
+  function tgFind(x) {
+    let e = tg.get(x);
+    if (!e) { e = { p: x, r: 0 }; tg.set(x, e); }
+    if (e.p === x) return { root: x, r: 0 };
+    const f = tgFind(e.p);
+    e.p = f.root;
+    e.r = (e.r + f.r) & 1;
+    return { root: e.p, r: e.r };
+  }
+
+  /** Record that a and b fought — therefore sit on opposing teams. */
+  function linkOpposed(a, b) {
+    if (a == null || b == null || a === b) return;
+    const fa = tgFind(a);
+    const fb = tgFind(b);
+    if (fa.root === fb.root) return;
+    const ra = tg.get(fa.root);
+    ra.p = fb.root;
+    ra.r = (fa.r + fb.r + 1) & 1;
+  }
+
+  /** 'ally' | 'enemy' | null (combatant not connected to the player yet). */
+  function sideOf(id) {
+    if (playerId == null) return null;
+    if (id === playerId) return 'ally';
+    if (!tg.has(id)) return null;
+    const fp = tgFind(playerId);
+    const fi = tgFind(id);
+    if (fi.root !== fp.root) return null;
+    return fi.r === fp.r ? 'ally' : 'enemy';
+  }
+
   function newStats() {
     return {
       fired: 0, hits: 0, pens: 0, dealt: 0, received: 0, blocked: 0,
@@ -331,7 +427,7 @@ export function createShotInfo(bus) {
   // Icon framing (tools/icons-page.html): bbox-normalized ortho renders with
   // MARGIN 1.07. Hull-local extent approximated from spec.dims exactly like
   // damagePanel.js: z in [-hullL/2, overallL - hullL/2] -> center (overall-hull)/2.
-  function diagramFor(ev) {
+  function diagramFor(ev, cls) {
     const specId = ev.targetSpecId || ev.targetId;
     let dims = null;
     let arm = null;
@@ -348,17 +444,33 @@ export function createShotInfo(bus) {
     const czOff = (dims.overallLengthM - dims.hullLengthM) / 2;
     const lp = ev.localPos;
     const ld = ev.localDir;
+    const badgeCol = (cls && cls.col) || '#ff8a5c';
+    // silhouette contrast (r4: the 0.34-alpha mask read as a gray pill):
+    // brighter fill + a drop-shadow outline pass that traces the mask edge
+    const SIL_FILL = 'rgba(206,222,236,0.55)';
+    const SIL_OUTLINE =
+      'drop-shadow(0 0 1px rgba(232,242,250,0.9)) drop-shadow(0 0 1px rgba(150,175,195,0.5))';
+    /** Badge-colored glow clipped to the silhouette mask at the hit point. */
+    const zoneTint = (parent, view, x, y, r) => {
+      const tint = el('div', 'sil', parent);
+      maskIcon(tint, specId, view, 'transparent');
+      tint.style.background =
+        `radial-gradient(circle ${r}px at ${x.toFixed(1)}px ${y.toFixed(1)}px,` +
+        `${badgeCol}d9 0%,${badgeCol}66 55%,${badgeCol}00 100%)`;
+    };
 
     // --- top view (72x72; icon: forward = up, screen right = -X world) ---
     const TS = 72;
     const top = el('div', 'box', wrap);
     top.style.width = `${TS}px`; top.style.height = `${TS}px`;
     const topSil = el('div', 'sil', top);
-    maskIcon(topSil, specId, 'top_silhouette', 'rgba(196,212,226,0.34)');
+    maskIcon(topSil, specId, 'top_silhouette', SIL_FILL);
+    topSil.style.filter = SIL_OUTLINE;
     const halfT = (Math.max(dims.widthM, dims.overallLengthM) / 2) * ICON_MARGIN;
     const sT = (TS / 2) / halfT;
     const topPx = (x, z) => [TS / 2 - x * sT, TS / 2 - (z - czOff) * sT];
     const [hx, hy] = topPx(lp[0], lp[2]);
+    zoneTint(top, 'top_silhouette', hx, hy, 15);
     let arrow = '';
     if (ld) {
       // Clamp the arrow tail inside the viewBox: the raw 2.2 m back-step
@@ -411,11 +523,13 @@ export function createShotInfo(bus) {
     const side = el('div', 'box', wrap);
     side.style.width = `${SW}px`; side.style.height = `${SH}px`;
     const sideSil = el('div', 'sil', side);
-    maskIcon(sideSil, specId, 'side_silhouette', 'rgba(196,212,226,0.34)');
+    maskIcon(sideSil, specId, 'side_silhouette', SIL_FILL);
+    sideSil.style.filter = SIL_OUTLINE;
     const halfS = Math.max(dims.heightM / 2, dims.overallLengthM / 4) * ICON_MARGIN;
     const sS = (SH / 2) / halfS;
     const sx = SW / 2 + (lp[2] - czOff) * sS;
     const sy = SH / 2 - (lp[1] - dims.heightM / 2) * sS;
+    zoneTint(side, 'side_silhouette', sx, sy, 13);
     const ovS = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     ovS.setAttribute('class', 'ov');
     ovS.setAttribute('viewBox', `0 0 ${SW} ${SH}`);
@@ -493,12 +607,23 @@ export function createShotInfo(bus) {
       kv('Armor', hasArmor
         ? `${Math.round(ev.nominalMm || 0)}→${Math.round(ev.effectiveMm || 0)} mm`
         : '—');
-      kv('Pen roll', (ev.penRollMm || 0) > 0 ? `${Math.round(ev.penRollMm)} mm` : '—');
+      // roll / nominal baseline: a bare '986 mm' beside a 63 mm plate looks
+      // like a bug to anyone who knows the shell's paper pen (r4 critique).
+      // Roll colored green/red vs the nominal it was rolled from.
+      const penNom = nominalPenFor(ev);
+      const roll = Math.round(ev.penRollMm || 0);
+      card.dataset.pennom = String(penNom);
+      if (roll > 0 && penNom > 0) {
+        kv('Pen roll', `<span style="color:${roll >= penNom ? COL.green : COL.red}">${roll}</span>` +
+          ` / ${penNom} mm`);
+      } else {
+        kv('Pen roll', roll > 0 ? `${roll} mm` : '—');
+      }
     }
     kv('Damage', `${Math.round(ev.damage || 0)} / ${Math.round(ev.dmgRoll || 0)}`);
     kv('Result', ev.destroyed ? 'DESTROYED' : `${Math.max(0, Math.round(ev.targetHpAfter || 0))} hp left`);
 
-    const diag = diagramFor(ev);
+    const diag = diagramFor(ev, cls);
     if (diag) {
       const zone = el('div', 'cot-si-zone', diag);
       zone.innerHTML = `${zoneLabel(ev.zone)}<span class="tn">${ev.targetName || ''}</span>`;
@@ -623,7 +748,7 @@ export function createShotInfo(bus) {
     const left = el('div', 'cot-si-panel cot-si-pl', cols);
     const right = el('div', 'cot-si-panel cot-si-pr', cols);
 
-    // --- left: rosters (your sortie + every enemy you engaged) ---
+    // --- left: your sortie summary + full team rosters ---
     const lh = el('div', 'ph', left);
     lh.innerHTML = '<span>Your sortie</span>';
     const you = el('div', 'cot-si-you', left);
@@ -632,8 +757,6 @@ export function createShotInfo(bus) {
       `<span class="s">${kills} kill${kills === 1 ? '' : 's'} · ${stats.hits}/${stats.fired} shots · ` +
       `received −${Math.round(stats.received)}</span>` +
       `<span class="dm">−${Math.round(stats.dealt)}</span>`;
-    const eh = el('div', 'ph', left);
-    eh.innerHTML = `<span>Enemies engaged</span><span>${stats.perTarget.size}</span>`;
 
     // --- right: performance tiles + per-shell + commendations ---
     const rh = el('div', 'ph', right);
@@ -674,14 +797,16 @@ export function createShotInfo(bus) {
 
     // commendation ribbons — every one derives 1:1 from the session counters
     const ribbons = [];
-    if (kills >= 3) ribbons.push(`ACE — ${kills} kills`);
-    else if (kills >= 1) ribbons.push(`DESTROYER — ${kills} kill${kills === 1 ? '' : 's'}`);
-    if (stats.hits >= 4 && penRate >= 70) ribbons.push(`SHARPSHOOTER — ${penRate}% pen`);
-    if (stats.blocked >= 400) ribbons.push(`STEEL WALL — ${Math.round(stats.blocked)} blocked`);
-    if (stats.fired >= 4 && stats.hits === stats.fired) ribbons.push('EVERY SHOT CONNECTED');
+    if (kills >= 3) ribbons.push({ g: GLYPH.star, t: `ACE — ${kills} kills` });
+    else if (kills >= 1) ribbons.push({ g: GLYPH.skull, t: `DESTROYER — ${kills} kill${kills === 1 ? '' : 's'}` });
+    if (stats.hits >= 4 && penRate >= 70) ribbons.push({ g: GLYPH.optics, t: `SHARPSHOOTER — ${penRate}% pen` });
+    if (stats.blocked >= 400) ribbons.push({ g: GLYPH.shield, t: `STEEL WALL — ${Math.round(stats.blocked)} blocked` });
+    if (stats.fired >= 4 && stats.hits === stats.fired) ribbons.push({ g: GLYPH.ammoRack, t: 'EVERY SHOT CONNECTED' });
     if (ribbons.length) {
       const rr = el('div', 'cot-si-ribbons', right);
-      for (const r of ribbons) el('span', 'cot-si-rib', rr).textContent = r;
+      for (const r of ribbons) {
+        el('span', 'cot-si-rib', rr).innerHTML = `${r.g}<span>${r.t}</span>`;
+      }
     }
 
     // damage-over-time strip: dealt (gold, up) mirrored vs received (red, down)
@@ -727,28 +852,77 @@ export function createShotInfo(bus) {
         `<div class="cap">dealt ▲ / received ▼ · ${fmtTime(dur)}</div>`;
     }
 
-    const engaged = [...stats.perTarget.entries()]
-      .sort((a, b) => b[1].dmg - a[1].dmg);
-    if (engaged.length) {
-      const kills2 = el('div', 'cot-si-kills', left);
-      for (const [id, t] of engaged) {
-        const row = el('div', 'cot-si-kill', kills2);
-        // Honest bookkeeping: a kill credited without any recorded player
-        // damage (fire tick, module chain) must not render as "0 hits · −0".
-        const detail = (t.hits > 0
-          ? `${t.hits} hit${t.hits === 1 ? '' : 's'} · ${t.pens} pen${t.pens === 1 ? '' : 's'}` +
-            `${t.lastZone ? ' · ' + zoneLabel(t.lastZone) : ''}`
-          : 'no direct hits recorded') +
-          // WoT roster read: survivors show remaining HP (as of your last hit)
-          (!t.killed && t.hpLeft != null ? ` · ${t.hpLeft} hp left` : '');
-        row.innerHTML = `<span class="si"></span><span class="n">${t.name || id}</span>` +
-          `${t.killed ? '<span class="kd">DESTROYED</span>' : ''}` +
-          `<span class="s">${detail}</span>` +
-          `<span class="dm">${t.dmg > 0 ? `−${Math.round(t.dmg)}` : '—'}</span>`;
-        maskIcon(row.querySelector('.si'), t.specId || id, 'side_silhouette',
-          t.killed ? '#f28f8f' : 'rgba(206,220,232,0.75)');
+    // --- team rosters: every combatant the battle produced evidence for.
+    // dmg/kills/dead are raw event sums (shell:hit / tank:destroyed); side
+    // comes from the parity graph, overridden by the battle:ended payload
+    // roster when the sim provides one. Nothing here is fabricated — a tank
+    // that appears in no event and no payload simply is not listed.
+    const rows = new Map();
+    for (const [id, c] of combatants) {
+      rows.set(id, {
+        id, name: c.name, specId: c.specId, dmg: c.dmg, kills: c.kills,
+        dead: c.dead, side: sideOf(id), isPlayer: id === playerId,
+      });
+    }
+    if (endRoster) {
+      for (const r of endRoster) {
+        let row = rows.get(r.id);
+        if (!row) {
+          row = { id: r.id, name: null, specId: null, dmg: 0, kills: 0, dead: false, side: null };
+          rows.set(r.id, row);
+        }
+        if (!row.name && (r.vehicle || r.name)) row.name = r.vehicle || r.name;
+        if (!row.specId && r.specId) row.specId = r.specId;
+        if (r.team) row.side = r.team === 'enemy' ? 'enemy' : 'ally';
+        if (r.alive === false) row.dead = true;
+        if (r.isPlayer) row.isPlayer = true;
       }
-    } else {
+    }
+    const allies = [];
+    const enemies = [];
+    const unknown = [];
+    for (const r of rows.values()) {
+      (r.side === 'ally' ? allies : r.side === 'enemy' ? enemies : unknown).push(r);
+    }
+    const bySort = (a, b) => (b.isPlayer ? 1 : 0) - (a.isPlayer ? 1 : 0) || b.dmg - a.dmg;
+    allies.sort(bySort);
+    enemies.sort(bySort);
+    unknown.sort(bySort);
+    statsRoot.dataset.rosterAllies = String(allies.length);
+    statsRoot.dataset.rosterEnemies = String(enemies.length);
+
+    const teamBlock = (title, list) => {
+      if (!list.length) return;
+      const hd = el('div', 'ph', left);
+      const alive = list.filter((r) => !r.dead).length;
+      hd.innerHTML = `<span>${title}</span><span>${alive}/${list.length} alive</span>`;
+      const host = el('div', 'cot-si-kills', left);
+      for (const r of list) {
+        const row = el('div', 'cot-si-kill', host);
+        // engagement detail for enemies the PLAYER fought (perTarget log)
+        const t = stats.perTarget.get(r.id);
+        const detail = t
+          ? (t.hits > 0
+            ? `${t.hits} hit${t.hits === 1 ? '' : 's'} · ${t.pens} pen${t.pens === 1 ? '' : 's'}` +
+              `${t.lastZone ? ' · ' + zoneLabel(t.lastZone) : ''}`
+            : 'no direct hits recorded') +
+            (!t.killed && t.hpLeft != null ? ` · ${t.hpLeft} hp left` : '')
+          : '';
+        row.innerHTML =
+          `<span class="si"></span>` +
+          `<span class="n">${r.isPlayer ? '<b class="you">YOU</b> ' : ''}${r.name || r.id}</span>` +
+          `<span class="s">${detail}</span>` +
+          `<span class="k">${r.kills > 0 ? `${r.kills} ✕` : ''}</span>` +
+          `<span class="dm">${r.dmg > 0 ? `−${Math.round(r.dmg)}` : '—'}</span>` +
+          (r.dead ? '<span class="kd">DEAD</span>' : '<span class="al">ALIVE</span>');
+        maskIcon(row.querySelector('.si'), r.specId || r.id, 'side_silhouette',
+          r.dead ? '#f28f8f' : 'rgba(206,220,232,0.75)');
+      }
+    };
+    teamBlock('Your team', allies);
+    teamBlock('Enemy team', enemies);
+    teamBlock('Contacts — side unconfirmed', unknown);
+    if (!rows.size) {
       const none = el('div', 'cot-si-empty', left);
       none.textContent = 'No engagements recorded.';
     }
@@ -778,6 +952,15 @@ export function createShotInfo(bus) {
   });
 
   bus.on('shell:hit', (ev) => {
+    // team-wide roster bookkeeping (every combatant, incl. AI-vs-AI)
+    if (ev.attackerId != null && ev.targetId != null && ev.attackerId !== ev.targetId) {
+      const a = combatant(ev.attackerId, ev.attackerName, ev.attackerSpecId);
+      a.dmg += ev.damage || 0;
+      const t = combatant(ev.targetId, ev.targetName, ev.targetSpecId);
+      if (ev.destroyed) t.dead = true; // kill CREDIT counted once, in tank:destroyed
+      // splash can catch a teammate — only DIRECT hits assert opposing teams
+      if (ev.kind !== 'he_splash') linkOpposed(ev.attackerId, ev.targetId);
+    }
     if (playerId == null) return;
     if (ev.attackerId === playerId && ev.targetId && ev.targetId !== playerId) {
       const cls = classify(ev);
@@ -819,6 +1002,12 @@ export function createShotInfo(bus) {
   });
 
   bus.on('tank:destroyed', (p) => {
+    // team-wide roster bookkeeping (fire deaths included — no shell:hit fires)
+    combatant(p.id, null, p.specId).dead = true;
+    if (p.killerId != null && p.killerId !== p.id) {
+      combatant(p.killerId).kills += 1;
+      linkOpposed(p.killerId, p.id);
+    }
     if (playerId == null || p.killerId !== playerId || p.id === playerId) return;
     let t = stats.perTarget.get(p.id);
     if (!t) {
@@ -834,7 +1023,16 @@ export function createShotInfo(bus) {
     t.hpLeft = 0;
   });
 
-  bus.on('battle:ended', (p) => renderStats(p ? p.result : ''));
+  bus.on('battle:ended', (p) => {
+    // the floating shot card and incoming toasts must never linger behind the
+    // results screen — a dimmed PENETRATION card double-reported the final
+    // shot in the corner of the DEFEAT report for up to 7 s (r4 critique)
+    while (cardHost.firstChild) cardHost.firstChild.remove();
+    while (toastHost.firstChild) toastHost.firstChild.remove();
+    // authoritative team roster when the sim provides one (additive payload)
+    if (p && Array.isArray(p.roster)) endRoster = p.roster;
+    renderStats(p ? p.result : '');
+  });
   bus.on('ui:shotLog', () => toggleLog());
   bus.on('ui:battleStart', () => api.reset());
 
@@ -858,6 +1056,9 @@ export function createShotInfo(bus) {
       while (toastHost.firstChild) toastHost.firstChild.remove();
       shotLog.length = 0;
       receivedLog.length = 0;
+      combatants.clear();
+      tg.clear();
+      endRoster = null;
       Object.assign(stats, newStats());
       stats.perTarget = new Map();
       logOpen = false;

@@ -176,7 +176,9 @@ function genPlateFeatures(rng) {
     f.rings.push({ x: 0.1 + rng() * 0.8, y: 0.1 + rng() * 0.8, r: 0.022 + rng() * 0.03, n: 8 + ((rng() * 6) | 0) });
   }
   // chips clustered near lines and edges
-  for (let i = 0; i < 260; i++) {
+  // r8: 260 chips with bright glints read as white speckle noise at
+  // garage distance — halved, and the glint rectangle dimmed below.
+  for (let i = 0; i < 140; i++) {
     let x = rng(), y = rng();
     if (rng() < 0.55) {                     // snap toward a random line
       if (rng() < 0.5 && f.hLines.length) { y = f.hLines[(rng() * f.hLines.length) | 0].p + (rng() - 0.5) * 0.02; }
@@ -258,20 +260,26 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // the overspray rim stays a tight stroke straddling the hard core edge.
     const bandAng = 0.9 + rng() * 0.5;                   // one direction per tank
     const nP0 = Math.round(11 * nK);
+    // r8: FEATHERED spray edges (2-3 px blur straddling the core) and colors
+    // pulled toward the base — the hard-edged saturated shards read as
+    // paper-cut vinyl stickers, not sprayed paint (r7 Tiger critique).
+    const feather = `blur(${Math.max(2, S * 0.0016).toFixed(1)}px)`;
     for (let i = 0; i < nP0; i++) {
-      const col = mix(patches[i % patches.length], base, 0.10);
+      const col = mix(patches[i % patches.length], base, 0.24);
       const r = S * wk * (i < nP0 * 0.3 ? 0.085 + rng() * 0.055 : 0.032 + rng() * 0.05);
       const x = rng() * S, y = rng() * S;
       const p = camoPatchPath2D(rng, x, y, r, bandAng + (rng() - 0.5) * 0.5);
-      strokeWrapped(ctx, S, p, rgb(col, 0.28), S * 0.006);   // tight overspray rim
-      fillWrapped(ctx, S, p, rgb(col, 0.93));
+      ctx.filter = feather;
+      strokeWrapped(ctx, S, p, rgb(col, 0.20), S * 0.009);   // soft overspray rim
+      fillWrapped(ctx, S, p, rgb(col, 0.85));
+      ctx.filter = 'none';
     }
     // Spray bands: LONG thin strokes at ONE consistent diagonal per vehicle
     // (small jitter only) — crews swept the spray gun in parallel passes, so
     // the bands read as a directional stripe scheme, never as random daubs
     // (r6 "finger-paint" critique).
-    for (let i = 0; i < Math.round(20 * nK); i++) {
-      const col = mix(patches[i % patches.length], base, 0.12);
+    for (let i = 0; i < Math.round(14 * nK); i++) {
+      const col = mix(patches[i % patches.length], base, 0.22);
       const x0 = rng() * S, y0 = rng() * S;
       const ang = bandAng + (rng() - 0.5) * 0.22;
       const len = S * wk * (0.20 + rng() * 0.24);
@@ -283,8 +291,12 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       const path = new Path2D();
       path.moveTo(x0, y0);
       path.quadraticCurveTo(mx, my, x1, y1);
-      strokeWrapped(ctx, S, path, rgb(col, 0.20), w * 1.8);      // overspray halo
-      strokeWrapped(ctx, S, path, rgb(col, 0.8), w);
+      // r8: feathered like the patches — the crisp near-opaque ribbons read
+      // as brush strokes; sprayed bands have soft flanks and sit lower.
+      ctx.filter = feather;
+      strokeWrapped(ctx, S, path, rgb(col, 0.15), w * 1.8);      // overspray halo
+      strokeWrapped(ctx, S, path, rgb(col, 0.78), w);
+      ctx.filter = 'none';
     }
   } else if (scheme === 'ambush' && patches.length) {
     // Hinterhalt-Tarnung (the Panther 'ambush' factory scheme): angular
@@ -301,8 +313,10 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       const r = S * wk * (i < nP * 0.35 ? 0.080 + rng() * 0.050 : 0.042 + rng() * 0.038);
       const x = rng() * S, y = rng() * S;
       const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.55);
-      strokeWrapped(ctx, S, p, rgb(mix(col, base, 0.35), 0.45), S * 0.0045);
-      fillWrapped(ctx, S, p, rgb(col, 0.94));
+      ctx.filter = `blur(${Math.max(1.5, S * 0.0012).toFixed(1)}px)`;   // r8 soft spray edge
+      strokeWrapped(ctx, S, p, rgb(mix(col, base, 0.35), 0.40), S * 0.005);
+      fillWrapped(ctx, S, p, rgb(col, 0.90));
+      ctx.filter = 'none';
       drawn.push({ p, x, y, r });
     }
     const dotWrap = (x, y, r2) => {
@@ -315,25 +329,25 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // light dots INSIDE the dark patches (sun dapple on the dark tones)
     ctx.fillStyle = rgb(mix(base, [235, 224, 178], 0.18), 0.92);
     for (const d of drawn) {
-      const n = 12 + ((rng() * 12) | 0);
+      const n = 6 + ((rng() * 6) | 0);
       let placed = 0, guard = 0;
       while (placed < n && guard++ < n * 8) {
         const px2 = d.x + (rng() - 0.5) * d.r * 3.6;
         const py2 = d.y + (rng() - 0.5) * d.r * 2.6;
         if (!ctx.isPointInPath(d.p, px2, py2)) continue;
-        dotWrap(px2, py2, S * (0.0028 + rng() * 0.0032));
+        dotWrap(px2, py2, S * (0.0040 + rng() * 0.0034));
         placed++;
       }
     }
     // dark dots on the base BETWEEN patches (never on the patches — dots on
     // everything is what mushed the scheme into confetti)
-    for (let i = 0; i < 240; i++) {
+    for (let i = 0; i < 110; i++) {
       const x = rng() * S, y = rng() * S;
       let inside = false;
       for (const d of drawn) { if (ctx.isPointInPath(d.p, x, y)) { inside = true; break; } }
       if (inside) continue;
       ctx.fillStyle = rgb(patches[(rng() * patches.length) | 0], 0.88);
-      dotWrap(x, y, S * (0.0026 + rng() * 0.0030));
+      dotWrap(x, y, S * (0.0038 + rng() * 0.0032));
     }
   } else if (scheme === 'nato' && patches.length) {
     // NATO 3-colour (Bundeswehr Gefechtstarnung / MERDC family): angular
@@ -400,15 +414,38 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       fillWrapped(ctx, S, polyPath2D(rng, x, y, r * 1.04, 7, 0.55), rgb(mix(col, base, 0.5), 0.5));
       fillWrapped(ctx, S, polyPath2D(rng, x, y, r, 7, 0.55), rgb(col, 0.96));
     }
-    for (let i = 0; i < Math.round(7 * nK); i++) {                // mid shards
-      const r = S * wk * (0.06 + rng() * 0.06);
-      const col = [darkHC, mid2, paleHC][(rng() * 3) | 0];
+    // r8 confetti fix: the pale sand tone used to arrive as ~27 identically
+    // sized chips at even density (1/3 of the mid shards + half the small
+    // flecks) — leopard-print at garage distance on Tiger/Abrams. The pale
+    // highlight is now FEW large elongated bands swept along one per-vehicle
+    // diagonal (sprayed desert geometry), and all small flecking clusters
+    // around those bands' edges with a 3x+ size spread (overspray language)
+    // instead of raining uniformly across the hull.
+    const dirD = rng() * Math.PI;
+    const paleBands = [];
+    for (let i = 0; i < Math.max(2, Math.round(3 * nK)); i++) {   // pale bands
+      const r = S * wk * (0.10 + rng() * 0.08);
+      const x = rng() * S, y = rng() * S;
+      const p = camoPatchPath2D(rng, x, y, r, dirD + (rng() - 0.5) * 0.4);
+      strokeWrapped(ctx, S, p, rgb(mix(paleHC, base, 0.45), 0.4), S * 0.006);
+      fillWrapped(ctx, S, p, rgb(paleHC, 0.93));
+      paleBands.push([x, y, r]);
+    }
+    for (let i = 0; i < Math.round(6 * nK); i++) {                // mid shards (dark/mid only)
+      const r = S * wk * (0.045 + rng() * 0.075);
+      const col = rng() < 0.5 ? darkHC : mid2;
       fillWrapped(ctx, S, polyPath2D(rng, rng() * S, rng() * S, r, 5, 0.7), rgb(col, 0.94));
     }
-    for (let i = 0; i < Math.round(20 * nK); i++) {               // small flecks
-      const r = S * wk * (0.012 + rng() * 0.02);
-      fillWrapped(ctx, S, polyPath2D(rng, rng() * S, rng() * S, r, 4, 0.8),
-        rgb(rng() < 0.5 ? darkHC : paleHC, 0.85));
+    for (const [bx, by, br] of paleBands) {                       // clustered flecks
+      const n = 4 + ((rng() * 5) | 0);
+      for (let i = 0; i < n; i++) {
+        const a3 = rng() * Math.PI * 2;
+        const d3 = br * (0.9 + rng() * 1.5);
+        const x = bx + Math.cos(a3) * d3, y = by + Math.sin(a3) * d3 * 0.7;
+        const r = S * wk * (0.010 + rng() * rng() * 0.040);       // ~3-5x size spread
+        fillWrapped(ctx, S, polyPath2D(rng, x, y, r, 4, 0.8),
+          rgb(rng() < 0.45 ? darkHC : paleHC, 0.85));
+      }
     }
     for (let i = 0; i < Math.round(14 * nK); i++) {               // thin streaks
       const x0 = rng() * S, y0 = rng() * S, len = S * wk * (0.05 + rng() * 0.1);
@@ -424,28 +461,41 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // patches[0] carries the underlying factory color that shows through
     // worn edges; broad translucent vertical strokes read as brush work.
     const under = patches.length ? patches[0] : [70, 80, 55];
-    for (let i = 0; i < 90; i++) {
+    // r8 rework (winter blowout critique): the wash is ~70% cover over the
+    // base coat — brighter brushed streaks sit BETWEEN visible grey-green
+    // gaps, worn edges show real paint, and the shadow washes went neutral
+    // grey (the old blue-tinted radials read as stray pale-blue patches).
+    for (let i = 0; i < 80; i++) {
       const x0 = rng() * S, y0 = rng() * S;
       const len = S * (0.08 + rng() * 0.2);
       const w = S * (0.012 + rng() * 0.03);
       const path = new Path2D();
       path.moveTo(x0, y0);
       path.quadraticCurveTo(x0 + (rng() - 0.5) * w * 3, y0 + len * 0.5, x0 + (rng() - 0.5) * w * 4, y0 + len);
-      strokeWrapped(ctx, S, path, 'rgba(235,238,232,0.22)', w * 1.5);
-      strokeWrapped(ctx, S, path, 'rgba(244,246,240,0.30)', w);
+      strokeWrapped(ctx, S, path, 'rgba(228,231,223,0.20)', w * 1.5);
+      strokeWrapped(ctx, S, path, 'rgba(238,240,233,0.26)', w);
     }
-    // worn-through patches revealing the base vehicle paint
-    for (let i = 0; i < 26; i++) {
-      const r = S * (0.012 + rng() * 0.035);
+    // worn-through patches revealing the base vehicle paint (heavier at r8 —
+    // the wash needs visible green bones to avoid the white-mass read)
+    for (let i = 0; i < 34; i++) {
+      const r = S * (0.012 + rng() * 0.04);
       const p = blobPath2D(rng, rng() * S, rng() * S, r);
-      fillWrapped(ctx, S, p, rgb(under, 0.28 + rng() * 0.4));
+      fillWrapped(ctx, S, p, rgb(under, 0.24 + rng() * 0.38));
     }
-    // cold grey-blue shadow washes so the wash never reads as flat white
+    // grey streaking down the plates (rain-washed whitewash)
+    for (let i = 0; i < 70; i++) {
+      const x0 = rng() * S, y0 = rng() * S, len = S * (0.05 + rng() * 0.14);
+      const path = new Path2D();
+      path.moveTo(x0, y0);
+      path.lineTo(x0 + (rng() - 0.5) * 6, y0 + len);
+      strokeWrapped(ctx, S, path, `rgba(118,122,110,${0.10 + rng() * 0.12})`, 1.5 + rng() * 4);
+    }
+    // neutral shadow washes so the wash never reads as flat white
     for (let i = 0; i < 18; i++) {
       const x = rng() * S, y = rng() * S, r = S * (0.05 + rng() * 0.12);
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, 'rgba(120,130,138,0.14)');
-      g.addColorStop(1, 'rgba(120,130,138,0)');
+      g.addColorStop(0, 'rgba(104,108,98,0.13)');
+      g.addColorStop(1, 'rgba(104,108,98,0)');
       ctx.fillStyle = g;
       ctx.fillRect(x - r, y - r, r * 2, r * 2);
     }
@@ -476,9 +526,16 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // spread, fewer rects per cluster, plus a sparse fine-grain octave. Cell
     // math: one repeat tile spans 1/camoScale meters, so cellsPerTile scales
     // with wk to hold world size across tanks.
-    const cells = Math.max(96, Math.round(128 / Math.max(wk, 0.5)));
+    // r8: `digitalCellK` (palette knob, see patternVisual USSR/Russia)
+    // scales the whole cell lattice UP for palettes whose blocks collapsed
+    // into speckle at pedestal distance; rect count and fine grain scale
+    // DOWN with it so coverage density stays constant.
+    const cellK = Math.max(1, visual.digitalCellK || 1);
+    const cells = Math.max(Math.round(96 / cellK),
+      Math.round(128 / (Math.max(wk, 0.5) * cellK)));
     const cell = S / cells;
     const GRID = 16;
+    const perCluster = Math.max(5, Math.round(12 / cellK));
     let ci = 0;
     for (let gy = 0; gy < GRID; gy++) {
       for (let gx = 0; gx < GRID; gx++) {
@@ -486,7 +543,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
         const cx = (((gx + rng()) * cells) / GRID) | 0;
         const cy = (((gy + rng()) * cells) / GRID) | 0;
         ctx.fillStyle = rgb(col, 0.92);
-        for (let k = 0; k < 12; k++) {
+        for (let k = 0; k < perCluster; k++) {
           const dx = ((rng() * 5) | 0) - 2, dy = ((rng() * 5) | 0) - 2;
           const px2 = ((((cx + dx) * cell) % S) + S) % S;
           const py2 = ((((cy + dy) * cell) % S) + S) % S;
@@ -498,7 +555,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       }
     }
     // fine-grain octave: lone cells peppered between clusters
-    for (let i = 0; i < 700; i++) {
+    for (let i = 0; i < Math.round(700 / (cellK * cellK)); i++) {
       const col = patches[(rng() * patches.length) | 0];
       ctx.fillStyle = rgb(col, 0.85);
       const px2 = ((rng() * cells) | 0) * cell, py2 = ((rng() * cells) | 0) * cell;
@@ -514,7 +571,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // ~1 cm; the S/340 rows read as corrugated cardboard at pedestal range.
     const pitch = Math.max(2, (S / 900) | 0);
     for (let y = 0; y < S; y += pitch) {
-      ctx.fillStyle = `rgba(0,0,0,${0.012 + 0.015 * rng()})`;
+      ctx.fillStyle = `rgba(0,0,0,${0.028 + 0.022 * rng()})`;
       ctx.fillRect(0, y, S, 1);
     }
     // faint vertical trowel-section seams so the coating reads as applied
@@ -615,7 +672,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     ctx.fillStyle = c.metal ? 'rgba(112,110,102,0.72)' : 'rgba(25,22,18,0.55)';
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     if (c.metal) {
-      ctx.fillStyle = 'rgba(205,200,185,0.75)';
+      ctx.fillStyle = 'rgba(196,190,174,0.45)';
       ctx.fillRect(x - r * 0.55, y - r - 1.2, r * 1.1, 1.8);
     }
   }
@@ -685,9 +742,9 @@ function paintHeight(canvas, visual, rng, feats, seed) {
     }
     for (const [x0, x1, phase] of cols) {
       for (let y = -pitch; y < S; y += pitch) {
-        ctx.fillStyle = 'rgba(255,255,255,0.11)';
+        ctx.fillStyle = 'rgba(255,255,255,0.20)';
         ctx.fillRect(x0, y + phase, x1 - x0, Math.max(1, pitch >> 1));
-        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        ctx.fillStyle = 'rgba(0,0,0,0.22)';
         ctx.fillRect(x0, y + phase + (pitch >> 1), x1 - x0, Math.max(1, pitch >> 1));
       }
       // groove between strips
@@ -957,6 +1014,20 @@ function canvasTex(canvas, { srgb = true, aniso = 4, repeat = false } = {}) {
 // expensive part, and every instance of a tank type can share the results.
 // Refcounted so dispose() only frees GPU memory when the last user is gone.
 // ---------------------------------------------------------------------------
+
+// r8 exposure trim for the SHARED procedural albedo (not the GLB pattern
+// tiles — composeGlbShare applies its own 0.84 multiply): full-brightness
+// procedural paint rendered a milky pastel next to the trimmed Abrams GLB
+// under the garage spots — the core of the roster-cohesion critique.
+function exposureTrim(canvas, k = 0.86) {
+  const ctx = canvas.getContext('2d');
+  ctx.globalCompositeOperation = 'multiply';
+  const v = Math.round(k * 255);
+  ctx.fillStyle = `rgb(${v},${v},${v})`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.globalCompositeOperation = 'source-over';
+}
+
 const TEX_CACHE = new Map();
 
 function acquireSharedTextures(spec, aniso) {
@@ -969,8 +1040,9 @@ function acquireSharedTextures(spec, aniso) {
     const rng = mulberry32(seed);
     const feats = genPlateFeatures(rng);
     const camoCanvas = paintCamo(makeCanvas(ALBEDO_SIZE, ALBEDO_SIZE), vis, rng, feats, seed);
+    exposureTrim(camoCanvas);
     const heightCanvas = paintHeight(makeCanvas(MAP_SIZE, MAP_SIZE), vis, rng, feats, seed);
-    const normalCanvas = heightToNormal(heightCanvas, vis.zimmerit ? 2.0 : 2.6);
+    const normalCanvas = heightToNormal(heightCanvas, vis.zimmerit ? 2.6 : 2.6);
     const roughCanvas = paintRoughness(makeCanvas(MAP_SIZE, MAP_SIZE), rng, feats);
     const trackCanvas = paintTrack(mulberry32(seed + 17));
     entry = {
@@ -990,6 +1062,20 @@ function acquireSharedTextures(spec, aniso) {
   }
   entry.refs++;
   return entry;
+}
+
+/**
+ * PERF (perf-budget handoff): pre-upload every cached spec's burnt/ember maps
+ * so the first kill of a battle doesn't pay a texture-upload stall inside a
+ * combat frame (probe measured a 125 ms frame at first blood). Call once at
+ * boot after all tanks are built; ~100 MB of uploads amortized off-battle.
+ * @param {THREE.WebGLRenderer} renderer
+ */
+export function warmWreckTextures(renderer) {
+  for (const entry of TEX_CACHE.values()) {
+    if (entry.burntTex) renderer.initTexture(entry.burntTex);
+    if (entry.emberTex) renderer.initTexture(entry.emberTex);
+  }
 }
 
 function releaseSharedTextures(spec) {
@@ -1019,11 +1105,16 @@ function ensureBurntTextures(entry, aniso) {
   const ctx = cv.getContext('2d');
   ctx.drawImage(entry.camoCanvas, 0, 0, S, S);
   // char the paint toward scorched near-black, camo faintly readable under it
+  // char levels lifted (multiply #5a5049 + 0.42 near-black overlay -> #7d7268
+  // + 0.28): the old stack pushed the wreck albedo to ~0.06 and the hull read
+  // as a light-swallowing pure-black silhouette within 2 s of the kill (r6).
+  // The wreck must stay CHARRED but keep readable camo/panel structure and
+  // catch sun/fire rim light.
   ctx.globalCompositeOperation = 'multiply';
-  ctx.fillStyle = '#5a5049';
+  ctx.fillStyle = '#6e645c';
   ctx.fillRect(0, 0, S, S);
   ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = 'rgba(22,19,16,0.42)';
+  ctx.fillStyle = 'rgba(24,21,18,0.34)';
   ctx.fillRect(0, 0, S, S);
   const rng = mulberry32((entry.seed ^ 0xb0217) >>> 0);
   // sooty blotches: char-black pockets and ash-grey burn-through patches
@@ -1056,10 +1147,12 @@ function ensureBurntTextures(entry, aniso) {
   const ectx = ec.getContext('2d');
   ectx.fillStyle = '#000';
   ectx.fillRect(0, 0, E, E);
-  for (let i = 0; i < 6; i++) {
-    const x = rng() * E, y = rng() * E, r = 22 + rng() * 34;
+  // 11 pockets (was 6) at varied radii/heat so the smolder reads as scattered
+  // embers in seams — more variation kills the r6 "featureless black" hull
+  for (let i = 0; i < 11; i++) {
+    const x = rng() * E, y = rng() * E, r = 14 + rng() * 40;
     const g = ectx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, `rgba(255,132,48,${0.35 + rng() * 0.35})`);
+    g.addColorStop(0, `rgba(255,${118 + Math.floor(rng() * 60)},48,${0.32 + rng() * 0.42})`);
     g.addColorStop(0.5, 'rgba(140,36,8,0.22)');
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ectx.fillStyle = g;
@@ -1139,11 +1232,27 @@ export function hasCamoPaint(specId) {
 // green (panel-tone variation comes from the tonal/mottle layers + the GLB's
 // baked detail overlay), keeping the 3-color NATO look exclusive to 'summer'.
 const FACTORY_OVERRIDE = {
-  m1a2: { scheme: 'solid', base: '#4c5741', weather: '#5a6650', patches: [] },
+  // r8: pure solid left the GLB's baked-camo luma showing through on the
+  // hull while the turret atlas stayed flat — coverage read inconsistent
+  // across one vehicle (r7 factory critique). Tone-on-tone green patches
+  // (same family, low contrast) put OUR pattern everywhere so hull, turret
+  // and skirts read as one deliberate paint job; still clearly distinct from
+  // 'summer's 3-color NATO.
+  m1a2: { scheme: 'nato', base: '#4c5741', weather: '#5a6650', patches: ['#3e4835', '#586349'] },
   // Hinterhalt tones: the authored '#7a4a35' Rotbraun reads bright orange
   // under the warm garage key light (r7 "orange/green cow spots"); drop both
   // patch tones toward RAL 6003/8017 so the scheme reads olive + chocolate.
   panther_g: { patches: ['#5d6334', '#5e3c29'] },
+  // r8: the SAME Rotbraun flare on the Tiger's authored '#6f4530' stripes was
+  // missed by the r7 fix (it only patched panther_g). The stripes scheme
+  // paints its bands semi-transparent over the light Dunkelgelb, so the brown
+  // must be authored DARKER than the panther's ambush fill to land on the
+  // same RAL 8017 chocolate on screen (measured: '#5e3c29' still left 6.4%
+  // of the hull in saturated orange vs the panther's 3.7%).
+  tiger1: { patches: ['#5d6334', '#452c1e'] },
+  // (t90m FACTORY needs no override: specs.js r8 authored it as the
+  // roster-doc solid dark-forest green; the digital-legibility fix lives on
+  // the picker 'digital' palette below, which stays a distinct choice.)
 };
 function patternVisual(spec, patternId) {
   const v = spec.visual || { base: '#5a6b46', weather: '#6f7d55', scheme: 'solid', patches: [] };
@@ -1154,8 +1263,9 @@ function patternVisual(spec, patternId) {
   let o = null;
   if (patternId === 'summer') {
     // brown dropped toward NATO chocolate — '#54402e' flared orange under
-    // the warm garage key (r7)
-    o = { scheme: 'nato', base: '#4d5940', weather: '#59664a', patches: ['#26291f', '#4c3a2a'] };
+    // the warm garage key (r7); r8 pulls it further off red ('#4c3a2a' still
+    // leaned warm on the WW2 Dunkelgelb hulls next to Hinterhalt references)
+    o = { scheme: 'nato', base: '#4d5940', weather: '#59664a', patches: ['#26291f', '#41382a'] };
   } else if (patternId === 'desert') {
     // 3-tone hard-edged desert geometry (scheme 'desert' in paintCamo):
     // patches = [dark shadow tan, mid earth, pale sand highlight].
@@ -1163,7 +1273,10 @@ function patternVisual(spec, patternId) {
     // wash at garage distance — the geometry has to survive at 12 m).
     o = { scheme: 'desert', base: '#b09466', weather: '#c4ad7d', patches: ['#6b5136', '#947c52', '#e4d3a8'] };
   } else if (patternId === 'winter') {
-    o = { scheme: 'winter', base: '#c4c8bf', weather: '#a8ad9f', patches: [v.base || '#4b5320'] };
+    // r8: base dropped off near-white — '#c4c8bf' blew out to a featureless
+    // white mass under the garage key (r7 winter critique); a worn grey-green
+    // whitewash keeps panel definition and stays inside matte-paint range.
+    o = { scheme: 'winter', base: '#b2b7aa', weather: '#8f9486', patches: [v.base || '#4b5320'] };
   } else if (patternId === 'urban') {
     // biome-resolved only (see BIOME_PATTERN): gray-biased GREEN NATO blend.
     // Pure concrete digital read conspicuously alien on the green approach
@@ -1180,7 +1293,13 @@ function patternVisual(spec, patternId) {
       // as camouflage rather than sparse tan stickers on flat green (r6).
       // r7: khaki + sage pulled darker — the old #8a7f5a/#55624a pair rendered
       // as minty pastel confetti under the garage key light.
-      o = { scheme: 'digital', base: '#3f5138', weather: '#47593f', patches: ['#2b2d26', '#6e654a', '#485541'] };
+      // r8 legibility: the r7 ladder collapsed at pedestal distance — '#485541'
+      // was near-identical to the '#3f5138' base and the khaki too muted, so
+      // the T-90M read as flat green with rust speckle. Tones re-spread
+      // (near-black / light khaki / light-mid green) + digitalCellK doubles
+      // the cell lattice so 2-3 distinct blocks read per hull panel at 12 m.
+      o = { scheme: 'digital', base: '#3f5138', weather: '#47593f',
+        patches: ['#262a20', '#7d7355', '#54683f'], digitalCellK: 2.2 };
     } else {
       o = { scheme: 'digital', base: '#4a5442', weather: '#525c49', patches: ['#333d30', '#79806a', '#23261f'] };
     }
@@ -1197,13 +1316,13 @@ export function resolveCamoVisual(spec, patternId = resolveCamoPattern(spec.id))
 // hardware in the vehicle scheme, so these solid colors derive from the
 // ACTIVE pattern base, not the authored factory palette.
 const cssRGB = (c) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
-const wheelRgbOf = (v) => mix(scale3(hexToRgb(v.base), 0.92), [118, 110, 86], 0.22);
+const wheelRgbOf = (v) => scale3(mix(scale3(hexToRgb(v.base), 0.92), [118, 110, 86], 0.22), 0.88);
 // Recessed interleaved-row wheels bake their own occlusion: same scheme paint
 // dropped toward shadow so the Schachtellaufwerk rows separate (r5). Kept at
 // 0.66 — the old 0.5 rendered near-black in the wheel bay and the recessed
 // rows read as GAPS between sparse floating wheels (r6 Tiger closeup).
 const wheelDarkRgbOf = (v) => scale3(wheelRgbOf(v), 0.66);
-const detailRgbOf = (v) => mix([65, 70, 58], hexToRgb(v.base), 0.5);
+const detailRgbOf = (v) => scale3(mix([65, 70, 58], hexToRgb(v.base), 0.5), 0.9);
 
 function repaintEntry(entry, patternId) {
   const vis = patternVisual(entry.spec, patternId);
@@ -1212,6 +1331,7 @@ function repaintEntry(entry, patternId) {
   let ph = 0;
   for (const ch of patternId) ph = (ph * 31 + ch.charCodeAt(0)) | 0;
   paintCamo(entry.camoCanvas, vis, mulberry32(entry.seed ^ ph), entry.feats, entry.seed);
+  exposureTrim(entry.camoCanvas);
   entry.camoTex.needsUpdate = true;
   entry.patternId = patternId;
   // wheels / sprockets / fittings follow the repaint live
@@ -1574,12 +1694,16 @@ export function getCommunityGearMaterials(spec) {
     const wheel = new THREE.MeshStandardMaterial({
       name: 'AddOnWheel', color: new THREE.Color(cssRGB(wheelDarkRgbOf(vis))),
       roughness: 0.82, metalness: 0.10, roughnessMap: entry.roughTex,
+      vertexColors: true,   // r8: baked dust/AO (modelLoader.refineCommunityGeometry)
+      envMapIntensity: 0.55,
     });
     wheel.onBeforeCompile = vehicleAmbientFloorHook;
     wheel.customProgramCacheKey = () => 'veh-ambient-floor-v1';
     const track = new THREE.MeshStandardMaterial({
       name: 'AddOnTrack', color: 0x43453f, roughness: 0.88, metalness: 0.14,
       roughnessMap: entry.roughTex,
+      vertexColors: true,   // r8: baked dust/AO (modelLoader.refineCommunityGeometry)
+      envMapIntensity: 0.55,
     });
     track.onBeforeCompile = vehicleAmbientFloorHook;
     track.customProgramCacheKey = () => 'veh-ambient-floor-v1';
@@ -1603,19 +1727,40 @@ export function getCommunityGearMaterials(spec) {
 // while staying far under the ~4.5-intensity sunlit response (0.16 sat AT the
 // ambient level and was invisible after ACES).
 const VEHICLE_AMBIENT_FLOOR = 0.35;
+// gameplay_feel r2 (critic MAJOR): the flat floor above was NOT enough — in
+// live third-person drive captures the whole hull sat on the shadow side of
+// the sun with dark-olive albedo (~0.08 luma), so 0.35×albedo ≈ 0.03 linear
+// still crushed to a featureless black silhouette against sunlit grass.
+// WoT keeps the player vehicle readable from EVERY bearing. Fix: a
+// camera-anchored wrap fill — the indirect-diffuse floor scales with how much
+// the surface faces the CAMERA (headlamp-style hemisphere fill), so whatever
+// side the chase camera orbits to is lifted into readability while
+// silhouette edges and camera-averted faces keep their shading. Applied to
+// all vehicles (enemies must stay readable too — WoT does the same); the
+// terrain/props keep their deep shadows for contrast. Sunlit response
+// (~4.5×albedo direct) still dominates ~3:1, so lit-vs-shade hull form
+// survives — verified no washout in tank_closeup_modern/garage/player_view.
+const VEHICLE_VIEW_FILL = 1.45; // fill at full camera-facing (linear, ×albedo)
+const VEHICLE_VIEW_WRAP = 0.40; // fraction kept at grazing angles (wrap term)
 
 /**
- * Shader hook: clamp `reflectedLight.indirectDiffuse` to an albedo-scaled
- * floor. Chain via `setupShadowMaterial(mat, vehicleAmbientFloorHook)` for
- * CSM materials, or assign directly as `onBeforeCompile` for sourced-GLB
- * materials (see applyCamoToModel's clone re-registration above/below).
+ * Shader hook: clamp `reflectedLight.indirectDiffuse` to an albedo-scaled,
+ * view-dependent floor. Chain via `setupShadowMaterial(mat,
+ * vehicleAmbientFloorHook)` for CSM materials, or assign directly as
+ * `onBeforeCompile` for sourced-GLB materials (see applyCamoToModel's clone
+ * re-registration above/below).
  * @param {object} shader onBeforeCompile shader arg
  */
 export function vehicleAmbientFloorHook(shader) {
   shader.fragmentShader = shader.fragmentShader.replace(
     '#include <lights_fragment_end>',
     `#include <lights_fragment_end>
-	reflectedLight.indirectDiffuse = max( reflectedLight.indirectDiffuse, material.diffuseColor * ${VEHICLE_AMBIENT_FLOOR.toFixed(3)} );`,
+	{
+		float vehFacing = saturate( dot( normal, geometryViewDir ) );
+		float vehFill = max( ${VEHICLE_AMBIENT_FLOOR.toFixed(3)},
+			${VEHICLE_VIEW_FILL.toFixed(3)} * ( ${VEHICLE_VIEW_WRAP.toFixed(3)} + ${(1 - VEHICLE_VIEW_WRAP).toFixed(3)} * vehFacing ) );
+		reflectedLight.indirectDiffuse = max( reflectedLight.indirectDiffuse, material.diffuseColor * vehFill );
+	}`,
   );
 }
 
@@ -1647,11 +1792,15 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
   // Matte military paint over rolled steel: normal map carries panel lines /
   // welds / bolts / casting; a whisper of clearcoat lets sky light streak
   // across big plates; vertex colors carry the baked dust/AO gradient.
+  // r8: envMapIntensity 0.55 across the painted set — full-strength IBL
+  // washed the procedural fleet a milky pastel next to the Abrams GLB
+  // (whose composite runs at 0.6), the core of the "CAD clay" cohesion
+  // critique. Clearcoat trimmed with it.
   const hull = track(setup(new THREE.MeshPhysicalMaterial({
     map: camoTex, roughnessMap: roughTex, roughness: 1.0, metalness: 0.06,
     normalMap: normalTex, normalScale: new THREE.Vector2(1.3, 1.3),
-    clearcoat: 0.07, clearcoatRoughness: 0.55, clearcoatRoughnessMap: roughTex,
-    vertexColors: true,
+    clearcoat: 0.05, clearcoatRoughness: 0.6, clearcoatRoughnessMap: roughTex,
+    vertexColors: true, envMapIntensity: 0.55,
   })));
 
   // CAMO PATTERN SECTION: wheel dishes and fittings are scheme-painted — the
@@ -1663,6 +1812,7 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
     color: new THREE.Color(cssRGB(wheelRgbOf(patVis))),
     roughness: 0.8, metalness: 0.1, roughnessMap: roughTex,
     normalMap: normalTex, normalScale: new THREE.Vector2(0.4, 0.4),
+    envMapIntensity: 0.55,
   })));
   // Recessed rows of an interleaved (Schachtellaufwerk) wheel stack: same
   // scheme paint pushed into shadow so the layers separate visually (r5).
@@ -1670,6 +1820,7 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
     color: new THREE.Color(cssRGB(wheelDarkRgbOf(patVis))),
     roughness: 0.88, metalness: 0.08, roughnessMap: roughTex,
     normalMap: normalTex, normalScale: new THREE.Vector2(0.4, 0.4),
+    envMapIntensity: 0.55,
   })));
   const rubber = track(setup(new THREE.MeshStandardMaterial({
     color: 0x1d1d1f, roughness: 0.96, metalness: 0.0,
@@ -1680,6 +1831,7 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
     color: new THREE.Color(cssRGB(detailRgbOf(patVis))),
     roughness: 0.66, metalness: 0.28, roughnessMap: roughTex,
     normalMap: normalTex, normalScale: new THREE.Vector2(0.35, 0.35),
+    envMapIntensity: 0.55,
   })));
   // Wheel-bay / sponson-underside ambient occlusion: near-black matte panels
   // that give running gear a shadowed pocket to read against (r5 hard gate).
@@ -1724,7 +1876,7 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
   const barrel = track(setup(new THREE.MeshStandardMaterial({
     map: camoTex, roughness: 0.72, metalness: 0.10, roughnessMap: roughTex,
     normalMap: normalTex, normalScale: new THREE.Vector2(0.5, 0.5),
-    vertexColors: true,
+    vertexColors: true, envMapIntensity: 0.55,
   })));
   const canvasCloth = track(setup(new THREE.MeshStandardMaterial({
     color: 0x59543f, roughness: 0.96, metalness: 0.0,

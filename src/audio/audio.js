@@ -55,6 +55,30 @@ export function createAudio() {
   let masterVolume = 0.8;
   let muted = false;
 
+  // SOUND SETTINGS (controls_gunnery r2): channel mix persisted by the
+  // settings panel (cot.settings.v1) and live-updated via 'ui:volumes'.
+  const chanVol = { engine: 1, combat: 1, ambience: 1, ui: 1 };
+  const clamp01 = (v, d) => (typeof v === 'number' ? Math.max(0, Math.min(1, v)) : d);
+  try {
+    const s = JSON.parse(localStorage.getItem('cot.settings.v1') || 'null');
+    if (s && typeof s === 'object') {
+      masterVolume = clamp01(s.volMaster, masterVolume);
+      chanVol.engine = clamp01(s.volEngine, 1);
+      chanVol.combat = clamp01(s.volCombat, 1);
+      chanVol.ambience = clamp01(s.volAmbience, 1);
+      chanVol.ui = clamp01(s.volUi, 1);
+    }
+  } catch (_) { /* private mode */ }
+  function applyChannelVolumes(smooth) {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const set = (bus, v) => (smooth ? bus.gain.setTargetAtTime(v, t, 0.03) : (bus.gain.value = v));
+    set(sfxBus, 1.0 * chanVol.combat);
+    set(engineBus, 0.75 * chanVol.engine);
+    set(ambientBus, 0.55 * chanVol.ambience);
+    set(musicBus, 0.9 * chanVol.ui);
+  }
+
   const rng = mulberry32(9001);
 
   // Listener pose (world space), refreshed each update().
@@ -91,6 +115,7 @@ export function createAudio() {
     engineBus = ctx.createGain();  engineBus.gain.value = 0.75; engineBus.connect(comp);
     ambientBus = ctx.createGain(); ambientBus.gain.value = 0.55; ambientBus.connect(comp);
     musicBus = ctx.createGain();   musicBus.gain.value = 0.9;  musicBus.connect(comp);
+    applyChannelVolumes(false);
   }
 
   function buildBuffers() {
@@ -462,7 +487,9 @@ export function createAudio() {
 
   function uiClick() {
     const when = ctx.currentTime;
-    const v = spawnVoice(when, 0.1, 0.4, 0, sfxBus);
+    // UI blips route through the UI/music channel so the Interface slider
+    // governs clicks as well as the garage sting (hitConfirm stays on sfxBus).
+    const v = spawnVoice(when, 0.1, 0.4, 0, musicBus);
     wire(v, nsrc(v, when, 0.03), flt('highpass', 2200, 0.7), env(when, 0.001, 0.6, 0.015));
     wire(v, osrc(v, 'sine', 1250, when, 0.06), env(when, 0.001, 0.3, 0.045));
   }
@@ -817,6 +844,17 @@ export function createAudio() {
       if (e.burning) startFireLoop(e.id); else stopFireLoop(e.id);
     });
     bus.on('ui:click', () => { if (ctx) uiClick(); });
+    // SOUND SETTINGS (controls_gunnery r2): live channel-mix updates from the
+    // settings panel sliders.
+    bus.on('ui:volumes', (v) => {
+      if (!v) return;
+      if (typeof v.master === 'number') setMasterVolume(v.master);
+      chanVol.engine = clamp01(v.engine, chanVol.engine);
+      chanVol.combat = clamp01(v.combat, chanVol.combat);
+      chanVol.ambience = clamp01(v.ambience, chanVol.ambience);
+      chanVol.ui = clamp01(v.ui, chanVol.ui);
+      applyChannelVolumes(true);
+    });
   }
 
   /**

@@ -228,26 +228,31 @@ const HUD_CSS = `
 .cot-ret{position:absolute;inset:0;width:100%;height:100%;display:block;}
 .cot-top{position:absolute;top:0;left:50%;transform:translateX(-50%);display:flex;
   align-items:center;gap:11px;padding:6px 30px 7px;
-  background:linear-gradient(180deg,rgba(7,10,14,.9),rgba(7,10,14,.62));
+  background:linear-gradient(180deg,rgba(16,21,27,.94),rgba(7,10,14,.68));
   border:1px solid rgba(146,164,180,.3);border-top:none;
-  box-shadow:0 3px 14px rgba(0,0,0,.45);
+  box-shadow:0 3px 14px rgba(0,0,0,.45),inset 0 1px 0 rgba(232,242,250,.10),
+  inset 0 -1px 0 rgba(0,0,0,.55);
   clip-path:polygon(0 0,100% 0,calc(100% - 16px) 100%,16px 100%);}
-.cot-top .fg{color:${PEN_GREEN};font-size:23px;font-weight:700;line-height:1;
-  font-family:${FONT_COND};font-stretch:condensed;
+.cot-top .fg{color:${PEN_GREEN};font-size:24px;font-weight:800;line-height:1;
+  font-family:${FONT_COND};font-stretch:condensed;letter-spacing:-.015em;
   font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.8);}
-.cot-top .fe{color:${PEN_RED};font-size:23px;font-weight:700;line-height:1;
-  font-family:${FONT_COND};font-stretch:condensed;
+.cot-top .fe{color:${PEN_RED};font-size:24px;font-weight:800;line-height:1;
+  font-family:${FONT_COND};font-stretch:condensed;letter-spacing:-.015em;
   font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.8);}
 .cot-top .tm{font-size:14px;font-weight:600;color:#d6e2ec;letter-spacing:.1em;
   font-family:${FONT_COND};font-stretch:condensed;text-shadow:0 1px 2px rgba(0,0,0,.8);
   font-variant-numeric:tabular-nums;line-height:1;padding:0 4px;}
 /* frag counter (WoT semantics): both sides render IDENTICAL slots. Empty
-   slots are subtle thin notch outlines (no filled grey plate); each kill a
-   team scores fills one chip in that team's color carrying the destroyed
-   vehicle's class glyph — same geometry, same stroke on both sides. */
+   slots are SOLID machined chips — dark steel plates with a bevel — never
+   hollow outlines (r2: outlined boxes read as unfinished checkboxes); each
+   kill a team scores fills one chip in that team's color carrying the
+   destroyed vehicle's class glyph — same geometry on both sides. */
 .cot-top .wedge{display:flex;gap:3px;align-items:center;}
 .cot-top .wedge i{display:block;width:14px;height:9px;transform:skewX(-24deg);
-  background:transparent;border:1px solid rgba(146,164,180,.4);opacity:.42;
+  background:linear-gradient(180deg,rgba(56,67,78,.95),rgba(22,28,34,.95));
+  border:1px solid rgba(146,164,180,.5);opacity:.88;
+  box-shadow:inset 0 1px 0 rgba(232,242,250,.14),inset 0 -1px 0 rgba(0,0,0,.5),
+  0 1px 2px rgba(0,0,0,.4);
   position:relative;transition:opacity .2s;}
 .cot-top .wedge.r i{transform:skewX(24deg);}
 .cot-top .wedge i svg{position:absolute;inset:0;margin:auto;display:block;}
@@ -400,6 +405,37 @@ const HUD_CSS = `
 .cot-hpb.ally .fl{background:linear-gradient(180deg,#9df09d,#3fae3f);}
 .cot-hpb .sg{position:absolute;inset:0;
   background:repeating-linear-gradient(90deg,transparent 0 12px,rgba(5,7,9,.85) 12px 13px);}
+/* over-target marker (WoT aiming loop): shown for the enemy vehicle sitting
+   under the gun — nickname, tier + vehicle, HP bar with numerals — replaces
+   that tank's ambient nameplate while targeted. */
+.cot-tgt{position:absolute;width:150px;transform:translate(-50%,-100%);
+  text-align:center;display:none;will-change:transform;}
+.cot-tgt .bk{background:linear-gradient(180deg,rgba(9,12,16,.88),rgba(6,9,12,.9));
+  border:1px solid rgba(240,90,90,.55);box-shadow:0 3px 12px rgba(0,0,0,.55);
+  padding:4px 7px 5px;}
+.cot-tgt .nick{font-size:12.5px;font-weight:700;color:#ff8f84;letter-spacing:.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  text-shadow:0 1px 2px rgba(0,0,0,.9);}
+.cot-tgt .vrow{display:flex;align-items:center;justify-content:center;gap:5px;
+  margin-top:1px;}
+.cot-tgt .tier{font-size:8.5px;font-weight:800;line-height:1;color:#d8b4ae;
+  font-family:${FONT_COND};font-stretch:condensed;letter-spacing:.04em;
+  padding:1.5px 3px;border:1px solid rgba(240,120,110,.4);background:rgba(10,14,18,.6);}
+.cot-tgt .veh{font-size:10px;font-weight:700;color:#e8cfc9;letter-spacing:.08em;
+  font-family:${FONT_COND};font-stretch:condensed;text-transform:uppercase;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cot-tgt .tr{height:6px;margin-top:4px;background:rgba(4,6,8,.9);
+  border:1px solid rgba(0,0,0,.85);position:relative;}
+.cot-tgt .fl{height:100%;background:linear-gradient(180deg,#ff7a6e,#d63a30);}
+.cot-tgt .sg{position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,transparent 0 12px,rgba(5,7,9,.85) 12px 13px);}
+.cot-tgt .hp{font-size:10px;font-weight:700;color:#f2c7c0;margin-top:2px;
+  font-family:${FONT_COND};font-stretch:condensed;font-variant-numeric:tabular-nums;
+  letter-spacing:.05em;text-shadow:0 1px 2px rgba(0,0,0,.9);}
+.cot-tgt .chev{width:0;height:0;margin:1px auto 0;
+  border-left:6px solid transparent;border-right:6px solid transparent;
+  border-top:7px solid rgba(240,90,90,.9);
+  filter:drop-shadow(0 1px 1px rgba(0,0,0,.7));}
 .cot-minimap{position:absolute;right:16px;bottom:16px;width:220px;height:220px;
   border:1px solid rgba(210,225,240,.28);box-shadow:0 6px 22px rgba(0,0,0,.55);
   background:#0d1310;}
@@ -477,6 +513,22 @@ export function initHud(bus) {
   const ctx = retCanvas.getContext('2d');
   const hpLayer = el('div', 'cot-hpbars', root);
   const dmgLayer = el('div', 'cot-dmglayer', root);
+
+  // --- over-target marker plate (WoT aiming loop feedback) ---
+  const tgtEl = el('div', 'cot-tgt', root);
+  tgtEl.innerHTML = `<div class="bk"><div class="nick"></div>` +
+    `<div class="vrow"><span class="tier"></span><span class="veh"></span></div>` +
+    `<div class="tr"><div class="fl"></div><div class="sg"></div></div>` +
+    `<div class="hp"></div></div><div class="chev"></div>`;
+  const tgtRefs = {
+    nick: tgtEl.querySelector('.nick'), tier: tgtEl.querySelector('.tier'),
+    veh: tgtEl.querySelector('.veh'), fl: tgtEl.querySelector('.fl'),
+    hp: tgtEl.querySelector('.hp'),
+  };
+  let tgtShown = false;
+  let aimTargetId = null;
+  let lastTanksRef = null;  // roster snapshot for the forced-still target scan
+  let forcedStill = false;  // true between forceAimDisplay and the next update
 
   // --- top score/timer plate ---
   const topPlate = el('div', 'cot-top', root);
@@ -927,35 +979,32 @@ export function initHud(bus) {
   }
 
   // ---------- reticle / scope canvas ----------
-  // WoT sniper mode: FULL-SCREEN view, no telescope mask and no full-width
-  // sim-style rule. A firm corner scope-shadow vignette (~25% darkening), a
-  // faint optics tint with a cool chromatic fringe at the edges, a SHORT
-  // labeled mil-scale near the center, and a zoom plate. The dispersion
-  // circle (drawReticle) stays the only circular element.
+  // WoT sniper mode: FULL-SCREEN view — no telescope mask, no black scope
+  // tunnel (that is budget-FPS sniper grammar, hud_ui r2 major). The scene
+  // stays fully visible edge to edge; only a very subtle corner darkening
+  // (<10% at the extreme corners, per the r2 critique) plus a whisper of
+  // chromatic fringe say "optics". The identity of the mode comes from the
+  // reticle furniture: dispersion circle, short mil stadia, zoom plate.
   function drawScope(zoom) {
     const cx = w / 2, cy = h / 2;
     if (!scopeGrad) {
-      // WoT scope shadow (movement doc §9.2): black vignette RING — clear
-      // inside ~0.40×min(w,h), rolling to near-black by ~0.66×min(w,h) so a
-      // CIRCULAR shadow boundary is visible on every frame edge (the old
-      // hypot-based outer radius only darkened the far corners: top/bottom
-      // edges stayed at ~11% and the overlay read as a plain FOV zoom).
-      scopeGrad = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.40,
-        cx, cy, Math.min(w, h) * 0.66);
+      // faint corner shade only: starts past mid-frame and peaks at ~9% in
+      // the far corners — no ring boundary is ever visible on screen
+      scopeGrad = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.52,
+        cx, cy, Math.hypot(w, h) * 0.52);
       scopeGrad.addColorStop(0, 'rgba(2,3,4,0)');
-      scopeGrad.addColorStop(0.30, 'rgba(2,3,4,0.34)');
-      scopeGrad.addColorStop(0.62, 'rgba(2,3,4,0.80)');
-      scopeGrad.addColorStop(1, 'rgba(1,2,3,0.93)');
+      scopeGrad.addColorStop(0.6, 'rgba(2,3,4,0.04)');
+      scopeGrad.addColorStop(1, 'rgba(2,3,4,0.09)');
     }
-    // scope-shadow fade-in (~0.1 s, movement doc §9.2); forced screenshot
-    // frames snap it complete via forceAimDisplay
+    // corner-shade fade-in (~0.1 s); forced screenshot frames snap it
+    // complete via forceAimDisplay
     const fadeK = scopeFadeMs >= 0
       ? Math.min(1, (performance.now() - scopeFadeMs) / 100) : 1;
     ctx.globalAlpha = fadeK;
     ctx.fillStyle = scopeGrad;
     ctx.fillRect(0, 0, w, h);
     // NO color tint over the scene: WoT sniper optics keep the arcade
-    // grading — the scope reads from the vignette + reticle furniture alone.
+    // grading — the scope reads from the reticle furniture alone.
     // Only a whisper of chromatic fringe survives at the extreme edge.
     const chrom = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.5, cx, cy, Math.hypot(w, h) * 0.52);
     chrom.addColorStop(0, 'rgba(70,110,190,0)');
@@ -1064,9 +1113,12 @@ export function initHud(bus) {
   function drawHitMark(view, timeS) {
     if (!hitMark) return;
     const age = timeS - hitMark.t0;
-    if (age < 0 || age > 0.6) { hitMark = null; return; }
-    const a = 1 - age / 0.6;
-    const r1 = 13 + age * 30;
+    // controls_gunnery r2: 1.0 s lifetime (0.6 s vanished inside the tracer
+    // smoke at 300 m+) with a brief scale-in pop so the land is unmissable.
+    if (age < 0 || age > 1.0) { hitMark = null; return; }
+    const a = 1 - age / 1.0;
+    const scaleIn = age < 0.12 ? 0.6 + 0.4 * (age / 0.12) : 1;
+    const r1 = (13 + age * 30) * scaleIn;
     const r2 = r1 + 10;
     ctx.strokeStyle = hitMark.bounced
       ? `rgba(190,202,214,${(0.9 * a).toFixed(3)})`
@@ -1118,7 +1170,9 @@ export function initHud(bus) {
     let fire = 1;
     if (rl && rl.totalS > 0 && rl.t > 0.001) {
       const sinceShotS = Math.max(0, rl.totalS - rl.t);
-      fire = 1 + 2.4 * Math.exp(-sinceShotS / 1.9);
+      // 1.2 s display time-constant matches the faster sim re-settle
+      // (movement.js LN6 shrink tau — controls_gunnery r2 item 3).
+      fire = 1 + 2.4 * Math.exp(-sinceShotS / 1.2);
     }
     return base * fire;
   }
@@ -1134,47 +1188,71 @@ export function initHud(bus) {
 
     // --- dispersion circle: paired arc segments + cardinal ticks in the
     // fixed WoT circle green — visually distinct from the pen-colored center
-    // marker so the two elements never merge into one composite ring
-    ctx.strokeStyle = CIRCLE_COL;
-    ctx.fillStyle = CIRCLE_COL;
+    // marker so the two elements never merge into one composite ring.
+    // Every stroke draws TWICE: a dark outer contour pass under the 2px
+    // green pass, so the sight never vanishes over bright grass/sky
+    // (hud_ui r2: the old 1.6px unlined stroke washed out in player_view).
+    function circlePass() {
+      ctx.beginPath();
+      // four long arcs with small gaps at the cardinals (WoT circle look)
+      for (let q = 0; q < 4; q++) {
+        const a0 = q * Math.PI / 2 + 0.10;
+        ctx.moveTo(cx + Math.cos(a0) * r, cy + Math.sin(a0) * r);
+        ctx.arc(cx, cy, r, a0, a0 + Math.PI / 2 - 0.20);
+      }
+      ctx.stroke();
+      // cardinal ticks bridging the gaps (inward, slightly heavier)
+      ctx.lineWidth += 1.0;
+      ctx.beginPath();
+      for (let q = 0; q < 4; q++) {
+        const a = q * Math.PI / 2;
+        const ca = Math.cos(a), sa = Math.sin(a);
+        ctx.moveTo(cx + ca * (r + 4), cy + sa * (r + 4));
+        ctx.lineTo(cx + ca * (r - 9), cy + sa * (r - 9));
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 0.62;
+    ctx.strokeStyle = 'rgba(6,10,8,0.9)'; // dark contour under-pass
+    ctx.lineWidth = 3.6;
+    circlePass();
+    ctx.globalAlpha = 0.92;
+    // BLOCKED-SHOT INDICATOR (controls_gunnery r2): the muzzle→aim path is
+    // obstructed short of the aim point — WoT's red reticle on a blocked gun
+    // line. The circle flips red so the player never fires into a crest.
+    const blocked = view.blockedDistM != null;
+    ctx.strokeStyle = blocked ? PEN_RED : CIRCLE_COL;
+    ctx.fillStyle = blocked ? PEN_RED : CIRCLE_COL;
     ctx.shadowColor = 'rgba(0,0,0,0.6)';
     ctx.shadowBlur = 2;
-    ctx.globalAlpha = 0.9;
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    // four long arcs with small gaps at the cardinals (WoT circle look)
-    for (let q = 0; q < 4; q++) {
-      const a0 = q * Math.PI / 2 + 0.10;
-      ctx.moveTo(cx + Math.cos(a0) * r, cy + Math.sin(a0) * r);
-      ctx.arc(cx, cy, r, a0, a0 + Math.PI / 2 - 0.20);
-    }
-    ctx.stroke();
-    // cardinal ticks bridging the gaps (inward, slightly heavier)
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    for (let q = 0; q < 4; q++) {
-      const a = q * Math.PI / 2;
-      const ca = Math.cos(a), sa = Math.sin(a);
-      ctx.moveTo(cx + ca * (r + 4), cy + sa * (r + 4));
-      ctx.lineTo(cx + ca * (r - 9), cy + sa * (r - 9));
-    }
-    ctx.stroke();
+    ctx.lineWidth = 2;
+    circlePass();
 
-    // --- central gun marker: dot + fine cross, ALWAYS visible and colored by
-    // penetration chance (green/orange/red, neutral off armor)
+    // --- central gun marker: dot + cross, ALWAYS visible and colored by
+    // penetration chance (green/orange/red, neutral off armor). Heavier than
+    // the circle strokes + its own dark contour so the pen state reads
+    // instantly at 1080p (r2: ">= 3px stroke" readability requirement).
+    function markerPass(inkOnly) {
+      ctx.beginPath();
+      ctx.moveTo(cx - 14, cy + 0.5); ctx.lineTo(cx - 5, cy + 0.5);
+      ctx.moveTo(cx + 5, cy + 0.5); ctx.lineTo(cx + 14, cy + 0.5);
+      ctx.moveTo(cx + 0.5, cy - 14); ctx.lineTo(cx + 0.5, cy - 5);
+      ctx.moveTo(cx + 0.5, cy + 5); ctx.lineTo(cx + 0.5, cy + 14);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx, cy, inkOnly ? 3.4 : 2.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 0.8;
+    ctx.strokeStyle = 'rgba(6,9,12,0.92)';
+    ctx.fillStyle = 'rgba(6,9,12,0.92)';
+    ctx.lineWidth = 5;
+    markerPass(true);
+    ctx.globalAlpha = 0.97;
     ctx.strokeStyle = col;
     ctx.fillStyle = col;
-    ctx.globalAlpha = 0.97;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(cx - 13, cy + 0.5); ctx.lineTo(cx - 5, cy + 0.5);
-    ctx.moveTo(cx + 5, cy + 0.5); ctx.lineTo(cx + 13, cy + 0.5);
-    ctx.moveTo(cx + 0.5, cy - 13); ctx.lineTo(cx + 0.5, cy - 5);
-    ctx.moveTo(cx + 0.5, cy + 5); ctx.lineTo(cx + 0.5, cy + 13);
-    ctx.stroke();
+    ctx.lineWidth = 3;
+    markerPass(false);
 
     // --- radial reload sweep hugging the center marker (WoT reload ring):
     // dim full track + amber arc that closes clockwise as the load completes
@@ -1261,6 +1339,12 @@ export function initHud(bus) {
       ctx.font = `600 12.5px ${FONT_COND}`;
       ctx.fillText(`${Math.round(view.distM)} m`, cx, cy + Math.max(58, r + 19));
     }
+    if (blocked) {
+      // blocking distance under the range numeral (controls_gunnery r2)
+      ctx.fillStyle = PEN_RED;
+      ctx.font = `700 12.5px ${FONT_COND}`;
+      ctx.fillText(`PATH BLOCKED ${Math.round(view.blockedDistM)} m`, cx, cy + Math.max(58, r + 19) + 16);
+    }
     ctx.shadowBlur = 0;
     ctx.textAlign = 'left';
   }
@@ -1313,6 +1397,7 @@ export function initHud(bus) {
     for (let i = 0; i < tanks.length; i++) {
       const t = tanks[i];
       if (!t || t.isPlayer || !t.combat || t.combat.destroyed) continue;
+      if (t.id === aimTargetId) continue; // over-target plate replaces it
       if (t.team !== 'player' && !isSpotted(t.id)) continue; // spotting gate
       if (t.visual && t.visual.turretTopWorld) {
         t.visual.turretTopWorld(_tmp);
@@ -1365,11 +1450,79 @@ export function initHud(bus) {
     }
   }
 
+  // ---------- over-target marker ----------
+  // WoT core aiming-loop feedback: when the gun ray terminates on an enemy
+  // vehicle, that tank carries a marker plate (nickname, tier + vehicle, HP
+  // bar with numerals) and its ambient nameplate hides. Gate: the vehicle's
+  // projected center sits inside the dispersion circle (or a 70px floor) AND
+  // the aim distance lands on the hull — a tank far BEHIND the aim point
+  // never lights up. Live battles additionally require the target to be
+  // spotted; forced screenshot stills trust the recipe (vehicle is rendered).
+  function updateTargetPlate() {
+    let best = null, bestPx = Infinity;
+    const cam = lastCamera;
+    const tanks = lastTanksRef || [];
+    if (cam && mode !== 'hidden' && aimView.distM != null) {
+      const rNow = Math.max(26, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
+      const gatePx = Math.max(rNow * 1.15, 70);
+      for (let i = 0; i < tanks.length; i++) {
+        const t = tanks[i];
+        if (!t || t.isPlayer || !t.state || !t.combat || t.combat.destroyed) continue;
+        if (t.team === 'player') continue;
+        if (!forcedStill && !isSpotted(t.id)) continue;
+        const hM = (t.spec && t.spec.dims && t.spec.dims.heightM) || 2.4;
+        project(cam, t.state.pos.x, t.state.pos.y + hM * 0.55, t.state.pos.z);
+        if (!_sVisible) continue;
+        const radM = (t.spec && t.spec.armor && t.spec.armor.boundingRadiusM) || 6;
+        if (Math.abs(_sDist - aimView.distM) > radM + 16) continue;
+        const dpx = Math.hypot(_sx - aimView.cx, _sy - aimView.cy);
+        if (dpx < gatePx && dpx < bestPx) { best = t; bestPx = dpx; }
+      }
+    }
+    aimTargetId = best ? best.id : null;
+    if (!best) {
+      if (tgtShown) { tgtEl.style.display = 'none'; tgtShown = false; }
+      return;
+    }
+    // anchor above the turret top, clear of the reticle furniture
+    if (best.visual && best.visual.turretTopWorld) {
+      best.visual.turretTopWorld(_tmp);
+    } else {
+      _tmp.copy(best.state.pos);
+      _tmp.y += (best.spec && best.spec.dims ? best.spec.dims.heightM : 2.5);
+    }
+    project(cam, _tmp.x, _tmp.y + 1.4, _tmp.z);
+    if (!_sVisible) {
+      aimTargetId = null;
+      if (tgtShown) { tgtEl.style.display = 'none'; tgtShown = false; }
+      return;
+    }
+    tgtEl.style.transform =
+      `translate(${_sx.toFixed(1)}px,${_sy.toFixed(1)}px) translate(-50%,-100%)`;
+    tgtRefs.nick.textContent = nickFor(best);
+    tgtRefs.tier.textContent = (best.spec && TIER_BY_ID[best.spec.id]) || '–';
+    tgtRefs.veh.textContent = best.spec ? best.spec.name : String(best.id);
+    const frac = Math.max(0, Math.min(1, best.combat.hp / best.combat.maxHp));
+    tgtRefs.fl.style.width = `${(frac * 100).toFixed(1)}%`;
+    tgtRefs.hp.textContent =
+      `${Math.max(0, Math.round(best.combat.hp))} / ${Math.round(best.combat.maxHp)}`;
+    if (!tgtShown) { tgtEl.style.display = 'block'; tgtShown = true; }
+    // the ambient plate for this tank (if it was already mounted) yields
+    const bar = hpPool.get(best.id);
+    if (bar) bar.root.style.display = 'none';
+  }
+
   // ---------- minimap ----------
+  // PERF: write-through scratch — worldToMap is called per blip/ping/vertex on
+  // every 20 Hz repaint; every call site destructures immediately (verified),
+  // so a shared 2-element array is safe and allocation-free.
+  const _wm = [0, 0];
   function worldToMap(x, z) {
     // +X right, +Z up (north)
     const half = mapWorldSize / 2;
-    return [((x + half) / mapWorldSize) * MM, ((half - z) / mapWorldSize) * MM];
+    _wm[0] = ((x + half) / mapWorldSize) * MM;
+    _wm[1] = ((half - z) / mapWorldSize) * MM;
+    return _wm;
   }
 
   // MAP-CONFIG WIRING: per-map minimap palette (src/world/maps/*.js cfg.minimap)
@@ -1519,18 +1672,21 @@ export function initHud(bus) {
     octx.stroke();
     // grid coordinates in slim inset strips (letters top, numbers left) —
     // no per-cell tabs eating map area, and the K column stays clear of the
-    // panel edge because labels sit at cell centers inside a full-width strip
+    // panel edge because labels sit at cell centers inside a full-width
+    // strip. Row numbers get the SAME size/alpha as the column letters and
+    // an inset gutter so "1"–"10" all render whole (r2: the old 8px gutter
+    // cropped every row label except "10").
     octx.fillStyle = 'rgba(5,8,11,0.55)';
-    octx.fillRect(0, 0, MM, 8);
-    octx.fillRect(0, 8, 8, MM - 8);
-    octx.font = `700 6.5px ${FONT_COND}`;
+    octx.fillRect(0, 0, MM, 10);
+    octx.fillRect(0, 10, 11, MM - 10);
+    octx.font = `700 7.5px ${FONT_COND}`;
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
-    octx.fillStyle = 'rgba(228,238,248,0.82)';
+    octx.fillStyle = 'rgba(255,255,255,0.72)';
     for (let i = 0; i < 10; i++) {
       const c = i * MM / 10 + MM / 20;
-      octx.fillText(GRID_LETTERS[i], c, 4.5);
-      octx.fillText(String(i + 1), 4, Math.max(c, 14) + 0.5);
+      octx.fillText(GRID_LETTERS[i], c, 5.5);
+      octx.fillText(String(i + 1), 5.5, Math.max(c, 17) + 0.5);
     }
     octx.textAlign = 'left';
     octx.textBaseline = 'alphabetic';
@@ -1633,11 +1789,24 @@ export function initHud(bus) {
     }
     const tanks = frame.tanks || [];
     const player = frame.player;
-    // team spawn flags under everything else
+    // team bases under everything else: WoT convention — a white circle
+    // outline (the base perimeter) with the team-colored flag at its center
     if (spawnFlags) {
       for (const fl of spawnFlags) {
         const [fx, fy] = worldToMap(fl.x, fl.z);
-        drawSpawnFlag(mmCtx, fx, fy, fl.color);
+        mmCtx.fillStyle = 'rgba(240,246,252,0.07)';
+        mmCtx.strokeStyle = 'rgba(240,246,252,0.85)';
+        mmCtx.lineWidth = 1.2;
+        mmCtx.beginPath();
+        mmCtx.arc(fx, fy, 10, 0, Math.PI * 2);
+        mmCtx.fill();
+        mmCtx.stroke();
+        mmCtx.strokeStyle = 'rgba(6,9,12,0.5)'; // dark keyline under the ring
+        mmCtx.lineWidth = 0.8;
+        mmCtx.beginPath();
+        mmCtx.arc(fx, fy, 11, 0, Math.PI * 2);
+        mmCtx.stroke();
+        drawSpawnFlag(mmCtx, fx, fy + 3, fl.color);
       }
     }
     // enemy / ally blips (spotting-gated for live enemies)
@@ -1894,13 +2063,14 @@ export function initHud(bus) {
 
   // ---------- aim view assembly ----------
   const aimView = {
-    cx: 0, cy: 0, radPx: 40, penRatio: null, distM: null,
+    cx: 0, cy: 0, radPx: 40, penRatio: null, distM: null, blockedDistM: null,
     gunX: null, gunY: null, atGunLimit: false,
     reload: { t: 0, totalS: 1 }, zoom: 1,
   };
 
   function assembleAimView(camera, aim) {
     aimView.penRatio = aim.penRatio != null ? aim.penRatio : null;
+    aimView.blockedDistM = aim.blockedDistM != null ? aim.blockedDistM : null;
     aimView.distM = aim.distM != null ? aim.distM : null;
     aimView.atGunLimit = !!aim.atGunLimit;
     aimView.reload = aim.reload || aimView.reload;
@@ -1979,7 +2149,11 @@ export function initHud(bus) {
       // must keep the deterministic default text — reset the live counter
       netFrames = 0;
       netLastMs = 0;
-      if (m === 'hidden') ctx.clearRect(0, 0, w, h);
+      if (m === 'hidden') {
+        ctx.clearRect(0, 0, w, h);
+        aimTargetId = null;
+        if (tgtShown) { tgtEl.style.display = 'none'; tgtShown = false; }
+      }
       // SHOT-INFO SECTION: lifecycle forwarding (reset per battle, hide the
       // end-of-battle stats card when the HUD leaves the battlefield).
       if (m === 'hidden') shotInfo.hideStats();
@@ -2009,8 +2183,10 @@ export function initHud(bus) {
      */
     update(frame) {
       forced = null; // a live frame supersedes any forced screenshot display
+      forcedStill = false;
       const camera = frame.camera;
       lastCamera = camera || lastCamera;
+      lastTanksRef = frame.tanks || lastTanksRef;
       const dt = Math.max(0, Math.min(0.1, frame.timeS - lastTimeS)) || 1 / 60;
       lastTimeS = frame.timeS;
       if (frame.mode && frame.mode !== mode) { mode = frame.mode; applyMode(); mmDirty = true; }
@@ -2040,6 +2216,7 @@ export function initHud(bus) {
       renderShells(lastShells, slot);
       updateShellCooldown(aim.reload, slot);
       renderCanvas(dt);
+      updateTargetPlate(); // before updateHpBars: the target's plate yields
       if (camera) updateHpBars(frame);
       // PERF: the minimap is a full 2D-canvas repaint (bg blit + blips +
       // ranges); 20 Hz is visually indistinguishable for map blips. mmDirty
@@ -2082,6 +2259,7 @@ export function initHud(bus) {
     forceAimDisplay(f) {
       scopeFadeMs = -1; // deterministic still: scope shadow fully settled
       forced = Object.assign({}, f);
+      forcedStill = true; // target plate trusts the recipe's aim state
       assembleAimView(lastCamera, forced);
       // no bloom animation in a forced still — land directly on the target
       // radius (including the post-shot bloom read from the reload state)
@@ -2091,6 +2269,7 @@ export function initHud(bus) {
       renderShells(lastShells, slot);
       updateShellCooldown(forced.reload, slot);
       renderCanvas(1);
+      updateTargetPlate(); // over-target marker for the vehicle under the gun
     },
   };
 

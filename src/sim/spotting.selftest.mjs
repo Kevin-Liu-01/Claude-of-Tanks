@@ -6,6 +6,7 @@ import {
   MAX_SPOT_RANGE_M, MIN_SPOT_RANGE_M, SPOT_LINGER_S, CAMO_PAINT_BONUS,
   MAX_BUSH_BONUS, VIEW_RANGE_M, BASE_CAMO,
   OPTICS_VIEW_FACTOR, SIGNAL_RANGE_M, RADIO_DAMAGED_FACTOR,
+  SIXTH_SENSE_DELAY_S, SIXTH_SENSE_SHOW_S,
   viewRangeOf, baseCamoOf, fireBloomAt, spotRangeM, combineCamo,
   bushBonusBetween, checkIntervalS, createSpottingSystem,
   effectiveViewRangeM, signalRangeM,
@@ -144,6 +145,16 @@ console.log('[9] hard cover blocks; proximity spotting floor');
   const prox = mkSys([{ x: 0, z: 40, r: 3, add: 0.35 }], [spotter, close]);
   prox.forceCheck(1);
   ok(prox.isSpotted('p1', 'enemy'), 'inside 50 m: bushes cannot save you');
+  // WoT proximity detection works THROUGH hard cover: a tank 40 m away
+  // behind a house is still proximity-spotted (no LOS test inside 50 m).
+  const proxWall = mkSys([], [spotter, tank('p1', 'player', 0, 40)],
+    { raycast: () => ({ dist: 10 }) });
+  proxWall.forceCheck(1);
+  ok(proxWall.isSpotted('p1', 'enemy'), 'inside 50 m: detected through walls');
+  const farWall = mkSys([], [spotter, tank('p2', 'player', 0, 60)],
+    { raycast: () => ({ dist: 10 }) });
+  farWall.forceCheck(1);
+  ok(!farWall.isSpotted('p2', 'enemy'), 'beyond 50 m: walls still block');
 }
 
 console.log('[10] linger 5 s');
@@ -208,6 +219,29 @@ console.log('[14] getConcealment snapshot');
   sys.notifyFired('p1', 2);
   const c2 = sys.getConcealment(target, 2.1);
   ok(c2.fired && c2.bush === 0 && c2.camo < c1.camo, 'after firing: bush lit, camo collapsed');
+}
+
+console.log('[14b] sixth-sense display gate (getConcealment.spotted)');
+{
+  // Raw team intel (isSpotted) is instant; the player's own HUD knowledge
+  // lights SIXTH_SENSE_DELAY_S later and holds only for the lamp window —
+  // the eye must never leak the spot before the lamp (r8 major).
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  const target = tank('p1', 'player', 0, 100);
+  const sys = mkSys([], [spotter, target]);
+  sys.forceCheck(1);
+  ok(sys.isSpotted('p1', 'enemy'), 'raw spot registers instantly (enemies aim on it)');
+  ok(!sys.getConcealment(target, 1.2).spotted, 'display state dark 0.2 s after the spot');
+  ok(!sys.getConcealment(target, 1 + SIXTH_SENSE_DELAY_S - 0.1).spotted,
+    'display state dark just before the fuse burns');
+  sys.forceCheck(3.5); // keep the spot fresh through the fuse
+  ok(sys.getConcealment(target, 1 + SIXTH_SENSE_DELAY_S + 0.1).spotted,
+    'display state lights 3 s after the rising edge');
+  // hold the spot alive past the lamp window: knowledge expires like the bulb
+  for (let t = 4; t <= 13; t += 1) sys.forceCheck(t);
+  ok(sys.isSpotted('p1', 'enemy'), 'still raw-spotted at t=13');
+  ok(!sys.getConcealment(target, 1 + SIXTH_SENSE_DELAY_S + SIXTH_SENSE_SHOW_S + 0.5).spotted,
+    'display state dies with the lamp window even while still spotted');
 }
 
 console.log('[15] armor doc §9: damaged optics halve view range');

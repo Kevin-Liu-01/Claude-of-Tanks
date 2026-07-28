@@ -78,6 +78,14 @@ const GUN_LIMIT_NUDGE_S = 1.5;    // gun pinned this long → back up for depres
 const EYE_FRAC          = 0.85;   // eye/turret-top height as fraction of heightM
 const ARRIVE_DIST_M     = 6.0;
 const MAX_FIRE_RANGE_M  = 620;
+// UNDER-FIRE REACTION + PLAYER THREAT (controls_gunnery r2): being shot
+// reveals the shooter for a chase window, and the PLAYER's distance is
+// weighted down during target selection so enemy aggression doesn't all
+// drain onto the allied bots pushing ahead of the player (r2 critic: enemies
+// fired 21-34 shells across three battles, zero directed at the player).
+const UNDER_FIRE_WINDOW_S = 15;       // chase/engage window after a team hit
+const UNDER_FIRE_RANGE_BONUS_M = 180; // engage-envelope extension toward the shooter
+const PLAYER_THREAT_DIST_MULT = 0.35; // player counts as 35% of its true d² when ranking targets
 
 // Module-scope scratch vectors (no per-frame allocation, §1.3).
 const _vA = new Vector3();
@@ -146,7 +154,11 @@ export function createAI(entity, opts = {}) {
   // SPOTTING WIRING: optional concealment gate (absent in headless fixtures)
   const spotting = deps.spotting && typeof deps.spotting.isSpotted === 'function'
     ? deps.spotting : null;
-  const isVisibleToTeam = (e) => !spotting || spotting.isSpotted(e.id, entity);
+  // Being hit is intel (tracer + muzzle flash): a shooter that just landed a
+  // shell on us/a nearby teammate bypasses the spotting gate for the reaction
+  // window. losClear still demands a personal ray before firing.
+  const isVisibleToTeam = (e) => !spotting || spotting.isSpotted(e.id, entity) ||
+    (e === underFire && nowS < underFireUntilS);
 
   // Ensure the shared input record exists (integration normally creates it).
   if (!entity.input) {
@@ -194,6 +206,8 @@ export function createAI(entity, opts = {}) {
   let flankIndex = 0;
   let flankUntilS = 0;
   let nonPenCount = 0;
+  let underFire = null;            // shooter entity revealed by hitting us/a teammate
+  let underFireUntilS = -Infinity; // reaction window end (sim seconds)
 
   // Aim solution (updated by probes at PROBE_INTERVAL_S).
   let aimHFrac = 0.48;
@@ -309,9 +323,11 @@ export function createAI(entity, opts = {}) {
       const tp = e.state.pos;
       const dx = tp.x - ex, dz = tp.z - ez;
       const d2 = dx * dx + dz * dz;
-      if (d2 >= bestD2) continue;
+      // Threat weighting: the player ranks as if 0.59x its true distance.
+      const eff = e.isPlayer ? d2 * PLAYER_THREAT_DIST_MULT : d2;
+      if (eff >= bestD2) continue;
       if (!hasLos(ex, ey, ez, tp.x, eyeY(e), tp.z)) continue;
-      best = e; bestD2 = d2;
+      best = e; bestD2 = eff;
     }
     if (best) {
       target = best;
@@ -614,7 +630,9 @@ export function createAI(entity, opts = {}) {
       return;
     }
     hasVantage = false; // ray is clear — fight from here
-    if (distToTarget > tier.engageRangeM) {
+    const engageR = tier.engageRangeM +
+      (timeS < underFireUntilS ? UNDER_FIRE_RANGE_BONUS_M : 0);
+    if (distToTarget > engageR) {
       driveToXZ(input, tp.x, tp.z, 1.0);
       return;
     }
@@ -945,10 +963,36 @@ export function createAI(entity, opts = {}) {
     resampleAimError();
   }
 
+  /**
+   * Reaction to this tank (or a nearby teammate) taking an enemy hit: acquire
+   * the shooter past the spotting gate, remember its position, and extend the
+   * engage envelope toward it for UNDER_FIRE_WINDOW_S. A PLAYER shooter always
+   * steals the target slot — return fire at the protagonist is the point.
+   * @param {object} shooterEnt TankEntity that fired the shell
+   */
+  function notifyUnderFire(shooterEnt) {
+    if (!shooterEnt || !shooterEnt.state || !shooterEnt.combat ||
+        shooterEnt.combat.destroyed || shooterEnt.team === entity.team) return;
+    underFire = shooterEnt;
+    underFireUntilS = nowS + UNDER_FIRE_WINDOW_S;
+    lastSeen.x = shooterEnt.state.pos.x;
+    lastSeen.z = shooterEnt.state.pos.z;
+    lastSeenAtS = nowS;
+    if (!target || !enemyAlive(target) ||
+        (shooterEnt.isPlayer && target !== shooterEnt)) {
+      target = shooterEnt;
+      acquiredAtS = nowS;
+      nonPenCount = 0;
+      probeTimer = 0;
+      if (mode === 'patrol') mode = 'engage';
+    }
+  }
+
   const controller = {
     update,
     setWaypoints,
     notifyShellResult,
+    notifyUnderFire,
     state: mode,
   };
   entity.ai = controller;

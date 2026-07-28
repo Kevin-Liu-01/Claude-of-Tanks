@@ -93,6 +93,7 @@ function renderAll(specs) {
   const box = new THREE.Box3();
   const center = new THREE.Vector3();
   const sph = new THREE.Sphere();
+  const _size = new THREE.Vector3();
   for (const spec of specs) {
     let visual = null;
     try {
@@ -102,17 +103,33 @@ function renderAll(specs) {
       box.setFromObject(visual.root);
       box.getBoundingSphere(sph);
       box.getCenter(center);
-      // 3/4 side-profile, nose to screen-right, ~11° above the deck
+      // 3/4 side-profile, nose to screen-right, ~11° above the deck.
+      // FRAMING (hud_ui r2): normalize the camera distance by the hull
+      // FOOTPRINT box, not the bounding sphere — antenna masts and stray gun
+      // tips inflated some vehicles' spheres so their cards rendered at a
+      // visibly smaller scale than the rest of the row. Every card now fills
+      // the same fraction of the frame with the same yaw/elevation/light.
+      const size = box.getSize(_size);
+      // tank_models r2: clamp to the spec hull length — the GLB swap's long
+      // gun overhang (box.setFromObject includes the barrel) measured ~2x the
+      // WWII hull-ish boxes and rendered the modern MBT cards at half scale.
+      const halfLen = Math.min(
+        Math.hypot(size.x, size.z) * 0.5,
+        (spec.dims && spec.dims.hullLengthM ? spec.dims.hullLengthM : Infinity) * 0.62,
+      );
+      // cap mast/antenna influence on height framing (they read as air)
+      const halfH = Math.min(size.y * 0.5, halfLen * 0.52);
       const az = -64 * Math.PI / 180; // from +Z (hull forward)
       const el = 12 * Math.PI / 180;
-      const hFov = 2 * Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect);
-      const dist = (sph.radius * 0.84) / Math.sin(hFov / 2);
+      const vTan = Math.tan(camera.fov * Math.PI / 360);
+      const hTan = vTan * camera.aspect;
+      const dist = Math.max((halfLen * 0.95) / hTan, (halfH * 1.35) / vTan);
       camera.position.set(
         center.x + Math.sin(az) * Math.cos(el) * dist,
         center.y + Math.sin(el) * dist,
         center.z + Math.cos(az) * Math.cos(el) * dist,
       );
-      camera.lookAt(center.x, center.y - sph.radius * 0.04, center.z);
+      camera.lookAt(center.x, center.y - halfLen * 0.05, center.z);
       camera.updateProjectionMatrix();
       renderer.render(scene, camera);
       cache.set(spec.id, renderer.domElement.toDataURL('image/png'));
@@ -128,23 +145,64 @@ function renderAll(specs) {
   if (renderer.forceContextLoss) { try { renderer.forceContextLoss(); } catch (e) { /* fine */ } }
 }
 
+// PERF (perf-budget r3): portrait rendering is a WORK QUEUE, not a sync
+// boot pass. The old sync renderAll put ~1.5-2 s of createTank + second-WebGL-
+// context boot on the __GAME_READY critical path, and the follow-up GLB
+// re-render pass fired on a wall-clock timer that landed MID-BATTLE (probe
+// measured 3.0 s + 1.3 s frames when it ran under a battle). Chunks render one
+// vehicle at a time on idle callbacks and only while `canWork()` allows (the
+// garage gates this on its own visibility — battles never stall); the
+// screenshot recipes drain synchronously via drainTankThumbs() so captured
+// garage/techtree frames always carry finished portraits.
+const queue = [];
+let canWorkFn = () => true;
+let pumpScheduled = false;
+
+function notifyDone() {
+  applyTankThumbs(document);
+  document.dispatchEvent(new CustomEvent('cot:tank-thumbs'));
+}
+
+function pump() {
+  pumpScheduled = false;
+  if (!queue.length) return;
+  if (canWorkFn()) {
+    const spec = queue.shift();
+    renderAll([spec]);
+    notifyDone();
+  }
+  schedulePump();
+}
+
+function schedulePump() {
+  if (pumpScheduled || !queue.length) return;
+  pumpScheduled = true;
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(pump, { timeout: 700 });
+  else setTimeout(pump, 120);
+}
+
+/** Synchronously finish every queued portrait (screenshot determinism). */
+export function drainTankThumbs() {
+  if (!queue.length) return;
+  const rest = queue.splice(0, queue.length);
+  renderAll(rest);
+  notifyDone();
+}
+
 /**
- * Render portraits for all specs once (idempotent). Upgrades every
- * <img data-cot-thumb> in the document and fires `cot:tank-thumbs`.
+ * Queue portraits for all specs once (idempotent). Upgrades every
+ * <img data-cot-thumb> in the document and fires `cot:tank-thumbs` as
+ * chunks complete. GLB-sourced vehicles are re-queued once their model
+ * parses so no card keeps the procedural stand-in.
  * @param {TankSpec[]} specs
+ * @param {{canWork?: () => boolean}} [opts] chunk gate (e.g. garage visible)
  */
-export function ensureTankThumbs(specs) {
+export function ensureTankThumbs(specs, opts = {}) {
   if (started) return;
   started = true;
-  // First pass renders SYNCHRONOUSLY at garage boot so the carousel never
-  // shows the flat baked icons in a capture: glb-sourced vehicles render
-  // their procedural stand-in now and are re-rendered the moment the GLB
-  // finishes parsing (kicked off by the boot pedestal).
-  renderAll(specs);
-  if (cache.size) {
-    applyTankThumbs(document);
-    document.dispatchEvent(new CustomEvent('cot:tank-thumbs'));
-  }
+  if (opts.canWork) canWorkFn = opts.canWork;
+  queue.push(...specs);
+  schedulePump();
   const glbSpecs = specs.filter((s) => {
     const src = MODEL_SOURCE[s.id];
     return src && src.source === 'glb';
@@ -152,8 +210,7 @@ export function ensureTankThumbs(specs) {
   if (!glbSpecs.length) return;
   (async () => {
     await waitForGlbModels(glbSpecs, 15000);
-    renderAll(glbSpecs);
-    applyTankThumbs(document);
-    document.dispatchEvent(new CustomEvent('cot:tank-thumbs'));
+    queue.push(...glbSpecs);
+    schedulePump();
   })();
 }

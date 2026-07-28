@@ -36,7 +36,12 @@ export function createRenderer(container) {
   // the stronger grade S-curve (post.js GRADE_CONTRAST 1.34) pulled midtone
   // foliage below the WoT reference band; a slight exposure lift restores
   // midtones while the contrast + black anchor keep shadow cores dense.
-  renderer.toneMappingExposure = 1.08;
+  // r7: 1.08 → 1.16 — pixel-measured lit playfield luma sat at 0.20-0.30
+  // display (WoT reference ~0.35): the whole foreground read underexposed
+  // against the hazy far field. Paired with the post.js grade-pivot fix
+  // (0.5 → 0.33) so the lift lands in the midtones instead of being crushed
+  // back down by the old above-pivot-only contrast.
+  renderer.toneMappingExposure = 1.16;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft is deprecated in r185
 

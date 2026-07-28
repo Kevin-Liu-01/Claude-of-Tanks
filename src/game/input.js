@@ -139,6 +139,19 @@ const VOLUME_KEYS = ['volMaster', 'volEngine', 'volCombat', 'volAmbience', 'volU
 // latched when the press could legitimately fire (pointer locked, or a
 // gamepad pull) and goes stale after this window, so a garage click can't
 // discharge the gun on the first battle frame.
+//
+// r2 CRITICAL FIX (41.7% click-to-fire): the edge is NOT consumed by a
+// getState() read. The render loop samples getState() once per rAF and
+// overwrites player input.fire each frame, but the fixed-step sim may run
+// ZERO steps on any given rAF (whenever rAF outpaces the 60 Hz sim — every
+// 120/144 Hz display). A read-consumed edge raised on a zero-step frame was
+// erased by the next frame's read before tryFire ever sampled it, silently
+// dropping ~half of all clicks. The latch now stays hot for the full buffer
+// window so at least one sim step is guaranteed to see it (worst-case rAF
+// gap is orders of magnitude under 250 ms). Reload times (>> 250 ms for
+// every gun in the roster) make a double fire from one click impossible:
+// the shot that consumes the window starts a multi-second reload, and
+// tryFire refuses while reload.t > 0.
 const FIRE_PRESS_BUFFER_MS = 250;
 
 const AI_DIFFICULTIES = ['easy', 'normal', 'hard'];
@@ -497,8 +510,11 @@ export function createInput(opts = {}) {
     getState() {
       pollPad();
       for (const def of ACTION_DEFS) state[def.id] = enabled && isHeld(def.id);
+      // NOT consumed by the read (see FIRE_PRESS_BUFFER_MS): the edge stays
+      // hot for the whole buffer window so a fixed sim step is guaranteed to
+      // sample it even when this rAF ran zero steps. tryFire's reload gate
+      // (seconds per shell) makes a second shot inside the window impossible.
       state.fire = enabled && nowMillis() - firePressMs < FIRE_PRESS_BUFFER_MS;
-      firePressMs = -Infinity; // consumed by this read
       return state;
     },
 

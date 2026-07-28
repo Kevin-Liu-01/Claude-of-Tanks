@@ -275,11 +275,15 @@ const TT_CSS = `
 .cot-tt-lane::after{content:'';display:inline-block;vertical-align:middle;
   width:220px;height:1px;margin-left:14px;
   background:linear-gradient(90deg,rgba(146,164,180,.25),rgba(146,164,180,0));}
-/* COMMUNITY TANKS: sourced-asset cards carry a mandatory author credit line */
-.cot-tt-node.comm{height:132px;}
-.cot-tt-node .credit{font-size:7.5px;font-weight:600;letter-spacing:.06em;
-  color:#7f96a8;text-align:center;margin-top:2px;white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis;}
+/* COMMUNITY TANKS: sourced-asset cards carry a mandatory author credit line.
+   r3: WRAPS to two lines (line-clamp) instead of ellipsizing — longer CC-BY
+   attributions ('by Lukasz Wesiora (canisferus)…') were clipped at default
+   zoom; the full string also rides the title tooltip. */
+.cot-tt-node.comm{height:140px;}
+.cot-tt-node .credit{font-size:7.5px;font-weight:600;letter-spacing:.04em;
+  color:#7f96a8;text-align:center;margin-top:2px;white-space:normal;
+  line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;
+  -webkit-box-orient:vertical;overflow:hidden;}
 .cot-tt-node .credit b{color:#a8bccc;font-weight:700;}
 `;
 

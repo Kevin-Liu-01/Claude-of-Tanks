@@ -171,10 +171,12 @@ void main() {
   float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
   // erosion-style dissolve: the alpha threshold rises with age so the noisy
   // texture breaks apart from its thin texels inward — edges churn and burn
-  // away instead of the whole card fading uniformly (softer now that the
-  // flipbook frames already self-erode over the sequence)
-  float er = vT * 0.45;
-  float a = smoothstep( er, er + 0.24, tex ) * vColor.a;
+  // away instead of the whole card fading uniformly. Band widened 0.24 ->
+  // 0.42 (r6): the narrow band binarized the noise into hard-edged speckle
+  // by mid-life — coarse GIF-dither confetti over the trees instead of
+  // half-transparent churn.
+  float er = vT * 0.42;
+  float a = smoothstep( er, er + 0.42, tex ) * vColor.a;
   if ( a < 0.004 ) discard;
   ${FOG_SCALE_F}
   // blackbody interior: texels well above the erosion front read white-hot,
@@ -384,8 +386,10 @@ void main() {
   // charred-metal albedo: near-black soot to dark scorched brown
   vTint = mix( vec3( 0.045, 0.040, 0.036 ), vec3( 0.145, 0.110, 0.085 ), h3 );
   // ember glow cools fast (orange -> black), scaled per-instance so chunks
-  // glow unevenly rather than as flat confetti
-  vHot = aSG.z * exp( -age * 1.7 ) * ( 0.35 + h2 * 0.75 );
+  // glow unevenly rather than as flat confetti. 2.6 (was 1.7): a chunk that
+  // lands in a tree canopy must be charred-dark within ~1 s, not a lump of
+  // orange popcorn parked in the foliage (r6)
+  vHot = aSG.z * exp( -age * 2.6 ) * ( 0.35 + h2 * 0.75 );
   vFade = fade;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   ${FOG_V}
@@ -452,16 +456,25 @@ function makeValueNoise(rng, grid) {
 }
 
 /**
- * 4-octave fbm turbulence built on seeded value noise, output ~[0,1].
+ * fbm turbulence built on seeded value noise, output ~[0,1].
  * (Exported for effects.js procedural canvas textures.)
  * @param {() => number} rng
+ * @param {number} [octaves=4] 4 or 5 — the 5th (grid 64) adds the fine churn
+ *   detail the fire flipbook needs so its erosion front never resolves into
+ *   coarse GIF-dither stipple at 5-7 m card sizes (r6 explosion critique)
  * @returns {(x: number, y: number) => number}
  */
-export function makeFbm(rng) {
+export function makeFbm(rng, octaves = 4) {
   const o1 = makeValueNoise(rng, 4);
   const o2 = makeValueNoise(rng, 8);
   const o3 = makeValueNoise(rng, 16);
   const o4 = makeValueNoise(rng, 32);
+  const o5 = octaves >= 5 ? makeValueNoise(rng, 64) : null;
+  if (o5) {
+    return (x, y) =>
+      (o1(x, y) * 0.5 + o2(x, y) * 0.25 + o3(x, y) * 0.125 + o4(x, y) * 0.0625 +
+        o5(x, y) * 0.03125) / 0.96875;
+  }
   return (x, y) =>
     (o1(x, y) * 0.5 + o2(x, y) * 0.25 + o3(x, y) * 0.125 + o4(x, y) * 0.0625) / 0.9375;
 }
@@ -499,15 +512,19 @@ function applyFbmAlpha(cv, rng, strength) {
  * @returns {THREE.CanvasTexture}
  */
 function makeFlipbookTexture(rng, style) {
-  const TILES = 4, T = 128, S = TILES * T;
+  // fire tiles at 176 px with 5-octave churn (was 128/4-oct for all styles):
+  // a destruction fireball card reaches 5-7 m, and the coarse noise scaled to
+  // ~25 cm/texel is what read as GIF-dither stipple once the erosion front
+  // ate into it (r6). smoke/dust keep 128 — they never erode as hard.
+  const fire = style === 'fire';
+  const TILES = 4, T = fire ? 176 : 128, S = TILES * T;
   const cv = document.createElement('canvas');
   cv.width = cv.height = S;
   const ctx = cv.getContext('2d');
-  const warp = makeFbm(rng);
-  const churn = makeFbm(rng);
+  const warp = makeFbm(rng, fire ? 5 : 4);
+  const churn = makeFbm(rng, fire ? 5 : 4);
   const img = ctx.createImageData(S, S);
   const d = img.data;
-  const fire = style === 'fire';
   const churnLo = fire ? 0.26 : (style === 'dust' ? 0.58 : 0.48);
   const churnHi = fire ? 1.10 : (style === 'dust' ? 0.62 : 0.78);
   const gamma = fire ? 0.88 : 1.06;

@@ -13,7 +13,11 @@ export default {
   },
 
   spawns: {
-    player: { x: 14, z: -78 },
+    // player pulled 20 m toward the establishing camera (was 14,-78): the
+    // battlefield shot must show SEVERAL tanks (contract), and the ally
+    // cluster (lateral ±22/44 m) now sits center-frame at ~70 m instead of
+    // reading as two dark specks at the frame edge
+    player: { x: 2, z: -95 },
     enemies: [
       { x: -30, z: 320 }, { x: 140, z: 350 }, { x: 265, z: 235 }, { x: -215, z: 270 },
       { x: -330, z: 140 }, { x: 330, z: 130 }, { x: 15, z: 430 },
@@ -27,9 +31,11 @@ export default {
     clusterMix: [['pine', 0.55], ['oak', 0.45]],
     loneMix: [['pine', 0.5], ['oak', 0.5]],
     rimMix: [['pine', 0.7], ['oak', 0.3]],
-    clusterCount: 46,
-    loneCount: 95,
-    rimCount: 58,
+    // r5 density push: designated forest strips must read as closed tree
+    // lines in establishing shots, not loose orchards
+    clusterCount: 64,
+    loneCount: 130,
+    rimCount: 74,
     grassDensity: 1,
     bushCount: 1,
     bushSpecies: 'oak',

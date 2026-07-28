@@ -35,7 +35,9 @@ export default {
     mudTone: (h, s, l) => [0.078, 0.30, clamp01(l * 1.5 + 0.04)], // cracked dry clay
     mudRough: 1.15,
     tintA: [1.10, 1.02, 0.85], tintB: [0.94, 0.89, 0.79], tintC: [1.12, 1.06, 0.90],
-    roadTint: [1.12, 1.06, 0.94],
+    // r5: darker packed track — the old near-sand tint made the desert road a
+    // faint smear across the dunes
+    roadTint: [0.94, 0.87, 0.76],
     strata: 0.22,           // horizontal rock banding on the mesa cliff walls
     microAmp: 0.3,          // tame the near-field dot speckle (ripples instead)
     rippleDir: [0.8, 0.6],  // global wind direction for the sand ripples
@@ -53,10 +55,12 @@ export default {
     // olive saucer floating over the oasis
     loneMix: [['palm', 1]],
     rimMix: [['palm', 1]],
-    clusterCount: 13,
-    loneCount: 42,
-    rimCount: 22,
-    grassDensity: 0.2,
+    // r5: denser oases + more standalone palms — the sparse-stick read was a
+    // top critique item; scrub density up with the new clump-gated scatter
+    clusterCount: 19,
+    loneCount: 68,
+    rimCount: 30,
+    grassDensity: 0.3,
     // pale sun-bleached straw: the old darker olive tufts/scrub read as
     // black pepper speckle against the bright sand in establishing shots
     grassTexTone: (h, s, l) => [0.112, clamp01(s * 0.55), clamp01(l * 1.05 + 0.14)],

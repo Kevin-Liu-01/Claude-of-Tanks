@@ -77,7 +77,7 @@ function nearestZoomIndex(zoom, list) {
  * @typedef {object} CamInput
  * @property {number} mouseDX - mouse delta x in px this frame
  * @property {number} mouseDY - mouse delta y in px this frame
- * @property {-1|0|1} wheel - wheel step: +1 zoom in, -1 zoom out
+ * @property {number} wheel - accumulated wheel notches this frame (int, ±3 max): +N zoom in, -N zoom out
  * @property {boolean} rmb - right button held (gun lock: free look, aim frozen)
  * @property {boolean} shiftPressed - Shift held (rising edge toggles sniper)
  */
@@ -251,27 +251,35 @@ export function createCameraRig(camera, deps) {
   /** Quintic ease for the cinematic sweep. */
   function smoother(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
 
+  // Sun azimuth of the fixed lighting rig (sky.js: elevation 35°, azimuth
+  // 140° — world sun dir ≈ (0.527, 0.574, -0.627)). The flyby biases its
+  // opening arc so the CAMERA sits on the sun side of the hero tank: the r6
+  // flyby opened on an unlit black silhouette in its own terrain shadow.
+  const SUN_AZ = Math.atan2(0.527, -0.627); // ≈ 2.443 rad
+  const CINE_START_YAW = SUN_AZ - Math.PI;  // camera azimuth = viewYaw + π
+
   /** Solve the battle-start flyby at cine.t; returns false when finished. */
   function solveCinematic(player, dt) {
     cine.t += dt;
     camera.userData.scoped = false;
     const k = smoother(THREE.MathUtils.clamp(cine.t / cine.dur, 0, 1));
     pivotTargetFor(player, _pivotTarget);
-    // sweep: front-quarter arc decaying onto the arcade chase pose. Kept LOW
-    // (-0.24 rad start pitch, was -0.40): the steep opening angle put the
-    // camera right in the terrain's specular sun-glint lobe and blew ~40% of
-    // the frame to near-white glare for the first 1.5 s.
-    const yawOff = 2.3 * (1 - k);
+    // sweep: SUN-SIDE arc decaying onto the arcade chase pose. The start yaw
+    // is pinned near CINE_START_YAW (wrapped adjacent to endYaw, minimum
+    // sweep enforced) so the opening frame shows a sun-lit hero tank; pitch
+    // kept LOW (-0.12 start) to stay out of the terrain sun-glint lobe.
     const pitch = THREE.MathUtils.lerp(-0.12, THREE.MathUtils.degToRad(-10), k);
     const d = THREE.MathUtils.lerp(23, ORBIT_STEPS[2], k);
-    dirFromAngles(cine.endYaw + yawOff, pitch, _viewDir);
+    dirFromAngles(THREE.MathUtils.lerp(cine.startYaw, cine.endYaw, k), pitch, _viewDir);
     _desired.copy(_pivotTarget).addScaledVector(_viewDir, -d);
     const minY = heightField.getHeightAt(_desired.x, _desired.z) + CAMERA_MIN_CLEARANCE_M;
     if (_desired.y < minY) _desired.y = minY;
     camera.position.copy(_desired);
     camera.up.set(0, 1, 0);
     camera.lookAt(_pivotTarget);
-    setFov(BASE_FOV_DEG - 8 * (1 - k));
+    // FOV animation 72 -> 60 (r6: sweep was cinematically flat): a wide
+    // establishing breath tightening onto the gameplay FOV as the arc lands
+    setFov(BASE_FOV_DEG + 12 * (1 - k));
     return cine.t < cine.dur;
   }
 
@@ -366,7 +374,12 @@ export function createCameraRig(camera, deps) {
       }
       prevShift = camInput.shiftPressed;
 
-      if (camInput.wheel) stepZoom(camInput.wheel);
+      // Consume ALL wheel notches accumulated this frame (main.js clamps to
+      // ±3): fast flicks used to collapse to one step per render frame.
+      if (camInput.wheel) {
+        const wDir = camInput.wheel > 0 ? 1 : -1;
+        for (let n = Math.min(Math.abs(camInput.wheel | 0), 3); n > 0; n--) stepZoom(wDir);
+      }
 
       const sens = rig.mode === 'SNIPER' ? BASE_SENS / rig.zoom : BASE_SENS;
       if (camInput.rmb) {
@@ -459,10 +472,18 @@ export function createCameraRig(camera, deps) {
       const player = getPlayer();
       death = null;
       trauma = 0;
+      const endYaw = player && player.state ? player.state.yaw : aimYaw;
+      // start the arc on the SUN side of the tank (wrapped adjacent to
+      // endYaw), enforcing a minimum sweep so the flyby always travels
+      let delta = (CINE_START_YAW - endYaw) % (Math.PI * 2);
+      if (delta > Math.PI) delta -= Math.PI * 2;
+      if (delta < -Math.PI) delta += Math.PI * 2;
+      if (Math.abs(delta) < 1.1) delta = (delta < 0 ? -1 : 1) * 1.1;
       cine = {
         t: 0,
         dur: Math.max(0.5, durS),
-        endYaw: player && player.state ? player.state.yaw : aimYaw,
+        endYaw,
+        startYaw: endYaw + delta,
       };
       rig.mode = 'ARCADE';
       applyPlayerVisibility(player, true);

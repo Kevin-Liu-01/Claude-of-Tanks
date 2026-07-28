@@ -89,6 +89,16 @@ const ENV_SKY_SCALE = 50; // PMREMGenerator.fromScene far plane = 100
 // which keeps shadowed faces cooler AND darker. Total fill is unchanged-ish;
 // form readability at midrange is not.
 const ENV_INTENSITY = 0.2;
+// r7 ("scene reads 100% diffuse — no sun glint on gun barrels, periscopes, or
+// metal fittings anywhere; vehicle materials clearly receive no IBL"): 0.2
+// was tuned purely as a DIFFUSE fill budget, but scene.environment is also
+// the only source of specular ambient — at 0.2 the periscope glass
+// (metalness 0.85 / roughness 0.12) and gunmetal fittings returned nothing
+// readable. Floor the per-map preset at 0.32 (max, not add: winter already
+// runs 0.52 for the ice sheet and must not climb). The extra omni fill is
+// offset form-wise by the hemisphere bounce floor in lighting.js carrying
+// the directional share.
+const ENV_INTENSITY_FLOOR = 0.32;
 // Exponential fog replaces the old linear Fog(150, 1200) that whited out the
 // midground by ~300 m. r3: density dropped 0.00088 → 0.00074 — the milky wash
 // was flattening the battlefield shot; the distance cue is now shared with
@@ -131,18 +141,33 @@ const CLOUD_SEED = 777;
 const CLOUD_TEX = 1024; // cumulus deck bake, tileable in BOTH axes
 const CIRRUS_TEX = 512; // thin high-veil bake
 const CLOUD_THR = 0.505; // r6: 0.53 → 0.505 — the infinite-deck projection spreads the same bake over far more sky; more coverage keeps the mid-elevation band from reading empty
-const CLOUD_EDGE = 0.03; // clear→rim ramp width in FBM units (crisp edge)
+// r7 cloud detail pass ("clouds are low-frequency painterly smears — no
+// detail octaves, no sun-lit edge, obviously a single blurred canvas blit"):
+// - CLOUD_EDGE is now the CUMULUS-CORE edge width; wisps/outliers (low macro
+//   clustering) blend toward CLOUD_EDGE_WISP so edge sharpness VARIES between
+//   crisp cauliflower cores and soft torn fringes instead of one global blur.
+// - fbmD gained a 7th octave and a separate high-frequency alpha-detail
+//   octave breaks the smooth interior gradients.
+// - the light march got a deeper optical depth (K 0.46 → 0.62) + darker
+//   shade pole, and thin sun-facing rims get an explicit silver-lining
+//   boost, so masses read modeled instead of airbrushed.
+const CLOUD_EDGE = 0.022; // clear→rim ramp width in FBM units (cumulus cores)
+const CLOUD_EDGE_WISP = 0.11; // edge width for sparse wispy fringes
 const CLOUD_CORE = 0.16; // rim→opaque-core ramp width in FBM units
 const CLOUD_CLUSTER = 0.09; // macro-noise threshold modulation (cloud grouping)
-const CLOUD_WARP = 0.06; // domain-warp strength (cauliflower edge crinkle)
+const CLOUD_WARP = 0.075; // domain-warp strength (cauliflower edge crinkle)
 const CLOUD_MARCH_STEPS = 12; // light-march samples toward the in-texture sun
 const CLOUD_MARCH_STEP_PX = 3;
-// r5: shade K 0.32 → 0.46 and a darker shade pole — the baked sun-lit rim /
-// dark base contrast was too subtle after the distance haze mix, so clouds
-// read as flat alpha blobs; bases now sit ~25% under the lit faces.
-const CLOUD_SHADE_K = 0.46; // optical-depth scale: bright rims, dark cores
+const CLOUD_SHADE_K = 0.62; // optical-depth scale: bright rims, dark cores
 const CLOUD_LIT = [1.0, 0.98, 0.94]; // warm-white sunlit faces
-const CLOUD_SHADE = [0.50, 0.57, 0.73]; // cool grey-blue shaded bellies
+const CLOUD_SHADE = [0.44, 0.52, 0.70]; // cool grey-blue shaded bellies
+const CLOUD_SILVER = 0.30; // extra silver-lining gain on thin sun-facing rims
+const CLOUD_DETAIL_AMP = 0.30; // high-frequency alpha modulation inside masses
+// Cloud decks are viewed at extreme grazing angles (the infinite-plane
+// projection): with the default anisotropy of 1 the mip filter smears every
+// horizonward cloud into a streak — the single biggest "blurred canvas blit"
+// contributor. 8x anisotropic sampling keeps bank edges readable to ~5 deg.
+const CLOUD_ANISOTROPY = 8;
 // r5: per-cloud macro opacity variation — breaks the uniform cotton-blob read
 // (each mass gets its own 0.74-1.0 alpha weight from the clustering noise).
 const CLOUD_ALPHA_VAR = 0.26;
@@ -333,10 +358,14 @@ function makeCloudTexture() {
   const W = CLOUD_TEX;
   const H = CLOUD_TEX;
   const rng = mulberry32(CLOUD_SEED);
+  // NOTE: keep fbmD at 6 octaves — a 7th octave shifts the seeded rng stream
+  // and re-rolls the whole deck LAYOUT (the composed masses in the frozen
+  // shots vanished). Interior high-frequency detail comes from fbmHF below.
   const fbmD = makeFbm(rng, 6, 8); // density field — primary cloud forms
   const fbmWX = makeFbm(rng, 3, 5); // domain warp u
   const fbmWY = makeFbm(rng, 3, 5); // domain warp v
   const fbmM = makeFbm(rng, 2, 3); // macro clustering (masses + clear gaps)
+  const fbmHF = makeFbm(rng, 3, 48); // high-frequency interior alpha detail (r7)
 
   // Pass 1 — carve the coverage field. mask = alpha shape (hard edge),
   // core = interior opacity ramp, sigma = optical density for the light march.
@@ -352,10 +381,14 @@ function makeCloudTexture() {
       let wv = (v + (fbmWY(u, v) - 0.5) * CLOUD_WARP) % 1;
       if (wv < 0) wv += 1;
       const d = fbmD(wu, wv);
-      const thr = CLOUD_THR + (fbmM(u, v) - 0.5) * 2 * CLOUD_CLUSTER;
+      const mac = fbmM(u, v);
+      const thr = CLOUD_THR + (mac - 0.5) * 2 * CLOUD_CLUSTER;
       const i = y * W + x;
-      const m = smoothstepNum(thr, thr + CLOUD_EDGE, d);
-      const c = smoothstepNum(thr + CLOUD_EDGE, thr + CLOUD_EDGE + CLOUD_CORE, d);
+      // edge sharpness varies with the macro field: dense clusters carve
+      // crisp cauliflower cores, sparse outliers tear into soft wisps
+      const edgeW = CLOUD_EDGE + CLOUD_EDGE_WISP * (1 - smoothstepNum(0.35, 0.62, mac));
+      const m = smoothstepNum(thr, thr + edgeW, d);
+      const c = smoothstepNum(thr + edgeW, thr + edgeW + CLOUD_CORE, d);
       mask[i] = m;
       core[i] = c;
       sigma[i] = m * (0.3 + 0.7 * c);
@@ -387,13 +420,19 @@ function makeCloudTexture() {
         occl += sigma[yy * W + x];
       }
       const lit = Math.pow(Math.exp(-CLOUD_SHADE_K * occl), 0.85);
-      px[o] = Math.round(255 * (CLOUD_SHADE[0] + (CLOUD_LIT[0] - CLOUD_SHADE[0]) * lit));
-      px[o + 1] = Math.round(255 * (CLOUD_SHADE[1] + (CLOUD_LIT[1] - CLOUD_SHADE[1]) * lit));
-      px[o + 2] = Math.round(255 * (CLOUD_SHADE[2] + (CLOUD_LIT[2] - CLOUD_SHADE[2]) * lit));
+      // silver lining: thin (low-core) texels whose light march came back
+      // unoccluded are the sun-facing rim — push them toward warm white so
+      // every mass carries a bright sun-lit edge against its shaded belly
+      const silver = 1 + CLOUD_SILVER * (1 - core[i]) * lit;
+      px[o] = Math.min(255, Math.round(255 * (CLOUD_SHADE[0] + (CLOUD_LIT[0] - CLOUD_SHADE[0]) * lit) * silver));
+      px[o + 1] = Math.min(255, Math.round(255 * (CLOUD_SHADE[1] + (CLOUD_LIT[1] - CLOUD_SHADE[1]) * lit) * silver));
+      px[o + 2] = Math.min(255, Math.round(255 * (CLOUD_SHADE[2] + (CLOUD_LIT[2] - CLOUD_SHADE[2]) * lit) * silver * 0.97));
       // per-cloud opacity variation keyed on the macro clustering field: each
-      // mass gets its own density so the deck never reads as uniform cotton
+      // mass gets its own density so the deck never reads as uniform cotton;
+      // a high-frequency octave breaks the smooth interior alpha gradients
       const macroA = 1 - CLOUD_ALPHA_VAR * (1 - fbmM(x / W, y / H));
-      px[o + 3] = Math.round(255 * CLOUD_MAX_ALPHA * macroA * m * (0.42 + 0.58 * core[i]));
+      const hfA = 1 - CLOUD_DETAIL_AMP * (1 - core[i]) * fbmHF(x / W, y / H);
+      px[o + 3] = Math.round(255 * CLOUD_MAX_ALPHA * macroA * hfA * m * (0.42 + 0.58 * core[i]));
     }
   }
   ctx.putImageData(img, 0, 0);
@@ -401,6 +440,7 @@ function makeCloudTexture() {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = CLOUD_ANISOTROPY; // grazing-angle sharpness (see const block)
   return tex;
 }
 
@@ -447,6 +487,7 @@ function makeCirrusTexture() {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = CLOUD_ANISOTROPY; // grazing-angle sharpness (see const block)
   return tex;
 }
 
@@ -700,7 +741,7 @@ export function createSky(scene, renderer) {
       if (envTarget !== null) envTarget.dispose();
       envTarget = nextTarget;
       scene.environment = envTarget.texture;
-      scene.environmentIntensity = preset.envIntensity;
+      scene.environmentIntensity = Math.max(preset.envIntensity, ENV_INTENSITY_FLOOR);
     }).catch((e) => console.warn('[sky] HDRI env failed, procedural bake kept —', e.message));
   };
 
@@ -739,7 +780,7 @@ export function createSky(scene, renderer) {
       envTarget = nextTarget;
 
       scene.environment = envTarget.texture;
-      scene.environmentIntensity = preset.envIntensity;
+      scene.environmentIntensity = Math.max(preset.envIntensity, ENV_INTENSITY_FLOOR);
 
       envSky.geometry.dispose();
       envSky.material.dispose();

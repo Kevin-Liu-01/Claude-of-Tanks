@@ -53,7 +53,7 @@ export default {
     // street paving strength: the splat shader lays the cobble/sett layer
     // across the full carriageway at all distances (uRoadTex uniform)
     roadTexMix: 0.85,
-    townWear: 1.8, // town-core ground reads packed dirt/rubble dust, not lawn
+    townWear: 2.3, // r5: town-core ground reads packed dirt/rubble dust, not lawn
   },
 
   vegetation: {
@@ -61,9 +61,9 @@ export default {
     clusterMix: [['oak', 0.7], ['pine', 0.3]],
     loneMix: [['oak', 0.8], ['pine', 0.2]],
     rimMix: [['pine', 0.6], ['oak', 0.4]],
-    clusterCount: 12,
-    loneCount: 30,
-    rimCount: 42,
+    clusterCount: 14,
+    loneCount: 40,
+    rimCount: 58, // r5: fuller rim forest under the serrated backdrop tree line
     grassDensity: 0.5,
     tuftTone: (h, s, l) => [0.185, clamp01(s * 0.7), clamp01(l * 0.92)],
     bushCount: 0.5,
@@ -84,12 +84,14 @@ export default {
     blockFill: true,
     tones: {
       plaster: (h, s, l) => [0.10, clamp01(s * 0.5), clamp01(l * 0.92)], // sooty render
-      // aged patchwork roofscape: the brighter tiles of the procedural sheet
-      // become replaced clay-red tiles, the rest stays dark slate — breaks
-      // the single maroon tone the whole town used to wear
+      // aged clay roofscape. r5: the old two-class split (red tiles vs hue-0.60
+      // slate rows) striped every roof red/blue in wide shots — and even
+      // neutral grey rows go blue under the sky fill. Keep the whole sheet in
+      // one warm clay family: bright tile faces dusty red, dark rows deep
+      // warm brown (row shadow), so roofs read tiled, not striped.
       roof: (h, s, l) => (l > 0.35
-        ? [0.045, 0.40, clamp01(l * 0.82)]
-        : [0.60, 0.15, clamp01(l * 0.70)]),
+        ? [0.032, 0.30, clamp01(l * 0.72)]
+        : [0.038, 0.24, clamp01(l * 0.55)]),
       stone: (h, s, l) => [0.09, clamp01(s * 0.6), clamp01(l * 0.95)],
       wood: null,
       straw: null,

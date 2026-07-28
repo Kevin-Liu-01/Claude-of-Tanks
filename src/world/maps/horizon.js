@@ -70,6 +70,11 @@ const PROFILES = {
   // alpine walls read as distinct massifs split by lower saddle country, not
   // one uniform comb of identical sharp teeth (the r2 sawtooth critique)
   alpine(a, noi, row) {
+    // DOMAIN WARP (r5): the raw ridged field put near-identical teeth at
+    // near-identical spacing — warp the angular coordinate before every peak
+    // sample so wavelength and spacing wander around the ring
+    const warp = noi.noise(Math.cos(a) * 1.9 + 55, Math.sin(a) * 1.9 - 41) * 0.16;
+    const aw = a + warp;
     // massif envelope (~2 wavelengths around the ring): tall ranges vs
     // saddle stretches at ~55% height
     const env = noi.noise(Math.cos(a) * 0.62 + 3.1, Math.sin(a) * 0.62 - 8.7) * 0.5 + 0.5;
@@ -77,17 +82,20 @@ const PROFILES = {
     // peak-shape selector, independent slow noise: 0 = rounded shoulder
     // domes, 1 = sharp glacial horns — so neighbouring summits differ
     const sel = smoothstep(0.3, 0.7, noi.noise(Math.cos(a) * 1.15 - 14.2, Math.sin(a) * 1.15 + 6.4) * 0.5 + 0.5);
-    const r1 = 1 - Math.abs(noi.noise(Math.cos(a) * row.f0 + 21, Math.sin(a) * row.f0 - 17));
-    const r2 = 1 - Math.abs(noi.noise(Math.cos(a) * row.f1 * 1.7 - 31, Math.sin(a) * row.f1 * 1.7 + 13));
+    const r1 = 1 - Math.abs(noi.noise(Math.cos(aw) * row.f0 + 21, Math.sin(aw) * row.f0 - 17));
+    const r2 = 1 - Math.abs(noi.noise(Math.cos(aw) * row.f1 * 1.7 - 31, Math.sin(aw) * row.f1 * 1.7 + 13));
     const horn = r1 * r1 * r1;
     // dome variant: same ridged field, softened exponent + slight widening
     const dome = Math.pow(r1, 1.35) * 0.72;
     const peak = dome + (horn - dome) * sel;
+    // per-peak amplitude jitter: neighbouring summits differ in height, not
+    // just shape, so the ring never settles into an even-spaced comb
+    const ampJit = 0.78 + 0.44 * (noi.noise(Math.cos(a) * 2.6 - 44, Math.sin(a) * 2.6 + 71) * 0.5 + 0.5);
     // crest serration only survives on the sharp stretches; dome country
     // carries a longer soft undulation instead
-    const jag = noi.noise(Math.cos(a) * 14.0 + 5, Math.sin(a) * 14.0 - 3) * sel;
+    const jag = noi.noise(Math.cos(aw) * 14.0 + 5, Math.sin(aw) * 14.0 - 3) * sel;
     const swell = noi.noise(Math.cos(a) * 3.3 + 27, Math.sin(a) * 3.3 - 19) * (1 - sel);
-    return row.base + ((peak * 0.8 + r2 * r2 * 0.28) * mass + jag * 0.05 + swell * 0.06) * row.amp;
+    return row.base + ((peak * 0.8 * ampJit + r2 * r2 * 0.28) * mass + jag * 0.05 + swell * 0.06) * row.amp;
   },
   // stepped tablelands: noise pushed through plateau terraces -> long flat
   // caps with cliff edges, plus lone buttes between the tables
@@ -125,7 +133,7 @@ const PROFILES = {
 // centred on 0.62 (recentred by the material color) — hue stays in the
 // vertex colors, so one texture serves rock, forest, sand and snow zones.
 // ---------------------------------------------------------------------------
-function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyAmp = 1 }) {
+function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyAmp = 1, coolRock = false }) {
   const su = 1536, sv = 512;
   const c = document.createElement('canvas');
   c.width = su; c.height = sv;
@@ -182,7 +190,12 @@ function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyA
         const marker = smoothstep(0.75, 0.95, Math.sin(v * 6.2 + warp * 0.4 + 0.6));
         L *= 1 - marker * banding * 0.65;
       }
-      let r = L, gc = L * 0.995, b = L * 0.975; // faintly warm rock
+      // faintly warm rock by default; alpine (winter) flips to a faintly COOL
+      // cast — the warm bias stacked with the warm scene grade/haze and read
+      // as tan desert stone framing a snow map (the r3 winter critique)
+      let r = L * (coolRock ? 0.978 : 1);
+      let gc = L * (coolRock ? 0.998 : 0.995);
+      let b = L * (coolRock ? 1.022 : 0.975);
       if (treeline > 0 && v < treeline) {
         // conifer/broadleaf mottle on the lower flanks — dark green-shifted
         // blotches (two scales) + lighter clearing patches, so vegetated
@@ -194,6 +207,24 @@ function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyA
         r *= 1 - mw * 1.1; gc *= 1 - mw * 0.45; b *= 1 - mw * 1.0;
         const clearing = smoothstep(0.62, 0.9, wn(u, v, 13, 15, 141) * 0.5 + 0.5) * below;
         r *= 1 + clearing * 0.10; gc *= 1 + clearing * 0.13; b *= 1 + clearing * 0.05;
+        // r5: HUE/VALUE stand variation, three octaves — real forested hills
+        // are a patchwork of species stands (yellow-green birch blocks, dark
+        // blue-green spruce, hazier mixed slopes), never one uniform speckle
+        const standA = wn(u, v, 9, 12, 217) * 0.5 + 0.5;   // ~40 m patches
+        const standB = wn(u, v, 3.4, 4.5, 305) * 0.5 + 0.5; // ~110 m stands
+        const standC = wn(u, v, 1.3, 1.8, 419) * 0.5 + 0.5; // whole-flank drift
+        const warmW = smoothstep(0.56, 0.86, standB) * below;      // birch/larch stands
+        r *= 1 + warmW * 0.16; gc *= 1 + warmW * 0.10; b *= 1 - warmW * 0.10;
+        const darkW = smoothstep(0.60, 0.88, 1 - standA) * below;  // spruce blocks
+        r *= 1 - darkW * 0.22; gc *= 1 - darkW * 0.12; b *= 1 - darkW * 0.08;
+        const lift = (standC - 0.5) * 0.14 * below;                // broad value drift
+        r *= 1 + lift; gc *= 1 + lift; b *= 1 + lift;
+        // darkened valley creases: shaded drainage folds running downslope,
+        // segmented so they never read as continuous paint streaks
+        const cr = 1 - Math.abs(wn(u, v, 26, 2.2, 511));
+        const crSeg = smoothstep(0.35, 0.7, wn(u, v, 17, 8, 623) * 0.5 + 0.5);
+        const crease = smoothstep(0.82, 0.97, cr) * crSeg * below;
+        r *= 1 - crease * 0.30; gc *= 1 - crease * 0.20; b *= 1 - crease * 0.22;
       }
       if (snowline <= 1) {
         const sw = smoothstep(snowline - 0.02, snowline + 0.09, v + wn(u, v, 24, 24, 51) * 0.05);
@@ -218,6 +249,69 @@ function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyA
   t.anisotropy = 8; // far walls are seen at grazing angles — 4 still smeared
   // linear (non-sRGB): authored contrast passes through 1:1 and the 0.62
   // mid-gray recentres exactly with the material color multiplier below
+  return t;
+}
+
+// ---------------------------------------------------------------------------
+// Ridgeline tree-line texture (r5) — a repeating strip of conifer/broadleaf
+// SILHOUETTES with alpha. Planted along the crest of the nearer ridge rows on
+// vegetated styles: the loudest tell of the old backdrop was a perfectly
+// smooth dome wrapped in speckle noise, where a real forested hill reads as a
+// serrated tree line breaking the sky. Drawn in a neutral green-grey band and
+// multiplied by per-vertex crest colors so haze/sun grading matches the ridge.
+// ---------------------------------------------------------------------------
+function makeTreeLineTexture(rng) {
+  const w = 1024, h = 256;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, w, h);
+  const base = h - 2;
+  let x = 2;
+  while (x < w - 12) {
+    const conifer = rng() < 0.62;
+    const tj = 0.62 + rng() * 0.55; // per-tree value jitter
+    ctx.fillStyle = `rgb(${Math.round(126 * tj)},${Math.round(148 * tj)},${Math.round(116 * tj)})`;
+    if (conifer) {
+      const th = 80 + rng() * 150, tw = 18 + rng() * 26;
+      const tiers = 3 + (rng() * 2 | 0);
+      for (let t = 0; t < tiers; t++) {
+        const ty = base - (th * (t + 1)) / tiers;
+        const twt = tw * (1 - (t / tiers) * 0.72);
+        ctx.beginPath();
+        ctx.moveTo(x + tw / 2 - twt / 2, ty + (th / tiers) * 1.45);
+        ctx.lineTo(x + tw / 2 + twt / 2, ty + (th / tiers) * 1.45);
+        ctx.lineTo(x + tw / 2 + (rng() - 0.5) * 4, ty);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.fillRect(x + tw / 2 - 2, base - th * 0.3, 4, th * 0.3 + 2);
+      x += tw * (0.55 + rng() * 0.75);
+    } else {
+      const th = 66 + rng() * 104, tw = 28 + rng() * 42;
+      const cy = base - th * 0.62;
+      for (let k = 0; k < 5; k++) {
+        ctx.beginPath();
+        ctx.ellipse(x + tw / 2 + (rng() - 0.5) * tw * 0.5, cy + (rng() - 0.5) * th * 0.38,
+          tw * (0.26 + rng() * 0.22), th * (0.18 + rng() * 0.14), rng() * Math.PI, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillRect(x + tw / 2 - 2.5, base - th * 0.35, 5, th * 0.35 + 2);
+      x += tw * (0.6 + rng() * 0.7);
+    }
+    if (rng() < 0.12) x += 18 + rng() * 46; // occasional clearing gap
+  }
+  // flood transparent texels with the mean tone so mips never halo dark
+  const id = ctx.getImageData(0, 0, w, h);
+  const d = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] < 40) { d[i] = 112; d[i + 1] = 132; d[i + 2] = 104; }
+  }
+  ctx.putImageData(id, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.ClampToEdgeWrapping;
+  t.anisotropy = 8;
   return t;
 }
 
@@ -406,11 +500,15 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
         tmp.setRGB(c.r * 1.08, c.g * 0.89, c.b * 0.75);
         c.lerp(tmp, steepW * 0.4);
       }
-      // snow above the snowline (gentler slopes hold snow; cliffs shed it)
+      // snow above the snowline (gentler slopes hold snow; cliffs shed it).
+      // r3: full caps above the line PLUS a thinner dusting on gentle ground
+      // below it — a winter range is snow-bound to the valley floor, not a
+      // snow-capped desert; bare tan foothills were the loudest winter tell
       if (snowline <= 1) {
-        const sn = smoothstep(snowline, snowline + 0.16, t +
-          gnoi.noise(Math.cos(a) * 6 - 9, Math.sin(a) * 6 + 4) * 0.07) * (1 - smoothstep(0.45, 0.9, slope));
-        c.lerp(snowC, sn * 0.92);
+        const band = smoothstep(snowline, snowline + 0.16, t +
+          gnoi.noise(Math.cos(a) * 6 - 9, Math.sin(a) * 6 + 4) * 0.07);
+        const hold = 1 - smoothstep(0.45, 0.9, slope); // cliffs shed snow
+        c.lerp(snowC, clamp(band * 0.95 + (1 - band) * 0.38, 0, 1) * hold);
       }
       // baked sun/shade on the ridge flanks
       c.multiplyScalar(1 + sunFace * (row.skirt ? 0.04 : shadeAmp));
@@ -470,7 +568,9 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
   // streaking — strata (mesa) and snow/rock contrast (alpine) carry the
   // material read instead
   const gullyAmp = style === 'alpine' ? 0.32 : style === 'mesa' ? 0.38 : 0.07;
-  const detailTex = makeHorizonTexture(gnoi, { banding, snowline, treeline, grainAmp, gullyAmp });
+  const detailTex = makeHorizonTexture(gnoi, {
+    banding, snowline, treeline, grainAmp, gullyAmp, coolRock: style === 'alpine',
+  });
   const mat = new THREE.MeshBasicMaterial({
     vertexColors: true, side: THREE.DoubleSide, map: detailTex,
   }); // unlit; scene fog still applies
@@ -483,5 +583,64 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
   // GTAO's depth-edge pass draws dark halo slashes along distant ridge
   // silhouettes — exclude the backdrop like the other flat-lit world layers
   mesh.userData.aoExclude = true;
+
+  // --- ridgeline tree combs (r5, vegetated styles only) ---------------------
+  // Alpha-tested tree-silhouette ribbons planted along the crest of every
+  // ridge row below the treeline: the skyline breaks into serrated forest
+  // instead of smooth painted domes. Ribbons follow the exact crest vertices
+  // and inherit their vertex colors (x ~1.5 against a ~0.53-mean texture, so
+  // trees sit slightly darker than the flank they stand on and pick up the
+  // same haze/sun grading).
+  if (treeline > 0) {
+    const trng = mulberry32(((seed ^ 0x5EED) ^ idHash(mapId)) >>> 0);
+    const combTex = makeTreeLineTexture(trng);
+    const combRows = [2, 3, 4];
+    const tlH = treeline * maxH;
+    const cPos = [], cCol = [], cUv = [], cIdx = [];
+    let vBase = 0;
+    for (const ri of combRows) {
+      const row = rows[ri];
+      const repeats = Math.max(8, Math.round((Math.PI * 2 * row.r) / 92));
+      for (let k = 0; k <= N; k++) {  // N+1 columns: seam-free u wrap
+        const kk = k % N;
+        const i = ri * N + kk;
+        const x = pos[i * 3], hh = pos[i * 3 + 1], z = pos[i * 3 + 2];
+        // trees thin toward the treeline, vanish above it; strip degenerates
+        // to a hidden zero-height line where faded out
+        const fade = 1 - smoothstep(tlH * 0.8, tlH * 1.12, hh);
+        const a = (kk / N) * Math.PI * 2;
+        const hn = gnoi.noise(Math.cos(a) * 5.3 + ri * 9, Math.sin(a) * 5.3 - ri * 5) * 0.5 + 0.5;
+        const span = (5 + 10 + hn * 15) * fade; // buried 5 m + 10-25 m of crowns
+        const inw = 0.995; // plant just inside the crest line
+        cPos.push(x * inw, hh - 5, z * inw, x * inw, hh - 5 + span, z * inw);
+        const cr = Math.min(1.4, col[i * 3] * 1.5);
+        const cg = Math.min(1.4, col[i * 3 + 1] * 1.5);
+        const cb = Math.min(1.4, col[i * 3 + 2] * 1.5);
+        cCol.push(cr, cg, cb, cr, cg, cb);
+        const u = (k / N) * repeats;
+        cUv.push(u, 0, u, 1);
+      }
+      for (let k = 0; k < N; k++) {
+        const b0 = vBase + k * 2, t0 = b0 + 1, b1 = b0 + 2, t1 = b1 + 1;
+        cIdx.push(b0, b1, t0, t0, b1, t1);
+      }
+      vBase += (N + 1) * 2;
+    }
+    const cGeo = new THREE.BufferGeometry();
+    cGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(cPos), 3));
+    cGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(cCol), 3));
+    cGeo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(cUv), 2));
+    cGeo.setIndex(cIdx);
+    const cMat = new THREE.MeshBasicMaterial({
+      map: combTex, vertexColors: true, alphaTest: 0.45, side: THREE.DoubleSide,
+    });
+    const comb = new THREE.Mesh(cGeo, cMat);
+    comb.name = 'horizon-treeline';
+    comb.castShadow = false;
+    comb.receiveShadow = false;
+    comb.matrixAutoUpdate = false;
+    comb.userData.aoExclude = true;
+    mesh.add(comb);
+  }
   return mesh;
 }

@@ -14,16 +14,19 @@ export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math
 
 const HALF = 512;
 const CHUNKS = 8, CHUNK_SIZE = 128;
-const GRASS_PER_CHUNK = 9600;          // midfield scatter (map-wide, cheap)
+// r5 density push: the mid-field carpet was the biggest "camo carpet" tell —
+// bare albedo with sparse tufts from ~40 m out. Midfield attempts up ~1.7x
+// and the far rolloff eased so the meadow stays three-dimensional to ~200 m.
+const GRASS_PER_CHUNK = 16000;         // midfield scatter (map-wide, cheap)
 const GRASS_FADE_END = 235;            // scale-out ends here (no hard carpet line)
 // near carpet: camera-centred cells, dense. Ring 5 pushes the dense band to
 // ~77 m so the ground-level view no longer pops to flat albedo at 30-40 m;
 // the midfield scatter carries the 70-235 m band beyond it.
 const CARPET_CELL = 14;
 const CARPET_RING = 5;                 // (2R+1)^2 = 121 cells around the camera
-const CARPET_PER_CELL = 460;           // attempts per cell (filters thin it)
+const CARPET_PER_CELL = 680;           // attempts per cell (filters thin it)
 const CARPET_FAR = 95;                 // shader fade distance
-const CARPET_CAP = 24000;              // instances per tuft variant
+const CARPET_CAP = 40000;              // instances per tuft variant
 const TREE_NEAR_IN = 260, TREE_NEAR_OUT = 290; // hysteresis band (full-detail radius)
 
 function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
@@ -551,21 +554,22 @@ function buildBirchGeometry(rng) {
     trunk.setAttribute('aFlex', new THREE.BufferAttribute(fl, 1));
     trunkParts.push(trunk);
   }
-  const nBr = 5 + ((rng() * 3) | 0);
+  const nBr = 9 + ((rng() * 4) | 0); // r5: doubled — "white pole with 3 twigs" tell
   for (let b = 0; b < nBr; b++) {
-    const len = 1.2 + rng() * 1.4;
+    const len = 1.2 + rng() * 1.7;
     const br = new THREE.CylinderGeometry(0.015, 0.045, len, 4, 1);
     br.translate(0, len / 2, 0);
-    br.rotateZ(0.35 + rng() * 0.5); // reach upward
+    br.rotateZ(0.35 + rng() * 0.55); // reach upward
     br.rotateY(rng() * Math.PI * 2);
-    br.translate(0, H * (0.5 + rng() * 0.42), 0);
+    br.translate(0, H * (0.45 + rng() * 0.47), 0);
     _c.setHSL(0.07, 0.10, 0.22 + rng() * 0.08, THREE.SRGBColorSpace);
     trunkParts.push(paintFlat(br, _c.clone(), 0.3));
   }
-  // sparse twig cards forming the bare crown silhouette
+  // twig cards forming the bare crown silhouette (r5: ~2x density so the
+  // crown reads as a branch haze, not a pole with stickers)
   const cardParts = [];
   const cy = H * 0.78;
-  const nc = 9 + ((rng() * 5) | 0);
+  const nc = 17 + ((rng() * 7) | 0);
   for (let i = 0; i < nc; i++) {
     let dx = rng() * 2 - 1, dy = rng() * 2 - 1, dz = rng() * 2 - 1;
     const dl = Math.hypot(dx, dy, dz) || 1;
@@ -642,18 +646,20 @@ function buildOakFarGeometry(rng, pal = {}) {
   trunk.translate(0, trunkH / 2, 0);
   _c.setHSL(0.07, 0.26, 0.17, THREE.SRGBColorSpace);
   trunkParts.push(paintFlat(trunk, _c, 0));
-  // 4-5 unequal lobes with strong offsets: broken asymmetric broadleaf mass
-  // (the old 3 near-equal blobs read as the same broccoli clone on every
-  // mid-distance tree), with a deeper shade gradient bottom -> crown
-  const nLobes = 4 + ((rng() * 2) | 0);
+  // 6-8 unequal lobes with strong offsets (r5, up from 4-5): broken
+  // asymmetric broadleaf mass with satellite tufts poking off the crown so
+  // the silhouette carries card-like raggedness even at range, with a deeper
+  // shade gradient bottom -> crown
+  const nLobes = 6 + ((rng() * 3) | 0);
   for (let b = 0; b < nLobes; b++) {
-    const big = b === 0 ? 1 : 0.62 + rng() * 0.32;
+    const big = b === 0 ? 1 : (b < 3 ? 0.62 + rng() * 0.32 : 0.30 + rng() * 0.26);
     const blob = new THREE.IcosahedronGeometry((1.25 + rng() * 0.6) * big, 1);
-    jitterRadial(blob, rng, 0.34);
+    jitterRadial(blob, rng, b < 3 ? 0.34 : 0.46);
     blob.scale(1.1 + rng() * 0.3, 0.72 + rng() * 0.25, 1.1 + rng() * 0.3);
     sphereNormals(blob, 0, 0, 0, 1.0); // smooth sunlit crown, no black facets
-    blob.translate((rng() - 0.5) * 2.2, 4.15 + (rng() - 0.45) * 1.7 - (1 - big) * 0.7,
-      (rng() - 0.5) * 2.2);
+    const spread = b < 3 ? 2.2 : 3.4; // small satellites reach past the mass
+    blob.translate((rng() - 0.5) * spread, 4.15 + (rng() - 0.45) * 1.7 - (1 - big) * 0.7 + (b >= 3 ? rng() * 0.9 : 0),
+      (rng() - 0.5) * spread);
     canopyParts.push(paintCanopy(blob, hue, sat, l0 * 0.82, l1, 2.3, 5.9, rng, 0.3));
   }
   return { trunk: mergeParts(trunkParts), canopy: mergeParts(canopyParts) };
@@ -674,10 +680,23 @@ function buildPineFarGeometry(rng, pal = {}) {
   ];
   for (const lv of lobes) {
     const cone = new THREE.ConeGeometry(lv.r * (0.9 + rng() * 0.2), lv.h, 8, 2);
-    jitterRadial(cone, rng, 0.18);
+    jitterRadial(cone, rng, 0.26); // r5: rougher tier edges — no smooth stack-of-cones read
     sphereNormals(cone, 0, lv.h * -0.25, 0, 0.75); // radial+up: lit side / sky-filled side
-    cone.translate(0, lv.y + lv.h / 2, 0);
+    cone.translate((rng() - 0.5) * 0.3, lv.y + lv.h / 2, (rng() - 0.5) * 0.3);
     canopyParts.push(paintCanopy(cone, hue, sat, l0, l1, 1.2, 6.6, rng, 0.35));
+  }
+  // r5: a few branch-tuft satellites poking through the tier line so the far
+  // pine silhouette is ragged like the near card LOD, not a lathe object
+  for (let b = 0; b < 4; b++) {
+    const a = rng() * Math.PI * 2, ty = 1.8 + rng() * 3.4;
+    const t = (ty - 1.2) / 5.4;
+    const rr = (1.0 - t) * 1.5 + 0.35;
+    const tuft = new THREE.IcosahedronGeometry(0.38 + rng() * 0.3, 0);
+    jitterRadial(tuft, rng, 0.4);
+    tuft.scale(1.3, 0.7, 1.3);
+    sphereNormals(tuft, 0, 0, 0, 0.85);
+    tuft.translate(Math.cos(a) * rr, ty, Math.sin(a) * rr);
+    canopyParts.push(paintCanopy(tuft, hue, sat, l0, l1, 1.2, 6.6, rng, 0.3));
   }
   return { trunk: mergeParts(trunkParts), canopy: mergeParts(canopyParts) };
 }
@@ -720,17 +739,17 @@ function buildPalmFarGeometry(rng, pal = {}) {
   // radial arched fronds: bent tapered blades that rise, arc over and droop —
   // the star-of-fronds crown a real palm shows at range (opaque planes; the
   // far canopy material is DoubleSide for exactly this builder)
-  const nF = 9 + ((rng() * 3) | 0);
+  const nF = 13 + ((rng() * 4) | 0); // r5: denser crown — sparse far palms read as sticks
   for (let k = 0; k < nF; k++) {
     const a = (k / nF) * Math.PI * 2 + rng() * 0.5;
-    const len = 2.7 + rng() * 0.9;
+    const len = 3.0 + rng() * 1.0;
     const phi0 = 0.55 + rng() * 0.5;            // launch angle up from horizontal
     const phiTip = -(0.55 + rng() * 0.5);       // tip droops below horizontal
     const g = new THREE.PlaneGeometry(1, 1, 1, 4);
     const p = g.attributes.position;
     for (let i = 0; i < p.count; i++) {
       const t = p.getY(i) + 0.5; // 0..1 along the frond
-      const w = (0.78 - t * 0.55) * (0.9 + rng() * 0.15); // taper to the tip
+      const w = (1.0 - t * 0.68) * (0.9 + rng() * 0.15); // taper to the tip
       let ry = 0, rf = 0;
       const steps = 8, dl = (len * t) / steps;
       for (let sIt = 0; sIt < steps; sIt++) {
@@ -761,13 +780,25 @@ function buildBirchFarGeometry(rng, pal = {}) {
   trunk.translate(0, H / 2, 0);
   _c.setHSL(0.09, 0.04, 0.62, THREE.SRGBColorSpace);
   trunkParts.push(paintFlat(trunk, _c, 0));
-  // bare crown: two thin dark twig-mass lobes
-  for (let b = 0; b < 2; b++) {
-    const blob = new THREE.IcosahedronGeometry(0.9 + rng() * 0.35, 1);
-    jitterRadial(blob, rng, 0.35);
-    blob.scale(0.9, 1.5, 0.9);
+  // r5: real winter birch crowns are a broken haze of twig masses around
+  // upward branches, not 2 lobes on a pole — 4-5 lobes + branch cylinders
+  const nBr = 4 + ((rng() * 2) | 0);
+  for (let b = 0; b < nBr; b++) {
+    const len = 1.6 + rng() * 1.4;
+    const br = new THREE.CylinderGeometry(0.02, 0.06, len, 4, 1);
+    br.translate(0, len / 2, 0);
+    br.rotateZ(0.35 + rng() * 0.55);
+    br.rotateY(rng() * Math.PI * 2);
+    br.translate(0, H * (0.55 + rng() * 0.35), 0);
+    _c.setHSL(0.08, 0.06, 0.42 + rng() * 0.1, THREE.SRGBColorSpace);
+    trunkParts.push(paintFlat(br, _c.clone(), 0.25));
+  }
+  for (let b = 0; b < 4 + ((rng() * 2) | 0); b++) {
+    const blob = new THREE.IcosahedronGeometry(0.65 + rng() * 0.45, 1);
+    jitterRadial(blob, rng, 0.45);
+    blob.scale(0.9, 1.35 + rng() * 0.4, 0.9);
     sphereNormals(blob, 0, 0, 0, 1.0);
-    blob.translate((rng() - 0.5) * 0.8, H * 0.72 + (rng() - 0.4) * 1.2, (rng() - 0.5) * 0.8);
+    blob.translate((rng() - 0.5) * 1.9, H * 0.74 + (rng() - 0.4) * 1.6, (rng() - 0.5) * 1.9);
     canopyParts.push(paintCanopy(blob, cp.hue ?? 0.06, cp.sat ?? 0.08,
       cp.l0 ?? 0.16, cp.l1 ?? 0.26, H * 0.4, H, rng, 0.35));
   }
@@ -950,9 +981,15 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     // scatter reads as noise dots — gate placement behind a low-frequency
     // mask so growth clusters in hollows and along moisture lines, with only
     // stray outliers between the clumps
+    let sxzMul = 1, syMul = 1;
     if (veg.grassDensity < 0.5) {
-      const clump = smoothstepJs(0.38, 0.62, sn.n2);
-      if (clJ > clump * 0.92 + 0.08) return null;
+      const clump = smoothstepJs(0.34, 0.60, sn.n2);
+      if (clJ > clump * 0.94 + 0.06) return null;
+      // r5: ~3x size spread keyed to the clump core — big established growth
+      // at clump centers, stunted stragglers at the fringe, so the scatter
+      // stops reading as same-size pepper dots
+      sxzMul = 0.55 + clump * 0.7 + roll * 0.75;
+      syMul = 0.6 + clump * 0.55 + varJ * 0.6;
     }
     const vv = varJ < (0.75 - dry * 0.5) ? 0 : 1;
     const y = heightField.getHeightAt(x, z);
@@ -964,7 +1001,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     if (veg.tuftTone) [th, ts, tl] = veg.tuftTone(th, ts, tl);
     _c.setHSL(((th % 1) + 1) % 1, clamp(ts, 0, 1), clamp(tl, 0, 1));
     const t = _tuftScratch;
-    t[0] = x; t[1] = y - 0.03; t[2] = z; t[3] = yaw; t[4] = sxz; t[5] = sy;
+    t[0] = x; t[1] = y - 0.03; t[2] = z; t[3] = yaw; t[4] = sxz * sxzMul; t[5] = sy * syMul;
     t[6] = _c.r; t[7] = _c.g; t[8] = _c.b; t[9] = vv;
     return t;
   }
@@ -1286,7 +1323,9 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     if (!far) continue;
     const r = 16 + rng() * 26;
     const species = pickSpecies(veg.clusterMix, rng());
-    const n = 15 + (rng() * 22) | 0;
+    // r5: ~1.7x trees per stand — designated forest strips must read DENSE
+    // (closed canopy) next to WoT tree lines, not as loose orchards
+    const n = 24 + (rng() * 34) | 0;
     let placed = 0;
     for (let i = 0; i < n * 3 && placed < n; i++) {
       const a = rng() * Math.PI * 2, rr = r * Math.sqrt(rng());
@@ -1359,6 +1398,12 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     const farCanopy = makeTreeMesh(treeGeoFar[sp].canopy, canopyFarMat, sp, false);
     farCanopy.receiveShadow = false; // CSM self-shadow at range = black crowns
     farMeshes[sp] = [makeTreeMesh(treeGeoFar[sp].trunk, barkMat, sp, false), farCanopy];
+    // PERF (perf-budget r3): far-partition trees (beyond ~260 m) do NOT cast
+    // shadows — a tree shadow out there is subpixel at 1080p (see lighting.js
+    // far-cascade rationale) yet every lobe/trunk was re-rasterized by the
+    // CSM cascade passes; with the density boost this alone was millions of
+    // tris/frame of invisible shadow work.
+    for (const m of farMeshes[sp]) m.castShadow = false;
   }
 
   // ---- bushes (hedgerow / field-edge cover, purely visual) ----
@@ -1372,10 +1417,18 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       if (heightField._roadDist(x, z) < 6) return;
       if (heightField.getGroundType(x, z) === 'soft' || noVeg(x, z)) return;
       if (heightField.getNormalAt(x, z).y < 0.78) return;
+      let clump = 1;
+      if (veg.bushCount < 1) {
+        // r5: sparse-biome shrubs (desert scrub, winter saplings) cluster in
+        // washes/hollows like the tufts do instead of even pepper noise
+        clump = smoothstepJs(0.34, 0.60, sampleSplatNoise(x, z).n2);
+        if (rng() > clump * 0.9 + 0.1) return;
+      }
       const y = heightField.getHeightAt(x, z);
       // hull-height concealers: foliage reaches ~2.5-3 m so a parked tank is
       // genuinely occluded (knee-high shrubs sold zero visual concealment)
-      const sc = 1.6 + rng() * 1.6;
+      // r5: size keyed to the clump core — 2-3x spread, big growth at centers
+      const sc = (1.6 + rng() * 1.6) * (0.7 + clump * 0.45);
       _q.setFromAxisAngle(_up, rng() * Math.PI * 2);
       _m4.compose(_pv.set(x, y - 0.05, z), _q, _sv.set(sc, sc * (1.05 + rng() * 0.35), sc));
       bushPlacements[(rng() * 2) | 0].push(_m4.clone());
@@ -1546,8 +1599,9 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       (1 - Math.exp(-(dt || 0) / 0.08));
     for (const gc of grassChunks) {
       const d = Math.max(0, Math.hypot(camPos.x - gc.cx, camPos.z - gc.cz) - CHUNK_SIZE * 0.71);
-      // continuous density rolloff (no stepped 1 -> 0.45 pop at 64 m)
-      let frac = d < GRASS_FADE_END ? 1 - 0.52 * smoothstepJs(62, 205, d) : 0;
+      // continuous density rolloff (no stepped 1 -> 0.45 pop at 64 m);
+      // eased 0.52 -> 0.36 (r5): the far half of the meadow kept its tufts
+      let frac = d < GRASS_FADE_END ? 1 - 0.36 * smoothstepJs(62, 205, d) : 0;
       for (const cm of gc.meshes) {
         const count = Math.floor(cm.total * frac);
         cm.mesh.visible = count > 0;

@@ -30,28 +30,39 @@ const TRACER_PRESETS = {
 };
 // Afterglow: a dying tracer streak lingers this long after the shell dies (or
 // outruns the frame) so every 60 fps frame catches a readable line of flight.
-const TRAIL_S = 0.45;
+// 0.2 (was 0.45): combined with the shorter tail below, a dead shell's streak
+// is fully gone within ~200 ms — the r6 kill frame showed one persistent
+// horizon-to-horizon incandescent rod crossing the whole valley.
+const TRAIL_S = 0.2;
 
 // Nominal muzzle velocities used ONLY by composeFiringMoment (m/s)
 const COMPOSE_VELOCITY = { AP: 800, APCR: 1050, HEAT: 780, HE: 750, HESH: 780, APFSDS: 1700 };
 
 const MAX_TRACERS = 96;
 const MUZZLE_LIGHT_S = 0.12;   // long enough to still kiss the hull at the 50 ms composed frame
-// 150 (was 240): a brief WARM point light that kisses barrel/hull/ground —
-// 240 still washed the whole hull side to cream-yellow for the fire frame
-// Bright enough to read against the 4.5-intensity sun: a warm kick on
-// hull/ground/grass decaying over ~120 ms (critique: "flash casts no light")
-// 1150 (was 950) + range 18 (was 15): the flash light must reach the turret
-// face and rear hull so the hull roof/glacis warm up visibly at the composed
-// firing frame — NOT wash to cream (that regression lives at peak~240/range 15
-// with the old deep-orange color; the safe window is narrow).
-const MUZZLE_LIGHT_PEAK = 1150;
+// 210 (was 1150): the 1150 peak stamped a ~20 m saturated yellow disc onto
+// the terrain and whited out the bottom half of the scope (r6 "flashbang").
+// 210 at range 11 (was 18) still reads a clear warm kick on barrel/glacis/
+// ground inside ~5 m against the 4.5-intensity sun, then dies quadratically —
+// a muzzle kiss, not a floodlight. Scoped view additionally attenuates the
+// LIGHT (see spawnMuzzleFlash return), matching the geometry suppression.
+const MUZZLE_LIGHT_PEAK = 210;
+const MUZZLE_LIGHT_RANGE = 11;
 const EXPLOSION_LIGHT_S = 1.1; // fireball glow lingers, lights the wreck at 0.6 s
-// 85 (was 190): the 190 peak + burnt-material emissive still cooked the whole
-// wreck to flat red-orange; 85 gives warm falloff without albedo takeover
-const EXPLOSION_LIGHT_PEAK = 85;
+// 250 with CUBIC decay (was 85 quadratic): 85 was too weak to sell the blast
+// on the surrounding terrain in the first 400 ms (r6). The cubic curve front-
+// loads the energy — at 0.15 s it is ~3x the old warm-up, while by 0.6 s
+// (the composed frame) it is back to ~25, so the wreck albedo never cooks
+// to flat emissive orange (the regression that drove the 190 -> 85 cut).
+const EXPLOSION_LIGHT_PEAK = 250;
 const SMOKE_COLUMN_S = 30;
 const COLUMN_TICK_S = 0.11;    // emitter cadence — overlap keeps the column connected
+// PERF: cap concurrent smoke-column emitters. Late battle every wreck runs a
+// 30 s column at ~27 puffs/s of 6-10 m billboards; 5+ simultaneous columns is
+// pure fill-rate pile-up at retina resolutions (measured 25-28 ms frames in
+// the 60 s probe tail). 4 columns reads identically in battle — when a 5th
+// kill lands, the column closest to burning out is retired early.
+const MAX_COLUMNS = 4;
 
 // ---------------------------------------------------------------------------
 // Tracer shader (instanced stretched additive ribbon, camera-facing)
@@ -298,19 +309,21 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   // --- dynamic lights (budget: exactly 2 PointLights) -----------------------
   // Muzzle: warm white-amber (was deep orange — the "saturated ground decal"
   // read); tighter range so it kisses the hull rather than floods the field.
-  const muzzleLight = new THREE.PointLight(0xffd9a8, 0, 18, 2);
+  const muzzleLight = new THREE.PointLight(0xffd9a8, 0, MUZZLE_LIGHT_RANGE, 2);
   const explosionLight = new THREE.PointLight(0xffb27a, 0, 26, 2);
   muzzleLight.castShadow = false;
   explosionLight.castShadow = false;
   group.add(muzzleLight, explosionLight);
+  // pow: temporal decay exponent — explosion uses 3 (front-loaded punch that
+  // collapses fast, see EXPLOSION_LIGHT_PEAK note), muzzle keeps 2.
   const lightStates = [
-    { light: muzzleLight, age: Infinity, dur: MUZZLE_LIGHT_S, peak: MUZZLE_LIGHT_PEAK },
-    { light: explosionLight, age: Infinity, dur: EXPLOSION_LIGHT_S, peak: EXPLOSION_LIGHT_PEAK },
+    { light: muzzleLight, age: Infinity, dur: MUZZLE_LIGHT_S, peak: MUZZLE_LIGHT_PEAK, pow: 2 },
+    { light: explosionLight, age: Infinity, dur: EXPLOSION_LIGHT_S, peak: EXPLOSION_LIGHT_PEAK, pow: 3 },
   ];
 
   function applyLight(state) {
     const k = Math.max(0, 1 - state.age / state.dur);
-    state.light.intensity = state.peak * k * k;
+    state.light.intensity = state.peak * Math.pow(k, state.pow || 2);
   }
 
   function flashLight(state, pos, peak, ageS = 0) {
@@ -473,8 +486,10 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     const k = 1 - Math.pow(1 - t, 2.2);
     r.mesh.position.copy(r.origin).addScaledVector(r.dir, 0.25 + 1.7 * k);
     r.mesh.scale.setScalar(0.35 + 1.5 * k);
-    // view-angle fade: full strength looking down the bore, vanishing
-    // edge-on (a flat card seen side-on reads as a vertical spike)
+    // view-angle fade: full strength looking down the bore, HARD-GATED off
+    // below ~55° alignment — the pow(align, 1.6) residual left a bright
+    // vertical spike from side-on cameras that crossed the horizontal tracer
+    // into a 4-point lens-flare diamond (r6 fire2/kill frames).
     let align = 1;
     const cam = engineCtx && engineCtx.camera;
     if (cam) {
@@ -482,7 +497,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       const len = _v4.length();
       if (len > 1e-4) align = Math.abs(_v4.dot(r.dir)) / len;
     }
-    r.mat.opacity = 0.34 * r.att * Math.pow(1 - t, 1.7) * Math.pow(align, 1.6);
+    const aGate = THREE.MathUtils.smoothstep(align, 0.62, 0.9);
+    if (aGate <= 0.001) { r.mesh.visible = false; r.mat.opacity = 0; return; }
+    r.mat.opacity = 0.30 * r.att * Math.pow(1 - t, 1.7) * aGate;
     r.mesh.visible = true;
   }
 
@@ -599,16 +616,20 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     // 1. blinding core PINNED to the muzzle tip: a 1-frame pure-white pop
     //    stacked on a compact 90 ms core so the gameplay framing always
     //    reads a distinct white-hot heart inside the orange combustion.
+    //    Sizes/alphas raised (r6): the brightest pixel cluster of the whole
+    //    flash must sit ON the barrel-tip pixels — the composed frame's
+    //    center-of-brightness used to live 1.5-3 m downrange in the tracer
+    //    bridge, reading as a shell airburst off a bare muzzle.
     _puffO.pos[0] = pos.x + dir.x * 0.12; _puffO.pos[1] = pos.y + dir.y * 0.12; _puffO.pos[2] = pos.z + dir.z * 0.12;
     _puffO.vel[0] = dir.x * 1.5; _puffO.vel[1] = dir.y * 1.5; _puffO.vel[2] = dir.z * 1.5;
     _puffO.life = 0.045;
-    _puffO.size0 = 0.62 * s * axSize; _puffO.size1 = 0.8 * s * axSize;
+    _puffO.size0 = 0.95 * s * axSize; _puffO.size1 = 1.2 * s * axSize;
     _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 0;
     col3(0xffffff, _puffO.col0); col3(0xffffff, _puffO.col1);
-    _puffO.alpha = 0.35 + 0.65 * axAtt; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
+    _puffO.alpha = 0.45 + 0.55 * axAtt; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
     particles.emit('flash', _puffO);
     _puffO.life = 0.09;
-    _puffO.size0 = 0.34 * s * axSize; _puffO.size1 = 0.6 * s * axSize;
+    _puffO.size0 = 0.55 * s * axSize; _puffO.size1 = 0.9 * s * axSize;
     _puffO.rotVel = (rng() - 0.5) * 2;
     col3(0xffffff, _puffO.col0); col3(0xffc558, _puffO.col1);
     particles.emit('flash', _puffO);
@@ -636,9 +657,43 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       _jetO.len1 = (i === 0 ? 1.7 + rng() * 0.4 : 1.1 + rng() * 0.3) * s * reach;
       _jetO.seed = rng();
       col3(i === 0 ? 0xffe6b0 : 0xffcf7e, _jetO.col);
-      _jetO.alpha = (i === 0 ? 0.55 : 0.38) * axAtt; _jetO.birthOffset = birthOffset;
+      // alpha raised 0.55/0.38 -> 0.85/0.55 (r6): the jets ARE the attached
+      // flash body — they were too dim next to the tracer bridge, so the
+      // bright mass read downrange of the bore instead of erupting from it.
+      _jetO.alpha = (i === 0 ? 0.85 : 0.55) * axAtt; _jetO.birthOffset = birthOffset;
       particles.emit('jet', _jetO);
     }
+    // 2a2. BACK-SPLASH: two short jets swept backward around the brake plus a
+    //    small halo puff BEHIND the tip. Real 120 mm blast wraps the muzzle
+    //    device; with every element forward-biased the flash mass sat wholly
+    //    downrange and a thin/dark barrel read as bare with a detached
+    //    airburst (r6 canonical-frame critical). Straddling the tip welds the
+    //    flash onto the tube from any camera.
+    for (let i = 0; i < 2; i++) {
+      const a = rng() * Math.PI * 2;
+      _sv.set(
+        -dir.x * 0.6 + (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)),
+        -dir.y * 0.6 + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)),
+        -dir.z * 0.6 + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)),
+      ).normalize();
+      _jetO.pos[0] = pos.x + dir.x * 0.06; _jetO.pos[1] = pos.y + dir.y * 0.06; _jetO.pos[2] = pos.z + dir.z * 0.06;
+      _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
+      _jetO.life = 0.07 + rng() * 0.02;
+      _jetO.width = 0.20 * s * axSize;
+      _jetO.len0 = 0.2 * s; _jetO.len1 = (0.55 + rng() * 0.2) * s;
+      _jetO.seed = rng();
+      col3(0xffd88a, _jetO.col);
+      _jetO.alpha = 0.5 * axAtt; _jetO.birthOffset = birthOffset;
+      particles.emit('jet', _jetO);
+    }
+    _puffO.pos[0] = pos.x - dir.x * 0.22; _puffO.pos[1] = pos.y - dir.y * 0.22; _puffO.pos[2] = pos.z - dir.z * 0.22;
+    _puffO.vel[0] = -dir.x * 1.2; _puffO.vel[1] = -dir.y * 1.2 + 0.3; _puffO.vel[2] = -dir.z * 1.2;
+    _puffO.life = 0.07;
+    _puffO.size0 = 0.5 * s * axSize; _puffO.size1 = 0.72 * s * axSize;
+    _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 0;
+    col3(0xfff1cc, _puffO.col0); col3(0xffb050, _puffO.col1);
+    _puffO.alpha = 0.55 * axAtt; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
+    particles.emit('flash', _puffO);
     // 2b. muzzle-brake side jets — short lateral cones venting from the brake
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * Math.PI * 2 + 0.5 + rng() * 0.5;
@@ -657,12 +712,14 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       _jetO.alpha = 0.42 * axAtt; _jetO.birthOffset = birthOffset;
       particles.emit('jet', _jetO);
     }
-    // 2c. radial flash spikes: 3 short-lived (80-120 ms) thin petals kicked
-    //    ~70-85 degrees off the bore — the sharp star structure a frozen
-    //    frame reads on real 120 mm muzzle blast photography.
-    for (let i = 0; i < 3; i++) {
-      const a = (i / 3) * Math.PI * 2 + rng() * 1.5;
-      const tilt = 1.22 + rng() * 0.28;
+    // 2c. radial flash petals: 2 short-lived soft lobes kicked ~55-70 degrees
+    //    off the bore. Tamed from the r5 tune (3 thin 1.2 m spikes at alpha
+    //    0.5): side-on those rendered as a bright THIN VERTICAL LINE through
+    //    the flash that crossed the horizontal tracer into the r6 "4-point
+    //    lens-flare diamond" read. Wider, shorter, dimmer = combustion lobes.
+    for (let i = 0; i < 2; i++) {
+      const a = (i / 2) * Math.PI * 2 + rng() * 1.5;
+      const tilt = 0.95 + rng() * 0.28;
       const st = Math.sin(tilt), ct = Math.cos(tilt);
       _sv.set(
         dir.x * ct + (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)) * st,
@@ -671,12 +728,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       ).normalize();
       _jetO.pos[0] = pos.x + dir.x * 0.16; _jetO.pos[1] = pos.y + dir.y * 0.16; _jetO.pos[2] = pos.z + dir.z * 0.16;
       _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
-      _jetO.life = 0.08 + rng() * 0.04;
-      _jetO.width = 0.10 * s * axSize;
-      _jetO.len0 = 0.18 * s; _jetO.len1 = (0.75 + rng() * 0.45) * s;
+      _jetO.life = 0.07 + rng() * 0.03;
+      _jetO.width = 0.17 * s * axSize;
+      _jetO.len0 = 0.16 * s; _jetO.len1 = (0.45 + rng() * 0.25) * s;
       _jetO.seed = rng();
       col3(0xffdf9a, _jetO.col);
-      _jetO.alpha = 0.5 * axAtt; _jetO.birthOffset = birthOffset;
+      _jetO.alpha = 0.3 * axAtt; _jetO.birthOffset = birthOffset;
       particles.emit('jet', _jetO);
     }
     // 3. barrel-aligned incandescent tongues — thin streak detail inside the
@@ -795,7 +852,10 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       _puffO.alpha = (0.30 + rng() * 0.16) * smokeA; _puffO.grav = 0.5; _puffO.birthOffset = smokeBirth;
       particles.emit('smoke', _puffO);
     }
-    if (scoped) return lightK; // no wisps/bore sparks/ground wash an inch from the lens
+    // Scoped LIGHT attenuation (r6): the muzzle light an inch from the lens
+    // whited out the bottom half of the scope — suppress it like the
+    // geometry, leaving a readable kick without the flashbang.
+    if (scoped) return lightK * 0.2; // no wisps/bore sparks/ground wash an inch from the lens
     // 6b. lingering wisp curling off the hot muzzle itself
     for (let i = 0; i < 5; i++) {
       const along = 0.15 + rng() * 0.3;
@@ -1088,24 +1148,27 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     // gradient instead of stacking to a clipped featureless sheet.
     // Spawn cluster kept TIGHT with big overlapping cards: separated centers
     // read as 5-6 individual cotton-ball spheres (r5) instead of one mass.
-    const fireN = rack ? 34 : (burn ? 14 : 26);
+    // FEWER, LARGER, MORE OPAQUE cards (r6: by 1.0-1.6 s the many mid-size
+    // half-eroded cards resolved into coarse confetti stipple over the trees
+    // instead of volumetric churn — density per card matters more than count)
+    const fireN = rack ? 22 : (burn ? 10 : 17);
     const fireS = burn ? 0.7 : 1;
     for (let i = 0; i < fireN; i++) {
       const a = rng() * Math.PI * 2, b = rng() * Math.PI;
-      const v = (3.8 + rng() * 5.6) * fireS;
-      _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.4 * fireS;
-      _puffO.pos[1] = cy + (rng() - 0.55) * 1.4;
-      _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.4 * fireS;
+      const v = (3.4 + rng() * 5.0) * fireS;
+      _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.2 * fireS;
+      _puffO.pos[1] = cy + (rng() - 0.55) * 1.2;
+      _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.2 * fireS;
       _puffO.vel[0] = Math.cos(a) * Math.sin(b) * v;
       _puffO.vel[1] = Math.abs(Math.cos(b)) * v * 0.45 + 0.9;
       _puffO.vel[2] = Math.sin(a) * Math.sin(b) * v;
       // staggered long tail: the burn must survive past 2.5 s, not collapse
       // into a thin sprite ribbon at 1.4 s (r2 critique)
-      _puffO.life = 1.1 + rng() * 1.7;
-      _puffO.size0 = (1.6 + rng() * 1.0) * fireS; _puffO.size1 = (4.6 + rng() * 2.6) * fireS;
+      _puffO.life = 1.2 + rng() * 1.7;
+      _puffO.size0 = (2.2 + rng() * 1.2) * fireS; _puffO.size1 = (5.6 + rng() * 2.8) * fireS;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 4;
       col3(0xffd865, _puffO.col0); col3(0xff3a00, _puffO.col1);
-      _puffO.alpha = 0.5; _puffO.grav = 1.0; _puffO.birthOffset = birthOffset - rng() * 0.25;
+      _puffO.alpha = 0.66; _puffO.grav = 1.0; _puffO.birthOffset = birthOffset - rng() * 0.25;
       particles.emit('fire', _puffO);
     }
     // fire-to-smoke takeover: dark roil born WHERE the flame puffs are as
@@ -1257,21 +1320,37 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     // with randomized length/width/brightness AND staggered births so the
     // frozen frame mixes fresh leaders with drooping, dying arcs
     sparkFan(_sv.set(pos.x, cy, pos.z), _UP, rack ? 28 : (burn ? 8 : 18), 16, 1.1, 0xffc470, 1.4, 0.05, 0.085, birthOffset, 0.35);
-    // debris shower (irregular scorched chunks, some glowing hot) — high
-    // radial speed + strong gravity so chunks read ballistic, never floating
-    for (let i = 0; i < (rack ? 34 : (burn ? 6 : 18)); i++) {
+    // debris shower (irregular scorched chunks, a FEW glowing hot) — high
+    // radial speed + strong gravity so chunks read ballistic, never floating.
+    // r6 "orange popcorn": too many hot lumps froze in tree canopies with no
+    // motion cue. Fewer/smaller chunks on flatter arcs, hot fraction cut, and
+    // every hot chunk drags a velocity-aligned spark streak so a frozen frame
+    // reads MOTION, not confetti pasted into the foliage.
+    for (let i = 0; i < (rack ? 20 : (burn ? 5 : 12)); i++) {
       const a = rng() * Math.PI * 2;
       const tilt = 0.25 + rng() * 0.85;
+      const bo = birthOffset - rng() * 0.15;
       _debO.pos[0] = pos.x; _debO.pos[1] = cy; _debO.pos[2] = pos.z;
-      _debO.vel[0] = Math.cos(a) * Math.sin(tilt) * (14 + rng() * 14);
-      _debO.vel[1] = 5 + rng() * 13;
-      _debO.vel[2] = Math.sin(a) * Math.sin(tilt) * (14 + rng() * 14);
-      _debO.life = 2.5 + rng() * 1.5;
-      _debO.scale = 0.10 + rng() * 0.24;
+      _debO.vel[0] = Math.cos(a) * Math.sin(tilt) * (13 + rng() * 11);
+      _debO.vel[1] = 4 + rng() * 9;
+      _debO.vel[2] = Math.sin(a) * Math.sin(tilt) * (13 + rng() * 11);
+      _debO.life = 1.7 + rng() * 1.1;
+      _debO.scale = 0.09 + rng() * 0.17;
       _debO.spin = 8 + rng() * 18;
       _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
-      _debO.groundY = gy; _debO.hot = rng() < 0.5; _debO.seed = rng(); _debO.birthOffset = birthOffset - rng() * 0.15;
+      _debO.groundY = gy; _debO.hot = rng() < 0.3; _debO.seed = rng(); _debO.birthOffset = bo;
       particles.emit('debris', _debO);
+      if (_debO.hot) {
+        // paired incandescent streak: same launch state, drag-decayed by the
+        // sparks shader along the same trajectory family — the motion cue
+        _strkO.pos[0] = pos.x; _strkO.pos[1] = cy; _strkO.pos[2] = pos.z;
+        _strkO.vel[0] = _debO.vel[0]; _strkO.vel[1] = _debO.vel[1]; _strkO.vel[2] = _debO.vel[2];
+        _strkO.life = 0.7 + rng() * 0.5;
+        _strkO.width = 0.035 + rng() * 0.03; _strkO.stretch = 0.06; _strkO.grav = -21.6;
+        col3(0xffc274, _strkO.col); _strkO.alpha = 0.8; _strkO.seed = rng();
+        _strkO.birthOffset = bo;
+        particles.emit('sparks', _strkO);
+      }
     }
     // large chunks with smoke trails (sampled along the same drag
     // trajectory the debris shader integrates: k = 0.12, g = -21.6)
@@ -1338,6 +1417,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     flashLight(lightStates[1], _sv.set(pos.x, cy + 3.6, pos.z),
       EXPLOSION_LIGHT_PEAK * (burn ? 0.5 : 1), Math.max(0, -birthOffset));
     columns.push({ key: null, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0, ttl: SMOKE_COLUMN_S, scale: burn ? 1.45 : 1.3 });
+    capColumns();
     if (visual) {
       const delay = 0.15 + birthOffset; // birthOffset ≤ 0 when backdated
       if (delay <= 0) visual.setDestroyed({ pop: rack, ageS: -delay });
@@ -1390,6 +1470,19 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   // Public API
   // --------------------------------------------------------------------------
 
+  /** Enforce MAX_COLUMNS by retiring the lowest-remaining-ttl emitter. */
+  function capColumns() {
+    while (columns.length > MAX_COLUMNS) {
+      let low = 0;
+      for (let i = 1; i < columns.length; i++) {
+        if (columns[i].ttl < columns[low].ttl) low = i;
+      }
+      columns.splice(low, 1);
+    }
+  }
+
+  const _due = []; // reused timer-fire scratch (cleared after each use)
+
   const fx = {
     group,
 
@@ -1403,13 +1496,16 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     update(dt, shells, camera) {
       particles.update(dt);
       if (!frozen) {
-        // one-shot timers
+        // one-shot timers (module-scope scratch — timer callbacks can re-enter
+        // fx spawn paths, so _due is length-cleared again AFTER the fire loop
+        // and never retains dead closures)
         if (timers.length) {
-          const due = [];
-          for (const tm of timers) { tm.t -= dt; if (tm.t <= 0) due.push(tm); }
-          if (due.length) {
+          _due.length = 0;
+          for (const tm of timers) { tm.t -= dt; if (tm.t <= 0) _due.push(tm); }
+          if (_due.length) {
             timers = timers.filter((tm) => tm.t > 0);
-            for (const tm of due) tm.fn();
+            for (const tm of _due) tm.fn();
+            _due.length = 0;
           }
         }
         // lights
@@ -1459,9 +1555,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         if (sh.dead) continue;
         const preset = TRACER_PRESETS[sh.spec && sh.spec.tracer] || TRACER_PRESETS.AP;
         const speed = sh.vel.length();
-        // 10-16 m streak, always readable in a single frame (clamped so a
-        // fresh shell's tail never pokes back out of the muzzle)
-        const len = Math.min(THREE.MathUtils.clamp(speed * 0.018, 6, 16),
+        // 5-11 m bright bolt head, always readable in a single frame (clamped
+        // so a fresh shell's tail never pokes back out of the muzzle)
+        const len = Math.min(THREE.MathUtils.clamp(speed * 0.012, 5, 11),
           Math.max(sh.distM || 0, 2));
         _v1.copy(sh.vel).normalize();
         _v2.copy(sh.pos).addScaledVector(_v1, -len);
@@ -1483,15 +1579,16 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         }
         writeTracer(n++, _v2.x, _v2.y, _v2.z, sh.pos.x, sh.pos.y, sh.pos.z,
           preset.width * wide, bright, _coreArr, _glowArr);
-        // dim PATH ribbon spanning the last ~60-100 ms of flight behind the
-        // bright core: a fast shell crosses a whole camera frame between two
-        // renders, and without this a still frame shows a dot, not a line.
+        // dim PATH ribbon: a short exponential-feeling tail behind the bright
+        // bolt (the tracer ribbon's built-in head->tail gradient does the
+        // fade). Capped at ~28 m (was 80) and thinner/dimmer — the r6 kill
+        // frame showed the 80 m ribbon as a full-flight-path laser beam.
         // Clamped by distM so it never pokes back out of the muzzle.
-        const pathLen = Math.min(speed * 0.08, 80, sh.distM || 0);
+        const pathLen = Math.min(speed * 0.025, 28, sh.distM || 0);
         _v3.copy(sh.pos).addScaledVector(_v1, -pathLen);
         if (n < MAX_TRACERS) {
           writeTracer(n++, _v3.x, _v3.y, _v3.z, _v2.x, _v2.y, _v2.z,
-            preset.width * wide * 1.8, bright * 0.30, _coreArr, _glowArr);
+            preset.width * wide * 1.1, bright * 0.18, _coreArr, _glowArr);
         }
         // record/refresh the afterglow trail (full path ribbon) for this shell
         let tr = trails.get(sh.id);
@@ -1499,7 +1596,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         tr.age = 0; tr.seen = true;
         const d = tr.d;
         d[0] = _v3.x; d[1] = _v3.y; d[2] = _v3.z; d[3] = sh.pos.x; d[4] = sh.pos.y; d[5] = sh.pos.z;
-        d[6] = preset.width * wide; d[7] = bright * 0.7;
+        d[6] = preset.width * wide; d[7] = bright * 0.5;
         d[8] = _coreArr[0]; d[9] = _coreArr[1]; d[10] = _coreArr[2];
         d[11] = _glowArr[0]; d[12] = _glowArr[1]; d[13] = _glowArr[2];
       }
@@ -1514,8 +1611,10 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
           const d = tr.d;
           _trailCore[0] = d[8]; _trailCore[1] = d[9]; _trailCore[2] = d[10];
           _trailGlow[0] = d[11]; _trailGlow[1] = d[12]; _trailGlow[2] = d[13];
+          // no width growth (was *(1 + age*2.2)): the widening made the dying
+          // streak read as a thick persistent beam instead of a fading trail
           writeTracer(n++, d[0], d[1], d[2], d[3], d[4], d[5],
-            d[6] * (1 + tr.age * 2.2), d[7] * k * k,
+            d[6], d[7] * k * k,
             _trailCore, _trailGlow);
         }
       }
@@ -1559,33 +1658,39 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         fx.destruction(_v3, null, e.cause || 'shot');
       });
       bus.on('module:state', (e) => {
-        // de-track moment: link fragments + a grinding dust burst at the hit
+        // de-track moment: thrown link fragments, a grinding spark burst and a
+        // heavy dust kick at the running gear (the thrown-track ribbon, band
+        // slump and road-wheel scatter live on the visual — tankFactory
+        // setTrackState — this is the particle side of the same beat)
         if ((e.module === 'trackL' || e.module === 'trackR') && e.state === 'red') {
           const p = lastKnownPos.get(e.id);
           if (!p) return;
           _v3.set(p[0], p[1], p[2]);
-          sparkFan(_v3, _UP, 10, 9, 1.2, 0xffce8a, 0.5, 0.03, 0.03);
-          for (let i = 0; i < 5; i++) {
+          sparkFan(_v3, _UP, 14, 11, 1.2, 0xffce8a, 0.5, 0.03, 0.03, 0, 0.12);
+          // link fragments: flat dark chips whipped off the sprocket
+          for (let i = 0; i < 8; i++) {
             const a = rng() * Math.PI * 2;
             _debO.pos[0] = p[0]; _debO.pos[1] = p[1] + 0.3; _debO.pos[2] = p[2];
-            _debO.vel[0] = Math.cos(a) * (3 + rng() * 4);
-            _debO.vel[1] = 3.5 + rng() * 4;
-            _debO.vel[2] = Math.sin(a) * (3 + rng() * 4);
-            _debO.life = 1.6; _debO.scale = 0.07 + rng() * 0.07; _debO.spin = 12 + rng() * 14;
+            _debO.vel[0] = Math.cos(a) * (3.5 + rng() * 5);
+            _debO.vel[1] = 3.5 + rng() * 5;
+            _debO.vel[2] = Math.sin(a) * (3.5 + rng() * 5);
+            _debO.life = 1.6; _debO.scale = 0.07 + rng() * 0.08; _debO.spin = 14 + rng() * 16;
             _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
             _debO.groundY = groundY(p[0], p[2]); _debO.hot = false; _debO.seed = rng(); _debO.birthOffset = 0;
             particles.emit('debris', _debO);
           }
-          for (let i = 0; i < 6; i++) {
-            _puffO.pos[0] = p[0] + (rng() - 0.5) * 0.8;
+          // low grinding dust burst rolling out from under the hull
+          for (let i = 0; i < 12; i++) {
+            const a = rng() * Math.PI * 2;
+            _puffO.pos[0] = p[0] + (rng() - 0.5) * 1.6;
             _puffO.pos[1] = p[1] + 0.25;
-            _puffO.pos[2] = p[2] + (rng() - 0.5) * 0.8;
-            _puffO.vel[0] = (rng() - 0.5) * 2.5; _puffO.vel[1] = 0.8 + rng(); _puffO.vel[2] = (rng() - 0.5) * 2.5;
-            _puffO.life = 1.2 + rng() * 0.8;
-            _puffO.size0 = 0.5; _puffO.size1 = 2.0 + rng() * 0.8;
+            _puffO.pos[2] = p[2] + (rng() - 0.5) * 1.6;
+            _puffO.vel[0] = Math.cos(a) * (1.5 + rng() * 2.5); _puffO.vel[1] = 0.8 + rng(); _puffO.vel[2] = Math.sin(a) * (1.5 + rng() * 2.5);
+            _puffO.life = 1.3 + rng() * 1.0;
+            _puffO.size0 = 0.5; _puffO.size1 = 2.3 + rng() * 1.0;
             _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
             col3(0x9a8a68, _puffO.col0); col3(0x857a60, _puffO.col1);
-            _puffO.alpha = 0.4; _puffO.grav = -0.4; _puffO.birthOffset = 0;
+            _puffO.alpha = 0.42; _puffO.grav = -0.4; _puffO.birthOffset = -rng() * 0.15;
             particles.emit('dust', _puffO);
           }
         }
@@ -1597,7 +1702,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
           // one column per tank id; refresh if already burning
           const existing = columns.find((c) => c.key === e.id);
           if (existing) existing.ttl = SMOKE_COLUMN_S;
-          else columns.push({ key: e.id, pos: [p[0], p[1], p[2]], acc: 0, ttl: SMOKE_COLUMN_S, scale: 0.8 });
+          else { columns.push({ key: e.id, pos: [p[0], p[1], p[2]], acc: 0, ttl: SMOKE_COLUMN_S, scale: 0.8 }); capColumns(); }
         } else {
           columns = columns.filter((c) => c.key !== e.id);
         }
@@ -1612,10 +1717,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      */
     muzzleFlash(pos, dir, caliberMm) {
       const lightK = spawnMuzzleFlash(pos, dir, caliberMm, 0);
-      // ~0.5 m ABOVE the bore axis: the barrel underside and glacis catch a
-      // rim of warm light instead of being self-shadow black (lighting_post r1)
-      _sv.copy(pos).addScaledVector(dir, 0.7);
-      _sv.y += 0.5;
+      // At the tip, ~0.45 m above the bore (was 0.7 m downrange): the light
+      // must paint the barrel TUBE warm so the flash visibly hangs off the
+      // gun — pushed forward it lit only air/ground and a dark thin barrel
+      // read as bare next to a detached blob (r6 canonical-frame critical).
+      _sv.copy(pos).addScaledVector(dir, 0.1);
+      _sv.y += 0.45;
       flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * lightK, 0);
     },
 
@@ -1629,11 +1736,47 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     impact(kind, pos, normal, caliberMm) {
       const s = calScale(caliberMm);
       switch (kind) {
-        case 'pen':
+        case 'pen': {
+          // layered penetration (r6: "a single small star sprite"):
+          // flash core + directional spall cone off the plate normal +
+          // wide secondary fan + dust/smoke ring + lingering crater glow
           hitFlash(pos, normal, s, 0xffffff, 0xffa030);
-          sparkFan(pos, normal, 18, 16 * s, 1.0, 0xffc060, 0.7, 0.03, 0.025);
+          // dust ring puffing out radially in the armor plane (before the
+          // sparkFans — they clobber the shared _v1/_v2 basis)
+          basisFrom(normal, _v1, _v2);
+          for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2 + rng() * 0.6;
+            const rx = _v1.x * Math.cos(a) + _v2.x * Math.sin(a);
+            const ry = _v1.y * Math.cos(a) + _v2.y * Math.sin(a);
+            const rz = _v1.z * Math.cos(a) + _v2.z * Math.sin(a);
+            _puffO.pos[0] = pos.x + rx * 0.3 + normal.x * 0.1;
+            _puffO.pos[1] = pos.y + ry * 0.3 + normal.y * 0.1;
+            _puffO.pos[2] = pos.z + rz * 0.3 + normal.z * 0.1;
+            _puffO.vel[0] = rx * (3 + rng() * 2.5) + normal.x * 0.8;
+            _puffO.vel[1] = ry * (3 + rng() * 2.5) + normal.y * 0.8 + 0.5;
+            _puffO.vel[2] = rz * (3 + rng() * 2.5) + normal.z * 0.8;
+            _puffO.life = 0.7 + rng() * 0.5;
+            _puffO.size0 = 0.30 * s; _puffO.size1 = (1.2 + rng() * 0.6) * s;
+            _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+            col3(0x8f8272, _puffO.col0); col3(0x6f675c, _puffO.col1);
+            _puffO.alpha = 0.4; _puffO.grav = 0.3; _puffO.birthOffset = 0;
+            particles.emit('dust', _puffO);
+          }
+          // brief incandescent crater glow pinned at the hole
+          _puffO.pos[0] = pos.x + normal.x * 0.08; _puffO.pos[1] = pos.y + normal.y * 0.08; _puffO.pos[2] = pos.z + normal.z * 0.08;
+          _puffO.vel[0] = 0; _puffO.vel[1] = 0; _puffO.vel[2] = 0;
+          _puffO.life = 0.5;
+          _puffO.size0 = 0.42 * s; _puffO.size1 = 0.30 * s;
+          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 0;
+          col3(0xffb050, _puffO.col0); col3(0xa2300a, _puffO.col1);
+          _puffO.alpha = 0.85; _puffO.grav = 0; _puffO.birthOffset = 0;
+          particles.emit('fire', _puffO);
+          // tight bright spall cone + wide dimmer secondary fan
+          sparkFan(pos, normal, 22, 26 * s, 0.45, 0xffd27e, 0.55, 0.032, 0.03, 0, 0.1);
+          sparkFan(pos, normal, 14, 14 * s, 1.05, 0xffb860, 0.75, 0.024, 0.022, 0, 0.15);
           impactSmoke(pos, normal, 5, 1.1 * s, 0x2e2c2a, 0x5a5854, 0.65);
           break;
+        }
         case 'he_pen':
           hitFlash(pos, normal, s * 1.3, 0xffffff, 0xff7018);
           heFireball(pos, caliberMm);
@@ -1786,21 +1929,38 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
 
     /**
      * Engine exhaust puff. Probability-gated like dust().
+     * Default is the LIGHT profile (near-transparent warm grey, fast
+     * dissipation) — correct for gas-turbine/modern powerpacks. Pass
+     * sooty=true for WWII diesels to keep the darker puffing character
+     * (r6: the Abrams dragged black soot blobs that hung against the sky).
      * @param {THREE.Vector3} pos exhaust stack tip (world)
      * @param {number} intensity 0..1 engine load
+     * @param {boolean} [sooty=false] dark diesel puffs instead of thin haze
      */
-    exhaust(pos, intensity) {
+    exhaust(pos, intensity, sooty = false) {
       if (rng() > 0.25 + intensity * 0.45) return;
       _puffO.pos[0] = pos.x; _puffO.pos[1] = pos.y; _puffO.pos[2] = pos.z;
       _puffO.vel[0] = (rng() - 0.5) * 0.5;
       _puffO.vel[1] = 1.2 + rng() * 1.2 + intensity;
       _puffO.vel[2] = (rng() - 0.5) * 0.5;
-      _puffO.life = 0.8 + rng() * 0.9;
-      _puffO.size0 = 0.18 + intensity * 0.15;
-      _puffO.size1 = 0.9 + intensity * 0.8;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
-      col3(0x3a3835, _puffO.col0); col3(0x6f6d68, _puffO.col1);
-      _puffO.alpha = 0.16 + 0.2 * intensity; _puffO.grav = 0.5; _puffO.birthOffset = 0;
+      if (sooty) {
+        // diesel: dark puffs, but shorter-lived and thinner than the r5 tune
+        // so they shear apart instead of lingering high against the sky
+        _puffO.life = 0.6 + rng() * 0.6;
+        _puffO.size0 = 0.18 + intensity * 0.15;
+        _puffO.size1 = 0.9 + intensity * 0.8;
+        col3(0x45423e, _puffO.col0); col3(0x767470, _puffO.col1);
+        _puffO.alpha = 0.13 + 0.16 * intensity;
+      } else {
+        // turbine: a faint hot shimmer-grey that dissipates in under a second
+        _puffO.life = 0.35 + rng() * 0.4;
+        _puffO.size0 = 0.16 + intensity * 0.12;
+        _puffO.size1 = 0.7 + intensity * 0.6;
+        col3(0x8d8b86, _puffO.col0); col3(0x9a9894, _puffO.col1);
+        _puffO.alpha = 0.06 + 0.08 * intensity;
+      }
+      _puffO.grav = 0.5; _puffO.birthOffset = 0;
       particles.emit('smoke', _puffO);
     },
 
@@ -1856,31 +2016,36 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       spawnMuzzleFlash(muzzlePos, dir, caliberMm, -ageS, 0.55);
       if (tracerType === 'APFSDS') spawnSabotPetals(muzzlePos, dir, -ageS);
       // shell position at ageS, tracer streak trailing back toward the muzzle.
-      // Head capped at 2.6 m: clearly departed the barrel (a visible shot,
-      // not an inert flash) yet still inside the combat_firing frame — r1
-      // capped it at 0.85 m and the tracer was invisible inside the flash.
-      const headDist = Math.min(vel * ageS, 2.6);
+      // Head capped at 2.2 m: clearly departed the barrel (a visible shot,
+      // not an inert flash) yet still inside the combat_firing frame.
+      // Width/brightness CUT HARD from r5 (2.2x/1.0 + a 3.0x/0.75 bridge):
+      // those two fat additive ribbons out-shone the flash itself, so the
+      // frame's brightest mass floated 1.5-3 m downrange of a bare barrel tip
+      // (r6 critical). The tracer is now a slim bolt; the boosted core/jets
+      // at the bore own the center-of-brightness.
+      const headDist = Math.min(vel * ageS, 1.7);
       const len = Math.min(THREE.MathUtils.clamp(vel * 0.02, 2, 12), headDist - 0.55);
       _v1.copy(muzzlePos).addScaledVector(dir, headDist);
       _v2.copy(muzzlePos).addScaledVector(dir, Math.max(headDist - len, 0.3));
       col3(preset.core, _coreArr); col3(preset.glow, _glowArr);
       staticTracers.push([
-        _v2.x, _v2.y, _v2.z, _v1.x, _v1.y, _v1.z, preset.width * 2.2, 1.0,
+        _v2.x, _v2.y, _v2.z, _v1.x, _v1.y, _v1.z, preset.width * 1.3, 0.8,
         _coreArr[0], _coreArr[1], _coreArr[2], _glowArr[0], _glowArr[1], _glowArr[2],
       ]);
-      // hot bridge segment welding flash to tracer: the ribbon gradient is
-      // bright at B and transparent at A, so a REVERSED short segment (bright
-      // end at the muzzle) closes the r5 gap between flash cone and head cap
+      // faint bridge segment welding flash to tracer (REVERSED so its bright
+      // end sits AT the muzzle): kept dim — it is a connector, not the flash
       _v3.copy(muzzlePos).addScaledVector(dir, Math.min(headDist * 0.55, 1.3));
       _v4.copy(muzzlePos).addScaledVector(dir, 0.12);
       staticTracers.push([
-        _v3.x, _v3.y, _v3.z, _v4.x, _v4.y, _v4.z, preset.width * 3.0, 0.75,
+        _v3.x, _v3.y, _v3.z, _v4.x, _v4.y, _v4.z, preset.width * 1.2, 0.32,
         1.0, 0.92, 0.72, _glowArr[0], _glowArr[1], _glowArr[2],
       ]);
-      // muzzle light state at ageS — still glowing at 50 ms (dur 90 ms) so the
-      // flash visibly kisses the hull, barrel and ground in the composed frame
-      _sv.copy(muzzlePos).addScaledVector(dir, 0.7);
-      _sv.y += 0.5; // above the bore: rim-light barrel underside + glacis
+      // muzzle light state at ageS — still glowing at 50 ms (dur 120 ms).
+      // Pulled BACK onto the tube (muzzle - 0.9 m, +0.4 up): it must paint
+      // the barrel itself warm so the composed frame reads flash-ON-gun even
+      // where the thin tube crosses a dark backdrop (r6 critical).
+      _sv.copy(muzzlePos).addScaledVector(dir, -0.9);
+      _sv.y += 0.4;
       flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK, ageS);
     },
 

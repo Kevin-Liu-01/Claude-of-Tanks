@@ -71,6 +71,18 @@ const HEMI_GROUND_COLOR = 0x8c7a5b;
 // grass detail alive inside shade while the key:fill ratio stays ~2:1 on
 // open ground after ACES.
 const HEMI_INTENSITY = 0.36;
+// r7 ("player tank is a near-black green silhouette — vehicle materials
+// clearly receive no hemisphere/IBL contribution"): pixel-measured on the
+// frozen player_view frame, the shadowed hull flank sat at 0.09 display luma
+// vs 0.21 lit grass — hemisphere fill was too weak for any object inside a
+// cast shadow to keep its albedo readable. ADDITIVE bounce floor rather than
+// a multiplier: map presets override hemiIntensity (verdant 0.32, winter
+// 0.92), and a multiplier would blow out the already ambient-dominated
+// overcast maps while barely moving the sunny ones. +0.12 models the
+// sky<->ground multiple-bounce term the single hemisphere layer misses;
+// sunny maps gain ~35% ambient (shadow interiors + hull flanks lift out of
+// black), winter gains only ~13%.
+const HEMI_BOUNCE_FLOOR = 0.12;
 // Backlit-rescue fill: a shadowless DirectionalLight from the anti-sun azimuth
 // at ~30° elevation. Sun-shadowed VERTICAL faces (tree canopies, barn walls,
 // hay bales seen against the light) currently drop to hemi+IBL only (~5% of
@@ -90,7 +102,12 @@ const FILL_COLOR = 0xbdd2f2; // same cool-sky family as the hemi
 // the deeper grade the shadowed hull flank dropped near-black. 0.65 keeps a
 // clear lit-vs-shaded step (r3's flatness came at 1.0) while armor detail on
 // the shade side stays readable.
-const FILL_INTENSITY = 0.65;
+// r7: 0.65 → 0.80 — the player_view hull flank (a vertical anti-sun face
+// inside a canopy shadow) measured 0.09 display luma: still a silhouette.
+// The fill mostly hits exactly those faces (cos-weighted against verticals),
+// so this is the cheapest targeted lift for vehicle readability; ground
+// shadow contrast moves <6% (sin 17 deg incidence).
+const FILL_INTENSITY = 0.80;
 // Low elevation (~17°): vertical anti-sun faces catch ~cos(17°) ≈ 0.96 of the
 // fill while up-facing ground only gets sin(17°) ≈ 0.29 — backlit walls and
 // canopies lift out of black without flattening ground-shadow contrast.
@@ -270,7 +287,8 @@ export function createLighting(scene, camera, sunDir) {
     }
   }
 
-  const hemi = new THREE.HemisphereLight(HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY);
+  const hemi = new THREE.HemisphereLight(
+    HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY + HEMI_BOUNCE_FLOOR);
   scene.add(hemi);
 
   // Anti-sun sky fill (see FILL_* above): castShadow stays false — it must
@@ -380,7 +398,7 @@ export function createLighting(scene, camera, sunDir) {
         csm.lights[k].intensity = intensity;
         csm.lights[k].color.setHex(colorHex);
       }
-      hemi.intensity = opts.hemiIntensity ?? HEMI_INTENSITY;
+      hemi.intensity = (opts.hemiIntensity ?? HEMI_INTENSITY) + HEMI_BOUNCE_FLOOR;
       const fx = -dir.x, fz = -dir.z;
       const fl = Math.hypot(fx, fz) || 1;
       fill.position.set((fx / fl) * FILL_HORIZ_M, FILL_ELEV_Y, (fz / fl) * FILL_HORIZ_M);

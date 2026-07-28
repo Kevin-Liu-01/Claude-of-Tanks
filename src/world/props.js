@@ -204,13 +204,17 @@ function scaleUV(geo, su, sv) {
   return geo;
 }
 
-// per-part random UV phase: with RepeatWrapping this de-syncs the texture grid
-// between wall segments / buildings so no two surfaces tile identically
+// per-part random UV phase + mild scale jitter: with RepeatWrapping this
+// de-syncs the texture grid between wall segments / buildings so no two
+// surfaces tile identically. The scale term (r5) varies the apparent tile
+// format per part — identical-pitch roof tile rows were striping in visible
+// registration across whole rooftops.
 function jitterUV(geo, rng) {
   const uv = geo.attributes.uv;
   if (!uv) return geo;
   const ou = rng() * 7.31, ov = rng() * 5.17;
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) + ou, uv.getY(i) + ov);
+  const su = 0.86 + rng() * 0.30, sv = 0.86 + rng() * 0.30;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su + ou, uv.getY(i) * sv + ov);
   return geo;
 }
 
@@ -344,8 +348,12 @@ function makeCottage(rng, buckets, wallBucket = 'plaster') {
     const zz = -d / 2 + (k + 0.5) * (d / nw);
     for (const side of [-1, 1]) {
       if (rng() < 0.2) continue;
-      parts.wood.push(box(0.10, 1.06, 0.86).translate(side * (w / 2 + 0.04), 1.7, zz));
-      parts.dark.push(box(0.06, 0.9, 0.7).translate(side * (w / 2 + 0.10), 1.7, zz));
+      // r5: frame PROUD, pane recessed (they were swapped — dark glass box
+      // floated outside the frame and read as a painted-on rectangle), plus
+      // a stone sill closing the bottom
+      parts.wood.push(box(0.14, 1.06, 0.86).translate(side * (w / 2 + 0.05), 1.7, zz));
+      parts.dark.push(box(0.06, 0.9, 0.7).translate(side * (w / 2 + 0.015), 1.7, zz));
+      parts.stone.push(box(0.16, 0.09, 0.98).translate(side * (w / 2 + 0.06), 1.12, zz));
     }
   }
   mergeInto(buckets, parts);
@@ -858,11 +866,11 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
       const frng = mulberry32(seed + 606);
       for (let ri = 0; ri < roads.length; ri++) {
         const pts = roads[ri];
-        for (let i = 1; i < pts.length - 1; i += 2) {
+        for (let i = 1; i < pts.length - 1; i += 1) { // r5: every node (~32 m spacing)
           const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
           const tl = Math.hypot(bx - ax, bz - az) || 1;
           const txn = (bx - ax) / tl, tzn = (bz - az) / tl;
-          const side = (i % 4 < 2) ? 1 : -1; // alternate pavements
+          const side = (i % 2) ? 1 : -1; // alternate pavements
           const lx = ax - tzn * side * 5.9, lz = az + txn * side * 5.9;
           if (lx < v.x0 + 4 || lx > v.x1 - 4 || lz < v.z0 + 4 || lz > v.z1 - 4) continue;
           if (distToOtherRoads(lx, lz, ri) < 7 || noVeg(lx, lz)) continue;
@@ -1377,18 +1385,34 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
         const len = Math.hypot(dx, dz);
         const tx = dx / len, tz = dz / len;
         const nSub = Math.max(1, Math.ceil(len / 5.2));
+        const segLen = (len / nSub) * 1.03;
+        const yaw = -Math.atan2(tz, tx);
         for (let k = 0; k < nSub; k++) {
-          const tt = (k + 0.5) / nSub;
+          const tt0 = k / nSub, tt = (k + 0.5) / nSub, tt1 = (k + 1) / nSub;
           const cx = ax + dx * tt, cz = az + dz * tt;
           for (const side of [-1, 1]) {
             const px = cx - tz * side * 5.05, pz = cz + tx * side * 5.05;
             if (distToOtherRoads(px, pz, ri) < 6.8) continue; // open corners
             const y = heightField.getHeightAt(px, pz);
-            const g = box((len / nSub) * 1.03, 0.26, 0.34, 1.3);
+            const g = box(segLen, 0.26, 0.34, 1.3);
             jitterUV(g, rng);
-            g.rotateY(-Math.atan2(tz, tx));
+            g.rotateY(yaw);
             g.translate(px, y + 0.06, pz);
             buckets.stone.push(g);
+            // r5: PAVEMENT slab behind the kerb — a 2.2 m sidewalk strip
+            // flanking every street, pitched to the terrain per sub-segment.
+            // The critique's "town = boxes dropped on a lawn" came straight
+            // from streets with no built edge between asphalt and grass.
+            const sx0 = ax + dx * tt0 - tz * side * 6.35, sz0 = az + dz * tt0 + tx * side * 6.35;
+            const sx1 = ax + dx * tt1 - tz * side * 6.35, sz1 = az + dz * tt1 + tx * side * 6.35;
+            const h0 = heightField.getHeightAt(sx0, sz0);
+            const h1 = heightField.getHeightAt(sx1, sz1);
+            const walk = box(segLen, 0.16, 2.25, 0.9);
+            jitterUV(walk, rng);
+            walk.rotateZ(Math.atan2(h1 - h0, segLen));
+            walk.rotateY(yaw);
+            walk.translate((sx0 + sx1) / 2, (h0 + h1) / 2 + 0.10, (sz0 + sz1) / 2);
+            buckets.stone.push(walk);
           }
         }
       }

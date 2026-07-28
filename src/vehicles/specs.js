@@ -68,8 +68,11 @@ const apfsdsPens = (quoted2km) => {
   return [Math.round(pen1000 / 0.91), Math.round(pen1000), quoted2km];
 };
 
-const BLOOM_WW2 = { move: 0.20, hullRot: 0.20, turret: 0.12, afterShot: 4 };
-const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 3 };
+// controls_gunnery r2: afterShot 4/3 → 2.8/2.2 with the movement.js LN6
+// shrink tau so a second aimed shot is possible ~2.3 s (modern) / ~3.5 s
+// (WW2) after firing — the old pair needed ~4.6 s on an M1A2.
+const BLOOM_WW2 = { move: 0.20, hullRot: 0.20, turret: 0.12, afterShot: 2.8 };
+const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 };
 
 // ---------------------------------------------------------------------------
 // M4A3E8 Sherman "Easy Eight"
@@ -199,14 +202,15 @@ function armorT34() {
       rf('hull_roof', 20, 0.96, roofY, -2.9, 1.30),
     ],
     turretPlates: [
-      fr('turret_front', 90, 0.32, 0.05, 0.85, 0.6, 0.78),
-      chR('turret_cheek_R', 90, 0.32, 0.85, 0.85, 0.35, 0.05, 0.6, 0.07),
-      chL('turret_cheek_L', 90, 0.32, 0.85, 0.85, 0.35, 0.05, 0.6, 0.07),
-      sR('turret_side_R', 75, 0.93, 0.02, 0.76, 0.68, -0.7, 0.35),     // ~20 deg inward
-      sL('turret_side_L', 75, 0.93, 0.02, 0.76, 0.68, -0.7, 0.35),
-      rr('turret_rear', 60, 0.8, 0.05, -0.85, 0.6, -0.9),
-      rf('turret_roof', 20, 0.8, 0.70, -0.85, 0.55),
-      par('mantlet', 90, [-0.38, 0.12, 0.98], [0.38, 0.12, 0.98], [-0.38, 0.55, 0.95],
+      // r8: shell resized with the visual turret scale-up (0.88 m cast)
+      fr('turret_front', 90, 0.38, 0.05, 0.98, 0.84, 0.88),
+      chR('turret_cheek_R', 90, 0.38, 0.98, 0.98, 0.40, 0.05, 0.84, 0.08),
+      chL('turret_cheek_L', 90, 0.38, 0.98, 0.98, 0.40, 0.05, 0.84, 0.08),
+      sR('turret_side_R', 75, 1.07, 0.02, 0.86, 0.86, -0.82, 0.40),    // ~20 deg inward
+      sL('turret_side_L', 75, 1.07, 0.02, 0.86, 0.86, -0.82, 0.40),
+      rr('turret_rear', 60, 0.9, 0.05, -1.0, 0.84, -1.05),
+      rf('turret_roof', 20, 0.92, 0.90, -1.0, 0.62),
+      par('mantlet', 90, [-0.38, 0.12, 1.10], [0.38, 0.12, 1.10], [-0.38, 0.58, 1.06],
         { kind: 'spaced', gunFollow: true }),
     ],
     modules: [
@@ -572,8 +576,11 @@ export const TANK_SPECS = {
     dims: { hullLengthM: 6.32, overallLengthM: 8.45, widthM: 3.71, heightM: 3.0 },
     armor: armorTiger(),
     visual: {
-      scheme: 'stripes', base: '#9b8a55', weather: '#8a7a4e',
-      patches: ['#5c6636', '#6f4530'],
+      // r8: dunkelgelb dropped a step darker — the old #9b8a55 rendered as
+      // pale cream under the warm garage key; patches desaturated to sit
+      // closer to sprayed RAL 6003/8017 instead of vinyl-sticker contrast.
+      scheme: 'stripes', base: '#8d7a4a', weather: '#7e6e44',
+      patches: ['#5f6539', '#6b4c38'],
       marking: 'cross', number: '212', zimmerit: true, trackWidthM: 0.725,
       camoScale: 0.6,
     },
@@ -651,7 +658,8 @@ export const TANK_SPECS = {
     dims: { hullLengthM: 6.87, overallLengthM: 8.66, widthM: 3.42, heightM: 2.99 },
     armor: armorPanther(),
     visual: {
-      scheme: 'ambush', base: '#9b8a55', weather: '#8f7f50',
+      // r8: dunkelgelb base darkened with the Tiger (pale-cream garage read)
+      scheme: 'ambush', base: '#8d7a4a', weather: '#80704a',
       patches: ['#6a713f', '#7a4a35'],
       marking: 'cross', number: '435', trackWidthM: 0.66,
       camoScale: 0.55,   // r6: default 0.34 painted hull-side blobs ~2x too large
@@ -708,10 +716,11 @@ export const TANK_SPECS = {
     dims: { hullLengthM: 6.86, overallLengthM: 9.63, widthM: 3.78, heightM: 2.23 },
     armor: armorT90M(),
     visual: {
-      // 3-tone Russian digital, muted khaki/sage (r7: tones pulled darker —
-      // the r6 pair still rendered as minty pastel pixels under garage light)
-      scheme: 'digital', base: '#3f5138', weather: '#47593f',
-      patches: ['#2b2d26', '#655e44', '#48553f'],
+      // r8: FACTORY is the roster-doc "Russian dark forest green overall"
+      // solid — the digital speckle rendered as dithered confetti at garage
+      // distance and killed the silhouette read; 'digital' stays available
+      // as a picker pattern (nation-flavored, retuned scale).
+      scheme: 'solid', base: '#3f5138', weather: '#4a5c42', patches: [],
       marking: 'number', number: '527', trackWidthM: 0.58,
     },
   },
@@ -906,7 +915,7 @@ const COMMUNITY_SPECS = {
       tFrontMm: 155, tSideMm: 110, tRearMm: 100, mantletMm: 155,
     }),
     visual: {
-      scheme: 'solid', base: '#4e5c3d', weather: '#5a6848', patches: [],
+      scheme: 'solid', base: '#445032', weather: '#4f5b3e', patches: [],
       marking: 'number', number: '703', trackWidthM: 0.65,
     },
   },
@@ -941,7 +950,7 @@ const COMMUNITY_SPECS = {
       tFrontMm: 90, tSideMm: 75, tRearMm: 60, mantletMm: 90,
     }),
     visual: {
-      scheme: 'solid', base: '#556647', weather: '#647456', patches: [],
+      scheme: 'solid', base: '#48522f', weather: '#535e3c', patches: [],
       marking: 'number', number: '85', trackWidthM: 0.5,
     },
   },
@@ -976,8 +985,8 @@ const COMMUNITY_SPECS = {
       tFrontMm: 100, tSideMm: 80, tRearMm: 80, mantletMm: 120,
     }),
     visual: {
-      scheme: 'stripes', base: '#9b8a55', weather: '#8a7a4e',
-      patches: ['#5c6636', '#6f4530'], marking: 'cross', number: '131',
+      scheme: 'stripes', base: '#8d7a4a', weather: '#7e6e44',
+      patches: ['#5f6539', '#6b4c38'], marking: 'cross', number: '131',
       trackWidthM: 0.725, camoScale: 0.6,
     },
   },
@@ -1153,7 +1162,7 @@ const COMMUNITY_SPECS = {
       tFrontMm: 130, tSideMm: 90, tRearMm: 80, mantletMm: 140,
     }),
     visual: {
-      scheme: 'stripes', base: '#8f7f58', weather: '#9c8c63',
+      scheme: 'stripes', base: '#7f7049', weather: '#8a7a52',
       patches: ['#5c6636', '#4a3a2c'], marking: 'number', number: '05',
       trackWidthM: 0.7, camoScale: 0.55,
     },

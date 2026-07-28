@@ -12,9 +12,10 @@
  * PLAYBACK (main.js drives it at battle end):
  *   1. FLIGHT — slow-mo tracer chase along the captured trajectory from the
  *      killer's muzzle to the victim.
- *   2. X-RAY  — the victim rendered ghost-translucent (shared additive,
- *      depth-tested material set, muzzle-faded so the barrel tip never blows
- *      out), recognizable internal proxies (ammo cassettes, engine block,
+ *   2. X-RAY  — the victim rendered ghost-translucent (view-dependent fresnel
+ *      skin, alpha-over blending that saturates instead of stacking to white,
+ *      no depth writes so GTAO never shades a phantom hull), recognizable
+ *      internal proxies drawn OVER the skin (ammo cassettes, engine block,
  *      fuel drums, crew capsules) tinted green/yellow/red by post-hit state,
  *      the shell path drawn through the hull all the way to the deepest
  *      damaged component with a spall cone at the penetration point, every
@@ -28,6 +29,8 @@
  */
 import * as THREE from 'three';
 import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.js';
+import { getSpec } from '../vehicles/specs.js';
+import { penAtDistanceMm } from '../sim/ballistics.js';
 
 const XRAY_HOLD_S = 7.0;
 const FLIGHT_MIN_S = 1.9;
@@ -86,8 +89,29 @@ function shellDisplayName(ev) {
   return name;
 }
 
+/**
+ * Nominal (un-rolled) penetration of the event's shell at the event's flight
+ * distance — the exact baseline the sim's ±25% pen roll was made from
+ * (ensurePenRoll: rollUniform(rng, penAtDistanceMm(spec, distM))). Resolved
+ * from the attacker's spec so the annotation can print 'roll / nominal'
+ * (same helper as shotInfo.js; a bare pen roll beside a 63 mm plate read as
+ * a bug to anyone knowing the shell's paper pen, r4 critique).
+ * @param {object} ev HitEvent
+ * @returns {number} nominal pen in mm (0 when unresolvable)
+ */
+function nominalPenFor(ev) {
+  try {
+    const spec = ev.attackerSpecId ? getSpec(ev.attackerSpecId) : null;
+    const shells = spec && spec.gun ? spec.gun.shells : null;
+    if (!shells) return 0;
+    const sh = shells.find((s) => s.name === ev.shellName && s.type === ev.shellType)
+      || shells.find((s) => s.type === ev.shellType);
+    return sh ? Math.round(penAtDistanceMm(sh, ev.flightDistM || 0)) : 0;
+  } catch (_) { return 0; }
+}
+
 // ---------------------------------------------------------------------------
-// Shared x-ray material set (lazy singleton; additive + depth-tested)
+// Shared x-ray material set (lazy singleton; depth-tested)
 // ---------------------------------------------------------------------------
 let S = null;
 function sharedMats() {
@@ -116,63 +140,49 @@ function sharedMats() {
       depthWrite: false, depthTest: true, toneMapped: false, fog: false,
     });
   };
-  // Ghost hull with a muzzle fade: thin stacked barrel/brake shells otherwise
-  // sum (additive, DoubleSide) to a blown-out white stub at the gun tip. The
-  // fragment alpha fades to 0 within ~1.4 m of the muzzle point (uniform set
-  // per replay in beginXray from the victim's live muzzle anchor).
-  const muzzleFade = { value: new THREE.Vector3(0, -1e6, 0) };
-  const muzzleFadeShader = (mat) => {
-    mat.onBeforeCompile = (sh) => {
-      sh.uniforms.uKcMuzzle = muzzleFade;
-      sh.vertexShader = `varying vec3 vKcWorld;\n${sh.vertexShader}`.replace(
-        '#include <project_vertex>',
-        `#include <project_vertex>
-        #ifdef USE_INSTANCING
-          vKcWorld = (modelMatrix * instanceMatrix * vec4(position, 1.0)).xyz;
-        #else
-          vKcWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;
-        #endif`);
-      sh.fragmentShader = `varying vec3 vKcWorld;\nuniform vec3 uKcMuzzle;\n${sh.fragmentShader}`.replace(
-        '#include <color_fragment>',
-        `#include <color_fragment>
-        diffuseColor.a *= smoothstep(0.12, 1.4, distance(vKcWorld, uKcMuzzle));`);
-    };
-    return mat;
-  };
-  // 0.055 (was 0.072): running-gear / structure shells still stacked to
-  // blown-out white columns at oblique angles — trimmed so ≥8 additive
-  // layers stay below full white while a single skin keeps its blue read.
-  const ghost = muzzleFadeShader(mesh(0x86c8f2, 0.055, THREE.DoubleSide));
-  // Faint tier for LOD-wrapped detail greebles (track links, stowage, vents):
-  // hundreds of small overlapping shells at full ghost opacity stack additive
-  // layers into a milky white mass — they get a fraction of the alpha instead.
-  const ghostDim = muzzleFadeShader(mesh(0x86c8f2, 0.014, THREE.DoubleSide));
-  // Soft radial blackout billboarded behind the ghost (WT hangar-void read):
-  // canvas radial gradient, NormalBlending so it DARKENS the sunlit terrain
-  // the additive hull otherwise blows out against. Procedural — no assets.
-  const bdCanvas = document.createElement('canvas');
-  bdCanvas.width = bdCanvas.height = 256;
-  const bdCtx = bdCanvas.getContext('2d');
-  // Capped at ~1/3 luminance knock-down: combined with the DOM veil the total
-  // dim at the hull stays ≤ ~45% (WT dims ~40% — the old 0.52 + 0.44 veil
-  // crushed the replay to a night void at midday, r3 critique).
-  const bdGrad = bdCtx.createRadialGradient(128, 128, 24, 128, 128, 128);
-  bdGrad.addColorStop(0, 'rgba(3,7,11,0.34)');
-  bdGrad.addColorStop(0.55, 'rgba(3,7,11,0.25)');
-  bdGrad.addColorStop(1, 'rgba(3,7,11,0)');
-  bdCtx.fillStyle = bdGrad;
-  bdCtx.fillRect(0, 0, 256, 256);
-  const bdTex = new THREE.CanvasTexture(bdCanvas);
-  const backdrop = new THREE.MeshBasicMaterial({
-    map: bdTex, color: 0x000000, transparent: true, opacity: 1,
+  // Ghost hull, War Thunder-class: a view-dependent fresnel skin (alpha rises
+  // toward grazing angles → crisp luminous silhouette edges, translucent
+  // face-on centers) composited with NORMAL blending. Alpha-over stacking
+  // SATURATES toward the skin color — dense mesh regions read as denser
+  // frost, never the additive white fog of r4 — and the material writes no
+  // depth, so the post chain's GTAO (which samples the shared scene depth
+  // buffer) never shades a phantom hull: an earlier depth-prepass variant
+  // painted a dark AO-stippled tank silhouette through the skin (live Abrams
+  // probe). Internals/boxes/path render AFTER the hull (pb.group renderOrder
+  // 12 vs skin 11) so the organs stay crisp regardless of skin density —
+  // same layering WT uses.
+  const ghost = new THREE.MeshBasicMaterial({
+    color: 0x9fd2f2, transparent: true, opacity: 1,
     blending: THREE.NormalBlending, depthWrite: false, depthTest: true,
-    toneMapped: false, fog: false, side: THREE.DoubleSide,
+    side: THREE.DoubleSide, toneMapped: false, fog: false,
   });
+  ghost.onBeforeCompile = (sh) => {
+    sh.vertexShader = `varying vec3 vKcW;\nvarying vec3 vKcN;\n${sh.vertexShader}`.replace(
+      '#include <project_vertex>',
+      `#include <project_vertex>
+      #ifdef USE_INSTANCING
+        vKcW = (modelMatrix * instanceMatrix * vec4(position, 1.0)).xyz;
+        vKcN = mat3(modelMatrix) * (mat3(instanceMatrix) * normal);
+      #else
+        vKcW = (modelMatrix * vec4(transformed, 1.0)).xyz;
+        vKcN = mat3(modelMatrix) * normal;
+      #endif`);
+    sh.fragmentShader = `varying vec3 vKcW;\nvarying vec3 vKcN;\n${sh.fragmentShader}`.replace(
+      '#include <color_fragment>',
+      `#include <color_fragment>
+      {
+        vec3 kcV = normalize(cameraPosition - vKcW);
+        float kcF = 1.0 - abs(dot(normalize(vKcN), kcV));
+        // face-on 0.17 per layer (a single clean GLB skin reads as frosted
+        // hull at ~0.3-0.45 with its skirt/roof layers; a dense procedural
+        // stack saturates ~0.7 instead of blowing to porcelain white),
+        // grazing ~0.75 for the rim silhouette. rgb stays ≤1 (sub-bloom).
+        diffuseColor.a *= 0.17 + 0.58 * pow(kcF, 1.6);
+        diffuseColor.rgb *= 0.72 + 0.26 * kcF;
+      }`);
+  };
   S = {
     ghost,
-    ghostDim,
-    ghostMuzzle: muzzleFade,
-    backdrop,
     // Trail intensity is deliberately sub-bloom: additive 1px line at full
     // 0xffb060 pushed the HDR buffer over the bloom threshold and smeared
     // into a screen-wide beam (r2 critique). Halved color × lower alpha keeps
@@ -207,7 +217,6 @@ function sharedMats() {
     proxYellow: prox(0xffb43c, 0.88, 0.12, 0.44),
     proxRed: prox(0xff4a38, 0.92, 0.13, 0.52),
   };
-  S.disposeTex = bdTex; // kept for completeness; singleton lives app-long
   return S;
 }
 
@@ -232,6 +241,7 @@ function proxMatFor(kind) {
 /** Group centered on a module/crew bounding box, parented to its frame. */
 function proxyGroup(bb, poseGrp, turretGrp) {
   const g = new THREE.Group();
+  g.renderOrder = 12; // nested Groups reset groupOrder — keep organs over the skin
   g.position.set(
     (bb.min[0] + bb.max[0]) / 2,
     (bb.min[1] + bb.max[1]) / 2,
@@ -346,7 +356,9 @@ const KC_CSS = `
 .cot-kc.on{display:block;}
 .cot-kc *{box-sizing:border-box;margin:0;padding:0;}
 .cot-kc-veil{position:absolute;inset:0;opacity:0;transition:opacity .5s ease;
-  background:radial-gradient(ellipse 62% 55% at 50% 52%,rgba(3,7,11,.08) 0%,rgba(2,5,8,.24) 100%);}
+  background:radial-gradient(ellipse 52% 46% at var(--kcvx,50%) var(--kcvy,55%),
+    rgba(4,8,12,0) 0%,rgba(4,8,12,0) 22%,rgba(4,8,12,.12) 48%,
+    rgba(4,8,12,.26) 76%,rgba(4,8,12,.34) 100%);}
 .cot-kc.xr .cot-kc-veil{opacity:1;}
 @keyframes cotKcIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
 .cot-kc-anim{opacity:0;animation:cotKcIn .35s ease forwards;}
@@ -390,8 +402,12 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
   box-shadow:0 2px 10px rgba(0,0,0,.6);}
 .cot-kc-label .s{display:block;font-size:9.5px;font-weight:700;letter-spacing:.06em;
   color:#e8f0f6;font-variant-numeric:tabular-nums;}
+.cot-kc-label.ok{color:#8a97a3;border-color:rgba(138,151,163,.5);
+  background:rgba(6,9,12,.6);box-shadow:none;font-weight:700;}
+.cot-kc-label.ok .s{color:#7d8a96;font-weight:600;}
 .cot-kc-dot{position:absolute;width:7px;height:7px;border-radius:50%;
   transform:translate(-50%,-50%);background:currentColor;box-shadow:0 0 9px currentColor;}
+.cot-kc-dot.ok{background:transparent;border:1.5px solid currentColor;box-shadow:none;}
 .cot-kc-dmg{position:absolute;font-family:${FONT_COND};
   font-stretch:condensed;font-weight:800;font-size:24px;color:#ffd166;
   letter-spacing:.04em;text-shadow:0 2px 12px rgba(0,0,0,.9);font-variant-numeric:tabular-nums;}
@@ -663,7 +679,6 @@ export function createKillCam(deps) {
       pts: null, cum: null, total: 0, dur: 0, segIdx: 0,
       core: null, streak: null, trailGeo: null,
       xcam: null,
-      backdrop: null,
       fxGroup: null, fxWasVisible: true,
       vegGroup: null, vegWasVisible: true,
     };
@@ -700,7 +715,11 @@ export function createKillCam(deps) {
     kv('Impact angle', `${Math.round(ev.impactAngleDeg || 0)}°`);
     kv('Armor', (ev.nominalMm || 0) > 0
       ? `${Math.round(ev.nominalMm)} → ${Math.round(ev.effectiveMm || 0)} mm` : '—');
-    kv('Pen roll', (ev.penRollMm || 0) > 0 ? `${Math.round(ev.penRollMm)} mm` : '—');
+    // roll / nominal: the rolled pen alone (e.g. 986 mm vs a 63 mm plate)
+    // reads as a bug without the ±25%-roll baseline it came from
+    const penNom = nominalPenFor(ev);
+    kv('Pen roll', (ev.penRollMm || 0) > 0
+      ? `${Math.round(ev.penRollMm)}${penNom > 0 ? ` / ${penNom}` : ''} mm` : '—');
     kv('Damage', `${Math.round(ev.damage || 0)}`);
     kv('Zone', zoneLabel(ev.zone));
     d.banner.classList.toggle('on', !!ev.ammoRacked);
@@ -852,26 +871,29 @@ export function createKillCam(deps) {
     const armor = snap.armor;
     const pose = snap.pose;
 
-    // 1. ghost-translucent victim — shared additive/depth-tested material set
+    // 1. ghost-translucent victim — fresnel skin (see sharedMats).
     const vis = snap.targetEnt.visual;
     vis.setVisible(true); // player may have died while scoped (hull hidden)
-    // fade the ghost out toward the muzzle tip (kills the additive blow-out stub)
-    if (vis.gunMuzzleWorld) S.ghostMuzzle.value.copy(vis.gunMuzzleWorld(_p));
-    else S.ghostMuzzle.value.set(0, -1e6, 0);
     pb.ghostBackup = [];
     // Ghost EVERY mesh, including currently-hidden LOD detail levels: the
     // x-ray camera sits close enough to flip LODs mid-hold, and a skipped
     // mesh would pop in with its original dark non-additive material and
-    // read as a black hole in the hull. LOD-wrapped detail greebles get the
-    // faint tier so their dense stacking never washes the hull to white.
+    // read as a black hole in the hull. Skin renders at renderOrder 11;
+    // everything the kill-cam adds (pb.group: proxies, boxes, shell path,
+    // labels' anchor dots) renders AFTER it at groupOrder 12, so the organs
+    // stay crisp whatever the local skin density.
     vis.root.traverse((o) => {
       if (o.isMesh) {
-        pb.ghostBackup.push([o, o.material]);
-        let inLod = false;
-        for (let p = o.parent; p && !inLod; p = p.parent) inLod = !!p.isLOD;
-        o.material = inLod ? S.ghostDim : S.ghost;
+        pb.ghostBackup.push([o, o.material, o.renderOrder, o.castShadow]);
+        o.material = S.ghost;
+        o.renderOrder = 11;
+        // the hull's own cast shadow otherwise sits directly beneath the
+        // translucent skin and reads THROUGH it as a black tank-shaped void
+        // (live Abrams probe) — WT floats the x-ray wreck on lit ground
+        o.castShadow = false;
       }
     });
+    pb.group.renderOrder = 12; // internals over the skin (groupOrder sort)
 
     // 1a. isolate the vehicle for the hold (WT x-ray read): sunlit grass
     // blades under/behind the hull otherwise show straight through the
@@ -883,38 +905,32 @@ export function createKillCam(deps) {
       pb.vegGroup.visible = false;
     }
 
-    // 1b. radial blackout billboard behind the ghost: the additive hull
-    // washed to white speckle over sunlit grass — the backdrop darkens what
-    // the ghost is composited against (luminance headroom, WT hangar read).
+    // 1b. key light on the wreck: the fresnel skin is self-lit, but the
+    // internal proxies (Lambert) and the ground pool under the hull get a
+    // cool camera-side fill so the vehicle stays the brightest element in
+    // frame (the world-space blackout billboard is GONE — the r4 staged
+    // frame read as a lighting bug: crushed terrain with one sunlit road
+    // stripe. Scene focus now comes only from the screen-space DOM veil,
+    // which is centered on the victim in projectLabels()).
     {
       const R = Math.max(9, snap.boundingRadiusM * 3.4);
-      const geo = new THREE.PlaneGeometry(R * 2.4, R * 1.7);
-      pb.disposables.push(geo);
-      pb.backdrop = new THREE.Mesh(geo, S.backdrop);
-      pb.backdrop.renderOrder = -5; // before every additive ghost/proxy layer
-      pb.backdrop.position.set(pose.pos[0], pose.pos[1] + snap.heightM * 0.5, pose.pos[2]);
-      pb.backdrop.lookAt(pb.xcam.pos);
-      pb.group.add(pb.backdrop);
-
-      // low-intensity ground fill: a cool point light hung above the camera
-      // side of the wreck lifts the terrain the backdrop darkens, so the
-      // ghost sits in a readable pool of ground instead of a void. Removed
-      // with pb.group in finish(); intensity is deliberately sub-sun.
-      const fill = new THREE.PointLight(0xcfe0ee, 30, R * 4.5, 2);
+      const fill = new THREE.PointLight(0xdfeaf4, 55, R * 4.5, 2);
       fill.position.set(
-        pose.pos[0] + (pb.xcam.pos.x - pose.pos[0]) * 0.35,
-        pose.pos[1] + snap.heightM * 2.4,
-        pose.pos[2] + (pb.xcam.pos.z - pose.pos[2]) * 0.35,
+        pose.pos[0] + (pb.xcam.pos.x - pose.pos[0]) * 0.4,
+        pose.pos[1] + snap.heightM * 2.6,
+        pose.pos[2] + (pb.xcam.pos.z - pose.pos[2]) * 0.4,
       );
       pb.group.add(fill);
     }
 
     // 2. snapshot-posed frame groups (hull + turret), no live-state reads
     const poseGrp = new THREE.Group();
+    poseGrp.renderOrder = 12;   // nested Groups reset groupOrder (see above)
     poseGrp.rotation.order = 'YXZ';
     poseGrp.position.set(pose.pos[0], pose.pos[1], pose.pos[2]);
     poseGrp.rotation.set(-pose.pitch, pose.yaw, pose.roll);
     const turretGrp = new THREE.Group();
+    turretGrp.renderOrder = 12;
     turretGrp.position.set(armor.turretPivot[0], armor.turretPivot[1], armor.turretPivot[2]);
     turretGrp.rotation.y = pose.turretYaw;
     poseGrp.add(turretGrp);
@@ -1051,19 +1067,23 @@ export function createKillCam(deps) {
     d.labelHost.textContent = '';
     d.leader.textContent = '';
     pb.labels.length = 0;
-    const addLabel = (world, color, main, sub, big) => {
-      const label = el('div', big ? 'cot-kc-dmg' : 'cot-kc-label', d.labelHost);
+    const addLabel = (world, color, main, sub, big, ok) => {
+      // ok = the hit left the module functional: the chip is demoted to the
+      // dim-gray tier (hollow ring dot, faint leader) so only yellow/red
+      // chips carry casualty weight — an 'ok' TRACK R / HIT chip in full
+      // white read as a loss at a glance (r4 critique).
+      const label = el('div', big ? 'cot-kc-dmg' : `cot-kc-label${ok ? ' ok' : ''}`, d.labelHost);
       let dot = null;
       let line = null;
       if (!big) {
         label.style.color = color;
         label.innerHTML = `${main}<span class="s">${sub}</span>`;
-        dot = el('div', 'cot-kc-dot', d.labelHost);
+        dot = el('div', `cot-kc-dot${ok ? ' ok' : ''}`, d.labelHost);
         dot.style.color = color;
         line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         line.setAttribute('stroke', color);
         line.setAttribute('stroke-width', '1');
-        line.setAttribute('opacity', '0.85');
+        line.setAttribute('opacity', ok ? '0.45' : '0.85');
         d.leader.appendChild(line);
       } else {
         label.textContent = main;
@@ -1077,16 +1097,17 @@ export function createKillCam(deps) {
       pb.labels.push({ label, dot: null, line: null, big: false, micro: true, world: world.clone() });
     };
     const MOD_STATE_WORD = { red: 'DESTROYED', yellow: 'DAMAGED', ok: 'HIT' };
-    const MOD_STATE_COLOR = { red: '#ff5a4a', yellow: '#ffb43c', ok: '#8fb8d8' };
+    const MOD_STATE_COLOR = { red: '#ff5a4a', yellow: '#ffb43c', ok: '#8a97a3' };
     for (const m of ev.modulesHit) {
       const seg = anchors.get(`m:${m.module}`);
       if (!seg) continue;
       seg.getWorldPosition(_p);
       // honest damage number: only the sim's rolled value, never the caliber
       const dmgTxt = Number.isFinite(m.dmg) ? ` −${Math.round(m.dmg)}` : '';
+      const ok = m.newState !== 'red' && m.newState !== 'yellow';
       addLabel(_p, MOD_STATE_COLOR[m.newState] || MOD_STATE_COLOR.ok,
         MODULE_LABEL[m.module] || m.module,
-        `${MOD_STATE_WORD[m.newState] || 'HIT'}${dmgTxt}`);
+        `${MOD_STATE_WORD[m.newState] || 'HIT'}${dmgTxt}`, false, ok);
     }
     for (const c of ev.crewHit) {
       const seg = anchors.get(`c:${c}`);
@@ -1132,6 +1153,14 @@ export function createKillCam(deps) {
   function projectLabels() {
     const w = window.innerWidth;
     const h = window.innerHeight;
+    // screen-space focus veil: keep the radial dim centered on the VICTIM's
+    // projected position every frame (a world-space blackout read as a
+    // lighting bug — bright road stripe over crushed edges, r4 critique)
+    if (dom && pb.xcam) {
+      _proj.copy(pb.xcam.center).project(camera);
+      dom.root.style.setProperty('--kcvx', `${((_proj.x * 0.5 + 0.5) * 100).toFixed(1)}%`);
+      dom.root.style.setProperty('--kcvy', `${((-_proj.y * 0.5 + 0.5) * 100).toFixed(1)}%`);
+    }
     // pass 1: project anchors, compute each chip's desired rect
     for (const it of pb.labels) {
       _proj.copy(it.world).project(camera);
@@ -1195,7 +1224,6 @@ export function createKillCam(deps) {
       if (_a.y < minY) _a.y = minY;
     }
     rig.setExternalPose(_a, pb.xcam.look, 42);
-    if (pb.backdrop) pb.backdrop.lookAt(_a); // keep the blackout camera-facing
     projectLabels();
     if (pb.xt >= XRAY_HOLD_S) finish(true);
   }
@@ -1205,7 +1233,13 @@ export function createKillCam(deps) {
     window.removeEventListener('keydown', onSkipKey, true);
     window.removeEventListener('mousedown', onSkipKey, true);
     if (pb) {
-      if (pb.ghostBackup) for (const [mesh, mat] of pb.ghostBackup) mesh.material = mat;
+      if (pb.ghostBackup) {
+        for (const [mesh, mat, ro, cs] of pb.ghostBackup) {
+          mesh.material = mat;
+          mesh.renderOrder = ro || 0;
+          mesh.castShadow = !!cs;
+        }
+      }
       if (pb.fxGroup) pb.fxGroup.visible = pb.fxWasVisible; // battle FX resume
       if (pb.vegGroup) pb.vegGroup.visible = pb.vegWasVisible; // vegetation back
       for (const g of pb.disposables) g.dispose();

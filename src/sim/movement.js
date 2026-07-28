@@ -127,6 +127,10 @@ const INERTIA_CLAMP = 0.1;       // rad — max inertial pitch contribution
 const DVDT_CLAMP = 16;           // m/s² — reject collision-pushback spikes
 const BLOOM_GROW_TAU = 0.05;     // s — bloom-up is effectively instant
 const LN3 = Math.log(3);         // aimTime = time to shrink to 1/3 ⇒ tau = aimTime/ln3
+// controls_gunnery r2: SHRINK tau uses ln6 (grow keeps LN3 semantics via
+// BLOOM_GROW_TAU) — pairs with the smaller afterShot multipliers in specs.js
+// so post-shot re-settle under the fire gate lands ~2.3 s on modern MBTs.
+const LN6 = Math.log(6);
 const RECOIL_VEL_MPS = 0.3;      // backward hull translation impulse on firing
 const RECOIL_DECAY_TAU = 0.13;   // s — translation impulse decays in ~0.4 s
 const RECOIL_KICK_MIN_DEGS = 8;  // spring pitch-rate kick, light gun
@@ -637,7 +641,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
   if (debuff.gunYellow) bloomTarget = Math.max(bloomTarget * 2, GUN_YELLOW_BLOOM_FLOOR);
   const tau = bloomTarget > state.bloomF
     ? BLOOM_GROW_TAU
-    : (spec.gun.aimTimeS * debuff.aimTimeMult) / LN3;
+    : (spec.gun.aimTimeS * debuff.aimTimeMult) / LN6;
   state.bloomF += (bloomTarget - state.bloomF) * (1 - Math.exp(-dt / tau));
   if (debuff.gunYellow && state.bloomF < GUN_YELLOW_BLOOM_FLOOR) {
     state.bloomF = GUN_YELLOW_BLOOM_FLOOR;

@@ -75,7 +75,12 @@ const TERRAIN_PLAN = {
     // worn patches, and the ripple normals carry the surface character.
     G: { set: 'sand', tint: [1.04, 1.0, 0.92], roughMul: 1.2 },
     D: { set: 'sand', tint: [0.86, 0.79, 0.68], roughMul: 1.25 },
-    R: 'rockWarm', M: null,
+    // Rock063 ships olive-khaki — retinted toward red sandstone so the mesa
+    // walls keep the 'red mesas' brief without the procedural maroon rockTone
+    // (which only ever showed because the sourced swap was silently failing).
+    // r5: blue must go DOWN, not up — the earlier [1.22,0.86,1.28] rendered
+    // the whole escarpment purple-magenta; iron-oxide sandstone is r>g>b.
+    R: { set: 'rockWarm', tint: [1.30, 0.94, 0.72], roughMul: 1.1 }, M: null,
   },
   winter: {
     G: { set: 'snow', roughMul: 1.15 },
@@ -155,6 +160,15 @@ function normalCanvas(img) {
 
 /** Swap a CanvasTexture's backing image in place (bindings stay valid). */
 function swapTexture(tex, canvas) {
+  // dispose FIRST (r3): once the texture has rendered a frame, the GL side
+  // holds immutable storage at the procedural canvas size (512) — assigning
+  // the 1024 sourced compose without disposing makes the sub-image upload
+  // overflow (GL_INVALID_VALUE: glCopySubTextureCHROMIUM) and the swap
+  // silently no-ops. This is why every map entered AFTER first render kept
+  // procedural layers (desert's maroon rockTone walls) while the startup map
+  // won the race and showed the sourced sets. dispose() re-allocates at the
+  // new size on next use; material uniform bindings keep the same object.
+  tex.dispose();
   tex.image = canvas;
   tex.needsUpdate = true;
 }
