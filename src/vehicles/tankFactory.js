@@ -23,6 +23,10 @@ import { MODERN1_BUILDERS } from './modern1.js';
 // one module every tank consumer (game, garage thumbs, icon generator,
 // perf probes) already imports, so registration is guaranteed everywhere.
 import './variants.js';
+// USER DROPS (2026-07-28): sourced-model swaps for leo2a6/ariete + the new
+// Type 74 — MUST import after the modern spec modules above so its
+// MODEL_SOURCE overrides land on top of their 'procedural' rows.
+import './userdrops.js';
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}

@@ -9,15 +9,18 @@ served locally from `public/`, no CDN or network fetches in game code.
 | Switzer font family (Regular 400, Medium 500, Semibold 600, Bold 700, Extrabold 800 — woff2 web kit) | Jérémie Hornus / Indian Type Foundry | https://www.fontshare.com/fonts/switzer (downloaded via https://api.fontshare.com/v2/fonts/download/switzer) | Fontshare Free Font License (ITF FF EULA) — free for personal & commercial use; license text committed alongside the fonts | `public/fonts/switzer/Switzer-{Regular,Medium,Semibold,Bold,Extrabold}.woff2`, license: `public/fonts/switzer/LICENSE-FFL.txt` |
 | Switzer Condensed (derivative faces) | derived locally from the hosted Switzer woff2s (glyph outlines and advances condensed to 86% width via fontTools; family renamed to avoid collision) | generated in-repo — no new third-party download | Same license and license file as Switzer: Fontshare Free Font License (ITF FF EULA), permits modification | `public/fonts/switzer/SwitzerCondensed-{Regular,Medium,Semibold,Bold,Extrabold}.woff2`, license: `public/fonts/switzer/LICENSE-FFL.txt` |
 
-## Vehicles (public/models/tanks/) — 1 shipped asset (M1A2)
+## Vehicles (public/models/tanks/) — 2 shipped assets (M1A2, Leopard 2A6)
 
-7 of 8 tank models (Tiger I, T-34-85, IS-2, Panther G, M4A3E8 Sherman, T-90M,
-Leopard 2A7) are 100% procedural (`src/vehicles/tankFactory.js`). The M1A2
-Abrams SEPv3 ships as a sourced GLB (deep-hunt winner, integrated 2026-07-27):
+6 of 8 core tank models (Tiger I, T-34-85, IS-2, Panther G, M4A3E8 Sherman,
+T-90M, Leopard 2A7 — minus the two below) are 100% procedural
+(`src/vehicles/tankFactory.js`). The M1A2 Abrams SEPv3 ships as a sourced GLB
+(deep-hunt winner, integrated 2026-07-27), and the Leopard 2A6 model was
+replaced by a CC-BY user drop (integrated 2026-07-28):
 
 | Asset | Author | Source | License | Files |
 |---|---|---|---|---|
 | Abrams M1A2 SEPv3 | dannzjs | https://sketchfab.com/3d-models/abrams-m1a2-sepv3-eb6f5560198740269507e9948376414c (obtained without login via public GitHub mirror DhruvBhargava007/Morv_AI @ Dhruv) | CC-BY-4.0 — "This work is based on \"Abrams M1A2 SEPv3\" (https://sketchfab.com/3d-models/abrams-m1a2-sepv3-eb6f5560198740269507e9948376414c) by dannzjs (https://sketchfab.com/dannzjs) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)" | `public/models/tanks/m1a2_sepv3_dannzjs.glb` (offline preprocess: textures downscaled 1K/512 + WebP, TurretPivot/GunPivot articulation grouping baked in; original license.txt + Sketchfab API license record + geometry notes preserved in `docs/licenses/m1a2_sepv3_dannzjs/`) |
+| Leopard 2 A6 | buh | https://sketchfab.com/buh-late (user-supplied download, batch user-drops 2026-07-28) | CC-BY 4.0 | `public/models/tanks/leo2a6_buh.glb` (textures recompressed to WebP; authored turret/gun nodes used as-is; yawOffset PI in `src/vehicles/userdrops.js`) — replaces the procedural `leo2a6` visual, gameplay stats unchanged |
 
 Integration verdict (harness renders `tank_closeup_modern`, `garage`,
 `player_view`, `combat_firing`, icons): the sourced model decisively beats the
@@ -438,6 +441,27 @@ print-oriented CAD, no game-rip topology" — see
 round verifier reconciles the Haphazard0587 provenance question, no
 Haphazard0587 model is used as a variant base. No STB-1-derived file ships in
 `public/`; the build script + artifacts remain in the session scratchpad only.
+UPDATE 2026-07-28: the Japan tech-tree slot is now filled by a DIFFERENT
+model — the NullOps Type 74 user drop (quarantine, see "User drops" section
+and the quarantine table) — the STB-1 rejection above stands unchanged.
+
+## User drops (integrated 2026-07-28) — 3 winners from user-supplied Sketchfab downloads
+
+Source archives were hand-delivered by the user (batch `user-drops`,
+normalized GLBs + judging renders retained under
+`public/models/community-candidates/user-drops/<slug>/`). Textures
+recompressed to WebP at <=2k for the shipped copies.
+
+| Vehicle (spec id) | Author | Source | License | Shipped file | Role |
+|---|---|---|---|---|---|
+| Leopard 2 A6 (`leo2a6`) | buh | https://sketchfab.com/buh-late (user-supplied download) | CC-BY 4.0 | `public/models/tanks/leo2a6_buh.glb` | REPLACES the procedural Leopard 2A6 model (modern1.js gameplay stats unchanged). Fully articulated: authored turret/gun nodes, individual wheels. Credit line renders on its garage/tech-tree cards via `spec.community`. |
+| Type 74 (`type74`) | NullOps | https://sketchfab.com/nullops (user-supplied download) | Sketchfab Standard — QUARANTINE (below) | `public/models/tanks/community/quarantine/type74-nullops.glb` | NEW playable: lights up the Japan tier-VIII tech-tree ghost (the STB-1 print base stays rejected — see the evaluation record above). Skinned rig: Tower_9 yaw / Gun_7 pitch bones. |
+| C1 Ariete (`ariete`) | DustyMojito | https://sketchfab.com/DustyMojito (user-supplied download) | Sketchfab Standard — QUARANTINE (below) | `public/models/tanks/community/quarantine/ariete-dustymojito.glb` | REPLACES the procedural C1 Ariete model (modern3.js gameplay stats unchanged). Preprocessed offline into an authored Hull/Turret split (ring-center pivot, antennas clamped); gun fused — pitch stays virtual. |
+
+Other `user-drops` candidates (`m1a2-abrams`, `abrams-x`, `bergman-pack`)
+were not part of this integration round — the m1a2-abrams CC-BY-NC-ND
+candidate is tabled in the quarantine section below; the rest stay in
+`community-candidates/` pending their own integration decisions.
 
 - `public/icons/*.png` — 5 PNGs per roster tank (top/angle/side + 2 silhouettes)
   rendered from the shipped models by `node tools/genIcons.mjs`
@@ -447,7 +471,9 @@ Haphazard0587 model is used as a variant base. No STB-1-derived file ships in
   `newc_tiger_*`, `newc_pziii_*`, `pziii_konserwa_*`, `leichttraktor_*`,
   `recon_tank_*`, `q_heavy_*`, plus wave 2: `kv2_*`, `tiger2_*`,
   `sherman_jumbo_*`, `jagdtiger_*`, `jpz_e100_*`, `sturmtiger_*`, `t95_*`,
-  `t30_*`, plus wave 3: `is7_*`, `object279_*`, `is6b_*`, `is1_*`) are
+  `t30_*`, plus wave 3: `is7_*`, `object279_*`, `is6b_*`, `is1_*`, plus user
+  drops 2026-07-28: `leo2a6_*` (CC-BY buh), `type74_*` and `ariete_*`
+  (QUARANTINE — see the section below)) are
   derivative renders of the community assets tabled above —
   those rows' attribution covers the derived images. All other icons render
   100% procedural geometry (no third-party content).
@@ -455,3 +481,16 @@ Haphazard0587 model is used as a variant base. No STB-1-derived file ships in
   captured from the game's own render; derivative only of this repo's
   procedural world + the CC0 texture sets listed above (no attribution duty
   for CC0).
+
+## PERSONAL-USE / NC QUARANTINE (remove before any public distribution or commercialization)
+
+Assets in this section are licensed NonCommercial (and/or NoDerivs) or
+personal-use only. They are acceptable in this private project but MUST be
+deleted (files + icons + any derivative renders) before the game is ever
+distributed publicly or commercialized.
+
+| Asset | Author | Source | License | Files | Notes |
+|---|---|---|---|---|---|
+| M1A2 Abrams (user drop, batch abrams-suspects 2026-07-28) | Tejas V. (@tejasv_) | https://sketchfab.com/3d-models/m1a2-abrams-c85846177bfc4018b6a8f3b40754655c | CC BY-NC-ND 4.0 | `public/models/community-candidates/user-drops/m1a2-abrams/{m1a2-abrams.glb,RENDER.png,LICENSE-RECORD.txt}` | Original artist work (Blender + Substance, ArtStation-linked; identity confirmed by exact 1,253,928 face-count match vs Sketchfab API). ND: the decimated GLB is an adaptation — never redistribute. Candidate to replace the shipped CC-BY dannzjs `m1a2` GLB in-game; if adopted, the CC-BY model remains the only one shippable publicly. |
+| Type 74 (user drop, integrated 2026-07-28 as spec `type74`) | NullOps | https://sketchfab.com/nullops (user-supplied download) | Sketchfab Standard (free download; author states 'feel free to use however you like' but the license is not CC) | `public/models/tanks/community/quarantine/type74-nullops.glb`, `public/icons/type74_*.png` (derivative renders), judging copies in `public/models/community-candidates/user-drops/type-74/` | SHIPPED PLAYABLE in this private build (Japan tier-VIII tech-tree slot). Remove the GLB + icons + spec registration (src/vehicles/userdrops.js) before any public distribution or commercialization. |
+| C1 Ariete (user drop, integrated 2026-07-28 as model source for spec `ariete`) | DustyMojito | https://sketchfab.com/DustyMojito (user-supplied download) | Sketchfab Standard (free download; use-in-project OK, no raw redistribution — not CC) | `public/models/tanks/community/quarantine/ariete-dustymojito.glb`, `public/icons/ariete_*.png` (derivative renders), judging copies in `public/models/community-candidates/user-drops/c1-ariete-mbt/` | SHIPPED MODEL SWAP in this private build (visual replacement for the procedural C1 Ariete). Remove the GLB + icons and revert `MODEL_SOURCE.ariete` to procedural (src/vehicles/userdrops.js) before any public distribution or commercialization. |

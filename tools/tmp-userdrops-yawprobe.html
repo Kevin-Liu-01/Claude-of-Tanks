@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<!-- tools/tmp-userdrops-yawprobe.html — user-drops integration temp probe:
+     same as tmp-critic-glbprobe.html plus ?tyaw=<deg> / ?gpitch=<deg> applied
+     AFTER the swap lands (rotates the articulation groups directly) so the
+     turret pivot seating of the three winner GLBs can be judged visually. -->
+<html><body style="margin:0">
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+import { getSpec } from '/src/vehicles/specs.js';
+
+const q = new URLSearchParams(location.search);
+const id = q.get('id') || 'leo2a6';
+const az = parseFloat(q.get('az') ?? '-38');
+const pitch = parseFloat(q.get('pitch') ?? '10');
+const tyaw = parseFloat(q.get('tyaw') ?? '0') * Math.PI / 180;
+const gpitch = parseFloat(q.get('gpitch') ?? '0') * Math.PI / 180;
+const distQ = parseFloat(q.get('dist') ?? '0');
+const W = 1280, H = 720;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87a6c4);
+scene.add(new THREE.HemisphereLight(0xcfe4ff, 0x4a5a3a, 1.0));
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.6);
+const sunA = ((az + 18) * Math.PI) / 180;
+sun.position.set(Math.sin(sunA) * 24, 15, Math.cos(sunA) * 24);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, far: 90 });
+scene.add(sun);
+
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(400, 400),
+  new THREE.MeshStandardMaterial({ color: 0x55663f, roughness: 1 }),
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+function countTris(root) {
+  let tris = 0;
+  root.traverse((o) => {
+    if (!(o.isMesh || o.isInstancedMesh) || !o.visible) return;
+    const g = o.geometry;
+    const n = g.index ? g.index.count / 3 : g.attributes.position.count / 3;
+    tris += n * (o.isInstancedMesh ? o.count : 1);
+  });
+  return Math.round(tris);
+}
+
+// Find the articulation groups: the swapped turret node's ancestor chain ends
+// at hull root; turretG is the group the GLB turret was reparented INTO. The
+// probe rotates the swapped node's direct parent (== turretG / recoilG).
+function articulate(root) {
+  const turretNames = /^(turret|Turret|Tower_9|Object_2|Plane000|Tank_Turret)$/;
+  const gunNames = /^(gun|Gun_7|Barrel|Gun|Tank_Gun)$/;
+  if (q.get('measure') === '1') {
+    // pivot-error measurement: bbox center of the turret subtree at yaw 0 vs
+    // 180 differs by exactly -2*(trueCenter - pivot) — solve for the offset.
+    let tn = null;
+    root.traverse((o) => { if (turretNames.test(o.name)) tn = o; });
+    if (tn) {
+      const g = tn.parent;
+      const c = (yaw) => {
+        g.rotation.y = yaw;
+        root.updateMatrixWorld(true);
+        return new THREE.Box3().setFromObject(tn).getCenter(new THREE.Vector3());
+      };
+      const c0 = c(0), c180 = c(Math.PI);
+      g.rotation.y = 0;
+      const d = c0.clone().sub(c180).multiplyScalar(0.5);
+      window.__ART = `pivotErr(world m): dx=${d.x.toFixed(3)} dz=${d.z.toFixed(3)}`;
+    } else window.__ART = 'no turret node';
+    return;
+  }
+  const hits = [];
+  const direct = q.get('direct') === '1';
+  const boneQ = q.get('bone');
+  if (boneQ) {
+    // single-bone experiment: rotate the named node about its local axis
+    root.traverse((o) => {
+      if (o.name === boneQ) {
+        const axis = q.get('axis') || 'y';
+        o.rotation[axis] += tyaw;
+        hits.push('B:' + o.name + '<' + (o.parent.name || o.parent.type));
+      }
+    });
+    window.__ART = hits.join(',');
+    return;
+  }
+  root.traverse((o) => {
+    if (turretNames.test(o.name) && o.parent) {
+      (direct ? o : o.parent).rotation.y += tyaw;
+      hits.push('T:' + o.name + '<' + o.parent.name + '(' + o.parent.type + ')');
+    }
+    if (gunNames.test(o.name) && o.parent) {
+      (direct ? o : o.parent.parent).rotation.x += -gpitch;
+      hits.push('G:' + o.name + '<' + o.parent.name + '(' + o.parent.type + ')');
+    }
+  });
+  window.__ART = hits.join(',');
+}
+
+try {
+  const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 8, renderer };
+  const visual = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high' });
+  scene.add(visual.root);
+
+  const spec = getSpec(id);
+  const dist = distQ || Math.max(6.2, spec.dims.overallLengthM * 0.82);
+  const cy = spec.dims.heightM * 0.52;
+  const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 500);
+  const a = (az * Math.PI) / 180, p = (pitch * Math.PI) / 180;
+  camera.position.set(
+    Math.sin(a) * Math.cos(p) * dist,
+    cy + Math.sin(p) * dist,
+    Math.cos(a) * Math.cos(p) * dist,
+  );
+  camera.lookAt(0, cy, 0);
+
+  const t0 = performance.now();
+  let lastTris = 0, stableFrames = 0;
+  (function loop() {
+    visual.root.updateMatrixWorld(true);
+    const tris = countTris(visual.root);
+    renderer.render(scene, camera);
+    if (tris === lastTris) stableFrames++; else { stableFrames = 0; lastTris = tris; }
+    const elapsed = performance.now() - t0;
+    const swapped = tris > 5000 && stableFrames > 30;
+    const timedOut = elapsed > 20000 && stableFrames > 10;
+    if (swapped || timedOut) {
+      articulate(visual.root);
+      // render several frames so any deferred skeleton/boneTexture update lands
+      for (let f = 0; f < 6; f++) {
+        visual.root.updateMatrixWorld(true);
+        renderer.render(scene, camera);
+      }
+      // diagnostics: identity between graph nodes and skeleton bones
+      const diag = [];
+      const graphByName = {};
+      let count9 = 0;
+      visual.root.traverse((o) => {
+        if (o.name === 'Tower_9') count9++;
+        if (/^(Tower_9|Gun_7)$/.test(o.name)) graphByName[o.name] = o;
+      });
+      diag.push(`Tower_9 count in graph: ${count9}`);
+      visual.root.traverse((o) => {
+        if (!o.isSkinnedMesh || diag.length > 6) return;
+        const b9 = o.skeleton.bones.find((b) => b.name === 'Tower_9');
+        const same = b9 === graphByName.Tower_9;
+        let r = b9; const chain = [];
+        while (r) { chain.push(r.name || r.type); r = r.parent; }
+        const e = b9.matrixWorld.elements;
+        diag.push(`SM:${o.name} skelTower9===graphTower9: ${same}; skelBoneChain=${chain.join('>')}; skelB9mw=[${[0,2,8,10].map(i=>+e[i].toFixed(2)).join(',')}]`);
+      });
+      window.__DIAG = diag.join('\n');
+      window.__TRIS = tris;
+      window.__PROBE_READY = true;
+      return;
+    }
+    requestAnimationFrame(loop);
+  })();
+} catch (e) {
+  console.error('[yawprobe]', e);
+  window.__PROBE_ERROR = String(e && e.message || e);
+  window.__PROBE_READY = true;
+}
+</script>
+</body></html>

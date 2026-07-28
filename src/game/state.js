@@ -215,6 +215,8 @@ const SPEC_TIER = {
   t72b3: 8, challenger2: 9, merkava4: 9, leo2a6: 9,
   leo2a4: 8, t80u: 8, leclerc: 9, type99a: 9, leo1a5: 7, t14: 10,
   chieftain_mk10: 7, k2: 9, type10: 9, m2a2_bradley: 8, bmp2: 7, ariete: 8,
+  // USER DROPS (2026-07-28): Type 74 fills the Japan tier-8 ghost
+  type74: 8,
 };
 const specTier = (specId) => SPEC_TIER[specId] != null ? SPEC_TIER[specId] : 6;
 

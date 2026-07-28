@@ -273,9 +273,10 @@ const TABS = [
     id: 'japan', label: 'Japan', flags: [['Japan', 'modern']],
     nodes: [
       n('type61', 'Type 61', 7, 'mbt', 'modern'),
-      // ghost carries the roster Type 74 spec id — blocked on the STB-1 base
-      // provenance conflict (docs/ATTRIBUTION.md evaluation record); lights
-      // up automatically if a clean variant ever ships
+      // USER DROPS 2026-07-28: no longer a ghost — the NullOps Type 74
+      // (quarantine GLB, userdrops.js) registered the spec and lit this node
+      // up. The old STB-1 print base stays rejected (provenance conflict,
+      // docs/ATTRIBUTION.md evaluation record).
       n('type74', 'Type 74', 8, 'mbt', 'modern', { spec: 'type74', from: ['type61'] }),
       n('type10', 'Type 10', 9, 'mbt', 'modern', { spec: 'type10', from: ['type74'] }),
     ],

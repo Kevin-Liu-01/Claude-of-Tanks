@@ -37,6 +37,8 @@ const TIER_BY_ID = {
   leo2a4: 'VIII', t80u: 'VIII', leclerc: 'IX', type99a: 'IX',
   leo1a5: 'VII', t14: 'X', chieftain_mk10: 'VII', k2: 'IX', type10: 'IX',
   m2a2_bradley: 'VIII', bmp2: 'VII', ariete: 'VIII',
+  // user drops (2026-07-28)
+  type74: 'VIII',
 };
 
 const SHELL_TYPE_COLOR = {
