@@ -5,7 +5,11 @@
 // has a primary and a secondary keyboard/mouse binding plus an optional
 // gamepad-button binding; all three persist to localStorage and are editable
 // at runtime (settings panel). Key state is a Set of codes, so simultaneous
-// keys never ghost each other. The layer also owns pointer-lock helpers,
+// keys never ghost each other. The layer also owns pointer-lock helpers —
+// including the CURSOR-AIM FALLBACK for environments that deny pointer lock
+// (isCursorAim/getCursorNdc/onLockDenied: sandboxed iframes and embedded
+// panes aim with the real cursor instead; battle input never requires the
+// lock) —
 // gameplay feel settings (mouse sensitivity / invert-Y / sniper sensitivity /
 // aim smoothing / pad sensitivity / sound mix, cot.settings.v1) and a
 // smoothed, sensitivity-scaled mouse-delta accumulator consumed once per
@@ -59,6 +63,13 @@ export const ACTION_DEFS = [
 
 /** Default primary bindings: WASD move, LMB fire, Shift sniper, RMB free-look,
  *  1/2/3 shells, 4/5/6 consumables, wheel zoom, Space handbrake, Esc menu.
+ *  WoT PC CLASSIC LAYOUT — locked by movement-physics.md §9.2 ("Enter: Shift
+ *  key or wheel-in") and cameraRig's CamInput contract (shiftPressed rising
+ *  edge toggles sniper). gameplay_feel r3: an uncommitted edit swapped
+ *  sniperToggle/freeCamera onto Mouse2/ShiftLeft — that killed the Shift tap
+ *  (sniper no-op on every desktop) and broke WoT muscle memory, so the swap
+ *  is reverted. If an RMB sniper toggle is ever wanted for no-pointer-lock
+ *  embeds, gate it on input.isCursorAim() — never as the desktop default.
  *  Mouse buttons are encoded as synthetic codes "Mouse0".."Mouse4"; the wheel
  *  as "WheelUp"/"WheelDown". `null` means unbound. */
 export const DEFAULT_BINDINGS = {
@@ -136,9 +147,10 @@ const VOLUME_KEYS = ['volMaster', 'volEngine', 'volCombat', 'volAmbience', 'volU
 // One shot per trigger pull (WoT PC): fire reports a PRESS EDGE through
 // getState() instead of held state, so a button held across the reload can
 // never surprise-fire the instant the next shell seats. The edge is only
-// latched when the press could legitimately fire (pointer locked, or a
-// gamepad pull) and goes stale after this window, so a garage click can't
-// discharge the gun on the first battle frame.
+// latched when the press could legitimately fire (pointer locked, a gamepad
+// pull, or — in cursor-aim mode — a click on the game canvas itself) and goes
+// stale after this window, so a garage click can't discharge the gun on the
+// first battle frame.
 //
 // r2 CRITICAL FIX (41.7% click-to-fire): the edge is NOT consumed by a
 // getState() read. The render loop samples getState() once per rAF and
@@ -338,16 +350,43 @@ export function createInput(opts = {}) {
   let smDY = 0;
   let firePressMs = -Infinity; // last legitimate fire press edge (see FIRE_PRESS_BUFFER_MS)
 
+  // CURSOR-AIM FALLBACK: pointer lock is unavailable in some embeds (sandboxed
+  // iframes / embedded panes — requestPointerLock throws a synchronous
+  // SecurityError, rejects its promise, or fires 'pointerlockerror'). Latch the
+  // denial and expose it: main.js switches the turret to cursor aim (raycast
+  // through the real cursor position) and the fire gate below accepts clicks
+  // landing on the game canvas. The latch clears the moment a lock actually
+  // engages, so lock-capable browsers are never degraded.
+  let lockDenied = false;
+  let cursorClientX = null; // last real cursor position (null = never moved)
+  let cursorClientY = null;
+  const lockDeniedHandlers = new Set();
+  function noteLockDenied() {
+    const first = !lockDenied;
+    lockDenied = true;
+    if (first) for (const cb of [...lockDeniedHandlers]) cb();
+  }
+
   const nowMillis = () =>
     (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
-  function firePress(actionId, code) {
+  function firePress(actionId, code, evt) {
     // Latch the single-shot fire edge. Presses that could never fire anyway —
     // mouse clicks without pointer lock (menus, the lock-acquiring click
     // itself) — are ignored, so re-locking after a pause can't pop a shot.
+    // CURSOR-AIM FALLBACK: when pointer lock is unavailable (lockDenied) a
+    // click ON THE GAME CANVAS is a legitimate fire press — battle clicks in
+    // no-lock environments must fire even though the same mousedown also
+    // re-attempts (and re-fails) the lock. Clicks on UI elements (garage
+    // BATTLE button, settings panel, end overlay) still never latch: their
+    // event target is the UI node, not the canvas. Key presses can't land on
+    // overlays, so a keyboard-bound fire always latches in this mode (the
+    // settings panel disables the whole layer while open).
     if (actionId === 'fire' &&
         (code.startsWith('Pad') || !lockElement ||
-         document.pointerLockElement === lockElement)) {
+         document.pointerLockElement === lockElement ||
+         (lockDenied && evt &&
+          (evt.target === lockElement || evt.type === 'keydown')))) {
       firePressMs = nowMillis();
     }
     pressLatch.add(actionId); // consumed by the next isDown(actionId) query
@@ -365,7 +404,7 @@ export function createInput(opts = {}) {
     }
     const wasDown = down.has(code);
     down.add(code);
-    if (actionId && !wasDown) firePress(actionId, code);
+    if (actionId && !wasDown) firePress(actionId, code, evt);
   }
 
   function release(code) {
@@ -458,9 +497,12 @@ export function createInput(opts = {}) {
   // --- DOM listeners ----------------------------------------------------------------
   const onKeyDown = (e) => { if (!e.repeat) press(e.code, e); else if (enabled) down.add(e.code); };
   const onKeyUp = (e) => release(e.code);
-  const onMouseDown = (e) => press(`Mouse${e.button}`, null);
+  const onMouseDown = (e) => press(`Mouse${e.button}`, e);
   const onMouseUp = (e) => release(`Mouse${e.button}`);
   const onMouseMove = (e) => {
+    // real cursor position is tracked always — cursor-aim raycasts through it
+    cursorClientX = e.clientX;
+    cursorClientY = e.clientY;
     if (lockElement && document.pointerLockElement === lockElement) {
       rawDX += e.movementX;
       rawDY += e.movementY;
@@ -470,12 +512,15 @@ export function createInput(opts = {}) {
   // to (zoom by default) — rebindable like any key, no held state. Gated on
   // pointer lock (like fire): without lock the wheel belongs to whatever UI
   // sits under the cursor, so scrolling a menu must never step the gun zoom.
+  // CURSOR-AIM FALLBACK: with the lock unavailable, notches over the game
+  // canvas itself do step the zoom (menus still own their own scroll).
   const onWheel = (e) => {
     if (!enabled || e.deltaY === 0) return;
-    if (lockElement && document.pointerLockElement !== lockElement) return;
+    if (lockElement && document.pointerLockElement !== lockElement &&
+        !(lockDenied && e.target === lockElement)) return;
     const code = e.deltaY < 0 ? 'WheelUp' : 'WheelDown';
     const actionId = codeToAction.get(code);
-    if (actionId) firePress(actionId, code);
+    if (actionId) firePress(actionId, code, e);
   };
   const onBlurClear = () => down.clear();
   const onContextMenu = (e) => e.preventDefault();
@@ -489,6 +534,12 @@ export function createInput(opts = {}) {
   window.addEventListener('blur', onBlurClear);
   document.addEventListener('visibilitychange', () => { if (document.hidden) onBlurClear(); });
   window.addEventListener('contextmenu', onContextMenu);
+  // CURSOR-AIM FALLBACK: browsers that deny the lock asynchronously report it
+  // here (no promise, no throw); a successful lock clears the denial latch.
+  document.addEventListener('pointerlockerror', () => noteLockDenied());
+  document.addEventListener('pointerlockchange', () => {
+    if (lockElement && document.pointerLockElement === lockElement) lockDenied = false;
+  });
 
   const isHeld = (actionId) =>
     down.has(maps[0][actionId]) || down.has(maps[1][actionId]) || padHeld.has(actionId);
@@ -740,13 +791,51 @@ export function createInput(opts = {}) {
       return !!lockElement && document.pointerLockElement === lockElement;
     },
 
-    /** Acquire pointer lock on the game canvas (must run inside a user gesture). */
+    /** Acquire pointer lock on the game canvas (must run inside a user gesture).
+     *  Denials — synchronous SecurityError throw, rejected promise, or the
+     *  'pointerlockerror' event — latch cursor-aim mode (see isCursorAim). */
     requestLock() {
       if (!lockElement || api.isLocked()) return;
       try {
         const p = lockElement.requestPointerLock();
-        if (p && typeof p.catch === 'function') p.catch(() => {});
-      } catch (_) { /* denied — user can click the canvas to retry */ }
+        if (p && typeof p.catch === 'function') p.catch(() => noteLockDenied());
+      } catch (_) { noteLockDenied(); /* denied — cursor-aim mode takes over */ }
+    },
+
+    /** @returns {boolean} pointer lock is unavailable here (every acquisition
+     *  attempt was denied) and not currently held — aim with the real cursor.
+     *  Self-healing: any successful lock clears the latch. */
+    isCursorAim() {
+      return !!lockElement && lockDenied &&
+        document.pointerLockElement !== lockElement;
+    },
+
+    /**
+     * Subscribe to the pointer-lock-denied transition (fires once per denial
+     * streak — i.e. on the FIRST failed acquisition; re-arms only after a
+     * successful lock). Used for the one-time "cursor aim enabled" toast.
+     * @param {() => void} cb
+     * @returns {() => void} unsubscribe
+     */
+    onLockDenied(cb) {
+      lockDeniedHandlers.add(cb);
+      return () => lockDeniedHandlers.delete(cb);
+    },
+
+    /**
+     * Real cursor position over the lock element in NDC (-1..1, +y up),
+     * clamped to the canvas. Falls back to screen center before the first
+     * mousemove. @param {{x:number,y:number}} out @returns {{x:number,y:number}}
+     */
+    getCursorNdc(out) {
+      out.x = 0;
+      out.y = 0;
+      if (!lockElement || cursorClientX === null) return out;
+      const r = lockElement.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) return out;
+      out.x = clamp(((cursorClientX - r.left) / r.width) * 2 - 1, -1, 1);
+      out.y = clamp(-(((cursorClientY - r.top) / r.height) * 2 - 1), -1, 1);
+      return out;
     },
 
     /** Release pointer lock if held. */

@@ -107,6 +107,13 @@ function nearestZoomIndex(zoom, list) {
  * @property {number} wheel - accumulated wheel notches this frame (int, ±3 max): +N zoom in, -N zoom out
  * @property {boolean} rmb - right button held (gun lock: free look, aim frozen)
  * @property {boolean} shiftPressed - Shift held (rising edge toggles sniper)
+ * @property {boolean} [cursorAim] - CURSOR-AIM FALLBACK: pointer lock is
+ *   unavailable — run the server-aim raycast through the real cursor position
+ *   (cursorX/cursorY) instead of screen center; the turret then slews toward
+ *   the terrain point under the cursor at its real traverse speed (the sim
+ *   already chases input.aimPoint). Mouse deltas are zero in this mode.
+ * @property {number} [cursorX] - cursor NDC x (-1..1) when cursorAim
+ * @property {number} [cursorY] - cursor NDC y (-1..1, +y up) when cursorAim
  */
 
 /**
@@ -294,9 +301,22 @@ export function createCameraRig(camera, deps) {
     camera.userData.scoped = true;
   }
 
-  /** Server-aim raycast from the camera through screen center (both modes). */
+  // CURSOR-AIM FALLBACK state (set per update from camInput; snaps reset it so
+  // deterministic screenshot poses always aim through screen center).
+  let cursorAimOn = false;
+  let cursorNdcX = 0;
+  let cursorNdcY = 0;
+
+  /** Server-aim raycast from the camera through screen center — or through
+   *  the real cursor position in cursor-aim mode (both camera modes). */
   function updateAim(player) {
-    camera.getWorldDirection(_rayDir);
+    if (cursorAimOn) {
+      camera.updateMatrixWorld();
+      _rayDir.set(cursorNdcX, cursorNdcY, 0.5).unproject(camera)
+        .sub(camera.position).normalize();
+    } else {
+      camera.getWorldDirection(_rayDir);
+    }
     const hit = aimRaycast(camera.position, _rayDir, MAX_AIM_DIST_M);
     if (hit !== null) {
       rig.aimPoint.copy(hit.point);
@@ -471,6 +491,15 @@ export function createCameraRig(camera, deps) {
       if (external) return;
       const player = getPlayer();
       if (!player) return;
+
+      // CURSOR-AIM FALLBACK: latch this frame's cursor ray inputs for
+      // updateAim (main.js sets cursorAim only while a battle is live and
+      // pointer lock is unavailable).
+      cursorAimOn = !!camInput.cursorAim;
+      if (cursorAimOn) {
+        cursorNdcX = camInput.cursorX || 0;
+        cursorNdcY = camInput.cursorY || 0;
+      }
 
       // Death-cam: slow orbit of the wreck (input ignored until released).
       if (death) {
@@ -805,6 +834,7 @@ export function createCameraRig(camera, deps) {
       cine = null;
       setLetterbox(false);
       death = null;
+      cursorAimOn = false; // deterministic pose: aim through screen center
       rig.mode = 'ARCADE';
       step = THREE.MathUtils.clamp(step_ | 0, 0, ORBIT_STEPS.length - 1);
       aimYaw = orbitYaw;
@@ -835,6 +865,7 @@ export function createCameraRig(camera, deps) {
       cine = null;
       setLetterbox(false);
       death = null;
+      cursorAimOn = false; // deterministic pose: aim through screen center
       rig.mode = 'SNIPER';
       rig.zoom = zoom;
       aimYaw = aimYaw_;

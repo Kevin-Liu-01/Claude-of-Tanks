@@ -41,6 +41,8 @@ const TIER_BY_ID = {
   type74: 'VIII',
   // user drops wave 2 (recovered batch)
   bmp1: 'VI', m1128: 'VIII', m1296: 'VII',
+  // user drops wave 4 (recovered batch, final sweep)
+  kf51: 'X',
 };
 
 const SHELL_TYPE_COLOR = {
@@ -726,7 +728,16 @@ export function createGarage(opts) {
     for (const [id, chip] of chipById) chip.classList.toggle('sel', id === gid);
     for (const s of specs) {
       const card = cardById.get(s.id);
-      if (card) card.style.display = groupOf(s) === gid ? '' : 'none';
+      if (!card) continue;
+      card.style.display = groupOf(s) === gid ? '' : 'none';
+      // r3: the per-card era tag is REDUNDANT while the matching era chip is
+      // the active filter (every visible card would repeat "MODERN" under a
+      // selected MODERN chip). It only stays on the mixed-era COMMUNITY tab,
+      // where it actually disambiguates.
+      const tag = card.querySelector('.era');
+      if (tag) {
+        tag.style.display = (s.era === 'ww2' ? 'ww2' : 'modern') === gid ? 'none' : '';
+      }
     }
   }
   // --- END era filter chips -------------------------------------------------
@@ -845,8 +856,17 @@ export function createGarage(opts) {
 
   function battle() {
     if (!selectedId) return;
-    emit('ui:click', {});
-    emit('ui:battleStart', { specId: selectedId, mapId: selectedMapId });
+    // Battle entry must be unstoppable: the pre-battle emits fan out to five+
+    // subscribers (audio click, pointer-lock grab, killcam/shot-log resets…)
+    // and any one of them throwing in an exotic environment would silently
+    // block onBattle — a BATTLE button that does nothing is the worst failure
+    // mode. Contain their failures; the phase flip always runs.
+    try {
+      emit('ui:click', {});
+      emit('ui:battleStart', { specId: selectedId, mapId: selectedMapId });
+    } catch (err) {
+      console.error('[garage] battle-start listener failed:', err);
+    }
     if (onBattle) onBattle(selectedId, selectedMapId); // MAP-CONFIG WIRING
   }
 

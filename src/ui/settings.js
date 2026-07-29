@@ -111,7 +111,15 @@ const SETTINGS_CSS = `
 .cot-set-toggle.on{background:rgba(90,54,10,.9);border-color:rgba(240,176,74,.6);}
 .cot-set-toggle.on i{left:26px;background:#f0a030;}
 .cot-set-note{font-size:10px;letter-spacing:.06em;color:#68747f;margin-top:12px;line-height:1.5;}
-.cot-gear{position:fixed;top:24px;right:342px;z-index:62;width:42px;height:42px;display:none;
+/* Gear placement: flush against the right edge, below the garage top bar
+   (y 20..~47) and above the stats card (y 110+). The gear (z 62) floats OVER
+   the garage layer (z 60), so it must never drift onto the centered BATTLE
+   button: the old top:24/right:342 landed EXACTLY on the button center at
+   ~700-770px-wide viewports (embedded panes / tablets) — clicking BATTLE
+   silently opened the settings panel instead and battle never started. Edge-
+   anchored at right:26 it stays clear of the button (half-width 126px) at
+   every viewport wider than ~390px. */
+.cot-gear{position:fixed;top:60px;right:26px;z-index:62;width:42px;height:42px;display:none;
   align-items:center;justify-content:center;cursor:pointer;
   background:rgba(11,15,20,.8);border:1px solid rgba(146,164,180,.3);
   transition:border-color .12s;pointer-events:auto;}
@@ -229,6 +237,11 @@ export function createSettings(opts) {
 
   function showResumeVeil() {
     if (open || resume.classList.contains('show')) return;
+    // CURSOR-AIM FALLBACK: the veil exists to re-grab pointer lock inside a
+    // fresh click gesture after focus loss. With the lock unavailable the aim
+    // never depended on it — showing the veil would only swallow the next
+    // battle click (input.isCursorAim() means every lock attempt is denied).
+    if (input.isCursorAim && input.isCursorAim()) return;
     resume.classList.add('show');
     emit('ui:click', {});
   }

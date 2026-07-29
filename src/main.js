@@ -654,6 +654,29 @@ const settings = createSettings({
   gearVisible: () => game.phase === 'garage',
 });
 
+// CURSOR-AIM FALLBACK: pointer lock denied/unavailable (sandboxed iframes,
+// embedded panes) — the input layer flips to cursor aim; tell the player ONCE
+// so the control change isn't mysterious. Battle input itself never depends
+// on the lock: turret = terrain point under the cursor, LMB fires as normal.
+let lockToastShown = false;
+input.onLockDenied(() => {
+  if (lockToastShown) return;
+  lockToastShown = true;
+  const t = document.createElement('div');
+  t.textContent = 'Mouse capture unavailable — cursor aim enabled';
+  t.className = 'cot-lock-toast';
+  t.style.cssText =
+    'position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:66;' +
+    'padding:9px 22px;pointer-events:none;background:rgba(9,13,17,.88);' +
+    'border:1px solid rgba(240,176,74,.55);color:#ffd27a;' +
+    "font-family:'Switzer','Segoe UI',Roboto,Helvetica,Arial,sans-serif;" +
+    'font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;' +
+    'box-shadow:0 4px 18px rgba(0,0,0,.5);opacity:1;transition:opacity 1.2s ease;';
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; }, 4500);
+  setTimeout(() => { t.remove(); }, 5900);
+});
+
 // Accumulate wheel notches (clamped ±3) instead of a single ±1 latch: two
 // physical notches inside one render frame used to collapse to ONE zoom step
 // (WoT steps once per notch; at 30 fps fast flicks felt like dropped zooms).
@@ -949,7 +972,12 @@ let lastPenUntilMs = -Infinity;
 // ---------------------------------------------------------------------------
 // Render loop
 // ---------------------------------------------------------------------------
-const camInput = { mouseDX: 0, mouseDY: 0, wheel: 0, rmb: false, shiftPressed: false };
+const camInput = {
+  mouseDX: 0, mouseDY: 0, wheel: 0, rmb: false, shiftPressed: false,
+  // CURSOR-AIM FALLBACK (no-pointer-lock environments — see input.isCursorAim)
+  cursorAim: false, cursorX: 0, cursorY: 0,
+};
+const _cursorNdc = { x: 0, y: 0 };
 const _listenerPose = { pos: null, forward: _fwd }; // reused — no per-frame literal
 let simAcc = 0;
 let lastMs = -1;
@@ -1051,8 +1079,46 @@ function updateDustAndSync(dtFrame) {
   }
 }
 
+// rAF-STARVATION FALLBACK (embedded panes): some embedded Chromium panes
+// report visibilityState 'hidden' PERMANENTLY (while still focused, receiving
+// real input events and compositing on demand) and never deliver
+// requestAnimationFrame — a purely rAF-driven loop means the sim never steps,
+// the 250 ms fire-press buffer expires before it is ever sampled, and the
+// game reads as "controls dead". Two rescue paths drive the very same tick:
+//  1. a 100 ms interval while the hidden document still claims focus (hidden
+//     pages clamp intervals to >= 1 s, hence also path 2) — a genuinely
+//     backgrounded tab (no focus) keeps the classic full freeze;
+//  2. real input events (they arrive unthrottled): each pumps a tick so a
+//     click is simulated long before its 250 ms fire edge can expire. These
+//     listeners register AFTER the input layer's own (same target + phase,
+//     registration order), so the pumped tick samples the fresh press.
+// rAF re-arming is latched (rafQueued) so fallback ticks can never stack
+// extra rAF callbacks for a speed burst when frames come back.
+let lastTickWallMs = -Infinity;
+let rafQueued = false;
+function scheduleRaf() {
+  if (rafQueued) return;
+  rafQueued = true;
+  requestAnimationFrame((t) => { rafQueued = false; tick(t); });
+}
+setInterval(() => {
+  const now = performance.now();
+  if (now - lastTickWallMs > 200 && document.hasFocus() && document.hidden) {
+    tick(now);
+  }
+}, 100);
+function starvedPump() {
+  if (!document.hidden) return; // visible pages tick on rAF as always
+  const now = performance.now();
+  if (now - lastTickWallMs > 100) tick(now);
+}
+for (const ev of ['mousedown', 'mouseup', 'mousemove', 'keydown', 'keyup', 'wheel']) {
+  window.addEventListener(ev, starvedPump, { passive: true });
+}
+
 function tick(nowMs) {
-  requestAnimationFrame(tick);
+  scheduleRaf();
+  lastTickWallMs = performance.now();
   if (lastMs < 0) lastMs = nowMs;
   const dtR = Math.min(0.1, Math.max(0, (nowMs - lastMs) / 1000));
   lastMs = nowMs;
@@ -1099,7 +1165,11 @@ function tick(nowMs) {
     inp.steer = (st.right ? 1 : 0) - (st.left ? 1 : 0);
     inp.brake = st.handbrake;
     const haveAmmo = !shellCards.length || ((shellCards[inp.shellSlot | 0] || {}).count | 0) > 0;
-    inp.fire = ((st.fire && (input.isLocked() || input.padActive())) || debugFlags.forceFire) && haveAmmo;
+    // Fire gate: pointer lock held, a recently-active gamepad, or CURSOR-AIM
+    // mode (lock unavailable — LMB must fire whenever the battle is live; the
+    // input layer already refuses edges from clicks on UI overlays).
+    inp.fire = ((st.fire && (input.isLocked() || input.padActive() || input.isCursorAim())) ||
+      debugFlags.forceFire) && haveAmmo;
   } else if (game.player) {
     const inp = game.player.input;
     inp.throttle = 0; inp.steer = 0; inp.brake = false; inp.fire = false;
@@ -1109,8 +1179,25 @@ function tick(nowMs) {
   camInput.mouseDX = paused ? 0 : _mouse.x;
   camInput.mouseDY = paused ? 0 : _mouse.y;
   camInput.wheel = paused ? 0 : wheelStep;
-  camInput.rmb = input.isDown('freeCamera');
-  camInput.shiftPressed = input.isDown('sniperToggle');
+  // CURSOR-AIM FALLBACK: pointer lock unavailable — the rig raycasts through
+  // the real cursor instead of screen center and the turret chases that point.
+  const cursorAimNow = input.isCursorAim();
+  camInput.cursorAim = inBattle && !paused && cursorAimNow;
+  if (camInput.cursorAim) {
+    input.getCursorNdc(_cursorNdc);
+    camInput.cursorX = _cursorNdc.x;
+    camInput.cursorY = _cursorNdc.y;
+  }
+  // Desktop default binds are WoT-classic (Shift = sniper, RMB hold = free
+  // look; see input.js DEFAULT_BINDINGS — locked by movement-physics.md §9.2).
+  // In CURSOR-AIM mode RMB is routed to the sniper toggle instead: free look
+  // is meaningless there (the camera never mouselooks), and no-pointer-lock
+  // embeds need a mouse-reachable sniper toggle on the button players expect
+  // to aim with. isDown() consumes the tap latch, so each branch reads
+  // 'freeCamera' at most once per frame.
+  camInput.rmb = cursorAimNow ? false : input.isDown('freeCamera');
+  camInput.shiftPressed = input.isDown('sniperToggle') ||
+    (cursorAimNow && input.isDown('freeCamera'));
   wheelStep = 0;
 
   // 2. fixed-step simulation (held while the settings panel is open)
@@ -1880,7 +1967,7 @@ function warmCombatPipeline() {
   () => warmCombatPipeline(), { timeout: 2000 },
 );
 
-requestAnimationFrame(tick);
+scheduleRaf();
 
 // ---------------------------------------------------------------------------
 // Debug / drive-test hooks (not part of the screenshot contract).
@@ -2206,6 +2293,7 @@ function debugSlayEnemies() {
 
 window.__DEBUG = {
   scene, camera, renderer, post, lighting, game, fx, rig, bus,
+  input, // controls probe: isLocked/isCursorAim/binding introspection
   get world() { return world; },
   switchMap,
   flags: debugFlags,
