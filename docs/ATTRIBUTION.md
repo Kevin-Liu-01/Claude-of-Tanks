@@ -491,6 +491,23 @@ Losing wave-2 candidates (m_bergman leo2a5/leo2a6/m1a1_aim — redundant with
 better shipped models — and brdm2/btr70/cougar_6x6/lav25, judged below the
 playable bar) were deleted with the source archives after extraction.
 
+### User drops wave 4 (batch `user-drops-recovered` final sweep, integrated 2026-07-28) — 3 winners
+
+Same batch and rules as wave 2 above (user's own recovered downloads;
+provenance + license records in `docs/licenses/user-drops-recovered/`).
+All three are CC-BY 4.0, license-verified against the Sketchfab API — no
+new quarantine entries.
+
+| Vehicle (spec id) | Author | Source | License | Shipped file | Role |
+|---|---|---|---|---|---|
+| Merkava Mk4 (`merkava4`) | arlassar | https://sketchfab.com/3d-models/merkava-mk4-5720c5369ea24c71af475aff769ffa8b (user-supplied download) | CC-BY 4.0 | `public/models/tanks/merkava4_arlassar.glb` | REPLACES the procedural Merkava IVm Windbreaker model (modern1.js gameplay stats unchanged) — Israel's first sourced model. Turret yaw node authored offline from the fused artist mesh (connected-component split); gun fused into the turret, pitch stays virtual (kv2 rule). Decimated 224,701 -> 147,998 tris, textures 4k->2k, AO as glTF occlusion. |
+| Tank T-80U (`t80u`) | javanilga | https://sketchfab.com/3d-models/tank-t-80u-ebf4b55eeabb421cbf2758a2ec948439 (user-supplied download) | CC-BY 4.0 (also stamped in the GLB's asset.extras) | `public/models/tanks/t80u_javanilga.glb` | REPLACES the procedural T-80U model (modern2.js gameplay stats unchanged). Authored turret + gun nodes; 10 roof-accessory root siblings reparented into the turret offline, whip antenna removed (height-clamp rule). 28,141 tris, 1024/512 PNG textures. |
+| KF51 Panther - Woodland (`kf51`) | GRIP420 (model + textures by David Falke) | https://sketchfab.com/3d-models/kf51-panther-woodland-4764a740867c4ea697df8011e7d5bf63 (user-supplied download) | CC-BY 4.0 | `public/models/tanks/kf51_grip420.glb` | NEW playable: Germany tier-X MBT (class-template spec, userdrops3.js) — lights the pre-wired `kf51` tech-tree ghost. Fully articulated authored turret > gun > MG chain. 63,016 tris; textures 2k (alpha sheets + body diffuse) / 1k (rest); rear whip antennas compressed offline. |
+
+The remaining batch contents (t-90m / char-leclerc / bergman-p1 shipped-source
+folders from wave 2, this wave's three source archives, and the stray original
+`tank_t-80u.glb`) were deleted from the gitignored drop area after integration.
+
 - `public/icons/*.png` — 5 PNGs per roster tank (top/angle/side + 2 silhouettes)
   rendered from the shipped models by `node tools/genIcons.mjs`
   (tools/icons-page.html studio scene). The five `m1a2_*` icons are
@@ -503,7 +520,9 @@ playable bar) were deleted with the source archives after extraction.
   drops 2026-07-28: `leo2a6_*` (CC-BY buh), `type74_*` and `ariete_*`
   (QUARANTINE — see the section below), plus user drops wave 2 (recovered):
   `t90m_*` (CC-BY minehffd), `leclerc_*` (CC-BY andertan), and `leo2a4_*`,
-  `bmp2_*`, `bmp1_*`, `m1128_*`, `m1296_*` (m_bergman — QUARANTINE)) are
+  `bmp2_*`, `bmp1_*`, `m1128_*`, `m1296_*` (m_bergman — QUARANTINE), plus user
+  drops wave 4: `merkava4_*` (CC-BY arlassar), `t80u_*` (CC-BY javanilga),
+  `kf51_*` (CC-BY GRIP420/David Falke)) are
   derivative renders of the community assets tabled above —
   those rows' attribution covers the derived images. All other icons render
   100% procedural geometry (no third-party content).

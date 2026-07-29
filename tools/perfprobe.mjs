@@ -226,7 +226,10 @@ function foreignGpuProcessCpu(ownBrowserPid) {
 }
 
 const port = 5900 + Math.floor(Math.random() * 90);
-const server = await createServer({ root: process.cwd(), logLevel: 'error', server: { port, strictPort: false } });
+// hmr:false (content r4, same fix as tools/screenshot.mjs): concurrent
+// sessions editing src/ mid-probe trigger a vite full reload that destroys
+// the puppeteer execution context.
+const server = await createServer({ root: process.cwd(), logLevel: 'error', server: { port, strictPort: false, hmr: false } });
 await server.listen();
 const url = `http://localhost:${server.config.server.port}/`;
 console.error(`[perf] vite up at ${url}`);

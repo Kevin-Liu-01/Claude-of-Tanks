@@ -61,8 +61,8 @@ function countTris(root) {
 // at hull root; turretG is the group the GLB turret was reparented INTO. The
 // probe rotates the swapped node's direct parent (== turretG / recoilG).
 function articulate(root) {
-  const turretNames = /^(turret|Turret|Tower_9|Object_2|Plane000|Tank_Turret)$/;
-  const gunNames = /^(gun|Gun_7|Barrel|Gun|Tank_Gun)$/;
+  const turretNames = /^(turret|Turret|Tower_9|Object_2|Plane000|Tank_Turret|Object09_24|KF51_Turret_Msh)$/;
+  const gunNames = /^(gun|Gun_7|Barrel|Gun|Tank_Gun|Object1101_22|Gun_Msh)$/;
   if (q.get('measure') === '1') {
     // pivot-error measurement: bbox center of the turret subtree at yaw 0 vs
     // 180 differs by exactly -2*(trueCenter - pivot) — solve for the offset.

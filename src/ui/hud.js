@@ -94,6 +94,8 @@ const TIER_BY_ID = {
   type74: 'VIII',
   // user drops wave 2 (recovered batch)
   bmp1: 'VI', m1128: 'VIII', m1296: 'VII',
+  // user drops wave 4 (recovered batch, final sweep)
+  kf51: 'X',
 };
 function hashStr(s) {
   let h = 2166136261;

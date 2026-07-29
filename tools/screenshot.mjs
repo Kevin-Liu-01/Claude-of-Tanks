@@ -54,7 +54,12 @@ const port = 5200 + Math.floor(Math.random() * 700);
 const server = await createServer({
   root: process.cwd(),
   logLevel: 'error',
-  server: { port, strictPort: false },
+  // hmr:false (content r4 / r3 CB handoff item): concurrent sessions editing
+  // src/ during a capture trigger a vite HMR full reload that destroys the
+  // puppeteer execution context mid-evaluate ("Execution context was
+  // destroyed"). The harness captures a static build state — live reload has
+  // no value here.
+  server: { port, strictPort: false, hmr: false },
   optimizeDeps: {
     // tank_models r3: pre-bundle the lazy-loaded modules so dep discovery can
     // never trigger a mid-capture page reload / stale-chunk 504

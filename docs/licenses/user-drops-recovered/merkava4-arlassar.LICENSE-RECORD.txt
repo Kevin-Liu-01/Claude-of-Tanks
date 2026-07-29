@@ -1,0 +1,31 @@
+Model: Merkava Mk4
+Author: arlassar (https://sketchfab.com/arlassar)
+Source: https://sketchfab.com/3d-models/merkava-mk4-5720c5369ea24c71af475aff769ffa8b
+License: CC Attribution 4.0 (CC-BY 4.0) — Sketchfab API license record "CC Attribution ...
+  Commercial use is allowed", slug "by".
+Verified: 2026-07-28 via Sketchfab API (batch user-drops-recovered / west).
+Identity: FBX file timestamps (2018-11-06 14:44-14:53) match the model's publishedAt
+  2018-11-06T23:50 (same day); triangulated source count 224,701 tris + 38 line segments
+  vs listing 224,772 faces (within exporter line/degenerate accounting); texture set
+  (merkava_albedo / lmerkava_normal / merkava_Mixed_AO / merkava_metallic /
+  merkava_roughness) identical to the Sketchfab bundle.
+Provenance: Original artist work — Maya 2018 FBX, DocumentUrl
+  "/Users/ozzy/Documents/__3D_folio__/merkava mk4/Merkava mk4.fbx" (artist portfolio
+  folder); description: "This is my first attempt to make a tank model". Hand-named
+  textures incl. the 'lmerkava_normal' typo. No Dagor/WT node schemes, no game texture
+  ids. NOT one of the 7 prior WT-rip Merkavas (those matched KojfDiscord/WT catalog
+  uploads; this mesh and its provenance are unrelated).
+Contents: merkava-mk4.glb — normalized GLB. Single fused source mesh: loose antenna
+  edges removed, decimated 224,701 -> 147,998 tris (collapse, UVs preserved), single PBR
+  material from the 5 textures downscaled 4k->2k (AO wired as glTF occlusion).
+Articulation: authored OFFLINE turret split — island classification (2,067 connected
+  components; islands clearly above the hull deck within the turret/barrel footprint, or
+  near-ring inside the turret footprint) separates a 15,095-poly 'Turret' node (shell,
+  gun+mantlet, bustle basket + chain curtain, MGs, mortar, turret antennas) from 'Hull';
+  ring pivot authored at x=-1.49 z=1.95 (extent midpoint of the shell band). Yaw verified
+  by a 30-deg rotation render (coherent, no strays). Gun is fused into the turret —
+  gun pitch stays virtual (kv2 rule).
+Orientation/scale: faces +X, grounded z=0, overall length (incl. gun) 9.04 m, width
+  4.88 m as modeled (artist's proportions run wide vs the real 3.72 m), turret antennas
+  reach z=5.15.
+Attribution required if shipped: "Merkava Mk4" by arlassar, CC-BY 4.0.

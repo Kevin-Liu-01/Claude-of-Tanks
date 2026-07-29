@@ -219,6 +219,8 @@ const SPEC_TIER = {
   type74: 8,
   // USER DROPS wave 2 (recovered batch): Stryker pair + BMP-1
   bmp1: 6, m1128: 8, m1296: 7,
+  // USER DROPS wave 4 (recovered batch, final sweep): KF51 tops the German ladder
+  kf51: 10,
 };
 const specTier = (specId) => SPEC_TIER[specId] != null ? SPEC_TIER[specId] : 6;
 

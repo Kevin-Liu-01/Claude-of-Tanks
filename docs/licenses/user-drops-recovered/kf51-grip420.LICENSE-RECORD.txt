@@ -1,0 +1,32 @@
+Model: KF51 Panther - Woodland
+Author: GRIP420 (model + textures by David Falke, https://sketchfab.com/davidfalke; studio https://www.grip420.com/)
+Source: https://sketchfab.com/3d-models/kf51-panther-woodland-4764a740867c4ea697df8011e7d5bf63
+License: CC Attribution 4.0 (CC-BY 4.0) — Sketchfab API license record "CC Attribution ...
+  Commercial use is allowed", slug "by". Description adds: "Credit and link GRIP420 if you
+  use the model somewhere/somehow. This model is not for re-sell. You can use it in
+  commerical products, but credit us."
+Verified: 2026-07-28 via Sketchfab API (batch user-drops-recovered / west).
+Identity: EXACT face-count match — source FBX triangulates to 63,016 faces / 34,502-vert
+  class = Sketchfab listing 63,016 faces / 34,502 verts. Zip file timestamps (2023-07-26)
+  match the model's publishedAt 2023-07-26T14:02.
+Provenance: Original artist work — Maya-authored FBX (FBX SDK 2020.1), DocumentUrl
+  "E:\Game Assets\Modern\Tanks\GER\KF51\FBX\SketchFab\FULL.fbx" (artist's own library
+  layout), Substance-style texture sets (Body/Parts/Wheels CC + Woodland variants).
+  Artist-named nodes (KF51_Body_Msh, KF51_Turret_Msh, Gun_Msh, MG_Msh). No game-engine
+  node schemes, no game texture ids. (No game ships a rippable KF51 matching this mesh;
+  vehicle unveiled 2022, model published 2023.)
+Contents: kf51-panther-woodland.glb — normalized GLB. Geometry re-baked through three.js
+  FBXLoader (the FBX uses Maya rotate-pivot transforms that Blender/assimp mishandle);
+  authored display pose neutralized by fixed-point pivot solve (turret was slewed -45 deg,
+  gun elevated 5 deg). 63,016 tris. 4 PBR materials rebuilt from the shipped textures,
+  downscaled 4k->2k (diffuse/AO/emissive as JPEG; normals, opacity as PNG; metal+rough
+  merged by exporter; AO wired as glTF occlusion; Parts + Treads alpha-clip opacity;
+  Parts emissive kept).
+Articulation: KF51 root > KF51_Turret_Msh (origin authored at the FBX turret ring pivot,
+  x=0.52 y=0 — yaw) > Gun_Msh (origin at trunnion x=1.35 z=2.17 — pitch) > MG_Msh.
+  Node names match modelLoader's default /turret/i and /gun/i regexes.
+Orientation/scale: faces +X, grounded z=0, hull length 7.70 m (overall 10.73 m with gun,
+  width 3.60 m; antennas reach z=5.70).
+Attribution required if shipped: "KF51 Panther - Woodland" by GRIP420 / David Falke,
+  CC-BY 4.0 — credit and link GRIP420 (https://www.grip420.com/). Not for re-sale as an
+  asset.
