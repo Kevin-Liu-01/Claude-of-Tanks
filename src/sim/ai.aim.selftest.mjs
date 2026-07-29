@@ -84,6 +84,97 @@ const b = runScenario('uphill-flat-base', step, [0, 0], [0, 150]);
 const flat = { getHeightAt: () => 0, getGroundType: gt };
 const c = runScenario('flat-control', flat, [0, 0], [0, 150]);
 
-const pass = a > 0 && b > 0 && c > 0;
-console.log(pass ? 'PASS: all three scenarios fired' : 'FAIL');
+// ---------------------------------------------------------------------------
+// ACQUISITION-THROUGH-SPOTTING GUARD (camo_spotting r7). The one sanctioned
+// exception to "AI acquires targets through the spotting sim only" is the
+// controls_gunnery r2 hardClaim: a player who fires 2+ times inside one
+// muzzle-intel window. These scenarios pin that boundary so a future round
+// cannot silently widen it back into the old wallhack:
+//   D) 0 shots and 1 shot from a concealment-hidden player: NEVER target.
+//   E) 2 shots (hardClaim, personal ray blocked): target claimed, but the
+//      chase intel stays at the notifyPlayerFired MUZZLE stamp while the
+//      player moves unspotted — the live position must not leak.
+//   F) control: a sim-SPOTTED player is acquired through the normal scan.
+// ---------------------------------------------------------------------------
+function acquisitionScenario(name, { spotted, shots, blockRay, moveAfter }) {
+  const bot = mkEntity('bot', 'tiger1', 0, 0, 0, flat);
+  bot.team = 'enemy';
+  const player = mkEntity('player', 'm4a3e8', 0, 250, 0, flat);
+  player.team = 'player';
+  player.isPlayer = true;
+  const muzzle = { x: player.state.pos.x, z: player.state.pos.z };
+  const ai = createAI(bot, {
+    difficulty: 'normal',
+    rng: mulberry32(7),
+    deps: {
+      heightField: flat,
+      raycast: blockRay ? () => ({ dist: 1 }) : () => null,
+      getEnemies: () => [player],
+      getObstacles: () => [],
+      spotting: { isSpotted: () => spotted },
+    },
+  });
+  let t = 0;
+  const step = (dur) => {
+    for (let i = 0; i < dur / SIM_DT; i++) {
+      t += SIM_DT;
+      ai.update(SIM_DT, t);
+      bot.input.throttle = 0; bot.input.steer = 0; // hold the bot in place
+    }
+  };
+  step(1.0);                       // settle: no intel yet
+  const preShot = ai.debugInfo().targetId;
+  for (let s = 0; s < shots; s++) {
+    ai.notifyPlayerFired(player, 0); // rank 0 = nearest earshot enemy
+    step(0.5);
+  }
+  if (moveAfter) {
+    player.state.pos.x += 80;      // reposition while still formally hidden
+    player.state.pos.z += 40;
+    step(1.0);
+  }
+  const d = ai.debugInfo();
+  console.log(`${name}: preShotTarget=${preShot} target=${d.targetId} ` +
+    `locked=${d.playerLocked} shotsInWindow=${d.playerShotsInWindow} ` +
+    `lastSeen=(${d.lastSeenX.toFixed(1)},${d.lastSeenZ.toFixed(1)}) muzzle=(${muzzle.x},${muzzle.z})`);
+  return { preShot, d, muzzle, player };
+}
+
+let guardsPass = true;
+const req = (cond, label) => {
+  if (!cond) { guardsPass = false; console.error(`FAIL  ${label}`); }
+  else console.log(`  ok  ${label}`);
+};
+
+// D) hidden player, 0 then 1 shot — never acquired, never locked.
+{
+  const { preShot, d } = acquisitionScenario('guard-hidden-1shot',
+    { spotted: false, shots: 1, blockRay: false, moveAfter: false });
+  req(preShot === null, 'hidden + 0 shots: no target');
+  req(d.targetId === null, 'hidden + 1 shot: still no target (no first-flash wallhack)');
+  req(d.playerLocked === false, 'hidden + 1 shot: no return-fire lock');
+}
+
+// E) hidden player, 2 shots, personal ray blocked — hardClaim engages on the
+// MUZZLE stamp only; live position never leaks while unspotted.
+{
+  const { d, muzzle, player } = acquisitionScenario('guard-hardclaim-muzzle',
+    { spotted: false, shots: 2, blockRay: true, moveAfter: true });
+  req(d.targetId === 'player', 'hardClaim (2 shots): player claimed as target');
+  req(d.playerLocked === false, 'hardClaim with blocked ray: no lock');
+  req(Math.hypot(d.lastSeenX - muzzle.x, d.lastSeenZ - muzzle.z) < 1e-6,
+    'hardClaim chase intel == notifyPlayerFired muzzle stamp');
+  req(Math.hypot(d.lastSeenX - player.state.pos.x, d.lastSeenZ - player.state.pos.z) > 50,
+    'hardClaim chase intel != live position while hidden');
+}
+
+// F) control — a sim-spotted player is acquired with zero shots fired.
+{
+  const { d } = acquisitionScenario('guard-spotted-scan',
+    { spotted: true, shots: 0, blockRay: false, moveAfter: false });
+  req(d.targetId === 'player', 'spotted player acquired through the normal scan');
+}
+
+const pass = a > 0 && b > 0 && c > 0 && guardsPass;
+console.log(pass ? 'PASS: all scenarios (fire + acquisition guards)' : 'FAIL');
 process.exit(pass ? 0 : 1);

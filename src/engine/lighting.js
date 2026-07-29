@@ -201,6 +201,20 @@ const HEMI_INTENSITY = 0.36;
 // leaf-color legible without lifting open-ground shadow contrast (the sun:
 // fill ratio on open grass moves <4%).
 const HEMI_BOUNCE_FLOOR = 0.15;
+// lighting_post r7 ("battlefield_desert: the entire valley floor is a milky
+// overexposed cream wash — dune and mesa form shadows are nearly absent"):
+// the FLAT +0.15 floor nearly doubled desert's art-directed hemi (preset
+// 0.20 → effective 0.35) — on 0.85-0.9-albedo sand that ambient share is the
+// single biggest form-shading killer. The floor now SCALES with the preset's
+// own hemi: maps that asked for a high key:fill ratio (desert 0.20/0.36 →
+// ×0.56 → +0.084) keep it, while verdant (0.32 → ×0.89) moves <5% and the
+// ambient-dominated overcast maps (winter 0.92 → clamped ×1.0) are
+// untouched. The floor's r7 purpose (hull flanks inside cast shadow never
+// silhouette) survives — desert hulls sit on bright bounce-lit sand.
+function hemiFloorFor(presetHemi) {
+  const k = Math.min(1, Math.max(0.5, presetHemi / HEMI_INTENSITY));
+  return HEMI_BOUNCE_FLOOR * k;
+}
 // Backlit-rescue fill: a shadowless DirectionalLight from the anti-sun azimuth
 // at ~30° elevation. Sun-shadowed VERTICAL faces (tree canopies, barn walls,
 // hay bales seen against the light) currently drop to hemi+IBL only (~5% of
@@ -325,6 +339,205 @@ function buildCoverageMipmaps(tex, cutoff) {
   tex.needsUpdate = true;
 }
 
+// --- r7 CASCADE SHADOW INSTANCE CULLING (perf: the frozen 7.0M triangle gate
+// breach; the "cascade shadow-proxy LOD" cut the r6 handoff named as the real
+// path back toward the 6.0M ratchet) ---------------------------------------
+// MEASURED (tools/tmp-pb-r7-diag2.mjs on 66722fb, pinned cert roster, verdant):
+// every shadow-casting InstancedMesh renders its FULL instance set into EVERY
+// cascade — the vegetation casters are built frustumCulled=false with
+// map-spanning instance sets, so even the ~25 m cascade-0 box rasterizes all
+// 373 K vegetation caster tris plus the 150 K merged-facade props mesh, three
+// times per frame (cascade 0 + cascade 1 + one round-robin far cascade) =
+// 2.10 M of the 7.34 M frame total. Mesh-level frustum culling can never help
+// (a map-spanning merged bounding sphere intersects every cascade box); the
+// correct cut is per-INSTANCE cascade culling:
+//  - onBeforeShadow: test each instance's world bounding sphere against the
+//    CURRENT shadow camera's frustum (built from the same matrices
+//    WebGLShadowMap uses for whole-mesh culling) and compact the survivors to
+//    the buffer PREFIX; the draw then runs with count=K. ALL per-instance
+//    attributes (instanceMatrix, instanceColor, geometry-level instanced
+//    attrs like the canopy fade) are compacted TOGETHER so slot i of the
+//    depth draw stays coherent across attributes.
+//  - onAfterShadow: restore the exact snapshot bytes + the full count, so the
+//    main pass and any game-code reader always see the owner's data — outside
+//    the shadow draw the buffers are bit-identical to owner state, and order
+//    is never changed.
+// Zero visual change BY CONSTRUCTION: an instance whose bounding sphere
+// misses a cascade's frustum was rasterized fully off that cascade's map and
+// contributed nothing; the test is conservative (per-instance sphere from the
+// geometry bounding sphere x instance scale + SHADOW_CULL_MARGIN covering
+// vertex wind sway and the 1-frame round-robin staleness of far cascades).
+// Static-ness is DETECTED, not assumed: a mesh qualifies only after its
+// instanceMatrix version sat unchanged across 3 consecutive shadow draws, and
+// any foreign write (vegetation chunk rebuild, map switch, live count change)
+// or a shared-geometry claim invalidates the snapshot and re-arms the gate —
+// per-frame-rewritten fx pools never qualify. Buffer traffic is prefix-only
+// via addUpdateRange (worst case ~0.5 MB/frame of bufferSubData, vs the 4096²
+// shadow map's 64 MB/frame of raster writes this deletes). Allocation-free
+// after snapshot build (module-scope scratch only) per the hot-loop rule.
+const SHADOW_CULL_MIN_TRIS = 24000; // instances*trisPerInstance below this: not worth the hook
+const SHADOW_CULL_MARGIN = 4.0; // meters: wind sway + far-cascade rr staleness
+const _cullState = new WeakMap(); // InstancedMesh -> rec | {pending} | null(never)
+const _geomClaims = new WeakMap(); // geometry -> first claiming mesh (shared-geom guard)
+const _cullFrustum = new THREE.Frustum();
+const _cullProj = new THREE.Matrix4();
+const _cullSphere = new THREE.Sphere();
+const _cullVec = new THREE.Vector3();
+const _cullMat = new THREE.Matrix4();
+let _cullFrusCam = null;
+let _cullFrusStamp = -1;
+let _cullTick = 0; // bumped once per lighting.update() — invalidates the frustum memo
+
+function geometryTris(geo) {
+  const idx = geo.index;
+  const pos = geo.attributes && geo.attributes.position;
+  return (((idx ? idx.count : (pos ? pos.count : 0)) / 3) | 0);
+}
+
+/** Fresh stability-gate record (also used to invalidate after foreign writes). */
+function cullPending(mesh) {
+  const rec = { pending: true, version: mesh.instanceMatrix.version, stable: 0, count: mesh.count };
+  _cullState.set(mesh, rec);
+  return rec;
+}
+
+/** Snapshot a stability-proven static instanced caster for per-cascade culling. */
+function buildCullRec(mesh) {
+  const geo = mesh.geometry;
+  const claimed = _geomClaims.get(geo);
+  if (claimed && claimed !== mesh) {
+    // two meshes share one geometry's instanced attrs — compacting for one
+    // would corrupt the other's draw; permanently skip both.
+    _cullState.set(mesh, null);
+    _cullState.set(claimed, null);
+    return null;
+  }
+  _geomClaims.set(geo, mesh);
+  if (!geo.boundingSphere) geo.computeBoundingSphere();
+  const bs = geo.boundingSphere;
+  if (!bs || !isFinite(bs.radius) || bs.radius <= 0) { _cullState.set(mesh, null); return null; }
+  const n = mesh.count;
+  // every attribute indexed per instance in the depth draw
+  const attrs = [{ attr: mesh.instanceMatrix, size: 16, snap: null, version: 0 }];
+  if (mesh.instanceColor) attrs.push({ attr: mesh.instanceColor, size: mesh.instanceColor.itemSize, snap: null, version: 0 });
+  const ga = geo.attributes;
+  for (const key of Object.keys(ga)) {
+    const a = ga[key];
+    if (a && a.isInstancedBufferAttribute) attrs.push({ attr: a, size: a.itemSize, snap: null, version: 0 });
+  }
+  for (const e of attrs) {
+    if (!e.attr.array || e.attr.array.length < n * e.size) { _cullState.set(mesh, null); return null; }
+    e.snap = e.attr.array.slice(0, n * e.size);
+    e.version = e.attr.version;
+  }
+  // per-instance world bounding spheres (static — guaranteed by the gate)
+  const centers = new Float32Array(n * 3);
+  const radii = new Float32Array(n);
+  const snapMat = attrs[0].snap;
+  for (let i = 0; i < n; i++) {
+    _cullMat.fromArray(snapMat, i * 16).premultiply(mesh.matrixWorld);
+    _cullVec.copy(bs.center).applyMatrix4(_cullMat);
+    centers[i * 3] = _cullVec.x;
+    centers[i * 3 + 1] = _cullVec.y;
+    centers[i * 3 + 2] = _cullVec.z;
+    radii[i] = bs.radius * _cullMat.getMaxScaleOnAxis() + SHADOW_CULL_MARGIN;
+  }
+  const rec = { pending: false, n, attrs, centers, radii, k: 0, compacted: false };
+  _cullState.set(mesh, rec);
+  return rec;
+}
+
+/** onBeforeShadow half: compact the instance prefix to this cascade's frustum. */
+function shadowCullBefore(object, shadowCamera) {
+  if (!object.isInstancedMesh || object.count === 0) return;
+  let rec = _cullState.get(object);
+  if (rec === null) return; // permanently skipped
+  if (rec === undefined) {
+    if (geometryTris(object.geometry) * object.count < SHADOW_CULL_MIN_TRIS) {
+      _cullState.set(object, null);
+      return;
+    }
+    cullPending(object);
+    return;
+  }
+  if (rec.pending) {
+    // static only once the buffer sat untouched across 3 consecutive draws
+    if (object.instanceMatrix.version !== rec.version || object.count !== rec.count) {
+      rec.version = object.instanceMatrix.version;
+      rec.count = object.count;
+      rec.stable = 0;
+      return;
+    }
+    if (++rec.stable < 3) return;
+    rec = buildCullRec(object);
+    if (!rec) return;
+  }
+  // foreign-write / live-count invalidation (owner rebuilt the instances)
+  if (object.count !== rec.n) { cullPending(object); return; }
+  for (let a = 0; a < rec.attrs.length; a++) {
+    const e = rec.attrs[a];
+    if (e.attr.version !== e.version) { cullPending(object); return; }
+  }
+  // one frustum build per cascade render (cascades draw their objects
+  // back-to-back, so a single {camera, tick} memo covers the whole pass)
+  if (_cullFrusCam !== shadowCamera || _cullFrusStamp !== _cullTick) {
+    _cullProj.multiplyMatrices(shadowCamera.projectionMatrix, shadowCamera.matrixWorldInverse);
+    _cullFrustum.setFromProjectionMatrix(_cullProj);
+    _cullFrusCam = shadowCamera;
+    _cullFrusStamp = _cullTick;
+  }
+  const { centers, radii, attrs, n } = rec;
+  let k = 0;
+  for (let i = 0; i < n; i++) {
+    _cullSphere.center.set(centers[i * 3], centers[i * 3 + 1], centers[i * 3 + 2]);
+    _cullSphere.radius = radii[i];
+    if (!_cullFrustum.intersectsSphere(_cullSphere)) continue;
+    if (k !== i) {
+      for (let a = 0; a < attrs.length; a++) {
+        const e = attrs[a];
+        const size = e.size;
+        const arr = e.attr.array;
+        const snap = e.snap;
+        const so = i * size;
+        const doff = k * size;
+        for (let j = 0; j < size; j++) arr[doff + j] = snap[so + j];
+      }
+    }
+    k++;
+  }
+  if (k === n) return; // nothing culled — buffers untouched, draw as-is
+  object.count = k;
+  rec.k = k;
+  rec.compacted = true;
+  if (k > 0) {
+    for (let a = 0; a < attrs.length; a++) {
+      const e = attrs[a];
+      e.attr.addUpdateRange(0, k * e.size);
+      e.attr.needsUpdate = true; // version++ — resync our expectation
+      e.version = e.attr.version;
+    }
+  }
+}
+
+/** onAfterShadow half: restore owner bytes + full count before anyone reads. */
+function shadowCullAfter(object) {
+  if (!object.isInstancedMesh) return;
+  const rec = _cullState.get(object);
+  if (!rec || rec.pending || !rec.compacted) return;
+  rec.compacted = false;
+  object.count = rec.n;
+  const k = rec.k;
+  rec.k = 0;
+  if (k === 0) return; // count=0 draw wrote nothing — buffers still pristine
+  for (let a = 0; a < rec.attrs.length; a++) {
+    const e = rec.attrs[a];
+    e.attr.array.set(e.snap); // memcpy restore; only the dirty prefix uploads
+    e.attr.addUpdateRange(0, k * e.size);
+    e.attr.needsUpdate = true;
+    e.version = e.attr.version;
+  }
+}
+
 // --- r6 SHADOW-CASTER RESCUE (critical: "shadow draw distance ~120m — every
 // mid-distance building, silo, hay bale, fence and tree sits on uniformly lit
 // ground; a telephone pole 15m away casts nothing") -----------------------
@@ -355,9 +568,16 @@ function patchShadowDepthPacking() {
       depthMaterial.depthPacking = THREE.RGBADepthPacking;
       depthMaterial.needsUpdate = true;
     }
+    // r7 cascade shadow instance culling (see the _cullState block above)
+    shadowCullBefore(object, shadowCamera);
+  };
+  const afterHook = function (renderer, object) {
+    shadowCullAfter(object);
   };
   THREE.Mesh.prototype.onBeforeShadow = hook;
   THREE.SkinnedMesh.prototype.onBeforeShadow = hook;
+  THREE.Mesh.prototype.onAfterShadow = afterHook;
+  THREE.SkinnedMesh.prototype.onAfterShadow = afterHook;
 }
 
 let shadowChunksPatched = false;
@@ -552,7 +772,7 @@ export function createLighting(scene, camera, sunDir) {
   }
 
   const hemi = new THREE.HemisphereLight(
-    HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY + HEMI_BOUNCE_FLOOR);
+    HEMI_SKY_COLOR, HEMI_GROUND_COLOR, HEMI_INTENSITY + hemiFloorFor(HEMI_INTENSITY));
   scene.add(hemi);
 
   // Anti-sun sky fill (see FILL_* above): castShadow stays false — it must
@@ -613,6 +833,7 @@ export function createLighting(scene, camera, sunDir) {
      */
     update(force = false) {
       csm.update();
+      _cullTick++; // cascades refit — the per-cascade frustum memo is stale
       if (force || forceFrames > 0) {
         if (forceFrames > 0) forceFrames--;
         for (let i = FAR_CASCADE_START; i < csm.lights.length; i++) {
@@ -666,7 +887,10 @@ export function createLighting(scene, camera, sunDir) {
         csm.lights[k].intensity = intensity;
         csm.lights[k].color.setHex(colorHex);
       }
-      hemi.intensity = (opts.hemiIntensity ?? HEMI_INTENSITY) + HEMI_BOUNCE_FLOOR;
+      {
+        const presetHemi = opts.hemiIntensity ?? HEMI_INTENSITY;
+        hemi.intensity = presetHemi + hemiFloorFor(presetHemi);
+      }
       const fx = -dir.x, fz = -dir.z;
       const fl = Math.hypot(fx, fz) || 1;
       fill.position.set((fx / fl) * FILL_HORIZ_M, FILL_ELEV_Y, (fz / fl) * FILL_HORIZ_M);

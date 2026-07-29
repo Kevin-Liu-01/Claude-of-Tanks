@@ -589,19 +589,36 @@ export function dressMapExtras({ mapId, L, heightField, rng, buckets }) {
     // the shoreline into a 3-8 m drifted transition. Plaster bucket + the
     // winter snow-cap shader = bright snow tops with soft blue side shading.
     {
-      const lens = (x, z, r, h) => {
+      // r7 terrain_environment: WIND-STREAK drifts. The old round lenses
+      // stamped "obviously repeated circular blobs" across the sheet
+      // (critique) — real on-ice drifts are elongated sastrugi tails carved
+      // by ONE prevailing wind. Every interior drift is now a 3-5:1 streak
+      // aligned to the same azimuth as the ice texture's authored wind
+      // streaks (dir 0.6 rad in makeIceLayer -> rotateY(-0.6)), with only
+      // small per-streak yaw jitter; several short tail segments trail off
+      // downwind so the shapes read carved, not stamped.
+      const WIND_YAW = -0.6;
+      const lens = (x, z, r, h, streak) => {
         const g = new THREE.SphereGeometry(1, 10, 5);
-        g.scale(r * (0.8 + rng() * 0.5), h, r * (0.8 + rng() * 0.5));
-        g.rotateY(rng() * Math.PI);
+        const el = streak ? 3.0 + rng() * 1.8 : 1.4 + rng() * 0.5;
+        g.scale(r * el * 0.5, h, r * (0.55 + rng() * 0.3));
+        g.rotateY(WIND_YAW + (rng() - 0.5) * 0.24);
         g.translate(x, heightField.getHeightAt(x, z) + h * 0.12, z);
         buckets.plaster.push(jitterUV(g, rng));
       };
-      const nDrift = big ? 10 : 4;
+      const nDrift = big ? 12 : 5;
       for (let i = 0; i < nDrift; i++) {
         const a = rng() * Math.PI * 2;
         const rr = lake.r * (0.15 + rng() * 0.6);
-        lens(lake.x + Math.cos(a) * rr, lake.z + Math.sin(a) * rr,
-          3.5 + rng() * 4.5, 0.15 + rng() * 0.15);
+        const dx = lake.x + Math.cos(a) * rr, dz = lake.z + Math.sin(a) * rr;
+        lens(dx, dz, 3.0 + rng() * 4.0, 0.13 + rng() * 0.12, true);
+        // downwind tail fragments
+        const nTail = 1 + ((rng() * 3) | 0);
+        for (let t = 1; t <= nTail; t++) {
+          lens(dx + Math.cos(WIND_YAW) * (5 + t * (4 + rng() * 3)),
+            dz - Math.sin(WIND_YAW) * (5 + t * (4 + rng() * 3)),
+            1.2 + rng() * 1.8, 0.08 + rng() * 0.07, true);
+        }
       }
       const nRim = Math.round(lake.r * (big ? 0.5 : 0.35));
       for (let i = 0; i < nRim; i++) {
@@ -611,7 +628,7 @@ export function dressMapExtras({ mapId, L, heightField, rng, buckets }) {
         const x = lake.x + Math.cos(a) * rr, z = lake.z + Math.sin(a) * rr;
         if (Math.max(Math.abs(x), Math.abs(z)) > 480) continue;
         if (heightField._roadDist(x, z) < 6) continue;
-        lens(x, z, 2.6 + rng() * 3.4, 0.13 + rng() * 0.14);
+        lens(x, z, 2.6 + rng() * 3.4, 0.13 + rng() * 0.14, false);
       }
     }
     if (!big) continue;

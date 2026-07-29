@@ -320,8 +320,17 @@ function bakedGeometry(name, opts = {}) {
   }
   const col = new Float32Array(m.colors.length);
   const burn = opts.burn ?? 0, mul = opts.mul ?? 1;
+  // r7 terrain_environment: opts.whiteCap = [r,g,b] remaps NEAR-WHITE source
+  // vertices (min channel > 0.72, low chroma) to the given tone. The
+  // telephone pole's 0.90-grey insulator caps rendered as blown emissive
+  // blobs at noon — "lit streetlamps" (critique); remapped to dark glazed
+  // ceramic they read as insulators.
+  const wc = opts.whiteCap || null;
   for (let i = 0; i < m.colors.length; i += 3) {
     let r = m.colors[i] * mul, g = m.colors[i + 1] * mul, b = m.colors[i + 2] * mul;
+    if (wc && Math.min(r, g, b) > 0.72 && Math.max(r, g, b) - Math.min(r, g, b) < 0.10) {
+      r = wc[0]; g = wc[1]; b = wc[2];
+    }
     if (burn > 0) { // char toward scorched brown-black, flatten saturation
       r = (r + (0.045 - r) * burn) * (1 - burn * 0.25);
       g = (g + (0.038 - g) * burn) * (1 - burn * 0.25);
@@ -656,6 +665,32 @@ function makeRowhouse(rng, buckets, wallBucket = 'plaster', dims = null) {
         pot.translate(cx + (rng() - 0.5) * 0.3, wallH + roofH + ch - 0.06, cz + (rng() - 0.5) * 0.3);
         parts.roof.push(pot);
       }
+    }
+  }
+  // r7 terrain_environment ROOF CLUTTER: small vent pipes + the occasional
+  // wire aerial mast — the ridge chimneys alone left mid-distance roofscapes
+  // reading as bare extruded caps (critique: "almost no roof clutter")
+  {
+    const nVent = 1 + ((rng() * 2) | 0);
+    for (let vi2 = 0; vi2 < nVent; vi2++) {
+      const vz = -d * 0.34 + rng() * d * 0.68;
+      const vSide = rng() < 0.5 ? -1 : 1;
+      const vx = vSide * w * (0.10 + rng() * 0.16);
+      const vy = wallH + roofH * (1 - Math.abs(vx) / (w / 2 + over)) - 0.12;
+      const pipe = new THREE.CylinderGeometry(0.05, 0.06, 0.5 + rng() * 0.3, 5, 1);
+      pipe.translate(vx, vy + 0.28, vz);
+      parts.dark.push(pipe);
+    }
+    if (rng() < 0.35) { // wire aerial: thin mast + one cross bar at the top
+      const az2 = -d * 0.3 + rng() * d * 0.6;
+      const ah = 1.4 + rng() * 0.8;
+      const mast = new THREE.CylinderGeometry(0.022, 0.028, ah, 4, 1);
+      mast.translate((rng() - 0.5) * w * 0.2, wallH + roofH + ah / 2 - 0.3, az2);
+      parts.dark.push(mast);
+      const bar = box(0.9 + rng() * 0.5, 0.03, 0.03, 2.0);
+      bar.rotateY(rng() * Math.PI);
+      bar.translate((rng() - 0.5) * w * 0.2, wallH + roofH + ah - 0.34, az2);
+      parts.dark.push(bar);
     }
   }
   // r7 DORMERS on ~40% of houses: boxed body half-sunk into the slope, dark
@@ -1547,8 +1582,12 @@ ${snowCap ? `
     }
     // telegraph poles marching along road A — tapered round poles with twin
     // cross-arms and a brace, planted dead vertical
+    // r7 terrain_environment: whiteCap remaps the model's 0.90-white insulator
+    // caps to dark glazed glass-green — they rendered as blown "daytime
+    // streetlamp" blobs on every pole (player_view critique)
     const poleGeo = SOURCED.poles && P.telegraph
-      ? bakedGeometry('telephone_pole_polygoogle', { targetH: 7.4, sink: 0.15 }) : null;
+      ? bakedGeometry('telephone_pole_polygoogle',
+        { targetH: 7.4, sink: 0.15, whiteCap: [0.14, 0.21, 0.16] }) : null;
     // r4 terrain_environment: record pole stations — catenary WIRES are strung
     // between consecutive poles below (the bare pole line was a critique item:
     // "telephone poles have no visible wires, they read as bare sticks")
@@ -1655,23 +1694,47 @@ ${snowCap ? `
   // silhouettes, and a slope/height-keyed albedo blend (pale weathered top
   // vs darker base) so the tops read snow/lichen-capped per map tone.
   const rockGeos = [];
+  // r7 terrain_environment: RIDGED FRACTURE displacement + crease shading —
+  // the r3 boulders still read as "smooth grey blobs with no fracture
+  // planes" (critique). A ridged octave (1-|noise|) carves crease valleys
+  // into the surface; crease proximity darkens the albedo (fracture shadow
+  // lines) and the same field keys a partial normal HARDENING (lerp toward
+  // the local radial facet direction) so crease shoulders shade as broken
+  // faces instead of one continuous smooth ball.
   for (let vi = 0; vi < 3; vi++) {
     const g = mergeVertices(new THREE.IcosahedronGeometry(1, vi === 2 ? 3 : 2));
     const p = g.attributes.position;
     const vr = mulberry32(seed + 30 + vi);
     const tmpv = new THREE.Vector3();
+    const creaseA = new Float32Array(p.count); // 1 at crease line, 0 elsewhere
     for (let i = 0; i < p.count; i++) {
       tmpv.set(p.getX(i), p.getY(i), p.getZ(i));
+      const ridge = 1 - Math.abs(noi.noise3d(
+        tmpv.x * 2.2 + vi * 31, tmpv.y * 2.2 - 7, tmpv.z * 2.2 + 13));
+      const crease = Math.pow(ridge, 5); // sharp valley lines
+      creaseA[i] = crease;
       const f = 1
         + noi.noise3d(tmpv.x * 1.4 + vi * 9, tmpv.y * 1.4, tmpv.z * 1.4) * 0.30
         + noi.noise3d(tmpv.x * 3.1 - vi * 17, tmpv.y * 3.1 + 40, tmpv.z * 3.1) * 0.13
-        + noi.noise3d(tmpv.x * 6.8 + 91, tmpv.y * 6.8 - vi * 5, tmpv.z * 6.8) * 0.05;
+        + noi.noise3d(tmpv.x * 6.8 + 91, tmpv.y * 6.8 - vi * 5, tmpv.z * 6.8) * 0.05
+        - crease * 0.115; // carved fracture valleys
       tmpv.multiplyScalar(f);
       tmpv.y = Math.max(tmpv.y, -0.55);
       p.setXYZ(i, tmpv.x, tmpv.y * 0.82, tmpv.z);
     }
     g.computeVertexNormals();
     const nrm = g.attributes.normal;
+    // partial facet hardening: pull normals toward the radial direction on
+    // crease shoulders — the smooth-welded shading breaks into planes there
+    const nv = new THREE.Vector3();
+    for (let i = 0; i < p.count; i++) {
+      const cw = creaseA[i] * 0.55;
+      if (cw < 0.03) continue;
+      nv.set(nrm.getX(i), nrm.getY(i), nrm.getZ(i));
+      tmpv.set(p.getX(i), p.getY(i) * 0.6, p.getZ(i)).normalize();
+      nv.lerp(tmpv, cw).normalize();
+      nrm.setXYZ(i, nv.x, nv.y, nv.z);
+    }
     const col = new Float32Array(p.count * 3);
     for (let i = 0; i < p.count; i++) {
       // darker, mossier boulders — the old light-gray tone flashed white at
@@ -1680,8 +1743,10 @@ ${snowCap ? `
       const l = 0.26 + vr() * 0.08 + p.getY(i) * 0.04 + upW * upW * 0.10;
       let rh = 0.09 + vr() * 0.02, rs = 0.07, rl = clamp(l, 0.15, 0.48);
       if (P.rockTone) { const t = P.rockTone(rh, rs, rl); rh = t[0]; rs = t[1]; rl = clamp(t[2], 0, 1); }
-      // upward faces take the map cap tone harder (snow/dust), sides darker
-      _col.setHSL(rh, rs, clamp(rl * (0.86 + upW * 0.22), 0, 1), THREE.SRGBColorSpace);
+      // upward faces take the map cap tone harder (snow/dust), sides darker;
+      // crease valleys darken like fracture shadow lines
+      _col.setHSL(rh, rs,
+        clamp(rl * (0.86 + upW * 0.22) * (1 - creaseA[i] * 0.34), 0, 1), THREE.SRGBColorSpace);
       col[i * 3] = _col.r; col[i * 3 + 1] = _col.g; col[i * 3 + 2] = _col.b;
     }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));

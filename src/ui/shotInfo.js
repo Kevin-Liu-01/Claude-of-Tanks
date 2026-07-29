@@ -91,6 +91,17 @@ const SI_CSS = `
 .cot-si-kv{display:flex;justify-content:space-between;font-size:10px;color:${COL.dim};
   font-variant-numeric:tabular-nums;letter-spacing:.03em;}
 .cot-si-kv b{color:#dbe6ef;font-weight:700;font-family:${FONT_COND};font-stretch:condensed;}
+/* r8: the pen row spans the card on ONE line (the 'Pen roll' label broke
+   across two lines and the value wrapped, r7 critic); the ERA/screens
+   qualifier is an unbreakable suffix chip and a dim caption legends the
+   'fresh → after screens / nominal' format once. */
+.cot-si-kv.w{grid-column:1/-1;}
+.cot-si-kv.pen b{white-space:nowrap;}
+.cot-si-kv b .q{display:inline-block;margin-left:5px;padding:0 3px 1px;
+  border:1px solid currentColor;font-size:7.5px;letter-spacing:.12em;
+  vertical-align:1px;line-height:1.25;font-weight:800;}
+.cot-si-pencap{grid-column:1/-1;font-size:8px;color:#647180;letter-spacing:.05em;
+  text-align:right;margin-top:-1px;}
 .cot-si-diag{display:flex;gap:8px;align-items:center;padding:6px 9px 0;}
 .cot-si-diag .box{position:relative;flex:0 0 auto;}
 .cot-si-diag .sil{position:absolute;inset:0;}
@@ -875,18 +886,22 @@ export function createShotInfo(bus) {
       `<span>${ev.targetName || ''}</span>`;
 
     const rows = el('div', 'cot-si-rows', card);
-    const kv = (k, v) => {
-      const r = el('div', 'cot-si-kv', rows);
+    const kv = (k, v, cls) => {
+      const r = el('div', `cot-si-kv${cls ? ` ${cls}` : ''}`, rows);
       r.innerHTML = `<span>${k}</span><b>${v}</b>`;
+      return r;
     };
     const hasArmor = (ev.nominalMm || 0) > 0 || (ev.effectiveMm || 0) > 0;
     kv('Distance', `${Math.round(ev.flightDistM || 0)} m`);
     kv('Angle', `${Math.round(ev.impactAngleDeg || 0)}°`);
     // screen_pierce has no main-armor interaction: show the pierced screen's
     // physical thickness instead of misleading em-dashes / 0→0
+    let penHtml = '—';
+    let penQual = '';
+    let penLegend = '';
     if (ev.kind === 'screen_pierce') {
       kv('Armor', (ev.physicalMm || 0) > 0 ? `${Math.round(ev.physicalMm)} mm screen` : 'screen');
-      kv('Pen roll', 'passed through');
+      penHtml = 'passed through';
     } else {
       // 'N → M mm eff.' labels the angle-adjusted number (r5: nothing said
       // which figure was nominal and which effective — the card's single most
@@ -908,31 +923,46 @@ export function createShotInfo(bus) {
       // '461 / 898 mm' on an ERA'd T-80U glacis read as a broken ±25% RNG.
       // When the payload carries the pre-degradation roll (penRollFreshMm,
       // additive damage.js stamp per docs/handoff/killcam_shotinfo-r6.md)
-      // the row prints the cut explicitly: '894 → 461 / 898 mm · ERA'.
-      // Payloads without the field still get the qualifier whenever the
-      // event itself proves a cut (eraPlate set, or a residual impossible
-      // from a ±25% roll); the roll's green/red verdict is judged on the
-      // FRESH roll when known — RNG luck, not ERA, is what it grades.
+      // the row prints the cut explicitly: '894 → 461 / 896 mm'. Payloads
+      // without the field still get the qualifier whenever the event itself
+      // proves a cut (eraPlate set, or a residual impossible from a ±25%
+      // roll); the roll's green/red verdict is judged on the FRESH roll when
+      // known — RNG luck, not ERA, is what it grades.
+      // r8 presentation (critic: the row wrapped into a mangled two-line
+      // label/value jumble and its three numbers carried no legend): the
+      // pen row is emitted below as a FULL-WIDTH one-line row ('Pen' label,
+      // nowrap value), the qualifier rides as an unbreakable suffix chip,
+      // and a dim caption states the format once.
       const penNom = nominalPenFor(ev);
       const roll = Math.round(ev.penRollMm || 0);
       const fresh = Math.round(ev.penRollFreshMm || 0);
       card.dataset.pennom = String(penNom);
       card.dataset.penfresh = String(fresh);
-      // qualifier is one unbreakable token — a wrapped orphan '·' read scruffy
-      const qual = ev.eraPlate ? ' · ERA'
-        : (roll > 0 && (fresh > roll + 1
-          || (penNom > 0 && roll < penNom * 0.75 - 2))) ? ' · screens' : '';
-      const arrow = fresh > roll + 1 ? `${fresh} → ` : '';
+      const cut = fresh > roll + 1;
+      penQual = ev.eraPlate ? 'ERA'
+        : (roll > 0 && (cut
+          || (penNom > 0 && roll < penNom * 0.75 - 2))) ? 'SCREENS' : '';
+      const arrow = cut ? `${fresh} → ` : '';
+      penLegend = cut
+        ? `fresh → after ${penQual === 'ERA' ? 'ERA' : 'screens'} / nominal`
+        : roll > 0 && penNom > 0 ? 'roll / nominal' : '';
       if (roll > 0 && penNom > 0) {
-        const verdict = (fresh > roll + 1 ? fresh : roll) >= penNom ? COL.green : COL.red;
-        kv('Pen roll', `<span style="color:${verdict}">${arrow}${roll}</span>` +
-          ` / ${penNom} mm${qual}`);
+        const verdict = (cut ? fresh : roll) >= penNom ? COL.green : COL.red;
+        penHtml = `<span style="color:${verdict}">${arrow}${roll}</span>` +
+          ` / ${penNom} mm`;
       } else {
-        kv('Pen roll', roll > 0 ? `${arrow}${roll} mm${qual}` : '—');
+        penHtml = roll > 0 ? `${arrow}${roll} mm` : '—';
       }
     }
     kv('Damage', `${Math.round(ev.damage || 0)} / ${Math.round(ev.dmgRoll || 0)}`);
-    kv('Result', ev.destroyed ? 'DESTROYED' : `${Math.max(0, Math.round(ev.targetHpAfter || 0))} hp left`);
+    {
+      const r = kv('Pen', penHtml + (penQual
+        ? `<span class="q" style="color:${penQual === 'ERA' ? COL.yellow : '#9fb0bf'}">${penQual}</span>`
+        : ''), 'w pen');
+      r.title = penLegend ? `Penetration (mm): ${penLegend}` : 'Penetration roll at impact';
+      if (penLegend) el('div', 'cot-si-pencap', rows).textContent = penLegend;
+    }
+    kv('Result', ev.destroyed ? 'DESTROYED' : `${Math.max(0, Math.round(ev.targetHpAfter || 0))} hp left`, 'w');
 
     const diag = diagramFor(ev, cls);
     if (diag) {
@@ -1211,14 +1241,13 @@ export function createShotInfo(bus) {
     }
 
     // commendation ribbons — every one derives 1:1 from the session counters.
-    // Kill ribbons additionally require dealt > 0 (r6 minor): kill CREDIT can
-    // exist with zero damage output (debug-slain roster; ram/fire analogues),
-    // and an 'ACE — 4 KILLS' beside all-zero performance tiles contradicted
-    // the report it sat on. A ribbon may never outrun the tiles beside it.
+    // Kill ribbons key off the KILLS counter alone (r8: the r6 damage gate
+    // made a 4-kill VICTORY render zero ribbons, which read as a broken
+    // reward system — the KILLS tile beside the ribbon backs the claim, so
+    // a kill ribbon never outruns the visible tiles even at zero damage).
     const ribbons = [];
-    const dealtAny = Math.round(stats.dealt) > 0;
-    if (kills >= 3 && dealtAny) ribbons.push({ g: GLYPH.star, t: `ACE — ${kills} kills` });
-    else if (kills >= 1 && dealtAny) ribbons.push({ g: GLYPH.skull, t: `DESTROYER — ${kills} kill${kills === 1 ? '' : 's'}` });
+    if (kills >= 3) ribbons.push({ g: GLYPH.star, t: `ACE — ${kills} kills` });
+    else if (kills >= 1) ribbons.push({ g: GLYPH.skull, t: `DESTROYER — ${kills} kill${kills === 1 ? '' : 's'}` });
     if (stats.hits >= 4 && penRate >= 70) ribbons.push({ g: GLYPH.optics, t: `SHARPSHOOTER — ${penRate}% pen` });
     if (stats.blocked >= 400) ribbons.push({ g: GLYPH.shield, t: `STEEL WALL — ${Math.round(stats.blocked)} blocked` });
     if (stats.fired >= 4 && stats.hits === stats.fired) ribbons.push({ g: GLYPH.ammoRack, t: 'EVERY SHOT CONNECTED' });

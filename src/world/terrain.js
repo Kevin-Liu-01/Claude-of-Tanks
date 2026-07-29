@@ -590,11 +590,12 @@ export function sampleSplatNoise(x, z) {
   const wx = x + wr * 0.5 * 48, wz = z + wg * 0.5 * 48;
   const n1 = fieldSample(f.a, w(wx * 0.0117), w(wz * 0.0117));
   const n2 = fieldSample(f.b, w(wx * 0.0031 + 0.41), w(wz * 0.0031 + 0.13));
-  // mA: the CPU twin of the shader's meadowA field (uvW * 0.0121 +
-  // vec2(0.63, 0.29), noise .r) — the dry-straw patchwork tint. Grass tufts
-  // read it so the blade carpet carries the same 50-200 m yellow-brown
-  // patches the ground albedo shows.
-  const mA = fieldSample(f.a, w(wx * 0.0121 + 0.63), w(wz * 0.0121 + 0.29));
+  // mA: the CPU twin of the shader's meadowA field — the dry-straw patchwork
+  // tint. Grass tufts read it so the blade carpet carries the same yellow-
+  // brown patches the ground albedo shows. r7: TWO-SCALE composite matching
+  // the shader (0.0121 .r x0.62 + 0.00779 .g x0.38 — the 83 m repeat break).
+  const mA = fieldSample(f.a, w(wx * 0.0121 + 0.63), w(wz * 0.0121 + 0.29)) * 0.62
+    + fieldSample(f.b, w(wx * 0.00779 + 0.19), w(wz * 0.00779 + 0.71)) * 0.38;
   return { n1: n1 * 0.5 + 0.5, n2: n2 * 0.5 + 0.5, mA: mA * 0.5 + 0.5 };
 }
 
@@ -629,23 +630,34 @@ function makeGrassLayer(seed, anisotropy, tone = null) {
       const macro = torusNoise(noi, u, v, 3, 3, 11) * 0.6 + torusNoise(noi, u, v, 7, 7, 23) * 0.4;
       const fine = torusNoise(noi, u, v, 43, 43, 61) * 0.5 + 0.5;
       const m01 = macro * 0.5 + 0.5;
-      const dry = smoothstep(0.62, 0.9, m01);
-      // lighting_post r2: ~18% desat + slight olive hue shift — flat lime read
-      _col.setHSL(0.205 + macro * 0.03 - dry * 0.06, 0.27 - dry * 0.07, 0.16 + m01 * 0.07 + fine * 0.05);
+      // r7 terrain_environment: MIXED STRAW/OLIVE/SOIL base instead of one
+      // spring green (critique: "one saturated spring green... pull grass
+      // albedo toward WoT's mixed straw/olive/brown range"). Wider dry band
+      // (0.54 start), a soil-through family on the low end of the macro
+      // field, and the living green pulled toward olive.
+      const dry = smoothstep(0.54, 0.88, m01);
+      const soil = smoothstep(0.34, 0.10, m01); // bare-earth showing through
+      _col.setHSL(
+        0.192 + macro * 0.030 - dry * 0.075 - soil * 0.085,
+        0.245 - dry * 0.075 - soil * 0.10,
+        0.16 + m01 * 0.07 + fine * 0.05 - soil * 0.015);
       base.data[j] = _col.r * 255; base.data[j + 1] = _col.g * 255; base.data[j + 2] = _col.b * 255;
       base.data[j + 3] = 255;
     }
   }
   ctx.putImageData(base, 0, 0);
   // blade strokes: short curved tapers in varied greens + scattered dry blades
+  // r7: dry share 0.14 -> 0.24 and living hue pulled toward olive with a
+  // wider spread — the blade carpet must mix straw into the green, not read
+  // as one lawn tone (ground-cover critique)
   ctx.lineCap = 'round';
   for (let b = 0; b < 3400; b++) {
     const x = rng() * s, y = rng() * s;
-    const dry = rng() < 0.14;
+    const dry = rng() < 0.24;
     const lum = 0.16 + rng() * 0.17 + (dry ? 0.12 : 0);
     ctx.strokeStyle = dry
-      ? _css(0.11 + rng() * 0.02, 0.28, lum)
-      : _css(0.195 + rng() * 0.06, 0.29 + rng() * 0.13, lum);
+      ? _css(0.10 + rng() * 0.035, 0.26 + rng() * 0.08, lum)
+      : _css(0.175 + rng() * 0.075, 0.26 + rng() * 0.13, lum);
     ctx.lineWidth = 1.1 + rng() * 1.4;
     const len = 7 + rng() * 12;
     const a = rng() * Math.PI * 2;
@@ -1305,8 +1317,10 @@ void splatCompute() {
   // weight 0.62 -> 0.74 — the gameplay-camera near field read as one uniform
   // green noise carpet with "no macro albedo variation" (critique); more
   // visible dirt/dry-patch breakup is the cheapest macro signal at 5-60 m
+  // r7: 0.74 -> 0.84 — bare-dirt splats must read as real ground breakup
+  // between the road decals (ground-cover critique), not a faint stain
   float worn = smoothstep(0.55, 0.80, n2w + (n1w - 0.5) * 0.45);
-  float fD = clamp(max(worn * 0.74, max(shoulder, mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
+  float fD = clamp(max(worn * 0.84, max(shoulder, mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
   float fM = mkB;
   // marsh/ice sheets only live on near-flat ground: without this the graded
   // banks around a frozen lake inherit the sheet's glossy blue ice response
@@ -1434,7 +1448,14 @@ void splatCompute() {
   // meadow macro variation, three scales (~80 m, ~230 m, ~600 m): dry-straw
   // patches, dark clover, and broad field-to-field tone shifts so open ground
   // never reads as one continuous green wash at any distance
-  float meadowA = texture2D(uNoise, uvW * 0.0121 + vec2(0.63, 0.29)).r;
+  // r7 terrain_environment: meadowA is a TWO-SCALE composite. The single
+  // 0.0121 sample of the 256-texel noise repeats every ~83 m and the dry-
+  // straw patchwork visibly restamped on that period (critique: "mottle
+  // pattern visibly repeats, ~50-70 m period"). A second incommensurate
+  // scale (~128 m, other channel) breaks the period; CPU twin
+  // (sampleSplatNoise) mirrors this exactly for grass/dirt correlation.
+  float meadowA = texture2D(uNoise, uvW * 0.0121 + vec2(0.63, 0.29)).r * 0.62
+                + texture2D(uNoise, uvW * 0.00779 + vec2(0.19, 0.71)).g * 0.38;
   float meadowB = texture2D(uNoise, uvW * 0.0043 + vec2(0.11, 0.87)).g;
   float meadowC = texture2D(uNoise, uvW * 0.0016 + vec2(0.37, 0.55)).r;
   // strength capped ~0.30-0.35 with n1 edge breakup so patch borders are
@@ -1451,7 +1472,9 @@ void splatCompute() {
   // 0.17+0.09, C 0.16+0.14 -> 0.21+0.16) — the macro dry-straw/clover fields
   // were too subtle to register from the chase camera and the ground read as
   // one continuous green wash (critique: "no macro albedo variation")
-  a.rgb = mix(a.rgb, a.rgb * uTintA, smoothstep(0.54, 0.85, meadowA) * (0.28 + 0.20 * n1) * meadowG);
+  // r7: band recentred for the two-scale composite's lower variance + one
+  // more strength step — the dry-straw fields must read from the chase cam
+  a.rgb = mix(a.rgb, a.rgb * uTintA, smoothstep(0.52, 0.80, meadowA) * (0.33 + 0.20 * n1) * meadowG);
   a.rgb = mix(a.rgb, a.rgb * uTintB, smoothstep(0.58, 0.85, 1.0 - meadowB) * (0.17 + 0.09 * n1) * meadowG);
   a.rgb = mix(a.rgb, a.rgb * uTintC, smoothstep(0.52, 0.9, meadowC) * (0.21 + 0.16 * n1) * meadowG);
   a.rgb *= mix(0.93 + meadowC * 0.14, 1.0, projW);
@@ -1592,7 +1615,21 @@ void splatCompute() {
       vec3 wg1 = texture2D(uNrmG, gWallUVx * 0.55).xyz;
       vec3 wg2 = texture2D(uNrmG, gWallUVz * 0.55).xyz;
       vec3 wgn = mix(wg1, wg2, gWallW) * 2.0 - 1.0;
-      n.xy += wgn.xy * 0.65 * sandFaceW * (1.0 - smoothstep(120.0, 320.0, effDist));
+      // r7: fade 320 -> 560 m — the 300-500 m dune flanks lost every detail
+      // pass at once and any residual shading isoline printed bare (part of
+      // the "terracing" read); the wall-plane grain now carries those faces
+      n.xy += wgn.xy * 0.65 * sandFaceW * (1.0 - smoothstep(160.0, 560.0, effDist));
+      // slope-aligned ripple detail on the same faces: anisotropic waves in
+      // the wall frame (V = world height, so crests run along the contour —
+      // real wind ripples on a slip face) mask any residual banding
+      {
+        float wRip = mix(sin(gWallUVx.y * 7.3 + texture2D(uNoise, gWallUVx * 0.05).r * 4.0),
+                         sin(gWallUVz.y * 7.3 + texture2D(uNoise, gWallUVz * 0.05).r * 4.0), gWallW);
+        float wRipW = sandFaceW * (1.0 - smoothstep(200.0, 620.0, effDist)) * 0.30;
+        vec2 hDir = wn.xz / max(length(wn.xz), 1e-4); // fall-line in the map plane
+        a.rgb *= 1.0 + wRip * 0.12 * wRipW;
+        n.xy += hDir * wRip * wRipW;
+      }
       // avalanche flow tongues: value streaks running down the fall line
       // (variation ALONG the wall run = vertical flow structure)
       float flow = mix(
@@ -1712,9 +1749,21 @@ void splatCompute() {
   // r4: 0.09 -> 0.16 + a dusty desaturation pull — road shoulders must read
   // as worn verge (tracked dirt spilling off the carriageway), not clean lawn
   // running flush to the wheel ruts (critique: "no decals along road edges")
-  float edgeBand = shoulder * (1.0 - roadCore);
+  // r7: NOISE-RAGGED edge band + gravel spill — the road met the grass as
+  // one uniform soft feather (decal-ecosystem critique); the worn verge now
+  // breaks up on the ~6 m noise and scatters gravel speckle off the
+  // carriageway shoulder
+  float edgeBand = shoulder * (1.0 - roadCore) * (0.55 + 0.90 * n1hs);
   a.rgb *= 1.0 - edgeBand * 0.16;
   a.rgb = mix(a.rgb, vec3(dot(a.rgb, vec3(0.34, 0.45, 0.21))) * vec3(1.06, 1.0, 0.88), edgeBand * 0.22);
+  {
+    float gravSpill = shoulder * (1.0 - roadCore) * smoothstep(0.58, 0.9, n1h)
+      * (1.0 - smoothstep(30.0, 90.0, effDist));
+    if (gravSpill > 0.004) {
+      vec4 gravE = texture2D(uAlbR, uv * 0.83);
+      a.rgb = mix(a.rgb, gravE.rgb * vec3(1.02, 0.97, 0.88), gravSpill * 0.5);
+    }
+  }
   // rut relief from the mask G gradient (visible well past the near ring)
   {
     float texel = 1.4 / 1024.0;
@@ -2091,7 +2140,7 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant', lan
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v18'; // r6: rock gate + near octave + steep-sand detail
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v19'; // r7: meadow de-repeat + edge gravel + slip-face ripples
   return mat;
 }
 
@@ -2109,26 +2158,45 @@ const LOD_DIST = [200, 430]; // near < 200, mid < 430, else far
 // worst cliff-edge mismatch at every LOD pairing.
 const SKIRT_DROP = 6.5;
 
-function buildChunkGeometry(hf, cx0, cz0, segs) {
-  const n = segs + 1, step = CHUNK_SIZE / segs;
-  // padded height grid for seam-free central-difference normals
-  const pn = n + 2;
+// r7 terrain_environment TERRACING FIX: one FINE height grid per chunk (the
+// LOD0 resolution, 1.33 m step) serves position AND normal sampling for all
+// three LODs. The old per-LOD grids computed central-difference normals at
+// the LOD's own step — 2.7/5.3 m on the mid/far LODs — and on high-curvature
+// dune brinks/mesa shoulders the O(step^2 * curvature) normal error alternates
+// sign row to row, printing horizontal Mach-band terraces along every contour
+// (the desert critique's "heightfield quantization stair-step isolines").
+// Normals now come from 1.33 m central differences at every LOD, so coarse
+// meshes shade like the true surface; positions are unchanged (same heightAt
+// values at the same world coords). Bonus: 9.8k height evaluations per chunk
+// instead of 12.1k — boot gets slightly faster.
+const FINE_SEGS = 96; // must equal LOD_SEGS[0]; strides 1/2/4 stay integral
+function buildFineGrid(hf, cx0, cz0) {
+  const stepF = CHUNK_SIZE / FINE_SEGS;
+  const pn = FINE_SEGS + 3; // +1 vertex row, +2 padding rows
   const hgrid = new Float64Array(pn * pn);
   for (let gz = 0; gz < pn; gz++) for (let gx = 0; gx < pn; gx++) {
-    hgrid[gz * pn + gx] = hf.getHeightAt(cx0 + (gx - 1) * step, cz0 + (gz - 1) * step);
+    hgrid[gz * pn + gx] = hf.getHeightAt(cx0 + (gx - 1) * stepF, cz0 + (gz - 1) * stepF);
   }
+  return { hgrid, pn, stepF };
+}
+
+function buildChunkGeometry(hf, cx0, cz0, segs, fine) {
+  const n = segs + 1, step = CHUNK_SIZE / segs;
+  const stride = FINE_SEGS / segs;
+  const { hgrid, pn, stepF } = fine;
   const perim = 4 * segs;
   const vcount = n * n + perim;
   const pos = new Float32Array(vcount * 3);
   const nrm = new Float32Array(vcount * 3);
-  const inv2e = 1 / (2 * step);
+  const inv2e = 1 / (2 * stepF);
   let vi = 0;
   for (let gz = 0; gz < n; gz++) for (let gx = 0; gx < n; gx++) {
     const wx = cx0 + gx * step, wz = cz0 + gz * step;
-    const h = hgrid[(gz + 1) * pn + (gx + 1)];
+    const fi = (gz * stride + 1) * pn + (gx * stride + 1);
+    const h = hgrid[fi];
     pos[vi * 3] = wx; pos[vi * 3 + 1] = h; pos[vi * 3 + 2] = wz;
-    const hl = hgrid[(gz + 1) * pn + gx], hr = hgrid[(gz + 1) * pn + (gx + 2)];
-    const hd = hgrid[gz * pn + (gx + 1)], hu = hgrid[(gz + 2) * pn + (gx + 1)];
+    const hl = hgrid[fi - 1], hr = hgrid[fi + 1];
+    const hd = hgrid[fi - pn], hu = hgrid[fi + pn];
     const nx = (hl - hr) * inv2e, nz = (hd - hu) * inv2e;
     const il = 1 / Math.sqrt(nx * nx + 1 + nz * nz);
     nrm[vi * 3] = nx * il; nrm[vi * 3 + 1] = il; nrm[vi * 3 + 2] = nz * il;
@@ -2204,7 +2272,9 @@ export function buildTerrainMeshes(heightField, engineCtx, cfg = null) {
   const chunks = [];
   for (let cz = 0; cz < CHUNKS; cz++) for (let cx = 0; cx < CHUNKS; cx++) {
     const cx0 = -HALF + cx * CHUNK_SIZE, cz0 = -HALF + cz * CHUNK_SIZE;
-    const lods = LOD_SEGS.map((segs) => buildChunkGeometry(heightField, cx0, cz0, segs));
+    // r7: one shared fine grid per chunk — see buildFineGrid (terracing fix)
+    const fine = buildFineGrid(heightField, cx0, cz0);
+    const lods = LOD_SEGS.map((segs) => buildChunkGeometry(heightField, cx0, cz0, segs, fine));
     const mesh = new THREE.Mesh(lods[2], mat);
     mesh.receiveShadow = true;
     mesh.castShadow = false;

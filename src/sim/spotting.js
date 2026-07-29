@@ -627,9 +627,42 @@ export function createSpottingSystem(deps) {
         const c = concealers[i];
         const dx = c.x - p.x, dz = c.z - p.z;
         if (dx * dx + dz * dz > (c.r + 1.2) * (c.r + 1.2)) continue;
-        if (bloom > 0) continue; // 15 m rule: own bush is lit while hot
+        // 15 m rule — the SAME per-disc edge test bushBonusBetween applies
+        // (r7: the old blanket `if (bloom > 0) continue` zeroed every
+        // hull-overlapping disc while the bloom was hot regardless of its
+        // radius; a large concealer whose edge sits beyond the flash radius
+        // keeps concealing here exactly as it does on the sim sightline).
+        if (bloom > 0 &&
+            Math.hypot(dx, dz) - c.r < BUSH_FIRE_TRANSPARENT_M) continue;
         bush += c.add;
         if (bush >= MAX_BUSH_BONUS) { bush = MAX_BUSH_BONUS; break; }
+      }
+      // Double-bush ambush truth (r7): while the bloom is hot the loop above
+      // burns the OWN bush (15 m rule) but canSpot still honors screening
+      // foliage farther down the sightline (bushBonusBetween keeps any disc
+      // beyond 15 m of the firer). The snapshot used to report bush = 0 for
+      // the full ~6 s decay — the HUD read "exposed" while every enemy check
+      // still failed behind the second bush. Mirror the sim: evaluate the
+      // real sightline bonus toward the nearest enemy THIS TEAM HAS SPOTTED
+      // (minimap-known contacts only, so no hidden enemy's bearing leaks
+      // into a HUD number) and keep the larger term.
+      if (bloom > 0 && concealers.length) {
+        const tanks = deps.getTanks();
+        let nx = 0, nz = 0, nd = Infinity;
+        for (let i = 0; i < tanks.length; i++) {
+          const e = tanks[i];
+          if (e === ent || e.id === ent.id || !alive(e) || e.team === ent.team) continue;
+          const er = recs.get(e.id);
+          const st2 = er && er.byTeam[ent.team];
+          if (!st2 || !st2.spotted) continue;
+          const ex = e.state.pos.x - p.x, ez = e.state.pos.z - p.z;
+          const d2 = ex * ex + ez * ez;
+          if (d2 < nd) { nd = d2; nx = e.state.pos.x; nz = e.state.pos.z; }
+        }
+        if (nd < Infinity) {
+          const line = bushBonusBetween(concealers, nx, nz, p.x, p.z, true);
+          if (line > bush) bush = line;
+        }
       }
       _conc.base = baseCamoOf(ent.spec, moving);
       _conc.paint = getCamoBonus(ent);

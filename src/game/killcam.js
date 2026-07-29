@@ -209,9 +209,17 @@ function sharedMats() {
   // the shader picks the write up whether it compiled before or after).
   const ghostCenter = { value: new THREE.Vector3(0, -1e6, 0) };
   const ghostRad = { value: 6 };
+  // r8 per-band opacity shaping (critic: 'decapitated' ghosts + hot tracks).
+  // World-space y of the victim's turret-ring plane and running-gear top
+  // line, written per x-ray in beginXray(). Defaults are inert (no boost,
+  // no dim) so the warmup rig and any pre-x-ray render stay unchanged.
+  const ghostRingY = { value: 1e7 };
+  const ghostGearY = { value: -1e7 };
   ghost.onBeforeCompile = (sh) => {
     sh.uniforms.kcCenter = ghostCenter;
     sh.uniforms.kcRad = ghostRad;
+    sh.uniforms.kcRingY = ghostRingY;
+    sh.uniforms.kcGearY = ghostGearY;
     sh.vertexShader = `varying vec3 vKcW;\nvarying vec3 vKcN;\n${sh.vertexShader}`.replace(
       '#include <project_vertex>',
       `#include <project_vertex>
@@ -223,7 +231,7 @@ function sharedMats() {
         vKcN = mat3(modelMatrix) * normal;
       #endif`);
     sh.fragmentShader =
-      `varying vec3 vKcW;\nvarying vec3 vKcN;\nuniform vec3 kcCenter;\nuniform float kcRad;\n${sh.fragmentShader}`.replace(
+      `varying vec3 vKcW;\nvarying vec3 vKcN;\nuniform vec3 kcCenter;\nuniform float kcRad;\nuniform float kcRingY;\nuniform float kcGearY;\n${sh.fragmentShader}`.replace(
         '#include <color_fragment>',
         `#include <color_fragment>
       {
@@ -265,13 +273,27 @@ function sharedMats() {
         float kcRimW = pow(kcF, 2.2);
         float kcRimT = pow(kcF, 7.0);
         float kcTop = kcNL > 1e-5 ? clamp(kcN.y * 0.5 + 0.5, 0.0, 1.0) : 0.6;
-        diffuseColor.a *= (0.075 + 0.10 * kcTop + 0.16 * kcRimW + 0.52 * kcRimT)
-          * mix(0.6, 1.25, kcT);
-        diffuseColor.rgb *= 0.52 + 0.13 * kcTop + 0.09 * kcRimW + 0.26 * kcRimT;
+        // r8 per-band shaping (critic: both the Tiger and the live Abrams
+        // read as DECAPITATED hulls while the track runs burned hot cyan).
+        // Density here is layer-count-driven: an 8-12 layer procedural hull
+        // stack saturates while the 1-2 shell turret sits at the face-on
+        // floor (~0.08 alpha) and vanishes over the dimmed backdrop; track
+        // runs stack the MOST layers (links + wheels + band + skirt) and
+        // blow out. Two world-y bands fix both ends without any per-mesh
+        // naming assumptions: fragments above the victim's turret-ring
+        // plane (kcRingY) get a flat opacity floor so a single-shell turret
+        // matches hull density, and fragments below the running-gear top
+        // line (kcGearY) are dimmed so stacked links stop reading as slabs.
+        // beginXray() writes both planes from the SNAPSHOT armor spec.
+        float kcTur = smoothstep(kcRingY - 0.25, kcRingY + 0.3, vKcW.y);
+        float kcGear = 1.0 - smoothstep(kcGearY - 0.05, kcGearY + 0.28, vKcW.y);
+        diffuseColor.a *= (0.075 + 0.235 * kcTur + 0.10 * kcTop + 0.16 * kcRimW + 0.52 * kcRimT)
+          * mix(0.68, 1.22, kcT) * mix(1.0, 0.4, kcGear);
+        diffuseColor.rgb *= 0.52 + 0.10 * kcTur + 0.13 * kcTop + 0.09 * kcRimW + 0.26 * kcRimT;
       }`);
   };
   S = {
-    ghost, ghostCenter, ghostRad,
+    ghost, ghostCenter, ghostRad, ghostRingY, ghostGearY,
     // Trail intensity is deliberately sub-bloom: additive 1px line at full
     // 0xffb060 pushed the HDR buffer over the bloom threshold and smeared
     // into a screen-wide beam (r2 critique). Halved color × lower alpha keeps
@@ -328,7 +350,11 @@ function sharedMats() {
     // an amber fuel cell implied a hit the sim never resolved. Identity now
     // lives in the shapes + label chips only.
     proxIntact: prox(0xd8e4ee, 0.78, 0.1, 0.3),
-    proxSteel: prox(0x9fb4c4, 0.72, 0.09, 0.28),
+    // r8: steel accent darkened (0x9fb4c4/es .28 sat within ~15% of the
+    // intact tint — fins/straps/fan alpha-mushed into the main mass and the
+    // organs read as 'tan loaf-boxes and plain crates', critic) so the
+    // mechanical detail separates as a distinct darker metal.
+    proxSteel: prox(0x7e94a8, 0.74, 0.07, 0.17),
     proxGreen: prox(0x2fd98c, 0.8, 0.1, 0.34),
     proxYellow: prox(0xffb43c, 0.88, 0.12, 0.44),
     proxRed: prox(0xff4a38, 0.92, 0.13, 0.52),
@@ -467,12 +493,18 @@ function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables, era, calMm) {
       }
     }
     rounds(r, caseH, tipH, list);
-    // rack shelves between the layers + the blast-door bulkhead
+    // rack shelves between the layers + the blast-door bulkhead + steel
+    // side-cheek plates (r8: the charge tubes read loose without the rack
+    // frame holding them)
     for (let iy = 1; iy < ny; iy++) {
       put(new THREE.BoxGeometry(sx * 0.96, sy * 0.03, sz * 0.7),
         0, -sy / 2 + iy * (sy / ny), -sz * 0.08);
     }
     put(new THREE.BoxGeometry(sx * 0.96, sy * 0.94, 0.05), 0, 0, sz / 2 - 0.03);
+    for (const xf of [-1, 1]) {
+      put(new THREE.BoxGeometry(0.03, sy * 0.9, sz * 0.7),
+        xf * (sx / 2 - 0.015), 0, -sz * 0.08, 0, 0, 0, S.proxSteel);
+    }
   } else if (kind === 'ammoRack' && modern) {
     // modern hull autoloader carousel (T-72/T-90 lineage): ring of charges
     // standing in a rotating tray around the turret basket axis. Charge
@@ -517,25 +549,37 @@ function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables, era, calMm) {
     rounds(r, h, tipH, list);
     put(new THREE.BoxGeometry(sx * 0.98, sy * 0.08, sz * 0.98), 0, -sy / 2 + sy * 0.03, 0);
   } else if (kind === 'fuelTank' && modern) {
-    // modern internal fuel CELL (r5 critique: 'featureless slab'): tank body
-    // with a domed top ridge, two proud wrap-around strap ribs in steel, a
-    // filler neck + cap on the deck and a feed line exiting the base — the
-    // old baffle plates hid entirely INSIDE the box silhouette and left a
-    // blank slab. No WWII external-style drums inside an Abrams hull (r2).
+    // modern internal fuel: STRAPPED CYLINDRICAL CELLS (r8 — the r5 box cell
+    // still read as a plain crate during the 7 s hold, critic). Two fat
+    // rounded cells with domed ends filling the volume, each cradled on
+    // steel saddles under two proud wrap-around strap ribs, plus a filler
+    // neck + cap on one cell and a feed line exiting the base. Cylinder
+    // silhouettes read as tankage at ghost range where a box reads as cargo.
     const steel = S.proxSteel;
-    put(new THREE.BoxGeometry(sx * 0.8, sy * 0.62, sz * 0.82), 0, -sy * 0.08, 0);
-    put(new THREE.BoxGeometry(sx * 0.52, sy * 0.18, sz * 0.68), 0, sy * 0.26, 0);
-    for (const zf of [-0.24, 0.24]) {
-      put(new THREE.BoxGeometry(sx * 0.88, sy * 0.72, sz * 0.05),
-        0, -sy * 0.06, sz * zf, 0, 0, 0, steel);
+    const nCell = sx > sy * 1.7 ? 2 : 1; // narrow bays get one big cell
+    const xOffs = nCell === 2 ? [-0.22, 0.22] : [0];
+    const r = Math.max(0.07, Math.min(sy * 0.42, (sx / nCell) * 0.36, sz * 0.4));
+    const cl = sz * 0.78;
+    for (const xf of xOffs) {
+      const cx = sx * xf;
+      put(new THREE.CylinderGeometry(r, r, cl, 14), cx, -sy * 0.03, 0, Math.PI / 2, 0, 0);
+      put(new THREE.SphereGeometry(r, 12, 8), cx, -sy * 0.03, cl / 2);
+      put(new THREE.SphereGeometry(r, 12, 8), cx, -sy * 0.03, -cl / 2);
+      for (const zf of [-0.24, 0.24]) {
+        put(new THREE.TorusGeometry(r * 1.04, r * 0.11, 6, 18),
+          cx, -sy * 0.03, sz * zf, 0, 0, 0, steel);
+        // saddle cradle feet under each strap station
+        put(new THREE.BoxGeometry(r * 1.7, Math.max(0.04, sy * 0.5 - r * 0.4), r * 0.5),
+          cx, -sy * 0.03 - r * 0.78, sz * zf, 0, 0, 0, steel);
+      }
     }
-    const fr = Math.min(sx, sz) * 0.12;
-    put(new THREE.CylinderGeometry(fr * 0.55, fr * 0.55, sy * 0.2, 8),
-      sx * 0.2, sy * 0.4, 0, 0, 0, 0, steel);
-    put(new THREE.CylinderGeometry(fr, fr, sy * 0.06, 10),
-      sx * 0.2, sy * 0.51, 0, 0, 0, 0, steel);
-    put(new THREE.CylinderGeometry(fr * 0.4, fr * 0.4, sz * 0.5, 6),
-      -sx * 0.28, -sy * 0.3, 0, Math.PI / 2, 0, 0, steel);
+    const fr = Math.min(sx, sz) * 0.11;
+    put(new THREE.CylinderGeometry(fr * 0.55, fr * 0.55, sy * 0.24, 8),
+      sx * xOffs[xOffs.length - 1], sy * 0.3, sz * 0.1, 0, 0, 0, steel);
+    put(new THREE.CylinderGeometry(fr, fr, sy * 0.07, 10),
+      sx * xOffs[xOffs.length - 1], sy * 0.43, sz * 0.1, 0, 0, 0, steel);
+    put(new THREE.CylinderGeometry(fr * 0.4, fr * 0.4, sz * 0.55, 6),
+      -sx * 0.1, -sy * 0.34, 0, Math.PI / 2, 0, 0, steel);
   } else if (kind === 'engine') {
     // machinery read (r5 critique: 'plain gray box with two cylinders'):
     // crankcase + narrower head with twin rocker covers, transverse
@@ -544,7 +588,13 @@ function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables, era, calMm) {
     // Fins/fan/exhaust wear the steel accent so the assembly separates into
     // recognizable machinery instead of alpha-mushing into one slab.
     const steel = S.proxSteel;
+    // r8 silhouette pass (critic: read as a 'tan loaf' at ghost range): the
+    // crankcase gains an oil pan step, the cooling fan grows to deck-fan
+    // scale with visible radial blades in its shroud, an air-cleaner drum
+    // rides the head, and the flank exhaust manifolds thicken with riser
+    // elbows — block + fan ring + manifolds now read at silhouette level.
     put(new THREE.BoxGeometry(sx * 0.84, sy * 0.42, sz * 0.8), 0, -sy * 0.22, 0);
+    put(new THREE.BoxGeometry(sx * 0.58, sy * 0.14, sz * 0.58), 0, -sy * 0.44, 0, 0, 0, 0, steel);
     put(new THREE.BoxGeometry(sx * 0.54, sy * 0.3, sz * 0.6), 0, sy * 0.06, 0);
     put(new THREE.BoxGeometry(sx * 0.16, sy * 0.1, sz * 0.56),
       -sx * 0.15, sy * 0.25, 0, 0, 0, 0, steel);
@@ -554,18 +604,25 @@ function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables, era, calMm) {
       put(new THREE.BoxGeometry(sx * 0.68, sy * 0.4, sz * 0.045),
         0, sy * 0.04, -sz * 0.26 + i * (sz * 0.52 / 4), 0, 0, 0, steel);
     }
-    const fr = Math.min(sx, sz) * 0.21;
-    put(new THREE.TorusGeometry(fr * 1.18, fr * 0.16, 8, 22),
-      -sx * 0.22, sy * 0.34, 0, Math.PI / 2, 0, 0, steel);
-    put(new THREE.CylinderGeometry(fr, fr, sy * 0.05, 16), -sx * 0.22, sy * 0.33, 0);
-    put(new THREE.CylinderGeometry(fr * 0.28, fr * 0.28, sy * 0.12, 8),
-      -sx * 0.22, sy * 0.38, 0, 0, 0, 0, steel);
+    const fr = Math.min(sx, sz) * 0.27;
+    put(new THREE.TorusGeometry(fr * 1.12, fr * 0.14, 8, 24),
+      -sx * 0.2, sy * 0.34, 0, Math.PI / 2, 0, 0, steel);
+    put(new THREE.CylinderGeometry(fr, fr, sy * 0.04, 18), -sx * 0.2, sy * 0.31, 0);
+    for (let b = 0; b < 5; b++) {
+      put(new THREE.BoxGeometry(fr * 1.9, sy * 0.03, fr * 0.24),
+        -sx * 0.2, sy * 0.345, 0, 0, (b / 5) * Math.PI, 0, steel);
+    }
+    put(new THREE.CylinderGeometry(fr * 0.22, fr * 0.22, sy * 0.14, 8),
+      -sx * 0.2, sy * 0.39, 0, 0, 0, 0, steel);
+    // air-cleaner drum on the head, opposite the fan
+    put(new THREE.CylinderGeometry(fr * 0.5, fr * 0.5, sx * 0.3, 10),
+      sx * 0.24, sy * 0.3, -sz * 0.18, 0, 0, Math.PI / 2, steel);
     for (const side of [-1, 1]) {
-      put(new THREE.CylinderGeometry(sy * 0.075, sy * 0.075, sz * 0.68, 8),
-        side * sx * 0.38, sy * 0.02, 0, Math.PI / 2, 0, 0, steel);
+      put(new THREE.CylinderGeometry(sy * 0.095, sy * 0.095, sz * 0.7, 8),
+        side * sx * 0.38, sy * 0.04, 0, Math.PI / 2, 0, 0, steel);
       for (let i = 0; i < 3; i++) {
-        put(new THREE.CylinderGeometry(sy * 0.045, sy * 0.045, sx * 0.16, 6),
-          side * sx * 0.3, sy * 0.12, -sz * 0.2 + i * sz * 0.2,
+        put(new THREE.CylinderGeometry(sy * 0.06, sy * 0.06, sx * 0.18, 6),
+          side * sx * 0.3, sy * 0.14, -sz * 0.2 + i * sz * 0.2,
           0, 0, side * (Math.PI / 2.7), steel);
       }
     }
@@ -774,6 +831,16 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-kv{display:flex;justify-content:space-between;font-size:10.5px;color:#8a97a3;
   font-variant-numeric:tabular-nums;letter-spacing:.03em;}
 .cot-kc-kv b{color:#e4edf4;font-weight:700;font-family:${FONT_COND};font-stretch:condensed;}
+/* r8: the pen row spans the card on ONE line (it wrapped into a mangled
+   two-line label/value jumble); the ERA/screens qualifier is a suffix chip
+   and a dim caption legends the number format once. */
+.cot-kc-kv.w{grid-column:1/-1;}
+.cot-kc-kv.pen b{white-space:nowrap;}
+.cot-kc-kv b .q{display:inline-block;margin-left:6px;padding:0 3px 1px;
+  border:1px solid currentColor;font-size:8px;letter-spacing:.12em;
+  vertical-align:1.5px;line-height:1.25;font-weight:800;}
+.cot-kc-pencap{grid-column:1/-1;font-size:8.5px;color:#5f6d7a;letter-spacing:.05em;
+  text-align:right;margin-top:-2px;}
 .cot-kc-banner{margin:7px 10px 0;padding:3px 8px;text-align:center;display:none;
   font-family:${FONT_COND};font-stretch:condensed;font-weight:800;font-size:11px;
   letter-spacing:.2em;color:#ff6a5a;border:1px solid rgba(255,106,90,.7);
@@ -789,6 +856,14 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-label.ok{color:#8a97a3;border-color:rgba(138,151,163,.5);
   background:rgba(6,9,12,.6);box-shadow:none;font-weight:700;}
 .cot-kc-label.ok .s{color:#7d8a96;font-weight:600;}
+/* r8 near-miss tier (critic: the gray chip language read as a damaged-module
+   callout): dashed border, smaller caps, one line, no leader dot — sits ON
+   its organ like the micro identity tags, so it can never straddle the hull
+   silhouette edge. Informational, never a casualty. */
+.cot-kc-label.nm{color:#9fb0bf;border:1px dashed rgba(150,166,180,.55);
+  background:rgba(6,9,12,.72);box-shadow:none;font-weight:700;font-size:9.5px;
+  letter-spacing:.11em;padding:2px 6px 3px;opacity:.85;}
+.cot-kc-label.nm .s{display:inline;font-size:9.5px;font-weight:600;color:#788695;}
 .cot-kc-dot{position:absolute;width:7px;height:7px;border-radius:50%;
   transform:translate(-50%,-50%);background:currentColor;box-shadow:0 0 9px currentColor;}
 .cot-kc-dot.ok{background:transparent;border:1.5px solid currentColor;box-shadow:none;}
@@ -1259,10 +1334,11 @@ export function createKillCam(deps) {
     d.hdK.textContent = cleanName ? `${ev.shellType || ''} · ${cleanName}` : (ev.shellType || '');
     d.hdW.textContent = `${ev.attackerName || 'Enemy'} → ${ev.targetName || ''}`;
     d.rows.textContent = '';
-    const kv = (k, v) => {
-      const r = el('div', 'cot-kc-kv', d.rows);
+    const kv = (k, v, wide) => {
+      const r = el('div', `cot-kc-kv${wide ? ' w' : ''}`, d.rows);
       const ks = el('span', '', r); ks.textContent = k;
       const vs = el('b', '', r); vs.textContent = v;
+      return r;
     };
     kv('Distance', `${Math.round(ev.flightDistM || 0)} m`);
     kv('Impact angle', `${Math.round(ev.impactAngleDeg || 0)}°`);
@@ -1287,17 +1363,36 @@ export function createKillCam(deps) {
     // the field still get the qualifier whenever the event itself proves a
     // cut happened (eraPlate set, or a residual mathematically impossible
     // from a ±25% roll) — nothing is ever recomputed or guessed.
+    kv('Damage', `${Math.round(ev.damage || 0)}`);
+    // r8 presentation (critic: 'Pen roll' wrapped into a mangled two-line
+    // label/value jumble and the three numbers carried no legend): the row
+    // now spans the full card width on ONE line ('Pen' label, nowrap value),
+    // the ERA/screens qualifier rides as an unbreakable suffix chip, and a
+    // dim caption states the format once ('fresh → after ERA / nominal').
     const penNom = nominalPenFor(ev);
     const penRoll = Math.round(ev.penRollMm || 0);
     const penFresh = Math.round(ev.penRollFreshMm || 0);
-    const penQual = ev.eraPlate ? ' · ERA'
-      : (penRoll > 0 && (penFresh > penRoll + 1
-        || (penNom > 0 && penRoll < penNom * 0.75 - 2))) ? ' · screens' : '';
-    const penArrow = penFresh > penRoll + 1 ? `${penFresh} → ` : '';
-    kv('Pen roll', penRoll > 0
-      ? `${penArrow}${penRoll}${penNom > 0 ? ` / ${penNom}` : ''} mm${penQual}` : '—');
-    kv('Damage', `${Math.round(ev.damage || 0)}`);
-    kv('Zone', zoneLabel(ev.zone));
+    const penCut = penFresh > penRoll + 1;
+    const penQual = ev.eraPlate ? 'ERA'
+      : (penRoll > 0 && (penCut
+        || (penNom > 0 && penRoll < penNom * 0.75 - 2))) ? 'SCREENS' : '';
+    {
+      const r = kv('Pen', penRoll > 0
+        ? `${penCut ? `${penFresh} → ` : ''}${penRoll}${penNom > 0 ? ` / ${penNom}` : ''} mm`
+        : '—', true);
+      r.classList.add('pen');
+      if (penQual) {
+        const q = el('span', 'q', r.querySelector('b'));
+        q.textContent = penQual;
+        q.style.color = penQual === 'ERA' ? '#ffb43c' : '#9fb0bf';
+      }
+      const legend = penCut
+        ? `fresh → after ${penQual === 'ERA' ? 'ERA' : 'screens'} / nominal`
+        : penRoll > 0 && penNom > 0 ? 'roll / nominal' : '';
+      r.title = legend ? `Penetration (mm): ${legend}` : 'Penetration roll at impact';
+      if (legend) el('div', 'cot-kc-pencap', d.rows).textContent = legend;
+    }
+    kv('Zone', zoneLabel(ev.zone), true);
     d.banner.classList.toggle('on', !!ev.ammoRacked);
     d.labelHost.textContent = '';
     d.leader.textContent = '';
@@ -1866,6 +1961,24 @@ export function createKillCam(deps) {
     // feed the ghost shader's depth grading this victim's bounding sphere
     S.ghostCenter.value.copy(pb.xcam.center);
     S.ghostRad.value = Math.max(2, snap.boundingRadiusM || 4);
+    // r8 per-band opacity planes (see the shader note in sharedMats): the
+    // turret-floor band starts at the SNAPSHOT armor's turret-ring height,
+    // the gear-dim band tops out at the track modules' bb ceiling — both
+    // straight from the spec the sim itself rolled against, nothing tuned
+    // per vehicle. Fallbacks derive from the spec height when a layout
+    // carries no turret pivot / track boxes.
+    {
+      const hM = Math.max(1.4, snap.heightM || 2.4);
+      S.ghostRingY.value = pose.pos[1]
+        + (armor.turretPivot ? armor.turretPivot[1] : hM * 0.62);
+      let gearTop = 0;
+      for (const mb of armor.modules || []) {
+        if (mb.module === 'trackL' || mb.module === 'trackR') {
+          gearTop = Math.max(gearTop, mb.max[1]);
+        }
+      }
+      S.ghostGearY.value = pose.pos[1] + (gearTop > 0 ? gearTop : hM * 0.3);
+    }
 
     // 1a. isolate the vehicle for the hold (WT x-ray read): sunlit grass
     // blades under/behind the hull otherwise show straight through the
@@ -1945,6 +2058,13 @@ export function createKillCam(deps) {
       seg.position.set((bb.min[0] + bb.max[0]) / 2, (bb.min[1] + bb.max[1]) / 2, (bb.min[2] + bb.max[2]) / 2);
       const parent = bb.turretLocal ? turretGrp : poseGrp;
       parent.add(seg);
+      // r8: un-hit boxes draw NO outline at all — even at the r6 whisper
+      // alpha the straight EdgesGeometry lattice read as raw debug box edges
+      // on the hull rear (critic). WT draws none: identity lives in the
+      // organ shapes + micro tags; bright outlines stay reserved for hit /
+      // destroyed modules and crew casualties. The (invisible) seg is kept
+      // as the label anchor its chips project from.
+      if (mat === S.edgeDim) seg.visible = false;
       if (fillMat) {
         if (key === 'm:trackL' || key === 'm:trackR') {
           // Destroyed/damaged TRACK tint as tread segments (r6 minor): one
@@ -2320,6 +2440,22 @@ export function createKillCam(deps) {
         world: world.clone(), key: key || null,
       });
     };
+    /**
+     * Near-miss tag (r8): the old gray damage-chip language (dot + leader +
+     * two-line chip) read as a damaged-module callout at a glance and one
+     * clipped against the hull top edge on the live Abrams replay (critic).
+     * Rendered as a dashed one-line tag that sits ON its organ like the
+     * micro identity tags — always inside the silhouette, never straddling
+     * its edge — visibly informational, never a casualty.
+     */
+    const addNearMiss = (world, text, key) => {
+      const label = el('div', 'cot-kc-label nm', d.labelHost);
+      label.innerHTML = `${text}<span class="s"> · near miss</span>`;
+      pb.labels.push({
+        label, dot: null, line: null, big: false, micro: true,
+        world: world.clone(), key: key || null,
+      });
+    };
     const MOD_STATE_WORD = { red: 'DESTROYED', yellow: 'DAMAGED', ok: 'HIT' };
     const MOD_STATE_COLOR = { red: '#ff5a4a', yellow: '#ffb43c', ok: '#8a97a3' };
     for (const m of ev.modulesHit) {
@@ -2362,7 +2498,7 @@ export function createKillCam(deps) {
       const seg = anchors.get(nm.key);
       if (!seg) continue;
       seg.getWorldPosition(_p);
-      addLabel(_p, MOD_STATE_COLOR.ok, nm.label, 'NEAR MISS', false, true, nm.key);
+      addNearMiss(_p, nm.label, nm.key);
     }
     if ((ev.damage || 0) > 0) {
       _p.set(ev.pos[0], ev.pos[1], ev.pos[2]);
@@ -2540,6 +2676,13 @@ export function createKillCam(deps) {
       if (it.dot) it.dot.style.display = off ? 'none' : 'block';
       if (it.line) it.line.style.display = off ? 'none' : 'block';
       if (off) continue;
+      // r8 frame-safe clamp: a chip anchored high (raised barrel tip, tall
+      // AA mount) could slide under the top letterbox bar and clip (the
+      // live Abrams GUN tag, critic) — labels stay inside the letterboxed
+      // picture area whatever the anchor projection does.
+      if (!it.big) {
+        it.top = Math.min(Math.max(it.top, h * 0.095), h * 0.885 - it.lh);
+      }
       it.label.style.left = `${it.left.toFixed(1)}px`;
       it.label.style.top = `${it.top.toFixed(1)}px`;
       if (it.dot) {

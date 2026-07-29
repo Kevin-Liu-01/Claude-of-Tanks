@@ -3,3 +3,11 @@ dist/
 shots/
 .DS_Store
 public/models/community-candidates/user-drops-recovered/
+
+# Model sourcing staging area — candidates judged then discarded; shipped
+# versions live under public/models/tanks/. Keeps the repo from carrying
+# hundreds of MB of raw source bundles.
+public/models/community-candidates/
+
+# Throwaway critic/diagnostic probes generated during review rounds
+tools/tmp-*.mjs

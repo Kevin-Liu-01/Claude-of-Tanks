@@ -32,7 +32,12 @@ export const SIM_DT = 1 / 60;
 // the SPOOL_S torque ramp below lands flat-sim 0-30 ≈ 2.0 s (~2.2 s on live
 // rough ground) while 43→60 stays well under 2 s (the r-crit authority
 // requirement — verified by scratchpad/gf-r4-tune.mjs).
-const K_ACCEL = 0.17;            // m/s² per (hp/t) on resistance-1 ground
+// r7 (round critique MINOR: firm-ground launch still hot — live 0-30 in
+// 2.04 s on the M1A2): 0.17 → 0.165 with SPOOL_FLOOR 0.25 → 0.22 and
+// SPOOL_S 1.05 → 1.2 lands module-measured flat HARD 2.20 s / MEDIUM 2.42 s
+// (scratchpad/gf-r7-tune.mjs) while 43→60 stays 1.37/1.53 s — both launch
+// cases inside/at the WoT band edges, top-half authority untouched.
+const K_ACCEL = 0.165;           // m/s² per (hp/t) on resistance-1 ground
 const C_DRAG = 0.65;             // quadratic drag fraction — asymptotic crawl to v_max (§3)
 // Engine torque spool (r4 crit "initial surge a touch hot"): drive force ramps
 // from SPOOL_FLOOR to 1 over SPOOL_S when the throttle opens, so a 60-ton
@@ -49,8 +54,8 @@ const C_DRAG = 0.65;             // quadratic drag fraction — asymptotic crawl
 // (0.45 s) keeps sub-half-second throttle blips (serpentine, tap-brake) from
 // dumping the spool — only a real stop/reversal relaunches heavy; wall
 // impacts still zero it explicitly (impact hard-stop below).
-const SPOOL_S = 1.05;            // s to full drive torque from a standing start
-const SPOOL_FLOOR = 0.25;        // torque fraction available instantly
+const SPOOL_S = 1.2;             // s to full drive torque from a standing start
+const SPOOL_FLOOR = 0.22;        // torque fraction available instantly
 const SPOOL_DECAY_S = 0.45;      // s for the spool to unwind at closed throttle
 const BRAKE_MULT = 3.5;          // braking is this much stronger than driving
 // Brake decel cap scales with specific power (weight class): a 12 hp/t heavy
@@ -107,7 +112,22 @@ const HALF_WID_FRAC = 0.5;       // contact-line half-width = 0.5 × widthM (tra
 // Terrain-contact support solve (r5 hard gate): the hull pose is resolved so
 // that NO point along either track contact line renders below the heightfield.
 // Line half-length 0.45 × hullLengthM matches the rendered track bottom run
-// (tankFactory places idler/sprocket at ~±0.45 L; the arcs curve up past them).
+// for PROCEDURAL gear (tankFactory places idler/sprocket at ~±0.45 L; the
+// arcs curve up past them).
+// r7 TERRAIN-CONTACT HARD GATE (float side, round critique CRITICAL): GLB
+// visuals do NOT share that layout — the swapped Abrams' rendered track
+// bottom runs only ±2.3 m (0.29 L) with the tracks curling up past ±2.5 m,
+// so a 0.45 L support line held the tank up on ~1.25 m of PHANTOM contact
+// beyond each real track end: on WoT-typical rolling ground the lowest
+// rendered vertex rode a MEDIAN 20-21 cm above the heightfield (53-69 cm
+// peaks at speed) and PARKED hovering 21 cm — photographed daylight under
+// the whole wheel run on desert. state.js therefore scans the swapped
+// visual's low band (vertices within 5 cm of min-Y, exactly like the r7
+// probe) when it stamps rigidGear and publishes the measured geometry as
+// `entity.contactGeom = { halfLenM, halfWidM, zCenterM }`; the solve below
+// uses it for the line half-length, half-width and longitudinal center.
+// Procedural gear keeps the 0.45 L / 0.5 W spec fractions (they match
+// tankFactory by construction — fallback when contactGeom is absent).
 const SUPPORT_LEN_FRAC = 0.45;   // support line half-length = 0.45 × hullLengthM
 const SUPPORT_SPACING_M = 0.35;  // max gap between contact samples along a line
 const SUPPORT_MAX_N = 24;        // per-line sample cap (Maus-length hulls)
@@ -532,7 +552,11 @@ export function updateTank(entity, heightField, dt, collide = null) {
   // The fit itself is computed at the settled post-integration pose below (so
   // the support solve and the fit share one sampling pass); the speed/slope
   // logic reads the one-tick-old plane, which is imperceptible at 60 Hz.
-  const hw = HALF_WID_FRAC * spec.dims.widthM;
+  // r7 float gate: GLB-swapped visuals carry MEASURED contact geometry (see
+  // the SUPPORT_LEN_FRAC note) — the support lines must ride the rendered
+  // track bottoms, not the spec hull box.
+  const cg = entity.contactGeom;
+  const hw = cg ? cg.halfWidM : HALF_WID_FRAC * spec.dims.widthM;
   const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);   // forwardAxis
   const rx = Math.cos(state.yaw), rz = -Math.sin(state.yaw);  // rightAxis
   const terrPitch = state._terr.pitch;
@@ -864,7 +888,14 @@ export function updateTank(entity, heightField, dt, collide = null) {
     Math.abs(pitchEff - sup.pitch) < 0.0012 && Math.abs(rollEff - sup.roll) < 0.0012 &&
     sup.rigid === rigidGear;
   if (!supFresh) {
-    const sl = SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
+    // Measured contact run for GLB gear (see the SUPPORT_LEN_FRAC r7 note):
+    // half-length + longitudinal center come from the rendered track-bottom
+    // band. zc shifts every sample's hull-local z; the plane FIT uses levers
+    // about zc (the sample centroid — the Σz=0 symmetry the closed-form
+    // slope assumes) while the support deficit keeps the ACTUAL z lever arm
+    // (worldY of a contact point = pos.y + x·sinR·cosP + z·sinP).
+    const sl = cg ? cg.halfLenM : SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
+    const zc = cg ? cg.zCenterM : 0;
     const nLine = Math.min(SUPPORT_MAX_N, Math.max(5, Math.ceil((2 * sl) / SUPPORT_SPACING_M) + 1));
     const step = (2 * sl) / (nLine - 1);
     // Project the hull-local contact points to world XZ with the same YXZ
@@ -888,20 +919,21 @@ export function updateTank(entity, heightField, dt, collide = null) {
       const x = side * hw;
       const x1 = x * cr0, y1 = x * sr0;
       for (let k = 0; k < nLine; k++) {
-        const z = -sl + k * step;
+        const zr = -sl + k * step; // lever about the contact-run center (fit)
+        const z = zc + zr;         // actual hull-local z (deficit / projection)
         const z2 = y1 * sa0 + z * ca0;
         const h = heightField.getHeightAt(px1 + x1 * cb + z2 * sb, pz1 - x1 * sb + z2 * cb);
-        sumHZ += h * z;
-        sumZZ += z * z;
+        sumHZ += h * zr;
+        sumZZ += zr * zr;
         if (side < 0) sumL += h; else sumR += h;
         nLR++;
         // support deficit at the rendered pose (worldY of the contact point
         // relative to pos.y): pos.y must sit at max over samples of
         // h − (x·sinR·cosP + z·sinP)
         const d = h - (x * sinR * cosP + z * sinP);
-        if (d > outerMax) { outerMax = d; argZ = z; }
-        if (z < -zHalf && d > rearMax) { rearMax = d; rearZ = z; }
-        else if (z > zHalf && d > frontMax) { frontMax = d; frontZ = z; }
+        if (d > outerMax) { outerMax = d; argZ = zr; }
+        if (zr < -zHalf && d > rearMax) { rearMax = d; rearZ = zr; }
+        else if (zr > zHalf && d > frontMax) { frontMax = d; frontZ = zr; }
         sumD += d; nD++;
       }
     }
@@ -931,7 +963,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
         const y1 = x * sr0 + ln.yOff * cr0;
         const lift = (x * sinR + ln.yOff * cr0) * cosP;
         for (let k = 0; k < nLine; k += fanStride) {
-          const z = k === nLine - 2 ? sl : -sl + k * step; // keep the far end
+          const z = zc + (k === nLine - 2 ? sl : -sl + k * step); // keep the far end
           const z2 = y1 * sa0 + z * ca0;
           const h = heightField.getHeightAt(px1 + x1 * cb + z2 * sb, pz1 - x1 * sb + z2 * cb);
           const d = h - (lift + z * sinP);

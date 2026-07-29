@@ -938,6 +938,7 @@ const frameInfo = {
     dispersionRadM: 1,
     penRatio: null,
     blockedDistM: null,
+    blockedLabel: false, // r7: dwell-gated PATH BLOCKED text (tint stays instant)
     gunMarker: new THREE.Vector3(),
     atGunLimit: false,
     gunLimitSpec: false, // GUN LIMIT label (movement.js r3: spec pins only)
@@ -1046,6 +1047,25 @@ function computeAimInfo() {
   // muzzlePathBlockDist. The old margin made hull-down crests invisible.
   p.visual.gunMuzzleWorld(_v1);
   aim.blockedDistM = muzzlePathBlockDist(_v1, aim.point, aim.dispersionRadM);
+  // gameplay_feel r7 (round critique MAJOR): the "PATH BLOCKED N m" TEXT
+  // fired constantly during ordinary cross-country driving — every time
+  // server-aim rested on a nearby rise (parked verdant 32 m, desert 10-11 m
+  // palm grove/freeze captures). WoT never shouts text for a gun resting on
+  // close terrain; this is the same every-crest noise class the GUN LIMIT
+  // label got dwell-gated for in movement.js (gunLimitSpec). The LABEL now
+  // requires (same recipe): ~0.5 s of CONTINUOUS block AND (stationary/
+  // creeping OR a far ask ≥ 120 m — pinning there is a deliberate lay, not
+  // terrain noise). The red reticle TINT stays tick-instant via
+  // aim.blockedDistM; only the text is gated (hud.js prints blockedLabel).
+  if (aim.blockedDistM != null) {
+    if (blockedSinceMs < 0) blockedSinceMs = performance.now();
+    const dwellOk = performance.now() - blockedSinceMs >= 500;
+    const speedKmh = Math.abs(p.state.speed) * 3.6;
+    aim.blockedLabel = dwellOk && (speedKmh <= 10 || rig.aimDist >= 120);
+  } else {
+    blockedSinceMs = -1;
+    aim.blockedLabel = false;
+  }
 
   // penetration indicator: first enemy plate under the aim ray.
   // controls_gunnery r6: matches the sticky server reticle — the bounding
@@ -1079,6 +1099,8 @@ function computeAimInfo() {
 }
 let lastPenRatio = null;
 let lastPenUntilMs = -Infinity;
+// gameplay_feel r7: continuous-block dwell start for the PATH BLOCKED label
+let blockedSinceMs = -1;
 
 // ---------------------------------------------------------------------------
 // Render loop
@@ -1546,6 +1568,7 @@ function forcedHudFrame(mode, forcedAim) {
   aim.dispersionRadM = forcedAim.dispersionRadM;
   aim.penRatio = forcedAim.penRatio;
   aim.blockedDistM = null; // screenshot views never show the blocked warning
+  aim.blockedLabel = false;
   aim.atGunLimit = false;
   aim.gunLimitSpec = false;
   aim.reload.t = forcedAim.reload.t;

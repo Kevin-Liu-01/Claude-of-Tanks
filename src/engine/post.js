@@ -266,13 +266,18 @@ const AERIAL_HEIGHT_EXT_K = 0.35; // share of extinction that obeys altitude
 // so the ramp must be fully in by then, and the dominance key is G-vs-B
 // directly (the B>=G atmospheric criterion) — teal (g>b>r) pixels only
 // scored ~0.35 under a g-vs-max(r,b) key and kept their jade cast.
-const AERIAL_HUE_CLAMP_NEAR = 400; // m — clamp fades in from here
-const AERIAL_HUE_CLAMP_FAR = 760; // m — full strength beyond
-// r5 ("far-tree impostors magnify into flat TEAL leaf-blob wallpaper" at
-// x8): the impostor band's g-b delta is small (~0.02-0.04 linear), so the
-// old smoothstep(0, 0.05) only half-engaged the clamp and the jade cast
-// survived. Steeper key + slightly stronger max pull.
-const AERIAL_HUE_CLAMP_MAX = 0.88; // max pull toward blue-grey
+// lighting_post r7 (CRITICAL: "horizon forest impostors render as flat teal
+// vertical smears — fully desaturated versus sunlit midground trees at
+// similar view depth"): the 0.88 pull at 760 m was THIS clamp — it converted
+// the whole 470-1300 m forest band to the blue-grey pole, killing every trace
+// of canopy green ("dead teal curtain"). The impostors are now relit to
+// sun-matched albedo at the source (maps/horizon.js, r7 handoff), so the
+// clamp returns to being ATMOSPHERE, not paint: a moderate pull that starts
+// past the first comb row and never exceeds ~45% — distant forest shifts
+// toward blue-grey with range, but stays recognizably lit green canopy.
+const AERIAL_HUE_CLAMP_NEAR = 560; // m — clamp fades in from here
+const AERIAL_HUE_CLAMP_FAR = 1150; // m — full strength beyond
+const AERIAL_HUE_CLAMP_MAX = 0.45; // max pull toward blue-grey
 const AERIAL_HUE_GREY = [0.92, 0.99, 1.12]; // blue-grey pole (per-channel luma scale)
 // r9 PRE-TONEMAP EMISSIVE SHOULDER ("fireball core is fully clipped: flat
 // blown white-yellow disc — the tonemapper has no highlight shoulder on
@@ -413,8 +418,12 @@ const AerialShader = {
         // stays continuous.
         float hzD = max( -viewZ - 85.0, 0.0 );
         // r6 sniper far-band give-back (see the uHazeFull uniform note).
+        // lighting_post r7: 0.62 -> 0.50 — with the impostor band relit to
+        // sun-matched albedo (horizon.js handoff) the full-density give-back
+        // re-veiled it toward the cool haze pole at zoom; half density keeps
+        // the backdrop atmospheric without re-tealing the canopy.
         float dHaze = max( uHazeDensity,
-          uHazeFull * 0.62 * smoothstep( 430.0, 780.0, rayT ) );
+          uHazeFull * 0.50 * smoothstep( 430.0, 780.0, rayT ) );
         float x2 = hzD * dHaze;
         float f2 = 1.0 - exp( -x2 * x2 );
         f2 *= 0.25 + 0.75 * smoothstep( 0.0, 0.05, lum );
@@ -567,7 +576,12 @@ const GRADE_VIGNETTE_BRIGHT_KEEP = 0.62; // fraction of vignette removed on brig
 // r2: 0.012 → 0.015 — paired with the aerial black-point guard so combat
 // frames under smoke/haze keep a true display-black anchor (the r2 critique's
 // "lifted blacks" veil read).
-const GRADE_BLACK_LIFT = 0.015;
+// lighting_post r7 ("lifted black floor across the wide shots: no pixel
+// reaches a true dark, shadow interiors are milky"): 0.015 → 0.022 — canopy
+// shadow cores and building interiors now anchor at ~5% display luma. The
+// grade's low-end contrast taper (smoothstep 0.045-0.30 below) still holds
+// the 0.08-0.25 shadow BODY band, so only the deepest cores take the toe.
+const GRADE_BLACK_LIFT = 0.022;
 // r3 ("desert is exposure-blown: sand midtones near RGB 245, dune relief
 // unreadable"): knee 0.86 → 0.82 — the rational shoulder starts a step lower
 // so the sand/snow top-end re-spreads into readable texture; paired with the
@@ -632,17 +646,19 @@ const GRADE_HIGH_TINT = [1.056, 1.008, 0.947]; // warm sun-kissed highlights
 // capture, the r5 ring shaded the lower midfield ×0.87 and the upper horizon
 // band ×0.55 — stacked onto the zoom de-haze (see AERIAL_ZOOM_* below) the
 // sight picture read two stops under the arcade frame of the same scene.
-// Scene exposure/tonemap/grade are untouched by scope mode (same OutputPass +
-// grade path); the optics ring is eased to a light, WoT-style corner shade:
-// l/r edges now keep ~×0.85 (was ×0.72) and extreme corners ~×0.55 (was
-// ×0.27). The ring stays clearly visible against daylight (gameplay_feel r5
-// ask) without eating the aim band.
-const SCOPE_VIGNETTE_START = 0.72; // radius where the inner falloff begins
-const SCOPE_VIGNETTE_END = 1.15; // inner falloff reaches max past the v-edges
-const SCOPE_VIGNETTE_MAX = 0.15; // picture is ×0.85 by the l/r edge band
-const SCOPE_CORNER_START = 1.25; // corner shade begins past the v-edge midpoints
-const SCOPE_CORNER_END = 2.02; // ~frame corner (aspect-corrected radius)
-const SCOPE_CORNER_MAX = 0.35; // extra ×0.65 in the extreme corners
+// lighting_post r7 (CRITICAL: "top ~40% of frame is under a heavy dark veil —
+// scope vignette overreach darkening the whole scoreboard band and horizon,
+// not just corners"): the two-term stack (inner falloff from scopeR 0.72 +
+// corner shade from 1.25) still hit the TOP-CENTER of a 16:9 frame at ~11%
+// (scopeR = 1.0 there) and the top corners at ~45%, and it compounded with
+// the scoped highlight pull below into the "murky veil" read. Rebuilt as ONE
+// strictly corner-weighted radial term in CORNER-NORMALIZED radius (1.0 = the
+// exact frame corner at any aspect): zero effect inside 0.60 of the corner
+// radius (top-center sits at 0.49 — untouched), reaching SCOPE_VIGNETTE_MAX
+// only at the extreme corners. WoT's sniper shade is corner-only; the sight
+// picture, scoreboard band and horizon keep full scene exposure.
+const SCOPE_VIGNETTE_INNER = 0.60; // corner-normalized radius where shade begins
+const SCOPE_VIGNETTE_MAX = 0.20; // ×0.80 at the extreme frame corners only
 // hud_ui r4: blur only kisses the outer ~20% of screen radius at ~40% strength
 // (the old 1.02 start put the outer thirds of a 16:9 frame at FULL blur —
 // "left and right thirds dissolve into watercolor streaks" at x8)
@@ -733,13 +749,17 @@ const GradeShader = {
       // per-map display exposure trim (sky preset postExposure, default 1.0)
       col *= uExposure;
       // gameplay_feel r6 (round critique MINOR): sun-facing scoped washout —
-      // while scoped, pull the BRIGHT end ~0.5 EV (luma-keyed: shadow/midtone
-      // level untouched) so bright ground + haze + bloom can no longer stack
-      // the upper half of the sight picture into unreadable near-white milk.
+      // while scoped, pull the BRIGHT end (luma-keyed: shadow/midtone level
+      // untouched) so bright ground + haze + bloom can no longer stack the
+      // upper half of the sight picture into unreadable near-white milk.
       // Pairs with the scoped bloom/aerial trims in render().
+      // lighting_post r7: 0.30 over 0.34-0.95 was a second whole-frame veil —
+      // it dragged every ordinary 0.4-0.6 luma pixel (horizon band, scree,
+      // sky) 8-14% darker and stacked with the old vignette into the "top
+      // 40% under a murky veil" critical. Only true near-milk is pulled now.
       if ( uScope > 0.001 ) {
         float scLum = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
-        col *= 1.0 - 0.30 * uScope * smoothstep( 0.34, 0.95, scLum );
+        col *= 1.0 - 0.14 * uScope * smoothstep( 0.62, 0.97, scLum );
       }
       // fixed warm white balance — identical for every camera/shot
       col = clamp( col * uBalance, 0.0, 1.0 );
@@ -784,9 +804,16 @@ const GradeShader = {
       // black anchor and the midtone S-curve identity is untouched.
       cGain = mix( 1.0, cGain, smoothstep( 0.045, 0.30, cLuma ) );
       col = clamp( mix( vec3( ${GRADE_PIVOT.toFixed(3)} ), col, cGain ), 0.0, 1.0 );
-      // split-tone: cool shadows / warm highlights, keyed on luminance
+      // split-tone: cool shadows / warm highlights, keyed on luminance.
+      // lighting_post r7 ("combat_firing white balance is split within the
+      // frame: dirt road stays cool blue-gray while adjacent grass carries
+      // the warm golden grade"): the 0.12-0.72 band held a 0.35-0.45-luma
+      // road at ~50% shadow-tint membership while brighter grass beside it
+      // rode the warm pole — two white balances in one frame. Band tightened
+      // to 0.10-0.55: midtone ground now shares the warm side with its
+      // surroundings; true shadows (<0.15) keep the full cool pole.
       float luma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
-      vec3 split = mix( uShadowTint, uHighTint, smoothstep( 0.12, 0.72, luma ) );
+      vec3 split = mix( uShadowTint, uHighTint, smoothstep( 0.10, 0.55, luma ) );
       col = clamp( col * split, 0.0, 1.0 );
       // soft highlight shoulder: roll near-white values off instead of
       // clipping (metal speculars, horizon band) — filmic top-end.
@@ -810,16 +837,27 @@ const GradeShader = {
       float vig = uVignette * ( 1.0 - ${GRADE_VIGNETTE_BRIGHT_KEEP.toFixed(3)}
         * smoothstep( 0.45, 0.75, vigL ) );
       col *= 1.0 - vig * smoothstep( 0.34, 1.15, dot( q, q ) * 2.0 ); // terrain_environment r4: wider falloff
-      // sniper optics (hud_ui r6): FULL-SCREEN sight picture — a gentle
-      // inner falloff toward the frame edge plus a corner-only shade. No
-      // opaque scope-tube cut (WoT sniper never masks the frame).
+      // sniper optics (lighting_post r7): corner-only shade in corner-
+      // normalized radius — zero inside 0.60 of the corner distance, max 20%
+      // at the extreme corners. Never touches the top/bottom frame centers
+      // (the r7 "dark veil over the whole scoreboard band" fix). No opaque
+      // scope-tube cut (WoT sniper never masks the frame).
       if ( uScope > 0.001 ) {
+        float cornerR = scopeR / length( vec2( uAspect, 1.0 ) );
         col *= 1.0 - uScope * ${SCOPE_VIGNETTE_MAX.toFixed(3)}
-          * smoothstep( ${SCOPE_VIGNETTE_START.toFixed(3)}, ${SCOPE_VIGNETTE_END.toFixed(3)}, scopeR );
-        col *= 1.0 - uScope * ${SCOPE_CORNER_MAX.toFixed(3)}
-          * smoothstep( ${SCOPE_CORNER_START.toFixed(3)}, ${SCOPE_CORNER_END.toFixed(3)}, scopeR );
+          * smoothstep( ${SCOPE_VIGNETTE_INNER.toFixed(3)}, 1.0, cornerR );
       }
-      gl_FragColor = vec4( col, texel.a );
+      // lighting_post r7 ("deep-blue-to-haze sky transition shows visible
+      // gradient banding" on desert): the grade's contrast/knee re-spreads
+      // the 8-bit-bound sky ramp and re-quantizes it. A ±0.7 LSB interleaved-
+      // gradient-noise dither at the very end of the display chain breaks
+      // every low-frequency ramp (sky dome, haze band, vignette falloff)
+      // below the visibility threshold — IGN has a far better spectrum for
+      // this than white noise, and 1080p captures stay deterministic.
+      float ign = fract( 52.9829189 * fract(
+        dot( gl_FragCoord.xy, vec2( 0.06711056, 0.00583715 ) ) ) );
+      col += ( ign - 0.5 ) * ( 1.4 / 255.0 );
+      gl_FragColor = vec4( clamp( col, 0.0, 1.0 ), texel.a );
     }`,
 };
 

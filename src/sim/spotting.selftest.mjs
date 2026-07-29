@@ -378,6 +378,50 @@ console.log('[18] notifyFired pulls the shooter\'s next check in (no cadence wai
     'reveal lands on the next update tick after the shot');
 }
 
+console.log('[19] getConcealment double-bush truth while the fire bloom is hot (r7)');
+{
+  // Ambush layout: the player idles INSIDE bush A with bush B screening the
+  // sightline 30 m toward the enemy; a teammate keeps the enemy team-spotted
+  // from a clean angle. Firing burns bush A (15 m rule) but canSpot still
+  // fails behind bush B — the HUD snapshot must report that surviving screen
+  // instead of dropping to "exposed" for the ~6 s bloom decay.
+  const bushA = { x: 0, z: 0, r: 3, add: 0.35 };    // own bush (hull overlap)
+  const bushB = { x: 30, z: 0, r: 3, add: 0.35 };   // screen 30 m down the line
+  const me = tank('p1', 'player', 0, 0);
+  const enemy = tank('e1', 'enemy', 250, 0);
+  const buddy = tank('p2', 'player', 200, 60);      // spots the enemy for the team
+  const sys = mkSys([bushA, bushB], [me, enemy, buddy]);
+  sys.forceCheck(0);
+  ok(sys.isSpotted('e1', 'player'), 'setup: enemy is team-spotted (minimap-known)');
+  const cold = { ...sys.getConcealment(me, 1) };
+  near(cold.bush, 0.35, 1e-9, 'cold snapshot: own bush counts');
+  sys.notifyFired('p1', 2, 88);
+  const hot = { ...sys.getConcealment(me, 2.1) };
+  ok(!sys.testSpot(enemy, me, 2.1),
+    'sim truth: still hidden behind bush B while bloom-hot');
+  near(hot.bush, 0.35, 1e-9,
+    'hot snapshot mirrors the sim: surviving sightline screen reported');
+  ok(hot.inBush, 'hot snapshot keeps inBush while the screen holds');
+  // Contrast: the same shot with NO screening bush is flash-revealed, and
+  // the snapshot agrees (bush 0 -> exposed is then the truth).
+  // (0,250) -> enemy (250,0): 353.6 m, inside the enemy's 370 m view range.
+  const me2 = tank('p3', 'player', 0, 250);
+  const sys2 = mkSys([{ x: 0, z: 250, r: 3, add: 0.35 }], [me2, enemy, buddy]);
+  sys2.forceCheck(0);
+  sys2.notifyFired('p3', 1, 88);
+  ok(sys2.testSpot(enemy, me2, 1.1), 'control: no screen -> muzzle flash reveals');
+  ok(sys2.getConcealment(me2, 1.1).bush === 0, 'control: snapshot reports no bush');
+  // No-leak property: with NO team-spotted enemy the hot snapshot must not
+  // consult hidden enemies' bearings — bush stays 0 even though a screen
+  // disc covers the hidden enemy's sightline.
+  const me3 = tank('p4', 'player', 0, 0);
+  const ghost = tank('e2', 'enemy', 250, 0);
+  const sys3 = mkSys([bushA, bushB], [me3, ghost]);
+  sys3.notifyFired('p4', 0.5, 88);
+  ok(sys3.getConcealment(me3, 0.6).bush === 0,
+    'no-leak: unspotted enemies never feed the hot snapshot');
+}
+
 console.log('');
 if (failed > 0) {
   console.error(`spotting.selftest: ${failed} FAILED, ${passed} passed`);

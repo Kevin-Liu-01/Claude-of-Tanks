@@ -360,20 +360,29 @@ function wheelGeo(style, r, w, seg, dishR = 0.90) {
     // toward the hub, dark shadow annulus at the dish bottom, raised hub drum
     // + cap, and a 16-bolt ring standing dark on the dish slope. Reads as a
     // dished pressed-steel wheel at closeup instead of a flat painted disc.
-    const tire = mergeAll([cylX(r, w, seg)]);            // thin rubber band
-    discs.push(cylX(r * 0.93, w * 1.04, seg));           // proud outer face ring
+    // r7b ("flat pancake discs — no dish, no rubber/steel rim separation" on
+    // the judged Tiger closeup): the painted rim ring pulls in to 0.86 r so a
+    // REAL dark tire band (14% of radius) separates rubber from steel, the
+    // dish cones deepen (0.34 w -> 0.46 w span, proud of the face ring) and
+    // the dish-bottom shadow annulus widens so the concavity survives flat
+    // camo paint at closeup range.
+    const tire = mergeAll([
+      cylX(r, w, seg),                                   // rubber tire band
+      cylX(r * 0.92, w * 1.02, seg),                     // tire shoulder rounds the edge
+    ]);
+    discs.push(cylX(r * 0.86, w * 1.06, seg));           // proud outer face ring
     for (const sgn of [-1, 1]) {                          // concave dish cones
       discs.push(xform(
-        cylX(sgn < 0 ? r * 0.88 : r * 0.30, w * 0.34, seg, sgn < 0 ? r * 0.30 : r * 0.88),
-        sgn * w * 0.35, 0, 0));
+        cylX(sgn < 0 ? r * 0.82 : r * 0.28, w * 0.46, seg, sgn < 0 ? r * 0.28 : r * 0.82),
+        sgn * w * 0.42, 0, 0));
     }
-    discs.push(cylX(r * 0.26, w * 1.28, 12));            // raised hub drum
-    discs.push(cylX(r * 0.15, w * 1.46, 10));            // hub cap
-    const dk = [cylX(r * 0.40, w * 0.46, seg)];          // dish-bottom shadow annulus
+    discs.push(cylX(r * 0.26, w * 1.34, 12));            // raised hub drum
+    discs.push(cylX(r * 0.15, w * 1.52, 10));            // hub cap
+    const dk = [cylX(r * 0.50, w * 0.52, seg)];          // dish-bottom shadow annulus
     for (let k = 0; k < 16; k++) {                        // 16 rim bolts on the dish slope
       const a = (k / 16) * Math.PI * 2 + 0.1;
-      dk.push(xform(cylX(r * 0.040, w * 1.06, 6),
-        0, Math.sin(a) * r * 0.58, Math.cos(a) * r * 0.58));
+      dk.push(xform(cylX(r * 0.042, w * 1.12, 6),
+        0, Math.sin(a) * r * 0.60, Math.cos(a) * r * 0.60));
     }
     return { tire, disc: mergeAll(discs), dark: mergeAll(dk) };
   }
@@ -429,17 +438,20 @@ function idlerGeo(r, w, seg) {
   }
   body.push(cylX(r * 0.26, w + hD * 1.6, 14));           // raised hub drum
   body.push(cylX(r * 0.15, w + hD * 2.1, 10));           // hub cap
-  // six ROUND lightening holes (real idlers carry circular cutouts) — kept
-  // small enough that the face still reads solid inside the wrap
-  for (let k = 0; k < 6; k++) {
-    const a = (k / 6) * Math.PI * 2 + 0.35;
-    dark.push(xform(cylX(r * 0.145, w * 0.9 + hD, 10),
-      0, Math.sin(a) * r * 0.56, Math.cos(a) * r * 0.56));
+  // r7b DE-STAR (Sherman "star-toothed wheel at the rear" misread): the six
+  // BIG dark holes at 0.56 r left green lobes between them that rendered as
+  // a 6-point drive star at garage range — the critic concluded rear drive.
+  // Idlers keep ROUND lightening holes but small and tucked toward the hub
+  // so the face reads as a plain dished wheel, unmistakably NOT a sprocket.
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2 + 0.35;
+    dark.push(xform(cylX(r * 0.085, w * 0.9 + hD, 8),
+      0, Math.sin(a) * r * 0.48, Math.cos(a) * r * 0.48));
   }
   for (let k = 0; k < 8; k++) {                          // dark bolt heads on the dish
     const a = (k / 8) * Math.PI * 2 + 0.2;
     dark.push(xform(cylX(0.022, w + hD * 1.6, 6),
-      0, Math.sin(a) * r * 0.34, Math.cos(a) * r * 0.34));
+      0, Math.sin(a) * r * 0.30, Math.cos(a) * r * 0.30));
   }
   return { body: mergeAll(body), dark: mergeAll(dark) };
 }
@@ -450,28 +462,41 @@ function idlerGeo(r, w, seg) {
 // recessed core, dark teeth (they read as link engagement, not camo spikes),
 // dark bolt ring, raised hub. `toothOuter` is the band outer radius
 // (r + CLEAR + trackTh/2) supplied by the caller; tips stay a hair proud.
-function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null) {
-  // r5 track-gate rework (hollow-wrap critique, sprocket side): teeth used to
-  // poke 1-2 cm THROUGH the band's outer face (they read as stray grey rods
-  // riding the wrap) while the skinny 0.60r body drum left daylight between
-  // the rim plates. The drum is now a solid painted core spanning nearly the
-  // full width, the rim plates reach the band's inner face, and the teeth
-  // stop just inside the band so they read as link engagement in the gap.
-  const tipR = Math.max((toothOuter ?? r * 1.1) - 0.055, r * 1.0);
-  const rootR = r * 0.80;
-  const body = [cylX(r * 0.88, w * 0.86, seg)];          // solid painted body drum
+function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165, ringSpan = null) {
+  // r7b TOOTHED-RING REBUILD (hard critique on both judged WWII closeups AND
+  // the Sherman drive-end misread): the r5 "teeth hidden just inside the
+  // band" compromise rendered the drive end as a FLAT TOOTHLESS PAINTED DISC
+  // from every side view — indistinguishable from the idler, so front-drive
+  // vehicles read rear-drive. Real sprockets carry TWO TOOTHED CARRIER RINGS
+  // with the track running between them; from the side the outer ring's
+  // teeth visibly overlap the link run. Rebuild:
+  //  - the two carrier rings move to the BAND EDGES (outer face a hair proud
+  //    of the band side, so they read over the links, never inside them);
+  //  - teeth are radially TAPERED wedges reaching the band's OUTER face
+  //    (toothOuter), spaced at the LINK PITCH so sprocket rotation stays
+  //    visually registered with the pad stream (both advance by `scroll`);
+  //  - tooth + ring recess render dark steel against the painted drum.
+  const tipR = (toothOuter ?? r * 1.12) + 0.006;
+  const rootR = Math.max(r * 0.72, tipR - Math.max(0.11, r * 0.30));
+  const n = Math.max(10, Math.round((Math.PI * (rootR + tipR)) / linkM));
+  const pitchArc = (Math.PI * (rootR + tipR)) / n;       // circumferential pitch at mid
+  const body = [cylX(r * 0.88, w * 0.80, seg)];          // solid painted body drum
   const dark = [];
   body.push(cylX(r * 0.30, w * 1.14, 12));               // hub
   body.push(cylX(r * 0.17, w * 1.26, 10));               // hub cap
-  for (const off of [-w / 2, w / 2]) {
-    body.push(xform(cylX(r * 0.97, w * 0.13, seg), off, 0, 0));    // rim plate
-    dark.push(xform(cylX(r * 0.90, w * 0.16, seg), off, 0, 0));    // recessed dark ring
-    for (let k = 0; k < teeth; k++) {
-      const a = (k / teeth) * Math.PI * 2;
+  const span = ringSpan ?? w;                            // rings ride the BAND edges
+  for (const off of [-(span / 2) * 0.99, (span / 2) * 0.99]) {
+    body.push(xform(cylX(r * 0.94, w * 0.145, seg), off, 0, 0));   // carrier ring, painted
+    dark.push(xform(cylX(r * 0.82, w * 0.155, seg), off, 0, 0));   // recessed dark root ring
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2;
       const mid = (rootR + tipR) / 2;
-      // rx = (PI/2 - a) points the long dim RADIALLY around the ring
-      dark.push(xform(box(w * 0.15, tipR - rootR + 0.02, r * 0.13),
+      // rx = (PI/2 - a) points the long dim RADIALLY around the ring; teeth
+      // taper root->tip (wedge) via a slim tip cap on a wider root block
+      dark.push(xform(box(w * 0.13, tipR - rootR, pitchArc * 0.46),
         off, Math.sin(a) * mid, Math.cos(a) * mid, Math.PI / 2 - a, 0, 0));
+      dark.push(xform(box(w * 0.13, Math.max(0.02, (tipR - rootR) * 0.3), pitchArc * 0.26),
+        off, Math.sin(a) * (tipR - 0.01), Math.cos(a) * (tipR - 0.01), Math.PI / 2 - a, 0, 0));
     }
   }
   for (let k = 0; k < 8; k++) {                          // dark bolt ring on the hub boss
@@ -602,7 +627,10 @@ function buildRunningGear(P, cfg) {
   // drums left the outermost interleave row standing PROUD of the sprocket
   // face (the "non-concentric flat camo disc inside the wrap" read) and a
   // see-through slot between rim plates on the modern rigs.
-  const sg = sprocketGeo(sprocket.r, trackW * 0.80, seg, 12, sprocket.r + bandOuterR);
+  // r7b: the toothed carrier rings ride the BAND edges (ringSpan = trackW) so
+  // the drive end reads toothed from the side; teeth spaced at the link pitch.
+  const sg = sprocketGeo(sprocket.r, trackW * 0.80, seg, 12, sprocket.r + bandOuterR,
+    mats.trackLinkM, trackW);
   const ig = idlerGeo(idler.r, trackW * 0.74, seg);
   P.disposables.push(sg.body, sg.dark, ig.body, ig.dark);
   // End-wheel BODIES always take scheme paint (crews paint sprocket/idler
@@ -1181,26 +1209,35 @@ function buildRunningGear(P, cfg) {
 // Gun assembly (into the recoil group). cfg fractions are along barrel length.
 // ---------------------------------------------------------------------------
 function buildGun(P, cfg) {
-  const { len, r, brake = null, sleeve = false, evac = null, collar = false, baseR = r * 1.9 } = cfg;
+  const { len, r, brake = null, sleeve = false, evac = null, collar = false,
+    baseR = r * 1.9, evacR = 1.62 } = cfg;
   const seg = P.q ? 28 : 12;
   const g = [];
+  const gd = [];                                                             // dark fittings on the tube
   g.push(xform(cylZ(baseR, 0.55, seg, baseR * 1.15), 0, 0, 0.2));           // mantlet root / breech collar
   const bLen = brake === 'double' ? len - 0.66 : brake ? len - 0.42 : len - 0.02;
   g.push(xform(cylZ(r, bLen - 0.4, seg, r * 1.25), 0, 0, 0.4 + (bLen - 0.4) / 2));
   if (sleeve) {
+    // r7b (T-90M "zero material separation" major): the thermal sleeve's
+    // clamp rings render DARK (canvas/steel cinch bands) so the sleeved tube
+    // splits into sleeve / ring / bare-steel segments instead of one painted
+    // pipe; a dark seam ring also closes each sleeve start.
     for (const [f0, f1] of [[0.16, 0.46], [0.52, 0.82]]) {
       const sl = (f1 - f0) * len;
       g.push(xform(cylZ(r * 1.22, sl, seg), 0, 0, f0 * len + sl / 2));
-      g.push(xform(cylZ(r * 1.3, 0.06, seg), 0, 0, f1 * len + 0.03));       // clamp ring
+      gd.push(xform(cylZ(r * 1.24, 0.045, seg), 0, 0, f0 * len + 0.02));     // start seam ring
+      gd.push(xform(cylZ(r * 1.31, 0.06, seg), 0, 0, f1 * len + 0.03));      // clamp ring
     }
   }
   if (evac !== null) {
     // Bore evacuator: a clearly readable tapered drum blended into the tube —
     // the single most identifying feature of a modern gun tube at closeup.
+    // r7b: diameter now per-gun (cfg.evacR) — the 2A46M's fat drum barely
+    // read over the thermal sleeve at the default 1.62x.
     const el = Math.max(0.62, len * 0.13);
-    g.push(xform(cylZ(r * 1.62, el * 0.55, seg), 0, 0, evac * len));
-    g.push(xform(cylZ(r * 1.62, el * 0.32, seg, r * 1.16), 0, 0, evac * len - el * 0.43));
-    g.push(xform(cylZ(r * 1.16, el * 0.32, seg, r * 1.62), 0, 0, evac * len + el * 0.43));
+    g.push(xform(cylZ(r * evacR, el * 0.55, seg), 0, 0, evac * len));
+    g.push(xform(cylZ(r * evacR, el * 0.32, seg, r * 1.16), 0, 0, evac * len - el * 0.43));
+    g.push(xform(cylZ(r * 1.16, el * 0.32, seg, r * evacR), 0, 0, evac * len + el * 0.43));
   }
   if (collar) g.push(xform(cylZ(r * 1.35, 0.09, seg), 0, 0, len - 0.55));    // MRS collar
   if (brake) {
@@ -1214,23 +1251,23 @@ function buildGun(P, cfg) {
       g.push(xform(cylZ(br * 0.9, 0.1, seg, r * 1.08), 0, 0, len - 0.52));   // tapered lead-in cone
     }
     if (brake === 'double') {
-      // r5 rework (critic: the r4 build read as "a dumbbell of two discs with
-      // a skinny exposed neck"): the KwK 36/42 brake is two JOINED BULBOUS
-      // baffle chambers — the rear one longer and barrel-shaped, a NARROW
-      // baffle slot (not a bare-core gap), and a rounded front chamber with
-      // a small exit collar. Chambers are built as tapered barrel profiles
-      // (lead cone -> fat waist -> shoulder) so they read cast, not turned.
-      const bd = r * 1.66;
-      g.push(xform(cylZ(r * 0.92, 0.72, seg), 0, 0, len - 0.36));            // fat core through the brake
-      g.push(xform(cylZ(bd * 0.80, 0.10, seg, r * 1.04), 0, 0, len - 0.66)); // lead-in cone
-      g.push(xform(cylZ(bd, 0.14, seg, bd * 0.80), 0, 0, len - 0.545));      // rear chamber, swelling
-      g.push(xform(cylZ(bd, 0.16, seg), 0, 0, len - 0.40));                  // rear chamber waist
-      g.push(xform(cylZ(bd * 0.86, 0.05, seg, bd), 0, 0, len - 0.295));      // rear shoulder taper
-      // narrow baffle slot len-0.27..len-0.23 over the fat core
-      g.push(xform(cylZ(bd * 0.96, 0.05, seg, bd * 0.80), 0, 0, len - 0.205)); // front chamber swell
-      g.push(xform(cylZ(bd * 0.96, 0.13, seg), 0, 0, len - 0.115));          // front chamber waist
-      g.push(xform(cylZ(bd * 0.70, 0.05, seg, bd * 0.96), 0, 0, len - 0.025)); // front shoulder
-      g.push(xform(cylZ(r * 1.12, 0.05, seg), 0, 0, len - 0.005));           // exit collar
+      // r7b REWORK (judged Tiger closeup: "muzzle brake is a smooth capsule
+      // bulb instead of the flat twin-baffle drums"): the r5 tapered barrel
+      // profiles melted into one camo-painted capsule at crop range. The KwK
+      // 36/42 brake is TWO FLAT DISC-FACED DRUMS with a visible gap: rear
+      // baffle drum (flat faces, hard edges), open dark slot over a thin
+      // core, front baffle drum, small exit collar. Faces are plain
+      // cylinders — no lead-in cones to round the silhouette — and the slot
+      // core renders DARK so the gap reads from any angle.
+      const bd = r * 1.60;
+      gd.push(xform(cylZ(r * 0.78, 0.30, seg), 0, 0, len - 0.30));           // dark core through the slot
+      g.push(xform(cylZ(r * 1.02, 0.10, seg), 0, 0, len - 0.60));            // brake neck
+      g.push(xform(cylZ(bd, 0.17, seg), 0, 0, len - 0.475));                 // REAR flat drum
+      gd.push(xform(cylZ(bd * 0.99, 0.012, seg), 0, 0, len - 0.386));        // rear face shadow ring
+      // open slot len-0.39..len-0.21 (dark core only)
+      g.push(xform(cylZ(bd * 0.97, 0.15, seg), 0, 0, len - 0.135));          // FRONT flat drum
+      gd.push(xform(cylZ(bd * 0.96, 0.012, seg), 0, 0, len - 0.208));        // front face shadow ring
+      g.push(xform(cylZ(r * 1.06, 0.06, seg), 0, 0, len - 0.03));            // exit collar
     } else if (brake === 'discs') {
       // Soviet D-25T style — tank_models r7 ("plain cylinder muzzle-brake
       // cap ... should be a double-baffle brake with side windows"): the r6
@@ -1252,6 +1289,7 @@ function buildGun(P, cfg) {
     }
   }
   for (const geo of g) P.add('gun', geo);
+  for (const geo of gd) P.add('gunDark', geo);
   P.muzzleZ = len;
 }
 
@@ -2675,55 +2713,65 @@ function buildLeo2A7(P) {
   // r5 ("turret reads ~55% hull width pushed far forward"): base box widened
   // 2.44 -> 2.60 m (~70% of the 3.75 m hull, the real 2A7 plan ratio) with
   // the wedge shells following outboard — the turret now owns the deck.
-  const LTW = 1.30;                    // base turret half-width (2.60 m box)
+  // tank_models r7b FULL TURRET REBUILD (contract-shot critical): the r5
+  // turret failed two ways. (1) PROPORTION — the base box ended at z -2.05,
+  // leaving a 2.67 m turret on a 7.6 m hull (35%); with the ring at z 0.12
+  // the bow deck read as an enormous bare "engine deck" and the whole
+  // vehicle as rear-engined. (2) FORM — the base box FRONT FACE (z 0.62)
+  // poked laterally PAST the thin wedge shells (the wedge front line crosses
+  // z 0.62 at |x|~0.92), so from any 3/4 view the front corners showed as
+  // vertical slab walls with a small wedge appliqué by the gun. Now: the
+  // base box front pulls back to z 0.10 (fully behind the wedge planes), the
+  // box runs aft to -2.50 (turret 3.2 m ≈ 42% of hull, ~46% with the rack),
+  // and the wedge pair spans the WHOLE front — apex sweep under the gun,
+  // full-height outer shells reaching x ±1.46 and cresting the roofline —
+  // so the front 3/4 silhouette is nothing but the two big wedge planes,
+  // exactly the 2A5/A7 arrow. specs.js moves the ring forward (0.12 ->
+  // 0.30) so the bow deck drops to ~25% of hull length.
+  const LTW = 1.34;                    // base turret half-width (2.68 m box)
   const LTH = 0.88;                    // roofline: 1.72 + 0.88 = 2.60 m ≈ spec 2.64
-  // base box: near-vertical sides, flat roof, front face at z 0.62
-  P.add('turret', frustum(LTW, 0.62, -2.05, LTW * 0.94, 0.55, -2.02, 0.0, LTH));
-  // spaced-armor wedge pair: THIN shells (0.16 m along z) in TWO TIERS. The
-  // LOWER tier sweeps all the way to the arrow apex (z 1.52) BELOW the gun —
-  // on the real 2A5/A7 the wedges meet in a point under the tube. The UPPER
-  // tier stops at |x| 0.34, leaving an open rectangular mantlet slot the gun
-  // emerges from (the r5-first-pass full-height shells converged in front of
-  // the gun and read as a slot canyon with a floating pyramid inside).
-  // Top edges set back (the §8.5 "sloped back ~60°" side profile).
+  P.add('turret', frustum(LTW, 0.10, -2.50, LTW * 0.95, 0.06, -2.46, 0.0, LTH));
   P.add('turret', slab(                                                          // R wedge, apex tier
-    [0.04, 0.08, 1.52], [1.38, 0.08, 0.14], [1.38, 0.08, -0.02], [0.04, 0.08, 1.36],
-    [0.04, 0.22, 1.43], [1.38, 0.22, 0.05], [1.38, 0.22, -0.11], [0.04, 0.22, 1.27]));
+    [0.03, 0.04, 1.58], [1.46, 0.04, 0.10], [1.46, 0.04, -0.06], [0.03, 0.04, 1.42],
+    [0.03, 0.20, 1.50], [1.46, 0.20, 0.02], [1.46, 0.20, -0.14], [0.03, 0.20, 1.34]));
   P.add('turret', slab(                                                          // R wedge, upper tier
-    [0.34, 0.22, 1.10], [1.38, 0.22, 0.05], [1.38, 0.22, -0.11], [0.34, 0.22, 0.94],
-    [0.34, 0.90, 0.67], [1.38, 0.90, -0.38], [1.38, 0.90, -0.54], [0.34, 0.90, 0.51]));
+    [0.34, 0.20, 1.18], [1.46, 0.20, 0.02], [1.46, 0.20, -0.14], [0.34, 0.20, 1.02],
+    [0.34, 0.94, 0.72], [1.46, 0.94, -0.44], [1.46, 0.94, -0.60], [0.34, 0.94, 0.56]));
   P.add('turret', slab(                                                          // L wedge, apex tier
-    [-1.38, 0.08, 0.14], [-0.04, 0.08, 1.52], [-0.04, 0.08, 1.36], [-1.38, 0.08, -0.02],
-    [-1.38, 0.22, 0.05], [-0.04, 0.22, 1.43], [-0.04, 0.22, 1.27], [-1.38, 0.22, -0.11]));
+    [-1.46, 0.04, 0.10], [-0.03, 0.04, 1.58], [-0.03, 0.04, 1.42], [-1.46, 0.04, -0.06],
+    [-1.46, 0.20, 0.02], [-0.03, 0.20, 1.50], [-0.03, 0.20, 1.34], [-1.46, 0.20, -0.14]));
   P.add('turret', slab(                                                          // L wedge, upper tier
-    [-1.38, 0.22, 0.05], [-0.34, 0.22, 1.10], [-0.34, 0.22, 0.94], [-1.38, 0.22, -0.11],
-    [-1.38, 0.90, -0.38], [-0.34, 0.90, 0.67], [-0.34, 0.90, 0.51], [-1.38, 0.90, -0.54]));
-  // wedge face furniture so the big plates stop reading as blank slabs:
-  // module split seam + a pair of lifting lugs per side
-  for (const s of [-1, 1]) {
-    P.add('turretDark', box(0.78, 0.035, 0.035), s * 0.80, 0.40, 0.50, -0.5, s * 0.83, 0);
-    P.add('turret', box(0.09, 0.05, 0.12), s * 0.62, 0.80, 0.50, -0.5, s * 0.83, 0);
-    P.add('turret', box(0.09, 0.05, 0.12), s * 1.08, 0.80, 0.02, -0.5, s * 0.83, 0);
-  }
+    [-1.46, 0.20, 0.02], [-0.34, 0.20, 1.18], [-0.34, 0.20, 1.02], [-1.46, 0.20, -0.14],
+    [-1.46, 0.94, -0.44], [-0.34, 0.94, 0.72], [-0.34, 0.94, 0.56], [-1.46, 0.94, -0.60]));
   // spaced-armor GAP: near-black filler wall behind the upper shells so the
   // standoff from the base turret reads as real shadow depth
   P.add('turretDark', slab(
-    [0.30, 0.38, 0.87], [1.32, 0.38, -0.16], [1.32, 0.38, -0.24], [0.30, 0.38, 0.79],
-    [0.30, 0.86, 0.55], [1.32, 0.86, -0.48], [1.32, 0.86, -0.56], [0.30, 0.86, 0.47]));
+    [0.32, 0.30, 0.92], [1.40, 0.30, -0.18], [1.40, 0.30, -0.26], [0.32, 0.30, 0.84],
+    [0.32, 0.90, 0.62], [1.40, 0.90, -0.48], [1.40, 0.90, -0.56], [0.32, 0.90, 0.54]));
   P.add('turretDark', slab(
-    [-1.32, 0.38, -0.16], [-0.30, 0.38, 0.87], [-0.30, 0.38, 0.79], [-1.32, 0.38, -0.24],
-    [-1.32, 0.86, -0.48], [-0.30, 0.86, 0.55], [-0.30, 0.86, 0.47], [-1.32, 0.86, -0.56]));
-  // mantlet slot back wall: scheme-painted plate closing the slot behind the
-  // mantlet so the gun never emerges from a black void
-  P.add('turret', box(0.72, 0.56, 0.06), 0, 0.36, 0.60);
+    [-1.40, 0.30, -0.18], [-0.32, 0.30, 0.92], [-0.32, 0.30, 0.84], [-1.40, 0.30, -0.26],
+    [-1.40, 0.90, -0.48], [-0.32, 0.90, 0.62], [-0.32, 0.90, 0.54], [-1.40, 0.90, -0.56]));
+  // mantlet slot: painted back wall + dark cheek walls so the gun emerges
+  // from a real rectangular slot between the wedge inner ends
+  P.add('turret', box(0.76, 0.66, 0.06), 0, 0.42, 0.50);
+  for (const s of [-1, 1]) {
+    P.add('turretDark', box(0.05, 0.64, 0.80), s * 0.37, 0.42, 0.85);
+  }
+  // side armor modules: proud slabs continuing the wedge mass around the
+  // corner along the front half of the side walls (the r5 bare box side made
+  // the wedge read as a pasted-on appliqué from 3/4 views)
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.10, 0.56, 1.35), s * (LTW + 0.05), 0.40, -0.85);
+    P.add('turretDark', box(0.02, 0.50, 0.025), s * (LTW + 0.105), 0.40, -0.85);// module seam
+  }
   // EMES 15 gunner's sight: rectangular CUTOUT recessed into the right wedge
   // roof edge (§8.5 weak spot): dark well sunk below the wedge top line, the
   // armored head inside it, shutter face + brow
-  P.add('turretDark', box(0.62, 0.20, 0.52), 0.74, 0.84, 0.52);                 // recess well
-  P.add('turret', box(0.50, 0.24, 0.40), 0.74, 0.88, 0.50);                     // sight head
-  P.add('turretDetail', box(0.54, 0.05, 0.44), 0.74, 1.025, 0.48);              // brow lid
-  P.add('turretDark', box(0.38, 0.16, 0.04), 0.74, 0.88, 0.715);                // shutter plate
-  P.add('turretGlass', box(0.30, 0.10, 0.02), 0.74, 0.88, 0.74);                // EMES lens
+  P.add('turretDark', box(0.62, 0.22, 0.52), 0.74, 0.82, 0.28);                 // recess well
+  P.add('turret', box(0.50, 0.26, 0.40), 0.74, 0.86, 0.26);                     // sight head
+  P.add('turretDetail', box(0.54, 0.05, 0.44), 0.74, 1.005, 0.24);              // brow lid
+  P.add('turretDark', box(0.38, 0.18, 0.04), 0.74, 0.86, 0.475);                // shutter plate
+  P.add('turretGlass', box(0.30, 0.11, 0.02), 0.74, 0.86, 0.50);                // EMES lens
   // PERI R17 panoramic periscope on its stalk — tallest point, CENTER-RIGHT
   // roof behind the commander's hatch (§8.5; the old build had it left).
   P.add('turretDetail', cylY(0.055, 0.065, 0.30, 12), 0.38, LTH + 0.15, -1.18);

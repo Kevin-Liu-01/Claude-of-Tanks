@@ -28,9 +28,13 @@ export default {
     // r2 terrain_environment: agrarian field patchwork (crop plots, mowing
     // strips, field-margin lines) on the 150-800 m band — see terrain.js
     fieldPatch: 1,
-    // dry-straw meadow tint softened off pure lime (was the default
-    // 1.16/1.08/0.76 — hot yellow-green patches beside dark clover)
-    tintA: [1.11, 1.05, 0.84],
+    // r7 terrain_environment: full straw/olive/brown macro range — the
+    // meadow read as "one saturated spring green" (critique). tintA leans
+    // harder into dry straw, tintB is a real olive-brown darkener, tintC a
+    // pale hay lift; pairs with the olive-shifted grass layer in terrain.js
+    tintA: [1.14, 1.05, 0.78],
+    tintB: [0.76, 0.80, 0.62],
+    tintC: [1.09, 1.03, 0.80],
   },
 
   vegetation: {

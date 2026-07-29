@@ -151,7 +151,9 @@ export default {
     // r6: fences on — split-rail runs break up the open outskirt fields
     well: true, hayCrates: false, fences: true, telegraph: true, carts: true, logs: false,
     // r1: fewer bare boulders (they read as blobs on lawn), more rubble piles
-    haystacks: 0, rocks: 70, outcrops: 6, craters: 88, rubblePiles: 132,
+    // r7 terrain_environment: craters 88 -> 102, rubble 132 -> 152 — the
+    // fought-over brief needs debris fields reading along the main streets
+    haystacks: 0, rocks: 70, outcrops: 6, craters: 102, rubblePiles: 152,
     // r6 terrain_environment: street furniture + battle debris — lampposts
     // march the paved grid, anti-tank hedgehogs hold intersections/approaches
     // and two more road wrecks ("urban streets missing furniture, wrecks and

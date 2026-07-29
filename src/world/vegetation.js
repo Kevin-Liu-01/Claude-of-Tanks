@@ -1881,12 +1881,22 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
         // capsule — canopy crossing open sky stays solid (no dither
         // curtains smearing crowns half-off the sight line). uFocusPos.y is
         // parked at -9999 while the corridor is off, zeroing the fade.
+        // gameplay_feel r7 (round critique MAJOR "screen-door dither
+        // corridor"): the gate is now a CONE, pinched at the camera (0.55 m)
+        // and opening to hull-silhouette width (2.8 m) at the tank, with a
+        // 2 m feather. The old constant 3–6.5 m cylinder classified
+        // everything within 6.5 m of the CAMERA end as "on the sight line" —
+        // under perspective that is most of the frame, so whole near
+        // canopies dithered as full-height checkerboard swathes while
+        // driving woods (b_drive_mid evidence). A fragment now fades only if
+        // it actually overlaps the camera->hull silhouette cone.
         {
           vec3 seg = uFocusPos - uCamPos;
           float segL2 = dot(seg, seg);
           float tt = segL2 > 1e-4 ? clamp(dot(tvw.xyz - uCamPos, seg) / segL2, 0.0, 1.0) : 0.0;
           float dSeg = length(tvw.xyz - (uCamPos + seg * tt));
-          vFadeI = aFadeI * (1.0 - smoothstep(3.0, 6.5, dSeg));
+          float coneR = mix(0.55, 2.8, tt);
+          vFadeI = aFadeI * (1.0 - smoothstep(coneR, coneR + 2.0, dSeg));
           vDSeg = dSeg; // gameplay_feel r5: fragment keep-floor near the sight capsule
         }
         // sniper scope-ray corridor keep (per vertex — tall trunks fade only
@@ -1950,8 +1960,11 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
         // gameplay_feel r5: occlusion-fade keep FLOOR near the sight capsule
         // — canopy within ~2.2 m of the camera->tank sight ray discards
         // fully, so no half-dissolved speckle overlaps the player hull
-        // silhouette when parked under a tree.
-        if (vFadeI > 0.01 && vDSeg < 2.2) discard;` : ''}
+        // silhouette when parked under a tree. r7: gate on vFadeI > 0.6
+        // (deep inside the cone) instead of > 0.01 — with the pinched cone a
+        // barely-fading fragment 2 m off the camera-end axis must not be
+        // cut to a hard 2.2 m hole.
+        if (vFadeI > 0.6 && vDSeg < 2.2) discard;` : ''}
         if (uScopeHard > 0.5) {
           // high-zoom scope (FOV <= 15°): dither magnified by the optics
           // reads as halftone stipple — cut binary instead (r4): corridor
@@ -2292,6 +2305,21 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     const pj = (veg.palettes[species] && veg.palettes[species].jitterHue) ?? 1;
     _c.setRGB(vj * (1 + (rng() * 0.26 - 0.12) * pj), vj * (1 + (rng() * 0.22 - 0.04) * pj),
       vj * (1 + (rng() * 0.24 - 0.16) * pj));
+    // r7 terrain_environment: ~10% DRY/YELLOWED individuals (critique: "no
+    // dry/dead mix-ins... monoculture"). A strong per-instance tint pull
+    // toward sun-scorched straw/amber — broadleafs go autumn-gold, conifers
+    // read as browning stressed trees. Gated to summer palettes (pj >= 0.5):
+    // winter runs value-only jitter and the desert palettes manage their own
+    // range. Rolled from a POSITION HASH, not the shared rng stream — one
+    // extra rng() here would shift every subsequent placement and re-break
+    // the authored establishing-shot compositions (see sapRng note above).
+    const dryRoll = (Math.sin(x * 12.9898 + z * 78.233) * 43758.5453 % 1 + 1) % 1;
+    if (pj >= 0.5 && dryRoll < 0.10) {
+      const deep = dryRoll < 0.03; // a few fully browned-off trees
+      _c.r *= deep ? 1.30 : 1.26;
+      _c.g *= deep ? 0.82 : 0.96;
+      _c.b *= deep ? 0.38 : 0.48;
+    }
     trees.push({
       x, z, species, variant: (rng() * 3) | 0, fv: (rng() * 2) | 0,
       mat: _m4.clone(), tint: _c.clone(), near: false,

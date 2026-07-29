@@ -110,7 +110,12 @@ const HAZE_TINT_WARM = [1.24, 1.02, 0.70]; // warm scatter toward the sun azimut
 // golden glow readable ~50 deg around the sun azimuth without the white wash.
 const HAZE_WARM_POW = 2.9; // azimuthal width of the warm lobe
 const HAZE_TINT_MIX = 0.63;
-const SKY_DITHER = 0.004; // linear-space dither amplitude ~1 display LSB
+// lighting_post r7 ("deep-blue-to-haze transition at top-left shows visible
+// gradient banding" on desert): 0.004 → 0.008 — the steep clear-sky rayleigh
+// ramp needs ~2 linear LSBs of decorrelation to stay under the banding
+// threshold after the grade's contrast re-spread; pairs with the new
+// display-space IGN dither at the end of post.js's grade pass.
+const SKY_DITHER = 0.008; // linear-space dither amplitude ~2 display LSB
 const SKY_FRAG_ANCHOR = 'gl_FragColor = vec4( texColor, 1.0 );';
 const SKY_DOME_SCALE = 10000; // must stay inside camera.far
 const ENV_SKY_SCALE = 50; // PMREMGenerator.fromScene far plane = 100
@@ -138,7 +143,14 @@ const ENV_INTENSITY = 0.2;
 // on every bright map while vehicle speculars (which carry their own
 // envMapIntensity 0.75 multiplier) stay clearly readable. The rest of the
 // desert delta ships as a desert.js preset retune (handoff r4).
-const ENV_INTENSITY_FLOOR = 0.26;
+// lighting_post r7 ("desert valley floor is a milky overexposed cream wash
+// — form shadows nearly absent"): 0.26 → 0.21. Desert's art direction asks
+// for 0.16; the floor was still adding +62% omni fill on the one map whose
+// form shading is carried entirely by dune slope response. The specular-
+// ambient duty that motivated the floor moves to the per-material
+// envMapIntensity raises on optics/gunmetal/track (materials.js, r7
+// handoff), which read BETTER against a slightly darker diffuse env.
+const ENV_INTENSITY_FLOOR = 0.21;
 // Exponential fog replaces the old linear Fog(150, 1200) that whited out the
 // midground by ~300 m. r3: density dropped 0.00088 → 0.00074 — the milky wash
 // was flattening the battlefield shot; the distance cue is now shared with
@@ -180,7 +192,14 @@ const FALLBACK_HORIZON_HEX = 0xc4d3dd; // hand-tuned noon-hazy, doc §5 option (
 const CLOUD_SEED = 777;
 const CLOUD_TEX = 1024; // cumulus deck bake, tileable in BOTH axes
 const CIRRUS_TEX = 512; // thin high-veil bake
-const CLOUD_THR = 0.505; // r6: 0.53 → 0.505 — the infinite-deck projection spreads the same bake over far more sky; more coverage keeps the mid-elevation band from reading empty
+// lighting_post r7 ("cloud cover in battlefield.png is a single cirrus patch
+// in one corner leaving two-thirds of the dome an empty gradient"): 0.505 →
+// 0.488 + clustering 0.15 → 0.17 below — carves ~30% more cumulus area into
+// MORE SEPARATE masses, so every establishing camera sees 2-3 distinct
+// clusters spread across the dome instead of one corner patch. The bloom
+// white-out mechanism cannot return (deck luminance is knee-capped and the
+// haze pole is luminance-capped).
+const CLOUD_THR = 0.488;
 // r7 cloud detail pass ("clouds are low-frequency painterly smears — no
 // detail octaves, no sun-lit edge, obviously a single blurred canvas blit"):
 // - CLOUD_EDGE is now the CUMULUS-CORE edge width; wisps/outliers (low macro
@@ -211,7 +230,7 @@ const CLOUD_CORE = 0.16; // rim→opaque-core ramp width in FBM units
 // (2x frequency along the wind/march axis, see makeCloudTexture) so an
 // along-wind arm breaks into separate cauliflower masses instead of one
 // connected streak. Tileability holds — period 1/2 divides the unit tile.
-const CLOUD_CLUSTER = 0.15; // macro-noise threshold modulation (cloud grouping)
+const CLOUD_CLUSTER = 0.17; // macro-noise threshold modulation (cloud grouping)
 const CLOUD_MACRO_ANISO = 2; // integer v-frequency multiplier of the macro field
 const CLOUD_WARP = 0.09; // domain-warp strength (cauliflower edge crinkle)
 const CLOUD_MARCH_STEPS = 12; // light-march samples toward the in-texture sun

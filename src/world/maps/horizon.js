@@ -106,8 +106,16 @@ const PROFILES = {
   // stepped tablelands: noise pushed through plateau terraces -> long flat
   // caps with cliff edges, plus lone buttes between the tables
   mesa(a, noi, row) {
-    const n = noi.noise(Math.cos(a) * row.f0 + 41, Math.sin(a) * row.f0 - 27) * 0.5 + 0.5;
+    const n0 = noi.noise(Math.cos(a) * row.f0 + 41, Math.sin(a) * row.f0 - 27) * 0.5 + 0.5;
     const n2 = noi.noise(Math.cos(a) * row.f1 * 2.3 - 13, Math.sin(a) * row.f1 * 2.3 + 33) * 0.5 + 0.5;
+    // r7 terrain_environment: EDGE CRENELLATION — two finer octaves wobble
+    // the terrace-threshold field so cap rims read embayed/eroded promontory
+    // lines instead of vector-clean prism edges (critique: "flat-faced
+    // prisms"). Small amplitude: the wobble bends the PLAN of the cliff
+    // line without breaking the flat-cap read.
+    const cren = noi.noise(Math.cos(a) * row.f0 * 4.6 - 71, Math.sin(a) * row.f0 * 4.6 + 15) * 0.042
+      + noi.noise(Math.cos(a) * row.f0 * 9.7 + 133, Math.sin(a) * row.f0 * 9.7 - 55) * 0.018;
+    const n = n0 + cren;
     // two terrace levels with tight smoothstep walls => visible flat tops,
     // over a broad pedestal so inter-table stretches never sag to bare base
     // (bare-base gaps exposed the fog-washed backslope behind as a white
@@ -116,7 +124,10 @@ const PROFILES = {
     const table2 = smoothstep(0.62, 0.70, n);
     const butte = smoothstep(0.80, 0.86, n2) * (1 - table2);
     const pedestal = smoothstep(0.14, 0.52, n) * 0.17;
-    const capWobble = 1 + 0.05 * noi.noise(Math.cos(a) * 9 + 3, Math.sin(a) * 9 - 8);
+    // r7: second cap-relief octave — tops undulate a few meters instead of
+    // extruding one dead-flat lid per table
+    const capWobble = 1 + 0.05 * noi.noise(Math.cos(a) * 9 + 3, Math.sin(a) * 9 - 8)
+      + 0.028 * noi.noise(Math.cos(a) * 23 - 17, Math.sin(a) * 23 + 41);
     return row.base + (pedestal + table1 * 0.45 + table2 * 0.34 + butte * 0.30) * row.amp * capWobble;
   },
   // one long low escarpment line with a couple of gentle high points —
@@ -449,8 +460,22 @@ function makeTreeLineTexture(rng) {
   const ctx = c.getContext('2d');
   ctx.clearRect(0, 0, w, h);
   const base = h - 2;
+  // lighting_post r7 (CRITICAL "flat teal paint-smear impostor forest 2-3
+  // stops darker and desaturated vs sunlit midground trees"): the comb strip
+  // is UNLIT MeshBasic — its texel values must carry SCENE-LIT canopy level,
+  // not shade albedo. Base ink raised toward warm sunlit green (was
+  // 126,148,116 — multiplied by the dark crest vertex colors it landed the
+  // whole band ~2 stops under the lit midground canopy).
   const ink = (tone) =>
-    `rgb(${Math.round(126 * tone)},${Math.round(148 * tone)},${Math.round(116 * tone)})`;
+    `rgb(${Math.round(157 * tone)},${Math.round(172 * tone)},${Math.round(112 * tone)})`;
+  // per-tree sun-side/shade-side gradient (same critique): horizontal fill
+  // gradient across one crown, lit toward -u — the wall reads as lit canopy.
+  const inkGrad = (x0, x1, tone) => {
+    const g = ctx.createLinearGradient(x0, 0, x1, 0);
+    g.addColorStop(0, ink(tone * 1.14));
+    g.addColorStop(1, ink(tone * 0.74));
+    return g;
+  };
   // r8 FOREST MASS BAND: two depth layers of overlapping crown lobes filling
   // the lower ~35% of the strip as a CONTINUOUS closed-canopy mass. Spaced
   // individual silhouettes alone minify to isolated 1-2 px "toothpick" dashes
@@ -459,9 +484,14 @@ function makeTreeLineTexture(rng) {
   // serrated band with emergent crowns — the trees drawn after this become
   // those emergents. Band height wanders and dips (never to zero) so
   // clearings read as low scrub saddles, not bald crest.
-  for (let layer = 0; layer < 2; layer++) {
-    const tone0 = layer === 0 ? 0.52 : 0.72; // back layer darker (depth)
-    const hTop = layer === 0 ? 0.50 : 0.36;  // fraction of strip height
+  // r7 terrain_environment: THREE haze-stepped depth layers (was 2) and a
+  // taller band — the scalloped emergent clusters ride on a deep connected
+  // canopy mass, so the crest silhouette is a soft layered scallop line
+  // instead of spaced teeth (the "2-3 parallax layers of soft scalloped
+  // forest-silhouette cards" the critique asked for, in texture space).
+  for (let layer = 0; layer < 3; layer++) {
+    const tone0 = layer === 0 ? 0.50 : layer === 1 ? 0.64 : 0.80; // back layers darker (depth)
+    const hTop = layer === 0 ? 0.58 : layer === 1 ? 0.46 : 0.34;  // fraction of strip height
     let bx = -20;
     let bh = h * hTop * (0.75 + rng() * 0.4);
     while (bx < w + 20) {
@@ -486,79 +516,81 @@ function makeTreeLineTexture(rng) {
     }
   }
   let x = 2;
-  // r5 terrain_environment: STAND-SCALE modulation — the comb drew every
-  // emergent tree from one height/width distribution, so far forest walls
-  // read as a repeating vertical-stroke carpet where the haze is thin
-  // (critique). A slow sine + jitter walks the stand scale 0.72-1.18x along
-  // the strip, clearings come ~2x as often (with pale scree/rock patches in
-  // the gap), so the ridge line reads as aged mixed forest.
+  // r7 terrain_environment SCALLOP REWRITE. The emergent pass used to draw
+  // isolated tall-thin trees (conifers up to ~200 px tall x ~40 px wide) —
+  // at ridge distance one tree minifies to a 1-2 px vertical NEEDLE, and the
+  // whole crest rendered as the critique's "sawtooth spike silhouettes /
+  // vertical stripe noise" (the single biggest AAA tell). A far forest crest
+  // actually reads as a CONNECTED SCALLOPED band: overlapping crown clusters
+  // with low aspect (wider than tall), height undulating on a stand scale,
+  // with only shallow serration on top. Emergents are now drawn as CLUSTERS
+  // of 2-5 broad crowns rising modestly out of the mass band, conifer spires
+  // are short and always shouldered by neighbours, and the value range is
+  // tightened so no isolated dark needle survives minification.
   const scPhase = rng() * 9.7;
   while (x < w - 24) {
-    // r6 terrain_environment: stand range widened 0.72-1.28 -> 0.55-1.45 —
-    // the comb's tooth height still ran near-uniform ("even comb edge")
-    const stand = 0.55 + 0.70 * (Math.sin(x * 0.006 + scPhase) * 0.5 + 0.5) + rng() * 0.20;
-    const conifer = rng() < 0.62;
-    const tj = 0.62 + rng() * 0.55; // per-tree value jitter
+    const stand = 0.62 + 0.55 * (Math.sin(x * 0.006 + scPhase) * 0.5 + 0.5) + rng() * 0.18;
+    const conifer = rng() < 0.55;
+    const tj = 0.72 + rng() * 0.42; // per-cluster value jitter (tightened)
+    // cluster footprint: several crowns overlapping into one scalloped mass
+    const nCr = 2 + (rng() * 4) | 0;
+    const cw = (70 + rng() * 90) * stand;   // cluster width
+    const chMax = (58 + rng() * 64) * stand; // cluster rise above the band
     if (conifer) {
-      // hud_ui r6: cap the height/width aspect near 4:1 (was up to ~12:1) —
-      // the old needle spires magnified into bare flagpoles poking out of
-      // the canopy at x8 sniper zoom, the single loudest cardboard tell.
-      const tw = (30 + rng() * 40) * stand;
-      const th = Math.min((84 + rng() * 132) * stand, tw * (3.4 + rng() * 0.9));
-      const tiers = 3 + (rng() * 2 | 0);
-      for (let t = 0; t < tiers; t++) {
-        const ty = base - (th * (t + 1)) / tiers;
-        const twt = tw * (1 - (t / tiers) * 0.72);
-        // shading: shadowed lower skirts -> lit upper tiers (top-down sun)
-        ctx.fillStyle = ink(tj * (0.74 + 0.42 * (t / Math.max(1, tiers - 1))));
-        ctx.beginPath();
-        ctx.moveTo(x + tw / 2 - twt / 2, ty + (th / tiers) * 1.45);
-        ctx.lineTo(x + tw / 2 + twt / 2, ty + (th / tiers) * 1.45);
-        ctx.lineTo(x + tw / 2 + (rng() - 0.5) * 5, ty);
-        ctx.closePath();
-        ctx.fill();
+      // spruce cluster: short broad spires leaning on each other. Aspect
+      // capped ~1.9:1 per spire so nothing minifies to a flagpole.
+      for (let k2 = 0; k2 < nCr; k2++) {
+        const fx = x + (k2 + 0.5) / nCr * cw + (rng() - 0.5) * cw * 0.2;
+        const th = chMax * (0.55 + rng() * 0.45);
+        const tw = Math.max(th * (0.55 + rng() * 0.25), 26 * stand);
+        const tiers = 3;
+        for (let t = 0; t < tiers; t++) {
+          const ty = base - (th * (t + 1)) / tiers;
+          const twt = tw * (1 - (t / tiers) * 0.62);
+          // lighting_post r7: per-tree sun-side/shade-side gradient — the
+          // wall reads as LIT canopy, not one flat tone (critique)
+          ctx.fillStyle = inkGrad(fx - tw / 2, fx + tw / 2,
+            tj * (0.80 + 0.34 * (t / (tiers - 1))));
+          ctx.beginPath();
+          ctx.moveTo(fx - twt / 2, ty + (th / tiers) * 1.5);
+          ctx.lineTo(fx + twt / 2, ty + (th / tiers) * 1.5);
+          ctx.lineTo(fx + (rng() - 0.5) * 6, ty);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
-      // dark interior core keeps the silhouette from reading as a flat wash
-      ctx.fillStyle = ink(tj * 0.6);
-      ctx.fillRect(x + tw / 2 - tw * 0.09, base - th * 0.72, tw * 0.18, th * 0.5);
-      ctx.fillStyle = ink(tj * 0.62);
-      ctx.fillRect(x + tw / 2 - 2.5, base - th * 0.3, 5, th * 0.3 + 2);
-      x += tw * (0.55 + rng() * 0.75);
+      x += cw * (0.72 + rng() * 0.4);
     } else {
-      const th = (82 + rng() * 130) * stand, tw = (35 + rng() * 52) * stand;
-      const cy = base - th * 0.62;
-      for (let k = 0; k < 6; k++) {
-        const ox = (rng() - 0.5) * tw * 0.5;
-        const oy = (rng() - 0.5) * th * 0.38;
-        // shading: upper/left lobes lit, lower lobes in crown shadow
-        const lit = 0.78 - (oy / (th * 0.38)) * 0.28 - (ox / (tw * 0.5)) * 0.10;
-        ctx.fillStyle = ink(tj * clamp(lit, 0.5, 1.15));
-        ctx.beginPath();
-        ctx.ellipse(x + tw / 2 + ox, cy + oy,
-          tw * (0.26 + rng() * 0.22), th * (0.18 + rng() * 0.14), rng() * Math.PI, 0, Math.PI * 2);
-        ctx.fill();
+      // broadleaf cluster: broad overlapping crown lobes (scallops)
+      for (let k2 = 0; k2 < nCr; k2++) {
+        const fx = x + (k2 + 0.5) / nCr * cw + (rng() - 0.5) * cw * 0.25;
+        const th = chMax * (0.5 + rng() * 0.5);
+        const tw = th * (1.15 + rng() * 0.6); // wider than tall
+        const cy = base - th * 0.52;
+        for (let k = 0; k < 4; k++) {
+          const ox = (rng() - 0.5) * tw * 0.45;
+          const oy = (rng() - 0.5) * th * 0.30;
+          // lighting_post r7: horizontal lit-side bias doubled (0.08 ->
+          // 0.18) — per-crown sun-side/shade-side split (critique)
+          const lit = 0.86 - (oy / (th * 0.30)) * 0.20 - (ox / (tw * 0.45)) * 0.18;
+          ctx.fillStyle = ink(tj * clamp(lit, 0.62, 1.2));
+          ctx.beginPath();
+          ctx.ellipse(fx + ox, cy + oy,
+            tw * (0.30 + rng() * 0.20), th * (0.26 + rng() * 0.16), rng() * Math.PI, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
-      ctx.fillStyle = ink(tj * 0.58);
-      ctx.fillRect(x + tw / 2 - 3, base - th * 0.35, 6, th * 0.35 + 2);
-      x += tw * (0.6 + rng() * 0.7);
+      x += cw * (0.75 + rng() * 0.4);
     }
-    if (rng() < 0.24) { // clearing gap with a pale scree/rock patch
-      const gw = 26 + rng() * 74;
-      if (rng() < 0.6) {
-        const gh = 18 + rng() * 26;
-        ctx.fillStyle = `rgb(${150 + (rng() * 30) | 0},${146 + (rng() * 24) | 0},${132 + (rng() * 20) | 0})`;
-        ctx.beginPath();
-        ctx.ellipse(x + gw * 0.5, base - gh * 0.45, gw * 0.42, gh * 0.5, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      x += gw;
+    if (rng() < 0.20) { // low saddle: the mass band alone carries the crest
+      x += 30 + rng() * 60;
     }
   }
   // flood transparent texels with the mean tone so mips never halo dark
   const id = ctx.getImageData(0, 0, w, h);
   const d = id.data;
   for (let i = 0; i < d.length; i += 4) {
-    if (d[i + 3] < 40) { d[i] = 112; d[i + 1] = 132; d[i + 2] = 104; }
+    if (d[i + 3] < 40) { d[i] = 138; d[i + 1] = 152; d[i + 2] = 100; } // r7: follow the lit ink base
   }
   ctx.putImageData(id, 0, 0);
   const t = new THREE.CanvasTexture(c);
@@ -588,12 +620,16 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
   const haze = H.haze ?? 1;
   const grainAmp = H.grain ?? 1;
 
-  const base = new THREE.Color(H.baseHex ?? 0x4a5a44);
+  // lighting_post r7: vegetated ring base lifted toward the SUNLIT hillside
+  // band (0x4a5a44 -> 0x5b6c4c) — the unlit ring's baked colors must carry
+  // the sun x albedo product; 2-3-stops-dark backdrop was the teal-curtain
+  // critical's other half.
+  const base = new THREE.Color(H.baseHex ?? 0x5b6c4c);
   const fogC = new THREE.Color((cfg && cfg.sky && cfg.sky.fogTintHex) ?? 0x8fa3bd);
   // detail palette: sensible per-style defaults, overridable per map
   const rockC = new THREE.Color(H.rockHex ?? (style === 'mesa' ? 0x8a5a38 : 0x66625e));
   const snowC = new THREE.Color(H.snowHex ?? 0xeef2f7);
-  const forestC = new THREE.Color(H.forestHex ?? 0x2e4230);
+  const forestC = new THREE.Color(H.forestHex ?? 0x435f3a); // r7: lit-canopy green (was 0x2e4230 deep shade)
   const snowline = H.snowline ?? (style === 'alpine' ? 0.42 : 2); // >1 disables
   // r7: vegetated default treelines pushed near the crests (0.55/0.5 ->
   // 0.90/0.88). The old constant-altitude cutoff drew a horizontal band
@@ -1092,12 +1128,25 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
     // carries more of the directional shading (vertex bake stays at 0.10)
     const fragRel = style === 'alpine' ? 0.40 : 0.0;
     const slopeSplat = style === 'alpine' ? 1.0 : 0.0;
+    // r7 terrain_environment: GRAZING-SMEAR KILL. The ring texture's u axis
+    // wraps the ring, so on any wall seen along-tangent u compresses to zero
+    // pixels and every fine feature renders as a 1-D function of v — the
+    // "vertical texture smearing on steep faces" (winter left massif) and
+    // the stretched mesa cap tops. Per-fragment fix: on steep faces (alpine,
+    // uWallFix) / near-flat caps (mesa, uCapFix) the texel is rebuilt from a
+    // DEEP MIP of itself (broad authored tone, smear-free) times a triplanar
+    // world-anchored mottle from the tileable detail texture — true surface
+    // texture at any view angle, exactly like the terrain-side triplanar.
+    const wallFix = style === 'alpine' ? 1.0 : 0.0;
+    const capFix = style === 'mesa' ? 1.0 : 0.0;
     mat.onBeforeCompile = (shader) => {
       shader.uniforms.uDetail2 = { value: detail2 };
       shader.uniforms.uSunDirW = { value: new THREE.Vector3(lx, ly, lz) };
       shader.uniforms.uFragRel = { value: fragRel };
       shader.uniforms.uSlopeSplat = { value: slopeSplat };
       shader.uniforms.uMaxH = { value: maxH * 1.0 };
+      shader.uniforms.uWallFix = { value: wallFix };
+      shader.uniforms.uCapFix = { value: capFix };
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>',
           '#include <common>\nvarying vec3 vHNrm;\nvarying vec3 vHPos;')
@@ -1108,17 +1157,40 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
       shader.fragmentShader = 'uniform sampler2D uDetail2;\n'
         + 'uniform vec3 uSunDirW;\nuniform float uFragRel;\n'
         + 'uniform float uSlopeSplat;\nuniform float uMaxH;\n'
+        + 'uniform float uWallFix;\nuniform float uCapFix;\n'
         + 'varying vec3 vHNrm;\nvarying vec3 vHPos;\n' +
         shader.fragmentShader.replace(
           '#include <map_fragment>', /* glsl */`#include <map_fragment>
         {
+          vec3 hnW0 = normalize(vHNrm);
+          float steepF0 = smoothstep(0.30, 0.60, 1.0 - hnW0.y) * uWallFix;
+          float capF0 = smoothstep(0.84, 0.96, hnW0.y) * uCapFix;
+          float fixW = max(steepF0, capF0);
+          if (fixW > 0.004) {
+            // broad smear-free base tone: the same texel at a deep mip
+            vec3 mapSmooth = texture2D(map, vMapUv, 4.0).rgb;
+            // triplanar world-anchored mottle, two feature scales
+            vec3 awF = abs(hnW0);
+            awF /= (awF.x + awF.y + awF.z);
+            float wA = texture2D(uDetail2, vHPos.zy * 0.0052 + vec2(0.11, 0.71)).r * awF.x
+                     + texture2D(uDetail2, vHPos.xy * 0.0052 + vec2(0.53, 0.29)).r * awF.z
+                     + texture2D(uDetail2, vHPos.xz * 0.0052).r * awF.y;
+            float wB = texture2D(uDetail2, vHPos.zy * 0.0175 + vec2(0.67, 0.13)).r * awF.x
+                     + texture2D(uDetail2, vHPos.xy * 0.0175 + vec2(0.23, 0.87)).r * awF.z
+                     + texture2D(uDetail2, vHPos.xz * 0.0175 + vec2(0.37, 0.61)).r * awF.y;
+            vec3 fixCol = mapSmooth * (1.0 + (wA - 0.5) * 0.46 + (wB - 0.5) * 0.34);
+            diffuseColor.rgb = diffuseColor.rgb / max(texture2D(map, vMapUv).rgb, vec3(1e-3))
+              * mix(texture2D(map, vMapUv).rgb, fixCol, fixW * 0.85);
+          }
           float dA = texture2D(uDetail2, vMapUv * vec2(64.0, 26.0)).r - 0.5;
           float dB = texture2D(uDetail2, vMapUv * vec2(17.0, 7.0) + vec2(0.37, 0.11)).r - 0.5;
           // amplitudes sized to SURVIVE the baked haze lerp + scene fog: the
           // wall multiplies this onto an already fog-flattened vertex color,
           // so ±0.1 authored contrast reads as ~±0.04 on screen (still-flat
           // first cut). ±0.29 lands at the crown-mottle read real hills give.
-          diffuseColor.rgb *= 1.0 + dA * 0.28 + dB * 0.30;
+          // r7: the vMapUv-based overlay is itself u-degenerate on grazed
+          // walls — fade it where the triplanar fix takes over.
+          diffuseColor.rgb *= 1.0 + (dA * 0.28 + dB * 0.30) * (1.0 - fixW * 0.8);
           if (uSlopeSplat > 0.001) {
             vec3 hn = normalize(vHNrm);
             float slopeF = 1.0 - clamp(hn.y, 0.0, 1.0);
@@ -1161,7 +1233,7 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
           }
         }`);
     };
-    mat.customProgramCacheKey = () => 'horizon-ring-r6cb-' + style;
+    mat.customProgramCacheKey = () => 'horizon-ring-r7te-' + style;
   }
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = 'horizon-ring';
@@ -1233,10 +1305,19 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
         // the ranked combs still stacked into a high-contrast serrated WALL
         // of packed silhouettes at the frame edges (critique); sitting them
         // deeper into the aerial tint keeps the serration but recesses it
-        const hz = Math.min(0.92, row.aer * 0.66 + (back ? 0.24 : 0.06));
-        let cr = Math.min(1.4, col[i * 3] * (back ? 1.32 : 1.5));
-        let cg = Math.min(1.4, col[i * 3 + 1] * (back ? 1.32 : 1.5));
-        let cb = Math.min(1.4, col[i * 3 + 2] * (back ? 1.32 : 1.5));
+        // r7 terrain_environment: front-rank haze floor 0.06 -> 0.16 — the
+        // crest band must sit INSIDE the aerial tint of its own ridge, never
+        // as a high-contrast dark serration pasted on it (sawtooth critique)
+        const hz = Math.min(0.92, row.aer * 0.66 + (back ? 0.28 : 0.16));
+        // lighting_post r7 (CRITICAL sniper teal-curtain): x1.5 on the DARK
+        // crest colors left the whole comb band ~2 stops under sunlit
+        // midground canopy (measured lum 68-86 vs 158 on shots/sniper_view).
+        // The strip is unlit — its vertex tint must carry the sun product:
+        // x2.1 front / x1.8 back (cap 1.9) lands the first comb row within
+        // ~15% of lit midground trees; the haze lerp still recesses far rows.
+        let cr = Math.min(1.9, col[i * 3] * (back ? 1.8 : 2.1));
+        let cg = Math.min(1.9, col[i * 3 + 1] * (back ? 1.8 : 2.1));
+        let cb = Math.min(1.9, col[i * 3 + 2] * (back ? 1.8 : 2.1));
         cr += (fogC.r - cr) * hz;
         cg += (fogC.g - cg) * hz;
         cb += (fogC.b - cb) * hz;
@@ -1302,9 +1383,11 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
           // sink the ribbon base into the slope so crowns emerge from it
           cPos.push(x, hh - span * 0.35, z, x, hh + span * 0.65, z);
           const hz = Math.min(0.9, aerMid * 0.5 + 0.10);
-          let cr = Math.min(1.4, (col[iA * 3] + (col[iB * 3] - col[iA * 3]) * f) * 1.42);
-          let cg = Math.min(1.4, (col[iA * 3 + 1] + (col[iB * 3 + 1] - col[iA * 3 + 1]) * f) * 1.42);
-          let cb = Math.min(1.4, (col[iA * 3 + 2] + (col[iB * 3 + 2] - col[iA * 3 + 2]) * f) * 1.42);
+          // lighting_post r7: flank stands follow the crest-comb relight
+          // (x1.42 -> x2.0, cap 1.9) so wall faces match the lit crest band
+          let cr = Math.min(1.9, (col[iA * 3] + (col[iB * 3] - col[iA * 3]) * f) * 2.0);
+          let cg = Math.min(1.9, (col[iA * 3 + 1] + (col[iB * 3 + 1] - col[iA * 3 + 1]) * f) * 2.0);
+          let cb = Math.min(1.9, (col[iA * 3 + 2] + (col[iB * 3 + 2] - col[iA * 3 + 2]) * f) * 2.0);
           cr += (fogC.r - cr) * hz;
           cg += (fogC.g - cg) * hz;
           cb += (fogC.b - cb) * hz;

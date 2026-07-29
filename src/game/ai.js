@@ -1655,13 +1655,24 @@ export function createAI(entity, opts = {}) {
       lastSeenAtS = nowS;
     }
     if (!target || !enemyAlive(target)) {
-      target = shooterEnt;
-      acquiredAtS = nowS;
-      nonPenCount = 0;
-      probeTimer = 0;
-      lastSeen.x = sp.x; lastSeen.z = sp.z;
-      lastSeenAtS = nowS;
-      if (mode === 'patrol') mode = 'engage';
+      // camo_spotting r7 (regression guard vs the old wallhack): an IDLE bot
+      // used to claim the shooter as TARGET on the very first flash even
+      // when the spotting sim still hid it — the one acquisition path that
+      // skipped both the deep-concealment courtesy of the lock path above
+      // and the >=2-shot hardClaim rule. Same gate now: shot 1 from a
+      // formally unspotted bush claims nobody (the sim's own muzzle-flash
+      // branch resolves an open-ground shooter within the forced check, so
+      // a visible shooter is claimed a LOS tick later at most); a repeat
+      // offender (2+ flashes, one window) is unambiguous intel as before.
+      if (isVisibleToTeam(shooterEnt) || playerShotsInWindow >= 2) {
+        target = shooterEnt;
+        acquiredAtS = nowS;
+        nonPenCount = 0;
+        probeTimer = 0;
+        lastSeen.x = sp.x; lastSeen.z = sp.z;
+        lastSeenAtS = nowS;
+        if (mode === 'patrol') mode = 'engage';
+      }
     } else if (playerShotsInWindow >= 2 && target !== shooterEnt && !target.isPlayer) {
       // controls_gunnery r2: a player who keeps firing inside one intel
       // window takes the target slot OUTRIGHT — even from an ENGAGED bot and
@@ -1698,6 +1709,10 @@ export function createAI(entity, opts = {}) {
       pressing: nowS < pressUntilS,
       playerShotsInWindow, // r2: repeat-offender aggro count (intel window)
       playerLocked: nowS < playerLockUntilS, // r4 RETURN-FIRE LOCK live
+      // camo_spotting r7: chase-intel snapshot for the acquisition selftest —
+      // asserts a hardClaim keeps the MUZZLE stamp, never the live position,
+      // while the spotting sim hides the shooter.
+      lastSeenX: lastSeen.x, lastSeenZ: lastSeen.z, lastSeenAtS,
       ..._dbg,
     }),
     state: mode,

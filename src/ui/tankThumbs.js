@@ -88,10 +88,16 @@ function renderAll(specs) {
   // r6-2: rim strengthened + a second low cool rim OPPOSITE the key (round
   // critique "weak rim separation from the dark card") — the far flank and
   // gun run now carry a visible cool edge line.
-  const hemi = new THREE.HemisphereLight(0xc4d4e4, 0x3a362e, 1.35);
+  // r7-2 (round critique: "T-90M / Leo 2A7 renders murky next to the USA
+  // card"): measured means were already normalized (0.40 ± 0.02) — the murk
+  // was SHADOW CRUSH: the camera-side flank fell to near-black on schemes
+  // with dark camo, so those cards read darker at a glance. Hemisphere +
+  // camera-side fill rise so the shaded flank keeps readable detail; the
+  // exposure loop below then pulls every card back onto the shared mean.
+  const hemi = new THREE.HemisphereLight(0xc4d4e4, 0x4a463c, 1.5);
   const key = new THREE.DirectionalLight(0xfff0d6, 4.1);
   key.position.set(-7, 8, 4);
-  const fill = new THREE.DirectionalLight(0x9fb4cc, 1.0);
+  const fill = new THREE.DirectionalLight(0x9fb4cc, 1.6);
   fill.position.set(6, 2, 6);
   const rim = new THREE.DirectionalLight(0xeaf3ff, 5.0);
   rim.position.set(6, 7, -8);
@@ -247,7 +253,9 @@ function renderAll(specs) {
         const bb = measureAlphaBox();
         if (!bb || bb.meanLuma <= 0.02) break;
         const ratio = TARGET_LUMA / bb.meanLuma;
-        if (ratio > 0.94 && ratio < 1.1) break; // inside the target band
+        // r7-2: band tightened (0.94-1.1 → 0.96-1.06) — the old band let two
+        // neighboring cards settle a visible ~14% apart and still "pass"
+        if (ratio > 0.96 && ratio < 1.06) break; // inside the target band
         const next = Math.max(MIN_EXPOSURE, Math.min(MAX_EXPOSURE,
           renderer.toneMappingExposure * Math.max(0.62, Math.min(1.65, ratio))));
         if (Math.abs(next - renderer.toneMappingExposure) < 1e-4) break; // clamped

@@ -264,9 +264,9 @@ const HUD_CSS = `
    optical edge falloff real scope glass shows. Sits UNDER the reticle canvas
    so sight furniture stays crisp. */
 .cot-scopeblur{position:absolute;inset:0;display:none;pointer-events:none;
-  -webkit-backdrop-filter:blur(2.2px);backdrop-filter:blur(2.2px);
-  -webkit-mask-image:radial-gradient(ellipse 72% 72% at 50% 50%,transparent 0 56%,#000 92%);
-  mask-image:radial-gradient(ellipse 72% 72% at 50% 50%,transparent 0 56%,#000 92%);}
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+  -webkit-mask-image:radial-gradient(ellipse 72% 72% at 50% 50%,transparent 0 48%,#000 86%);
+  mask-image:radial-gradient(ellipse 72% 72% at 50% 50%,transparent 0 48%,#000 86%);}
 .cot-top{position:absolute;top:0;left:50%;transform:translateX(-50%);display:flex;
   align-items:center;gap:16px;padding:7px 46px 9px;
   background:linear-gradient(180deg,rgba(16,21,27,.94),rgba(7,10,14,.68));
@@ -287,21 +287,23 @@ const HUD_CSS = `
 .cot-top .tm{font-size:15.5px;font-weight:600;color:#d6e2ec;letter-spacing:.1em;
   font-family:${FONT_COND};font-stretch:condensed;text-shadow:0 1px 2px rgba(0,0,0,.8);
   font-variant-numeric:tabular-nums;line-height:1;padding:0 4px;}
-/* frag counter (WoT tug-of-war semantics): a segmented TUG BAR under each
-   numeral (one slat per opposing vehicle); each kill fills one slat solid in
-   the scoring team's color, growing outward from the timer. r6-2: the empty
-   state is a DARK TRACK slat (skewed, wide-flat) — the old hollow 11px
-   squares read as four unchecked checkboxes at battle start. */
-.cot-top .sc{display:flex;flex-direction:column;align-items:center;gap:2px;}
-.cot-top .wedge{display:flex;gap:2px;align-items:center;}
-.cot-top .wedge i{display:block;width:13px;height:5px;transform:skewX(-14deg);
-  background:rgba(10,14,18,.85);border:1px solid rgba(150,166,180,.35);
-  box-shadow:inset 0 1px 1px rgba(0,0,0,.6);}
+/* frag counter (WoT tug-of-war semantics): one kill PIP per opposing
+   vehicle under each numeral; each kill fills one pip solid in the scoring
+   team's color, growing outward from the timer. r7-2 (round critique: "the
+   wide-flat slats render as four underscore dashes / placeholder text"):
+   pips are now small 6px FILLED SQUARES hugging the numeral baseline —
+   unlit = dark filled square with a quiet keyline (clearly a socket, not
+   text), lit = solid team color. */
+.cot-top .sc{display:flex;flex-direction:column;align-items:center;gap:1px;}
+.cot-top .wedge{display:flex;gap:3px;align-items:center;}
+.cot-top .wedge i{display:block;width:6px;height:6px;
+  background:rgba(12,17,22,.92);border:1px solid rgba(150,166,180,.42);
+  box-shadow:inset 0 1px 1px rgba(0,0,0,.55);}
 .cot-top .wedge i.on{animation:cotChipIn .18s ease-out;
-  background:rgba(134,232,134,.95);border-color:rgba(134,232,134,.95);
-  box-shadow:0 0 4px rgba(126,232,126,.35);}
-.cot-top .wedge.r i.on{background:rgba(242,110,100,.95);border-color:rgba(242,110,100,.95);
-  box-shadow:0 0 4px rgba(240,90,90,.35);}
+  background:rgba(134,232,134,.95);border-color:rgba(150,244,150,.95);
+  box-shadow:0 0 4px rgba(126,232,126,.4);}
+.cot-top .wedge.r i.on{background:rgba(242,110,100,.95);border-color:rgba(250,130,120,.95);
+  box-shadow:0 0 4px rgba(240,90,90,.4);}
 @keyframes cotChipIn{from{opacity:0}to{opacity:1}}
 /* net/perf readout (WoT battle constant): fps + ping tokens — r8: TOP-RIGHT
    corner at 10px/0.6 alpha (WoT's placement); parked top-left at full HUD
@@ -480,10 +482,12 @@ const HUD_CSS = `
   text-align:center;display:none;will-change:transform;}
 .cot-tgt .bk{padding:0 0 4px;}
 /* r5: soft 60%-black DROP SHADOW only — the old five-direction shadow stack
-   rendered as a cheap outline stroke around the name text */
-.cot-tgt .nick{font-size:13px;font-weight:700;color:#ff9c92;letter-spacing:.02em;
+   rendered as a cheap outline stroke around the name text.
+   r7-2: nickname in WoT crimson (#fa5252) — the salmon-pink read as damage
+   text, not an enemy nameplate. */
+.cot-tgt .nick{font-size:13px;font-weight:700;color:#fa5252;letter-spacing:.02em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  text-shadow:0 1px 2px rgba(0,0,0,.75),0 0 6px rgba(0,0,0,.5);}
+  text-shadow:0 1px 2px rgba(0,0,0,.8),0 0 6px rgba(0,0,0,.55);}
 .cot-tgt .vrow{display:flex;align-items:center;justify-content:center;gap:5px;
   margin-top:1px;}
 .cot-tgt .cg{display:inline-flex;align-items:center;
@@ -496,16 +500,18 @@ const HUD_CSS = `
   font-family:${FONT_COND};font-stretch:condensed;text-transform:uppercase;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   text-shadow:0 1px 2px rgba(0,0,0,.75),0 0 6px rgba(0,0,0,.5);}
-/* r8: CONTINUOUS HP bar with a 1px dark inset around the fill (WoT) — the
-   repeating 10-tick segment overlay read as a Battlefield ammo gauge */
-.cot-tgt .tr{height:7px;margin:4px 14px 0;background:rgba(4,6,8,.88);
-  border:1px solid rgba(0,0,0,.9);padding:1px;position:relative;
-  box-shadow:0 1px 3px rgba(0,0,0,.7);}
+/* r7-2 (round critique: "thick full-width red bar + separate 1000/1000 line
+   makes the plate feel oversized"): the HP bar slims to ~60% plate width at
+   4px and the WHITE numerals move INLINE to its right — one quiet gauge
+   line instead of two stacked rows. */
+.cot-tgt .hrow{display:flex;align-items:center;justify-content:center;gap:5px;
+  margin-top:4px;}
+.cot-tgt .tr{height:4px;width:88px;flex:0 0 auto;background:rgba(4,6,8,.88);
+  border:1px solid rgba(0,0,0,.9);box-shadow:0 1px 3px rgba(0,0,0,.7);}
 .cot-tgt .fl{height:100%;background:linear-gradient(180deg,#ff7a6e,#d63a30);}
-/* r8: WHITE HP numerals (WoT) — the salmon-pink figures read as damage text */
-.cot-tgt .hp{font-size:10px;font-weight:700;color:rgba(255,255,255,.9);margin-top:2px;
+.cot-tgt .hp{font-size:9.5px;font-weight:700;color:rgba(255,255,255,.92);line-height:1;
   font-family:${FONT_COND};font-stretch:condensed;font-variant-numeric:tabular-nums;
-  letter-spacing:.05em;
+  letter-spacing:.04em;
   text-shadow:0 1px 2px rgba(0,0,0,.75),0 0 6px rgba(0,0,0,.5);}
 /* r5: anchor chevron — small downward triangle tying the plate to its
    vehicle (the plate floated context-free above the turret before) */
@@ -605,8 +611,8 @@ export function initHud(bus) {
   const tgtEl = el('div', 'cot-tgt', root);
   tgtEl.innerHTML = `<div class="bk"><div class="nick"></div>` +
     `<div class="vrow"><span class="cg"></span><span class="tier"></span><span class="veh"></span></div>` +
-    `<div class="tr"><div class="fl"></div></div>` +
-    `<div class="hp"></div><div class="anch"></div></div>`;
+    `<div class="hrow"><div class="tr"><div class="fl"></div></div>` +
+    `<div class="hp"></div></div><div class="anch"></div></div>`;
   const tgtRefs = {
     nick: tgtEl.querySelector('.nick'), tier: tgtEl.querySelector('.tier'),
     veh: tgtEl.querySelector('.veh'), fl: tgtEl.querySelector('.fl'),
@@ -812,13 +818,6 @@ export function initHud(bus) {
   const camoLidEl = camoInd.querySelector('.clid');
   const camoPupEl = camoInd.querySelector('.cpup');
   let camoIndState = 'off'; // 'off'|'spotted'|'concealed'|'exposed'
-  // camo_spotting r6: first-battle discoverability — until the player has
-  // seen the chip go 'concealed' once (persisted), the EXPOSED state shows
-  // the faint neutral outline so the indicator's home is learnable; after
-  // that first flip it returns to r4 signal-only behavior (the permanent
-  // grey eye read as Blitz-style foreign furniture).
-  let camoIndTaught = false;
-  try { camoIndTaught = localStorage.getItem('cot.hint.camoInd') === '1'; } catch (e) { /* private mode */ }
   function updateCamoIndicator(sp) {
     let state = 'off';
     if (sp) {
@@ -829,11 +828,14 @@ export function initHud(bus) {
     if (state === camoIndState) return;
     const prev = camoIndState;
     camoIndState = state;
-    // r4: the EXPOSED state renders nothing — the permanent faint grey eye
-    // chip perched on the damage panel read as Blitz-style foreign furniture
-    // (critique). The chip now only pops with signal: red eye while spotted,
-    // green closed eye while a bush/camo is actually working.
-    camoInd.style.display = state === 'off' || (state === 'exposed' && camoIndTaught) ? 'none' : 'flex';
+    // r7-2 (round critique: "a permanently visible dimmed eye reads as debug
+    // UI — WoT's lamp only appears when spotted"): the EXPOSED state renders
+    // NOTHING, unconditionally (the old first-battle "teach" mode kept a
+    // faint grey eye on screen for the whole session in fresh profiles /
+    // screenshot captures). The chip only pops with signal: red eye while
+    // spotted (sixth-sense gated, sim-side ~10 s decay), green closed eye
+    // while a bush/camo is actually working.
+    camoInd.style.display = state === 'spotted' || state === 'concealed' ? 'flex' : 'none';
     camoInd.classList.toggle('spotted', state === 'spotted');
     camoInd.classList.toggle('hidden-in-bush', state === 'concealed');
     // camo_spotting r2: one-shot pulse on the exposed→concealed flip so the
@@ -843,10 +845,6 @@ export function initHud(bus) {
     if (state === 'concealed' && (prev === 'exposed' || prev === 'spotted')) {
       void camoInd.offsetWidth; // restart the animation
       camoInd.classList.add('conceal-pulse');
-    }
-    if (state === 'concealed' && !camoIndTaught) {
-      camoIndTaught = true;                  // the pulse just taught the chip
-      try { localStorage.setItem('cot.hint.camoInd', '1'); } catch (e) { /* private mode */ }
     }
     if (state === 'spotted') {
       camoEyeEl.style.display = '';
@@ -861,14 +859,6 @@ export function initHud(bus) {
       camoLidEl.style.display = '';
       camoPupEl.style.display = 'none';
       camoSvgEl.style.opacity = '0.85';
-    } else if (state === 'exposed') {
-      camoEyeEl.style.display = '';
-      camoLidEl.style.display = 'none';
-      camoPupEl.style.display = '';
-      camoEyeEl.setAttribute('stroke', '#8a97a3');
-      camoPupEl.setAttribute('fill', '#8a97a3');
-      camoPupEl.setAttribute('r', '3');
-      camoSvgEl.style.opacity = '0.45';
     }
   }
   // ======================= END SPOTTING SECTION =============================
@@ -1170,22 +1160,22 @@ export function initHud(bus) {
   function drawScope(zoom) {
     const cx = w / 2, cy = h / 2;
     if (!scopeGrad || scopeGrad._zoom !== zoom) {
-      // gameplay_feel r4-fix (round critique): WoT applies the FULL scope
-      // shadow at every zoom step — the old zoom-keyed strength (x2 ≈ 14%)
-      // made low-zoom sniper read as plain FOV zoom with crosslines. Ring
-      // strength is now constant at the x8-class value; the ring START pulls
-      // in slightly as zoom rises so higher magnification still reads as a
-      // marginally tighter optic (movement-physics.md §9.2).
-      // r6-2 (round critique: "edge treatment imperceptible at 1080p"): the
-      // shade starts earlier and lands ~40% at the true frame corner — a
-      // clearly visible optical falloff that still never forms a ring/tunnel
-      // boundary inside the sight picture.
-      const deep = 0.40;
-      scopeGrad = ctx.createRadialGradient(cx, cy,
-        Math.min(w, h) * (0.385 - 0.015 * Math.log2(zoom)),
-        cx, cy, Math.hypot(w, h) * 0.5);
+      // r7-2 MAJOR (round critique: "vignette nearly imperceptible at the
+      // frame edges — 8x reads as a plain FOV change"): the falloff is now
+      // ELLIPTICAL, built in a y-scaled space where every frame edge is
+      // equidistant from center. The old circular gradient reached the
+      // left/right edges at ~29% but the top/bottom edges at ~6% — on a
+      // 16:9 frame the treatment effectively didn't exist along the whole
+      // horizontal band the eye actually reads. Now every edge midpoint
+      // lands ~25% luminance falloff and the extreme corners ~48%, still
+      // with no ring/tunnel boundary inside the sight picture. Zoom pulls
+      // the start radius in fractionally (tighter optic at x8).
+      const deep = 0.48;
+      const r0 = w * (0.30 - 0.012 * Math.log2(zoom));
+      const r1 = w * 0.62;
+      scopeGrad = ctx.createRadialGradient(0, 0, r0, 0, 0, r1);
       scopeGrad.addColorStop(0, 'rgba(2,3,4,0)');
-      scopeGrad.addColorStop(0.5, `rgba(2,3,4,${(deep * 0.38).toFixed(3)})`);
+      scopeGrad.addColorStop(0.5, `rgba(2,3,4,${(deep * 0.34).toFixed(3)})`);
       scopeGrad.addColorStop(1, `rgba(2,3,4,${deep.toFixed(3)})`);
       scopeGrad._zoom = zoom;
     }
@@ -1193,16 +1183,25 @@ export function initHud(bus) {
     // via forceAimDisplay
     const fadeK = scopeFadeMs >= 0
       ? Math.min(1, (performance.now() - scopeFadeMs) / 100) : 1;
+    const sy = h / w; // elliptical space: y compressed so edges are equal
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(1, sy);
     ctx.globalAlpha = fadeK;
     ctx.fillStyle = scopeGrad;
-    ctx.fillRect(0, 0, w, h);
+    ctx.fillRect(-cx, -cy / sy, w, h / sy);
     // NO color tint over the scene: WoT sniper optics keep the arcade
-    // grading. Only a whisper of chromatic fringe survives at the edge.
-    const chrom = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.5, cx, cy, Math.hypot(w, h) * 0.52);
-    chrom.addColorStop(0, 'rgba(70,110,190,0)');
-    chrom.addColorStop(1, 'rgba(90,130,215,0.08)');
+    // grading — but real scope glass shows a cool chromatic fringe where
+    // the vignette bites. Same elliptical space, slightly wider start so
+    // the blue-violet edge sits just outside the luminance falloff knee.
+    const chrom = ctx.createRadialGradient(0, 0, w * 0.40, 0, 0, w * 0.66);
+    chrom.addColorStop(0, 'rgba(84,118,205,0)');
+    chrom.addColorStop(0.72, 'rgba(88,122,210,0.055)');
+    chrom.addColorStop(1, 'rgba(104,130,225,0.15)');
     ctx.fillStyle = chrom;
-    ctx.fillRect(0, 0, w, h);
+    ctx.fillRect(-cx, -cy / sy, w, h / sy);
+    ctx.restore();
+    ctx.globalAlpha = fadeK;
     // SHORT cross arms off the dispersion-circle rim (r4 MAJOR): vanilla WoT
     // sniper mode has NO full-screen crosshair — the r8 edge-to-edge
     // hairlines read as a third-party mod / generic FPS scope. The arms now
@@ -1369,12 +1368,26 @@ export function initHud(bus) {
     // the circle open to at least the gun-marker offset and drop the pen
     // coloring to neutral until the gun is physically inside the circle.
     let gunOutside = false;
+    let gunOffPx = 0;
     if (view.gunX != null && view.gunY != null) {
-      const gunOffPx = Math.hypot(view.gunX - cx, view.gunY - cy);
+      gunOffPx = Math.hypot(view.gunX - cx, view.gunY - cy);
       if (gunOffPx > r) {
         gunOutside = true;
         r = Math.min(Math.max(r, gunOffPx + 8), Math.min(w, h) * 0.46);
       }
+    }
+    // r7-2 MAJOR (WoT dual-element grammar): the DISPERSION CIRCLE belongs
+    // to the GUN — it is centered on the barrel's projected lay point and
+    // visibly lags/diverges from the camera-axis cross during a fast turret
+    // traverse, converging back as the gun settles. The old build drew both
+    // on the camera axis, so traverse never separated them and the circle
+    // read as camera furniture. (Once the gun is far outside, the circle is
+    // held open around the camera axis instead — a tiny circle riding the
+    // gun marker across the screen reads as a glitch, and the gunOutside
+    // clamp above already covers that regime.)
+    let ccx = cx, ccy = cy;
+    if (!gunOutside && view.gunX != null && view.gunY != null && gunOffPx > 1.5) {
+      ccx = view.gunX; ccy = view.gunY;
     }
     // r4 (WoT marker grammar): the center marker stays NEUTRAL over terrain
     // and only takes the pen color when an enemy VEHICLE actually sits under
@@ -1386,28 +1399,29 @@ export function initHud(bus) {
     if (sniper && col === PEN_NONE) col = SNIPER_NONE;
 
     // --- dispersion circle: ONE thin DASHED ring (stock WoT's aim circle),
-    // NO outer tick marks — r5-2 round critique: the r6 continuous circle
-    // with 8 radial ticks read as a War-Thunder rangefinder, not WoT. The
-    // dash length tracks the radius so the segment count stays stable
-    // through bloom/shrink and the animation keeps reading.
-    // r5-2 sniper skin: brighter green, heavier stroke, denser dashes.
-    const dashLen = Math.max(5, (2 * Math.PI * r) / (sniper ? 44 : 36) * 0.62);
-    const dashGap = dashLen * (sniper ? 0.52 : 0.62);
+    // NO outer tick marks. r7-2 MAJOR (round critique: "16-20 chunky
+    // round-capped dashes read as a UI loading spinner, not gunnery
+    // optics"): the ring is now 32/40 FINE hard-ended segments at a 1.3 to
+    // 1.5 px stroke — fine-ruled instrument marks whose count stays stable
+    // through bloom/shrink. The dark under-stroke survives (sunlit-road
+    // legibility) but slims to a hairline halo.
+    const segN = sniper ? 40 : 32;
+    const segPeriod = (2 * Math.PI * r) / segN;
+    const dashLen = Math.max(2.5, segPeriod * 0.52);
+    const dashGap = Math.max(1.5, segPeriod - dashLen);
     function circlePass() {
       ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.arc(ccx, ccy, r, 0, Math.PI * 2);
       ctx.stroke();
     }
-    // controls_gunnery r2: heavier weights — the grey arcade ring vanished
-    // over sunlit roads at 1080p (dark under-stroke ~4.5 px, bright >=2.2 px)
-    const circleLw = sniper ? 2.5 : 2.2;
+    const circleLw = sniper ? 1.5 : 1.3;
     ctx.lineCap = 'butt';
     ctx.setLineDash([dashLen, dashGap]);
-    ctx.globalAlpha = 0.68;
+    ctx.globalAlpha = 0.72;
     ctx.strokeStyle = 'rgba(0,0,0,0.62)'; // dark halo under-pass
-    ctx.lineWidth = circleLw + 2.3;
+    ctx.lineWidth = circleLw + 1.5;
     circlePass();
-    ctx.globalAlpha = 0.95;
+    ctx.globalAlpha = 0.97;
     // BLOCKED-SHOT INDICATOR (controls_gunnery r2): the muzzle→aim path is
     // obstructed short of the aim point — WoT's red reticle on a blocked gun
     // line. The circle flips red so the player never fires into a crest.
@@ -1420,22 +1434,22 @@ export function initHud(bus) {
       : sniper ? SNIPER_COL : CIRCLE_COL;
     ctx.strokeStyle = ringCol;
     ctx.fillStyle = ringCol;
-    ctx.shadowColor = 'rgba(0,0,0,0.6)';
-    ctx.shadowBlur = 1;
     ctx.lineWidth = circleLw;
     circlePass();
     ctx.setLineDash([]);
 
-    // --- central gun marker: a SMALL CLEAN CROSS (short gapped arms + a
-    // fine center dot), colored by penetration chance (green/orange/red,
-    // neutral off armor). r5-2 round critique: the old heavy 5px black
-    // under-stroke + 3.4px black dot + dark reload track fused into a
-    // "quartered black/white registration disc" — the ink pass is now a
-    // slim contour (+1.4px), the dot is small, and the reload track is gone.
-    // hud_ui r5: the marker SCALES with zoom in sniper mode — at x8 fixed
-    // 14px arms read as a tiny cluster of dashes lost on the target's hull.
-    // Sniper also draws a half-weight heavier (its sight identity).
+    // --- central CAMERA-AXIS marker: a SMALL CLEAN CROSS (short gapped
+    // arms + a fine center dot), colored by penetration chance (green/
+    // orange/red, neutral off armor). r7-2 MAJOR (round critique: "the
+    // white center cross is oversized relative to the circle and sits on a
+    // faint dark backing disc"): the whole marker shrinks ~40% (arms 13 px
+    // → 8 px, strokes 2.4 → 1.6), the ink under-pass thins to a hairline
+    // contour at half alpha, and the canvas shadow is OFF for the marker —
+    // the accumulated dark passes were what fused into the backing disc.
+    // hud_ui r5: the marker SCALES with zoom in sniper mode — at x8 a fixed
+    // 8px cross would be lost on the target's hull.
     const zs = sniper ? Math.min(1.8, 1.1 + 0.085 * (view.zoom || 8)) : 1;
+    ctx.shadowBlur = 0;
     // reload state hoisted (r7): the ring, the countdown numeral and the
     // ready-pulse edge detector below all read it
     const rl0 = view.reload;
@@ -1444,20 +1458,20 @@ export function initHud(bus) {
     wasReloading = isReloading;
     function markerPass(inkOnly) {
       ctx.beginPath();
-      ctx.moveTo(cx - 13 * zs, cy + 0.5); ctx.lineTo(cx - 4.5 * zs, cy + 0.5);
-      ctx.moveTo(cx + 4.5 * zs, cy + 0.5); ctx.lineTo(cx + 13 * zs, cy + 0.5);
-      ctx.moveTo(cx + 0.5, cy - 13 * zs); ctx.lineTo(cx + 0.5, cy - 4.5 * zs);
-      ctx.moveTo(cx + 0.5, cy + 4.5 * zs); ctx.lineTo(cx + 0.5, cy + 13 * zs);
+      ctx.moveTo(cx - 8 * zs, cy + 0.5); ctx.lineTo(cx - 2.8 * zs, cy + 0.5);
+      ctx.moveTo(cx + 2.8 * zs, cy + 0.5); ctx.lineTo(cx + 8 * zs, cy + 0.5);
+      ctx.moveTo(cx + 0.5, cy - 8 * zs); ctx.lineTo(cx + 0.5, cy - 2.8 * zs);
+      ctx.moveTo(cx + 0.5, cy + 2.8 * zs); ctx.lineTo(cx + 0.5, cy + 8 * zs);
       ctx.stroke();
       ctx.beginPath();
-      ctx.arc(cx, cy, (inkOnly ? 2.5 : 1.7) * Math.min(zs, 1.35), 0, Math.PI * 2);
+      ctx.arc(cx, cy, (inkOnly ? 1.6 : 1.1) * Math.min(zs, 1.35), 0, Math.PI * 2);
       ctx.fill();
     }
-    const markLw = (sniper ? 2.9 : 2.4) * Math.min(zs, 1.4);
-    ctx.globalAlpha = 0.75;
+    const markLw = (sniper ? 1.8 : 1.6) * Math.min(zs, 1.4);
+    ctx.globalAlpha = 0.5;
     ctx.strokeStyle = 'rgba(6,9,12,0.9)';
     ctx.fillStyle = 'rgba(6,9,12,0.9)';
-    ctx.lineWidth = markLw + 1.6;
+    ctx.lineWidth = markLw + 1.2;
     markerPass(true);
     ctx.globalAlpha = 0.97;
     ctx.strokeStyle = col;
@@ -1465,32 +1479,27 @@ export function initHud(bus) {
     ctx.lineWidth = markLw;
     markerPass(false);
 
-    // --- radial reload sweep around the center marker (WoT reload ring):
-    // a SUBTLE amber arc in the countdown numeral's accent color closing
-    // clockwise as the load completes, over a faint same-hue track. r5-2:
-    // the old 60%-black full track read as a solid dark disc behind the
-    // marker (part of the "registration mark" critique) — killed.
+    // --- radial reload arc around the center marker (WoT reload ring):
+    // r7-2 (round critique: "the arc sweep does not obviously correspond to
+    // reload fraction"): the amber arc now DRAINS — it starts as a full
+    // ring the instant the gun fires and empties clockwise from 12 o'clock
+    // in exact proportion to time REMAINING (rl.t / totalS), hitting zero
+    // as the countdown hits zero. The old faint full-circle track is gone
+    // (it read as part of the backing disc); the dark hairline backing
+    // rides only under the lit arc for sky readability.
     if (isReloading) {
-      const RING = 18 + (zs - 1) * 13; // clears the zoom-scaled marker arms
-      const frac = Math.max(0, Math.min(1, 1 - rl0.t / rl0.totalS));
-      ctx.lineWidth = 2.6;
-      ctx.strokeStyle = 'rgba(240,160,48,0.2)'; // faint accent-hue track
-      ctx.beginPath();
-      ctx.arc(cx, cy, RING, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.lineCap = 'round';
-      // hairline dark backing under the lit arc only (sky readability)
+      const RING = 14 + (zs - 1) * 9; // clears the zoom-scaled marker arms
+      const frac = Math.max(0, Math.min(1, rl0.t / rl0.totalS)); // remaining
       ctx.strokeStyle = 'rgba(6,9,12,0.45)';
-      ctx.lineWidth = 4.2;
+      ctx.lineWidth = 3.6;
       ctx.beginPath();
       ctx.arc(cx, cy, RING, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
       ctx.stroke();
       ctx.strokeStyle = RELOAD_ACCENT;
-      ctx.lineWidth = 2.6;
+      ctx.lineWidth = 2.2;
       ctx.beginPath();
       ctx.arc(cx, cy, RING, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
       ctx.stroke();
-      ctx.lineCap = 'butt';
     }
     // ready pulse (r7): the moment the reload arc closes, the center marker
     // flashes white for ~0.4 s — WoT's unmistakable "gun ready" beat.
@@ -1505,7 +1514,7 @@ export function initHud(bus) {
           ctx.globalAlpha = 0.95 * pa;
           ctx.strokeStyle = '#ffffff';
           ctx.fillStyle = '#ffffff';
-          ctx.lineWidth = 3.2;
+          ctx.lineWidth = markLw + 0.6;
           markerPass(false);
         }
       } else {
@@ -1519,18 +1528,21 @@ export function initHud(bus) {
     // aim point) — r5-2: a DIMMED, SMALLER COPY of the main center marker
     // (same gapped-cross grammar, same ink) instead of the old bare white
     // circle-plus, which read as a rendering glitch next to the styled cross.
+    // r7-2: it sits at the DISPERSION CIRCLE's center (the circle now rides
+    // the gun), so cross-at-camera + circle-with-gun-dot visibly separate
+    // and re-converge during turret traverse — WoT's two-element read.
     if (view.gunX != null && Math.hypot(view.gunX - cx, view.gunY - cy) > 6) {
       const gx = view.gunX, gy = view.gunY;
       const gzs = 0.72 * zs;
       const gunPass = () => {
         ctx.beginPath();
-        ctx.moveTo(gx - 13 * gzs, gy + 0.5); ctx.lineTo(gx - 4.5 * gzs, gy + 0.5);
-        ctx.moveTo(gx + 4.5 * gzs, gy + 0.5); ctx.lineTo(gx + 13 * gzs, gy + 0.5);
-        ctx.moveTo(gx + 0.5, gy - 13 * gzs); ctx.lineTo(gx + 0.5, gy - 4.5 * gzs);
-        ctx.moveTo(gx + 0.5, gy + 4.5 * gzs); ctx.lineTo(gx + 0.5, gy + 13 * gzs);
+        ctx.moveTo(gx - 8 * gzs, gy + 0.5); ctx.lineTo(gx - 2.8 * gzs, gy + 0.5);
+        ctx.moveTo(gx + 2.8 * gzs, gy + 0.5); ctx.lineTo(gx + 8 * gzs, gy + 0.5);
+        ctx.moveTo(gx + 0.5, gy - 8 * gzs); ctx.lineTo(gx + 0.5, gy - 2.8 * gzs);
+        ctx.moveTo(gx + 0.5, gy + 2.8 * gzs); ctx.lineTo(gx + 0.5, gy + 8 * gzs);
         ctx.stroke();
         ctx.beginPath();
-        ctx.arc(gx, gy, 1.5 * Math.min(gzs, 1.35), 0, Math.PI * 2);
+        ctx.arc(gx, gy, 1.1 * Math.min(gzs, 1.35), 0, Math.PI * 2);
         ctx.fill();
       };
       // r6-2 (round critique: "two competing center markers with no visual
@@ -1540,7 +1552,7 @@ export function initHud(bus) {
       ctx.globalAlpha = 0.26;
       ctx.strokeStyle = 'rgba(6,9,12,0.9)';
       ctx.fillStyle = 'rgba(6,9,12,0.9)';
-      ctx.lineWidth = markLw * 0.72 + 1.4;
+      ctx.lineWidth = markLw * 0.72 + 1.1;
       gunPass();
       ctx.globalAlpha = view.atGunLimit ? 0.55 : 0.38;
       ctx.strokeStyle = gCol;
@@ -1559,21 +1571,23 @@ export function initHud(bus) {
     ctx.shadowColor = 'rgba(0,0,0,0.9)';
     ctx.shadowBlur = 3;
     if (isReloading) {
-      // countdown just under the reload ring — r7: promoted to a 17px bold
-      // numeral (the r6 11.5px read as an afterthought next to the arc).
-      // r4: the unit renders as a SEPARATE smaller non-bold ' s' — at 17px
-      // bold condensed the lowercase glyph read as a capital "3.4 S".
+      // r7-2 (round critique: "the countdown floats below the reticle while
+      // the arc sits inside it"): the numeral now lives at the RETICLE
+      // CENTER — directly below the cross, inside the reload arc's ring —
+      // the WoT placement that binds numeral and arc into one instrument.
+      // r4: the unit renders as a SEPARATE smaller non-bold ' s' — at bold
+      // condensed sizes the lowercase glyph read as a capital "3.4 S".
       ctx.fillStyle = RELOAD_ACCENT;
       const cdTxt = rl0.t >= 10 ? `${Math.ceil(rl0.t)}` : `${rl0.t.toFixed(1)}`;
-      const cdY = cy + 18 + (zs - 1) * 13 + 27;
-      ctx.font = `700 17px ${FONT_COND}`;
+      const cdY = cy + 14 + (zs - 1) * 9 + 15; // just under the reload ring
+      ctx.font = `700 16px ${FONT_COND}`;
       const cdW = ctx.measureText(cdTxt).width;
-      ctx.font = `500 11px ${FONT_COND}`;
+      ctx.font = `500 10.5px ${FONT_COND}`;
       const unitW = ctx.measureText(' s').width;
       ctx.textAlign = 'left';
-      ctx.font = `700 17px ${FONT_COND}`;
+      ctx.font = `700 16px ${FONT_COND}`;
       ctx.fillText(cdTxt, cx - (cdW + unitW) / 2, cdY);
-      ctx.font = `500 11px ${FONT_COND}`;
+      ctx.font = `500 10.5px ${FONT_COND}`;
       ctx.fillText(' s', cx - (cdW + unitW) / 2 + cdW, cdY);
       ctx.textAlign = 'center';
     }
@@ -1589,7 +1603,11 @@ export function initHud(bus) {
         const sp = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
         const n = shellCount(sp);
         const tType = sp.type || '';
-        const yInfo = Math.min(cy + Math.max(r * 1.02 + 24, 96), h - 150);
+        // r7-2: clear the sniper cross's lower arm (rim → r*1.55, drawScope)
+        // — the readout used to sit inside the arm's run and the hairline
+        // sliced through the ammo count text.
+        const yInfo = Math.min(
+          cy + Math.max(r * 1.02 + 24, r * 1.55 + 18, 96), h - 150);
         ctx.font = `700 13.5px ${FONT_COND}`;
         const wN = ctx.measureText(`${n} `).width;
         ctx.font = `800 9px ${FONT_COND}`;
@@ -2261,8 +2279,11 @@ export function initHud(bus) {
     c.lineTo(-s * 0.74, s * 0.9);          // left tail
     c.closePath();
     c.fillStyle = fill;
-    c.strokeStyle = 'rgba(6,10,8,0.9)';
-    c.lineWidth = 1;
+    // r7-2 (round critique: "ally arrows merge with the own-base ring into
+    // one green blob at spawn"): heavier near-black keyline so each arrow
+    // keeps its own edge even when parked on the green base ring.
+    c.strokeStyle = 'rgba(4,8,6,0.95)';
+    c.lineWidth = 1.4;
     c.lineJoin = 'round';
     c.fill();
     c.stroke();
@@ -2391,11 +2412,16 @@ export function initHud(bus) {
       // the IDENTICAL full-weight treatment — heavier team ring over the
       // dark keyline, 30% cap fill, brighter flag — and the player-overlap
       // dim floor rises to 85% (the relaxation pass already clears blips).
+      // r7-2 (round critique: "base circle, player arrow and ally markers
+      // merge into one green blob at spawn"): a base OVERLAPPED by the
+      // player drops to 55% so the arrow cluster reads ON TOP of it — the
+      // r6-2 85% floor kept the ring at nearly full weight exactly where
+      // four green markers stack on it.
       for (const fl of spawnFlags) {
         const [fx, fy] = worldToMap(fl.x, fl.z);
         const dimmed = Math.hypot(fx - plMapX, fy - plMapY) < 15;
         mmCtx.save();
-        if (dimmed) mmCtx.globalAlpha = 0.85;
+        if (dimmed) mmCtx.globalAlpha = 0.55;
         mmCtx.strokeStyle = 'rgba(6,9,12,0.78)'; // dark keyline under the ring
         mmCtx.lineWidth = 4.2;
         mmCtx.beginPath();
@@ -2509,11 +2535,13 @@ export function initHud(bus) {
       // larger than any teammate blip — FIXED anchor for the relaxation pass
       pushLiveBlip(px, py, st.yaw, '#f2f8ff', 6.6, 1, true);
     }
-    // r7: relax overlapping blips to >= 11px separation (radial nudge, the
-    // player arrow never moves), clamp inside the map frame, and draw the
-    // player arrow LAST so it always sits on top. (The r5 8px pass still
-    // left the spawn cluster reading as one green clump over the own base.)
-    const MIN_SEP = 11;
+    // r7: relax overlapping blips to a minimum separation (radial nudge,
+    // the player arrow never moves), clamp inside the map frame, and draw
+    // the player arrow LAST so it always sits on top. r7-2: 11 → 13.5 px —
+    // at 11 the four spawn arrows still touched tail-to-nose on the base
+    // ring and fused into a wreath; 13.5 leaves a visible seam of map
+    // between every pair (arrow footprint is ~10 px at s=5).
+    const MIN_SEP = 13.5;
     for (let it = 0; it < 6; it++) {
       let moved = false;
       for (let i = 0; i < _liveBlipCount; i++) {
@@ -2727,6 +2755,7 @@ export function initHud(bus) {
   // ---------- aim view assembly ----------
   const aimView = {
     cx: 0, cy: 0, radPx: 40, penRatio: null, distM: null, blockedDistM: null,
+    blockedLabel: false, // gameplay_feel r7: dwell-gated PATH BLOCKED text
     gunX: null, gunY: null, atGunLimit: false, gunLimitSpec: false,
     reload: { t: 0, totalS: 1 }, zoom: 1,
   };
@@ -2734,6 +2763,7 @@ export function initHud(bus) {
   function assembleAimView(camera, aim) {
     aimView.penRatio = aim.penRatio != null ? aim.penRatio : null;
     aimView.blockedDistM = aim.blockedDistM != null ? aim.blockedDistM : null;
+    aimView.blockedLabel = !!aim.blockedLabel;
     aimView.distM = aim.distM != null ? aim.distM : null;
     aimView.atGunLimit = !!aim.atGunLimit;
     aimView.gunLimitSpec = !!aim.gunLimitSpec;

@@ -162,6 +162,9 @@ export function spawnTanks(game, engineCtx) {
       // gameplay_feel r5: true once the visual GLB-swaps (rigid running gear,
       // no per-wheel conform) — movement.js hard-clamps its support fan then.
       rigidGear: false,
+      // gameplay_feel r7: measured GLB contact footprint (null = procedural
+      // spec fractions). Stamped with rigidGear — see measureContactGeom.
+      contactGeom: null,
       _camoSeed: 4000 + i,
       ai: null,
       aiCtl: null,
@@ -426,6 +429,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     // gameplay_feel r5: the rigid-gear stamp belongs to the DISPOSED visual —
     // a recycled slot may get a procedural (conform-capable) visual next.
     ent.rigidGear = false;
+    ent.contactGeom = null; // r7: measured footprint dies with the visual too
     if (ent.visual) {
       if (ent.visual.resetDestroyed) ent.visual.resetDestroyed();
       ent.visual.setVisible(false);
@@ -621,7 +625,99 @@ function refreshRigidGear(ent) {
   const kids = ent.visual.root.children;
   for (let i = 0; i < kids.length; i++) {
     const ud = kids[i].userData;
-    if (ud && ud.__glbSwapped) { ent.rigidGear = true; return; }
+    if (ud && ud.__glbSwapped) {
+      ent.rigidGear = true;
+      // gameplay_feel r7 (terrain-contact hard gate, FLOAT side): measure the
+      // swapped visual's true ground-contact footprint and publish it for the
+      // movement.js support solve — see measureContactGeom.
+      ent.contactGeom = measureContactGeom(ent);
+      return;
+    }
+  }
+}
+
+// gameplay_feel r7 (round critique CRITICAL — resting/rolling FLOAT): the
+// support solve assumed every visual's track bottom runs ±0.45 × hullLengthM
+// (true for tankFactory's procedural gear by construction). GLB swaps do NOT
+// honor that layout — the sourced Abrams' rendered contact run measures only
+// ±2.3 m of its 7.93 m hull (0.29 L), tracks curling UP well before ±0.45 L,
+// so the solve held the hull on ~1.25 m of phantom contact beyond each real
+// track end: median 20-21 cm of daylight under the lowest rendered vertex on
+// rolling ground, 21 cm hover at rest. Fix: scan the swapped visual's LOW
+// BAND exactly like the r7 probe — hull-local vertices within 5 cm of the
+// overall min-Y — and derive the contact half-length/half-width/center from
+// that band. Runs ONCE per swap detection (a few hundred k verts, strided),
+// in the visual root's local frame (== the sim's hull frame: root.position =
+// state.pos, root.rotation = sim attitude, so inv(rootWorld)·meshWorld drops
+// any pose above/at the root).
+const CONTACT_BAND_M = 0.05;      // low band: vertices within 5 cm of min-Y
+const CONTACT_MIN_SAMPLES = 24;   // fewer band samples than this = no trust
+const CONTACT_LEN_FRAC_MIN = 0.22; // sanity clamps vs spec dims — a scan that
+const CONTACT_LEN_FRAC_MAX = 0.50; // lands outside these is wrong, not novel
+const CONTACT_WID_FRAC_MIN = 0.30;
+const CONTACT_WID_FRAC_MAX = 0.58;
+const CONTACT_ZC_FRAC_MAX = 0.12; // contact-run center offset cap (× hull L)
+function measureContactGeom(ent) {
+  const root = ent.visual && ent.visual.root;
+  const spec = ent.spec;
+  if (!root || !spec || !spec.dims) return null;
+  try {
+    root.updateMatrixWorld(true);
+    const invRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
+    const rel = new THREE.Matrix4();
+    const meshes = [];
+    root.traverse((o) => {
+      if (!o.isMesh || o.isInstancedMesh || !o.geometry) return;
+      // skip hidden subtrees (the swapped-out procedural gear) and non-color
+      // helpers (shadow proxies write no color but DO define the cast shadow
+      // silhouette — they clone hidden gear geometry, so keep them out too)
+      if (o.material && o.material.colorWrite === false) return;
+      let p = o;
+      let vis = true;
+      while (p && p !== root) { if (!p.visible) { vis = false; break; } p = p.parent; }
+      if (!vis) return;
+      const pa = o.geometry.getAttribute && o.geometry.getAttribute('position');
+      if (!pa) return;
+      meshes.push({ o, pa });
+    });
+    if (!meshes.length) return null;
+    // pass 1: hull-local Y of every (strided) vertex + overall min
+    let minY = Infinity;
+    const pts = [];
+    const v = new THREE.Vector3();
+    for (const { o, pa } of meshes) {
+      rel.multiplyMatrices(invRoot, o.matrixWorld);
+      const step = Math.max(1, Math.floor(pa.count / 20000));
+      for (let i = 0; i < pa.count; i += step) {
+        v.fromBufferAttribute(pa, i).applyMatrix4(rel);
+        pts.push(v.x, v.y, v.z);
+        if (v.y < minY) minY = v.y;
+      }
+    }
+    if (!Number.isFinite(minY)) return null;
+    // pass 2: extents of the low band
+    const band = minY + CONTACT_BAND_M;
+    let zMin = Infinity, zMax = -Infinity, xMin = Infinity, xMax = -Infinity, n = 0;
+    for (let i = 0; i < pts.length; i += 3) {
+      if (pts[i + 1] > band) continue;
+      const x = pts[i], z = pts[i + 2];
+      if (z < zMin) zMin = z;
+      if (z > zMax) zMax = z;
+      if (x < xMin) xMin = x;
+      if (x > xMax) xMax = x;
+      n++;
+    }
+    if (n < CONTACT_MIN_SAMPLES || zMax - zMin < 1 || xMax - xMin < 0.5) return null;
+    const L = spec.dims.hullLengthM;
+    const W = spec.dims.widthM;
+    const clamp = (x, lo, hi) => (x < lo ? lo : (x > hi ? hi : x));
+    return {
+      halfLenM: clamp((zMax - zMin) / 2, CONTACT_LEN_FRAC_MIN * L, CONTACT_LEN_FRAC_MAX * L),
+      halfWidM: clamp((xMax - xMin) / 2, CONTACT_WID_FRAC_MIN * W, CONTACT_WID_FRAC_MAX * W),
+      zCenterM: clamp((zMax + zMin) / 2, -CONTACT_ZC_FRAC_MAX * L, CONTACT_ZC_FRAC_MAX * L),
+    };
+  } catch (e) {
+    return null; // scan is best-effort: fall back to spec fractions
   }
 }
 

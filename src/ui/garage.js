@@ -146,7 +146,14 @@ const GARAGE_CSS = `
   background:rgba(11,15,20,.8);color:#9fb0bf;font-size:20px;font-family:${FONT_STACK};
   transition:color .12s,border-color .12s;outline:none;}
 .cot-car-arrow:hover{color:#f0b04a;border-color:rgba(240,176,74,.6);}
-.cot-cards{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;}
+/* r7-2 (round critique: "'Type 99A (ZTZ-9' truncates with no ellipsis at
+   the strip edge"): the overflow container hard-clipped the last partially
+   visible card mid-glyph. A right-edge fade mask dissolves the partial card
+   into the strip edge instead — the standard carousel "more content"
+   affordance — while each card's own label keeps its CSS ellipsis. */
+.cot-cards{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 64px),transparent 100%);
+  mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 64px),transparent 100%);}
 .cot-cards::-webkit-scrollbar{display:none;}
 .cot-card{width:132px;flex:0 0 auto;cursor:pointer;position:relative;
   background:linear-gradient(180deg,rgba(13,18,23,.86),rgba(8,11,14,.92));

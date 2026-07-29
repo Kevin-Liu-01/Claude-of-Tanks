@@ -1844,14 +1844,24 @@ const FACTORY_OVERRIDE = {
   // dropped ~10% in lightness and a step toward gray. Most of the remaining
   // mint was the specular film (see the hull/GLB spec trims this round) —
   // the paint itself only needed the half-step.
-  m1a2: { scheme: 'nato', base: '#404b38', weather: '#485341', patches: ['#2e2e2e', '#4c4136'] },
+  // camo_spotting r7 (critic: "FACTORY still reads as a multi-tone camo
+  // scheme, not monotone CARC Green 383 — saturated brown patches at
+  // summer's pattern scale ... the two choices differ mainly in contrast,
+  // not identity"): the near-black + red-brown NATO chips are gone. Factory
+  // is now strictly GREEN-FAMILY, delta-L only: both patch tones are the
+  // base hue scaled in value (0.63x / 1.26x — zero hue shift), so the hull
+  // reads as ONE monotone green coat with tonal batch/fade variation while
+  // the 3-color NATO look stays exclusive to 'summer'. Kept as patches (not
+  // pure solid) per the r8 lesson: the GLB's baked-camo luma ghosts through
+  // a flat coat and coverage reads inconsistent across hull vs turret.
+  m1a2: { scheme: 'nato', base: '#404b38', weather: '#485341', patches: ['#282f23', '#505e46'] },
   // tank_models r2: the Abrams VARIANTS must land on the SAME factory
   // woodland as the base m1a2 — their untextured kit parts (ARAT tiles, TUSK
   // shield, muzzle furniture) paint from the per-spec canvas while the baked
   // hull composite uses the shared USA nation tile, and any palette split
   // reads as mismatched toy parts (the r2 "bright-tan pyramid studs" major).
-  m1a1: { scheme: 'nato', base: '#404b38', weather: '#485341', patches: ['#2e2e2e', '#4c4136'] },
-  m1a2_tusk: { scheme: 'nato', base: '#404b38', weather: '#485341', patches: ['#2e2e2e', '#4c4136'] },
+  m1a1: { scheme: 'nato', base: '#404b38', weather: '#485341', patches: ['#282f23', '#505e46'] },
+  m1a2_tusk: { scheme: 'nato', base: '#404b38', weather: '#485341', patches: ['#282f23', '#505e46'] },
   // Hinterhalt tones: the authored '#7a4a35' Rotbraun reads bright orange
   // under the warm garage key light (r7 "orange/green cow spots"); drop both
   // patch tones toward RAL 6003/8017 so the scheme reads olive + chocolate.
@@ -2131,6 +2141,18 @@ const GLB_TILE_CACHE = new Map(); // nation:patternId -> pattern tile canvas
 // (critic r6 minor). These sheets are textured (verified on the sepv3/tusk
 // GLBs), so skipping keeps the asset's own canvas/webbing albedo.
 const GLB_SKIP_RE = /rubber|tire|light|lens|glass|optic|radiator|screw|track|wheel|gear|addon|props|stowage|canvas/i;
+// camo_spotting r7: per-SPEC material masks for sourced GLBs whose running
+// gear carries none of the names above. The andertan Leclerc bakes the whole
+// running-gear volume (road wheels, sprockets, both track runs) into one
+// textured material named exactly 'Nato black' — a flat #1e2222 sheet whose
+// meanLuma (~0.13) sits just above the 0.10 dark-hardware skip — so DESERT/
+// WINTER repainted wheels and track band in scheme paint while the m1a2's
+// named gear correctly stayed dark (critic r7 minor). Anchored `$`: the
+// 'Nato black.0NN' clones are small fittings + the gun sleeve and keep the
+// existing composite/tint behavior.
+const GLB_SPEC_SKIP_RE = {
+  leclerc: /^Nato[ _]black$/i,
+};
 // Per-spec chroma pre-compensation for picker patterns composited through
 // the GLB atlas path (see composeGlbShare) — measured against the m1a2
 // reference render under the garage key.
@@ -2152,6 +2174,14 @@ const GLB_TILE_TUNE = {
   // otherwise plain green hull"): grow the Centre-Europe bands and weight
   // the noir component so the FR 3-tone reads authored on the atlas.
   'France:factory': { patchK: 1.2, blackK: 1.4 },
+  // camo_spotting r7 (critic: "leclerc SUMMER/AUTO reads as near-solid green
+  // — pattern barely visible on the hull — while m1a2 SUMMER is a crisp
+  // 3-tone"): the andertan atlas has the same UV-density mismatch the
+  // factory tune above fixed, but 'France:summer' had no row, so summer's
+  // small authored NATO patches fell between the sheet's hull/skirt islands
+  // and the vehicle rendered one flat olive. Same proven numbers as the
+  // factory row; AUTO on verdant resolves to 'summer' and rides this too.
+  'France:summer': { patchK: 1.2, blackK: 1.4 },
 };
 function glbPatternTile(spec, patternId) {
   const tuneKey = `${spec.nation || 'x'}:${patternId}`;
@@ -2552,6 +2582,7 @@ export function applyCamoToModel(root, spec, opts = null) {
       m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       return m;
     };
+  const specSkipRe = GLB_SPEC_SKIP_RE[spec.id] || null;
   root.traverse((o) => {
     if (!o.isMesh) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
@@ -2564,7 +2595,8 @@ export function applyCamoToModel(root, spec, opts = null) {
       // 'skip' materials included (they were equally over-lit).
       const own = setup(m.clone());
       if (Array.isArray(o.material)) o.material[i] = own; else o.material = own;
-      if (GLB_SKIP_RE.test(own.name || '')) {
+      if (GLB_SKIP_RE.test(own.name || '') ||
+          (specSkipRe && specSkipRe.test(own.name || ''))) {
         entry.mats.push({ m: own, kind: 'skip' });
         continue;
       }

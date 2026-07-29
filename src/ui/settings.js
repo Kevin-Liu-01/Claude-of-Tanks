@@ -15,6 +15,10 @@
 // layer's localStorage stores. Also owns the fading controls-hint strip
 // shown on battle start and the garage gear button, and broadcasts
 // 'ui:bindingsChanged' so the HUD's shell/consumable hotkey labels stay honest.
+// KILL-CAM aware: while a replay owns the screen ('killcam:begin'/'done' on
+// the bus) the panel never auto-opens, never veils, and closes itself — the
+// replay's ANY-KEY skip always wins (player death hands off to the death cam
+// with a free cursor, like WoT).
 // Design language mirrors src/ui/hud.js / garage.js (palette, chamfers, type).
 
 import { FONT_STACK, ensureFonts } from './fonts.js';
@@ -166,6 +170,15 @@ const GEAR_SVG =
 const ESC_HOLD_MS = 700; // hold Esc this long during capture to bind Escape itself
 const PAD_START_BUTTON = 9; // START closes the panel for controller players
 const MAX_PAD_BUTTONS = 17;
+// controls_gunnery r7: menu-suppression grace after a kill-cam replay
+// releases the screen. The ANY-KEY skip that finishes a replay is handled by
+// the kill-cam's CAPTURE-phase keydown listener, which emits 'killcam:done'
+// synchronously — the input layer's BUBBLE-phase listener then sees the very
+// same keydown and would fire the settingsMenu action with the replay flag
+// already cleared, opening the options menu on the skip press itself. The
+// grace window absorbs that same-event race (sub-ms in practice); a human
+// deliberately opening the menu after a skip is always slower than 250 ms.
+const KC_DONE_GRACE_MS = 250;
 
 function ensureStyle(id, css) {
   if (!document.getElementById(id)) {
@@ -250,6 +263,10 @@ export function createSettings(opts) {
 
   function showResumeVeil() {
     if (open || resume.classList.contains('show')) return;
+    // KILL-CAM: the replay owns the screen — a veil on top would sit over the
+    // cinematic and its mousedown would eat the click players aim at the
+    // 'ANY KEY — SKIP' prompt.
+    if (kcReplay) return;
     // CURSOR-AIM FALLBACK: the veil exists to re-grab pointer lock inside a
     // fresh click gesture after focus loss. With the lock unavailable the aim
     // never depended on it — showing the veil would only swallow the next
@@ -272,6 +289,20 @@ export function createSettings(opts) {
 
   // --- state ---------------------------------------------------------------------
   let open = false;
+  // KILL-CAM awareness (controls_gunnery r7 MAJOR): every player death while
+  // pointer-locked used to throw this panel open ON TOP of the death replay.
+  // The death branch in main.js calls document.exitPointerLock() with the
+  // battle still live (allies keep fighting), and the unlock heuristic below
+  // read that as an Esc press. Track the replay via the bus — killcam:begin
+  // is emitted synchronously in the same JS task as that exitPointerLock
+  // call, so the flag is ALWAYS set by the time the (async) pointerlockchange
+  // event lands. While a replay owns the screen, nothing here may auto-open,
+  // veil, or capture keys: the replay's ANY-KEY skip must win.
+  let kcReplay = false;
+  let kcDoneMs = -Infinity; // when the last replay released the screen
+  const nowMs = () =>
+    (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const replayOwnsScreen = () => kcReplay || nowMs() - kcDoneMs < KC_DONE_GRACE_MS;
   let activeTab = 'controls';
   let capture = null; // { actionId, slot: 0|1|'pad', chip }
   let escHoldTimer = null; // pending hold-Esc-to-bind timer during capture
@@ -842,8 +873,10 @@ export function createSettings(opts) {
   }
 
   // Esc (or the rebound menu key / pad START) opens the panel whenever the
-  // layer is live.
-  input.onAction('settingsMenu', () => { if (!open) openPanel(); });
+  // layer is live. NOT while a kill-cam replay owns the screen: there Esc is
+  // just another ANY-KEY skip (the replay handles it in capture phase), and
+  // the done-grace absorbs the skip keypress itself — see KC_DONE_GRACE_MS.
+  input.onAction('settingsMenu', () => { if (!open && !replayOwnsScreen()) openPanel(); });
 
   // WoT behavior: pressing Esc under pointer lock is swallowed by the browser
   // as the unlock gesture — detect the unexpected unlock mid-battle and treat
@@ -853,10 +886,19 @@ export function createSettings(opts) {
   // instead (WoT does not open the options menu after an alt-tab). The
   // focus check runs a tick later: on some platforms pointerlockchange
   // fires before the blur that caused it lands.
+  // controls_gunnery r7 (MAJOR — settings menu over the death kill-cam):
+  // the player-death branch in main.js exits pointer lock with the battle
+  // still live, and this heuristic read that as an Esc press — every
+  // pointer-locked death ended in an options menu nobody opened, with
+  // onPanelKey swallowing the replay's ANY-KEY skip. Bail while a replay
+  // owns the screen (bus-tracked, set synchronously before the unlock event
+  // can land) — and main.js's isBattleActive callback now also reports false
+  // once the local player is destroyed, so the no-replay death (straight to
+  // the death cam) hands off with a free cursor too, exactly like WoT.
   document.addEventListener('pointerlockchange', () => {
-    if (document.pointerLockElement || open || !isBattleActive()) return;
+    if (document.pointerLockElement || open || !isBattleActive() || replayOwnsScreen()) return;
     setTimeout(() => {
-      if (document.pointerLockElement || open || !isBattleActive()) return;
+      if (document.pointerLockElement || open || !isBattleActive() || replayOwnsScreen()) return;
       if (document.hasFocus() && !document.hidden) openPanel();
       else showResumeVeil();
     }, 0);
@@ -864,7 +906,7 @@ export function createSettings(opts) {
   // Focus regained with the pointer still unlocked (alt-tab round trip that
   // never fired another pointerlockchange): offer the resume veil.
   window.addEventListener('focus', () => {
-    if (!open && isBattleActive() && !input.isLocked()) showResumeVeil();
+    if (!open && isBattleActive() && !input.isLocked() && !replayOwnsScreen()) showResumeVeil();
   });
 
   // --- gear button (garage) --------------------------------------------------------
@@ -882,8 +924,29 @@ export function createSettings(opts) {
       updateGear();
       // leaving battle (garage / result) always clears the resume veil
       if (!ev || ev.phase !== 'battle') hideResumeVeil();
+      // belt for the kill-cam flag: killcam.cancel() only emits killcam:done
+      // while a replay is live, so a phase flip is the reset of last resort
+      kcReplay = false;
     });
     bus.on('ui:battleStart', updateGear);
+    // KILL-CAM ownership window (controls_gunnery r7 MAJOR — see kcReplay).
+    // begin() emits synchronously in the same task as the death branch's
+    // exitPointerLock, ahead of any pointerlockchange this panel could react
+    // to. While live: no auto-open, no resume veil, no Esc-menu — and a panel
+    // the player left open must not sit over the replay swallowing its
+    // ANY-KEY skip (onPanelKey is a capture-phase stopPropagation handler).
+    bus.on('killcam:begin', () => {
+      kcReplay = true;
+      hideResumeVeil();
+      // never relock out of this close — the cursor must stay free for the
+      // replay (and a gesture-less requestLock denial would falsely latch
+      // the cursor-aim fallback)
+      if (open) { relockOnClose = false; closePanel(); }
+    });
+    bus.on('killcam:done', () => {
+      kcReplay = false;
+      kcDoneMs = nowMs();
+    });
   }
   setInterval(updateGear, 150); // fallback only — events above hide/show instantly
   updateGear();
