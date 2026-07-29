@@ -18,10 +18,16 @@ and procedural builds), 4 maps, plate-level armor simulation, kill cams with
 x-ray shot analysis, WoT-style HUD/garage/tech-tree, camo + spotting system.
 
 - **Private local project.** The owner has stated it will never be published or
-  monetized. Licensing is therefore relaxed: NC / ShareAlike / personal-use
-  assets are used freely; `docs/ATTRIBUTION.md` keeps one provenance line per
-  asset. **The one absolute rule that remains: no assets ripped from
-  commercial games** (see §7 forensics).
+  monetized. Licensing is therefore fully relaxed: NC / ND / ShareAlike /
+  personal-use / Sketchfab-Standard assets are ALL used freely — nothing is
+  ever distributed, so no license term is triggered. Do not re-reject a model
+  for its license; `docs/ATTRIBUTION.md` keeps one provenance line per asset.
+  **The one absolute rule that remains: no assets ripped from commercial
+  games** (see §7 forensics) — rips have no grant from anyone at any severity.
+  Known unlocked-but-not-yet-integrated: the Tejas V. CC-BY-NC-ND M1A2 Abrams
+  (1.25M-face original, expected to beat the shipped dannzjs model — see the
+  tabled note in ATTRIBUTION.md) and the Mortavex AbramsX concept; both need
+  re-dropping from the owner's ~/Downloads (TCC-blocked for agents).
 - GitHub: `Kevin-Liu-01/claude-of-tanks` (private). Local repo `~/claude-of-tanks`.
 
 ## 2. Quickstart
