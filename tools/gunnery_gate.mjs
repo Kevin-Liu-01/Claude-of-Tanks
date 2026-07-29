@@ -40,6 +40,9 @@ const opt = (n, f) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i
 const BATTLES = parseInt(opt('battles', '8'), 10);
 const SHOTS_PER = parseInt(opt('shots', '6'), 10);
 const MIN_RATE = parseInt(opt('min', '80'), 10);
+// controls_gunnery r3: the r6 350 m window predates current spawn standoffs
+// (first LOS contact ~375-385 m) and silently emptied the gate.
+const MAX_RANGE_M = parseInt(opt('maxrange', '420'), 10);
 
 const server = await createServer({
   root: process.cwd(), logLevel: 'error',
@@ -73,7 +76,7 @@ try {
   const report = await page.evaluate(async (BATTLES, SHOTS_PER) => {
     const D = window.__DEBUG;
     const g = D.game;
-    const out = { battles: [] };
+    const out = { battles: [], convergeFails: 0 };
     for (let b = 0; b < BATTLES; b++) {
       D.startBattle('m1a2');
       const logStart = D.playerShellLog.length;
@@ -85,20 +88,37 @@ try {
         if (!aimed) { D.fastForward(2); continue; }
         const tgt = g.tankById.get(aimed.id);
         if (!tgt || !tgt.state) continue;
-        // settle: <=0.5 mrad AND reload done (dispersion follows bloom decay)
+        // settle: <=0.5 mrad AND reload done (dispersion follows bloom decay).
+        // controls_gunnery r3: fully-aimed discipline — also require a clear
+        // muzzle path and bloom <=1.15 (the old loop fired at bloom ~2.4 over
+        // lines grazing 1.1 m above a crest; those were dispersion-tail
+        // terrain deaths, not gun-lay data).
         let st = null;
+        let minErr4s = Infinity; // convergence trap: min errMrad over first 4 s
         for (let w = 0; w < 56; w++) {
           st = D.aimState();
-          if (st && st.errMrad <= 0.5 && st.reloadT <= 0) break;
+          if (st && w < 16) minErr4s = Math.min(minErr4s, st.errMrad);
+          if (st && st.errMrad <= 0.5 && st.reloadT <= 0 &&
+              st.blockedDistM == null && st.bloomF <= 1.15) break;
           D.fastForward(0.25);
           if (!tgt.combat || tgt.combat.destroyed) break;
+        }
+        // controls_gunnery r3: convergence regression assert — a
+        // near-stationary target the gun cannot get within 3 mrad of in 4 s
+        // is the off-axis-anchor class of bug, round-blocking.
+        if (tgt.state && Math.abs(tgt.state.speed || 0) < 1 && minErr4s >= 3) {
+          out.convergeFails++;
         }
         if (!tgt.combat || tgt.combat.destroyed) continue;
         const re = D.aimAtNearest(); // refresh sticky lead just before firing
         if (!re) continue;
+        // controls_gunnery r3: the refresh snap can pin a DIFFERENT newly-
+        // LOS-clear enemy; half a second is not a full slew.
+        if (re.id !== aimed.id) continue;
         D.fastForward(0.5);
         st = D.aimState();
-        if (!st || st.errMrad > 0.5 || st.reloadT > 0) continue;
+        if (!st || st.errMrad > 0.5 || st.reloadT > 0 ||
+            st.blockedDistM != null || st.bloomF > 1.15) continue;
         const before = g.shells.length ? Math.max(...g.shells.map((s) => s.id)) : -1;
         D.flags.forceFire = true;
         let fired = false;
@@ -126,10 +146,14 @@ try {
     console.log(`[gunnery-gate] roster: ${b.roster.join(', ')}`);
     for (const s of b.shells) {
       if (!s.terminal) continue;
-      const inGate = s.targetDistM != null && s.targetDistM <= 350 && !s.blockedDistM;
-      if (inGate) { settled++; if (s.terminal === 'tank') hits++; }
+      const inGate = s.targetDistM != null && s.targetDistM <= MAX_RANGE_M && !s.blockedDistM;
+      // controls_gunnery r3: wrong-tank exclusion — a tank impact only counts
+      // as a HIT when it landed within 10 m of the intended target's center
+      // (the shot stays in the denominator).
+      if (inGate) { settled++; if (s.terminal === 'tank' && (s.missM == null || s.missM <= 10)) hits++; }
       console.log(`[gunnery-gate]   shell ${s.shellId} -> ${s.terminal}` +
         (s.hitKind ? ` (${s.hitKind}, ${s.damage} dmg)` : '') +
+        (s.hitTankId ? ` hit=${s.hitTankId}` : '') +
         ` target=${s.targetId || '-'} @${s.targetDistM || '?'}m v=${s.targetSpeed}` +
         ` missM=${s.missM == null ? '-' : s.missM}` +
         (s.blockedDistM ? ` BLOCKED@${s.blockedDistM}m` : '') +
@@ -139,12 +163,23 @@ try {
     console.log(`[gunnery-gate]   bot pressure: ${bp.enemyShells} enemy shells, ` +
       `${bp.aimedAtPlayer} aimed at player, ${bp.hitsOnPlayer} hits (${Math.round(bp.dmgOnPlayer)} dmg)`);
   }
+  // controls_gunnery r3: convergence regression trap (off-axis anchor class).
+  if (report.convergeFails > 0) {
+    console.error(`[gunnery-gate] FAIL: ${report.convergeFails} aim snaps never converged within 3 mrad in 4 s on a near-stationary target`);
+    failed = true;
+  }
   // controls_gunnery r2 regression floors:
   for (const b of report.battles) {
     // botPressure floor: a player who fires 5+ times must draw counter-fire.
     const playerShots = b.shells.filter((s) => s.terminal).length;
     if (playerShots >= 5 && b.botPressure.aimedAtPlayer < 3) {
       console.error(`[gunnery-gate] FAIL: botPressure floor — ${playerShots} player shots but only ${b.botPressure.aimedAtPlayer} enemy shells aimed at the player (need >=3)`);
+      failed = true;
+    }
+    // controls_gunnery r3: per-battle aggro floor — any battle with 3+ landed
+    // player shots and ZERO return shells aimed back is a dead roster.
+    if (playerShots >= 3 && b.botPressure.aimedAtPlayer < 1) {
+      console.error(`[gunnery-gate] FAIL: aggro floor — ${playerShots} player shots drew ZERO enemy shells aimed at the player`);
       failed = true;
     }
     // 0-damage streak floor: no 2 consecutive 0-damage tank impacts on the

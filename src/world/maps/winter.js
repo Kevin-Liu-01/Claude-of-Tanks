@@ -64,6 +64,10 @@ export default {
     // basin finally reads as ICE (pairs with the new shoreline reed/pressure-
     // ridge dressing in maps/mapKits.js)
     iceDrift: 0.18,
+    // terrain_environment r3: fresnel sky tint the clear-ice fields reflect
+    // at grazing view angles (terrain.js uIceSky) — pairs with the darker
+    // makeIceLayer fields + 0.13 roughness floor for a real ice identity
+    iceSky: [0.70, 0.76, 0.85],
     // lighting_post r5: tintB desaturated toward neutral (was [0.90,0.93,1.00])
     tintA: [1.03, 1.04, 1.09], tintB: [0.95, 0.965, 1.005], tintC: [1.04, 1.04, 1.07],
     roadTint: [0.74, 0.68, 0.62], // worn dark slush tracks through the snow
@@ -96,25 +100,30 @@ export default {
     // as speckle noise against the snow in establishing shots
     bushSpecies: 'pine',
     palettes: {
-      birch: { // r7: pushed further toward rime-grey — even the r6 lift left
-        // midground birch stands rendering as near-black pixel clusters where
-        // the far cards minify against the bright ring base (critique: "noisy
-        // dark pixel clusters"); +6 pts floor and lower sat keep them legible
-        // winter brush, clearly darker than snow but no longer ink blots
-        cardHue: 0.08, cardSat: 0.05, cardL0: 0.42, // r4: luminance floor
-        texTone: (h, s, l) => [h, clamp01(s * 0.38), clamp01(l * 0.80 + 0.20)],
-        // r9: far-LOD crown lobes get an explicit rime-grey palette — the
-        // builder defaults were authored for autumn brush and minified to
-        // ink blots against the snow
-        canopy: { hue: 0.07, sat: 0.06, l0: 0.30, l1: 0.44 },
+      // r3 (content_breadth): the foreground stands read as DEAD AUTUMN
+      // SAPLINGS — pale trunks, beige-mauve twig puffs, zero snow, one
+      // saturated green pine breaking the set (critique, major). Both
+      // species now run a HOAR-FROST palette: twig/needle textures pushed
+      // toward pale rime, near-card tints cooled and lifted, and the new
+      // `snow` knob (vegetation.js, handoff r3) lays a white top-weighted
+      // snow load on the card cloud. `jitterHue` clamps the per-instance
+      // hue jitter (authored for verdant variety) to near value-only so no
+      // lone summer-green tree can survive on a snow map.
+      birch: {
+        cardHue: 0.58, cardSat: 0.03, cardL0: 0.46,
+        // rime-grey twig haze: cool hue, near-zero sat, high floor — the
+        // twig texture's dark strokes read as frost-bound brush, not brown
+        texTone: (h, s, l) => [0.58, clamp01(s * 0.14), clamp01(l * 0.62 + 0.34)],
+        canopy: { hue: 0.575, sat: 0.045, l0: 0.42, l1: 0.60 },
+        snow: 0.60, jitterHue: 0.22,
       },
-      pine: { // winter spruce: r7 — lift again (+0.075 -> +0.13): minified
-        // scrub cards still mip-averaged toward near-black dots against the
-        // snowpack (the 'scattered dirt' speckle critique). Saturation LOW so
-        // the lift cannot re-create the old mint-confetti artifact.
-        texTone: (h, s, l) => [clamp01(h * 0.96), clamp01(s * 0.38), clamp01(l * 1.04 + 0.13)],
-        cardHue: 0.345, cardSat: 0.08, cardL0: 0.38, // r4: luminance floor
-        canopy: { hue: 0.40, sat: 0.06, l0: 0.36, l1: 0.58 },
+      pine: { // winter spruce under snow load: frosted blue-green underlayer,
+        // the `snow` knob whitens the upward tier surfaces (near cards) and
+        // the lifted canopy l1 carries the same read in the far LOD
+        texTone: (h, s, l) => [clamp01(h * 0.98), clamp01(s * 0.32), clamp01(l * 1.02 + 0.18)],
+        cardHue: 0.40, cardSat: 0.07, cardL0: 0.42,
+        canopy: { hue: 0.46, sat: 0.05, l0: 0.42, l1: 0.66 },
+        snow: 0.55, jitterHue: 0.22,
       },
     },
   },
@@ -128,9 +137,19 @@ export default {
       roof: (h, s, l) => [0.58, clamp01(s * 0.25), clamp01(l * 1.35 + 0.18)], // snow-capped
       stone: (h, s, l) => [0.60, clamp01(s * 0.35), clamp01(l * 1.05 + 0.05)],
       wood: (h, s, l) => [h, clamp01(s * 0.7), clamp01(l * 0.95 + 0.02)],
-      straw: (h, s, l) => [0.575, clamp01(s * 0.14), clamp01(l * 1.2 + 0.22)], // snowed-over stacks
+      // terrain_environment r3: the all-white "snowed-over" tone erased the
+      // thatch texture entirely — foreground stacks read as raw untextured
+      // white primitives (the critique's "unsubdivided icosphere rock").
+      // Frosted warm straw keeps the haystack identity under a pale rime.
+      straw: (h, s, l) => [0.105, clamp01(s * 0.42 + 0.06), clamp01(l * 1.02 + 0.10)],
     },
-    rockTone: (h, s, l) => [0.60, 0.02, clamp01(l * 1.25 + 0.12)], // snowy boulders
+    // terrain_environment r3: l*1.25+0.12 -> l*0.70+0.02 — the near-white
+    // boulders read as featureless dough lumps on the snow (probed: the
+    // "raw icosphere" in the establishing foreground was rock instance 49
+    // at [67,-226]). Under the BRIGHT overcast fill (hemi 0.92, env 0.60)
+    // even mid-grey albedo renders pale, so the sides must go properly dark;
+    // the geometry's up-facing gradient (props.js) keeps snow-dusted caps.
+    rockTone: (h, s, l) => [0.60, 0.05, clamp01(l * 0.70 + 0.02)],
     wallStoneChance: 0.25,
     wallRuns: [
       [-56, 8, -56, 64, 2], [74, 30, 74, 96, 4], [-8, 110, 52, 110, 2],
@@ -145,6 +164,11 @@ export default {
       // north-shore run beyond the lake for depth layering
       [216, -46, 272, -46, 2],
     ],
+    // r3 terrain_environment: winter boulders sink to ~45% — a rock standing
+    // proud ON the snow renders as a pale dough ball under the flat overcast
+    // (albedo-independent engine fill washes small props); half-drifted rock
+    // shoulders read natural and keep their cover role
+    rockSink: 0.45,
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     // r2: haystacks 4 -> 8 (snow-capped stacks as mid-field silhouettes),
     // outcrops 12 -> 15, +1 road wreck — the open snowfield needed more
@@ -194,8 +218,15 @@ export default {
     // contrast survives it. Halving the scene-fog share (0.47 -> 0.27 at
     // 900 m) lets the rebuilt sastrugi/rib/crag structure and the darker
     // alpine recenter finally read; the aerial pass still owns depth grading.
-    fogDensity: 0.00064, fogTintHex: 0xb9c4d2, fogMix: 0.94, envIntensity: 0.52,
-    cloudOpacity: 1.0, cloudOpacity2: 0.95, cloudTintHex: 0xaab2bc,
+    // terrain_environment r3: envIntensity 0.52 -> 0.60 — the ice sheet's
+    // sky-reflection term needs the headroom (roughness floor now 0.13)
+    fogDensity: 0.00064, fogTintHex: 0xb9c4d2, fogMix: 0.94, envIntensity: 0.60,
+    // lighting_post r3 (round 3): per-map overcast deck tuning (overrides the
+    // sky.js overcast auto-detect values) — a lower/darker broken stratus
+    // deck (tint 0xaab2bc -> 0x9aa3ae) reads against the bright snow bounce
+    // in the 2-12° establishing band.
+    cloudOpacity: 1.0, cloudOpacity2: 0.95, cloudTintHex: 0x9aa3ae,
+    cloudAltM: 320, cloudHazeK: 0.00013, cloudUvM: 2200,
     sunIntensity: 1.15, sunColorHex: 0xdfe7f2, hemiIntensity: 0.92,
   },
 

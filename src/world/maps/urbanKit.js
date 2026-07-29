@@ -51,6 +51,11 @@ function pushParts(buckets, parts) {
  */
 export function makeChurch(rng, buckets) {
   const parts = { plaster: [], stone: [], roof: [], wood: [], dark: [] };
+  // content_breadth r3: window panes ride the props.js 'glass' bucket when
+  // the facade-variety patch is applied (sky-catching panes); falls back to
+  // 'dark' cleanly on an unpatched props.js.
+  if (buckets.glass) parts.glass = [];
+  const pane = parts.glass || parts.dark;
   const w = 9.2, d = 17.5, wallH = 5.6, roofH = 3.4;
   // nave
   parts.stone.push(box(w + 0.4, 1.2, d + 0.4).translate(0, -0.1, 0));
@@ -65,11 +70,11 @@ export function makeChurch(rng, buckets) {
     slab.translate(-side * (w / 4 + 0.2), wallH + roofH / 2 + 0.06, -1.2);
     parts.roof.push(slab);
   }
-  // tall arched nave windows (dark inset strips with stone sills)
+  // tall arched nave windows (glass inset strips with stone sills)
   for (let k = 0; k < 4; k++) {
     const zz = -d / 2 + 2.6 + k * 3.4;
     for (const side of [-1, 1]) {
-      parts.dark.push(box(0.08, 2.2, 0.8).translate(side * (w / 2 + 0.05), 2.9, zz - 1.2));
+      pane.push(box(0.08, 2.2, 0.8).translate(side * (w / 2 + 0.05), 2.9, zz - 1.2));
       parts.wood.push(box(0.12, 0.12, 0.95).translate(side * (w / 2 + 0.06), 1.75, zz - 1.2));
     }
   }
@@ -108,6 +113,9 @@ export function makeChurch(rng, buckets) {
  */
 export function makeFactory(rng, buckets) {
   const parts = { plaster: [], stone: [], roof: [], wood: [], dark: [] };
+  // content_breadth r3: see makeChurch — glass panes when available
+  if (buckets.glass) parts.glass = [];
+  const pane = parts.glass || parts.dark;
   const w = 11.5, d = 19.0, wallH = 6.2, roofH = 2.0;
   parts.stone.push(box(w + 0.4, 1.2, d + 0.4).translate(0, -0.1, 0));
   parts.stone.push(box(w, wallH, d, 0.55).translate(0, wallH / 2, 0));
@@ -126,7 +134,7 @@ export function makeFactory(rng, buckets) {
     const zz = -d / 2 + (k + 0.5) * (d / 5);
     for (const side of [-1, 1]) {
       if (rng() < 0.12) continue;
-      parts.dark.push(box(0.08, 2.6, 1.35).translate(side * (w / 2 + 0.05), 3.4, zz));
+      pane.push(box(0.08, 2.6, 1.35).translate(side * (w / 2 + 0.05), 3.4, zz));
       parts.wood.push(box(0.12, 0.10, 1.5).translate(side * (w / 2 + 0.06), 2.0, zz));
     }
   }

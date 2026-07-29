@@ -71,17 +71,23 @@ const EMPTY_SET = new Set();
  * rendered attitude.
  *
  * @param {object} state TankState
+ * @param {object} [out] PERF (performance_budget r3): optional reusable pose
+ *   — the HUD aim path calls this once per bounding-gated enemy per frame
+ *   (main.js computeAimInfo) and the Vector3 clone + fresh object were the
+ *   last steady per-frame allocations in the hot loop. Pass a module-scope
+ *   scratch to reuse; omit for the allocating form (identical result).
  * @returns {{pos: Vector3, yaw: number, pitch: number, roll: number, turretYaw: number, gunPitch: number}} Pose
  */
-export function tankPoseFromState(state) {
-  return {
-    pos: state.pos.clone(),
-    yaw: state.yaw,
-    pitch: state.visualPitch,
-    roll: state.visualRoll,
-    turretYaw: state.turretYaw,
-    gunPitch: state.gunPitch,
-  };
+export function tankPoseFromState(state, out = null) {
+  const pose = out || { pos: new Vector3() };
+  if (!pose.pos) pose.pos = new Vector3();
+  pose.pos.copy(state.pos);
+  pose.yaw = state.yaw;
+  pose.pitch = state.visualPitch;
+  pose.roll = state.visualRoll;
+  pose.turretYaw = state.turretYaw;
+  pose.gunPitch = state.gunPitch;
+  return pose;
 }
 
 /**

@@ -1,7 +1,7 @@
 // Performance probe harness (perf engineer tooling).
 // Usage: node tools/perfprobe.mjs [--seconds 60] [--width 1920] [--height 1080]
 //        [--dsf 1|2] [--out file] [--preset low|medium|high|ultra] [--dump file]
-//        [--note tag] [--no-trend]
+//        [--note tag] [--no-trend] [--roster random|id1,id2,...]
 // Starts vite, loads the game headless, measures load-to-__GAME_READY, enters
 // battle on the verdant map, simulates combat (drive via synthetic keys +
 // forceFire debug flag) for N seconds while sampling rAF deltas, renderer.info,
@@ -76,6 +76,18 @@ const noTrend = args.includes('--no-trend'); // skip the perf-trend.jsonl append
 const forcePreset = opt('preset', '');
 const dumpFile = opt('dump', '');
 const trendNote = opt('note', '');
+// PERF r3 (draw-call worst-frame gate): certification measures a PINNED
+// worst-case roster — all multi-mesh GLB heavies — instead of whatever the
+// seeded shuffle draws for the current content pool. The round-2 critic
+// measured 1095 worst-frame calls on one random roster and 470 on another on
+// the IDENTICAL build; a budget that depends on the draw is not a gate.
+// Requires the state.js flags.forceRoster hook (performance_budget-r3.md §4)
+// — on trees without it the flag is simply ignored and the seeded draw runs.
+// `--roster random` restores the legacy seeded draw (for trend comparisons);
+// `--roster a,b,c` pins any explicit lineup (7 enemies max).
+const WORST_CASE_ROSTER = 'kv2,jagdtiger,tiger2,object279,is7,t30,t95';
+const rosterOpt = opt('roster', WORST_CASE_ROSTER);
+const forceRoster = rosterOpt === 'random' ? null : rosterOpt.split(',').map((s) => s.trim()).filter(Boolean);
 
 // Tracked performance budget (docs/EVALUATION.md perf gate). Every line is
 // evaluated in the report's `budget` block so regressions surface in the
@@ -276,16 +288,33 @@ if (forcePreset) {
 let failed = false;
 let report = null;
 try {
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+  // PERF r3 (harness parity): one retry on navigation/ready timeout with the
+  // screenshot harness's 90 s budget — cold vite transforms under machine
+  // load blew the old 30 s goto and killed certification attempts before a
+  // single frame was measured (this round's first dsf1 run died exactly
+  // there). A retried load resets the page's time origin, so __READY_AT
+  // still measures the successful load only.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
+      await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+      break;
+    } catch (err) {
+      if (attempt >= 1) throw err;
+      console.error(`[perf] load attempt ${attempt + 1} failed (${err.message}) — retrying`);
+      consoleErrors.length = 0;
+    }
+  }
   const loadToReadyMs = await page.evaluate(() => window.__READY_AT);
 
-  // Enter battle on verdant deterministically.
-  await page.evaluate(() => {
+  // Enter battle on verdant deterministically (pinned worst-case roster by
+  // default — see WORST_CASE_ROSTER above).
+  await page.evaluate((roster) => {
     const D = window.__DEBUG;
+    if (roster) D.flags.forceRoster = roster;
     D.startBattle('m1a2', 'verdant');
     D.flags.forceFire = true; // fire whenever reloaded
-  });
+  }, forceRoster);
   // small settle so shaders/instances for battle HUD compile
   await new Promise((r) => setTimeout(r, 1500));
   // r2: certify the SUSTAINED battle regime — wait (bounded) for the roster's
@@ -475,6 +504,7 @@ try {
   report = {
     date: new Date().toISOString(),
     ...(forcePreset ? { forcedPreset: forcePreset } : {}),
+    roster: forceRoster ? `pinned:${forceRoster.join(',')}` : 'random-seeded',
     viewport: { width, height, deviceScaleFactor: dsf },
     sampleSeconds: seconds,
     frames: perf.deltas.length,

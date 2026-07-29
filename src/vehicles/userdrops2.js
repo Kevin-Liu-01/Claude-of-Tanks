@@ -301,13 +301,20 @@ if (TANK_SPECS.leclerc && !TANK_SPECS.leclerc.community) {
     license: 'CC-BY 4.0',
   };
 }
-if (TANK_SPECS.leo2a4 && !TANK_SPECS.leo2a4.community) {
-  TANK_SPECS.leo2a4.variantOf = 'leo2a4';
-  TANK_SPECS.leo2a4.community = QUAR_BERGMAN;
-}
-if (TANK_SPECS.bmp2 && !TANK_SPECS.bmp2.community) {
-  TANK_SPECS.bmp2.variantOf = 'bmp2';
-  TANK_SPECS.bmp2.community = QUAR_BERGMAN;
+// tank_models r3 QUARANTINE DELIST (same rule as the SHIP_USERDROP2_NEW gate
+// below + userdrops.js ariete/type74): the CC-BY-NC-SA bergman swaps for
+// leo2a4/bmp2 fall back to their procedural modern2/modern3 builds — no
+// personal-use asset ships as a playable and no 'QUARANTINE' license line
+// reaches the player-facing panel.
+if (SHIP_USERDROP2_NEW) {
+  if (TANK_SPECS.leo2a4 && !TANK_SPECS.leo2a4.community) {
+    TANK_SPECS.leo2a4.variantOf = 'leo2a4';
+    TANK_SPECS.leo2a4.community = QUAR_BERGMAN;
+  }
+  if (TANK_SPECS.bmp2 && !TANK_SPECS.bmp2.community) {
+    TANK_SPECS.bmp2.variantOf = 'bmp2';
+    TANK_SPECS.bmp2.community = QUAR_BERGMAN;
+  }
 }
 
 // MODEL_SOURCE overrides — unconditional assignment REPLACES the
@@ -325,6 +332,9 @@ MODEL_SOURCE.t90m = {
     turretNode: '^Turret$', gunNode: '^Main_barrel$', autoPivot: true,
     scaleToOverall: true,
     yawOffset: Math.PI / 2,
+    // PERF (performance_budget r3): tank_closeup_t90m contract hero —
+    // keeps 2048 color maps at import (see specs.js m1a2 heroTex note).
+    heroTex: true,
   },
 };
 MODEL_SOURCE.leclerc = {
@@ -337,21 +347,23 @@ MODEL_SOURCE.leclerc = {
     yawOffset: -Math.PI / 2,
   },
 };
-MODEL_SOURCE.leo2a4 = {
-  source: 'glb',
-  glb: {
-    path: '/models/tanks/community/quarantine/leo2a4_bergman.glb',
-    turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
-  },
-};
-MODEL_SOURCE.bmp2 = {
-  source: 'glb',
-  glb: {
-    path: '/models/tanks/community/quarantine/bmp2_bergman.glb',
-    turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
-  },
-};
 if (SHIP_USERDROP2_NEW) {
+  // r3 QUARANTINE DELIST: leo2a4/bmp2 ride their procedural builders until a
+  // clean-license substitution lands (see the spec-credit gate above).
+  MODEL_SOURCE.leo2a4 = {
+    source: 'glb',
+    glb: {
+      path: '/models/tanks/community/quarantine/leo2a4_bergman.glb',
+      turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
+    },
+  };
+  MODEL_SOURCE.bmp2 = {
+    source: 'glb',
+    glb: {
+      path: '/models/tanks/community/quarantine/bmp2_bergman.glb',
+      turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
+    },
+  };
   MODEL_SOURCE.bmp1 = {
     source: 'glb',
     glb: {

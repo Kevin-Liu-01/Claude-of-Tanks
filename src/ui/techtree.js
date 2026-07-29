@@ -405,11 +405,20 @@ const TT_CSS = `
 .cot-tt-node.ghost.researched .res{color:#8fce8f;}
 .cot-tt-node.ghost.researched .nm{color:#d9c9a8;}
 /* r2: garage-delisted community models — card + CC-BY credit stay, gold
-   goes: greyed icon, dashed frame, explicit non-battle-ready footer */
-.cot-tt-node.ghost.delisted{opacity:.6;}
-.cot-tt-node.ghost.delisted .ti{filter:grayscale(1) brightness(.75)
+   goes: greyed icon, dashed frame, explicit non-battle-ready footer.
+   r3 (content_breadth): delisted must read at a GLANCE, not via the tiny
+   footer caption (critique) — full-card diagonal hatch overlay, deeper
+   desaturation and a rust-red dashed frame set the pair apart from ordinary
+   researchable ghosts across the whole tab. */
+.cot-tt-node.ghost.delisted{opacity:.66;border-color:rgba(160,90,74,.55);
+  border-top-color:rgba(160,90,74,.65);filter:saturate(.35);position:absolute;}
+.cot-tt-node.ghost.delisted::after{content:'';position:absolute;inset:0;
+  pointer-events:none;
+  background:repeating-linear-gradient(-45deg,rgba(150,70,52,.13) 0 7px,
+    rgba(0,0,0,0) 7px 15px);}
+.cot-tt-node.ghost.delisted .ti{filter:grayscale(1) brightness(.65)
   drop-shadow(0 2px 3px rgba(0,0,0,.5));}
-.cot-tt-node.ghost.delisted .res{color:#a06a5e;}
+.cot-tt-node.ghost.delisted .res{color:#b4705c;letter-spacing:.14em;}
 .cot-tt-node.ghost.delisted .nm{color:#93a1ad;}
 @keyframes cot-tt-deny{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}
   75%{transform:translateX(4px)}}
@@ -609,6 +618,61 @@ const GHOSTS = {
   su76: { L: 5.2, HL: 4.9, H: 2.2, hullH: 1.4, wheels: 5, wheelR: 0.28, td: true, caseH: 0.75, caseX0: 0.3, caseX1: 0.95, caseFront: 0.15, caseRear: 0.25, gunTh: 0.16 },
   su85: { L: 8.2, HL: 6.1, H: 2.45, hullH: 1.55, wheels: 5, wheelR: 0.4, td: true, caseH: 0.85, caseX0: 0.04, caseX1: 0.78, caseFront: 0.34, caseRear: 0.22, gunTh: 0.19 },
   isu152: { L: 9.0, HL: 6.8, H: 2.9, hullH: 1.75, wheels: 6, wheelR: 0.33, td: true, caseH: 1.15, caseX0: 0.06, caseX1: 0.82, caseFront: 0.24, caseRear: 0.16, gunUp: 0.45, brake: true, gunTh: 0.34 },
+  // r3 (content_breadth): EVERY remaining ghost node gets its own proportion
+  // row — the class fallbacks below made the whole Germany light line (and
+  // every other untabled ghost) repeat one identical blob (critique). Each
+  // row is a side-profile caricature of the real vehicle: wheel count/size,
+  // hull/turret masses, gun length/position and brake all differ per node.
+  // --- USA lights / mediums / TDs ---
+  m5: { L: 4.8, HL: 4.3, H: 2.3, hullH: 1.55, wheels: 4, wheelR: 0.30, glacis: 0.7, tPos: 0.5, tLen: 1.7, tH: 0.8, taper: 0.3, cupola: true, gunTh: 0.15 },
+  chaffee: { L: 5.6, HL: 5.0, H: 2.5, hullH: 1.5, wheels: 5, wheelR: 0.33, glacis: 0.9, tPos: 0.55, tLen: 2.2, tH: 0.9, taper: 0.35, gunTh: 0.18 },
+  t37: { L: 6.4, HL: 5.4, H: 2.4, hullH: 1.45, wheels: 5, wheelR: 0.32, glacis: 0.8, tPos: 0.52, tLen: 2.3, tH: 0.85, taper: 0.45, gunTh: 0.18 },
+  t71: { L: 6.8, HL: 5.2, H: 2.2, hullH: 1.35, wheels: 4, wheelR: 0.33, glacis: 1.0, tPos: 0.5, tLen: 2.4, tH: 0.8, taper: 0.55, gunTh: 0.18 },
+  sheridan: { L: 6.3, HL: 6.2, H: 2.5, hullH: 1.55, wheels: 5, wheelR: 0.33, glacis: 1.3, tPos: 0.6, tLen: 2.3, tH: 0.95, taper: 0.3, gunTh: 0.30, gunUp: 0.5 },
+  t20: { L: 7.4, HL: 5.9, H: 2.6, hullH: 1.7, wheels: 6, wheelR: 0.31, glacis: 0.9, tPos: 0.58, tLen: 2.4, tH: 0.95, taper: 0.35, brake: true, gunTh: 0.2 },
+  t32: { L: 10.7, HL: 7.1, H: 3.1, hullH: 1.85, wheels: 7, wheelR: 0.32, glacis: 1.2, tPos: 0.55, tLen: 3.4, tH: 1.2, taper: 0.45, cupola: true, brake: true, gunTh: 0.25 },
+  t28us: { L: 10.1, HL: 7.5, H: 2.9, hullH: 2.0, skirt: true, td: true, caseH: 0.9, caseX0: 0.02, caseX1: 0.62, caseFront: 0.30, caseRear: 0.10, gunUp: 0.6, gunTh: 0.26 },
+  // --- Germany lights / mediums / heavies / TDs ---
+  pz38na: { L: 5.2, HL: 4.7, H: 2.4, hullH: 1.5, wheels: 4, wheelR: 0.34, tPos: 0.5, tLen: 1.8, tH: 0.85, cupola: true, gunTh: 0.16 },
+  luchs: { L: 4.9, HL: 4.6, H: 2.2, hullH: 1.45, wheels: 5, wheelR: 0.34, glacis: 0.5, tPos: 0.6, tLen: 1.8, tH: 0.8, taper: 0.25, gunTh: 0.14 },
+  vk1602: { L: 5.9, HL: 5.0, H: 2.5, hullH: 1.6, wheels: 5, wheelR: 0.36, glacis: 1.0, tPos: 0.55, tLen: 2.0, tH: 0.85, taper: 0.3, gunTh: 0.16 },
+  aufklpanther: { L: 7.6, HL: 6.9, H: 2.6, hullH: 1.7, wheels: 8, wheelR: 0.34, glacis: 1.5, tPos: 0.5, tLen: 2.0, tH: 0.8, taper: 0.3, gunTh: 0.17 },
+  ru251: { L: 7.9, HL: 5.8, H: 2.2, hullH: 1.4, wheels: 5, wheelR: 0.35, glacis: 1.2, tPos: 0.52, tLen: 2.4, tH: 0.75, dome: true, gunTh: 0.2 },
+  vk3002m: { L: 8.2, HL: 6.6, H: 2.8, hullH: 1.8, wheels: 8, wheelR: 0.33, glacis: 1.6, tPos: 0.52, tLen: 2.5, tH: 0.95, taper: 0.35, cupola: true, gunTh: 0.19 },
+  e75: { L: 10.9, HL: 7.6, H: 3.1, hullH: 1.9, wheels: 8, wheelR: 0.34, glacis: 1.5, tPos: 0.54, tLen: 3.3, tH: 1.15, taper: 0.5, brake: true, gunTh: 0.26 },
+  jpz4: { L: 8.1, HL: 6.0, H: 2.0, hullH: 1.35, wheels: 6, wheelR: 0.30, td: true, caseH: 0.65, caseX0: 0.02, caseX1: 0.85, caseFront: 0.45, caseRear: 0.12, gunUp: 0.55, gunTh: 0.19 },
+  ferdinand: { L: 9.8, HL: 6.8, H: 3.0, hullH: 1.8, wheels: 6, wheelR: 0.32, td: true, caseH: 1.2, caseX0: 0.34, caseX1: 0.98, caseFront: 0.18, caseRear: 0.14, gunUp: 0.55, gunTh: 0.24 },
+  // --- USSR lights / heavies / TDs ---
+  t80l: { L: 4.9, HL: 4.4, H: 2.3, hullH: 1.4, wheels: 4, wheelR: 0.36, glacis: 1.1, tPos: 0.55, tLen: 1.7, tH: 0.85, taper: 0.35, gunTh: 0.15 },
+  t50: { L: 5.5, HL: 5.2, H: 2.3, hullH: 1.45, wheels: 6, wheelR: 0.30, glacis: 1.2, tPos: 0.55, tLen: 1.9, tH: 0.8, dome: true, gunTh: 0.16 },
+  mt25: { L: 5.9, HL: 5.5, H: 2.4, hullH: 1.5, wheels: 5, wheelR: 0.40, glacis: 1.3, tPos: 0.5, tLen: 2.0, tH: 0.8, taper: 0.3, gunTh: 0.16 },
+  kv85: { L: 8.5, HL: 6.7, H: 2.8, hullH: 1.85, wheels: 6, wheelR: 0.31, tPos: 0.55, tLen: 2.6, tH: 1.05, taper: 0.3, cupola: true, gunTh: 0.21 },
+  t10: { L: 9.7, HL: 7.0, H: 2.6, hullH: 1.65, wheels: 7, wheelR: 0.32, glacis: 1.5, tPos: 0.58, tLen: 3.0, tH: 0.9, dome: true, brake: true, gunTh: 0.25 },
+  su152: { L: 8.0, HL: 6.7, H: 2.6, hullH: 1.7, wheels: 6, wheelR: 0.31, td: true, caseH: 0.95, caseX0: 0.04, caseX1: 0.72, caseFront: 0.28, caseRear: 0.18, gunUp: 0.5, brake: true, gunTh: 0.32 },
+  obj704: { L: 9.3, HL: 6.8, H: 2.5, hullH: 1.6, wheels: 6, wheelR: 0.33, td: true, caseH: 0.95, caseX0: 0.10, caseX1: 0.80, caseFront: 0.42, caseRear: 0.30, gunUp: 0.6, brake: true, gunTh: 0.33 },
+  // --- UK ---
+  cromwell: { L: 6.4, HL: 6.3, H: 2.5, hullH: 1.6, wheels: 5, wheelR: 0.38, tPos: 0.55, tLen: 2.4, tH: 0.9, gunTh: 0.18 },
+  comet: { L: 7.7, HL: 6.5, H: 2.7, hullH: 1.65, wheels: 5, wheelR: 0.36, tPos: 0.55, tLen: 2.6, tH: 1.0, taper: 0.25, cupola: true, gunTh: 0.2 },
+  centurion: { L: 9.8, HL: 7.6, H: 3.0, hullH: 1.75, wheels: 6, wheelR: 0.33, skirt: true, glacis: 1.4, tPos: 0.55, tLen: 3.0, tH: 1.15, taper: 0.4, gunTh: 0.21 },
+  challenger1: { L: 11.5, HL: 8.3, H: 2.9, hullH: 1.7, skirt: true, glacis: 1.9, tPos: 0.52, tLen: 3.6, tH: 1.15, taper: 0.5, gunTh: 0.24 },
+  // --- France ---
+  amx13: { L: 6.4, HL: 4.9, H: 2.3, hullH: 1.35, wheels: 5, wheelR: 0.30, glacis: 1.0, tPos: 0.45, tLen: 2.3, tH: 0.9, taper: 0.15, gunUp: 0.85, gunTh: 0.18 },
+  amx30: { L: 9.5, HL: 6.6, H: 2.85, hullH: 1.6, wheels: 5, wheelR: 0.35, glacis: 1.4, tPos: 0.5, tLen: 2.7, tH: 1.0, dome: true, gunTh: 0.21 },
+  // --- Israel ---
+  m50sherman: { L: 8.2, HL: 5.9, H: 2.9, hullH: 2.0, wheels: 6, wheelR: 0.30, glacis: 0.8, tPos: 0.58, tLen: 2.2, tH: 0.95, dome: true, brake: true, gunTh: 0.2 },
+  magach: { L: 9.4, HL: 6.9, H: 3.0, hullH: 1.75, wheels: 6, wheelR: 0.34, glacis: 1.2, tPos: 0.55, tLen: 3.0, tH: 1.2, dome: true, gunTh: 0.22 },
+  merkava1: { L: 8.6, HL: 7.5, H: 2.75, hullH: 1.75, skirt: true, glacis: 2.2, tPos: 0.30, tLen: 2.8, tH: 0.9, taper: 0.6, gunTh: 0.22 },
+  // --- China ---
+  type59: { L: 9.0, HL: 6.0, H: 2.6, hullH: 1.55, wheels: 5, wheelR: 0.38, glacis: 1.3, tPos: 0.55, tLen: 2.5, tH: 0.95, dome: true, gunTh: 0.22 },
+  type88: { L: 9.6, HL: 6.9, H: 2.6, hullH: 1.6, wheels: 6, wheelR: 0.34, skirt: true, glacis: 1.3, tPos: 0.55, tLen: 2.9, tH: 1.0, taper: 0.4, gunTh: 0.23 },
+  // --- S. Korea ---
+  m48k: { L: 9.3, HL: 6.9, H: 3.1, hullH: 1.8, wheels: 6, wheelR: 0.34, glacis: 1.1, tPos: 0.55, tLen: 3.0, tH: 1.2, dome: true, gunTh: 0.22 },
+  k1: { L: 9.7, HL: 7.5, H: 2.5, hullH: 1.55, skirt: true, glacis: 1.6, tPos: 0.55, tLen: 3.1, tH: 1.0, taper: 0.55, gunTh: 0.23 },
+  // --- Japan ---
+  type61: { L: 8.2, HL: 6.3, H: 2.85, hullH: 1.7, wheels: 6, wheelR: 0.33, glacis: 0.9, tPos: 0.55, tLen: 2.6, tH: 1.1, dome: true, brake: true, gunTh: 0.2 },
+  // --- Italy ---
+  m47i: { L: 8.6, HL: 6.4, H: 3.0, hullH: 1.75, wheels: 6, wheelR: 0.33, glacis: 1.0, tPos: 0.55, tLen: 3.0, tH: 1.15, dome: true, gunTh: 0.21 },
+  of40: { L: 9.2, HL: 6.9, H: 2.7, hullH: 1.6, wheels: 7, wheelR: 0.33, glacis: 1.3, tPos: 0.55, tLen: 2.9, tH: 1.0, taper: 0.45, gunTh: 0.21 },
 };
 
 // class fallbacks for any ghost without a table entry
@@ -855,9 +919,26 @@ export function createTechTree(opts) {
       colByKey.set(nd.key, c);
       if (c > maxCol) maxCol = c;
     }
+    // r3 (content_breadth): ADAPTIVE tier columns on the COMMUNITY tab. The
+    // curated roster clusters at V-X, so ten fixed-width columns left a dead
+    // left third and pushed the occupied band off-center (critique). Empty
+    // tiers KEEP their ladder slot (I..X must read without gaps) but shrink
+    // to a narrow spacer column; occupied tiers keep full TIER_W. Nation
+    // tabs are untouched.
+    const COMM_EMPTY_W = 72;
+    const occTiers = new Set(tab.nodes.map((nd) => nd.tier));
+    const tierWOf = (t) => (!isComm || occTiers.has(t)) ? TIER_W : COMM_EMPTY_W;
+    const tierXs = new Array(maxTier + 2).fill(0);
+    {
+      let tx = 0;
+      for (let t = minTier; t <= maxTier + 1; t++) { tierXs[t] = tx; tx += tierWOf(t); }
+    }
+    const tierLeft = (t) => PAD_X + tierXs[Math.max(minTier, Math.min(maxTier + 1, t))];
     function nodePos(node) {
       return {
-        x: PAD_X + colByKey.get(node.key) * TIER_W + (TIER_W - NODE_W) / 2,
+        x: isComm
+          ? tierLeft(node.tier) + (tierWOf(node.tier) - NODE_W) / 2
+          : PAD_X + colByKey.get(node.key) * TIER_W + (TIER_W - NODE_W) / 2,
         y: isComm
           ? commBandY.get(node.row) + commSub.get(node.key) * COMM_SUB_H
           : HEAD_H + node.row * ROW_H,
@@ -868,7 +949,9 @@ export function createTechTree(opts) {
         commBands[commBands.length - 1].depth * COMM_SUB_H
       : 0;
     bounds = {
-      w: PAD_X * 2 + Math.max(10, maxCol + 1) * TIER_W,
+      w: isComm
+        ? PAD_X * 2 + tierXs[maxTier + 1]
+        : PAD_X * 2 + Math.max(10, maxCol + 1) * TIER_W,
       h: isComm ? commBottom + 60 : HEAD_H + maxRow * ROW_H + NODE_H + 60,
     };
     // r8: fit the camera to the OCCUPIED row band vertically (was y0:0 — the
@@ -877,9 +960,10 @@ export function createTechTree(opts) {
     // r1: community bounds hug the band stack (headers included) so the tab
     // centers tight instead of floating in dead space.
     content = {
-      x0: PAD_X + minCol * TIER_W - 16,
+      x0: isComm ? tierLeft(minTier) - 16 : PAD_X + minCol * TIER_W - 16,
       y0: isComm ? HEAD_H - 64 : HEAD_H + minRow * ROW_H - 24,
-      x1: PAD_X + (maxCol + 1) * TIER_W + 16,
+      x1: isComm ? tierLeft(maxTier) + tierWOf(maxTier) + 16
+        : PAD_X + (maxCol + 1) * TIER_W + 16,
       y1: isComm ? commBottom - COMM_SUB_H + cardH + 24
         : HEAD_H + maxRow * ROW_H + cardH + 24,
     };
@@ -898,8 +982,8 @@ export function createTechTree(opts) {
     // organized class rows instead of cards floating on blank grid.
     if (isComm) {
       for (const b of commBands) {
-        const rx0 = PAD_X + (b.t0 - 1) * TIER_W + 10;
-        const rx1 = PAD_X + b.t1 * TIER_W - 10;
+        const rx0 = tierLeft(b.t0) + 10;
+        const rx1 = tierLeft(b.t1) + tierWOf(b.t1) - 10;
         for (let s = 0; s < b.depth; s++) {
           const ry = b.y0 + s * COMM_SUB_H + cardH / 2;
           const rail = document.createElementNS(svgNS, 'line');
@@ -959,7 +1043,11 @@ export function createTechTree(opts) {
     for (let t = minTier; t <= maxTier; t++) {
       const hd = document.createElement('div');
       hd.className = 'cot-tt-tierhd';
-      hd.style.left = `${PAD_X + (t - 1) * TIER_W + (TIER_W - NODE_W) / 2}px`;
+      // r3 (content_breadth): headers center on their (possibly narrowed)
+      // community column so the ladder spacing tracks the adaptive widths
+      hd.style.left = isComm
+        ? `${tierLeft(t) + tierWOf(t) / 2 - NODE_W / 2}px`
+        : `${PAD_X + (t - 1) * TIER_W + (TIER_W - NODE_W) / 2}px`;
       // r8: anchor the ladder just above the TOP OCCUPIED row instead of the
       // world's absolute top — with the row-band camera fit the old top:14px
       // strip drifted into the dead zone above the frame

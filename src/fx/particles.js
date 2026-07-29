@@ -216,8 +216,10 @@ void main() {
   // the whole eroding footprint sizzled as TV static (the r2 critical
   // "hash-dither alpha" kill read). The widening smoothstep band alone keeps
   // the dissolve soft; the flipbook supplies all the ragged structure.
+  // lighting_post r3 (round 3): base band 0.40 -> 0.60 (~1.5x) — fire edges
+  // still stippled at 2x crops; wider gate dissolves them as gradients.
   float er = vT * 0.34;
-  float a = smoothstep( er, er + 0.40 + 0.52 * vT, tex ) * vColor.a;
+  float a = smoothstep( er, er + 0.60 + 0.52 * vT, tex ) * vColor.a;
   if ( a < 0.004 ) discard;
   ${FOG_SCALE_F}
   // blackbody interior: texels well above the erosion front read white-hot,
@@ -687,7 +689,9 @@ function makeFlipbookTexture(rng, style) {
   // ~25 cm/texel is what read as GIF-dither stipple once the erosion front
   // ate into it (r6). smoke/dust keep 128 — they never erode as hard.
   const fire = style === 'fire';
-  const TILES = 4, T = fire ? 176 : 128, S = TILES * T;
+  // lighting_post r3 (round 3): fire 176 → 256 — tiles still resolved as
+  // stipple in 2x crops of 5-7 m cards (one-time bake cost ~+40 ms).
+  const TILES = 4, T = fire ? 256 : 128, S = TILES * T;
   const cv = document.createElement('canvas');
   cv.width = cv.height = S;
   const ctx = cv.getContext('2d');
@@ -1236,6 +1240,31 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
       const fn = EMITTERS[poolName];
       if (!fn) throw new Error(`particles: unknown pool '${poolName}'`);
       fn(opts);
+    },
+
+    /**
+     * Shift every live particle's birth stamp by `delta` seconds (r4 clock
+     * REBASE): when the debug/screenshot pipeline re-pins the shared clock
+     * far from its current value (setFrozen(atTimeS) with a big jump), the
+     * particles already in flight must keep their AGE rather than instantly
+     * expiring — a wreck that started burning 0.8 s ago must still be a
+     * 0.8 s-old fire after the pin. Live gameplay never takes this path.
+     * @param {number} delta seconds to add to every live birth stamp
+     */
+    shiftTime(delta) {
+      for (const key of Object.keys(pools)) {
+        const pool = pools[key];
+        const pb = pool.attrs.aPB;
+        const life = pool.attrs[pool.lifeAttr];
+        const n = pool.highWater;
+        for (let i = 0; i < n; i++) {
+          if (life.array[i * 4 + pool.lifeComp] <= 0) continue;
+          pb.array[i * 4 + 3] += delta;
+        }
+        pb.clearUpdateRanges();
+        pb.addUpdateRange(0, n * 4);
+        pb.needsUpdate = true;
+      }
     },
 
     /** Kill all live particles and reset every ring buffer. */

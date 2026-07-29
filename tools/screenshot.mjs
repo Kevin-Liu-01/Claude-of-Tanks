@@ -27,8 +27,10 @@ async function acquireLock() {
         continue;
       }
     } catch (_) { continue; } // vanished between calls — retry immediately
-    if (Date.now() - t0 > 10 * 60 * 1000) throw new Error('cot-shots lock timeout');
-    await new Promise((r) => setTimeout(r, 2000 + Math.random() * 1000));
+    // camo_spotting r3: wider budget + jitter — lock starvation under
+    // several concurrent sessions.
+    if (Date.now() - t0 > 20 * 60 * 1000) throw new Error('cot-shots lock timeout');
+    await new Promise((r) => setTimeout(r, 2000 + Math.random() * 3000));
   }
 }
 function releaseLock() {
@@ -59,7 +61,10 @@ const server = await createServer({
   // puppeteer execution context mid-evaluate ("Execution context was
   // destroyed"). The harness captures a static build state — live reload has
   // no value here.
-  server: { port, strictPort: false, hmr: false },
+  // camo_spotting r3: watch off too — a concurrent editor session touching
+  // src/ mid-capture triggered a full-reload navigation that destroyed the
+  // evaluate context (spotting-check.mjs has carried this fix since r2).
+  server: { port, strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
   optimizeDeps: {
     // tank_models r3: pre-bundle the lazy-loaded modules so dep discovery can
     // never trigger a mid-capture page reload / stale-chunk 504
@@ -122,9 +127,60 @@ try {
     // vegetation) — on cold vite transforms the fixed 1.2 s could capture
     // the PREVIOUS screen (terrain_environment r1), so they get ~3 s.
     const settleMs = view.startsWith('battlefield_') ? 3000 : 1200;
+    // performance_budget r3 (capture determinism, killcam r2 follow-up): the
+    // garage view RESUMES the GLB idle queue so the pedestal hero can land —
+    // but the fixed settle raced the swap under machine load and a GREEN run
+    // shipped an empty pedestal. Wait (bounded) for the queue to drain AND
+    // hold stable before the settle; on timeout capture anyway (never hang).
+    if (view === 'garage') {
+      await page.waitForFunction(
+        `(() => {
+          const s = window.__GLB_STATS;
+          if (!s) return true;
+          const key = s.settled + '/' + s.started;
+          if (s.settled < s.started) { window.__GLB_STABLE_SHOT = null; return false; }
+          if (!window.__GLB_STABLE_SHOT || window.__GLB_STABLE_SHOT.key !== key) {
+            window.__GLB_STABLE_SHOT = { key, at: performance.now() };
+            return false;
+          }
+          return performance.now() - window.__GLB_STABLE_SHOT.at > 800;
+        })()`,
+        { timeout: 20000, polling: 200 },
+      ).catch(() => console.warn('[shots] garage GLB queue did not settle within 20 s — capturing anyway'));
+    }
     await new Promise((r) => setTimeout(r, settleMs));
     const file = `${outDir}/${view}.png`;
     await page.screenshot({ path: file });
+    // tank_models r3: fail instead of shipping an empty turntable.
+    if (view === 'garage') {
+      const heroOk = await page.evaluate(() => {
+        const D = window.__DEBUG; if (!D) return false;
+        let ok = false;
+        D.scene.traverse((o) => {
+          if (ok || !o.name || !o.name.startsWith('tank_')) return;
+          if (o.parent !== D.scene) return;
+          const dx = o.position.x + 1500, dz = o.position.z + 1500;
+          if (dx * dx + dz * dz > 3600) return;      // 60 m of the garage disc
+          if (!o.visible) return;
+          let vis = 0;
+          o.traverse((c) => { if (c.isMesh && c.visible) vis++; });
+          ok = vis > 10;                              // real model, not a stub
+        });
+        return ok;
+      });
+      if (!heroOk) throw new Error('garage view captured with an EMPTY pedestal (no visible hero tank)');
+    }
+    // tank_models r3: guard against a future dead-flank/stand-in restage.
+    if (view === 'tank_closeup_modern') {
+      const glbOk = await page.evaluate(() => {
+        const t = window.__DEBUG.game.tankById.get('m1a2');
+        if (!t || !t.visual) return false;
+        let ok = false;
+        t.visual.root.traverse((o) => { if (o.userData && o.userData.__glbSwapped) ok = true; });
+        return ok;
+      });
+      if (!glbOk) throw new Error('tank_closeup_modern captured the procedural stand-in, not the sourced GLB');
+    }
     console.log(`[shots] captured ${file}`);
   }
 } catch (err) {

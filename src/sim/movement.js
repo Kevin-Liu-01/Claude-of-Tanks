@@ -37,16 +37,21 @@ const C_DRAG = 0.65;             // quadratic drag fraction — asymptotic crawl
 // Engine torque spool (r4 crit "initial surge a touch hot"): drive force ramps
 // from SPOOL_FLOOR to 1 over SPOOL_S when the throttle opens, so a 60-ton
 // launch reads heavy (tracks bite, hull squats, THEN it surges) without
-// materially changing 0-40 times. Decays quickly when the throttle closes.
-// r2 critique (minor): 0.35/0.25 measured 0-30 km/h = 2.76 s LIVE on flat
-// medium ground vs the ~2.2-2.4 s target above — the first second was too
-// lazy for a modern 22.5 hp/t MBT. More instant bite (floor 0.35) + a faster
-// ramp (0.25 s) sharpen only the launch; the 0-60 curve is untouched
-// (verified live by the r2 drive probe: 0-30 ≈ 2.3 s, still inside the WoT
-// medium band, nowhere near the 1.74 s arcade-hot regime the spool fixed).
-const SPOOL_S = 0.25;            // s to full drive torque from a standing start
-const SPOOL_FLOOR = 0.35;        // torque fraction available instantly
-const SPOOL_DECAY_S = 0.15;      // s for the spool to unwind at closed throttle
+// materially changing 0-40 times.
+// r3 retune (r2 critique + task #216: 0.35/0.25 measured 0-30 km/h = 1.85 s
+// LIVE on flat medium — arcade-hot vs the locked 2.2-2.4 s WoT-medium band).
+// The ramp is now QUADRATIC (spool² — torque builds in the back half, reads
+// as the turbine spooling while the tracks hook up) with floor 0.25 over
+// 1.05 s: module-measured flat-medium 0-30 = 2.25 s on the M1A2 (22.5 hp/t,
+// R=0.8), 43→60 untouched at 1.50 s (< 2 s r-crit authority requirement) —
+// a plain floor/ramp tweak saturates at ~2.0 s because the linear spool is
+// spent after S seconds, hence the curve change. The slower decay
+// (0.45 s) keeps sub-half-second throttle blips (serpentine, tap-brake) from
+// dumping the spool — only a real stop/reversal relaunches heavy; wall
+// impacts still zero it explicitly (impact hard-stop below).
+const SPOOL_S = 1.05;            // s to full drive torque from a standing start
+const SPOOL_FLOOR = 0.25;        // torque fraction available instantly
+const SPOOL_DECAY_S = 0.45;      // s for the spool to unwind at closed throttle
 const BRAKE_MULT = 3.5;          // braking is this much stronger than driving
 // Brake decel cap scales with specific power (weight class): a 12 hp/t heavy
 // caps near 7 m/s² and coasts visibly longer than a 25+ hp/t light/MBT at 9.
@@ -115,19 +120,51 @@ const SUPPORT_FAN = [
   { f: 0.32, yOff: 0.34 },
   { f: 0.00, yOff: 0.34 },
 ];
+// r3 fan yield (selftest levitation, round critique): the yOff=0 wheel-run
+// fan lines are SOFT supports. On a rough contact patch their allowed lift
+// over the track-edge contact shrinks by (roughness − FREE), where roughness
+// = outer-line max deficit − mean yOff=0 deficit (the critique's "spread
+// between max and mean contact deficit"). The yield is capped so the terrain
+// left proud under a wheel line never exceeds what the renderer's per-wheel
+// conform layer absorbs (tankFactory: 1.35× gain, +0.35 m up-travel, track
+// band + link pads follow the wheels) — the rendered-vertex burial gate
+// holds by construction. Smooth/planar patches (roughness < FREE: every
+// live-map case, incl. the r5 parked-meadow wheel-rim evidence) keep the
+// full hard clamp — bit-identical behavior to r5 there.
+const FAN_YIELD_FREE_M = 0.10;   // roughness below this: fan lines stay hard
+const FAN_YIELD_MAX_M = 0.30;    // max softening — conform absorbs ≤ 0.35 m
+// Yield OPENS rate-limited (m/s): the renderer's per-wheel conform spring
+// (tankFactory, 0.55/frame ease) is what bridges the yielded terrain, and
+// handing it a step lets a wheel rim lag transiently into the ground (drive
+// probe: −3.1 cm spike at 47 km/h). Slew-limited opening keeps the conform
+// target inside what the ease tracks per frame; CLOSING stays instant — a
+// rising clamp is always burial-safe.
+const FAN_YIELD_OPEN_MPS = 0.6;
+// r3 two-point settle authority (see the fit block): max pitch correction the
+// rigid-body settling may add on top of the LSQ plane per tick's target. On
+// ordinary ground the deficit spread keeps ΔP a few milliradians — the clamp
+// only engages on extreme single-tip cantilevers (plunging off a crest into a
+// trough), where a large, fast rotation IS the physical motion.
+const SETTLE_CLAMP_RAD = 0.09;
 // Contact margin: the solved plane rides this far above the highest contact
 // sample. Covers (a) the sub-sample terrain bulge between support points and
 // (b) the bounded phase error between this sim-tick susp mirror and the
 // renderer's per-frame integration at non-60 fps — while staying under the
 // track link pads, which hang ~1–2 cm below the hull-local contact plane.
-const SUPPORT_MARGIN_M = 0.015;
+// r3: 0.015 → 0.017 — pairs with the ATT bump below; the live drive gate at
+// 50 km/h over 19 m relief brushed −3.0 cm (instantaneous, conform-lag class,
+// r6 measured −2.4 for the same class) and the extra base margin buys it back.
+const SUPPORT_MARGIN_M = 0.017;
 // r6 hard-gate headroom: the margin GROWS with the rendered attitude. The
 // track link pads hang 1–2 cm below the hull-local contact plane by design,
 // and at combined attitude extremes they approached the 3 cm burial gate
 // (-2.4 cm transient at 24° pitch with -17° roll — 60% of the gate). Up to
 // +SUPPORT_MARGIN_ATT_M is blended in linearly, saturating at
 // |pitch|+|roll| = SUPPORT_MARGIN_ATT_RAD; exactly zero cost on flat ground.
-const SUPPORT_MARGIN_ATT_M = 0.010;
+// r3: 0.010 → 0.014 — the drive probe's rendered-vertex scan brushed −3.1 cm
+// once at 47 km/h on 19° attitude swings (conform-lag transient); the extra
+// attitude-scaled headroom costs nothing on flat ground.
+const SUPPORT_MARGIN_ATT_M = 0.014;
 const SUPPORT_MARGIN_ATT_RAD = 35 * (Math.PI / 180);
 // Mirror of tankFactory's turn-lean sway (visual layer adds it to rotation.z):
 // the support solve folds the predicted sway into the effective roll so a hard
@@ -178,6 +215,18 @@ const SWAY_VIS = 3.2; // effects_combat r1: pairs with tankFactory SWAY_VIS 3.2
 const FLINCH_W = 13;
 const FLINCH_Z = 0.32;
 const MUZZLE_CLEARANCE_M = 0.15; // gun-terrain clamp: min muzzle height above ground
+// GUN LIMIT label gating (r3, round critique): the muzzle-terrain clearance
+// clamp pins the reticle near-CONSTANTLY while driving rough ground (every
+// crest the barrel sweeps raises the depression floor over the close-range
+// server-aim ask), which reads as UI noise — WoT only shouts at true
+// depression limits. state.gunLimitSpec carries the LABEL: genuine spec pins
+// (gunDepressionDeg / gunElevationDeg / casemate arc) always label; a pin
+// that exists only because of the terrain-clearance floor stays label-silent
+// at close range — the red tint still marks it, and a shot that would
+// actually strike the near terrain raises the richer PATH BLOCKED indicator
+// (hud blockedDistM), so no information is lost. Far asks (≥ the distance
+// gate) keep the label: pinning there means real hull-down geometry.
+const GUN_LIMIT_LABEL_DIST_M = 120; // terrain-floor pins label only past this
 const SPRING_OMEGA = 2 * Math.PI * 3; // hull attitude spring natural frequency (rad/s)
 const SPRING_ZETA = 0.6;         // damping ratio
 const K_INERTIA = 0.006;         // rad of pitch target per m/s² of longitudinal accel
@@ -359,6 +408,7 @@ export function createTankState(spec, pos, yaw) {
     bloomF: 1,
     trackScroll: { l: 0, r: 0 },
     atGunLimit: false,
+    gunLimitSpec: false, // GUN LIMIT label flag (see GUN_LIMIT_LABEL_DIST_M)
     // r2 blocked-drive impact telemetry: closing speed (m/s) the collision
     // pushback absorbed this tick (0 = no blocked contact). state.js reads it
     // right after updateTank to emit ONE 'tank:impact' bus event per hit.
@@ -370,6 +420,7 @@ export function createTankState(spec, pos, yaw) {
     _prevSpeed: 0,
     _spool: 0,                     // engine torque spool 0..1 (SPOOL_S ramp)
     _terr: { pitch: 0, roll: 0 },  // last terrain plane fit (spring target source)
+    _fanYield: 0,                  // slew-limited wheel-line yield (support solve)
     _swayEst: 0,                   // predicted visual turn-lean sway (rad)
     _susp: { p: 0, r: 0, pv: 0, rv: 0 }, // mirror of the visual susp rock layer
     _flinch: { p: 0, r: 0, pv: 0, rv: 0 }, // hit-flinch rock (impulses fed by the visual)
@@ -505,9 +556,10 @@ export function updateTank(entity, heightField, dt, collide = null) {
     const u = Math.min(Math.abs(state.speed) / vRef, 1);
     rate = baseRate * (1 - C_DRAG * u * u);
     // Engine torque spool: the launch reads heavy — SPOOL_FLOOR of the force
-    // bites instantly, the rest builds over SPOOL_S.
+    // bites instantly, the rest builds over SPOOL_S on a QUADRATIC ramp
+    // (see the r3 retune note at the constants).
     const spool = state._spool || 0;
-    rate *= SPOOL_FLOOR + (1 - SPOOL_FLOOR) * spool;
+    rate *= SPOOL_FLOOR + (1 - SPOOL_FLOOR) * spool * spool;
     spoolTarget = 1;
     // Steering diverts engine power to the tracks (§4): while turning hard the
     // drive can't refill what the turn bleeds, so serpentining costs momentum.
@@ -531,8 +583,18 @@ export function updateTank(entity, heightField, dt, collide = null) {
       TURN_DIRECT_BLEED * bleedFade * Math.min(Math.abs(state.yawRate) / trMax, 1) * dt;
   }
   if (!debuff.immobile) {
-    // Gravity along the track line: stalled tanks slide back, coasting gains downhill.
-    state.speed += -GRAVITY * Math.sin(terrPitch) * dt * (throttle !== 0 ? 0.3 : 1.0);
+    // Gravity along the track line: stalled tanks slide back, coasting gains
+    // downhill. r3: the throttled share is SPEED-gated — a near-stationary
+    // tank on a slope hasn't hooked the ground yet (tracks barely turning:
+    // full gravity, it creeps back uphill / rolls away downhill for the first
+    // moments of a slope start, pairing with the heavy-launch spool), then
+    // fades to the locked tracked share of 0.3 by ~3 m/s. Flat launches
+    // (sin ≈ 0 — the 0-30 tuning case) and all moving driving are untouched.
+    const slow = throttle !== 0
+      ? 1 - clamp((Math.abs(state.speed) - 1.0) / 2.0, 0, 1)
+      : 0;
+    state.speed += -GRAVITY * Math.sin(terrPitch) * dt *
+      (throttle !== 0 ? 0.3 + 0.7 * slow : 1.0);
   }
   state.speed = clamp(state.speed, -revMps * OVERSPEED_CAP, topMps * OVERSPEED_CAP);
 
@@ -701,7 +763,14 @@ export function updateTank(entity, heightField, dt, collide = null) {
     const sinR = Math.sin(rollEff);
     const px1 = state.pos.x, pz1 = state.pos.z;
     let sumHZ = 0, sumZZ = 0, sumL = 0, sumR = 0, nLR = 0;
-    let supportY = -Infinity;
+    let outerMax = -Infinity; // track outer edges: HARD support (also the fit)
+    let sumD = 0, nD = 0;     // all yOff=0 deficits — patch roughness estimate
+    // Two-point settle bookkeeping (r3): deepest contact overall + deepest in
+    // each longitudinal half (center band excluded — no lever there).
+    const zHalf = 0.25 * sl;
+    let argZ = 0;
+    let frontMax = -Infinity, frontZ = sl;
+    let rearMax = -Infinity, rearZ = -sl;
     for (let side = -1; side <= 1; side += 2) {
       const x = side * hw;
       const x1 = x * cr0, y1 = x * sr0;
@@ -717,7 +786,10 @@ export function updateTank(entity, heightField, dt, collide = null) {
         // relative to pos.y): pos.y must sit at max over samples of
         // h − (x·sinR·cosP + z·sinP)
         const d = h - (x * sinR * cosP + z * sinP);
-        if (d > supportY) supportY = d;
+        if (d > outerMax) { outerMax = d; argZ = z; }
+        if (z < -zHalf && d > rearMax) { rearMax = d; rearZ = z; }
+        else if (z > zHalf && d > frontMax) { frontMax = d; frontZ = z; }
+        sumD += d; nD++;
       }
     }
     // r5 lateral fan (see SUPPORT_FAN): support-only lines between the outer
@@ -728,6 +800,11 @@ export function updateTank(entity, heightField, dt, collide = null) {
     //             sin(−pitch) + z·cos(−pitch))
     // so pos.y must also sit at max of h − ((x·sinR + yOff·cosR)·cosP + z·sinP)
     // over these lines. Coarse spacing (every other z sample, endpoints kept).
+    // yOff=0 wheel-run lines are SOFT (fanMax, yield below); the yOff>0
+    // hull-belly guard stays HARD (bellyMax) — the pan is rigid geometry with
+    // no conform layer under it.
+    let fanMax = -Infinity;
+    let bellyMax = -Infinity;
     for (const ln of SUPPORT_FAN) {
       for (let side = -1; side <= 1; side += 2) {
         const x = side * hw * ln.f;
@@ -739,11 +816,38 @@ export function updateTank(entity, heightField, dt, collide = null) {
           const z2 = y1 * sa0 + z * ca0;
           const h = heightField.getHeightAt(px1 + x1 * cb + z2 * sb, pz1 - x1 * sb + z2 * cb);
           const d = h - (lift + z * sinP);
-          if (d > supportY) supportY = d;
+          if (ln.yOff === 0) {
+            if (d > fanMax) fanMax = d;
+            sumD += d; nD++;
+          } else if (d > bellyMax) {
+            bellyMax = d;
+          }
         }
         if (ln.f === 0) break; // centerline: one line, not two
       }
     }
+    // Assemble the support height (see FAN_YIELD_* note): track edges clamp
+    // exactly — the max-deficit outer sample always sits ON the ground
+    // (levitation-proof anchor) — while the wheel-run fan lines lose
+    // authority as the patch roughens (their residual is absorbed by the
+    // renderer's per-wheel conform + articulated track band), and the belly
+    // guard stays absolute.
+    const rough = outerMax - sumD / nD;
+    const yieldWant = clamp(rough - FAN_YIELD_FREE_M, 0, FAN_YIELD_MAX_M);
+    const yieldPrev = state._fanYield || 0;
+    const fanYield = yieldWant > yieldPrev
+      ? Math.min(yieldWant, yieldPrev + FAN_YIELD_OPEN_MPS * dt)
+      : yieldWant; // closing (harder clamp) applies instantly
+    state._fanYield = fanYield;
+    let supportY = outerMax;
+    if (fanMax - fanYield > supportY) supportY = fanMax - fanYield;
+    // The belly guard shares the roughness yield: on ≤ 4 m-cell live maps a
+    // pan-threatening crest between the tracks cannot exist while the patch
+    // is smooth (guard fully hard there, r5 behavior), and on high-frequency
+    // synthetic fields honoring it would hover the whole contact patch (the
+    // selftest levitation gate). Real hull pans sit ≥ 0.40 m vs the 0.34 m
+    // guard, so the first 6 cm of yield never even reaches rendered geometry.
+    if (bellyMax - fanYield > supportY) supportY = bellyMax - fanYield;
     // Least-squares plane: pitch from the along-track height gradient (Σz = 0
     // by symmetry), roll from the mean left/right line difference. RENDERER
     // ROLL SIGN: positive roll lifts the right side, so ground higher on the
@@ -751,6 +855,22 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // opposite sign and leaned the hull INTO every side slope).
     state._terr.pitch = Math.atan2(sumHZ, sumZZ);
     state._terr.roll = Math.atan2((sumR - sumL) / (nLR / 2), 2 * hw);
+    // r3 TWO-POINT SETTLE: the LSQ plane under-rotates in V-troughs and on
+    // sharp crests, so a single line-END contact carries the whole hull while
+    // every other sample hangs (rigid bodies don't rest on one point — they
+    // pivot about it until a second contact lands). When the deepest contact
+    // sits in one longitudinal half, rotate the spring's pitch target toward
+    // the deepest sample of the OPPOSITE half: ΔP = (d₁−d₂)/(z₁−z₂) is
+    // exactly the rotation that brings both onto the plane. Zero on planar
+    // ground (uniform deficits ⇒ ΔP ≈ 0), clamped so smooth terrain keeps the
+    // pure fit; the attitude spring provides the damping/rate limit.
+    if (argZ > zHalf && rearMax > -Infinity) {
+      state._terr.pitch += clamp((outerMax - rearMax) / (argZ - rearZ),
+        -SETTLE_CLAMP_RAD, SETTLE_CLAMP_RAD);
+    } else if (argZ < -zHalf && frontMax > -Infinity) {
+      state._terr.pitch += clamp((outerMax - frontMax) / (argZ - frontZ),
+        -SETTLE_CLAMP_RAD, SETTLE_CLAMP_RAD);
+    }
     // Attitude-scaled margin (see SUPPORT_MARGIN_ATT_M): worst-case combined
     // pitch+roll lifts the plane an extra centimeter so the track link pads
     // (1–2 cm below the contact plane) can never approach the 3 cm gate.
@@ -822,11 +942,21 @@ export function updateTank(entity, heightField, dt, collide = null) {
         if (loTerr > loEff) loEff = Math.min(loTerr, hi);
       }
     }
-    state.atGunLimit = yawPinned || desiredGun < loEff - 1e-4 || desiredGun > hi + 1e-4;
+    // Pin classification (r3): specPinned = the gun physically cannot reach
+    // the lay within its OWN limits (true depression/elevation stop or the
+    // casemate yaw arc) — always labeled. A pin introduced only by the
+    // terrain-clearance floor (loEff > lo) tints the reticle but labels only
+    // for far asks (≥ GUN_LIMIT_LABEL_DIST_M): close-range clearance pins are
+    // the every-crest noise the round critique flagged, and a genuinely
+    // obstructed close shot surfaces as PATH BLOCKED instead.
+    const specPinned = yawPinned || desiredGun < lo - 1e-4 || desiredGun > hi + 1e-4;
+    state.atGunLimit = specPinned || desiredGun < loEff - 1e-4;
     state.gunPitch = clamp(
       approach(state.gunPitch, clamp(desiredGun, loEff, hi), spec.gunPitchDegS * DEG2RAD * dt),
       lo, hi,
     );
+    state.gunLimitSpec = specPinned ||
+      (state.atGunLimit && horiz >= GUN_LIMIT_LABEL_DIST_M);
   }
   state.turretYawRate = wrapAngle(state.turretYaw - prevTurretYaw) / dt;
 

@@ -66,7 +66,11 @@ export default {
     // street paving strength: the splat shader lays the cobble/sett layer
     // across the full carriageway at all distances (uRoadTex uniform)
     roadTexMix: 0.85,
-    townWear: 2.3, // r5: town-core ground reads packed dirt/rubble dust, not lawn
+    // r5: town-core ground reads packed dirt/rubble dust, not lawn
+    // terrain_environment r3: 2.3 -> 1.7 — at 2.3 the wear channel painted
+    // one continuous muddy noise smear between the blocks; the new courtyard
+    // wear DECALS (props.js) carry structured paths/yards instead
+    townWear: 1.7,
   },
 
   vegetation: {
@@ -97,6 +101,14 @@ export default {
     blockFill: true,
     tones: {
       plaster: (h, s, l) => [0.10, clamp01(s * 0.5), clamp01(l * 0.92)], // sooty render
+      // r3 (content_breadth): two more render families for the street walls —
+      // the whole town recycled ONE white-plaster box ("kit-bash at mid
+      // distance" critique). plaster2 = warm ochre-cream (Central European
+      // lime render), plaster3 = muted grey-green (weathered distemper).
+      // Consumed by the props.js facade-variety patch (handoff r3); inert
+      // until that lands.
+      plaster2: (h, s, l) => [0.075, clamp01(s * 0.45 + 0.14), clamp01(l * 0.84)],
+      plaster3: (h, s, l) => [0.21, clamp01(s * 0.28 + 0.05), clamp01(l * 0.80)],
       // aged clay roofscape. r5: the old two-class split (red tiles vs hue-0.60
       // slate rows) striped every roof red/blue in wide shots — and even
       // neutral grey rows go blue under the sky fill. Keep the whole sheet in
@@ -155,7 +167,10 @@ export default {
     // 0.00078 — finishes the engine-side haze-cap/far-shadow work; the urban
     // horizon share read as bleached white.
     turbidity: 4.0, rayleigh: 1.4, mieCoefficient: 0.005, mieDirectionalG: 0.8,
-    fogDensity: 0.00078, fogTintHex: 0x8d99a8, fogMix: 0.62, envIntensity: 0.2,
+    // lighting_post r3 (round 3): 0.00078 -> 0.00062 — milky midfield; the
+    // engine's FOG_EXTINCTION_SHARE split keeps hue in the aerial pass and
+    // buildings at 300 m keep local contrast.
+    fogDensity: 0.00062, fogTintHex: 0x8d99a8, fogMix: 0.62, envIntensity: 0.2,
     cloudOpacity: 0.85, cloudOpacity2: 0.5, cloudTintHex: 0xe8e4dc,
     sunIntensity: 4.2, sunColorHex: 0xffedd6, hemiIntensity: 0.36,
   },

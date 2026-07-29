@@ -191,11 +191,16 @@ const CLOUD_THR = 0.505; // r6: 0.53 → 0.505 — the infinite-deck projection 
 // (its along-view arm projects as the vertical streak). Wisp edge halved so
 // fringes tear instead of airbrush, clustering +33% so the field breaks into
 // separate masses with real blue gaps between them.
-const CLOUD_EDGE = 0.022; // clear→rim ramp width in FBM units (cumulus cores)
+// r3 ("main cumulus has a hard-edged nose and directional smear banding"):
+// core edge 0.022 → 0.030 and warp 0.075 → 0.09 — the r6 half-width left
+// upwind mass boundaries as razor threshold contours; a slightly wider ramp
+// under a stronger domain warp reads as turbulent water-vapor margin while
+// the wisp/core split (r7) still varies edge character between masses.
+const CLOUD_EDGE = 0.030; // clear→rim ramp width in FBM units (cumulus cores)
 const CLOUD_EDGE_WISP = 0.055; // edge width for sparse wispy fringes
 const CLOUD_CORE = 0.16; // rim→opaque-core ramp width in FBM units
 const CLOUD_CLUSTER = 0.12; // macro-noise threshold modulation (cloud grouping)
-const CLOUD_WARP = 0.075; // domain-warp strength (cauliflower edge crinkle)
+const CLOUD_WARP = 0.09; // domain-warp strength (cauliflower edge crinkle)
 const CLOUD_MARCH_STEPS = 12; // light-march samples toward the in-texture sun
 const CLOUD_MARCH_STEP_PX = 3;
 // r2 ("clouds receive no directional lighting — no lit/shadow side"): march
@@ -259,7 +264,9 @@ const CLOUD_MAX_ALPHA = 0.94;
 // r2: 0.6 → 0.5 — the cirrus veil is the main "directional streaking"
 // contributor in the establishing shots; thinner default keeps it a subtle
 // high veil (map presets still override).
-const CLOUD_LAYER2_OPACITY = 0.5; // default for preset field cloudOpacity2 (cirrus)
+// r3: 0.5 → 0.42 — the sheared veil is the residual "directional smear
+// banding" contributor on verdant; map presets still override.
+const CLOUD_LAYER2_OPACITY = 0.42; // default for preset field cloudOpacity2 (cirrus)
 
 /**
  * @typedef {object} SkyRig
@@ -285,6 +292,25 @@ const DEFAULT_PRESET = Object.freeze({
   cloudOpacity: 1.0,
   cloudOpacity2: CLOUD_LAYER2_OPACITY,
   cloudTintHex: 0xffffff,
+  // r3 overcast support ("winter sky is a completely featureless warm-grey
+  // gradient" — winter ALREADY ran cloudOpacity 1.0, but its establishing
+  // cameras only see the 2-12 deg elevation band, where a 620 m deck sits
+  // 6-7 km of slant range out and the haze term erases all texture). Maps
+  // can now pull the virtual deck DOWN (stratus altitude) and thin the
+  // slant-haze so a broken low deck stays readable at grazing elevations:
+  //   winter.js suggested values — cloudAltM: 340, cloudHazeK: 0.00015,
+  //   cloudUvM: 2400 (smaller masses read as broken stratus).
+  // null = AUTO: fair-weather maps keep the 620 m cumulus deck; presets that
+  // read as OVERCAST (both decks near-opaque + turbid sky — winter is the
+  // only current match) drop to a 340 m broken-stratus deck so grazing
+  // establishing cameras see modeled cloud instead of a bare grey gradient.
+  cloudAltM: null,
+  cloudHazeK: null,
+  cloudUvM: null,
+  // r3 per-map display exposure trim, applied by post.js's grade (uExposure):
+  // 1.0 = neutral. Desert should ship ~0.88 (the "sand midtones at RGB 245"
+  // blowout is an exposure problem the global grade must not pay for).
+  postExposure: 1,
 });
 
 /** Apply the shared atmosphere parameters to a Sky instance. @param {Sky} sky @param {THREE.Vector3} sunDir @param {object} [preset] */
@@ -673,7 +699,10 @@ function sampleHorizonColor(renderer, sunDir, preset = DEFAULT_PRESET) {
 // Linear-luminance ceiling for the horizon sample (see sampleHorizonColor).
 // 0.55 linear lands at ~215/255 display after ACES + grade — a bright haze
 // that still reads as atmosphere, never as blown white.
-const HORIZON_LUM_CAP = 0.48; // r5: 0.55 → 0.48 — see HAZE_MAX_LUM note
+// r3: 0.48 → 0.45 — paired with post.js AERIAL_HAZE_LUM_CAP 0.44 → 0.41 so
+// the desert mesa band and urban far field keep silhouette value against the
+// haze (the "mesas ~90% swallowed by a pink haze band" read).
+const HORIZON_LUM_CAP = 0.45;
 
 /** Scale a linear color down so its Rec709 luminance is <= maxLum (hue kept).
  * @param {THREE.Color} c @param {number} maxLum @returns {THREE.Color} c */
@@ -711,6 +740,8 @@ export function createSky(scene, renderer) {
   // (same Vector3 instance — applyPreset mutates it in place, so the post
   // chain always sees the current map's sun without an explicit re-wire).
   scene.userData.sunDirWorld = sunDir;
+  // r3: publish the per-map display exposure trim for post.js's grade.
+  scene.userData.postExposure = preset.postExposure;
 
   // Cloud decks: two horizon-flattened dome shells (low cumulus + high cirrus
   // veil) whose shader projects an INFINITE virtual deck plane (see the
@@ -842,6 +873,20 @@ export function createSky(scene, renderer) {
       else u.uRot.value.set(rot[0], rot[1]);
       u.uHaze.value.copy(haze);
     }
+    // r3 overcast: per-map stratus altitude / slant-haze / mass scale on the
+    // low (cumulus) deck — see the cloudAltM note in DEFAULT_PRESET. AUTO
+    // (null) drops OVERCAST presets to a broken-stratus deck: winter's
+    // establishing cameras only see the 2-12 deg elevation band, where the
+    // 620 m fair-weather deck is 6-7 km of slant range out and fully hazed —
+    // the r3 "completely featureless warm-grey sky" read.
+    {
+      const overcast = preset.cloudOpacity >= 0.95 && preset.cloudOpacity2 >= 0.9
+        && preset.turbidity >= 7;
+      const u = clouds.material.uniforms;
+      u.uAlt.value = preset.cloudAltM ?? (overcast ? 340 : CLOUD_ALT);
+      u.uHazeK.value = preset.cloudHazeK ?? (overcast ? 0.00015 : CLOUD_HAZE_K);
+      u.uScale.value = preset.cloudUvM ?? (overcast ? 2400 : CLOUD_UV_METERS);
+    }
     clouds.material.uniforms.uOpacity.value = preset.cloudOpacity;
     clouds.visible = preset.cloudOpacity > 0.01;
     cloudsFar.material.uniforms.uOpacity.value = preset.cloudOpacity2;
@@ -960,6 +1005,7 @@ export function createSky(scene, renderer) {
       configureSkyUniforms(sky, sunDir, preset);
       horizonColor.copy(sampleHorizonColor(renderer, sunDir, preset));
       updateCloudDecks(); // tint/opacity/sun-rotation/haze follow the preset
+      scene.userData.postExposure = preset.postExposure; // post.js grade trim
       rig.bakeEnvironment();
       rig.applyFog(targetScene);
     },

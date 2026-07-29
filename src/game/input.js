@@ -132,6 +132,13 @@ const DEFAULT_SETTINGS = {
   aimSmoothing: 0.5, // 0 = raw 1:1 deltas, 1 = heavy (56 ms EMA); 0.5 = classic 28 ms
   padSensitivity: 1, // 0.2x .. 3x multiplier on right-stick aim
   aiDifficulty: 'normal', // bot tier for the NEXT battle: 'easy'|'normal'|'hard'
+  // FPS/ping readout (hud.js cot-net corner element). DEFAULT OFF —
+  // controls_gunnery r3 minor: a raw "41 FPS 33 MS" string in the top corner
+  // reads as developer chrome left in the build (and leaked into shipped
+  // contract shots). Players who want the WoT net-stats corner opt in via
+  // the settings GAMEPLAY tab; settings.js broadcasts 'ui:perfMeter' so the
+  // HUD follows live.
+  showPerfMeter: false,
   // Sound mix (settings panel SOUND tab). The synth audio stack
   // (src/audio/audio.js) reads these at graph build and live-follows the
   // 'ui:volumes' bus event the panel emits on every slider change.
@@ -325,6 +332,7 @@ export function createInput(opts = {}) {
     if (typeof storedSettings.aimSmoothing === 'number') settings.aimSmoothing = clamp(storedSettings.aimSmoothing, 0, 1);
     if (typeof storedSettings.padSensitivity === 'number') settings.padSensitivity = clamp(storedSettings.padSensitivity, 0.2, 3);
     if (AI_DIFFICULTIES.includes(storedSettings.aiDifficulty)) settings.aiDifficulty = storedSettings.aiDifficulty;
+    if (typeof storedSettings.showPerfMeter === 'boolean') settings.showPerfMeter = storedSettings.showPerfMeter;
     for (const k of VOLUME_KEYS) {
       if (typeof storedSettings[k] === 'number') settings[k] = clamp(storedSettings[k], 0, 1);
     }
@@ -727,6 +735,7 @@ export function createInput(opts = {}) {
         return clamp(Number.isFinite(n) ? n : fallback, lo, hi);
       };
       if (key === 'invertY') settings.invertY = !!value;
+      else if (key === 'showPerfMeter') settings.showPerfMeter = !!value;
       else if (key === 'sensitivity') settings.sensitivity = num(1, 0.2, 3);
       else if (key === 'sniperSensScale') settings.sniperSensScale = num(1, 0.2, 3);
       else if (key === 'aimSmoothing') settings.aimSmoothing = num(0.5, 0, 1);

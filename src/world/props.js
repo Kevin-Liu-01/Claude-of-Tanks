@@ -3,7 +3,7 @@
 // all textures canvas-generated, everything merged into few draw calls.
 
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise.js';
 import { applyTone } from './terrain.js';
 import { applySourcedBuildings } from './sourcedTextures.js';
@@ -239,9 +239,12 @@ function makeGrimeTexture(noi, anisotropy) {
     const u = x / s, v = y / s, j = (y * s + x) * 4;
     const a = torusN(noi, u, v, 3, 3, 5) * 0.6 + torusN(noi, u, v, 7, 7, 19) * 0.4;
     const b = torusN(noi, u, v, 5, 5, 47) * 0.55 + torusN(noi, u, v, 13, 13, 91) * 0.45;
+    // r3: blue carries a smooth 1-2 cycle field — sampled at very low world
+    // frequency it drives the per-neighbourhood facade tint drift below
+    const c2 = torusN(noi, u, v, 2, 2, 133) * 0.7 + torusN(noi, u, v, 5, 5, 171) * 0.3;
     px[j] = (a * 0.5 + 0.5) * 255;
     px[j + 1] = (b * 0.5 + 0.5) * 255;
-    px[j + 2] = 128; px[j + 3] = 255;
+    px[j + 2] = (c2 * 0.5 + 0.5) * 255; px[j + 3] = 255;
   }
   return toTexture(px, s, { anisotropy });
 }
@@ -343,9 +346,11 @@ function bakedGeometry(name, opts = {}) {
 // ---------------------------------------------------------------------------
 
 function makeCottage(rng, buckets, wallBucket = 'plaster') {
+  // (content_breadth r3: wallBucket may now be plaster2/plaster3 — the
+  // parts literal below carries all wall families)
   const w = 5.2 + rng() * 1.2, d = 7.0 + rng() * 2.2;
   const wallH = 2.9, roofH = 1.9 + rng() * 0.4, over = 0.35;
-  const parts = { plaster: [], stone: [], roof: [], wood: [], dark: [] };
+  const parts = { plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [] };
   parts.stone.push(box(w + 0.3, 1.0, d + 0.3).translate(0, -0.1, 0)); // foundation (sinks)
   parts[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
   parts[wallBucket].push(gablePrism(w, roofH, 0.32).translate(0, wallH, d / 2 - 0.16));
@@ -402,7 +407,7 @@ function makeCottage(rng, buckets, wallBucket = 'plaster') {
 
 function makeBarn(rng, buckets) {
   const w = 7.5 + rng() * 1.2, d = 11 + rng() * 2, wallH = 3.6, roofH = 2.6, over = 0.45;
-  const parts = { plaster: [], stone: [], roof: [], wood: [], dark: [] };
+  const parts = { plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [] };
   parts.stone.push(box(w + 0.3, 1.2, d + 0.3).translate(0, -0.1, 0));
   parts.wood.push(box(w, wallH, d).translate(0, wallH / 2, 0));
   parts.wood.push(gablePrism(w, roofH, 0.3).translate(0, wallH, d / 2 - 0.15));
@@ -456,7 +461,7 @@ function makeBarn(rng, buckets) {
 
 function makeTower(rng, buckets) {
   const w = 3.4, d = 3.4, wallH = 6.4 + rng() * 0.8;
-  const parts = { plaster: [], stone: [], roof: [], wood: [], dark: [] };
+  const parts = { plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [] };
   parts.stone.push(box(w + 0.4, 1.2, d + 0.4).translate(0, -0.1, 0));
   parts.stone.push(box(w, wallH, d, 0.7).translate(0, wallH / 2, 0));
   const spire = new THREE.ConeGeometry(w * 0.78, 2.6, 4, 1);
@@ -476,7 +481,7 @@ function makeTower(rng, buckets) {
 
 function makeRuin(rng, buckets) {
   const w = 6.0 + rng(), d = 8.0 + rng() * 1.5;
-  const parts = { plaster: [], stone: [], roof: [], wood: [], dark: [] };
+  const parts = { plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [] };
   parts.stone.push(box(w + 0.3, 1.0, d + 0.3).translate(0, -0.1, 0));
   // four broken walls: sequences of piers with varying heights
   const t = 0.5;
@@ -507,7 +512,7 @@ function makeRuin(rng, buckets) {
 function makeAdobe(rng, buckets) {
   const w = 5.4 + rng() * 1.8, d = 5.8 + rng() * 2.6;
   const wallH = 3.0 + rng() * 0.5;
-  const parts = { plaster: [], stone: [], roof: [], wood: [], dark: [] };
+  const parts = { plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [] };
   parts.stone.push(box(w + 0.3, 0.8, d + 0.3).translate(0, -0.15, 0));
   parts.plaster.push(box(w, wallH, d).translate(0, wallH / 2, 0));
   // parapet rim
@@ -550,8 +555,22 @@ function makeRowhouse(rng, buckets, wallBucket = 'plaster', dims = null) {
   const d = (dims && dims.d) || 9.0 + rng() * 4.0;
   const stories = 2 + ((rng() * 2) | 0);
   const wallH = stories * 2.9 + 0.6;
-  const roofH = 1.4 + rng() * 0.6, over = 0.3;
-  const parts = { plaster: [], stone: [], roof: [], wood: [], dark: [] };
+  // content_breadth r3: MIXED roof pitches — every house carried the same
+  // 1.4-2.0 m gable ("one gable pitch" critique). ~20% low-pitch pans, ~15%
+  // steep town gables, the rest the classic band.
+  const roofRoll = rng();
+  const roofH = roofRoll < 0.2 ? 0.75 + rng() * 0.35
+    : roofRoll < 0.35 ? 1.9 + rng() * 0.55
+      : 1.35 + rng() * 0.6;
+  const over = 0.3;
+  const parts = { plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [], glass: [], curtain: [] };
+  // window-pane material mix (content_breadth r3): mostly sky-catching
+  // glass, ~1 in 5 pale curtained interiors, ~1 in 6 stays black (broken /
+  // open casements in a shelled town) — kills the uniform void grid
+  const paneBucket = () => {
+    const r = rng();
+    return r < 0.62 ? 'glass' : r < 0.83 ? 'curtain' : 'dark';
+  };
   parts.stone.push(box(w + 0.3, 1.2, d + 0.3).translate(0, -0.1, 0));
   parts[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
   parts[wallBucket].push(gablePrism(w, roofH, 0.32).translate(0, wallH, d / 2 - 0.16));
@@ -630,12 +649,21 @@ function makeRowhouse(rng, buckets, wallBucket = 'plaster', dims = null) {
       for (const side of [-1, 1]) {
         const wx = side * (w / 2);
         if (st === 0 && k === doorK[side < 0 ? 0 : 1] % nwn) {
-          if (rng() < 0.45) {
+          if (rng() < 0.55) {
             // shopfront: wide display glass, stall riser, lintel + signboard
-            parts.dark.push(box(0.07, 1.55, 1.90).translate(wx + side * 0.02, 1.38, zz));
+            parts.glass.push(box(0.07, 1.55, 1.90).translate(wx + side * 0.02, 1.38, zz));
             parts.stone.push(box(0.16, 0.42, 2.06).translate(wx + side * 0.05, 0.32, zz));
             parts.wood.push(box(0.10, 0.15, 2.10).translate(wx + side * 0.055, 2.28, zz));
             parts.wood.push(box(0.09, 0.44, 1.72).translate(wx + side * 0.065, 2.66, zz));
+            if (rng() < 0.55) {
+              // content_breadth r3: shop AWNING — an angled slab over the
+              // display glass; the one street-level cue that still reads as
+              // "storefront" from the establishing camera
+              const aw = box(0.85, 0.06, 2.15);
+              aw.rotateZ(side * -0.42);
+              aw.translate(wx + side * 0.52, 2.62, zz);
+              parts.roof.push(aw);
+            }
           } else {
             // street door: wood leaf in a proud frame, lintel, stone step
             parts.wood.push(box(0.10, 2.24, 1.08).translate(wx + side * 0.03, 1.14, zz));
@@ -650,7 +678,7 @@ function makeRowhouse(rng, buckets, wallBucket = 'plaster', dims = null) {
         // full 12-16 cm proud with masonry-scale sections — deep trim that
         // still casts shadow lines at gameplay camera distance (the old 5 cm
         // sticks vanished and the glass read painted-on)
-        parts.dark.push(box(0.05, winH, winW).translate(wx + side * 0.012, wy, zz));
+        parts[paneBucket()].push(box(0.05, winH, winW).translate(wx + side * 0.012, wy, zz));
         const jw = 0.14, jp = side * 0.065; // jamb section / proudness
         parts[trimBucket].push(box(jw, winH + 0.14, 0.13).translate(wx + jp, wy, zz - winW / 2 - 0.06));
         parts[trimBucket].push(box(jw, winH + 0.14, 0.13).translate(wx + jp, wy, zz + winW / 2 + 0.06));
@@ -671,7 +699,7 @@ function makeRowhouse(rng, buckets, wallBucket = 'plaster', dims = null) {
       const gx = w * (0.14 + rng() * 0.08);
       for (const gz of [d / 2 + 0.05, -d / 2 - 0.05]) {
         for (const gs of [-1, 1]) {
-          parts.dark.push(box(winW, winH, 0.06).translate(gs * gx, wy, gz));
+          parts[paneBucket()].push(box(winW, winH, 0.06).translate(gs * gx, wy, gz));
           parts.stone.push(box(winW + 0.28, 0.10, 0.16).translate(gs * gx, wy - winH / 2 - 0.06, gz));
         }
       }
@@ -688,7 +716,7 @@ function makeRowhouse(rng, buckets, wallBucket = 'plaster', dims = null) {
   // street door + shopfront on the +z gable face
   parts.wood.push(box(1.2, 2.3, 0.12).translate(-w * 0.15, 1.15, d / 2 + 0.08));
   parts.dark.push(box(1.0, 2.1, 0.06).translate(-w * 0.15, 1.1, d / 2 + 0.14));
-  if (rng() < 0.55) parts.dark.push(box(2.3, 1.5, 0.06).translate(w * 0.18, 1.5, d / 2 + 0.10));
+  if (rng() < 0.55) parts.glass.push(box(2.3, 1.5, 0.06).translate(w * 0.18, 1.5, d / 2 + 0.10));
   mergeInto(buckets, parts);
   return { w: w + 0.3, d: d + 0.3, h: wallH + roofH };
 }
@@ -746,6 +774,19 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
 
   const T = P.tones || {};
   const plaster = makePlaster(noi, aniso, T.plaster || null);
+  // content_breadth r3: TWO extra render families — the street walls
+  // recycled one plaster print ("same white-plaster box repeats dozens of
+  // times", critique). Map configs may author tones.plaster2/plaster3
+  // (urban.js does); other maps derive tasteful shifts of their own plaster
+  // tone so village cottages inherit the variety for free.
+  const _tShift = (base, dh, ds, dl) => (h, s, l) => {
+    const [bh, bs, bl] = base ? base(h, s, l) : [h, s, l];
+    return [Math.max(0, Math.min(1, bh + dh)),
+      Math.max(0, Math.min(1, bs * ds)),
+      Math.max(0, Math.min(1, bl * dl))];
+  };
+  const plaster2 = makePlaster(noi, aniso, T.plaster2 || _tShift(T.plaster, +0.022, 1.1, 0.90));
+  const plaster3 = makePlaster(noi, aniso, T.plaster3 || _tShift(T.plaster, -0.035, 0.72, 0.84));
   const roofT = makeRoofTiles(noi, aniso, T.roof || null);
   const stone = makeStone(noi, aniso, T.stone || null);
   const wood = makeWood(noi, aniso, T.wood || null);
@@ -758,16 +799,26 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
 
   const mats = {
     plaster: new THREE.MeshStandardMaterial({ map: plaster.albedo, normalMap: plaster.normal, roughness: 0.93, metalness: 0 }),
+    plaster2: new THREE.MeshStandardMaterial({ map: plaster2.albedo, normalMap: plaster2.normal, roughness: 0.93, metalness: 0 }),
+    plaster3: new THREE.MeshStandardMaterial({ map: plaster3.albedo, normalMap: plaster3.normal, roughness: 0.93, metalness: 0 }),
     roof: new THREE.MeshStandardMaterial({ map: roofT.albedo, normalMap: roofT.normal, roughness: 0.82, metalness: 0 }),
     stone: new THREE.MeshStandardMaterial({ map: stone.albedo, normalMap: stone.normal, roughness: 0.9, metalness: 0 }),
     wood: new THREE.MeshStandardMaterial({ map: wood.albedo, normalMap: wood.normal, roughness: 0.8, metalness: 0 }),
     dark: new THREE.MeshStandardMaterial({ color: 0x161a1d, roughness: 0.35, metalness: 0.15 }),
+    // content_breadth r3: window PANES get real materials — the old shared
+    // near-black 'dark' slabs read as unframed voids at establishing
+    // distance (critique). 'glass' is a low-roughness slate that picks up
+    // sky/env specular; 'curtain' is a warm pale fill (daytime curtained /
+    // shuttered interiors) that breaks the all-black grid.
+    glass: new THREE.MeshStandardMaterial({ color: 0x2b3640, roughness: 0.18, metalness: 0.4 }),
+    curtain: new THREE.MeshStandardMaterial({ color: 0xb3a992, roughness: 0.92, metalness: 0 }),
     straw: new THREE.MeshStandardMaterial({ map: straw.albedo, normalMap: straw.normal, roughness: 0.95, metalness: 0 }),
     rock: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }),
     baked: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 }),
   };
   mats.rock.envMapIntensity = 0.35; // no white env-specular sparkle at distance
   mats.baked.envMapIntensity = 0.5; // flat-shaded sourced models: no spec sparkle
+  mats.glass.envMapIntensity = 1.5; // panes catch the sky at range
 
   // world-space grime/variation overlay: a second noise-masked albedo layer
   // (macro tone breakup + streaky weathering) that de-grids every tiled
@@ -793,14 +844,23 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
   float gB = texture2D(uGrime, vec2(vGrimeW.x + vGrimeW.z, vGrimeW.y * 1.7) * 0.055).g;
   diffuseColor.rgb *= 0.84 + gA * 0.30;
   diffuseColor.rgb *= 1.0 - smoothstep(0.58, 0.95, gB) * 0.20;
+  // r3 terrain_environment: smooth ~25-60 m warm/cool + value drift so
+  // adjacent buildings stop sharing one identical facade/roof tone (the
+  // "whole town shares 3-4 materials" tell). Low frequency = no seams
+  // across a single wall, but neighbouring houses land on different tints.
+  float gC = texture2D(uGrime, vGrimeW.xz * 0.0058 + vec2(0.31, 0.67)).b;
+  diffuseColor.rgb *= 0.92 + gC * 0.16;
+  diffuseColor.rgb = mix(diffuseColor.rgb,
+    diffuseColor.rgb * (gC > 0.5 ? vec3(1.05, 1.0, 0.93) : vec3(0.95, 0.99, 1.06)),
+    abs(gC - 0.5) * 1.1);
 }`);
   };
   for (const [mk, m] of Object.entries(mats)) {
-    engineCtx.setupShadowMaterial(m, mk === 'dark' ? null : grimeHook);
-    m.customProgramCacheKey = () => 'world-props-' + mk + '-v4';
+    engineCtx.setupShadowMaterial(m, mk === 'dark' || mk === 'glass' ? null : grimeHook);
+    m.customProgramCacheKey = () => 'world-props-' + mk + '-v5';
   }
 
-  const buckets = { plaster: [], stone: [], roof: [], wood: [], dark: [], straw: [], baked: [] };
+  const buckets = { plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [], glass: [], curtain: [], straw: [], baked: [] };
   const obstacles = [];
   const colliders = [];
   const crushables = []; // [{x,y,z,r,h,index,toppled}] — telegraph poles (effects_combat r1)
@@ -869,6 +929,22 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
     return best;
   }
 
+  // content_breadth r3: wall-material picker — stone share still follows
+  // P.wallStoneChance (desert adobe stays all-sandstone), but the plaster
+  // share now splits across the three render families, and a cap stops the
+  // SAME plaster print appearing on 3+ consecutive placements (the "same
+  // white box repeats dozens of times" critique).
+  const _wallHist = [null, null];
+  function pickWall(rr) {
+    let b = rr() < P.wallStoneChance ? 'stone'
+      : (() => { const q = rr(); return q < 0.5 ? 'plaster' : q < 0.8 ? 'plaster2' : 'plaster3'; })();
+    if (b !== 'stone' && _wallHist[0] === b && _wallHist[1] === b) {
+      b = b === 'plaster' ? 'plaster2' : b === 'plaster2' ? 'plaster3' : 'plaster';
+    }
+    _wallHist[1] = _wallHist[0]; _wallHist[0] = b;
+    return b;
+  }
+
   const candidates = [];
   for (const nodes of roads) {
     for (let i = 1; i < nodes.length - 1; i++) {
@@ -905,8 +981,8 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
       for (const pb of placedB) if (Math.hypot(px - pb.x, pz - pb.z) < pb.rr + P.spacingPad) { clear = false; break; }
       if (!clear) continue;
       const rot = Math.atan2(cand.tx, cand.tz) + (rng() - 0.5) * 0.10;
-      const tmp = { plaster: [], stone: [], roof: [], wood: [], dark: [], straw: [], baked: [] };
-      const info = builders[bi](rng, tmp, rng() < 1 - P.wallStoneChance ? 'plaster' : 'stone');
+      const tmp = { plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [], glass: [], curtain: [], straw: [], baked: [] };
+      const info = builders[bi](rng, tmp, pickWall(rng));
       const fit = groundFit(px, pz, info.w, info.d, rot);
       if (fit.spread > P.maxSpread) continue;
       // per-building texture phase: no two facades repeat the same grid
@@ -923,19 +999,55 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
   }
 
   // heaped masonry chunks + a jutting charred beam (shared by the street
-  // rubble scatter and the collapsed rowhouse slots)
+  // rubble scatter and the collapsed rowhouse slots).
+  // r3 terrain_environment: chunks are no longer axis-clean boxes — each box
+  // gets a consistent PER-CORNER offset (shared corners move together, so
+  // faces stay welded) turning it into an irregular broken-masonry
+  // hexahedron; a scatter of small brick shards rings the pile base.
+  const _rubbleOff = new Float32Array(24);
+  function roughenChunk(chunk, rrng, amt) {
+    for (let c = 0; c < 8; c++) {
+      _rubbleOff[c * 3] = (rrng() - 0.5) * amt;
+      _rubbleOff[c * 3 + 1] = (rrng() - 0.5) * amt * 0.7;
+      _rubbleOff[c * 3 + 2] = (rrng() - 0.5) * amt;
+    }
+    const cp = chunk.attributes.position;
+    for (let i = 0; i < cp.count; i++) {
+      const ci = (cp.getX(i) > 0 ? 1 : 0) + (cp.getY(i) > 0 ? 2 : 0) + (cp.getZ(i) > 0 ? 4 : 0);
+      cp.setXYZ(i, cp.getX(i) + _rubbleOff[ci * 3], cp.getY(i) + _rubbleOff[ci * 3 + 1],
+        cp.getZ(i) + _rubbleOff[ci * 3 + 2]);
+    }
+    chunk.computeVertexNormals();
+    return chunk;
+  }
   function addRubblePile(x, z, pr, rrng) {
     const y = heightField.getHeightAt(x, z);
     const n = 6 + ((rrng() * 5) | 0);
     for (let k = 0; k < n; k++) {
       const a = rrng() * Math.PI * 2, rr = Math.sqrt(rrng()) * pr;
       const cs = 0.35 + rrng() * 0.8;
-      const chunk = box(cs, cs * (0.5 + rrng() * 0.5), cs * (0.6 + rrng() * 0.6), 0.9);
+      // mix chunk classes: blocky masonry / flat slab / brick-proportioned
+      const cls = rrng();
+      const chunk = cls < 0.55
+        ? box(cs, cs * (0.5 + rrng() * 0.5), cs * (0.6 + rrng() * 0.6), 0.9)
+        : cls < 0.8
+          ? box(cs * 1.3, cs * 0.22, cs * (0.8 + rrng() * 0.5), 0.9)   // wall slab
+          : box(cs * 0.7, cs * 0.3, cs * 0.35, 0.9);                    // brick clump
+      roughenChunk(chunk, rrng, cs * 0.34);
       jitterUV(chunk, rrng);
       chunk.rotateY(rrng() * Math.PI);
       chunk.rotateX((rrng() - 0.5) * 0.5);
       chunk.translate(x + Math.cos(a) * rr, y + 0.12 + (1 - rr / pr) * pr * 0.35, z + Math.sin(a) * rr);
       buckets.stone.push(chunk);
+    }
+    // brick-shard apron: small debris feathering the pile into the ground
+    for (let k = 0; k < 7; k++) {
+      const a = rrng() * Math.PI * 2, rr = pr * (0.8 + rrng() * 0.6);
+      const bs = 0.10 + rrng() * 0.16;
+      const shard = roughenChunk(box(bs * 1.7, bs * 0.7, bs, 1.2), rrng, bs * 0.4);
+      shard.rotateY(rrng() * Math.PI);
+      shard.translate(x + Math.cos(a) * rr, y + 0.05, z + Math.sin(a) * rr);
+      buckets.stone.push(shard);
     }
     if (rrng() < 0.6) { // charred beam jutting out
       const beam = box(0.14, 0.14, 2.2 + rrng() * 1.4, 1.0);
@@ -999,10 +1111,10 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
           }
           if (!clear) { t += w * 0.6; continue; }
           const ruined = roll < ruinChance; // shell-collapsed slot in the row
-          const tmp = { plaster: [], stone: [], roof: [], wood: [], dark: [], straw: [], baked: [] };
+          const tmp = { plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [], glass: [], curtain: [], straw: [], baked: [] };
           const info = ruined
             ? makeRuin(rng, tmp)
-            : makeRowhouse(rng, tmp, srng() < 0.5 ? 'plaster' : 'stone', { w, d });
+            : makeRowhouse(rng, tmp, pickWall(srng), { w, d });
           const fit = groundFit(px, pz, info.w, info.d, rot);
           if (fit.spread > 3.2) { t += w; continue; }
           for (const bk of Object.keys(tmp)) for (const g of tmp[bk]) jitterUV(g, rng);
@@ -1103,8 +1215,8 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
         for (const pb of placedB) if (Math.hypot(px - pb.x, pz - pb.z) < pb.rr + P.spacingPad) { clear = false; break; }
         if (!clear) continue;
         const rot = (brng() < 0.5 ? 0 : Math.PI / 2) + (brng() - 0.5) * 0.06;
-        const tmp = { plaster: [], stone: [], roof: [], wood: [], dark: [], straw: [], baked: [] };
-        const info = builders[bi](rng, tmp, rng() < 1 - P.wallStoneChance ? 'plaster' : 'stone');
+        const tmp = { plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [], glass: [], curtain: [], straw: [], baked: [] };
+        const info = builders[bi](rng, tmp, pickWall(rng));
         const fit = groundFit(px, pz, info.w, info.d, rot);
         if (fit.spread > P.maxSpread) continue;
         for (const bk of Object.keys(tmp)) for (const g of tmp[bk]) jitterUV(g, rng);
@@ -1402,35 +1514,48 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
   }
 
   // --- rocks (instanced, 3 displaced-icosahedron variants) ---
+  // r3 terrain_environment: REBUILT. The old detail-1 icospheres with one
+  // low-frequency displacement octave kept their geodesic facet pattern and
+  // flat (unwelded) normals — a raw white faceted primitive sat in the
+  // winter establishing foreground. Now: welded vertices (smooth normals),
+  // higher subdivision, THREE displacement octaves for real lumpy boulder
+  // silhouettes, and a slope/height-keyed albedo blend (pale weathered top
+  // vs darker base) so the tops read snow/lichen-capped per map tone.
   const rockGeos = [];
   for (let vi = 0; vi < 3; vi++) {
-    const g = new THREE.IcosahedronGeometry(1, vi === 2 ? 2 : 1);
+    const g = mergeVertices(new THREE.IcosahedronGeometry(1, vi === 2 ? 3 : 2));
     const p = g.attributes.position;
     const vr = mulberry32(seed + 30 + vi);
     const tmpv = new THREE.Vector3();
     for (let i = 0; i < p.count; i++) {
       tmpv.set(p.getX(i), p.getY(i), p.getZ(i));
-      const f = 1 + noi.noise3d(tmpv.x * 1.4 + vi * 9, tmpv.y * 1.4, tmpv.z * 1.4) * 0.34;
+      const f = 1
+        + noi.noise3d(tmpv.x * 1.4 + vi * 9, tmpv.y * 1.4, tmpv.z * 1.4) * 0.30
+        + noi.noise3d(tmpv.x * 3.1 - vi * 17, tmpv.y * 3.1 + 40, tmpv.z * 3.1) * 0.13
+        + noi.noise3d(tmpv.x * 6.8 + 91, tmpv.y * 6.8 - vi * 5, tmpv.z * 6.8) * 0.05;
       tmpv.multiplyScalar(f);
       tmpv.y = Math.max(tmpv.y, -0.55);
       p.setXYZ(i, tmpv.x, tmpv.y * 0.82, tmpv.z);
     }
     g.computeVertexNormals();
+    const nrm = g.attributes.normal;
     const col = new Float32Array(p.count * 3);
     for (let i = 0; i < p.count; i++) {
       // darker, mossier boulders — the old light-gray tone flashed white at
       // distance under the sun/env light and read as pixel errors
-      const l = 0.28 + vr() * 0.09 + p.getY(i) * 0.05;
-      let rh = 0.09 + vr() * 0.02, rs = 0.07, rl = clamp(l, 0.16, 0.44);
+      const upW = clamp(nrm.getY(i), 0, 1);
+      const l = 0.26 + vr() * 0.08 + p.getY(i) * 0.04 + upW * upW * 0.10;
+      let rh = 0.09 + vr() * 0.02, rs = 0.07, rl = clamp(l, 0.15, 0.48);
       if (P.rockTone) { const t = P.rockTone(rh, rs, rl); rh = t[0]; rs = t[1]; rl = clamp(t[2], 0, 1); }
-      _col.setHSL(rh, rs, rl, THREE.SRGBColorSpace);
+      // upward faces take the map cap tone harder (snow/dust), sides darker
+      _col.setHSL(rh, rs, clamp(rl * (0.86 + upW * 0.22), 0, 1), THREE.SRGBColorSpace);
       col[i * 3] = _col.r; col[i * 3 + 1] = _col.g; col[i * 3 + 2] = _col.b;
     }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     rockGeos.push(g);
   }
   const rockPlacements = [[], [], []];
-  function tryRock(x, z, scMin, scMax, slopePref) {
+  function tryRock(x, z, scMin, scMax, slopePref, sink = 0.22) {
     const vv = (rng() * 3) | 0;
     const yawR = rng() * Math.PI * 2;
     const sc = scMin + Math.pow(rng(), 1.6) * (scMax - scMin);
@@ -1445,19 +1570,31 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
       const steep = heightField.getNormalAt(x, z).y < 0.93;
       if (!steep && rng() > 0.30) return false; // prefer rocky slopes
     }
-    const y = heightField.getHeightAt(x, z) - 0.22 * sc;
+    const y = heightField.getHeightAt(x, z) - sink * sc;
     _quat.setFromAxisAngle(_upAxis, yawR);
     _mat4.compose(_posv.set(x, y, z), _quat, new THREE.Vector3(sc, sc * (0.8 + rng() * 0.35), sc));
     rockPlacements[vv].push(_mat4.clone());
-    if (sc >= 1.25) {
+    // sink <= 0.5: half-drifted surface rocks keep their cover role; only the
+    // deep-embedded ground-clutter class (0.60) is drive-over
+    if (sc >= 1.25 && sink <= 0.5) {
       const e = sc * 1.15;
       obstacles.push({ min: [x - e, y, z - e], max: [x + e, y + sc * 1.1, z + e] });
       colliders.push({ min: [x - e, y, z - e], max: [x + e, y + sc * 1.1, z + e] });
     }
     return true;
   }
+  // r3: per-map surface-rock sink (winter buries boulders deeper so they
+  // read as drift-covered rock shoulders, not loose balls ON the snow)
+  const surfSink = P.rockSink ?? 0.22;
   for (let i = 0, placed = 0; i < P.rocks * 9 && placed < P.rocks; i++) {
-    if (tryRock((rng() * 2 - 1) * 485, (rng() * 2 - 1) * 485, 0.9, 2.8, true)) placed++;
+    if (tryRock((rng() * 2 - 1) * 485, (rng() * 2 - 1) * 485, 0.9, 2.8, true, surfSink)) placed++;
+  }
+  // r3 terrain_environment: embedded half-buried boulders — sunk to ~60% so
+  // the ground reads like it HOLDS rock instead of hosting loose balls; no
+  // colliders (drive-over ground clutter), pairs with the new heightfield
+  // micro-relief for a believable near-field ground
+  for (let i = 0, placed = 0; i < P.rocks * 5 && placed < Math.round(P.rocks * 0.7); i++) {
+    if (tryRock((rng() * 2 - 1) * 470, (rng() * 2 - 1) * 470, 0.55, 1.5, false, 0.60)) placed++;
   }
   // boulder outcrop clusters: chunky hull-down cover groups in the open field
   for (let c = 0, made = 0; c < P.outcrops * 8 && made < P.outcrops; c++) {
@@ -1924,6 +2061,25 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
       // r2: 1.05 -> 1.2 — a wider worn-earth apron grounds the building
       dirtDiscs.push(conformedDisc(b.x, b.z, Math.max(b.w, b.d) * 1.2, [0.05, 0.05, 0.05, 0.04]));
     }
+    // r3 terrain_environment (town maps): courtyard/yard wear decals — the
+    // ground between buildings was one continuous noise smear; structured
+    // trampled-earth patches between the rows read as used yards and paths.
+    if (P.streetRows) {
+      const crng2 = mulberry32(seed + 771);
+      for (let i = 0, placed = 0; i < 400 && placed < 46; i++) {
+        const x = v.x0 + crng2() * (v.x1 - v.x0);
+        const z = v.z0 + crng2() * (v.z1 - v.z0);
+        const rd = heightField._roadDist(x, z);
+        if (rd < 7 || rd > 40) continue; // block interiors, not the street
+        let onB = false;
+        for (const pb of placedB) {
+          if (Math.hypot(x - pb.x, z - pb.z) < pb.rr + 1) { onB = true; break; }
+        }
+        if (onB || noVeg(x, z)) continue;
+        dirtDiscs.push(conformedDisc(x, z, 3.2 + crng2() * 4.6, [0.04, 0.04, 0.04, 0.03]));
+        placed++;
+      }
+    }
     addDecalMesh(dirtDiscs, makeDecalTexture('dirt'));
     // craters: scattered shell holes with a raised rim mound. Town maps
     // (P.townCraters) let them pock the streets and squares themselves —
@@ -1962,10 +2118,20 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
 
   // --- sourced-model InstancedMeshes (one per model, shared baked material) ---
   let poleIM = null; // effects_combat r1: kept for hinge-topple matrix writes
+  // r3 terrain_environment: the pale-sand baked sandbag models rendered as
+  // raw white lumps on the winter snowfield (probed: the "foreground white
+  // icosphere" of the critique was a sack_trench instance at 87 m). Per-map
+  // instance tint pulls them to dark wet hessian so they read as emplaced
+  // defenses against the snow.
+  const bakedTint = mapId === 'winter' ? new THREE.Color(0.52, 0.50, 0.47) : null;
   for (const [name, e] of bakedInstances) {
     if (e.list.length === 0) continue;
     const im = new THREE.InstancedMesh(e.geo, mats.baked, e.list.length);
-    for (let i = 0; i < e.list.length; i++) im.setMatrixAt(i, e.list[i]);
+    const tint = bakedTint && name.startsWith('sb') ? bakedTint : null;
+    for (let i = 0; i < e.list.length; i++) {
+      im.setMatrixAt(i, e.list[i]);
+      if (tint) im.setColorAt(i, tint);
+    }
     im.castShadow = true;
     im.receiveShadow = true;
     im.matrixAutoUpdate = false;

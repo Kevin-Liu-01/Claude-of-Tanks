@@ -547,7 +547,9 @@ function buildT72B3(P) {
     P.add('turretDetail', box(0.025, 0.025, 0.6), s * 0.85, 0.30, -0.45);
     stowage(P, 'turretCloth', rng, [[s * 0.72, 0.34, -0.72, 0.34, 0.22, 0.4]]);
   }
-  jerryCan(P, 'turretCloth', -0.05, 0.42, -0.95, 0.2);
+  // r3 kit de-share: no NATO tan jerry can on a Russian turret — a dark
+  // stowed tarp bundle breaks the identical-kit read across the moderns.
+  stowage(P, 'turretDark', rng, [[-0.05, 0.40, -0.95, 0.34, 0.16, 0.30]]);
   // 902B smoke bank on the left cheek (T-72B3 carries them clustered left)
   smokeCluster(P, -0.92, 0.32, 0.42, 6, -0.85, 0.6);
   // gun: 125 mm 2A46M-5 with sleeve + evacuator; embrasure block + collar
@@ -561,7 +563,8 @@ function buildT72B3(P) {
     wheelZs: [2.48, 1.49, 0.50, -0.49, -1.48, -2.47],
     sprocket: { z: -3.0, y: 0.53, r: 0.27 }, idler: { z: 2.95, y: 0.51, r: 0.25 },
     rollers: [1.45, 0, -1.45].map((z) => ({ z, y: 0.92, r: 0.09 })),
-    trackW: 0.58, topY: 0.85, arms: true, paintedEnds: true,
+    // r3: rubber-flap skirts cover the T-72B3 return run — no horn comb.
+    trackW: 0.58, topY: 0.85, arms: true, paintedEnds: true, coveredTop: true,
   });
   P.decal('turret', 'number', '312', 0.30, [0.98, 0.24, -0.30], Math.PI / 2, 0, 0.18);
   P.decal('turret', 'number', '312', 0.30, [-0.98, 0.24, -0.30], -Math.PI / 2, 0, -0.18);
@@ -607,14 +610,16 @@ function buildChallenger2(P) {
     P.add('hullDark', torus(0.11, 0.012, 12), -1.15, 1.565, zc);
   }
   // big flat squared skirt panels with lifting handles (§18.5)
+  // r3 (clone-hull critical): panels drop to the wheel axle line — the CR2's
+  // side profile is "dominated by big flat skirts", not by a bare wheel band.
   for (const s of [-1, 1]) {
     for (let k = 0; k < 6; k++) {
       const z = 3.28 - k * 1.31;
-      P.add('hull', box(0.07, 0.56, 1.24), s * 1.82, 0.86, z);
+      P.add('hull', box(0.07, 0.66, 1.24), s * 1.82, 0.81, z);
       P.add('hullDetail', box(0.05, 0.05, 0.34), s * 1.87, 1.02, z);            // lifting handle
-      P.add('hullDark', box(0.075, 0.50, 0.018), s * 1.82, 0.86, z - 0.645);    // panel seams
+      P.add('hullDark', box(0.075, 0.60, 0.018), s * 1.82, 0.81, z - 0.645);    // panel seams
     }
-    P.add('hullRubber', box(0.03, 0.10, 7.7), s * 1.82, 0.55, -0.02);
+    P.add('hullRubber', box(0.03, 0.10, 7.7), s * 1.82, 0.46, -0.02);
   }
   // glacis furniture: driver hatch center, periscope, headlights, tow cable,
   // ZAP number plate front
@@ -1052,7 +1057,7 @@ function buildLeo2A6(P) {
     style: 'rubber', wheelR: 0.35, wheelW: 0.22, xc: 1.55,
     wheelZs: [2.95, 2.0, 1.25, 0.28, -0.69, -1.66, -2.63],
     sprocket: { z: -3.5, y: 0.46, r: 0.34 }, idler: { z: 3.45, y: 0.44, r: 0.32 },
-    trackW: 0.635, topY: 0.92, paintedEnds: true,
+    trackW: 0.635, topY: 0.92, paintedEnds: true, coveredTop: true,
   });
   // Bundeswehr iron cross on the turret sides + 2-digit tactical number
   P.decal('turret', 'crossgrey', null, 0.38, [1.23, 0.44, -0.22], Math.PI / 2);

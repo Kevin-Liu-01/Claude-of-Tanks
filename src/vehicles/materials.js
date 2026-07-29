@@ -86,9 +86,12 @@ function polyPath2D(rng, x, y, r, lobes = 6, jitter = 0.6) {
 // Replaces the single rounded blob stamps that read as leopard/cow spots at
 // garage distance (r7 factory/summer morphology critique). Overlapping
 // same-winding subpaths union under the default nonzero fill rule.
-function camoPatchPath2D(rng, x, y, r, ang) {
+function camoPatchPath2D(rng, x, y, r, ang, lobeNIn) {
   const p = new Path2D();
-  const lobeN = 2 + ((rng() * 3) | 0);
+  // camo_spotting r3: callers may force the lobe count — the NATO scheme
+  // chains 4-6 lobes into one long flowing band (island-blob critique).
+  // When omitted the rng draw order is byte-identical to r2.
+  const lobeN = lobeNIn || (2 + ((rng() * 3) | 0));
   const step = r * (0.85 + rng() * 0.5);
   let a = ang + (rng() - 0.5) * 0.2;
   let cx = x - Math.cos(a) * step * (lobeN - 1) * 0.5;
@@ -279,18 +282,41 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     ctx.fillStyle = g;
     ctx.fillRect(x - r, y - r, r * 2, r * 2);
   }
+  // tank_models r3 (critic major: T-90M factory solid renders as "one flat
+  // untextured green — plastic toy response, no roughness/weathering
+  // variation"): SOLID schemes lean entirely on the two passes above, which
+  // vanish under a bright key. Single-color vehicles get an extra patina
+  // quilt — big soft fields of sun-faded and oil-darkened paint at low
+  // contrast, the multi-tone base every real monotone tank carries.
+  if ((visual.scheme || 'solid') === 'solid') {
+    for (let i = 0; i < 14; i++) {
+      const x = rng() * S, y = rng() * S, r = S * (0.09 + rng() * 0.20);
+      const warm = rng() < 0.5;
+      const tone = warm
+        ? mix(scale3(base, 1.18), [150, 142, 108], 0.20)     // sun-faded, dust-warmed
+        : scale3(mix(base, weather, 0.5), 0.84);             // oil/soot-deepened
+      const p = blobPath2D(rng, x, y, r, 8, 0.5);
+      ctx.filter = `blur(${(S * 0.004).toFixed(1)}px)`;
+      fillWrapped(ctx, S, p, rgb(tone, 0.15));
+      ctx.filter = 'none';
+    }
+  }
 
   const scheme = visual.scheme || 'solid';
   // camo_spotting r2 (close-orbit edge critique): the r8 wide feather made
   // sprayed patches read hand-painted at ~5 m. Real spray has a HARD core
   // edge (1-2 px feather) with a separate faint overspray halo plus droplet
   // specks riding the border — shared by the 'stripes' and 'nato' schemes.
-  const sprayEdge = (p, col, coreA) => {
+  // camo_spotting r3: `specks` optional — the 2px droplet dash blew up into
+  // confetti-scale chips on GLB skirt UV islands (NATO topology critique);
+  // the NATO/masked schemes now skip it while WW2 sprayed schemes keep it.
+  const sprayEdge = (p, col, coreA, specks = true) => {
     ctx.filter = `blur(${(S * 0.0028).toFixed(1)}px)`;
     strokeWrapped(ctx, S, p, rgb(col, 0.18), S * 0.007);       // overspray halo
     ctx.filter = `blur(${Math.max(1, S * 0.0006).toFixed(1)}px)`;
     fillWrapped(ctx, S, p, rgb(col, coreA));                   // hard core, ~1.5px feather
     ctx.filter = 'none';
+    if (!specks) return;
     ctx.setLineDash([2, 9 + rng() * 8]);                       // droplet specks on the border
     strokeWrapped(ctx, S, p, rgb(col, 0.5), 2.2);
     ctx.setLineDash([]);
@@ -402,29 +428,44 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // airsoft-arcade"): patch scale trimmed ~25% and core alpha raised so the
     // sprayed boundary reads hard at garage distance (NATO/CARC masks are
     // crisp; only a narrow overspray flank stays soft).
+    // camo_spotting r3 (critic: "patch topology reads island-blob ... real
+    // NATO 3-color flows in connected anchor-point bands"): brown is now FEW
+    // LONG bands — 4-6 chained lobes each, spanning a third to half the tile
+    // — and ~40% of bands ANCHOR their start on a previous band's spine so
+    // the field connects into the flowing anchor-point network of the real
+    // scheme instead of scattered same-size islands. Black rides the brown
+    // boundaries as elongated shadow bars (never free confetti chips), and
+    // the droplet-speck dash is off for both (confetti on skirt UV islands).
     const black = patches[0], brown = patches[1] || patches[0];
     const dirA = rng() * Math.PI;
     const centers = [];
-    const nBrown = Math.round(9 * nK);
+    const nBrown = Math.max(4, Math.round(6 * nK));
     for (let i = 0; i < nBrown; i++) {
-      const r = S * wk * (i < nBrown * 0.4 ? 0.072 + rng() * 0.042 : 0.040 + rng() * 0.030);
-      const x = rng() * S, y = rng() * S;
-      const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.55);
-      sprayEdge(p, brown, 0.97);           // r2: hard core + overspray specks
+      const r = S * wk * (i < nBrown * 0.4 ? 0.082 + rng() * 0.046 : 0.052 + rng() * 0.034);
+      let x = rng() * S, y = rng() * S;
+      if (i > 0 && rng() < 0.4) {                // anchor on an earlier band
+        const c2 = centers[(rng() * centers.length) | 0];
+        x = c2[0] + (rng() - 0.5) * c2[2] * 2.4;
+        y = c2[1] + (rng() - 0.5) * c2[2] * 1.8;
+      }
+      const lobes = 4 + ((rng() * 3) | 0);       // 4-6 lobes = one long band
+      const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.55, lobes);
+      sprayEdge(p, brown, 0.97, false);          // hard core, no confetti dash
       centers.push([x, y, r]);
     }
-    const nBlack = Math.round(5 * nK);
+    const nBlack = Math.max(3, Math.round(4 * nK));
     for (let i = 0; i < nBlack; i++) {
-      const r = S * wk * (i < nBlack * 0.4 ? 0.052 + rng() * 0.028 : 0.040 + rng() * 0.022);
+      const r = S * wk * (i < nBlack * 0.4 ? 0.050 + rng() * 0.026 : 0.040 + rng() * 0.020);
       let x = rng() * S, y = rng() * S;
-      if ((i & 1) && centers.length) {           // ride a brown patch boundary
+      if (centers.length && rng() < 0.75) {      // ride a brown band boundary
         const c2 = centers[(rng() * centers.length) | 0];
         const a2 = rng() * Math.PI * 2;
-        x = c2[0] + Math.cos(a2) * c2[2] * 1.2;
-        y = c2[1] + Math.sin(a2) * c2[2] * 0.9;
+        x = c2[0] + Math.cos(a2) * c2[2] * 1.15;
+        y = c2[1] + Math.sin(a2) * c2[2] * 0.85;
       }
-      const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.7);
-      sprayEdge(p, black, 0.95);           // r2: hard core + overspray specks
+      const lobes = 3 + ((rng() * 2) | 0);       // elongated shadow bars
+      const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.7, lobes);
+      sprayEdge(p, black, 0.95, false);
     }
   } else if (scheme === 'desert' && patches.length) {
     // Desert: hard-edged multi-scale 3-tone geometry — broad low-contrast
@@ -519,7 +560,10 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // brushed strokes are dimmer, worn-through base paint doubles, and a
     // dust-ochre grime pass keyed to the under color masses toward the lower
     // plates so the wash keeps form under the warm garage key.
-    for (let i = 0; i < 74; i++) {
+    // r3: stroke count 74 -> 92 — pairs with the show-through cut below so
+    // whitewash coverage rises toward the real ~80% wash (the luma ceiling
+    // at the end of this scheme still caps the brightest texels).
+    for (let i = 0; i < 92; i++) {
       const x0 = rng() * S, y0 = rng() * S;
       const len = S * (0.08 + rng() * 0.2);
       const w = S * (0.012 + rng() * 0.03);
@@ -530,11 +574,18 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       strokeWrapped(ctx, S, path, 'rgba(226,228,219,0.20)', w);
     }
     // worn-through patches revealing the base vehicle paint (heavier at r8 —
-    // the wash needs visible green bones to avoid the white-mass read)
-    for (let i = 0; i < 52; i++) {
-      const r = S * (0.012 + rng() * 0.045);
+    // the wash needs visible green bones to avoid the white-mass read).
+    // camo_spotting r3 (critic: "M1A2 winter retains ~40% green blotch share
+    // on upward-facing deck surfaces — roof reads green-spotted rather than
+    // whitewashed"): show-through cut from 52 large strong blobs to 30
+    // smaller, more translucent ones (~15-20% coverage); the green bones now
+    // lean on the streaking passes below, which read as brushed wear rather
+    // than spotting. Coverage is texture-global (boxUV has no up-facing
+    // knowledge), so decks and flanks whiten together.
+    for (let i = 0; i < 30; i++) {
+      const r = S * (0.010 + rng() * 0.032);
       const p = blobPath2D(rng, rng() * S, rng() * S, r);
-      fillWrapped(ctx, S, p, rgb(under, 0.26 + rng() * 0.40));
+      fillWrapped(ctx, S, p, rgb(under, 0.20 + rng() * 0.28));
     }
     // grey streaking down the plates (rain-washed whitewash)
     for (let i = 0; i < 70; i++) {
@@ -690,6 +741,36 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       const px2 = ((rng() * cells) | 0) * cell, py2 = ((rng() * cells) | 0) * cell;
       ctx.fillRect(px2, py2, cell, cell);
     }
+  } else if (scheme === 'solid') {
+    // ===================== CAMO PATTERN SECTION =====================
+    // camo_spotting r3 (critic: t90m factory "single flat parade green ...
+    // reads as clay render"): monotone factory coats get an explicit
+    // weathered-panel pass — patterned schemes carry tonal variety in their
+    // patches, but a solid coat only had the (weather-tone-dependent) soft
+    // lifts above, which vanish when the palette authors weather ~= base.
+    // Sun-fade patches toward a fixed dusty drift of the weather tone,
+    // darker oil/soot pooling, and fine dust-run streaks keep the paint
+    // reading as a maintained field vehicle, never parade clay. All alphas
+    // stay low so the coat remains clean at distance.
+    const fade = mix(weather, [172, 162, 124], 0.16);
+    for (let i = 0; i < 26; i++) {                 // sun-fade / repaint panels
+      const x = rng() * S, y = rng() * S, r = S * (0.05 + rng() * 0.13);
+      const tone = i % 3 === 2 ? scale3(base, 0.80) : fade;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, rgb(tone, 0.15 + rng() * 0.13));
+      g.addColorStop(1, rgb(tone, 0));
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    for (let i = 0; i < 80; i++) {                 // dust runs down the plates
+      const x0 = rng() * S, y0 = rng() * S, len = S * (0.04 + rng() * 0.10);
+      const tone = rng() < 0.4 ? scale3(base, 0.76) : mix(base, [150, 140, 106], 0.42);
+      const path = new Path2D();
+      path.moveTo(x0, y0);
+      path.lineTo(x0 + (rng() - 0.5) * 7, y0 + len);
+      strokeWrapped(ctx, S, path, rgb(tone, 0.07 + rng() * 0.09), 1.5 + rng() * 3.5);
+    }
+    // ===================== END CAMO PATTERN SECTION =================
   }
 
   // Zimmerit: barely-there albedo modulation only — the ridge relief lives in
@@ -1041,34 +1122,38 @@ function paintTrack(rng) {
   const S = 512;
   const c = makeCanvas(S, S);
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#37373d';
+  // r3 (critic: Tiger "track links are bright sparkly silver-gray instead of
+  // dark manganese steel", T-90M idler "navy-blue sparkle"): the old cool
+  // blue-grey ramp read as polished silver under the field sun. Warm dark
+  // manganese-iron ramp with an earth cast; wear highlights cut below.
+  ctx.fillStyle = '#332f2a';
   ctx.fillRect(0, 0, S, S);
   const rows = 4, rh = S / rows;
   for (let r = 0; r < rows; r++) {
     const y = r * rh;
     // link body shading
     const g = ctx.createLinearGradient(0, y, 0, y + rh);
-    g.addColorStop(0, '#53535a');
-    g.addColorStop(0.45, '#404046');
-    g.addColorStop(0.5, '#232327');
-    g.addColorStop(0.55, '#424248');
-    g.addColorStop(1, '#35353a');
+    g.addColorStop(0, '#494439');
+    g.addColorStop(0.45, '#3a362e');
+    g.addColorStop(0.5, '#211f1a');
+    g.addColorStop(0.55, '#3c382f');
+    g.addColorStop(1, '#302d26');
     ctx.fillStyle = g;
     ctx.fillRect(0, y + 4, S, rh - 8);
     // pin gap + end-connector bumps
-    ctx.fillStyle = '#0d0d0f';
+    ctx.fillStyle = '#0d0c0a';
     ctx.fillRect(0, y, S, 6);
-    ctx.fillStyle = '#48484f';
+    ctx.fillStyle = '#403c33';
     for (let x = 0; x < S; x += S / 8) ctx.fillRect(x + 4, y, S / 16, 5);
     // chevron grouser
-    ctx.strokeStyle = '#5c5c64';
+    ctx.strokeStyle = '#524d40';
     ctx.lineWidth = 14;
     ctx.beginPath();
     ctx.moveTo(S * 0.08, y + rh * 0.72);
     ctx.lineTo(S * 0.5, y + rh * 0.3);
     ctx.lineTo(S * 0.92, y + rh * 0.72);
     ctx.stroke();
-    ctx.strokeStyle = '#232328';
+    ctx.strokeStyle = '#211f19';
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.moveTo(S * 0.08, y + rh * 0.78);
@@ -1076,15 +1161,16 @@ function paintTrack(rng) {
     ctx.lineTo(S * 0.92, y + rh * 0.78);
     ctx.stroke();
     // guide horn shadow (center)
-    ctx.fillStyle = '#101012';
+    ctx.fillStyle = '#0f0e0b';
     ctx.fillRect(S * 0.46, y + rh * 0.15, S * 0.08, rh * 0.5);
-    // wear highlights on contact ridge
-    ctx.fillStyle = 'rgba(168,166,158,0.5)';
-    for (let i = 0; i < 34; i++) ctx.fillRect(rng() * S, y + rh * (0.28 + rng() * 0.1), 5 + rng() * 14, 3);
-    // mud/rust
-    ctx.fillStyle = 'rgba(96,74,48,0.25)';
-    for (let i = 0; i < 40; i++) {
-      ctx.beginPath(); ctx.arc(rng() * S, y + rng() * rh, 2 + rng() * 7, 0, Math.PI * 2); ctx.fill();
+    // wear highlights on contact ridge — dull burnished steel, not silver
+    // sparkle (r3: alpha halved, count trimmed, warm dust tint)
+    ctx.fillStyle = 'rgba(148,138,118,0.26)';
+    for (let i = 0; i < 20; i++) ctx.fillRect(rng() * S, y + rh * (0.28 + rng() * 0.1), 5 + rng() * 14, 3);
+    // mud/rust — heavier, the run should read dragged through earth
+    ctx.fillStyle = 'rgba(92,70,44,0.32)';
+    for (let i = 0; i < 52; i++) {
+      ctx.beginPath(); ctx.arc(rng() * S, y + rng() * rh, 2 + rng() * 8, 0, Math.PI * 2); ctx.fill();
     }
   }
   return c;
@@ -1211,22 +1297,49 @@ function exposureTrim(canvas, k = 0.86) {
 
 const TEX_CACHE = new Map();
 
-function acquireSharedTextures(spec, aniso) {
+// PERF (performance_budget r3): per-spec bake quality tiers. The generated
+// set (2048² albedo + 2x 1024² data maps ≈ 35 MB with mips) is hero-grade
+// texel density for a vehicle the camera orbits at 4-6 m — the garage
+// pedestal and the player's own tank. AI roster vehicles are viewed at
+// 20-500 m where a 1024²/512² set is already ~3 mm/texel on the hull, yet a
+// full battle held 5-7 hero sets (scene texture estimate 666-685 MB vs the
+// FROZEN 512 MB gate) and each boot-path bake burned 250-350 ms of 2048²
+// canvas painting. The painters are all canvas.width-relative, so an 'ai'
+// entry is the identical feature plan at half resolution; if the player
+// later selects a spec cached at 'ai' (garage pedestal always acquires
+// 'high'), bakeSharedCanvases repaints the SAME canvases in place at full
+// size — live materials update through texture.needsUpdate, exactly like
+// the camo repaint path below.
+const QUALITY_SIZES = {
+  high: { albedo: ALBEDO_SIZE, map: MAP_SIZE },
+  ai: { albedo: ALBEDO_SIZE / 2, map: MAP_SIZE / 2 },
+};
+
+function bakeSharedCanvases(entry, quality) {
+  const sz = QUALITY_SIZES[quality] || QUALITY_SIZES.high;
+  const { spec, seed } = entry;
+  // modernWelds: welded-composite hulls draw no rivet/bolt rows (r10)
+  const vis = { ...resolveCamoVisual(spec, entry.patternId), modernWelds: spec.era === 'modern' };
+  const rng = mulberry32(seed);
+  entry.feats = genPlateFeatures(rng);
+  entry.camoCanvas.width = entry.camoCanvas.height = sz.albedo;
+  paintCamo(entry.camoCanvas, vis, rng, entry.feats, seed);
+  exposureTrim(entry.camoCanvas);
+  const heightCanvas = paintHeight(makeCanvas(sz.map, sz.map), vis, rng, entry.feats, seed);
+  const normalSrc = heightToNormal(heightCanvas, vis.zimmerit ? 2.6 : 2.6);
+  entry.normalCanvas.width = entry.normalCanvas.height = sz.map;
+  entry.normalCanvas.getContext('2d').drawImage(normalSrc, 0, 0, sz.map, sz.map);
+  entry.roughCanvas.width = entry.roughCanvas.height = sz.map;
+  paintRoughness(entry.roughCanvas, rng, entry.feats);
+  entry.quality = quality;
+}
+
+function acquireSharedTextures(spec, aniso, quality = 'high') {
   const key = spec.id;
   let entry = TEX_CACHE.get(key);
   if (!entry) {
     const patternId = resolveCamoPattern(key);
-    // modernWelds: welded-composite hulls draw no rivet/bolt rows (r10)
-    const vis = { ...resolveCamoVisual(spec, patternId), modernWelds: spec.era === 'modern' };
     const seed = 0x5eed ^ (key.split('').reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) | 0, 7));
-    const rng = mulberry32(seed);
-    const feats = genPlateFeatures(rng);
-    const camoCanvas = paintCamo(makeCanvas(ALBEDO_SIZE, ALBEDO_SIZE), vis, rng, feats, seed);
-    exposureTrim(camoCanvas);
-    const heightCanvas = paintHeight(makeCanvas(MAP_SIZE, MAP_SIZE), vis, rng, feats, seed);
-    const normalCanvas = heightToNormal(heightCanvas, vis.zimmerit ? 2.6 : 2.6);
-    const roughCanvas = paintRoughness(makeCanvas(MAP_SIZE, MAP_SIZE), rng, feats);
-    const trackCanvas = paintTrack(mulberry32(seed + 17));
     entry = {
       refs: 0,
       // CAMO PATTERN SECTION: kept so applyCamoPatterns() can repaint the
@@ -1234,13 +1347,27 @@ function acquireSharedTextures(spec, aniso) {
       // paintable: per-instance solid-color materials (road-wheel dishes,
       // fittings) that must follow the scheme on repaint (r1: lime-green
       // wheels under winter whitewash).
-      spec, seed, feats, camoCanvas, patternId, paintable: new Set(),
-      camoTex: canvasTex(camoCanvas, { aniso, repeat: true }),
-      normalTex: canvasTex(normalCanvas, { srgb: false, aniso, repeat: true }),
-      roughTex: canvasTex(roughCanvas, { srgb: false, aniso, repeat: true }),
-      trackCanvas,
+      spec, seed, feats: null, patternId, paintable: new Set(),
+      quality,
+      camoCanvas: makeCanvas(4, 4),
+      normalCanvas: makeCanvas(4, 4),
+      roughCanvas: makeCanvas(4, 4),
+      trackCanvas: paintTrack(mulberry32(seed + 17)),
     };
+    bakeSharedCanvases(entry, quality);
+    entry.camoTex = canvasTex(entry.camoCanvas, { aniso, repeat: true });
+    entry.normalTex = canvasTex(entry.normalCanvas, { srgb: false, aniso, repeat: true });
+    entry.roughTex = canvasTex(entry.roughCanvas, { srgb: false, aniso, repeat: true });
     TEX_CACHE.set(key, entry);
+  } else if (quality === 'high' && entry.quality === 'ai') {
+    // in-place hero upgrade (garage selection of an AI-baked spec)
+    bakeSharedCanvases(entry, 'high');
+    entry.camoTex.needsUpdate = true;
+    entry.normalTex.needsUpdate = true;
+    entry.roughTex.needsUpdate = true;
+    // burnt/ember derive from the albedo — rebuild lazily at next wreck
+    if (entry.burntTex) { entry.burntTex.dispose(); entry.burntTex = null; }
+    if (entry.emberTex) { entry.emberTex.dispose(); entry.emberTex = null; }
   }
   entry.refs++;
   return entry;
@@ -1389,8 +1516,9 @@ function ensureBurntTextures(entry, aniso) {
 //
 // Patterns repaint the SHARED per-spec albedo canvas in place, so the garage
 // pedestal, battle tanks, and any sourced-GLB overlay all update live without
-// rebuilding geometry. Non-factory patterns grant a small concealment bonus
-// (see src/sim/spotting.js CAMO_PAINT_BONUS) via hasCamoPaint().
+// rebuilding geometry. A pattern grants the small concealment bonus (see
+// src/sim/spotting.js CAMO_PAINT_BONUS) only when it MATCHES the active
+// battlefield biome — hasCamoPaint() below; AUTO always matches.
 // ===========================================================================
 
 export const CAMO_PATTERN_IDS = ['auto', 'factory', 'summer', 'desert', 'winter', 'digital'];
@@ -1432,9 +1560,18 @@ export function resolveCamoPattern(specId) {
   return sel === 'auto' ? BIOME_PATTERN[activeBiome] : sel;
 }
 
-/** True when the tank wears a non-factory pattern (spotting camo bonus). */
+/**
+ * True when the tank's resolved pattern MATCHES the active battlefield biome
+ * (spotting camo paint bonus — state.js getCamoBonus consumes this).
+ * camo_spotting r3: WoT grants the paint bonus only when the camo season
+ * matches the map type — that is what makes AUTO strategically meaningful.
+ * AUTO always qualifies (it resolves to the biome pattern by construction);
+ * a mismatched manual pick (winter paint on the desert map) still repaints
+ * the tank but earns no concealment bonus; 'factory' never qualifies.
+ */
 export function hasCamoPaint(specId) {
-  return resolveCamoPattern(specId) !== 'factory';
+  const pat = resolveCamoPattern(specId);
+  return pat !== 'factory' && pat === BIOME_PATTERN[activeBiome];
 }
 
 // Nation-flavored palettes. Marking/number/zimmerit/camoScale stay authored —
@@ -1463,14 +1600,16 @@ const FACTORY_OVERRIDE = {
   // orange-tan blobs read airsoft-arcade"): green pulled down/grayer and the
   // red-brown desaturated a step further; blob scale/edge fixes live in the
   // 'nato' painter.
-  m1a2: { scheme: 'nato', base: '#48573f', weather: '#526049', patches: ['#2e2e2e', '#584639'] },
+  // camo_spotting r3: factory red-brown pulled a step cooler with the summer
+  // palette ('#584639' rode the same warm-key salmon drift).
+  m1a2: { scheme: 'nato', base: '#48573f', weather: '#526049', patches: ['#2e2e2e', '#524538'] },
   // tank_models r2: the Abrams VARIANTS must land on the SAME factory
   // woodland as the base m1a2 — their untextured kit parts (ARAT tiles, TUSK
   // shield, muzzle furniture) paint from the per-spec canvas while the baked
   // hull composite uses the shared USA nation tile, and any palette split
   // reads as mismatched toy parts (the r2 "bright-tan pyramid studs" major).
-  m1a1: { scheme: 'nato', base: '#48573f', weather: '#526049', patches: ['#2e2e2e', '#584639'] },
-  m1a2_tusk: { scheme: 'nato', base: '#48573f', weather: '#526049', patches: ['#2e2e2e', '#584639'] },
+  m1a1: { scheme: 'nato', base: '#48573f', weather: '#526049', patches: ['#2e2e2e', '#524538'] },
+  m1a2_tusk: { scheme: 'nato', base: '#48573f', weather: '#526049', patches: ['#2e2e2e', '#524538'] },
   // Hinterhalt tones: the authored '#7a4a35' Rotbraun reads bright orange
   // under the warm garage key light (r7 "orange/green cow spots"); drop both
   // patch tones toward RAL 6003/8017 so the scheme reads olive + chocolate.
@@ -1482,9 +1621,13 @@ const FACTORY_OVERRIDE = {
   // same RAL 8017 chocolate on screen (measured: '#5e3c29' still left 6.4%
   // of the hull in saturated orange vs the panther's 3.7%).
   tiger1: { patches: ['#5d6334', '#452c1e'] },
-  // (t90m FACTORY needs no override: specs.js r8 authored it as the
-  // roster-doc solid dark-forest green; the digital-legibility fix lives on
-  // the picker 'digital' palette below, which stays a distinct choice.)
+  // camo_spotting r3 (critic: t90m factory "flat parade clay"): the authored
+  // weather '#4a5c42' sat too close to the '#3f5138' base for the tonal
+  // layer to register — the hull rendered as one unmodulated green. Weather
+  // pushed toward sun-faded dusty olive (clearly lighter, slightly warmer)
+  // so the tonal/mottle passes + the new solid-scheme weathering block in
+  // paintCamo read at garage range; base stays the roster-doc forest green.
+  t90m: { weather: '#5d6549' },
   // r9: the Strv 103's authored '#3f5a3a' brightens through the community-GLB
   // composite (the palette-atlas detail overlay recenters on mid-gray and
   // LIFTS dark tiles) and read lime/acid on the pedestal — brighter and more
@@ -1507,7 +1650,11 @@ function patternVisual(spec, patternId) {
     // r1: black patch albedo floor lifted #26291f -> #2e2e2e — the old tone
     // clipped to unlit pure black under any key (critic: "NATO black patches
     // clip to pure black with zero material response").
-    o = { scheme: 'nato', base: '#4d5940', weather: '#59664a', patches: ['#2e2e2e', '#46392b'] };
+    // camo_spotting r3: red-brown desaturated/cooled another step ('#46392b'
+    // sat 0.39 drifted pinkish/salmon on WWII turrets under the warm garage
+    // key — t34_85 summer turret critique); '#423a30' keeps the earth-brown
+    // read at sat ~0.27 without the red flare.
+    o = { scheme: 'nato', base: '#4d5940', weather: '#59664a', patches: ['#2e2e2e', '#423a30'] };
   } else if (patternId === 'desert') {
     // 3-tone hard-edged desert geometry (scheme 'desert' in paintCamo):
     // patches = [dark shadow tan, mid earth, pale sand highlight].
@@ -1573,8 +1720,30 @@ const cssRGB = (c) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
 // fast; at full hull luma the T-34-85's solid wheel discs rendered as
 // near-white plastic toy rims under the warm garage key while the Tiger's
 // tire-ringed wheels got away with it (r1 winter-consistency critique).
+// camo_spotting r3: running gear follows the PATTERN FIELD, not the base
+// coat alone. On patch-dominant schemes (digital/fleck cover most of the
+// tile) base-only tinting left the T-34-85's wheel dishes reading as
+// untouched factory 4BO right under a fully digital fender line ("mismatched
+// kit seam" critique). The tint now blends the base toward the mean patch
+// tone — heavily for digital/fleck, lightly for banded schemes — so wheels
+// land inside the scheme's rendered tonal family. Winter keeps base (its
+// patches[0] is the show-through UNDER color, not a top coat); solid has no
+// patches.
+const wheelToneOf = (v) => {
+  const base = hexToRgb(v.base);
+  const pats = (v.patches || []).map(hexToRgb);
+  if (!pats.length || v.scheme === 'winter' || v.scheme === 'solid') return base;
+  let mr = 0, mg = 0, mb = 0;
+  for (const p of pats) { mr += p[0]; mg += p[1]; mb += p[2]; }
+  const mean = scale3([mr, mg, mb], 1 / pats.length);
+  const k = (v.scheme === 'digital' || v.scheme === 'fleck') ? 0.6 : 0.3;
+  return mix(base, mean, k);
+};
 const wheelRgbOf = (v) => {
-  const c = scale3(mix(scale3(hexToRgb(v.base), 0.92), [118, 110, 86], 0.22), 0.88);
+  // r3: dust-mix cut 0.22 -> 0.12 and darkened — painted gear leaned BEIGE
+  // under a warm key (the T-90M idler "beige rim" read); wheels now stay in
+  // the scheme's tonal family with only a hint of dust.
+  const c = scale3(mix(scale3(wheelToneOf(v), 0.92), [118, 110, 86], 0.12), 0.84);
   return v.scheme === 'winter' ? scale3(c, 0.85) : c;
 };
 // Recessed interleaved-row wheels bake their own occlusion: same scheme paint
@@ -1582,7 +1751,7 @@ const wheelRgbOf = (v) => {
 // 0.66 — the old 0.5 rendered near-black in the wheel bay and the recessed
 // rows read as GAPS between sparse floating wheels (r6 Tiger closeup).
 const wheelDarkRgbOf = (v) => scale3(wheelRgbOf(v), 0.66);
-const detailRgbOf = (v) => scale3(mix([65, 70, 58], hexToRgb(v.base), 0.5), 0.9);
+const detailRgbOf = (v) => scale3(mix([65, 70, 58], wheelToneOf(v), 0.5), 0.9);
 
 function repaintEntry(entry, patternId) {
   const vis = { ...patternVisual(entry.spec, patternId), modernWelds: entry.spec.era === 'modern' };
@@ -1681,13 +1850,17 @@ function glbPatternTile(spec, patternId) {
 // Bake one source texture to a canvas (≤1024) + measure mean luminance.
 // Returns null when the image is unreadable (compressed formats) — those
 // materials degrade to the plain-tint path.
-function acquireGlbShare(srcTex) {
+function acquireGlbShare(srcTex, cap = 1024) {
   if (GLB_MAP_SHARE.has(srcTex.uuid)) return GLB_MAP_SHARE.get(srcTex.uuid);
   let share = null;
   const img = srcTex.image;
   if (img && img.width > 0 && img.height > 0) {
     try {
-      const w = Math.min(img.width, 1024), h = Math.min(img.height, 1024);
+      // PERF r3: non-hero GLB camo composites bake at <=512 (cap param) —
+      // an AI vehicle's composited hull sheet at 512² is ~5.5 mm/texel,
+      // invisible past 20 m, and the per-source-texture composite pool was
+      // the largest single texture block on Abrams-variant rosters.
+      const w = Math.min(img.width, cap), h = Math.min(img.height, cap);
       const src = makeCanvas(w, h);
       src.getContext('2d').drawImage(img, 0, 0, w, h);
       const probe = makeCanvas(16, 16);
@@ -1924,7 +2097,11 @@ function retintGlbModels() {
  * @param {THREE.Object3D} root normalized GLB scene
  * @param {object} spec TankSpec
  */
-export function applyCamoToModel(root, spec) {
+export function applyCamoToModel(root, spec, opts = null) {
+  // PERF r3: opts.shareCap sizes the per-source camo composites (modelLoader
+  // passes 512 for non-hero GLBs, 1024 for the closeup-contract heroes).
+  // Legacy third-arg callers passed a scale number — ignore non-objects.
+  const shareCap = (opts && typeof opts === 'object' && opts.shareCap) || 1024;
   const entry = { specId: spec.id, spec, mats: [] };
   // CSM registration for the cloned GLB materials (r6 winter/desert supernova
   // ROOT CAUSE): the cascaded-shadow rig adds one directional light PER
@@ -1965,7 +2142,7 @@ export function applyCamoToModel(root, spec) {
         entry.mats.push({ m: own, kind: 'skip' });
         continue;
       }
-      const share = own.map ? acquireGlbShare(own.map) : null;
+      const share = own.map ? acquireGlbShare(own.map, shareCap) : null;
       // very dark sheets are bare hardware/track runs — leave them unpainted
       // (recoloring them is what created bright pips on the skirts in r1).
       // Wave-2 (jagdtiger): assets whose whole PAINTED hull bakes near-black
@@ -2231,7 +2408,7 @@ export function vehicleAmbientFloorHook(shader) {
  * @returns {object} { hull, wheels, rubber, detail, dark, glass, barrel, canvasCloth,
  *   wood, trackL, trackR, trackTexL, trackTexR, trackLinkM, decal(kind), burnt, dispose() }
  */
-export function createTankMaterials(spec, engineCtx, camoSeed) {
+export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high') {
   // CAMO PATTERN SECTION: remember the engine context so applyCamoToModel can
   // CSM-register the sourced-GLB material clones (tankFactory always builds
   // the procedural material set before the GLB swap fires, so this is set by
@@ -2245,7 +2422,8 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
   const disposables = [];
   const track = (r) => { disposables.push(r); return r; };
 
-  const shared = acquireSharedTextures(spec, aniso);
+  // PERF r3: 'ai' bakes the shared set at half resolution — see QUALITY_SIZES
+  const shared = acquireSharedTextures(spec, aniso, quality === 'ai' ? 'ai' : 'high');
   const { camoTex, normalTex, roughTex } = shared;
 
   // Matte military paint over rolled steel: normal map carries panel lines /
@@ -2255,13 +2433,19 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
   // washed the procedural fleet a milky pastel next to the Abrams GLB
   // (whose composite runs at 0.6), the core of the "CAD clay" cohesion
   // critique. Clearcoat trimmed with it.
+  // lighting_post r3 (round 3, major #1b): hulls rendered ~2 stops darker
+  // than terrain under the new denser shadows — roughness 0.95 -> 0.78
+  // (CARC paint sheen under strong keys) and envMapIntensity 0.55 -> 0.75 so
+  // the IBL share follows the ambient stack. (The companion camo-palette
+  // luminance raise is deferred to the materials owner — the camo_spotting
+  // r3 palette rework landed this same round and must not be double-tuned.)
   const hull = track(setup(new THREE.MeshPhysicalMaterial({
-    map: camoTex, roughnessMap: roughTex, roughness: 0.95, metalness: 0.06,
+    map: camoTex, roughnessMap: roughTex, roughness: 0.78, metalness: 0.06,
     normalMap: normalTex, normalScale: new THREE.Vector2(1.3, 1.3),
     // lighting_post r4: sheen without white-deck — NO clearcoatRoughnessMap
     // (map dips spike the lobe and blow flat rear fenders to mirror-white).
     clearcoat: 0.12, clearcoatRoughness: 0.60,
-    vertexColors: true, envMapIntensity: 0.55,
+    vertexColors: true, envMapIntensity: 0.75,
   })));
 
   // CAMO PATTERN SECTION: wheel dishes and fittings are scheme-painted — the
@@ -2288,8 +2472,10 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
     normalMap: normalTex, normalScale: new THREE.Vector2(0.4, 0.4),
     envMapIntensity: 0.2,
   })));
+  // camo_spotting r3: lifted off near-black so lighting models tire rings
+  // instead of silhouetting them (Tiger bullseye critique).
   const rubber = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x1d1d1f, roughness: 0.96, metalness: 0.0,
+    color: 0x2e2d2a, roughness: 0.96, metalness: 0.0,
   })));
   // Accessories must never read as raw #000 blockout: scheme-tinted fittings
   // and gunmetal hardware, both with roughness variation.
@@ -2331,8 +2517,11 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
   // fighting vehicle is dusty and near-diffuse; keep the tone, kill the sky
   // mirror.
   const dark = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x33383a, roughness: 0.9, metalness: 0.22, roughnessMap: roughTex,
-    envMapIntensity: 0.3,
+    // r3: hue pulled off the blue-grey — 0x33383a leaned navy under the sky
+    // env and cool key light; neutral warm gunmetal keeps fittings in the
+    // same family as the dust/steel gear.
+    color: 0x36342f, roughness: 0.9, metalness: 0.18, roughnessMap: roughTex,
+    envMapIntensity: 0.22,
   })));
   // Individual track-link pads: worn dusty steel, clearly lighter than the
   // shadowed band behind them so the run reads as articulated links up close.
@@ -2360,8 +2549,11 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
   // light-grey trackLink shade read as unpainted plastic sprue racked on the
   // Tiger turret sides (r6); the live run needs the lighter tone, spares don't.
   const spareTrack = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x3c3a33, roughness: 0.85, metalness: 0.15, roughnessMap: roughTex,
-    envMapIntensity: 0.1,   // r1: kill the blue sky sheen entirely (see trackLink)
+    // r3: roughness floor raised / metalness cut — with the multiplying
+    // roughnessMap the 0.85 base dipped to sparkling flecks on idler/sprocket
+    // recess faces (the T-90M "navy sparkle" read under the closeup key).
+    color: 0x3c3a33, roughness: 0.94, metalness: 0.08, roughnessMap: roughTex,
+    envMapIntensity: 0.06,
   })));
   // Optics / headlight lenses: smooth glass with a dark blue-grey tint.
   const glass = track(setup(new THREE.MeshStandardMaterial({
@@ -2394,6 +2586,10 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
     normalMap: normalTex, normalScale: new THREE.Vector2(0.9, 0.9),
     emissive: 0xff5a18, emissiveIntensity: 0.018, emissiveMap: shared.emberTex,
   })));
+  // effects_combat r3: lift the charred albedo floor ~1.3x (color multiplier
+  // above white) so wrecks read as scorched steel rather than a silhouette
+  // in overcast/shadowed framings.
+  burnt.color.setScalar(1.3);
   // r5 WORLD-SPACE TRIPLANAR charred sampling: the burnt swap must work on
   // ANY mesh, including sourced GLBs whose palette-atlas UVs collapse whole
   // faces to a few texels — with plain UV sampling those wrecks rendered as

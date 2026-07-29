@@ -20,7 +20,10 @@
  *    spotter→target add camo (capped). The 15 m proximity rule: while a
  *    tank's fire bloom is hot, foliage within 15 m of it turns transparent
  *    (muzzle flash lights it up) — bushes further back keep concealing.
- *  - Per-tank view range; camo paint pattern adds a flat bonus (+3–4%).
+ *  - Per-tank view range; a camo paint pattern adds a flat bonus (+3–4%)
+ *    only when it matches the battlefield biome (WoT season rule — AUTO
+ *    always matches; the gate lives in materials.hasCamoPaint via the
+ *    getCamoBonus dep, r3).
  *  - spotRange = viewRange − (viewRange − 50) × targetCamo, clamped to
  *    [50 m, MAX_SPOT_RANGE_M]. Inside 50 m the spot is unconditional —
  *    WoT's proximity rule detects THROUGH houses/terrain (no LOS test).
@@ -69,7 +72,7 @@ export const BUSH_FIRE_TRANSPARENT_M = 15; // 15 m rule radius
 // open-field sniper beyond static view range draws return fire.
 export const MUZZLE_FLASH_BLOOM_MIN = 0.45; // flash window ~1.4 s after the shot
 export const MUZZLE_FLASH_BUSH_MAX = 0.2;   // line foliage that defeats the flash
-export const CAMO_PAINT_BONUS = 0.035; // equipped camo pattern (+3.5%)
+export const CAMO_PAINT_BONUS = 0.035; // biome-MATCHED camo pattern (+3.5%, r3)
 // r9 forest-camping balance: 0.6 let any tree clump stack to the cap (canopy
 // discs add 0.13 each) and, with the own-camo term bloom-stripped to ~0.05,
 // a firing tank in forest still carried ~0.65 total — at 250 m+ the WoT
@@ -482,7 +485,10 @@ export function createSpottingSystem(deps) {
       if (seenVia[team]) {
         if (!st.spotted) {
           st.spottedAtS = timeS; // rising edge — starts the sixth-sense fuse
-          events.push({ id: target.id, team, timeS });
+          // SHOT-INFO ENRICHMENT (killcam_shotinfo r3): attribute the spotter
+          // so results-screen assist tiles can credit "damage upon your
+          // spotting" (shotInfo feature-detects spotterId).
+          events.push({ id: target.id, team, timeS, spotterId: seenVia[team].id });
         }
         st.spotted = true;
         st.lastPassS = timeS;

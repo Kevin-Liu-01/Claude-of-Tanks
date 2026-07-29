@@ -16,9 +16,11 @@
  *      skin, alpha-over blending that saturates instead of stacking to white,
  *      no depth writes so GTAO never shades a phantom hull), recognizable
  *      internal proxies drawn OVER the skin (ammo cassettes, engine block,
- *      fuel drums, crew capsules) tinted green/yellow/red by post-hit state,
+ *      fuel drums, crew capsules) tinted WHITE/yellow/red by post-hit state
+ *      (WT convention — identity lives in shapes + chips, never the tint),
  *      the shell path drawn through the hull all the way to the deepest
- *      damaged component with a spall cone at the penetration point, every
+ *      damaged component with a spall cone at the penetration point plus
+ *      causal fragment streaks to every damaged module/crew slot, every
  *      module / crew box outlined, hit ones highlighted + DOM-labeled with
  *      leader lines and overlap deconfliction, and an annotation block
  *      (shell, distance, angle, nominal→effective armor, pen roll, damage).
@@ -226,7 +228,19 @@ function sharedMats() {
         `#include <color_fragment>
       {
         vec3 kcV = normalize(cameraPosition - vKcW);
-        float kcF = 1.0 - abs(dot(normalize(vKcN), kcV));
+        // Degenerate-normal guard FIRST (r3): the performance-budget kit
+        // merge ships GLB hull meshes WITHOUT a normal attribute (m1a2/t90m
+        // audit: 4 merged meshes each) — the attribute defaults to (0,0,0),
+        // normalize() NaNs, and NaN alpha painted the whole live-Abrams
+        // ghost as a solid black silhouette. Zero-length normals fall back
+        // to a soft face-on read instead of exploding.
+        float kcNL = length(vKcN);
+        vec3 kcN = kcNL > 1e-5 ? vKcN / kcNL : kcV;
+        // clamped: |dot| of two unit vectors can exceed 1.0 by float error
+        // (guaranteed when kcN == kcV), kcF goes -1e-7, and pow(negative,
+        // 2.2) is NaN in GLSL — that NaN painted the merged kit meshes as
+        // per-pixel black stipple
+        float kcF = clamp(1.0 - abs(dot(kcN, kcV)), 0.0, 1.0);
         // Depth-graded fresnel (WT x-ray read): faces on the CAMERA side of
         // the hull sit dim, far-side faces brighten — the skin reads as a
         // volume with a lit back wall instead of a flat slab. kcT is the
@@ -234,15 +248,26 @@ function sharedMats() {
         float kcNear = distance(cameraPosition, kcCenter) - kcRad;
         float kcT = clamp((distance(cameraPosition, vKcW) - kcNear)
           / max(kcRad * 2.0, 0.001), 0.0, 1.0);
-        // Face-on floor 0.06 per layer: the r5 staged Tiger stacked glacis +
-        // wheels + tracks + fenders into 8-12 alpha-over layers up front and
-        // saturated to a featureless porcelain slab at the old 0.17 floor.
-        // 0.06 keeps a dense stack at frost (~0.30-0.45); the grazing term is
-        // gained low with a tight exponent so rims stay THIN luminous lines
-        // instead of the roof/sponson planes (huge near-grazing areas from
-        // the 24-degree vantage) washing out into white sheets.
-        diffuseColor.a *= (0.06 + 0.34 * pow(kcF, 2.6)) * mix(0.55, 1.3, kcT);
-        diffuseColor.rgb *= 0.72 + 0.26 * kcF;
+        // r3 fidelity rework (the live GLB Abrams read as a near-turretless
+        // slab): GLB victims are ONE smooth-normal mesh, so the old single
+        // pow(kcF,2.6) term lit only a hair-thin band while every face-on
+        // panel sat at the 0.06 floor — invisible over sunlit grass. The
+        // multi-part procedural Tiger only read because 8-12 hull layers
+        // alpha-stacked. Three terms make density mesh-count-INDEPENDENT:
+        //   - plate shading: a top-lit structural tone (kcTop) so roof /
+        //     side / glacis separate as distinct frost densities and the
+        //     turret mass reads as a VOLUME, not a veil;
+        //   - wide body fresnel (pow 2.2) for the soft WT frost falloff;
+        //   - a TIGHT bright rim (pow 7) — the crisp luminous silhouette
+        //     line WT draws around hull, turret and gun. Alpha carries the
+        //     rim (NormalBlending saturates toward the skin color and can
+        //     never bloom); rgb stays <=1.0 for the post chain.
+        float kcRimW = pow(kcF, 2.2);
+        float kcRimT = pow(kcF, 7.0);
+        float kcTop = kcNL > 1e-5 ? clamp(kcN.y * 0.5 + 0.5, 0.0, 1.0) : 0.6;
+        diffuseColor.a *= (0.075 + 0.10 * kcTop + 0.16 * kcRimW + 0.52 * kcRimT)
+          * mix(0.6, 1.25, kcT);
+        diffuseColor.rgb *= 0.52 + 0.13 * kcTop + 0.09 * kcRimW + 0.26 * kcRimT;
       }`);
   };
   S = {
@@ -288,17 +313,22 @@ function sharedMats() {
     pathCore: nmesh(0xffe9b8, 0.95),
     spall: nmesh(0xff8438, 0.16, THREE.DoubleSide),
     frag: nmesh(0xffb060, 0.55),
+    // causal fragment tiers (r3): streaks from the pen point to each module /
+    // crew slot the sim payload damaged — brightness follows the post-hit
+    // state so a detonated rack reads hotter than a nicked engine.
+    fragRed: nmesh(0xff5a40, 0.92),
+    fragYellow: nmesh(0xffc46a, 0.7),
+    fragCrew: nmesh(0xff8a96, 0.8),
     marker: nmesh(0xffffff, 0.95),
     core: mesh(0xfff3d0, 1.0),
     streak: mesh(0xffb464, 0.85),
-    // Internal proxies: distinct per-kind hues (WT visual language — brass
-    // ammo, steel-blue engine, amber fuel) for HEALTHY modules; hit ones
-    // override to the yellow/red state tints.
-    proxAmmo: prox(0xe0c25e, 0.8, 0.1, 0.34),
-    proxEngine: prox(0x4aa8c8, 0.8, 0.1, 0.34),
-    proxFuel: prox(0xcf7f3a, 0.8, 0.1, 0.34),
+    // Internal proxies, STATE-coded (r3 — WT convention: white intact,
+    // yellow damaged, red destroyed). The r2 identity hues (brass ammo, teal
+    // engine, amber fuel) read as damage states to genre-literate players —
+    // an amber fuel cell implied a hit the sim never resolved. Identity now
+    // lives in the shapes + label chips only.
+    proxIntact: prox(0xd8e4ee, 0.78, 0.1, 0.3),
     proxSteel: prox(0x9fb4c4, 0.72, 0.09, 0.28),
-    proxRadio: prox(0x6ad0a8, 0.72, 0.09, 0.28),
     proxGreen: prox(0x2fd98c, 0.8, 0.1, 0.34),
     proxYellow: prox(0xffb43c, 0.88, 0.12, 0.44),
     proxRed: prox(0xff4a38, 0.92, 0.13, 0.52),
@@ -314,18 +344,16 @@ function sharedMats() {
   return S;
 }
 
-/** Healthy-state proxy material for a module kind (distinct WT-style hues). */
-function proxMatFor(kind) {
-  switch (kind) {
-    case 'ammoRack': return S.proxAmmo;
-    case 'engine': return S.proxEngine;
-    case 'fuelTank': return S.proxFuel;
-    case 'radio': return S.proxRadio;
-    case 'gun':
-    case 'turretRing': return S.proxSteel;
-    case 'optics': return S.proxSteel;
-    default: return S.proxGreen;
-  }
+/**
+ * Proxy material for a module's POST-HIT state (r3 — WT color language:
+ * white intact / yellow damaged / red destroyed). Identity comes from the
+ * proxy shapes and the label chips, never from the tint — an amber "fuel
+ * hue" on an untouched tank read as damage the sim never resolved.
+ */
+function proxMatForState(state) {
+  return state === 'red' ? S.proxRed
+    : state === 'yellow' ? S.proxYellow
+      : S.proxIntact;
 }
 
 // ---------------------------------------------------------------------------
@@ -676,7 +704,9 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-dot.ok{background:transparent;border:1.5px solid currentColor;box-shadow:none;}
 .cot-kc-dmg{position:absolute;font-family:${FONT_COND};
   font-stretch:condensed;font-weight:800;font-size:24px;color:#ffd166;
-  letter-spacing:.04em;text-shadow:0 2px 12px rgba(0,0,0,.9);font-variant-numeric:tabular-nums;}
+  letter-spacing:.04em;text-shadow:0 2px 12px rgba(0,0,0,.9);font-variant-numeric:tabular-nums;
+  background:rgba(6,9,12,.6);border:1px solid rgba(255,209,102,.4);
+  padding:1px 9px 2px;line-height:1.2;}
 .cot-kc-leader{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
 `;
 
@@ -754,13 +784,14 @@ export function createKillCam(deps) {
     g.userData.disposables = [box, lineGeo];
     const meshMats = [S.trailGlow, S.trailCore, S.trailGlowFar, S.trailCoreFar,
       S.core, S.streak, S.tail,
-      S.ghost, S.pathIn, S.pathOut, S.pathCore, S.spall, S.frag, S.marker,
-      S.fillRed, S.fillYellow, S.fillCrew, S.proxAmmo, S.proxEngine,
-      S.proxFuel, S.proxSteel, S.proxRadio, S.proxGreen, S.proxYellow,
+      S.ghost, S.pathIn, S.pathOut, S.pathCore, S.spall, S.frag, S.fragRed,
+      S.fragYellow, S.fragCrew, S.marker,
+      S.fillRed, S.fillYellow, S.fillCrew, S.proxIntact,
+      S.proxSteel, S.proxGreen, S.proxYellow,
       S.proxRed, S.proxGrey];
     for (const m of meshMats) g.add(new THREE.Mesh(box, m));
     // instanced Lambert variant (ammo cassettes) compiles a separate program
-    for (const m of [S.proxAmmo, S.proxYellow, S.proxRed]) {
+    for (const m of [S.proxIntact, S.proxYellow, S.proxRed]) {
       const im = new THREE.InstancedMesh(box, m, 1);
       im.setMatrixAt(0, new THREE.Matrix4());
       g.add(im);
@@ -1038,7 +1069,9 @@ export function createKillCam(deps) {
       group: new THREE.Group(),
       disposables: [],
       ghostBackup: null,
+      ghostVis: null, ghostSkin: null, // re-assertable skin pass (r3)
       labels: [],
+      obstacles: null, // module/crew box screen rects (label repulsion, r3)
       pts: null, cum: null, total: 0, dur: 0, segIdx: 0,
       core: null, streak: null, trailGeo: null,
       halo: null, tail: null, shellLight: null, muzzleLight: null,
@@ -1510,17 +1543,26 @@ export function createKillCam(deps) {
     // everything the kill-cam adds (pb.group: proxies, boxes, shell path,
     // labels' anchor dots) renders AFTER it at groupOrder 12, so the organs
     // stay crisp whatever the local skin density.
-    vis.root.traverse((o) => {
-      if (o.isMesh) {
-        pb.ghostBackup.push([o, o.material, o.renderOrder, o.castShadow]);
-        o.material = S.ghost;
-        o.renderOrder = 11;
-        // the hull's own cast shadow otherwise sits directly beneath the
-        // translucent skin and reads THROUGH it as a black tank-shaped void
-        // (live Abrams probe) — WT floats the x-ray wreck on lit ground
-        o.castShadow = false;
-      }
-    });
+    // r3: extracted + RE-ASSERTED every x-ray frame (updateXray) — the
+    // perf-budget GLB kit deferral parents add-on meshes (TUSK kit: 93
+    // meshes on the live probe) into the visual ASYNCHRONOUSLY, and a
+    // one-shot traverse left them wearing their lit materials: the ghost
+    // rendered as a black add-on shell over an invisible hull.
+    pb.ghostVis = vis;
+    pb.ghostSkin = () => {
+      pb.ghostVis.root.traverse((o) => {
+        if (o.isMesh && o.material !== S.ghost) {
+          pb.ghostBackup.push([o, o.material, o.renderOrder, o.castShadow]);
+          o.material = S.ghost;
+          o.renderOrder = 11;
+          // the hull's own cast shadow otherwise sits directly beneath the
+          // translucent skin and reads THROUGH it as a black tank-shaped
+          // void (live Abrams probe) — WT floats the wreck on lit ground
+          o.castShadow = false;
+        }
+      });
+    };
+    pb.ghostSkin();
     pb.group.renderOrder = 12; // internals over the skin (groupOrder sort)
     // feed the ghost shader's depth grading this victim's bounding sphere
     S.ghostCenter.value.copy(pb.xcam.center);
@@ -1555,11 +1597,21 @@ export function createKillCam(deps) {
     poseGrp.add(turretGrp);
     pb.group.add(poseGrp);
 
-    // 3. module + crew boxes (hit ones highlighted, rest faint)
+    // 3. module + crew boxes (hit ones highlighted, rest faint).
+    // State honesty (r3): box tint follows the POST-HIT module state from the
+    // snapshot's combat roster (moduleStates) — a rack detonated by an
+    // EARLIER shell must read red too, exactly like the proxies inside it.
+    // This shell's own casualties (modulesHit) are the fallback for staged /
+    // legacy snapshots that carry no roster.
     const modHit = new Map();
     for (const m of ev.modulesHit) modHit.set(m.module, m.newState);
     const crewHit = new Set(ev.crewHit);
+    const effState = (name) => {
+      const s = (snap.moduleStates && snap.moduleStates[name]) || modHit.get(name);
+      return s === 'red' || s === 'yellow' ? s : null;
+    };
     const anchors = new Map(); // labelKey -> anchor object
+    pb.obstacles = []; // module/crew boxes as label-repulsion obstacles
     const addBox = (bb, key, mat, fillMat) => {
       const sx = bb.max[0] - bb.min[0];
       const sy = bb.max[1] - bb.min[1];
@@ -1576,10 +1628,21 @@ export function createKillCam(deps) {
         fill.position.copy(seg.position);
         parent.add(fill);
       }
+      // obstacle record for the screen-space label repulsion pass (r3):
+      // local corners now, world corners once poses are final (below)
+      const corners = [];
+      for (let i = 0; i < 8; i++) {
+        corners.push(new THREE.Vector3(
+          i & 1 ? bb.max[0] : bb.min[0],
+          i & 2 ? bb.max[1] : bb.min[1],
+          i & 4 ? bb.max[2] : bb.min[2],
+        ));
+      }
+      pb.obstacles.push({ parent, corners });
       if (key && !anchors.has(key)) anchors.set(key, seg);
     };
     for (const mb of armor.modules || []) {
-      const state = modHit.get(mb.module);
+      const state = effState(mb.module);
       const mat = state === 'red' ? S.edgeRed : state === 'yellow' ? S.edgeYellow : S.edgeDim;
       const fill = state === 'red' ? S.fillRed : state === 'yellow' ? S.fillYellow : null;
       // every module box anchors (hit ones get damage chips, idle key
@@ -1612,10 +1675,8 @@ export function createKillCam(deps) {
       if (min[0] >= max[0] || min[1] >= max[1] || min[2] >= max[2]) return bb;
       return { ...bb, min, max };
     };
-    const stateMat = (state, kind) =>
-      state === 'red' ? S.proxRed : state === 'yellow' ? S.proxYellow : proxMatFor(kind);
     for (const mb of armor.modules || []) {
-      addModuleProxy(clampBB(mb), stateMat(modHit.get(mb.module), mb.module),
+      addModuleProxy(clampBB(mb), proxMatForState(effState(mb.module)),
         poseGrp, turretGrp, pb.disposables, specEra);
     }
     // hull anatomy between the boxes: driveshaft spine + transmission block
@@ -1646,19 +1707,21 @@ export function createKillCam(deps) {
       const tc = Math.cos(tyaw);
       const ts = Math.sin(tyaw);
       let deepest = 0;
-      const depthOf = (bb) => {
-        let cx = (bb.min[0] + bb.max[0]) / 2;
+      /** Module/crew box center in the HULL frame (turret boxes rotated). */
+      const centerOf = (bb, out) => {
+        const cx = (bb.min[0] + bb.max[0]) / 2;
         const cyy = (bb.min[1] + bb.max[1]) / 2;
-        let cz = (bb.min[2] + bb.max[2]) / 2;
+        const cz = (bb.min[2] + bb.max[2]) / 2;
         if (bb.turretLocal) { // turret frame -> hull frame
-          const rx = cx * tc + cz * ts;
-          const rz = -cx * ts + cz * tc;
-          cx = rx + armor.turretPivot[0];
-          cz = rz + armor.turretPivot[2];
-          return _a.set(cx, cyy + armor.turretPivot[1], cz).sub(lp).dot(ld);
+          return out.set(
+            cx * tc + cz * ts + armor.turretPivot[0],
+            cyy + armor.turretPivot[1],
+            -cx * ts + cz * tc + armor.turretPivot[2],
+          );
         }
-        return _a.set(cx, cyy, cz).sub(lp).dot(ld);
+        return out.set(cx, cyy, cz);
       };
+      const depthOf = (bb) => centerOf(bb, _a).sub(lp).dot(ld);
       for (const m of ev.modulesHit) {
         const bb = (armor.modules || []).find((b) => b.module === m.module);
         if (bb) deepest = Math.max(deepest, depthOf(bb));
@@ -1693,20 +1756,77 @@ export function createKillCam(deps) {
       cone.position.copy(lp).addScaledVector(ld, coneLen * 0.5);
       cone.quaternion.setFromUnitVectors(_Y, _s.copy(ld).negate());
       poseGrp.add(cone);
-      // deterministic fragment rays fanned inside the cone
+      // deterministic fragment rays fanned inside the cone (short, dim —
+      // ambient spall texture; the CAUSAL streaks below carry the story)
       const side = new THREE.Vector3().crossVectors(ld, UP);
       if (side.lengthSq() < 1e-6) side.set(1, 0, 0); else side.normalize();
       const norm = new THREE.Vector3().crossVectors(ld, side);
-      for (let i = 0; i < 10; i++) {
-        const az = (i / 10) * Math.PI * 2 + 0.45;
-        const spread = 0.13 + 0.11 * (((i * 37) % 5) / 4);
-        const len = innerLen * (0.35 + 0.5 * (((i * 53) % 7) / 6));
+      for (let i = 0; i < 6; i++) {
+        const az = (i / 6) * Math.PI * 2 + 0.45;
+        const spread = 0.15 + 0.12 * (((i * 37) % 5) / 4);
+        const len = innerLen * (0.28 + 0.34 * (((i * 53) % 7) / 6));
         _a.copy(ld)
           .addScaledVector(side, Math.cos(az) * spread)
           .addScaledVector(norm, Math.sin(az) * spread)
           .normalize();
         _b.copy(lp).addScaledVector(_a, len);
-        tube(lp, _b, 0.02, S.frag, poseGrp, pb.disposables);
+        tube(lp, _b, 0.018, S.frag, poseGrp, pb.disposables);
+      }
+      // CAUSAL fragment cone (r3, WT's signature read): thin streaks opening
+      // from the penetration point to EVERY module / crew slot this shell's
+      // resolved payload damaged, so the kill's cause is told by geometry,
+      // not only by the text chips. Streak tier follows the sim state — red
+      // (destroyed) hottest and thickest, yellow warm, an 'ok' graze dim —
+      // and red/yellow components get a terminal spark where the streaks
+      // land. Endpoints come from the same armor boxes the sim rolled
+      // against; nothing here is invented.
+      {
+        const fs = new THREE.Vector3();
+        const fn = new THREE.Vector3();
+        const fd = new THREE.Vector3();
+        const fe = new THREE.Vector3();
+        const fc = new THREE.Vector3();
+        const fragTo = (bb, mat, n, r, spark) => {
+          centerOf(bb, fc);
+          const L = Math.max(0.5, fc.distanceTo(lp));
+          fd.copy(fc).sub(lp).multiplyScalar(1 / L);
+          fs.crossVectors(fd, UP);
+          if (fs.lengthSq() < 1e-6) fs.set(1, 0, 0); else fs.normalize();
+          fn.crossVectors(fd, fs);
+          for (let k = 0; k < n; k++) {
+            // deterministic jitter (no rng — staged captures must repeat)
+            const j1 = ((k * 73 + 31) % 17) / 16 - 0.5;
+            const j2 = ((k * 41 + 7) % 13) / 12 - 0.5;
+            const len = L * (0.86 + 0.3 * (((k * 53) % 5) / 4));
+            fe.copy(fd)
+              .addScaledVector(fs, j1 * 0.24)
+              .addScaledVector(fn, j2 * 0.24)
+              .normalize()
+              .multiplyScalar(len)
+              .add(lp);
+            tube(lp, fe, k === 0 ? r * 1.35 : r, mat, poseGrp, pb.disposables);
+          }
+          if (spark) {
+            const sGeo = new THREE.SphereGeometry(0.075, 8, 6);
+            pb.disposables.push(sGeo);
+            const sm = new THREE.Mesh(sGeo, mat);
+            sm.position.copy(fc);
+            poseGrp.add(sm);
+          }
+        };
+        for (const m of ev.modulesHit) {
+          const bb = (armor.modules || []).find((b) => b.module === m.module);
+          if (!bb) continue;
+          const mat = m.newState === 'red' ? S.fragRed
+            : m.newState === 'yellow' ? S.fragYellow : S.frag;
+          fragTo(bb, mat, m.newState === 'red' ? 4 : 3,
+            m.newState === 'red' ? 0.026 : 0.019,
+            m.newState === 'red' || m.newState === 'yellow');
+        }
+        for (const c of ev.crewHit) {
+          const bb = (armor.crew || []).find((b) => b.crew === c);
+          if (bb) fragTo(bb, S.fragCrew, 3, 0.019, true);
+        }
       }
       const mGeo = new THREE.SphereGeometry(0.1, 10, 8);
       pb.disposables.push(mGeo);
@@ -1715,6 +1835,12 @@ export function createKillCam(deps) {
       poseGrp.add(marker);
     }
     poseGrp.updateMatrixWorld(true);
+    // finalize label-repulsion obstacles: world-space corners (static for the
+    // whole hold — only the camera moves, so projection happens per frame)
+    for (const ob of pb.obstacles) {
+      for (const c of ob.corners) ob.parent.localToWorld(c);
+      ob.parent = null;
+    }
 
     // 5. DOM labels anchored to the snapshot (static world positions); each
     // chip gets a leader line to its module dot and joins the vertical
@@ -1863,6 +1989,51 @@ export function createKillCam(deps) {
         }
       }
     }
+    // pass 2b: module-geometry repulsion (r3 — the AMMO RACK chip sat ON the
+    // ammo shells it labeled). Chips slide UP along their leader lines until
+    // clear of any projected module/crew box they intersect, capped at ~130px
+    // of lift so a chip never orphans from its dot (huge rects like the
+    // full-length track bands are undodgeable anyway — the near-opaque chip
+    // plates keep text legible there). The big damage numeral and the micro
+    // identity tags are exempt: the numeral belongs AT the impact point (its
+    // r3 backing plate carries legibility over any fill — dodging the
+    // track-band rect flung it to the screen bottom), micro tags sit on
+    // their organ by design.
+    if (pb.obstacles && pb.obstacles.length) {
+      const maxArea = 0.18 * w * h;
+      const obs = [];
+      for (const ob of pb.obstacles) {
+        let x0 = Infinity;
+        let y0 = Infinity;
+        let x1 = -Infinity;
+        let y1 = -Infinity;
+        let behind = false;
+        for (const c of ob.corners) {
+          _proj.copy(c).project(camera);
+          if (_proj.z > 1) { behind = true; break; }
+          const sx = (_proj.x * 0.5 + 0.5) * w;
+          const sy = (-_proj.y * 0.5 + 0.5) * h;
+          if (sx < x0) x0 = sx;
+          if (sx > x1) x1 = sx;
+          if (sy < y0) y0 = sy;
+          if (sy > y1) y1 = sy;
+        }
+        if (behind || (x1 - x0) * (y1 - y0) > maxArea) continue;
+        obs.push({ x0, y0, x1, y1 });
+      }
+      for (let sweep = 0; sweep < 2; sweep++) {
+        for (const it of pb.labels) {
+          if (it.hidden || it.micro || it.big) continue;
+          const minTop = it.ay - 30 - it.lh - 130; // lift cap: dot stays close
+          for (const r of obs) {
+            if (it.left < r.x1 + 4 && r.x0 < it.left + it.lw + 4 &&
+                it.top < r.y1 + 3 && r.y0 < it.top + it.lh + 3) {
+              it.top = Math.max(minTop, r.y0 - it.lh - 8);
+            }
+          }
+        }
+      }
+    }
     // pass 3: write DOM positions + leader lines dot -> chip edge
     for (const it of pb.labels) {
       const off = it.hidden;
@@ -1888,6 +2059,9 @@ export function createKillCam(deps) {
 
   function updateXray(dt) {
     pb.xt += dt;
+    // late-attached meshes (async GLB kit deferral) join the ghost skin the
+    // frame they arrive — see the r3 note at pb.ghostSkin
+    if (pb.ghostSkin) pb.ghostSkin();
     const ang = ORBIT_RAD_S * pb.xt;
     const c = pb.xcam.center;
     const o = pb.xcam.off;

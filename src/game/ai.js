@@ -239,6 +239,14 @@ export function createAI(entity, opts = {}) {
   const vantage = { x: 0, z: 0 };
   let hasVantage = false;
   let losBlockedT = 0;
+  // controls_gunnery r3 (§7 return-fire watchdog): battles with 5-6 landed
+  // player shots drew ZERO enemy shells aimed back — idle bots without
+  // personal LOS never rotate into engagement. If this long passes with a
+  // spotted opposing tank inside engage range and no target committed,
+  // force-commit to the nearest spotted enemy and let the vantage-seek
+  // machinery drive toward a firing position.
+  const ENGAGE_WATCHDOG_S = 15;
+  let lastEngagedS = 0;
   const coverPoint = { x: 0, z: 0 };
   let hasCoverPoint = false;
   let coverRollPassed = false;               // coverIQ roll for the current reload cycle
@@ -473,6 +481,31 @@ export function createAI(entity, opts = {}) {
       probeTimer = 0; // probe the new target immediately
     } else {
       losClear = false;
+      // controls_gunnery r3 (§7): engagement watchdog — force-commit to the
+      // nearest SPOTTED enemy in engage range after ENGAGE_WATCHDOG_S of no
+      // target (no personal-LOS gate; losBlockedT primes the r5 hard-commit
+      // vantage path so the bot drives to a firing position).
+      if (timeS - lastEngagedS > ENGAGE_WATCHDOG_S) {
+        let near = null, nearD2 = Infinity;
+        for (let i = 0; i < list.length; i++) {
+          const e = list[i];
+          if (!enemyAlive(e) || !isVisibleToTeam(e)) continue;
+          const tp2 = e.state.pos;
+          const ndx = tp2.x - ex, ndz = tp2.z - ez;
+          const d2 = ndx * ndx + ndz * ndz;
+          if (d2 < nearD2) { near = e; nearD2 = d2; }
+        }
+        const wr = tier.engageRangeM;
+        if (near && nearD2 < wr * wr) {
+          target = near;
+          acquiredAtS = timeS;
+          lastSeenAtS = timeS;
+          lastSeen.x = near.state.pos.x; lastSeen.z = near.state.pos.z;
+          losBlockedT = Math.max(losBlockedT, 5); // vantage seek NOW
+          nonPenCount = 0;
+          probeTimer = 0;
+        }
+      }
     }
   }
 
@@ -1060,6 +1093,8 @@ export function createAI(entity, opts = {}) {
       acquireTarget(timeS);
       losTimer = LOS_INTERVAL_S * (0.8 + rng() * 0.4);
     }
+    // controls_gunnery r3 (§7): feed the engagement watchdog.
+    if (target) lastEngagedS = timeS;
     if (probeTimer <= 0 && target) {
       runProbes();
       probeTimer = PROBE_INTERVAL_S * (0.8 + rng() * 0.4);

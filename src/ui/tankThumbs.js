@@ -157,7 +157,11 @@ function renderAll(specs) {
   for (const spec of specs) {
     let visual = null;
     try {
-      visual = createTank(spec.id, engineCtx, { camoSeed: 4200, quality: 'high' });
+      // PERF r3: thumbs render at carousel-chip size — the 'ai' texture tier
+      // is indistinguishable there and keeps a garage browse from baking
+      // hero-grade 2048² sets for all ~30 specs (the pedestal, which the
+      // player actually inspects, acquires 'high' and upgrades in place).
+      visual = createTank(spec.id, engineCtx, { camoSeed: 4200, quality: 'ai' });
       scene.add(visual.root);
       visual.root.updateMatrixWorld(true);
       box.setFromObject(visual.root);
@@ -204,20 +208,26 @@ function renderAll(specs) {
         frame();
         if (Math.abs(1 - k) < 0.04 && Math.abs(dxPx) < 4 && Math.abs(dyPx) < 4) break;
       }
-      // r7 EXPOSURE NORMALIZATION: dark camo schemes (T-90M Proryv, Type 10)
-      // still rendered near-silhouette at the r6 0.30 target/2.1x cap next
-      // to the well-lit Abrams — the row read as mixed-source assets. Target
-      // raised to the critic's 0.37 mean-luminance floor with more lift
-      // headroom and a third convergence pass (ACES responds sub-linearly).
+      // r8 EXPOSURE NORMALIZATION — BIDIRECTIONAL: every thumb converges
+      // onto the SAME 0.37 mean silhouette luminance. The r7 loop only
+      // LIFTED dark camo (and capped at 2.6x, which stranded the near-black
+      // T-90M Proryv) while pale schemes like the Chieftain Mk 10 sailed
+      // over the target washed-out — the row read as mixed-exposure assets.
+      // Now over-bright thumbs are pulled DOWN too, the lift headroom is
+      // 3.4x, and a fourth pass covers ACES's sub-linear response.
       const TARGET_LUMA = 0.37;
-      const MAX_EXPOSURE = BASE_EXPOSURE * 2.6;
-      for (let ep = 0; ep < 3; ep++) {
+      const MIN_EXPOSURE = BASE_EXPOSURE * 0.5;
+      const MAX_EXPOSURE = BASE_EXPOSURE * 3.4;
+      for (let ep = 0; ep < 4; ep++) {
         const bb = measureAlphaBox();
-        if (!bb || bb.meanLuma <= 0.02 || bb.meanLuma >= TARGET_LUMA * 0.97) break;
-        renderer.toneMappingExposure = Math.min(MAX_EXPOSURE,
-          renderer.toneMappingExposure * Math.min(1.65, TARGET_LUMA / bb.meanLuma));
+        if (!bb || bb.meanLuma <= 0.02) break;
+        const ratio = TARGET_LUMA / bb.meanLuma;
+        if (ratio > 0.94 && ratio < 1.1) break; // inside the target band
+        const next = Math.max(MIN_EXPOSURE, Math.min(MAX_EXPOSURE,
+          renderer.toneMappingExposure * Math.max(0.62, Math.min(1.65, ratio))));
+        if (Math.abs(next - renderer.toneMappingExposure) < 1e-4) break; // clamped
+        renderer.toneMappingExposure = next;
         frame();
-        if (renderer.toneMappingExposure >= MAX_EXPOSURE) break;
       }
       cache.set(spec.id, renderer.domElement.toDataURL('image/png'));
       renderer.toneMappingExposure = BASE_EXPOSURE; // reset for the next card

@@ -1,0 +1,116 @@
+{
+  "date": "2026-07-29T02:07:25.130Z",
+  "roster": "pinned:kv2,jagdtiger,tiger2,object279,is7,t30,t95",
+  "viewport": {
+    "width": 1920,
+    "height": 1080,
+    "deviceScaleFactor": 1
+  },
+  "sampleSeconds": 60,
+  "frames": 5637,
+  "loadToReadyMs": 6328,
+  "fps": {
+    "median": 97.1,
+    "p5": 70.9,
+    "p1": 38.3,
+    "mean": 103.2
+  },
+  "frameMs": {
+    "median": 10.3,
+    "p95": 14.1,
+    "p99": 26.1
+  },
+  "drawCalls": {
+    "median": 348,
+    "max": 421
+  },
+  "triangles": {
+    "median": 6199470,
+    "max": 7192036
+  },
+  "rendererInfo": {
+    "geometries": 460,
+    "textures": 179,
+    "programs": 238
+  },
+  "heap": {
+    "startMB": 474.1,
+    "endMB": 505.5,
+    "growthMBperS": 0.52,
+    "floorGrowthMBperS": 0.2,
+    "retainedStartMB": 468,
+    "retainedEndMB": 470.9,
+    "retainedGrowthMBperS": 0.05
+  },
+  "gpuTextureEstimate": {
+    "sceneTextureMB": 379.7,
+    "shadowRtMB": 160,
+    "uniqueTextures": 124
+  },
+  "consoleErrors": [],
+  "machine": {
+    "cores": 18,
+    "load1Start": 5.42,
+    "load1End": 8.77,
+    "load1Max": 9.01,
+    "foreignHeadlessMax": 3,
+    "foreignGpuCpuMax": 212.5,
+    "contended": true
+  },
+  "budget": {
+    "pass": false,
+    "fpsMedian": {
+      "limit": ">=60",
+      "actual": 97.1,
+      "pass": true
+    },
+    "fpsP5": {
+      "limit": ">=45",
+      "actual": 70.9,
+      "pass": true
+    },
+    "frameMsP99": {
+      "limit": "<=25",
+      "actual": 26.1,
+      "pass": false
+    },
+    "drawCallsWorstFrame": {
+      "limit": "<=900",
+      "actual": 421,
+      "pass": true
+    },
+    "trianglesMedian": {
+      "limit": "<=7000000",
+      "actual": 6199470,
+      "pass": true
+    },
+    "loadToReady": {
+      "limit": "<=8000",
+      "actual": 6328,
+      "pass": true
+    },
+    "sceneTextureMB": {
+      "limit": "<=512 (frozen; holdable via parked-pool visual eviction)",
+      "actual": 379.7,
+      "pass": true
+    },
+    "heapStableMBperS": {
+      "limit": "<=1",
+      "actual": 0.05,
+      "pass": true
+    },
+    "consoleErrors": {
+      "limit": "=0",
+      "actual": 0,
+      "pass": true
+    },
+    "certification": "REFUSED — machine contended (load1 5.42->8.77, mid-run max 9.01, foreign headless-GPU procs 3, interactive-browser GPU cpu 212.5% (limit 15), on 18 cores, load limit 9); re-run quiet"
+  },
+  "ratchet": {
+    "trianglesMedian": {
+      "target": 6000000,
+      "actual": 6199470,
+      "met": false
+    }
+  }
+}

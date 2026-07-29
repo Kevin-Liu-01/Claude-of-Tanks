@@ -189,8 +189,19 @@ const TYPE74_SPEC = {
 // ---------------------------------------------------------------------------
 // Registration (idempotent — vite HMR can re-evaluate this module)
 // ---------------------------------------------------------------------------
-TANK_SPECS.type74 = TANK_SPECS.type74 || TYPE74_SPEC;
-if (!ALL_TANK_IDS.includes('type74')) ALL_TANK_IDS.push('type74');
+// tank_models r3 QUARANTINE DELIST (mirror of the r2 CB bmp1/m1128/m1296
+// rule + critic minor: "a quarantined personal-use-license model shipping as
+// a playable — and advertising that status in the UI — contradicts the
+// project's own licensing gate"): personal-use Sketchfab assets must not be
+// selectable playables. type74 (a NEW vehicle with no procedural fallback)
+// is delisted until relicensed/replaced; ariete falls back to its procedural
+// modern3.js build below. Flip when a clean-license substitution lands.
+const SHIP_QUARANTINE_USERDROPS = false;
+
+if (SHIP_QUARANTINE_USERDROPS) {
+  TANK_SPECS.type74 = TANK_SPECS.type74 || TYPE74_SPEC;
+  if (!ALL_TANK_IDS.includes('type74')) ALL_TANK_IDS.push('type74');
+}
 
 // Sourced-model credit lines on the two replaced specs (m1a1 rule: variantOf
 // keeps them off the COMMUNITY tab; gameplay stats in modern1/modern3 are
@@ -203,7 +214,11 @@ if (TANK_SPECS.leo2a6 && !TANK_SPECS.leo2a6.community) {
     license: 'CC-BY 4.0',
   };
 }
-if (TANK_SPECS.ariete && !TANK_SPECS.ariete.community) {
+// r3 QUARANTINE DELIST: the DustyMojito Ariete swap is personal-use only —
+// the C1 Ariete now ships its PROCEDURAL modern3.js model (no credit line,
+// no 'QUARANTINE' text in the player-facing panel). Restore the block below
+// only with a relicensed asset.
+if (SHIP_QUARANTINE_USERDROPS && TANK_SPECS.ariete && !TANK_SPECS.ariete.community) {
   TANK_SPECS.ariete.variantOf = 'ariete';
   TANK_SPECS.ariete.community = {
     author: 'DustyMojito',
@@ -227,23 +242,25 @@ MODEL_SOURCE.leo2a6 = {
     yawOffset: Math.PI,                       // asset faces -z (probe render)
   },
 };
-MODEL_SOURCE.ariete = {
-  source: 'glb',
-  // authored Turret node (offline restructure) with ring-center origin;
-  // gun fused into the turret meshes — yaw only, pitch stays virtual
-  glb: {
-    path: '/models/tanks/community/quarantine/ariete-dustymojito.glb',
-    turretNode: '^Turret$', autoPivot: true,
-  },
-};
-MODEL_SOURCE.type74 = {
-  source: 'glb',
-  // skinned armature: Tower_9 yaw bone > Gun_7 pitch bone (bone reparenting,
-  // recon_tank rule); bones carry no meshes, so the barrel cannot be excluded
-  // from the scale bbox -> scaleToOverall
-  glb: {
-    path: '/models/tanks/community/quarantine/type74-nullops.glb',
-    turretNode: '^Tower_9$', gunNode: '^Gun_7$', autoPivot: true,
-    scaleToOverall: true,
-  },
-};
+if (SHIP_QUARANTINE_USERDROPS) {
+  MODEL_SOURCE.ariete = {
+    source: 'glb',
+    // authored Turret node (offline restructure) with ring-center origin;
+    // gun fused into the turret meshes — yaw only, pitch stays virtual
+    glb: {
+      path: '/models/tanks/community/quarantine/ariete-dustymojito.glb',
+      turretNode: '^Turret$', autoPivot: true,
+    },
+  };
+  MODEL_SOURCE.type74 = {
+    source: 'glb',
+    // skinned armature: Tower_9 yaw bone > Gun_7 pitch bone (bone reparenting,
+    // recon_tank rule); bones carry no meshes, so the barrel cannot be excluded
+    // from the scale bbox -> scaleToOverall
+    glb: {
+      path: '/models/tanks/community/quarantine/type74-nullops.glb',
+      turretNode: '^Tower_9$', gunNode: '^Gun_7$', autoPivot: true,
+      scaleToOverall: true,
+    },
+  };
+}

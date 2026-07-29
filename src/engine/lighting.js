@@ -72,7 +72,31 @@ const SHADOW_NORMAL_BIAS = 0.045; // kills acne on terrain slopes (CSM only expo
 // (cascade 1-2) blurred far past the pole shadows beside them. Near-flat
 // texel radii keep one coherent softness law: penumbra grows with distance
 // only through texel size, not through per-band filter jumps.
-const SHADOW_RADII = [2.4, 2.6, 2.6, 2.8];
+const SHADOW_RADII = [2.2, 2.6, 2.6, 2.8];
+// r3 SHADOW DENSITY ("vehicles beyond ~100m cast no shadows — floating
+// stickers"; measured: the shadow MAP is intact out to 700 m, but the ambient
+// stack that has grown round-over-round to rescue hull flanks — hemi 0.51
+// effective + anti-sun fill 0.66 + IBL floor 0.32 — fills sun-shadowed ground
+// to ~29% of lit LINEAR, and ACES + the grade's high-luma taper compress that
+// to a ~1.3:1 DISPLAY ratio: a 4 m tank shadow at 150-250 m is statistically
+// invisible against terrain albedo mottle. Near-field shadows only read
+// because GTAO (faded out past ~250 m) stacks on top — the exact "shadow dies
+// at the distance tank gameplay lives at" tell.)
+// Fix: a WoT-era shadow-density term, not a global key:fill rebalance (the
+// fills exist to keep hull flanks/canopy interiors readable and must stay).
+// Physically: an occluder that blocks the sun also blocks a chunk of sky +
+// bounce, so inside a sun cast shadow the hemisphere/IBL/ambient irradiance
+// is scaled by SHADOW_AMBIENT_DIM. Cast shadows keep hue (the cool split-tone
+// still reads) but recover a ~2:1 display ratio at ANY camera distance —
+// cascade resolution was never the limit. Implemented as a global
+// ShaderChunk patch layered over the CSMShader chunks (see the block after
+// the CSM constructor); materials.js's vehicle deep-shade luminance floor
+// runs later in the chain and keeps hulls readable inside the denser shade.
+const SHADOW_AMBIENT_DIM = 0.58;
+// Indirect SPECULAR (env reflections) dims harder: a sky probe reflecting at
+// full strength inside a cast shadow is the classic "wet plastic in shade"
+// tell on ice/wet roads once materials gain speculars.
+const SHADOW_AMBIENT_SPEC_DIM = 0.45;
 // The radii above are tuned in TEXELS of these reference map sizes (ultra's
 // ladder). When a quality preset allocates a smaller map for a cascade, the
 // texel is proportionally larger — an uncompensated radius would widen the
@@ -246,6 +270,70 @@ function buildCoverageMipmaps(tex, cutoff) {
   tex.needsUpdate = true;
 }
 
+let shadowChunksPatched = false;
+/**
+ * Layer the shadow-density capture over the (CSM-installed) lighting chunks:
+ *  - `lights_fragment_begin`: declare `cotSunVis`, record the CSM sun's
+ *    shadow visibility (fade semantics preserved — the capture reads the
+ *    post-fade color ratio, green channel: our sun colors never zero it);
+ *  - `lights_fragment_end`: scale ambient/IBL irradiance (and env radiance)
+ *    by SHADOW_AMBIENT_DIM inside the sun's cast shadow.
+ * Guards compile away on non-CSM materials (no USE_CSM define). Throws on a
+ * missed anchor so a three.js upgrade fails loudly, per the bloom/GTAO
+ * precedent in post.js.
+ * @returns {void}
+ */
+function patchShadowAmbientChunks() {
+  if (shadowChunksPatched) return;
+  shadowChunksPatched = true;
+
+  const declAnchor = 'IncidentLight directLight;';
+  const fadeAnchor =
+    'directLight.color = mix( prevColor, directLight.color, shouldFadeLastCascade ? ratio : 1.0 );';
+  const noFadeAnchor =
+    'if(linearDepth >= CSM_cascades[UNROLLED_LOOP_INDEX].x && linearDepth < CSM_cascades[UNROLLED_LOOP_INDEX].y) directLight.color *= ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowIntensity, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;';
+
+  let frag = THREE.ShaderChunk.lights_fragment_begin;
+  if (!frag.includes(declAnchor) || !frag.includes(fadeAnchor) || !frag.includes(noFadeAnchor)) {
+    throw new Error('lighting.js: shadow-density anchors not found in lights_fragment_begin');
+  }
+  frag = frag.replace(declAnchor, `${declAnchor}
+float cotSunVis = 1.0;
+vec3 cotPrev;`);
+  frag = frag.replace(fadeAnchor, `${fadeAnchor}
+					cotSunVis = min( cotSunVis, directLight.color.g / max( prevColor.g, 1e-4 ) );`);
+  frag = frag.replace(noFadeAnchor, `cotPrev = directLight.color;
+				${noFadeAnchor}
+				cotSunVis = min( cotSunVis, directLight.color.g / max( cotPrev.g, 1e-4 ) );`);
+  THREE.ShaderChunk.lights_fragment_begin = frag;
+
+  const endHead = '#if defined( RE_IndirectDiffuse )';
+  const end = THREE.ShaderChunk.lights_fragment_end;
+  if (!end.includes(endHead)) {
+    throw new Error('lighting.js: shadow-density anchor not found in lights_fragment_end');
+  }
+  THREE.ShaderChunk.lights_fragment_end = end.replace(endHead, `#if defined( USE_CSM ) && defined( CSM_CASCADES )
+
+	float cotAmbDim = mix( ${SHADOW_AMBIENT_DIM.toFixed(3)}, 1.0, cotSunVis );
+
+	#if defined( RE_IndirectDiffuse )
+
+		irradiance *= cotAmbDim;
+		iblIrradiance *= cotAmbDim;
+
+	#endif
+
+	#if defined( RE_IndirectSpecular )
+
+		radiance *= mix( ${SHADOW_AMBIENT_SPEC_DIM.toFixed(3)}, 1.0, cotSunVis );
+
+	#endif
+
+#endif
+
+${endHead}`);
+}
+
 /**
  * @typedef {object} Lighting
  * @property {CSM} csm - the cascaded-shadow-map instance (3×2048 cascades)
@@ -284,6 +372,13 @@ export function createLighting(scene, camera, sunDir) {
   });
   csm.fade = true;
   csm.updateFrustums(); // required after changing fade
+
+  // --- r3 SHADOW DENSITY chunk patch (see SHADOW_AMBIENT_DIM above) --------
+  // CSM's constructor just replaced ShaderChunk.lights_fragment_begin with
+  // CSMShader's version; layer a capture of the sun's per-fragment shadow
+  // visibility onto it, then scale the indirect terms in lights_fragment_end.
+  // Applied ONCE per page load (guarded), before any lit material compiles.
+  patchShadowAmbientChunks();
 
   /** Apply per-cascade shadow map sizes; dispose old RTs so three reallocates. */
   function applyShadowSizes(sizes) {

@@ -41,7 +41,7 @@ import { createInput } from './game/input.js';
 import { createSettings } from './ui/settings.js';
 import {
   createBus, createGameState, spawnTanks, setupBattle, simStep, createCollider,
-  mulberry32,
+  mulberry32, ensureStagedVisuals,
 } from './game/state.js';
 
 const DEG = Math.PI / 180;
@@ -57,6 +57,9 @@ const _rayD = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
 // chase-camera occlusion focus (player hull center, lifted to turret height)
 const _occlFocus = new THREE.Vector3();
+// PERF r3: reusable pose for the per-frame aim armor query (computeAimInfo
+// runs tankPoseFromState once per bounding-gated enemy per HUD frame)
+const _aimPose = { pos: new THREE.Vector3() };
 
 // ---------------------------------------------------------------------------
 // Engine bootstrap (§4 startup order)
@@ -102,7 +105,11 @@ const hfProxy = {
 const bus = createBus();
 const game = createGameState();
 spawnTanks(game, engineCtx);
-setupBattle(game, 'm1a2', world); // battle scene staged behind the garage screen
+// battle scene staged behind the garage screen. PERF r3: deferVisuals keeps
+// the 7 enemy texture bakes off the boot-critical path (~2.2 s at dsf1) —
+// warmCombatPipeline / the post-ready idle pump stream them in before any
+// battle or screenshot frame can render the battlefield.
+setupBattle(game, 'm1a2', world, { deferVisuals: true });
 let collider = createCollider(game, world);
 
 // --- fx ----------------------------------------------------------------------
@@ -218,8 +225,17 @@ function setPedestalTank(specId) {
       const stats = (typeof window !== 'undefined' && window.__GLB_STATS) || null;
       const poll = () => {
         if (token !== pedestalPollToken) { retirePrev(); return; } // superseded
-        const settled = m.hasCachedGlb(src.glb.path) &&
-          (!stats || stats.settled >= stats.started);
+        // tank_models r3: gate on THIS visual's swap, not global settle —
+        // any future load kicked while the hero parses (thumbs, another
+        // asset) would re-open the empty-pedestal window. applySwap stamps
+        // __glbSwapped on success and re-shows the root itself; the poll
+        // only handles reveal + retire.
+        let swapped = false;
+        vis.root.traverse((o) => {
+          if (o.userData && o.userData.__glbSwapped) swapped = true;
+        });
+        const settled = swapped ||
+          (m.hasCachedGlb(src.glb.path) && (!stats || stats.settled >= stats.started));
         if (!settled) { setTimeout(poll, 150); return; }
         if (vis.setVisible) vis.setVisible(true); // swap landed in place
         retirePrev(); // hand-over, no gap
@@ -538,9 +554,19 @@ bus.on('shell:fired', (ev) => {
   });
   if (playerShellLog.length > 64) playerShellLog.shift();
 });
+// controls_gunnery r3 CRITICAL: shell ids RESET per battle — a forward find()
+// resolved to the OLDEST record, so battle 5's hits overwrote battle 1's rows
+// (the "hits on tanks 423 m from the intended target" phenomenon was entirely
+// this telemetry corruption). Resolve the NEWEST record for an id.
+function shellRecFor(shellId) {
+  for (let i = playerShellLog.length - 1; i >= 0; i--) {
+    if (playerShellLog[i].shellId === shellId) return playerShellLog[i];
+  }
+  return null;
+}
 bus.on('shell:hit', (ev) => {
   if (!game.player || ev.attackerId !== game.player.id) return;
-  const rec = playerShellLog.find((r) => r.shellId === ev.shellId);
+  const rec = shellRecFor(ev.shellId);
   if (!rec) return;
   rec.terminal = 'tank';
   rec.hitTankId = ev.targetId;
@@ -549,7 +575,7 @@ bus.on('shell:hit', (ev) => {
   rec.missM = teleMissM(rec, ev.pos);
 });
 bus.on('shell:expired', (ev) => {
-  const rec = playerShellLog.find((r) => r.shellId === ev.shellId);
+  const rec = shellRecFor(ev.shellId);
   if (!rec || rec.terminal) return;
   rec.terminal = ev.hitTerrain ? 'terrain' : 'air';
   rec.missM = teleMissM(rec, ev.pos);
@@ -812,6 +838,10 @@ function startBattle(specId, mapId = null) {
   // MODERN EXPANSION: rosters are era-matched to the player's vehicle —
   // mixed-era battles happen only on the RANDOM battlefield card.
   setupBattle(game, specId, world, { random: true, mixedEra: mapId === 'random' });
+  // SHOT-INFO identity (killcam_shotinfo r3): set synchronously — hud.update
+  // only forwards it after the first rendered frame, which dropped hits
+  // resolved in the very first sim ticks (headless replays / spectators).
+  hud.shotInfo.setPlayer(game.player.id);
   // Fresh battlefield fx: clear scars/tracers/smoke columns left on (or by)
   // last battle's wrecks — scar decals are parented onto tank hulls and would
   // otherwise carry into the rematch.
@@ -874,6 +904,7 @@ const frameInfo = {
     blockedDistM: null,
     gunMarker: new THREE.Vector3(),
     atGunLimit: false,
+    gunLimitSpec: false, // GUN LIMIT label (movement.js r3: spec pins only)
     reload: { t: 0, totalS: 1 },
     shellSlot: 0,
     shells: [],
@@ -908,16 +939,18 @@ function computeAimInfo() {
   aim.distM = rig.aimDist;
   aim.dispersionRadM = computeDispersionRadM(p.spec, p.state, rig.aimDist);
   aim.atGunLimit = p.state.atGunLimit;
+  aim.gunLimitSpec = !!p.state.gunLimitSpec;
   aim.reload.t = p.combat.reload.t;
   aim.reload.totalS = p.combat.reload.totalS;
   aim.shellSlot = p.combat.shellSlot;
   aim.shells = shellCards;
   aim.zoom = rig.mode === 'SNIPER' ? rig.zoom : 1;
 
-  // gun marker: where the barrel actually points, projected at aim distance
+  // gun marker: where the barrel actually points, projected at aim distance.
+  // controls_gunnery r3: bore AXIS, not muzzle-minus-pivot — the GLB muzzle
+  // anchor sits off-axis and the anchor line parked the marker 2.5° off.
   p.visual.gunMuzzleWorld(_v1);
-  p.visual.gunPivotWorld(_v2);
-  _v3.copy(_v1).sub(_v2).normalize();
+  p.visual.gunDirWorld(_v3);
   aim.gunMarker.copy(_v1).addScaledVector(_v3, Math.max(rig.aimDist - 2, 6));
 
   // BLOCKED-SHOT INDICATOR (controls_gunnery r2): the reticle ray comes from
@@ -955,7 +988,7 @@ function computeAimInfo() {
     if (proj < 0 || proj > 800) continue;
     const r = ent.spec.armor.boundingRadiusM * AIM_STICKY_INFLATE;
     if (_v1.lengthSq() - proj * proj > r * r) continue;
-    const q = queryAimArmor(_rayO, _rayD, 800, tankPoseFromState(ent.state), ent.spec.armor);
+    const q = queryAimArmor(_rayO, _rayD, 800, tankPoseFromState(ent.state, _aimPose), ent.spec.armor);
     if (q && q.distM < bestDist) { bestDist = q.distM; bestInfo = q; }
   }
   if (bestInfo) {
@@ -993,7 +1026,10 @@ let lastCineActive = false; // battle-open flyby HUD veil edge latch
 
 function updateDustAndSync(dtFrame) {
   for (const ent of game.tanks) {
-    if (!ent.state || !ent.combat) continue;
+    // PERF r3: staged-battle visuals are deferred to post-ready idle — skip
+    // entities whose visual has not streamed in yet (garage phase only;
+    // warmCombatPipeline builds all of them before battle/shot frames).
+    if (!ent.state || !ent.combat || !ent.visual) continue;
     // effects_combat r1: pass the real frame dt so self-timed visual
     // timelines (recuperator recoil, turret-pop arc, ember cooldown) play at
     // wall-clock speed on 120 Hz displays (undefined at boot -> 1/60 default).
@@ -1415,6 +1451,7 @@ function forcedHudFrame(mode, forcedAim) {
   aim.penRatio = forcedAim.penRatio;
   aim.blockedDistM = null; // screenshot views never show the blocked warning
   aim.atGunLimit = false;
+  aim.gunLimitSpec = false;
   aim.reload.t = forcedAim.reload.t;
   aim.reload.totalS = forcedAim.reload.totalS;
   aim.shellSlot = forcedAim.shellSlot;
@@ -1709,9 +1746,9 @@ const SHOT_VIEWS = {
     p.visual.syncFromState(p.state);
     p.visual.syncFromState(p.state);
     p.visual.syncFromState(p.state);
+    // controls_gunnery r3: staged flash direction along the real bore axis.
     p.visual.gunMuzzleWorld(_v1);
-    p.visual.gunPivotWorld(_v2);
-    _v3.copy(_v1).sub(_v2).normalize();
+    p.visual.gunDirWorld(_v3);
     fx.composeFiringMoment({
       muzzlePos: _v1.clone(),
       dir: _v3.clone(),
@@ -1942,6 +1979,11 @@ let combatPipelineWarmed = false;
 function warmCombatPipeline() {
   if (combatPipelineWarmed) return;
   combatPipelineWarmed = true;
+  // PERF (performance_budget r3): boot builds only the player's visual —
+  // finish the staged roster before anything renders the battlefield (this
+  // runs synchronously from __SHOTS.set() and startBattle(), and from the
+  // post-ready idle chunker below in the common garage-dwell case).
+  ensureStagedVisuals(game);
   const warm = game.tanks.find((e) => !e.isPlayer && e.visual);
   if (warm) {
     warm.visual.setDestroyed({});
@@ -1963,9 +2005,17 @@ function warmCombatPipeline() {
   try { renderer.compile(scene, camera); } catch (_) { /* fine */ }
   if (spotsWereOn) setGarageSpots(true);
 }
-(window.requestIdleCallback || ((fn) => setTimeout(fn, 250)))(
-  () => warmCombatPipeline(), { timeout: 2000 },
-);
+// PERF (performance_budget r3): stream the 7 deferred staged-battle visuals
+// in one-per-idle-slice chunks (~150-350 ms each at the 'ai' bake tier) so
+// the garage dwell absorbs them without a single long freeze, then run the
+// combat warm (which needs a built enemy for the wreck-material compile).
+const _idle = (fn, t) => (window.requestIdleCallback || ((f) => setTimeout(f, 250)))(fn, { timeout: t });
+function pumpStagedVisuals() {
+  if (combatPipelineWarmed) return; // warm already ran synchronously — done
+  if (ensureStagedVisuals(game, 1)) warmCombatPipeline();
+  else _idle(pumpStagedVisuals, 1500);
+}
+_idle(pumpStagedVisuals, 2000);
 
 scheduleRaf();
 
@@ -2118,9 +2168,20 @@ function debugAimState() {
     // floor), not a slew still in progress. Exposed so gates/probes can
     // separate "not settled yet" from "will never settle".
     atGunLimit: !!p.state.atGunLimit,
+    gunLimitSpec: !!p.state.gunLimitSpec,
     gunPitchDeg: Math.round(p.state.gunPitch * 573) / 10,
     turretYawDeg: Math.round(p.state.turretYaw * 573) / 10,
-    blockedDistM: frameInfo.aim.blockedDistM,
+    // controls_gunnery r3: HUD frames don't run inside debugFastForward, so
+    // frameInfo.aim.blockedDistM is STALE for headless gates — recast fresh.
+    blockedDistM: (() => {
+      p.visual.gunMuzzleWorld(_v1);
+      _v2.copy(p.input.aimPoint).sub(_v1);
+      const len = _v2.length();
+      if (len <= 12) return null;
+      _v2.multiplyScalar(1 / len);
+      const blk = world.raycast(_v1, _v2, len - 6);
+      return blk ? blk.dist : null;
+    })(),
     leadHFrac: leadLatchTargetId ? leadLatchHFrac : null,
   };
 }
@@ -2187,9 +2248,9 @@ function debugAimAtNearest() {
 function debugGunAimError() {
   const p = game.player;
   if (!p || !p.state || p.combat.destroyed) return Infinity;
+  // controls_gunnery r3: bore AXIS, not the (possibly off-axis) anchor line.
   p.visual.gunMuzzleWorld(_v1);
-  p.visual.gunPivotWorld(_v2);
-  _v3.copy(_v1).sub(_v2).normalize();
+  p.visual.gunDirWorld(_v3);
   _v2.copy(p.input.aimPoint).sub(_v1).normalize();
   return Math.acos(Math.min(1, Math.max(-1, _v3.dot(_v2))));
 }

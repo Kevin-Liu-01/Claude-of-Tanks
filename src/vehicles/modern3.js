@@ -468,7 +468,9 @@ function buildChieftain(P) {
     layers: [[-0.10, 0.10]],                                                    // paired steel-rimmed wheels
     sprocket: { z: -3.18, y: 0.70, r: 0.33 }, idler: { z: 3.12, y: 0.50, r: 0.29 },
     rollers: [[1.55, 0.80], [0.05, 0.88], [-1.6, 0.97]].map(([z, y]) => ({ z, y, r: 0.08 })),
-    trackW: 0.61, topY: 0.90, paintedEnds: true,
+    // r3: §19.5 "top run covered by shallow fenders with stowage bins" — the
+    // exposed Horstmann wheel line stays (authentic), the horn comb goes.
+    trackW: 0.61, topY: 0.90, paintedEnds: true, coveredTop: true,
   });
   // turret: long cast body with the needle-nose front (§19.5)
   const CTH = 0.78;
@@ -548,16 +550,21 @@ function buildK2(P) {
   // barely covered the wheels): pushed outboard of the track run, deepened
   // to mid-wheel, HEAVY armor blocks over the front third (proud, with bolt
   // seams) + thinner rubber-fringed run aft, per modern-roster.md §23.5.
+  // r3 (clone-hull critical: "K2 shown with 7-8 half-exposed wheels" — the
+  // skirt bottom sat at 0.71 m over 0.83 m wheel tops, so the whole wheel
+  // band read bare): the full-length angular skirts now drop to ~0.57 m
+  // (§23.5 — skirts hide the return run and half the wheels), with the
+  // stepped lower plates riding just above the wheel axles.
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.07, 0.52, 6.9), s * 1.875, 0.97, -0.05);                // main skirt band
-    P.add('hull', box(0.11, 0.56, 2.5), s * 1.895, 0.97, 2.25);                 // heavy front blocks
-    P.add('hullDark', box(0.115, 0.52, 0.02), s * 1.895, 0.97, 1.55);           // block split
-    P.add('hullDark', box(0.115, 0.52, 0.02), s * 1.895, 0.97, 2.85);
+    P.add('hull', box(0.07, 0.66, 6.9), s * 1.875, 0.90, -0.05);                // main skirt band (0.57-1.23)
+    P.add('hull', box(0.11, 0.70, 2.5), s * 1.895, 0.90, 2.25);                 // heavy front blocks
+    P.add('hullDark', box(0.115, 0.64, 0.02), s * 1.895, 0.90, 1.55);           // block split
+    P.add('hullDark', box(0.115, 0.64, 0.02), s * 1.895, 0.90, 2.85);
     for (let k = 0; k < 4; k++) {                                               // stepped lower plates
-      P.add('hull', box(0.06, 0.22, 1.45), s * 1.885, 0.68 - (k % 2) * 0.05, 2.5 - k * 1.7);
+      P.add('hull', box(0.06, 0.22, 1.45), s * 1.885, 0.575 - (k % 2) * 0.05, 2.5 - k * 1.7);
     }
-    P.add('hullRubber', box(0.045, 0.14, 4.1), s * 1.875, 0.60, -1.55);         // rubber rear fringe
-    for (let k = 0; k < 5; k++) P.add('hullDark', box(0.076, 0.46, 0.018), s * 1.875, 0.95, 2.8 - k * 1.4); // seams
+    P.add('hullRubber', box(0.045, 0.14, 4.1), s * 1.875, 0.50, -1.55);         // rubber rear fringe
+    for (let k = 0; k < 5; k++) P.add('hullDark', box(0.076, 0.58, 0.018), s * 1.875, 0.88, 2.8 - k * 1.4); // seams
   }
   // deck furniture: driver hatch (center-right), V splash board, filler caps
   for (const s of [-1, 1]) P.add('hullDetail', box(0.95, 0.045, 0.07), s * 0.43, 1.42, 2.4, -0.28, s * 0.42, 0);
@@ -579,7 +586,8 @@ function buildK2(P) {
     wheelZs: [2.6, 1.56, 0.52, -0.52, -1.56, -2.6],
     sprocket: { z: -3.22, y: 0.52, r: 0.29 }, idler: { z: 3.16, y: 0.50, r: 0.28 },
     rollers: [1.6, 0, -1.6].map((z) => ({ z, y: 0.95, r: 0.09 })),
-    trackW: 0.63, topY: 0.95, paintedEnds: true,
+    // r3: §23.5 return rollers are "hidden by skirts" — no horn comb.
+    trackW: 0.63, topY: 0.95, paintedEnds: true, coveredTop: true,
   });
   // ---- turret: compact angular box + steep one-piece front wedge ----
   const KTH = 0.78;
@@ -628,7 +636,10 @@ function buildK2(P) {
     for (let k = 0; k < 5; k++) P.add('turretDetail', box(0.03, 0.37, 0.03), s * (1.30 + 0.10), 0.365, -0.55 - k * 0.2);
     stowage(P, 'turretCloth', rng, [[s * 1.36, 0.38, -0.95, 0.14, 0.28, 0.8]]);
   }
-  jerryCan(P, 'turretCloth', -1.05, 0.30, -1.72, 0.1);
+  // r3 kit de-share (clone-hull critique: "identical rear slat-basket + tan
+  // box stowage kit" across the moderns): the K2 drops the NATO-style tan
+  // jerry can — ROK bustles carry hard cases; twin dark ammo cans instead.
+  ammoCan(P, 'turretDark', -1.05, 0.28, -1.72, 0.15);
   ammoCan(P, 'turretDark', 0.95, 0.26, -1.72, -0.2);
   // 6-tube smoke banks angled on the rear corners
   smokeCluster(P, 1.02, 0.40, -1.30, 6, 2.05, 0.7);
@@ -666,10 +677,14 @@ function buildType10(P) {
   }
   // FLAT MODULAR SLAB SKIRTS: straight lower edge, visible bolt studs, inset
   // from the fender line, step cutout at wheel 1 (§24.5)
+  // r3 (clone-hull critical: "Type 10 should be a compact 5-wheel skirted
+  // hull — shown with exposed wheels"): the modular slabs now drop to the
+  // wheel axle line (§24.5 — flat slabs with a straight lower edge hiding
+  // the upper half of the running gear).
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.05, 0.40, 4.9), s * 1.56, 0.92, -0.65);                 // main modular run
-    P.add('hull', box(0.05, 0.30, 1.15), s * 1.56, 1.00, 2.35);                 // stepped front panel
-    for (let k = 0; k < 4; k++) P.add('hullDark', box(0.056, 0.36, 0.016), s * 1.56, 0.92, 0.75 - k * 1.15); // module seams
+    P.add('hull', box(0.05, 0.60, 4.9), s * 1.56, 0.82, -0.65);                 // main modular run (0.52-1.12)
+    P.add('hull', box(0.05, 0.44, 1.15), s * 1.56, 0.93, 2.35);                 // stepped front panel
+    for (let k = 0; k < 4; k++) P.add('hullDark', box(0.056, 0.54, 0.016), s * 1.56, 0.82, 0.75 - k * 1.15); // module seams
     if (P.q) for (let k = 0; k < 10; k++) {                                     // bolt studs
       P.add('hullDark', cylX(0.018, 0.07, 6), s * 1.585, 1.06, 1.7 - k * 0.52);
     }
@@ -695,7 +710,8 @@ function buildType10(P) {
     wheelZs: [2.25, 1.12, 0.0, -1.12, -2.25],
     sprocket: { z: -2.88, y: 0.50, r: 0.28 }, idler: { z: 2.84, y: 0.48, r: 0.27 },
     rollers: [1.35, 0, -1.35].map((z) => ({ z, y: 0.92, r: 0.085 })),
-    trackW: 0.55, topY: 0.92, paintedEnds: true,
+    // r3: the modular slab skirts enclose the return run (§24.5).
+    trackW: 0.55, topY: 0.92, paintedEnds: true, coveredTop: true,
   });
   // ---- turret: low flat slab with shallow wedge front ----
   const TTH = 0.60;
@@ -956,10 +972,12 @@ function buildAriete(P) {
     P.add('hullDetail', box(0.05, 0.24, 0.14), s * 1.1, 0.98, -3.78);           // tow brackets
   }
   // rubber skirts with 5 VERTICAL STIFFENER LINES per side (§26.5)
+  // r3: dropped to the wheel axle line with the other skirted moderns (the
+  // Ariete now ships this procedural model again — quarantine delist).
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.045, 0.50, 6.9), s * 1.82, 0.93, -0.05);
-    P.add('hullRubber', box(0.03, 0.10, 6.85), s * 1.82, 0.65, -0.05);          // rubber lower lip
-    for (let k = 0; k < 5; k++) P.add('hullDark', box(0.052, 0.46, 0.025), s * 1.82, 0.93, 2.6 - k * 1.32);
+    P.add('hull', box(0.045, 0.68, 6.9), s * 1.82, 0.84, -0.05);
+    P.add('hullRubber', box(0.03, 0.10, 6.85), s * 1.82, 0.47, -0.05);          // rubber lower lip
+    for (let k = 0; k < 5; k++) P.add('hullDark', box(0.052, 0.62, 0.025), s * 1.82, 0.84, 2.6 - k * 1.32);
   }
   // deck furniture
   for (const s of [-1, 1]) P.add('hullDetail', box(0.9, 0.045, 0.07), s * 0.42, 1.40, 2.55, -0.27, s * 0.42, 0); // splash V
@@ -979,7 +997,7 @@ function buildAriete(P) {
     wheelZs: [2.85, 1.9, 0.95, 0.0, -0.95, -1.9, -2.85],
     sprocket: { z: -3.42, y: 0.48, r: 0.30 }, idler: { z: 3.38, y: 0.46, r: 0.29 },
     rollers: [2.1, 0.7, -0.7, -2.1].map((z) => ({ z, y: 0.90, r: 0.085 })),
-    trackW: 0.60, topY: 0.90, paintedEnds: true,
+    trackW: 0.60, topY: 0.90, paintedEnds: true, coveredTop: true,
   });
   // ---- turret: flat-faced angular box, cheeks angled back ~15° in plan ----
   const ATH = 0.80;

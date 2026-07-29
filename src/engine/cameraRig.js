@@ -420,10 +420,14 @@ export function createCameraRig(camera, deps) {
     // opened on what read as a camera bug. A 14 m lead keeps the hull inside
     // the left third at k=0 (camera opens 45 m out) while still revealing the
     // battle line; converged fully by k=0.6.
-    const s = THREE.MathUtils.smoothstep(k, 0.0, 0.6);
+    // r4: lead 14 -> 9 m and converge by k=0.5 — with the tightened r4 path
+    // (opens 36 m out) the 14 m lead pushed the hull to the frame edge for
+    // the first beat; 9 m keeps the hero inside the middle third from the
+    // opening frame while still reading the advance route.
+    const s = THREE.MathUtils.smoothstep(k, 0.0, 0.5);
     _cineLook.copy(_pivotTarget)
-      .addScaledVector(cine.fwd, 14 * (1 - s))
-      .addScaledVector(_UPV, -1.0 * (1 - s));
+      .addScaledVector(cine.fwd, 9 * (1 - s))
+      .addScaledVector(_UPV, -0.8 * (1 - s));
     camera.lookAt(_cineLook);
     // FOV 72 -> 60: wide establishing breath tightening onto gameplay FOV
     setFov(BASE_FOV_DEG + 12 * (1 - k));
@@ -676,11 +680,18 @@ export function createCameraRig(camera, deps) {
       // r2: 4th waypoint routed wider + higher (7.5,0.6,-9 -> 9.5,1.6,-10) —
       // the old swing-behind cut over the rear deck through the exhaust
       // plume at ~2.5 s; paired with the solve-time hull standoff clamp.
+      // r4 HERO FRAMING: the whole arc pulled in — the old path (open 51 m
+      // out, lateral pass at 10 m) peaked the player tank at ~15% of frame
+      // width ("the flyby never features the hero tank"). Opens 36 m out
+      // with the hull already readable, and the low lateral beat passes at
+      // ~6.5 m — a 3/4 close-up where the hull fills ~40% of frame height —
+      // before swinging up onto the chase pose. The hull-sphere standoff
+      // clamp below still guarantees no clip.
       const curve = new THREE.CatmullRomCurve3([
-        P(24, 2.6, 45),
-        P(16, 0.6, 22),
-        P(10, -0.2, 4),
-        P(9.5, 1.6, -10),
+        P(18, 2.2, 31),
+        P(11, 0.4, 14),
+        P(6.5, -0.5, 2.5),
+        P(6.8, 0.9, -7.5),
         chase,
       ], false, 'centripetal', 0.5);
       cine = {

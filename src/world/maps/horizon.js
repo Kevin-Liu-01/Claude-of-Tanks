@@ -222,6 +222,35 @@ function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyA
       let r = L * (coolRock ? 0.978 : 1);
       let gc = L * (coolRock ? 0.998 : 0.995);
       let b = L * (coolRock ? 1.022 : 0.975);
+      if (coolRock) {
+        // r3 (content_breadth) ALPINE ROCK STRUCTURE: the bare-rock zones of
+        // the winter wall carried only grain+talus (~±10% pre-fog) and
+        // rendered as smooth grey slabs (critique, major). Three additions,
+        // all broad-in-v so tangential grazing can NEVER comb them into the
+        // old vertical fiber:
+        //  - constant-altitude LEDGE BEDS (~37 m / ~110 m spacing, per-bed
+        //    strength variation) — glacial benches/strata, horizontal by
+        //    construction so they actively counter the vertical-smear read
+        //  - blocky CRAG mottle (two isotropic octaves) + darker joints
+        //  - SNOW LEDGES: thin white accumulation bands riding the ledge
+        //    crests below the cap — the elevation-banded snow a real winter
+        //    face carries
+        const lwarp = wn(u, v, 2.6, 0.7, 143) * 0.35;
+        const ledge = Math.sin(v * 34 + lwarp) * 0.55
+          + Math.sin(v * 11.5 + lwarp * 0.7 + 2.1) * 0.45;
+        const ledgeW = 0.55 + 0.45 * (wn(u, v, 1.7, 8, 517) * 0.5 + 0.5);
+        const cragA = wn(u, v, 30, 11, 653);
+        const cragB = wn(u, v, 12, 4.6, 719);
+        const joint = smoothstep(0.82, 0.97, 1 - Math.abs(wn(u, v, 40, 3.4, 787)));
+        const rockM = (1 + ledge * 0.115 * ledgeW)
+          * (1 + cragA * 0.075 + cragB * 0.10) * (1 - joint * 0.16);
+        r *= rockM; gc *= rockM; b *= rockM * 0.995;
+        const shelf = smoothstep(0.55, 0.95, ledge) * ledgeW;
+        const shelfW = shelf * 0.5 * smoothstep(0.06, 0.16, v);
+        r += (1.06 - r) * shelfW;
+        gc += (1.08 - gc) * shelfW;
+        b += (1.12 - b) * shelfW;
+      }
       if (treeline > 0 && v < treeline * 1.08) {
         // r6 CANOPY REWRITE. The old block was built from vertically-coherent
         // features (downslope creases at fv 2.2, gullies, angle-keyed face
@@ -598,6 +627,22 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
       { r: 1050, base: 66, amp: 116, f0: 1.4, f1: 3.1, aer: 0.54 },
       { r: 1330, base: 76, amp: 106, f0: 1.0, f1: 2.2, aer: 0.70 },
     ],
+    // terrain_environment r3: alpine gets its OWN row table with two extra
+    // intermediate ranges. On the shared 4-ridge table the radial span
+    // between rows reached 230-250 m — each wall was a single quad strip of
+    // ~12 x 150 m triangles whose baked per-vertex shading interpolated into
+    // exactly the "raw planar facets / vertical brush-smear" the critique
+    // called out. Tighter spacing (plus the per-fragment relight below)
+    // turns the wall into overlapping layered ridge lines.
+    alpine: [
+      { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
+      { r: 470, base: 26, amp: 14, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
+      { r: 585, base: 50, amp: 52, f0: 3.1, f1: 6.2, aer: 0.10 },
+      { r: 720, base: 56, amp: 76, f0: 2.6, f1: 5.2, aer: 0.18 },
+      { r: 870, base: 66, amp: 102, f0: 1.9, f1: 4.0, aer: 0.30 },
+      { r: 1040, base: 82, amp: 128, f0: 1.5, f1: 3.3, aer: 0.44 },
+      { r: 1240, base: 88, amp: 100, f0: 1.1, f1: 2.4, aer: 0.60 },
+    ],
   };
   const rows = ROWS_BY_STYLE[style] || ROWS_BY_STYLE.default;
 
@@ -624,7 +669,11 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
   // enter the playfield. The treeline combs follow automatically (they read
   // the warped crest vertices).
   const RIM_HALF_W = 512;
-  const ROW_RIM_MARGIN = [-34, 22, 95, 280, 520, 800];
+  // r3: margins keyed per row COUNT — the 7-row alpine table needs its own
+  // outward-push ladder (values interpolate the original radius->margin curve)
+  const ROW_RIM_MARGIN = rows.length === 7
+    ? [-34, 22, 95, 200, 340, 540, 800]
+    : [-34, 22, 95, 280, 520, 800];
   // <<< gameplay_feel r4 ------------------------------------------------------
   for (let ri = 0; ri < rows.length; ri++) {
     const row = rows[ri];
@@ -800,8 +849,12 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
         const nz = -dTangA[i] * Math.cos(a) - dRadA[i] * Math.sin(a);
         const inv = 1 / Math.hypot(nx, 1, nz);
         const ndl = (nx * lx + ly + nz * lz) * inv;         // N.L, -1..1
+        // r3 terrain_environment: alpine drops to 0.10 — its full N·L bake
+        // interpolated across the huge wall triangles as visible planar
+        // facets; the per-fragment relight in the material (smooth vertex
+        // normals, uFragRel) carries the directional shading instead.
         const relAmp = row.skirt ? 0.08 :
-          (style === 'alpine' || style === 'mesa' ? 0.34 : 0.26);
+          (style === 'alpine' ? 0.10 : style === 'mesa' ? 0.34 : 0.26);
         const lit = Math.max(ndl, 0), shade = Math.max(-ndl, 0);
         c.multiplyScalar(1 - relAmp * 0.85 + relAmp * 1.6 * lit); // sun side up, back slopes down
         c.lerp(tmp.setRGB(c.r * 1.05, c.g * 1.0, c.b * 0.92), lit * 0.30);   // warm lit faces
@@ -894,11 +947,35 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
   {
     const detail2 = makeDetailNoiseTexture(
       mulberry32(((seed ^ 0x0D37) ^ idHash(mapId)) >>> 0));
+    // r3 terrain_environment: PER-FRAGMENT alpine material pass. The winter
+    // wall used to carry all slope/sun response baked per-vertex — across
+    // 12 x 150 m wall triangles that interpolates as flat planar facets and
+    // vertical gradient smear ("untextured lilac cardboard"). The fragment
+    // pass reads the SMOOTH interpolated vertex normal instead:
+    //  - slope-keyed rock exposure with a noise-broken boundary (snow sheds
+    //    off steep faces per-fragment, not per-vertex),
+    //  - constant-altitude strata banding on the exposed rock,
+    //  - a real N·L relight against the map sun (replaces the baked term,
+    //    which is dropped to 0.10 for alpine above).
+    const fragRel = style === 'alpine' ? 0.30 : 0.0;
+    const slopeSplat = style === 'alpine' ? 1.0 : 0.0;
     mat.onBeforeCompile = (shader) => {
       shader.uniforms.uDetail2 = { value: detail2 };
+      shader.uniforms.uSunDirW = { value: new THREE.Vector3(lx, ly, lz) };
+      shader.uniforms.uFragRel = { value: fragRel };
+      shader.uniforms.uSlopeSplat = { value: slopeSplat };
+      shader.uniforms.uMaxH = { value: maxH * 1.0 };
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>',
+          '#include <common>\nvarying vec3 vHNrm;\nvarying vec3 vHPos;')
+        .replace('#include <begin_vertex>',
+          '#include <begin_vertex>\nvHNrm = normal;\nvHPos = position;');
       // onBeforeCompile uniforms are NOT auto-declared in the GLSL —
       // declared at global scope ahead of the injected block.
-      shader.fragmentShader = 'uniform sampler2D uDetail2;\n' +
+      shader.fragmentShader = 'uniform sampler2D uDetail2;\n'
+        + 'uniform vec3 uSunDirW;\nuniform float uFragRel;\n'
+        + 'uniform float uSlopeSplat;\nuniform float uMaxH;\n'
+        + 'varying vec3 vHNrm;\nvarying vec3 vHPos;\n' +
         shader.fragmentShader.replace(
           '#include <map_fragment>', /* glsl */`#include <map_fragment>
         {
@@ -909,9 +986,34 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
           // so ±0.1 authored contrast reads as ~±0.04 on screen (still-flat
           // first cut). ±0.29 lands at the crown-mottle read real hills give.
           diffuseColor.rgb *= 1.0 + dA * 0.28 + dB * 0.30;
+          if (uSlopeSplat > 0.001) {
+            vec3 hn = normalize(vHNrm);
+            float slopeF = 1.0 - clamp(hn.y, 0.0, 1.0);
+            // aerial attenuation: the outer ranges stay fog-flattened
+            float farAtt = 1.0 - smoothstep(700.0, 1400.0, length(vHPos.xz)) * 0.62;
+            // ~600 m + ~140 m noise fields break the rock/snow boundary
+            float nB = texture2D(uDetail2, vHPos.xz * 0.0016).r - 0.5;
+            float nC = texture2D(uDetail2, vHPos.xz * 0.0071 + vec2(0.29, 0.53)).r - 0.5;
+            float hT = clamp(vHPos.y / max(uMaxH, 1.0), 0.0, 1.0);
+            // rock exposure on steep faces; the highest crests hold snow
+            float rockW = smoothstep(0.30, 0.58, slopeF + nB * 0.34 + nC * 0.20)
+                        * (1.0 - smoothstep(0.55, 0.85, hT) * 0.70) * uSlopeSplat * farAtt;
+            vec3 rockCol = diffuseColor.rgb * vec3(0.47, 0.50, 0.58);
+            // constant-altitude strata relief on the exposed rock
+            float bedR = sin(vHPos.y * 0.42 + nB * 9.0) * 0.6
+                       + sin(vHPos.y * 0.13 + nC * 5.0) * 0.4;
+            rockCol *= 1.0 + bedR * 0.16;
+            diffuseColor.rgb = mix(diffuseColor.rgb, rockCol, rockW * 0.85);
+            // per-fragment N·L relight (smooth normals -> no planar facets)
+            float ndl = dot(hn, uSunDirW);
+            float rel = uFragRel * farAtt;
+            diffuseColor.rgb *= 1.0 - rel * 0.85 + rel * 1.6 * max(ndl, 0.0);
+            diffuseColor.rgb = mix(diffuseColor.rgb,
+              diffuseColor.rgb * vec3(0.90, 0.94, 1.07), max(-ndl, 0.0) * 0.32 * farAtt);
+          }
         }`);
     };
-    mat.customProgramCacheKey = () => 'horizon-ring-detail2-r5';
+    mat.customProgramCacheKey = () => 'horizon-ring-r3te-' + style;
   }
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = 'horizon-ring';

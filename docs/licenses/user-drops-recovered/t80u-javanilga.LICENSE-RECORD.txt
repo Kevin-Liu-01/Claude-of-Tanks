@@ -1,0 +1,29 @@
+Model: Tank T-80U
+Author: javanilga (https://sketchfab.com/javanilga)
+Source: https://sketchfab.com/3d-models/tank-t-80u-ebf4b55eeabb421cbf2758a2ec948439
+License: CC Attribution 4.0 (CC-BY 4.0)
+Verified: 2026-07-28 via Sketchfab API (batch user-drops-recovered / east).
+- License stamped in the downloaded GLB's asset.extras ("CC-BY-4.0", author
+  javanilga, matching source URL) AND confirmed live via
+  api.sketchfab.com/v3/models/ebf4b55eeabb421cbf2758a2ec948439
+  (license slug "by", faceCount 28617 vs 28,141 GLB tris — Sketchfab count
+  includes its own processing delta; uid matches the embedded extras).
+Provenance: Original artist work. Small hobbyist account (4 models, all
+Russian vehicles: Ural 4320, T-80U, BM-27 Uragan, Zil 130 — all CC-BY,
+modest hand-modeled poly counts). 3ds-Max-style authored node names
+(T-80U_Main, T-80_Setka, ObjectNN). No Dagor vehicle# node schemes, no
+WT/Wargame texture ids, no hash *_dds textures, no desirefx watermark.
+Face count 28,617 is unique among Sketchfab T-80U uploads (known WT rips
+are 263k/304k; Armored Warfare rip 236k; 42manako rips 6.7k/19.9k) — no
+rip face-count collision.
+Contents: t80u-javanilga.glb — normalized GLB (Blender 3.x import/re-export
+of the source GLB; 28,141 tris; textures kept: 1024x1024 + 512x512 PNG —
+no downscale needed). Articulation: separate turret mesh node
+(Object09_24, 9.6k tris, sits z 1.5-2.7) + separate gun barrel node
+(Object1101_22) + per-station roadwheel nodes (Object96..101) and track
+nodes (Object04/Plane01). CAUTION for integration: turret roof accessories
+(searchlight T-80U_Mini, NSVT stand T-80U_Stan, antenna T-80U_Ante, misc
+ObjectNN at z>1.5) are ROOT siblings, not turret children — they must be
+reparented to the turret node before yaw articulation.
+Facing: gun points -Y in Blender import space; grounded at z~0.02.
+Attribution required if shipped: "Tank T-80U" by javanilga, CC-BY 4.0.

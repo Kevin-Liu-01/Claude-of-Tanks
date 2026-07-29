@@ -76,8 +76,12 @@ const TERRAIN_PLAN = {
     // r7: sand albedo -7% — pairs with the desert.js sun drop (4.9 -> 4.15,
     // lighting r4) to pull the blown-out center valley off the tonemap
     // shoulder without going muddy
-    G: { set: 'sand', tint: [0.96, 0.92, 0.85], roughMul: 1.2 },
-    D: { set: 'sand', tint: [0.80, 0.73, 0.63], roughMul: 1.25 },
+    // terrain_environment r3: another -8% — NOTE the desert.js grassTone cap
+    // only reaches the procedural fallback; THIS tint is the real albedo of
+    // the sourced Ground093C sand that renders. Pairs with the desert.js sun
+    // 3.55 -> 3.30 + fog cut so the establishing midfield keeps texture.
+    G: { set: 'sand', tint: [0.88, 0.845, 0.78], roughMul: 1.2 },
+    D: { set: 'sand', tint: [0.74, 0.675, 0.58], roughMul: 1.25 },
     // r7: R stays PROCEDURAL (terrain.js makeSandstoneLayer). Rock063's wavy
     // metamorphic veining — magnified by the warm tint — was the swirly
     // "wet-sand" smear on every mesa/canyon wall; the procedural layer is

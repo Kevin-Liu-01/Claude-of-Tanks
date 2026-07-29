@@ -575,7 +575,7 @@ export function createGarage(opts) {
     }
     const note = document.createElement('div');
     note.className = 'cnote';
-    note.textContent = 'Pattern +3.5% concealment';
+    note.textContent = '+3.5% concealment on matching maps — AUTO always matches';
     camosEl.appendChild(note);
   }
   // --- EQUIPMENT PICKER (camo_spotting r1): 3-slot loadout toggles ---------

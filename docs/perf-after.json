@@ -1,103 +1,108 @@
 {
-  "note": "POST-FIX certification, performance_budget r5. MEASURED TREE: pinned worktree at df8574e (the round-4 merged HEAD) + the docs/handoff/performance_budget-r5-*.patch set (vegetation upload fix; quality.js high maxPixelRatio 1.1->1.0; materials grain-tile boot fix; perfprobe interactive-GPU stamp). Certification chronology, fully disclosed: (1) The dsf1 block below is the first valid uncontended 60 s window after the vegetation patch alone (p99 24.7 — ambient load1 ~7.8-8.0 during the run); a later, cleaner window on the FULL patch set measured dsf1 p99 14.7 / median 9.9 ms / p1 68 fps / load 7632 ms PASS, but its report file was lost to a tooling slip and is transcribed here rather than embedded. (2) The dsf2 block is a valid uncontended window on the vegetation+quality patches (p99 14.4; the grain patch that landed after it only reduces boot time - later same-build windows measured p99 16.5 with the load gate at 8174 pre-grain-fix, and 30.3 in a window where the USER’S interactive browser GPU process was measured at 24 % CPU - the blind spot that motivated the new perfprobe contention stamp; runs under the new stamp refuse certification in such windows). (3) Both embedded runs predate the new foreignGpuCpuMax field. The upload-stall fix itself is unambiguous: main-thread GL upload time in a 30 s driven battle fell 4321 ms -> 102 ms (worst single call 224 -> 16 ms), and the 75-250 ms hitch class disappeared from every subsequent frame dump. AFTER THE ROUND VERIFIER MERGES THE HANDOFFS, re-run node tools/perfprobe.mjs --dsf 1 and --dsf 2 in a window the (new) stamp accepts and REPLACE this file - publishing pre-merge numbers as tree certification is the r4 mistake this note exists to prevent. Triangle ratchet (6 M) intentionally unmet this round: the shadow-proxy premise re-measured net-negative for canopies; the props-hull plan in performance_budget-r5.md §2 carries the measured 0.66 M.",
+  "note": "PERFORMANCE_BUDGET r3 EVIDENCE — NOT yet a merged-tree certification. MEASURED TREE: pinned worktree at f43b778 (this round's HEAD) + the full docs/handoff/performance_budget-r3.patch set + the perfprobe/screenshot tool changes that landed directly. Both blocks below are complete, unedited 60 s probe reports (source files cert-r3-dsf1/2.json), run back-to-back with the NEW pinned worst-case all-GLB certification roster. What they prove: every WORKLOAD gate now holds with margin — trianglesMedian 6.20M/6.20M vs the FROZEN 7.0M gate (was 8.08M, ratchet 6.0M within noise), sceneTextureMB 379.7 vs the FROZEN 512 gate (was 666-685), drawCalls worst-frame 421/419 vs 900 ON THE WORST-CASE ROSTER (the round-2 critic measured 1095 on this roster class), loadToReady 6328/7261 vs 8000 measured CONTENDED (quiet should sit ~5s; pre-fix contended runs were 7.7-15s), retained-set heap 0.05 MB/s, zero console errors, and fps median 97.1/83.3 + p5 70.9/62.1 vs the 60/45 gates. What they do NOT prove: the frame-time tail — p99 26.1/32.0 vs 25 — because both windows were stamped machine-contended by the probe's own guards (3 foreign headless Chromiums + the interactive browser GPU at 98-213% CPU; certification: REFUSED, correctly). The r5 history shows this tail class is contention noise (quiet dsf2 on a HEAVIER tree measured p99 14.4), but per the project's rules it stays UNPROVEN until a quiet window: AFTER THE ROUND VERIFIER MERGES THE HANDOFFS, re-run node tools/perfprobe.mjs --dsf 1 and --dsf 2 in a window the stamps accept and REPLACE this file — publishing pre-merge numbers as tree certification is the r4 mistake this note exists to prevent. Screenshot harness on the same worktree: exit 0, zero console errors, all 16 PNGs reviewed (battlefield/sniper/winter indistinguishable from pristine f43b778; garage pedestal shows the kit-merged hero GLB).",
   "sources": {
-    "dsf1": "cert-dsf1-a4-recovered.json",
-    "dsf2": "cert-dsf2-a8-recovered.json"
+    "dsf1": "cert-r3-dsf1.json",
+    "dsf2": "cert-r3-dsf2.json"
   },
   "dsf1": {
-    "date": "2026-07-28T16:07:51.919Z",
+    "date": "2026-07-29T02:07:25.130Z",
+    "roster": "pinned:kv2,jagdtiger,tiger2,object279,is7,t30,t95",
     "viewport": {
       "width": 1920,
       "height": 1080,
       "deviceScaleFactor": 1
     },
     "sampleSeconds": 60,
-    "frames": 5292,
-    "loadToReadyMs": 7867,
+    "frames": 5637,
+    "loadToReadyMs": 6328,
     "fps": {
-      "median": 89.3,
-      "p5": 72.5,
-      "p1": 40.5,
-      "mean": 96.8
+      "median": 97.1,
+      "p5": 70.9,
+      "p1": 38.3,
+      "mean": 103.2
     },
     "frameMs": {
-      "median": 11.2,
-      "p95": 13.8,
-      "p99": 24.7
+      "median": 10.3,
+      "p95": 14.1,
+      "p99": 26.1
     },
     "drawCalls": {
-      "median": 446,
-      "max": 543
+      "median": 348,
+      "max": 421
     },
     "triangles": {
-      "median": 6287331,
-      "max": 6965951
+      "median": 6199470,
+      "max": 7192036
     },
     "rendererInfo": {
-      "geometries": 256,
-      "textures": 125,
-      "programs": 163
+      "geometries": 460,
+      "textures": 179,
+      "programs": 238
     },
     "heap": {
-      "startMB": 253.9,
-      "endMB": 280.4,
-      "growthMBperS": 0.44,
-      "floorGrowthMBperS": 0.08
+      "startMB": 474.1,
+      "endMB": 505.5,
+      "growthMBperS": 0.52,
+      "floorGrowthMBperS": 0.2,
+      "retainedStartMB": 468,
+      "retainedEndMB": 470.9,
+      "retainedGrowthMBperS": 0.05
     },
     "gpuTextureEstimate": {
-      "sceneTextureMB": 293.2,
+      "sceneTextureMB": 379.7,
       "shadowRtMB": 160,
-      "uniqueTextures": 74
+      "uniqueTextures": 124
     },
     "consoleErrors": [],
     "machine": {
       "cores": 18,
-      "load1Start": 7.82,
-      "load1End": 7.09,
-      "load1Max": 8,
-      "foreignHeadlessMax": 0,
-      "contended": false
+      "load1Start": 5.42,
+      "load1End": 8.77,
+      "load1Max": 9.01,
+      "foreignHeadlessMax": 3,
+      "foreignGpuCpuMax": 212.5,
+      "contended": true
     },
     "budget": {
-      "pass": true,
+      "pass": false,
       "fpsMedian": {
         "limit": ">=60",
-        "actual": 89.3,
+        "actual": 97.1,
         "pass": true
       },
       "fpsP5": {
         "limit": ">=45",
-        "actual": 72.5,
+        "actual": 70.9,
         "pass": true
       },
       "frameMsP99": {
         "limit": "<=25",
-        "actual": 24.7,
-        "pass": true
+        "actual": 26.1,
+        "pass": false
       },
       "drawCallsWorstFrame": {
         "limit": "<=900",
-        "actual": 543,
+        "actual": 421,
         "pass": true
       },
       "trianglesMedian": {
         "limit": "<=7000000",
-        "actual": 6287331,
+        "actual": 6199470,
         "pass": true
       },
       "loadToReady": {
         "limit": "<=8000",
-        "actual": 7867,
+        "actual": 6328,
         "pass": true
       },
       "sceneTextureMB": {
         "limit": "<=512 (frozen; holdable via parked-pool visual eviction)",
-        "actual": 293.2,
+        "actual": 379.7,
         "pass": true
       },
       "heapStableMBperS": {
         "limit": "<=1",
-        "actual": 0.08,
+        "actual": 0.05,
         "pass": true
       },
       "consoleErrors": {
@@ -105,110 +110,115 @@
         "actual": 0,
         "pass": true
       },
-      "certification": "PASS"
+      "certification": "REFUSED — machine contended (load1 5.42->8.77, mid-run max 9.01, foreign headless-GPU procs 3, interactive-browser GPU cpu 212.5% (limit 15), on 18 cores, load limit 9); re-run quiet"
     },
     "ratchet": {
       "trianglesMedian": {
         "target": 6000000,
-        "actual": 6287331,
+        "actual": 6199470,
         "met": false
       }
     }
   },
   "dsf2": {
-    "date": "2026-07-28T16:17:16.156Z",
+    "date": "2026-07-29T02:08:43.046Z",
+    "roster": "pinned:kv2,jagdtiger,tiger2,object279,is7,t30,t95",
     "viewport": {
       "width": 1920,
       "height": 1080,
       "deviceScaleFactor": 2
     },
     "sampleSeconds": 60,
-    "frames": 5908,
-    "loadToReadyMs": 7842,
+    "frames": 4850,
+    "loadToReadyMs": 7261,
     "fps": {
-      "median": 99,
-      "p5": 80,
-      "p1": 69.4,
-      "mean": 106
+      "median": 83.3,
+      "p5": 62.1,
+      "p1": 31.3,
+      "mean": 100.4
     },
     "frameMs": {
-      "median": 10.1,
-      "p95": 12.5,
-      "p99": 14.4
+      "median": 12,
+      "p95": 16.1,
+      "p99": 32
     },
     "drawCalls": {
-      "median": 448,
-      "max": 543
+      "median": 348,
+      "max": 419
     },
     "triangles": {
-      "median": 6287737,
-      "max": 6965875
+      "median": 6202000,
+      "max": 7188734
     },
     "rendererInfo": {
-      "geometries": 256,
-      "textures": 125,
-      "programs": 163
+      "geometries": 460,
+      "textures": 179,
+      "programs": 238
     },
     "heap": {
-      "startMB": 253.9,
-      "endMB": 275.1,
-      "growthMBperS": 0.35,
-      "floorGrowthMBperS": 0.12
+      "startMB": 472.8,
+      "endMB": 483.6,
+      "growthMBperS": 0.18,
+      "floorGrowthMBperS": 0.19,
+      "retainedStartMB": 467.9,
+      "retainedEndMB": 470.9,
+      "retainedGrowthMBperS": 0.05
     },
     "gpuTextureEstimate": {
-      "sceneTextureMB": 293.2,
+      "sceneTextureMB": 379.7,
       "shadowRtMB": 160,
-      "uniqueTextures": 74
+      "uniqueTextures": 124
     },
     "consoleErrors": [],
     "machine": {
       "cores": 18,
-      "load1Start": 6.55,
-      "load1End": 6.85,
-      "load1Max": 6.9,
-      "foreignHeadlessMax": 0,
-      "contended": false
+      "load1Start": 8.77,
+      "load1End": 8.13,
+      "load1Max": 8.79,
+      "foreignHeadlessMax": 3,
+      "foreignGpuCpuMax": 98.4,
+      "contended": true
     },
     "budget": {
-      "pass": true,
+      "pass": false,
       "fpsMedian": {
         "limit": ">=60",
-        "actual": 99,
+        "actual": 83.3,
         "pass": true
       },
       "fpsP5": {
         "limit": ">=45",
-        "actual": 80,
+        "actual": 62.1,
         "pass": true
       },
       "frameMsP99": {
         "limit": "<=25",
-        "actual": 14.4,
-        "pass": true
+        "actual": 32,
+        "pass": false
       },
       "drawCallsWorstFrame": {
         "limit": "<=900",
-        "actual": 543,
+        "actual": 419,
         "pass": true
       },
       "trianglesMedian": {
         "limit": "<=7000000",
-        "actual": 6287737,
+        "actual": 6202000,
         "pass": true
       },
       "loadToReady": {
         "limit": "<=8000",
-        "actual": 7842,
+        "actual": 7261,
         "pass": true
       },
       "sceneTextureMB": {
         "limit": "<=512 (frozen; holdable via parked-pool visual eviction)",
-        "actual": 293.2,
+        "actual": 379.7,
         "pass": true
       },
       "heapStableMBperS": {
         "limit": "<=1",
-        "actual": 0.12,
+        "actual": 0.05,
         "pass": true
       },
       "consoleErrors": {
@@ -216,12 +226,12 @@
         "actual": 0,
         "pass": true
       },
-      "certification": "PASS"
+      "certification": "REFUSED — machine contended (load1 8.77->8.13, mid-run max 8.79, foreign headless-GPU procs 3, interactive-browser GPU cpu 98.4% (limit 15), on 18 cores, load limit 9); re-run quiet"
     },
     "ratchet": {
       "trianglesMedian": {
         "target": 6000000,
-        "actual": 6287737,
+        "actual": 6202000,
         "met": false
       }
     }

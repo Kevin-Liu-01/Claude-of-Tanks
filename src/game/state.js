@@ -169,7 +169,36 @@ export function spawnTanks(game, engineCtx) {
     game.tankById.set(ent.id, ent);
   });
   game.tanks = game.allTanks.slice(0, TANK_IDS.length); // staged default battle
-  for (const ent of game.tanks) ensureTankVisual(game, ent);
+  // PERF (performance_budget r3): the staged battle's 7 ENEMY bakes are the
+  // single biggest load-to-ready block (~2.2 s of 2048² canvas painting +
+  // SimplexNoise + first-use GPU uploads on the boot path; bootprobe:
+  // heightToNormal 1050 ms + noise 2.2 s). Nobody can see the staged battle
+  // behind the garage screen, so boot builds ONLY the player's visual;
+  // ensureStagedVisuals() (idempotent, chunked by the caller) builds the
+  // rest post-ready — and main.js runs it synchronously from
+  // warmCombatPipeline(), which __SHOTS.set() and startBattle() already
+  // invoke before anything can look at the battlefield.
+  ensureTankVisual(game, game.tanks[0]);
+}
+
+/**
+ * PERF (performance_budget r3): build any still-missing staged-battle
+ * visuals. Synchronous and idempotent — a no-op once all 8 exist. `limit`
+ * lets the post-ready idle pump build one vehicle per slice so the garage
+ * dwell absorbs ~300 ms chunks instead of one 2 s freeze.
+ * @param {object} game game state
+ * @param {number} [limit] max visuals to build this call (default: all)
+ * @returns {boolean} true when every staged participant has a visual
+ */
+export function ensureStagedVisuals(game, limit = Infinity) {
+  let built = 0;
+  for (const ent of game.tanks) {
+    if (ent.visual) continue;
+    if (built >= limit) return false;
+    ensureTankVisual(game, ent);
+    built++;
+  }
+  return true;
 }
 
 /**
@@ -183,13 +212,33 @@ export function spawnTanks(game, engineCtx) {
 export function ensureTankVisual(game, ent) {
   if (ent.visual) return ent.visual;
   const engineCtx = game._engineCtx;
-  ent.visual = createTank(ent.specId, engineCtx, { camoSeed: ent._camoSeed, quality: 'high' });
+  // PERF (performance_budget r3): texture-quality tier. Hero-grade 2048²
+  // bakes go to vehicles the camera can inspect at arm's length — the
+  // player's pick and the closeup screenshot-contract specs (the garage
+  // pedestal acquires 'high' itself and upgrades a cached 'ai' entry in
+  // place). AI roster fills bake at half size: 5-7 full hero sets per battle
+  // measured 666-685 MB scene textures vs the FROZEN 512 MB gate, and each
+  // 2048² bake costs 250-350 ms of main-thread canvas work.
+  const hero = ent.isPlayer || ent === game.tanks[0] || HERO_TEX_SPECS.has(ent.specId);
+  ent.visual = createTank(ent.specId, engineCtx, {
+    camoSeed: ent._camoSeed, quality: hero ? 'high' : 'ai',
+  });
   engineCtx.scene.add(ent.visual.root);
   if (game._groundSampler && ent.visual.setGroundSampler) {
     ent.visual.setGroundSampler(game._groundSampler);
   }
+  // PERF r3: a deferred staged visual streams in AFTER setupBattle posed the
+  // entity — pose it now so it never renders a frame at the origin.
+  if (ent.state && ent.visual.syncFromState) {
+    ent.visual.syncFromState(ent.state);
+    ent.visual.setVisible(true);
+  }
   return ent.visual;
 }
+
+// PERF r3: specs whose closeup contract shots (tank_closeup_*) frame the
+// vehicle at 3-6 m — always hero texture tier regardless of roster role.
+const HERO_TEX_SPECS = new Set(['m1a2', 'tiger1', 't34_85', 't90m', 'leo2a7']);
 
 /**
  * MATCHMAKING TIERS (controls_gunnery r3): WoT-style tier per spec, keyed off
@@ -234,6 +283,20 @@ const specTier = (specId) => SPEC_TIER[specId] != null ? SPEC_TIER[specId] : 6;
 function pickParticipants(game, playerSpecId, randomize, mixedEra = false) {
   const player = game.tankById.get(playerSpecId);
   const enemySlots = 7;
+  // PERF (performance_budget r3, certification determinism): an explicit
+  // debug roster bypasses the seeded shuffle/era matchmaking so the perf
+  // gate measures a PINNED worst-case lineup (all multi-mesh GLB heavies)
+  // instead of whatever the pool happens to draw — the round-2 critic
+  // measured 1095 worst-frame draw calls on one random roster and 470 on
+  // another, on the identical build. Debug/tooling only (perfprobe).
+  const forced = (typeof window !== 'undefined' && window.__DEBUG &&
+    window.__DEBUG.flags && window.__DEBUG.flags.forceRoster) || null;
+  if (Array.isArray(forced) && forced.length) {
+    const list = forced
+      .map((id) => game.tankById.get(id))
+      .filter((e) => e && e !== player);
+    return [player, ...list.slice(0, enemySlots)];
+  }
   let others;
   if (randomize) {
     const rng = mulberry32(0x51e57 ^ (game.battleCount * 2654435761));
@@ -313,7 +376,15 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   // PERF (performance_budget r4): participants get visuals on demand; parked
   // vehicles' visuals are EVICTED (scene detach + dispose) so only fielded
   // tanks keep generated texture sets resident — see spawnTanks.
-  for (const ent of game.tanks) ensureTankVisual(game, ent);
+  // PERF r3: the BOOT staging call defers the 7 enemy bakes off the
+  // load-to-ready path (opts.deferVisuals; main.js streams them post-ready
+  // via ensureStagedVisuals — see spawnTanks). Real battle entries build
+  // eagerly, exactly as before.
+  if (!opts.deferVisuals) {
+    for (const ent of game.tanks) ensureTankVisual(game, ent);
+  } else {
+    ensureTankVisual(game, game.tanks[0]); // the player is always staged
+  }
   for (const ent of game.allTanks) {
     if (game.tanks.includes(ent)) continue;
     ent.state = null;
@@ -427,7 +498,9 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     ent.ai = null;
     // Rematch: undo any wreck look / thrown tracks / stripped ERA from the
     // previous battle (visuals only — combat state above is already fresh).
-    if (ent.visual.resetDestroyed) ent.visual.resetDestroyed();
+    // PERF r3: visual may still be streaming in (boot deferVisuals path) —
+    // a fresh build needs no reset.
+    if (ent.visual && ent.visual.resetDestroyed) ent.visual.resetDestroyed();
     if (isPlayer) {
       game.player = ent;
       ent.aiCtl = null;
@@ -481,8 +554,11 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     // attitude, pad-center height) rendered one frame with a track end
     // clipped ~0.3 m into the pad-edge slope.
     for (let k = 0; k < 30; k++) updateTank(ent, world.heightField, SIM_DT);
-    ent.visual.syncFromState(ent.state);
-    ent.visual.setVisible(true);
+    // PERF r3: deferred boot visuals sync when ensureTankVisual builds them
+    if (ent.visual) {
+      ent.visual.syncFromState(ent.state);
+      ent.visual.setVisible(true);
+    }
   });
 }
 
@@ -603,9 +679,18 @@ function tryFire(game, ent, bus, rig) {
   const shellSpec = ent.spec.gun.shells[c.shellSlot];
 
   // Barrel direction from the visual (already chasing input.aimPoint).
+  // controls_gunnery r3 CRITICAL: use the articulated bore AXIS (recoil-group
+  // +Z), NOT muzzle-minus-pivot — on GLB-swapped tanks the muzzle anchor is
+  // re-derived from real tube-tip vertices and sits off the trunnion axis
+  // (m1a2: ~45 mrad skew), so the anchor-difference line pointed every
+  // "settled" shot ~15 m wide at 330 m while the sim gun-lay was perfect.
   ent.visual.gunMuzzleWorld(_muzzle);
-  ent.visual.gunPivotWorld(_pivot);
-  _dir.copy(_muzzle).sub(_pivot).normalize();
+  if (ent.visual.gunDirWorld) {
+    ent.visual.gunDirWorld(_dir);
+  } else {
+    ent.visual.gunPivotWorld(_pivot);
+    _dir.copy(_muzzle).sub(_pivot).normalize();
+  }
 
   // Server-gun correction (WoT rule: the shot goes where the GUN is aimed,
   // i.e. the server aim point — the rendered barrel is cosmetic and can sit a
@@ -888,6 +973,7 @@ export function simStep(game, bus, world, rig, collider) {
     if (game.result !== null) {
       bus.emit('battle:ended', {
         result: game.result, timeS: game.timeS,
+        map: game.mapId, // SHOT-INFO ENRICHMENT (r3): report header map name
         // SHOT-INFO ENRICHMENT (additive): full team roster for the report
         roster: game.tanks.map((t) => ({
           id: t.id, specId: t.specId,

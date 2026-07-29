@@ -450,6 +450,18 @@ export function createSettings(opts) {
       'Easy bots aim slower, react later and engage closer; Hard bots hunt weak spots. ' +
       'Takes effect when the next battle starts.';
 
+    el('div', 'cot-set-group', body).textContent = 'Interface';
+    const netRow = el('div', 'cot-set-row', body);
+    el('span', 'lb', netRow).textContent = 'FPS / ping readout (top corner)';
+    const netTog = el('div', `cot-set-toggle${input.getSettings().showPerfMeter ? ' on' : ''}`, netRow);
+    el('i', '', netTog);
+    netTog.addEventListener('click', () => {
+      input.setSetting('showPerfMeter', !input.getSettings().showPerfMeter);
+      netTog.classList.toggle('on', input.getSettings().showPerfMeter);
+      emitPerfMeter(); // hud.js follows live (default off — no dev chrome)
+      emit('ui:click', {});
+    });
+
     el('div', 'cot-set-group', body).textContent = 'Controller';
     sliderRow(body, 'Controller aim sensitivity', 'padSensitivity', 0.2, 3);
     const padNote = el('div', 'cot-set-note', body);
@@ -471,6 +483,14 @@ export function createSettings(opts) {
     ['volAmbience', 'Ambience volume (wind, birds)'],
     ['volUi', 'Interface volume'],
   ];
+
+  /** Broadcast the FPS/ping readout preference (hud.js 'cot-net' element).
+   *  Persisted with the gameplay settings; DEFAULT OFF so the raw
+   *  "NN FPS NN MS" string never ships as apparent developer chrome
+   *  (controls_gunnery r3 minor). */
+  function emitPerfMeter() {
+    emit('ui:perfMeter', { on: !!input.getSettings().showPerfMeter });
+  }
 
   /** Broadcast the whole mix so the audio graph re-levels its channel buses. */
   function emitVolumes() {
@@ -903,6 +923,7 @@ export function createSettings(opts) {
   // directly at build time — this covers a graph that already exists).
   emitBindings();
   emitVolumes();
+  emitPerfMeter(); // HUD net readout follows the persisted opt-in (default off)
 
   return api;
 }

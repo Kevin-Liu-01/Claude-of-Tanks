@@ -17,6 +17,7 @@ import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
 import { maskIcon, iconUrl } from './icons.js';
 import { getSpec, ALL_TANK_IDS } from '../vehicles/specs.js';
 import { penAtDistanceMm } from '../sim/ballistics.js';
+import { getMapConfig } from '../world/maps/index.js';
 
 const ICON_MARGIN = 1.07; // tools/icons-page.html bounding-box framing margin
 
@@ -105,6 +106,8 @@ const SI_CSS = `
   background-position:center;background-repeat:no-repeat;opacity:.86;
   filter:grayscale(1) brightness(1.5) contrast(1.4);}
 .cot-si-diag svg.ov{position:absolute;inset:0;overflow:visible;}
+.cot-si-diag svg.ov .wdg{animation:cotSiWedge 1.6s ease-in-out infinite;}
+@keyframes cotSiWedge{0%,100%{opacity:.5;}50%{opacity:1;}}
 .cot-si-zone{font-size:10px;color:#f0c987;font-weight:700;letter-spacing:.06em;
   text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;flex:1;
   text-align:right;line-height:1.35;}
@@ -185,6 +188,10 @@ body.cot-si-report .cot-ret{display:none !important;}
 .cot-si-ban.v{color:#7ee87e;}.cot-si-ban.d{color:#f05a5a;}.cot-si-ban.n{color:#cfd9e2;}
 .cot-si-bansub{font-size:10px;letter-spacing:.32em;color:${COL.dim};margin:7px 0 2.6vh;
   text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;font-weight:800;}
+.cot-si-hdr{font-size:10.5px;letter-spacing:.2em;color:#a9b6c2;margin:0 0 2.2vh;
+  text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;font-weight:700;
+  font-variant-numeric:tabular-nums;}
+.cot-si-hdr b{color:#dbe6ef;font-weight:800;}
 .cot-si-cols{display:flex;gap:16px;width:1120px;max-width:94vw;align-items:stretch;
   min-height:220px;}
 .cot-si-panel{background:linear-gradient(180deg,rgba(10,14,18,.92),rgba(6,9,12,.95));
@@ -216,6 +223,7 @@ body.cot-si-report .cot-ret{display:none !important;}
 .cot-si-rib svg{width:12px;height:12px;display:block;flex:0 0 auto;}
 .cot-si-tlwrap{width:1120px;max-width:94vw;margin-top:14px;}
 .cot-si-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 16px;margin-bottom:12px;}
+.cot-si-grid.c5{grid-template-columns:repeat(5,1fr);}
 .cot-si-stat{text-align:center;}
 .cot-si-stat .v{font-size:28px;font-weight:800;font-family:${FONT_COND};
   font-stretch:condensed;font-variant-numeric:tabular-nums;color:#f2f7fb;line-height:1.1;}
@@ -385,8 +393,8 @@ const fmtTime = (s) => {
 // fallback filter and swap in the bake when it lands (same-origin PNG, so
 // canvas readback is always allowed; any failure keeps the fallback).
 const schemCache = new Map();
-function schematicUrl(id, view) {
-  const key = `${id}|${view}`;
+function schematicUrl(id, view, outW, outH) {
+  const key = `${id}|${view}|${outW}x${outH}`;
   let p = schemCache.get(key);
   if (!p) {
     p = new Promise((resolve) => {
@@ -408,14 +416,45 @@ function schematicUrl(id, view) {
             n++;
           }
           const mean = n ? sum / n : 128;
+          // r3: contrast stretch raised 1.5 -> 2.1 — at the card's 84 px the
+          // 1.5 bake still averaged to a soft gray blur (r2 critique)
           for (let i = 0; i < px.length; i += 4) {
             if (px[i + 3] === 0) continue;
             const lum = px[i] * 0.2126 + px[i + 1] * 0.7152 + px[i + 2] * 0.0722;
-            const v = Math.max(30, Math.min(246, 178 + (lum - mean) * 1.5));
+            const v = Math.max(24, Math.min(250, 178 + (lum - mean) * 2.1));
             px[i] = px[i + 1] = px[i + 2] = v;
           }
           x.putImageData(d, 0, 0);
-          resolve(c.toDataURL());
+          // r3: bake DOWN to exactly 2x the display box, then unsharp at that
+          // scale — detail that survives the 2x raster survives the final CSS
+          // downscale, instead of the 512->84 jump averaging edges away.
+          const t = document.createElement('canvas');
+          t.width = outW;
+          t.height = outH;
+          const tx = t.getContext('2d');
+          const fit = Math.min(outW / c.width, outH / c.height);
+          const fw = c.width * fit;
+          const fh = c.height * fit;
+          tx.imageSmoothingQuality = 'high';
+          tx.drawImage(c, (outW - fw) / 2, (outH - fh) / 2, fw, fh);
+          const d2 = tx.getImageData(0, 0, outW, outH);
+          const p2 = d2.data;
+          const src = new Uint8ClampedArray(p2);
+          const A = 0.55; // unsharp amount (3x3 laplacian)
+          for (let y = 1; y < outH - 1; y++) {
+            for (let xx = 1; xx < outW - 1; xx++) {
+              const i = (y * outW + xx) * 4;
+              if (src[i + 3] < 8) continue;
+              for (let ch = 0; ch < 3; ch++) {
+                const cv = src[i + ch];
+                const nb = (off) => (src[i + off + 3] >= 8 ? src[i + off + ch] : cv);
+                p2[i + ch] = cv * (1 + 4 * A)
+                  - A * (nb(-4) + nb(4) + nb(-outW * 4) + nb(outW * 4));
+              }
+            }
+          }
+          tx.putImageData(d2, 0, 0);
+          resolve(t.toDataURL());
         } catch (_) { resolve(null); }
       };
       img.onerror = () => resolve(null);
@@ -427,10 +466,10 @@ function schematicUrl(id, view) {
 }
 
 /** Plan-form layer: raw icon + CSS fallback now, baked schematic on arrival. */
-function planForm(parent, specId, view) {
+function planForm(parent, specId, view, boxW, boxH) {
   const pf = el('div', 'pf', parent);
   pf.style.backgroundImage = `url(${iconUrl(specId, view)})`;
-  schematicUrl(specId, view).then((u) => {
+  schematicUrl(specId, view, boxW * 2, boxH * 2).then((u) => {
     if (u && pf.isConnected !== false) {
       pf.style.backgroundImage = `url(${u})`;
       pf.style.filter = 'none';
@@ -461,6 +500,21 @@ export function createShotInfo(bus) {
   const shotLog = [];      // last 6 outgoing summaries {ev, cls}
   const receivedLog = [];  // per-battle incoming entries (full battle)
   const stats = newStats();
+  let endInfo = null;      // battle:ended {timeS, map} for the report header
+
+  // --- spotting assist (r3) --------------------------------------------------
+  // Driven purely by the sim's tank:spotted events. When the payload carries
+  // spotterId (additive spotting.js enrichment, see docs/handoff), a rising
+  // edge with spotterId === player marks the target "lit by you"; ally
+  // (non-player) damage on that target within ASSIST_WINDOW_S then counts as
+  // spotting-assist damage — WoT's 'damage upon your spotting'. The window is
+  // a fixed convention (falling edges are not broadcast), and the whole stat
+  // row only renders once an enriched event has been SEEN (spotAttributed) —
+  // a zero from missing data must never masquerade as a real zero.
+  const ASSIST_WINDOW_S = 12;
+  const spotWindow = new Map(); // enemyId -> timeS of last player-spot edge
+  const spottedSet = new Set(); // distinct enemies the player lit
+  let spotAttributed = false;   // saw a spotterId-carrying event this battle
 
   // --- team-wide roster bookkeeping (battle report) -------------------------
   // Every combatant seen in ANY bus event (shell:hit fires for AI-vs-AI hits
@@ -523,7 +577,7 @@ export function createShotInfo(bus) {
 
   function newStats() {
     return {
-      fired: 0, hits: 0, pens: 0, dealt: 0, received: 0, blocked: 0,
+      fired: 0, hits: 0, pens: 0, dealt: 0, received: 0, blocked: 0, assist: 0,
       modulesDestroyed: 0, perTarget: new Map(),
       perShell: new Map(),   // shellType -> {fired,hits,pens,dmg}
       timeline: [],          // dealt-damage events [{t, d}] (battle report strip)
@@ -570,9 +624,11 @@ export function createShotInfo(bus) {
     const zoneTint = (parent, view, x, y, r) => {
       const tint = el('div', 'sil', parent);
       maskIcon(tint, specId, view, 'transparent');
+      // r3: hotter stops + bigger radius — the r2 glow sat too faint under
+      // the plan-form to carry the zone read at 84 px
       tint.style.background =
         `radial-gradient(circle ${r}px at ${x.toFixed(1)}px ${y.toFixed(1)}px,` +
-        `${badgeCol}d9 0%,${badgeCol}66 55%,${badgeCol}00 100%)`;
+        `${badgeCol}ee 0%,${badgeCol}88 55%,${badgeCol}00 100%)`;
     };
 
     // --- top view (84x84; icon: forward = up, screen right = -X world) ---
@@ -589,10 +645,34 @@ export function createShotInfo(bus) {
     // zone glow UNDER the plan-form (r2: painted over it, the orange radial
     // muddied the schematic into a blob); the translucent plan layer lets
     // the tint breathe through while the plan shape stays crisp
-    zoneTint(top, 'top_silhouette', hx, hy, 18);
+    zoneTint(top, 'top_silhouette', hx, hy, 24);
     // per-tank plan-form over glow + mask (r7: the flat silhouette read as a
     // generic rounded box) — neutral-gray baked schematic, see schematicUrl
-    planForm(top, specId, 'top');
+    planForm(top, specId, 'top', TS, TS);
+    // hit-sector flash (r3, WoT-mod style): a pulsing wedge opening from the
+    // hit point back toward where the shell came FROM (event localDir) — the
+    // zone reads from geometry before the text label is even parsed
+    let wedge = '';
+    if (ld) {
+      const wl = Math.hypot(ld[0], ld[2]);
+      if (wl > 1e-4) {
+        const ux = ld[0] / wl; // screen dir toward the shooter (both axes of
+        const uy = ld[2] / wl; // topPx negate, so -localDir maps to +ld here)
+        const WR = 17;
+        const rot = (vx, vy, a) => [
+          vx * Math.cos(a) - vy * Math.sin(a),
+          vx * Math.sin(a) + vy * Math.cos(a),
+        ];
+        const [ax1, ay1] = rot(ux, uy, 0.46);
+        const [ax2, ay2] = rot(ux, uy, -0.46);
+        wedge =
+          `<path class="wdg" d="M${hx.toFixed(1)} ${hy.toFixed(1)}` +
+          ` L${(hx + ax1 * WR).toFixed(1)} ${(hy + ay1 * WR).toFixed(1)}` +
+          ` L${(hx + ux * WR * 1.12).toFixed(1)} ${(hy + uy * WR * 1.12).toFixed(1)}` +
+          ` L${(hx + ax2 * WR).toFixed(1)} ${(hy + ay2 * WR).toFixed(1)} Z"` +
+          ` fill="${badgeCol}" fill-opacity="0.5" stroke="${badgeCol}" stroke-width="0.8"/>`;
+      }
+    }
     let arrow = '';
     if (ld) {
       // Clamp the arrow tail inside the viewBox: the raw 2.2 m back-step
@@ -636,10 +716,11 @@ export function createShotInfo(bus) {
     ovT.innerHTML =
       `<defs><marker id="cotsiarw" viewBox="0 0 8 8" refX="6.5" refY="4" markerWidth="5"
         markerHeight="5" orient="auto"><path d="M0 0L8 4L0 8z" fill="#ff8a5c"/></marker></defs>` +
+      wedge +
       facing +
       arrow +
-      `<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="5" fill="none" stroke="#fff" stroke-width="1.3"/>` +
-      `<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="2.6" fill="#ff8a5c"/>`;
+      `<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="6.2" fill="none" stroke="#fff" stroke-width="1.6"/>` +
+      `<circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="3.2" fill="#ff8a5c"/>`;
     top.appendChild(ovT);
 
     // --- side view (aspect 2:1; icon: front = right, up = +Y) ---
@@ -653,14 +734,14 @@ export function createShotInfo(bus) {
     const sS = (SH / 2) / halfS;
     const sx = SW / 2 + (lp[2] - czOff) * sS;
     const sy = SH / 2 - (lp[1] - dims.heightM / 2) * sS;
-    zoneTint(side, 'side_silhouette', sx, sy, 16); // glow under the plan-form
-    planForm(side, specId, 'side');
+    zoneTint(side, 'side_silhouette', sx, sy, 20); // glow under the plan-form
+    planForm(side, specId, 'side', SW, SH);
     const ovS = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     ovS.setAttribute('class', 'ov');
     ovS.setAttribute('viewBox', `0 0 ${SW} ${SH}`);
     ovS.innerHTML =
-      `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="4.6" fill="none" stroke="#fff" stroke-width="1.3"/>` +
-      `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="2.4" fill="#ff8a5c"/>`;
+      `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="5.6" fill="none" stroke="#fff" stroke-width="1.6"/>` +
+      `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="3" fill="#ff8a5c"/>`;
     side.appendChild(ovS);
     return wrap;
   }
@@ -863,7 +944,35 @@ export function createShotInfo(bus) {
       : youDestroyed ? 'YOU WERE DESTROYED'
         : res === 'defeat' ? 'DEFEAT' : 'DRAW';
     statsRoot.dataset.banner = ban.textContent;
-    el('div', 'cot-si-bansub', statsRoot).textContent = 'Battle report';
+    const bansub = el('div', 'cot-si-bansub', statsRoot);
+    bansub.textContent = 'Battle report';
+
+    // battle header (r3, stock-WoT staple): map · duration · local date.
+    // Duration comes off the battle:ended payload clock, map from the same
+    // payload when the sim enriches it — segments simply drop out when the
+    // data is absent, never guessed. The wall-clock date stamps the report.
+    {
+      const bits = [];
+      if (endInfo && endInfo.map) {
+        let mapName = endInfo.map;
+        try { mapName = getMapConfig(endInfo.map).name || endInfo.map; } catch (_) { /* raw id */ }
+        bits.push(`<b>${mapName}</b>`);
+        statsRoot.dataset.map = mapName;
+      }
+      const durS2 = endInfo && Number.isFinite(endInfo.timeS)
+        ? endInfo.timeS
+        : Math.max(0, ...stats.timeline.map((e) => e.t), ...receivedLog.map((e) => e.t));
+      if (durS2 > 0) {
+        bits.push(`battle time <b>${fmtTime(durS2)}</b>`);
+        statsRoot.dataset.durationS = String(Math.floor(durS2));
+      }
+      bits.push(new Date().toLocaleString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+      }));
+      const hdr = el('div', 'cot-si-hdr', statsRoot);
+      hdr.innerHTML = bits.join(' &nbsp;·&nbsp; ');
+      bansub.style.margin = '7px 0 8px';
+    }
 
     const kills = [...stats.perTarget.values()].filter((t) => t.killed).length;
 
@@ -937,12 +1046,22 @@ export function createShotInfo(bus) {
     stat(stats.hits, 'Shots hit');
     stat(`${penRate}%`, 'Pen rate');
     stat(stats.modulesDestroyed, 'Modules destroyed');
+    // spotting row (r3) — rendered only when this battle's tank:spotted
+    // events carried spotter attribution (enriched sim); a zero born from
+    // missing data must never pose as a real zero
+    if (spotAttributed) {
+      stat(spottedSet.size, 'Enemies spotted');
+      stat(Math.round(stats.assist), 'Assist damage');
+      grid.classList.add('c5');
+    }
     statsRoot.dataset.dealt = String(Math.round(stats.dealt));
     statsRoot.dataset.received = String(Math.round(stats.received));
     statsRoot.dataset.blocked = String(Math.round(stats.blocked));
     statsRoot.dataset.fired = String(stats.fired);
     statsRoot.dataset.hits = String(stats.hits);
     statsRoot.dataset.pens = String(stats.pens);
+    statsRoot.dataset.assist = String(Math.round(stats.assist));
+    statsRoot.dataset.spotted = String(spottedSet.size);
 
     // per-shell-type accuracy breakdown (fired / hit / pen / damage)
     const shellTypes = [...stats.perShell.entries()].filter(([, s]) => s.fired > 0 || s.hits > 0);
@@ -1194,8 +1313,29 @@ export function createShotInfo(bus) {
 
   bus.on('shell:fired', (p) => {
     if (!p.isPlayer) return;
+    // identity hardening (r3 audit): latch the player id from the sim event
+    // itself — hud.update only forwards setPlayer once a frame has rendered,
+    // which silently dropped a hit resolved before the first post-start
+    // frame. main.js now also sets it synchronously at battle start (see
+    // docs/handoff/killcam_shotinfo-r3.md); this latch covers sim-tick-driven
+    // replays that never render at all.
+    if (p.shooterId != null) playerId = p.shooterId;
     stats.fired += 1;
     perShell(p.shellType || '—').fired += 1;
+  });
+
+  bus.on('tank:spotted', (ev) => {
+    if (!ev || ev.id == null) return;
+    // a spot is a sim-asserted cross-team fact: the spotting TEAM ('player'
+    // side) opposes the target — feed the parity graph the same way a direct
+    // hit would (helps side resolution for combatants that never traded fire)
+    if (ev.team === 'player' && playerId != null) linkOpposed(playerId, ev.id);
+    if (ev.spotterId == null) return;
+    spotAttributed = true;
+    if (playerId != null && ev.spotterId === playerId && ev.id !== playerId) {
+      spotWindow.set(ev.id, ev.timeS || 0);
+      spottedSet.add(ev.id);
+    }
   });
 
   bus.on('shell:hit', (ev) => {
@@ -1209,6 +1349,15 @@ export function createShotInfo(bus) {
       if (ev.kind !== 'he_splash') linkOpposed(ev.attackerId, ev.targetId);
     }
     if (playerId == null) return;
+    // spotting assist (r3): ally (non-player) damage on an enemy the PLAYER
+    // lit within the last ASSIST_WINDOW_S — summed only from resolved events
+    // (damage from the payload, the spot edge from the sim's tank:spotted)
+    if (ev.attackerId !== playerId && ev.targetId !== playerId
+        && (ev.damage || 0) > 0 && spotWindow.has(ev.targetId)
+        && (ev.timeS || 0) - spotWindow.get(ev.targetId) <= ASSIST_WINDOW_S
+        && sideOf(ev.attackerId) === 'ally') {
+      stats.assist += ev.damage || 0;
+    }
     if (ev.attackerId === playerId && ev.targetId && ev.targetId !== playerId) {
       const cls = classify(ev);
       stats.hits += 1;
@@ -1336,6 +1485,16 @@ export function createShotInfo(bus) {
     while (toastHost.firstChild) toastHost.firstChild.remove();
     // authoritative team roster when the sim provides one (additive payload)
     if (p && Array.isArray(p.roster)) endRoster = p.roster;
+    // identity hardening (r3 audit): the roster names the player — latch it
+    // in case no rendered frame ever forwarded setPlayer (headless replays)
+    if (playerId == null && endRoster) {
+      const me = endRoster.find((r) => r.isPlayer);
+      if (me && me.id != null) playerId = me.id;
+    }
+    // report header data (r3): battle duration is the payload's end-of-battle
+    // sim clock (setupBattle zeroes it), map id is an additive state.js
+    // enrichment (docs/handoff) — the header simply omits what is absent
+    endInfo = p ? { timeS: p.timeS, map: p.map || null } : null;
     pendingReport = p ? (p.result || '') : '';
     scheduleReportFlush();
   });
@@ -1368,6 +1527,10 @@ export function createShotInfo(bus) {
       combatants.clear();
       tg.clear();
       endRoster = null;
+      endInfo = null;
+      spotWindow.clear();
+      spottedSet.clear();
+      spotAttributed = false;
       Object.assign(stats, newStats());
       stats.perTarget = new Map();
       logOpen = false;

@@ -271,11 +271,12 @@ const HUD_CSS = `
 .cot-top .wedge.r i.on{background:rgba(242,110,100,.95);border-color:rgba(242,110,100,.95);
   box-shadow:0 0 4px rgba(240,90,90,.35);}
 @keyframes cotChipIn{from{opacity:0}to{opacity:1}}
-/* net/perf readout (WoT battle constant): fps + ping tokens, top-left corner
-   — r7: muted letterspaced caps with tabular digits (HUD label style) */
-.cot-net{position:absolute;top:5px;left:10px;font-size:11px;font-weight:700;
-  font-family:${FONT_COND};font-stretch:condensed;letter-spacing:.11em;
-  color:#c8d4de;opacity:.55;font-variant-numeric:tabular-nums;line-height:1;
+/* net/perf readout (WoT battle constant): fps + ping tokens — r8: TOP-RIGHT
+   corner at 10px/0.6 alpha (WoT's placement); parked top-left at full HUD
+   weight it read as a dev overlay burned into the frame */
+.cot-net{position:absolute;top:5px;right:10px;font-size:10px;font-weight:700;
+  font-family:${FONT_COND};font-stretch:condensed;letter-spacing:.1em;
+  color:#c8d4de;opacity:.6;font-variant-numeric:tabular-nums;line-height:1;
   text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.85);}
 .cot-ear{position:absolute;top:52px;width:194px;display:flex;flex-direction:column;gap:1px;}
 .cot-ear.l{left:0;}
@@ -423,8 +424,6 @@ const HUD_CSS = `
   box-shadow:0 1px 3px rgba(0,0,0,.8);position:relative;}
 .cot-hpb .fl{height:100%;background:linear-gradient(180deg,#ff7a6e,#d63a30);transition:width .15s linear;}
 .cot-hpb.ally .fl{background:linear-gradient(180deg,#9df09d,#3fae3f);}
-.cot-hpb .sg{position:absolute;inset:0;
-  background:repeating-linear-gradient(90deg,transparent 0 12px,rgba(5,7,9,.85) 12px 13px);}
 /* over-target marker (WoT aiming loop): shown for the enemy vehicle sitting
    under the gun — nickname, tier + vehicle, segmented HP bar with numerals.
    FREE-FLOATING shadowed text, NO card background or border (r3: the old
@@ -447,13 +446,14 @@ const HUD_CSS = `
   font-family:${FONT_COND};font-stretch:condensed;text-transform:uppercase;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   text-shadow:0 1px 2px rgba(0,0,0,.75),0 0 6px rgba(0,0,0,.5);}
-.cot-tgt .tr{height:5px;margin:4px 14px 0;background:rgba(4,6,8,.88);
-  border:1px solid rgba(0,0,0,.9);position:relative;
+/* r8: CONTINUOUS HP bar with a 1px dark inset around the fill (WoT) — the
+   repeating 10-tick segment overlay read as a Battlefield ammo gauge */
+.cot-tgt .tr{height:7px;margin:4px 14px 0;background:rgba(4,6,8,.88);
+  border:1px solid rgba(0,0,0,.9);padding:1px;position:relative;
   box-shadow:0 1px 3px rgba(0,0,0,.7);}
 .cot-tgt .fl{height:100%;background:linear-gradient(180deg,#ff7a6e,#d63a30);}
-.cot-tgt .sg{position:absolute;inset:0;
-  background:repeating-linear-gradient(90deg,transparent 0 12px,rgba(5,7,9,.85) 12px 13px);}
-.cot-tgt .hp{font-size:10px;font-weight:700;color:#f6cfc8;margin-top:2px;
+/* r8: WHITE HP numerals (WoT) — the salmon-pink figures read as damage text */
+.cot-tgt .hp{font-size:10px;font-weight:700;color:rgba(255,255,255,.9);margin-top:2px;
   font-family:${FONT_COND};font-stretch:condensed;font-variant-numeric:tabular-nums;
   letter-spacing:.05em;
   text-shadow:0 1px 2px rgba(0,0,0,.75),0 0 6px rgba(0,0,0,.5);}
@@ -483,12 +483,16 @@ const HUD_CSS = `
    sim says the player is concealed (in bush / high camo), faint neutral
    outline while merely exposed. The player's OWN concealment is not secret —
    only the spotted state stays behind the 3 s lamp gate.
-   r7 MAJOR: no box, no chrome — a bare LAMP glyph perched on the damage
-   panel's top edge (setDamagePanel re-parents it), like WoT's lamp sitting
-   with the panel instead of a detached grey slot floating beside it. */
+   r7 MAJOR: the lamp perches on the damage panel's top edge (setDamagePanel
+   re-parents it). r8: it perches ON A CHIP — a small dark tab growing off
+   the panel's top-left border, so the glyph is grouped with the instrument
+   instead of floating unanchored in empty screen space. */
 .cot-camoind{position:absolute;bottom:150px;left:14px;width:46px;height:40px;
   display:flex;align-items:center;justify-content:center;pointer-events:none;}
-.cot-camoind.onpanel{left:2px;top:-45px;bottom:auto;}
+.cot-camoind.onpanel{left:-1px;top:-29px;bottom:auto;width:36px;height:29px;
+  background:linear-gradient(180deg,rgba(12,17,22,.9),rgba(8,11,15,.78));
+  border:1px solid rgba(146,164,180,.25);border-bottom:none;}
+.cot-camoind.onpanel svg{width:21px;height:21px;}
 .cot-camoind svg{display:block;flex:0 0 auto;transition:opacity .2s;
   filter:drop-shadow(0 1px 2px rgba(0,0,0,.85));}
 .cot-camoind.spotted svg{
@@ -548,7 +552,7 @@ export function initHud(bus) {
   const tgtEl = el('div', 'cot-tgt', root);
   tgtEl.innerHTML = `<div class="bk"><div class="nick"></div>` +
     `<div class="vrow"><span class="tier"></span><span class="veh"></span></div>` +
-    `<div class="tr"><div class="fl"></div><div class="sg"></div></div>` +
+    `<div class="tr"><div class="fl"></div></div>` +
     `<div class="hp"></div><div class="anch"></div></div>`;
   const tgtRefs = {
     nick: tgtEl.querySelector('.nick'), tier: tgtEl.querySelector('.tier'),
@@ -556,6 +560,7 @@ export function initHud(bus) {
     hp: tgtEl.querySelector('.hp'),
   };
   let tgtShown = false;
+  let tgtRect = null; // screen-px rect of the shown plate (sniper hairline gap)
   let aimTargetId = null;
   let lastTanksRef = null;  // roster snapshot for the forced-still target scan
   let forcedStill = false;  // true between forceAimDisplay and the next update
@@ -582,7 +587,12 @@ export function initHud(bus) {
   let netLastMs = 0;       // wall-clock of previous update (fps EMA only)
   let netEmaDt = 1 / 60;
   let netLastTxt = netEl.textContent;
+  // controls_gunnery r3 (minor): FPS/ping readout is OPT-IN via the
+  // GAMEPLAY -> Interface toggle (settings.js broadcasts 'ui:perfMeter' at
+  // boot and on change) — fresh profiles show no dev chrome.
+  let netOptIn = false;
   function updateNetReadout(timeS) {
+    if (!netOptIn) return;
     const now = performance.now();
     if (netLastMs > 0) {
       const dt = Math.min(0.25, (now - netLastMs) / 1000);
@@ -1114,9 +1124,31 @@ export function initHud(bus) {
     // full-width hairline cross: TRUE 1px hairlines (not the r5 1.6px bars
     // with a fat halo that read as a debug horizon line) from all four frame
     // edges to the dispersion circle rim — the WoT sniper sight's skeleton.
+    // r8: the hairlines also yield to the over-target plate with the same
+    // gap treatment as the circle rim — a line slicing through the enemy's
+    // name/tier text read as a rendering bug, not a sight element.
     {
       const rNow = Math.max(26, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
       const gap = rNow + 3;
+      const vRuns = [[0, cy - gap], [cy + gap, h]];
+      const hRuns = [[0, cx - gap], [cx + gap, w]];
+      const cut = (runs, a, b) => {
+        for (let i = runs.length - 1; i >= 0; i--) {
+          const [r0, r1] = runs[i];
+          if (b <= r0 || a >= r1) continue;
+          runs.splice(i, 1);
+          if (a - r0 > 1) runs.push([r0, a]);
+          if (r1 - b > 1) runs.push([b, r1]);
+        }
+      };
+      if (tgtShown && tgtRect) {
+        if (Math.abs(tgtRect.cx - cx) < tgtRect.hw + 3) {
+          cut(vRuns, tgtRect.top - 5, tgtRect.bottom + 5);
+        }
+        if (cy > tgtRect.top - 5 && cy < tgtRect.bottom + 5) {
+          cut(hRuns, tgtRect.cx - tgtRect.hw - 5, tgtRect.cx + tgtRect.hw + 5);
+        }
+      }
       for (const pass of [
         { c: 'rgba(4,7,6,0.38)', lw: 2.4 },
         { c: 'rgba(216,232,222,0.62)', lw: 1 },
@@ -1124,10 +1156,12 @@ export function initHud(bus) {
         ctx.strokeStyle = pass.c;
         ctx.lineWidth = pass.lw;
         ctx.beginPath();
-        ctx.moveTo(0, cy + 0.5); ctx.lineTo(cx - gap, cy + 0.5);
-        ctx.moveTo(cx + gap, cy + 0.5); ctx.lineTo(w, cy + 0.5);
-        ctx.moveTo(cx + 0.5, 0); ctx.lineTo(cx + 0.5, cy - gap);
-        ctx.moveTo(cx + 0.5, cy + gap); ctx.lineTo(cx + 0.5, h);
+        for (const [x0, x1] of hRuns) {
+          ctx.moveTo(x0, cy + 0.5); ctx.lineTo(x1, cy + 0.5);
+        }
+        for (const [y0, y1] of vRuns) {
+          ctx.moveTo(cx + 0.5, y0); ctx.lineTo(cx + 0.5, y1);
+        }
         ctx.stroke();
       }
     }
@@ -1225,13 +1259,27 @@ export function initHud(bus) {
   }
 
   function drawReticle(view, dt) {
-    const col = penColor(view.penRatio);
     const cx = view.cx, cy = view.cy;
     // bloom/shrink smoothing toward the target pixel radius
     const targetR = reticleTargetR(view);
     const k = 1 - Math.exp(-14 * dt);
     smoothRadPx += (targetR - smoothRadPx) * k;
-    const r = Math.max(26, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
+    let r = Math.max(26, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
+    // controls_gunnery r3 (major): the aim circle BOUNDS shell landing (WoT
+    // contract). While the barrel still points OUTSIDE the drawn circle
+    // (slew in progress / residual lay error), a converged circle plus a
+    // pen-colored cross promises an impact the gun cannot deliver — hold
+    // the circle open to at least the gun-marker offset and drop the pen
+    // coloring to neutral until the gun is physically inside the circle.
+    let gunOutside = false;
+    if (view.gunX != null && view.gunY != null) {
+      const gunOffPx = Math.hypot(view.gunX - cx, view.gunY - cy);
+      if (gunOffPx > r) {
+        gunOutside = true;
+        r = Math.min(Math.max(r, gunOffPx + 8), Math.min(w, h) * 0.46);
+      }
+    }
+    const col = penColor(gunOutside ? null : view.penRatio);
 
     // --- dispersion circle: ONE thin CONTINUOUS circle with 8 fine tick
     // marks (WoT PC's aim circle) in the fixed pale green — visually distinct
@@ -1341,15 +1389,20 @@ export function initHud(bus) {
     }
     // ready pulse (r7): the moment the reload arc closes, the center marker
     // flashes white for ~0.4 s — WoT's unmistakable "gun ready" beat.
+    // r8 MAJOR: never in a forced still — with timeS frozen the flash held at
+    // full alpha in every captured frame and painted the pen-colored marker
+    // ready-pulse WHITE (the canonical sniper shot lost its green pen read).
     if (readyPulseT >= 0) {
       const pAge = lastTimeS - readyPulseT;
       if (pAge >= 0 && pAge < 0.4) {
-        const pa = 1 - pAge / 0.4;
-        ctx.globalAlpha = 0.95 * pa;
-        ctx.strokeStyle = '#ffffff';
-        ctx.fillStyle = '#ffffff';
-        ctx.lineWidth = 3.2;
-        markerPass(false);
+        if (!forcedStill) {
+          const pa = 1 - pAge / 0.4;
+          ctx.globalAlpha = 0.95 * pa;
+          ctx.strokeStyle = '#ffffff';
+          ctx.fillStyle = '#ffffff';
+          ctx.lineWidth = 3.2;
+          markerPass(false);
+        }
       } else {
         readyPulseT = -1;
       }
@@ -1427,9 +1480,11 @@ export function initHud(bus) {
       ctx.fillStyle = PEN_RED;
       ctx.font = `700 12.5px ${FONT_COND}`;
       ctx.fillText(`PATH BLOCKED ${Math.round(view.blockedDistM)} m`, cx, cy + Math.max(58, r + 19));
-    } else if (view.atGunLimit) {
-      // controls_gunnery r2: the gun physically cannot reach the reticle
-      // (pitch clamp / muzzle-clearance floor / casemate arc)
+    } else if (view.gunLimitSpec) {
+      // r3 (gameplay_feel): label only genuine spec pins (depression/
+      // elevation/casemate) or terrain-clearance pins at range — the tint
+      // above still marks every pin, so close-range clearance pins stay
+      // quiet instead of shouting GUN LIMIT across rough ground.
       ctx.fillStyle = 'rgba(170,180,190,0.95)';
       ctx.font = `700 12.5px ${FONT_COND}`;
       ctx.fillText('GUN LIMIT', cx, cy + Math.max(58, r + 19));
@@ -1502,7 +1557,7 @@ export function initHud(bus) {
         const ally = t.team === 'player';
         const rootEl = el('div', ally ? 'cot-hpb ally' : 'cot-hpb', hpLayer);
         rootEl.innerHTML = `<div class="nm"><i class="si"></i><span></span></div>` +
-          `<div class="tr"><div class="fl"></div><div class="sg"></div></div>`;
+          `<div class="tr"><div class="fl"></div></div>`;
         if (t.spec) {
           maskIcon(rootEl.querySelector('.si'), t.spec.id, 'side_silhouette',
             ally ? PEN_GREEN : '#ff5555');
@@ -1571,6 +1626,7 @@ export function initHud(bus) {
     aimTargetId = best ? best.id : null;
     if (!best) {
       if (tgtShown) { tgtEl.style.display = 'none'; tgtShown = false; }
+      tgtRect = null;
       return;
     }
     // r5: anchor a FIXED 24px above the vehicle's screen-space top (turret
@@ -1587,6 +1643,7 @@ export function initHud(bus) {
     if (!_sVisible) {
       aimTargetId = null;
       if (tgtShown) { tgtEl.style.display = 'none'; tgtShown = false; }
+      tgtRect = null;
       return;
     }
     tgtEl.style.transform =
@@ -1599,6 +1656,12 @@ export function initHud(bus) {
     tgtRefs.hp.textContent =
       `${Math.max(0, Math.round(best.combat.hp))} / ${Math.round(best.combat.maxHp)}`;
     if (!tgtShown) { tgtEl.style.display = 'block'; tgtShown = true; }
+    // record the plate's screen rect so the sniper hairlines gap behind it
+    // (drawScope runs after this in both the live and forced-still paths)
+    tgtRect = {
+      cx: _sx, hw: 75,
+      top: _sy - 24 - (tgtEl.offsetHeight || 62), bottom: _sy - 24,
+    };
     // the ambient plate for this tank (if it was already mounted) yields
     const bar = hpPool.get(best.id);
     if (bar) bar.root.style.display = 'none';
@@ -1858,12 +1921,21 @@ export function initHud(bus) {
       }
       octx.lineCap = 'butt';
     }
-    // buildings: light footprints with a dark keyline. Small structures get a
-    // 4px floor so village clusters merge into readable town blocks instead
-    // of scattering into single-pixel white noise; the keyline only draws on
-    // footprints big enough to carry it.
+    // buildings: DARK footprints with a faint light keyline (r8 — WoT draws
+    // structures dark on its aerial tiles; the pale chips scattered through
+    // villages read as unexplained white unit markers at a glance). The
+    // per-map palette fill is darkened to ~1/3 so each biome keeps its hue
+    // (adobe stays warm, town blocks stay grey). Small structures get a 4px
+    // floor so clusters merge into readable blocks.
     if (f.buildings) {
-      octx.strokeStyle = 'rgba(24,29,36,0.8)';
+      let bFill = 'rgb(56,50,42)'; // dark grey-brown fallback
+      if (typeof pal.buildingFill === 'string' && pal.buildingFill[0] === '#' &&
+          pal.buildingFill.length === 7) {
+        const n = parseInt(pal.buildingFill.slice(1), 16);
+        bFill = `rgb(${((n >> 16) & 255) * 0.32 | 0},` +
+          `${((n >> 8) & 255) * 0.32 | 0},${(n & 255) * 0.32 | 0})`;
+      }
+      octx.strokeStyle = 'rgba(198,208,218,0.4)';
       octx.lineWidth = 0.7;
       for (const b of f.buildings) {
         const [px, py] = worldToMap(b.x, b.z);
@@ -1872,8 +1944,8 @@ export function initHud(bus) {
         octx.rotate(-(b.rot || 0));
         const bw = Math.max(4, (b.w / mapWorldSize) * MM);
         const bd = Math.max(4, (b.d / mapWorldSize) * MM);
-        octx.globalAlpha = 0.85;
-        octx.fillStyle = pal.buildingFill;
+        octx.globalAlpha = 0.9;
+        octx.fillStyle = bFill;
         octx.fillRect(-bw / 2, -bd / 2, bw, bd);
         octx.globalAlpha = 1;
         if (bw * bd >= 26) octx.strokeRect(-bw / 2, -bd / 2, bw, bd);
@@ -2004,6 +2076,15 @@ export function initHud(bus) {
   // last steady per-frame allocation in the hot loop. Jitter is deterministic
   // per id, so the memo is exact.
   const _bj = new Map(); // id -> [dx, dy]
+  // PERF r3: minimap blip record pool (see drawMinimap)
+  const _liveBlipPool = [];
+  let _liveBlipCount = 0;
+  function pushLiveBlip(x, y, yaw, fill, s, a, fixed) {
+    let b = _liveBlipPool[_liveBlipCount];
+    if (!b) { b = { x: 0, y: 0, yaw: 0, fill: '', s: 0, a: 0, fixed: false }; _liveBlipPool[_liveBlipCount] = b; }
+    b.x = x; b.y = y; b.yaw = yaw; b.fill = fill; b.s = s; b.a = a; b.fixed = fixed;
+    _liveBlipCount++;
+  }
   function blipJitter(id) {
     let v = _bj.get(id);
     if (!v) {
@@ -2047,6 +2128,12 @@ export function initHud(bus) {
     }
     const tanks = frame.tanks || [];
     const player = frame.player;
+    // player map position first — base rings fade while the arrow sits on them
+    let plMapX = NaN, plMapY = NaN;
+    if (player && player.state) {
+      const pm = worldToMap(player.state.pos.x, player.state.pos.z);
+      plMapX = pm[0]; plMapY = pm[1];
+    }
     // team bases under everything else: WoT convention — a white circle
     // outline (the base perimeter) with the team-colored flag at its center
     if (spawnFlags) {
@@ -2054,8 +2141,14 @@ export function initHud(bus) {
       // team-tinted cap fill, team-colored ring over a dark keyline, flag.
       // (The own base's white ring + weak fill used to vanish under the
       // ally blip cluster while the enemy flag read at full strength.)
+      // r8: a base OVERLAPPED by the player arrow fades to 40% so the spawn
+      // marker cluster stays readable (ring directly under the arrow at
+      // battle start made the own-base corner a busy green clump).
       for (const fl of spawnFlags) {
         const [fx, fy] = worldToMap(fl.x, fl.z);
+        const dimmed = Math.hypot(fx - plMapX, fy - plMapY) < 15;
+        mmCtx.save();
+        if (dimmed) mmCtx.globalAlpha = 0.4;
         mmCtx.strokeStyle = 'rgba(6,9,12,0.72)'; // dark keyline under the ring
         mmCtx.lineWidth = 2.8;
         mmCtx.beginPath();
@@ -2069,6 +2162,7 @@ export function initHud(bus) {
         mmCtx.fill();
         mmCtx.stroke();
         drawSpawnFlag(mmCtx, fx, fy + 3, fl.color);
+        mmCtx.restore();
       }
     }
     // enemy / ally blips (spotting-gated for live enemies)
@@ -2076,7 +2170,12 @@ export function initHud(bus) {
     // 8px screen separation before drawing (player arrow fixed, drawn last)
     // — at battle start all three ally arrows, the own-base ring and the
     // player arrow stacked into one unreadable green clump.
-    const liveBlips = [];
+    // PERF (performance_budget r3): pooled blip records — this redraw runs
+    // at 20 Hz and the array + per-blip objects were the last steady
+    // allocations in the HUD hot loop (worldToMap/blipJitter already return
+    // reused module tuples). Pool indexes are stable within one redraw.
+    _liveBlipCount = 0;
+    const liveBlips = _liveBlipPool;
     for (let i = 0; i < tanks.length; i++) {
       const t = tanks[i];
       if (!t || !t.state || t.isPlayer) continue;
@@ -2095,13 +2194,13 @@ export function initHud(bus) {
       const [jx, jy] = blipJitter(t.id);
       if (ally) {
         const [px, py] = worldToMap(t.state.pos.x, t.state.pos.z);
-        liveBlips.push({ x: px + jx, y: py + jy, yaw: t.state.yaw, fill: PEN_GREEN, s: 5, a: 0.95, fixed: false });
+        pushLiveBlip(px + jx, py + jy, t.state.yaw, PEN_GREEN, 5, 0.95, false);
         continue;
       }
       const sp = spotById.get(t.id);
       if (sp && sp.vis) {
         const [px, py] = worldToMap(t.state.pos.x, t.state.pos.z);
-        liveBlips.push({ x: px + jx, y: py + jy, yaw: t.state.yaw, fill: PEN_RED, s: 5, a: 0.95, fixed: false });
+        pushLiveBlip(px + jx, py + jy, t.state.yaw, PEN_RED, 5, 0.95, false);
       } else if (sp && sp.ever) {
         // last-known-position ghost marker (class diamond — deliberately a
         // DIFFERENT shape from the live arrows: "stale intel" at a glance)
@@ -2173,7 +2272,7 @@ export function initHud(bus) {
       mmCtx.stroke();
       // self marker: the classic WHITE hull-direction arrow (WoT self read),
       // larger than any teammate blip — FIXED anchor for the relaxation pass
-      liveBlips.push({ x: px, y: py, yaw: st.yaw, fill: '#f2f8ff', s: 6.6, a: 1, fixed: true });
+      pushLiveBlip(px, py, st.yaw, '#f2f8ff', 6.6, 1, true);
     }
     // r7: relax overlapping blips to >= 11px separation (radial nudge, the
     // player arrow never moves), clamp inside the map frame, and draw the
@@ -2182,8 +2281,8 @@ export function initHud(bus) {
     const MIN_SEP = 11;
     for (let it = 0; it < 6; it++) {
       let moved = false;
-      for (let i = 0; i < liveBlips.length; i++) {
-        for (let j = i + 1; j < liveBlips.length; j++) {
+      for (let i = 0; i < _liveBlipCount; i++) {
+        for (let j = i + 1; j < _liveBlipCount; j++) {
           const a = liveBlips[i], b = liveBlips[j];
           let dx = b.x - a.x, dy = b.y - a.y;
           const d = Math.hypot(dx, dy);
@@ -2203,7 +2302,8 @@ export function initHud(bus) {
       if (!moved) break;
     }
     let playerBlip = null;
-    for (const b of liveBlips) {
+    for (let bi = 0; bi < _liveBlipCount; bi++) {
+      const b = liveBlips[bi];
       if (!b.fixed) {
         b.x = Math.max(21, Math.min(MM - 5, b.x));
         b.y = Math.max(14, Math.min(MM - 5, b.y));
@@ -2310,6 +2410,10 @@ export function initHud(bus) {
   // Shell hotkeys route through input.js actions only (main.js emits this) —
   // the HUD renders selection state from the bus instead of its own listener.
   bus.on('ui:shellSelect', ({ slot }) => selectSlot(slot));
+  bus.on('ui:perfMeter', (p) => {
+    netOptIn = !!(p && p.on);
+    if (!netOptIn) { netEl.style.display = 'none'; netFrames = 0; }
+  });
   // Live hotkey labels — settings.js broadcasts at boot and after every
   // rebind/clear/reset, so the tray never lies about the player's keys.
   bus.on('ui:bindingsChanged', (p) => {
@@ -2388,7 +2492,7 @@ export function initHud(bus) {
   // ---------- aim view assembly ----------
   const aimView = {
     cx: 0, cy: 0, radPx: 40, penRatio: null, distM: null, blockedDistM: null,
-    gunX: null, gunY: null, atGunLimit: false,
+    gunX: null, gunY: null, atGunLimit: false, gunLimitSpec: false,
     reload: { t: 0, totalS: 1 }, zoom: 1,
   };
 
@@ -2397,6 +2501,7 @@ export function initHud(bus) {
     aimView.blockedDistM = aim.blockedDistM != null ? aim.blockedDistM : null;
     aimView.distM = aim.distM != null ? aim.distM : null;
     aimView.atGunLimit = !!aim.atGunLimit;
+    aimView.gunLimitSpec = !!aim.gunLimitSpec;
     aimView.reload = aim.reload || aimView.reload;
     aimView.zoom = aim.zoom || 1;
     aimView.gunX = null; aimView.gunY = null;
@@ -2561,8 +2666,10 @@ export function initHud(bus) {
       const slot = aim.shellSlot != null ? aim.shellSlot : localSlot;
       renderShells(lastShells, slot);
       updateShellCooldown(aim.reload, slot);
+      updateTargetPlate(); // before renderCanvas: hairlines gap around the
+                           // plate rect; before updateHpBars: the target's
+                           // ambient plate yields
       renderCanvas(dt);
-      updateTargetPlate(); // before updateHpBars: the target's plate yields
       if (camera) updateHpBars(frame);
       // PERF: the minimap is a full 2D-canvas repaint (bg blit + blips +
       // ranges); 20 Hz is visually indistinguishable for map blips. mmDirty
@@ -2614,6 +2721,13 @@ export function initHud(bus) {
       scopeFadeMs = -1; // deterministic still: scope shadow fully settled
       forced = Object.assign({}, f);
       forcedStill = true; // target plate trusts the recipe's aim state
+      // r8 MAJOR: disarm the reload-complete ready pulse and sync its edge
+      // detector to the STAGED reload — a previous view's mid-reload preset
+      // otherwise trips the edge here and the frozen-clock pulse whites out
+      // the penetration marker in every captured frame.
+      readyPulseT = -1;
+      const frl = forced.reload;
+      wasReloading = !!(frl && frl.totalS > 0 && frl.t > 0.001);
       assembleAimView(lastCamera, forced);
       // no bloom animation in a forced still — land directly on the target
       // radius (including the post-shot bloom read from the reload state)
@@ -2622,8 +2736,8 @@ export function initHud(bus) {
       const slot = forced.shellSlot != null ? forced.shellSlot : localSlot;
       renderShells(lastShells, slot);
       updateShellCooldown(forced.reload, slot);
-      renderCanvas(1);
       updateTargetPlate(); // over-target marker for the vehicle under the gun
+      renderCanvas(1);     // after the plate: hairlines gap around its rect
     },
   };
 

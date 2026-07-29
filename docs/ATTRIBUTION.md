@@ -458,10 +458,19 @@ recompressed to WebP at <=2k for the shipped copies.
 | Type 74 (`type74`) | NullOps | https://sketchfab.com/nullops (user-supplied download) | Sketchfab Standard — QUARANTINE (below) | `public/models/tanks/community/quarantine/type74-nullops.glb` | NEW playable: lights up the Japan tier-VIII tech-tree ghost (the STB-1 print base stays rejected — see the evaluation record above). Skinned rig: Tower_9 yaw / Gun_7 pitch bones. |
 | C1 Ariete (`ariete`) | DustyMojito | https://sketchfab.com/DustyMojito (user-supplied download) | Sketchfab Standard — QUARANTINE (below) | `public/models/tanks/community/quarantine/ariete-dustymojito.glb` | REPLACES the procedural C1 Ariete model (modern3.js gameplay stats unchanged). Preprocessed offline into an authored Hull/Turret split (ring-center pivot, antennas clamped); gun fused — pitch stays virtual. |
 
-Other `user-drops` candidates (`m1a2-abrams`, `abrams-x`, `bergman-pack`)
-were not part of this integration round — the m1a2-abrams CC-BY-NC-ND
-candidate is tabled in the quarantine section below; the rest stay in
-`community-candidates/` pending their own integration decisions.
+Other `user-drops` candidates (`m1a2-abrams`, `bergman-pack`) were not part
+of this integration round — the m1a2-abrams CC-BY-NC-ND candidate is tabled
+in the quarantine section below; the rest stay in `community-candidates/`
+pending their own integration decisions.
+
+REMOVED (critique round 3, content_breadth audit): the `abrams-x` candidate
+directory (`abrams-x.glb` + `RENDER.png`) was deleted from the repo. It was
+the one committed public/ asset with no ATTRIBUTION row and no
+LICENSE-RECORD.txt: the re-exported GLB embeds no provenance (Blender I/O
+generator only), no source archive remains, and the decimated mesh cannot be
+face-count-matched to a Sketchfab source honestly. It was referenced nowhere
+in src/, tools/ or index.html (pure shelf-ware). It can return if the user
+re-supplies the original download with provenance verified at download time.
 
 ### User drops wave 2 (batch `user-drops-recovered`, integrated 2026-07-28) — 7 winners
 

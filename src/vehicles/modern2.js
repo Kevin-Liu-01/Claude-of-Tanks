@@ -562,7 +562,7 @@ function buildLeo2A4(P) {
     style: 'rubber', wheelR: 0.35, wheelW: 0.22, xc: 1.55,
     wheelZs: [2.95, 2.0, 1.25, 0.28, -0.69, -1.66, -2.63],
     sprocket: { z: -3.5, y: 0.46, r: 0.34 }, idler: { z: 3.45, y: 0.44, r: 0.32 },
-    trackW: 0.635, topY: 0.92, paintedEnds: true,
+    trackW: 0.635, topY: 0.92, paintedEnds: true, coveredTop: true,
   });
   P.decal('turret', 'crossgrey', null, 0.36, [1.21, 0.40, -0.6], Math.PI / 2);
   P.decal('turret', 'crossgrey', null, 0.36, [-1.21, 0.40, -0.6], -Math.PI / 2);
@@ -676,7 +676,8 @@ function buildT80U(P) {
     wheelZs: [2.45, 1.47, 0.49, -0.49, -1.47, -2.45],
     sprocket: { z: -3.0, y: 0.52, r: 0.27 }, idler: { z: 2.95, y: 0.50, r: 0.25 },
     rollers: [1.85, 0.95, 0, -0.95, -1.85].map((z) => ({ z, y: 0.92, r: 0.08 })),
-    trackW: 0.60, topY: 0.86, arms: true, paintedEnds: true,
+    // r3: §15.5 rubber skirts cover the return run — no horn comb.
+    trackW: 0.60, topY: 0.86, arms: true, paintedEnds: true, coveredTop: true,
   });
   // ---- Kontakt-5 brick clusters (strippable) --------------------------------
   const t80GlacisZ = (y) => 1.86 + (1.38 - y) * 2.75 + 0.05;

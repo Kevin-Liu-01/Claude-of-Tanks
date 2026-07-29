@@ -38,8 +38,13 @@ export default {
   },
 
   splat: {
-    grassTone: (h, s, l) => [0.094, 0.36, clamp01(0.24 + l * 1.08)], // r7: -7% (pairs with sun 4.15)
-    dirtTone: (h, s, l) => [0.083, 0.34, clamp01(l * 1.3 + 0.05)],
+    // r3 (content_breadth): sand albedo CAP dropped (0.24+1.08l could hit
+    // ~1.0 — real sand albedo is ~0.4, and an albedo-1.0 layer under the
+    // hottest sun in the game tonemapped the whole midfield to one blown
+    // cream void). 0.20+0.86l tops out ~0.82: still clearly sun-hammered,
+    // but dune-face shading and the macro tints below survive to screen.
+    grassTone: (h, s, l) => [0.096, 0.40, clamp01(0.20 + l * 0.86)],
+    dirtTone: (h, s, l) => [0.083, 0.38, clamp01(l * 1.12 + 0.04)],
     // r7: R layer is the dedicated stratified-sandstone painter — authored
     // already-red, so no retint hook (the old s*3.2 hook targeted the grey
     // generic rock and would push the beds to neon)
@@ -55,7 +60,12 @@ export default {
     rockTone: (h, s, l) => [h, clamp01(s * 0.55), clamp01(0.53 + (l - 0.5) * 0.70)],
     mudTone: (h, s, l) => [0.078, 0.30, clamp01(l * 1.5 + 0.04)], // cracked dry clay
     mudRough: 1.15,
-    tintA: [1.10, 1.02, 0.85], tintB: [0.94, 0.89, 0.79], tintC: [1.12, 1.06, 0.90],
+    // r3 (content_breadth): tintB pushed to a REAL darkener (0.94 -> 0.84
+    // peak) — the three macro tints were all within ~8% of unity, so at
+    // 300-800 m (where every distance-faded detail pass is gone) the flats
+    // rendered as one continuous tone. Darker sabkha/gravel patches at the
+    // ~230 m noise scale are what keep the open erg readable at range.
+    tintA: [1.07, 1.00, 0.84], tintB: [0.84, 0.78, 0.67], tintC: [1.09, 1.03, 0.88],
     // r5: darker packed track — the old near-sand tint made the desert road a
     // faint smear across the dunes
     roadTint: [0.94, 0.87, 0.76],
@@ -67,15 +77,25 @@ export default {
     // r1 (content_breadth): 0.15 -> 0.10 — pairs with the compressed bed
     // contrast above; the shader bands only whisper at range now
     strata: 0.10,
-    microAmp: 0.3,          // tame the near-field dot speckle (ripples instead)
+    microAmp: 0.38,         // tame the near-field dot speckle (ripples instead)
     rippleDir: [0.8, 0.6],  // global wind direction for the sand ripples
     // r7: 0.26 -> 0.34 — with the darker sand albedo the dune-face ripple
     // waves must carry the directional detail in the sunlit center valley
-    rippleAmp: 0.34,
+    // r3 (content_breadth): 0.34 -> 0.55 — the foreground/mid dune faces
+    // still read felt-smooth in the establishing shot; the darker albedo cap
+    // above buys the headroom for a stronger anisotropic wave without the
+    // old moire risk (the >300 m fade + rMod gate in terrain.js still hold)
+    rippleAmp: 0.55,
     // bright low-sun sand turned the shared mid-frequency normal dapple into
     // a leopard-spot shadow field across the whole foreground — run it low
     // and let the wind ripples carry the mid-range surface interest
-    midRelief: 0.3,
+    // r3 (content_breadth): 0.3 -> 0.55 + midReliefFar 820 — the shared
+    // dapple band died at 480 m, exactly where the critique's "textureless
+    // cream void" begins; with the sand no longer on the tonemap shoulder
+    // the dapple reads as dune mottle, not leopard spots. midReliefFar is
+    // consumed by the terrain.js splat shader (uMidFar, landed r3).
+    midRelief: 0.55,
+    midReliefFar: 820,
   },
 
   vegetation: {
@@ -93,6 +113,10 @@ export default {
     clusterCount: 27,
     loneCount: 30,
     rimCount: 22,
+    // terrain_environment r3: dense understory scrub INSIDE the oases — the
+    // palm clusters stood as bare sticks on clean sand (vegetation.js
+    // clusterScrub: >1 puts ~55% of the shrubs at the trunk bases)
+    clusterScrub: 2.3,
     // r6: 0.3 -> 0.42 — compensates the stricter two-scale thicket gating so
     // scrub concentrates into dense wadis instead of thinning out overall
     grassDensity: 0.42,
@@ -164,7 +188,10 @@ export default {
       [-46, 76, -12, 76, 1],
     ],
     well: true, hayCrates: true, fences: false, telegraph: false, carts: true, logs: false,
-    haystacks: 0, rocks: 210, outcrops: 24, craters: 18, rubblePiles: 0,
+    // r3: craters 18 -> 30, +1 wreck — more battle scarring/track marks to
+    // break the open bowl between the landforms
+    haystacks: 0, rocks: 210, outcrops: 24, craters: 30, rubblePiles: 0,
+    wrecks: 5,
   },
 
   horizon: {
@@ -186,7 +213,14 @@ export default {
     // past ~40% frame height in the establishing shot washed to one blown
     // cream tone; the lighter haze keeps dune-shadow value separation alive
     // through the midground while the warm tint still sells the heat
-    fogDensity: 0.00066, fogTintHex: 0xc7ac85, fogMix: 0.72, envIntensity: 0.22,
+    // r3 (content_breadth): 0.00066 -> 0.00047 and fogMix 0.72 -> 0.60 —
+    // even after the r1 cut the warm haze still laid a cream veil over
+    // everything past ~250 m and compounded the albedo blow-out (the
+    // map-picker thumbnail, rendered before fog thickens with distance,
+    // showed visibly richer sand than the live establishing shot). The mie
+    // sky + warm fog tint keep the heat identity; the veil no longer eats
+    // the midfield value range.
+    fogDensity: 0.00047, fogTintHex: 0xc7ac85, fogMix: 0.60, envIntensity: 0.22,
     cloudOpacity: 0.35, cloudOpacity2: 0.18, cloudTintHex: 0xfff2df,
     // lighting_post r4: sun 4.9 → 4.15 — the hottest sun in the game over the
     // brightest albedo pushed open sand to ~1.5 linear, high on the ACES
@@ -198,7 +232,16 @@ export default {
     // the lighting_post r8 global exposure raise (renderer 1.16 -> 1.20,
     // grade contrast 1.36): the brightest-albedo map must come down a notch
     // so midground dune faces keep readable shading instead of blowing out
-    sunIntensity: 3.55, sunColorHex: 0xffe9c2, hemiIntensity: 0.34,
+    // r3 (content_breadth): 3.55 -> 3.30 and hemi 0.34 -> 0.30 — final step
+    // of the wash-out fix: pairs with the 0.82 albedo cap + fog cut so open
+    // sand sits ~0.9-1.1 linear (texture survives ACES) while dune shadow
+    // sides keep a full stop of separation.
+    sunIntensity: 3.30, sunColorHex: 0xffe9c2, hemiIntensity: 0.30,
+    // lighting_post r3 (round 3): per-map display exposure trim (post.js
+    // uExposure). 0.93 (not the 0.88 the LP probe used) because the r3
+    // content_breadth sun/fog/albedo retune above already pulls sand
+    // midtones down — together they land dune relief in the readable band.
+    postExposure: 0.93,
   },
 
   minimap: {

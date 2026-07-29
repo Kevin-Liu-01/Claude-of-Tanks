@@ -1111,7 +1111,7 @@ const COMMUNITY_SPECS = {
   },
 
   recon_tank: {
-    id: 'recon_tank', name: 'Recon Tank', nation: 'Community', era: 'modern', class: 'light',
+    id: 'recon_tank', name: 'Recon Tank (Mophs)', nation: 'Community', era: 'modern', class: 'light',
     community: {
       author: 'Mophs (base mesh: MNDV.ecb / Eric Buisson)',
       source: 'https://opengameart.org/content/recon-tank-update',
@@ -1665,6 +1665,10 @@ export const MODEL_SOURCE = {
       path: '/models/tanks/m1a2_sepv3_dannzjs.glb',
       turretNode: 'TurretPivot',
       gunNode: 'GunPivot',
+      // PERF (performance_budget r3): closeup-contract hero — keeps 2048
+      // color maps at import; every other GLB caps at 1024 (modelLoader
+      // capGlbSceneTextures, frozen 512 MB scene-texture gate).
+      heroTex: true,
     },
   },
   t90m: { source: 'procedural' },

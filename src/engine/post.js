@@ -29,8 +29,15 @@ import { getPreset, onPresetChange } from './quality.js';
 // bloom blobs"): strength 0.34 → 0.20 and radius 0.4 → 0.28 so bloom is a
 // tight halo around genuinely hot pixels instead of a wide gaussian smear
 // that erases the flash's internal core/spike structure.
-const BLOOM_STRENGTH = 0.20;
-const BLOOM_RADIUS = 0.28;
+// r3 ("emissive events barely bloom: the fireball leaves almost no halo and
+// the flash core is a pea-sized orb"): 0.20/0.28 starved true emissives.
+// Strength 0.20 → 0.30 and radius 0.28 → 0.34 restore a readable hot-source
+// halo; the r5 "structureless gaussian blobs" failure cannot return because
+// (a) the high-pass input stays clamped (BLOOM_INPUT_CLAMP) so halo energy is
+// bounded, and (b) the 1.78 threshold still fences everything but genuinely
+// hot cores — the halo hugs the fire instead of swallowing the frame.
+const BLOOM_STRENGTH = 0.30;
+const BLOOM_RADIUS = 0.34;
 // With the rebalanced ambient (sky.js ENV_INTENSITY 0.45, hemi 0.26) diffuse
 // surfaces top out well under 1.0 in the linear HDR buffer, so the threshold
 // keeps bloom off walls/terrain AND off the near-sun horizon band, while the
@@ -51,7 +58,10 @@ const BLOOM_THRESHOLD = 1.78;
 // The fx fireball reaches 5-20 in the HDR buffer; unclamped, UnrealBloom
 // smears it into a full-frame white-out. Clamping the high-pass input keeps
 // hot sources glowing (flash spikes, tracers, fire) without flooding.
-const BLOOM_INPUT_CLAMP = 2.0;
+// r3: 2.0 → 2.6 — with the deeper emissive shoulder the fire core's HDR
+// headroom (up to ~5.15) must reach the bloom pass or the halo cannot scale
+// with core heat; still far below the 5-20 raw stack values that flooded.
+const BLOOM_INPUT_CLAMP = 2.6;
 const HIGH_PASS_ANCHOR = 'gl_FragColor = mix( outputColor, texel, alpha );';
 // AO radius must be vehicle-scale (~1 m) to ground hulls/building bases;
 // 0.3 m read as nothing at gameplay camera distances. r3: radius 1.0 → 1.3,
@@ -161,7 +171,11 @@ const AERIAL_SUN_POW = 5.0; // width of the warm forward-scatter lobe
 // ~200-205 with its hue clearly legible — atmosphere, not blowout. Paired
 // with sky.js HAZE_MAX_LUM 0.56 -> 0.50 and HORIZON_LUM_CAP 0.55 -> 0.48 so
 // all three haze sources agree on the same sub-white ceiling.
-const AERIAL_HAZE_LUM_CAP = 0.44;
+// r3 ("mesa backdrop ~90% swallowed by a pink haze band"): 0.44 → 0.41,
+// paired with sky.js HORIZON_LUM_CAP 0.48 → 0.45 — the scatter-in target
+// drops another step below white so far mesas/ridges keep silhouette value
+// against the band instead of dissolving into it.
+const AERIAL_HAZE_LUM_CAP = 0.41;
 // r9 SNIPER DE-HAZE: main.js already scales the FogExp2 density down at high
 // zoom (fov < 15), but the aerial pass kept FULL density, so the x8 sight
 // picture stayed a desaturated teal wash — a 450 m hillside at x8 subtends
@@ -184,7 +198,12 @@ const AERIAL_ZOOM_FLOOR = 0.26; // density multiplier floor at max zoom
 const AERIAL_DETAIL_FOV = 20; // deg — detail fades in below this FOV
 const AERIAL_DETAIL_NEAR = 150; // m — never touches gameplay-range geometry (hud_ui r6: was 180)
 const AERIAL_DETAIL_FAR = 380; // m — full strength by here (hud_ui r6: was 430)
-const AERIAL_DETAIL_AMP = 0.30; // peak luminance modulation (+/-15%) (hud_ui r6: was 0.24)
+// r3 ("mid hill shows blue mottled smearing" at x8): amp 0.30 → 0.26 and the
+// octave scales tightened below (23/6.1/1.9 m → 15/4.6/1.6 m) — the old
+// largest octave modulated ~23 m patches, which at x8 subtend a third of the
+// frame and read as blotch, not canopy texture; finer octaves read as forest
+// grain at scope magnification.
+const AERIAL_DETAIL_AMP = 0.26; // peak luminance modulation (+/-13%)
 // r9 PRE-TONEMAP EMISSIVE SHOULDER ("fireball core is fully clipped: flat
 // blown white-yellow disc — the tonemapper has no highlight shoulder on
 // emissives"): the additive fire/flash sprite stacks reach 5-20 in linear
@@ -199,7 +218,11 @@ const AERIAL_DETAIL_AMP = 0.30; // peak luminance modulation (+/-15%) (hud_ui r6
 // tonemaps to ~0.92 so hot cores stay hot, and still crosses the 1.78 bloom
 // threshold so fire/flash keep their halo.
 const EM_SHOULDER_START = 1.55;
-const EM_SHOULDER_RANGE = 3.0; // asymptote = START + RANGE
+// r3: 3.0 → 3.6 (asymptote 5.15) — fire cores keep more HDR separation above
+// the bloom threshold so the halo brightness tracks the core instead of every
+// hot pixel compressing into the same 3.1-3.8 band. ACES(5.15 x 1.16) ~ 0.95
+// display: still no clipped-white plateau.
+const EM_SHOULDER_RANGE = 3.6; // asymptote = START + RANGE
 
 const AerialShader = {
   name: 'AerialPerspectiveShader',
@@ -302,9 +325,9 @@ const AerialShader = {
             // slope-aware planar coords: xz carries flat ground, the y term
             // keeps texture alive on the near-vertical horizon-ring faces
             vec2 dp = wp.xz + vec2( wp.y * 0.85, wp.y * 0.37 );
-            float dn = vnoise( dp * ( 1.0 / 23.0 ) ) * 0.55
-                     + vnoise( dp * ( 1.0 / 6.1 ) + vec2( 7.3, 2.9 ) ) * 0.30
-                     + vnoise( dp * ( 1.0 / 1.9 ) + vec2( 3.1, 9.7 ) ) * 0.15;
+            float dn = vnoise( dp * ( 1.0 / 15.0 ) ) * 0.50
+                     + vnoise( dp * ( 1.0 / 4.6 ) + vec2( 7.3, 2.9 ) ) * 0.32
+                     + vnoise( dp * ( 1.0 / 1.6 ) + vec2( 3.1, 9.7 ) ) * 0.18;
             texel.rgb *= 1.0 + ( dn - 0.5 ) * ${AERIAL_DETAIL_AMP.toFixed(3)} * dw;
           }
         }
@@ -391,7 +414,12 @@ const GRADE_VIGNETTE = 0.26; // 0.27 stacked with foreground canopy shadow into 
 // frames under smoke/haze keep a true display-black anchor (the r2 critique's
 // "lifted blacks" veil read).
 const GRADE_BLACK_LIFT = 0.015;
-const GRADE_KNEE = 0.86; // display-space luma where the highlight shoulder starts
+// r3 ("desert is exposure-blown: sand midtones near RGB 245, dune relief
+// unreadable"): knee 0.86 → 0.82 — the rational shoulder starts a step lower
+// so the sand/snow top-end re-spreads into readable texture; paired with the
+// earlier high-luma contrast taper below (0.60 → 0.52) and the per-map
+// uExposure trim (sky preset `postExposure`, e.g. desert 0.88).
+const GRADE_KNEE = 0.82; // display-space luma where the highlight shoulder starts
 // (r9: the linear GRADE_KNEE_SLOPE 0.55 knee was replaced by a rational
 // shoulder in the shader — see the "soft highlight shoulder" note there.)
 // Warm afternoon balance, matching the sun key instead of fighting it.
@@ -450,6 +478,12 @@ const GradeShader = {
     uShadowTint: { value: new THREE.Vector3(...GRADE_SHADOW_TINT) },
     uHighTint: { value: new THREE.Vector3(...GRADE_HIGH_TINT) },
     uGreenWarm: { value: new THREE.Vector3(...GRADE_GREEN_WARM) },
+    // r3 per-map display exposure trim: driven per frame from
+    // scene.userData.postExposure (written by sky.js applyPreset from the
+    // map preset's `postExposure`, default 1.0). Multiplies BEFORE the
+    // grade's contrast/knee so a -0.2 EV desert trim re-seats sand midtones
+    // into the readable band instead of just dimming the final image.
+    uExposure: { value: 1 },
     uScope: { value: 0 }, // 0 = arcade, 1 = sniper (eased by render())
     // r4: zoom-scaled center unsharp while scoped — the x8 picture magnifies
     // terrain/horizon texels far past their mip frequency and the far field
@@ -474,6 +508,7 @@ const GradeShader = {
     uniform vec3 uShadowTint;
     uniform vec3 uHighTint;
     uniform vec3 uGreenWarm;
+    uniform float uExposure;
     uniform float uScope;
     uniform float uSharp;
     uniform float uAspect;
@@ -511,6 +546,8 @@ const GradeShader = {
         }
       }
       vec3 col = texel.rgb;
+      // per-map display exposure trim (sky preset postExposure, default 1.0)
+      col *= uExposure;
       // fixed warm white balance — identical for every camera/shot
       col = clamp( col * uBalance, 0.0, 1.0 );
       // warm the terrain/foliage greens only (green-dominant pixels): unifies
@@ -541,7 +578,7 @@ const GradeShader = {
       // band while brights keep their measured level and texture.
       col = max( col - vec3( uBlack ), vec3( 0.0 ) );
       float cLuma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
-      float cGain = uContrast - ( uContrast - 1.0 ) * smoothstep( 0.60, 0.95, cLuma );
+      float cGain = uContrast - ( uContrast - 1.0 ) * smoothstep( 0.52, 0.90, cLuma );
       col = clamp( mix( vec3( ${GRADE_PIVOT.toFixed(3)} ), col, cGain ), 0.0, 1.0 );
       // split-tone: cool shadows / warm highlights, keyed on luminance
       float luma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
@@ -848,6 +885,9 @@ export function createPost(renderer, scene, camera) {
         aerial.uniforms.uDetailW.value = THREE.MathUtils.clamp(
           (AERIAL_DETAIL_FOV - camera.fov) / (AERIAL_DETAIL_FOV - 8), 0, 1);
       }
+      // per-map display exposure trim (sky.js applyPreset publishes the
+      // active preset's postExposure on scene.userData; default 1.0)
+      grade.uniforms.uExposure.value = scene.userData.postExposure || 1;
       // scope treatment follows the rig's live scoped flag (snapSniper sets
       // it too, so harness captures get the exact same treatment). Eased
       // over ~5 frames so live scope-in reads as a transition, not a pop;

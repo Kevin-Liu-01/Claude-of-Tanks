@@ -288,6 +288,16 @@ export function createHeightField(seed = 1337, cfg = null) {
       micro *= (1 - cw * 0.55) * (1 - vm) * (1 - marshW) * T.microScale;
       h += micro;
     }
+    // r3 terrain_environment: near-field micro-relief — 3-8 m humps, scrapes
+    // and settling (~10-25 cm) so the ground stops reading as a smooth
+    // blanket under every prop and tank. Small enough not to disturb play;
+    // suppressed in the village and softened in marshes. Roads/pads flatten
+    // over it via their blends below.
+    {
+      const m1 = noi.noise(x * 0.143 + 88, z * 0.143 - 141);
+      const m2 = noi.noise(x * 0.317 - 260, z * 0.317 + 33);
+      h += (m1 * 0.16 + m2 * 0.07) * (1 - vm) * (1 - marshW * 0.7) * T.microScale;
+    }
     const rim = smoothstep(430, HALF, Math.max(Math.abs(x), Math.abs(z)));
     h += rim * rim * T.rimH;
     // frozen/ice lakes: pull the terrain to a flat sheet at the lake level.
@@ -317,6 +327,16 @@ export function createHeightField(seed = 1337, cfg = null) {
       // wide feather: the roadbed melts into the terrain instead of sitting
       // proud on an embankment shelf
       if (rd < 14) h += (gridSample(gRoadElev, x, z) - h) * (1 - smoothstep(3.8, 14, rd));
+      // r3 terrain_environment: roadside berm + drainage ditch profile — a
+      // low graded shoulder hump (~25 cm) and a shallow ditch beyond it,
+      // both wandering in strength along the road, so the carriageway reads
+      // built into the landscape instead of painted onto a smooth blanket
+      if (rd > 4 && rd < 22) {
+        const bermA = 0.5 + 0.5 * noi.noise(x * 0.031 + 71, z * 0.031 - 44);
+        const berm = Math.exp(-(((rd - 7.0) / 1.9) ** 2)) * 0.26 * bermA;
+        const ditch = -Math.exp(-(((rd - 11.5) / 2.4) ** 2)) * 0.20 * (1 - bermA * 0.5);
+        h += (berm + ditch) * (1 - vm) * (1 - marshW);
+      }
     }
     return h;
   }
@@ -712,8 +732,12 @@ function makeIceLayer(seed, anisotropy) {
       // slightly-blue snow patch; darker clear-ice fields (0.58 base, deeper
       // 0.19 depth drop) separate ICE from the 0.8+ snow albedo around it
       // while staying grey enough to sit under the overcast sky
-      _col.setHSL(0.548 + depth * 0.012, 0.035 + deep * 0.045,
-        0.58 - deep * 0.19 + fine * 0.03);
+      // terrain_environment r3: darker still (0.44 base, 0.24 drop) with a
+      // touch more blue-green — the sheet needs real VALUE separation from
+      // the snowfield so the new fresnel sky sheen has something to play
+      // against; at 0.58 it read as a pale stain with no material identity
+      _col.setHSL(0.535 + depth * 0.015, 0.055 + deep * 0.06,
+        0.44 - deep * 0.24 + fine * 0.03);
       base.data[j] = _col.r * 255; base.data[j + 1] = _col.g * 255; base.data[j + 2] = _col.b * 255;
       base.data[j + 3] = 255;
     }
@@ -1035,6 +1059,9 @@ uniform vec3 uTintA, uTintB, uTintC, uRoadTint;
 uniform float uMarshGloss;
 uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uIceDrift, uMidRelief, uFieldPatch;
 uniform vec3 uRipple; // xy = wind dir, z = ripple normal amplitude
+uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
+uniform vec3 uIceSky;     // r3: fresnel sky tint reflected by clear lake ice
+uniform float uMidFar;    // r3: far edge of the mid-relief dapple band (m)
 vec3 gSplatAlbedo; float gSplatRough; vec3 gSplatNrm; float gSplatFar; float gSplatSteepAtt;
 // r7 axis-triplanar wall basis (set in splatCompute): two FIXED world-axis
 // projections + a pow-sharpened blend weight. The r6 tangent projection built
@@ -1258,7 +1285,9 @@ void splatCompute() {
   // SMOOTH noise field gradient (texture normals reused at giant scales read
   // as scratch marks), so the midground never collapses into smooth felt
   {
-    float dMid = smoothstep(20.0, 55.0, effDist) * (1.0 - smoothstep(220.0, 480.0, effDist));
+    // r3: far edge is per-map (uMidFar; desert extends it to ~820 m so the
+    // dapple carries the open erg past the old 480 m cutoff)
+    float dMid = smoothstep(20.0, 55.0, effDist) * (1.0 - smoothstep(uMidFar * 0.46, uMidFar, effDist));
     vec2 uvA = uv * 0.017;
     float ha = texture2D(uNoise, uvA).r;
     vec2 ga = vec2(texture2D(uNoise, uvA + vec2(0.006, 0.0)).r - ha,
@@ -1353,6 +1382,37 @@ void splatCompute() {
                   * (1.0 - smoothstep(110.0, 300.0, camDist)) * rMod)
               * uRipple.z * (1.0 - fR);
     n.xy += uRipple.xy * rw;
+    // r3 terrain_environment: DUNE BEDFORMS that survive the establishing
+    // shot. Both ripple octaves above die by 300 m, so the whole central
+    // bowl rendered as one blown cream sheet from the wide camera. A ~26 m
+    // wind-transverse wave carried in ALBEDO (normals mip away out there):
+    // shadowed slip faces vs lit crests, amplitude wandering on a ~150-300 m
+    // field so the waves read as dune trains, not corduroy. Ramps IN past
+    // 60 m (the fine ripples own the near field) and never fades out.
+    float bedPhase = rphase * 0.24 + texture2D(uNoise, uv * 0.0021 + vec2(0.19, 0.57)).g * 5.0;
+    float bedMod = smoothstep(0.30, 0.72, texture2D(uNoise, uvW * 0.0035 + vec2(0.67, 0.23)).r);
+    float bed = sin(bedPhase);
+    float bedW = min(uRipple.z * 2.2, 1.0) * bedMod * (1.0 - fR) * (1.0 - roadCore)
+               * smoothstep(60.0, 170.0, effDist);
+    a.rgb *= 1.0 + bed * 0.105 * bedW;
+    n.xy += uRipple.xy * bed * 0.5 * bedW;
+  }
+  // r3 terrain_environment: desert macro sheet variation — the bowl between
+  // the mesas was near-uniform pale cream at establishing range. Broad
+  // (~120-400 m) warped fields: darker granular gravel-lag basins and pale
+  // wind-scoured sheets, gated off rock/road so the landforms keep their own
+  // material response.
+  if (uSandMacro > 0.001) {
+    float smA = texture2D(uNoise, uvW * 0.0024 + vec2(0.13, 0.83)).r;
+    float smB = texture2D(uNoise, uvW * 0.0009 + vec2(0.77, 0.31)).g;
+    float openW = (1.0 - fR) * (1.0 - roadCore) * (1.0 - steepW) * uSandMacro;
+    float gravelW = smoothstep(0.56, 0.82, smA + (n1 - 0.5) * 0.24) * openW;
+    float grainG = texture2D(uNoise, uv * 0.11 + vec2(0.41, 0.09)).r;
+    vec3 gravelCol = a.rgb * vec3(0.80, 0.755, 0.70) * (0.90 + grainG * 0.20);
+    a.rgb = mix(a.rgb, gravelCol, gravelW * 0.8);
+    a.a = mix(a.a, max(a.a, 0.92), gravelW * 0.5); // lag surfaces run matte
+    float scourW = smoothstep(0.60, 0.90, smB) * openW * (1.0 - gravelW);
+    a.rgb = mix(a.rgb, a.rgb * vec3(1.055, 1.035, 1.0), scourW * 0.55);
   }
   // 0-48 m detail pass: layered micro normals + albedo speckle + road gravel
   float dNear = 1.0 - smoothstep(18.0, 48.0, camDist);
@@ -1474,6 +1534,19 @@ void splatCompute() {
         a.rgb *= 1.0 + max(ridge, 0.0) * 0.07;
       }
     }
+    // r3 terrain_environment: FRESNEL sky sheen on clear ice — the sheet had
+    // no view-dependent response at all and read as a flat blue stain. At the
+    // near-grazing establishing camera the clear-ice fields now pick up the
+    // cold sky tint (drifted snow stays matte), which together with the
+    // lowered roughness floor below gives the lake a real ice identity.
+    // (first cut at 0.55 toward a bright tint WASHED the sheet whiter than
+    // the snow — the sheen must stay a cool mid-tone glaze over DARK ice)
+    {
+      vec3 vDirIce = normalize(cameraPosition - wp);
+      float fresI = pow(1.0 - clamp(dot(vDirIce, wn), 0.0, 1.0), 3.0);
+      float clearIce = fM * (1.0 - driftW);
+      a.rgb = mix(a.rgb, uIceSky, fresI * clearIce * 0.30);
+    }
   }
   // r7: the unconditional macro term reads the PLANAR n2 field — degenerate
   // down vertical faces, it printed full-height value stripes (taffy smear);
@@ -1569,7 +1642,12 @@ void splatCompute() {
       vec3 e2 = cross(e1, wn);
       // r2: counter-stretch eased 0.22 -> 0.32 — the 4.5:1 stretch printed a
       // visible directional combing band across the 60-130 m midfield
-      vec2 uvG = vec2(dot(wp, e1), dot(wp, e2) * 0.32);
+      // r3 terrain_environment: eased again 0.32 -> 0.48 (~2:1) — the r2
+      // stretch still resolved as an anisotropic combed smear right of the
+      // road in player_view; a gentler counter-stretch plus ISOTROPIC value
+      // breakup (planar-warped n1w below) keeps the grazing rescue without
+      // printing a directional texture band
+      vec2 uvG = vec2(dot(wp, e1), dot(wp, e2) * 0.48);
       vec4 aG = splatSamp(uAlbG, uvG * 0.240, df, 0.0);
       vec4 nG = splatSamp(uNrmG, uvG * 0.240, df, 0.0);
       // value breakup in the SAME stretched space (replaces the smeared
@@ -1577,9 +1655,13 @@ void splatCompute() {
       float n1G = texture2D(uNoise, uvG * 0.0117).r;
       float n2G = texture2D(uNoise, uvG * 0.0031 + vec2(0.41, 0.13)).g;
       aG.rgb *= (0.88 + n1G * 0.18) * (0.94 + n2G * 0.12);
+      // isotropic planar patch tone re-applied over the stretched sample so
+      // the band cannot read as one combed direction
+      aG.rgb *= 0.92 + n1w * 0.16;
       // r2: 0.80 -> 0.62 — full-strength replacement stamped its own combed
       // texture band; a partial blend keeps the planar patchwork visible
-      float gMix = grazeW * 0.62;
+      // r3: 0.62 -> 0.48, same reasoning one more step
+      float gMix = grazeW * 0.48;
       a = mix(a, aG, gMix);
       n = mix(n, nG, gMix);
     }
@@ -1612,7 +1694,10 @@ void splatCompute() {
   // r9: 0.30 -> 0.20 — with the raised winter envIntensity the sheet still
   // read matte from the establishing camera; 0.20 picks up a real sky sheen
   // on the clear-ice fields while drifted snow (driftW) stays matte
-  rough0 = max(rough0, iceW * 0.20);
+  // terrain_environment r3: 0.20 -> 0.17 — pairs with the fresnel sky tint
+  // above; the clear-ice fields need a genuine specular identity (0.13 let
+  // the bright overcast env reflection blow the sheet out to snow-white)
+  rough0 = max(rough0, iceW * 0.17);
   // matte floor: kills the wet-plastic sheen / white sparkle glints on every
   // ground type except intentionally glossy lake ice
   gSplatRough = max(rough0, 0.78 * (1.0 - iceW) + shoreW * -0.12);
@@ -1676,6 +1761,11 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant') {
   const roadTint = S.roadTint || [1.08, 1.04, 0.96];
 
   const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0, metalness: 0.0 });
+  // r3: DoubleSide — at chunk borders where LOD levels disagree on a steep
+  // cliff edge, the higher chunk's skirt ribbon can face AWAY from a camera
+  // looking across the boundary; the culled backface opened a fog-bright
+  // sliver through the desert canyon pass (battlefield_desert center).
+  mat.side = THREE.DoubleSide;
   const splatHook = (shader) => {
     shader.uniforms.uAlbG = { value: layers.G.albedo };
     shader.uniforms.uAlbD = { value: layers.D.albedo };
@@ -1700,6 +1790,10 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant') {
     shader.uniforms.uMidRelief = { value: S.midRelief ?? 1 };
     // r2: agrarian field patchwork — only sensible on temperate farmland maps
     shader.uniforms.uFieldPatch = { value: S.fieldPatch ?? 0 };
+    // r3: desert macro sheet variation + ice fresnel sky tint
+    shader.uniforms.uSandMacro = { value: S.sandMacro ?? 0 };
+    shader.uniforms.uIceSky = { value: new THREE.Vector3(...(S.iceSky || [0.66, 0.72, 0.82])) };
+    shader.uniforms.uMidFar = { value: S.midReliefFar ?? 480 };
     {
       const rd = S.rippleDir || [0.8, 0.6];
       const rl = Math.hypot(rd[0], rd[1]) || 1;
@@ -1721,7 +1815,7 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant') {
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v15';
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v16';
   return mat;
 }
 
@@ -1732,7 +1826,12 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant') {
 const CHUNKS = 8, CHUNK_SIZE = MAP_SIZE / CHUNKS;
 const LOD_SEGS = [96, 48, 24];
 const LOD_DIST = [200, 430]; // near < 200, mid < 430, else far
-const SKIRT_DROP = 2.5;
+// r3: 2.5 -> 6.5 — on the 38 m desert mesa walls the far-LOD (5.3 m verts)
+// vs near-LOD height mismatch across a chunk border exceeded the old skirt
+// and the gap flashed the fog-bright backdrop through as a white sliver in
+// the canyon pass (battlefield_desert center). Deeper skirts cover the
+// worst cliff-edge mismatch at every LOD pairing.
+const SKIRT_DROP = 6.5;
 
 function buildChunkGeometry(hf, cx0, cz0, segs) {
   const n = segs + 1, step = CHUNK_SIZE / segs;
@@ -1765,10 +1864,23 @@ function buildChunkGeometry(hf, cx0, cz0, segs) {
   for (let gz = 0; gz < segs; gz++) ring.push(gz * n + (n - 1));         // x=max, z asc
   for (let gx = segs; gx > 0; gx--) ring.push((n - 1) * n + gx);         // z=max, x desc
   for (let gz = segs; gz > 0; gz--) ring.push(gz * n);                   // x=min, z desc
+  // content_breadth r3: skirt normals point OUTWARD-DOWN instead of copying
+  // the (mostly up-facing) top-vertex normal. A skirt revealed through an
+  // LOD T-junction crack used to shade like fully sunlit flat ground — on a
+  // shadowed dune face that rendered as a blown-white sliver (the desert
+  // establishing-shot artifact at the z=250 chunk border). Wall-like normals
+  // shade a revealed skirt as a dark seam line instead, and the splat
+  // shader's slope response paints it as rock/cliff material.
+  const ccx = cx0 + CHUNK_SIZE / 2, ccz = cz0 + CHUNK_SIZE / 2;
   for (let k = 0; k < perim; k++) {
     const src = ring[k], dst = n * n + k;
     pos[dst * 3] = pos[src * 3]; pos[dst * 3 + 1] = pos[src * 3 + 1] - SKIRT_DROP; pos[dst * 3 + 2] = pos[src * 3 + 2];
-    nrm[dst * 3] = nrm[src * 3]; nrm[dst * 3 + 1] = nrm[src * 3 + 1]; nrm[dst * 3 + 2] = nrm[src * 3 + 2];
+    let ox = pos[src * 3] - ccx, oz = pos[src * 3 + 2] - ccz;
+    const ol = Math.hypot(ox, oz) || 1;
+    ox /= ol; oz /= ol;
+    // outward + strong down bias: crack-revealed skirts read as shaded seams
+    const oy = -0.55, oil = 1 / Math.hypot(ox, oy, oz);
+    nrm[dst * 3] = ox * oil; nrm[dst * 3 + 1] = oy * oil; nrm[dst * 3 + 2] = oz * oil;
   }
   const idx = new Uint32Array(segs * segs * 6 + perim * 6);
   let ii = 0;

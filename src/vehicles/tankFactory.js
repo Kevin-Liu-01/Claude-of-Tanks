@@ -323,15 +323,20 @@ function wheelGeo(style, r, w, seg) {
   }
   // Rubber band + a dark hub-well ring: the well sits between dish and hub so
   // the hub reads against shadow (r5: wheels merged into one flat plate).
+  // camo_spotting r3: tire rim <=10% of radius and hub well slimmed — the
+  // wide dark annuli rendered as high-contrast black/base BULLSEYE rings on
+  // the Tiger under every scheme ("toy targets" critique). The thin rim +
+  // recessed well + bolt ring keep the wheel reading as a wheel (the r6
+  // "body-green disc" concern) without the target-ring geometry.
   const tire = mergeAll([
     cylX(r, w, seg),
-    cylX(r * 0.40, w * 1.2, seg),                        // hub shadow well
+    cylX(r * 0.30, w * 1.2, seg),                        // hub shadow well
   ]);
-  // Painted dish stands PROUD of the tire caps and covers 74% of the radius —
-  // real road wheels read as painted steel discs with a clearly visible dark
-  // rubber rim, never as full-face painted circles (r3/r5; rim widened in r6
-  // after the Leo/T-90M wheels still read as body-green discs).
-  discs.push(cylX(r * 0.74, w * 1.14, seg));
+  // Painted dish stands PROUD of the tire caps and covers 90% of the radius —
+  // real road wheels read as painted steel discs with a THIN visible dark
+  // rubber rim, never as full-face painted circles (r3/r5) and never as
+  // wide-ringed bullseyes (camo_spotting r3).
+  discs.push(cylX(r * 0.90, w * 1.14, seg));
   discs.push(cylX(r * 0.24, w * 1.38, 10));              // hub
   discs.push(cylX(r * 0.14, w * 1.54, 8));               // hub cap
   boltRing(discs, r, w, 8);
@@ -349,7 +354,11 @@ function wheelGeo(style, r, w, seg) {
 function idlerGeo(r, w, seg) {
   const body = [];
   const dark = [];
-  body.push(cylX(r, w, seg));                            // rim band
+  // r3 (critic: T-90M "front idler drum face is navy-blue sparkle bare metal
+  // with a beige rim"): the RIM BAND is the track-contact surface — it wears
+  // to bare steel on every real vehicle, so it renders in the dark worn-steel
+  // material instead of scheme paint (the painted rim was the beige ring).
+  dark.push(cylX(r, w, seg));                            // rim band (track-worn steel)
   dark.push(cylX(r * 0.965, w * 1.03, seg));             // recessed dark annulus
   const hD = Math.max(0.06, r * 0.18);                   // dish proudness
   for (const s of [-1, 1]) {
@@ -759,7 +768,38 @@ function buildRunningGear(P, cfg) {
   }
   const ribbonGeo = mergeAll(ribPads);
   P.disposables.push(ribbonGeo);
+  // r4 SLUMPED PARTIAL BAND (critic detrack minor): the broken side is not
+  // just bare wheels + a ground ribbon — a torn stub of the band stays
+  // HUNG off the rear sprocket/idler, draping down its back face and
+  // piling on the ground in a catenary sag. Built once from the same pad
+  // kit; toggled with the ribbon in setBroken.
+  const slumpPads = [];
+  {
+    const cx = rearY, cz = rearZ; // rear wheel center (hull-local y/z)
+    const R = rearR + 0.055;
+    // over-the-wheel arc: from just past top-dead-center down the back face
+    for (let i = 0; i < 7; i++) {
+      const a = 1.35 - (i / 6) * 2.45; // rad, 1.35 (up-front) -> -1.1 (low-rear)
+      const py = cx + Math.sin(a) * R;
+      const pz = cz - Math.cos(a) * R;
+      slumpPads.push(xform(ribPad(), (rr(i + 81) - 0.5) * 0.05, py, pz,
+        -a + Math.PI / 2 + (rr(i + 91) - 0.5) * 0.12, (rr(i + 97) - 0.5) * 0.10, (rr(i + 87) - 0.5) * 0.12));
+    }
+    // catenary drop from the low-rear rim to the ground behind the wheel
+    const y0 = cx + Math.sin(-1.1) * R, z0 = cz - Math.cos(-1.1) * R;
+    for (let i = 0; i < 5; i++) {
+      const t = (i + 1) / 5;
+      const sag = 1 - (1 - t) * (1 - t);
+      const py = Math.max(0.05, y0 * (1 - sag) + 0.05 * sag);
+      const pz = z0 - t * 0.55 - (rr(i + 71) - 0.5) * 0.06;
+      slumpPads.push(xform(ribPad(), (rr(i + 61) - 0.5) * 0.07, py, pz,
+        0.9 * (1 - t) + (rr(i + 51) - 0.5) * 0.14, (rr(i + 55) - 0.5) * 0.16, (rr(i + 57) - 0.5) * 0.18));
+    }
+  }
+  const slumpGeo = mergeAll(slumpPads);
+  P.disposables.push(slumpGeo);
   const thrownRibbons = {};
+  const slumpBands = {};
   for (const side of [-1, 1]) {
     const rm = new THREE.Mesh(ribbonGeo, mats.trackLink || mats.dark);
     rm.position.x = side * xc;
@@ -771,11 +811,20 @@ function buildRunningGear(P, cfg) {
     rm.visible = false;
     hullG.add(rm);
     thrownRibbons[side] = rm;
+    const sm = new THREE.Mesh(slumpGeo, mats.trackLink || mats.dark);
+    sm.position.x = side * xc;
+    sm.scale.x = side;
+    sm.castShadow = false;
+    sm.receiveShadow = true;
+    sm.visible = false;
+    hullG.add(sm);
+    slumpBands[side] = sm;
   }
 
   // de-track state: 0 = healthy, 1 = thrown (band slumps, links sag)
   let brokenL = 0;
   let brokenR = 0;
+  let throwCount = 0; // r4: seeds per-throw ribbon pose scatter
   const tlY0 = tl.position.y, trY0 = tr.position.y;
 
   // r5 wheel-bounce state: speed-gated so parked closeups stay clean while a
@@ -994,7 +1043,24 @@ function buildRunningGear(P, cfg) {
       const showBand = !broken && !hullG.userData.__glbSwapped;
       if (side < 0) { brokenL = broken ? 1 : 0; tl.visible = showBand; tl.position.y = tlY0; tl.rotation.x = 0; }
       else { brokenR = broken ? 1 : 0; tr.visible = showBand; tr.position.y = trY0; tr.rotation.x = 0; }
-      if (thrownRibbons[side]) thrownRibbons[side].visible = !!broken;
+      if (thrownRibbons[side]) {
+        const rm = thrownRibbons[side];
+        rm.visible = !!broken;
+        // r4: per-throw pose scatter — repeated de-tracks never drop an
+        // identical zigzag; a small roll partially buries the tail run.
+        if (broken) {
+          throwCount++;
+          const j = Math.abs(Math.sin(throwCount * 12.9898 + side * 3.7)) % 1;
+          rm.rotation.y = side * 0.07 + (j - 0.5) * 0.5;
+          rm.rotation.z = (j * 7.13 % 1 - 0.5) * 0.12;
+          rm.position.y = -0.02 - (j * 3.71 % 1) * 0.03; // pads bite into soil
+        } else {
+          rm.rotation.y = side * 0.07; rm.rotation.z = 0; rm.position.y = 0;
+        }
+      }
+      // r4: the torn stub of the band stays HUNG off the rear wheel on the
+      // broken side (catenary drape built at construction)
+      if (slumpBands[side]) slumpBands[side].visible = !!broken;
       // rearmost PROUD road wheel on that side scatters (interleaved recessed
       // rows stay seated — the outer wheel is the one that visibly lets go)
       let pick = null;
@@ -1504,9 +1570,19 @@ function buildTiger(P) {
   });
   // idler mount bracket closing the last daylight between the idler hub and
   // the sponson underside (tank_models r1)
+  // r3 (critic major: "rear idler is a track-wrapped drum ... no spokes, hub
+  // bolts, or swing arm — floating with a visible gap off the hull rear
+  // plate"): the spokes/bolts now come from the reworked idlerGeo (dark
+  // recess + radial slots + bolt heads on worn steel); here the mount gets a
+  // real CRANK ARM — axle housing on the hull rear corner, angled tensioner
+  // arm dropping to the hub, and a fat stub axle INTO the wheel face — so
+  // the idler visibly hangs off its adjuster like the real Tiger.
   for (const s of [-1, 1]) {
     P.add('hullDetail', box(0.16, 0.50, 0.34), s * 1.30, 0.92, -2.90);
-    P.add('hullDetail', cylX(0.10, 0.20, 10), s * 1.38, 0.60, -2.95);
+    P.add('hullDetail', cylX(0.16, 0.26, 12), s * 1.30, 0.72, -3.05);           // adjuster housing
+    P.add('hullDetail', box(0.13, 0.16, 0.42), s * 1.34, 0.62, -2.86, 0.62, 0, 0); // crank arm to hub
+    P.add('hullDetail', cylX(0.085, 0.42, 10), s * 1.36, 0.525, -2.98);         // stub axle into the hub
+    P.add('hullDark', xform(cylX(0.115, 0.05, 10), 0, 0, 0), s * 1.56, 0.525, -2.98); // outer hub nut
   }
   stowage(P, 'hullCloth', rng, [[0, 2.02, -2.6, 1.6, 0.16, 0.7]]);
   tarpRoll(P, 'hullCloth', -1.5, 2.06, -1.6, 1.0, 0.09, false);
@@ -1861,7 +1937,7 @@ function buildM1A2(P) {
     style: 'rubber', wheelR: 0.33, wheelW: 0.23, xc: 1.5,
     wheelZs: [2.9, 1.93, 0.96, 0.0, -0.97, -1.94, -2.9],
     sprocket: { z: -3.5, y: 0.44, r: 0.33 }, idler: { z: 3.45, y: 0.42, r: 0.31 },
-    trackW: 0.635, topY: 0.9, paintedEnds: true,
+    trackW: 0.635, topY: 0.9, paintedEnds: true, coveredTop: true,
   });
   P.decal('hull', 'number', 'B-24', 0.4, [1.92, 0.82, 2.9], Math.PI / 2);
   P.decal('hull', 'number', 'B-24', 0.4, [-1.92, 0.82, 2.9], -Math.PI / 2);
@@ -2052,21 +2128,30 @@ function buildT90M(P) {
     wheelZs: [2.55, 1.53, 0.51, -0.51, -1.53, -2.55],
     sprocket: { z: -3.08, y: 0.54, r: 0.27 }, idler: { z: 3.04, y: 0.52, r: 0.25 },
     rollers: [1.5, 0, -1.5].map((z) => ({ z, y: 0.95, r: 0.09 })),
-    trackW: 0.58, topY: 0.88, arms: true, paintedEnds: true,
+    // r3 (critic major: "track guide horns silhouette above the fender line
+    // the full hull length — on the real T-90M the top run is fully
+    // covered"): suppress return-run link pads under the fender/skirt line.
+    trackW: 0.58, topY: 0.88, arms: true, paintedEnds: true, coveredTop: true,
   });
   // ---- Relikt ERA bricks (instanced, strippable per armor plate name) ----
   // Glacis rows seated on the r7 glacis plane z(y) = 1.90 + (1.40-y)*2.636.
   const t90GlacisZ = (y) => 1.90 + (1.40 - y) * 2.636 + 0.04;
+  // r3 (critic major: "the glacis Relikt chevron reads as a single flat decal
+  // wedge"): alternate rows pitch ±9° off the glacis plane so consecutive
+  // brick courses catch the key light differently — the sawtooth chevron
+  // SECTION of real Relikt glacis panels, not one co-planar sticker sheet.
   P.eraCluster('glacis_era_R', (put) => {
     for (let row = 0; row < 4; row++) for (let c = 0; c < 5; c++) {
       const y = 0.95 + row * 0.125;
-      put(0.16 + c * 0.31, y, t90GlacisZ(y), -68 * D2R, 0, 0);
+      put(0.16 + c * 0.31, y, t90GlacisZ(y) + (row % 2 ? 0.012 : 0),
+        (-68 + (row % 2 ? 9 : -9)) * D2R, 0, 0);
     }
   });
   P.eraCluster('glacis_era_L', (put) => {
     for (let row = 0; row < 4; row++) for (let c = 0; c < 5; c++) {
       const y = 0.95 + row * 0.125;
-      put(-0.16 - c * 0.31, y, t90GlacisZ(y), -68 * D2R, 0, 0);
+      put(-0.16 - c * 0.31, y, t90GlacisZ(y) + (row % 2 ? 0.012 : 0),
+        (-68 + (row % 2 ? 9 : -9)) * D2R, 0, 0);
     }
   });
   // Turret cheek tiles ride ON the rebuilt chunky wedge-course faces — 2 rows
@@ -2096,13 +2181,17 @@ function buildT90M(P) {
   P.eraCluster('side_era_L', (put) => t90Side(put, -1), true);
   // Skirt tiles run (nearly) the FULL skirt length in two rows on the raised
   // panel; the last metre stays rubber flaps (r6: tiles stopped mid-hull).
+  // r3 (critic major: "skirt ERA is uniform minecraft slabs with deep black
+  // gaps"): the 0.44 m column pitch left 0.16 m voids between 0.28 m tiles.
+  // Real Relikt skirt panels are contiguous — tiles now butt at a 0.295 m
+  // pitch with a 0.055 m row gap, reading as one plated run with seam lines.
   P.eraCluster('skirt_era_R', (put) => {
-    for (let c = 0; c < 12; c++) for (let row = 0; row < 2; row++)
-      put(1.92, 0.755 + row * 0.225, 3.05 - c * 0.44, 0, Math.PI / 2, 0);
+    for (let c = 0; c < 17; c++) for (let row = 0; row < 2; row++)
+      put(1.92, 0.77 + row * 0.185, 3.05 - c * 0.295, 0, Math.PI / 2, 0);
   });
   P.eraCluster('skirt_era_L', (put) => {
-    for (let c = 0; c < 12; c++) for (let row = 0; row < 2; row++)
-      put(-1.92, 0.755 + row * 0.225, 3.05 - c * 0.44, 0, -Math.PI / 2, 0);
+    for (let c = 0; c < 17; c++) for (let row = 0; row < 2; row++)
+      put(-1.92, 0.77 + row * 0.185, 3.05 - c * 0.295, 0, -Math.PI / 2, 0);
   });
   // r5: numbers on the rebuilt faceted side walls, ahead of the bustle box
   // r1: number pushed proud of the faceted wall (was buried inside it) and
@@ -2201,19 +2290,25 @@ function buildLeo2A7(P) {
   // skirts (r7): the heavy sculpted front skirt now runs fender-deep
   // (0.68-1.30) like the real 2A7 armor modules — hull side above it is a
   // shallow band, not a wall; thinner recessed rubber skirt aft.
+  // r3 (critic critical: the garage pedestal leo2a7 read as an "unskirted
+  // ~9-wheel hull" — the skirt bottoms sat at ~0.65 m with wheel tops at
+  // 0.80 m, so from the raised garage camera the wheel band dominated the
+  // whole flank): both skirt runs now drop to ~0.50 m — just above the wheel
+  // axle line like the real 2A7 armor modules — and the wheels read as
+  // half-hidden running gear under one continuous flat-skirt line.
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.10, 0.62, 3.25), s * 1.85, 0.99, 2.18);                 // heavy front skirt
-    P.add('hull', box(0.10, 0.14, 3.2), s * 1.85, 0.64, 2.18, 0, 0, -s * 0.28); // chamfered lower lip
+    P.add('hull', box(0.10, 0.80, 3.25), s * 1.85, 0.90, 2.18);                 // heavy front skirt (0.50-1.30)
+    P.add('hull', box(0.10, 0.14, 3.2), s * 1.85, 0.50, 2.18, 0, 0, -s * 0.28); // chamfered lower lip
     if (P.q) for (let k = 0; k < 4; k++) {                                      // panel split seams
-      P.add('hullDark', box(0.104, 0.56, 0.016), s * 1.85, 0.99, 3.6 - k * 0.8);
+      P.add('hullDark', box(0.104, 0.74, 0.016), s * 1.85, 0.90, 3.6 - k * 0.8);
     }
     // r8: rear rubber skirt pushed OUTBOARD of the track run (the old x1.80
     // panel hid behind the 1.87 track edge, leaving the rear wheels bare) and
     // deepened so the flat-skirt line runs the full hull like the real 2A7
-    P.add('hull', box(0.035, 0.55, 3.42), s * 1.865, 0.94, -1.28);              // rear rubber skirt
-    P.add('hullRubber', box(0.028, 0.12, 3.4), s * 1.865, 0.63, -1.28);         // dangling rubber lip
+    P.add('hull', box(0.035, 0.72, 3.42), s * 1.865, 0.86, -1.28);              // rear rubber skirt (0.50-1.22)
+    P.add('hullRubber', box(0.028, 0.12, 3.4), s * 1.865, 0.49, -1.28);         // dangling rubber lip
     for (let k = 0; k < 4; k++) {
-      P.add('hullDark', box(0.042, 0.5, 0.02), s * 1.865, 0.94, -0.3 - k * 0.7);
+      P.add('hullDark', box(0.042, 0.66, 0.02), s * 1.865, 0.86, -0.3 - k * 0.7);
     }
   }
   // tank_models r2 (critic: "huge empty rear deck with a floating wire-thin
@@ -2373,7 +2468,9 @@ function buildLeo2A7(P) {
     style: 'rubber', wheelR: 0.35, wheelW: 0.22, xc: 1.55,
     wheelZs: [2.95, 2.0, 1.25, 0.28, -0.69, -1.66, -2.63],
     sprocket: { z: -3.5, y: 0.46, r: 0.34 }, idler: { z: 3.45, y: 0.44, r: 0.32 },
-    trackW: 0.635, topY: 0.92, paintedEnds: true,
+    // r3: skirts cover the real 2A7's return run — no horn comb above the
+    // fender line (same fix as the T-90M).
+    trackW: 0.635, topY: 0.92, paintedEnds: true, coveredTop: true,
   });
   // r5: crosses re-seated on the rebuilt (narrower) turret side wall, ahead
   // of the stowage baskets — at the old ±1.61 they floated in mid-air.
@@ -2469,14 +2566,16 @@ function bakeDirt(geo, yOffset, strength = 1) {
  * Build the articulated visual for one tank.
  * @param {string} specId one of TANK_IDS
  * @param {object} engineCtx EngineCtx (§2.8)
- * @param {{camoSeed?: number, quality?: 'high'|'low'}} [opts]
+ * @param {{camoSeed?: number, quality?: 'high'|'ai'|'low'}} [opts] — PERF r3:
+ *   'ai' keeps full geometry detail but bakes the shared texture set at half
+ *   resolution (materials.js QUALITY_SIZES); 'high' is hero-grade.
  * @returns {object} TankVisual (ARCHITECTURE §3.3.2)
  */
 export function createTank(specId, engineCtx, opts = {}) {
   const { camoSeed = 4000, quality = 'high' } = opts;
   const spec = getSpec(specId);
   const armor = spec.armor;
-  const mats = createTankMaterials(spec, engineCtx, camoSeed);
+  const mats = createTankMaterials(spec, engineCtx, camoSeed, quality);
   const rng = mulberry32((camoSeed | 0) ^ 0x9e37);
 
   const root = new THREE.Group();
@@ -2499,7 +2598,9 @@ export function createTank(specId, engineCtx, opts = {}) {
   const disposables = [];
 
   const P = {
-    spec, mats, rng, q: quality === 'high', hullG, turretG, gunG, recoilG,
+    // PERF r3: 'ai' is a TEXTURE tier only — geometry detail stays hero
+    // (killcam closeups frame AI vehicles at arm's length)
+    spec, mats, rng, q: quality !== 'low', hullG, turretG, gunG, recoilG,
     disposables, gear: null, muzzleZ: armor.gunBarrel.lengthM, topY: 0.8,
     add(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       (buckets[bucket] || (buckets[bucket] = [])).push(xform(geo, x, y, z, rx, ry, rz, s));
@@ -2667,6 +2768,11 @@ export function createTank(specId, engineCtx, opts = {}) {
   const SUSP_VIS_P = 2.6, SUSP_VIS_R = 2.1, SWAY_VIS = 3.2;
   let wreckAge = -1;                 // >= 0 while destroyed (ember pulse timer)
   const emberPhase = rng() * Math.PI * 2;
+  // r4 staged char: [dueAgeS, mesh] entries consumed as wreckAge advances —
+  // the burnt swap spreads across ~0.55 s instead of popping in one frame.
+  const charQueue = [];
+  let charSeed = (Math.abs(Math.sin(emberPhase)) * 1e6) | 0;
+  const rngChar = () => { charSeed = (charSeed * 1664525 + 1013904223) >>> 0; return charSeed / 4294967296; };
   // ammo-rack turret pop (physics arc + spin, settles askew on the hull)
   let popActive = false;
   let popT = 0;
@@ -2804,6 +2910,12 @@ export function createTank(specId, engineCtx, opts = {}) {
         // ember pulse: engine-deck glow throbs and cools over the first ~20 s
         if (wreckAge >= 0) {
           wreckAge += dt;
+          // r4 staged char spread: consume due entries as the wreck ages —
+          // the paint scorches over ~0.55 s under the fireball instead of
+          // the whole vehicle flipping matte black in one frame.
+          while (charQueue.length && charQueue[0][0] <= wreckAge) {
+            charQueue.shift()[1].material = mats.burnt;
+          }
           const decay = Math.exp(-wreckAge / 8);
           // 1.05 amplitude (was 0.65) + 0.05 floor: with the lifted burnt
           // albedo the ember pockets must visibly throb on the fresh wreck
@@ -2855,6 +2967,13 @@ export function createTank(specId, engineCtx, opts = {}) {
 
     /** @param {THREE.Vector3} out @returns {THREE.Vector3} world-space muzzle tip */
     gunMuzzleWorld(out) { return muzzle.getWorldPosition(out); },
+    /** @param {THREE.Vector3} out @returns {THREE.Vector3} world-space barrel
+     *  AXIS (+Z of the recoil group). The muzzle ANCHOR may sit off-axis on
+     *  GLB swaps (modelLoader re-derives it from real tube-tip vertices, with
+     *  a nonzero recoilG-local x/y), so muzzle-minus-pivot is NOT the bore
+     *  line — a constant ~45 mrad skew on the m1a2 sent every settled shot
+     *  ~15 m wide at 330 m (controls_gunnery r3 critical). */
+    gunDirWorld(out) { return muzzle.getWorldDirection(out); },
     /** @param {THREE.Vector3} out @returns {THREE.Vector3} world-space gun trunnion */
     gunPivotWorld(out) { return gunG.getWorldPosition(out); },
     /** @param {THREE.Vector3} out @returns {THREE.Vector3} world-space turret roof anchor */
@@ -2923,17 +3042,46 @@ export function createTank(specId, engineCtx, opts = {}) {
       if (destroyed) return;
       destroyed = true;
       // lazy capture (see originalMats note): traverse NOW so GLB-swapped
-      // meshes are included in the burnt swap and restorable on rematch
+      // meshes are included in the burnt swap and restorable on rematch.
+      // r4: each entry also records the mesh's CURRENT visibility —
+      // resetDestroyed used to force `visible = true` on everything, which
+      // resurrected the hidden procedural placeholder hull over the GLB on
+      // any rematch (giant black/camo box enclosing the real model).
       originalMats.length = 0;
-      root.traverse((o) => { if (o.isMesh) originalMats.push([o, o.material]); });
-      // r5: swap EVERY mesh to the charred material — the old rule hid any
-      // transparent-material mesh outright, which amputated whole assemblies
-      // on GLB tanks (the Recon Tank's gun barrel vanished, r4 wreck-closeup
-      // major). Charred glass reads fine; missing barrels do not.
-      for (const [mesh] of originalMats) mesh.material = mats.burnt;
+      root.traverse((o) => {
+        if (!o.isMesh) return;
+        // never char meshes that are not currently rendered (hidden
+        // placeholder hulls, retracted proxies) — charring them was harmless
+        // only until any code path toggled their visibility
+        originalMats.push([o, o.material, o.visible]);
+      });
+      // r5: swap every RENDERED mesh to the charred material — the old rule
+      // hid any transparent-material mesh outright, which amputated whole
+      // assemblies on GLB tanks (the Recon Tank's gun barrel vanished, r4
+      // wreck-closeup major). Charred glass reads fine; missing barrels do
+      // not. r4: the swap is STAGED — the char spreads over ~0.55 s
+      // (turret/top first, hull, then running gear) under the fireball's
+      // cover instead of the whole vehicle flipping matte black in a single
+      // frame ("loses all paint in one frame" major). charQueue is consumed
+      // by syncFromState; composers passing ageS >= 0.55 char instantly.
+      charQueue.length = 0;
+      for (const rec of originalMats) {
+        const [mesh] = rec;
+        if (!mesh.visible) continue;
+        let g = mesh, inTurret = false;
+        while (g && g !== root) { if (g === turretG) { inTurret = true; break; } g = g.parent; }
+        const stageT = inTurret ? 0.10 : (0.26 + rngChar() * 0.3);
+        charQueue.push([stageT, mesh]);
+      }
+      charQueue.sort((a, b) => a[0] - b[0]);
+      const ageS0 = Math.max(0, (opts && opts.ageS) || 0);
+      // consume everything already due at this age (composers, late joins)
+      while (charQueue.length && charQueue[0][0] <= ageS0) {
+        charQueue.shift()[1].material = mats.burnt;
+      }
       for (const d of decalMeshes) d.visible = false;
       // fresh wreck: embers glow bright, then pulse and cool via syncFromState
-      wreckAge = Math.max(0, (opts && opts.ageS) || 0);
+      wreckAge = ageS0;
       // r5: 1.05 -> 0.62 amplitude — with the triplanar ember sampling the
       // old peak read as saturated red spotlight blobs at close range
       mats.burnt.emissiveIntensity = 0.035 + 0.62 * Math.exp(-wreckAge / 8);
@@ -2961,7 +3109,13 @@ export function createTank(specId, engineCtx, opts = {}) {
     resetDestroyed() {
       if (destroyed) {
         destroyed = false;
-        for (const [mesh, mat] of originalMats) { mesh.material = mat; mesh.visible = true; }
+        charQueue.length = 0;
+        // restore the EXACT captured visibility (never a blanket `true` —
+        // that resurrected hidden placeholder hulls over GLB models, r4)
+        for (const [mesh, mat, wasVisible] of originalMats) {
+          mesh.material = mat;
+          mesh.visible = wasVisible !== false;
+        }
         for (const d of decalMeshes) d.visible = true;
         turretG.position.set(armor.turretPivot[0], armor.turretPivot[1], armor.turretPivot[2]);
         turretG.rotation.set(0, 0, 0);
@@ -2991,7 +3145,13 @@ export function createTank(specId, engineCtx, opts = {}) {
 
     dispose() {
       for (const g of disposables) g.dispose();
-      root.traverse((o) => { if (o.isInstancedMesh) o.dispose(); });
+      root.traverse((o) => {
+        if (o.isInstancedMesh) o.dispose();
+        // PERF (performance_budget r3): kit-merged GLB geometry is baked
+        // per instance (modelLoader mergeStaticKit) — unlike the shared
+        // cache geometry it must die with the visual or eviction leaks it.
+        if (o.isMesh && o.userData.__kitMerged && o.geometry) o.geometry.dispose();
+      });
       mats.dispose();
       if (root.parent) root.parent.remove(root);
     },
