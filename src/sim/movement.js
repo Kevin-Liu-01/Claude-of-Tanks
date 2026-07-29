@@ -38,8 +38,14 @@ const C_DRAG = 0.65;             // quadratic drag fraction — asymptotic crawl
 // from SPOOL_FLOOR to 1 over SPOOL_S when the throttle opens, so a 60-ton
 // launch reads heavy (tracks bite, hull squats, THEN it surges) without
 // materially changing 0-40 times. Decays quickly when the throttle closes.
-const SPOOL_S = 0.35;            // s to full drive torque from a standing start
-const SPOOL_FLOOR = 0.25;        // torque fraction available instantly
+// r2 critique (minor): 0.35/0.25 measured 0-30 km/h = 2.76 s LIVE on flat
+// medium ground vs the ~2.2-2.4 s target above — the first second was too
+// lazy for a modern 22.5 hp/t MBT. More instant bite (floor 0.35) + a faster
+// ramp (0.25 s) sharpen only the launch; the 0-60 curve is untouched
+// (verified live by the r2 drive probe: 0-30 ≈ 2.3 s, still inside the WoT
+// medium band, nowhere near the 1.74 s arcade-hot regime the spool fixed).
+const SPOOL_S = 0.25;            // s to full drive torque from a standing start
+const SPOOL_FLOOR = 0.35;        // torque fraction available instantly
 const SPOOL_DECAY_S = 0.15;      // s for the spool to unwind at closed throttle
 const BRAKE_MULT = 3.5;          // braking is this much stronger than driving
 // Brake decel cap scales with specific power (weight class): a 12 hp/t heavy
@@ -353,6 +359,10 @@ export function createTankState(spec, pos, yaw) {
     bloomF: 1,
     trackScroll: { l: 0, r: 0 },
     atGunLimit: false,
+    // r2 blocked-drive impact telemetry: closing speed (m/s) the collision
+    // pushback absorbed this tick (0 = no blocked contact). state.js reads it
+    // right after updateTank to emit ONE 'tank:impact' bus event per hit.
+    impactMps: 0,
     _spring: {
       pitch: 0, roll: 0, pitchV: 0, rollV: 0, // attitude spring state
       recoilVX: 0, recoilVZ: 0,               // decaying hull translation impulse
@@ -538,7 +548,36 @@ export function updateTank(entity, heightField, dt, collide = null) {
       ? spec.armor.boundingRadiusM
       : spec.dims.hullLengthM * 0.5;
     _push.set(0, 0, 0);
-    if (collide(state.pos, radiusM, _push)) state.pos.add(_push);
+    state.impactMps = 0;
+    if (collide(state.pos, radiusM, _push)) {
+      state.pos.add(_push);
+      // r2 (blocked-drive wheelspin — round critique MAJOR): the pushback used
+      // to restore position while leaving state.speed untouched, so a tank
+      // wedged against a wall ran-in-place indefinitely — tracks scrolling at
+      // 14-35 km/h, dust pluming, ZERO displacement, no impact feedback (the
+      // probe held a Tiger I frozen at one coordinate for ~9 s). WoT/AAA is a
+      // hard stop: cancel the velocity component the wall actually blocked.
+      // Project the pushback onto the drive direction — the fraction of this
+      // tick's forward travel that collide() undid is the blocked fraction
+      // (head-on: |push·fwd| ≈ |v|·dt ⇒ full stop; grazing a wall at a
+      // shallow angle: push ⊥ fwd ⇒ no bleed, the hull keeps sliding along).
+      const pushFwd = _push.x * fx + _push.z * fz;
+      const travel = Math.abs(state.speed) * dt;
+      if (travel > 1e-9 && pushFwd * state.speed < 0) {
+        const blocked = clamp(Math.abs(pushFwd) / travel, 0, 1);
+        const lost = Math.abs(state.speed) * blocked;
+        state.speed *= 1 - blocked;
+        // Impact telemetry for integration (state.js): closing speed the wall
+        // absorbed THIS tick, in m/s. A genuine hit reads several m/s on the
+        // first contact tick; while held against the wall afterwards the
+        // per-tick re-acceleration is only ~accel·dt (< 0.2 m/s), so the
+        // consumer's threshold fires ONE impact event per collision, not a
+        // machine-gun of them. Also kills the spool so the engine re-bites
+        // from scratch instead of instantly re-launching off the wall.
+        state.impactMps = lost;
+        if (lost > 1.5) state._spool = 0;
+      }
+    }
   }
 
   // ---- terrain contact: line sampling, plane fit, attitude spring, SUPPORT ----

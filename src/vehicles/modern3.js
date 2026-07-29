@@ -418,11 +418,20 @@ function buildChieftain(P) {
   }
   fenders(P, 1.20, 1.83, 1.10, -3.68, 3.55, 0.04);
   // fender stowage bins — the Chieftain carries its kit along the track guards
+  // r2 ("giant featureless hull stowage boxes"): panel splits, strap bands,
+  // latch blocks and a stowed pioneer roll so the bins read as built kit
   for (const s of [-1, 1]) {
     P.add('hullDetail', box(0.30, 0.24, 1.6), s * 1.66, 1.24, 1.5);
     P.add('hullDetail', box(0.30, 0.24, 1.3), s * 1.66, 1.24, -0.4);
     P.add('hullDark', box(0.31, 0.02, 1.55), s * 1.66, 1.37, 1.5);              // lid seams
     P.add('hullDark', box(0.31, 0.02, 1.25), s * 1.66, 1.37, -0.4);
+    for (const zc of [1.05, 1.95, -0.05, -0.75]) {
+      P.add('hullDark', box(0.315, 0.25, 0.025), s * 1.66, 1.24, zc);           // strap bands
+      P.add('hullDetail', box(0.05, 0.06, 0.06), s * 1.815, 1.30, zc);          // latch blocks
+    }
+    P.add('hullDark', box(0.32, 0.025, 0.02), s * 1.66, 1.13, 1.5);             // base seam
+    P.add('hullDark', box(0.32, 0.025, 0.02), s * 1.66, 1.13, -0.4);
+    tarpRoll(P, 'hullCloth', s * 1.62, 1.42, 0.55, 0.85, 0.07, false);          // stowed roll
   }
   // splash-board ridge across the glacis (§19.5)
   P.add('hullDetail', box(2.0, 0.055, 0.10), 0, 1.29, 1.85, -1.25, 0, 0);
@@ -446,13 +455,20 @@ function buildChieftain(P) {
       P.add('hullDetail', cylX(0.05, 0.34, 8), s * 1.42, 0.47, z1);
     }
   }
+  // tank_models r2 (critic major: "near-rectangular exposed track run — the
+  // Chieftain's top run should slope with a raised rear sprocket", plus "tan
+  // sprocket with dark wheels"): the rear drive sprocket rides HIGH like the
+  // real Mk 10 and the return rollers step down toward the front idler so
+  // the whole top run reads as one descending slope (real trapezoid form);
+  // paintedEnds pulls sprocket/idler onto the same scheme paint as the road
+  // wheels instead of bare dust-steel drums.
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.36, wheelW: 0.155, xc: 1.50,
     wheelZs: [2.55, 1.75, 0.55, -0.25, -1.45, -2.25],
     layers: [[-0.10, 0.10]],                                                    // paired steel-rimmed wheels
-    sprocket: { z: -3.18, y: 0.52, r: 0.30 }, idler: { z: 3.12, y: 0.50, r: 0.29 },
-    rollers: [1.55, 0.05, -1.6].map((z) => ({ z, y: 0.90, r: 0.08 })),
-    trackW: 0.61, topY: 0.90,
+    sprocket: { z: -3.18, y: 0.70, r: 0.33 }, idler: { z: 3.12, y: 0.50, r: 0.29 },
+    rollers: [[1.55, 0.80], [0.05, 0.88], [-1.6, 0.97]].map(([z, y]) => ({ z, y, r: 0.08 })),
+    trackW: 0.61, topY: 0.90, paintedEnds: true,
   });
   // turret: long cast body with the needle-nose front (§19.5)
   const CTH = 0.78;
@@ -527,12 +543,21 @@ function buildK2(P) {
     P.add('hullRubber', box(0.55, 0.32, 0.03), s * 1.5, 0.52, -3.72, 0.12, 0, 0); // mud flaps
   }
   // full-length angular skirts with the STEPPED lower edge (§23.5)
+  // tank_models r2 (critic major: "real K2 wears side skirts covering the
+  // gear" — the old x1.82 panels sat flush with the 1.815 track edge and
+  // barely covered the wheels): pushed outboard of the track run, deepened
+  // to mid-wheel, HEAVY armor blocks over the front third (proud, with bolt
+  // seams) + thinner rubber-fringed run aft, per modern-roster.md §23.5.
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.08, 0.42, 6.9), s * 1.82, 1.02, -0.05);                 // main skirt band
+    P.add('hull', box(0.07, 0.52, 6.9), s * 1.875, 0.97, -0.05);                // main skirt band
+    P.add('hull', box(0.11, 0.56, 2.5), s * 1.895, 0.97, 2.25);                 // heavy front blocks
+    P.add('hullDark', box(0.115, 0.52, 0.02), s * 1.895, 0.97, 1.55);           // block split
+    P.add('hullDark', box(0.115, 0.52, 0.02), s * 1.895, 0.97, 2.85);
     for (let k = 0; k < 4; k++) {                                               // stepped lower plates
-      P.add('hull', box(0.07, 0.22, 1.45), s * 1.82, 0.74 - (k % 2) * 0.05, 2.5 - k * 1.7);
+      P.add('hull', box(0.06, 0.22, 1.45), s * 1.885, 0.68 - (k % 2) * 0.05, 2.5 - k * 1.7);
     }
-    for (let k = 0; k < 5; k++) P.add('hullDark', box(0.086, 0.38, 0.018), s * 1.82, 1.0, 2.8 - k * 1.4); // seams
+    P.add('hullRubber', box(0.045, 0.14, 4.1), s * 1.875, 0.60, -1.55);         // rubber rear fringe
+    for (let k = 0; k < 5; k++) P.add('hullDark', box(0.076, 0.46, 0.018), s * 1.875, 0.95, 2.8 - k * 1.4); // seams
   }
   // deck furniture: driver hatch (center-right), V splash board, filler caps
   for (const s of [-1, 1]) P.add('hullDetail', box(0.95, 0.045, 0.07), s * 0.43, 1.42, 2.4, -0.28, s * 0.42, 0);

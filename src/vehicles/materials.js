@@ -281,6 +281,20 @@ function paintCamo(canvas, visual, rng, feats, seed) {
   }
 
   const scheme = visual.scheme || 'solid';
+  // camo_spotting r2 (close-orbit edge critique): the r8 wide feather made
+  // sprayed patches read hand-painted at ~5 m. Real spray has a HARD core
+  // edge (1-2 px feather) with a separate faint overspray halo plus droplet
+  // specks riding the border — shared by the 'stripes' and 'nato' schemes.
+  const sprayEdge = (p, col, coreA) => {
+    ctx.filter = `blur(${(S * 0.0028).toFixed(1)}px)`;
+    strokeWrapped(ctx, S, p, rgb(col, 0.18), S * 0.007);       // overspray halo
+    ctx.filter = `blur(${Math.max(1, S * 0.0006).toFixed(1)}px)`;
+    fillWrapped(ctx, S, p, rgb(col, coreA));                   // hard core, ~1.5px feather
+    ctx.filter = 'none';
+    ctx.setLineDash([2, 9 + rng() * 8]);                       // droplet specks on the border
+    strokeWrapped(ctx, S, p, rgb(col, 0.5), 2.2);
+    ctx.setLineDash([]);
+  };
   if (scheme === 'stripes' && patches.length) {
     // Dunkelgelb with sprayed Olivgruen/Rotbraun camo: hard-edged angular
     // patches ELONGATED along the band diagonal (crews swept the gun along
@@ -289,19 +303,12 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // the overspray rim stays a tight stroke straddling the hard core edge.
     const bandAng = 0.9 + rng() * 0.5;                   // one direction per tank
     const nP0 = Math.round(11 * nK);
-    // r8: FEATHERED spray edges (2-3 px blur straddling the core) and colors
-    // pulled toward the base — the hard-edged saturated shards read as
-    // paper-cut vinyl stickers, not sprayed paint (r7 Tiger critique).
-    const feather = `blur(${Math.max(2, S * 0.0016).toFixed(1)}px)`;
     for (let i = 0; i < nP0; i++) {
       const col = mix(patches[i % patches.length], base, 0.24);
       const r = S * wk * (i < nP0 * 0.3 ? 0.085 + rng() * 0.055 : 0.032 + rng() * 0.05);
       const x = rng() * S, y = rng() * S;
       const p = camoPatchPath2D(rng, x, y, r, bandAng + (rng() - 0.5) * 0.5);
-      ctx.filter = feather;
-      strokeWrapped(ctx, S, p, rgb(col, 0.20), S * 0.009);   // soft overspray rim
-      fillWrapped(ctx, S, p, rgb(col, 0.85));
-      ctx.filter = 'none';
+      sprayEdge(p, col, 0.88);
     }
     // Spray bands: LONG thin strokes at ONE consistent diagonal per vehicle
     // (small jitter only) — crews swept the spray gun in parallel passes, so
@@ -320,11 +327,13 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       const path = new Path2D();
       path.moveTo(x0, y0);
       path.quadraticCurveTo(mx, my, x1, y1);
-      // r8: feathered like the patches — the crisp near-opaque ribbons read
-      // as brush strokes; sprayed bands have soft flanks and sit lower.
-      ctx.filter = feather;
-      strokeWrapped(ctx, S, path, rgb(col, 0.15), w * 1.8);      // overspray halo
-      strokeWrapped(ctx, S, path, rgb(col, 0.78), w);
+      // camo_spotting r2: the r8 full-width feather turned the bands into
+      // hand-brushed zebra stripes at close orbit. Sprayed bands keep a wide
+      // soft overspray FLANK but a near-hard core stroke.
+      ctx.filter = `blur(${(S * 0.0024).toFixed(1)}px)`;
+      strokeWrapped(ctx, S, path, rgb(col, 0.15), w * 1.9);      // overspray flanks
+      ctx.filter = `blur(${Math.max(1, S * 0.0006).toFixed(1)}px)`;
+      strokeWrapped(ctx, S, path, rgb(col, 0.74), w);            // hard band core
       ctx.filter = 'none';
     }
   } else if (scheme === 'ambush' && patches.length) {
@@ -389,24 +398,24 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // schemes (sprayed paint has soft flanks), patch count drops ~30% with
     // larger cores so blobs flow across panel seams, and the minimum black
     // patch is ~2x bigger so no black lands as a confetti chip.
+    // tank_models r2 (critic minor: factory/summer "soft-edged ... blobs read
+    // airsoft-arcade"): patch scale trimmed ~25% and core alpha raised so the
+    // sprayed boundary reads hard at garage distance (NATO/CARC masks are
+    // crisp; only a narrow overspray flank stays soft).
     const black = patches[0], brown = patches[1] || patches[0];
     const dirA = rng() * Math.PI;
     const centers = [];
-    const feather = `blur(${Math.max(2.5, S * 0.0022).toFixed(1)}px)`;
-    const nBrown = Math.round(8 * nK);
+    const nBrown = Math.round(9 * nK);
     for (let i = 0; i < nBrown; i++) {
-      const r = S * wk * (i < nBrown * 0.4 ? 0.095 + rng() * 0.055 : 0.052 + rng() * 0.038);
+      const r = S * wk * (i < nBrown * 0.4 ? 0.072 + rng() * 0.042 : 0.040 + rng() * 0.030);
       const x = rng() * S, y = rng() * S;
       const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.55);
-      ctx.filter = feather;
-      strokeWrapped(ctx, S, p, rgb(mix(brown, base, 0.35), 0.35), S * 0.008);
-      fillWrapped(ctx, S, p, rgb(brown, 0.92));
-      ctx.filter = 'none';
+      sprayEdge(p, brown, 0.97);           // r2: hard core + overspray specks
       centers.push([x, y, r]);
     }
     const nBlack = Math.round(5 * nK);
     for (let i = 0; i < nBlack; i++) {
-      const r = S * wk * (i < nBlack * 0.4 ? 0.065 + rng() * 0.035 : 0.048 + rng() * 0.028);
+      const r = S * wk * (i < nBlack * 0.4 ? 0.052 + rng() * 0.028 : 0.040 + rng() * 0.022);
       let x = rng() * S, y = rng() * S;
       if ((i & 1) && centers.length) {           // ride a brown patch boundary
         const c2 = centers[(rng() * centers.length) | 0];
@@ -415,10 +424,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
         y = c2[1] + Math.sin(a2) * c2[2] * 0.9;
       }
       const p = camoPatchPath2D(rng, x, y, r, dirA + (rng() - 0.5) * 0.7);
-      ctx.filter = feather;
-      strokeWrapped(ctx, S, p, rgb(mix(black, base, 0.35), 0.35), S * 0.008);
-      fillWrapped(ctx, S, p, rgb(black, 0.9));
-      ctx.filter = 'none';
+      sprayEdge(p, black, 0.95);           // r2: hard core + overspray specks
     }
   } else if (scheme === 'desert' && patches.length) {
     // Desert: hard-edged multi-scale 3-tone geometry — broad low-contrast
@@ -538,15 +544,30 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       path.lineTo(x0 + (rng() - 0.5) * 6, y0 + len);
       strokeWrapped(ctx, S, path, `rgba(118,122,110,${0.10 + rng() * 0.12})`, 1.5 + rng() * 4);
     }
-    // dust-ochre grime keyed to the under color (mud-splashed whitewash)
-    const grime = mix(under, [96, 84, 58], 0.5);
-    for (let i = 0; i < 26; i++) {
+    // dust-ochre grime — camo_spotting r2: the mix is now dominated by a
+    // FIXED ochre so the pass reads on every hull. Keyed 50% to `under`, a
+    // green factory coat (T-34) produced greenish-dark grime that vanished
+    // at 0.10 alpha while the Tiger's Dunkelgelb flared warm — same pattern
+    // id, one tank grimy, one plastic-clean (r1 winter critique).
+    const grime = mix(under, [118, 98, 62], 0.72);
+    for (let i = 0; i < 30; i++) {
       const x = rng() * S, y = rng() * S, r = S * (0.03 + rng() * 0.08);
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, rgb(grime, 0.10 + rng() * 0.12));
+      g.addColorStop(0, rgb(grime, 0.14 + rng() * 0.13));
       g.addColorStop(1, rgb(grime, 0));
       ctx.fillStyle = g;
       ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    // worn-bleed streaking (r2, all hulls): ochre-grey runs dragged down the
+    // plates — the Tiger carried this read via its warm feature weeps while
+    // green-based hulls stayed toy-clean; now it is part of the scheme.
+    for (let i = 0; i < 44; i++) {
+      const x0 = rng() * S, y0 = rng() * S, len = S * (0.04 + rng() * 0.12);
+      const tone = rng() < 0.5 ? grime : mix(under, [104, 108, 98], 0.55);
+      const path = new Path2D();
+      path.moveTo(x0, y0);
+      path.lineTo(x0 + (rng() - 0.5) * 5, y0 + len);
+      strokeWrapped(ctx, S, path, rgb(tone, 0.10 + rng() * 0.14), 2 + rng() * 5);
     }
     // neutral shadow washes so the wash never reads as flat white
     for (let i = 0; i < 18; i++) {
@@ -556,6 +577,24 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       g.addColorStop(1, 'rgba(104,108,98,0)');
       ctx.fillStyle = g;
       ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    // r2 unification luma ceiling (same treatment as 'fleck'): the tonal /
+    // mottle lifts pushed bright texels ~7% over the authored '#9ba18f'
+    // whitewash band, which the warm garage key then blew into cream — no
+    // texel may exceed the authored base luma +4%.
+    {
+      const lumaOf = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+      const maxL = lumaOf(base) * 1.04;
+      const img = ctx.getImageData(0, 0, S, S);
+      const dd = img.data;
+      for (let i = 0; i < dd.length; i += 4) {
+        const l = 0.2126 * dd[i] + 0.7152 * dd[i + 1] + 0.0722 * dd[i + 2];
+        if (l > maxL) {
+          const k = maxL / l;
+          dd[i] *= k; dd[i + 1] *= k; dd[i + 2] *= k;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
     }
   } else if (scheme === 'fleck' && patches.length) {
     // Flecktarn (camo_spotting r2 legibility rework): the r9 specks (6-22 px,
@@ -1067,11 +1106,43 @@ function paintDecal(kind, text) {
     }
     ctx.closePath(); ctx.fill();
   } else if (kind === 'cross') {
-    // Balkenkreuz: black-outlined open white cross.
-    ctx.fillStyle = 'rgba(245,245,240,0.95)';
-    ctx.fillRect(28, 96, 200, 64); ctx.fillRect(96, 28, 64, 200);
-    ctx.fillStyle = 'rgba(20,20,20,0.95)';
-    ctx.fillRect(52, 116, 152, 24); ctx.fillRect(116, 52, 24, 152);
+    // Balkenkreuz, mid-war OPEN form (camo_spotting r2): four white corner
+    // flanges tracing the inner corners of the cross, thin black edging, and
+    // a paint-transparent core so the hull camo shows through the arms. The
+    // old solid cross (200 px bars at 0.96 albedo) crossed the 1.55 bloom
+    // knee under the garage key and read as a glowing sticker on every
+    // pattern; white area drops ~60% here and the flange albedo is clamped
+    // to ~0.80 luma (worn field-applied paint, never fresh white).
+    const W = 'rgba(203,199,188,0.93)';
+    const K = 'rgba(26,26,24,0.88)';
+    const t = 17;              // flange band thickness
+    const leg = 68;            // flange leg length along each arm edge
+    // legs as [x, y, w, h]: horizontal + vertical leg per corner, meeting at
+    // the four inner corners of the plus (arm box 96..160 across, 28..228 long)
+    const legs = [
+      [96 - leg, 96, leg, t], [96, 96 - leg, t, leg],           // top-left
+      [160, 96, leg, t], [160 - t, 96 - leg, t, leg],           // top-right
+      [96 - leg, 160 - t, leg, t], [96, 160, t, leg],           // bottom-left
+      [160, 160 - t, leg, t], [160 - t, 160, t, leg],           // bottom-right
+    ];
+    ctx.strokeStyle = K;
+    ctx.lineWidth = 5;
+    for (const [x, y, w, h] of legs) ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = W;
+    for (const [x, y, w, h] of legs) ctx.fillRect(x, y, w, h);
+    // deterministic wear nicks so the flanges read as brushed-on paint
+    ctx.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 26; i++) {
+      const [x, y, w, h] = legs[i % legs.length];
+      const px2 = x + ((i * 73) % 97) / 97 * w;
+      const py2 = y + ((i * 41) % 89) / 89 * h;
+      ctx.globalAlpha = 0.35 + ((i * 29) % 50) / 100;
+      ctx.beginPath();
+      ctx.arc(px2, py2, 1.5 + ((i * 17) % 30) / 10, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
   } else if (kind === 'soot') {
     // Exhaust soot smudge: dark core fading out plus streak fingers running
     // down the plate. Deterministic (no rng needed — decals are cached).
@@ -1388,7 +1459,18 @@ const FACTORY_OVERRIDE = {
   // primer clay"): tone-on-tone was invisible at any distance. Factory is now
   // the roster §6.5 NATO 3-color (green #4c5d43 / black / red-brown) with the
   // black lifted off pure black so lighting still models the patch surface.
-  m1a2: { scheme: 'nato', base: '#4c5d43', weather: '#57684d', patches: ['#2e2e2e', '#5f4a37'] },
+  // tank_models r2 (critic minor: factory "soft-edged lime-green + saturated
+  // orange-tan blobs read airsoft-arcade"): green pulled down/grayer and the
+  // red-brown desaturated a step further; blob scale/edge fixes live in the
+  // 'nato' painter.
+  m1a2: { scheme: 'nato', base: '#48573f', weather: '#526049', patches: ['#2e2e2e', '#584639'] },
+  // tank_models r2: the Abrams VARIANTS must land on the SAME factory
+  // woodland as the base m1a2 — their untextured kit parts (ARAT tiles, TUSK
+  // shield, muzzle furniture) paint from the per-spec canvas while the baked
+  // hull composite uses the shared USA nation tile, and any palette split
+  // reads as mismatched toy parts (the r2 "bright-tan pyramid studs" major).
+  m1a1: { scheme: 'nato', base: '#48573f', weather: '#526049', patches: ['#2e2e2e', '#584639'] },
+  m1a2_tusk: { scheme: 'nato', base: '#48573f', weather: '#526049', patches: ['#2e2e2e', '#584639'] },
   // Hinterhalt tones: the authored '#7a4a35' Rotbraun reads bright orange
   // under the warm garage key light (r7 "orange/green cow spots"); drop both
   // patch tones toward RAL 6003/8017 so the scheme reads olive + chocolate.
@@ -1486,7 +1568,15 @@ export function resolveCamoVisual(spec, patternId = resolveCamoPattern(spec.id))
 // hardware in the vehicle scheme, so these solid colors derive from the
 // ACTIVE pattern base, not the authored factory palette.
 const cssRGB = (c) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
-const wheelRgbOf = (v) => scale3(mix(scale3(hexToRgb(v.base), 0.92), [118, 110, 86], 0.22), 0.88);
+// camo_spotting r2: winter running-gear whitewash is clamped ~15% darker than
+// the hull wash — crews slop thinner coats on wheels and they shed to grime
+// fast; at full hull luma the T-34-85's solid wheel discs rendered as
+// near-white plastic toy rims under the warm garage key while the Tiger's
+// tire-ringed wheels got away with it (r1 winter-consistency critique).
+const wheelRgbOf = (v) => {
+  const c = scale3(mix(scale3(hexToRgb(v.base), 0.92), [118, 110, 86], 0.22), 0.88);
+  return v.scheme === 'winter' ? scale3(c, 0.85) : c;
+};
 // Recessed interleaved-row wheels bake their own occlusion: same scheme paint
 // dropped toward shadow so the Schachtellaufwerk rows separate (r5). Kept at
 // 0.66 — the old 0.5 rendered near-black in the wheel bay and the recessed
@@ -1975,7 +2065,9 @@ export function getCommunityGearMaterials(spec) {
     wheel.onBeforeCompile = vehicleAmbientFloorHook;
     wheel.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     const track = new THREE.MeshStandardMaterial({
-      name: 'AddOnTrack', color: 0x4a453a, roughness: 0.92, metalness: 0.1,
+      // r2: pulled toward neutral dark iron with the procedural trackLink —
+      // the warmer 0x4a453a flared tan under the garage key (T-90A gear)
+      name: 'AddOnTrack', color: 0x413d35, roughness: 0.94, metalness: 0.1,
       roughnessMap: entry.roughTex,
       vertexColors: true,   // r8: baked dust/AO (modelLoader.refineCommunityGeometry)
       envMapIntensity: 0.1, // r1: no blue-sky sheen on community track runs
@@ -2254,8 +2346,14 @@ export function createTankMaterials(spec, engineCtx, camoSeed) {
   // tank_models r1: color pulled to dust-brown iron and env cut again — the
   // 0.22 sky response still tinted whole link runs blue-violet in wheel-bay
   // shade ("blue-tinted duplo bricks" critique).
+  // tank_models r2 (critic major: Leo 2A7 "near-side track renders light
+  // desert-tan while the far track is dark steel"): the 0x57503f dust-brown
+  // pads flared warm TAN under direct key light while the shaded far side
+  // kept the dark band read — one vehicle, two apparent track materials.
+  // Neutral dark iron with only a hint of dust keeps both sides in the same
+  // family under any lighting.
   const trackLink = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x57503f, roughness: 0.92, metalness: 0.08, roughnessMap: roughTex,
+    color: 0x46423a, roughness: 0.94, metalness: 0.08, roughnessMap: roughTex,
     envMapIntensity: 0.1,
   })));
   // Spare track links carried as stowage/armor: dark oily track steel — the

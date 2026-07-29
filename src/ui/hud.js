@@ -269,11 +269,12 @@ const HUD_CSS = `
 .cot-top .wedge.r i.on{background:rgba(242,110,100,.95);border-color:rgba(242,110,100,.95);
   box-shadow:0 0 4px rgba(240,90,90,.35);}
 @keyframes cotChipIn{from{opacity:0}to{opacity:1}}
-/* net/perf readout (WoT battle constant): ping + fps, top-left corner */
-.cot-net{position:absolute;top:5px;left:10px;font-size:11px;font-weight:600;
-  font-family:${FONT_COND};font-stretch:condensed;letter-spacing:.07em;
-  color:#d6e2ec;opacity:.6;font-variant-numeric:tabular-nums;line-height:1;
-  text-shadow:0 1px 2px rgba(0,0,0,.85);}
+/* net/perf readout (WoT battle constant): fps + ping tokens, top-left corner
+   — r7: muted letterspaced caps with tabular digits (HUD label style) */
+.cot-net{position:absolute;top:5px;left:10px;font-size:11px;font-weight:700;
+  font-family:${FONT_COND};font-stretch:condensed;letter-spacing:.11em;
+  color:#c8d4de;opacity:.55;font-variant-numeric:tabular-nums;line-height:1;
+  text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.85);}
 .cot-ear{position:absolute;top:52px;width:194px;display:flex;flex-direction:column;gap:1px;}
 .cot-ear.l{left:0;}
 .cot-ear.r{right:0;}
@@ -298,9 +299,6 @@ const HUD_CSS = `
   align-items:center;justify-content:center;
   filter:drop-shadow(0 1px 1px rgba(0,0,0,.7));}
 .cot-er .ic svg{display:block;}
-.cot-er .tier{flex:0 0 auto;font-size:8.5px;font-weight:800;line-height:1;color:#9fb0bf;
-  font-family:${FONT_COND};font-stretch:condensed;letter-spacing:.04em;
-  padding:1.5px 3px;border:1px solid rgba(146,164,180,.35);background:rgba(10,14,18,.5);}
 .cot-er .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;
   display:flex;flex-direction:column;gap:0;line-height:1.15;}
 .cot-ear.r .cot-er .n{text-align:right;align-items:flex-end;}
@@ -308,7 +306,13 @@ const HUD_CSS = `
   white-space:nowrap;max-width:100%;}
 .cot-er .n .veh{font-size:8.5px;font-weight:600;color:#8a97a3;letter-spacing:.05em;
   font-family:${FONT_COND};font-stretch:condensed;text-transform:uppercase;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}
+  max-width:100%;display:flex;gap:4px;align-items:baseline;}
+.cot-ear.r .cot-er .n .veh{justify-content:flex-end;}
+/* r7: BARE roman tier numeral next to the vehicle name (WoT) — the boxed
+   badge chips read as foreign UI furniture in the blind side-by-side */
+.cot-er .n .veh .tier{flex:0 0 auto;font-weight:800;color:#9fb0bf;
+  font-style:normal;letter-spacing:.04em;}
+.cot-er .n .veh .vn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-er.me .n .nick{color:#ffd27a;}
 .cot-er .hpm{position:absolute;left:8px;right:10px;bottom:1px;height:2px;
   background:rgba(255,255,255,.1);}
@@ -476,17 +480,23 @@ const HUD_CSS = `
    while actively spotted (sixth-sense gated), dim green closed eye while the
    sim says the player is concealed (in bush / high camo), faint neutral
    outline while merely exposed. The player's OWN concealment is not secret —
-   only the spotted state stays behind the 3 s lamp gate. */
-.cot-camoind{position:absolute;bottom:12px;left:166px;
-  display:flex;align-items:center;justify-content:center;width:36px;height:30px;
-  background:linear-gradient(180deg,rgba(14,19,24,.92),rgba(8,11,14,.95));
-  border:1px solid rgba(146,164,180,.28);
-  box-shadow:0 2px 8px rgba(0,0,0,.5);}
-.cot-camoind.spotted{border-color:rgba(240,90,90,.55);
-  box-shadow:0 2px 8px rgba(0,0,0,.5),0 0 10px rgba(240,90,90,.25);}
-.cot-camoind.hidden-in-bush{border-color:rgba(120,200,130,.45);
-  box-shadow:0 2px 8px rgba(0,0,0,.5),0 0 8px rgba(90,190,110,.18);}
-.cot-camoind svg{display:block;flex:0 0 auto;transition:opacity .2s;}
+   only the spotted state stays behind the 3 s lamp gate.
+   r7 MAJOR: no box, no chrome — a bare LAMP glyph perched on the damage
+   panel's top edge (setDamagePanel re-parents it), like WoT's lamp sitting
+   with the panel instead of a detached grey slot floating beside it. */
+.cot-camoind{position:absolute;bottom:150px;left:14px;width:46px;height:40px;
+  display:flex;align-items:center;justify-content:center;pointer-events:none;}
+.cot-camoind.onpanel{left:2px;top:-45px;bottom:auto;}
+.cot-camoind svg{display:block;flex:0 0 auto;transition:opacity .2s;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.85));}
+.cot-camoind.spotted svg{
+  filter:drop-shadow(0 0 7px rgba(240,90,90,.7)) drop-shadow(0 1px 2px rgba(0,0,0,.85));}
+/* camo_spotting r2: brighter concealed glow — the dim green closed eye was
+   nearly invisible against bright terrain at 1080p */
+.cot-camoind.hidden-in-bush svg{
+  filter:drop-shadow(0 0 6px rgba(120,225,140,.75)) drop-shadow(0 1px 2px rgba(0,0,0,.85));}
+.cot-camoind.conceal-pulse{animation:cotConcealPulse .7s ease-out 1;}
+@keyframes cotConcealPulse{0%{transform:scale(1)}35%{transform:scale(1.3)}100%{transform:scale(1)}}
 `;
 
 function penColor(r) {
@@ -584,34 +594,31 @@ export function initHud(bus) {
     netEl.style.display = '';
     const fps = Math.max(1, Math.min(999, Math.round(1 / netEmaDt)));
     const ping = 31 + Math.round(Math.sin(timeS * 0.37) * 2 + Math.sin(timeS * 1.7) * 1);
-    // killcam_shotinfo r3: label the ping — unlabeled "32 ms / 60 fps" read
-    // as a contradictory frame-time next to the fps figure in captures
-    const txt = `ping ${ping} ms · ${fps} fps`;
+    // hud_ui r7: two compact letterspaced caps tokens with tabular digits —
+    // the old lowercase "ping 33 ms · 55 fps" string read as debug text left
+    // in the build, not a styled HUD readout.
+    const txt = `${fps} FPS  ${ping} MS`;
     if (txt !== netLastTxt) { netEl.textContent = txt; netLastTxt = txt; }
   }
 
-  // Vehicle-class glyphs (r6): FIVE clearly distinct silhouettes — the r5 set
-  // was four rhombus variants that all collapsed into "the same diamond" at
-  // row size (critique: Tiger I, IS-2, T-90M and Leopard 2A7 all wore one
-  // glyph). Now only the WoT classic trio stays in the diamond family
-  // (light = hollow, medium = hollow + filled core, heavy = solid), TD is the
-  // inverted filled wedge, and the modern classes leave the family entirely:
-  // MBT = wide solid hull hexagon with a dark slot, IFV = the same hexagon
-  // hollow with a core dot. Parameterized by ink so team rows tint green/red.
+  // Vehicle-class glyphs (r7): the WoT flat-geometry glyph set — rhombi for
+  // the classic trio (light = hollow, medium = hollow + filled core, heavy =
+  // solid), TD = filled inverted wedge, SPG = filled dot, and the modern
+  // classes are trapezoids (MBT = filled, IFV = hollow). The r6 hexagon with
+  // a dark slot rendered as an unreadable "horizontal capsule" at row size.
+  // Parameterized by ink so team rows tint green/red.
   function classGlyphSVG(cls, ink, w = 10, h = 8) {
     const dia = 'M6 .7 11.2 5 6 9.3 .8 5Z';
-    const hex = 'M2.6 1.6h6.8L11.5 5l-2.1 3.4H2.6L.5 5Z';
+    const trap = 'M3.4 1.6h5.2l2.6 6.8H.8Z';
     const body = {
       light: `<path d="${dia}" fill="none" stroke="${ink}" stroke-width="1.5" stroke-linejoin="round"/>`,
       medium: `<path d="${dia}" fill="none" stroke="${ink}" stroke-width="1.5" stroke-linejoin="round"/>` +
         `<path d="M6 3.2 8.2 5 6 6.8 3.8 5Z" fill="${ink}"/>`,
       heavy: `<path d="${dia}" fill="${ink}"/>`,
       td: `<path d="M1 1.2h10L6 9.3Z" fill="${ink}"/>`,
-      mbt: `<path d="${hex}" fill="${ink}"/>` +
-        `<rect x="3.4" y="4.2" width="5.2" height="1.6" fill="rgba(8,12,16,.85)"/>`,
-      ifv: `<path d="${hex}" fill="none" stroke="${ink}" stroke-width="1.4" stroke-linejoin="round"/>` +
-        `<circle cx="6" cy="5" r="1.6" fill="${ink}"/>`,
-      spg: `<rect x="1.8" y="1.6" width="8.4" height="6.8" fill="${ink}"/>`,
+      mbt: `<path d="${trap}" fill="${ink}"/>`,
+      ifv: `<path d="${trap}" fill="none" stroke="${ink}" stroke-width="1.4" stroke-linejoin="round"/>`,
+      spg: `<circle cx="6" cy="5" r="3.1" fill="${ink}"/>`,
     };
     return `<svg viewBox="0 0 12 10" width="${w}" height="${h}">${body[cls] || body.medium}</svg>`;
   }
@@ -722,10 +729,10 @@ export function initHud(bus) {
   // stays behind the lamp gate.
   const camoInd = el('div', 'cot-camoind', root);
   camoInd.innerHTML =
-    `<svg viewBox="0 0 24 24" width="22" height="22">` +
+    `<svg viewBox="0 0 24 24" width="32" height="32">` +
     `<path class="ceye" fill="none" stroke="#8a97a3" stroke-width="1.7" ` +
     `d="M2.5 12c2.7-4.4 6-6.6 9.5-6.6s6.8 2.2 9.5 6.6c-2.7 4.4-6 6.6-9.5 6.6S5.2 16.4 2.5 12Z"/>` +
-    `<path class="clid" fill="none" stroke="#7dbd88" stroke-width="1.7" stroke-linecap="round" ` +
+    `<path class="clid" fill="none" stroke="#9ae8a6" stroke-width="1.7" stroke-linecap="round" ` +
     `d="M2.5 12c2.7 3.6 6 5.4 9.5 5.4s6.8-1.8 9.5-5.4M6 15.6l-1.5 2M12 17.6v2.3M18 15.6l1.5 2" ` +
     `style="display:none"/>` +
     `<circle class="cpup" cx="12" cy="12" r="3" fill="#8a97a3"/></svg>`;
@@ -743,10 +750,19 @@ export function initHud(bus) {
       else state = 'exposed';
     }
     if (state === camoIndState) return;
+    const prev = camoIndState;
     camoIndState = state;
     camoInd.style.display = state === 'off' ? 'none' : 'flex';
     camoInd.classList.toggle('spotted', state === 'spotted');
     camoInd.classList.toggle('hidden-in-bush', state === 'concealed');
+    // camo_spotting r2: one-shot pulse on the exposed→concealed flip so the
+    // player notices the bush start working (spotted state untouched — it
+    // stays behind the sixth-sense fuse).
+    camoInd.classList.remove('conceal-pulse');
+    if (state === 'concealed' && (prev === 'exposed' || prev === 'spotted')) {
+      void camoInd.offsetWidth; // restart the animation
+      camoInd.classList.add('conceal-pulse');
+    }
     if (state === 'spotted') {
       camoEyeEl.style.display = '';
       camoLidEl.style.display = 'none';
@@ -827,6 +843,8 @@ export function initHud(bus) {
   let lastTimeS = 0;
   let playerId = null;
   let smoothRadPx = 40;
+  let wasReloading = false; // reload-complete edge detector (ready pulse)
+  let readyPulseT = -1;     // sim time the reload ring finished closing
   let localSlot = 0;
   let forced = null; // partial FrameInfo.aim override (cleared by next update)
   let lastShells = DEFAULT_SHELLS;
@@ -961,8 +979,25 @@ export function initHud(bus) {
     return nick;
   }
 
+  let rosterSig = '';
   function updateTeams(frame) {
     const tanks = frame.tanks || [];
+    // content_breadth r2: battle restarts don't always round-trip through
+    // setMode('hidden') — when the participant set (or the player entity)
+    // changes, drop and rebuild the whole roster DOM instead of appending
+    // 4 fresh rows under the stale 4 (entity ids are stable spec ids).
+    let sig = '';
+    for (let i = 0; i < tanks.length; i++) {
+      const t = tanks[i];
+      if (t && t.spec) sig += t.id + (t.isPlayer ? '*' : '') + ';';
+    }
+    if (sig !== rosterSig) {
+      rosterSig = sig;
+      for (const [, row] of earRows) row.root.remove();
+      earRows.clear();
+      nickById.clear();
+      lastScore = '';
+    }
     let allyAlive = 0, allyTotal = 0, enemyAlive = 0, enemyTotal = 0;
     const deadEnemies = []; // class ids — fill the ALLY frag chips
     const deadAllies = [];  // class ids — fill the ENEMY frag chips
@@ -977,8 +1012,11 @@ export function initHud(bus) {
       if (!row) {
         const r = el('div', 'cot-er');
         const color = ally ? PEN_GREEN : PEN_RED;
-        r.innerHTML = `<span class="ic"></span><span class="tier"></span>` +
-          `<span class="n"><span class="nick"></span><span class="veh"></span></span>` +
+        // r7: tier is a BARE roman numeral leading the vehicle-name line
+        // (WoT) — no boxed badge chip
+        r.innerHTML = `<span class="ic"></span>` +
+          `<span class="n"><span class="nick"></span>` +
+          `<span class="veh"><i class="tier"></i><span class="vn"></span></span></span>` +
           `<div class="hpm"><i></i></div>`;
         // class glyph, team-tinted (r3: per-vehicle side silhouettes at
         // 28x12 all read as the same tank — WoT parses the roster by CLASS)
@@ -987,7 +1025,7 @@ export function initHud(bus) {
         if (t.isPlayer) r.classList.add('me');
         r.querySelector('.tier').textContent = TIER_BY_ID[t.spec.id] || '–';
         r.querySelector('.nick').textContent = nickFor(t);
-        r.querySelector('.veh').textContent = t.spec.name;
+        r.querySelector('.vn').textContent = t.spec.name;
         (ally ? earL : earR).appendChild(r);
         row = {
           root: r, hp: r.querySelector('.hpm i'), ic: r.querySelector('.ic'),
@@ -1033,68 +1071,65 @@ export function initHud(bus) {
   // ---------- reticle / scope canvas ----------
   // WoT sniper mode: FULL-SCREEN view — no telescope mask, no black scope
   // tunnel (that is budget-FPS sniper grammar, hud_ui r2 major). The scene
-  // stays fully visible edge to edge; only a very subtle corner darkening
-  // (<10% at the extreme corners, per the r2 critique) plus a whisper of
-  // chromatic fringe say "optics". The identity of the mode comes from the
-  // reticle furniture: dispersion circle, short mil stadia, zoom plate.
+  // stays visible edge to edge. r7 MAJOR: the mode still failed the blind
+  // side-by-side because nothing about it was visibly "sniper" at 1080p —
+  // the r6 9%-corner shade was invisible and the reticle was the arcade
+  // circle verbatim. Sniper identity now comes from three cues WoT ships:
+  //   1. a SOFT DARK VIGNETTE (~18% at the extreme corners, nothing by
+  //      mid-frame — still no ring boundary, no tunnel);
+  //   2. FULL-WIDTH HAIRLINES — 1px cross lines running from the screen
+  //      edges up to the dispersion circle's rim (interior stays clean);
+  //   3. the zoom readout anchored below reticle center (drawReticle).
   function drawScope(zoom) {
     const cx = w / 2, cy = h / 2;
-    if (!scopeGrad) {
-      // faint corner shade only: starts past mid-frame and peaks at ~9% in
-      // the far corners — no ring boundary is ever visible on screen
-      scopeGrad = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.52,
+    if (!scopeGrad || scopeGrad._zoom !== zoom) {
+      // gameplay_feel r2: scope shadow — perceptible ring shading that
+      // STRENGTHENS with zoom (x2 ~14% corners, x8+ ~30%) while the center
+      // 55% stays untouched — optics identity without the budget-FPS
+      // telescope tunnel (movement-physics.md §9.2).
+      const deep = Math.min(0.30, 0.10 + 0.05 * Math.log2(zoom));
+      scopeGrad = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.42,
         cx, cy, Math.hypot(w, h) * 0.52);
       scopeGrad.addColorStop(0, 'rgba(2,3,4,0)');
-      scopeGrad.addColorStop(0.6, 'rgba(2,3,4,0.04)');
-      scopeGrad.addColorStop(1, 'rgba(2,3,4,0.09)');
+      scopeGrad.addColorStop(0.55, `rgba(2,3,4,${(deep * 0.35).toFixed(3)})`);
+      scopeGrad.addColorStop(1, `rgba(2,3,4,${deep.toFixed(3)})`);
+      scopeGrad._zoom = zoom;
     }
-    // corner-shade fade-in (~0.1 s); forced screenshot frames snap it
-    // complete via forceAimDisplay
+    // vignette fade-in (~0.1 s); forced screenshot frames snap it complete
+    // via forceAimDisplay
     const fadeK = scopeFadeMs >= 0
       ? Math.min(1, (performance.now() - scopeFadeMs) / 100) : 1;
     ctx.globalAlpha = fadeK;
     ctx.fillStyle = scopeGrad;
     ctx.fillRect(0, 0, w, h);
     // NO color tint over the scene: WoT sniper optics keep the arcade
-    // grading — the scope reads from the reticle furniture alone.
-    // Only a whisper of chromatic fringe survives at the extreme edge.
+    // grading. Only a whisper of chromatic fringe survives at the edge.
     const chrom = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.5, cx, cy, Math.hypot(w, h) * 0.52);
     chrom.addColorStop(0, 'rgba(70,110,190,0)');
     chrom.addColorStop(1, 'rgba(90,130,215,0.08)');
     ctx.fillStyle = chrom;
     ctx.fillRect(0, 0, w, h);
-    // short WoT-style stadia bars HUGGING the aim circle — clipped to at most
-    // 1.5x the circle radius, mirrored left/right, with a small end tick.
-    // hud_ui r5 MAJOR: the old fixed 150px stadia PLUS faint carry-out
-    // hairlines to min(w,h)*0.40 fused into one continuous ~860px grey line
-    // crossing terrain and the target tank — read as a leftover debug/horizon
-    // line. No shipped tank game draws long stadia; reticle strokes must
-    // never extend past 1.5x the aim-circle radius, and the carry-out
-    // hairlines are gone for good.
+    // full-width hairline cross: TRUE 1px hairlines (not the r5 1.6px bars
+    // with a fat halo that read as a debug horizon line) from all four frame
+    // edges to the dispersion circle rim — the WoT sniper sight's skeleton.
     {
       const rNow = Math.max(26, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
-      const gap = rNow * 1.12;
-      const EXT = Math.max(rNow * 1.5, gap + 12);
+      const gap = rNow + 3;
       for (const pass of [
-        { c: 'rgba(6,10,8,0.55)', lw: 3.4 },
-        { c: 'rgba(222,238,228,0.85)', lw: 1.6 },
+        { c: 'rgba(4,7,6,0.38)', lw: 2.4 },
+        { c: 'rgba(216,232,222,0.62)', lw: 1 },
       ]) {
         ctx.strokeStyle = pass.c;
         ctx.lineWidth = pass.lw;
         ctx.beginPath();
-        ctx.moveTo(cx - EXT, cy + 0.5); ctx.lineTo(cx - gap, cy + 0.5);
-        ctx.moveTo(cx + gap, cy + 0.5); ctx.lineTo(cx + EXT, cy + 0.5);
-        // end ticks (short verticals) cap the bars WoT-style
-        ctx.moveTo(cx - EXT + 0.5, cy - 4); ctx.lineTo(cx - EXT + 0.5, cy + 4);
-        ctx.moveTo(cx + EXT - 0.5, cy - 4); ctx.lineTo(cx + EXT - 0.5, cy + 4);
+        ctx.moveTo(0, cy + 0.5); ctx.lineTo(cx - gap, cy + 0.5);
+        ctx.moveTo(cx + gap, cy + 0.5); ctx.lineTo(w, cy + 0.5);
+        ctx.moveTo(cx + 0.5, 0); ctx.lineTo(cx + 0.5, cy - gap);
+        ctx.moveTo(cx + 0.5, cy + gap); ctx.lineTo(cx + 0.5, h);
         ctx.stroke();
       }
     }
     ctx.globalAlpha = 1;
-    // (r6: the magnification readout moved out of this top-center plate to
-    // the reticle's left flank — see the readout block in drawReticle. WoT
-    // shows the zoom factor adjacent to the aim circle, not under the score
-    // plate. Probes still hide it via window.__HUD_HIDE_ZOOM_PLATE.)
   }
 
   function drawHitIndicators(timeS) {
@@ -1223,19 +1258,25 @@ export function initHud(bus) {
     }
     // thin continuous stroke (a touch heavier in sniper, where the whole
     // sight identity hangs on this circle) over a 62%-black halo under-pass
-    const circleLw = mode === 'sniper' ? 1.7 : 1.5;
+    // controls_gunnery r2: heavier weights — the grey arcade ring vanished
+    // over sunlit roads at 1080p (dark under-stroke ~4.5 px, bright >=2.2 px)
+    const circleLw = mode === 'sniper' ? 2.0 : 2.2;
     ctx.lineCap = 'butt';
     ctx.globalAlpha = 0.68;
     ctx.strokeStyle = 'rgba(0,0,0,0.62)'; // dark halo under-pass
-    ctx.lineWidth = circleLw + 2.0;
+    ctx.lineWidth = circleLw + 2.3;
     circlePass(0.4);
     ctx.globalAlpha = 0.95;
     // BLOCKED-SHOT INDICATOR (controls_gunnery r2): the muzzle→aim path is
     // obstructed short of the aim point — WoT's red reticle on a blocked gun
     // line. The circle flips red so the player never fires into a crest.
+    // GUN-LIMIT (r2): gun pinned by the pitch clamp / muzzle-clearance floor
+    // / casemate arc — the circle greys out so an unconverged lay is visibly
+    // not-ready even though the path itself is clear.
     const blocked = view.blockedDistM != null;
-    ctx.strokeStyle = blocked ? PEN_RED : CIRCLE_COL;
-    ctx.fillStyle = blocked ? PEN_RED : CIRCLE_COL;
+    const limited = !blocked && view.atGunLimit;
+    ctx.strokeStyle = blocked ? PEN_RED : limited ? 'rgba(160,170,180,0.95)' : CIRCLE_COL;
+    ctx.fillStyle = blocked ? PEN_RED : limited ? 'rgba(160,170,180,0.95)' : CIRCLE_COL;
     ctx.shadowColor = 'rgba(0,0,0,0.6)';
     ctx.shadowBlur = 1;
     ctx.lineWidth = circleLw;
@@ -1250,6 +1291,12 @@ export function initHud(bus) {
     // target's hull.
     const zs = mode === 'sniper'
       ? Math.min(1.8, 1.1 + 0.085 * (view.zoom || 8)) : 1;
+    // reload state hoisted (r7): the ring, the countdown numeral and the
+    // ready-pulse edge detector below all read it
+    const rl0 = view.reload;
+    const isReloading = !!(rl0 && rl0.totalS > 0 && rl0.t > 0.001);
+    if (wasReloading && !isReloading) readyPulseT = lastTimeS;
+    wasReloading = isReloading;
     function markerPass(inkOnly) {
       ctx.beginPath();
       ctx.moveTo(cx - 14 * zs, cy + 0.5); ctx.lineTo(cx - 5 * zs, cy + 0.5);
@@ -1273,14 +1320,13 @@ export function initHud(bus) {
     markerPass(false);
 
     // --- radial reload sweep hugging the center marker (WoT reload ring):
-    // dim full track + amber arc that closes clockwise as the load completes
-    const rl0 = view.reload;
-    const isReloading = rl0 && rl0.totalS > 0 && rl0.t > 0.001;
+    // dim full track + amber arc that closes clockwise as the load completes.
+    // r7: heavier 3.5px stroke — the old 3px arc read as a generic spinner.
     if (isReloading) {
       const RING = 19 + (zs - 1) * 14; // clears the zoom-scaled marker arms
       const frac = Math.max(0, Math.min(1, 1 - rl0.t / rl0.totalS));
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(10,14,18,0.55)';
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = 'rgba(10,14,18,0.6)';
       ctx.beginPath();
       ctx.arc(cx, cy, RING, 0, Math.PI * 2);
       ctx.stroke();
@@ -1290,6 +1336,21 @@ export function initHud(bus) {
       ctx.arc(cx, cy, RING, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
       ctx.stroke();
       ctx.lineCap = 'butt';
+    }
+    // ready pulse (r7): the moment the reload arc closes, the center marker
+    // flashes white for ~0.4 s — WoT's unmistakable "gun ready" beat.
+    if (readyPulseT >= 0) {
+      const pAge = lastTimeS - readyPulseT;
+      if (pAge >= 0 && pAge < 0.4) {
+        const pa = 1 - pAge / 0.4;
+        ctx.globalAlpha = 0.95 * pa;
+        ctx.strokeStyle = '#ffffff';
+        ctx.fillStyle = '#ffffff';
+        ctx.lineWidth = 3.2;
+        markerPass(false);
+      } else {
+        readyPulseT = -1;
+      }
     }
     ctx.globalAlpha = 1;
     ctx.shadowBlur = 0;
@@ -1310,62 +1371,66 @@ export function initHud(bus) {
       ctx.shadowBlur = 0;
     }
 
-    // --- readouts (r4, WoT PC layout): ONLY the reload countdown lives on
-    // the reticle's vertical axis; the chambered-shell count and the range
-    // sit together in a small side tag beside the dispersion circle in BOTH
-    // modes (the old center-under "240 m" occupied WoT's reload-timer slot).
+    // --- readouts (r7, WoT PC layout): everything hangs CENTERED below the
+    // reticle. The reload countdown sits just under the reload ring; the
+    // chambered-shell count + aim distance anchor below the dispersion
+    // circle's lower rim (the old 4-o'clock side tag collided with the
+    // circle stroke); sniper appends the zoom factor to the same stack.
     ctx.textAlign = 'center';
     ctx.shadowColor = 'rgba(0,0,0,0.9)';
     ctx.shadowBlur = 3;
     if (isReloading) {
-      // countdown just under the reload ring — r6: SMALL secondary numeral
-      // (the sweep arc is the primary reload cue; the old 800-weight 16px
-      // orange read as a mod/Blitz-style countdown, not PC WoT vanilla)
-      ctx.fillStyle = 'rgba(240,160,48,0.9)';
-      ctx.font = `600 11.5px ${FONT_COND}`;
+      // countdown just under the reload ring — r7: promoted to a 17px bold
+      // numeral (the r6 11.5px read as an afterthought next to the arc)
+      ctx.fillStyle = 'rgba(240,160,48,0.95)';
+      ctx.font = `700 17px ${FONT_COND}`;
       ctx.fillText(rl0.t >= 10 ? `${Math.ceil(rl0.t)} s` : `${rl0.t.toFixed(1)} s`,
-        cx, cy + Math.max(37, 19 + (zs - 1) * 14 + 19));
+        cx, cy + 19 + (zs - 1) * 14 + 27);
     }
-    // side tag: shell count (white) + type (ammo color) with the range in a
-    // smaller line beneath. r6: anchored on a DOWN-RIGHT diagonal OUTSIDE the
-    // dispersion circle's edge (min 132px radial) — the old cx+(r+24) tag at
-    // center height parked the text on the target's hull at mid sniper zoom.
     {
       const sp = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
       const n = shellCount(sp);
       const tType = sp.type || '';
-      const RT = Math.max(r * 1.18 + 26, 132);
-      const x0 = cx + RT * 0.79;  // cos ~38°
-      const y0 = cy + RT * 0.62;  // sin ~38° — clears the hull center-line
+      // below the circle's lower rim, clear of the reload numeral, and never
+      // into the shell dock even at an extreme bloom clamp
+      const yInfo = Math.min(cy + Math.max(r * 1.06 + 26, 112), h - 132);
+      ctx.font = `700 13.5px ${FONT_COND}`;
+      const wN = ctx.measureText(`${n} `).width;
+      ctx.font = `800 9px ${FONT_COND}`;
+      const wT = ctx.measureText(tType).width;
+      const x0 = cx - (wN + wT) / 2;
       ctx.textAlign = 'left';
-      ctx.font = `700 13px ${FONT_COND}`;
-      const wN = ctx.measureText(`${n}`).width;
+      ctx.font = `700 13.5px ${FONT_COND}`;
       ctx.fillStyle = 'rgba(226,236,244,0.92)';
-      ctx.fillText(`${n}`, x0, y0);
-      ctx.font = `800 8.5px ${FONT_COND}`;
+      ctx.fillText(`${n} `, x0, yInfo);
+      ctx.font = `800 9px ${FONT_COND}`;
       ctx.fillStyle = SHELL_TYPE_COLOR[tType] || 'rgba(159,176,191,0.9)';
-      ctx.fillText(tType, x0 + wN + 4, y0);
-      if (view.distM != null && isFinite(view.distM)) {
-        ctx.fillStyle = 'rgba(208,221,232,0.80)';
-        ctx.font = `600 11.5px ${FONT_COND}`;
-        ctx.fillText(`${Math.round(view.distM)} m`, x0, y0 + 16);
-      }
-      // zoom factor: adjacent to the reticle on its LEFT at center height
-      // (WoT sniper placement — r6: it lived top-center under the score
-      // plate, a spot no WoT player expects it in)
-      if (mode === 'sniper' && !window.__HUD_HIDE_ZOOM_PLATE) {
-        ctx.textAlign = 'right';
-        ctx.font = `700 14px ${FONT_COND}`;
-        ctx.fillStyle = 'rgba(222,234,246,0.92)';
-        ctx.fillText(`×${(view.zoom || 8).toFixed(1)}`, cx - Math.max(r + 30, 110), cy + 5);
-      }
+      ctx.fillText(tType, x0 + wN, yInfo);
       ctx.textAlign = 'center';
+      if (view.distM != null && isFinite(view.distM)) {
+        ctx.fillStyle = 'rgba(208,221,232,0.85)';
+        ctx.font = `600 12px ${FONT_COND}`;
+        ctx.fillText(`${Math.round(view.distM)} m`, cx, yInfo + 17);
+      }
+      // zoom factor: bottom of the same center stack (r7 — the 9-o'clock
+      // float read as a stray label in the blind side-by-side)
+      if (mode === 'sniper' && !window.__HUD_HIDE_ZOOM_PLATE) {
+        ctx.font = `700 13px ${FONT_COND}`;
+        ctx.fillStyle = 'rgba(222,234,246,0.9)';
+        ctx.fillText(`×${(view.zoom || 8).toFixed(1)}`, cx, yInfo + 36);
+      }
     }
     if (blocked) {
       // blocking distance under the aim circle (controls_gunnery r2)
       ctx.fillStyle = PEN_RED;
       ctx.font = `700 12.5px ${FONT_COND}`;
       ctx.fillText(`PATH BLOCKED ${Math.round(view.blockedDistM)} m`, cx, cy + Math.max(58, r + 19));
+    } else if (view.atGunLimit) {
+      // controls_gunnery r2: the gun physically cannot reach the reticle
+      // (pitch clamp / muzzle-clearance floor / casemate arc)
+      ctx.fillStyle = 'rgba(170,180,190,0.95)';
+      ctx.font = `700 12.5px ${FONT_COND}`;
+      ctx.fillText('GUN LIMIT', cx, cy + Math.max(58, r + 19));
     }
     ctx.shadowBlur = 0;
     ctx.textAlign = 'left';
@@ -1556,9 +1621,13 @@ export function initHud(bus) {
   // it. One ortho render into an offscreen target at map load (main.js passes
   // {renderer, scene, exclude} through buildMinimap); any failure falls back
   // to the procedural cartography below, so the harness can never go dark.
-  function renderTopDownSnap(snap, N) {
+  function renderTopDownSnap(snap, N0) {
     try {
       if (!snap || !snap.renderer || !snap.scene) return null;
+      // r7: SUPERSAMPLE the one-time capture at 2x the display resolution —
+      // the caller downsamples it, anti-aliasing tree crowns/road edges into
+      // the higher-detail satellite look the flat 1x pass lacked.
+      const N = N0 * 2;
       const { renderer, scene, exclude } = snap;
       const half = mapWorldSize / 2;
       // NOTE: a straight down-look with +Z (north) as screen-up puts world +X
@@ -1660,9 +1729,11 @@ export function initHud(bus) {
     const bctx = bg.getContext('2d');
     if (snapBg) {
       // slight contrast/saturation shape + a whisper of dark veil so white
-      // grid/blips/rings always separate from sunlit terrain
+      // grid/blips/rings always separate from sunlit terrain (the 2x snap
+      // downsamples here — see renderTopDownSnap supersampling)
+      bctx.imageSmoothingQuality = 'high';
       bctx.filter = 'saturate(1.16) brightness(0.97) contrast(1.06)';
-      bctx.drawImage(snapBg, 0, 0);
+      bctx.drawImage(snapBg, 0, 0, N, N);
       bctx.filter = 'none';
       bctx.fillStyle = 'rgba(6,10,8,0.15)';
       bctx.fillRect(0, 0, N, N);
@@ -1720,37 +1791,57 @@ export function initHud(bus) {
         octx.stroke();
       }
     }
-    // tree clusters: hard-edged irregular forest polygons (WoT flat style)
+    // tree clusters: irregular forest polygons — r7 SATELLITE READ: each
+    // stand gets a SE canopy drop shadow (NW sun) plus an inner sunlit-crown
+    // fill offset toward the light, so forests read as volumes on an aerial
+    // photo instead of flat "pebble blob" dabs.
     if (f.treeClusters) {
-      octx.fillStyle = pal.forest;
-      octx.strokeStyle = pal.forestStroke;
-      octx.lineWidth = 0.8;
       octx.lineJoin = 'round';
+      const vx = new Float32Array(8);
+      const vy = new Float32Array(8);
       for (const p of f.treeClusters) {
         const [px, py] = worldToMap(p.x, p.z);
         const pr = Math.max(2.5, (p.r / mapWorldSize) * MM);
         // deterministic lumpy octagon seeded from the cluster position
         const seed = Math.abs(Math.sin(p.x * 12.9898 + p.z * 78.233) * 43758.5453);
-        octx.beginPath();
         for (let k = 0; k < 8; k++) {
           const a = (k / 8) * Math.PI * 2;
           const jr = pr * (0.72 + 0.38 * Math.abs(Math.sin(seed + k * 2.3)));
-          const vx = px + Math.cos(a) * jr;
-          const vy = py + Math.sin(a) * jr * 0.9;
-          if (k === 0) octx.moveTo(vx, vy); else octx.lineTo(vx, vy);
+          vx[k] = px + Math.cos(a) * jr;
+          vy[k] = py + Math.sin(a) * jr * 0.9;
         }
-        octx.closePath();
+        const poly = (dx, dy, s) => {
+          octx.beginPath();
+          for (let k = 0; k < 8; k++) {
+            const x2 = px + (vx[k] - px) * s + dx;
+            const y2 = py + (vy[k] - py) * s + dy;
+            if (k === 0) octx.moveTo(x2, y2); else octx.lineTo(x2, y2);
+          }
+          octx.closePath();
+        };
+        poly(1.3, 1.7, 1);              // canopy shadow cast to the SE
+        octx.fillStyle = 'rgba(8,14,7,0.4)';
         octx.fill();
+        poly(0, 0, 1);                  // canopy body
+        octx.fillStyle = pal.forest;
+        octx.fill();
+        octx.strokeStyle = pal.forestStroke;
+        octx.lineWidth = 0.8;
         octx.stroke();
+        poly(-0.8, -1.0, 0.58);         // sunlit crown toward the NW light
+        octx.fillStyle = 'rgba(106,140,74,0.36)';
+        octx.fill();
       }
     }
-    // roads: dark casing pass + solid 2px tan centerline pass
+    // roads: dark casing pass + solid tan ribbon pass — r7: wider casing so
+    // every road carries a visible dark edge line (satellite read) instead
+    // of a pale unbordered ribbon
     if (f.roads) {
       octx.lineJoin = 'round';
       octx.lineCap = 'round';
       for (const pass of [
-        { c: pal.roadCasing, lw: 3.2 },
-        { c: pal.roadFill, lw: 1.8 },
+        { c: pal.roadCasing, lw: 3.8 },
+        { c: pal.roadFill, lw: 2.0 },
       ]) {
         octx.strokeStyle = pass.c;
         octx.lineWidth = pass.lw;
@@ -2082,11 +2173,12 @@ export function initHud(bus) {
       // larger than any teammate blip — FIXED anchor for the relaxation pass
       liveBlips.push({ x: px, y: py, yaw: st.yaw, fill: '#f2f8ff', s: 6.6, a: 1, fixed: true });
     }
-    // r5: relax overlapping blips to >= 8px separation (radial nudge, the
+    // r7: relax overlapping blips to >= 11px separation (radial nudge, the
     // player arrow never moves), clamp inside the map frame, and draw the
-    // player arrow LAST so it always sits on top.
-    const MIN_SEP = 8;
-    for (let it = 0; it < 4; it++) {
+    // player arrow LAST so it always sits on top. (The r5 8px pass still
+    // left the spawn cluster reading as one green clump over the own base.)
+    const MIN_SEP = 11;
+    for (let it = 0; it < 6; it++) {
       let moved = false;
       for (let i = 0; i < liveBlips.length; i++) {
         for (let j = i + 1; j < liveBlips.length; j++) {
@@ -2411,6 +2503,7 @@ export function initHud(bus) {
         sixthEl.classList.remove('on');
         for (const [, row] of earRows) row.root.remove();
         earRows.clear();
+        rosterSig = ''; // content_breadth r2: keep the rebuild signature in sync
         for (const [, bar] of hpPool) bar.root.remove();
         hpPool.clear();
         lastScore = '';
@@ -2502,6 +2595,10 @@ export function initHud(bus) {
     setDamagePanel(panel) {
       if (panel && panel.root && panel.root.parentNode !== root) {
         root.appendChild(panel.root);
+        // r7: the spotted/camo lamp perches on the panel's top edge (WoT
+        // lamp placement) instead of floating in a detached box beside it
+        panel.root.appendChild(camoInd);
+        camoInd.classList.add('onpanel');
       }
     },
 

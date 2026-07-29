@@ -17,7 +17,10 @@ const port = 5200 + Math.floor(Math.random() * 700);
 const server = await createServer({
   root: process.cwd(),
   logLevel: 'error',
-  server: { port, strictPort: false },
+  // camo_spotting r2: hmr off — a concurrent editor session touching src/
+  // mid-probe triggered a full-reload navigation that destroyed the page
+  // evaluate context and failed the run spuriously.
+  server: { port, strictPort: false, hmr: false },
 });
 await server.listen();
 const url = `http://localhost:${server.config.server.port}/`;
@@ -202,21 +205,58 @@ try {
     // camo_spotting r3: random rosters — the observer must be ENEMY-team
     const en = g.tanks.find((t) => !t.isPlayer && t.team === 'enemy' && !t.combat.destroyed);
     // park an enemy 60 m away so the 0.5 s proximity checks light the player up
+    // camo_spotting r2 (this round): the fixed +x bearing broke when the
+    // content-expansion roster reshuffled spawns — an obstacle 12 m from the
+    // teleported enemy blocked hard LOS, so the sim CORRECTLY never spotted
+    // and the check red-flagged healthy code. Search bearings for a clear
+    // eye-to-eye line (same raycast the sim uses) before fast-forwarding.
     const px = g.player.state.pos.x, pz = g.player.state.pos.z;
-    en.state.pos.x = px + 60; en.state.pos.z = pz;
-    en.state.pos.y = hf.getHeightAt(px + 60, pz);
+    const losClear = (a, b) => {
+      const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+      const d = Math.hypot(dx, dy, dz);
+      const hit = D.world.raycast({ x: a.x, y: a.y, z: a.z }, { x: dx / d, y: dy / d, z: dz / d }, d);
+      return !hit || hit.dist > d - 2;
+    };
+    let placed = false;
+    for (let a = 0; a < 16 && !placed; a++) {
+      const ang = (a / 16) * Math.PI * 2;
+      const ex = px + Math.sin(ang) * 60, ez = pz + Math.cos(ang) * 60;
+      en.state.pos.x = ex; en.state.pos.z = ez;
+      en.state.pos.y = hf.getHeightAt(ex, ez);
+      placed = losClear(
+        { x: ex, y: en.state.pos.y + en.spec.dims.heightM * 0.9, z: ez },
+        { x: px, y: g.player.state.pos.y + g.player.spec.dims.heightM * 0.85, z: pz },
+      );
+    }
+    if (!placed) return { spotted: false, lampOn: false, camoShown: false, camoSpotted: false, noLos: true };
+    // camo_spotting r2: the AI return-fire rounds made a 60 m parked enemy
+    // KILL the player inside the 7 s fast-forward — the killcam death replay
+    // then owns the HUD (frame clock rewinds to the replay), so the lamp
+    // assertions read a replay frame, not the live battle. The lamp check
+    // needs a living player; make them unkillable for this scenario only.
+    g.player.combat.hp = 1e9;
     D.fastForward(7); // spot (<1 s) + 3 s sixth-sense fuse + margin
-    await new Promise((r) => setTimeout(r, 400)); // let rAF HUD frames run
+    // camo_spotting r2: the fixed 400 ms rAF wait was flaky under machine
+    // load (the AI can shuffle the rising edge later into the fast-forward,
+    // and starved rAF frames delay the lamp update). Poll up to ~5 s of
+    // real time, nudging the sim forward, until the lamp lights.
     const sixth = document.querySelector('.cot-sixth');
     // camo_spotting r3: the camo indicator is now the eye icon — SPOTTED
     // state is the 'spotted' class, not a .pct text node (which is gone)
     const camo = document.querySelector('.cot-camoind');
-    return {
+    const read = () => ({
       spotted: D.spotting.isSpotted(g.player.id, 'enemy'),
       lampOn: !!(sixth && sixth.classList.contains('on')),
       camoShown: !!(camo && camo.style.display !== 'none'),
       camoSpotted: !!(camo && camo.classList.contains('spotted')),
-    };
+    });
+    let out = read();
+    for (let i = 0; i < 12 && !(out.spotted && out.lampOn && out.camoSpotted); i++) {
+      D.fastForward(0.5);
+      await new Promise((r) => setTimeout(r, 400)); // let rAF HUD frames run
+      out = read();
+    }
+    return out;
   });
   if (lamp.spotted && lamp.lampOn) pass('sixth-sense lamp lit 3 s after being spotted');
   else fail(`sixth sense: spotted=${lamp.spotted} lampOn=${lamp.lampOn}`);

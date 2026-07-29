@@ -252,6 +252,7 @@ export function createAI(entity, opts = {}) {
   let underFireUntilS = -Infinity; // reaction window end (sim seconds)
   let playerAggro = null;          // sticky PLAYER attacker-of-record (r4)
   let playerAggroUntilS = -Infinity;
+  let playerShotsInWindow = 0;     // player shots inside the live intel window (r2)
   // PLAYER-HUNTER BIAS (controls_gunnery r4): r3's flat 0.35 d² weighting
   // still let every bot farm the closer allied escorts while the player
   // plinked from 350 m (probe: 26 enemy shells, zero at the player). A
@@ -377,9 +378,16 @@ export function createAI(entity, opts = {}) {
       // spotting sim actually shows the shooter (fire reveal now resolves
       // through the formula there) — a raw geometric ray alone must never
       // acquire a concealment-hidden ambusher.
-      if (isVisibleToTeam(aggro) && hasLos(ex, ey, ez, up.x, eyeY(aggro), up.z)) {
+      // controls_gunnery r2 EXCEPTION: a PLAYER that has fired 2+ times
+      // inside one muzzle-intel window is claimed even without visibility or
+      // a personal ray — repeated muzzle flash/tracer from one position is
+      // unambiguous intel, and the blocked-LOS engage path converts the
+      // claim into a vantage push (2 s hard commit for player targets).
+      const seen = isVisibleToTeam(aggro) && hasLos(ex, ey, ez, up.x, eyeY(aggro), up.z);
+      const hardClaim = !seen && aggro === playerAggro && playerShotsInWindow >= 2;
+      if (seen || hardClaim) {
         target = aggro;
-        losClear = true;
+        losClear = seen;
         acquiredAtS = timeS;
         lastSeenAtS = timeS;
         lastSeen.x = up.x; lastSeen.z = up.z;
@@ -1262,6 +1270,10 @@ export function createAI(entity, opts = {}) {
   function notifyPlayerFired(shooterEnt) {
     if (!shooterEnt || !shooterEnt.state || !shooterEnt.combat ||
         shooterEnt.combat.destroyed || shooterEnt.team === entity.team) return;
+    // REPEAT-OFFENDER COUNT (controls_gunnery r2): shots inside one intel
+    // window accumulate; the count resets when the window lapses.
+    if (nowS > playerAggroUntilS) playerShotsInWindow = 0;
+    playerShotsInWindow += 1;
     playerAggro = shooterEnt;
     playerAggroUntilS = Math.max(playerAggroUntilS, nowS + MUZZLE_INTEL_WINDOW_S);
     lastSeen.x = shooterEnt.state.pos.x;
@@ -1273,6 +1285,21 @@ export function createAI(entity, opts = {}) {
       nonPenCount = 0;
       probeTimer = 0;
       if (mode === 'patrol') mode = 'engage';
+    } else if (playerShotsInWindow >= 2 && target !== shooterEnt && !target.isPlayer) {
+      // controls_gunnery r2: a player who keeps firing inside one intel
+      // window takes the target slot OUTRIGHT — even from an ENGAGED bot and
+      // even without personal LOS. r5's design left engaged bots on their
+      // allied-bot targets and gated the aggro claim on team visibility, so
+      // whole gate battles passed with 30 enemy shells and ZERO aimed at a
+      // player firing 5 times from one position. The blocked-ray engage path
+      // hard-commits to a vantage in 2 s for player targets (driveEngage),
+      // so the claim converts into a firing position instead of idling.
+      target = shooterEnt;
+      losClear = false; // recomputed on the next LOS tick
+      acquiredAtS = nowS;
+      nonPenCount = 0;
+      probeTimer = 0;
+      if (mode === 'patrol' || mode === 'seekCover') mode = 'engage';
     }
   }
 
@@ -1287,7 +1314,9 @@ export function createAI(entity, opts = {}) {
       mode, targetId: target ? target.id : null,
       targetIsPlayer: !!(target && target.isPlayer),
       losBlockedT: +losBlockedT.toFixed(1), hasVantage,
-      pressing: nowS < pressUntilS, ..._dbg,
+      pressing: nowS < pressUntilS,
+      playerShotsInWindow, // r2: repeat-offender aggro count (intel window)
+      ..._dbg,
     }),
     state: mode,
   };

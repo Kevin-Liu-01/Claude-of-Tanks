@@ -24,7 +24,14 @@ export default {
     ],
   },
 
-  splat: {}, // stock grass/dirt/rock/mud palette
+  splat: {
+    // r2 terrain_environment: agrarian field patchwork (crop plots, mowing
+    // strips, field-margin lines) on the 150-800 m band — see terrain.js
+    fieldPatch: 1,
+    // dry-straw meadow tint softened off pure lime (was the default
+    // 1.16/1.08/0.76 — hot yellow-green patches beside dark clover)
+    tintA: [1.11, 1.05, 0.84],
+  },
 
   vegetation: {
     species: ['pine', 'oak'],
@@ -33,9 +40,12 @@ export default {
     rimMix: [['pine', 0.7], ['oak', 0.3]],
     // r5 density push: designated forest strips must read as closed tree
     // lines in establishing shots, not loose orchards
-    clusterCount: 64,
-    loneCount: 130,
-    rimCount: 92, // r7: closed rim tree line bridging field -> horizon ring
+    // r2 terrain_environment: midground push — the 250-450 m band read as
+    // bald gumdrop hills with sparse tree sprinkles; more clusters + lone
+    // trees fill it (far-LOD instances, no shadow casters, cheap)
+    clusterCount: 72,
+    loneCount: 185,
+    rimCount: 102, // closed rim tree line bridging field -> horizon ring
     grassDensity: 1,
     bushCount: 1,
     bushSpecies: 'oak',
@@ -54,7 +64,9 @@ export default {
       [96, -320, 158, -320, 3],
     ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
-    haystacks: 15, rocks: 170, outcrops: 16, craters: 30, rubblePiles: 0,
+    // r2: more midfield material breakup (craters/haystacks) — the open
+    // field between orchards and village read as a manicured golf course
+    haystacks: 18, rocks: 170, outcrops: 16, craters: 42, rubblePiles: 0,
   },
 
   horizon: {

@@ -80,20 +80,19 @@ const GARAGE_CSS = `
   transition:color .12s,border-color .12s;}
 .cot-tech:hover{color:#ffd27a;border-color:rgba(240,176,74,.65);}
 .cot-tech .tt-ico{font-size:12px;line-height:1;color:#f0b04a;}
-/* r5: FLAT two-stop plate with a crisp 1px bevel — the old three-stop glossy
-   gradient + orange glow + fuzzy text shadow read as a 2012 Flash-game web
-   button, not a shipped client's battle CTA */
+/* r7: ONE flat orange plate, no gloss, no bevel highlight, no text shadow —
+   the r5 two-stop gradient + inset bevels + letterform shadow still read as
+   2012 Flash-game chrome, and the clip-path chamfer aliased at 1080p. The
+   chamfered plate is now an SVG background (rasterized with proper edge
+   anti-aliasing) carrying only a 1px outline and a darker bottom edge. */
 .cot-battle{position:absolute;top:26px;left:50%;transform:translateX(-50%);
   pointer-events:auto;cursor:pointer;border:none;outline:none;
+  width:252px;height:46px;padding:0 0 1px;
   font-family:${FONT_STACK};font-size:19px;font-weight:800;letter-spacing:.30em;
-  color:#fff8ee;text-shadow:0 1px 0 rgba(96,44,0,.85);
-  padding:13px 66px 13px 74px;
-  background:linear-gradient(180deg,#f5921c 0%,#dd6f04 100%);
-  border:1px solid #8f4a06;
-  box-shadow:inset 0 1px 0 rgba(255,224,170,.55),inset 0 -1px 0 rgba(90,42,0,.55),
-  0 2px 8px rgba(0,0,0,.45);
-  transition:filter .12s,transform .06s;clip-path:polygon(4% 0,96% 0,100% 50%,96% 100%,4% 100%,0 50%);}
-.cot-battle:hover{filter:brightness(1.08);}
+  text-indent:.30em;color:#fff8ee;text-shadow:none;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 252 46'%3E%3Cpath d='M11.2 .5H240.8L251.5 23 240.8 45.5H11.2L.5 23Z' fill='%23ee8912' stroke='%238a4a06' stroke-width='1'/%3E%3Cpath d='M1.4 24.8 11.8 45.1h228.4l10.4-20.3' fill='none' stroke='%23a85a05' stroke-width='2' opacity='.9'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat;
+  transition:filter .12s,transform .06s;}
+.cot-battle:hover{filter:brightness(1.07);}
 .cot-battle:active{transform:translateX(-50%) translateY(1px);}
 .cot-garage .stats{position:absolute;right:26px;top:110px;width:300px;
   background:linear-gradient(180deg,rgba(11,15,20,.88),rgba(7,10,13,.92));
@@ -446,7 +445,9 @@ export function createGarage(opts) {
   // next to the hero roster as Minecraft-grade thumbnails (hud_ui r4 major).
   // They stay researchable/selectable through the tech tree's COMMUNITY tab
   // (attribution + playability preserved); only the carousel strip curates.
-  const DELISTED = new Set(['newc_tiger', 'newc_pziii']);
+  // content_breadth r2: bmp1/m1128/m1296 defense-in-depth — registration is
+  // already gated off in userdrops2.js (SHIP_USERDROP2_NEW).
+  const DELISTED = new Set(['newc_tiger', 'newc_pziii', 'bmp1', 'm1128', 'm1296']);
   const allSpecs = opts.specs || [];
   const specs = allSpecs.filter((s) => !DELISTED.has(s.id));
   ensureFonts();

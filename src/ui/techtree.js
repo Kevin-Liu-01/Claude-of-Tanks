@@ -116,11 +116,14 @@ const TABS = [
       n('t71', 'T71 DA', 7, 'light', 'ww2', { from: ['t37'] }),
       // MODERN EXPANSION: the scout line tops out in the Bradley IFV
       n('bradley', 'M2A2 Bradley', 8, 'ifv', 'modern', { spec: 'm2a2_bradley', from: ['t71'] }),
-      // USER DROPS wave 2 (recovered batch): the Stryker branch — the 8x8
-      // Dragoon IFV feeding the glass-cannon MGS in the TD lane (both
-      // m_bergman quarantine GLBs, userdrops2.js)
-      n('m1296', 'M1296 Stryker Dragoon', 7, 'ifv', 'modern', { spec: 'm1296', from: ['t71'] }),
-      n('m1128', 'M1128 Stryker MGS', 8, 'td', 'modern', { spec: 'm1128', from: ['m1296'] }),
+      // USER DROPS wave 2 (recovered batch): the Stryker branch. r2
+      // (content_breadth): DELISTED to ghost research nodes — the bergman
+      // 1:100 CAD swaps do not land in-game (procedural box fallback renders
+      // instead, no icons), so the pair must not advertise battle-ready.
+      // Re-add `spec:` once the quarantine GLB substitution actually works
+      // (see docs/handoff/content_breadth-r2.md).
+      n('m1296', 'M1296 Stryker Dragoon', 7, 'ifv', 'modern', { from: ['t71'] }),
+      n('m1128', 'M1128 Stryker MGS', 8, 'td', 'modern', { from: ['m1296'] }),
       n('sheridan', 'M551 Sheridan', 9, 'light', 'modern', { from: ['bradley'] }),
       n('m3lee', 'M3 Lee', 4, 'medium', 'ww2', { from: ['m3stuart'] }),
       n('m4', 'M4 Sherman', 5, 'medium', 'ww2', { from: ['m3lee'] }),
@@ -197,9 +200,10 @@ const TABS = [
       n('mt25', 'MT-25', 6, 'light', 'ww2', { from: ['t50'] }),
       // MODERN EXPANSION: the scout lane flows into the flanker IFV, the
       // turbine hot-rod T-80U and tops out at the T-14 Armata flagship
-      // USER DROPS wave 2: BMP-1 slots in ahead of the BMP-2 (bergman GLB);
-      // bmp2 gains it as an alternate parent (either lights the path)
-      n('bmp1', 'BMP-1', 6, 'ifv', 'modern', { spec: 'bmp1', from: ['t50'] }),
+      // USER DROPS wave 2: BMP-1 slots in ahead of the BMP-2; bmp2 keeps it
+      // as an alternate parent. r2 (content_breadth): DELISTED to a ghost —
+      // same bergman box-fallback problem as the Stryker pair above.
+      n('bmp1', 'BMP-1', 6, 'ifv', 'modern', { from: ['t50'] }),
       n('bmp2', 'BMP-2', 7, 'ifv', 'modern', { spec: 'bmp2', from: ['mt25', 'bmp1'] }),
       n('t80u', 'T-80U', 8, 'mbt', 'modern', { spec: 't80u', from: ['bmp2'], row: 0 }),
       n('t14', 'T-14 Armata', 10, 'mbt', 'modern', { spec: 't14', from: ['t80u'], row: 0 }),
@@ -400,6 +404,13 @@ const TT_CSS = `
   border-color:rgba(240,160,48,.42);border-top-color:rgba(240,160,48,.85);}
 .cot-tt-node.ghost.researched .res{color:#8fce8f;}
 .cot-tt-node.ghost.researched .nm{color:#d9c9a8;}
+/* r2: garage-delisted community models — card + CC-BY credit stay, gold
+   goes: greyed icon, dashed frame, explicit non-battle-ready footer */
+.cot-tt-node.ghost.delisted{opacity:.6;}
+.cot-tt-node.ghost.delisted .ti{filter:grayscale(1) brightness(.75)
+  drop-shadow(0 2px 3px rgba(0,0,0,.5));}
+.cot-tt-node.ghost.delisted .res{color:#a06a5e;}
+.cot-tt-node.ghost.delisted .nm{color:#93a1ad;}
 @keyframes cot-tt-deny{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}
   75%{transform:translateX(4px)}}
 .cot-tt-node.deny{animation:cot-tt-deny .16s linear 2;}
@@ -580,6 +591,12 @@ const GHOSTS = {
   stug: { L: 6.8, HL: 5.9, H: 2.15, hullH: 1.45, wheels: 6, wheelR: 0.28, td: true, caseH: 0.7, caseX0: 0.06, caseX1: 0.8, caseFront: 0.3, brake: true, gunTh: 0.18 },
   jagdpanther: { L: 9.9, HL: 6.9, H: 2.7, hullH: 1.6, wheels: 8, wheelR: 0.34, td: true, caseH: 1.1, caseX0: 0.05, caseX1: 0.9, caseFront: 0.38, caseRear: 0.2, gunUp: 0.55, brake: true, gunTh: 0.22 },
   jagdtiger: { L: 10.7, HL: 7.4, H: 3.1, hullH: 1.85, wheels: 8, wheelR: 0.34, td: true, caseH: 1.25, caseX0: 0.2, caseX1: 0.82, caseFront: 0.2, caseRear: 0.14, gunUp: 0.5, brake: true, gunTh: 0.26 },
+  // --- delisted user-drops (r2): side profiles for the ghost nodes ---
+  // 8x8 Strykers read as 4 large road wheels in side view; BMP-1 is the
+  // low pointed-prow IFV with a small dome turret and stubby 73mm.
+  m1296: { L: 7.5, HL: 6.95, H: 2.8, hullH: 1.9, wheels: 4, wheelR: 0.44, glacis: 1.5, tPos: 0.62, tLen: 1.5, tH: 0.75, taper: 0.3, gunTh: 0.13 },
+  m1128: { L: 7.8, HL: 6.95, H: 2.9, hullH: 1.9, wheels: 4, wheelR: 0.44, glacis: 1.5, tPos: 0.55, tLen: 2.0, tH: 0.55, taper: 0.5, gunTh: 0.17 },
+  bmp1: { L: 7.3, HL: 6.74, H: 2.2, hullH: 1.35, wheels: 6, wheelR: 0.3, glacis: 1.8, tPos: 0.56, tLen: 1.4, tH: 0.6, dome: true, gunTh: 0.16 },
   // --- USSR ---
   ms1: { L: 4.0, HL: 3.5, H: 2.6, hullH: 1.6, wheels: 4, wheelR: 0.24, tPos: 0.42, tLen: 1.3, tH: 0.9, gunTh: 0.13 },
   t26: { L: 4.9, HL: 4.6, H: 2.4, hullH: 1.5, wheels: 4, wheelR: 0.28, tPos: 0.5, tLen: 1.6, tH: 0.9, gunTh: 0.15 },
@@ -636,6 +653,12 @@ export function createTechTree(opts) {
   // tab curates the sourced third-party pool only. Their credit line still
   // renders on the nation-tab node via spec.community.
   const commSpecs = (specs || []).filter((sp) => sp.community && !sp.variantOf);
+  // r2 (content_breadth): mirror of garage.js DELISTED — placeholder-grade
+  // models hidden from the garage carousel. Their community cards render
+  // grey (state 'delisted', non-clickable) instead of gold, so the tab's own
+  // contract — 'gold nodes are battle-ready' — matches the garage roster 1:1.
+  // Keep this set in sync with garage.js when a delist changes.
+  const GARAGE_DELISTED = new Set(['newc_tiger', 'newc_pziii']);
   const tabs = TABS.slice();
   if (commSpecs.length) {
     tabs.push({
@@ -644,6 +667,7 @@ export function createTechTree(opts) {
         ...n(`c_${sp.id}`, sp.name, COMM_TIER[sp.id] || 5, sp.class === 'mbt' ? 'mbt' : sp.class,
           sp.era, { spec: sp.id }),
         credit: sp.community,
+        delisted: GARAGE_DELISTED.has(sp.id),
       })),
     });
   }
@@ -964,12 +988,17 @@ export function createTechTree(opts) {
 
     // nodes
     for (const node of tab.nodes) {
-      const real = !!node.specId;
-      const spec = real ? specById.get(node.specId) : null;
+      const spec0 = node.specId ? specById.get(node.specId) : null;
+      // r2: garage-delisted community models keep their card + credit but
+      // render grey/non-clickable — never gold ('gold = battle-ready').
+      const delisted = !!node.delisted && !!spec0;
+      const real = !!node.specId && !delisted;
+      const spec = real ? spec0 : null;
       // CC-BY: credit rides the node on the COMMUNITY tab, and follows any
       // cross-linked community spec onto its nation tab (IS-3)
-      const credit = node.credit || (spec && spec.community) || null;
-      const st = real && spec ? 'ready' : ghostState(node, byKey);
+      const credit = node.credit || (spec0 && spec0.community) || null;
+      const st = delisted ? 'delisted'
+        : real && spec ? 'ready' : ghostState(node, byKey);
       const cost = RESEARCH_COST[node.tier] || 0;
       const p = nodePos(node);
       const el = document.createElement('div');
@@ -982,17 +1011,21 @@ export function createTechTree(opts) {
         israel: 'Israel', china: 'China', korea: 'South Korea',
         japan: 'Japan', italy: 'Italy', community: 'Community',
       };
-      const nation = spec ? spec.nation
+      const nation = spec0 ? spec0.nation
         : (TAB_NATION[tab.id] || (node.era === 'ww2' ? 'USSR' : 'Russia'));
       const resLabel = st === 'researched' ? 'Researched'
         : st === 'available' ? `Research &middot; ${fmt(cost)} XP`
-          : `Locked &middot; ${fmt(cost)} XP`;
+          : st === 'delisted' ? 'Delisted &middot; not in garage'
+            : `Locked &middot; ${fmt(cost)} XP`;
       el.innerHTML =
         `<div class="top">${flagSVG(nation, node.era, 20, 13)}` +
         `<span class="tier">${ROMAN[node.tier]}</span></div>` +
         // battle-ready nodes show the real 3/4 hero icon of the shipped model;
-        // ghost research placeholders keep the flat grey vector silhouette
-        (real && spec ? `<img class="ti" data-cot-thumb="${spec.id}" src="${getTankThumb(spec.id) || iconUrl(spec.id, 'angle')}" alt="">` : `<canvas></canvas>`) +
+        // delisted community cards keep the (greyed) icon; ghost research
+        // placeholders keep the flat grey vector silhouette
+        ((real && spec) || delisted
+          ? `<img class="ti" data-cot-thumb="${spec0.id}" src="${getTankThumb(spec0.id) || iconUrl(spec0.id, 'angle')}" alt="">`
+          : `<canvas></canvas>`) +
         `<div class="nm"></div>` +
         `<div class="cls">${CLASS_LABEL[node.cls] || node.cls}</div>` +
         (credit ? `<div class="credit"></div>` : '') +
@@ -1007,7 +1040,7 @@ export function createTechTree(opts) {
         cr.querySelector('span').textContent = credit.license;
         cr.title = `${credit.author} — ${credit.license} — ${credit.source}`;
       }
-      if (!(real && spec)) {
+      if (!(real && spec) && !delisted) {
         drawGhostTank(el.querySelector('canvas'),
           GHOSTS[node.key] || GHOST_DEFAULT[node.cls] || GHOST_DEFAULT.medium,
           st === 'researched'

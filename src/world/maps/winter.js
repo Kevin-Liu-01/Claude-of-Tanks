@@ -58,7 +58,12 @@ export default {
     // the establishing camera; 0.30 keeps the drifted shore band but exposes
     // the darker glossy ice interior (pairs with the makeIceLayer value-
     // contrast push and the 0.20 ice roughness floor in terrain.js)
-    iceDrift: 0.30,
+    // r2 (content_breadth): 0.30 -> 0.18 — the lake still read as a "soft
+    // white-blue smudge" in the establishing shot; less windblown snow on the
+    // sheet exposes the refrozen crack veins + glossy clear-ice fields so the
+    // basin finally reads as ICE (pairs with the new shoreline reed/pressure-
+    // ridge dressing in maps/mapKits.js)
+    iceDrift: 0.18,
     // lighting_post r5: tintB desaturated toward neutral (was [0.90,0.93,1.00])
     tintA: [1.03, 1.04, 1.09], tintB: [0.95, 0.965, 1.005], tintC: [1.04, 1.04, 1.07],
     roadTint: [0.74, 0.68, 0.62], // worn dark slush tracks through the snow
@@ -131,9 +136,21 @@ export default {
       [-56, 8, -56, 64, 2], [74, 30, 74, 96, 4], [-8, 110, 52, 110, 2],
       [-186, -62, -118, -62, 3], [-64, 218, 8, 218, 4], [196, 108, 258, 108, 2],
       [-266, 66, -212, 66, 1],
+      // r2 (content_breadth): the establishing shot's lower-left two-thirds
+      // was featureless snowfield — snow-capped field-boundary walls stage
+      // the foreground and lead the eye to the frozen lake (basin at
+      // [195,-120] r88; camera [40,52,-288] -> [175,-4,-75])
+      [66, -244, 138, -244, 2], [138, -244, 138, -186, 1],
+      [88, -178, 156, -178, 3],
+      // north-shore run beyond the lake for depth layering
+      [216, -46, 272, -46, 2],
     ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
-    haystacks: 4, rocks: 140, outcrops: 12, craters: 22, rubblePiles: 0,
+    // r2: haystacks 4 -> 8 (snow-capped stacks as mid-field silhouettes),
+    // outcrops 12 -> 15, +1 road wreck — the open snowfield needed more
+    // battle-worn anchors between the village and the basin
+    haystacks: 8, rocks: 150, outcrops: 15, craters: 22, rubblePiles: 0,
+    wrecks: 5,
   },
 
   horizon: {

@@ -51,8 +51,8 @@ const MUZZLE_LIGHT_S = 0.14;   // lighting_post r6: composed frame catches 41% o
 // lighting_post r5: 210 flooded hull+dust to flat pale yellow — at the
 // composed 50 ms frame the light contributed 2-8x the sun's irradiance on
 // the glacis/turret front (hull maxima 206-214 display).
-const MUZZLE_LIGHT_PEAK = 170; // lighting_post r6: 120/11 read as zero dynamic light at the composed frame
-const MUZZLE_LIGHT_RANGE = 14; // lighting_post r6: 170/14/0.14 s puts ~70 intensity at capture — visible warm kick, 4x under the r5 flood threshold
+const MUZZLE_LIGHT_PEAK = 210; // lighting_post r2: 170 read as "barely lights the scene" — the smoke/dust alpha cut in spawnMuzzleFlash removed the sprites that used to flood first
+const MUZZLE_LIGHT_RANGE = 16; // lighting_post r2: reach the hull front + nearby foliage (was 14)
 // lighting_post r3: 1.1 s / pow-3 decay left the light at 9% of peak while
 // the fireball sprites were at their VISUAL peak (composed ageS 0.6) — the
 // scene read as "fire barely influences lighting". 1.6 s + pow 1.6 keeps a
@@ -1087,8 +1087,8 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     //    (backdated slightly so it is readable in the 50 ms composed frame).
     //    Scoped: thinned to a faint haze so the scope never floods.
     const smokeBirth = birthOffset - 0.2;
-    const smokeA = scoped ? 0.45 : 1;
-    for (let i = 0; i < (scoped ? 5 : 18); i++) {
+    const smokeA = scoped ? 0.45 : 0.72; // lighting_post r2: veil cut
+    for (let i = 0; i < (scoped ? 5 : 12); i++) {
       const a = rng() * Math.PI * 2;
       const r = (0.15 + rng() * 0.24) * s;
       const rx = _v1.x * Math.cos(a) + _v2.x * Math.sin(a);
@@ -1113,7 +1113,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     }
     // 6. forward cordite plume — a widening cone (lateral spread grows with
     //    distance), long-lived, expanding slowly and drifting with the wind
-    for (let i = 0; i < (scoped ? 6 : 20); i++) {
+    for (let i = 0; i < (scoped ? 6 : 13); i++) {
       const along = 0.8 + rng() * 3.2 * s;
       const lat = along * 0.24 * (rng() - 0.5) * 2;
       const la = rng() * Math.PI * 2;
@@ -1128,11 +1128,11 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       _puffO.vel[1] = dir.y * v + ly * 1.1 + 0.7 + rng() * 0.7;
       _puffO.vel[2] = dir.z * v + lz * 1.1 + (rng() - 0.5) * 0.6;
       _puffO.life = 2.2 + rng() * 2.0;
-      _puffO.size0 = (0.45 + rng() * 0.3) * s; _puffO.size1 = (2.0 + rng() * 2.0) * s;
+      _puffO.size0 = (0.45 + rng() * 0.3) * s; _puffO.size1 = (1.6 + rng() * 1.5) * s;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
       col3(0xcfc8ba, _puffO.col0); col3(0x97948e, _puffO.col1);
       // lighting_post r4: birth stagger + distance taper (see donut note)
-      _puffO.alpha = (0.18 + rng() * 0.26) * smokeA; _puffO.grav = 0.5;
+      _puffO.alpha = (0.13 + rng() * 0.18) * smokeA; _puffO.grav = 0.5;
       _puffO.birthOffset = smokeBirth - rng() * 0.35 - (along / (3.2 * s + 0.8)) * 0.25;
       particles.emit('smoke', _puffO);
     }
@@ -1145,7 +1145,8 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     // r5 motion capture: 2-3 faint blobs gone in ~1.5 s read as nothing from
     // the chase camera. 12 puffs, 2.8-4.6 s lives, staggered births and a
     // slow wind drift so the haze visibly HANGS at the bore and shears away.
-    for (let i = 0; i < 12; i++) {
+    // lighting_post r2: 12 -> 9 (veil cut)
+    for (let i = 0; i < 9; i++) {
       const along = 0.15 + rng() * 0.45;
       _puffO.pos[0] = pos.x + dir.x * along; _puffO.pos[1] = pos.y + dir.y * along; _puffO.pos[2] = pos.z + dir.z * along;
       _puffO.vel[0] = dir.x * 0.3 + (rng() - 0.5) * 0.4 + 0.35;
@@ -1172,21 +1173,22 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     //    donut expanding under the brake + a forward blast wash 2-4 m ahead
     const gy = groundY(pos.x, pos.z);
     if (pos.y - gy < 3.5) {
-      // 8a. recoil dust donut directly beneath the muzzle
+      // 8a. recoil dust donut directly beneath the muzzle (r2: born at
+      // grass-canopy height — grass-root cards stippled against the blades)
       for (let i = 0; i < 12; i++) {
         const a = (i / 12) * Math.PI * 2 + rng() * 0.5;
         const r0 = 0.7 + rng() * 0.5;
         _puffO.pos[0] = pos.x + dir.x * 0.8 + Math.cos(a) * r0;
-        _puffO.pos[1] = gy + 0.3;
+        _puffO.pos[1] = gy + 0.95;
         _puffO.pos[2] = pos.z + dir.z * 0.8 + Math.sin(a) * r0;
         _puffO.vel[0] = Math.cos(a) * (3.5 + rng() * 3) + dir.x * 1.5;
         _puffO.vel[1] = 0.8 + rng() * 0.9;
         _puffO.vel[2] = Math.sin(a) * (3.5 + rng() * 3) + dir.z * 1.5;
         _puffO.life = 1.1 + rng() * 0.8;
-        _puffO.size0 = 0.55; _puffO.size1 = 2.3 + rng() * 1.1;
+        _puffO.size0 = 0.55; _puffO.size1 = 1.8 + rng() * 0.9;
         _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.5;
         col3(0x958a74, _puffO.col0); col3(0x81796a, _puffO.col1);
-        _puffO.alpha = 0.5; _puffO.grav = -0.4; _puffO.birthOffset = birthOffset - 0.08;
+        _puffO.alpha = 0.34; _puffO.grav = -0.4; _puffO.birthOffset = birthOffset - 0.08;
         particles.emit('dust', _puffO);
       }
       // 8b. forward blast wash
@@ -1194,16 +1196,16 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         const a = rng() * Math.PI * 2;
         const ahead = 2.2 + rng() * 1.8;
         _puffO.pos[0] = pos.x + dir.x * ahead + Math.cos(a) * 1.2;
-        _puffO.pos[1] = gy + 0.4;
+        _puffO.pos[1] = gy + 0.95; // r2: over the blade band (anti-static)
         _puffO.pos[2] = pos.z + dir.z * ahead + Math.sin(a) * 1.2;
         _puffO.vel[0] = Math.cos(a) * (2.5 + rng() * 2.5) + dir.x * 4;
         _puffO.vel[1] = 0.9 + rng() * 1.1;
         _puffO.vel[2] = Math.sin(a) * (2.5 + rng() * 2.5) + dir.z * 4;
         _puffO.life = 1.0 + rng() * 0.8;
-        _puffO.size0 = 0.7; _puffO.size1 = 2.4 + rng();
+        _puffO.size0 = 0.7; _puffO.size1 = 1.9 + rng() * 0.8;
         _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.5;
         col3(0x958a74, _puffO.col0); col3(0x81796a, _puffO.col1);
-        _puffO.alpha = 0.44; _puffO.grav = -0.4; _puffO.birthOffset = birthOffset - 0.1;
+        _puffO.alpha = 0.30; _puffO.grav = -0.4; _puffO.birthOffset = birthOffset - 0.1;
         particles.emit('dust', _puffO);
       }
     }
@@ -1459,7 +1461,10 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       _puffO.vel[0] = Math.cos(a) * Math.sin(b) * v;
       _puffO.vel[1] = Math.abs(Math.cos(b)) * v * 0.5 + (crown ? 2.4 : 1.1);
       _puffO.vel[2] = Math.sin(a) * Math.sin(b) * v;
-      _puffO.life = crown ? 1.7 + rng() * 0.9 : 1.1 + rng() * 1.1;
+      // r2: lives cut ~30% — the billow's paint-to-char window must land
+      // inside ~1 s (the long tail held a readable bright mid-dissolve stage
+      // over the hull for 2 s, the "noisy white plaster" major)
+      _puffO.life = crown ? 1.25 + rng() * 0.6 : 0.85 + rng() * 0.75;
       _puffO.size0 = (crown ? 2.8 + rng() * 1.0 : 2.0 + rng() * 1.0) * fireS * dk;
       _puffO.size1 = (crown ? 7.0 + rng() * 2.2 : 4.8 + rng() * 1.8) * fireS * dk;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
@@ -1503,26 +1508,38 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         : birthOffset + rng() * 0.35;
       particles.emit('fire', _puffO);
     }
+    // r2 SPAWN-FRAME BUDGET: batches whose particles are born in the FUTURE
+    // (positive birthOffset) don't need to be written on the blast frame —
+    // live kills stagger them over the next few frames via the timer queue
+    // (the single-frame emit burst was part of the 55->26 fps kill hitch).
+    // Composed/backdated captures still spawn synchronously.
+    const _dpx = pos.x, _dpz = pos.z;
+    const deferBatch = (delayS, fn) => {
+      if (birthOffset < 0 || frozen) fn();
+      else timers.push({ t: delayS, fn });
+    };
     // fire-to-smoke takeover: dark roil born WHERE the flame puffs are as
     // they die (0.4-1.4 s in), so the fireball transitions into a churning
     // black mass instead of thinning to sparse sprites
-    for (let i = 0; i < 14; i++) {
-      const a = rng() * Math.PI * 2;
-      const r = (0.6 + rng() * 1.5) * fireS;
-      _puffO.pos[0] = pos.x + Math.cos(a) * r;
-      _puffO.pos[1] = cy + rng() * 2.2;
-      _puffO.pos[2] = pos.z + Math.sin(a) * r;
-      _puffO.vel[0] = Math.cos(a) * (1.2 + rng() * 1.8);
-      _puffO.vel[1] = 2.2 + rng() * 2.6;
-      _puffO.vel[2] = Math.sin(a) * (1.2 + rng() * 1.8);
-      _puffO.life = 2.4 + rng() * 2.2;
-      _puffO.size0 = (1.4 + rng() * 0.8) * dk; _puffO.size1 = (4.6 + rng() * 2.2) * dk;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
-      col3(0x27231f, _puffO.col0); col3(0x565349, _puffO.col1);
-      _puffO.alpha = 0.62 + rng() * 0.14; _puffO.grav = 1.1;
-      _puffO.birthOffset = birthOffset + 0.4 + rng() * 1.0;
-      particles.emit('smoke', _puffO);
-    }
+    deferBatch(0.03, () => {
+      for (let i = 0; i < 14; i++) {
+        const a = rng() * Math.PI * 2;
+        const r = (0.6 + rng() * 1.5) * fireS;
+        _puffO.pos[0] = _dpx + Math.cos(a) * r;
+        _puffO.pos[1] = cy + rng() * 2.2;
+        _puffO.pos[2] = _dpz + Math.sin(a) * r;
+        _puffO.vel[0] = Math.cos(a) * (1.2 + rng() * 1.8);
+        _puffO.vel[1] = 2.2 + rng() * 2.6;
+        _puffO.vel[2] = Math.sin(a) * (1.2 + rng() * 1.8);
+        _puffO.life = 2.4 + rng() * 2.2;
+        _puffO.size0 = (1.4 + rng() * 0.8) * dk; _puffO.size1 = (4.6 + rng() * 2.2) * dk;
+        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+        col3(0x2f2b26, _puffO.col0); col3(0x605d53, _puffO.col1);
+        _puffO.alpha = 0.62 + rng() * 0.14; _puffO.grav = 1.1;
+        _puffO.birthOffset = birthOffset + 0.4 + rng() * 1.0;
+        particles.emit('smoke', _puffO);
+      }
+    });
     // dark combustion intrusions INSIDE the fireball volume — sooty pockets
     // mixed into the flame mass give the churn its internal structure
     // (lighting_post r4: 8 → 12 cells, supports the de-clipped core gradient)
@@ -1545,7 +1562,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     for (let i = 0; i < (burn ? 4 : 10); i++) {
       const a = rng() * Math.PI * 2;
       const r = 1.2 + rng() * 1.0;
-      _puffO.pos[0] = pos.x + Math.cos(a) * r; _puffO.pos[1] = gy + 0.5 + rng() * 0.4; _puffO.pos[2] = pos.z + Math.sin(a) * r;
+      // r2: gy+0.9 (was +0.5) — the additive skirt burned INSIDE the grass
+      // blade band and stippled against the alpha-tested blades
+      _puffO.pos[0] = pos.x + Math.cos(a) * r; _puffO.pos[1] = gy + 0.9 + rng() * 0.4; _puffO.pos[2] = pos.z + Math.sin(a) * r;
       _puffO.vel[0] = Math.cos(a) * (3.5 + rng() * 3);
       _puffO.vel[1] = 1.2 + rng() * 1.2;
       _puffO.vel[2] = Math.sin(a) * (3.5 + rng() * 3);
@@ -1617,18 +1636,18 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       _puffO.vel[0] = Math.cos(a) * v + COLUMN_WIND_X * 0.7;
       _puffO.vel[1] = 3.2 + rng() * 4.0;
       _puffO.vel[2] = Math.sin(a) * v + COLUMN_WIND_Z * 0.7;
-      // life 4-8 (was 2.8-5.8): these cards must bridge the fireball into the
-      // established column — the r7 sequence had a visible smoke HOLE at
-      // +3-6 s while the slow column puffs were still climbing
-      _puffO.life = 4.0 + rng() * 4.0;
-      _puffO.size0 = (1.6 + rng() * 0.5) * dk; _puffO.size1 = (6.2 + rng() * 2.8) * dk;
+      // r2: 3.2-5.2 s (was 4-8) — the full-height column feed (see
+      // emitColumnPuff) now owns the plume past ~4 s; these cap cards only
+      // bridge the fireball into it. The old 8 s tail was half of the
+      // "static ink blob pinned at the top of the frame" major.
+      _puffO.life = 3.2 + rng() * 2.0;
+      _puffO.size0 = (1.6 + rng() * 0.5) * dk; _puffO.size1 = (5.6 + rng() * 2.4) * dk;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.5;
       // every third puff is a lighter grey so the cap keeps internal contrast
-      // instead of stacking to one flat ink-black silhouette. Albedo lifted
-      // out of pure black (r5: "flat ink silhouette") — the flipbook + sun
-      // rim shading needs SOME reflectance to sculpt the volume.
-      if (i % 3 === 2) { col3(0x45413c, _puffO.col0); col3(0x7d7a72, _puffO.col1); }
-      else { col3(0x2b2723, _puffO.col0); col3(0x5c5952, _puffO.col1); }
+      // instead of stacking to one flat ink-black silhouette. Albedo floor
+      // lifted again (r2): the stack must never resolve to pure black.
+      if (i % 3 === 2) { col3(0x4a463f, _puffO.col0); col3(0x817d75, _puffO.col1); }
+      else { col3(0x363029, _puffO.col0); col3(0x655f56, _puffO.col1); }
       // r1: backdated 0.45 s (was 0.25) — the cap must already read as a
       // rolling dark mass at the composed 0.6 s hero moment
       _puffO.alpha = 0.58 + rng() * 0.16; _puffO.grav = 1.3; _puffO.birthOffset = birthOffset - 0.45;
@@ -1637,19 +1656,25 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     // shockwave dust ring on the ground — fast, clearly expanding, but
     // ORGANIC: jittered radius/angle/size and ~30% of slots dropped so the
     // ring never resolves into evenly spaced puffs on a perfect circle (r5)
-    const ringN = burn ? 10 : 34;
+    // r2 ANTI-STATIC: the ring rode at gy+0.45 — waist-deep INSIDE the grass
+    // blade band, so every card interleaved with alpha-tested blades into
+    // per-pixel TV static across ~40% of the frame for the 2 s dust window
+    // (THE r2 critical). The wave now skims the grass TOPS (gy+1.1), runs
+    // bigger and dimmer cards (same total mass, no per-blade contrast), and
+    // its silhouette reads against terrain instead of through the meadow.
+    const ringN = burn ? 10 : 30;
     for (let i = 0; i < ringN; i++) {
       if (rng() < 0.3) continue;
       const a = (i / ringN) * Math.PI * 2 + (rng() - 0.5) * 0.85;
       const rs = 1.4 + rng() * 1.7;
-      const sizeK = 0.6 + rng() * 0.9;
-      _puffO.pos[0] = pos.x + Math.cos(a) * rs; _puffO.pos[1] = gy + 0.45; _puffO.pos[2] = pos.z + Math.sin(a) * rs;
-      _puffO.vel[0] = Math.cos(a) * (7 + rng() * 8); _puffO.vel[1] = 1 + rng(); _puffO.vel[2] = Math.sin(a) * (7 + rng() * 8);
+      const sizeK = 0.7 + rng() * 0.9;
+      _puffO.pos[0] = pos.x + Math.cos(a) * rs; _puffO.pos[1] = gy + 1.1; _puffO.pos[2] = pos.z + Math.sin(a) * rs;
+      _puffO.vel[0] = Math.cos(a) * (7 + rng() * 8); _puffO.vel[1] = 1.1 + rng(); _puffO.vel[2] = Math.sin(a) * (7 + rng() * 8);
       _puffO.life = 1.0 + rng() * 0.9;
-      _puffO.size0 = 0.8 * sizeK; _puffO.size1 = (3.2 + rng() * 2.2) * sizeK;
+      _puffO.size0 = 1.0 * sizeK; _puffO.size1 = (4.0 + rng() * 2.4) * sizeK;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
       col3(0x8a8069, _puffO.col0); col3(0x776f5f, _puffO.col1);
-      _puffO.alpha = 0.30 + rng() * 0.22; _puffO.grav = -0.6; _puffO.birthOffset = birthOffset - rng() * 0.1;
+      _puffO.alpha = 0.20 + rng() * 0.13; _puffO.grav = -0.5; _puffO.birthOffset = birthOffset - rng() * 0.1;
       particles.emit('dust', _puffO);
     }
     // scorched earth: persistent soot decal projected onto the terrain
@@ -1687,21 +1712,57 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       _debO.spin = 8 + rng() * 18;
       _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
       // r1: fractional heat — full-hot chunks drag spark streaks, the rest
-      // carry a faint fire-rim glow (0.3) so nothing tumbles as a pure
+      // carry a faint fire-rim glow (0.45) so nothing tumbles as a pure
       // matte-black card against the fireball (fire_chase_060ms critique)
-      const fullHot = rng() < 0.4;
-      _debO.groundY = gy; _debO.hot = fullHot ? 1 : 0.3; _debO.seed = rng(); _debO.birthOffset = bo;
+      const fullHot = rng() < 0.55;
+      _debO.groundY = gy; _debO.hot = fullHot ? 1 : 0.45; _debO.seed = rng(); _debO.birthOffset = bo;
+      const dvx = _debO.vel[0], dvy = _debO.vel[1], dvz = _debO.vel[2];
       particles.emit('debris', _debO);
       if (fullHot) {
         // paired incandescent streak: same launch state, drag-decayed by the
         // sparks shader along the same trajectory family — the motion cue
         _strkO.pos[0] = pos.x; _strkO.pos[1] = cy; _strkO.pos[2] = pos.z;
-        _strkO.vel[0] = _debO.vel[0]; _strkO.vel[1] = _debO.vel[1]; _strkO.vel[2] = _debO.vel[2];
+        _strkO.vel[0] = dvx; _strkO.vel[1] = dvy; _strkO.vel[2] = dvz;
         _strkO.life = 0.7 + rng() * 0.5;
         _strkO.width = 0.035 + rng() * 0.03; _strkO.stretch = 0.06; _strkO.grav = -21.6;
         col3(0xffc274, _strkO.col); _strkO.alpha = 0.8; _strkO.seed = rng();
         _strkO.birthOffset = bo;
         particles.emit('sparks', _strkO);
+        // r2: short-lived ember-smoke trail riding the SAME drag trajectory
+        // the debris shader integrates (k = 0.12, g = -21.6) — a hot chunk
+        // reads as burning wreckage, not a clean tumbling card
+        for (let ts = 0.10; ts < 0.6; ts += 0.16) {
+          const sd = (1 - Math.exp(-0.12 * ts)) / 0.12;
+          const py = cy + dvy * sd - 10.8 * ts * ts;
+          if (py < gy + 0.3) break;
+          _puffO.pos[0] = pos.x + dvx * sd; _puffO.pos[1] = py; _puffO.pos[2] = pos.z + dvz * sd;
+          _puffO.vel[0] = (rng() - 0.5) * 0.4; _puffO.vel[1] = 0.5 + rng() * 0.4; _puffO.vel[2] = (rng() - 0.5) * 0.4;
+          _puffO.life = 0.7 + rng() * 0.4;
+          _puffO.size0 = 0.22; _puffO.size1 = 0.9 + rng() * 0.4;
+          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+          col3(0x36322e, _puffO.col0); col3(0x605c55, _puffO.col1);
+          _puffO.alpha = 0.5; _puffO.grav = 0.5; _puffO.birthOffset = bo + ts;
+          particles.emit('smoke', _puffO);
+        }
+      }
+      // r2: ground contact — solve the shader's own trajectory for the
+      // landing instant and pre-book a small dust kick at the impact point
+      // (GPU debris can't call back; the closed form makes it deterministic)
+      for (let ts = 0.14; ts < _debO.life; ts += 0.07) {
+        const sd = (1 - Math.exp(-0.12 * ts)) / 0.12;
+        const py = cy + dvy * sd - 10.8 * ts * ts;
+        if (py > gy + _debO.scale * 0.5) continue;
+        const lx = pos.x + dvx * sd, lz = pos.z + dvz * sd;
+        _puffO.pos[0] = lx; _puffO.pos[1] = groundY(lx, lz) + 0.8; _puffO.pos[2] = lz;
+        _puffO.vel[0] = dvx * 0.06 + (rng() - 0.5) * 0.6; _puffO.vel[1] = 0.9 + rng() * 0.7;
+        _puffO.vel[2] = dvz * 0.06 + (rng() - 0.5) * 0.6;
+        _puffO.life = 0.9 + rng() * 0.5;
+        _puffO.size0 = 0.45; _puffO.size1 = 1.5 + rng() * 0.7;
+        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.5;
+        col3(0x8a8069, _puffO.col0); col3(0x776f5f, _puffO.col1);
+        _puffO.alpha = 0.34; _puffO.grav = -0.5; _puffO.birthOffset = bo + ts;
+        particles.emit('dust', _puffO);
+        break;
       }
     }
     // large chunks with smoke trails (sampled along the same drag
@@ -1745,24 +1806,29 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       particles.emit('debris', _debO);
     }
     // settling dust: a delayed low blanket that drifts in AFTER the fireball
-    // dies (positive birthOffset relative to the blast = future birth)
-    for (let i = 0; i < 12; i++) {
-      const a = rng() * Math.PI * 2;
-      const d = 1.5 + rng() * 3.5;
-      _puffO.pos[0] = pos.x + Math.cos(a) * d;
-      _puffO.pos[1] = gy + 0.35;
-      _puffO.pos[2] = pos.z + Math.sin(a) * d;
-      _puffO.vel[0] = Math.cos(a) * (0.5 + rng() * 0.6);
-      _puffO.vel[1] = 0.25 + rng() * 0.3;
-      _puffO.vel[2] = Math.sin(a) * (0.5 + rng() * 0.6);
-      _puffO.life = 3.5 + rng() * 2.5;
-      _puffO.size0 = 1.2; _puffO.size1 = 4.2 + rng() * 1.6;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 0.6;
-      col3(0x867e6e, _puffO.col0); col3(0x746e60, _puffO.col1);
-      _puffO.alpha = 0.22 + rng() * 0.08; _puffO.grav = -0.25;
-      _puffO.birthOffset = birthOffset + 1.2 + rng() * 1.2;
-      particles.emit('dust', _puffO);
-    }
+    // dies (positive birthOffset relative to the blast = future birth).
+    // r2 anti-static: lifted from gy+0.35 (grass-root level — per-blade
+    // interleave static) to just over the blade tops, dimmer + larger.
+    // Deferred off the blast frame live (kill-hitch budget).
+    deferBatch(0.06, () => {
+      for (let i = 0; i < 12; i++) {
+        const a = rng() * Math.PI * 2;
+        const d = 1.5 + rng() * 3.5;
+        _puffO.pos[0] = _dpx + Math.cos(a) * d;
+        _puffO.pos[1] = gy + 1.0;
+        _puffO.pos[2] = _dpz + Math.sin(a) * d;
+        _puffO.vel[0] = Math.cos(a) * (0.5 + rng() * 0.6);
+        _puffO.vel[1] = 0.25 + rng() * 0.3;
+        _puffO.vel[2] = Math.sin(a) * (0.5 + rng() * 0.6);
+        _puffO.life = 3.5 + rng() * 2.5;
+        _puffO.size0 = 1.5; _puffO.size1 = 5.2 + rng() * 1.8;
+        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 0.6;
+        col3(0x867e6e, _puffO.col0); col3(0x746e60, _puffO.col1);
+        _puffO.alpha = 0.15 + rng() * 0.06; _puffO.grav = -0.2;
+        _puffO.birthOffset = birthOffset + 1.2 + rng() * 1.2;
+        particles.emit('dust', _puffO);
+      }
+    });
     // explosion light + persistent smoke column + burnt hull swap. Light sits
     // 2.4 m above the hull: warm falloff over wreck/terrain without nuking
     // the hull albedo to flat orange.
@@ -1786,12 +1852,14 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       _puffO.vel[0] = COLUMN_WIND_X * (0.3 + h * 0.09) + (rng() - 0.5) * 0.9;
       _puffO.vel[1] = 3.0 + rng() * 2.0;
       _puffO.vel[2] = COLUMN_WIND_Z * (0.3 + h * 0.09) + (rng() - 0.5) * 0.9;
-      _puffO.life = 5 + rng() * 3;
+      // r2: 3-4.8 s (was 5-8) + lifted albedo — the stalk seeds the marker,
+      // then hands off to the continuously-fed column (static-blob fix)
+      _puffO.life = 3.0 + rng() * 1.8;
       _puffO.size0 = (2.0 + rng() * 1.0 + h * 0.10) * dk;
       _puffO.size1 = (6.0 + rng() * 2.5 + h * 0.22) * dk;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.0;
-      if (i % 3 === 2) { col3(0x3d3934, _puffO.col0); col3(0x6e6a63, _puffO.col1); }
-      else { col3(0x282420, _puffO.col0); col3(0x54514a, _puffO.col1); }
+      if (i % 3 === 2) { col3(0x423e38, _puffO.col0); col3(0x736f68, _puffO.col1); }
+      else { col3(0x332e29, _puffO.col0); col3(0x5f5a52, _puffO.col1); }
       _puffO.alpha = 0.55 + rng() * 0.15; _puffO.grav = 1.0;
       // r1 hero-frame fix: the stalk is BACKDATED (-1.1 s at the deck rising
       // to -0.3 s at the crown) so a readable dark column already stands over
@@ -1818,7 +1886,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       _puffO.size0 = (1.8 + rng() * 0.8) * dk; _puffO.size1 = (5.4 + rng() * 2.2) * dk;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.4;
       if (i % 3 === 2) { col3(0x3d3934, _puffO.col0); col3(0x6e6a63, _puffO.col1); }
-      else { col3(0x2b2723, _puffO.col0); col3(0x56534c, _puffO.col1); }
+      else { col3(0x363029, _puffO.col0); col3(0x615b52, _puffO.col1); } // r2 albedo floor
       _puffO.alpha = 0.6 + rng() * 0.14; _puffO.grav = 1.0;
       _puffO.birthOffset = birthOffset - 0.35 + (i / 9) * 2.85 + rng() * 0.25;
       particles.emit('smoke', _puffO);
@@ -1840,7 +1908,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       _puffO.size0 = (2.0 + rng() * 0.8) * dk; _puffO.size1 = (5.0 + rng() * 1.8) * dk;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.8;
       if (i % 3 === 2) { col3(0x403c36, _puffO.col0); col3(0x716d66, _puffO.col1); }
-      else { col3(0x232019, _puffO.col0); col3(0x504d46, _puffO.col1); }
+      else { col3(0x332e27, _puffO.col0); col3(0x5c584f, _puffO.col1); } // r2 albedo floor
       _puffO.alpha = 0.68 + rng() * 0.12; _puffO.grav = 1.1;
       _puffO.birthOffset = birthOffset + 0.05 + rng() * 0.3;
       particles.emit('smoke', _puffO);
@@ -1871,6 +1939,15 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     const stage = Math.min(1, Math.max(0, col.ttl / SMOKE_COLUMN_S));
     const dk = distBoost(col.pos[0], col.pos[1], col.pos[2]);
     const s = col.scale * (0.62 + 0.38 * stage) * dk;
+    // r2 COLUMN CONTINUITY: the emitter only fed the bottom ~4 m while the
+    // one-shot stalk/cap cards parked a huge long-lived blob at the top —
+    // frame-to-frame the plume read as flame, a GAP, then a static ink mass
+    // pinned at the frame top (r2 major). The feed now spans the column's
+    // WHOLE current height (grown ~2 m/s from the wreck, capped at 15 m):
+    // every band of the plume is continuously replaced by fresh advecting
+    // puffs, so the column visibly rises, bends and dissolves over time.
+    const ageS = SMOKE_COLUMN_S - Math.max(0, col.ttl);
+    const H = Math.min(3.5 + ageS * 2.0, 15);
     // r5 CONTINUITY REBUILD (motion critique: "stack of giant soft blobs that
     // detaches from the wreck leaving a visible gap; walked up close it is
     // one featureless screen-filling mass"):
@@ -1886,26 +1963,36 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     //    near-camera column keeps silhouette detail instead of stacking to
     //    an opacity-clipped mass.
     for (let k = 0; k < 3; k++) {
-      const kf = k + rng() * 0.8;                    // continuous height band
-      _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * (0.7 + kf * 0.45) * s;
-      _puffO.pos[1] = col.pos[1] + 0.9 + kf * 1.25 + rng() * 0.8;
-      _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * (0.7 + kf * 0.45) * s;
-      const shear = 0.35 + kf * 0.55 + rng() * 0.4; // more drift higher up
+      // height sampled over the FULL living column, biased toward the base
+      // (dense stalk) with the crown still refreshed every few ticks
+      const hN = Math.pow(rng(), 1.35);              // 0..1, base-biased
+      const h = hN * H;
+      // the column leans downwind as it climbs — emission follows the lean
+      // so fresh puffs are born INSIDE the bent plume, not beside it
+      const leanX = COLUMN_WIND_X * h * 0.28, leanZ = COLUMN_WIND_Z * h * 0.28;
+      _puffO.pos[0] = col.pos[0] + leanX + (rng() - 0.5) * (0.7 + h * 0.16) * s;
+      _puffO.pos[1] = col.pos[1] + 0.9 + h + rng() * 0.8;
+      _puffO.pos[2] = col.pos[2] + leanZ + (rng() - 0.5) * (0.7 + h * 0.16) * s;
+      const shear = 0.35 + h * 0.20 + rng() * 0.4;  // more drift higher up
       _puffO.vel[0] = COLUMN_WIND_X * shear + (rng() - 0.5) * 0.9;
-      _puffO.vel[1] = (2.1 + 1.1 * stage) + rng() * 1.8 - kf * 0.2;
+      // real buoyancy: every band keeps rising so the crown continuously
+      // clears upward and dissolves instead of hanging as one parked mass
+      _puffO.vel[1] = (2.4 + 1.2 * stage) + rng() * 1.6;
       _puffO.vel[2] = COLUMN_WIND_Z * shear + (rng() - 0.5) * 0.9;
-      _puffO.life = 3.5 + rng() * 1.5 + kf * 2.2;   // short base, tall crown
-      _puffO.size0 = (1.0 + rng() * 0.6 + kf * 0.3) * s;
-      _puffO.size1 = (3.8 + rng() * 2.2 + kf * 0.9) * s;
+      // short-ish lives everywhere: the plume is a FLOW, each band lives on
+      // fresh puffs (the old 5.7-11 s crown cards were the static ink blob)
+      _puffO.life = 2.8 + rng() * 1.4 + hN * 1.2;
+      _puffO.size0 = (1.0 + rng() * 0.6 + h * 0.09) * s;
+      _puffO.size1 = (3.6 + rng() * 2.0 + h * 0.30) * s;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.9;
-      const grey = rng();
-      if (stage > 0.5) {
-        if (grey < 0.6) { col3(0x2e2a26, _puffO.col0); col3(0x625e58, _puffO.col1); }
-        else { col3(0x3b3733, _puffO.col0); col3(0x716d66, _puffO.col1); }
-      } else if (grey < 0.5) { col3(0x413e3a, _puffO.col0); col3(0x7b786f, _puffO.col1); }
-      else { col3(0x4c4945, _puffO.col0); col3(0x8a877f, _puffO.col1); }
-      _puffO.alpha = (0.26 + rng() * 0.14) + 0.26 * stage;
-      _puffO.grav = 0.35;
+      // r2 albedo floor: capped well above black (0x3a→) and the crown runs
+      // a shade lighter than the base — sunlit smoke, never an ink cutout
+      const grey = rng() * 0.5 + hN * 0.5;
+      if (grey < 0.45) { col3(0x3a3531, _puffO.col0); col3(0x6e6a63, _puffO.col1); }
+      else if (grey < 0.8) { col3(0x4a4641, _puffO.col0); col3(0x807c74, _puffO.col1); }
+      else { col3(0x5a564f, _puffO.col0); col3(0x94908a, _puffO.col1); }
+      _puffO.alpha = (0.20 + rng() * 0.12) + 0.20 * stage;
+      _puffO.grav = 0.45;
       _puffO.birthOffset = birthOffset - rng() * COLUMN_TICK_S; // intra-tick stagger
       particles.emit('smoke', _puffO);
     }
@@ -2178,6 +2265,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
           // the r4 live test at 10 m in field grass showed no readable event
           // (0.03-width sparks + knee-high dust swallowed by the meadow).
           _v3.set(p[0], p[1] + 0.55, p[2]);
+          // r2: dark disturbed-earth stamp under the shed point — the thrown
+          // band must leave a gouge where it tore off (detrack minor)
+          spawnScorch(p[0], p[2], 2.4 + rng() * 0.8);
           sparkFan(_v3, _UP, 26, 16, 1.25, 0xffce8a, 0.7, 0.05, 0.045, 0, 0.16);
           // link fragments: flat dark chips whipped off the sprocket
           for (let i = 0; i < 12; i++) {
@@ -2232,12 +2322,14 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      */
     muzzleFlash(pos, dir, caliberMm) {
       const lightK = spawnMuzzleFlash(pos, dir, caliberMm, 0);
-      // At the tip, ~0.45 m above the bore (was 0.7 m downrange): the light
-      // must paint the barrel TUBE warm so the flash visibly hangs off the
-      // gun — pushed forward it lit only air/ground and a dark thin barrel
-      // read as bare next to a detached blob (r6 canonical-frame critical).
-      _sv.copy(pos).addScaledVector(dir, 0.1);
-      _sv.y += 0.45;
+      // r2 ON THE BORE AXIS: the r1 light floated 0.45 m ABOVE the tube and
+      // its local pool rendered as a glowing lozenge sitting ON TOP of the
+      // barrel at mid-length (critic: "as if the barrel exploded midway").
+      // The light now sits a hair behind the tip ON the axis — the tube's
+      // last meter, mantlet and hull front all catch the same falloff and
+      // the brightest lit surface is the muzzle itself.
+      _sv.copy(pos).addScaledVector(dir, -0.15);
+      _sv.y += 0.10;
       flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * lightK, 0);
     },
 
@@ -2433,31 +2525,47 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       // small dense kicks and big thin veils, not one uniform fog mass
       const kSize = 0.6 + rng() * 0.85;
       const kA = 0.55 + rng() * 0.7;
-      // rooster-tail wake: kicked up-and-back off the sprocket, big and
-      // long-lived so a moving tank drags a hanging dust cloud. r7: the wake
-      // was practically invisible driving straight on the dirt road — same-hue
-      // low puffs vanished against the road texture. The plume now RISES
-      // (2-4 m/s at speed) so it silhouettes against the background, and dry
-      // 'hard' surfaces read a shade lighter than the packed road they hang
-      // over.
+      // r2 sprocket spray: on packed dirt a small dense kick right at the
+      // contact patch (short-lived, ground level — safe over bare road) sells
+      // the "dirt thrown off the sprockets" beat under the big veil.
+      if (gt === 'hard' && rng() < 0.5) {
+        _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.5;
+        _puffO.pos[1] = Math.max(pos.y, gy) + 0.35;
+        _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.5;
+        _puffO.vel[0] = -dir.x * (3.5 + rng() * 3) + (rng() - 0.5) * 1.2;
+        _puffO.vel[1] = 1.6 + rng() * 1.6 * intensity;
+        _puffO.vel[2] = -dir.z * (3.5 + rng() * 3) + (rng() - 0.5) * 1.2;
+        _puffO.life = 0.8 + rng() * 0.5;
+        _puffO.size0 = 0.35; _puffO.size1 = 1.3 + intensity * 1.2;
+        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
+        col3(c0, _puffO.col0); col3(c1, _puffO.col1);
+        _puffO.alpha = 0.30 + 0.30 * intensity; _puffO.grav = -1.2; _puffO.birthOffset = 0;
+        particles.emit('dust', _puffO);
+      }
+      // rooster-tail wake -> lingering corridor. r2 ANTI-STATIC: the veil is
+      // born at ~1.05 m (grass-blade TOPS, was 0.5) — cards half-buried in
+      // the alpha-tested meadow interleaved with the blades into per-pixel
+      // TV static across the whole wake (THE r2 critical read); riding the
+      // canopy the same mass blends softly and silhouettes against terrain.
       _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.7;
-      _puffO.pos[1] = Math.max(pos.y, gy) + 0.5 + rng() * 0.4;
+      _puffO.pos[1] = Math.max(pos.y, gy) + (gt === 'hard' ? 0.6 : 1.05) + rng() * 0.4;
       _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.7;
-      // r1 dust-corridor: stronger downwind drift + ~40% longer lives so a
-      // moving tank leaves a hanging lane of dust several tank-lengths long
-      // instead of a 3-4 sprite wake that dies within one hull (kbd_drive_c/d)
+      // r2 corridor: 4.2-7.4 s lives (critic asks a 3-5 s lingering lane)
+      // with downwind drift so the corridor hangs and shears behind the run
       _puffO.vel[0] = -dir.x * (2.4 + rng() * 2.8) + (rng() - 0.5) * 1.4 + COLUMN_WIND_X * 0.55;
-      _puffO.vel[1] = 1.0 + (1.7 + rng() * 1.7) * intensity;
+      _puffO.vel[1] = 1.0 + (1.6 + rng() * 1.5) * intensity;
       _puffO.vel[2] = -dir.z * (2.4 + rng() * 2.8) + (rng() - 0.5) * 1.4 + COLUMN_WIND_Z * 0.55;
-      _puffO.life = 3.2 + rng() * 2.4;
+      _puffO.life = 4.2 + rng() * 3.2;
       // continuous onset: size AND alpha ramp with intensity from near-zero
       // (r5: zero dust at speed, then a huge opaque cloud one second later)
-      _puffO.size0 = (0.5 + intensity * 0.95) * kSize * Math.min(surf, 1.4);
-      _puffO.size1 = (2.6 + intensity * 5.2 + rng() * 1.4) * kSize * Math.min(surf, 1.4);
+      _puffO.size0 = (0.6 + intensity * 1.1) * kSize * Math.min(surf, 1.4);
+      _puffO.size1 = (3.2 + intensity * 5.6 + rng() * 1.6) * kSize * Math.min(surf, 1.4);
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.5;
       col3(c0, _puffO.col0); col3(c1, _puffO.col1);
-      _puffO.alpha = (0.16 + 0.44 * intensity) * kA * Math.min(surf, 1.25);
-      _puffO.grav = -0.28; _puffO.birthOffset = 0;
+      // grass wake runs dimmer per-card (more cards overlap the meadow —
+      // low contrast against the blades kills the residual interleave noise)
+      _puffO.alpha = (0.14 + 0.38 * intensity) * kA * (gt === 'hard' ? 1.25 : 0.8);
+      _puffO.grav = -0.24; _puffO.birthOffset = 0;
       particles.emit('dust', _puffO);
     },
 
@@ -2624,11 +2732,14 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         particles.getTime(), // bornAtS: stepped captures age the bolt honestly
       ]);
       // muzzle light state at ageS — still glowing at 50 ms (dur 120 ms).
-      // Pulled BACK onto the tube (muzzle - 0.9 m, +0.4 up): it must paint
-      // the barrel itself warm so the composed frame reads flash-ON-gun even
-      // where the thin tube crosses a dark backdrop (r6 critical).
-      _sv.copy(muzzlePos).addScaledVector(dir, -0.9);
-      _sv.y += 0.4;
+      // r2 ON THE BORE at the tip (was muzzle - 0.9 m, +0.4 up): the pulled-
+      // back overhead light pooled on the tube's TOP at mid-length and froze
+      // in the 3x judged frame as a glowing lozenge between bore evacuator
+      // and muzzle — "as if the barrel exploded midway" (r2 major). At the
+      // tip the falloff still walks down the last meter of tube and kicks
+      // onto the mantlet/hull front, but the hottest lit metal is the muzzle.
+      _sv.copy(muzzlePos).addScaledVector(dir, -0.18);
+      _sv.y += 0.10;
       flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK, ageS);
     },
 

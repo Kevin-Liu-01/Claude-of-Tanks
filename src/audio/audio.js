@@ -322,6 +322,24 @@ export function createAudio() {
 
   // -------------------------------------------------------------- impacts ---
 
+  /**
+   * Hull-on-obstacle thud (gameplay_feel r2): dull lowpassed noise burst +
+   * one low inharmonic partial — 60 tons meeting masonry, NOT the
+   * penetration clang (no ring partials). Gain scales with closing speed.
+   */
+  function onTankImpact(e) {
+    const s = spat(e.pos[0], e.pos[1], e.pos[2]);
+    const k = Math.min(1, e.speedMps / 12);
+    if (s.gain * k < 0.002) return;
+    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const v = spawnVoice(when, 0.5, s.gain * (0.4 + 0.6 * k), s.pan, sfxBus);
+    const lp = distLowpass(s.dist);
+    lp.connect(v.in);
+    wire(v, nsrc(v, when, 0.12), flt('lowpass', 420, 0.7), env(when, 0.002, 0.9, 0.1), lp);
+    wire(v, osrc(v, 'triangle', 138, when, 0.22), env(when, 0.002, 0.5 * k, 0.18), lp);
+    wire(v, nsrc(v, when, 0.05), flt('bandpass', 1400, 1.1), env(when, 0.001, 0.35 * k, 0.04), lp);
+  }
+
   /** Armor penetration clang: inharmonic metal partials + transient. */
   function clang(x, y, z) {
     const s = spat(x, y, z);
@@ -839,6 +857,9 @@ export function createAudio() {
     bus.on('shell:fired', (e) => { if (ctx) onShellFired(e); });
     bus.on('shell:hit', (e) => { if (ctx) onShellHit(e); });
     bus.on('tank:destroyed', (e) => { if (ctx) onTankDestroyed(e); });
+    // gameplay_feel r2: blocked-drive collision feedback (state.js emits once
+    // per genuine hit, 5.4 km/h closing-speed floor)
+    bus.on('tank:impact', (e) => { if (ctx) onTankImpact(e); });
     bus.on('tank:fire', (e) => {
       if (!ctx) return;
       if (e.burning) startFireLoop(e.id); else stopFireLoop(e.id);

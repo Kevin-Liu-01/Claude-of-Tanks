@@ -419,7 +419,7 @@ export function createGarageStage(engineCtx, pos) {
     cable.position.set(hx, 8.7, hz);
     group.add(shade, glow, cable);
     // reach the hangar's far corners (~33 m) so the floor never dies to black
-    const pt = new THREE.PointLight(0xffe9c4, 42, 42, 1.9);
+    const pt = new THREE.PointLight(0xf3f1ea, 36, 42, 1.9); // camo_spotting r2: neutral highbay cast
     pt.position.set(hx, 7.1, hz);
     group.add(pt);
   }
@@ -555,7 +555,7 @@ export function createGarageStage(engineCtx, pos) {
     // aim the housing at the podium (lookAt works in world space)
     holder.lookAt(new THREE.Vector3(0, 1.2, 0).add(group.position));
     if (f.i > 0) {
-      const spot = new THREE.SpotLight(0xf4ead6, f.i, 46, 0.62, 0.55, 1.5);
+      const spot = new THREE.SpotLight(0xefeee8, f.i, 46, 0.62, 0.55, 1.5); // camo_spotting r2: neutral wall flood
       spot.position.copy(f.p);
       spot.target = target;
       group.add(spot);

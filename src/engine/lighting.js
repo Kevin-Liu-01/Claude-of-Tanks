@@ -62,7 +62,17 @@ const SHADOW_NORMAL_BIAS = 0.045; // kills acne on terrain slopes (CSM only expo
 // instead of smearing amorphous. Physical penumbra still widens per cascade
 // (cascade texel size roughly doubles each band), so the PCSS-style distance
 // ordering is preserved.
-const SHADOW_RADII = [2.4, 3.1, 2.9, 3.4];
+// r2 ("shadow softness is inconsistent within a single frame: poles/fences
+// crisp while adjacent tree canopies smear into amorphous soft blobs"):
+// cascade texel size roughly doubles per band, so the PHYSICAL penumbra
+// already widens with distance (the PCSS-style cue) even at a near-constant
+// texel radius. The old ladder [2.4, 3.1, 2.9, 3.4] additionally widened the
+// FILTER by up to 40% band-to-band — same-distance casters straddling a
+// cascade seam got visibly different softness, and mid-range canopy masses
+// (cascade 1-2) blurred far past the pole shadows beside them. Near-flat
+// texel radii keep one coherent softness law: penumbra grows with distance
+// only through texel size, not through per-band filter jumps.
+const SHADOW_RADII = [2.4, 2.6, 2.6, 2.8];
 // The radii above are tuned in TEXELS of these reference map sizes (ultra's
 // ladder). When a quality preset allocates a smaller map for a cascade, the
 // texel is proportionally larger — an uncompensated radius would widen the

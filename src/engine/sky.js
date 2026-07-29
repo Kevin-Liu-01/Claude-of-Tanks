@@ -198,11 +198,21 @@ const CLOUD_CLUSTER = 0.12; // macro-noise threshold modulation (cloud grouping)
 const CLOUD_WARP = 0.075; // domain-warp strength (cauliflower edge crinkle)
 const CLOUD_MARCH_STEPS = 12; // light-march samples toward the in-texture sun
 const CLOUD_MARCH_STEP_PX = 3;
-const CLOUD_SHADE_K = 0.62; // optical-depth scale: bright rims, dark cores
+// r2 ("clouds receive no directional lighting — no lit/shadow side"): march
+// depth 0.62 → 0.80 and a darker shade pole so the baked sun-side/belly split
+// survives ACES + the haze mix at battle-camera distances; paired with the
+// NEW deck-shader mass shading term (uShadeW) that darkens texels lying
+// down-sun of denser cloud at ~150 m scale — a whole-mass lit/shadow axis,
+// not just per-texel rim shading.
+const CLOUD_SHADE_K = 0.80; // optical-depth scale: bright rims, dark cores
 const CLOUD_LIT = [1.0, 0.98, 0.94]; // warm-white sunlit faces
-const CLOUD_SHADE = [0.44, 0.52, 0.70]; // cool grey-blue shaded bellies
+const CLOUD_SHADE = [0.40, 0.48, 0.67]; // cool grey-blue shaded bellies
 const CLOUD_SILVER = 0.38; // extra silver-lining gain on thin sun-facing rims
-const CLOUD_DETAIL_AMP = 0.42; // high-frequency alpha modulation inside masses
+// r2 ("smeared 2D noise blobs ... visible directional streaking like a
+// stretched low-res texture"): interior alpha detail 0.42 → 0.56 — the high-
+// frequency octave has to survive the grazing-angle anisotropic minification
+// that softens everything toward the horizon.
+const CLOUD_DETAIL_AMP = 0.56; // high-frequency alpha modulation inside masses
 // Cloud decks are viewed at extreme grazing angles (the infinite-plane
 // projection): with the default anisotropy of 1 the mip filter smears every
 // horizonward cloud into a streak — the single biggest "blurred canvas blit"
@@ -246,7 +256,10 @@ const CIRRUS_HAZE_K = 0.00010;
 // color, so no hard silhouettes against the terrain edge).
 const CLOUD_Y_FADE = [0.007, 0.034];
 const CLOUD_MAX_ALPHA = 0.94;
-const CLOUD_LAYER2_OPACITY = 0.6; // default for preset field cloudOpacity2 (cirrus)
+// r2: 0.6 → 0.5 — the cirrus veil is the main "directional streaking"
+// contributor in the establishing shots; thinner default keeps it a subtle
+// high veil (map presets still override).
+const CLOUD_LAYER2_OPACITY = 0.5; // default for preset field cloudOpacity2 (cirrus)
 
 /**
  * @typedef {object} SkyRig
@@ -328,6 +341,13 @@ function configureSkyUniforms(sky, sunDir, preset = DEFAULT_PRESET) {
 		float kneeScale = ( ${SKY_KNEE.toFixed(3)} + ${SKY_KNEE_RANGE.toFixed(3)} * ( 1.0 - exp( -( skyL - ${SKY_KNEE.toFixed(3)} ) * ${SKY_KNEE_FALLOFF.toFixed(4)} ) ) ) / skyL;
 		skyCol *= mix( kneeScale, 1.0, sunDisc );
 	}
+	// r2 ("no sun disc"): compact warm forward-scatter glow around the disc —
+	// pow 240 spans ~5 deg, so the disc reads as the frame's hottest point
+	// with a tight golden halo (the disc+glow crosses the 1.78 bloom
+	// threshold and blooms locally) while the WIDE Mie halo stays fully
+	// knee-compressed — the old white-out mechanism cannot return.
+	float sunGlow = pow( max( dot( direction, vSunDirection ), 0.0 ), 240.0 );
+	skyCol += vec3( 1.30, 1.02, 0.68 ) * sunGlow * 0.50;
 	// break up gradient banding on the low-frequency sky ramps
 	skyCol += ( fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) - 0.5 ) * ${SKY_DITHER.toFixed(4)};
 	gl_FragColor = vec4( max( skyCol, vec3( 0.0 ) ), 1.0 );`,
@@ -445,7 +465,12 @@ function makeCloudTexture() {
       // edge sharpness varies with the macro field: dense clusters carve
       // crisp cauliflower cores, sparse outliers tear into soft wisps
       const edgeW = CLOUD_EDGE + CLOUD_EDGE_WISP * (1 - smoothstepNum(0.35, 0.62, mac));
-      const m = smoothstepNum(thr, thr + edgeW, d);
+      // terrain_environment r2: gate the mask edge with the high-frequency
+      // field so mass borders read as cauliflower turbulence rather than
+      // smooth threshold contours (multiplier floor >= ~0.7 or thin rims
+      // dither out and the deck loses its silver lining).
+      const m = smoothstepNum(thr, thr + edgeW, d)
+        * (0.72 + 0.28 * smoothstepNum(0.25, 0.75, fbmHF(u * 0.25, v * 0.25)));
       const c = smoothstepNum(thr + edgeW, thr + edgeW + CLOUD_CORE, d);
       mask[i] = m;
       core[i] = c;
@@ -541,7 +566,10 @@ function makeCirrusTexture() {
     const v = y / H;
     for (let x = 0; x < W; x++) {
       const u = x / W;
-      let wu = (u + (fbmW(u, v) - 0.5) * 0.16 + (fbmE(u, v) - 0.5) * 0.035) % 1;
+      // r2: edge crinkle 0.035 → 0.06 — the sheared filaments read as one
+      // smooth diagonal smear ("stretched low-res texture"); harder crinkle
+      // tears the filament edges so the veil reads fibrous at 1080p.
+      let wu = (u + (fbmW(u, v) - 0.5) * 0.16 + (fbmE(u, v) - 0.5) * 0.06) % 1;
       if (wu < 0) wu += 1;
       const sv = (v * 3) % 1;
       const s = fbm(wu, sv);
@@ -708,6 +736,7 @@ export function createSky(scene, renderer) {
     uniform float uAlt;   // virtual deck plane altitude (m)
     uniform float uHazeK; // slant-distance haze rate (1/m)
     uniform vec2 uYFade;  // direction.y band where alpha melts at the horizon
+    uniform float uShadeW; // deck-level directional mass shading strength
     varying vec3 vWPos;
     void main() {
       vec3 d = normalize( vWPos - cameraPosition );
@@ -716,6 +745,12 @@ export function createSky(scene, renderer) {
       vec2 p = cameraPosition.xz + d.xz * t;
       vec2 uv = vec2( p.x * uRot.x - p.y * uRot.y, p.x * uRot.y + p.y * uRot.x ) / uScale + uOff;
       vec4 c = texture2D( uMap, uv );
+      // r2 directional mass shading: the rotated uv frame puts the sun at -v,
+      // so sampling up-sun and darkening texels that sit behind denser cloud
+      // gives every mass a lit sun side and a shaded lee side at ~150 m scale
+      // (the baked light march only models per-texel rim depth).
+      float dSun = texture2D( uMap, uv + vec2( 0.0, -0.045 ) ).a;
+      c.rgb *= 1.0 - uShadeW * clamp( dSun - c.a * 0.55, 0.0, 1.0 );
       // macro variety mask at an irrational relative scale: with the deck now
       // visible out to many texture repeats, straight tiling shows periodic
       // cloud shapes near the horizon — a slow decorrelated mask thins whole
@@ -739,7 +774,7 @@ export function createSky(scene, renderer) {
     const l = Math.hypot(dir.x, dir.z) || 1;
     return [-dir.z / l, -dir.x / l];
   };
-  const mkCloudDeck = (tex, alt, uvMeters, opacity, radius, hazeK, off, name) => {
+  const mkCloudDeck = (tex, alt, uvMeters, opacity, radius, hazeK, off, name, shadeW = 0.3) => {
     const rot = cloudSunRot(sunDir);
     const mat = new THREE.ShaderMaterial({
       vertexShader: CLOUD_VERT,
@@ -755,6 +790,7 @@ export function createSky(scene, renderer) {
         uAlt: { value: alt },
         uHazeK: { value: hazeK },
         uYFade: { value: new THREE.Vector2(...CLOUD_Y_FADE) },
+        uShadeW: { value: shadeW },
       },
       transparent: true,
       depthWrite: false,
@@ -773,6 +809,9 @@ export function createSky(scene, renderer) {
   const cloudsFar = mkCloudDeck(
     makeCirrusTexture(), CIRRUS_ALT, CIRRUS_UV_METERS, CLOUD_LAYER2_OPACITY,
     CIRRUS_DOME_RADIUS, CIRRUS_HAZE_K, [0.31, 0.77], 'cloudLayerFar',
+    // cirrus rides perpendicular to the sun rotation — its -v axis is NOT
+    // sunward, so the mass-shading term stays subtle there
+    0.10,
   );
   cloudsFar.renderOrder = -3;
   // NOTE: the cirrus deck rides PERPENDICULAR to the sun-aligned cumulus
@@ -783,7 +822,7 @@ export function createSky(scene, renderer) {
   // meteorologically common case.
   const clouds = mkCloudDeck(
     makeCloudTexture(), CLOUD_ALT, CLOUD_UV_METERS, 1.0,
-    CLOUD_DOME_RADIUS, CLOUD_HAZE_K, [0, 0], 'cloudLayer',
+    CLOUD_DOME_RADIUS, CLOUD_HAZE_K, [0, 0], 'cloudLayer', 0.30,
   );
   clouds.renderOrder = -2;
 

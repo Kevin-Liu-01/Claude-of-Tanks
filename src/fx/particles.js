@@ -210,11 +210,13 @@ void main() {
   // alpha-dither speckle instead of soft billowing lobes. A widening band
   // keeps the front torn early yet dissolves late edges as translucent
   // gradients, so lobes billow away instead of pixel-popping.
-  // r1 anti-ordered-dither: per-pixel hash jitter on the erosion threshold —
-  // whatever residual banding the flipbook quantization leaves resolves as
-  // sub-pixel film grain instead of ordered stipple at 1080p.
-  float jn = fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
-  float er = vT * 0.34 + ( jn - 0.5 ) * 0.045;
+  // r2 anti-static: the per-pixel gl_FragCoord hash jitter is GONE. It was
+  // screen-pinned white noise on the erosion threshold — under a moving
+  // texture every near-threshold texel flickered per pixel, and with no TAA
+  // the whole eroding footprint sizzled as TV static (the r2 critical
+  // "hash-dither alpha" kill read). The widening smoothstep band alone keeps
+  // the dissolve soft; the flipbook supplies all the ragged structure.
+  float er = vT * 0.34;
   float a = smoothstep( er, er + 0.40 + 0.52 * vT, tex ) * vColor.a;
   if ( a < 0.004 ) discard;
   ${FOG_SCALE_F}
@@ -232,7 +234,9 @@ void main() {
   // grey-orange fast once it stops burning — pull the late-life color toward
   // its own luma (grey) and dim it, so flame hands off to the smoke pool's
   // grey-black instead of holding red.
-  float soot = smoothstep( 0.42, 0.9, vT );
+  // r2: soot onset 0.42 -> 0.30 — the fire pool must go dark-first so the
+  // paint-to-char beat never passes through a bright desaturated stage.
+  float soot = smoothstep( 0.30, 0.85, vT );
   float luma = dot( col, vec3( 0.299, 0.587, 0.114 ) );
   col = mix( col, vec3( luma * 0.5 ), soot );
   a *= 1.0 - soot * 0.45;
@@ -262,9 +266,12 @@ varying vec2 vShade;
 ${FOG_PARS_F}
 void main() {
   float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
-  float jn = fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
-  float er = vT * 0.30 + ( jn - 0.5 ) * 0.05;
-  float a = smoothstep( er, er + 0.30 + 0.45 * vT, tex ) * vColor.a;
+  // r2 anti-static: screen-space hash jitter removed (see PUFF_FRAG_ADDITIVE
+  // note) — the jitter binarized the erosion front into per-pixel sizzle over
+  // the wreck and the ground for the fireball's whole life. Band widened a
+  // touch to keep the front torn without it.
+  float er = vT * 0.30;
+  float a = smoothstep( er, er + 0.34 + 0.45 * vT, tex ) * vColor.a;
   if ( a < 0.004 ) discard;
   // blackbody interior: dense texels above the erosion front burn white-hot,
   // cooling through orange -> deep ember red -> soot as the card ages and
@@ -274,15 +281,20 @@ void main() {
   // most of the crown into the white band — cotton-ball read); the body of
   // the lobe lives in ember-red/orange with sooty shoulders.
   float heat = clamp( ( tex - er ) * ( 2.0 - 0.9 * vT ), 0.0, 1.0 );
-  float h2 = heat * ( 1.0 - vT * 0.85 );
+  // r2 dark-first dissolve: h2 collapses harder with age and the white band
+  // shrank to the very densest texels — the old ramp held a bright
+  // desaturated "noisy white plaster" stage over the hull for ~2 s (r2
+  // major). paint -> ember orange -> charcoal, never through ash white.
+  float h2 = heat * ( 1.0 - vT * 0.95 );
   vec3 col = mix( vColor.rgb, vec3( 0.42, 0.06, 0.015 ), smoothstep( 0.06, 0.32, h2 ) );
   col = mix( col, vec3( 1.0, 0.38, 0.04 ), smoothstep( 0.30, 0.72, h2 ) );
-  col = mix( col, vec3( 1.35, 1.15, 0.85 ), smoothstep( 0.80, 0.985, h2 ) );
+  col = mix( col, vec3( 1.28, 1.06, 0.78 ), smoothstep( 0.88, 0.99, h2 ) );
   // combustion chemistry: saturation falls BEFORE value — past mid-life the
   // card desaturates to sooty grey and dims, handing off to the smoke pool
   // (without this the aged billow mass froze as a translucent MAROON wall
   // over the trees at 1.6 s — the exact r5 dried-blood-fog regression)
-  float sootF = smoothstep( 0.35, 0.8, vT );
+  // r2: onset 0.35 -> 0.26 (dark-first, see h2 note)
+  float sootF = smoothstep( 0.26, 0.72, vT );
   float luma = dot( col, vec3( 0.299, 0.587, 0.114 ) );
   col = mix( col, vec3( luma ), sootF * 0.9 );
   col *= 1.0 - 0.3 * sootF;
@@ -432,8 +444,8 @@ void main() {
   // burns off from the tip back toward the bore — the surviving bright mass
   // stays welded to the muzzle instead of freezing as a detached mid-cone
   // blob 1.5-2 m downrange while the bore is already dark.
-  float jn = fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
-  float er = 0.06 + vT * ( 0.45 + 0.75 * vUv.x ) + ( jn - 0.5 ) * 0.04;
+  // r2 anti-static: screen-space hash jitter removed (see PUFF_FRAG_ADDITIVE)
+  float er = 0.06 + vT * ( 0.45 + 0.75 * vUv.x );
   // 0.28 -> 0.46 band (r5): jet tips dissolved into hard noise speckle at
   // the flash frame edges — wider band keeps the cone ragged but soft
   float a = smoothstep( er, er + 0.46, tex ) * vColor.a;
@@ -517,12 +529,15 @@ void main() {
   vLocal = lp;
   vSeed = aSG.w;
   vWorldPos = wpos;
-  // charred-metal albedo: near-black soot to dark scorched brown
-  vTint = mix( vec3( 0.045, 0.040, 0.036 ), vec3( 0.145, 0.110, 0.085 ), h3 );
+  // charred-metal albedo: dark soot to scorched brown (r2: floor lifted off
+  // near-black — 0.045 albedo could not read as a lit object at any exposure)
+  vTint = mix( vec3( 0.075, 0.068, 0.060 ), vec3( 0.185, 0.140, 0.105 ), h3 );
   // ember glow: airborne wreckage leaves the fireball HOT — near-full glow
   // through the first ~0.5 s (the r5 "flat matte-black slabs against sky"
   // window), then cools fast so grounded chunks never read orange popcorn.
-  vHot = aSG.z * exp( -max( age - 0.45, 0.0 ) * 3.4 ) * ( 0.40 + h2 * 0.60 );
+  // r2: hold full glow 0.55 s and cool over ~1 s more (was gone by ~0.75 s)
+  // so airborne wreckage visibly cools ember-orange -> dark in flight
+  vHot = aSG.z * exp( -max( age - 0.55, 0.0 ) * 2.6 ) * ( 0.40 + h2 * 0.60 );
   vFade = fade;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   ${FOG_V}
@@ -550,11 +565,15 @@ void main() {
   // r5: hemisphere ambient raised + a view-dependent sky rim so a chunk
   // tumbling against the bright sky reads as a LIT 3D object with a cool
   // rim-lit edge, never an unlit matte-black 2D card.
-  float hemi = 0.34 + 0.30 * ( n.y * 0.5 + 0.5 );
-  vec3 col = vTint * ( hemi + nl * 1.1 );
+  // r2: ambient floor + rim raised again — the r1 values still froze the
+  // shard cloud as flat black polygon confetti against the fireball
+  // (kill0 crop major). A wreck chunk in daylight reads mid-grey scorched
+  // steel with a clear sky rim, never a light-swallowing cutout.
+  float hemi = 0.46 + 0.38 * ( n.y * 0.5 + 0.5 );
+  vec3 col = vTint * ( hemi + nl * 1.35 ) + vec3( 0.028, 0.026, 0.024 ) * hemi;
   vec3 viewDir = normalize( cameraPosition - vWorldPos );
-  float rim = pow( 1.0 - abs( dot( n, viewDir ) ), 2.2 );
-  col += vec3( 0.36, 0.42, 0.50 ) * rim * ( 0.18 + 0.22 * ( n.y * 0.5 + 0.5 ) );
+  float rim = pow( 1.0 - abs( dot( n, viewDir ) ), 2.0 );
+  col += vec3( 0.36, 0.42, 0.50 ) * rim * ( 0.26 + 0.28 * ( n.y * 0.5 + 0.5 ) );
   // cooling ember glow (bloom feed): NOT a flat face tint — SMOOTH seeded
   // noise blotches so irregular PATCHES of the scorched chunk glow orange
   // while the rest stays charred black. r1: the old floor()-cell hash read as

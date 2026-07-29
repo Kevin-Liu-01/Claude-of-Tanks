@@ -10,6 +10,7 @@
 // pushing THREE.BufferGeometry parts into buckets.{plaster,stone,roof,wood,dark}.
 
 import * as THREE from 'three';
+import { MARKET_BUILDERS } from './mapKits.js';
 
 // --- tiny local twins of the props.js geometry helpers (not exported there) --
 function box(w, h, d, uvScale = 0.5) {
@@ -146,5 +147,10 @@ export function makeFactory(rng, buckets) {
   return { w: w + 0.4, d: d + 0.4, h: stackH + 1 };
 }
 
-/** Builders keyed by plan name — spread into props.js BUILDER_BY_NAME. */
-export const URBAN_BUILDERS = { church: makeChurch, factory: makeFactory };
+/** Builders keyed by plan name — spread into props.js BUILDER_BY_NAME.
+ * content_breadth r2: the desert bazaar builders (maps/mapKits.js) ride the
+ * same registry, so 'market' / 'marketRow' plan entries work map-wide with
+ * no props.js change. */
+export const URBAN_BUILDERS = {
+  church: makeChurch, factory: makeFactory, ...MARKET_BUILDERS,
+};

@@ -204,20 +204,20 @@ function renderAll(specs) {
         frame();
         if (Math.abs(1 - k) < 0.04 && Math.abs(dxPx) < 4 && Math.abs(dyPx) < 4) break;
       }
-      // r6 EXPOSURE NORMALIZATION: dark camo schemes (T-90M Proryv, T-80U,
-      // Leclerc, BMP-2) rendered as near-black olive smudges on the dark
-      // carousel cards while the Abrams read fine. Lift the tone-map
-      // exposure until the silhouette's mean luminance reaches a common
-      // floor — every thumb separates from its card at 1080p. Two passes
-      // because ACES responds sub-linearly to exposure.
-      const TARGET_LUMA = 0.30;
-      for (let ep = 0; ep < 2; ep++) {
+      // r7 EXPOSURE NORMALIZATION: dark camo schemes (T-90M Proryv, Type 10)
+      // still rendered near-silhouette at the r6 0.30 target/2.1x cap next
+      // to the well-lit Abrams — the row read as mixed-source assets. Target
+      // raised to the critic's 0.37 mean-luminance floor with more lift
+      // headroom and a third convergence pass (ACES responds sub-linearly).
+      const TARGET_LUMA = 0.37;
+      const MAX_EXPOSURE = BASE_EXPOSURE * 2.6;
+      for (let ep = 0; ep < 3; ep++) {
         const bb = measureAlphaBox();
         if (!bb || bb.meanLuma <= 0.02 || bb.meanLuma >= TARGET_LUMA * 0.97) break;
-        renderer.toneMappingExposure = Math.min(BASE_EXPOSURE * 2.1,
+        renderer.toneMappingExposure = Math.min(MAX_EXPOSURE,
           renderer.toneMappingExposure * Math.min(1.65, TARGET_LUMA / bb.meanLuma));
-        if (renderer.toneMappingExposure >= BASE_EXPOSURE * 2.1) { frame(); break; }
         frame();
+        if (renderer.toneMappingExposure >= MAX_EXPOSURE) break;
       }
       cache.set(spec.id, renderer.domElement.toDataURL('image/png'));
       renderer.toneMappingExposure = BASE_EXPOSURE; // reset for the next card

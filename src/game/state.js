@@ -421,6 +421,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     ent.input.shellSlot = 0;
     ent.input.aimPoint.copy(ent.state.aimPoint);
     ent._destroyedAnnounced = false;
+    ent._lastImpactT = -1; // impact-event cooldown must not carry across battles
     ent.ai = null;
     // Rematch: undo any wreck look / thrown tracks / stripped ERA from the
     // previous battle (visuals only — combat state above is already fresh).
@@ -802,6 +803,29 @@ export function simStep(game, bus, world, rig, collider) {
     if (!ent.state || ent.combat.destroyed) continue;
     collider.setSelf(ent);
     updateTank(ent, world.heightField, dt, collider.collide);
+    // r2 blocked-drive impact (gameplay_feel critique MAJOR): movement now
+    // bleeds the wall-blocked speed component and reports the closing speed
+    // it absorbed (state.impactMps). Surface it as feedback — WoT slams to a
+    // halt with a clank + camera jolt instead of running-in-place. The
+    // >1.5 m/s (~5.4 km/h) floor means ONE event per genuine hit; leaning on
+    // the wall afterwards re-bleeds only ~accel·dt per tick and stays silent.
+    const impact = ent.state.impactMps;
+    if (impact > 1.5 && game.timeS - (ent._lastImpactT || -1) > 0.3) {
+      // 0.3 s per-entity cooldown: a hard hit can bleed across 2 sim ticks
+      // (first tick absorbs only the sub-tick overshoot into the wall) — one
+      // collision must read as ONE clank/jolt, not a 16 ms double-tap.
+      ent._lastImpactT = game.timeS;
+      if (ent.isPlayer && rig) {
+        rig.addTrauma(Math.min(0.5, 0.10 + impact * 0.030)); // 10 m/s ≈ 0.4
+      }
+      bus.emit('tank:impact', {
+        id: ent.id,
+        specId: ent.specId,
+        isPlayer: ent.isPlayer,
+        speedMps: impact,
+        pos: [ent.state.pos.x, ent.state.pos.y, ent.state.pos.z],
+      });
+    }
   }
 
   // c. reload timers + firing

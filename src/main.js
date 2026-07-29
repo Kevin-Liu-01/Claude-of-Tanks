@@ -137,9 +137,11 @@ scene.add(garageStage.group);
 // wider penumbras — the light pool under the turntable was a blown-out
 // uniform white disc with a hard rim; lower peak stops the clip to paper
 // white, wider penumbra turns the pool edge into a radial falloff.
-const spotA = new THREE.SpotLight(0xfff1d8, 78, 60, 0.5, 0.85, 1.6);
+// camo_spotting r2: neutralize the warm key + cool fill — desert/winter camo
+// schemes rendered honey-gold/cream on the pedestal vs their in-battle tone.
+const spotA = new THREE.SpotLight(0xf2f0e8, 64, 60, 0.5, 0.85, 1.6);
 spotA.position.set(GARAGE_POS.x + 9, GARAGE_POS.y + 11, GARAGE_POS.z + 7);
-const spotB = new THREE.SpotLight(0xcfe0ff, 58, 60, 0.6, 0.8, 1.6);
+const spotB = new THREE.SpotLight(0xdce3ec, 48, 60, 0.6, 0.8, 1.6);
 spotB.position.set(GARAGE_POS.x - 10, GARAGE_POS.y + 8, GARAGE_POS.z - 6);
 const spotTarget = new THREE.Object3D();
 spotTarget.position.set(GARAGE_POS.x, GARAGE_POS.y + 1.2, GARAGE_POS.z);
@@ -158,16 +160,40 @@ function setGarageSpots(on) {
   spotB.visible = on;
 }
 
+// camo_spotting r2: the pedestal is keyed by the ACTIVE MAP's warm sun
+// (verdant 0xfff1dc @ 4.5) — desert paint read honey-gold and winter wash
+// cream on the turntable vs the same paint's in-battle tone. While the garage
+// screen is up the sun is re-keyed to near-neutral white and trimmed (at the
+// map's full 4.5 the hull sat at 0.85+ display luma, inside the post grade's
+// WARM highlight split-tone pole); battle entry / staged shots restore the
+// map's authored sun via the same setSun call.
+const GARAGE_SUN_COLOR = 0xf2f0ea;
+function setGarageSunTrim(on) {
+  const skyCfg = world.config.sky || {};
+  lighting.setSun(sky.sunDir, on
+    ? { ...skyCfg, sunColorHex: GARAGE_SUN_COLOR,
+        sunIntensity: (skyCfg.sunIntensity ?? 4.5) * 0.55 }
+    : skyCfg);
+}
+
 let pedestalVisual = null;
 let selectedSpecId = 'm1a2';
 let pedestalPollToken = 0; // content_breadth r1: cancels stale GLB polls
 function setPedestalTank(specId) {
-  if (pedestalVisual) {
-    if (pedestalVisual.specId === specId) return;
-    pedestalVisual.dispose();
-    pedestalVisual = null;
-  }
+  if (pedestalVisual && pedestalVisual.specId === specId) return;
   pedestalPollToken++;
+  // content_breadth r2: the OUTGOING hero stays on stage until the incoming
+  // model is ready — disposing it immediately left 1-6 s of bare pedestal
+  // while the incoming GLB settled. Each call retires only ITS OWN prev; a
+  // superseded poll retires its prev on the token-mismatch path, so rapid
+  // carousel scrubbing cannot leak visuals.
+  const prev = pedestalVisual;
+  let prevRetired = false;
+  const retirePrev = () => {
+    if (prevRetired || !prev) return;
+    prevRetired = true;
+    prev.dispose();
+  };
   pedestalVisual = createTank(specId, engineCtx, { camoSeed: 4200, quality: 'high' });
   pedestalVisual.root.position.set(GARAGE_POS.x, GARAGE_POS.y + 0.35, GARAGE_POS.z);
   pedestalVisual.root.rotation.y = 162 * DEG;
@@ -186,18 +212,22 @@ function setPedestalTank(specId) {
     const token = pedestalPollToken;
     const vis = pedestalVisual;
     import('./vehicles/modelLoader.js').then((m) => {
-      if (token !== pedestalPollToken || m.hasCachedGlb(src.glb.path)) return;
-      if (vis.setVisible) vis.setVisible(false);
+      if (token !== pedestalPollToken) { retirePrev(); return; }
+      if (m.hasCachedGlb(src.glb.path)) { retirePrev(); return; }
+      if (vis.setVisible) vis.setVisible(false); // prev covers the stage
       const stats = (typeof window !== 'undefined' && window.__GLB_STATS) || null;
       const poll = () => {
-        if (token !== pedestalPollToken) return; // superseded — new hero owns the stage
+        if (token !== pedestalPollToken) { retirePrev(); return; } // superseded
         const settled = m.hasCachedGlb(src.glb.path) &&
           (!stats || stats.settled >= stats.started);
         if (!settled) { setTimeout(poll, 150); return; }
         if (vis.setVisible) vis.setVisible(true); // swap landed in place
+        retirePrev(); // hand-over, no gap
       };
       setTimeout(poll, 150);
-    }).catch(() => { /* loader unavailable — keep the procedural stand-in */ });
+    }).catch(retirePrev); // loader unavailable — keep the procedural stand-in
+  } else {
+    retirePrev(); // procedural: instant
   }
 }
 setPedestalTank(selectedSpecId);
@@ -773,6 +803,7 @@ function startBattle(specId, mapId = null) {
   hud.setMode('battle');
   game.phase = 'battle';
   setGarageSpots(false); // PERF: no spot-light cost on battle draws
+  setGarageSunTrim(false); // restore the map's authored warm sun
   bus.emit('phase:change', { phase: 'battle' });
   for (let i = 0; i < 3; i++) { consumableLeft[i] = CONSUMABLE_STOCK[i]; consumableReadyAt[i] = 0; }
   bus.emit('ui:consumableReset', {});
@@ -791,6 +822,7 @@ function enterGarage() {
   fx.setFrozen(false);
   game.phase = 'garage';
   setGarageSpots(true);
+  setGarageSunTrim(true);
   bus.emit('phase:change', { phase: 'garage' });
   endOverlay.style.display = 'none';
   if (document.exitPointerLock) document.exitPointerLock();
@@ -1151,7 +1183,11 @@ function tick(nowMs) {
   world.setSniperFade(rig.mode === 'SNIPER' ? 1 : 0, false, camera.fov, rig.aimDist);
   camera.getWorldDirection(_fwd);
   let occlFocus = null;
-  if (inBattle && !kcActive && rig.mode === 'ARCADE' && game.player && game.player.state &&
+  // lighting_post r2: never run the chase-camera occlusion fade during an
+  // external capture pose (setExternalPose keeps mode ARCADE) — the fade
+  // dithered bushes into screen-door noise in staged combat_firing frames.
+  if (inBattle && !kcActive && rig.mode === 'ARCADE' && !rig.externalActive &&
+      game.player && game.player.state &&
       game.player.visual && game.player.visual.root.visible) {
     occlFocus = _occlFocus.copy(game.player.state.pos);
     occlFocus.y += game.player.spec.dims.heightM * 0.75;
@@ -1229,6 +1265,11 @@ const VIEW_MAP = {
 // (deterministic spawns) whenever the map actually changes.
 function ensureShotWorld(mapId) {
   if (world.mapId !== mapId) switchMap(mapId);
+  // camo_spotting r2: staged captures must show biome-correct AUTO paint —
+  // startBattle resolves the camo biome but the contract views do not pass
+  // through it, so shots could carry the previous biome's paint.
+  setCamoBiome(mapId);
+  applyCamoPatterns();
   // Always restage deterministically: a prior random-roster battle must not
   // leak into the screenshot contract (recipes reference tiger1/t90m/etc).
   setupBattle(game, 'm1a2', world);
@@ -1455,6 +1496,11 @@ const SHOT_VIEWS = {
         }
         return true;
       };
+      // hud_ui r2: the sweep mutates near's REAL state each try — save the
+      // original so a fully-failed sweep can restore it instead of leaving
+      // the tank at the last FAILED (occluded) position.
+      const origX = near.state.pos.x, origY = near.state.pos.y, origZ = near.state.pos.z;
+      const origYaw = near.state.yaw;
       outer:
       for (const distM of [300, 240, 360, 190, 150, 420]) {
         for (let k = 0; k < 29; k++) {
@@ -1468,7 +1514,45 @@ const SHOT_VIEWS = {
           if (clearTo(near) && nearClear(...aimTo(near))) { best = near; break outer; }
         }
       }
-      if (!best) best = near; // last resort: original staging
+      if (!best) {
+        // hud_ui r2 relaxed sweep: terrain LOS only (turret top + hull
+        // center) — map dressing density can over-reject the strict pass
+        // wholesale (concealer circles + near-prop cone).
+        const terrainClear = (ent) => {
+          const tp = ent.state.pos;
+          const hh2 = ent.spec.dims.heightM;
+          for (const oy of [hh2 * 0.92, hh2 * 0.5]) {
+            _v2.set(tp.x, tp.y + oy, tp.z);
+            _v3.copy(_v2).sub(_v1);
+            const dd = _v3.length();
+            _v3.multiplyScalar(1 / Math.max(dd, 1e-3));
+            const block = world.raycast(_v1, _v3, dd);
+            if (block && block.dist < dd - 0.25) return false;
+          }
+          return true;
+        };
+        outer2:
+        for (const distM of [300, 240, 360, 190, 150, 420]) {
+          for (let k = 0; k < 29; k++) {
+            const ang = p.state.yaw +
+              (k % 2 ? -1 : 1) * Math.ceil(k / 2) * (Math.PI / 24);
+            const x = p.state.pos.x + Math.sin(ang) * distM;
+            const z = p.state.pos.z + Math.cos(ang) * distM;
+            if (Math.abs(x) > 460 || Math.abs(z) > 460 || !groundFree(x, z)) continue;
+            near.state.pos.set(x, world.heightField.getHeightAt(x, z), z);
+            near.state.yaw = ang + Math.PI * 0.72;
+            if (terrainClear(near)) { best = near; break outer2; }
+          }
+        }
+      }
+      if (!best) {
+        // TRUE original staging (the old code left the tank at the last
+        // FAILED sweep position — captured frames aimed 420 m into an empty
+        // hillside)
+        near.state.pos.set(origX, origY, origZ);
+        near.state.yaw = origYaw;
+        best = near;
+      }
       best.visual.syncFromState(best.state);
       bestD = best.state.pos.distanceTo(p.state.pos);
     }
@@ -1699,12 +1783,25 @@ window.__SHOTS = {
     // post-ready warm — run it now (idempotent, no-op once idle fired).
     warmCombatPipeline();
     shotMode = true;
+    // killcam_shotinfo r2 (harness reliability): keep the GLB idle queue
+    // quiet during shot capture — a parse job landing inside the ~1.2 s
+    // battlefield settle window adds decode pressure exactly while the
+    // biggest worlds build. EXCEPTION: the garage view NEEDS the queue live —
+    // the pedestal hero GLB must settle or the stand-in stays hidden and the
+    // turntable captures empty. Dynamic import keeps GLTFLoader off the
+    // boot-critical bundle path (perf-budget rule).
+    import('./vehicles/modelLoader.js')
+      .then((m) => m.pauseIdleQueue && m.pauseIdleQueue(name !== 'garage'))
+      .catch(() => { /* loader unavailable — nothing to pause */ });
     shotHudFrame = false; // r5: recipes with a HUD frame re-latch this
     game.phase = 'shot';
     setGarageSpots(true); // shot staging keeps the boot-time light set
     zeroInputs();
     killcam.cancel(); // KILL-CAM: clear any staged/active replay (restores materials)
     ensureShotWorld(VIEW_MAP[name] || 'verdant'); // MAP-CONFIG WIRING
+    // camo_spotting r2: garage shot keeps the neutral pedestal key; every
+    // battlefield shot gets the authored map sun.
+    setGarageSunTrim(name === 'garage');
     garage.hide(); // also closes the tech tree; recipes re-show what they need
     endOverlay.style.display = 'none';
     fx.resetAll();
@@ -1731,6 +1828,7 @@ buildShellCards(game.player.spec);
 damagePanel.setTank(game.player.spec);
 garage.show(selectedSpecId);
 garageCameraPose();
+setGarageSunTrim(true); // camo_spotting r2: boot lands on the garage screen
 hud.setMode('hidden');
 
 world.update(0, camera.position);
@@ -1805,6 +1903,19 @@ let debugAimTargetId = null;
 // then upper hull, then turret, and lead the first aim height whose
 // muzzle→impact path is clear. All heights blocked = keep center (the
 // live reticle shows the red blocked warning for that shot).
+// controls_gunnery r2: AIM-HEIGHT LATCH + GRAZE MARGIN. The r6 multi-height
+// probe re-picked its aim height (0.5/0.72/0.88) EVERY sim step — near a
+// micro-crest the raycast verdict flips frame to frame, so the turret chased
+// an aim point oscillating ~0.9 m vertically and never settled (measured:
+// 47 mrad error after 10 s, shot 178 m into terrain). The chosen height now
+// LATCHES for 1 s of game time per target. A height also only qualifies when
+// a parallel ray 0.5 m BELOW it is clear too — a path that grazes terrain
+// within half a meter gets biased up to the next height instead of trusting
+// a knife-edge LOS that half the dispersion cone will still clip.
+let leadLatchHFrac = 0;
+let leadLatchUntilS = -1;
+let leadLatchTargetId = null;
+
 function debugLeadPoint(p, best, out) {
   p.visual.gunPivotWorld(_v1);
   const shell = p.spec.gun.shells[Math.max(0, Math.min(2, p.combat.shellSlot))];
@@ -1826,17 +1937,76 @@ function debugLeadPoint(p, best, out) {
     out.set(ax, _v2.y, az);
   };
   p.visual.gunMuzzleWorld(_v3); // blocked-reticle test origin (muzzle path)
-  for (const hFrac of [0.5, 0.72, 0.88]) {
+  const margin = Math.min(6, best.spec.armor.boundingRadiusM);
+  // NOTE (round-2 integration): the handoff's binary GRAZE MARGIN (parallel
+  // ray 0.5 m below must clear too) was applied, measured against the frozen
+  // gunnery gate, and REPLACED — it biased marginal cross-valley lays up to
+  // hFrac 0.88 (turret roof, ~0.3 m headroom vs ~1 m dispersion at 350 m)
+  // and shots flew clean over the target. The picker now SCORES each aim
+  // height by min(terrain clearance along the path, headroom to the roof
+  // line) — both eat the same dispersion tails in meters — and lays on the
+  // height with the largest margin, which lands on the crest/overshoot
+  // compromise instead of either cliff edge. The 1 s LATCH still prevents
+  // the r6 oscillation wedge (aim height flapping every sim step).
+  const clearAt = (hFrac) => {
     solveAt(hFrac);
     _rayD.copy(out).sub(_v3);
     const d = _rayD.length();
-    if (d < 12) return out;
+    if (d < 12) return true;
     _rayD.multiplyScalar(1 / d);
-    const margin = Math.min(6, best.spec.armor.boundingRadiusM);
-    const blk = world.raycast(_v3, _rayD, d - margin);
-    if (!blk) return out;
+    return !world.raycast(_v3, _rayD, d - margin);
+  };
+  // Terrain clearance of the muzzle→lead-point segment in TERMINAL-dispersion
+  // units: the shot cone diverges linearly from the muzzle, so a crest at
+  // fraction t of the path only sees t× the terminal deviation — divide each
+  // sample's clearance by t to compare it against the roof-line headroom on
+  // equal footing. Sampled between ~16% and ~90% (ends sit on hull/target).
+  const pathClearance = () => {
+    let clr = Infinity;
+    for (let i = 2; i <= 11; i++) {
+      const t = i / 12.2;
+      const px = _v3.x + (out.x - _v3.x) * t;
+      const py = _v3.y + (out.y - _v3.y) * t;
+      const pz = _v3.z + (out.z - _v3.z) * t;
+      const c = (py - world.heightField.getHeightAt(px, pz)) / t;
+      if (c < clr) clr = c;
+    }
+    return clr;
+  };
+  const latched = leadLatchTargetId === best.id && game.timeS < leadLatchUntilS;
+  if (latched && clearAt(leadLatchHFrac)) return out; // hold the settled height
+  // CONTINUOUS optimum: raising the aim by dy raises the scaled clearance by
+  // exactly dy and lowers the roof headroom by dy, so the height equalizing
+  // the two margins maximizes the min margin in one closed-form step —
+  // aim = center + (headroom - scaledClr)/2, clamped to the [0.5, 0.9]·h
+  // band (never below hull center, never a knife-edge under the roof line).
+  const hM = best.spec.dims.heightM;
+  if (clearAt(0.5)) {
+    const sc = pathClearance();
+    const headroom = hM * 0.5; // roof line is 0.5·h above the center aim
+    const delta = Math.max(0, Math.min(0.25 * hM, (headroom - sc) / 2));
+    out.y += delta;
+    // final path check at the adjusted height (rocks/props via colliders)
+    _rayD.copy(out).sub(_v3);
+    const d = _rayD.length();
+    _rayD.multiplyScalar(1 / Math.max(d, 1e-6));
+    if (d < 12 || !world.raycast(_v3, _rayD, d - margin)) {
+      leadLatchHFrac = 0.5 + delta / hM;
+      leadLatchTargetId = best.id;
+      leadLatchUntilS = game.timeS + 1;
+      return out;
+    }
+    out.y -= delta; // adjusted point blocked — fall through to the ladder
+  }
+  for (const hFrac of [0.5, 0.72, 0.88]) {
+    if (!clearAt(hFrac)) continue;
+    leadLatchHFrac = hFrac;
+    leadLatchTargetId = best.id;
+    leadLatchUntilS = game.timeS + 1;
+    return out;
   }
   solveAt(0.5); // everything masked — center lead; reticle reads BLOCKED
+  leadLatchTargetId = null;
   return out;
 }
 
@@ -1855,6 +2025,16 @@ function debugAimState() {
     reticleRadM: computeDispersionRadM(p.spec, p.state, rig.aimDist),
     aimDistM: rig.aimDist,
     reloadT: p.combat.reload.t,
+    // controls_gunnery r2: settle-failure attribution — a large errMrad with
+    // atGunLimit true is a pitch/yaw CLAMP (gun physically cannot reach the
+    // aim point: gun-terrain muzzle clearance, casemate arc, or depression
+    // floor), not a slew still in progress. Exposed so gates/probes can
+    // separate "not settled yet" from "will never settle".
+    atGunLimit: !!p.state.atGunLimit,
+    gunPitchDeg: Math.round(p.state.gunPitch * 573) / 10,
+    turretYawDeg: Math.round(p.state.turretYaw * 573) / 10,
+    blockedDistM: frameInfo.aim.blockedDistM,
+    leadHFrac: leadLatchTargetId ? leadLatchHFrac : null,
   };
 }
 

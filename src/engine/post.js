@@ -84,7 +84,11 @@ const HIGH_PASS_ANCHOR = 'gl_FragColor = mix( outputColor, texel, alpha );';
 // smooth shading; blatant on snow ("ordered dot-grid halftone" critical).
 // Near-field contact grounding (hulls, walls, props < 110 m) is untouched,
 // and deep corners keep ~55% depth through the mid band.
-const GTAO_PARAMS = { radius: 2.3, distanceExponent: 2, thickness: 2.0, scale: 3.0, samples: 16 };
+// r2: scale 3.0 → 3.3 — the surviving CONTACT term (post kill-band) must
+// read as clear grounding under hulls/walls/trunks at 1080p; the shallow
+// dapple that motivated the 3.3 → 3.0 pullback is now removed by the kill
+// band + distance ladder below, not by weakening every corner.
+const GTAO_PARAMS = { radius: 2.3, distanceExponent: 2, thickness: 2.0, scale: 3.3, samples: 16 };
 const GTAO_BLEND_INTENSITY = 1.0;
 
 // Depth-driven aerial perspective (r3: "distant hills correctly shift
@@ -276,9 +280,16 @@ const AerialShader = {
         vec3 hazy = mix( texel.rgb, vec3( lum ), uDesat ) * uCool;
         texel.rgb = mix( texel.rgb, hazy, f );
         // scattering-in: distance pulls everything toward the sun-directional
-        // sky haze — warm near the sun azimuth, cool blue away from it
+        // sky haze — warm near the sun azimuth, cool blue away from it.
+        // r2 BLACK-POINT GUARD ("combat frame drowned in a warm low-contrast
+        // veil ... lifted blacks"): scatter-in is additive skylight and used
+        // to lift even the deepest shadow cores, so no pixel in a hazy frame
+        // could reach display black. Pixels below ~0.05 linear luminance now
+        // keep 75% of their darkness (they still shift hue with distance via
+        // the extinction term above) — the frame keeps a true black anchor.
         float x2 = -viewZ * uHazeDensity;
         float f2 = 1.0 - exp( -x2 * x2 );
+        f2 *= 0.25 + 0.75 * smoothstep( 0.0, 0.05, lum );
         texel.rgb = mix( texel.rgb, hazeCol, f2 );
         // sniper far-field detail (see AERIAL_DETAIL_* const block): world-
         // anchored two-octave value noise re-textures backdrop surfaces that
@@ -376,7 +387,10 @@ const GRADE_CONTRAST = 1.36;
 const GRADE_PIVOT = 0.33;
 const GRADE_SATURATION = 1.09;
 const GRADE_VIGNETTE = 0.26; // 0.27 stacked with foreground canopy shadow into heavy corners
-const GRADE_BLACK_LIFT = 0.012;
+// r2: 0.012 → 0.015 — paired with the aerial black-point guard so combat
+// frames under smoke/haze keep a true display-black anchor (the r2 critique's
+// "lifted blacks" veil read).
+const GRADE_BLACK_LIFT = 0.015;
 const GRADE_KNEE = 0.86; // display-space luma where the highlight shoulder starts
 // (r9: the linear GRADE_KNEE_SLOPE 0.55 knee was replaced by a rational
 // shoulder in the shader — see the "soft highlight shoulder" note there.)
@@ -385,7 +399,10 @@ const GRADE_BALANCE = [1.02, 1.0, 0.975];
 // Applied only to green-dominant pixels (terrain/foliage): warms hue toward
 // yellow-green without touching sky, tank camo browns, or skin-tone-ish dirt.
 const GRADE_GREEN_WARM = [1.03, 1.0, 0.96];
-const GRADE_GREEN_DESAT = 0.09; // chroma pull-back on green-dominant pixels
+// r2: 0.09 → 0.12 — "grass is a flat saturated lime-green albedo ... WoT
+// grass is desaturated olive"; the extra chroma pull moves the whole green
+// band toward the olive reference (terrain.js albedo desat carries the rest).
+const GRADE_GREEN_DESAT = 0.12; // chroma pull-back on green-dominant pixels
 // Split-tone poles (multiplied in by shadow/highlight membership).
 const GRADE_SHADOW_TINT = [0.936, 0.986, 1.084]; // cool blue-grey shadows
 const GRADE_HIGH_TINT = [1.074, 1.010, 0.930]; // warm sun-kissed highlights
@@ -504,6 +521,16 @@ const GradeShader = {
       col *= mix( vec3( 1.0 ), uGreenWarm, greenDom );
       float gLuma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
       col = mix( col, vec3( gLuma ), ${GRADE_GREEN_DESAT.toFixed(3)} * greenDom );
+      // r2 FOLIAGE HIGHLIGHT SHOULDER ("bushes blow out to near-white lime
+      // with no rolloff"): sunlit high-chroma greens were riding the ACES
+      // per-channel top end into a clipped lime — real vegetation highlights
+      // desaturate toward pale warm green and roll off, they never peg the
+      // green channel. Above ~0.58 display luma, green-dominant pixels lose
+      // chroma progressively (up to 35%) and ease down ~12% in level, so
+      // canopy/bush hot spots keep leaf texture instead of clipping.
+      float gHot = greenDom * smoothstep( 0.58, 0.90, gLuma );
+      col = mix( col, vec3( gLuma ), 0.35 * gHot );
+      col *= 1.0 - 0.12 * gHot;
       // black anchor + linear contrast around the scene's measured midtone
       // band (uPivot ~0.33, NOT display 0.5 — see the r7 note above).
       // r6 HIGH-LUMA TAPER: the above-pivot expansion is what shoved snow
@@ -672,16 +699,22 @@ export function createPost(renderer, scene, camera) {
     // grass). Raise the kill band to 0.09-0.28: open-field micro-dapple
     // vanishes on every map while genuine contact corners (>30% occlusion —
     // hulls, building bases, prop feet) keep their full grounding depth.
-    const AO_FADE = 'ao = 1.0 - ( 1.0 - ao ) * smoothstep( 0.16, 0.44, 1.0 - ao );'
-      + '\n\t\t\tao = mix( ao, 1., 0.45 * smoothstep( 110., 250., length( viewPos ) ) );'
+    // r2 ("no ambient occlusion anywhere: building wall-to-ground junctions
+    // show zero contact darkening, fence posts and mid-distance trees look
+    // pasted onto the grass"): the r5 hard fade (35-90 in this metric,
+    // ~130-330 m real) erased EVERY contact cue at establishing distance —
+    // the whole village sat outside it. The open-field patchwork the fade
+    // was killing is SHALLOW occlusion (5-15%), which the 0.14-0.40 kill
+    // band below already removes; deep contact corners are what remain, and
+    // those are exactly what must survive to mid-range. New ladder: full AO
+    // to 25 metric (~90 m), a 35% give-back through 60 (undersampled band),
+    // then gone by 170 metric (~550+ m — the aerial haze owns the far field).
+    // Verified A/B on winter/desert establishing shots: no dot-grid return.
+    const AO_FADE = 'ao = 1.0 - ( 1.0 - ao ) * smoothstep( 0.14, 0.40, 1.0 - ao );'
+      + '\n\t\t\tao = mix( ao, 1., 0.35 * smoothstep( 25., 60., length( viewPos ) ) );'
       // terrain_environment r5: length(viewPos) here reads ~3-4x smaller than
-      // true camera distance (see handoff doc) — 35-90 in this metric is a
-      // ~130-330 m real fade. AO is a contact cue; past ~130 m the 2.3 m
-      // radius is subpixel and the depth-reconstructed AO prints a rectangular
-      // patchwork + stipple rows over open sand/snow (the r5 critical).
-      // Verified A/B: pattern gone at 35-90, urban rowhouse-base grounding
-      // preserved (inside the fade start in this metric).
-      + '\n\t\t\tao = mix( ao, 1., smoothstep( 35., 90., length( viewPos ) ) );';
+      // true camera distance (see handoff doc).
+      + '\n\t\t\tao = mix( ao, 1., smoothstep( 60., 170., length( viewPos ) ) );';
     const AO_ANCHOR = 'ao = pow(ao, scale);';
     const src = gtao.gtaoMaterial.fragmentShader;
     const patched = src.replace(AO_ANCHOR, `${AO_FADE}\n\t\t\t${AO_ANCHOR}`);

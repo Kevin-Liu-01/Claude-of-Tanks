@@ -129,6 +129,14 @@ const SETTINGS_CSS = `
   letter-spacing:.06em;padding:2px 6px;line-height:14px;
   background:linear-gradient(180deg,rgba(34,42,50,.95),rgba(18,23,28,.95));
   border:1px solid rgba(146,164,180,.45);border-bottom:2px solid rgba(146,164,180,.6);}
+.cot-resume{position:fixed;inset:0;z-index:79;display:none;align-items:center;justify-content:center;
+  flex-direction:column;gap:14px;cursor:pointer;background:rgba(4,7,10,.55);
+  font-family:${FONT_STACK};color:#e6edf3;-webkit-user-select:none;user-select:none;}
+.cot-resume.show{display:flex;}
+.cot-resume .rz-title{font-size:22px;font-weight:800;letter-spacing:.34em;text-transform:uppercase;
+  color:#f0b04a;text-shadow:0 2px 14px rgba(0,0,0,.8);}
+.cot-resume .rz-sub{font-size:11px;font-weight:600;letter-spacing:.22em;color:#9fb0bf;
+  text-transform:uppercase;}
 `;
 
 const GEAR_SVG =
@@ -209,6 +217,32 @@ export function createSettings(opts) {
 
   const hints = el('div', 'cot-hints');
   document.body.appendChild(hints);
+
+  // Click-to-resume veil (controls_gunnery r2): pointer-lock loss from ALT-TAB
+  // / focus loss must NOT throw the options menu at the player (WoT returns
+  // you to the battle). The veil relocks inside its own click gesture.
+  const resume = el('div', 'cot-resume');
+  resume.innerHTML =
+    '<div class="rz-title">Battle paused</div>' +
+    '<div class="rz-sub">Click to resume &mdash; Esc for settings</div>';
+  document.body.appendChild(resume);
+
+  function showResumeVeil() {
+    if (open || resume.classList.contains('show')) return;
+    resume.classList.add('show');
+    emit('ui:click', {});
+  }
+
+  function hideResumeVeil() {
+    resume.classList.remove('show');
+  }
+
+  resume.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    hideResumeVeil();
+    if (isBattleActive()) input.requestLock(); // inside the click gesture
+    emit('ui:click', {});
+  });
 
   // --- state ---------------------------------------------------------------------
   let open = false;
@@ -696,6 +730,7 @@ export function createSettings(opts) {
   function openPanel() {
     if (open) return;
     open = true;
+    hideResumeVeil(); // the panel supersedes the click-to-resume veil
     relockOnClose = isBattleActive(); // resume grabs the pointer again
     input.setEnabled(false); // menu owns the keyboard; also clears held keys
     input.releaseLock();
@@ -767,8 +802,23 @@ export function createSettings(opts) {
   // WoT behavior: pressing Esc under pointer lock is swallowed by the browser
   // as the unlock gesture — detect the unexpected unlock mid-battle and treat
   // it as "open the menu". Intentional releases flip phase/result first.
+  // controls_gunnery r2: ONLY when the page still owns the keyboard — an
+  // unlock caused by alt-tab / focus loss shows the click-to-resume veil
+  // instead (WoT does not open the options menu after an alt-tab). The
+  // focus check runs a tick later: on some platforms pointerlockchange
+  // fires before the blur that caused it lands.
   document.addEventListener('pointerlockchange', () => {
-    if (!document.pointerLockElement && !open && isBattleActive()) openPanel();
+    if (document.pointerLockElement || open || !isBattleActive()) return;
+    setTimeout(() => {
+      if (document.pointerLockElement || open || !isBattleActive()) return;
+      if (document.hasFocus() && !document.hidden) openPanel();
+      else showResumeVeil();
+    }, 0);
+  });
+  // Focus regained with the pointer still unlocked (alt-tab round trip that
+  // never fired another pointerlockchange): offer the resume veil.
+  window.addEventListener('focus', () => {
+    if (!open && isBattleActive() && !input.isLocked()) showResumeVeil();
   });
 
   // --- gear button (garage) --------------------------------------------------------
@@ -776,10 +826,17 @@ export function createSettings(opts) {
   // interval as a safety net for un-evented flows.
   function updateGear() {
     gear.style.display = !open && gearVisible() ? 'flex' : 'none';
+    // Safety net (r2): the resume veil must never outlive the battle — a
+    // result can land without a phase:change (end overlay is z 70, veil 79).
+    if (!isBattleActive()) hideResumeVeil();
   }
   gear.addEventListener('click', () => { if (!open) openPanel(); });
   if (bus && bus.on) {
-    bus.on('phase:change', updateGear);
+    bus.on('phase:change', (ev) => {
+      updateGear();
+      // leaving battle (garage / result) always clears the resume veil
+      if (!ev || ev.phase !== 'battle') hideResumeVeil();
+    });
     bus.on('ui:battleStart', updateGear);
   }
   setInterval(updateGear, 150); // fallback only — events above hide/show instantly

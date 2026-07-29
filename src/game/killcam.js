@@ -255,8 +255,13 @@ function sharedMats() {
     // x-ray approach ribbon (glow sheath + hot core tubes over the final
     // trail arc): the bare 1px GL line read as a laser-pointer thread at
     // 1080p (r5 critique). Colors stay ≤1 so the ribbon never blooms.
+    // r2: split into near/far tiers — the uniform 60 m beam read as a
+    // pass-through laser with no directionality (r2 critique); the far tail
+    // is thin and faint, ramping into the bright near segment at the plate.
     trailGlow: mesh(0xcf9a4e, 0.22),
     trailCore: mesh(0xffd9a0, 0.7),
+    trailGlowFar: mesh(0xcf9a4e, 0.09),
+    trailCoreFar: mesh(0xffd9a0, 0.3),
     // flight-phase tracer dressing: bloomed-looking halo sprite around the
     // core + a velocity-stretched glow cone trailing it (see begin())
     halo: new THREE.SpriteMaterial({
@@ -301,8 +306,10 @@ function sharedMats() {
     // bright-green crew (r5 critique) — survivors of the final blow render
     // as soft steel-blue silhouettes (matching the module color language,
     // r6: opaque gray busts read as untextured mannequins), casualties keep
-    // the red state tint.
-    proxGrey: prox(0x9fb8cc, 0.42, 0.05, 0.13),
+    // the red state tint. r2: 0.42 -> 0.58 opacity + brighter emissive —
+    // grey figures vanished entirely over a dense (bright) skin stack on the
+    // live Abrams death frame ("no crew figures render").
+    proxGrey: prox(0x9fb8cc, 0.58, 0.06, 0.2),
   };
   return S;
 }
@@ -339,14 +346,23 @@ function proxyGroup(bb, poseGrp, turretGrp) {
 }
 
 /**
- * War Thunder-style recognizable internals: ammo cassette rows, ribbed engine
- * block, fuel drums, breech, ring, periscope — tinted by post-hit state.
+ * War Thunder-style recognizable internals: ammo stowage, ribbed engine
+ * block, fuel storage, breech, ring, periscope — tinted by post-hit state.
+ * The ammo/fuel kit is selected per spec layout + era (r2 minor: an Abrams
+ * showed a WWII open tray of vertical brass amidships and external-style
+ * fuel drums — WT models per-vehicle stowage):
+ *   - turret-local ammoRack           -> bustle racks behind a blast door
+ *   - hull ammoRack on a modern spec  -> autoloader carousel ring
+ *   - hull ammoRack, WWII             -> open tray of standing rounds
+ *   - fuelTank on a modern spec       -> baffled internal fuel cell
  * @param {{module:string,min:number[],max:number[],turretLocal:boolean}} bb
  * @param {THREE.Material} mat state-tinted proxy material
+ * @param {string} era spec.era of the victim ('modern' selects modern kits)
  */
-function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables) {
+function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables, era) {
   const kind = bb.module;
   if (kind === 'trackL' || kind === 'trackR') return; // real track geometry reads already
+  const modern = era === 'modern';
   const sx = bb.max[0] - bb.min[0];
   const sy = bb.max[1] - bb.min[1];
   const sz = bb.max[2] - bb.min[2];
@@ -359,35 +375,106 @@ function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables) {
     g.add(m);
     return m;
   };
-  if (kind === 'ammoRack') {
-    // cassette rows of standing rounds: brass case + ogive tip per round
-    // (r7 critique: bare cylinders read as extruded crates, not shells) over
-    // a thin rack tray
+  /** Instanced case+tip round set from a placement list [{x,y,z,rx}]. */
+  const rounds = (r, caseH, tipH, list, tilt = 0) => {
+    const caseGeo = new THREE.CylinderGeometry(r, r, caseH, 8);
+    const tipGeo = new THREE.CylinderGeometry(r * 0.18, r * 0.94, tipH, 8);
+    disposables.push(caseGeo, tipGeo);
+    const im = new THREE.InstancedMesh(caseGeo, mat, list.length);
+    const it = new THREE.InstancedMesh(tipGeo, mat, list.length);
+    disposables.push(im, it);
+    const m4 = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const v = new THREE.Vector3();
+    const s = new THREE.Vector3(1, 1, 1);
+    const off = new THREE.Vector3();
+    list.forEach((p, i) => {
+      q.setFromEuler(new THREE.Euler(p.rx || 0, p.ry || 0, tilt));
+      off.set(0, (caseH + tipH) / 2, 0).applyQuaternion(q);
+      m4.compose(v.set(p.x, p.y, p.z), q, s);
+      im.setMatrixAt(i, m4);
+      m4.compose(v.set(p.x + off.x, p.y + off.y, p.z + off.z), q, s);
+      it.setMatrixAt(i, m4);
+    });
+    g.add(im, it);
+  };
+  if (kind === 'ammoRack' && bb.turretLocal) {
+    // modern bustle stowage (Abrams/Leo lineage): horizontal rounds racked
+    // nose-forward in layered rows, sealed off by a blast-door bulkhead at
+    // the fighting-compartment face of the box
+    const nx = Math.max(2, Math.min(6, Math.floor(sx / 0.2)));
+    const ny = Math.max(1, Math.min(3, Math.floor(sy / 0.22)));
+    const r = Math.min(0.05, (sx / nx) * 0.32, (sy / ny) * 0.32);
+    const caseH = sz * 0.52;
+    const tipH = Math.min(sz * 0.2, r * 5.5);
+    const list = [];
+    for (let ix = 0; ix < nx; ix++) {
+      for (let iy = 0; iy < ny; iy++) {
+        list.push({
+          x: -sx / 2 + (ix + 0.5) * (sx / nx),
+          y: -sy / 2 + (iy + 0.5) * (sy / ny),
+          z: -sz * 0.08,
+          rx: Math.PI / 2, // cylinder +Y -> +Z: rounds lie nose-forward
+        });
+      }
+    }
+    rounds(r, caseH, tipH, list);
+    // rack shelves between the layers + the blast-door bulkhead
+    for (let iy = 1; iy < ny; iy++) {
+      put(new THREE.BoxGeometry(sx * 0.96, sy * 0.03, sz * 0.7),
+        0, -sy / 2 + iy * (sy / ny), -sz * 0.08);
+    }
+    put(new THREE.BoxGeometry(sx * 0.96, sy * 0.94, 0.05), 0, 0, sz / 2 - 0.03);
+  } else if (kind === 'ammoRack' && modern) {
+    // modern hull autoloader carousel (T-72/T-90 lineage): ring of charges
+    // standing in a rotating tray around the turret basket axis
+    const R = Math.max(0.22, Math.min(sx, sz) * 0.36);
+    const n = 10;
+    const r = Math.min(0.055, R * 0.3);
+    const caseH = sy * 0.5;
+    const tipH = Math.min(sy * 0.2, r * 5.5);
+    const list = [];
+    for (let i = 0; i < n; i++) {
+      const az = (i / n) * Math.PI * 2;
+      list.push({ x: Math.cos(az) * R, y: -sy / 2 + sy * 0.1 + caseH / 2, z: Math.sin(az) * R });
+    }
+    rounds(r, caseH, tipH, list);
+    // carousel tray disc + rim
+    put(new THREE.CylinderGeometry(R * 1.28, R * 1.28, sy * 0.1, 18), 0, -sy / 2 + sy * 0.05, 0);
+    put(new THREE.TorusGeometry(R * 1.24, Math.min(sy * 0.08, 0.045), 8, 24),
+      0, -sy / 2 + sy * 0.16, 0, Math.PI / 2, 0, 0);
+  } else if (kind === 'ammoRack') {
+    // WWII open tray: rows of standing rounds (brass case + ogive tip, r7
+    // critique: bare cylinders read as extruded crates) over a thin rack tray
     const nx = Math.max(2, Math.min(5, Math.floor(sx / 0.24)));
     const nz = Math.max(2, Math.min(7, Math.floor(sz / 0.24)));
     const r = Math.min(0.055, (sx / nx) * 0.3, (sz / nz) * 0.3);
     const h = sy * 0.62;
     const tipH = Math.min(sy * 0.26, r * 5.5);
-    const caseGeo = new THREE.CylinderGeometry(r, r, h, 8);
-    const tipGeo = new THREE.CylinderGeometry(r * 0.18, r * 0.94, tipH, 8);
-    disposables.push(caseGeo, tipGeo);
-    const im = new THREE.InstancedMesh(caseGeo, mat, nx * nz);
-    const it = new THREE.InstancedMesh(tipGeo, mat, nx * nz);
-    disposables.push(im, it);
-    const m4 = new THREE.Matrix4();
-    let i = 0;
+    const list = [];
     for (let ix = 0; ix < nx; ix++) {
       for (let iz = 0; iz < nz; iz++) {
-        const x = -sx / 2 + (ix + 0.5) * (sx / nx);
-        const z = -sz / 2 + (iz + 0.5) * (sz / nz);
-        m4.makeTranslation(x, -sy / 2 + sy * 0.06 + h / 2, z);
-        im.setMatrixAt(i, m4);
-        m4.makeTranslation(x, -sy / 2 + sy * 0.06 + h + tipH / 2, z);
-        it.setMatrixAt(i++, m4);
+        list.push({
+          x: -sx / 2 + (ix + 0.5) * (sx / nx),
+          y: -sy / 2 + sy * 0.06 + h / 2,
+          z: -sz / 2 + (iz + 0.5) * (sz / nz),
+        });
       }
     }
-    g.add(im, it);
+    rounds(r, h, tipH, list);
     put(new THREE.BoxGeometry(sx * 0.98, sy * 0.08, sz * 0.98), 0, -sy / 2 + sy * 0.03, 0);
+  } else if (kind === 'fuelTank' && modern) {
+    // modern internal fuel cell: baffled rectangular tank + filler neck and
+    // feed line — no WWII external-style drums inside an Abrams hull (r2)
+    put(new THREE.BoxGeometry(sx * 0.84, sy * 0.7, sz * 0.86), 0, -sy * 0.06, 0);
+    for (let i = 0; i < 3; i++) {
+      put(new THREE.BoxGeometry(sx * 0.9, sy * 0.78, sz * 0.035),
+        0, -sy * 0.06, -sz * 0.28 + i * sz * 0.28);
+    }
+    const fr = Math.min(sx, sz) * 0.12;
+    put(new THREE.CylinderGeometry(fr, fr, sy * 0.2, 8), sx * 0.18, sy * 0.36, 0);
+    put(new THREE.CylinderGeometry(fr * 0.45, fr * 0.45, sz * 0.5, 6),
+      -sx * 0.28, -sy * 0.28, 0, Math.PI / 2, 0, 0);
   } else if (kind === 'engine') {
     // machinery read (r7 critique: flat slab stack): crankcase + narrower
     // head block, transverse cylinder-bank ribs, shrouded cooling fan and
@@ -665,7 +752,8 @@ export function createKillCam(deps) {
     lineGeo.setAttribute('position',
       new THREE.BufferAttribute(new Float32Array([0, 0, 0, 0.01, 0, 0]), 3));
     g.userData.disposables = [box, lineGeo];
-    const meshMats = [S.trailGlow, S.trailCore, S.core, S.streak, S.tail,
+    const meshMats = [S.trailGlow, S.trailCore, S.trailGlowFar, S.trailCoreFar,
+      S.core, S.streak, S.tail,
       S.ghost, S.pathIn, S.pathOut, S.pathCore, S.spall, S.frag, S.marker,
       S.fillRed, S.fillYellow, S.fillCrew, S.proxAmmo, S.proxEngine,
       S.proxFuel, S.proxSteel, S.proxRadio, S.proxGreen, S.proxYellow,
@@ -761,6 +849,17 @@ export function createKillCam(deps) {
       // AFTER damage resolved): the x-ray colors casualties from EARLIER hits
       // red too, not just the ones this shell caused.
       crewAlive: target.combat && target.combat.crew ? { ...target.combat.crew } : null,
+      // post-hit module states + spent ERA tiles: the pre-wreck restage in
+      // begin() re-poses the LIVE visual for the ghost — broken tracks and
+      // stripped ERA the tank already carried must be re-applied to it (and
+      // to the wreck again in finish()) so the ghost never under-reports
+      // damage the sim resolved.
+      moduleStates: target.combat && target.combat.modules
+        ? Object.fromEntries(Object.entries(target.combat.modules)
+          .map(([k, v]) => [k, v.state]))
+        : null,
+      eraSpent: target.combat && target.combat.eraSpent
+        ? [...target.combat.eraSpent] : [],
       pose: {
         pos: [st.pos.x, st.pos.y, st.pos.z],
         yaw: st.yaw, pitch: st.visualPitch, roll: st.visualRoll,
@@ -946,6 +1045,7 @@ export function createKillCam(deps) {
       xcam: null,
       fxGroup: null, fxHidden: null,
       vegGroup: null, vegWasVisible: true,
+      rewreck: null, // wreck look to re-apply in finish() (pre-wreck restage)
     };
     pb.group.name = 'killcam';
     scene.add(pb.group);
@@ -966,6 +1066,43 @@ export function createKillCam(deps) {
         if (child.isLight || !child.visible) continue;
         child.visible = false;
         pb.fxHidden.push(child);
+      }
+    }
+
+    // PRE-WRECK RESTAGE (r2 major): the replay shows the moment of the hit,
+    // but by the time it plays the victim's visual has already been wrecked
+    // (burnt materials, turret settled askew / popped onto the deck, gun
+    // drooped). Ghosting THAT produced a turretless slab whose hull no longer
+    // aligned with the snapshot-posed module frames — fuel drums and
+    // drivetrain blocks rendered half OUTSIDE the silhouette on the live
+    // Abrams death (r2 evidence). Restore the live visual and re-pose it from
+    // the SNAPSHOT state (position, yaw, attitude, turret yaw, gun pitch) for
+    // the whole replay; finish() re-applies the wreck (settled, embers cold)
+    // together with the snapshot's broken tracks and spent ERA so the death
+    // cam afterwards is honest again. The sim/visual sync loop is frozen
+    // while the replay runs (main.js step 5), so nothing overwrites the pose.
+    {
+      const vis0 = snap.targetEnt && snap.targetEnt.visual;
+      if (vis0 && vis0.isDestroyed && vis0.isDestroyed()) {
+        const deadTrack = (m) =>
+          (snap.moduleStates && snap.moduleStates[m] === 'red') ||
+          (snap.ev.modulesHit || []).some((x) => x.module === m && x.newState === 'red');
+        pb.rewreck = {
+          pop: !!snap.ev.ammoRacked,
+          brokenTracks: ['trackL', 'trackR'].filter(deadTrack),
+          eraSpent: snap.eraSpent || [],
+        };
+        vis0.resetDestroyed();
+        const p0 = snap.pose;
+        vis0.syncFromState({
+          pos: new THREE.Vector3(p0.pos[0], p0.pos[1], p0.pos[2]),
+          yaw: p0.yaw, visualPitch: p0.pitch, visualRoll: p0.roll,
+          turretYaw: p0.turretYaw, gunPitch: p0.gunPitch,
+          yawRate: 0, speed: 0, trackScroll: { l: 0, r: 0 },
+        }, 0);
+        // damage the tank HAD at the hit stays visible on the live ghost
+        for (const m of pb.rewreck.brokenTracks) vis0.setTrackState(m, true);
+        if (vis0.stripEra) for (const pl of pb.rewreck.eraSpent) vis0.stripEra(pl);
       }
     }
 
@@ -1132,13 +1269,22 @@ export function createKillCam(deps) {
     pb.shellLight.position.set(_p.x, _p.y + 0.5, _p.z);
     pb.muzzleLight.intensity = 70 * Math.max(0, 1 - u * 2.2); // fades early
 
-    // chase camera: behind + beside the tracer, blending into the x-ray pose
+    // chase camera: behind + beside the tracer, blending into the x-ray pose.
+    // r2 cinematography fix: the old 8.5-15.5 m trail distance + look-at 16 m
+    // past the shell framed NEITHER shooter nor victim — the tracer was a
+    // small off-center streak in an empty landscape. The camera now rides a
+    // tight, near-constant 6-9 m offset (constant tracer screen size) and the
+    // look target is BIASED TOWARD THE VICTIM (WT read: the destination tank
+    // rises into center frame while the shell holds the lower third).
     _s.crossVectors(_d, UP);
     if (_s.lengthSq() < 1e-6) _s.set(1, 0, 0); else _s.normalize();
     const k = THREE.MathUtils.smoothstep(u, 0.78, 1);
-    _a.copy(_p).addScaledVector(_d, -(8.5 + 7 * (1 - u))).addScaledVector(_s, 3.4);
-    _a.y += 1.6;
-    _b.copy(_p).addScaledVector(_d, 16);
+    _a.copy(_p).addScaledVector(_d, -(6.4 + 2.6 * (1 - u))).addScaledVector(_s, 2.7);
+    _a.y += 1.35;
+    // look-at: shell's forward point pulled toward the victim center — the
+    // pull strengthens over the flight so the kill frame is always in view
+    _b.copy(_p).addScaledVector(_d, 10);
+    _b.lerp(pb.xcam.center, 0.4 + 0.35 * u);
     if (k > 0) {
       _a.lerp(pb.xcam.pos, k);
       _b.lerp(pb.xcam.look, k);
@@ -1328,13 +1474,23 @@ export function createKillCam(deps) {
       const keepFrom = pb.total - 60;
       while (start < pb.pts.length - 2 && pb.cum[start + 1] < keepFrom) start++;
       pb.trailGeo.setDrawRange(start, pb.pts.length - start);
-      // Rebuild that final arc as a glow ribbon (wide additive sheath + hot
-      // core tube per segment): the 1px GL line alone was a dim tan thread
-      // at 1080p (r5 critique). A handful of segments — ~60 m of 60 Hz sim
-      // points — so the cost is a few dozen cylinders for the hold.
-      for (let i = start; i < pb.pts.length - 1; i++) {
-        tube(pb.pts[i], pb.pts[i + 1], 0.085, S.trailGlow, pb.group, pb.disposables);
-        tube(pb.pts[i], pb.pts[i + 1], 0.03, S.trailCore, pb.group, pb.disposables);
+      // Rebuild the final arc as a glow ribbon (sheath + hot core tube per
+      // segment): the 1px GL line alone was a dim tan thread at 1080p (r5).
+      // r2: the ribbon is now a TAPERED ~26 m — the uniform 60 m beam read
+      // as a pass-through laser with no travel direction. Radius and tier
+      // (far = thin/faint, near = wide/bright) ramp toward the plate, so the
+      // approach reads as a tracer ARRIVING, clearly split from the shorter
+      // internal penetration channel by the entry marker + spall burst.
+      const RIB_M = 26;
+      let rs = start;
+      const ribFrom = pb.total - RIB_M;
+      while (rs < pb.pts.length - 2 && pb.cum[rs + 1] < ribFrom) rs++;
+      for (let i = rs; i < pb.pts.length - 1; i++) {
+        const f = THREE.MathUtils.clamp((pb.cum[i] - ribFrom) / RIB_M, 0, 1);
+        tube(pb.pts[i], pb.pts[i + 1], 0.028 + 0.057 * f,
+          f > 0.5 ? S.trailGlow : S.trailGlowFar, pb.group, pb.disposables);
+        tube(pb.pts[i], pb.pts[i + 1], 0.013 + 0.017 * f,
+          f > 0.5 ? S.trailCore : S.trailCoreFar, pb.group, pb.disposables);
       }
     }
 
@@ -1435,14 +1591,32 @@ export function createKillCam(deps) {
       addBox(cb, hit ? `c:${cb.crew}` : null, hit ? S.edgeCrew : S.edgeDim, hit ? S.fillCrew : null);
     }
 
-    // 3b. recognizable internals inside the boxes — ammo cassette rows, ribbed
-    // engine block, fuel drums, breech, crew capsules. Healthy modules wear
-    // distinct per-kind hues (brass ammo, steel-blue engine, amber fuel);
-    // hit ones override to yellow (damaged) / red (destroyed) state tints.
+    // 3b. recognizable internals inside the boxes — ammo stowage (bustle /
+    // carousel / WWII tray per spec layout + era), ribbed engine block, fuel
+    // cell or drums, breech, crew capsules. Healthy modules wear distinct
+    // per-kind hues (brass ammo, steel-blue engine, amber fuel); hit ones
+    // override to yellow (damaged) / red (destroyed) state tints.
+    const specEra = (snap.targetEnt && snap.targetEnt.spec && snap.targetEnt.spec.era) || '';
+    // defensive proxy clamp (r2): internals may never protrude through the
+    // hull silhouette — hull-local volumes are intersected with the spec's
+    // own dims box before geometry is built (turret-local boxes ride the
+    // turret frame and stay authored). No-op for spec-conform layouts.
+    const specDims = snap.targetEnt && snap.targetEnt.spec ? snap.targetEnt.spec.dims : null;
+    const clampBB = (bb) => {
+      if (!specDims || bb.turretLocal) return bb;
+      const hx = specDims.widthM / 2 + 0.03;
+      const hz = (specDims.hullLengthM || specDims.overallLengthM * 0.8) / 2 + 0.08;
+      const hy = specDims.heightM + 0.05;
+      const min = [Math.max(bb.min[0], -hx), Math.max(bb.min[1], -0.05), Math.max(bb.min[2], -hz)];
+      const max = [Math.min(bb.max[0], hx), Math.min(bb.max[1], hy), Math.min(bb.max[2], hz)];
+      if (min[0] >= max[0] || min[1] >= max[1] || min[2] >= max[2]) return bb;
+      return { ...bb, min, max };
+    };
     const stateMat = (state, kind) =>
       state === 'red' ? S.proxRed : state === 'yellow' ? S.proxYellow : proxMatFor(kind);
     for (const mb of armor.modules || []) {
-      addModuleProxy(mb, stateMat(modHit.get(mb.module), mb.module), poseGrp, turretGrp, pb.disposables);
+      addModuleProxy(clampBB(mb), stateMat(modHit.get(mb.module), mb.module),
+        poseGrp, turretGrp, pb.disposables, specEra);
     }
     // hull anatomy between the boxes: driveshaft spine + transmission block
     addDrivetrainProxy(armor, poseGrp, pb.disposables);
@@ -1740,6 +1914,17 @@ export function createKillCam(deps) {
           mesh.renderOrder = ro || 0;
           mesh.castShadow = !!cs;
         }
+      }
+      // PRE-WRECK RESTAGE release: re-apply the wreck look the replay
+      // temporarily lifted (must run AFTER the ghost-material restore above —
+      // setDestroyed lazily captures current materials for the rematch
+      // restore, and it must capture the LIVE ones, never the ghost).
+      // Settled pose + cooled embers: by replay end the destruction is old.
+      if (pb.rewreck && pb.snap.targetEnt && pb.snap.targetEnt.visual) {
+        const vis = pb.snap.targetEnt.visual;
+        vis.setDestroyed({ pop: pb.rewreck.pop, ageS: 12 });
+        for (const m of pb.rewreck.brokenTracks) vis.setTrackState(m, true);
+        if (vis.stripEra) for (const pl of pb.rewreck.eraSpent) vis.stripEra(pl);
       }
       if (pb.fxHidden) for (const c of pb.fxHidden) c.visible = true; // FX resume
       if (pb.vegGroup) pb.vegGroup.visible = pb.vegWasVisible; // vegetation back

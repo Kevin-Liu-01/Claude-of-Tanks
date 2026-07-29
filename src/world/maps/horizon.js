@@ -990,6 +990,55 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
       }
       vBase += (N + 1) * 2;
     }
+    // r2 terrain_environment: FLANK ribbons. The crest combs serrate the
+    // skylines, but the big wall faces BETWEEN comb rows carried only smooth
+    // canopy tint — the "bald gumdrop" midground hills behind the village.
+    // Plant additional crown ribbons directly ON the slope surface (linear
+    // interpolation between consecutive row vertices lies exactly on the
+    // wall quad strip) at 2-3 fractional heights per span, so every visible
+    // flank reads as massed forest instead of green felt.
+    {
+      const flankSpans = [
+        [1, 2, 0.28], [1, 2, 0.60], [1, 2, 0.86],
+        [2, 3, 0.30], [2, 3, 0.58], [2, 3, 0.84],
+        [3, 4, 0.40], [3, 4, 0.74],
+      ];
+      for (const [ra, rb, f] of flankSpans) {
+        const rowA = rows[ra], rowB = rows[rb];
+        const rMid = rowA.r + (rowB.r - rowA.r) * f;
+        const aerMid = rowA.aer + (rowB.aer - rowA.aer) * f;
+        const repeats = Math.max(8, Math.round((Math.PI * 2 * rMid) / 56));
+        for (let k = 0; k <= N; k++) {
+          const kk = k % N;
+          const iA = ra * N + kk, iB = rb * N + kk;
+          const x = pos[iA * 3] + (pos[iB * 3] - pos[iA * 3]) * f;
+          const hh = pos[iA * 3 + 1] + (pos[iB * 3 + 1] - pos[iA * 3 + 1]) * f;
+          const z = pos[iA * 3 + 2] + (pos[iB * 3 + 2] - pos[iA * 3 + 2]) * f;
+          const fade = 1 - smoothstep(tlH * 0.8, tlH * 1.12, hh);
+          const a = (kk / N) * Math.PI * 2;
+          const hn = gnoi.noise(Math.cos(a) * 5.3 + ra * 7 + f * 17,
+            Math.sin(a) * 5.3 - rb * 5 - f * 11) * 0.5 + 0.5;
+          const span = (5 + (8 + hn * 12) * (0.85 + rMid / 2600)) * fade * 0.9;
+          // sink the ribbon base into the slope so crowns emerge from it
+          cPos.push(x, hh - span * 0.35, z, x, hh + span * 0.65, z);
+          const hz = Math.min(0.9, aerMid * 0.5 + 0.10);
+          let cr = Math.min(1.4, (col[iA * 3] + (col[iB * 3] - col[iA * 3]) * f) * 1.42);
+          let cg = Math.min(1.4, (col[iA * 3 + 1] + (col[iB * 3 + 1] - col[iA * 3 + 1]) * f) * 1.42);
+          let cb = Math.min(1.4, (col[iA * 3 + 2] + (col[iB * 3 + 2] - col[iA * 3 + 2]) * f) * 1.42);
+          cr += (fogC.r - cr) * hz;
+          cg += (fogC.g - cg) * hz;
+          cb += (fogC.b - cb) * hz;
+          cCol.push(cr, cg, cb, cr, cg, cb);
+          const u = (k / N) * repeats + f * 0.71; // de-correlate vs crest ranks
+          cUv.push(u, 0, u, 1);
+        }
+        for (let k = 0; k < N; k++) {
+          const b0 = vBase + k * 2, t0 = b0 + 1, b1 = b0 + 2, t1 = b1 + 1;
+          cIdx.push(b0, b1, t0, t0, b1, t1);
+        }
+        vBase += (N + 1) * 2;
+      }
+    }
     const cGeo = new THREE.BufferGeometry();
     cGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(cPos), 3));
     cGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(cCol), 3));

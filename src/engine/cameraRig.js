@@ -44,7 +44,18 @@ const DIST_LERP_TAU_S = 0.15; // smooth lerp between orbit steps
 const CLIMB_PROBE_N = 5;      // heightfield samples along the view azimuth
 const CLIMB_PROBE_RANGE = 1.6; // × orbit distance probed ahead of the pivot
 const CLIMB_FULL_RAD = 0.30;  // apparent terrain rise (rad) for full assist
-const CLIMB_LIFT_MAX = 0.55;  // max extra camera height, × orbit distance
+// r2 (gameplay_feel critique MAJOR): 0.55 with a turret-roof reference lifted
+// the camera 7+ m while DESCENDING into any bowl whose far wall rises — the
+// player tank shrank to <5% of frame behind canopy. The probe now references
+// the PIVOT height (a far wall must clear the whole camera pivot line before
+// it counts as "uphill"), the assist only engages when the ground under/ahead
+// of the hull actually RISES (CLIMB_GATE_*), and the max lift is clamped so
+// the projected hull stays in the lower third of frame (atan(0.42·0.45) ≈
+// 10.7° look-offset ≈ the lower-third boundary at FOV 60).
+const CLIMB_LIFT_MAX = 0.42;  // max extra camera height, × orbit distance
+const CLIMB_GATE_DIST_M = 9;  // near-ground slope probe ahead of the pivot
+const CLIMB_GATE_LO_RAD = 0.05; // ~3° near-ground rise — assist starts
+const CLIMB_GATE_HI_RAD = 0.16; // ~9° — full assist authority
 const CLIMB_LOOK_FRAC = 0.45; // look-target lift as a fraction of camera lift
 const CLIMB_TAU_S = 0.35;     // assist ease time constant
 // <<< gameplay_feel r4 ------------------------------------------------------
@@ -217,15 +228,27 @@ export function createCameraRig(camera, deps) {
     // reference point sits above the hull, so level terrain never engages.)
     if (!snap && dt > 0) {
       const fx = Math.sin(viewYaw), fz = Math.cos(viewYaw);
-      const refY = pivot.y - PIVOT_ABOVE_TURRET_M * 0.5; // ~turret roof line
+      // r2: reference the PIVOT line, not the turret roof — a bowl's far
+      // wall must rise past the camera pivot before it reads as "uphill".
+      const refY = pivot.y;
       let rise = 0;
       for (let i = 1; i <= CLIMB_PROBE_N; i++) {
         const d = (i / CLIMB_PROBE_N) * dist * CLIMB_PROBE_RANGE;
         const a = Math.atan2(heightField.getHeightAt(pivot.x + fx * d, pivot.z + fz * d) - refY, d);
         if (a > rise) rise = a;
       }
+      // r2 gate: the assist exists for CLIMBS. Only engage when the ground
+      // immediately ahead of the hull is actually rising — a far wall across
+      // a depression is a view feature, not a climb, and must never pull the
+      // camera off the tank.
+      const hHere = heightField.getHeightAt(pivot.x, pivot.z);
+      const hNear = heightField.getHeightAt(
+        pivot.x + fx * CLIMB_GATE_DIST_M, pivot.z + fz * CLIMB_GATE_DIST_M);
+      const nearPitch = Math.atan2(hNear - hHere, CLIMB_GATE_DIST_M);
+      const gate = THREE.MathUtils.clamp(
+        (nearPitch - CLIMB_GATE_LO_RAD) / (CLIMB_GATE_HI_RAD - CLIMB_GATE_LO_RAD), 0, 1);
       const liftTarget =
-        THREE.MathUtils.clamp(rise / CLIMB_FULL_RAD, 0, 1) * dist * CLIMB_LIFT_MAX;
+        THREE.MathUtils.clamp(rise / CLIMB_FULL_RAD, 0, 1) * gate * dist * CLIMB_LIFT_MAX;
       climbLift += (liftTarget - climbLift) * (1 - Math.exp(-dt / CLIMB_TAU_S));
     }
     if (climbLift > 1e-3) _desired.y += climbLift;
@@ -348,6 +371,24 @@ export function createCameraRig(camera, deps) {
     // path position: world-frame offsets from the (moving) pivot
     cine.curve.getPoint(k < 0.97 ? k : 0.97 + (k - 0.97) * 0.999, _desired);
     _desired.add(_pivotTarget);
+    // r2 minimum standoff: the swing-behind segment could cut directly over
+    // the rear deck (~2.5 m off the hull at k≈0.83), clipping through the
+    // exhaust plume right before handoff. Enforce a hull-sphere standoff —
+    // the camera is pushed radially out (never below) when it dips inside.
+    {
+      const vis = player && player.visual;
+      const standR = Math.max(4.2, (vis && vis.boundingRadiusM ? vis.boundingRadiusM : 3) + 2.2);
+      const dx = _desired.x - _pivotTarget.x;
+      const dy = _desired.y - _pivotTarget.y;
+      const dz = _desired.z - _pivotTarget.z;
+      const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      if (d > 1e-4 && d < standR) {
+        const push = standR / d;
+        _desired.x = _pivotTarget.x + dx * push;
+        _desired.y = _pivotTarget.y + Math.max(dy * push, dy); // never push down
+        _desired.z = _pivotTarget.z + dz * push;
+      }
+    }
     const minY = heightField.getHeightAt(_desired.x, _desired.z) + 1.3;
     if (_desired.y < minY) _desired.y = minY;
     camera.position.copy(_desired);
@@ -400,6 +441,10 @@ export function createCameraRig(camera, deps) {
     zoom: SNIPER_ZOOMS_BASE[0],
     aimPoint: new THREE.Vector3(),
     aimDist: MAX_AIM_DIST_M,
+    /** True while setExternalPose pins the camera (harness/killcam framing).
+     * Consumers (main.js foliage occlusion focus) must not treat an external
+     * capture pose as a chase camera — WoT never fades foliage in replays. */
+    externalActive: false,
     /** Settings flag: unlock ×16/×25 sniper zoom steps ("increased zoom"). */
     _increasedZoom: false,
     /**
@@ -599,11 +644,14 @@ export function createCameraRig(camera, deps) {
       // exact chase-pose offset (solveArcade: pivot - dir(endYaw, -10deg) * 13 m)
       dirFromAngles(endYaw, THREE.MathUtils.degToRad(-10), _viewDir);
       const chase = new THREE.Vector3().addScaledVector(_viewDir, -ORBIT_STEPS[2]);
+      // r2: 4th waypoint routed wider + higher (7.5,0.6,-9 -> 9.5,1.6,-10) —
+      // the old swing-behind cut over the rear deck through the exhaust
+      // plume at ~2.5 s; paired with the solve-time hull standoff clamp.
       const curve = new THREE.CatmullRomCurve3([
         P(24, 2.6, 45),
         P(16, 0.6, 22),
         P(10, -0.2, 4),
-        P(7.5, 0.6, -9),
+        P(9.5, 1.6, -10),
         chase,
       ], false, 'centripetal', 0.5);
       cine = {
@@ -729,6 +777,7 @@ export function createCameraRig(camera, deps) {
      */
     setExternalPose(pos, lookAt, fovDeg = 50) {
       external = true;
+      rig.externalActive = true;
       cine = null;
       setLetterbox(false);
       death = null;
@@ -752,6 +801,7 @@ export function createCameraRig(camera, deps) {
      */
     snapArcade(step_, orbitYaw, orbitPitch) {
       external = false;
+      rig.externalActive = false;
       cine = null;
       setLetterbox(false);
       death = null;
@@ -781,6 +831,7 @@ export function createCameraRig(camera, deps) {
      */
     snapSniper(zoom, aimYaw_, aimPitch_) {
       external = false;
+      rig.externalActive = false;
       cine = null;
       setLetterbox(false);
       death = null;
@@ -806,6 +857,7 @@ export function createCameraRig(camera, deps) {
      */
     release() {
       external = false;
+      rig.externalActive = false;
     },
   };
 

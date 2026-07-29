@@ -94,12 +94,16 @@ const SI_CSS = `
 .cot-si-diag .box{position:relative;flex:0 0 auto;}
 .cot-si-diag .sil{position:absolute;inset:0;}
 /* shaded per-tank plan-form render (icons pipeline <id>_top/_side.png)
-   layered over the silhouette base: grayscale + brighten turns the camo
-   render into a light schematic that carries the turret/barrel/fender read
-   the flat mask lacked (r7: top view parsed as a generic rounded box) */
+   layered over the silhouette base: a canvas-baked NEUTRAL-GRAY schematic
+   (luminance-normalized, see schematicUrl) carries the turret/barrel/fender
+   read the flat mask lacked (r7: top view parsed as a generic rounded box).
+   r2: full grayscale(1) fallback while the bake lands — grayscale(.85)+
+   brightness(2) left bright camo a fuzzy yellow-green blob at 84 px. The
+   layer is slightly translucent so the zone glow now drawn UNDER it tints
+   through without burying the plan shape. */
 .cot-si-diag .pf{position:absolute;inset:0;background-size:contain;
-  background-position:center;background-repeat:no-repeat;
-  filter:grayscale(.85) brightness(2) contrast(1.55);}
+  background-position:center;background-repeat:no-repeat;opacity:.86;
+  filter:grayscale(1) brightness(1.5) contrast(1.4);}
 .cot-si-diag svg.ov{position:absolute;inset:0;overflow:visible;}
 .cot-si-zone{font-size:10px;color:#f0c987;font-weight:700;letter-spacing:.06em;
   text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;flex:1;
@@ -369,6 +373,72 @@ const fmtTime = (s) => {
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 };
 
+// ---------------------------------------------------------------------------
+// Plan-form schematic bake (r2 minor): the raw icons-pipeline top render is a
+// CAMO paint job — a CSS grayscale(.85)+brightness(2) declutter left bright
+// winter/NATO schemes as a fuzzy yellow-green blob at 84 px (Leopard 2A4
+// evidence). Bake a NEUTRAL-GRAY schematic once per icon: full luminance
+// desaturation, then normalization around the sprite's own mean luminance so
+// every tank lands at the same light-gray tone whatever its paint, with the
+// local contrast (turret ring, barrel, fenders, engine deck) stretched back
+// in. Cached per id/view; async — callers show the raw icon under the CSS
+// fallback filter and swap in the bake when it lands (same-origin PNG, so
+// canvas readback is always allowed; any failure keeps the fallback).
+const schemCache = new Map();
+function schematicUrl(id, view) {
+  const key = `${id}|${view}`;
+  let p = schemCache.get(key);
+  if (!p) {
+    p = new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const c = document.createElement('canvas');
+          c.width = img.naturalWidth;
+          c.height = img.naturalHeight;
+          const x = c.getContext('2d');
+          x.drawImage(img, 0, 0);
+          const d = x.getImageData(0, 0, c.width, c.height);
+          const px = d.data;
+          let sum = 0;
+          let n = 0;
+          for (let i = 0; i < px.length; i += 4) {
+            if (px[i + 3] < 16) continue;
+            sum += px[i] * 0.2126 + px[i + 1] * 0.7152 + px[i + 2] * 0.0722;
+            n++;
+          }
+          const mean = n ? sum / n : 128;
+          for (let i = 0; i < px.length; i += 4) {
+            if (px[i + 3] === 0) continue;
+            const lum = px[i] * 0.2126 + px[i + 1] * 0.7152 + px[i + 2] * 0.0722;
+            const v = Math.max(30, Math.min(246, 178 + (lum - mean) * 1.5));
+            px[i] = px[i + 1] = px[i + 2] = v;
+          }
+          x.putImageData(d, 0, 0);
+          resolve(c.toDataURL());
+        } catch (_) { resolve(null); }
+      };
+      img.onerror = () => resolve(null);
+      img.src = iconUrl(id, view);
+    });
+    schemCache.set(key, p);
+  }
+  return p;
+}
+
+/** Plan-form layer: raw icon + CSS fallback now, baked schematic on arrival. */
+function planForm(parent, specId, view) {
+  const pf = el('div', 'pf', parent);
+  pf.style.backgroundImage = `url(${iconUrl(specId, view)})`;
+  schematicUrl(specId, view).then((u) => {
+    if (u && pf.isConnected !== false) {
+      pf.style.backgroundImage = `url(${u})`;
+      pf.style.filter = 'none';
+    }
+  });
+  return pf;
+}
+
 /**
  * Create the combat-intelligence UI bundle. All data arrives via bus events;
  * hud.js mounts `root` and forwards player identity / lifecycle.
@@ -512,15 +582,17 @@ export function createShotInfo(bus) {
     const topSil = el('div', 'sil', top);
     maskIcon(topSil, specId, 'top_silhouette', SIL_FILL);
     topSil.style.filter = SIL_OUTLINE;
-    // per-tank plan-form over the mask (r7: the flat silhouette read as a
-    // generic rounded box) — the icons pipeline's shaded top render carries
-    // the real turret/barrel/fender detail; CSS declutters it to schematic
-    el('div', 'pf', top).style.backgroundImage = `url(${iconUrl(specId, 'top')})`;
     const halfT = (Math.max(dims.widthM, dims.overallLengthM) / 2) * ICON_MARGIN;
     const sT = (TS / 2) / halfT;
     const topPx = (x, z) => [TS / 2 - x * sT, TS / 2 - (z - czOff) * sT];
     const [hx, hy] = topPx(lp[0], lp[2]);
+    // zone glow UNDER the plan-form (r2: painted over it, the orange radial
+    // muddied the schematic into a blob); the translucent plan layer lets
+    // the tint breathe through while the plan shape stays crisp
     zoneTint(top, 'top_silhouette', hx, hy, 18);
+    // per-tank plan-form over glow + mask (r7: the flat silhouette read as a
+    // generic rounded box) — neutral-gray baked schematic, see schematicUrl
+    planForm(top, specId, 'top');
     let arrow = '';
     if (ld) {
       // Clamp the arrow tail inside the viewBox: the raw 2.2 m back-step
@@ -577,12 +649,12 @@ export function createShotInfo(bus) {
     const sideSil = el('div', 'sil', side);
     maskIcon(sideSil, specId, 'side_silhouette', SIL_FILL);
     sideSil.style.filter = SIL_OUTLINE;
-    el('div', 'pf', side).style.backgroundImage = `url(${iconUrl(specId, 'side')})`;
     const halfS = Math.max(dims.heightM / 2, dims.overallLengthM / 4) * ICON_MARGIN;
     const sS = (SH / 2) / halfS;
     const sx = SW / 2 + (lp[2] - czOff) * sS;
     const sy = SH / 2 - (lp[1] - dims.heightM / 2) * sS;
-    zoneTint(side, 'side_silhouette', sx, sy, 16);
+    zoneTint(side, 'side_silhouette', sx, sy, 16); // glow under the plan-form
+    planForm(side, specId, 'side');
     const ovS = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     ovS.setAttribute('class', 'ov');
     ovS.setAttribute('viewBox', `0 0 ${SW} ${SH}`);

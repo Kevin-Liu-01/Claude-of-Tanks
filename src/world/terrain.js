@@ -531,7 +531,8 @@ function makeGrassLayer(seed, anisotropy, tone = null) {
       const fine = torusNoise(noi, u, v, 43, 43, 61) * 0.5 + 0.5;
       const m01 = macro * 0.5 + 0.5;
       const dry = smoothstep(0.62, 0.9, m01);
-      _col.setHSL(0.21 + macro * 0.03 - dry * 0.07, 0.34 - dry * 0.08, 0.16 + m01 * 0.07 + fine * 0.05);
+      // lighting_post r2: ~18% desat + slight olive hue shift — flat lime read
+      _col.setHSL(0.205 + macro * 0.03 - dry * 0.06, 0.27 - dry * 0.07, 0.16 + m01 * 0.07 + fine * 0.05);
       base.data[j] = _col.r * 255; base.data[j + 1] = _col.g * 255; base.data[j + 2] = _col.b * 255;
       base.data[j + 3] = 255;
     }
@@ -544,8 +545,8 @@ function makeGrassLayer(seed, anisotropy, tone = null) {
     const dry = rng() < 0.14;
     const lum = 0.16 + rng() * 0.17 + (dry ? 0.12 : 0);
     ctx.strokeStyle = dry
-      ? _css(0.11 + rng() * 0.02, 0.32, lum)
-      : _css(0.20 + rng() * 0.075, 0.36 + rng() * 0.16, lum);
+      ? _css(0.11 + rng() * 0.02, 0.28, lum)
+      : _css(0.195 + rng() * 0.06, 0.29 + rng() * 0.13, lum);
     ctx.lineWidth = 1.1 + rng() * 1.4;
     const len = 7 + rng() * 12;
     const a = rng() * Math.PI * 2;
@@ -576,12 +577,12 @@ function makeGrassLayer(seed, anisotropy, tone = null) {
   for (let i = 0; i < s * s; i++) {
     const g = px[i * 4 + 1] / 255;
     hgt[i] = g;
-    px[i * 4 + 3] = clamp(0.97 - g * 0.08, 0.03, 1) * 255; // roughness in alpha (matte turf)
+    px[i * 4 + 3] = clamp(0.90 - g * 0.10, 0.03, 1) * 255; // roughness in alpha (0.80-0.90: low-gloss turf sheen so sun angle reads)
   }
   applyTone(px, tone);
   return {
     albedo: canvasToTexture(px, s, { srgb: true, anisotropy }),
-    normal: normalFromHeight(hgt, s, 1.8, anisotropy),
+    normal: normalFromHeight(hgt, s, 2.4, anisotropy), // lighting_post r2: stronger micro-normal
   };
 }
 
@@ -1032,7 +1033,7 @@ uniform sampler2D uNrmG, uNrmD, uNrmR, uNrmM;
 uniform sampler2D uMask, uNoise;
 uniform vec3 uTintA, uTintB, uTintC, uRoadTint;
 uniform float uMarshGloss;
-uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uIceDrift, uMidRelief;
+uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uIceDrift, uMidRelief, uFieldPatch;
 uniform vec3 uRipple; // xy = wind dir, z = ripple normal amplitude
 vec3 gSplatAlbedo; float gSplatRough; vec3 gSplatNrm; float gSplatFar; float gSplatSteepAtt;
 // r7 axis-triplanar wall basis (set in splatCompute): two FIXED world-axis
@@ -1383,7 +1384,10 @@ void splatCompute() {
     a.rgb = mix(a.rgb, roadCol, dW);
     // r6: paved rut wear 0.10 -> 0.30 — town streets need visible dark
     // wheel-wear lanes or the carriageway reads as one clean bright sheet
-    a.rgb *= 1.0 - rut * mix(0.55, 0.30, uRoadTex);
+    // terrain_environment r2: the mask G channel mip-averages away past
+    // ~250 m and distant roads collapsed into uniform beige ribbons — boost
+    // the surviving rut signal with distance so the two-track read holds
+    a.rgb *= 1.0 - min(rut * (1.0 + farM * 0.9), 1.0) * mix(0.55, 0.30, uRoadTex);
     if (uRoadTex > 0.01) {
       // r5: HARDER pavement edge (0.10-0.26 with less noise wobble) — paved
       // town streets end at a kerb line, they do not alpha-fade into lawn.
@@ -1416,7 +1420,9 @@ void splatCompute() {
     vec2 rutG;
     rutG.x = texture2D(uMask, mUV + vec2(texel, 0.0)).g - texture2D(uMask, mUV - vec2(texel, 0.0)).g;
     rutG.y = texture2D(uMask, mUV + vec2(0.0, texel)).g - texture2D(uMask, mUV - vec2(0.0, texel)).g;
-    n.xy += rutG * 0.9 * (1.0 - df);
+    // r2: attenuation eased (1-df -> 1-df*0.55) so rut relief survives into
+    // the midfield instead of dying at the 160 m detail fade
+    n.xy += rutG * 0.9 * (1.0 - df * 0.55);
   }
   // wind-blown snow drifts across the ice sheet + snowbank shoreline blend
   float driftW = 0.0;
@@ -1477,6 +1483,54 @@ void splatCompute() {
   // sheet blends into darkened damp banks instead of ending on a hard seam
   float shoreW = smoothstep(0.04, 0.30, fM) * (1.0 - smoothstep(0.55, 0.95, fM));
   a.rgb *= 1.0 - shoreW * 0.30 * (1.0 - driftW);
+  // >>> terrain_environment r2: agrarian field patchwork + far turf relief. --
+  // The 150-800 m band used to collapse into one smooth green wash (the bald
+  // "gumdrop" midground hills behind the village): by 330 m every detail
+  // layer is mip-faded flat and the soft meadow tints carry no structure.
+  // (a) per-plot crop-tone variation on a ~92 m warped grid with darker
+  //     field-margin lines (hedgerow/verge read from the air),
+  // (b) straight mowing/crop strips inside each plot (~20 m pitch),
+  // (c) a coarse re-projection of the grass layer's normal+albedo (same trick
+  //     as the far-cliff rescue) so distant hills shade like turf-covered
+  //     terrain instead of smooth clay.
+  {
+    float fieldW = uFieldPatch * smoothstep(70.0, 150.0, effDist)
+      * (1.0 - fD) * (1.0 - fM) * (1.0 - shoulder) * (1.0 - fR) * (1.0 - steepW)
+      * (1.0 - mk.a);
+    if (fieldW > 0.004) {
+      vec2 plotUv = uvW * (1.0 / 92.0);
+      vec2 pid = floor(plotUv);
+      float pr = texture2D(uNoise, pid * 0.1371 + vec2(0.29, 0.71)).r;
+      float pg = texture2D(uNoise, pid * 0.2117 + vec2(0.61, 0.37)).g;
+      // per-plot crop tone: hay-gold / dark clover / neutral pasture
+      float cropSel = smoothstep(0.40, 0.72, pr);
+      vec3 cropTint = mix(vec3(1.0),
+        pg > 0.5 ? vec3(1.10, 1.04, 0.80) : vec3(0.84, 0.94, 0.82),
+        cropSel * 0.55);
+      a.rgb *= mix(vec3(1.0), cropTint, fieldW);
+      // straight mowing strips: direction + pitch vary per plot
+      float mAng = pr * 6.2832 + pg * 2.1;
+      vec2 mdir = vec2(cos(mAng), sin(mAng));
+      float strip = sin(dot(uv, mdir) * (0.24 + pg * 0.22));
+      a.rgb *= 1.0 + strip * 0.05 * fieldW * (0.35 + cropSel);
+      // darker margin line along plot borders
+      vec2 fr2 = abs(fract(plotUv) - 0.5);
+      float margin = smoothstep(0.44, 0.492, max(fr2.x, fr2.y));
+      a.rgb *= 1.0 - margin * 0.10 * fieldW;
+    }
+    // coarse turf relief at range (all maps): the far band keeps macro
+    // normal structure where the per-texel detail normals have faded out
+    float farG = farM * (1.0 - fR) * (1.0 - fM) * (1.0 - steepW);
+    if (farG > 0.003) {
+      // 1.5: SPLAT_NORMAL_FRAG rolls detail normals to ~0.29 strength in the
+      // far band — pre-compensate so the coarse relief survives out there
+      vec3 gnF = texture2D(uNrmG, uv * 0.021).xyz * 2.0 - 1.0;
+      n.xy += gnF.xy * farG * 1.5;
+      float gLum = dot(texture2D(uAlbG, uv * 0.0137).rgb, vec3(0.36, 0.42, 0.22));
+      a.rgb *= mix(1.0, 0.86 + gLum * 0.30, farG * 0.55);
+    }
+  }
+  // <<< terrain_environment r2 ------------------------------------------------
   // distant mottling: forest-floor/heather patches keep far hills from reading
   // as one flat green wash
   float mot = texture2D(uNoise, uv * 0.0022 + vec2(0.17, 0.71)).g;
@@ -1513,7 +1567,9 @@ void splatCompute() {
       // tangent (compressed axis, counter-stretched ~4.5:1)
       vec3 e1 = normalize(cross(wn, vDirN));
       vec3 e2 = cross(e1, wn);
-      vec2 uvG = vec2(dot(wp, e1), dot(wp, e2) * 0.22);
+      // r2: counter-stretch eased 0.22 -> 0.32 — the 4.5:1 stretch printed a
+      // visible directional combing band across the 60-130 m midfield
+      vec2 uvG = vec2(dot(wp, e1), dot(wp, e2) * 0.32);
       vec4 aG = splatSamp(uAlbG, uvG * 0.240, df, 0.0);
       vec4 nG = splatSamp(uNrmG, uvG * 0.240, df, 0.0);
       // value breakup in the SAME stretched space (replaces the smeared
@@ -1521,7 +1577,9 @@ void splatCompute() {
       float n1G = texture2D(uNoise, uvG * 0.0117).r;
       float n2G = texture2D(uNoise, uvG * 0.0031 + vec2(0.41, 0.13)).g;
       aG.rgb *= (0.88 + n1G * 0.18) * (0.94 + n2G * 0.12);
-      float gMix = grazeW * 0.80;
+      // r2: 0.80 -> 0.62 — full-strength replacement stamped its own combed
+      // texture band; a partial blend keeps the planar patchwork visible
+      float gMix = grazeW * 0.62;
       a = mix(a, aG, gMix);
       n = mix(n, nG, gMix);
     }
@@ -1640,6 +1698,8 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant') {
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
     shader.uniforms.uIceDrift = { value: S.iceLake ? (S.iceDrift ?? 0.85) : 0 };
     shader.uniforms.uMidRelief = { value: S.midRelief ?? 1 };
+    // r2: agrarian field patchwork — only sensible on temperate farmland maps
+    shader.uniforms.uFieldPatch = { value: S.fieldPatch ?? 0 };
     {
       const rd = S.rippleDir || [0.8, 0.6];
       const rl = Math.hypot(rd[0], rd[1]) || 1;
@@ -1661,7 +1721,7 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant') {
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v14';
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v15';
   return mat;
 }
 

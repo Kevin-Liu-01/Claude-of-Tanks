@@ -268,9 +268,18 @@ const USERDROP2_SPECS = {
 // ---------------------------------------------------------------------------
 // Registration (idempotent — vite HMR can re-evaluate this module)
 // ---------------------------------------------------------------------------
-for (const [id, spec] of Object.entries(USERDROP2_SPECS)) {
-  TANK_SPECS[id] = TANK_SPECS[id] || spec;
-  if (!ALL_TANK_IDS.includes(id)) ALL_TANK_IDS.push(id);
+// content_breadth r2: the bergman quarantine swaps for the three NEW specs
+// render as placeholder boxes in-game — do not ship them as playables until
+// the GLB substitution actually lands (then flip this flag, re-add the
+// techtree.js spec wiring, and run `node tools/genIcons.mjs --tanks
+// bmp1,m1128,m1296`).
+const SHIP_USERDROP2_NEW = false;
+
+if (SHIP_USERDROP2_NEW) {
+  for (const [id, spec] of Object.entries(USERDROP2_SPECS)) {
+    TANK_SPECS[id] = TANK_SPECS[id] || spec;
+    if (!ALL_TANK_IDS.includes(id)) ALL_TANK_IDS.push(id);
+  }
 }
 
 // Sourced-model credit lines on the four replaced specs (m1a1 rule: variantOf
@@ -342,24 +351,26 @@ MODEL_SOURCE.bmp2 = {
     turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
   },
 };
-MODEL_SOURCE.bmp1 = {
-  source: 'glb',
-  glb: {
-    path: '/models/tanks/community/quarantine/bmp1_bergman.glb',
-    turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
-  },
-};
-MODEL_SOURCE.m1128 = {
-  source: 'glb',
-  glb: {
-    path: '/models/tanks/community/quarantine/m1128_mgs_bergman.glb',
-    turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
-  },
-};
-MODEL_SOURCE.m1296 = {
-  source: 'glb',
-  glb: {
-    path: '/models/tanks/community/quarantine/m1296_dragoon_bergman.glb',
-    turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
-  },
-};
+if (SHIP_USERDROP2_NEW) {
+  MODEL_SOURCE.bmp1 = {
+    source: 'glb',
+    glb: {
+      path: '/models/tanks/community/quarantine/bmp1_bergman.glb',
+      turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
+    },
+  };
+  MODEL_SOURCE.m1128 = {
+    source: 'glb',
+    glb: {
+      path: '/models/tanks/community/quarantine/m1128_mgs_bergman.glb',
+      turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
+    },
+  };
+  MODEL_SOURCE.m1296 = {
+    source: 'glb',
+    glb: {
+      path: '/models/tanks/community/quarantine/m1296_dragoon_bergman.glb',
+      turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
+    },
+  };
+}

@@ -1,11 +1,11 @@
 // Automated player hull-hit-rate gate (controls_gunnery r6).
 // FAILS (exit 1) unless >=80% of fully-settled aim-assisted shots at <=350 m
-// (moving targets included) register a tank impact, across 3 random-roster
+// (moving targets included) register a tank impact, across 8 random-roster
 // battles. Every player shell's terminal event is printed from
 // __DEBUG.playerShellLog so whiffs are attributable (lead error / drop /
 // blocked path / collider gap). Also prints the per-battle bot-vs-player
 // pressure line (__DEBUG.botPressure).
-// Usage: node tools/gunnery_gate.mjs [--battles 3] [--shots 6] [--min 80]
+// Usage: node tools/gunnery_gate.mjs [--battles 8] [--shots 6] [--min 80]
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, rmdirSync, statSync } from 'node:fs';
@@ -30,7 +30,14 @@ process.on('exit', releaseLock);
 
 const args = process.argv.slice(2);
 const opt = (n, f) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : f; };
-const BATTLES = parseInt(opt('battles', '3'), 10);
+// r2 verifier: default 3 battles collected only ~11 gated shots — at a true
+// hit rate near the 80% floor the pass/fail was decided by 1-2 seeded
+// dispersion draws (measured: 8/11=73% FAIL at 3 battles, 14/16=88% PASS at
+// 8 on the SAME tree; sibling code changes reshuffle the shared combatRng
+// stream and flipped earlier runs between 100% and 45% with identical spawn
+// geometry/poses). 8 battles keeps the gate's intent and floor while making
+// the sample statistically meaningful.
+const BATTLES = parseInt(opt('battles', '8'), 10);
 const SHOTS_PER = parseInt(opt('shots', '6'), 10);
 const MIN_RATE = parseInt(opt('min', '80'), 10);
 
@@ -131,6 +138,29 @@ try {
     const bp = b.botPressure;
     console.log(`[gunnery-gate]   bot pressure: ${bp.enemyShells} enemy shells, ` +
       `${bp.aimedAtPlayer} aimed at player, ${bp.hitsOnPlayer} hits (${Math.round(bp.dmgOnPlayer)} dmg)`);
+  }
+  // controls_gunnery r2 regression floors:
+  for (const b of report.battles) {
+    // botPressure floor: a player who fires 5+ times must draw counter-fire.
+    const playerShots = b.shells.filter((s) => s.terminal).length;
+    if (playerShots >= 5 && b.botPressure.aimedAtPlayer < 3) {
+      console.error(`[gunnery-gate] FAIL: botPressure floor — ${playerShots} player shots but only ${b.botPressure.aimedAtPlayer} enemy shells aimed at the player (need >=3)`);
+      failed = true;
+    }
+    // 0-damage streak floor: no 2 consecutive 0-damage tank impacts on the
+    // same target at <=350 m (envelope seams / broken feedback regression).
+    let streak = 0, prevTarget = null;
+    for (const s of b.shells) {
+      if (s.terminal !== 'tank' || s.targetDistM == null || s.targetDistM > 350) { streak = 0; prevTarget = null; continue; }
+      if ((s.damage || 0) <= 0 && s.hitTankId === prevTarget && prevTarget != null) streak += 1;
+      else streak = (s.damage || 0) <= 0 ? 1 : 0;
+      prevTarget = s.hitTankId;
+      if (streak >= 2) {
+        console.error(`[gunnery-gate] FAIL: ${streak + 0} consecutive 0-damage tank impacts on ${s.hitTankId} at <=350 m`);
+        failed = true;
+        break;
+      }
+    }
   }
   const rate = settled ? Math.round((hits / settled) * 100) : 0;
   console.log(`[gunnery-gate] settled shots <=350 m: ${settled}, tank impacts: ${hits}, rate: ${rate}% (min ${MIN_RATE}%)`);

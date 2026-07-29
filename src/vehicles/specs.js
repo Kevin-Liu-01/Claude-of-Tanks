@@ -1217,7 +1217,9 @@ const COMMUNITY_SPECS = {
       tFrontMm: 75, tSideMm: 75, tRearMm: 75, mantletMm: 110,
     }),
     visual: {
-      scheme: 'solid', base: '#3e4a2e', weather: '#4a563a', patches: [],
+      // r2: authored darker under the community paint-path lift (is7 note) —
+      // the '#3e4a2e' 4BO rendered as pale flat sage on the pedestal
+      scheme: 'solid', base: '#37412a', weather: '#404b33', patches: [],
       marking: 'number', number: '2', trackWidthM: 0.7,
     },
   },
@@ -1514,7 +1516,12 @@ const COMMUNITY_SPECS = {
       tFrontMm: 240, tSideMm: 185, tRearMm: 94, mantletMm: 250,
     }),
     visual: {
-      scheme: 'solid', base: '#445032', weather: '#4f5b3e', patches: [],
+      // tank_models r2 (critic: "uniform chartreuse/lime clay"): authored a
+      // step darker/grayer — the community-GLB paint path (ambient floor +
+      // view fill + dust overlay) lifts tones well above the procedural
+      // fleet, so the shared 4BO family must be authored under it (strv103
+      // rule). Lands beside the T-34/IS-2 greens on the pedestal.
+      scheme: 'solid', base: '#39432b', weather: '#414c35', patches: [],
       marking: 'number', number: '7', trackWidthM: 0.71,
     },
   },
@@ -1694,9 +1701,14 @@ Object.assign(MODEL_SOURCE, {
   },
   is3: {
     source: 'glb',
+    // content_breadth r2: stripBakedTextures — same cohesion treatment as
+    // kv2/is7 (r1 TM #188): the baked albedo rendered flat single-tone lime
+    // clay next to the camo-painted fleet; route the shell onto the shared
+    // camo canvas + weathering instead.
     glb: {
       path: '/models/tanks/community/is3_panzerfactory.glb',
-      turretNode: '^turret$', gunNode: '^gun$', autoPivot: true, paintUntextured: true,
+      turretNode: '^turret$', gunNode: '^gun$', autoPivot: true,
+      paintUntextured: true, stripBakedTextures: true,
     },
   },
   t34_85_cad: {
@@ -1729,10 +1741,12 @@ Object.assign(MODEL_SOURCE, {
   },
   pziii_konserwa: {
     source: 'glb',
+    // content_breadth r2: stripBakedTextures — kv2/is7 cohesion treatment;
+    // the thumb rendered bare grey plastic next to the camo-painted fleet.
     glb: {
       path: '/models/tanks/community/pziii_konserwa.glb',
       turretNode: '^Plane000$', yawOffset: Math.PI, autoPivot: true,
-      pivot: [0, 0.545, 0.12], paintUntextured: true,
+      pivot: [0, 0.545, 0.12], paintUntextured: true, stripBakedTextures: true,
     },
   },
   leichttraktor: {

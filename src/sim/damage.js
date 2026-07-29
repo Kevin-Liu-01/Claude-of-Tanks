@@ -479,6 +479,31 @@ function ensurePenRoll(shell, rng) {
 }
 
 /**
+ * Weakest MAIN hull/turret plate (keMm) of an armor model — the nominal
+ * thickness charged to a shell that entered through an authored-plate seam
+ * (ENVELOPE-SEAM CATCH in resolveShellHit). Cached on the model.
+ * @param {object} armorModel ArmorModel
+ * @returns {number} mm
+ */
+function seamArmorMm(armorModel) {
+  if (armorModel._seamMm != null) return armorModel._seamMm;
+  let mm = Infinity;
+  const scan = (plates) => {
+    if (!plates) return;
+    for (const p of plates) {
+      if ((p.kind || 'main') !== 'main') continue;
+      const ke = p.keMm != null ? p.keMm : (p.physicalMm || 0);
+      if (ke > 0 && ke < mm) mm = ke;
+    }
+  };
+  scan(armorModel.hullPlates);
+  scan(armorModel.turretPlates);
+  if (!isFinite(mm)) mm = 40;
+  armorModel._seamMm = mm;
+  return mm;
+}
+
+/**
  * Resolve a kinetic/HEAT (or direct-fire HE) shell against one tank. Walks the
  * ordered traceTank intersections: ricochet on raw angle (3× overmatch
  * suppression), ERA tiles, spaced screens (HEAT air-gap decay), main-armor pen
@@ -690,6 +715,42 @@ export function resolveShellHit(shell, target, hits, rng) {
     // SHOT-INFO (additive): zone from the first plate the trace crossed.
     const firstPlate = hits.find((h) => h.kind === 'plate') || first;
     if (firstPlate) stampShotInfo(event, firstPlate, spec, target, shell.vel);
+    // ENVELOPE-SEAM CATCH (controls_gunnery r2): the trace crossed INTERIOR
+    // module/crew boxes without a single armor plate — the segment slipped
+    // through a seam between authored plates (measured on leo2a4: 26/300
+    // on-target rays, e.g. the side of the glacis nose wedge and the turret
+    // cheek/side joint; gate battle 2 logged THREE consecutive center-mass
+    // APFSDS "screen_pierce" hits for 0 damage). A shell inside the fighting
+    // compartment did not get there for free: charge it the tank's weakest
+    // MAIN plate and resolve as a normal pen/nonpen instead of a free
+    // pass-through. True grazes (barrel / skirt edge / external boxes only)
+    // still screen_pierce with zero damage.
+    const seamInterior = hits.some((h) =>
+      h.kind === 'crew' ||
+      (h.kind === 'module' && h.external !== true && !h.barrel && h.module !== 'gun'));
+    if (seamInterior) {
+      const seamMm = seamArmorMm(target.spec.armor);
+      if (pen >= seamMm) {
+        event.kind = 'pen';
+        event.damage = dmgRoll;
+        combat.hp -= dmgRoll;
+        for (const h of hits) {
+          if (h.kind === 'module' && h.external !== true && !h.barrel && h.module !== 'gun') {
+            const r = rollModuleDamage(ctx, h.module);
+            event.fireStarted = event.fireStarted || r.fireStarted;
+            event.ammoRacked = event.ammoRacked || r.ammoRacked;
+          } else if (h.kind === 'crew') {
+            rollCrewHit(ctx, h.crew, false);
+          }
+        }
+      } else {
+        event.kind = 'nonpen';
+      }
+      shell.dead = true;
+      event.destroyed = finalizeTarget(combat, event.ammoRacked);
+      event.targetHpAfter = combat.hp;
+      return event;
+    }
     if (behavior.kindClass === 'KE' && shell.remainingPenMm > 0) {
       event.kind = 'screen_pierce';
       event.destroyed = finalizeTarget(combat, event.ammoRacked);

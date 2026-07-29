@@ -17,10 +17,46 @@
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { writeFileSync, appendFileSync } from 'node:fs';
+import { writeFileSync, appendFileSync, mkdirSync, rmdirSync, statSync, utimesSync } from 'node:fs';
 import { resolve } from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
+
+// ---------------------------------------------------------------------------
+// Harness serialization (performance_budget r2, critic minor #8): this machine
+// hosts multiple agent sessions whose vite+puppeteer harnesses share one GPU —
+// the r2 review window never saw a quiet cert because probes ran concurrently.
+// Take the SAME advisory lock the screenshot harness and shot tools use
+// (mkdir is atomic; stale dirs from crashed runs are reclaimed by mtime) so at
+// most one GPU-bound harness runs at a time. The contention stamps below stay:
+// the lock serializes THIS repo's tooling, the stamps catch everything else.
+const LOCK_DIR = '/tmp/cot-shots.lock';
+const LOCK_STALE_MS = 5 * 60 * 1000;
+let lockHeld = false;
+async function acquireLock() {
+  const t0 = Date.now();
+  for (;;) {
+    try { mkdirSync(LOCK_DIR); lockHeld = true; return; } catch (_) { /* held */ }
+    try {
+      if (Date.now() - statSync(LOCK_DIR).mtimeMs > LOCK_STALE_MS) { rmdirSync(LOCK_DIR); continue; }
+    } catch (_) { continue; }
+    if (Date.now() - t0 > 15 * 60 * 1000) throw new Error('cot-shots lock timeout');
+    await new Promise((r) => setTimeout(r, 2000 + Math.random() * 1000));
+  }
+}
+function releaseLock() {
+  if (!lockHeld) return;
+  lockHeld = false;
+  try { rmdirSync(LOCK_DIR); } catch (_) { /* fine */ }
+}
+await acquireLock();
+process.on('exit', releaseLock);
+// keep the lock's mtime fresh so a long 60 s certification is never reclaimed
+// as stale by a sibling harness mid-run
+const lockRefresher = setInterval(() => {
+  try { const now = new Date(); utimesSync(LOCK_DIR, now, now); } catch (_) { /* fine */ }
+}, 60 * 1000);
+lockRefresher.unref();
 
 const args = process.argv.slice(2);
 function opt(name, fallback) {
@@ -249,6 +285,32 @@ try {
   });
   // small settle so shaders/instances for battle HUD compile
   await new Promise((r) => setTimeout(r, 1500));
+  // r2: certify the SUSTAINED battle regime — wait (bounded) for the roster's
+  // GLB swap queue to drain before opening the window. The battle-staging
+  // design intentionally lands sourced models during the opening flyby
+  // (modelLoader idle gate + 6 s grace); starting the measurement mid-landing
+  // billed each model's one-time parse/upload retention (~90 MB across 5-7
+  // GLB vehicles) to the SUSTAINED heap gate and its upload hitches to the
+  // frame tail. Bounded at 20 s so a broken loader can never hang the probe —
+  // and the load-to-ready gate above still covers the boot path itself.
+  // "Settled" must also be STABLE: __GLB_STATS.started grows as staged loads
+  // kick in over the first seconds (measured: 0/2 at battle+1.5 s, 5/5 by
+  // t=15 — a bare settled>=started check passes between waves). Require the
+  // queue drained AND unchanged for 3 s.
+  await page.waitForFunction(
+    `(() => {
+      const s = window.__GLB_STATS;
+      if (!s) return true;
+      const key = s.settled + '/' + s.started;
+      if (s.settled < s.started) { window.__GLB_STABLE = null; return false; }
+      if (!window.__GLB_STABLE || window.__GLB_STABLE.key !== key) {
+        window.__GLB_STABLE = { key, at: performance.now() };
+        return false;
+      }
+      return performance.now() - window.__GLB_STABLE.at > 3000;
+    })()`,
+    { timeout: 30000, polling: 250 },
+  ).catch(() => console.error('[perf] GLB queue did not settle within 30 s — window opens anyway'));
   // Warmup collection before the measured window (standard bench hygiene, NOT
   // a masking trick): the boot bake creates ~300 MB of one-shot large-object
   // garbage (getImageData buffers of the 2048² vehicle canvases). V8 reclaims
@@ -259,7 +321,10 @@ try {
   // Sustained-combat allocation behavior is untouched — the heap gate still
   // watches the full 60 s window, and a warmup GC makes its floor baseline
   // STRICTER (starts post-collection, so any battle growth is real).
-  await page.evaluate(() => { if (window.gc) { window.gc(); window.gc(); } });
+  const heapRetainedStart = await page.evaluate(() => {
+    if (window.gc) { window.gc(); window.gc(); }
+    return performance.memory ? performance.memory.usedJSHeapSize : -1;
+  });
 
   // Drive: hold W, wiggle steering + camera so combat is representative.
   await page.keyboard.down('KeyW');
@@ -316,6 +381,28 @@ try {
   await page.waitForFunction('window.__PERF && window.__PERF.done === true', { timeout: (seconds + 30) * 1000 });
   await page.keyboard.up('KeyW');
   await steerTimer;
+
+  // RETAINED-SET heap measure (performance_budget r2): force a full major GC
+  // at both window boundaries and difference the true retained set. The
+  // existing raw/floor trends stay (trend continuity + they need no --expose-gc
+  // outside this probe), but both are MAJOR-GC-PHASE estimators: V8 sizes its
+  // old-gen allocation budget as a multiple of the live heap, so after the
+  // content expansion grew the live battle heap ~+140 MB (5-7 parsed GLB
+  // vehicles), a 60 s window often contains NO major GC and the "floor"
+  // metric reads the accumulation of perfectly collectable garbage as growth.
+  // Measured on HEAD (2026-07-28, 65 s diag): sawtooth floor climbed ~1.3
+  // MB/s all window, then a single natural major at t=64 dropped 552 -> 430 MB
+  // — back to the post-boot baseline; the identical build measured
+  // floorGrowth 1.49-1.99 across probe runs. A REAL leak still fails this
+  // metric — leaked objects survive the forced majors by definition — so the
+  // 1.0 MB/s gate value is unchanged; it now gates a phase-noise-free number.
+  const heapRetainedEnd = await page.evaluate(() => {
+    if (window.gc) { window.gc(); window.gc(); }
+    return performance.memory ? performance.memory.usedJSHeapSize : -1;
+  });
+  const heapRetainedMBs = (heapRetainedStart > 0 && heapRetainedEnd > 0)
+    ? ((heapRetainedEnd - heapRetainedStart) / seconds) / 1048576
+    : null;
 
   // GPU texture memory estimate: walk scene materials + render targets.
   const texEstimate = await page.evaluate(() => {
@@ -410,6 +497,11 @@ try {
       endMB: +(heap[heap.length - 1] / 1048576).toFixed(1),
       growthMBperS: +heapGrowthMBs.toFixed(2),
       floorGrowthMBperS: +heapFloorGrowthMBs.toFixed(2),
+      // forced-major-GC retained-set delta across the window (see comment at
+      // the measurement site) — null when --expose-gc/memory API unavailable
+      retainedStartMB: heapRetainedStart > 0 ? +(heapRetainedStart / 1048576).toFixed(1) : null,
+      retainedEndMB: heapRetainedEnd > 0 ? +(heapRetainedEnd / 1048576).toFixed(1) : null,
+      retainedGrowthMBperS: heapRetainedMBs === null ? null : +heapRetainedMBs.toFixed(2),
     },
     gpuTextureEstimate: {
       sceneTextureMB: +(texEstimate.textureBytes / 1048576).toFixed(1),
@@ -459,10 +551,18 @@ try {
     // post-GC floor trend; GC-cycle phase in a 20 s window skews one or the
     // other (raw measured -4.6..+2.5 MB/s across identical no-leak runs, and
     // a 60 s control trends -0.4). Gate on the smaller of the two.
+    // r2: prefer the forced-GC retained-set delta when available (this probe
+    // always launches with --expose-gc) — it is the phase-noise-free form of
+    // exactly what this gate documents ("a leak raises the post-GC floor");
+    // raw/floor trends remain in report.heap for continuity. Gate UNCHANGED.
     heapStableMBperS: {
       limit: `<=${BUDGET.heapGrowthMaxMBperS}`,
-      actual: Math.min(report.heap.growthMBperS, report.heap.floorGrowthMBperS),
-      pass: Math.min(report.heap.growthMBperS, report.heap.floorGrowthMBperS) <= BUDGET.heapGrowthMaxMBperS,
+      actual: report.heap.retainedGrowthMBperS !== null
+        ? report.heap.retainedGrowthMBperS
+        : Math.min(report.heap.growthMBperS, report.heap.floorGrowthMBperS),
+      pass: (report.heap.retainedGrowthMBperS !== null
+        ? report.heap.retainedGrowthMBperS
+        : Math.min(report.heap.growthMBperS, report.heap.floorGrowthMBperS)) <= BUDGET.heapGrowthMaxMBperS,
     },
     consoleErrors: { limit: '=0', actual: consoleErrors.length, pass: consoleErrors.length === 0 },
   };
@@ -502,6 +602,7 @@ try {
         trianglesMedian: report.triangles.median,
         sceneTextureMB: report.gpuTextureEstimate.sceneTextureMB,
         heapFloorMBperS: report.heap.floorGrowthMBperS,
+        heapRetainedMBperS: report.heap.retainedGrowthMBperS,
         budgetPass: report.budget.pass,
         ...(forcePreset ? { preset: forcePreset } : {}),
         // contaminated rows must never read as regressions (see machine stamp)
@@ -517,8 +618,10 @@ try {
 } finally {
   clearInterval(loadSampler);
   clearInterval(foreignSampler);
+  clearInterval(lockRefresher);
   await browser.close();
   await server.close();
+  releaseLock();
 }
 
 if (report) {

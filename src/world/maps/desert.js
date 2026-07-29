@@ -17,7 +17,11 @@ export default {
     // walls that read as true rock mesas on the skyline, not tinted dunes
     mesas: { amp: 38, thr0: 0.70, thr1: 0.755 },
     marshes: [], // no marshes — dry wadi
-    village: { x0: -70, x1: 74, z0: -34, z1: 112, cx: 4, cz: 40, feather: 40, flatten: 0.9 },
+    // r2 (content_breadth): village footprint widened (-70..74 -> -92..92,
+    // -34..112 -> -46..132) — the crossroads settlement read as "a handful of
+    // isolated boxes along the road"; more road frontage inside the box means
+    // more placement slots for the longer adobe/bazaar plan below
+    village: { x0: -92, x1: 92, z0: -46, z1: 132, cx: 4, cz: 40, feather: 40, flatten: 0.9 },
   },
 
   spawns: {
@@ -132,8 +136,15 @@ export default {
   },
 
   props: {
-    plan: ['adobe', 'adobe', 'adobe', 'tower', 'adobe', 'ruin',
-      'adobe', 'adobe', 'adobe', 'adobe'],
+    // r2 (content_breadth): plan 10 -> 18 slots — three more adobe clusters
+    // plus a souk ('market'/'marketRow' builders, maps/mapKits.js via the
+    // urbanKit registry) so the crossroads reads as a lived-in bazaar town
+    plan: ['adobe', 'adobe', 'market', 'adobe', 'tower', 'adobe', 'ruin',
+      'adobe', 'marketRow', 'adobe', 'adobe', 'adobe', 'adobe', 'market',
+      'adobe', 'ruin', 'adobe', 'adobe'],
+    // denser packing: fill both road sides more often and let neighbouring
+    // adobes huddle (flat-roof villages cluster tight around their souk)
+    sideSkip: 0.12, spacingPad: 7,
     tones: {
       plaster: (h, s, l) => [0.068, 0.52, clamp01(l * 0.98 + 0.02)], // warm sand-plaster adobe
       roof: (h, s, l) => [0.065, clamp01(s * 0.8), clamp01(l * 1.1)],
@@ -146,6 +157,11 @@ export default {
     wallRuns: [
       [-58, 4, -58, 58, 2], [70, 26, 70, 92, 3], [-6, 104, 48, 104, 1],
       [-170, -70, -110, -70, 2], [150, -180, 150, -120, 1], [-70, 210, 0, 210, 3],
+      // r2: courtyard walls hugging the crossroads (junction ~[4,40]) — low
+      // sandstone compounds that knit the bazaar blocks together
+      [-30, 16, -30, 52, 2], [-30, 16, -2, 16, 1],
+      [34, 58, 34, 92, 3], [34, 92, 66, 92, 2],
+      [-46, 76, -12, 76, 1],
     ],
     well: true, hayCrates: true, fences: false, telegraph: false, carts: true, logs: false,
     haystacks: 0, rocks: 210, outcrops: 24, craters: 18, rubblePiles: 0,

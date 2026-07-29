@@ -207,8 +207,16 @@ export const VARIANT_SPECS = {
       return a;
     })(),
     visual: {
-      // urban-Iraq TUSK fit: overall desert tan, heavy dust (roster §3.4)
-      scheme: 'solid', base: '#8d7f5f', weather: '#9a8a68', patches: [],
+      // tank_models r2 (critic: ARAT tiles/muzzle painted a clashing tan over
+      // the woodland hull): the GLB's baked-texture composite is keyed by
+      // NATION pattern tile (USA woodland), while every untextured kit part
+      // (ARAT rows, loader shield, muzzle furniture) wears THIS visual's
+      // shared canvas — the roster §3.4 solid desert tan made the kit read
+      // as beige toy parts glued on a green tank. The TUSK now ships the
+      // m1a2 family woodland so hull and kit read as one paint job; the tan
+      // urban-Iraq fit stays available via the 'desert' picker pattern.
+      scheme: 'nato', base: '#49543c', weather: '#525f45',
+      patches: ['#23261f', '#4a3a2c'],
       marking: 'number', number: 'T-2', trackWidthM: 0.635,
       camoScale: 0.5,
     },

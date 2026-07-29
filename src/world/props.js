@@ -8,6 +8,7 @@ import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise.js';
 import { applyTone } from './terrain.js';
 import { applySourcedBuildings } from './sourcedTextures.js';
 import { URBAN_BUILDERS } from './maps/urbanKit.js';
+import { dressMapExtras } from './maps/mapKits.js'; // content_breadth r2
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). Synchronous import keeps the __GAME_READY contract.
 import MODELS from './props-models.json';
@@ -250,6 +251,26 @@ function box(w, h, d, uvScale = 0.5) {
   return scaleUV(g, Math.max(w, d) * uvScale, h * uvScale);
 }
 
+// r2 terrain_environment: per-face-correct UV box for THIN SLABS (roof
+// planes, sidewalks). box() scales V by the box HEIGHT on every face — on a
+// 0.12 m-thick roof slab the top face's V axis actually runs along the slab
+// LENGTH, so the tile texture was stretched ~200:1 into featureless orange
+// streaks (the critique's "untextured flat orange planes"). BoxGeometry face
+// order: +x,-x,+y,-y,+z,-z, 4 verts each — scale each face by its true
+// world dimensions so tile rows resolve on the visible plane.
+function slabBox(w, h, d, uvScale = 0.5) {
+  const g = new THREE.BoxGeometry(w, h, d);
+  const uv = g.attributes.uv;
+  const su = [d, d, w, w, w, w], sv = [h, h, d, d, h, h];
+  for (let f = 0; f < 6; f++) {
+    for (let k = 0; k < 4; k++) {
+      const i = f * 4 + k;
+      uv.setXY(i, uv.getX(i) * su[f] * uvScale, uv.getY(i) * sv[f] * uvScale);
+    }
+  }
+  return g;
+}
+
 // triangular gable prism: width w, height h, thickness t (along z)
 function gablePrism(w, h, t) {
   const shape = new THREE.Shape();
@@ -333,17 +354,32 @@ function makeCottage(rng, buckets, wallBucket = 'plaster') {
   const slope = Math.hypot(w / 2 + over, roofH + 0.1);
   const ang = Math.atan2(roofH + 0.1, w / 2 + over);
   for (const side of [-1, 1]) {
-    const slab = box(slope + 0.15, 0.12, d + over * 2, 0.35);
+    const slab = slabBox(slope + 0.15, 0.12, d + over * 2, 0.35); // r2: real tile rows (see slabBox)
     slab.rotateZ(side * ang);
     slab.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + 0.06, 0);
     parts.roof.push(slab);
   }
-  parts.stone.push(box(0.55, 1.6, 0.55).translate(w * 0.22, wallH + roofH - 0.2, d * 0.22)); // chimney
-  // door on +z gable end
+  // r2: ridge cap — the bare slab junction read as an extruded cardboard fold
+  parts.roof.push(slabBox(0.34, 0.13, d + over * 2, 0.5).translate(0, wallH + roofH + 0.04, 0));
+  // r2: chimney with cap slab + clay pot (was a bare stub most shots missed)
+  parts.stone.push(box(0.55, 1.6, 0.55).translate(w * 0.22, wallH + roofH - 0.2, d * 0.22));
+  parts.stone.push(box(0.72, 0.12, 0.72).translate(w * 0.22, wallH + roofH + 0.56, d * 0.22));
+  {
+    const pot = new THREE.CylinderGeometry(0.09, 0.12, 0.30, 6, 1);
+    scaleUV(pot, 0.5, 0.5);
+    pot.translate(w * 0.22, wallH + roofH + 0.74, d * 0.22);
+    parts.roof.push(pot);
+  }
+  // door on +z gable end (r2: + lintel and a stone doorstep)
   parts.wood.push(box(1.1, 2.1, 0.10).translate(w * 0.08, 1.05, d / 2 + 0.10));
   parts.dark.push(box(0.86, 1.9, 0.06).translate(w * 0.08, 1.0, d / 2 + 0.16));
+  parts.wood.push(box(1.3, 0.14, 0.14).translate(w * 0.08, 2.16, d / 2 + 0.10));
+  parts.stone.push(box(1.24, 0.14, 0.5).translate(w * 0.08, 0.07, d / 2 + 0.28));
+  // r2: small dark attic window in the +z gable
+  parts.dark.push(box(0.5, 0.6, 0.06).translate(-w * 0.16, wallH + roofH * 0.42, d / 2 + 0.02));
   // windows on long sides
   const nw = 2 + ((rng() * 2) | 0);
+  const shutters = rng() < 0.6; // r2: hung shutters on most cottages
   for (let k = 0; k < nw; k++) {
     const zz = -d / 2 + (k + 0.5) * (d / nw);
     for (const side of [-1, 1]) {
@@ -354,6 +390,10 @@ function makeCottage(rng, buckets, wallBucket = 'plaster') {
       parts.wood.push(box(0.14, 1.06, 0.86).translate(side * (w / 2 + 0.05), 1.7, zz));
       parts.dark.push(box(0.06, 0.9, 0.7).translate(side * (w / 2 + 0.015), 1.7, zz));
       parts.stone.push(box(0.16, 0.09, 0.98).translate(side * (w / 2 + 0.06), 1.12, zz));
+      if (shutters && rng() < 0.85) {
+        parts.wood.push(box(0.05, 1.0, 0.30).translate(side * (w / 2 + 0.04), 1.7, zz - 0.43 - 0.16));
+        parts.wood.push(box(0.05, 1.0, 0.30).translate(side * (w / 2 + 0.04), 1.7, zz + 0.43 + 0.16));
+      }
     }
   }
   mergeInto(buckets, parts);
@@ -370,13 +410,46 @@ function makeBarn(rng, buckets) {
   const slope = Math.hypot(w / 2 + over, roofH + 0.1);
   const ang = Math.atan2(roofH + 0.1, w / 2 + over);
   for (const side of [-1, 1]) {
-    const slab = box(slope + 0.15, 0.14, d + over * 2, 0.35);
+    const slab = slabBox(slope + 0.15, 0.14, d + over * 2, 0.35); // r2: real tile rows
     slab.rotateZ(side * ang);
     slab.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + 0.07, 0);
     parts.roof.push(slab);
   }
   parts.dark.push(box(2.6, 2.9, 0.10).translate(0, 1.45, d / 2 + 0.08)); // big barn door
   parts.wood.push(box(2.9, 3.1, 0.06).translate(0, 1.55, d / 2 + 0.02));
+  // r2 terrain_environment: the barn was a featureless dark box (critique).
+  // Ridge cap, vertical batten relief on both long walls, cross-braced door
+  // planks, a hayloft door + hoist beam in the gable, and small side windows.
+  parts.roof.push(slabBox(0.36, 0.14, d + over * 2, 0.5).translate(0, wallH + roofH + 0.05, 0));
+  {
+    const nBat = Math.max(6, Math.round(d / 1.15));
+    for (let bIdx = 0; bIdx < nBat; bIdx++) {
+      const zz = -d / 2 + (bIdx + 0.5) * (d / nBat);
+      for (const side of [-1, 1]) {
+        const bat = box(0.07, wallH - 0.35, 0.13, 1.4);
+        jitterUV(bat, rng);
+        parts.wood.push(bat.translate(side * (w / 2 + 0.035), wallH / 2 - 0.1, zz));
+      }
+    }
+    // diagonal door cross-brace plank
+    const brace = box(0.16, 3.4, 0.05, 1.2);
+    brace.rotateZ(0.72);
+    parts.wood.push(brace.translate(0, 1.45, d / 2 + 0.15));
+    // hayloft door + hoist beam high in the +z gable
+    parts.dark.push(box(1.05, 1.15, 0.08).translate(0, wallH + roofH * 0.42, d / 2 + 0.04));
+    parts.wood.push(box(1.25, 0.10, 0.10).translate(0, wallH + roofH * 0.42 + 0.68, d / 2 + 0.04));
+    const hoist = box(0.10, 0.10, 0.85, 1.2);
+    hoist.translate(0, wallH + roofH * 0.78, d / 2 + 0.35);
+    parts.wood.push(hoist);
+    // small side windows under the eaves
+    for (const side of [-1, 1]) {
+      for (const zz of [-d * 0.28, d * 0.28]) {
+        if (rng() < 0.25) continue;
+        parts.dark.push(box(0.06, 0.5, 0.62).translate(side * (w / 2 + 0.02), wallH - 0.75, zz));
+        parts.wood.push(box(0.10, 0.08, 0.74).translate(side * (w / 2 + 0.04), wallH - 1.06, zz));
+      }
+    }
+  }
   mergeInto(buckets, parts);
   return { w: w + 0.3, d: d + 0.3, h: wallH + roofH };
 }
@@ -442,7 +515,7 @@ function makeAdobe(rng, buckets) {
   parts.plaster.push(box(w, 0.45, 0.18).translate(0, wallH + 0.22, -d / 2 + 0.09));
   parts.plaster.push(box(0.18, 0.45, d - 0.36).translate(w / 2 - 0.09, wallH + 0.22, 0));
   parts.plaster.push(box(0.18, 0.45, d - 0.36).translate(-w / 2 + 0.09, wallH + 0.22, 0));
-  parts.wood.push(box(w - 0.2, 0.1, d - 0.2, 0.35).translate(0, wallH + 0.02, 0)); // roof deck
+  parts.wood.push(slabBox(w - 0.2, 0.1, d - 0.2, 0.35).translate(0, wallH + 0.02, 0)); // roof deck (r2: slabBox)
   // viga beam ends over the door face
   const nBeam = Math.max(3, (w / 0.9) | 0);
   for (let k = 0; k < nBeam; k++) {
@@ -486,7 +559,7 @@ function makeRowhouse(rng, buckets, wallBucket = 'plaster', dims = null) {
   const slope = Math.hypot(w / 2 + over, roofH + 0.1);
   const ang = Math.atan2(roofH + 0.1, w / 2 + over);
   for (const side of [-1, 1]) {
-    const slab = box(slope + 0.15, 0.13, d + over * 2, 0.35);
+    const slab = slabBox(slope + 0.15, 0.13, d + over * 2, 0.35); // r2: real tile rows
     slab.rotateZ(side * ang);
     slab.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + 0.06, 0);
     parts.roof.push(slab);
@@ -526,7 +599,7 @@ function makeRowhouse(rng, buckets, wallBucket = 'plaster', dims = null) {
       parts.dark.push(box(0.07, 0.60, 0.52).translate(dx + dside * 0.50, yc + 0.14, dz));
       parts.wood.push(box(0.05, 0.72, 0.10).translate(dx + dside * 0.51, yc + 0.14, dz - 0.31));
       parts.wood.push(box(0.05, 0.72, 0.10).translate(dx + dside * 0.51, yc + 0.14, dz + 0.31));
-      const cap = box(1.24, 0.09, 1.04, 0.4);
+      const cap = slabBox(1.24, 0.09, 1.04, 0.4);
       cap.rotateZ(dside * ang * 0.5);
       cap.translate(dx - dside * 0.06, yc + 0.72, dz);
       parts.roof.push(cap);
@@ -1043,6 +1116,109 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
         buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot });
         placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
         bi++;
+      }
+    }
+  }
+
+  // --- yard set-dressing (r2 terrain_environment): woodpiles, barrels and
+  // short garden-fence runs around every free-standing building. The village
+  // read as boxes dropped on pristine lawn — lived-in clutter grounds them.
+  if (P.yardClutter ?? !P.streetRows) {
+    const yrng = mulberry32(seed + 808);
+    function yardSpot(pb, rMin, rMax) {
+      for (let t = 0; t < 8; t++) {
+        const a = yrng() * Math.PI * 2, r = pb.rr + rMin + yrng() * (rMax - rMin);
+        const x = pb.x + Math.cos(a) * r, z = pb.z + Math.sin(a) * r;
+        if (heightField._roadDist(x, z) < 4.5 || noVeg(x, z)) continue;
+        if (heightField.getNormalAt(x, z).y < 0.9) continue;
+        let clear = true;
+        for (const ob of placedB) {
+          if (ob !== pb && Math.hypot(x - ob.x, z - ob.z) < ob.rr) { clear = false; break; }
+        }
+        if (clear) return [x, z];
+      }
+      return null;
+    }
+    for (const pb of placedB) {
+      // woodpile: stacked split logs against the yard
+      if (yrng() < 0.6) {
+        const spot = yardSpot(pb, 1.2, 3.4);
+        if (spot) {
+          const [x, z] = spot;
+          const y = heightField.getHeightAt(x, z);
+          const yaw = yrng() * Math.PI * 2;
+          const pxd = Math.sin(yaw), pzd = Math.cos(yaw); // stack axis (perp to logs)
+          const rows = [[5, 0.14], [4, 0.40], [2, 0.64]];
+          for (const [nLog, ly] of rows) {
+            for (let li = 0; li < nLog; li++) {
+              const off = (li - (nLog - 1) / 2) * 0.29;
+              const log = new THREE.CylinderGeometry(0.125, 0.135, 1.7 + yrng() * 0.3, 6, 1);
+              scaleUV(log, 0.8, 0.8);
+              jitterUV(log, yrng);
+              log.rotateZ(Math.PI / 2); // axis -> world X
+              log.rotateY(yaw);
+              log.translate(x + pxd * off, y + ly, z + pzd * off);
+              buckets.wood.push(log);
+            }
+          }
+        }
+      }
+      // barrels by the wall
+      if (yrng() < 0.7) {
+        const spot = yardSpot(pb, 0.8, 2.6);
+        if (spot) {
+          const n = 1 + ((yrng() * 2) | 0);
+          for (let bIdx = 0; bIdx < n; bIdx++) {
+            const x = spot[0] + (yrng() - 0.5) * 1.4, z = spot[1] + (yrng() - 0.5) * 1.4;
+            const y = heightField.getHeightAt(x, z);
+            const tipped = yrng() < 0.25;
+            const bar = new THREE.CylinderGeometry(0.30, 0.33, 0.88, 9, 1);
+            scaleUV(bar, 1.2, 0.6);
+            jitterUV(bar, yrng);
+            if (tipped) { bar.rotateX(Math.PI / 2); bar.rotateY(yrng() * Math.PI); bar.translate(x, y + 0.32, z); }
+            else bar.translate(x, y + 0.40, z);
+            buckets.wood.push(bar);
+            for (const hy of tipped ? [] : [0.18, 0.62]) {
+              const hoop = new THREE.CylinderGeometry(0.325, 0.325, 0.05, 9, 1, true);
+              scaleUV(hoop, 1, 1);
+              hoop.translate(x, y + hy, z);
+              buckets.dark.push(hoop);
+            }
+          }
+        }
+      }
+      // short garden-fence run along one side of the yard
+      if (yrng() < 0.5) {
+        const spot = yardSpot(pb, 2.2, 4.2);
+        if (spot) {
+          const [x0f, z0f] = spot;
+          const yaw = yrng() * Math.PI * 2;
+          const tx = Math.cos(yaw), tz = Math.sin(yaw);
+          const len = 4.5 + yrng() * 3;
+          const nPost = Math.max(3, Math.round(len / 1.4));
+          let prev = null;
+          for (let k = 0; k <= nPost; k++) {
+            const x = x0f + tx * (len * k / nPost - len / 2), z = z0f + tz * (len * k / nPost - len / 2);
+            if (heightField._roadDist(x, z) < 4 || noVeg(x, z)) { prev = null; continue; }
+            const y = heightField.getHeightAt(x, z);
+            const post = box(0.09, 0.95, 0.09, 1.4);
+            post.rotateY(yrng() * 0.2);
+            post.translate(x, y + 0.42, z);
+            buckets.wood.push(post);
+            if (prev) {
+              const mx = (x + prev[0]) / 2, mz = (z + prev[2]) / 2, my = (y + prev[1]) / 2;
+              const rl = Math.hypot(x - prev[0], z - prev[2]);
+              for (const rh of [0.36, 0.74]) {
+                const rail = box(rl * 1.03, 0.07, 0.06, 1.4);
+                rail.rotateZ(Math.atan2(prev[1] - y, rl) * 0.9);
+                rail.rotateY(-Math.atan2(z - prev[2], x - prev[0]));
+                rail.translate(mx, my + rh, mz);
+                buckets.wood.push(rail);
+              }
+            }
+            prev = [x, y, z];
+          }
+        }
       }
     }
   }
@@ -1608,7 +1784,7 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
             const px = cx - tz * side * 5.05, pz = cz + tx * side * 5.05;
             if (distToOtherRoads(px, pz, ri) < 6.8) continue; // open corners
             const y = heightField.getHeightAt(px, pz);
-            const g = box(segLen, 0.26, 0.34, 1.3);
+            const g = slabBox(segLen, 0.26, 0.34, 1.3);
             jitterUV(g, rng);
             g.rotateY(yaw);
             g.translate(px, y + 0.06, pz);
@@ -1621,7 +1797,7 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
             const sx1 = ax + dx * tt1 - tz * side * 6.35, sz1 = az + dz * tt1 + tx * side * 6.35;
             const h0 = heightField.getHeightAt(sx0, sz0);
             const h1 = heightField.getHeightAt(sx1, sz1);
-            const walk = box(segLen, 0.16, 2.25, 0.9);
+            const walk = slabBox(segLen, 0.16, 2.25, 0.9); // r2: un-stretched paving
             jitterUV(walk, rng);
             walk.rotateZ(Math.atan2(h1 - h0, segLen));
             walk.rotateY(yaw);
@@ -1745,7 +1921,8 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
     }
     const dirtDiscs = [];
     for (const b of buildingFeatures) {
-      dirtDiscs.push(conformedDisc(b.x, b.z, Math.max(b.w, b.d) * 1.05, [0.05, 0.05, 0.05, 0.04]));
+      // r2: 1.05 -> 1.2 — a wider worn-earth apron grounds the building
+      dirtDiscs.push(conformedDisc(b.x, b.z, Math.max(b.w, b.d) * 1.2, [0.05, 0.05, 0.05, 0.04]));
     }
     addDecalMesh(dirtDiscs, makeDecalTexture('dirt'));
     // craters: scattered shell holes with a raised rim mound. Town maps
@@ -1796,6 +1973,11 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
     group.add(im);
     if (name === 'pole') { poleIM = im; im.frustumCulled = false; }
   }
+
+  // content_breadth r2: map-specific set dressing (Frosthollow lake basin —
+  // shoreline reeds / refrozen pressure ridges / rowboat / jetty). Soft
+  // dressing only: pushes into the existing material buckets, no colliders.
+  dressMapExtras({ mapId, L, heightField, rng, buckets });
 
   // --- merge buckets into one mesh per material ---
   for (const key of Object.keys(buckets)) {

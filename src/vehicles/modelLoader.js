@@ -48,7 +48,7 @@ import { clone as cloneWithSkeleton } from 'three/examples/jsm/utils/SkeletonUti
 // assets (Newc42 octagonal road wheels shaded as hard 45° facets — "octagon
 // wheels" critique). 47° crease smooths wheel rims/cylinders while keeping
 // hull plate corners (>=60°) sharp.
-import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { toCreasedNormals, mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 // CAMO PATTERN SECTION: sourced models get the active camo pattern composited
 // over their baked maps (materials.js owns pattern resolution + live
 // re-painting on garage/biome switches); procedural add-on parts wear the
@@ -59,6 +59,27 @@ import {
 } from './materials.js';
 
 const _loader = new GLTFLoader();
+// Resilient texture path (killcam_shotinfo r2, harness-reliability critical):
+// under parallel-probe memory pressure createImageBitmap fails on the
+// loader's internal blob: URLs — 38x "THREE.GLTFLoader: Couldn't load
+// texture" console errors, then the tab dies. Decode via HTMLImageElement
+// instead, and never reject: retry once next frame, then resolve a neutral
+// 1x1 pixel so GLTFLoader's internal console.error path is unreachable and
+// the parse always completes.
+const FALLBACK_PX =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABXvMqOgAAAABJRU5ErkJggg==';
+_loader.register((parser) => {
+  const robust = new THREE.TextureLoader(parser.options.manager);
+  robust.setCrossOrigin(parser.options.crossOrigin);
+  const origLoad = robust.load.bind(robust);
+  robust.load = (url, onLoad, onProgress, onError) =>
+    origLoad(url, onLoad, onProgress, () => {
+      requestAnimationFrame(() => origLoad(url, onLoad, undefined,
+        () => origLoad(FALLBACK_PX, onLoad, undefined, onError)));
+    });
+  parser.textureLoader = robust;
+  return { name: 'COT_resilient_textures' };
+});
 const _cache = new Map();    // url -> Promise<GLTF>
 const _resolved = new Map(); // url -> GLTF (parse finished; sync path usable)
 
@@ -88,6 +109,38 @@ if (typeof window !== 'undefined') window.__GLB_STATS = _stats;
 const _idleQueue = [];
 let _idlePumpScheduled = false;
 
+// tank_models r2 PRIORITY LANE (critic major: selecting the M1A1 in the live
+// garage showed the placeholder box for 15-45 s): on garage open ~20 thumbnail
+// GLB jobs (parse + swap) fill the idle queue, and the pedestal hero's jobs
+// queued FIFO behind all of them. Swap contexts register here the moment
+// applyGlbModel is called; any queued job whose tag matches a pending swap
+// whose tank root is attached to the LIVE scene (the pedestal — thumbs build
+// in an offscreen booth scene) jumps the queue. Garage has no combat frames
+// to protect, so hot jobs also pump on a tight 40 ms spacing.
+const _pendingSwapCtx = new Set();
+
+function isMainSceneCtx(ctx) {
+  try {
+    const D = typeof window !== 'undefined' ? window.__DEBUG : null;
+    if (!D || !D.scene) return false;
+    let root = ctx.hullG;
+    while (root.parent) root = root.parent;
+    return root === D.scene;
+  } catch (_) { return false; }
+}
+
+/** Queue index of the highest-priority runnable job (0 when no hot job). */
+function nextJobIndex() {
+  if (_idleQueue.length < 2 || !_pendingSwapCtx.size) return 0;
+  let hot = null;
+  for (const ctx of _pendingSwapCtx) {
+    if (isMainSceneCtx(ctx)) { (hot || (hot = new Set())).add(ctx.cfg.path); }
+  }
+  if (!hot) return 0;
+  const i = _idleQueue.findIndex((j) => j.tag && hot.has(j.tag));
+  return i > 0 ? i : 0;
+}
+
 // Battle STAGING window: startBattle resets game.timeS to 0 and plays a 3 s
 // opening flyby before the player has control. Draining the GLB queue inside
 // the first BATTLE_STAGE_GRACE_S seconds lands every roster model during the
@@ -103,12 +156,23 @@ function inBattle() {
   } catch (_) { return false; }
 }
 
+// killcam_shotinfo r2: shot-capture pause — the harness stages its biggest
+// worlds exactly when a queued GLB parse would add decode pressure; main.js
+// pauses the queue for the whole capture session.
+let _queuePaused = false;
+/** @param {boolean} v pause (true) / resume (false) the GLB idle queue */
+export function pauseIdleQueue(v) {
+  _queuePaused = !!v;
+  if (!_queuePaused) scheduleIdlePump();
+}
+
 function pumpIdle() {
   _idlePumpScheduled = false;
+  if (_queuePaused) return; // shot capture in flight — resume via pauseIdleQueue(false)
   if (!_idleQueue.length) return;
   let ran = false;
   if (!inBattle()) {
-    const job = _idleQueue.shift();
+    const job = _idleQueue.splice(nextJobIndex(), 1)[0];
     ran = true;
     try { job.res(job.fn()); } catch (e) { job.rej(e); }
   }
@@ -125,16 +189,19 @@ function scheduleIdlePump(afterJob = false) {
   // spreads over ~3 s of end-screen/garage time instead of one freeze).
   // Inside the battle staging window drain fast (the flyby hides the work);
   // everywhere else keep the 300 ms spacing that guarantees rendered frames
-  // between jobs.
-  if (afterJob) setTimeout(pumpIdle, inBattle() ? 300 : 120);
+  // between jobs. tank_models r2: when the NEXT job is a priority-lane job
+  // (garage pedestal hero), pump on a tight spacing — the player is staring
+  // at a hidden/placeholder pedestal and there are no combat frames to guard.
+  if (afterJob) setTimeout(pumpIdle, inBattle() ? 300 : (nextJobIndex() > 0 ? 40 : 120));
   else if (typeof requestIdleCallback === 'function') requestIdleCallback(pumpIdle, { timeout: 350 });
   else setTimeout(pumpIdle, 80);
 }
 
-/** Run `fn` in the next out-of-battle idle slot (one job per slot). */
-function idleGate(fn) {
+/** Run `fn` in the next out-of-battle idle slot (one job per slot).
+ * `tag` (GLB url) lets the garage priority lane reorder queued jobs. */
+function idleGate(fn, tag = null) {
   return new Promise((res, rej) => {
-    _idleQueue.push({ fn, res, rej });
+    _idleQueue.push({ fn, res, rej, tag });
     scheduleIdlePump();
   });
 }
@@ -180,7 +247,18 @@ function loadGltf(url) {
       try {
         const g = await idleGate(() => new Promise((res, rej) => {
           _loader.parse(buf, url.slice(0, url.lastIndexOf('/') + 1), res, rej);
-        }));
+        }), url);
+        // PERF (performance_budget r2): the cache must retain gltf.scene (the
+        // clone source for later createTank calls) — but gltf.parser hangs on
+        // to the decoded JSON tree, its own per-load caches and associations,
+        // none of which any swap path reads (applySwap only touches .scene).
+        // With 5-7 GLB vehicles resident per battle this parse scaffolding was
+        // a measurable slice of the +140 MB retained-set growth the r2 heap
+        // gate flagged. The fetch ArrayBuffer (buf) is dropped by scope end;
+        // geometry attribute views keep the GLB body alive — that part IS the
+        // live mesh data.
+        g.parser = null;
+        g.userData = {};
         _resolved.set(url, g);
         _stats.settled++;
         return g;
@@ -505,6 +583,17 @@ function applyModelFixes(scene, turret, spec) {
     addPart(turret, mat, new THREE.BoxGeometry(0.60, 0.52, 0.40), bx, by, 3.14);
     addPart(turret, mat, new THREE.BoxGeometry(0.64, 0.28, 0.07), bx, by - 0.16, 3.31); // brow
     addPart(turret, dark, new THREE.BoxGeometry(0.46, 0.05, 0.18), bx, by - 0.26, 3.16); // window
+    // r2 (critic minor: roof furniture "flat-shaded hard-edged lego with no
+    // panel/bolt detail"): panel split seams + hinge blocks + corner bolts on
+    // the doghouse so the box reads as an assembled armored housing.
+    addPart(turret, dark, new THREE.BoxGeometry(0.62, 0.015, 0.015), bx, by, 3.26);       // lid seam
+    addPart(turret, dark, new THREE.BoxGeometry(0.015, 0.54, 0.015), bx - 0.20, by, 3.26); // panel seam
+    addPart(turret, mat, new THREE.BoxGeometry(0.10, 0.06, 0.05), bx + 0.18, by + 0.24, 3.30); // hinge
+    addPart(turret, mat, new THREE.BoxGeometry(0.10, 0.06, 0.05), bx - 0.18, by + 0.24, 3.30);
+    for (const [ox, oy] of [[-0.26, -0.20], [0.26, -0.20], [-0.26, 0.20], [0.26, 0.20]]) {
+      addPart(turret, dark, new THREE.CylinderGeometry(0.016, 0.016, 0.03, 6)
+        .rotateX(Math.PI / 2), bx + ox, by + oy, 3.345);                        // corner bolts
+    }
     // CITV pedestal + rotating head forward-left (hunter-killer sight)
     const cx = -0.85, cy = -0.90;
     addPart(turret, mat, new THREE.CylinderGeometry(0.16, 0.19, 0.22, seg)
@@ -640,12 +729,13 @@ function applyModelFixes(scene, turret, spec) {
           }
         });
         const evacY = minY + 0.42 * (-2.7 - minY);   // ~42% back from the muzzle
-        addPart(gun, mat, new THREE.CylinderGeometry(0.205, 0.205, 0.60, seg), cx, evacY, cz);
-        addPart(gun, mat, new THREE.CylinderGeometry(0.205, 0.150, 0.17, seg), cx, evacY - 0.38, cz);
-        addPart(gun, mat, new THREE.CylinderGeometry(0.150, 0.205, 0.17, seg), cx, evacY + 0.38, cz);
-        // r5: MRS collar slimmed 0.175 -> 0.142 (~1.2x tube) — at 0.175 it
-        // read as a grenade launcher can on the barrel tip (critic minor)
-        addPart(gun, mat, new THREE.CylinderGeometry(0.142, 0.142, 0.11, seg), cx, minY + 0.30, cz); // MRS collar
+        // r2 (critic minor: "fat cylindrical collar reads oversized vs the
+        // real M256"): evacuator bulge trimmed 0.205 -> 0.19 (~1.3x tube,
+        // photo-matched) and the MRS collar slimmed to a near-flush ring.
+        addPart(gun, mat, new THREE.CylinderGeometry(0.19, 0.19, 0.58, seg), cx, evacY, cz);
+        addPart(gun, mat, new THREE.CylinderGeometry(0.19, 0.150, 0.16, seg), cx, evacY - 0.37, cz);
+        addPart(gun, mat, new THREE.CylinderGeometry(0.150, 0.19, 0.16, seg), cx, evacY + 0.37, cz);
+        addPart(gun, mat, new THREE.CylinderGeometry(0.132, 0.132, 0.10, seg), cx, minY + 0.30, cz); // MRS collar
       }
     }
   }
@@ -937,6 +1027,36 @@ function paintGlbGunTube(gun, spec) {
 }
 
 /**
+ * tank_models r2 — Abrams variant GLB kit fixes (m1a1 / m1a2_tusk), applied
+ * to the baked node tree BEFORE orientation/scale normalization. The baked
+ * add-on nodes live at scene level in a y-up/z-forward frame (hull kit) or
+ * stay raw z-up under TurretPivot/GunPivot (turret/gun kit) — verified by
+ * offline JSON-chunk probe (scratchpad glbdump.mjs).
+ *  - ARAT1/ARAT2 tiles (critic: "oversized bright-tan PYRAMID studs in a
+ *    perfect grid"): flattened to plate-like wedges (x = outward stud axis
+ *    compressed 70%) and grown along the skirt run so the two rows read as
+ *    near-continuous angled plate rows, not a stud grid. Their tint follows
+ *    the shared camo canvas (see the m1a2_tusk visual + FACTORY_OVERRIDE
+ *    change that pulls it onto the hull's woodland scheme).
+ *  - TUSK slat cage: baked ~0.5 m adrift BEHIND the hull rear plate (read as
+ *    a floating mesh slab) — pulled flush against the rear engine quarters.
+ *  - MRSCollar / BoreEvac (critic: "oversized beige cylinder cap on the
+ *    muzzle"): radially slimmed toward the M256's slim MRS-collar scale.
+ */
+function applyAbramsVariantFixes(scene, spec) {
+  const isTusk = spec.id === 'm1a2_tusk';
+  scene.traverse((o) => {
+    const n = o.name || '';
+    if (isTusk && /^ARAT1/.test(n)) o.scale.set(0.16, 1.30, 1.52);
+    else if (isTusk && /^ARAT2/.test(n)) o.scale.set(0.20, 1.20, 1.60);
+    else if (isTusk && /^Slat(Bar|Rail)/.test(n)) o.position.z += 0.44;
+    else if (isTusk && /^SlatMount/.test(n)) o.position.z += 0.44;
+    else if (/^MRSCollar/.test(n)) o.scale.set(0.74, 1, 0.74);
+    else if (/^BoreEvac/.test(n)) o.scale.set(0.86, 1, 0.86);
+  });
+}
+
+/**
  * COMMUNITY TANKS r10 cohesion surgery (runs after paintUntextured, before
  * the camo composite — replacement materials carry 'AddOn' names so
  * applyCamoToModel treats them as gear, not paint):
@@ -1079,6 +1199,49 @@ function applyCommunityFixes(scene, spec, gun) {
     gun.scale.x *= 1.5;
     gun.scale.y *= 1.5;
     gun.updateMatrixWorld(true);
+  } else if (spec.id === 't90a') {
+    // tank_models r2 (critic: "running gear, wheels and skirts rendered fully
+    // tan/beige against a green upper hull with a sawtooth boundary"): the
+    // offline bake fused the SIDE SKIRTS into the 'tracks_running_gear' node,
+    // so the whole band — skirts included — took the dark/dusty gear steel.
+    // Real T-90A skirts are hull-painted. Split the gear mesh's triangles:
+    // everything above the wheel line rejoins the live camo canvas (skirts +
+    // covered top run), wheels/track stay gear steel.
+    const camoSkirt = new THREE.MeshStandardMaterial({
+      name: 'AddOnCamoHullSkirt', map: getSharedCamoTexture(spec),
+      roughness: 0.86, metalness: 0.08,
+      roughnessMap: getSharedRoughnessTexture(spec),
+      vertexColors: true,
+      envMapIntensity: 0.55,
+    });
+    camoSkirt.onBeforeCompile = vehicleAmbientFloorHook;
+    camoSkirt.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    scene.traverse((o) => {
+      if (!o.isMesh || !o.geometry || !/tracks_running_gear/i.test(o.name || '')) return;
+      const pos = o.geometry.attributes.position;
+      if (!pos) return;
+      boxUVRaw(o.geometry, 0.34);
+      splitTrianglesToGroups(o,
+        (i) => pos.getY(i) > 0.84 && Math.abs(pos.getX(i)) > 1.35, camoSkirt);
+    });
+    // Kontakt-5 clam-shell wedges on the turret cheeks — "the single most
+    // identifying T-90A feature" (critic). The decimated asset's cheek wedges
+    // read flat; stand a proud angled plate pair flanking the gun, painted on
+    // the shared camo canvas. TurretPivot-local frame is y-up/z-forward
+    // (offline probe: TurretMesh spans y -0.05..1.52, z -2.54..2.24).
+    const turretP = findNode(scene, /^TurretPivot$/i);
+    if (turretP) {
+      const mat = addOnMaterial(spec);
+      for (const sgn of [-1, 1]) {
+        const g = new THREE.BoxGeometry(0.30, 0.40, 0.86);
+        addOnUV(g);
+        const m = new THREE.Mesh(g, mat);
+        m.position.set(sgn * 0.52, 0.42, 1.42);
+        m.rotation.set(-0.14, sgn * 0.95, sgn * 0.10);
+        m.castShadow = m.receiveShadow = true;
+        turretP.add(m);
+      }
+    }
   } else if (spec.id === 'is7') {
     // tank_models r1 (critic: "IS-7 is one coat of waxy monochrome green
     // including its tracks and wheels"): the print asset fuses the whole
@@ -1188,6 +1351,88 @@ function upgradeMaterials(root) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// PERF (performance_budget r2): cascade shadow-proxy LODs for GLB vehicles.
+//
+// Measured on HEAD (tools/tmp-perf-diag.mjs + A/B lever probe, m1a2/verdant
+// 60 s battle): the swapped GLB fleet carries 25-83 shadow-casting meshes per
+// vehicle (upgradeMaterials set castShadow=true on EVERY sub-mesh, including
+// each signature-kit add-on part), and each caster costs one draw per CSM
+// cascade it intersects. Turning tank casters off measured calls median
+// 569 -> 271 and worst-frame 991 -> 303, triangles median -0.96 M — tank
+// shadow passes alone were ~55% of all draw calls and the entire worst-frame
+// budget breach (probe max 1095 vs the 900 gate).
+//
+// The AAA fix is a shadow proxy: the procedural stand-in meshes that the swap
+// just hid ARE a spec-accurate low-poly version of the vehicle — merge their
+// casting geometry into ONE position-only mesh per articulation group (hull /
+// turret / gun so the proxy tracks yaw + elevation), let those cast, and turn
+// every GLB sub-mesh's castShadow off. Shadow silhouettes stay (same spec
+// dimensions), draws per tank drop from ~25-83 x cascades to 3 x cascades.
+// The proxy wears a colorWrite:false depthWrite:false material: three's
+// shadow pass only respects object.visible + layers vs the MAIN camera
+// (WebGLShadowMap.renderObject), so a shadow-only mesh must stay visible and
+// simply write nothing in the color pass (3 null draws per vehicle).
+const _shadowProxyMat = new THREE.MeshBasicMaterial({
+  name: 'ShadowProxy', colorWrite: false, depthWrite: false,
+});
+function buildShadowProxy(g, label) {
+  const sources = [];
+  g.updateWorldMatrix(true, false);
+  const inv = new THREE.Matrix4().copy(g.matrixWorld).invert();
+  const collect = (node) => {
+    if (node.isLOD) {
+      // highest-detail level only — the proxy is already the LOD
+      if (node.levels && node.levels[0] && node.levels[0].object) collect(node.levels[0].object);
+      return;
+    }
+    if (node.isMesh && !node.isInstancedMesh && node.castShadow && node.geometry &&
+        node.geometry.attributes && node.geometry.attributes.position &&
+        node.geometry.attributes.position.count >= 12) {
+      sources.push(node);
+    }
+    for (const c of node.children) collect(c);
+  };
+  for (const child of g.children) {
+    // only the procedural stand-ins the swap just hid
+    if (child.visible === false && (child.isMesh || child.isLOD || child.isInstancedMesh)) collect(child);
+  }
+  if (!sources.length) return null;
+  const geos = [];
+  for (const m of sources) {
+    m.updateWorldMatrix(true, false);
+    // depth-only pass: position (+index) is all a shadow map samples
+    let geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', m.geometry.attributes.position.clone());
+    if (m.geometry.index) geo.setIndex(m.geometry.index.clone());
+    geo = geo.toNonIndexed ? (geo.index ? geo.toNonIndexed() : geo) : geo;
+    geo.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld));
+    geos.push(geo);
+  }
+  const merged = geos.length === 1 ? geos[0] : mergeGeometries(geos, false);
+  if (!merged) return null;
+  const proxy = new THREE.Mesh(merged, _shadowProxyMat);
+  proxy.name = `shadowProxy_${label}`;
+  proxy.castShadow = true;
+  proxy.receiveShadow = false;
+  proxy.frustumCulled = true;
+  // shadow-only: must never intercept aim/LOS/picking Raycasters — the
+  // procedural silhouette overhangs the GLB hull in places
+  proxy.raycast = () => {};
+  g.add(proxy);
+  return proxy;
+}
+
+/** Effective-visibility traverse: skip subtrees hidden by the swap sweep. */
+function visibleMeshes(root, fn) {
+  const walk = (node) => {
+    if (node.visible === false) return;
+    if (node.isMesh || node.isInstancedMesh) fn(node);
+    for (const c of node.children) walk(c);
+  };
+  walk(root);
+}
+
 /** Core swap, fully synchronous once the parsed GLTF is in hand. */
 function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
   const scene = cloneWithSkeleton(gltf.scene);
@@ -1212,6 +1457,9 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
 
   // ---- fidelity surgery in the raw asset frame (before orient/scale) ----
   if (spec.id === 'm1a2') applyModelFixes(scene, turret, spec);
+  // tank_models r2: variant GLB kit fixes (ARAT flatten, slat cage seat,
+  // muzzle collar slim) — see applyAbramsVariantFixes
+  if (spec.id === 'm1a1' || spec.id === 'm1a2_tusk') applyAbramsVariantFixes(scene, spec);
 
   // Skinned assets (recon_tank bones, quaternius track rig): bone-driven
   // verts move outside the mesh's static bounds — never frustum-cull them.
@@ -1243,6 +1491,23 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
   scene.position.x = -(hullBB.min.x + hullBB.max.x) / 2 * s;  // center in plan
   scene.position.z = -(hullBB.min.z + hullBB.max.z) / 2 * s;
   scene.updateMatrixWorld(true);
+
+  // tank_models r2 (critic minor: the buh Leopard 2A6's "L/55 should overhang
+  // dramatically" but reads closer to L/44): measure the barrel reach from the
+  // authored trunnion origin in the normalized frame and stretch the gun node
+  // along its bore when it lands short of the spec's 6.6 m Rh-120 L/55. The
+  // authored 'gun' node carries an identity rotation (offline probe), so its
+  // local z IS the bore axis after the yaw normalization above.
+  if (spec.id === 'leo2a6' && gun) {
+    const gb = bboxExcluding(gun, null);
+    const go = new THREE.Vector3().setFromMatrixPosition(gun.matrixWorld);
+    const reach = gb.max.z - go.z;
+    const want = spec.armor.gunBarrel.lengthM;
+    if (reach > 2 && reach < want * 0.97) {
+      gun.scale.z *= want / reach;
+      scene.updateMatrixWorld(true);
+    }
+  }
 
   // ---- COMMUNITY TANKS: derive articulation pivots from the asset ---------
   // Computed in the scene's normalized frame (== tank-root local: hullG and
@@ -1405,6 +1670,26 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
   // gear (tankFactory setBroken repair path) never resurrect the hidden
   // stand-in meshes beside the GLB.
   hullG.userData.__glbSwapped = true;
+
+  // PERF (performance_budget r2): shadow-proxy LODs — see buildShadowProxy.
+  // Order matters: proxies are built FROM the just-hidden procedural casters,
+  // then every still-visible (= GLB + kit) mesh stops casting. The proxies are
+  // idempotent per group (repeat swaps on the same visual bail on the flag).
+  if (!hullG.userData.__shadowProxied) {
+    hullG.userData.__shadowProxied = true;
+    buildShadowProxy(hullG, 'hull');
+    buildShadowProxy(turretG, 'turret');
+    buildShadowProxy(recoilG, 'gun');
+    if (gunG) buildShadowProxy(gunG, 'mantlet');
+    // hullG and turretG are SIBLINGS under the tank root (tankFactory
+    // articulation layout) — sweep the whole root or the turret-side GLB
+    // subtree (where most signature-kit addPart meshes live) keeps casting.
+    const sweepRoot = (hullG.parent && !hullG.parent.isScene) ? hullG.parent : hullG;
+    visibleMeshes(sweepRoot, (o) => {
+      if (o.name && o.name.startsWith('shadowProxy_')) return;
+      o.castShadow = false;
+    });
+  }
   return true;
 }
 
@@ -1439,20 +1724,40 @@ export function applyGlbModelSync(ctx) {
  * @returns {Promise<boolean>}
  */
 export async function applyGlbModel(ctx) {
-  const gltf = await loadGltf(ctx.cfg.path);
-  // PERF (performance_budget r4): the swap itself (skeleton clone, triangle
-  // surgery, creased normals, camo composite) is also a main-thread chunk —
-  // run it through the same battle-safe idle gate, then pre-upload textures
-  // and compile programs in the same slot so the next frame binds nothing new.
-  return idleGate(() => {
-    // The visual may have been evicted/disposed while the job waited (battle
-    // roster change, thumbs booth teardown): a detached tank root means the
-    // procedural stand-in is gone from the scene — skip the dead swap.
-    let root = ctx.hullG;
-    while (root.parent) root = root.parent;
-    if (!root.isScene) return false;
-    const ok = applySwap(gltf, ctx);
-    if (ok) warmSwappedModel(ctx);
-    return ok;
-  });
+  // tank_models r2: register the pending swap BEFORE the load so the priority
+  // lane can bump this tank's parse job the moment its root joins the live
+  // scene (garage pedestal selection vs the thumbs booth queue).
+  _pendingSwapCtx.add(ctx);
+  try {
+    const gltf = await loadGltf(ctx.cfg.path);
+    // PERF (performance_budget r4): the swap itself (skeleton clone, triangle
+    // surgery, creased normals, camo composite) is also a main-thread chunk —
+    // run it through the same battle-safe idle gate, then pre-upload textures
+    // and compile programs in the same slot so the next frame binds nothing new.
+    return await idleGate(() => {
+      // The visual may have been evicted/disposed while the job waited (battle
+      // roster change, thumbs booth teardown): a detached tank root means the
+      // procedural stand-in is gone from the scene — skip the dead swap.
+      let root = ctx.hullG;
+      while (root.parent) root = root.parent;
+      if (!root.isScene) return false;
+      const ok = applySwap(gltf, ctx);
+      if (ok) warmSwappedModel(ctx);
+      // tank_models r2 (critic major: pedestal placeholder/blank for 15-45 s):
+      // main.js hides the garage hero while its GLB loads, but its reveal poll
+      // waits for the WHOLE load queue to settle (~20 thumb GLBs) — the hero
+      // stayed hidden long after its own swap landed (probe: swap at t+8 s,
+      // reveal never before t+30 s). The swap is the authoritative "this
+      // tank's real model is on stage" moment: re-show the tank root here.
+      // Battle spotting re-asserts visibility per frame, so this only ever
+      // matters on the garage pedestal.
+      if (ok && !inBattle()) {
+        const tankRoot = ctx.hullG.parent;
+        if (tankRoot && tankRoot.visible === false) tankRoot.visible = true;
+      }
+      return ok;
+    }, ctx.cfg.path);
+  } finally {
+    _pendingSwapCtx.delete(ctx);
+  }
 }

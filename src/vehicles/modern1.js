@@ -777,10 +777,16 @@ function buildMerkava4(P) {
   liftEye(P, 'hullDetail', -1.3, 1.52, -2.6);
   liftEye(P, 'hullDetail', 1.3, 1.52, -2.6);
   // skirts of overlapping angled slats + chunky mud flaps (§21.5)
+  // tank_models r2 (critic major: "real Merkava wears side skirts covering
+  // the gear" — they were ABSENT): the slat panels sat at x ±1.84 while the
+  // running gear's track outer edge runs to ±1.90 (xc 1.58 + 0.64/2), so the
+  // whole skirt run was buried INSIDE the track band and never rendered.
+  // Pushed outboard of the gear, deepened, with a dark rubber lower fringe.
   for (const s of [-1, 1]) {
     for (let k = 0; k < 7; k++) {
       const z = 2.95 - k * 1.02;
-      P.add('hull', box(0.045, 0.48, 1.06), s * (1.84 + (k % 2) * 0.025), 0.82, z, 0, s * 0.05, -s * 0.06);
+      P.add('hull', box(0.05, 0.56, 1.06), s * (1.955 + (k % 2) * 0.03), 0.86, z, 0, s * 0.05, -s * 0.06);
+      P.add('hullRubber', box(0.04, 0.14, 1.0), s * (1.955 + (k % 2) * 0.03), 0.54, z, 0, s * 0.05, -s * 0.06);
     }
     P.add('hullRubber', box(0.55, 0.4, 0.035), s * 1.5, 0.55, 3.62, -0.15, 0, 0);
     P.add('hullRubber', box(0.55, 0.36, 0.035), s * 1.5, 0.52, -3.66, 0.15, 0, 0);
