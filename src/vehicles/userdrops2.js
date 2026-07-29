@@ -30,7 +30,7 @@
 //             (static — no wheel spin, same compromise as the print packs).
 //   m1296   — M1296 Stryker Dragoon, USA tier-VII IFV; unmanned 30mm turret.
 //
-// QUARANTINE assets live under public/models/tanks/community/quarantine/ and
+// QUARANTINE assets live under public/models/tanks/community/ and
 // are listed in docs/ATTRIBUTION.md PERSONAL-USE/NC QUARANTINE — remove that
 // directory + section before any public distribution or commercialization of
 // this private project.
@@ -358,35 +358,35 @@ if (SHIP_USERDROP2_NEW) {
   MODEL_SOURCE.leo2a4 = {
     source: 'glb',
     glb: {
-      path: '/models/tanks/community/quarantine/leo2a4_bergman.glb',
+      path: '/models/tanks/community/leo2a4_bergman.glb',
       turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
     },
   };
   MODEL_SOURCE.bmp2 = {
     source: 'glb',
     glb: {
-      path: '/models/tanks/community/quarantine/bmp2_bergman.glb',
+      path: '/models/tanks/community/bmp2_bergman.glb',
       turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
     },
   };
   MODEL_SOURCE.bmp1 = {
     source: 'glb',
     glb: {
-      path: '/models/tanks/community/quarantine/bmp1_bergman.glb',
+      path: '/models/tanks/community/bmp1_bergman.glb',
       turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
     },
   };
   MODEL_SOURCE.m1128 = {
     source: 'glb',
     glb: {
-      path: '/models/tanks/community/quarantine/m1128_mgs_bergman.glb',
+      path: '/models/tanks/community/m1128_mgs_bergman.glb',
       turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
     },
   };
   MODEL_SOURCE.m1296 = {
     source: 'glb',
     glb: {
-      path: '/models/tanks/community/quarantine/m1296_dragoon_bergman.glb',
+      path: '/models/tanks/community/m1296_dragoon_bergman.glb',
       turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
     },
   };

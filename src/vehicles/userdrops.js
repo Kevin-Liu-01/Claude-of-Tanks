@@ -22,7 +22,7 @@
 //             as recon_tank; scaleToOverall because the gun bone carries no
 //             meshes of its own (barrel verts live in the skinned hull mesh).
 //
-// QUARANTINE assets live under public/models/tanks/community/quarantine/ and
+// QUARANTINE assets live under public/models/tanks/community/ and
 // are listed in the ATTRIBUTION.md PERSONAL-USE/NC QUARANTINE section —
 // remove that whole directory + section before any public distribution or
 // commercialization of this private project.
@@ -253,7 +253,7 @@ if (SHIP_QUARANTINE_USERDROPS) {
     // authored Turret node (offline restructure) with ring-center origin;
     // gun fused into the turret meshes — yaw only, pitch stays virtual
     glb: {
-      path: '/models/tanks/community/quarantine/ariete-dustymojito.glb',
+      path: '/models/tanks/community/ariete-dustymojito.glb',
       turretNode: '^Turret$', autoPivot: true,
     },
   };
@@ -263,7 +263,7 @@ if (SHIP_QUARANTINE_USERDROPS) {
     // recon_tank rule); bones carry no meshes, so the barrel cannot be excluded
     // from the scale bbox -> scaleToOverall
     glb: {
-      path: '/models/tanks/community/quarantine/type74-nullops.glb',
+      path: '/models/tanks/community/type74-nullops.glb',
       turretNode: '^Tower_9$', gunNode: '^Gun_7$', autoPivot: true,
       scaleToOverall: true,
     },
