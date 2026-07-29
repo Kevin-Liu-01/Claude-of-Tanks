@@ -71,3 +71,10 @@
 [quietcert 2026-07-29T19:12:07.971Z] waiting: load1=6.2 busyHeadless=0 interactiveGpu=82%
 [quietcert 2026-07-29T19:22:08.124Z] waiting: load1=8.4 busyHeadless=0 interactiveGpu=117.4%
 [quietcert 2026-07-29T19:32:08.283Z] waiting: load1=8.0 busyHeadless=0 interactiveGpu=113.7%
+[quietcert 2026-07-29T19:42:08.468Z] waiting: load1=18.9 busyHeadless=0 interactiveGpu=150.1%
+[quietcert 2026-07-29T19:52:08.605Z] waiting: load1=9.4 busyHeadless=0 interactiveGpu=117.2%
+[quietcert 2026-07-29T20:02:08.771Z] waiting: load1=10.8 busyHeadless=2 interactiveGpu=148.8%
+[quietcert 2026-07-29T20:12:08.913Z] waiting: load1=9.8 busyHeadless=0 interactiveGpu=125.1%
+[quietcert 2026-07-29T20:22:09.066Z] waiting: load1=10.2 busyHeadless=2 interactiveGpu=125.5%
+[quietcert 2026-07-29T20:32:09.229Z] waiting: load1=13.8 busyHeadless=2 interactiveGpu=161.1%
+[quietcert 2026-07-29T20:42:09.383Z] waiting: load1=8.0 busyHeadless=0 interactiveGpu=160.9%
