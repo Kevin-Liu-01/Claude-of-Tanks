@@ -83,13 +83,13 @@ Vehicles are a judged mix of **sourced CC-BY/CC0 models** (winners of
 side-by-side render-offs against our procedural builds) and **procedural
 constructions** built from real dimensions and armor layouts. Every sourced
 asset is credited in [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md); models under
-non-commercial or personal-use licenses are isolated in a clearly marked
-quarantine section and must be removed before any public distribution.
+non-commercial or personal-use licenses are used freely — this is a private,
+local, non-commercial project and nothing is distributed.
 
-No ripped game assets are used. During sourcing, 34 of 47 candidate uploads
-were rejected on provenance (War Thunder / Wargame / Arma / Call of Duty
-extractions, warez-site watermarks, and laundered re-exports), documented
-in the attribution file.
+No assets extracted from commercial games are used. During sourcing, many
+candidate uploads were declined on provenance (commercial-game extractions,
+warez-site watermarks, and laundered re-exports), documented in the
+attribution file.
 
 ## Maps
 
