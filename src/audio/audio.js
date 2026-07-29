@@ -919,6 +919,10 @@ export function createAudio() {
 
     for (let i = 0; i < tanks.length; i++) {
       const ent = tanks[i];
+      // Deferred battle staging leaves roster shells in game.tanks while the
+      // garage is open; they intentionally have no simulation state yet.
+      // Audio must ignore them until setupBattle supplies a world position.
+      if (!ent || !ent.state || !ent.state.pos) continue;
       const id = ent.id;
       const dead = !!(ent.combat && ent.combat.destroyed);
       const eng = engines.get(id);

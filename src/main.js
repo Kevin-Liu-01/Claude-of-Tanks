@@ -646,6 +646,53 @@ const rig = createCameraRig(camera, {
   getPlayer: () => game.player,
 });
 
+// GARAGE SHOWROOM CAMERA: auto-framed hero pose + damped drag orbit
+// (engine/cameraRig.js createShowroomOrbit). This adapter owns the on/off
+// latch, the canvas pointer wiring, and the per-frame pump — tick() runs it
+// in the garage phase only, so shot staging ('shot') and battle keep their
+// own camera owners. startBattle()/enterGarage() call stop()/start().
+const showroom = (() => {
+  const ctl = createShowroomOrbit(camera, rig, {
+    getSubject: () => (pedestalVisual ? pedestalVisual.root : null),
+    getStageRect: () => (garage.getStageRect ? garage.getStageRect() : null),
+    // the hand-tuned garageCameraPose() composition expressed as orbit
+    // angles: eye offset (+7.4, +1.2, +8.0) m from the pedestal look target
+    heroYawRad: Math.atan2(7.4, 8.0),
+    heroPitchRad: Math.atan2(1.2, Math.hypot(7.4, 8.0)),
+    floorY: () => GARAGE_POS.y,
+  });
+  let on = false;
+  let dragPtr = -1;
+  const el = renderer.domElement;
+  el.addEventListener('pointerdown', (e) => {
+    if (!on || e.button !== 0) return;
+    dragPtr = e.pointerId;
+    try { el.setPointerCapture(e.pointerId); } catch (_) { /* embedded panes */ }
+    ctl.beginDrag();
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (on && e.pointerId === dragPtr) ctl.drag(e.movementX || 0, e.movementY || 0);
+  });
+  const endDrag = (e) => { if (e.pointerId === dragPtr) { dragPtr = -1; ctl.endDrag(); } };
+  el.addEventListener('pointerup', endDrag);
+  el.addEventListener('pointercancel', endDrag);
+  el.addEventListener('wheel', (e) => {
+    if (!on) return;
+    ctl.wheel(e.deltaY < 0 ? 1 : -1);
+    e.preventDefault();
+  }, { passive: false });
+  return {
+    // reset() fails harmlessly while the pedestal is still empty — update()
+    // re-measures a few times a second and takes over once a hero exists.
+    start() { on = true; ctl.start(); },
+    stop() { on = false; dragPtr = -1; ctl.stop(); },
+    reset() { return ctl.reset(); },
+    update(dt) { if (on) ctl.update(dt); },
+    get active() { return on && ctl.active; },
+    debugState: () => ctl.debugState(),
+  };
+})();
+
 // Sniper close-quarters fill (gameplay_feel r1): with the camera at the gun
 // trunnion, aiming into nearby shadowed/backfacing geometry (a bush wall, a
 // building 5-10 m out) rendered a 100% black scope — zero feedback about the
@@ -922,8 +969,14 @@ input.onLockDenied(() => {
     'font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;' +
     'box-shadow:0 4px 18px rgba(0,0,0,.5);opacity:1;transition:opacity 1.2s ease;';
   document.body.appendChild(t);
-  setTimeout(() => { t.style.opacity = '0'; }, 4500);
-  setTimeout(() => { t.remove(); }, 5900);
+  // Fade timers start from the first frame that could PAINT the toast, not
+  // from append: battle entry can block the main thread for seconds building
+  // the world, and wall-clock timers would expire the toast the moment the
+  // screen unfroze (nextFrame's timer fallback covers rAF-starved panes).
+  nextFrame().then(() => {
+    setTimeout(() => { t.style.opacity = '0'; }, 4500);
+    setTimeout(() => { t.remove(); }, 5900);
+  });
 });
 
 // Accumulate wheel notches (clamped ±3) instead of a single ±1 latch: two
@@ -1533,12 +1586,14 @@ function scheduleRaf() {
   requestAnimationFrame((t) => { rafQueued = false; tick(t); });
 }
 setInterval(() => {
+  if (!bootComplete) return;
   const now = performance.now();
   if (now - lastTickWallMs > 200 && document.hasFocus() && document.hidden) {
     tick(now);
   }
 }, 100);
 function starvedPump() {
+  if (!bootComplete) return;
   if (!document.hidden) return; // visible pages tick on rAF as always
   const now = performance.now();
   if (now - lastTickWallMs > 100) tick(now);
@@ -1692,6 +1747,7 @@ function tick(nowMs) {
   // 3. camera rig (kill-cam drives the camera through rig.setExternalPose)
   if (inBattle && !paused && !kcActive) rig.update(dtR, camInput);
   if (kcActive) killcam.update(dtR);
+  if (game.phase === 'garage') showroom.update(dtR);
 
   // Battle-open flyby: hide the battle HUD while the rig owns the camera
   // (the rig itself shows the letterbox bars — cameraRig.setLetterbox).
@@ -2247,7 +2303,7 @@ const SHOT_VIEWS = {
     setPedestalTank('m1a2');
     garage.show('m1a2');
     if (garage.drainThumbs) garage.drainThumbs(); // portraits finished for the capture
-    garageCameraPose();
+    showroom.reset();
   },
   techtree() {
     // research screen over the garage: Germany tab shows both eras
@@ -2256,7 +2312,7 @@ const SHOT_VIEWS = {
     setPedestalTank('m1a2');
     garage.show('m1a2');
     if (garage.drainThumbs) garage.drainThumbs(); // portraits finished for the capture
-    garageCameraPose();
+    showroom.reset();
     garage.showTechTree('germany');
   },
   battlefield_desert() { mapEstablishingShot(); },
@@ -2368,6 +2424,7 @@ window.__SHOTS = {
     // PERF (performance_budget r1): shot recipes must never race the deferred
     // post-ready warm — run it now (idempotent, no-op once idle fired).
     warmCombatPipeline();
+    showroom.stop(); // reset drag/inertia before any deterministic shot recipe
     shotMode = true;
     // killcam_shotinfo r2 (harness reliability): keep the GLB idle queue
     // quiet during shot capture — a parse job landing inside the ~1.2 s
@@ -2417,7 +2474,8 @@ window.__SHOTS = {
 buildShellCards(getSpec(selectedSpecId));
 damagePanel.setTank(getSpec(selectedSpecId));
 garage.show(selectedSpecId);
-garageCameraPose();
+garageCameraPose(); // fallback pose until the orbit measures the hero
+showroom.start();
 setGarageSunTrim(true); // camo_spotting r2: boot lands on the garage screen
 hud.setMode('hidden');
 
@@ -2429,8 +2487,10 @@ if (world) {
   world.update(0, camera.position);
   updateDustAndSync();
 }
-lighting.update(true); // boot: render every cascade before first present
-post.render(SIM_DT);
+await bootStage('post', () => {
+  lighting.update(true); // boot: render every cascade before first present
+  post.render(SIM_DT);
+});
 // PERF (performance_budget r1): the combat-pipeline warms below are needed
 // before FIRST COMBAT, not before readiness — they used to run synchronously
 // ahead of __GAME_READY and billed ~120 ms straight onto load-to-ready.
@@ -2489,6 +2549,7 @@ function pumpStagedVisuals() {
 }
 _idle(pumpStagedVisuals, 2000);
 
+bootComplete = true;
 scheduleRaf();
 
 // ---------------------------------------------------------------------------
@@ -2887,6 +2948,7 @@ window.__DEBUG = {
   // SPOTTING WIRING: live SpottingSystem for headless concealment checks
   get spotting() { return game.spotting; },
   killcam,                             // KILL-CAM introspection (phase, cancel)
+  showroom,                            // garage orbit introspection (debugState)
   spawnKillShell: debugSpawnKillShell, // KILL-CAM: die on purpose
   // effects_combat r2: shot-mode latch exposed for headless drive tests
   get shotMode() { return shotMode; },
@@ -2895,4 +2957,11 @@ window.__DEBUG = {
   // captures can verify its weight without landing a live 400 m shot.
   forceHitMark: (bounced) => hud.forceHitMark(!!bounced),
 };
+await bootStage('ready', null);
+// ready() arms the "press any key" entry gate (auto-dismissed under
+// ?nosplash / webdriver). Deliberately not awaited: __GAME_READY means
+// "fully initialised" and must not depend on a keypress.
+boot.ready();
 window.__GAME_READY = true;
+window.__BOOT_TIMINGS = BOOT_TIMINGS;
+window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);

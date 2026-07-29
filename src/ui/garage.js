@@ -54,7 +54,7 @@ const SHELL_TYPE_COLOR = {
 
 const GARAGE_CSS = `
 .cot-garage{position:fixed;inset:0;z-index:60;display:none;font-family:${FONT_STACK};
-  color:#e6edf3;-webkit-user-select:none;user-select:none;overflow:hidden;}
+  color:#e6edf3;-webkit-user-select:none;user-select:none;overflow:hidden;pointer-events:none;}
 .cot-garage *{box-sizing:border-box;margin:0;padding:0;}
 .cot-garage .band-top{position:absolute;left:0;right:0;top:0;height:26%;
   background:linear-gradient(180deg,rgba(5,8,11,.94) 0%,rgba(5,8,11,.78) 55%,rgba(5,8,11,0) 100%);}
@@ -975,6 +975,19 @@ export function createGarage(opts) {
 
     /** Synchronously finish queued tank portraits (screenshot determinism). */
     drainThumbs() { drainTankThumbs(); },
+
+    /** UI-free rectangle reserved for the 3D showroom hero (CSS pixels). */
+    getStageRect() {
+      const rr = root.getBoundingClientRect();
+      const left = root.querySelector('.cot-leftcol')?.getBoundingClientRect();
+      const stats = statsEl.getBoundingClientRect();
+      const carousel = root.querySelector('.cot-carousel')?.getBoundingClientRect();
+      const x0 = Math.max(rr.left, left && left.width ? left.right + 14 : rr.left + 24);
+      const x1 = Math.min(rr.right, stats.width ? stats.left - 14 : rr.right - 24);
+      const y0 = rr.top + 78;
+      const y1 = Math.min(rr.bottom, carousel && carousel.height ? carousel.top - 14 : rr.bottom - 190);
+      return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
+    },
 
     /**
      * Open the tech tree over the garage (used by the screenshot harness).

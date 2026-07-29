@@ -1079,6 +1079,7 @@ export function createShowroomOrbit(camera, rig, deps) {
   let tZoom = 1, zoom = 1;
   let yawVel = 0, pitchVel = 0;
   let dragging = false;
+  let running = false;
   let sinceInputS = 999;
   let lastDragMs = 0;
   let measureAccS = 0;
@@ -1213,7 +1214,7 @@ export function createShowroomOrbit(camera, rig, deps) {
 
   const api = {
     /** True once a hero has been measured (the orbit owns the camera). */
-    get active() { return haveBox; },
+    get active() { return running && haveBox; },
     /** Hero framing distance in meters (0 until measured). */
     get heroDist() { return haveBox ? heroDist : 0; },
 
@@ -1237,6 +1238,19 @@ export function createShowroomOrbit(camera, rig, deps) {
       return true;
     },
 
+    /** Enable showroom ownership and immediately solve the selected hero. */
+    start() {
+      running = true;
+      return api.reset();
+    },
+
+    /** Release showroom ownership before battle/shot-mode camera control. */
+    stop() {
+      running = false;
+      dragging = false;
+      yawVel = pitchVel = 0;
+    },
+
     /**
      * Per-frame damped integration (drag → momentum → idle spring-back) and
      * pose write. Cheap: two 8-corner solves, no allocation.
@@ -1244,7 +1258,7 @@ export function createShowroomOrbit(camera, rig, deps) {
      * @returns {void}
      */
     update(dt) {
-      if (!haveBox) return;
+      if (!running || !haveBox) return;
       const d = THREE.MathUtils.clamp(dt, 0, 0.1);
       // The hero GLB streams in behind a procedural stand-in and the carousel
       // can swap vehicles at any time — re-measure a few times a second so the
@@ -1295,6 +1309,7 @@ export function createShowroomOrbit(camera, rig, deps) {
 
     /** Pointer went down on the 3D stage. @returns {void} */
     beginDrag() {
+      if (!running || !haveBox) return;
       dragging = true;
       sinceInputS = 0;
       yawVel = pitchVel = 0;
@@ -1355,7 +1370,8 @@ export function createShowroomOrbit(camera, rig, deps) {
      */
     debugState() {
       return {
-        active: haveBox,
+        active: running && haveBox,
+        running,
         yawDeg: THREE.MathUtils.radToDeg(yaw),
         pitchDeg: THREE.MathUtils.radToDeg(pitch),
         heroYawDeg: THREE.MathUtils.radToDeg(heroYaw),
