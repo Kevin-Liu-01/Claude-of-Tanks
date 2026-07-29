@@ -766,10 +766,33 @@ export function createInput(opts = {}) {
      * Drain this frame's aim delta: EMA-smoothed (player-tunable, 0 = raw),
      * sensitivity-scaled, invert-Y applied, extra sniper scaling when `sniper`
      * is true. Right-stick pad aim is merged in with its own sensitivity.
+     *
+     * SIGN CONTRACT (controls-sign fix — do not "simplify" this away):
+     *   out.x is a WORLD-YAW delta, not a screen-pixel delta. Its consumer is
+     *   cameraRig, which integrates it as `aimYaw += mouseDX * sens` (and
+     *   `freeYaw += ...` for RMB free-look), and this project's yaw convention
+     *   is forwardAxis(yaw) = [sin yaw, 0, cos yaw] (ARCHITECTURE §1.1). In a
+     *   Y-up right-handed world, a camera looking along +Z has screen-right =
+     *   world -X (three.js Matrix4.lookAt: x_axis = up × (eye-target)), so
+     *   INCREASING yaw swings the view/gun toward screen-LEFT. Feeding raw
+     *   movementX straight through therefore panned the camera and slewed the
+     *   turret the wrong way on every mouse move (user report: "turning right
+     *   with mouse actually turns tank left"; measured before this fix as a
+     *   -0.64 NDC-x bore swing for a +240 px movementX on m1a2, -0.40 on
+     *   tiger1 — see the direction-aware assertions in tools/controls-probe.mjs).
+     *   Hence the negation below: physical mouse-right (movementX > 0) becomes
+     *   a yaw DECREASE, which is a screen-RIGHT swing.
+     *   out.y stays in screen convention (down-positive) because the rig
+     *   already negates it itself (`aimPitch -= mouseDY * sens`) — pitch was
+     *   never inverted and must not be touched.
+     *   The cursor-aim fallback path does NOT come through here (it raycasts
+     *   through getCursorNdc), and it was already correct — see the probe.
+     *
      * @param {{x:number,y:number}} out
      * @param {number} dt - render delta seconds
      * @param {boolean} [sniper=false]
-     * @returns {{x:number,y:number}} out
+     * @returns {{x:number,y:number}} out - x: yaw delta (world-yaw sign),
+     *   y: pitch delta (screen sign, down-positive)
      */
     consumeMouseDelta(out, dt, sniper = false) {
       pollPad();
@@ -789,11 +812,14 @@ export function createInput(opts = {}) {
       const sniperScale = sniper ? settings.sniperSensScale : 1;
       const s = settings.sensitivity * sniperScale;
       const inv = settings.invertY ? -1 : 1;
-      out.x = smDX * s;
+      // -1 on x: screen-right (movementX > 0) is a yaw DECREASE (see the SIGN
+      // CONTRACT above). Right-stick aim gets the same flip — a stick pushed
+      // right must swing the gun right.
+      out.x = -smDX * s;
       out.y = smDY * s * inv;
       if (enabled && (padAim.x !== 0 || padAim.y !== 0)) {
         const ps = PAD_AIM_RATE * dt * settings.padSensitivity * sniperScale;
-        out.x += padAim.x * ps;
+        out.x -= padAim.x * ps;
         out.y += padAim.y * ps * inv;
       }
       return out;

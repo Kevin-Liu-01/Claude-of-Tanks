@@ -943,3 +943,437 @@ export function createCameraRig(camera, deps) {
 
   return rig;
 }
+
+// ===========================================================================
+// GARAGE CAMERA: showroom hero framing + damped drag orbit
+// ===========================================================================
+// The garage pedestal used to be a hard-coded eye/target pair, so the SAME
+// pose framed a 4.4 m Leichttraktor and an 11 m Object 279 (small tanks sat
+// lost in the middle of the bay, long-gun TDs pushed the muzzle into the stats
+// card). This block replaces it with a solved pose:
+//
+//  - AUTO-FRAME: the selected vehicle's ORIENTED bounding box (measured in the
+//    hull's own local frame, so a yawed 10 m hull is not padded out by an
+//    axis-aligned world box) is projected through the live camera basis and a
+//    distance + framing offsets are solved so the whole silhouette — barrel
+//    included — lands inside the garage's clear STAGE RECT (the screen area
+//    the UI leaves free; garage.js measures it from its own DOM) with even
+//    margins. Every vehicle therefore reads at the same apparent size and the
+//    same 3/4 angle regardless of hull length.
+//
+//  - DRAG ORBIT: pointer drag steers a damped turntable around the hero pose
+//    inside a yaw/pitch clamp, with release momentum and a gentle spring back
+//    to the hero angle after a couple of seconds idle. The camera distance
+//    grows (never shrinks below the hero distance) if the widening silhouette
+//    would otherwise leave the stage rect, so a broadside orbit of a long
+//    vehicle can never crop the gun.
+//
+// Determinism: the pose is a pure function of (box, yaw, pitch, zoom, rect).
+// `reset()` snaps the orbit state back to the hero pose and re-solves, which
+// is what the __SHOTS garage/techtree recipes call — a staged capture is
+// therefore byte-identical whether or not the player had dragged the view.
+
+const SHOW_FOV_DEG = 42;               // stage lens (matches the authored bay)
+const SHOW_HERO_FILL = 0.86;           // hero framing: fraction of the stage rect
+const SHOW_KEEP_FILL = 0.99;           // orbiting: pull back rather than crop
+const SHOW_YAW_CLAMP = THREE.MathUtils.degToRad(72);  // ±from the hero heading
+const SHOW_PITCH_MIN = THREE.MathUtils.degToRad(5);   // never below the pedestal
+const SHOW_PITCH_MAX = THREE.MathUtils.degToRad(35);
+const SHOW_DRAG_YAW_PER_PX = THREE.MathUtils.degToRad(0.22);
+const SHOW_DRAG_PITCH_PER_PX = THREE.MathUtils.degToRad(0.10);
+const SHOW_FOLLOW_TAU_S = 0.085;       // pointer → camera smoothing
+const SHOW_INERTIA_TAU_S = 0.42;       // release momentum decay
+const SHOW_INERTIA_MIN = THREE.MathUtils.degToRad(2.5); // rad/s: coast cutoff
+const SHOW_INERTIA_MAX = THREE.MathUtils.degToRad(220); // rad/s: flick clamp
+const SHOW_IDLE_RETURN_S = 2.0;        // idle before the spring back engages
+const SHOW_RETURN_TAU_S = 0.75;        // spring-back ease
+const SHOW_ZOOM_STEP = 0.9;            // per wheel notch
+const SHOW_ZOOM_MIN = 0.62;
+const SHOW_ZOOM_MAX = 1.55;
+const SHOW_DIST_MAX_M = 19;            // stays inside the 46 m bay (HW 23)
+const SHOW_NEAR_PAD_M = 1.2;           // camera never inside the silhouette
+const SHOW_FLOOR_PAD_M = 0.7;          // camera never under the pedestal plane
+const SHOW_SOLVE_ITERS = 9;
+
+const _sbMin = new THREE.Vector3();
+const _sbMax = new THREE.Vector3();
+const _sbInv = new THREE.Matrix4();
+const _sbV = new THREE.Vector3();
+const _sbC = new THREE.Vector3();      // target → camera unit vector
+const _sbR = new THREE.Vector3();      // camera right
+const _sbU = new THREE.Vector3();      // camera up
+const _sbPos = new THREE.Vector3();
+const _sbLook = new THREE.Vector3();
+const _sbCenter = new THREE.Vector3();
+const _sbCorners = [];
+for (let i = 0; i < 8; i++) _sbCorners.push(new THREE.Vector3());
+// per-corner camera-basis coordinates (right, up, toward-camera), reused
+const _sbPr = new Float64Array(8);
+const _sbPu = new Float64Array(8);
+const _sbPc = new Float64Array(8);
+
+/**
+ * Union of every descendant mesh's geometry AABB, expressed in `root`'s LOCAL
+ * frame (so the result hugs a yawed hull instead of ballooning into a
+ * world-axis box). Invisible children are included on purpose: the garage
+ * hides the whole hero while its GLB parses, and the pose must still solve.
+ *
+ * @param {THREE.Object3D} root
+ * @param {THREE.Vector3} outMin
+ * @param {THREE.Vector3} outMax
+ * @returns {boolean} false when the subtree carries no geometry
+ */
+function measureLocalBox(root, outMin, outMax) {
+  root.updateMatrixWorld(true);
+  _sbInv.copy(root.matrixWorld).invert();
+  outMin.set(Infinity, Infinity, Infinity);
+  outMax.set(-Infinity, -Infinity, -Infinity);
+  let any = false;
+  root.traverse((o) => {
+    if (!o.isMesh || !o.geometry) return;
+    const g = o.geometry;
+    if (!g.boundingBox) g.computeBoundingBox();
+    const bb = g.boundingBox;
+    if (!bb || bb.isEmpty()) return;
+    for (let i = 0; i < 8; i++) {
+      _sbV.set(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z);
+      _sbV.applyMatrix4(o.matrixWorld).applyMatrix4(_sbInv);
+      outMin.min(_sbV);
+      outMax.max(_sbV);
+      any = true;
+    }
+  });
+  return any;
+}
+
+/**
+ * Create the garage showroom camera controller.
+ *
+ * Owns nothing but the pose it hands to `rig.setExternalPose` — the rig stays
+ * the single writer of camera position/rotation/fov.
+ *
+ * @param {THREE.PerspectiveCamera} camera - reads aspect; never written here
+ * @param {Rig} rig - target for the solved pose
+ * @param {{ getSubject: () => ?THREE.Object3D,
+ *           getStageRect: () => ?{ x: number, y: number, w: number, h: number },
+ *           heroYawRad: number, heroPitchRad: number, floorY: () => number }} deps
+ *   `getSubject` returns the pedestal hero root (null while empty);
+ *   `getStageRect` returns the UI-free screen area in CSS px (null → whole
+ *   viewport); `heroYawRad` is the world azimuth of the camera as seen FROM
+ *   the vehicle (0 → +Z), `heroPitchRad` its elevation.
+ * @returns {object} showroom controller
+ */
+export function createShowroomOrbit(camera, rig, deps) {
+  const heroYaw = deps.heroYawRad;
+  const heroPitch = THREE.MathUtils.clamp(deps.heroPitchRad, SHOW_PITCH_MIN, SHOW_PITCH_MAX);
+
+  // measured subject (local-frame box + the world transform it was taken in)
+  let subject = null;
+  let haveBox = false;
+  let heroDist = 12;
+  let nearDist = 3;
+  // live orbit state: `t*` are the pointer/spring targets, the bare values are
+  // the damped ones actually rendered.
+  let tYaw = heroYaw, yaw = heroYaw;
+  let tPitch = heroPitch, pitch = heroPitch;
+  let tZoom = 1, zoom = 1;
+  let yawVel = 0, pitchVel = 0;
+  let dragging = false;
+  let sinceInputS = 999;
+  let lastDragMs = 0;
+  let measureAccS = 0;
+  const win = { cx: 0, cy: 0, hx: 1, hy: 1 };
+
+  /** Stage rect (CSS px) → NDC center/half-extents, with a sanity floor. */
+  function readWindow() {
+    const vw = camera.__cotViewW || (typeof window !== 'undefined' ? window.innerWidth : 1920);
+    const vh = camera.__cotViewH || (typeof window !== 'undefined' ? window.innerHeight : 1080);
+    let r = null;
+    try { r = deps.getStageRect ? deps.getStageRect() : null; } catch (_) { r = null; }
+    let x0 = 0, y0 = 0, x1 = vw, y1 = vh;
+    if (r && r.w > 0 && r.h > 0) { x0 = r.x; y0 = r.y; x1 = r.x + r.w; y1 = r.y + r.h; }
+    // Crowded viewports (the 768 px embed the controls probe drives) can pinch
+    // the free area to a sliver — never let the UI starve the hero framing.
+    const minW = vw * 0.52, minH = vh * 0.44;
+    if (x1 - x0 < minW) {
+      const c = THREE.MathUtils.clamp((x0 + x1) / 2, minW / 2, vw - minW / 2);
+      x0 = c - minW / 2; x1 = c + minW / 2;
+    }
+    if (y1 - y0 < minH) {
+      const c = THREE.MathUtils.clamp((y0 + y1) / 2, minH / 2, vh - minH / 2);
+      y0 = c - minH / 2; y1 = c + minH / 2;
+    }
+    win.cx = ((x0 + x1) / vw) - 1;          // NDC x of the rect center
+    win.cy = 1 - ((y0 + y1) / vh);          // NDC y (screen y grows downward)
+    win.hx = (x1 - x0) / vw;                // NDC half-width
+    win.hy = (y1 - y0) / vh;
+    return win;
+  }
+
+  /** Re-measure the hero's oriented box + world corners. @returns {boolean} */
+  function measure() {
+    const root = deps.getSubject ? deps.getSubject() : null;
+    subject = root || null;
+    haveBox = false;
+    if (!root) return false;
+    if (!measureLocalBox(root, _sbMin, _sbMax)) return false;
+    for (let i = 0; i < 8; i++) {
+      _sbCorners[i].set(i & 1 ? _sbMax.x : _sbMin.x, i & 2 ? _sbMax.y : _sbMin.y,
+        i & 4 ? _sbMax.z : _sbMin.z).applyMatrix4(root.matrixWorld);
+    }
+    _sbCenter.set(0, 0, 0);
+    for (let i = 0; i < 8; i++) _sbCenter.add(_sbCorners[i]);
+    _sbCenter.multiplyScalar(1 / 8);
+    let radius = 0;
+    for (let i = 0; i < 8; i++) radius = Math.max(radius, _sbCorners[i].distanceTo(_sbCenter));
+    nearDist = radius + SHOW_NEAR_PAD_M;
+    haveBox = true;
+    return true;
+  }
+
+  /** Camera basis for (yaw, pitch) into _sbC / _sbR / _sbU. */
+  function basis(y, p) {
+    const cp = Math.cos(p);
+    _sbC.set(Math.sin(y) * cp, Math.sin(p), Math.cos(y) * cp);
+    _sbR.set(Math.cos(y), 0, -Math.sin(y));
+    _sbU.set(-Math.sin(p) * Math.sin(y), cp, -Math.sin(p) * Math.cos(y));
+  }
+
+  /**
+   * Solve the pose for the current box at (yaw, pitch).
+   *
+   * Projects the 8 oriented-box corners through the camera basis and iterates
+   * distance + lateral/vertical framing offsets until the silhouette fills
+   * `fill` of the stage rect, centered in it. `fixedDist` skips the distance
+   * search and only solves the centering offsets (used once the orbit has
+   * picked its own distance).
+   *
+   * @returns {{ dist: number, sx: number, sy: number }} sx/sy shift the camera
+   *   along its right/up axes (the framing offsets).
+   */
+  function solve(y, p, fill, fixedDist) {
+    const w = readWindow();
+    const tanV = Math.tan(THREE.MathUtils.degToRad(SHOW_FOV_DEG) * 0.5);
+    const tanH = tanV * (camera.aspect || 16 / 9);
+    basis(y, p);
+    let maxPc = -Infinity;
+    for (let i = 0; i < 8; i++) {
+      _sbV.copy(_sbCorners[i]).sub(_sbCenter);
+      _sbPr[i] = _sbV.dot(_sbR);
+      _sbPu[i] = _sbV.dot(_sbU);
+      _sbPc[i] = _sbV.dot(_sbC);
+      if (_sbPc[i] > maxPc) maxPc = _sbPc[i];
+    }
+    const dFloor = Math.max(maxPc + SHOW_NEAR_PAD_M, nearDist, 1);
+    let d = fixedDist || Math.max(dFloor, nearDist * 2.2);
+    let sx = 0, sy = 0;
+    for (let it = 0; it < SHOW_SOLVE_ITERS; it++) {
+      let nx0 = Infinity, nx1 = -Infinity, ny0 = Infinity, ny1 = -Infinity;
+      for (let i = 0; i < 8; i++) {
+        const depth = d - _sbPc[i];
+        const nx = (_sbPr[i] - sx) / (depth * tanH);
+        const ny = (_sbPu[i] - sy) / (depth * tanV);
+        if (nx < nx0) nx0 = nx; if (nx > nx1) nx1 = nx;
+        if (ny < ny0) ny0 = ny; if (ny > ny1) ny1 = ny;
+      }
+      if (!fixedDist) {
+        const s = Math.min((w.hx * fill) / Math.max(nx1 - nx0, 1e-6),
+          (w.hy * fill) / Math.max(ny1 - ny0, 1e-6));
+        const dNew = THREE.MathUtils.clamp(d / s, dFloor, SHOW_DIST_MAX_M);
+        // offsets are proportional to distance — carry them across the step so
+        // the centering correction below starts from the same framing
+        const k = dNew / d;
+        sx *= k; sy *= k;
+        nx0 /= k; nx1 /= k; ny0 /= k; ny1 /= k;   // first-order ndc rescale
+        d = dNew;
+      }
+      sx += ((nx0 + nx1) * 0.5 - w.cx) * d * tanH;
+      sy += ((ny0 + ny1) * 0.5 - w.cy) * d * tanV;
+    }
+    return { dist: d, sx, sy };
+  }
+
+  /** Write the solved pose for the current damped orbit state to the rig. */
+  function applyPose() {
+    if (!haveBox) return;
+    const need = solve(yaw, pitch, SHOW_KEEP_FILL, 0).dist;
+    const d = THREE.MathUtils.clamp(Math.max(heroDist, need) * zoom,
+      nearDist, SHOW_DIST_MAX_M);
+    const off = solve(yaw, pitch, SHOW_HERO_FILL, d);
+    basis(yaw, pitch);
+    _sbPos.copy(_sbCenter).addScaledVector(_sbC, d)
+      .addScaledVector(_sbR, off.sx).addScaledVector(_sbU, off.sy);
+    // last-resort floor guard: the pitch clamp already keeps the eye above the
+    // pedestal, this catches a pathological framing offset on a huge subject.
+    const minY = (deps.floorY ? deps.floorY() : -Infinity) + SHOW_FLOOR_PAD_M;
+    if (_sbPos.y < minY) _sbPos.y = minY;
+    _sbLook.copy(_sbPos).addScaledVector(_sbC, -d);
+    rig.setExternalPose(_sbPos, _sbLook, SHOW_FOV_DEG);
+  }
+
+  const api = {
+    /** True once a hero has been measured (the orbit owns the camera). */
+    get active() { return haveBox; },
+    /** Hero framing distance in meters (0 until measured). */
+    get heroDist() { return haveBox ? heroDist : 0; },
+
+    /**
+     * Re-measure the hero and snap the orbit back to the solved hero pose.
+     * Deterministic — the __SHOTS garage recipes call this so a staged capture
+     * never inherits a dragged view.
+     * @returns {boolean} true when a hero was measured and the pose applied
+     */
+    reset() {
+      if (!measure()) return false;
+      tYaw = yaw = heroYaw;
+      tPitch = pitch = heroPitch;
+      tZoom = zoom = 1;
+      yawVel = pitchVel = 0;
+      dragging = false;
+      sinceInputS = 999;
+      measureAccS = 0;
+      heroDist = solve(heroYaw, heroPitch, SHOW_HERO_FILL, 0).dist;
+      applyPose();
+      return true;
+    },
+
+    /**
+     * Per-frame damped integration (drag → momentum → idle spring-back) and
+     * pose write. Cheap: two 8-corner solves, no allocation.
+     * @param {number} dt render delta seconds
+     * @returns {void}
+     */
+    update(dt) {
+      if (!haveBox) return;
+      const d = THREE.MathUtils.clamp(dt, 0, 0.1);
+      // The hero GLB streams in behind a procedural stand-in and the carousel
+      // can swap vehicles at any time — re-measure a few times a second so the
+      // framing (and heroDist) always describes what is actually on stage.
+      measureAccS += d;
+      if (measureAccS > 0.4) {
+        measureAccS = 0;
+        const prev = subject;
+        if (measure() && haveBox) {
+          heroDist = solve(heroYaw, heroPitch, SHOW_HERO_FILL, 0).dist;
+          if (prev !== subject) { // new hero on the pedestal — settle it back
+            tYaw = heroYaw; tPitch = heroPitch; tZoom = 1;
+            yawVel = pitchVel = 0;
+          }
+        }
+        if (!haveBox) return;
+      }
+      if (dragging) {
+        sinceInputS = 0;
+      } else {
+        sinceInputS += d;
+        if (Math.hypot(yawVel, pitchVel) > SHOW_INERTIA_MIN) {
+          tYaw += yawVel * d;
+          tPitch += pitchVel * d;
+          const before = tPitch;
+          tYaw = THREE.MathUtils.clamp(tYaw, heroYaw - SHOW_YAW_CLAMP, heroYaw + SHOW_YAW_CLAMP);
+          tPitch = THREE.MathUtils.clamp(tPitch, SHOW_PITCH_MIN, SHOW_PITCH_MAX);
+          if (tPitch !== before) pitchVel = 0;   // kill the coast at the clamp
+          if (tYaw <= heroYaw - SHOW_YAW_CLAMP || tYaw >= heroYaw + SHOW_YAW_CLAMP) yawVel = 0;
+          const k = Math.exp(-d / SHOW_INERTIA_TAU_S);
+          yawVel *= k; pitchVel *= k;
+        } else {
+          yawVel = pitchVel = 0;
+        }
+        if (sinceInputS > SHOW_IDLE_RETURN_S) {
+          const a = 1 - Math.exp(-d / SHOW_RETURN_TAU_S);
+          tYaw += (heroYaw - tYaw) * a;
+          tPitch += (heroPitch - tPitch) * a;
+          tZoom += (1 - tZoom) * a;
+        }
+      }
+      const f = 1 - Math.exp(-d / SHOW_FOLLOW_TAU_S);
+      yaw += (tYaw - yaw) * f;
+      pitch += (tPitch - pitch) * f;
+      zoom += (tZoom - zoom) * f;
+      applyPose();
+    },
+
+    /** Pointer went down on the 3D stage. @returns {void} */
+    beginDrag() {
+      dragging = true;
+      sinceInputS = 0;
+      yawVel = pitchVel = 0;
+      lastDragMs = 0;
+    },
+
+    /**
+     * Pointer moved during a stage drag: steer the turntable within the clamp
+     * and remember the flick velocity for release momentum.
+     * @param {number} dxPx horizontal pointer delta in CSS px
+     * @param {number} dyPx vertical pointer delta in CSS px
+     * @returns {void}
+     */
+    drag(dxPx, dyPx) {
+      if (!dragging) return;
+      sinceInputS = 0;
+      const y0 = tYaw, p0 = tPitch;
+      // drag right → the near face sweeps right (camera orbits left)
+      tYaw = THREE.MathUtils.clamp(tYaw - dxPx * SHOW_DRAG_YAW_PER_PX,
+        heroYaw - SHOW_YAW_CLAMP, heroYaw + SHOW_YAW_CLAMP);
+      // drag down → look further down onto the roof (turntable tilt)
+      tPitch = THREE.MathUtils.clamp(tPitch + dyPx * SHOW_DRAG_PITCH_PER_PX,
+        SHOW_PITCH_MIN, SHOW_PITCH_MAX);
+      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      const dtMs = lastDragMs ? THREE.MathUtils.clamp(now - lastDragMs, 4, 60) : 16;
+      lastDragMs = now;
+      const inv = 1000 / dtMs;
+      const mix = 0.45;                       // EMA over ~2-3 pointer events
+      yawVel = THREE.MathUtils.clamp(yawVel * (1 - mix) + (tYaw - y0) * inv * mix,
+        -SHOW_INERTIA_MAX, SHOW_INERTIA_MAX);
+      pitchVel = THREE.MathUtils.clamp(pitchVel * (1 - mix) + (tPitch - p0) * inv * mix,
+        -SHOW_INERTIA_MAX, SHOW_INERTIA_MAX);
+    },
+
+    /** Pointer released — the coast + spring-back take over. @returns {void} */
+    endDrag() {
+      dragging = false;
+      sinceInputS = 0;
+    },
+
+    /**
+     * Wheel zoom inside clamps derived from the fitted hero distance.
+     * @param {number} notches positive = zoom in
+     * @returns {void}
+     */
+    wheel(notches) {
+      if (!haveBox || !notches) return;
+      const n = THREE.MathUtils.clamp(notches | 0, -3, 3) ||
+        (notches > 0 ? 1 : -1);
+      tZoom = THREE.MathUtils.clamp(tZoom * Math.pow(SHOW_ZOOM_STEP, n),
+        SHOW_ZOOM_MIN, SHOW_ZOOM_MAX);
+      sinceInputS = 0;
+    },
+
+    /**
+     * Live state for the headless camera probe (tools/garage-camera-probe.mjs).
+     * @returns {object}
+     */
+    debugState() {
+      return {
+        active: haveBox,
+        yawDeg: THREE.MathUtils.radToDeg(yaw),
+        pitchDeg: THREE.MathUtils.radToDeg(pitch),
+        heroYawDeg: THREE.MathUtils.radToDeg(heroYaw),
+        heroPitchDeg: THREE.MathUtils.radToDeg(heroPitch),
+        yawClampDeg: THREE.MathUtils.radToDeg(SHOW_YAW_CLAMP),
+        pitchMinDeg: THREE.MathUtils.radToDeg(SHOW_PITCH_MIN),
+        pitchMaxDeg: THREE.MathUtils.radToDeg(SHOW_PITCH_MAX),
+        zoom, zoomMin: SHOW_ZOOM_MIN, zoomMax: SHOW_ZOOM_MAX,
+        heroDist, dragging, sinceInputS,
+        fovDeg: SHOW_FOV_DEG,
+        box: haveBox
+          ? { min: _sbMin.toArray(), max: _sbMax.toArray(), center: _sbCenter.toArray() }
+          : null,
+        corners: haveBox ? _sbCorners.map((c) => c.toArray()) : null,
+        stage: { cx: win.cx, cy: win.cy, hx: win.hx, hy: win.hy },
+      };
+    },
+  };
+
+  return api;
+}

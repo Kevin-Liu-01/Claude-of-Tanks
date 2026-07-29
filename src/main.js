@@ -1298,7 +1298,15 @@ function tick(nowMs) {
     const st = input.getState();
     const inp = game.player.input;
     inp.throttle = (st.forward ? 1 : 0) - (st.back ? 1 : 0);
-    inp.steer = (st.right ? 1 : 0) - (st.left ? 1 : 0);
+    // CONTROLS-SIGN FIX (input routing only — 1 line): TankInput.steer is
+    // POSITIVE = increasing hull yaw (movement.js "Steering sign" note; the
+    // AI's `steer = wrapAngle(bearing - yaw) * k` depends on it). Increasing
+    // yaw rotates forwardAxis toward +X, which in this Y-up right-handed world
+    // is the player's screen-LEFT — so "steer right" (D) must send steer < 0.
+    // The old `right - left` drove D into +yaw and turned the hull LEFT on
+    // screen (user report; measured -0.36 NDC-x nose swing for D before this
+    // fix — tools/controls-probe.mjs now asserts the screen direction).
+    inp.steer = (st.left ? 1 : 0) - (st.right ? 1 : 0);
     inp.brake = st.handbrake;
     const haveAmmo = !shellCards.length || ((shellCards[inp.shellSlot | 0] || {}).count | 0) > 0;
     // Fire gate: pointer lock held, a recently-active gamepad, or CURSOR-AIM

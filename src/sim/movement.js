@@ -565,6 +565,27 @@ export function updateTank(entity, heightField, dt, collide = null) {
   const revMps = spec.reverseSpeedKmh / 3.6;
 
   // ---- hull traverse (wiki formula reduced: Tr = Tn × Rh/Rx × Pc, + debuffs) ----
+  // STEERING SIGN (locked — every producer of input.steer depends on it):
+  //   input.steer > 0  ⇒  yawRate > 0  ⇒  yaw INCREASES.
+  // Increasing yaw rotates forwardAxis(yaw) = [sin yaw, 0, cos yaw] toward +X,
+  // and in this Y-up right-handed world a camera looking along the hull's
+  // forward has screen-right = world -X (three.js lookAt: x_axis = up ×
+  // (eye−target)) — so POSITIVE steer is a turn toward the player's
+  // screen-LEFT, i.e. toward +rightAxis(yaw), which is the hull's local +X
+  // side, NOT the visual right side. Two independent consumers confirm this
+  // reading and stay correct under it:
+  //   • the 'pivot' drift below moves the hull center along +rightAxis for
+  //     positive steer — orbiting about the INNER (locked) track, as it should;
+  //   • trackScroll.l (= wheels at hull-local x < 0, i.e. the VISUAL RIGHT
+  //     side per tankFactory's `e.x < 0 ? l : r`) gets +yawRate × arm, i.e.
+  //     the outer track in a screen-left turn runs faster.
+  // The AI is the main producer and matches: `steer = wrapAngle(bearing −
+  // yaw) × k` (ai.js driveToXZ/faceYaw) needs +steer to raise yaw. Therefore
+  // the PLAYER's key map is where "right" is turned into a sign: main.js sends
+  // `steer = left − right` (a D press is negative). Never invert the mapping
+  // here or in ai.js — that silently breaks bot navigation; and never fix a
+  // perceived inversion downstream in the renderer (it would desync the sim,
+  // the reticle, spotting and hit resolution from the visuals).
   const trMaxHealthy = spec.hullTraverseDegS * DEG2RAD * (Rh / R) *
     (spec.pivotStyle === 'neutral' ? NEUTRAL_TURN_MULT : 1);
   // Speed-scaled traverse, quadratic: near-nominal yaw rate through the whole

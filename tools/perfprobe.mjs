@@ -2,7 +2,7 @@
 // Usage: node tools/perfprobe.mjs [--seconds 60] [--width 1920] [--height 1080]
 //        [--dsf 1|2] [--out file] [--preset low|medium|high|ultra] [--dump file]
 //        [--note tag] [--no-trend] [--roster random|id1,id2,...]
-//        [--map verdant|desert|winter|urban]
+//        [--map verdant|desert|winter|urban] [--scene battle|garage] [--breakdown]
 // Starts vite, loads the game headless, measures load-to-__GAME_READY, enters
 // battle on the verdant map, simulates combat (drive via synthetic keys +
 // forceFire debug flag) for N seconds while sampling rAF deltas, renderer.info,
@@ -141,6 +141,22 @@ const forceRoster = rosterOpt === 'random' ? null : rosterOpt.split(',').map((s)
 // Certification lines are defined on verdant; other maps are evidence runs —
 // tag them via the trend note so cross-map rows never read as regressions.
 const mapId = opt('map', 'verdant');
+// PERF r7: --scene garage measures the GARAGE screen instead of battle. The
+// garage is where a player spends most of their session (carousel browsing,
+// camo, tech tree) and it was never on the perf gate: the pedestal is staged
+// at (-1500,-1500) INSIDE the same THREE.Scene as the 1 km battlefield, so
+// every garage frame could be paying the battle world's traversal, LOD update
+// and shadow cascades. Garage mode skips startBattle + the drive script and
+// certifies the steady-state garage dwell (staged-visual pump drained).
+const sceneMode = opt('scene', 'battle');
+if (sceneMode !== 'battle' && sceneMode !== 'garage') {
+  console.error(`[perf] unknown --scene ${sceneMode} (want battle|garage)`);
+  process.exit(2);
+}
+// PERF r7: attribution pass — after the timed window, re-measure single frames
+// with subsets of the scene hidden (battle world off, staged tanks off, ...) so
+// draw calls / triangles are ATTRIBUTED to a subsystem instead of guessed.
+const wantBreakdown = args.includes('--breakdown');
 
 // Tracked performance budget (docs/EVALUATION.md perf gate). Every line is
 // evaluated in the report's `budget` block so regressions surface in the
@@ -360,14 +376,19 @@ try {
   }
   const loadToReadyMs = await page.evaluate(() => window.__READY_AT);
 
-  // Enter battle on verdant deterministically (pinned worst-case roster by
-  // default — see WORST_CASE_ROSTER above).
-  await page.evaluate((roster, map) => {
-    const D = window.__DEBUG;
-    if (roster) D.flags.forceRoster = roster;
-    D.startBattle('m1a2', map);
-    D.flags.forceFire = true; // fire whenever reloaded
-  }, forceRoster, mapId);
+  if (sceneMode === 'battle') {
+    // Enter battle on verdant deterministically (pinned worst-case roster by
+    // default — see WORST_CASE_ROSTER above).
+    await page.evaluate((roster, map) => {
+      const D = window.__DEBUG;
+      if (roster) D.flags.forceRoster = roster;
+      D.startBattle('m1a2', map);
+      D.flags.forceFire = true; // fire whenever reloaded
+    }, forceRoster, mapId);
+  } else if (mapId !== 'verdant') {
+    // garage on a non-default battlefield: switch the staged world only
+    await page.evaluate((map) => window.__DEBUG.switchMap(map), mapId);
+  }
   // small settle so shaders/instances for battle HUD compile
   await new Promise((r) => setTimeout(r, 1500));
   // r2: certify the SUSTAINED battle regime — wait (bounded) for the roster's
@@ -396,6 +417,17 @@ try {
     })()`,
     { timeout: 30000, polling: 250 },
   ).catch(() => console.error('[perf] GLB queue did not settle within 30 s — window opens anyway'));
+  if (sceneMode === 'garage') {
+    // The staged-battle visual pump (main.js pumpStagedVisuals) streams the
+    // roster in one-per-idle-slice DURING the garage dwell. Measuring across
+    // that pump bills one-time bake cost to the steady-state garage gate, so
+    // wait for every staged entity to own a visual (bounded).
+    await page.waitForFunction(
+      '(() => { const t = window.__DEBUG.game.tanks || []; return t.length > 0 && t.every((e) => !!e.visual); })()',
+      { timeout: 30000, polling: 250 },
+    ).catch(() => console.error('[perf] staged visuals did not finish within 30 s — window opens anyway'));
+    await new Promise((r) => setTimeout(r, 1000));
+  }
   // Warmup collection before the measured window (standard bench hygiene, NOT
   // a masking trick): the boot bake creates ~300 MB of one-shot large-object
   // garbage (getImageData buffers of the 2048² vehicle canvases). V8 reclaims
@@ -412,17 +444,22 @@ try {
   });
 
   // Drive: hold W, wiggle steering + camera so combat is representative.
-  await page.keyboard.down('KeyW');
-  const steerTimer = (async () => {
-    const keys = ['KeyA', 'KeyD'];
-    for (let i = 0; i < Math.floor(seconds / 2); i++) {
-      const k = keys[i % 2];
-      await page.keyboard.down(k);
-      await new Promise((r) => setTimeout(r, 800));
-      await page.keyboard.up(k);
-      await new Promise((r) => setTimeout(r, 1200));
-    }
-  })();
+  // Garage mode has no drive script — the garage screen IS a hold pose; the
+  // whole point is to measure what an idle garage dwell costs.
+  let steerTimer = Promise.resolve();
+  if (sceneMode === 'battle') {
+    await page.keyboard.down('KeyW');
+    steerTimer = (async () => {
+      const keys = ['KeyA', 'KeyD'];
+      for (let i = 0; i < Math.floor(seconds / 2); i++) {
+        const k = keys[i % 2];
+        await page.keyboard.down(k);
+        await new Promise((r) => setTimeout(r, 800));
+        await page.keyboard.up(k);
+        await new Promise((r) => setTimeout(r, 1200));
+      }
+    })();
+  }
 
   // In-page sampler: rAF deltas + per-frame renderer.info + heap once/second.
   await page.evaluate((sampleMs) => {
@@ -464,7 +501,7 @@ try {
   }, seconds * 1000);
 
   await page.waitForFunction('window.__PERF && window.__PERF.done === true', { timeout: (seconds + 30) * 1000 });
-  await page.keyboard.up('KeyW');
+  if (sceneMode === 'battle') await page.keyboard.up('KeyW');
   await steerTimer;
 
   // RETAINED-SET heap measure (performance_budget r2): force a full major GC
@@ -529,6 +566,88 @@ try {
     return { textureBytes: Math.round(bytes), shadowRtBytes: rtBytes, uniqueTextures: seen.size };
   });
 
+  // PERF r7 ATTRIBUTION: measure single-config frames with subsets of the scene
+  // hidden so draw calls / triangles / frame ms are attributed to a subsystem.
+  // Runs AFTER the timed window so it cannot perturb the certified numbers, and
+  // restores every flag it touched.
+  let breakdown = null;
+  if (wantBreakdown) {
+    breakdown = await page.evaluate(async (frames) => {
+      const D = window.__DEBUG;
+      const R = D.renderer;
+      const world = D.world;
+      const kids = world.group.children;
+      const named = (frag) => kids.find((c) => (c.name || '').toLowerCase().includes(frag));
+      const terrain = named('terrain') || kids[0];
+      const veg = named('veget') || kids[1];
+      const props = named('prop') || kids[2];
+      const tankRoots = (D.game.tanks || []).map((e) => e.visual && e.visual.root).filter(Boolean);
+      const state = [];
+      const save = (o) => { if (o) state.push([o, o.visible]); };
+      const nextFrame = () => new Promise((r) => requestAnimationFrame(r));
+
+      async function sample(label) {
+        R.info.autoReset = false;
+        // let the toggles settle (LOD/wind updates react to visibility)
+        for (let i = 0; i < 3; i++) await nextFrame();
+        const calls = []; const tris = []; const ms = [];
+        let last = performance.now();
+        for (let i = 0; i < frames; i++) {
+          R.info.reset();
+          await nextFrame();
+          const now = performance.now();
+          calls.push(R.info.render.calls);
+          tris.push(R.info.render.triangles);
+          ms.push(now - last);
+          last = now;
+        }
+        R.info.autoReset = true;
+        const med = (a) => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)];
+        return { label, calls: med(calls), triangles: med(tris), frameMs: +med(ms).toFixed(2) };
+      }
+
+      const out = [];
+      out.push(await sample('full'));
+
+      // battle world off (terrain + vegetation + props, the whole 1 km map)
+      save(world.group); world.group.visible = false;
+      out.push(await sample('noBattleWorld'));
+      world.group.visible = true;
+
+      // staged battle tanks off (7 AI + player, all 1500 m away in garage)
+      const tankPrev = tankRoots.map((r) => r.visible);
+      tankRoots.forEach((r) => { r.visible = false; });
+      out.push(await sample('noStagedTanks'));
+      tankRoots.forEach((r, i) => { r.visible = tankPrev[i]; });
+
+      // world AND tanks off = what the garage screen alone costs
+      world.group.visible = false;
+      tankRoots.forEach((r) => { r.visible = false; });
+      out.push(await sample('garageOnly'));
+      world.group.visible = true;
+      tankRoots.forEach((r, i) => { r.visible = tankPrev[i]; });
+
+      // sub-attribution inside the world group
+      for (const [label, obj] of [['noVegetation', veg], ['noProps', props], ['noTerrain', terrain]]) {
+        if (!obj) continue;
+        const prev = obj.visible;
+        obj.visible = false;
+        out.push(await sample(label));
+        obj.visible = prev;
+      }
+
+      // shadow-pass cost: disabling shadowMap skips every CSM cascade render
+      const shadowPrev = R.shadowMap.enabled;
+      R.shadowMap.enabled = false;
+      out.push(await sample('noShadows'));
+      R.shadowMap.enabled = shadowPrev;
+
+      for (const [o, v] of state) o.visible = v;
+      await nextFrame();
+      return { phase: D.game.phase, frames, samples: out };
+    }, 30);
+  }
+
   const perf = await page.evaluate(() => window.__PERF);
   if (dumpFile) {
     writeFileSync(resolve(dumpFile), JSON.stringify({ times: perf.times, deltas: perf.deltas, calls: perf.calls, tris: perf.tris }));
@@ -557,6 +676,7 @@ try {
   report = {
     date: new Date().toISOString(),
     ...(forcePreset ? { forcedPreset: forcePreset } : {}),
+    scene: sceneMode,
     map: mapId,
     roster: forceRoster ? `pinned:${forceRoster.join(',')}` : 'random-seeded',
     viewport: { width, height, deviceScaleFactor: dsf },
@@ -595,8 +715,16 @@ try {
       shadowRtMB: +(texEstimate.shadowRtBytes / 1048576).toFixed(1),
       uniqueTextures: texEstimate.uniqueTextures,
     },
+    ...(breakdown ? { breakdown } : {}),
     consoleErrors: consoleErrors.slice(0, 10),
   };
+  if (breakdown) {
+    const base = breakdown.samples[0];
+    console.error(`[perf] attribution (${breakdown.phase}) baseline calls=${base.calls} tris=${base.triangles} frameMs=${base.frameMs}`);
+    for (const s of breakdown.samples.slice(1)) {
+      console.error(`[perf]   ${s.label.padEnd(15)} calls ${String(s.calls).padStart(5)} (${s.calls - base.calls}) tris ${String(s.triangles).padStart(9)} (${s.triangles - base.triangles}) frameMs ${String(s.frameMs).padStart(6)} (${(s.frameMs - base.frameMs).toFixed(2)})`);
+    }
+  }
   // Machine contention stamp (see CONTENTION_LOAD_LIMIT above).
   const load1End = os.loadavg()[0];
   clearInterval(loadSampler);
@@ -681,6 +809,8 @@ try {
         date: report.date,
         dsf,
         seconds,
+        // PERF r7: garage rows must never read as battle regressions
+        ...(sceneMode !== 'battle' ? { scene: sceneMode } : {}),
         loadToReadyMs: report.loadToReadyMs,
         fpsMedian: report.fps.median,
         fpsP5: report.fps.p5,
