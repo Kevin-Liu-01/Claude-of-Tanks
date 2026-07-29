@@ -371,6 +371,7 @@ function baseEvent(shell, targetId) {
     // --- SHOT-INFO ENRICHMENT (ADDITIVE ONLY — consumed by src/ui/shotInfo.js;
     // existing fields/math above are untouched) ------------------------------
     shellName: shell.spec.name || shell.spec.type, // display name of the round
+    penRollFreshMm: shell.freshPenRollMm || 0, // pre-ERA/screen ±25% roll
     flightDistM: shell.distM > 0 ? shell.distM : shell.ageS * shell.spec.velocityMps,
     dmgRoll: shell.dmgRoll || 0,   // once-per-shot ±25% damage roll (pre-mitigation)
     zone: null,                    // armor-model plate/box name, e.g. 'lower_glacis'
@@ -474,6 +475,10 @@ function ensurePenRoll(shell, rng) {
   // than age × muzzle velocity); fall back for shells that never stepped.
   const distM = shell.distM > 0 ? shell.distM : shell.ageS * shell.spec.velocityMps;
   shell.remainingPenMm = rollUniform(rng, penAtDistanceMm(shell.spec, distM));
+  // SHOT-INFO ENRICHMENT (additive, killcam_shotinfo r6): keep the original
+  // once-per-shot roll — ERA/screens degrade remainingPenMm in-event, and the
+  // shot card / killcam print the cut as 'fresh → residual / nominal'.
+  shell.freshPenRollMm = shell.remainingPenMm;
   shell.dmgRoll = rollUniform(rng, shell.spec.dmg);
   shell.penRollDone = true;
 }

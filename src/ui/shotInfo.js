@@ -308,6 +308,13 @@ body.cot-si-report .cot-end button{pointer-events:auto !important;}
   font-stretch:condensed;width:30px;text-align:right;font-size:10px;flex:0 0 auto;}
 .cot-si-kill .dm{color:#ffd166;font-weight:800;font-family:${FONT_COND};
   font-stretch:condensed;width:48px;text-align:right;flex:0 0 auto;}
+/* roster column micro-captions (r6): the right-hand figure is the
+   combatant's TOTAL battle damage output — un-headed it read as damage
+   done to you next to 'no engagement with you' */
+.cot-si-kill.cap{padding:0 0 1px;border-bottom:none;}
+.cot-si-kill.cap span{color:${COL.dim} !important;font-size:7.5px;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;font-family:${FONT_COND};
+  font-stretch:condensed;}
 `;
 
 function ensureStyle(id, css) {
@@ -813,6 +820,12 @@ export function createShotInfo(bus) {
 
   function modChips(ev, parent) {
     const items = [];
+    // ERA chip (r6 major): the payload's eraPlate marks a tile this shell
+    // detonated — without it the card never said WHY the pen roll shrank.
+    // Yellow (spent, did its job), never red: no crew/module was lost.
+    if (ev.eraPlate) {
+      items.push({ glyph: GLYPH.shield, label: 'ERA', col: COL.yellow });
+    }
     for (const m of ev.modulesHit || []) {
       // chip color tracks the sim's post-hit state: red destroyed, yellow
       // damaged, dim for a hit that left the module 'ok' (never imply worse)
@@ -889,14 +902,33 @@ export function createShotInfo(bus) {
       // roll / nominal baseline: a bare '986 mm' beside a 63 mm plate looks
       // like a bug to anyone who knows the shell's paper pen (r4 critique).
       // Roll colored green/red vs the nominal it was rolled from.
+      // ERA/screen honesty (r6 major): penRollMm is the shell's RESIDUAL pen
+      // — ERA tiles / spaced screens already cut it in-event before the main
+      // plate test (damage.js: pen *= 1 - era.keReduction) — and a bare
+      // '461 / 898 mm' on an ERA'd T-80U glacis read as a broken ±25% RNG.
+      // When the payload carries the pre-degradation roll (penRollFreshMm,
+      // additive damage.js stamp per docs/handoff/killcam_shotinfo-r6.md)
+      // the row prints the cut explicitly: '894 → 461 / 898 mm · ERA'.
+      // Payloads without the field still get the qualifier whenever the
+      // event itself proves a cut (eraPlate set, or a residual impossible
+      // from a ±25% roll); the roll's green/red verdict is judged on the
+      // FRESH roll when known — RNG luck, not ERA, is what it grades.
       const penNom = nominalPenFor(ev);
       const roll = Math.round(ev.penRollMm || 0);
+      const fresh = Math.round(ev.penRollFreshMm || 0);
       card.dataset.pennom = String(penNom);
+      card.dataset.penfresh = String(fresh);
+      // qualifier is one unbreakable token — a wrapped orphan '·' read scruffy
+      const qual = ev.eraPlate ? ' · ERA'
+        : (roll > 0 && (fresh > roll + 1
+          || (penNom > 0 && roll < penNom * 0.75 - 2))) ? ' · screens' : '';
+      const arrow = fresh > roll + 1 ? `${fresh} → ` : '';
       if (roll > 0 && penNom > 0) {
-        kv('Pen roll', `<span style="color:${roll >= penNom ? COL.green : COL.red}">${roll}</span>` +
-          ` / ${penNom} mm`);
+        const verdict = (fresh > roll + 1 ? fresh : roll) >= penNom ? COL.green : COL.red;
+        kv('Pen roll', `<span style="color:${verdict}">${arrow}${roll}</span>` +
+          ` / ${penNom} mm${qual}`);
       } else {
-        kv('Pen roll', roll > 0 ? `${roll} mm` : '—');
+        kv('Pen roll', roll > 0 ? `${arrow}${roll} mm${qual}` : '—');
       }
     }
     kv('Damage', `${Math.round(ev.damage || 0)} / ${Math.round(ev.dmgRoll || 0)}`);
@@ -968,9 +1000,11 @@ export function createShotInfo(bus) {
     // worse: dim for a hit that left the module 'ok', yellow damaged, red
     // destroyed (an 'ok' Track R styled as a red casualty lied, r3 critique).
     const stateCol = (s) => (s === 'red' ? COL.red : s === 'yellow' ? COL.yellow : COL.dim);
-    const modsLost = (ev.modulesHit || [])
-      .map((m) => `<span style="color:${stateCol(m.newState)}">` +
-        `${MODULE_LABEL[m.module] || m.module}${m.newState === 'red' ? ' ✕' : ''}</span>`)
+    const modsLost = (ev.eraPlate
+      ? [`<span style="color:${COL.yellow}">ERA</span>`] : [])
+      .concat((ev.modulesHit || [])
+        .map((m) => `<span style="color:${stateCol(m.newState)}">` +
+          `${MODULE_LABEL[m.module] || m.module}${m.newState === 'red' ? ' ✕' : ''}</span>`))
       .concat((ev.crewHit || []).map((c) => `<span style="color:${COL.red}">${CREW_LABEL[c] || c} ✕</span>`))
       .join(', ');
     t.innerHTML =
@@ -1176,10 +1210,15 @@ export function createShotInfo(bus) {
       }
     }
 
-    // commendation ribbons — every one derives 1:1 from the session counters
+    // commendation ribbons — every one derives 1:1 from the session counters.
+    // Kill ribbons additionally require dealt > 0 (r6 minor): kill CREDIT can
+    // exist with zero damage output (debug-slain roster; ram/fire analogues),
+    // and an 'ACE — 4 KILLS' beside all-zero performance tiles contradicted
+    // the report it sat on. A ribbon may never outrun the tiles beside it.
     const ribbons = [];
-    if (kills >= 3) ribbons.push({ g: GLYPH.star, t: `ACE — ${kills} kills` });
-    else if (kills >= 1) ribbons.push({ g: GLYPH.skull, t: `DESTROYER — ${kills} kill${kills === 1 ? '' : 's'}` });
+    const dealtAny = Math.round(stats.dealt) > 0;
+    if (kills >= 3 && dealtAny) ribbons.push({ g: GLYPH.star, t: `ACE — ${kills} kills` });
+    else if (kills >= 1 && dealtAny) ribbons.push({ g: GLYPH.skull, t: `DESTROYER — ${kills} kill${kills === 1 ? '' : 's'}` });
     if (stats.hits >= 4 && penRate >= 70) ribbons.push({ g: GLYPH.optics, t: `SHARPSHOOTER — ${penRate}% pen` });
     if (stats.blocked >= 400) ribbons.push({ g: GLYPH.shield, t: `STEEL WALL — ${Math.round(stats.blocked)} blocked` });
     if (stats.fired >= 4 && stats.hits === stats.fired) ribbons.push({ g: GLYPH.ammoRack, t: 'EVERY SHOT CONNECTED' });
@@ -1308,6 +1347,14 @@ export function createShotInfo(bus) {
       const alive = list.filter((r) => !r.dead).length;
       hd.innerHTML = `<span>${title}</span><span>${alive}/${list.length} alive</span>`;
       const host = el('div', 'cot-si-kills', left);
+      // column captions (r6 minor): the damage figure is the combatant's
+      // whole-battle output (same shell:hit sums as everything else) — a
+      // bare '−45' beside 'no engagement with you' read as damage done to
+      // you. KILLS / DMG OUT pin both right-hand columns' meaning.
+      const cap = el('div', 'cot-si-kill cap', host);
+      cap.innerHTML = '<span class="si"></span><span class="n"></span>' +
+        '<span class="s"></span><span class="k">Kills</span>' +
+        '<span class="dm">Dmg out</span><span class="al"></span>';
       for (const r of list) {
         const row = el('div', 'cot-si-kill', host);
         // engagement detail is an ENEMY story (your hits on them, their

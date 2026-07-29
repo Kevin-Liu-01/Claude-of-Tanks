@@ -55,7 +55,7 @@ import { toCreasedNormals, mergeGeometries } from 'three/examples/jsm/utils/Buff
 // shared camo canvas directly.
 import {
   applyCamoToModel, getSharedCamoTexture, getSharedRoughnessTexture,
-  getCommunityGearMaterials, vehicleAmbientFloorHook,
+  getCommunityGearMaterials, getKitPaintTexture, vehicleAmbientFloorHook,
 } from './materials.js';
 
 const _loader = new GLTFLoader();
@@ -830,6 +830,36 @@ function applyModelFixes(scene, turret, spec) {
             g2.computeBoundingSphere();
           }
         });
+        // tank_models r7 (critic minor: "muzzle-end furniture is a chunky
+        // stepped cylinder that reads more Leo L55 collar than M256 MRS"):
+        // the asset's own baked muzzle rings get the same radial compress as
+        // the mid-tube sleeve — anything fatter than the bore in the last
+        // 0.75 units slims ~35% toward the tube so the M256 muzzle reads as
+        // a slim collar, not a stepped drum.
+        gun.traverse((o) => {
+          if (!o.isMesh || !o.geometry) return;
+          const g3 = o.geometry;
+          if (g3.userData.__cotMuzzleSlim) return;
+          g3.userData.__cotMuzzleSlim = true;
+          const p3 = g3.attributes.position;
+          let touched3 = false;
+          for (let i = 0; i < p3.count; i++) {
+            const y3 = p3.getY(i);
+            if (y3 > minY + 0.75) continue;
+            const dx3 = p3.getX(i) - cx, dz3 = p3.getZ(i) - cz;
+            const r3 = Math.hypot(dx3, dz3);
+            if (r3 <= 0.155 || r3 > 0.34) continue;  // keep the bore itself
+            const k3 = (0.155 + (r3 - 0.155) * 0.4) / r3;
+            p3.setX(i, cx + dx3 * k3);
+            p3.setZ(i, cz + dz3 * k3);
+            touched3 = true;
+          }
+          if (touched3) {
+            p3.needsUpdate = true;
+            g3.computeBoundingBox();
+            g3.computeBoundingSphere();
+          }
+        });
         const evacY = minY + 0.42 * (-2.7 - minY);   // ~42% back from the muzzle
         // r2 (critic minor: "fat cylindrical collar reads oversized vs the
         // real M256"): evacuator bulge trimmed 0.205 -> 0.19 (~1.3x tube,
@@ -1008,18 +1038,26 @@ function paintUntextured(root, spec, normScale, cfg = {}) {
   // multi-primitive meshes that the old single-material pass skipped
   // entirely, which is how the banana-cream factory palette survived r6.
   // tank_models r5 ("ARAT tiles read painted-flat: the camo pattern paints
-  // straight across tile faces and gaps"): TUSK ERA tiles keep their own
-  // FLAT desert-tan matte finish — real ARAT ships in monotone tan and is
-  // bolted over the camo, so the hull pattern must STOP at the skirt plane.
+  // straight across tile faces and gaps"): TUSK ERA tiles keep a MONOTONE
+  // plate finish — but tank_models r7 (the r2 critique came back: "flat
+  // cream-beige rows against the woodland hull, unpainted toy parts") kills
+  // the fixed desert-tan constant. Real ARAT on a woodland/NATO vehicle is
+  // CARC'd in the scheme's tonal family; the tiles now wear the shared
+  // per-spec KIT-PAINT canvas (solid scheme tone, repaints live with the
+  // garage pattern picker: woodland -> muted green tiles, desert -> tan,
+  // winter -> whitewash), staying monotone per tile so the hull pattern
+  // still stops at the skirt plane.
   let tuskTileMat = null;
   const ensureTuskTileMat = () => {
     if (!tuskTileMat) {
       tuskTileMat = new THREE.MeshStandardMaterial({
-        name: 'AddOnAratTile_addon', color: 0x8a7f5f,
+        name: 'AddOnAratTile_addon', map: getKitPaintTexture(spec),
         roughness: 0.94, metalness: 0.05,
         roughnessMap: getSharedRoughnessTexture(spec),
         vertexColors: true, envMapIntensity: 0.2,
       });
+      tuskTileMat.onBeforeCompile = vehicleAmbientFloorHook;
+      tuskTileMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     }
     return tuskTileMat;
   };
@@ -1501,6 +1539,88 @@ function applyCommunityFixes(scene, spec, gun) {
       // chunky mud flaps, front + rear (dark gear rubber/steel)
       addPart(rig, gear.track, new THREE.BoxGeometry(0.52, 0.44, 0.05), sgn * 1.48, 0.62, 3.74);
       addPart(rig, gear.track, new THREE.BoxGeometry(0.52, 0.44, 0.05), sgn * 1.48, 0.62, -3.72);
+    }
+  } else if (spec.id === 'tiger2') {
+    // tank_models r7 ("monochrome sand-dip: tracks, wheels and running gear
+    // share the hull's sand tone" + "cleaning-rod stowage welded into the
+    // turret mesh sweeps through the air when the turret yaws").
+    // The asset ships 20 generic Object_N nodes, so the paintUntextured
+    // name regexes never fire:
+    //  1. gear split by node id — mats 2/3 are the complete track+wheel
+    //     assemblies (offline bbox probe: x 1.05..1.89 / y 0..1.4 per side).
+    //     Object_15/19 carry the return-run strip (track), 14/18 the wrap;
+    //     16/17 / 20/21 are the interleaved wheel rows.
+    //  2. hull furniture baked into the TURRET mesh (Object_2) — cleaning
+    //     rods + exhaust group across the rear deck (file z < -2.15, i.e.
+    //     behind the bustle) and the left glacis headlight (z > 0.9,
+    //     x < -0.35) — is EXTRACTED into a static hull-side sibling so it
+    //     stops yawing with the turret. Thresholds are scale-normalized off
+    //     the mesh's own world z-span (probe span 10.29 in file units).
+    const gear = getCommunityGearMaterials(spec);
+    const trackRe = /^Object_(14|15|18|19)$/;
+    const wheelRe = /^Object_(16|17|20|21)$/;
+    scene.updateMatrixWorld(true);
+    scene.traverse((o) => {
+      if (!o.isMesh) return;
+      if (trackRe.test(o.name || '')) { refineCommunityGeometry(o); o.material = gear.track; }
+      else if (wheelRe.test(o.name || '')) { refineCommunityGeometry(o); o.material = gear.wheel; }
+    });
+    const turretMesh = scene.getObjectByName('Object_2');
+    if (turretMesh && turretMesh.isMesh && turretMesh.geometry) {
+      const g = turretMesh.geometry;
+      if (!g.userData.__cotTiger2Split) {
+        const pos = g.attributes.position;
+        const v = new THREE.Vector3();
+        const m = turretMesh.matrixWorld;
+        let zMin = Infinity, zMax = -Infinity;
+        for (let i = 0; i < pos.count; i++) {
+          v.fromBufferAttribute(pos, i).applyMatrix4(m);
+          if (v.z < zMin) zMin = v.z;
+          if (v.z > zMax) zMax = v.z;
+        }
+        const k = (zMax - zMin) / 10.29;           // file-units -> current frame
+        const zRear = zMin + 3.0 * k;              // file z -2.15 (bustle ends -2.0)
+        const zFront = zMin + 6.05 * k;            // file z 0.9 (turret shell ends 0.5)
+        const mask = new Uint8Array(pos.count);
+        let any = 0;
+        for (let i = 0; i < pos.count; i++) {
+          v.fromBufferAttribute(pos, i).applyMatrix4(m);
+          if (v.z < zRear || (v.z > zFront && v.x < -0.35 * k)) { mask[i] = 1; any++; }
+        }
+        if (any) {
+          const src = g.index ? Array.from(g.index.array) : [...Array(pos.count).keys()];
+          const keep = [], cut = [];
+          for (let t = 0; t + 2 < src.length; t += 3) {
+            const a = src[t], b = src[t + 1], c = src[t + 2];
+            const n = (mask[a] ? 1 : 0) + (mask[b] ? 1 : 0) + (mask[c] ? 1 : 0);
+            (n >= 2 ? cut : keep).push(a, b, c);
+          }
+          const mk = (arr) => (pos.count > 65535
+            ? new THREE.BufferAttribute(new Uint32Array(arr), 1)
+            : new THREE.BufferAttribute(new Uint16Array(arr), 1));
+          const cutGeo = new THREE.BufferGeometry();
+          for (const [name, attr] of Object.entries(g.attributes)) cutGeo.setAttribute(name, attr);
+          cutGeo.setIndex(mk(cut));
+          cutGeo.computeBoundingBox();
+          cutGeo.computeBoundingSphere();
+          g.setIndex(mk(keep));
+          g.computeBoundingBox();
+          g.computeBoundingSphere();
+          g.userData.__cotTiger2CutGeo = cutGeo;
+        }
+        g.userData.__cotTiger2Split = true;
+      }
+      const cutGeo = g.userData.__cotTiger2CutGeo;
+      if (cutGeo && turretMesh.parent
+        && !turretMesh.parent.children.some((c) => c.name === 'Tiger2HullKit')) {
+        const kit = new THREE.Mesh(cutGeo, turretMesh.material);
+        kit.name = 'Tiger2HullKit';
+        kit.castShadow = kit.receiveShadow = true;
+        kit.position.copy(turretMesh.position);
+        kit.quaternion.copy(turretMesh.quaternion);
+        kit.scale.copy(turretMesh.scale);
+        turretMesh.parent.add(kit);
+      }
     }
   }
 }

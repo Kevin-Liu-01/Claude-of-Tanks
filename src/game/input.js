@@ -369,9 +369,22 @@ export function createInput(opts = {}) {
   let cursorClientX = null; // last real cursor position (null = never moved)
   let cursorClientY = null;
   const lockDeniedHandlers = new Set();
+  // content_breadth r6 (minor: first aggressive click swallowed in no-lock
+  // environments): the FIRST canvas click is what TRIGGERS the
+  // pointerlockerror -> cursor-aim latch, so at press time lockDenied is
+  // still false and the fire edge never latched — the click died and only
+  // the SECOND click fired. Remember the last canvas-targeted fire press;
+  // when the denial lands (well inside FIRE_PRESS_BUFFER_MS), re-arm that
+  // edge retroactively. Lock-CAPABLE browsers are untouched: their
+  // lock-acquiring click still never latches (no denial event follows), so
+  // re-locking after a pause still can't pop a shot.
+  let lastCanvasFirePressMs = -Infinity;
   function noteLockDenied() {
     const first = !lockDenied;
     lockDenied = true;
+    if (nowMillis() - lastCanvasFirePressMs < FIRE_PRESS_BUFFER_MS) {
+      firePressMs = lastCanvasFirePressMs; // re-arm the swallowed first click
+    }
     if (first) for (const cb of [...lockDeniedHandlers]) cb();
   }
 
@@ -396,6 +409,10 @@ export function createInput(opts = {}) {
          (lockDenied && evt &&
           (evt.target === lockElement || evt.type === 'keydown')))) {
       firePressMs = nowMillis();
+    } else if (actionId === 'fire' && evt && evt.target === lockElement) {
+      // content_breadth r6: canvas click before the no-lock latch — remember
+      // it so noteLockDenied can re-arm the edge (see lastCanvasFirePressMs).
+      lastCanvasFirePressMs = nowMillis();
     }
     pressLatch.add(actionId); // consumed by the next isDown(actionId) query
     const set = actionHandlers.get(actionId);

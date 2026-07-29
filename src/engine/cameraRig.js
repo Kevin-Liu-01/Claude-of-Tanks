@@ -160,6 +160,10 @@ export function createCameraRig(camera, deps) {
 
   let step = 2; // ORBIT_STEPS index — 13 m default
   let dist = ORBIT_STEPS[step];
+  // gameplay_feel r6 (round critique MINOR): the arcade orbit step the player
+  // scoped in FROM — Shift-exit restores it (WoT behavior) instead of dumping
+  // the camera at the 4 m step inside the nearest bush.
+  let preSniperStep = -1;
   const pivot = new THREE.Vector3();
   let pivotInitialized = false;
   // >>> gameplay_feel r4: current uphill camera lift in meters (eased)
@@ -542,13 +546,23 @@ export function createCameraRig(camera, deps) {
         const skip = Math.abs(camInput.mouseDX) > 2 || Math.abs(camInput.mouseDY) > 2 ||
           camInput.wheel !== 0 || camInput.shiftPressed || camInput.rmb;
         if (skip || !solveCinematic(player, dt)) endCinematic(player);
-        return;
+        // controls_gunnery r6: a Shift tap must SKIP AND STILL TOGGLE. The
+        // tap used to be eaten by the skip (prevShift never updates in this
+        // branch, so the rising edge died with the cinematic): players who
+        // Shift'ed into the opening flyby landed in ARCADE with no scope
+        // treatment and read sniper entry as broken (probe: mode ARCADE /
+        // fov 60 after a mid-flyby tap; the critic's "live sniper entry has
+        // no vignette" frame is exactly this failure). A shift-skip now
+        // falls through so the rising-edge toggle below fires this same
+        // frame; every other skip input (and the natural end) returns as
+        // before.
+        if (!(camInput.shiftPressed && cine === null)) return;
       }
 
       // Shift toggles sniper on the rising edge.
       if (camInput.shiftPressed && !prevShift) {
         if (rig.mode === 'ARCADE') rig.enterSniper();
-        else rig.exitSniper();
+        else rig.exitSniper(true); // gameplay_feel r6: restore pre-scope orbit
       }
       prevShift = camInput.shiftPressed;
 
@@ -745,6 +759,7 @@ export function createCameraRig(camera, deps) {
     enterSniper() {
       if (rig.mode === 'SNIPER') return;
       rig.mode = 'SNIPER';
+      preSniperStep = step; // gameplay_feel r6: restored on Shift-exit
       freeYaw = 0;
       freePitch = 0;
       // Scope-in must open on the BATTLEFIELD, not the dirt: the arcade
@@ -794,15 +809,22 @@ export function createCameraRig(camera, deps) {
     },
 
     /**
-     * Exit sniper back to arcade at the closest orbit step, with the orbit
-     * oriented behind the current gun (aim yaw synced to hull yaw + turret
-     * yaw) so the camera comes out behind the barrel.
+     * Exit sniper back to arcade, with the orbit oriented behind the current
+     * gun (aim yaw synced to hull yaw + turret yaw) so the camera comes out
+     * behind the barrel. gameplay_feel r6 (round critique MINOR): a Shift
+     * TOGGLE exit (`restorePrev` true) returns to the orbit distance the
+     * player scoped in from — WoT restores the pre-sniper arcade distance —
+     * while the wheel-out path keeps the closest 4 m step for zoom
+     * continuity.
+     * @param {boolean} [restorePrev=false] restore the pre-sniper orbit step
      * @returns {void}
      */
-    exitSniper() {
+    exitSniper(restorePrev = false) {
       if (rig.mode === 'ARCADE') return;
       rig.mode = 'ARCADE';
-      step = ORBIT_STEPS.length - 1;
+      step = restorePrev && preSniperStep >= 0
+        ? preSniperStep
+        : ORBIT_STEPS.length - 1;
       dist = ORBIT_STEPS[step];
       const player = getPlayer();
       if (player && player.state) aimYaw = player.state.yaw + player.state.turretYaw;

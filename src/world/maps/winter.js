@@ -65,7 +65,11 @@ export default {
     // ridge dressing in maps/mapKits.js)
     // r4: 0.18 -> 0.12 — pairs with the darker makeIceLayer fields; less
     // wind-blown snow albedo re-burying the clear-ice interior
-    iceDrift: 0.12,
+    // r6 (content_breadth): 0.12 -> 0.20 — the critique flipped back: the
+    // fully-exposed sheet reads as one uniform pale print with a hard rim.
+    // 0.20 restores partial snow-drift patches (pairs with the new mapKits
+    // drift-lens geometry) while the crack veins still read.
+    iceDrift: 0.20,
     // terrain_environment r3: fresnel sky tint the clear-ice fields reflect
     // at grazing view angles (terrain.js uIceSky) — pairs with the darker
     // makeIceLayer fields + 0.13 roughness floor for a real ice identity
@@ -131,7 +135,11 @@ export default {
         texTone: (h, s, l) => [clamp01(h * 0.98), clamp01(s * 0.32), clamp01(l * 1.02 + 0.18)],
         cardHue: 0.40, cardSat: 0.07, cardL0: 0.42,
         canopy: { hue: 0.46, sat: 0.05, l0: 0.42, l1: 0.66 },
-        snow: 0.55, jitterHue: 0.22,
+        // r6 terrain_environment: 0.55 -> 0.90 — "conifers carry zero snow
+        // load and read summer-green against full snow cover" (critique).
+        // Feeds the strengthened card whitening AND the new opaque bough
+        // snow lobes in vegetation.js buildPineTrunk.
+        snow: 0.90, jitterHue: 0.22,
       },
     },
   },

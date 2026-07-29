@@ -764,12 +764,23 @@ export function createTechTree(opts) {
   if (commSpecs.length) {
     tabs.push({
       id: 'community', label: 'Community', flags: [['Community', 'modern']],
-      nodes: commSpecs.map((sp) => ({
-        ...n(`c_${sp.id}`, sp.name, COMM_TIER[sp.id] || 5, sp.class === 'mbt' ? 'mbt' : sp.class,
-          sp.era, { spec: sp.id }),
-        credit: sp.community,
-        delisted: GARAGE_DELISTED.has(sp.id),
-      })),
+      // r6 (content_breadth): CARD-CLASS corrections. The IS-1 spec plays as
+      // a fixed-gun assault TD (welded single-mesh print, same gameplay rule
+      // as t30) but the vehicle IS a heavy tank — its community card sat in
+      // the TANK DESTROYER band (critique, data error). Present the true
+      // class on the tree; gameplay keeps the spec's TD handling until the
+      // specs.js source-of-truth change lands (see content_breadth-r6
+      // handoff), at which point this override becomes a harmless no-op.
+      nodes: commSpecs.map((sp) => {
+        const clsFix = { is1: 'heavy' };
+        const cls = clsFix[sp.id] || (sp.class === 'mbt' ? 'mbt' : sp.class);
+        return {
+          ...n(`c_${sp.id}`, sp.name, COMM_TIER[sp.id] || 5, cls,
+            sp.era, { spec: sp.id }),
+          credit: sp.community,
+          delisted: GARAGE_DELISTED.has(sp.id),
+        };
+      }),
     });
   }
   const emit = (ev, p) => { if (bus && bus.emit) bus.emit(ev, p); };
@@ -963,6 +974,15 @@ export function createTechTree(opts) {
         by += depth * COMM_SUB_H + COMM_BAND_GAP;
       }
     }
+    // r6 (content_breadth): NATION tabs stack class bands over OCCUPIED lanes
+    // only — the same compression the community tab already runs. A nation
+    // with no vehicles in a class no longer keeps a full dead ROW_H band
+    // where the absent lane would sit (critique: "LIGHT row pinned at top
+    // then a huge dead band before MEDIUM"), and every band's Y comes from
+    // its occupied index instead of its absolute class slot.
+    const occRows = [...new Set(tab.nodes.map((nd) => nd.row))].sort((a, b) => a - b);
+    const rowIdx = new Map(occRows.map((r, i) => [r, i]));
+    const rowYOf = (r) => HEAD_H + (rowIdx.get(r) ?? r) * ROW_H;
     // Collision-safe placement (modern expansion, NATION tabs): two nodes
     // sharing a (lane,tier) cell shift right to the next free column instead
     // of stacking. Community cards never shift — their column IS their tier.
@@ -1011,7 +1031,7 @@ export function createTechTree(opts) {
       }
       return {
         x: PAD_X + colByKey.get(node.key) * TIER_W + (TIER_W - NODE_W) / 2,
-        y: HEAD_H + node.row * ROW_H,
+        y: rowYOf(node.row),
       };
     }
     const commBottom = isComm
@@ -1022,7 +1042,8 @@ export function createTechTree(opts) {
       w: isComm
         ? PAD_X * 2 + tierXs[maxTier + 1]
         : PAD_X * 2 + Math.max(10, maxCol + 1) * TIER_W,
-      h: isComm ? commBottom + 60 : HEAD_H + maxRow * ROW_H + NODE_H + 60,
+      h: isComm ? commBottom + 60
+        : HEAD_H + (occRows.length - 1) * ROW_H + NODE_H + 60,
     };
     // r8: fit the camera to the OCCUPIED row band vertically (was y0:0 — the
     // fixed head zone above the first class row counted as content, so nation
@@ -1031,11 +1052,11 @@ export function createTechTree(opts) {
     // centers tight instead of floating in dead space.
     content = {
       x0: isComm ? tierLeft(minTier) - 16 : PAD_X + minCol * TIER_W - 16,
-      y0: isComm ? HEAD_H - 64 : HEAD_H + minRow * ROW_H - 24,
+      y0: isComm ? HEAD_H - 64 : rowYOf(minRow) - 24,
       x1: isComm ? tierLeft(maxTier) + tierWOf(maxTier) + 16
         : PAD_X + (maxCol + 1) * TIER_W + 16,
       y1: isComm ? commBottom - COMM_SUB_H + cardH + 24
-        : HEAD_H + maxRow * ROW_H + cardH + 24,
+        : rowYOf(maxRow) + cardH + 24,
     };
     world.style.width = `${bounds.w}px`;
     world.style.height = `${bounds.h}px`;
@@ -1116,7 +1137,7 @@ export function createTechTree(opts) {
       // r8: anchor the ladder just above the TOP OCCUPIED row instead of the
       // world's absolute top — with the row-band camera fit the old top:14px
       // strip drifted into the dead zone above the frame
-      hd.style.top = `${isComm ? HEAD_H - 56 : HEAD_H + minRow * ROW_H - 56}px`;
+      hd.style.top = `${isComm ? HEAD_H - 56 : rowYOf(minRow) - 56}px`;
       hd.innerHTML = `${ROMAN[t]}<i>tier</i>`;
       world.appendChild(hd);
     }
@@ -1134,7 +1155,7 @@ export function createTechTree(opts) {
       lb.style.left = `${content.x0 + 16}px`;
       // r1: community captions sit at their class BAND top (bands stack with
       // variable depth, so the fixed row pitch no longer applies there)
-      lb.style.top = `${isComm ? commBandY.get(r) - laneYOff : HEAD_H + r * ROW_H - laneYOff}px`;
+      lb.style.top = `${isComm ? commBandY.get(r) - laneYOff : rowYOf(r) - laneYOff}px`;
       lb.textContent = LANE_LABEL[r] || '';
       world.appendChild(lb);
     }
@@ -1158,7 +1179,12 @@ export function createTechTree(opts) {
       const modsDone = Math.min(3, loadProgress().modules[node.key] || 0);
       const stepIdx = Math.min(modsDone, 2);
       const stepCost = moduleStep(node, stepIdx);
-      const pips = st === 'available' || st === 'locked'
+      // r6 (content_breadth): pips ride AVAILABLE cards only, and the footer
+      // now says what they mean ("NEXT: GUN") — the bare '◦◦◦ GUN · 125 XP'
+      // chip read as a cryptic glyph string (critique). Locked cards drop
+      // the pips entirely (no module can be bought there yet) and both
+      // states carry a plain-language tooltip legend.
+      const pips = st === 'available'
         ? `<i class="mp">${'◆'.repeat(modsDone)}${'◇'.repeat(3 - modsDone)}</i>`
         : '';
       const p = nodePos(node);
@@ -1175,9 +1201,9 @@ export function createTechTree(opts) {
       const nation = spec0 ? spec0.nation
         : (TAB_NATION[tab.id] || (node.era === 'ww2' ? 'USSR' : 'Russia'));
       const resLabel = st === 'researched' ? 'Researched'
-        : st === 'available' ? `${pips} ${MODULES[stepIdx]} &middot; ${fmt(stepCost)} XP`
+        : st === 'available' ? `${pips} next: ${MODULES[stepIdx]} &middot; ${fmt(stepCost)} XP`
           : st === 'delisted' ? 'Delisted &middot; not in garage'
-            : `${pips} Locked &middot; ${fmt(cost)} XP`;
+            : `Locked &middot; ${fmt(cost)} XP`;
       el.innerHTML =
         `<div class="top">${flagSVG(nation, node.era, 20, 13)}` +
         `<span class="tier">${ROMAN[node.tier]}</span></div>` +
@@ -1196,6 +1222,18 @@ export function createTechTree(opts) {
           : `<div class="res">${resLabel}</div>` +
             (st === 'locked' ? `<span class="lock">&#128274;</span>` : ''));
       el.querySelector('.nm').textContent = node.name;
+      // r6 (content_breadth): plain-language legend for the module ladder —
+      // hover explains the pips instead of leaving a cryptic glyph chip
+      {
+        const resEl = el.querySelector('.res');
+        if (resEl && st === 'available') {
+          resEl.title = 'Module ladder: gun → engine → tracks, then the '
+            + 'vehicle unlocks. ◆ = researched module, ◇ = pending.';
+        } else if (resEl && st === 'locked') {
+          resEl.title = 'Research a connected earlier vehicle first. '
+            + `Full line from here: ${fmt(cost)} XP.`;
+        }
+      }
       if (credit) {
         const cr = el.querySelector('.credit');
         cr.innerHTML = 'by <b></b> &middot; <span></span>';

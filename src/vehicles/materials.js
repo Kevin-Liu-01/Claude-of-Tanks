@@ -101,14 +101,33 @@ function camoPatchPath2D(rng, x, y, r, ang, lobeNIn) {
     const stretch = 1.5 + rng() * 0.9;           // per-lobe elongation
     const sides = 5 + ((rng() * 3) | 0);
     const cosA = Math.cos(a), sinA = Math.sin(a);
+    const pts = [];
     for (let i = 0; i < sides; i++) {
       const t = (i / sides) * Math.PI * 2 + (rng() - 0.5) * (Math.PI / sides);
       let rr = lr * (0.6 + rng() * 0.6);
       if (rng() < 0.16) rr *= 0.5;               // concave notch facet
       const ex = Math.cos(t) * rr * stretch, ey = Math.sin(t) * rr * 0.8;
-      const px = cx + ex * cosA - ey * sinA;
-      const py = cy + ex * sinA + ey * cosA;
-      if (i === 0) p.moveTo(px, py); else p.lineTo(px, py);
+      pts.push([cx + ex * cosA - ey * sinA, cy + ex * sinA + ey * cosA]);
+    }
+    // tank_models r7 ("razor-edged geometric triangles that read as vector
+    // shapes rather than sprayed paint" — T-80U/T-90A skirts): the straight
+    // lineTo polygon sides survive every downstream blur once a GLB atlas
+    // island magnifies the canvas. Each side is subdivided with normal-
+    // displaced midpoints (~2-4 px noise at reference scale, scales with the
+    // patch) so boundaries wander like spray, never ruler lines.
+    p.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 0; i < sides; i++) {
+      const [x0, y0] = pts[i];
+      const [x1, y1] = pts[(i + 1) % sides];
+      const dx = x1 - x0, dy = y1 - y0;
+      const elen = Math.hypot(dx, dy) || 1;
+      const nx = -dy / elen, ny = dx / elen;     // edge normal
+      const amp = Math.min(elen * 0.18, lr * 0.22);
+      for (const f of [0.3, 0.62]) {
+        const j = (rng() - 0.5) * 2 * amp;
+        p.lineTo(x0 + dx * f + nx * j, y0 + dy * f + ny * j);
+      }
+      p.lineTo(x1, y1);
     }
     p.closePath();
     a += (rng() - 0.5) * 0.55;                   // spine wanders slightly
@@ -292,8 +311,11 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     for (let i = 0; i < 14; i++) {
       const x = rng() * S, y = rng() * S, r = S * (0.09 + rng() * 0.20);
       const warm = rng() < 0.5;
+      // tank_models r7 ("pastel-flat" WWII solids): sun-fade blobs pulled
+      // down — the bright [150,142,108] dust mix at 1.18x base was a big
+      // slice of the minty lift on 4BO/olive hulls under the warm key.
       const tone = warm
-        ? mix(scale3(base, 1.18), [150, 142, 108], 0.20)     // sun-faded, dust-warmed
+        ? mix(scale3(base, 1.10), [126, 120, 94], 0.16)      // sun-faded, dust-warmed
         : scale3(mix(base, weather, 0.5), 0.84);             // oil/soot-deepened
       const p = blobPath2D(rng, x, y, r, 8, 0.5);
       ctx.filter = `blur(${(S * 0.004).toFixed(1)}px)`;
@@ -450,12 +472,20 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // scheme instead of scattered same-size islands. Black rides the brown
     // boundaries as elongated shadow bars (never free confetti chips), and
     // the droplet-speck dash is off for both (confetti on skirt UV islands).
+    // camo_spotting r6: `pk`/`blackK` (visual.patchK / visual.blackK, both
+    // default 1 — rng draw order untouched at 1) let the GLB atlas path
+    // rescale the scheme where its UV world density differs from the boxUV
+    // reference: the m1a2's summer patches grow ~14% and the black shadow
+    // bars gain weight ("two greens read monotone olive at mid distance,
+    // black underweighted" critique) while the Tiger's boxUV summer — which
+    // already reads — stays byte-identical.
+    const pk = visual.patchK || 1;
     const black = patches[0], brown = patches[1] || patches[0];
     const dirA = rng() * Math.PI;
     const centers = [];
-    const nBrown = Math.max(4, Math.round(6 * nK));
+    const nBrown = Math.max(4, Math.round(6 * nK / pk));
     for (let i = 0; i < nBrown; i++) {
-      const r = S * wk * (i < nBrown * 0.4 ? 0.082 + rng() * 0.046 : 0.052 + rng() * 0.034);
+      const r = S * wk * pk * (i < nBrown * 0.4 ? 0.082 + rng() * 0.046 : 0.052 + rng() * 0.034);
       let x = rng() * S, y = rng() * S;
       if (i > 0 && rng() < 0.4) {                // anchor on an earlier band
         const c2 = centers[(rng() * centers.length) | 0];
@@ -467,9 +497,9 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       sprayEdge(p, brown, 0.97, false);          // hard core, no confetti dash
       centers.push([x, y, r]);
     }
-    const nBlack = Math.max(3, Math.round(4 * nK));
+    const nBlack = Math.max(3, Math.round(4 * nK * (visual.blackK || 1) / pk));
     for (let i = 0; i < nBlack; i++) {
-      const r = S * wk * (i < nBlack * 0.4 ? 0.050 + rng() * 0.026 : 0.040 + rng() * 0.020);
+      const r = S * wk * pk * (i < nBlack * 0.4 ? 0.050 + rng() * 0.026 : 0.040 + rng() * 0.020);
       let x = rng() * S, y = rng() * S;
       if (centers.length && rng() < 0.75) {      // ride a brown band boundary
         const c2 = centers[(rng() * centers.length) | 0];
@@ -485,31 +515,39 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // Desert: hard-edged multi-scale 3-tone geometry — broad low-contrast
     // diagonal wind bands under angular polygon patches at three scales plus
     // thin dark streaks. Replaces the r1 same-size-ellipse "cheetah print".
+    // camo_spotting r6: `pk` (visual.patchK, default 1 — rng draw order is
+    // untouched at 1) rescales the patch geometry for consumers whose UV
+    // world density differs from the boxUV reference: the GLB atlas path
+    // shrinks the big modern hulls' blobs ~30% (m1a2 "dazzle/giraffe patches
+    // at large scale" critique) while counts scale 1/pk so overall coverage
+    // eases down with the size rather than ballooning.
+    const pk = visual.patchK || 1;
     const dark = patches[0], mid2 = patches[1] || patches[0];
     const pale = patches[2] || mix(base, [255, 250, 235], 0.35);
     for (let i = 0; i < 5; i++) {                                 // band layer
       const y0 = rng() * S, slope = (rng() - 0.5) * 0.6;
-      const w = S * wk * (0.10 + rng() * 0.10);
+      const w = S * wk * pk * (0.10 + rng() * 0.10);
       const path = new Path2D();
       path.moveTo(-S * 0.1, y0);
       path.quadraticCurveTo(S * 0.5, y0 + slope * S * 0.5 + (rng() - 0.5) * S * 0.09,
         S * 1.1, y0 + slope * S);
       strokeWrapped(ctx, S, path, rgb(mix(rng() < 0.5 ? mid2 : pale, base, 0.45), 0.30), w);
     }
-    // Large patches at ~2x the r5 scale and near-opaque, with a stronger
-    // lightness split between tones: the 3-tone geometry has to survive
-    // mipping at garage distance instead of washing to a uniform tan
-    // (r6 "near-uniform tan wash" critique).
-    const darkHC = scale3(dark, 0.74);                            // push contrast
-    // r9: pale lift 0.35 -> 0.12 — the extra whitening stacked on the palette
-    // highlight and fed the garage-key blowout (see patternVisual 'desert')
-    const paleHC = mix(pale, [255, 252, 238], 0.12);
+    // Large patches near-opaque at three scales. History: r6 pushed contrast
+    // here (darkHC 0.74x, paleHC white lift) so the geometry survived mipping
+    // at garage distance — but stacked on the widened r9 palette that became
+    // the m1a2 "near-white cream blobs vs mid-brown dazzle" (camo_spotting r6
+    // critique). The authored palette now carries the whole ladder: darkHC/
+    // paleHC are the palette stops themselves, and the low-contrast read is
+    // the point (real Sinai-family schemes are subtle).
+    const darkHC = dark;
+    const paleHC = pale;
     // patch geometry rides wk/nK so the 3-tone shapes stay hull-scale on
     // every tank (r7: on the T-34 the tile spans ~3 m and single patches
     // swallowed the whole flank -> flat tan wash)
-    const nBig = Math.round(4 * nK);
+    const nBig = Math.round(4 * nK / pk);
     for (let i = 0; i < nBig; i++) {                              // large angular patches
-      const r = S * wk * (0.16 + rng() * 0.10);
+      const r = S * wk * pk * (0.16 + rng() * 0.10);
       const x = rng() * S, y = rng() * S;
       const col = i % 2 ? mid2 : darkHC;
       fillWrapped(ctx, S, polyPath2D(rng, x, y, r * 1.04, 7, 0.55), rgb(mix(col, base, 0.5), 0.5));
@@ -526,16 +564,16 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     const paleBands = [];
     // r9: band count 3 -> 2.5 x nK and radius trimmed — pale coverage down
     // ~25% so the highlight reads as sprayed accents, not dazzle chips
-    for (let i = 0; i < Math.max(2, Math.round(2.5 * nK)); i++) { // pale bands
-      const r = S * wk * (0.085 + rng() * 0.07);
+    for (let i = 0; i < Math.max(2, Math.round(2.5 * nK / pk)); i++) { // pale bands
+      const r = S * wk * pk * (0.085 + rng() * 0.07);
       const x = rng() * S, y = rng() * S;
       const p = camoPatchPath2D(rng, x, y, r, dirD + (rng() - 0.5) * 0.4);
       strokeWrapped(ctx, S, p, rgb(mix(paleHC, base, 0.45), 0.4), S * 0.006);
       fillWrapped(ctx, S, p, rgb(paleHC, 0.93));
       paleBands.push([x, y, r]);
     }
-    for (let i = 0; i < Math.round(6 * nK); i++) {                // mid shards (dark/mid only)
-      const r = S * wk * (0.045 + rng() * 0.075);
+    for (let i = 0; i < Math.round(6 * nK / pk); i++) {           // mid shards (dark/mid only)
+      const r = S * wk * pk * (0.045 + rng() * 0.075);
       const col = rng() < 0.5 ? darkHC : mid2;
       fillWrapped(ctx, S, polyPath2D(rng, rng() * S, rng() * S, r, 5, 0.7), rgb(col, 0.94));
     }
@@ -545,13 +583,13 @@ function paintCamo(canvas, visual, rng, feats, seed) {
         const a3 = rng() * Math.PI * 2;
         const d3 = br * (0.9 + rng() * 1.5);
         const x = bx + Math.cos(a3) * d3, y = by + Math.sin(a3) * d3 * 0.7;
-        const r = S * wk * (0.010 + rng() * rng() * 0.040);       // ~3-5x size spread
+        const r = S * wk * pk * (0.010 + rng() * rng() * 0.040);  // ~3-5x size spread
         fillWrapped(ctx, S, polyPath2D(rng, x, y, r, 4, 0.8),
           rgb(rng() < 0.45 ? darkHC : paleHC, 0.85));
       }
     }
-    for (let i = 0; i < Math.round(14 * nK); i++) {               // thin streaks
-      const x0 = rng() * S, y0 = rng() * S, len = S * wk * (0.05 + rng() * 0.1);
+    for (let i = 0; i < Math.round(14 * nK / pk); i++) {          // thin streaks
+      const x0 = rng() * S, y0 = rng() * S, len = S * wk * pk * (0.05 + rng() * 0.1);
       const a2 = rng() * Math.PI;
       const path = new Path2D();
       path.moveTo(x0, y0);
@@ -1864,10 +1902,18 @@ function patternVisual(spec, patternId) {
     // field base with a darker green shadow tone and one muted earth accent
     // (the NATO black chip is a Western signature). Other nations keep the
     // NATO 3-color, pulled a half-step deeper with the m1a2 factory greens.
+    // camo_spotting r6 (critic: m1a2 summer "reads monotone olive at mid
+    // distance, black component underweighted"): black '#2e2e2e'->'#292929'
+    // and brown '#423a30'->'#3e352a' — one value step down each so both
+    // pattern tones separate from the green base at 50-150 m. Still well off
+    // the '#26291f' floor that clipped to unlit pure black (r1); the m1a2's
+    // patch-scale/weight fix rides the GLB tile tune (GLB_TILE_TUNE below),
+    // not the shared palette, so the Tiger's already-good summer keeps its
+    // patch geometry.
     if (spec.nation === 'USSR' || spec.nation === 'Russia') {
       o = { scheme: 'nato', base: '#4a5638', weather: '#556042', patches: ['#333d2a', '#4a3f2e'] };
     } else {
-      o = { scheme: 'nato', base: '#49543e', weather: '#545f47', patches: ['#2e2e2e', '#423a30'] };
+      o = { scheme: 'nato', base: '#49543e', weather: '#545f47', patches: ['#292929', '#3e352a'] };
     }
   } else if (patternId === 'desert') {
     // 3-tone hard-edged desert geometry (scheme 'desert' in paintCamo):
@@ -1878,7 +1924,16 @@ function patternVisual(spec, patternId) {
     // garage key the old chip blew out toward pure white on tiger1/strv103/
     // m1a2 and the scheme read as high-contrast "chocolate chip" dazzle
     // (coverage is also trimmed ~25% in the desert painter above).
-    o = { scheme: 'desert', base: '#b09466', weather: '#c4ad7d', patches: ['#6b5136', '#947c52', '#d3bf92'] };
+    // camo_spotting r6 (critic: m1a2 desert "near-white cream blobs against
+    // mid-brown ... read as dazzle/giraffe patches rather than a low-contrast
+    // military desert scheme"): the AUTHORED ladder is now the ON-TEXTURE
+    // ladder — the painter's darkHC 0.74x push and paleHC white lift are
+    // retired (they widened the delta the palette had just been tuned to).
+    // pale '#d3bf92'->'#cbb489' (sand, not cream) and dark '#6b5136'->
+    // '#7a5f43' land an even ~26-step luma ladder (100/126/151/182): the
+    // pale-vs-dark delta drops ~39% to Sinai-scheme territory while all four
+    // tones still separate at garage distance.
+    o = { scheme: 'desert', base: '#b09466', weather: '#c4ad7d', patches: ['#7a5f43', '#947c52', '#cbb489'] };
   } else if (patternId === 'winter') {
     // r8: base dropped off near-white — '#c4c8bf' blew out to a featureless
     // white mass under the garage key (r7 winter critique); a worn grey-green
@@ -2008,6 +2063,14 @@ function repaintEntry(entry, patternId) {
       : rec.kind === 'wheelsDark' ? wheelDarkRgbOf(vis) : detailRgbOf(vis);
     rec.m.color.set(cssRGB(c));
   }
+  // tank_models r7: solid scheme-tone KIT canvas (ARAT tiles, bolt-on armor)
+  // follows the repaint through the shared texture — texture-backed so the
+  // applyCamoToModel clone pass cannot orphan it (color-only paintables go
+  // stale on clones; canvas redraws propagate to every clone).
+  if (entry.kitCanvas) {
+    paintKitCanvas(entry.kitCanvas, vis);
+    entry.kitTex.needsUpdate = true;
+  }
 }
 
 /**
@@ -2061,14 +2124,48 @@ const GLB_MAP_SHARE = new Map();  // srcTex.uuid -> { src, meanLuma, canvas, tex
 const GLB_TILE_CACHE = new Map(); // nation:patternId -> pattern tile canvas
 // 'addon' covers modelLoader's procedural correction parts — they already
 // carry the shared camo canvas directly and must not be re-composited.
-const GLB_SKIP_RE = /rubber|tire|light|lens|glass|optic|radiator|screw|track|wheel|gear|addon/i;
+// camo_spotting r6: 'props' (the dannzjs asset family's accessory class —
+// rucksacks, duffels, bustle-rack stowage, tarps) + 'stowage'/'canvas' are
+// masked out of the camo composite: crews do not spray CARC over soft kit,
+// and scheme-painted rucksacks read as one-color toy molding at closeup
+// (critic r6 minor). These sheets are textured (verified on the sepv3/tusk
+// GLBs), so skipping keeps the asset's own canvas/webbing albedo.
+const GLB_SKIP_RE = /rubber|tire|light|lens|glass|optic|radiator|screw|track|wheel|gear|addon|props|stowage|canvas/i;
 // Per-spec chroma pre-compensation for picker patterns composited through
 // the GLB atlas path (see composeGlbShare) — measured against the m1a2
 // reference render under the garage key.
 const GLB_CHROMA_COMP = { strv103: 0.82 };
 
+// camo_spotting r6: per-(nation:pattern) patch rescale for the GLB atlas
+// composite. The dannzjs Abrams family's UV islands run noticeably larger
+// than the 3x3-tile reference the other GLB moderns land on, so the SAME
+// tile painted the m1a2 with outsized geometry — desert blobs at dazzle
+// scale ("near-white cream blobs read giraffe patches") while summer's NATO
+// patches, authored small, mushed to monotone olive at 50-150 m. Keyed by
+// nation so the cache key stays valid; the T-90M (Russia) keeps its praised
+// splinter desert untouched, and every procedural boxUV painter ignores
+// these (patchK/blackK default 1 there).
+const GLB_TILE_TUNE = {
+  'USA:desert': { patchK: 0.72 },                // shrink blobs ~30%
+  'USA:summer': { patchK: 1.14, blackK: 1.35 },  // grow patches, weight black
+  // tank_models r7 (Leclerc factory "two arbitrary brown blobs on an
+  // otherwise plain green hull"): grow the Centre-Europe bands and weight
+  // the noir component so the FR 3-tone reads authored on the atlas.
+  'France:factory': { patchK: 1.2, blackK: 1.4 },
+};
 function glbPatternTile(spec, patternId) {
-  const key = `${spec.nation || 'x'}:${patternId}`;
+  const tuneKey = `${spec.nation || 'x'}:${patternId}`;
+  // tank_models r7 (KF51 "two material worlds" major / tiger2 sand-dip): the
+  // tile cache was keyed by NATION but painted from patternVisual(SPEC) —
+  // Germany mixes Dunkelgelb WWII paints with NATO-green moderns, so
+  // whichever German GLB composited FIRST poisoned '<nation>:factory' for the
+  // whole nation (order-dependent: the KF51 hull rendered Tiger-II sand while
+  // its add-on skirts took the per-spec green canvas). Key the cache by the
+  // PALETTE ITSELF: distinct paints get distinct tiles while identical
+  // palettes (the three Abrams, the NATO-green Germans) still share one.
+  const pv = { ...patternVisual(spec, patternId), camoScale: 0.5, ...(GLB_TILE_TUNE[tuneKey] || {}) };
+  const key = `${patternId}:${pv.scheme || 'solid'}:${pv.base}:${pv.weather || ''}:` +
+    `${(pv.patches || []).join('|')}:${pv.patchK || 1}:${pv.blackK || 1}`;
   let tile = GLB_TILE_CACHE.get(key);
   if (!tile) {
     let ph = 7;
@@ -2078,9 +2175,7 @@ function glbPatternTile(spec, patternId) {
     // the sheet (not boxUV), so the wk world-size normalization in paintCamo
     // must not rescale these tiles.
     const feats = { hLines: [], vLines: [], rings: [], chips: [], streaks: [] };
-    tile = paintCamo(makeCanvas(1024, 1024),
-      { ...patternVisual(spec, patternId), camoScale: 0.5 },
-      mulberry32(ph), feats, ph);
+    tile = paintCamo(makeCanvas(1024, 1024), pv, mulberry32(ph), feats, ph);
     GLB_TILE_CACHE.set(key, tile);
   }
   return tile;
@@ -2558,6 +2653,45 @@ export function getSharedRoughnessTexture(spec) {
   return entry.roughTex;
 }
 
+// tank_models r7: solid scheme-tone paint for bolt-on kit (ARAT ERA tiles,
+// stowage boxes) — monotone like real CARC'd add-on armor, in the ACTIVE
+// pattern's tonal family, with a hint of mottle so plates don't read as one
+// dead constant. Canvas-backed so pattern switches repaint every live clone.
+function paintKitCanvas(canvas, vis) {
+  const ctx = canvas.getContext('2d');
+  const S = canvas.width;
+  const base = wheelRgbOf(vis);
+  ctx.fillStyle = cssRGB(base);
+  ctx.fillRect(0, 0, S, S);
+  const rng = mulberry32(0x6b17);
+  for (let i = 0; i < 6; i++) {
+    const x = rng() * S, y = rng() * S, r = S * (0.2 + rng() * 0.3);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, cssRGB(scale3(base, rng() < 0.5 ? 0.93 : 1.07)));
+    g.addColorStop(1, cssRGB(base));
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/**
+ * Shared per-spec solid kit-paint texture (see paintKitCanvas). Lives on the
+ * TEX_CACHE entry so repaintEntry restyles it with every pattern switch.
+ * @param {object} spec TankSpec
+ * @returns {THREE.Texture}
+ */
+export function getKitPaintTexture(spec) {
+  const entry = TEX_CACHE.get(spec.id) || acquireSharedTextures(spec, 4);
+  if (!entry.kitTex) {
+    entry.kitCanvas = makeCanvas(64, 64);
+    paintKitCanvas(entry.kitCanvas, patternVisual(spec, entry.patternId));
+    entry.kitTex = canvasTex(entry.kitCanvas, { aniso: 2, repeat: true });
+  }
+  return entry.kitTex;
+}
+
 /**
  * COMMUNITY TANKS: scheme-painted running-gear materials for sourced GLBs —
  * wheel dishes take the active pattern's solid wheel paint (registered on the
@@ -2946,9 +3080,14 @@ export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high')
     normalMap: normalTex, normalScale: new THREE.Vector2(0.5, 0.5),
     vertexColors: true, envMapIntensity: 0.45,
   })));
+  // tank_models r7 (critic: "solid cream rectangular prism" stowage on the
+  // Challenger 2 bustle/deck + K2 turret side): 0x59543f is warm-biased —
+  // under the ~4.5x warm key + ACES it tonemapped to flat CREAM while the
+  // hull camo stayed green, so every canvas bundle read as an unpainted
+  // placeholder primitive. OD canvas is duller, darker and green-biased.
   const canvasCloth = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x59543f, roughness: 0.96, metalness: 0.0,
-    bumpMap: roughTex, bumpScale: 0.5,
+    color: 0x42452f, roughness: 0.97, metalness: 0.0,
+    bumpMap: roughTex, bumpScale: 0.5, envMapIntensity: 0.25,
   })));
   const wood = track(setup(new THREE.MeshStandardMaterial({
     color: 0x6b543a, roughness: 0.88, metalness: 0.0,
@@ -2969,7 +3108,11 @@ export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high')
   // in overcast/shadowed framings.
   // r5: 1.3 -> 1.5 with the lifted char stack above — scorched steel, not a
   // light-swallowing silhouette (r4 "black hole against sunlit grass").
-  burnt.color.setScalar(1.5);
+  // r7 (critic critical: wreck reads "bone-white/cream" where this fallback
+  // is sunlit): 1.5 over the pale scorched-camo bake rendered lit panels as
+  // bleached bone. 0.72 puts the rare fallback swap in the same charcoal
+  // family as the shader burn mask (real wrecks char DARK).
+  burnt.color.setScalar(0.72);
   // r5 WORLD-SPACE TRIPLANAR charred sampling: the burnt swap must work on
   // ANY mesh, including sourced GLBs whose palette-atlas UVs collapse whole
   // faces to a few texels — with plain UV sampling those wrecks rendered as
@@ -3137,15 +3280,18 @@ if ( uBurnT >= 0.0 ) {
   brnM *= 1.0 - 0.46 * brnKeep;
   if ( brnM > 0.001 ) {
     float brnLum = dot( diffuseColor.rgb, vec3( 0.299, 0.587, 0.114 ) );
-    // paint chars: desaturate + darken first, then collapse into sooty char
-    // with its own low-frequency tonal variation (never one flat black)
-    // char albedo floor (r6 verify): 0.042-0.135 rendered lit decks as a
-    // void-black slab while the vehicle deep-shade readability floor lifted
-    // shaded flanks to a washed pale tan (3-4x their albedo). Charred steel
-    // lives at ~0.08-0.16 luma — ash grey-brown that stays itself both lit
-    // and in shade (the WoT wreck read the critic keeps calling for).
-    vec3 brnChar = mix( vec3( 0.075, 0.068, 0.062 ), vec3( 0.185, 0.155, 0.125 ),
-      brnNoise( vBrnW * 3.1 + vec3( uBurnSeed * 2.3 ) ) );
+    // r7 char rework (critic: "real wrecks char DARK while retaining surface
+    // detail"): the char MULTIPLIES the panel's own albedo toward charcoal
+    // instead of replacing it with flat noise — camo edges, panel lines,
+    // bolts and the normal/roughness response all survive under the soot,
+    // just compressed dark. A low-frequency soot-tone noise varies the
+    // multiplier panel to panel (patchy burn), and a small additive ash
+    // floor guarantees no region ever clips to lightless black. Typical
+    // paint (0.10-0.35 linear luma) lands at ~0.035-0.075 — charcoal-dark
+    // in sun, still self-similar in shade.
+    float brnTone = brnNoise( vBrnW * 3.1 + vec3( uBurnSeed * 2.3 ) );
+    vec3 brnChar = diffuseColor.rgb * mix( vec3( 0.105, 0.090, 0.078 ), vec3( 0.27, 0.235, 0.20 ), brnTone )
+      + vec3( 0.021, 0.018, 0.015 );
     diffuseColor.rgb = mix( diffuseColor.rgb, vec3( brnLum ) * 0.62, brnM * 0.55 );
     diffuseColor.rgb = mix( diffuseColor.rgb, brnChar, brnM );
   }
@@ -3166,13 +3312,21 @@ if ( uBurnT >= 0.0 ) {
   // bloom threshold) and reaches partially-charred panels early, while
   // staying exactly zero on unburned paint (keep it a brnM product — a
   // brnM-independent base term regressed a GLB deck to black).
-  totalEmissiveRadiance += vec3( 0.95, 0.34, 0.10 ) * uBurnGlow * 0.62 * pow( brnM, 0.4 );
+  // r7: 0.62 -> 0.34 — against the darker multiply-char albedo the old gain
+  // FLOODED the whole wreck uniform orange for seconds (probe destroy_2_5s);
+  // the wash must fire-light the toss beat, then hand the surface back to
+  // the charred diffuse (uBurnGlow also decays 1.5 s -> 0.9 s, tankFactory).
+  totalEmissiveRadiance += vec3( 0.95, 0.34, 0.10 ) * uBurnGlow * 0.34 * pow( brnM, 0.4 );
   // ember pockets smoldering in seams of the finished char (throb + cool)
-  float brnPk = smoothstep( 0.74, 0.96, brnNoise( vBrnW * 4.7 + vec3( uBurnSeed * 4.9 + 3.7 ) ) );
-  totalEmissiveRadiance += vec3( 1.30, 0.30, 0.05 ) * brnPk * brnM * uBurnEmber * ( 1.0 - brnKeep );
+  // r7: tighter pocket gate + ~half gain — pockets are seams, not a coat
+  float brnPk = smoothstep( 0.80, 0.97, brnNoise( vBrnW * 4.7 + vec3( uBurnSeed * 4.9 + 3.7 ) ) );
+  totalEmissiveRadiance += vec3( 0.72, 0.16, 0.028 ) * brnPk * brnM * uBurnEmber * ( 1.0 - brnKeep );
   // shadow-side albedo floor: charred flanks keep their soot/panel gradients
   // readable from any angle (matches the old burnt material's wreck floor)
-  totalEmissiveRadiance += diffuseColor.rgb * 0.11 * brnM;
+  // r7: 0.11 -> 0.19 — with the darker multiply-char albedo the shaded side
+  // of a wreck needs a touch more ambient fill so soot gradients stay
+  // readable from any bearing (never a lightless region, never a wash).
+  totalEmissiveRadiance += diffuseColor.rgb * 0.19 * brnM;
 }
 `;
 

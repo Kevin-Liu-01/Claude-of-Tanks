@@ -181,7 +181,15 @@ export default {
         cardHue: 0.235, cardSat: 0.20,
         // near-LOD blade vertex tint (buildPalmGeometry pal.frond): khaki-olive
         frond: { hue: 0.19, sat: 0.19, l: 0.41 },
-        canopy: { hue: 0.24, sat: 0.22, l0: 0.26, l1: 0.40 },
+        // r6 (content_breadth): far-crown value up another step (l0 0.26 ->
+        // 0.33, l1 0.40 -> 0.52) and sat 0.22 -> 0.17 — even after r9 the
+        // 300 m+ palm clusters collapsed to DARK UNGROUNDED CONFETTI against
+        // the ~0.85-luminance sand (critique, major). Dusty pale olive keeps
+        // ~1.6:1 contrast at range and lets the aerial haze melt the crowns
+        // toward the dune tone instead of punching black specks; pairs with
+        // the crown-scaled contact-shadow blobs (vegetation.js) that tie
+        // each cluster to the ground.
+        canopy: { hue: 0.24, sat: 0.17, l0: 0.33, l1: 0.52 },
       },
     },
   },
@@ -233,7 +241,11 @@ export default {
     // r4: rocks 210 -> 275, outcrops 24 -> 36, craters 30 -> 48, wrecks 5 ->
     // 7 — the critique's "hundreds of meters of empty sand" needs mid-scale
     // props, not just the new sandMacro albedo fields
-    haystacks: 0, rocks: 275, outcrops: 36, craters: 48, rubblePiles: 0,
+    haystacks: 0, rocks: 275, outcrops: 36, craters: 48,
+    // r6 terrain_environment: rubble around the adobe village — the
+    // settlement read as "~10 bare boxes on empty sand" (critique); collapsed
+    // mud-brick piles knit the compounds into a lived-in, fought-over block
+    rubblePiles: 14,
     wrecks: 7,
   },
 

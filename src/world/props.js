@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise.js';
+import { SimplexNoise } from '../engine/simplexFast.js';
 import { applyTone } from './terrain.js';
 import { applySourcedBuildings } from './sourcedTextures.js';
 import { URBAN_BUILDERS } from './maps/urbanKit.js';
@@ -814,6 +814,11 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
     telegraph: true, carts: true, logs: true,
     haystacks: 15, rocks: 170, outcrops: 16, craters: 30, rubblePiles: 0,
     wrecks: 4, // r7: burned-out vehicle hulks along the roads (contested read)
+    // r6 terrain_environment dressing passes (per-biome, see map configs):
+    // cropFields = standing crop-row plots on open farmland; lampposts =
+    // cast-iron street lights along the town grid; hedgehogs = steel anti-
+    // tank obstacles scattered on streets/approaches
+    cropFields: 0, lampposts: false, hedgehogs: 0,
     streetRows: false, curbs: false, monument: false, townCraters: false,
     ...((cfg && cfg.props) || {}),
   };
@@ -1748,6 +1753,7 @@ ${snowCap ? `
   }
 
   // --- field haystacks: classic WoT soft-cover silhouettes in the open ---
+  const stackSpots = []; // r6: fed to the grounding-decal pass below
   for (let i = 0, placed = 0; i < P.haystacks * 22 && placed < P.haystacks; i++) {
     const x = (rng() * 2 - 1) * 430, z = (rng() * 2 - 1) * 430;
     if (x > v.x0 - 10 && x < v.x1 + 10 && z > v.z0 - 10 && z < v.z1 + 10) continue;
@@ -1779,6 +1785,7 @@ ${snowCap ? `
     buckets.straw.push(stack);
     obstacles.push({ min: [x - hr * 0.9, y, z - hr * 0.9], max: [x + hr * 0.9, y + hh, z + hr * 0.9] });
     colliders.push({ min: [x - hr * 0.9, y, z - hr * 0.9], max: [x + hr * 0.9, y + hh, z + hr * 0.9] });
+    stackSpots.push({ x, z, r: hr * 1.5 });
     placed++;
   }
 
@@ -1806,6 +1813,222 @@ ${snowCap ? `
       buckets.wood.push(st);
     }
     placed++;
+  }
+
+  // --- standing crop fields (r6 terrain_environment) ------------------------
+  // The open farmland carried no crops at all ("summer fields have no crops"
+  // critique) — WoT maps stage their fields with standing grain. Each plot is
+  // a fan of parallel crop-card rows (terrain-conformed vertical strips, one
+  // merged alpha-tested mesh) plus the field's own haystack-ready clearing.
+  // ~350 tris/plot — establishing-shot scale dressing at negligible cost.
+  if ((P.cropFields ?? 0) > 0) {
+    const crng = mulberry32(seed + 515);
+    const cs = 256;
+    const cc = document.createElement('canvas');
+    cc.width = cc.height = cs;
+    const cctx = cc.getContext('2d');
+    cctx.clearRect(0, 0, cs, cs);
+    for (let b = 0; b < 260; b++) { // wheat stalks with seed heads
+      const x = crng() * cs;
+      const hgt = cs * (0.50 + crng() * 0.42);
+      const lean = (crng() - 0.5) * 16;
+      const lum = 0.30 + crng() * 0.20;
+      _col.setHSL(0.115 + crng() * 0.02, 0.34, lum);
+      cctx.strokeStyle = _col.getStyle();
+      cctx.lineWidth = 1.2 + crng() * 1.1;
+      cctx.beginPath();
+      cctx.moveTo(x, cs + 2);
+      cctx.quadraticCurveTo(x + lean * 0.4, cs - hgt * 0.6, x + lean, cs - hgt);
+      cctx.stroke();
+      _col.setHSL(0.105 + crng() * 0.02, 0.38, Math.min(0.62, lum + 0.12));
+      cctx.fillStyle = _col.getStyle();
+      cctx.beginPath();
+      cctx.ellipse(x + lean, cs - hgt, 1.7 + crng(), 4.5 + crng() * 2.5, lean * 0.03, 0, Math.PI * 2);
+      cctx.fill();
+    }
+    const cid = cctx.getImageData(0, 0, cs, cs);
+    for (let i = 0; i < cs * cs; i++) { // mean-tone flood so mips don't halo
+      if (cid.data[i * 4 + 3] < 24) {
+        cid.data[i * 4] = 150; cid.data[i * 4 + 1] = 122; cid.data[i * 4 + 2] = 62;
+      }
+    }
+    cctx.putImageData(cid, 0, 0);
+    const cropTex = new THREE.CanvasTexture(cc);
+    cropTex.colorSpace = THREE.SRGBColorSpace;
+    cropTex.wrapS = THREE.RepeatWrapping;
+    cropTex.anisotropy = aniso;
+    const cropGeos = [];
+    for (let p = 0, made = 0; p < P.cropFields * 30 && made < P.cropFields; p++) {
+      const cx = (crng() * 2 - 1) * 380, cz = (crng() * 2 - 1) * 380;
+      const pw = 34 + crng() * 26, pd = 26 + crng() * 22; // plot extents
+      const pr = Math.hypot(pw, pd) * 0.5;
+      if (cx > v.x0 - pr - 14 && cx < v.x1 + pr + 14 && cz > v.z0 - pr - 14 && cz < v.z1 + pr + 14) continue;
+      if (heightField._roadDist(cx, cz) < pr + 9) continue;
+      if (heightField.getGroundType(cx, cz) === 'soft' || noVeg(cx, cz)) continue;
+      let ok = heightField.getNormalAt(cx, cz).y > 0.965;
+      for (const s of [L.spawns.player, ...L.spawns.enemies]) {
+        if (Math.hypot(cx - s.x, cz - s.z) < pr + 24) { ok = false; break; }
+      }
+      // flatness scan at the corners: crops on a hillside read broken
+      const dirA = crng() * Math.PI;
+      const dx = Math.cos(dirA), dz = Math.sin(dirA); // row direction
+      const px2 = -dz, pz2 = dx;                      // row-normal direction
+      if (ok) {
+        const y0 = heightField.getHeightAt(cx, cz);
+        for (const [ex, ez] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+          const qx = cx + dx * ex * pw * 0.5 + px2 * ez * pd * 0.5;
+          const qz = cz + dz * ex * pw * 0.5 + pz2 * ez * pd * 0.5;
+          if (Math.abs(heightField.getHeightAt(qx, qz) - y0) > 3.2) { ok = false; break; }
+        }
+      }
+      if (!ok) continue;
+      const rowPitch = 2.5 + crng() * 0.5;
+      const nRows = Math.floor(pd / rowPitch);
+      const rowH = 1.05 + crng() * 0.2;
+      const tintL = 0.9 + crng() * 0.25; // per-plot ripeness
+      for (let r = 0; r < nRows; r++) {
+        const off = (r - (nRows - 1) / 2) * rowPitch;
+        const rx = cx + px2 * off, rz = cz + pz2 * off;
+        const half = pw * (0.44 + crng() * 0.08);
+        const nSt = Math.max(3, Math.ceil((half * 2) / 3.4));
+        const pos = [], uv = [], idx = [], col = [];
+        for (let sIt = 0; sIt <= nSt; sIt++) {
+          const t = sIt / nSt;
+          const sx2 = rx + dx * (t * 2 - 1) * half;
+          const sz2 = rz + dz * (t * 2 - 1) * half;
+          const gy = heightField.getHeightAt(sx2, sz2);
+          const hh = rowH * (0.86 + crng() * 0.28);
+          pos.push(sx2, gy + 0.02, sz2, sx2, gy + hh, sz2);
+          uv.push(t * half * 0.8, 0, t * half * 0.8, 1);
+          const cshade = tintL * (0.9 + crng() * 0.2);
+          col.push(cshade, cshade, cshade, cshade, cshade, cshade);
+          if (sIt > 0) {
+            const b0 = (sIt - 1) * 2, b1 = sIt * 2;
+            idx.push(b0, b1, b0 + 1, b0 + 1, b1, b1 + 1);
+          }
+        }
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+        g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv), 2));
+        g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(col), 3));
+        g.setIndex(idx);
+        cropGeos.push(g);
+      }
+      made++;
+    }
+    if (cropGeos.length > 0) {
+      const cropMat = new THREE.MeshStandardMaterial({
+        map: cropTex, alphaTest: 0.42, side: THREE.DoubleSide,
+        vertexColors: true, roughness: 1.0, metalness: 0.0,
+      });
+      cropMat.envMapIntensity = 0.5;
+      engineCtx.setupShadowMaterial(cropMat);
+      const merged = mergeGeometries(cropGeos, false);
+      // up-facing normals: crop strips light like the meadow they stand in.
+      // (r6 content_breadth hotfix: the strip geometries carry no normal
+      // attribute, so allocate the all-up normals instead of dereferencing
+      // a missing attribute — this crashed createProps map-wide)
+      const nPos = merged.attributes.position.count;
+      const nUp = new Float32Array(nPos * 3);
+      for (let i = 0; i < nPos; i++) nUp[i * 3 + 1] = 1;
+      merged.setAttribute('normal', new THREE.BufferAttribute(nUp, 3));
+      const cropMesh = new THREE.Mesh(merged, cropMat);
+      cropMesh.name = 'crop-fields';
+      cropMesh.castShadow = false;
+      cropMesh.receiveShadow = false;
+      cropMesh.matrixAutoUpdate = false;
+      cropMesh.userData.aoExclude = true; // GTAO prepass ignores alphaTest
+      group.add(cropMesh);
+    }
+  }
+
+  // --- street lampposts (r6 terrain_environment, town maps) -----------------
+  // Cast-iron posts marching along the paved grid — the missing street
+  // furniture scale cue ("urban streets missing furniture" critique).
+  if (P.lampposts) {
+    const lrng = mulberry32(seed + 611);
+    let lampCount = 0;
+    for (let ri = 0; ri < L.roads.length && lampCount < 44; ri++) {
+      const nodes = L.roads[ri];
+      for (let i = 2; i < nodes.length - 1 && lampCount < 44; i += 2) {
+        const [ax, az] = nodes[i], [bx, bz] = nodes[i + 1];
+        const tl = Math.hypot(bx - ax, bz - az) || 1;
+        const side = ((i >> 1) % 2) ? 1 : -1; // alternate sides
+        const lx = ax - ((bz - az) / tl) * 6.3 * side;
+        const lz = az + ((bx - ax) / tl) * 6.3 * side;
+        // town grid only: posts belong to the paved core
+        if (lx < v.x0 - 12 || lx > v.x1 + 12 || lz < v.z0 - 12 || lz > v.z1 + 12) continue;
+        if (heightField._roadDist(lx, lz) < 4.6) continue;
+        let onB = false;
+        for (const pb of placedB) {
+          if (Math.hypot(lx - pb.x, lz - pb.z) < pb.rr + 1.2) { onB = true; break; }
+        }
+        if (onB) continue;
+        const y = heightField.getHeightAt(lx, lz);
+        const H = 4.4 + lrng() * 0.5;
+        const pole = new THREE.CylinderGeometry(0.045, 0.085, H, 6, 1);
+        scaleUV(pole, 0.6, 2.0);
+        pole.translate(lx, y + H / 2, lz);
+        buckets.dark.push(pole);
+        const collar = new THREE.CylinderGeometry(0.12, 0.16, 0.5, 6, 1);
+        collar.translate(lx, y + 0.25, lz);
+        buckets.dark.push(collar);
+        // curved arm reaching over the carriageway + lantern head
+        const armA = Math.atan2(((bx - ax) / tl) * -side * 0, 1) + Math.atan2((ax - lx), (az - lz));
+        const arm = new THREE.CylinderGeometry(0.035, 0.045, 1.25, 5, 1);
+        arm.rotateZ(Math.PI / 2 - 0.5);
+        arm.rotateY(armA);
+        arm.translate(lx + Math.sin(armA) * 0.5, y + H - 0.18, lz + Math.cos(armA) * 0.5);
+        buckets.dark.push(arm);
+        const head = new THREE.CylinderGeometry(0.16, 0.24, 0.34, 6, 1);
+        head.translate(lx + Math.sin(armA) * 1.02, y + H - 0.02, lz + Math.cos(armA) * 1.02);
+        buckets.dark.push(head);
+        const cap = new THREE.ConeGeometry(0.20, 0.16, 6, 1);
+        cap.translate(lx + Math.sin(armA) * 1.02, y + H + 0.22, lz + Math.cos(armA) * 1.02);
+        buckets.dark.push(cap);
+        obstacles.push({ min: [lx - 0.3, y, lz - 0.3], max: [lx + 0.3, y + H, lz + 0.3] });
+        lampCount++;
+      }
+    }
+  }
+
+  // --- anti-tank hedgehogs (r6 terrain_environment) --------------------------
+  // Steel-beam obstacles on the streets/approaches — the classic shelled-town
+  // debris silhouette WoT urban maps scatter at intersections.
+  if ((P.hedgehogs ?? 0) > 0) {
+    const hrng = mulberry32(seed + 613);
+    for (let i = 0, placed = 0; i < P.hedgehogs * 20 && placed < P.hedgehogs; i++) {
+      const inTown = hrng() < 0.7;
+      const hx = inTown ? v.x0 + hrng() * (v.x1 - v.x0) : (hrng() * 2 - 1) * 320;
+      const hz = inTown ? v.z0 + hrng() * (v.z1 - v.z0) : (hrng() * 2 - 1) * 320;
+      const rd = heightField._roadDist(hx, hz);
+      if (rd > 8.5) continue; // hug the street edges / approaches
+      if (rd < 2.2 && hrng() < 0.5) continue; // some ON the road, most beside it
+      let onB = false;
+      for (const pb of placedB) {
+        if (Math.hypot(hx - pb.x, hz - pb.z) < pb.rr + 1.5) { onB = true; break; }
+      }
+      if (onB || noVeg(hx, hz)) continue;
+      let nearSpawn = false;
+      for (const s of [L.spawns.player, ...L.spawns.enemies]) {
+        if (Math.hypot(hx - s.x, hz - s.z) < 20) { nearSpawn = true; break; }
+      }
+      if (nearSpawn) continue;
+      const y = heightField.getHeightAt(hx, hz);
+      const yawH = hrng() * Math.PI * 2;
+      const scH = 0.85 + hrng() * 0.35;
+      for (let b = 0; b < 3; b++) { // three crossed I-beams
+        const beam = box(0.16 * scH, 0.16 * scH, 2.1 * scH, 1.2);
+        beam.rotateX(b === 0 ? 0.62 : b === 1 ? -0.62 : 0.02);
+        beam.rotateY(yawH + b * (Math.PI * 2 / 3) + (hrng() - 0.5) * 0.3);
+        beam.translate(hx, y + 0.62 * scH, hz);
+        buckets.dark.push(beam);
+      }
+      const e = 1.15 * scH;
+      obstacles.push({ min: [hx - e, y, hz - e], max: [hx + e, y + 1.3 * scH, hz + e] });
+      colliders.push({ min: [hx - e, y, hz - e], max: [hx + e, y + 1.3 * scH, hz + e] });
+      placed++;
+    }
   }
 
   // --- wrecked hay cart near the village edge ---
@@ -2116,6 +2339,18 @@ ${snowCap ? `
         g.addColorStop(0.52, 'rgba(64,50,32,0.88)'); // thrown raw earth on the rim
         g.addColorStop(0.74, 'rgba(70,56,37,0.55)');
         g.addColorStop(1, 'rgba(74,60,40,0)');
+      } else if (kind === 'apron') {
+        // r6 (content_breadth): packed dirt/grit APRON for town buildings —
+        // pale rubble-dust in the urban dirtTone family. Laid as rotated
+        // rects hugging each footprint plus courtyard patches between the
+        // rows, so blocks read tied into a worked street fabric instead of
+        // dropped straight onto lawn (critique, major). Square-metric
+        // falloff (see the ragged-edge pass below) keeps the fade parallel
+        // to the walls.
+        g.addColorStop(0, 'rgba(112,101,84,0.92)');
+        g.addColorStop(0.55, 'rgba(104,93,76,0.88)');
+        g.addColorStop(0.82, 'rgba(96,86,70,0.72)');
+        g.addColorStop(1, 'rgba(90,80,66,0.55)');
       } else {
         // foundation skirt: dark packed-earth AO ring so buildings sit IN the
         // ground instead of floating on the grass
@@ -2126,6 +2361,18 @@ ${snowCap ? `
       }
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, s, s);
+      if (kind === 'apron') { // grit mottle: swept-dirt texture, not one fill
+        const arng = mulberry32(5519);
+        for (let k = 0; k < 260; k++) {
+          const px = arng() * s, py = arng() * s, pr = 0.8 + arng() * 2.6;
+          ctx.fillStyle = arng() < 0.5
+            ? `rgba(84,74,60,${0.10 + arng() * 0.16})`
+            : `rgba(132,121,102,${0.08 + arng() * 0.14})`;
+          ctx.beginPath();
+          ctx.arc(px, py, pr, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
       if (kind === 'crater') { // ejecta rays: ragged radial streaks past the rim
         const rrng = mulberry32(7717);
         ctx.strokeStyle = 'rgba(58,46,30,0.55)';
@@ -2143,14 +2390,23 @@ ${snowCap ? `
         }
         ctx.globalAlpha = 1;
       }
-      // ragged edge: punch noise holes in the outer band
+      // ragged edge: punch noise holes in the outer band. Aprons use a
+      // SQUARE distance metric so the worn fringe runs parallel to the
+      // building walls, with a hard guarantee of full transparency at the
+      // rect rim.
       const id = ctx.getImageData(0, 0, s, s);
       for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
         const dx = (x - s / 2) / (s / 2), dy = (y - s / 2) / (s / 2);
-        const rr = Math.hypot(dx, dy);
+        const rr = kind === 'apron'
+          ? Math.max(Math.abs(dx), Math.abs(dy))
+          : Math.hypot(dx, dy);
         const nse = noi.noise(x * 0.11 + (kind === 'scorch' ? 40 : 0), y * 0.11) * 0.5 + 0.5;
-        const edge = smoothstep(0.55, 1.0, rr);
-        id.data[(y * s + x) * 4 + 3] *= clamp(1 - edge * (0.4 + nse * 1.1), 0, 1);
+        const edge = kind === 'apron'
+          ? smoothstep(0.66, 0.99, rr + (nse - 0.5) * 0.20)
+          : smoothstep(0.55, 1.0, rr);
+        let aMul = clamp(1 - edge * (kind === 'apron' ? 1.0 + nse * 0.25 : 0.4 + nse * 1.1), 0, 1);
+        if (kind === 'apron') aMul *= 1 - smoothstep(0.94, 1.0, rr);
+        id.data[(y * s + x) * 4 + 3] *= aMul;
       }
       ctx.putImageData(id, 0, 0);
       const t = new THREE.CanvasTexture(c);
@@ -2270,6 +2526,36 @@ ${snowCap ? `
       geo.computeVertexNormals();
       return geo;
     }
+    // r6 (content_breadth): terrain-conformed ROTATED RECT (building aprons)
+    // — 5x5 vertex grid so the sheet follows the ground; uv spans 0..1 for
+    // the square-falloff apron texture.
+    function conformedRect(cx, cz, hw, hd, rot) {
+      const nx = 5, nz = 5;
+      const cosR = Math.cos(rot), sinR = Math.sin(rot);
+      const pos = [], uv = [], idx = [];
+      for (let iz = 0; iz < nz; iz++) {
+        for (let ix = 0; ix < nx; ix++) {
+          const u = ix / (nx - 1), vv = iz / (nz - 1);
+          const lx = (u - 0.5) * 2 * hw, lz = (vv - 0.5) * 2 * hd;
+          const px = cx + lx * cosR + lz * sinR;
+          const pz = cz - lx * sinR + lz * cosR;
+          pos.push(px, heightField.getHeightAt(px, pz) + 0.06, pz);
+          uv.push(u, vv);
+        }
+      }
+      for (let iz = 0; iz < nz - 1; iz++) {
+        for (let ix = 0; ix < nx - 1; ix++) {
+          const a = iz * nx + ix, b = a + 1, c2 = a + nx, d2 = c2 + 1;
+          idx.push(a, c2, b, b, c2, d2);
+        }
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+      geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv), 2));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+      return geo;
+    }
     function addDecalMesh(geos, tex) {
       if (geos.length === 0) return;
       const mat = new THREE.MeshStandardMaterial({
@@ -2286,16 +2572,43 @@ ${snowCap ? `
       group.add(mesh);
     }
     const dirtDiscs = [];
+    const apronGeos = [];
     for (const b of buildingFeatures) {
-      // r2: 1.05 -> 1.2 — a wider worn-earth apron grounds the building
-      dirtDiscs.push(conformedDisc(b.x, b.z, Math.max(b.w, b.d) * 1.2, [0.05, 0.05, 0.05, 0.04]));
+      if (P.streetRows) {
+        // r6 (content_breadth): TOWN buildings get a rotated RECT apron of
+        // packed dirt/grit hugging the footprint (+~2.8 m) instead of the
+        // round earth ring — whole rowhouse blocks sat directly on grass
+        // with no yard/pavement transition (critique, major). Adjacent
+        // rowhouses' aprons overlap into continuous worked strips along
+        // the street walls.
+        apronGeos.push(conformedRect(b.x, b.z,
+          b.w / 2 + 2.8, b.d / 2 + 2.8, b.rot || 0));
+      } else {
+        // r2: 1.05 -> 1.2 — a wider worn-earth apron grounds the building
+        dirtDiscs.push(conformedDisc(b.x, b.z, Math.max(b.w, b.d) * 1.2, [0.05, 0.05, 0.05, 0.04]));
+      }
+    }
+    // r6 terrain_environment: grounding decals under EVERY standing prop —
+    // telegraph/lamp poles and haystacks sat on untouched pristine grass
+    // ("object-terrain grounding is weak" critique). Small worn-earth discs
+    // tie them in like the building aprons.
+    for (const cp of crushables) {
+      dirtDiscs.push(conformedDisc(cp.x, cp.z, 1.15, [0.05, 0.05, 0.04, 0.03]));
+    }
+    for (const ss of stackSpots) {
+      dirtDiscs.push(conformedDisc(ss.x, ss.z, ss.r, [0.05, 0.05, 0.04, 0.03]));
     }
     // r3 terrain_environment (town maps): courtyard/yard wear decals — the
     // ground between buildings was one continuous noise smear; structured
     // trampled-earth patches between the rows read as used yards and paths.
+    // r6 (content_breadth): patches upsized (3.2-7.8 -> 4.5-11.5 m) and
+    // nearly doubled in count, riding the pale packed-grit apron texture —
+    // the block INTERIORS still read as full lawn between the rows
+    // (critique); big overlapping courtyard sheets replace the grass with
+    // worked ground the way a lived-in town core reads.
     if (P.streetRows) {
       const crng2 = mulberry32(seed + 771);
-      for (let i = 0, placed = 0; i < 400 && placed < 46; i++) {
+      for (let i = 0, placed = 0; i < 700 && placed < 84; i++) {
         const x = v.x0 + crng2() * (v.x1 - v.x0);
         const z = v.z0 + crng2() * (v.z1 - v.z0);
         const rd = heightField._roadDist(x, z);
@@ -2305,11 +2618,12 @@ ${snowCap ? `
           if (Math.hypot(x - pb.x, z - pb.z) < pb.rr + 1) { onB = true; break; }
         }
         if (onB || noVeg(x, z)) continue;
-        dirtDiscs.push(conformedDisc(x, z, 3.2 + crng2() * 4.6, [0.04, 0.04, 0.04, 0.03]));
+        apronGeos.push(conformedDisc(x, z, 4.5 + crng2() * 7.0, [0.04, 0.04, 0.04, 0.03]));
         placed++;
       }
     }
     addDecalMesh(dirtDiscs, makeDecalTexture('dirt'));
+    addDecalMesh(apronGeos, makeDecalTexture('apron'));
     // craters: scattered shell holes with a raised rim mound. Town maps
     // (P.townCraters) let them pock the streets and squares themselves —
     // the contract's shelled-town read needs impact scars ON the asphalt,

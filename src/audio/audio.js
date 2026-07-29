@@ -340,6 +340,20 @@ export function createAudio() {
     wire(v, nsrc(v, when, 0.05), flt('bandpass', 1400, 1.1), env(when, 0.001, 0.35 * k, 0.04), lp);
   }
 
+  /** gameplay_feel r6: sapling/trunk crush under a hull — sharp wood crack,
+   * low trunk-snap body, foliage crunch tail. Fired by 'prop:crushed'. */
+  function onPropCrushed(e) {
+    const s = spat(e.pos[0], e.pos[1], e.pos[2]);
+    if (s.gain < 0.002) return;
+    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const v = spawnVoice(when, 0.7, s.gain * 0.8, s.pan, sfxBus);
+    const lp = distLowpass(s.dist);
+    lp.connect(v.in);
+    wire(v, nsrc(v, when, 0.05), flt('bandpass', 950, 1.3), env(when, 0.001, 0.9, 0.045), lp);
+    wire(v, osrc(v, 'triangle', 92, when, 0.2), env(when, 0.002, 0.55, 0.16), lp);
+    wire(v, nsrc(v, when, 0.38), flt('lowpass', 1500, 0.8), env(when, 0.012, 0.4, 0.32), lp);
+  }
+
   /** Armor penetration clang: inharmonic metal partials + transient. */
   function clang(x, y, z) {
     const s = spat(x, y, z);
@@ -860,6 +874,7 @@ export function createAudio() {
     // gameplay_feel r2: blocked-drive collision feedback (state.js emits once
     // per genuine hit, 5.4 km/h closing-speed floor)
     bus.on('tank:impact', (e) => { if (ctx) onTankImpact(e); });
+    bus.on('prop:crushed', (e) => { if (ctx) onPropCrushed(e); }); // gameplay_feel r6
     bus.on('tank:fire', (e) => {
       if (!ctx) return;
       if (e.burning) startFireLoop(e.id); else stopFireLoop(e.id);

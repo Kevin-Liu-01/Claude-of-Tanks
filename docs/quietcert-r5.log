@@ -10,3 +10,9 @@
 [perf] BUDGET FAIL: frameMsP99=28.6 (want <=25)
 [perf] RATCHET WARN: trianglesMedian=6693309 still above the 6000000 ratchet target (gate frozen — do not raise)
 [quietcert 2026-07-29T06:58:29.691Z] probe dsf1: certification=REFUSED — machine contended (load1 6.34->6.74, mid-run max 6.74, foreign headless-GPU procs 0, interactive-browser GPU cpu 106.4% (limit 15), on 18 cores, load limit 9); re-run quiet fps=85.5/71.4 p99=28.6 tris=6693309 load=7715
+[quietcert 2026-07-29T07:08:29.754Z] waiting: load1=6.4 busyHeadless=1
+[quietcert 2026-07-29T07:18:29.839Z] waiting: load1=7.3 busyHeadless=8
+[quietcert 2026-07-29T07:28:29.910Z] waiting: load1=7.2 busyHeadless=1
+[quietcert 2026-07-29T07:38:29.985Z] waiting: load1=8.9 busyHeadless=3
+[quietcert 2026-07-29T07:48:30.063Z] waiting: load1=8.6 busyHeadless=3
+[quietcert 2026-07-29T07:54:44Z] r5 runner terminated by performance_budget r6 owner: superseded by tools/quietcert.mjs r6 (cert-r6-* artifacts, interactive-GPU pre-check); relaunched as the r6 runner — see docs/quietcert-r6.log

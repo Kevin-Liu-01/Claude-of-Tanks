@@ -69,7 +69,11 @@ const MUZZLE_LIGHT_S = 0.14;   // lighting_post r6: composed frame catches 41% o
 // the barrel underside at 3-8x in the composed frame — a clear warm kick —
 // while the ground pool still dies inside ~6 m (range 12 with the quartic
 // cutoff), so the old "ground glow >> flash" inversion cannot return.
-const MUZZLE_LIGHT_PEAK = 300;
+// r7 (critic: "no light splash on terrain readable from the chase cam"):
+// 300 -> 460. At the composed 50 ms frame the hull front now reads ~1.8x sun
+// and the ground pool inside ~6 m carries a clear warm kick; range stays 12
+// with quadratic decay, so the r5 "20 m road wash" cannot return.
+const MUZZLE_LIGHT_PEAK = 460;
 const MUZZLE_LIGHT_RANGE = 12;
 // lighting_post r3: 1.1 s / pow-3 decay left the light at 9% of peak while
 // the fireball sprites were at their VISUAL peak (composed ageS 0.6) — the
@@ -167,7 +171,9 @@ void main() {
   vec3 side = cross( axis, viewDir );
   float sl = length( side );
   side = sl > 1e-4 ? side / sl : vec3( viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0] );
-  wpos += side * position.y * aA.w * 6.0;   // ribbon spans core + glow halo
+  // r7: halo span 6.0 -> 3.6 — the wide additive halo read as the sci-fi
+  // beam's body; the bolt now spans a tight core + close glow only.
+  wpos += side * position.y * aA.w * 3.6;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   #ifdef USE_FOG
     vFogDepth = -mvPosition.z;
@@ -189,17 +195,24 @@ varying float vBright;
 #endif
 void main() {
   float d = abs( vUv.y * 2.0 - 1.0 );
-  float core = smoothstep( 0.22, 0.0, d );
-  float glow = pow( max( 1.0 - d, 0.0 ), 2.4 );
-  float head = pow( vUv.x, 1.6 );                 // bright at shell, tapered tail
-  float a = ( core + glow * 0.5 ) * head * vBright;
+  float core = smoothstep( 0.30, 0.0, d );
+  float glow = pow( max( 1.0 - d, 0.0 ), 3.0 );
+  // r7 bolt profile (critic: "a ~30 m continuous uniform-brightness tapered
+  // beam ... reads as a sci-fi laser"): a shell tracer is a BRIGHT HEAD with
+  // an exponentially-decaying incandescent tail. exp falloff kills the
+  // uniform mid-beam; a compact round head bulb carries the white-hot point.
+  float head = exp( ( vUv.x - 1.0 ) * 3.4 );
+  float bulb = smoothstep( 0.90, 1.0, vUv.x ) * smoothstep( 0.75, 0.0, d );
+  float a = ( core + glow * 0.35 ) * head * vBright + bulb * vBright * 0.9;
   if ( a < 0.004 ) discard;
   #ifdef USE_FOG
     float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
   #else
     float fogFactor = 0.0;
   #endif
-  vec3 col = ( vCore * core * 5.0 + vGlow * glow * 1.4 ) * head * vBright;
+  // orange-white ramp: white-hot head point, glow hue fading down the tail
+  vec3 col = ( vCore * core * 4.2 + vGlow * glow * 1.1 ) * head * vBright;
+  col += vec3( 1.0, 0.96, 0.86 ) * bulb * vBright * 2.4;
   gl_FragColor = vec4( col * ( 1.0 - fogFactor ), a );
 }
 `;
@@ -615,8 +628,11 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     const t = (particles.getTime() - r.bornAt) / SHOCK_DUR;
     if (t >= 1 || t < 0) { r.mesh.visible = false; r.mat.opacity = 0; return; }
     const k = 1 - Math.pow(1 - t, 2.4);         // fast launch, decelerating
-    r.mesh.scale.setScalar((1.6 + 11.5 * k) * (r.scaleK || 1));
-    r.mat.opacity = 0.30 * (r.alphaK || 1) * Math.pow(1 - t, 1.5);
+    // r7 (critic: "no readable expanding ground shockwave ring in the first
+    // 400 ms"): faster radial launch + ~50% more opacity so the ring reads
+    // against road/dirt at the 20 m kill framing before it dies at 400 ms.
+    r.mesh.scale.setScalar((1.6 + 14.5 * k) * (r.scaleK || 1));
+    r.mat.opacity = 0.45 * (r.alphaK || 1) * Math.pow(1 - t, 1.5);
     r.mesh.visible = true;
   }
 
@@ -989,18 +1005,44 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     // glow — scale the white-hot CORE with caliber (120 mm ≈ 1.3x, 152 ≈ 1.43x)
     // so the size hierarchy is flash > glow.
     const coreK = 0.8 + (caliberMm / 120) * 0.5;
-    // 0.75/0.95 (was 0.95/1.2): the big soft-radial card froze as a smooth
-    // translucent ORB one radius downrange in the composed frame (r7)
-    _puffO.size0 = 0.75 * s * axSize * coreK; _puffO.size1 = 0.95 * s * axSize * coreK;
+    // r7 caliber-true scale (critic: "120 mm muzzle flash is undersized and
+    // mushy ... a ~1.5 m soft white blob"): the white-hot core doubles to a
+    // 2.5-3 m event for a 120 mm gun (petal/jet layers below carry the spiky
+    // silhouette so it never reads as one big soft orb).
+    _puffO.size0 = 1.30 * s * axSize * coreK; _puffO.size1 = 1.75 * s * axSize * coreK;
     _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 0;
     col3(0xffffff, _puffO.col0); col3(0xffffff, _puffO.col1);
     _puffO.alpha = 0.45 + 0.55 * axAtt; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
     particles.emit('flash', _puffO);
     _puffO.life = Math.max(0.17, -birthOffset * 3.0);
-    _puffO.size0 = 0.55 * s * axSize * coreK; _puffO.size1 = 0.9 * s * axSize * coreK;
+    _puffO.size0 = 0.95 * s * axSize * coreK; _puffO.size1 = 1.5 * s * axSize * coreK;
     _puffO.rotVel = (rng() - 0.5) * 2;
     col3(0xffffff, _puffO.col0); col3(0xffc558, _puffO.col1);
     particles.emit('flash', _puffO);
+    // 1c. crisp radial PETALS (r7 critic: "no crisp radial petals"): 4 short
+    //    spiky incandescent tongues in a shallow forward star around the
+    //    brake, alive 2-4 frames. Short (<= ~1.6 m) so the r5 "side-on
+    //    asterisk of long spears" cannot return — this is the sharp muzzle
+    //    star inside the bigger core, not a spoke wheel.
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + 0.4 + rng() * 0.6;
+      const tilt = 1.02 + rng() * 0.3;             // ~58-76 deg off-bore
+      const st2 = Math.sin(tilt), ct2 = Math.cos(tilt);
+      _sv.set(
+        dir.x * ct2 + (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)) * st2,
+        dir.y * ct2 + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)) * st2,
+        dir.z * ct2 + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)) * st2,
+      ).normalize();
+      _jetO.pos[0] = pos.x + dir.x * 0.14; _jetO.pos[1] = pos.y + dir.y * 0.14; _jetO.pos[2] = pos.z + dir.z * 0.14;
+      _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
+      _jetO.life = Math.max(0.055 + rng() * 0.03, -birthOffset * 1.5);
+      _jetO.width = 0.17 * s * axSize;
+      _jetO.len0 = 0.30 * s; _jetO.len1 = (1.0 + rng() * 0.4) * s;
+      _jetO.seed = rng();
+      col3(0xfff0c4, _jetO.col);
+      _jetO.alpha = 0.8 * axAtt; _jetO.birthOffset = birthOffset;
+      particles.emit('jet', _jetO);
+    }
     // 1b. pressure "refraction" ring snapping out along the bore axis.
     // lighting_post r3: halve att for backdated (composed screenshot) births
     // — at the 50 ms composed age the two ring planes rendered as translucent
@@ -1032,13 +1074,13 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       // the tip-biased erosion) before the 0.14 s pinned core dies, so no
       // frame ever shows a bright bolt downrange of an already-dark muzzle.
       _jetO.life = Math.max(i === 0 ? 0.135 : 0.105, -birthOffset * 2.2); // r6: +2 frames
-      _jetO.width = (i === 0 ? 0.30 : 0.22) * s * axSize;
-      _jetO.len0 = 0.35 * s;
-      // r7: the 1.7-2.1 barrel-length cone was the backbone of the screen
-      // wash — a real 120 mm flash body is ~1 barrel-length. Kept bright,
-      // made COMPACT. r5: mild length share of the distance floor so the
-      // widened far-camera cone doesn't go stubby.
-      _jetO.len1 = (i === 0 ? 1.2 + rng() * 0.3 : 0.85 + rng() * 0.25) * s * reach *
+      // r7 (critic: flash undersized/mushy): jet body widened and lengthened
+      // ~35% with the doubled core — a 120 mm discharge now spans ~2.5-3.5 m
+      // of readable incandescence. Still ~1 barrel-length: the r7-old
+      // "diagonal white wash" guard (nearS/axSize) keeps close cameras safe.
+      _jetO.width = (i === 0 ? 0.38 : 0.28) * s * axSize;
+      _jetO.len0 = 0.40 * s;
+      _jetO.len1 = (i === 0 ? 1.6 + rng() * 0.4 : 1.1 + rng() * 0.35) * s * reach *
         (0.7 + 0.3 * dkF);
       _jetO.seed = rng();
       col3(i === 0 ? 0xffe6b0 : 0xffcf7e, _jetO.col);
@@ -1203,7 +1245,10 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       // see PUFF_FRAG_PROP) with bigger birth sizes so neighbours overlap
       // from frame one — one connected turbulent cloud, alpha up a notch to
       // compensate the erosion cut.
-      _puffO.size0 = (1.05 + rng() * 0.5) * s; _puffO.size1 = (2.6 + rng() * 1.4) * s;
+      // r7 (critic: "discrete round sprite balls with heavy stipple"):
+      // birth sizes up ~40% again — adjacent puffs must OVERLAP at birth so
+      // the 100-500 ms window reads one merged cloud, never popcorn.
+      _puffO.size0 = (1.5 + rng() * 0.6) * s; _puffO.size1 = (2.9 + rng() * 1.4) * s;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2.2;
       col3(0x9b9285, _puffO.col0); col3(0x7a766e, _puffO.col1);
       _puffO.alpha = 0.32 + rng() * 0.10; _puffO.grav = 0.4;
@@ -1334,10 +1379,30 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     const hK = THREE.MathUtils.clamp(1 - (pos.y - gy - 1.2) / 3.4, 0, 1);
     if (hK > 0.05) {
       // 8a0. ground pressure ring snapping out under the muzzle (the visible
-      // side-on "shock ring" — the bore-axis refraction ring is view-gated)
-      if (birthOffset >= 0) {
-        spawnShockRing(pos.x + dir.x * 1.2, pos.z + dir.z * 1.2, 0,
-          0.42 + 0.22 * hK, 0.7 * (0.5 + 0.5 * hK));
+      // side-on "shock ring"). r7: fires for COMPOSED births too (ageS from
+      // the backdate) — the staged combat_firing frame promised a ground
+      // overpressure read and never showed one.
+      spawnShockRing(pos.x + dir.x * 1.2, pos.z + dir.z * 1.2,
+        Math.max(0, -birthOffset), 0.42 + 0.22 * hK, 0.7 * (0.5 + 0.5 * hK));
+      // 8a-1. one-shot overpressure dust HALO: a fast ring of low cards
+      // already expanding by 20-100 ms (r7 critic: "no ground overpressure
+      // dust halo at the muzzle" in the peak-flash frames). Short lives —
+      // the halo pops with the flash and hands off to the slower donut.
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 + rng() * 0.6;
+        _puffO.pos[0] = pos.x + dir.x * 0.9 + Math.cos(a) * 0.8;
+        _puffO.pos[1] = gy + 0.75;
+        _puffO.pos[2] = pos.z + dir.z * 0.9 + Math.sin(a) * 0.8;
+        _puffO.vel[0] = Math.cos(a) * (9 + rng() * 4) + dir.x * 2;
+        _puffO.vel[1] = 0.8 + rng() * 0.8;
+        _puffO.vel[2] = Math.sin(a) * (9 + rng() * 4) + dir.z * 2;
+        _puffO.life = 0.38 + rng() * 0.22;
+        _puffO.size0 = 0.9; _puffO.size1 = (2.3 + rng() * 0.9) * (0.75 + 0.25 * hK);
+        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2.5;
+        col3(0x9a9078, _puffO.col0); col3(0x847c6c, _puffO.col1);
+        _puffO.alpha = (0.34 + 0.14 * hK) * (0.7 + 0.3 * nearAtt);
+        _puffO.grav = -0.6; _puffO.birthOffset = birthOffset - 0.02;
+        particles.emit('dust', _puffO);
       }
       // 8a. recoil dust donut directly beneath the muzzle (r2: born at
       // grass-canopy height — grass-root cards stippled against the blades)
@@ -1954,7 +2019,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     // motion cue. Fewer/smaller chunks on flatter arcs, hot fraction cut, and
     // every hot chunk drags a velocity-aligned spark streak so a frozen frame
     // reads MOTION, not confetti pasted into the foliage.
-    for (let i = 0; i < (rack ? 20 : (burn ? 5 : 12)); i++) {
+    // r7 (critic: "only 1-2 debris chunks readable at a 20 m camera from a
+    // full rack detonation"): rack kills throw a denser, chunkier shower.
+    for (let i = 0; i < (rack ? 30 : (burn ? 5 : 14)); i++) {
       const a = rng() * Math.PI * 2;
       const tilt = 0.25 + rng() * 0.85;
       const bo = birthOffset - rng() * 0.15;
@@ -1967,9 +2034,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       // r5: 1.7-2.8 -> 1.4-2.1 s — landed chips must fade off the lawn
       // within ~2 s instead of lingering as confetti (r4 debris major)
       _debO.life = 1.4 + rng() * 0.7;
-      // 0.08-0.21 (was 0.09-0.26): the biggest slabs dominated the sky
-      // silhouette as flat cards (r5) — cap the maximum chunk size
-      _debO.scale = 0.08 + rng() * 0.13;
+      // r7: 0.08-0.21 -> 0.10-0.25 — chunks must read at 20 m (the r5 slab
+      // cap stands: nothing over ~0.25)
+      _debO.scale = 0.10 + rng() * 0.15;
       _debO.spin = 8 + rng() * 18;
       _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
       // r1: fractional heat — full-hot chunks drag spark streaks, the rest
@@ -2054,7 +2121,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     }
     // large chunks with smoke trails (sampled along the same drag
     // trajectory the debris shader integrates: k = 0.12, g = -21.6)
-    for (let i = 0; i < (rack ? 3 : (burn ? 0 : 2)); i++) {
+    // r7: rack 3 -> 5 — the signature detonation needs more than a couple of
+    // readable smoking slabs at the 20 m kill framing.
+    for (let i = 0; i < (rack ? 5 : (burn ? 0 : 2)); i++) {
       const a = rng() * Math.PI * 2;
       const tilt = 0.25 + rng() * 0.5;
       const vx = Math.cos(a) * Math.sin(tilt) * 14;
@@ -2462,16 +2531,20 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         if (sh.dead) continue;
         const preset = TRACER_PRESETS[sh.spec && sh.spec.tracer] || TRACER_PRESETS.AP;
         const speed = sh.vel.length();
-        // 5-11 m bright bolt head, always readable in a single frame (clamped
-        // so a fresh shell's tail never pokes back out of the muzzle)
-        const len = Math.min(THREE.MathUtils.clamp(speed * 0.012, 5, 11),
+        // r7 (critic: "30 m uniform laser beam no shell ever produced"): the
+        // bolt is a 3-6 m head+tail streak — APFSDS at 1700 m/s tops out at
+        // 6 m, ordnance velocities land 3-4 m. Clamped by distM so a fresh
+        // shell's tail never pokes back out of the muzzle. The old dim
+        // 28 m PATH ribbon is GONE — it was the laser's body.
+        const len = Math.min(THREE.MathUtils.clamp(speed * 0.0035, 3, 6),
           Math.max(sh.distM || 0, 2));
         _v1.copy(sh.vel).normalize();
         _v2.copy(sh.pos).addScaledVector(_v1, -len);
         col3(preset.core, _coreArr); col3(preset.glow, _glowArr);
-        // enemy fire reads at 2x width/brightness — battlefield legibility
-        let wide = sh.isPlayer ? 1 : 2.0;
-        let bright = sh.isPlayer ? 1.15 : 1.6;
+        // enemy fire reads wider/brighter — battlefield legibility (width is
+        // hard-capped below: no tracer body may exceed ~0.15 m)
+        let wide = sh.isPlayer ? 1 : 1.7;
+        let bright = sh.isPlayer ? 1.15 : 1.5;
         // dead-astern boost: a ribbon seen within ~15° of the bore axis is
         // foreshortened to a dot — widen/brighten so the player's own shot
         // stays readable from the default chase camera (r5: invisible)
@@ -2484,29 +2557,19 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
             bright *= 1 + 0.9 * k;
           }
         }
+        const bw = Math.min(preset.width * wide, 0.15);
         writeTracer(n++, _v2.x, _v2.y, _v2.z, sh.pos.x, sh.pos.y, sh.pos.z,
-          preset.width * wide, bright, _coreArr, _glowArr);
-        // dim PATH ribbon: a short exponential-feeling tail behind the bright
-        // bolt (the tracer ribbon's built-in head->tail gradient does the
-        // fade). Capped at ~28 m (was 80) and thinner/dimmer — the r6 kill
-        // frame showed the 80 m ribbon as a full-flight-path laser beam.
-        // Clamped by distM so it never pokes back out of the muzzle.
-        const pathLen = Math.min(speed * 0.025, 28, sh.distM || 0);
-        _v3.copy(sh.pos).addScaledVector(_v1, -pathLen);
-        if (n < MAX_TRACERS) {
-          writeTracer(n++, _v3.x, _v3.y, _v3.z, _v2.x, _v2.y, _v2.z,
-            preset.width * wide * 1.1, bright * 0.18, _coreArr, _glowArr);
-        }
+          bw, bright, _coreArr, _glowArr);
         // record/refresh the afterglow trail for this shell — stored as a
         // VAPOR ribbon (r4): what lingers after the bolt passes is powder
-        // vapor, not light. Grey-tinted, alpha-capped low, slightly wider
-        // than the bolt so it reads as a dissipating wake, never a beam.
+        // vapor, not light. Grey-tinted, alpha-capped low, only the bolt's
+        // own 3-6 m segment (r7: the old 28 m span WAS the laser).
         let tr = trails.get(sh.id);
         if (!tr) { tr = { d: new Float32Array(14), age: 0, seen: true }; trails.set(sh.id, tr); }
         tr.age = 0; tr.seen = true;
         const d = tr.d;
-        d[0] = _v3.x; d[1] = _v3.y; d[2] = _v3.z; d[3] = sh.pos.x; d[4] = sh.pos.y; d[5] = sh.pos.z;
-        d[6] = preset.width * wide * 1.3; d[7] = bright * 0.16;
+        d[0] = _v2.x; d[1] = _v2.y; d[2] = _v2.z; d[3] = sh.pos.x; d[4] = sh.pos.y; d[5] = sh.pos.z;
+        d[6] = bw * 1.3; d[7] = bright * 0.16;
         // desaturate the preset hue hard toward smoke grey (25% color keeps a
         // faint warm/cool identity without reading as an incandescent rod)
         d[8] = 0.45 + _coreArr[0] * 0.25; d[9] = 0.44 + _coreArr[1] * 0.25; d[10] = 0.43 + _coreArr[2] * 0.25;
@@ -2675,9 +2738,57 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
           // flash core + directional spall cone off the plate normal +
           // wide secondary fan + dust/smoke ring + lingering crater glow
           hitFlash(pos, normal, s, 0xffffff, 0xffa030);
+          // r7 WHITE-HOT PENETRATION CORE (critic: "no white-hot penetration
+          // flash core" — the strike read as pale popcorn): a 2-3 frame
+          // blinding pop pinned at the hole, 0.6-1 m, additive flash pool.
+          _puffO.pos[0] = pos.x + normal.x * 0.14; _puffO.pos[1] = pos.y + normal.y * 0.14; _puffO.pos[2] = pos.z + normal.z * 0.14;
+          _puffO.vel[0] = normal.x * 2.5; _puffO.vel[1] = normal.y * 2.5 + 0.5; _puffO.vel[2] = normal.z * 2.5;
+          _puffO.life = 0.09;
+          _puffO.size0 = 0.55 * s; _puffO.size1 = 1.05 * s;
+          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 0;
+          col3(0xffffff, _puffO.col0); col3(0xfff2d0, _puffO.col1);
+          _puffO.alpha = 1.0; _puffO.grav = 0; _puffO.birthOffset = 0;
+          particles.emit('flash', _puffO);
           // dust ring puffing out radially in the armor plane (before the
           // sparkFans — they clobber the shared _v1/_v2 basis)
           basisFrom(normal, _v1, _v2);
+          // r7 DARK SPALL JET (critic: "no dark spall/armor-dust jet along
+          // the incidence normal"): pulverized paint/armor dust blasting out
+          // of the hole in a tight fast cone — the dark directional mass
+          // that sells a penetration against the pale dust ring.
+          for (let i = 0; i < 8; i++) {
+            const a = rng() * Math.PI * 2;
+            const tilt = rng() * 0.24;
+            const st2 = Math.sin(tilt), ct2 = Math.cos(tilt);
+            const jx = normal.x * ct2 + (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)) * st2;
+            const jy = normal.y * ct2 + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)) * st2;
+            const jz = normal.z * ct2 + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)) * st2;
+            const v = 10 + rng() * 9;
+            _puffO.pos[0] = pos.x + normal.x * 0.15; _puffO.pos[1] = pos.y + normal.y * 0.15; _puffO.pos[2] = pos.z + normal.z * 0.15;
+            _puffO.vel[0] = jx * v; _puffO.vel[1] = jy * v; _puffO.vel[2] = jz * v;
+            _puffO.life = 0.45 + rng() * 0.4;
+            _puffO.size0 = 0.20 * s; _puffO.size1 = (0.95 + rng() * 0.55) * s;
+            _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 4;
+            col3(0x38332d, _puffO.col0); col3(0x5c564d, _puffO.col1);
+            _puffO.alpha = 0.8; _puffO.grav = -2.0; _puffO.birthOffset = -rng() * 0.03;
+            particles.emit('smoke', _puffO);
+          }
+          // r7 directional debris cone: solid armor chips ejected along the
+          // normal, gravity-arced (the critic's missing particulate mass)
+          for (let i = 0; i < 5; i++) {
+            const a = rng() * Math.PI * 2;
+            const tilt = rng() * 0.45;
+            const st2 = Math.sin(tilt), ct2 = Math.cos(tilt);
+            _debO.pos[0] = pos.x; _debO.pos[1] = pos.y; _debO.pos[2] = pos.z;
+            _debO.vel[0] = (normal.x * ct2 + (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)) * st2) * (9 + rng() * 9);
+            _debO.vel[1] = (normal.y * ct2 + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)) * st2) * (9 + rng() * 9) + 2.5;
+            _debO.vel[2] = (normal.z * ct2 + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)) * st2) * (9 + rng() * 9);
+            _debO.life = 1.3; _debO.scale = 0.05 + rng() * 0.06; _debO.spin = 14 + rng() * 18;
+            _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+            _debO.groundY = groundY(pos.x, pos.z);
+            _debO.hot = i < 2 ? 1 : 0.45; _debO.seed = rng(); _debO.birthOffset = 0;
+            particles.emit('debris', _debO);
+          }
           for (let i = 0; i < 8; i++) {
             const a = (i / 8) * Math.PI * 2 + rng() * 0.6;
             const rx = _v1.x * Math.cos(a) + _v2.x * Math.sin(a);
@@ -2866,7 +2977,10 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       else if (gt === 'soft') { c0 = 0x6d675a; c1 = 0x5c574c; }
       // r6: pale grey-green dust (was dark loam 0x6f6b57 — invisible against
       // the meadow); dry-soil dust with a green cast reads twin plumes
-      else { c0 = 0x9a947e; c1 = 0x82805e; }
+      // r7 (critic: STILL "zero dust at the tracks" carving meadow at
+      // 10 m/s): lifted another step toward sunlit-dust brightness — the
+      // wake must sit clearly ABOVE the meadow tone, matching the road read.
+      else { c0 = 0xa8a189; c1 = 0x8e8a6c; }
       // per-puff turbulence: randomized scale/opacity so the wake is a mix of
       // small dense kicks and big thin veils, not one uniform fog mass
       const kSize = 0.6 + rng() * 0.8;
@@ -2925,8 +3039,10 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       col3(c0, _puffO.col0); col3(c1, _puffO.col1);
       // r5: grass/loam veil alpha raised to slightly ABOVE road (denser dark
       // media vs the bright road tan) — the meadow wake must read (r4 major)
-      _puffO.alpha = Math.min(gt === 'hard' ? 0.42 : 0.50,
-        (gt === 'hard' ? 0.14 + 0.32 * intensity : 0.20 + 0.34 * intensity) * kA * 1.18) * alphaCapK;
+      // r7: another step (0.50 -> 0.58 cap, +0.06 base) — the off-road wake
+      // was still sub-visible at 10 m/s in the r6 drive frames.
+      _puffO.alpha = Math.min(gt === 'hard' ? 0.42 : 0.58,
+        (gt === 'hard' ? 0.14 + 0.32 * intensity : 0.26 + 0.36 * intensity) * kA * 1.18) * alphaCapK;
       _puffO.grav = -0.24; _puffO.birthOffset = 0;
       particles.emit('dust', _puffO);
       // r6: second veil card per pass on soft ground — main.js emits 1 puff
@@ -2960,8 +3076,8 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         _puffO.size0 = 0.8 + intensity * 0.5;
         _puffO.size1 = Math.min(5.6, 3.0 + intensity * 2.6 + rng() * 1.2) * sizeCapK;
         _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2.0;
-        col3(0x9a947e, _puffO.col0); col3(0x7f7c68, _puffO.col1);
-        _puffO.alpha = Math.min(0.50, 0.28 + 0.32 * intensity) * alphaCapK;
+        col3(0xa8a189, _puffO.col0); col3(0x8a876f, _puffO.col1); // r7: sunlit-dust lift
+        _puffO.alpha = Math.min(0.56, 0.34 + 0.34 * intensity) * alphaCapK;
         _puffO.grav = -0.18; _puffO.birthOffset = 0;
         particles.emit('dust', _puffO);
       }

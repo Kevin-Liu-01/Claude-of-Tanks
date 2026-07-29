@@ -38,7 +38,6 @@ const _aimDir = new THREE.Vector3();
 const _upOrtho = new THREE.Vector3();
 const _seg = new THREE.Vector3();
 const _toC = new THREE.Vector3();
-const _push2 = new THREE.Vector3();
 const _spawnPos = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -389,9 +388,18 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   clearCamoOverrides();
   if (opts.random) {
     const camoRng = mulberry32(8600 + game.battleCount);
+    // camo_spotting r6 (critic: factory-green ally on open snow in the winter
+    // AUTO battle): on high-contrast biomes (winter/desert) a parade-green
+    // bot is never plausible — the AUTO roll is ~100% there, with variety
+    // carried by the per-spec paint bakes (every whitewash/desert coat is
+    // seeded per tank). Verdant/urban keep the 60% mix: green factory paint
+    // is plausible against grass and rubble. camoRng is still drawn per bot
+    // so the battle seed stream stays position-identical across biomes.
+    const forceAuto = game.mapId === 'winter' || game.mapId === 'desert';
     for (const ent of game.tanks) {
       if (ent.specId === playerSpecId) continue;
-      if (camoRng() < 0.6) setCamoOverride(ent.specId, 'auto');
+      const roll = camoRng();
+      if (forceAuto || roll < 0.6) setCamoOverride(ent.specId, 'auto');
     }
   }
   applyCamoPatterns();
@@ -617,43 +625,161 @@ function refreshRigidGear(ent) {
   }
 }
 
-/** Tank-vs-tank + tank-vs-obstacle circle pushback used by movement. */
+/**
+ * Tank collision layer (gameplay_feel r6 — round critique MAJOR "invisible
+ * walls"): the old narrow phase was ONE fat circle per tank
+ * (spec.armor.boundingRadiusM 4.1–4.55 m, gun barrel included) against prop
+ * AABBs — the live probe dead-stopped twice in 13 s of open-meadow driving,
+ * both times ~2 m short of any visible geometry, and grazing paths deflected
+ * ~2.5 m before the hull could reach the prop. Replaced with:
+ *  - tank vs OBSTACLE: the true 2D hull footprint (hullLengthM × widthM
+ *    oriented box, NO barrel) vs the AABB via SAT minimum-translation
+ *    push-out — contact happens where the tracks visually touch;
+ *  - tank vs TANK: hull capsules (segment down the hull axis, radius
+ *    widthM/2 each) — tight nose-to-nose / side-by-side contact instead of a
+ *    6 m circular force field;
+ *  - broad phase stays a cheap circle reject (footprint circumradius).
+ * CRUSHABLE props (round critique MAJOR "nothing in the world crushes"):
+ * obstacle records tagged `crushable` by the world layer (vegetation.js tags
+ * tree trunks — see docs/handoff/gameplay_feel-r6.md) do NOT wall a hull that
+ * is already moving faster than CRUSH_MIN_MPS: the overlap is queued on
+ * `pendingCrush` and simStep fells the prop (world.crushObstacle topple
+ * anim), bleeds a little momentum and emits `prop:crushed` for fx/audio.
+ * A `crushed` record stops colliding for everyone (ai.js avoidance skips it
+ * too). Below the threshold the trunk still resists a parked nudge; boulders,
+ * buildings and every untagged prop stay permanently solid.
+ */
+const CRUSH_MIN_MPS = 6 / 3.6;   // ~6 km/h — WoT fells small trees on any real overrun
+const CRUSH_SPEED_KEEP = 0.94;   // per-prop momentum bite (v *= keep on crush)
+// Below the speed threshold a trunk is solid — but a hull HOLDING drive
+// against it saws it down after this much continuous press (replay probe: a
+// hull clank-stopped by a boulder sat WEDGED between the rock and the solid
+// slow-speed tree behind it for 4+ s, because a wedged tank can never reach
+// 6 km/h again; WoT tanks push saplings over from a standstill). A parked
+// nudge (no throttle) still never fells anything.
+const CRUSH_PRESS_S = 0.45;      // s of held-throttle contact that fells a trunk
+const CRUSH_PRESS_GAP_S = 0.2;   // press bookkeeping resets after this gap
 function makeCollide(game, world) {
   let self = null;
   const obstacles = world.getObstacles();
+  const pendingCrush = [];
   function collide(pos, radiusM, outPush) {
     outPush.set(0, 0, 0);
     let pushed = false;
-    // other tanks
+    const spec = self ? self.spec : null;
+    const halfL = spec ? spec.dims.hullLengthM * 0.5 : radiusM * 0.6;
+    const halfW = spec ? spec.dims.widthM * 0.5 : radiusM * 0.45;
+    const yaw = self && self.state ? self.state.yaw : 0;
+    const fx = Math.sin(yaw), fz = Math.cos(yaw);   // hull forward (world XZ)
+    const rx = fz, rz = -fx;                        // hull right
+    const mySeg = Math.max(halfL - halfW, 0);       // capsule half-segment
+    const selfSpeed = self && self.state ? Math.abs(self.state.speed) : 0;
+
+    // --- other tanks: hull capsule vs hull capsule (2D segment-segment) ----
     for (const other of game.tanks) {
       if (other === self || !other.state) continue;
-      const oR = other.spec.dims.widthM * 0.75;
-      const minD = radiusM + oR;
-      _toC.set(pos.x - other.state.pos.x, 0, pos.z - other.state.pos.z);
-      const d = _toC.length();
-      if (d > 1e-4 && d < minD) {
-        outPush.addScaledVector(_toC, (minD - d) / d);
+      const od = other.spec.dims;
+      const oHalfW = od.widthM * 0.5;
+      const oSeg = Math.max(od.hullLengthM * 0.5 - oHalfW, 0);
+      const minD = halfW + oHalfW;
+      const dx0 = pos.x - other.state.pos.x;
+      const dz0 = pos.z - other.state.pos.z;
+      const outer = mySeg + oSeg + minD;
+      if (dx0 * dx0 + dz0 * dz0 > outer * outer) continue;
+      const ofx = Math.sin(other.state.yaw), ofz = Math.cos(other.state.yaw);
+      // closest points between segments A(s)=pos+f·s, B(t)=oPos+of·t
+      const b = fx * ofx + fz * ofz;            // f·of
+      const dU = dx0 * fx + dz0 * fz;           // d·f   (d = A0 − B0)
+      const dV = dx0 * ofx + dz0 * ofz;         // d·of
+      const denom = 1 - b * b;
+      let s = denom > 1e-6 ? (b * dV - dU) / denom : -dU;
+      s = s < -mySeg ? -mySeg : (s > mySeg ? mySeg : s);
+      let t = dV + b * s;
+      t = t < -oSeg ? -oSeg : (t > oSeg ? oSeg : t);
+      s = b * t - dU;
+      s = s < -mySeg ? -mySeg : (s > mySeg ? mySeg : s);
+      const wx = dx0 + fx * s - ofx * t;        // B-closest → A-closest
+      const wz = dz0 + fz * s - ofz * t;
+      const d2 = wx * wx + wz * wz;
+      if (d2 < minD * minD) {
+        const d = Math.sqrt(Math.max(d2, 1e-8));
+        if (d > 1e-4) {
+          outPush.x += (wx / d) * (minD - d);
+          outPush.z += (wz / d) * (minD - d);
+        } else {
+          // dead-center overlap: push out sideways
+          outPush.x += rx * minD;
+          outPush.z += rz * minD;
+        }
         pushed = true;
       }
     }
-    // static obstacle AABBs (2D footprint, expanded by radius)
+
+    // --- static obstacle AABBs: hull OBB vs box via 2D SAT -----------------
+    const broadR = Math.sqrt(halfL * halfL + halfW * halfW) + 0.01;
     for (const ob of obstacles) {
+      if (ob.crushed) continue;                 // felled — ghosts for everyone
       if (pos.y > ob.max[1] + 0.5) continue;
-      const cx = Math.max(ob.min[0], Math.min(pos.x, ob.max[0]));
-      const cz = Math.max(ob.min[2], Math.min(pos.z, ob.max[2]));
-      const dx = pos.x - cx;
-      const dz = pos.z - cz;
-      const d2 = dx * dx + dz * dz;
-      if (d2 < radiusM * radiusM) {
-        const d = Math.sqrt(Math.max(d2, 1e-6));
-        _push2.set(dx / d, 0, dz / d);
-        outPush.addScaledVector(_push2, radiusM - d);
-        pushed = true;
+      const ccx = Math.max(ob.min[0], Math.min(pos.x, ob.max[0]));
+      const ccz = Math.max(ob.min[2], Math.min(pos.z, ob.max[2]));
+      const bdx = pos.x - ccx;
+      const bdz = pos.z - ccz;
+      if (bdx * bdx + bdz * bdz >= broadR * broadR) continue;
+      // SAT over 4 axes: world X, world Z, hull forward, hull right.
+      const bhx = (ob.max[0] - ob.min[0]) * 0.5;
+      const bhz = (ob.max[2] - ob.min[2]) * 0.5;
+      const dx = pos.x - (ob.min[0] + bhx);     // box center → hull center
+      const dz = pos.z - (ob.min[2] + bhz);
+      let minOv = Infinity, mnx = 0, mnz = 0;
+      let separated = false;
+      for (let a = 0; a < 4; a++) {
+        const nx = a === 0 ? 1 : a === 1 ? 0 : a === 2 ? fx : rx;
+        const nz = a === 0 ? 0 : a === 1 ? 1 : a === 2 ? fz : rz;
+        const rA = halfL * Math.abs(fx * nx + fz * nz) +
+                   halfW * Math.abs(rx * nx + rz * nz);
+        const rB = bhx * Math.abs(nx) + bhz * Math.abs(nz);
+        const dist = dx * nx + dz * nz;
+        const ov = rA + rB - Math.abs(dist);
+        if (ov <= 0) { separated = true; break; }
+        if (ov < minOv) {
+          minOv = ov;
+          const sign = dist >= 0 ? 1 : -1;
+          mnx = nx * sign;
+          mnz = nz * sign;
+        }
       }
+      if (separated) continue;
+      if (ob.crushable && self) {
+        let crushNow = selfSpeed > CRUSH_MIN_MPS;
+        if (!crushNow && self.input &&
+            Math.abs(self.input.throttle || 0) > 0.5) {
+          // slow-speed press: the trunk resists, but held drive saws it down
+          // after CRUSH_PRESS_S of continuous contact (wedge-deadlock fix).
+          if (game.timeS - (ob._pressT || -1e9) > CRUSH_PRESS_GAP_S) {
+            ob._pressS = 0;
+          }
+          ob._pressT = game.timeS;
+          ob._pressS = (ob._pressS || 0) + SIM_DT;
+          crushNow = ob._pressS >= CRUSH_PRESS_S;
+        }
+        if (crushNow) {
+          // momentum (or the held press) carries the hull THROUGH — queue the
+          // crush (deduped); simStep resolves it (topple + speed bite + bus).
+          let queued = false;
+          for (let qi = 0; qi < pendingCrush.length; qi++) {
+            if (pendingCrush[qi].ob === ob) { queued = true; break; }
+          }
+          if (!queued) pendingCrush.push({ ob, ent: self });
+          continue;
+        }
+      }
+      outPush.x += mnx * minOv;
+      outPush.z += mnz * minOv;
+      pushed = true;
     }
     return pushed;
   }
-  return { collide, setSelf(e) { self = e; } };
+  return { collide, setSelf(e) { self = e; }, pendingCrush };
 }
 
 /** Emit the derived bus events flagged inside one HitEvent. */
@@ -979,6 +1105,41 @@ export function simStep(game, bus, world, rig, collider) {
         pos: [ent.state.pos.x, ent.state.pos.y, ent.state.pos.z],
       });
     }
+  }
+
+  // b2. crushable props (gameplay_feel r6): resolve the hull-overrun crushes
+  // the collider queued this tick — mark the record dead for all collision/AI
+  // consumers, fell the world visual (topple anim — vegetation.js/map.js via
+  // world.crushObstacle, see docs/handoff/gameplay_feel-r6.md), bite a little
+  // momentum (WoT: small trees barely slow a hull) and announce for fx/audio.
+  const pending = collider.pendingCrush;
+  if (pending && pending.length) {
+    for (const q of pending) {
+      const ob = q.ob;
+      if (ob.crushed) continue;
+      ob.crushed = true;
+      const ent = q.ent;
+      const dirSign = ent.state ? Math.sign(ent.state.speed || 1) : 1;
+      const dirX = ent.state ? Math.sin(ent.state.yaw) * dirSign : 0;
+      const dirZ = ent.state ? Math.cos(ent.state.yaw) * dirSign : 1;
+      if (world.crushObstacle) world.crushObstacle(ob, dirX, dirZ);
+      if (ent.state) ent.state.speed *= CRUSH_SPEED_KEEP;
+      bus.emit('prop:crushed', {
+        id: ent.id,
+        specId: ent.specId,
+        isPlayer: ent.isPlayer,
+        speedMps: ent.state ? Math.abs(ent.state.speed) : 0,
+        kind: ob.kind || 'tree',
+        h: ob.max[1] - ob.min[1],
+        pos: [
+          (ob.min[0] + ob.max[0]) * 0.5,
+          ob.min[1],
+          (ob.min[2] + ob.max[2]) * 0.5,
+        ],
+        dir: [dirX, 0, dirZ],
+      });
+    }
+    pending.length = 0;
   }
 
   // c. reload timers + firing

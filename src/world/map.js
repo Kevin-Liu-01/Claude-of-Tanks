@@ -147,6 +147,12 @@ export function createMap(engineCtx, { mapId = 'verdant', seed = 1337 } = {}) {
     // main.js triggers crushProp (hinge-topple) + fx.propCrush splinters.
     crushables: props.crushables || [],
     crushProp: (i, dx, dz) => props.crushProp && props.crushProp(i, dx, dz),
+    // gameplay_feel r6: crushable OBSTACLE records (tree trunks tagged by
+    // vegetation.js). state.js's collider queues the hull overrun, marks the
+    // record `crushed`, then calls this for the world-side hinge-topple.
+    crushObstacle: (ob, dx, dz) =>
+      (ob && ob.treeIdx != null && vegetation.crushTree
+        ? vegetation.crushTree(ob, dx, dz) : false),
     spawnPoints,
     /** @returns {{roads:Array, buildings:Array, treeClusters:Array, waterOrSoft:Array}} minimap features */
     getMinimapFeatures: () => ({

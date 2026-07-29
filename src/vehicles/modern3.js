@@ -207,7 +207,9 @@ const MODERN3_SPECS = {
     dims: { hullLengthM: 7.5, overallLengthM: 10.8, widthM: 3.6, heightM: 2.4 },
     armor: modernArmor({
       hl: 3.75, hw: 1.79, inW: 1.22, floor: 0.45, trkTop: 1.05, roofY: 1.66,
-      turretPivot: [0, 1.66, -0.1], gunPivot: [0, 0.30, 0.75],
+      // tank_models r7 (barge read): ring moved 0.4 forward — K2 turret apex
+      // ~2.1 m from the nose like the real vehicle; foredeck 34% -> ~28%.
+      turretPivot: [0, 1.66, 0.30], gunPivot: [0, 0.30, 0.75],
       barrelLenM: 6.6, barrelRadM: 0.079,
       glacis: [45, 130, 160], lower: [550, 500, 700], side: [45, 100, 100],
       skirt: [80, 150, 400], rear: 40, roof: 40,
@@ -617,8 +619,10 @@ function buildK2(P) {
     trackW: 0.63, topY: 0.95, paintedEnds: true, coveredTop: true,
   });
   // ---- turret: compact angular box + steep one-piece front wedge ----
+  // r7 (barge read): base box extended aft 0.30 m — the K2 turret+bustle is
+  // ~46% of hull length; the old 2.9 m turret over the 7.35 m hull read toy
   const KTH = 0.78;
-  P.add('turret', frustum(1.30, 0.48, -1.55, 1.20, 0.30, -1.50, 0.0, KTH));     // base box
+  P.add('turret', frustum(1.30, 0.48, -1.85, 1.20, 0.30, -1.80, 0.0, KTH));     // base box
   // one-piece raked front wedge, TWO tiers (lower sweeps under the gun to the
   // plan apex; upper stops at |x| 0.32 leaving the mantlet slot)
   P.add('turret', slab(                                                          // R lower apex tier
@@ -644,35 +648,36 @@ function buildK2(P) {
   P.add('turretGlass', box(0.26, 0.08, 0.02), 0.62, KTH + 0.13, 0.465);
   P.add('turretDetail', box(0.48, 0.04, 0.38), 0.62, KTH + 0.235, 0.24);        // brow lid
   // KCPS panoramic sight TOWER rear-left (tallest point)
-  P.add('turretDetail', cylY(0.07, 0.09, 0.34, 12), -0.52, KTH + 0.17, -1.02);
-  P.add('turretDetail', cylY(0.10, 0.10, 0.08, 12), -0.52, KTH + 0.38, -1.02);
-  P.add('turretDark', box(0.22, 0.26, 0.22), -0.52, KTH + 0.55, -1.02);
-  P.add('turretGlass', box(0.14, 0.12, 0.02), -0.52, KTH + 0.57, -0.90);
+  P.add('turretDetail', cylY(0.07, 0.09, 0.34, 12), -0.52, KTH + 0.17, -1.12);
+  P.add('turretDetail', cylY(0.10, 0.10, 0.08, 12), -0.52, KTH + 0.38, -1.12);
+  P.add('turretDark', box(0.22, 0.26, 0.22), -0.52, KTH + 0.55, -1.12);
+  P.add('turretGlass', box(0.14, 0.12, 0.02), -0.52, KTH + 0.57, -1.00);
   // commander hatch + crew .50 on a simple ring mount (RWS-less, §23.5)
   P.add('turret', cylY(0.23, 0.23, 0.045, 14), 0.55, KTH + 0.02, -0.60);
   pintleMG(P, 0.55, KTH + 0.04, -0.72);
   P.add('turret', cylY(0.21, 0.21, 0.045, 14), -0.55, KTH + 0.02, -0.45);       // gunner/loader hatch
-  // slim bustle: autoloader blow-off panel seams + twin stowage baskets
-  P.add('turretDetail', box(0.9, 0.015, 0.72), 0, KTH + 0.008, -1.15);          // blow-off panel
-  P.add('turretDark', box(0.92, 0.012, 0.03), 0, KTH + 0.02, -0.82);            // panel seams
-  P.add('turretDark', box(0.03, 0.012, 0.72), 0.45, KTH + 0.02, -1.15);
-  P.add('turretDark', box(0.03, 0.012, 0.72), -0.45, KTH + 0.02, -1.15);
+  // bustle: autoloader blow-off panel seams + twin stowage baskets (r7: kit
+  // rides the extended bustle)
+  P.add('turretDetail', box(0.9, 0.015, 0.72), 0, KTH + 0.008, -1.40);          // blow-off panel
+  P.add('turretDark', box(0.92, 0.012, 0.03), 0, KTH + 0.02, -1.02);            // panel seams
+  P.add('turretDark', box(0.03, 0.012, 0.72), 0.45, KTH + 0.02, -1.40);
+  P.add('turretDark', box(0.03, 0.012, 0.72), -0.45, KTH + 0.02, -1.40);
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.05, 0.05, 1.0), s * (1.30 + 0.10), 0.55, -0.95); // basket rails
-    P.add('turretDetail', box(0.05, 0.05, 1.0), s * (1.30 + 0.10), 0.18, -0.95);
-    for (let k = 0; k < 5; k++) P.add('turretDetail', box(0.03, 0.37, 0.03), s * (1.30 + 0.10), 0.365, -0.55 - k * 0.2);
-    stowage(P, 'turretCloth', rng, [[s * 1.36, 0.38, -0.95, 0.14, 0.28, 0.8]]);
+    P.add('turretDetail', box(0.05, 0.05, 1.0), s * (1.30 + 0.10), 0.55, -1.20); // basket rails
+    P.add('turretDetail', box(0.05, 0.05, 1.0), s * (1.30 + 0.10), 0.18, -1.20);
+    for (let k = 0; k < 5; k++) P.add('turretDetail', box(0.03, 0.37, 0.03), s * (1.30 + 0.10), 0.365, -0.80 - k * 0.2);
+    stowage(P, 'turretCloth', rng, [[s * 1.36, 0.38, -1.20, 0.14, 0.28, 0.8]]);
   }
   // r3 kit de-share (clone-hull critique: "identical rear slat-basket + tan
   // box stowage kit" across the moderns): the K2 drops the NATO-style tan
   // jerry can — ROK bustles carry hard cases; twin dark ammo cans instead.
-  ammoCan(P, 'turretDark', -1.05, 0.28, -1.72, 0.15);
-  ammoCan(P, 'turretDark', 0.95, 0.26, -1.72, -0.2);
+  ammoCan(P, 'turretDark', -1.05, 0.28, -2.02, 0.15);
+  ammoCan(P, 'turretDark', 0.95, 0.26, -2.02, -0.2);
   // 6-tube smoke banks angled on the rear corners
-  smokeCluster(P, 1.02, 0.40, -1.30, 6, 2.05, 0.7);
-  smokeCluster(P, -1.02, 0.40, -1.30, 6, -2.05, 0.7);
-  P.add('turretDetail', box(0.03, 0.5, 0.03), -0.95, KTH + 0.25, -1.45);        // crosswind mast
-  P.add('turretDetail', box(0.03, 0.55, 0.03), 0.95, KTH + 0.25, -1.5, 0, 0, 0.1); // whip antenna
+  smokeCluster(P, 1.02, 0.40, -1.60, 6, 2.05, 0.7);
+  smokeCluster(P, -1.02, 0.40, -1.60, 6, -2.05, 0.7);
+  P.add('turretDetail', box(0.03, 0.5, 0.03), -0.95, KTH + 0.25, -1.75);        // crosswind mast
+  P.add('turretDetail', box(0.03, 0.55, 0.03), 0.95, KTH + 0.25, -1.8, 0, 0, 0.1); // whip antenna
   // mantlet in the wedge slot
   P.addGunExtra(box(0.55, 0.42, 0.30), 0, 0.02, 0.48);
   P.addGunExtra(cylZ(0.13, 0.30, 12, 0.16), 0, 0, 0.70);

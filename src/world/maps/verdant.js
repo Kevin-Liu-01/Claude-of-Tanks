@@ -70,6 +70,10 @@ export default {
     // 24, rocks 170 -> 195) — the critique still read "one lone bale" and a
     // golf course; paired with the bigger crater radii in props.js
     haystacks: 26, rocks: 195, outcrops: 24, craters: 58, rubblePiles: 0,
+    // r6 terrain_environment: standing grain plots on the open farmland —
+    // "summer fields have no crops" was a major dressing gap; pairs with the
+    // fieldPatch splat tint so plots sit inside visibly worked fields
+    cropFields: 7,
   },
 
   horizon: {

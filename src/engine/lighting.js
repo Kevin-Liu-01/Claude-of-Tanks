@@ -325,6 +325,41 @@ function buildCoverageMipmaps(tex, cutoff) {
   tex.needsUpdate = true;
 }
 
+// --- r6 SHADOW-CASTER RESCUE (critical: "shadow draw distance ~120m — every
+// mid-distance building, silo, hay bale, fence and tree sits on uniformly lit
+// ground; a telephone pole 15m away casts nothing") -----------------------
+// Root-caused live (tools/tmp-lp6-shadowdiag*.mjs): the casters and receivers
+// are all correctly flagged — the failure is that EVERY shadow-map draw that
+// goes through WebGLShadowMap's shared MeshDepthMaterial with the default
+// BasicDepthPacking renders nothing on this stack (ANGLE Metal + three r185
+// native depth-texture shadow maps). Controlled A/B on the live scene:
+//   - plain Mesh box, castShadow=true            -> casts NOTHING
+//   - same box, customDepthMaterial Basic packing -> casts NOTHING
+//   - same box, customDepthMaterial RGBA packing  -> casts correctly
+//   - InstancedMesh box (separate program variant)-> casts correctly
+// (vegetation leaf cards always cast — their custom depth materials use
+// RGBADepthPacking — which is why trees were the ONLY thing shadowing and the
+// image read as a ~120 m "shadow horizon" of canopy blobs on grass.)
+// The shadow compare samples the map's native DEPTH attachment, so the color
+// packing is functionally irrelevant — flipping the depth materials onto the
+// proven-good RGBADepthPacking program reroutes every caster (buildings,
+// poles, fences, hay bales, vehicle shadow proxies) onto a working pipeline.
+// onBeforeShadow runs for every object right before its shadow-pass draw and
+// receives the SELECTED depth material (shared singleton, variant clone, or
+// custom), so the flip covers all three paths and is a one-time recompile per
+// depth-material variant.
+function patchShadowDepthPacking() {
+  const hook = function (renderer, object, camera, shadowCamera, geometry, depthMaterial) {
+    if (depthMaterial && depthMaterial.isMeshDepthMaterial &&
+        depthMaterial.depthPacking !== THREE.RGBADepthPacking) {
+      depthMaterial.depthPacking = THREE.RGBADepthPacking;
+      depthMaterial.needsUpdate = true;
+    }
+  };
+  THREE.Mesh.prototype.onBeforeShadow = hook;
+  THREE.SkinnedMesh.prototype.onBeforeShadow = hook;
+}
+
 let shadowChunksPatched = false;
 /**
  * Layer the shadow-density capture over the (CSM-installed) lighting chunks:
@@ -454,6 +489,10 @@ export function createLighting(scene, camera, sunDir) {
   // visibility onto it, then scale the indirect terms in lights_fragment_end.
   // Applied ONCE per page load (guarded), before any lit material compiles.
   patchShadowAmbientChunks();
+  // r6: reroute all shadow-map depth draws onto the working RGBA-packing
+  // program (see patchShadowDepthPacking above) — restores building/prop/
+  // vehicle cast shadows that the broken Basic-packing path was dropping.
+  patchShadowDepthPacking();
 
   /** Apply per-cascade shadow map sizes; dispose old RTs so three reallocates. */
   function applyShadowSizes(sizes) {

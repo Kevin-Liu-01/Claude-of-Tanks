@@ -481,6 +481,7 @@ function updateSniperFill() {
 // (game.killcam); the camera is driven only via rig.setExternalPose.
 const killcam = createKillCam({
   scene, camera, rig, heightField: hfProxy, getPlayer: () => game.player,
+  getWorld: () => world, // r6: flight-cam LOS solve (foliage/terrain/props)
 });
 killcam.bindBus(bus);
 game.killcam = killcam;
@@ -601,6 +602,15 @@ bus.on('shell:expired', (ev) => {
   if (!rec || rec.terminal) return;
   rec.terminal = ev.hitTerrain ? 'terrain' : 'air';
   rec.missM = teleMissM(rec, ev.pos);
+});
+// gameplay_feel r6 (crushable vegetation): state.js emits prop:crushed when a
+// moving hull overruns a tagged trunk — splinter burst at the break point
+// (the same fx the pole hinge-topple uses; the fall anim itself runs in
+// vegetation.js via world.crushObstacle).
+bus.on('prop:crushed', (ev) => {
+  _v1.set(ev.pos[0], ev.pos[1], ev.pos[2]);
+  _fwd.set(ev.dir[0], 0, ev.dir[2]);
+  fx.propCrush(_v1, _fwd, ev.h);
 });
 // Bot-vs-player pressure telemetry (same round, minor #4): per-battle
 // counters for enemy shells whose fire ray passes near the player (aimed at
@@ -1792,8 +1802,27 @@ const SHOT_VIEWS = {
     // lighting_post r4: elev 9 -> 15, dist 7 -> 8 — the extra elevation puts
     // the hull-adjacent contact shadow above the hull's own horizon so the
     // closeup actually shows the vehicle grounded (shadow-read fix).
-    closeupStage(game.tankById.get('m1a2'));
-    orbitPose(game.tankById.get('m1a2'), 8, -42, 15, 45);
+    const hero = game.tankById.get('m1a2');
+    // tank_models r6 (minor): a flat background bot ("312") parked right
+    // behind the hero undercut the closeup — push any OTHER vehicle inside
+    // 55 m a further 30 m out along its own bearing (deterministic, no rng;
+    // this view runs after the battlefield capture so wide shots keep their
+    // original staging).
+    for (const t of game.tanks) {
+      if (t === hero || !t.state || !t.visual) continue;
+      const ddx = t.state.pos.x - hero.state.pos.x;
+      const ddz = t.state.pos.z - hero.state.pos.z;
+      const d = Math.hypot(ddx, ddz);
+      if (d > 0.01 && d < 55) {
+        const s = (d + 30) / d;
+        t.state.pos.x = hero.state.pos.x + ddx * s;
+        t.state.pos.z = hero.state.pos.z + ddz * s;
+        t.state.pos.y = world.heightField.getHeightAt(t.state.pos.x, t.state.pos.z);
+        t.visual.syncFromState(t.state);
+      }
+    }
+    closeupStage(hero);
+    orbitPose(hero, 8, -42, 15, 45);
   },
   tank_closeup_ww2() {
     hud.setMode('hidden');

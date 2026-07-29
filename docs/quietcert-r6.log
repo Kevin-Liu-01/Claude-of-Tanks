@@ -1,0 +1,7 @@
+[quietcert 2026-07-29T07:54:53.156Z] runner up on c3fa305 + uncommitted src changes; cores=18 quiet-load<7.6 quiet-gpu<10%
+[quietcert 2026-07-29T07:54:53.316Z] waiting: load1=10.3 busyHeadless=6 interactiveGpu=125.7%
+[quietcert 2026-07-29T08:04:53.436Z] waiting: load1=10.3 busyHeadless=3 interactiveGpu=101.8%
+[quietcert 2026-07-29T08:14:53.630Z] waiting: load1=8.2 busyHeadless=4 interactiveGpu=107%
+[quietcert 2026-07-29T08:24:53.745Z] waiting: load1=9.4 busyHeadless=3 interactiveGpu=122%
+[quietcert 2026-07-29T08:34:53.852Z] waiting: load1=6.9 busyHeadless=0 interactiveGpu=94.2%
+[quietcert 2026-07-29T08:44:53.956Z] waiting: load1=7.7 busyHeadless=0 interactiveGpu=167.3%

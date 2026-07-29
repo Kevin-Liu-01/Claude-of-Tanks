@@ -24,7 +24,7 @@
 // }
 
 import * as THREE from 'three';
-import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise.js';
+import { SimplexNoise } from '../../engine/simplexFast.js';
 
 function mulberry32(a) {
   return function () {
@@ -328,8 +328,16 @@ function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyA
         // the same offset-run mask the gullies use — the full-height 0.60
         // rib chutes were the "vertical texture smearing" the critique saw
         // on the winter wall (dark top-to-bottom streaks magnified at range)
+        // r6 (content_breadth): the surviving ribs STILL read as rain streaks
+        // across the big massif face (critique). seg's fv 9.5 leaves ~21 m
+        // runs — long enough to chain visually into full-height chutes at
+        // ring distance. A second, much tighter v-segmentation (fv 26 ≈ 8 m
+        // runs) breaks every rib into short couloir dashes, and both chute
+        // terms drop another step; the isotropic sastrugi/basin/spur fields
+        // carry the face structure instead.
+        const seg2 = smoothstep(0.30, 0.62, wn(u, v, 12, 26, 997) * 0.5 + 0.5);
         const snowL = 1.03 + sast * 0.26 + basin * 0.34 + spur * 0.18
-          - gully * 0.18 - ribRaw * ribMask * seg * 0.30;
+          - gully * 0.10 - ribRaw * ribMask * seg * seg2 * 0.18;
         let sr = snowL * 0.98, sg = snowL * 1.0, sb = snowL * 1.04;
         // crag windows: bare cool rock showing through the mid-flank snow
         sr += (0.60 - sr) * crag * 0.85; sg += (0.63 - sg) * crag * 0.85; sb += (0.70 - sb) * crag * 0.85;
@@ -486,7 +494,9 @@ function makeTreeLineTexture(rng) {
   // the gap), so the ridge line reads as aged mixed forest.
   const scPhase = rng() * 9.7;
   while (x < w - 24) {
-    const stand = 0.72 + 0.46 * (Math.sin(x * 0.006 + scPhase) * 0.5 + 0.5) + rng() * 0.10;
+    // r6 terrain_environment: stand range widened 0.72-1.28 -> 0.55-1.45 —
+    // the comb's tooth height still ran near-uniform ("even comb edge")
+    const stand = 0.55 + 0.70 * (Math.sin(x * 0.006 + scPhase) * 0.5 + 0.5) + rng() * 0.20;
     const conifer = rng() < 0.62;
     const tj = 0.62 + rng() * 0.55; // per-tree value jitter
     if (conifer) {
@@ -1114,12 +1124,27 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
             float slopeF = 1.0 - clamp(hn.y, 0.0, 1.0);
             // aerial attenuation: the outer ranges stay fog-flattened
             float farAtt = 1.0 - smoothstep(700.0, 1400.0, length(vHPos.xz)) * 0.62;
-            // ~600 m + ~140 m noise fields break the rock/snow boundary
-            float nB = texture2D(uDetail2, vHPos.xz * 0.0016).r - 0.5;
-            float nC = texture2D(uDetail2, vHPos.xz * 0.0071 + vec2(0.29, 0.53)).r - 0.5;
+            // r6 (content_breadth) TRIPLANAR boundary noise. The old fields
+            // sampled vHPos.xz only — constant straight DOWN a steep face, so
+            // the rock/snow mix varied laterally but never vertically and the
+            // whole wall broke into full-height light/dark runnels (the
+            // critique's "rain streaks" on the winter massif). Blend the
+            // horizontal-plane sample with the two vertical-plane projections
+            // by the smooth normal, exactly like the terrain-side steep-slope
+            // splat: steep faces now sample laterally-AND-vertically and the
+            // boundary breaks into patches down the face. A third ~45 m field
+            // (nD) adds the within-face patch scale the two broad fields lack.
+            vec3 awT = abs(hn);
+            awT /= (awT.x + awT.y + awT.z);
+            #define HTRIP(s, o) (texture2D(uDetail2, vHPos.xz * (s) + (o)).r * awT.y \
+              + texture2D(uDetail2, vHPos.zy * (s) + (o) + vec2(0.41, 0.07)).r * awT.x \
+              + texture2D(uDetail2, vHPos.xy * (s) + (o) + vec2(0.13, 0.61)).r * awT.z)
+            float nB = HTRIP(0.0016, vec2(0.0)) - 0.5;
+            float nC = HTRIP(0.0071, vec2(0.29, 0.53)) - 0.5;
+            float nD = HTRIP(0.0230, vec2(0.71, 0.19)) - 0.5;
             float hT = clamp(vHPos.y / max(uMaxH, 1.0), 0.0, 1.0);
             // rock exposure on steep faces; the highest crests hold snow
-            float rockW = smoothstep(0.30, 0.58, slopeF + nB * 0.34 + nC * 0.20)
+            float rockW = smoothstep(0.30, 0.58, slopeF + nB * 0.34 + nC * 0.20 + nD * 0.14)
                         * (1.0 - smoothstep(0.55, 0.85, hT) * 0.70) * uSlopeSplat * farAtt;
             vec3 rockCol = diffuseColor.rgb * vec3(0.47, 0.50, 0.58);
             // constant-altitude strata relief on the exposed rock
@@ -1136,7 +1161,7 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
           }
         }`);
     };
-    mat.customProgramCacheKey = () => 'horizon-ring-r3te-' + style;
+    mat.customProgramCacheKey = () => 'horizon-ring-r6cb-' + style;
   }
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = 'horizon-ring';
@@ -1190,15 +1215,25 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
           Math.sin(a) * 5.3 - ri * 5 - back * 2.9) * 0.5 + 0.5;
         // r7: crown span scales with row radius so far-ring combs keep their
         // angular weight — distant ridges must read forested, not stubbled
+        // r6 terrain_environment: a second, faster stand-height walk (hn2)
+        // modulates the ribbon height ±35% on a ~40 m period — the smooth hn
+        // field alone kept the comb top at near-constant height for hundreds
+        // of meters, the "even sawtooth comb edge" tell (critique)
+        const hn2 = gnoi.noise(Math.cos(a) * 19.7 + ri * 3.1 + back * 7.3,
+          Math.sin(a) * 19.7 + ri * 11.9) * 0.5 + 0.5;
         const span = (5 + (8 + hn * 12) * (0.85 + row.r / 2600)) * fade *
-          (back ? 0.85 : 1);
+          (back ? 0.85 : 1) * (0.72 + hn2 * 0.56);
         const inw = back ? 1.004 : 0.995; // back rank behind the crest line
         const drop = back ? 5 + span * 0.4 : 5;
         cPos.push(x * inw, hh - drop, z * inw, x * inw, hh - drop + span, z * inw);
         // lighting_post r3: combs inherit extra aerial haze (row.aer * 0.5)
         // so distant tree lines melt into the ridge instead of popping darker
         // in front of it (r5: the back rank gets an extra step of haze)
-        const hz = Math.min(0.9, row.aer * 0.5 + (back ? 0.22 : 0));
+        // r6 terrain_environment: 0.5 -> 0.66 + a small unconditional floor —
+        // the ranked combs still stacked into a high-contrast serrated WALL
+        // of packed silhouettes at the frame edges (critique); sitting them
+        // deeper into the aerial tint keeps the serration but recesses it
+        const hz = Math.min(0.92, row.aer * 0.66 + (back ? 0.24 : 0.06));
         let cr = Math.min(1.4, col[i * 3] * (back ? 1.32 : 1.5));
         let cg = Math.min(1.4, col[i * 3 + 1] * (back ? 1.32 : 1.5));
         let cb = Math.min(1.4, col[i * 3 + 2] * (back ? 1.32 : 1.5));

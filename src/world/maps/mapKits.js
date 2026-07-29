@@ -429,24 +429,38 @@ function reedClump(buckets, rng, x, y, z) {
   }
 }
 
-// A chain of upthrust refrozen ice slabs (pressure ridge) marching along a
-// short arc on the sheet. Stone bucket — winter stone is pale snow-dusted, so
-// tilted thin plates read as broken refrozen ice with real shadow lines.
+// A refrozen pressure ridge, read FOR RANGE (content_breadth r6): the old
+// chain of upthrust thin plates minified into dark broken stick strokes lying
+// flat on the bright sheet — the critique's "debris reads as flat 2D twigs
+// floating on the ice". At 300 m a real ridge reads as a LOW BRIGHT BERM: a
+// continuous snow-drifted crack levee. Built as a gently curving run of low
+// WIDE segments whose visible top faces dominate (the winter snow-cap shader
+// whitens them, so the run reads as a bright ridge line with soft side
+// shadows), plus only the odd small upthrust plate on the crest.
 function pressureRidge(buckets, rng, cx, cz, y, ang, len) {
-  // near-continuous chain (1.6 m pitch, plates overlapping) — sparse plates
-  // minified to scattered specks; a ridge must read as a LINE across the ice
-  const n = Math.max(5, Math.round(len / 1.6));
+  const n = Math.max(6, Math.round(len / 1.7));
+  const bend = (rng() - 0.5) * 0.9; // gentle S-curve along the run
   for (let k = 0; k < n; k++) {
-    const t = (k / (n - 1) - 0.5) * len;
-    const px = cx + Math.cos(ang) * t + (rng() - 0.5) * 0.6;
-    const pz = cz + Math.sin(ang) * t + (rng() - 0.5) * 0.6;
-    const pw = 1.8 + rng() * 1.4, phh = 0.38 + rng() * 0.5;
-    const slab = box(pw, phh, 0.18 + rng() * 0.12, 0.8);
-    slab.rotateZ((rng() - 0.5) * 0.5);           // canted plates
-    slab.rotateX((rng() - 0.5) * 0.55);
-    slab.rotateY(-ang + (rng() - 0.5) * 0.35);
-    slab.translate(px, y + phh * 0.32, pz);
-    buckets.stone.push(jitterUV(slab, rng));
+    const t = k / (n - 1) - 0.5;
+    const aa = ang + bend * t;
+    const px = cx + Math.cos(aa) * t * len + (rng() - 0.5) * 0.5;
+    const pz = cz + Math.sin(aa) * t * len + (rng() - 0.5) * 0.5;
+    const taper = Math.max(0.25, 1 - Math.abs(t) * 1.6); // sink toward the ends
+    const bh = (0.17 + rng() * 0.13) * taper;
+    const seg = box(1.9 + rng() * 0.9, bh, 1.15 + rng() * 0.65, 0.8);
+    seg.rotateY(-aa + (rng() - 0.5) * 0.22);
+    seg.rotateX((rng() - 0.5) * 0.10);
+    seg.translate(px, y + bh * 0.42, pz);
+    buckets.stone.push(jitterUV(seg, rng));
+    if (rng() < 0.22) { // occasional small refrozen plate on the crest
+      const pw = 0.7 + rng() * 0.6, phh = 0.18 + rng() * 0.22;
+      const plate = box(pw, phh, 0.10 + rng() * 0.08, 0.8);
+      plate.rotateZ((rng() - 0.5) * 0.5);
+      plate.rotateX((rng() - 0.5) * 0.4);
+      plate.rotateY(-aa + (rng() - 0.5) * 0.6);
+      plate.translate(px, y + bh + phh * 0.3, pz);
+      buckets.stone.push(jitterUV(plate, rng));
+    }
   }
 }
 
@@ -565,6 +579,40 @@ export function dressMapExtras({ mapId, L, heightField, rng, buckets }) {
       const x = lake.x + Math.cos(a) * rr, z = lake.z + Math.sin(a) * rr;
       pressureRidge(buckets, rng, x, z, heightField.getHeightAt(x, z),
         rng() * Math.PI, 10 + rng() * 10);
+    }
+    // --- drift lenses ON the sheet + a drifted shore ring (content_breadth
+    // r6). (a) partially snow-drifted ice patches: low flattened lenses
+    // scattered over the interior so the sheet reads wind-worked instead of
+    // one uniform macro print; (b) a patchy ring of shore-drift lenses
+    // straddling the nominal radius — the splat rim used to end as a hard
+    // ellipse against the snowfield (critique); overlapping soft lenses blur
+    // the shoreline into a 3-8 m drifted transition. Plaster bucket + the
+    // winter snow-cap shader = bright snow tops with soft blue side shading.
+    {
+      const lens = (x, z, r, h) => {
+        const g = new THREE.SphereGeometry(1, 10, 5);
+        g.scale(r * (0.8 + rng() * 0.5), h, r * (0.8 + rng() * 0.5));
+        g.rotateY(rng() * Math.PI);
+        g.translate(x, heightField.getHeightAt(x, z) + h * 0.12, z);
+        buckets.plaster.push(jitterUV(g, rng));
+      };
+      const nDrift = big ? 10 : 4;
+      for (let i = 0; i < nDrift; i++) {
+        const a = rng() * Math.PI * 2;
+        const rr = lake.r * (0.15 + rng() * 0.6);
+        lens(lake.x + Math.cos(a) * rr, lake.z + Math.sin(a) * rr,
+          3.5 + rng() * 4.5, 0.15 + rng() * 0.15);
+      }
+      const nRim = Math.round(lake.r * (big ? 0.5 : 0.35));
+      for (let i = 0; i < nRim; i++) {
+        const a = rng() * Math.PI * 2;
+        if (rng() < 0.30) continue; // leave clean sheet stretches
+        const rr = lake.r * (0.90 + rng() * 0.16);
+        const x = lake.x + Math.cos(a) * rr, z = lake.z + Math.sin(a) * rr;
+        if (Math.max(Math.abs(x), Math.abs(z)) > 480) continue;
+        if (heightField._roadDist(x, z) < 6) continue;
+        lens(x, z, 2.6 + rng() * 3.4, 0.13 + rng() * 0.14);
+      }
     }
     if (!big) continue;
     // --- one frozen-in rowboat + a sagging jetty on the near shore -------

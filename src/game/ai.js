@@ -134,6 +134,18 @@ const STALEMATE_PUSH_S = 8;      // duration of one forced push window
 // memory expiry — refreshed on every subsequent player shot.
 const PLAYER_LOCK_S = 9;
 const PLAYER_LOCK_RANK = 2;      // the three nearest earshot enemies qualify
+// PLAYER PRIORITY BUMP + FIRST-AIMED-SHOT BUDGET (controls_gunnery r6): with
+// the player parked FULLY BROADSIDE in the open at 196 m, botPressure showed
+// aimedAtPlayer stuck at 0 for 30+ s while the bots put 11 shells into the
+// allied brawl — a 100 m bot still out-ranked a 200 m player on d² even with
+// playerDistMult. Inside PLAYER_NEAR_BONUS range the player's weighted d² is
+// halved again (threat x2), and a per-controller budget guarantees that a
+// team-spotted player inside PLAYER_BUDGET range with a clear personal ray is
+// CLAIMED as target within PLAYER_ENGAGE_BUDGET_S — WoT bots punish a
+// stationary flank at 200 m in seconds, not minutes.
+const PLAYER_NEAR_BONUS_D2 = 300 * 300; // priority x2 (d² x0.5) inside 300 m
+const PLAYER_ENGAGE_BUDGET_S = 8;       // max s a visible near player goes unclaimed
+const PLAYER_BUDGET_D2 = 250 * 250;     // budget applies inside 250 m
 
 // HEADING COMMITMENT (controls_gunnery r3): approach/chase legs used to steer
 // at the LIVE target position every tick, so bots wove continuously (speed
@@ -269,6 +281,9 @@ export function createAI(entity, opts = {}) {
   // machinery drive toward a firing position.
   const ENGAGE_WATCHDOG_S = 15;
   let lastEngagedS = 0;
+  // r6: last sim time this controller HELD the player as target (stamped per
+  // update tick) — arms the FIRST-AIMED-SHOT BUDGET claim in acquireTarget.
+  let lastPlayerEngageS = 0;
   const coverPoint = { x: 0, z: 0 };
   let hasCoverPoint = false;
   let coverRollPassed = false;               // coverIQ roll for the current reload cycle
@@ -444,6 +459,36 @@ export function createAI(entity, opts = {}) {
       return;
     }
 
+    // FIRST-AIMED-SHOT BUDGET (controls_gunnery r6, critic major #2): a
+    // team-spotted player inside 250 m with a clear personal ray is claimed
+    // as the target whenever no player-lay has been held for
+    // PLAYER_ENGAGE_BUDGET_S — measured live before the fix: a stationary
+    // broadside Abrams at 196 m drew zero aimed shells for 30+ s while the
+    // bots farmed the allied brawl. The update() stamp re-arms the budget
+    // while the player IS the target, so bots alternate between the human
+    // and the escorts instead of permanently tunneling either. No wallhack:
+    // spotting gate + personal ray both still required.
+    if ((!target || !target.isPlayer) &&
+        timeS - lastPlayerEngageS > PLAYER_ENGAGE_BUDGET_S) {
+      for (let i = 0; i < list.length; i++) {
+        const p = list[i];
+        if (!p || !p.isPlayer) continue;
+        if (!enemyAlive(p) || !isVisibleToTeam(p)) break;
+        const pp = p.state.pos;
+        const bdx = pp.x - ex, bdz = pp.z - ez;
+        if (bdx * bdx + bdz * bdz > PLAYER_BUDGET_D2) break;
+        if (!hasLos(ex, ey, ez, pp.x, eyeY(p), pp.z)) break;
+        target = p;
+        losClear = true;
+        acquiredAtS = timeS;
+        lastSeenAtS = timeS;
+        lastSeen.x = pp.x; lastSeen.z = pp.z;
+        nonPenCount = 0;
+        probeTimer = 0;
+        return;
+      }
+    }
+
     // ATTACKER-OF-RECORD AGGRO (controls_gunnery r4): a shooter that just
     // landed a shell on us or a nearby teammate takes the target slot
     // OUTRIGHT for its reaction window whenever we can draw a clear personal
@@ -512,7 +557,9 @@ export function createAI(entity, opts = {}) {
           const pp = p.state.pos;
           const pdx = pp.x - ex, pdz = pp.z - ez;
           const cdx = tp.x - ex, cdz = tp.z - ez;
-          const pEff = (pdx * pdx + pdz * pdz) * playerDistMult;
+          const pd2 = pdx * pdx + pdz * pdz;
+          const pEff = pd2 * playerDistMult *
+            (pd2 < PLAYER_NEAR_BONUS_D2 ? 0.5 : 1); // r6 near bump
           if (pEff < cdx * cdx + cdz * cdz &&
               hasLos(ex, ey, ez, pp.x, eyeY(p), pp.z)) {
             target = p;
@@ -552,7 +599,12 @@ export function createAI(entity, opts = {}) {
       const d2 = dx * dx + dz * dz;
       // Threat weighting: the player ranks as if 0.59x its true distance
       // (0.35x for the playerHunter fraction — controls_gunnery r4).
-      const eff = e.isPlayer ? d2 * playerDistMult : d2;
+      // r6 PRIORITY BUMP: inside 300 m the player counts DOUBLE threat
+      // (weighted d² halved) — a broadside human at 200 m now outranks a
+      // 100 m allied bot for every controller, not just the hunters.
+      const eff = e.isPlayer
+        ? d2 * playerDistMult * (d2 < PLAYER_NEAR_BONUS_D2 ? 0.5 : 1)
+        : d2;
       if (eff >= bestD2) continue;
       if (!hasLos(ex, ey, ez, tp.x, eyeY(e), tp.z)) continue;
       best = e; bestD2 = eff;
@@ -780,6 +832,7 @@ export function createAI(entity, opts = {}) {
     const margin = spec.dims.widthM * 0.5 + 1.2;
     for (let i = 0; i < obstacles.length; i++) {
       const o = obstacles[i];
+      if (o.crushed) continue; // gameplay_feel r6: felled crushables don't block
       if (px < o.min[0] - margin || px > o.max[0] + margin) continue;
       if (pz < o.min[2] - margin || pz > o.max[2] + margin) continue;
       const cx = (o.min[0] + o.max[0]) * 0.5 - st.pos.x;
@@ -791,6 +844,34 @@ export function createAI(entity, opts = {}) {
     }
   }
 
+  // r6 NAV-PROGRESS WATCHDOG (engagement-starvation root cause): the r7
+  // displacement-EMA stuck test is blind to two wedge modes measured in the
+  // r6 probe — (a) obstacle ORBITING, where pivot->drive->avoid->pivot cycles
+  // around a spawn prop cluster produce 1-2 m/s of continuous displacement
+  // (the flanker danced 115 s at its spawn, obs=3, yaw churning end to end),
+  // and (b) damped-throttle GRINDS, where avoidObstacles' x0.6 and the
+  // arrival ease-in push throttle under the old |throttle|>0.25 arming term
+  // so exactly the bots pressing against props never armed the stuck timer.
+  // Track progress toward the CURRENT drive goal instead: driveIntent marks
+  // every tick a drive helper actually wants motion (any throttle), and
+  // navNoProgressT accumulates while the goal distance refuses to shrink.
+  let navGoalX = 1e9;
+  let navGoalZ = 1e9;
+  let navBestD = Infinity;
+  let navNoProgressT = 0;
+  let driveIntent = false;
+  function trackNavProgress(x, z, dist) {
+    driveIntent = true;
+    if (Math.abs(x - navGoalX) > 15 || Math.abs(z - navGoalZ) > 15) {
+      navGoalX = x; navGoalZ = z;   // new leg — fresh baseline
+      navBestD = dist;
+      navNoProgressT = 0;
+    } else if (dist < navBestD - 1.5) {
+      navBestD = dist;              // genuine approach — reset the clock
+      navNoProgressT = 0;
+    }
+  }
+
   /**
    * Drive toward (x,z). Returns true when within ARRIVE_DIST_M.
    * Steering = signed angle to the point; throttle eases off in tight turns.
@@ -799,6 +880,7 @@ export function createAI(entity, opts = {}) {
     const st = entity.state;
     let dx = x - st.pos.x, dz = z - st.pos.z;
     let dist = Math.hypot(dx, dz);
+    trackNavProgress(x, z, dist); // r6 wedge watchdog (see update())
     // Blocked-route detour (see detourUntilS): steer for a point offset
     // sideways from the real target so the hull clears the blocking face.
     if (nowS < detourUntilS && dist > 25) {
@@ -1257,6 +1339,8 @@ export function createAI(entity, opts = {}) {
     }
     // controls_gunnery r3 (§7): feed the engagement watchdog.
     if (target) lastEngagedS = timeS;
+    // r6: re-arm the first-aimed-shot budget while the player IS the lay.
+    if (target && target.isPlayer) lastPlayerEngageS = timeS;
     if (probeTimer <= 0 && target) {
       runProbes();
       probeTimer = PROBE_INTERVAL_S * (0.8 + rng() * 0.4);
@@ -1330,6 +1414,7 @@ export function createAI(entity, opts = {}) {
 
     // ---- movement by mode ----
     input.brake = false;
+    driveIntent = false; // r6: set by trackNavProgress inside the drive helpers
     switch (mode) {
       case 'patrol':    drivePatrol(input); break;
       case 'engage':    driveEngage(input, timeS, distToTarget); break;
@@ -1360,8 +1445,15 @@ export function createAI(entity, opts = {}) {
       input.steer = unstickSteer;
       input.brake = false;
       lowSpeedT = 0;
-    } else if (Math.abs(input.throttle) > 0.25 &&
+      navNoProgressT = 0; // r6: reversing away — give the goal a fresh chance
+      navBestD = Infinity;
+    } else if (driveIntent &&
                (Math.abs(st.speed) < 0.3 || progressRate < 0.45)) {
+      // r6: arming keys on driveIntent, NOT |throttle|>0.25 — avoidObstacles'
+      // x0.6 damping and the arrival ease-in put wedged bots at 0.07-0.24
+      // throttle, which is exactly when the unstick must be armable (probe:
+      // bots ground at thr=0.18-0.25 against props for 60-115 s, never
+      // arming). Intentional halts (faceYaw hold, arrivals) set no intent.
       lowSpeedT += dt;
       if (lowSpeedT > STUCK_TIME_S) {
         unstickUntilS = timeS + UNSTICK_TIME_S;
@@ -1387,6 +1479,35 @@ export function createAI(entity, opts = {}) {
     } else {
       lowSpeedT = 0;
       if (progressRate > 2.5) stuckStrikes = 0; // moving freely again
+    }
+
+    // r6 ORBIT WATCHDOG (see trackNavProgress): continuous displacement with
+    // NO approach to the nav goal — a bot circling a spawn prop cluster keeps
+    // progressRate at 1-2 m/s, so the stuck test above never fires (probe:
+    // the flanker orbited its spawn for 115 s, obs=3, yaw churning end to
+    // end, and the whole enemy team contributed 0 shells for 60 s). Six
+    // seconds without closing on the goal is a strike through the SAME
+    // unstick/detour/waypoint-skip machinery.
+    if (driveIntent && timeS >= unstickUntilS) {
+      navNoProgressT += dt;
+      if (navNoProgressT > 6) {
+        navNoProgressT = 0;
+        navBestD = Infinity;
+        unstickUntilS = timeS + UNSTICK_TIME_S;
+        unstickSteer = rng() < 0.5 ? -1 : 1;
+        stuckStrikes++;
+        detourSide = -detourSide;
+        detourUntilS = timeS + UNSTICK_TIME_S + 6;
+        if (mode === 'patrol' && waypoints.length > 1) {
+          wpIndex = (wpIndex + 1) % waypoints.length;
+        } else if (hasMoveTarget) {
+          hasMoveTarget = false;
+        }
+        hasVantage = false; // blocked vantage — re-sample a fresh one
+        if (stuckStrikes >= 4) stuckStrikes = 2; // keep flipping sides
+      }
+    } else if (!driveIntent) {
+      navNoProgressT = 0;
     }
 
     aimAndFire(input, dt, timeS);
@@ -1572,6 +1693,8 @@ export function createAI(entity, opts = {}) {
       mode, targetId: target ? target.id : null,
       targetIsPlayer: !!(target && target.isPlayer),
       losBlockedT: +losBlockedT.toFixed(1), hasVantage,
+      navT: +navNoProgressT.toFixed(1), strikes: stuckStrikes, // r6 watchdog
+      playerBudgetT: +(nowS - lastPlayerEngageS).toFixed(1),   // r6 budget arm
       pressing: nowS < pressUntilS,
       playerShotsInWindow, // r2: repeat-offender aggro count (intel window)
       playerLocked: nowS < playerLockUntilS, // r4 RETURN-FIRE LOCK live

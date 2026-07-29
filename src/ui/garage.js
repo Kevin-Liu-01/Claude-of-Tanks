@@ -67,13 +67,13 @@ const GARAGE_CSS = `
 .cot-garage .title{position:absolute;top:22px;left:34px;font-size:17px;font-weight:800;
   letter-spacing:.30em;color:#9fb0bf;text-transform:uppercase;}
 .cot-garage .title b{color:#f0a030;}
-.cot-garage .selname{position:absolute;top:46px;left:34px;font-size:30px;font-weight:500;
-  letter-spacing:-.01em;color:#eef4f9;}
-.cot-garage .selsub{position:absolute;top:88px;left:36px;font-size:11px;font-weight:600;
-  letter-spacing:.18em;color:#8a97a3;text-transform:uppercase;display:flex;
-  align-items:center;gap:8px;}
-.cot-garage .selsub svg{display:block;box-shadow:0 1px 4px rgba(0,0,0,.5);}
-.cot-tech{position:absolute;top:118px;left:34px;pointer-events:auto;cursor:pointer;
+/* r6-2 (round critique: vehicle name + flag + class line appeared TWICE —
+   top-left header and right stats panel): the top-left corner now carries
+   only the game logo + a quiet screen-mode tag; the vehicle identity lives
+   solely on the stats card. */
+.cot-garage .modetag{position:absolute;top:47px;left:35px;font-size:10px;
+  font-weight:700;letter-spacing:.30em;color:#68747f;text-transform:uppercase;}
+.cot-tech{position:absolute;top:70px;left:34px;pointer-events:auto;cursor:pointer;
   display:flex;align-items:center;gap:8px;
   font-family:${FONT_STACK};font-size:10.5px;font-weight:800;letter-spacing:.20em;
   color:#c6d2dc;text-transform:uppercase;padding:8px 16px 7px;
@@ -187,7 +187,7 @@ const GARAGE_CSS = `
    never overlap at short viewports (the old absolute anchors collided at
    1600x900 — the RANDOM card's conic-gradient thumb showed through the camo
    grid's 5px gaps as a phantom "white national cross"). */
-.cot-leftcol{position:absolute;left:34px;top:168px;bottom:calc(36% + 10px);
+.cot-leftcol{position:absolute;left:34px;top:122px;bottom:calc(36% + 10px);
   width:224px;display:flex;flex-direction:column;gap:14px;overflow:hidden;pointer-events:auto;}
 .cot-maps{position:static;width:224px;min-height:0;overflow-y:auto;
   scrollbar-width:none;flex:0 1 auto;pointer-events:auto;}
@@ -467,6 +467,7 @@ export function createGarage(opts) {
     `<div class="band-top"></div><div class="band-bot"></div>` +
     `<div class="band-l"></div><div class="band-r"></div>` +
     `<div class="title">CLAUDE <b>OF TANKS</b></div>` +
+    `<div class="modetag">Garage</div>` +
     `<div class="cot-topbar">` +
     `<div class="res"><svg viewBox="0 0 14 14" width="13" height="13">` +
     `<circle cx="7" cy="7" r="6" fill="#c8d2dc"/><circle cx="7" cy="7" r="4.4" fill="none" stroke="#8f9aa4" stroke-width="1"/>` +
@@ -480,7 +481,6 @@ export function createGarage(opts) {
     `<path d="M7 .8 8.7 5.3 13.2 7 8.7 8.7 7 13.2 5.3 8.7 .8 7 5.3 5.3Z" fill="#9fd8ec"/></svg>` +
     `<span>48 250</span></div>` +
     `</div>` +
-    `<div class="selname"></div><div class="selsub"></div>` +
     `<button class="cot-tech" type="button"><span class="tt-ico">&#9776;</span>TECH TREE</button>` +
     `<button class="cot-battle" type="button">BATTLE</button>` +
     `<div class="stats"></div>` +
@@ -495,8 +495,6 @@ export function createGarage(opts) {
     `<div class="hint">&#8592; &#8594; select &nbsp;&middot;&nbsp; enter to battle</div>`;
   document.body.appendChild(root);
 
-  const selName = root.querySelector('.selname');
-  const selSub = root.querySelector('.selsub');
   const statsEl = root.querySelector('.stats');
   const cardsEl = root.querySelector('.cot-cards');
   const battleBtn = root.querySelector('.cot-battle');
@@ -687,14 +685,18 @@ export function createGarage(opts) {
   const groupOf = (s) =>
     (s.community && !s.variantOf) ? 'community' : (s.era === 'ww2' ? 'ww2' : 'modern');
 
-  // PER-GROUP stat ranges for the normalized bars (r5-2 round critique: the
-  // r3 whole-roster maxima made a top-tier MBT's 600 hp alpha read as a ~35%
-  // bar against a KV-2 derp — the bar fought the number it annotates). Every
-  // bar now spreads min→max WITHIN the vehicle's own era group, oriented
-  // higher-is-better on every row (reload inverted: faster = fuller).
-  const STAT_RANGES = new Map(); // group -> {hp,speed,hpt,dmg,reload:[lo,hi]}
+  // PER-CLASS stat ranges for the normalized bars. r6-2 (round critique:
+  // "6.0 s reload renders ~90% full / bars carry no comparative scale"): the
+  // r5-2 per-era ranges let the IFV autocannons (sub-second reload, ~50 hp
+  // alpha) stretch every modern range so far that MBT bars parked at
+  // arbitrary-looking lengths. Bars now normalize min→max within the
+  // vehicle's own ERA + CLASS peer group (an Abrams compares against MBTs,
+  // a Bradley against IFVs), higher-is-better on every row (reload
+  // inverted: faster = fuller).
+  const statGroupOf = (s) => `${groupOf(s)}/${s.class || 'medium'}`;
+  const STAT_RANGES = new Map(); // era/class -> {hp,speed,hpt,dmg,reload:[lo,hi]}
   for (const s of allSpecs) {
-    const g = groupOf(s);
+    const g = statGroupOf(s);
     let r = STAT_RANGES.get(g);
     if (!r) {
       r = {
@@ -832,9 +834,9 @@ export function createGarage(opts) {
     // (r3: a vehicle-level pen number duplicated the shell table; no AAA tank
     // game headlines a single pen figure)
     const bestDmg = shells.length ? Math.max(...shells.map((s) => s.dmg || 0)) : 0;
-    // r5-2: every bar normalizes within the vehicle's OWN era group,
-    // higher-is-better (reload inverted) — see STAT_RANGES above
-    const grp = groupOf(spec);
+    // r6-2: every bar normalizes within the vehicle's OWN era+class peer
+    // group, higher-is-better (reload inverted) — see STAT_RANGES above
+    const grp = statGroupOf(spec);
     statsEl.innerHTML =
       `<h3></h3><div class="sub">${flagSVG(spec.nation, spec.era, 20, 13)}<span>${spec.nation} &middot; ${spec.class} &middot; ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}</span></div>` +
       statBar('Hit points', `${spec.hp}`, statFrac(grp, 'hp', spec.hp)) +
@@ -873,10 +875,6 @@ export function createGarage(opts) {
     if (card && card.scrollIntoView) {
       card.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
     }
-    selName.textContent = spec.name;
-    selSub.innerHTML = `${flagSVG(spec.nation, spec.era, 22, 14)}<span></span>`;
-    selSub.querySelector('span').textContent =
-      `${spec.nation} · ${spec.class} · ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}`;
     renderStats(spec);
     refreshCamoSel(); // CAMO PICKER SECTION: highlight this tank's pattern
     refreshEquipSel(); // EQUIPMENT PICKER: highlight this tank's loadout

@@ -138,7 +138,9 @@ function armorChallenger2() {
   const trkTop = 1.0, floor = 0.45, roofY = 1.55;
   return {
     boundingRadiusM: 5.95,
-    turretPivot: [0, 1.55, -0.15],
+    // tank_models r7 (barge read): ring moved 0.5 forward — the CR2 turret
+    // face sits ~2.4 m from the nose (was ~3.0); foredeck 36% -> ~29%.
+    turretPivot: [0, 1.55, 0.35],
     gunPivot: [0, 0.35, 0.70],
     gunBarrel: { lengthM: 6.7, radiusM: 0.11 },
     hullPlates: [

@@ -175,7 +175,10 @@ const AERIAL_SUN_POW = 5.0; // width of the warm forward-scatter lobe
 // paired with sky.js HORIZON_LUM_CAP 0.48 → 0.45 — the scatter-in target
 // drops another step below white so far mesas/ridges keep silhouette value
 // against the band instead of dissolving into it.
-const AERIAL_HAZE_LUM_CAP = 0.41;
+// lighting_post r6 (minor: "the horizon band left of center blows to
+// near-white" on player_view): 0.41 -> 0.385 — one more step below white so
+// the brightest scatter-in convergence stays clearly a color, not a blowout.
+const AERIAL_HAZE_LUM_CAP = 0.385;
 // r9 SNIPER DE-HAZE: main.js already scales the FogExp2 density down at high
 // zoom (fov < 15), but the aerial pass kept FULL density, so the x8 sight
 // picture stayed a desaturated teal wash — a 450 m hillside at x8 subtends
@@ -302,6 +305,18 @@ const AerialShader = {
     uDesat: { value: AERIAL_DESAT },
     uCool: { value: new THREE.Vector3(...AERIAL_COOL) },
     uHazeDensity: { value: AERIAL_HAZE_DENSITY },
+    // lighting_post r6 ("sniper horizon forest band renders near-black-teal
+    // ... apply distance fog to the horizon-ring impostors so they inherit
+    // aerial perspective at zoom"): the r9 sniper de-haze scales
+    // uHazeDensity down to keep the 100-450 m sight picture magnified-clear,
+    // but it also stripped the 500 m+ impostor band of ALL its scatter-in —
+    // at x8 the backdrop rendered raw dark-teal albedo, the "different
+    // renderer" read. uHazeFull carries the UNSCALED per-frame density; far
+    // pixels take max(zoomed, 0.62 x full) fading in over 430-780 m, so the
+    // backdrop keeps its atmospheric lift at any zoom. In arcade the zoomed
+    // density equals the full density and the max() is a no-op — every
+    // establishing shot is bit-identical.
+    uHazeFull: { value: AERIAL_HAZE_DENSITY },
     // Directional scatter-in targets, re-synced per frame from scene.fog
     // (sky-sampled) x the warm/cool tints above.
     uHazeWarm: { value: new THREE.Color(0.62, 0.64, 0.62) },
@@ -331,6 +346,7 @@ const AerialShader = {
     uniform float uDesat;
     uniform vec3 uCool;
     uniform float uHazeDensity;
+    uniform float uHazeFull;
     uniform vec3 uHazeWarm;
     uniform vec3 uHazeCool;
     uniform vec3 uSunDir;
@@ -388,7 +404,18 @@ const AerialShader = {
         // could reach display black. Pixels below ~0.05 linear luminance now
         // keep 75% of their darkness (they still shift hue with distance via
         // the extinction term above) — the frame keeps a true black anchor.
-        float x2 = -viewZ * uHazeDensity;
+        // r6 midfield de-milk ("player_view midfield sits under a milky haze
+        // veil ... fog starts too close and too bright for a clear noon
+        // sky"): scatter-in now starts ~85 m out — the 150-350 m aim band
+        // keeps its contrast while the far field still converges on the same
+        // atmosphere (a ~28% cut at village range, <10% at 900 m).
+        // Extinction/desat above still start at the camera, so depth cueing
+        // stays continuous.
+        float hzD = max( -viewZ - 85.0, 0.0 );
+        // r6 sniper far-band give-back (see the uHazeFull uniform note).
+        float dHaze = max( uHazeDensity,
+          uHazeFull * 0.62 * smoothstep( 430.0, 780.0, rayT ) );
+        float x2 = hzD * dHaze;
         float f2 = 1.0 - exp( -x2 * x2 );
         f2 *= 0.25 + 0.75 * smoothstep( 0.0, 0.05, lum );
         f2 *= mix( 1.0, hAtt, ${AERIAL_HEIGHT_SCATTER_K.toFixed(2)} );
@@ -599,12 +626,23 @@ const GRADE_HIGH_TINT = [1.056, 1.008, 0.947]; // warm sun-kissed highlights
 // corners ×0.27 — a daylight-readable circular scope shadow, still a soft
 // roll (no hard tube mask, the hud_ui r6 no-go), HUD/panels unaffected
 // (they composite above the post chain).
-const SCOPE_VIGNETTE_START = 0.62; // radius where the inner falloff begins
+// lighting_post r6 (critical: "sniper_view exposure/grading collapse — at x8
+// the whole frame drops ~2 stops into an olive-green murk ... the scope view
+// looks like a different, broken renderer"): pixel-measured on the frozen
+// capture, the r5 ring shaded the lower midfield ×0.87 and the upper horizon
+// band ×0.55 — stacked onto the zoom de-haze (see AERIAL_ZOOM_* below) the
+// sight picture read two stops under the arcade frame of the same scene.
+// Scene exposure/tonemap/grade are untouched by scope mode (same OutputPass +
+// grade path); the optics ring is eased to a light, WoT-style corner shade:
+// l/r edges now keep ~×0.85 (was ×0.72) and extreme corners ~×0.55 (was
+// ×0.27). The ring stays clearly visible against daylight (gameplay_feel r5
+// ask) without eating the aim band.
+const SCOPE_VIGNETTE_START = 0.72; // radius where the inner falloff begins
 const SCOPE_VIGNETTE_END = 1.15; // inner falloff reaches max past the v-edges
-const SCOPE_VIGNETTE_MAX = 0.28; // picture is ×0.72 by the l/r edge band
+const SCOPE_VIGNETTE_MAX = 0.15; // picture is ×0.85 by the l/r edge band
 const SCOPE_CORNER_START = 1.25; // corner shade begins past the v-edge midpoints
 const SCOPE_CORNER_END = 2.02; // ~frame corner (aspect-corrected radius)
-const SCOPE_CORNER_MAX = 0.62; // extra ×0.38 in the extreme corners
+const SCOPE_CORNER_MAX = 0.35; // extra ×0.65 in the extreme corners
 // hud_ui r4: blur only kisses the outer ~20% of screen radius at ~40% strength
 // (the old 1.02 start put the outer thirds of a 16:9 frame at FULL blur —
 // "left and right thirds dissolve into watercolor streaks" at x8)
@@ -694,6 +732,15 @@ const GradeShader = {
       vec3 col = texel.rgb;
       // per-map display exposure trim (sky preset postExposure, default 1.0)
       col *= uExposure;
+      // gameplay_feel r6 (round critique MINOR): sun-facing scoped washout —
+      // while scoped, pull the BRIGHT end ~0.5 EV (luma-keyed: shadow/midtone
+      // level untouched) so bright ground + haze + bloom can no longer stack
+      // the upper half of the sight picture into unreadable near-white milk.
+      // Pairs with the scoped bloom/aerial trims in render().
+      if ( uScope > 0.001 ) {
+        float scLum = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
+        col *= 1.0 - 0.30 * uScope * smoothstep( 0.34, 0.95, scLum );
+      }
       // fixed warm white balance — identical for every camera/shot
       col = clamp( col * uBalance, 0.0, 1.0 );
       // warm the terrain/foliage greens only (green-dominant pixels): unifies
@@ -1137,6 +1184,16 @@ export function createPost(renderer, scene, camera) {
         // tighter 1 px kernel above keeps it from haloing.
         grade.uniforms.uSharp.value = grade.uniforms.uScope.value *
           0.95 * Math.min(1, Math.max(0, (16 - camera.fov) / 10));
+        // gameplay_feel r6 (scoped sun-side washout): bloom is a large share
+        // of the milk over bright ground — pull it to ~half while scoped,
+        // and take one extra step out of BOTH aerial curves beyond the r9
+        // fovK ramp (the sun-directional scatter-in is what fills the upper
+        // half of the frame against the sun). Arcade (uScope 0) is bit-
+        // identical; pairs with the luma-keyed highlight pull in the grade.
+        const scopeW = grade.uniforms.uScope.value;
+        bloom.strength = BLOOM_STRENGTH * (1 - 0.5 * scopeW);
+        aerial.uniforms.uDensity.value *= 1 - 0.22 * scopeW;
+        aerial.uniforms.uHazeDensity.value *= 1 - 0.30 * scopeW;
       }
       // scatter-in targets follow the sky-sampled fog color (map switches),
       // split into a warm (sunward) and cool (anti-sun) pole

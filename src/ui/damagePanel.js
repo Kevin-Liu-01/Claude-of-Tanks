@@ -43,27 +43,28 @@ const CREW_SVG = {
 };
 
 const DP_CSS = `
-.cot-dp{position:absolute;left:12px;bottom:12px;width:148px;pointer-events:none;
+.cot-dp{position:absolute;left:12px;bottom:12px;width:136px;pointer-events:none;
   font-family:${FONT_STACK};color:#e6edf3;background:linear-gradient(180deg,rgba(10,14,18,.72),rgba(6,9,12,.8));
   border:1px solid rgba(146,164,180,.25);box-shadow:0 6px 22px rgba(0,0,0,.5);
   padding:7px 8px 8px;-webkit-user-select:none;user-select:none;}
 .cot-dp *{box-sizing:border-box;margin:0;padding:0;}
 .cot-dp .hprow{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;}
-.cot-dp .hplabel{font-size:9px;font-weight:700;letter-spacing:.14em;color:#8a97a3;
+.cot-dp .hplabel{font-size:9px;font-weight:700;letter-spacing:.12em;color:#8a97a3;
   font-family:${FONT_COND};font-stretch:condensed;}
-.cot-dp .hpnum{font-size:12px;font-weight:700;color:#d6e2ec;font-variant-numeric:tabular-nums;
+.cot-dp .hpnum{font-size:11.5px;font-weight:700;color:#d6e2ec;font-variant-numeric:tabular-nums;
   font-family:${FONT_COND};font-stretch:condensed;}
 .cot-dp .hptrack{height:5px;background:rgba(4,6,8,.75);border:1px solid rgba(0,0,0,.6);margin-bottom:5px;}
 .cot-dp .hpfill{height:100%;width:100%;transition:width .15s linear;}
 .cot-dp canvas{display:block;margin:0 auto;}
-/* crew strip (r4): HIDDEN while healthy — WoT shows crew only when someone
-   is knocked out; the r8 persistent ~25%-alpha role chips read as muddy
-   smudges under the schematic. A casualty pops in as a full red chip. */
-.cot-dp .crew{display:flex;justify-content:center;gap:4px;}
-.cot-dp .cm{display:none;width:24px;height:21px;border-radius:2px;
-  align-items:center;justify-content:center;color:#cfd9e2;
-  border:1px solid rgba(146,164,180,.5);background:rgba(9,13,17,.55);}
-.cot-dp .cm.dead{display:flex;margin-top:5px;color:#f05a5a;
+/* crew strip (r6-2, round critique "no ghosted crew affordances"): the four
+   role chips are PERSISTENT ghosts — dim icons in dark sockets under the
+   schematic (good contrast on the panel plate, unlike the r8 bare 25%-alpha
+   icons on the light hull) — and a casualty floods its chip red. */
+.cot-dp .crew{display:flex;justify-content:center;gap:4px;margin-top:5px;}
+.cot-dp .cm{display:flex;width:23px;height:20px;border-radius:2px;
+  align-items:center;justify-content:center;color:rgba(199,211,222,.52);
+  border:1px solid rgba(146,164,180,.3);background:rgba(9,13,17,.5);}
+.cot-dp .cm.dead{color:#f05a5a;
   border-color:rgba(240,90,90,.7);background:rgba(46,14,14,.75);
   animation:cotDmgPop .22s ease-out;}
 .cot-dp .cm svg{display:block;width:14px;height:14px;}
@@ -138,9 +139,10 @@ function topSilhouette(specId, onReady) {
       img,
       bbox: [x0 * sx2, y0 * sy2, (x1 - x0 + 1) * sx2, (y1 - y0 + 1) * sy2],
       // solid light-steel plan view (WoT's filled tinted schematic) over a
-      // thin dark contour
-      rim: tintCanvas(img, 'rgba(9,14,19,0.9)'),
-      body: tintCanvas(img, '#9aa5ad'),
+      // crisp near-black contour (r6-2: full-strength ink — the 0.9-alpha
+      // rim at 0.6 draw alpha read as a soft grey halo, not an outline)
+      rim: tintCanvas(img, 'rgba(6,10,14,0.98)'),
+      body: tintCanvas(img, '#a4afb7'),
     };
     silCache.set(specId, entry);
     if (onReady) onReady();
@@ -256,24 +258,31 @@ export function createDamagePanel() {
   const hpFill = root.querySelector('.hpfill');
   const fireEl = root.querySelector('.fire');
 
-  // single compact TOP-DOWN plan view (WoT panel scale). CH is the CURRENT
-  // canvas height — it tightens to the artwork once the silhouette's aspect
-  // is known.
-  const CW = 132, CH_MAX = 96;
-  let CH = CH_MAX;
+  // single compact TOP-DOWN plan view (WoT panel scale). CW/CH are the
+  // CURRENT canvas size — BOTH tighten to the artwork once the silhouette's
+  // aspect is known (r6-2, round critique: "~40% of the panel box is empty
+  // dark space beside the silhouette" — the box now hugs schematic + chip
+  // gutters and the panel width follows).
+  const CW_MAX = 128, CH_MAX = 108, CW_MIN = 118;
+  let CW = CW_MAX, CH = CH_MAX;
   const dprC = 2; // fixed 2x internal resolution — crisp at devicePixelRatio 1
   const canvas = document.createElement('canvas');
   canvas.width = CW * dprC; canvas.height = CH * dprC;
   canvas.style.width = `${CW}px`; canvas.style.height = `${CH}px`;
   root.appendChild(canvas);
+  root.style.width = `${CW + 18}px`; // keep panel hugging the canvas from boot
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dprC, 0, 0, dprC, 0, 0);
-  function fitCanvasHeight(hgt) {
-    const want = Math.round(Math.max(48, Math.min(CH_MAX, hgt)));
-    if (want === CH) return;
-    CH = want;
-    canvas.height = CH * dprC; // resize clears — callers redraw right after
+  function fitCanvas(wdt, hgt) {
+    const wantW = Math.round(Math.max(CW_MIN, Math.min(CW_MAX, wdt)));
+    const wantH = Math.round(Math.max(48, Math.min(CH_MAX, hgt)));
+    if (wantW === CW && wantH === CH) return;
+    CW = wantW; CH = wantH;
+    canvas.width = CW * dprC; // resize clears — callers redraw right after
+    canvas.height = CH * dprC;
+    canvas.style.width = `${CW}px`;
     canvas.style.height = `${CH}px`;
+    root.style.width = `${CW + 18}px`; // padding 8+8 + 1px borders
     ctx.setTransform(dprC, 0, 0, dprC, 0, 0);
     anchors = null;
   }
@@ -350,22 +359,31 @@ export function createDamagePanel() {
     return [x0, y0, rw, y1 - y0];
   }
   // persistent WoT read: hull plan flanked by its two ticked track rails —
-  // clipped to the silhouette so the treads follow the artwork's edge
+  // clipped to the silhouette so the treads follow the artwork's edge.
+  // r6-2 (round critique "no distinct track runs"): the rails are now a
+  // genuinely DARK band (near-track-rubber tone) with LIGHT tread rungs and
+  // a bright inner edge line, so the plan reads three-tone at a glance:
+  // dark tracks / mid hull / light turret.
   function drawTrackRails() {
     ctx.save();
     ctx.globalCompositeOperation = 'source-atop';
     for (const side of [-1, 1]) {
       const [x0, y0, rw, rh] = railRect(side);
-      ctx.fillStyle = 'rgba(18,26,34,0.32)';
+      ctx.fillStyle = 'rgba(16,22,29,0.82)';
       ctx.fillRect(x0, y0, rw, rh);
-      ctx.strokeStyle = 'rgba(10,16,22,0.55)';
+      // light tread rungs over the dark band
+      ctx.strokeStyle = 'rgba(172,186,198,0.30)';
       ctx.lineWidth = 1;
-      ctx.strokeRect(x0 + 0.5, y0 + 0.5, rw - 1, rh - 1);
-      ctx.strokeStyle = 'rgba(10,16,22,0.3)';
       ctx.beginPath();
       for (let y = y0 + 3; y < y0 + rh - 2; y += 4.5) {
         ctx.moveTo(x0 + 1.5, y); ctx.lineTo(x0 + rw - 1.5, y);
       }
+      ctx.stroke();
+      // bright inner edge seam between rail and hull plate
+      const xIn = side < 0 ? x0 + rw - 0.5 : x0 + 0.5;
+      ctx.strokeStyle = 'rgba(225,236,246,0.4)';
+      ctx.beginPath();
+      ctx.moveTo(xIn, y0 + 1); ctx.lineTo(xIn, y0 + rh - 1);
       ctx.stroke();
     }
     ctx.restore();
@@ -412,24 +430,37 @@ export function createDamagePanel() {
     for (const p of pts) anchors.set(p.name, [p.x, p.y]);
   }
 
-  // One module pip — DAMAGED STATES ONLY (r4, WoT panel behavior): healthy
-  // modules render nothing at all. The r6-r8 persistent ~25%-alpha slots
-  // measured ~1.2:1 contrast on the grey schematic and read as illegible
-  // smudges (critique) — WoT keeps the healthy panel clean and pops crisp
-  // orange/red state chips only when something breaks.
+  // One module pip. r6-2 (round critique: "no ghosted module affordances"):
+  // healthy modules render a GHOST SLOT — a small dark socket chip with a
+  // dim icon — so the schematic shows its module geography at all times and
+  // a damaged module visibly LIGHTS UP its slot amber/red. Unlike the old
+  // failed 25%-alpha bare icons (~1.2:1 on the light hull), the dark socket
+  // keeps ~3:1 contrast on hull and gutter alike.
   function drawPip(name, pt, st) {
     const icon = MODULE_ICON[name];
-    if (!icon || st === 'ok') return;
+    if (!icon) return;
     ctx.save();
     ctx.translate(pt[0], pt[1]);
-    const col = STATE_COLOR[st];
-    roundRect(ctx, -8.5, -8.5, 17, 17, 3);
-    ctx.fillStyle = 'rgba(30,14,10,0.92)';
-    ctx.fill();
-    ctx.strokeStyle = col;
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-    icon(ctx, col);
+    if (st === 'ok') {
+      ctx.globalAlpha = 0.85;
+      roundRect(ctx, -6.5, -6.5, 13, 13, 2.5);
+      ctx.fillStyle = 'rgba(10,15,20,0.6)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(205,220,232,0.38)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.scale(0.72, 0.72);
+      icon(ctx, 'rgba(214,226,238,0.58)');
+    } else {
+      const col = STATE_COLOR[st];
+      roundRect(ctx, -8.5, -8.5, 17, 17, 3);
+      ctx.fillStyle = 'rgba(30,14,10,0.92)';
+      ctx.fill();
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      icon(ctx, col);
+    }
     ctx.restore();
   }
 
@@ -492,8 +523,10 @@ export function createDamagePanel() {
     const barrelL = Math.max(py - destY + 1, destH * 0.30);
     const gunSt = moduleState('gun');
     const ringSt = moduleState('turretRing');
-    const barrelCol = gunSt === 'ok' ? '#c6cfd7' : STATE_COLOR[gunSt];
-    const turretFill = ringSt === 'ok' ? '#b3bdc5' : STATE_COLOR[ringSt] + 'd8';
+    // r6-2: turret/gun run a clearly LIGHTER steel than the hull plate so
+    // the plan reads three-tone (dark tracks / mid hull / light turret)
+    const barrelCol = gunSt === 'ok' ? '#d2dce4' : STATE_COLOR[gunSt];
+    const turretFill = ringSt === 'ok' ? '#c8d2da' : STATE_COLOR[ringSt] + 'd8';
     const rx = destW * 0.31; // turret half-width (across the gun axis)
     ctx.save();
     ctx.translate(px, py);
@@ -550,11 +583,12 @@ export function createDamagePanel() {
     if (sil) {
       const [bx, by, bw, bh] = sil.bbox;
       // top-down artwork is TALL: height-fit first, clamp the width so the
-      // pips relaxed off the hull sides keep breathing room
+      // pips relaxed off the hull sides keep breathing room; then the CANVAS
+      // tightens around artwork + ~26px chip gutters (r6-2 tight box)
       destH = CH_MAX - 6;
       destW = destH * (bw / bh);
-      if (destW > CW - 48) { destW = CW - 48; destH = destW * (bh / bw); }
-      fitCanvasHeight(destH + 6);
+      if (destW > 74) { destW = 74; destH = destW * (bh / bw); }
+      fitCanvas(destW + 54, destH + 6);
       ctx.clearRect(0, 0, CW, CH);
       destX = (CW - destW) / 2;
       destY = (CH - destH) / 2;
@@ -566,15 +600,20 @@ export function createDamagePanel() {
       ctx.beginPath();
       ctx.rect(0, yHullTop - 0.5, CW, CH - yHullTop + 0.5);
       ctx.clip();
-      // thin dark contour (four 1px offset passes) grounds the light fill
-      ctx.globalAlpha = 0.6;
-      for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      // crisp ~2px contour (r6-2: 8 offset passes at full ink + 4 spread
+      // passes — the old 60%-alpha 1px halo read as a soft grey blob edge)
+      ctx.globalAlpha = 0.42;
+      for (const [ox, oy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) {
         ctx.drawImage(sil.rim, bx, by, bw, bh, destX + ox, destY + oy, destW, destH);
       }
-      // solid light-steel plan at ~80% alpha — WoT's filled tinted schematic
-      ctx.globalAlpha = 0.82;
-      ctx.drawImage(sil.body, bx, by, bw, bh, destX, destY, destW, destH);
+      ctx.globalAlpha = 0.92;
+      for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1],
+        [-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        ctx.drawImage(sil.rim, bx, by, bw, bh, destX + ox, destY + oy, destW, destH);
+      }
+      // solid light-steel plan at FULL alpha — WoT's filled tinted schematic
       ctx.globalAlpha = 1;
+      ctx.drawImage(sil.body, bx, by, bw, bh, destX, destY, destW, destH);
       drawTrackRails();
       ctx.restore();
     } else {

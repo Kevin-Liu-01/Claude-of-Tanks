@@ -80,10 +80,12 @@ const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 }
 function armorM4() {
   // r4: roofY raised 1.93 -> 2.02 with the visual sponson (roster: the
   // tallest-proportioned WWII tank; height ~= hull length x 0.47)
-  const hw = 1.5, inW = 0.92, roofY = 2.02, trkTop = 1.10, floor = 0.43;
+  // tank_models r7: +8% again (2.02 -> 2.18) with the visual — the E8 still
+  // read long-and-low next to the roster doc's proportions.
+  const hw = 1.5, inW = 0.92, roofY = 2.18, trkTop = 1.10, floor = 0.43;
   return {
     boundingRadiusM: 4.1,
-    turretPivot: [0, 2.02, 0.4],
+    turretPivot: [0, 2.18, 0.4],
     gunPivot: [0, 0.35, 0.55],
     gunBarrel: { lengthM: 3.96, radiusM: 0.07 },
     hullPlates: [
@@ -471,7 +473,11 @@ function armorLeo2A7() {
   const trkTop = 1.08, floor = 0.5, roofY = 1.72;
   return {
     boundingRadiusM: 5.8,
-    turretPivot: [0, 1.72, -0.35],
+    // tank_models r7 ("forward hull deck ~2x the turret length ... gun
+    // overhanging a huge featureless slab"): ring moved 0.47 forward — the
+    // real Leo 2 turret sits slightly AHEAD of hull center (wedge tips ~2.1 m
+    // from the nose, not 2.7). Foredeck drops from ~35% to ~28% of hull.
+    turretPivot: [0, 1.72, 0.12],
     gunPivot: [0, 0.32, 0.8],
     gunBarrel: { lengthM: 6.6, radiusM: 0.10 },
     hullPlates: [
@@ -555,7 +561,11 @@ export const TANK_SPECS = {
     dims: { hullLengthM: 6.27, overallLengthM: 7.52, widthM: 3.0, heightM: 2.97 },
     armor: armorM4(),
     visual: {
-      scheme: 'solid', base: '#4b5320', weather: '#6b6b47', patches: [],
+      // tank_models r7 ("factory greens come out minty light-green vinyl"):
+      // the saturated #4b5320 + BRIGHT #6b6b47 weather pair flared lime under
+      // the warm garage key. Deeper, grayer WWII olive drab + a dust-khaki
+      // weather tone one step darker.
+      scheme: 'solid', base: '#3f4423', weather: '#54543e', patches: [],
       marking: 'star', number: '3070512', trackWidthM: 0.58,
     },
   },
@@ -617,7 +627,9 @@ export const TANK_SPECS = {
       // dark 4BO olive — the old light pea-green read as bare plastic (r6)
       // r4: another step deeper — with the top-face bake fix the pair lands
       // on wartime 4BO instead of pastel mint under the garage key
-      scheme: 'solid', base: '#3f4a2b', weather: '#4c5637', patches: [],
+      // tank_models r7 ("pastel light-green vinyl"): base/weather darkened +
+      // desaturated another ~15% toward weathered wartime 4BO.
+      scheme: 'solid', base: '#374026', weather: '#434c34', patches: [],
       marking: 'number', number: '312', trackWidthM: 0.5,
     },
   },
@@ -643,7 +655,8 @@ export const TANK_SPECS = {
     armor: armorIS2(),
     visual: {
       // dark 4BO olive (r6 — was a bright pea green)
-      scheme: 'solid', base: '#39442b', weather: '#455138', patches: [],
+      // tank_models r7: another ~15% down/grayer with the T-34 (pastel read)
+      scheme: 'solid', base: '#333c27', weather: '#3f4834', patches: [],
       marking: 'number', number: '432', trackWidthM: 0.65,
     },
   },
@@ -1264,10 +1277,16 @@ const COMMUNITY_SPECS = {
       tFrontMm: 185, tSideMm: 80, tRearMm: 80, mantletMm: 200,
     }),
     visual: {
-      // baked ambush-camo PBR carries the identity; solid dunkelgelb tint
-      // keeps the composite from fighting the factory 3-tone pattern.
-      scheme: 'solid', base: '#8a7a52', weather: '#7e7049', patches: [],
-      marking: 'cross', number: '204', trackWidthM: 0.8,
+      // tank_models r7 ("monochrome sand-dip ... unpainted 3D print next to
+      // the camo-painted fleet"): the solid dunkelgelb composite painted the
+      // WHOLE asset one sand tone, gear included. The shell now rides the
+      // per-spec camo canvas (paintUntextured+strip, kv2 rule) with the
+      // 1944 factory language of the tiger1: Dunkelgelb + sprayed Olivgruen /
+      // Rotbraun bands; running gear splits to dark steel in
+      // applyCommunityFixes (generic Object_N node names — position split).
+      scheme: 'stripes', base: '#8a7a52', weather: '#7e7049',
+      patches: ['#5d6334', '#452c1e'],
+      marking: 'cross', number: '204', trackWidthM: 0.8, camoScale: 0.5,
     },
   },
 
@@ -1613,7 +1632,10 @@ const COMMUNITY_SPECS = {
   is1: {
     // fused single-mesh print model: plays as a fixed-gun assault TD (same
     // class rule as the other welded-turret prints — see t30)
-    id: 'is1', name: 'IS-1', nation: 'USSR', era: 'ww2', class: 'td',
+    // content_breadth r6: IS-1 is a HEAVY tank (community-tab data error) —
+    // the fixed-gun assault handling stays enforced by gunArcDeg: 11, not by
+    // the class field; this corrects the tech-tree band / garage chip label.
+    id: 'is1', name: 'IS-1', nation: 'USSR', era: 'ww2', class: 'heavy',
     community: {
       author: 'AaronTMG',
       source: 'https://www.printables.com/model/925804-is-1-russian-heavy-tank',
@@ -1818,9 +1840,15 @@ Object.assign(MODEL_SOURCE, {
     // 20 flat sibling meshes; Object_2 = turret + gun (verified by isolation
     // render). Explicit pivot: the turret bbox includes the long 88 L/71, so
     // the footprint-center fallback would land ~1.3 m too far forward.
+    // tank_models r7 ("monochrome sand-dip"): paintUntextured + strip routes
+    // the baked one-tone albedo onto the per-spec camo canvas (kv2 rule);
+    // running gear + welded-in hull furniture split in applyCommunityFixes
+    // (the asset ships generic Object_N names, so the node-name gear regex
+    // never fires — position classification instead).
     glb: {
       path: '/models/tanks/community/tiger2-maximus.glb',
       turretNode: '^Object_2$', autoPivot: true, pivot: [0, 1.9, -1.3],
+      paintUntextured: true, stripBakedTextures: true,
     },
   },
   sherman_jumbo: {

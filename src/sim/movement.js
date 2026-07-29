@@ -1126,7 +1126,15 @@ export function updateTank(entity, heightField, dt, collide = null) {
       (desiredGun < lo - 1e-4 || desiredGun > hi + 1e-4) &&
       wantPitchWorld >= lo - 1e-4 && wantPitchWorld <= hi + 1e-4;
     const fastTransient = attitudePin && Math.abs(state.speed) * 3.6 > 15;
-    const labelWant = !fastTransient &&
+    //  3. STEER (r6 round critique MINOR): the label re-fired during
+    //     quasi-stationary obstacle escapes — hard steering at a crawl kept
+    //     the hull under the 15 km/h transient gate while the reticle asked
+    //     for depression over the near crest. Active maneuvering
+    //     (|commanded steer| ≥ 0.2) never labels; WoT reserves the words for
+    //     deliberate hull-down lays, and the red tint still marks the pin.
+    //     Casemate auto-traverse is unaffected (it synthesizes steerCmd only
+    //     when input.steer is 0, and `steer` here is the raw command).
+    const labelWant = !fastTransient && Math.abs(steer) < 0.2 &&
       (specPinned || (state.atGunLimit && horiz >= GUN_LIMIT_LABEL_DIST_M));
     state._gunLimitHoldS = labelWant ? (state._gunLimitHoldS || 0) + dt : 0;
     state.gunLimitSpec = state._gunLimitHoldS >= GUN_LIMIT_LABEL_DWELL_S;

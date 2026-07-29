@@ -75,24 +75,29 @@ function renderAll(specs) {
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  // r5: brighter booth — the old 1.05 exposure / 3.4 key rendered murky,
-  // low-contrast card thumbs against the dark carousel plates
-  // (r6: BASE only — a per-thumb exposure lift below normalizes dark camo)
-  const BASE_EXPOSURE = 1.16;
+  // r6-2 (round critique "uniformly murky olive renders"): booth exposure up
+  // ~0.3 stops so hull detail separates from the dark card plates
+  // (BASE only — a per-thumb exposure lift below normalizes dark camo)
+  const BASE_EXPOSURE = 1.43;
   renderer.toneMappingExposure = BASE_EXPOSURE;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(24, THUMB_W / THUMB_H, 0.1, 200);
   // studio rig: warm key from the camera side, cool sky fill, hard white-blue
-  // rim from behind-above so the silhouette pops off the dark card
+  // rim from behind-above so the silhouette pops off the dark card.
+  // r6-2: rim strengthened + a second low cool rim OPPOSITE the key (round
+  // critique "weak rim separation from the dark card") — the far flank and
+  // gun run now carry a visible cool edge line.
   const hemi = new THREE.HemisphereLight(0xc4d4e4, 0x3a362e, 1.35);
   const key = new THREE.DirectionalLight(0xfff0d6, 4.1);
   key.position.set(-7, 8, 4);
   const fill = new THREE.DirectionalLight(0x9fb4cc, 1.0);
   fill.position.set(6, 2, 6);
-  const rim = new THREE.DirectionalLight(0xeaf3ff, 3.8);
+  const rim = new THREE.DirectionalLight(0xeaf3ff, 5.0);
   rim.position.set(6, 7, -8);
-  scene.add(hemi, key, fill, rim);
+  const rim2 = new THREE.DirectionalLight(0xd8e8ff, 1.9);
+  rim2.position.set(8, 3, -2);
+  scene.add(hemi, key, fill, rim, rim2);
 
   const engineCtx = {
     renderer, scene, camera,
@@ -115,8 +120,12 @@ function renderAll(specs) {
   const measureCanvas = document.createElement('canvas');
   measureCanvas.width = THUMB_W; measureCanvas.height = THUMB_H;
   const mctx = measureCanvas.getContext('2d', { willReadFrequently: true });
-  const FILL_W = 0.86; // target silhouette width as a fraction of the card
-  const FILL_H = 0.74; // target height fraction (leaves nameplate air below)
+  // r6-2 (round critique: "framing scale inconsistent — Chieftain's barrel
+  // clips the card edge"): width target drops to the 78-82% band so long
+  // guns keep a visible margin; height headroom rises so short/tall hulls
+  // (IFVs) land as close to that width band as the 424x256 frame allows.
+  const FILL_W = 0.80; // target silhouette width as a fraction of the card
+  const FILL_H = 0.78; // target height fraction (leaves nameplate air below)
   function measureAlphaBox() {
     mctx.clearRect(0, 0, THUMB_W, THUMB_H);
     mctx.drawImage(renderer.domElement, 0, 0);
@@ -203,7 +212,10 @@ function renderAll(specs) {
         renderer.render(scene, camera);
       };
       frame();
-      for (let pass = 0; pass < 2; pass++) {
+      // r6-2: three correction passes (was two) — vehicles whose geometric
+      // seed was far off (GLB asset-space quirks) could exit pass 2 still
+      // ~15% from target, which is exactly the inconsistent-framing read
+      for (let pass = 0; pass < 3; pass++) {
         const bb = measureAlphaBox();
         if (!bb) break;
         // scale: bring the larger deficit axis exactly onto its target fill
@@ -226,7 +238,9 @@ function renderAll(specs) {
       // shoulder that bold camo washed to pale olive speckle and the card
       // stopped resembling the vehicle on the pedestal. Fidelity to the
       // hangar look now outranks perfect row uniformity.
-      const TARGET_LUMA = 0.36;
+      // r6-2: target mean tracks the +0.3-stop booth (a stale 0.36 target
+      // would make the normalization loops silently undo the exposure lift)
+      const TARGET_LUMA = 0.42;
       const MIN_EXPOSURE = BASE_EXPOSURE * 0.75;
       const MAX_EXPOSURE = BASE_EXPOSURE * 1.9;
       for (let ep = 0; ep < 4; ep++) {

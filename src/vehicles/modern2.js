@@ -383,8 +383,9 @@ export const MODERN2_SPECS = {
     },
     dims: { hullLengthM: 8.7, overallLengthM: 10.8, widthM: 3.9, heightM: 2.7 },
     armor: mbtArmor({
-      hl: 4.35, hw: 1.95, roofY: 1.62, trkTop: 1.05, floor: 0.48,
-      turretPivot: [0, 1.62, -0.3], gunPivot: [0, 0.40, 0.6],
+      // r7: deck plane dropped with the visual hull-height cut (1.62 -> 1.50)
+      hl: 4.35, hw: 1.95, roofY: 1.50, trkTop: 1.05, floor: 0.48,
+      turretPivot: [0, 1.50, -0.3], gunPivot: [0, 0.40, 0.6],
       barrelLenM: 6.0, barrelRadM: 0.07,
       glacis: { ke: 900, ce: 1200, phys: 900 }, lower: { ke: 300, ce: 350 },
       side: { ke: 200, ce: 200 }, rear: 60, roof: 50,
@@ -1137,105 +1138,162 @@ function buildT14(P) {
     buildGun, buildRunningGear, fenders, headlight, liftEye, periscope,
     towCable, stowage } = KIT;
   const { rng } = P;
-  // ---- hull: long, high flat roofline ---------------------------------------
+  // ---- hull: long flat roofline ---------------------------------------------
+  // tank_models r7 ("fictional barge ... cut the hull height ~10%"): the
+  // deck plane drops 1.62 -> 1.50 (roofline cut ~8%, wheels/skirts keep
+  // their line so the cut comes out of the slab flank), and every deck
+  // fitting rides down with it. turretPivot y follows in the t14 armor.
   P.add('hull', box(2.6, 0.6, 8.2), 0, 0.78, -0.1);                             // lower hull
-  // r4: band side near-vertical (1.90 -> 1.86 top) — the 19-deg tilt caught
-  // the garage key and split the hull into a pale upper body
-  P.add('hull', frustum(1.90, 2.42, -4.3, 1.86, 2.36, -4.26, 1.10, 1.62));      // long deck band
+  // r4: band side near-vertical — the 19-deg tilt caught the garage key
+  P.add('hull', frustum(1.90, 2.42, -4.3, 1.86, 2.36, -4.26, 1.06, 1.50));      // long deck band
   fenders(P, 1.40, 1.96, 1.085, -4.35, 4.2, 0.035);
   // massive one-piece sloped glacis with driver strip + V splash ridge
-  P.add('hull', frustum(1.80, 4.30, 2.42, 1.86, 2.36, 2.42, 0.95, 1.62));
-  P.add('hull', frustum(1.80, 3.95, 4.0, 1.80, 4.30, 4.0, 0.48, 0.95));         // lower bow with notch
-  P.add('hull', box(0.55, 0.05, 0.7), 0, 1.50, 2.85, -1.13, 0, 0);              // driver hatch strip
-  periscope(P, 'hullDetail', -0.2, 1.60, 2.55, -0.1);
-  periscope(P, 'hullDetail', 0.2, 1.60, 2.55, 0.1);
-  for (const s of [-1, 1]) P.add('hullDetail', box(1.1, 0.055, 0.09), s * 0.52, 1.30, 3.25, -1.13, s * 0.45, 0); // V ridge
+  P.add('hull', frustum(1.80, 4.30, 2.42, 1.86, 2.36, 2.42, 0.92, 1.50));
+  P.add('hull', frustum(1.80, 3.95, 4.0, 1.80, 4.30, 4.0, 0.48, 0.92));         // lower bow with notch
+  P.add('hull', box(0.55, 0.05, 0.7), 0, 1.40, 2.85, -1.13, 0, 0);              // driver hatch strip
+  periscope(P, 'hullDetail', -0.2, 1.49, 2.55, -0.1);
+  periscope(P, 'hullDetail', 0.2, 1.49, 2.55, 0.1);
+  for (const s of [-1, 1]) P.add('hullDetail', box(1.1, 0.055, 0.09), s * 0.52, 1.24, 3.25, -1.13, s * 0.45, 0); // V ridge
   for (const s of [-1, 1]) {
     P.add('hullShadow', new THREE.BoxGeometry(0.55, 0.026, 8.0), s * 1.62, 1.075, -0.1);
   }
-  // full-length ANGULAR skirts with sawtooth lower edge (§16.5 signature).
-  // r5 track-gate rebuild ("no side skirts at all... exposed track is a flat
-  // rectangular band floating around the wheel set"): the old 0.58 m panel
-  // stopped at the wheel tops AND the 1.96 m track outer edge poked past the
-  // 1.93 m skirt plane, so the whole return run rendered as a floating
-  // zipper outboard of the hull. The skirts now drop fender-to-mid-wheel
-  // (roster §16.5: 3.9 m skirted width IS the T-14's defining look), the
-  // track tucked inboard (xc 1.60), and a sponson filler strip closes the
-  // slot between fender line and skirt top.
+  // tank_models r7 skirt rework ("oversized slab skirts with one pasted ERA
+  // tile strip"): roster §16.5 — the FRONT half wears three thick full-height
+  // articulated armor panels (fender line to mid-wheel, proud of the skirt
+  // plane, chamfered lower lip, deep seams) carrying the Malachit tile rows;
+  // the REAR half is an open BAR-ARMOR screen (horizontal slats on hanger
+  // struts) over a recessed rubber skirt. No more one flat 8 m plate.
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.06, 0.66, 8.0), s * 1.93, 0.86, -0.1);                  // main skirt panel (0.53-1.19)
+    P.add('hull', box(0.05, 0.62, 8.0), s * 1.90, 0.88, -0.1);                  // inner skirt plane
     P.add('hull', box(0.06, 0.10, 8.0), s * 1.90, 1.23, -0.1);                  // sponson filler strip
-    for (let k = 0; k < 7; k++) {                                               // sawtooth teeth
-      P.add('hull', box(0.055, 0.16, 0.62), s * 1.93, 0.50, 3.3 - k * 1.12, 0, 0, s * 0.20);
+    for (let k = 0; k < 3; k++) {                                               // front armor panels
+      const z = 3.42 - k * 1.06;
+      P.add('hull', box(0.085, 0.70, 1.00), s * 1.945, 0.90, z);
+      P.add('hull', box(0.085, 0.14, 1.00), s * 1.925, 0.51, z, 0, 0, -s * 0.30); // chamfered lip
+      P.add('hullDark', box(0.09, 0.66, 0.03), s * 1.945, 0.90, z - 0.52);      // panel seam
     }
-    for (let k = 0; k < 6; k++) {                                               // panel seams
-      P.add('hullDark', box(0.066, 0.58, 0.02), s * 1.93, 0.86, 3.0 - k * 1.15);
+    // rear bar-armor screen: 4 horizontal slats + hanger struts
+    for (let r = 0; r < 4; r++) {
+      P.add('hullDark', box(0.045, 0.055, 5.0), s * 1.955, 0.62 + r * 0.17, -1.75);
     }
+    for (let kk = 0; kk < 6; kk++) {
+      P.add('hullDark', box(0.05, 0.72, 0.05), s * 1.945, 0.87, 0.65 - kk * 0.96);
+    }
+    P.add('hullRubber', box(0.03, 0.12, 4.9), s * 1.90, 0.50, -1.75);           // rubber fringe under bars
     // rear-view camera pods on the hull corners (§16.5)
-    P.add('hullDetail', cylZ(0.05, 0.16, 10), s * 1.7, 1.55, 4.12);
-    P.add('hullDetail', cylZ(0.05, 0.16, 10), s * 1.7, 1.55, -4.32);
-    P.add('hullDark', box(0.06, 0.06, 0.02), s * 1.7, 1.55, -4.41);
+    P.add('hullDetail', cylZ(0.05, 0.16, 10), s * 1.7, 1.44, 4.12);
+    P.add('hullDetail', cylZ(0.05, 0.16, 10), s * 1.7, 1.44, -4.32);
+    P.add('hullDark', box(0.06, 0.06, 0.02), s * 1.7, 1.44, -4.41);
   }
   // rear deck: grille-covered turbine-style intakes + rear plate
-  P.add('hull', box(3.2, 0.55, 0.14), 0, 1.3, -4.32);
+  P.add('hull', box(3.2, 0.55, 0.14), 0, 1.22, -4.32);
   for (const s of [-1, 1]) {
-    P.add('hullDark', box(1.15, 0.02, 1.5), s * 0.82, 1.625, -3.3);
+    P.add('hullDark', box(1.15, 0.02, 1.5), s * 0.82, 1.505, -3.3);
     if (P.q) for (let k = 0; k < 6; k++) {
-      P.add('hullDetail', box(1.05, 0.025, 0.06), s * 0.82, 1.632, -2.75 - k * 0.2);
+      P.add('hullDetail', box(1.05, 0.025, 0.06), s * 0.82, 1.512, -2.75 - k * 0.2);
     }
-    P.add('hullDark', box(0.6, 0.34, 0.05), s * 0.95, 1.05, -4.4);              // exhaust grilles
+    P.add('hullDark', box(0.6, 0.34, 0.05), s * 0.95, 1.02, -4.4);              // exhaust grilles
     P.add('hullRubber', box(0.55, 0.35, 0.03), s * 1.5, 0.5, -4.42, 0.1, 0, 0);
   }
-  P.add('hullDetail', box(0.5, 0.1, 0.4), 0, 1.68, -2.4);                       // APU hump
+  // tank_models r7 ("featureless rear plate ... add the rear-plate exhaust +
+  // stowage"): unditching log across the rear plate, twin stowage bins,
+  // exhaust heat-shield louvres, tow hooks + convoy light.
+  P.add('hullWood', cylX(0.13, 2.4, P.q ? 12 : 8), 0, 1.46, -4.44);             // unditching log
+  for (const s of [-1, 1]) {
+    P.add('hullDark', box(0.03, 0.16, 0.03), s * 0.85, 1.38, -4.44);            // log straps
+    P.add('hullDetail', box(0.62, 0.30, 0.16), s * 1.35, 1.14, -4.44);          // stowage bins
+    P.add('hullDark', box(0.64, 0.02, 0.17), s * 1.35, 1.30, -4.44);            // bin lids
+    for (let k = 0; k < 3; k++) {                                               // exhaust louvres
+      P.add('hullDetail', box(0.56, 0.045, 0.04), s * 0.95, 0.92 + k * 0.10, -4.45);
+    }
+    P.add('hullDetail', box(0.14, 0.12, 0.16), s * 0.9, 0.66, -4.40);           // rear tow hooks
+  }
+  P.add('hullDark', box(0.16, 0.09, 0.04), 0, 1.32, -4.42);                     // convoy light
+  P.add('hullDetail', box(0.5, 0.1, 0.4), 0, 1.56, -2.4);                       // APU hump
   headlight(P, -1.5, 1.2, 4.05, -0.25, 0.05);
   headlight(P, 1.5, 1.2, 4.05, -0.25, 0.05);
   // tow hooks in the lower bow notch
   for (const s of [-1, 1]) P.add('hullDetail', box(0.14, 0.12, 0.18), s * 0.9, 0.62, 4.02);
-  towCable(P, [[-1.3, 1.35, 3.3], [-0.5, 1.28, 3.7], [0.4, 1.32, 3.5]]);
-  liftEye(P, 'hullDetail', -1.5, 1.65, 0.5);
-  liftEye(P, 'hullDetail', 1.5, 1.65, 0.5);
+  towCable(P, [[-1.3, 1.26, 3.3], [-0.5, 1.20, 3.7], [0.4, 1.24, 3.5]]);
+  liftEye(P, 'hullDetail', -1.5, 1.53, 0.5);
+  liftEye(P, 'hullDetail', 1.5, 1.53, 0.5);
 
   // ---- turret: faceted stealth shroud (§16.5) -------------------------------
+  // tank_models r7 REBUILD ("soft bloated turret shroud — none of the
+  // Armata's faceted shroud panels"): the single gentle frustum is replaced
+  // by HARD-EDGED INTERSECTING FACETS — an outward-leaning lower belt, an
+  // inward-leaning upper belt that breaks the side profile with a visible
+  // knuckle line, a two-plane front arrow meeting at a center ridge, and a
+  // small flat roof crown. Every plane is a slab; the silhouette kinks at
+  // each junction instead of melting.
   const AH = 0.98;
-  // r4 ("slab hull dwarfs the toy-scale turret"): shroud widened/lengthened
-  // toward the real ~2.8 m cladding footprint
-  P.add('turret', frustum(1.18, 1.06, -1.62, 0.90, 0.64, -1.36, 0.0, AH));      // main shroud
-  P.add('turret', slab(                                                          // right lower facet
-    [1.06, 0, 1.10], [1.30, 0, -0.2], [1.30, 0, -1.10], [1.06, 0, -1.56],
-    [0.96, 0.52, 0.82], [1.15, 0.52, -0.25], [1.15, 0.52, -1.0], [0.96, 0.52, -1.38]));
-  P.add('turret', slab(                                                          // left lower facet
-    [-1.30, 0, -0.2], [-1.06, 0, 1.10], [-1.06, 0, -1.56], [-1.30, 0, -1.10],
-    [-1.15, 0.52, -0.25], [-0.96, 0.52, 0.82], [-0.96, 0.52, -1.38], [-1.15, 0.52, -1.0]));
-  // faceted-shroud panel seams + corner sensor boxes (r4 "featureless folded
-  // cardboard"): dark seam lines across the front + side facets, small EO
-  // boxes at the front corners
-  P.add('turretDark', box(0.016, AH * 0.9, 0.03), 0.55, AH * 0.47, 0.86, 0, -0.32, 0);
-  P.add('turretDark', box(0.016, AH * 0.9, 0.03), -0.55, AH * 0.47, 0.86, 0, 0.32, 0);
-  P.add('turretDark', box(0.02, 0.44, 1.9), 1.065, 0.24, -0.35);
-  P.add('turretDark', box(0.02, 0.44, 1.9), -1.065, 0.24, -0.35);
-  P.add('turretDark', box(0.9, 0.02, 0.9), 0, AH - 0.02, -0.1);
+  const BK = 0.54;                                   // knuckle line height
+  // lower belt: leans OUT (base narrower than knuckle) — R / L / front pair / rear
+  P.add('turret', slab(                                                          // right lower belt
+    [1.06, 0, 1.02], [1.24, 0, -0.2], [1.24, 0, -1.16], [1.06, 0, -1.50],
+    [1.13, BK, 0.90], [1.32, BK, -0.22], [1.32, BK, -1.20], [1.13, BK, -1.54]));
+  P.add('turret', slab(                                                          // left lower belt
+    [-1.24, 0, -0.2], [-1.06, 0, 1.02], [-1.06, 0, -1.50], [-1.24, 0, -1.16],
+    [-1.32, BK, -0.22], [-1.13, BK, 0.90], [-1.13, BK, -1.54], [-1.32, BK, -1.20]));
+  P.add('turret', slab(                                                          // front-right lower arrow
+    [0.06, 0, 1.46], [1.06, 0, 1.02], [1.06, 0, 0.74], [0.06, 0, 1.18],
+    [0.06, BK, 1.30], [1.13, BK, 0.90], [1.13, BK, 0.62], [0.06, BK, 1.02]));
+  P.add('turret', slab(                                                          // front-left lower arrow
+    [-1.06, 0, 1.02], [-0.06, 0, 1.46], [-0.06, 0, 1.18], [-1.06, 0, 0.74],
+    [-1.13, BK, 0.90], [-0.06, BK, 1.30], [-0.06, BK, 1.02], [-1.13, BK, 0.62]));
+  P.add('turret', box(2.36, BK, 0.30), 0, BK / 2, -1.42);                       // rear lower wall
+  // upper belt: leans IN to the roof crown — the knuckle break line
+  P.add('turret', slab(                                                          // right upper facet
+    [1.13, BK, 0.90], [1.32, BK, -0.22], [1.32, BK, -1.20], [1.13, BK, -1.54],
+    [0.74, AH, 0.44], [0.86, AH, -0.30], [0.86, AH, -1.14], [0.74, AH, -1.32]));
+  P.add('turret', slab(                                                          // left upper facet
+    [-1.32, BK, -0.22], [-1.13, BK, 0.90], [-1.13, BK, -1.54], [-1.32, BK, -1.20],
+    [-0.86, AH, -0.30], [-0.74, AH, 0.44], [-0.74, AH, -1.32], [-0.86, AH, -1.14]));
+  P.add('turret', slab(                                                          // front-right upper arrow
+    [0.05, BK, 1.30], [1.13, BK, 0.90], [1.13, BK, 0.62], [0.05, BK, 1.02],
+    [0.05, AH, 0.78], [0.74, AH, 0.44], [0.74, AH, 0.24], [0.05, AH, 0.58]));
+  P.add('turret', slab(                                                          // front-left upper arrow
+    [-1.13, BK, 0.90], [-0.05, BK, 1.30], [-0.05, BK, 1.02], [-1.13, BK, 0.62],
+    [-0.74, AH, 0.44], [-0.05, AH, 0.78], [-0.05, AH, 0.58], [-0.74, AH, 0.24]));
+  P.add('turret', slab(                                                          // rear upper facet
+    [-1.32, BK, -1.20], [1.32, BK, -1.20], [1.32, BK, -1.54], [-1.32, BK, -1.54],
+    [-0.86, AH, -1.14], [0.86, AH, -1.14], [0.86, AH, -1.32], [-0.86, AH, -1.32]));
+  P.add('turret', box(1.62, 0.05, 1.86), 0, AH - 0.02, -0.36);                  // roof crown plate
+  P.add('turret', frustum(0.60, 0.66, -1.34, 0.55, 0.60, -1.30, BK, AH + 0.14)); // bustle hump
+  // hard shadow seams along the knuckle + facet junctions (the intersecting-
+  // plane read) + roof panel seams
   for (const s2 of [-1, 1]) {
-    P.add('turretDark', box(0.16, 0.14, 0.10), s2 * 0.78, AH - 0.16, 0.68, 0, s2 * 0.5, 0); // corner EO box
-    P.add('turretGlass', box(0.09, 0.07, 0.02), s2 * 0.80, AH - 0.15, 0.74, 0, s2 * 0.5, 0);
+    P.add('turretDark', box(0.02, 0.02, 2.42), s2 * 1.315, BK, -0.33);          // knuckle seam
+    P.add('turretDark', box(0.016, AH * 0.92, 0.03), s2 * 0.58, AH * 0.48, 1.06, 0, -s2 * 0.36, 0); // arrow ridge seams
+    P.add('turretDark', box(0.16, 0.14, 0.10), s2 * 0.72, AH - 0.14, 0.56, 0, s2 * 0.5, 0); // corner EO box
+    P.add('turretGlass', box(0.09, 0.07, 0.02), s2 * 0.74, AH - 0.13, 0.62, 0, s2 * 0.5, 0);
   }
-  // gun trough: dark slot the clean tube emerges from
-  P.add('turretDark', box(0.5, 0.42, 0.2), 0, 0.42, 1.02);
+  P.add('turretDark', box(0.9, 0.02, 0.9), 0, AH + 0.032, -0.1);
+  // gun trough: dark slot the clean tube emerges from, under the arrow apex
+  P.add('turretDark', box(0.5, 0.42, 0.2), 0, 0.42, 1.06);
   // small square APS hard-kill launch tubes ringing the shroud base
   for (let k = 0; k < 5; k++) {
     for (const s of [-1, 1]) {
       P.add('turretDark', box(0.09, 0.09, 0.14),
-        s * (1.10 - k * 0.04), 0.10, 0.62 - k * 0.40, 0.25, s * (0.5 + k * 0.18), 0);
+        s * (1.06 - k * 0.04), 0.10, 0.62 - k * 0.40, 0.25, s * (0.5 + k * 0.18), 0);
     }
   }
-  // sensor mast cluster: pano tower rear-center + meteo + AESA corner panels
+  // sensor mast cluster: pano tower rear-center + meteo cluster + AESA panels
   P.add('turret', box(0.34, 0.42, 0.34), 0, AH + 0.21, -0.95);                  // tower base
   P.add('turretDetail', cylY(0.07, 0.08, 0.22, 10), 0, AH + 0.53, -0.95);
   P.add('turretDark', cylY(0.13, 0.13, 0.2, 12), 0, AH + 0.74, -0.95);          // pano head
   P.add('turretGlass', box(0.14, 0.08, 0.02), 0, AH + 0.76, -0.82);
-  P.add('turretDetail', box(0.025, 0.55, 0.025), -0.35, AH + 0.27, -1.15);      // meteo mast
+  // meteo MAST CLUSTER (r7: the lone wire-thin stick read as an artifact):
+  // proper mast with crossbar vane pair + tip sensor pod on a base block
+  P.add('turretDetail', box(0.10, 0.10, 0.10), -0.35, AH + 0.05, -1.15);        // mast base block
+  P.add('turretDetail', cylY(0.022, 0.028, 0.52, 8), -0.35, AH + 0.36, -1.15);  // mast
+  P.add('turretDetail', box(0.30, 0.025, 0.025), -0.35, AH + 0.56, -1.15);      // crossbar
+  P.add('turretDark', cylX(0.028, 0.09, 8), -0.49, AH + 0.56, -1.15);           // vane pods
+  P.add('turretDark', cylX(0.028, 0.09, 8), -0.21, AH + 0.56, -1.15);
+  P.add('turretDark', box(0.05, 0.07, 0.05), -0.35, AH + 0.66, -1.15);          // tip sensor
   for (const s of [-1, 1]) {                                                    // Afganit AESA plates
-    P.add('turretDark', box(0.30, 0.34, 0.04), s * 0.82, AH - 0.28, 0.86, -0.1, s * 0.55, 0);
-    P.add('turretDark', box(0.30, 0.30, 0.04), s * 1.06, AH - 0.30, -1.22, 0.1, s * 2.6, 0);
+    P.add('turretDark', box(0.30, 0.34, 0.04), s * 0.80, AH - 0.30, 0.80, -0.1, s * 0.55, 0);
+    P.add('turretDark', box(0.30, 0.30, 0.04), s * 1.10, AH - 0.52, -1.24, 0.1, s * 2.6, 0);
   }
   // vertical smoke-tube banks at the rear corners
   for (const s of [-1, 1]) {
@@ -1282,17 +1340,21 @@ function buildT14(P) {
       put(-0.17 - c * 0.33, y, t14GlacisZ(y), -71 * D2R, 0, 0);
     }
   });
+  // r7: tile field rides the full-height front armor panels (3 rows x 7
+  // columns over the front half) instead of the old lone 2-row strip pasted
+  // mid-flank on a bare 8 m plate.
   P.eraCluster('skirt_era_R', (put) => {
-    for (let c = 0; c < 9; c++) for (let row = 0; row < 2; row++)
-      put(1.97, 0.80 + row * 0.23, 3.6 - c * 0.42, 0, Math.PI / 2, 0);
+    for (let c = 0; c < 7; c++) for (let row = 0; row < 3; row++)
+      put(2.0, 0.68 + row * 0.23, 3.75 - c * 0.44, 0, Math.PI / 2, 0);
   });
   P.eraCluster('skirt_era_L', (put) => {
-    for (let c = 0; c < 9; c++) for (let row = 0; row < 2; row++)
-      put(-1.97, 0.80 + row * 0.23, 3.6 - c * 0.42, 0, -Math.PI / 2, 0);
+    for (let c = 0; c < 7; c++) for (let row = 0; row < 3; row++)
+      put(-2.0, 0.68 + row * 0.23, 3.75 - c * 0.44, 0, -Math.PI / 2, 0);
   });
-  // white 512 on the REAR (untiled) skirt half — the Malachit rows own the front
-  P.decal('hull', 'number', '512', 0.4, [1.97, 0.92, -1.75], Math.PI / 2);
-  P.decal('hull', 'number', '512', 0.4, [-1.97, 0.92, -1.75], -Math.PI / 2);
+  // white 512 moved UP onto the deck-band side — the rear skirt half is now
+  // an open bar-armor screen (r7), no flat plate to carry a decal there
+  P.decal('hull', 'number', '512', 0.34, [1.885, 1.30, -1.9], Math.PI / 2);
+  P.decal('hull', 'number', '512', 0.34, [-1.885, 1.30, -1.9], -Math.PI / 2);
   P.topY = AH + 0.85;                                                           // sensor mast top
 }
 

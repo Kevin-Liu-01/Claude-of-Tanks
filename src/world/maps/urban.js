@@ -152,6 +152,11 @@ export default {
     well: true, hayCrates: false, fences: true, telegraph: true, carts: true, logs: false,
     // r1: fewer bare boulders (they read as blobs on lawn), more rubble piles
     haystacks: 0, rocks: 70, outcrops: 6, craters: 88, rubblePiles: 132,
+    // r6 terrain_environment: street furniture + battle debris — lampposts
+    // march the paved grid, anti-tank hedgehogs hold intersections/approaches
+    // and two more road wrecks ("urban streets missing furniture, wrecks and
+    // debris variety" critique)
+    lampposts: true, hedgehogs: 16, wrecks: 6,
   },
 
   horizon: {

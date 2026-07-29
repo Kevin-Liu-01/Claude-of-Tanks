@@ -393,11 +393,17 @@ function proxyGroup(bb, poseGrp, turretGrp) {
  * @param {{module:string,min:number[],max:number[],turretLocal:boolean}} bb
  * @param {THREE.Material} mat state-tinted proxy material
  * @param {string} era spec.era of the victim ('modern' selects modern kits)
+ * @param {number} calMm victim's own gun caliber — ammo rounds are scaled to
+ *   it (r6: fixed-cap cassette shells read a fidelity notch under WT; a
+ *   caliber-true radius with counts derived from the free run keeps an 88 mm
+ *   Tiger tray slim and a 125 mm carousel dense). 0 keeps legacy caps.
  */
-function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables, era) {
+function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables, era, calMm) {
   const kind = bb.module;
   if (kind === 'trackL' || kind === 'trackR') return; // real track geometry reads already
   const modern = era === 'modern';
+  // caliber-true CASE radius (case sits ~8% over the projectile diameter)
+  const rCal = calMm > 0 ? (calMm / 2000) * 1.08 : 0;
   const sx = bb.max[0] - bb.min[0];
   const sy = bb.max[1] - bb.min[1];
   const sz = bb.max[2] - bb.min[2];
@@ -441,10 +447,12 @@ function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables, era) {
   if (kind === 'ammoRack' && bb.turretLocal) {
     // modern bustle stowage (Abrams/Leo lineage): horizontal rounds racked
     // nose-forward in layered rows, sealed off by a blast-door bulkhead at
-    // the fighting-compartment face of the box
-    const nx = Math.max(2, Math.min(6, Math.floor(sx / 0.2)));
-    const ny = Math.max(1, Math.min(3, Math.floor(sy / 0.22)));
-    const r = Math.min(0.05, (sx / nx) * 0.32, (sy / ny) * 0.32);
+    // the fighting-compartment face of the box. Row/column counts derive
+    // from the caliber-true round size (r6) so the rack reads dense + slim.
+    const rT = rCal > 0 ? rCal : 0.05;
+    const nx = Math.max(2, Math.min(8, Math.floor(sx / Math.max(0.13, rT * 2.7))));
+    const ny = Math.max(1, Math.min(3, Math.floor(sy / Math.max(0.15, rT * 3.1))));
+    const r = Math.min(rT, (sx / nx) * 0.36, (sy / ny) * 0.36);
     const caseH = sz * 0.52;
     const tipH = Math.min(sz * 0.2, r * 5.5);
     const list = [];
@@ -467,10 +475,13 @@ function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables, era) {
     put(new THREE.BoxGeometry(sx * 0.96, sy * 0.94, 0.05), 0, 0, sz / 2 - 0.03);
   } else if (kind === 'ammoRack' && modern) {
     // modern hull autoloader carousel (T-72/T-90 lineage): ring of charges
-    // standing in a rotating tray around the turret basket axis
+    // standing in a rotating tray around the turret basket axis. Charge
+    // radius is caliber-true and the ring count follows the circumference
+    // (r6) — a 125 mm carousel packs ~14-16 slim charges, never 10 fat ones.
     const R = Math.max(0.22, Math.min(sx, sz) * 0.36);
-    const n = 10;
-    const r = Math.min(0.055, R * 0.3);
+    const rT = rCal > 0 ? rCal : 0.055;
+    const n = Math.max(8, Math.min(18, Math.round((Math.PI * 2 * R) / Math.max(0.11, rT * 2.9))));
+    const r = Math.min(rT, R * 0.3);
     const caseH = sy * 0.5;
     const tipH = Math.min(sy * 0.2, r * 5.5);
     const list = [];
@@ -485,10 +496,12 @@ function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables, era) {
       0, -sy / 2 + sy * 0.16, 0, Math.PI / 2, 0, 0);
   } else if (kind === 'ammoRack') {
     // WWII open tray: rows of standing rounds (brass case + ogive tip, r7
-    // critique: bare cylinders read as extruded crates) over a thin rack tray
-    const nx = Math.max(2, Math.min(5, Math.floor(sx / 0.24)));
-    const nz = Math.max(2, Math.min(7, Math.floor(sz / 0.24)));
-    const r = Math.min(0.055, (sx / nx) * 0.3, (sz / nz) * 0.3);
+    // critique: bare cylinders read as extruded crates) over a thin rack
+    // tray. Round radius caliber-true, grid pitch derived from it (r6).
+    const rT = rCal > 0 ? rCal : 0.055;
+    const nx = Math.max(2, Math.min(6, Math.floor(sx / Math.max(0.12, rT * 3.0))));
+    const nz = Math.max(2, Math.min(8, Math.floor(sz / Math.max(0.12, rT * 3.0))));
+    const r = Math.min(rT, (sx / nx) * 0.32, (sz / nz) * 0.32);
     const h = sy * 0.62;
     const tipH = Math.min(sy * 0.26, r * 5.5);
     const list = [];
@@ -602,10 +615,12 @@ function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables, era) {
 }
 
 /**
- * Crew proxy: soft rounded-capsule torso + head sphere. Slimmer and rounder
- * than the r6 flat-topped cylinder busts (which read as untextured gray
- * mannequins) — a quiet tinted silhouette in the same material language as
- * the module proxies.
+ * Crew proxy: seated human silhouette — torso capsule with a shoulder bar
+ * across its top, a clearly-necked head sphere and a slightly proud helmet
+ * dome over it. The r6 single-capsule + ball figures read as featureless
+ * "bowling pins" (critique) — the shoulder lobe and helmet brim give the
+ * silhouette the two-lobe human read WT's crew ghosts have, still in the
+ * same quiet tinted material language as the module proxies.
  */
 function addCrewProxy(bb, mat, poseGrp, turretGrp, disposables) {
   const sx = bb.max[0] - bb.min[0];
@@ -613,17 +628,27 @@ function addCrewProxy(bb, mat, poseGrp, turretGrp, disposables) {
   const sz = bb.max[2] - bb.min[2];
   const g = proxyGroup(bb, poseGrp, turretGrp);
   const r = Math.min(sx, sz) * 0.26;
-  const headR = Math.max(0.05, Math.min(r * 0.8, sy * 0.17));
-  const bodyH = sy * 0.58;
-  const capR = Math.max(0.04, r * 0.9);
-  const body = new THREE.CapsuleGeometry(capR, Math.max(0.02, bodyH - capR * 2), 4, 12);
+  const headR = Math.max(0.05, Math.min(r * 0.62, sy * 0.15));
+  const torsoH = sy * 0.52;
+  const capR = Math.max(0.04, r * 0.78);
+  const shoulderSpan = Math.max(0.06, Math.min(sx, sz) * 0.46);
+  const body = new THREE.CapsuleGeometry(capR, Math.max(0.02, torsoH - capR * 2), 4, 10);
+  const shoulder = new THREE.CapsuleGeometry(capR * 0.55, shoulderSpan, 4, 8);
   const head = new THREE.SphereGeometry(headR, 10, 8);
-  disposables.push(body, head);
+  const helmet = new THREE.SphereGeometry(headR * 1.24, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.52);
+  disposables.push(body, shoulder, head, helmet);
   const bm = new THREE.Mesh(body, mat);
-  bm.position.y = -sy / 2 + bodyH / 2;
+  bm.position.y = -sy / 2 + torsoH / 2;
+  const sm = new THREE.Mesh(shoulder, mat);
+  sm.rotation.z = Math.PI / 2;
+  sm.position.y = -sy / 2 + torsoH - capR * 0.5;
+  const neckY = -sy / 2 + torsoH + headR * 1.05;
   const hm = new THREE.Mesh(head, mat);
-  hm.position.y = -sy / 2 + bodyH + headR * 0.8;
-  g.add(bm, hm);
+  hm.position.y = neckY;
+  const em = new THREE.Mesh(helmet, mat);
+  em.position.y = neckY + headR * 0.1;
+  em.scale.set(1, 0.8, 1);
+  g.add(bm, sm, hm, em);
 }
 
 /**
@@ -814,6 +839,14 @@ function tube(a, b, radius, mat, parent, disposables) {
  */
 export function createKillCam(deps) {
   const { scene, camera, rig, heightField, getPlayer } = deps;
+  // World access for the flight LOS solve (r6 major): terrain/prop raycast +
+  // the vegetation concealment discs the spotting sim itself uses. Prefer an
+  // injected getter (docs/handoff/killcam_shotinfo-r6.md wires main.js to
+  // pass `getWorld: () => world`); fall back to the debug handle so the fix
+  // is live before the integration dep lands. Resolved lazily per replay —
+  // the world object is REPLACED on every map switch.
+  const getWorld = deps.getWorld
+    || (() => (typeof window !== 'undefined' && window.__DEBUG ? window.__DEBUG.world : null));
 
   // ---- LIGHT-COUNT / PROGRAM STABILITY --------------------------------------
   // three.js recompiles EVERY lit material program when the renderer's light
@@ -1138,6 +1171,7 @@ export function createKillCam(deps) {
       labels: [],
       obstacles: null, // module/crew box screen rects (label repulsion, r3)
       pts: null, cum: null, total: 0, dur: 0, segIdx: 0,
+      flightLift: null, // per-sample camera lift (flight LOS solve, r6)
       core: null, streak: null, trailGeo: null,
       halo: null, tail: null, shellLight: null, muzzleLight: null,
       xcam: null,
@@ -1243,10 +1277,25 @@ export function createKillCam(deps) {
       ? `${Math.round(ev.nominalMm || 0)} → ${Math.round(ev.effectiveMm || 0)} mm eff.`
       : extNoArm ? 'external — no armor' : '—');
     // roll / nominal: the rolled pen alone (e.g. 986 mm vs a 63 mm plate)
-    // reads as a bug without the ±25%-roll baseline it came from
+    // reads as a bug without the ±25%-roll baseline it came from.
+    // ERA/screen honesty (r6 major): penRollMm is the shell's RESIDUAL pen —
+    // ERA tiles and spaced screens already cut it in-event before the main
+    // plate test — and a bare 461/898 on an ERA'd glacis read as a broken
+    // ±25% RNG. With the additive payload field penRollFreshMm (damage.js
+    // stamps the pre-degradation roll, see docs/handoff) the row prints the
+    // cut explicitly: 'fresh → residual / nominal · ERA'. Payloads without
+    // the field still get the qualifier whenever the event itself proves a
+    // cut happened (eraPlate set, or a residual mathematically impossible
+    // from a ±25% roll) — nothing is ever recomputed or guessed.
     const penNom = nominalPenFor(ev);
-    kv('Pen roll', (ev.penRollMm || 0) > 0
-      ? `${Math.round(ev.penRollMm)}${penNom > 0 ? ` / ${penNom}` : ''} mm` : '—');
+    const penRoll = Math.round(ev.penRollMm || 0);
+    const penFresh = Math.round(ev.penRollFreshMm || 0);
+    const penQual = ev.eraPlate ? ' · ERA'
+      : (penRoll > 0 && (penFresh > penRoll + 1
+        || (penNom > 0 && penRoll < penNom * 0.75 - 2))) ? ' · screens' : '';
+    const penArrow = penFresh > penRoll + 1 ? `${penFresh} → ` : '';
+    kv('Pen roll', penRoll > 0
+      ? `${penArrow}${penRoll}${penNom > 0 ? ` / ${penNom}` : ''} mm${penQual}` : '—');
     kv('Damage', `${Math.round(ev.damage || 0)}`);
     kv('Zone', zoneLabel(ev.zone));
     d.banner.classList.toggle('on', !!ev.ammoRacked);
@@ -1302,6 +1351,7 @@ export function createKillCam(deps) {
         }
         pb.total = acc;
         pb.dur = THREE.MathUtils.clamp(1.2 + acc * 0.005, FLIGHT_MIN_S, FLIGHT_MAX_S);
+        pb.flightLift = solveFlightOcclusion();
         // trail polyline (drawRange grows with the shell); full-white vertex
         // colors during flight — beginXray rewrites them into the tail fade
         const posAttr = new Float32Array(pts.length * 3);
@@ -1379,6 +1429,95 @@ export function createKillCam(deps) {
     beginXray();
   }
 
+  /**
+   * FLIGHT LOS SOLVE (r6 major): the chase camera rode a fixed 6-9 m offset
+   * with only a terrain floor — a trajectory skimming a foliage clump parked
+   * the entire 2.6 s slow-mo INSIDE the canopy (screen full of leaf cards +
+   * lens flare, victim invisible until the x-ray; live capture
+   * shots/critic_r6_ks/b_flight.png). Before the flight starts this samples
+   * the exact camera poses updateFlight() will visit and, wherever a pose
+   * sits inside a vegetation concealment volume or has its view line to the
+   * look target blocked by terrain/props, finds the smallest vertical lift
+   * that clears it. Lifts are neighbor-maxed (the camera is already climbing
+   * BEFORE it reaches an occluded stretch) and lerped during playback; the
+   * x-ray blend fades them out through the same k-lerp that lands the pose,
+   * so the handover stays seamless. Occluder data is the world the sim
+   * itself uses — world.raycast (heightfield + prop AABBs) and the spotting
+   * system's vegetation concealment discs — nothing here is invented.
+   * @returns {?Float32Array} lift meters per sample, or null when clear
+   */
+  function solveFlightOcclusion() {
+    let world = null;
+    try { world = getWorld ? getWorld() : null; } catch (_) { world = null; }
+    const conceal = (world && world.getConcealment && world.getConcealment()) || [];
+    const canRay = !!(world && world.raycast);
+    if ((!conceal.length && !canRay) || !pb.pts || pb.total <= 0) return null;
+    const N = 13;
+    const LIFTS = [0, 2.5, 5, 8, 12, 16, 20];
+    const lifts = new Float32Array(N);
+    const pos = new THREE.Vector3();
+    const dir = new THREE.Vector3();
+    const camP = new THREE.Vector3();
+    const look = new THREE.Vector3();
+    const sideV = new THREE.Vector3();
+    const ray = new THREE.Vector3();
+    /** Camera pose acceptable: outside foliage volumes, view line open. */
+    const clearAt = (cp, lk) => {
+      // 1. inside a foliage clump? Discs are 2D (x,z,r) — bushes (add>=0.2)
+      // occlude a low band, tree canopies an elevated one (trunk gaps below
+      // ~1.8 m read fine; canopy tops out ~11.5 m across the tree kits).
+      for (const c of conceal) {
+        const dx = cp.x - c.x;
+        const dz = cp.z - c.z;
+        const rr = c.r + 0.9;
+        if (dx * dx + dz * dz > rr * rr) continue;
+        const gy = heightField ? heightField.getHeightAt(c.x, c.z) : cp.y - 100;
+        const lo = c.add >= 0.2 ? gy - 1 : gy + 1.8;
+        const hi = c.add >= 0.2 ? gy + 3.2 : gy + 11.5;
+        if (cp.y > lo && cp.y < hi) return false;
+      }
+      // 2. view line to the look target blocked by terrain or a building?
+      // 80% guard distance: the look point sits near/inside the victim, and
+      // the victim's own surroundings must not fail an otherwise clean pose.
+      if (canRay) {
+        ray.copy(lk).sub(cp);
+        const d = ray.length();
+        if (d > 2 && world.raycast(cp, ray.multiplyScalar(1 / d), d * 0.8)) return false;
+      }
+      return true;
+    };
+    for (let i = 0; i < N; i++) {
+      const u = i / (N - 1);
+      const s = 1 - Math.pow(1 - u, 2.15); // same ease as updateFlight
+      sampleTraj(s * pb.total, pos, dir);
+      sideV.crossVectors(dir, UP);
+      if (sideV.lengthSq() < 1e-6) sideV.set(1, 0, 0); else sideV.normalize();
+      camP.copy(pos).addScaledVector(dir, -(6.4 + 2.6 * (1 - u))).addScaledVector(sideV, 2.7);
+      camP.y += 1.35;
+      if (heightField) {
+        const minY = heightField.getHeightAt(camP.x, camP.z) + 0.8;
+        if (camP.y < minY) camP.y = minY;
+      }
+      look.copy(pos).addScaledVector(dir, 10).lerp(pb.xcam.center, 0.4 + 0.35 * u);
+      const baseY = camP.y;
+      let lift = LIFTS[LIFTS.length - 1]; // best effort if nothing clears
+      for (const cand of LIFTS) {
+        camP.y = baseY + cand;
+        if (clearAt(camP, look)) { lift = cand; break; }
+      }
+      lifts[i] = lift;
+    }
+    pb.segIdx = 0; // sampleTraj cache back to the launch segment for playback
+    let any = 0;
+    for (let i = 0; i < N; i++) any = Math.max(any, lifts[i]);
+    if (any === 0) return null; // clean path — skip the per-frame lerp
+    const sm = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      sm[i] = Math.max(lifts[Math.max(0, i - 1)], lifts[i], lifts[Math.min(N - 1, i + 1)]);
+    }
+    return sm;
+  }
+
   /** Sample the trajectory polyline at arc length `dist`. */
   function sampleTraj(dist, outPos, outDir) {
     const pts = pb.pts;
@@ -1426,6 +1565,14 @@ export function createKillCam(deps) {
     const k = THREE.MathUtils.smoothstep(u, 0.78, 1);
     _a.copy(_p).addScaledVector(_d, -(6.4 + 2.6 * (1 - u))).addScaledVector(_s, 2.7);
     _a.y += 1.35;
+    // occlusion lift (r6): solved once in begin() — the chase arcs OVER
+    // foliage clumps / buildings instead of chasing through them; the k-lerp
+    // to the x-ray pose below fades the lift out naturally.
+    if (pb.flightLift) {
+      const fi = Math.min(0.999999, u) * (pb.flightLift.length - 1);
+      const i0 = Math.floor(fi);
+      _a.y += pb.flightLift[i0] + (pb.flightLift[i0 + 1] - pb.flightLift[i0]) * (fi - i0);
+    }
     // look-at: shell's forward point pulled toward the victim center — the
     // pull strengthens over the flight so the kill frame is always in view
     _b.copy(_p).addScaledVector(_d, 10);
@@ -1799,9 +1946,27 @@ export function createKillCam(deps) {
       const parent = bb.turretLocal ? turretGrp : poseGrp;
       parent.add(seg);
       if (fillMat) {
-        const fill = new THREE.Mesh(boxGeo, fillMat);
-        fill.position.copy(seg.position);
-        parent.add(fill);
+        if (key === 'm:trackL' || key === 'm:trackR') {
+          // Destroyed/damaged TRACK tint as tread segments (r6 minor): one
+          // box fill across the ~7 m run painted the whole hull side as a
+          // flat salmon slab. A row of slats inside the same module AABB —
+          // gaps at track-link pitch — reads as the track itself while the
+          // red edge outline still owns the full module footprint.
+          const n = Math.max(5, Math.min(12, Math.round(sz / 0.55)));
+          const segL = (sz / n) * 0.62;
+          const slatGeo = new THREE.BoxGeometry(sx * 0.96, sy * 0.9, segL);
+          pb.disposables.push(slatGeo);
+          for (let i = 0; i < n; i++) {
+            const slat = new THREE.Mesh(slatGeo, fillMat);
+            slat.position.set(seg.position.x, seg.position.y,
+              bb.min[2] + (i + 0.5) * (sz / n));
+            parent.add(slat);
+          }
+        } else {
+          const fill = new THREE.Mesh(boxGeo, fillMat);
+          fill.position.copy(seg.position);
+          parent.add(fill);
+        }
       }
       // obstacle record for the screen-space label repulsion pass (r3):
       // local corners now, world corners once poses are final (below).
@@ -1828,7 +1993,8 @@ export function createKillCam(deps) {
     }
     for (const cb of armor.crew || []) {
       const hit = crewHit.has(cb.crew);
-      addBox(cb, hit ? `c:${cb.crew}` : null, hit ? S.edgeCrew : S.edgeDim, hit ? S.fillCrew : null);
+      // always keyed (r6): near-miss chips anchor to un-hit crew boxes too
+      addBox(cb, `c:${cb.crew}`, hit ? S.edgeCrew : S.edgeDim, hit ? S.fillCrew : null);
     }
 
     // 3b. recognizable internals inside the boxes — ammo stowage (bustle /
@@ -1852,9 +2018,15 @@ export function createKillCam(deps) {
       if (min[0] >= max[0] || min[1] >= max[1] || min[2] >= max[2]) return bb;
       return { ...bb, min, max };
     };
+    // victim's own gun caliber sizes its ammo proxies (r6, best-effort)
+    let victimCalMm = 0;
+    try {
+      const sh0 = snap.targetEnt.spec.gun.shells[0];
+      victimCalMm = (sh0 && sh0.caliberMm) || 0;
+    } catch (_) { victimCalMm = 0; }
     for (const mb of armor.modules || []) {
       addModuleProxy(clampBB(mb), proxMatForState(effState(mb.module)),
-        poseGrp, turretGrp, pb.disposables, specEra);
+        poseGrp, turretGrp, pb.disposables, specEra, victimCalMm);
     }
     // hull anatomy between the boxes: driveshaft spine + transmission block
     addDrivetrainProxy(armor, poseGrp, pb.disposables);
@@ -1876,6 +2048,7 @@ export function createKillCam(deps) {
     // bright internal segment carried all the way to the DEEPEST damaged
     // component (entry -> ammo rack is the story), and a spall cone with
     // deterministic fragment rays opening from the penetration point.
+    const nearMiss = []; // spall-brushed but undamaged internals (labeled in 5)
     if (ev.localPos && ev.localDir) {
       const lp = new THREE.Vector3().fromArray(ev.localPos);
       const ld = new THREE.Vector3().fromArray(ev.localDir).normalize();
@@ -1908,6 +2081,44 @@ export function createKillCam(deps) {
         if (bb) deepest = Math.max(deepest, depthOf(bb));
       }
       const innerLen = Math.max(1.2, (ev.caliberMm || 100) * 10 / 1000 + 0.6, deepest + 0.35);
+      // NEAR-MISS pass (r6 minor): a clean pen with no module/crew casualties
+      // left the 7 s hold telling no story beyond the −HP tag. Record the
+      // un-hit internals whose boxes the spall cone geometrically brushes —
+      // the SAME lp/ld/armor boxes the cone render and causal streaks use,
+      // so nothing is invented — and dim-label them 'NEAR MISS' in step 5.
+      // No damage is implied: the chips take the demoted gray 'ok' tier.
+      if (ev.kind === 'pen' || ev.kind === 'he_pen') {
+        const spallTan = 0.26; // rendered cone opens at r=0.24·len (+ margin)
+        const consider = (bb, kkey, klabel) => {
+          centerOf(bb, _a).sub(lp);
+          const along = _a.dot(ld);
+          if (along < 0.12 || along > innerLen + 0.3) return;
+          _b.copy(ld).multiplyScalar(along);
+          const radial = _a.sub(_b).length();
+          const half = ((bb.max[0] - bb.min[0]) + (bb.max[1] - bb.min[1])
+            + (bb.max[2] - bb.min[2])) / 6; // mean half-extent
+          const reach = along * spallTan + 0.12;
+          if (radial - half < reach) nearMiss.push({ key: kkey, label: klabel, score: radial - half });
+        };
+        for (const mb of armor.modules || []) {
+          // tracks are external gear; the turret RING encircles the whole
+          // basket — 'brushed' is near-universally true on any turret-area
+          // pen and its box coincides with the gun's in screen space (the
+          // chip clipped behind GUN on the live probe). Both stay silent.
+          if (mb.module === 'trackL' || mb.module === 'trackR'
+            || mb.module === 'turretRing') continue;
+          if (modHit.has(mb.module)) continue;
+          consider(mb, `m:${mb.module}`, MODULE_LABEL[mb.module] || mb.module);
+        }
+        for (const cb of armor.crew || []) {
+          if (crewHit.has(cb.crew)) continue;
+          if (crewAlive && crewAlive[cb.crew] === false) continue; // earlier casualty — red proxy tells that
+          consider(cb, `c:${cb.crew}`, CREW_LABEL[cb.crew] || cb.crew);
+        }
+        nearMiss.sort((a, b) => a.score - b.score);
+        nearMiss.length = Math.min(nearMiss.length,
+          (ev.modulesHit.length + ev.crewHit.length) >= 3 ? 2 : 3);
+      }
       // external approach: the last meters into the plate. r4 rework — the
       // old single 4.5 m tube was a uniform thick rod that hard-cut at the
       // frame edge; on the staged Tiger it read as a beam rising OUT OF THE
@@ -2128,6 +2339,31 @@ export function createKillCam(deps) {
       seg.getWorldPosition(_p);
       addLabel(_p, '#ff7d8a', CREW_LABEL[c] || c, 'KNOCKED OUT', false, false, `c:${c}`);
     }
+    // ENTRY-PLATE chip (r6 minor): the struck zone is ALWAYS annotated at the
+    // penetration point — a clean pen with no module/crew casualties used to
+    // hold 7 s with nothing but the −HP tag. Zone / plate thickness / outcome
+    // word all come straight off the payload (zone, physicalMm, kind).
+    if (ev.zone && ev.localPos) {
+      const KIND_WORD = {
+        pen: 'PENETRATED', he_pen: 'PENETRATED', ricochet: 'RICOCHET',
+        nonpen: 'NO PENETRATION', era: 'STOPPED BY ERA',
+        spaced_absorb: 'ABSORBED', screen_pierce: 'PASSED THROUGH',
+        he_splash: 'SPLASH',
+      };
+      const mm = (ev.physicalMm || 0) > 0 ? ` · ${Math.round(ev.physicalMm)} mm` : '';
+      _p.set(ev.pos[0], ev.pos[1], ev.pos[2]);
+      addLabel(_p, '#ffb04a', zoneLabel(ev.zone),
+        `${KIND_WORD[ev.kind] || 'HIT'}${mm}`, false, false, null);
+    }
+    // near-miss chips (r6 minor, collected in step 4): internals the spall
+    // cone brushed but the sim left untouched — demoted gray tier, so they
+    // can never read as casualties next to the yellow/red damage chips.
+    for (const nm of nearMiss) {
+      const seg = anchors.get(nm.key);
+      if (!seg) continue;
+      seg.getWorldPosition(_p);
+      addLabel(_p, MOD_STATE_COLOR.ok, nm.label, 'NEAR MISS', false, true, nm.key);
+    }
     if ((ev.damage || 0) > 0) {
       _p.set(ev.pos[0], ev.pos[1], ev.pos[2]);
       addLabel(_p, '', `−${Math.round(ev.damage)} HP`, '', true);
@@ -2136,6 +2372,7 @@ export function createKillCam(deps) {
     const MICRO = { ammoRack: 'AMMO', engine: 'ENGINE', fuelTank: 'FUEL' };
     for (const key of Object.keys(MICRO)) {
       if (modHit.has(key)) continue; // hit ones already carry a damage chip
+      if (nearMiss.some((n) => n.key === `m:${key}`)) continue; // NEAR MISS chip owns it
       const seg = anchors.get(`m:${key}`);
       if (!seg) continue;
       seg.getWorldPosition(_p);

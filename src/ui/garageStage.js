@@ -737,6 +737,21 @@ export function createGarageStage(engineCtx, pos) {
   fill.position.set(-15, 5.6, -1);
   group.add(fill);
 
+  // content_breadth r6 (critic minor: "lower hull/running gear falls into
+  // shadow"): low bounce fill aimed at the hull lower third / running gear —
+  // parked near the podium front-right, tuned so tracks/wheels read under
+  // the moody key without flattening it.
+  const gearFill = new THREE.PointLight(0xcfd8e6, 14, 9, 2);
+  gearFill.position.set(2.6, 0.55, 2.2);
+  gearFill.castShadow = false;
+  group.add(gearFill);
+  // lighting_post r6 (optional minor): low-intensity cool rim behind-left of
+  // the pedestal so the vehicle silhouette separates from the back wall.
+  const coolRim = new THREE.PointLight(0x9fb8d8, 8, 18, 1.8);
+  coolRim.position.set(-4.5, 3.2, -6.5);
+  coolRim.castShadow = false;
+  group.add(coolRim);
+
   // second light pool: warm additive splash on the floor under the west-wall
   // flood housing (its lens is emissive) — fakes the third fixture being live
   // without adding a real light to every shader
