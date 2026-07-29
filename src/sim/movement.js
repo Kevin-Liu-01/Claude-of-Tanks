@@ -83,6 +83,21 @@ const TRAVERSE_SPEED_SCALE = 0.2;// hull traverse reduction fraction at top spee
 const GRAVITY = 9.81;            // m/s²
 const MAX_CLIMB_DEG = 28;        // slope (deg) at which the drive stalls
 const DOWNHILL_BONUS_CAP = 0.25; // up to +25% v_target downhill
+// r4 (round critique: "heavy-tank standing start on a grade reads dead"): an
+// open throttle on a DRIVABLE grade (below the 28° stall) must always win the
+// tug-of-war with gravity, however slowly — a WoT Tiger on a 12-17° grass
+// slope visibly pulls away at 8-12 km/h, while here SPOOL_FLOOR × accel
+// (Tiger I: 0.25 × 1.9 ≈ 0.47 m/s²) lost to the near-stationary full-gravity
+// share (~2.5 m/s² at 15°) and the hull sat inert for seconds (live probe:
+// 6.6 km/h peak in 3.2 s). Two coordinated changes (see the gravity block):
+// the "tracks not hooked up yet" full-gravity share now fades with the
+// engine spool (spooled drivetrain = tracks turning = hooked), and the NET
+// per-tick accel toward an open-throttle target is floored at this value so
+// low hp/t tanks always creep forward on any grade the spec can climb. The
+// floor never adds speed past vTarget (slope/turn-scaled), so flat-ground
+// 0-30 tuning and the turn-bleed regimes are untouched (their net accel is
+// far above it).
+const CLIMB_CREEP_MPS2 = 0.25;   // min net accel toward an open-throttle target
 const OVERSPEED_CAP = 1.2;       // absolute speed ceiling: 1.2 × transmission limit
 const YAW_SPOOL_S = 0.15;        // track spool-up time toward target yaw rate
 const NEUTRAL_TURN_MULT = 0.95;  // Pc term of the wiki traverse formula
@@ -139,7 +154,16 @@ const FAN_YIELD_MAX_M = 0.30;    // max softening — conform absorbs ≤ 0.35 m
 // probe: −3.1 cm spike at 47 km/h). Slew-limited opening keeps the conform
 // target inside what the ease tracks per frame; CLOSING stays instant — a
 // rising clamp is always burial-safe.
-const FAN_YIELD_OPEN_MPS = 0.6;
+// r4-fix: 0.6 → 0.35. The slew is SIM-time but the conform ease is per
+// RENDERED frame — on a frame-starved page (or a low-fps player machine)
+// main.js batches up to MAX_SIM_STEPS ticks per frame, so at 0.6 m/s the
+// yield could step 3-4× further per frame than the ease was budgeted for
+// (contention drive probe: −5…−6 cm wheel-rim transients at sim/wall 0.28
+// that never appear at real-time pacing). Halving the rate keeps the
+// per-frame conform step in budget through 2-tick frames; on smooth->rough
+// transitions the clamp simply stays hard ~0.2 s longer, which is the safe
+// direction.
+const FAN_YIELD_OPEN_MPS = 0.35;
 // r3 two-point settle authority (see the fit block): max pitch correction the
 // rigid-body settling may add on top of the LSQ plane per tick's target. On
 // ordinary ground the deficit spread keeps ΔP a few milliradians — the clamp
@@ -164,7 +188,11 @@ const SUPPORT_MARGIN_M = 0.017;
 // r3: 0.010 → 0.014 — the drive probe's rendered-vertex scan brushed −3.1 cm
 // once at 47 km/h on 19° attitude swings (conform-lag transient); the extra
 // attitude-scaled headroom costs nothing on flat ground.
-const SUPPORT_MARGIN_ATT_M = 0.014;
+// r4-fix: 0.014 → 0.017 — the corrected (interleave-aware) vertex gate saw a
+// −3.2 cm single-scan transient at 57 km/h on 27°/39° combined swings; one
+// more attitude-scaled step keeps the worst conform-lag class inside the
+// −3 cm gate. Still exactly zero cost on flat ground.
+const SUPPORT_MARGIN_ATT_M = 0.017;
 const SUPPORT_MARGIN_ATT_RAD = 35 * (Math.PI / 180);
 // Mirror of tankFactory's turn-lean sway (visual layer adds it to rotation.z):
 // the support solve folds the predicted sway into the effective roll so a hard
@@ -570,6 +598,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
   state._spool = spoolTarget > 0
     ? Math.min(1, (state._spool || 0) + dt / SPOOL_S)
     : Math.max(0, (state._spool || 0) - dt / SPOOL_DECAY_S);
+  const preAccelSpeed = state.speed; // for the CLIMB_CREEP net-accel floor
   state.speed = approach(state.speed, vTarget, rate * dt);
   // Direct multiplicative turn bleed (movement doc §4): every hard turn costs
   // momentum — v *= 1 − k·|yawRate|/trMax·dt. r4 crit: fades out below
@@ -586,15 +615,39 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // Gravity along the track line: stalled tanks slide back, coasting gains
     // downhill. r3: the throttled share is SPEED-gated — a near-stationary
     // tank on a slope hasn't hooked the ground yet (tracks barely turning:
-    // full gravity, it creeps back uphill / rolls away downhill for the first
-    // moments of a slope start, pairing with the heavy-launch spool), then
-    // fades to the locked tracked share of 0.3 by ~3 m/s. Flat launches
-    // (sin ≈ 0 — the 0-30 tuning case) and all moving driving are untouched.
+    // full gravity for the first moments of a slope start, pairing with the
+    // heavy-launch spool), then fades to the locked tracked share of 0.3 by
+    // ~3 m/s. r4 (round critique — dead heavy uphill starts): the unhooked
+    // share ALSO fades with the engine spool — a spooled drivetrain means the
+    // tracks are turning and biting, so a slope start goes heavy for the
+    // first ~half second and then hooks up instead of losing to gravity for
+    // 3+ s at 12 hp/t. Flat launches (sin ≈ 0 — the 0-30 tuning case) and all
+    // moving driving are untouched.
     const slow = throttle !== 0
-      ? 1 - clamp((Math.abs(state.speed) - 1.0) / 2.0, 0, 1)
+      ? (1 - clamp((Math.abs(state.speed) - 1.0) / 2.0, 0, 1)) * (1 - (state._spool || 0))
       : 0;
     state.speed += -GRAVITY * Math.sin(terrPitch) * dt *
       (throttle !== 0 ? 0.3 + 0.7 * slow : 1.0);
+  }
+  // CLIMB_CREEP floor (r4, see the constant): with the throttle open toward a
+  // reachable target, the net of drive − drag − gravity this tick never drops
+  // below +creep in the drive direction. The creep is scaled by the DRIVABLE
+  // MARGIN in the throttle direction (§5 slope law): full strength once the
+  // grade sits ≥ ~4° inside the climbable envelope, fading to zero at the
+  // stall grade — a tank at its rated gradeability grinds to a crawl and
+  // holds, past it there is no floor and it slides back per the research
+  // doc. The pitch is re-derived from throttle sign (not moveSign): while
+  // the hull momentarily slides BACKWARD on a steep grade, moveSign flips
+  // pitchAlong to "downhill" and vTarget goes positive for a tick — the
+  // margin gate must not read that flip as a drivable slope.
+  if (throttle !== 0 && !braking && !debuff.immobile && vTarget * throttle > 0) {
+    const drivable = slopeSpeedFactor(terrPitch * Math.sign(throttle));
+    if (drivable > 0.01) {
+      const creep = CLIMB_CREEP_MPS2 * Math.min(1, drivable / 0.15);
+      const dir = Math.sign(vTarget);
+      const want = Math.min(preAccelSpeed * dir + creep * dt, Math.abs(vTarget));
+      if (state.speed * dir < want) state.speed = dir * want;
+    }
   }
   state.speed = clamp(state.speed, -revMps * OVERSPEED_CAP, topMps * OVERSPEED_CAP);
 

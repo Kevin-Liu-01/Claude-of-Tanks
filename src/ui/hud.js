@@ -43,7 +43,6 @@ import { MAX_SPOT_RANGE_M as SPOT_RANGE_M, SPOT_LINGER_S as SPOT_PERSIST_S }
 // SPOTTING SECTION: single source of truth for the sixth-sense timing —
 // the lamp fuse/window MUST match the sim's getConcealment display gate.
 import { SIXTH_SENSE_DELAY_S, SIXTH_SENSE_SHOW_S } from '../sim/spotting.js';
-const RENDER_RANGE_M = 500; // white square on the minimap
 const BATTLE_DURATION_S = 900; // 15:00 countdown
 
 // Default shell card data (used only when a forced screenshot aim view arrives
@@ -764,7 +763,11 @@ export function initHud(bus) {
     if (state === camoIndState) return;
     const prev = camoIndState;
     camoIndState = state;
-    camoInd.style.display = state === 'off' ? 'none' : 'flex';
+    // r4: the EXPOSED state renders nothing — the permanent faint grey eye
+    // chip perched on the damage panel read as Blitz-style foreign furniture
+    // (critique). The chip now only pops with signal: red eye while spotted,
+    // green closed eye while a bush/camo is actually working.
+    camoInd.style.display = state === 'off' || state === 'exposed' ? 'none' : 'flex';
     camoInd.classList.toggle('spotted', state === 'spotted');
     camoInd.classList.toggle('hidden-in-bush', state === 'concealed');
     // camo_spotting r2: one-shot pulse on the exposed→concealed flip so the
@@ -845,7 +848,7 @@ export function initHud(bus) {
 
   // --- internal state ---
   let mode = 'hidden';
-  let mmFrame = 0;    // minimap redraw throttle counter (PERF: 20 Hz repaint)
+  let mmLastPaintMs = -1e9; // minimap repaint throttle (PERF: 20 Hz, time-based)
   let mmDirty = true; // force an immediate minimap paint on the next update()
   let w = 1, h = 1, dpr = 1;
   let scopeGrad = null;
@@ -1095,12 +1098,15 @@ export function initHud(bus) {
   function drawScope(zoom) {
     const cx = w / 2, cy = h / 2;
     if (!scopeGrad || scopeGrad._zoom !== zoom) {
-      // gameplay_feel r2: scope shadow — perceptible ring shading that
-      // STRENGTHENS with zoom (x2 ~14% corners, x8+ ~30%) while the center
-      // 55% stays untouched — optics identity without the budget-FPS
-      // telescope tunnel (movement-physics.md §9.2).
-      const deep = Math.min(0.30, 0.10 + 0.05 * Math.log2(zoom));
-      scopeGrad = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.42,
+      // gameplay_feel r4-fix (round critique): WoT applies the FULL scope
+      // shadow at every zoom step — the old zoom-keyed strength (x2 ≈ 14%)
+      // made low-zoom sniper read as plain FOV zoom with crosslines. Ring
+      // strength is now constant at the x8-class value; the ring START pulls
+      // in slightly as zoom rises so higher magnification still reads as a
+      // marginally tighter optic (movement-physics.md §9.2).
+      const deep = 0.28;
+      scopeGrad = ctx.createRadialGradient(cx, cy,
+        Math.min(w, h) * (0.435 - 0.015 * Math.log2(zoom)),
         cx, cy, Math.hypot(w, h) * 0.52);
       scopeGrad.addColorStop(0, 'rgba(2,3,4,0)');
       scopeGrad.addColorStop(0.55, `rgba(2,3,4,${(deep * 0.35).toFixed(3)})`);
@@ -1121,17 +1127,19 @@ export function initHud(bus) {
     chrom.addColorStop(1, 'rgba(90,130,215,0.08)');
     ctx.fillStyle = chrom;
     ctx.fillRect(0, 0, w, h);
-    // full-width hairline cross: TRUE 1px hairlines (not the r5 1.6px bars
-    // with a fat halo that read as a debug horizon line) from all four frame
-    // edges to the dispersion circle rim — the WoT sniper sight's skeleton.
-    // r8: the hairlines also yield to the over-target plate with the same
-    // gap treatment as the circle rim — a line slicing through the enemy's
-    // name/tier text read as a rendering bug, not a sight element.
+    // SHORT cross arms off the dispersion-circle rim (r4 MAJOR): vanilla WoT
+    // sniper mode has NO full-screen crosshair — the r8 edge-to-edge
+    // hairlines read as a third-party mod / generic FPS scope. The arms now
+    // start at the circle rim and stop at ~1.55x the circle radius, so the
+    // sight furniture stays central: circle + ticks + short cross skeleton.
+    // The arms still yield to the over-target plate (a line slicing through
+    // the enemy's name text read as a rendering bug, not a sight element).
     {
       const rNow = Math.max(26, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
       const gap = rNow + 3;
-      const vRuns = [[0, cy - gap], [cy + gap, h]];
-      const hRuns = [[0, cx - gap], [cx + gap, w]];
+      const armEnd = rNow * 1.55 + 3; // arms clipped to ~1.55x circle radius
+      const vRuns = [[cy - armEnd, cy - gap], [cy + gap, cy + armEnd]];
+      const hRuns = [[cx - armEnd, cx - gap], [cx + gap, cx + armEnd]];
       const cut = (runs, a, b) => {
         for (let i = runs.length - 1; i >= 0; i--) {
           const [r0, r1] = runs[i];
@@ -1279,7 +1287,11 @@ export function initHud(bus) {
         r = Math.min(Math.max(r, gunOffPx + 8), Math.min(w, h) * 0.46);
       }
     }
-    const col = penColor(gunOutside ? null : view.penRatio);
+    // r4 (WoT marker grammar): the center marker stays NEUTRAL over terrain
+    // and only takes the pen color when an enemy VEHICLE actually sits under
+    // the gun (aimTargetId — the same gate that shows the over-target plate).
+    // The old always-on pen tint painted a bright green cross on bare road.
+    const col = penColor(gunOutside || aimTargetId == null ? null : view.penRatio);
 
     // --- dispersion circle: ONE thin CONTINUOUS circle with 8 fine tick
     // marks (WoT PC's aim circle) in the fixed pale green — visually distinct
@@ -1436,13 +1448,27 @@ export function initHud(bus) {
     ctx.shadowBlur = 3;
     if (isReloading) {
       // countdown just under the reload ring — r7: promoted to a 17px bold
-      // numeral (the r6 11.5px read as an afterthought next to the arc)
+      // numeral (the r6 11.5px read as an afterthought next to the arc).
+      // r4: the unit renders as a SEPARATE smaller non-bold ' s' — at 17px
+      // bold condensed the lowercase glyph read as a capital "3.4 S".
       ctx.fillStyle = 'rgba(240,160,48,0.95)';
+      const cdTxt = rl0.t >= 10 ? `${Math.ceil(rl0.t)}` : `${rl0.t.toFixed(1)}`;
+      const cdY = cy + 19 + (zs - 1) * 14 + 27;
       ctx.font = `700 17px ${FONT_COND}`;
-      ctx.fillText(rl0.t >= 10 ? `${Math.ceil(rl0.t)} s` : `${rl0.t.toFixed(1)} s`,
-        cx, cy + 19 + (zs - 1) * 14 + 27);
+      const cdW = ctx.measureText(cdTxt).width;
+      ctx.font = `500 11px ${FONT_COND}`;
+      const unitW = ctx.measureText(' s').width;
+      ctx.textAlign = 'left';
+      ctx.font = `700 17px ${FONT_COND}`;
+      ctx.fillText(cdTxt, cx - (cdW + unitW) / 2, cdY);
+      ctx.font = `500 11px ${FONT_COND}`;
+      ctx.fillText(' s', cx - (cdW + unitW) / 2 + cdW, cdY);
+      ctx.textAlign = 'center';
     }
-    {
+    // r4 (WoT arcade furniture): the chambered-shell + distance stack is
+    // SNIPER-ONLY — vanilla WoT arcade carries no text under the reticle
+    // (ammo lives in the shell dock; the range readout is a sniper cue).
+    if (mode === 'sniper') {
       const sp = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
       const n = shellCount(sp);
       const tType = sp.type || '';
@@ -1469,7 +1495,7 @@ export function initHud(bus) {
       }
       // zoom factor: bottom of the same center stack (r7 — the 9-o'clock
       // float read as a stray label in the blind side-by-side)
-      if (mode === 'sniper' && !window.__HUD_HIDE_ZOOM_PLATE) {
+      if (!window.__HUD_HIDE_ZOOM_PLATE) {
         ctx.font = `700 13px ${FONT_COND}`;
         ctx.fillStyle = 'rgba(222,234,246,0.9)';
         ctx.fillText(`×${(view.zoom || 8).toFixed(1)}`, cx, yInfo + 36);
@@ -1856,45 +1882,54 @@ export function initHud(bus) {
         octx.stroke();
       }
     }
-    // tree clusters: irregular forest polygons — r7 SATELLITE READ: each
-    // stand gets a SE canopy drop shadow (NW sun) plus an inner sunlit-crown
-    // fill offset toward the light, so forests read as volumes on an aerial
-    // photo instead of flat "pebble blob" dabs.
+    // tree clusters: irregular forest polygons — r7 SATELLITE READ, r4
+    // DE-STICKER pass: the repeated dark-outlined octagons read as clipart
+    // dabs. Each stand is now a 12-vertex lumpy polygon whose per-vertex
+    // jitter, overall size and fill alpha all derive from the cluster's
+    // actual scatter position, the heavy keyline drops to a faint half-alpha
+    // hairline, and the shadow/crown offsets shrink so the stands melt into
+    // the painted underlay like WoT's aerial tiles.
     if (f.treeClusters) {
       octx.lineJoin = 'round';
-      const vx = new Float32Array(8);
-      const vy = new Float32Array(8);
+      const NV = 12;
+      const vx = new Float32Array(NV);
+      const vy = new Float32Array(NV);
       for (const p of f.treeClusters) {
         const [px, py] = worldToMap(p.x, p.z);
-        const pr = Math.max(2.5, (p.r / mapWorldSize) * MM);
-        // deterministic lumpy octagon seeded from the cluster position
+        // deterministic per-stand variation seeded from the scatter position
         const seed = Math.abs(Math.sin(p.x * 12.9898 + p.z * 78.233) * 43758.5453);
-        for (let k = 0; k < 8; k++) {
-          const a = (k / 8) * Math.PI * 2;
-          const jr = pr * (0.72 + 0.38 * Math.abs(Math.sin(seed + k * 2.3)));
+        const s01 = seed - Math.floor(seed);
+        const pr = Math.max(2.2, (p.r / mapWorldSize) * MM) * (0.82 + s01 * 0.4);
+        for (let k = 0; k < NV; k++) {
+          const a = (k / NV) * Math.PI * 2;
+          const jr = pr * (0.62 + 0.46 * Math.abs(Math.sin(seed + k * 2.3))
+            + 0.14 * Math.sin(seed * 3.1 + k * 5.7));
           vx[k] = px + Math.cos(a) * jr;
-          vy[k] = py + Math.sin(a) * jr * 0.9;
+          vy[k] = py + Math.sin(a) * jr * (0.86 + 0.12 * Math.sin(seed * 1.7));
         }
         const poly = (dx, dy, s) => {
           octx.beginPath();
-          for (let k = 0; k < 8; k++) {
+          for (let k = 0; k < NV; k++) {
             const x2 = px + (vx[k] - px) * s + dx;
             const y2 = py + (vy[k] - py) * s + dy;
             if (k === 0) octx.moveTo(x2, y2); else octx.lineTo(x2, y2);
           }
           octx.closePath();
         };
-        poly(1.3, 1.7, 1);              // canopy shadow cast to the SE
-        octx.fillStyle = 'rgba(8,14,7,0.4)';
+        poly(0.8, 1.1, 1);              // soft canopy shadow cast to the SE
+        octx.fillStyle = 'rgba(8,14,7,0.28)';
         octx.fill();
-        poly(0, 0, 1);                  // canopy body
+        poly(0, 0, 1);                  // canopy body (alpha varies per stand)
+        octx.globalAlpha = 0.68 + s01 * 0.24;
         octx.fillStyle = pal.forest;
         octx.fill();
+        octx.globalAlpha = 0.42;        // faint hairline, half the old weight
         octx.strokeStyle = pal.forestStroke;
-        octx.lineWidth = 0.8;
+        octx.lineWidth = 0.45;
         octx.stroke();
-        poly(-0.8, -1.0, 0.58);         // sunlit crown toward the NW light
-        octx.fillStyle = 'rgba(106,140,74,0.36)';
+        octx.globalAlpha = 1;
+        poly(-0.5, -0.7, 0.55);         // sunlit crown toward the NW light
+        octx.fillStyle = 'rgba(106,140,74,0.22)';
         octx.fill();
       }
     }
@@ -2223,16 +2258,14 @@ export function initHud(bus) {
       }
       // never spotted -> nothing on the map
     }
-    // player: render-range square + spot-range circle + view wedge + arrow
+    // player: spot-range circle + view wedge + arrow. r4: the white
+    // render-range SQUARE is gone — at 500 m on a 1 km map its edges sliced
+    // across the terrain and read as a stray playable-bounds frame floating
+    // inset from the map border (the panel frame IS the map bound).
     if (player && player.state) {
       const st = player.state;
       const [px, py] = worldToMap(st.pos.x, st.pos.z);
       const pxPerM = MM / mapWorldSize;
-      // white draw-distance square (WoT max-render box around the player)
-      const rsq = RENDER_RANGE_M * pxPerM;
-      mmCtx.strokeStyle = 'rgba(240,246,252,0.75)';
-      mmCtx.lineWidth = 1;
-      mmCtx.strokeRect(px - rsq, py - rsq, rsq * 2, rsq * 2);
       // dashed max-spot circle
       mmCtx.strokeStyle = 'rgba(240,246,252,0.35)';
       mmCtx.setLineDash([3, 3]);
@@ -2675,10 +2708,11 @@ export function initHud(bus) {
       // ranges); 20 Hz is visually indistinguishable for map blips. mmDirty
       // (mode switches, forced screenshot frames, minimap rebuilds) always
       // paints immediately so single-shot updates never show a stale map.
-      mmFrame++;
-      if (mmDirty || mmFrame % 3 === 0) {
+      const mmNowMs = performance.now();
+      if (mmDirty || mmNowMs - mmLastPaintMs >= 50) { // 20 Hz on EVERY refresh rate
         drawMinimap(frame);
         mmDirty = false;
+        mmLastPaintMs = mmNowMs;
       }
     },
 

@@ -63,11 +63,15 @@ export default {
     // sheet exposes the refrozen crack veins + glossy clear-ice fields so the
     // basin finally reads as ICE (pairs with the new shoreline reed/pressure-
     // ridge dressing in maps/mapKits.js)
-    iceDrift: 0.18,
+    // r4: 0.18 -> 0.12 — pairs with the darker makeIceLayer fields; less
+    // wind-blown snow albedo re-burying the clear-ice interior
+    iceDrift: 0.12,
     // terrain_environment r3: fresnel sky tint the clear-ice fields reflect
     // at grazing view angles (terrain.js uIceSky) — pairs with the darker
     // makeIceLayer fields + 0.13 roughness floor for a real ice identity
-    iceSky: [0.70, 0.76, 0.85],
+    // r4: brightened a step — pairs with the stronger 0.48 fresnel weight in
+    // terrain.js so the sheet reads specular from the establishing camera
+    iceSky: [0.76, 0.82, 0.92],
     // lighting_post r5: tintB desaturated toward neutral (was [0.90,0.93,1.00])
     tintA: [1.03, 1.04, 1.09], tintB: [0.95, 0.965, 1.005], tintC: [1.04, 1.04, 1.07],
     roadTint: [0.74, 0.68, 0.62], // worn dark slush tracks through the snow
@@ -110,12 +114,16 @@ export default {
       // hue jitter (authored for verdant variety) to near value-only so no
       // lone summer-green tree can survive on a snow map.
       birch: {
+        // r4 (content_breadth): snow 0.60 -> 0.75 — feeds the new branch-
+        // conforming snow-cap lobes in vegetation.js buildBirchGeometry (the
+        // crowns read as "floating white confetti" without an opaque snow
+        // mass tying the card cloud together)
         cardHue: 0.58, cardSat: 0.03, cardL0: 0.46,
         // rime-grey twig haze: cool hue, near-zero sat, high floor — the
         // twig texture's dark strokes read as frost-bound brush, not brown
         texTone: (h, s, l) => [0.58, clamp01(s * 0.14), clamp01(l * 0.62 + 0.34)],
         canopy: { hue: 0.575, sat: 0.045, l0: 0.42, l1: 0.60 },
-        snow: 0.60, jitterHue: 0.22,
+        snow: 0.75, jitterHue: 0.22,
       },
       pine: { // winter spruce under snow load: frosted blue-green underlayer,
         // the `snow` knob whitens the upward tier surfaces (near cards) and
@@ -163,6 +171,15 @@ export default {
       [88, -178, 156, -178, 3],
       // north-shore run beyond the lake for depth layering
       [216, -46, 272, -46, 2],
+      // r4 (content_breadth): the establishing frame's bare bottom-left
+      // third (projection-probed: screen-left = INCREASING world x for the
+      // [40,52,-288]->[175,-4,-75] camera, so the bowl is x 150..260,
+      // z -300..-235, south of the [66,-244] run) gets an L-shaped field
+      // boundary + a cross run, and the bottom-center approach two more —
+      // the quadrant reads composed and holds hull-down cover
+      [-24, -206, 48, -206, 2], [-2, -158, 56, -158, 3],
+      [150, -262, 224, -262, 2], [224, -262, 224, -306, 1],
+      [162, -240, 162, -290, 3],
     ],
     // r3 terrain_environment: winter boulders sink to ~45% — a rock standing
     // proud ON the snow renders as a pale dough ball under the flat overcast
@@ -173,7 +190,10 @@ export default {
     // r2: haystacks 4 -> 8 (snow-capped stacks as mid-field silhouettes),
     // outcrops 12 -> 15, +1 road wreck — the open snowfield needed more
     // battle-worn anchors between the village and the basin
-    haystacks: 8, rocks: 150, outcrops: 15, craters: 22, rubblePiles: 0,
+    // r4 (content_breadth): haystacks 8 -> 12, rocks 150 -> 190, outcrops
+    // 15 -> 19 — pairs with the SW wall runs above so the bare bowl west of
+    // the establishing camera picks up drifted rocks/stack silhouettes too
+    haystacks: 12, rocks: 190, outcrops: 19, craters: 22, rubblePiles: 0,
     wrecks: 5,
   },
 
@@ -220,7 +240,7 @@ export default {
     // alpine recenter finally read; the aerial pass still owns depth grading.
     // terrain_environment r3: envIntensity 0.52 -> 0.60 — the ice sheet's
     // sky-reflection term needs the headroom (roughness floor now 0.13)
-    fogDensity: 0.00064, fogTintHex: 0xb9c4d2, fogMix: 0.94, envIntensity: 0.60,
+    fogDensity: 0.00064, fogTintHex: 0xb9c4d2, fogMix: 0.94, envIntensity: 0.32, // lighting_post r4: 0.60 -> 0.32 — scene-wide rough-spec env wash was the albedo-independent pale-props root cause; the lake ice keeps its sheen via its own envMapIntensity (terrain.js)
     // lighting_post r3 (round 3): per-map overcast deck tuning (overrides the
     // sky.js overcast auto-detect values) — a lower/darker broken stratus
     // deck (tint 0xaab2bc -> 0x9aa3ae) reads against the bright snow bounce

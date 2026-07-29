@@ -12,11 +12,17 @@
 import * as THREE from 'three';
 import { createTank } from '../vehicles/tankFactory.js';
 import { MODEL_SOURCE } from '../vehicles/specs.js';
+// r4: portraits track the SAME camo resolution the hangar/battle uses —
+// resolveCamoPattern(specId) is the selection+biome truth from materials.js,
+// so a card can detect that its frozen PNG no longer matches the pedestal.
+import { resolveCamoPattern } from '../vehicles/materials.js';
 
 const THUMB_W = 424; // 4x the 106x64 carousel slot — crisp at any sane DPR
 const THUMB_H = 256;
 
 const cache = new Map(); // specId -> dataURL
+const renderedPattern = new Map(); // specId -> camo patternId baked into the PNG
+const specById = new Map(); // registered specs (requeue/staleness lookups)
 let started = false;
 
 /** Cached portrait data URL (null until rendered). @param {string} specId */
@@ -166,8 +172,13 @@ function renderAll(specs) {
       visual.root.updateMatrixWorld(true);
       box.setFromObject(visual.root);
       box.getCenter(center);
-      // 3/4 side-profile, nose to screen-right, ~12° above the deck — the
-      // geometric estimate below only SEEDS the autoframe passes.
+      // 3/4 side-profile, nose to screen-right, ~19° above the deck — the
+      // geometric estimate below only SEEDS the autoframe passes. r4: raised
+      // from 12° — the near-deck-level camera hid the hull top and let the
+      // running gear dominate the flank, so skirted MBTs (Leo 2A7) read as
+      // "unskirted WW2 hulls with exposed wheels" on their cards. At ~19°
+      // the skirt line, deck and turret plan all read, matching how the
+      // hangar pedestal presents the vehicle.
       const size = box.getSize(_size);
       const halfLen = Math.min(
         Math.hypot(size.x, size.z) * 0.5,
@@ -175,7 +186,7 @@ function renderAll(specs) {
       );
       const halfH = Math.min(size.y * 0.5, halfLen * 0.52);
       const az = -64 * Math.PI / 180; // from +Z (hull forward)
-      const el = 12 * Math.PI / 180;
+      const el = 19 * Math.PI / 180;
       const vTan = Math.tan(camera.fov * Math.PI / 360);
       const hTan = vTan * camera.aspect;
       let dist = Math.max((halfLen * 0.95) / hTan, (halfH * 1.35) / vTan);
@@ -208,16 +219,16 @@ function renderAll(specs) {
         frame();
         if (Math.abs(1 - k) < 0.04 && Math.abs(dxPx) < 4 && Math.abs(dyPx) < 4) break;
       }
-      // r8 EXPOSURE NORMALIZATION — BIDIRECTIONAL: every thumb converges
-      // onto the SAME 0.37 mean silhouette luminance. The r7 loop only
-      // LIFTED dark camo (and capped at 2.6x, which stranded the near-black
-      // T-90M Proryv) while pale schemes like the Chieftain Mk 10 sailed
-      // over the target washed-out — the row read as mixed-exposure assets.
-      // Now over-bright thumbs are pulled DOWN too, the lift headroom is
-      // 3.4x, and a fourth pass covers ACES's sub-linear response.
-      const TARGET_LUMA = 0.37;
-      const MIN_EXPOSURE = BASE_EXPOSURE * 0.5;
-      const MAX_EXPOSURE = BASE_EXPOSURE * 3.4;
+      // r8 EXPOSURE NORMALIZATION — BIDIRECTIONAL: thumbs converge toward a
+      // shared mean silhouette luminance. r4: the correction RANGE is
+      // clamped hard (0.75x-1.9x, was 0.5x-3.4x) — the old 3.4x headroom
+      // lifted dark schemes (NATO 3-tone Leo 2A7) so far through the ACES
+      // shoulder that bold camo washed to pale olive speckle and the card
+      // stopped resembling the vehicle on the pedestal. Fidelity to the
+      // hangar look now outranks perfect row uniformity.
+      const TARGET_LUMA = 0.36;
+      const MIN_EXPOSURE = BASE_EXPOSURE * 0.75;
+      const MAX_EXPOSURE = BASE_EXPOSURE * 1.9;
       for (let ep = 0; ep < 4; ep++) {
         const bb = measureAlphaBox();
         if (!bb || bb.meanLuma <= 0.02) break;
@@ -230,6 +241,8 @@ function renderAll(specs) {
         frame();
       }
       cache.set(spec.id, renderer.domElement.toDataURL('image/png'));
+      // remember which camo pattern this PNG carries (staleness detection)
+      try { renderedPattern.set(spec.id, resolveCamoPattern(spec.id)); } catch (e) { /* fine */ }
       renderer.toneMappingExposure = BASE_EXPOSURE; // reset for the next card
     } catch (e) {
       /* keep the baked icon for this vehicle */
@@ -261,6 +274,14 @@ function notifyDone() {
   document.dispatchEvent(new CustomEvent('cot:tank-thumbs'));
 }
 
+// queue push with per-id dedupe (requeues must never stack duplicates)
+function enqueue(specs) {
+  for (const s of specs) {
+    if (!s || queue.some((q) => q.id === s.id)) continue;
+    queue.push(s);
+  }
+}
+
 function pump() {
   pumpScheduled = false;
   if (!queue.length) return;
@@ -279,8 +300,30 @@ function schedulePump() {
   else setTimeout(pump, 120);
 }
 
+/**
+ * r4: re-render portraits whose baked camo pattern no longer matches the
+ * live resolution (camo picker change, AUTO biome flip on map select) — the
+ * card must always show the paint the pedestal/battle shows. Pass a specId
+ * to target one vehicle, nothing to sweep every registered spec.
+ * Renders happen on the idle queue (or at the next drain).
+ * @param {string} [specId]
+ */
+export function requeueTankThumbs(specId = null) {
+  const ids = specId != null ? [specId] : [...specById.keys()];
+  const stale = [];
+  for (const id of ids) {
+    const spec = specById.get(id);
+    if (!spec) continue;
+    let pid = null;
+    try { pid = resolveCamoPattern(id); } catch (e) { /* keep null */ }
+    if (specId != null || !cache.has(id) || pid !== renderedPattern.get(id)) stale.push(spec);
+  }
+  if (stale.length) { enqueue(stale); schedulePump(); }
+}
+
 /** Synchronously finish every queued portrait (screenshot determinism). */
 export function drainTankThumbs() {
+  requeueTankThumbs(); // sweep camo-stale cards into the queue first
   if (!queue.length) return;
   const rest = queue.splice(0, queue.length);
   renderAll(rest);
@@ -299,7 +342,8 @@ export function ensureTankThumbs(specs, opts = {}) {
   if (started) return;
   started = true;
   if (opts.canWork) canWorkFn = opts.canWork;
-  queue.push(...specs);
+  for (const s of specs) specById.set(s.id, s);
+  enqueue(specs);
   schedulePump();
   const glbSpecs = specs.filter((s) => {
     const src = MODEL_SOURCE[s.id];
@@ -308,7 +352,7 @@ export function ensureTankThumbs(specs, opts = {}) {
   if (!glbSpecs.length) return;
   (async () => {
     await waitForGlbModels(glbSpecs, 15000);
-    queue.push(...glbSpecs);
+    enqueue(glbSpecs);
     schedulePump();
   })();
 }

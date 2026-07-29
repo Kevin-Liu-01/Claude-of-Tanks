@@ -2,6 +2,7 @@
 // Usage: node tools/perfprobe.mjs [--seconds 60] [--width 1920] [--height 1080]
 //        [--dsf 1|2] [--out file] [--preset low|medium|high|ultra] [--dump file]
 //        [--note tag] [--no-trend] [--roster random|id1,id2,...]
+//        [--map verdant|desert|winter|urban]
 // Starts vite, loads the game headless, measures load-to-__GAME_READY, enters
 // battle on the verdant map, simulates combat (drive via synthetic keys +
 // forceFire debug flag) for N seconds while sampling rAF deltas, renderer.info,
@@ -17,8 +18,8 @@
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { writeFileSync, appendFileSync, mkdirSync, rmdirSync, statSync, utimesSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync, appendFileSync, mkdirSync, rmdirSync, statSync, utimesSync, readdirSync, unlinkSync } from 'node:fs';
+import { resolve, join } from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
 
@@ -30,18 +31,64 @@ import { execSync } from 'node:child_process';
 // (mkdir is atomic; stale dirs from crashed runs are reclaimed by mtime) so at
 // most one GPU-bound harness runs at a time. The contention stamps below stay:
 // the lock serializes THIS repo's tooling, the stamps catch everything else.
+//
+// performance_budget r4 (critic major: lock starvation): the original
+// randomized mkdir spin is NOT fair — with 8+ sibling harnesses queued, a
+// waiter can lose every wakeup race for its entire 15-minute budget (the r4
+// review's certification runs starved to timeout exactly this way). Waiters
+// now take a FIFO TICKET (ordered file in /tmp/cot-shots.queue); only the
+// lowest live ticket contends for the mkdir, so handoff is first-come-first-
+// served and starvation-free among ticket-aware tools. The mkdir on LOCK_DIR
+// remains the actual exclusion primitive, so tools still running the old
+// spin protocol stay mutually excluded (they just don't queue); dead ticket
+// owners are reaped via kill(pid, 0) liveness, crashed holders via lock
+// mtime staleness, exactly as before.
 const LOCK_DIR = '/tmp/cot-shots.lock';
+const QUEUE_DIR = '/tmp/cot-shots.queue';
 const LOCK_STALE_MS = 5 * 60 * 1000;
+const TICKET_STALE_MS = 60 * 60 * 1000; // pid-reuse safety net for reaping
 let lockHeld = false;
-async function acquireLock() {
+function ticketPid(name) {
+  const m = name.match(/-(\d+)\.t$/);
+  return m ? parseInt(m[1], 10) : -1;
+}
+function ticketAlive(name) {
+  const pid = ticketPid(name);
+  if (pid <= 0) return false;
+  try { process.kill(pid, 0); return true; } catch (err) { return err.code === 'EPERM'; }
+}
+async function acquireLock(timeoutMs) {
+  mkdirSync(QUEUE_DIR, { recursive: true });
+  // zero-padded ms timestamp + pid: lexicographic name order == arrival order
+  const myTicket = `${String(Date.now()).padStart(15, '0')}-${process.pid}.t`;
+  writeFileSync(join(QUEUE_DIR, myTicket), String(process.pid));
   const t0 = Date.now();
-  for (;;) {
-    try { mkdirSync(LOCK_DIR); lockHeld = true; return; } catch (_) { /* held */ }
-    try {
-      if (Date.now() - statSync(LOCK_DIR).mtimeMs > LOCK_STALE_MS) { rmdirSync(LOCK_DIR); continue; }
-    } catch (_) { continue; }
-    if (Date.now() - t0 > 15 * 60 * 1000) throw new Error('cot-shots lock timeout');
-    await new Promise((r) => setTimeout(r, 2000 + Math.random() * 1000));
+  try {
+    for (;;) {
+      // find the queue head among LIVE tickets (reap dead/stale ones)
+      let head = null;
+      let names = [];
+      try { names = readdirSync(QUEUE_DIR).filter((n) => n.endsWith('.t')).sort(); } catch (_) { names = [myTicket]; }
+      for (const n of names) {
+        if (n === myTicket) { head = head || n; break; }
+        let stale = false;
+        try { stale = Date.now() - statSync(join(QUEUE_DIR, n)).mtimeMs > TICKET_STALE_MS; } catch (_) { continue; }
+        if (stale || !ticketAlive(n)) { try { unlinkSync(join(QUEUE_DIR, n)); } catch (_) { /* raced */ } continue; }
+        head = n; break;
+      }
+      // only the head contends — everyone else parks (no thundering herd)
+      if (head === myTicket) {
+        try { mkdirSync(LOCK_DIR); lockHeld = true; return; } catch (_) { /* held */ }
+        try {
+          if (Date.now() - statSync(LOCK_DIR).mtimeMs > LOCK_STALE_MS) { rmdirSync(LOCK_DIR); continue; }
+        } catch (_) { continue; }
+      }
+      if (Date.now() - t0 > timeoutMs) throw new Error('cot-shots lock timeout');
+      await new Promise((r) => setTimeout(r, head === myTicket ? 300 : 1000));
+    }
+  } finally {
+    // ticket never outlives the wait — removed on acquire AND on timeout
+    try { unlinkSync(join(QUEUE_DIR, myTicket)); } catch (_) { /* fine */ }
   }
 }
 function releaseLock() {
@@ -49,7 +96,7 @@ function releaseLock() {
   lockHeld = false;
   try { rmdirSync(LOCK_DIR); } catch (_) { /* fine */ }
 }
-await acquireLock();
+await acquireLock(15 * 60 * 1000);
 process.on('exit', releaseLock);
 // keep the lock's mtime fresh so a long 60 s certification is never reclaimed
 // as stale by a sibling harness mid-run
@@ -88,6 +135,12 @@ const trendNote = opt('note', '');
 const WORST_CASE_ROSTER = 'kv2,jagdtiger,tiger2,object279,is7,t30,t95';
 const rosterOpt = opt('roster', WORST_CASE_ROSTER);
 const forceRoster = rosterOpt === 'random' ? null : rosterOpt.split(',').map((s) => s.trim()).filter(Boolean);
+// PERF r4: --map makes the triangle-ratchet flip criterion executable
+// (carryover-from-r3 §7: flip RATCHET.trianglesMedianMax into BUDGET only
+// after it holds across desert/winter/urban probes, not just verdant).
+// Certification lines are defined on verdant; other maps are evidence runs —
+// tag them via the trend note so cross-map rows never read as regressions.
+const mapId = opt('map', 'verdant');
 
 // Tracked performance budget (docs/EVALUATION.md perf gate). Every line is
 // evaluated in the report's `budget` block so regressions surface in the
@@ -309,12 +362,12 @@ try {
 
   // Enter battle on verdant deterministically (pinned worst-case roster by
   // default — see WORST_CASE_ROSTER above).
-  await page.evaluate((roster) => {
+  await page.evaluate((roster, map) => {
     const D = window.__DEBUG;
     if (roster) D.flags.forceRoster = roster;
-    D.startBattle('m1a2', 'verdant');
+    D.startBattle('m1a2', map);
     D.flags.forceFire = true; // fire whenever reloaded
-  }, forceRoster);
+  }, forceRoster, mapId);
   // small settle so shaders/instances for battle HUD compile
   await new Promise((r) => setTimeout(r, 1500));
   // r2: certify the SUSTAINED battle regime — wait (bounded) for the roster's
@@ -504,6 +557,7 @@ try {
   report = {
     date: new Date().toISOString(),
     ...(forcePreset ? { forcedPreset: forcePreset } : {}),
+    map: mapId,
     roster: forceRoster ? `pinned:${forceRoster.join(',')}` : 'random-seeded',
     viewport: { width, height, deviceScaleFactor: dsf },
     sampleSeconds: seconds,
@@ -638,6 +692,7 @@ try {
         heapRetainedMBperS: report.heap.retainedGrowthMBperS,
         budgetPass: report.budget.pass,
         ...(forcePreset ? { preset: forcePreset } : {}),
+        ...(mapId !== 'verdant' ? { map: mapId } : {}),
         // contaminated rows must never read as regressions (see machine stamp)
         ...(contended ? { note: trendNote ? `contended; ${trendNote}` : 'contended', load1: report.machine.load1End, cores: CORES } : (trendNote ? { note: trendNote } : {})),
       })}\n`);

@@ -748,11 +748,25 @@ function tryFire(game, ent, bus, rig) {
   // the player. ai.js notifyPlayerFired re-reveals the player for
   // MUZZLE_INTEL_WINDOW_S and hard-commits idle bots onto the shooter.
   if (ent.isPlayer) {
+    // controls_gunnery r4: DISTANCE-RANKED fan-out — ai.js's RETURN-FIRE
+    // LOCK lets the nearest ranked receivers with a clear personal ray pin
+    // the player as their target outright (rank 0 = closest). Runs once per
+    // player shot, so the sort allocation is negligible.
+    // r4: earshot 420 -> 500 m — the intel radius must exceed the worst
+    // spawn standoff (~450 m) the same way engageRangeM had to (r7 tier
+    // note), or opening snipes from spawn draw zero receivers at all.
+    const near = [];
     for (const e of game.tanks) {
       if (e === ent || e.team === ent.team || !e.aiCtl || !e.state ||
           !e.combat || e.combat.destroyed) continue;
-      if (e.state.pos.distanceToSquared(ent.state.pos) > 420 * 420) continue;
-      if (e.aiCtl.notifyPlayerFired) e.aiCtl.notifyPlayerFired(ent);
+      const d2 = e.state.pos.distanceToSquared(ent.state.pos);
+      if (d2 > 500 * 500) continue;
+      near.push({ e, d2 });
+    }
+    near.sort((a, b) => a.d2 - b.d2);
+    for (let i = 0; i < near.length; i++) {
+      const e = near[i].e;
+      if (e.aiCtl.notifyPlayerFired) e.aiCtl.notifyPlayerFired(ent, i);
     }
   }
 }

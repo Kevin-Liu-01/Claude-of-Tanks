@@ -555,9 +555,12 @@ function buildK2(P) {
   // band read bare): the full-length angular skirts now drop to ~0.57 m
   // (§23.5 — skirts hide the return run and half the wheels), with the
   // stepped lower plates riding just above the wheel axles.
+  // r4 clone-hull fix: skirt run ends short of the nose with a raised
+  // stepped stub over the idler — front wheel + rising track read again.
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.07, 0.66, 6.9), s * 1.875, 0.90, -0.05);                // main skirt band (0.57-1.23)
-    P.add('hull', box(0.11, 0.70, 2.5), s * 1.895, 0.90, 2.25);                 // heavy front blocks
+    P.add('hull', box(0.07, 0.66, 6.3), s * 1.875, 0.90, -0.35);                // main skirt band (0.57-1.23)
+    P.add('hull', box(0.11, 0.70, 1.9), s * 1.895, 0.90, 1.95);                 // heavy front blocks
+    P.add('hull', box(0.11, 0.34, 0.85), s * 1.895, 1.06, 3.28, 0, 0, 0);       // stepped idler stub
     P.add('hullDark', box(0.115, 0.64, 0.02), s * 1.895, 0.90, 1.55);           // block split
     P.add('hullDark', box(0.115, 0.64, 0.02), s * 1.895, 0.90, 2.85);
     for (let k = 0; k < 4; k++) {                                               // stepped lower plates

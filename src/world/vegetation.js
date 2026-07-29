@@ -918,21 +918,58 @@ function buildBirchGeometry(rng, pal = {}) {
   // must read as one continuous twig-haze volume
   const cardParts = [];
   const cy = H * 0.76;
-  const nc = 30 + ((rng() * 9) | 0);
-  const hue0 = pal.cardHue ?? 0.08, sat0 = pal.cardSat ?? 0.06;
+  // content_breadth r4: snow-bound birches run a DENSER, slightly smaller
+  // card cloud — the r9 30-38 cards at 1.5-2.5 m read as separated "floating
+  // white confetti" chips from the establishing camera (critique, major);
+  // more overlap turns the crown back into one connected twig-haze volume.
   const snow = pal.snow ?? 0;
+  const nc = (snow > 0.01 ? 46 : 30) + ((rng() * 9) | 0);
+  const hue0 = pal.cardHue ?? 0.08, sat0 = pal.cardSat ?? 0.06;
+  const snowAnchors = [];
   for (let i = 0; i < nc; i++) {
     let dx = rng() * 2 - 1, dy = rng() * 2 - 1, dz = rng() * 2 - 1;
     const dl = Math.hypot(dx, dy, dz) || 1;
     dx /= dl; dy /= dl; dz /= dl;
     const rad = Math.pow(0.3 + 0.7 * rng(), 0.8);
-    const w = 1.5 + rng() * 1.0;
+    const w = (snow > 0.01 ? 1.3 : 1.5) + rng() * (snow > 0.01 ? 0.85 : 1.0);
     _e.set(rng() * Math.PI, rng() * Math.PI * 2, rng() * Math.PI, 'YXZ');
     // snow load: cards on the UPPER crown hemisphere whiten + brighten
     const sk = snow * Math.max(0, dy) * (0.6 + rng() * 0.4);
-    cardParts.push(foliageCard(w, w * 0.9, dx * rad * 1.6, cy + dy * rad * H * 0.22, dz * rad * 1.6,
+    const px = dx * rad * 1.6, py = cy + dy * rad * H * 0.22, pz = dz * rad * 1.6;
+    cardParts.push(foliageCard(w, w * 0.9, px, py, pz,
       _e, (0.9 + rng() * 0.3) * (1 + sk * 0.35),
       hue0 + (0.585 - hue0) * sk, sat0 * (1 - sk * 0.8) + 0.02 * sk, 0.45, 0, cy, 0));
+    if (dy > 0.08) snowAnchors.push({ x: px, y: py, z: pz, w, dy });
+  }
+  // content_breadth r4: BRANCH-CONFORMING SNOW CAPS (winter maps only,
+  // pal.snow > 0). The card whitening alone left the crown a cloud of
+  // disconnected pale chips; opaque flattened lobes sitting ON the upper
+  // twig masses (same anchor points as the upper-hemisphere cards, so the
+  // load follows the branch structure) read as a real snow load and visually
+  // fuse the card cloud. They ride the trunk part => bark material's neutral
+  // map + a lifted vertex tint keeps them bright rime-white.
+  if (snow > 0.01) {
+    for (const a of snowAnchors) {
+      if (rng() > snow * (0.35 + a.dy * 0.65)) continue;
+      const lr = a.w * (0.30 + rng() * 0.14);
+      const lobe = new THREE.IcosahedronGeometry(lr, 0);
+      jitterRadial(lobe, rng, 0.30);
+      lobe.scale(1.55, 0.48, 1.15);
+      lobe.rotateY(rng() * Math.PI * 2);
+      sphereNormals(lobe, 0, 0, 0, 1.15);
+      lobe.translate(a.x, a.y + lr * 0.30, a.z);
+      _c.setHSL(0.585, 0.05, 0.60, THREE.SRGBColorSpace).multiplyScalar(1.55);
+      trunkParts.push(paintFlat(lobe, _c.clone(), 0.10));
+    }
+    // one broad crown cap on top ties the silhouette together
+    const cr = 1.0 + rng() * 0.5;
+    const cap = new THREE.IcosahedronGeometry(cr, 0);
+    jitterRadial(cap, rng, 0.35);
+    cap.scale(1.5, 0.42, 1.3);
+    sphereNormals(cap, 0, 0, 0, 1.2);
+    cap.translate((rng() - 0.5) * 0.8, cy + H * 0.20, (rng() - 0.5) * 0.8);
+    _c.setHSL(0.585, 0.05, 0.62, THREE.SRGBColorSpace).multiplyScalar(1.55);
+    trunkParts.push(paintFlat(cap, _c.clone(), 0.10));
   }
   return { trunk: mergeParts(trunkParts), cards: mergeParts(cardParts) };
 }
@@ -1189,10 +1226,14 @@ function buildBirchFarGeometry(rng, pal = {}) {
   }
   // r9: more lobes, lifted default luminance (0.16/0.26 -> 0.26/0.38) — far
   // birch crowns minified to near-black ink blots against the snowfield
+  // r4 terrain_environment: narrower, TALLER lobes (0.9 -> 0.72 xz, 1.35 ->
+  // 1.6 y) — the squat round caps read as "grey poles with blue-white
+  // mushroom-cap blobs" (winter critique); a birch crown is an upright
+  // broom-shaped twig mass. Pairs with the far-canopy edge erosion.
   for (let b = 0; b < 5 + ((rng() * 3) | 0); b++) {
     const blob = new THREE.IcosahedronGeometry(0.65 + rng() * 0.45, 0); // PERF r3: far-LOD detail 0
     jitterRadial(blob, rng, 0.45);
-    blob.scale(0.9, 1.35 + rng() * 0.4, 0.9);
+    blob.scale(0.72, 1.6 + rng() * 0.5, 0.72);
     sphereNormals(blob, 0, 0, 0, 1.0);
     blob.translate((rng() - 0.5) * 2.1, H * 0.74 + (rng() - 0.4) * 1.7, (rng() - 0.5) * 2.1);
     canopyParts.push(paintCanopy(blob, cp.hue ?? 0.06, cp.sat ?? 0.07,
@@ -1395,8 +1436,8 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     if (heightField.getNormalAt(x, z).y < 0.78) return null;
     // splat-aware thinning: drier + thinner on dirt patches, dense in meadows
     const sn = sampleSplatNoise(x, z);
-    // (thresholds track the shader's `worn` band — r6: 0.60/0.82 + warp)
-    const dirtPatch = smoothstepJs(0.60, 0.82, sn.n2 + (sn.n1 - 0.5) * 0.45);
+    // (thresholds track the shader's `worn` band — r4: 0.55/0.80 + warp)
+    const dirtPatch = smoothstepJs(0.55, 0.80, sn.n2 + (sn.n1 - 0.5) * 0.45);
     if (dirtPatch > 0.35 && clJ < dirtPatch * 0.9) dry = Math.max(dry, 0.55);
     // r7: carpet cull 0.6 -> 0.4 — the near dirt patches punched hard bald
     // holes in the hero grass ring and the exposed albedo read as "flat
@@ -1767,8 +1808,65 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   // unaffected beyond a little overdraw)
   canopyFarMat.side = THREE.DoubleSide;
   canopyFarMat.envMapIntensity = 1.35;
-  engineCtx.setupShadowMaterial(canopyFarMat, canopyWindHook);
-  canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v8';
+  // r4 terrain_environment: the far-LOD lobes were SMOOTH-SHADED SOLIDS —
+  // beyond 260 m every crown read as a "playdough broccoli" blob with a
+  // clean round silhouette (the single loudest AAA failure in the critique).
+  // Two fragment-side fixes on the shared far-canopy material:
+  //  (a) world-space leaf-clump value mottle (biplanar, per-instance unique
+  //      since it keys off world position) so the surface reads as massed
+  //      foliage instead of smooth clay, and
+  //  (b) VIEW-EDGE ALPHA EROSION — fragments near the silhouette (low
+  //      |N·V|) discard where the clump noise runs light, so every crown
+  //      edge breaks into leaf-scale raggedness instead of a vector-smooth
+  //      lobe outline. Interior fragments (|N·V| high) never discard, so
+  //      crowns stay solid masses with no see-through.
+  const canopyDetailTex = (() => {
+    const s = 128;
+    const drng = mulberry32(seed + 913);
+    const c = document.createElement('canvas');
+    c.width = c.height = s;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = 'rgb(118,118,118)';
+    ctx.fillRect(0, 0, s, s);
+    for (let k = 0; k < 340; k++) { // wrapped soft leaf clumps -> tileable
+      const x = drng() * s, y = drng() * s, r = 1.4 + drng() * 4.2;
+      const l = (60 + drng() * 150) | 0;
+      ctx.fillStyle = `rgba(${l},${l},${l},0.85)`;
+      for (const ox of [-s, 0, s]) for (const oy of [-s, 0, s]) {
+        ctx.beginPath();
+        ctx.arc(x + ox, y + oy, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = 2;
+    return t;
+  })();
+  const farCanopyHook = (shader) => {
+    canopyWindHook(shader);
+    shader.uniforms.uCanopyDet = { value: canopyDetailTex };
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
+      '#include <common>\nvarying vec3 vCanW;');
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <project_vertex>',
+      '{ vec4 cw4 = instanceMatrix * vec4(transformed, 1.0); vCanW = cw4.xyz; }\n#include <project_vertex>');
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
+      '#include <common>\nuniform sampler2D uCanopyDet;\nvarying vec3 vCanW;');
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <map_fragment>', /* glsl */`
+      #include <map_fragment>
+      {
+        // ~0.9 m clump scale; two world-plane projections cover every face
+        float lA = texture2D(uCanopyDet, vCanW.xz * 0.55).r;
+        float lB = texture2D(uCanopyDet, vec2(vCanW.x * 0.41 + 0.37, vCanW.y * 0.55)).r;
+        float leaf = lA * 0.6 + lB * 0.4;
+        diffuseColor.rgb *= 0.74 + leaf * 0.56; // leaf-clump value breakup
+        float ndv = abs(dot(normalize(vNormal), normalize(vViewPosition)));
+        // silhouette erosion: ragged leafy crown edges (interior untouched)
+        if (leaf < 0.74 - ndv * 1.45) discard;
+      }`);
+  };
+  engineCtx.setupShadowMaterial(canopyFarMat, farCanopyHook);
+  canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v9';
 
   // r3 terrain_environment: SILHOUETTE variant tables. Every near/far
   // variant used to run the same builder with a different seed — same
@@ -1777,7 +1875,10 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   // squat-thick / classic / tall-slender with matching trunk gauges.
   const OAK_SHAPES = [
     { cy: 4.35, rx: 2.35, ry: 1.75, rz: 2.35, trunkH: 3.1, n: 58 }, // round classic
-    { cy: 5.05, rx: 1.85, ry: 2.30, rz: 1.85, trunkH: 3.8, n: 52 }, // tall columnar
+    // r4: columnar crown widened + more cards (1.85/52 -> 2.05/62) — at the
+    // frame edge the sparse narrow variant read as "a bare pole with a tiny
+    // blob canopy" (player_view right edge, critique)
+    { cy: 5.05, rx: 2.05, ry: 2.30, rz: 2.05, trunkH: 3.8, n: 62 }, // tall columnar
     { cy: 3.80, rx: 3.05, ry: 1.40, rz: 3.05, trunkH: 2.6, n: 66 }, // wide spreading
   ];
   const PALM_VAR = [

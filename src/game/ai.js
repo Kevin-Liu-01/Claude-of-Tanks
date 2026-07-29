@@ -110,8 +110,30 @@ const PLAYER_AGGRO_WINDOW_S = 25;
 // bonus), and a stalemate breaker forces silent bots with a known contact to
 // push a firing position instead of idling in patrol/seekCover.
 const MUZZLE_INTEL_WINDOW_S = 18;
+// REPEAT-OFFENDER MEMORY (controls_gunnery r4): a player who fires 2+ times
+// from one position is a FIXED KNOWN position, and converting a blocked-LOS
+// commit at 300-400 m into a firing position is a 30-60 s drive — the 18 s
+// base window died mid-reposition and every committed bot reverted to
+// patrol (unstaged probe: 3 player shots, all 4 bots back in patrol with
+// zero shells returned). Repeat shots escalate the window so the chase
+// survives the drive.
+const MUZZLE_INTEL_REPEAT_WINDOW_S = 45;
 const STALEMATE_SILENT_S = 12;   // no shot fired this long w/ contact → push
 const STALEMATE_PUSH_S = 8;      // duration of one forced push window
+// RETURN-FIRE LOCK (controls_gunnery r4): three rounds of aggro plumbing
+// (r4 sticky slot, r5 muzzle intel + hard-commit) still measured 76 enemy
+// shells / 2 aimed at the player / 0 hits across 5 battles. Two remaining
+// holes closed here: (1) notifyUnderFire CLOBBERED lastSeen — the shared
+// chase point — with the latest ALLIED shooter's position, so every
+// "player-committed" bot was actually driving at the player's escorts; and
+// (2) nothing ever forced a bot that could ALREADY see the player to convert
+// commitment into trigger time ranked above the closer allied brawl. Now
+// state.js distance-ranks the shell:fired fan-out, and the nearest ranked
+// bots (rank <= PLAYER_LOCK_RANK) with a clear personal ray LOCK the player
+// as target outright for PLAYER_LOCK_S — no d² ally bias, no cover roll, no
+// memory expiry — refreshed on every subsequent player shot.
+const PLAYER_LOCK_S = 9;
+const PLAYER_LOCK_RANK = 2;      // the three nearest earshot enemies qualify
 
 // HEADING COMMITMENT (controls_gunnery r3): approach/chase legs used to steer
 // at the LIVE target position every tick, so bots wove continuously (speed
@@ -261,6 +283,7 @@ export function createAI(entity, opts = {}) {
   let playerAggro = null;          // sticky PLAYER attacker-of-record (r4)
   let playerAggroUntilS = -Infinity;
   let playerShotsInWindow = 0;     // player shots inside the live intel window (r2)
+  let playerLockUntilS = -Infinity; // RETURN-FIRE LOCK window (r4, see tuning)
   // PLAYER-HUNTER BIAS (controls_gunnery r4): r3's flat 0.35 d² weighting
   // still let every bot farm the closer allied escorts while the player
   // plinked from 350 m (probe: 26 enemy shells, zero at the player). A
@@ -324,6 +347,10 @@ export function createAI(entity, opts = {}) {
     nowS < pressUntilS ? 0 : tier.coverIQ * clamp(1.15 - nowS / 240, 0.35, 1);
 
   const scanPhase = rng() * TAU;             // idle turret sweep phase
+  // r4: per-controller vantage fan bias — clustered bots hunting the same
+  // contact used to fan identical bearings, converge on one candidate and
+  // wedge against each other at full throttle (probe: thr=1.0, spd=0.1).
+  const vantageBias = (rng() - 0.5) * 0.9;
   let obstacles = deps.getObstacles();
   let nowS = 0;                              // last timeS seen by update()
 
@@ -367,6 +394,36 @@ export function createAI(entity, opts = {}) {
     const st = entity.state;
     const list = aliveEnemies();
     const ex = st.pos.x, ey = st.pos.y + selfEyeM, ez = st.pos.z;
+
+    // RETURN-FIRE LOCK (controls_gunnery r4): a live lock — or a live
+    // REPEAT-OFFENDER window (2+ muzzle flashes from one position: the bots
+    // know exactly which bush) — pins the player as the target OUTRIGHT: no
+    // ally-proximity re-rank, no cover roll, no 5 s memory expiry, and
+    // losClear comes from the RAW personal ray, not vis && ray. The
+    // vis-gated losClear was the last dead end in three rounds of aggro
+    // plumbing: a static sniper's fire bloom decays in seconds, so by the
+    // time a committed bot finished its 30-60 s reposition the player was
+    // formally unspotted again and gunReady stayed false forever at a
+    // geometrically clear 250 m ray (r4 unstaged probe). Scope-limited to
+    // the self-revealed repeat offender + time-boxed windows, per the r2
+    // hardClaim precedent — a one-shot ambusher stays camo-protected.
+    if (playerAggro && enemyAlive(playerAggro) &&
+        (timeS < playerLockUntilS ||
+         (playerShotsInWindow >= 2 && timeS < playerAggroUntilS))) {
+      const pp = playerAggro.state.pos;
+      if (target !== playerAggro) {
+        target = playerAggro;
+        acquiredAtS = timeS;
+        nonPenCount = 0;
+        probeTimer = 0;
+      }
+      losClear = hasLos(ex, ey, ez, pp.x, eyeY(playerAggro), pp.z);
+      if (losClear || isVisibleToTeam(playerAggro)) {
+        lastSeen.x = pp.x; lastSeen.z = pp.z;
+        lastSeenAtS = timeS;
+      }
+      return;
+    }
 
     // ATTACKER-OF-RECORD AGGRO (controls_gunnery r4): a shooter that just
     // landed a shell on us or a nearby teammate takes the target slot
@@ -446,7 +503,13 @@ export function createAI(entity, opts = {}) {
         }
         if (target.isPlayer) return;
       }
-      if (timeS - lastSeenAtS <= TARGET_MEMORY_S) return;
+      // r4: a PLAYER attacker-of-record survives the 5 s spot-memory for the
+      // whole aggro window — the commitment has POSITION intel (the muzzle
+      // flash), and dropping it mid-reposition is why three rounds of aggro
+      // plumbing still measured zero conversions. lastSeen intentionally
+      // stays at the muzzle position (not live-tracked) while unspotted.
+      if (timeS - lastSeenAtS <= TARGET_MEMORY_S ||
+          (target === playerAggro && timeS < playerAggroUntilS)) return;
       target = null; // memory expired — rescan below
     } else if (target) {
       target = null;
@@ -616,6 +679,26 @@ export function createAI(entity, opts = {}) {
     const ty = hf.getHeightAt(lastSeen.x, lastSeen.z) + 1.5;
     let bestD2 = Infinity;
     let found = false;
+    // r4: NEAR-SELF fan first — a firing position 35-100 m from the BOT
+    // (fanned toward the contact, so no 180-degree pivots) converts a
+    // blocked commit in seconds. The old lastSeen-ring-only search demanded
+    // a 200-350 m cross-map drive that stall-prone navigation never
+    // finished: the r4 unstaged probe showed committed bots pivoting at
+    // spd=0 for 60+ s, blkT ever-growing, zero conversions.
+    const bearing = Math.atan2(lastSeen.x - st.pos.x, lastSeen.z - st.pos.z) + vantageBias;
+    for (const r of [35, 65, 100]) {
+      for (let k = -3; k <= 3; k++) {
+        const a = bearing + k * 0.35;
+        const cx = st.pos.x + Math.sin(a) * r;
+        const cz = st.pos.z + Math.cos(a) * r;
+        const cy = hf.getHeightAt(cx, cz) + selfEyeM;
+        if (!hasLos(cx, cy, cz, lastSeen.x, ty, lastSeen.z)) continue;
+        const dx = cx - st.pos.x, dz = cz - st.pos.z;
+        const d2 = dx * dx + dz * dz;
+        if (d2 < bestD2) { bestD2 = d2; vantage.x = cx; vantage.z = cz; found = true; }
+      }
+      if (found) return true;
+    }
     const a0 = rng() * TAU;
     for (const r of [70, 110]) {
       for (let k = 0; k < 8; k++) {
@@ -710,13 +793,20 @@ export function createAI(entity, opts = {}) {
     const bearing = Math.atan2(dx, dz);
     const err = wrapAngle(bearing - st.yaw);
     input.steer = clamp(err * 2.2, -1, 1);
-    if (Math.abs(err) > 1.2) {
-      input.throttle = 0.15;                     // near-pivot turn
-    } else {
-      input.throttle = clamp(1 - Math.abs(err) * 0.55, 0.25, 1) * speedScale;
-    }
-    input.throttle *= clamp(dist / 10, 0.35, 1); // ease into arrivals
     input.brake = false;
+    if (Math.abs(err) > 1.2) {
+      // r4 PIVOT DEADLOCK FIX: the old near-pivot (0.15 throttle, then
+      // avoidObstacles damping it to 0.09 AND counter-steering against the
+      // bearing steer every tick) left hulls parked next to spawn props
+      // wobbling at spd=0 for 60+ s (unstaged probe traces: thr=0.1, zero
+      // rotation, blkT growing forever). A rotating-in-place hull neither
+      // needs obstacle avoidance nor moves enough to hit anything — skip
+      // it, and give the pivot enough drive to actually break friction.
+      input.throttle = 0.3;
+      return false;
+    }
+    input.throttle = clamp(1 - Math.abs(err) * 0.55, 0.25, 1) * speedScale;
+    input.throttle *= clamp(dist / 10, 0.35, 1); // ease into arrivals
     avoidObstacles(input);
     return false;
   }
@@ -905,6 +995,21 @@ export function createAI(entity, opts = {}) {
     // zero" streaky-pressure failure. The aim point is the intended IMPACT
     // point; state.js owns the ballistic solution.
 
+    // r4 BLIND-FIRE FALLBACK (WoT bush-fire): a bot with a live
+    // repeat-offender window (2+ muzzle flashes from one position — the bots
+    // know exactly which bush) that has been LOS-pinned for 15+ s shells the
+    // KNOWN muzzle position instead of holding fire forever. Pathological
+    // spawn-cluster rosters wedge on nav and would otherwise contribute zero
+    // pressure for the whole battle (r4 unstaged probe, seed 2). Rate is
+    // naturally capped by the reload; the aim point is the INTEL position
+    // (lastSeen ground line), never the live unspotted target.
+    const blindFire = !losClear && target.isPlayer &&
+      playerShotsInWindow >= 2 && timeS < playerAggroUntilS &&
+      losBlockedT > 15 && dist <= MAX_FIRE_RANGE_M;
+    if (blindFire) {
+      _vD.set(lastSeen.x, hf.getHeightAt(lastSeen.x, lastSeen.z) + 1.2, lastSeen.z);
+    }
+
     // Difficulty aim error (persistent, resampled periodically).
     _vD.x += px * errYawRad * dist;
     _vD.z += pz * errYawRad * dist;
@@ -966,7 +1071,11 @@ export function createAI(entity, opts = {}) {
     else dispGateT = 0;
     const dispersionPass = dispersionOk || dispGateT > 2.5;
 
-    input.fire = gunReady && dispersionPass && alignOk && (penGateOk || chosenSlot === 2);
+    input.fire = (gunReady && dispersionPass && alignOk && (penGateOk || chosenSlot === 2)) ||
+      // blind bush-fire skips LOS/pen/dispersion gates — the lay itself is
+      // the message — but still demands reaction time, a seated shell and
+      // the gun actually pointed at the intel position.
+      (blindFire && reactionOk && reloadReady && rangeOk && alignOk);
     if (input.fire) lastFiredAtS = timeS; // STALEMATE BREAKER bookkeeping (r5)
     // controls_gunnery r5 debug surface (headless probes): why is/isn't this
     // bot firing right now? Plain snapshot object — no live references.
@@ -1275,9 +1384,21 @@ export function createAI(entity, opts = {}) {
     }
     underFire = shooterEnt;
     underFireUntilS = nowS + UNDER_FIRE_WINDOW_S;
-    lastSeen.x = shooterEnt.state.pos.x;
-    lastSeen.z = shooterEnt.state.pos.z;
-    lastSeenAtS = nowS;
+    // RETURN-FIRE LOCK (controls_gunnery r4) ROOT-CAUSE FIX: lastSeen is the
+    // CHASE POINT for the CURRENT target, but this unconditional write
+    // teleported it onto whichever ALLIED bot landed the latest teammate hit
+    // — so every bot "committed" to the player was measurably driving at the
+    // player's escorts instead (r5 probe: aggro'd bots stalled mid-chase,
+    // 76 enemy shells / 2 aimed at the player). The intel position now only
+    // updates when the shooter IS — or here BECOMES — the target.
+    const takesSlot = !target || !enemyAlive(target) ||
+        shooterEnt === target ||
+        (shooterEnt.isPlayer && target !== shooterEnt);
+    if (takesSlot) {
+      lastSeen.x = shooterEnt.state.pos.x;
+      lastSeen.z = shooterEnt.state.pos.z;
+      lastSeenAtS = nowS;
+    }
     if (!target || !enemyAlive(target) ||
         (shooterEnt.isPlayer && target !== shooterEnt)) {
       target = shooterEnt;
@@ -1301,8 +1422,10 @@ export function createAI(entity, opts = {}) {
    * outright — acquireTarget's aggro path (clear personal ray) and the
    * threat-weighted re-rank handle that on the next LOS tick.
    * @param {object} shooterEnt the player TankEntity that fired
+   * @param {number} [rank=99] distance rank among this shot's earshot
+   *   receivers (0 = nearest enemy to the player; state.js sorts the fan-out)
    */
-  function notifyPlayerFired(shooterEnt) {
+  function notifyPlayerFired(shooterEnt, rank = 99) {
     if (!shooterEnt || !shooterEnt.state || !shooterEnt.combat ||
         shooterEnt.combat.destroyed || shooterEnt.team === entity.team) return;
     // REPEAT-OFFENDER COUNT (controls_gunnery r2): shots inside one intel
@@ -1310,15 +1433,53 @@ export function createAI(entity, opts = {}) {
     if (nowS > playerAggroUntilS) playerShotsInWindow = 0;
     playerShotsInWindow += 1;
     playerAggro = shooterEnt;
-    playerAggroUntilS = Math.max(playerAggroUntilS, nowS + MUZZLE_INTEL_WINDOW_S);
-    lastSeen.x = shooterEnt.state.pos.x;
-    lastSeen.z = shooterEnt.state.pos.z;
-    lastSeenAtS = nowS;
+    playerAggroUntilS = Math.max(playerAggroUntilS, nowS +
+      (playerShotsInWindow >= 2 ? MUZZLE_INTEL_REPEAT_WINDOW_S : MUZZLE_INTEL_WINDOW_S));
+    const sp = shooterEnt.state.pos;
+    // RETURN-FIRE LOCK (controls_gunnery r4): one of the nearest ranked
+    // enemies with a clear personal ray converts the muzzle flash into a
+    // DUEL right now — target locked for PLAYER_LOCK_S (refreshed per shot),
+    // cover/vantage intentions dropped, engage mode forced. Deep-concealment
+    // courtesy: shot 1 from a formally unspotted bush only locks bots the
+    // spotting sim shows the player to; a SECOND flash from the same window
+    // is unambiguous and locks regardless (r2 hardClaim precedent).
+    if (rank <= PLAYER_LOCK_RANK &&
+        (isVisibleToTeam(shooterEnt) || playerShotsInWindow >= 2)) {
+      const st = entity.state;
+      if (hasLos(st.pos.x, st.pos.y + selfEyeM, st.pos.z,
+                 sp.x, eyeY(shooterEnt), sp.z)) {
+        playerLockUntilS = nowS + PLAYER_LOCK_S;
+        if (target !== shooterEnt) {
+          target = shooterEnt;
+          acquiredAtS = nowS;
+          nonPenCount = 0;
+          probeTimer = 0;
+        }
+        losClear = true;
+        lastSeen.x = sp.x; lastSeen.z = sp.z;
+        lastSeenAtS = nowS;
+        hasMoveTarget = false;
+        hasCoverPoint = false;
+        hasVantage = false;
+        if (mode !== 'engage' && mode !== 'flank') mode = 'engage';
+        return;
+      }
+    }
+    // r4 (symmetric with notifyUnderFire): lastSeen is the CURRENT target's
+    // chase point — writes below only land in branches where the player IS
+    // or BECOMES the target, so a bot mid-duel with an allied bot keeps its
+    // own chase intel.
+    if (target === shooterEnt) {
+      lastSeen.x = sp.x; lastSeen.z = sp.z;
+      lastSeenAtS = nowS;
+    }
     if (!target || !enemyAlive(target)) {
       target = shooterEnt;
       acquiredAtS = nowS;
       nonPenCount = 0;
       probeTimer = 0;
+      lastSeen.x = sp.x; lastSeen.z = sp.z;
+      lastSeenAtS = nowS;
       if (mode === 'patrol') mode = 'engage';
     } else if (playerShotsInWindow >= 2 && target !== shooterEnt && !target.isPlayer) {
       // controls_gunnery r2: a player who keeps firing inside one intel
@@ -1334,6 +1495,8 @@ export function createAI(entity, opts = {}) {
       acquiredAtS = nowS;
       nonPenCount = 0;
       probeTimer = 0;
+      lastSeen.x = sp.x; lastSeen.z = sp.z; // chase the MUZZLE position (r4)
+      lastSeenAtS = nowS;
       if (mode === 'patrol' || mode === 'seekCover') mode = 'engage';
     }
   }
@@ -1351,6 +1514,7 @@ export function createAI(entity, opts = {}) {
       losBlockedT: +losBlockedT.toFixed(1), hasVantage,
       pressing: nowS < pressUntilS,
       playerShotsInWindow, // r2: repeat-offender aggro count (intel window)
+      playerLocked: nowS < playerLockUntilS, // r4 RETURN-FIRE LOCK live
       ..._dbg,
     }),
     state: mode,

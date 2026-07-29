@@ -237,7 +237,10 @@ export const MODERN2_SPECS = {
       ],
     }),
     visual: {
-      scheme: 'solid', base: '#4a5a40', weather: '#556349', patches: [],
+      // r4: pulled down toward 4BO — the GLB's stripped-shell repaint (see
+      // userdrops3 paintUntextured route) samples this canvas; the authored
+      // parade green rendered bleached mint next to the T-90A.
+      scheme: 'solid', base: '#40503a', weather: '#4a5a42', patches: [],
       marking: 'number', number: '518', trackWidthM: 0.60,
     },
   },
@@ -895,10 +898,13 @@ function buildType99A(P) {
   // splash ridge + driver center hatch
   for (const s of [-1, 1]) P.add('hullDetail', box(0.85, 0.05, 0.08), s * 0.40, 1.14, 2.72, -1.15, s * 0.5, 0);
   P.add('hull', box(0.5, 0.05, 0.45), 0, 1.32, 2.28, -1.15, 0, 0);
-  // skirts: heavy rubber, ERA-tiled forward half (bricks via cluster below)
+  // skirts: heavy rubber, ERA-tiled forward half (bricks via cluster below).
+  // r4 clone-hull fix: the curtain stops SHORT of the nose — a raised stub
+  // covers only the upper front, exposing the idler + rising approach run.
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.045, 0.44, 6.9), s * 1.86, 0.86, -0.05);
-    P.add('hullRubber', box(0.03, 0.10, 6.85), s * 1.86, 0.60, -0.05);
+    P.add('hull', box(0.045, 0.44, 6.0), s * 1.86, 0.86, -0.5);
+    P.add('hull', box(0.045, 0.26, 1.0), s * 1.86, 0.95, 2.98, 0, 0, 0);        // raised front stub
+    P.add('hullRubber', box(0.03, 0.10, 5.95), s * 1.86, 0.60, -0.5);
     for (let k = 0; k < 4; k++) {
       P.add('hullDark', box(0.05, 0.36, 0.022), s * 1.86, 0.84, -1.3 - k * 0.55);
     }
@@ -994,11 +1000,11 @@ function buildType99A(P) {
   P.eraCluster('turret_era_L', (put) => t99Cheek(put, -1), true);
   P.eraCluster('skirt_era_R', (put) => {
     for (let c = 0; c < 8; c++) for (let row = 0; row < 2; row++)
-      put(1.90, 0.74 + row * 0.22, 3.3 - c * 0.42, 0, Math.PI / 2, 0);
+      put(1.90, 0.74 + row * 0.22, 2.42 - c * 0.42, 0, Math.PI / 2, 0);
   });
   P.eraCluster('skirt_era_L', (put) => {
     for (let c = 0; c < 8; c++) for (let row = 0; row < 2; row++)
-      put(-1.90, 0.74 + row * 0.22, 3.3 - c * 0.42, 0, -Math.PI / 2, 0);
+      put(-1.90, 0.74 + row * 0.22, 2.42 - c * 0.42, 0, -Math.PI / 2, 0);
   });
   P.decal('turret', 'number', '215', 0.28, [1.12, 0.3, -0.45], Math.PI / 2, 0, 0.05);
   P.decal('turret', 'number', '215', 0.28, [-1.12, 0.3, -0.45], -Math.PI / 2, 0, -0.05);
@@ -1123,7 +1129,9 @@ function buildT14(P) {
   const { rng } = P;
   // ---- hull: long, high flat roofline ---------------------------------------
   P.add('hull', box(2.6, 0.6, 8.2), 0, 0.78, -0.1);                             // lower hull
-  P.add('hull', frustum(1.90, 2.42, -4.3, 1.72, 2.36, -4.26, 1.10, 1.62));      // long deck band
+  // r4: band side near-vertical (1.90 -> 1.86 top) — the 19-deg tilt caught
+  // the garage key and split the hull into a pale upper body
+  P.add('hull', frustum(1.90, 2.42, -4.3, 1.86, 2.36, -4.26, 1.10, 1.62));      // long deck band
   fenders(P, 1.40, 1.96, 1.085, -4.35, 4.2, 0.035);
   // massive one-piece sloped glacis with driver strip + V splash ridge
   P.add('hull', frustum(1.80, 4.30, 2.42, 1.86, 2.36, 2.42, 0.95, 1.62));
@@ -1169,22 +1177,35 @@ function buildT14(P) {
   liftEye(P, 'hullDetail', 1.5, 1.65, 0.5);
 
   // ---- turret: faceted stealth shroud (§16.5) -------------------------------
-  const AH = 0.95;
-  // tall trapezoidal front + slab sides tapering rearward
-  P.add('turret', frustum(1.05, 0.95, -1.55, 0.80, 0.55, -1.30, 0.0, AH));      // main shroud
+  const AH = 0.98;
+  // r4 ("slab hull dwarfs the toy-scale turret"): shroud widened/lengthened
+  // toward the real ~2.8 m cladding footprint
+  P.add('turret', frustum(1.18, 1.06, -1.62, 0.90, 0.64, -1.36, 0.0, AH));      // main shroud
   P.add('turret', slab(                                                          // right lower facet
-    [0.95, 0, 0.98], [1.16, 0, -0.2], [1.16, 0, -1.05], [0.95, 0, -1.5],
-    [0.85, 0.5, 0.72], [1.02, 0.5, -0.25], [1.02, 0.5, -0.95], [0.85, 0.5, -1.32]));
+    [1.06, 0, 1.10], [1.30, 0, -0.2], [1.30, 0, -1.10], [1.06, 0, -1.56],
+    [0.96, 0.52, 0.82], [1.15, 0.52, -0.25], [1.15, 0.52, -1.0], [0.96, 0.52, -1.38]));
   P.add('turret', slab(                                                          // left lower facet
-    [-1.16, 0, -0.2], [-0.95, 0, 0.98], [-0.95, 0, -1.5], [-1.16, 0, -1.05],
-    [-1.02, 0.5, -0.25], [-0.85, 0.5, 0.72], [-0.85, 0.5, -1.32], [-1.02, 0.5, -0.95]));
+    [-1.30, 0, -0.2], [-1.06, 0, 1.10], [-1.06, 0, -1.56], [-1.30, 0, -1.10],
+    [-1.15, 0.52, -0.25], [-0.96, 0.52, 0.82], [-0.96, 0.52, -1.38], [-1.15, 0.52, -1.0]));
+  // faceted-shroud panel seams + corner sensor boxes (r4 "featureless folded
+  // cardboard"): dark seam lines across the front + side facets, small EO
+  // boxes at the front corners
+  P.add('turretDark', box(0.016, AH * 0.9, 0.03), 0.55, AH * 0.47, 0.86, 0, -0.32, 0);
+  P.add('turretDark', box(0.016, AH * 0.9, 0.03), -0.55, AH * 0.47, 0.86, 0, 0.32, 0);
+  P.add('turretDark', box(0.02, 0.44, 1.9), 1.065, 0.24, -0.35);
+  P.add('turretDark', box(0.02, 0.44, 1.9), -1.065, 0.24, -0.35);
+  P.add('turretDark', box(0.9, 0.02, 0.9), 0, AH - 0.02, -0.1);
+  for (const s2 of [-1, 1]) {
+    P.add('turretDark', box(0.16, 0.14, 0.10), s2 * 0.78, AH - 0.16, 0.68, 0, s2 * 0.5, 0); // corner EO box
+    P.add('turretGlass', box(0.09, 0.07, 0.02), s2 * 0.80, AH - 0.15, 0.74, 0, s2 * 0.5, 0);
+  }
   // gun trough: dark slot the clean tube emerges from
-  P.add('turretDark', box(0.5, 0.42, 0.2), 0, 0.42, 0.92);
+  P.add('turretDark', box(0.5, 0.42, 0.2), 0, 0.42, 1.02);
   // small square APS hard-kill launch tubes ringing the shroud base
   for (let k = 0; k < 5; k++) {
     for (const s of [-1, 1]) {
       P.add('turretDark', box(0.09, 0.09, 0.14),
-        s * (0.98 - k * 0.04), 0.10, 0.55 - k * 0.38, 0.25, s * (0.5 + k * 0.18), 0);
+        s * (1.10 - k * 0.04), 0.10, 0.62 - k * 0.40, 0.25, s * (0.5 + k * 0.18), 0);
     }
   }
   // sensor mast cluster: pano tower rear-center + meteo + AESA corner panels
@@ -1194,13 +1215,13 @@ function buildT14(P) {
   P.add('turretGlass', box(0.14, 0.08, 0.02), 0, AH + 0.76, -0.82);
   P.add('turretDetail', box(0.025, 0.55, 0.025), -0.35, AH + 0.27, -1.15);      // meteo mast
   for (const s of [-1, 1]) {                                                    // Afganit AESA plates
-    P.add('turretDark', box(0.30, 0.34, 0.04), s * 0.72, AH - 0.28, 0.78, -0.1, s * 0.55, 0);
-    P.add('turretDark', box(0.30, 0.30, 0.04), s * 0.95, AH - 0.30, -1.15, 0.1, s * 2.6, 0);
+    P.add('turretDark', box(0.30, 0.34, 0.04), s * 0.82, AH - 0.28, 0.86, -0.1, s * 0.55, 0);
+    P.add('turretDark', box(0.30, 0.30, 0.04), s * 1.06, AH - 0.30, -1.22, 0.1, s * 2.6, 0);
   }
   // vertical smoke-tube banks at the rear corners
   for (const s of [-1, 1]) {
     for (let k = 0; k < 4; k++) {
-      P.add('turretDetail', cylY(0.035, 0.035, 0.3, 8), s * (0.72 + k * 0.09), AH - 0.12 - k * 0.02, -1.28, 0.12, 0, s * 0.15);
+      P.add('turretDetail', cylY(0.035, 0.035, 0.3, 8), s * (0.80 + k * 0.09), AH - 0.12 - k * 0.02, -1.34, 0.12, 0, s * 0.15);
     }
   }
   // roof panel seams (unmanned: no hatches on the shroud)

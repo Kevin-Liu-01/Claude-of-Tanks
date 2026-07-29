@@ -68,6 +68,19 @@ const SETTINGS_CSS = `
 .cot-chip.empty{color:#5c6771;}
 .cot-chip.listening{color:#f0b04a;border-color:#f0a030;animation:cotChipPulse 1.1s ease-in-out infinite;
   font-size:9px;letter-spacing:.05em;}
+/* controls_gunnery r4 minor: Chromium's default blue focus ring survived on
+   chips after a rebind click (visible in the conflict screenshot) and read as
+   web-page chrome inside the custom panel. All panel controls drop the UA
+   outline; keyboard navigation keeps an on-brand amber ring via
+   :focus-visible (mouse clicks set :focus but not :focus-visible, so the
+   pointer flow stays clean). */
+.cot-chip:focus,.cot-set-tab:focus,.cot-set-btn:focus,.cot-set-close:focus,
+.cot-set-seg button:focus{outline:none;}
+.cot-chip:focus-visible,.cot-set-tab:focus-visible,.cot-set-btn:focus-visible,
+.cot-set-close:focus-visible,.cot-set-seg button:focus-visible{
+  outline:1px solid #f0a030;outline-offset:1px;}
+.cot-set-slider input[type=range]:focus{outline:none;}
+.cot-set-slider input[type=range]:focus-visible{outline:1px solid #f0a030;outline-offset:2px;}
 @keyframes cotChipPulse{0%,100%{box-shadow:0 0 0 rgba(240,160,48,0);}50%{box-shadow:0 0 12px rgba(240,160,48,.55);}}
 .cot-set-conflict{display:none;margin:10px 22px 0;padding:9px 14px;align-items:center;gap:12px;
   background:rgba(58,17,15,.9);border:1px solid rgba(240,90,90,.55);font-size:11.5px;

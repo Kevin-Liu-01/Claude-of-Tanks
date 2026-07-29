@@ -7,7 +7,7 @@ import { FONT_STACK, ensureFonts } from './fonts.js';
 import { flagSVG } from './flags.js';
 import { iconUrl } from './icons.js';
 import { createTechTree } from './techtree.js';
-import { ensureTankThumbs, drainTankThumbs, getTankThumb } from './tankThumbs.js';
+import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } from './tankThumbs.js';
 // CAMO PICKER SECTION: swatches preview the REAL resolved pattern (scheme +
 // palette from materials.js) instead of hand-approximated CSS gradients.
 import { resolveCamoVisual } from '../vehicles/materials.js';
@@ -107,7 +107,10 @@ const GARAGE_CSS = `
 .cot-garage .srow{margin-bottom:9px;}
 .cot-garage .srow .lr{display:flex;justify-content:space-between;font-size:11px;
   letter-spacing:.08em;color:#9fb0bf;text-transform:uppercase;margin-bottom:3px;}
-.cot-garage .srow .lr b{color:#e6edf3;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.02em;}
+/* r4: VALUE cells escape the row's uppercase transform — SI units are
+   case-sensitive ("6.0 s", "67 km/h", not "6.0 S" / "67 KM/H") */
+.cot-garage .srow .lr b{color:#e6edf3;font-weight:600;font-variant-numeric:tabular-nums;
+  letter-spacing:.02em;text-transform:none;}
 .cot-garage .srow .track{height:3px;background:rgba(255,255,255,.08);}
 .cot-garage .srow .fill{height:100%;background:linear-gradient(90deg,#c98a2e,#f0b04a);}
 .cot-garage .sep{height:1px;background:rgba(146,164,180,.2);margin:12px 0 10px;}
@@ -120,7 +123,8 @@ const GARAGE_CSS = `
 .cot-garage .shellrow .pd b{color:#e6edf3;font-weight:600;}
 .cot-garage .armorline{font-size:10.5px;letter-spacing:.06em;color:#9fb0bf;
   text-transform:uppercase;display:flex;justify-content:space-between;padding:2px 0;}
-.cot-garage .armorline b{color:#e6edf3;font-weight:600;font-variant-numeric:tabular-nums;}
+.cot-garage .armorline b{color:#e6edf3;font-weight:600;font-variant-numeric:tabular-nums;
+  text-transform:none;}
 /* MODERN EXPANSION: era filter chips — 35+ vehicles need grouping to stay
    navigable; the carousel shows one era group at a time (WWII/MODERN/COMMUNITY) */
 .cot-era-chips{position:absolute;left:50%;bottom:172px;transform:translateX(-50%);
@@ -235,8 +239,10 @@ const GARAGE_CSS = `
 .cot-camo-card .cl{font-size:8px;font-weight:700;letter-spacing:.1em;color:#9fb0bf;
   text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cot-camo-card.sel .cl{color:#d8a04c;}
-.cot-camos .cnote{font-size:8.5px;font-weight:700;letter-spacing:.14em;
-  color:#8a97a3;text-transform:uppercase;margin-top:6px;white-space:nowrap;
+/* r4: caption WRAPS instead of clipping — the old nowrap line overflowed the
+   196px column and cut off mid-sentence, leaving a dangling em-dash */
+.cot-camos .cnote{font-size:8.5px;font-weight:700;letter-spacing:.10em;
+  color:#8a97a3;text-transform:uppercase;margin-top:6px;line-height:1.55;
   text-shadow:0 1px 2px rgba(0,0,0,.7);}
 `;
 
@@ -569,13 +575,18 @@ export function createGarage(opts) {
         if (!selectedId) return;
         camoOpts.set(selectedId, pid);
         refreshCamoSel();
+        // r4: the carousel card must wear the SAME paint the pedestal now
+        // shows — re-render this vehicle's portrait with the new pattern
+        requeueTankThumbs(selectedId);
       });
       grid.appendChild(card);
       camoCardById.set(pid, card);
     }
     const note = document.createElement('div');
     note.className = 'cnote';
-    note.textContent = '+3.5% concealment on matching maps — AUTO always matches';
+    // r4: complete sentence that WRAPS (the old nowrap line clipped at the
+    // column edge and shipped a dangling em-dash mid-sentence)
+    note.textContent = '+3.5% concealment on matching maps · auto always matches';
     camosEl.appendChild(note);
   }
   // --- EQUIPMENT PICKER (camo_spotting r1): 3-slot loadout toggles ---------
@@ -961,6 +972,9 @@ export function createGarage(opts) {
       selectedMapId = mapId;
       for (const [id, card] of mapCardById) card.classList.toggle('sel', id === mapId);
       if (opts.onMapSelect) opts.onMapSelect(mapId);   // CAMO WIRING: AUTO preview
+      // r4: AUTO-camo vehicles change paint with the biome — sweep every
+      // card whose baked pattern went stale (idle-time re-renders)
+      requeueTankThumbs();
     },
   };
 

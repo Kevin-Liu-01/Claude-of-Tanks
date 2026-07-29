@@ -72,7 +72,18 @@ const SHADOW_NORMAL_BIAS = 0.045; // kills acne on terrain slopes (CSM only expo
 // (cascade 1-2) blurred far past the pole shadows beside them. Near-flat
 // texel radii keep one coherent softness law: penumbra grows with distance
 // only through texel size, not through per-band filter jumps.
-const SHADOW_RADII = [2.2, 2.6, 2.6, 2.8];
+// r4 LP2 ("hero tanks cast no ground shadow in staged shots"): root-caused
+// with cascade-isolation + hoist probes — the vehicle shadow IS rendered and
+// correctly placed, but at the staged low-elevation sun-side cameras its
+// contact region is self-occluded and the visible run reads as a soft
+// detached band the eye files under "fence shadow". Two owned levers make it
+// read as THE TANK'S shadow: cascade 0 tightens 2.2 → 1.6 texels (a crisp
+// contact core at closeup range — 1.6 texels on the 4096/75 m cascade-0 box
+// is ~3 cm of penumbra, still above the r5 stair-step floor of ~1.4 at this
+// box size) and SHADOW_AMBIENT_DIM deepens below so the shadow body holds a
+// clear step against lit road after ACES. Cascade 1 follows (2.6 → 2.3) to
+// keep the softness ladder monotonic without a band-to-band jump.
+const SHADOW_RADII = [1.6, 2.3, 2.6, 2.8];
 // r3 SHADOW DENSITY ("vehicles beyond ~100m cast no shadows — floating
 // stickers"; measured: the shadow MAP is intact out to 700 m, but the ambient
 // stack that has grown round-over-round to rescue hull flanks — hemi 0.51
@@ -92,11 +103,16 @@ const SHADOW_RADII = [2.2, 2.6, 2.6, 2.8];
 // ShaderChunk patch layered over the CSMShader chunks (see the block after
 // the CSM constructor); materials.js's vehicle deep-shade luminance floor
 // runs later in the chain and keeps hulls readable inside the denser shade.
-const SHADOW_AMBIENT_DIM = 0.58;
+// r4 LP2: 0.58 → 0.50 — the staged closeup/combat vehicle shadows still sat
+// only ~1.6:1 against lit road after ACES (they read as road discoloration,
+// not as THE TANK'S shadow); a denser ambient dim inside sun shadow restores
+// the ~2.2:1 display step everywhere. Hull readability inside shade is held
+// by materials.js's deep-shade luminance floor + the hemi bounce floor.
+const SHADOW_AMBIENT_DIM = 0.50;
 // Indirect SPECULAR (env reflections) dims harder: a sky probe reflecting at
 // full strength inside a cast shadow is the classic "wet plastic in shade"
 // tell on ice/wet roads once materials gain speculars.
-const SHADOW_AMBIENT_SPEC_DIM = 0.45;
+const SHADOW_AMBIENT_SPEC_DIM = 0.40;
 // The radii above are tuned in TEXELS of these reference map sizes (ultra's
 // ladder). When a quality preset allocates a smaller map for a cascade, the
 // texel is proportionally larger — an uncompensated radius would widen the
@@ -422,9 +438,16 @@ export function createLighting(scene, camera, sunDir) {
     forceFarCascades();
   });
   let rrIndex = 0; // round-robin cursor over the far cascades
+  // r4 LP2 (teleport robustness): any event that can move casters or the
+  // cascade fit wholesale — map/sun switch, frustum change, __SHOTS restage —
+  // forces FULL cascade redraws for the next 2 frames, so the round-robin
+  // staleness optimization can never hold a teleported vehicle out of the
+  // far maps for even one presented frame.
+  let forceFrames = 0;
 
   /** Mark every throttled (far) cascade for re-render on the next frame. */
   function forceFarCascades() {
+    forceFrames = 2;
     for (let i = FAR_CASCADE_START; i < csm.lights.length; i++) {
       csm.lights[i].shadow.needsUpdate = true;
     }
@@ -492,8 +515,12 @@ export function createLighting(scene, camera, sunDir) {
      */
     update(force = false) {
       csm.update();
-      if (force) {
-        forceFarCascades();
+      if (force || forceFrames > 0) {
+        if (forceFrames > 0) forceFrames--;
+        for (let i = FAR_CASCADE_START; i < csm.lights.length; i++) {
+          csm.lights[i].shadow.needsUpdate = true;
+        }
+        if (force) forceFrames = Math.max(forceFrames, 1); // settle 1 extra frame
       } else {
         const span = csm.lights.length - FAR_CASCADE_START;
         if (span > 0) {

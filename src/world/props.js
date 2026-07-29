@@ -559,9 +559,14 @@ function makeRowhouse(rng, buckets, wallBucket = 'plaster', dims = null) {
   // 1.4-2.0 m gable ("one gable pitch" critique). ~20% low-pitch pans, ~15%
   // steep town gables, the rest the classic band.
   const roofRoll = rng();
-  const roofH = roofRoll < 0.2 ? 0.75 + rng() * 0.35
-    : roofRoll < 0.35 ? 1.9 + rng() * 0.55
-      : 1.35 + rng() * 0.6;
+  // content_breadth r4: ~13% PARAPET-FLAT roofs — the establishing camera
+  // reads the town as roofscape, and an unbroken sheet of same-axis gables
+  // was the loudest "archetype repetition" tell along the main street.
+  const flatRoof = roofRoll < 0.13;
+  const roofH = flatRoof ? 0.7
+    : roofRoll < 0.30 ? 0.75 + rng() * 0.35
+      : roofRoll < 0.44 ? 1.9 + rng() * 0.55
+        : 1.35 + rng() * 0.6;
   const over = 0.3;
   const parts = { plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [], glass: [], curtain: [] };
   // window-pane material mix (content_breadth r3): mostly sky-catching
@@ -573,15 +578,65 @@ function makeRowhouse(rng, buckets, wallBucket = 'plaster', dims = null) {
   };
   parts.stone.push(box(w + 0.3, 1.2, d + 0.3).translate(0, -0.1, 0));
   parts[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
-  parts[wallBucket].push(gablePrism(w, roofH, 0.32).translate(0, wallH, d / 2 - 0.16));
-  parts[wallBucket].push(gablePrism(w, roofH, 0.32).translate(0, wallH, -d / 2 + 0.16));
+  if (flatRoof) {
+    // content_breadth r4: parapet-flat massing — tar deck below a raised
+    // parapet with stone coping; breaks the one-gable-pitch roofscape.
+    // Deck rides the MATTE vertex-colored 'baked' bucket — the specular
+    // 'dark' material (roughness .35) mirrored the sky and every flat roof
+    // read as a swimming pool from the establishing camera.
+    const deck = box(w - 0.24, 0.10, d - 0.24);
+    {
+      const n = deck.attributes.position.count;
+      const col = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        const v = 0.045 + rng() * 0.02;
+        col[i * 3] = v * 1.08; col[i * 3 + 1] = v; col[i * 3 + 2] = v * 0.90;
+      }
+      deck.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    }
+    deck.translate(0, wallH + 0.14, 0);
+    if (buckets.baked) { (parts.baked = parts.baked || []).push(deck); }
+    else parts.roof.push(deck);
+    const ph = 0.55 + rng() * 0.25;
+    parts[wallBucket].push(box(w, ph, 0.22).translate(0, wallH + ph / 2, d / 2 - 0.11));
+    parts[wallBucket].push(box(w, ph, 0.22).translate(0, wallH + ph / 2, -d / 2 + 0.11));
+    parts[wallBucket].push(box(0.22, ph, d).translate(w / 2 - 0.11, wallH + ph / 2, 0));
+    parts[wallBucket].push(box(0.22, ph, d).translate(-w / 2 + 0.11, wallH + ph / 2, 0));
+    parts.stone.push(box(w + 0.14, 0.10, 0.32).translate(0, wallH + ph + 0.05, d / 2 - 0.11));
+    parts.stone.push(box(w + 0.14, 0.10, 0.32).translate(0, wallH + ph + 0.05, -d / 2 + 0.11));
+    parts.stone.push(box(0.32, 0.10, d + 0.14).translate(w / 2 - 0.11, wallH + ph + 0.05, 0));
+    parts.stone.push(box(0.32, 0.10, d + 0.14).translate(-w / 2 + 0.11, wallH + ph + 0.05, 0));
+    if (rng() < 0.6) { // rooftop access hut
+      parts[wallBucket].push(box(1.5, 1.1, 1.9).translate((rng() - 0.5) * w * 0.3, wallH + 0.55, (rng() - 0.5) * d * 0.3));
+    }
+  } else {
+    parts[wallBucket].push(gablePrism(w, roofH, 0.32).translate(0, wallH, d / 2 - 0.16));
+    parts[wallBucket].push(gablePrism(w, roofH, 0.32).translate(0, wallH, -d / 2 + 0.16));
+  }
   const slope = Math.hypot(w / 2 + over, roofH + 0.1);
   const ang = Math.atan2(roofH + 0.1, w / 2 + over);
-  for (const side of [-1, 1]) {
+  if (!flatRoof) for (const side of [-1, 1]) {
     const slab = slabBox(slope + 0.15, 0.13, d + over * 2, 0.35); // r2: real tile rows
     slab.rotateZ(side * ang);
     slab.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + 0.06, 0);
     parts.roof.push(slab);
+  }
+  // content_breadth r4: facade RELIEF that survives to mid distance — a
+  // proud eaves cornice band under the roofline (~60%) and stone corner
+  // quoin strips on masonry walls (~45%): the two most-repeated street
+  // archetypes stop reading as bare extruded boxes
+  const trimB = wallBucket === 'plaster' || wallBucket === 'stone' ? 'stone' : 'plaster';
+  if (rng() < 0.6) {
+    parts[trimB].push(box(w + 0.22, 0.16, 0.12).translate(0, wallH - 0.10, d / 2 + 0.05));
+    parts[trimB].push(box(w + 0.22, 0.16, 0.12).translate(0, wallH - 0.10, -d / 2 - 0.05));
+    parts[trimB].push(box(0.12, 0.16, d + 0.22).translate(w / 2 + 0.05, wallH - 0.10, 0));
+    parts[trimB].push(box(0.12, 0.16, d + 0.22).translate(-w / 2 - 0.05, wallH - 0.10, 0));
+  }
+  if (rng() < 0.45) {
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      parts.stone.push(box(0.20, wallH - 0.3, 0.20)
+        .translate(sx * (w / 2 + 0.02), (wallH - 0.3) / 2, sz * (d / 2 + 0.02)));
+    }
   }
   // r7 ROOFSCAPE: ridge chimney stacks with cap slabs (1-2 per house, real
   // masonry proportions) — the old lone 0.6 m stub on the slope was invisible
@@ -1471,6 +1526,10 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
     // cross-arms and a brace, planted dead vertical
     const poleGeo = SOURCED.poles && P.telegraph
       ? bakedGeometry('telephone_pole_polygoogle', { targetH: 7.4, sink: 0.15 }) : null;
+    // r4 terrain_environment: record pole stations — catenary WIRES are strung
+    // between consecutive poles below (the bare pole line was a critique item:
+    // "telephone poles have no visible wires, they read as bare sticks")
+    const poleLine = [];
     for (let i = 8; P.telegraph && i < roadsL[0].length - 1; i += 2) {
       const [ax, az] = roadsL[0][i], [bx, bz] = roadsL[0][i + 1];
       const tl = Math.hypot(bx - ax, bz - az);
@@ -1478,6 +1537,7 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
       if (Math.max(Math.abs(px), Math.abs(pz)) > 470 || noVeg(px, pz)) continue;
       const py = heightField.getHeightAt(px, pz);
       const armYaw = Math.atan2(bx - ax, bz - az) + Math.PI / 2;
+      poleLine.push({ x: px, y: py, z: pz, yaw: armYaw, sourced: !!SOURCED.poles });
       if (SOURCED.poles) {
         addBakedInstance('pole', poleGeo, px, py - 0.05, pz, armYaw, 1);
         // effects_combat r1: poles are CRUSHABLE — record the instance index
@@ -1510,6 +1570,46 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
       brace.rotateY(armYaw);
       brace.translate(px + Math.cos(armYaw) * 0.26, py + 4.8, pz - Math.sin(armYaw) * 0.26);
       buckets.wood.push(brace);
+    }
+    // r4 terrain_environment: catenary wire spans between consecutive poles —
+    // two conductors per span (one per insulator side), sagging ~0.8 m at
+    // mid-span, built as short 4-sided cylinder segments so the line reads
+    // as a continuous drooping wire instead of the poles standing as bare
+    // sticks (critique). Spans longer than ~85 m (a skipped pole) are left
+    // unstrung. Cheap: ~15 spans x 2 wires x 7 segments of 4-side cylinders.
+    for (let pi = 0; pi + 1 < poleLine.length; pi++) {
+      const A = poleLine[pi], B = poleLine[pi + 1];
+      const spanL = Math.hypot(B.x - A.x, B.z - A.z);
+      if (spanL > 85 || spanL < 6) continue;
+      // wire attachment height: sourced pole crossarm rides higher than the
+      // procedural twin-arm pole
+      const hTop = A.sourced ? 6.5 : 5.75;
+      for (const s of [-1, 1]) { // one wire per insulator side
+        // insulator offset in each pole's OWN arm frame
+        const ax2 = A.x + Math.cos(A.yaw) * 0.6 * s, az2 = A.z - Math.sin(A.yaw) * 0.6 * s;
+        const bx2 = B.x + Math.cos(B.yaw) * 0.6 * s, bz2 = B.z - Math.sin(B.yaw) * 0.6 * s;
+        const ay2 = A.y + hTop, by2 = B.y + hTop;
+        const SEGS = 7;
+        let prevX = ax2, prevY = ay2, prevZ = az2;
+        for (let k2 = 1; k2 <= SEGS; k2++) {
+          const t = k2 / SEGS;
+          const sag = Math.sin(t * Math.PI); // parabola-ish droop
+          const cx2 = ax2 + (bx2 - ax2) * t;
+          const cy2 = ay2 + (by2 - ay2) * t - sag * sag * 0.8;
+          const cz2 = az2 + (bz2 - az2) * t;
+          const segL = Math.hypot(cx2 - prevX, cy2 - prevY, cz2 - prevZ);
+          const wire = new THREE.CylinderGeometry(0.028, 0.028, segL * 1.02, 4, 1);
+          wire.rotateX(Math.PI / 2); // axis -> +z, then aim
+          const m4w = new THREE.Matrix4().lookAt(
+            new THREE.Vector3(prevX, prevY, prevZ),
+            new THREE.Vector3(cx2, cy2, cz2),
+            new THREE.Vector3(0, 1, 0));
+          wire.applyMatrix4(m4w);
+          wire.translate((prevX + cx2) / 2, (prevY + cy2) / 2, (prevZ + cz2) / 2);
+          buckets.dark.push(wire);
+          prevX = cx2; prevY = cy2; prevZ = cz2;
+        }
+      }
     }
   }
 
@@ -2104,7 +2204,9 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
         if (Math.hypot(x - s.x, z - s.z) < 20) { nearSpawn = true; break; }
       }
       if (nearSpawn) continue;
-      const r = 2.4 + rng() * 2.6;
+      // r4: 2.4-5.0 -> 2.8-6.6 m — the shell scars were too small to register
+      // from the establishing camera ("no craters ... manicured golf course")
+      const r = 2.8 + rng() * 3.8;
       craterDiscs.push(conformedDisc(x, z, r, [0.04, 0.06, 0.14 + rng() * 0.12, 0.03]));
       placed++;
     }

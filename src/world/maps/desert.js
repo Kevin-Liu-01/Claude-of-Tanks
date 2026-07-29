@@ -44,7 +44,18 @@ export default {
     // cream void). 0.20+0.86l tops out ~0.82: still clearly sun-hammered,
     // but dune-face shading and the macro tints below survive to screen.
     grassTone: (h, s, l) => [0.096, 0.40, clamp01(0.20 + l * 0.86)],
-    dirtTone: (h, s, l) => [0.083, 0.38, clamp01(l * 1.12 + 0.04)],
+    // r4 (content_breadth): the `worn` dirt-patch bands were the critique's
+    // "smeared dirt/grime streaks" across the midfield dune faces — the dirt
+    // layer's clod/crack texture (painted L 0.08-0.31) rode l*1.12+0.04, so
+    // every noise-banded worn patch rendered at roughly HALF the sand
+    // luminance and the establishing shot read paint smears, not terrain.
+    // Root-caused live (tools/tmp-cb-r4-bandprobe*.mjs): bands persist with
+    // ALL vegetation hidden => splat, not scrub shadows. Compress the dirt
+    // tone into a sand-adjacent band (L 0.31-0.48, ~15-25% under the open
+    // sand instead of ~50%) and desaturate a step: the same worn fields now
+    // read as compacted gravel-lag flats. Pairs with grassDensity below so
+    // the surviving darkening carries actual vegetation clusters.
+    dirtTone: (h, s, l) => [0.088, 0.30, clamp01(0.31 + l * 0.38)],
     // r7: R layer is the dedicated stratified-sandstone painter — authored
     // already-red, so no retint hook (the old s*3.2 hook targeted the grey
     // generic rock and would push the beds to neon)
@@ -57,7 +68,9 @@ export default {
     // beds still read as a layer-cake print on the near mesas; squeezing the
     // per-bed value swing keeps the sedimentary structure while the wall
     // finally reads as one weathered rock mass
-    rockTone: (h, s, l) => [h, clamp01(s * 0.55), clamp01(0.53 + (l - 0.5) * 0.70)],
+    // r4: sat 0.55 -> 0.42 — pairs with the makeSandstoneLayer desaturation
+    // (terrain.js) to kill the residual PINK cast on the cliff beds
+    rockTone: (h, s, l) => [h, clamp01(s * 0.42), clamp01(0.53 + (l - 0.5) * 0.70)],
     mudTone: (h, s, l) => [0.078, 0.30, clamp01(l * 1.5 + 0.04)], // cracked dry clay
     mudRough: 1.15,
     // r3 (content_breadth): tintB pushed to a REAL darkener (0.94 -> 0.84
@@ -96,6 +109,11 @@ export default {
     // consumed by the terrain.js splat shader (uMidFar, landed r3).
     midRelief: 0.55,
     midReliefFar: 820,
+    // r4 terrain_environment: the sandMacro sheet-variation pass (gravel-lag
+    // basins + pale scoured sheets, terrain.js uSandMacro) was authored in r3
+    // but never ENABLED for this map — the mid-map stayed "hundreds of meters
+    // of featureless smooth sand" (critique). Full strength.
+    sandMacro: 1.0,
   },
 
   vegetation: {
@@ -111,7 +129,7 @@ export default {
     // palms rendered as thin spider silhouettes of inconsistent scale across
     // the open flats (critique); date palms grow at water, i.e. in clumps
     clusterCount: 27,
-    loneCount: 30,
+    loneCount: 36, // r4: a few more standalone palms breaking the open flats
     rimCount: 22,
     // terrain_environment r3: dense understory scrub INSIDE the oases — the
     // palm clusters stood as bare sticks on clean sand (vegetation.js
@@ -119,7 +137,11 @@ export default {
     clusterScrub: 2.3,
     // r6: 0.3 -> 0.42 — compensates the stricter two-scale thicket gating so
     // scrub concentrates into dense wadis instead of thinning out overall
-    grassDensity: 0.42,
+    // r4 (content_breadth): 0.42 -> 0.60 — the wadi thickets share the same
+    // n1/n2 noise belts as the splat's worn bands (sampleSplatNoise twins the
+    // shader warp), so denser tufts land INSIDE the darkened fields and the
+    // banding reads as vegetated wadis rather than bare paint
+    grassDensity: 0.60,
     // pale sun-bleached straw: the old darker olive tufts/scrub read as
     // black pepper speckle against the bright sand in establishing shots
     grassTexTone: (h, s, l) => [0.112, clamp01(s * 0.55), clamp01(l * 1.05 + 0.14)],
@@ -130,7 +152,7 @@ export default {
     // r7: 0.9 -> 0.78 — thins the isolated mid-field scrub dots (each casts a
     // hard shadow speck at establishing distance) while the clump-gated wadi
     // thickets keep their density
-    bushCount: 0.78,
+    bushCount: 0.92, // r4: more wadi scrub — mid-map emptiness critique
     bushSpecies: 'oak',
     palettes: {
       oak: { // r7: sun-bleached sage scrub — the r6 olive still bottomed out
@@ -176,7 +198,9 @@ export default {
       wood: (h, s, l) => [0.08, clamp01(s * 0.9), clamp01(l * 1.15)],
       straw: null,
     },
-    rockTone: (h, s, l) => [0.05, 0.34, clamp01(l * 1.15 + 0.04)], // red-rock boulders
+    // r4: sat 0.34 -> 0.20, lift trimmed — the saturated red-rock boulders
+    // read as fleshy-pink blobs on the open sand (establishing shot)
+    rockTone: (h, s, l) => [0.055, 0.20, clamp01(l * 1.06 + 0.03)], // dusty red-rock boulders
     wallStoneChance: 1.0,
     wallRuns: [
       [-58, 4, -58, 58, 2], [70, 26, 70, 92, 3], [-6, 104, 48, 104, 1],
@@ -190,8 +214,11 @@ export default {
     well: true, hayCrates: true, fences: false, telegraph: false, carts: true, logs: false,
     // r3: craters 18 -> 30, +1 wreck — more battle scarring/track marks to
     // break the open bowl between the landforms
-    haystacks: 0, rocks: 210, outcrops: 24, craters: 30, rubblePiles: 0,
-    wrecks: 5,
+    // r4: rocks 210 -> 275, outcrops 24 -> 36, craters 30 -> 48, wrecks 5 ->
+    // 7 — the critique's "hundreds of meters of empty sand" needs mid-scale
+    // props, not just the new sandMacro albedo fields
+    haystacks: 0, rocks: 275, outcrops: 36, craters: 48, rubblePiles: 0,
+    wrecks: 7,
   },
 
   horizon: {
@@ -220,7 +247,7 @@ export default {
     // showed visibly richer sand than the live establishing shot). The mie
     // sky + warm fog tint keep the heat identity; the veil no longer eats
     // the midfield value range.
-    fogDensity: 0.00047, fogTintHex: 0xc7ac85, fogMix: 0.60, envIntensity: 0.22,
+    fogDensity: 0.00047, fogTintHex: 0xc7ac85, fogMix: 0.60, envIntensity: 0.16, // lighting_post r4: 0.22 -> 0.16 (sun/lee dune separation)
     cloudOpacity: 0.35, cloudOpacity2: 0.18, cloudTintHex: 0xfff2df,
     // lighting_post r4: sun 4.9 → 4.15 — the hottest sun in the game over the
     // brightest albedo pushed open sand to ~1.5 linear, high on the ACES
@@ -236,12 +263,12 @@ export default {
     // of the wash-out fix: pairs with the 0.82 albedo cap + fog cut so open
     // sand sits ~0.9-1.1 linear (texture survives ACES) while dune shadow
     // sides keep a full stop of separation.
-    sunIntensity: 3.30, sunColorHex: 0xffe9c2, hemiIntensity: 0.30,
+    sunIntensity: 4.15, sunColorHex: 0xffe9c2, hemiIntensity: 0.20, // lighting_post r4: sun 3.30 -> 4.15, hemi 0.30 -> 0.20 (lee faces ~30% darker)
     // lighting_post r3 (round 3): per-map display exposure trim (post.js
     // uExposure). 0.93 (not the 0.88 the LP probe used) because the r3
     // content_breadth sun/fog/albedo retune above already pulls sand
     // midtones down — together they land dune relief in the readable band.
-    postExposure: 0.93,
+    postExposure: 0.90, // lighting_post r4: keep the raised sun from re-blowing the sand top end
   },
 
   minimap: {

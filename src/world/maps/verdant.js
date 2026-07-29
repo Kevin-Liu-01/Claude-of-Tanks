@@ -66,7 +66,10 @@ export default {
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     // r2: more midfield material breakup (craters/haystacks) — the open
     // field between orchards and village read as a manicured golf course
-    haystacks: 18, rocks: 170, outcrops: 16, craters: 42, rubblePiles: 0,
+    // r4: another push (haystacks 18 -> 26, craters 42 -> 58, outcrops 16 ->
+    // 24, rocks 170 -> 195) — the critique still read "one lone bale" and a
+    // golf course; paired with the bigger crater radii in props.js
+    haystacks: 26, rocks: 195, outcrops: 24, craters: 58, rubblePiles: 0,
   },
 
   horizon: {

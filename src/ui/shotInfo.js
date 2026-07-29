@@ -228,10 +228,11 @@ body.cot-si-report .cot-ret{display:none !important;}
 .cot-si-stat .v{font-size:28px;font-weight:800;font-family:${FONT_COND};
   font-stretch:condensed;font-variant-numeric:tabular-nums;color:#f2f7fb;line-height:1.1;}
 .cot-si-econ{display:flex;gap:16px;width:1120px;max-width:94vw;margin-bottom:14px;}
-.cot-si-ecoitem{flex:1;display:flex;align-items:baseline;justify-content:center;gap:10px;
+.cot-si-ecoitem{flex:1;display:flex;flex-direction:column;
   background:linear-gradient(180deg,rgba(10,14,18,.92),rgba(6,9,12,.95));
   border:1px solid rgba(146,164,180,.3);box-shadow:0 10px 40px rgba(0,0,0,.5);
-  padding:12px 16px 13px;}
+  padding:10px 16px 11px;}
+.cot-si-ecoitem .et{display:flex;align-items:baseline;justify-content:center;gap:10px;}
 .cot-si-ecoitem .ek{font-size:9.5px;font-weight:800;letter-spacing:.22em;color:${COL.dim};
   text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;}
 .cot-si-ecoitem .ev{font-size:30px;font-weight:800;font-family:${FONT_COND};
@@ -240,6 +241,43 @@ body.cot-si-report .cot-ret{display:none !important;}
 .cot-si-ecoitem.xp .ev{color:#9fd0ff;}
 .cot-si-ecoitem .eb{font-size:9px;color:${COL.dim};letter-spacing:.05em;
   font-variant-numeric:tabular-nums;}
+/* itemized earnings receipt (r4, WoT detailed-results depth): one line item
+   per source, each printing its exact inputs x rate — the strip total above
+   MUST reconcile with the visible rows (rounding stated on the total row) */
+.cot-si-erows{margin-top:7px;border-top:1px solid rgba(146,164,180,.16);
+  padding-top:5px;display:flex;flex-direction:column;gap:1px;}
+.cot-si-erows>div{display:flex;justify-content:space-between;font-size:9.5px;
+  color:${COL.dim};font-variant-numeric:tabular-nums;letter-spacing:.03em;}
+.cot-si-erows b{color:#cfdae4;font-weight:700;font-family:${FONT_COND};
+  font-stretch:condensed;}
+.cot-si-erows .tot{border-top:1px solid rgba(146,164,180,.22);margin-top:3px;
+  padding-top:3px;}
+.cot-si-ecoitem.cr .tot b{color:#ffd166;}
+.cot-si-ecoitem.xp .tot b{color:#9fd0ff;}
+/* expandable enemy rows (r4): click reveals the per-shot exchange ledger —
+   the same resolved events the floating cards / toasts already showed */
+.cot-si-kill.x{pointer-events:auto;cursor:pointer;}
+.cot-si-kill.x:hover{background:rgba(146,164,180,.07);}
+.cot-si-kill .ex{color:${COL.dim};font-size:8px;width:10px;flex:0 0 auto;
+  transition:transform .15s ease;}
+.cot-si-kill.open .ex{transform:rotate(90deg);}
+.cot-si-xd{display:none;background:rgba(8,12,16,.6);
+  border-bottom:1px solid rgba(146,164,180,.08);
+  padding:3px 6px 4px 24px;max-height:96px;overflow-y:auto;pointer-events:auto;}
+.cot-si-xd.open{display:block;}
+.cot-si-xd .xr{display:flex;gap:7px;align-items:baseline;font-size:9.5px;
+  color:#b9c6d2;font-variant-numeric:tabular-nums;padding:1px 0;}
+.cot-si-xd .xr .t{color:${COL.dim};width:30px;flex:0 0 auto;}
+.cot-si-xd .xr .w{font-family:${FONT_COND};font-stretch:condensed;font-weight:800;
+  font-size:8.5px;letter-spacing:.08em;width:52px;flex:0 0 auto;}
+.cot-si-xd .xr .d{color:#ffd166;font-weight:700;width:34px;text-align:right;
+  flex:0 0 auto;font-family:${FONT_COND};font-stretch:condensed;}
+.cot-si-xd .xr .z{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:#93a2af;}
+/* roster clicks must reach the report — the transparent integration overlay
+   (.cot-end, z 72) sits above it solely to host its RETURN button */
+body.cot-si-report .cot-end{pointer-events:none !important;}
+body.cot-si-report .cot-end button{pointer-events:auto !important;}
 .cot-si-stat .k{font-size:8.5px;font-weight:700;letter-spacing:.16em;color:${COL.dim};
   text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;}
 .cot-si-shell{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;
@@ -453,6 +491,30 @@ function schematicUrl(id, view, outW, outH) {
               }
             }
           }
+          // r4: dark outline traced around the silhouette edge (2 px at the
+          // 2x bake = 1 px on the card) — the neutral-gray bake alone still
+          // averaged into a soft blob on busy camo at 84 px; the rim keeps
+          // the hull/turret plan boundary through the final CSS downscale.
+          const OUT = 2;
+          for (let y = 0; y < outH; y++) {
+            for (let xx = 0; xx < outW; xx++) {
+              const i = (y * outW + xx) * 4;
+              if (src[i + 3] < 8) continue;
+              let edge = false;
+              for (let dy = -OUT; dy <= OUT && !edge; dy++) {
+                for (let dx = -OUT; dx <= OUT && !edge; dx++) {
+                  const nx2 = xx + dx;
+                  const ny2 = y + dy;
+                  if (nx2 < 0 || ny2 < 0 || nx2 >= outW || ny2 >= outH ||
+                      src[(ny2 * outW + nx2) * 4 + 3] < 8) edge = true;
+                }
+              }
+              if (edge) {
+                p2[i] = p2[i + 1] = p2[i + 2] = 36;
+                p2[i + 3] = Math.max(p2[i + 3], 216);
+              }
+            }
+          }
           tx.putImageData(d2, 0, 0);
           resolve(t.toDataURL());
         } catch (_) { resolve(null); }
@@ -498,6 +560,8 @@ export function createShotInfo(bus) {
   let playerId = null;
   let logOpen = false;
   const shotLog = [];      // last 6 outgoing summaries {ev, cls}
+  const allShots = [];     // EVERY outgoing hit this battle {ev, cls} — the
+                           // report's expandable per-enemy exchange ledger (r4)
   const receivedLog = [];  // per-battle incoming entries (full battle)
   const stats = newStats();
   let endInfo = null;      // battle:ended {timeS, map} for the report header
@@ -624,11 +688,12 @@ export function createShotInfo(bus) {
     const zoneTint = (parent, view, x, y, r) => {
       const tint = el('div', 'sil', parent);
       maskIcon(tint, specId, view, 'transparent');
-      // r3: hotter stops + bigger radius — the r2 glow sat too faint under
-      // the plan-form to carry the zone read at 84 px
+      // r4: inner/mid stops raised again (ee/88 -> ff/c0) — under the .86
+      // plan-form layer the r3 glow still sat faint enough that the zone
+      // read depended on the text label instead of the diagram
       tint.style.background =
         `radial-gradient(circle ${r}px at ${x.toFixed(1)}px ${y.toFixed(1)}px,` +
-        `${badgeCol}ee 0%,${badgeCol}88 55%,${badgeCol}00 100%)`;
+        `${badgeCol}ff 0%,${badgeCol}c0 55%,${badgeCol}00 100%)`;
     };
 
     // --- top view (84x84; icon: forward = up, screen right = -X world) ---
@@ -990,15 +1055,42 @@ export function createShotInfo(bus) {
     const credits = Math.round(dealtR * 4.2 + kills * 850 + blockedR * 0.55) + (win ? 2500 : 0);
     statsRoot.dataset.xp = String(xp);
     statsRoot.dataset.credits = String(credits);
+    statsRoot.dataset.xpBase = String(baseXp);
+    // itemized receipt (r4, WoT detailed-results depth): every line item is a
+    // session counter × its published rate, printed with its exact inputs —
+    // the big total is the rounded sum of the visible rows and NOTHING else.
+    // Zero-value sources are omitted; rounding happens only where a row says
+    // so ('base', 'total'), so a reader can reconcile the receipt by hand.
+    const fmtN = (n) => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
     const econ = el('div', 'cot-si-econ', statsRoot);
-    const eco = (cls, k, v, b) => {
+    const eco = (cls, k, v, rows2) => {
       const it = el('div', `cot-si-ecoitem ${cls}`, econ);
-      it.innerHTML = `<span class="ek">${k}</span><span class="ev">${v}</span><span class="eb">${b}</span>`;
+      it.innerHTML = `<div class="et"><span class="ek">${k}</span>` +
+        `<span class="ev">${v}</span></div>`;
+      const host = el('div', 'cot-si-erows', it);
+      for (const [label, val, tot] of rows2) {
+        const r = el('div', tot ? 'tot' : '', host);
+        r.innerHTML = `<span>${label}</span><b>${val}</b>`;
+      }
     };
-    eco('cr', 'Credits', `+${credits.toLocaleString('en-US')}`,
-      `dmg ×4.2 · kill 850 · blocked ×0.55${win ? ' · +2,500 victory' : ''}`);
-    eco('xp', 'Experience', `+${xp.toLocaleString('en-US')}`,
-      `dmg ×0.85 · kill 140 · hit 6${win ? ' · ×1.5 victory' : ''}`);
+    const crRows = [];
+    if (dealtR > 0) crRows.push([`Damage dealt ${fmtN(dealtR)} × 4.2`, fmtN(dealtR * 4.2)]);
+    if (kills > 0) crRows.push([`Kills ${kills} × 850`, fmtN(kills * 850)]);
+    if (blockedR > 0) crRows.push([`Damage blocked ${fmtN(blockedR)} × 0.55`, fmtN(blockedR * 0.55)]);
+    if (win) crRows.push(['Victory bonus', `+${fmtN(2500)}`]);
+    crRows.push(['Total (rounded)', `+${credits.toLocaleString('en-US')}`, true]);
+    const xpRows = [];
+    if (dealtR > 0) xpRows.push([`Damage dealt ${fmtN(dealtR)} × 0.85`, fmtN(dealtR * 0.85)]);
+    if (kills > 0) xpRows.push([`Kills ${kills} × 140`, fmtN(kills * 140)]);
+    if (blockedR > 0) xpRows.push([`Damage blocked ${fmtN(blockedR)} × 0.12`, fmtN(blockedR * 0.12)]);
+    if (stats.hits > 0) xpRows.push([`Shots hit ${stats.hits} × 6`, fmtN(stats.hits * 6)]);
+    if (win) {
+      xpRows.push(['Base (rounded)', fmtN(baseXp)]);
+      xpRows.push(['Victory ×1.5 bonus', `+${fmtN(xp - baseXp)}`]);
+    }
+    xpRows.push(['Total (rounded)', `+${xp.toLocaleString('en-US')}`, true]);
+    eco('cr', 'Credits', `+${credits.toLocaleString('en-US')}`, crRows);
+    eco('xp', 'Experience', `+${xp.toLocaleString('en-US')}`, xpRows);
 
     const cols = el('div', 'cot-si-cols', statsRoot);
     const left = el('div', 'cot-si-panel cot-si-pl', cols);
@@ -1233,6 +1325,58 @@ export function createShotInfo(bus) {
           (r.dead ? '<span class="kd">DEAD</span>' : '<span class="al">ALIVE</span>');
         maskIcon(row.querySelector('.si'), r.specId || r.id, 'side_silhouette',
           r.dead ? '#f28f8f' : 'rgba(206,220,232,0.75)');
+        // expandable exchange ledger (r4, WoT detailed-results depth): rows
+        // with recorded traffic open a chronological per-shot list — YOUR
+        // hits on them (full-battle allShots ledger) merged with THEIR
+        // damaging/blocked hits on you (receivedLog). Same resolved events
+        // the floating cards and toasts already rendered; nothing recomputed.
+        const xs = hostile ? allShots.filter((s) => s.ev.targetId === r.id) : [];
+        const xrec = hostile ? receivedLog.filter((e) => e.aid === r.id) : [];
+        if (xs.length || xrec.length) {
+          row.classList.add('x');
+          row.insertAdjacentHTML('afterbegin', '<span class="ex">▸</span>');
+          let xd = null;
+          row.addEventListener('click', () => {
+            if (!xd) {
+              xd = document.createElement('div');
+              xd.className = 'cot-si-xd';
+              const lines = [];
+              for (const s of xs) {
+                lines.push({
+                  t: s.ev.timeS || 0,
+                  html: `<span class="t">${fmtTime(s.ev.timeS)}</span>` +
+                    `<span class="w" style="color:${s.cls.col}">` +
+                    `${s.cls.badge.split(' ')[0].split('·')[0]}</span>` +
+                    `<span class="d">${(s.ev.damage || 0) > 0 ? `−${Math.round(s.ev.damage)}` : '·'}</span>` +
+                    `<span class="z">${zoneLabel(s.ev.zone)} · ${Math.round(s.ev.flightDistM || 0)} m</span>`,
+                });
+              }
+              for (const e of xrec) {
+                lines.push({
+                  t: e.t,
+                  html: `<span class="t">${fmtTime(e.t)}</span>` +
+                    `<span class="w" style="color:${e.dmg > 0 ? '#ff8f80' : COL.green}">` +
+                    `${e.dmg > 0 ? 'HIT YOU' : 'BLOCKED'}</span>` +
+                    `<span class="d">${e.dmg > 0 ? `−${Math.round(e.dmg)}` : '·'}</span>` +
+                    `<span class="z">${e.shellType}${e.zone ? ' · ' + zoneLabel(e.zone) : ''}` +
+                    `${e.mods ? ' · ' + e.mods : ''}</span>`,
+                });
+              }
+              lines.sort((a, b) => a.t - b.t);
+              for (const ln of lines) {
+                const lr = document.createElement('div');
+                lr.className = 'xr';
+                lr.innerHTML = ln.html;
+                xd.appendChild(lr);
+              }
+              row.after(xd);
+            }
+            const open = !xd.classList.contains('open');
+            xd.classList.toggle('open', open);
+            row.classList.toggle('open', open);
+            pinFooter(); // report height changed — re-pin the RETURN button
+          });
+        }
       }
     };
     teamBlock('Your team', allies, false);
@@ -1379,6 +1523,7 @@ export function createShotInfo(bus) {
       if (ev.destroyed) { t.killed = true; t.hpLeft = 0; }
       shotLog.unshift({ ev, cls });
       if (shotLog.length > 6) shotLog.pop();
+      allShots.push({ ev, cls }); // full-battle ledger (report expansion, r4)
       showCard(ev, cls);
       if (logOpen) renderLog();
     }
@@ -1391,6 +1536,7 @@ export function createShotInfo(bus) {
       receivedLog.push({
         t: ev.timeS || 0, dmg: ev.damage || 0, kind: ev.kind, aid: ev.attackerId,
         attacker: ev.attackerName || 'Enemy', shellType: ev.shellType || '', mods,
+        zone: ev.zone || '', // r4: expandable roster ledger prints the zone
       });
       showToast(ev, cls);
       if (logOpen) renderLog();
@@ -1523,6 +1669,7 @@ export function createShotInfo(bus) {
       while (cardHost.firstChild) cardHost.firstChild.remove();
       while (toastHost.firstChild) toastHost.firstChild.remove();
       shotLog.length = 0;
+      allShots.length = 0;
       receivedLog.length = 0;
       combatants.clear();
       tg.clear();

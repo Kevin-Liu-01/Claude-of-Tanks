@@ -649,10 +649,32 @@ const KC_CSS = `
   font-family:${FONT_STACK};color:#e6edf3;}
 .cot-kc.on{display:block;}
 .cot-kc *{box-sizing:border-box;margin:0;padding:0;}
+/* REPLAY OWNS THE SCREEN (r4 critical): while a replay is live, no battle-HUD
+   chrome may render over the cinematic — a one-frame race in the integration
+   flyby edge-latch (main.js snapshots kcActive at frame top, the death path
+   begins the replay mid-frame, the stale latch then un-veiled the HUD for the
+   whole replay: team panels/kill feed/minimap/reticle over flight AND x-ray,
+   photographed 1-of-2 live runs). Declarative defense: begin() stamps
+   body.cot-kc-live, finish() removes it — !important beats any inline
+   veilHud(false) a later caller writes, so the chrome CANNOT come back while
+   the replay is active whatever the caller ordering. .cot-hud contains every
+   battle element incl. the damage panel + shot-info layer; .cot-si-stats is
+   the battle report (already killcam:done-gated, veiled here for parity). */
+body.cot-kc-live .cot-hud{display:none !important;}
+body.cot-kc-live .cot-si-stats{visibility:hidden !important;}
+/* X-RAY BACKDROP SCRIM (r4 major): the old veil was a pure edge vignette —
+   0% dim at the victim — so sunlit grass behind the ghost stayed at full
+   luminance and the fresnel skin washed out to a milky blob (staged Tiger
+   evidence; the same treatment read fine over a dark dirt road). The veil now
+   darkens the WHOLE frame (WT armor-viewer read) with the focus falloff kept:
+   ~14% at the victim rising to ~52% at the frame edge, over a light-dim of
+   the 3D scene itself (beginXray dims sun/hemi so terrain drops BEFORE the
+   translucent skin blends over it — the unlit ghost material keeps its own
+   brightness, making ghost contrast scene-luminance-INVARIANT). */
 .cot-kc-veil{position:absolute;inset:0;opacity:0;transition:opacity .5s ease;
-  background:radial-gradient(ellipse 52% 46% at var(--kcvx,50%) var(--kcvy,55%),
-    rgba(4,8,12,0) 0%,rgba(4,8,12,0) 22%,rgba(4,8,12,.12) 48%,
-    rgba(4,8,12,.26) 76%,rgba(4,8,12,.34) 100%);}
+  background:radial-gradient(ellipse 56% 50% at var(--kcvx,50%) var(--kcvy,55%),
+    rgba(5,9,14,.14) 0%,rgba(5,9,14,.17) 26%,rgba(5,9,14,.28) 54%,
+    rgba(5,9,14,.42) 78%,rgba(5,9,14,.52) 100%);}
 .cot-kc.xr .cot-kc-veil{opacity:1;}
 @keyframes cotKcIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
 .cot-kc-anim{opacity:0;animation:cotKcIn .35s ease forwards;}
@@ -1078,6 +1100,7 @@ export function createKillCam(deps) {
       xcam: null,
       fxGroup: null, fxHidden: null,
       vegGroup: null, vegWasVisible: true,
+      dimmedLights: null, // x-ray backdrop light dim, restored in finish (r4)
       rewreck: null, // wreck look to re-apply in finish() (pre-wreck restage)
     };
     pb.group.name = 'killcam';
@@ -1169,6 +1192,9 @@ export function createKillCam(deps) {
     d.labelHost.textContent = '';
     d.leader.textContent = '';
     d.root.classList.add('on');
+    // REPLAY OWNS THE SCREEN: css-level HUD veil that no later veilHud(false)
+    // caller can undo (see KC_CSS note) — removed in finish()
+    document.body.classList.add('cot-kc-live');
 
     window.addEventListener('keydown', onSkipKey, true);
     window.addEventListener('mousedown', onSkipKey, true);
@@ -1506,6 +1532,17 @@ export function createKillCam(deps) {
       let start = 0;
       const keepFrom = pb.total - 60;
       while (start < pb.pts.length - 2 && pb.cum[start + 1] < keepFrom) start++;
+      // terrain-aware trim (r4): a low grazing arc could leave kept points
+      // skimming (or, on a rising slope, visually inside) the ground — the
+      // beam then reads as if the shell emerged from the terrain. Drop every
+      // kept point up to the LAST one without ~0.6 m of clearance; the final
+      // two points (the plate arrival) are always kept.
+      if (heightField) {
+        for (let i = start; i < pb.pts.length - 3; i++) {
+          const p = pb.pts[i];
+          if (p.y < heightField.getHeightAt(p.x, p.z) + 0.6) start = i + 1;
+        }
+      }
       pb.trailGeo.setDrawRange(start, pb.pts.length - start);
       // Rebuild the final arc as a glow ribbon (sheath + hot core tube per
       // segment): the 1px GL line alone was a dim tan thread at 1080p (r5).
@@ -1578,6 +1615,29 @@ export function createKillCam(deps) {
       pb.vegGroup.visible = false;
     }
 
+    // 1a-bis. BACKDROP LIGHT DIM (r4 major — scene-luminance-invariant ghost):
+    // the fresnel skin is translucent, so whatever sits behind it leaks
+    // through the alpha blend — over sunlit grass the hull washed out to a
+    // milky low-contrast blob while the identical treatment read crisp over a
+    // dark dirt road. WT darkens the whole world behind its x-ray; here the
+    // sun cascades + ambient hemisphere are dimmed for the hold so the
+    // TERRAIN drops before the skin blends over it, while the ghost material
+    // itself (unlit MeshBasicMaterial, toneMapped:false) keeps every bit of
+    // its own brightness. Intensity writes are pure uniform updates — light
+    // COUNT never changes, so no material recompiles (LIGHT-COUNT note).
+    // Exact originals restored in finish().
+    pb.dimmedLights = [];
+    scene.traverse((o) => {
+      if ((o.isDirectionalLight || o.isHemisphereLight) && o.intensity > 0) {
+        pb.dimmedLights.push([o, o.intensity]);
+        o.intensity *= o.isHemisphereLight ? 0.42 : 0.30;
+      }
+    });
+    // pull the victim fill light in tight: at R*4.5 it pooled a bright disc
+    // of terrain around the wreck that fought the scrim — the hold only
+    // needs it on the hull volume (internals are Lambert-lit)
+    kcLights[0].distance = Math.max(10, snap.boundingRadiusM * 2.4);
+
     // 1b. key light on the wreck: created in begin() for the whole replay
     // (flight included) — cool camera-side fill so the vehicle stays the
     // brightest element in frame; the world-space blackout billboard is GONE
@@ -1629,7 +1689,9 @@ export function createKillCam(deps) {
         parent.add(fill);
       }
       // obstacle record for the screen-space label repulsion pass (r3):
-      // local corners now, world corners once poses are final (below)
+      // local corners now, world corners once poses are final (below).
+      // r4: keyed — projectLabels re-anchors each chip's dot/leader to the
+      // screen-projected centroid of ITS OWN module rect (anchor fidelity).
       const corners = [];
       for (let i = 0; i < 8; i++) {
         corners.push(new THREE.Vector3(
@@ -1638,7 +1700,7 @@ export function createKillCam(deps) {
           i & 4 ? bb.max[2] : bb.min[2],
         ));
       }
-      pb.obstacles.push({ parent, corners });
+      pb.obstacles.push({ parent, corners, key: key || null });
       if (key && !anchors.has(key)) anchors.set(key, seg);
     };
     for (const mb of armor.modules || []) {
@@ -1731,11 +1793,43 @@ export function createKillCam(deps) {
         if (bb) deepest = Math.max(deepest, depthOf(bb));
       }
       const innerLen = Math.max(1.2, (ev.caliberMm || 100) * 10 / 1000 + 0.6, deepest + 0.35);
-      // external approach: wide glow sheath + hot core so the last meters
-      // into the plate read as one continuous channel with the ribbon above
-      _a.copy(lp).addScaledVector(ld, -4.5);
-      tube(_a, lp, 0.06, S.trailGlow, poseGrp, pb.disposables);
-      tube(_a, lp, 0.026, S.pathOut, poseGrp, pb.disposables);
+      // external approach: the last meters into the plate. r4 rework — the
+      // old single 4.5 m tube was a uniform thick rod that hard-cut at the
+      // frame edge; on the staged Tiger it read as a beam rising OUT OF THE
+      // GROUND at the lower-left corner. The approach is now (a) terrain-
+      // lifted: the tail is shortened until it clears the ground line by
+      // ~0.7 m, and (b) tapered + tier-faded over its far ~65%: radius ramps
+      // toward the plate and the far half drops to the faint far-tier
+      // materials, so the beam reads as a tracer ARRIVING and simply fades
+      // where it leaves frame instead of anchoring to the terrain.
+      {
+        poseGrp.updateMatrixWorld(true);
+        const lpW = poseGrp.localToWorld(lp.clone());
+        const ldW = ld.clone().transformDirection(poseGrp.matrixWorld);
+        let APP = 5.2;
+        if (heightField) {
+          for (; APP > 1.6; APP -= 0.4) {
+            const wy = lpW.y - ldW.y * APP;
+            if (wy > heightField.getHeightAt(
+              lpW.x - ldW.x * APP, lpW.z - ldW.z * APP) + 0.7) break;
+          }
+        }
+        const sa = new THREE.Vector3();
+        const sb = new THREE.Vector3();
+        const SEGS = 4;
+        for (let i = 0; i < SEGS; i++) {
+          const t0 = i / SEGS;          // 0 at the tail, 1 at the plate
+          const t1 = (i + 1) / SEGS;
+          sa.copy(lp).addScaledVector(ld, -APP * (1 - t0));
+          sb.copy(lp).addScaledVector(ld, -APP * (1 - t1));
+          const tm = (t0 + t1) / 2;
+          const far = tm < 0.55;
+          tube(sa, sb, 0.014 + 0.05 * tm,
+            far ? S.trailGlowFar : S.trailGlow, poseGrp, pb.disposables);
+          tube(sa, sb, 0.006 + 0.021 * tm,
+            far ? S.trailCoreFar : S.pathOut, poseGrp, pb.disposables);
+        }
+      }
       // internal penetration channel, carried to the deepest damaged module
       // (r5: the path dead-ended at the entry dot; thickened + brightened so
       // it stays legible over the frosted skin)
@@ -1853,7 +1947,7 @@ export function createKillCam(deps) {
     d.labelHost.textContent = '';
     d.leader.textContent = '';
     pb.labels.length = 0;
-    const addLabel = (world, color, main, sub, big, ok) => {
+    const addLabel = (world, color, main, sub, big, ok, key) => {
       // ok = the hit left the module functional: the chip is demoted to the
       // dim-gray tier (hollow ring dot, faint leader) so only yellow/red
       // chips carry casualty weight — an 'ok' TRACK R / HIT chip in full
@@ -1874,13 +1968,18 @@ export function createKillCam(deps) {
       } else {
         label.textContent = main;
       }
-      pb.labels.push({ label, dot, line, big: !!big, world: world.clone() });
+      pb.labels.push({
+        label, dot, line, big: !!big, world: world.clone(), key: key || null,
+      });
     };
     /** Idle micro-label (no dot/leader): WT-style always-on internals tag. */
-    const addMicro = (world, text) => {
+    const addMicro = (world, text, key) => {
       const label = el('div', 'cot-kc-micro', d.labelHost);
       label.textContent = text;
-      pb.labels.push({ label, dot: null, line: null, big: false, micro: true, world: world.clone() });
+      pb.labels.push({
+        label, dot: null, line: null, big: false, micro: true,
+        world: world.clone(), key: key || null,
+      });
     };
     const MOD_STATE_WORD = { red: 'DESTROYED', yellow: 'DAMAGED', ok: 'HIT' };
     const MOD_STATE_COLOR = { red: '#ff5a4a', yellow: '#ffb43c', ok: '#8a97a3' };
@@ -1893,13 +1992,13 @@ export function createKillCam(deps) {
       const ok = m.newState !== 'red' && m.newState !== 'yellow';
       addLabel(_p, MOD_STATE_COLOR[m.newState] || MOD_STATE_COLOR.ok,
         MODULE_LABEL[m.module] || m.module,
-        `${MOD_STATE_WORD[m.newState] || 'HIT'}${dmgTxt}`, false, ok);
+        `${MOD_STATE_WORD[m.newState] || 'HIT'}${dmgTxt}`, false, ok, `m:${m.module}`);
     }
     for (const c of ev.crewHit) {
       const seg = anchors.get(`c:${c}`);
       if (!seg) continue;
       seg.getWorldPosition(_p);
-      addLabel(_p, '#ff7d8a', CREW_LABEL[c] || c, 'KNOCKED OUT');
+      addLabel(_p, '#ff7d8a', CREW_LABEL[c] || c, 'KNOCKED OUT', false, false, `c:${c}`);
     }
     if ((ev.damage || 0) > 0) {
       _p.set(ev.pos[0], ev.pos[1], ev.pos[2]);
@@ -1912,7 +2011,7 @@ export function createKillCam(deps) {
       const seg = anchors.get(`m:${key}`);
       if (!seg) continue;
       seg.getWorldPosition(_p);
-      addMicro(_p, MICRO[key]);
+      addMicro(_p, MICRO[key], `m:${key}`);
     }
 
     // staggered reveal guided from the impact point outward (chips first,
@@ -1942,24 +2041,74 @@ export function createKillCam(deps) {
     // screen-space focus veil: keep the radial dim centered on the VICTIM's
     // projected position every frame (a world-space blackout read as a
     // lighting bug — bright road stripe over crushed edges, r4 critique)
+    let vcy = h * 0.5; // victim's projected screen y (label side preference)
     if (dom && pb.xcam) {
       _proj.copy(pb.xcam.center).project(camera);
       dom.root.style.setProperty('--kcvx', `${((_proj.x * 0.5 + 0.5) * 100).toFixed(1)}%`);
       dom.root.style.setProperty('--kcvy', `${((-_proj.y * 0.5 + 0.5) * 100).toFixed(1)}%`);
+      vcy = (-_proj.y * 0.5 + 0.5) * h;
     }
-    // pass 1: project anchors, compute each chip's desired rect
+    // pass 0 (r4): project every module/crew box to a screen rect once —
+    // these feed BOTH the repulsion pass (2b) and the per-key ANCHOR rects:
+    // each chip's dot/leader snaps to the projected centroid of its OWN
+    // module's rect instead of the box's 3D center point, whose projection
+    // drifted onto neighbouring assemblies (the AMMO RACK chip's leader
+    // ended near the turret ring while the orange bin sat mid-hull).
+    const maxArea = 0.18 * w * h;
+    const obs = [];
+    const anchorRect = new Map(); // obstacle key -> screen rect
+    if (pb.obstacles) {
+      for (const ob of pb.obstacles) {
+        let x0 = Infinity;
+        let y0 = Infinity;
+        let x1 = -Infinity;
+        let y1 = -Infinity;
+        let behind = false;
+        for (const c of ob.corners) {
+          _proj.copy(c).project(camera);
+          if (_proj.z > 1) { behind = true; break; }
+          const sx = (_proj.x * 0.5 + 0.5) * w;
+          const sy = (-_proj.y * 0.5 + 0.5) * h;
+          if (sx < x0) x0 = sx;
+          if (sx > x1) x1 = sx;
+          if (sy < y0) y0 = sy;
+          if (sy > y1) y1 = sy;
+        }
+        if (behind) continue;
+        const area = (x1 - x0) * (y1 - y0);
+        // full-length track bands exceed the cap in both roles: undodgeable
+        // as obstacles, and their rect centroid says nothing about the hit
+        if (ob.key && !anchorRect.has(ob.key) && area <= maxArea * 1.4) {
+          anchorRect.set(ob.key, { x0, y0, x1, y1 });
+        }
+        if (area <= maxArea) obs.push({ x0, y0, x1, y1 });
+      }
+    }
+    // pass 1: project anchors, compute each chip's desired rect. r4 side
+    // preference: chips whose module sits in the LOWER half of the victim
+    // hang BELOW their dot — a mid-hull ammo bin's chip no longer floats
+    // above the turret where it read as a turret-ammo callout.
     for (const it of pb.labels) {
       _proj.copy(it.world).project(camera);
       it.hidden = _proj.z > 1;
       if (it.hidden) continue;
       it.ax = (_proj.x * 0.5 + 0.5) * w;
       it.ay = (-_proj.y * 0.5 + 0.5) * h;
+      const ar = it.key ? anchorRect.get(it.key) : null;
+      if (ar) {
+        it.ax = (ar.x0 + ar.x1) / 2;
+        it.ay = (ar.y0 + ar.y1) / 2;
+      }
       it.lw = it.label.offsetWidth || 60;
       it.lh = it.label.offsetHeight || 18;
       it.left = it.ax - it.lw / 2;
+      it.below = !it.big && !it.micro && it.ay > vcy + 6;
       // micro tags sit right on their component (no leader line); chips
-      // float above their dot; the big damage number hangs below the impact
-      it.top = it.big ? it.ay + 14 : it.micro ? it.ay - it.lh / 2 : it.ay - 30 - it.lh;
+      // float above (lower-hull modules: below) their dot; the big damage
+      // number hangs below the impact
+      it.top = it.big ? it.ay + 14
+        : it.micro ? it.ay - it.lh / 2
+          : it.below ? it.ay + 26 : it.ay - 30 - it.lh;
     }
     // pass 2: vertical deconfliction — when projected rects overlap, cascade
     // the later chip below the earlier one with a 4px gap. Anchor DOTS join
@@ -1999,36 +2148,21 @@ export function createKillCam(deps) {
     // r3 backing plate carries legibility over any fill — dodging the
     // track-band rect flung it to the screen bottom), micro tags sit on
     // their organ by design.
-    if (pb.obstacles && pb.obstacles.length) {
-      const maxArea = 0.18 * w * h;
-      const obs = [];
-      for (const ob of pb.obstacles) {
-        let x0 = Infinity;
-        let y0 = Infinity;
-        let x1 = -Infinity;
-        let y1 = -Infinity;
-        let behind = false;
-        for (const c of ob.corners) {
-          _proj.copy(c).project(camera);
-          if (_proj.z > 1) { behind = true; break; }
-          const sx = (_proj.x * 0.5 + 0.5) * w;
-          const sy = (-_proj.y * 0.5 + 0.5) * h;
-          if (sx < x0) x0 = sx;
-          if (sx > x1) x1 = sx;
-          if (sy < y0) y0 = sy;
-          if (sy > y1) y1 = sy;
-        }
-        if (behind || (x1 - x0) * (y1 - y0) > maxArea) continue;
-        obs.push({ x0, y0, x1, y1 });
-      }
+    if (obs.length) {
       for (let sweep = 0; sweep < 2; sweep++) {
         for (const it of pb.labels) {
           if (it.hidden || it.micro || it.big) continue;
           const minTop = it.ay - 30 - it.lh - 130; // lift cap: dot stays close
+          const maxTop = it.ay + 26 + 130;         // drop cap (below-side chips)
           for (const r of obs) {
             if (it.left < r.x1 + 4 && r.x0 < it.left + it.lw + 4 &&
                 it.top < r.y1 + 3 && r.y0 < it.top + it.lh + 3) {
-              it.top = Math.max(minTop, r.y0 - it.lh - 8);
+              // dodge AWAY from the hull on the chip's own side (r4): below-
+              // side chips slide further down, above-side chips further up —
+              // repulsion may never flip a chip back across the silhouette
+              it.top = it.below
+                ? Math.min(maxTop, r.y1 + 8)
+                : Math.max(minTop, r.y0 - it.lh - 8);
             }
           }
         }
@@ -2102,6 +2236,8 @@ export function createKillCam(deps) {
       }
       if (pb.fxHidden) for (const c of pb.fxHidden) c.visible = true; // FX resume
       if (pb.vegGroup) pb.vegGroup.visible = pb.vegWasVisible; // vegetation back
+      // backdrop light dim released — exact pre-x-ray intensities back (r4)
+      if (pb.dimmedLights) for (const [L, i] of pb.dimmedLights) L.intensity = i;
       for (const L of kcLights) L.intensity = 0; // pool dimmed, never removed
       for (const g of pb.disposables) g.dispose();
       scene.remove(pb.group);
@@ -2113,6 +2249,8 @@ export function createKillCam(deps) {
       dom.labelHost.textContent = '';
       dom.leader.textContent = '';
     }
+    // release the css-level HUD veil (counterpart of begin()'s stamp)
+    document.body.classList.remove('cot-kc-live');
     const done = pb ? pb.onDone : null;
     pb = null;
     active = false;

@@ -131,7 +131,14 @@ const ENV_INTENSITY = 0.2;
 // runs 0.52 for the ice sheet and must not climb). The extra omni fill is
 // offset form-wise by the hemisphere bounce floor in lighting.js carrying
 // the directional share.
-const ENV_INTENSITY_FLOOR = 0.32;
+// r4 LP2 ("desert dunes show a measured 3% sun/lee difference — albedo-only
+// terrain"): 0.32 → 0.26. On 0.85-0.9-albedo sand the floored omni IBL was
+// the single largest slope-shading killer (it lights sun and lee faces
+// identically); -19% omni fill lets the sun term register on dune lee faces
+// on every bright map while vehicle speculars (which carry their own
+// envMapIntensity 0.75 multiplier) stay clearly readable. The rest of the
+// desert delta ships as a desert.js preset retune (handoff r4).
+const ENV_INTENSITY_FLOOR = 0.26;
 // Exponential fog replaces the old linear Fog(150, 1200) that whited out the
 // midground by ~300 m. r3: density dropped 0.00088 → 0.00074 — the milky wash
 // was flattening the battlefield shot; the distance cue is now shared with
@@ -199,7 +206,13 @@ const CLOUD_THR = 0.505; // r6: 0.53 → 0.505 — the infinite-deck projection 
 const CLOUD_EDGE = 0.030; // clear→rim ramp width in FBM units (cumulus cores)
 const CLOUD_EDGE_WISP = 0.055; // edge width for sparse wispy fringes
 const CLOUD_CORE = 0.16; // rim→opaque-core ramp width in FBM units
-const CLOUD_CLUSTER = 0.12; // macro-noise threshold modulation (cloud grouping)
+// r4 LP2 ("top-center mass is a long diagonal airbrushed lenticular streak"):
+// clustering 0.12 → 0.15 AND the macro field is now sampled ANISOTROPICALLY
+// (2x frequency along the wind/march axis, see makeCloudTexture) so an
+// along-wind arm breaks into separate cauliflower masses instead of one
+// connected streak. Tileability holds — period 1/2 divides the unit tile.
+const CLOUD_CLUSTER = 0.15; // macro-noise threshold modulation (cloud grouping)
+const CLOUD_MACRO_ANISO = 2; // integer v-frequency multiplier of the macro field
 const CLOUD_WARP = 0.09; // domain-warp strength (cauliflower edge crinkle)
 const CLOUD_MARCH_STEPS = 12; // light-march samples toward the in-texture sun
 const CLOUD_MARCH_STEP_PX = 3;
@@ -217,7 +230,10 @@ const CLOUD_SILVER = 0.38; // extra silver-lining gain on thin sun-facing rims
 // stretched low-res texture"): interior alpha detail 0.42 → 0.56 — the high-
 // frequency octave has to survive the grazing-angle anisotropic minification
 // that softens everything toward the horizon.
-const CLOUD_DETAIL_AMP = 0.56; // high-frequency alpha modulation inside masses
+// r4 LP2 ("remaining wisps are soft gradient veils without modeled
+// cauliflower structure at full-frame scale"): 0.56 → 0.68 — deeper interior
+// alpha carving so mass interiors keep billow structure at establishing size.
+const CLOUD_DETAIL_AMP = 0.68; // high-frequency alpha modulation inside masses
 // Cloud decks are viewed at extreme grazing angles (the infinite-plane
 // projection): with the default anisotropy of 1 the mip filter smears every
 // horizonward cloud into a streak — the single biggest "blurred canvas blit"
@@ -485,7 +501,9 @@ function makeCloudTexture() {
       let wv = (v + (fbmWY(u, v) - 0.5) * CLOUD_WARP) % 1;
       if (wv < 0) wv += 1;
       const d = fbmD(wu, wv);
-      const mac = fbmM(u, v);
+      // anisotropic macro sampling: higher frequency ALONG the wind/march
+      // axis (v) breaks along-wind arms into separate masses (r4 LP2)
+      const mac = fbmM(u, (v * CLOUD_MACRO_ANISO) % 1);
       const thr = CLOUD_THR + (mac - 0.5) * 2 * CLOUD_CLUSTER;
       const i = y * W + x;
       // edge sharpness varies with the macro field: dense clusters carve
@@ -539,7 +557,7 @@ function makeCloudTexture() {
       // per-cloud opacity variation keyed on the macro clustering field: each
       // mass gets its own density so the deck never reads as uniform cotton;
       // a high-frequency octave breaks the smooth interior alpha gradients
-      const macroA = 1 - CLOUD_ALPHA_VAR * (1 - fbmM(x / W, y / H));
+      const macroA = 1 - CLOUD_ALPHA_VAR * (1 - fbmM(x / W, ((y / H) * CLOUD_MACRO_ANISO) % 1));
       const hfA = 1 - CLOUD_DETAIL_AMP * (1 - core[i]) * fbmHF(x / W, y / H);
       // r6: rim floor 0.42 → 0.30 — denser cores against thinner rims give
       // the masses a modeled 3D read instead of one flat translucency.
@@ -980,6 +998,15 @@ export function createSky(scene, renderer) {
     applyFog(targetScene) {
       const fogColor = horizonColor.clone()
         .lerp(new THREE.Color(preset.fogTintHex), preset.fogMix);
+      // r4 LP2 hue guard: atmospheric extinction color must NEVER be
+      // green-dominant (the r3 sniper "jade fog" carryover) — whatever the
+      // sampled sky band or preset tint produced, clamp toward blue-grey so
+      // B >= G always holds on the fog pole. (Verdant currently samples
+      // blue already; this is insurance against any preset/band drift.)
+      if (fogColor.g > fogColor.b) {
+        const lum = 0.2126 * fogColor.r + 0.7152 * fogColor.g + 0.0722 * fogColor.b;
+        fogColor.lerp(new THREE.Color(lum * 0.92, lum * 0.99, lum * 1.12), 0.6);
+      }
       // preset.fogDensity is total atmosphere; the exp2 fog takes only its
       // extinction share — post.js's aerial pass carries the scatter-in hue
       // (see FOG_EXTINCTION_SHARE).

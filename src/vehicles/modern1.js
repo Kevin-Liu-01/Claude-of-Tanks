@@ -612,14 +612,22 @@ function buildChallenger2(P) {
   // big flat squared skirt panels with lifting handles (§18.5)
   // r3 (clone-hull critical): panels drop to the wheel axle line — the CR2's
   // side profile is "dominated by big flat skirts", not by a bare wheel band.
+  // r4 clone-hull fix (critic: "full-drop skirt curtains erase the front
+  // idler and approach-angle read... track visible only as a thin bottom
+  // sliver"): the FIRST panel is now the CR2's signature raised STEP —
+  // shorter, higher-bottomed, with a raked leading edge — exposing the
+  // idler and the rising approach run like the real TES skirt line.
   for (const s of [-1, 1]) {
-    for (let k = 0; k < 6; k++) {
+    for (let k = 1; k < 6; k++) {
       const z = 3.28 - k * 1.31;
       P.add('hull', box(0.07, 0.66, 1.24), s * 1.82, 0.81, z);
       P.add('hullDetail', box(0.05, 0.05, 0.34), s * 1.87, 1.02, z);            // lifting handle
       P.add('hullDark', box(0.075, 0.60, 0.018), s * 1.82, 0.81, z - 0.645);    // panel seams
     }
-    P.add('hullRubber', box(0.03, 0.10, 7.7), s * 1.82, 0.46, -0.02);
+    P.add('hull', box(0.07, 0.38, 1.20), s * 1.82, 0.95, 3.30);                 // stepped front panel
+    P.add('hull', box(0.07, 0.30, 0.42), s * 1.82, 0.88, 2.62, 0, 0, 0);        // step riser
+    P.add('hullDetail', box(0.05, 0.05, 0.34), s * 1.87, 1.06, 3.30);           // lifting handle
+    P.add('hullRubber', box(0.03, 0.10, 6.4), s * 1.82, 0.46, -0.68);
   }
   // glacis furniture: driver hatch center, periscope, headlights, tow cable,
   // ZAP number plate front
@@ -703,6 +711,12 @@ function buildChallenger2(P) {
     P.add('turretDetail', box(0.04, 0.26, 1.1), s * (CTW + 0.075), 0.40, -1.65);
     stowage(P, 'turretCloth', rng, [[s * (CTW + 0.02), 0.42, -1.6, 0.14, 0.24, 0.85]]);
   }
+  // TOGS II armored barbette ABOVE the gun (r4 — critic: "lacks its TOGS
+  // housing entirely"): boxy housing pitching with the gun, dark aperture
+  // with a glass slit and a shutter brow.
+  P.addGunExtra(box(0.42, 0.32, 0.66), 0, 0.42, 0.42);
+  P.addGunExtra(box(0.46, 0.08, 0.70), 0, 0.60, 0.42);                          // brow lid
+  P.addGunExtraDark(box(0.30, 0.18, 0.05), 0, 0.42, 0.76);                      // aperture
   // fat thermal-sleeved L30 with MRS at the muzzle: collar:true adds the MRS
   // ring; the 0.082 tube + sleeve reads smooth/fat per §18.5
   buildGun(P, { len: 6.7, r: 0.082, sleeve: true, evac: 0.58, collar: true, baseR: 0.15 });

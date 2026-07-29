@@ -218,8 +218,12 @@ void main() {
   // the dissolve soft; the flipbook supplies all the ragged structure.
   // lighting_post r3 (round 3): base band 0.40 -> 0.60 (~1.5x) — fire edges
   // still stippled at 2x crops; wider gate dissolves them as gradients.
-  float er = vT * 0.34;
-  float a = smoothstep( er, er + 0.60 + 0.52 * vT, tex ) * vColor.a;
+  // r5 anti-stipple: erosion runs through an ultra-wide band (0.72 -> 1.2)
+  // so the flipbook's high-frequency octaves resolve as translucent
+  // gradients, never binarized speckle (r4 "dither-speckled additive cards
+  // chewing every edge, hundreds of dark stipple dots").
+  float er = vT * 0.30;
+  float a = smoothstep( er, er + 0.72 + 0.48 * vT, tex ) * vColor.a;
   if ( a < 0.004 ) discard;
   ${FOG_SCALE_F}
   // blackbody interior: texels well above the erosion front read white-hot,
@@ -227,8 +231,10 @@ void main() {
   float heat = clamp( ( tex - er ) * 2.6, 0.0, 1.0 );
   float hot = 0.45 + heat * heat * ( 2.2 - vT * 1.6 );
   vec3 col = vColor.rgb * hot * ( 1.0 - vT * vT * 0.45 );
-  // rim tint: pixels near the burning front shift toward deep ember red
-  col = mix( vec3( 1.0, 0.22, 0.03 ) * ( 0.4 + 0.6 * vColor.r ), col, smoothstep( 0.0, 0.55, heat ) );
+  // rim tint — r5: the hard 0.0-0.55 gate stamped a saturated RED BAND onto
+  // the rim (r4 "hard red banding"). The ramp now walks white -> yellow ->
+  // orange -> sooty umber across a wide gate so no single hue bands.
+  col = mix( vec3( 0.86, 0.34, 0.10 ) * ( 0.4 + 0.6 * vColor.r ), col, smoothstep( 0.0, 0.80, heat ) );
   // r5 combustion chemistry: saturation must fall BEFORE value. The old ramp
   // held saturated deep red through the whole back half of a fire card's
   // life, so 1.5-2.9 s post-blast the dying flare rendered as a floating
@@ -272,8 +278,11 @@ void main() {
   // note) — the jitter binarized the erosion front into per-pixel sizzle over
   // the wreck and the ground for the fireball's whole life. Band widened a
   // touch to keep the front torn without it.
+  // r5 anti-stipple: band 0.34 -> 0.46 base — the billow rim was the other
+  // stipple source at 2x crops (r4 "screen-door dither chewing every edge");
+  // 0.52 over-thinned the whole fireball body, 0.46 keeps the mass.
   float er = vT * 0.30;
-  float a = smoothstep( er, er + 0.34 + 0.45 * vT, tex ) * vColor.a;
+  float a = smoothstep( er, er + 0.46 + 0.45 * vT, tex ) * vColor.a;
   if ( a < 0.004 ) discard;
   // blackbody interior: dense texels above the erosion front burn white-hot,
   // cooling through orange -> deep ember red -> soot as the card ages and
@@ -287,10 +296,14 @@ void main() {
   // shrank to the very densest texels — the old ramp held a bright
   // desaturated "noisy white plaster" stage over the hull for ~2 s (r2
   // major). paint -> ember orange -> charcoal, never through ash white.
+  // r5: ramp stops widened + the deep-red band lifted toward burnt orange —
+  // the tight 0.30-0.72 orange gate left a hard red ring where it met the
+  // 0.06-0.32 band (r4 "hard red banding at the rim"). The overlapping
+  // gates now walk soot -> ember -> orange -> near-white as one gradient.
   float h2 = heat * ( 1.0 - vT * 0.95 );
-  vec3 col = mix( vColor.rgb, vec3( 0.42, 0.06, 0.015 ), smoothstep( 0.06, 0.32, h2 ) );
-  col = mix( col, vec3( 1.0, 0.38, 0.04 ), smoothstep( 0.30, 0.72, h2 ) );
-  col = mix( col, vec3( 1.28, 1.06, 0.78 ), smoothstep( 0.88, 0.99, h2 ) );
+  vec3 col = mix( vColor.rgb, vec3( 0.46, 0.10, 0.03 ), smoothstep( 0.04, 0.40, h2 ) );
+  col = mix( col, vec3( 1.0, 0.44, 0.07 ), smoothstep( 0.25, 0.85, h2 ) );
+  col = mix( col, vec3( 1.28, 1.08, 0.80 ), smoothstep( 0.80, 0.99, h2 ) );
   // combustion chemistry: saturation falls BEFORE value — past mid-life the
   // card desaturates to sooty grey and dims, handing off to the smoke pool
   // (without this the aged billow mass froze as a translucent MAROON wall
@@ -371,12 +384,18 @@ void main() {
   float dx = abs( vUv.x * 2.0 - 1.0 );
   float profile = ( 1.0 - dy * dy ) * ( 1.0 - dx * dx * dx );
   float core = smoothstep( 0.55, 0.0, dy );
-  float a = profile * vColor.a;
+  // r5 (critic: "dead-straight hairline streaks that read as vector lines"):
+  // a soft bright GLOW HEAD at the leading end + a tail that thins to
+  // nothing makes each streak read as a falling ember with a motion smear,
+  // not a uniform-width rod.
+  float head = smoothstep( 0.30, 0.92, vUv.x );
+  float a = profile * vColor.a * ( 0.38 + 0.62 * head );
   if ( a < 0.004 ) discard;
   ${FOG_SCALE_F}
   // incandescent cooling ramp: white-hot core -> orange -> deep red over life
   vec3 base = mix( vColor.rgb, vec3( 1.0, 0.30, 0.04 ), clamp( vT * 1.5, 0.0, 0.92 ) );
-  vec3 col = toneCap( ( base + vec3( core ) * 0.7 * ( 1.0 - vT * 0.85 ) ) * uIntensity );
+  vec3 col = toneCap( ( base * ( 0.55 + 0.45 * head )
+    + vec3( core ) * ( 0.35 + 0.55 * head ) * ( 1.0 - vT * 0.85 ) ) * uIntensity );
   gl_FragColor = vec4( col * ( 1.0 - fogFactor ), a );
 }
 `;
@@ -531,9 +550,12 @@ void main() {
   vLocal = lp;
   vSeed = aSG.w;
   vWorldPos = wpos;
-  // charred-metal albedo: dark soot to scorched brown (r2: floor lifted off
-  // near-black — 0.045 albedo could not read as a lit object at any exposure)
-  vTint = mix( vec3( 0.075, 0.068, 0.060 ), vec3( 0.185, 0.140, 0.105 ), h3 );
+  // charred-metal albedo — r5 (critic: "pale salmon-PINK flat chips"): the
+  // 0.185/0.140/0.105 warm-brown top of the range, lit by the warm sun +
+  // blast light, tone-mapped to salmon confetti on the grass. The range now
+  // tops out at dark gunmetal-brown so lit chunks stay wreckage-dark; the
+  // ember pockets supply all the orange.
+  vTint = mix( vec3( 0.055, 0.052, 0.048 ), vec3( 0.115, 0.092, 0.070 ), h3 );
   // ember glow: airborne wreckage leaves the fireball HOT — near-full glow
   // through the first ~0.5 s (the r5 "flat matte-black slabs against sky"
   // window), then cools fast so grounded chunks never read orange popcorn.
@@ -575,14 +597,23 @@ void main() {
   vec3 col = vTint * ( hemi + nl * 1.35 ) + vec3( 0.028, 0.026, 0.024 ) * hemi;
   vec3 viewDir = normalize( cameraPosition - vWorldPos );
   float rim = pow( 1.0 - abs( dot( n, viewDir ) ), 2.0 );
-  col += vec3( 0.36, 0.42, 0.50 ) * rim * ( 0.26 + 0.28 * ( n.y * 0.5 + 0.5 ) );
+  // r5 (critic: "pale salmon-PINK flat chips scatter around the kill"): the
+  // cool blue-grey rim ADDED onto the warm ember glow + blast light mixed to
+  // salmon on any chip catching both. Rim is now a dim neutral grey and it
+  // FADES OUT while the chunk is ember-hot, so hot chips stay gunmetal with
+  // orange pockets and cold chips keep only a whisper of sky rim.
+  col += vec3( 0.30, 0.32, 0.35 ) * rim * ( 0.10 + 0.16 * ( n.y * 0.5 + 0.5 ) )
+    * ( 1.0 - clamp( vHot * 2.0, 0.0, 0.85 ) );
   // cooling ember glow (bloom feed): NOT a flat face tint — SMOOTH seeded
   // noise blotches so irregular PATCHES of the scorched chunk glow orange
   // while the rest stays charred black. r1: the old floor()-cell hash read as
   // a hard checkerboard-dither texture on chunks near the camera — value
   // noise (hashed lattice corners, smoothstep-interpolated) keeps the pockets
   // irregular but CONTINUOUS.
-  float edge = 0.40 + 0.60 * ( 1.0 - nl );
+  // r5: sun-side ember floor 0.40 -> 0.28 + tighter pocket gate below — a
+  // fully-lit landed chip used to glow across its whole top face, reading
+  // as a pastel salmon petal on the grass instead of a cooling ember core.
+  float edge = 0.28 + 0.72 * ( 1.0 - nl );
   vec3 lp3 = vLocal * 3.6 + vSeed * 29.0;
   vec3 c0 = floor( lp3 );
   vec3 f3 = lp3 - c0;
@@ -592,8 +623,8 @@ void main() {
   float n10 = mix( DHASH(vec3(0.,1.,0.)), DHASH(vec3(1.,1.,0.)), f3.x );
   float n01 = mix( DHASH(vec3(0.,0.,1.)), DHASH(vec3(1.,0.,1.)), f3.x );
   float n11 = mix( DHASH(vec3(0.,1.,1.)), DHASH(vec3(1.,1.,1.)), f3.x );
-  float pat = smoothstep( 0.52, 0.88, mix( mix( n00, n10, f3.y ), mix( n01, n11, f3.y ), f3.z ) );
-  col += vec3( 1.5, 0.38, 0.05 ) * vHot * edge * ( 0.06 + 0.94 * pat );
+  float pat = smoothstep( 0.60, 0.92, mix( mix( n00, n10, f3.y ), mix( n01, n11, f3.y ), f3.z ) );
+  col += vec3( 1.35, 0.30, 0.04 ) * vHot * edge * ( 0.05 + 0.95 * pat );
   ${FOG_SCALE_F}
   #ifdef USE_FOG
     col = mix( col, fogColor, fogFactor );
@@ -704,8 +735,11 @@ function makeFlipbookTexture(rng, style) {
   // front binarized into GIF-dither confetti on 5-7 m cards at 100% zoom.
   // Billow structure now comes from the low octaves; the fine octaves only
   // modulate, never gate.
-  const churnLo = fire ? 0.44 : (style === 'dust' ? 0.58 : 0.52);
-  const churnHi = fire ? 0.72 : (style === 'dust' ? 0.62 : 0.62);
+  // r5: fire per-texel contrast cut again (0.44/0.72 -> 0.55/0.55) — the
+  // erosion smoothstep still binarized the top octave into stipple on 5-7 m
+  // destruction cards (r4 "hundreds of dark stipple dots").
+  const churnLo = fire ? 0.55 : (style === 'dust' ? 0.58 : 0.52);
+  const churnHi = fire ? 0.55 : (style === 'dust' ? 0.62 : 0.62);
   const gamma = fire ? 0.88 : 1.06;
   for (let k = 0; k < TILES * TILES; k++) {
     const q = k / (TILES * TILES - 1);          // 0 -> 1 over the sequence

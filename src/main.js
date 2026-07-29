@@ -203,7 +203,13 @@ function setPedestalTank(specId) {
   };
   pedestalVisual = createTank(specId, engineCtx, { camoSeed: 4200, quality: 'high' });
   pedestalVisual.root.position.set(GARAGE_POS.x, GARAGE_POS.y + 0.35, GARAGE_POS.z);
-  pedestalVisual.root.rotation.y = 162 * DEG;
+  // camo_spotting r4: same front-3/4 presentation for every hero — long
+  // hulls may carry a yaw trim so the camo picker repaints a fully framed
+  // vehicle (visual.garageYawDeg, authored per spec; 0 keeps today's pose).
+  const pedSpec = getSpec(specId);
+  pedestalVisual.spec = pedSpec;
+  pedestalVisual.root.rotation.y =
+    (162 + ((pedSpec && pedSpec.visual && pedSpec.visual.garageYawDeg) || 0)) * DEG;
   scene.add(pedestalVisual.root);
   // content_breadth r1: never show the three-box procedural placeholder on
   // the garage pedestal while the hero's GLB parses (the hard pop landed
@@ -223,8 +229,17 @@ function setPedestalTank(specId) {
       if (m.hasCachedGlb(src.glb.path)) { retirePrev(); return; }
       if (vis.setVisible) vis.setVisible(false); // prev covers the stage
       const stats = (typeof window !== 'undefined' && window.__GLB_STATS) || null;
+      // tank_models r4: 6 s timeout fallback — on asset 404/parse fail the
+      // procedural stand-in is what exists; reveal it rather than leaving
+      // the OUTGOING hero parked on the pedestal forever (swap-race minor).
+      const deadline = performance.now() + 6000;
       const poll = () => {
         if (token !== pedestalPollToken) { retirePrev(); return; } // superseded
+        if (performance.now() > deadline) {
+          if (vis.setVisible) vis.setVisible(true);
+          retirePrev();
+          return;
+        }
         // tank_models r3: gate on THIS visual's swap, not global settle —
         // any future load kicked while the hero parses (thumbs, another
         // asset) would re-open the empty-pedestal window. applySwap stamps
@@ -249,7 +264,14 @@ function setPedestalTank(specId) {
 setPedestalTank(selectedSpecId);
 
 function garageCameraPose() {
-  _v1.set(GARAGE_POS.x + 8.2, GARAGE_POS.y + 2.9, GARAGE_POS.z + 8.8);
+  // hud_ui r4: camera pulled in ~10% + slightly lower — kills the dead
+  // charcoal zone below the dais and enlarges the hero tank.
+  // camo_spotting r4: offset scales with the selected hull's overall length
+  // so long vehicles (Leo 2A7 10.97 m, T-90M) keep the muzzle in frame at
+  // the same front-3/4 composition (M1A2 ~9.9 m is the reference framing).
+  const dims = pedestalVisual && pedestalVisual.spec && pedestalVisual.spec.dims;
+  const k = Math.min(1.25, Math.max(1, ((dims && dims.overallLengthM) || 9.9) / 9.9));
+  _v1.set(GARAGE_POS.x + 7.4 * k, GARAGE_POS.y + 2.75 + 0.2 * (k - 1), GARAGE_POS.z + 8.0 * k);
   _v2.set(GARAGE_POS.x, GARAGE_POS.y + 1.55, GARAGE_POS.z);
   rig.setExternalPose(_v1, _v2, 42);
 }
@@ -932,6 +954,53 @@ function refreshSpotFrame() {
   frameInfo.spotting = spotFrame;
 }
 
+// controls_gunnery r4: MUZZLE-PATH CLEARANCE, shared by the live reticle
+// (computeAimInfo) and the headless aim gate (debugAimState). The r2 test
+// stopped a full 6 m short of the aim point, so a knife-edge crest sitting at
+// a hull-down target's bounding sphere read as CLEAR while every shell died
+// in it (r4 E2E: 3 settled shots at 290-347 m, green pen marker, converged
+// circle, misses 118-394 m into terrain). Two rays now decide:
+//  1. CENTER ray to within 1.5 m of the aim point — the aim point itself sits
+//     >= 0.5·height above the target's ground contact, so target-adjacent
+//     terrain can only intersect when a real crest interposes;
+//  2. GRAZE ray along the lower dispersion cone (the cone diverges from the
+//     muzzle, so its lower boundary at fraction k of the reticle radius is
+//     the straight line muzzle -> aim point dropped by k*r; the reticle
+//     circle is the ~2-sigma envelope). k = 0.65 (~1.3 sigma): flags lays
+//     where ~10%+ of the shot distribution eats a mid-path crest. Probing
+//     the FULL radius (first r4 attempt) vetoed nearly every rolling-terrain
+//     lay on the verdant map at 150-250 m (probe: settled errMrad 0.6-1.1,
+//     center ray clear, stable phantom "blocked at 149 m") — a 2-sigma tail
+//     graze is a ~2% whiff, which WoT would not warn about either. The last
+//     15% is exempt so the target's own ground plane / glacis apron never
+//     strobes the warning on honest lays.
+const _mpbA = new THREE.Vector3();
+const _mpbB = new THREE.Vector3();
+function muzzlePathBlockDist(muzzle, aimPoint, dispersionRadM) {
+  _mpbB.copy(aimPoint).sub(muzzle);
+  const pathLen = _mpbB.length();
+  if (pathLen <= 12) return null;
+  _mpbB.multiplyScalar(1 / pathLen);
+  const blk = world.raycast(muzzle, _mpbB, pathLen - 1.5);
+  if (blk) return blk.dist;
+  if (dispersionRadM > 0.1) {
+    _mpbA.copy(aimPoint);
+    // 0.65 of the reticle radius ~= the 1.3-sigma line: flags lays where
+    // ~10%+ of the cone dies mid-path (measured residual class: settled
+    // 250 m shots dying 40 m short at ~84% of the path), while the full-r
+    // probe (2-sigma tail, ~2%) vetoed nearly every rolling-terrain lay.
+    _mpbA.y -= dispersionRadM * 0.65;
+    _mpbB.copy(_mpbA).sub(muzzle);
+    const len2 = _mpbB.length();
+    if (len2 > 12) {
+      _mpbB.multiplyScalar(1 / len2);
+      const graze = world.raycast(muzzle, _mpbB, len2 * 0.85);
+      if (graze) return graze.dist;
+    }
+  }
+  return null;
+}
+
 function computeAimInfo() {
   const p = game.player;
   const aim = frameInfo.aim;
@@ -959,15 +1028,10 @@ function computeAimInfo() {
   // clear. Raycast the actual muzzle→aimPoint path every HUD frame; the
   // reticle turns red + prints the blocking distance when obstructed short
   // of the aim point.
-  aim.blockedDistM = null;
+  // r4: raycast margin 6 m -> 1.5 m + dispersion-cone graze test — see
+  // muzzlePathBlockDist. The old margin made hull-down crests invisible.
   p.visual.gunMuzzleWorld(_v1);
-  _v2.copy(aim.point).sub(_v1);
-  const pathLen = _v2.length();
-  if (pathLen > 12) {
-    _v2.multiplyScalar(1 / pathLen);
-    const blk = world.raycast(_v1, _v2, pathLen - 6);
-    if (blk) aim.blockedDistM = blk.dist;
-  }
+  aim.blockedDistM = muzzlePathBlockDist(_v1, aim.point, aim.dispersionRadM);
 
   // penetration indicator: first enemy plate under the aim ray.
   // controls_gunnery r6: matches the sticky server reticle — the bounding
@@ -1293,7 +1357,13 @@ function tick(nowMs) {
   // Battle-open flyby: hide the battle HUD while the rig owns the camera
   // (the rig itself shows the letterbox bars — cameraRig.setLetterbox).
   // Edge-triggered so the kill-cam's own veilHud calls are never fought.
-  if (!kcActive && rig.cinematicActive !== lastCineActive) {
+  // killcam_shotinfo r4: re-check killcam.isActive() LIVE — the replay may
+  // have STARTED in step 2 of this very tick (death path mid-frame), and the
+  // stale frame-top kcActive snapshot let the flyby edge-latch un-veil the
+  // battle HUD over a live replay. If the edge is swallowed here, the latch
+  // fires on the first frame after the replay ends (veilHud(false) — exactly
+  // the state finishBattle/afterDeath restore anyway).
+  if (!kcActive && !killcam.isActive() && rig.cinematicActive !== lastCineActive) {
     lastCineActive = rig.cinematicActive;
     veilHud(lastCineActive);
   }
@@ -1703,24 +1773,27 @@ const SHOT_VIEWS = {
     hud.setMode('hidden');
     // tank_models r2: sun-side close orbit (negative azimuth) — fills the
     // frame and keeps the running gear/M256 collar/skirt panels readable.
-    orbitPose(game.tankById.get('m1a2'), 7, -38, 9, 45);
+    // lighting_post r4: elev 9 -> 15, dist 7 -> 8 — the extra elevation puts
+    // the hull-adjacent contact shadow above the hull's own horizon so the
+    // closeup actually shows the vehicle grounded (shadow-read fix).
+    orbitPose(game.tankById.get('m1a2'), 8, -42, 15, 45);
   },
   tank_closeup_ww2() {
     hud.setMode('hidden');
     // Sun-lit 3/4 front (tank_models r1): the old azimuth 35 put the running
     // gear and lower hull in their own shadow — the interleaved wheels, track
     // sag and camo bands were unreadable in the judged frame.
-    orbitPose(game.tankById.get('tiger1'), 9, -35, 12, 50);
+    orbitPose(game.tankById.get('tiger1'), 9, -35, 16, 50); // lighting_post r4: elev 12 -> 16 (contact shadow read)
   },
   tank_closeup_t90m() {
     hud.setMode('hidden');
     // tank_models r3: every core roster tank gets a judged closeup — the
     // T-90M shipped unauditable as a carousel thumb.
-    orbitPose(game.tankById.get('t90m'), 8, -38, 10, 45);
+    orbitPose(game.tankById.get('t90m'), 8, -38, 15, 45); // lighting_post r4: elev 10 -> 15 (contact shadow read)
   },
   tank_closeup_leo2a7() {
     hud.setMode('hidden');
-    orbitPose(game.tankById.get('leo2a7'), 8, -35, 10, 45);
+    orbitPose(game.tankById.get('leo2a7'), 8, -35, 15, 45); // lighting_post r4: elev 10 -> 15 (contact shadow read)
   },
   detrack() {
     // effects_combat r2: de-track destruction visuals — slumped band, thrown
@@ -1739,13 +1812,14 @@ const SHOT_VIEWS = {
     const p = game.player;
     // effects_combat r2: pitch 8 → 14 lifts the barrel line onto the sunlit
     // road so the dark tube no longer vanishes against the shadowed bank.
-    orbitPose(p, 13, 55, 14, 45);
-    // Recoil in the composed moment: each syncFromState advances the
-    // self-timed recoil one 1/60 step, so 3 syncs ~= ageS 0.05 of kick.
-    p.visual.recoilKick();
-    p.visual.syncFromState(p.state);
-    p.visual.syncFromState(p.state);
-    p.visual.syncFromState(p.state);
+    orbitPose(p, 13, 55, 18, 45); // lighting_post r4: elev 14 -> 18 (left-side shadow readable)
+    // effects_combat r4: recoil timelines now advance on the SHARED FX CLOCK
+    // (src/fx/clock.js), which is pinned during __SHOTS.set — repeated
+    // syncFromState calls advance 0 s. recoilKick(ageS) takes the composed
+    // age directly: backdate the stroke 50 ms so the barrel sits visibly
+    // out of battery in the staged still.
+    p.visual.recoilKick(0.05);          // backdate: stroke already 50 ms in
+    p.visual.syncFromState(p.state);    // one call to apply the pose
     // controls_gunnery r3: staged flash direction along the real bore axis.
     p.visual.gunMuzzleWorld(_v1);
     p.visual.gunDirWorld(_v3);
@@ -2074,7 +2148,13 @@ function debugLeadPoint(p, best, out) {
     out.set(ax, _v2.y, az);
   };
   p.visual.gunMuzzleWorld(_v3); // blocked-reticle test origin (muzzle path)
-  const margin = Math.min(6, best.spec.armor.boundingRadiusM);
+  // controls_gunnery r4: 6 m -> 1.5 m. min(6, boundingRadius) left the whole
+  // bounding sphere untested, so a knife-edge crest AT a hull-down target
+  // passed clearAt and the picker confidently laid center-mass into dirt
+  // (misses 118-394 m with a green reticle). 1.5 m still stops short of the
+  // aim point itself (>= 0.5·height above the target's ground contact), so
+  // honest flat-ground lays never self-block.
+  const margin = 1.5;
   // NOTE (round-2 integration): the handoff's binary GRAZE MARGIN (parallel
   // ray 0.5 m below must clear too) was applied, measured against the frozen
   // gunnery gate, and REPLACED — it biased marginal cross-valley lays up to
@@ -2110,6 +2190,19 @@ function debugLeadPoint(p, best, out) {
     }
     return clr;
   };
+  // r4 BOUNCE FEEDBACK (0-damage streak fix): if this target's LAST player
+  // shell was a 0-damage tank impact (ricochet / nonpen), stop re-bouncing
+  // the same plate — skip the center-mass optimum and probe the lower-hull /
+  // upper bands instead (WoT weak-spot discipline; the r5 sample landed
+  // damage on only 2 of 5 aim-assisted shots because the assist kept
+  // re-serving the same bounce).
+  let bouncedLast = false;
+  for (let i = playerShellLog.length - 1; i >= 0; i--) {
+    const r = playerShellLog[i];
+    if (r.targetId !== best.id || !r.terminal) continue;
+    bouncedLast = r.terminal === 'tank' && (r.damage || 0) <= 0;
+    break;
+  }
   const latched = leadLatchTargetId === best.id && game.timeS < leadLatchUntilS;
   if (latched && clearAt(leadLatchHFrac)) return out; // hold the settled height
   // CONTINUOUS optimum: raising the aim by dy raises the scaled clearance by
@@ -2118,6 +2211,19 @@ function debugLeadPoint(p, best, out) {
   // aim = center + (headroom - scaledClr)/2, clamped to the [0.5, 0.9]·h
   // band (never below hull center, never a knife-edge under the roof line).
   const hM = best.spec.dims.heightM;
+  if (bouncedLast) {
+    // alternate plates after a bounce: lower hull first, then high turret
+    for (const hFrac of [0.34, 0.62, 0.5]) {
+      if (!clearAt(hFrac)) continue;
+      leadLatchHFrac = hFrac;
+      leadLatchTargetId = best.id;
+      leadLatchUntilS = game.timeS + 1;
+      return out;
+    }
+    solveAt(0.5);
+    leadLatchTargetId = null;
+    return out;
+  }
   if (clearAt(0.5)) {
     const sc = pathClearance();
     const headroom = hM * 0.5; // roof line is 0.5·h above the center aim
@@ -2173,14 +2279,13 @@ function debugAimState() {
     turretYawDeg: Math.round(p.state.turretYaw * 573) / 10,
     // controls_gunnery r3: HUD frames don't run inside debugFastForward, so
     // frameInfo.aim.blockedDistM is STALE for headless gates — recast fresh.
+    // r4: same 1.5 m margin + dispersion graze test as the live reticle, so
+    // the gate can never settle-fire a lay the reticle would call blocked.
     blockedDistM: (() => {
       p.visual.gunMuzzleWorld(_v1);
-      _v2.copy(p.input.aimPoint).sub(_v1);
-      const len = _v2.length();
-      if (len <= 12) return null;
-      _v2.multiplyScalar(1 / len);
-      const blk = world.raycast(_v1, _v2, len - 6);
-      return blk ? blk.dist : null;
+      return muzzlePathBlockDist(
+        _v1, p.input.aimPoint,
+        computeDispersionRadM(p.spec, p.state, rig.aimDist));
     })(),
     leadHFrac: leadLatchTargetId ? leadLatchHFrac : null,
   };
@@ -2209,9 +2314,20 @@ function debugAimAtNearest() {
     const d = _v3.length();
     if (d >= bestD || d < 1e-3) continue;
     // Only offer LOS-clear targets: the drive test needs a shot that can land.
+    // controls_gunnery r4: tolerance boundingRadius+1 (up to 7 m of accepted
+    // obstruction) -> 2 m — candidates whose hull-center ray dies in a crest
+    // at their own bounding sphere are exactly the shots that whiff with a
+    // green reticle; reject them here instead of teaching the gate to fire.
     _v3.multiplyScalar(1 / d);
     const block = world.raycast(_v1, _v3, d);
-    if (block && block.dist < d - ent.spec.armor.boundingRadiusM - 1) continue;
+    if (block && block.dist < d - 2) continue;
+    // r4: the settle gate rejects on the MUZZLE path (muzzlePathBlockDist);
+    // pre-filter candidates with the same test so the drive test never
+    // commits its slew to a target the fire gate will veto anyway (probe
+    // showed repeated doomed attempts on pivot-clear/muzzle-blocked lanes).
+    // _rayO is free here (only computeAimInfo's pen probe uses it).
+    p.visual.gunMuzzleWorld(_rayO);
+    if (muzzlePathBlockDist(_rayO, _v2, 0) != null) continue;
     bestD = d;
     best = ent;
   }

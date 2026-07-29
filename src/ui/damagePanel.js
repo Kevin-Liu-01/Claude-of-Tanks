@@ -1,14 +1,12 @@
 // src/ui/damagePanel.js — bottom-left player damage panel, WoT panel
-// language. r8 MAJOR: TOP-DOWN hull schematic — the vehicle's own
-// top_silhouette.png (nose up) drawn as a solid light-steel plan view with
-// its two TRACK RAILS ticked in, flanked by the WoT damage-panel instrument
-// set: persistent module pips (gun/engine/ammo/fuel/optics/radio) at ~25%
-// alpha on the healthy vehicle that light orange/red on damage, per-side
-// rail floods for de-tracks, hit-zone floods from the real armor model, and
-// a persistent dim crew row whose members flip to red chips when knocked
-// out. (The r7 side profile with a bare HP bar read as a War Thunder X-ray
-// crossed with an empty box — WoT's panel is a top-down schematic that shows
-// its module/crew geography at all times.) No letterforms inside the
+// language. TOP-DOWN hull schematic — the vehicle's own top_silhouette.png
+// (nose up) drawn as a solid light-steel plan view with its two TRACK RAILS
+// ticked in. r4: the HEALTHY panel is clean (WoT behavior) — module chips
+// (gun/engine/ammo/fuel/optics/radio) and crew chips exist only in their
+// damaged states: crisp orange/red icon chips, per-side rail floods for
+// de-tracks, hit-zone floods from the real armor model, red crew chips on
+// knock-outs. (The r6-r8 persistent ~25%-alpha pips measured ~1.2:1
+// contrast and read as illegible smudges.) No letterforms inside the
 // silhouette, ever (hud_ui r2). HP bar and fire indicator.
 // Contract: docs/ARCHITECTURE.md §3.7.2.
 
@@ -58,14 +56,14 @@ const DP_CSS = `
 .cot-dp .hptrack{height:5px;background:rgba(4,6,8,.75);border:1px solid rgba(0,0,0,.6);margin-bottom:5px;}
 .cot-dp .hpfill{height:100%;width:100%;transition:width .15s linear;}
 .cot-dp canvas{display:block;margin:0 auto;}
-/* crew strip (r8): PERSISTENT dim role chips (~25% alpha) under the
-   schematic — the crew geography reads even at full health (WoT panel
-   grammar); a knocked-out member flips to a full red chip. */
-.cot-dp .crew{display:flex;justify-content:center;gap:4px;margin-top:5px;}
-.cot-dp .cm{display:flex;width:24px;height:21px;border-radius:2px;
-  align-items:center;justify-content:center;color:#cfd9e2;opacity:.25;
+/* crew strip (r4): HIDDEN while healthy — WoT shows crew only when someone
+   is knocked out; the r8 persistent ~25%-alpha role chips read as muddy
+   smudges under the schematic. A casualty pops in as a full red chip. */
+.cot-dp .crew{display:flex;justify-content:center;gap:4px;}
+.cot-dp .cm{display:none;width:24px;height:21px;border-radius:2px;
+  align-items:center;justify-content:center;color:#cfd9e2;
   border:1px solid rgba(146,164,180,.5);background:rgba(9,13,17,.55);}
-.cot-dp .cm.dead{opacity:1;color:#f05a5a;
+.cot-dp .cm.dead{display:flex;margin-top:5px;color:#f05a5a;
   border-color:rgba(240,90,90,.7);background:rgba(46,14,14,.75);
   animation:cotDmgPop .22s ease-out;}
 .cot-dp .cm svg{display:block;width:14px;height:14px;}
@@ -236,9 +234,8 @@ const MODULE_ICON = {
   },
 };
 
-// modules that keep a PERSISTENT dim pip on the healthy schematic (the WoT
-// instrument set); anything else with an icon only appears once damaged.
-const PIP_MODULES = ['gun', 'engine', 'ammoRack', 'fuelTank', 'optics', 'radio'];
+// r4: no persistent healthy-module pips — every module icon appears only
+// once damaged (WoT panel behavior; see drawPip).
 
 /**
  * Create the player damage panel (top-down schematic + modules + crew + HP + fire).
@@ -411,33 +408,24 @@ export function createDamagePanel() {
     for (const p of pts) anchors.set(p.name, [p.x, p.y]);
   }
 
-  // One module pip. Healthy pips render the WHOLE slot at ~25% alpha (WoT's
-  // persistent instrument read); damaged pips are full-strength state chips.
+  // One module pip — DAMAGED STATES ONLY (r4, WoT panel behavior): healthy
+  // modules render nothing at all. The r6-r8 persistent ~25%-alpha slots
+  // measured ~1.2:1 contrast on the grey schematic and read as illegible
+  // smudges (critique) — WoT keeps the healthy panel clean and pops crisp
+  // orange/red state chips only when something breaks.
   function drawPip(name, pt, st) {
     const icon = MODULE_ICON[name];
-    if (!icon) return;
+    if (!icon || st === 'ok') return;
     ctx.save();
     ctx.translate(pt[0], pt[1]);
-    if (st === 'ok') {
-      ctx.globalAlpha = 0.25;
-      roundRect(ctx, -7.5, -7.5, 15, 15, 2.5);
-      ctx.fillStyle = 'rgba(7,11,15,0.8)';
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(225,235,244,0.8)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.scale(0.8, 0.8);
-      icon(ctx, 'rgba(232,240,248,0.95)');
-    } else {
-      const col = STATE_COLOR[st];
-      roundRect(ctx, -8.5, -8.5, 17, 17, 3);
-      ctx.fillStyle = 'rgba(30,14,10,0.92)';
-      ctx.fill();
-      ctx.strokeStyle = col;
-      ctx.lineWidth = 1.2;
-      ctx.stroke();
-      icon(ctx, col);
-    }
+    const col = STATE_COLOR[st];
+    roundRect(ctx, -8.5, -8.5, 17, 17, 3);
+    ctx.fillStyle = 'rgba(30,14,10,0.92)';
+    ctx.fill();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    icon(ctx, col);
     ctx.restore();
   }
 
@@ -563,14 +551,12 @@ export function createDamagePanel() {
     // module hit-zones from the real armor model — invisible until damaged
     drawModuleRegions(tPivot);
 
-    // module pips at relaxed anchors: PERSISTENT dim slots for the WoT
-    // instrument set, full state chips on damage (any module with an icon)
+    // module state chips at relaxed anchors — damaged modules only (r4,
+    // WoT behavior; drawPip no-ops on 'ok')
     if (!anchors) computeAnchors();
     for (const [name, pt] of anchors) {
       if (!MODULE_ICON[name]) continue;
-      const st = moduleState(name);
-      if (st === 'ok' && PIP_MODULES.indexOf(name) < 0) continue;
-      drawPip(name, pt, st);
+      drawPip(name, pt, moduleState(name));
     }
   }
 

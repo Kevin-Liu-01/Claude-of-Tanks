@@ -78,10 +78,12 @@ const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 }
 // M4A3E8 Sherman "Easy Eight"
 // ---------------------------------------------------------------------------
 function armorM4() {
-  const hw = 1.5, inW = 0.92, roofY = 1.93, trkTop = 1.10, floor = 0.43;
+  // r4: roofY raised 1.93 -> 2.02 with the visual sponson (roster: the
+  // tallest-proportioned WWII tank; height ~= hull length x 0.47)
+  const hw = 1.5, inW = 0.92, roofY = 2.02, trkTop = 1.10, floor = 0.43;
   return {
     boundingRadiusM: 4.1,
-    turretPivot: [0, 1.93, 0.4],
+    turretPivot: [0, 2.02, 0.4],
     gunPivot: [0, 0.35, 0.55],
     gunBarrel: { lengthM: 3.96, radiusM: 0.07 },
     hullPlates: [
@@ -473,10 +475,12 @@ function armorLeo2A7() {
     gunPivot: [0, 0.32, 0.8],
     gunBarrel: { lengthM: 6.6, radiusM: 0.10 },
     hullPlates: [
-      fr('upper_glacis', 45, 1.6, 1.0, 3.83, roofY, 1.00, { keMm: 120, ceMm: 150 }),   // ~76 deg
-      fr('lower_front', 600, 1.6, floor, 3.45, 1.0, 3.83, { keMm: 620, ceMm: 820 }),
-      sR('hull_side_upper_R', 40, 1.875, trkTop, 1.875, roofY, -3.86, 1.0),
-      sL('hull_side_upper_L', 40, 1.875, trkTop, 1.875, roofY, -3.86, 1.0),
+      // r4 bow rebuild: high prow (beak 1.45) + short 81-deg glacis to the
+      // deck crease at z 2.03 — matches the visual (buildLeo2A7)
+      fr('upper_glacis', 45, 1.6, 1.45, 3.83, roofY, 2.03, { keMm: 120, ceMm: 150 }),  // ~81 deg
+      fr('lower_front', 600, 1.6, floor, 3.42, 1.45, 3.83, { keMm: 620, ceMm: 820 }),
+      sR('hull_side_upper_R', 40, 1.875, trkTop, 1.875, roofY, -3.86, 2.03),
+      sL('hull_side_upper_L', 40, 1.875, trkTop, 1.875, roofY, -3.86, 2.03),
       sR('hull_side_lower_R', 40, 1.24, floor, 1.24, trkTop, -3.8, 3.45),
       sL('hull_side_lower_L', 40, 1.24, floor, 1.24, trkTop, -3.8, 3.45),
       sR('skirt_heavy_R', 110, 1.88, 0.45, 1.88, 1.15, 1.3, 3.8, { kind: 'spaced', keMm: 160, ceMm: 450 }),
@@ -486,7 +490,7 @@ function armorLeo2A7() {
       sR('track_R', 25, 1.55, 0.15, 1.55, trkTop, -3.86, 3.86, { kind: 'external', moduleLink: 'trackR' }),
       sL('track_L', 25, 1.55, 0.15, 1.55, trkTop, -3.86, 3.86, { kind: 'external', moduleLink: 'trackL' }),
       rr('hull_rear', 40, 1.6, floor, -3.86, roofY, -3.86),
-      rf('hull_roof', 40, 1.6, roofY, -3.86, 1.00),
+      rf('hull_roof', 40, 1.6, roofY, -3.86, 2.03),
     ],
     turretPlates: [
       // r5: resized with the visual turret rebuild (thin proud wedge shells
@@ -607,7 +611,9 @@ export const TANK_SPECS = {
     armor: armorT34(),
     visual: {
       // dark 4BO olive — the old light pea-green read as bare plastic (r6)
-      scheme: 'solid', base: '#45502f', weather: '#535e3c', patches: [],
+      // r4: another step deeper — with the top-face bake fix the pair lands
+      // on wartime 4BO instead of pastel mint under the garage key
+      scheme: 'solid', base: '#3f4a2b', weather: '#4c5637', patches: [],
       marking: 'number', number: '312', trackWidthM: 0.5,
     },
   },
@@ -633,7 +639,7 @@ export const TANK_SPECS = {
     armor: armorIS2(),
     visual: {
       // dark 4BO olive (r6 — was a bright pea green)
-      scheme: 'solid', base: '#3e4a2e', weather: '#4a563a', patches: [],
+      scheme: 'solid', base: '#39442b', weather: '#455138', patches: [],
       marking: 'number', number: '432', trackWidthM: 0.65,
     },
   },

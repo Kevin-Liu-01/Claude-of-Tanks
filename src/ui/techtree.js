@@ -33,6 +33,29 @@ const LANE_LABEL = ['LIGHT', 'MEDIUM · MBT', 'HEAVY', 'TANK DESTROYER'];
 const ECON_KEY = 'cot_progress_v1';
 // research cost in XP by tier — tier I a formality, tier X a long grind
 const RESEARCH_COST = [0, 300, 700, 1300, 2200, 3600, 5800, 9200, 14500, 22500, 34000];
+// r4 (content_breadth): the flat per-tier table was a stub economy
+// (critique). Costs now differentiate per VEHICLE — a class factor (scouts
+// research fast, heavies grind) times a stable per-key spread — and research
+// happens in three MODULE steps (gun -> engine -> tracks) so a line has
+// texture beyond one click per card. Storage stays backward-compatible:
+// researched{} keeps its meaning, modules{} only tracks partial progress.
+const CLS_COST_F = { light: 0.85, ifv: 0.92, medium: 1.0, mbt: 1.05, heavy: 1.12, td: 1.02 };
+const MODULES = ['gun', 'engine', 'tracks'];
+const MODULE_SHARE = [0.45, 0.30, 0.25];
+function keyHash01(key) {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return ((h >>> 8) & 0xffff) / 0xffff;
+}
+function nodeCost(node) {
+  const base = RESEARCH_COST[node.tier] || 0;
+  if (!base) return 0;
+  const f = (CLS_COST_F[node.cls] ?? 1) * (0.88 + keyHash01(node.key) * 0.24);
+  return Math.max(25, Math.round((base * f) / 25) * 25);
+}
+function moduleStep(node, idx) {
+  return Math.max(25, Math.round((nodeCost(node) * MODULE_SHARE[idx]) / 25) * 25);
+}
 // enlistment stipend: enough to research a couple of low-tier nodes right
 // away, so a fresh profile can feel the loop before its first battle
 const SEED_XP = 900;
@@ -41,7 +64,7 @@ const SEED_CREDITS = 20000;
 let _prog = null;
 function loadProgress() {
   if (_prog) return _prog;
-  _prog = { xp: SEED_XP, credits: SEED_CREDITS, researched: {} };
+  _prog = { xp: SEED_XP, credits: SEED_CREDITS, researched: {}, modules: {} };
   try {
     const raw = localStorage.getItem(ECON_KEY);
     if (raw) {
@@ -51,6 +74,7 @@ function loadProgress() {
           xp: p.xp,
           credits: typeof p.credits === 'number' ? p.credits : 0,
           researched: p.researched && typeof p.researched === 'object' ? p.researched : {},
+          modules: p.modules && typeof p.modules === 'object' ? p.modules : {},
         };
       }
     }
@@ -371,8 +395,13 @@ const TT_CSS = `
 .cot-tt-node .tier{margin-left:auto;font-size:11px;font-weight:800;letter-spacing:.14em;
   color:#8a97a3;}
 .cot-tt-node canvas{display:block;margin:1px auto 2px;}
+/* r4 (content_breadth): +22% brightness / +8% contrast on the card renders —
+   the exposure-normalized portraits sit on near-black card plates here and
+   read murky at node size (critique: "dim and low-contrast"). Per-variant
+   scale deltas ride the inline transform set at build time. */
 .cot-tt-node .ti{display:block;margin:0 auto 1px;width:118px;height:38px;
-  object-fit:contain;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));}
+  object-fit:contain;filter:brightness(1.22) contrast(1.08) saturate(1.05)
+  drop-shadow(0 2px 3px rgba(0,0,0,.55));}
 .cot-tt-node .nm{font-size:10.5px;font-weight:600;letter-spacing:.01em;color:#eef4f9;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;}
 .cot-tt-node .cls{font-size:8px;font-weight:700;letter-spacing:.22em;color:#8a97a3;
@@ -394,6 +423,10 @@ const TT_CSS = `
   text-align:center;font-size:8.5px;font-weight:800;letter-spacing:.14em;
   color:#67727d;text-transform:uppercase;white-space:nowrap;overflow:hidden;
   background:linear-gradient(180deg,rgba(146,164,180,.07),rgba(146,164,180,.02));}
+/* r4: gun/engine/tracks module pips on research cards */
+.cot-tt-node .res .mp{font-style:normal;font-size:8px;letter-spacing:.10em;
+  margin-right:3px;color:#8a97a3;}
+.cot-tt-node.ghost.available .res .mp{color:#e0b060;}
 .cot-tt-node.ghost.available{opacity:.78;cursor:pointer;
   transition:transform .12s,border-color .12s,opacity .12s;}
 .cot-tt-node.ghost.available .res{color:#f0b04a;}
@@ -874,32 +907,45 @@ export function createTechTree(opts) {
     // COMMUNITY layout (content_breadth r1): a TRUE tier ladder. The old
     // collapsed-column + shift-right packing detached cards from their tier
     // columns (a VIII card could sit right of a IX card) and the tab read as
-    // a loose card pile (critique). Cards now keep their REAL tier column;
-    // same class+tier cards stack VERTICALLY into sub-rows inside their
-    // class band, and each band carries subtle rail lines so the roster
-    // reads as labeled class rows on a continuous I..X ladder.
-    const COMM_SUB_H = cardH + 40;   // sub-row pitch inside a class band
-    const COMM_BAND_GAP = 42;        // gap between class bands
-    const commSub = isComm ? new Map() : null;   // node.key -> sub-row index
+    // a loose card pile (critique). Cards keep their REAL tier column.
+    // r4 (content_breadth): overloaded (lane,tier) cells now pack TWO-WIDE
+    // inside a widened tier column instead of stacking 4 deep — the old
+    // one-per-sub-row stacking left giant vertical gulfs under every other
+    // column (critique: "wasted canvas"); sub-row pitch and band gaps
+    // tightened for the same reason. A pair of same-tier cards side by side
+    // still sits strictly inside its tier column, so the ladder stays honest.
+    const COMM_SUB_H = cardH + 26;   // sub-row pitch inside a class band
+    const COMM_BAND_GAP = 30;        // gap between class bands
+    const COMM_PAIR_GAP = 12;        // gap between two-wide same-tier cards
+    const commSub = isComm ? new Map() : null;   // node.key -> {sub,col,n}
     const commBandY = isComm ? new Map() : null; // lane -> band top Y
     const commBands = [];            // {lane, y0, depth, t0, t1}
+    const commTierWide = new Set();  // tiers that need a double-width column
     if (isComm) {
       const lanes = [...new Set(tab.nodes.map((nd) => nd.row))].sort((a, b) => a - b);
       let by = HEAD_H;
       for (const ln of lanes) {
-        const perTier = new Map();
-        let depth = 1, t0 = 11, t1 = 0;
+        const cells = new Map(); // tier -> [nodes]
+        let t0 = 11, t1 = 0;
         for (const nd of tab.nodes) {
           if (nd.row !== ln) continue;
-          const k = perTier.get(nd.tier) || 0;
-          perTier.set(nd.tier, k + 1);
-          commSub.set(nd.key, k);
-          depth = Math.max(depth, k + 1);
+          if (!cells.has(nd.tier)) cells.set(nd.tier, []);
+          cells.get(nd.tier).push(nd);
           t0 = Math.min(t0, nd.tier);
           t1 = Math.max(t1, nd.tier);
         }
+        let depth = 1;
+        for (const [tier, list] of cells) {
+          if (list.length > 1) commTierWide.add(tier);
+          for (let i = 0; i < list.length; i++) {
+            const sub = (i / 2) | 0;
+            const lastRowN = list.length - sub * 2 >= 2 ? 2 : 1;
+            commSub.set(list[i].key, { sub, col: i % 2, n: lastRowN });
+            depth = Math.max(depth, sub + 1);
+          }
+        }
         commBandY.set(ln, by);
-        commBands.push({ lane: ln, y0: by, depth, t0, t1 });
+        commBands.push({ lane: ln, y0: by, depth, t0, t1, cells });
         by += depth * COMM_SUB_H + COMM_BAND_GAP;
       }
     }
@@ -925,9 +971,14 @@ export function createTechTree(opts) {
     // tiers KEEP their ladder slot (I..X must read without gaps) but shrink
     // to a narrow spacer column; occupied tiers keep full TIER_W. Nation
     // tabs are untouched.
-    const COMM_EMPTY_W = 72;
+    // r4: 72 -> 54 — pairs with the two-wide cell packing; long empty tier
+    // runs (LIGHT band I..VIII) stop eating a third of the canvas
+    const COMM_EMPTY_W = 54;
     const occTiers = new Set(tab.nodes.map((nd) => nd.tier));
-    const tierWOf = (t) => (!isComm || occTiers.has(t)) ? TIER_W : COMM_EMPTY_W;
+    const tierWOf = (t) => !isComm ? TIER_W
+      : !occTiers.has(t) ? COMM_EMPTY_W
+        : commTierWide.has(t) ? NODE_W * 2 + COMM_PAIR_GAP + 26
+          : TIER_W;
     const tierXs = new Array(maxTier + 2).fill(0);
     {
       let tx = 0;
@@ -935,13 +986,18 @@ export function createTechTree(opts) {
     }
     const tierLeft = (t) => PAD_X + tierXs[Math.max(minTier, Math.min(maxTier + 1, t))];
     function nodePos(node) {
+      if (isComm) {
+        const cell = commSub.get(node.key);
+        const rowW = cell.n * NODE_W + (cell.n - 1) * COMM_PAIR_GAP;
+        return {
+          x: tierLeft(node.tier) + (tierWOf(node.tier) - rowW) / 2 +
+            cell.col * (NODE_W + COMM_PAIR_GAP),
+          y: commBandY.get(node.row) + cell.sub * COMM_SUB_H,
+        };
+      }
       return {
-        x: isComm
-          ? tierLeft(node.tier) + (tierWOf(node.tier) - NODE_W) / 2
-          : PAD_X + colByKey.get(node.key) * TIER_W + (TIER_W - NODE_W) / 2,
-        y: isComm
-          ? commBandY.get(node.row) + commSub.get(node.key) * COMM_SUB_H
-          : HEAD_H + node.row * ROW_H,
+        x: PAD_X + colByKey.get(node.key) * TIER_W + (TIER_W - NODE_W) / 2,
+        y: HEAD_H + node.row * ROW_H,
       };
     }
     const commBottom = isComm
@@ -981,30 +1037,25 @@ export function createTechTree(opts) {
     // rail spanning the band's occupied tier range — the tab reads as
     // organized class rows instead of cards floating on blank grid.
     if (isComm) {
+      // r4 (content_breadth): rails span only the tiers actually OCCUPIED at
+      // each sub-row (the old full-band rails ran through hundreds of px of
+      // empty grid and advertised the dead space they were meant to organize)
       for (const b of commBands) {
-        const rx0 = tierLeft(b.t0) + 10;
-        const rx1 = tierLeft(b.t1) + tierWOf(b.t1) - 10;
         for (let s = 0; s < b.depth; s++) {
+          let minT = 12, maxT = -1;
+          for (const [tier, list] of b.cells) {
+            if (list.length > s * 2) { minT = Math.min(minT, tier); maxT = Math.max(maxT, tier); }
+          }
+          if (maxT <= minT) continue; // single occupied column: no rail
           const ry = b.y0 + s * COMM_SUB_H + cardH / 2;
           const rail = document.createElementNS(svgNS, 'line');
-          rail.setAttribute('x1', rx0);
+          rail.setAttribute('x1', tierLeft(minT) + 10);
           rail.setAttribute('y1', ry);
-          rail.setAttribute('x2', rx1);
+          rail.setAttribute('x2', tierLeft(maxT) + tierWOf(maxT) - 10);
           rail.setAttribute('y2', ry);
           rail.setAttribute('stroke', 'rgba(146,164,180,.16)');
           rail.setAttribute('stroke-width', '2');
           svg.appendChild(rail);
-        }
-        // faint band frame ticks at both ends tie the sub-rows together
-        for (const rx of [rx0, rx1]) {
-          const tick = document.createElementNS(svgNS, 'line');
-          tick.setAttribute('x1', rx);
-          tick.setAttribute('y1', b.y0 + cardH / 2);
-          tick.setAttribute('x2', rx);
-          tick.setAttribute('y2', b.y0 + (b.depth - 1) * COMM_SUB_H + cardH / 2);
-          tick.setAttribute('stroke', 'rgba(146,164,180,.12)');
-          tick.setAttribute('stroke-width', '2');
-          svg.appendChild(tick);
         }
       }
     }
@@ -1087,11 +1138,19 @@ export function createTechTree(opts) {
       const credit = node.credit || (spec0 && spec0.community) || null;
       const st = delisted ? 'delisted'
         : real && spec ? 'ready' : ghostState(node, byKey);
-      const cost = RESEARCH_COST[node.tier] || 0;
+      const cost = nodeCost(node);
+      // module research progress (0..3 bought) — drives the pip strip + the
+      // next-step price on the footer
+      const modsDone = Math.min(3, loadProgress().modules[node.key] || 0);
+      const stepIdx = Math.min(modsDone, 2);
+      const stepCost = moduleStep(node, stepIdx);
+      const pips = st === 'available' || st === 'locked'
+        ? `<i class="mp">${'◆'.repeat(modsDone)}${'◇'.repeat(3 - modsDone)}</i>`
+        : '';
       const p = nodePos(node);
       const el = document.createElement('div');
       el.className = `cot-tt-node ${real && spec ? 'real' : `ghost ${st}`}` +
-        `${credit ? ' comm' : ''}${st === 'available' && loadProgress().xp < cost ? ' poor' : ''}`;
+        `${credit ? ' comm' : ''}${st === 'available' && loadProgress().xp < stepCost ? ' poor' : ''}`;
       el.style.left = `${p.x}px`;
       el.style.top = `${p.y}px`;
       const TAB_NATION = {
@@ -1102,17 +1161,19 @@ export function createTechTree(opts) {
       const nation = spec0 ? spec0.nation
         : (TAB_NATION[tab.id] || (node.era === 'ww2' ? 'USSR' : 'Russia'));
       const resLabel = st === 'researched' ? 'Researched'
-        : st === 'available' ? `Research &middot; ${fmt(cost)} XP`
+        : st === 'available' ? `${pips} ${MODULES[stepIdx]} &middot; ${fmt(stepCost)} XP`
           : st === 'delisted' ? 'Delisted &middot; not in garage'
-            : `Locked &middot; ${fmt(cost)} XP`;
+            : `${pips} Locked &middot; ${fmt(cost)} XP`;
       el.innerHTML =
         `<div class="top">${flagSVG(nation, node.era, 20, 13)}` +
         `<span class="tier">${ROMAN[node.tier]}</span></div>` +
         // battle-ready nodes show the real 3/4 hero icon of the shipped model;
         // delisted community cards keep the (greyed) icon; ghost research
         // placeholders keep the flat grey vector silhouette
+        // r4 (content_breadth): per-vehicle scale delta (±8%) so sibling
+        // variants (Leo 2A6 vs 2A7) stop rendering as identical stamps
         ((real && spec) || delisted
-          ? `<img class="ti" data-cot-thumb="${spec0.id}" src="${getTankThumb(spec0.id) || iconUrl(spec0.id, 'angle')}" alt="">`
+          ? `<img class="ti" data-cot-thumb="${spec0.id}" src="${getTankThumb(spec0.id) || iconUrl(spec0.id, 'angle')}" alt="" style="transform:scale(${(0.94 + keyHash01(spec0.id) * 0.16).toFixed(3)})">`
           : `<canvas></canvas>`) +
         `<div class="nm"></div>` +
         `<div class="cls">${CLASS_LABEL[node.cls] || node.cls}</div>` +
@@ -1143,14 +1204,22 @@ export function createTechTree(opts) {
           if (onPick) onPick(spec.id);
         });
       } else if (st === 'available') {
-        // spend XP to research: node (and its outgoing wires) flip gold
+        // spend XP on the NEXT MODULE (gun -> engine -> tracks); the third
+        // module completes the vehicle and its outgoing wires flip gold
         el.addEventListener('click', () => {
           if (dragMoved) return;
           const prog = loadProgress();
-          if (prog.xp >= cost) {
+          const done = Math.min(3, prog.modules[node.key] || 0);
+          const step = moduleStep(node, Math.min(done, 2));
+          if (prog.xp >= step) {
             emit('ui:click', {});
-            prog.xp -= cost;
-            prog.researched[node.key] = true;
+            prog.xp -= step;
+            if (done + 1 >= 3) {
+              delete prog.modules[node.key];
+              prog.researched[node.key] = true;
+            } else {
+              prog.modules[node.key] = done + 1;
+            }
             saveProgress();
             buildTree(tab); // relight wires + downstream availability
             refreshWallet();
@@ -1194,7 +1263,12 @@ export function createTechTree(opts) {
     dragMoved = false;
     px = e.clientX; py = e.clientY;
     view.classList.add('panning');
-    view.setPointerCapture(e.pointerId);
+    // r4 (content_breadth): guarded — synthetic pointer events (puppeteer /
+    // automated UI probes) carry pointerIds with no active pointer, and the
+    // unguarded call threw NotFoundError into the zero-console-error gate.
+    // Real pointers are unaffected; pan still works without capture (the
+    // move/up listeners live on `view`), it only loses off-element tracking.
+    try { view.setPointerCapture(e.pointerId); } catch (_) { /* synthetic */ }
   });
   view.addEventListener('pointermove', (e) => {
     if (!dragging) return;

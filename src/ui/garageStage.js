@@ -324,9 +324,80 @@ export function createGarageStage(engineCtx, pos) {
     map: hazTex, roughness: 0.7, metalness: 0.05,
   }));
   // r5: darker/rougher top — at 0x54575b/rough .5 the integration key spot
-  // clipped the whole turntable to a uniform white disc with a hard edge
+  // clipped the whole turntable to a uniform white disc with a hard edge.
+  // r4: the bare disc read as "featureless charcoal with one soft blob"
+  // (critique) — the top now carries painted turntable markings: a worn
+  // alignment ring with radial ticks, a center datum cross, twin tread wear
+  // bands where the tanks drive on, and grime speckle.
+  const podTopC = document.createElement('canvas');
+  podTopC.width = podTopC.height = 1024;
+  {
+    const g = podTopC.getContext('2d');
+    const C = 512;
+    g.fillStyle = '#45484c';
+    g.fillRect(0, 0, 1024, 1024);
+    // broad tonal drift so the disc never reads as one flat fill
+    for (let i = 0; i < 40; i++) {
+      const x = rng() * 1024, y = rng() * 1024, r = 60 + rng() * 200;
+      const grad = g.createRadialGradient(x, y, 0, x, y, r);
+      grad.addColorStop(0, rng() < 0.5 ? 'rgba(30,32,34,0.10)' : 'rgba(120,124,128,0.07)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = grad;
+      g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    }
+    // twin tread wear bands (tanks drive on/off along one axis)
+    for (const off of [-118, 118]) {
+      g.fillStyle = 'rgba(28,30,32,0.30)';
+      g.fillRect(C + off - 56, 0, 112, 1024);
+      g.fillStyle = 'rgba(22,24,26,0.25)';
+      for (let y = 10; y < 1024; y += 26) g.fillRect(C + off - 48, y, 96, 5);
+    }
+    // worn painted alignment ring + radial ticks
+    g.strokeStyle = 'rgba(188,192,198,0.34)';
+    g.lineWidth = 7;
+    g.beginPath(); g.arc(C, C, 430, 0, Math.PI * 2); g.stroke();
+    g.lineWidth = 4;
+    g.beginPath(); g.arc(C, C, 300, 0, Math.PI * 2); g.stroke();
+    g.lineWidth = 6;
+    g.beginPath();
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2;
+      g.moveTo(C + Math.cos(a) * 402, C + Math.sin(a) * 402);
+      g.lineTo(C + Math.cos(a) * 438, C + Math.sin(a) * 438);
+    }
+    g.stroke();
+    // center datum cross
+    g.lineWidth = 7;
+    g.strokeStyle = 'rgba(188,192,198,0.28)';
+    g.beginPath();
+    g.moveTo(C - 60, C); g.lineTo(C + 60, C);
+    g.moveTo(C, C - 60); g.lineTo(C, C + 60);
+    g.stroke();
+    // paint wear: chip the markings back to deck color
+    for (let i = 0; i < 900; i++) {
+      g.fillStyle = 'rgba(69,72,76,0.9)';
+      const a = rng() * Math.PI * 2, rr = rng() < 0.5 ? 430 : 300;
+      g.fillRect(C + Math.cos(a) * (rr + (rng() - 0.5) * 8) - 2,
+        C + Math.sin(a) * (rr + (rng() - 0.5) * 8) - 2, 1 + rng() * 4, 1 + rng() * 3);
+    }
+    // oil spotting + speckle
+    for (let i = 0; i < 6; i++) {
+      const x = C + (rng() - 0.5) * 500, y = C + (rng() - 0.5) * 500, r = 14 + rng() * 40;
+      const grad = g.createRadialGradient(x, y, 0, x, y, r);
+      grad.addColorStop(0, 'rgba(16,16,18,0.30)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = grad;
+      g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    }
+    for (let i = 0; i < 1400; i++) {
+      g.fillStyle = rng() < 0.5 ? 'rgba(28,30,32,0.18)' : 'rgba(140,145,150,0.10)';
+      g.fillRect(rng() * 1024, rng() * 1024, 1 + rng() * 2, 1 + rng() * 2);
+    }
+    dither(g, 1024, 1024, rng, 0.05);
+  }
   const podTopMat = shadowMat(new THREE.MeshStandardMaterial({
-    color: 0x45484c, roughness: 0.64, metalness: 0.1, envMapIntensity: 0.5,
+    map: track(canvasTexture(podTopC, { aniso })),
+    color: 0xffffff, roughness: 0.64, metalness: 0.1, envMapIntensity: 0.5,
   }));
   track(podSideMat); track(podTopMat);
   const podium = new THREE.Mesh(
@@ -348,10 +419,14 @@ export function createGarageStage(engineCtx, pos) {
   rimRing.rotation.x = Math.PI / 2;
   rimRing.position.y = 0.362;
   group.add(rimRing);
-  // faint stripe self-lift so the hazard band reads all the way around
+  // stripe self-lift so the hazard band reads ALL the way around the dais —
+  // r4: 0.07 was below the key light's falloff and the band fell to black
+  // for ~3/4 of the circumference, reading as a texture seam that
+  // "terminates mid-arc" (critique). 0.3 keeps every stripe legible in the
+  // shadowed sectors while the lit sector still carries the key.
   podSideMat.emissive = new THREE.Color(0xffffff);
   podSideMat.emissiveMap = hazTex;
-  podSideMat.emissiveIntensity = 0.07;
+  podSideMat.emissiveIntensity = 0.3;
 
   // --- walls + ceiling -------------------------------------------------------
   const wallTexBase = makeWallTexture(rng);
@@ -810,6 +885,111 @@ export function createGarageStage(engineCtx, pos) {
     const leg = new THREE.Mesh(legGeo, benchLegMat);
     leg.position.set(-21.6 + lx, 0.5, 1.5 + lz);
     group.add(leg);
+  }
+
+  // --- foreground staging (r4): the camera-side floor below the dais edge
+  // rendered as featureless charcoal (critique: "dead empty floor"). WoT
+  // hangars fill that zone with floor markings, cable runs and shop clutter:
+  //   1. worn dashed KEEP-CLEAR ring painted around the turntable,
+  //   2. rubber power cables snaking from the bay to the dais base,
+  //   3. extra oil staining in the camera foreground,
+  //   4. wheel chocks + a traffic cone at the frame's lower corners.
+  // Decals are depthWrite-false quads a few mm over the floor plane.
+  {
+    // 1. painted ring decal (dashed, worn)
+    const ringC = document.createElement('canvas');
+    ringC.width = ringC.height = 512;
+    const rg = ringC.getContext('2d');
+    rg.translate(256, 256);
+    rg.strokeStyle = 'rgba(202,170,52,0.6)';
+    rg.lineWidth = 9;
+    rg.setLineDash([34, 22]);
+    rg.beginPath();
+    rg.arc(0, 0, 232, 0, Math.PI * 2);
+    rg.stroke();
+    rg.setLineDash([]);
+    // wear: chip the paint with floor-colored nicks
+    for (let i = 0; i < 220; i++) {
+      const a = rng() * Math.PI * 2, rr = 232 + (rng() - 0.5) * 10;
+      rg.fillStyle = 'rgba(72,75,78,0.75)';
+      rg.fillRect(Math.cos(a) * rr - 1.5, Math.sin(a) * rr - 1.5, 1 + rng() * 3, 1 + rng() * 2);
+    }
+    const ringMat = track(new THREE.MeshBasicMaterial({
+      map: track(canvasTexture(ringC)), transparent: true, depthWrite: false,
+    }));
+    const ring = new THREE.Mesh(track(new THREE.PlaneGeometry(16.4, 16.4)), ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.022;
+    group.add(ring);
+
+    // 2. rubber cable runs (camera side of the dais)
+    const cableMat = track(shadowMat(new THREE.MeshStandardMaterial({
+      color: 0x141618, roughness: 0.88, metalness: 0.05,
+    })));
+    const cableRuns = [
+      [[11.2, 0.05, 6.6], [8.6, 0.04, 5.7], [6.9, 0.04, 4.4], [5.2, 0.06, 2.9]],
+      [[2.4, 0.05, 11.0], [1.5, 0.04, 8.9], [0.9, 0.06, 6.4]],
+    ];
+    for (const pts of cableRuns) {
+      const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)));
+      const tube = new THREE.Mesh(track(new THREE.TubeGeometry(curve, 32, 0.045, 8)), cableMat);
+      tube.castShadow = true;
+      group.add(tube);
+    }
+    // junction box the long run plugs into
+    const jbox = new THREE.Mesh(track(new THREE.BoxGeometry(0.5, 0.42, 0.34)), bracketMat);
+    jbox.position.set(11.45, 0.21, 6.7);
+    jbox.rotation.y = -0.5;
+    jbox.castShadow = true;
+    group.add(jbox);
+
+    // 3. foreground oil stains
+    const stainC = document.createElement('canvas');
+    stainC.width = stainC.height = 128;
+    const sg = stainC.getContext('2d');
+    const sgrad = sg.createRadialGradient(64, 64, 4, 64, 64, 62);
+    sgrad.addColorStop(0, 'rgba(14,14,16,0.5)');
+    sgrad.addColorStop(0.6, 'rgba(14,14,16,0.22)');
+    sgrad.addColorStop(1, 'rgba(14,14,16,0)');
+    sg.fillStyle = sgrad;
+    sg.fillRect(0, 0, 128, 128);
+    const stainMat = track(new THREE.MeshBasicMaterial({
+      map: track(canvasTexture(stainC)), transparent: true, depthWrite: false,
+    }));
+    for (const [sx, sz, ss] of [[5.9, 5.6, 2.6], [-4.3, 7.4, 1.9], [9.4, 3.2, 1.5]]) {
+      const stain = new THREE.Mesh(track(new THREE.PlaneGeometry(ss, ss)), stainMat);
+      stain.rotation.x = -Math.PI / 2;
+      stain.rotation.z = rng() * Math.PI;
+      stain.position.set(sx, 0.026, sz);
+      group.add(stain);
+    }
+
+    // 4. wheel chocks (striped wedges) + traffic cone at the frame corners
+    const chockMat = track(shadowMat(new THREE.MeshStandardMaterial({
+      color: 0xb08a26, roughness: 0.7, metalness: 0.08,
+    })));
+    const chockGeo = track(new THREE.CylinderGeometry(0.26, 0.26, 0.4, 3));
+    for (const [cx3, cz3, ry3] of [[3.3, 5.6, 0.5], [3.9, 5.2, 0.65]]) {
+      const chock = new THREE.Mesh(chockGeo, chockMat);
+      chock.rotation.set(Math.PI / 2, 0, ry3); // wedge lying on its side
+      chock.position.set(cx3, 0.13, cz3);
+      chock.castShadow = true;
+      group.add(chock);
+    }
+    const coneMat2 = track(shadowMat(new THREE.MeshStandardMaterial({
+      color: 0xc65a1e, roughness: 0.62, metalness: 0,
+    })));
+    const coneBandMat = track(new THREE.MeshBasicMaterial({ color: 0xe8e4da }));
+    for (const [nx, nz] of [[-3.6, 7.9], [12.4, 4.1]]) {
+      const body = new THREE.Mesh(track(new THREE.CylinderGeometry(0.035, 0.19, 0.52, 12)), coneMat2);
+      body.position.set(nx, 0.26, nz);
+      body.castShadow = true;
+      const band = new THREE.Mesh(track(new THREE.CylinderGeometry(0.115, 0.145, 0.09, 12)), coneBandMat);
+      band.position.set(nx, 0.28, nz);
+      const base = new THREE.Mesh(track(new THREE.BoxGeometry(0.42, 0.035, 0.42)), coneMat2);
+      base.position.set(nx, 0.018, nz);
+      group.add(body, band, base);
+    }
   }
 
   return {

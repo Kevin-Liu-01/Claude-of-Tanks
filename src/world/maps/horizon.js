@@ -634,12 +634,20 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
     // exactly the "raw planar facets / vertical brush-smear" the critique
     // called out. Tighter spacing (plus the per-fragment relight below)
     // turns the wall into overlapping layered ridge lines.
+    // r4 terrain_environment: two MORE intermediate ranges (650/940). The
+    // winter critique's "faceted low-poly triangle mountains" were the huge
+    // radial wall quads between adjacent rows — with only ~5 visible rows a
+    // single triangle spanned 130-200 m and its vertex-color/normal
+    // interpolation read as flat slate facets. Tighter row spacing halves
+    // the facet size and adds two extra overlapping ridge lines.
     alpine: [
       { r: 428, base: -22, amp: 0, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
       { r: 470, base: 26, amp: 14, f0: 6.0, f1: 11.0, aer: 0.10, skirt: true },
       { r: 585, base: 50, amp: 52, f0: 3.1, f1: 6.2, aer: 0.10 },
+      { r: 650, base: 52, amp: 64, f0: 2.8, f1: 5.7, aer: 0.14 },
       { r: 720, base: 56, amp: 76, f0: 2.6, f1: 5.2, aer: 0.18 },
       { r: 870, base: 66, amp: 102, f0: 1.9, f1: 4.0, aer: 0.30 },
+      { r: 940, base: 74, amp: 114, f0: 1.7, f1: 3.6, aer: 0.36 },
       { r: 1040, base: 82, amp: 128, f0: 1.5, f1: 3.3, aer: 0.44 },
       { r: 1240, base: 88, amp: 100, f0: 1.1, f1: 2.4, aer: 0.60 },
     ],
@@ -671,9 +679,13 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
   const RIM_HALF_W = 512;
   // r3: margins keyed per row COUNT — the 7-row alpine table needs its own
   // outward-push ladder (values interpolate the original radius->margin curve)
-  const ROW_RIM_MARGIN = rows.length === 7
-    ? [-34, 22, 95, 200, 340, 540, 800]
-    : [-34, 22, 95, 280, 520, 800];
+  // r4: 9-row alpine ladder (rows added at 650/940) — margins interpolated so
+  // rEff stays monotonic across rows along every azimuth (incl. corners)
+  const ROW_RIM_MARGIN = rows.length === 9
+    ? [-34, 22, 95, 150, 200, 340, 430, 540, 800]
+    : rows.length === 7
+      ? [-34, 22, 95, 200, 340, 540, 800]
+      : [-34, 22, 95, 280, 520, 800];
   // <<< gameplay_feel r4 ------------------------------------------------------
   for (let ri = 0; ri < rows.length; ri++) {
     const row = rows[ri];
@@ -902,6 +914,27 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
   geo.setAttribute('uv', new THREE.BufferAttribute(uvA, 2));
   geo.setIndex(idx);
   geo.computeVertexNormals();
+  // r4 terrain_environment: ANALYTIC SMOOTHED NORMALS for the alpine ring.
+  // computeVertexNormals face-averages the sharp silhouette geometry, so
+  // adjacent vertices carry wildly different normals and the per-fragment
+  // relight/rock-splat interpolated them as huge flat planes — the winter
+  // critique's "faceted low-poly triangle mountains". The 5-pass smoothed
+  // slope series (dTangA/dRadA, same data the vertex relight uses) shades
+  // the wall as one continuous surface; the SILHOUETTE keeps its sharp
+  // vertices. Alpine only: the other styles never read normals (unlit).
+  if (style === 'alpine') {
+    const nAttr = geo.attributes.normal;
+    for (let ri = 0; ri < rows.length; ri++) {
+      for (let k = 0; k < N; k++) {
+        const i = ri * N + k;
+        const a = (k / N) * Math.PI * 2;
+        const nx = dTangA[i] * Math.sin(a) - dRadA[i] * Math.cos(a);
+        const nz = -dTangA[i] * Math.cos(a) - dRadA[i] * Math.sin(a);
+        const inv = 1 / Math.hypot(nx, 1, nz);
+        nAttr.setXYZ(i, nx * inv, inv, nz * inv);
+      }
+    }
+  }
   // DoubleSide: the shallow inner skirt annulus is seen from ABOVE by raised
   // establishing cameras — with default FrontSide it backface-culls and the
   // sky shows through as a pale 'sea sheet' between rim and ridges (the old
@@ -957,7 +990,9 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
     //  - constant-altitude strata banding on the exposed rock,
     //  - a real N·L relight against the map sun (replaces the baked term,
     //    which is dropped to 0.10 for alpine above).
-    const fragRel = style === 'alpine' ? 0.30 : 0.0;
+    // r4: 0.30 -> 0.40 — with the tighter row ladder the per-fragment relight
+    // carries more of the directional shading (vertex bake stays at 0.10)
+    const fragRel = style === 'alpine' ? 0.40 : 0.0;
     const slopeSplat = style === 'alpine' ? 1.0 : 0.0;
     mat.onBeforeCompile = (shader) => {
       shader.uniforms.uDetail2 = { value: detail2 };
@@ -1105,6 +1140,19 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
         [2, 3, 0.30], [2, 3, 0.58], [2, 3, 0.84],
         [3, 4, 0.40], [3, 4, 0.74],
       ];
+      // r4 terrain_environment: the r2 flank ribbons were the critique's
+      // "rows of dark dotted striations crawling across the hill faces" —
+      // each ribbon ran at ONE constant fractional height between two ring
+      // rows, so at range its individual tree silhouettes minified into
+      // 1-2 px dots strung along perfect arcs. Three changes kill the rows:
+      //  (a) the ribbon samples only the LOWER HALF of the comb texture (the
+      //      continuous closed-canopy mass band) — no isolated emergent
+      //      trees left to read as dots,
+      //  (b) per-column HEIGHT WANDER (±0.4 span) so the band drifts off the
+      //      contour line instead of tracing it,
+      //  (c) PATCH GATING — a low-frequency noise collapses the span to zero
+      //      over ~40% of each ring, breaking the band into irregular forest
+      //      stands with clean slope between them.
       for (const [ra, rb, f] of flankSpans) {
         const rowA = rows[ra], rowB = rows[rb];
         const rMid = rowA.r + (rowB.r - rowA.r) * f;
@@ -1114,13 +1162,20 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
           const kk = k % N;
           const iA = ra * N + kk, iB = rb * N + kk;
           const x = pos[iA * 3] + (pos[iB * 3] - pos[iA * 3]) * f;
-          const hh = pos[iA * 3 + 1] + (pos[iB * 3 + 1] - pos[iA * 3 + 1]) * f;
+          let hh = pos[iA * 3 + 1] + (pos[iB * 3 + 1] - pos[iA * 3 + 1]) * f;
           const z = pos[iA * 3 + 2] + (pos[iB * 3 + 2] - pos[iA * 3 + 2]) * f;
           const fade = 1 - smoothstep(tlH * 0.8, tlH * 1.12, hh);
           const a = (kk / N) * Math.PI * 2;
           const hn = gnoi.noise(Math.cos(a) * 5.3 + ra * 7 + f * 17,
             Math.sin(a) * 5.3 - rb * 5 - f * 11) * 0.5 + 0.5;
-          const span = (5 + (8 + hn * 12) * (0.85 + rMid / 2600)) * fade * 0.9;
+          // (c) stand patches: ~40% of the ring carries no band at all
+          const pn = gnoi.noise(Math.cos(a) * 2.1 + ra * 13 + f * 29,
+            Math.sin(a) * 2.1 - rb * 9 + f * 41) * 0.5 + 0.5;
+          const patch = smoothstep(0.34, 0.58, pn);
+          const span = (5 + (8 + hn * 12) * (0.85 + rMid / 2600)) * fade * 0.9 * patch;
+          // (b) wander the band off the constant-height contour line
+          hh += (gnoi.noise(Math.cos(a) * 3.7 - ra * 5 + f * 7,
+            Math.sin(a) * 3.7 + rb * 3 - f * 13)) * span * 0.4;
           // sink the ribbon base into the slope so crowns emerge from it
           cPos.push(x, hh - span * 0.35, z, x, hh + span * 0.65, z);
           const hz = Math.min(0.9, aerMid * 0.5 + 0.10);
@@ -1132,7 +1187,7 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
           cb += (fogC.b - cb) * hz;
           cCol.push(cr, cg, cb, cr, cg, cb);
           const u = (k / N) * repeats + f * 0.71; // de-correlate vs crest ranks
-          cUv.push(u, 0, u, 1);
+          cUv.push(u, 0, u, 0.5); // (a) mass band only — no emergent-tree dots
         }
         for (let k = 0; k < N; k++) {
           const b0 = vBase + k * 2, t0 = b0 + 1, b1 = b0 + 2, t1 = b1 + 1;

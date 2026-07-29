@@ -736,8 +736,11 @@ function makeIceLayer(seed, anisotropy) {
       // touch more blue-green — the sheet needs real VALUE separation from
       // the snowfield so the new fresnel sky sheen has something to play
       // against; at 0.58 it read as a pale stain with no material identity
+      // r4: 0.44/0.24 -> 0.37/0.27 — the engine's bright winter fill washes
+      // the sheet toward white, so the authored fields must sit DARKER for
+      // any ice identity to survive to screen (critique: "matte pale splat")
       _col.setHSL(0.535 + depth * 0.015, 0.055 + deep * 0.06,
-        0.44 - deep * 0.24 + fine * 0.03);
+        0.37 - deep * 0.27 + fine * 0.03);
       base.data[j] = _col.r * 255; base.data[j + 1] = _col.g * 255; base.data[j + 2] = _col.b * 255;
       base.data[j + 3] = 255;
     }
@@ -830,7 +833,9 @@ function makeSandstoneLayer(seed, anisotropy, tone = null) {
     let y = 0;
     while (y < s) {
       const marker = rng() < 0.16;
-      const th = marker ? 4 + rng() * 6 : 20 + rng() * 60;
+      // r4: thicker beds (20-80 -> 34-110 px) — the old thin-bed ladder
+      // repeated every couple of meters on the walls and read as marble veins
+      const th = marker ? 4 + rng() * 6 : 34 + rng() * 76;
       beds.push({
         y0: y, y1: y + th, marker,
         tone: rng(),            // per-bed lightness
@@ -851,7 +856,10 @@ function makeSandstoneLayer(seed, anisotropy, tone = null) {
       const u = xx / s, v = yy / s, i = yy * s + xx, j = i * 4;
       // gentle boundary wobble — LOW turbulence, long wavelength; this is
       // the only warp in the layer, so beds stay legible strata
-      const wob = torusNoise(noi, u, v, 2, 2, 7) * 4.2 + torusNoise(noi, u, v, 6, 6, 33) * 1.6;
+      // r4: 4.2/1.6 -> 2.2/0.8 — the deeper wobble bent the beds into the
+      // "marble-vein" waviness the desert critique flagged; near-straight
+      // beds read as sediment
+      const wob = torusNoise(noi, u, v, 2, 2, 7) * 2.2 + torusNoise(noi, u, v, 6, 6, 33) * 0.8;
       const yw = ((yy + wob) % s + s) % s;
       const bed = bedAt(yw);
       const bedT = (yw - bed.y0) / Math.max(1, bed.y1 - bed.y0);
@@ -863,8 +871,10 @@ function makeSandstoneLayer(seed, anisotropy, tone = null) {
       const grain2 = torusNoise(noi, u, v, 13, 13, 99) * 0.5 + 0.5;
       // broad along-bed tone drift so a bed is not one flat stripe
       const drift = torusNoise(noi, u, v * 0.15, 3, 1, 145) * 0.5 + 0.5;
+      // r4: sat 0.42+0.12 -> 0.33+0.08 — the saturated ochre beds were the
+      // PINK cast in the "contour-band marbling" read
       let hue = 0.062 + bed.hueJ * 0.022 - 0.006 * grain2;
-      let sat = 0.42 + bed.hueJ * 0.12 - grain * 0.06;
+      let sat = 0.33 + bed.hueJ * 0.08 - grain * 0.06;
       let lum = bed.marker
         ? 0.185 + bed.tone * 0.05
         : 0.315 + bed.tone * 0.20 + (bedT - 0.5) * 0.03 + grain * 0.05 + (drift - 0.5) * 0.07;
@@ -1171,8 +1181,12 @@ void splatCompute() {
   // edges instead of giant airbrushed smears. r6: warped samples + slightly
   // softer band — the hard 0.62-0.78 step on unwarped texels was the
   // axis-aligned checkerboard tell beside the player tank
-  float worn = smoothstep(0.60, 0.82, n2w + (n1w - 0.5) * 0.45);
-  float fD = clamp(max(worn * 0.62, max(shoulder, mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
+  // r4 terrain_environment: worn band widened (0.60-0.82 -> 0.55-0.80) and
+  // weight 0.62 -> 0.74 — the gameplay-camera near field read as one uniform
+  // green noise carpet with "no macro albedo variation" (critique); more
+  // visible dirt/dry-patch breakup is the cheapest macro signal at 5-60 m
+  float worn = smoothstep(0.55, 0.80, n2w + (n1w - 0.5) * 0.45);
+  float fD = clamp(max(worn * 0.74, max(shoulder, mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
   float fM = mk.b;
   // marsh/ice sheets only live on near-flat ground: without this the graded
   // banks around a frozen lake inherit the sheet's glossy blue ice response
@@ -1198,7 +1212,11 @@ void splatCompute() {
   // r8: 0.18-0.40 -> 0.14-0.34 (with the matching steepW change below) — the
   // 15-30 deg mesa flank band still held planar XZ sand UVs and its texture
   // stretched downslope as taffy; wall projection now owns faces from ~28 deg
-  fR = max(fR, smoothstep(0.14, 0.34, slope) * (1.0 - mk.b * 0.85) * 0.95);
+  // r4 terrain_environment: 0.14-0.34 -> 0.20-0.42 — at 0.14 every moderate
+  // DUNE flank flipped to the banded sandstone layer and carried its beds as
+  // "pink contour marbling on sand" (desert critique). Rock now takes over
+  // from ~37 deg; the 30-37 deg band stays sand (ripples own it).
+  fR = max(fR, smoothstep(0.20, 0.42, slope) * (1.0 - mk.b * 0.85) * 0.95);
   vec4 a = groundSamp(uAlbG, uv * 0.240, df, mipB);
   vec4 n = groundNrm(uNrmG, uv * 0.240, df, mipB);
   // r5 anti-tiling: the ground texture's clump pattern repeats at ONE fixed
@@ -1225,7 +1243,7 @@ void splatCompute() {
   // face — everything between ~35 and ~60 deg (the whole mesa flank band)
   // kept planar XZ UVs and smeared like melted wax; wall-plane projection now
   // starts at ~32 deg and owns the face by ~51 deg.
-  float steepW = smoothstep(0.14, 0.34, slope) * (1.0 - mk.b * 0.85); // r8: see fR note
+  float steepW = smoothstep(0.20, 0.42, slope) * (1.0 - mk.b * 0.85); // r4: tracks the fR band (marbling fix)
   // r7: SHARPENED AXIS TRIPLANAR replaces the r6 tangent projection. The
   // tangent frame was derived from the interpolated normal, so on undulating
   // walls it rotated per-fragment and the sample coordinate wandered — the
@@ -1277,9 +1295,13 @@ void splatCompute() {
   // into full-height tint stripes (a big taffy-smear contributor); gate them
   // off steep faces and let the wall macro octave below carry the variation
   float meadowG = (1.0 - fD) * (1.0 - steepW);
-  a.rgb = mix(a.rgb, a.rgb * uTintA, smoothstep(0.54, 0.85, meadowA) * (0.22 + 0.18 * n1) * meadowG);
-  a.rgb = mix(a.rgb, a.rgb * uTintB, smoothstep(0.58, 0.85, 1.0 - meadowB) * (0.14 + 0.08 * n1) * meadowG);
-  a.rgb = mix(a.rgb, a.rgb * uTintC, smoothstep(0.52, 0.9, meadowC) * (0.16 + 0.14 * n1) * meadowG);
+  // r4: tint strengths raised ~30% (A 0.22+0.18 -> 0.28+0.20, B 0.14+0.08 ->
+  // 0.17+0.09, C 0.16+0.14 -> 0.21+0.16) — the macro dry-straw/clover fields
+  // were too subtle to register from the chase camera and the ground read as
+  // one continuous green wash (critique: "no macro albedo variation")
+  a.rgb = mix(a.rgb, a.rgb * uTintA, smoothstep(0.54, 0.85, meadowA) * (0.28 + 0.20 * n1) * meadowG);
+  a.rgb = mix(a.rgb, a.rgb * uTintB, smoothstep(0.58, 0.85, 1.0 - meadowB) * (0.17 + 0.09 * n1) * meadowG);
+  a.rgb = mix(a.rgb, a.rgb * uTintC, smoothstep(0.52, 0.9, meadowC) * (0.21 + 0.16 * n1) * meadowG);
   a.rgb *= mix(0.93 + meadowC * 0.14, 1.0, steepW);
   // mid-frequency relief + mottle (25-450 m): stroke-free bump from the
   // SMOOTH noise field gradient (texture normals reused at giant scales read
@@ -1313,8 +1335,12 @@ void splatCompute() {
     n.xy += dnR.xy * fR * 0.9 * dMid;
   }
   // horizontal strata banding on steep faces (mesa cliff walls), world-Y driven
+  // r4 terrain_environment: band start 0.24 -> 0.36 slope (~31 deg -> ~40 deg)
+  // — moderate DUNE flanks fell inside the old band and carried the sin-bed
+  // stripes as "pink contour-band marbling over the sand" (desert critique);
+  // strata now live only on genuine cliff faces
   if (uStrata > 0.001) {
-    float steep = smoothstep(0.24, 0.50, slope);
+    float steep = smoothstep(0.36, 0.58, slope);
     // r7: bed phase warped by the WALL-plane noise, not planar n2 — planar
     // n2 is sampled at grazing angles down a vertical face, so its rapid
     // horizontal gradient sheared the beds into wavy taffy along cliff tops.
@@ -1334,10 +1360,10 @@ void splatCompute() {
     float bed = smoothstep(0.55, 0.9, sin(wp.y * 0.23 * bedF + n2Wall * 1.1 + 0.8 + gCliffJ * 3.7));
     a.rgb = mix(a.rgb, a.rgb * vec3(1.16, 1.12, 1.04), bed * steep * 0.4);
     // r8 per-cliff color drift: warm iron-stained faces vs paler washed faces
-    a.rgb = mix(a.rgb, a.rgb * vec3(1.07, 0.985, 0.91), steep * gCliffJ * 0.5);
-    // iron-oxide flush desaturated toward the Rock063 reference (r3: the old
-    // 1.05/0.90/0.78 at 0.35 pushed every wall to saturated maroon)
-    a.rgb = mix(a.rgb, a.rgb * vec3(1.03, 0.95, 0.88), steep * 0.22); // baked iron-oxide faces
+    // r4: 0.5 -> 0.30 and flush 0.22 -> 0.12 — the stacked warm shifts were
+    // the residual PINK cast in the marbled-cliff read
+    a.rgb = mix(a.rgb, a.rgb * vec3(1.07, 0.985, 0.91), steep * gCliffJ * 0.30);
+    a.rgb = mix(a.rgb, a.rgb * vec3(1.03, 0.95, 0.88), steep * 0.12); // baked iron-oxide faces
     // r7 macro-variation octave (wall-space): breaks the uniform band print
     // into distinct rock masses / weathered faces along the wall run
     float wallMac = wallNoiseG(0.011, vec2(0.19, 0.67));
@@ -1394,8 +1420,10 @@ void splatCompute() {
     float bed = sin(bedPhase);
     float bedW = min(uRipple.z * 2.2, 1.0) * bedMod * (1.0 - fR) * (1.0 - roadCore)
                * smoothstep(60.0, 170.0, effDist);
-    a.rgb *= 1.0 + bed * 0.105 * bedW;
-    n.xy += uRipple.xy * bed * 0.5 * bedW;
+    // r4: 0.105 -> 0.15 — the dune trains must survive the establishing shot
+    // (the mid-map otherwise reads as one blown "whipped cream" sheet)
+    a.rgb *= 1.0 + bed * 0.15 * bedW;
+    n.xy += uRipple.xy * bed * 0.55 * bedW;
   }
   // r3 terrain_environment: desert macro sheet variation — the bowl between
   // the mesas was near-uniform pale cream at establishing range. Broad
@@ -1472,8 +1500,12 @@ void splatCompute() {
       a.rgb *= 1.0 - gutter * 0.18 * uRoadTex;
     }
   }
+  // r4: 0.09 -> 0.16 + a dusty desaturation pull — road shoulders must read
+  // as worn verge (tracked dirt spilling off the carriageway), not clean lawn
+  // running flush to the wheel ruts (critique: "no decals along road edges")
   float edgeBand = shoulder * (1.0 - roadCore);
-  a.rgb *= 1.0 - edgeBand * 0.09;
+  a.rgb *= 1.0 - edgeBand * 0.16;
+  a.rgb = mix(a.rgb, vec3(dot(a.rgb, vec3(0.34, 0.45, 0.21))) * vec3(1.06, 1.0, 0.88), edgeBand * 0.22);
   // rut relief from the mask G gradient (visible well past the near ring)
   {
     float texel = 1.4 / 1024.0;
@@ -1500,7 +1532,8 @@ void splatCompute() {
     float iceLum = dot(iceMacro.rgb, vec3(0.30, 0.45, 0.25));
     // r6: macro contrast up (0.55+0.80 -> 0.45+1.00) so the 75 m-scale
     // pressure cracks and clear-ice fields dominate at range...
-    a.rgb = mix(a.rgb, a.rgb * (0.45 + iceLum * 1.00), fM * 0.9);
+    // r4: 0.45+1.00 -> 0.36+1.18 — one more contrast step (see makeIceLayer)
+    a.rgb = mix(a.rgb, a.rgb * (0.36 + iceLum * 1.18), fM * 0.9);
     // ...and DESATURATE the sheet with distance: the 5 m detail tile can only
     // resolve as blue salt-speckle from the establishing camera — pull the
     // far sheet toward a cool gray so it reads as one ice surface with crack
@@ -1545,7 +1578,14 @@ void splatCompute() {
       vec3 vDirIce = normalize(cameraPosition - wp);
       float fresI = pow(1.0 - clamp(dot(vDirIce, wn), 0.0, 1.0), 3.0);
       float clearIce = fM * (1.0 - driftW);
-      a.rgb = mix(a.rgb, uIceSky, fresI * clearIce * 0.30);
+      // r4: 0.30 -> 0.48 — the sheet still read as a matte pale splat from
+      // the establishing camera; a stronger grazing sky sheen (plus the 0.14
+      // roughness floor below) finally gives it a specular ice identity
+      // lighting_post r4: 0.48 -> 0.62 — winter.js envIntensity dropped
+      // 0.60 -> 0.32 to kill the albedo-independent pale wash on props; the
+      // ice sheet keeps its DIRECTIONAL sheen by leaning harder on its own
+      // fresnel term instead of the scene-wide env (ice vs snow separation).
+      a.rgb = mix(a.rgb, uIceSky, fresI * clearIce * 0.62);
     }
   }
   // r7: the unconditional macro term reads the PLANAR n2 field — degenerate
@@ -1567,7 +1607,9 @@ void splatCompute() {
   //     as the far-cliff rescue) so distant hills shade like turf-covered
   //     terrain instead of smooth clay.
   {
-    float fieldW = uFieldPatch * smoothstep(70.0, 150.0, effDist)
+    // r4: band pulled in 70-150 -> 40-110 m — plowed/mowed field patches must
+    // be visible from the gameplay camera, not only in establishing shots
+    float fieldW = uFieldPatch * smoothstep(40.0, 110.0, effDist)
       * (1.0 - fD) * (1.0 - fM) * (1.0 - shoulder) * (1.0 - fR) * (1.0 - steepW)
       * (1.0 - mk.a);
     if (fieldW > 0.004) {
@@ -1697,7 +1739,8 @@ void splatCompute() {
   // terrain_environment r3: 0.20 -> 0.17 — pairs with the fresnel sky tint
   // above; the clear-ice fields need a genuine specular identity (0.13 let
   // the bright overcast env reflection blow the sheet out to snow-white)
-  rough0 = max(rough0, iceW * 0.17);
+  // r4: 0.17 -> 0.14 — one step glossier with the stronger fresnel term
+  rough0 = max(rough0, iceW * 0.14);
   // matte floor: kills the wet-plastic sheen / white sparkle glints on every
   // ground type except intentionally glossy lake ice
   gSplatRough = max(rough0, 0.78 * (1.0 - iceW) + shoreW * -0.12);

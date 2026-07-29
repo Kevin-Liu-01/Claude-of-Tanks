@@ -245,9 +245,16 @@ MODEL_SOURCE.t80u = {
   // turret shell Object09_24 (accessories reparented in offline); gun
   // Object1101_22 is a turret SIBLING -> explicit gunNode resolves it
   // scene-wide. Nose = raw +Z -> no yawOffset.
+  // tank_models r4 ("bleached washed-out mint, visibly paler than every
+  // neighboring vehicle... factory camo applies no pattern"): the baked
+  // albedo skipped every cohesion pass. stripBakedTextures routes the shell
+  // onto the shared camo canvas (darker 4BO base now authored in modern2.js)
+  // exactly like the kv2/is3/T-90A treatment, keeps the asset's normal maps,
+  // and the refine pass re-creases the decimation-melted turret kit normals.
   glb: {
     path: '/models/tanks/t80u_javanilga.glb',
     turretNode: '^Object09_24$', gunNode: '^Object1101_22$', autoPivot: true,
+    paintUntextured: true, stripBakedTextures: true,
   },
 };
 MODEL_SOURCE.kf51 = {

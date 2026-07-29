@@ -1361,6 +1361,49 @@ function applyCommunityFixes(scene, spec, gun) {
       splitTrianglesToGroups(o,
         (i) => Math.abs(pos.getX(i)) > 1.15 && pos.getY(i) < 1.18, gear.track);
     });
+  } else if (spec.id === 'kf51') {
+    // tank_models r4 (critic: "KF51 has no side skirts — modern-roster.md
+    // specifies overlapping angled slats + chunky mud flaps — and the rusted
+    // orange-brown wheel finish clashes with the pristine camo hull"):
+    // 1. gear albedo: the asset's 'Panther_KF51_Treads'/'..._Wheels'
+    //    materials route to the shared dark gear steel / scheme wheel pair
+    //    (same cohesion language as the rest of the fleet);
+    // 2. the missing slat-skirt row + mud flaps are added as scheme-painted
+    //    add-on geometry in a metric-frame rig (the rig's local transform
+    //    cancels the scene normalization, so parts are authored in meters).
+    const gear = getCommunityGearMaterials(spec);
+    scene.traverse((o) => {
+      if (!o.isMesh || !o.material) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (let i = 0; i < mats.length; i++) {
+        const m = mats[i];
+        if (!m) continue;
+        const r = /Treads/i.test(m.name || '') ? gear.track
+          : /Wheels/i.test(m.name || '') ? gear.wheel : null;
+        if (!r) continue;
+        refineCommunityGeometry(o);
+        if (Array.isArray(o.material)) o.material[i] = r; else o.material = r;
+      }
+    });
+    const rig = new THREE.Object3D();
+    rig.name = 'Kf51SkirtRig';
+    scene.add(rig);
+    rig.matrix.copy(scene.matrix).invert();
+    rig.matrix.decompose(rig.position, rig.quaternion, rig.scale);
+    const mat = addOnMaterial(spec);
+    for (const sgn of [-1, 1]) {
+      // continuous upper skirt band along the sponson line
+      addPart(rig, mat, new THREE.BoxGeometry(0.05, 0.24, 6.5), sgn * 1.73, 1.17, 0.05);
+      // overlapping angled slat row over the upper wheel run
+      for (let k = 0; k < 9; k++) {
+        const slat = addPart(rig, mat, new THREE.BoxGeometry(0.045, 0.36, 0.80),
+          sgn * 1.745, 0.90, 3.15 - k * 0.72, sgn * 0.07);
+        slat.rotation.z = sgn * 0.12;
+      }
+      // chunky mud flaps, front + rear (dark gear rubber/steel)
+      addPart(rig, gear.track, new THREE.BoxGeometry(0.52, 0.44, 0.05), sgn * 1.48, 0.62, 3.74);
+      addPart(rig, gear.track, new THREE.BoxGeometry(0.52, 0.44, 0.05), sgn * 1.48, 0.62, -3.72);
+    }
   }
 }
 
