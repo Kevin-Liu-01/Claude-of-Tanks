@@ -245,7 +245,7 @@ async function runAll() {
         check('card', 'Armor row (screen)', (ev.physicalMm || 0) > 0 ? `${R(ev.physicalMm)} mm screen` : 'screen', card.rows['Armor']);
       } else {
         const hasArmor = (ev.nominalMm || 0) > 0 || (ev.effectiveMm || 0) > 0;
-        check('card', 'Armor row', hasArmor ? `${R(ev.nominalMm || 0)}→${R(ev.effectiveMm || 0)} mm` : '—', card.rows['Armor']);
+        check('card', 'Armor row', hasArmor ? `${R(ev.nominalMm || 0)} → ${R(ev.effectiveMm || 0)} mm eff.` : ['optics','gun','gun_barrel','trackL','trackR'].includes(ev.zone) ? 'external — no armor' : '—', card.rows['Armor']); // r5 format
         // pen roll: rendered roll must equal payload; baseline must equal an
         // INDEPENDENT pen-at-distance recompute from the attacker's spec
         const spec = await page.evaluate(() => JSON.parse(JSON.stringify(window.__DEBUG.game.player.spec.gun.shells)));
@@ -411,7 +411,7 @@ async function runAll() {
     const R = Math.round;
     check('killcam', 'Distance row', `${R(ev.flightDistM || 0)} m`, kc.rows['Distance']);
     check('killcam', 'Impact angle row', `${R(ev.impactAngleDeg || 0)}°`, kc.rows['Impact angle']);
-    if ((ev.nominalMm || 0) > 0) check('killcam', 'Armor row', `${R(ev.nominalMm)} → ${R(ev.effectiveMm || 0)} mm`, kc.rows['Armor']);
+    if ((ev.nominalMm || 0) > 0) check('killcam', 'Armor row', `${R(ev.nominalMm)} → ${R(ev.effectiveMm || 0)} mm eff.`, kc.rows['Armor']); // r5 format
     check('killcam', 'Damage row', `${R(ev.damage || 0)}`, kc.rows['Damage']);
     check('killcam', 'Zone row', zoneLabel(ev.zone), kc.rows['Zone']);
     if ((ev.penRollMm || 0) > 0 && !String(kc.rows['Pen roll'] || '').startsWith(String(R(ev.penRollMm)))) {

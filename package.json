@@ -9,7 +9,7 @@
   "scripts": {
     "test": "node src/sim/movement.selftest.mjs && node src/sim/combat.selftest.mjs && node src/sim/spotting.selftest.mjs",
     "build": "vite build && node tools/strip-nc-assets.mjs",
-    "build:public": "vite build && node tools/strip-nc-assets.mjs",
+    "build:public": "VITE_PUBLIC_BUILD=1 vite build && node tools/strip-nc-assets.mjs",
     "icons": "node tools/genIcons.mjs",
     "shots": "node tools/screenshot.mjs"
   },

@@ -196,14 +196,57 @@ const AERIAL_ZOOM_FLOOR = 0.26; // density multiplier floor at max zoom
 // shimmer while panning, deterministic for captures. Zero effect in arcade
 // cameras (fov >= AERIAL_DETAIL_FOV) and on near geometry (< 220 m).
 const AERIAL_DETAIL_FOV = 20; // deg — detail fades in below this FOV
-const AERIAL_DETAIL_NEAR = 150; // m — never touches gameplay-range geometry (hud_ui r6: was 180)
-const AERIAL_DETAIL_FAR = 380; // m — full strength by here (hud_ui r6: was 430)
+// r5 ("sniper x8: midfield grass is a flat yellow-green wash with no detail
+// texture; horizon rock band a formless gray gradient smear; far-tree
+// impostors magnify into flat teal leaf-blob wallpaper"): the overlay now
+// starts at 90 m (the x8 sight picture's whole midfield), gains a 4th
+// scope-only 0.55 m octave (reads as grass/leaf grain under magnification),
+// and gets a green-keyed CHROMA octave that swings far grass/canopy between
+// olive and warm brown — hue variation, not just a luminance screen.
+const AERIAL_DETAIL_NEAR = 90; // m — never touches gameplay-range geometry
+const AERIAL_DETAIL_FAR = 320; // m — full strength by here
 // r3 ("mid hill shows blue mottled smearing" at x8): amp 0.30 → 0.26 and the
 // octave scales tightened below (23/6.1/1.9 m → 15/4.6/1.6 m) — the old
 // largest octave modulated ~23 m patches, which at x8 subtend a third of the
 // frame and read as blotch, not canopy texture; finer octaves read as forest
 // grain at scope magnification.
-const AERIAL_DETAIL_AMP = 0.26; // peak luminance modulation (+/-13%)
+// r5: 0.26 → 0.34 — at 0.26 the overlay measurably existed but visually
+// vanished under the haze; x8 needs the full grain to read as surface.
+const AERIAL_DETAIL_AMP = 0.34; // peak luminance modulation (+/-17%)
+// r5 ARCADE FAR-FIELD SHARE ("winter alpine ring faces are untextured flat
+// matte facets at 1:1"): the establishing cameras (fov 45) had uDetailW = 0,
+// so the horizon ring rendered as bare gradients in every wide shot. Far
+// pixels now always carry a fraction of the detail overlay — fading in from
+// 430 m (past all gameplay-range geometry) so only backdrop surfaces (ring
+// walls, far forest combs) get re-textured; the finest octave stays gated to
+// scope FOVs (subpixel at establishing distance = shimmer while panning).
+const AERIAL_DETAIL_ARCADE = 0.55; // arcade-share of AERIAL_DETAIL_AMP
+const AERIAL_DETAIL_ARCADE_NEAR = 430; // m
+const AERIAL_DETAIL_ARCADE_FAR = 950; // m
+// r5 CLOUD-SHADOW MODULATION ("no large-scale light modulation: terrain
+// luminance is uniform across the entire 1.5 km battlefield — no cloud
+// shadows, no fog patchiness"): a world-anchored two-octave value noise,
+// thresholded into 2-3 soft ~150-400 m patches per km, multiplies the scene
+// color for every ground pixel (sky excluded via the depth gate). Applied in
+// the aerial pass where the per-pixel WORLD position is already
+// reconstructed, so the patches are anchored to the terrain (no screen-space
+// swim) and deterministic for captures. Amplitude ships per map via
+// scene.userData.cloudShadeAmp (sky.js: fair-weather 0.22, overcast 0.10 —
+// a diffuse-lit deck cannot cast crisp cloud shadows, but soft fog
+// patchiness still breaks the wash).
+const CLOUD_SHADE_DEFAULT = 0.22;
+// r5 HEIGHT-AWARE HAZE ("a diagonal fog-gradient band cutting across the
+// winter massif reads as a shader artifact — replace with height-based fog
+// so the band follows altitude"): in-scatter accumulates along the path
+// through LOW-ALTITUDE air, so pixels high above the battlefield datum must
+// haze less than same-distance pixels at ground level. The scatter-in term
+// decays with the pixel's world height above (camera + offset); extinction
+// keeps a partial share. Mountain walls now grade bottom-up (dense haze at
+// their skirts, clearer crags) instead of wearing a screen-diagonal band.
+const AERIAL_HEIGHT_REF = 30; // m above camera where the falloff starts
+const AERIAL_HEIGHT_SCALE = 150; // e-fold height of the scatter falloff (m)
+const AERIAL_HEIGHT_SCATTER_K = 0.75; // share of scatter-in that obeys altitude
+const AERIAL_HEIGHT_EXT_K = 0.35; // share of extinction that obeys altitude
 // r4 LP2 FAR-FIELD HUE CLAMP ("sniper_view top half: horizon forest renders
 // as solid two-tone teal blobs under a saturated jade-green fog — sampled RGB
 // [55,90,73] G-dominant where atmospheric haze must be blue-grey, B>=G").
@@ -222,7 +265,11 @@ const AERIAL_DETAIL_AMP = 0.26; // peak luminance modulation (+/-13%)
 // scored ~0.35 under a g-vs-max(r,b) key and kept their jade cast.
 const AERIAL_HUE_CLAMP_NEAR = 400; // m — clamp fades in from here
 const AERIAL_HUE_CLAMP_FAR = 760; // m — full strength beyond
-const AERIAL_HUE_CLAMP_MAX = 0.85; // max pull toward blue-grey
+// r5 ("far-tree impostors magnify into flat TEAL leaf-blob wallpaper" at
+// x8): the impostor band's g-b delta is small (~0.02-0.04 linear), so the
+// old smoothstep(0, 0.05) only half-engaged the clamp and the jade cast
+// survived. Steeper key + slightly stronger max pull.
+const AERIAL_HUE_CLAMP_MAX = 0.88; // max pull toward blue-grey
 const AERIAL_HUE_GREY = [0.92, 0.99, 1.12]; // blue-grey pole (per-channel luma scale)
 // r9 PRE-TONEMAP EMISSIVE SHOULDER ("fireball core is fully clipped: flat
 // blown white-yellow disc — the tonemapper has no highlight shoulder on
@@ -267,6 +314,7 @@ const AerialShader = {
     uTan: { value: new THREE.Vector2(1, 1) },
     uCamPos: { value: new THREE.Vector3() },
     uDetailW: { value: 0 }, // sniper far-field detail weight (0 in arcade)
+    uCloudShade: { value: CLOUD_SHADE_DEFAULT }, // per-map cloud-shadow depth
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -292,6 +340,7 @@ const AerialShader = {
     uniform vec2 uTan;
     uniform vec3 uCamPos;
     uniform float uDetailW;
+    uniform float uCloudShade;
     varying vec2 vUv;
     // 2D value noise on a hashed integer lattice — smooth (quintic fade),
     // tileless, cheap enough for a fullscreen pass that only pays it while
@@ -317,8 +366,17 @@ const AerialShader = {
           + uCamUp * ( vUv.y * 2.0 - 1.0 ) * uTan.y );
         float sunAmt = pow( max( dot( ray, uSunDir ), 0.0 ), ${AERIAL_SUN_POW.toFixed(1)} );
         vec3 hazeCol = mix( uHazeCool, uHazeWarm, sunAmt );
+        float rayT = -viewZ / max( dot( ray, uCamFwd ), 0.05 );
+        // height-aware atmosphere (see AERIAL_HEIGHT_* const block): pixels
+        // high above the battlefield datum sit in thinner air — scatter-in
+        // (and a share of extinction) decays with altitude so mountain walls
+        // haze bottom-up instead of wearing a screen-diagonal gradient band.
+        float wy = uCamPos.y + ray.y * rayT;
+        float hAtt = exp( -max( wy - uCamPos.y - ${AERIAL_HEIGHT_REF.toFixed(1)}, 0.0 )
+          / ${AERIAL_HEIGHT_SCALE.toFixed(1)} );
         float x = -viewZ * uDensity;
         float f = 1.0 - exp( -x * x );
+        f *= mix( 1.0, hAtt, ${AERIAL_HEIGHT_EXT_K.toFixed(2)} );
         float lum = dot( texel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
         vec3 hazy = mix( texel.rgb, vec3( lum ), uDesat ) * uCool;
         texel.rgb = mix( texel.rgb, hazy, f );
@@ -333,8 +391,17 @@ const AerialShader = {
         float x2 = -viewZ * uHazeDensity;
         float f2 = 1.0 - exp( -x2 * x2 );
         f2 *= 0.25 + 0.75 * smoothstep( 0.0, 0.05, lum );
+        f2 *= mix( 1.0, hAtt, ${AERIAL_HEIGHT_SCATTER_K.toFixed(2)} );
         texel.rgb = mix( texel.rgb, hazeCol, f2 );
-        float rayT = -viewZ / max( dot( ray, uCamFwd ), 0.05 );
+        // large-scale cloud shadows / light patchiness (see CLOUD_SHADE
+        // const block): world-anchored soft patches multiply the ground —
+        // the sun visibility modulation establishing shots were missing.
+        if ( uCloudShade > 0.003 ) {
+          vec2 cp = ( uCamPos + ray * rayT ).xz;
+          float cn = vnoise( cp * ( 1.0 / 340.0 ) ) * 0.62
+                   + vnoise( cp * ( 1.0 / 131.0 ) + vec2( 4.7, 8.1 ) ) * 0.38;
+          texel.rgb *= 1.0 - uCloudShade * smoothstep( 0.52, 0.80, cn );
+        }
         // far-field hue clamp (see AERIAL_HUE_CLAMP_* const block): distant
         // green-dominant pixels are forced toward same-luma blue-grey so the
         // horizon band can never read jade-green — zoom-independent, unlike
@@ -342,25 +409,38 @@ const AerialShader = {
         float hueW = ${AERIAL_HUE_CLAMP_MAX.toFixed(3)}
           * smoothstep( ${AERIAL_HUE_CLAMP_NEAR.toFixed(1)}, ${AERIAL_HUE_CLAMP_FAR.toFixed(1)}, rayT );
         if ( hueW > 0.002 ) {
-          float gDom = smoothstep( 0.0, 0.05, texel.g - texel.b );
+          float gDom = smoothstep( 0.0, 0.032, texel.g - texel.b );
           float hl = dot( texel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
           vec3 grey = hl * vec3( ${AERIAL_HUE_GREY[0].toFixed(3)}, ${AERIAL_HUE_GREY[1].toFixed(3)}, ${AERIAL_HUE_GREY[2].toFixed(3)} );
           texel.rgb = mix( texel.rgb, grey, hueW * gDom );
         }
-        // sniper far-field detail (see AERIAL_DETAIL_* const block): world-
-        // anchored two-octave value noise re-textures backdrop surfaces that
-        // the x8 scope magnifies past their bake frequency. Luminance-only.
-        if ( uDetailW > 0.001 ) {
-          float dw = uDetailW * smoothstep( ${AERIAL_DETAIL_NEAR.toFixed(1)}, ${AERIAL_DETAIL_FAR.toFixed(1)}, rayT );
+        // far-field detail (see AERIAL_DETAIL_* const block): world-anchored
+        // value noise re-textures backdrop surfaces the x8 scope magnifies
+        // past their bake frequency — and, at a reduced share, the horizon
+        // ring / far forest in ARCADE establishing shots (bare-gradient fix).
+        {
+          float dwS = uDetailW * smoothstep( ${AERIAL_DETAIL_NEAR.toFixed(1)}, ${AERIAL_DETAIL_FAR.toFixed(1)}, rayT );
+          float dw = max( dwS, ${AERIAL_DETAIL_ARCADE.toFixed(2)}
+            * smoothstep( ${AERIAL_DETAIL_ARCADE_NEAR.toFixed(1)}, ${AERIAL_DETAIL_ARCADE_FAR.toFixed(1)}, rayT ) );
           if ( dw > 0.003 ) {
             vec3 wp = uCamPos + ray * rayT;
             // slope-aware planar coords: xz carries flat ground, the y term
             // keeps texture alive on the near-vertical horizon-ring faces
             vec2 dp = wp.xz + vec2( wp.y * 0.85, wp.y * 0.37 );
-            float dn = vnoise( dp * ( 1.0 / 15.0 ) ) * 0.50
-                     + vnoise( dp * ( 1.0 / 4.6 ) + vec2( 7.3, 2.9 ) ) * 0.32
-                     + vnoise( dp * ( 1.0 / 1.6 ) + vec2( 3.1, 9.7 ) ) * 0.18;
+            float dnM = vnoise( dp * ( 1.0 / 15.0 ) );
+            float dn = dnM * 0.42
+                     + vnoise( dp * ( 1.0 / 4.6 ) + vec2( 7.3, 2.9 ) ) * 0.28
+                     + vnoise( dp * ( 1.0 / 1.6 ) + vec2( 3.1, 9.7 ) ) * 0.17
+                     // finest octave is SCOPE-ONLY (subpixel grain shimmers
+                     // in arcade pans; under x8 it reads as grass/leaf grain)
+                     + ( vnoise( dp * ( 1.0 / 0.55 ) + vec2( 9.4, 4.2 ) ) - 0.5 ) * 0.13 * ( dwS / max( dw, 1e-3 ) )
+                     + 0.065;
             texel.rgb *= 1.0 + ( dn - 0.5 ) * ${AERIAL_DETAIL_AMP.toFixed(3)} * dw;
+            // green-keyed chroma octave: swings far grass/canopy between
+            // olive and warm dry-brown at ~15 m patch scale, so magnified
+            // fields read as real mixed meadow instead of one flat hue.
+            float gVar = smoothstep( 0.0, 0.06, texel.g - texel.b ) * dw;
+            texel.rgb *= mix( vec3( 1.0 ), vec3( 1.075, 0.995, 0.86 ), ( dnM - 0.5 ) * 1.7 * gVar );
           }
         }
       }
@@ -438,9 +518,15 @@ const AerialShader = {
 // exposure 1.16 → 1.20 so the midtone band holds its WoT-reference level
 // while lit-vs-shadow separation deepens (contrast alone would drag the
 // sub-pivot playfield darker — the r7 failure mode).
+// r5 ("verdant gameplay cameras are oversaturated acid green-yellow — neon
+// mobile-game; real WoT ground is desaturated multi-hue"): global saturation
+// 1.09 → 1.045 (~-4% overall, and the aerial chroma octave now supplies hue
+// VARIETY so the field no longer needs raw chroma to read alive), green
+// chroma pull 0.12 → 0.19, and the green-warm hue nudge halved (below) so
+// the blue channel of grass stops being driven to ~0 (the lime-acid tell).
 const GRADE_CONTRAST = 1.36;
 const GRADE_PIVOT = 0.33;
-const GRADE_SATURATION = 1.09;
+const GRADE_SATURATION = 1.045;
 // r4 LP2 ("vignette stacks to a ~30-35% corner luminance falloff on bright
 // daylight wides — sky corners [121,155,164] vs [187,217,219] center; reads
 // as a filter, not photography"): 0.26 → 0.21, and the shader now keys the
@@ -471,11 +557,11 @@ const GRADE_KNEE = 0.80; // display-space luma where the highlight shoulder star
 const GRADE_BALANCE = [1.02, 1.0, 0.975];
 // Applied only to green-dominant pixels (terrain/foliage): warms hue toward
 // yellow-green without touching sky, tank camo browns, or skin-tone-ish dirt.
-const GRADE_GREEN_WARM = [1.03, 1.0, 0.96];
+const GRADE_GREEN_WARM = [1.016, 1.0, 0.982]; // r5: halved — see saturation note
 // r2: 0.09 → 0.12 — "grass is a flat saturated lime-green albedo ... WoT
 // grass is desaturated olive"; the extra chroma pull moves the whole green
 // band toward the olive reference (terrain.js albedo desat carries the rest).
-const GRADE_GREEN_DESAT = 0.12; // chroma pull-back on green-dominant pixels
+const GRADE_GREEN_DESAT = 0.19; // chroma pull-back on green-dominant pixels (r5: 0.12 → 0.19, olive band)
 // Split-tone poles (multiplied in by shadow/highlight membership).
 // r4 LP2: highlight pole eased ~25% ([1.074,1.010,0.930] → [1.056,1.008,0.947])
 // — at full strength the warm pole compounded with the sun key into the
@@ -505,12 +591,20 @@ const GRADE_HIGH_TINT = [1.056, 1.008, 0.947]; // warm sun-kissed highlights
 // black cut is gone: the treatment is now a gentle inner falloff plus a
 // ~13% CORNER-ONLY darkening (scopeR ~2.0 at the frame corners), with the
 // radial optics blur pushed out so it only kisses the frame edges.
+// gameplay_feel r5 (round critique MAJOR: "no visible scope-shadow vignette
+// at any zoom — the scope reads as raw FOV zoom"; movement-physics.md §9.2
+// requires a "full-screen black vignette ring"): the 0.10/0.13 shade was
+// invisible at 1080p in daylight. The ring now reads: sight picture clear to
+// ~r 0.62, top/bottom frame edges ×0.77, left/right edges ×0.41, extreme
+// corners ×0.27 — a daylight-readable circular scope shadow, still a soft
+// roll (no hard tube mask, the hud_ui r6 no-go), HUD/panels unaffected
+// (they composite above the post chain).
 const SCOPE_VIGNETTE_START = 0.62; // radius where the inner falloff begins
-const SCOPE_VIGNETTE_END = 1.05; // inner falloff reaches max at the frame edge
-const SCOPE_VIGNETTE_MAX = 0.10; // picture is ×0.90 by the frame edge band
-const SCOPE_CORNER_START = 1.12; // corner shade begins past the edge midpoints
+const SCOPE_VIGNETTE_END = 1.15; // inner falloff reaches max past the v-edges
+const SCOPE_VIGNETTE_MAX = 0.28; // picture is ×0.72 by the l/r edge band
+const SCOPE_CORNER_START = 1.25; // corner shade begins past the v-edge midpoints
 const SCOPE_CORNER_END = 2.02; // ~frame corner (aspect-corrected radius)
-const SCOPE_CORNER_MAX = 0.13; // extra ×0.87 in the extreme corners only
+const SCOPE_CORNER_MAX = 0.62; // extra ×0.38 in the extreme corners
 // hud_ui r4: blur only kisses the outer ~20% of screen radius at ~40% strength
 // (the old 1.02 start put the outer thirds of a 16:9 frame at FULL blur —
 // "left and right thirds dissolve into watercolor streaks" at x8)
@@ -589,7 +683,7 @@ const GradeShader = {
         // watercolor smear on the magnified far field; skips the blur ring.
         float sharpW = uSharp * ( 1.0 - smoothstep( ${(SCOPE_BLUR_START - 0.08).toFixed(3)}, ${SCOPE_BLUR_START.toFixed(3)}, scopeR ) );
         if ( sharpW > 0.001 ) {
-          vec2 px = vec2( 0.0011 / uAspect, 0.0011 ); // ~1.2 px at 1080p
+          vec2 px = vec2( 0.0009 / uAspect, 0.0009 ); // ~1 px at 1080p (r5: tighter kernel = crisper x8)
           vec3 nb = texture2D( tDiffuse, vUv + vec2( px.x, 0.0 ) ).rgb
                   + texture2D( tDiffuse, vUv - vec2( px.x, 0.0 ) ).rgb
                   + texture2D( tDiffuse, vUv + vec2( 0.0, px.y ) ).rgb
@@ -634,6 +728,14 @@ const GradeShader = {
       col = max( col - vec3( uBlack ), vec3( 0.0 ) );
       float cLuma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
       float cGain = uContrast - ( uContrast - 1.0 ) * smoothstep( 0.52, 0.90, cLuma );
+      // r5 LOW-END TAPER ("player-view shadow floor is near-black — blue-sky
+      // daylight should fill shadows to ~35-45%"): the sub-pivot expansion
+      // was dragging the whole 0.08-0.25 SHADOW-BODY band toward black on
+      // top of the ACES toe (measured: a 20% linear road shadow displayed at
+      // 11%). Ease the contrast gain out below ~0.30 luma so shadow bodies
+      // keep their fill while crevice/AO cores (< ~0.05) still reach the
+      // black anchor and the midtone S-curve identity is untouched.
+      cGain = mix( 1.0, cGain, smoothstep( 0.045, 0.30, cLuma ) );
       col = clamp( mix( vec3( ${GRADE_PIVOT.toFixed(3)} ), col, cGain ), 0.0, 1.0 );
       // split-tone: cool shadows / warm highlights, keyed on luminance
       float luma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
@@ -889,11 +991,66 @@ export function createPost(renderer, scene, camera) {
   // sharpness and only the 3D frame pays the reduced raster cost.
   let cssW = 0;
   let cssH = 0;
+  // --- Dynamic resolution governor (performance_budget r5) -----------------
+  // EVALUATION.md F10 / critic r5 minor: the preset ladder is static, so
+  // hardware weaker than the reference machine rides p5 dips with no
+  // recovery. Standard AAA answer: scale the internal render resolution to
+  // hold frame time. The governor tracks a ~1 s EMA of the render delta and
+  // steps `dynScale` (multiplied into the composer pixel ratio below) between
+  // 1.0 and DYN_MIN while the frame budget is blown, stepping back up once
+  // there is clear headroom. Constraints that shape the design:
+  //  - RETINA-CLASS FENCE: engages only when the renderer pixel ratio is
+  //    >= 1.25 (dpr >= 2 displays cap at 1.5, laptops at 1.25+). At dsf 1 the
+  //    renderer ratio is 1.0, so the screenshot harness and every dsf-1
+  //    certification render bit-identical frames — the governor cannot mask
+  //    a workload regression on the gate path. (At dsf 2 it is part of the
+  //    shipped behavior the probe certifies, exactly like the preset ladder.)
+  //  - STEPPED + RATE-LIMITED, not a per-frame lerp: every ratio change
+  //    reallocates the whole composer chain (scene HDR target, GTAO, bloom,
+  //    SMAA). A continuous lerp would thrash multi-MB GPU allocations; steps
+  //    of ~0.09 at most once per 2.5 s cost one bounded resize each and only
+  //    fire when frames are already long.
+  //  - HYSTERESIS: down past 18.5 ms sustained, up below 13.5 ms — a 5 ms
+  //    dead band so the governor cannot oscillate around one threshold. EMA
+  //    is re-seeded to the band midpoint after each step so the next decision
+  //    needs ~1 s of fresh evidence at the new resolution.
+  //  - HUD/DOM stays native-crisp: only the composer's internal buffers
+  //    scale; the final pass upscales to the untouched canvas, same as the
+  //    preset render-scale path this reuses.
+  const DYN_MIN = 0.75;
+  const DYN_STEP = 0.09;
+  const DYN_DOWN_MS = 18.5;
+  const DYN_UP_MS = 13.5;
+  const DYN_INTERVAL_S = 2.5;
+  const DYN_WARMUP_S = 6; // ignore boot/shader-compile turbulence
+  let dynScale = 1;
+  let dynEma = 0;
+  let dynClock = 0;
+  let dynLastStep = 0;
   function applySize(w, h) {
     cssW = w;
     cssH = h;
-    composer.setPixelRatio(Math.min(renderer.getPixelRatio(), preset.maxPixelRatio));
+    composer.setPixelRatio(Math.min(renderer.getPixelRatio(), preset.maxPixelRatio) * dynScale);
     composer.setSize(w, h);
+  }
+  /** Advance the governor one frame; resizes the chain when a step fires. */
+  function dynGovern(dt) {
+    if (!(dt > 0) || dt > 0.25) return; // hitches/tab-switch: not a trend
+    dynClock += dt;
+    dynEma = dynEma === 0 ? dt : dynEma + (dt - dynEma) * 0.06;
+    if (renderer.getPixelRatio() < 1.25) return; // retina-class only (see above)
+    if (dynClock < DYN_WARMUP_S || dynClock - dynLastStep < DYN_INTERVAL_S) return;
+    const ms = dynEma * 1000;
+    if (ms > DYN_DOWN_MS && dynScale > DYN_MIN) {
+      dynScale = Math.max(DYN_MIN, dynScale - DYN_STEP);
+    } else if (ms < DYN_UP_MS && dynScale < 1) {
+      dynScale = Math.min(1, dynScale + DYN_STEP);
+    } else {
+      return;
+    }
+    dynLastStep = dynClock;
+    dynEma = (DYN_DOWN_MS + DYN_UP_MS) / 2000; // re-seed to the band midpoint
+    if (cssW > 0 && cssH > 0) applySize(cssW, cssH);
   }
   {
     const css = renderer.getSize(new THREE.Vector2());
@@ -904,6 +1061,9 @@ export function createPost(renderer, scene, camera) {
   onPresetChange((p) => {
     preset = p;
     gtao.enabled = preset.aoScale > 0;
+    dynScale = 1; // new preset = new budget baseline; governor re-earns cuts
+    dynEma = 0;
+    dynLastStep = dynClock;
     if (cssW > 0 && cssH > 0) applySize(cssW, cssH);
   });
 
@@ -918,6 +1078,10 @@ export function createPost(renderer, scene, camera) {
      * @returns {void}
      */
     render(dt) {
+      // dynamic resolution governor (see the DYN_* block above): may step the
+      // composer's internal pixel ratio and resize the chain — run it FIRST
+      // so a resize never lands between the passes below and their uniforms.
+      dynGovern(dt);
       // Parity guard — the pass chain swaps the ping-pong buffers an ODD
       // number of times per frame (5 with GTAO enabled), so without this the
       // scene render (and its depth) lands in ALTERNATING buffers frame to
@@ -948,6 +1112,10 @@ export function createPost(renderer, scene, camera) {
       // per-map display exposure trim (sky.js applyPreset publishes the
       // active preset's postExposure on scene.userData; default 1.0)
       grade.uniforms.uExposure.value = scene.userData.postExposure || 1;
+      // per-map cloud-shadow depth (sky.js publishes cloudShadeAmp: 0.22
+      // fair-weather, 0.10 overcast; see CLOUD_SHADE_DEFAULT block)
+      aerial.uniforms.uCloudShade.value =
+        scene.userData.cloudShadeAmp ?? CLOUD_SHADE_DEFAULT;
       // scope treatment follows the rig's live scoped flag (snapSniper sets
       // it too, so harness captures get the exact same treatment). Eased
       // over ~5 frames so live scope-in reads as a transition, not a pop;
@@ -960,10 +1128,15 @@ export function createPost(renderer, scene, camera) {
           ? target
           : cur + (target - cur) * 0.45;
         grade.uniforms.uAspect.value = camera.aspect || (16 / 9);
-        // r4: zoom-scaled unsharp — 0 below x3 (fov ≥ ~16°), ~0.5 at x8
+        // r4: zoom-scaled unsharp — 0 below x3 (fov ≥ ~16°), full at x8
         // (fov 6.25°). Follows the eased uScope so scope-in has no pop.
+        // r5 ("enemy Tiger at 300 m renders soft at x8 — real WoT sniper
+        // mode stays tack-sharp at zoom"): 0.55 → 0.95. Textures are already
+        // at their finest mip under magnification (screen-space derivatives
+        // shrink with FOV), so source softness must be re-crisped here; the
+        // tighter 1 px kernel above keeps it from haloing.
         grade.uniforms.uSharp.value = grade.uniforms.uScope.value *
-          0.55 * Math.min(1, Math.max(0, (16 - camera.fov) / 10));
+          0.95 * Math.min(1, Math.max(0, (16 - camera.fov) / 10));
       }
       // scatter-in targets follow the sky-sampled fog color (map switches),
       // split into a warm (sunward) and cool (anti-sun) pole
@@ -1006,6 +1179,10 @@ export function createPost(renderer, scene, camera) {
 
     bloom,
     gtao,
+
+    /** Live dynamic-resolution scale (1 = full preset resolution). Probe/
+     * settings-UI observability for the governor above; read-only. */
+    get dynScale() { return dynScale; },
 
     /**
      * Quality toggle. GTAO is the most expensive pass (~2–3 ms @1080p) and is

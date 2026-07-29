@@ -401,16 +401,21 @@ function buildChieftain(P) {
   // ONE continuous shallow glacis: nose lip (0.66, 3.74) -> ring (1.70, 0.55)
   P.add('hull', frustum(1.55, 3.74, 0.50, 1.55, 0.58, 0.50, 0.66, 1.70));
   P.add('hull', frustum(1.42, 3.42, 3.62, 1.52, 3.74, 3.62, 0.32, 0.66));       // nose plate
-  P.add('hull', box(3.04, 0.30, 2.35), 0, 1.83, -2.50);                         // TALL raised engine deck
-  // big louvred plates across the raised deck (§19.5) — detail bars over
-  // narrow dark slots, never one big black slab
+  // r5 ("rear hull is a featureless container-like box nearly as tall as the
+  // turret"): the raised deck drops to the real Chieftain's LOW engine deck —
+  // a shallow 14 cm louvre platform just proud of the sponson line, sloping
+  // nothing, with the louvre banks reading as deck relief instead of the
+  // walls of a shipping container.
+  P.add('hull', box(3.04, 0.14, 2.30), 0, 1.75, -2.50);                         // low engine deck
+  // big louvred plates across the deck (§19.5) — detail bars over narrow
+  // dark slots, never one big black slab
   for (let k = 0; k < 7; k++) {
-    P.add('hullDetail', box(2.5, 0.05, 0.17), 0, 1.985, -1.62 - k * 0.28);
-    P.add('hullDark', box(2.4, 0.02, 0.09), 0, 1.99, -1.76 - k * 0.28);
+    P.add('hullDetail', box(2.5, 0.05, 0.17), 0, 1.825, -1.62 - k * 0.28);
+    P.add('hullDark', box(2.4, 0.02, 0.09), 0, 1.83, -1.76 - k * 0.28);
   }
   // rear plate: exhaust boxes low on the corners + taillights
   P.add('hull', box(3.0, 0.7, 0.1), 0, 1.30, -3.68);
-  P.add('hull', box(2.9, 0.36, 0.1), 0, 1.80, -3.66);                           // upper rear plate
+  P.add('hull', box(2.9, 0.18, 0.1), 0, 1.72, -3.66);                           // upper rear plate
   for (const s of [-1, 1]) {
     P.add('hull', box(0.5, 0.42, 0.22), s * 1.05, 1.22, -3.72);                 // exhaust shroud boxes
     P.add('hullDark', box(0.34, 0.10, 0.06), s * 1.05, 1.10, -3.85);            // exhaust slots
@@ -431,7 +436,11 @@ function buildChieftain(P) {
     }
     P.add('hullDark', box(0.32, 0.025, 0.02), s * 1.66, 1.13, 1.5);             // base seam
     P.add('hullDark', box(0.32, 0.025, 0.02), s * 1.66, 1.13, -0.4);
-    tarpRoll(P, 'hullCloth', s * 1.62, 1.42, 0.55, 0.85, 0.07, false);          // stowed roll
+    // r5 ("unpainted beige cylinder floats on the sponson"): the roll now
+    // SITS on the bin lid, lashed with a center strap (hull frame — the r5
+    // first pass parented it to the turret bucket and it levitated)
+    tarpRoll(P, 'hullCloth', s * 1.66, 1.44, 0.9, 0.85, 0.065, false);          // stowed roll on the bin lid
+    P.add('hullDark', box(0.30, 0.14, 0.03), s * 1.66, 1.44, 0.9);              // center lashing strap
   }
   // splash-board ridge across the glacis (§19.5)
   P.add('hullDetail', box(2.0, 0.055, 0.10), 0, 1.29, 1.85, -1.25, 0, 0);
@@ -463,9 +472,13 @@ function buildChieftain(P) {
   // paintedEnds pulls sprocket/idler onto the same scheme paint as the road
   // wheels instead of bare dust-steel drums.
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.36, wheelW: 0.155, xc: 1.50,
+    style: 'rubber', wheelR: 0.36, wheelW: 0.155, xc: 1.50, dishR: 0.80,
     wheelZs: [2.55, 1.75, 0.55, -0.25, -1.45, -2.25],
-    layers: [[-0.10, 0.10]],                                                    // paired steel-rimmed wheels
+    // r5 ("six giant plain green discs with no paired-wheel gap"): BOTH rows
+    // of each Horstmann pair keep scheme paint (recessDepth widens past the
+    // 0.20 row spread) so the visible gap between paired rims reads; dishR
+    // gives every wheel its rubber tire ring + hub separation.
+    layers: [[-0.10, 0.10]], recessDepth: 0.30,                                 // paired steel-rimmed wheels
     sprocket: { z: -3.18, y: 0.70, r: 0.33 }, idler: { z: 3.12, y: 0.50, r: 0.29 },
     rollers: [[1.55, 0.80], [0.05, 0.88], [-1.6, 0.97]].map(([z, y]) => ({ z, y, r: 0.08 })),
     // r3: §19.5 "top run covered by shallow fenders with stowage bins" — the
@@ -495,6 +508,17 @@ function buildChieftain(P) {
   P.add('turret', box(0.44, 0.52, 0.34), -0.94, 0.36, 0.22, 0, -0.5, 0);
   P.add('turretDark', box(0.36, 0.42, 0.05), -1.06, 0.36, 0.38, 0, -0.5, 0);    // door face
   P.add('turretDetail', box(0.04, 0.46, 0.04), -1.18, 0.36, 0.28, 0, -0.5, 0);  // hinge
+  // r5 ("add the turret-side stowage bins that define the Mk 10
+  // silhouette"): long shallow bins hung along BOTH turret flanks with lid
+  // seams and strap bands — the Chieftain's turret reads wider than its
+  // casting because of exactly this kit.
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.24, 0.34, 1.35), s * 1.06, 0.34, -0.72, 0, s * 0.06, 0);
+    P.add('turretDark', box(0.25, 0.02, 1.30), s * 1.06, 0.46, -0.72, 0, s * 0.06, 0);  // lid seam
+    for (const zc of [-0.25, -0.95]) {
+      P.add('turretDark', box(0.255, 0.35, 0.025), s * 1.07, 0.34, zc, 0, s * 0.06, 0); // strap bands
+    }
+  }
   // long stowage tail: full-width rear bin + bustle basket (§19.5)
   P.add('turret', box(1.9, 0.44, 0.62), 0, 0.30, -1.62);
   P.add('turretDark', box(1.8, 0.02, 0.5), 0, 0.10, -2.12);                     // basket mesh floor

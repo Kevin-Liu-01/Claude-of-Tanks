@@ -327,6 +327,12 @@ const DEFAULT_PRESET = Object.freeze({
   // 1.0 = neutral. Desert should ship ~0.88 (the "sand midtones at RGB 245"
   // blowout is an exposure problem the global grade must not pay for).
   postExposure: 1,
+  // r5 cloud-shadow / light-patchiness depth, applied by post.js's aerial
+  // pass (uCloudShade): null = AUTO — fair-weather maps get 0.22 (soft
+  // world-anchored cloud shadows breaking up the uniform field luminance),
+  // OVERCAST presets (winter) drop to 0.10: a diffuse-lit deck casts no
+  // crisp cloud shadows, but gentle fog patchiness still modulates the wash.
+  cloudShadowAmp: null,
 });
 
 /** Apply the shared atmosphere parameters to a Sky instance. @param {Sky} sky @param {THREE.Vector3} sunDir @param {object} [preset] */
@@ -904,6 +910,10 @@ export function createSky(scene, renderer) {
       u.uAlt.value = preset.cloudAltM ?? (overcast ? 340 : CLOUD_ALT);
       u.uHazeK.value = preset.cloudHazeK ?? (overcast ? 0.00015 : CLOUD_HAZE_K);
       u.uScale.value = preset.cloudUvM ?? (overcast ? 2400 : CLOUD_UV_METERS);
+      // r5: publish the cloud-shadow depth for post.js's aerial pass (see
+      // DEFAULT_PRESET.cloudShadowAmp) — overcast maps get patchiness, not
+      // crisp cloud shadows.
+      scene.userData.cloudShadeAmp = preset.cloudShadowAmp ?? (overcast ? 0.10 : 0.22);
     }
     clouds.material.uniforms.uOpacity.value = preset.cloudOpacity;
     clouds.visible = preset.cloudOpacity > 0.01;

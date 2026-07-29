@@ -135,6 +135,11 @@ export default {
     // palm clusters stood as bare sticks on clean sand (vegetation.js
     // clusterScrub: >1 puts ~55% of the shrubs at the trunk bases)
     clusterScrub: 2.3,
+    // r5 terrain_environment: keep the establishing camera's foreground frame
+    // edge clear — a squat palm sat CLIPPED at the bottom-left of
+    // battlefield_desert.png (shot pos [-85,46,-162] looking [60,10,172]);
+    // no trees/scrub/tufts inside this disc
+    avoid: [{ x: -78, z: -146, r: 48 }],
     // r6: 0.3 -> 0.42 — compensates the stricter two-scale thicket gating so
     // scrub concentrates into dense wadis instead of thinning out overall
     // r4 (content_breadth): 0.42 -> 0.60 — the wadi thickets share the same
@@ -185,12 +190,23 @@ export default {
     // r2 (content_breadth): plan 10 -> 18 slots — three more adobe clusters
     // plus a souk ('market'/'marketRow' builders, maps/mapKits.js via the
     // urbanKit registry) so the crossroads reads as a lived-in bazaar town
-    plan: ['adobe', 'adobe', 'market', 'adobe', 'tower', 'adobe', 'ruin',
-      'adobe', 'marketRow', 'adobe', 'adobe', 'adobe', 'adobe', 'market',
-      'adobe', 'ruin', 'adobe', 'adobe'],
+    // r5 (content_breadth): WALLED COMPOUNDS. The critique's midfield read
+    // was "~6 small boxes scattered on a bare sand pan with no compound
+    // walls/courtyards" — four 'compound'/'compoundSouk' slots (mapKits.js:
+    // mud-brick perimeter + gate, 2-story house, annex, well/souk anchor,
+    // courtyard clutter) cluster the loose adobes into real family blocks.
+    plan: ['compound', 'adobe', 'market', 'adobe', 'compoundSouk', 'tower',
+      'adobe', 'ruin', 'compound', 'adobe', 'marketRow', 'adobe', 'adobe',
+      'compoundSouk', 'adobe', 'market', 'ruin', 'adobe'],
     // denser packing: fill both road sides more often and let neighbouring
     // adobes huddle (flat-roof villages cluster tight around their souk)
     sideSkip: 0.12, spacingPad: 7,
+    // r5: 14 m-deep compound footprints need one extra lateral step so their
+    // street wall clears the carriageway (front face >= ~4.5 m off the road
+    // centerline at the closest roll), and a wider ground-fit tolerance so a
+    // 24 m footprint still finds slots on the feathered village apron
+    // (flatten 0.9 keeps the actual spread well under this inside the core)
+    buildingLat: [11.5, 4.5], maxSpread: 2.2,
     tones: {
       plaster: (h, s, l) => [0.068, 0.52, clamp01(l * 0.98 + 0.02)], // warm sand-plaster adobe
       roof: (h, s, l) => [0.065, clamp01(s * 0.8), clamp01(l * 1.1)],

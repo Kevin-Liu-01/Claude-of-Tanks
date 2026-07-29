@@ -305,7 +305,7 @@ function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyA
         //  - rock ribs: dark spur lines piercing the caps where gullies run,
         //    plus sparse crag windows on the steeper mid-band (broad in v so
         //    tangential grazing cannot comb them into stripes)
-        const sast = wn(u, v, 52, 17, 361) * 0.5 + wn(u, v, 21, 7, 409) * 0.5;
+        const sast = wn(u, v, 30, 17, 361) * 0.5 + wn(u, v, 14, 7, 409) * 0.5; // r5 TE: lower u-freq — no grazing stripes
         const basin = wn(u, v, 5.5, 3.2, 477);
         // rib lines from the RAW ridged field (the gullyAmp-scaled `gully` is
         // ~0.12 on alpine — far too faint to survive the ring fog)
@@ -359,7 +359,10 @@ function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyA
   // altitude beds, the snow/rock structure is stochastic, and 16x resolved it
   // into the same down-slope fiber on tangentially-grazed winter walls.
   // Only the banded (mesa) style keeps 16.
-  t.anisotropy = treeline > 0 ? 2 : (banding > 0.003 ? 16 : 4);
+  // r5 terrain_environment: alpine 4 -> 2 — the residual vertical streaks on
+  // the winter massif walls were the stochastic snow structure resolving at
+  // grazing angles; 2x mips those faces to a soft blend like the canopy path.
+  t.anisotropy = treeline > 0 ? 2 : (banding > 0.003 ? 16 : 2);
   // linear (non-sRGB): authored contrast passes through 1:1 and the 0.62
   // mid-gray recentres exactly with the material color multiplier below
   return t;
@@ -475,15 +478,23 @@ function makeTreeLineTexture(rng) {
     }
   }
   let x = 2;
+  // r5 terrain_environment: STAND-SCALE modulation — the comb drew every
+  // emergent tree from one height/width distribution, so far forest walls
+  // read as a repeating vertical-stroke carpet where the haze is thin
+  // (critique). A slow sine + jitter walks the stand scale 0.72-1.18x along
+  // the strip, clearings come ~2x as often (with pale scree/rock patches in
+  // the gap), so the ridge line reads as aged mixed forest.
+  const scPhase = rng() * 9.7;
   while (x < w - 24) {
+    const stand = 0.72 + 0.46 * (Math.sin(x * 0.006 + scPhase) * 0.5 + 0.5) + rng() * 0.10;
     const conifer = rng() < 0.62;
     const tj = 0.62 + rng() * 0.55; // per-tree value jitter
     if (conifer) {
       // hud_ui r6: cap the height/width aspect near 4:1 (was up to ~12:1) —
       // the old needle spires magnified into bare flagpoles poking out of
       // the canopy at x8 sniper zoom, the single loudest cardboard tell.
-      const tw = 30 + rng() * 40;
-      const th = Math.min(84 + rng() * 132, tw * (3.4 + rng() * 0.9));
+      const tw = (30 + rng() * 40) * stand;
+      const th = Math.min((84 + rng() * 132) * stand, tw * (3.4 + rng() * 0.9));
       const tiers = 3 + (rng() * 2 | 0);
       for (let t = 0; t < tiers; t++) {
         const ty = base - (th * (t + 1)) / tiers;
@@ -504,7 +515,7 @@ function makeTreeLineTexture(rng) {
       ctx.fillRect(x + tw / 2 - 2.5, base - th * 0.3, 5, th * 0.3 + 2);
       x += tw * (0.55 + rng() * 0.75);
     } else {
-      const th = 82 + rng() * 130, tw = 35 + rng() * 52;
+      const th = (82 + rng() * 130) * stand, tw = (35 + rng() * 52) * stand;
       const cy = base - th * 0.62;
       for (let k = 0; k < 6; k++) {
         const ox = (rng() - 0.5) * tw * 0.5;
@@ -521,7 +532,17 @@ function makeTreeLineTexture(rng) {
       ctx.fillRect(x + tw / 2 - 3, base - th * 0.35, 6, th * 0.35 + 2);
       x += tw * (0.6 + rng() * 0.7);
     }
-    if (rng() < 0.12) x += 22 + rng() * 58; // occasional clearing gap
+    if (rng() < 0.24) { // clearing gap with a pale scree/rock patch
+      const gw = 26 + rng() * 74;
+      if (rng() < 0.6) {
+        const gh = 18 + rng() * 26;
+        ctx.fillStyle = `rgb(${150 + (rng() * 30) | 0},${146 + (rng() * 24) | 0},${132 + (rng() * 20) | 0})`;
+        ctx.beginPath();
+        ctx.ellipse(x + gw * 0.5, base - gh * 0.45, gw * 0.42, gh * 0.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      x += gw;
+    }
   }
   // flood transparent texels with the mean tone so mips never halo dark
   const id = ctx.getImageData(0, 0, w, h);
@@ -652,13 +673,11 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
       { r: 1240, base: 88, amp: 100, f0: 1.1, f1: 2.4, aer: 0.60 },
     ],
   };
-  const rows = ROWS_BY_STYLE[style] || ROWS_BY_STYLE.default;
+  const rows0 = ROWS_BY_STYLE[style] || ROWS_BY_STYLE.default;
 
-  const nv = N * rows.length;
-  const pos = new Float32Array(nv * 3);
-  const col = new Float32Array(nv * 3);
-  const uvA = new Float32Array(nv * 2);
-  const hs = new Float32Array(nv);
+  const nv0 = N * rows0.length;
+  const pos0 = new Float32Array(nv0 * 3);
+  const hs0 = new Float32Array(nv0);
   let maxH = 1;
   // >>> gameplay_feel r4: keep every ring row OUTSIDE the playable square. --
   // The rows are circles but the map is a SQUARE (half-width ~512): a
@@ -681,14 +700,14 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
   // outward-push ladder (values interpolate the original radius->margin curve)
   // r4: 9-row alpine ladder (rows added at 650/940) — margins interpolated so
   // rEff stays monotonic across rows along every azimuth (incl. corners)
-  const ROW_RIM_MARGIN = rows.length === 9
+  const ROW_RIM_MARGIN = rows0.length === 9
     ? [-34, 22, 95, 150, 200, 340, 430, 540, 800]
-    : rows.length === 7
+    : rows0.length === 7
       ? [-34, 22, 95, 200, 340, 540, 800]
       : [-34, 22, 95, 280, 520, 800];
   // <<< gameplay_feel r4 ------------------------------------------------------
-  for (let ri = 0; ri < rows.length; ri++) {
-    const row = rows[ri];
+  for (let ri = 0; ri < rows0.length; ri++) {
+    const row = rows0[ri];
     for (let k = 0; k < N; k++) {
       const a = (k / N) * Math.PI * 2;
       // >>> gameplay_feel r4: square-rim radius clamp (see note above)
@@ -704,13 +723,82 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
       }
       hh *= amp;
       const i = ri * N + k;
-      hs[i] = hh;
+      hs0[i] = hh;
       if (!row.skirt && hh > maxH) maxH = hh;
-      pos[i * 3] = Math.cos(a) * jr;
-      pos[i * 3 + 1] = hh;
-      pos[i * 3 + 2] = Math.sin(a) * jr;
+      pos0[i * 3] = Math.cos(a) * jr;
+      pos0[i * 3 + 1] = hh;
+      pos0[i * 3 + 2] = Math.sin(a) * jr;
     }
   }
+
+  // --- alpine RADIAL SUBDIVISION (content_breadth r5) ------------------------
+  // Even with the 9-row ladder + smoothed analytic normals, the wall between
+  // two adjacent alpine rows is ONE quad strip spanning 65-200 m radially —
+  // from the establishing camera those quads render as flat "folded paper"
+  // facets with a plain vertex-color gradient (critique, minor). Insert two
+  // interpolated circles per non-skirt gap and displace them with a fractal
+  // crag field scaled to the local wall relief: facet size drops ~3x, and the
+  // sub-row knolls/gullies feed the smoothed-normal relight + per-fragment
+  // rock splat with REAL surface structure instead of an interpolation ramp.
+  // Silhouette is untouched (authored crest circles keep their vertices);
+  // other styles pass through unchanged. Cost: 9 -> 21 rows x 520 verts.
+  let rows = rows0, pos = pos0, hs = hs0;
+  if (style === 'alpine') {
+    const SUB = 2;
+    const rowsX = [];
+    const posX = [];
+    const hsX = [];
+    const pushRow = (rowObj, srcBase) => {
+      rowsX.push(rowObj);
+      for (let k = 0; k < N; k++) {
+        const i = srcBase + k;
+        posX.push(pos0[i * 3], pos0[i * 3 + 1], pos0[i * 3 + 2]);
+        hsX.push(hs0[i]);
+      }
+    };
+    for (let ri = 0; ri < rows0.length; ri++) {
+      pushRow(rows0[ri], ri * N);
+      if (ri >= rows0.length - 1 || rows0[ri].skirt || rows0[ri + 1].skirt) continue;
+      const rA = rows0[ri], rB = rows0[ri + 1];
+      for (let s = 1; s <= SUB; s++) {
+        const f = s / (SUB + 1);
+        rowsX.push({
+          r: rA.r + (rB.r - rA.r) * f,
+          base: rA.base + (rB.base - rA.base) * f,
+          amp: rA.amp + (rB.amp - rA.amp) * f,
+          f0: rA.f0, f1: rA.f1,
+          aer: rA.aer + (rB.aer - rA.aer) * f,
+        });
+        const fq = 6.5 + s * 2.3;
+        for (let k = 0; k < N; k++) {
+          const a = (k / N) * Math.PI * 2;
+          const iA = ri * N + k, iB = (ri + 1) * N + k;
+          const hA = hs0[iA], hB = hs0[iB];
+          // crag displacement sized to the local wall relief (+ a floor so
+          // even gentle spans pick up micro-structure)
+          const crag = noi.noise(Math.cos(a) * fq + ri * 23.7 + s * 17.1,
+            Math.sin(a) * fq - ri * 11.3 + s * 7.7) * 0.72
+            + noi.noise(Math.cos(a) * 14.0 + s * 41.0 + ri * 3.0,
+              Math.sin(a) * 14.0 - s * 23.0) * 0.28;
+          const disp = crag * (Math.abs(hB - hA) * 0.16 + 7.0);
+          // small radial wander so remaining facet borders never run straight
+          const rj = 1 + 0.011 * noi.noise(Math.cos(a) * 9.0 - s * 13.0 + ri * 5.0,
+            Math.sin(a) * 9.0 + s * 29.0);
+          posX.push(
+            (pos0[iA * 3] + (pos0[iB * 3] - pos0[iA * 3]) * f) * rj,
+            hA + (hB - hA) * f + disp,
+            (pos0[iA * 3 + 2] + (pos0[iB * 3 + 2] - pos0[iA * 3 + 2]) * f) * rj);
+          hsX.push(hA + (hB - hA) * f + disp);
+        }
+      }
+    }
+    rows = rowsX;
+    pos = new Float32Array(posX);
+    hs = new Float32Array(hsX);
+  }
+  const nv = N * rows.length;
+  const col = new Float32Array(nv * 3);
+  const uvA = new Float32Array(nv * 2);
   // detail-texture UVs: u wraps the ring, v = absolute altitude fraction so
   // strata/snow features in the texture land at constant world height
   for (let ri = 0; ri < rows.length; ri++) {

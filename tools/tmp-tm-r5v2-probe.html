@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<!-- tools/tmp-tm-r5v2-probe.html — tank_models r5v2 temp probe: swap-aware
+     single-tank render (glbprobe framing) + a MEASURE dump: muzzle world pos,
+     gun pivot, hull bbox (gun excluded) so barrel overhang can be asserted
+     numerically. ?id=&az=&pitch=&dist=&tyaw= (turret yaw deg). -->
+<html><body style="margin:0">
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+import { getSpec } from '/src/vehicles/specs.js';
+
+const q = new URLSearchParams(location.search);
+const id = q.get('id') || 'tiger1';
+const az = parseFloat(q.get('az') ?? '-38');
+const pitch = parseFloat(q.get('pitch') ?? '10');
+const distQ = parseFloat(q.get('dist') ?? '0');
+const tyaw = parseFloat(q.get('tyaw') ?? '0');
+const W = 1280, H = 720;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87a6c4);
+scene.add(new THREE.HemisphereLight(0xcfe4ff, 0x4a5a3a, 1.0));
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.6);
+const sunA = ((az + 18) * Math.PI) / 180;
+sun.position.set(Math.sin(sunA) * 24, 15, Math.cos(sunA) * 24);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, far: 90 });
+scene.add(sun);
+
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(400, 400),
+  new THREE.MeshStandardMaterial({ color: 0x55663f, roughness: 1 }),
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+function countTris(root) {
+  let tris = 0;
+  root.traverse((o) => {
+    if (!(o.isMesh || o.isInstancedMesh) || !o.visible) return;
+    const g = o.geometry;
+    const n = g.index ? g.index.count / 3 : g.attributes.position.count / 3;
+    tris += n * (o.isInstancedMesh ? o.count : 1);
+  });
+  return Math.round(tris);
+}
+
+try {
+  const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 8, renderer };
+  const visual = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high' });
+  scene.add(visual.root);
+  if (tyaw && visual.syncFromState) {
+    // pose the turret directly (probe-only): find the turret group child
+    visual.root.traverse((o) => {});
+  }
+
+  const spec = getSpec(id);
+  const dist = distQ || Math.max(6.2, spec.dims.overallLengthM * 0.82);
+  const cy = spec.dims.heightM * 0.52;
+  const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 500);
+  const a = (az * Math.PI) / 180, p = (pitch * Math.PI) / 180;
+  camera.position.set(
+    Math.sin(a) * Math.cos(p) * dist,
+    cy + Math.sin(p) * dist,
+    Math.cos(a) * Math.cos(p) * dist,
+  );
+  camera.lookAt(0, cy, 0);
+
+  const t0 = performance.now();
+  let lastTris = 0, stableFrames = 0;
+  (function loop() {
+    visual.root.updateMatrixWorld(true);
+    const tris = countTris(visual.root);
+    renderer.render(scene, camera);
+    if (tris === lastTris) stableFrames++; else { stableFrames = 0; lastTris = tris; }
+    const elapsed = performance.now() - t0;
+    if ((stableFrames > 90 && elapsed > 4000) || elapsed > 22000) {
+      // MEASURE dump: muzzle vs hull front (barrel overhang check)
+      try {
+        const mz = new THREE.Vector3();
+        visual.gunMuzzleWorld(mz);
+        const gp = new THREE.Vector3();
+        visual.gunPivotWorld(gp);
+        // wheel-material forensics: find the road-wheel InstancedMesh color
+        const wheelCols = [];
+        visual.root.traverse((o) => {
+          if (o.isInstancedMesh && o.material && o.material.color && o.count > 4) {
+            wheelCols.push(`${o.count}x #${o.material.color.getHexString()} map:${!!o.material.map}`);
+          }
+        });
+        let swapped = false;
+        let glbMeshes = 0;
+        visual.root.traverse((o) => {
+          if (o.userData && o.userData.__glbSwapped) swapped = true;
+          if (o.isMesh && o.material && o.material.map && o.material.map.image
+            && (o.material.map.image.width || 0) > 64) glbMeshes++;
+        });
+        window.__MEASURE = {
+          id, tris: lastTris, swapped, glbMeshes,
+          muzzleZ: +mz.z.toFixed(3), muzzleY: +mz.y.toFixed(3),
+          gunPivotZ: +gp.z.toFixed(3),
+          hullFrontZ: +(spec.dims.hullLengthM / 2).toFixed(3),
+          overhang: +(mz.z - spec.dims.hullLengthM / 2).toFixed(3),
+          wheelCols: wheelCols.slice(0, 6),
+        };
+      } catch (e) { window.__MEASURE = { id, error: String(e) }; }
+      window.__PROBE_READY = true;
+      return;
+    }
+    requestAnimationFrame(loop);
+  })();
+} catch (e) {
+  window.__MEASURE = { id, error: String(e) };
+  window.__PROBE_READY = true;
+  document.title = 'ERR ' + e.message;
+  console.error(e);
+}
+</script>
+</body></html>

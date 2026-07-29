@@ -488,18 +488,22 @@ function ensurePenRoll(shell, rng) {
 function seamArmorMm(armorModel) {
   if (armorModel._seamMm != null) return armorModel._seamMm;
   let mm = Infinity;
+  let plate = null;
   const scan = (plates) => {
     if (!plates) return;
     for (const p of plates) {
       if ((p.kind || 'main') !== 'main') continue;
       const ke = p.keMm != null ? p.keMm : (p.physicalMm || 0);
-      if (ke > 0 && ke < mm) mm = ke;
+      if (ke > 0 && ke < mm) { mm = ke; plate = p; }
     }
   };
   scan(armorModel.hullPlates);
   scan(armorModel.turretPlates);
   if (!isFinite(mm)) mm = 40;
   armorModel._seamMm = mm;
+  // SHOT-INFO (killcam_shotinfo r5): surrogate plate identity, so the seam
+  // catch below can stamp WHICH plate the shell was charged with.
+  armorModel._seamPlate = plate;
   return mm;
 }
 
@@ -730,6 +734,22 @@ export function resolveShellHit(shell, target, hits, rng) {
       (h.kind === 'module' && h.external !== true && !h.barrel && h.module !== 'gun'));
     if (seamInterior) {
       const seamMm = seamArmorMm(target.spec.armor);
+      // SHOT-INFO (killcam_shotinfo r5, ADDITIVE): the seam check charges the
+      // tank's weakest MAIN plate — stamp that surrogate plate's armor story
+      // onto the event BEFORE resolution so the shot card / killcam never
+      // print a PENETRATION with '—' armor, '—' pen roll and '—' zone (the
+      // player's most important feedback was blank on every seam catch, r5
+      // major). Zone is prefixed 'seam_' so zoneLabel renders e.g.
+      // 'seam hull side upper R' — flagged as a seam, never posing as a
+      // clean plate hit. event.pos/localPos/localDir were already stamped
+      // from the first intersection above. No RNG, no damage math touched.
+      const seamPlate = target.spec.armor._seamPlate || null;
+      event.zone = `seam_${(seamPlate && seamPlate.name) || 'hull'}`;
+      event.plateKind = 'main';
+      event.physicalMm = (seamPlate && seamPlate.physicalMm) || seamMm;
+      event.nominalMm = seamMm;   // the KE base the seam check actually used
+      event.effectiveMm = seamMm; // charged at face value — no normal at a seam
+      event.penRollMm = pen;      // the shell's rolled pen tested against it
       if (pen >= seamMm) {
         event.kind = 'pen';
         event.damage = dmgRoll;

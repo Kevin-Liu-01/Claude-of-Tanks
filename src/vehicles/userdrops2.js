@@ -273,7 +273,12 @@ const USERDROP2_SPECS = {
 // the GLB substitution actually lands (then flip this flag, re-add the
 // techtree.js spec wiring, and run `node tools/genIcons.mjs --tanks
 // bmp1,m1128,m1296`).
-const SHIP_USERDROP2_NEW = false;
+// content_breadth r5: even when flipped, PUBLIC builds (build:public sets
+// VITE_PUBLIC_BUILD=1) never register quarantine-path sources — the specs
+// stay delisted / procedural, so tools/strip-nc-assets.mjs succeeds instead
+// of failing loudly.
+const SHIP_USERDROP2_NEW = false
+  && !(typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_PUBLIC_BUILD);
 
 if (SHIP_USERDROP2_NEW) {
   for (const [id, spec] of Object.entries(USERDROP2_SPECS)) {

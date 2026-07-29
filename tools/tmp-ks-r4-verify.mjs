@@ -235,8 +235,12 @@ if (!shot.ok) {
     if (ev.kind === 'screen_pierce') {
       check('card', 'Armor row (screen)', (ev.physicalMm || 0) > 0 ? `${R(ev.physicalMm)} mm screen` : 'screen', card.rows['Armor']);
     } else {
+      // r5 format: labelled effective value + external-module honesty
       const hasArmor = (ev.nominalMm || 0) > 0 || (ev.effectiveMm || 0) > 0;
-      check('card', 'Armor row', hasArmor ? `${R(ev.nominalMm || 0)}→${R(ev.effectiveMm || 0)} mm` : '—', card.rows['Armor']);
+      const extZ = ['optics', 'gun', 'gun_barrel', 'trackL', 'trackR'].includes(ev.zone);
+      check('card', 'Armor row', hasArmor
+        ? `${R(ev.nominalMm || 0)} → ${R(ev.effectiveMm || 0)} mm eff.`
+        : extZ ? 'external — no armor' : '—', card.rows['Armor']);
       const spec = await page.evaluate(() => JSON.parse(JSON.stringify(window.__DEBUG.game.player.spec.gun.shells)));
       const sh = spec.find((s) => s.name === ev.shellName && s.type === ev.shellType) || spec.find((s) => s.type === ev.shellType);
       const nomPen = sh ? R(penAt(sh, ev.flightDistM || 0)) : 0;

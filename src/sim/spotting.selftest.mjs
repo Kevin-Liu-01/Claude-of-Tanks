@@ -299,37 +299,49 @@ console.log('[16] armor doc §9: damaged radio halves intel share range');
 
 console.log('[17] muzzle-flash reveal resolves fire intel THROUGH the formula');
 {
-  // m4a3e8 (still camo 0.24) at 400 m from a tiger1 spotter (vr 370):
-  // cold: spotRange 293 < 400 -> hidden. Firing bloom-strips own camo to
-  // 0.0432 -> spotRange 356.2, STILL < 400 — the formula alone never reveals
+  // m4a3e8 (still camo 0.24) at 435 m from an m1a2 spotter (vr 445):
+  // cold: spotRange 350.2 < 435 -> hidden. Firing bloom-strips own camo to
+  // 0.0432 -> spotRange 427.9, STILL < 435 — the formula alone never reveals
   // this shooter, which is exactly where the old ai.js hard bypass lived.
-  // The flash branch now reveals it (open ground, bloom hot, LOS clear).
-  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
-  const shooter = tank('p1', 'player', 0, 400);
+  // The flash branch reveals it (open ground, bloom hot, inside the
+  // spotter's view range, LOS clear).
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'm1a2', cls: 'mbt' });
+  const shooter = tank('p1', 'player', 0, 435);
   const open = mkSys([], [spotter, shooter]);
   open.forceCheck(1);
-  ok(!open.isSpotted('p1', 'enemy'), 'open @400 m, cold gun: hidden (beyond formula range)');
+  ok(!open.isSpotted('p1', 'enemy'), 'open @435 m, cold gun: hidden (beyond formula range)');
   open.notifyFired('p1', 2);
   open.forceCheck(2.05);
-  ok(open.isSpotted('p1', 'enemy'), 'open @400 m, firing: muzzle flash reveals');
+  ok(open.isSpotted('p1', 'enemy'), 'open @435 m, firing: muzzle flash reveals');
 
-  // Deep bush ambush: a bush 40 m up the line (> 15 m rule radius) keeps
-  // concealing while the bloom is hot — the ambush SURVIVES its own shot.
+  // r5 WoT-parity clamp: firing only strips camo — the flash must never
+  // extend detection past the SPOTTER'S view range. A tiger1 (vr 370) at
+  // 400 m does NOT get the reveal an m1a2 (vr 445) gets.
+  const spotterVr = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  const pastVr = mkSys([], [spotterVr, tank('p1', 'player', 0, 400)]);
+  pastVr.notifyFired('p1', 2);
+  pastVr.forceCheck(2.05);
+  ok(!pastVr.isSpotted('p1', 'enemy'),
+    'flash reveal clamps to the spotter view range (370 m spotter, 400 m shooter)');
+
+  // Deep bush ambush INSIDE view range: a bush 35 m up the line (> 15 m
+  // rule radius) keeps concealing while the bloom is hot — the ambush
+  // SURVIVES its own shot (bush gate, not the view-range clamp: 350 < 370).
   const spotter2 = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
-  const ambusher = tank('p1', 'player', 0, 400);
-  const bush = mkSys([{ x: 0, z: 360, r: 3, add: 0.35 }], [spotter2, ambusher]);
+  const ambusher = tank('p1', 'player', 0, 350);
+  const bush = mkSys([{ x: 0, z: 315, r: 3, add: 0.35 }], [spotter2, ambusher]);
   bush.notifyFired('p1', 2);
   bush.forceCheck(2.05);
-  ok(!bush.isSpotted('p1', 'enemy'), 'bush ambush @400 m survives its own shot');
+  ok(!bush.isSpotted('p1', 'enemy'), 'bush ambush @350 m survives its own shot');
 
   // The flash respects hard cover and the 445 m clamp.
-  const spotter3 = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
-  const walled = mkSys([], [spotter3, tank('p1', 'player', 0, 400)],
+  const spotter3 = tank('e1', 'enemy', 0, 0, { specId: 'm1a2', cls: 'mbt' });
+  const walled = mkSys([], [spotter3, tank('p1', 'player', 0, 435)],
     { raycast: () => ({ dist: 100 }) });
   walled.notifyFired('p1', 2);
   walled.forceCheck(2.05);
   ok(!walled.isSpotted('p1', 'enemy'), 'flash reveal still blocked by hard cover');
-  const spotter4 = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
+  const spotter4 = tank('e1', 'enemy', 0, 0, { specId: 'm1a2', cls: 'mbt' });
   const far = mkSys([], [spotter4, tank('p1', 'player', 0, MAX_SPOT_RANGE_M + 30)]);
   far.notifyFired('p1', 2);
   far.forceCheck(2.05);
@@ -339,8 +351,8 @@ console.log('[17] muzzle-flash reveal resolves fire intel THROUGH the formula');
   // MUZZLE_FLASH_BLOOM_MIN (~1.4 s) no longer benefits from the flash.
   ok(fireBloomAt(0, 1.3) >= MUZZLE_FLASH_BLOOM_MIN &&
      fireBloomAt(0, 2.5) < MUZZLE_FLASH_BLOOM_MIN, 'flash window ~1.4 s');
-  const spotter5 = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
-  const cold = mkSys([], [spotter5, tank('p1', 'player', 0, 400)]);
+  const spotter5 = tank('e1', 'enemy', 0, 0, { specId: 'm1a2', cls: 'mbt' });
+  const cold = mkSys([], [spotter5, tank('p1', 'player', 0, 435)]);
   cold.notifyFired('p1', 2);
   cold.forceCheck(4.6); // bloom 0.22 — still bloom-hot camo-wise, flash gone
   ok(!cold.isSpotted('p1', 'enemy'), 'flash expired: shooter back to formula-hidden');
@@ -350,15 +362,16 @@ console.log('[17] muzzle-flash reveal resolves fire intel THROUGH the formula');
 
 console.log('[18] notifyFired pulls the shooter\'s next check in (no cadence wait)');
 {
-  // At 400 m the check cadence is 2 s. Without the pull-in, a shot fired
+  // At 435 m the check cadence is 2 s. Without the pull-in, a shot fired
   // right after a scheduled check would stay unresolved for up to 2 s; the
-  // reveal must land on the very next update() tick.
-  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'tiger1', cls: 'heavy' });
-  const shooter = tank('p1', 'player', 0, 400);
+  // reveal must land on the very next update() tick. (m1a2 spotter: the
+  // shooter sits inside its 445 m view range for the r5-clamped flash.)
+  const spotter = tank('e1', 'enemy', 0, 0, { specId: 'm1a2', cls: 'mbt' });
+  const shooter = tank('p1', 'player', 0, 435);
   const sys = mkSys([], [spotter, shooter]);
   const dt = 1 / 60;
   for (let t = 0; t <= 1; t += dt) sys.update(dt, t); // settle the stagger
-  ok(!sys.isSpotted('p1', 'enemy'), 'pre-shot: hidden at 400 m');
+  ok(!sys.isSpotted('p1', 'enemy'), 'pre-shot: hidden at 435 m');
   sys.notifyFired('p1', 1.02);
   const evs = sys.update(dt, 1.03);
   ok(evs.some((e) => e.id === 'p1' && e.team === 'enemy'),

@@ -196,7 +196,12 @@ const TYPE74_SPEC = {
 // selectable playables. type74 (a NEW vehicle with no procedural fallback)
 // is delisted until relicensed/replaced; ariete falls back to its procedural
 // modern3.js build below. Flip when a clean-license substitution lands.
-const SHIP_QUARANTINE_USERDROPS = false;
+// content_breadth r5: even when flipped, PUBLIC builds (build:public sets
+// VITE_PUBLIC_BUILD=1) never register quarantine-path sources — the specs
+// fall back to their procedural builds / stay delisted, so the NC strip in
+// tools/strip-nc-assets.mjs succeeds instead of failing loudly.
+const SHIP_QUARANTINE_USERDROPS = false
+  && !(typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_PUBLIC_BUILD);
 
 if (SHIP_QUARANTINE_USERDROPS) {
   TANK_SPECS.type74 = TANK_SPECS.type74 || TYPE74_SPEC;

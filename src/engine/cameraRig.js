@@ -386,7 +386,14 @@ export function createCameraRig(camera, deps) {
   function solveCinematic(player, dt) {
     cine.t += dt;
     camera.userData.scoped = false;
-    const k = THREE.MathUtils.clamp(cine.t / cine.dur, 0, 1);
+    const kLin = THREE.MathUtils.clamp(cine.t / cine.dur, 0, 1);
+    // r6 HOLD BEAT (critic: "flyby is ~2 s and weakly composed ... fully over
+    // with HUD up by 2.2 s"): the path parameter now decelerates through the
+    // mid-arc — the camera visibly LINGERS on the hero close-up (~0.45x path
+    // speed around k=0.5) and accelerates out onto the chase pose. Total
+    // screen time comes from startCinematic's 4 s floor.
+    const k = THREE.MathUtils.clamp(
+      kLin + 0.55 * Math.sin(Math.PI * 2 * kLin) / (Math.PI * 2), 0, 1);
     pivotTargetFor(player, _pivotTarget);
     // path position: world-frame offsets from the (moving) pivot
     cine.curve.getPoint(k < 0.97 ? k : 0.97 + (k - 0.97) * 0.999, _desired);
@@ -424,10 +431,14 @@ export function createCameraRig(camera, deps) {
     // (opens 36 m out) the 14 m lead pushed the hull to the frame edge for
     // the first beat; 9 m keeps the hero inside the middle third from the
     // opening frame while still reading the advance route.
-    const s = THREE.MathUtils.smoothstep(k, 0.0, 0.5);
+    // r6 (critic: flyby_08 "clips the hero tank at the bottom frame edge
+    // with 55% empty sky"): lead 9 -> 7 m, the downward look bias cut to
+    // -0.3, and convergence pulled in to k=0.32 — the hull is fully inside
+    // frame from k~0.15 and OWNS the frame through the mid-arc hold beat.
+    const s = THREE.MathUtils.smoothstep(k, 0.0, 0.32);
     _cineLook.copy(_pivotTarget)
-      .addScaledVector(cine.fwd, 9 * (1 - s))
-      .addScaledVector(_UPV, -0.8 * (1 - s));
+      .addScaledVector(cine.fwd, 7 * (1 - s))
+      .addScaledVector(_UPV, -0.3 * (1 - s));
     camera.lookAt(_cineLook);
     // FOV 72 -> 60: wide establishing breath tightening onto gameplay FOV
     setFov(BASE_FOV_DEG + 12 * (1 - k));
@@ -659,6 +670,11 @@ export function createCameraRig(camera, deps) {
      * @returns {void}
      */
     startCinematic(durS = 3) {
+      // r6 (critic: "battle-start flyby is ~2 s ... over with HUD up by
+      // 2.2 s"): 4 s floor regardless of the caller's legacy constant — the
+      // authored sweep + mid-arc hold beat needs the screen time, and every
+      // input still skips it instantly.
+      durS = Math.max(4.0, durS);
       const player = getPlayer();
       death = null;
       trauma = 0;

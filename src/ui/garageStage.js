@@ -754,7 +754,12 @@ export function createGarageStage(engineCtx, pos) {
   crateTexC.width = crateTexC.height = 128;
   {
     const g = crateTexC.getContext('2d');
-    g.fillStyle = '#6d5a38';
+    // tank_models r5 (minor #8): from the locked garage camera the crate
+    // stack sits exactly on the rear-deck line of every carousel vehicle —
+    // bright raw pine read as a copy-pasted deck prop on the tanks. Repaint
+    // to weathered olive/grey wood (~0.55x albedo, desaturated) so it recedes
+    // into the set dressing instead of glowing against the armor tones.
+    g.fillStyle = '#403c30';
     g.fillRect(0, 0, 128, 128);
     g.strokeStyle = 'rgba(40,30,16,0.8)';
     g.lineWidth = 5;
@@ -763,7 +768,7 @@ export function createGarageStage(engineCtx, pos) {
     g.moveTo(4, 4); g.lineTo(124, 124); g.moveTo(124, 4); g.lineTo(4, 124);
     g.stroke();
     for (let i = 0; i < 250; i++) {
-      g.fillStyle = Math.random() < 0.5 ? 'rgba(30,22,10,0.25)' : 'rgba(150,130,90,0.2)';
+      g.fillStyle = Math.random() < 0.5 ? 'rgba(24,22,14,0.25)' : 'rgba(96,92,74,0.2)';
       g.fillRect(Math.random() * 128, Math.random() * 128, 2, 6);
     }
   }

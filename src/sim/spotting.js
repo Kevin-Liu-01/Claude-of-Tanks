@@ -12,8 +12,10 @@
  *  - Fire reveal resolves THROUGH the formula (r2): notifyFired pulls the
  *    shooter's next check to `now`, and while the bloom is flash-hot a
  *    shooter with no real foliage on the sightline is revealed by its
- *    muzzle flash past the camo-formula range (never past 445 m, hard LOS
- *    still gates). The old AI-side spotting-gate bypass is gone (ai.js).
+ *    muzzle flash past the camo-formula range (r5: never past the SPOTTER'S
+ *    effective view range — WoT parity, firing only strips camo — nor past
+ *    445 m, and hard LOS still gates). The old AI-side spotting-gate bypass
+ *    is gone (ai.js).
  *  - Equipment (EQUIPMENT table): camo net (+still camo), binoculars
  *    (+still view range), vents — injected via deps.getEquipment.
  *  - Bush/foliage concealment: vegetation discs intersecting the 2D line
@@ -66,10 +68,13 @@ export const BUSH_FIRE_TRANSPARENT_M = 15; // 15 m rule radius
 // bush-transparency rule) is evaluated immediately; a shooter the formula
 // STILL hides gets one extra concession — while the bloom is flash-hot and
 // no real foliage covers the sightline, the muzzle flash itself is visible
-// past the camo-formula spot range (never past MAX_SPOT_RANGE_M, and hard
-// LOS still applies). A deep double-bush ambush (bush bonus on the line
+// past the camo-formula spot range. r5 WoT-parity clamp: the concession is
+// bounded by the SPOTTER'S effective view range (WoT firing only strips
+// camo — detection never exceeds view range), by MAX_SPOT_RANGE_M, and by
+// hard LOS. A deep double-bush ambush (bush bonus on the line
 // >= MUZZLE_FLASH_BUSH_MAX) survives its own shot exactly like WoT; an
-// open-field sniper beyond static view range draws return fire.
+// open-field sniper hidden by the formula but inside the spotter's view
+// range draws return fire the moment it shoots.
 export const MUZZLE_FLASH_BLOOM_MIN = 0.45; // flash window ~1.4 s after the shot
 export const MUZZLE_FLASH_BUSH_MAX = 0.2;   // line foliage that defeats the flash
 export const CAMO_PAINT_BONUS = 0.035; // biome-MATCHED camo pattern (+3.5%, r3)
@@ -446,7 +451,13 @@ export function createSpottingSystem(deps) {
       // target, but a flash-hot shooter with no meaningful foliage on this
       // sightline is given away by its own muzzle flash. Range is already
       // inside MAX_SPOT_RANGE_M (early reject above) and hardLos still gates.
-      if (!(bloom >= MUZZLE_FLASH_BLOOM_MIN && bush < MUZZLE_FLASH_BUSH_MAX)) {
+      // camo_spotting r5 (WoT parity): the flash is additionally clamped to
+      // the SPOTTER'S effective view range — in WoT firing only strips the
+      // shooter's camo, so detection can never exceed the spotter's view
+      // range. Before the clamp a 370 m-view spotter revealed a bloom-hot
+      // open-ground shooter all the way out to the 445 m hard cap.
+      if (!(bloom >= MUZZLE_FLASH_BLOOM_MIN && bush < MUZZLE_FLASH_BUSH_MAX &&
+            dist <= vr)) {
         return false;
       }
     }

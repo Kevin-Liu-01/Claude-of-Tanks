@@ -879,20 +879,30 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
   // (macro tone breakup + streaky weathering) that de-grids every tiled
   // hard-surface texture — walls stop reading as a repeated stamp at zoom
   const grimeTex = makeGrimeTexture(noi, aniso);
+  // r5 terrain_environment: WINTER SNOW-CAP — on the winter map every prop
+  // material whitens its UP-FACING fragments toward drifted snow (clumpy,
+  // noise-broken). This is what fixes the physically-contradictory "fully
+  // snow-free saturated orange roofs in a deep-snow scene" critique: roofs,
+  // wall tops, chimneys, carts, sourced baked models and rocks all carry a
+  // slope-masked snow load, while vertical faces keep their material.
+  const snowCap = mapId === 'winter';
   const grimeHook = (shader) => {
     shader.uniforms.uGrime = { value: grimeTex };
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\nvarying vec3 vGrimeW;');
+      '#include <common>\nvarying vec3 vGrimeW;\nvarying vec3 vGrimeN;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <worldpos_vertex>', /* glsl */`#include <worldpos_vertex>
 {
   vec4 gw = vec4(transformed, 1.0);
+  vec3 gn = objectNormal;
   #ifdef USE_INSTANCING
   gw = instanceMatrix * gw;
+  gn = mat3(instanceMatrix) * gn;
   #endif
   vGrimeW = (modelMatrix * gw).xyz;
+  vGrimeN = normalize(mat3(modelMatrix) * gn);
 }`);
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\nvarying vec3 vGrimeW;\nuniform sampler2D uGrime;');
+      '#include <common>\nvarying vec3 vGrimeW;\nvarying vec3 vGrimeN;\nuniform sampler2D uGrime;');
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <map_fragment>', /* glsl */`#include <map_fragment>
 {
   float gA = texture2D(uGrime, vGrimeW.xz * 0.021 + vGrimeW.y * 0.013).r;
@@ -908,11 +918,19 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
   diffuseColor.rgb = mix(diffuseColor.rgb,
     diffuseColor.rgb * (gC > 0.5 ? vec3(1.05, 1.0, 0.93) : vec3(0.95, 0.99, 1.06)),
     abs(gC - 0.5) * 1.1);
+${snowCap ? `
+  // winter: slope-masked snow load on upward faces (clumpy, wind-tailed)
+  {
+    float swN = texture2D(uGrime, vGrimeW.xz * 0.11 + vec2(0.13, 0.71)).r;
+    float sw = smoothstep(0.52, 0.80, vGrimeN.y + (swN - 0.5) * 0.22);
+    sw *= 0.72 + 0.28 * texture2D(uGrime, vGrimeW.xz * 0.031).g;
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.795, 0.835, 0.90), sw * 0.88);
+  }` : ''}
 }`);
   };
   for (const [mk, m] of Object.entries(mats)) {
     engineCtx.setupShadowMaterial(m, mk === 'dark' || mk === 'glass' ? null : grimeHook);
-    m.customProgramCacheKey = () => 'world-props-' + mk + '-v5';
+    m.customProgramCacheKey = () => 'world-props-' + mk + '-v6' + (snowCap ? 's' : '');
   }
 
   const buckets = { plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [], glass: [], curtain: [], straw: [], baked: [] };
@@ -1530,7 +1548,12 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
     // between consecutive poles below (the bare pole line was a critique item:
     // "telephone poles have no visible wires, they read as bare sticks")
     const poleLine = [];
-    for (let i = 8; P.telegraph && i < roadsL[0].length - 1; i += 2) {
+    // r5 terrain_environment: poles every node (~32 m, was every 2nd). The
+    // 64 m spans cut CHORDS across the road's curves — one span slashed
+    // diagonally through the default chase-cam frame as a hard black line
+    // (critique). Short spans follow the carriageway; the wires read as
+    // roadside infrastructure instead of a graphical artifact.
+    for (let i = 8; P.telegraph && i < roadsL[0].length - 1; i += 1) {
       const [ax, az] = roadsL[0][i], [bx, bz] = roadsL[0][i + 1];
       const tl = Math.hypot(bx - ax, bz - az);
       const px = ax - ((bz - az) / tl) * 6.9, pz = az + ((bx - ax) / tl) * 6.9;
@@ -1580,7 +1603,7 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
     for (let pi = 0; pi + 1 < poleLine.length; pi++) {
       const A = poleLine[pi], B = poleLine[pi + 1];
       const spanL = Math.hypot(B.x - A.x, B.z - A.z);
-      if (spanL > 85 || spanL < 6) continue;
+      if (spanL > 52 || spanL < 6) continue; // a skipped pole leaves the span unstrung
       // wire attachment height: sourced pole crossarm rides higher than the
       // procedural twin-arm pole
       const hTop = A.sourced ? 6.5 : 5.75;
@@ -1589,16 +1612,21 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
         const ax2 = A.x + Math.cos(A.yaw) * 0.6 * s, az2 = A.z - Math.sin(A.yaw) * 0.6 * s;
         const bx2 = B.x + Math.cos(B.yaw) * 0.6 * s, bz2 = B.z - Math.sin(B.yaw) * 0.6 * s;
         const ay2 = A.y + hTop, by2 = B.y + hTop;
-        const SEGS = 7;
+        // r5 terrain_environment: true COSH catenary at 16 segments (was a
+        // 7-seg sin approximation — visible kinks) and a thinner conductor;
+        // the drooping curve is what separates "power line" from "polyline"
+        const SEGS = 16, CATK = 1.35;
+        const droop = 0.45 + spanL * 0.008; // deeper sag on longer spans
+        const coshK = Math.cosh(CATK) - 1;
         let prevX = ax2, prevY = ay2, prevZ = az2;
         for (let k2 = 1; k2 <= SEGS; k2++) {
           const t = k2 / SEGS;
-          const sag = Math.sin(t * Math.PI); // parabola-ish droop
+          const cat = 1 - (Math.cosh((t - 0.5) * 2 * CATK) - 1) / coshK; // 0 at ends, 1 mid
           const cx2 = ax2 + (bx2 - ax2) * t;
-          const cy2 = ay2 + (by2 - ay2) * t - sag * sag * 0.8;
+          const cy2 = ay2 + (by2 - ay2) * t - cat * droop;
           const cz2 = az2 + (bz2 - az2) * t;
           const segL = Math.hypot(cx2 - prevX, cy2 - prevY, cz2 - prevZ);
-          const wire = new THREE.CylinderGeometry(0.028, 0.028, segL * 1.02, 4, 1);
+          const wire = new THREE.CylinderGeometry(0.020, 0.020, segL * 1.02, 4, 1);
           wire.rotateX(Math.PI / 2); // axis -> +z, then aim
           const m4w = new THREE.Matrix4().lookAt(
             new THREE.Vector3(prevX, prevY, prevZ),
@@ -2079,6 +2107,15 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
         g.addColorStop(0.38, 'rgba(52,38,24,0.85)');
         g.addColorStop(0.66, 'rgba(84,66,42,0.55)');
         g.addColorStop(1, 'rgba(90,74,48,0)');
+      } else if (kind === 'crater') {
+        // r5 terrain_environment: SHELL CRATER — near-black pit core, a raw
+        // disturbed-earth ring where the rim mound geometry rises, ejecta
+        // rays feathering outward. Reads as an impact, not a soft smudge.
+        g.addColorStop(0, 'rgba(16,13,10,0.96)');
+        g.addColorStop(0.30, 'rgba(30,24,17,0.93)');
+        g.addColorStop(0.52, 'rgba(64,50,32,0.88)'); // thrown raw earth on the rim
+        g.addColorStop(0.74, 'rgba(70,56,37,0.55)');
+        g.addColorStop(1, 'rgba(74,60,40,0)');
       } else {
         // foundation skirt: dark packed-earth AO ring so buildings sit IN the
         // ground instead of floating on the grass
@@ -2089,6 +2126,23 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
       }
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, s, s);
+      if (kind === 'crater') { // ejecta rays: ragged radial streaks past the rim
+        const rrng = mulberry32(7717);
+        ctx.strokeStyle = 'rgba(58,46,30,0.55)';
+        ctx.lineCap = 'round';
+        for (let k = 0; k < 22; k++) {
+          const a = rrng() * Math.PI * 2;
+          const r0 = s * (0.26 + rrng() * 0.10), r1 = s * (0.38 + rrng() * 0.16);
+          ctx.lineWidth = 1.5 + rrng() * 3.5;
+          ctx.globalAlpha = 0.35 + rrng() * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(s / 2 + Math.cos(a) * r0, s / 2 + Math.sin(a) * r0);
+          ctx.lineTo(s / 2 + Math.cos(a + (rrng() - 0.5) * 0.2) * r1,
+            s / 2 + Math.sin(a + (rrng() - 0.5) * 0.2) * r1);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
       // ragged edge: punch noise holes in the outer band
       const id = ctx.getImageData(0, 0, s, s);
       for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
@@ -2103,6 +2157,81 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
       t.colorSpace = THREE.SRGBColorSpace;
       t.anisotropy = aniso;
       return t;
+    }
+    // r5 terrain_environment: TRACK-TEAR strip texture — churned dark earth
+    // with two ragged tread lanes running along V; laid as conformed strips
+    // on the AI drive corridors so the approaches read fought-over.
+    function makeChurnTexture() {
+      const w = 128, h = 256;
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, w, h);
+      const trng = mulberry32(9131);
+      // churned base band
+      for (let y = 0; y < h; y += 2) {
+        const wob = noi.noise(y * 0.05, 3.7) * 10;
+        const grd = ctx.createLinearGradient(0, 0, w, 0);
+        grd.addColorStop(0, 'rgba(60,48,32,0)');
+        grd.addColorStop(0.22, 'rgba(52,41,27,0.62)');
+        grd.addColorStop(0.5, 'rgba(58,46,30,0.72)');
+        grd.addColorStop(0.78, 'rgba(52,41,27,0.62)');
+        grd.addColorStop(1, 'rgba(60,48,32,0)');
+        ctx.fillStyle = grd;
+        ctx.fillRect(wob, y, w - wob * 2, 2.4);
+      }
+      // twin tread lanes: darker compacted ruts with lug chatter
+      for (const lane of [0.32, 0.68]) {
+        for (let y = 0; y < h; y += 3) {
+          const wobL = noi.noise(y * 0.07, lane * 9) * 5;
+          ctx.fillStyle = `rgba(28,22,15,${0.55 + (trng() * 0.3)})`;
+          ctx.fillRect(w * lane - 7 + wobL, y, 14, 2.2);
+        }
+        for (let y = 0; y < h; y += 7) { // lug marks across the rut
+          ctx.fillStyle = 'rgba(20,16,11,0.5)';
+          ctx.fillRect(w * lane - 8 + trng() * 3, y + trng() * 3, 16, 1.6);
+        }
+      }
+      // fade both ends + ragged alpha
+      const id = ctx.getImageData(0, 0, w, h);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const vv = y / h;
+        const endFade = smoothstep(0, 0.14, vv) * smoothstep(1, 0.86, vv);
+        const nse = noi.noise(x * 0.12 + 80, y * 0.12) * 0.5 + 0.5;
+        id.data[(y * w + x) * 4 + 3] *= endFade * clamp(0.75 + nse * 0.5, 0, 1);
+      }
+      ctx.putImageData(id, 0, 0);
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = aniso;
+      return t;
+    }
+    // terrain-conformed rectangular strip (track tears): stations every ~2.4 m
+    function conformedStrip(ax, az, bx, bz, wS) {
+      const len = Math.hypot(bx - ax, bz - az);
+      const nSt = Math.max(3, Math.ceil(len / 2.4));
+      const tx = (bx - ax) / len, tz = (bz - az) / len;
+      const nx = -tz, nz = tx;
+      const pos = [], uv = [], idx = [];
+      for (let i = 0; i <= nSt; i++) {
+        const t = i / nSt;
+        const cx = ax + (bx - ax) * t, cz = az + (bz - az) * t;
+        for (const sd of [-1, 1]) {
+          const px = cx + nx * sd * wS / 2, pz = cz + nz * sd * wS / 2;
+          pos.push(px, heightField.getHeightAt(px, pz) + 0.05, pz);
+          uv.push(sd < 0 ? 0 : 1, t);
+        }
+        if (i > 0) {
+          const b0 = (i - 1) * 2, b1 = i * 2;
+          idx.push(b0, b1, b0 + 1, b0 + 1, b1, b1 + 1);
+        }
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+      geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv), 2));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+      return geo;
     }
     // terrain-conformed disc; profile[] lifts each ring above the ground
     function conformedDisc(x, z, r, profile) {
@@ -2185,9 +2314,33 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
     // (P.townCraters) let them pock the streets and squares themselves —
     // the contract's shelled-town read needs impact scars ON the asphalt,
     // not just in the fields outside the rect.
+    // r5 terrain_environment: CRATER KIT rebuild. The old soft scorch smudge
+    // + 0.14-0.26 m rim never registered ("zero battle scarring ... pristine
+    // lawns", critique). Now: (a) a dedicated crater texture (black pit, raw
+    // rim earth, ejecta rays), (b) a REAL raised rim mound (0.26-0.48 m at
+    // the 0.7 ring — catches sun/shadow so the scar reads in silhouette),
+    // (c) 3 radius classes, (d) ~55% of craters CLUSTER along the AI drive
+    // corridors (spawn -> objective) where the eye actually looks, and (e) a
+    // debris-clod ring around the larger holes.
     const craterDiscs = [];
-    for (let i = 0, placed = 0; i < P.craters * 11 && placed < P.craters; i++) {
-      const x = (rng() * 2 - 1) * 420, z = (rng() * 2 - 1) * 420;
+    const burnDiscs = [];
+    const corridors = [L.spawns.player, ...L.spawns.enemies]
+      .map((sp) => [sp.x, sp.z, v.cx ?? 10, v.cz ?? 40]);
+    const CR_R = [2.3, 3.6, 5.2, 6.8];
+    for (let i = 0, placed = 0; i < P.craters * 14 && placed < P.craters; i++) {
+      let x, z;
+      if (rng() < 0.55 && corridors.length) { // corridor-clustered scarring
+        const co = corridors[(rng() * corridors.length) | 0];
+        const t = 0.16 + rng() * 0.74;
+        const lat = (rng() - 0.5) * 44;
+        const dx = co[2] - co[0], dz = co[3] - co[1];
+        const dl = Math.hypot(dx, dz) || 1;
+        x = co[0] + dx * t - (dz / dl) * lat;
+        z = co[1] + dz * t + (dx / dl) * lat;
+      } else {
+        x = (rng() * 2 - 1) * 420; z = (rng() * 2 - 1) * 420;
+      }
+      if (Math.max(Math.abs(x), Math.abs(z)) > 430) continue;
       const inTown = x > v.x0 - 4 && x < v.x1 + 4 && z > v.z0 - 4 && z < v.z1 + 4;
       if (inTown && !P.townCraters) continue;
       if (heightField._roadDist(x, z) < (inTown ? 1.5 : 5.5)) continue;
@@ -2204,18 +2357,75 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
         if (Math.hypot(x - s.x, z - s.z) < 20) { nearSpawn = true; break; }
       }
       if (nearSpawn) continue;
-      // r4: 2.4-5.0 -> 2.8-6.6 m — the shell scars were too small to register
-      // from the establishing camera ("no craters ... manicured golf course")
-      const r = 2.8 + rng() * 3.8;
-      craterDiscs.push(conformedDisc(x, z, r, [0.04, 0.06, 0.14 + rng() * 0.12, 0.03]));
+      const roll = rng();
+      if (roll < 0.24) { // burnt patch, no rim — HE strike / burn scar
+        burnDiscs.push(conformedDisc(x, z, 2.6 + rng() * 2.6, [0.03, 0.03, 0.04, 0.02]));
+        placed++;
+        continue;
+      }
+      const r = CR_R[(rng() * CR_R.length) | 0] * (0.85 + rng() * 0.3);
+      const rim = 0.26 + rng() * 0.22;
+      craterDiscs.push(conformedDisc(x, z, r, [0.03, 0.02, rim, 0.02]));
+      // debris-clod ring on the bigger holes (merged into the stone bucket)
+      if (r > 3.2) {
+        const nCl = 4 + ((rng() * 3) | 0);
+        for (let ci = 0; ci < nCl; ci++) {
+          const a = rng() * Math.PI * 2;
+          const cr2 = r * (0.68 + rng() * 0.45);
+          const cs = 0.14 + rng() * 0.26;
+          const clod = roughenChunk(box(cs * 1.4, cs * 0.7, cs, 1.3), rng, cs * 0.4);
+          jitterUV(clod, rng);
+          clod.rotateY(rng() * Math.PI);
+          clod.translate(x + Math.cos(a) * cr2,
+            heightField.getHeightAt(x + Math.cos(a) * cr2, z + Math.sin(a) * cr2) + cs * 0.25,
+            z + Math.sin(a) * cr2);
+          buckets.stone.push(clod);
+        }
+      }
       placed++;
     }
     // r7: burn scar under every vehicle wreck — grounds the hulk and sells
     // the kill site (flat profile: no rim, just scorched earth)
     for (const [wx, wz] of wreckScorch) {
-      craterDiscs.push(conformedDisc(wx, wz, 4.4, [0.03, 0.04, 0.05, 0.02]));
+      burnDiscs.push(conformedDisc(wx, wz, 5.6, [0.03, 0.04, 0.05, 0.02]));
     }
-    addDecalMesh(craterDiscs, makeDecalTexture('scorch'));
+    addDecalMesh(craterDiscs, makeDecalTexture('crater'));
+    addDecalMesh(burnDiscs, makeDecalTexture('scorch'));
+    // r5 terrain_environment: TRACK-TEAR strips along the AI corridors —
+    // tread-churned earth runs (14-26 m) with twin rut lanes, conformed to
+    // the terrain, so the approaches read driven-over ("no tread-torn earth
+    // beyond faint road ruts", critique).
+    {
+      const trng = mulberry32(seed + 5115);
+      const tearGeos = [];
+      const nTears = P.streetRows ? 10 : 16;
+      for (let i = 0, placed = 0; i < nTears * 10 && placed < nTears; i++) {
+        const co = corridors[(trng() * corridors.length) | 0];
+        const t = 0.18 + trng() * 0.66;
+        const dx = co[2] - co[0], dz = co[3] - co[1];
+        const dl = Math.hypot(dx, dz) || 1;
+        const lat = (trng() - 0.5) * 30;
+        const cx = co[0] + dx * t - (dz / dl) * lat;
+        const cz = co[1] + dz * t + (dx / dl) * lat;
+        if (Math.max(Math.abs(cx), Math.abs(cz)) > 420) continue;
+        if (heightField._roadDist(cx, cz) < 6) continue;
+        if (heightField.getGroundType(cx, cz) === 'soft' || noVeg(cx, cz)) continue;
+        if (heightField.getNormalAt(cx, cz).y < 0.86) continue;
+        let onB = false;
+        for (const pb of placedB) {
+          if (Math.hypot(cx - pb.x, cz - pb.z) < pb.rr + 2) { onB = true; break; }
+        }
+        if (onB) continue;
+        const ang = Math.atan2(dz, dx) + (trng() - 0.5) * 0.5;
+        const hl = 7 + trng() * 6; // half length
+        tearGeos.push(conformedStrip(
+          cx - Math.cos(ang) * hl, cz - Math.sin(ang) * hl,
+          cx + Math.cos(ang) * hl, cz + Math.sin(ang) * hl,
+          3.2 + trng() * 0.8));
+        placed++;
+      }
+      addDecalMesh(tearGeos, makeChurnTexture());
+    }
   }
 
   // --- sourced-model InstancedMeshes (one per model, shared baked material) ---

@@ -123,8 +123,280 @@ function makeMarketRow(rng, buckets) {
   return { w: a.w + b.w - 1.2, d: Math.max(a.d, b.d), h: a.h };
 }
 
+// =============================================================================
+// DESERT WALLED COMPOUNDS — plan builders ('compound', 'compoundSouk')
+// content_breadth r5: the critique's "adobe 'village' is ~6 small boxes
+// scattered on a bare sand pan with no compound walls/courtyards". Real
+// crossroads settlements cluster into WALLED family compounds: a mud-brick
+// perimeter with a gate, a 2-story main house in a back corner, an annex, a
+// well/souk anchor and lived-in courtyard clutter. Each compound registers as
+// ONE plan building, so it inherits ground-fit, the worn-earth apron decal,
+// minimap footprint and collision for free.
+// =============================================================================
+
+// mud-brick perimeter wall with a gate gap on the street face (+z), coping
+// course and gate posts. Returns nothing; pushes into buckets.
+function compoundWall(rng, buckets, w, d, wallH) {
+  const T = 0.42;
+  // coping rides the SAME plaster print as the wall — the derived plaster2
+  // shift renders as a saturated orange stripe under the desert sun (probed
+  // on the r5 establishing shot); the 0.14 m geometric lip alone reads as a
+  // finished mud-brick cap
+  const cop = (g) => buckets.plaster.push(jitterUV(g, rng));
+  const wal = (g) => buckets.plaster.push(jitterUV(g, rng));
+  // back + side walls (slight per-run lean/settle so runs read hand-built)
+  const runs = [
+    { x: 0, z: -d / 2, wx: w, wz: T },
+    { x: -w / 2, z: 0, wx: T, wz: d - T },
+    { x: w / 2, z: 0, wx: T, wz: d - T },
+  ];
+  for (const r of runs) {
+    const g = box(r.wx, wallH, r.wz, 0.8);
+    g.rotateY((rng() - 0.5) * 0.015);
+    g.translate(r.x, wallH / 2, r.z);
+    wal(g);
+    const c = box(r.wx + 0.14, 0.14, r.wz + 0.14, 0.8);
+    c.translate(r.x, wallH + 0.07, r.z);
+    cop(c);
+  }
+  // front wall split by a 3.6 m gate (offset from center like real lanes)
+  const gx = w * (0.10 + rng() * 0.10) * (rng() < 0.5 ? -1 : 1);
+  const segs = [
+    { x0: -w / 2, x1: gx - 1.8 },
+    { x0: gx + 1.8, x1: w / 2 },
+  ];
+  for (const s of segs) {
+    const ww = s.x1 - s.x0;
+    if (ww < 0.8) continue;
+    const g = box(ww, wallH, T, 0.8);
+    g.translate((s.x0 + s.x1) / 2, wallH / 2, d / 2);
+    wal(g);
+    const c = box(ww + 0.14, 0.14, T + 0.14, 0.8);
+    c.translate((s.x0 + s.x1) / 2, wallH + 0.07, d / 2);
+    cop(c);
+  }
+  // gate posts + timber lintel
+  for (const s of [-1, 1]) {
+    const p = box(0.55, wallH + 0.65, 0.55, 1.0);
+    p.translate(gx + s * 1.95, (wallH + 0.65) / 2, d / 2);
+    buckets.plaster.push(jitterUV(p, rng));
+  }
+  const lin = box(4.5, 0.16, 0.22, 1.2);
+  lin.translate(gx, wallH + 0.30, d / 2);
+  buckets.wood.push(jitterUV(lin, rng));
+  return gx;
+}
+
+// flat-roofed adobe block with parapet, viga beam ends, door + windows on the
+// courtyard face — the same massing language as props.js makeAdobe.
+function adobeBlock(rng, buckets, bw, bd, bh, x, z, doorAxis = 'z', tone = 'plaster') {
+  const wal = buckets[tone] ? tone : 'plaster';
+  const base = box(bw + 0.25, 0.6, bd + 0.25, 0.8);
+  base.translate(x, -0.1, z);
+  buckets.stone.push(jitterUV(base, rng));
+  const blk = box(bw, bh, bd, 0.6);
+  blk.translate(x, bh / 2, z);
+  buckets[wal].push(jitterUV(blk, rng));
+  // parapet
+  for (const [px, pz, pw, pdep] of [
+    [0, bd / 2 - 0.08, bw, 0.16], [0, -bd / 2 + 0.08, bw, 0.16],
+    [bw / 2 - 0.08, 0, 0.16, bd - 0.32], [-bw / 2 + 0.08, 0, 0.16, bd - 0.32],
+  ]) {
+    const p = box(pw, 0.42, pdep, 0.8);
+    p.translate(x + px, bh + 0.21, z + pz);
+    buckets[wal].push(jitterUV(p, rng));
+  }
+  // roof deck: sun-bleached MUD roof (BASE plaster tone), not wood planking —
+  // from the raised establishing camera a big timber deck read as a dark
+  // brown slab, and the derived plaster3 shift (hue -0.035) rendered a big
+  // sunlit deck saturated RED (both probed r5); vigas keep the timber cue
+  const deck = box(bw - 0.2, 0.08, bd - 0.2, 0.35);
+  deck.translate(x, bh + 0.02, z);
+  buckets.plaster.push(jitterUV(deck, rng));
+  // viga beam ends on the door face
+  const dSign = 1;
+  const nBeam = Math.max(3, (bw / 0.95) | 0);
+  for (let k = 0; k < nBeam; k++) {
+    const bx = -bw / 2 + (k + 0.5) * (bw / nBeam);
+    const beam = box(0.13, 0.13, 0.5, 1.2);
+    if (doorAxis === 'z') beam.translate(x + bx, bh - 0.3, z + dSign * (bd / 2 + 0.2));
+    else beam.translate(x + dSign * (bw / 2 + 0.2), bh - 0.3, z + bx);
+    buckets.wood.push(beam);
+  }
+  // door + a pair of small windows (courtyard face)
+  const dr = box(1.0, 1.9, 0.10, 1.0);
+  const drD = box(0.8, 1.7, 0.06, 1.0);
+  if (doorAxis === 'z') {
+    dr.translate(x + bw * 0.14, 0.95, z + bd / 2 + 0.06);
+    drD.translate(x + bw * 0.14, 0.9, z + bd / 2 + 0.10);
+  } else {
+    dr.rotateY(Math.PI / 2); drD.rotateY(Math.PI / 2);
+    dr.translate(x + bw / 2 + 0.06, 0.95, z + bd * 0.14);
+    drD.translate(x + bw / 2 + 0.10, 0.9, z + bd * 0.14);
+  }
+  buckets.wood.push(dr); buckets.dark.push(drD);
+  for (const s of [-1, 1]) {
+    const wnd = box(0.55, 0.65, 0.06, 1.0);
+    if (doorAxis === 'z') wnd.translate(x - bw * 0.24 + (s > 0 ? bw * 0.5 : 0), bh - 0.95, z + bd / 2 + 0.05);
+    else { wnd.rotateY(Math.PI / 2); wnd.translate(x + bw / 2 + 0.05, bh - 0.95, z - bd * 0.24 + (s > 0 ? bd * 0.5 : 0)); }
+    buckets.dark.push(wnd);
+  }
+  if (rng() < 0.5) { // rooftop stair hut
+    const hut = box(bw * 0.32, 0.9, bd * 0.3, 0.8);
+    hut.translate(x - bw * 0.2, bh + 0.45, z - bd * 0.2);
+    buckets[wal].push(jitterUV(hut, rng));
+  }
+}
+
+// courtyard well: stone ring, two posts, crossbar + bucket
+function courtyardWell(rng, buckets, x, z) {
+  const ring = new THREE.CylinderGeometry(0.85, 0.95, 0.85, 9, 1);
+  scaleUV(ring, 3, 1);
+  ring.translate(x, 0.42, z);
+  buckets.stone.push(jitterUV(ring, rng));
+  for (const s of [-1, 1]) {
+    const p = box(0.14, 1.9, 0.14, 1.2);
+    p.translate(x + s * 0.75, 0.95, z);
+    buckets.wood.push(p);
+  }
+  const bar = box(1.8, 0.10, 0.10, 1.2);
+  bar.translate(x, 1.8, z);
+  buckets.wood.push(bar);
+  const bk = box(0.3, 0.3, 0.3, 1.2);
+  bk.translate(x + 0.2, 1.35, z);
+  buckets.dark.push(bk);
+}
+
+// scattered courtyard living clutter: crates, clay pots, sacks, a rug
+function courtyardClutter(rng, buckets, w, d, n) {
+  for (let k = 0; k < n; k++) {
+    const cx = (rng() - 0.5) * (w - 5), cz = (rng() - 0.5) * (d - 5);
+    const roll = rng();
+    if (roll < 0.34) {
+      const cs = 0.5 + rng() * 0.4;
+      const crate = box(cs, cs, cs, 1.0);
+      crate.rotateY(rng() * Math.PI * 0.5);
+      crate.translate(cx, cs / 2, cz);
+      buckets.wood.push(jitterUV(crate, rng));
+    } else if (roll < 0.62) {
+      const pr = 0.22 + rng() * 0.16, ph = 0.5 + rng() * 0.3;
+      const pot = new THREE.CylinderGeometry(pr * 0.7, pr, ph, 8, 1);
+      scaleUV(pot, 2, 1);
+      pot.translate(cx, ph / 2, cz);
+      buckets.stone.push(jitterUV(pot, rng));
+    } else if (roll < 0.82) {
+      const s = 0.42 + rng() * 0.22;
+      const sack = new THREE.SphereGeometry(s, 7, 5);
+      scaleUV(sack, 1.5, 1);
+      sack.scale(1, 0.7, 1);
+      sack.translate(cx, s * 0.48, cz);
+      buckets.plaster.push(jitterUV(sack, rng));
+    } else {
+      const rug = box(1.5 + rng() * 0.8, 0.05, 2.2 + rng() * 0.6, 0.4);
+      rug.rotateY((rng() - 0.5) * 0.6);
+      rug.translate(cx, 0.035, cz);
+      buckets.roof.push(jitterUV(rug, rng));
+    }
+  }
+}
+
+/**
+ * Walled family compound: perimeter wall + gate, 2-story main house, 1-story
+ * annex, well anchor, courtyard clutter. w runs ALONG the street so the
+ * footprint stays shallow enough for the road-side placement lattice.
+ */
+function makeCompound(rng, buckets) {
+  const w = 21 + rng() * 3, d = 13.5 + rng() * 1.5;
+  const wallH = 2.05 + rng() * 0.3;
+  compoundWall(rng, buckets, w, d, wallH);
+  // main house in a back corner (2-story), door onto the courtyard
+  const hw = 7.6 + rng() * 1.2, hd = 5.6 + rng() * 0.8, hh = 5.1 + rng() * 0.5;
+  const hs = rng() < 0.5 ? -1 : 1;
+  const hx = hs * (w / 2 - hw / 2 - 0.55), hz = -d / 2 + hd / 2 + 0.55;
+  adobeBlock(rng, buckets, hw, hd, hh, hx, hz, 'z', 'plaster');
+  // single-story annex against the opposite side wall (base plaster: the
+  // derived plaster3 family carries a red hue shift that reads brick, not
+  // mud, under the desert sun — probed r5)
+  const aw = 4.6 + rng() * 1.0, ad = 3.8 + rng() * 0.8, ah = 2.75 + rng() * 0.3;
+  const ax = -hs * (w / 2 - aw / 2 - 0.5), az = -d / 2 + ad / 2 + 0.6;
+  adobeBlock(rng, buckets, aw, ad, ah, ax, az, 'z', 'plaster');
+  // lean-to awning off the annex (shade for goods/animals)
+  const awn = box(aw * 0.9, 0.08, 2.4, 0.35);
+  awn.rotateX(-0.12);
+  awn.translate(ax, ah - 0.35, az + ad / 2 + 1.15);
+  buckets.plaster.push(jitterUV(awn, rng));
+  for (const s of [-1, 1]) {
+    const p = box(0.13, ah - 0.75, 0.13, 1.2);
+    p.translate(ax + s * aw * 0.4, (ah - 0.75) / 2, az + ad / 2 + 2.1);
+    buckets.wood.push(p);
+  }
+  // well just off courtyard center + lived-in clutter
+  courtyardWell(rng, buckets, -hs * w * 0.08, d * 0.12);
+  courtyardClutter(rng, buckets, w, d, 6 + ((rng() * 3) | 0));
+  return { w: w + 0.5, d: d + 0.5, h: hh + 0.5 };
+}
+
+/**
+ * Souk compound: walled yard with a shop row along the back wall, an awning
+ * stall, corner watch-post and dense goods clutter — the market anchor.
+ */
+function makeCompoundSouk(rng, buckets) {
+  const w = 19 + rng() * 2.5, d = 13 + rng() * 1.5;
+  const wallH = 1.95 + rng() * 0.25;
+  compoundWall(rng, buckets, w, d, wallH);
+  // shop row: long single-story block against the back wall, wide dark bays.
+  // BASE plaster only — both derived families shift hue on desert (plaster2
+  // orange, plaster3 brick-red) and a 12 m block wears the cast loudly
+  const sw = w * 0.62, sd = 4.0, sh = 3.05 + rng() * 0.25;
+  const sx = -w * 0.12, sz = -d / 2 + sd / 2 + 0.55;
+  adobeBlock(rng, buckets, sw, sd, sh, sx, sz, 'z', 'plaster');
+  for (let k = 0; k < 3; k++) { // open market bays punched into the row
+    const bx = sx - sw / 2 + (k + 0.5) * (sw / 3);
+    const bay = box(1.7, 1.9, 0.08, 1.0);
+    bay.translate(bx, 1.0, sz + sd / 2 + 0.07);
+    buckets.dark.push(bay);
+  }
+  // corner watch-post (small square tower for the skyline)
+  const tw = 2.6, th = 4.6 + rng() * 0.5;
+  const tx = w / 2 - tw / 2 - 0.5, tz = -d / 2 + tw / 2 + 0.5;
+  const tower = box(tw, th, tw, 0.6);
+  tower.translate(tx, th / 2, tz);
+  buckets.plaster.push(jitterUV(tower, rng));
+  for (const [mx, mz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    const merlon = box(0.5, 0.5, 0.5, 0.8);
+    merlon.translate(tx + mx * (tw / 2 - 0.3), th + 0.25, tz + mz * (tw / 2 - 0.3));
+    buckets.plaster.push(jitterUV(merlon, rng));
+  }
+  const slit = box(0.30, 0.75, 0.06, 1.0);
+  slit.translate(tx, th - 1.1, tz + tw / 2 + 0.05);
+  buckets.dark.push(slit);
+  // awning stall in the yard (reuses the souk stall vocabulary)
+  {
+    const ph = 2.1 + rng() * 0.3, awW = 5.4, awD = 4.2;
+    const ox = -w * 0.18, oz = d * 0.16;
+    for (const [sxp, szp] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      const post = box(0.15, ph, 0.15, 1.2);
+      post.rotateZ((rng() - 0.5) * 0.05);
+      post.translate(ox + sxp * (awW / 2 - 0.5), ph / 2, oz + szp * (awD / 2 - 0.5));
+      buckets.wood.push(jitterUV(post, rng));
+    }
+    const awn = box(awW, 0.08, awD, 0.35);
+    awn.rotateX((rng() - 0.5) * 0.09 - 0.05);
+    awn.translate(ox, ph + 0.04, oz);
+    buckets.plaster.push(jitterUV(awn, rng));
+    const counter = box(2.4, 0.8, 0.85, 0.8);
+    counter.translate(ox - 0.4, 0.4, oz + awD / 2 - 1.1);
+    buckets.wood.push(jitterUV(counter, rng));
+  }
+  courtyardClutter(rng, buckets, w, d, 8 + ((rng() * 4) | 0));
+  return { w: w + 0.5, d: d + 0.5, h: th + 0.3 };
+}
+
 /** Plan-name builders to spread into URBAN_BUILDERS (props.js contract). */
-export const MARKET_BUILDERS = { market: makeMarketStall, marketRow: makeMarketRow };
+export const MARKET_BUILDERS = {
+  market: makeMarketStall, marketRow: makeMarketRow,
+  compound: makeCompound, compoundSouk: makeCompoundSouk,
+};
 
 // =============================================================================
 // FROSTHOLLOW LAKE BASIN — explicit-position dressing
@@ -254,6 +526,36 @@ export function dressMapExtras({ mapId, L, heightField, rng, buckets }) {
       if (Math.max(Math.abs(x), Math.abs(z)) > 480) continue;
       if (heightField._roadDist(x, z) < 6) continue;
       reedClump(buckets, rng, x, heightField.getHeightAt(x, z), z);
+    }
+    // --- jumbled shore-ice ring (content_breadth r5) ----------------------
+    // The sheet met the snowfield as a soft airbrushed border ("flat light-
+    // blue paint puddle ... soft undefined shoreline" critique). Real lake
+    // ice piles broken refrozen plates along the waterline; a clumpy ring of
+    // small canted slabs draws a bright, structured shoreline that reads at
+    // establishing distance. Stone bucket = winter's pale snow-dusted tone.
+    {
+      const clusters = Math.round(lake.r * (big ? 0.62 : 0.42));
+      for (let i = 0; i < clusters; i++) {
+        const a = rng() * Math.PI * 2;
+        // hug the waterline: just inside/outside the nominal radius
+        const rr = lake.r * (0.90 + rng() * 0.12);
+        const cx = lake.x + Math.cos(a) * rr, cz = lake.z + Math.sin(a) * rr;
+        if (Math.max(Math.abs(cx), Math.abs(cz)) > 480) continue;
+        if (heightField._roadDist(cx, cz) < 6) continue;
+        // ~55% of the ring carries jumble; leave clean drift stretches
+        if (rng() < 0.45) continue;
+        const y = heightField.getHeightAt(cx, cz);
+        const n = 2 + ((rng() * 4) | 0);
+        for (let k = 0; k < n; k++) {
+          const pw = 0.7 + rng() * 1.1, ph = 0.22 + rng() * 0.34;
+          const slab = box(pw, ph, 0.14 + rng() * 0.10, 0.9);
+          slab.rotateZ((rng() - 0.5) * 0.9);
+          slab.rotateX((rng() - 0.5) * 0.8);
+          slab.rotateY(-a + (rng() - 0.5) * 0.9);
+          slab.translate(cx + (rng() - 0.5) * 2.6, y + ph * 0.28, cz + (rng() - 0.5) * 2.6);
+          buckets.stone.push(jitterUV(slab, rng));
+        }
+      }
     }
     // --- refrozen pressure ridges out on the sheet ------------------------
     const ridges = big ? 7 : 2;

@@ -240,7 +240,36 @@ function renderAll(specs) {
         renderer.toneMappingExposure = next;
         frame();
       }
-      cache.set(spec.id, renderer.domElement.toDataURL('image/png'));
+      // r5-2 AUTO-LEVELS (round critique: "T-90M / Chieftain render as
+      // near-black silhouettes next to the bright Abrams"): the exposure
+      // clamp above protects camo fidelity through the ACES shoulder, so a
+      // dark scheme could still land at ~55% of the target mean. The FINAL
+      // capture now gets a per-pixel GAMMA levels pass (endpoints pinned —
+      // no highlight washout) that lands every silhouette's mean luminance
+      // on the shared target. Uniform card row, hangar hues intact.
+      const bbF = measureAlphaBox(); // fresh copy of the settled frame
+      let outUrl = null;
+      if (bbF && bbF.meanLuma > 0.02) {
+        const g = Math.log(TARGET_LUMA) / Math.log(Math.min(0.98, Math.max(0.02, bbF.meanLuma)));
+        const gc = Math.max(0.5, Math.min(1.45, g));
+        if (Math.abs(gc - 1) > 0.04) {
+          const lut = new Uint8ClampedArray(256);
+          for (let i = 0; i < 256; i++) {
+            lut[i] = Math.round(255 * Math.pow(i / 255, gc));
+          }
+          const img = mctx.getImageData(0, 0, THUMB_W, THUMB_H);
+          const px = img.data;
+          for (let o = 0; o < px.length; o += 4) {
+            if (px[o + 3] === 0) continue;
+            px[o] = lut[px[o]];
+            px[o + 1] = lut[px[o + 1]];
+            px[o + 2] = lut[px[o + 2]];
+          }
+          mctx.putImageData(img, 0, 0);
+          outUrl = measureCanvas.toDataURL('image/png');
+        }
+      }
+      cache.set(spec.id, outUrl || renderer.domElement.toDataURL('image/png'));
       // remember which camo pattern this PNG carries (staleness detection)
       try { renderedPattern.set(spec.id, resolveCamoPattern(spec.id)); } catch (e) { /* fine */ }
       renderer.toneMappingExposure = BASE_EXPOSURE; // reset for the next card

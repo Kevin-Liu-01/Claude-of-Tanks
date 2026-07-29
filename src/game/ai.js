@@ -303,6 +303,9 @@ export function createAI(entity, opts = {}) {
   // Persistent aim error (resampled periodically and after every shot result).
   let errYawRad = 0;
   let errPitchRad = 0;
+  // Blind-fire spread (camo_spotting r5) — see resampleAimError.
+  let blindYawRad = 0;
+  let blindPitchRad = 0;
 
   // Timers (count down with dt).
   let losTimer = rng() * LOS_INTERVAL_S;     // stagger AI work across ticks
@@ -365,6 +368,14 @@ export function createAI(entity, opts = {}) {
     const sigma = ((spec.gun.baseAccuracy / 2) / 100) * extra;
     errYawRad = gauss(rng) * sigma;
     errPitchRad = gauss(rng) * sigma;
+    // camo_spotting r5: blind-fire spread — shelling a REMEMBERED muzzle
+    // position is area fire, not a lay on a seen hull. Sampled separately
+    // (additive with the tier error) because the hard tier's aimErrMult of
+    // 1.0 makes the tier sigma exactly zero; ~10 mrad yaw / 6 mrad pitch
+    // puts a 2.5 m sigma on a 250 m blind shot — real suppression, not a
+    // laser.
+    blindYawRad = gauss(rng) * 0.010;
+    blindPitchRad = gauss(rng) * 0.006;
     errTimer = 1.1 + rng() * 0.5;
   }
 
@@ -418,7 +429,15 @@ export function createAI(entity, opts = {}) {
         probeTimer = 0;
       }
       losClear = hasLos(ex, ey, ez, pp.x, eyeY(playerAggro), pp.z);
-      if (losClear || isVisibleToTeam(playerAggro)) {
+      // camo_spotting r5: chase intel only tracks the LIVE position while
+      // the spotting sim actually shows the player. The old `losClear ||`
+      // arm streamed exact coordinates of a formally UNSPOTTED player
+      // through a raw geometric ray (vegetation is transparent to it) —
+      // the "precisely-aimed return fire through the bush" leak. While
+      // hidden, lastSeen stays at the muzzle position notifyPlayerFired
+      // stamped (refreshed per shot) and aimAndFire's blind-lock path
+      // shells that point with blind-fire spread instead.
+      if (isVisibleToTeam(playerAggro)) {
         lastSeen.x = pp.x; lastSeen.z = pp.z;
         lastSeenAtS = timeS;
       }
@@ -454,8 +473,13 @@ export function createAI(entity, opts = {}) {
         target = aggro;
         losClear = seen;
         acquiredAtS = timeS;
-        lastSeenAtS = timeS;
-        lastSeen.x = up.x; lastSeen.z = up.z;
+        // camo_spotting r5: only a SEEN shooter's live position stamps the
+        // chase intel — a hardClaim (formally unspotted repeat offender)
+        // keeps the muzzle position notifyPlayerFired recorded at the shot.
+        if (seen) {
+          lastSeenAtS = timeS;
+          lastSeen.x = up.x; lastSeen.z = up.z;
+        }
         nonPenCount = 0;
         probeTimer = 0;
         return;
@@ -878,6 +902,14 @@ export function createAI(entity, opts = {}) {
       return;
     }
     const tp = target.state.pos;
+    // camo_spotting r5: an UNSPOTTED target's live position is server-side
+    // truth the bot's team does not have — navigation and hull facing use
+    // the last team-known point instead (lastSeen refreshes per spotting
+    // check and per muzzle flash), so a hull never visibly tracks a
+    // concealed tank crawling inside its bush.
+    const tVis = isVisibleToTeam(target);
+    const navX = tVis ? tp.x : lastSeen.x;
+    const navZ = tVis ? tp.z : lastSeen.z;
 
     // Gun pinned at a limit while trying to shoot → back away from the crest.
     if (timeS < nudgeUntilS) {
@@ -917,7 +949,7 @@ export function createAI(entity, opts = {}) {
         (target.isPlayer && timeS < playerAggroUntilS) ||
         timeS < pressUntilS) ? UNDER_FIRE_RANGE_BONUS_M : 0);
     if (distToTarget > engageR) {
-      chaseToXZ(input, tp.x, tp.z, 1.0); // committed leg (r3) — leadable mover
+      chaseToXZ(input, navX, navZ, 1.0); // committed leg (r3) — leadable mover
       return;
     }
     if (hasMoveTarget) {                          // roll into the hull-down spot
@@ -934,14 +966,14 @@ export function createAI(entity, opts = {}) {
       // while the gun is loading, HALT and settle the moment it is ready.
       const rl = entity.combat && entity.combat.reload;
       if (rl && rl.t > 1.2) {
-        chaseToXZ(input, tp.x, tp.z, 0.6); // close distance during the reload
+        chaseToXZ(input, navX, navZ, 0.6); // close distance during the reload
         return;
       }
-      faceYaw(input, Math.atan2(tp.x - st.pos.x, tp.z - st.pos.z));
+      faceYaw(input, Math.atan2(navX - st.pos.x, navZ - st.pos.z));
       return;
     }
     // Hold: face the target hull-on and shoot.
-    faceYaw(input, Math.atan2(tp.x - st.pos.x, tp.z - st.pos.z));
+    faceYaw(input, Math.atan2(navX - st.pos.x, navZ - st.pos.z));
   }
 
   // ---- aiming & firing -----------------------------------------------------
@@ -1006,7 +1038,21 @@ export function createAI(entity, opts = {}) {
     const blindFire = !losClear && target.isPlayer &&
       playerShotsInWindow >= 2 && timeS < playerAggroUntilS &&
       losBlockedT > 15 && dist <= MAX_FIRE_RANGE_M;
-    if (blindFire) {
+    // BLIND LOCK (camo_spotting r5): the return-fire lock can hold a player
+    // target the spotting sim does NOT currently show (double-flash claim,
+    // or the reveal lapsed mid-lock) with losClear coming from the raw
+    // geometric ray. Aiming the LIVE hull there was the ground-truth leak
+    // the critic flagged — two shots from a formally unspotted deep bush
+    // drew precisely-aimed fire through the vegetation. The lay now goes to
+    // the REMEMBERED muzzle position (lastSeen — refreshed per flash, never
+    // live-tracked while hidden) with the blind-fire spread on top: the bot
+    // shells the known bush like a WoT player would, and a target that
+    // crawled away inside concealment is safe.
+    const blindLock = losClear && target.isPlayer && spotting &&
+      !isVisibleToTeam(target) &&
+      (timeS < playerLockUntilS ||
+        (playerShotsInWindow >= 2 && timeS < playerAggroUntilS));
+    if (blindFire || blindLock) {
       _vD.set(lastSeen.x, hf.getHeightAt(lastSeen.x, lastSeen.z) + 1.2, lastSeen.z);
     }
 
@@ -1014,6 +1060,13 @@ export function createAI(entity, opts = {}) {
     _vD.x += px * errYawRad * dist;
     _vD.z += pz * errYawRad * dist;
     _vD.y += errPitchRad * dist;
+    if (blindFire || blindLock) {
+      // blind-fire spread (r5): area fire on a remembered point — additive
+      // with the tier error, which is zero on the hard tier.
+      _vD.x += px * blindYawRad * dist;
+      _vD.z += pz * blindYawRad * dist;
+      _vD.y += blindPitchRad * dist;
+    }
 
     input.aimPoint.copy(_vD);
     input.shellSlot = /** @type {0|1|2} */ (clamp(chosenSlot, 0, 2));
@@ -1248,11 +1301,18 @@ export function createAI(entity, opts = {}) {
         if (bestE) {
           pressUntilS = timeS + STALEMATE_PUSH_S;
           waypoints.length = 0;
+          // camo_spotting r5: QUANTIZE the destination to a ~50 m map-grid
+          // sector — route intel means "push toward sector G7", never the
+          // opponent's exact live coordinates (the old waypoint was a soft
+          // ground-truth leak: an unspotted survivor drew a bot beeline to
+          // its precise position after 25 s of silence).
+          const qx = Math.round(bestE.state.pos.x / 50) * 50;
+          const qz = Math.round(bestE.state.pos.z / 50) * 50;
           waypoints.push({
-            x: (st.pos.x + bestE.state.pos.x) / 2,
-            z: (st.pos.z + bestE.state.pos.z) / 2,
+            x: (st.pos.x + qx) / 2,
+            z: (st.pos.z + qz) / 2,
           });
-          waypoints.push({ x: bestE.state.pos.x, z: bestE.state.pos.z });
+          waypoints.push({ x: qx, z: qz });
           wpIndex = 0;
           autoPatrolBuilt = true;
           if (mode === 'seekCover') mode = 'engage';

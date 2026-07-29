@@ -18,7 +18,7 @@ import * as THREE from 'three';
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
-const POOL_SIZES = { smoke: 2048, fire: 1024, billow: 256, dust: 1024, sparks: 512, debris: 256, flash: 128, jet: 64 };
+const POOL_SIZES = { smoke: 2048, fire: 1024, billow: 256, psmoke: 384, dust: 1024, sparks: 512, debris: 256, flash: 128, jet: 64 };
 
 // ---------------------------------------------------------------------------
 // GLSL — shared helpers
@@ -326,6 +326,47 @@ void main() {
 }
 `;
 
+// --- propellant smoke (muzzle discharge mass: normal-blended, EROSION-masked)
+// r6 (critic major: "propellant smoke has no internal texture — 3-5 detached
+// soft gaussian puffs / airbrushed beige gradient"): the plain smoke pool's
+// pow(tex, ...) falloff is soft by design (columns, wakes), so 1-2 m muzzle
+// cards resolve as untextured gaussians at 100% zoom. This variant runs the
+// SAME widening erosion-band dissolve the fireball billow uses — the flipbook
+// octaves gate alpha, so every card carries torn billow structure and the
+// cloud reads as one turbulent connected mass — but with NO blackbody ramp:
+// cold grey powder smoke, sun-shaded like the normal pool.
+const PUFF_FRAG_PROP = `
+uniform sampler2D uMap;
+varying vec2 vUv;
+varying vec2 vUvA;
+varying vec2 vUvB;
+varying float vFMix;
+varying vec4 vColor;
+varying float vT;
+varying vec2 vShade;
+${FOG_PARS_F}
+void main() {
+  float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
+  // erosion dissolve: threshold rises with age, band widens so late edges go
+  // translucent instead of binarizing (see PUFF_FRAG_ADDITIVE anti-stipple)
+  float er = vT * 0.36;
+  float a = smoothstep( er, er + 0.44 + 0.50 * vT, tex ) * vColor.a;
+  if ( a < 0.004 ) discard;
+  // density-weighted sun shading (same model as the normal smoke pool,
+  // response toned down — the propellant mass must stay a grey-brown cloud,
+  // never a bright cream fog bank)
+  vec2 p = vUv * 2.0 - 1.0;
+  float sun = clamp( 0.5 + 0.8 * dot( p, vShade ), 0.0, 1.0 );
+  float light = 0.46 + 0.60 * sun + 0.28 * sun * ( 1.0 - tex );
+  vec3 col = vColor.rgb * light;
+  ${FOG_SCALE_F}
+  #ifdef USE_FOG
+    col = mix( col, fogColor, fogFactor );
+  #endif
+  gl_FragColor = vec4( col, a );
+}
+`;
+
 // --- streak (sparks / ricochet) --------------------------------------------
 
 const STREAK_VERT = `
@@ -560,8 +601,15 @@ void main() {
   // through the first ~0.5 s (the r5 "flat matte-black slabs against sky"
   // window), then cools fast so grounded chunks never read orange popcorn.
   // r2: hold full glow 0.55 s and cool over ~1 s more (was gone by ~0.75 s)
-  // so airborne wreckage visibly cools ember-orange -> dark in flight
-  vHot = aSG.z * exp( -max( age - 0.55, 0.0 ) * 2.6 ) * ( 0.40 + h2 * 0.60 );
+  // so airborne wreckage visibly cools ember-orange -> dark in flight.
+  // r6 (critic: "embers read as confetti ... static orange flecks pasted
+  // flat on the grass, holding constant brightness"): per-chunk FLICKER
+  // (seeded rate/phase — frozen frames catch a spread of phases, live
+  // frames breathe) + a hard glow cut once grounded so landed chips read
+  // as dying embers, never painted-on orange dots.
+  float flick = 0.70 + 0.30 * sin( uTime * ( 12.0 + h1 * 11.0 ) + aSG.w * 61.0 );
+  vHot = aSG.z * exp( -max( age - 0.55, 0.0 ) * ( 2.6 + grounded * 2.4 ) )
+    * ( 0.40 + h2 * 0.60 ) * flick * mix( 1.0, 0.45, grounded );
   vFade = fade;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   ${FOG_V}
@@ -720,14 +768,19 @@ function makeFlipbookTexture(rng, style) {
   // ~25 cm/texel is what read as GIF-dither stipple once the erosion front
   // ate into it (r6). smoke/dust keep 128 — they never erode as hard.
   const fire = style === 'fire';
+  // r6 'prop' style: the muzzle propellant mass — mid-res tiles with HIGH
+  // per-texel churn contrast so the erosion-band shader (PUFF_FRAG_PROP) has
+  // real internal structure to gate; the cloud reads as torn billows, never
+  // an airbrushed gradient.
+  const prop = style === 'prop';
   // lighting_post r3 (round 3): fire 176 → 256 — tiles still resolved as
   // stipple in 2x crops of 5-7 m cards (one-time bake cost ~+40 ms).
-  const TILES = 4, T = fire ? 256 : 128, S = TILES * T;
+  const TILES = 4, T = fire ? 256 : (prop ? 192 : 128), S = TILES * T;
   const cv = document.createElement('canvas');
   cv.width = cv.height = S;
   const ctx = cv.getContext('2d');
-  const warp = makeFbm(rng, fire ? 5 : 4);
-  const churn = makeFbm(rng, fire ? 5 : 4);
+  const warp = makeFbm(rng, (fire || prop) ? 5 : 4);
+  const churn = makeFbm(rng, (fire || prop) ? 5 : 4);
   const img = ctx.createImageData(S, S);
   const d = img.data;
   // r5 anti-stipple: fire churn contrast 0.26/1.10 -> 0.44/0.72 and smoke
@@ -738,9 +791,11 @@ function makeFlipbookTexture(rng, style) {
   // r5: fire per-texel contrast cut again (0.44/0.72 -> 0.55/0.55) — the
   // erosion smoothstep still binarized the top octave into stipple on 5-7 m
   // destruction cards (r4 "hundreds of dark stipple dots").
-  const churnLo = fire ? 0.55 : (style === 'dust' ? 0.58 : 0.52);
-  const churnHi = fire ? 0.55 : (style === 'dust' ? 0.62 : 0.62);
-  const gamma = fire ? 0.88 : 1.06;
+  // prop: high per-texel contrast IS the point — PUFF_FRAG_PROP's wide
+  // erosion band dissolves it as translucent billow gradients, never speckle.
+  const churnLo = fire ? 0.55 : (prop ? 0.36 : (style === 'dust' ? 0.58 : 0.52));
+  const churnHi = fire ? 0.55 : (prop ? 0.88 : (style === 'dust' ? 0.62 : 0.62));
+  const gamma = fire ? 0.88 : (prop ? 0.98 : 1.06);
   for (let k = 0; k < TILES * TILES; k++) {
     const q = k / (TILES * TILES - 1);          // 0 -> 1 over the sequence
     const tx = (k % TILES) * T, ty = Math.floor(k / TILES) * T;
@@ -1055,6 +1110,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
 
   const smokeTex = makeFlipbookTexture(texRng, 'smoke');
   const fireTex = makeFlipbookTexture(texRng, 'fire');
+  const propTex = makeFlipbookTexture(texRng, 'prop');
   const dustTex = makeFlipbookTexture(texRng, 'dust');
   const flashTex = makeFlashTexture(texRng);
   const jetTex = makeJetTexture(texRng);
@@ -1108,6 +1164,14 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
         m.fragmentShader = PUFF_FRAG_BILLOW;
         return m;
       })(), PUFF_LAYOUT, POOL_SIZES.billow, 'aVL', 3),
+    psmoke: new Pool('psmoke', makeQuadGeometry(POOL_SIZES.psmoke),
+      // muzzle propellant mass (see PUFF_FRAG_PROP): erosion-masked cold grey
+      // powder smoke — torn billow structure instead of gaussian cotton balls
+      (() => {
+        const m = puffMaterial(propTex, false, 0.9, 1.0, 4, [0.8, 3.0]);
+        m.fragmentShader = PUFF_FRAG_PROP;
+        return m;
+      })(), PUFF_LAYOUT, POOL_SIZES.psmoke, 'aVL', 3),
     dust: new Pool('dust', makeQuadGeometry(POOL_SIZES.dust),
       puffMaterial(dustTex, false, 1.4, 1, 4), PUFF_LAYOUT, POOL_SIZES.dust, 'aVL', 3),
     flash: new Pool('flash', makeQuadGeometry(POOL_SIZES.flash),
@@ -1161,6 +1225,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   pools.debris.mesh.renderOrder = 0;
   pools.dust.mesh.renderOrder = 20;
   pools.smoke.mesh.renderOrder = 21;
+  pools.psmoke.mesh.renderOrder = 21.2; // propellant mass rides over the wake
   pools.billow.mesh.renderOrder = 21.5;
   pools.fire.mesh.renderOrder = 22;
   pools.jet.mesh.renderOrder = 23;
@@ -1233,6 +1298,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     smoke: (o) => emitPuff(pools.smoke, o),
     fire: (o) => emitPuff(pools.fire, o),
     billow: (o) => emitPuff(pools.billow, o),
+    psmoke: (o) => emitPuff(pools.psmoke, o),
     dust: (o) => emitPuff(pools.dust, o),
     flash: (o) => emitPuff(pools.flash, o),
     jet: (o) => emitJet(pools.jet, o),
@@ -1267,7 +1333,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
 
     /**
      * Spawn one particle into a named pool.
-     * @param {'smoke'|'fire'|'billow'|'dust'|'flash'|'jet'|'sparks'|'debris'} poolName
+     * @param {'smoke'|'fire'|'billow'|'psmoke'|'dust'|'flash'|'jet'|'sparks'|'debris'} poolName
      * @param {object} opts pool-specific fields (pos, vel, life, ...; birthOffset backdates)
      */
     emit(poolName, opts) {

@@ -495,8 +495,19 @@ function paintFlat(geo, color, flex) {
 
 // one foliage card: plane transformed into place, vertex colour = AO/tint,
 // normal = canopy-outward blend so lighting wraps the crown as one volume
-function foliageCard(w, h, px, py, pz, euler, shade, hue, sat, flex, canopyCx, canopyCy, canopyCz, upBias = 1.55) {
-  const g = new THREE.PlaneGeometry(w, h);
+// r5 terrain_environment: optional BOW — broadleaf/bush cards arc gently
+// along their height (parabolic bulge toward local +z) so crown surfaces
+// read as curved intersecting leaf masses instead of flat cut-out sheets
+// (the "blob-card parasol" critique). Costs 2 extra tris per bowed card.
+function foliageCard(w, h, px, py, pz, euler, shade, hue, sat, flex, canopyCx, canopyCy, canopyCz, upBias = 1.55, bow = 0) {
+  const g = new THREE.PlaneGeometry(w, h, 1, bow > 0 ? 2 : 1);
+  if (bow > 0) {
+    const bp = g.attributes.position;
+    for (let i = 0; i < bp.count; i++) {
+      const yy = bp.getY(i) / (h || 1); // -0.5 .. 0.5 along the card height
+      bp.setZ(i, bp.getZ(i) + (0.25 - yy * yy) * w * bow);
+    }
+  }
   _qq.setFromEuler(euler);
   _m.compose(_v3.set(px, py, pz), _qq, new THREE.Vector3(1, 1, 1));
   g.applyMatrix4(_m);
@@ -663,7 +674,8 @@ function buildBroadleafCards(rng, nCards, sizeMul, pal = {}, shape = {}) {
     const shade = (0.58 + 0.42 * clamp(distC, 0, 1)) // dark core, lit shell
       * (0.80 + 0.34 * clamp((py - cy) / ry * 0.5 + 0.5, 0, 1)) * (0.92 + rng() * 0.16);
     parts.push(foliageCard(wsz, wsz * 0.82, px, py, pz, _e, shade,
-      hue0 + (rng() - 0.5) * 0.09, sat0 + rng() * 0.08, l0 + rad * 0.65, 0, cy, 0));
+      hue0 + (rng() - 0.5) * 0.09, sat0 + rng() * 0.08, l0 + rad * 0.65, 0, cy, 0,
+      1.55, 0.5)); // r5: bowed shell cards — curved leaf masses, not flat splats
   }
   // a couple of low cards hanging near the branch collar
   for (let i = 0; i < Math.max(2, nCards >> 4); i++) {
@@ -843,21 +855,33 @@ function buildPalmGeometry(rng, pal = {}, vr = {}) {
   }
 
   const cardParts = [];
-  // r9: 13-17 fronds (was 11-14) — the crown must read as one massed canopy
-  // dome at mid distance, not separable spikes
-  const n = 13 + ((rng() * 5) | 0);
+  // r5 terrain_environment: 9-11 BIG fronds (was 13-17 thin ones) — the
+  // dense thin-blade crown read as a bottle-brush starburst (critique);
+  // real date-palm crowns are a handful of long arched fronds that rise,
+  // arc and DROOP well below horizontal. Wider blades + longer arcs + a
+  // deeper droop give the layered drooping canopy; the crown core below
+  // fills the star's hollow center.
+  const n = 9 + ((rng() * 3) | 0);
   for (let k = 0; k < n; k++) {
-    const a = (k / n) * Math.PI * 2 + rng() * 0.45;
+    const a = (k / n) * Math.PI * 2 + rng() * 0.5;
     // alternate steep/shallow launch angles => layered dome-shaped crown
     const steep = k % 2 === 0;
-    const phi0 = steep ? 0.95 + rng() * 0.25 : 0.55 + rng() * 0.25; // up from horizontal
-    const phiTip = -(0.5 + rng() * 0.7); // tips droop below horizontal
-    const len = 3.4 + rng() * 1.2;
+    const phi0 = steep ? 0.95 + rng() * 0.30 : 0.50 + rng() * 0.28; // up from horizontal
+    const phiTip = -(0.85 + rng() * 0.60); // tips droop WELL below horizontal
+    const len = 4.0 + rng() * 1.5;
     const shade = 0.7 + (steep ? 0.3 : 0.12) + rng() * 0.1;
-    // r6: blade width 1.9 -> 1.4 m — the fat planes read as banana leaves up
-    // close AND cast solid strap shadows (the star-blob shadow tell)
-    // r9: 1.4 -> 1.55 with the denser frond texture — coverage, not strap
-    cardParts.push(frond(a, phi0, phiTip, len, 1.55, shade, false));
+    cardParts.push(frond(a, phi0, phiTip, len, 2.0, shade, false));
+  }
+  // crown core: a small dark mass where the frond bases overlap — without it
+  // the crown center was hollow and the fronds read as separate spikes
+  {
+    const core = new THREE.IcosahedronGeometry(0.44 * rMul, 0);
+    jitterRadial(core, rng, 0.25);
+    core.scale(1.35, 0.85, 1.35);
+    sphereNormals(core, 0, 0, 0, 1.0);
+    core.translate(px, H + 0.30, pz);
+    _c.setHSL(frondHue, frondSat * 0.9, Math.max(0.10, frondLum * 0.45), THREE.SRGBColorSpace);
+    trunkParts.push(paintFlat(core, _c.clone(), 0.2));
   }
   // r6: 4-5 hanging dead fronds — a proper dry skirt under the crown pulls
   // the palette toward khaki and breaks the all-green crown ball
@@ -875,14 +899,28 @@ function buildPalmGeometry(rng, pal = {}, vr = {}) {
 // that ignored pal. cardHue/cardSat/cardL0 now apply, and pal.snow (0..1)
 // lays a top-weighted SNOW LOAD across the twig cloud: upward cards lerp
 // toward blue-white and brighten, exactly how loaded winter brush reads.
-function buildBirchGeometry(rng, pal = {}) {
+// r5 terrain_environment: REBUILT. The r4 "crown cap" — a 2.5-3.5 m
+// flattened icosphere disc on a pole — rendered every winter birch as the
+// SAME grey umbrella/parasol, cloned ~30x at near-identical height (the
+// loudest foliage tell in the critique). Now: per-variant proportions
+// (BIRCH_VAR: young slender / classic / old broad), an UPRIGHT BRANCH
+// LATTICE of real forking limbs that carries the winter silhouette, an
+// upright-ellipsoid twig-haze card cloud (taller than wide — birch brooms,
+// not mushrooms), and small branch-riding snow lobes only. No crown cap.
+const BIRCH_VAR = [
+  { h0: 4.3, hr: 0.9, crw: 1.15, nBr: 11 }, // young slender
+  { h0: 6.0, hr: 1.3, crw: 1.55, nBr: 14 }, // classic
+  { h0: 7.5, hr: 1.6, crw: 2.00, nBr: 17 }, // old broad
+];
+function buildBirchGeometry(rng, pal = {}, vr = {}) {
   const trunkParts = [];
-  const H = 5.6 + rng() * 1.6;
-  const trunk = new THREE.CylinderGeometry(0.07, 0.17, H, 7, 3);
+  const H = (vr.h0 ?? 5.6) + rng() * (vr.hr ?? 1.6);
+  const crw = vr.crw ?? 1.55;
+  const trunk = new THREE.CylinderGeometry(0.06, 0.16, H * 0.62, 7, 3);
   const tp = trunk.attributes.position;
   for (let i = 0; i < tp.count; i++) tp.setX(i, tp.getX(i) + tp.getY(i) * (rng() * 0.03));
   trunk.computeVertexNormals();
-  trunk.translate(0, H / 2, 0);
+  trunk.translate(0, H * 0.31, 0);
   // banded bark via vertex colours: pale white with darker patches
   {
     const nv = trunk.attributes.position.count;
@@ -899,31 +937,55 @@ function buildBirchGeometry(rng, pal = {}) {
     trunk.setAttribute('aFlex', new THREE.BufferAttribute(fl, 1));
     trunkParts.push(trunk);
   }
-  const nBr = 12 + ((rng() * 5) | 0); // r5: doubled — "white pole with 3 twigs" tell
-  for (let b = 0; b < nBr; b++) {
-    // r9: shorter, paler branches that stay INSIDE the twig-card cloud — the
-    // long dark 3 m limbs poked past the crown as black antenna spikes
-    const len = 0.9 + rng() * 1.2;
-    const br = new THREE.CylinderGeometry(0.015, 0.045, len, 4, 1);
+  // r5: LEADER LIMBS — the trunk forks into 2-3 near-vertical leaders that
+  // run into the crown (a real birch splits low), each pale-barked
+  const nLead = 2 + ((rng() * 2) | 0);
+  for (let ld = 0; ld < nLead; ld++) {
+    const la = (ld / nLead) * Math.PI * 2 + rng() * 1.2;
+    const tilt = 0.10 + rng() * 0.14;
+    const len = H * (0.42 + rng() * 0.16);
+    const y0 = H * (0.50 + rng() * 0.10);
+    const br = new THREE.CylinderGeometry(0.035, 0.075, len, 5, 1);
     br.translate(0, len / 2, 0);
-    br.rotateZ(0.35 + rng() * 0.55); // reach upward
-    br.rotateY(rng() * Math.PI * 2);
-    br.translate(0, H * (0.45 + rng() * 0.42), 0);
-    _c.setHSL(0.06, 0.07, 0.40 + rng() * 0.10, THREE.SRGBColorSpace);
-    trunkParts.push(paintFlat(br, _c.clone(), 0.3));
+    br.rotateZ(tilt);
+    br.rotateY(la);
+    br.translate(0, y0 - len * 0.12, 0);
+    _c.setHSL(0.08, 0.04, 0.72 + rng() * 0.10, THREE.SRGBColorSpace);
+    trunkParts.push(paintFlat(br, _c.clone(), 0.15));
   }
-  // twig cards forming the bare crown silhouette. r9: ~1.7x density AND
-  // bigger cards on a wider crown — the r5 count still resolved as a white
-  // pole with a few dark stickers in the winter establishing shot; the crown
-  // must read as one continuous twig-haze volume
+  // upward branch lattice: thin forking limbs filling the crown ellipsoid —
+  // the bare winter structure the critique asked for ("bare branch lattice")
+  const nBr = (vr.nBr ?? 14) + ((rng() * 4) | 0);
+  for (let b = 0; b < nBr; b++) {
+    const len = 0.9 + rng() * (H * 0.22);
+    const rotZ = 0.30 + rng() * 0.55;
+    const rotY = rng() * Math.PI * 2;
+    const y0 = H * (0.52 + rng() * 0.34);
+    const br = new THREE.CylinderGeometry(0.012, 0.040, len, 4, 1);
+    br.translate(0, len / 2, 0);
+    br.rotateZ(rotZ); // reach upward
+    br.rotateY(rotY);
+    br.translate((rng() - 0.5) * crw * 0.5, y0, (rng() - 0.5) * crw * 0.5);
+    _c.setHSL(0.06, 0.06, 0.46 + rng() * 0.12, THREE.SRGBColorSpace);
+    trunkParts.push(paintFlat(br, _c.clone(), 0.3));
+    if (rng() < 0.6) { // forked twig off the limb tip
+      const len2 = len * (0.45 + rng() * 0.3);
+      const br2 = new THREE.CylinderGeometry(0.008, 0.020, len2, 3, 1);
+      br2.translate(0, len2 / 2, 0);
+      br2.rotateZ(rotZ + (rng() - 0.3) * 0.7);
+      br2.rotateY(rotY + (rng() - 0.5) * 1.1);
+      br2.translate(Math.sin(rotY) * Math.sin(rotZ) * len * 0.9,
+        y0 + Math.cos(rotZ) * len * 0.9, Math.cos(rotY) * Math.sin(rotZ) * len * 0.9);
+      _c.setHSL(0.06, 0.06, 0.50 + rng() * 0.12, THREE.SRGBColorSpace);
+      trunkParts.push(paintFlat(br2, _c.clone(), 0.4));
+    }
+  }
+  // twig-haze cards in an UPRIGHT ellipsoid (taller than wide): the crown
+  // reads as a broom-shaped gauze around the branch lattice
   const cardParts = [];
-  const cy = H * 0.76;
-  // content_breadth r4: snow-bound birches run a DENSER, slightly smaller
-  // card cloud — the r9 30-38 cards at 1.5-2.5 m read as separated "floating
-  // white confetti" chips from the establishing camera (critique, major);
-  // more overlap turns the crown back into one connected twig-haze volume.
+  const cy = H * 0.74;
   const snow = pal.snow ?? 0;
-  const nc = (snow > 0.01 ? 46 : 30) + ((rng() * 9) | 0);
+  const nc = (snow > 0.01 ? 40 : 30) + ((rng() * 8) | 0);
   const hue0 = pal.cardHue ?? 0.08, sat0 = pal.cardSat ?? 0.06;
   const snowAnchors = [];
   for (let i = 0; i < nc; i++) {
@@ -931,45 +993,31 @@ function buildBirchGeometry(rng, pal = {}) {
     const dl = Math.hypot(dx, dy, dz) || 1;
     dx /= dl; dy /= dl; dz /= dl;
     const rad = Math.pow(0.3 + 0.7 * rng(), 0.8);
-    const w = (snow > 0.01 ? 1.3 : 1.5) + rng() * (snow > 0.01 ? 0.85 : 1.0);
+    const w = (snow > 0.01 ? 1.05 : 1.25) + rng() * 0.75;
     _e.set(rng() * Math.PI, rng() * Math.PI * 2, rng() * Math.PI, 'YXZ');
     // snow load: cards on the UPPER crown hemisphere whiten + brighten
     const sk = snow * Math.max(0, dy) * (0.6 + rng() * 0.4);
-    const px = dx * rad * 1.6, py = cy + dy * rad * H * 0.22, pz = dz * rad * 1.6;
-    cardParts.push(foliageCard(w, w * 0.9, px, py, pz,
+    const px = dx * rad * crw, py = cy + dy * rad * H * 0.26, pz = dz * rad * crw;
+    cardParts.push(foliageCard(w, w * 1.05, px, py, pz,
       _e, (0.9 + rng() * 0.3) * (1 + sk * 0.35),
       hue0 + (0.585 - hue0) * sk, sat0 * (1 - sk * 0.8) + 0.02 * sk, 0.45, 0, cy, 0));
-    if (dy > 0.08) snowAnchors.push({ x: px, y: py, z: pz, w, dy });
+    if (dy > 0.15) snowAnchors.push({ x: px, y: py, z: pz, w, dy });
   }
-  // content_breadth r4: BRANCH-CONFORMING SNOW CAPS (winter maps only,
-  // pal.snow > 0). The card whitening alone left the crown a cloud of
-  // disconnected pale chips; opaque flattened lobes sitting ON the upper
-  // twig masses (same anchor points as the upper-hemisphere cards, so the
-  // load follows the branch structure) read as a real snow load and visually
-  // fuse the card cloud. They ride the trunk part => bark material's neutral
-  // map + a lifted vertex tint keeps them bright rime-white.
+  // small BRANCH-RIDING snow lobes on the upper twig masses only — rime
+  // clumps following the structure, no monolithic parasol cap
   if (snow > 0.01) {
     for (const a of snowAnchors) {
-      if (rng() > snow * (0.35 + a.dy * 0.65)) continue;
-      const lr = a.w * (0.30 + rng() * 0.14);
+      if (rng() > snow * (0.20 + a.dy * 0.45)) continue;
+      const lr = a.w * (0.16 + rng() * 0.10);
       const lobe = new THREE.IcosahedronGeometry(lr, 0);
-      jitterRadial(lobe, rng, 0.30);
-      lobe.scale(1.55, 0.48, 1.15);
+      jitterRadial(lobe, rng, 0.35);
+      lobe.scale(1.5 + rng() * 0.5, 0.40, 0.85 + rng() * 0.3);
       lobe.rotateY(rng() * Math.PI * 2);
       sphereNormals(lobe, 0, 0, 0, 1.15);
-      lobe.translate(a.x, a.y + lr * 0.30, a.z);
+      lobe.translate(a.x, a.y + lr * 0.28, a.z);
       _c.setHSL(0.585, 0.05, 0.60, THREE.SRGBColorSpace).multiplyScalar(1.55);
       trunkParts.push(paintFlat(lobe, _c.clone(), 0.10));
     }
-    // one broad crown cap on top ties the silhouette together
-    const cr = 1.0 + rng() * 0.5;
-    const cap = new THREE.IcosahedronGeometry(cr, 0);
-    jitterRadial(cap, rng, 0.35);
-    cap.scale(1.5, 0.42, 1.3);
-    sphereNormals(cap, 0, 0, 0, 1.2);
-    cap.translate((rng() - 0.5) * 0.8, cy + H * 0.20, (rng() - 0.5) * 0.8);
-    _c.setHSL(0.585, 0.05, 0.62, THREE.SRGBColorSpace).multiplyScalar(1.55);
-    trunkParts.push(paintFlat(cap, _c.clone(), 0.10));
   }
   return { trunk: mergeParts(trunkParts), cards: mergeParts(cardParts) };
 }
@@ -1167,12 +1215,12 @@ function buildPalmFarGeometry(rng, pal = {}, fvi = 0) {
   // radial arched fronds: bent tapered blades that rise, arc over and droop —
   // the star-of-fronds crown a real palm shows at range (opaque planes; the
   // far canopy material is DoubleSide for exactly this builder)
-  const nF = 13 + ((rng() * 4) | 0); // r5: denser crown — sparse far palms read as sticks
+  const nF = 10 + ((rng() * 3) | 0); // r5 TE: match the near crown — few BIG fronds
   for (let k = 0; k < nF; k++) {
     const a = (k / nF) * Math.PI * 2 + rng() * 0.5;
-    const len = 3.0 + rng() * 1.0;
+    const len = 3.5 + rng() * 1.2;
     const phi0 = 0.55 + rng() * 0.5;            // launch angle up from horizontal
-    const phiTip = -(0.55 + rng() * 0.5);       // tip droops below horizontal
+    const phiTip = -(0.80 + rng() * 0.55);      // tip droops well below horizontal
     // PERF r3: 4 -> 3 height segments — the arc solver below keeps the
     // rise/droop curve; one fewer bend row is invisible at 260 m+.
     const g = new THREE.PlaneGeometry(1, 1, 1, 3);
@@ -1180,7 +1228,7 @@ function buildPalmFarGeometry(rng, pal = {}, fvi = 0) {
     for (let i = 0; i < p.count; i++) {
       const t = p.getY(i) + 0.5; // 0..1 along the frond
       // r9: blades widened ~40% — sub-pixel blades were the starburst tell
-      const w = (1.0 - t * 0.62) * (1.28 + rng() * 0.2); // taper to the tip
+      const w = (1.0 - t * 0.62) * (1.55 + rng() * 0.25); // taper to the tip
       let ry = 0, rf = 0;
       const steps = 8, dl = (len * t) / steps;
       for (let sIt = 0; sIt < steps; sIt++) {
@@ -1262,7 +1310,7 @@ function buildBushCards(rng, pal = {}) {
     const vGrad = 0.78 + 0.42 * clamp(dy * 0.5 + 0.5, 0, 1); // lit top, shaded skirt
     const shade = (0.34 + 0.62 * rad) * vGrad * (0.9 + rng() * 0.2);
     parts.push(foliageCard(w, w * 0.8, dx * rad * 0.85, cy + dy * rad * 0.38, dz * rad * 0.85,
-      _e, shade, hue0 + (rng() - 0.5) * 0.055, sat0 + rng() * 0.06, 0.22, 0, cy, 0, 0.75));
+      _e, shade, hue0 + (rng() - 0.5) * 0.055, sat0 + rng() * 0.06, 0.22, 0, cy, 0, 0.75, 0.45));
   }
   return mergeParts(parts);
 }
@@ -1289,6 +1337,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     clusterCount: 46, loneCount: 95, rimCount: 58,
     grassDensity: 1, bushCount: 1, bushSpecies: 'oak',
     grassTexTone: null, tuftTone: null, parks: null, palettes: {},
+    avoid: null, // [{x,z,r}] — no vegetation discs (e.g. establishing-camera foreground)
     ...((cfg && cfg.vegetation) || {}),
   };
   const rng = mulberry32(seed);
@@ -1379,6 +1428,30 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     return geo;
   }
 
+  // PERF (performance_budget r5): far-band tuft geometry LOD. The mid-grass
+  // pool (world-grass-wind-v5) measured 3.2-3.4 M triangles/frame on the
+  // certification battle -- the single largest triangle line in the whole
+  // frame -- and ~70% of its instances sit beyond 78 m, where a 0.6-0.7 m
+  // tuft subtends <= 12 px at 1080p. Out there the third crossed plane and
+  // the mid-height wind vertex row are both sub-pixel; a 2-plane single-
+  // segment cross (4 tris vs 12) is indistinguishable. Width +14% keeps the
+  // projected coverage mass of the dropped plane. Swapped per CHUNK in
+  // update() (see GRASS_LOD_DIST there) -- a geometry pointer swap, no
+  // instance-buffer upload, no material/program change.
+  function makeTuftFarGeometry(w, h) {
+    const planes = [];
+    for (let k = 0; k < 2; k++) {
+      const p = new THREE.PlaneGeometry(w * 1.14, h, 1, 1);
+      p.translate(0, h / 2 - 0.03, 0);
+      p.rotateY((k / 2) * Math.PI);
+      planes.push(p);
+    }
+    const geo = mergeGeometries(planes, false);
+    const nrm = geo.attributes.normal;
+    for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, 0, 1, 0);
+    return geo;
+  }
+
   const grassTex = [
     makeGrassCardTexture(mulberry32(seed + 41), 0, veg.grassTexTone),
     makeGrassCardTexture(mulberry32(seed + 42), 1, veg.grassTexTone),
@@ -1401,6 +1474,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     const w = gv === 0 ? 0.92 : 1.14, h = gv === 0 ? 0.74 : 0.58;
     grassVariants.push({
       geo: makeTuftGeometry(w, h),
+      geoFar: makeTuftFarGeometry(w, h), // performance_budget r5 (see builder)
       matMid: makeGrassMaterial(grassTex[gv], GRASS_FADE_END, 'world-grass-wind-v5'),
       matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v5'),
     });
@@ -1421,8 +1495,19 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   // before calling makeTuft again. This ran hot enough to top the allocation
   // profile while driving (new carpet cells stream in as the camera moves).
   const _tuftScratch = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  // r5 terrain_environment: map-authored no-vegetation discs (desert uses one
+  // to keep the establishing camera's foreground frame edge clear — a squat
+  // palm sat clipped at the bottom-left of battlefield_desert.png)
+  function inAvoid(x, z) {
+    if (!veg.avoid) return false;
+    for (const av of veg.avoid) {
+      if (Math.hypot(x - av.x, z - av.z) < av.r) return true;
+    }
+    return false;
+  }
   function makeTuft(x, z, crng, carpet) {
     if (Math.max(Math.abs(x), Math.abs(z)) > 474) return null;
+    if (inAvoid(x, z)) return null;
     const roll = crng(), yaw = crng() * Math.PI * 2;
     const sxz = 0.74 + crng() * 0.62;
     let sy = 0.55 + crng() * 0.85;
@@ -1528,7 +1613,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       mesh.matrixAutoUpdate = false;
       mesh.userData.aoExclude = true; // GTAO override prepass ignores alphaTest
       group.add(mesh);
-      chunkMeshes.push({ mesh, total: tufts[vv].length });
+      chunkMeshes.push({ mesh, total: tufts[vv].length, geoNear: grassVariants[vv].geo, geoFar: grassVariants[vv].geoFar });
     }
     if (chunkMeshes.length > 0) {
       grassChunks.push({ meshes: chunkMeshes, cx: x0 + CHUNK_SIZE / 2, cz: z0 + CHUNK_SIZE / 2 });
@@ -1669,7 +1754,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     shader.uniforms.uScopeDist = uScopeDist; // r5: corridor length = aim dist
     shader.uniforms.uFocusPos = uFocusPos;   // r2: occlusion-fade sight capsule
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\nuniform float uWindTime;\nuniform vec3 uCamPos;\nuniform vec3 uCamFwd;\nuniform float uSniperFade;\nuniform float uScopeDist;\nuniform vec3 uFocusPos;\nattribute float aFlex;\nattribute float aFadeI;\nvarying float vFadeI;\nvarying float vScopeKeep;');
+      '#include <common>\nuniform float uWindTime;\nuniform vec3 uCamPos;\nuniform vec3 uCamFwd;\nuniform float uSniperFade;\nuniform float uScopeDist;\nuniform vec3 uFocusPos;\nattribute float aFlex;\nattribute float aFadeI;\nvarying float vFadeI;\nvarying float vScopeKeep;\nvarying float vTDRay;\nvarying float vTAlong;\nvarying float vDSeg;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`
       #include <begin_vertex>
       {
@@ -1689,6 +1774,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
           float tt = segL2 > 1e-4 ? clamp(dot(tvw.xyz - uCamPos, seg) / segL2, 0.0, 1.0) : 0.0;
           float dSeg = length(tvw.xyz - (uCamPos + seg * tt));
           vFadeI = aFadeI * (1.0 - smoothstep(3.0, 6.5, dSeg));
+          vDSeg = dSeg; // gameplay_feel r5: fragment keep-floor near the sight capsule
         }
         // sniper scope-ray corridor keep (per vertex — tall trunks fade only
         // where they actually cross the sight line)
@@ -1711,10 +1797,16 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
                                               mix(9.0, 5.0, tBand), tDRay))
                           * (1.0 - smoothstep(uScopeDist, uScopeDist + 30.0, tAlong));
         vScopeKeep = mix(1.0, tCorr, uSniperFade);
+        // gameplay_feel r5: carry the ray metrics to the fragment stage so
+        // the corridor EDGES can be feathered per fragment (the per-vertex
+        // vScopeKeep quantized the dissolve into card-sized hard columns);
+        // vScopeKeep stays as a cheap early-out.
+        vTDRay = tDRay;
+        vTAlong = tAlong;
         // <<< gameplay_feel r4 / controls_gunnery r5
       }`);
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\nuniform float uScopeHard;\nvarying float vFadeI;\nvarying float vScopeKeep;');
+      '#include <common>\nuniform float uScopeHard;\nuniform float uSniperFade;\nuniform float uScopeDist;\nvarying float vFadeI;\nvarying float vScopeKeep;\nvarying float vTDRay;\nvarying float vTAlong;\nvarying float vDSeg;');
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <alphatest_fragment>', /* glsl */`
       #include <alphatest_fragment>
       {
@@ -1727,18 +1819,40 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
         // trunks keep the 12% ghost so the forest still reads.
         float fadeKeep = 1.0 - ${fullFade ? '1.0' : '0.88'} * vFadeI;
         fadeKeep *= smoothstep(${nearD0.toFixed(2)}, ${nearD1.toFixed(2)}, length(vViewPosition));
-        fadeKeep = min(fadeKeep, vScopeKeep);
+        // gameplay_feel r5 (round critique minor): re-evaluate the corridor
+        // smoothsteps PER FRAGMENT from the interpolated ray metrics — the
+        // vertex-quantized vScopeKeep made whole cards share one keep value,
+        // dissolving the corridor in hard-edged card-sized COLUMNS. The
+        // vertex value stays as a cheap early-out.
+        float scopeKeepF = 1.0;
+        if (vScopeKeep < 0.999) {
+          float fBand = smoothstep(30.0, 60.0, vTAlong);
+          float fCorr = 1.0 - (1.0 - smoothstep(mix(5.5, 2.5, fBand),
+                                                mix(9.0, 5.0, fBand), vTDRay))
+                            * (1.0 - smoothstep(uScopeDist, uScopeDist + 30.0, vTAlong));
+          scopeKeepF = mix(1.0, fCorr, uSniperFade);
+        }
+        fadeKeep = min(fadeKeep, scopeKeepF);
+        ${fullFade ? `
+        // gameplay_feel r5: occlusion-fade keep FLOOR near the sight capsule
+        // — canopy within ~2.2 m of the camera->tank sight ray discards
+        // fully, so no half-dissolved speckle overlaps the player hull
+        // silhouette when parked under a tree.
+        if (vFadeI > 0.01 && vDSeg < 2.2) discard;` : ''}
         if (uScopeHard > 0.5) {
           // high-zoom scope (FOV <= 15°): dither magnified by the optics
           // reads as halftone stipple — cut binary instead (r4): corridor
           // foliage vanishes cleanly, everything else is full-opacity.
           if (fadeKeep < 0.55) discard;
         } else if (fadeKeep < 0.9995) {
-          // lighting_post r2: decorrelated hash instead of IGN — IGN at mid
-          // keep-rates resolves as a checkerboard in 1080p stills; hash
-          // noise reads as film grain.
-          float ign = fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
-          if (ign > fadeKeep) discard;
+          // gameplay_feel r5: interleaved-gradient-noise pair at TWO octaves
+          // (fine + 3.7x coarser, 50/50) — the old pixel-scale white-noise
+          // hash read as artifact speckle over large sheets at mid
+          // keep-rates; the IGN mix has blue-ish spectral character.
+          float d1 = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+          float d2 = fract(52.9829189 * fract(dot(floor(gl_FragCoord.xy / 3.7), vec2(0.06711056, 0.00583715))));
+          float dit = mix(d1, d2, 0.5);
+          if (dit > fadeKeep) discard;
         }
       }`);
     // lighting_post r3: wrap-diffuse on canopy materials — crowns get a lit
@@ -1783,7 +1897,12 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       if (uScopeHard > 0.5) {
         if (vFolKeep < 0.55) discard; // r4: binary at high zoom — no stipple
       } else if (vFolKeep < 0.999) {
-        float fdit = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+        // gameplay_feel r5: two-octave IGN (fine + 3.7x coarser, 50/50) —
+        // matches the tree-hook dissolve so half-faded bushes stop reading
+        // as pixel-scale white speckle.
+        float fd1 = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+        float fd2 = fract(52.9829189 * fract(dot(floor(gl_FragCoord.xy / 3.7), vec2(0.06711056, 0.00583715))));
+        float fdit = mix(fd1, fd2, 0.5);
         if (fdit >= vFolKeep) discard;
       }`);
   };
@@ -1919,7 +2038,9 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       tex: (r, pal) => makeTwigTexture(r, pal.texTone || null),
       // content_breadth r3: pal now reaches the near builder (winter card
       // tint + snow load; verdant/urban pass no birch palette -> unchanged)
-      near: (k, pal) => buildBirchGeometry(mulberry32(seed + 85 + k * 7), pal),
+      // r5 terrain_environment: k selects BIRCH_VAR — three distinct
+      // height/crown proportions so stands stop reading as clones
+      near: (k, pal) => buildBirchGeometry(mulberry32(seed + 85 + k * 7), pal, BIRCH_VAR[k % 3]),
       far: (r, pal) => buildBirchFarGeometry(r, pal),
     },
   };
@@ -1987,6 +2108,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   const concealers = [];
   function siteOk(x, z, margin) {
     if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
+    if (inAvoid(x, z)) return false;
     if (x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24) return false;
     if (heightField._roadDist(x, z) < 9 + margin) return false;
     if (heightField.getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
@@ -2244,6 +2366,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     const bushPlacements = [[], []];
     function addBush(x, z) {
       if (Math.max(Math.abs(x), Math.abs(z)) > 470) return;
+      if (inAvoid(x, z)) return;
       if (rng() > veg.bushCount) return; // per-map density scale
       if (heightField._roadDist(x, z) < 6) return;
       if (heightField.getGroundType(x, z) === 'soft' || noVeg(x, z)) return;
@@ -2593,15 +2716,31 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       // PERF (performance_budget r3): far-band taper deepened (keep 70% ->
       // 46% past ~200 m). A tuft card at 200 m is <=8 px tall and already
       // scale-fading in the shader (uGrassFar 250); the mid-grass chunk pool
-      // was ~1.5 M tris/frame and the far half of it is sub-pixel work. The
-      // near band (<58 m) is untouched — the r2/r5 LOD-seam fixes hold.
+      // was ~1.5 M tris/frame and the far half of it is sub-pixel work.
       // (r3 verifier: supersedes the terrain owner's 0.24@70-230 retune — the
       // triangle budget gate was blown at 8.08M and this cut is measured.)
-      let frac = d < GRASS_FADE_END ? 1 - 0.54 * smoothstepJs(58, 205, d) : 0;
+      // r5 terrain_environment: taper start 58 -> 92 m. The midfield density
+      // used to start FALLING exactly where the dense carpet scale-out ends
+      // (48-86 m) — the two stacked into the visible "3D grass band ends at
+      // 40-60 m" seam line (critique). Full midfield density now runs PAST
+      // the carpet handover before the far taper begins; the far half of the
+      // r3 cut (sub-pixel range) is preserved by the same 205 m endpoint.
+      let frac = d < GRASS_FADE_END ? 1 - 0.54 * smoothstepJs(92, 205, d) : 0;
+      // PERF (performance_budget r5): far-band tuft geometry LOD (see
+      // makeTuftFarGeometry). d is already edge-adjusted (- CHUNK_SIZE*0.71),
+      // so d > 78 means the NEAREST possible tuft of the chunk is 78 m out
+      // (<= 12 px tall at 1080p). 8 m hysteresis so a camera hovering on the
+      // boundary never oscillates the swap. Measured on the r5 tree: -1.9 M
+      // triangles on the certification-battle median, no visible change at
+      // either gate view (shots diffed).
+      if (d > 78) gc.lod = true;
+      else if (d < 70) gc.lod = false;
       for (const cm of gc.meshes) {
         const count = Math.floor(cm.total * frac);
         cm.mesh.visible = count > 0;
         if (count > 0) cm.mesh.count = count;
+        const g = gc.lod ? cm.geoFar : cm.geoNear;
+        if (cm.mesh.geometry !== g) cm.mesh.geometry = g;
       }
     }
     // PERF (performance_budget r5): stagger the two rebuild classes so a

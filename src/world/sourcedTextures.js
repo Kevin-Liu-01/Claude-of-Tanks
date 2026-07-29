@@ -122,7 +122,7 @@ function loadImage(url) {
  * Compose color * AO with roughness packed into alpha (terrain contract) or
  * alpha=255 (props). Returns a canvas sized to the color map (max 1024).
  */
-function composeAlbedo(color, ao, rough, { roughInAlpha = false, roughMul = 1, tint = null } = {}) {
+function composeAlbedo(color, ao, rough, { roughInAlpha = false, roughMul = 1, tint = null, desat = 0, lift = 0 } = {}) {
   const s = Math.min(color.width, 1024);
   const c = document.createElement('canvas');
   c.width = c.height = s;
@@ -148,9 +148,18 @@ function composeAlbedo(color, ao, rough, { roughInAlpha = false, roughMul = 1, t
   const tr = tint ? tint[0] : 1, tg = tint ? tint[1] : 1, tb = tint ? tint[2] : 1;
   for (let i = 0; i < d.length; i += 4) {
     const a = aod ? aod[i] / 255 : 1;
-    d[i] = Math.min(255, d[i] * a * tr);
-    d[i + 1] = Math.min(255, d[i + 1] * a * tg);
-    d[i + 2] = Math.min(255, d[i + 2] * a * tb);
+    let r = d[i] * a * tr, g = d[i + 1] * a * tg, b = d[i + 2] * a * tb;
+    // r5 terrain_environment: desat/lift — a multiply-only tint cannot turn
+    // saturated terracotta into frosted tile (winter roofs stayed ORANGE in
+    // a deep-snow scene, critique); mixing toward luminance then lifting can
+    if (desat > 0) {
+      const lum = r * 0.299 + g * 0.587 + b * 0.114;
+      r += (lum - r) * desat; g += (lum - g) * desat; b += (lum - b) * desat;
+    }
+    if (lift > 0) { r += lift * 255; g += lift * 255; b += lift * 255; }
+    d[i] = Math.min(255, r);
+    d[i + 1] = Math.min(255, g);
+    d[i + 2] = Math.min(255, b);
     d[i + 3] = roughInAlpha
       ? Math.max(8, Math.min(255, (rgd ? rgd[i] : 230) * roughMul))
       : 255;
@@ -224,7 +233,11 @@ export function applySourcedTerrain(mapId, layers, S = {}) {
 const BUILDING_TINTS = {
   urban:  { roof: [0.52, 0.55, 0.62], plaster: [0.88, 0.86, 0.82] }, // slate / sooty render
   desert: { plaster: [1.08, 0.92, 0.70], wood: [1.05, 0.95, 0.80] }, // sand-plaster adobe
-  winter: { roof: [1.25, 1.28, 1.35] },                              // snow-caked tiles
+  // r5 terrain_environment: winter roofs were still SATURATED ORANGE under a
+  // deep-snow sky (critique) — the multiply tint cannot desaturate terracotta.
+  // Cooled + 62% desaturated + lifted frost; the props.js up-face snow-cap
+  // shader lays the actual white load on the slopes.
+  winter: { roof: { tint: [0.96, 1.02, 1.14], desat: 0.62, lift: 0.10 } },
 };
 
 export function applySourcedBuildings(sets, mapId) {
@@ -237,10 +250,9 @@ export function applySourcedBuildings(sets, mapId) {
   if (mapId === 'urban') delete plan.roof;
   for (const [bucket, setKey] of Object.entries(plan)) {
     if (!sets[bucket]) continue;
-    applySet(setKey, sets[bucket], {
-      roughInAlpha: false,
-      tint: (BUILDING_TINTS[mapId] || {})[bucket] || null,
-    })
+    const tw = (BUILDING_TINTS[mapId] || {})[bucket] || null;
+    const opts = tw && !Array.isArray(tw) ? tw : { tint: tw };
+    applySet(setKey, sets[bucket], { roughInAlpha: false, ...opts })
       .catch((e) => console.warn(`[sourcedTextures] building ${bucket}:`, e.message));
   }
 }

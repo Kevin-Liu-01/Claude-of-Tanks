@@ -875,9 +875,17 @@ export function createShotInfo(bus) {
       kv('Armor', (ev.physicalMm || 0) > 0 ? `${Math.round(ev.physicalMm)} mm screen` : 'screen');
       kv('Pen roll', 'passed through');
     } else {
+      // 'N → M mm eff.' labels the angle-adjusted number (r5: nothing said
+      // which figure was nominal and which effective — the card's single most
+      // educational stat was opaque); hits that resolved on an external
+      // module (optics, gun barrel, track gear) state that truth instead of
+      // an em-dash armor story (r5 major: 'a AAA damage panel never shows a
+      // pen with no armor story'). Dataset fields are untouched.
+      const extNoArmor = !hasArmor && !!ev.zone
+        && ['optics', 'gun', 'gun_barrel', 'trackL', 'trackR'].includes(ev.zone);
       kv('Armor', hasArmor
-        ? `${Math.round(ev.nominalMm || 0)}→${Math.round(ev.effectiveMm || 0)} mm`
-        : '—');
+        ? `${Math.round(ev.nominalMm || 0)} → ${Math.round(ev.effectiveMm || 0)} mm eff.`
+        : extNoArmor ? 'external — no armor' : '—');
       // roll / nominal baseline: a bare '986 mm' beside a 63 mm plate looks
       // like a bug to anyone who knows the shell's paper pen (r4 critique).
       // Roll colored green/red vs the nominal it was rolled from.

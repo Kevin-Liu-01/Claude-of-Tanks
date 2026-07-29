@@ -584,9 +584,13 @@ export const TANK_SPECS = {
       // pale cream under the warm garage key; patches desaturated to sit
       // closer to sprayed RAL 6003/8017 instead of vinyl-sticker contrast.
       scheme: 'stripes', base: '#8d7a4a', weather: '#7e6e44',
-      patches: ['#5f6539', '#6b4c38'],
+      // r5: olive pulled greener + rotbraun warmer so the roster's THREE
+      // tones separate (the old pair blended into "2-tone tan/brown").
+      patches: ['#5c6a3b', '#6f4a32'],
       marking: 'cross', number: '212', zimmerit: true, trackWidthM: 0.725,
       camoScale: 0.6,
+      // r5: single-plate hull — no tiled panel-join grid (materials.js)
+      plateLines: false,
     },
   },
 
@@ -1527,7 +1531,10 @@ const COMMUNITY_SPECS = {
       // view fill + dust overlay) lifts tones well above the procedural
       // fleet, so the shared 4BO family must be authored under it (strv103
       // rule). Lands beside the T-34/IS-2 greens on the pedestal.
-      scheme: 'solid', base: '#39432b', weather: '#414c35', patches: [],
+      // tank_models r5 ("still a step too bright/lime next to KV-2's deeper
+      // soviet green"): another step down + slightly grayer, landing on the
+      // kv2 pedestal value.
+      scheme: 'solid', base: '#333c27', weather: '#3b4530', patches: [],
       marking: 'number', number: '7', trackWidthM: 0.71,
     },
   },

@@ -341,6 +341,13 @@ function sharedMats() {
     // live Abrams death frame ("no crew figures render").
     proxGrey: prox(0x9fb8cc, 0.58, 0.06, 0.2),
   };
+  // vertex-color fades (r5): the flight tail cone dies toward its far end and
+  // the x-ray trail polyline fades where it enters frame — additive blending
+  // multiplies by vertex color, so a black vertex is simply invisible.
+  // Geometries without a color attribute read the WebGL default (0,0,0) and
+  // render nothing, which only ever affects the off-screen warmup rig.
+  S.tail.vertexColors = true;
+  S.trail.vertexColors = true;
   return S;
 }
 
@@ -395,9 +402,14 @@ function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables, era) {
   const sy = bb.max[1] - bb.min[1];
   const sz = bb.max[2] - bb.min[2];
   const g = proxyGroup(bb, poseGrp, turretGrp);
-  const put = (geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => {
+  // Optional material override (r5): mechanical accents (fins, fan shroud,
+  // exhaust runs, straps) render in the neutral steel tint so the shapes
+  // separate inside the ghost — a single tint alpha-mushed multi-part organs
+  // into one slab. The state color still owns each module's main mass, so
+  // the WT white/yellow/red language is untouched.
+  const put = (geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, m2 = mat) => {
     disposables.push(geo);
-    const m = new THREE.Mesh(geo, mat);
+    const m = new THREE.Mesh(geo, m2);
     m.position.set(x, y, z);
     m.rotation.set(rx, ry, rz);
     g.add(m);
@@ -492,35 +504,58 @@ function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables, era) {
     rounds(r, h, tipH, list);
     put(new THREE.BoxGeometry(sx * 0.98, sy * 0.08, sz * 0.98), 0, -sy / 2 + sy * 0.03, 0);
   } else if (kind === 'fuelTank' && modern) {
-    // modern internal fuel cell: baffled rectangular tank + filler neck and
-    // feed line — no WWII external-style drums inside an Abrams hull (r2)
-    put(new THREE.BoxGeometry(sx * 0.84, sy * 0.7, sz * 0.86), 0, -sy * 0.06, 0);
-    for (let i = 0; i < 3; i++) {
-      put(new THREE.BoxGeometry(sx * 0.9, sy * 0.78, sz * 0.035),
-        0, -sy * 0.06, -sz * 0.28 + i * sz * 0.28);
+    // modern internal fuel CELL (r5 critique: 'featureless slab'): tank body
+    // with a domed top ridge, two proud wrap-around strap ribs in steel, a
+    // filler neck + cap on the deck and a feed line exiting the base — the
+    // old baffle plates hid entirely INSIDE the box silhouette and left a
+    // blank slab. No WWII external-style drums inside an Abrams hull (r2).
+    const steel = S.proxSteel;
+    put(new THREE.BoxGeometry(sx * 0.8, sy * 0.62, sz * 0.82), 0, -sy * 0.08, 0);
+    put(new THREE.BoxGeometry(sx * 0.52, sy * 0.18, sz * 0.68), 0, sy * 0.26, 0);
+    for (const zf of [-0.24, 0.24]) {
+      put(new THREE.BoxGeometry(sx * 0.88, sy * 0.72, sz * 0.05),
+        0, -sy * 0.06, sz * zf, 0, 0, 0, steel);
     }
     const fr = Math.min(sx, sz) * 0.12;
-    put(new THREE.CylinderGeometry(fr, fr, sy * 0.2, 8), sx * 0.18, sy * 0.36, 0);
-    put(new THREE.CylinderGeometry(fr * 0.45, fr * 0.45, sz * 0.5, 6),
-      -sx * 0.28, -sy * 0.28, 0, Math.PI / 2, 0, 0);
+    put(new THREE.CylinderGeometry(fr * 0.55, fr * 0.55, sy * 0.2, 8),
+      sx * 0.2, sy * 0.4, 0, 0, 0, 0, steel);
+    put(new THREE.CylinderGeometry(fr, fr, sy * 0.06, 10),
+      sx * 0.2, sy * 0.51, 0, 0, 0, 0, steel);
+    put(new THREE.CylinderGeometry(fr * 0.4, fr * 0.4, sz * 0.5, 6),
+      -sx * 0.28, -sy * 0.3, 0, Math.PI / 2, 0, 0, steel);
   } else if (kind === 'engine') {
-    // machinery read (r7 critique: flat slab stack): crankcase + narrower
-    // head block, transverse cylinder-bank ribs, shrouded cooling fan and
-    // twin exhaust manifolds along the flanks
-    put(new THREE.BoxGeometry(sx * 0.82, sy * 0.46, sz * 0.84), 0, -sy * 0.2, 0);
-    put(new THREE.BoxGeometry(sx * 0.58, sy * 0.34, sz * 0.64), 0, sy * 0.08, 0);
+    // machinery read (r5 critique: 'plain gray box with two cylinders'):
+    // crankcase + narrower head with twin rocker covers, transverse
+    // cylinder-bank fins, a shrouded cooling fan (ring + blade disc + hub)
+    // sunk into the deck and twin flank exhaust manifolds with riser elbows.
+    // Fins/fan/exhaust wear the steel accent so the assembly separates into
+    // recognizable machinery instead of alpha-mushing into one slab.
+    const steel = S.proxSteel;
+    put(new THREE.BoxGeometry(sx * 0.84, sy * 0.42, sz * 0.8), 0, -sy * 0.22, 0);
+    put(new THREE.BoxGeometry(sx * 0.54, sy * 0.3, sz * 0.6), 0, sy * 0.06, 0);
+    put(new THREE.BoxGeometry(sx * 0.16, sy * 0.1, sz * 0.56),
+      -sx * 0.15, sy * 0.25, 0, 0, 0, 0, steel);
+    put(new THREE.BoxGeometry(sx * 0.16, sy * 0.1, sz * 0.56),
+      sx * 0.15, sy * 0.25, 0, 0, 0, 0, steel);
     for (let i = 0; i < 5; i++) {
-      put(new THREE.BoxGeometry(sx * 0.66, sy * 0.42, sz * 0.05),
-        0, sy * 0.1, -sz * 0.28 + i * (sz * 0.56 / 4));
+      put(new THREE.BoxGeometry(sx * 0.68, sy * 0.4, sz * 0.045),
+        0, sy * 0.04, -sz * 0.26 + i * (sz * 0.52 / 4), 0, 0, 0, steel);
     }
-    const fr = Math.min(sx, sz) * 0.2;
-    put(new THREE.CylinderGeometry(fr, fr, sy * 0.09, 16), -sx * 0.2, sy * 0.31, 0);
-    put(new THREE.TorusGeometry(fr * 1.15, fr * 0.14, 8, 20),
-      -sx * 0.2, sy * 0.31, 0, Math.PI / 2, 0, 0);
-    put(new THREE.CylinderGeometry(sy * 0.08, sy * 0.08, sz * 0.72, 8),
-      sx * 0.37, sy * 0.04, 0, Math.PI / 2, 0, 0);
-    put(new THREE.CylinderGeometry(sy * 0.08, sy * 0.08, sz * 0.72, 8),
-      -sx * 0.37, sy * 0.04, 0, Math.PI / 2, 0, 0);
+    const fr = Math.min(sx, sz) * 0.21;
+    put(new THREE.TorusGeometry(fr * 1.18, fr * 0.16, 8, 22),
+      -sx * 0.22, sy * 0.34, 0, Math.PI / 2, 0, 0, steel);
+    put(new THREE.CylinderGeometry(fr, fr, sy * 0.05, 16), -sx * 0.22, sy * 0.33, 0);
+    put(new THREE.CylinderGeometry(fr * 0.28, fr * 0.28, sy * 0.12, 8),
+      -sx * 0.22, sy * 0.38, 0, 0, 0, 0, steel);
+    for (const side of [-1, 1]) {
+      put(new THREE.CylinderGeometry(sy * 0.075, sy * 0.075, sz * 0.68, 8),
+        side * sx * 0.38, sy * 0.02, 0, Math.PI / 2, 0, 0, steel);
+      for (let i = 0; i < 3; i++) {
+        put(new THREE.CylinderGeometry(sy * 0.045, sy * 0.045, sx * 0.16, 6),
+          side * sx * 0.3, sy * 0.12, -sz * 0.2 + i * sz * 0.2,
+          0, 0, side * (Math.PI / 2.7), steel);
+      }
+    }
   } else if (kind === 'fuelTank') {
     const r = Math.max(0.05, Math.min(sy * 0.42, sx * 0.21));
     put(new THREE.CylinderGeometry(r, r, sz * 0.85, 10), -sx * 0.22, 0, 0, Math.PI / 2, 0, 0);
@@ -530,6 +565,14 @@ function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables, era) {
     put(new THREE.CylinderGeometry(r * 0.3, r * 0.3, r * 0.5, 8), sx * 0.22, r * 1.05, 0);
     put(new THREE.CylinderGeometry(r * 0.16, r * 0.16, sx * 0.44, 6),
       0, 0, sz * 0.28, 0, 0, Math.PI / 2);
+    // strap ribs around each drum (r5: at x-ray range the pair still read as
+    // one slab) — steel bands stand slightly proud of the drum shells
+    for (const zf of [-0.26, 0.26]) {
+      put(new THREE.TorusGeometry(r * 1.05, r * 0.1, 6, 16),
+        -sx * 0.22, 0, sz * zf, 0, 0, 0, S.proxSteel);
+      put(new THREE.TorusGeometry(r * 1.05, r * 0.1, 6, 16),
+        sx * 0.22, 0, sz * zf, 0, 0, 0, S.proxSteel);
+    }
   } else if (kind === 'gun') {
     // breech assembly behind the mantlet (r7 critique: turret interior read
     // empty): breech ring where the barrel enters, block with a sliding
@@ -1164,9 +1207,19 @@ export function createKillCam(deps) {
 
     // annotation block
     const ev = snap.ev;
-    d.titleT.textContent = kind === 'victory' ? 'FINAL BLOW' : 'KILL CAM';
-    d.titleS.textContent = kind === 'victory'
-      ? `${ev.targetName || ''} destroyed`
+    // Header branches on the REPLAY DIRECTION, not just the caller's kind
+    // param (r5): the staged harness frame runs begin(kind='death') on a
+    // player-scored kill and titled it 'KILL CAM / destroyed by <your own
+    // tank>' — your kill phrased like your death. victim==player keeps the
+    // death phrasing; killer==player reads 'FINAL BLOW / <victim> destroyed'.
+    const pEnt = getPlayer();
+    const playerIsVictim = !!(pEnt
+      && ((ev.targetId != null && ev.targetId === pEnt.id) || snap.targetEnt === pEnt));
+    const playerKill = kind === 'victory'
+      || (!playerIsVictim && !!(pEnt && ev.attackerId != null && ev.attackerId === pEnt.id));
+    d.titleT.textContent = playerKill ? 'FINAL BLOW' : 'KILL CAM';
+    d.titleS.textContent = playerKill
+      ? `${ev.targetName || 'enemy'} destroyed`
       : `destroyed by ${ev.attackerName || 'enemy fire'}`;
     const cleanName = shellDisplayName(ev);
     d.hdK.textContent = cleanName ? `${ev.shellType || ''} · ${cleanName}` : (ev.shellType || '');
@@ -1179,8 +1232,16 @@ export function createKillCam(deps) {
     };
     kv('Distance', `${Math.round(ev.flightDistM || 0)} m`);
     kv('Impact angle', `${Math.round(ev.impactAngleDeg || 0)}°`);
-    kv('Armor', (ev.nominalMm || 0) > 0
-      ? `${Math.round(ev.nominalMm)} → ${Math.round(ev.effectiveMm || 0)} mm` : '—');
+    // 'N → M mm eff.' labels the angle-adjusted number (r5: nominal vs
+    // effective was unlabeled — the most educational stat read as opaque);
+    // hits that resolved on an external module (optics, gun barrel) state
+    // the truth instead of a bare em-dash armor story (r5 major).
+    const hasArm = (ev.nominalMm || 0) > 0 || (ev.effectiveMm || 0) > 0;
+    const extNoArm = !hasArm && !!ev.zone
+      && ['optics', 'gun', 'gun_barrel', 'trackL', 'trackR'].includes(ev.zone);
+    kv('Armor', hasArm
+      ? `${Math.round(ev.nominalMm || 0)} → ${Math.round(ev.effectiveMm || 0)} mm eff.`
+      : extNoArm ? 'external — no armor' : '—');
     // roll / nominal: the rolled pen alone (e.g. 986 mm vs a 63 mm plate)
     // reads as a bug without the ±25%-roll baseline it came from
     const penNom = nominalPenFor(ev);
@@ -1241,19 +1302,30 @@ export function createKillCam(deps) {
         }
         pb.total = acc;
         pb.dur = THREE.MathUtils.clamp(1.2 + acc * 0.005, FLIGHT_MIN_S, FLIGHT_MAX_S);
-        // trail polyline (drawRange grows with the shell)
+        // trail polyline (drawRange grows with the shell); full-white vertex
+        // colors during flight — beginXray rewrites them into the tail fade
         const posAttr = new Float32Array(pts.length * 3);
         pts.forEach((v, i) => { posAttr[i * 3] = v.x; posAttr[i * 3 + 1] = v.y; posAttr[i * 3 + 2] = v.z; });
         pb.trailGeo = new THREE.BufferGeometry();
         pb.trailGeo.setAttribute('position', new THREE.BufferAttribute(posAttr, 3));
+        pb.trailGeo.setAttribute('color',
+          new THREE.BufferAttribute(new Float32Array(pts.length * 3).fill(1), 3));
         pb.trailGeo.setDrawRange(0, 1);
         pb.disposables.push(pb.trailGeo);
         pb.group.add(new THREE.Line(pb.trailGeo, S.trail));
-        // tracer core + streak
-        const coreGeo = new THREE.SphereGeometry(0.14, 10, 8);
-        const streakGeo = new THREE.CylinderGeometry(0.05, 0.02, 5.5, 6, 1, true);
-        pb.disposables.push(coreGeo, streakGeo);
-        pb.core = new THREE.Mesh(coreGeo, S.core);
+        // tracer core: an APFSDS long-rod DART — thin tapered rod + cone
+        // tip, no sphere (r5: the shell read as a fat glowing baton with a
+        // bulbous white ball at the tip; WT renders a needle with a fading
+        // trail). Radial thickness is camera-distance-scaled in updateFlight.
+        const rodGeo = new THREE.CylinderGeometry(0.032, 0.02, 1.05, 8, 1, true);
+        const tipGeo = new THREE.ConeGeometry(0.032, 0.3, 8);
+        const streakGeo = new THREE.CylinderGeometry(0.02, 0.007, 5.0, 6, 1, true);
+        pb.disposables.push(rodGeo, tipGeo, streakGeo);
+        pb.core = new THREE.Group();
+        const rodMesh = new THREE.Mesh(rodGeo, S.core);
+        const tipMesh = new THREE.Mesh(tipGeo, S.core);
+        tipMesh.position.y = 0.675; // cone base seated on the rod's front
+        pb.core.add(rodMesh, tipMesh);
         pb.streak = new THREE.Mesh(streakGeo, S.streak);
         pb.group.add(pb.core, pb.streak);
         // Flight dressing (r6: 'white ball on an orange stick'):
@@ -1266,10 +1338,23 @@ export function createKillCam(deps) {
         //  - muzzle light — brief cool fill at the shooter so the firing tank
         //    is not a second black silhouette at the start of the chase
         pb.halo = new THREE.Sprite(S.halo);
-        pb.halo.scale.set(3.1, 3.1, 1);
+        pb.halo.scale.set(1.7, 1.7, 1); // r5: 3.1 read as a bulb around the dart
         S.halo.opacity = 0.95; // shared mats: undo any axis fade left behind
         S.tail.opacity = 0.17;
-        const tailGeo = new THREE.ConeGeometry(0.42, 13, 10, 1, true);
+        // tail cone slimmed ~55% and vertex-faded to NOTHING at its far end
+        // (r5: the hard-edged orange cone was the 'baton' half of the read) —
+        // additive blending multiplies by vertex color, so black = invisible
+        const tailGeo = new THREE.ConeGeometry(0.19, 10, 10, 1, true);
+        {
+          const tp = tailGeo.getAttribute('position');
+          const tc = new Float32Array(tp.count * 3);
+          for (let vi = 0; vi < tp.count; vi++) {
+            // apex (+Y, the far tail end) -> 0, base (at the shell) -> 1
+            const v = Math.pow(THREE.MathUtils.clamp(0.5 - tp.getY(vi) / 10, 0, 1), 1.4);
+            tc[vi * 3] = tc[vi * 3 + 1] = tc[vi * 3 + 2] = v;
+          }
+          tailGeo.setAttribute('color', new THREE.BufferAttribute(tc, 3));
+        }
         pb.disposables.push(tailGeo);
         pb.tail = new THREE.Mesh(tailGeo, S.tail);
         pb.group.add(pb.halo, pb.tail);
@@ -1317,6 +1402,7 @@ export function createKillCam(deps) {
     const idx = sampleTraj(dist, _p, _d);
     pb.trailGeo.setDrawRange(0, Math.max(2, idx + 2));
     pb.core.position.copy(_p);
+    pb.core.quaternion.setFromUnitVectors(_Y, _d); // dart noses along the velocity
     pb.streak.position.copy(_p).addScaledVector(_d, -2.6);
     pb.streak.quaternion.setFromUnitVectors(_Y, _d);
     // glow dressing rides the core: halo on it, tail cone stretched back
@@ -1365,6 +1451,14 @@ export function createKillCam(deps) {
       S.halo.opacity = 0.95 * (0.35 + 0.65 * f);
       S.tail.opacity = 0.17 * f;
       pb.shellLight.intensity = 48 * (0.3 + 0.7 * f);
+      // near-constant screen thickness (r5: the tracer swelled into a fat
+      // baton as the chase closed into the x-ray blend): radial scale tracks
+      // camera range — full at the 8 m chase, thinning to ~45% point-blank
+      const th = THREE.MathUtils.clamp(_a.distanceTo(_p) / 8, 0.45, 1.15);
+      pb.core.scale.set(th, 1, th);
+      pb.streak.scale.set(th, 1, th);
+      pb.tail.scale.set(th, 1, th);
+      pb.halo.scale.set(1.7 * th, 1.7 * th, 1);
     }
     rig.setExternalPose(_a, _b, 50 - 8 * k);
     if (u >= 1) beginXray();
@@ -1516,6 +1610,11 @@ export function createKillCam(deps) {
     if (pb.phase === 'xray') return;
     pb.phase = 'xray';
     pb.xt = 0;
+    // x-ray dressing thickness follows the SOLVED orbit radius (r5: fixed
+    // radii read as a fat baton at the tight Tiger-class orbit): ~1 at an
+    // 8.5 m orbit, floored/capped so huge and tiny victims both stay legible.
+    const rQ = THREE.MathUtils.clamp(
+      (pb.xcam && pb.xcam.off ? pb.xcam.off.length() : 8.5) / 8.5, 0.8, 1.5);
     // retire the flight tracer + its glow dressing (keep the trail arcing
     // into the tank; the victim fill light stays for the hold). Pool lights
     // are only DIMMED, never removed — removal changes the light count and
@@ -1544,6 +1643,20 @@ export function createKillCam(deps) {
         }
       }
       pb.trailGeo.setDrawRange(start, pb.pts.length - start);
+      // Fade the kept polyline's TAIL (r5): vertex colors ramp from black
+      // where the line enters frame to full at the plate, so the trail dies
+      // away instead of hard-starting as a laser at the frame edge.
+      const colA = pb.trailGeo.getAttribute('color');
+      if (colA) {
+        const c0 = pb.cum[start];
+        const span = Math.max(1e-3, pb.total - c0);
+        for (let i = 0; i < pb.pts.length; i++) {
+          const f = THREE.MathUtils.clamp((pb.cum[i] - c0) / span, 0, 1);
+          const v = f * f;
+          colA.setXYZ(i, v, v, v);
+        }
+        colA.needsUpdate = true;
+      }
       // Rebuild the final arc as a glow ribbon (sheath + hot core tube per
       // segment): the 1px GL line alone was a dim tan thread at 1080p (r5).
       // r2: the ribbon is now a TAPERED ~26 m — the uniform 60 m beam read
@@ -1551,15 +1664,17 @@ export function createKillCam(deps) {
       // (far = thin/faint, near = wide/bright) ramp toward the plate, so the
       // approach reads as a tracer ARRIVING, clearly split from the shorter
       // internal penetration channel by the entry marker + spall burst.
+      // r5: radii ~40% slimmer and orbit-scaled — the old ribbon fattened
+      // into the baton read at close orbit.
       const RIB_M = 26;
       let rs = start;
       const ribFrom = pb.total - RIB_M;
       while (rs < pb.pts.length - 2 && pb.cum[rs + 1] < ribFrom) rs++;
       for (let i = rs; i < pb.pts.length - 1; i++) {
         const f = THREE.MathUtils.clamp((pb.cum[i] - ribFrom) / RIB_M, 0, 1);
-        tube(pb.pts[i], pb.pts[i + 1], 0.028 + 0.057 * f,
+        tube(pb.pts[i], pb.pts[i + 1], (0.017 + 0.034 * f) * rQ,
           f > 0.5 ? S.trailGlow : S.trailGlowFar, pb.group, pb.disposables);
-        tube(pb.pts[i], pb.pts[i + 1], 0.013 + 0.017 * f,
+        tube(pb.pts[i], pb.pts[i + 1], (0.008 + 0.011 * f) * rQ,
           f > 0.5 ? S.trailCore : S.trailCoreFar, pb.group, pb.disposables);
       }
     }
@@ -1824,24 +1939,36 @@ export function createKillCam(deps) {
           sb.copy(lp).addScaledVector(ld, -APP * (1 - t1));
           const tm = (t0 + t1) / 2;
           const far = tm < 0.55;
-          tube(sa, sb, 0.014 + 0.05 * tm,
+          tube(sa, sb, (0.009 + 0.026 * tm) * rQ,
             far ? S.trailGlowFar : S.trailGlow, poseGrp, pb.disposables);
-          tube(sa, sb, 0.006 + 0.021 * tm,
+          tube(sa, sb, (0.004 + 0.012 * tm) * rQ,
             far ? S.trailCoreFar : S.pathOut, poseGrp, pb.disposables);
         }
       }
-      // internal penetration channel, carried to the deepest damaged module
-      // (r5: the path dead-ended at the entry dot; thickened + brightened so
-      // it stays legible over the frosted skin)
+      // internal penetration channel, carried to the deepest damaged module.
+      // r5 rework ('fat glowing baton with a bulbous white sphere at the
+      // tip'): a TAPERED long-rod dart — widest at the breach, needling down
+      // toward the deepest component — finished with a small cone tip instead
+      // of a terminal glow ball. Radii sit ~55% under the old baton and scale
+      // with the solved orbit radius so the dart stays legible on big hulls.
       _b.copy(lp).addScaledVector(ld, innerLen);
-      tube(lp, _b, 0.11, S.pathIn, poseGrp, pb.disposables);   // hot sheath
-      tube(lp, _b, 0.045, S.pathCore, poseGrp, pb.disposables); // white-hot core
-      // terminal glow where the channel stops (the deepest component hit)
-      const endGeo = new THREE.SphereGeometry(0.09, 10, 8);
-      pb.disposables.push(endGeo);
-      const endDot = new THREE.Mesh(endGeo, S.pathCore);
-      endDot.position.copy(_b);
-      poseGrp.add(endDot);
+      const dart = (r0, r1, mat) => {
+        const g = new THREE.CylinderGeometry(r1, r0, innerLen, 8, 1, true);
+        pb.disposables.push(g);
+        const m = new THREE.Mesh(g, mat);
+        m.position.copy(lp).addScaledVector(ld, innerLen * 0.5);
+        m.quaternion.setFromUnitVectors(_Y, ld);
+        poseGrp.add(m);
+      };
+      dart(0.048 * rQ, 0.024 * rQ, S.pathIn);   // hot sheath
+      dart(0.021 * rQ, 0.01 * rQ, S.pathCore);  // white-hot core
+      // cone tip at the deepest component hit — the dart's point, no bulb
+      const tipG = new THREE.ConeGeometry(0.024 * rQ, 0.16 * rQ, 8);
+      pb.disposables.push(tipG);
+      const tip = new THREE.Mesh(tipG, S.pathCore);
+      tip.position.copy(_b).addScaledVector(ld, 0.08 * rQ);
+      tip.quaternion.setFromUnitVectors(_Y, ld);
+      poseGrp.add(tip);
       // spall cone: apex at the penetration point, opening along the path
       const coneLen = innerLen * 0.8;
       const coneGeo = new THREE.ConeGeometry(coneLen * 0.24, coneLen, 14, 1, true);
@@ -1922,7 +2049,8 @@ export function createKillCam(deps) {
           if (bb) fragTo(bb, S.fragCrew, 3, 0.019, true);
         }
       }
-      const mGeo = new THREE.SphereGeometry(0.1, 10, 8);
+      // entry marker halved (r5: the 0.1 m ball read as a bulb on the dart)
+      const mGeo = new THREE.SphereGeometry(0.05 * rQ, 10, 8);
       pb.disposables.push(mGeo);
       const marker = new THREE.Mesh(mGeo, S.marker);
       marker.position.copy(lp);

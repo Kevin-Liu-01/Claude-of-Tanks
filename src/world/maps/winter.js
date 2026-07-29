@@ -193,7 +193,9 @@ export default {
     // r4 (content_breadth): haystacks 8 -> 12, rocks 150 -> 190, outcrops
     // 15 -> 19 — pairs with the SW wall runs above so the bare bowl west of
     // the establishing camera picks up drifted rocks/stack silhouettes too
-    haystacks: 12, rocks: 190, outcrops: 19, craters: 22, rubblePiles: 0,
+    // r5 terrain_environment: craters 22 -> 36 — battle scarring reads
+    // LOUDEST on snow (dark pits on white); the map carried almost none
+    haystacks: 12, rocks: 190, outcrops: 19, craters: 36, rubblePiles: 0,
     wrecks: 5,
   },
 

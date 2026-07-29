@@ -547,6 +547,13 @@ personal-use only. They are acceptable in this private project but MUST be
 deleted (files + icons + any derivative renders) before the game is ever
 distributed publicly or commercialized.
 
+NOTE: `npm run build:public` excludes this entire block automatically — it
+sets `VITE_PUBLIC_BUILD=1` (quarantine-path model sources are never
+registered, even if their ship flags are flipped) and then runs
+`tools/strip-nc-assets.mjs`, which deletes
+`dist/models/tanks/community/quarantine/**` plus the candidates trees and
+fails the build if any registered playable still references a stripped path.
+
 | Asset | Author | Source | License | Files | Notes |
 |---|---|---|---|---|---|
 | M1A2 Abrams (user drop, batch abrams-suspects 2026-07-28) | Tejas V. (@tejasv_) | https://sketchfab.com/3d-models/m1a2-abrams-c85846177bfc4018b6a8f3b40754655c | CC BY-NC-ND 4.0 | `public/models/community-candidates/user-drops/m1a2-abrams/{m1a2-abrams.glb,RENDER.png,LICENSE-RECORD.txt}` | Original artist work (Blender + Substance, ArtStation-linked; identity confirmed by exact 1,253,928 face-count match vs Sketchfab API). ND: the decimated GLB is an adaptation — never redistribute. Candidate to replace the shipped CC-BY dannzjs `m1a2` GLB in-game; if adopted, the CC-BY model remains the only one shippable publicly. |

@@ -193,14 +193,14 @@ const GARAGE_CSS = `
   scrollbar-width:none;flex:0 1 auto;pointer-events:auto;}
 .cot-maps .mtitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
   text-transform:uppercase;margin-bottom:7px;}
-.cot-map-card{display:flex;align-items:center;gap:9px;cursor:pointer;margin-bottom:6px;
+.cot-map-card{display:flex;align-items:center;gap:9px;cursor:pointer;margin-bottom:4px;
   background:linear-gradient(180deg,rgba(13,18,23,.82),rgba(8,11,14,.9));
   border:1px solid rgba(146,164,180,.24);border-left:2px solid rgba(146,164,180,.24);
-  padding:5px 8px 5px 6px;transition:border-color .12s,background .12s;}
+  padding:3px 8px 3px 5px;transition:border-color .12s,background .12s;}
 .cot-map-card:hover{border-color:rgba(210,225,240,.5);}
 .cot-map-card.sel{border-color:#f0a030;border-left-color:#f0a030;
   background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
-.cot-map-card .mthumb{width:86px;height:48px;flex:0 0 auto;background-size:112% auto;
+.cot-map-card .mthumb{width:72px;height:34px;flex:0 0 auto;background-size:112% auto;
   background-position:center;border:1px solid rgba(0,0,0,.55);position:relative;
   box-shadow:inset 0 0 0 1px rgba(235,243,250,.14);
   transition:background-size .18s ease;}
@@ -682,30 +682,58 @@ export function createGarage(opts) {
   }
   // --- END CAMO PICKER SECTION ---------------------------------------------
 
-  // roster maxima/minima for normalized stat bars — every bar spreads across
-  // the actual roster range so bar length carries meaning (r3: the old
-  // fixed-scale reload bar sat near-full for every tank)
-  const MAXES = {
-    hp: 1, speed: 1, hpt: 1, dmg: 1, reloadMax: 1, reloadMin: Infinity,
-  };
+  // era-group classifier hoisted (r5-2): both the stat-bar normalization and
+  // the carousel filter chips below key off it.
+  const groupOf = (s) =>
+    (s.community && !s.variantOf) ? 'community' : (s.era === 'ww2' ? 'ww2' : 'modern');
+
+  // PER-GROUP stat ranges for the normalized bars (r5-2 round critique: the
+  // r3 whole-roster maxima made a top-tier MBT's 600 hp alpha read as a ~35%
+  // bar against a KV-2 derp — the bar fought the number it annotates). Every
+  // bar now spreads min→max WITHIN the vehicle's own era group, oriented
+  // higher-is-better on every row (reload inverted: faster = fuller).
+  const STAT_RANGES = new Map(); // group -> {hp,speed,hpt,dmg,reload:[lo,hi]}
   for (const s of allSpecs) {
-    MAXES.hp = Math.max(MAXES.hp, s.hp);
-    MAXES.speed = Math.max(MAXES.speed, s.topSpeedKmh);
-    MAXES.hpt = Math.max(MAXES.hpt, s.enginePowerHp / s.weightTons);
-    MAXES.reloadMax = Math.max(MAXES.reloadMax, s.gun.reloadS);
-    MAXES.reloadMin = Math.min(MAXES.reloadMin, s.gun.reloadS);
+    const g = groupOf(s);
+    let r = STAT_RANGES.get(g);
+    if (!r) {
+      r = {
+        hp: [Infinity, -Infinity], speed: [Infinity, -Infinity],
+        hpt: [Infinity, -Infinity], dmg: [Infinity, -Infinity],
+        reload: [Infinity, -Infinity],
+      };
+      STAT_RANGES.set(g, r);
+    }
+    const add = (key, v) => {
+      if (v == null || !isFinite(v)) return;
+      if (v < r[key][0]) r[key][0] = v;
+      if (v > r[key][1]) r[key][1] = v;
+    };
+    add('hp', s.hp);
+    add('speed', s.topSpeedKmh);
+    add('hpt', s.enginePowerHp / s.weightTons);
+    add('reload', s.gun.reloadS);
     const shells = (s.gun && s.gun.shells) || [];
-    for (const sh of shells) MAXES.dmg = Math.max(MAXES.dmg, sh.dmg || 0);
+    add('dmg', shells.length ? Math.max(...shells.map((sh) => sh.dmg || 0)) : null);
   }
-  if (!isFinite(MAXES.reloadMin)) MAXES.reloadMin = 1;
+  // min→0.14 stub, max→1.0 full; degenerate spans (single-vehicle group)
+  // park at a neutral 0.72 so the card never shows an all-stub column
+  function statFrac(group, key, v, invert) {
+    const r = STAT_RANGES.get(group);
+    if (!r || v == null || !isFinite(v)) return 0.6;
+    const [lo, hi] = r[key];
+    const span = hi - lo;
+    if (!(span > Math.max(1e-6, Math.abs(hi) * 0.02))) return 0.72;
+    let f = (v - lo) / span;
+    if (invert) f = 1 - f;
+    return 0.14 + Math.max(0, Math.min(1, f)) * 0.86;
+  }
 
   // --- MODERN EXPANSION: era filter chips (WWII / MODERN / COMMUNITY) ------
   // The carousel shows ONE group at a time so a 35+ vehicle roster stays
   // navigable. Nation-roster variants (spec.variantOf) count as MODERN;
   // sourced third-party vehicles (spec.community without variantOf) are
-  // COMMUNITY regardless of era.
-  const groupOf = (s) =>
-    (s.community && !s.variantOf) ? 'community' : (s.era === 'ww2' ? 'ww2' : 'modern');
+  // COMMUNITY regardless of era. (groupOf hoisted above the stat ranges.)
   const ERA_GROUPS = [
     { id: 'ww2', label: 'WWII' },
     { id: 'modern', label: 'Modern' },
@@ -804,16 +832,16 @@ export function createGarage(opts) {
     // (r3: a vehicle-level pen number duplicated the shell table; no AAA tank
     // game headlines a single pen figure)
     const bestDmg = shells.length ? Math.max(...shells.map((s) => s.dmg || 0)) : 0;
-    const reloadSpan = Math.max(0.5, MAXES.reloadMax - MAXES.reloadMin);
-    const reloadFrac = Math.max(0.06,
-      (MAXES.reloadMax - spec.gun.reloadS) / reloadSpan * 0.94 + 0.06);
+    // r5-2: every bar normalizes within the vehicle's OWN era group,
+    // higher-is-better (reload inverted) — see STAT_RANGES above
+    const grp = groupOf(spec);
     statsEl.innerHTML =
       `<h3></h3><div class="sub">${flagSVG(spec.nation, spec.era, 20, 13)}<span>${spec.nation} &middot; ${spec.class} &middot; ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}</span></div>` +
-      statBar('Hit points', `${spec.hp}`, spec.hp / MAXES.hp) +
-      statBar('Top speed', `${spec.topSpeedKmh} km/h`, spec.topSpeedKmh / MAXES.speed) +
-      statBar('Power / weight', `${hpT.toFixed(1)} hp/t`, hpT / MAXES.hpt) +
-      statBar('Reload', `${spec.gun.reloadS.toFixed(1)} s`, reloadFrac) +
-      statBar('Damage', `${bestDmg} hp`, bestDmg / MAXES.dmg) +
+      statBar('Hit points', `${spec.hp}`, statFrac(grp, 'hp', spec.hp)) +
+      statBar('Top speed', `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh)) +
+      statBar('Power / weight', `${hpT.toFixed(1)} hp/t`, statFrac(grp, 'hpt', hpT)) +
+      statBar('Reload', `${spec.gun.reloadS.toFixed(1)} s`, statFrac(grp, 'reload', spec.gun.reloadS, true)) +
+      statBar('Damage', `${bestDmg} hp`, statFrac(grp, 'dmg', bestDmg)) +
       `<div class="sep"></div>` + shellRows +
       `<div class="sep"></div>` +
       `<div class="armorline"><span>Hull front</span><b>${hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;'}</b></div>` +

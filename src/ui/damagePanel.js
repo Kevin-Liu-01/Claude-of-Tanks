@@ -290,6 +290,10 @@ export function createDamagePanel() {
   let anchors = null; // module name -> [x, y] canvas anchor (non-overlapping)
   // plan-view destination box of the silhouette on the canvas (set per draw)
   let destX = 46, destY = 4, destW = 40, destH = CH - 8;
+  // live turret bearing (rad, hull-relative) — the schematic's turret +
+  // barrel rotate with it (WoT's signature damage-panel behavior). Fed every
+  // frame by hud.update via setTurretYaw.
+  let turretYawDisp = 0;
 
   // --- top mapping: world +X (lateral) -> canvas right, +Z (forward) -> up.
   // Horizontal span destX..destX+destW covers x in [-W/2, W/2]; vertical
@@ -455,10 +459,9 @@ export function createDamagePanel() {
   }
 
   // Vector stand-in for the first few frames while the silhouette PNG
-  // decodes: minimal clean plan view (hull + rails + turret + gun) in the
-  // same schematic language.
+  // decodes: minimal clean plan view (hull + rails) in the same schematic
+  // language — drawTurretAndGun adds the rotating turret + barrel on top.
   function drawVectorFallback() {
-    const d = spec.dims;
     const [yT, yB] = hullBandY();
     const rw = Math.max(7, destW * 0.22);
     ctx.fillStyle = 'rgba(154,165,173,0.82)';
@@ -473,17 +476,67 @@ export function createDamagePanel() {
       roundRect(ctx, x0, yT + 1, rw, yB - yT - 2, 2.5);
       ctx.fill();
     }
-    const tp = (spec.armor && spec.armor.turretPivot) || [0, 1.2, 0];
-    ctx.fillStyle = 'rgba(165,176,184,0.95)';
+  }
+
+  // --- rotating turret + gun barrel (WoT's signature panel element) --------
+  // The turret is a distinct plan-view shape (elongated dome + rear bustle)
+  // in a LIGHTER steel than the hull so it reads as a separate part; the
+  // barrel runs from the ring to the artwork's muzzle line. Both rotate
+  // about the armor model's turret pivot with the live turret bearing, and
+  // both flood their module state color when damaged (gun / turretRing).
+  function drawTurretAndGun(tPivot) {
+    const px = sxT(tPivot[0] || 0);
+    const py = syT(tPivot[2] || 0);
+    // barrel length: pivot to the plan's muzzle line (artwork top), with a
+    // floor so rear-turret designs still show a credible overhang
+    const barrelL = Math.max(py - destY + 1, destH * 0.30);
+    const gunSt = moduleState('gun');
+    const ringSt = moduleState('turretRing');
+    const barrelCol = gunSt === 'ok' ? '#c6cfd7' : STATE_COLOR[gunSt];
+    const turretFill = ringSt === 'ok' ? '#b3bdc5' : STATE_COLOR[ringSt] + 'd8';
+    const rx = destW * 0.31; // turret half-width (across the gun axis)
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(turretYawDisp); // nose-up plan: +yaw swings the gun right
+    // barrel: dark contour under a light steel run + muzzle tip
+    ctx.lineCap = 'butt';
+    ctx.strokeStyle = 'rgba(9,14,19,0.85)';
+    ctx.lineWidth = 4.6;
     ctx.beginPath();
-    ctx.arc(sxT(tp[0] || 0), syT(tp[2] || 0), destW * 0.27, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(165,176,184,0.95)';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(sxT(tp[0] || 0), syT(tp[2] || 0));
-    ctx.lineTo(sxT(tp[0] || 0), syT(d.overallLengthM - d.hullLengthM / 2) + 1);
+    ctx.moveTo(0.5, -rx * 0.4);
+    ctx.lineTo(0.5, -barrelL);
     ctx.stroke();
+    ctx.strokeStyle = barrelCol;
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(0.5, -rx * 0.4);
+    ctx.lineTo(0.5, -barrelL + 1);
+    ctx.stroke();
+    // muzzle reference tick
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(0.5, -barrelL + 1);
+    ctx.lineTo(0.5, -barrelL + 3.4);
+    ctx.stroke();
+    // turret: squat plan-form (tapered face, wide cheeks, flat-ish bustle) —
+    // deliberately WIDER than tall so it reads "turret", not "egg"
+    ctx.beginPath();
+    ctx.moveTo(-rx * 0.58, -rx * 0.74);
+    ctx.quadraticCurveTo(0, -rx * 1.0, rx * 0.58, -rx * 0.74); // tapered face
+    ctx.quadraticCurveTo(rx * 1.06, -rx * 0.22, rx * 0.88, rx * 0.42);
+    ctx.quadraticCurveTo(rx * 0.5, rx * 0.88, 0, rx * 0.88); // rear bustle
+    ctx.quadraticCurveTo(-rx * 0.5, rx * 0.88, -rx * 0.88, rx * 0.42);
+    ctx.quadraticCurveTo(-rx * 1.06, -rx * 0.22, -rx * 0.58, -rx * 0.74);
+    ctx.closePath();
+    ctx.fillStyle = turretFill;
+    ctx.strokeStyle = 'rgba(9,14,19,0.8)';
+    ctx.lineWidth = 1.2;
+    ctx.fill();
+    ctx.stroke();
+    // mantlet block where the barrel meets the turret face
+    ctx.fillStyle = barrelCol;
+    ctx.fillRect(-2.6, -rx * 0.98, 5.2, 4);
+    ctx.restore();
   }
 
   function draw() {
@@ -505,6 +558,14 @@ export function createDamagePanel() {
       ctx.clearRect(0, 0, CW, CH);
       destX = (CW - destW) / 2;
       destY = (CH - destH) / 2;
+      // the artwork's HULL region only — its baked nose-up gun overhang is
+      // clipped off (the vector barrel below rotates with the live turret
+      // bearing; keeping the baked one would show two guns off-center)
+      const yHullTop = syT(spec.dims.hullLengthM / 2);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, yHullTop - 0.5, CW, CH - yHullTop + 0.5);
+      ctx.clip();
       // thin dark contour (four 1px offset passes) grounds the light fill
       ctx.globalAlpha = 0.6;
       for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
@@ -515,6 +576,7 @@ export function createDamagePanel() {
       ctx.drawImage(sil.body, bx, by, bw, bh, destX, destY, destW, destH);
       ctx.globalAlpha = 1;
       drawTrackRails();
+      ctx.restore();
     } else {
       destW = 44; destH = CH - 8;
       destX = (CW - destW) / 2; destY = 4;
@@ -533,20 +595,9 @@ export function createDamagePanel() {
       ctx.fill();
       ctx.stroke();
     }
-    // damaged gun: the barrel run re-draws in its state color
-    const gunSt = moduleState('gun');
-    if (gunSt !== 'ok') {
-      const d = spec.dims;
-      const gx = sxT(tPivot[0] || 0);
-      ctx.strokeStyle = STATE_COLOR[gunSt];
-      ctx.lineWidth = 3;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(gx, syT(tPivot[2] || 0));
-      ctx.lineTo(gx, syT(d.overallLengthM - d.hullLengthM / 2) + 1);
-      ctx.stroke();
-      ctx.lineCap = 'butt';
-    }
+    // rotating turret + gun barrel over the hull plan (state-colored when
+    // the gun / turret ring is damaged)
+    drawTurretAndGun(tPivot);
 
     // module hit-zones from the real armor model — invisible until damaged
     drawModuleRegions(tPivot);
@@ -638,6 +689,17 @@ export function createDamagePanel() {
       combat = c;
       refreshDom();
       draw();
+    },
+
+    /**
+     * Feed the live hull-relative turret bearing (rad) — the schematic's
+     * turret + barrel rotate with it. Stored only; the per-frame update()
+     * draw picks it up (hud.update calls this right before main's
+     * damagePanel.update in the same frame).
+     * @param {number} yaw
+     */
+    setTurretYaw(yaw) {
+      if (yaw != null && isFinite(yaw)) turretYawDisp = yaw;
     },
 
     /**

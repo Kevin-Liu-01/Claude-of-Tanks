@@ -23,7 +23,7 @@ import { createTank } from './vehicles/tankFactory.js';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
   CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, getCamoSelection, setCamoSelection,
-  setCamoBiome, applyCamoPatterns, warmWreckTextures,
+  setCamoBiome, applyCamoPatterns, clearCamoOverrides, warmWreckTextures,
 } from './vehicles/materials.js';
 import { computeDispersionRadM, SIM_DT } from './sim/movement.js';
 import { tankPoseFromState, queryAimArmor, traceTank } from './sim/armor.js';
@@ -896,6 +896,10 @@ function enterGarage() {
   shotMode = false;
   fx.setFrozen(false);
   game.phase = 'garage';
+  // camo_spotting r5: bot biome-camo overrides are battle-scoped — drop
+  // them so the pedestal/picker show the player's own persisted selection.
+  clearCamoOverrides();
+  applyCamoPatterns();
   setGarageSpots(true);
   setGarageSunTrim(true);
   bus.emit('phase:change', { phase: 'garage' });
@@ -1490,6 +1494,18 @@ function zeroInputs() {
   if (settings.isOpen()) settings.close();
 }
 
+// tank_models r5 (minor #10 "same game, three different suns"): the map sun
+// is FIXED (verdant az 115 / elev 32) but each hero spawns with its own yaw,
+// so the four closeups read as four different suns — the Tiger's cast shadow
+// hid straight behind its hull (pasted-on look) while the T-90M/Leo threw
+// long side shadows. Normalize every closeup hero to ONE world heading before
+// the orbit so all four shots share the same sun-relative geometry and a
+// comparable grounded contact shadow; per-view camera azimuth keeps framing.
+function closeupStage(ent) {
+  ent.state.yaw = THREE.MathUtils.degToRad(98);
+  ent.visual.syncFromState(ent.state);
+}
+
 function orbitPose(ent, distM, azimuthDeg, elevDeg, fovDeg) {
   const az = ent.state.yaw + azimuthDeg * DEG;
   const el = elevDeg * DEG;
@@ -1776,6 +1792,7 @@ const SHOT_VIEWS = {
     // lighting_post r4: elev 9 -> 15, dist 7 -> 8 — the extra elevation puts
     // the hull-adjacent contact shadow above the hull's own horizon so the
     // closeup actually shows the vehicle grounded (shadow-read fix).
+    closeupStage(game.tankById.get('m1a2'));
     orbitPose(game.tankById.get('m1a2'), 8, -42, 15, 45);
   },
   tank_closeup_ww2() {
@@ -1783,16 +1800,19 @@ const SHOT_VIEWS = {
     // Sun-lit 3/4 front (tank_models r1): the old azimuth 35 put the running
     // gear and lower hull in their own shadow — the interleaved wheels, track
     // sag and camo bands were unreadable in the judged frame.
-    orbitPose(game.tankById.get('tiger1'), 9, -35, 16, 50); // lighting_post r4: elev 12 -> 16 (contact shadow read)
+    closeupStage(game.tankById.get('tiger1'));
+    orbitPose(game.tankById.get('tiger1'), 9, -35, 15, 45); // tank_models r5: elev/fov match the other closeups (shared sun read)
   },
   tank_closeup_t90m() {
     hud.setMode('hidden');
     // tank_models r3: every core roster tank gets a judged closeup — the
     // T-90M shipped unauditable as a carousel thumb.
+    closeupStage(game.tankById.get('t90m'));
     orbitPose(game.tankById.get('t90m'), 8, -38, 15, 45); // lighting_post r4: elev 10 -> 15 (contact shadow read)
   },
   tank_closeup_leo2a7() {
     hud.setMode('hidden');
+    closeupStage(game.tankById.get('leo2a7'));
     orbitPose(game.tankById.get('leo2a7'), 8, -35, 15, 45); // lighting_post r4: elev 10 -> 15 (contact shadow read)
   },
   detrack() {

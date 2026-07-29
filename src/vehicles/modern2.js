@@ -237,11 +237,14 @@ export const MODERN2_SPECS = {
       ],
     }),
     visual: {
-      // r4: pulled down toward 4BO — the GLB's stripped-shell repaint (see
-      // userdrops3 paintUntextured route) samples this canvas; the authored
-      // parade green rendered bleached mint next to the T-90A.
-      scheme: 'solid', base: '#40503a', weather: '#4a5a42', patches: [],
-      marking: 'number', number: '518', trackWidthM: 0.60,
+      // r5 ("entire vehicle is one uniform pale pea-green ... factory scheme
+      // applies no camo pattern"): base pulled ANOTHER step toward wartime
+      // 4BO and the factory coat becomes the Soviet 3-tone — black-green +
+      // sand angular fields over the dark green (nato painter morphology,
+      // russian palette). The stripped-shell repaint samples this canvas.
+      scheme: 'nato', base: '#3a4832', weather: '#44523c',
+      patches: ['#272d22', '#71684a'],
+      marking: 'number', number: '518', trackWidthM: 0.60, camoScale: 0.5,
     },
   },
 
@@ -463,13 +466,19 @@ function buildLeo2A4(P) {
   }
   // skirts (§9.5): PLAIN rubber wavy-bottom panels the full hull length —
   // no 2A7 heavy armor modules. Panel seams + alternating scallop lip.
+  // r5 ("leo2a4 is missing its side skirts entirely, exposing a floating
+  // cleated return-run band over plain disc wheels"): the old 0.50 m panel
+  // hung at 0.73-1.23 with the 1.87 m-wide track flush against its 1.86 m
+  // plane — the run rendered THROUGH it. Panels now hang fender line to
+  // upper-wheel (0.60-1.29) at 1.90 m, outboard of the track, like the
+  // always-fitted rubber skirts every service 2A4 carries.
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.045, 0.50, 6.9), s * 1.86, 0.98, -0.05);
-    P.add('hullRubber', box(0.032, 0.14, 6.85), s * 1.86, 0.70, -0.05);
+    P.add('hull', box(0.045, 0.69, 6.9), s * 1.90, 0.945, -0.05);
+    P.add('hullRubber', box(0.032, 0.14, 6.85), s * 1.90, 0.55, -0.05);
     for (let k = 0; k < 8; k++) {
-      P.add('hullDark', box(0.05, 0.46, 0.018), s * 1.86, 0.97, 3.15 - k * 0.92);
+      P.add('hullDark', box(0.05, 0.62, 0.018), s * 1.90, 0.945, 3.15 - k * 0.92);
       // wavy lower edge: alternating rubber scallop tabs
-      P.add('hullRubber', box(0.034, 0.08, 0.5), s * 1.86, 0.61 + (k % 2) * 0.045, 2.85 - k * 0.86);
+      P.add('hullRubber', box(0.034, 0.08, 0.5), s * 1.90, 0.47 + (k % 2) * 0.045, 2.85 - k * 0.86);
     }
   }
   towCable(P, [[-1.3, 1.6, -3.4], [0, 1.7, -3.7], [1.3, 1.6, -3.4]]);
@@ -562,9 +571,10 @@ function buildLeo2A4(P) {
   P.addGunExtra(cylZ(0.13, 0.3, 12, 0.155), 0, 0, 0.68);
   buildGun(P, { len: 5.28, r: 0.079, sleeve: true, evac: 0.52, baseR: 0.16 });
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.35, wheelW: 0.22, xc: 1.55,
+    style: 'rubber', wheelR: 0.35, wheelW: 0.22, xc: 1.55, dishR: 0.80,
     wheelZs: [2.95, 2.0, 1.25, 0.28, -0.69, -1.66, -2.63],
-    sprocket: { z: -3.5, y: 0.46, r: 0.34 }, idler: { z: 3.45, y: 0.44, r: 0.32 },
+    sprocket: { z: -3.5, y: 0.50, r: 0.36 }, idler: { z: 3.45, y: 0.47, r: 0.33 },
+    rollers: [2.1, 0.6, -0.9, -2.4].map((z) => ({ z, y: 0.93, r: 0.08 })),
     trackW: 0.635, topY: 0.92, paintedEnds: true, coveredTop: true,
   });
   P.decal('turret', 'crossgrey', null, 0.36, [1.21, 0.40, -0.6], Math.PI / 2);
@@ -1143,14 +1153,23 @@ function buildT14(P) {
   for (const s of [-1, 1]) {
     P.add('hullShadow', new THREE.BoxGeometry(0.55, 0.026, 8.0), s * 1.62, 1.075, -0.1);
   }
-  // full-length ANGULAR skirts with sawtooth lower edge (§16.5 signature)
+  // full-length ANGULAR skirts with sawtooth lower edge (§16.5 signature).
+  // r5 track-gate rebuild ("no side skirts at all... exposed track is a flat
+  // rectangular band floating around the wheel set"): the old 0.58 m panel
+  // stopped at the wheel tops AND the 1.96 m track outer edge poked past the
+  // 1.93 m skirt plane, so the whole return run rendered as a floating
+  // zipper outboard of the hull. The skirts now drop fender-to-mid-wheel
+  // (roster §16.5: 3.9 m skirted width IS the T-14's defining look), the
+  // track tucked inboard (xc 1.60), and a sponson filler strip closes the
+  // slot between fender line and skirt top.
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.06, 0.58, 8.0), s * 1.93, 0.92, -0.1);                  // main skirt panel
+    P.add('hull', box(0.06, 0.66, 8.0), s * 1.93, 0.86, -0.1);                  // main skirt panel (0.53-1.19)
+    P.add('hull', box(0.06, 0.10, 8.0), s * 1.90, 1.23, -0.1);                  // sponson filler strip
     for (let k = 0; k < 7; k++) {                                               // sawtooth teeth
-      P.add('hull', box(0.055, 0.16, 0.62), s * 1.93, 0.58, 3.3 - k * 1.12, 0, 0, s * 0.20);
+      P.add('hull', box(0.055, 0.16, 0.62), s * 1.93, 0.50, 3.3 - k * 1.12, 0, 0, s * 0.20);
     }
     for (let k = 0; k < 6; k++) {                                               // panel seams
-      P.add('hullDark', box(0.066, 0.5, 0.02), s * 1.93, 0.92, 3.0 - k * 1.15);
+      P.add('hullDark', box(0.066, 0.58, 0.02), s * 1.93, 0.86, 3.0 - k * 1.15);
     }
     // rear-view camera pods on the hull corners (§16.5)
     P.add('hullDetail', cylZ(0.05, 0.16, 10), s * 1.7, 1.55, 4.12);
@@ -1231,16 +1250,26 @@ function buildT14(P) {
   P.addGunExtra(box(0.44, 0.5, 0.3), 0, 0.04, 0.85);                            // shroud chin
   P.addGunExtra(cylZ(0.14, 0.36, 12, 0.17), 0, 0, 1.1);
   buildGun(P, { len: 6.0, r: 0.07, sleeve: true, evac: null, baseR: 0.15 });
-  // 7 road wheels (first Russian 7-wheel), sprocket rear, skirt hides top run
+  // 7 road wheels (first Russian 7-wheel), sprocket rear, skirt hides top run.
+  // r5 track gate: track pulled INBOARD of the skirt plane (outer edge 1.88
+  // vs skirt inner face 1.90), end drums grown to FILL their wraps (solid
+  // sprocket/idler per the reworked sprocketGeo/idlerGeo), coveredTop hides
+  // the return-run link pads behind the deep skirts, and dishR gives the
+  // wheels a real fat rubber tire ring + hub separation.
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.35, wheelW: 0.22, xc: 1.66,
+    style: 'rubber', wheelR: 0.35, wheelW: 0.22, xc: 1.60, dishR: 0.76,
     wheelZs: [3.3, 2.24, 1.18, 0.12, -0.94, -2.0, -3.06],
-    sprocket: { z: -3.9, y: 0.50, r: 0.31 }, idler: { z: 3.85, y: 0.48, r: 0.30 },
+    sprocket: { z: -3.88, y: 0.52, r: 0.36 }, idler: { z: 3.83, y: 0.50, r: 0.35 },
     rollers: [2.4, 0.8, -0.8, -2.4].map((z) => ({ z, y: 0.95, r: 0.08 })),
-    trackW: 0.60, topY: 0.95, paintedEnds: true,
+    trackW: 0.56, topY: 0.95, paintedEnds: true, coveredTop: true,
   });
   // Malachit ERA: glacis courses + skirt front half (strippable)
   const t14GlacisZ = (y) => 2.36 + (1.62 - y) * 2.90 + 0.05;
+  // r5: dark mounting bed behind the tile field so the inter-tile gaps read
+  // as recessed seams instead of camo-on-camo
+  for (const s of [-1, 1]) {
+    P.add('hullDark', box(1.50, 0.62, 0.025), s * 0.83, 1.255, 3.40, -71 * D2R, 0, 0);
+  }
   P.eraCluster('glacis_era_R', (put) => {
     for (let row = 0; row < 4; row++) for (let c = 0; c < 5; c++) {
       const y = 1.06 + row * 0.13;

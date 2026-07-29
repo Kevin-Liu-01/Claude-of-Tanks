@@ -47,3 +47,30 @@ export function noteFxClockShift(delta) {
 export function fxNow() {
   return clockFn ? clockFn() - shiftS : null;
 }
+
+// ---------------------------------------------------------------------------
+// Turret-pop smoke/ember trail bridge (effects_combat r6)
+// ---------------------------------------------------------------------------
+// The tumbling popped turret read as "a distant bird" — a bare dark speck
+// with no motion cue tying it to the explosion. The particle system lives in
+// effects.js; the pop arc lives in tankFactory.js. effects registers a tiny
+// emitter here and the visual's applyPop calls it along the arc, so the
+// turret drags a readable smoke + ember wake for its whole flight (works for
+// live kills, GLB swaps and backdated composed captures alike).
+
+let popTrailFn = null;
+
+/** Install the trail emitter. @param {(x:number,y:number,z:number,heat:number,birthOffset:number)=>void} fn */
+export function registerPopTrail(fn) {
+  popTrailFn = fn;
+}
+
+/**
+ * Emit one pop-trail puff at a world position (no-op without an fx system).
+ * @param {number} x @param {number} y @param {number} z world position
+ * @param {number} heat 0..1 ember intensity for this sample
+ * @param {number} birthOffset seconds (<= 0 backdates the puff)
+ */
+export function emitPopTrail(x, y, z, heat, birthOffset = 0) {
+  if (popTrailFn) popTrailFn(x, y, z, heat, birthOffset);
+}

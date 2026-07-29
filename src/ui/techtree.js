@@ -476,13 +476,17 @@ const TT_CSS = `
 /* COMMUNITY TANKS: sourced-asset cards carry a mandatory author credit line.
    r3: WRAPS to two lines (line-clamp) instead of ellipsizing — longer CC-BY
    attributions ('by Lukasz Wesiora (canisferus)…') were clipped at default
-   zoom; the full string also rides the title tooltip. */
-.cot-tt-node.comm{height:140px;}
-.cot-tt-node .credit{font-size:7.5px;font-weight:600;letter-spacing:.04em;
-  color:#7f96a8;text-align:center;margin-top:2px;white-space:normal;
-  line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;
+   zoom; the full string also rides the title tooltip.
+   r5 (content_breadth): 7.5px rendered as 2-3px glyphs at the tab's ~1.0
+   fit zoom — unreadable, undermining the CC-BY display (critique). 10px
+   floor + 3-line clamp on a taller card keeps every attribution legible at
+   default zoom. */
+.cot-tt-node.comm{height:152px;}
+.cot-tt-node .credit{font-size:12px;font-weight:600;letter-spacing:.02em;
+  color:#8ea6b9;text-align:center;margin-top:2px;white-space:normal;
+  line-height:1.28;display:-webkit-box;-webkit-line-clamp:3;
   -webkit-box-orient:vertical;overflow:hidden;}
-.cot-tt-node .credit b{color:#a8bccc;font-weight:700;}
+.cot-tt-node .credit b{color:#b4c8d8;font-weight:700;}
 `;
 
 function ensureStyle(id, css) {
@@ -865,7 +869,12 @@ export function createTechTree(opts) {
     const vw = view.clientWidth || window.innerWidth;
     const vh = view.clientHeight || (window.innerHeight - 70);
     const cw = content.x1 - content.x0, ch = content.y1 - content.y0;
-    const s = Math.max(MIN_ZOOM, Math.min(MAX_FIT_ZOOM,
+    // content_breadth r5: SPARSE tabs (Sweden's lone Strv 103, small rosters)
+    // may fit-zoom to 1.6x so a handful of cards fills the canvas instead of
+    // floating in dead grid; dense trees keep the 1.32 cap (over-zooming a
+    // full 10-tier nation just crops it).
+    const sparseFit = cw * ch < 900 * 620 ? 1.6 : MAX_FIT_ZOOM;
+    const s = Math.max(MIN_ZOOM, Math.min(sparseFit,
       (vw - 36) / cw, (vh - 36) / ch));
     tgt.s = s;
     tgt.x = (vw - cw * s) / 2 - content.x0 * s;
@@ -902,8 +911,9 @@ export function createTechTree(opts) {
       minTier = Math.min(minTier, node.tier);
       maxTier = Math.max(maxTier, node.tier);
     }
-    // The COMMUNITY credit cards run ~22 px taller than NODE_H.
-    const cardH = isComm ? NODE_H + 22 : NODE_H;
+    // The COMMUNITY credit cards run ~34 px taller than NODE_H (r5: grew 12px
+    // with the 10px-floor 3-line credit block — see .cot-tt-node.comm CSS).
+    const cardH = isComm ? NODE_H + 34 : NODE_H;
     // COMMUNITY layout (content_breadth r1): a TRUE tier ladder. The old
     // collapsed-column + shift-right packing detached cards from their tier
     // columns (a VIII card could sit right of a IX card) and the tab read as
@@ -914,8 +924,12 @@ export function createTechTree(opts) {
     // column (critique: "wasted canvas"); sub-row pitch and band gaps
     // tightened for the same reason. A pair of same-tier cards side by side
     // still sits strictly inside its tier column, so the ladder stays honest.
-    const COMM_SUB_H = cardH + 26;   // sub-row pitch inside a class band
-    const COMM_BAND_GAP = 30;        // gap between class bands
+    // r5 (content_breadth): pitch/band gaps tightened (26/30 -> 14/22) — the
+    // taller credit cards otherwise grow the band stack past the viewport
+    // and the fit zoom drops to ~0.80, shrinking the very credits the cards
+    // grew to show (12px font x ~0.9 fit = ~11px effective glyphs).
+    const COMM_SUB_H = cardH + 14;   // sub-row pitch inside a class band
+    const COMM_BAND_GAP = 22;        // gap between class bands
     const COMM_PAIR_GAP = 12;        // gap between two-wide same-tier cards
     const commSub = isComm ? new Map() : null;   // node.key -> {sub,col,n}
     const commBandY = isComm ? new Map() : null; // lane -> band top Y

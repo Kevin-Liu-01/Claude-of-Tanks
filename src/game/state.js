@@ -20,7 +20,7 @@ import { createAI } from './ai.js';
 import { getStoredDifficulty } from './input.js';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.js';
-import { hasCamoPaint } from '../vehicles/materials.js';
+import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.js';
 
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -160,6 +160,9 @@ export function spawnTanks(game, engineCtx) {
         aimPoint: new THREE.Vector3(), shellSlot: 0,
       },
       visual: null,
+      // gameplay_feel r5: true once the visual GLB-swaps (rigid running gear,
+      // no per-wheel conform) — movement.js hard-clamps its support fan then.
+      rigidGear: false,
       _camoSeed: 4000 + i,
       ai: null,
       aiCtl: null,
@@ -373,6 +376,25 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   // COMMUNITY TANKS: field the participants; park everyone else (hidden,
   // null state/combat — every sim/HUD/audio consumer guards on those).
   game.tanks = pickParticipants(game, playerSpecId, !!opts.random, !!opts.mixedEra);
+  // BOT BIOME CAMO (camo_spotting r5): non-player participants of a random
+  // battle roll a 60% chance of fielding the biome-matched AUTO pattern so
+  // snowfields/dunes stop being full of factory-green bots (the player's
+  // AUTO paint already matched). Runtime overrides only — localStorage and
+  // the garage picker are untouched; the player's spec is never rolled
+  // (participants are keyed by spec id, so no bot shares it). Seeded per
+  // battle for reproducibility. main.js startBattle calls setCamoBiome
+  // BEFORE setupBattle, so the repaint below resolves the right biome; the
+  // trailing applyCamoPatterns() also restores factory paint on entries a
+  // PREVIOUS battle's overrides repainted (cheap no-op otherwise).
+  clearCamoOverrides();
+  if (opts.random) {
+    const camoRng = mulberry32(8600 + game.battleCount);
+    for (const ent of game.tanks) {
+      if (ent.specId === playerSpecId) continue;
+      if (camoRng() < 0.6) setCamoOverride(ent.specId, 'auto');
+    }
+  }
+  applyCamoPatterns();
   // PERF (performance_budget r4): participants get visuals on demand; parked
   // vehicles' visuals are EVICTED (scene detach + dispose) so only fielded
   // tanks keep generated texture sets resident — see spawnTanks.
@@ -393,6 +415,9 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     ent.aiCtl = null;
     ent.team = 'enemy';
     ent.isPlayer = false;
+    // gameplay_feel r5: the rigid-gear stamp belongs to the DISPOSED visual —
+    // a recycled slot may get a procedural (conform-capable) visual next.
+    ent.rigidGear = false;
     if (ent.visual) {
       if (ent.visual.resetDestroyed) ent.visual.resetDestroyed();
       ent.visual.setVisible(false);
@@ -552,7 +577,9 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     // few ticks so the attitude spring settles and the terrain support solve
     // owns pos.y BEFORE the first rendered frame — the raw spawn pose (flat
     // attitude, pad-center height) rendered one frame with a track end
-    // clipped ~0.3 m into the pad-edge slope.
+    // clipped ~0.3 m into the pad-edge slope. Rigid-gear detection first: a
+    // reused garage/pool visual may already be GLB-swapped at restage.
+    refreshRigidGear(ent);
     for (let k = 0; k < 30; k++) updateTank(ent, world.heightField, SIM_DT);
     // PERF r3: deferred boot visuals sync when ensureTankVisual builds them
     if (ent.visual) {
@@ -565,6 +592,30 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
 // ---------------------------------------------------------------------------
 // Fixed-step simulation
 // ---------------------------------------------------------------------------
+
+/**
+ * gameplay_feel r5 (terrain-contact hard gate): stamp `ent.rigidGear = true`
+ * once the entity's visual has GLB-swapped. movement.js softens its wheel-run
+ * support lines (FAN_YIELD) only on the premise that tankFactory's per-wheel
+ * conform layer absorbs the yielded terrain — modelLoader.applySwap HIDES the
+ * procedural running gear (stamping hullG.userData.__glbSwapped on the hull
+ * group, a direct child of the visual root) and renders rigid GLB wheels
+ * with no conform, so the yield buried them up to 9 cm on rough corridors.
+ * The swap is one-way and can land any time after the visual builds (deferred
+ * stream-in), so poll the direct root children each tick until found — a
+ * handful of flag reads per tank, no traversal. movement.js reads the flag
+ * and hard-clamps every support line for rigid gear.
+ * @param {object} ent pool entity
+ * @returns {void}
+ */
+function refreshRigidGear(ent) {
+  if (ent.rigidGear || !ent.visual || !ent.visual.root) return;
+  const kids = ent.visual.root.children;
+  for (let i = 0; i < kids.length; i++) {
+    const ud = kids[i].userData;
+    if (ud && ud.__glbSwapped) { ent.rigidGear = true; return; }
+  }
+}
 
 /** Tank-vs-tank + tank-vs-obstacle circle pushback used by movement. */
 function makeCollide(game, world) {
@@ -902,6 +953,7 @@ export function simStep(game, bus, world, rig, collider) {
   // b. movement
   for (const ent of game.tanks) {
     if (!ent.state || ent.combat.destroyed) continue;
+    refreshRigidGear(ent); // GLB swap detection for the support-solve yield
     collider.setSelf(ent);
     updateTank(ent, world.heightField, dt, collider.collide);
     // r2 blocked-drive impact (gameplay_feel critique MAJOR): movement now

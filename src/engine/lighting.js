@@ -108,11 +108,50 @@ const SHADOW_RADII = [1.6, 2.3, 2.6, 2.8];
 // not as THE TANK'S shadow); a denser ambient dim inside sun shadow restores
 // the ~2.2:1 display step everywhere. Hull readability inside shade is held
 // by materials.js's deep-shade luminance floor + the hemi bounce floor.
-const SHADOW_AMBIENT_DIM = 0.50;
+// r5 ("player-view shadow floor is near-black: tank shadow on the road drops
+// to ~15% luminance with no cool sky fill; blue-sky daylight should fill
+// shadows to ~35-45% with a cool tint"): the r4 0.50 scalar stacked with the
+// grade's sub-pivot contrast + GTAO into a ~6.7:1 display step. The dim is
+// now a TINTED vector (luminance ~0.70) whose blue channel keeps ~92% — a
+// cast shadow under open sky is lit BY that sky, so it fills brighter AND
+// cooler. Distance readability (the r3 "shadows die at range" fix this dim
+// was born for) is preserved by the ~1.9:1 display step that remains plus
+// the new distance-widened penumbra making edges read as shadow, not decal.
+// (Measured after the first r5 pass: at [0.60,0.70,0.92] the road shadow
+// still displayed at ~11% of lit — the display chain (ACES toe + sub-pivot
+// grade contrast) was the real crusher, fixed by the grade's new low-end
+// taper in post.js. The dim itself now only needs to carry the COOL TINT and
+// a gentle density step; the linear ratio lands ~26% and displays ~35%.)
+const SHADOW_AMBIENT_DIM = [0.80, 0.88, 1.0];
 // Indirect SPECULAR (env reflections) dims harder: a sky probe reflecting at
 // full strength inside a cast shadow is the classic "wet plastic in shade"
 // tell on ice/wet roads once materials gain speculars.
-const SHADOW_AMBIENT_SPEC_DIM = 0.40;
+const SHADOW_AMBIENT_SPEC_DIM = 0.55;
+// r5 PCSS-STYLE DISTANCE-WIDENING PENUMBRA ("edge stays knife-sharp 8-10 m
+// from the caster — penumbra must widen with distance from the contact
+// point"). three r185's PCF getShadow samples a Vogel disk at a CONSTANT
+// per-light texel radius, so a hull contact shadow and a canopy shadow cast
+// 15 m down had identical razor edges. True PCSS needs blocker depths, but
+// the PCF path binds the map as a compare-only sampler2DShadow — so blocker
+// distance is instead ESTIMATED with three extra center taps whose compare
+// plane is pushed TOWARD the light by fixed world offsets: if the test still
+// reports "shadowed" with the plane 1.6 m / 7 m / 22 m closer to the sun,
+// the occluder is at least that far above the receiver. The Vogel radius
+// then scales between PEN_TIGHT x (contact — crisp core under the hull) and
+// PEN_WIDE x (deep gap — soft canopy/building edges). All CSM cascades share
+// one shadow camera depth range (near 1 / far 2000, CSM.js defaults), so the
+// normalized probe offsets below correspond to the same world gaps on every
+// cascade. Lit-side fragments see all probes pass (gap 0) and keep the tight
+// radius — the penumbra softens into the shadow body, which reads correctly
+// at 1080p and never blurs lit-side detail.
+const PEN_PROBE_DEPTHS = [0.0008, 0.0035, 0.011]; // x1999 m: ~1.6 / 7 / 22 m gaps
+const PEN_PROBE_WEIGHTS = [0.40, 0.34, 0.26];
+const PEN_TIGHT = 0.9; // radius factor at contact (crisp core, stays above the ~1.4-texel stair-step floor)
+// 5.0 (first pass ran 6.5): at 6.5x the 5-tap Vogel disk undersamples and
+// the IGN rotation pattern printed a visible crosshatch across wide penumbra
+// bands; 5.0 keeps the distance-softening clearly readable with the noise
+// under the SMAA/grain floor.
+const PEN_WIDE = 5.0; // radius factor at 22 m+ occluder gap
 // The radii above are tuned in TEXELS of these reference map sizes (ultra's
 // ladder). When a quality preset allocates a smaller map for a cascade, the
 // texel is proportionally larger — an uncompensated radius would widen the
@@ -328,9 +367,10 @@ vec3 cotPrev;`);
   if (!end.includes(endHead)) {
     throw new Error('lighting.js: shadow-density anchor not found in lights_fragment_end');
   }
+  const dimVec = `vec3( ${SHADOW_AMBIENT_DIM.map((v) => v.toFixed(3)).join(', ')} )`;
   THREE.ShaderChunk.lights_fragment_end = end.replace(endHead, `#if defined( USE_CSM ) && defined( CSM_CASCADES )
 
-	float cotAmbDim = mix( ${SHADOW_AMBIENT_DIM.toFixed(3)}, 1.0, cotSunVis );
+	vec3 cotAmbDim = mix( ${dimVec}, vec3( 1.0 ), cotSunVis );
 
 	#if defined( RE_IndirectDiffuse )
 
@@ -348,6 +388,25 @@ vec3 cotPrev;`);
 #endif
 
 ${endHead}`);
+
+  // --- r5 distance-widening penumbra (see PEN_* const block) ---------------
+  // Patch the PCF getShadow: three center compare-probes estimate the
+  // receiver-to-occluder gap, and the Vogel disk radius widens with it.
+  const penAnchor = 'float radius = shadowRadius * texelSize.x;';
+  const sm = THREE.ShaderChunk.shadowmap_pars_fragment;
+  if (!sm.includes(penAnchor)) {
+    throw new Error('lighting.js: penumbra anchor not found in shadowmap_pars_fragment');
+  }
+  THREE.ShaderChunk.shadowmap_pars_fragment = sm.replace(penAnchor, `float radius = shadowRadius * texelSize.x;
+				{
+					// blocker-gap probe: compare plane pushed toward the light —
+					// still shadowed => occluder at least that far above receiver
+					float cotOcc =
+						( 1.0 - texture( shadowMap, vec3( shadowCoord.xy, shadowCoord.z - ${PEN_PROBE_DEPTHS[0].toFixed(4)} ) ) ) * ${PEN_PROBE_WEIGHTS[0].toFixed(2)} +
+						( 1.0 - texture( shadowMap, vec3( shadowCoord.xy, shadowCoord.z - ${PEN_PROBE_DEPTHS[1].toFixed(4)} ) ) ) * ${PEN_PROBE_WEIGHTS[1].toFixed(2)} +
+						( 1.0 - texture( shadowMap, vec3( shadowCoord.xy, shadowCoord.z - ${PEN_PROBE_DEPTHS[2].toFixed(4)} ) ) ) * ${PEN_PROBE_WEIGHTS[2].toFixed(2)};
+					radius *= mix( ${PEN_TIGHT.toFixed(2)}, ${PEN_WIDE.toFixed(2)}, cotOcc );
+				}`);
 }
 
 /**

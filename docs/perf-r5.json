@@ -1,0 +1,717 @@
+{
+  "note": "PERFORMANCE_BUDGET r5 EVIDENCE \u2014 grass far-band geometry LOD (handoff \u00a71). MEASURED TREE: snapshot of the r5 working tree (163a968 + all sibling r5 in-tree work, TE vegetation retune included, horizon.js pinned to HEAD while TE was mid-edit) with and without docs/handoff/performance_budget-r5-grassLOD.patch. 20 s iteration probes (NOT certification): triangle medians are renderer.info-exact and contention-independent; fps/tail numbers in these blocks are machine-contended and prove nothing. KEY LINE: trianglesMedian 8,521,425 pre-patch (the TE taper retune re-blew the frozen 7.0M gate on top of the 7.59M merged tree) -> 6,665,805 (dsf1) / 6,653,809 (dsf2) with the patch: -1.86M, gate PASS with 5% margin. Visual cost: none \u2014 two screenshot-harness runs on the patched tree exit 0 with zero console errors; pixel-diff vs unpatched sits at the harness run-to-run noise floor on 15/16 views; sniper_view reviewed at crop level (reads identical). Certification of the round-close merged tree is owned by tools/quietcert.mjs (running detached, see docs/quietcert-r5.log) which replaces docs/perf-after.json only on a valid-stamp PASS pair. Cross-map evidence in crossMap below.",
+  "sources": {
+    "preLOD_dsf1_20s": "probe-live-base-20s.json (scratch)",
+    "postLOD_dsf1_20s": "probe-live-lod-20s.json (scratch)",
+    "postLOD_dsf2_20s": "probe-live-lod-20s-dsf2.json (scratch)"
+  },
+  "preLOD_dsf1": {
+    "date": "2026-07-29T05:57:20.895Z",
+    "map": "verdant",
+    "roster": "pinned:kv2,jagdtiger,tiger2,object279,is7,t30,t95",
+    "viewport": {
+      "width": 1920,
+      "height": 1080,
+      "deviceScaleFactor": 1
+    },
+    "sampleSeconds": 20,
+    "frames": 1215,
+    "loadToReadyMs": 8656,
+    "fps": {
+      "median": 61.7,
+      "p5": 29.9,
+      "p1": 28.7,
+      "mean": 257.1
+    },
+    "frameMs": {
+      "median": 16.2,
+      "p95": 33.4,
+      "p99": 34.8
+    },
+    "drawCalls": {
+      "median": 386,
+      "max": 457
+    },
+    "triangles": {
+      "median": 8521425,
+      "max": 9548203
+    },
+    "rendererInfo": {
+      "geometries": 479,
+      "textures": 192,
+      "programs": 261
+    },
+    "heap": {
+      "startMB": 505.9,
+      "endMB": 521.7,
+      "growthMBperS": 0.79,
+      "floorGrowthMBperS": 1.29,
+      "retainedStartMB": 491.4,
+      "retainedEndMB": 494.2,
+      "retainedGrowthMBperS": 0.14
+    },
+    "gpuTextureEstimate": {
+      "sceneTextureMB": 389.5,
+      "shadowRtMB": 160,
+      "uniqueTextures": 135
+    },
+    "consoleErrors": [],
+    "machine": {
+      "cores": 18,
+      "load1Start": 11.28,
+      "load1End": 9.81,
+      "load1Max": 11.98,
+      "foreignHeadlessMax": 0,
+      "foreignGpuCpuMax": 130.2,
+      "contended": true
+    },
+    "budget": {
+      "pass": false,
+      "fpsMedian": {
+        "limit": ">=60",
+        "actual": 61.7,
+        "pass": true
+      },
+      "fpsP5": {
+        "limit": ">=45",
+        "actual": 29.9,
+        "pass": false
+      },
+      "frameMsP99": {
+        "limit": "<=25",
+        "actual": 34.8,
+        "pass": false
+      },
+      "drawCallsWorstFrame": {
+        "limit": "<=900",
+        "actual": 457,
+        "pass": true
+      },
+      "trianglesMedian": {
+        "limit": "<=7000000",
+        "actual": 8521425,
+        "pass": false
+      },
+      "loadToReady": {
+        "limit": "<=8000",
+        "actual": 8656,
+        "pass": false
+      },
+      "sceneTextureMB": {
+        "limit": "<=512 (frozen; holdable via parked-pool visual eviction)",
+        "actual": 389.5,
+        "pass": true
+      },
+      "heapStableMBperS": {
+        "limit": "<=2",
+        "actual": 0.14,
+        "pass": true
+      },
+      "consoleErrors": {
+        "limit": "=0",
+        "actual": 0,
+        "pass": true
+      },
+      "certification": "REFUSED \u2014 machine contended (load1 11.28->9.81, mid-run max 11.98, foreign headless-GPU procs 0, interactive-browser GPU cpu 130.2% (limit 15), on 18 cores, load limit 9); re-run quiet"
+    },
+    "ratchet": {
+      "trianglesMedian": {
+        "target": 6000000,
+        "actual": 8521425,
+        "met": false
+      }
+    }
+  },
+  "postLOD_dsf1": {
+    "date": "2026-07-29T06:04:52.819Z",
+    "map": "verdant",
+    "roster": "pinned:kv2,jagdtiger,tiger2,object279,is7,t30,t95",
+    "viewport": {
+      "width": 1920,
+      "height": 1080,
+      "deviceScaleFactor": 1
+    },
+    "sampleSeconds": 20,
+    "frames": 1241,
+    "loadToReadyMs": 8071,
+    "fps": {
+      "median": 63.3,
+      "p5": 30,
+      "p1": 28.9,
+      "mean": 235.4
+    },
+    "frameMs": {
+      "median": 15.8,
+      "p95": 33.3,
+      "p99": 34.6
+    },
+    "drawCalls": {
+      "median": 389,
+      "max": 457
+    },
+    "triangles": {
+      "median": 6665805,
+      "max": 7777193
+    },
+    "rendererInfo": {
+      "geometries": 484,
+      "textures": 192,
+      "programs": 261
+    },
+    "heap": {
+      "startMB": 499.3,
+      "endMB": 521.9,
+      "growthMBperS": 1.13,
+      "floorGrowthMBperS": 1.84,
+      "retainedStartMB": 491.5,
+      "retainedEndMB": 494.5,
+      "retainedGrowthMBperS": 0.15
+    },
+    "gpuTextureEstimate": {
+      "sceneTextureMB": 389.5,
+      "shadowRtMB": 160,
+      "uniqueTextures": 135
+    },
+    "consoleErrors": [],
+    "machine": {
+      "cores": 18,
+      "load1Start": 10.31,
+      "load1End": 10.67,
+      "load1Max": 10.71,
+      "foreignHeadlessMax": 3,
+      "foreignGpuCpuMax": 181.6,
+      "contended": true
+    },
+    "budget": {
+      "pass": false,
+      "fpsMedian": {
+        "limit": ">=60",
+        "actual": 63.3,
+        "pass": true
+      },
+      "fpsP5": {
+        "limit": ">=45",
+        "actual": 30,
+        "pass": false
+      },
+      "frameMsP99": {
+        "limit": "<=25",
+        "actual": 34.6,
+        "pass": false
+      },
+      "drawCallsWorstFrame": {
+        "limit": "<=900",
+        "actual": 457,
+        "pass": true
+      },
+      "trianglesMedian": {
+        "limit": "<=7000000",
+        "actual": 6665805,
+        "pass": true
+      },
+      "loadToReady": {
+        "limit": "<=8000",
+        "actual": 8071,
+        "pass": false
+      },
+      "sceneTextureMB": {
+        "limit": "<=512 (frozen; holdable via parked-pool visual eviction)",
+        "actual": 389.5,
+        "pass": true
+      },
+      "heapStableMBperS": {
+        "limit": "<=2",
+        "actual": 0.15,
+        "pass": true
+      },
+      "consoleErrors": {
+        "limit": "=0",
+        "actual": 0,
+        "pass": true
+      },
+      "certification": "REFUSED \u2014 machine contended (load1 10.31->10.67, mid-run max 10.71, foreign headless-GPU procs 3, interactive-browser GPU cpu 181.6% (limit 15), on 18 cores, load limit 9); re-run quiet"
+    },
+    "ratchet": {
+      "trianglesMedian": {
+        "target": 6000000,
+        "actual": 6665805,
+        "met": false
+      }
+    }
+  },
+  "postLOD_dsf2": {
+    "date": "2026-07-29T06:15:27.556Z",
+    "map": "verdant",
+    "roster": "pinned:kv2,jagdtiger,tiger2,object279,is7,t30,t95",
+    "viewport": {
+      "width": 1920,
+      "height": 1080,
+      "deviceScaleFactor": 2
+    },
+    "sampleSeconds": 20,
+    "frames": 1192,
+    "loadToReadyMs": 7887,
+    "fps": {
+      "median": 62.9,
+      "p5": 30.5,
+      "p1": 28,
+      "mean": 185.9
+    },
+    "frameMs": {
+      "median": 15.9,
+      "p95": 32.8,
+      "p99": 35.7
+    },
+    "drawCalls": {
+      "median": 387,
+      "max": 457
+    },
+    "triangles": {
+      "median": 6653809,
+      "max": 7778471
+    },
+    "rendererInfo": {
+      "geometries": 481,
+      "textures": 192,
+      "programs": 261
+    },
+    "heap": {
+      "startMB": 499.9,
+      "endMB": 546.9,
+      "growthMBperS": 2.35,
+      "floorGrowthMBperS": 1.11,
+      "retainedStartMB": 491.3,
+      "retainedEndMB": 494.3,
+      "retainedGrowthMBperS": 0.15
+    },
+    "gpuTextureEstimate": {
+      "sceneTextureMB": 389.5,
+      "shadowRtMB": 160,
+      "uniqueTextures": 135
+    },
+    "consoleErrors": [],
+    "machine": {
+      "cores": 18,
+      "load1Start": 8.33,
+      "load1End": 10.62,
+      "load1Max": 10.62,
+      "foreignHeadlessMax": 6,
+      "foreignGpuCpuMax": 179.2,
+      "contended": true
+    },
+    "budget": {
+      "pass": false,
+      "fpsMedian": {
+        "limit": ">=60",
+        "actual": 62.9,
+        "pass": true
+      },
+      "fpsP5": {
+        "limit": ">=45",
+        "actual": 30.5,
+        "pass": false
+      },
+      "frameMsP99": {
+        "limit": "<=25",
+        "actual": 35.7,
+        "pass": false
+      },
+      "drawCallsWorstFrame": {
+        "limit": "<=900",
+        "actual": 457,
+        "pass": true
+      },
+      "trianglesMedian": {
+        "limit": "<=7000000",
+        "actual": 6653809,
+        "pass": true
+      },
+      "loadToReady": {
+        "limit": "<=8000",
+        "actual": 7887,
+        "pass": true
+      },
+      "sceneTextureMB": {
+        "limit": "<=512 (frozen; holdable via parked-pool visual eviction)",
+        "actual": 389.5,
+        "pass": true
+      },
+      "heapStableMBperS": {
+        "limit": "<=2",
+        "actual": 0.15,
+        "pass": true
+      },
+      "consoleErrors": {
+        "limit": "=0",
+        "actual": 0,
+        "pass": true
+      },
+      "certification": "REFUSED \u2014 machine contended (load1 8.33->10.62, mid-run max 10.62, foreign headless-GPU procs 6, interactive-browser GPU cpu 179.2% (limit 15), on 18 cores, load limit 9); re-run quiet"
+    },
+    "ratchet": {
+      "trianglesMedian": {
+        "target": 6000000,
+        "actual": 6653809,
+        "met": false
+      }
+    }
+  },
+  "crossMap": {
+    "note": "carryover-from-r3 \u00a77 ratchet-flip evidence: 60 s probes, dsf1, pinned roster, working-tree snapshot + grassLOD patch. Triangle medians (contention-independent): verdant 6.67M (20 s row above; the WORST map), desert 3.73M, winter 4.80M, urban see below. All four under the FROZEN 7.0M gate; verdant alone exceeds the 6.0M ratchet target, so the ratchet stays a warning per the frozen rules.",
+    "desert": {
+      "date": "2026-07-29T06:17:27.385Z",
+      "map": "desert",
+      "roster": "pinned:kv2,jagdtiger,tiger2,object279,is7,t30,t95",
+      "viewport": {
+        "width": 1920,
+        "height": 1080,
+        "deviceScaleFactor": 1
+      },
+      "sampleSeconds": 60,
+      "frames": 4554,
+      "loadToReadyMs": 9847,
+      "fps": {
+        "median": 75.8,
+        "p5": 61.7,
+        "p1": 32.6,
+        "mean": 107.6
+      },
+      "frameMs": {
+        "median": 13.2,
+        "p95": 16.2,
+        "p99": 30.7
+      },
+      "drawCalls": {
+        "median": 366,
+        "max": 422
+      },
+      "triangles": {
+        "median": 3725772,
+        "max": 4421609
+      },
+      "rendererInfo": {
+        "geometries": 611,
+        "textures": 216,
+        "programs": 305
+      },
+      "heap": {
+        "startMB": 620.5,
+        "endMB": 641.8,
+        "growthMBperS": 0.36,
+        "floorGrowthMBperS": 0.18,
+        "retainedStartMB": 613.3,
+        "retainedEndMB": 616.2,
+        "retainedGrowthMBperS": 0.05
+      },
+      "gpuTextureEstimate": {
+        "sceneTextureMB": 432.7,
+        "shadowRtMB": 160,
+        "uniqueTextures": 162
+      },
+      "consoleErrors": [],
+      "machine": {
+        "cores": 18,
+        "load1Start": 10.53,
+        "load1End": 8.27,
+        "load1Max": 11.51,
+        "foreignHeadlessMax": 6,
+        "foreignGpuCpuMax": 157.8,
+        "contended": true
+      },
+      "budget": {
+        "pass": false,
+        "fpsMedian": {
+          "limit": ">=60",
+          "actual": 75.8,
+          "pass": true
+        },
+        "fpsP5": {
+          "limit": ">=45",
+          "actual": 61.7,
+          "pass": true
+        },
+        "frameMsP99": {
+          "limit": "<=25",
+          "actual": 30.7,
+          "pass": false
+        },
+        "drawCallsWorstFrame": {
+          "limit": "<=900",
+          "actual": 422,
+          "pass": true
+        },
+        "trianglesMedian": {
+          "limit": "<=7000000",
+          "actual": 3725772,
+          "pass": true
+        },
+        "loadToReady": {
+          "limit": "<=8000",
+          "actual": 9847,
+          "pass": false
+        },
+        "sceneTextureMB": {
+          "limit": "<=512 (frozen; holdable via parked-pool visual eviction)",
+          "actual": 432.7,
+          "pass": true
+        },
+        "heapStableMBperS": {
+          "limit": "<=1",
+          "actual": 0.05,
+          "pass": true
+        },
+        "consoleErrors": {
+          "limit": "=0",
+          "actual": 0,
+          "pass": true
+        },
+        "certification": "REFUSED \u2014 machine contended (load1 10.53->8.27, mid-run max 11.51, foreign headless-GPU procs 6, interactive-browser GPU cpu 157.8% (limit 15), on 18 cores, load limit 9); re-run quiet"
+      },
+      "ratchet": {
+        "trianglesMedian": {
+          "target": 6000000,
+          "actual": 3725772,
+          "met": true
+        }
+      }
+    },
+    "winter": {
+      "date": "2026-07-29T06:21:12.049Z",
+      "map": "winter",
+      "roster": "pinned:kv2,jagdtiger,tiger2,object279,is7,t30,t95",
+      "viewport": {
+        "width": 1920,
+        "height": 1080,
+        "deviceScaleFactor": 1
+      },
+      "sampleSeconds": 60,
+      "frames": 4702,
+      "loadToReadyMs": 7753,
+      "fps": {
+        "median": 79.4,
+        "p5": 61.7,
+        "p1": 32.1,
+        "mean": 106.4
+      },
+      "frameMs": {
+        "median": 12.6,
+        "p95": 16.2,
+        "p99": 31.2
+      },
+      "drawCalls": {
+        "median": 453,
+        "max": 537
+      },
+      "triangles": {
+        "median": 4800337,
+        "max": 6432030
+      },
+      "rendererInfo": {
+        "geometries": 625,
+        "textures": 216,
+        "programs": 322
+      },
+      "heap": {
+        "startMB": 593.2,
+        "endMB": 615,
+        "growthMBperS": 0.36,
+        "floorGrowthMBperS": 0.14,
+        "retainedStartMB": 587.6,
+        "retainedEndMB": 589.3,
+        "retainedGrowthMBperS": 0.03
+      },
+      "gpuTextureEstimate": {
+        "sceneTextureMB": 432.3,
+        "shadowRtMB": 160,
+        "uniqueTextures": 161
+      },
+      "consoleErrors": [],
+      "machine": {
+        "cores": 18,
+        "load1Start": 10.44,
+        "load1End": 10.89,
+        "load1Max": 11.14,
+        "foreignHeadlessMax": 4,
+        "foreignGpuCpuMax": 152.9,
+        "contended": true
+      },
+      "budget": {
+        "pass": false,
+        "fpsMedian": {
+          "limit": ">=60",
+          "actual": 79.4,
+          "pass": true
+        },
+        "fpsP5": {
+          "limit": ">=45",
+          "actual": 61.7,
+          "pass": true
+        },
+        "frameMsP99": {
+          "limit": "<=25",
+          "actual": 31.2,
+          "pass": false
+        },
+        "drawCallsWorstFrame": {
+          "limit": "<=900",
+          "actual": 537,
+          "pass": true
+        },
+        "trianglesMedian": {
+          "limit": "<=7000000",
+          "actual": 4800337,
+          "pass": true
+        },
+        "loadToReady": {
+          "limit": "<=8000",
+          "actual": 7753,
+          "pass": true
+        },
+        "sceneTextureMB": {
+          "limit": "<=512 (frozen; holdable via parked-pool visual eviction)",
+          "actual": 432.3,
+          "pass": true
+        },
+        "heapStableMBperS": {
+          "limit": "<=1",
+          "actual": 0.03,
+          "pass": true
+        },
+        "consoleErrors": {
+          "limit": "=0",
+          "actual": 0,
+          "pass": true
+        },
+        "certification": "REFUSED \u2014 machine contended (load1 10.44->10.89, mid-run max 11.14, foreign headless-GPU procs 4, interactive-browser GPU cpu 152.9% (limit 15), on 18 cores, load limit 9); re-run quiet"
+      },
+      "ratchet": {
+        "trianglesMedian": {
+          "target": 6000000,
+          "actual": 4800337,
+          "met": true
+        }
+      }
+    },
+    "urban": {
+      "date": "2026-07-29T06:23:41.064Z",
+      "map": "urban",
+      "roster": "pinned:kv2,jagdtiger,tiger2,object279,is7,t30,t95",
+      "viewport": {
+        "width": 1920,
+        "height": 1080,
+        "deviceScaleFactor": 1
+      },
+      "sampleSeconds": 60,
+      "frames": 2885,
+      "loadToReadyMs": 8246,
+      "fps": {
+        "median": 46.9,
+        "p5": 29.5,
+        "p1": 21.7,
+        "mean": 151.6
+      },
+      "frameMs": {
+        "median": 21.3,
+        "p95": 33.9,
+        "p99": 46
+      },
+      "drawCalls": {
+        "median": 436,
+        "max": 496
+      },
+      "triangles": {
+        "median": 5991755,
+        "max": 7067516
+      },
+      "rendererInfo": {
+        "geometries": 605,
+        "textures": 215,
+        "programs": 311
+      },
+      "heap": {
+        "startMB": 735.7,
+        "endMB": 751.6,
+        "growthMBperS": 0.27,
+        "floorGrowthMBperS": 0.2,
+        "retainedStartMB": 729.5,
+        "retainedEndMB": 732,
+        "retainedGrowthMBperS": 0.04
+      },
+      "gpuTextureEstimate": {
+        "sceneTextureMB": 433,
+        "shadowRtMB": 160,
+        "uniqueTextures": 160
+      },
+      "consoleErrors": [],
+      "machine": {
+        "cores": 18,
+        "load1Start": 11.63,
+        "load1End": 11.4,
+        "load1Max": 11.63,
+        "foreignHeadlessMax": 5,
+        "foreignGpuCpuMax": 257.4,
+        "contended": true
+      },
+      "budget": {
+        "pass": false,
+        "fpsMedian": {
+          "limit": ">=60",
+          "actual": 46.9,
+          "pass": false
+        },
+        "fpsP5": {
+          "limit": ">=45",
+          "actual": 29.5,
+          "pass": false
+        },
+        "frameMsP99": {
+          "limit": "<=25",
+          "actual": 46,
+          "pass": false
+        },
+        "drawCallsWorstFrame": {
+          "limit": "<=900",
+          "actual": 496,
+          "pass": true
+        },
+        "trianglesMedian": {
+          "limit": "<=7000000",
+          "actual": 5991755,
+          "pass": true
+        },
+        "loadToReady": {
+          "limit": "<=8000",
+          "actual": 8246,
+          "pass": false
+        },
+        "sceneTextureMB": {
+          "limit": "<=512 (frozen; holdable via parked-pool visual eviction)",
+          "actual": 433,
+          "pass": true
+        },
+        "heapStableMBperS": {
+          "limit": "<=1",
+          "actual": 0.04,
+          "pass": true
+        },
+        "consoleErrors": {
+          "limit": "=0",
+          "actual": 0,
+          "pass": true
+        },
+        "certification": "REFUSED \u2014 machine contended (load1 11.63->11.4, mid-run max 11.63, foreign headless-GPU procs 5, interactive-browser GPU cpu 257.4% (limit 15), on 18 cores, load limit 9); re-run quiet"
+      },
+      "ratchet": {
+        "trianglesMedian": {
+          "target": 6000000,
+          "actual": 5991755,
+          "met": true
+        }
+      }
+    }
+  },
+  "dynresGovernorVerification": {
+    "dsf2_contended": "dynScale series 1.0 -> 0.75 floor over ~15 s of sustained >18.5 ms frames, zero console errors (tools/tmp-pb-r5-dynres.mjs)",
+    "dsf1": "dynScale pinned at 1.0 for the whole run (retina fence) \u2014 gate path bit-identical, zero console errors"
+  }
+}

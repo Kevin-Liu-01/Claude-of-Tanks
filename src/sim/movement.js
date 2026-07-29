@@ -170,6 +170,35 @@ const FAN_YIELD_OPEN_MPS = 0.35;
 // only engages on extreme single-tip cantilevers (plunging off a crest into a
 // trough), where a large, fast rotation IS the physical motion.
 const SETTLE_CLAMP_RAD = 0.09;
+// r5 PERCH boost (selftest egg-crate levitation, round critique): when the
+// settle asks for MORE rotation than the clamp allows, the hull is balancing
+// on a single line-END contact — a knife-crest perch. Diagnosed on the failing
+// selftest tick: front-left line end in true contact (+3.3 cm = margins) while
+// every other contact sample hung ≥ 7 cm, the raw settle ratio ~0.33 rad vs
+// the 0.09 clamp, and the 3 Hz attitude spring lagging the (clamped) target.
+// Raising the clamp alone over-rotates the λ8/A1.5 sine case airborne — the
+// physical fix is RATE, not authority: a hull tipping about one end carries
+// the full gravitational moment, so the PITCH spring stiffens (ω up to
+// ×(1+PERCH_W_BOOST)) and goes critically damped (ζ→1, ground reaction is
+// dissipative — tip onto the second contact and STOP, no underdamped
+// bounce-back float) while the perch persists. state._perch is the smoothed
+// 0..1 factor: raw settle excess over the clamp, instant attack, ~0.3 s
+// release. Exactly zero on ordinary ground (raw settle inside the clamp), so
+// smooth-map feel is untouched.
+const PERCH_W_BOOST = 1.0;       // pitch spring ω multiplier at full perch (×2)
+const PERCH_RELEASE_S = 0.3;     // s for the perch factor to decay after touchdown
+// The dominant float term during a perch is NOT the main spring but the susp
+// ROCK MIRROR: its terrain-delta target pins at the ±SUSP_P_CLAMP and the
+// ×SUSP_VIS_P render amplification turns that into up to ~10° of COSMETIC
+// nose-dive beyond the two-contact pose (diagnosed at the failing selftest
+// tick: spring −0.084 rad vs susp contribution −0.136 rad). The solve then
+// must float the whole patch to keep the dove pose clear. Physically a hull
+// hanging off one line end has NO loaded bogies to chatter — the cosmetic
+// layer yields to the rigid-body tip: the terrain-delta target fades with
+// perch and the stored displacement bleeds off at PERCH_SUSP_BLEED (τ ≈ 80 ms
+// at full perch). tankFactory renders state._susp directly (sim is the single
+// authority since r5), so the gate reaches the screen with zero divergence.
+const PERCH_SUSP_BLEED = 12;     // 1/s displacement bleed rate at full perch
 // Contact margin: the solved plane rides this far above the highest contact
 // sample. Covers (a) the sub-sample terrain bulge between support points and
 // (b) the bounded phase error between this sim-tick susp mirror and the
@@ -255,6 +284,11 @@ const MUZZLE_CLEARANCE_M = 0.15; // gun-terrain clamp: min muzzle height above g
 // (hud blockedDistM), so no information is lost. Far asks (≥ the distance
 // gate) keep the label: pinning there means real hull-down geometry.
 const GUN_LIMIT_LABEL_DIST_M = 120; // terrain-floor pins label only past this
+// r5 (round critique): even the far-ask label re-fired on every crest while
+// rolling cross-country. The LABEL (not the tint) requires this much
+// CONTINUOUS pin time — transient hull-pitch pins at speed never reach it,
+// a deliberate hull-down lay does.
+const GUN_LIMIT_LABEL_DWELL_S = 0.5;
 const SPRING_OMEGA = 2 * Math.PI * 3; // hull attitude spring natural frequency (rad/s)
 const SPRING_ZETA = 0.6;         // damping ratio
 const K_INERTIA = 0.006;         // rad of pitch target per m/s² of longitudinal accel
@@ -449,11 +483,13 @@ export function createTankState(spec, pos, yaw) {
     _spool: 0,                     // engine torque spool 0..1 (SPOOL_S ramp)
     _terr: { pitch: 0, roll: 0 },  // last terrain plane fit (spring target source)
     _fanYield: 0,                  // slew-limited wheel-line yield (support solve)
+    _perch: 0,                     // 0..1 single-end perch factor (spring boost)
+    _gunLimitHoldS: 0,             // continuous-pin dwell for the GUN LIMIT label
     _swayEst: 0,                   // predicted visual turn-lean sway (rad)
     _susp: { p: 0, r: 0, pv: 0, rv: 0 }, // mirror of the visual susp rock layer
     _flinch: { p: 0, r: 0, pv: 0, rv: 0 }, // hit-flinch rock (impulses fed by the visual)
     _sup: {                        // static-pose support cache (skip resampling)
-      x: NaN, z: NaN, yaw: 0, pitch: 0, roll: 0, y: pos.y,
+      x: NaN, z: NaN, yaw: 0, pitch: 0, roll: 0, y: pos.y, rigid: false,
     },
   };
 }
@@ -466,6 +502,9 @@ export function createTankState(spec, pos, yaw) {
  * Mutates `entity.state` in place; touches nothing else.
  *
  * @param {object} entity - `{ spec, state, input, combat }` (combat may be null ⇒ healthy).
+ *   Optional `entity.rigidGear === true` (stamped by state.js when the visual
+ *   is GLB-swapped, i.e. has NO per-wheel conform layer) hard-clamps every
+ *   support fan line — see the FAN_YIELD_* / r5 hard-gate note in the solve.
  * @param {object} heightField - `{ getHeightAt(x,z), getNormalAt(x,z), getGroundType(x,z) }`.
  * @param {number} dt - Timestep in seconds (SIM_DT in-game).
  * @param {?function} collide - Optional `(pos, radiusM, outPush) => boolean` circle
@@ -742,10 +781,17 @@ export function updateTank(entity, heightField, dt, collide = null) {
   const susp = state._susp;
 
   // ---- hull attitude spring: terrain target + inertial pitch (nose dip/lift) ----
+  // PERCH boost (see the constants): balancing on a single line-end contact
+  // stiffens/critically-damps the PITCH axis so the hull tips onto its second
+  // contact at gravity rate instead of hanging off one end for several ticks.
+  state._perch = Math.max(0, (state._perch || 0) - dt / PERCH_RELEASE_S);
+  const perch = state._perch;
   const targetPitch = state._terr.pitch + inertialPitch;
   const targetRoll = state._terr.roll;
-  spr.pitchV += (SPRING_OMEGA * SPRING_OMEGA * (targetPitch - spr.pitch) -
-                 2 * SPRING_ZETA * SPRING_OMEGA * spr.pitchV) * dt;
+  const wP = SPRING_OMEGA * (1 + PERCH_W_BOOST * perch);
+  const zP = SPRING_ZETA + (1 - SPRING_ZETA) * perch;
+  spr.pitchV += (wP * wP * (targetPitch - spr.pitch) -
+                 2 * zP * wP * spr.pitchV) * dt;
   spr.pitch += spr.pitchV * dt;
   spr.rollV += (SPRING_OMEGA * SPRING_OMEGA * (targetRoll - spr.roll) -
                 2 * SPRING_ZETA * SPRING_OMEGA * spr.rollV) * dt;
@@ -776,13 +822,22 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // layer's roll delta now measures the true conformance error instead of
     // fighting the main spring on side slopes.
     const terrR2 = Math.atan2((hFR + hRR - hFL - hRL) * 0.5, 2 * hw2);
-    const kf = Math.min(1, Math.abs(state.speed) / SUSP_K_SPEED) * SUSP_K_GAIN;
+    // Perch gate (see PERCH_SUSP_BLEED): a hull carried by one line end has no
+    // loaded bogies — fade the terrain-delta target and bleed the stored
+    // displacement so the ×SUSP_VIS amplification cannot hold the rendered
+    // pose dived past the two-contact pose (the r5 egg-crate levitation).
+    const kf = Math.min(1, Math.abs(state.speed) / SUSP_K_SPEED) * SUSP_K_GAIN * (1 - perch);
     pT += clamp((terrP2 - state.visualPitch) * kf, -SUSP_P_CLAMP, SUSP_P_CLAMP);
     rT += clamp((terrR2 - state.visualRoll) * kf, -SUSP_R_CLAMP, SUSP_R_CLAMP);
     susp.pv += (SUSP_W * SUSP_W * (pT - susp.p) - 2 * SUSP_Z * SUSP_W * susp.pv) * dt;
     susp.p += susp.pv * dt;
     susp.rv += (SUSP_W * SUSP_W * (rT - susp.r) - 2 * SUSP_Z * SUSP_W * susp.rv) * dt;
     susp.r += susp.rv * dt;
+    if (perch > 0) {
+      const bleed = Math.exp(-dt * perch * PERCH_SUSP_BLEED);
+      susp.p *= bleed; susp.pv *= bleed;
+      susp.r *= bleed; susp.rv *= bleed;
+    }
   }
 
   // ---- support solve: no contact sample below ground at the rendered pose ----
@@ -798,11 +853,16 @@ export function updateTank(entity, heightField, dt, collide = null) {
   const pitchEff = spr.pitch + susp.p * SUSP_VIS_P - flP;
   const rollEff = spr.roll + susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS + flR;
   // Static-pose cache: a parked, settled tank re-uses the solved height instead
-  // of re-sampling the (static) heightfield every tick.
+  // of re-sampling the (static) heightfield every tick. The rigid-gear flag is
+  // part of the key: a GLB swap landing on a PARKED tank (deferred stream-in)
+  // must re-solve immediately with the yield zeroed, not sit on a stale
+  // yielded height with rigid wheels in the dirt.
+  const rigidGear = entity.rigidGear === true;
   const supFresh =
     Math.abs(state.pos.x - sup.x) < 0.004 && Math.abs(state.pos.z - sup.z) < 0.004 &&
     Math.abs(wrapAngle(state.yaw - sup.yaw)) < 0.0012 &&
-    Math.abs(pitchEff - sup.pitch) < 0.0012 && Math.abs(rollEff - sup.roll) < 0.0012;
+    Math.abs(pitchEff - sup.pitch) < 0.0012 && Math.abs(rollEff - sup.roll) < 0.0012 &&
+    sup.rigid === rigidGear;
   if (!supFresh) {
     const sl = SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
     const nLine = Math.min(SUPPORT_MAX_N, Math.max(5, Math.ceil((2 * sl) / SUPPORT_SPACING_M) + 1));
@@ -858,13 +918,19 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // no conform layer under it.
     let fanMax = -Infinity;
     let bellyMax = -Infinity;
+    // Fan sampling stride: the 2× coarse spacing was a perf trade justified
+    // when the fan lines were SOFT supports (conform absorbs sub-sample
+    // bulges). For rigid gear they are hard constraints — sample at full
+    // resolution (r5 drive gate: a 4 cm terrain bulge between 0.66 m-spaced
+    // fan samples put a GLB track vertex −3.1 cm under at 27 km/h).
+    const fanStride = rigidGear ? 1 : 2;
     for (const ln of SUPPORT_FAN) {
       for (let side = -1; side <= 1; side += 2) {
         const x = side * hw * ln.f;
         const x1 = x * cr0 - ln.yOff * sr0;
         const y1 = x * sr0 + ln.yOff * cr0;
         const lift = (x * sinR + ln.yOff * cr0) * cosP;
-        for (let k = 0; k < nLine; k += 2) {
+        for (let k = 0; k < nLine; k += fanStride) {
           const z = k === nLine - 2 ? sl : -sl + k * step; // keep the far end
           const z2 = y1 * sa0 + z * ca0;
           const h = heightField.getHeightAt(px1 + x1 * cb + z2 * sb, pz1 - x1 * sb + z2 * cb);
@@ -885,8 +951,25 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // authority as the patch roughens (their residual is absorbed by the
     // renderer's per-wheel conform + articulated track band), and the belly
     // guard stays absolute.
+    // r5 TERRAIN-CONTACT HARD GATE (round critique CRITICAL): the yield's
+    // whole premise is that tankFactory's per-wheel conform layer (1.35×
+    // gain, +0.35 m up-travel) absorbs the terrain left proud under the
+    // wheel lines. GLB-swapped visuals (modelLoader.applySwap — every modern
+    // MBT incl. the default player M1A2) HIDE the procedural running gear
+    // and render rigid GLB wheels with NO conform, so yielded crests cut
+    // straight through them (drive gate: −9.2 cm at 28 km/h, worst vertex at
+    // hull-contact height; the procedural Tiger I on the same corridor never
+    // exceeded −2.8 cm). state.js stamps entity.rigidGear once it sees the
+    // swap land (hullG.userData.__glbSwapped); rigid gear takes the FULL
+    // hard clamp on every fan/belly line — the yield want collapses to 0 and
+    // the instant-closing branch below zeroes any previously-open yield on
+    // the very tick the swap is detected. Entities without a visual (selftest
+    // fixtures, headless sim, pre-build pool entries) keep procedural
+    // semantics — nothing renders for them until a visual exists.
     const rough = outerMax - sumD / nD;
-    const yieldWant = clamp(rough - FAN_YIELD_FREE_M, 0, FAN_YIELD_MAX_M);
+    const yieldWant = rigidGear
+      ? 0
+      : clamp(rough - FAN_YIELD_FREE_M, 0, FAN_YIELD_MAX_M);
     const yieldPrev = state._fanYield || 0;
     const fanYield = yieldWant > yieldPrev
       ? Math.min(yieldWant, yieldPrev + FAN_YIELD_OPEN_MPS * dt)
@@ -917,21 +1000,39 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // exactly the rotation that brings both onto the plane. Zero on planar
     // ground (uniform deficits ⇒ ΔP ≈ 0), clamped so smooth terrain keeps the
     // pure fit; the attitude spring provides the damping/rate limit.
+    let tipRaw = 0;
     if (argZ > zHalf && rearMax > -Infinity) {
-      state._terr.pitch += clamp((outerMax - rearMax) / (argZ - rearZ),
-        -SETTLE_CLAMP_RAD, SETTLE_CLAMP_RAD);
+      tipRaw = (outerMax - rearMax) / (argZ - rearZ);
     } else if (argZ < -zHalf && frontMax > -Infinity) {
-      state._terr.pitch += clamp((outerMax - frontMax) / (argZ - frontZ),
-        -SETTLE_CLAMP_RAD, SETTLE_CLAMP_RAD);
+      tipRaw = (outerMax - frontMax) / (argZ - frontZ);
     }
+    state._terr.pitch += clamp(tipRaw, -SETTLE_CLAMP_RAD, SETTLE_CLAMP_RAD);
+    // PERCH factor (see PERCH_W_BOOST): settle demand past the clamp means the
+    // deepest contact is carrying the hull alone off one line end — feed the
+    // smoothed 0..1 excess to the pitch spring boost. Instant attack (the
+    // decay above already ran this tick), PERCH_RELEASE_S release.
+    const perchWant = clamp(Math.abs(tipRaw) / SETTLE_CLAMP_RAD - 1, 0, 1);
+    if (perchWant > state._perch) state._perch = perchWant;
     // Attitude-scaled margin (see SUPPORT_MARGIN_ATT_M): worst-case combined
     // pitch+roll lifts the plane an extra centimeter so the track link pads
     // (1–2 cm below the contact plane) can never approach the 3 cm gate.
-    supportY += SUPPORT_MARGIN_M + SUPPORT_MARGIN_ATT_M *
+    // During a PERCH the att share fades (× 1−0.7·perch): the hull hangs off
+    // a single line END with every other pad meters in the air — the pad-hang
+    // insurance protects nothing there while its full centimeter shows up
+    // directly as patch float (the r5 egg-crate levitation was margin 3.3 cm
+    // + the dense scan's endpoint blind spot). The tip contact itself keeps
+    // the full SUPPORT_MARGIN_M base, and the 30% att floor still covers the
+    // near-end pads through the release tail. RIGID gear keeps the FULL att
+    // margin: GLB tanks have no conform to absorb fast-rotation transients
+    // and no levitation gate riding on the margin (the selftest fixture is
+    // procedural), so headroom beats float there.
+    const perchCut = rigidGear ? 0 : 0.7 * state._perch;
+    supportY += SUPPORT_MARGIN_M + SUPPORT_MARGIN_ATT_M * (1 - perchCut) *
       Math.min(1, (Math.abs(pitchEff) + Math.abs(rollEff)) / SUPPORT_MARGIN_ATT_RAD);
     state.pos.y = supportY;
     sup.x = state.pos.x; sup.z = state.pos.z; sup.yaw = state.yaw;
     sup.pitch = pitchEff; sup.roll = rollEff; sup.y = supportY;
+    sup.rigid = rigidGear;
   } else {
     state.pos.y = sup.y;
   }
@@ -1008,8 +1109,27 @@ export function updateTank(entity, heightField, dt, collide = null) {
       approach(state.gunPitch, clamp(desiredGun, loEff, hi), spec.gunPitchDegS * DEG2RAD * dt),
       lo, hi,
     );
-    state.gunLimitSpec = specPinned ||
-      (state.atGunLimit && horiz >= GUN_LIMIT_LABEL_DIST_M);
+    // Label DWELL + attitude-origin gate (r5 round critique MINOR): the label
+    // fired persistently while simply driving rolling terrain (3 of 6 drive
+    // captures) — WoT communicates transient depression pins with reticle
+    // color only. Two filters on the LABEL (the red tint stays tick-instant):
+    //  1. ATTITUDE-ORIGIN pins go label-silent at speed: if the ask would be
+    //     INSIDE the gun's own arc with the hull level (wantPitchWorld within
+    //     [lo, hi]) the pin exists only because the hull is momentarily
+    //     pitched/rolled — on a crest transit above ~15 km/h that is terrain
+    //     noise, not an aiming problem the player can fix. Parked or creeping
+    //     hull-down lays (the deliberate case) keep the label.
+    //  2. DWELL: any labeled state needs GUN_LIMIT_LABEL_DWELL_S of
+    //     CONTINUOUS pin first, clearing instantly on release — one-crest
+    //     flickers never reach the HUD.
+    const attitudePin =
+      (desiredGun < lo - 1e-4 || desiredGun > hi + 1e-4) &&
+      wantPitchWorld >= lo - 1e-4 && wantPitchWorld <= hi + 1e-4;
+    const fastTransient = attitudePin && Math.abs(state.speed) * 3.6 > 15;
+    const labelWant = !fastTransient &&
+      (specPinned || (state.atGunLimit && horiz >= GUN_LIMIT_LABEL_DIST_M));
+    state._gunLimitHoldS = labelWant ? (state._gunLimitHoldS || 0) + dt : 0;
+    state.gunLimitSpec = state._gunLimitHoldS >= GUN_LIMIT_LABEL_DWELL_S;
   }
   state.turretYawRate = wrapAngle(state.turretYaw - prevTurretYaw) / dt;
 

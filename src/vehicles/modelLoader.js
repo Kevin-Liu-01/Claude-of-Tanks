@@ -1007,10 +1007,27 @@ function paintUntextured(root, spec, normScale, cfg = {}) {
   // meshes are handled per slot — the Quaternius/konserwa assets ship
   // multi-primitive meshes that the old single-material pass skipped
   // entirely, which is how the banana-cream factory palette survived r6.
+  // tank_models r5 ("ARAT tiles read painted-flat: the camo pattern paints
+  // straight across tile faces and gaps"): TUSK ERA tiles keep their own
+  // FLAT desert-tan matte finish — real ARAT ships in monotone tan and is
+  // bolted over the camo, so the hull pattern must STOP at the skirt plane.
+  let tuskTileMat = null;
+  const ensureTuskTileMat = () => {
+    if (!tuskTileMat) {
+      tuskTileMat = new THREE.MeshStandardMaterial({
+        name: 'AddOnAratTile_addon', color: 0x8a7f5f,
+        roughness: 0.94, metalness: 0.05,
+        roughnessMap: getSharedRoughnessTexture(spec),
+        vertexColors: true, envMapIntensity: 0.2,
+      });
+    }
+    return tuskTileMat;
+  };
   const replacement = (o, m) => {
     if (!m || !m.color) return null;
     if (m.map && !isPalette(m) && !strip) return null;   // real texture: composite path
     const path = `${nodePath(o)}/${m.name || ''}`;
+    if (spec.id === 'm1a2_tusk' && /ARAT/i.test(path)) return ensureTuskTileMat();
     if (TRACK_RE.test(path)) return getCommunityGearMaterials(spec).track;
     if (WHEEL_RE.test(path)) return getCommunityGearMaterials(spec).wheel;
     if (m.map && !isPalette(m) && strip) {
@@ -1147,15 +1164,46 @@ function paintGlbGunTube(gun, spec) {
  */
 function applyAbramsVariantFixes(scene, spec) {
   const isTusk = spec.id === 'm1a2_tusk';
+  const aratRows = { [-1]: [], [1]: [] };
   scene.traverse((o) => {
     const n = o.name || '';
-    if (isTusk && /^ARAT1/.test(n)) o.scale.set(0.16, 1.30, 1.52);
-    else if (isTusk && /^ARAT2/.test(n)) o.scale.set(0.20, 1.20, 1.60);
+    if (isTusk && /^ARAT1/.test(n)) {
+      o.scale.set(0.16, 1.30, 1.52);
+      aratRows[o.position.x < 0 ? -1 : 1].push(o.position);
+    } else if (isTusk && /^ARAT2/.test(n)) o.scale.set(0.20, 1.20, 1.60);
     else if (isTusk && /^Slat(Bar|Rail)/.test(n)) o.position.z += 0.44;
     else if (isTusk && /^SlatMount/.test(n)) o.position.z += 0.44;
     else if (/^MRSCollar/.test(n)) o.scale.set(0.74, 1, 0.74);
     else if (/^BoreEvac/.test(n)) o.scale.set(0.86, 1, 0.86);
   });
+  // tank_models r5 ("tile rows meet the skirt with no mounting-rail shadow
+  // line"): a dark ARAT mounting rail runs behind each tile row — sized and
+  // placed from the tiles' own positions (raw z-up frame: y = along hull),
+  // so it lands correctly regardless of the asset's unit scale.
+  if (isTusk) {
+    const railMat = new THREE.MeshStandardMaterial({
+      name: 'AddOnAratRail_addon', color: 0x24231f, roughness: 0.95, metalness: 0.08,
+    });
+    for (const s of [-1, 1]) {
+      const pts = aratRows[s];
+      if (pts.length < 4) continue;
+      let y0 = Infinity, y1 = -Infinity, zSum = 0, xOut = 0;
+      for (const p of pts) {
+        y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+        zSum += p.z; xOut = Math.max(xOut, Math.abs(p.x));
+      }
+      const zMid = zSum / pts.length;
+      const len = (y1 - y0) * 1.06;
+      const th = len * 0.012;
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(th * 1.6, len, th * 3.2), railMat);
+      rail.position.set(s * (xOut - th * 0.8), (y0 + y1) / 2, zMid + len * 0.055);
+      rail.castShadow = rail.receiveShadow = true;
+      scene.add(rail);
+      const rail2 = rail.clone();
+      rail2.position.z = zMid - len * 0.055;
+      scene.add(rail2);
+    }
+  }
 }
 
 /**
@@ -1344,6 +1392,56 @@ function applyCommunityFixes(scene, spec, gun) {
         turretP.add(m);
       }
     }
+  } else if (spec.id === 't90m') {
+    // tank_models r5 (closeup critique: "no material separation between
+    // paint, rubber and steel" — the camo composite painted the minehffd
+    // GLB's wheels/tracks the same flat green as the armor): the asset
+    // ships clean material names — route 'Wheels' to the scheme-painted
+    // wheel steel and 'Thread' (the track runs) to dark worn track steel,
+    // exactly the split the procedural fleet carries. 'AddOn' names opt
+    // them out of the downstream camo composite.
+    const gear = getCommunityGearMaterials(spec);
+    scene.traverse((o) => {
+      if (!o.isMesh || !o.material) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (let i = 0; i < mats.length; i++) {
+        const m = mats[i];
+        if (!m) continue;
+        const r = /^Thread/i.test(m.name || '') ? gear.track
+          : /^Wheels/i.test(m.name || '') ? gear.wheel : null;
+        if (!r) continue;
+        if (Array.isArray(o.material)) o.material[i] = r; else o.material = r;
+      }
+    });
+  } else if (spec.id === 't80u') {
+    // tank_models r5 ("hull, turret, kit, and most of the gear share a single
+    // tone ... split rubber tires / steel rims / track steel into distinct
+    // materials"): the asset's Object* node names never match the gear
+    // regexes, so the name-based split never fired. Split by WORLD position
+    // instead (runs post-normalization): everything in the wheel/track band
+    // below the skirt lip and outboard of the lower hull goes to dark worn
+    // track steel — wheels, track runs and sprockets separate from the
+    // camo-painted shell exactly like the procedural fleet.
+    const gear = getCommunityGearMaterials(spec);
+    const wv = new THREE.Vector3();
+    scene.updateMatrixWorld(true);
+    scene.traverse((o) => {
+      if (!o.isMesh || !o.geometry) return;
+      const m = Array.isArray(o.material) ? o.material[0] : o.material;
+      if (!m || !/AddOnCamoHull/.test(m.name || '')) return;
+      const pos = o.geometry.attributes.position;
+      if (!pos) return;
+      const bb = new THREE.Box3().setFromObject(o);
+      if (bb.min.y > 0.95) return;                 // turret/deck meshes: skip
+      const mask = new Uint8Array(pos.count);
+      let any = 0;
+      for (let i = 0; i < pos.count; i++) {
+        wv.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+        if (wv.y < 0.92 && Math.abs(wv.x) > 1.22) { mask[i] = 1; any++; }
+      }
+      if (!any) return;
+      splitTrianglesToGroups(o, (i) => !!mask[i], gear.track);
+    });
   } else if (spec.id === 'is7') {
     // tank_models r1 (critic: "IS-7 is one coat of waxy monochrome green
     // including its tracks and wheels"): the print asset fuses the whole
@@ -1699,19 +1797,43 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
   scene.position.z = -(hullBB.min.z + hullBB.max.z) / 2 * s;
   scene.updateMatrixWorld(true);
 
-  // tank_models r2 (critic minor: the buh Leopard 2A6's "L/55 should overhang
-  // dramatically" but reads closer to L/44): measure the barrel reach from the
-  // authored trunnion origin in the normalized frame and stretch the gun node
-  // along its bore when it lands short of the spec's 6.6 m Rh-120 L/55. The
-  // authored 'gun' node carries an identity rotation (offline probe), so its
-  // local z IS the bore axis after the yaw normalization above.
+  // tank_models r5 (critic MAJOR: "the signature L/55 renders with only ~1 m
+  // overhang ... it reads as an L/44; bore evacuator sits at ~40% instead of
+  // 60%"). The r2 attempt scaled gun.scale.z — but this asset's bore runs
+  // along the gun node's LOCAL +y (raw z-up frame under the Sketchfab -90°X
+  // wrapper; offline probe: gun mesh spans local y -0.34..5.72), so it only
+  // fattened the tube vertically. Rebuilt as a PIECEWISE bore-axis remap of
+  // the gun geometry itself: the section behind the evacuator stretches, the
+  // section ahead compresses, landing the muzzle at ~40% hull-length
+  // overhang with the evacuator at 60% of the new tube — the two L/55
+  // recognition cues (roster §8.1).
   if (spec.id === 'leo2a6' && gun) {
     const gb = bboxExcluding(gun, null);
     const go = new THREE.Vector3().setFromMatrixPosition(gun.matrixWorld);
-    const reach = gb.max.z - go.z;
-    const want = spec.armor.gunBarrel.lengthM;
-    if (reach > 2 && reach < want * 0.97) {
-      gun.scale.z *= want / reach;
+    const reach = gb.max.z - go.z;                 // world bore reach (yawed frame)
+    const wantMuzzleZ = spec.dims.hullLengthM / 2 + spec.dims.hullLengthM * 0.40;
+    const wantReach = wantMuzzleZ - go.z;
+    if (reach > 2 && wantReach > reach * 1.05) {
+      const k = wantReach / reach;                 // total length factor (local == world ratio)
+      gun.traverse((o) => {
+        if (!o.isMesh || !o.geometry || o.geometry.userData.__cotL55) return;
+        o.geometry.userData.__cotL55 = true;
+        const pos = o.geometry.attributes.position;
+        let maxY = 0;
+        for (let i = 0; i < pos.count; i++) maxY = Math.max(maxY, pos.getY(i));
+        const yEvac = maxY * 0.40;                 // measured evacuator station
+        const yEvacNew = maxY * k * 0.60;          // target: 60% of the new tube
+        const a = yEvacNew / Math.max(yEvac, 1e-3);
+        const b = (maxY * k - yEvacNew) / Math.max(maxY - yEvac, 1e-3);
+        for (let i = 0; i < pos.count; i++) {
+          const y = pos.getY(i);
+          if (y <= 0) continue;                    // mantlet/breech untouched
+          pos.setY(i, y <= yEvac ? y * a : yEvacNew + (y - yEvac) * b);
+        }
+        pos.needsUpdate = true;
+        o.geometry.computeBoundingBox();
+        o.geometry.computeBoundingSphere();
+      });
       scene.updateMatrixWorld(true);
     }
   }
