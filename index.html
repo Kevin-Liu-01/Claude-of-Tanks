@@ -5,14 +5,211 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Claude of Tanks</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎖️</text></svg>" />
+  <!-- BOOT SCREEN: the wordmark weights are on the critical paint path, so they
+       are preloaded ahead of the module graph (the splash markup below is inline
+       for exactly the same reason — first paint must not wait on /src/main.js). -->
+  <link rel="preload" href="/fonts/switzer/Switzer-Extrabold.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/switzer/SwitzerCondensed-Bold.woff2" as="font" type="font/woff2" crossorigin />
   <style>
-    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #05080b; }
     #app { width: 100%; height: 100%; }
     canvas { display: block; }
+
+    /* ---------------------------------------------------------------------
+       ENTRY / LOADING SCREEN (src/ui/bootScreen.js drives the live parts).
+       Everything needed for the FIRST PAINT is inline here: the game used to
+       show a black screen for ~7.5 s while the vehicle textures and the 1 km
+       world baked. Now the branded splash paints from the HTML itself, before
+       a single module is fetched, and the bar below is driven by real load
+       stages (see bootScreen.js / main.js BOOT STAGES).
+       --------------------------------------------------------------------- */
+    @font-face { font-family: 'Switzer'; src: url('/fonts/switzer/Switzer-Extrabold.woff2') format('woff2');
+      font-weight: 800; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Switzer'; src: url('/fonts/switzer/Switzer-Bold.woff2') format('woff2');
+      font-weight: 700; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Switzer'; src: url('/fonts/switzer/Switzer-Medium.woff2') format('woff2');
+      font-weight: 500; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Switzer Condensed'; src: url('/fonts/switzer/SwitzerCondensed-Bold.woff2') format('woff2');
+      font-weight: 700; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Switzer Condensed'; src: url('/fonts/switzer/SwitzerCondensed-Semibold.woff2') format('woff2');
+      font-weight: 600; font-style: normal; font-display: swap; }
+
+    #cot-boot {
+      position: fixed; inset: 0; z-index: 200; overflow: hidden;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-family: 'Switzer', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #e6edf3; -webkit-user-select: none; user-select: none; cursor: default;
+      background:
+        radial-gradient(118% 82% at 50% 22%, #16202b 0%, #0b1117 42%, #05080b 78%),
+        #05080b;
+      opacity: 1; transition: opacity .5s ease;
+    }
+    #cot-boot.cot-boot-out { opacity: 0; pointer-events: none; }
+    /* horizon glow + a faint armour-plate grid so the field is never flat black */
+    #cot-boot::before {
+      content: ''; position: absolute; left: -10%; right: -10%; bottom: -8%; height: 62%;
+      background: radial-gradient(60% 100% at 50% 100%, rgba(240,160,48,.20) 0%, rgba(240,160,48,.05) 45%, rgba(240,160,48,0) 72%);
+      pointer-events: none;
+    }
+    #cot-boot::after {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(146,164,180,.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(146,164,180,.055) 1px, transparent 1px);
+      background-size: 74px 74px, 74px 74px;
+      mask-image: radial-gradient(88% 68% at 50% 44%, #000 12%, transparent 74%);
+      -webkit-mask-image: radial-gradient(88% 68% at 50% 44%, #000 12%, transparent 74%);
+    }
+    .cot-boot-inner { position: relative; z-index: 2; width: min(760px, 86vw); text-align: center; }
+
+    /* --- emblem + wordmark ------------------------------------------------ */
+    .cot-boot-mark { display: block; width: 118px; height: 118px; margin: 0 auto 22px; }
+    .cot-boot-word { line-height: .92; }
+    .cot-boot-word .l1 {
+      display: block; font-weight: 800; letter-spacing: .17em; text-indent: .17em;
+      font-size: clamp(34px, 6.4vw, 62px); color: #f2f7fb;
+      text-shadow: 0 2px 26px rgba(0,0,0,.75);
+    }
+    .cot-boot-word .l2 {
+      display: flex; align-items: center; justify-content: center; gap: 14px;
+      margin-top: 12px; font-family: 'Switzer Condensed', 'Arial Narrow', Arial, sans-serif;
+      font-weight: 700; letter-spacing: .42em; text-indent: .42em;
+      font-size: clamp(14px, 2.05vw, 21px); color: #f0a030;
+    }
+    .cot-boot-word .l2 i { display: block; height: 1px; width: clamp(28px, 8vw, 92px);
+      background: linear-gradient(90deg, rgba(240,160,48,0), #f0a030); }
+    .cot-boot-word .l2 i + span + i { background: linear-gradient(270deg, rgba(240,160,48,0), #f0a030); }
+    .cot-boot-tag {
+      margin-top: 20px; font-family: 'Switzer Condensed', 'Arial Narrow', Arial, sans-serif;
+      font-weight: 600; font-size: 10.5px; letter-spacing: .34em; text-indent: .34em;
+      color: #6e7d8a; text-transform: uppercase;
+    }
+
+    /* --- progress ---------------------------------------------------------- */
+    .cot-boot-load { margin-top: 46px; }
+    .cot-boot-meta {
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 18px;
+      margin-bottom: 9px;
+      font-family: 'Switzer Condensed', 'Arial Narrow', Arial, sans-serif;
+      font-variant-numeric: tabular-nums;
+    }
+    .cot-boot-stage {
+      font-size: 11px; font-weight: 700; letter-spacing: .26em; text-transform: uppercase;
+      color: #9fb0bf; text-align: left; min-height: 14px;
+    }
+    .cot-boot-pct { font-size: 21px; font-weight: 700; letter-spacing: .06em; color: #ffd27a; }
+    .cot-boot-bar {
+      position: relative; height: 6px; background: rgba(255,255,255,.07);
+      box-shadow: inset 0 0 0 1px rgba(146,164,180,.22);
+    }
+    .cot-boot-fill {
+      position: absolute; left: 0; top: 0; bottom: 0; width: 0%;
+      background: linear-gradient(90deg, #b96f10 0%, #f0a030 62%, #ffcf7d 100%);
+      box-shadow: 0 0 16px rgba(240,160,48,.55);
+    }
+    /* travelling sheen — proves the loop is alive even inside a long stage */
+    .cot-boot-fill::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.34) 50%, rgba(255,255,255,0) 100%);
+      background-size: 42% 100%; background-repeat: no-repeat;
+      animation: cot-sheen 1.35s linear infinite;
+    }
+    @keyframes cot-sheen { from { background-position: -45% 0; } to { background-position: 145% 0; } }
+    .cot-boot-ticks {
+      display: flex; gap: 4px; margin-top: 10px;
+    }
+    .cot-boot-ticks span {
+      flex: 1 1 0; height: 2px; background: rgba(146,164,180,.18);
+      transition: background .2s ease, box-shadow .2s ease;
+    }
+    .cot-boot-ticks span.on { background: #f0a030; box-shadow: 0 0 8px rgba(240,160,48,.6); }
+
+    /* --- tips + gate ------------------------------------------------------- */
+    .cot-boot-tip {
+      margin-top: 34px; min-height: 44px; padding: 0 6%;
+      font-size: 13px; font-weight: 500; line-height: 1.55; color: #aebbc7;
+      opacity: 1; transition: opacity .35s ease;
+    }
+    .cot-boot-tip.fade { opacity: 0; }
+    .cot-boot-tip b {
+      display: block; margin-bottom: 5px;
+      font-family: 'Switzer Condensed', 'Arial Narrow', Arial, sans-serif;
+      font-size: 9.5px; font-weight: 700; letter-spacing: .3em; color: #f0a030;
+      text-transform: uppercase;
+    }
+    .cot-boot-gate {
+      margin-top: 26px; height: 22px;
+      font-family: 'Switzer Condensed', 'Arial Narrow', Arial, sans-serif;
+      font-size: 12.5px; font-weight: 700; letter-spacing: .34em; text-indent: .34em;
+      color: #ffe4b0; text-transform: uppercase; opacity: 0;
+      transition: opacity .4s ease;
+    }
+    .cot-boot-gate.on { opacity: 1; animation: cot-gate 1.5s ease-in-out infinite; }
+    @keyframes cot-gate { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
+    .cot-boot-foot {
+      position: absolute; left: 0; right: 0; bottom: 20px; z-index: 2;
+      font-family: 'Switzer Condensed', 'Arial Narrow', Arial, sans-serif;
+      font-size: 9px; font-weight: 600; letter-spacing: .26em; color: #4b5865;
+      text-transform: uppercase; text-align: center;
+    }
+    @media (max-width: 760px) { .cot-boot-mark { width: 88px; height: 88px; } .cot-boot-load { margin-top: 32px; } }
   </style>
 </head>
 <body>
   <div id="app"></div>
+
+  <div id="cot-boot">
+    <div class="cot-boot-inner">
+      <!-- Procedural emblem: chamfered armour plate + tank silhouette.
+           Inline SVG so it needs no network round-trip at all. -->
+      <svg class="cot-boot-mark" viewBox="0 0 120 120" aria-label="Claude of Tanks">
+        <defs>
+          <linearGradient id="cotPlate" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#1d2937" /><stop offset="1" stop-color="#0a1016" />
+          </linearGradient>
+          <linearGradient id="cotEdge" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#ffc978" /><stop offset="1" stop-color="#c07713" />
+          </linearGradient>
+        </defs>
+        <!-- chamfered hex shield -->
+        <path d="M60 3 108 27v48L60 117 12 75V27Z" fill="url(#cotPlate)" stroke="url(#cotEdge)" stroke-width="2.4" />
+        <path d="M60 11 100 31v42L60 108 20 73V31Z" fill="none" stroke="rgba(146,164,180,.30)" stroke-width="1" />
+        <!-- tank silhouette, hull-down 3/4-side reading right -->
+        <g fill="#e9f1f8">
+          <path d="M28 74h58l7 5v6H26l-4-5Z" />
+          <path d="M31 60h48l6 5v8H29l-3-8Z" />
+          <path d="M47 48h20l9 4 1 8H45l-1-8Z" />
+          <rect x="76" y="51" width="24" height="3.6" />
+          <rect x="94" y="49" width="6" height="7.6" />
+        </g>
+        <g fill="#0a1016">
+          <circle cx="34" cy="80" r="2.7" /><circle cx="44" cy="80" r="2.7" />
+          <circle cx="54" cy="80" r="2.7" /><circle cx="64" cy="80" r="2.7" />
+          <circle cx="74" cy="80" r="2.7" /><circle cx="84" cy="80" r="2.7" />
+        </g>
+      </svg>
+
+      <div class="cot-boot-word">
+        <span class="l1">CLAUDE</span>
+        <span class="l2"><i></i><span>OF TANKS</span><i></i></span>
+      </div>
+      <div class="cot-boot-tag">48 Vehicles &middot; 4 Battlefields &middot; Tiers I&ndash;X</div>
+
+      <div class="cot-boot-load">
+        <div class="cot-boot-meta">
+          <div class="cot-boot-stage" id="cot-boot-stage">Starting engine</div>
+          <div class="cot-boot-pct" id="cot-boot-pct">0%</div>
+        </div>
+        <div class="cot-boot-bar"><div class="cot-boot-fill" id="cot-boot-fill"></div></div>
+        <div class="cot-boot-ticks" id="cot-boot-ticks"></div>
+      </div>
+
+      <div class="cot-boot-tip" id="cot-boot-tip"></div>
+      <div class="cot-boot-gate" id="cot-boot-gate">Press any key to continue</div>
+    </div>
+    <div class="cot-boot-foot">Claude of Tanks &middot; Three.js technology demo</div>
+  </div>
+
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>

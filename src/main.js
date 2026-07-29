@@ -2,20 +2,33 @@
  * main.js — integration entry point (ARCHITECTURE.md §4, §5).
  *
  * Startup order (locked): createRenderer → createSky → bakeEnvironment →
- * createLighting (CSM before any material compiles) → EngineCtx → createMap →
+ * createLighting (CSM before any material compiles) → EngineCtx →
  * spawn tanks → createFx → HUD/garage → createAudio → createCameraRig →
  * applyFog → warm frames → window.__GAME_READY.
  *
- * Game flow: garage (pedestal showcase at -1500,-1500) → battle (player vs 7
- * AI tanks) → victory/defeat overlay → back to garage.
+ * BOOT SCREENS (boot r8): the module body is now a STAGED, frame-yielding boot
+ * sequence (top-level await between stages) behind the branded entry/loading
+ * screen whose markup lives inline in index.html. Every stage reports real
+ * progress to src/ui/bootScreen.js, so the bar tracks work instead of a timer,
+ * and the browser gets a frame between stages so it can actually paint it.
+ *
+ * The 1 km battlefield is NOT part of boot any more — nothing on the garage
+ * screen can see it (the bay is fully enclosed), so ensureWorld() builds it on
+ * first real need, chunked behind the pre-battle loading screen. In the garage
+ * the battle world is dormant: hidden (which also drops it from every shadow
+ * cascade) and skipped by the per-frame LOD/wind update.
+ *
+ * Game flow: entry splash → garage (pedestal showcase at -1500,-1500) →
+ * battle loading screen → battle (player vs 7 AI tanks) → victory/defeat
+ * overlay → back to garage.
  */
 import * as THREE from 'three';
 import { createRenderer, onResize } from './engine/renderer.js';
 import { createSky } from './engine/sky.js';
 import { createLighting } from './engine/lighting.js';
 import { createPost } from './engine/post.js';
-import { createCameraRig } from './engine/cameraRig.js';
-import { createMap } from './world/map.js';
+import { createCameraRig, createShowroomOrbit } from './engine/cameraRig.js';
+import { createMap, createMapAsync } from './world/map.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
 import { MAP_THUMBS } from './ui/mapThumbs.js';
 import { ALL_TANK_IDS, getSpec, MODEL_SOURCE } from './vehicles/specs.js';
@@ -43,6 +56,10 @@ import {
   createBus, createGameState, spawnTanks, setupBattle, simStep, createCollider,
   mulberry32, ensureStagedVisuals,
 } from './game/state.js';
+// BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
+// paint never waits on this module graph) and the pre-battle roster screen.
+import { createBootScreen } from './ui/bootScreen.js';
+import { createBattleLoadScreen, tierNumeral } from './ui/battleLoad.js';
 
 const DEG = Math.PI / 180;
 const GARAGE_POS = new THREE.Vector3(-1500, 0, -1500);
@@ -62,19 +79,71 @@ const _occlFocus = new THREE.Vector3();
 const _aimPose = { pos: new THREE.Vector3() };
 
 // ---------------------------------------------------------------------------
+// BOOT STAGES (src/ui/bootScreen.js)
+//
+// The module body below is a staged boot sequence: each heavy step runs inside
+// bootStage(), which names the stage on the loading screen, yields a frame so
+// the bar paints, runs the work, then advances the bar. Stage keys and their
+// weights (measured shares of boot wall-clock) live in bootScreen.js STAGES.
+//
+// `bootComplete` gates the render loop: the rAF-starvation fallback below
+// registers its listeners mid-module and must never fire tick() while later
+// top-level consts are still in their temporal dead zone.
+// ---------------------------------------------------------------------------
+const boot = createBootScreen();
+const BOOT_TIMINGS = {};
+let bootComplete = false;
+/**
+ * Yield to the browser so the loading screen can paint. Falls back to a timer:
+ * some embedded/headless panes report `hidden` and never deliver rAF, and a
+ * starved rAF must not be able to stall the boot sequence forever.
+ * @returns {Promise<void>}
+ */
+function nextFrame() {
+  return new Promise((resolve) => {
+    let done = false;
+    const fin = () => { if (!done) { done = true; resolve(); } };
+    requestAnimationFrame(fin);
+    setTimeout(fin, 34);
+  });
+}
+/**
+ * Run one named boot stage with progress reporting around it.
+ * @param {string} key stage key (bootScreen.js STAGES)
+ * @param {?function():*} [fn] the work (may be async)
+ * @returns {Promise<*>} fn's result
+ */
+async function bootStage(key, fn) {
+  boot.begin(key);
+  await nextFrame();
+  const t0 = performance.now();
+  const out = fn ? await fn() : undefined;
+  BOOT_TIMINGS[key] = Math.round(performance.now() - t0);
+  boot.end(key);
+  await nextFrame();
+  return out;
+}
+const BOOT_T0 = performance.now();
+
+// ---------------------------------------------------------------------------
 // Engine bootstrap (§4 startup order)
 // ---------------------------------------------------------------------------
 const container = document.getElementById('app');
+boot.begin('renderer');
 const renderer = createRenderer(container);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
   60, (container.clientWidth || window.innerWidth) / (container.clientHeight || window.innerHeight),
   0.5, 4000,
 );
+boot.end('renderer');
 
-const sky = createSky(scene, renderer);
-sky.bakeEnvironment();
-const lighting = createLighting(scene, camera, sky.sunDir);
+const sky = await bootStage('sky', () => {
+  const s = createSky(scene, renderer);
+  s.bakeEnvironment();
+  return s;
+});
+const lighting = await bootStage('lighting', () => createLighting(scene, camera, sky.sunDir));
 
 const engineCtx = {
   renderer,
@@ -85,32 +154,51 @@ const engineCtx = {
   quality: 'high',
 };
 
-// --- MAP-CONFIG WIRING: worlds are lazy-built per map config and cached;
-// `world` always points at the active one. Long-lived systems (camera rig,
-// fx) reach terrain through the stable proxy below so a map switch never
-// leaves them holding a stale heightfield.
+// --- MAP-CONFIG WIRING + DEFERRED WORLD BUILD ------------------------------
+// Worlds are lazy-built per map config and cached; `world` always points at
+// the active one (null until one exists). Long-lived systems (camera rig, fx,
+// kill-cam) reach terrain through the stable proxy below, so a map switch —
+// or a boot with no world at all — never leaves them holding a stale or
+// missing heightfield.
+//
+// PERF (boot r8): the battlefield used to be built synchronously right here,
+// on the boot-critical path, even though the garage bay is fully enclosed and
+// cannot see a single triangle of it. The 1 km terrain bake + vegetation +
+// props + minimap capture are now deferred to ensureWorld(), which the battle
+// entry (behind the pre-battle loading screen) and the __SHOTS staging path
+// call. Boot never touches them.
 const worldCache = new Map();
-let world = createMap(engineCtx, { mapId: 'verdant', seed: 1337 });
-worldCache.set('verdant', world);
+let world = null;
+let pendingMapId = 'verdant';    // battlefield the garage is pointing at
+let worldDormant = false;        // garage: world hidden + per-frame update off
+// The sky/fog preset the atmosphere is currently keyed to. Seeded with the
+// boot map so the FIRST activation of 'verdant' behaves exactly like the old
+// boot did (createSky's DEFAULT_PRESET + one applyFog, no applyPreset) —
+// switching away and back still re-keys, as switchMap always did.
+let skyMapId = 'verdant';
+const _upNormal = new THREE.Vector3(0, 1, 0);
 const hfProxy = {
-  getHeightAt: (x, z) => world.heightField.getHeightAt(x, z),
-  getNormalAt: (x, z) => world.heightField.getNormalAt(x, z),
-  getGroundType: (x, z) => world.heightField.getGroundType(x, z),
-  get size() { return world.heightField.size; },
-  get minY() { return world.heightField.minY; },
-  get maxY() { return world.heightField.maxY; },
+  getHeightAt: (x, z) => (world ? world.heightField.getHeightAt(x, z) : 0),
+  getNormalAt: (x, z) => (world ? world.heightField.getNormalAt(x, z) : _upNormal),
+  getGroundType: (x, z) => (world ? world.heightField.getGroundType(x, z) : 'hard'),
+  get size() { return world ? world.heightField.size : 1000; },
+  get minY() { return world ? world.heightField.minY : 0; },
+  get maxY() { return world ? world.heightField.maxY : 0; },
 };
+/** World raycast that is safe before any battlefield exists. */
+function worldRaycast(o, d, m) { return world ? world.raycast(o, d, m) : null; }
 
 // --- game state + tanks -----------------------------------------------------
 const bus = createBus();
 const game = createGameState();
 spawnTanks(game, engineCtx);
-// battle scene staged behind the garage screen. PERF r3: deferVisuals keeps
-// the 7 enemy texture bakes off the boot-critical path (~2.2 s at dsf1) —
-// warmCombatPipeline / the post-ready idle pump stream them in before any
-// battle or screenshot frame can render the battlefield.
-setupBattle(game, 'm1a2', world, { deferVisuals: true });
-let collider = createCollider(game, world);
+// The staged default battle (screenshot contract + first BATTLE press) needs a
+// world for its spawn points, so it is staged by ensureWorld() rather than
+// here. PERF r3: deferVisuals still keeps the 7 enemy texture bakes off the
+// critical path — warmCombatPipeline / the post-ready idle pump stream them in
+// before any battle or screenshot frame can render the battlefield.
+let collider = null;
+let battleStaged = false;
 
 // --- fx ----------------------------------------------------------------------
 const fx = createFx(engineCtx, hfProxy, { seed: 5000 });
@@ -135,9 +223,17 @@ bus.on('module:state', (ev) => {
 });
 
 // --- garage stage (12 m disc pad + 2 integration-owned spotlights) -----------
-GARAGE_POS.y = world.heightField.getHeightAt(GARAGE_POS.x, GARAGE_POS.z);
-const garageStage = createGarageStage(engineCtx, GARAGE_POS);
-scene.add(garageStage.group);
+// The pad sits on the active map's edge terrain when one exists; with the world
+// deferred it opens at y = 0 and placeGarage() re-seats it the moment a
+// battlefield is activated. Everything on the stage (pedestal, spots, camera
+// pose) is positioned RELATIVE to GARAGE_POS, so the bay looks identical either
+// way — and the bay is sealed, so no battlefield is visible from it regardless.
+GARAGE_POS.y = hfProxy.getHeightAt(GARAGE_POS.x, GARAGE_POS.z);
+const garageStage = await bootStage('garage', () => {
+  const gs = createGarageStage(engineCtx, GARAGE_POS);
+  scene.add(gs.group);
+  return gs;
+});
 // hud_ui r2: key 160 → 112, penumbra 0.45 → 0.6 — the warm key stacked with
 // the stage floods and clipped the turntable floor right of the tank to 255.
 // hud_ui r5 (+ tank_models r5 garage-key rolloff): 112 → 78 / 80 → 58 with
@@ -176,7 +272,10 @@ function setGarageSpots(on) {
 // map's authored sun via the same setSun call.
 const GARAGE_SUN_COLOR = 0xf2f0ea;
 function setGarageSunTrim(on) {
-  const skyCfg = world.config.sky || {};
+  // boot r8: the world is deferred, so fall back to the config of the map the
+  // garage is currently pointing at (identical to the old boot, which read
+  // verdant's config off the eagerly built world).
+  const skyCfg = (world ? world.config.sky : getMapConfig(pendingMapId).sky) || {};
   lighting.setSun(sky.sunDir, on
     ? { ...skyCfg, sunColorHex: GARAGE_SUN_COLOR,
         sunIntensity: (skyCfg.sunIntensity ?? 4.5) * 0.55 }
@@ -261,7 +360,12 @@ function setPedestalTank(specId) {
     retirePrev(); // procedural: instant
   }
 }
-setPedestalTank(selectedSpecId);
+// The hero on the pedestal is the ONE vehicle the boot path may bake: it is
+// the only one the player can see. Every other roster entry (48 specs) stays
+// lazy — carousel portraits come from the pre-rendered public/icons/ set, and
+// the battle participants are baked by ensureStagedVisuals during the garage
+// dwell / behind the battle loading screen.
+await bootStage('vehicle', () => setPedestalTank(selectedSpecId));
 
 function garageCameraPose() {
   // hud_ui r4: camera pulled in ~10% + slightly lower — kills the dead
@@ -279,7 +383,7 @@ function garageCameraPose() {
 // --- MAP-CONFIG WIRING: map switching --------------------------------------
 // Re-seat the garage stage on the active map's edge terrain height.
 function placeGarage() {
-  GARAGE_POS.y = world.heightField.getHeightAt(GARAGE_POS.x, GARAGE_POS.z);
+  GARAGE_POS.y = hfProxy.getHeightAt(GARAGE_POS.x, GARAGE_POS.z);
   garageStage.group.position.copy(GARAGE_POS);
   spotA.position.set(GARAGE_POS.x + 9, GARAGE_POS.y + 11, GARAGE_POS.z + 7);
   spotB.position.set(GARAGE_POS.x - 10, GARAGE_POS.y + 8, GARAGE_POS.z - 6);
@@ -291,31 +395,104 @@ function placeGarage() {
 }
 
 /**
- * Activate a battlefield: lazily build + cache its world, hide the old one,
- * re-target atmosphere/lighting to the map's sky preset, rebuild the minimap
- * and re-seat the garage stage. Synchronous (screenshot-contract safe).
+ * Make `next` the active battlefield: hide whatever was active, re-target
+ * atmosphere/lighting to the map's sky preset, rebuild the collider + minimap
+ * and re-seat the garage stage.
+ * @param {object} next a World from createMap/createMapAsync
+ * @returns {object} the active World
+ */
+function activateWorld(next) {
+  if (world && world !== next) world.group.visible = false;
+  world = next;
+  worldDormant = false;
+  world.group.visible = true;
+  pendingMapId = world.mapId;
+  collider = createCollider(game, world);
+  const skyCfg = world.config.sky || {};
+  // Only re-key the atmosphere when the map actually changed — the first
+  // activation of the boot map keeps createSky's DEFAULT_PRESET exactly as the
+  // old eager boot did (see skyMapId).
+  if (skyMapId !== world.mapId) {
+    skyMapId = world.mapId;
+    sky.applyPreset(skyCfg, scene);
+    baseFogDensity = scene.fog.density;
+  }
+  lighting.setSun(sky.sunDir, skyCfg);
+  hud.buildMinimap(world.heightField, world.getMinimapFeatures(), world.config.minimap,
+    minimapSnapCtx()); // hud_ui r6: real top-down capture as the map underlay
+  placeGarage();
+  return world;
+}
+
+/**
+ * MAP-CONFIG WIRING: lazily build + cache a battlefield and activate it.
+ * Synchronous (screenshot-contract safe) — the chunked variant used behind the
+ * pre-battle loading screen is ensureWorld().
  * @param {string} mapId concrete map id (never 'random' — resolve first)
  * @returns {object} the active World
  */
 function switchMap(mapId) {
-  if (world.mapId === mapId) return world;
+  if (world && world.mapId === mapId) return world;
   let next = worldCache.get(mapId);
   if (!next) {
     next = createMap(engineCtx, { mapId, seed: 1337 });
     worldCache.set(mapId, next);
   }
-  world.group.visible = false;
-  world = next;
-  world.group.visible = true;
-  collider = createCollider(game, world);
-  const skyCfg = world.config.sky || {};
-  sky.applyPreset(skyCfg, scene);
-  lighting.setSun(sky.sunDir, skyCfg);
-  baseFogDensity = scene.fog.density;
-  hud.buildMinimap(world.heightField, world.getMinimapFeatures(), world.config.minimap,
-    minimapSnapCtx()); // hud_ui r6: real top-down capture as the map underlay
-  placeGarage();
+  return activateWorld(next);
+}
+
+/**
+ * BOOT DEFERRAL: guarantee a battlefield exists and is active, building it one
+ * subsystem per frame so the caller's loading bar keeps animating.
+ * @param {string} mapId concrete map id
+ * @param {?function(number, string):void} [onProgress] (fraction, label)
+ * @returns {Promise<object>} the active World
+ */
+async function ensureWorld(mapId, onProgress = null) {
+  const id = mapId || pendingMapId;
+  let next = worldCache.get(id);
+  if (!next) {
+    next = await createMapAsync(engineCtx, { mapId: id, seed: 1337 },
+      async (label, f) => {
+        if (onProgress) onProgress(f, label);
+        await nextFrame();
+      });
+    worldCache.set(id, next);
+  }
+  if (world !== next || worldDormant) activateWorld(next);
   return world;
+}
+
+/**
+ * Stage the deterministic default battle (screenshot contract + the very first
+ * BATTLE press). Needs a world for its spawn points, so it runs on first world
+ * activation rather than at boot.
+ * @returns {void}
+ */
+function ensureBattleStaged() {
+  if (battleStaged || !world) return;
+  battleStaged = true;
+  setupBattle(game, selectedSpecId, world, { deferVisuals: true });
+  buildShellCards(game.player.spec);
+  damagePanel.setTank(game.player.spec);
+  for (const ent of game.allTanks) {
+    if (ent.visual && ent.visual.setGroundSampler) ent.visual.setGroundSampler(groundSampler);
+  }
+}
+
+/**
+ * GARAGE PERF (boot r8): make the battle world genuinely dormant while the
+ * garage screen is up. Hiding the group drops its ~370 draw calls and 1.35 M
+ * triangles from the main pass AND from every shadow cascade (three skips
+ * invisible subtrees in the shadow render), and `worldDormant` also skips the
+ * per-frame terrain-LOD / vegetation-wind / prop-animation update in tick().
+ * The garage bay is fully sealed, so none of it was ever visible from there.
+ * @param {boolean} on true = dormant (garage), false = live (battle/shots)
+ */
+function setWorldDormant(on) {
+  if (!world || worldDormant === on) return;
+  worldDormant = on;
+  world.group.visible = !on;
 }
 
 // hud_ui r6: live-scene handles for the minimap's one-time orthographic
@@ -329,13 +506,19 @@ function minimapSnapCtx() {
 }
 
 // --- HUD / garage / panels ----------------------------------------------------
-const hud = initHud(bus);
-const damagePanel = createDamagePanel();
-hud.setDamagePanel(damagePanel);
-hud.buildMinimap(world.heightField, world.getMinimapFeatures(), world.config.minimap,
-  minimapSnapCtx()); // hud_ui r6: real top-down capture as the map underlay
+// boot r8: the minimap build (a real orthographic top-down capture of the
+// battlefield) moved to activateWorld — the HUD is hidden in the garage, so
+// nothing on the boot path can see it.
+let damagePanel = null;
+const hud = await bootStage('hud', () => {
+  const h = initHud(bus);
+  const dp = createDamagePanel();
+  h.setDamagePanel(dp);
+  damagePanel = dp;
+  return h;
+});
 
-const garage = createGarage({
+const garage = await bootStage('ui', () => createGarage({
   specs: ALL_TANK_IDS.map(getSpec), // COMMUNITY TANKS: grown carousel
   bus,
   onSelect: (specId) => { selectedSpecId = specId; setPedestalTank(specId); },
@@ -367,11 +550,19 @@ const garage = createGarage({
     setCamoBiome(mapId);
     applyCamoPatterns();
   },
-});
+}));
+
+// PRE-BATTLE LOADING SCREEN (src/ui/battleLoad.js): map art + both rosters +
+// real build progress + countdown. Created here so its stylesheet/DOM is warm
+// before the first BATTLE press.
+const battleLoad = createBattleLoadScreen();
 
 // --- audio --------------------------------------------------------------------
-const audio = createAudio();
-audio.bindBus(bus);
+const audio = await bootStage('audio', () => {
+  const a = createAudio();
+  a.bindBus(bus);
+  return a;
+});
 
 // --- camera rig -----------------------------------------------------------------
 // Server-aim raycast: world geometry PLUS live enemy hulls, so the reticle
@@ -396,7 +587,7 @@ let aimStickyUntilMs = -Infinity;
 let aimStickyDistM = 0;
 const _aimSoft = { point: new THREE.Vector3(), normal: null, dist: 0, kind: 'tank-soft' };
 function aimRaycastWithTanks(origin, dir, maxDist) {
-  const wHit = world.raycast(origin, dir, maxDist);
+  const wHit = worldRaycast(origin, dir, maxDist);
   let bestD = wHit ? wHit.dist : maxDist;
   let best = wHit;
   let exactTank = false;
@@ -450,7 +641,7 @@ function aimRaycastWithTanks(origin, dir, maxDist) {
 
 const rig = createCameraRig(camera, {
   heightField: hfProxy,
-  raycast: (o, d, m) => world.raycast(o, d, m),
+  raycast: worldRaycast,
   aimRaycast: aimRaycastWithTanks,
   getPlayer: () => game.player,
 });
@@ -847,10 +1038,98 @@ bus.on('shell:fired', (p) => {
   if (card && card.count > 0) card.count -= 1;
 });
 
-function startBattle(specId, mapId = null) {
+/**
+ * PRE-BATTLE LOADING SCREEN (boot r8): WoT shows map art + both rosters +
+ * progress between pressing BATTLE and the battle opening. Ours does the same
+ * AND does real work behind it — the battlefield build, the roster's texture
+ * bakes and the shader warm all happen while this screen is up, which is why
+ * the battlefield no longer has to exist at boot.
+ *
+ * @param {string} specId player vehicle
+ * @param {?string} mapId picked map id ('random' rolls here)
+ * @returns {Promise<void>} resolves when the battle is live
+ */
+async function startBattleLoading(specId, mapId = null) {
+  const resolved = resolveMapId(mapId || pendingMapId);
+  const cfg = getMapConfig(resolved);
+  battleLoad.show({
+    mapName: cfg.name || resolved,
+    mapSub: cfg.sub || '',
+    thumb: MAP_THUMBS[resolved] || '',
+    biome: resolved,
+    mode: mapId === 'random' ? 'Random Battle · Any Battlefield' : 'Random Battle · Standard',
+    allies: [], enemies: [],
+  });
+  await nextFrame();
+
+  // 1. battlefield (0 → 55%). Already-cached maps skip straight through.
+  battleLoad.progress(0.02, 'Loading battlefield');
+  await ensureWorld(resolved, (f, label) => battleLoad.progress(0.02 + f * 0.53, label));
+
+  // 2. roster: pick the participants, then bake any visual still missing one
+  //    chunk-by-chunk (55 → 92%) so the bar moves through the texture bakes.
+  battleLoad.progress(0.56, 'Assembling rosters');
+  await nextFrame();
+  startBattle(specId, resolved, { deferVisuals: true });
+  battleLoad.show({
+    mapName: cfg.name || resolved,
+    mapSub: cfg.sub || '',
+    thumb: MAP_THUMBS[resolved] || '',
+    biome: resolved,
+    mode: mapId === 'random' ? 'Random Battle · Any Battlefield' : 'Random Battle · Standard',
+    allies: rosterRows('player'),
+    enemies: rosterRows('enemy'),
+  });
+  battleLoad.progress(0.58, 'Painting vehicles');
+  await nextFrame();
+  const missing = game.tanks.filter((e) => !e.visual).length;
+  for (let i = 0; i < missing + 1; i++) {
+    if (ensureStagedVisuals(game, 1)) break;
+    battleLoad.progress(0.58 + ((i + 1) / Math.max(1, missing)) * 0.34, 'Painting vehicles');
+    await nextFrame();
+  }
+
+  // 3. shader/texture warm (92 → 100%): pulling this in front of the countdown
+  //    is what keeps the opening flyby from hitching on a compile storm.
+  battleLoad.progress(0.94, 'Compiling shaders');
+  await nextFrame();
+  warmCombatPipeline();
+  battleLoad.progress(1, 'Ready');
+
+  // 4. countdown, then hand the screen over to the battle-open flyby.
+  for (let n = 2; n >= 1; n--) {
+    battleLoad.countdown(n);
+    await new Promise((r) => setTimeout(r, battleCountdownMs));
+  }
+  battleLoad.countdown(0);
+  await new Promise((r) => setTimeout(r, Math.min(360, battleCountdownMs)));
+  battleLoad.hide();
+  openBattle();
+}
+// Headless probes drive the battle entry through __DEBUG.startBattle (which is
+// synchronous); the countdown only exists for the player-facing flow.
+let battleCountdownMs = 620;
+let battleEntryPending = false;
+
+/** Rows for the pre-battle roster panels. @param {string} team @returns {Array} */
+function rosterRows(team) {
+  return game.tanks
+    .filter((e) => e.team === team)
+    .map((e) => ({
+      id: e.specId,
+      name: (e.spec && e.spec.name) || e.specId,
+      tier: tierNumeral(e.specId),
+      isPlayer: !!e.isPlayer,
+    }))
+    .sort((a, b) => (b.isPlayer ? 1 : 0) - (a.isPlayer ? 1 : 0));
+}
+
+function startBattle(specId, mapId = null, opts = {}) {
   // PERF (performance_budget r1): first-combat fallback for the post-ready
   // idle warm — no-op when the idle callback already ran (the common case).
-  warmCombatPipeline();
+  // The loading-screen path warms explicitly AFTER the roster is picked, so it
+  // skips this (the pick is what decides which visuals are needed).
+  if (!opts.deferVisuals) warmCombatPipeline();
   // SHOT-MODE RESET (effects_combat/content_breadth r2): __SHOTS.set() freezes
   // fx and stops the sim tick; any UI path out of shot mode (garage BATTLE
   // button) must resume it or the battle is permanently frozen.
@@ -859,7 +1138,8 @@ function startBattle(specId, mapId = null) {
   selectedSpecId = specId;
   debugAimTargetId = null; // sticky drive-test aim never carries across battles
   // MAP-CONFIG WIRING: battle on the picked map ('random' rolls here)
-  if (mapId) switchMap(resolveMapId(mapId));
+  switchMap(resolveMapId(mapId || pendingMapId));
+  setWorldDormant(false); // the battle world wakes up (see setWorldDormant)
   game.mapId = world.mapId;
   // CAMO WIRING: AUTO patterns resolve to the biome of the map being fought;
   // only tanks whose resolved pattern actually changed get repainted.
@@ -869,7 +1149,10 @@ function startBattle(specId, mapId = null) {
   // full pool (core + community), seeded per battle for reproducibility.
   // MODERN EXPANSION: rosters are era-matched to the player's vehicle —
   // mixed-era battles happen only on the RANDOM battlefield card.
-  setupBattle(game, specId, world, { random: true, mixedEra: mapId === 'random' });
+  setupBattle(game, specId, world, {
+    random: true, mixedEra: mapId === 'random', deferVisuals: !!opts.deferVisuals,
+  });
+  battleStaged = true;
   // SHOT-INFO identity (killcam_shotinfo r3): set synchronously — hud.update
   // only forwards it after the first rendered frame, which dropped hits
   // resolved in the very first sim ticks (headless replays / spectators).
@@ -894,10 +1177,20 @@ function startBattle(specId, mapId = null) {
   bus.emit('ui:consumableReset', {});
   rig.release();
   rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
-  // Battle-open cinematic: 3 s flyby sweeping onto the chase camera
-  // (skippable with any camera input). Doubles as the garage transition.
+  showroom.stop(); // garage drag-orbit hands the camera back to the rig
+  // The battle-open flyby is armed only once the player can actually SEE it:
+  // the loading-screen path calls openBattle() when the screen clears.
+  if (!opts.deferVisuals) openBattle();
+}
+
+/**
+ * Hand the screen to the battle: 3 s flyby sweeping onto the chase camera
+ * (skippable with any camera input), ambience up.
+ * @returns {void}
+ */
+function openBattle() {
   if (rig.startCinematic) rig.startCinematic(3);
-  audio.resume();
+  audio.resume(); // the entry-gate keypress already unlocked the context
   audio.ambientOn(true);
 }
 
@@ -906,6 +1199,7 @@ function enterGarage() {
   shotMode = false;
   fx.setFrozen(false);
   game.phase = 'garage';
+  setWorldDormant(true); // GARAGE PERF: the battlefield stops costing anything
   // camo_spotting r5: bot biome-camo overrides are battle-scoped — drop
   // them so the pedestal/picker show the player's own persisted selection.
   clearCamoOverrides();
@@ -918,6 +1212,7 @@ function enterGarage() {
   hud.setMode('hidden');
   garage.show(selectedSpecId);
   garageCameraPose();
+  showroom.start(); // SHOWROOM CAMERA: hero framing + drag-orbit takes over
   audio.ambientOn(false);
   audio.playGarageSting();
 }
@@ -996,7 +1291,7 @@ function muzzlePathBlockDist(muzzle, aimPoint, dispersionRadM) {
   const pathLen = _mpbB.length();
   if (pathLen <= 12) return null;
   _mpbB.multiplyScalar(1 / pathLen);
-  const blk = world.raycast(muzzle, _mpbB, pathLen - 1.5);
+  const blk = worldRaycast(muzzle, _mpbB, pathLen - 1.5);
   if (blk) return blk.dist;
   if (dispersionRadM > 0.1) {
     _mpbA.copy(aimPoint);
@@ -1009,7 +1304,7 @@ function muzzlePathBlockDist(muzzle, aimPoint, dispersionRadM) {
     const len2 = _mpbB.length();
     if (len2 > 12) {
       _mpbB.multiplyScalar(1 / len2);
-      const graze = world.raycast(muzzle, _mpbB, len2 * 0.85);
+      const graze = worldRaycast(muzzle, _mpbB, len2 * 0.85);
       if (graze) return graze.dist;
     }
   }
@@ -1198,7 +1493,7 @@ function updateDustAndSync(dtFrame) {
       }
       // effects_combat r1: crushable props — pole vs hull overlap triggers
       // the hinge-topple (world.crushProp) + wood-splinter burst.
-      if (sp > 1.2 && world.crushables && world.crushables.length) {
+      if (sp > 1.2 && world && world.crushables && world.crushables.length) {
         const hl = ent.spec.dims.hullLengthM * 0.5 + 0.5;
         for (let ci = 0; ci < world.crushables.length; ci++) {
           const c = world.crushables[ci];
@@ -1271,7 +1566,7 @@ function tick(nowMs) {
     // Deterministic screenshot hold: no sim, no rig, frozen fx clock.
     // (dt = 0 also snaps the foliage occlusion fade to zero — see vegetation.)
     camera.getWorldDirection(_fwd);
-    world.update(0, camera.position, _fwd, null);
+    if (world) world.update(0, camera.position, _fwd, null);
     updateSniperFill(); // same close-scope fill state as live play
     fx.update(dtR, game.shells, camera);
     // controls_gunnery r5: staged HUD views redraw the reticle canvas every
@@ -1417,7 +1712,11 @@ function tick(nowMs) {
   // chase-camera foliage occlusion fade along player→camera in arcade).
   // r5: rig.aimDist drives the scope-ray foliage corridor length so the cull
   // opens the sight line all the way to the aimed target, not just 70 m.
-  world.setSniperFade(rig.mode === 'SNIPER' ? 1 : 0, false, camera.fov, rig.aimDist);
+  // GARAGE PERF (boot r8): a dormant battle world costs nothing per frame —
+  // no terrain LOD swap, no vegetation wind rebuild, no prop animation.
+  if (world && !worldDormant) {
+    world.setSniperFade(rig.mode === 'SNIPER' ? 1 : 0, false, camera.fov, rig.aimDist);
+  }
   camera.getWorldDirection(_fwd);
   let occlFocus = null;
   // lighting_post r2: never run the chase-camera occlusion fade during an
@@ -1429,7 +1728,7 @@ function tick(nowMs) {
     occlFocus = _occlFocus.copy(game.player.state.pos);
     occlFocus.y += game.player.spec.dims.heightM * 0.75;
   }
-  world.update(dtR, camera.position, _fwd, occlFocus);
+  if (world && !worldDormant) world.update(dtR, camera.position, _fwd, occlFocus);
 
   // 5. visuals + dust (frozen during the kill-cam replay — tanks hold the
   // pose they died in; the x-ray reads the snapshot, not live state)
@@ -1501,7 +1800,12 @@ const VIEW_MAP = {
 // MAP-CONFIG WIRING: pin the shot to its map, re-seating the staged battle
 // (deterministic spawns) whenever the map actually changes.
 function ensureShotWorld(mapId) {
-  if (world.mapId !== mapId) switchMap(mapId);
+  // boot r8: the battlefield is deferred, so a staged capture may well be the
+  // first thing that needs one at all. Synchronous by contract (__SHOTS.set
+  // must fully determine the frame) — this is why createMap keeps its
+  // non-chunked form alongside createMapAsync.
+  if (!world || world.mapId !== mapId) switchMap(mapId);
+  setWorldDormant(false);
   // camo_spotting r2: staged captures must show biome-correct AUTO paint —
   // startBattle resolves the camo biome but the contract views do not pass
   // through it, so shots could carry the previous biome's paint.
@@ -1510,8 +1814,12 @@ function ensureShotWorld(mapId) {
   // Always restage deterministically: a prior random-roster battle must not
   // leak into the screenshot contract (recipes reference tiger1/t90m/etc).
   setupBattle(game, 'm1a2', world);
+  battleStaged = true;
   buildShellCards(game.player.spec);
   damagePanel.setTank(game.player.spec);
+  for (const ent of game.allTanks) {
+    if (ent.visual && ent.visual.setGroundSampler) ent.visual.setGroundSampler(groundSampler);
+  }
 }
 
 // wide establishing shot from the map config's deterministic camera preset
@@ -2085,12 +2393,12 @@ window.__SHOTS = {
     fx.resetAll();
     fx.resetSeed(5000);
     fx.setFrozen(true, VIEW_TIME[name]);
-    world.setWindTime(VIEW_TIME[name]);
+    if (world) world.setWindTime(VIEW_TIME[name]);
     recipe();
     // Shot mode runs world.update with dt=0 (frozen), so the eased sniper
     // grass fade would never move — snap it to match the rig mode instead.
     // (r5: aim distance opens the scope-ray corridor to the staged target.)
-    world.setSniperFade(rig.mode === 'SNIPER' ? 1 : 0, true, camera.fov, rig.aimDist);
+    if (world) world.setSniperFade(rig.mode === 'SNIPER' ? 1 : 0, true, camera.fov, rig.aimDist);
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld(true);
     lighting.updateFrustums();
@@ -2102,15 +2410,25 @@ window.__SHOTS = {
 // ---------------------------------------------------------------------------
 // Boot: garage first, warm the pipeline, then declare readiness.
 // ---------------------------------------------------------------------------
-buildShellCards(game.player.spec);
-damagePanel.setTank(game.player.spec);
+// BOOT DEFERRAL seam: battle staging (and with it game.player) now happens on
+// first world activation (ensureBattleStaged), not at boot — so prime the HUD
+// cards from the SELECTED SPEC here. ensureBattleStaged re-primes from the
+// real player entity when a battle actually stages.
+buildShellCards(getSpec(selectedSpecId));
+damagePanel.setTank(getSpec(selectedSpecId));
 garage.show(selectedSpecId);
 garageCameraPose();
 setGarageSunTrim(true); // camo_spotting r2: boot lands on the garage screen
 hud.setMode('hidden');
 
-world.update(0, camera.position);
-updateDustAndSync();
+// BOOT DEFERRAL seam: the battlefield build is deferred until BATTLE is
+// pressed, so `world` is legitimately null on the garage boot path — the
+// garage bay renders without it. When a world IS already active (harness
+// staging a battlefield view before readiness), warm it as before.
+if (world) {
+  world.update(0, camera.position);
+  updateDustAndSync();
+}
 lighting.update(true); // boot: render every cascade before first present
 post.render(SIM_DT);
 // PERF (performance_budget r1): the combat-pipeline warms below are needed

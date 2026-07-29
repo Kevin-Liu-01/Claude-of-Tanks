@@ -53,6 +53,45 @@ export function createMap(engineCtx, { mapId = 'verdant', seed = 1337 } = {}) {
   const terrain = buildTerrainMeshes(heightField, engineCtx, config);
   const vegetation = createVegetation(heightField, engineCtx, 2001, config);
   const props = createProps(heightField, engineCtx, 2002, config);
+  return assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
+}
+
+/**
+ * BOOT DEFERRAL: same world, built one subsystem per animation frame so a
+ * loading bar can report real progress and keep animating instead of freezing
+ * for the whole build. main.js uses this for the pre-battle load; the
+ * synchronous {@link createMap} stays the path for screenshot-contract map
+ * switches (which must not span frames).
+ *
+ * @param {object} engineCtx EngineCtx (ARCHITECTURE §2.8)
+ * @param {{mapId?:string, seed?:number}} [opts] world options
+ * @param {?function(string, number): (Promise<void>|void)} [onStep] called
+ *   BEFORE each subsystem with (label, fractionComplete); await it to yield
+ * @returns {Promise<object>} World (ARCHITECTURE §2.7) + {mapId, config}
+ */
+export async function createMapAsync(engineCtx, { mapId = 'verdant', seed = 1337 } = {},
+  onStep = null) {
+  const config = getMapConfig(mapId);
+  const step = async (label, f) => { if (onStep) await onStep(label, f); };
+  await step('Surveying terrain', 0.0);
+  const heightField = createHeightField(seed, config);
+  await step('Building terrain meshes', 0.34);
+  const terrain = buildTerrainMeshes(heightField, engineCtx, config);
+  await step('Planting vegetation', 0.58);
+  const vegetation = createVegetation(heightField, engineCtx, 2001, config);
+  await step('Placing structures', 0.82);
+  const props = createProps(heightField, engineCtx, 2002, config);
+  await step('Sealing the battlefield', 0.96);
+  return assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
+}
+
+/**
+ * Wire built subsystems into the World facade and add it to the scene. Shared
+ * by {@link createMap} and {@link createMapAsync} so both produce an identical
+ * world object.
+ * @returns {object} World (ARCHITECTURE §2.7)
+ */
+function assembleWorld(engineCtx, config, heightField, terrain, vegetation, props) {
   const layout = heightField._layout;
 
   const group = new THREE.Group();
