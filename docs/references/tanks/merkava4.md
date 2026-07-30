@@ -51,6 +51,7 @@ match the oracle, not the datasheet:
 | 0 (canonical modern1 stand-in) | 60.5 | 74.4 | 76 | 37 | 0 | 81 | baseline |
 | 1 (bespoke rebuild: oracle-fitted chassis + wedge turret + short-overhang gun) | 75.5 | — | 78 | 37 | 100 | 89 | full rebuild in profiles/merkava.js |
 | 2 (LOD0 turret buckets, rotor, frame basket, corner bins, Trophy fit) | 78.0 | 77.7 | 80 | 51 | 100 | 87 | turret comp capped by oracle yaw + fused-barrel hull fragments |
+| 3 (shaded-parity r2: gunmetal basket/chains/MG/smoke/antennas, detail-tone mantlet cheeks, Trophy slab + radar mount struts — float fix, dished wheels dishR 0.78, deck grilles/headlight guards/tow eyes/driver hump/door hinges, skirt bolts + rubber hems, front fender boards over the sprocket | 77.9 | — | 80 | 51 | 100 | 88 | material/furniture pass — silhouette pinned |
 
 Remaining gaps (oracle defects dominate): (1) the ~5-7 degree yaw baked into the
 GLB costs every quarter/top view (top 81 vs 95+ on the recovered marks);

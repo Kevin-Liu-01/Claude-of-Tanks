@@ -32,6 +32,7 @@ whole z −3.65..+4.55.
 | 0 (generic MERKAVA profile) | 71.6 | — | 82 | 25 | 80 | 86 | baseline |
 | 1 (bespoke rebuild) | 72.3 | — | 81 | 26 | 71 | 91 | |
 | 2 (small-turret mass fixes + gun radius/tip) | 74.8 | 87.6 | 81 | 26 | 90 | 92 | turret comp STUCK at 26 |
+| 3 (shaded-parity r2: cloth bustle bags + straps, gunmetal basket rails/mesh/chains + hanger rail, dark MG + hatch seam rings, dished wheels, deck grilles, headlight guards, tow eyes, tail hinges, skirt bolts + rubber hem, front fender boards) | 74.9 | — | 81 | 26 | 89 | 92 | material/furniture pass — silhouette pinned |
 
 ORACLE DEFECT (dominates this row): the 2B GLB's turret node captured the
 ENTIRE side-skirt run (MERKAVA_TURRET_FOLLOWERS `ex_armor_(?!body)` matches

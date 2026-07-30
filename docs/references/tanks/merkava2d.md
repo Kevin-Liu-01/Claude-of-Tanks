@@ -34,6 +34,7 @@ whole z −3.62..+4.51.
 | 0 (generic MERKAVA profile) | 76.6 | — | 88 | 40 | 84 | 86 | baseline |
 | 1 (bespoke rebuild + wedge cheek kit) | 79.0 | — | 91 | 47 | 74 | 90 | |
 | 2 (bustle fill, rotor length, roof raise) | 82.2 | 86.3 | 90 | 53 | 89 | 89 | |
+| 3 (shaded-parity r2: wedge-module recess seams, cloth bustle kit, gunmetal basket/chains/MG, dished wheels, deck/glacis/tail furniture, skirt bolts + hem, front fender boards) | 82.6 | — | 90 | 53 | 91 | 90 | material/furniture pass — silhouette pinned |
 
 Remaining gaps: partial follower skirt capture in the ref turret mask
 (smaller than 2B's but present: front sections + rows).

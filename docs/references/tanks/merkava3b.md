@@ -31,5 +31,6 @@ oracle with a slightly narrower turret:
 | 0 (generic MERKAVA profile) | 71.3 | — | 86 | 43 | 38 | 85 | baseline |
 | 1 (bespoke rebuild) | 79.4 | — | 90 | 53 | 72 | 88 | |
 | 2 (rotor/evac position, roof stowage kit, tail rack to -4.13) | 82.0 | 86.3 | 89 | 57 | 87 | 87 | |
+| 3 (shaded-parity r2: strapped cloth roof bundles, gunmetal basket mesh/chains, detail-tone gun-mount cheeks + rotor recess rings, dished wheels, deck grilles/headlight guards/tow eyes/tail hinges, skirt bolts + hem, front fender boards) | 82.0 | — | 89 | 57 | 87 | 87 | material/furniture pass — silhouette pinned |
 
 Remaining gaps: follower skirt capture in the ref turret mask (as 3D).

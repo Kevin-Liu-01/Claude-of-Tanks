@@ -36,6 +36,7 @@ Width-normalized to 3.72. Whole z −4.14..+4.14:
 | 0 (generic MERKAVA profile) | 68.9 | 80.1 | 86 | 44 | 13 | 86 | baseline |
 | 1 (bespoke rebuild) | 74.2 | — | 89 | 57 | 15 | 89 | gun blocked by rear-sliver asymmetry |
 | 2 (rear chain-rail tip past the hull tail + width-norm fix) | 82.9 | 86.2 | 89 | 58 | 89 | 89 | gun metric fixed by mirroring the oracle's rear turret overhang |
+| 3 (shaded-parity r2: rear-roof roll as strapped cloth, flank modules on dark mount struts — float fix, gunmetal basket/chains, dished wheels, deck/glacis/tail furniture, skirt bolts + hem, front fender boards) | 82.8 | — | 88 | 58 | 89 | 89 | material/furniture pass — silhouette pinned |
 
 Remaining gaps: ref turret mask carries rear+front skirt sections and the
 hull rack (followers config), inflating the ref upper mask my clean turret

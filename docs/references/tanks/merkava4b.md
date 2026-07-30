@@ -40,6 +40,7 @@ TALL: h/w ≈ 0.83 vs 0.72 real). Scoring targets ARE these oracle numbers:
 | 0 (base:'merkava4' donor + kit) | 67.0 | 72.9 | 82 | 29 | 51 | 88 | baseline |
 | 1 (bespoke rebuild via shared buildMerkavaMark) | 77.5 | — | 84 | 39 | 69 | 87 | no more base:'merkava4' donor |
 | 2 (LOD0 buckets + rotor + gun radius/tip + rear extents) | 78.7 | 85.1 | 82 | 51 | 86 | 86 | turret comp capped by follower skirt capture + tall-oracle proportions |
+| 3 (shaded-parity r2: dark basket frame + chains, dark loader/coax MGs + smoke tubes, detail-tone cheeks, dished wheels, deck/glacis/tail furniture, skirt bolts + hems, front fender boards) | 78.7 | — | 82 | 51 | 86 | 86 | material/furniture pass — silhouette pinned |
 
 Remaining gaps: oracle is 1.313x width-normalized (proportionally very tall);
 its turret node also captured a front skirt section (MERKAVA_TURRET_FOLLOWERS

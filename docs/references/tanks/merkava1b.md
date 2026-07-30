@@ -39,6 +39,7 @@ metric): whole z −3.94..+4.06.
 | 0 (generic MERKAVA profile) | 71.1 | — | 88 | 38 | 45 | 85 | baseline |
 | 1 (bespoke rebuild: exposed gear + fender line + small turret) | 79.8 | — | 91 | 53 | 70 | 89 | |
 | 2 (bustle fills to measured top, longer rotor, wider cheeks) | 83.9 | 86.6 | 92 | 59 | 88 | 89 | family best |
+| 3 (shaded-parity r2: dished exposed wheels dishR 0.78 with dark tire/annulus/bolts, gunmetal basket rails + mesh + chains, cloth bustle kit with straps, dark MG, deck grilles + headlight guards + tow eyes + tail hinge/latch detail) | 84.0 | — | 92 | 59 | 88 | 89 | material/furniture pass — silhouette pinned |
 
 Remaining gaps: ref turret mask captured a mid-hull skirt trapezoid
 (followers config); ref stowage silhouette atop the bustle is irregular.

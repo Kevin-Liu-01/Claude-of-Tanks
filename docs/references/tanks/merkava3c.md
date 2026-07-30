@@ -29,5 +29,6 @@ Width-normalized to 3.72. Whole z −4.14..+4.14; same sculpt family as 3B/3D:
 | 0 (generic MERKAVA profile) | 74.5 | — | 86 | 59 | 38 | 85 | baseline |
 | 1 (bespoke rebuild) | 80.7 | — | 88 | 60 | 72 | 88 | |
 | 2 (rotor/evac position + Kasag roof clutter kit) | 83.3 | 86.4 | 87 | 66 | 86 | 88 | best turret comp of the family |
+| 3 (shaded-parity r2: Kasag clutter as strapped cloth bundles, gunmetal basket mesh/chains, detail-tone cheeks, dished wheels, deck/glacis/tail furniture, skirt bolts + hem, front fender boards) | 83.4 | — | 87 | 66 | 86 | 88 | material/furniture pass — silhouette pinned |
 
 Remaining gaps: follower skirt capture in the ref turret mask (as 3D).
