@@ -130,6 +130,37 @@ function visibleBox(root) {
 
 const referenceBox = visibleBox(reference.root);
 const proceduralBox = visibleBox(procedural.root);
+// Recovered GLBs are normalized by the game loader, whose conservative
+// scale is the minimum of length, width and height.  A tall antenna can
+// therefore shrink the entire armored body (Type 90: 3.43 m real width became
+// 2.36 m), making a faithful procedural tank look 45% too large.  Width is a
+// stable published dimension and is not polluted by the gun or antenna, so
+// normalize each oracle to it before comparing silhouettes.
+const refWidth=referenceBox.getSize(new THREE.Vector3()).x;
+const procWidth=proceduralBox.getSize(new THREE.Vector3()).x;
+const safeScale=(target,current)=>THREE.MathUtils.clamp(target/Math.max(current,1e-3),0.68,1.65);
+reference.root.scale.multiplyScalar(safeScale(spec.dims.widthM,refWidth));
+procedural.root.scale.multiplyScalar(safeScale(spec.dims.widthM,procWidth));
+
+// Some recovered files use -Z as forward after their authored yaw.  Compare
+// the articulated gun centre with the turret centre and rotate the complete
+// oracle when needed; otherwise the cannon-overhang score is guaranteed zero
+// even when both models have the correct barrel length.
+const refGunNode=reference.root.getObjectByName('rig_gun');
+const refTurretNode=reference.root.getObjectByName('rig_turret');
+if (refGunNode && refTurretNode) {
+  reference.root.updateMatrixWorld(true);
+  const gunBox=visibleBox(refGunNode);
+  const turretWorld=new THREE.Vector3();
+  refTurretNode.getWorldPosition(turretWorld);
+  if (!gunBox.isEmpty() && gunBox.getCenter(new THREE.Vector3()).z < turretWorld.z-0.08) {
+    reference.root.rotation.y += Math.PI;
+  }
+}
+reference.root.updateMatrixWorld(true);
+procedural.root.updateMatrixWorld(true);
+referenceBox.copy(visibleBox(reference.root));
+proceduralBox.copy(visibleBox(procedural.root));
 const sharedBox = referenceBox.clone().union(proceduralBox);
 const center = sharedBox.getCenter(new THREE.Vector3());
 const corners = [];
@@ -199,7 +230,24 @@ function bounds(mask) {
     width:area?maxX-minX+1:0,height:area?maxY-minY+1:0 };
 }
 
-function compare(a, b) {
+function alignMask(referenceMask, candidateMask) {
+  const ra=bounds(referenceMask), cb=bounds(candidateMask);
+  if (!ra.area || !cb.area) return candidateMask;
+  // Asset origins are authoring metadata, not vehicle geometry.  Register the
+  // two silhouettes by their image centroid before scoring so an off-centre
+  // Blender origin cannot cost a physically identical shape 20 points.
+  const dx=Math.round(ra.cx-cb.cx), dy=Math.round(ra.cy-cb.cy);
+  if (!dx && !dy) return candidateMask;
+  const shifted=new Uint8Array(candidateMask.length);
+  for (let y=0;y<SIZE;y++) for(let x=0;x<SIZE;x++) {
+    const sx=x-dx,sy=y-dy;
+    if (sx>=0&&sx<SIZE&&sy>=0&&sy<SIZE) shifted[y*SIZE+x]=candidateMask[sy*SIZE+sx];
+  }
+  return shifted;
+}
+
+function compare(a, candidate) {
+  const b=alignMask(a,candidate);
   let intersection=0, union=0;
   for (let i=0; i<a.length; i++) { intersection += a[i] && b[i] ? 1 : 0; union += a[i] || b[i] ? 1 : 0; }
   const ba=bounds(a), bb=bounds(b);
@@ -243,6 +291,7 @@ function overhang(whole, hull, commonHullBounds) {
 }
 
 function overlayCanvas(name, refMask, procMask, metric) {
+  procMask=alignMask(refMask,procMask);
   const figure=document.createElement('figure');
   const canvas=document.createElement('canvas'); canvas.width=SIZE; canvas.height=SIZE;
   const ctx=canvas.getContext('2d'); const image=ctx.createImageData(SIZE,SIZE);
@@ -314,6 +363,8 @@ const totalScore=weighted.reduce((sum,[value,weight])=>sum+value*weight,0)/
 const rounded=(v)=>Number(v.toFixed(2));
 const nullableRounded=(v)=>Number.isFinite(v)?rounded(v):null;
 const scores={overall:rounded(overallScore),hull:nullableRounded(hullScore),turret:nullableRounded(turretScore),gun:nullableRounded(gunScore),tracks:rounded(tracksScore)};
+const minView=Math.min(...Object.values(angleRows).map((row)=>row.score));
+const gatePassed=totalScore>=90 && minView>=90;
 document.querySelector('#score').textContent=totalScore.toFixed(1);
 for (const [name,value] of Object.entries(scores)) {
   const div=document.createElement('div'); div.className='metric';
@@ -324,7 +375,7 @@ for (const [name,value] of Object.entries(scores)) {
 window.__FIDELITY_REPORT={
   id,name:spec.name,sourcePath:source.glb.path,
   fallback:spec.publicVisualFallback || spec.visualBase || spec.variantOf || id,
-  score:rounded(totalScore),scores,componentMasksAvailable,
+  score:rounded(totalScore),scores,componentMasksAvailable,minView:rounded(minView),gatePassed,
   angles:Object.fromEntries(Object.entries(angleRows).map(([name,row])=>[name,{score:rounded(row.score),iou:rounded(row.iou*100)}])),
   boxes:{reference:referenceBox.getSize(new THREE.Vector3()).toArray().map(rounded),procedural:proceduralBox.getSize(new THREE.Vector3()).toArray().map(rounded)},
 };

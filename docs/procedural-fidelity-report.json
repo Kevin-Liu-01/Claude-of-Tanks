@@ -1,11 +1,12 @@
 {
-  "generatedAt": "2026-07-30T05:38:43.174Z",
+  "generatedAt": "2026-07-30T17:38:28.064Z",
   "summary": {
     "references": 72,
-    "passed": 8,
-    "failed": 64,
-    "passThreshold": 72,
-    "median": 61.44,
+    "passed": 0,
+    "failed": 72,
+    "passThreshold": 90,
+    "perViewFloor": 90,
+    "median": 71.53,
     "worst": "chieftain5",
     "best": "sturmtiger"
   },
@@ -15,853 +16,45 @@
       "name": "Chieftain Mk.5",
       "sourcePath": "/models/tanks/community/recovered/chieftain5.glb",
       "fallback": "chieftain_mk10",
-      "score": 37.71,
+      "score": 51.78,
       "scores": {
-        "overall": 68.86,
-        "hull": 42.25,
-        "turret": 9.52,
+        "overall": 86.79,
+        "hull": 62.4,
+        "turret": 20.76,
         "gun": 0,
-        "tracks": 14.31
+        "tracks": 20.6
       },
       "componentMasksAvailable": true,
+      "minView": 81.95,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 77.79,
-          "iou": 73.03
+          "score": 85.41,
+          "iou": 80.95
         },
         "side": {
-          "score": 61.65,
-          "iou": 50.44
+          "score": 81.95,
+          "iou": 76.46
         },
         "top": {
-          "score": 67.69,
-          "iou": 59.09
+          "score": 92.56,
+          "iou": 90.97
         },
         "rearQuarter": {
-          "score": 68.29,
-          "iou": 59.65
+          "score": 87.23,
+          "iou": 83.2
         }
       },
       "boxes": {
         "reference": [
-          3.47,
-          3.77,
-          10.36
+          3.5,
+          3.8,
+          10.44
         ],
         "procedural": [
-          3.54,
-          3.37,
-          9.25
-        ]
-      }
-    },
-    {
-      "id": "m1a2_sepv2",
-      "name": "M1A2 Abrams SEPv2",
-      "sourcePath": "/models/tanks/community/recovered/m1a2_sepv2.glb",
-      "fallback": "m1a2",
-      "score": 45.98,
-      "scores": {
-        "overall": 59.9,
-        "hull": 55.85,
-        "turret": 26.99,
-        "gun": 6.16,
-        "tracks": 61.5
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 63.4,
-          "iou": 58.11
-        },
-        "side": {
-          "score": 58.15,
-          "iou": 51.71
-        },
-        "top": {
-          "score": 61.49,
-          "iou": 57.36
-        },
-        "rearQuarter": {
-          "score": 56.55,
-          "iou": 51.18
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.2,
-          3.17,
-          7.15
-        ],
-        "procedural": [
-          3.87,
-          3.33,
-          9.83
-        ]
-      }
-    },
-    {
-      "id": "m1a1",
-      "name": "M1A1 Abrams",
-      "sourcePath": "/models/tanks/m1a2_tejas.glb",
-      "fallback": "m1a2",
-      "score": 46.25,
-      "scores": {
-        "overall": 59.82,
-        "hull": 51.87,
-        "turret": 29.27,
-        "gun": 8.44,
-        "tracks": 68.53
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 59.69,
-          "iou": 54.65
-        },
-        "side": {
-          "score": 59.73,
-          "iou": 53.37
-        },
-        "top": {
-          "score": 60.15,
-          "iou": 56.18
-        },
-        "rearQuarter": {
-          "score": 59.71,
-          "iou": 54.4
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.84,
-          3.17,
-          7.47
-        ],
-        "procedural": [
-          3.87,
-          3.22,
-          9.83
-        ]
-      }
-    },
-    {
-      "id": "m1a1ha",
-      "name": "M1A1HA Abrams",
-      "sourcePath": "/models/tanks/m1a2_tejas.glb",
-      "fallback": "m1a1",
-      "score": 46.25,
-      "scores": {
-        "overall": 59.82,
-        "hull": 51.87,
-        "turret": 29.27,
-        "gun": 8.44,
-        "tracks": 68.53
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 59.69,
-          "iou": 54.65
-        },
-        "side": {
-          "score": 59.73,
-          "iou": 53.37
-        },
-        "top": {
-          "score": 60.15,
-          "iou": 56.18
-        },
-        "rearQuarter": {
-          "score": 59.71,
-          "iou": 54.4
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.84,
-          3.17,
-          7.47
-        ],
-        "procedural": [
-          3.87,
-          3.22,
-          9.83
-        ]
-      }
-    },
-    {
-      "id": "m1a2_tejas",
-      "name": "M1A2 Abrams (Tejas)",
-      "sourcePath": "/models/tanks/m1a2_tejas.glb",
-      "fallback": "m1a2",
-      "score": 46.25,
-      "scores": {
-        "overall": 59.82,
-        "hull": 51.87,
-        "turret": 29.27,
-        "gun": 8.44,
-        "tracks": 68.53
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 59.69,
-          "iou": 54.65
-        },
-        "side": {
-          "score": 59.73,
-          "iou": 53.37
-        },
-        "top": {
-          "score": 60.15,
-          "iou": 56.18
-        },
-        "rearQuarter": {
-          "score": 59.71,
-          "iou": 54.4
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.84,
-          3.17,
-          7.47
-        ],
-        "procedural": [
-          3.87,
-          3.22,
-          9.83
-        ]
-      }
-    },
-    {
-      "id": "leo2a7v",
-      "name": "Leopard 2A7V",
-      "sourcePath": "/models/tanks/community/recovered/leo2a7v.glb",
-      "fallback": "leo2a7",
-      "score": 46.76,
-      "scores": {
-        "overall": 65.45,
-        "hull": 63.75,
-        "turret": 13.93,
-        "gun": 0,
-        "tracks": 64.12
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 69.89,
-          "iou": 64.89
-        },
-        "side": {
-          "score": 58.43,
-          "iou": 52.36
-        },
-        "top": {
-          "score": 72.46,
-          "iou": 68.71
-        },
-        "rearQuarter": {
-          "score": 61.02,
-          "iou": 55.6
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.47,
-          3.43,
-          7.32
-        ],
-        "procedural": [
-          2.51,
-          3.12,
-          7.22
-        ]
-      }
-    },
-    {
-      "id": "m1a2",
-      "name": "M1A2 Abrams SEPv3",
-      "sourcePath": "/models/tanks/m1a2_sepv3_dannzjs.glb",
-      "fallback": "m1a2",
-      "score": 47.11,
-      "scores": {
-        "overall": 59.7,
-        "hull": 51.25,
-        "turret": 29.74,
-        "gun": 16.68,
-        "tracks": 68.15
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 57.7,
-          "iou": 51.89
-        },
-        "side": {
-          "score": 60.5,
-          "iou": 54.26
-        },
-        "top": {
-          "score": 59.86,
-          "iou": 55.5
-        },
-        "rearQuarter": {
-          "score": 60.73,
-          "iou": 55.7
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.98,
-          3.17,
-          7.58
-        ],
-        "procedural": [
-          3.87,
-          3.22,
-          9.83
-        ]
-      }
-    },
-    {
-      "id": "abramsx",
-      "name": "AbramsX",
-      "sourcePath": "/models/tanks/community/abramsx-mortavex.glb",
-      "fallback": "m1a2",
-      "score": 47.71,
-      "scores": {
-        "overall": 59.29,
-        "hull": 57.04,
-        "turret": 30.19,
-        "gun": 9.89,
-        "tracks": 68.44
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 60.22,
-          "iou": 55.11
-        },
-        "side": {
-          "score": 58.93,
-          "iou": 52.11
-        },
-        "top": {
-          "score": 58.78,
-          "iou": 54.41
-        },
-        "rearQuarter": {
-          "score": 59.24,
-          "iou": 53.81
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.81,
-          3.17,
-          7.77
-        ],
-        "procedural": [
-          3.87,
-          3.22,
-          9.83
-        ]
-      }
-    },
-    {
-      "id": "m1a2_tusk",
-      "name": "M1A2 Abrams TUSK",
-      "sourcePath": "/models/tanks/m1a2_tejas.glb",
-      "fallback": "m1a2",
-      "score": 48.48,
-      "scores": {
-        "overall": 63.07,
-        "hull": 55.45,
-        "turret": 29.55,
-        "gun": 8.44,
-        "tracks": 70.3
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 64.25,
-          "iou": 58.63
-        },
-        "side": {
-          "score": 60.95,
-          "iou": 54.22
-        },
-        "top": {
-          "score": 63.72,
-          "iou": 58.5
-        },
-        "rearQuarter": {
-          "score": 63.37,
-          "iou": 57.83
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.9,
-          3.17,
-          8.33
-        ],
-        "procedural": [
-          4.16,
-          3.22,
-          9.83
-        ]
-      }
-    },
-    {
-      "id": "pt91m",
-      "name": "PT-91M Pendekar",
-      "sourcePath": "/models/tanks/community/recovered/pt91m.glb",
-      "fallback": "t72b3",
-      "score": 50.57,
-      "scores": {
-        "overall": 68.55,
-        "hull": 63.13,
-        "turret": 22.32,
-        "gun": 6.75,
-        "tracks": 69.06
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 67.67,
-          "iou": 63.01
-        },
-        "side": {
-          "score": 66.05,
-          "iou": 59.9
-        },
-        "top": {
-          "score": 71.25,
-          "iou": 67.45
-        },
-        "rearQuarter": {
-          "score": 69.21,
-          "iou": 63.78
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.73,
-          2.9,
-          7.91
-        ],
-        "procedural": [
-          3.24,
-          2.58,
-          7.2
-        ]
-      }
-    },
-    {
-      "id": "object279",
-      "name": "Object 279",
-      "sourcePath": "/models/tanks/community/object279-snowleopard.glb",
-      "fallback": "object279",
-      "score": 51.65,
-      "scores": {
-        "overall": 67.72,
-        "hull": 67.68,
-        "turret": 24.7,
-        "gun": 6.91,
-        "tracks": 65.79
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 75.39,
-          "iou": 67.53
-        },
-        "side": {
-          "score": 58.84,
-          "iou": 48.75
-        },
-        "top": {
-          "score": 66.96,
-          "iou": 57.58
-        },
-        "rearQuarter": {
-          "score": 69.67,
-          "iou": 61.54
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.58,
-          2.53,
-          10.24
-        ],
-        "procedural": [
-          3.69,
-          2.52,
-          7.16
-        ]
-      }
-    },
-    {
-      "id": "t72b3m",
-      "name": "T-72B3M obr. 2022",
-      "sourcePath": "/models/tanks/community/recovered/t72b3m.glb",
-      "fallback": "t72b3",
-      "score": 52.05,
-      "scores": {
-        "overall": 67.36,
-        "hull": 66.44,
-        "turret": 24.1,
-        "gun": 13.74,
-        "tracks": 67.4
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 73.5,
-          "iou": 69.25
-        },
-        "side": {
-          "score": 61.13,
-          "iou": 54.57
-        },
-        "top": {
-          "score": 71.93,
-          "iou": 67.89
-        },
-        "rearQuarter": {
-          "score": 62.86,
-          "iou": 57.51
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.64,
-          2.51,
-          6.86
-        ],
-        "procedural": [
-          2.71,
-          2.54,
-          6.87
-        ]
-      }
-    },
-    {
-      "id": "is7",
-      "name": "IS-7",
-      "sourcePath": "/models/tanks/community/is7-snowleopard.glb",
-      "fallback": "is7",
-      "score": 52.08,
-      "scores": {
-        "overall": 68.18,
-        "hull": 68.31,
-        "turret": 30.19,
-        "gun": 0,
-        "tracks": 63.82
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 77.93,
-          "iou": 70.33
-        },
-        "side": {
-          "score": 60.22,
-          "iou": 50.7
-        },
-        "top": {
-          "score": 65.12,
-          "iou": 55.72
-        },
-        "rearQuarter": {
-          "score": 69.43,
-          "iou": 61.03
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.67,
-          2.83,
-          10.91
-        ],
-        "procedural": [
-          3.49,
-          2.64,
-          7.39
-        ]
-      }
-    },
-    {
-      "id": "charioteer",
-      "name": "FV4101 Charioteer",
-      "sourcePath": "/models/tanks/community/recovered/charioteer.glb",
-      "fallback": "jagdtiger",
-      "score": 53.35,
-      "scores": {
-        "overall": 70.34,
-        "hull": 65.33,
-        "turret": 16.22,
-        "gun": 17.42,
-        "tracks": 88.27
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 69.81,
-          "iou": 64.37
-        },
-        "side": {
-          "score": 69.89,
-          "iou": 64.24
-        },
-        "top": {
-          "score": 68.3,
-          "iou": 64.9
-        },
-        "rearQuarter": {
-          "score": 73.37,
-          "iou": 69.24
-        }
-      },
-      "boxes": {
-        "reference": [
-          4,
-          2.36,
-          8.8
-        ],
-        "procedural": [
-          3.11,
-          2.78,
-          7.82
-        ]
-      }
-    },
-    {
-      "id": "m26_pershing",
-      "name": "M26 Pershing",
-      "sourcePath": "/models/tanks/community/recovered/m26_pershing.glb",
-      "fallback": "m4a3e8",
-      "score": 53.56,
-      "scores": {
-        "overall": 71.86,
-        "hull": 72.5,
-        "turret": 19.7,
-        "gun": 0,
-        "tracks": 79.35
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 70.63,
-          "iou": 67.42
-        },
-        "side": {
-          "score": 66.32,
-          "iou": 60.78
-        },
-        "top": {
-          "score": 78.08,
-          "iou": 75.37
-        },
-        "rearQuarter": {
-          "score": 72.42,
-          "iou": 69.67
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.24,
-          2.18,
-          6.43
-        ],
-        "procedural": [
-          3.57,
-          2.85,
-          6.93
-        ]
-      }
-    },
-    {
-      "id": "isu152",
-      "name": "ISU-152",
-      "sourcePath": "/models/tanks/community/recovered/isu152.glb",
-      "fallback": "sturmtiger",
-      "score": 54.12,
-      "scores": {
-        "overall": 52.26,
-        "hull": null,
-        "turret": null,
-        "gun": null,
-        "tracks": 62.24
-      },
-      "componentMasksAvailable": false,
-      "angles": {
-        "front": {
-          "score": 48.51,
-          "iou": 43.84
-        },
-        "side": {
-          "score": 53.07,
-          "iou": 47.95
-        },
-        "top": {
-          "score": 56.06,
-          "iou": 52.07
-        },
-        "rearQuarter": {
-          "score": 51.4,
-          "iou": 46.79
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.3,
-          1.67,
-          6.28
-        ],
-        "procedural": [
-          3.13,
-          2.11,
-          7.51
-        ]
-      }
-    },
-    {
-      "id": "merkava2d",
-      "name": "Merkava Mk.2D",
-      "sourcePath": "/models/tanks/community/recovered/merkava2d.glb",
-      "fallback": "merkava4",
-      "score": 54.54,
-      "scores": {
-        "overall": 77.39,
-        "hull": 71.6,
-        "turret": 15.3,
-        "gun": 0,
-        "tracks": 81.17
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 80.67,
-          "iou": 77.54
-        },
-        "side": {
-          "score": 71.2,
-          "iou": 66.38
-        },
-        "top": {
-          "score": 86.52,
-          "iou": 84.36
-        },
-        "rearQuarter": {
-          "score": 71.18,
-          "iou": 66.96
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.63,
-          3.46,
-          5.78
-        ],
-        "procedural": [
-          2.69,
-          3.07,
-          5.93
-        ]
-      }
-    },
-    {
-      "id": "t90a_vladimir",
-      "name": "T-90A Vladimir",
-      "sourcePath": "/models/tanks/community/recovered/t90a_vladimir.glb",
-      "fallback": "t90a",
-      "score": 54.64,
-      "scores": {
-        "overall": 69.07,
-        "hull": 66.96,
-        "turret": 32.05,
-        "gun": 14.31,
-        "tracks": 70.02
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 73.96,
-          "iou": 69.75
-        },
-        "side": {
-          "score": 64.78,
-          "iou": 58.42
-        },
-        "top": {
-          "score": 69.39,
-          "iou": 64.76
-        },
-        "rearQuarter": {
-          "score": 68.15,
-          "iou": 63.3
-        }
-      },
-      "boxes": {
-        "reference": [
+          3.5,
           2.88,
-          2.9,
-          7.93
-        ],
-        "procedural": [
-          3.19,
-          2.6,
-          7.2
-        ]
-      }
-    },
-    {
-      "id": "t64bv1",
-      "name": "T-64BV1",
-      "sourcePath": "/models/tanks/community/recovered/t64bv1.glb",
-      "fallback": "t72b3",
-      "score": 55.1,
-      "scores": {
-        "overall": 69.62,
-        "hull": 67.45,
-        "turret": 27.61,
-        "gun": 23.56,
-        "tracks": 69.07
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 74.71,
-          "iou": 67.1
-        },
-        "side": {
-          "score": 64.29,
-          "iou": 54.87
-        },
-        "top": {
-          "score": 65.57,
-          "iou": 57.77
-        },
-        "rearQuarter": {
-          "score": 73.9,
-          "iou": 66.74
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.78,
-          2.53,
-          9.53
-        ],
-        "procedural": [
-          3.44,
-          2.5,
-          7.06
+          10.35
         ]
       }
     },
@@ -870,178 +63,92 @@
       "name": "Heavy Tank (Quaternius)",
       "sourcePath": "/models/tanks/community/tank_quaternius_fa5.glb",
       "fallback": "q_heavy",
-      "score": 55.12,
+      "score": 57.24,
       "scores": {
-        "overall": 70.95,
-        "hull": 72.36,
-        "turret": 22.31,
-        "gun": 14.2,
-        "tracks": 75.36
+        "overall": 65.71,
+        "hull": 68.15,
+        "turret": 49.24,
+        "gun": 14.52,
+        "tracks": 70.18
       },
       "componentMasksAvailable": true,
+      "minView": 57.25,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 72.7,
-          "iou": 69.55
+          "score": 68.88,
+          "iou": 65.36
         },
         "side": {
-          "score": 64.66,
-          "iou": 60.63
+          "score": 57.25,
+          "iou": 52.28
         },
         "top": {
-          "score": 75.96,
-          "iou": 71.45
+          "score": 73.95,
+          "iou": 70.65
         },
         "rearQuarter": {
-          "score": 70.45,
-          "iou": 66.82
+          "score": 62.77,
+          "iou": 58.3
         }
       },
       "boxes": {
         "reference": [
-          3.89,
-          1.78,
-          6.81
+          3.6,
+          1.65,
+          6.31
         ],
         "procedural": [
-          3.62,
-          2.59,
-          8.11
+          3.6,
+          2.58,
+          8.07
         ]
       }
     },
     {
-      "id": "m45_patton",
-      "name": "M45 Patton",
-      "sourcePath": "/models/tanks/community/recovered/m45_patton.glb",
-      "fallback": "m4a3e8",
-      "score": 55.25,
+      "id": "charioteer",
+      "name": "FV4101 Charioteer",
+      "sourcePath": "/models/tanks/community/recovered/charioteer.glb",
+      "fallback": "jagdtiger",
+      "score": 58.97,
       "scores": {
-        "overall": 72.95,
-        "hull": 73.97,
-        "turret": 23.54,
+        "overall": 77.43,
+        "hull": 85.54,
+        "turret": 19.33,
         "gun": 0,
-        "tracks": 81.49
+        "tracks": 82.7
       },
       "componentMasksAvailable": true,
+      "minView": 68.34,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 69,
-          "iou": 65.87
+          "score": 74.99,
+          "iou": 71.31
         },
         "side": {
-          "score": 69.9,
-          "iou": 66.6
+          "score": 68.34,
+          "iou": 62.32
         },
         "top": {
-          "score": 79.86,
-          "iou": 77.85
+          "score": 91.44,
+          "iou": 90.28
         },
         "rearQuarter": {
-          "score": 73.04,
-          "iou": 70.23
+          "score": 74.93,
+          "iou": 70.57
         }
       },
       "boxes": {
         "reference": [
-          3.24,
-          2.15,
-          5.8
-        ],
-        "procedural": [
-          3.57,
-          2.89,
-          6.93
-        ]
-      }
-    },
-    {
-      "id": "merkava2b",
-      "name": "Merkava Mk.2B",
-      "sourcePath": "/models/tanks/community/recovered/merkava2b.glb",
-      "fallback": "merkava4",
-      "score": 55.47,
-      "scores": {
-        "overall": 76.58,
-        "hull": 77.68,
-        "turret": 13.55,
-        "gun": 0,
-        "tracks": 81.77
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 77.33,
-          "iou": 73.91
-        },
-        "side": {
-          "score": 71.31,
-          "iou": 66.39
-        },
-        "top": {
-          "score": 86.27,
-          "iou": 83.99
-        },
-        "rearQuarter": {
-          "score": 71.4,
-          "iou": 67.2
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.61,
-          3.46,
-          5.79
-        ],
-        "procedural": [
-          2.67,
           3.05,
-          5.93
-        ]
-      }
-    },
-    {
-      "id": "centurion3",
-      "name": "Centurion Mk.3",
-      "sourcePath": "/models/tanks/community/recovered/centurion3.glb",
-      "fallback": "chieftain_mk10",
-      "score": 56.18,
-      "scores": {
-        "overall": 76.83,
-        "hull": 73.1,
-        "turret": 18.84,
-        "gun": 0,
-        "tracks": 90.57
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 77.39,
-          "iou": 72.89
-        },
-        "side": {
-          "score": 73.63,
-          "iou": 67.09
-        },
-        "top": {
-          "score": 79.14,
-          "iou": 76.65
-        },
-        "rearQuarter": {
-          "score": 77.16,
-          "iou": 72.91
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.95,
-          2.57,
-          8.77
+          1.8,
+          6.71
         ],
         "procedural": [
-          3.45,
-          2.84,
-          9.64
+          3.05,
+          2.73,
+          7.67
         ]
       }
     },
@@ -1050,673 +157,92 @@
       "name": "Merkava IVm Windbreaker",
       "sourcePath": "/models/tanks/merkava4_arlassar.glb",
       "fallback": "merkava4",
-      "score": 56.74,
+      "score": 59.29,
       "scores": {
-        "overall": 75.98,
-        "hull": 73.13,
-        "turret": 27.06,
+        "overall": 78.57,
+        "hull": 75.26,
+        "turret": 32.83,
         "gun": 0,
-        "tracks": 80.64
+        "tracks": 80.18
       },
       "componentMasksAvailable": true,
+      "minView": 74.38,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 84.7,
-          "iou": 80.89
+          "score": 86.58,
+          "iou": 82.43
         },
         "side": {
-          "score": 74.44,
-          "iou": 69.81
+          "score": 77.38,
+          "iou": 72.11
         },
         "top": {
-          "score": 73.29,
-          "iou": 70.18
+          "score": 75.93,
+          "iou": 72.69
         },
         "rearQuarter": {
-          "score": 71.49,
-          "iou": 67.47
+          "score": 74.38,
+          "iou": 70.19
         }
       },
       "boxes": {
         "reference": [
-          4.02,
+          3.72,
+          2.62,
+          6.89
+        ],
+        "procedural": [
+          3.72,
+          2.68,
+          8.43
+        ]
+      }
+    },
+    {
+      "id": "m1a2_tusk",
+      "name": "M1A2 Abrams TUSK",
+      "sourcePath": "/models/tanks/m1a2_tejas.glb",
+      "fallback": "m1a2",
+      "score": 59.59,
+      "scores": {
+        "overall": 69.89,
+        "hull": 59.81,
+        "turret": 46.98,
+        "gun": 41.67,
+        "tracks": 72.22
+      },
+      "componentMasksAvailable": true,
+      "minView": 68.05,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 72.26,
+          "iou": 66.83
+        },
+        "side": {
+          "score": 68.05,
+          "iou": 61.7
+        },
+        "top": {
+          "score": 69.14,
+          "iou": 63.53
+        },
+        "rearQuarter": {
+          "score": 70.11,
+          "iou": 64.57
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.66,
+          2.98,
+          7.83
+        ],
+        "procedural": [
+          3.66,
           2.83,
-          7.44
-        ],
-        "procedural": [
-          4.11,
-          2.95,
-          9.31
-        ]
-      }
-    },
-    {
-      "id": "leo2a5",
-      "name": "Leopard 2A5",
-      "sourcePath": "/models/tanks/community/recovered/leo2a5.glb",
-      "fallback": "leo2a6",
-      "score": 57.06,
-      "scores": {
-        "overall": 77.41,
-        "hull": 76.35,
-        "turret": 22.36,
-        "gun": 0,
-        "tracks": 80.08
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 77.32,
-          "iou": 73.97
-        },
-        "side": {
-          "score": 76.64,
-          "iou": 71.92
-        },
-        "top": {
-          "score": 79.66,
-          "iou": 76.71
-        },
-        "rearQuarter": {
-          "score": 76.03,
-          "iou": 71.86
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.13,
-          3.43,
-          8.33
-        ],
-        "procedural": [
-          3.29,
-          3,
-          7.71
-        ]
-      }
-    },
-    {
-      "id": "tiger2",
-      "name": "Tiger II",
-      "sourcePath": "/models/tanks/community/tiger2-maximus.glb",
-      "fallback": "tiger2",
-      "score": 57.55,
-      "scores": {
-        "overall": 72.4,
-        "hull": 68.08,
-        "turret": 30.7,
-        "gun": 25.27,
-        "tracks": 75.24
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 76.45,
-          "iou": 70.46
-        },
-        "side": {
-          "score": 62.19,
-          "iou": 54.41
-        },
-        "top": {
-          "score": 75.32,
-          "iou": 67.97
-        },
-        "rearQuarter": {
-          "score": 75.63,
-          "iou": 69.94
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.91,
-          3.19,
-          10.29
-        ],
-        "procedural": [
-          3.83,
-          2.5,
-          8.77
-        ]
-      }
-    },
-    {
-      "id": "centurion5",
-      "name": "Centurion Mk.5/2",
-      "sourcePath": "/models/tanks/community/recovered/centurion5.glb",
-      "fallback": "chieftain_mk10",
-      "score": 57.68,
-      "scores": {
-        "overall": 76.12,
-        "hull": 72.67,
-        "turret": 21.79,
-        "gun": 11.34,
-        "tracks": 89.37
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 76.38,
-          "iou": 71.92
-        },
-        "side": {
-          "score": 72.53,
-          "iou": 65.75
-        },
-        "top": {
-          "score": 78.76,
-          "iou": 76.17
-        },
-        "rearQuarter": {
-          "score": 76.83,
-          "iou": 72.51
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.95,
-          2.57,
-          9.22
-        ],
-        "procedural": [
-          3.45,
-          2.86,
-          9.64
-        ]
-      }
-    },
-    {
-      "id": "t62mv1",
-      "name": "T-62MV-1",
-      "sourcePath": "/models/tanks/community/recovered/t62mv1.glb",
-      "fallback": "leo1a5",
-      "score": 57.82,
-      "scores": {
-        "overall": 75.17,
-        "hull": 74.2,
-        "turret": 25.48,
-        "gun": 16.83,
-        "tracks": 73.08
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 79.37,
-          "iou": 72.08
-        },
-        "side": {
-          "score": 69.34,
-          "iou": 61.69
-        },
-        "top": {
-          "score": 72.91,
-          "iou": 65.14
-        },
-        "rearQuarter": {
-          "score": 79.06,
-          "iou": 72.71
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.31,
-          2.77,
-          9.54
-        ],
-        "procedural": [
-          3.39,
-          2.52,
-          7.1
-        ]
-      }
-    },
-    {
-      "id": "leo2a6",
-      "name": "Leopard 2A6",
-      "sourcePath": "/models/tanks/leo2a6_buh.glb",
-      "fallback": "leo2a6",
-      "score": 59.61,
-      "scores": {
-        "overall": 74.82,
-        "hull": 71.85,
-        "turret": 35.37,
-        "gun": 18.32,
-        "tracks": 77.35
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 76.15,
-          "iou": 72.24
-        },
-        "side": {
-          "score": 69.68,
-          "iou": 62.83
-        },
-        "top": {
-          "score": 82.05,
-          "iou": 78.79
-        },
-        "rearQuarter": {
-          "score": 71.39,
-          "iou": 65.11
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.15,
-          3.43,
-          10.1
-        ],
-        "procedural": [
-          3.17,
-          3.19,
-          9.78
-        ]
-      }
-    },
-    {
-      "id": "leopard2_proto",
-      "name": "Leopard 2 Prototype",
-      "sourcePath": "/models/tanks/community/recovered/leopard2_proto.glb",
-      "fallback": "leo2a4",
-      "score": 59.62,
-      "scores": {
-        "overall": 80.72,
-        "hull": 76.73,
-        "turret": 15.8,
-        "gun": 16.22,
-        "tracks": 88.46
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 81.19,
-          "iou": 77.43
-        },
-        "side": {
-          "score": 76.37,
-          "iou": 70
-        },
-        "top": {
-          "score": 84.21,
-          "iou": 82.27
-        },
-        "rearQuarter": {
-          "score": 81.1,
-          "iou": 76.79
-        }
-      },
-      "boxes": {
-        "reference": [
-          4,
-          2.31,
-          9.15
-        ],
-        "procedural": [
-          3.64,
-          2.76,
-          8.78
-        ]
-      }
-    },
-    {
-      "id": "t72b_1987",
-      "name": "T-72B obr. 1987",
-      "sourcePath": "/models/tanks/community/recovered/t72b_1987.glb",
-      "fallback": "t72b3",
-      "score": 59.79,
-      "scores": {
-        "overall": 77.46,
-        "hull": 75.65,
-        "turret": 28.32,
-        "gun": 14.66,
-        "tracks": 79.33
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 79.5,
-          "iou": 72.05
-        },
-        "side": {
-          "score": 73.01,
-          "iou": 65.87
-        },
-        "top": {
-          "score": 75.83,
-          "iou": 69.73
-        },
-        "rearQuarter": {
-          "score": 81.51,
-          "iou": 75.27
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.53,
-          2.83,
-          9.53
-        ],
-        "procedural": [
-          3.54,
-          2.54,
-          7.12
-        ]
-      }
-    },
-    {
-      "id": "t90m",
-      "name": "T-90M Proryv",
-      "sourcePath": "/models/tanks/t90m_minehffd.glb",
-      "fallback": "t90m",
-      "score": 60.43,
-      "scores": {
-        "overall": 75.03,
-        "hull": 74.33,
-        "turret": 35.14,
-        "gun": 19.09,
-        "tracks": 78.34
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 83.75,
-          "iou": 78.47
-        },
-        "side": {
-          "score": 67.02,
-          "iou": 57.11
-        },
-        "top": {
-          "score": 76.24,
-          "iou": 70.79
-        },
-        "rearQuarter": {
-          "score": 73.13,
-          "iou": 67.26
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.67,
-          2.89,
-          9.63
-        ],
-        "procedural": [
-          4.01,
-          2.7,
-          10.44
-        ]
-      }
-    },
-    {
-      "id": "m46_patton",
-      "name": "M46 Patton",
-      "sourcePath": "/models/tanks/community/recovered/m46_patton.glb",
-      "fallback": "m60a1",
-      "score": 60.45,
-      "scores": {
-        "overall": 79.74,
-        "hull": 82.04,
-        "turret": 20.02,
-        "gun": 11.11,
-        "tracks": 83.73
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 79.5,
-          "iou": 74.82
-        },
-        "side": {
-          "score": 73.46,
-          "iou": 66.39
-        },
-        "top": {
-          "score": 85.06,
-          "iou": 80.68
-        },
-        "rearQuarter": {
-          "score": 80.93,
-          "iou": 74.96
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.64,
-          2.42,
-          7.22
-        ],
-        "procedural": [
-          3.57,
-          2.9,
-          8.17
-        ]
-      }
-    },
-    {
-      "id": "is6b",
-      "name": "IS-6B",
-      "sourcePath": "/models/tanks/community/is6b-snowleopard.glb",
-      "fallback": "is6b",
-      "score": 60.59,
-      "scores": {
-        "overall": 71.53,
-        "hull": 66.16,
-        "turret": 50.65,
-        "gun": 29.76,
-        "tracks": 66.35
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 78.09,
-          "iou": 75.83
-        },
-        "side": {
-          "score": 67.02,
-          "iou": 58.67
-        },
-        "top": {
-          "score": 66.24,
-          "iou": 57.65
-        },
-        "rearQuarter": {
-          "score": 74.76,
-          "iou": 68.43
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.95,
-          2.18,
-          9.1
-        ],
-        "procedural": [
-          3.19,
-          2.56,
-          6.95
-        ]
-      }
-    },
-    {
-      "id": "is3",
-      "name": "IS-3",
-      "sourcePath": "/models/tanks/community/is3_panzerfactory.glb",
-      "fallback": "is3",
-      "score": 60.92,
-      "scores": {
-        "overall": 78.93,
-        "hull": 84.9,
-        "turret": 24.16,
-        "gun": 2.93,
-        "tracks": 86.14
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 76.29,
-          "iou": 70.37
-        },
-        "side": {
-          "score": 71.98,
-          "iou": 66.18
-        },
-        "top": {
-          "score": 89.97,
-          "iou": 88.39
-        },
-        "rearQuarter": {
-          "score": 77.46,
-          "iou": 72.01
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.11,
-          3.1,
-          8.98
-        ],
-        "procedural": [
-          3.24,
-          2.54,
-          7.22
-        ]
-      }
-    },
-    {
-      "id": "newc_pziii",
-      "name": "Panzer III Ausf. J",
-      "sourcePath": "/models/tanks/community/pziii_newc42.glb",
-      "fallback": "newc_pziii",
-      "score": 61.04,
-      "scores": {
-        "overall": 81.61,
-        "hull": 84.73,
-        "turret": 22.91,
-        "gun": 0,
-        "tracks": 83.92
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 78.76,
-          "iou": 72.49
-        },
-        "side": {
-          "score": 73.92,
-          "iou": 68.68
-        },
-        "top": {
-          "score": 95.87,
-          "iou": 94.93
-        },
-        "rearQuarter": {
-          "score": 77.9,
-          "iou": 72.97
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.99,
-          2.64,
-          6.3
-        ],
-        "procedural": [
-          3,
-          2.21,
-          5.73
-        ]
-      }
-    },
-    {
-      "id": "type90",
-      "name": "Type 90 Kyu-maru",
-      "sourcePath": "/models/tanks/community/recovered/type90.glb",
-      "fallback": "type10",
-      "score": 61.44,
-      "scores": {
-        "overall": 69.69,
-        "hull": 64.74,
-        "turret": 15.12,
-        "gun": 100,
-        "tracks": 72.98
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 69.57,
-          "iou": 64.93
-        },
-        "side": {
-          "score": 64.04,
-          "iou": 57.95
-        },
-        "top": {
-          "score": 80.32,
-          "iou": 77.72
-        },
-        "rearQuarter": {
-          "score": 64.82,
-          "iou": 60.07
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.32,
-          2.99,
-          6.29
-        ],
-        "procedural": [
-          2.43,
-          2.99,
-          6.38
-        ]
-      }
-    },
-    {
-      "id": "m47_patton",
-      "name": "M47 Patton",
-      "sourcePath": "/models/tanks/community/recovered/m47_patton.glb",
-      "fallback": "m60a1",
-      "score": 61.92,
-      "scores": {
-        "overall": 81.09,
-        "hull": 83.68,
-        "turret": 24.04,
-        "gun": 8.31,
-        "tracks": 85.1
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 81.45,
-          "iou": 76.66
-        },
-        "side": {
-          "score": 74.71,
-          "iou": 67.69
-        },
-        "top": {
-          "score": 87.17,
-          "iou": 84.31
-        },
-        "rearQuarter": {
-          "score": 81.05,
-          "iou": 74.85
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.64,
-          2.65,
-          7.09
-        ],
-        "procedural": [
-          3.57,
-          2.96,
-          8.17
+          8.65
         ]
       }
     },
@@ -1725,223 +251,45 @@
       "name": "A34 Comet",
       "sourcePath": "/models/tanks/community/recovered/comet.glb",
       "fallback": "panther_g",
-      "score": 62,
+      "score": 61.8,
       "scores": {
-        "overall": 70.23,
-        "hull": 63.59,
-        "turret": 12.73,
-        "gun": 100,
-        "tracks": 87.16
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 69.76,
-          "iou": 63.9
-        },
-        "side": {
-          "score": 69.82,
-          "iou": 64.5
-        },
-        "top": {
-          "score": 70.28,
-          "iou": 67.06
-        },
-        "rearQuarter": {
-          "score": 71.04,
-          "iou": 67.26
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.69,
-          2.27,
-          8.42
-        ],
-        "procedural": [
-          3.1,
-          2.31,
-          7.22
-        ]
-      }
-    },
-    {
-      "id": "pziii_konserwa",
-      "name": "Panzerkampfwagen III",
-      "sourcePath": "/models/tanks/community/pziii_konserwa.glb",
-      "fallback": "pziii_konserwa",
-      "score": 62.07,
-      "scores": {
-        "overall": 82.64,
-        "hull": 82.7,
-        "turret": 28.87,
+        "overall": 86.34,
+        "hull": 87.91,
+        "turret": 15.33,
         "gun": 0,
-        "tracks": 83.76
+        "tracks": 81.76
       },
       "componentMasksAvailable": true,
+      "minView": 78.83,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 82.67,
-          "iou": 77.13
+          "score": 87.07,
+          "iou": 84.38
         },
         "side": {
-          "score": 77.46,
-          "iou": 72.14
+          "score": 78.83,
+          "iou": 71.13
         },
         "top": {
-          "score": 87.66,
-          "iou": 83.9
+          "score": 94.9,
+          "iou": 93.99
         },
         "rearQuarter": {
-          "score": 82.76,
-          "iou": 77.62
+          "score": 84.55,
+          "iou": 79.01
         }
       },
       "boxes": {
         "reference": [
-          3.03,
-          2.59,
-          6.28
+          3.05,
+          1.87,
+          6.96
         ],
         "procedural": [
-          3,
-          2.21,
-          5.73
-        ]
-      }
-    },
-    {
-      "id": "m1a1_aim",
-      "name": "M1A1 AIM Abrams",
-      "sourcePath": "/models/tanks/community/recovered/m1a1_aim.glb",
-      "fallback": "m1a1",
-      "score": 62.24,
-      "scores": {
-        "overall": 80.39,
-        "hull": 80.8,
-        "turret": 24.24,
-        "gun": 18.06,
-        "tracks": 86.15
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 84.09,
-          "iou": 80.53
-        },
-        "side": {
-          "score": 71.16,
-          "iou": 63.5
-        },
-        "top": {
-          "score": 88.7,
-          "iou": 86.71
-        },
-        "rearQuarter": {
-          "score": 77.62,
-          "iou": 72.55
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.94,
-          2.59,
-          9.77
-        ],
-        "procedural": [
-          3.87,
-          3.22,
-          9.83
-        ]
-      }
-    },
-    {
-      "id": "is3_bergman",
-      "name": "IS-3 (Bergman)",
-      "sourcePath": "/models/tanks/community/recovered/bergman_is3.glb",
-      "fallback": "is3",
-      "score": 62.83,
-      "scores": {
-        "overall": 83.86,
-        "hull": 82.56,
-        "turret": 24.06,
-        "gun": 7.71,
-        "tracks": 88.79
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 84.19,
-          "iou": 78.66
-        },
-        "side": {
-          "score": 76.85,
-          "iou": 69.38
-        },
-        "top": {
-          "score": 91.01,
-          "iou": 90.23
-        },
-        "rearQuarter": {
-          "score": 83.38,
-          "iou": 79.27
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.4,
-          2.39,
-          7.55
-        ],
-        "procedural": [
-          3.24,
-          2.54,
-          7.22
-        ]
-      }
-    },
-    {
-      "id": "t34_85_cad",
-      "name": "T-34-85 (Wei He)",
-      "sourcePath": "/models/tanks/community/t34_85_weihe.glb",
-      "fallback": "t34_85_cad",
-      "score": 63.2,
-      "scores": {
-        "overall": 78.06,
-        "hull": 75.04,
-        "turret": 35.88,
-        "gun": 36.36,
-        "tracks": 69.76
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 86.55,
-          "iou": 82.77
-        },
-        "side": {
-          "score": 70.27,
-          "iou": 61.36
-        },
-        "top": {
-          "score": 75.13,
-          "iou": 67.9
-        },
-        "rearQuarter": {
-          "score": 80.29,
-          "iou": 73.95
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.06,
-          2.8,
-          8.1
-        ],
-        "procedural": [
-          3.06,
-          2.39,
-          7.07
+          3.05,
+          2.28,
+          7.11
         ]
       }
     },
@@ -1950,583 +298,609 @@
       "name": "T-90A",
       "sourcePath": "/models/tanks/community/variants/t90a_xarchenko_variant.glb",
       "fallback": "t90m",
-      "score": 63.7,
+      "score": 62.98,
       "scores": {
-        "overall": 83.5,
-        "hull": 82.41,
-        "turret": 31.65,
-        "gun": 6.63,
-        "tracks": 84.33
+        "overall": 79.3,
+        "hull": 75.6,
+        "turret": 39.55,
+        "gun": 18.68,
+        "tracks": 77.23
       },
       "componentMasksAvailable": true,
+      "minView": 73.28,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 87.41,
-          "iou": 83.26
+          "score": 82.63,
+          "iou": 79.45
         },
         "side": {
-          "score": 77.89,
-          "iou": 72.27
+          "score": 73.28,
+          "iou": 67.68
         },
         "top": {
-          "score": 89.41,
-          "iou": 87.98
+          "score": 86.36,
+          "iou": 84
         },
         "rearQuarter": {
-          "score": 79.28,
-          "iou": 73.64
+          "score": 74.92,
+          "iou": 70.33
         }
       },
       "boxes": {
         "reference": [
-          3.46,
-          2.66,
-          9.04
+          3.78,
+          2.91,
+          9.88
         ],
         "procedural": [
-          3.19,
-          2.59,
-          7.2
+          3.78,
+          3.07,
+          8.54
         ]
       }
     },
     {
-      "id": "fv510",
-      "name": "FV510 Warrior",
-      "sourcePath": "/models/tanks/community/recovered/fv510.glb",
-      "fallback": "m2a2_bradley",
-      "score": 64,
+      "id": "centurion3",
+      "name": "Centurion Mk.3",
+      "sourcePath": "/models/tanks/community/recovered/centurion3.glb",
+      "fallback": "chieftain_mk10",
+      "score": 63.94,
       "scores": {
-        "overall": 73.79,
-        "hull": 71.84,
-        "turret": 11.32,
-        "gun": 100,
-        "tracks": 74.34
+        "overall": 86.06,
+        "hull": 88.44,
+        "turret": 24.83,
+        "gun": 0,
+        "tracks": 84.35
       },
       "componentMasksAvailable": true,
+      "minView": 75.76,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 76.26,
-          "iou": 72.38
+          "score": 88.66,
+          "iou": 85.65
         },
         "side": {
-          "score": 70.63,
-          "iou": 66.96
+          "score": 75.76,
+          "iou": 68.22
         },
         "top": {
-          "score": 78.68,
-          "iou": 76.13
+          "score": 95.12,
+          "iou": 94.11
         },
         "rearQuarter": {
-          "score": 69.6,
-          "iou": 65.91
+          "score": 84.69,
+          "iou": 79.55
         }
       },
       "boxes": {
         "reference": [
-          3.01,
-          3.87,
-          5.62
+          3.38,
+          2.2,
+          7.5
         ],
         "procedural": [
-          3.14,
-          3.03,
-          6.48
+          3.38,
+          2.64,
+          8.39
         ]
       }
     },
     {
-      "id": "t90sm",
-      "name": "T-90SM",
-      "sourcePath": "/models/tanks/community/recovered/t90sm.glb",
-      "fallback": "t90m",
-      "score": 64.09,
+      "id": "is7",
+      "name": "IS-7",
+      "sourcePath": "/models/tanks/community/is7-snowleopard.glb",
+      "fallback": "is7",
+      "score": 64.33,
       "scores": {
-        "overall": 82.34,
-        "hull": 80.78,
-        "turret": 36.23,
-        "gun": 11.16,
-        "tracks": 81.09
+        "overall": 84.13,
+        "hull": 83.65,
+        "turret": 35.42,
+        "gun": 0,
+        "tracks": 86.12
       },
       "componentMasksAvailable": true,
+      "minView": 78.76,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 80.03,
-          "iou": 73.99
+          "score": 87.08,
+          "iou": 83.61
         },
         "side": {
-          "score": 81.45,
-          "iou": 76.62
+          "score": 78.76,
+          "iou": 72.47
         },
         "top": {
-          "score": 87.39,
-          "iou": 86.22
+          "score": 88.08,
+          "iou": 86.53
         },
         "rearQuarter": {
-          "score": 80.47,
-          "iou": 74.8
+          "score": 82.6,
+          "iou": 77.45
         }
       },
       "boxes": {
         "reference": [
           3.4,
-          2.83,
-          9.48
-        ],
-        "procedural": [
-          3.49,
           2.62,
-          7.2
-        ]
-      }
-    },
-    {
-      "id": "merkava3d",
-      "name": "Merkava Mk.3D",
-      "sourcePath": "/models/tanks/community/recovered/merkava3d.glb",
-      "fallback": "merkava4",
-      "score": 64.61,
-      "scores": {
-        "overall": 75.63,
-        "hull": 68.43,
-        "turret": 13.22,
-        "gun": 100,
-        "tracks": 79.91
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 78.27,
-          "iou": 74.96
-        },
-        "side": {
-          "score": 68.71,
-          "iou": 63.41
-        },
-        "top": {
-          "score": 85.69,
-          "iou": 83.67
-        },
-        "rearQuarter": {
-          "score": 69.86,
-          "iou": 65.64
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.66,
-          3.46,
-          5.93
+          10.11
         ],
         "procedural": [
-          2.73,
-          3.16,
-          6.08
+          3.4,
+          2.58,
+          7.22
         ]
       }
     },
     {
-      "id": "leo2_revolution",
-      "name": "Leopard 2 Revolution",
-      "sourcePath": "/models/tanks/community/recovered/leo2_revolution.glb",
-      "fallback": "leo2a7",
-      "score": 64.66,
+      "id": "is3",
+      "name": "IS-3",
+      "sourcePath": "/models/tanks/community/is3_panzerfactory.glb",
+      "fallback": "is3",
+      "score": 64.43,
       "scores": {
-        "overall": 70.56,
-        "hull": 72.11,
-        "turret": 21.79,
-        "gun": 100,
-        "tracks": 69.7
+        "overall": 81.44,
+        "hull": 87.98,
+        "turret": 29.66,
+        "gun": 10.25,
+        "tracks": 84.54
       },
       "componentMasksAvailable": true,
+      "minView": 72.67,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 76.33,
-          "iou": 72.55
+          "score": 82.29,
+          "iou": 79.35
         },
         "side": {
-          "score": 65.97,
-          "iou": 60.32
+          "score": 72.67,
+          "iou": 68.52
         },
         "top": {
-          "score": 72.96,
-          "iou": 69.21
+          "score": 92.26,
+          "iou": 91.09
         },
         "rearQuarter": {
-          "score": 66.99,
-          "iou": 62.76
+          "score": 78.54,
+          "iou": 74.86
         }
       },
       "boxes": {
         "reference": [
           3.15,
-          3.17,
-          7.72
+          3.14,
+          9.09
         ],
         "procedural": [
-          3.34,
-          2.9,
-          7.71
+          3.15,
+          2.48,
+          7.03
         ]
       }
     },
     {
-      "id": "merkava3b",
-      "name": "Merkava Mk.3B",
-      "sourcePath": "/models/tanks/community/recovered/merkava3b.glb",
-      "fallback": "merkava4",
-      "score": 64.95,
+      "id": "t62mv1",
+      "name": "T-62MV-1",
+      "sourcePath": "/models/tanks/community/recovered/t62mv1.glb",
+      "fallback": "leo1a5",
+      "score": 64.64,
       "scores": {
-        "overall": 74.87,
-        "hull": 69.41,
-        "turret": 14.93,
-        "gun": 100,
-        "tracks": 80.09
+        "overall": 83.01,
+        "hull": 86.7,
+        "turret": 25.77,
+        "gun": 16.59,
+        "tracks": 84.61
       },
       "componentMasksAvailable": true,
+      "minView": 74.03,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 74.67,
-          "iou": 70.92
+          "score": 86.94,
+          "iou": 82.88
         },
         "side": {
-          "score": 68.88,
-          "iou": 63.54
+          "score": 74.03,
+          "iou": 67.82
         },
         "top": {
-          "score": 85.63,
-          "iou": 83.61
+          "score": 90.16,
+          "iou": 88.53
         },
         "rearQuarter": {
-          "score": 70.29,
-          "iou": 66.01
+          "score": 80.93,
+          "iou": 75.37
         }
       },
       "boxes": {
         "reference": [
-          2.65,
-          3.46,
-          5.89
+          3.3,
+          2.76,
+          9.51
         ],
         "procedural": [
-          2.71,
-          3.12,
-          6.04
+          3.3,
+          2.46,
+          6.96
         ]
       }
     },
     {
-      "id": "merkava3c",
-      "name": "Merkava Mk.3C",
-      "sourcePath": "/models/tanks/community/recovered/merkava3c.glb",
-      "fallback": "merkava4",
-      "score": 65.27,
-      "scores": {
-        "overall": 74.7,
-        "hull": 70.68,
-        "turret": 15.25,
-        "gun": 100,
-        "tracks": 80.11
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 74.42,
-          "iou": 70.63
-        },
-        "side": {
-          "score": 68.75,
-          "iou": 63.4
-        },
-        "top": {
-          "score": 85.63,
-          "iou": 83.61
-        },
-        "rearQuarter": {
-          "score": 69.98,
-          "iou": 65.62
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.65,
-          3.46,
-          5.89
-        ],
-        "procedural": [
-          2.71,
-          3.13,
-          6.04
-        ]
-      }
-    },
-    {
-      "id": "sherman_jumbo",
-      "name": "M4A3E2 Sherman Jumbo",
-      "sourcePath": "/models/tanks/community/sherman-jumbo.glb",
-      "fallback": "sherman_jumbo",
-      "score": 65.42,
-      "scores": {
-        "overall": 82.76,
-        "hull": 87.02,
-        "turret": 31.67,
-        "gun": 9.79,
-        "tracks": 89.89
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 80.11,
-          "iou": 75.77
-        },
-        "side": {
-          "score": 76.69,
-          "iou": 72.3
-        },
-        "top": {
-          "score": 93.15,
-          "iou": 91.45
-        },
-        "rearQuarter": {
-          "score": 81.1,
-          "iou": 77.25
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.95,
-          3.13,
-          6.35
-        ],
-        "procedural": [
-          3.04,
-          2.7,
-          6.1
-        ]
-      }
-    },
-    {
-      "id": "merkava1b",
-      "name": "Merkava Mk.1B",
-      "sourcePath": "/models/tanks/community/recovered/merkava1b.glb",
-      "fallback": "merkava4",
-      "score": 65.48,
-      "scores": {
-        "overall": 76.3,
-        "hull": 69.75,
-        "turret": 14.73,
-        "gun": 100,
-        "tracks": 79.85
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 77.67,
-          "iou": 74.21
-        },
-        "side": {
-          "score": 70.51,
-          "iou": 65.67
-        },
-        "top": {
-          "score": 85.2,
-          "iou": 83.14
-        },
-        "rearQuarter": {
-          "score": 71.82,
-          "iou": 67.95
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.63,
-          3.46,
-          5.78
-        ],
-        "procedural": [
-          2.67,
-          3.03,
-          5.92
-        ]
-      }
-    },
-    {
-      "id": "t72bu",
-      "name": "T-72BU",
-      "sourcePath": "/models/tanks/community/recovered/t72bu.glb",
+      "id": "t90a_vladimir",
+      "name": "T-90A Vladimir",
+      "sourcePath": "/models/tanks/community/recovered/t90a_vladimir.glb",
       "fallback": "t90a",
-      "score": 65.86,
+      "score": 65.39,
       "scores": {
-        "overall": 72.3,
-        "hull": 70.67,
-        "turret": 24.32,
-        "gun": 100,
-        "tracks": 75.27
+        "overall": 80.76,
+        "hull": 82.68,
+        "turret": 34.32,
+        "gun": 28.62,
+        "tracks": 76.9
       },
       "componentMasksAvailable": true,
+      "minView": 72.58,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 77.65,
-          "iou": 73.72
+          "score": 85.26,
+          "iou": 81.7
         },
         "side": {
-          "score": 68.98,
-          "iou": 61.74
+          "score": 72.58,
+          "iou": 66.41
         },
         "top": {
-          "score": 69.57,
-          "iou": 63.47
+          "score": 87.26,
+          "iou": 85.29
         },
         "rearQuarter": {
-          "score": 73.01,
-          "iou": 66.97
+          "score": 77.95,
+          "iou": 72.41
         }
       },
       "boxes": {
         "reference": [
-          3.06,
-          2.9,
-          8.83
+          3.78,
+          3.81,
+          10.41
         ],
         "procedural": [
-          3.34,
-          2.55,
-          7.2
+          3.78,
+          3.09,
+          8.54
         ]
       }
     },
     {
-      "id": "challenger_cruiser",
-      "name": "A30 Challenger",
-      "sourcePath": "/models/tanks/community/recovered/challenger_cruiser.glb",
-      "fallback": "panther_g",
-      "score": 67.28,
+      "id": "m1a1_aim",
+      "name": "M1A1 AIM Abrams",
+      "sourcePath": "/models/tanks/community/recovered/m1a1_aim.glb",
+      "fallback": "m1a1",
+      "score": 65.46,
       "scores": {
-        "overall": 76.23,
-        "hull": 73.61,
-        "turret": 14.72,
-        "gun": 100,
-        "tracks": 90.64
+        "overall": 81.59,
+        "hull": 82.19,
+        "turret": 20.56,
+        "gun": 45.51,
+        "tracks": 84.8
       },
       "componentMasksAvailable": true,
+      "minView": 72.23,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 70.35,
-          "iou": 64.59
+          "score": 85.61,
+          "iou": 83.02
         },
         "side": {
-          "score": 76.66,
-          "iou": 71.17
+          "score": 72.23,
+          "iou": 65.15
         },
         "top": {
-          "score": 79.42,
-          "iou": 77.24
+          "score": 93.19,
+          "iou": 91.98
         },
         "rearQuarter": {
-          "score": 78.5,
-          "iou": 74.46
+          "score": 75.32,
+          "iou": 69.62
         }
       },
       "boxes": {
         "reference": [
-          3.69,
-          2.33,
-          8.56
-        ],
-        "procedural": [
-          2.96,
-          2.37,
-          8.19
-        ]
-      }
-    },
-    {
-      "id": "ariete",
-      "name": "C1 Ariete",
-      "sourcePath": "/models/tanks/community/ariete-dustymojito.glb",
-      "fallback": "ariete",
-      "score": 67.66,
-      "scores": {
-        "overall": 79.43,
-        "hull": 79.73,
-        "turret": 40.31,
-        "gun": 45.53,
-        "tracks": 80
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 77.61,
-          "iou": 73.14
-        },
-        "side": {
-          "score": 75.13,
-          "iou": 68.84
-        },
-        "top": {
-          "score": 83.67,
-          "iou": 78.62
-        },
-        "rearQuarter": {
-          "score": 81.31,
-          "iou": 76.39
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.84,
-          2.97,
-          9.67
+          3.66,
+          2.41,
+          9.08
         ],
         "procedural": [
           3.66,
-          2.57,
-          9.78
+          3.04,
+          9.3
         ]
       }
     },
     {
-      "id": "t95",
-      "name": "T95 Doomturtle",
-      "sourcePath": "/models/tanks/community/t95_doomturtle_haphazard.glb",
-      "fallback": "t95",
-      "score": 67.71,
+      "id": "m45_patton",
+      "name": "M45 Patton",
+      "sourcePath": "/models/tanks/community/recovered/m45_patton.glb",
+      "fallback": "m4a3e8",
+      "score": 65.66,
       "scores": {
-        "overall": 67.9,
-        "hull": null,
-        "turret": null,
-        "gun": null,
-        "tracks": 66.84
+        "overall": 83.73,
+        "hull": 85.33,
+        "turret": 41.61,
+        "gun": 0,
+        "tracks": 83.76
       },
-      "componentMasksAvailable": false,
+      "componentMasksAvailable": true,
+      "minView": 77.38,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 74.02,
-          "iou": 70.78
+          "score": 81.33,
+          "iou": 76.92
         },
         "side": {
-          "score": 63.69,
-          "iou": 54.39
+          "score": 77.38,
+          "iou": 71.5
         },
         "top": {
-          "score": 61.87,
-          "iou": 52.8
+          "score": 92.82,
+          "iou": 91.43
         },
         "rearQuarter": {
-          "score": 72.03,
-          "iou": 64.99
+          "score": 83.38,
+          "iou": 79.11
         }
       },
       "boxes": {
         "reference": [
-          4.1,
-          3.47,
-          10.26
+          3.51,
+          2.33,
+          6.29
         ],
         "procedural": [
-          4.64,
-          1.85,
-          9.78
+          3.51,
+          2.69,
+          6.86
+        ]
+      }
+    },
+    {
+      "id": "centurion5",
+      "name": "Centurion Mk.5/2",
+      "sourcePath": "/models/tanks/community/recovered/centurion5.glb",
+      "fallback": "chieftain_mk10",
+      "score": 66,
+      "scores": {
+        "overall": 85.83,
+        "hull": 88.58,
+        "turret": 23.52,
+        "gun": 19.96,
+        "tracks": 83.9
+      },
+      "componentMasksAvailable": true,
+      "minView": 75.98,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 88.34,
+          "iou": 85.02
+        },
+        "side": {
+          "score": 75.98,
+          "iou": 68.63
+        },
+        "top": {
+          "score": 95.07,
+          "iou": 93.9
+        },
+        "rearQuarter": {
+          "score": 83.93,
+          "iou": 78.66
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.38,
+          2.2,
+          7.88
+        ],
+        "procedural": [
+          3.38,
+          2.66,
+          8.78
+        ]
+      }
+    },
+    {
+      "id": "m47_patton",
+      "name": "M47 Patton",
+      "sourcePath": "/models/tanks/community/recovered/m47_patton.glb",
+      "fallback": "m60a1",
+      "score": 66.08,
+      "scores": {
+        "overall": 84.93,
+        "hull": 88.44,
+        "turret": 25.7,
+        "gun": 20.91,
+        "tracks": 82.43
+      },
+      "componentMasksAvailable": true,
+      "minView": 77.62,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 82.74,
+          "iou": 77.37
+        },
+        "side": {
+          "score": 77.62,
+          "iou": 70.42
+        },
+        "top": {
+          "score": 95.2,
+          "iou": 94.18
+        },
+        "rearQuarter": {
+          "score": 84.19,
+          "iou": 78.56
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.51,
+          2.55,
+          6.84
+        ],
+        "procedural": [
+          3.51,
+          2.75,
+          7.67
+        ]
+      }
+    },
+    {
+      "id": "m46_patton",
+      "name": "M46 Patton",
+      "sourcePath": "/models/tanks/community/recovered/m46_patton.glb",
+      "fallback": "m60a1",
+      "score": 66.7,
+      "scores": {
+        "overall": 83.95,
+        "hull": 87.33,
+        "turret": 27.22,
+        "gun": 28.91,
+        "tracks": 82.18
+      },
+      "componentMasksAvailable": true,
+      "minView": 77.26,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 81.5,
+          "iou": 76.74
+        },
+        "side": {
+          "score": 77.26,
+          "iou": 70.3
+        },
+        "top": {
+          "score": 93.26,
+          "iou": 91.36
+        },
+        "rearQuarter": {
+          "score": 83.79,
+          "iou": 78.4
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.51,
+          2.33,
+          6.96
+        ],
+        "procedural": [
+          3.51,
+          2.7,
+          7.52
+        ]
+      }
+    },
+    {
+      "id": "newc_pziii",
+      "name": "Panzer III Ausf. J",
+      "sourcePath": "/models/tanks/community/pziii_newc42.glb",
+      "fallback": "newc_pziii",
+      "score": 66.71,
+      "scores": {
+        "overall": 87.3,
+        "hull": 89.27,
+        "turret": 36.63,
+        "gun": 0,
+        "tracks": 81.41
+      },
+      "componentMasksAvailable": true,
+      "minView": 78.39,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 90.41,
+          "iou": 88.16
+        },
+        "side": {
+          "score": 78.39,
+          "iou": 74.56
+        },
+        "top": {
+          "score": 96.63,
+          "iou": 95.93
+        },
+        "rearQuarter": {
+          "score": 83.76,
+          "iou": 80.65
+        }
+      },
+      "boxes": {
+        "reference": [
+          2.9,
+          2.56,
+          6.11
+        ],
+        "procedural": [
+          2.9,
+          2.14,
+          5.53
+        ]
+      }
+    },
+    {
+      "id": "t64bv1",
+      "name": "T-64BV1",
+      "sourcePath": "/models/tanks/community/recovered/t64bv1.glb",
+      "fallback": "t72b3",
+      "score": 66.82,
+      "scores": {
+        "overall": 82.52,
+        "hull": 77.96,
+        "turret": 35.06,
+        "gun": 40.66,
+        "tracks": 81.93
+      },
+      "componentMasksAvailable": true,
+      "minView": 75.26,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 85.61,
+          "iou": 82.75
+        },
+        "side": {
+          "score": 75.26,
+          "iou": 68.22
+        },
+        "top": {
+          "score": 89.4,
+          "iou": 87.78
+        },
+        "rearQuarter": {
+          "score": 79.83,
+          "iou": 74.12
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.42,
+          2.29,
+          8.62
+        ],
+        "procedural": [
+          3.42,
+          2.49,
+          7.03
         ]
       }
     },
@@ -2535,628 +909,468 @@
       "name": "Merkava Mk.4B",
       "sourcePath": "/models/tanks/community/recovered/merkava4b.glb",
       "fallback": "merkava4",
-      "score": 68.29,
+      "score": 66.99,
       "scores": {
-        "overall": 79.75,
-        "hull": 73.31,
-        "turret": 18.3,
-        "gun": 100,
-        "tracks": 79.84
+        "overall": 79.94,
+        "hull": 82.72,
+        "turret": 24.02,
+        "gun": 54.22,
+        "tracks": 87.8
       },
       "componentMasksAvailable": true,
+      "minView": 72.3,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 81.47,
-          "iou": 77.71
+          "score": 77.12,
+          "iou": 74.67
         },
         "side": {
-          "score": 74.58,
-          "iou": 69.51
+          "score": 72.3,
+          "iou": 68.35
         },
         "top": {
-          "score": 86.9,
-          "iou": 84.8
+          "score": 92.04,
+          "iou": 90.56
         },
         "rearQuarter": {
-          "score": 76.05,
-          "iou": 72.23
+          "score": 78.29,
+          "iou": 75.15
         }
       },
       "boxes": {
         "reference": [
-          2.83,
-          3.46,
-          6.53
+          3.72,
+          4.54,
+          8.58
         ],
         "procedural": [
-          2.91,
-          3.19,
-          6.55
+          3.72,
+          2.81,
+          8.43
         ]
       }
     },
     {
-      "id": "leclerc",
-      "name": "Leclerc S2",
-      "sourcePath": "/models/tanks/char_leclerc_andertan.glb",
-      "fallback": "leclerc",
-      "score": 68.36,
+      "id": "m26_pershing",
+      "name": "M26 Pershing",
+      "sourcePath": "/models/tanks/community/recovered/m26_pershing.glb",
+      "fallback": "m4a3e8",
+      "score": 67.08,
       "scores": {
-        "overall": 80.74,
-        "hull": 76.56,
-        "turret": 50.3,
-        "gun": 33.11,
-        "tracks": 86.64
+        "overall": 82.63,
+        "hull": 85.09,
+        "turret": 34.12,
+        "gun": 27.52,
+        "tracks": 84.52
       },
       "componentMasksAvailable": true,
+      "minView": 75.26,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 80.45,
-          "iou": 76.77
+          "score": 81.75,
+          "iou": 77.06
         },
         "side": {
-          "score": 77.15,
-          "iou": 70.87
+          "score": 75.26,
+          "iou": 67.81
         },
         "top": {
-          "score": 86.85,
-          "iou": 85.35
+          "score": 91.1,
+          "iou": 89.03
         },
         "rearQuarter": {
-          "score": 78.52,
-          "iou": 74.26
+          "score": 82.43,
+          "iou": 78.12
         }
       },
       "boxes": {
         "reference": [
-          3.47,
-          2.96,
-          9.46
+          3.51,
+          2.36,
+          6.96
         ],
         "procedural": [
-          3.76,
-          3.3,
-          10.21
+          3.51,
+          2.67,
+          7.64
         ]
       }
     },
     {
-      "id": "m60a3",
-      "name": "M60A3",
-      "sourcePath": "/models/tanks/community/recovered/m60a1.glb",
-      "fallback": "m60a1",
-      "score": 68.75,
+      "id": "m1a2_sepv2",
+      "name": "M1A2 Abrams SEPv2",
+      "sourcePath": "/models/tanks/community/recovered/m1a2_sepv2.glb",
+      "fallback": "m1a2",
+      "score": 67.83,
       "scores": {
-        "overall": 82.39,
-        "hull": 86.77,
-        "turret": 41.75,
-        "gun": 23.95,
-        "tracks": 87.46
+        "overall": 79.11,
+        "hull": 75.03,
+        "turret": 43.06,
+        "gun": 59.83,
+        "tracks": 69.86
       },
       "componentMasksAvailable": true,
+      "minView": 73.5,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 82.1,
-          "iou": 76.75
+          "score": 83.01,
+          "iou": 78.61
         },
         "side": {
-          "score": 73.81,
-          "iou": 68.41
+          "score": 73.5,
+          "iou": 67.07
         },
         "top": {
-          "score": 96.26,
-          "iou": 96.19
+          "score": 84.19,
+          "iou": 81.89
         },
         "rearQuarter": {
-          "score": 77.37,
-          "iou": 72.75
+          "score": 75.74,
+          "iou": 70.93
         }
       },
       "boxes": {
         "reference": [
-          3.63,
+          3.66,
+          3.62,
+          8.17
+        ],
+        "procedural": [
+          3.66,
+          3.15,
+          9.3
+        ]
+      }
+    },
+    {
+      "id": "object279",
+      "name": "Object 279",
+      "sourcePath": "/models/tanks/community/object279-snowleopard.glb",
+      "fallback": "object279",
+      "score": 67.91,
+      "scores": {
+        "overall": 83.39,
+        "hull": 88.86,
+        "turret": 36.86,
+        "gun": 15.77,
+        "tracks": 90.61
+      },
+      "componentMasksAvailable": true,
+      "minView": 75.17,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 86.36,
+          "iou": 82.79
+        },
+        "side": {
+          "score": 75.17,
+          "iou": 71.55
+        },
+        "top": {
+          "score": 91.26,
+          "iou": 90.61
+        },
+        "rearQuarter": {
+          "score": 80.79,
+          "iou": 77.38
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.4,
+          2.4,
+          9.72
+        ],
+        "procedural": [
+          3.4,
+          2.33,
+          6.61
+        ]
+      }
+    },
+    {
+      "id": "pziii_konserwa",
+      "name": "Panzerkampfwagen III",
+      "sourcePath": "/models/tanks/community/pziii_konserwa.glb",
+      "fallback": "pziii_konserwa",
+      "score": 68.07,
+      "scores": {
+        "overall": 88.54,
+        "hull": 90.01,
+        "turret": 40.17,
+        "gun": 0,
+        "tracks": 81.88
+      },
+      "componentMasksAvailable": true,
+      "minView": 81.36,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 90.29,
+          "iou": 87.49
+        },
+        "side": {
+          "score": 81.36,
+          "iou": 76.58
+        },
+        "top": {
+          "score": 96.17,
+          "iou": 95.49
+        },
+        "rearQuarter": {
+          "score": 86.34,
+          "iou": 82.04
+        }
+      },
+      "boxes": {
+        "reference": [
+          2.9,
+          2.48,
+          6.02
+        ],
+        "procedural": [
+          2.9,
+          2.14,
+          5.53
+        ]
+      }
+    },
+    {
+      "id": "is3_bergman",
+      "name": "IS-3 (Bergman)",
+      "sourcePath": "/models/tanks/community/recovered/bergman_is3.glb",
+      "fallback": "is3",
+      "score": 68.15,
+      "scores": {
+        "overall": 86.35,
+        "hull": 88.32,
+        "turret": 21.74,
+        "gun": 39.08,
+        "tracks": 85.14
+      },
+      "componentMasksAvailable": true,
+      "minView": 77.99,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 85.82,
+          "iou": 81.86
+        },
+        "side": {
+          "score": 77.99,
+          "iou": 69.94
+        },
+        "top": {
+          "score": 96.66,
+          "iou": 95.29
+        },
+        "rearQuarter": {
+          "score": 84.92,
+          "iou": 80.14
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.15,
+          2.21,
+          6.99
+        ],
+        "procedural": [
+          3.15,
+          2.48,
+          7.03
+        ]
+      }
+    },
+    {
+      "id": "merkava3d",
+      "name": "Merkava Mk.3D",
+      "sourcePath": "/models/tanks/community/recovered/merkava3d.glb",
+      "fallback": "merkava4",
+      "score": 68.17,
+      "scores": {
+        "overall": 87.07,
+        "hull": 87.12,
+        "turret": 37.2,
+        "gun": 13.55,
+        "tracks": 85.62
+      },
+      "componentMasksAvailable": true,
+      "minView": 79.83,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 87.32,
+          "iou": 84.97
+        },
+        "side": {
+          "score": 79.83,
+          "iou": 74.58
+        },
+        "top": {
+          "score": 96.15,
+          "iou": 95.27
+        },
+        "rearQuarter": {
+          "score": 85,
+          "iou": 81.19
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.72,
+          4.83,
+          8.28
+        ],
+        "procedural": [
+          3.72,
           3.21,
-          9.53
-        ],
-        "procedural": [
-          3.69,
-          2.96,
-          8.44
+          8.63
         ]
       }
     },
     {
-      "id": "m60a1",
-      "name": "M60A1 Patton",
-      "sourcePath": "/models/tanks/community/recovered/m60a1.glb",
-      "fallback": "leo1a5",
-      "score": 68.85,
+      "id": "leopard2_proto",
+      "name": "Leopard 2 Prototype",
+      "sourcePath": "/models/tanks/community/recovered/leopard2_proto.glb",
+      "fallback": "leo2a4",
+      "score": 68.48,
       "scores": {
-        "overall": 82.29,
-        "hull": 87,
-        "turret": 42.1,
-        "gun": 23.95,
-        "tracks": 87.46
+        "overall": 86.02,
+        "hull": 89.54,
+        "turret": 27.01,
+        "gun": 32.41,
+        "tracks": 83.72
       },
       "componentMasksAvailable": true,
+      "minView": 78.57,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 81.93,
-          "iou": 76.66
+          "score": 86.26,
+          "iou": 83.73
         },
         "side": {
-          "score": 73.66,
-          "iou": 68.24
+          "score": 78.57,
+          "iou": 73.6
         },
         "top": {
-          "score": 96.26,
-          "iou": 96.19
+          "score": 95.15,
+          "iou": 93.75
         },
         "rearQuarter": {
-          "score": 77.32,
-          "iou": 72.7
+          "score": 84.1,
+          "iou": 80.54
         }
       },
       "boxes": {
         "reference": [
-          3.63,
-          3.21,
-          9.53
+          3.7,
+          2.14,
+          8.47
         ],
         "procedural": [
-          3.69,
-          2.96,
-          8.44
+          3.7,
+          2.81,
+          8.94
         ]
       }
     },
     {
-      "id": "isu122s",
-      "name": "ISU-122S",
-      "sourcePath": "/models/tanks/community/recovered/isu122s.glb",
-      "fallback": "jagdtiger",
-      "score": 69.49,
+      "id": "leo2a6",
+      "name": "Leopard 2A6",
+      "sourcePath": "/models/tanks/leo2a6_buh.glb",
+      "fallback": "leo2a6",
+      "score": 68.8,
       "scores": {
-        "overall": 70.75,
-        "hull": null,
-        "turret": null,
-        "gun": null,
-        "tracks": 63.98
+        "overall": 75.91,
+        "hull": 72.69,
+        "turret": 54.67,
+        "gun": 58.5,
+        "tracks": 76.33
       },
-      "componentMasksAvailable": false,
+      "componentMasksAvailable": true,
+      "minView": 70.27,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 84.05,
-          "iou": 78.66
+          "score": 77.13,
+          "iou": 73.08
         },
         "side": {
-          "score": 62.09,
-          "iou": 51.54
+          "score": 70.27,
+          "iou": 63.1
         },
         "top": {
-          "score": 64.97,
-          "iou": 55.94
+          "score": 82.93,
+          "iou": 79.72
         },
         "rearQuarter": {
-          "score": 71.89,
-          "iou": 64.39
+          "score": 73.29,
+          "iou": 67.13
         }
       },
       "boxes": {
         "reference": [
-          3.31,
-          2.56,
-          10.65
+          3.75,
+          4.09,
+          12.04
         ],
         "procedural": [
-          3.13,
-          2.11,
-          9.01
+          3.75,
+          3.79,
+          11.59
         ]
       }
     },
     {
-      "id": "newc_tiger",
-      "name": "Tiger I (Newc42)",
-      "sourcePath": "/models/tanks/community/tiger_newc42.glb",
-      "fallback": "newc_tiger",
-      "score": 69.92,
+      "id": "sherman_jumbo",
+      "name": "M4A3E2 Sherman Jumbo",
+      "sourcePath": "/models/tanks/community/sherman-jumbo.glb",
+      "fallback": "sherman_jumbo",
+      "score": 69.09,
       "scores": {
-        "overall": 85.02,
-        "hull": 88.06,
-        "turret": 45.78,
-        "gun": 14.47,
-        "tracks": 90.75
+        "overall": 82.81,
+        "hull": 88.2,
+        "turret": 43.83,
+        "gun": 18.76,
+        "tracks": 88.03
       },
       "componentMasksAvailable": true,
+      "minView": 76.71,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 85.86,
-          "iou": 81.9
+          "score": 80.43,
+          "iou": 76.97
         },
         "side": {
-          "score": 77.85,
+          "score": 76.71,
           "iou": 73.35
         },
         "top": {
-          "score": 93.73,
-          "iou": 92.22
+          "score": 93.48,
+          "iou": 92.78
         },
         "rearQuarter": {
-          "score": 82.63,
-          "iou": 77.24
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.85,
-          2.86,
-          8.51
-        ],
-        "procedural": [
-          3.78,
-          2.51,
-          7.54
-        ]
-      }
-    },
-    {
-      "id": "challenger1",
-      "name": "Challenger 1 Mk.3",
-      "sourcePath": "/models/tanks/community/recovered/challenger1.glb",
-      "fallback": "challenger2",
-      "score": 70.25,
-      "scores": {
-        "overall": 80.55,
-        "hull": 80.88,
-        "turret": 59.99,
-        "gun": 30.24,
-        "tracks": 77.66
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 81.76,
-          "iou": 77.75
-        },
-        "side": {
-          "score": 75.81,
-          "iou": 69.04
-        },
-        "top": {
-          "score": 87.9,
-          "iou": 85.84
-        },
-        "rearQuarter": {
-          "score": 76.72,
-          "iou": 71.29
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.71,
-          3.24,
-          10.49
-        ],
-        "procedural": [
-          3.54,
-          2.95,
-          10.49
-        ]
-      }
-    },
-    {
-      "id": "recon_tank",
-      "name": "Recon Tank (Mophs)",
-      "sourcePath": "/models/tanks/community/recon_tank_mophs.glb",
-      "fallback": "recon_tank",
-      "score": 70.26,
-      "scores": {
-        "overall": 70.93,
-        "hull": null,
-        "turret": null,
-        "gun": null,
-        "tracks": 67.32
-      },
-      "componentMasksAvailable": false,
-      "angles": {
-        "front": {
-          "score": 80.34,
+          "score": 80.59,
           "iou": 77.5
-        },
-        "side": {
-          "score": 64.49,
-          "iou": 59.28
-        },
-        "top": {
-          "score": 72.48,
-          "iou": 69.31
-        },
-        "rearQuarter": {
-          "score": 66.41,
-          "iou": 62.54
         }
       },
       "boxes": {
         "reference": [
-          2.19,
-          3.25,
-          5.21
+          2.95,
+          3.13,
+          6.36
         ],
         "procedural": [
-          2.31,
-          2.69,
-          5.52
-        ]
-      }
-    },
-    {
-      "id": "kf51",
-      "name": "KF51 Panther",
-      "sourcePath": "/models/tanks/kf51_grip420.glb",
-      "fallback": "kf51",
-      "score": 72.19,
-      "scores": {
-        "overall": 84.41,
-        "hull": 88.26,
-        "turret": 47.4,
-        "gun": 32.67,
-        "tracks": 89.77
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 81.32,
-          "iou": 76.42
-        },
-        "side": {
-          "score": 78.64,
-          "iou": 73.71
-        },
-        "top": {
-          "score": 95.76,
-          "iou": 94.68
-        },
-        "rearQuarter": {
-          "score": 81.9,
-          "iou": 76.83
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.63,
-          3.58,
-          10.73
-        ],
-        "procedural": [
-          3.69,
-          3.06,
-          10.15
-        ]
-      }
-    },
-    {
-      "id": "t80u",
-      "name": "T-80U",
-      "sourcePath": "/models/tanks/t80u_javanilga.glb",
-      "fallback": "t80u",
-      "score": 72.25,
-      "scores": {
-        "overall": 83.87,
-        "hull": 84.43,
-        "turret": 49.07,
-        "gun": 42.03,
-        "tracks": 86.63
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 80.88,
-          "iou": 76.46
-        },
-        "side": {
-          "score": 80.93,
-          "iou": 74.57
-        },
-        "top": {
-          "score": 92.45,
-          "iou": 91.65
-        },
-        "rearQuarter": {
-          "score": 81.2,
-          "iou": 75.34
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.63,
-          2.7,
-          9.62
-        ],
-        "procedural": [
-          3.83,
-          2.37,
-          10.24
-        ]
-      }
-    },
-    {
-      "id": "jpz_e100",
-      "name": "Jagdpanzer E100",
-      "sourcePath": "/models/tanks/community/jagdpanzer_e100_haphazard.glb",
-      "fallback": "jpz_e100",
-      "score": 74.49,
-      "scores": {
-        "overall": 74.16,
-        "hull": null,
-        "turret": null,
-        "gun": null,
-        "tracks": 75.96
-      },
-      "componentMasksAvailable": false,
-      "angles": {
-        "front": {
-          "score": 79.13,
-          "iou": 72.72
-        },
-        "side": {
-          "score": 64.74,
-          "iou": 54.94
-        },
-        "top": {
-          "score": 76.25,
-          "iou": 68.51
-        },
-        "rearQuarter": {
-          "score": 76.52,
-          "iou": 69.62
-        }
-      },
-      "boxes": {
-        "reference": [
-          4.3,
-          3.32,
-          11.1
-        ],
-        "procedural": [
-          4.14,
-          2.55,
-          11.25
-        ]
-      }
-    },
-    {
-      "id": "strv103",
-      "name": "Stridsvagn 103",
-      "sourcePath": "/models/tanks/community/strv103_wesiora.glb",
-      "fallback": "strv103",
-      "score": 74.53,
-      "scores": {
-        "overall": 74.82,
-        "hull": null,
-        "turret": null,
-        "gun": null,
-        "tracks": 73.22
-      },
-      "componentMasksAvailable": false,
-      "angles": {
-        "front": {
-          "score": 72.72,
-          "iou": 68.23
-        },
-        "side": {
-          "score": 66.98,
-          "iou": 58.56
-        },
-        "top": {
-          "score": 82.81,
-          "iou": 79.04
-        },
-        "rearQuarter": {
-          "score": 76.8,
-          "iou": 69.02
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.56,
-          2.76,
-          8.99
-        ],
-        "procedural": [
-          3.27,
-          1.62,
-          8.56
-        ]
-      }
-    },
-    {
-      "id": "jagdtiger",
-      "name": "Jagdtiger",
-      "sourcePath": "/models/tanks/community/jagdtiger-adipriatna.glb",
-      "fallback": "jagdtiger",
-      "score": 78.27,
-      "scores": {
-        "overall": 77.91,
-        "hull": null,
-        "turret": null,
-        "gun": null,
-        "tracks": 79.87
-      },
-      "componentMasksAvailable": false,
-      "angles": {
-        "front": {
-          "score": 82.63,
-          "iou": 77.78
-        },
-        "side": {
-          "score": 70.19,
-          "iou": 63.08
-        },
-        "top": {
-          "score": 77.42,
-          "iou": 72.26
-        },
-        "rearQuarter": {
-          "score": 81.4,
-          "iou": 75.45
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.96,
-          3.07,
-          10.65
-        ],
-        "procedural": [
-          3.83,
-          2.44,
-          10.15
-        ]
-      }
-    },
-    {
-      "id": "leichttraktor",
-      "name": "Leichttraktor",
-      "sourcePath": "/models/tanks/community/leichttraktor_newc42.glb",
-      "fallback": "leichttraktor",
-      "score": 79.73,
-      "scores": {
-        "overall": 82.37,
-        "hull": 84.92,
-        "turret": 52.26,
-        "gun": 100,
-        "tracks": 90.19
-      },
-      "componentMasksAvailable": true,
-      "angles": {
-        "front": {
-          "score": 79.82,
-          "iou": 76.07
-        },
-        "side": {
-          "score": 76.78,
-          "iou": 72.91
-        },
-        "top": {
-          "score": 91.45,
-          "iou": 90.26
-        },
-        "rearQuarter": {
-          "score": 81.44,
-          "iou": 77.98
-        }
-      },
-      "boxes": {
-        "reference": [
-          2.22,
-          2.39,
-          4.4
-        ],
-        "procedural": [
-          2.3,
-          1.94,
-          4.6
+          2.95,
+          2.61,
+          5.91
         ]
       }
     },
@@ -3165,43 +1379,1972 @@
       "name": "KV-2",
       "sourcePath": "/models/tanks/community/kv2-full-comrade1280.glb",
       "fallback": "kv2",
-      "score": 79.88,
+      "score": 69.59,
       "scores": {
-        "overall": 86.15,
-        "hull": 86.29,
-        "turret": 45.37,
-        "gun": 100,
-        "tracks": 88.57
+        "overall": 88.11,
+        "hull": 88.99,
+        "turret": 46.82,
+        "gun": 0,
+        "tracks": 89.31
       },
       "componentMasksAvailable": true,
+      "minView": 78,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 84.3,
-          "iou": 81.65
+          "score": 90.15,
+          "iou": 87.5
         },
         "side": {
-          "score": 82.8,
-          "iou": 77.1
+          "score": 78,
+          "iou": 72.61
         },
         "top": {
-          "score": 90.48,
-          "iou": 88.67
+          "score": 96.12,
+          "iou": 95.72
         },
         "rearQuarter": {
-          "score": 87.02,
-          "iou": 83.32
+          "score": 88.15,
+          "iou": 85.21
         }
       },
       "boxes": {
         "reference": [
-          3.21,
-          3.18,
-          6.95
+          3.32,
+          3.29,
+          7.19
         ],
         "procedural": [
-          3.39,
-          3.18,
-          6.87
+          3.32,
+          3.12,
+          6.75
+        ]
+      }
+    },
+    {
+      "id": "leo2_revolution",
+      "name": "Leopard 2 Revolution",
+      "sourcePath": "/models/tanks/community/recovered/leo2_revolution.glb",
+      "fallback": "leo2a7",
+      "score": 70.18,
+      "scores": {
+        "overall": 84.14,
+        "hull": 84.89,
+        "turret": 49.18,
+        "gun": 25.87,
+        "tracks": 82.13
+      },
+      "componentMasksAvailable": true,
+      "minView": 78.13,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 84.07,
+          "iou": 79.53
+        },
+        "side": {
+          "score": 78.13,
+          "iou": 72.54
+        },
+        "top": {
+          "score": 92.52,
+          "iou": 90.6
+        },
+        "rearQuarter": {
+          "score": 81.83,
+          "iou": 77.47
+        }
+      },
+      "boxes": {
+        "reference": [
+          4,
+          4.03,
+          9.8
+        ],
+        "procedural": [
+          4,
+          3.04,
+          10.07
+        ]
+      }
+    },
+    {
+      "id": "m1a2",
+      "name": "M1A2 Abrams SEPv3",
+      "sourcePath": "/models/tanks/m1a2_sepv3_dannzjs.glb",
+      "fallback": "m1a2",
+      "score": 70.69,
+      "scores": {
+        "overall": 85.96,
+        "hull": 77.41,
+        "turret": 28.87,
+        "gun": 72.47,
+        "tracks": 84.79
+      },
+      "componentMasksAvailable": true,
+      "minView": 80.4,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 86.39,
+          "iou": 83.35
+        },
+        "side": {
+          "score": 80.4,
+          "iou": 74.05
+        },
+        "top": {
+          "score": 92.43,
+          "iou": 90.55
+        },
+        "rearQuarter": {
+          "score": 84.61,
+          "iou": 79.98
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.66,
+          3.89,
+          9.3
+        ],
+        "procedural": [
+          3.66,
+          3.04,
+          9.3
+        ]
+      }
+    },
+    {
+      "id": "merkava3b",
+      "name": "Merkava Mk.3B",
+      "sourcePath": "/models/tanks/community/recovered/merkava3b.glb",
+      "fallback": "merkava4",
+      "score": 70.77,
+      "scores": {
+        "overall": 86.86,
+        "hull": 86.9,
+        "turret": 36.51,
+        "gun": 37.43,
+        "tracks": 85.6
+      },
+      "componentMasksAvailable": true,
+      "minView": 79.04,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 88.8,
+          "iou": 86.34
+        },
+        "side": {
+          "score": 79.04,
+          "iou": 73.79
+        },
+        "top": {
+          "score": 95.23,
+          "iou": 94.17
+        },
+        "rearQuarter": {
+          "score": 84.36,
+          "iou": 80.06
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.72,
+          4.86,
+          8.28
+        ],
+        "procedural": [
+          3.72,
+          3.16,
+          8.58
+        ]
+      }
+    },
+    {
+      "id": "challenger1",
+      "name": "Challenger 1 Mk.3",
+      "sourcePath": "/models/tanks/community/recovered/challenger1.glb",
+      "fallback": "challenger2",
+      "score": 70.89,
+      "scores": {
+        "overall": 82.16,
+        "hull": 81.85,
+        "turret": 49.56,
+        "gun": 47.17,
+        "tracks": 76.18
+      },
+      "componentMasksAvailable": true,
+      "minView": 76.3,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 86.99,
+          "iou": 83.38
+        },
+        "side": {
+          "score": 76.3,
+          "iou": 68.5
+        },
+        "top": {
+          "score": 85.23,
+          "iou": 82.89
+        },
+        "rearQuarter": {
+          "score": 80.12,
+          "iou": 74.64
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.52,
+          3.07,
+          9.95
+        ],
+        "procedural": [
+          3.52,
+          2.68,
+          9
+        ]
+      }
+    },
+    {
+      "id": "challenger_cruiser",
+      "name": "A30 Challenger",
+      "sourcePath": "/models/tanks/community/recovered/challenger_cruiser.glb",
+      "fallback": "panther_g",
+      "score": 71.29,
+      "scores": {
+        "overall": 78.59,
+        "hull": 81.71,
+        "turret": 26.21,
+        "gun": 100,
+        "tracks": 76.47
+      },
+      "componentMasksAvailable": true,
+      "minView": 72.51,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 80.33,
+          "iou": 77.03
+        },
+        "side": {
+          "score": 72.51,
+          "iou": 67.91
+        },
+        "top": {
+          "score": 84.4,
+          "iou": 82.58
+        },
+        "rearQuarter": {
+          "score": 77.14,
+          "iou": 74.06
+        }
+      },
+      "boxes": {
+        "reference": [
+          2.91,
+          1.84,
+          6.75
+        ],
+        "procedural": [
+          2.91,
+          2.33,
+          8.05
+        ]
+      }
+    },
+    {
+      "id": "m60a3",
+      "name": "M60A3",
+      "sourcePath": "/models/tanks/community/recovered/m60a1.glb",
+      "fallback": "m60a1",
+      "score": 71.32,
+      "scores": {
+        "overall": 81.16,
+        "hull": 86.26,
+        "turret": 45.59,
+        "gun": 44.4,
+        "tracks": 86.26
+      },
+      "componentMasksAvailable": true,
+      "minView": 71.3,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 82.3,
+          "iou": 78.63
+        },
+        "side": {
+          "score": 71.3,
+          "iou": 66.37
+        },
+        "top": {
+          "score": 94.78,
+          "iou": 94.54
+        },
+        "rearQuarter": {
+          "score": 76.27,
+          "iou": 72.69
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.63,
+          3.21,
+          9.52
+        ],
+        "procedural": [
+          3.63,
+          2.71,
+          8.47
+        ]
+      }
+    },
+    {
+      "id": "fv510",
+      "name": "FV510 Warrior",
+      "sourcePath": "/models/tanks/community/recovered/fv510.glb",
+      "fallback": "m2a2_bradley",
+      "score": 71.53,
+      "scores": {
+        "overall": 80.45,
+        "hull": 80.27,
+        "turret": 27.53,
+        "gun": 100,
+        "tracks": 72.47
+      },
+      "componentMasksAvailable": true,
+      "minView": 75,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 83.3,
+          "iou": 79.43
+        },
+        "side": {
+          "score": 75,
+          "iou": 70.63
+        },
+        "top": {
+          "score": 83.06,
+          "iou": 80.67
+        },
+        "rearQuarter": {
+          "score": 80.42,
+          "iou": 77.32
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.03,
+          3.9,
+          5.66
+        ],
+        "procedural": [
+          3.03,
+          2.67,
+          6.33
+        ]
+      }
+    },
+    {
+      "id": "merkava1b",
+      "name": "Merkava Mk.1B",
+      "sourcePath": "/models/tanks/community/recovered/merkava1b.glb",
+      "fallback": "merkava4",
+      "score": 71.55,
+      "scores": {
+        "overall": 85.75,
+        "hull": 88.55,
+        "turret": 32.17,
+        "gun": 50.84,
+        "tracks": 85.86
+      },
+      "componentMasksAvailable": true,
+      "minView": 77.85,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 85.87,
+          "iou": 83.74
+        },
+        "side": {
+          "score": 77.85,
+          "iou": 73.09
+        },
+        "top": {
+          "score": 95.3,
+          "iou": 94.14
+        },
+        "rearQuarter": {
+          "score": 83.97,
+          "iou": 79.98
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.7,
+          4.86,
+          8.12
+        ],
+        "procedural": [
+          3.7,
+          2.98,
+          8.12
+        ]
+      }
+    },
+    {
+      "id": "merkava2b",
+      "name": "Merkava Mk.2B",
+      "sourcePath": "/models/tanks/community/recovered/merkava2b.glb",
+      "fallback": "merkava4",
+      "score": 71.62,
+      "scores": {
+        "overall": 86.27,
+        "hull": 83.52,
+        "turret": 21.8,
+        "gun": 77.65,
+        "tracks": 85.85
+      },
+      "componentMasksAvailable": true,
+      "minView": 78.5,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 85.78,
+          "iou": 83.65
+        },
+        "side": {
+          "score": 78.5,
+          "iou": 74.11
+        },
+        "top": {
+          "score": 95.76,
+          "iou": 94.48
+        },
+        "rearQuarter": {
+          "score": 85.02,
+          "iou": 81.59
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.7,
+          4.9,
+          8.2
+        ],
+        "procedural": [
+          3.7,
+          3.01,
+          8.12
+        ]
+      }
+    },
+    {
+      "id": "pt91m",
+      "name": "PT-91M Pendekar",
+      "sourcePath": "/models/tanks/community/recovered/pt91m.glb",
+      "fallback": "t72b3",
+      "score": 72.12,
+      "scores": {
+        "overall": 80.67,
+        "hull": 82.02,
+        "turret": 46.46,
+        "gun": 59.15,
+        "tracks": 87.39
+      },
+      "componentMasksAvailable": true,
+      "minView": 75.99,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 77.1,
+          "iou": 74.26
+        },
+        "side": {
+          "score": 75.99,
+          "iou": 73.83
+        },
+        "top": {
+          "score": 87.71,
+          "iou": 85.6
+        },
+        "rearQuarter": {
+          "score": 81.87,
+          "iou": 79.29
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.59,
+          3.82,
+          10.42
+        ],
+        "procedural": [
+          3.59,
+          2.3,
+          9.58
+        ]
+      }
+    },
+    {
+      "id": "t72b_1987",
+      "name": "T-72B obr. 1987",
+      "sourcePath": "/models/tanks/community/recovered/t72b_1987.glb",
+      "fallback": "t72b3",
+      "score": 72.35,
+      "scores": {
+        "overall": 82.67,
+        "hull": 86.44,
+        "turret": 43.16,
+        "gun": 52.61,
+        "tracks": 85.75
+      },
+      "componentMasksAvailable": true,
+      "minView": 75.91,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 81.21,
+          "iou": 78.07
+        },
+        "side": {
+          "score": 75.91,
+          "iou": 70.07
+        },
+        "top": {
+          "score": 90.86,
+          "iou": 88.97
+        },
+        "rearQuarter": {
+          "score": 82.71,
+          "iou": 77.06
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.59,
+          2.88,
+          9.7
+        ],
+        "procedural": [
+          3.59,
+          2.3,
+          9.58
+        ]
+      }
+    },
+    {
+      "id": "is6b",
+      "name": "IS-6B",
+      "sourcePath": "/models/tanks/community/is6b-snowleopard.glb",
+      "fallback": "is6b",
+      "score": 72.69,
+      "scores": {
+        "overall": 85.7,
+        "hull": 88.71,
+        "turret": 48.77,
+        "gun": 28.84,
+        "tracks": 91.27
+      },
+      "componentMasksAvailable": true,
+      "minView": 78.75,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 89.16,
+          "iou": 87.25
+        },
+        "side": {
+          "score": 78.75,
+          "iou": 73.72
+        },
+        "top": {
+          "score": 91.36,
+          "iou": 91.18
+        },
+        "rearQuarter": {
+          "score": 83.53,
+          "iou": 79.59
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.2,
+          2.37,
+          9.87
+        ],
+        "procedural": [
+          3.2,
+          2.58,
+          6.99
+        ]
+      }
+    },
+    {
+      "id": "t72b3m",
+      "name": "T-72B3M obr. 2022",
+      "sourcePath": "/models/tanks/community/recovered/t72b3m.glb",
+      "fallback": "t72b3",
+      "score": 72.78,
+      "scores": {
+        "overall": 82.42,
+        "hull": 85.37,
+        "turret": 45.35,
+        "gun": 56.1,
+        "tracks": 84.82
+      },
+      "componentMasksAvailable": true,
+      "minView": 76.28,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 78.42,
+          "iou": 74.94
+        },
+        "side": {
+          "score": 76.28,
+          "iou": 71.14
+        },
+        "top": {
+          "score": 93.52,
+          "iou": 91.01
+        },
+        "rearQuarter": {
+          "score": 81.48,
+          "iou": 76.58
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.59,
+          3.42,
+          9.33
+        ],
+        "procedural": [
+          3.59,
+          2.3,
+          9.58
+        ]
+      }
+    },
+    {
+      "id": "m60a1",
+      "name": "M60A1 Patton",
+      "sourcePath": "/models/tanks/community/recovered/m60a1.glb",
+      "fallback": "leo1a5",
+      "score": 73.21,
+      "scores": {
+        "overall": 81.31,
+        "hull": 86.92,
+        "turret": 48.7,
+        "gun": 53.14,
+        "tracks": 86.26
+      },
+      "componentMasksAvailable": true,
+      "minView": 71.77,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 82.13,
+          "iou": 78.52
+        },
+        "side": {
+          "score": 71.77,
+          "iou": 67.02
+        },
+        "top": {
+          "score": 94.92,
+          "iou": 94.68
+        },
+        "rearQuarter": {
+          "score": 76.43,
+          "iou": 72.85
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.63,
+          3.21,
+          9.52
+        ],
+        "procedural": [
+          3.63,
+          2.7,
+          8.47
+        ]
+      }
+    },
+    {
+      "id": "t90m",
+      "name": "T-90M Proryv",
+      "sourcePath": "/models/tanks/t90m_minehffd.glb",
+      "fallback": "t90m",
+      "score": 73.66,
+      "scores": {
+        "overall": 83.01,
+        "hull": 85.72,
+        "turret": 50.19,
+        "gun": 52.68,
+        "tracks": 85.22
+      },
+      "componentMasksAvailable": true,
+      "minView": 75.56,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 82.34,
+          "iou": 79.19
+        },
+        "side": {
+          "score": 75.56,
+          "iou": 67.91
+        },
+        "top": {
+          "score": 91.2,
+          "iou": 89.19
+        },
+        "rearQuarter": {
+          "score": 82.95,
+          "iou": 76.28
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.78,
+          2.97,
+          9.91
+        ],
+        "procedural": [
+          3.78,
+          2.54,
+          9.84
+        ]
+      }
+    },
+    {
+      "id": "t72bu",
+      "name": "T-72BU",
+      "sourcePath": "/models/tanks/community/recovered/t72bu.glb",
+      "fallback": "t90a",
+      "score": 73.93,
+      "scores": {
+        "overall": 83.68,
+        "hull": 83.12,
+        "turret": 25.61,
+        "gun": 100,
+        "tracks": 84.25
+      },
+      "componentMasksAvailable": true,
+      "minView": 75.42,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 87.88,
+          "iou": 84.69
+        },
+        "side": {
+          "score": 75.42,
+          "iou": 67.67
+        },
+        "top": {
+          "score": 90.44,
+          "iou": 88.29
+        },
+        "rearQuarter": {
+          "score": 80.97,
+          "iou": 74.9
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.78,
+          3.58,
+          10.9
+        ],
+        "procedural": [
+          3.78,
+          2.89,
+          8.16
+        ]
+      }
+    },
+    {
+      "id": "leo2a7v",
+      "name": "Leopard 2A7V",
+      "sourcePath": "/models/tanks/community/recovered/leo2a7v.glb",
+      "fallback": "leo2a7",
+      "score": 74.12,
+      "scores": {
+        "overall": 83.92,
+        "hull": 86.16,
+        "turret": 43.64,
+        "gun": 62.4,
+        "tracks": 87.43
+      },
+      "componentMasksAvailable": true,
+      "minView": 76.51,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 86.22,
+          "iou": 84.97
+        },
+        "side": {
+          "score": 76.51,
+          "iou": 73.15
+        },
+        "top": {
+          "score": 90.42,
+          "iou": 87.96
+        },
+        "rearQuarter": {
+          "score": 82.54,
+          "iou": 79.67
+        }
+      },
+      "boxes": {
+        "reference": [
+          4,
+          5.56,
+          11.86
+        ],
+        "procedural": [
+          4,
+          3.13,
+          11.2
+        ]
+      }
+    },
+    {
+      "id": "t90sm",
+      "name": "T-90SM",
+      "sourcePath": "/models/tanks/community/recovered/t90sm.glb",
+      "fallback": "t90m",
+      "score": 74.64,
+      "scores": {
+        "overall": 82.84,
+        "hull": 83.86,
+        "turret": 50.21,
+        "gun": 64.14,
+        "tracks": 86.76
+      },
+      "componentMasksAvailable": true,
+      "minView": 77.14,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 79.01,
+          "iou": 75.08
+        },
+        "side": {
+          "score": 77.14,
+          "iou": 72.83
+        },
+        "top": {
+          "score": 92.48,
+          "iou": 90.67
+        },
+        "rearQuarter": {
+          "score": 82.74,
+          "iou": 78.36
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.78,
+          3.15,
+          10.55
+        ],
+        "procedural": [
+          3.78,
+          2.57,
+          9.84
+        ]
+      }
+    },
+    {
+      "id": "merkava2d",
+      "name": "Merkava Mk.2D",
+      "sourcePath": "/models/tanks/community/recovered/merkava2d.glb",
+      "fallback": "merkava4",
+      "score": 75.53,
+      "scores": {
+        "overall": 85.87,
+        "hull": 88.63,
+        "turret": 33.11,
+        "gun": 81.63,
+        "tracks": 86.22
+      },
+      "componentMasksAvailable": true,
+      "minView": 78.44,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 85.47,
+          "iou": 83.49
+        },
+        "side": {
+          "score": 78.44,
+          "iou": 73.42
+        },
+        "top": {
+          "score": 95.43,
+          "iou": 94.12
+        },
+        "rearQuarter": {
+          "score": 84.14,
+          "iou": 79.9
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.7,
+          4.86,
+          8.13
+        ],
+        "procedural": [
+          3.7,
+          3.12,
+          8.12
+        ]
+      }
+    },
+    {
+      "id": "merkava3c",
+      "name": "Merkava Mk.3C",
+      "sourcePath": "/models/tanks/community/recovered/merkava3c.glb",
+      "fallback": "merkava4",
+      "score": 75.7,
+      "scores": {
+        "overall": 86.99,
+        "hull": 86.7,
+        "turret": 61.14,
+        "gun": 37.53,
+        "tracks": 85.61
+      },
+      "componentMasksAvailable": true,
+      "minView": 79.24,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 89.11,
+          "iou": 86.87
+        },
+        "side": {
+          "score": 79.24,
+          "iou": 74.04
+        },
+        "top": {
+          "score": 95.24,
+          "iou": 94.18
+        },
+        "rearQuarter": {
+          "score": 84.36,
+          "iou": 80.28
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.72,
+          4.86,
+          8.27
+        ],
+        "procedural": [
+          3.72,
+          3.17,
+          8.58
+        ]
+      }
+    },
+    {
+      "id": "ariete",
+      "name": "C1 Ariete",
+      "sourcePath": "/models/tanks/community/ariete-dustymojito.glb",
+      "fallback": "ariete",
+      "score": 75.85,
+      "scores": {
+        "overall": 86.83,
+        "hull": 87.66,
+        "turret": 61.33,
+        "gun": 40.14,
+        "tracks": 80.79
+      },
+      "componentMasksAvailable": true,
+      "minView": 79.56,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 89.66,
+          "iou": 87.07
+        },
+        "side": {
+          "score": 79.56,
+          "iou": 72.02
+        },
+        "top": {
+          "score": 93.83,
+          "iou": 92.99
+        },
+        "rearQuarter": {
+          "score": 84.27,
+          "iou": 78.62
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.6,
+          2.79,
+          9.07
+        ],
+        "procedural": [
+          3.6,
+          2.54,
+          9.64
+        ]
+      }
+    },
+    {
+      "id": "kf51",
+      "name": "KF51 Panther",
+      "sourcePath": "/models/tanks/kf51_grip420.glb",
+      "fallback": "kf51",
+      "score": 76.05,
+      "scores": {
+        "overall": 85.11,
+        "hull": 89.43,
+        "turret": 49.01,
+        "gun": 58.76,
+        "tracks": 88.19
+      },
+      "componentMasksAvailable": true,
+      "minView": 75.02,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 87.56,
+          "iou": 85.03
+        },
+        "side": {
+          "score": 75.02,
+          "iou": 69
+        },
+        "top": {
+          "score": 95.2,
+          "iou": 94.43
+        },
+        "rearQuarter": {
+          "score": 82.65,
+          "iou": 78.25
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.6,
+          3.54,
+          10.63
+        ],
+        "procedural": [
+          3.6,
+          2.99,
+          9.92
+        ]
+      }
+    },
+    {
+      "id": "t80u",
+      "name": "T-80U",
+      "sourcePath": "/models/tanks/t80u_javanilga.glb",
+      "fallback": "t80u",
+      "score": 76.46,
+      "scores": {
+        "overall": 83,
+        "hull": 88.44,
+        "turret": 47.25,
+        "gun": 73.78,
+        "tracks": 87.52
+      },
+      "componentMasksAvailable": true,
+      "minView": 77.08,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 78.87,
+          "iou": 74.97
+        },
+        "side": {
+          "score": 77.08,
+          "iou": 70.4
+        },
+        "top": {
+          "score": 96.3,
+          "iou": 95.4
+        },
+        "rearQuarter": {
+          "score": 79.75,
+          "iou": 72.23
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.6,
+          2.67,
+          9.52
+        ],
+        "procedural": [
+          3.6,
+          2.23,
+          9.63
+        ]
+      }
+    },
+    {
+      "id": "abramsx",
+      "name": "AbramsX",
+      "sourcePath": "/models/tanks/community/abramsx-mortavex.glb",
+      "fallback": "m1a2",
+      "score": 76.47,
+      "scores": {
+        "overall": 85.92,
+        "hull": 83.76,
+        "turret": 54.36,
+        "gun": 63.6,
+        "tracks": 86.93
+      },
+      "componentMasksAvailable": true,
+      "minView": 78.85,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 85.36,
+          "iou": 82.67
+        },
+        "side": {
+          "score": 78.85,
+          "iou": 74.5
+        },
+        "top": {
+          "score": 95.95,
+          "iou": 95.48
+        },
+        "rearQuarter": {
+          "score": 83.52,
+          "iou": 79.85
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.66,
+          4.13,
+          10.12
+        ],
+        "procedural": [
+          3.66,
+          3.04,
+          9.3
+        ]
+      }
+    },
+    {
+      "id": "leclerc",
+      "name": "Leclerc S2",
+      "sourcePath": "/models/tanks/char_leclerc_andertan.glb",
+      "fallback": "leclerc",
+      "score": 76.71,
+      "scores": {
+        "overall": 87.63,
+        "hull": 82.03,
+        "turret": 53.97,
+        "gun": 65.12,
+        "tracks": 86.56
+      },
+      "componentMasksAvailable": true,
+      "minView": 81.28,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 88.14,
+          "iou": 83.64
+        },
+        "side": {
+          "score": 81.28,
+          "iou": 74.73
+        },
+        "top": {
+          "score": 93.9,
+          "iou": 91.68
+        },
+        "rearQuarter": {
+          "score": 87.2,
+          "iou": 82.3
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.6,
+          3.07,
+          9.8
+        ],
+        "procedural": [
+          3.6,
+          3.14,
+          9.77
+        ]
+      }
+    },
+    {
+      "id": "type90",
+      "name": "Type 90 Kyu-maru",
+      "sourcePath": "/models/tanks/community/recovered/type90.glb",
+      "fallback": "type10",
+      "score": 76.89,
+      "scores": {
+        "overall": 85.18,
+        "hull": 87.01,
+        "turret": 48.68,
+        "gun": 72.91,
+        "tracks": 85.56
+      },
+      "componentMasksAvailable": true,
+      "minView": 75.97,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 86.96,
+          "iou": 85.73
+        },
+        "side": {
+          "score": 75.97,
+          "iou": 72.57
+        },
+        "top": {
+          "score": 95.36,
+          "iou": 94.73
+        },
+        "rearQuarter": {
+          "score": 82.43,
+          "iou": 80.02
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.43,
+          4.42,
+          9.29
+        ],
+        "procedural": [
+          3.43,
+          2.7,
+          8.66
+        ]
+      }
+    },
+    {
+      "id": "m1a1",
+      "name": "M1A1 Abrams",
+      "sourcePath": "/models/tanks/m1a2_tejas.glb",
+      "fallback": "m1a2",
+      "score": 77.49,
+      "scores": {
+        "overall": 88.07,
+        "hull": 81.74,
+        "turret": 49.17,
+        "gun": 79.93,
+        "tracks": 85.15
+      },
+      "componentMasksAvailable": true,
+      "minView": 81.79,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 88.04,
+          "iou": 85.71
+        },
+        "side": {
+          "score": 81.79,
+          "iou": 78.09
+        },
+        "top": {
+          "score": 96.17,
+          "iou": 95.55
+        },
+        "rearQuarter": {
+          "score": 86.27,
+          "iou": 83.31
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.66,
+          4.09,
+          9.64
+        ],
+        "procedural": [
+          3.66,
+          3.04,
+          9.3
+        ]
+      }
+    },
+    {
+      "id": "m1a1ha",
+      "name": "M1A1HA Abrams",
+      "sourcePath": "/models/tanks/m1a2_tejas.glb",
+      "fallback": "m1a1",
+      "score": 77.49,
+      "scores": {
+        "overall": 88.07,
+        "hull": 81.74,
+        "turret": 49.17,
+        "gun": 79.93,
+        "tracks": 85.15
+      },
+      "componentMasksAvailable": true,
+      "minView": 81.79,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 88.04,
+          "iou": 85.71
+        },
+        "side": {
+          "score": 81.79,
+          "iou": 78.09
+        },
+        "top": {
+          "score": 96.17,
+          "iou": 95.55
+        },
+        "rearQuarter": {
+          "score": 86.27,
+          "iou": 83.31
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.66,
+          4.09,
+          9.64
+        ],
+        "procedural": [
+          3.66,
+          3.04,
+          9.3
+        ]
+      }
+    },
+    {
+      "id": "m1a2_tejas",
+      "name": "M1A2 Abrams (Tejas)",
+      "sourcePath": "/models/tanks/m1a2_tejas.glb",
+      "fallback": "m1a2",
+      "score": 77.49,
+      "scores": {
+        "overall": 88.07,
+        "hull": 81.74,
+        "turret": 49.17,
+        "gun": 79.93,
+        "tracks": 85.15
+      },
+      "componentMasksAvailable": true,
+      "minView": 81.79,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 88.04,
+          "iou": 85.71
+        },
+        "side": {
+          "score": 81.79,
+          "iou": 78.09
+        },
+        "top": {
+          "score": 96.17,
+          "iou": 95.55
+        },
+        "rearQuarter": {
+          "score": 86.27,
+          "iou": 83.31
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.66,
+          4.09,
+          9.64
+        ],
+        "procedural": [
+          3.66,
+          3.04,
+          9.3
+        ]
+      }
+    },
+    {
+      "id": "leo2a5",
+      "name": "Leopard 2A5",
+      "sourcePath": "/models/tanks/community/recovered/leo2a5.glb",
+      "fallback": "leo2a6",
+      "score": 77.96,
+      "scores": {
+        "overall": 87.51,
+        "hull": 85.35,
+        "turret": 50.73,
+        "gun": 73.43,
+        "tracks": 87.98
+      },
+      "componentMasksAvailable": true,
+      "minView": 80.54,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 89.31,
+          "iou": 87.21
+        },
+        "side": {
+          "score": 80.54,
+          "iou": 75.78
+        },
+        "top": {
+          "score": 94.04,
+          "iou": 92.47
+        },
+        "rearQuarter": {
+          "score": 86.16,
+          "iou": 81.78
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.75,
+          4.11,
+          9.98
+        ],
+        "procedural": [
+          3.75,
+          3.16,
+          9.55
+        ]
+      }
+    },
+    {
+      "id": "tiger2",
+      "name": "Tiger II",
+      "sourcePath": "/models/tanks/community/tiger2-maximus.glb",
+      "fallback": "tiger2",
+      "score": 78.19,
+      "scores": {
+        "overall": 86.13,
+        "hull": 82.49,
+        "turret": 52.91,
+        "gun": 84.98,
+        "tracks": 83.11
+      },
+      "componentMasksAvailable": true,
+      "minView": 77.58,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 89.26,
+          "iou": 86.46
+        },
+        "side": {
+          "score": 77.58,
+          "iou": 74.05
+        },
+        "top": {
+          "score": 93.38,
+          "iou": 91.84
+        },
+        "rearQuarter": {
+          "score": 84.28,
+          "iou": 80.36
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.76,
+          3.07,
+          9.91
+        ],
+        "procedural": [
+          3.76,
+          2.46,
+          8.61
+        ]
+      }
+    },
+    {
+      "id": "newc_tiger",
+      "name": "Tiger I (Newc42)",
+      "sourcePath": "/models/tanks/community/tiger_newc42.glb",
+      "fallback": "newc_tiger",
+      "score": 78.68,
+      "scores": {
+        "overall": 88.86,
+        "hull": 89.37,
+        "turret": 62.13,
+        "gun": 48.01,
+        "tracks": 88.15
+      },
+      "componentMasksAvailable": true,
+      "minView": 83.22,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 89.32,
+          "iou": 86.78
+        },
+        "side": {
+          "score": 83.22,
+          "iou": 79.53
+        },
+        "top": {
+          "score": 93.12,
+          "iou": 91.61
+        },
+        "rearQuarter": {
+          "score": 89.78,
+          "iou": 85.94
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.71,
+          2.76,
+          8.19
+        ],
+        "procedural": [
+          3.71,
+          2.45,
+          7.4
+        ]
+      }
+    },
+    {
+      "id": "recon_tank",
+      "name": "Recon Tank (Mophs)",
+      "sourcePath": "/models/tanks/community/recon_tank_mophs.glb",
+      "fallback": "recon_tank",
+      "score": 78.68,
+      "scores": {
+        "overall": 79.19,
+        "hull": null,
+        "turret": null,
+        "gun": null,
+        "tracks": 76.46
+      },
+      "componentMasksAvailable": false,
+      "minView": 73.67,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 85.93,
+          "iou": 83.42
+        },
+        "side": {
+          "score": 74,
+          "iou": 69.82
+        },
+        "top": {
+          "score": 83.17,
+          "iou": 80.26
+        },
+        "rearQuarter": {
+          "score": 73.67,
+          "iou": 69.79
+        }
+      },
+      "boxes": {
+        "reference": [
+          3,
+          4.45,
+          7.14
+        ],
+        "procedural": [
+          3,
+          3.51,
+          7.19
+        ]
+      }
+    },
+    {
+      "id": "t34_85_cad",
+      "name": "T-34-85 (Wei He)",
+      "sourcePath": "/models/tanks/community/t34_85_weihe.glb",
+      "fallback": "t34_85_cad",
+      "score": 79.05,
+      "scores": {
+        "overall": 88.39,
+        "hull": 90.15,
+        "turret": 52,
+        "gun": 73.34,
+        "tracks": 79.75
+      },
+      "componentMasksAvailable": true,
+      "minView": 81.3,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 93.3,
+          "iou": 91.24
+        },
+        "side": {
+          "score": 81.3,
+          "iou": 75.57
+        },
+        "top": {
+          "score": 92.82,
+          "iou": 91.48
+        },
+        "rearQuarter": {
+          "score": 86.13,
+          "iou": 81.24
+        }
+      },
+      "boxes": {
+        "reference": [
+          3,
+          2.74,
+          7.93
+        ],
+        "procedural": [
+          3,
+          2.35,
+          6.94
+        ]
+      }
+    },
+    {
+      "id": "t95",
+      "name": "T95 Doomturtle",
+      "sourcePath": "/models/tanks/community/t95_doomturtle_haphazard.glb",
+      "fallback": "t95",
+      "score": 81.55,
+      "scores": {
+        "overall": 81.19,
+        "hull": null,
+        "turret": null,
+        "gun": null,
+        "tracks": 83.13
+      },
+      "componentMasksAvailable": false,
+      "minView": 70.17,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 84.09,
+          "iou": 81.22
+        },
+        "side": {
+          "score": 70.17,
+          "iou": 67.25
+        },
+        "top": {
+          "score": 90.9,
+          "iou": 88.89
+        },
+        "rearQuarter": {
+          "score": 79.61,
+          "iou": 76.84
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.8,
+          3.21,
+          9.5
+        ],
+        "procedural": [
+          3.8,
+          1.52,
+          8.01
+        ]
+      }
+    },
+    {
+      "id": "strv103",
+      "name": "Stridsvagn 103",
+      "sourcePath": "/models/tanks/community/strv103_wesiora.glb",
+      "fallback": "strv103",
+      "score": 81.92,
+      "scores": {
+        "overall": 85.41,
+        "hull": null,
+        "turret": null,
+        "gun": null,
+        "tracks": 66.65
+      },
+      "componentMasksAvailable": false,
+      "minView": 76.17,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 92.29,
+          "iou": 90.88
+        },
+        "side": {
+          "score": 76.17,
+          "iou": 70.36
+        },
+        "top": {
+          "score": 91,
+          "iou": 88.95
+        },
+        "rearQuarter": {
+          "score": 82.19,
+          "iou": 78.2
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.63,
+          2.82,
+          9.17
+        ],
+        "procedural": [
+          3.63,
+          1.8,
+          9.5
+        ]
+      }
+    },
+    {
+      "id": "isu152",
+      "name": "ISU-152",
+      "sourcePath": "/models/tanks/community/recovered/isu152.glb",
+      "fallback": "sturmtiger",
+      "score": 83.64,
+      "scores": {
+        "overall": 84.57,
+        "hull": null,
+        "turret": null,
+        "gun": null,
+        "tracks": 79.56
+      },
+      "componentMasksAvailable": false,
+      "minView": 78.87,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 83.89,
+          "iou": 81.32
+        },
+        "side": {
+          "score": 78.87,
+          "iou": 73.53
+        },
+        "top": {
+          "score": 91.85,
+          "iou": 90.06
+        },
+        "rearQuarter": {
+          "score": 83.68,
+          "iou": 79.55
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.07,
+          2.23,
+          8.39
+        ],
+        "procedural": [
+          3.07,
+          2.08,
+          7.37
+        ]
+      }
+    },
+    {
+      "id": "leichttraktor",
+      "name": "Leichttraktor",
+      "sourcePath": "/models/tanks/community/leichttraktor_newc42.glb",
+      "fallback": "leichttraktor",
+      "score": 84.19,
+      "scores": {
+        "overall": 83.21,
+        "hull": 87.27,
+        "turret": 69.93,
+        "gun": 100,
+        "tracks": 90.86
+      },
+      "componentMasksAvailable": true,
+      "minView": 74.69,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 79.83,
+          "iou": 76.4
+        },
+        "side": {
+          "score": 74.69,
+          "iou": 70.59
+        },
+        "top": {
+          "score": 97.68,
+          "iou": 97.03
+        },
+        "rearQuarter": {
+          "score": 80.65,
+          "iou": 77.61
+        }
+      },
+      "boxes": {
+        "reference": [
+          2.28,
+          2.46,
+          4.52
+        ],
+        "procedural": [
+          2.28,
+          1.93,
+          4.56
+        ]
+      }
+    },
+    {
+      "id": "jpz_e100",
+      "name": "Jagdpanzer E100",
+      "sourcePath": "/models/tanks/community/jagdpanzer_e100_haphazard.glb",
+      "fallback": "jpz_e100",
+      "score": 84.98,
+      "scores": {
+        "overall": 85.66,
+        "hull": null,
+        "turret": null,
+        "gun": null,
+        "tracks": 81.99
+      },
+      "componentMasksAvailable": false,
+      "minView": 82.3,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 83.87,
+          "iou": 79.56
+        },
+        "side": {
+          "score": 82.3,
+          "iou": 76.51
+        },
+        "top": {
+          "score": 92.75,
+          "iou": 91.07
+        },
+        "rearQuarter": {
+          "score": 83.71,
+          "iou": 80.12
+        }
+      },
+      "boxes": {
+        "reference": [
+          4.3,
+          3.32,
+          11.09
+        ],
+        "procedural": [
+          4.3,
+          2.65,
+          11.7
+        ]
+      }
+    },
+    {
+      "id": "jagdtiger",
+      "name": "Jagdtiger",
+      "sourcePath": "/models/tanks/community/jagdtiger-adipriatna.glb",
+      "fallback": "jagdtiger",
+      "score": 86.23,
+      "scores": {
+        "overall": 85.88,
+        "hull": null,
+        "turret": null,
+        "gun": null,
+        "tracks": 87.74
+      },
+      "componentMasksAvailable": false,
+      "minView": 79.64,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 85.27,
+          "iou": 81.85
+        },
+        "side": {
+          "score": 79.64,
+          "iou": 73.66
+        },
+        "top": {
+          "score": 93.28,
+          "iou": 91.73
+        },
+        "rearQuarter": {
+          "score": 85.34,
+          "iou": 79.94
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.7,
+          2.87,
+          9.95
+        ],
+        "procedural": [
+          3.7,
+          2.37,
+          9.8
+        ]
+      }
+    },
+    {
+      "id": "isu122s",
+      "name": "ISU-122S",
+      "sourcePath": "/models/tanks/community/recovered/isu122s.glb",
+      "fallback": "jagdtiger",
+      "score": 86.24,
+      "scores": {
+        "overall": 86.52,
+        "hull": null,
+        "turret": null,
+        "gun": null,
+        "tracks": 85
+      },
+      "componentMasksAvailable": false,
+      "minView": 79.56,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 89.58,
+          "iou": 87.42
+        },
+        "side": {
+          "score": 79.56,
+          "iou": 73.03
+        },
+        "top": {
+          "score": 91.15,
+          "iou": 88.28
+        },
+        "rearQuarter": {
+          "score": 85.8,
+          "iou": 81.64
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.07,
+          2.38,
+          9.88
+        ],
+        "procedural": [
+          3.07,
+          2.08,
+          8.84
         ]
       }
     },
@@ -3210,43 +3353,45 @@
       "name": "Sturmtiger",
       "sourcePath": "/models/tanks/community/sturmtiger-tomrs.glb",
       "fallback": "sturmtiger",
-      "score": 85.16,
+      "score": 87.46,
       "scores": {
-        "overall": 83.75,
+        "overall": 86.94,
         "hull": null,
         "turret": null,
         "gun": null,
-        "tracks": 91.33
+        "tracks": 89.72
       },
       "componentMasksAvailable": false,
+      "minView": 76.7,
+      "gatePassed": false,
       "angles": {
         "front": {
-          "score": 82,
-          "iou": 79.89
+          "score": 89.67,
+          "iou": 88.14
         },
         "side": {
-          "score": 79.89,
-          "iou": 75.47
+          "score": 76.7,
+          "iou": 72.96
         },
         "top": {
-          "score": 91.83,
-          "iou": 90.78
+          "score": 96.5,
+          "iou": 95.85
         },
         "rearQuarter": {
-          "score": 81.29,
-          "iou": 77.34
+          "score": 84.91,
+          "iou": 81.75
         }
       },
       "boxes": {
         "reference": [
-          3.58,
-          4.16,
-          6.17
+          3.57,
+          4.15,
+          6.16
         ],
         "procedural": [
-          3.78,
-          2.39,
-          6.28
+          3.57,
+          2.26,
+          5.94
         ]
       }
     }

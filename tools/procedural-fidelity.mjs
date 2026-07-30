@@ -17,7 +17,8 @@ const option = (name, fallback = null) => {
 const requested = option('ids')?.split(',').map((id) => id.trim()).filter(Boolean) || null;
 const shotCount = Math.max(0, Number(option('shots', '0')) || 0);
 const CHECK = args.includes('--check');
-const PASS = 72;
+const PASS = 90;
+const VIEW_FLOOR = 90;
 const rows = [];
 const browserErrors = [];
 const metric = (value) => Number.isFinite(value) ? value.toFixed(0) : 'NA';
@@ -88,9 +89,10 @@ const scores = rows.map((row) => row.score).sort((a,b)=>a-b);
 const median = scores.length ? scores[Math.floor(scores.length/2)] : 0;
 const summary = {
   references:rows.length,
-  passed:rows.filter((row)=>row.score>=PASS).length,
-  failed:rows.filter((row)=>row.score<PASS).length,
+  passed:rows.filter((row)=>row.gatePassed).length,
+  failed:rows.filter((row)=>!row.gatePassed).length,
   passThreshold:PASS,
+  perViewFloor:VIEW_FLOOR,
   median:Number(median.toFixed(2)),
   worst:rows[0]?.id || null,
   best:rows.at(-1)?.id || null,
@@ -100,7 +102,7 @@ fs.writeFileSync(path.join(ROOT,'docs','procedural-fidelity-report.json'),`${JSO
 const cell = (value) => Number.isFinite(value) ? value.toFixed(1) : 'N/A';
 const md=[
   '# Procedural tank fidelity report','',
-  `Local sourced references: **${summary.references}**. At or above ${PASS}/100: **${summary.passed}**. `+
+  `Local sourced references: **${summary.references}**. Passing ${PASS}/100 overall and ${VIEW_FLOOR}/100 in every view: **${summary.passed}**. `+
     `Below target: **${summary.failed}**. Median: **${summary.median.toFixed(1)}**.`,'',
   'Red/cyan mask scoring uses identical normalized poses: 35% whole silhouette, 25% hull, '+
     '20% upper assembly, 12% cannon overhang, and 8% lower track profile.','',
@@ -117,6 +119,6 @@ const md=[
 ].join('\n');
 fs.writeFileSync(path.join(ROOT,'docs','procedural-fidelity-report.md'),md);
 
-console.log(`\nprocedural-fidelity: ${summary.passed}/${summary.references} at ${PASS}+; `+
+console.log(`\nprocedural-fidelity: ${summary.passed}/${summary.references} pass ${PASS}+ overall / ${VIEW_FLOOR}+ each view; `+
   `median ${summary.median.toFixed(1)}; worst ${summary.worst}; best ${summary.best}`);
 if (CHECK && summary.failed) process.exitCode=1;

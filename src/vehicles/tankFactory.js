@@ -351,8 +351,13 @@ function trackLoopPoints({ idler, sprocket, botY, topY, sag = 0.03, supports = n
   }
   // ground-contact span: only between the outer ROAD wheels does the run lie
   // flat at botY; outside it the band rises straight to its wrap tangents.
-  const cF = contact ? Math.min(contact.zF, zi) : zi;
-  const cR = contact ? Math.max(contact.zR, zs) : zs;
+  // The previous clamp forced both ground-contact endpoints *inside* the end
+  // wheel centres. In side view that made the return run the long base and
+  // the ground run the short base: an unmistakably upside-down trapezoid.
+  // Keep the authored tangent endpoints outside the centres instead; the
+  // tangent solve below naturally joins them to the raised end-wheel wraps.
+  const cF = contact ? contact.zF : zi;
+  const cR = contact ? contact.zR : zs;
   // clamped: degenerate rigs (end wheel wrap at/below ground) keep the old
   // near-full wrap instead of an open or crossed loop
   const aIdler = Math.max((contact && tangentDeg(idler, cF, botY, 1)) || 170, 120);
@@ -568,6 +573,40 @@ function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165, ri
 // Running gear: instanced road wheels + rollers, per-side sprocket/idler meshes,
 // and the two scrolling track bands.
 // ---------------------------------------------------------------------------
+function trackShoeGeometries(trackW, pitch) {
+  // Two physically distinct layers, as seen on real live tracks:
+  //   1. the broad outer road-contact shoe with twin grousers;
+  //   2. a recessed inner chain/connector layer carrying the pins and guide
+  //      horn between the road wheels.
+  // Keeping these as separate meshes/materials makes the vertical step read
+  // in side view; merging everything into one dark 5 cm slab was why the old
+  // ground run looked like a flat rubber ribbon.
+  const pad = mergeAll([
+    box(trackW * 0.97, 0.072, pitch * 0.72),
+    xform(box(trackW * 0.90, 0.042, pitch * 0.13), 0, 0.052, pitch * 0.22),
+    xform(box(trackW * 0.90, 0.042, pitch * 0.13), 0, 0.052, -pitch * 0.22),
+    // Raised outside shoulders protect the pin bosses and keep the shoe from
+    // reading as one featureless rectangle at garage distance.
+    xform(box(trackW * 0.10, 0.060, pitch * 0.58), -trackW * 0.43, 0.006, 0),
+    xform(box(trackW * 0.10, 0.060, pitch * 0.58), trackW * 0.43, 0.006, 0),
+  ]);
+  const inner = mergeAll([
+    // Recessed web above the road-contact pad on the loaded bottom run.
+    xform(box(trackW * 0.82, 0.050, pitch * 0.62), 0, -0.055, 0),
+    // Two longitudinal connector rails: the second visible "layer".
+    xform(box(trackW * 0.20, 0.135, pitch * 0.80), -trackW * 0.34, -0.125, 0),
+    xform(box(trackW * 0.20, 0.135, pitch * 0.80), trackW * 0.34, -0.125, 0),
+    // Center guide tooth rises between the paired road-wheel discs.
+    xform(box(0.070, 0.205, pitch * 0.34), 0, -0.185, 0),
+    xform(box(0.040, 0.090, pitch * 0.20), 0, -0.325, 0),
+    // Proper transverse pin caps. cylX faces the side camera; the previous
+    // cylZ bosses appeared as skinny bars and disappeared into the pad.
+    ...[-1,1].flatMap((side)=>[-1,1].map((end)=>
+      xform(cylX(0.047,0.058,10),side*trackW*0.49,-0.100,end*pitch*0.30))),
+  ]);
+  return { pad, inner };
+}
+
 function buildRunningGear(P, cfg) {
   const { mats, hullG, q } = P;
   const seg = q ? 26 : 12;
@@ -742,10 +781,23 @@ function buildRunningGear(P, cfg) {
   // patch; approach/departure rise tangentially to the raised end wraps
   // instead of running at ground level past both end wheels.
   const contact = {
-    zF: Math.max(...wheelZs) + wheelR * 0.5,
-    zR: Math.min(...wheelZs) - wheelR * 0.5,
+    // A real track's loaded ground run is the stable base of the profile.
+    // Give it a slight approach/departure overhang beyond both raised end
+    // wheel centres; the top return run must never be the wider trapezoid.
+    zF: Math.max(Math.max(...wheelZs) + wheelR * 0.5, frontEnd.z + frontEnd.r * 0.12),
+    zR: Math.min(Math.min(...wheelZs) - wheelR * 0.5, rearEnd.z - rearEnd.r * 0.12),
   };
   const pts = trackLoopPoints({ idler: { ...frontEnd }, sprocket: { ...rearEnd }, botY, topY, sag, supports, contact });
+  // Track-band normals and individual link orientation assume a clockwise
+  // loop in (z,y): top rear->front, front wrap down, ground front->rear. Some
+  // unusual front-drive/interleaved configs used to arrive reversed, placing
+  // the guide horns on the outside. Enforce the winding once, globally.
+  let loopArea2 = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    loopArea2 += a[0] * b[1] - b[0] * a[1];
+  }
+  if (loopArea2 > 0) pts.reverse();
   const tg = trackBandGeo(pts, trackW, trackTh, mats.trackLinkM);
   P.disposables.push(tg);
   // r1 per-wheel articulation: each side owns its OWN geometry so the bottom
@@ -777,29 +829,32 @@ function buildRunningGear(P, cfg) {
   }
   const nLinks = Math.max(24, Math.round(loopLen / 0.165));
   const lp = loopLen / nLinks;
-  // Real link: pad + grouser + inner shoe + center guide horn + pin bosses,
-  // so the loop reads as articulated individual links, not an extruded band.
-  // tank_models r1 (critic: "links are oversized bricks with no guide
-  // horns"): slimmer pad, twin end connectors, and a TALLER wedge guide horn
-  // that reads between the wheel rows; the grouser bar keeps the tread bite.
-  const linkGeo = mergeAll([
-    box(trackW * 0.96, 0.05, lp * 0.62),                           // link pad
-    xform(box(trackW * 0.88, 0.046, lp * 0.20), 0, 0.044, 0),      // grouser bar
-    xform(box(trackW * 0.9, 0.02, lp * 0.5), 0, -0.026, 0),        // inner shoe plate
-    xform(new THREE.BoxGeometry(0.055, 0.17, lp * 0.30), 0, -0.115, 0), // guide horn body
-    xform(new THREE.BoxGeometry(0.03, 0.07, lp * 0.18), 0, -0.225, 0),  // horn tip taper
-    xform(cylZ(0.026, lp * 0.52, 8), -trackW * 0.485, 0, 0),       // pin boss L
-    xform(cylZ(0.026, lp * 0.52, 8), trackW * 0.485, 0, 0),        // pin boss R
-    xform(box(0.10, 0.052, lp * 0.30), -trackW * 0.42, 0.006, 0),  // end connector L
-    xform(box(0.10, 0.052, lp * 0.30), trackW * 0.42, 0.006, 0),   // end connector R
-  ]);
-  P.disposables.push(linkGeo);
-  const linkIM = new THREE.InstancedMesh(linkGeo, mats.trackLink || mats.dark, nLinks * 2);
-  // PERF: link pads hug the casting track band — their shadow is the band's
-  linkIM.castShadow = false;
-  linkIM.receiveShadow = true;
-  linkIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  lodWrap(hullG, linkIM);
+  const shoe = trackShoeGeometries(trackW,lp);
+  P.disposables.push(shoe.pad,shoe.inner);
+  // Fixed neutral iron tones prevent the garage key light from turning the
+  // now-thicker faces into a tan/white necklace.  The inner chain is only a
+  // notch lighter, enough to separate the two levels without looking new.
+  const padMat=(mats.trackLink || mats.dark).clone();
+  padMat.color=new THREE.Color(0x171614);
+  padMat.roughness=0.97;
+  padMat.metalness=0.08;
+  const innerMat=(mats.spareTrack || mats.dark).clone();
+  innerMat.color=new THREE.Color(0x27251f);
+  innerMat.roughness=0.96;
+  innerMat.metalness=0.09;
+  P.disposables.push(padMat,innerMat);
+  const padIM = new THREE.InstancedMesh(shoe.pad,padMat,nLinks*2);
+  const innerIM = new THREE.InstancedMesh(shoe.inner,innerMat,nLinks*2);
+  const linkMeshes=[padIM,innerIM];
+  // PERF: both layers hug the casting track band; the band alone casts the
+  // continuous shadow. The extra layer costs one instanced draw per tank,
+  // not one draw per shoe.
+  for(const mesh of linkMeshes) {
+    mesh.castShadow=false;
+    mesh.receiveShadow=true;
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    lodWrap(hullG,mesh);
+  }
   const rOut = trackTh / 2 + 0.012;
   // tank_models r1 (critic: "exposed 'zipper' top track run rides above the
   // skirt line" on skirted moderns): cfg.coveredTop suppresses link pads on
@@ -824,7 +879,7 @@ function buildRunningGear(P, cfg) {
       const z = sg.z + sg.tz * u, y = sg.y + sg.ty * u;
       if (y > coverY && z > coverZ0 && z < coverZ1) {
         _m.makeScale(0, 0, 0);                     // covered return run: hide pad
-        linkIM.setMatrixAt(i, _m);
+        for(const mesh of linkMeshes) mesh.setMatrixAt(i,_m);
         continue;
       }
       _q.setFromAxisAngle(_X, Math.atan2(-sg.ty, sg.tz));
@@ -846,7 +901,7 @@ function buildRunningGear(P, cfg) {
       if (broken) {
         _s.set(0, 0, 0);
         _m.compose(_v, _q, _s);
-        linkIM.setMatrixAt(i, _m);
+        for(const mesh of linkMeshes) mesh.setMatrixAt(i,_m);
         continue;
       }
       // ground-run pads follow the per-wheel band deformation (bandOffsetAt
@@ -855,12 +910,14 @@ function buildRunningGear(P, cfg) {
         const w = Math.min((wheelY - y) / Math.max(wheelY - botY, 1e-3), 1);
         _v.y += bandOffsetAt(z, side) * w * w;
       }
-      if (_v.y < 0.062) _v.y = 0.062;
+      // 7.2 cm pad plus the raised grouser needs a slightly higher centre
+      // than the old paper-thin shoe to keep its tread face on the terrain.
+      if (_v.y < 0.078) _v.y = 0.078;
       _s.set(1, 1, 1);
       _m.compose(_v, _q, _s);
-      linkIM.setMatrixAt(i, _m);
+      for(const mesh of linkMeshes) mesh.setMatrixAt(i,_m);
     }
-    linkIM.instanceMatrix.needsUpdate = true;
+    for(const mesh of linkMeshes) mesh.instanceMatrix.needsUpdate=true;
   };
 
   // ---- thrown-track ribbon (de-track destruction visual) --------------------
@@ -1480,14 +1537,14 @@ function spareTrackStrip(P, bucket, x, y, z, links, rx = 0, ry = 0) {
 // ---------------------------------------------------------------------------
 export const KIT = {
   xform, box, cylX, cylY, cylZ, sph, torus, lathe, slab, frustum, polyTurret,
-  mergeAll, trackBandGeo, trackLoopPoints, buildRunningGear, buildGun,
+  mergeAll, trackBandGeo, trackLoopPoints, trackShoeGeometries, buildRunningGear, buildGun,
   cupola, headlight, liftEye, periscope, pintleMG, smokeCluster, towCable,
   fenders, stowage, jerryCan, tarpRoll, ammoCan, shovelTool, spareTrackStrip,
   // Exposed for the recovered Abrams family: those variants layer their own
   // kits onto the detailed native Abrams rather than replacing it with a
   // generic wedge profile. Function declarations are hoisted; invocation
   // happens only after both sides of the extension-module cycle initialize.
-  buildM1A2,
+  buildM1A2, buildCanonical,
   D2R,
 };
 
@@ -2931,6 +2988,19 @@ Object.assign(BUILDERS, MODERN2_BUILDERS);
 // EXTENSION HOOK (HD modern roster #3): chieftain_mk10 / k2 / type10 /
 // m2a2_bradley / bmp2 / ariete — builders + specs live in modern3.js
 Object.assign(BUILDERS, MODERN3_BUILDERS);
+// Freeze the authored core/modern constructors before recovered procedural
+// variants are registered. A recovered Leopard, Abrams, T-72, etc. can now
+// begin with the complete production-quality family model and apply an exact
+// variant delta instead of rebuilding the entire vehicle from a handful of
+// generic boxes. This also avoids recursion after PROFILED_BUILDERS replaces
+// a public-facing id such as m1a2 or leo2a6 below.
+const CANONICAL_BUILDERS = { ...BUILDERS };
+
+function buildCanonical(P, id) {
+  const builder = CANONICAL_BUILDERS[id];
+  if (!builder) throw new Error(`No canonical procedural builder for ${id}`);
+  builder(P);
+}
 // Dedicated public-safe silhouettes for recovered/source-only variants. This
 // is deliberately last so an exact per-vehicle profile wins over its older
 // visualBase/variantOf family fallback.
@@ -3073,6 +3143,13 @@ export function createTank(specId, engineCtx, opts = {}) {
     disposables, gear: null, muzzleZ: armor.gunBarrel.lengthM, topY: 0.8,
     add(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       (buckets[bucket] || (buckets[bucket] = [])).push(xform(geo, x, y, z, rx, ry, rz, s));
+    },
+    // Variant builders may replace a canonical family's turret, mantlet or
+    // cannon while retaining its detailed hull and suspension. Clearing an
+    // authored bucket is explicit and happens before mesh merging, so no
+    // hidden duplicate geometry or floating donor gun survives the delta.
+    clear(...names) {
+      for (const name of names.flat()) buckets[name] = [];
     },
     // Mantlet & cradle parts: pitch with the gun but do NOT recoil.
     addGunExtra(geo, x, y, z) {

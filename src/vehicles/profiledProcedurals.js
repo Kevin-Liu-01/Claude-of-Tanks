@@ -62,6 +62,30 @@ function buildHull(P,p) {
     P.add('hull',frustum(width*0.39,halfL*0.77,halfL*0.98,width*0.47,halfL*0.98,halfL*0.98,
       0.31,trackTop*0.96));
     if (p.era) addEra(P,width,halfL*0.48,roofY,p.eraRows || 2);
+  } else if (style === 'type90') {
+    // Type 90: low two-level engine deck, very shallow glacis and broad
+    // fender shoulders.  The old generic western hull was almost a metre too
+    // tall at the nose and read as a rectangular troop carrier in profile.
+    P.add('hull',box(width*0.82,roofY-trackTop,length*0.52),0,trackTop+(roofY-trackTop)/2,-halfL*0.23);
+    P.add('hull',frustum(width*0.47,halfL*0.98,halfL*0.02,width*0.38,halfL*0.48,halfL*0.02,
+      trackTop*0.78,roofY));
+    P.add('hull',frustum(width*0.40,halfL*0.81,halfL*0.98,width*0.47,halfL*0.98,halfL*0.98,
+      0.31,trackTop*0.80));
+    P.add('hull',box(width*0.94,0.11,length*0.43),0,trackTop+0.17,-halfL*0.22);
+    P.add('hullDetail',box(width*0.32,0.035,length*0.26),-width*0.18,roofY+0.025,halfL*0.15);
+  } else if (style === 'warrior') {
+    // FV510 Warrior: tall but strongly chamfered troop hull, a long shallow
+    // glacis and a near-vertical rear door.  A single full-height box erased
+    // all three of those cues and hid the complete six-wheel suspension.
+    P.add('hull',frustum(width*0.46,halfL*0.46,-halfL*0.94,width*0.39,halfL*0.34,-halfL*0.91,
+      trackTop*0.93,roofY));
+    P.add('hull',frustum(width*0.46,halfL*0.97,halfL*0.31,width*0.38,halfL*0.46,halfL*0.27,
+      trackTop*0.72,roofY));
+    P.add('hull',frustum(width*0.41,halfL*0.81,halfL*0.98,width*0.46,halfL*0.98,halfL*0.98,
+      0.30,trackTop*0.78));
+    P.add('hull',box(width*0.92,0.12,length*0.61),0,trackTop+0.17,-halfL*0.12);
+    P.add('hullDetail',box(width*0.56,roofY*0.58,0.045),0,roofY*0.61,-halfL*0.985);
+    P.add('hullDark',box(width*0.23,roofY*0.44,0.052),0,roofY*0.59,-halfL*0.995);
   } else if (style === 'ifv') {
     P.add('hull',box(width*0.86,roofY-trackTop,length*0.69),0,trackTop+(roofY-trackTop)/2,-halfL*0.12);
     P.add('hull',frustum(width*0.46,halfL*0.98,halfL*0.16,width*0.40,halfL*0.55,halfL*0.04,
@@ -113,6 +137,28 @@ function buildHull(P,p) {
     for (let i=0;i<6;i++) P.add('hullDetail',box(width*0.42,0.028,0.045),0,roofY+0.05,-halfL*(0.40+i*0.07));
     P.add('hull',box(0.34,0.18,length*0.30),width*0.40,roofY-0.07,-halfL*0.20);
     P.add('hullDark',cylZ(0.075,length*0.23,10),-width*0.39,roofY+0.09,-halfL*0.28,Math.PI/2,0,0);
+  } else if (style === 'type90') {
+    // The Japanese tank's rear deck is dominated by two rectangular cooling
+    // banks and a transverse louvre row; the driver sits front-left beneath a
+    // flush, polygonal hatch.  These are important in top and rear views.
+    for (const side of [-1,1]) {
+      P.add('hullDark',box(width*0.29,0.024,length*0.21),side*width*0.19,roofY+0.035,-halfL*0.53);
+      for (let i=0;i<7;i++) P.add('hullDetail',box(width*0.26,0.026,0.030),side*width*0.19,roofY+0.055,-halfL*(0.40+i*0.055));
+      P.add('hullDark',box(0.035,0.13,0.62),side*width*0.43,roofY-0.04,-halfL*0.54);
+    }
+    P.add('hull',cylY(0.28,0.28,0.045,8),-width*0.18,roofY+0.03,halfL*0.22,0,0.18,0);
+    for (const x of [-0.76,-0.57,-0.38]) P.add('hullDark',box(0.13,0.035,0.038),x,roofY+0.08,halfL*0.36);
+    P.add('hullDark',box(width*0.57,0.34,0.025),0,trackTop+0.31,-halfL*0.995);
+    for(let i=0;i<8;i++) P.add('hullDetail',box(width*0.52,0.026,0.028),0,trackTop+0.18+i*0.035,-halfL*1.002);
+    P.add('hullDetail',box(0.22,0.28,0.04),width*0.36,trackTop+0.27,-halfL*1.01);
+  } else if (style === 'warrior') {
+    for (const side of [-1,1]) {
+      P.add('hullDark',box(width*0.29,0.024,length*0.23),side*width*0.19,roofY+0.035,-halfL*0.51);
+      for(let i=0;i<6;i++) P.add('hullDetail',box(width*0.26,0.025,0.030),side*width*0.19,roofY+0.052,-halfL*(0.37+i*0.065));
+      P.add('hullDetail',box(0.18,0.30,0.10),side*width*0.36,roofY*0.70,halfL*0.74);
+    }
+    P.add('hull',cylY(0.26,0.26,0.045,8),-width*0.19,roofY+0.025,halfL*0.18);
+    for(const x of [-0.72,-0.52,-0.32]) P.add('hullDark',box(0.12,0.035,0.035),x,roofY+0.075,halfL*0.34);
   } else if (style === 'western' || style === 'ifv') {
     // Twin cooling banks, driver's hatch and rear exhaust louvres.
     for (const side of [-1,1]) {
@@ -128,7 +174,7 @@ function buildHull(P,p) {
   // Side-skirt panel fasteners and towing eyes give scale in every family.
   if (p.skirts !== false) for (const side of [-1,1]) for (let i=0;i<(p.skirtPanels || (style === 'ifv'?6:7));i++) {
     const z=length*0.37-i*(length*0.74/Math.max(1,(p.skirtPanels || (style === 'ifv'?6:7))-1));
-    P.add('hullDark',cylZ(0.022,0.018,8),side*(width/2+0.035),trackTop*0.78,z,0,side*Math.PI/2,0);
+    P.add('hullDark',cylZ(0.022,0.018,8),side*(width/2+0.035),p.skirtY ?? trackTop*0.78,z,0,side*Math.PI/2,0);
   }
   for (const side of [-1,1]) P.add('hullDetail',torus(0.09,0.018,10),side*width*0.27,0.48,halfL*0.94,Math.PI/2,0,0);
   headlight(P,-width*0.35,trackTop+0.10,halfL*0.88,-0.34,0.05);
@@ -146,9 +192,10 @@ function buildHull(P,p) {
     sprocket:{z:p.frontSprocket ? halfL*0.88 : -halfL*0.88,y:wheelR+0.10,r:wheelR*0.88},
     idler:{z:p.frontSprocket ? -halfL*0.88 : halfL*0.88,y:wheelR+0.08,r:wheelR*0.84},
     rollers:evenStations(Math.max(3,Math.floor(wheelCount/2)),wheelSpan*0.68).map((z)=>({z,y:trackTop*0.84,r:wheelR*0.23})),
-    trackW,topY:trackTop*0.86,paintedEnds:true,coveredTop:p.skirts !== false,arms:p.arms !== false,
+    trackW,topY:trackTop*0.86,paintedEnds:true,coveredTop:p.coveredTop ?? (p.skirts !== false),arms:p.arms !== false,
   });
-  if (p.skirts !== false) addSegmentedSkirts(P,width,length*0.86,trackTop*0.72,trackTop*0.60,p.skirtPanels || wheelCount);
+  if (p.skirts !== false) addSegmentedSkirts(P,width,p.skirtLength ?? length*0.86,
+    p.skirtY ?? trackTop*0.72,p.skirtHeight ?? trackTop*0.60,p.skirtPanels || wheelCount);
   return {width,length,halfL,roofY,trackTop};
 }
 
@@ -231,16 +278,80 @@ function merkavaTurret(P,p) {
 }
 
 function castTurret(P,p) {
-  const { lathe }=KIT;
-  const r=p.turretWidth/2,h=p.turretHeight;
-  P.add('turret',lathe([[r*0.74,0],[r,0.12],[r*0.97,h*0.38],[r*0.82,h*0.75],[r*0.52,h],[0.02,h]],30,p.turretDepth/p.turretWidth));
+  const { lathe,frustum,box }=KIT;
+  const tw=p.turretWidth/2,h=p.turretHeight;
+  const f=p.turretFront ?? p.turretDepth*0.42;
+  const r=p.turretRear ?? -p.turretDepth*0.58;
+  // Patton/Centurion castings are low, rounded gun shields flowing into a
+  // separate rear bustle—not tall polygonal prisms. A forward cast dome
+  // supplies the curved cheeks; the tapered bustle supplies the asymmetric
+  // side/top profile without stretching the dome into a giant pyramid.
+  const domeR=tw*0.88;
+  const domeDepth=Math.min(f*1.02,Math.abs(r)*0.58);
+  P.add('turret',lathe([
+    [domeR*0.70,0],[domeR*0.94,h*0.12],[domeR,h*0.30],
+    [domeR*0.88,h*0.60],[domeR*0.62,h*0.84],[domeR*0.28,h*0.98],[0.02,h],
+  ],32,domeDepth/Math.max(domeR,0.01)),0,0,f-domeDepth);
+  P.add('turret',frustum(tw*0.82,-0.20,r,tw*0.62,-0.30,r*0.94,h*0.10,h*0.76));
+  P.add('turret',box(tw*1.16,0.050,Math.abs(r)*0.54),0,h*0.78,r*0.54);
+  const rackZ=r-0.22;
+  P.add('turretDetail',box(tw*1.45,0.032,0.032),0,h*0.54,rackZ);
+  P.add('turretDetail',box(tw*1.45,0.032,0.032),0,0.16,rackZ);
+  for(let i=0;i<7;i++) P.add('turretDetail',box(0.022,h*0.34,0.022),-tw*0.62+i*(tw*1.24/6),h*0.34,rackZ);
 }
 
 function ifvTurret(P,p) {
-  const { box,frustum }=KIT;
-  const tw=p.turretWidth/2,h=p.turretHeight;
-  P.add('turret',frustum(tw,p.turretFront,p.turretRear,tw*0.86,p.turretFront*0.78,p.turretRear*0.90,0,h));
-  P.add('turretDark',box(tw*0.45,h*0.22,0.04),tw*0.32,h*0.56,p.turretFront+0.025);
+  const { box,polyTurret }=KIT;
+  const tw=p.turretWidth/2,h=p.turretHeight,f=p.turretFront,r=p.turretRear;
+  P.add('turret',polyTurret([
+    [-tw*0.30,f],[tw*0.30,f],[tw*0.92,f*0.54],[tw,f*0.02],
+    [tw*0.76,r],[-tw*0.76,r],[-tw,f*0.02],[-tw*0.92,f*0.54],
+  ],h,1.02,0.86));
+  P.add('turret',box(tw*0.70,h*0.56,0.18),0,h*0.46,f*0.88);
+  P.add('turretDark',box(tw*0.42,h*0.30,0.04),tw*0.36,h*0.60,f+0.025);
+  P.add('turret',KIT.cylY(tw*0.22,tw*0.22,0.045,12),-tw*0.30,h+0.02,-0.12);
+  P.add('turret',KIT.cylY(tw*0.20,tw*0.20,0.045,12),tw*0.31,h+0.02,-0.18);
+  P.add('turretDetail',box(tw*1.34,0.035,0.035),0,h*0.42,r-0.16);
+  for(let i=0;i<5;i++) P.add('turretDetail',box(0.025,h*0.30,0.025),-tw*0.55+i*(tw*1.10/4),h*0.30,r-0.16);
+}
+
+function type90Turret(P,p) {
+  const { box,cylY,polyTurret,slab }=KIT;
+  const tw=p.turretWidth/2,h=p.turretHeight,f=p.turretFront,r=p.turretRear;
+  // Ten-sided welded shell derived from the Type 90 top view: narrow gun
+  // throat, swept cheeks, almost parallel autoloader bustle and clipped rear
+  // corners.  Keep the roof nearly full-width; a heavily inset generic
+  // polyTurret is what produced the old tiered-pyramid silhouette.
+  const plan=[
+    [-tw*0.18,f],[tw*0.18,f],[tw*0.73,f*0.62],[tw,f*0.16],
+    [tw*0.96,r*0.72],[tw*0.72,r],[-tw*0.72,r],[-tw*0.96,r*0.72],
+    [-tw,f*0.16],[-tw*0.73,f*0.62],
+  ];
+  P.add('turret',polyTurret(plan,h,1.02,0.91));
+
+  // Separate lower cheek wedges create the characteristic arrow nose without
+  // turning the whole turret into a Leopard 2A5 pyramid.
+  const throat=tw*0.16;
+  for (const side of [-1,1]) {
+    const inner=side*throat,outer=side*tw;
+    P.add('turret',slab(
+      [inner,0.03,f],[outer,0.03,f*0.20],[outer,0.03,-0.22],[inner,0.03,f*0.63],
+      [inner,h*0.74,f*0.62],[outer*0.90,h*0.60,f*0.05],[outer*0.91,h*0.68,-0.34],[inner,h*0.86,f*0.38]));
+    // Long, shallow bustle stowage box and side rail.
+    P.add('turretDetail',box(tw*0.16,h*0.31,Math.abs(r)*0.62),side*tw*0.91,h*0.38,r*0.61);
+    P.add('turretDetail',box(0.035,0.035,Math.abs(r)*0.78),side*tw*1.01,h*0.30,r*0.55);
+  }
+  // Autoloader bustle, roof access panels and rear rack.
+  P.add('turret',box(tw*1.52,h*0.72,Math.abs(r)*0.63),0,h*0.41,r*0.70);
+  for (let i=0;i<3;i++) P.add('turretDark',box(tw*0.42,0.032,Math.abs(r)*0.28),(i-1)*tw*0.48,h+0.02,r*0.62);
+  P.add('turretDetail',box(tw*1.72,0.035,0.035),0,h*0.58,r-0.27);
+  P.add('turretDetail',box(tw*1.72,0.035,0.035),0,0.16,r-0.27);
+  for(let i=0;i<9;i++) P.add('turretDetail',box(0.024,h*0.40,0.024),-tw*0.76+i*(tw*1.52/8),h*0.36,r-0.27);
+  // Low mantlet aperture and prominent right-side gunner's primary sight.
+  P.add('turretDark',box(tw*0.34,h*0.48,0.14),0,h*0.45,f*0.76);
+  P.add('turretDetail',box(0.34,0.31,0.28),tw*0.40,h*0.70,f*0.23);
+  P.add('turretGlass',box(0.22,0.12,0.025),tw*0.40,h*0.73,f*0.39);
+  P.add('turret',cylY(0.24,0.24,0.045,14),-tw*0.38,h+0.025,-0.24);
 }
 
 function buildTurretAndGun(P,p) {
@@ -253,11 +364,13 @@ function buildTurretAndGun(P,p) {
   else if (p.turret === 'merkava') merkavaTurret(P,p);
   else if (p.turret === 'cast') castTurret(P,p);
   else if (p.turret === 'ifv') ifvTurret(P,p);
+  else if (p.turret === 'type90') type90Turret(P,p);
   else westernWedge(P,p);
 
   const h=p.turretHeight;
-  if (p.turret !== 'ifv' && p.turret !== 'casemate') {
-    cupola(P,'turret',p.commanderX ?? p.turretWidth*0.20,h,-p.turretDepth*0.22,Math.min(0.24,p.turretWidth*0.09),0.10,6);
+  if (p.turret !== 'ifv' && p.turret !== 'casemate' && p.turret !== 'type90') {
+    cupola(P,'turret',p.commanderX ?? p.turretWidth*0.20,h,p.commanderZ ?? -p.turretDepth*0.22,
+      p.cupolaR ?? Math.min(0.24,p.turretWidth*0.09),p.cupolaH ?? 0.10,p.cupolaPeriscopes ?? 6);
     P.add('turret',cylY(0.19,0.19,0.035,14),p.loaderX ?? -p.turretWidth*0.20,h+0.02,-p.turretDepth*0.18);
   }
   if (p.turret !== 'casemate') periscope(P,'turretDetail',p.sightX ?? p.turretWidth*0.20,h+0.06,p.turretFront*0.28);
@@ -361,6 +474,110 @@ function buildAbramsVariant(P,p) {
   }
 }
 
+function addDonorVariantKit(P,p) {
+  const { box,cylY,buildGun,smokeCluster,pintleMG }=KIT;
+  switch (p.variantKit) {
+    case 'leo2-revolution': {
+      // AMAP package over the A4: full-depth faceted turret cheeks/bustle,
+      // modular hull-side arrays and the characteristic raised roof station.
+      for (const side of [-1,1]) {
+        P.add('turret',KIT.slab(
+          [side*0.22,0.04,1.20],[side*1.58,0.04,0.68],[side*1.62,0.04,-1.72],[side*0.48,0.04,-2.08],
+          [side*0.20,0.84,0.76],[side*1.43,0.74,0.25],[side*1.48,0.72,-1.80],[side*0.44,0.88,-2.08]));
+        for (let i=0;i<6;i++) P.add('hull',box(0.15,0.68,0.92),side*1.94,0.79,2.52-i*0.98,0,0,side*0.035);
+        P.add('turretDetail',box(0.05,0.05,1.55),side*1.58,0.40,-1.20);
+      }
+      P.add('hull',KIT.frustum(1.70,3.82,2.55,1.55,3.68,2.72,1.15,1.50));
+      P.add('turretDetail',cylY(0.18,0.21,0.12,16),0.56,1.02,-0.55);
+      P.add('turretDetail',box(0.34,0.28,0.38),0.56,1.20,-0.55);
+      break;
+    }
+    case 'leo2-a5':
+      // A5 keeps the arrowhead A6 turret but the shorter L/44 cannon.
+      P.clear('gun','gunDark');
+      buildGun(P,{len:5.30,r:0.079,sleeve:true,evac:0.58,collar:true,baseR:0.16});
+      break;
+    case 'leo2-a7v': {
+      // A7V: added frontal hull module, deeper side protection and enlarged
+      // rear hull cooling/APU housings. Keep the full L/55A1 A7 turret.
+      P.add('hull',KIT.frustum(1.74,3.90,2.62,1.60,3.76,2.76,1.12,1.56));
+      for (const side of [-1,1]) {
+        for(let i=0;i<7;i++) P.add('hull',box(0.13,0.74,0.80),side*1.98,0.78,2.86-i*0.90,0,0,side*0.025);
+        P.add('hullDetail',box(0.28,0.62,0.74),side*1.72,1.16,-3.30);
+      }
+      P.add('hullDark',box(2.48,0.56,0.05),0,1.15,-3.84);
+      break;
+    }
+    case 't72-1987':
+      // Kontakt-1 wedge arrays on glacis and turret circumference.
+      for(let row=0;row<4;row++) for(let col=-3;col<=3;col++)
+        P.add('hullDetail',box(0.26,0.10,0.17),col*0.34,1.12+row*0.105,3.02-row*0.20,-0.34,0,0);
+      for(const side of [-1,1]) for(let i=0;i<5;i++)
+        P.add('turretDetail',box(0.24,0.12,0.18),side*(0.36+i*0.22),0.47,0.65-i*0.11,0,side*0.13,side*0.05);
+      break;
+    case 't72b3m':
+      // Relikt side bags, Sosna-U housing and rear cage package.
+      for(const side of [-1,1]) {
+        for(let i=0;i<7;i++) P.add('hull',box(0.13,0.52,0.63),side*1.84,0.70,2.38-i*0.68);
+        P.add('turretDetail',box(0.32,0.42,0.35),side*0.72,0.73,0.45);
+      }
+      P.add('turretDark',box(0.23,0.22,0.04),-0.72,0.75,0.64);
+      break;
+    case 'pt91m':
+      for(const side of [-1,1]) for(let i=0;i<7;i++)
+        P.add('hull',box(0.12,0.45,0.66),side*1.84,0.72,2.35-i*0.70);
+      P.add('turretDetail',box(1.48,0.42,0.62),0,0.46,-1.38);
+      P.add('turretDetail',cylY(0.16,0.18,0.12,14),0.53,0.90,-0.24);
+      break;
+    case 't90sm':
+      // Export SM bustle and panoramic commander's sight.
+      P.add('turret',box(1.62,0.56,0.92),0,0.42,-1.88);
+      P.add('turretDetail',cylY(0.17,0.20,0.12,14),0.48,0.98,-0.38);
+      P.add('turretDetail',box(0.30,0.30,0.34),0.48,1.16,-0.38);
+      break;
+    case 'merkava4b':
+      // Mk.4B without Trophy: preserve the accurate Mk.4 armor casting but
+      // keep the roof cleaner and add the twin hatch/MG fit.
+      pintleMG(P,-0.58,1.12,-0.52,true);
+      smokeCluster(P,1.10,0.55,-0.18,6,1.15,0.55);
+      smokeCluster(P,-1.10,0.55,-0.18,6,-1.15,0.55);
+      break;
+    case 'chieftain5':
+      // Mk.5 roof fit and rear stowage, on the already detailed Chieftain
+      // hull/turret/suspension. The Mk.10 Stillbrew face is deliberately
+      // softened by a broad cast mantlet surround rather than another box.
+      P.add('turret',KIT.lathe([[0.58,0],[0.78,0.18],[0.66,0.54],[0.38,0.72],[0.01,0.74]],24,0.48),0,0.02,0.45,Math.PI/2,0,0);
+      P.add('turretDetail',box(2.10,0.04,0.04),0,0.28,-1.72);
+      for(let i=0;i<7;i++) P.add('turretDetail',box(0.025,0.32,0.025),-0.90+i*0.30,0.30,-1.72);
+      break;
+    case 'challenger1': {
+      // Keep the highly detailed Challenger running gear, glacis, engine deck
+      // and stepped skirts, but replace the CR2 upper assembly with the Mk.3's
+      // lower, shorter, more rectangular Chobham turret and L11A5.
+      P.clear('turret','turretDark','turretDetail','turretGlass','turretCloth','gun','gunDark','gunMount');
+      P.turretG.position.set(0,1.54,-0.22);
+      P.gunG.position.set(0,0.34,0);
+      buildTurretAndGun(P,{
+        turret:'western',turretWidth:2.70,turretDepth:3.30,turretHeight:0.70,
+        turretFront:1.05,turretRear:-1.92,gunLength:5.72,gunRadius:0.078,
+        mantletWidth:0.50,mantletHeight:0.44,pano:false,mg:true,smokeCount:5,
+        commanderX:0.55,loaderX:-0.58,commanderZ:-0.52,antennaHeight:0.78,
+      });
+      // Distinctive square side stowage bins and long rear basket.
+      for(const side of [-1,1]) {
+        P.add('turret',box(0.15,0.42,1.18),side*1.41,0.34,-1.02);
+        P.add('turretDetail',box(0.035,0.035,1.48),side*1.49,0.44,-1.42);
+      }
+      break;
+    }
+  }
+}
+
+function buildDonorVariant(P,p) {
+  KIT.buildCanonical(P,p.base);
+  addDonorVariantKit(P,p);
+}
+
 const WESTERN={hull:'western',wheels:7,skirts:true,turret:'western',turretWidth:2.45,turretDepth:3.05,turretHeight:0.72,turretFront:1.05,turretRear:-1.65,pano:true,mg:true};
 const LEOPARD={...WESTERN,turretWidth:2.62,turretDepth:3.42,turretHeight:0.76,turretFront:1.18,turretRear:-1.92,smokeCount:4,gunLength:4.0,antennaHeight:0.72};
 const SOVIET={hull:'soviet',wheels:6,skirts:true,turret:'soviet',turretWidth:2.25,turretDepth:2.55,turretHeight:0.62,turretFront:0.92,turretRear:-1.18,era:true,pano:true,mg:true,gunLength:4.0};
@@ -405,15 +622,19 @@ export const PROCEDURAL_PROFILES={
   leo2a6:{...LEOPARD,width:3.08,hullLength:7.72,roofY:1.78,trackW:0.57,turretWidth:2.30,turretDepth:3.20,turretHeight:0.72,turretFront:1.10,turretRear:-1.80,gunLength:6.25,gunRadius:0.079,antennaHeight:0.88,pano:true},
 
   // British first-generation MBTs / IFV.
-  challenger1:{...WESTERN,width:3.45,hullLength:8.30,roofY:1.68,trackW:0.62,turretWidth:2.48,turretDepth:3.10,turretHeight:0.78},
-  chieftain5:{...CLASSIC,width:3.47,hullLength:7.52,roofY:1.84,trackW:0.58,turretWidth:2.55,turretDepth:2.95,turretHeight:0.86,pano:false,gunLength:5.75,antennaHeight:0.82},
-  fv510:{hull:'ifv',width:3.05,hullLength:6.34,roofY:2.15,trackTop:0.86,trackW:0.46,wheels:6,skirts:true,
-    turret:'ifv',turretWidth:1.08,turretDepth:1.28,turretHeight:0.38,turretFront:0.55,turretRear:-0.68,gunRadius:0.035,gunLength:2.35,sleeve:false,evac:null,pano:false,mg:false},
+  challenger1:{base:'challenger2',variantKit:'challenger1'},
+  chieftain5:{base:'chieftain_mk10',variantKit:'chieftain5'},
+  fv510:{hull:'warrior',width:3.03,hullLength:6.34,roofY:1.78,trackTop:0.77,trackW:0.46,
+    wheels:6,wheelR:0.34,wheelY:0.43,wheelSpan:4.72,frontSprocket:false,skirts:true,
+    skirtHeight:0.32,skirtY:0.83,skirtLength:5.48,skirtPanels:6,rearDoor:true,
+    turret:'ifv',turretPivotY:1.77,turretPivotZ:0.12,turretWidth:1.52,turretDepth:1.72,
+    turretHeight:0.48,turretFront:0.70,turretRear:-1.02,gunY:0.24,gunZ:0.38,
+    gunRadius:0.035,gunLength:2.05,sleeve:false,evac:null,pano:false,mg:false,smokeCount:4},
 
   // Leopard 2 lineage: each receives the correct generation-specific turret.
-  leo2_revolution:{...LEOPARD,width:3.25,hullLength:7.72,roofY:1.64,trackW:0.61,turretWidth:2.10,turretDepth:3.18,turretHeight:0.64,pano:true},
-  leo2a5:{...LEOPARD,width:3.20,hullLength:7.72,roofY:1.66,trackW:0.61,turretHeight:0.72},
-  leo2a7v:{...LEOPARD,width:2.42,hullLength:7.20,roofY:1.78,trackW:0.48,turretWidth:1.68,turretDepth:2.76,turretHeight:0.62,gunLength:3.65,antennaHeight:0.92},
+  leo2_revolution:{base:'leo2a4',variantKit:'leo2-revolution'},
+  leo2a5:{base:'leo2a6',variantKit:'leo2-a5'},
+  leo2a7v:{base:'leo2a7',variantKit:'leo2-a7v'},
   leopard2_proto:{...WESTERN,width:3.55,hullLength:7.65,roofY:1.58,trackW:0.61,turret:'cast',turretWidth:2.55,turretDepth:2.95,turretHeight:0.68,pano:false},
 
   // Abrams derivatives use dedicated broad-bustle geometry instead of a
@@ -423,45 +644,70 @@ export const PROCEDURAL_PROFILES={
   m1a1_aim:{...ABRAMS,width:3.55,hullLength:7.65,trackW:0.62,turretWidth:2.72,turretDepth:3.55,turretHeight:0.74,turretRear:-2.02,pano:false,gunLength:6.15,abramsKit:'aim'},
 
   // Patton and Soviet export families.
-  m60a1:{...CLASSIC,width:3.63,hullLength:6.95,roofY:1.62,trackW:0.55,turretWidth:2.42,turretDepth:2.85,turretHeight:0.85,pano:false},
-  pt91m:{...SOVIET,width:3.15,hullLength:6.86,roofY:1.42,trackW:0.55,turretWidth:2.22,turretDepth:2.58,turretHeight:0.66,bustle:0.58},
-  t62mv1:{...SOVIET,width:3.30,hullLength:6.63,roofY:1.38,trackW:0.55,turretWidth:2.18,turretDepth:2.46,turretHeight:0.64,bustle:0},
+  m60a1:{...CLASSIC,width:3.63,hullLength:6.95,roofY:1.48,trackTop:0.82,trackW:0.55,
+    turretPivotY:1.46,turretPivotZ:-0.16,turretWidth:2.62,turretDepth:3.35,turretHeight:0.78,
+    turretFront:1.05,turretRear:-2.02,pano:false,gunY:0.38,gunLength:5.25,gunRadius:0.066,
+    mantletWidth:0.56,mantletHeight:0.48,cupolaR:0.25,cupolaH:0.38,commanderZ:-0.42},
+  pt91m:{base:'t72b3',variantKit:'pt91m'},
+  t62mv1:{...SOVIET,width:3.30,hullLength:6.63,roofY:1.38,trackW:0.55,wheels:5,turretWidth:2.18,turretDepth:2.46,turretHeight:0.64,bustle:0},
   t64bv1:{...SOVIET,width:3.35,hullLength:6.54,roofY:1.38,trackW:0.56,turretWidth:2.20,turretDepth:2.52,turretHeight:0.62,bustle:0},
-  t72b_1987:{...SOVIET,width:3.45,hullLength:6.67,roofY:1.40,trackW:0.58,turretWidth:2.24,turretDepth:2.58,turretHeight:0.64,bustle:0},
-  t72b3m:{...SOVIET,width:2.62,hullLength:6.67,roofY:1.39,trackW:0.48,turretWidth:1.94,turretDepth:2.44,turretHeight:0.65,bustle:0.42,pano:true,gunLength:3.75},
+  t72b_1987:{base:'t72b3',variantKit:'t72-1987'},
+  t72b3m:{base:'t72b3',variantKit:'t72b3m'},
   t72bu:{...SOVIET,width:3.25,hullLength:6.86,roofY:1.40,trackW:0.56,turretWidth:2.18,turretDepth:2.56,turretHeight:0.65,bustle:0.35},
-  t90sm:{...SOVIET,width:3.40,hullLength:6.86,roofY:1.43,trackW:0.58,turretWidth:2.32,turretDepth:2.95,turretHeight:0.69,bustle:0.82,pano:true},
+  t90sm:{base:'t90m',variantKit:'t90sm'},
   t90a_vladimir:{...SOVIET,width:3.10,hullLength:6.86,roofY:1.42,trackW:0.56,turretWidth:2.20,turretDepth:2.62,turretHeight:0.68,bustle:0.26,pano:true},
 
   // Merkava generations: narrower early castings, progressively larger
   // modular wedges, all with front-engine hulls and six-wheel suspensions.
-  merkava1b:{...MERKAVA,width:2.58,hullLength:5.76,roofY:1.66,trackW:0.46,turret:'cast',turretWidth:1.64,turretDepth:2.18,turretHeight:0.58,pano:false,gunLength:2.75},
-  merkava2b:{...MERKAVA,width:2.58,hullLength:5.78,roofY:1.67,trackW:0.46,turret:'cast',turretWidth:1.70,turretDepth:2.26,turretHeight:0.60,pano:false,gunLength:2.75},
-  merkava2d:{...MERKAVA,width:2.60,hullLength:5.78,roofY:1.67,trackW:0.47,turretWidth:1.78,turretDepth:2.38,turretHeight:0.62,pano:false,gunLength:2.75},
-  merkava3b:{...MERKAVA,width:2.62,hullLength:5.88,roofY:1.70,trackW:0.47,turretWidth:1.84,turretDepth:2.46,turretHeight:0.63,gunLength:2.80},
-  merkava3c:{...MERKAVA,width:2.62,hullLength:5.88,roofY:1.70,trackW:0.47,turretWidth:1.86,turretDepth:2.50,turretHeight:0.64,gunLength:2.80},
-  merkava3d:{...MERKAVA,width:2.64,hullLength:5.92,roofY:1.71,trackW:0.48,turretWidth:1.92,turretDepth:2.60,turretHeight:0.66,gunLength:2.85},
-  merkava4b:{...MERKAVA,width:2.82,hullLength:6.42,roofY:1.72,trackW:0.51,turretWidth:2.06,turretDepth:2.72,turretHeight:0.68,pano:true,gunLength:3.10},
+  merkava1b:{...MERKAVA,width:3.70,hullLength:7.45,roofY:1.58,trackW:0.58,turretWidth:2.38,turretDepth:3.16,turretHeight:0.68,turretFront:1.06,turretRear:-1.92,pano:false,gunLength:4.85},
+  merkava2b:{...MERKAVA,width:3.70,hullLength:7.45,roofY:1.59,trackW:0.58,turretWidth:2.46,turretDepth:3.28,turretHeight:0.70,turretFront:1.08,turretRear:-2.02,pano:false,gunLength:4.85},
+  merkava2d:{...MERKAVA,width:3.70,hullLength:7.45,roofY:1.60,trackW:0.58,turretWidth:2.62,turretDepth:3.42,turretHeight:0.80,turretFront:1.14,turretRear:-2.12,pano:false,gunLength:4.85},
+  merkava3b:{...MERKAVA,width:3.72,hullLength:7.60,roofY:1.62,trackW:0.59,turretWidth:2.70,turretDepth:3.52,turretHeight:0.82,turretFront:1.18,turretRear:-2.18,gunLength:5.25},
+  merkava3c:{...MERKAVA,width:3.72,hullLength:7.60,roofY:1.62,trackW:0.59,turretWidth:2.74,turretDepth:3.56,turretHeight:0.83,turretFront:1.18,turretRear:-2.22,gunLength:5.25},
+  merkava3d:{...MERKAVA,width:3.72,hullLength:7.60,roofY:1.63,trackW:0.60,turretWidth:2.86,turretDepth:3.68,turretHeight:0.86,turretFront:1.22,turretRear:-2.30,gunLength:5.30},
+  merkava4b:{base:'merkava4',variantKit:'merkava4b'},
 
-  type90:{...WESTERN,width:2.34,hullLength:6.24,roofY:1.70,trackW:0.45,wheels:6,turretWidth:1.68,turretDepth:2.42,turretHeight:0.62,turretFront:0.78,turretRear:-1.34,pano:false,gunLength:3.15,antennaHeight:0.82},
+  type90:{...WESTERN,hull:'type90',width:3.43,hullLength:7.45,roofY:1.43,trackTop:0.76,
+    trackW:0.56,wheels:6,wheelR:0.37,wheelY:0.46,wheelSpan:5.55,frontSprocket:false,
+    skirts:true,skirtPanels:6,skirtHeight:0.33,skirtY:0.86,skirtLength:6.30,
+    turret:'type90',turretWidth:2.72,turretDepth:3.62,turretHeight:0.68,turretFront:1.13,turretRear:-2.16,
+    turretPivotY:1.42,turretPivotZ:-0.18,gunY:0.33,pano:false,gunLength:5.30,gunRadius:0.079,
+    mantletWidth:0.50,mantletHeight:0.38,antennaHeight:0.82,smokeCount:4},
 
   // Second recovered archive: dedicated British, Soviet and US silhouettes.
   is3_bergman:{...SOVIET,width:3.15,hullLength:6.90,roofY:1.42,trackW:0.58,wheels:6,turretWidth:2.35,turretDepth:2.55,turretHeight:0.70,bustle:0,pano:false,smoke:false,antennas:false,sleeve:false,evac:null},
   isu152:{...CASEMATE,width:3.07,hullLength:6.80,roofY:2.05,trackW:0.55,wheels:6,casemateWidth:2.55,casemateHeight:1.08,casemateDepth:3.70,gunLength:3.25,gunRadius:0.09},
   isu122s:{...CASEMATE,width:3.07,hullLength:6.80,roofY:2.05,trackW:0.55,wheels:6,casemateWidth:2.55,casemateHeight:1.08,casemateDepth:3.70,gunLength:4.75,gunRadius:0.072},
-  centurion3:{...CLASSIC,width:3.39,hullLength:7.60,roofY:1.58,trackW:0.57,wheels:6,turretWidth:2.35,turretDepth:2.72,turretHeight:0.76,pano:false},
-  centurion5:{...CLASSIC,width:3.39,hullLength:7.60,roofY:1.58,trackW:0.57,wheels:6,turretWidth:2.38,turretDepth:2.76,turretHeight:0.78,pano:false},
+  centurion3:{...CLASSIC,width:3.38,hullLength:7.56,roofY:1.48,trackTop:0.83,trackW:0.57,wheels:6,
+    turretPivotY:1.47,turretPivotZ:-0.12,turretWidth:2.48,turretDepth:3.12,turretHeight:0.72,
+    turretFront:1.02,turretRear:-1.88,pano:false,gunY:0.36,gunLength:4.85},
+  centurion5:{...CLASSIC,width:3.38,hullLength:7.56,roofY:1.48,trackTop:0.83,trackW:0.57,wheels:6,
+    turretPivotY:1.47,turretPivotZ:-0.12,turretWidth:2.52,turretDepth:3.18,turretHeight:0.74,
+    turretFront:1.04,turretRear:-1.92,pano:false,gunY:0.37,gunLength:5.25},
   comet:{...WW2,width:3.04,hullLength:6.55,roofY:1.46,trackW:0.50,wheels:5,turret:'western',turretWidth:2.05,turretDepth:2.35,turretHeight:0.68,turretFront:0.82,turretRear:-1.28,gunLength:4.10,gunRadius:0.052},
   challenger_cruiser:{...WW2,width:2.91,hullLength:8.15,roofY:1.48,trackW:0.47,wheels:5,turret:'western',turretWidth:2.02,turretDepth:2.32,turretHeight:0.72,turretFront:0.84,turretRear:-1.25,gunLength:4.25,gunRadius:0.052},
   charioteer:{...CLASSIC,width:3.05,hullLength:6.55,roofY:1.46,trackW:0.50,wheels:5,turret:'western',turretWidth:2.08,turretDepth:2.52,turretHeight:0.82,turretFront:0.88,turretRear:-1.38,pano:false},
-  m46_patton:{...CLASSIC,width:3.51,hullLength:6.35,roofY:1.58,trackW:0.55,wheels:6,turretWidth:2.45,turretDepth:2.70,turretHeight:0.82,pano:false},
-  m47_patton:{...CLASSIC,width:3.51,hullLength:6.35,roofY:1.60,trackW:0.55,wheels:6,turretWidth:2.52,turretDepth:2.82,turretHeight:0.86,pano:false},
-  m26_pershing:{...CLASSIC,width:3.51,hullLength:6.33,roofY:1.55,trackW:0.54,wheels:6,turretWidth:2.42,turretDepth:2.72,turretHeight:0.80,pano:false},
-  m45_patton:{...CLASSIC,width:3.51,hullLength:6.33,roofY:1.55,trackW:0.54,wheels:6,turretWidth:2.46,turretDepth:2.76,turretHeight:0.84,pano:false,gunRadius:0.075},
-  m60a3:{...CLASSIC,width:3.63,hullLength:6.95,roofY:1.62,trackW:0.55,wheels:6,turretWidth:2.42,turretDepth:2.85,turretHeight:0.85,pano:true},
+  m46_patton:{...CLASSIC,width:3.51,hullLength:6.33,roofY:1.50,trackTop:0.84,trackW:0.55,wheels:6,
+    turretPivotY:1.49,turretPivotZ:-0.12,turretWidth:2.64,turretDepth:3.24,turretHeight:0.76,
+    turretFront:1.02,turretRear:-1.98,pano:false,gunY:0.37,gunLength:4.55},
+  m47_patton:{...CLASSIC,width:3.51,hullLength:6.33,roofY:1.51,trackTop:0.84,trackW:0.55,wheels:6,
+    turretPivotY:1.50,turretPivotZ:-0.12,turretWidth:2.72,turretDepth:3.42,turretHeight:0.80,
+    turretFront:1.06,turretRear:-2.12,pano:false,gunY:0.39,gunLength:4.70},
+  m26_pershing:{...CLASSIC,width:3.51,hullLength:6.33,roofY:1.48,trackTop:0.82,trackW:0.54,wheels:6,
+    turretPivotY:1.47,turretPivotZ:-0.10,turretWidth:2.58,turretDepth:3.18,turretHeight:0.74,
+    turretFront:1.00,turretRear:-1.94,pano:false,gunY:0.36,gunLength:4.65},
+  m45_patton:{...CLASSIC,width:3.51,hullLength:6.33,roofY:1.48,trackTop:0.82,trackW:0.54,wheels:6,
+    turretPivotY:1.47,turretPivotZ:-0.10,turretWidth:2.60,turretDepth:3.20,turretHeight:0.76,
+    turretFront:1.02,turretRear:-1.96,pano:false,gunY:0.37,gunLength:3.85,gunRadius:0.075},
+  m60a3:{...CLASSIC,width:3.63,hullLength:6.95,roofY:1.48,trackTop:0.82,trackW:0.55,wheels:6,
+    turretPivotY:1.46,turretPivotZ:-0.16,turretWidth:2.64,turretDepth:3.38,turretHeight:0.79,
+    turretFront:1.05,turretRear:-2.04,pano:true,gunY:0.39,gunLength:5.25,
+    cupolaR:0.25,cupolaH:0.38,commanderZ:-0.42},
 };
 
 export const PROFILED_BUILDERS=Object.fromEntries(Object.entries(PROCEDURAL_PROFILES)
-  .map(([id,profile])=>[id,(P)=>profile.family === 'abrams'
+  .map(([id,profile])=>[id,(P)=>profile.base
+    ? buildDonorVariant(P,profile)
+    : profile.family === 'abrams'
     ? buildAbramsVariant(P,profile)
     : buildProfile(P,profile)]));
