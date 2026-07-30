@@ -59,3 +59,11 @@ shift):
 | Date | total | minView | hull | turret | gun | tracks | change |
 |---|---|---|---|---|---|---|---|
 | 2026-07-30 | 70.6 | 78.1 | 83.5 | 42.0 | 48.5 | 81.1 | baseline (donor leo2a4 canonical + AMAP slab kit) |
+| 2026-07-30 | 78.8 | — | 85.0 | 54.0 | 88.0 | 84.0 | r1: bespoke build — AMAP side courses, bow appliqué shelf, faceted closed turret, rear slat course, L/44 at the print's 4.89 muzzle |
+| 2026-07-30 | 80.4 | 82.6 | 87.0 | 55.4 | 88.6 | 88.2 | r2: gear on the print's rear-set wheelbase, stepped rear RWS station sloping up to the −2.9 peak, travel-clamp rod on the bow (aligns the gun-overhang crop), module tops to the print line |
+
+Gun channel fluctuates 79-89 between runs (thin-tube mask alignment noise);
+totals quoted from the final full run. Shaded-parity notes
+(boards/leo2_revolution.png): AMAP course seams, slat course standing off the
+tail on brackets, raised RWS station with glass optic, sealed mantlet at
+−9/+20, zero floaters on the turntable.

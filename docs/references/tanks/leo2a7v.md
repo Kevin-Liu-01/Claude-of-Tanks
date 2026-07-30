@@ -60,3 +60,14 @@ Width-normalized probe (ground = 0 after +0.05 shift):
 | Date | total | minView | hull | turret | gun | tracks | change |
 |---|---|---|---|---|---|---|---|
 | 2026-07-30 | 73.3 | 76.7 | 77.7 | 53.2 | 61.8 | 87.5 | baseline (donor leo2a7 canonical + hull kit) |
+| 2026-07-30 | 74.0 | — | 78.0 | 47.0 | 88.0 | 85.0 | r1: bespoke build in the print's chunky frame (deep courses, mast farm, L/55A1 at the print's muzzle) |
+| 2026-07-30 | 74.4 | — | 81.0 | 40.0 | 85.0 | 83.0 | r2: stepped rear deck, gear ends on the print ramps, hollow sponson gap under a floating deck shell (the print's construction), pivot to the print's low band |
+| 2026-07-30 | 74.3 | 77.3 | 80.7 | 39.5 | 84.7 | 83.0 | r3: apex tier raised for 180°-yaw deck clearance + shortened (was a floating canopy over the low bow), bustle rack shortened to the real 1.2 m basket |
+
+TURRET CHANNEL ORACLE CAP (logged per HANDOFF §7): the print's turret node
+(`desirefx_me_003`) carries hull-side armor and sponson courses down to
+y≈1.9 across z −3.4..+2.4, plus a hull-node mast/plinth at z −2.2..−0.6
+topping 3.2 that no sane articulated rig can reproduce (a hull plinth taller
+than the turret roof would clip through the yawing shell). The turret score
+is committed at ~40; the whole-silhouette views carry the identity. The r3
+apex/rack changes traded ~0.1 total for honest articulation — kept.

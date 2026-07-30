@@ -61,3 +61,14 @@ Width-normalized probe of the tub (ground = 0 after +0.09 shift):
 | Date | total | minView | hull | turret | gun | tracks | change |
 |---|---|---|---|---|---|---|---|
 | 2026-07-30 | 67.1 | 77.2 | 89.7 | 25.9 | 31.9 | 80.1 | baseline (generic WESTERN cast-turret profile — wrong identity) |
+| 2026-07-30 | 65.5 | — | 86.2 | 27.9 | 30.5 | 81.7 | r1: bespoke build — Leo2 hull matched to the tub + REAL proud PT turret (blisters, base bulge) + 105 mm |
+| 2026-07-30 | 67.2 | — | 89.0 | 28.0 | 31.0 | 83.0 | r2: deck/fitting slimming (rope off, thin louvres), gear ends on the tub's ramps, turret shifted onto the sunken hump, slimmer mantlet |
+| 2026-07-30 | 67.2 | 77.9 | 89.3 | 28.6 | 31.0 | 83.0 | r3: wheels out to the a6 track line, low PT trunnion (axis 1.88) |
+
+TURRET+GUN ORACLE CAP (per HANDOFF §5, is3_bergman precedent): the tub's
+turret channel is belly scraps + a deck-level gun bar (0.76 m overhang at
+axis ~1.3); the build keeps the real proud turret and the full-length 105
+(2.25 m overhang at axis 1.88), costing T≈28/G≈31 against this oracle while
+every shaded view finally shows a Leopard 2 prototype instead of a turretless
+tub. Total is pinned at baseline (67.1→67.2) by those two capped channels;
+hull/tracks/overall all improved.

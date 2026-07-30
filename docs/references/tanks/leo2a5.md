@@ -60,3 +60,11 @@ Width-normalized probe (ground = 0 after +0.07 shift):
 | Date | total | minView | hull | turret | gun | tracks | change |
 |---|---|---|---|---|---|---|---|
 | 2026-07-30 | 74.6 | 80.8 | 77.2 | 47.7 | 70.6 | 88.4 | baseline (donor leo2a6 canonical + L/44 kit) |
+| 2026-07-30 | 78.3 | — | 82.6 | 48.0 | 88.4 | 90.4 | r1: bespoke oracle-frame build (wedge turret, L/44, heavy skirts) |
+| 2026-07-30 | 78.9 | 84.3 | 82.1 | 47.9 | 88.1 | 90.1 | r2: deck matched to this print's taller line, muzzle fixed to z 6.02 (was 0.3 long), rear skirts raised to expose the wheel band like the print |
+
+Turret channel holds ~48 as committed (shell fused into the hull node — see
+oracle notes; the proud wedge turret is correct against photos). The gun
+channel fluctuates 84-89 between runs (thin-tube alignment noise).
+Shaded-parity notes (boards/leo2a5.png): the SHORT L/44 vs A6's L/55 reads
+clearly; sealed mantlet at −9/+20; full fittings/material kit as leo2a6.

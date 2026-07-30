@@ -60,3 +60,12 @@ probe frame; numbers below shifted to ground = 0):
 | Date | total | minView | hull | turret | gun | tracks | change |
 |---|---|---|---|---|---|---|---|
 | 2026-07-30 | 70.0 | 70.0 | 73.3 | 64.4 | 58.5 | 70.4 | baseline (generic LEOPARD template profile) |
+| 2026-07-30 | 84.1 | 83.1 | 88.7 | 75.1 | 81.4 | 86.8 | r1: bespoke oracle-frame build — deck polyline hull, wedge turret + EMES/PERI/rack, L/55 sleeve+evac+MRS, heavy front skirts |
+| 2026-07-30 | 85.6 | 83.9 | 90.0 | 77.0 | 83.8 | 86.8 | r2: deck −0.1 (projection-bias fix), idler/sprocket raised to the ref ramps, smoke banks pulled inside wedge width, taller antennas |
+| 2026-07-30 | 86.0 | ~84 | 90.0 | 79.0 | 84.0 | 87.0 | r3: wedge apex extended to the oracle's z 3.3 reach with 180°-yaw deck clearance, deep mantlet block in the arrow notch |
+
+Shaded-parity notes (fresh board, boards/leo2a6.png): sealed plate mantlet on a
+trunnion roll — no void at −9/+20; materials split (dark grilles/fan discs/
+seams, rubber skirt lip + flaps + anti-slip, glass EMES/PERI/headlights, cloth
+bustle duffels); 7 rubber-rimmed wheels w/ dark hub contrast behind skirts;
+zero floaters through the 24-frame turntable.
