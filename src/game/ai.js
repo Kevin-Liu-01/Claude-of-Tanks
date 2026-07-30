@@ -50,9 +50,9 @@ const DIFFICULTY_TIERS = {
   // (~350-450 m on every map) or bots idle outside it while spotted targets
   // trade: r7 raised normal 330→400 and hard 420→500 so a known contact is
   // always worth advancing on at full throttle.
-  easy:   { fireFactor: 0.6, reactionS: 1.2, aimErrMult: 2.0, probeLevel: 0, engageRangeM: 300, holdRangeM: 180, coverIQ: 0.35 },
-  normal: { fireFactor: 0.9, reactionS: 0.7, aimErrMult: 1.4, probeLevel: 1, engageRangeM: 400, holdRangeM: 240, coverIQ: 0.7  },
-  hard:   { fireFactor: 1.2, reactionS: 0.3, aimErrMult: 1.0, probeLevel: 2, engageRangeM: 500, holdRangeM: 300, coverIQ: 1.0  },
+  easy:   { fireFactor: 0.6, reactionS: 1.2, aimErrMult: 2.0, playerSpreadMult: 1.3, probeLevel: 0, engageRangeM: 300, holdRangeM: 180, coverIQ: 0.35 },
+  normal: { fireFactor: 0.9, reactionS: 0.7, aimErrMult: 1.4, playerSpreadMult: 1.0, probeLevel: 1, engageRangeM: 400, holdRangeM: 240, coverIQ: 0.7  },
+  hard:   { fireFactor: 1.2, reactionS: 0.3, aimErrMult: 1.0, playerSpreadMult: 0,   probeLevel: 2, engageRangeM: 500, holdRangeM: 300, coverIQ: 1.0  },
 };
 
 /**
@@ -321,6 +321,8 @@ export function createAI(entity, opts = {}) {
   // Blind-fire spread (camo_spotting r5) — see resampleAimError.
   let blindYawRad = 0;
   let blindPitchRad = 0;
+  let playerYawRad = 0;
+  let playerPitchRad = 0;
 
   // Timers (count down with dt).
   let losTimer = rng() * LOS_INTERVAL_S;     // stagger AI work across ticks
@@ -391,6 +393,8 @@ export function createAI(entity, opts = {}) {
     // laser.
     blindYawRad = gauss(rng) * 0.010;
     blindPitchRad = gauss(rng) * 0.006;
+    playerYawRad = gauss(rng) * 0.0045;
+    playerPitchRad = gauss(rng) * 0.0030;
     errTimer = 1.1 + rng() * 0.5;
   }
 
@@ -1142,6 +1146,14 @@ export function createAI(entity, opts = {}) {
     _vD.x += px * errYawRad * dist;
     _vD.z += pz * errYawRad * dist;
     _vD.y += errPitchRad * dist;
+    // Break perfect center-mass streaks against the human on easy/normal at
+    // range. Close brawls and hard difficulty remain unchanged.
+    if (target.isPlayer && tier.playerSpreadMult > 0 && dist > 150) {
+      const ramp = Math.min(1, (dist - 150) / 150) * tier.playerSpreadMult;
+      _vD.x += px * playerYawRad * dist * ramp;
+      _vD.z += pz * playerYawRad * dist * ramp;
+      _vD.y += playerPitchRad * dist * ramp;
+    }
     if (blindFire || blindLock) {
       // blind-fire spread (r5): area fire on a remembered point — additive
       // with the tier error, which is zero on the hard tier.

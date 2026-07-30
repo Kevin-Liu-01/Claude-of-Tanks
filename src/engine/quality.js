@@ -74,19 +74,15 @@ export const PRESETS = {
     shadowMapSizes: [4096, 4096, 4096, 2048],
     shadowMaxFar: 700,
   },
-  // r5 (perf recert): maxPixelRatio 1.1 -> 1.0 on 'high'. The r4 content round
-  // (near-camera 3D grass, forested far hills, tree variants) raised the dpr2
-  // battle median from 9.5 ms (r7 cert) to 12.5-13.5 ms and the p99 tail to
-  // 27-32 ms vs the 25 ms gate in THREE valid uncontended 60 s windows — the
-  // 1.1 ratio's 3.24 Mpx no longer fits the frame budget on the reference
-  // GPU. 1.0 = native 1080p logical resolution (2.07 Mpx, -17 % raster) and
-  // is the ONLY knob with ZERO effect at dpr 1 (the renderer ratio is already
-  // 1.0 there): every dpr-1 screenshot-contract capture is bit-identical.
-  // Ultra (explicit opt-in) keeps 1.5. Same playbook as the accepted r7
-  // retune (1.25 -> 1.1) when the r5/r6 content rounds outgrew the budget.
+  // High may supersample to 1.1 for a visibly cleaner image on retina panels,
+  // but begins from the proven 1.0 budget. The post chain's frame-time
+  // governor raises it to 1.1 only when there is clear GPU headroom and can
+  // step below 1.0 under sustained load, so resolution never takes priority
+  // over the >=45 fps floor.
   high: {
     label: 'High',
-    maxPixelRatio: 1.0,
+    maxPixelRatio: 1.1,
+    adaptiveBasePixelRatio: 1.0,
     aoScale: 0.5,
     bloomScale: 0.6,
     shadowMapSizes: [4096, 4096, 2048, 2048],

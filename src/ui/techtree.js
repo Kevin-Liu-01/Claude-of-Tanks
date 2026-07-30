@@ -7,7 +7,6 @@
 
 import { FONT_STACK, ensureFonts } from './fonts.js';
 import { flagSVG } from './flags.js';
-import { iconUrl } from './icons.js';
 import { getTankThumb } from './tankThumbs.js';
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
@@ -1207,13 +1206,13 @@ export function createTechTree(opts) {
       el.innerHTML =
         `<div class="top">${flagSVG(nation, node.era, 20, 13)}` +
         `<span class="tier">${ROMAN[node.tier]}</span></div>` +
-        // battle-ready nodes show the real 3/4 hero icon of the shipped model;
+        // battle-ready nodes show the generated 3/4 icon of the final model;
         // delisted community cards keep the (greyed) icon; ghost research
         // placeholders keep the flat grey vector silhouette
         // r4 (content_breadth): per-vehicle scale delta (±8%) so sibling
         // variants (Leo 2A6 vs 2A7) stop rendering as identical stamps
         ((real && spec) || delisted
-          ? `<img class="ti" data-cot-thumb="${spec0.id}" src="${getTankThumb(spec0.id) || iconUrl(spec0.id, 'angle')}" alt="" style="transform:scale(${(0.94 + keyHash01(spec0.id) * 0.16).toFixed(3)})">`
+          ? `<img class="ti" data-cot-thumb="${spec0.id}" src="${getTankThumb(spec0.id)}" alt="" style="transform:scale(${(0.94 + keyHash01(spec0.id) * 0.16).toFixed(3)})">`
           : `<canvas></canvas>`) +
         `<div class="nm"></div>` +
         `<div class="cls">${CLASS_LABEL[node.cls] || node.cls}</div>` +

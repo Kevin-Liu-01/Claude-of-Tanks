@@ -102,6 +102,8 @@ const SETTINGS_CSS = `
 .cot-set-btn.ghost{background:rgba(11,15,20,.8);color:#9fb0bf;text-shadow:none;
   border:1px solid rgba(146,164,180,.35);border-bottom:2px solid rgba(146,164,180,.45);}
 .cot-set-btn.ghost:hover{color:#f0b04a;border-color:rgba(240,176,74,.6);filter:none;}
+.cot-set-btn.leave{margin-left:auto;color:#e9b4a8;border-color:rgba(216,92,68,.5);}
+.cot-set-btn.leave:hover{color:#ffd0c5;border-color:rgba(239,110,82,.85);}
 .cot-set-slider{display:flex;align-items:center;gap:10px;}
 .cot-set-slider input[type=range]{width:190px;accent-color:#f0a030;cursor:pointer;}
 .cot-set-slider input[type=number]{width:62px;text-align:right;font-size:12px;font-weight:700;
@@ -203,6 +205,8 @@ function el(tag, cls, parent) {
  *   input: import('../game/input.js').InputLayer,
  *   bus?: {emit:Function,on:Function},
  *   isBattleActive?: () => boolean,   // battle running (phase battle, no result)
+ *   canLeaveBattle?: () => boolean,   // any battle/spectator state
+ *   onLeaveBattle?: () => void,
  *   gearVisible?: () => boolean,      // gear button should currently show
  * }} opts
  * @returns {{open:Function,close:Function,toggle:Function,isOpen:()=>boolean,
@@ -212,6 +216,8 @@ export function createSettings(opts) {
   ensureFonts();
   const { input, bus } = opts;
   const isBattleActive = opts.isBattleActive || (() => false);
+  const canLeaveBattle = opts.canLeaveBattle || isBattleActive;
+  const onLeaveBattle = opts.onLeaveBattle || null;
   const gearVisible = opts.gearVisible || (() => false);
   const emit = (ev, payload) => { if (bus && bus.emit) bus.emit(ev, payload); };
 
@@ -235,6 +241,7 @@ export function createSettings(opts) {
     `<div class="cot-set-body"></div>` +
     `<div class="cot-set-ftr">` +
     `<button class="cot-set-btn ghost reset" type="button">Reset to defaults</button>` +
+    `<button class="cot-set-btn ghost leave" type="button">Leave Battle</button>` +
     `<button class="cot-set-btn resume" type="button">Resume</button></div>` +
     `</div>`;
   document.body.appendChild(root);
@@ -243,6 +250,7 @@ export function createSettings(opts) {
   const conflictBar = root.querySelector('.cot-set-conflict');
   const conflictMsg = conflictBar.querySelector('.msg');
   const resetBtn = root.querySelector('.reset');
+  const leaveBtn = root.querySelector('.leave');
 
   const gear = el('div', 'cot-gear');
   gear.innerHTML = GEAR_SVG;
@@ -588,9 +596,9 @@ export function createSettings(opts) {
     for (const x of btns) x.classList.toggle('sel', x.dataset.name === getStoredChoice());
     const note = el('div', 'cot-set-note', body);
     note.textContent =
-      'Auto picks High on retina/HiDPI displays and Ultra otherwise. High renders the 3D scene at a ' +
-      'capped internal resolution with half-resolution ambient occlusion; Medium/Low also reduce bloom ' +
-      'and shadow resolution. Applies instantly, no restart.';
+      'Auto uses adaptive High quality: it raises 3D resolution above native logical resolution when ' +
+      'there is GPU headroom and scales only the 3D frame when needed. The reticle and HUD remain ' +
+      'native-sharp. Medium/Low reduce bloom, ambient occlusion, and shadows. Applies instantly.';
   }
 
   function renderTab() {
@@ -816,6 +824,7 @@ export function createSettings(opts) {
     // the panel mid-iteration on sensitivity or volume no longer bounces the
     // player back to CONTROLS every time.
     renderTab();
+    leaveBtn.style.display = canLeaveBattle() && onLeaveBattle ? 'block' : 'none';
     root.classList.add('open');
     window.addEventListener('keydown', onPanelKey, true);
     window.addEventListener('keyup', onPanelKeyUp, true);
@@ -843,6 +852,12 @@ export function createSettings(opts) {
   root.addEventListener('mousedown', (e) => e.stopPropagation()); // keep clicks off the game layer
   root.querySelector('.cot-set-close').addEventListener('click', () => api.close());
   root.querySelector('.resume').addEventListener('click', () => api.close());
+  leaveBtn.addEventListener('click', () => {
+    if (!onLeaveBattle || !canLeaveBattle()) return;
+    relockOnClose = false;
+    closePanel();
+    onLeaveBattle();
+  });
   resetBtn.addEventListener('click', () => {
     cancelCapture();
     clearConflict();

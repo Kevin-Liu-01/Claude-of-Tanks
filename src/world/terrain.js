@@ -497,7 +497,7 @@ export function applyTone(px, fn) {
 // Procedural PBR texture layers (browser-only; called from buildTerrainMeshes)
 // ---------------------------------------------------------------------------
 
-function canvasToTexture(px, s, { srgb = false, anisotropy = 4, repeat = true } = {}) {
+function canvasToTexture(px, s, { srgb = false, anisotropy = 16, repeat = true } = {}) {
   const c = document.createElement('canvas');
   c.width = c.height = s;
   c.getContext('2d').putImageData(new ImageData(px, s, s), 0, 0);

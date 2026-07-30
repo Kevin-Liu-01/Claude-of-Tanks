@@ -491,6 +491,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   const trB = new THREE.InstancedBufferAttribute(new Float32Array(MAX_TRACERS * 4), 4);
   const trCore = new THREE.InstancedBufferAttribute(new Float32Array(MAX_TRACERS * 3), 3);
   const trGlow = new THREE.InstancedBufferAttribute(new Float32Array(MAX_TRACERS * 3), 3);
+  const tracerAttrs = [trA, trB, trCore, trGlow];
   for (const a of [trA, trB, trCore, trGlow]) a.setUsage(THREE.DynamicDrawUsage);
   tracerGeo.setAttribute('aA', trA);
   tracerGeo.setAttribute('aB', trB);
@@ -2675,7 +2676,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       }
       tracerGeo.instanceCount = n;
       if (n > 0 || tracerGeo._lastCount !== 0) {
-        for (const a of [trA, trB, trCore, trGlow]) a.needsUpdate = true;
+        for (const a of tracerAttrs) a.needsUpdate = true;
       }
       tracerGeo._lastCount = n;
     },

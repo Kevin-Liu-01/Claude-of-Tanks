@@ -124,6 +124,10 @@ const FACES = {
       '<rect x="10" y="0" width="10" height="20" fill="#e8edf2"/>' +
       '<rect x="20" y="0" width="10" height="20" fill="#c93b3b"/>';
   },
+  poland() {
+    return '<rect x="0" y="0" width="30" height="10" fill="#eef2f5"/>' +
+      '<rect x="0" y="10" width="30" height="10" fill="#cf2e3e"/>';
+  },
   community() {
     // deliberate COMMUNITY WORKSHOP insignia (gear ring + gold star) — the
     // sourced roster wears a maker's mark, not a missing-flag grey box
@@ -163,6 +167,7 @@ export function flagSVG(nation, era, w = 24, h = 0) {
   else if (nation === 'South Korea') face = FACES.southKorea();
   else if (nation === 'Japan') face = FACES.japan();
   else if (nation === 'Italy') face = FACES.italy();
+  else if (nation === 'Poland') face = FACES.poland();
   else if (nation === 'Community') face = FACES.community();
   else face = '<rect x="0" y="0" width="30" height="20" fill="#54606b"/>';
   const id = `cotfg${uid++}`;

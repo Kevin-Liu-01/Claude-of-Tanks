@@ -383,6 +383,25 @@ function findNode(root, re) {
   return hit;
 }
 
+/** Resolve duplicate authored gun names by visible subtree span. Several CAD
+ * exports contain both a short auxiliary tube and the main cannon under the
+ * same semantic name (AbramsX has two `stvol` nodes); traversal order is not
+ * a stable or correct discriminator. */
+function findBestGunNode(root, re) {
+  const hits = [];
+  root.traverse((o) => { if (re.test(o.name)) hits.push(o); });
+  if (hits.length < 2) return hits[0] || null;
+  const size = new THREE.Vector3();
+  let best = hits[0];
+  let bestSpan = -Infinity;
+  for (const node of hits) {
+    const box = bboxExcluding(node, null);
+    const span = box.isEmpty() ? 0 : Math.max(...box.getSize(size).toArray());
+    if (span > bestSpan) { best = node; bestSpan = span; }
+  }
+  return best;
+}
+
 /** Bounding box of root EXCLUDING one subtree (gun overhang must not skew the
  * hull-length scale normalization). Box3.setFromObject can't skip subtrees. */
 function bboxExcluding(root, skip) {
@@ -1861,23 +1880,40 @@ function visibleMeshes(root, fn) {
 /** Core swap, fully synchronous once the parsed GLTF is in hand. */
 function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
   const scene = cloneWithSkeleton(gltf.scene);
+  // Snapshot every procedural render node before the sourced scene enters the
+  // tank hierarchy. Direct-child sweeps miss nested barrel/mantlet parts on
+  // some builders (the Merkava's detached procedural tube was the visible
+  // failure); this identity set hides exactly the old stand-in and never a
+  // subsequently re-parented GLB node.
+  const proceduralRenderNodes = new Set();
+  const proceduralRoot = hullG.parent || hullG;
+  proceduralRoot.traverse((o) => {
+    if (o.isMesh || o.isLOD || o.isInstancedMesh) proceduralRenderNodes.add(o);
+  });
 
   // ---- articulation gate ----
-  // COMMUNITY TANKS: cfg.fixedGun marks casemate vehicles (Strv 103) — the
-  // whole model rides the hull and the sim aims a virtual turret through the
-  // (empty) articulation groups; everything else still REQUIRES a turret node.
-  const turret = cfg.fixedGun
+  // A fixed mount is a fact about the real vehicle, never a workaround for a
+  // fused asset. Guard that contract here so a bad model config cannot turn a
+  // T30/IS-1-style turreted tank into a casemate again.
+  const fixedMount = cfg.fixedMount === true;
+  if (fixedMount && !(spec.armor && spec.armor.turretless)) {
+    throw new Error(`glb model for ${spec.id} declares fixedMount on a turreted vehicle`);
+  }
+  const turret = fixedMount
     ? null
     : findNode(scene, new RegExp(cfg.turretNode || 'turret', 'i'));
-  if (!turret && !cfg.fixedGun) {
+  if (!turret && !fixedMount) {
     throw new Error(`glb model for ${spec.id} has no articulable turret node — keeping procedural`);
   }
   // Gun node: prefer a child of the turret; community assets often ship the
   // gun as a turret SIBLING (is3, quaternius), so an explicit cfg.gunNode is
   // also resolved scene-wide.
-  const gunRe = new RegExp(cfg.gunNode || 'gun|barrel|cannon', 'i');
+  // Whole-token fallback only: the old /gun/ expression selected empty crew
+  // locators such as M60 `gunnera` before it ever reached the actual tube.
+  // Nonstandard authored names (for example `weapon`) must be explicit.
+  const gunRe = new RegExp(cfg.gunNode || '(^|[_\\s.-])(gun|barrel|cannon)(?=$|[_\\s.-])', 'i');
   const gun = turret
-    ? (findNode(turret, gunRe) || (cfg.gunNode ? findNode(scene, gunRe) : null))
+    ? (findBestGunNode(turret, gunRe) || (cfg.gunNode ? findBestGunNode(scene, gunRe) : null))
     : null;
 
   // ---- fidelity surgery in the raw asset frame (before orient/scale) ----
@@ -1891,7 +1927,10 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
   scene.traverse((o) => { if (o.isSkinnedMesh) o.frustumCulled = false; });
 
   // ---- orient, then scale/ground to real dimensions ----
-  scene.rotation.y = cfg.yawOffset || 0;
+  // Most web assets are Y-up already, but a few direct OBJ exports preserve
+  // their original Z-up frame. Allow an explicit X/Z correction before the
+  // same real-dimension normalization used by every sourced tank.
+  scene.rotation.set(cfg.pitchOffset || 0, cfg.yawOffset || 0, cfg.rollOffset || 0);
   scene.updateMatrixWorld(true);
   // Hull-only box for the scale: the gun overhang would otherwise shrink the
   // whole vehicle by the barrel length (m1a2: -22%). cfg.scaleToOverall keeps
@@ -2107,14 +2146,7 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
   // ---- swap: hide procedural render meshes, keep anchors/instancing intact.
   // gunG (recoilG's parent) carries the procedural mantlet (gunMount bucket)
   // and must be swept too.
-  for (const g of [hullG, turretG, recoilG, ...(gunG ? [gunG] : [])]) {
-    for (const child of g.children) {
-      if (child !== turret && child !== gun && child !== recoilG && child !== scene &&
-          (child.isMesh || child.isLOD || child.isInstancedMesh)) {
-        child.visible = false;
-      }
-    }
-  }
+  for (const node of proceduralRenderNodes) node.visible = false;
   // tank_models r1: flag the swap so later visibility toggles on procedural
   // gear (tankFactory setBroken repair path) never resurrect the hidden
   // stand-in meshes beside the GLB.
@@ -2185,7 +2217,7 @@ export function applyGlbModelSync(ctx) {
  * @param {object} ctx.spec        TankSpec (specs.js)
  * @param {object} ctx.cfg         spec.model.glb config: { path, yawOffset?,
  *                                 turretNode?, gunNode? } (node fields are
- *                                 regex sources; sensible defaults above)
+ *                                 regex sources; fixedMount is casemate-only)
  * @param {THREE.Group} ctx.hullG  hull group (procedural children hidden, GLB hull added)
  * @param {THREE.Group} ctx.turretG turret yaw group
  * @param {THREE.Group} ctx.recoilG gun recoil group

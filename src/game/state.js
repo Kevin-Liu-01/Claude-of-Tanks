@@ -275,6 +275,19 @@ const SPEC_TIER = {
   bmp1: 6, m1128: 8, m1296: 7,
   // USER DROPS wave 4 (recovered batch, final sweep): KF51 tops the German ladder
   kf51: 10,
+  // recovered Abrams candidates
+  m1a2_tejas: 10, abramsx: 10,
+  challenger1: 8, chieftain5: 7, fv510: 7,
+  leo2_revolution: 10, leo2a5: 9, leo2a7v: 10,
+  m1a1ha: 9, m1a2_sepv2: 10, m60a1: 7, pt91m: 8,
+  merkava1b: 7, merkava2b: 7, merkava2d: 8,
+  merkava3b: 8, merkava3c: 8, merkava3d: 9, merkava4b: 9,
+  t62mv1: 7, t64bv1: 8, t72b_1987: 8, t72b3m: 9,
+  t72bu: 8, t90sm: 9, type90: 9, t90a_vladimir: 9,
+  is3_bergman: 8, isu152: 8, isu122s: 8,
+  centurion3: 7, centurion5: 8, comet: 7, challenger_cruiser: 6, charioteer: 8,
+  leopard2_proto: 8, m1a1_aim: 9, m46_patton: 7, m47_patton: 7,
+  m26_pershing: 8, m45_patton: 8, m60a3: 8,
 };
 const specTier = (specId) => SPEC_TIER[specId] != null ? SPEC_TIER[specId] : 6;
 
@@ -997,8 +1010,12 @@ function tryFire(game, ent, bus, rig) {
   fireRecoil(ent.state, ent.spec);
   ent.visual.recoilKick();
   if (ent.isPlayer && rig) {
-    rig.addTrauma(0.25);
-    if (rig.recoilKick) rig.recoilKick(0.012);
+    // Dedicated feel pass: the old fixed impulse made a 30 mm autocannon and
+    // a 152 mm siege gun kick the camera identically. Scale both concussion
+    // and pitch by bore size while preserving the former 120 mm baseline.
+    const caliberK = Math.max(0, Math.min(1, (shellSpec.caliberMm - 30) / 122));
+    rig.addTrauma(0.10 + caliberK * 0.20);
+    if (rig.recoilKick) rig.recoilKick(0.006 + caliberK * 0.011);
   }
   _firedEv.shellId = shell.id;
   _firedEv.shooterId = ent.id;
@@ -1243,8 +1260,15 @@ export function simStep(game, bus, world, rig, collider) {
     const c = ent.combat;
     if (!c || c.destroyed) continue;
     if (c.reload.t > 0) {
+      const wasReloading = c.reload.t;
       c.reload.t = Math.max(0, c.reload.t - dt);
-      if (ent.isPlayer) bus.emit('player:reload', { t: c.reload.t, total: c.reload.totalS });
+      if (ent.isPlayer) bus.emit('player:reload', {
+        t: c.reload.t,
+        total: c.reload.totalS,
+        // A single authoritative edge feeds the mechanical ready cue and
+        // instrumentation. Previously consumers had to infer it from frames.
+        done: wasReloading > 0 && c.reload.t === 0,
+      });
     }
     tryFire(game, ent, bus, rig);
   }

@@ -4,7 +4,8 @@ A World of Tanks-style armored combat game built in pure Three.js, developed by 
 long-running multi-agent pipeline: parallel research → subsystem builders →
 harsh visual-critic loops with per-dimension fix agents.
 
-Roughly 63,000 lines of JavaScript across `src/`, ~58 playable vehicles, four
+Roughly 63,000 lines of JavaScript across `src/`, 91 playable vehicles in the
+private/local roster, four
 battle maps, a plate-level armor simulation, kill cams with x-ray shot analysis,
 and a WoT-authentic HUD.
 
@@ -77,7 +78,11 @@ C1 Ariete, KF51 Panther, M60A3, plus Bradley and BMP-2 IFVs.
 
 **Community:** KV-2, Tiger II, Sherman Jumbo, Jagdtiger, Jagdpanzer E-100,
 Sturmtiger, T95, T30, IS-7, IS-6B, IS-1, Object 279, Panzer III variants,
-Leichttraktor, Recon Tank, and more.
+Leichttraktor, Recon Tank, and more. The recovered local fleet adds AbramsX,
+Tejas's M1A2, Challenger 1, Chieftain Mk.5, Warrior, Leopard 2 variants,
+M1A1HA/SEPv2, M60A1/A3, PT-91M, seven Merkava variants, T-62/T-64/T-72/T-90
+variants, Type 90, ISU-122S/152, Centurions, Comet, Charioteer, early Pattons,
+Pershings, and several m_bergman print-pack variants.
 
 Vehicles are a judged mix of **sourced CC-BY/CC0 models** (winners of
 side-by-side render-offs against our procedural builds) and **procedural
@@ -85,6 +90,11 @@ constructions** built from real dimensions and armor layouts. Every sourced
 asset is credited in [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md); models under
 non-commercial or personal-use licenses are used freely — this is a private,
 local, non-commercial project and nothing is distributed.
+
+The 42 newest recovered-drop vehicles are explicitly local-only because their
+licenses are NC/ND or were not preserved well enough to clear redistribution.
+They load in `npx vite` and `npm run build:private`; `npm run build` and
+`npm run build:public` omit their specs, models, and derivative icons.
 
 No assets extracted from commercial games are used. During sourcing, many
 candidate uploads were declined on provenance (commercial-game extractions,

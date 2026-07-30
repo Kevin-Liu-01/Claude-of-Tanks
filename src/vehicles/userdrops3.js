@@ -96,6 +96,7 @@ function communityArmor(o) {
   const tl = o.turretless ? hl * 0.5 : hw * 0.62;
   return {
     boundingRadiusM: hl + o.barrelLenM * 0.55 + 0.4,
+    turretless: o.turretless === true,
     turretPivot: [tp[0], tp[1], tp[2]],
     gunPivot: [o.gunPivot[0], o.gunPivot[1], o.gunPivot[2]],
     gunBarrel: { lengthM: o.barrelLenM, radiusM: o.barrelRadM },

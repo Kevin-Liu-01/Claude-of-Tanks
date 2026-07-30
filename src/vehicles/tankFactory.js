@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { getSpec, MODEL_SOURCE } from './specs.js';
+import { getSpec, MODEL_SOURCE, TANK_SPECS } from './specs.js';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook } from './materials.js';
 // effects_combat r5 ANIMATION CLOCK: the self-timed visual timelines (gun
 // recuperator, turret-pop arc, wreck char/ember cooldown) now age against
@@ -44,6 +44,12 @@ import './userdrops.js';
 import './userdrops2.js';
 // USER DROPS wave 4 (recovered batch, final sweep) — same import rule.
 import './userdrops3.js';
+// USER DROPS wave 5: Tejas M1A2 + Mortavex AbramsX.
+import './userdrops4.js';
+// USER DROPS wave 6: recovered Cold-War/modern fleet.
+import './userdrops5.js';
+// USER DROPS wave 7: second m_bergman tank-pack mining pass.
+import './userdrops6.js';
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -189,6 +195,56 @@ function lodWrap(parent, obj, dist = LOD1_DIST) {
   lod.addLevel(new THREE.Object3D(), dist);
   parent.add(lod);
   return obj;
+}
+
+// PERF: procedural tanks used to submit every bevel, fitting and armor plate
+// to each CSM pass. The detailed meshes remain untouched in the color pass,
+// while three articulation-aware low-poly silhouettes carry their shadows.
+// This is the procedural counterpart to modelLoader's sourced-GLB proxies.
+const PROC_SHADOW_MAT = new THREE.MeshBasicMaterial({
+  name: 'ProceduralShadowProxy', colorWrite: false, depthWrite: false,
+});
+function installProceduralShadowProxies(spec, hullG, turretG, recoilG, disposables) {
+  for (const group of [hullG, turretG, recoilG]) {
+    group.traverse((o) => { if (o.isMesh || o.isInstancedMesh) o.castShadow = false; });
+  }
+
+  const w = spec.dims.widthM;
+  const hullLen = spec.dims.hullLengthM || spec.dims.overallLengthM * 0.72;
+  const height = spec.dims.heightM;
+  const pivotY = spec.armor.turretPivot[1];
+  const hullH = Math.max(0.55, Math.min(height * 0.45, pivotY * 0.72));
+  const trackW = Math.max(0.18, w * 0.105);
+  const hullGeo = mergeAll([
+    xform(new THREE.BoxGeometry(w * 0.82, hullH, hullLen * 0.84), 0, hullH * 0.58, 0),
+    xform(new THREE.BoxGeometry(trackW, 0.42, hullLen * 0.90), -w * 0.43, 0.28, 0),
+    xform(new THREE.BoxGeometry(trackW, 0.42, hullLen * 0.90),  w * 0.43, 0.28, 0),
+  ]);
+
+  const turretAvail = Math.max(0.45, height - pivotY);
+  const turretH = Math.max(0.34, turretAvail * 0.56);
+  const turretR = Math.max(0.55, w * 0.31);
+  const turretGeo = new THREE.CylinderGeometry(turretR * 0.82, turretR, turretH, 8, 1);
+  turretGeo.scale(1, 1, 0.82);
+  turretGeo.translate(0, turretH * 0.42, 0);
+
+  const barrel = spec.armor.gunBarrel;
+  const barrelGeo = cylZ(Math.max(0.065, barrel.radiusM * 1.08), barrel.lengthM, 6);
+  barrelGeo.translate(0, 0, barrel.lengthM * 0.5);
+
+  const add = (parent, geo, name) => {
+    disposables.push(geo);
+    const mesh = new THREE.Mesh(geo, PROC_SHADOW_MAT);
+    mesh.name = `procShadow_${name}`;
+    mesh.castShadow = true;
+    mesh.receiveShadow = false;
+    mesh.frustumCulled = true;
+    mesh.raycast = () => {};
+    parent.add(mesh);
+  };
+  add(hullG, hullGeo, 'hull');
+  add(turretG, turretGeo, 'turret');
+  add(recoilG, barrelGeo, 'gun');
 }
 
 // Closed track band swept around a 2D loop in the (z,y) plane.
@@ -2870,6 +2926,24 @@ Object.assign(BUILDERS, MODERN2_BUILDERS);
 // m2a2_bradley / bmp2 / ariete — builders + specs live in modern3.js
 Object.assign(BUILDERS, MODERN3_BUILDERS);
 
+// Recovered variants should fall back to the closest articulated family
+// model, not the generic box placeholder, when their candidate GLB fails the
+// quality gate. Follow visualBase/variantOf chains with cycle protection.
+function resolveBuilder(specId, spec) {
+  const seen = new Set();
+  let id = specId;
+  let row = spec;
+  while (id && !seen.has(id)) {
+    seen.add(id);
+    if (BUILDERS[id]) return BUILDERS[id];
+    const next = row && (row.visualBase || row.variantOf);
+    if (!next || next === id) break;
+    id = next;
+    row = TANK_SPECS[id];
+  }
+  return null;
+}
+
 // COMMUNITY TANKS: cheap generic stand-in for GLB-sourced vehicles with no
 // hand-built procedural model. Rough hull slab + turret box + gun tube sized
 // off the spec so the silhouette is sane for the frames before the GLB swap
@@ -2963,11 +3037,15 @@ export function createTank(specId, engineCtx, opts = {}) {
   root.rotation.order = 'YXZ';
   root.name = `tank_${specId}`;
   const hullG = new THREE.Group();
+  hullG.name = 'rig_hull';
   const turretG = new THREE.Group();
+  turretG.name = 'rig_turret';
   turretG.position.set(armor.turretPivot[0], armor.turretPivot[1], armor.turretPivot[2]);
   const gunG = new THREE.Group();
+  gunG.name = 'rig_gun';
   gunG.position.set(armor.gunPivot[0], armor.gunPivot[1], armor.gunPivot[2]);
   const recoilG = new THREE.Group();
+  recoilG.name = 'rig_recoil';
   root.add(hullG, turretG);
   turretG.add(gunG);
   gunG.add(recoilG);
@@ -3004,7 +3082,7 @@ export function createTank(specId, engineCtx, opts = {}) {
     },
   };
 
-  (BUILDERS[specId] || buildCommunityPlaceholder)(P);
+  (resolveBuilder(specId, spec) || buildCommunityPlaceholder)(P);
 
   // ---- merge buckets into meshes ----
   const gunYOff = armor.turretPivot[1] + armor.gunPivot[1];
@@ -3064,6 +3142,8 @@ export function createTank(specId, engineCtx, opts = {}) {
     seatEraBricks();
   }
 
+  installProceduralShadowProxies(spec, hullG, turretG, recoilG, disposables);
+
   /** (Re)compose every ERA brick at its as-built placement (undoes stripEra). */
   function seatEraBricks() {
     for (const e of eraPlacements) {
@@ -3083,6 +3163,7 @@ export function createTank(specId, engineCtx, opts = {}) {
 
   // ---- anchors ----
   const muzzle = new THREE.Object3D();
+  muzzle.name = 'rig_muzzle';
   muzzle.position.set(0, 0, P.muzzleZ);
   recoilG.add(muzzle);
   const turretTop = new THREE.Object3D();

@@ -816,6 +816,10 @@ function communityArmor(o) {
   const tl = o.turretless ? hl * 0.5 : hw * 0.62; // turret half-length
   return {
     boundingRadiusM: hl + o.barrelLenM * 0.55 + 0.4,
+    // Keep the vehicle-layout fact in the runtime armor record. Previously
+    // this input only changed the size of the generated armor boxes and was
+    // then discarded, so movement/model QA had to guess from an id list.
+    turretless: o.turretless === true,
     turretPivot: [tp[0], tp[1], tp[2]],
     gunPivot: [o.gunPivot[0], o.gunPivot[1], o.gunPivot[2]],
     gunBarrel: { lengthM: o.barrelLenM, radiusM: o.barrelRadM },
@@ -1486,9 +1490,10 @@ const COMMUNITY_SPECS = {
     hullTraverseDegS: 22,
     terrainResistance: { hard: 1.15, medium: 1.35, soft: 2.4 },
     pivotStyle: 'neutral',
-    // fused print model: the cast turret ships welded to the hull, so the
-    // T30 plays as a fixed-gun assault TD (same class rule as the casemates)
-    turretTraverseDegS: 18, gunPitchDegS: 10, gunElevationDeg: 15, gunDepressionDeg: 6, gunArcDeg: 11,
+    // The real T30 has a fully traversable turret. Asset limitations must not
+    // rewrite vehicle mechanics; the fused source is retained only as a
+    // rejected visual candidate below.
+    turretTraverseDegS: 18, gunPitchDegS: 10, gunElevationDeg: 15, gunDepressionDeg: 6,
     gun: {
       caliberMm: 155, reloadS: 16.0, baseAccuracy: 0.42, aimTimeS: 3.0,
       bloom: BLOOM_WW2,
@@ -1503,7 +1508,7 @@ const COMMUNITY_SPECS = {
       lenM: 7.6, widM: 3.8, hgtM: 3.25, turretPivot: [0, 2.3, 0.0],
       gunPivot: [0, 0.35, 0.5], barrelLenM: 4.9, barrelRadM: 0.1,
       frontMm: 102, sideMm: 76, rearMm: 51, roofMm: 38,
-      tFrontMm: 203, tSideMm: 127, tRearMm: 102, mantletMm: 203, turretless: true,
+      tFrontMm: 203, tSideMm: 127, tRearMm: 102, mantletMm: 203,
     }),
     visual: {
       scheme: 'solid', base: '#4b5320', weather: '#6b6b47', patches: [],
@@ -1630,12 +1635,9 @@ const COMMUNITY_SPECS = {
   },
 
   is1: {
-    // fused single-mesh print model: plays as a fixed-gun assault TD (same
-    // class rule as the other welded-turret prints — see t30)
-    // content_breadth r6: IS-1 is a HEAVY tank (community-tab data error) —
-    // the fixed-gun assault handling stays enforced by gunArcDeg: 11, not by
-    // the class field; this corrects the tech-tree band / garage chip label.
-    id: 'is1', name: 'IS-1', nation: 'USSR', era: 'ww2', class: 'heavy',
+    // The IS-1 is a turreted heavy tank. The old fixed-gun handling described
+    // the limitations of one fused print, not the real vehicle.
+    id: 'is1', name: 'IS-1', nation: 'USSR', era: 'ww2', class: 'heavy', visualBase: 'is2',
     community: {
       author: 'AaronTMG',
       source: 'https://www.printables.com/model/925804-is-1-russian-heavy-tank',
@@ -1646,7 +1648,7 @@ const COMMUNITY_SPECS = {
     hullTraverseDegS: 24,
     terrainResistance: { hard: 1.1, medium: 1.3, soft: 2.3 },
     pivotStyle: 'pivot',
-    turretTraverseDegS: 24, gunPitchDegS: 14, gunElevationDeg: 20, gunDepressionDeg: 5, gunArcDeg: 11,
+    turretTraverseDegS: 24, gunPitchDegS: 14, gunElevationDeg: 20, gunDepressionDeg: 5,
     gun: {
       caliberMm: 85, reloadS: 5.5, baseAccuracy: 0.40, aimTimeS: 2.4,
       bloom: BLOOM_WW2,
@@ -1661,7 +1663,7 @@ const COMMUNITY_SPECS = {
       lenM: 6.77, widM: 3.07, hgtM: 2.73, turretPivot: [0, 1.75, -0.1],
       gunPivot: [0, 0.35, 0.4], barrelLenM: 4.0, barrelRadM: 0.07,
       frontMm: 100, sideMm: 90, rearMm: 60, roofMm: 30,
-      tFrontMm: 100, tSideMm: 100, tRearMm: 100, mantletMm: 120, turretless: true,
+      tFrontMm: 100, tSideMm: 100, tRearMm: 100, mantletMm: 120,
     }),
     visual: {
       scheme: 'solid', base: '#445032', weather: '#4f5b3e', patches: [],
@@ -1714,7 +1716,7 @@ export const MODEL_SOURCE = {
 // Node names below were verified offline against each asset's node tree
 // (GLTFLoader sanitizes names: dots stripped, e.g. 'Plane.000' -> 'Plane000').
 // glb config extensions understood by modelLoader.applySwap:
-//   fixedGun        — casemate vehicle: no turret node; whole model rides the
+//   fixedMount      — casemate vehicle: no turret node; whole model rides the
 //                     hull, sim aims a virtual turret (muzzle anchors only)
 //   autoPivot       — derive turret yaw / gun pitch pivots from the asset's
 //                     node origins / subtree bounds (community assets carry
@@ -1734,7 +1736,7 @@ Object.assign(MODEL_SOURCE, {
     // shell box-UV'd onto the live camo canvas, gear split to dark steel) —
     // it was the one sourced tank skipping the cohesion pass.
     glb: {
-      path: '/models/tanks/community/strv103_wesiora.glb', fixedGun: true,
+      path: '/models/tanks/community/strv103_wesiora.glb', fixedMount: true,
       paintUntextured: true,
     },
   },
@@ -1864,13 +1866,13 @@ Object.assign(MODEL_SOURCE, {
   },
   jagdtiger: {
     source: 'glb',
-    glb: { path: '/models/tanks/community/jagdtiger-adipriatna.glb', fixedGun: true },
+    glb: { path: '/models/tanks/community/jagdtiger-adipriatna.glb', fixedMount: true },
   },
   jpz_e100: {
     source: 'glb',
     glb: {
       path: '/models/tanks/community/jagdpanzer_e100_haphazard.glb',
-      fixedGun: true, paintUntextured: true,
+      fixedMount: true, paintUntextured: true,
     },
   },
   sturmtiger: {
@@ -1878,22 +1880,25 @@ Object.assign(MODEL_SOURCE, {
     // asset faces +x — rotate to the +z convention
     glb: {
       path: '/models/tanks/community/sturmtiger-tomrs.glb',
-      fixedGun: true, yawOffset: -Math.PI / 2,
+      fixedMount: true, yawOffset: -Math.PI / 2,
     },
   },
   t95: {
     source: 'glb',
     glb: {
       path: '/models/tanks/community/t95_doomturtle_haphazard.glb',
-      fixedGun: true, yawOffset: Math.PI, paintUntextured: true,
+      fixedMount: true, yawOffset: Math.PI, paintUntextured: true,
     },
   },
   t30: {
-    source: 'glb',
-    glb: {
+    source: 'procedural',
+    // Kept for the repeatable A/B audit, but never activated: it is one fused
+    // hull mesh and cannot represent the real vehicle's turret or elevation.
+    candidateGlb: {
       path: '/models/tanks/community/t30_haphazard.glb',
-      fixedGun: true, yawOffset: Math.PI, paintUntextured: true,
+      yawOffset: Math.PI, paintUntextured: true,
     },
+    qaReason: 'single fused mesh cannot articulate the real T30 turret',
   },
 
   // -------------------------------------------------------------------------
@@ -1933,12 +1938,12 @@ Object.assign(MODEL_SOURCE, {
     },
   },
   is1: {
-    source: 'glb',
-    // single fused mesh (turret welded) — fixed-gun assault TD per class rule
-    glb: {
+    source: 'procedural',
+    candidateGlb: {
       path: '/models/tanks/community/is1-aarontmg.glb',
-      fixedGun: true, paintUntextured: true,
+      paintUntextured: true,
     },
+    qaReason: 'single fused mesh cannot articulate the real IS-1 turret',
   },
 });
 

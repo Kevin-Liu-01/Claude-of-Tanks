@@ -51,6 +51,7 @@ export function createAudio() {
   let whiteBuf = null;    // 2 s seeded white noise, looped everywhere
   let crackleBuf = null;  // sparse impulse train for fire crackle / debris
   let windBuf = null;     // pink-ish noise for wind bed
+  let gunBufs = null;     // pre-synthesized caliber beds (one source per shot)
 
   let masterVolume = 0.8;
   let muted = false;
@@ -156,6 +157,45 @@ export function createAudio() {
         }
       }
     }
+
+    // Render the layered gun timbres into three small PCM beds once. The old
+    // live recipe created 12-18 WebAudio nodes synchronously on every trigger
+    // pull, exactly when visual FX were also uploading. These buffers use the
+    // same runtime-synthesized crack/body/sub/rumble ingredients, while the
+    // live shot now schedules one source and one distance filter.
+    const makeGunBed = (kind) => {
+      const heavy = kind === 'heavy';
+      const medium = kind === 'medium';
+      const dur = heavy ? 1.5 : medium ? 0.9 : 0.5;
+      const out = ctx.createBuffer(1, Math.ceil(sr * dur), sr);
+      const d = out.getChannelData(0);
+      const grng = mulberry32(0x6a09e667 ^ (heavy ? 120 : medium ? 90 : 57));
+      let low = 0, prevNoise = 0, phase = 0;
+      for (let i = 0; i < d.length; i++) {
+        const t = i / sr;
+        const n = grng() * 2 - 1;
+        low += (n - low) * (heavy ? 0.025 : medium ? 0.05 : 0.09);
+        const high = n - prevNoise;
+        prevNoise = n;
+        const f0 = heavy ? 42 : medium ? 52 : 60;
+        const f1 = heavy ? 28 : medium ? 36 : 44;
+        const sweepT = Math.min(1, t / (heavy ? 0.45 : medium ? 0.3 : 0.15));
+        phase += Math.PI * 2 * (f0 + (f1 - f0) * sweepT) / sr;
+        const crack = high * Math.exp(-t / (heavy ? 0.055 : medium ? 0.04 : 0.03));
+        const body = n * Math.exp(-t / (heavy ? 0.24 : medium ? 0.16 : 0.10));
+        const rumble = low * Math.exp(-t / (heavy ? 0.72 : medium ? 0.38 : 0.18));
+        const sub = Math.sin(phase) * Math.exp(-t / (heavy ? 0.48 : medium ? 0.30 : 0.15));
+        const attack = Math.min(1, t / 0.004);
+        const v = attack * (crack * 0.20 + body * 0.42 + rumble * 0.68 + sub * 0.62);
+        d[i] = Math.max(-1, Math.min(1, v * (heavy ? 0.92 : medium ? 0.86 : 0.78)));
+      }
+      return out;
+    };
+    gunBufs = {
+      light: makeGunBed('light'),
+      medium: makeGunBed('medium'),
+      heavy: makeGunBed('heavy'),
+    };
   }
 
   function applyMaster() {
@@ -292,32 +332,12 @@ export function createAudio() {
     const dur = heavy ? 1.5 : medium ? 0.9 : 0.5;
     const v = spawnVoice(when, dur, s.gain, s.pan, sfxBus);
     const lp = distLowpass(s.dist);
-    lp.connect(v.in);
-
-    if (heavy) {
-      // Body boom.
-      wire(v, nsrc(v, when, 0.7), flt('lowpass', 950, 0.7), env(when, 0.006, 1.15, 0.55), lp);
-      // Sharp muzzle crack.
-      wire(v, nsrc(v, when, 0.2), flt('highpass', 1200, 0.7), env(when, 0.002, 0.7, 0.09), lp);
-      // Deep thump 42 → 28 Hz.
-      const sub = osrc(v, 'sine', 42, when, 0.7);
-      sub.frequency.exponentialRampToValueAtTime(28, when + 0.45);
-      wire(v, sub, env(when, 0.006, 1.15, 0.55), lp);
-      // Long rolling rumble.
-      wire(v, nsrc(v, when, 1.3), flt('lowpass', 220, 0.6), env(when, 0.02, 0.8, 1.0), lp);
-    } else if (medium) {
-      wire(v, nsrc(v, when, 0.45), flt('lowpass', 2300, 0.8), env(when, 0.005, 1.0, 0.3), lp);
-      wire(v, nsrc(v, when, 0.15), flt('highpass', 1600, 0.7), env(when, 0.002, 0.6, 0.06), lp);
-      const sub = osrc(v, 'sine', 52, when, 0.45);
-      sub.frequency.exponentialRampToValueAtTime(36, when + 0.3);
-      wire(v, sub, env(when, 0.005, 0.9, 0.32), lp);
-    } else {
-      wire(v, nsrc(v, when, 0.25), flt('highpass', 900, 0.7), env(when, 0.003, 1.0, 0.13), lp);
-      wire(v, nsrc(v, when, 0.2), flt('bandpass', 3200, 1.2), env(when, 0.002, 0.55, 0.07), lp);
-      const sub = osrc(v, 'sine', 60, when, 0.25);
-      sub.frequency.exponentialRampToValueAtTime(44, when + 0.15);
-      wire(v, sub, env(when, 0.004, 0.5, 0.16), lp);
-    }
+    const src = ctx.createBufferSource();
+    src.buffer = gunBufs[heavy ? 'heavy' : medium ? 'medium' : 'light'];
+    src.start(when);
+    src.stop(when + dur + 0.05);
+    v.sources.push(src);
+    wire(v, src, lp);
   }
 
   // -------------------------------------------------------------- impacts ---
@@ -532,14 +552,24 @@ export function createAudio() {
    * @param {boolean} pen true = damaging hit (bright two-tone dink);
    *                      false = bounce/absorb (short dull knock)
    */
-  function hitConfirmSound(pen) {
+  function hitConfirmSound(kind, damage = 0) {
     if (!ctx) return;
     const when = ctx.currentTime + 0.01;
+    const pen = kind === 'pen' || kind === 'he_pen' || damage > 0;
+    const ricochet = kind === 'ricochet';
     if (pen) {
-      const v = spawnVoice(when, 0.3, 0.5, 0, sfxBus);
+      const v = spawnVoice(when, 0.3, 0.55, 0, sfxBus);
       wire(v, osrc(v, 'triangle', 1560, when, 0.09), env(when, 0.002, 0.5, 0.07));
       wire(v, osrc(v, 'triangle', 2140, when + 0.055, 0.12), env(when + 0.055, 0.002, 0.42, 0.1));
       wire(v, nsrc(v, when, 0.03), flt('highpass', 4200, 0.8), env(when, 0.001, 0.25, 0.02));
+    } else if (ricochet) {
+      // Rising, ringing skid: unmistakably different from the low absorbed
+      // thud below even when the spatial target impact is far away.
+      const v = spawnVoice(when, 0.34, 0.46, 0, sfxBus);
+      const o = osrc(v, 'triangle', 1150, when, 0.25);
+      o.frequency.exponentialRampToValueAtTime(2350, when + 0.16);
+      wire(v, o, flt('bandpass', 1900, 1.1), env(when, 0.002, 0.55, 0.23));
+      wire(v, nsrc(v, when, 0.035), flt('highpass', 3600, 0.8), env(when, 0.001, 0.34, 0.025));
     } else {
       const v = spawnVoice(when, 0.22, 0.42, 0, sfxBus);
       const o = osrc(v, 'square', 340, when, 0.1);
@@ -547,6 +577,17 @@ export function createAudio() {
       wire(v, o, flt('lowpass', 900, 0.8), env(when, 0.002, 0.5, 0.09));
       wire(v, nsrc(v, when, 0.04), flt('bandpass', 1200, 1.2), env(when, 0.001, 0.3, 0.035));
     }
+  }
+
+  /** Non-spatial breech latch: the loaded gun is ready to fire again. */
+  function reloadReadySound() {
+    if (!ctx) return;
+    const when = ctx.currentTime + 0.004;
+    const v = spawnVoice(when, 0.24, 0.36, 0, sfxBus);
+    wire(v, nsrc(v, when, 0.035), flt('bandpass', 1250, 1.8), env(when, 0.001, 0.55, 0.028));
+    const latch = osrc(v, 'triangle', 420, when + 0.025, 0.13);
+    latch.frequency.exponentialRampToValueAtTime(690, when + 0.1);
+    wire(v, latch, flt('lowpass', 1500, 0.8), env(when + 0.025, 0.002, 0.45, 0.11));
   }
 
   // ----------------------------------------------------------- fire loops ---
@@ -601,7 +642,7 @@ export function createAudio() {
   // --------------------------------------------------------- engine loops ---
 
   function createEngineVoice(entity) {
-    const isTurbine = entity.specId === 'm1a2';
+    const isTurbine = /^(m1a|m1a2|abramsx)/.test(entity.specId || '');
     const modern = entity.spec && entity.spec.era === 'modern';
     const f0 = isTurbine ? 58 : modern ? 50 : 41;   // fundamental at idle pitch 1.0
 
@@ -668,7 +709,13 @@ export function createAudio() {
         const t = ctx.currentTime;
         const spd = Math.abs(ent.state.speed);
         const frac = Math.min(1, spd / topMps);
-        const p = 0.8 + 0.6 * frac;                      // RPM pitch — §3.9
+        // Perceived throttle bite: engine load responds on the input edge,
+        // before 60 tonnes have gained visible speed. Speed still owns cruise
+        // RPM; throttle/spool adds the immediate turbine/diesel surge.
+        const demand = Math.min(1, Math.abs((ent.input && ent.input.throttle) || 0));
+        const spool = Math.min(1, ent.state._spool || 0);
+        const rpm = Math.max(frac, demand * (0.34 + 0.44 * spool));
+        const p = 0.8 + 0.6 * rpm;                       // RPM pitch — §3.9
         sawA.frequency.setTargetAtTime(f0 * p, t, 0.08);
         sawB.frequency.setTargetAtTime(f0 * 2.02 * p, t, 0.08);
         sub.frequency.setTargetAtTime(f0 * 0.5 * p, t, 0.08);
@@ -683,7 +730,8 @@ export function createAudio() {
 
         const pos = ent.state.pos;
         const s = spat(pos.x, pos.y, pos.z);
-        const load = 0.5 + 0.5 * frac;
+        gNoi.gain.setTargetAtTime((isTurbine ? 0.3 : 0.22) + demand * 0.12, t, 0.055);
+        const load = 0.44 + 0.30 * frac + 0.26 * demand;
         out.gain.setTargetAtTime(s.gain * load, t, 0.1);
         pan.pan.setTargetAtTime(s.pan, t, 0.1);
         return s.dist;
@@ -870,6 +918,7 @@ export function createAudio() {
   function bindBus(bus) {
     bus.on('shell:fired', (e) => { if (ctx) onShellFired(e); });
     bus.on('shell:hit', (e) => { if (ctx) onShellHit(e); });
+    bus.on('player:reload', (e) => { if (ctx && e && e.done) reloadReadySound(); });
     bus.on('tank:destroyed', (e) => { if (ctx) onTankDestroyed(e); });
     // gameplay_feel r2: blocked-drive collision feedback (state.js emits once
     // per genuine hit, 5.4 km/h closing-speed floor)
@@ -989,7 +1038,7 @@ export function createAudio() {
 
   return {
     resume, bindBus, update, setMasterVolume, mute, playGarageSting, ambientOn,
-    /** Non-spatial player hit-confirm blip. @param {boolean} pen damaging hit */
-    hitConfirm(pen) { if (ctx) hitConfirmSound(pen); },
+    /** Non-spatial player result cue; preserves pen/ricochet/nonpen identity. */
+    hitConfirm(kind, damage = 0) { if (ctx) hitConfirmSound(kind, damage); },
   };
 }

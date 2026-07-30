@@ -1108,7 +1108,15 @@ export function createPost(renderer, scene, camera) {
   const DYN_UP_MS = 13.5;
   const DYN_INTERVAL_S = 2.5;
   const DYN_WARMUP_S = 6; // ignore boot/shader-compile turbulence
-  let dynScale = 1;
+  // High exposes 1.1x as an opportunistic supersampling ceiling, but starts
+  // at its certified 1.0x base. This is expressed as a scale relative to the
+  // live capped ratio so dpr-1 displays remain exactly 1.0 (never 0.91x).
+  function baseDynScale() {
+    const capped = Math.min(renderer.getPixelRatio(), preset.maxPixelRatio);
+    const base = Math.min(capped, preset.adaptiveBasePixelRatio || capped);
+    return capped > 0 ? base / capped : 1;
+  }
+  let dynScale = baseDynScale();
   let dynEma = 0;
   let dynClock = 0;
   let dynLastStep = 0;
@@ -1146,7 +1154,7 @@ export function createPost(renderer, scene, camera) {
   onPresetChange((p) => {
     preset = p;
     gtao.enabled = preset.aoScale > 0;
-    dynScale = 1; // new preset = new budget baseline; governor re-earns cuts
+    dynScale = baseDynScale(); // new preset = new budget baseline; governor re-earns supersampling
     dynEma = 0;
     dynLastStep = dynClock;
     if (cssW > 0 && cssH > 0) applySize(cssW, cssH);

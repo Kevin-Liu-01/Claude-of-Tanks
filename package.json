@@ -8,8 +8,11 @@
   },
   "scripts": {
     "test": "node src/sim/movement.selftest.mjs && node src/sim/combat.selftest.mjs && node src/sim/spotting.selftest.mjs",
-    "build": "vite build && node tools/strip-nc-assets.mjs",
+    "build": "VITE_PUBLIC_BUILD=1 vite build && node tools/strip-nc-assets.mjs",
+    "build:private": "vite build",
     "build:public": "VITE_PUBLIC_BUILD=1 vite build && node tools/strip-nc-assets.mjs",
+    "model:audit": "node tools/model-quality-audit.mjs --check",
+    "model:rig": "node tools/model-rig-probe.mjs",
     "icons": "node tools/genIcons.mjs",
     "shots": "node tools/screenshot.mjs"
   },

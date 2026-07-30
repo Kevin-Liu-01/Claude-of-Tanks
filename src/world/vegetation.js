@@ -14,32 +14,17 @@ export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math
 
 const HALF = 512;
 const CHUNKS = 8, CHUNK_SIZE = 128;
-// r5 density push: the mid-field carpet was the biggest "camo carpet" tell —
-// bare albedo with sparse tufts from ~40 m out. Midfield attempts up ~1.7x
-// and the far rolloff eased so the meadow stays three-dimensional to ~200 m.
-// r2: 16000 -> 19000 + relaxed midfield cull (makeTuft) — the carpet-to-
-// scatter density step at 60-80 m was the visible ground-cover LOD seam
-// r3 terrain_environment: 19000 -> 23000 + wider midfield tufts — the seam
-// fix is two-sided: the carpet fade must land ON a midfield that can carry
-// the density, or the transition line just moves
-const GRASS_PER_CHUNK = 23000;         // midfield scatter (map-wide, cheap)
-const GRASS_FADE_END = 250;            // scale-out ends here (no hard carpet line)
-// near carpet: camera-centred cells, dense. Ring 5 pushes the dense band to
-// ~77 m so the ground-level view no longer pops to flat albedo at 30-40 m;
-// the midfield scatter carries the 70-235 m band beyond it.
-// r3: cell 14 -> 16 (square coverage to ±88 m) and the shader fade band now
-// ENDS INSIDE that coverage (CARPET_FAR 86 < 88): the old fade ran to 95 m
-// while cells stopped at ±77 m, so the carpet CUT on a hard square boundary
-// mid-fade — the visible "dense 3D grass band ends at 40-60 m" LOD seam.
+// Performance pass: terrain splat/detail already carries the meadow at range;
+// rendering hundreds of thousands of alpha-tested blade cards on top made the
+// field look noisy and consumed most of the battle's triangle/overdraw budget.
+// Keep readable tufts around the vehicle, then hand off gradually to terrain.
+const GRASS_PER_CHUNK = 12000;         // sparse, map-wide midfield scatter
+const GRASS_FADE_END = 180;            // scale-out ends before cards become sub-pixel
 const CARPET_CELL = 16;
-const CARPET_RING = 5;                 // (2R+1)^2 = 121 cells around the camera
-// r6: 680 -> 880 attempts/cell + cap raise — the 0-25 m ring around the tank
-// must read as continuous 3D turf (AAA tank games run dense instanced grass
-// to 30 m+); at 680 the ground still showed flat albedo between tufts right
-// beside the tracks (r3: 880 -> 1080, tracks the bigger cell area)
-const CARPET_PER_CELL = 1080;          // attempts per cell (filters thin it)
-const CARPET_FAR = 86;                 // shader fade distance (< ring coverage)
-const CARPET_CAP = 52000;              // instances per tuft variant
+const CARPET_RING = 3;                 // 49 cached cells, coverage to ±56 m
+const CARPET_PER_CELL = 420;           // filters thin this to a natural sward
+const CARPET_FAR = 48;                 // circular fade hides the square cell edge
+const CARPET_CAP = 14000;              // hard upload/raster ceiling per variant
 const TREE_NEAR_IN = 260, TREE_NEAR_OUT = 290; // hysteresis band (full-detail radius)
 
 function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
@@ -89,7 +74,7 @@ function finishAlphaTexture(c, ctx, floodR, floodG, floodB, radialFalloff = fals
   ctx.putImageData(id, 0, 0);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
+  t.anisotropy = 8;
   return t;
 }
 
@@ -115,7 +100,7 @@ function _nrmFromHeight(h, s, strength) {
   c.getContext('2d').putImageData(new ImageData(px, s, s), 0, 0);
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.anisotropy = 4;
+  t.anisotropy = 8;
   return t;
 }
 function makeBarkTexture(seed) {
@@ -183,7 +168,7 @@ function makeBarkTexture(seed) {
   const albedo = new THREE.CanvasTexture(c);
   albedo.colorSpace = THREE.SRGBColorSpace;
   albedo.wrapS = albedo.wrapT = THREE.RepeatWrapping;
-  albedo.anisotropy = 4;
+  albedo.anisotropy = 8;
   return { albedo, normal: _nrmFromHeight(hgt, s, 2.2) };
 }
 
@@ -191,7 +176,10 @@ function makeBarkTexture(seed) {
 // root line, ragged at the top so minified mips fade the card edges instead of
 // exposing a translucent rectangle.
 function makeGrassCardTexture(rng, variant, tone = null) {
-  const s = 256;
+  // Grass never occupies enough screen space to justify a 256 px procedural
+  // atlas. A simpler 128 px silhouette minifies more cleanly and quarters the
+  // texture traffic without changing the authored meadow palette.
+  const s = 128;
   const c = document.createElement('canvas');
   c.width = c.height = s;
   const ctx = c.getContext('2d');
@@ -200,13 +188,13 @@ function makeGrassCardTexture(rng, variant, tone = null) {
   // dust over the dark carpet in player_view) + livelier green tips so near
   // tufts read as lit 3D turf instead of murky moss
   const dryChance = variant === 0 ? 0.08 : 0.26;
-  const nBlades = variant === 0 ? 46 : 38;
+  const nBlades = variant === 0 ? 22 : 18;
   for (let b = 0; b < nBlades; b++) {
     const dry = rng() < dryChance;
-    const bx = 8 + rng() * (s - 16);
-    const bw = 5 + rng() * 7;
+    const bx = 4 + rng() * (s - 8);
+    const bw = 3 + rng() * 4;
     const tall = rng();
-    const tipX = bx + (rng() - 0.5) * (variant === 0 ? 90 : 130);
+    const tipX = bx + (rng() - 0.5) * (variant === 0 ? 45 : 65);
     const tipY = s - (0.35 + 0.62 * tall) * s;
     const cpX = bx + (tipX - bx) * (0.25 + rng() * 0.3);
     const cpY = s - (s - tipY) * (0.45 + rng() * 0.2);
@@ -233,16 +221,16 @@ function makeGrassCardTexture(rng, variant, tone = null) {
     ctx.closePath();
     ctx.fill();
   }
-  // r2: sparse wildflower heads on the lush variant — tiny meadow color
-  // accents (yarrow white / buttercup) that break the golf-course monotone
+  // A few broad color accents survive minification without the old high-
+  // frequency flower speckle.
   if (variant === 0) {
-    for (let f = 0; f < 9; f++) {
-      const fx = 12 + rng() * (s - 24), fy = s - (0.45 + 0.4 * rng()) * s;
+    for (let f = 0; f < 3; f++) {
+      const fx = 6 + rng() * (s - 12), fy = s - (0.45 + 0.4 * rng()) * s;
       const warm = rng() < 0.55;
       ctx.fillStyle = warm ? css(0.13, 0.75, 0.62) : css(0.14, 0.12, 0.86);
       for (let p = 0; p < 4; p++) {
         ctx.beginPath();
-        ctx.arc(fx + (rng() - 0.5) * 5, fy + (rng() - 0.5) * 4, 1.1 + rng() * 1.2, 0, Math.PI * 2);
+        ctx.arc(fx + (rng() - 0.5) * 3, fy + (rng() - 0.5) * 2, 0.7 + rng() * 0.8, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -1508,13 +1496,15 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     useAttributeNormal(shader);
   };
 
-  // tuft geometry: 3 crossed planes, root sunk slightly for ground blend
+  // Two single-segment crossed cards are sufficient for grass-scale parallax.
+  // The old three 2-segment cards cost 12 triangles per tuft; this costs four
+  // and also avoids the overly busy blade volume the user was seeing.
   function makeTuftGeometry(w, h) {
     const planes = [];
-    for (let k = 0; k < 3; k++) {
-      const p = new THREE.PlaneGeometry(w, h, 1, 2);
+    for (let k = 0; k < 2; k++) {
+      const p = new THREE.PlaneGeometry(w * 1.12, h, 1, 1);
       p.translate(0, h / 2 - 0.03, 0);
-      p.rotateY((k / 3) * Math.PI);
+      p.rotateY((k / 2) * Math.PI);
       planes.push(p);
     }
     const geo = mergeGeometries(planes, false);
@@ -1523,20 +1513,12 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     return geo;
   }
 
-  // PERF (performance_budget r5): far-band tuft geometry LOD. The mid-grass
-  // pool (world-grass-wind-v5) measured 3.2-3.4 M triangles/frame on the
-  // certification battle -- the single largest triangle line in the whole
-  // frame -- and ~70% of its instances sit beyond 78 m, where a 0.6-0.7 m
-  // tuft subtends <= 12 px at 1080p. Out there the third crossed plane and
-  // the mid-height wind vertex row are both sub-pixel; a 2-plane single-
-  // segment cross (4 tris vs 12) is indistinguishable. Width +14% keeps the
-  // projected coverage mass of the dropped plane. Swapped per CHUNK in
-  // update() (see GRASS_LOD_DIST there) -- a geometry pointer swap, no
-  // instance-buffer upload, no material/program change.
+  // Far tufts collapse to one wider plane. At this range their alpha
+  // silhouette supplies the entire read, so a crossed second plane is waste.
   function makeTuftFarGeometry(w, h) {
     const planes = [];
-    for (let k = 0; k < 2; k++) {
-      const p = new THREE.PlaneGeometry(w * 1.14, h, 1, 1);
+    for (let k = 0; k < 1; k++) {
+      const p = new THREE.PlaneGeometry(w * 1.5, h, 1, 1);
       p.translate(0, h / 2 - 0.03, 0);
       p.rotateY((k / 2) * Math.PI);
       planes.push(p);
@@ -1552,11 +1534,11 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     makeGrassCardTexture(mulberry32(seed + 42), 1, veg.grassTexTone),
   ];
   function makeGrassMaterial(tex, farDist, cacheKey) {
-    const mat = new THREE.MeshStandardMaterial({
+    // Lambert is materially cheaper for a rough, non-metallic alpha card and
+    // preserves the lighting/shadow response that is actually visible here.
+    const mat = new THREE.MeshLambertMaterial({
       map: tex, alphaTest: 0.44, side: THREE.DoubleSide,
-      roughness: 1.0, metalness: 0.0,
     });
-    mat.envMapIntensity = 0.35; // kill white env-specular sparkle on distant blades
     engineCtx.setupShadowMaterial(mat, grassWindHook(farDist));
     mat.customProgramCacheKey = () => cacheKey;
     return mat;
@@ -1793,8 +1775,8 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     if (carpetCache.size > 420) carpetCache.delete(carpetCache.keys().next().value);
     return cell;
   }
-  const _carpetLast = new THREE.Vector3(1e9, 0, 0);
-  let _carpetLastMs = -1e9;
+  let _carpetCellX = 0x7fffffff;
+  let _carpetCellZ = 0x7fffffff;
   function rebuildCarpet(camPos) {
     const cix = Math.floor(camPos.x / CARPET_CELL), ciz = Math.floor(camPos.z / CARPET_CELL);
     const counts = [0, 0];
@@ -3041,16 +3023,14 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       // 40-60 m" seam line (critique). Full midfield density now runs PAST
       // the carpet handover before the far taper begins; the far half of the
       // r3 cut (sub-pixel range) is preserved by the same 205 m endpoint.
-      let frac = d < GRASS_FADE_END ? 1 - 0.54 * smoothstepJs(92, 205, d) : 0;
+      let frac = d < GRASS_FADE_END ? 1 - 0.94 * smoothstepJs(56, 155, d) : 0;
       // PERF (performance_budget r5): far-band tuft geometry LOD (see
-      // makeTuftFarGeometry). d is already edge-adjusted (- CHUNK_SIZE*0.71),
-      // so d > 78 means the NEAREST possible tuft of the chunk is 78 m out
-      // (<= 12 px tall at 1080p). 8 m hysteresis so a camera hovering on the
-      // boundary never oscillates the swap. Measured on the r5 tree: -1.9 M
-      // triangles on the certification-battle median, no visible change at
-      // either gate view (shots diffed).
-      if (d > 78) gc.lod = true;
-      else if (d < 70) gc.lod = false;
+      // makeTuftFarGeometry). `d` is already edge-adjusted by the chunk
+      // radius; beyond 48 m the nearest possible card is small enough for the
+      // single-plane silhouette. Eight meters of hysteresis keeps the swap
+      // stable while the camera moves.
+      if (d > 48) gc.lod = true;
+      else if (d < 40) gc.lod = false;
       for (const cm of gc.meshes) {
         const count = Math.floor(cm.total * frac);
         cm.mesh.visible = count > 0;
@@ -3059,21 +3039,22 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
         if (cm.mesh.geometry !== g) cm.mesh.geometry = g;
       }
     }
-    // PERF (performance_budget r5): stagger the two rebuild classes so a
-    // carpet re-upload and a tree repartition never land on the same frame
-    // (each is a multi-MB instance-buffer upload; pairing them doubled the
-    // spike). Carpet additionally rate-limits on wall clock — at top speed the
-    // 7 m trigger fired ~2x/s and each rebuild is the priciest upload we have.
-    const nowMs = (typeof performance !== 'undefined' ? performance.now() : 0);
+    // Stagger the two rebuild classes so a carpet upload and tree repartition
+    // never land on the same frame.
     let uploadedThisFrame = false;
-    if (_carpetLast.distanceToSquared(camPos) > 49 && nowMs - _carpetLastMs > 180) {
-      _carpetLast.copy(camPos);
-      _carpetLastMs = nowMs;
+    // Rebuild only after crossing a 16 m cache-cell boundary. The previous
+    // seven-meter distance trigger uploaded several MB while merely orbiting
+    // the camera; the circular shader fade keeps this coarser recenter hidden.
+    const carpetCx = Math.floor(camPos.x / CARPET_CELL);
+    const carpetCz = Math.floor(camPos.z / CARPET_CELL);
+    if (carpetCx !== _carpetCellX || carpetCz !== _carpetCellZ) {
+      _carpetCellX = carpetCx;
+      _carpetCellZ = carpetCz;
       rebuildCarpet(camPos);
       uploadedThisFrame = true;
     }
     if (!uploadedThisFrame &&
-        (_lastCam.distanceToSquared(camPos) > 9 || scopeRepartitionPending)) {
+        (_lastCam.distanceToSquared(camPos) > 36 || scopeRepartitionPending)) {
       scopeRepartitionPending = false;
       _lastCam.copy(camPos);
       repartitionTrees(camPos);
@@ -3104,7 +3085,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     // hud_ui r6: zoom-scaled impostor→mesh promotion radius (aim corridor)
     const wasR = scopeZoomR;
     scopeZoomR = (sniperFadeTarget >= 0.5 && fovDeg != null && fovDeg <= 15)
-      ? Math.min(640, TREE_NEAR_IN * clamp(24 / fovDeg, 1, 2.5)) : 0;
+      ? Math.min(720, TREE_NEAR_IN * clamp(30 / fovDeg, 1, 3.4)) : 0;
     if (Math.abs(scopeZoomR - wasR) > 1) scopeRepartitionPending = true;
   }
 

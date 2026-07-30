@@ -337,8 +337,8 @@ const RAD2DEG = 180 / Math.PI;
 // limited to ±arc instead of a full turret — when the aim point exceeds the
 // arc, hull traverse toward the target auto-engages (WoT does exactly this in
 // sniper mode). `spec.gunArcDeg` overrides per vehicle; any spec whose armor
-// carries `turretless: true` (every fixed-gun vehicle in the roster: strv103,
-// jagdtiger, jpz_e100, sturmtiger, t95, t30, is1) defaults to ±CASEMATE_ARC_DEG
+// carries `turretless: true` (every fixed-mount vehicle in the roster: strv103,
+// jagdtiger, jpz_e100, sturmtiger, t95 and the ISU variants) defaults to ±CASEMATE_ARC_DEG
 // per the doc's ±10–15° band. Turreted tanks (arc = Infinity) are untouched.
 const CASEMATE_ARC_DEG = 11;
 // Excess-over-arc that commands a FULL-RATE hull traverse; below it the
@@ -348,24 +348,11 @@ const CASEMATE_ARC_DEG = 11;
 // the settled gun lands ON the aim point, not a deadband short of it.
 const AUTO_TRAVERSE_RAMP_RAD = 8 * DEG2RAD;
 
-// Fallback arcs by spec id: specs.js's communityArmor() consumes its
-// `turretless` input for turret-box sizing WITHOUT carrying the flag onto the
-// built armor object, so the runtime spec has no casemate marker yet. This
-// table makes the §7 mechanic real today; docs/handoff/gameplay_feel-r1.md §1
-// moves these values into specs.js as explicit `gunArcDeg` fields, after
-// which this fallback is dead code and should be deleted.
-const CASEMATE_ARC_FALLBACK_DEG = {
-  strv103: 4,      // true fixed gun — hull-aimed (S-tank)
-  jagdtiger: 10, jpz_e100: 10, sturmtiger: 10, t95: 10,
-  t30: 11, is1: 11, // fused print turrets — class default
-};
-
 /** Gun-yaw half-arc in radians for a spec (Infinity = full turret). */
 function gunArcRadFor(spec) {
   if (typeof spec.gunArcDeg === 'number') return spec.gunArcDeg * DEG2RAD;
   if (spec.armor && spec.armor.turretless) return CASEMATE_ARC_DEG * DEG2RAD;
-  const fb = CASEMATE_ARC_FALLBACK_DEG[spec.id];
-  return fb != null ? fb * DEG2RAD : Infinity;
+  return Infinity;
 }
 
 // Module-scope scratch (no per-frame allocation, ARCHITECTURE §1.3).

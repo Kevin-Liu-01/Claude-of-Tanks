@@ -1040,13 +1040,22 @@ class Pool {
     this.highWater = 0;
     this.lifeAttr = lifeAttr;
     this.lifeComp = lifeComp;
+    // Particle recipes often write dozens of adjacent slots for one shot.
+    // Defer GPU upload marking until the frame flush so that becomes one
+    // bufferSubData span per attribute, not one driver call per particle.
+    this.dirtyStart = -1;
+    this.dirtyEnd = -1;
+    this.dirtyStart2 = -1;
+    this.dirtyEnd2 = -1;
     this.attrs = {};
+    this.attrList = [];
     for (const key of Object.keys(layout)) {
       const itemSize = layout[key];
       const attr = new THREE.InstancedBufferAttribute(
         new Float32Array(capacity * itemSize), itemSize);
       attr.setUsage(THREE.DynamicDrawUsage);
       this.attrs[key] = attr;
+      this.attrList.push(attr);
       geometry.setAttribute(key, attr);
     }
     this.geometry = geometry;
@@ -1068,11 +1077,42 @@ class Pool {
 
   /** Mark one instance's span dirty on every attribute. */
   dirty(i) {
-    for (const key of Object.keys(this.attrs)) {
-      const a = this.attrs[key];
-      a.addUpdateRange(i * a.itemSize, a.itemSize);
+    if (this.dirtyStart < 0) {
+      this.dirtyStart = i;
+      this.dirtyEnd = i + 1;
+    } else if (i === this.dirtyEnd) {
+      this.dirtyEnd = i + 1;
+    } else if (i + 1 === this.dirtyStart) {
+      this.dirtyStart = i;
+    } else if (i < this.dirtyStart) {
+      // Ring-buffer wrap creates at most one second contiguous range during
+      // a frame. Keep it separate instead of uploading the whole pool.
+      if (this.dirtyStart2 < 0) {
+        this.dirtyStart2 = i;
+        this.dirtyEnd2 = i + 1;
+      } else {
+        this.dirtyStart2 = Math.min(this.dirtyStart2, i);
+        this.dirtyEnd2 = Math.max(this.dirtyEnd2, i + 1);
+      }
+    } else {
+      this.dirtyEnd = Math.max(this.dirtyEnd, i + 1);
+    }
+  }
+
+  /** Commit all CPU writes as one or two contiguous ranges per attribute. */
+  flush() {
+    if (this.dirtyStart < 0) return;
+    for (const a of this.attrList) {
+      a.clearUpdateRanges();
+      a.addUpdateRange(this.dirtyStart * a.itemSize,
+        (this.dirtyEnd - this.dirtyStart) * a.itemSize);
+      if (this.dirtyStart2 >= 0) {
+        a.addUpdateRange(this.dirtyStart2 * a.itemSize,
+          (this.dirtyEnd2 - this.dirtyStart2) * a.itemSize);
+      }
       a.needsUpdate = true;
     }
+    this.dirtyStart = this.dirtyEnd = this.dirtyStart2 = this.dirtyEnd2 = -1;
   }
 
   /** Kill every live particle (zero the life component) and reset the ring. */
@@ -1083,6 +1123,7 @@ class Pool {
     for (let i = 0; i < this.capacity; i++) arr[i * k + this.lifeComp] = 0;
     a.clearUpdateRanges();
     a.needsUpdate = true;
+    this.dirtyStart = this.dirtyEnd = this.dirtyStart2 = this.dirtyEnd2 = -1;
     this.cursor = 0;
     this.highWater = 0;
     this.geometry.instanceCount = 0;
@@ -1218,6 +1259,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
         fog: true,
       }), DEBRIS_LAYOUT, POOL_SIZES.debris, 'aVL', 3),
   };
+  const poolList = Object.values(pools);
 
   // Draw order: opaque debris first (default), then dust → smoke → billow →
   // fire → sparks (the occluding billow body draws over the smoke mass; the
@@ -1319,6 +1361,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
      */
     update(dt) {
       if (!frozen) uTime.value += dt;
+      for (const pool of poolList) pool.flush();
     },
 
     /**
@@ -1369,7 +1412,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
 
     /** Kill all live particles and reset every ring buffer. */
     resetAll() {
-      for (const key of Object.keys(pools)) pools[key].killAll();
+      for (const pool of poolList) pool.killAll();
     },
   };
 }

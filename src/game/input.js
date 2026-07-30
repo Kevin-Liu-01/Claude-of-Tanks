@@ -20,6 +20,8 @@
 // synthesized as held forward/back/left/right actions past a deadzone),
 // right stick aims (merged into consumeMouseDelta with its own sensitivity
 // and a squared response curve), buttons map to the same action ids as keys.
+// The mobile HUD feeds the same layer through the virtual-control methods at
+// the bottom of the public API; it never writes directly into simulation state.
 
 const BINDINGS_KEY = 'cot.bindings.v1'; // primary keyboard/mouse map (v1 compatible)
 const BINDINGS2_KEY = 'cot.bindings2.v1'; // secondary keyboard/mouse map
@@ -349,6 +351,10 @@ export function createInput(opts = {}) {
   // action down for that one query even though the key is already up. Held
   // keys behave exactly as before (the latch is just cleared on first read).
   const pressLatch = new Set();
+  const virtualHeld = new Set(); // touch HUD buttons held this frame
+  const virtualMove = { x: 0, y: 0 }; // x right, y forward, both -1..1
+  let virtualMoveActive = false;
+  let virtualLastActiveMs = -Infinity;
   const state = {};
   for (const def of ACTION_DEFS) state[def.id] = false;
   let enabled = true;
@@ -404,7 +410,7 @@ export function createInput(opts = {}) {
     // overlays, so a keyboard-bound fire always latches in this mode (the
     // settings panel disables the whole layer while open).
     if (actionId === 'fire' &&
-        (code.startsWith('Pad') || !lockElement ||
+        (code.startsWith('Pad') || code.startsWith('Touch') || !lockElement ||
          document.pointerLockElement === lockElement ||
          (lockDenied && evt &&
           (evt.target === lockElement || evt.type === 'keydown')))) {
@@ -567,7 +573,8 @@ export function createInput(opts = {}) {
   });
 
   const isHeld = (actionId) =>
-    down.has(maps[0][actionId]) || down.has(maps[1][actionId]) || padHeld.has(actionId);
+    down.has(maps[0][actionId]) || down.has(maps[1][actionId]) ||
+    padHeld.has(actionId) || virtualHeld.has(actionId);
 
   const api = {
     /** Ordered action metadata for UI listings. */
@@ -737,6 +744,52 @@ export function createInput(opts = {}) {
       return out;
     },
 
+    /** Set the mobile driving stick. x is screen-right; y is forward. */
+    setVirtualMove(x, y) {
+      virtualMove.x = clamp(Number(x) || 0, -1, 1);
+      virtualMove.y = clamp(Number(y) || 0, -1, 1);
+      virtualMoveActive = Math.abs(virtualMove.x) > 0.025 || Math.abs(virtualMove.y) > 0.025;
+      virtualLastActiveMs = nowMillis();
+    },
+
+    /** Read the mobile driving stick and report whether it is deflected. */
+    getVirtualMove(out) {
+      out.x = virtualMove.x;
+      out.y = virtualMove.y;
+      return virtualMoveActive;
+    },
+
+    /** Feed a touch-drag aim delta through the same smoothing/sign path as a mouse. */
+    addVirtualAim(dx, dy) {
+      if (!enabled) return;
+      rawDX += Number(dx) || 0;
+      rawDY += Number(dy) || 0;
+      virtualLastActiveMs = nowMillis();
+    },
+
+    /** Press/release/tap a named action from the mobile HUD. */
+    pressVirtual(actionId) {
+      if (!enabled || !Object.prototype.hasOwnProperty.call(state, actionId)) return;
+      const wasDown = virtualHeld.has(actionId);
+      virtualHeld.add(actionId);
+      virtualLastActiveMs = nowMillis();
+      if (!wasDown) firePress(actionId, `Touch:${actionId}`);
+    },
+    releaseVirtual(actionId) { virtualHeld.delete(actionId); },
+    tapVirtual(actionId) {
+      api.pressVirtual(actionId);
+      api.releaseVirtual(actionId);
+    },
+
+    /** Recent touch activity relaxes pointer-lock-only fire gating. */
+    virtualActive() { return nowMillis() - virtualLastActiveMs < PAD_ACTIVE_WINDOW_MS; },
+
+    /** Coarse/narrow devices use the Blitz-style touch HUD and skip pointer lock. */
+    isTouchLayout() {
+      const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+      return coarse || (typeof innerWidth === 'number' && innerWidth <= 900);
+    },
+
     /** @returns {{sensitivity:number,invertY:boolean,sniperSensScale:number,
      *  aimSmoothing:number,padSensitivity:number,aiDifficulty:string}} live settings object */
     getSettings() { return settings; },
@@ -834,6 +887,8 @@ export function createInput(opts = {}) {
       if (!enabled) {
         down.clear();
         padHeld.clear();
+        virtualHeld.clear();
+        virtualMove.x = 0; virtualMove.y = 0; virtualMoveActive = false;
         rawDX = 0; rawDY = 0; smDX = 0; smDY = 0;
       }
     },

@@ -5,7 +5,6 @@
 
 import { FONT_STACK, ensureFonts } from './fonts.js';
 import { flagSVG } from './flags.js';
-import { iconUrl } from './icons.js';
 import { createTechTree } from './techtree.js';
 import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } from './tankThumbs.js';
 // CAMO PICKER SECTION: swatches preview the REAL resolved pattern (scheme +
@@ -43,6 +42,18 @@ const TIER_BY_ID = {
   bmp1: 'VI', m1128: 'VIII', m1296: 'VII',
   // user drops wave 4 (recovered batch, final sweep)
   kf51: 'X',
+  m1a2_tejas: 'X', abramsx: 'X',
+  challenger1: 'VIII', chieftain5: 'VII', fv510: 'VII',
+  leo2_revolution: 'X', leo2a5: 'IX', leo2a7v: 'X',
+  m1a1ha: 'IX', m1a2_sepv2: 'X', m60a1: 'VII', pt91m: 'VIII',
+  merkava1b: 'VII', merkava2b: 'VII', merkava2d: 'VIII',
+  merkava3b: 'VIII', merkava3c: 'VIII', merkava3d: 'IX', merkava4b: 'IX',
+  t62mv1: 'VII', t64bv1: 'VIII', t72b_1987: 'VIII', t72b3m: 'IX',
+  t72bu: 'VIII', t90sm: 'IX', type90: 'IX', t90a_vladimir: 'IX',
+  is3_bergman: 'VIII', isu152: 'VIII', isu122s: 'VIII',
+  centurion3: 'VII', centurion5: 'VIII', comet: 'VII', challenger_cruiser: 'VI', charioteer: 'VIII',
+  leopard2_proto: 'VIII', m1a1_aim: 'IX', m46_patton: 'VII', m47_patton: 'VII',
+  m26_pershing: 'VIII', m45_patton: 'VIII', m60a3: 'VIII',
 };
 
 const SHELL_TYPE_COLOR = {
@@ -251,6 +262,43 @@ const GARAGE_CSS = `
 .cot-camos .cnote{font-size:8.5px;font-weight:700;letter-spacing:.10em;
   color:#8a97a3;text-transform:uppercase;margin-top:6px;line-height:1.55;
   text-shadow:0 1px 2px rgba(0,0,0,.7);}
+
+/* Compact touch garage: keep the tank, BATTLE action and vehicle roster
+   dominant on a phone-sized landscape screen. The full stat sheet remains
+   available on desktop, while mobile keeps the interactive loadout column. */
+@media (max-width:900px){
+  .cot-garage .band-top{height:23%;}.cot-garage .band-bot{height:31%;}
+  .cot-garage .band-r{display:none;}
+  .cot-garage .title{top:14px;left:14px;font-size:13px;letter-spacing:.22em;}
+  .cot-garage .modetag{top:35px;left:15px;font-size:7.5px;letter-spacing:.24em;}
+  .cot-tech{top:56px;left:14px;padding:6px 10px 5px;font-size:8px;}
+  .cot-battle{top:12px;width:214px;height:40px;font-size:15px;}
+  .cot-garage .stats{display:none;}
+  .cot-topbar{top:8px;right:8px;gap:3px;transform:scale(.72);transform-origin:right top;}
+  .cot-leftcol{left:14px;top:98px;bottom:112px;width:180px;gap:7px;overflow:visible;}
+  .cot-maps{display:none;}
+  .cot-camos{width:180px;margin-top:0;padding:7px;
+    background:rgba(7,11,15,.62);border:1px solid rgba(146,164,180,.18);}
+  .cot-camos .ctitle{font-size:8px;margin-bottom:5px;}
+  .cot-camo-card{padding:3px 2px 2px;}.cot-camo-card .sw{height:22px;margin-bottom:2px;}
+  .cot-camo-card .cl{font-size:6.5px;letter-spacing:.06em;}
+  .cot-camos .cnote{display:none;}
+  .cot-era-chips{bottom:86px;gap:3px;}
+  .cot-era-chip{padding:4px 8px 3px;font-size:7px;letter-spacing:.12em;}
+  .cot-era-chip .ct{margin-left:3px;}
+  .cot-carousel{bottom:8px;gap:4px;height:72px;max-width:98vw;}
+  .cot-car-arrow{width:24px;font-size:16px;}
+  .cot-cards{gap:4px;-webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 30px),transparent 100%);
+    mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 30px),transparent 100%);}
+  .cot-card{width:94px;padding:4px 5px 3px;}
+  .cot-card.sel{transform:translateY(-3px);}
+  .cot-card .flag{margin-bottom:1px;font-size:6px;gap:2px;}
+  .cot-card .flag svg{width:15px;height:auto;}.cot-card .era{font-size:6px;padding:1px 0;}
+  .cot-card .ti{width:76px;height:40px;margin:-3px auto -1px;}
+  .cot-card .nm{font-size:7.5px;margin:0 -3px;}.cot-card .nm .tiern{margin-right:2px;}
+  .cot-card .cls{font-size:6px;margin-top:0;letter-spacing:.12em;}
+  .cot-garage .hint{display:none;}
+}
 `;
 
 function ensureStyle(id, css) {
@@ -580,8 +628,8 @@ export function createGarage(opts) {
         if (!selectedId) return;
         camoOpts.set(selectedId, pid);
         refreshCamoSel();
-        // r4: the carousel card must wear the SAME paint the pedestal now
-        // shows — re-render this vehicle's portrait with the new pattern
+        // Keep the packaged portrait healthy; the live pedestal is the
+        // authoritative camouflage preview.
         requeueTankThumbs(selectedId);
       });
       grid.appendChild(card);
@@ -794,12 +842,12 @@ export function createGarage(opts) {
   for (const s of specs) {
     const card = document.createElement('div');
     card.className = 'cot-card';
-    // portrait: runtime-rendered 3/4 side-profile (tankThumbs.js) with the
-    // baked hero icon as the instant fallback while portraits render
+    // Stable pre-rendered 3/4 portrait. These are generated only after the
+    // final model has loaded, so async GLB stand-ins can never replace a card.
     card.innerHTML =
       `<span class="era">${s.era === 'ww2' ? 'WWII' : 'MODERN'}</span>` +
       `<span class="flag">${flagSVG(s.nation, s.era, 18, 12)}<i>${NATION_LABEL[s.nation] || s.nation}</i></span>` +
-      `<img class="ti" data-cot-thumb="${s.id}" src="${getTankThumb(s.id) || iconUrl(s.id, 'angle')}" alt="">` +
+      `<img class="ti" data-cot-thumb="${s.id}" src="${getTankThumb(s.id)}" alt="">` +
       `<div class="nm"><b class="tiern">${TIER_BY_ID[s.id] || ''}</b><span class="nmt"></span></div>` +
       `<div class="cls">${s.class}</div>`;
     card.querySelector('.nmt').textContent = s.name;
@@ -810,12 +858,9 @@ export function createGarage(opts) {
     cardsEl.appendChild(card);
     cardById.set(s.id, card);
   }
-  // PERF (load-to-ready): portraits render as idle-time chunks while the
-  // garage is VISIBLE (see tankThumbs.js) — off the __GAME_READY critical
-  // path, and never inside a battle frame. Cards ship with the baked icons
-  // and upgrade in place as chunks land; screenshot recipes call
-  // api.drainThumbs() so captured garage frames always carry portraits.
-  ensureTankThumbs(allSpecs, { canWork: () => api.isOpen }); // tech tree needs delisted portraits too
+  // Packaged PNGs avoid per-card WebGL contexts and remain deterministic
+  // across the garage carousel, tech tree, and screenshot harness.
+  ensureTankThumbs(allSpecs, { canWork: () => api.isOpen });
 
   function statBar(label, valueText, frac) {
     const pct = Math.max(2, Math.min(100, frac * 100)).toFixed(1);
@@ -973,7 +1018,7 @@ export function createGarage(opts) {
     /** The research screen (created/owned by the garage). */
     techtree,
 
-    /** Synchronously finish queued tank portraits (screenshot determinism). */
+    /** Normalize packaged tank portraits (screenshot compatibility). */
     drainThumbs() { drainTankThumbs(); },
 
     /** UI-free rectangle reserved for the 3D showroom hero (CSS pixels). */
@@ -1018,8 +1063,7 @@ export function createGarage(opts) {
       selectedMapId = mapId;
       for (const [id, card] of mapCardById) card.classList.toggle('sel', id === mapId);
       if (opts.onMapSelect) opts.onMapSelect(mapId);   // CAMO WIRING: AUTO preview
-      // r4: AUTO-camo vehicles change paint with the biome — sweep every
-      // card whose baked pattern went stale (idle-time re-renders)
+      // Keep packaged portraits healthy after the biome/camo transition.
       requeueTankThumbs();
     },
   };

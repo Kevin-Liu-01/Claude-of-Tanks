@@ -108,6 +108,19 @@ const TIER_BY_ID = {
   bmp1: 'VI', m1128: 'VIII', m1296: 'VII',
   // user drops wave 4 (recovered batch, final sweep)
   kf51: 'X',
+  // recovered Abrams candidates
+  m1a2_tejas: 'X', abramsx: 'X',
+  challenger1: 'VIII', chieftain5: 'VII', fv510: 'VII',
+  leo2_revolution: 'X', leo2a5: 'IX', leo2a7v: 'X',
+  m1a1ha: 'IX', m1a2_sepv2: 'X', m60a1: 'VII', pt91m: 'VIII',
+  merkava1b: 'VII', merkava2b: 'VII', merkava2d: 'VIII',
+  merkava3b: 'VIII', merkava3c: 'VIII', merkava3d: 'IX', merkava4b: 'IX',
+  t62mv1: 'VII', t64bv1: 'VIII', t72b_1987: 'VIII', t72b3m: 'IX',
+  t72bu: 'VIII', t90sm: 'IX', type90: 'IX', t90a_vladimir: 'IX',
+  is3_bergman: 'VIII', isu152: 'VIII', isu122s: 'VIII',
+  centurion3: 'VII', centurion5: 'VIII', comet: 'VII', challenger_cruiser: 'VI', charioteer: 'VIII',
+  leopard2_proto: 'VIII', m1a1_aim: 'IX', m46_patton: 'VII', m47_patton: 'VII',
+  m26_pershing: 'VIII', m45_patton: 'VIII', m60a3: 'VIII',
 };
 function hashStr(s) {
   let h = 2166136261;
@@ -259,14 +272,6 @@ const HUD_CSS = `
   -webkit-user-select:none;user-select:none;color:#e6edf3;overflow:hidden;}
 .cot-hud *{box-sizing:border-box;margin:0;padding:0;}
 .cot-ret{position:absolute;inset:0;width:100%;height:100%;display:block;}
-/* r6-2 sniper glass: a masked backdrop blur softens ONLY the outer frame of
-   the scene (~2px at the corners, nothing inside the sight picture) — the
-   optical edge falloff real scope glass shows. Sits UNDER the reticle canvas
-   so sight furniture stays crisp. */
-.cot-scopeblur{position:absolute;inset:0;display:none;pointer-events:none;
-  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
-  -webkit-mask-image:radial-gradient(ellipse 72% 72% at 50% 50%,transparent 0 48%,#000 86%);
-  mask-image:radial-gradient(ellipse 72% 72% at 50% 50%,transparent 0 48%,#000 86%);}
 .cot-top{position:absolute;top:0;left:50%;transform:translateX(-50%);display:flex;
   align-items:center;gap:16px;padding:7px 46px 9px;
   background:linear-gradient(180deg,rgba(16,21,27,.94),rgba(7,10,14,.68));
@@ -599,9 +604,6 @@ export function initHud(bus) {
   const root = el('div', 'cot-hud');
   document.body.appendChild(root);
 
-  // scope-glass edge blur BEFORE the reticle canvas: backdrop-filter blurs
-  // what is painted beneath it (the 3D scene), the reticle above stays crisp
-  const scopeBlurEl = el('div', 'cot-scopeblur', root);
   const retCanvas = el('canvas', 'cot-ret', root);
   const ctx = retCanvas.getContext('2d');
   const hpLayer = el('div', 'cot-hpbars', root);
@@ -942,7 +944,11 @@ export function initHud(bus) {
   function resize() {
     w = root.clientWidth || window.innerWidth;
     h = root.clientHeight || window.innerHeight;
-    dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    // The sight is a cheap 2D overlay, so keep it truly retina-sharp even
+    // when the 3D scene's dynamic resolution governor scales down under load.
+    // A 2x cap avoids oversized mobile allocations while removing the soft
+    // half-pixel dashes and text produced by the old 1.5x backing store.
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
     retCanvas.width = Math.round(w * dpr);
     retCanvas.height = Math.round(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1157,8 +1163,14 @@ export function initHud(bus) {
   //   2. FULL-WIDTH HAIRLINES — 1px cross lines running from the screen
   //      edges up to the dispersion circle's rim (interior stays clean);
   //   3. the zoom readout anchored below reticle center (drawReticle).
-  function drawScope(zoom) {
-    const cx = w / 2, cy = h / 2;
+  function drawScope(view) {
+    const zoom = view.zoom || 2;
+    // Sight furniture follows the actual server-aim projection. This matters
+    // while the cursor-follow camera is easing onto a newly selected point:
+    // the scope remains truthful instead of showing a second cross at screen
+    // centre. The optical vignette itself remains centred on the lens.
+    const cx = view.cx, cy = view.cy;
+    const lensCx = w / 2, lensCy = h / 2;
     if (!scopeGrad || scopeGrad._zoom !== zoom) {
       // r7-2 MAJOR (round critique: "vignette nearly imperceptible at the
       // frame edges — 8x reads as a plain FOV change"): the falloff is now
@@ -1185,11 +1197,11 @@ export function initHud(bus) {
       ? Math.min(1, (performance.now() - scopeFadeMs) / 100) : 1;
     const sy = h / w; // elliptical space: y compressed so edges are equal
     ctx.save();
-    ctx.translate(cx, cy);
+    ctx.translate(lensCx, lensCy);
     ctx.scale(1, sy);
     ctx.globalAlpha = fadeK;
     ctx.fillStyle = scopeGrad;
-    ctx.fillRect(-cx, -cy / sy, w, h / sy);
+    ctx.fillRect(-lensCx, -lensCy / sy, w, h / sy);
     // NO color tint over the scene: WoT sniper optics keep the arcade
     // grading — but real scope glass shows a cool chromatic fringe where
     // the vignette bites. Same elliptical space, slightly wider start so
@@ -1199,7 +1211,7 @@ export function initHud(bus) {
     chrom.addColorStop(0.72, 'rgba(88,122,210,0.055)');
     chrom.addColorStop(1, 'rgba(104,130,225,0.15)');
     ctx.fillStyle = chrom;
-    ctx.fillRect(-cx, -cy / sy, w, h / sy);
+    ctx.fillRect(-lensCx, -lensCy / sy, w, h / sy);
     ctx.restore();
     ctx.globalAlpha = fadeK;
     // SHORT cross arms off the dispersion-circle rim (r4 MAJOR): vanilla WoT
@@ -1249,6 +1261,30 @@ export function initHud(bus) {
         }
         ctx.stroke();
       }
+
+      // Fine first-focal-plane mil references: subdued enough not to compete
+      // with the dispersion circle, but useful for holding elevation/lead at
+      // long range. Spacing grows with magnification like an optical reticle.
+      const mil = THREE.MathUtils.clamp(8 + zoom * 1.2, 11, 22);
+      const maxMil = Math.min(3, Math.max(1, Math.floor((armEnd - 4) / mil)));
+      for (const pass of [
+        { c: 'rgba(3,7,5,0.52)', lw: 2.2 },
+        { c: 'rgba(176,242,184,0.70)', lw: 0.9 },
+      ]) {
+        ctx.strokeStyle = pass.c;
+        ctx.lineWidth = pass.lw;
+        ctx.beginPath();
+        for (let i = 1; i <= maxMil; i++) {
+          const d = i * mil;
+          const major = i % 2 === 0;
+          const tick = major ? 4.5 : 3;
+          ctx.moveTo(cx - tick, cy - d + 0.5); ctx.lineTo(cx + tick, cy - d + 0.5);
+          ctx.moveTo(cx - tick, cy + d + 0.5); ctx.lineTo(cx + tick, cy + d + 0.5);
+          ctx.moveTo(cx - d + 0.5, cy - tick); ctx.lineTo(cx - d + 0.5, cy + tick);
+          ctx.moveTo(cx + d + 0.5, cy - tick); ctx.lineTo(cx + d + 0.5, cy + tick);
+        }
+        ctx.stroke();
+      }
     }
     ctx.globalAlpha = 1;
   }
@@ -1281,26 +1317,30 @@ export function initHud(bus) {
     // capture/verification pass could ever catch it and still read short on
     // 400 m+ shots) with a brief scale-in pop so the land is unmissable.
     if (age < 0 || age > 1.4) { hitMark = null; return; }
-    const a = 1 - age / 1.4;
+    // Hold the confirmation at full strength long enough to read, then use a
+    // dark under-stroke so sunlit walls cannot erase the result marker.
+    const a = age < 0.3 ? 1 : 1 - (age - 0.3) / 1.1;
     const scaleIn = age < 0.12 ? 0.6 + 0.4 * (age / 0.12) : 1;
     const r1 = (13 + age * 30) * scaleIn;
-    const r2 = r1 + 10;
-    ctx.strokeStyle = hitMark.bounced
-      ? `rgba(190,202,214,${(0.9 * a).toFixed(3)})`
-      : `rgba(255,152,54,${(0.95 * a).toFixed(3)})`;
-    ctx.lineWidth = 3;
+    const r2 = r1 + 14;
     ctx.lineCap = 'round';
-    ctx.shadowColor = 'rgba(0,0,0,0.7)';
-    ctx.shadowBlur = 2;
-    ctx.beginPath();
-    for (let q = 0; q < 4; q++) {
-      const ang = Math.PI / 4 + q * Math.PI / 2;
-      const ca = Math.cos(ang), sa = Math.sin(ang);
-      ctx.moveTo(view.cx + ca * r1, view.cy + sa * r1);
-      ctx.lineTo(view.cx + ca * r2, view.cy + sa * r2);
+    for (const pass of [
+      { c: `rgba(10,14,18,${(0.85 * a).toFixed(3)})`, lw: 8 },
+      { c: hitMark.bounced
+        ? `rgba(216,226,236,${a.toFixed(3)})`
+        : `rgba(255,158,44,${a.toFixed(3)})`, lw: 5 },
+    ]) {
+      ctx.strokeStyle = pass.c;
+      ctx.lineWidth = pass.lw;
+      ctx.beginPath();
+      for (let q = 0; q < 4; q++) {
+        const ang = Math.PI / 4 + q * Math.PI / 2;
+        const ca = Math.cos(ang), sa = Math.sin(ang);
+        ctx.moveTo(view.cx + ca * r1, view.cy + sa * r1);
+        ctx.lineTo(view.cx + ca * r2, view.cy + sa * r2);
+      }
+      ctx.stroke();
     }
-    ctx.stroke();
-    ctx.shadowBlur = 0;
     ctx.lineCap = 'butt';
   }
 
@@ -2643,6 +2683,10 @@ export function initHud(bus) {
       y = clash.y - 26;
       x += (Math.random() - 0.5) * 12;
     }
+    // Labels are x-centered; keep the complete widest result string and its
+    // float-up tail inside the viewport at edge hits.
+    x = Math.min(Math.max(x, 90), w - 90);
+    y = Math.min(Math.max(y, 40), h - 60);
     liveNums.push({ x, y, until: nowMs + 900 });
     d.style.left = `${x.toFixed(0)}px`;
     d.style.top = `${y.toFixed(0)}px`;
@@ -2798,7 +2842,7 @@ export function initHud(bus) {
   function renderCanvas(dt) {
     ctx.clearRect(0, 0, w, h);
     if (mode === 'hidden') return;
-    if (mode === 'sniper') drawScope(aimView.zoom);
+    if (mode === 'sniper') drawScope(aimView);
     drawHitIndicators(lastTimeS);
     drawReticle(aimView, dt);
     drawHitMark(aimView, lastTimeS);
@@ -2821,8 +2865,6 @@ export function initHud(bus) {
     // scope shadow fades in over ~0.1 s on ENTERING sniper (movement §9.2)
     if (mode === 'sniper' && scopePrevMode !== 'sniper') scopeFadeMs = performance.now();
     scopePrevMode = mode;
-    // scope-glass edge blur rides the mode directly (masked backdrop-filter)
-    scopeBlurEl.style.display = mode === 'sniper' ? 'block' : 'none';
     const sc = sceneCanvas();
     if (sc && sc.style.filter) sc.style.filter = '';
   }

@@ -1,0 +1,88 @@
+// Recovered m_bergman pack: every distinct tank/assault-gun in part 1 that
+// was not already represented by the earlier BMP/Stryker imports.
+import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+
+const copy = (v) => JSON.parse(JSON.stringify(v));
+const ALLOW_LOCAL_RECOVERED_MODELS = typeof import.meta !== 'undefined' &&
+  import.meta.env && !import.meta.env.VITE_PUBLIC_BUILD;
+const make = (baseId, id, name, nation, patch = {}) => {
+  const s = copy(TANK_SPECS[baseId]);
+  s.id = id; s.name = name; s.nation = nation || s.nation; s.variantOf = baseId;
+  s.community = {
+    author: 'm_bergman', source: 'https://www.thingiverse.com/thing:4718232',
+    license: 'CC BY-NC-SA — LOCAL-ONLY QUARANTINE',
+  };
+  const gun = s.gun, dims = s.dims, visual = s.visual;
+  Object.assign(s, patch);
+  if (patch.gun) s.gun = { ...gun, ...patch.gun };
+  if (patch.dims) s.dims = { ...dims, ...patch.dims };
+  if (patch.visual) s.visual = { ...visual, ...patch.visual };
+  return s;
+};
+
+const SPECS = ALLOW_LOCAL_RECOVERED_MODELS ? [
+  make('is3', 'is3_bergman', 'IS-3 (Bergman)', 'USSR', { visual: { number: '703' } }),
+  make('sturmtiger', 'isu152', 'ISU-152', 'USSR',
+    { hp: 1450, weightTons: 47.3, topSpeedKmh: 37, reverseSpeedKmh: 14, gun: { caliberMm: 152, reloadS: 15.5 } }),
+  make('jagdtiger', 'isu122s', 'ISU-122S', 'USSR',
+    { hp: 1400, weightTons: 46, topSpeedKmh: 37, reverseSpeedKmh: 14, gun: { caliberMm: 122, reloadS: 9.5 } }),
+  make('chieftain_mk10', 'centurion3', 'Centurion Mk.3', 'UK',
+    { hp: 1500, weightTons: 51, topSpeedKmh: 35, gun: { caliberMm: 84, reloadS: 7.0 } }),
+  make('chieftain_mk10', 'centurion5', 'Centurion Mk.5/2', 'UK',
+    { hp: 1650, weightTons: 52, topSpeedKmh: 35, gun: { caliberMm: 105, reloadS: 7.4 } }),
+  make('panther_g', 'comet', 'A34 Comet', 'UK',
+    { hp: 1150, weightTons: 33.5, topSpeedKmh: 51, gun: { caliberMm: 77, reloadS: 5.2 } }),
+  make('panther_g', 'challenger_cruiser', 'A30 Challenger', 'UK',
+    { hp: 1050, weightTons: 33, topSpeedKmh: 52, gun: { caliberMm: 76.2, reloadS: 5.8 } }),
+  make('jagdtiger', 'charioteer', 'FV4101 Charioteer', 'UK',
+    {
+      hp: 1250, weightTons: 30, topSpeedKmh: 56,
+      gun: { caliberMm: 84, reloadS: 7.0 },
+      // Gameplay ancestry supplies balance defaults only; the Charioteer has
+      // a rotating turret and must not inherit the Jagdtiger's casemate flag.
+      armor: { ...TANK_SPECS.jagdtiger.armor, turretless: false },
+    }),
+  make('leo2a4', 'leopard2_proto', 'Leopard 2 Prototype', 'Germany',
+    { hp: 2050, weightTons: 55, topSpeedKmh: 68, gun: { reloadS: 6.8 } }),
+  make('m1a1', 'm1a1_aim', 'M1A1 AIM Abrams', 'USA',
+    { hp: 2400, weightTons: 63, gun: { reloadS: 6.2 } }),
+  make('m60a1', 'm46_patton', 'M46 Patton', 'USA',
+    { hp: 1450, weightTons: 44, topSpeedKmh: 48, gun: { caliberMm: 90, reloadS: 7.0 } }),
+  make('m60a1', 'm47_patton', 'M47 Patton', 'USA',
+    { hp: 1550, weightTons: 46, topSpeedKmh: 48, gun: { caliberMm: 90, reloadS: 6.8 } }),
+  make('m4a3e8', 'm26_pershing', 'M26 Pershing', 'USA',
+    { hp: 1450, weightTons: 41.9, topSpeedKmh: 40, gun: { caliberMm: 90, reloadS: 7.5 } }),
+  make('m4a3e8', 'm45_patton', 'M45 Patton', 'USA',
+    { hp: 1500, weightTons: 42, topSpeedKmh: 40, gun: { caliberMm: 105, reloadS: 9.0 } }),
+  make('m60a1', 'm60a3', 'M60A3', 'USA',
+    { hp: 1800, weightTons: 52.6, topSpeedKmh: 48, gun: { reloadS: 7.2 } }),
+] : [];
+
+const ROOT = '/models/tanks/community/recovered/';
+const articulated = (id, file = id, cfg = {}) => {
+  MODEL_SOURCE[id] = { source: 'glb', glb: {
+    path: `${ROOT}${file}.glb`, turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
+    ...cfg,
+  } };
+};
+const fixed = (id) => {
+  MODEL_SOURCE[id] = { source: 'glb', glb: { path: `${ROOT}${id}.glb`, fixedMount: true, paintUntextured: true } };
+};
+
+if (ALLOW_LOCAL_RECOVERED_MODELS) {
+  for (const spec of SPECS) {
+    TANK_SPECS[spec.id] = TANK_SPECS[spec.id] || spec;
+    if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
+  }
+  articulated('is3_bergman', 'bergman_is3');
+  fixed('isu152'); fixed('isu122s');
+  for (const id of ['centurion3', 'centurion5', 'comet', 'challenger_cruiser', 'charioteer',
+    'leopard2_proto', 'm1a1_aim', 'm46_patton', 'm47_patton', 'm26_pershing', 'm45_patton']) articulated(id);
+  // The pack's `M60A3 complex` STL is the M60 machine-gun receiver, not the
+  // Patton tank (the icon pass caught the false-positive). Use the recovered
+  // M60A1 hull/turret for this close family variant instead of shipping a gun
+  // floating on the pedestal.
+  articulated('m60a3', 'm60a1', { gunNode: '^weapon$', yawOffset: -Math.PI / 2 });
+}
+
+export const USERDROP6_TANK_IDS = SPECS.map((s) => s.id);

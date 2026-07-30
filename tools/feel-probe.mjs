@@ -242,6 +242,12 @@ try {
     };
   });
   results.pointerLocked = await page.evaluate(() => window.__DEBUG.input.isLocked());
+  await page.evaluate(() => {
+    const p = window.__DEBUG.game.player;
+    window.__FEEL.driveOrigin = {
+      x: p.state.pos.x, y: p.state.pos.y, z: p.state.pos.z, yaw: p.state.yaw,
+    };
+  });
 
   // ==========================================================================
   // 1. AIM LATENCY
@@ -336,6 +342,8 @@ try {
   async function accelRun() {
     await page.evaluate(() => {
       const p = window.__DEBUG.game.player;
+      const o = window.__FEEL.driveOrigin;
+      p.state.pos.set(o.x, o.y, o.z); p.state.yaw = o.yaw;
       p.state.speed = 0; p.state._spool = 0;
       window.__FEEL.speed.length = 0;
       window.__FEEL.accMark = { frame: window.__FEEL.frame, t: performance.now() - window.__FEEL.t0 };
@@ -379,6 +387,8 @@ try {
   // than the old bug (a collided, already-stopped hull read "0.0 km/h").
   await page.evaluate(() => {
     const p = window.__DEBUG.game.player;
+    const o = window.__FEEL.driveOrigin;
+    p.state.pos.set(o.x, o.y, o.z); p.state.yaw = o.yaw;
     p.state.speed = 0; p.state._spool = 0;
     window.__FEEL.speed.length = 0;
     window.__FEEL.brakeMark = null;
@@ -478,15 +488,42 @@ try {
   // ==========================================================================
   console.log('\n[feel] === 3. fire chain ===');
   const fire = { shots: [] };
-  // aim at the nearest enemy so shots actually terminate on a tank
-  await page.evaluate(() => { if (window.__DEBUG.aimAtNearest) window.__DEBUG.aimAtNearest(); });
-  await sleep(700);
   for (let shot = 0; shot < 5; shot++) {
+    // Find a live, muzzle-clear target. The battle AI can move the initially
+    // visible enemy behind cover while the drive trials run, so a one-shot
+    // aim request occasionally returned null and the probe fired into dirt.
+    const target = await page.evaluate(() => {
+      const D = window.__DEBUG;
+      const p = D.game.player;
+      // This is a fire-feedback instrument, not a survivability trial: keep
+      // incoming module damage from disabling the trigger halfway through.
+      p.combat.hp = Math.max(p.combat.hp, 50000);
+      for (const m of Object.values(p.combat.modules || {})) if (m && m.state) m.state = 'green';
+      for (let retry = 0; retry < 12; retry++) {
+        const aimed = D.aimAtNearest && D.aimAtNearest();
+        if (aimed) return aimed;
+        if (D.fastForward) D.fastForward(0.5);
+      }
+      return null;
+    });
+    if (!target) throw new Error(`no clear fire-chain target for shot ${shot + 1}`);
+    // debugAimAtNearest moves the camera immediately but the physical turret
+    // must still traverse. Firing before this gate made every trial terminate
+    // in the nearby terrain on frame zero and measured no combat feedback.
+    await page.waitForFunction(
+      () => {
+        const s = window.__DEBUG.aimState && window.__DEBUG.aimState();
+        return s && s.errMrad <= 1.2 && s.reloadT <= 0.001 &&
+          s.blockedDistM == null && s.bloomF <= 1.3;
+      },
+      { timeout: 12000, polling: 16 },
+    ).catch(() => {});
     await page.evaluate(() => {
       const F = window.__FEEL;
+      // Begin the observation window immediately before our click so enemy
+      // muzzle events cannot be misattributed to this player's shot.
       F.events.length = 0;
       F.shotMark = { frame: F.frame, t: performance.now() - F.t0 };
-      if (window.__DEBUG.aimAtNearest) window.__DEBUG.aimAtNearest();
     });
     const pre = await page.evaluate(() => {
       const p = window.__DEBUG.game.player;
@@ -499,6 +536,12 @@ try {
     await page.mouse.down();
     await page.mouse.up();
     await sleep(2600);
+    // Keep the event window open through the ready edge. The old probe read
+    // results at 2.6 s on a 6 s reload and therefore reported 0% by design.
+    await page.waitForFunction(
+      () => window.__DEBUG.game.player.combat.reload.t <= 0.001,
+      { timeout: 25000, polling: 100 },
+    ).catch(() => {});
     const s = await page.evaluate(() => {
       const F = window.__FEEL;
       const M = F.shotMark;
@@ -527,11 +570,6 @@ try {
     });
     s.pre = pre;
     fire.shots.push(s);
-    // wait out the reload
-    await page.waitForFunction(
-      () => window.__DEBUG.game.player.combat.reload.t <= 0.001,
-      { timeout: 25000, polling: 100 },
-    ).catch(() => {});
     await sleep(200);
   }
   const fired = fire.shots.filter((s) => s.firedFrames != null);

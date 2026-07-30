@@ -4,7 +4,8 @@
 // 1. Deletes NC/personal-use quarantined + unvetted candidate model trees from
 //    dist/ (they must never ship in a public build):
 //      dist/models/community-candidates/**
-//      dist/models/tanks/community/quarantine/**
+//      dist/models/tanks/community/{quarantine,recovered}/**
+//      local-only Tejas/AbramsX GLBs and their derivative icon sets
 // 2. FAILS (exit 1) if any MODEL_SOURCE path in src/vehicles/*.js that is
 //    still REGISTERED as a playable references a deleted path — i.e. any
 //    spec module 'quarantine/' or 'community-candidates/' path whose id is in
@@ -26,8 +27,24 @@ const DIST = path.join(ROOT, 'dist');
 const STRIP_DIRS = [
   path.join(DIST, 'models', 'community-candidates'),
   path.join(DIST, 'models', 'tanks', 'community', 'quarantine'),
+  path.join(DIST, 'models', 'tanks', 'community', 'recovered'),
 ];
-const NC_PATH_RE = /(quarantine\/|community-candidates\/)/;
+const STRIP_FILES = [
+  path.join(DIST, 'models', 'tanks', 'm1a2_tejas.glb'),
+  path.join(DIST, 'models', 'tanks', 'community', 'abramsx-mortavex.glb'),
+];
+const RECOVERED_ICON_IDS = [
+  'm1a2_tejas', 'abramsx',
+  'challenger1', 'chieftain5', 'fv510', 'leo2_revolution', 'leo2a5', 'leo2a7v',
+  'm1a1ha', 'm1a2_sepv2', 'm60a1', 'pt91m', 'merkava1b', 'merkava2b',
+  'merkava2d', 'merkava3b', 'merkava3c', 'merkava3d', 'merkava4b', 't62mv1',
+  't64bv1', 't72b_1987', 't72b3m', 't72bu', 't90sm', 'type90', 't90a_vladimir',
+  'is3_bergman', 'isu152', 'isu122s', 'centurion3', 'centurion5', 'comet',
+  'challenger_cruiser', 'charioteer', 'leopard2_proto', 'm1a1_aim', 'm46_patton',
+  'm47_patton', 'm26_pershing', 'm45_patton', 'm60a3',
+];
+const ICON_SUFFIXES = ['angle', 'side', 'side_silhouette', 'top', 'top_silhouette'];
+const NC_PATH_RE = /(quarantine\/|community-candidates\/|community\/recovered\/|m1a2_tejas\.glb|abramsx-mortavex\.glb)/;
 
 async function main() {
   if (!existsSync(DIST)) {
@@ -44,6 +61,17 @@ async function main() {
       console.log(`[strip-nc] (already absent) ${path.relative(ROOT, dir)}`);
     }
   }
+  for (const file of STRIP_FILES) {
+    if (existsSync(file)) {
+      await rm(file, { force: true });
+      console.log(`[strip-nc] removed ${path.relative(ROOT, file)}`);
+    }
+  }
+  for (const id of RECOVERED_ICON_IDS) {
+    for (const suffix of ICON_SUFFIXES) {
+      await rm(path.join(DIST, 'icons', `${id}_${suffix}.png`), { force: true });
+    }
+  }
 
   // 2. cross-check: registered playables must not point at deleted paths.
   // Import the spec registry (registration side effects included — userdrops
@@ -54,7 +82,8 @@ async function main() {
         // pull in every spec module that mutates the registry, mirroring the
         // app's import graph (order matters only for completeness, not data)
         for (const mod of ['modern1.js', 'modern2.js', 'modern3.js',
-          'variants.js', 'userdrops.js', 'userdrops2.js']) {
+          'variants.js', 'userdrops.js', 'userdrops2.js', 'userdrops3.js',
+          'userdrops4.js', 'userdrops5.js', 'userdrops6.js']) {
           const p = path.join(ROOT, 'src', 'vehicles', mod);
           if (existsSync(p)) {
             try { await import(p); } catch (e) {

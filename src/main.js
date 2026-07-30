@@ -52,6 +52,7 @@ import { createGarageStage } from './ui/garageStage.js';
 import { createAudio } from './audio/audio.js';
 import { createInput } from './game/input.js';
 import { createSettings } from './ui/settings.js';
+import { createTouchControls } from './ui/touchControls.js';
 import {
   createBus, createGameState, spawnTanks, setupBattle, simStep, createCollider,
   mulberry32, ensureStagedVisuals,
@@ -522,7 +523,7 @@ const garage = await bootStage('ui', () => createGarage({
   specs: ALL_TANK_IDS.map(getSpec), // COMMUNITY TANKS: grown carousel
   bus,
   onSelect: (specId) => { selectedSpecId = specId; setPedestalTank(specId); },
-  onBattle: (specId, mapId) => startBattle(specId, mapId), // MAP-CONFIG WIRING
+  onBattle: (specId, mapId) => beginBattleEntry(specId, mapId), // loading screen owns entry
   // MAP-CONFIG WIRING: battlefield picker cards (4 maps + Random)
   maps: [
     ...MAP_IDS.map((id) => {
@@ -761,10 +762,14 @@ bus.on('shell:hit', (ev) => {
   }
   if (!game.player) return;
   if (ev.attackerId === game.player.id && ev.targetId && ev.targetId !== game.player.id) {
-    const pen = ev.kind === 'pen' || ev.kind === 'he_pen' || (ev.damage || 0) > 0;
-    audio.hitConfirm(pen);
+    // Preserve the actual armor result: a ricochet's singing deflection and
+    // a blunt non-penetration should never collapse into the same UI knock.
+    audio.hitConfirm(ev.kind, ev.damage || 0);
   }
-  if (ev.targetId === game.player.id && (ev.damage || 0) > 0) rig.addTrauma(0.35);
+  if (ev.targetId === game.player.id && (ev.damage || 0) > 0) {
+    const shock = Math.min(0.62, 0.24 + (ev.damage || 0) / 2400 + (ev.caliberMm || 90) / 1200);
+    rig.addTrauma(shock);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -913,6 +918,27 @@ endOverlay.append(endTitle, endEarn, endBtn);
 document.body.appendChild(endOverlay);
 endBtn.addEventListener('click', () => { bus.emit('ui:click', {}); enterGarage(); });
 
+// Always-visible battle escape hatch. The settings menu remains available on
+// Esc, but this explicit control makes leaving discoverable in pointer-lock,
+// cursor-aim, spectator, and end-of-battle states alike.
+const leaveBattleBtn = document.createElement('button');
+leaveBattleBtn.type = 'button';
+leaveBattleBtn.textContent = 'LEAVE BATTLE';
+leaveBattleBtn.title = 'Return to garage';
+leaveBattleBtn.setAttribute('aria-label', 'Leave battle and return to garage');
+leaveBattleBtn.style.cssText =
+  'position:fixed;top:18px;right:20px;z-index:69;display:none;cursor:pointer;' +
+  'padding:8px 13px;color:#d8e0e7;background:rgba(7,11,15,.72);' +
+  'border:1px solid rgba(190,204,216,.35);border-left:2px solid #e69a2d;' +
+  "font-family:'Switzer','Segoe UI',Roboto,Helvetica,Arial,sans-serif;" +
+  'font-size:10px;font-weight:800;letter-spacing:.16em;backdrop-filter:blur(4px);';
+document.body.appendChild(leaveBattleBtn);
+leaveBattleBtn.addEventListener('mousedown', (ev) => ev.stopPropagation());
+leaveBattleBtn.addEventListener('click', () => {
+  bus.emit('ui:click', {});
+  enterGarage();
+});
+
 function showEndOverlay(result) {
   endTitle.textContent = result === 'victory' ? 'VICTORY' : result === 'draw' ? 'DRAW' : 'DEFEAT';
   endTitle.style.color = result === 'victory' ? '#7ee87e' : result === 'draw' ? '#cfd9e2' : '#f05a5a';
@@ -941,13 +967,24 @@ function showEndOverlay(result) {
 const debugFlags = { forceFire: false }; // headless-test hook (window.__DEBUG.flags)
 let wheelStep = 0;
 const _mouse = { x: 0, y: 0 };
+const _touchMove = { x: 0, y: 0 };
 
 const input = createInput({ lockElement: renderer.domElement });
 const settings = createSettings({
   input,
   bus,
-  isBattleActive: () => game.phase === 'battle' && !game.result,
+  // A dead player is spectating even though the team battle continues. This
+  // keeps pointer-unlock from opening settings over the death camera.
+  isBattleActive: () => game.phase === 'battle' && !game.result &&
+    !!(game.player && game.player.combat && !game.player.combat.destroyed),
+  canLeaveBattle: () => game.phase === 'battle',
+  onLeaveBattle: () => enterGarage(),
   gearVisible: () => game.phase === 'garage',
+});
+const touchControls = createTouchControls({
+  input, bus,
+  isBattleActive: () => game.phase === 'battle',
+  onLeaveBattle: () => enterGarage(),
 });
 
 // CURSOR-AIM FALLBACK: pointer lock denied/unavailable (sandboxed iframes,
@@ -988,14 +1025,18 @@ input.onAction('zoomOut', () => { if (game.phase === 'battle' && !settings.isOpe
 renderer.domElement.addEventListener('mousedown', () => {
   audio.resume();
   if (game.phase !== 'battle' || settings.isOpen()) return;
+  if (input.isTouchLayout()) return;
   if (!input.isLocked()) input.requestLock();
 });
 
 // Battle start: grab the pointer inside the BATTLE-click gesture and flash the
 // controls hint strip (reflects the CURRENT bindings; fades after 8 s).
 bus.on('ui:battleStart', () => {
-  input.requestLock();
-  settings.showHints();
+  touchControls.refresh();
+  if (!input.isTouchLayout()) {
+    input.requestLock();
+    settings.showHints();
+  }
 });
 
 // Rebindable shell slots — the ONLY hotkey path (HUD renders from ui:shellSelect).
@@ -1103,6 +1144,7 @@ bus.on('shell:fired', (p) => {
  * @returns {Promise<void>} resolves when the battle is live
  */
 async function startBattleLoading(specId, mapId = null) {
+  const shownAt = performance.now();
   const resolved = resolveMapId(mapId || pendingMapId);
   const cfg = getMapConfig(resolved);
   battleLoad.show({
@@ -1124,15 +1166,7 @@ async function startBattleLoading(specId, mapId = null) {
   battleLoad.progress(0.56, 'Assembling rosters');
   await nextFrame();
   startBattle(specId, resolved, { deferVisuals: true });
-  battleLoad.show({
-    mapName: cfg.name || resolved,
-    mapSub: cfg.sub || '',
-    thumb: MAP_THUMBS[resolved] || '',
-    biome: resolved,
-    mode: mapId === 'random' ? 'Random Battle · Any Battlefield' : 'Random Battle · Standard',
-    allies: rosterRows('player'),
-    enemies: rosterRows('enemy'),
-  });
+  battleLoad.rosters(rosterRows('player'), rosterRows('enemy'));
   battleLoad.progress(0.58, 'Painting vehicles');
   await nextFrame();
   const missing = game.tanks.filter((e) => !e.visual).length;
@@ -1149,6 +1183,11 @@ async function startBattleLoading(specId, mapId = null) {
   warmCombatPipeline();
   battleLoad.progress(1, 'Ready');
 
+  // Cached maps can finish in only a few frames. Give the page enough dwell
+  // to communicate the map/rosters instead of flashing like a dropped frame.
+  const readyHoldMs = 900 - (performance.now() - shownAt);
+  if (readyHoldMs > 0) await new Promise((r) => setTimeout(r, readyHoldMs));
+
   // 4. countdown, then hand the screen over to the battle-open flyby.
   for (let n = 2; n >= 1; n--) {
     battleLoad.countdown(n);
@@ -1161,8 +1200,22 @@ async function startBattleLoading(specId, mapId = null) {
 }
 // Headless probes drive the battle entry through __DEBUG.startBattle (which is
 // synchronous); the countdown only exists for the player-facing flow.
-let battleCountdownMs = 620;
+let battleCountdownMs = 780;
 let battleEntryPending = false;
+
+async function beginBattleEntry(specId, mapId = null) {
+  if (battleEntryPending) return;
+  battleEntryPending = true;
+  try {
+    await startBattleLoading(specId, mapId);
+  } catch (error) {
+    console.error('[battle] entry failed', error);
+    battleLoad.hide();
+    enterGarage();
+  } finally {
+    battleEntryPending = false;
+  }
+}
 
 /** Rows for the pre-battle roster panels. @param {string} team @returns {Array} */
 function rosterRows(team) {
@@ -1223,6 +1276,7 @@ function startBattle(specId, mapId = null, opts = {}) {
   killcam.cancel(); // KILL-CAM: never carry a replay across battles
   hud.setMode('battle');
   game.phase = 'battle';
+  leaveBattleBtn.style.display = 'block';
   setGarageSpots(false); // PERF: no spot-light cost on battle draws
   setGarageSunTrim(false); // restore the map's authored warm sun
   bus.emit('phase:change', { phase: 'battle' });
@@ -1236,13 +1290,16 @@ function startBattle(specId, mapId = null, opts = {}) {
   if (!opts.deferVisuals) openBattle();
 }
 
-/**
- * Hand the screen to the battle: 3 s flyby sweeping onto the chase camera
- * (skippable with any camera input), ambience up.
- * @returns {void}
- */
+/** Hand the screen to the battle in an immediately readable chase pose. */
 function openBattle() {
-  if (rig.startCinematic) rig.startCinematic(3);
+  // Re-snap here because the loading screen may have covered several warm-up
+  // frames. Starting aligned behind the hull avoids the old front/side flyby
+  // that made the selected tank appear to face the wrong direction, and it
+  // avoids a large vegetation repartition/upload during the first seconds.
+  if (game.player && game.player.state) {
+    rig.release();
+    rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
+  }
   audio.resume(); // the entry-gate keypress already unlocked the context
   audio.ambientOn(true);
 }
@@ -1252,6 +1309,7 @@ function enterGarage() {
   shotMode = false;
   fx.setFrozen(false);
   game.phase = 'garage';
+  leaveBattleBtn.style.display = 'none';
   setWorldDormant(true); // GARAGE PERF: the battlefield stops costing anything
   // camo_spotting r5: bot biome-camo overrides are battle-scoped — drop
   // them so the pedestal/picker show the player's own persisted selection.
@@ -1647,7 +1705,10 @@ function tick(nowMs) {
   if (inBattle && !paused && !kcActive && game.player && !game.player.combat.destroyed) {
     const st = input.getState();
     const inp = game.player.input;
-    inp.throttle = (st.forward ? 1 : 0) - (st.back ? 1 : 0);
+    const touchDriving = input.getVirtualMove(_touchMove);
+    inp.throttle = touchDriving
+      ? _touchMove.y
+      : (st.forward ? 1 : 0) - (st.back ? 1 : 0);
     // CONTROLS-SIGN FIX (input routing only — 1 line): TankInput.steer is
     // POSITIVE = increasing hull yaw (movement.js "Steering sign" note; the
     // AI's `steer = wrapAngle(bearing - yaw) * k` depends on it). Increasing
@@ -1656,13 +1717,16 @@ function tick(nowMs) {
     // The old `right - left` drove D into +yaw and turned the hull LEFT on
     // screen (user report; measured -0.36 NDC-x nose swing for D before this
     // fix — tools/controls-probe.mjs now asserts the screen direction).
-    inp.steer = (st.left ? 1 : 0) - (st.right ? 1 : 0);
+    inp.steer = touchDriving
+      ? -_touchMove.x
+      : (st.left ? 1 : 0) - (st.right ? 1 : 0);
     inp.brake = st.handbrake;
     const haveAmmo = !shellCards.length || ((shellCards[inp.shellSlot | 0] || {}).count | 0) > 0;
     // Fire gate: pointer lock held, a recently-active gamepad, or CURSOR-AIM
     // mode (lock unavailable — LMB must fire whenever the battle is live; the
     // input layer already refuses edges from clicks on UI overlays).
-    inp.fire = ((st.fire && (input.isLocked() || input.padActive() || input.isCursorAim())) ||
+    inp.fire = ((st.fire && (input.isLocked() || input.padActive() ||
+      input.isCursorAim() || input.virtualActive())) ||
       debugFlags.forceFire) && haveAmmo;
   } else if (game.player) {
     const inp = game.player.input;
@@ -2930,6 +2994,9 @@ function debugSlayEnemies() {
 window.__DEBUG = {
   scene, camera, renderer, post, lighting, game, fx, rig, bus,
   input, // controls probe: isLocked/isCursorAim/binding introspection
+  garage,
+  get pedestalVisual() { return pedestalVisual; },
+  selectGarageTank: (id) => garage.setSelected(id),
   get world() { return world; },
   switchMap,
   flags: debugFlags,

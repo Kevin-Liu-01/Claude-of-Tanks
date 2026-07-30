@@ -76,7 +76,7 @@ try {
   const report = await page.evaluate(async (BATTLES, SHOTS_PER) => {
     const D = window.__DEBUG;
     const g = D.game;
-    const out = { battles: [], convergeFails: 0 };
+    const out = { battles: [], convergeFails: 0, convergeLimitSkips: 0, convergeTravelSkips: 0, convergeDetails: [] };
     for (let b = 0; b < BATTLES; b++) {
       D.startBattle('m1a2');
       // LANE STAGING (controls_gunnery r4, critic minor #3): the gate's job
@@ -169,8 +169,10 @@ try {
         // terrain deaths, not gun-lay data).
         let st = null;
         let minErr4s = Infinity; // convergence trap: min errMrad over first 4 s
+        let startErrMrad = null;
         for (let w = 0; w < 56; w++) {
           st = D.aimState();
+          if (startErrMrad == null && st) startErrMrad = st.errMrad;
           if (st && w < 16) minErr4s = Math.min(minErr4s, st.errMrad);
           // r4: prefer fully settled (0.5 mrad) for 8 s, then accept
           // near-settled (1.2 mrad ~= 0.36 m at 300 m, well inside the
@@ -188,7 +190,22 @@ try {
         // near-stationary target the gun cannot get within 3 mrad of in 4 s
         // is the off-axis-anchor class of bug, round-blocking.
         if (tgt.state && Math.abs(tgt.state.speed || 0) < 1 && minErr4s >= 3) {
-          out.convergeFails++;
+          // A physical depression/elevation or casemate-yaw clamp is not the
+          // off-axis-anchor regression this assertion is designed to catch.
+          // aimState exposes that distinction; retain the hard failure only
+          // when the gun had legal travel and still would not converge.
+          const travel4sMrad = g.player.spec.turretTraverseDegS * Math.PI / 180 * 4 * 1000;
+          if (startErrMrad != null && startErrMrad > travel4sMrad * 0.9) {
+            // A near-180° target switch cannot physically finish inside the
+            // fixed four-second diagnostic window; do not call legal traverse
+            // time an anchor failure. The ordinary settle/fire gate still
+            // requires actual convergence before it can contribute a shot.
+            out.convergeTravelSkips++;
+          } else if (st && st.atGunLimit) out.convergeLimitSkips++;
+          else {
+            out.convergeFails++;
+            out.convergeDetails.push({ battle: b, target: aimed.id, startErrMrad, minErr4s, state: st });
+          }
         }
         if (!tgt.combat || tgt.combat.destroyed) continue;
         const re = D.aimAtNearest(); // refresh sticky lead just before firing
@@ -254,7 +271,14 @@ try {
   // controls_gunnery r3: convergence regression trap (off-axis anchor class).
   if (report.convergeFails > 0) {
     console.error(`[gunnery-gate] FAIL: ${report.convergeFails} aim snaps never converged within 3 mrad in 4 s on a near-stationary target`);
+    for (const d of report.convergeDetails) console.error(`[gunnery-gate]   convergence detail ${JSON.stringify(d)}`);
     failed = true;
+  }
+  if (report.convergeLimitSkips > 0) {
+    console.log(`[gunnery-gate] note: ${report.convergeLimitSkips} non-converging aim snap(s) were at a physical gun limit and excluded`);
+  }
+  if (report.convergeTravelSkips > 0) {
+    console.log(`[gunnery-gate] note: ${report.convergeTravelSkips} non-converging aim snap(s) exceeded the turret's four-second traverse envelope and were excluded`);
   }
   // controls_gunnery r2 regression floors:
   for (const b of report.battles) {

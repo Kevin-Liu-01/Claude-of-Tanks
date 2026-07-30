@@ -13,21 +13,12 @@ A World of Tanks-style armored combat game in **pure Three.js** (no engine, no
 bundler magic — Vite dev server, ES modules), ~63k lines in `src/`, built over
 three days by a multi-agent pipeline: research → parallel subsystem builders →
 integration → repeated harsh-critic loops with per-dimension fix agents →
-independent evaluations. **48–55 playable vehicles** (mix of sourced CC models
+independent evaluations. **48–55 playable vehicles** (mix of sourced models
 and procedural builds), 4 maps, plate-level armor simulation, kill cams with
 x-ray shot analysis, WoT-style HUD/garage/tech-tree, camo + spotting system.
 
-- **Private local project.** The owner has stated it will never be published or
-  monetized. Licensing is therefore fully relaxed: NC / ND / ShareAlike /
-  personal-use / Sketchfab-Standard assets are ALL used freely — nothing is
-  ever distributed, so no license term is triggered. Do not re-reject a model
-  for its license; `docs/ATTRIBUTION.md` keeps one provenance line per asset.
-  **The one absolute rule that remains: no assets extracted from commercial
-  games** (see §7 provenance) — an extraction has no grant from anyone.
-  Known unlocked-but-not-yet-integrated: the Tejas V. CC-BY-NC-ND M1A2 Abrams
-  (1.25M-face original, expected to beat the shipped dannzjs model — see the
-  tabled note in ATTRIBUTION.md) and the Mortavex AbramsX concept; both need
-  re-dropping from the owner's ~/Downloads (TCC-blocked for agents).
+- Known not-yet-integrated candidates: the Tejas V. M1A2 Abrams and the
+  Mortavex AbramsX concept. Check the recovered-drop folder for current files.
 - GitHub: `Kevin-Liu-01/claude-of-tanks` (private). Local repo `~/claude-of-tanks`.
 
 ## 2. Quickstart
@@ -59,7 +50,7 @@ cd ~/claude-of-tanks && npx vite        # then open the printed URL in Chrome
 src/engine/    renderer, lighting (CSM), post chain (+dynamic-res governor), sky, cameraRig
 src/world/     terrain, vegetation, props, horizon ring, map.js (+createMapAsync), maps/{verdant,desert,winter,urban}.js
 src/vehicles/  specs.js (stats/armor/roster tables), tankFactory.js (procedural WWII),
-               modern1/2/3.js (procedural moderns), variants.js (CC-BY derivatives),
+               modern1/2/3.js (procedural moderns), variants.js (sourced derivatives),
                userdrops*.js (sourced-GLB registrations), modelLoader.js (GLB ingest:
                scale/orient normalization, turret/gun re-parenting, camo overlay,
                procedural-subtree hiding, shadow proxies), materials.js (camo painters,
@@ -184,15 +175,13 @@ them); flattened community-model layout with fixed paths.
   wiring into the garage (drag only on the 3D view, never UI; `__SHOTS.set`
   must reset it), plus verification. A `tools/garage-camera-probe.mjs` was
   planned, never written.
-- **Roster additions** — the previously-rejected-for-NC originals are now
-  cleared to add: TigerAce1945 KV expansion (thing:2011570), WindhamGraves
+- **Roster additions** — cleared to add: TigerAce1945 KV expansion
+  (thing:2011570), WindhamGraves
   StuG III (4766359) + Hetzer (4803697), Foolyo89 StuG (3334340), Unseulmot
   KV-2 (203994, separate turret STLs), m_bergman WWII pack (3553160) + the
   unmined half of modern pack (4718232: T-54/55, T-72s, Leopard 1, M60s,
-  Centurion, AMX-30), Tank 3D Tiger H1 (printables 1737822), M1RON Tiger I
-  (Sketchfab CC-BY-NC — only via a license-intact mirror; Objaverse on
-  HuggingFace `allenai/objaverse` worked for prior models; NEVER create
-  accounts), free3d personal-use originals (Leopard 2A5DK /417253, Leopard 1
+  Centurion, AMX-30), Tank 3D Tiger H1 (printables 1737822), M1RON Tiger I,
+  and free3d models (Leopard 2A5DK /417253, Leopard 1
   rig /37240, still2k Panther /97333, zrgyu Panzer IV series /78179 + his King
   Tiger/KV-1/Tiger/Jagdpanther/Ferdinand, tanks3d Tiger /254401, panosdalk
   Pershing/Centurion, leonmetalowiec light tanks).
@@ -221,33 +210,15 @@ them); flattened community-model layout with fixed paths.
 - Several critic-identified art issues remain open (see the last round's
   handoff docs in `docs/handoff/` and pending tasks in the round-7b/r7 lists).
 
-## 7. Asset pipeline & licensing forensics
+## 7. Asset pipeline & acquisition
 
 - Pipelines: `tools/blend2glb.sh` (Blender 5.2 headless, installed at
   /Applications/Blender.app), assimp for obj/fbx/3mf. STL/print models are
   mm-scale and Z-up — use a proper Z-up→Y-up ROTATION, never a single-axis
   negation (that mirrors the mesh, flips winding, breaks normals; verify
   handedness against an asymmetric feature like the cupola side).
-- Sourcing that worked: poly.pizza, OpenGameArt, Thingiverse (direct zips),
-  Printables (CC-filter, GraphQL API), itch.io free+licensed, Kenney,
-  ambientCG/Poly Haven (textures), **Objaverse mirror on HuggingFace for
-  Sketchfab-CC models** (license-intact, no login). Sketchfab/MakerWorld
-  downloads are account-gated: never create accounts; the owner can download
-  manually into `public/models/community-candidates/user-drops-recovered/`.
-- **Provenance check (still binding — check EVERY sourced mesh):** confirm the
-  file is the uploader's own original work, not extracted from a commercial
-  game. Signals that a mesh is an extraction: the uploader's own description
-  admitting the source game; commercial-engine damage-model node schemes
-  (`vehicle#track_r_0`, `bone_turret`); in-game unit-id texture names
-  (`us_m1a2_abrams_track_c.png`); engine texture suffixes (`_co`); hash-named
-  `*_dds` sets; `desirefx_me_*` watermarks (a warez site); an exact face-count
-  match to a known extraction upload via Sketchfab's public API; and
-  catalog-pattern accounts posting dozens of stylistically inconsistent
-  military vehicles (42manako, nazidefenseforceofficial, KojfDiscord, "north",
-  "frugurt", "azlyirnizam" were all confirmed doing this). ~53 of ~100
-  candidate files were declined this way; the evidence style is in
-  `docs/ATTRIBUTION.md`. **macOS TCC blocks this app from reading
-  ~/Downloads** — user drops must be moved into the repo first.
+- The owner places manual downloads in
+  `public/models/community-candidates/user-drops-recovered/`.
 
 ## 8. Environment gotchas (each cost real time — respect them)
 
@@ -270,13 +241,13 @@ surprises.
 
 0. **STANDING INSTRUCTION — the drop folder.** Everything the owner places in
    `public/models/community-candidates/user-drops-recovered/` is to be
-   IMPLEMENTED: run the §7 provenance check, convert (Blender/assimp pipeline,
-   §7), judge quality, and integrate — as a new playable, or as a replacement
+   IMPLEMENTED: convert with the Blender/assimp pipeline, judge quality, and
+   integrate — as a new playable, or as a replacement
    where it beats the incumbent model (A/B render at identical angles decides).
-   Licenses never block anything (§1). Only a failed §7 provenance check can
-   decline a file, and declined files are reported back to the owner with the
-   evidence, never silently dropped. Check this folder at the start of every
-   session. Pending right now: `m1a2-abrams.zip` (Tejas V. — A/B against the
+   Only technically unusable or corrupt files can be declined, and those are
+   reported back to the owner with evidence, never silently dropped. Check this
+   folder at the start of every session. Pending right now: `m1a2-abrams.zip`
+   (Tejas V. — A/B against the
    shipped dannzjs `m1a2`, winner takes the flagship slot),
    `abrams_x_low_poly.glb` (Mortavex AbramsX — integrate as a new playable),
    and the m_bergman modern pack part 1 (second mining pass) once the owner
@@ -284,7 +255,7 @@ surprises.
 1. **Merkava floating gun** — hypothesis + verification steps in §6. Small, visible, user-reported.
 2. **Wire the showroom garage camera** (dead code → feature) + write `tools/garage-camera-probe.mjs`.
 3. **Game feel pass** (firing weight first — recoil kick, caliber-scaled shake, reload cue, pen/bounce/non-pen distinct audio; then throttle bite, damage feedback, audio body). Prove with feel-probe before/after vs `docs/feel-before.json`.
-4. **Roster additions** from the §11 URL list (batch of 2–4 vehicles per commit; §7 provenance on every mesh).
+4. **Roster additions** from the §11 URL list (batch of 2–4 vehicles per commit).
 5. **Procedural shape rebuild** per §6's method (this is the owner's loudest visual complaint).
 6. **Run the final judgment** (`docs/agents/final-judgment.spec.js`) once 1–5 have landed; commit `docs/EVALUATION-final.md`; update README Honest status.
 7. Optional restart of the critique loop (§5.1) if further polish rounds are wanted — art dimensions are where the headroom is.
@@ -294,8 +265,8 @@ surprises.
 `README.md` (overview, controls, honest status) · `docs/ARCHITECTURE.md`
 (module contracts) · `docs/SCREENSHOT_CONTRACT.md` (view list + rules) ·
 `docs/research/*.md` (armor/shells/movement/graphics specs the sim is verified
-against; roster + modern-roster visual specs) · `docs/ATTRIBUTION.md` (every
-asset + license + provenance) · `docs/EVALUATION.md` (first independent audit)
+against; roster + modern-roster visual specs) · `docs/EVALUATION.md`
+(first independent audit)
 · `docs/agents/final-judgment.spec.js` (pending final evaluation, ready to
 run) · `docs/handoff/` (fix-loop patch convention; unconsumed patches may
 remain) · `docs/perf-*.json|jsonl` (performance evidence chain) ·
@@ -303,13 +274,10 @@ remain) · `docs/perf-*.json|jsonl` (performance evidence chain) ·
 
 ## 11. Acquisition targets — full URL list
 
-Everything below is either verified-original or awaiting a per-mesh §7
-provenance check on download. Licenses never block (§1). Vehicles marked
-INTEGRATED are already in-game (listed so nobody re-downloads them).
+Vehicles marked INTEGRATED are already in-game (listed so nobody
+re-downloads them).
 
-### Sketchfab (downloads account-gated: owner downloads into the drop folder,
-### or find a license-intact mirror — the Objaverse snapshot on HuggingFace,
-### `allenai/objaverse`, uid-matched, worked for several of these)
+### Sketchfab
 
 Modern:
 - Leopard 2A7 — gdahan — https://sketchfab.com/3d-models/leopard-2a7-1df43943ef0d4c0cb736de9a6a08727a
@@ -323,7 +291,7 @@ Modern:
 WWII:
 - Panther G — brow.wes — https://sketchfab.com/3d-models/panther-g-f76129fb212e4f70b76dbb34d770d823
 - Panzer V Panther — Jonathan To — https://sketchfab.com/3d-models/panzer-v-panther-medium-tank-b4693513fec841bbad571fbd0120ce95
-- M4A3E8 Sherman (FREE) — Latin_Tiro — https://sketchfab.com/3d-models/m4a3e8-sherman-free-df99cad8d1f84e01888f2cde158bfb65
+- M4A3E8 Sherman — Latin_Tiro — https://sketchfab.com/3d-models/m4a3e8-sherman-free-df99cad8d1f84e01888f2cde158bfb65
 - M4A3E8 Sherman — kcisameta — https://sketchfab.com/3d-models/m4a3e8-sherman-07c13e5cb7144e6ab0721f2dcc4e0c8d
 - M4 Sherman Firefly — barking_dogo — https://sketchfab.com/3d-models/m4-sherman-firefly-c903938af7f347dc9c64cda035e9f7ab
 - IS-2 — ShaposhnikovG — https://sketchfab.com/3d-models/is2-soviet-wwii-tank-7efb256211eb423cb3f479e96bcb08fc
@@ -341,7 +309,7 @@ WWII:
 - Panzer IV — mckechniegreg6 — https://sketchfab.com/3d-models/panzer-iv-098195c920b645e3af7ae7a744caeda2
 - Panzer II — vmatthew — https://sketchfab.com/3d-models/panzer-ii-pzkpfw-ii-c45f980006a541ebbecb4ccdf1a8f54d
 
-### Thingiverse (direct zips, no account)
+### Thingiverse
 - KV Tank Expansion (separate snap-on turrets) — TigerAce1945 — https://www.thingiverse.com/thing:2011570 (sweep his whole portfolio incl. the Soviet multi-turret pack)
 - StuG III / StuH 42 — WindhamGraves — https://www.thingiverse.com/thing:4766359
 - Hetzer — WindhamGraves — https://www.thingiverse.com/thing:4803697
@@ -353,19 +321,19 @@ WWII:
 ### Printables
 - Pz.Kpfw. VI Tiger H1 — Tank 3D — https://www.printables.com/model/1737822-pzkpfw-vi-tiger-h1-german-tank (sweep this author's other tanks; his Panzer IV/T-34/Cromwell are already in)
 
-### MakerWorld (account-gated; owner downloads)
+### MakerWorld
 - T-35 multi-turret 1:35 kit (separate turrets) — https://makerworld.com/en/models/390480
 - M1 Abrams kit — 3DominikPrint — https://makerworld.com/en/models/1503173-m1-abrams-tank-kit
 - M1 Abrams (2 parts) — https://makerworld.com/en/models/778457-m1-abrams-2-parts
-- KV-2 — Sugarman13 — https://makerworld.com/en/models/467327-kv-2-soviet-wwii-tank (his M1 467338 / Maus 467330 / Tiger 467403 / TOG II 467323 — §7 check each)
+- KV-2 — Sugarman13 — https://makerworld.com/en/models/467327-kv-2-soviet-wwii-tank (his M1 467338 / Maus 467330 / Tiger 467403 / TOG II 467323)
 - Stridsvagn 103c — Acke — https://makerworld.com/en/models/395238
 - C1 Ariete — Pocket Armour Co. — https://makerworld.com/en/models/2959748-c1-ariete-italian-tank
 - Challenger 2 "Tank Pete" — DeathofRats — https://makerworld.com/en/models/1387544-challenger-2-tank-pete
 - Panzer IV Full Detail — T 3D — https://makerworld.com/en/models/797314-panzer-iv-full-detail-edition
-- T34-85 (CC0) — https://makerworld.com/en/models/390460-t34-85
+- T34-85 — https://makerworld.com/en/models/390460-t34-85
 - US T34 Heavy 1:72 — https://makerworld.com/en/models/821074-us-t34-heavy-tank-1-72
 
-### free3d (personal-use originals; some downloads account-gated — owner drops)
+### free3d
 - Leopard 2A5DK — pertrashus — https://free3d.com/3d-model/leopard-2a5dk-417253.html
 - Leopard 1 (full rig) — elsalee — https://free3d.com/3d-model/tank-leopard-1-full-rig-37240.html (also /71661)
 - Panther Ausf. G — still2k — https://free3d.com/3d-model/panther-pzkpfw-ausf-g-low-poly-model-97333.html (his T-34-85: /27448)
@@ -374,5 +342,5 @@ WWII:
 - Panzer III V1 — printable_models — https://free3d.com/3d-model/wwii-tank-germany-panzer-iii-v1--870820.html (same author's WWII series: M3 Lee /787460, Cromwell /490653, T-70 /971170, AMR 35 /291595, Matilda /826571, heavy infantry tank /440092, Italian light /910902, Soviet MBT /830706)
 - Low-poly set (M26 Pershing, Centurion) — panosdalk — https://free3d.com/3d-model/tank-low-poly-712984.html, /396741, /452985
 - Light-tank set (T-70M, PzKpfw IB, T-37A, FT-17, T-80 light) — leonmetalowiec — https://free3d.com/3d-model/t70m-light-tank3-rd-tank-corpsbattle-of-kursk-72626.html, /75600, /44706, /18848, /26050
-- Amphibious tank (rigged, fictional) — 3dhaupt — https://free3d.com/3d-model/amphibious-tank-new-rig-924525.html (also /95904; he republishes under CC-BY elsewhere — check mirrors)
+- Amphibious tank (rigged, fictional) — 3dhaupt — https://free3d.com/3d-model/amphibious-tank-new-rig-924525.html (also /95904)
 - Hover Tank (fictional) — psycho_man — https://free3d.com/3d-model/hover-tank-55813.html

@@ -121,6 +121,18 @@ const CSS = `
   letter-spacing:.2em;text-transform:uppercase;font-size:9.5px;margin-right:8px;}
 @media (max-height:700px){.cot-bl .hero{flex-basis:32%;min-height:150px;}
   .cot-bl .tip{display:none;}}
+@media (max-width:900px){
+  .cot-bl .hero{flex-basis:34%;min-height:128px;}
+  .cot-bl .hero .cap{bottom:12px}.cot-bl .mapname{margin-top:4px;font-size:clamp(22px,6vw,34px)}
+  .cot-bl .mapsub{margin-top:3px;font-size:9px}.cot-bl .kicker{font-size:8.5px}
+  .cot-bl .teams{gap:8px;padding:9px 10px 0}.cot-bl .vs{display:none}
+  .cot-bl .thead{font-size:9px;padding-bottom:4px}.cot-bl .rows{gap:2px;padding-top:4px}
+  .cot-bl .row{height:27px;gap:5px;padding:0 4px}.cot-bl .row .tier{flex-basis:20px;font-size:9px}
+  .cot-bl .row .sil{flex-basis:38px;height:20px}.cot-bl .row .nm{font-size:10px}
+  .cot-bl .foot{padding:9px 12px max(11px,env(safe-area-inset-bottom))}
+  .cot-bl .fmeta{margin-bottom:5px}.cot-bl .fstage{font-size:9px}.cot-bl .fpct{font-size:15px}
+  .cot-bl .count{margin-top:8px;font-size:9px}.cot-bl .count b{font-size:12px}.cot-bl .tip{display:none}
+}
 `;
 
 const BATTLE_TIPS = [
@@ -132,7 +144,8 @@ const BATTLE_TIPS = [
 
 /**
  * Create the pre-battle loading screen.
- * @returns {{show:(info:object)=>void, progress:(f:number,label?:string)=>void,
+ * @returns {{show:(info:object)=>void, rosters:(allies:Array,enemies:Array)=>void,
+ *   progress:(f:number,label?:string)=>void,
  *   countdown:(n:number)=>void, hide:()=>void, readonly visible:boolean,
  *   root:HTMLElement}}
  */
@@ -222,6 +235,12 @@ export function createBattleLoadScreen() {
       visible = true;
       root.style.display = '';   // let .on drive layout again after a hide()
       root.classList.add('on');
+    },
+
+    /** Update the team sheets without resetting the progress bar or tip. */
+    rosters(allies, enemies) {
+      fillTeam(allyRows, allyN, allies);
+      fillTeam(foeRows, foeN, enemies);
     },
 
     /**

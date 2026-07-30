@@ -1,409 +1,106 @@
-// src/ui/tankThumbs.js — runtime-rendered tank portraits for the garage
-// carousel and tech tree. Each vehicle is rendered ONCE to a small offscreen
-// WebGL canvas at a fixed WoT-style 3/4 side-profile angle (nose screen-right,
-// low elevation) under a warm key + cool rim light, then cached as a PNG data
-// URL. 100% self-contained: the models are the game's own createTank visuals,
-// no external assets. The pre-baked public/icons/<id>_angle.png stays as the
-// instant fallback until these portraits land (a few hundred ms after boot).
+// src/ui/tankThumbs.js — stable garage and tech-tree tank portraits.
 //
-// Consumers: give any <img> a `data-cot-thumb="<specId>"` attribute and it is
-// upgraded in place when portraits are ready; a `cot:tank-thumbs` document
-// event fires once afterwards for anything that renders lazily.
-import * as THREE from 'three';
-import { createTank } from '../vehicles/tankFactory.js';
-import { MODEL_SOURCE } from '../vehicles/specs.js';
-// r4: portraits track the SAME camo resolution the hangar/battle uses —
-// resolveCamoPattern(specId) is the selection+biome truth from materials.js,
-// so a card can detect that its frozen PNG no longer matches the pedestal.
-import { resolveCamoPattern } from '../vehicles/materials.js';
+// The old implementation rebuilt every portrait in an offscreen WebGL
+// renderer after the garage opened. GLB-backed tanks were captured before
+// their asynchronous model swap completed, so some cards were replaced with
+// the procedural three-box stand-in. It also created a WebGL context per
+// vehicle, adding avoidable garage stalls and making the result GPU/driver
+// dependent.
+//
+// The icon generator already renders the final, fully loaded vehicle models
+// into transparent PNGs in public/icons/. Use those deterministic assets in
+// every UI surface and keep this module as the small compatibility layer used
+// by the garage, tech tree, and screenshot harness.
 
-const THUMB_W = 424; // 4x the 106x64 carousel slot — crisp at any sane DPR
-const THUMB_H = 256;
+import { iconUrl } from './icons.js';
 
-const cache = new Map(); // specId -> dataURL
-const renderedPattern = new Map(); // specId -> camo patternId baked into the PNG
-const specById = new Map(); // registered specs (requeue/staleness lookups)
-let started = false;
+const FALLBACK_VIEWS = ['angle', 'side', 'side_silhouette'];
+let errorGuardInstalled = false;
 
-/** Cached portrait data URL (null until rendered). @param {string} specId */
+/** Stable portrait URL for a tank. @param {string} specId */
 export function getTankThumb(specId) {
-  return cache.get(specId) || null;
+  return iconUrl(specId, FALLBACK_VIEWS[0]);
 }
 
-/** Swap every <img data-cot-thumb> under `root` to its cached portrait. */
+function advanceFallback(img) {
+  const id = img && img.dataset && img.dataset.cotThumb;
+  if (!id) return;
+  const next = Number(img.dataset.cotIconFallback || 0) + 1;
+  if (next < FALLBACK_VIEWS.length) {
+    img.dataset.cotIconFallback = String(next);
+    img.src = iconUrl(id, FALLBACK_VIEWS[next]);
+    return;
+  }
+
+  // A missing asset should never expose the browser's broken-image glyph or
+  // a blank rectangular plate. Preserve layout while hiding only the image.
+  img.dataset.cotIconFallback = String(FALLBACK_VIEWS.length);
+  img.style.visibility = 'hidden';
+}
+
+function installErrorGuard() {
+  if (errorGuardInstalled || typeof document === 'undefined') return;
+  errorGuardInstalled = true;
+  // Resource errors do not bubble, so listen during capture. This also covers
+  // tech-tree nodes created after the initial garage setup.
+  document.addEventListener('error', (event) => {
+    const img = event.target;
+    if (!(img instanceof HTMLImageElement) || !img.dataset.cotThumb) return;
+    advanceFallback(img);
+  }, true);
+}
+
+/**
+ * Normalize every tank portrait under `root` to its packaged transparent PNG.
+ * @param {Document|Element} root
+ */
 export function applyTankThumbs(root) {
   if (!root || !root.querySelectorAll) return;
+  installErrorGuard();
   for (const img of root.querySelectorAll('img[data-cot-thumb]')) {
-    const url = cache.get(img.dataset.cotThumb);
-    if (url && img.src !== url) img.src = url;
+    const id = img.dataset.cotThumb;
+    const savedFallback = Number(img.dataset.cotIconFallback || 0);
+    const fallback = Math.min(Math.max(savedFallback, 0), FALLBACK_VIEWS.length - 1);
+    const expected = iconUrl(id, FALLBACK_VIEWS[fallback]);
+    const rawSrc = img.getAttribute('src') || '';
+    if (rawSrc !== expected) {
+      img.dataset.cotIconFallback = String(fallback);
+      img.style.visibility = '';
+      img.src = expected;
+    }
+    img.decoding = 'async';
+    img.draggable = false;
+    // Handle a cached failure that may have completed before the guard was
+    // installed. Successful cached images have a non-zero natural width.
+    if (img.complete && !img.naturalWidth) advanceFallback(img);
   }
 }
 
-// The m1a2 visual swaps in its sourced GLB asynchronously on first load (the
-// boot pedestal kicks that fetch off). Portraits wait for every glb-sourced
-// model to be parsed (or a timeout) so no card ships the procedural stand-in.
-async function waitForGlbModels(specs, timeoutMs) {
-  const paths = [];
-  for (const s of specs) {
-    const src = MODEL_SOURCE[s.id];
-    if (src && src.source === 'glb' && src.glb && src.glb.path) paths.push(src.glb.path);
-  }
-  if (!paths.length) return;
-  try {
-    const m = await import('../vehicles/modelLoader.js');
-    const t0 = performance.now();
-    while (performance.now() - t0 < timeoutMs) {
-      if (paths.every((p) => m.hasCachedGlb(p))) return;
-      await new Promise((r) => setTimeout(r, 200));
+/** Re-apply one portrait (or all portraits) without doing any GPU work. */
+export function requeueTankThumbs(specId = null) {
+  if (typeof document === 'undefined') return;
+  installErrorGuard();
+  for (const img of document.querySelectorAll('img[data-cot-thumb]')) {
+    if (specId != null && img.dataset.cotThumb !== specId) continue;
+    if (!img.getAttribute('src')) {
+      img.dataset.cotIconFallback = '0';
+      img.style.visibility = '';
+      img.src = getTankThumb(img.dataset.cotThumb);
     }
-  } catch (e) { /* loader unavailable — render the procedural models */ }
+  }
 }
 
-function renderAll(specs) {
-  const canvas = document.createElement('canvas');
-  canvas.width = THUMB_W; canvas.height = THUMB_H;
-  let renderer;
-  try {
-    renderer = new THREE.WebGLRenderer({
-      canvas, antialias: true, alpha: true, preserveDrawingBuffer: true,
-      powerPreference: 'low-power',
-    });
-  } catch (e) {
-    return; // no second context available — keep the baked icon fallback
-  }
-  renderer.setSize(THUMB_W, THUMB_H, false);
-  renderer.setClearColor(0x000000, 0);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  // r6-2 (round critique "uniformly murky olive renders"): booth exposure up
-  // ~0.3 stops so hull detail separates from the dark card plates
-  // (BASE only — a per-thumb exposure lift below normalizes dark camo)
-  const BASE_EXPOSURE = 1.43;
-  renderer.toneMappingExposure = BASE_EXPOSURE;
-
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(24, THUMB_W / THUMB_H, 0.1, 200);
-  // studio rig: warm key from the camera side, cool sky fill, hard white-blue
-  // rim from behind-above so the silhouette pops off the dark card.
-  // r6-2: rim strengthened + a second low cool rim OPPOSITE the key (round
-  // critique "weak rim separation from the dark card") — the far flank and
-  // gun run now carry a visible cool edge line.
-  // r7-2 (round critique: "T-90M / Leo 2A7 renders murky next to the USA
-  // card"): measured means were already normalized (0.40 ± 0.02) — the murk
-  // was SHADOW CRUSH: the camera-side flank fell to near-black on schemes
-  // with dark camo, so those cards read darker at a glance. Hemisphere +
-  // camera-side fill rise so the shaded flank keeps readable detail; the
-  // exposure loop below then pulls every card back onto the shared mean.
-  const hemi = new THREE.HemisphereLight(0xc4d4e4, 0x4a463c, 1.5);
-  const key = new THREE.DirectionalLight(0xfff0d6, 4.1);
-  key.position.set(-7, 8, 4);
-  const fill = new THREE.DirectionalLight(0x9fb4cc, 1.6);
-  fill.position.set(6, 2, 6);
-  const rim = new THREE.DirectionalLight(0xeaf3ff, 5.0);
-  rim.position.set(6, 7, -8);
-  const rim2 = new THREE.DirectionalLight(0xd8e8ff, 1.9);
-  rim2.position.set(8, 3, -2);
-  scene.add(hemi, key, fill, rim, rim2);
-
-  const engineCtx = {
-    renderer, scene, camera,
-    setupShadowMaterial: (m) => m, // no CSM in the portrait booth
-    anisotropy: 8, quality: 'high',
-  };
-
-  const box = new THREE.Box3();
-  const center = new THREE.Vector3();
-  const _size = new THREE.Vector3();
-  const _right = new THREE.Vector3();
-  const _up = new THREE.Vector3();
-  // r4 AUTOFRAME: measure the RENDERED silhouette (alpha bbox) and correct
-  // the camera so every card fills the same frame fraction. Geometry-derived
-  // framing (bbox/sphere/hull-length heuristics) kept drifting per model —
-  // the GLB Abrams rendered at ~60% the apparent size of its procedural
-  // neighbors. Pixels cannot lie: two measure/correct passes converge every
-  // vehicle onto the same footprint regardless of antennas, gun overhang or
-  // asset-space quirks.
-  const measureCanvas = document.createElement('canvas');
-  measureCanvas.width = THUMB_W; measureCanvas.height = THUMB_H;
-  const mctx = measureCanvas.getContext('2d', { willReadFrequently: true });
-  // r6-2 (round critique: "framing scale inconsistent — Chieftain's barrel
-  // clips the card edge"): width target drops to the 78-82% band so long
-  // guns keep a visible margin; height headroom rises so short/tall hulls
-  // (IFVs) land as close to that width band as the 424x256 frame allows.
-  const FILL_W = 0.80; // target silhouette width as a fraction of the card
-  const FILL_H = 0.78; // target height fraction (leaves nameplate air below)
-  function measureAlphaBox() {
-    mctx.clearRect(0, 0, THUMB_W, THUMB_H);
-    mctx.drawImage(renderer.domElement, 0, 0);
-    const d = mctx.getImageData(0, 0, THUMB_W, THUMB_H).data;
-    // Coverage-weighted bounds: whip antennas are 1-2px-wide verticals that
-    // inflated the raw bbox height (the GLB Abrams framed its HULL at ~60%
-    // of its neighbors). Rows with almost no opaque pixels are trimmed; the
-    // horizontal gun barrel survives (its rows are long runs), and x-bounds
-    // are then taken from the kept rows only.
-    const rowCount = new Int32Array(THUMB_H);
-    const rowX0 = new Int32Array(THUMB_H).fill(THUMB_W);
-    const rowX1 = new Int32Array(THUMB_H).fill(-1);
-    let maxRow = 0;
-    let lumSum = 0, lumN = 0; // r6: silhouette mean luminance (exposure lift)
-    for (let y = 0; y < THUMB_H; y++) {
-      for (let x = 0; x < THUMB_W; x++) {
-        const o = (y * THUMB_W + x) * 4;
-        if (d[o + 3] > 12) {
-          rowCount[y]++;
-          if (x < rowX0[y]) rowX0[y] = x;
-          if (x > rowX1[y]) rowX1[y] = x;
-          lumSum += 0.2126 * d[o] + 0.7152 * d[o + 1] + 0.0722 * d[o + 2];
-          lumN++;
-        }
-      }
-      if (rowCount[y] > maxRow) maxRow = rowCount[y];
-    }
-    if (!maxRow) return null;
-    const keep = Math.max(3, maxRow * 0.03);
-    let x0 = THUMB_W, y0 = -1, x1 = -1, y1 = -1;
-    for (let y = 0; y < THUMB_H; y++) {
-      if (rowCount[y] < keep) continue;
-      if (y0 < 0) y0 = y;
-      y1 = y;
-      if (rowX0[y] < x0) x0 = rowX0[y];
-      if (rowX1[y] > x1) x1 = rowX1[y];
-    }
-    if (x1 < 0) return null;
-    return {
-      x0, y0, x1, y1, w: x1 - x0 + 1, h: y1 - y0 + 1,
-      meanLuma: lumN ? lumSum / (255 * lumN) : 0,
-    };
-  }
-  for (const spec of specs) {
-    let visual = null;
-    try {
-      // PERF r3: thumbs render at carousel-chip size — the 'ai' texture tier
-      // is indistinguishable there and keeps a garage browse from baking
-      // hero-grade 2048² sets for all ~30 specs (the pedestal, which the
-      // player actually inspects, acquires 'high' and upgrades in place).
-      visual = createTank(spec.id, engineCtx, { camoSeed: 4200, quality: 'ai' });
-      scene.add(visual.root);
-      visual.root.updateMatrixWorld(true);
-      box.setFromObject(visual.root);
-      box.getCenter(center);
-      // 3/4 side-profile, nose to screen-right, ~19° above the deck — the
-      // geometric estimate below only SEEDS the autoframe passes. r4: raised
-      // from 12° — the near-deck-level camera hid the hull top and let the
-      // running gear dominate the flank, so skirted MBTs (Leo 2A7) read as
-      // "unskirted WW2 hulls with exposed wheels" on their cards. At ~19°
-      // the skirt line, deck and turret plan all read, matching how the
-      // hangar pedestal presents the vehicle.
-      const size = box.getSize(_size);
-      const halfLen = Math.min(
-        Math.hypot(size.x, size.z) * 0.5,
-        (spec.dims && spec.dims.hullLengthM ? spec.dims.hullLengthM : Infinity) * 0.62,
-      );
-      const halfH = Math.min(size.y * 0.5, halfLen * 0.52);
-      const az = -64 * Math.PI / 180; // from +Z (hull forward)
-      const el = 19 * Math.PI / 180;
-      const vTan = Math.tan(camera.fov * Math.PI / 360);
-      const hTan = vTan * camera.aspect;
-      let dist = Math.max((halfLen * 0.95) / hTan, (halfH * 1.35) / vTan);
-      const look = new THREE.Vector3(center.x, center.y - halfLen * 0.05, center.z);
-      const frame = () => {
-        camera.position.set(
-          look.x + Math.sin(az) * Math.cos(el) * dist,
-          look.y + Math.sin(el) * dist,
-          look.z + Math.cos(az) * Math.cos(el) * dist,
-        );
-        camera.lookAt(look);
-        camera.updateProjectionMatrix();
-        camera.updateMatrixWorld(true);
-        renderer.render(scene, camera);
-      };
-      frame();
-      // r6-2: three correction passes (was two) — vehicles whose geometric
-      // seed was far off (GLB asset-space quirks) could exit pass 2 still
-      // ~15% from target, which is exactly the inconsistent-framing read
-      for (let pass = 0; pass < 3; pass++) {
-        const bb = measureAlphaBox();
-        if (!bb) break;
-        // scale: bring the larger deficit axis exactly onto its target fill
-        const k = Math.min((FILL_W * THUMB_W) / bb.w, (FILL_H * THUMB_H) / bb.h);
-        // recenter: pan the rig so the silhouette midpoint hits frame center
-        const dxPx = (bb.x0 + bb.x1) / 2 - THUMB_W / 2;
-        const dyPx = (bb.y0 + bb.y1) / 2 - THUMB_H / 2;
-        const wpp = (2 * dist * vTan) / THUMB_H; // world units per pixel
-        _right.setFromMatrixColumn(camera.matrixWorld, 0);
-        _up.setFromMatrixColumn(camera.matrixWorld, 1);
-        look.addScaledVector(_right, dxPx * wpp).addScaledVector(_up, -dyPx * wpp);
-        dist /= k;
-        frame();
-        if (Math.abs(1 - k) < 0.04 && Math.abs(dxPx) < 4 && Math.abs(dyPx) < 4) break;
-      }
-      // r8 EXPOSURE NORMALIZATION — BIDIRECTIONAL: thumbs converge toward a
-      // shared mean silhouette luminance. r4: the correction RANGE is
-      // clamped hard (0.75x-1.9x, was 0.5x-3.4x) — the old 3.4x headroom
-      // lifted dark schemes (NATO 3-tone Leo 2A7) so far through the ACES
-      // shoulder that bold camo washed to pale olive speckle and the card
-      // stopped resembling the vehicle on the pedestal. Fidelity to the
-      // hangar look now outranks perfect row uniformity.
-      // r6-2: target mean tracks the +0.3-stop booth (a stale 0.36 target
-      // would make the normalization loops silently undo the exposure lift)
-      const TARGET_LUMA = 0.42;
-      const MIN_EXPOSURE = BASE_EXPOSURE * 0.75;
-      const MAX_EXPOSURE = BASE_EXPOSURE * 1.9;
-      for (let ep = 0; ep < 4; ep++) {
-        const bb = measureAlphaBox();
-        if (!bb || bb.meanLuma <= 0.02) break;
-        const ratio = TARGET_LUMA / bb.meanLuma;
-        // r7-2: band tightened (0.94-1.1 → 0.96-1.06) — the old band let two
-        // neighboring cards settle a visible ~14% apart and still "pass"
-        if (ratio > 0.96 && ratio < 1.06) break; // inside the target band
-        const next = Math.max(MIN_EXPOSURE, Math.min(MAX_EXPOSURE,
-          renderer.toneMappingExposure * Math.max(0.62, Math.min(1.65, ratio))));
-        if (Math.abs(next - renderer.toneMappingExposure) < 1e-4) break; // clamped
-        renderer.toneMappingExposure = next;
-        frame();
-      }
-      // r5-2 AUTO-LEVELS (round critique: "T-90M / Chieftain render as
-      // near-black silhouettes next to the bright Abrams"): the exposure
-      // clamp above protects camo fidelity through the ACES shoulder, so a
-      // dark scheme could still land at ~55% of the target mean. The FINAL
-      // capture now gets a per-pixel GAMMA levels pass (endpoints pinned —
-      // no highlight washout) that lands every silhouette's mean luminance
-      // on the shared target. Uniform card row, hangar hues intact.
-      const bbF = measureAlphaBox(); // fresh copy of the settled frame
-      let outUrl = null;
-      if (bbF && bbF.meanLuma > 0.02) {
-        const g = Math.log(TARGET_LUMA) / Math.log(Math.min(0.98, Math.max(0.02, bbF.meanLuma)));
-        const gc = Math.max(0.5, Math.min(1.45, g));
-        if (Math.abs(gc - 1) > 0.04) {
-          const lut = new Uint8ClampedArray(256);
-          for (let i = 0; i < 256; i++) {
-            lut[i] = Math.round(255 * Math.pow(i / 255, gc));
-          }
-          const img = mctx.getImageData(0, 0, THUMB_W, THUMB_H);
-          const px = img.data;
-          for (let o = 0; o < px.length; o += 4) {
-            if (px[o + 3] === 0) continue;
-            px[o] = lut[px[o]];
-            px[o + 1] = lut[px[o + 1]];
-            px[o + 2] = lut[px[o + 2]];
-          }
-          mctx.putImageData(img, 0, 0);
-          outUrl = measureCanvas.toDataURL('image/png');
-        }
-      }
-      cache.set(spec.id, outUrl || renderer.domElement.toDataURL('image/png'));
-      // remember which camo pattern this PNG carries (staleness detection)
-      try { renderedPattern.set(spec.id, resolveCamoPattern(spec.id)); } catch (e) { /* fine */ }
-      renderer.toneMappingExposure = BASE_EXPOSURE; // reset for the next card
-    } catch (e) {
-      /* keep the baked icon for this vehicle */
-    }
-    if (visual) {
-      scene.remove(visual.root);
-      try { visual.dispose(); } catch (e) { /* already partially disposed */ }
-    }
-  }
-  renderer.dispose();
-  if (renderer.forceContextLoss) { try { renderer.forceContextLoss(); } catch (e) { /* fine */ } }
+/** Screenshot compatibility: packaged icons need no render queue to drain. */
+export function drainTankThumbs() {
+  if (typeof document !== 'undefined') applyTankThumbs(document);
 }
 
-// PERF (perf-budget r3): portrait rendering is a WORK QUEUE, not a sync
-// boot pass. The old sync renderAll put ~1.5-2 s of createTank + second-WebGL-
-// context boot on the __GAME_READY critical path, and the follow-up GLB
-// re-render pass fired on a wall-clock timer that landed MID-BATTLE (probe
-// measured 3.0 s + 1.3 s frames when it ran under a battle). Chunks render one
-// vehicle at a time on idle callbacks and only while `canWork()` allows (the
-// garage gates this on its own visibility — battles never stall); the
-// screenshot recipes drain synchronously via drainTankThumbs() so captured
-// garage/techtree frames always carry finished portraits.
-const queue = [];
-let canWorkFn = () => true;
-let pumpScheduled = false;
-
-function notifyDone() {
+/**
+ * Compatibility entry point used by garage setup. The specs/options are kept
+ * in the signature so callers do not need special cases.
+ */
+export function ensureTankThumbs(_specs, _opts = {}) {
+  if (typeof document === 'undefined') return;
   applyTankThumbs(document);
   document.dispatchEvent(new CustomEvent('cot:tank-thumbs'));
-}
-
-// queue push with per-id dedupe (requeues must never stack duplicates)
-function enqueue(specs) {
-  for (const s of specs) {
-    if (!s || queue.some((q) => q.id === s.id)) continue;
-    queue.push(s);
-  }
-}
-
-function pump() {
-  pumpScheduled = false;
-  if (!queue.length) return;
-  if (canWorkFn()) {
-    const spec = queue.shift();
-    renderAll([spec]);
-    notifyDone();
-  }
-  schedulePump();
-}
-
-function schedulePump() {
-  if (pumpScheduled || !queue.length) return;
-  pumpScheduled = true;
-  if (typeof requestIdleCallback === 'function') requestIdleCallback(pump, { timeout: 700 });
-  else setTimeout(pump, 120);
-}
-
-/**
- * r4: re-render portraits whose baked camo pattern no longer matches the
- * live resolution (camo picker change, AUTO biome flip on map select) — the
- * card must always show the paint the pedestal/battle shows. Pass a specId
- * to target one vehicle, nothing to sweep every registered spec.
- * Renders happen on the idle queue (or at the next drain).
- * @param {string} [specId]
- */
-export function requeueTankThumbs(specId = null) {
-  const ids = specId != null ? [specId] : [...specById.keys()];
-  const stale = [];
-  for (const id of ids) {
-    const spec = specById.get(id);
-    if (!spec) continue;
-    let pid = null;
-    try { pid = resolveCamoPattern(id); } catch (e) { /* keep null */ }
-    if (specId != null || !cache.has(id) || pid !== renderedPattern.get(id)) stale.push(spec);
-  }
-  if (stale.length) { enqueue(stale); schedulePump(); }
-}
-
-/** Synchronously finish every queued portrait (screenshot determinism). */
-export function drainTankThumbs() {
-  requeueTankThumbs(); // sweep camo-stale cards into the queue first
-  if (!queue.length) return;
-  const rest = queue.splice(0, queue.length);
-  renderAll(rest);
-  notifyDone();
-}
-
-/**
- * Queue portraits for all specs once (idempotent). Upgrades every
- * <img data-cot-thumb> in the document and fires `cot:tank-thumbs` as
- * chunks complete. GLB-sourced vehicles are re-queued once their model
- * parses so no card keeps the procedural stand-in.
- * @param {TankSpec[]} specs
- * @param {{canWork?: () => boolean}} [opts] chunk gate (e.g. garage visible)
- */
-export function ensureTankThumbs(specs, opts = {}) {
-  if (started) return;
-  started = true;
-  if (opts.canWork) canWorkFn = opts.canWork;
-  for (const s of specs) specById.set(s.id, s);
-  enqueue(specs);
-  schedulePump();
-  const glbSpecs = specs.filter((s) => {
-    const src = MODEL_SOURCE[s.id];
-    return src && src.source === 'glb';
-  });
-  if (!glbSpecs.length) return;
-  (async () => {
-    await waitForGlbModels(glbSpecs, 15000);
-    enqueue(glbSpecs);
-    schedulePump();
-  })();
 }
