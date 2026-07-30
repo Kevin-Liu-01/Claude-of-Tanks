@@ -408,7 +408,10 @@ export function buildTurretAndGun(P,p) {
   buildGun(P,{
     len:p.gunLength || P.spec.armor.gunBarrel.lengthM,
     r:p.gunRadius || Math.max(0.05,P.spec.armor.gunBarrel.radiusM*0.82),
+    // evacRatio: buildGun's 1.62 default disappears INSIDE a thermal sleeve
+    // (r*1.22) — sleeved tubes need the bulge proud of the sleeve to read.
     sleeve:p.sleeve !== false,evac:Object.hasOwn(p,'evac') ? p.evac : 0.55,
+    evacR:p.evacR ?? (p.sleeve !== false ? 1.9 : 1.62),
     collar:true,baseR:Math.max(0.12,P.spec.armor.gunBarrel.radiusM*1.7),
   });
   P.topY=h+(p.pano?0.46:0.25);

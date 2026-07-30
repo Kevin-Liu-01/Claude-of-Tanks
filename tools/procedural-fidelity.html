@@ -438,13 +438,18 @@ if (params.get('board')) {
     renderer.render(scene, camera);
     ctx2d.drawImage(renderer.domElement, dx, dy, px, px);
   };
-  // Locked mild-perspective beauty camera — identical for every cell so
-  // before/after boards from different runs stay comparable.
-  const heroCamera = () => {
+  // Locked mild-perspective beauty camera. PER-MODEL framing: the two roots
+  // sit at different world centers with different bbox depths, so one shared
+  // camera rendered the procedural up to ~1.5x the reference's apparent size
+  // — the shaded pairs were judged scale-mismatched (wave-2 finding). Each
+  // cell now frames its own subject with identical fov/direction/fill.
+  const heroCameraFor = (root) => {
+    const box = visibleBox(root);
+    const c = box.getCenter(new THREE.Vector3());
     const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 400);
-    const radius = sharedBox.getSize(new THREE.Vector3()).length() * 1.06;
-    cam.position.copy(center).addScaledVector(new THREE.Vector3(0.75, 0.32, 1).normalize(), radius);
-    cam.lookAt(center);
+    const radius = box.getSize(new THREE.Vector3()).length() * 1.06;
+    cam.position.copy(c).addScaledVector(new THREE.Vector3(0.75, 0.32, 1).normalize(), radius);
+    cam.lookAt(c);
     cam.updateProjectionMatrix();
     cam.updateMatrixWorld(true);
     return cam;
@@ -457,14 +462,15 @@ if (params.get('board')) {
     figure.append(canvas, caption);
     boardDiv.append(figure);
   };
-  const cam = heroCamera();
+  const refCam = heroCameraFor(reference.root);
+  const procCam = heroCameraFor(procedural.root);
 
   { // shaded hero pair, 1600 px combined
     const px = 800;
     const cv = document.createElement('canvas'); cv.width = px * 2; cv.height = px;
     const ctx = cv.getContext('2d');
-    shadedInto(ctx, reference, procedural, cam, 0, 0, px);
-    shadedInto(ctx, procedural, reference, cam, px, 0, px);
+    shadedInto(ctx, reference, procedural, refCam, 0, 0, px);
+    shadedInto(ctx, procedural, reference, procCam, px, 0, px);
     addBoard('shaded — reference | procedural', cv);
   }
 
@@ -490,9 +496,9 @@ if (params.get('board')) {
     };
     poses.forEach((pose, i) => {
       applyPose(reference, pose);
-      shadedInto(ctx, reference, procedural, cam, i * px, 0, px);
+      shadedInto(ctx, reference, procedural, refCam, i * px, 0, px);
       applyPose(procedural, pose);
-      shadedInto(ctx, procedural, reference, cam, i * px, px, px);
+      shadedInto(ctx, procedural, reference, procCam, i * px, px, px);
     });
     for (const visual of [reference, procedural]) applyPose(visual, { yawDeg: 0, pitchDeg: 0 });
     addBoard(`articulation — turret −90/0/+90/180 · gun −${dep}°/+${elev}° (reference top, procedural bottom)`, cv);
@@ -506,7 +512,7 @@ if (params.get('board')) {
     for (let i = 0; i < 24; i++) {
       procedural.root.rotation.y = baseYaw + i * (Math.PI / 12);
       procedural.root.updateMatrixWorld(true);
-      shadedInto(ctx, procedural, reference, cam, (i % cols) * px, Math.floor(i / cols) * px, px);
+      shadedInto(ctx, procedural, reference, procCam, (i % cols) * px, Math.floor(i / cols) * px, px);
     }
     procedural.root.rotation.y = baseYaw;
     procedural.root.updateMatrixWorld(true);
