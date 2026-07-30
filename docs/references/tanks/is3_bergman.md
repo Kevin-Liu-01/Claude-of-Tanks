@@ -52,3 +52,12 @@ stub), whole-silhouette views drop into the 60-70s. Hull/tracks (the only
 meaningful components on this row) hold at H93/R87. The deck drums now carry
 end caps + mounting straps (the r1 "loose floating cylinders" critique).
 Reference GLB remains quarantined; do not trust automated numbers on this id.
+
+re-processed 2026-07-30: oracle repaired (tools/repair_oracles_blender.py
+is3_bergman) — the print-bed layout was a real assembly parked apart: the
+basket disc (r6.0, ground plane) exactly matches the hull's authored ring
+race (r6.2, y16, centre x16.67 z42.71). Dome+basket+D-25T rigid-moved onto
+the race (+1.45 x, +27.49 z, lift +8.0; mantlet butted to the dome face —
+muzzle 2.44 m past the bow at axis 1.91 m), fenders/drums re-tagged to the
+hull in place. 61.6 -> 81.6 (H93 T70 G55 R87); automated numbers on this id
+are meaningful again (residual T/G gap = the print's tall dome / fat tube).

@@ -64,3 +64,10 @@ critique and this packet's own "externally an M1A1":
   its turret & gun masks reward exactly the regression that was rejected.
   Repairing/quarantining the GLB stays an asset-side task; until then this
   id's fidelity number is not a likeness signal.
+
+re-processed 2026-07-30: oracle repaired (tools/repair_oracles_blender.py
+m1a1_aim) — casting + basket + M256 lifted +7.6 units to the rim-on-deck seat
+(bore axis 2.04 m, roof 2.62 m); sponson side-wall strips, engine deck +
+exhaust stack and glacis skin carved out of the Turret node to the hull in
+place. 66.9 -> 74.3 (H90 T49 G58 R90); remaining T/G gap is the print's round
+near-full-width casting and fat tube, not rig breakage.

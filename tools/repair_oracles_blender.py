@@ -139,6 +139,70 @@ RECIPES = {
             ((-0.02, 0.02, -0.02, 0.02, 0.0062, 0.02), 'root:BowPlating', None),
         ],
     },
+    'm1a1_aim': {
+        # The print's "turret" skin is the ENTIRE upper-body shell: sponson
+        # side walls (the packet's four full-height upper-mask strips), rear
+        # engine deck + exhaust stack, glacis-top plates — plus the actual
+        # casting, which is sunk with its basket disc (r8, centred x17.79
+        # z36.45) on the ground plane and the M256 at axis y12.65 (1.27 m).
+        # Re-tag the hull shell pieces to the hull IN PLACE and lift only the
+        # casting + basket + gun onto the deck (deck y~16 at the ring).
+        # lift swept 5.8..8.4 (73.7..74.5, near-flat); 7.6 is the exact
+        # rim-on-deck seat — rim 16.0, bore axis 2.04 m, roof 2.62 m (proc
+        # targets 1.96/2.52).
+        'sources': ['TurretMesh'],
+        'pivot': [17.79, 16.0, 36.45],   # authored basket axis, ring plane
+        'park': [17.3, 9.0, 30.0],       # unused (no park regions); keeps the
+                                         # stitch residual hull-side in place
+        'lift': 7.6,
+        'regions': [
+            # sponson side walls, both sides, full height/length — hull, in place
+            ((-0.5, 4.2, -0.5, 25.0, -0.5, 53.0), 'root:HullPlating', None),
+            ((30.6, 35.3, -0.5, 25.0, -0.5, 53.0), 'root:HullPlating', None),
+            # rear engine deck + exhaust stack (proc builds the stack on the
+            # hull; a chimney orbiting the hump at yaw is the r1 bug class)
+            ((4.2, 30.6, -0.5, 25.0, -0.5, 20.8), 'root:HullPlating', None),
+            # glacis-top deck skin ahead of the casting, above the tube line
+            ((4.2, 30.6, 15.35, 25.0, 44.47, 60.0), 'root:HullPlating', None),
+            # M256 + mantlet collar (evacuator top y14.6, glacis line >=15.5)
+            ((11.8, 23.2, 9.3, 15.3, 44.47, 91.5), 'turret', (0.0, 'lift', 0.0)),
+            # turret casting + basket cylinder + ground-plane basket disc
+            ((4.2, 30.6, -0.5, 25.0, 20.8, 44.47), 'turret', (0.0, 'lift', 0.0)),
+            # casting front lower shell / rim arc under the glacis-line band
+            ((4.2, 30.6, -0.5, 15.35, 44.47, 55.4), 'turret', (0.0, 'lift', 0.0)),
+        ],
+    },
+    'is3_bergman': {
+        # Print-bed layout, not an assembly: the dome is parked over the rear
+        # deck (ring-disc centre x15.22 z15.22, ground plane) with the D-25T
+        # + mantlet floating mid-hull (z26..74, axis y12.2), while the hull
+        # deck carries an authored ring RACE (r6.2 vert circle, y16.0, centre
+        # x16.67 z42.71) that exactly matches the basket disc (r6.0). Rear
+        # fenders/drums are authored in correct hull positions but tagged
+        # into the Turret node. Move the dome+basket rigidly onto the race
+        # (dx +1.45, dz +27.49), butt the mantlet to the dome front face
+        # (dz +24.29 closes the 3.2-unit print gap; muzzle lands 2.44 m past
+        # the bow vs the proc's 2.25), re-tag fenders/drums to the hull in
+        # place. The print's bore is authored 1.06 m under its crown (real
+        # D-25T sits ~0.6 under): lift swept 4..8 (75.4..81.6, monotone) —
+        # honesty brackets it to [5.8 = barrel clears the glacis, ~8 = skirt
+        # rim still on the deck]. 8.0: rim deck+0.06 m, axis 1.91 m,
+        # crown 2.97 m.
+        'file': 'bergman_is3',
+        'sources': ['TurretMesh'],
+        'pivot': [16.67, 16.0, 42.71],   # hull ring race centre
+        'park': [16.7, 8.0, 36.0],       # unused (no park regions)
+        'lift': 8.0,
+        'regions': [
+            # rear fenders + fuel drums, both sides — hull, in place
+            ((-0.5, 2.6, -0.5, 24.0, -0.5, 23.5), 'root:FenderKit', None),
+            ((27.9, 31.0, -0.5, 24.0, -0.5, 23.5), 'root:FenderKit', None),
+            # D-25T + mantlet, butted onto the relocated dome front face
+            ((10.0, 21.0, 8.0, 17.5, 25.5, 74.5), 'turret', (1.45, 'lift', 24.29)),
+            # dome + basket wall + ground-plane basket disc, onto the race
+            ((2.0, 28.5, -0.5, 23.9, -0.5, 24.5), 'turret', (1.45, 'lift', 27.49)),
+        ],
+    },
 }
 
 
@@ -247,8 +311,9 @@ def main():
     recipe = RECIPES[tank_id]
     lift = float(argv[argv.index('--lift') + 1]) if '--lift' in argv else recipe.get('lift', 0.0)
     dz = float(argv[argv.index('--dz') + 1]) if '--dz' in argv else recipe.get('dz', 0.0)
-    src = RECOVERED / f'{tank_id}.glb'
-    bak = RECOVERED / f'{tank_id}.glb.bak'
+    stem = recipe.get('file', tank_id)   # is3_bergman ships as bergman_is3.glb
+    src = RECOVERED / f'{stem}.glb'
+    bak = RECOVERED / f'{stem}.glb.bak'
     if not bak.exists():
         shutil.copy2(src, bak)
     load(bak)
