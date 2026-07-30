@@ -29,3 +29,8 @@ docs/references/tanks/charioteer.md). Hull + tracks components legitimate: hull 
 - Turret was the generic `western` (Leopard wedge) — wrong identity; needs Comet's
   welded turret with curved front and rear bustle + 77 mm HV with muzzle brake.
 - Hull top 1.49 vs ref ≈ 1.7 (too low); wheels styled with cutouts vs solid discs.
+
+**Oracle re-processed (repair_oracles_blender.py): turret seated** — turret
+carved from the print skin and lifted +8.5 onto the ring; 77 mm muzzle-brake
+piece + mantlet collar seated on the face; spare plates parked inside the
+hull. Unassembled-layout defect above is historical.

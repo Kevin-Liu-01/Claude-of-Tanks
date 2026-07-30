@@ -132,8 +132,12 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   });
   // This OBJ retains its authored Z-up frame after import; rotate Z-up to the
   // runtime's Y-up convention before modelLoader measures and normalizes it.
+  // Oracle repair (tools/repair_oracles.py): the GLB's original `Turret` node
+  // was the CHASSIS; the repaired file seats the real casting under `Turret`
+  // (ring pivot at the authored y=0 station) and the L11 under `Gun`.
   source('chieftain5', {
-    turretNode: '^Turret$', autoPivot: true, pitchOffset: -Math.PI / 2,
+    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+    pitchOffset: -Math.PI / 2,
   });
   articulated('fv510', { yawOffset: Math.PI });
   articulated('leo2_revolution', { yawOffset: Math.PI });

@@ -11,3 +11,4 @@ public/models/community-candidates/
 
 # Throwaway critic/diagnostic probes generated during review rounds
 tools/tmp-*.mjs
+public/models/**/*.glb.bak

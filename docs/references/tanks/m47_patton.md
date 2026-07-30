@@ -48,3 +48,7 @@ top 1.78 (−0.8…−3.0); 6 wheels r 0.33 span −2.55…+1.95, sprocket −2.
 1.95 to −3.30, blisters ±1.05 at y ~2.16, cupola x −0.55 top 2.58; gun axis
 y 1.92, r 0.125, small evac 0.55, custom twin-drum blast deflector ~0.55 plan,
 muzzle +3.37.
+
+**Oracle re-processed (repair_oracles.py): turret seated** — fused Turret node
+lifted +4.0 model units (bustle rack lands in the 1.78-1.95 band), recentred
++6.3 x, origin on the ring axis. Sunken-turret defect above is historical.

@@ -51,3 +51,7 @@ tension wheel −2.50; turret ring (−0.50, 1.54), dome HW 1.24, roof 2.28, fro
 +0.33, bustle to −2.55 top ≤ 1.95, stow wedge to −3.0; prominent .50cal M2 at
 x −0.80 topping 2.33; 105 mm stub: r 0.14, axis y 1.88, muzzle +2.90, big
 square gun shield.
+
+**Oracle re-processed (repair_oracles.py): turret seated** — fused Turret node
+lifted +3.6 model units onto the deck, recentred +5.4 x, origin on the ring
+axis. Sunken-turret defect above is historical.

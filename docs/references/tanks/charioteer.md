@@ -34,3 +34,9 @@ proportions (6.25 long × 3.05 wide normalized, hull top 1.67, five 0.9 m-class 
 - Turret was the generic Leopard-style `western` wedge — wrong identity (needs the tall
   angular Charioteer slab turret) — and the 20-pdr had no real overhang (tip 1.0 m past
   nose vs ≈ 2.4 m real).
+
+**Oracle re-processed (repair_oracles_blender.py): turret seated** — turret
+part carved from the fused print skin and lifted +8.0 onto the ring
+(recentred +3.3 x), 20-pdr base collar seated on the gun throat, print spares
+parked inside the hull. Gun stays structurally 0: the print expects a rod
+barrel (only a 0.4 m collar ships).

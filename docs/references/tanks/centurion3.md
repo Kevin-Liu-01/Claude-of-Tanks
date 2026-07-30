@@ -32,3 +32,9 @@ with 6 exposed lower wheels.
   full skirts.
 - Turret 'cast' dome is passable but sits slightly narrow; 20-pdr overhang was 0.85 m —
   should be ≈ 2.3 m for identity (gun component stays 0 either way under the print oracle).
+
+**Oracle re-processed (repair_oracles_blender.py): turret seated** — cast
+turret section carved from the print skin and lifted +8.0 onto the ring;
+20-pdr stub seated on the face; flat-pack plates parked inside the hull.
+Turret stays partially capped: the print splits the long turret into the cast
+front (assembled) plus flat-pack panels no rigid move can assemble.

@@ -31,3 +31,9 @@ gun ≈ 100 here). Hull + tracks components legitimate.
 - 5 wheels vs the A30's 6; turret was the generic `western` wedge — needs the tall narrow
   A30 turret; barrel previously reached z 3.83 (past the oracle nose) — keep it just
   inside the hull nose to preserve both identity (tiny real overhang) and the gun mask.
+
+**Oracle re-processed (repair_oracles_blender.py): turret seated** — turret
+carved from the print skin, lifted +8.5 and moved +18 z to the real mid-hull
+station (print packed it at the tail); 17-pdr piece seated on the face (no
+overhang, gun stays 100). Turret component remains shape-capped (~34): the
+print's turret is stubbier than the tall A30 slab.

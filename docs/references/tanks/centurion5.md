@@ -24,3 +24,8 @@ legitimate.
 ## Procedural gaps identified (before edits)
 - Same as centurion3: hull band too low (1.50 vs 1.74), skirts missing, L7 overhang was
   1.25 m — should be ≈ 2.2 m with an evacuator for identity.
+
+**Oracle re-processed (repair_oracles_blender.py): turret seated** — cast
+turret carved from the print skin and lifted +8.5 onto the ring; the L7 tube
+segments on the bore line lifted to the throat (muzzle keeps its authored
++3.9 station); flat-pack plates parked inside the hull.

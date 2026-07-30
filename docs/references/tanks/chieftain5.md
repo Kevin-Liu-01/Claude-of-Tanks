@@ -38,3 +38,9 @@ UK-family file ownership.
   than the sleeved L11 (ref tube silhouette ≈ 0.30 m thick).
 - Procedural hull nose overshoots low-forward (cyan lower-nose spill in side views).
 - Ref bustle/basket reaches farther aft; ref cupola/antenna cluster taller.
+
+**Oracle re-processed (repair_oracles.py): rig mapping fixed** — the GLB's
+'Turret' node (actually the chassis) renamed 'Chassis'; the real casting +
+roof gear re-grouped under a new 'Turret' (ring pivot at the authored y=0
+station) and the L11 under 'Gun' (trunnion origin); userdrops5.js adds
+gunNode '^Gun$'. Crossed-mask defect above is historical.

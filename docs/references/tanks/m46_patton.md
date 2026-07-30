@@ -47,3 +47,7 @@ mufflers (hull bucket) ±1.15, z −0.95…−2.95, top 1.78; 6 wheels r 0.33 sp
 stow to −2.95 top ≤ 1.85; .50cal at x −0.85 topping 2.33; gun axis y 1.92,
 r 0.125, evac 0.80 (drum just behind brake), single-baffle brake, muzzle
 +3.45.
+
+**Oracle re-processed (repair_oracles.py): turret seated** — fused Turret node
+lifted +4.2 model units onto the muffler-line deck, recentred +7.1 x, origin
+on the ring axis. Sunken-turret defect above is historical.

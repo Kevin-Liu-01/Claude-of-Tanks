@@ -51,3 +51,8 @@ tension wheel −2.60 low, 5 rollers; turret ring (−1.70, 1.55), dome HW 1.24,
 roof 2.30, front −0.55, bustle to −3.35; gun axis y 1.90, muzzle +3.46,
 double-baffle brake; muzzle stays 0.9 m past nose to mirror the oracle (real
 overhang is ~2.3 m — oracle wins for scoring).
+
+**Oracle re-processed (repair_oracles.py): turret seated** — fused Turret node
+lifted +4.0 model units onto the deck and recentred (+5.4 x) on the hull
+centreline; node origin parked on the ring axis for autoPivot. Sunken-turret
+defect above is historical.
