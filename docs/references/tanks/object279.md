@@ -39,3 +39,18 @@ low silhouette.
 
 ## Final fidelity (2026-07-30)
 67.6 → 91.2 — PASSES the 90/90 gate (H93 T86 G91 R93).
+
+## Shaded-parity r2 (2026-07-30)
+91.2 → 91.0 — still passes the 90/90 gate (H93 T85 G91 R93). Surface pass:
+dark slot rings on the M-65 multi-slot muzzle; saddle collar + cheek plates
+at the trunnion; dome hatch seams, low periscope pods, IR spotlight w/ glass,
+handrails, lifting bosses; bow-crest driver hatch + periscopes + pike tow
+hooks; stern exhaust ports + louvers seated ON the stern ellipse (z ≈ −4.95 —
+anything shallower is buried); shield stud rows; dark wheel-face contrast.
+Mismatch log: the four-track gimmick is expressed as dark-steel inner-track
+WRAP STUBS at bow/stern + the beam shadow band. A full second sovGear pair
+was tried twice and rejected by the masks: grounded inner tracks fill the
+oracle's open centre-bottom (front 91.9→87.4) and a lifted pair leaks through
+the outer band's scallop windows from the side (R 93→88). Head-on the stubs
+give the twin-beam read; a true always-visible 4-track run is incompatible
+with this oracle's silhouette.

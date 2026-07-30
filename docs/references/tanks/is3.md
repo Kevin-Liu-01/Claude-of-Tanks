@@ -42,3 +42,17 @@ sleeved tube (mask Ø 0.25) and a custom double-baffle brake at the oracle's
 turret mask reaches ~0.2 below the deck line at the dome flanks (its hull
 render is hollow there), a band a solid procedural deck occludes — side
 turret views cap around 72-75.
+
+## Shaded-parity r2 (2026-07-30)
+88.6 → 88.2 (H93 T79 G88 R86). Surface pass per docs/critique/shaded-parity-r1.md:
+D-25T double-baffle brake now READS (dark slot core + face rings + spine,
+silhouette held to the oracle's Ø0.35 — a Ø0.38 attempt cost 4 gun points and
+was reverted); sealed saddle mantlet w/ bolt rings (r1 socket gap at
+depression closed); dark-metal DShK with cradle/drum; cupola lids + seams,
+periscopes, grab rails, lifting bosses; 4 strapped fuel drums (split from the
+r1 two-long-drums read); louvered V-hump deck; pike weld beads, driver
+hatch/periscopes, tow hooks, fender bins + shovel, BDSh tail canisters;
+dark wheel-face contrast. Mismatch log: BDSh canisters must stay inside the
+oracle hull z-bound −3.41 — letting them overhang the tail shifted the
+gun-overhang crop (−6 G). Drum split gap + rails cost ~0.4 total vs r1 masks;
+side turret views still cap ~72-75 on the oracle's hollow-hull dome flanks.

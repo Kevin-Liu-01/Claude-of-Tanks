@@ -39,3 +39,17 @@ a narrow ring collar — lathe with re-entrant base.
 ## Final fidelity (2026-07-30)
 72.3 → 90.1 — PASSES the 90/90 gate (H93 T87 G82 R92). Gun 82: the oracle's
 brake blob is slightly taller/shorter than the buildGun drum + extra ring.
+
+## Shaded-parity r2 (2026-07-30)
+90.1 → 90.5 — passes the 90/90 gate (H92 T88 G85 R92). Surface pass:
+compact D-30 brake rebuilt as a dark-slotted double drum sized to the oracle
+blob (G 82→85 — it finally reads as a brake); cast saddle + coax port at the
+trunnion; dark collar seat seam under the onion dome (the "melts into the
+deck" read); low-profile hatch rings + seams, DShK ring mount, periscope
+pods, lifting bosses (all ≤2.40 — the oracle carries no spikes, T 87→88);
+IS-2-style louver rows on the sloped rear deck; strapped fuel drums; bin
+latch straps + toolbox + shovel; driver hatch seam + periscopes; bow tow
+hooks + headlight guards; dark wheel-face contrast. Mismatch log: the
+oracle's brake blob remains slightly taller/shorter than the twin-drum
+build — G caps ~85; dome fittings deliberately stay sub-scale to protect the
+no-spike turret mask.

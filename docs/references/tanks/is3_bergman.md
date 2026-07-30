@@ -39,3 +39,16 @@ truth (flush cap + hatch stack + stub muzzle with a tall thin collar blob).
 T/G are hard-capped by the degenerate source rig; matching further would
 require parenting hull furniture into the rotating turret — rejected for
 articulation cleanliness.
+
+## Shaded-parity r2 (2026-07-30) — IDENTITY REBUILD, score cost accepted
+71.7 → 61.6 (H93 T21 G12 R87). The r1 flush-cap build matched this print's
+degenerate rig but was rejected by the human shaded gate ("flat cone lid
+flush on the deck"). r2 ships the REAL proud IS-3 dome + full D-25T with
+double-baffle brake (shared construction with the is3 row, all r2 fittings
+included) per the work order: identity beats the metric on a broken oracle.
+Cost breakdown vs the degenerate GLB: T 20→21 (dome vs sunken shell — was
+already floored), G 55→12 (real 2.25 m muzzle overhang vs the print's 0.14 m
+stub), whole-silhouette views drop into the 60-70s. Hull/tracks (the only
+meaningful components on this row) hold at H93/R87. The deck drums now carry
+end caps + mounting straps (the r1 "loose floating cylinders" critique).
+Reference GLB remains quarantined; do not trust automated numbers on this id.

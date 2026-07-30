@@ -43,3 +43,18 @@ centre deck around the turret well is LOW (~1.45) with raised outboard
 sponson decks, and its slab skirt drops into that well; its howitzer mask is
 Ø0.23 at axis 2.57 with only 0.35 m of bow overhang. Turret sides cap ~82 on
 the mantlet-chin region.
+
+## Shaded-parity r2 (2026-07-30)
+90.0 → 90.2 — passes the 90/90 gate (H92 T85 G89 R88). Surface pass:
+round BOLTED mantlet disc + stepped sleeve + fixed aperture collar (the r1
+boxed recess that swallowed the howitzer at depression is gone — sealed
+through −5/+12° in the articulation strip); ~65 dark rivet studs along every
+turret plate seam; side vision slits; rear door MG ball + stub; second roof
+periscope + hatch seams; bow driver visor + hull MG ball + both draped tow
+cables w/ shackles; fender gusset struts; hull handrails (held inside the
+3.31 width anchor); engine-deck mesh intakes + round hatch; twin tail
+exhausts; headlight + horn moved to the left fender; dark wheel-face
+contrast on wheels + rollers. Mismatch log: tail exhausts must stay flush
+with the tail-plate face (−3.655) — extending the hull z-bound shifted the
+gun-overhang crop (−2 G, reverted). Track tone is the shared family material
+(gunmetal darkening would need a materials.js change — out of scope).

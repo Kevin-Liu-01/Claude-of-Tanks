@@ -41,3 +41,14 @@ plus a thin tall glacis stub that its hull mask carries between probe
 stations — both push its upper/hull mask centroids in ways a cleanly
 partitioned procedural rig can approach but not fully match. Custom brake
 kept at Ø≈0.21 per the oracle (not the huge historical S-70 slotted brake).
+
+## Shaded-parity r2 (2026-07-30)
+89.0 → 88.9 (H90 T81 G96 R93). Surface pass per docs/critique/shaded-parity-r1.md:
+sealed trunnion-axis saddle mantlet w/ bolt-bump rings (the r1 collar box slot
+at −6° is gone — verified in the articulation strip), cupola vision ring,
+loader lid, twin dark-metal KPVT AA mount, cheek SGMT MG ports, pike weld
+beads + tow hooks, rear-corner exhaust ports, deck-edge fender bins, grab
+rails, lifting bosses, headlight guards, dark wheel-face contrast.
+Mismatch log: the oracle keeps its broad turret skirt band (T holds ~81 as
+committed); rear bins are held to z < −3.5 so the yawed egg never sweeps
+them; track sag left as committed (R93) — end-connector greeble skipped.
