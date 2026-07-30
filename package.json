@@ -13,6 +13,7 @@
     "build:public": "VITE_PUBLIC_BUILD=1 vite build && node tools/strip-nc-assets.mjs",
     "model:audit": "node tools/model-quality-audit.mjs --check",
     "model:rig": "node tools/model-rig-probe.mjs",
+    "model:fidelity": "node tools/procedural-fidelity.mjs",
     "icons": "node tools/genIcons.mjs",
     "shots": "node tools/screenshot.mjs"
   },

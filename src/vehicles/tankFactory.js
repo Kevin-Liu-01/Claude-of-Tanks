@@ -29,6 +29,7 @@ import { MODERN2_BUILDERS } from './modern2.js'; // EXTENSION HOOK (see BUILDERS
 // modern1.js and merge into BUILDERS below. Deliberate module cycle — that
 // module reads our KIT bindings only at build time, never at module scope.
 import { MODERN1_BUILDERS } from './modern1.js';
+import { PROFILED_BUILDERS } from './profiledProcedurals.js';
 // EXTENSION HOOK (modern expansion integration): importing variants.js
 // registers the CC-BY derivative vehicles (m1a1 / t90a / m1a2_tusk) into the
 // shared spec tables (TANK_SPECS / MODEL_SOURCE / ALL_TANK_IDS) — the same
@@ -1482,6 +1483,11 @@ export const KIT = {
   mergeAll, trackBandGeo, trackLoopPoints, buildRunningGear, buildGun,
   cupola, headlight, liftEye, periscope, pintleMG, smokeCluster, towCable,
   fenders, stowage, jerryCan, tarpRoll, ammoCan, shovelTool, spareTrackStrip,
+  // Exposed for the recovered Abrams family: those variants layer their own
+  // kits onto the detailed native Abrams rather than replacing it with a
+  // generic wedge profile. Function declarations are hoisted; invocation
+  // happens only after both sides of the extension-module cycle initialize.
+  buildM1A2,
   D2R,
 };
 
@@ -2925,6 +2931,10 @@ Object.assign(BUILDERS, MODERN2_BUILDERS);
 // EXTENSION HOOK (HD modern roster #3): chieftain_mk10 / k2 / type10 /
 // m2a2_bradley / bmp2 / ariete — builders + specs live in modern3.js
 Object.assign(BUILDERS, MODERN3_BUILDERS);
+// Dedicated public-safe silhouettes for recovered/source-only variants. This
+// is deliberately last so an exact per-vehicle profile wins over its older
+// visualBase/variantOf family fallback.
+Object.assign(BUILDERS, PROFILED_BUILDERS);
 
 // Recovered variants should fall back to the closest articulated family
 // model, not the generic box placeholder, when their candidate GLB fails the
@@ -3027,7 +3037,7 @@ function bakeDirt(geo, yOffset, strength = 1) {
  * @returns {object} TankVisual (ARCHITECTURE §3.3.2)
  */
 export function createTank(specId, engineCtx, opts = {}) {
-  const { camoSeed = 4000, quality = 'high' } = opts;
+  const { camoSeed = 4000, quality = 'high', proceduralOnly = false } = opts;
   const spec = getSpec(specId);
   const armor = spec.armor;
   const mats = createTankMaterials(spec, engineCtx, camoSeed, quality);
@@ -3725,7 +3735,11 @@ export function createTank(specId, engineCtx, opts = {}) {
   // failure (missing file, no articulable turret node) the procedural model
   // simply remains — it is the fallback of record.
   const modelCfg = MODEL_SOURCE[specId];
-  if (modelCfg && modelCfg.source === 'glb' && modelCfg.glb) {
+  // Local fidelity tooling needs to instantiate the authored procedural
+  // fallback beside its sourced model without mutating the shared source
+  // registry. This flag is deliberately opt-in and leaves every gameplay
+  // caller on the normal sourced-model path.
+  if (!proceduralOnly && modelCfg && modelCfg.source === 'glb' && modelCfg.glb) {
     const ctx = { spec, cfg: modelCfg.glb, hullG, turretG, recoilG, muzzle };
     if (_modelLoaderMod && _modelLoaderMod.hasCachedGlb(modelCfg.glb.path)) {
       // GLB already parsed (garage re-entry, icon generation): swap in the

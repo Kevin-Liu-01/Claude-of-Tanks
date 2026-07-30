@@ -1,0 +1,333 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Claude of Tanks — procedural fidelity lab</title>
+<style>
+  :root { color-scheme:dark; font:13px/1.45 Inter,system-ui,sans-serif; background:#0b0f12; color:#e7edf0 }
+  body { margin:0; padding:20px; min-height:100vh; box-sizing:border-box }
+  header { display:flex; align-items:end; justify-content:space-between; gap:20px; margin-bottom:16px }
+  h1 { margin:0; font-size:22px } #summary { color:#9eabb2 }
+  #score { font:700 32px/1 ui-monospace,monospace; color:#f5b64b }
+  #grid { display:grid; grid-template-columns:repeat(4,minmax(180px,1fr)); gap:12px }
+  figure { margin:0; border:1px solid #263038; background:#050708; padding:8px }
+  canvas { display:block; width:100%; height:auto; image-rendering:auto }
+  figcaption { display:flex; justify-content:space-between; padding-top:6px; text-transform:uppercase; letter-spacing:.08em }
+  #metrics { margin-top:14px; display:grid; grid-template-columns:repeat(5,1fr); gap:8px }
+  .metric { padding:10px; border:1px solid #263038; background:#11171b }
+  .metric b { display:block; color:#f5b64b; font:700 18px/1.2 ui-monospace,monospace }
+  .legend { margin-top:10px; color:#9eabb2 } .ref { color:#ff5349 } .proc { color:#29d9ff } .both { color:#fff }
+</style>
+<header>
+  <div><h1 id="title">Procedural fidelity lab</h1><div id="summary">Loading reference…</div></div>
+  <div id="score">—</div>
+</header>
+<div id="grid"></div>
+<div id="metrics"></div>
+<div class="legend"><span class="ref">red = sourced reference</span> · <span class="proc">cyan = procedural</span> · <span class="both">white = overlap</span></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
+
+const SIZE = 384;
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'm1a2';
+const spec = TANK_SPECS[id];
+if (!spec) throw new Error(`Unknown tank id: ${id}`);
+
+// Private/local oracle only. The asset remains quarantined and is never
+// registered by the public build; the generated procedural code stays an
+// original primitive construction rather than embedding source mesh data.
+const LOCAL_REFERENCE_OVERRIDES = {
+  ariete: {
+    source:'glb',
+    glb:{
+      path:'/models/tanks/community/ariete-dustymojito.glb',
+      turretNode:'^Turret$', autoPivot:true,
+    },
+  },
+};
+const source = LOCAL_REFERENCE_OVERRIDES[id] || MODEL_SOURCE[id];
+const sourceIds = ALL_TANK_IDS.filter((tankId) => MODEL_SOURCE[tankId]?.source === 'glb');
+window.__REFERENCE_IDS = [...new Set([...sourceIds, ...Object.keys(LOCAL_REFERENCE_OVERRIDES)])]
+  .filter((tankId) => TANK_SPECS[tankId]);
+
+document.querySelector('#title').textContent = `${spec.name} — sourced vs procedural`;
+document.querySelector('#summary').textContent = source?.glb?.path || 'No sourced reference';
+
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false, preserveDrawingBuffer:true, powerPreference:'high-performance' });
+renderer.setSize(SIZE, SIZE, false);
+renderer.setPixelRatio(1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setClearColor(0x000000, 1);
+const target = new THREE.WebGLRenderTarget(SIZE, SIZE, { depthBuffer:true, stencilBuffer:false });
+target.samples = 4;
+const scene = new THREE.Scene();
+const maskMaterial = new THREE.MeshBasicMaterial({ color:0xffffff, side:THREE.DoubleSide });
+scene.overrideMaterial = maskMaterial;
+const engineCtx = { setupShadowMaterial:(m) => m, anisotropy:1, renderer };
+
+const originalSource = MODEL_SOURCE[id];
+if (source) MODEL_SOURCE[id] = source;
+const reference = createTank(id, engineCtx, { camoSeed:4242, quality:'high' });
+MODEL_SOURCE[id] = originalSource;
+const procedural = createTank(id, engineCtx, { camoSeed:4242, quality:'high', proceduralOnly:true });
+scene.add(reference.root, procedural.root);
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const isBelow = (node, ancestor) => { for (let p=node; p; p=p.parent) if (p === ancestor) return true; return false; };
+const isRenderNode = (o) => (o.isMesh || o.isSkinnedMesh || o.isInstancedMesh) && o.geometry;
+const effectivelyVisible = (o) => {
+  for (let p=o; p; p=p.parent) if (!p.visible) return false;
+  return true;
+};
+const isShadowHelper = (o) => /shadow/i.test(o.name || '');
+const swapped = (visual) => {
+  let yes = false;
+  visual.root.traverse((o) => { if (o.userData?.__glbSwapped) yes = true; });
+  return yes;
+};
+if (source?.source !== 'glb') throw new Error(`${id} has no local GLB reference`);
+for (let i=0; i<600 && !swapped(reference); i++) await sleep(50);
+if (!swapped(reference)) throw new Error(`${id} reference GLB did not load`);
+
+reference.root.updateMatrixWorld(true);
+procedural.root.updateMatrixWorld(true);
+const baseVisible = new WeakMap();
+for (const root of [reference.root, procedural.root]) {
+  root.traverse((o) => { if (isRenderNode(o)) baseVisible.set(o, effectivelyVisible(o) && !isShadowHelper(o)); });
+}
+
+function forEachBoxCorner(box, fn) {
+  for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) {
+    for (const z of [box.min.z, box.max.z]) fn(new THREE.Vector3(x, y, z));
+  }
+}
+
+function visibleBox(root) {
+  const result = new THREE.Box3();
+  const local = new THREE.Box3();
+  const instance = new THREE.Matrix4();
+  const world = new THREE.Matrix4();
+  root.updateMatrixWorld(true);
+  root.traverse((o) => {
+    if (!isRenderNode(o) || !baseVisible.get(o)) return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    if (!o.geometry.boundingBox) return;
+    local.copy(o.geometry.boundingBox);
+    if (o.isInstancedMesh) {
+      for (let i=0; i<o.count; i++) {
+        o.getMatrixAt(i, instance);
+        world.multiplyMatrices(o.matrixWorld, instance);
+        forEachBoxCorner(local, (p) => result.expandByPoint(p.applyMatrix4(world)));
+      }
+    } else {
+      forEachBoxCorner(local, (p) => result.expandByPoint(p.applyMatrix4(o.matrixWorld)));
+    }
+  });
+  return result;
+}
+
+const referenceBox = visibleBox(reference.root);
+const proceduralBox = visibleBox(procedural.root);
+const sharedBox = referenceBox.clone().union(proceduralBox);
+const center = sharedBox.getCenter(new THREE.Vector3());
+const corners = [];
+forEachBoxCorner(sharedBox, (p) => corners.push(p));
+
+const ANGLES = {
+  front: new THREE.Vector3(0, 0.08, 1),
+  side: new THREE.Vector3(1, 0.05, 0),
+  top: new THREE.Vector3(0, 1, 0.02),
+  rearQuarter: new THREE.Vector3(1, 0.28, -1),
+};
+
+function cameraFor(direction) {
+  const dir = direction.clone().normalize();
+  const nominalUp = Math.abs(dir.y) > 0.9 ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 1, 0);
+  const right = new THREE.Vector3().crossVectors(nominalUp, dir).normalize();
+  const up = new THREE.Vector3().crossVectors(dir, right).normalize();
+  let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
+  for (const p of corners) {
+    const rel = p.clone().sub(center);
+    const x = rel.dot(right), y = rel.dot(up);
+    minX=Math.min(minX,x); maxX=Math.max(maxX,x); minY=Math.min(minY,y); maxY=Math.max(maxY,y);
+  }
+  const half = Math.max((maxX-minX)/2, (maxY-minY)/2, 0.5) * 1.08;
+  const camera = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 200);
+  camera.position.copy(center).addScaledVector(dir, 60);
+  camera.up.copy(up);
+  camera.lookAt(center);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld(true);
+  return camera;
+}
+
+function setPart(root, part) {
+  const hull = root.getObjectByName('rig_hull');
+  const turret = root.getObjectByName('rig_turret');
+  root.traverse((o) => {
+    if (!isRenderNode(o)) return;
+    const base = baseVisible.get(o) === true;
+    const allowed = part === 'whole' || (part === 'hull' && isBelow(o, hull) && !isBelow(o, turret));
+    o.visible = base && allowed;
+  });
+}
+
+function renderMask(visual, other, camera, part='whole') {
+  visual.root.visible = true;
+  other.root.visible = false;
+  setPart(visual.root, part);
+  renderer.setRenderTarget(target);
+  renderer.clear(true, true, true);
+  renderer.render(scene, camera);
+  const rgba = new Uint8Array(SIZE * SIZE * 4);
+  renderer.readRenderTargetPixels(target, 0, 0, SIZE, SIZE, rgba);
+  const mask = new Uint8Array(SIZE * SIZE);
+  for (let i=0; i<mask.length; i++) mask[i] = rgba[i*4] > 40 ? 1 : 0;
+  return mask;
+}
+
+function bounds(mask) {
+  let minX=SIZE, minY=SIZE, maxX=-1, maxY=-1, area=0, sx=0, sy=0;
+  for (let y=0; y<SIZE; y++) for (let x=0; x<SIZE; x++) {
+    if (!mask[y*SIZE+x]) continue;
+    area++; sx+=x; sy+=y;
+    minX=Math.min(minX,x); maxX=Math.max(maxX,x); minY=Math.min(minY,y); maxY=Math.max(maxY,y);
+  }
+  return { minX,minY,maxX,maxY,area,cx:area?sx/area:0,cy:area?sy/area:0,
+    width:area?maxX-minX+1:0,height:area?maxY-minY+1:0 };
+}
+
+function compare(a, b) {
+  let intersection=0, union=0;
+  for (let i=0; i<a.length; i++) { intersection += a[i] && b[i] ? 1 : 0; union += a[i] || b[i] ? 1 : 0; }
+  const ba=bounds(a), bb=bounds(b);
+  if (!union) return { score:100, iou:1, areaSimilarity:1, bboxSimilarity:1, centroidSimilarity:1 };
+  const iou = intersection/union;
+  const areaSimilarity = Math.min(ba.area,bb.area)/Math.max(ba.area,bb.area,1);
+  const dw=Math.abs(ba.width-bb.width)/Math.max(ba.width,bb.width,1);
+  const dh=Math.abs(ba.height-bb.height)/Math.max(ba.height,bb.height,1);
+  const bboxSimilarity=Math.max(0,1-(dw+dh)/2);
+  const dc=Math.hypot(ba.cx-bb.cx,ba.cy-bb.cy)/Math.max(Math.hypot(ba.width,ba.height),1);
+  const centroidSimilarity=Math.max(0,1-dc*2);
+  const score=(iou*.70+areaSimilarity*.15+bboxSimilarity*.10+centroidSimilarity*.05)*100;
+  return { score, iou, areaSimilarity, bboxSimilarity, centroidSimilarity, referenceArea:ba.area, proceduralArea:bb.area };
+}
+
+const subtract = (whole, base) => {
+  const out = new Uint8Array(whole.length);
+  for (let i=0; i<out.length; i++) out[i] = whole[i] && !base[i] ? 1 : 0;
+  return out;
+};
+
+function lowerBand(a, b) {
+  const ba=bounds(a), bb=bounds(b);
+  const minY=Math.min(ba.minY,bb.minY), maxY=Math.max(ba.maxY,bb.maxY);
+  const cut=minY+(maxY-minY)*0.39;
+  const oa=new Uint8Array(a.length), ob=new Uint8Array(b.length);
+  for (let y=0; y<SIZE; y++) for (let x=0; x<SIZE; x++) if (y<=cut) {
+    const i=y*SIZE+x; oa[i]=a[i]; ob[i]=b[i];
+  }
+  return [oa,ob];
+}
+
+function overhang(whole, hull, commonHullBounds) {
+  const out=new Uint8Array(whole.length);
+  const pad=2;
+  for (let y=0; y<SIZE; y++) for (let x=0; x<SIZE; x++) {
+    const i=y*SIZE+x;
+    if (whole[i] && (x<commonHullBounds.minX-pad || x>commonHullBounds.maxX+pad)) out[i]=1;
+  }
+  return out;
+}
+
+function overlayCanvas(name, refMask, procMask, metric) {
+  const figure=document.createElement('figure');
+  const canvas=document.createElement('canvas'); canvas.width=SIZE; canvas.height=SIZE;
+  const ctx=canvas.getContext('2d'); const image=ctx.createImageData(SIZE,SIZE);
+  for (let y=0; y<SIZE; y++) for (let x=0; x<SIZE; x++) {
+    const src=(SIZE-1-y)*SIZE+x, dst=(y*SIZE+x)*4;
+    const r=refMask[src], p=procMask[src];
+    image.data[dst]=r?255:0; image.data[dst+1]=p?225:(r?75:0); image.data[dst+2]=p?255:(r?65:0); image.data[dst+3]=255;
+  }
+  ctx.putImageData(image,0,0);
+  const caption=document.createElement('figcaption');
+  caption.innerHTML=`<span>${name}</span><b>${metric.score.toFixed(1)}</b>`;
+  figure.append(canvas,caption); document.querySelector('#grid').append(figure);
+}
+
+const angleRows={};
+const hullRows={};
+const upperRows={};
+const rawMasks={};
+for (const [name,dir] of Object.entries(ANGLES)) {
+  const camera=cameraFor(dir);
+  const refWhole=renderMask(reference,procedural,camera,'whole');
+  const procWhole=renderMask(procedural,reference,camera,'whole');
+  const refHull=renderMask(reference,procedural,camera,'hull');
+  const procHull=renderMask(procedural,reference,camera,'hull');
+  const overall=compare(refWhole,procWhole);
+  angleRows[name]=overall;
+  hullRows[name]=compare(refHull,procHull);
+  upperRows[name]=compare(subtract(refWhole,refHull),subtract(procWhole,procHull));
+  rawMasks[name]={refWhole,procWhole,refHull,procHull};
+  overlayCanvas(name,refWhole,procWhole,overall);
+}
+
+// A number of recovered GLBs are intentionally kept as one fused mesh. They
+// remain excellent whole-silhouette references, but their "hull" rig node also
+// contains the turret and cannon. Do not manufacture a zero component score
+// for information that the source file simply cannot provide.
+const refSideUpper=subtract(rawMasks.side.refWhole,rawMasks.side.refHull);
+const procSideUpper=subtract(rawMasks.side.procWhole,rawMasks.side.procHull);
+const segmentedReference=bounds(refSideUpper).area > 20;
+const segmentedProcedural=bounds(procSideUpper).area > 20;
+const componentMasksAvailable=segmentedReference && segmentedProcedural;
+
+const [refTrack,procTrack]=lowerBand(
+  componentMasksAvailable ? rawMasks.side.refHull : rawMasks.side.refWhole,
+  componentMasksAvailable ? rawMasks.side.procHull : rawMasks.side.procWhole,
+);
+const trackMetric=compare(refTrack,procTrack);
+const hullSideBounds=bounds(rawMasks.side.refHull);
+const procHullSideBounds=bounds(rawMasks.side.procHull);
+const commonHullBounds={
+  minX:Math.min(hullSideBounds.minX,procHullSideBounds.minX),
+  maxX:Math.max(hullSideBounds.maxX,procHullSideBounds.maxX),
+};
+const refGun=overhang(rawMasks.side.refWhole,rawMasks.side.refHull,commonHullBounds);
+const procGun=overhang(rawMasks.side.procWhole,rawMasks.side.procHull,commonHullBounds);
+const gunMetric=componentMasksAvailable ? compare(refGun,procGun) : null;
+
+const mean=(values) => values.reduce((sum,v)=>sum+v,0)/Math.max(values.length,1);
+const overallScore=mean(Object.values(angleRows).map((v)=>v.score));
+const hullScore=componentMasksAvailable ? mean(['front','side','top'].map((name)=>hullRows[name].score)) : null;
+const turretScore=componentMasksAvailable ? mean(['front','side','top'].map((name)=>upperRows[name].score)) : null;
+const gunScore=gunMetric?.score ?? null;
+const tracksScore=trackMetric.score;
+const weighted=[
+  [overallScore,.35],[hullScore,.25],[turretScore,.20],[gunScore,.12],[tracksScore,.08],
+].filter(([value])=>Number.isFinite(value));
+const totalScore=weighted.reduce((sum,[value,weight])=>sum+value*weight,0)/
+  weighted.reduce((sum,[,weight])=>sum+weight,0);
+const rounded=(v)=>Number(v.toFixed(2));
+const nullableRounded=(v)=>Number.isFinite(v)?rounded(v):null;
+const scores={overall:rounded(overallScore),hull:nullableRounded(hullScore),turret:nullableRounded(turretScore),gun:nullableRounded(gunScore),tracks:rounded(tracksScore)};
+document.querySelector('#score').textContent=totalScore.toFixed(1);
+for (const [name,value] of Object.entries(scores)) {
+  const div=document.createElement('div'); div.className='metric';
+  div.innerHTML=`${name}<b>${value == null ? 'N/A' : value.toFixed(1)}</b>`;
+  document.querySelector('#metrics').append(div);
+}
+
+window.__FIDELITY_REPORT={
+  id,name:spec.name,sourcePath:source.glb.path,
+  fallback:spec.publicVisualFallback || spec.visualBase || spec.variantOf || id,
+  score:rounded(totalScore),scores,componentMasksAvailable,
+  angles:Object.fromEntries(Object.entries(angleRows).map(([name,row])=>[name,{score:rounded(row.score),iou:rounded(row.iou*100)}])),
+  boxes:{reference:referenceBox.getSize(new THREE.Vector3()).toArray().map(rounded),procedural:proceduralBox.getSize(new THREE.Vector3()).toArray().map(rounded)},
+};
+window.__FIDELITY_READY=true;
+renderer.setRenderTarget(null);
+</script>
