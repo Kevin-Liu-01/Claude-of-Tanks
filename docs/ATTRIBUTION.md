@@ -517,13 +517,15 @@ The remaining batch contents (t-90m / char-leclerc / bergman-p1 shipped-source
 folders from wave 2, this wave's three source archives, and the stray original
 `tank_t-80u.glb`) were deleted from the gitignored drop area after integration.
 
-### User drops waves 5–7 (recovered fleet, integrated 2026-07-29) — local-only
+### User drops waves 5–7 (recovered fleet, integrated 2026-07-29) — local-only models
 
 These models came from the owner's recovered download folder. They are enabled
-only in the private/local runtime. `VITE_PUBLIC_BUILD=1` omits their specs and
-model-source rows; `tools/strip-nc-assets.mjs` removes their GLBs and derivative
-icons from public artifacts. This conservative quarantine is required because
-most direct archives did not retain a verifiable license/author record.
+only in the private/local runtime. `VITE_PUBLIC_BUILD=1` keeps their gameplay
+specs but omits the restricted model-source rows; the vehicles use built-in
+procedural family visuals and icons instead. `tools/strip-nc-assets.mjs` removes
+their GLBs and derivative icons from public artifacts. This conservative
+quarantine is required because most direct archives did not retain a verifiable
+license/author record.
 
 | Group | Vehicles / spec ids | Source and license state | Local files |
 |---|---|---|---|
@@ -570,7 +572,7 @@ distributed publicly or commercialized.
 
 NOTE: `npm run build` and `npm run build:public` exclude this entire block
 automatically — they set `VITE_PUBLIC_BUILD=1` (quarantine-path model sources are never
-registered, even if their ship flags are flipped) and then runs
+registered; recovered gameplay rows remain on procedural family fallbacks) and then run
 `tools/strip-nc-assets.mjs`, which deletes
 `dist/models/tanks/community/{quarantine,recovered}/**`, the local-only
 Tejas/AbramsX GLBs and derivative icons, plus the candidates trees, and
@@ -583,4 +585,4 @@ fails the build if any registered playable still references a stripped path.
 | C1 Ariete (user drop, integrated 2026-07-28 as model source for spec `ariete`) | DustyMojito | https://sketchfab.com/DustyMojito (user-supplied download) | Sketchfab Standard (free download; use-in-project OK, no raw redistribution — not CC) | `public/models/tanks/community/quarantine/ariete-dustymojito.glb`, `public/icons/ariete_*.png` (derivative renders), judging copies in `public/models/community-candidates/user-drops/c1-ariete-mbt/` | SHIPPED MODEL SWAP in this private build (visual replacement for the procedural C1 Ariete). Remove the GLB + icons and revert `MODEL_SOURCE.ariete` to procedural (src/vehicles/userdrops.js) before any public distribution or commercialization. |
 | 1:100 Modern Tanks and Vehicles pack — 5 vehicles (user drops wave 2, integrated 2026-07-28 as specs `leo2a4`, `bmp2`, `bmp1`, `m1128`, `m1296`) | m_bergman (Thingiverse) | https://www.thingiverse.com/thing:4718232 (user-supplied download; original Solidworks-drawn wargame print masters — author's own custom license note ONLY narrows "commercial" to selling the prints, the CC-BY-NC-SA grant itself stands) | CC-BY-NC-SA | `public/models/tanks/community/quarantine/{leo2a4_bergman,bmp2_bergman,bmp1_bergman,m1128_mgs_bergman,m1296_dragoon_bergman}.glb`, `public/icons/{leo2a4,bmp2,bmp1,m1128,m1296}_*.png` (derivative renders) | SHIPPED in this private build: 2 model swaps (leo2a4/bmp2 — revert their `MODEL_SOURCE` rows) + 3 new playables (bmp1/m1128/m1296 — remove the specs, tech-tree nodes, and tier-table rows in src/vehicles/userdrops2.js, src/ui/techtree.js, src/game/state.js, src/ui/{garage,hud}.js). Remove GLBs + icons before any public distribution or commercialization; NC-SA also bars selling the game while these ship. |
 | 1:100 Modern Tanks and Vehicles pack, part 1 (user drop, batch bergman 2026-07-28) | m_bergman (Thingiverse) | https://www.thingiverse.com/thing:4718232 (user-supplied download; LICENSE.txt + README.txt in archive) | CC BY-NC-SA (Thingiverse license marker in archive) | 12 converted candidate GLBs + renders in `public/models/community-candidates/user-drops-recovered/bergman-p1/{glb,renders}/` (leo2a4, leo2a5, leo2a6, m1a1_aim, bmp1, bmp2, m1128_mgs, m1296_dragoon, lav25, cougar_6x6, btr70, brdm2 — `*_bergman.glb`) | Original Solidworks-drawn wargame print minis (author ships Parasolid `.x_t` sources alongside every STL — not a game rip). Untextured single-material CAD; hull + yaw-articulated `Turret` pivot authored at ring center, gun fused (virtual pitch). NC-SA: candidates for this private build only — delete all GLBs/renders (and any icons if integrated) before public distribution or commercialization. |
-| Recovered fleet waves 5–7 (42 local-only playables) | Tejas V.; Mortavex; m_bergman; authors not preserved in the remaining direct archives | See “User drops waves 5–7” above | CC BY-NC-ND / CC BY-NC-SA / unverified; all treated as local-only | `public/models/tanks/m1a2_tejas.glb`, `public/models/tanks/community/abramsx-mortavex.glb`, `public/models/tanks/community/recovered/**`, and the 42 matching five-view icon sets | Omitted from `VITE_PUBLIC_BUILD=1`; model trees and derivative icons are removed by `tools/strip-nc-assets.mjs`. |
+| Recovered fleet waves 5–7 (42 local-only model sets) | Tejas V.; Mortavex; m_bergman; authors not preserved in the remaining direct archives | See “User drops waves 5–7” above | CC BY-NC-ND / CC BY-NC-SA / unverified; all treated as local-only | `public/models/tanks/m1a2_tejas.glb`, `public/models/tanks/community/abramsx-mortavex.glb`, `public/models/tanks/community/recovered/**`, and the 42 matching five-view icon sets | Model trees and derivative icons are removed by `tools/strip-nc-assets.mjs`; public gameplay rows use distributable procedural family visuals/icons. |

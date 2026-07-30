@@ -91,10 +91,13 @@ asset is credited in [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md); models under
 non-commercial or personal-use licenses are used freely — this is a private,
 local, non-commercial project and nothing is distributed.
 
-The 42 newest recovered-drop vehicles are explicitly local-only because their
+The 42 newest recovered model assets are explicitly local-only because their
 licenses are NC/ND or were not preserved well enough to clear redistribution.
-They load in `npx vite` and `npm run build:private`; `npm run build` and
-`npm run build:public` omit their specs, models, and derivative icons.
+Their gameplay rows remain available in every build: public builds use the
+closest built-in procedural family visual and distributable family icons,
+while `npx vite` / `npm run build:private` use the recovered GLBs and exact
+derivative icons. `npm run build` / `npm run build:public` strip only the
+restricted models and their derivative renders.
 
 No assets extracted from commercial games are used. During sourcing, many
 candidate uploads were declined on provenance (commercial-game extractions,

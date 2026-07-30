@@ -7,10 +7,9 @@
 //      dist/models/tanks/community/{quarantine,recovered}/**
 //      local-only Tejas/AbramsX GLBs and their derivative icon sets
 // 2. FAILS (exit 1) if any MODEL_SOURCE path in src/vehicles/*.js that is
-//    still REGISTERED as a playable references a deleted path — i.e. any
-//    spec module 'quarantine/' or 'community-candidates/' path whose id is in
-//    ALL_TANK_IDS. Those playables would render as broken/placeholder models
-//    in the public artifact; make a conscious ship/no-ship call first.
+//    still REGISTERED as a playable references a deleted path. Recovered
+//    gameplay rows remain registered in public builds, but their model-source
+//    gates must leave them on legal procedural family fallbacks.
 // 3. Prints the docs/ATTRIBUTION.md sections that must be dropped for a
 //    public build (the PERSONAL-USE / NC QUARANTINE block).
 //
@@ -74,8 +73,8 @@ async function main() {
   }
 
   // 2. cross-check: registered playables must not point at deleted paths.
-  // Import the spec registry (registration side effects included — userdrops
-  // modules gate their own NEW ids, so ALL_TANK_IDS reflects what ships).
+  // Import the spec registry (registration side effects included). Recovered
+  // rows remain in ALL_TANK_IDS; their restricted MODEL_SOURCE overrides do not.
   const { ALL_TANK_IDS, MODEL_SOURCE } =
     await import(path.join(ROOT, 'src', 'vehicles', 'specs.js'))
       .then(async (specs) => {

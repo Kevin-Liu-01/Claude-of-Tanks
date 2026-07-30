@@ -8,10 +8,15 @@ const ALLOW_LOCAL_RECOVERED_MODELS = typeof import.meta !== 'undefined' &&
 const make = (baseId, id, name, nation, patch = {}) => {
   const s = copy(TANK_SPECS[baseId]);
   s.id = id; s.name = name; s.nation = nation || s.nation; s.variantOf = baseId;
-  s.community = {
-    author: 'm_bergman', source: 'https://www.thingiverse.com/thing:4718232',
-    license: 'CC BY-NC-SA — LOCAL-ONLY QUARANTINE',
-  };
+  s.publicVisualFallback = baseId;
+  if (ALLOW_LOCAL_RECOVERED_MODELS) {
+    s.community = {
+      author: 'm_bergman', source: 'https://www.thingiverse.com/thing:4718232',
+      license: 'CC BY-NC-SA — LOCAL-ONLY QUARANTINE',
+    };
+  } else {
+    delete s.community;
+  }
   const gun = s.gun, dims = s.dims, visual = s.visual;
   Object.assign(s, patch);
   if (patch.gun) s.gun = { ...gun, ...patch.gun };
@@ -20,7 +25,7 @@ const make = (baseId, id, name, nation, patch = {}) => {
   return s;
 };
 
-const SPECS = ALLOW_LOCAL_RECOVERED_MODELS ? [
+const SPECS = [
   make('is3', 'is3_bergman', 'IS-3 (Bergman)', 'USSR', { visual: { number: '703' } }),
   make('sturmtiger', 'isu152', 'ISU-152', 'USSR',
     { hp: 1450, weightTons: 47.3, topSpeedKmh: 37, reverseSpeedKmh: 14, gun: { caliberMm: 152, reloadS: 15.5 } }),
@@ -56,7 +61,7 @@ const SPECS = ALLOW_LOCAL_RECOVERED_MODELS ? [
     { hp: 1500, weightTons: 42, topSpeedKmh: 40, gun: { caliberMm: 105, reloadS: 9.0 } }),
   make('m60a1', 'm60a3', 'M60A3', 'USA',
     { hp: 1800, weightTons: 52.6, topSpeedKmh: 48, gun: { reloadS: 7.2 } }),
-] : [];
+];
 
 const ROOT = '/models/tanks/community/recovered/';
 const articulated = (id, file = id, cfg = {}) => {
@@ -69,11 +74,15 @@ const fixed = (id) => {
   MODEL_SOURCE[id] = { source: 'glb', glb: { path: `${ROOT}${id}.glb`, fixedMount: true, paintUntextured: true } };
 };
 
+// All balance/spec rows are redistribution-safe code and remain playable in
+// public builds through their procedural family fallbacks. Only the recovered
+// NC model sources below are local/private.
+for (const spec of SPECS) {
+  TANK_SPECS[spec.id] = TANK_SPECS[spec.id] || spec;
+  if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
+}
+
 if (ALLOW_LOCAL_RECOVERED_MODELS) {
-  for (const spec of SPECS) {
-    TANK_SPECS[spec.id] = TANK_SPECS[spec.id] || spec;
-    if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
-  }
   articulated('is3_bergman', 'bergman_is3');
   fixed('isu152'); fixed('isu122s');
   for (const id of ['centurion3', 'centurion5', 'comet', 'challenger_cruiser', 'charioteer',

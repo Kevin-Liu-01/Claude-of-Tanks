@@ -13,10 +13,15 @@ const make = (baseId, id, name, nation, patch = {}) => {
   spec.name = name;
   spec.nation = nation || spec.nation;
   spec.variantOf = baseId;
-  spec.community = {
-    author: 'Recovered owner drop', source: `user-drops-recovered/${id}`,
-    license: 'Redistribution not cleared — LOCAL-ONLY QUARANTINE',
-  };
+  spec.publicVisualFallback = baseId;
+  if (ALLOW_LOCAL_RECOVERED_MODELS) {
+    spec.community = {
+      author: 'Recovered owner drop', source: `user-drops-recovered/${id}`,
+      license: 'Redistribution not cleared — LOCAL-ONLY QUARANTINE',
+    };
+  } else {
+    delete spec.community;
+  }
   const baseGun = spec.gun;
   const baseDims = spec.dims;
   const baseVisual = spec.visual;
@@ -27,7 +32,7 @@ const make = (baseId, id, name, nation, patch = {}) => {
   return spec;
 };
 
-const SPECS = ALLOW_LOCAL_RECOVERED_MODELS ? [
+const SPECS = [
   make('challenger2', 'challenger1', 'Challenger 1 Mk.3', 'UK',
     { hp: 2100, weightTons: 62, topSpeedKmh: 56, gun: { reloadS: 7.2 } }),
   make('chieftain_mk10', 'chieftain5', 'Chieftain Mk.5', 'UK',
@@ -78,7 +83,7 @@ const SPECS = ALLOW_LOCAL_RECOVERED_MODELS ? [
     { hp: 2200, weightTons: 50.2, topSpeedKmh: 70, gun: { reloadS: 5.5 } }),
   make('t90a', 't90a_vladimir', 'T-90A Vladimir', 'Russia',
     { hp: 2150, topSpeedKmh: 65, gun: { reloadS: 6.8 } }),
-] : [];
+];
 
 const ROOT = '/models/tanks/community/recovered/';
 const source = (id, cfg = {}) => {
@@ -94,11 +99,15 @@ const MERKAVA_TURRET_FOLLOWERS =
   'vehicle#(?:antenna_|bone_|ex_armor_(?!body)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))';
 const MERKAVA_GUN_FOLLOWERS = 'vehicle#gun_barrel_';
 
+// Specs/gameplay ship everywhere. Public builds deliberately omit the
+// recovered GLBs and resolve each row through its procedural family model;
+// private/local builds install the exact recovered source below.
+for (const spec of SPECS) {
+  TANK_SPECS[spec.id] = TANK_SPECS[spec.id] || spec;
+  if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
+}
+
 if (ALLOW_LOCAL_RECOVERED_MODELS) {
-  for (const spec of SPECS) {
-    TANK_SPECS[spec.id] = TANK_SPECS[spec.id] || spec;
-    if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
-  }
   articulated('challenger1', {
     turretFollowers: CHALLENGER_TURRET_FOLLOWERS,
     gunFollowers: CHALLENGER_GUN_FOLLOWERS,

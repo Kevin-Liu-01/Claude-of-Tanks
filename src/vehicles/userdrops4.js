@@ -5,11 +5,14 @@
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
+const ALLOW_LOCAL_RECOVERED_MODELS = typeof import.meta !== 'undefined' &&
+  import.meta.env && !import.meta.env.VITE_PUBLIC_BUILD;
 
 const tejas = clone(TANK_SPECS.m1a2);
 tejas.id = 'm1a2_tejas';
 tejas.name = 'M1A2 Abrams (Tejas)';
 tejas.variantOf = 'm1a2';
+tejas.publicVisualFallback = 'm1a2';
 tejas.community = {
   author: 'Tejas V.',
   source: 'https://sketchfab.com/3d-models/m1a2-abrams-c85846177bfc4018b6a8f3b40754655c',
@@ -21,6 +24,7 @@ const abramsx = clone(TANK_SPECS.m1a2);
 abramsx.id = 'abramsx';
 abramsx.name = 'AbramsX';
 abramsx.variantOf = 'm1a2';
+abramsx.publicVisualFallback = 'm1a2';
 abramsx.community = {
   author: 'Mortavex',
   source: 'https://sketchfab.com/Mortavex',
@@ -44,15 +48,19 @@ abramsx.visual = {
   patches: ['#1f2420', '#665746'], marking: 'star', number: 'X1', camoScale: 0.58,
 };
 
-// Source models are intentionally absent from VITE_PUBLIC_BUILD artifacts.
-// The local-only specs and their derivative icons are omitted there too.
-const ALLOW_LOCAL_RECOVERED_MODELS = typeof import.meta !== 'undefined' &&
-  import.meta.env && !import.meta.env.VITE_PUBLIC_BUILD;
+// Keep the gameplay rows in every build. Public artifacts use the legal
+// procedural M1A2 family fallback + its packaged icons; only private/local
+// builds attach the recovered model credits and restricted GLB sources.
+if (!ALLOW_LOCAL_RECOVERED_MODELS) {
+  delete tejas.community;
+  delete abramsx.community;
+}
+for (const spec of [tejas, abramsx]) {
+  TANK_SPECS[spec.id] = TANK_SPECS[spec.id] || spec;
+  if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
+}
+
 if (ALLOW_LOCAL_RECOVERED_MODELS) {
-  for (const spec of [tejas, abramsx]) {
-    TANK_SPECS[spec.id] = TANK_SPECS[spec.id] || spec;
-    if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
-  }
   MODEL_SOURCE.m1a2_tejas = {
     source: 'glb',
     glb: {

@@ -10,8 +10,9 @@ new entry.
 
 The recovered models are local-only. Their licenses are NC/ND or were not
 preserved well enough to clear redistribution. They load through `npx vite`
-and `npm run build:private`; `npm run build` / `npm run build:public` omit their
-specs, GLBs, and derivative icons.
+and `npm run build:private`; `npm run build` / `npm run build:public` keep all
+gameplay/spec rows but substitute built-in procedural family visuals and
+family icons, while omitting the restricted GLBs and derivative icons.
 
 ## New playable entries
 
