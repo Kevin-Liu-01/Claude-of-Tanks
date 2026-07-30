@@ -31,9 +31,10 @@
  * - ultra : maxed visuals — full-res AO, 1.5 ratio, 4096 cascade 2. Explicit
  *           opt-in via settings (r7: auto no longer selects it — see
  *           resolvePresetName).
- * - high  : THE DEFAULT on every display ('auto'). 1.1 ratio, half-res AO,
- *           0.6x bloom chain — holds the fps budget with real tail margin
- *           while keeping every feature (AO, bloom, SMAA, 4 cascades).
+ * - high  : THE DEFAULT on every display ('auto'). Starts at 1.25 ratio on
+ *           Retina and can climb to the native 1.5 renderer cap, with half-res
+ *           AO and a 0.6x bloom chain. The frame governor can fall back to
+ *           ~1.0 under sustained load, preserving the >=45 fps floor.
  * - medium: 1.0 ratio, half-res AO, half-res bloom, 2048/1024 cascades.
  * - low   : 0.75 ratio, AO off, half-res bloom, 2048/1024 cascades, shorter
  *           shadow range.
@@ -54,10 +55,9 @@ export const PRESETS = {
   // radius compensation in lighting.js (radius scales with mapSize/reference,
   // so the r5 stripe fix is kept: penumbra WIDTH is identical, only shadow
   // texel resolution in the 130-230 m band drops). Measured on the reference
-  // machine at dpr2/60 s: the r5/r6 content rounds pushed 'high' from 9.4 ms
-  // median (r4 cert) to 12.3 ms — a budget fail; this retune (ratio 1.25 →
-  // 1.1, bloomScale 1.0 → 0.6, cascade 2 → 2048) brings it back to ~10 ms
-  // (100 fps median) with every feature still on.
+  // machine at dpr2/60 s: scaled AO, bloom and cascade 2 leave enough
+  // headroom to restore native-class scene raster resolution. The live
+  // governor owns the fallback when a device cannot sustain that resolution.
   // r5 (lighting_post: "battlefield_urban has zero cast-shadow volumes from
   // buildings onto streets at establishing-shot distance"): shadowMaxFar
   // 520 → 700 on ultra/high. The urban establishing camera reads town rows
@@ -74,15 +74,14 @@ export const PRESETS = {
     shadowMapSizes: [4096, 4096, 4096, 2048],
     shadowMaxFar: 700,
   },
-  // High may supersample to 1.1 for a visibly cleaner image on retina panels,
-  // but begins from the proven 1.0 budget. The post chain's frame-time
-  // governor raises it to 1.1 only when there is clear GPU headroom and can
-  // step below 1.0 under sustained load, so resolution never takes priority
-  // over the >=45 fps floor.
+  // High starts above CSS-pixel resolution on Retina panels and can earn the
+  // full 1.5 native renderer ratio. Fine geometry reaches SMAA before any
+  // upscale instead of being rasterized at 1.0 then stretched across a 1.5x
+  // backing store. The governor may return to ~1.0 under sustained load.
   high: {
     label: 'High',
-    maxPixelRatio: 1.1,
-    adaptiveBasePixelRatio: 1.0,
+    maxPixelRatio: 1.5,
+    adaptiveBasePixelRatio: 1.25,
     aoScale: 0.5,
     bloomScale: 0.6,
     shadowMapSizes: [4096, 4096, 2048, 2048],
@@ -122,16 +121,15 @@ export function getStoredChoice() {
 /**
  * Resolve 'auto' to a concrete preset name: 'high' on every display — the
  * tier tuned to hold the perf budget (>=60 median / >=45 p5, p99 <= 25 ms)
- * with real margin; 'ultra' is the explicit opt-in maxed tier.
+ * through its adaptive fallback; 'ultra' is the explicit opt-in maxed tier.
  *
  * r7: auto used to give dpr-1 displays 'ultra'. Measured on the reference
  * machine at 1080p/60 s certification windows, ultra's tail sat at p99
  * 27 ms (gate 25) with every other line passing — the full-res AO + 1.0
  * bloom + 4096 cascade 2 stack leaves too little headroom to absorb normal
- * desktop scheduling noise. The 'high' chain certifies p99 16.3 ms while
- * rasterizing MORE pixels at dpr2 (1.1 ratio = 3.24 Mpx vs 2.07 Mpx at
- * dpr1), so the default holds the budget on every display class and the
- * frame-tail gate stops being a coin flip against ambient load.
+ * desktop scheduling noise. High keeps the scaled AO/bloom/shadow workload,
+ * but now lets its dynamic raster ratio absorb scheduling/GPU pressure instead
+ * of permanently presenting every Retina player with a 1.0x upscaled scene.
  */
 export function resolvePresetName(choice = getStoredChoice()) {
   if (choice !== 'auto') return choice;

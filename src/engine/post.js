@@ -3,15 +3,15 @@
  *
  * Chain (extends ARCHITECTURE.md §3.1.4 / graphics-aaa.md §4 with a grade):
  *   RenderPass → AerialPass → GTAOPass → UnrealBloomPass → OutputPass →
- *   SMAAPass → GradePass
+ *   GradePass → SMAAPass
  *
  * The composer runs on a custom HalfFloat HDR target that owns a DepthTexture
  * (so fx can later sample scene depth for soft particles). OutputPass applies
  * ACES tone mapping + sRGB conversion (reading renderer.toneMapping/
- * outputColorSpace); SMAA runs AFTER it, in display space, so edge blending
- * happens on the values the eye sees (AA on linear HDR is defeated by the
- * tone map on hot speculars). GradePass runs last, in display sRGB space
- * (contrast/split-tone/vignette are perceptual ops). Bloom thresholds against
+ * outputColorSpace); the display-space GradePass resolves contrast, scope
+ * sharpening and split tone before SMAA runs LAST on the values the eye sees.
+ * That ordering prevents the grade from sharpening stair steps back into an
+ * already-antialiased frame. Bloom thresholds against
  * the linear HDR buffer — sun, muzzle flash and fire exceed 1.0 and bloom
  * naturally.
  */
@@ -1056,16 +1056,28 @@ export function createPost(renderer, scene, camera) {
   }
   composer.addPass(bloom); // 3. HDR bloom — muzzle flash / fire pop here
 
-  // r4 ORDER CHANGE: SMAA moved AFTER OutputPass. Anti-aliasing computed on
+  // SMAA runs after BOTH OutputPass and the display grade. Anti-aliasing computed on
   // linear HDR values is defeated by the tone map: a 6.0-vs-0.4 edge blended
   // 50/50 in linear space still tone-maps to ~white against mid-grey, so hot
   // speculars (gun tube top edge vs sky) kept a jagged 1px stair. SMAA's edge
   // detection and blend now run in display sRGB space — the space the eye
   // sees — which is also where the algorithm was designed to operate.
   composer.addPass(new OutputPass()); // 4. ACES + sRGB
-  composer.addPass(new SMAAPass()); // 5. AA in display space, post-tonemap
   const grade = new ShaderPass(GradeShader);
-  composer.addPass(grade); // 6. display-space grade (+ scope treatment) — LAST
+  composer.addPass(grade); // 5. display-space grade (+ scope treatment)
+  const smaa = new SMAAPass();
+  // Three's stock pass uses its medium preset (0.10 edge threshold / 8 search
+  // steps). The HUD-scale gun tubes, wires, fences and vehicle silhouettes
+  // routinely land below that threshold after tone mapping. High-preset SMAA
+  // catches those fine edges and follows longer diagonals without the memory
+  // and fill-rate cost of full-scene MSAA/supersampling.
+  if (smaa._materialEdges && smaa._materialEdges.defines) {
+    smaa._materialEdges.defines.SMAA_THRESHOLD = '0.055';
+  }
+  if (smaa._materialWeights && smaa._materialWeights.defines) {
+    smaa._materialWeights.defines.SMAA_MAX_SEARCH_STEPS = '16';
+  }
+  composer.addPass(smaa); // 6. final-frame AA — nothing may sharpen after this
 
   // --- Quality-aware sizing --------------------------------------------------
   // The composer's pixel ratio is the renderer's, CAPPED by the preset
@@ -1102,15 +1114,18 @@ export function createPost(renderer, scene, camera) {
   //  - HUD/DOM stays native-crisp: only the composer's internal buffers
   //    scale; the final pass upscales to the untouched canvas, same as the
   //    preset render-scale path this reuses.
-  const DYN_MIN = 0.75;
+  // With High capped at 1.5, 0.67 is an effective ratio of ~1.0: the old
+  // certified fallback rather than a sub-native blur. Normal operation starts
+  // at 1.25 and may climb to the full 1.5 canvas ratio.
+  const DYN_MIN = 0.67;
   const DYN_STEP = 0.09;
   const DYN_DOWN_MS = 18.5;
   const DYN_UP_MS = 13.5;
   const DYN_INTERVAL_S = 2.5;
   const DYN_WARMUP_S = 6; // ignore boot/shader-compile turbulence
-  // High exposes 1.1x as an opportunistic supersampling ceiling, but starts
-  // at its certified 1.0x base. This is expressed as a scale relative to the
-  // live capped ratio so dpr-1 displays remain exactly 1.0 (never 0.91x).
+  // High exposes the native 1.5x renderer ratio as an opportunistic ceiling
+  // and starts at 1.25x. This remains relative to the live capped ratio, so
+  // dpr-1 displays stay exactly 1.0 and never allocate a pointless upscale.
   function baseDynScale() {
     const capped = Math.min(renderer.getPixelRatio(), preset.maxPixelRatio);
     const base = Math.min(capped, preset.adaptiveBasePixelRatio || capped);

@@ -515,8 +515,17 @@ function ensureStyle(id, css) {
 // ---------------------------------------------------------------------------
 function drawGhostTank(canvas, p, opts = {}) {
   const W = opts.w || 118, Hpx = opts.h || 38;
-  canvas.width = W; canvas.height = Hpx;
+  // These silhouettes used to be the only 1x UI canvases in the game. They
+  // were visibly stair-stepped beside the 2x HUD/minimap artwork, especially
+  // on diagonal glacis plates and gun tubes. Keep their CSS footprint but
+  // supersample the painter and let the browser resolve it smoothly.
+  const dpr = Math.max(2, Math.min(window.devicePixelRatio || 1, 3));
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(Hpx * dpr);
+  canvas.style.width = `${W}px`; canvas.style.height = `${Hpx}px`;
   const c = canvas.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.imageSmoothingEnabled = true;
+  c.imageSmoothingQuality = 'high';
   c.clearRect(0, 0, W, Hpx);
   const hullC = opts.color || 'rgba(126,140,152,0.60)';
   const gearC = opts.gearColor || 'rgba(92,104,115,0.52)';

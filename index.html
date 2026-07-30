@@ -11,9 +11,27 @@
   <link rel="preload" href="/fonts/switzer/Switzer-Extrabold.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/switzer/SwitzerCondensed-Bold.woff2" as="font" type="font/woff2" crossorigin />
   <style>
+    :root {
+      /* One raster-quality contract for every DOM HUD mounted by the game.
+         Most panels are composited translucent layers, where browser defaults
+         can fall back to visibly coarse grayscale glyph edges. */
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+      font-synthesis: none;
+    }
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #05080b; }
+    body, button, input, select, textarea {
+      -webkit-font-smoothing: inherit;
+      text-rendering: optimizeLegibility;
+      font-kerning: inherit;
+      font-synthesis: none;
+    }
     #app { width: 100%; height: 100%; }
+    canvas, img { image-rendering: auto; }
     canvas { display: block; }
+    svg { shape-rendering: geometricPrecision; text-rendering: geometricPrecision; }
 
     /* ---------------------------------------------------------------------
        ENTRY / LOADING SCREEN (src/ui/bootScreen.js drives the live parts).
