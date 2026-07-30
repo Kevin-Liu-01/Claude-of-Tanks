@@ -22,3 +22,7 @@ docs/references/tanks/m1a2_tejas.md (identical).
 ## Outcome (final lab state)
 Shares the tejas oracle/geometry: 75.4 -> ~87 (H92 T78 G87 R88). See
 m1a2_tejas.md for the LOD-bucket and camera-tilt notes.
+
+## Round 2 (shaded-parity, 2026-07-30)
+Identical build to m1a1 (correct per packet); see m1a1.md round-2 note.
+Score 87.1 -> 86.6.

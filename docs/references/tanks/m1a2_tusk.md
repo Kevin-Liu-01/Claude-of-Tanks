@@ -46,3 +46,23 @@ Baseline 58.9 (H58 T44 G42 R73) -> 86.5 (H91 T81 G78 R86). The 0.727 body
 scale + real-scale runtime-kit mirror is what closed the gap; residual gun
 loss comes from the very slim scaled tube (r ~0.065) anti-aliasing against
 the reference's tube at mask resolution.
+
+## Round 2 (shaded-parity, 2026-07-30)
+- ARAT reads as a tile array: lower course DEAD FLAT at the ±1.83 oracle face
+  (this plane is the width-normalization anchor — a leaned lower course only
+  touched 1.83 at a rounded corner and silently re-scaled the whole tank),
+  upper ARAT-2 course wedged out 0.22 rad, dark seam spacers between tiles,
+  standoff arms tying the real-scale rails back to the under-scale hull.
+- Slat cage gains horizontal slat bars + brace arms to the hull rear; TIP
+  hangs on its bracket; LAGS gets a swept wing plate + vision window; thin
+  belly-armor lip tucked at the toe. abramsHull's own TIP/mud-flaps are
+  suppressed here (the runtime kit brings the real TIP; the scaled oracle
+  body carries no flaps at those stations).
+- Station is the shared CROWS build at s=0.727.
+- Score 86.5 -> 84.1 (H 91->87, T 81->73, G 78->85). The T loss is the
+  under-scale interaction: the critique-mandated fine kit (hatch fences,
+  skate rail, banks, station facets) rasterizes smaller than round-1's
+  chunky primitives at 0.727, and the glacis/grille furniture adds fronts
+  the clamped oracle body lacks. 0.4 outside the ±2 gate — flagged rather
+  than re-fattened, since the fat blobs are exactly what the shaded gate
+  rejected.

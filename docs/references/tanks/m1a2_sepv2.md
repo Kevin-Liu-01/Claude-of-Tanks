@@ -41,3 +41,19 @@ in whichever mask modelLoader's follower regex assigns them, and its widest
 point (one-station protrusion) narrows the whole reference body after width
 normalization — the uniform-width procedural reads ~4% wide against it in
 plan. Both are recovered-asset quirks, not geometry choices.
+
+## Round 2 (shaded-parity, 2026-07-30)
+- The round-1 "rotor-shield" slab (gun-local z 2.05) hovered 1.4 m ahead of
+  the turret face over the glacis and swung as a detached box in every yaw
+  cell — the critique's floating part. The housing now sits AT the embrasure
+  face (gun-local 1.42/1.86) with cover seams + coax, still inside the
+  hull-length bound so the overhang mask keeps its clean tube.
+- Roof pulled down to the measured band (roofFront/Rear 0.98/1.02 ->
+  0.82/0.87; shell roof ~2.55 world) per "pull the roof down ~15%".
+- CROWS II mast gets a slew collar, dark-faced head with glass lens and a
+  cradled M2 + ammo can; hatches gain rings + periscope fences; M250 banks
+  sit on the cheek plates (the old nub block floated 0.6 m ahead of the
+  swept face); static deck rack gains a dark mesh floor + strap details.
+- Family glacis/skirt/grille kit; driver hump offset left (periX -0.42) to
+  clear the recovered asset's low gun line at -10 deg.
+- Score 74.4 -> 76.5 (H 82->83, T 55, G 75->73, R 78->79).

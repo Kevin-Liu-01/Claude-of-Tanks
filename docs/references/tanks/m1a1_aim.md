@@ -46,3 +46,21 @@ turret (visually broken at any yaw), so they are deliberately not mirrored;
 T stays ~27 with the remaining shape matched. Flagged as an asset-side fix
 (re-tag those wall strips to the hull in the recovered GLB or its follower
 config).
+
+## Round 2 (shaded-parity rebuild, 2026-07-30)
+Round-1 shipped the score-chased slab: the "turret" frustum was buried inside
+the rising deck and the gun rode axis 1.28 under the nose line — no visible
+turret or gun (critique: TC 0/10, worst tank in the fleet). Rebuilt per the
+critique and this packet's own "externally an M1A1":
+- Hull keeps every measured station (slab body, rising deck, rear overhang
+  rack now rails+mesh+strapped bundle, exhaust stack at z -3.35 top 2.43).
+- Upper works are the canonical M1A1 turret + M256 (ring (0,1.70,-0.5), roof
+  2.52, gun axis 1.96, muzzle 4.70) with the family CWS/bustle/smoke kit.
+- The stack is HULL-built (the oracle turret-tags it, but a chimney orbiting
+  the hump at yaw is the exact round-1 bug class); the floating ring-apron
+  and bustle-shelf slivers are deleted.
+- DELIBERATE score cost: 77.3 -> 66.9 (H92->90, T27->20, G78->58, R91->90).
+  The reference GLB is sunken-turret/broken (critique systemic item 11) and
+  its turret & gun masks reward exactly the regression that was rejected.
+  Repairing/quarantining the GLB stays an asset-side task; until then this
+  id's fidelity number is not a likeness signal.

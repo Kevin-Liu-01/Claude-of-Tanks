@@ -44,3 +44,22 @@ Residual gaps: the shell band's exact chamfer profile and the bridge
 mass (front view) each hold ~3-5 pts; the asset's empty turret pivot means
 its shell yaws around an off-body origin in the articulation strip, which
 the procedural intentionally does not copy (its shell yaws about the ring).
+
+## Round 2 (shaded-parity, 2026-07-30)
+- XM914 RWS built out on the static bridge (hull bucket, matching the
+  asset's non-yawing shell): slew ring, cradle cheeks, stepped 30 mm barrel
+  with muzzle ring, dark-faced sensor heads with glass.
+- Faceted corner sensor pods flank the bridge at the measured front-view
+  slopes (2.62..2.82, x to ±1.58), floored above the yawing shell's swing.
+- Round-1 floaters fixed: front mud flaps deleted (nothing behind the blade
+  bow to carry them; rears hang at the tail block), and the antenna rods —
+  which floated 0.9 m over the deck — now stand on base pods on the rear
+  deck at (±1.5, -2.85), outside the shell's yaw sweep. Turret-rear bases
+  would orbit/clip a static-antenna asset, so hull-deck pods are the
+  closest feasible read of that critique bullet.
+- Splitter undercut below the nose tip, hybrid-drive louver panels on the
+  raised rear deck, shell panel seams + tie-downs, XM360 angular shroud +
+  dark pepperpot muzzle over the tube tip, family glacis/skirt kit with the
+  diagonal lead-panel cut.
+- Score 81.0 -> 79.4 (T 60->61, R 94->92.5, G 77->71 — the real-XM360
+  muzzle furniture the asset's plain tube lacks; within the ±2 gate).

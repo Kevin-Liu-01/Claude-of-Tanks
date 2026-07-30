@@ -57,3 +57,10 @@ axis 1.88 / muzzle 5.70.
 - The right/left proof cameras carry a 0.05 lateral tilt: full-width flat
   decks read ~+0.09 at the silhouette edge. Deck stations here are authored
   to match the resulting silhouette line, not the physical plate height.
+
+## Round 2 (shaded-parity, 2026-07-30)
+Shares the m1a1 round-2 kit (see m1a1.md) with the station built as a proper
+CROWS RWS: slew ring + pedestal, EO housing with dark sensor face + glass
+lens plate, cradled M2 + ammo can — visibly differentiating this id from the
+m1a1/m1a1ha manual-station dressing on the same oracle massing (critique ask).
+Score 87.1 -> 86.6 (T 78 -> 80).
