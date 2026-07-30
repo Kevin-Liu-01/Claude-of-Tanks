@@ -31,3 +31,20 @@ ends z −1.87. This oracle is trustworthy for all five component masks.
 - Bustle reached −2.21 vs −1.87 → turretRear −1.92 → −1.55.
 - Gun trunnion 0.15 too high → gunY 0.34 → 0.23; donor CR2 hull runs 7.79 long vs 7.38
   (kept — CR2 hull detail is worth more than the last ~2 pts of hull bbox).
+
+## Mismatch log — shaded-parity r2 (2026-07-30)
+- TOGS thermal barbette rebuilt BESIDE the gun root (0.52x0.56x0.85 housing, dark shutter
+  face, 4 round glass sensor ports, lid rim) — the r1 roof stub read as a vent box.
+- Roof: template pintle/smoke defaults disabled; commander now carries a LOW pintle GPMG +
+  sight housing, plus gunner sight cowl and loader cupola ring (r1 "oversized RWS block").
+- Gun raised out of the wedge toe (gunY 0.10 -> 0.20; G 90 -> 92) with a two-piece canvas
+  dust-cover wedge at the root; MRS muzzle collar + thermal sleeve retained.
+- Cheeks: real 2x5 smoke discharger banks on brackets (was a flush 5-dot row).
+- Flanks/rear wrapped with tubular stowage baskets (rails + posts) filled with strapped
+  canvas kit; rear basket rails span the bustle.
+- Hull: splash board, twin-lens headlight clusters in guards, central tow point + eye,
+  travel-lock crutch on the nose, rear bin rack across the tail, tow-cable clamp cleats
+  (the buildHull cable ends hovered over the glacis), 8 skirt panels with bolt rows +
+  lifting handles, dished road wheels (hub caps + rubber rings).
+- Fidelity 81.5 vs 80.3 committed (T 71 -> 78). Remaining gap: R ~73 — ref track band
+  reads wider/lower at the sprocket taper; would need shared running-gear geometry work.

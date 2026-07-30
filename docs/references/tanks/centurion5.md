@@ -29,3 +29,14 @@ legitimate.
 turret carved from the print skin and lifted +8.5 onto the ring; the L7 tube
 segments on the bore line lifted to the throat (muzzle keeps its authored
 +3.9 station); flat-pack plates parked inside the hull.
+
+## Mismatch log — shaded-parity r2 (2026-07-30)
+- All centurion3 r2 fixes apply (shared centurionBuild): cupola/loader pedestals (RWS read
+  closed), clamped tow cable, bustle bin, lifting eyes, antenna base pots, canvas mantlet
+  hood, glacis kit, louvre field + link rack, skirt gaps + handles, dished wheels.
+- L7 identity: the prominent FAT mid-tube fume extractor is layered over buildGun's slim
+  drum (r 0.100 vs tube 0.053, with taper rings); evac at 0.62 of the tube.
+- Mk.5/2 now visibly differs from Mk.3: full 2x6 double-row smoke discharger banks per
+  cheek (Mk.3 carries triples) + canvas stowage baskets on both bustle flanks.
+- G stays 15: the repaired print keeps only partial tube segments on the bore line (cap;
+  honest 5.45 m barrel kept). Fidelity 73.1 vs 73.4 committed.

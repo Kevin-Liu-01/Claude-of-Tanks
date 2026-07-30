@@ -40,3 +40,18 @@ part carved from the fused print skin and lifted +8.0 onto the ring
 (recentred +3.3 x), 20-pdr base collar seated on the gun throat, print spares
 parked inside the hull. Gun stays structurally 0: the print expects a rod
 barrel (only a 0.4 m collar ships).
+
+## Mismatch log — shaded-parity r2 (2026-07-30)
+- 20-pdr re-seated at the upper-tier face CENTER (gun pivot 0.52 -> 0.64; r1 critique said
+  it emerged at the tier seam) behind a narrow bolted internal mantlet + recoil collar.
+  Type B kit added: mid-tube fume extractor (evac 0.52, 1.75x) + muzzle counterweight
+  collar. G stays 0 by structure: print ships a 0.4 m collar, no rod barrel (cap).
+- Floating deck tow cable DELETED (shared Cromwell hull); bow shackles instead.
+- Christie wheels 'holes' style (tires, bolt hubs, stamped holes). No return rollers
+  (correct for the Cromwell run).
+- Hull: rivet seams + dots (extended), inset pannier band with PROUD strapped bins + boxed
+  step (r1 "single tall plates"), raised louvre bank, twin fishtail exhaust cowls, framed
+  visor + hinges, Besa ball housing + stub, stalk headlights on the mudguard tips.
+- Turret: cupola vision ring, loader split-hatch seam, 4 corner lifting eyes, 2" smoke
+  discharger boxes with tube triplets on both cheeks, strapped bustle stowage bin.
+- Fidelity 67.4 vs 67.9 committed (T50 — print turret stubbier than the real slab; noted).

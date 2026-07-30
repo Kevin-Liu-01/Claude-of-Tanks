@@ -37,3 +37,18 @@ carved from the print skin, lifted +8.5 and moved +18 z to the real mid-hull
 station (print packed it at the tail); 17-pdr piece seated on the face (no
 overhang, gun stays 100). Turret component remains shape-capped (~34): the
 print's turret is stubbier than the tall A30 slab.
+
+## Mismatch log — shaded-parity r2 (2026-07-30)
+- Floating bent tow-cable rod over the glacis DELETED (shared Cromwell hull rework);
+  bow tow shackles + eyes added.
+- Bow: hull MG hemisphere removed (A30 deleted the bow Besa) — framed driver visor with
+  hinges + hooded periscopes + blanking plate instead; headlights on mudguard-tip stalks.
+- Turret: pistol port discs both flanks, 4 corner lifting lugs, cupola vision-block ring,
+  loader split-hatch seam, rear shoulder bin strapped (lid seam + end straps).
+- Gun: 17-pdr kept at print length (real tube is longer — G100 cap per oracle note);
+  recoil housing collar + sleeve step ring added at a recessed dark mantlet slot.
+- Hull: rivet seams/dots, inset pannier band + PROUD strapped bins + step, raised louvre
+  bank, twin fishtail cowls, intake mushroom, Christie 'holes' wheels.
+- Turret component stays ~34: the print turret is stubbier than the real A30 slab AND
+  levitates above the ring in its own articulation row (reference defect, outside UK file
+  ownership). Fidelity 77.4 vs 77.4 committed.

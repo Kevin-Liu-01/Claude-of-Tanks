@@ -34,3 +34,20 @@ docs/references/tanks/charioteer.md). Hull + tracks components legitimate: hull 
 carved from the print skin and lifted +8.5 onto the ring; 77 mm muzzle-brake
 piece + mantlet collar seated on the face; spare plates parked inside the
 hull. Unassembled-layout defect above is historical.
+
+## Mismatch log — shaded-parity r2 (2026-07-30)
+- 77 mm HV re-seated at the turret FACE CENTER (gun pivot +0.08) inside a new bolted
+  internal mantlet plate (bolt ring, coax Besa port, sight port) — r1 critique "exits the
+  turret/hull seam" closed. G stays 0 by structure: the repaired print still ships only a
+  muzzle-brake stub, so an honest 4.42 m tube cannot overlap it (cap, do not chase).
+- Floating deck tow cable DELETED from the shared Cromwell hull (one end read mid-air);
+  replaced with bow tow shackles + eyes on the lower glacis.
+- Christie wheels now 'holes' style (rubber tire + near-full dish + hub drum + bolt ring +
+  6 dark stamped holes); FOUR return rollers added in the wheel gaps (Comet cue).
+- Hull: riveted seam strips + rivet dots, pannier band inset with PROUD strapped bins +
+  boxed step, raised louvred engine bank, twin fishtail exhaust cowls, framed driver visor
+  with hinges, Besa ball in a ring housing with dark stub, headlights on mudguard-tip
+  stalks, intake mushroom + fuel fillers.
+- Turret: cupola vision ring, split-hatch seam on loader hatch, 4 lifting eyes, right-cheek
+  smoke discharger cluster on a bracket, strapped radio bustle.
+- Fidelity 69.0 vs 68.9 committed (T49 — print turret remains stubby vs the real casting).
