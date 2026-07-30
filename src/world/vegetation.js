@@ -1537,7 +1537,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     // Lambert is materially cheaper for a rough, non-metallic alpha card and
     // preserves the lighting/shadow response that is actually visible here.
     const mat = new THREE.MeshLambertMaterial({
-      map: tex, alphaTest: 0.44, side: THREE.DoubleSide,
+      map: tex, alphaTest: 0.44, alphaToCoverage: true, side: THREE.DoubleSide,
     });
     engineCtx.setupShadowMaterial(mat, grassWindHook(farDist));
     mat.customProgramCacheKey = () => cacheKey;
@@ -2188,7 +2188,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   for (const sp of speciesList) {
     foliageTex[sp] = SPECIES[sp].tex(mulberry32(seed + SPECIES[sp].texSeed), palOf(sp));
     const fm = new THREE.MeshStandardMaterial({
-      map: foliageTex[sp], alphaTest: 0.38, side: THREE.DoubleSide,
+      map: foliageTex[sp], alphaTest: 0.38, alphaToCoverage: true, side: THREE.DoubleSide,
       vertexColors: true, roughness: 1.0, metalness: 0.0,
     });
     fm.envMapIntensity = 0.85; // keep ambient on shaded leaves — no black cards

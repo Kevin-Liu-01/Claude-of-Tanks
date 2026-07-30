@@ -1408,7 +1408,8 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
     cGeo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(cUv), 2));
     cGeo.setIndex(cIdx);
     const cMat = new THREE.MeshBasicMaterial({
-      map: combTex, vertexColors: true, alphaTest: 0.45, side: THREE.DoubleSide,
+      map: combTex, vertexColors: true, alphaTest: 0.45,
+      alphaToCoverage: true, side: THREE.DoubleSide,
     });
     const comb = new THREE.Mesh(cGeo, cMat);
     comb.name = 'horizon-treeline';

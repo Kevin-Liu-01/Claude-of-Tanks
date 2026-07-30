@@ -1983,7 +1983,7 @@ ${snowCap ? `
     }
     if (cropGeos.length > 0) {
       const cropMat = new THREE.MeshStandardMaterial({
-        map: cropTex, alphaTest: 0.42, side: THREE.DoubleSide,
+        map: cropTex, alphaTest: 0.42, alphaToCoverage: true, side: THREE.DoubleSide,
         vertexColors: true, roughness: 1.0, metalness: 0.0,
       });
       cropMat.envMapIntensity = 0.5;

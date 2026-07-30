@@ -9,7 +9,7 @@
  *
  * Fix = an explicit quality ladder, auto-selected by devicePixelRatio and
  * user-overridable (persisted in localStorage; the settings UI writes through
- * `setPresetName`). Two GPU-cost levers live here as DATA; the engine modules
+ * `setPresetName`). GPU-cost levers live here as DATA; the engine modules
  * (post.js, lighting.js) read them and subscribe to live changes:
  *
  * - `maxPixelRatio` — cap on the EffectComposer's internal pixel ratio
@@ -24,20 +24,26 @@
  *   depth/normal prepass) is the single most expensive pass in the frame.
  * - `bloomScale` — UnrealBloom internal chain scale (its mip chain is already
  *   input/2, so 0.5 runs it at quarter res; composite stays full-res).
+ * - `msaaSamples` — geometry-edge samples on the scene-only HDR target. The
+ *   resolve happens before post processing, so fullscreen AO/bloom/grade/SMAA
+ *   passes stay single-sampled. SMAA then cleans shader/specular edges after
+ *   tone mapping without making every post pass pay the MSAA bandwidth cost.
  * - `shadowMapSizes` — per-cascade CSM shadow map resolutions (lighting.js).
  *
  * Preset semantics (resolution numbers are the EFFECTIVE pixel ratio at
  * dpr>=2, where the renderer caps at 1.5):
- * - ultra : maxed visuals — full-res AO, 1.5 ratio, 4096 cascade 2. Explicit
+ * - ultra : maxed visuals — 4x scene MSAA, full-res AO, 1.5 ratio, 4096
+ *           cascade 2. Explicit
  *           opt-in via settings (r7: auto no longer selects it — see
  *           resolvePresetName).
- * - high  : THE DEFAULT on every display ('auto'). Starts at 1.25 ratio on
+ * - high  : THE DEFAULT on every display ('auto'). Uses 2x scene MSAA and
+ *           starts at 1.25 ratio on
  *           Retina and can climb to the native 1.5 renderer cap, with half-res
  *           AO and a 0.6x bloom chain. The frame governor can fall back to
  *           ~1.0 under sustained load, preserving the >=45 fps floor.
- * - medium: 1.0 ratio, half-res AO, half-res bloom, 2048/1024 cascades.
- * - low   : 0.75 ratio, AO off, half-res bloom, 2048/1024 cascades, shorter
- *           shadow range.
+ * - medium: 2x scene MSAA, 1.0 ratio, half-res AO/bloom, 2048/1024 cascades.
+ * - low   : SMAA only, 0.75 ratio, AO off, half-res bloom, 2048/1024
+ *           cascades, shorter shadow range.
  */
 
 const LS_KEY = 'cot.gfxPreset';
@@ -68,6 +74,7 @@ export const PRESETS = {
   // amortized, and the r7 penumbra compensation keeps edge softness constant.
   ultra: {
     label: 'Ultra',
+    msaaSamples: 4,
     maxPixelRatio: 1.5,
     aoScale: 1.0,
     bloomScale: 1.0,
@@ -80,6 +87,7 @@ export const PRESETS = {
   // backing store. The governor may return to ~1.0 under sustained load.
   high: {
     label: 'High',
+    msaaSamples: 2,
     maxPixelRatio: 1.5,
     adaptiveBasePixelRatio: 1.25,
     aoScale: 0.5,
@@ -89,6 +97,7 @@ export const PRESETS = {
   },
   medium: {
     label: 'Medium',
+    msaaSamples: 2,
     maxPixelRatio: 1.0,
     aoScale: 0.5,
     bloomScale: 0.5,
@@ -97,6 +106,7 @@ export const PRESETS = {
   },
   low: {
     label: 'Low',
+    msaaSamples: 0,
     maxPixelRatio: 0.75,
     aoScale: 0,
     bloomScale: 0.5,

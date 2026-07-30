@@ -1,0 +1,173 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Claude of Tanks — model rig QA</title>
+<style>
+  :root { color-scheme: dark; font: 13px/1.4 system-ui, sans-serif; background:#101511; color:#dce8d8 }
+  body { margin:0; display:grid; grid-template-columns:minmax(520px, 1fr) 520px; min-height:100vh }
+  main { padding:18px; overflow:auto; max-height:100vh; box-sizing:border-box }
+  aside { position:sticky; top:0; height:100vh; background:#1c2a20 }
+  canvas { width:100%; height:100%; display:block }
+  table { width:100%; border-collapse:collapse; margin-top:12px }
+  th,td { padding:5px 7px; border-bottom:1px solid #2e3b31; text-align:left }
+  tr { cursor:pointer } tr:hover { background:#233328 }
+  .pass { color:#91d87b } .fail { color:#ff8278 } .warn { color:#e7bd67 }
+  code { color:#c9d8c5 }
+</style>
+<body>
+<main>
+  <h1>Fleet articulation QA</h1>
+  <p id="status">Starting…</p>
+  <table><thead><tr><th>Vehicle</th><th>Source</th><th>Yaw / pitch</th><th>Hierarchy / seat</th><th>Visible parts</th></tr></thead><tbody id="rows"></tbody></table>
+</main>
+<aside id="preview"></aside>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
+
+const status = document.querySelector('#status');
+const rows = document.querySelector('#rows');
+const preview = document.querySelector('#preview');
+const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.setSize(520, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+preview.append(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1c2a20);
+scene.add(new THREE.HemisphereLight(0xd8edff, 0x35442f, 2.1));
+const sun = new THREE.DirectionalLight(0xffedcf, 3.2); sun.position.set(-5, 9, 7); scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({color:0x29372d, roughness:1}));
+ground.rotation.x = -Math.PI / 2; scene.add(ground);
+const camera = new THREE.PerspectiveCamera(42, 520 / innerHeight, 0.1, 100);
+const engineCtx = { setupShadowMaterial:m=>m, anisotropy:4, renderer };
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const isBelow = (node, ancestor) => { for (let p=node; p; p=p.parent) if (p===ancestor) return true; return false; };
+const effectivelyVisible = node => { for (let p=node; p; p=p.parent) if (!p.visible) return false; return true; };
+const swapped = visual => { let yes=false; visual.root.traverse(o=>{ if (o.userData?.__glbSwapped) yes=true; }); return yes; };
+const waitForSwap = async (visual, expected) => {
+  if (!expected) return true;
+  for (let i=0; i<240 && !swapped(visual); i++) await sleep(50);
+  return swapped(visual);
+};
+const findRegex = (root, source, preferred) => {
+  if (!source) return null;
+  const re = new RegExp(source, 'i'); const hits=[];
+  root.traverse(o=>{ if (re.test(o.name||'')) hits.push(o); });
+  return (preferred && hits.find(o=>isBelow(o, preferred))) || hits[0] || null;
+};
+const followerCheck = (root, source, ancestor) => {
+  if (!source) return true;
+  const re = new RegExp(source, 'i'); let found=0, bad=0;
+  root.traverse(o=>{ if (re.test(o.name||'')) { found++; if (!isBelow(o, ancestor)) bad++; } });
+  return !found || !bad;
+};
+const meshCount = root => { let count=0; root.traverse(o=>{ if ((o.isMesh||o.isInstancedMesh) && effectivelyVisible(o) && !/^shadow/i.test(o.name||'')) count++; }); return count; };
+const visibleBox = root => {
+  const box = new THREE.Box3(); const part = new THREE.Box3();
+  root.updateMatrixWorld(true);
+  root.traverse(o=>{
+    if ((!o.isMesh && !o.isInstancedMesh) || !o.geometry || !effectivelyVisible(o) || /^shadow/i.test(o.name||'')) return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    part.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld); box.union(part);
+  });
+  return box;
+};
+const Vec = THREE.Vector3;
+let active = null;
+
+async function inspect(id) {
+  const visual = createTank(id, engineCtx, { camoSeed:4242, quality:'ai' });
+  scene.add(visual.root);
+  const source = MODEL_SOURCE[id] || {source:'procedural'};
+  const expectGlb = source.source === 'glb';
+  const loaded = await waitForSwap(visual, expectGlb);
+  const root = visual.root;
+  const hull = root.getObjectByName('rig_hull');
+  const turret = root.getObjectByName('rig_turret');
+  const gun = root.getObjectByName('rig_gun');
+  const recoil = root.getObjectByName('rig_recoil');
+  root.updateMatrixWorld(true);
+  const d0 = visual.gunDirWorld(new Vec()).clone();
+  const ty = turret?.rotation.y || 0, gx = gun?.rotation.x || 0;
+  if (turret) turret.rotation.y = 0.58;
+  if (gun) gun.rotation.x = -0.13;
+  root.updateMatrixWorld(true);
+  const d1 = visual.gunDirWorld(new Vec()).clone();
+  if (turret) turret.rotation.y = ty;
+  if (gun) gun.rotation.x = gx;
+  root.updateMatrixWorld(true);
+  const cfg = source.glb || {};
+  const sourceTurret = expectGlb && !cfg.fixedMount ? findRegex(root, cfg.turretNode || 'turret', turret) : null;
+  const sourceGun = expectGlb && cfg.gunNode ? findRegex(root, cfg.gunNode, recoil) : null;
+  const box = new THREE.Box3().setFromObject(root);
+  const size = box.getSize(new Vec());
+  const hullBox = visibleBox(hull), turretBox = visibleBox(turret);
+  const seatGap = hullBox.isEmpty() || turretBox.isEmpty() ? null : turretBox.min.y - hullBox.max.y;
+  // A valid parent chain is not enough: an exporter can preserve the names
+  // while double-applying the pivot translation and visibly floating the
+  // turret. Real turret rings may overlap the hull box, but never hover more
+  // than 45 cm above it.
+  const seated = seatGap == null || seatGap <= 0.45;
+  const hierarchy = (!sourceTurret || isBelow(sourceTurret, turret)) &&
+    (!sourceGun || isBelow(sourceGun, recoil)) &&
+    followerCheck(root, cfg.turretFollowers, turret) && followerCheck(root, cfg.gunFollowers, recoil);
+  const aim = d0.angleTo(d1) > 0.5 && Math.abs(d1.y-d0.y) > 0.07;
+  const horizontal = [size.x, size.z].sort((a,b)=>a-b);
+  // Skinned rigs can report a conservative static Y box before their first
+  // animation update; require a real footprint without rejecting that valid
+  // bind-pose behavior (the recovered recon tank is the regression target).
+  const turretVisible = TANK_SPECS[id].armor?.turretless || meshCount(turret) > 0 || sourceTurret?.isBone;
+  const visible = meshCount(hull) > 0 && turretVisible &&
+    Number.isFinite(size.length()) && horizontal[0] > .1 && horizontal[1] > 1 && size.y > .1;
+  const pass = (!expectGlb || loaded) && !!hull && !!turret && !!gun && !!recoil && aim && hierarchy && seated && visible;
+  const fused = expectGlb && !cfg.fixedMount && !sourceGun;
+  scene.remove(root);
+  visual.dispose();
+  return { id, expectGlb, loaded, aim, hierarchy, seated, visible, pass, fused, seatGap, size:size.toArray() };
+}
+
+async function show(id) {
+  if (active) { scene.remove(active.root); active.dispose(); }
+  active = createTank(id, engineCtx, { camoSeed:4242, quality:'high' });
+  scene.add(active.root);
+  await waitForSwap(active, MODEL_SOURCE[id]?.source === 'glb');
+  const d = TANK_SPECS[id].dims;
+  const dist = Math.max(7, d.overallLengthM * .92);
+  camera.position.set(-dist*.68, d.heightM*.72 + dist*.18, dist*.68);
+  camera.lookAt(0, d.heightM*.48, 0);
+}
+
+const requested = new URLSearchParams(location.search).get('ids');
+const ids = requested ? requested.split(',').filter(id=>TANK_SPECS[id]) : [...ALL_TANK_IDS];
+let passed = 0;
+for (let i=0; i<ids.length; i++) {
+  const id = ids[i]; status.textContent = `Auditing ${i+1}/${ids.length}: ${id}`;
+  let result;
+  try { result = await inspect(id); } catch (error) { result = {id, pass:false, error:String(error)}; }
+  passed += Number(result.pass);
+  const tr = document.createElement('tr');
+  tr.dataset.id = id;
+  tr.innerHTML = `<td class="${result.pass?'pass':'fail'}">${result.pass?'PASS':'FAIL'} <code>${id}</code>${result.fused?' <span class="warn">(fused elevation)</span>':''}</td>`+
+    `<td>${result.expectGlb ? (result.loaded?'GLB':'LOAD FAIL') : 'procedural'}</td>`+
+    `<td>${result.aim?'PASS':'FAIL'}</td><td>${result.hierarchy&&result.seated?'PASS':'FAIL'}${result.seatGap==null?'':` (seat ${result.seatGap.toFixed(2)}m)`}</td>`+
+    `<td>${result.visible?'PASS':'FAIL'}${result.size?` [${result.size.map(v=>v.toFixed(1)).join('×')}]`:''}${result.error?` — ${result.error}`:''}</td>`;
+  tr.onclick = () => show(id); rows.append(tr);
+}
+status.textContent = `Complete — ${passed}/${ids.length} rigs passed`;
+status.className = passed===ids.length ? 'pass' : 'fail';
+await show(new URLSearchParams(location.search).get('id') || ids[0]);
+
+function frame(now) {
+  if (active) {
+    const turret=active.root.getObjectByName('rig_turret');
+    const gun=active.root.getObjectByName('rig_gun');
+    if (turret) turret.rotation.y=Math.sin(now*.00065)*0.72;
+    if (gun) gun.rotation.x=-0.04+Math.sin(now*.0009)*0.11;
+    active.root.rotation.y=0.18;
+  }
+  renderer.render(scene,camera); requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>

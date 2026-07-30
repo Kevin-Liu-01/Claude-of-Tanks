@@ -596,9 +596,10 @@ export function createSettings(opts) {
     for (const x of btns) x.classList.toggle('sel', x.dataset.name === getStoredChoice());
     const note = el('div', 'cot-set-note', body);
     note.textContent =
-      'Auto uses adaptive High quality: it raises 3D resolution above native logical resolution when ' +
-      'there is GPU headroom and scales only the 3D frame when needed. The reticle and HUD remain ' +
-      'native-sharp. Medium/Low reduce bloom, ambient occlusion, and shadows. Applies instantly.';
+      'Auto uses adaptive High quality with scene MSAA plus final-frame SMAA: real geometry, foliage, ' +
+      'and shader edges stay smooth. It raises 3D resolution when there is GPU headroom and scales only ' +
+      'the 3D frame when needed; the reticle and HUD remain native-sharp. Medium/Low reduce GPU cost. ' +
+      'Applies instantly.';
   }
 
   function renderTab() {

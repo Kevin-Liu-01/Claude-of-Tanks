@@ -77,7 +77,13 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   articulated('is3_bergman', 'bergman_is3');
   fixed('isu152'); fixed('isu122s');
   for (const id of ['centurion3', 'centurion5', 'comet', 'challenger_cruiser', 'charioteer',
-    'leopard2_proto', 'm1a1_aim', 'm46_patton', 'm47_patton', 'm26_pershing', 'm45_patton']) articulated(id);
+    'leopard2_proto', 'm46_patton', 'm47_patton', 'm26_pershing', 'm45_patton']) articulated(id);
+  // The Bergman Abrams exports an empty Turret pivot at the scene origin.
+  // Its authored hull/turret placement is already correct; autoPivot treated
+  // the long fused cannon as the turret footprint and moved the entire upper
+  // vehicle off the pedestal. Keep the neutral placement and rotate it around
+  // the spec's real turret-ring pivot instead.
+  articulated('m1a1_aim', 'm1a1_aim', { autoPivot: false });
   // The pack's `M60A3 complex` STL is the M60 machine-gun receiver, not the
   // Patton tank (the icon pass caught the false-positive). Use the recovered
   // M60A1 hull/turret for this close family variant instead of shipping a gun

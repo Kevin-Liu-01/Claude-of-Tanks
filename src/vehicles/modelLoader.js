@@ -402,6 +402,35 @@ function findBestGunNode(root, re) {
   return best;
 }
 
+/** Resolve authored turret/gun accessories that were exported as siblings of
+ * the primary articulation node. Recovered OBJ/FBX packs commonly flatten the
+ * source hierarchy, which left sights, ERA, hatches, antennae and mantlets
+ * floating over the hull as soon as the turret yawed. Config patterns are
+ * deliberately opt-in: a spatial guess here could put hull stowage on the
+ * turret for every future asset. Only the highest matching roots are kept so
+ * a matching parent and child are never re-parented twice. */
+function findFollowerRoots(root, source, excluded = []) {
+  if (!source) return [];
+  const re = new RegExp(source, 'i');
+  const excludedSet = new Set();
+  for (const node of excluded) if (node) node.traverse((o) => excludedSet.add(o));
+  const containsExcluded = (node) => {
+    let hit = false;
+    node.traverse((o) => { if (excludedSet.has(o)) hit = true; });
+    return hit;
+  };
+  const hits = [];
+  root.traverse((node) => {
+    if (node === root || excludedSet.has(node) || !re.test(node.name || '')) return;
+    if (containsExcluded(node)) return;
+    for (let p = node.parent; p && p !== root; p = p.parent) {
+      if (hits.includes(p)) return;
+    }
+    hits.push(node);
+  });
+  return hits;
+}
+
 /** Bounding box of root EXCLUDING one subtree (gun overhang must not skew the
  * hull-length scale normalization). Box3.setFromObject can't skip subtrees. */
 function bboxExcluding(root, skip) {
@@ -1263,6 +1292,87 @@ function applyAbramsVariantFixes(scene, spec) {
   }
 }
 
+let _tuskPanelGeo = null;
+let _tuskRailGeo = null;
+let _tuskKitMat = null;
+let _tuskRailMat = null;
+
+/** Add the recognizable TUSK field kit to the recovered articulated Abrams
+ * base. The old derivative GLB baked the kit onto an incorrect oversized
+ * hull; the accurate owner-supplied Abrams has the right suspension and
+ * turret but no ARAT/slat package. Keep the recovered base and add the kit as
+ * two instanced draws so the local variant remains distinct without restoring
+ * the old high-draw mesh forest. */
+function addRuntimeTuskKit(hullG, turretG, spec) {
+  if (spec.id !== 'm1a2_tusk' || hullG.getObjectByName('TUSK_ARAT')) return;
+  if (!_tuskKitMat) {
+    _tuskKitMat = new THREE.MeshStandardMaterial({
+      name: 'AddOnTuskCamo', map: getSharedCamoTexture(spec),
+      roughnessMap: getSharedRoughnessTexture(spec), roughness: 0.86,
+      metalness: 0.07, envMapIntensity: 0.42,
+    });
+    _tuskRailMat = new THREE.MeshStandardMaterial({
+      name: 'AddOnTuskRail', color: 0x242620, roughness: 0.92, metalness: 0.16,
+    });
+  }
+  _tuskPanelGeo ||= new THREE.BoxGeometry(0.13, 0.29, 0.34);
+  _tuskRailGeo ||= new THREE.BoxGeometry(0.075, 0.07, 5.1);
+  const matrix = new THREE.Matrix4();
+  const position = new THREE.Vector3();
+  const rotation = new THREE.Quaternion();
+  const scale = new THREE.Vector3(1, 1, 1);
+  const cols = 14;
+  const panels = new THREE.InstancedMesh(_tuskPanelGeo, _tuskKitMat, cols * 4);
+  panels.name = 'TUSK_ARAT';
+  let index = 0;
+  for (const side of [-1, 1]) for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < cols; col++) {
+      position.set(
+        side * (spec.dims.widthM / 2 + 0.045),
+        0.63 + row * 0.31,
+        -2.24 + col * 0.345,
+      );
+      rotation.setFromEuler(new THREE.Euler(0, 0, side * -0.055));
+      panels.setMatrixAt(index++, matrix.compose(position, rotation, scale));
+    }
+  }
+  panels.instanceMatrix.needsUpdate = true;
+  panels.receiveShadow = true;
+  hullG.add(panels);
+
+  const rails = new THREE.InstancedMesh(_tuskRailGeo, _tuskRailMat, 4);
+  rails.name = 'TUSK_ARAT_RAILS';
+  index = 0;
+  for (const side of [-1, 1]) for (const y of [0.63, 0.94]) {
+    position.set(side * (spec.dims.widthM / 2 - 0.005), y, 0.0);
+    rotation.identity();
+    rails.setMatrixAt(index++, matrix.compose(position, rotation, scale));
+  }
+  rails.instanceMatrix.needsUpdate = true;
+  hullG.add(rails);
+
+  const addBox = (parent, name, size, pos, mat = _tuskRailMat) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), mat);
+    mesh.name = name;
+    mesh.position.set(...pos);
+    mesh.userData.__kitMerged = true;
+    mesh.receiveShadow = true;
+    parent.add(mesh);
+    return mesh;
+  };
+  // Rear engine-compartment slat cage and Tank Infantry Phone box.
+  addBox(hullG, 'TUSK_SlatRearTop', [3.55, 0.07, 0.07], [0, 1.23, -3.88]);
+  addBox(hullG, 'TUSK_SlatRearMid', [3.55, 0.07, 0.07], [0, 0.91, -3.88]);
+  for (const x of [-1.72, -1.15, -0.58, 0, 0.58, 1.15, 1.72]) {
+    addBox(hullG, `TUSK_SlatPost_${x}`, [0.045, 0.72, 0.045], [x, 0.91, -3.88]);
+  }
+  addBox(hullG, 'TUSK_TIP', [0.48, 0.42, 0.19], [1.42, 1.08, -3.78], _tuskKitMat);
+  // Loader's three-sided transparent-shield stand-in; mounted on turretG so
+  // it follows yaw while remaining independent of gun elevation.
+  addBox(turretG, 'TUSK_LoaderShieldFront', [0.78, 0.48, 0.055], [-0.62, 0.76, 0.34], _tuskKitMat);
+  addBox(turretG, 'TUSK_LoaderShieldSide', [0.055, 0.48, 0.58], [-1.0, 0.76, 0.06], _tuskKitMat);
+}
+
 /**
  * COMMUNITY TANKS r10 cohesion surgery (runs after paintUntextured, before
  * the camo composite — replacement materials carry 'AddOn' names so
@@ -1915,6 +2025,10 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
   const gun = turret
     ? (findBestGunNode(turret, gunRe) || (cfg.gunNode ? findBestGunNode(scene, gunRe) : null))
     : null;
+  const turretFollowers = turret
+    ? findFollowerRoots(scene, cfg.turretFollowers, [turret, gun]) : [];
+  const gunFollowers = gun
+    ? findFollowerRoots(scene, cfg.gunFollowers, [turret, gun, ...turretFollowers]) : [];
 
   // ---- fidelity surgery in the raw asset frame (before orient/scale) ----
   if (spec.id === 'm1a2') applyModelFixes(scene, turret, spec);
@@ -2096,6 +2210,7 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
     group.add(node);
   };
   if (gun) reparent(gun, recoilG);
+  for (const follower of gunFollowers) reparent(follower, recoilG);
   // ---- muzzle anchor from REAL barrel geometry (effects_combat r3) ---------
   // The fx muzzle anchor sat at P.muzzleZ = spec barrel length, but the GLB
   // swap rescales the whole vehicle to hull length — on the m1a2 the anchor
@@ -2139,9 +2254,11 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
     }
   }
   if (turret) reparent(turret, turretG);
+  for (const follower of turretFollowers) reparent(follower, turretG);
   turretG.rotation.y = saved.ty;
   if (gunG) gunG.rotation.x = saved.gx;
   recoilG.position.z = saved.rz;
+  addRuntimeTuskKit(hullG, turretG, spec);
 
   // ---- swap: hide procedural render meshes, keep anchors/instancing intact.
   // gunG (recoilG's parent) carries the procedural mantlet (gunMount bucket)

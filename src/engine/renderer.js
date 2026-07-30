@@ -1,10 +1,11 @@
 /**
  * renderer.js — WebGLRenderer construction per docs/research/graphics-aaa.md §1.
  *
- * AA is intentionally OFF at the context level: anti-aliasing comes from the
- * post chain (SMAAPass in post.js) so we never pay for MSAA twice. Tone mapping
- * and sRGB output are configured here but actually applied by OutputPass when
- * rendering through the EffectComposer (r185 behavior).
+ * Context AA is intentionally OFF because the EffectComposer never presents
+ * the default framebuffer directly. post.js instead gives the actual 3D scene
+ * a quality-aware MSAA target, resolves it once, then runs the single-sampled
+ * post chain and final display-space SMAA. Tone mapping and sRGB output are
+ * configured here but actually applied by OutputPass (r185 behavior).
  */
 import * as THREE from 'three';
 

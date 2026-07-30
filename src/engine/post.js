@@ -2,11 +2,13 @@
  * post.js — the full post-processing chain.
  *
  * Chain (extends ARCHITECTURE.md §3.1.4 / graphics-aaa.md §4 with a grade):
- *   RenderPass → AerialPass → GTAOPass → UnrealBloomPass → OutputPass →
- *   GradePass → SMAAPass
+ *   SceneAAPass (MSAA render + resolve) → AerialPass → GTAOPass →
+ *   UnrealBloomPass → OutputPass → GradePass → SMAAPass
  *
- * The composer runs on a custom HalfFloat HDR target that owns a DepthTexture
- * (so fx can later sample scene depth for soft particles). OutputPass applies
+ * The scene renders into a quality-aware multisampled HalfFloat HDR target
+ * with a DepthTexture, then resolves once into the composer's single-sampled
+ * ping-pong buffers. This preserves real geometry/foliage edge coverage while
+ * avoiding MSAA on every fullscreen post pass. OutputPass applies
  * ACES tone mapping + sRGB conversion (reading renderer.toneMapping/
  * outputColorSpace); the display-space GradePass resolves contrast, scope
  * sharpening and split tone before SMAA runs LAST on the values the eye sees.
@@ -18,11 +20,13 @@
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
 import { getPreset, onPresetChange } from './quality.js';
 
 // r5 bloom retune ("muzzle flash is three enormous structureless gaussian
@@ -875,12 +879,65 @@ function capLuminance(c, maxLum) {
  * @property {(w: number, h: number) => void} setSize
  * @property {UnrealBloomPass} bloom
  * @property {GTAOPass} gtao
+ * @property {number} msaaSamples - active scene-only MSAA sample count
  * @property {(level: 'high'|'low') => void} setQuality
  */
 
 /**
- * Build the EffectComposer chain on an HDR (HalfFloat) target with an
- * attached DepthTexture.
+ * Render the world into a dedicated multisampled HDR target, resolve it, then
+ * copy the resolved color into the composer's current read buffer. Keeping the
+ * composer buffers single-sampled is important: otherwise every aerial/AO/
+ * bloom/grade/SMAA fullscreen draw would pay MSAA bandwidth for no visual gain.
+ */
+class SceneAAPass extends RenderPass {
+  constructor(scene, camera, target) {
+    super(scene, camera);
+    this.sceneTarget = target;
+    this.copyMaterial = new THREE.ShaderMaterial({
+      name: 'SceneAAPass.Copy',
+      uniforms: THREE.UniformsUtils.clone(CopyShader.uniforms),
+      vertexShader: CopyShader.vertexShader,
+      fragmentShader: CopyShader.fragmentShader,
+      depthTest: false,
+      depthWrite: false,
+      blending: THREE.NoBlending,
+      toneMapped: false,
+    });
+    this.copyMaterial.uniforms.tDiffuse.value = target.texture;
+    this.copyQuad = new FullScreenQuad(this.copyMaterial);
+  }
+
+  setSize(width, height) {
+    this.sceneTarget.setSize(width, height);
+  }
+
+  setSamples(samples) {
+    if (this.sceneTarget.samples === samples) return;
+    this.sceneTarget.samples = samples;
+    // Sample count is part of the framebuffer allocation. Dispose only the
+    // GPU objects; Three recreates them lazily with the same target/textures.
+    this.sceneTarget.dispose();
+  }
+
+  render(renderer, writeBuffer, readBuffer) {
+    const oldAutoClear = renderer.autoClear;
+    renderer.autoClear = false;
+
+    renderer.setRenderTarget(this.sceneTarget);
+    renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
+    renderer.render(this.scene, this.camera);
+
+    // Switching targets resolves both multisampled color and depth. The copy
+    // is one cheap full-screen draw; all later post passes remain 1x sampled.
+    renderer.setRenderTarget(this.renderToScreen ? null : readBuffer);
+    this.copyQuad.render(renderer);
+    renderer.autoClear = oldAutoClear;
+  }
+}
+
+/**
+ * Build the EffectComposer chain with a scene-only multisampled HDR target and
+ * single-sampled HDR post buffers.
  *
  * @param {THREE.WebGLRenderer} renderer - from createRenderer
  * @param {THREE.Scene} scene - the game scene
@@ -897,35 +954,41 @@ export function createPost(renderer, scene, camera) {
   let preset = getPreset();
   const size = renderer.getDrawingBufferSize(new THREE.Vector2());
 
+  const maxSamples = renderer.capabilities.maxSamples || 0;
+  const samplesForPreset = (p) => maxSamples >= 2
+    ? Math.min(Math.max(0, p.msaaSamples || 0), maxSamples)
+    : 0;
+  let msaaSamples = samplesForPreset(preset);
+
+  // Composer ping-pong buffers never need depth or MSAA: the world is rendered
+  // and resolved by SceneAAPass before any fullscreen processing begins.
   const target = new THREE.WebGLRenderTarget(size.x, size.y, {
     type: THREE.HalfFloatType,
-    depthTexture: new THREE.DepthTexture(size.x, size.y),
+    depthBuffer: false,
+    stencilBuffer: false,
   });
+  const sceneTarget = new THREE.WebGLRenderTarget(size.x, size.y, {
+    type: THREE.HalfFloatType,
+    depthTexture: new THREE.DepthTexture(size.x, size.y),
+    stencilBuffer: false,
+    samples: msaaSamples,
+  });
+  sceneTarget.texture.name = 'SceneAAPass.color';
+  sceneTarget.depthTexture.name = 'SceneAAPass.depth';
   const composer = new EffectComposer(renderer, target);
-  // Scene depth plumbing — the topology is load-bearing. The composer keeps
-  // `target` as renderTarget1 but renders the SCENE into renderTarget2 (the
-  // initial readBuffer), which is a clone of `target`. A cloned DepthTexture
-  // shares its GL storage (same Source), so a depth-reading pass ends up
-  // sampling a texture that is ALSO the depth attachment of whichever
-  // ping-pong buffer it writes to: a framebuffer feedback loop
-  // (GL_INVALID_OPERATION spam + intermittent all-black frames on ANGLE).
-  // Give the scene buffer (renderTarget2) its own private DepthTexture, strip
-  // the twin's, and sample only that private texture in the aerial pass —
-  // which, running at even parity, always writes the OTHER buffer.
-  const sceneDepth = new THREE.DepthTexture(size.x, size.y);
-  composer.renderTarget1.depthTexture = null;
-  composer.renderTarget2.depthTexture = sceneDepth;
-
-  composer.addPass(new RenderPass(scene, camera)); // 1. scene, linear HDR
+  const sceneDepth = sceneTarget.depthTexture;
+  const sceneAA = new SceneAAPass(scene, camera, sceneTarget);
+  const publishAAState = () => {
+    renderer.domElement.dataset.sceneMsaaSamples = String(msaaSamples);
+    renderer.domElement.dataset.postAa = 'smaa-high';
+  };
+  publishAAState();
+  composer.addPass(sceneAA); // 1. multisampled scene + single resolve/copy
 
   // 2. depth-driven aerial perspective — one distance curve for every
   // material (see AerialShader above). Runs in linear HDR space, pre-bloom.
-  // ORDER IS LOAD-BEARING: this pass samples `target.depthTexture` (the depth
-  // attachment of composer renderTarget1). It must run at EVEN swap parity so
-  // it writes into renderTarget2 — placed after GTAO (odd parity) it renders
-  // INTO renderTarget1 while sampling renderTarget1's depth attachment, a
-  // framebuffer feedback loop (GL_INVALID_OPERATION spam + intermittent
-  // all-black frames on ANGLE).
+  // The sampled depth belongs to SceneAAPass' independent target, so neither
+  // composer ping-pong buffer can form a framebuffer feedback loop.
   const aerial = new ShaderPass(AerialShader);
   aerial.uniforms.tDepth.value = sceneDepth;
   composer.addPass(aerial);
@@ -948,8 +1011,7 @@ export function createPost(renderer, scene, camera) {
   // shots. Bonus: alpha-tested foliage now contributes real cutout depth
   // (the old override prepass ignored alphaTest, which is why aoExclude
   // existed), so canopies get proper grounding instead of being AO-invisible.
-  // The scene depth is complete by the time this pass runs: the parity guard
-  // in render() pins the scene render into renderTarget2 every frame.
+  // The scene depth is complete and resolved before this pass runs.
   gtao.setGBuffer(sceneDepth);
   gtao.updateGtaoMaterial(GTAO_PARAMS);
   gtao.blendIntensity = GTAO_BLEND_INTENSITY;
@@ -1135,17 +1197,27 @@ export function createPost(renderer, scene, camera) {
   let dynEma = 0;
   let dynClock = 0;
   let dynLastStep = 0;
+  let telemetryClock = 0;
   function applySize(w, h) {
     cssW = w;
     cssH = h;
-    composer.setPixelRatio(Math.min(renderer.getPixelRatio(), preset.maxPixelRatio) * dynScale);
+    const renderScale = Math.min(renderer.getPixelRatio(), preset.maxPixelRatio) * dynScale;
+    composer.setPixelRatio(renderScale);
     composer.setSize(w, h);
+    renderer.domElement.dataset.renderScale = renderScale.toFixed(3);
   }
   /** Advance the governor one frame; resizes the chain when a step fires. */
   function dynGovern(dt) {
     if (!(dt > 0) || dt > 0.25) return; // hitches/tab-switch: not a trend
     dynClock += dt;
     dynEma = dynEma === 0 ? dt : dynEma + (dt - dynEma) * 0.06;
+    if (dynClock - telemetryClock >= 1) {
+      telemetryClock = dynClock;
+      // Read-only QA telemetry on the renderer canvas; one DOM write per
+      // second is negligible and lets browser checks verify the frame budget
+      // without injecting scripts into the game's execution realm.
+      renderer.domElement.dataset.frameEmaMs = (dynEma * 1000).toFixed(2);
+    }
     if (renderer.getPixelRatio() < 1.25) return; // retina-class only (see above)
     if (dynClock < DYN_WARMUP_S || dynClock - dynLastStep < DYN_INTERVAL_S) return;
     const ms = dynEma * 1000;
@@ -1168,6 +1240,9 @@ export function createPost(renderer, scene, camera) {
   // every buffer without rebuilding the chain.
   onPresetChange((p) => {
     preset = p;
+    msaaSamples = samplesForPreset(preset);
+    sceneAA.setSamples(msaaSamples);
+    publishAAState();
     gtao.enabled = preset.aoScale > 0;
     dynScale = baseDynScale(); // new preset = new budget baseline; governor re-earns supersampling
     dynEma = 0;
@@ -1190,15 +1265,6 @@ export function createPost(renderer, scene, camera) {
       // composer's internal pixel ratio and resize the chain — run it FIRST
       // so a resize never lands between the passes below and their uniforms.
       dynGovern(dt);
-      // Parity guard — the pass chain swaps the ping-pong buffers an ODD
-      // number of times per frame (5 with GTAO enabled), so without this the
-      // scene render (and its depth) lands in ALTERNATING buffers frame to
-      // frame; every other frame the aerial pass then writes into the buffer
-      // whose depth attachment it is sampling — a framebuffer feedback loop
-      // (GL_INVALID_OPERATION spam + intermittent all-black frames on ANGLE).
-      // Pin the canonical start-of-frame state: scene renders into
-      // renderTarget2 (readBuffer, owns sceneDepth), aerial writes rt1.
-      if (composer.readBuffer !== composer.renderTarget2) composer.swapBuffers();
       // sniper zoom / rig changes can retune the camera planes — keep the
       // aerial distance reconstruction exact
       aerial.uniforms.uNear.value = camera.near;
@@ -1297,6 +1363,9 @@ export function createPost(renderer, scene, camera) {
 
     bloom,
     gtao,
+
+    /** Scene-only hardware AA. Display-space SMAA always follows it. */
+    get msaaSamples() { return msaaSamples; },
 
     /** Live dynamic-resolution scale (1 = full preset resolution). Probe/
      * settings-UI observability for the governor above; read-only. */

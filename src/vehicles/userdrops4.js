@@ -70,6 +70,21 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
       paintUntextured: true,
     },
   };
+
+  // The locally supplied Tejas asset is the accurate, fully articulated
+  // Abrams base the recovered roster was missing. Use it for the local M1A1
+  // and TUSK variants as well; public builds retain their redistributable
+  // CC-BY visuals because this override is inside the quarantine gate.
+  for (const id of ['m1a1', 'm1a2_tusk']) {
+    MODEL_SOURCE[id] = {
+      source: 'glb',
+      glb: {
+        path: '/models/tanks/m1a2_tejas.glb',
+        turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+        yawOffset: -Math.PI / 2, paintUntextured: true, heroTex: true,
+      },
+    };
+  }
 }
 
 export const USERDROP4_TANK_IDS = ['m1a2_tejas', 'abramsx'];

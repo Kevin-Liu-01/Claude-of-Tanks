@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-30T01:14:35.328Z",
+  "generatedAt": "2026-07-30T04:05:55.369Z",
   "passThreshold": 8.5,
   "rubric": {
     "source": 1,
@@ -19,9 +19,9 @@
     "vehicles": 91,
     "selectedPassed": 91,
     "selectedFailed": 0,
-    "retainedCandidates": 16,
-    "candidatesRejected": 16,
-    "selectedMedian": 9.2
+    "retainedCandidates": 2,
+    "candidatesRejected": 2,
+    "selectedMedian": 9.3
   },
   "rows": [
     {
@@ -182,8 +182,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "M1A2 Abrams SEPv3",
-      "peerMedian": 9.3,
-      "peerDelta": -0.1
+      "peerMedian": 9.41,
+      "peerDelta": -0.21
     },
     {
       "id": "t90m",
@@ -339,8 +339,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "T-90M Proryv",
-      "peerMedian": 9.3,
-      "peerDelta": 0.48
+      "peerMedian": 9.41,
+      "peerDelta": 0.37
     },
     {
       "id": "leo2a7",
@@ -356,8 +356,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Leopard 2A7",
-      "peerMedian": 9.3,
-      "peerDelta": 0.2
+      "peerMedian": 9.41,
+      "peerDelta": 0.09
     },
     {
       "id": "strv103",
@@ -1693,8 +1693,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Chieftain Mk 10",
-      "peerMedian": 9.3,
-      "peerDelta": 0.2
+      "peerMedian": 9.41,
+      "peerDelta": 0.09
     },
     {
       "id": "k2",
@@ -1710,8 +1710,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "K2 Black Panther",
-      "peerMedian": 9.3,
-      "peerDelta": 0.2
+      "peerMedian": 9.41,
+      "peerDelta": 0.09
     },
     {
       "id": "type10",
@@ -1727,8 +1727,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Type 10",
-      "peerMedian": 9.3,
-      "peerDelta": 0.2
+      "peerMedian": 9.41,
+      "peerDelta": 0.09
     },
     {
       "id": "m2a2_bradley",
@@ -1778,8 +1778,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "C1 Ariete",
-      "peerMedian": 9.3,
-      "peerDelta": 0.2
+      "peerMedian": 9.41,
+      "peerDelta": 0.09
     },
     {
       "id": "leo2a4",
@@ -1795,8 +1795,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Leopard 2A4",
-      "peerMedian": 9.3,
-      "peerDelta": 0.2
+      "peerMedian": 9.41,
+      "peerDelta": 0.09
     },
     {
       "id": "t80u",
@@ -1893,8 +1893,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "T-80U",
-      "peerMedian": 9.3,
-      "peerDelta": 0.34
+      "peerMedian": 9.41,
+      "peerDelta": 0.23
     },
     {
       "id": "leclerc",
@@ -1937,8 +1937,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Leclerc S2",
-      "peerMedian": 9.3,
-      "peerDelta": 0.55
+      "peerMedian": 9.41,
+      "peerDelta": 0.44
     },
     {
       "id": "type99a",
@@ -1954,8 +1954,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Type 99A (ZTZ-99A)",
-      "peerMedian": 9.3,
-      "peerDelta": 0.2
+      "peerMedian": 9.41,
+      "peerDelta": 0.09
     },
     {
       "id": "leo1a5",
@@ -1971,8 +1971,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Leopard 1A5",
-      "peerMedian": 9.3,
-      "peerDelta": 0.2
+      "peerMedian": 9.41,
+      "peerDelta": 0.09
     },
     {
       "id": "t14",
@@ -1988,8 +1988,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "T-14 Armata",
-      "peerMedian": 9.3,
-      "peerDelta": 0.2
+      "peerMedian": 9.41,
+      "peerDelta": 0.09
     },
     {
       "id": "t72b3",
@@ -2005,8 +2005,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "T-72B3",
-      "peerMedian": 9.3,
-      "peerDelta": 0.2
+      "peerMedian": 9.41,
+      "peerDelta": 0.09
     },
     {
       "id": "challenger2",
@@ -2022,8 +2022,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Challenger 2",
-      "peerMedian": 9.3,
-      "peerDelta": 0.2
+      "peerMedian": 9.41,
+      "peerDelta": 0.09
     },
     {
       "id": "merkava4",
@@ -2070,8 +2070,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Merkava IVm Windbreaker",
-      "peerMedian": 9.3,
-      "peerDelta": -0.7
+      "peerMedian": 9.41,
+      "peerDelta": -0.81
     },
     {
       "id": "leo2a6",
@@ -2153,115 +2153,54 @@
       "era": "modern",
       "class": "mbt",
       "name": "Leopard 2A6",
-      "peerMedian": 9.3,
-      "peerDelta": 0.1
+      "peerMedian": 9.41,
+      "peerDelta": -0.01
     },
     {
       "id": "m1a1",
       "role": "selected",
       "kind": "glb",
-      "path": "/models/tanks/community/variants/m1a1_dannzjs_variant.glb",
-      "score": 9.56,
+      "path": "/models/tanks/m1a2_tejas.glb",
+      "score": 9.52,
       "pass": true,
       "turretless": false,
-      "issues": [],
+      "issues": [
+        "overall proportions differ 36% from spec"
+      ],
       "hardCaps": [],
       "inspection": {
-        "nodeCount": 82,
-        "meshCount": 78,
+        "nodeCount": 19,
+        "meshCount": 15,
         "names": [
-          "DeckGrilleLouver",
-          "DeckGrilleLouver001",
-          "DeckGrilleLouver002",
-          "DeckGrilleLouver003",
-          "DeckGrilleLouver004",
-          "DeckGrilleLouver005",
-          "DeckGrillePlate",
-          "DeckGrilleSeam",
-          "FenderLens",
-          "FenderLens001",
-          "FenderLight",
-          "FenderLight001",
-          "Object_2",
-          "Object_5",
-          "Object_7",
-          "Object_8",
-          "Object_9",
-          "Object_10",
-          "Object_11",
-          "Object_12",
-          "Object_15",
-          "Object_19",
-          "Object_20",
-          "Object_21",
-          "Object_24",
-          "Object_25",
-          "Object_27",
-          "Object_29",
-          "Object_30",
-          "AmmoCan",
-          "BustleEndCap",
-          "CheekFront",
-          "CheekFront001",
-          "CheekShoulder",
-          "CheekShoulder001",
-          "CupolaRing",
-          "Duffel",
-          "Duffel001",
-          "Duffel002",
-          "Duffel003",
-          "GPSBrow",
-          "GPSDoghouse",
-          "GPSWindow",
-          "BoreEvac",
-          "BoreEvacT1",
-          "BoreEvacT2",
-          "MRSCollar",
-          "Object_3",
-          "Object_13",
-          "GunPivot",
-          "M2Barrel",
-          "M2Grips",
-          "M2Pintle",
-          "M2Receiver",
-          "M250Mount",
-          "M250Mount001",
-          "M250Tube",
-          "M250Tube001",
-          "M250Tube002",
-          "M250Tube003",
-          "M250Tube004",
-          "M250Tube005",
-          "M250Tube006",
-          "M250Tube007",
-          "M250Tube008",
-          "M250Tube009",
-          "M250Tube010",
-          "M250Tube011",
-          "Object_4",
-          "Object_17",
-          "Object_18",
-          "Object_23",
-          "Object_26",
-          "Object_28",
-          "RoofCap",
-          "RoofCap001",
-          "RoofCap002",
-          "RWSCap",
-          "SkateRail",
-          "TurretPivot",
-          "Tank_01_OBJobjcleanermaterialmergergles",
-          "Sketchfab_model"
+          "Rear_Fender",
+          "Track_Curve_-_Left",
+          "Track_Curve_-_Right",
+          "Track_Rods_-_Left",
+          "Track_Pads_-_Left",
+          "Track_Empty_-_Left",
+          "Track_Rods_-_Right",
+          "Track_Pads_-_Right",
+          "Track_Empty_-_Right",
+          "CROWS",
+          "Crows_Mount",
+          "Gun_Mantlet_Flap",
+          "Gun",
+          "M240",
+          "M240_Mount",
+          "M240_Shield",
+          "M240_Rail_Mount",
+          "Turret",
+          "Hull"
         ],
-        "turret": "TurretPivot",
-        "gun": "GunPivot",
+        "turret": "Turret",
+        "gun": "Gun",
         "turretMatchCount": 1,
         "gunMatchCount": 1,
         "gunInsideTurret": true,
         "size": [
-          5.0149,
-          3.7002,
-          12.7463
+          3.7056,
+          4.1447,
+          9.7646
         ]
       },
       "components": {
@@ -2269,15 +2208,15 @@
         "turret": 3,
         "gun": 2,
         "hierarchy": 1,
-        "pivot": 0.7,
-        "proportions": 0.86,
+        "pivot": 1,
+        "proportions": 0.52,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "M1A1 Abrams",
-      "peerMedian": 9.3,
-      "peerDelta": 0.26
+      "peerMedian": 9.41,
+      "peerDelta": 0.11
     },
     {
       "id": "t90a",
@@ -2323,229 +2262,54 @@
       "era": "modern",
       "class": "mbt",
       "name": "T-90A",
-      "peerMedian": 9.3,
-      "peerDelta": 0.5
+      "peerMedian": 9.41,
+      "peerDelta": 0.39
     },
     {
       "id": "m1a2_tusk",
       "role": "selected",
       "kind": "glb",
-      "path": "/models/tanks/community/variants/m1a2_tusk_dannzjs_variant.glb",
-      "score": 9.53,
+      "path": "/models/tanks/m1a2_tejas.glb",
+      "score": 9.52,
       "pass": true,
       "turretless": false,
-      "issues": [],
+      "issues": [
+        "overall proportions differ 36% from spec"
+      ],
       "hardCaps": [],
       "inspection": {
-        "nodeCount": 196,
-        "meshCount": 190,
+        "nodeCount": 19,
+        "meshCount": 15,
         "names": [
-          "ARAT1",
-          "ARAT1001",
-          "ARAT1002",
-          "ARAT1003",
-          "ARAT1004",
-          "ARAT1005",
-          "ARAT1006",
-          "ARAT1007",
-          "ARAT1008",
-          "ARAT1009",
-          "ARAT1010",
-          "ARAT1011",
-          "ARAT1012",
-          "ARAT1013",
-          "ARAT1014",
-          "ARAT1015",
-          "ARAT1016",
-          "ARAT1017",
-          "ARAT1018",
-          "ARAT1019",
-          "ARAT1020",
-          "ARAT1021",
-          "ARAT1022",
-          "ARAT1023",
-          "ARAT1024",
-          "ARAT1025",
-          "ARAT1026",
-          "ARAT1027",
-          "ARAT1028",
-          "ARAT1029",
-          "ARAT1030",
-          "ARAT1031",
-          "ARAT1032",
-          "ARAT1033",
-          "ARAT1034",
-          "ARAT1035",
-          "ARAT1036",
-          "ARAT1037",
-          "ARAT1038",
-          "ARAT1039",
-          "ARAT1040",
-          "ARAT1041",
-          "ARAT1042",
-          "ARAT1043",
-          "ARAT1044",
-          "ARAT1045",
-          "ARAT1046",
-          "ARAT1047",
-          "ARAT1048",
-          "ARAT1049",
-          "ARAT1050",
-          "ARAT1051",
-          "ARAT1052",
-          "ARAT1053",
-          "ARAT1054",
-          "ARAT1055",
-          "ARAT1056",
-          "ARAT1057",
-          "ARAT1058",
-          "ARAT1059",
-          "ARAT1060",
-          "ARAT1061",
-          "ARAT1062",
-          "ARAT1063",
-          "ARAT2",
-          "ARAT2001",
-          "ARAT2002",
-          "ARAT2003",
-          "ARAT2004",
-          "ARAT2005",
-          "ARAT2006",
-          "ARAT2007",
-          "BellyPlate",
-          "DeckGrilleLouver",
-          "DeckGrilleLouver001",
-          "DeckGrilleLouver002",
-          "DeckGrilleLouver003",
-          "DeckGrilleLouver004",
-          "DeckGrilleLouver005",
-          "DeckGrillePlate",
-          "DeckGrilleSeam",
-          "FenderLens",
-          "FenderLens001",
-          "FenderLight",
-          "FenderLight001",
-          "Object_2",
-          "Object_5",
-          "Object_7",
-          "Object_8",
-          "Object_9",
-          "Object_10",
-          "Object_11",
-          "Object_12",
-          "Object_15",
-          "Object_19",
-          "Object_20",
-          "Object_21",
-          "Object_24",
-          "Object_25",
-          "Object_27",
-          "Object_29",
-          "Object_30",
-          "CheekFront",
-          "CheekFront001",
-          "CheekShoulder",
-          "CheekShoulder001",
-          "CITVBase",
-          "CITVHead",
-          "CITVStem",
-          "CITVWindow",
-          "Duffel",
-          "Duffel001",
-          "Duffel002",
-          "Duffel003",
-          "GPSBrow",
-          "GPSDoghouse",
-          "GPSWindow",
-          "BoreEvac",
-          "BoreEvacT1",
-          "BoreEvacT2",
-          "MRSCollar",
-          "Object_3",
-          "Object_13",
-          "GunPivot",
-          "LoaderM240",
-          "LoaderShieldFront",
-          "LoaderShieldGlassF",
-          "LoaderShieldGlassL",
-          "LoaderShieldGlassR",
-          "LoaderShieldL",
-          "LoaderShieldPost",
-          "LoaderShieldPost001",
-          "LoaderShieldPost002",
-          "LoaderShieldPost003",
-          "LoaderShieldR",
-          "M240Pintle",
-          "M240Receiver",
-          "M250Mount",
-          "M250Mount001",
-          "M250Tube",
-          "M250Tube001",
-          "M250Tube002",
-          "M250Tube003",
-          "M250Tube004",
-          "M250Tube005",
-          "M250Tube006",
-          "M250Tube007",
-          "M250Tube008",
-          "M250Tube009",
-          "M250Tube010",
-          "M250Tube011",
-          "Object_4",
-          "Object_6",
-          "Object_16",
-          "Object_17",
-          "Object_18",
-          "Object_23",
-          "Object_26",
-          "Object_28",
-          "RoofCap",
-          "RoofCap001",
-          "RoofCap002",
-          "RWSCap",
-          "TurretPivot",
-          "Tank_01_OBJobjcleanermaterialmergergles",
-          "Sketchfab_model",
-          "SlatBar",
-          "SlatBar001",
-          "SlatBar002",
-          "SlatBar003",
-          "SlatBar004",
-          "SlatBar005",
-          "SlatBar006",
-          "SlatBar007",
-          "SlatBar008",
-          "SlatBar009",
-          "SlatBar010",
-          "SlatBar011",
-          "SlatBar012",
-          "SlatBar013",
-          "SlatBar014",
-          "SlatBar015",
-          "SlatBar016",
-          "SlatBar017",
-          "SlatBar018",
-          "SlatBar019",
-          "SlatBar020",
-          "SlatBar021",
-          "SlatBar022",
-          "SlatBar023",
-          "SlatMountL",
-          "SlatMountR",
-          "SlatRailB",
-          "SlatRailT",
-          "TIPBox",
-          "TIPCable"
+          "Rear_Fender",
+          "Track_Curve_-_Left",
+          "Track_Curve_-_Right",
+          "Track_Rods_-_Left",
+          "Track_Pads_-_Left",
+          "Track_Empty_-_Left",
+          "Track_Rods_-_Right",
+          "Track_Pads_-_Right",
+          "Track_Empty_-_Right",
+          "CROWS",
+          "Crows_Mount",
+          "Gun_Mantlet_Flap",
+          "Gun",
+          "M240",
+          "M240_Mount",
+          "M240_Shield",
+          "M240_Rail_Mount",
+          "Turret",
+          "Hull"
         ],
-        "turret": "TurretPivot",
-        "gun": "GunPivot",
+        "turret": "Turret",
+        "gun": "Gun",
         "turretMatchCount": 1,
         "gunMatchCount": 1,
         "gunInsideTurret": true,
         "size": [
-          5.1147,
-          3.87,
-          12.9254
+          3.7056,
+          4.1447,
+          9.7646
         ]
       },
       "components": {
@@ -2553,15 +2317,15 @@
         "turret": 3,
         "gun": 2,
         "hierarchy": 1,
-        "pivot": 0.7,
-        "proportions": 0.83,
+        "pivot": 1,
+        "proportions": 0.52,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "M1A2 Abrams TUSK",
-      "peerMedian": 9.3,
-      "peerDelta": 0.23
+      "peerMedian": 9.41,
+      "peerDelta": 0.11
     },
     {
       "id": "kf51",
@@ -2608,8 +2372,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "KF51 Panther",
-      "peerMedian": 9.3,
-      "peerDelta": 0.57
+      "peerMedian": 9.41,
+      "peerDelta": 0.46
     },
     {
       "id": "m1a2_tejas",
@@ -2670,8 +2434,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "M1A2 Abrams (Tejas)",
-      "peerMedian": 9.3,
-      "peerDelta": 0.22
+      "peerMedian": 9.41,
+      "peerDelta": 0.11
     },
     {
       "id": "abramsx",
@@ -2756,8 +2520,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "AbramsX",
-      "peerMedian": 9.3,
-      "peerDelta": 0.05
+      "peerMedian": 9.41,
+      "peerDelta": -0.06
     },
     {
       "id": "challenger1",
@@ -2932,51 +2696,34 @@
       "era": "modern",
       "class": "mbt",
       "name": "Challenger 1 Mk.3",
-      "peerMedian": 9.3,
-      "peerDelta": 0.11
+      "peerMedian": 9.41,
+      "peerDelta": 0
     },
     {
       "id": "chieftain5",
       "role": "selected",
-      "kind": "procedural",
-      "path": null,
-      "score": 9,
+      "kind": "glb",
+      "path": "/models/tanks/community/recovered/chieftain5.glb",
+      "score": 8.76,
       "pass": true,
       "turretless": false,
       "issues": [
-        "uses articulated family visual: chieftain_mk10"
-      ],
-      "hardCaps": [],
-      "inspection": null,
-      "era": "modern",
-      "class": "mbt",
-      "name": "Chieftain Mk.5",
-      "peerMedian": 9.3,
-      "peerDelta": -0.3
-    },
-    {
-      "id": "chieftain5",
-      "role": "candidate",
-      "kind": "glb",
-      "path": "/models/tanks/community/recovered/chieftain5.glb",
-      "score": 2.76,
-      "pass": false,
-      "turretless": false,
-      "issues": [
-        "no separable turret node"
+        "gun is fused to turret; elevation remains virtual"
       ],
       "hardCaps": [
-        "missing turret caps score at 5.5"
+        "fused gun caps score at 9.0"
       ],
       "inspection": {
-        "nodeCount": 1,
-        "meshCount": 1,
+        "nodeCount": 3,
+        "meshCount": 2,
         "names": [
-          "Chieftain_MK-5_Main_Battle_Tank"
+          "Chieftain_MK-5_Main_Battle_Tank",
+          "TurretMesh",
+          "Turret"
         ],
-        "turret": null,
+        "turret": "Turret",
         "gun": null,
-        "turretMatchCount": 0,
+        "turretMatchCount": 1,
         "gunMatchCount": 0,
         "gunInsideTurret": false,
         "size": [
@@ -2987,65 +2734,46 @@
       },
       "components": {
         "source": 1,
-        "turret": 0,
-        "gun": 0,
-        "hierarchy": 0,
-        "pivot": 0,
+        "turret": 3,
+        "gun": 1.25,
+        "hierarchy": 0.75,
+        "pivot": 1,
         "proportions": 0.76,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "Chieftain Mk.5",
-      "peerMedian": 9.3,
-      "peerDelta": -6.54
+      "peerMedian": 9.41,
+      "peerDelta": -0.65
     },
     {
       "id": "fv510",
       "role": "selected",
-      "kind": "procedural",
-      "path": null,
-      "score": 9,
-      "pass": true,
-      "turretless": false,
-      "issues": [
-        "uses articulated family visual: m2a2_bradley"
-      ],
-      "hardCaps": [],
-      "inspection": null,
-      "era": "modern",
-      "class": "ifv",
-      "name": "FV510 Warrior",
-      "peerMedian": 9.5,
-      "peerDelta": -0.5
-    },
-    {
-      "id": "fv510",
-      "role": "candidate",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/fv510.glb",
-      "score": 2.64,
-      "pass": false,
+      "score": 9.64,
+      "pass": true,
       "turretless": false,
-      "issues": [
-        "no separable turret node"
-      ],
-      "hardCaps": [
-        "missing turret caps score at 5.5"
-      ],
+      "issues": [],
+      "hardCaps": [],
       "inspection": {
-        "nodeCount": 3,
-        "meshCount": 2,
+        "nodeCount": 7,
+        "meshCount": 4,
         "names": [
           "Object_default-greyjpg",
           "Object_Main_Bodyjpg",
-          "Object_Trackjpg"
+          "Object_Trackjpg",
+          "GunMesh",
+          "Gun",
+          "TurretMesh",
+          "Turret"
         ],
-        "turret": null,
-        "gun": null,
-        "turretMatchCount": 0,
-        "gunMatchCount": 0,
-        "gunInsideTurret": false,
+        "turret": "Turret",
+        "gun": "Gun",
+        "turretMatchCount": 1,
+        "gunMatchCount": 1,
+        "gunInsideTurret": true,
         "size": [
           0.0134,
           0.0172,
@@ -3054,10 +2782,10 @@
       },
       "components": {
         "source": 1,
-        "turret": 0,
-        "gun": 0,
-        "hierarchy": 0,
-        "pivot": 0,
+        "turret": 3,
+        "gun": 2,
+        "hierarchy": 1,
+        "pivot": 1,
         "proportions": 0.64,
         "hygiene": 1
       },
@@ -3065,45 +2793,23 @@
       "class": "ifv",
       "name": "FV510 Warrior",
       "peerMedian": 9.5,
-      "peerDelta": -6.86
+      "peerDelta": 0.14
     },
     {
       "id": "leo2_revolution",
       "role": "selected",
-      "kind": "procedural",
-      "path": null,
-      "score": 9,
+      "kind": "glb",
+      "path": "/models/tanks/community/recovered/leo2_revolution.glb",
+      "score": 9.5,
       "pass": true,
       "turretless": false,
       "issues": [
-        "uses articulated family visual: leo2a7"
-      ],
-      "hardCaps": [],
-      "inspection": null,
-      "era": "modern",
-      "class": "mbt",
-      "name": "Leopard 2 Revolution",
-      "peerMedian": 9.3,
-      "peerDelta": -0.3
-    },
-    {
-      "id": "leo2_revolution",
-      "role": "candidate",
-      "kind": "glb",
-      "path": "/models/tanks/community/recovered/leo2_revolution.glb",
-      "score": 2.5,
-      "pass": false,
-      "turretless": false,
-      "issues": [
-        "no separable turret node",
         "overall proportions differ 45% from spec"
       ],
-      "hardCaps": [
-        "missing turret caps score at 5.5"
-      ],
+      "hardCaps": [],
       "inspection": {
-        "nodeCount": 23,
-        "meshCount": 23,
+        "nodeCount": 27,
+        "meshCount": 25,
         "names": [
           "chassis",
           "chassis_vlo",
@@ -3119,6 +2825,10 @@
           "track_10",
           "track_11",
           "track_12",
+          "GunMesh",
+          "Gun",
+          "TurretMesh",
+          "Turret",
           "wheel_big_0",
           "wheel_big_1",
           "wheels_1",
@@ -3129,11 +2839,11 @@
           "wheels_6",
           "wheels_7"
         ],
-        "turret": null,
-        "gun": null,
-        "turretMatchCount": 0,
-        "gunMatchCount": 0,
-        "gunInsideTurret": false,
+        "turret": "Turret",
+        "gun": "Gun",
+        "turretMatchCount": 1,
+        "gunMatchCount": 1,
+        "gunInsideTurret": true,
         "size": [
           4.4225,
           4.451,
@@ -3142,18 +2852,18 @@
       },
       "components": {
         "source": 1,
-        "turret": 0,
-        "gun": 0,
-        "hierarchy": 0,
-        "pivot": 0,
+        "turret": 3,
+        "gun": 2,
+        "hierarchy": 1,
+        "pivot": 1,
         "proportions": 0.5,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "Leopard 2 Revolution",
-      "peerMedian": 9.3,
-      "peerDelta": -6.8
+      "peerMedian": 9.41,
+      "peerDelta": 0.09
     },
     {
       "id": "leo2a5",
@@ -3307,42 +3017,23 @@
       "era": "modern",
       "class": "mbt",
       "name": "Leopard 2A5",
-      "peerMedian": 9.3,
-      "peerDelta": 0
+      "peerMedian": 9.41,
+      "peerDelta": -0.11
     },
     {
       "id": "leo2a7v",
       "role": "selected",
-      "kind": "procedural",
-      "path": null,
-      "score": 9,
+      "kind": "glb",
+      "path": "/models/tanks/community/recovered/leo2a7v.glb",
+      "score": 8.5,
       "pass": true,
       "turretless": false,
       "issues": [
-        "uses articulated family visual: leo2a7"
-      ],
-      "hardCaps": [],
-      "inspection": null,
-      "era": "modern",
-      "class": "mbt",
-      "name": "Leopard 2A7V",
-      "peerMedian": 9.3,
-      "peerDelta": -0.3
-    },
-    {
-      "id": "leo2a7v",
-      "role": "candidate",
-      "kind": "glb",
-      "path": "/models/tanks/community/recovered/leo2a7v.glb",
-      "score": 2.5,
-      "pass": false,
-      "turretless": false,
-      "issues": [
-        "no separable turret node",
+        "gun is fused to turret; elevation remains virtual",
         "overall proportions differ 48% from spec"
       ],
       "hardCaps": [
-        "missing turret caps score at 5.5"
+        "fused gun caps score at 9.0"
       ],
       "inspection": {
         "nodeCount": 4,
@@ -3353,9 +3044,9 @@
           "desirefx_me_003",
           "desirefx_me_004"
         ],
-        "turret": null,
+        "turret": "desirefx_me_003",
         "gun": null,
-        "turretMatchCount": 0,
+        "turretMatchCount": 1,
         "gunMatchCount": 0,
         "gunInsideTurret": false,
         "size": [
@@ -3366,99 +3057,94 @@
       },
       "components": {
         "source": 1,
-        "turret": 0,
-        "gun": 0,
-        "hierarchy": 0,
-        "pivot": 0,
+        "turret": 3,
+        "gun": 1.25,
+        "hierarchy": 0.75,
+        "pivot": 1,
         "proportions": 0.5,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "Leopard 2A7V",
-      "peerMedian": 9.3,
-      "peerDelta": -6.8
+      "peerMedian": 9.41,
+      "peerDelta": -0.91
     },
     {
       "id": "m1a1ha",
       "role": "selected",
-      "kind": "procedural",
-      "path": null,
-      "score": 9,
+      "kind": "glb",
+      "path": "/models/tanks/m1a2_tejas.glb",
+      "score": 9.52,
       "pass": true,
       "turretless": false,
       "issues": [
-        "uses articulated family visual: m1a1"
+        "overall proportions differ 36% from spec"
       ],
       "hardCaps": [],
-      "inspection": null,
-      "era": "modern",
-      "class": "mbt",
-      "name": "M1A1HA Abrams",
-      "peerMedian": 9.3,
-      "peerDelta": -0.3
-    },
-    {
-      "id": "m1a1ha",
-      "role": "candidate",
-      "kind": "glb",
-      "path": "/models/tanks/community/recovered/m1a1ha.glb",
-      "score": 2.68,
-      "pass": false,
-      "turretless": false,
-      "issues": [
-        "no separable turret node"
-      ],
-      "hardCaps": [
-        "missing turret caps score at 5.5"
-      ],
       "inspection": {
-        "nodeCount": 1,
-        "meshCount": 1,
+        "nodeCount": 19,
+        "meshCount": 15,
         "names": [
-          "model_0"
+          "Rear_Fender",
+          "Track_Curve_-_Left",
+          "Track_Curve_-_Right",
+          "Track_Rods_-_Left",
+          "Track_Pads_-_Left",
+          "Track_Empty_-_Left",
+          "Track_Rods_-_Right",
+          "Track_Pads_-_Right",
+          "Track_Empty_-_Right",
+          "CROWS",
+          "Crows_Mount",
+          "Gun_Mantlet_Flap",
+          "Gun",
+          "M240",
+          "M240_Mount",
+          "M240_Shield",
+          "M240_Rail_Mount",
+          "Turret",
+          "Hull"
         ],
-        "turret": null,
-        "gun": null,
-        "turretMatchCount": 0,
-        "gunMatchCount": 0,
-        "gunInsideTurret": false,
+        "turret": "Turret",
+        "gun": "Gun",
+        "turretMatchCount": 1,
+        "gunMatchCount": 1,
+        "gunInsideTurret": true,
         "size": [
-          8.3006,
-          7.5973,
-          21.1503
+          3.7056,
+          4.1447,
+          9.7646
         ]
       },
       "components": {
         "source": 1,
-        "turret": 0,
-        "gun": 0,
-        "hierarchy": 0,
-        "pivot": 0,
-        "proportions": 0.68,
+        "turret": 3,
+        "gun": 2,
+        "hierarchy": 1,
+        "pivot": 1,
+        "proportions": 0.52,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "M1A1HA Abrams",
-      "peerMedian": 9.3,
-      "peerDelta": -6.62
+      "peerMedian": 9.41,
+      "peerDelta": 0.11
     },
     {
       "id": "m1a2_sepv2",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/m1a2_sepv2.glb",
-      "score": 8.5,
+      "score": 9.3,
       "pass": true,
       "turretless": false,
       "issues": [
-        "gun is fused to turret; elevation remains virtual",
+        "gun is a turret sibling; loader reparent required",
         "overall proportions differ 49% from spec"
       ],
-      "hardCaps": [
-        "fused gun caps score at 9.0"
-      ],
+      "hardCaps": [],
       "inspection": {
         "nodeCount": 102,
         "meshCount": 102,
@@ -3567,9 +3253,9 @@
           "wheel_small_8"
         ],
         "turret": "Turret",
-        "gun": null,
+        "gun": "misc_b",
         "turretMatchCount": 1,
-        "gunMatchCount": 0,
+        "gunMatchCount": 1,
         "gunInsideTurret": false,
         "size": [
           4.403,
@@ -3580,8 +3266,8 @@
       "components": {
         "source": 1,
         "turret": 3,
-        "gun": 1.25,
-        "hierarchy": 0.75,
+        "gun": 2,
+        "hierarchy": 0.8,
         "pivot": 1,
         "proportions": 0.5,
         "hygiene": 1
@@ -3589,8 +3275,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "M1A2 Abrams SEPv2",
-      "peerMedian": 9.3,
-      "peerDelta": -0.8
+      "peerMedian": 9.41,
+      "peerDelta": -0.11
     },
     {
       "id": "m60a1",
@@ -3706,42 +3392,19 @@
       "era": "modern",
       "class": "mbt",
       "name": "M60A1 Patton",
-      "peerMedian": 9.3,
-      "peerDelta": 0.5
+      "peerMedian": 9.41,
+      "peerDelta": 0.39
     },
     {
       "id": "pt91m",
       "role": "selected",
-      "kind": "procedural",
-      "path": null,
-      "score": 9,
-      "pass": true,
-      "turretless": false,
-      "issues": [
-        "uses articulated family visual: t72b3"
-      ],
-      "hardCaps": [],
-      "inspection": null,
-      "era": "modern",
-      "class": "mbt",
-      "name": "PT-91M Pendekar",
-      "peerMedian": 9.3,
-      "peerDelta": -0.3
-    },
-    {
-      "id": "pt91m",
-      "role": "candidate",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/pt91m.glb",
-      "score": 2.57,
-      "pass": false,
+      "score": 9.57,
+      "pass": true,
       "turretless": false,
-      "issues": [
-        "no separable turret node"
-      ],
-      "hardCaps": [
-        "missing turret caps score at 5.5"
-      ],
+      "issues": [],
+      "hardCaps": [],
       "inspection": {
         "nodeCount": 16,
         "meshCount": 16,
@@ -3763,11 +3426,11 @@
           "wheel_small_6",
           "chassis"
         ],
-        "turret": null,
-        "gun": null,
-        "turretMatchCount": 0,
-        "gunMatchCount": 0,
-        "gunInsideTurret": false,
+        "turret": "misc_a",
+        "gun": "misc_b",
+        "turretMatchCount": 1,
+        "gunMatchCount": 1,
+        "gunInsideTurret": true,
         "size": [
           3.4744,
           3.696,
@@ -3776,18 +3439,18 @@
       },
       "components": {
         "source": 1,
-        "turret": 0,
-        "gun": 0,
-        "hierarchy": 0,
-        "pivot": 0,
+        "turret": 3,
+        "gun": 2,
+        "hierarchy": 1,
+        "pivot": 1,
         "proportions": 0.57,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "PT-91M Pendekar",
-      "peerMedian": 9.3,
-      "peerDelta": -6.73
+      "peerMedian": 9.41,
+      "peerDelta": 0.16
     },
     {
       "id": "merkava1b",
@@ -3950,8 +3613,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Merkava Mk.1B",
-      "peerMedian": 9.3,
-      "peerDelta": 0
+      "peerMedian": 9.41,
+      "peerDelta": -0.11
     },
     {
       "id": "merkava2b",
@@ -4140,8 +3803,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Merkava Mk.2B",
-      "peerMedian": 9.3,
-      "peerDelta": 0
+      "peerMedian": 9.41,
+      "peerDelta": -0.11
     },
     {
       "id": "merkava2d",
@@ -4355,8 +4018,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Merkava Mk.2D",
-      "peerMedian": 9.3,
-      "peerDelta": 0
+      "peerMedian": 9.41,
+      "peerDelta": -0.11
     },
     {
       "id": "merkava3b",
@@ -4540,8 +4203,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Merkava Mk.3B",
-      "peerMedian": 9.3,
-      "peerDelta": 0
+      "peerMedian": 9.41,
+      "peerDelta": -0.11
     },
     {
       "id": "merkava3c",
@@ -4722,8 +4385,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Merkava Mk.3C",
-      "peerMedian": 9.3,
-      "peerDelta": 0
+      "peerMedian": 9.41,
+      "peerDelta": -0.11
     },
     {
       "id": "merkava3d",
@@ -4894,8 +4557,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Merkava Mk.3D",
-      "peerMedian": 9.3,
-      "peerDelta": 0
+      "peerMedian": 9.41,
+      "peerDelta": -0.11
     },
     {
       "id": "merkava4b",
@@ -5104,52 +4767,35 @@
       "era": "modern",
       "class": "mbt",
       "name": "Merkava Mk.4B",
-      "peerMedian": 9.3,
-      "peerDelta": 0
+      "peerMedian": 9.41,
+      "peerDelta": -0.11
     },
     {
       "id": "t62mv1",
       "role": "selected",
-      "kind": "procedural",
-      "path": null,
-      "score": 9,
+      "kind": "glb",
+      "path": "/models/tanks/community/recovered/t62mv1.glb",
+      "score": 8.95,
       "pass": true,
       "turretless": false,
       "issues": [
-        "uses articulated family visual: leo1a5"
-      ],
-      "hardCaps": [],
-      "inspection": null,
-      "era": "modern",
-      "class": "mbt",
-      "name": "T-62MV-1",
-      "peerMedian": 9.3,
-      "peerDelta": -0.3
-    },
-    {
-      "id": "t62mv1",
-      "role": "candidate",
-      "kind": "glb",
-      "path": "/models/tanks/community/recovered/t62mv1.glb",
-      "score": 2.95,
-      "pass": false,
-      "turretless": false,
-      "issues": [
-        "no separable turret node"
+        "gun is fused to turret; elevation remains virtual"
       ],
       "hardCaps": [
-        "missing turret caps score at 5.5"
+        "fused gun caps score at 9.0"
       ],
       "inspection": {
-        "nodeCount": 2,
-        "meshCount": 2,
+        "nodeCount": 4,
+        "meshCount": 3,
         "names": [
           "mesh_326",
-          "mesh_327"
+          "mesh_327",
+          "TurretMesh",
+          "Turret"
         ],
-        "turret": null,
+        "turret": "Turret",
         "gun": null,
-        "turretMatchCount": 0,
+        "turretMatchCount": 1,
         "gunMatchCount": 0,
         "gunInsideTurret": false,
         "size": [
@@ -5160,62 +4806,45 @@
       },
       "components": {
         "source": 1,
-        "turret": 0,
-        "gun": 0,
-        "hierarchy": 0,
-        "pivot": 0,
+        "turret": 3,
+        "gun": 1.25,
+        "hierarchy": 0.75,
+        "pivot": 1,
         "proportions": 0.95,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "T-62MV-1",
-      "peerMedian": 9.3,
-      "peerDelta": -6.35
+      "peerMedian": 9.41,
+      "peerDelta": -0.46
     },
     {
       "id": "t64bv1",
       "role": "selected",
-      "kind": "procedural",
-      "path": null,
-      "score": 9,
+      "kind": "glb",
+      "path": "/models/tanks/community/recovered/t64bv1.glb",
+      "score": 8.88,
       "pass": true,
       "turretless": false,
       "issues": [
-        "uses articulated family visual: t72b3"
-      ],
-      "hardCaps": [],
-      "inspection": null,
-      "era": "modern",
-      "class": "mbt",
-      "name": "T-64BV1",
-      "peerMedian": 9.3,
-      "peerDelta": -0.3
-    },
-    {
-      "id": "t64bv1",
-      "role": "candidate",
-      "kind": "glb",
-      "path": "/models/tanks/community/recovered/t64bv1.glb",
-      "score": 2.88,
-      "pass": false,
-      "turretless": false,
-      "issues": [
-        "no separable turret node"
+        "gun is fused to turret; elevation remains virtual"
       ],
       "hardCaps": [
-        "missing turret caps score at 5.5"
+        "fused gun caps score at 9.0"
       ],
       "inspection": {
-        "nodeCount": 2,
-        "meshCount": 2,
+        "nodeCount": 4,
+        "meshCount": 3,
         "names": [
           "mesh_280",
-          "mesh_281"
+          "mesh_281",
+          "TurretMesh",
+          "Turret"
         ],
-        "turret": null,
+        "turret": "Turret",
         "gun": null,
-        "turretMatchCount": 0,
+        "turretMatchCount": 1,
         "gunMatchCount": 0,
         "gunInsideTurret": false,
         "size": [
@@ -5226,62 +4855,45 @@
       },
       "components": {
         "source": 1,
-        "turret": 0,
-        "gun": 0,
-        "hierarchy": 0,
-        "pivot": 0,
+        "turret": 3,
+        "gun": 1.25,
+        "hierarchy": 0.75,
+        "pivot": 1,
         "proportions": 0.88,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "T-64BV1",
-      "peerMedian": 9.3,
-      "peerDelta": -6.42
+      "peerMedian": 9.41,
+      "peerDelta": -0.53
     },
     {
       "id": "t72b_1987",
       "role": "selected",
-      "kind": "procedural",
-      "path": null,
-      "score": 9,
+      "kind": "glb",
+      "path": "/models/tanks/community/recovered/t72b_1987.glb",
+      "score": 8.81,
       "pass": true,
       "turretless": false,
       "issues": [
-        "uses articulated family visual: t72b3"
-      ],
-      "hardCaps": [],
-      "inspection": null,
-      "era": "modern",
-      "class": "mbt",
-      "name": "T-72B obr. 1987",
-      "peerMedian": 9.3,
-      "peerDelta": -0.3
-    },
-    {
-      "id": "t72b_1987",
-      "role": "candidate",
-      "kind": "glb",
-      "path": "/models/tanks/community/recovered/t72b_1987.glb",
-      "score": 2.81,
-      "pass": false,
-      "turretless": false,
-      "issues": [
-        "no separable turret node"
+        "gun is fused to turret; elevation remains virtual"
       ],
       "hardCaps": [
-        "missing turret caps score at 5.5"
+        "fused gun caps score at 9.0"
       ],
       "inspection": {
-        "nodeCount": 2,
-        "meshCount": 2,
+        "nodeCount": 4,
+        "meshCount": 3,
         "names": [
           "mesh_315",
-          "mesh_316"
+          "mesh_316",
+          "TurretMesh",
+          "Turret"
         ],
-        "turret": null,
+        "turret": "Turret",
         "gun": null,
-        "turretMatchCount": 0,
+        "turretMatchCount": 1,
         "gunMatchCount": 0,
         "gunInsideTurret": false,
         "size": [
@@ -5292,52 +4904,31 @@
       },
       "components": {
         "source": 1,
-        "turret": 0,
-        "gun": 0,
-        "hierarchy": 0,
-        "pivot": 0,
+        "turret": 3,
+        "gun": 1.25,
+        "hierarchy": 0.75,
+        "pivot": 1,
         "proportions": 0.81,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "T-72B obr. 1987",
-      "peerMedian": 9.3,
-      "peerDelta": -6.49
+      "peerMedian": 9.41,
+      "peerDelta": -0.6
     },
     {
       "id": "t72b3m",
       "role": "selected",
-      "kind": "procedural",
-      "path": null,
-      "score": 9,
+      "kind": "glb",
+      "path": "/models/tanks/community/recovered/t72b3m.glb",
+      "score": 9.41,
       "pass": true,
       "turretless": false,
       "issues": [
-        "uses articulated family visual: t72b3"
+        "gun is a turret sibling; loader reparent required"
       ],
       "hardCaps": [],
-      "inspection": null,
-      "era": "modern",
-      "class": "mbt",
-      "name": "T-72B3M obr. 2022",
-      "peerMedian": 9.3,
-      "peerDelta": -0.3
-    },
-    {
-      "id": "t72b3m",
-      "role": "candidate",
-      "kind": "glb",
-      "path": "/models/tanks/community/recovered/t72b3m.glb",
-      "score": 2.61,
-      "pass": false,
-      "turretless": false,
-      "issues": [
-        "no separable turret node"
-      ],
-      "hardCaps": [
-        "missing turret caps score at 5.5"
-      ],
       "inspection": {
         "nodeCount": 10,
         "meshCount": 10,
@@ -5353,10 +4944,10 @@
           "T-72B3M_Zavod_edition",
           "traks"
         ],
-        "turret": null,
-        "gun": null,
-        "turretMatchCount": 0,
-        "gunMatchCount": 0,
+        "turret": "misc_a",
+        "gun": "misc_b",
+        "turretMatchCount": 1,
+        "gunMatchCount": 1,
         "gunInsideTurret": false,
         "size": [
           3.951,
@@ -5366,62 +4957,45 @@
       },
       "components": {
         "source": 1,
-        "turret": 0,
-        "gun": 0,
-        "hierarchy": 0,
-        "pivot": 0,
+        "turret": 3,
+        "gun": 2,
+        "hierarchy": 0.8,
+        "pivot": 1,
         "proportions": 0.61,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "T-72B3M obr. 2022",
-      "peerMedian": 9.3,
-      "peerDelta": -6.69
+      "peerMedian": 9.41,
+      "peerDelta": 0
     },
     {
       "id": "t72bu",
       "role": "selected",
-      "kind": "procedural",
-      "path": null,
-      "score": 9,
+      "kind": "glb",
+      "path": "/models/tanks/community/recovered/t72bu.glb",
+      "score": 8.65,
       "pass": true,
       "turretless": false,
       "issues": [
-        "uses articulated family visual: t90a"
-      ],
-      "hardCaps": [],
-      "inspection": null,
-      "era": "modern",
-      "class": "mbt",
-      "name": "T-72BU",
-      "peerMedian": 9.3,
-      "peerDelta": -0.3
-    },
-    {
-      "id": "t72bu",
-      "role": "candidate",
-      "kind": "glb",
-      "path": "/models/tanks/community/recovered/t72bu.glb",
-      "score": 2.65,
-      "pass": false,
-      "turretless": false,
-      "issues": [
-        "no separable turret node"
+        "gun is fused to turret; elevation remains virtual"
       ],
       "hardCaps": [
-        "missing turret caps score at 5.5"
+        "fused gun caps score at 9.0"
       ],
       "inspection": {
-        "nodeCount": 2,
-        "meshCount": 2,
+        "nodeCount": 4,
+        "meshCount": 3,
         "names": [
           "mesh_324",
-          "mesh_325"
+          "mesh_325",
+          "TurretMesh",
+          "Turret"
         ],
-        "turret": null,
+        "turret": "Turret",
         "gun": null,
-        "turretMatchCount": 0,
+        "turretMatchCount": 1,
         "gunMatchCount": 0,
         "gunInsideTurret": false,
         "size": [
@@ -5432,52 +5006,31 @@
       },
       "components": {
         "source": 1,
-        "turret": 0,
-        "gun": 0,
-        "hierarchy": 0,
-        "pivot": 0,
+        "turret": 3,
+        "gun": 1.25,
+        "hierarchy": 0.75,
+        "pivot": 1,
         "proportions": 0.65,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "T-72BU",
-      "peerMedian": 9.3,
-      "peerDelta": -6.65
+      "peerMedian": 9.41,
+      "peerDelta": -0.76
     },
     {
       "id": "t90sm",
       "role": "selected",
-      "kind": "procedural",
-      "path": null,
-      "score": 9,
+      "kind": "glb",
+      "path": "/models/tanks/community/recovered/t90sm.glb",
+      "score": 9.55,
       "pass": true,
       "turretless": false,
       "issues": [
-        "uses articulated family visual: t90m"
+        "gun is a turret sibling; loader reparent required"
       ],
       "hardCaps": [],
-      "inspection": null,
-      "era": "modern",
-      "class": "mbt",
-      "name": "T-90SM",
-      "peerMedian": 9.3,
-      "peerDelta": -0.3
-    },
-    {
-      "id": "t90sm",
-      "role": "candidate",
-      "kind": "glb",
-      "path": "/models/tanks/community/recovered/t90sm.glb",
-      "score": 2.75,
-      "pass": false,
-      "turretless": false,
-      "issues": [
-        "no separable turret node"
-      ],
-      "hardCaps": [
-        "missing turret caps score at 5.5"
-      ],
       "inspection": {
         "nodeCount": 27,
         "meshCount": 27,
@@ -5510,10 +5063,10 @@
           "wheel_small_5",
           "wheel_small_6"
         ],
-        "turret": null,
-        "gun": null,
-        "turretMatchCount": 0,
-        "gunMatchCount": 0,
+        "turret": "misc_a",
+        "gun": "misc_b",
+        "turretMatchCount": 1,
+        "gunMatchCount": 1,
         "gunInsideTurret": false,
         "size": [
           4.9806,
@@ -5523,63 +5076,46 @@
       },
       "components": {
         "source": 1,
-        "turret": 0,
-        "gun": 0,
-        "hierarchy": 0,
-        "pivot": 0,
+        "turret": 3,
+        "gun": 2,
+        "hierarchy": 0.8,
+        "pivot": 1,
         "proportions": 0.75,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "T-90SM",
-      "peerMedian": 9.3,
-      "peerDelta": -6.55
+      "peerMedian": 9.41,
+      "peerDelta": 0.14
     },
     {
       "id": "type90",
       "role": "selected",
-      "kind": "procedural",
-      "path": null,
-      "score": 9,
+      "kind": "glb",
+      "path": "/models/tanks/community/recovered/type90.glb",
+      "score": 8.5,
       "pass": true,
       "turretless": false,
       "issues": [
-        "uses articulated family visual: type10"
-      ],
-      "hardCaps": [],
-      "inspection": null,
-      "era": "modern",
-      "class": "mbt",
-      "name": "Type 90 Kyu-maru",
-      "peerMedian": 9.3,
-      "peerDelta": -0.3
-    },
-    {
-      "id": "type90",
-      "role": "candidate",
-      "kind": "glb",
-      "path": "/models/tanks/community/recovered/type90.glb",
-      "score": 2.5,
-      "pass": false,
-      "turretless": false,
-      "issues": [
-        "no separable turret node",
+        "gun is fused to turret; elevation remains virtual",
         "overall proportions differ 52% from spec"
       ],
       "hardCaps": [
-        "missing turret caps score at 5.5"
+        "fused gun caps score at 9.0"
       ],
       "inspection": {
-        "nodeCount": 2,
-        "meshCount": 2,
+        "nodeCount": 4,
+        "meshCount": 3,
         "names": [
           "mesh_308",
-          "mesh_309"
+          "mesh_309",
+          "TurretMesh",
+          "Turret"
         ],
-        "turret": null,
+        "turret": "Turret",
         "gun": null,
-        "turretMatchCount": 0,
+        "turretMatchCount": 1,
         "gunMatchCount": 0,
         "gunInsideTurret": false,
         "size": [
@@ -5590,51 +5126,32 @@
       },
       "components": {
         "source": 1,
-        "turret": 0,
-        "gun": 0,
-        "hierarchy": 0,
-        "pivot": 0,
+        "turret": 3,
+        "gun": 1.25,
+        "hierarchy": 0.75,
+        "pivot": 1,
         "proportions": 0.5,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "Type 90 Kyu-maru",
-      "peerMedian": 9.3,
-      "peerDelta": -6.8
+      "peerMedian": 9.41,
+      "peerDelta": -0.91
     },
     {
       "id": "t90a_vladimir",
       "role": "selected",
-      "kind": "procedural",
-      "path": null,
-      "score": 9,
+      "kind": "glb",
+      "path": "/models/tanks/community/recovered/t90a_vladimir.glb",
+      "score": 8.57,
       "pass": true,
       "turretless": false,
       "issues": [
-        "uses articulated family visual: t90a"
-      ],
-      "hardCaps": [],
-      "inspection": null,
-      "era": "modern",
-      "class": "mbt",
-      "name": "T-90A Vladimir",
-      "peerMedian": 9.3,
-      "peerDelta": -0.3
-    },
-    {
-      "id": "t90a_vladimir",
-      "role": "candidate",
-      "kind": "glb",
-      "path": "/models/tanks/community/recovered/t90a_vladimir.glb",
-      "score": 2.57,
-      "pass": false,
-      "turretless": false,
-      "issues": [
-        "no separable turret node"
+        "gun is fused to turret; elevation remains virtual"
       ],
       "hardCaps": [
-        "missing turret caps score at 5.5"
+        "fused gun caps score at 9.0"
       ],
       "inspection": {
         "nodeCount": 15,
@@ -5656,9 +5173,9 @@
           "Text002",
           "Text003"
         ],
-        "turret": null,
+        "turret": "desirefxme_001",
         "gun": null,
-        "turretMatchCount": 0,
+        "turretMatchCount": 1,
         "gunMatchCount": 0,
         "gunInsideTurret": false,
         "size": [
@@ -5669,18 +5186,18 @@
       },
       "components": {
         "source": 1,
-        "turret": 0,
-        "gun": 0,
-        "hierarchy": 0,
-        "pivot": 0,
+        "turret": 3,
+        "gun": 1.25,
+        "hierarchy": 0.75,
+        "pivot": 1,
         "proportions": 0.57,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "T-90A Vladimir",
-      "peerMedian": 9.3,
-      "peerDelta": -6.73
+      "peerMedian": 9.41,
+      "peerDelta": -0.84
     },
     {
       "id": "is3_bergman",
@@ -5872,8 +5389,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Centurion Mk.3",
-      "peerMedian": 9.3,
-      "peerDelta": -0.58
+      "peerMedian": 9.41,
+      "peerDelta": -0.69
     },
     {
       "id": "centurion5",
@@ -5921,8 +5438,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Centurion Mk.5/2",
-      "peerMedian": 9.3,
-      "peerDelta": -0.5
+      "peerMedian": 9.41,
+      "peerDelta": -0.61
     },
     {
       "id": "comet",
@@ -6117,15 +5634,15 @@
       "era": "modern",
       "class": "mbt",
       "name": "Leopard 2 Prototype",
-      "peerMedian": 9.3,
-      "peerDelta": -0.43
+      "peerMedian": 9.41,
+      "peerDelta": -0.54
     },
     {
       "id": "m1a1_aim",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/m1a1_aim.glb",
-      "score": 8.91,
+      "score": 8.61,
       "pass": true,
       "turretless": false,
       "issues": [
@@ -6159,15 +5676,15 @@
         "turret": 3,
         "gun": 1.25,
         "hierarchy": 0.75,
-        "pivot": 1,
+        "pivot": 0.7,
         "proportions": 0.91,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "M1A1 AIM Abrams",
-      "peerMedian": 9.3,
-      "peerDelta": -0.39
+      "peerMedian": 9.41,
+      "peerDelta": -0.8
     },
     {
       "id": "m46_patton",
@@ -6215,8 +5732,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "M46 Patton",
-      "peerMedian": 9.3,
-      "peerDelta": -0.73
+      "peerMedian": 9.41,
+      "peerDelta": -0.84
     },
     {
       "id": "m47_patton",
@@ -6265,8 +5782,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "M47 Patton",
-      "peerMedian": 9.3,
-      "peerDelta": -0.8
+      "peerMedian": 9.41,
+      "peerDelta": -0.91
     },
     {
       "id": "m26_pershing",
@@ -6480,8 +5997,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "M60A3",
-      "peerMedian": 9.3,
-      "peerDelta": 0.5
+      "peerMedian": 9.41,
+      "peerDelta": 0.39
     }
   ]
 }

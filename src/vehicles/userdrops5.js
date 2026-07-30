@@ -87,43 +87,79 @@ const source = (id, cfg = {}) => {
 const articulated = (id, cfg = {}) => source(id, {
   turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true, ...cfg,
 });
-// Preserve visually interesting fused imports as scored candidates, but do
-// not let an asset limitation turn a real turreted tank into a casemate. The
-// factory uses the articulated family builder for these rows; model:audit
-// continues comparing the candidate so a repaired export can win later.
-const fusedCandidate = (id, cfg = {}) => {
-  MODEL_SOURCE[id] = {
-    source: 'procedural',
-    candidateGlb: { path: `${ROOT}${id}.glb`, paintUntextured: true, ...cfg },
-    qaReason: 'candidate has no separable turret node',
-  };
-};
+const CHALLENGER_TURRET_FOLLOWERS =
+  'vehicle#(?:ammo_|antenna_|bone_mg_aa_|ex_decor_(?:0[1-3]|0[5-9]|1[0-2])_|hatch_0[2-5]_)';
+const CHALLENGER_GUN_FOLLOWERS = 'vehicle#(?:gun_mask_|bone_mg_gun_twin_)';
+const MERKAVA_TURRET_FOLLOWERS =
+  'vehicle#(?:antenna_|bone_|ex_armor_(?!body)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))';
+const MERKAVA_GUN_FOLLOWERS = 'vehicle#gun_barrel_';
 
 if (ALLOW_LOCAL_RECOVERED_MODELS) {
   for (const spec of SPECS) {
     TANK_SPECS[spec.id] = TANK_SPECS[spec.id] || spec;
     if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
   }
-  articulated('challenger1');
+  articulated('challenger1', {
+    turretFollowers: CHALLENGER_TURRET_FOLLOWERS,
+    gunFollowers: CHALLENGER_GUN_FOLLOWERS,
+  });
   // This OBJ retains its authored Z-up frame after import; rotate Z-up to the
   // runtime's Y-up convention before modelLoader measures and normalizes it.
-  fusedCandidate('chieftain5', { pitchOffset: -Math.PI / 2 });
-  fusedCandidate('fv510');
-  fusedCandidate('leo2_revolution');
+  source('chieftain5', {
+    turretNode: '^Turret$', autoPivot: true, pitchOffset: -Math.PI / 2,
+  });
+  articulated('fv510', { yawOffset: Math.PI });
+  articulated('leo2_revolution', { yawOffset: Math.PI });
   articulated('leo2a5');
-  fusedCandidate('leo2a7v');
-  fusedCandidate('m1a1ha');
-  source('m1a2_sepv2', { turretNode: '^Turret$', autoPivot: true });
+  source('leo2a7v', {
+    // The author exported the complete upper fighting compartment (including
+    // the L/55 and mantlet) as this distinct mesh.
+    turretNode: '^desirefx_me_003$', autoPivot: true,
+  });
+  MODEL_SOURCE.m1a1ha = {
+    source: 'glb',
+    glb: {
+      path: '/models/tanks/m1a2_tejas.glb',
+      turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+      yawOffset: -Math.PI / 2, paintUntextured: true, heroTex: true,
+    },
+  };
+  source('m1a2_sepv2', {
+    turretNode: '^Turret$', gunNode: '^misc_b$', autoPivot: true,
+    yawOffset: Math.PI,
+    turretFollowers: '^(?:ammo_(?:5|box)|armor_turret|ex_armoc|ex_armor(?!_body)|ex_era_turret|ex_decor_04|glsaa_[6-8]|hatch_0[34]|mg_aamount_h|misc_a|optic_commander)$',
+  });
   source('m60a1', {
     turretNode: '^Turret$', gunNode: '^weapon$', autoPivot: true,
     yawOffset: -Math.PI / 2,
   });
-  fusedCandidate('pt91m');
-  for (const id of ['merkava1b', 'merkava2b', 'merkava2d', 'merkava3b', 'merkava3c', 'merkava3d', 'merkava4b']) articulated(id);
-  for (const id of ['t62mv1', 't64bv1', 't72b_1987', 't72bu', 'type90']) fusedCandidate(id, { yawOffset: -Math.PI / 2 });
-  fusedCandidate('t72b3m', { yawOffset: Math.PI });
-  fusedCandidate('t90sm', { yawOffset: Math.PI });
-  fusedCandidate('t90a_vladimir');
+  source('pt91m', {
+    turretNode: '^misc_a$', gunNode: '^misc_b$', autoPivot: true,
+  });
+  for (const id of ['merkava1b', 'merkava2b', 'merkava2d', 'merkava3b', 'merkava3c', 'merkava3d', 'merkava4b']) {
+    articulated(id, {
+      turretFollowers: MERKAVA_TURRET_FOLLOWERS,
+      gunFollowers: MERKAVA_GUN_FOLLOWERS,
+    });
+  }
+  for (const id of ['t62mv1', 't64bv1', 't72b_1987', 't72bu', 'type90']) {
+    source(id, {
+      turretNode: '^Turret$', autoPivot: true, yawOffset: -Math.PI / 2,
+    });
+  }
+  source('t72b3m', {
+    turretNode: '^misc_a$', gunNode: '^misc_b$', autoPivot: true,
+    yawOffset: Math.PI,
+  });
+  source('t90sm', {
+    turretNode: '^misc_a$', gunNode: '^misc_b$', autoPivot: true,
+    yawOffset: Math.PI,
+  });
+  source('t90a_vladimir', {
+    // Highest-detail turret assembly; the remaining desirefx meshes are hull,
+    // running gear, side skirts and LOD layers and must stay with the chassis.
+    turretNode: '^desirefx[._]?me_001$', autoPivot: true,
+  });
 }
 
 export const USERDROP5_TANK_IDS = SPECS.map((s) => s.id);
