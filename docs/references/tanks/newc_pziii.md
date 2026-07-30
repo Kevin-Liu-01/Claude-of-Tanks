@@ -50,3 +50,8 @@ turret `^Turret$`, gun `^Gun$`). Healthy. Width-normalized probe (scale 0.969):
 | Date | total | minView | H | T | G | R | change |
 |---|---|---|---|---|---|---|---|
 | 2026-07-30 | 68.6 | — | 89 | 52 | 0 | 80 | baseline (short L/42-ish gun never cleared the bow → gun mask 0) |
+| 2026-07-30 | 88.9 | 88.6 | 90 | 81 | 97 | 86 | bespoke build: oracle-frame hull, faceted turret w/ rear-center tall cupola + Rommelkiste, L/60 clearing the bow 0.72 m (G 0→97), 6 rubber wheels + 3 return rollers + front sprocket, visor/MG ball/hatches/tools/muffler |
+
+Remaining gap: turret 81 — the oracle's cupola blends into its roof as one
+low-poly lump; the front cheek step (low wings at z 0.8–1.05) approximates its
+sloped-face read within ~6 cm.

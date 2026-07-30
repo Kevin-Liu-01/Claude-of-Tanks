@@ -47,3 +47,9 @@ skinned rig (bone-driven), articulation nodes verified by the rig probe.
 | Date | total | minView | H | T | G | R | change |
 |---|---|---|---|---|---|---|---|
 | 2026-07-30 | 57.1 | — | 68 | 53 | 15 | 68 | baseline (generic 7.2 m parametric hull) |
+| 2026-07-30 | 89.1 | 89.2 | 92 | 79 | 91 | 86 | bespoke oracle-frame build: 5.26 m slab hull + cab band + rear hump, snouted dome turret w/ under-collar, two-step Ø0.24 gun, 9 chunky steel wheels at the oracle's 0.5 m pitch |
+
+Remaining gap: turret component (79) — the oracle's dome/collar transition is one
+fused blob whose subtract-mask carves differently than a clean hull/turret rig;
+plan and side profiles match within ~5 cm. Widening the snout plan toward the
+probe read cost 2 pts (r2 reverted).

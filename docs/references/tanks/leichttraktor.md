@@ -52,3 +52,9 @@ Path: `public/models/tanks/community/leichttraktor_newc42.glb` (turret
 | Date | total | minView | H | T | G | R | change |
 |---|---|---|---|---|---|---|---|
 | 2026-07-30 | 83.2 | — | 83 | 74 | 100 | 90 | baseline (turret too far forward, cab/track profile generic) |
+| 2026-07-30 | 90.3 | 87.2 | 90 | 82 | 100 | 93 | bespoke build: rear dome turret (pivot z −0.82) w/ wide cupola, raised driver cab + fore/rear decks, tall riveted track frames w/ horns + mud chutes, raised idler/sprocket wraps, thin 37 mm + coax staying over the deck (G 100 kept) |
+
+Remaining gap: front/rear views ~87 — the oracle's swooping diagonal fender
+band across the track frame is a single sculpted surface; the straight framed
+read keeps the real prototype's language instead (stylized-oracle judgment
+call, noted).

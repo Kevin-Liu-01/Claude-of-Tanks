@@ -52,3 +52,7 @@ gun). Width-normalized probe (scale 0.958):
 | Date | total | minView | H | T | G | R | change |
 |---|---|---|---|---|---|---|---|
 | 2026-07-30 | 70.7 | — | 91 | 56 | 0 | 80 | baseline (gun never cleared the bow → gun mask 0; centered frame vs rear-shifted oracle) |
+| 2026-07-30 | 89.0 | 88.3 | 90 | 81 | 97 | 87 | bespoke build in the oracle's REAR-SHIFTED frame (zc −0.35): thin 3.7 cm reaching +3.01 (G 0→97), twin coax MGs, tall rear-center cupola, narrow top cap over the fender band, raised end wheels matching the oracle's wrap line |
+
+Remaining gap: turret 81 (same fused-lump cupola read as newc_pziii); front/rear
+views ~88.5 from the low-poly track band edges.

@@ -56,3 +56,12 @@ explicit pivot [0,1.25,0]). Healthy. Width-normalized probe (scale 1.001):
 | Date | total | minView | H | T | G | R | change |
 |---|---|---|---|---|---|---|---|
 | 2026-07-30 | 70.0 | — | 88 | 51 | 20 | 86 | baseline (turret far too small/low; muzzle overhang mismatched) |
+| 2026-07-30 | 83.9 | 87.9 | 91 | 73 | 67 | 87 | bespoke build: slab E2 hull w/ sand-shield skirts + dark suspension backing, cast transmission nose w/ bolted flanges, huge cast dome (±1.44) + bustle + wide T110-style mantlet, 75 mm ending 0.16 m past the bow, VVSS bogies + duckbill-wide tracks |
+
+ORACLE CAPS (documented, not chased further): (1) the print's hull is
+laterally ASYMMETRIC — its upper side band sits ~5-10 cm right of center, so
+every front/rear mask carries a fixed red/cyan seam after centroid alignment;
+(2) the gun overhang region is a 0.16 m (≈8 px) sliver — its IoU is pixel
+noise (G swings 64-67 across identical reruns); the tube diameter/axis match
+the probe (Ø0.19 at y 2.22..2.41). Turret 73 is capped by the same top-view
+thin-tube subtract mask.

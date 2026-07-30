@@ -56,3 +56,7 @@ Width-normalized probe (scale 0.963):
 | Date | total | minView | H | T | G | R | change |
 |---|---|---|---|---|---|---|---|
 | 2026-07-30 | 80.2 | — | 90 | 71 | 47 | 86 | baseline (gun ~0.5 m short, centered frame, wedge turret) |
+| 2026-07-30 | 89.0 | 88.3 | 92 | 83 | 85 | 89 | bespoke build: full-track-width bow block + fender flare ±1.85, drum turret w/ hanging skirt + left cupola + rear bin + pistol port, wide mantlet + sealing face plate, L/56 two-step tube + double-baffle brake to +5.15 (G 47→85), interleaved dished wheels + front sprocket, bow spare links/visor/MG ball/exhaust stacks |
+
+Remaining gap: front view ~88 from the drum turret's low-poly faceting vs my
+smooth polygon; gun 85 on the thin brake-bulge mask.

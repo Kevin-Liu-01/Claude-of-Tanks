@@ -61,3 +61,13 @@ REAR-SHIFTED (full-box centering incl. the L/71). Width-normalized probe
 | Date | total | minView | H | T | G | R | change |
 |---|---|---|---|---|---|---|---|
 | 2026-07-30 | 76.3 | — | 77 | 53 | 85 | 83 | baseline (centered frame vs rear-shifted oracle; generic wedge turret) |
+| 2026-07-30 | 81.1 | 87.0 | 84 | 54 | 90 | 87 | bespoke rear-shifted build: 7.19 m hull w/ full-width 50° glacis + overhung tail + tail exhausts, splayed Henschel turret w/ rearward roof ramp + raised rear roof mound (crown 3.02) + flush cupola ring + wall track links + bustle bins, saddle-roll mantlet collar + chin, L/71 two-step tube + double-baffle brake reaching +4.94 (2.70 m overhang), 9 overlapped dished wheels, raised front sprocket |
+
+ORACLE CAP (documented after 3 revisions): the maximus print's rig is
+mis-parented — the mantlet collar (z 0.44..1.04, to y 2.5), the cupola-height
+band (z −1.06..−1.66, to y 3.03) and the aerials (z −2.2..−3.2) live in HULL
+meshes that do not yaw with Object_2. The component masks subtract them from
+the reference's turret and credit them to its hull, so a correctly-rigged
+procedural (cupola/collar on the yawing turret/gun, per the m1a1_aim lesson)
+is structurally capped near T≈55/H≈84 while the whole-view silhouettes sit at
+87-96. Identity wins over the metric; whole-mask overall is 89.7.
