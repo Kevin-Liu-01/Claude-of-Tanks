@@ -48,6 +48,19 @@ const LOCAL_REFERENCE_OVERRIDES = {
       turretNode:'^Turret$', autoPivot:true,
     },
   },
+  // Same quarantine-oracle pattern as ariete: the NullOps Type 74 is
+  // PERSONAL-USE (docs/ATTRIBUTION.md) and never ships as a MODEL_SOURCE;
+  // the roster's type74 spec + procedural build live in profiles/misc.js.
+  // Skinned armature (bones carry no meshes) -> scaleToOverall, per the
+  // original userdrops.js registration notes.
+  type74: {
+    source:'glb',
+    glb:{
+      path:'/models/tanks/community/type74-nullops.glb',
+      turretNode:'^Tower_9$', gunNode:'^Gun_7$', autoPivot:true,
+      scaleToOverall:true,
+    },
+  },
 };
 const source = LOCAL_REFERENCE_OVERRIDES[id] || MODEL_SOURCE[id];
 const sourceIds = ALL_TANK_IDS.filter((tankId) => MODEL_SOURCE[tankId]?.source === 'glb');
