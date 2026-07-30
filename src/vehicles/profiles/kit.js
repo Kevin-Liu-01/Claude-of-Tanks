@@ -23,7 +23,11 @@ export function addSegmentedSkirts(P, width, length, y, height, panels = 6) {
       P.add('hull',box(0.045,height,panelD*0.96),side*width/2,y,z);
       P.add('hullDark',box(0.052,height*0.90,0.018),side*(width/2+0.004),y,z-panelD/2);
     }
-    P.add('hullRubber',box(0.025,0.075,length*0.98),side*(width/2+0.008),y-height/2-0.035,0);
+    // shaded-parity r2 (russia root-cause): the rubber lip's thin sunlit top
+    // face rendered as a salmon stripe above the fenders on every family
+    // using these skirts. Dark bucket, inset behind the panel face, and no
+    // exposed top face under the board key.
+    P.add('hullDark',box(0.02,0.06,length*0.98),side*(width/2-0.004),y-height/2-0.02,0);
   }
 }
 

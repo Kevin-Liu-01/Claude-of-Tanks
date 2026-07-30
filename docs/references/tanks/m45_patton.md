@@ -49,8 +49,9 @@ hull tail −3.10 (+tail fixture to −3.34) / nose +3.09 / roof 1.54 / knee +2.
 / toe y 1.02; 6 wheels r 0.33 span −2.45…+1.90, sprocket −2.75, idler +2.35,
 tension wheel −2.50; turret ring (−0.50, 1.54), dome HW 1.24, roof 2.28, front
 +0.33, bustle to −2.55 top ≤ 1.95, stow wedge to −3.0; prominent .50cal M2 at
-x −0.80 topping 2.33; 105 mm stub: r 0.14, axis y 1.88, muzzle +2.90, big
-square gun shield.
+x −0.80 topping 2.33; 105 mm M4 stub: r 0.16, ~L/22 (wave 2:
+shortened + fattened per the shaded critique), axis y 1.58, muzzle +2.45
+(inside the hull bound), counterweighted M71 shield casting.
 
 **Oracle re-processed (repair_oracles.py): turret seated** — fused Turret node
 lifted +3.6 model units onto the deck, recentred +5.4 x, origin on the ring

@@ -48,9 +48,11 @@ length/shape (the gun metric centroid-aligns, so trunnion height is free).
 hull tail −3.44 / nose +2.55 / roof 1.55 / knee +1.77 / toe y 1.06; sponson
 floor 0.98; 6 wheels r 0.33 spanning −2.55…+1.75, sprocket −2.90, idler +2.10,
 tension wheel −2.60 low, 5 rollers; turret ring (−1.70, 1.55), dome HW 1.24,
-roof 2.30, front −0.55, bustle to −3.35; gun axis y 1.90, muzzle +3.46,
-double-baffle brake; muzzle stays 0.9 m past nose to mirror the oracle (real
-overhang is ~2.3 m — oracle wins for scoring).
+roof 2.30, front −0.55, bustle to −3.35; gun axis y 1.60 (wave 2: raised from the
+oracle's sunken barrel line to the turret-lip/mantlet center per the shaded
+critique; overhang length unchanged), muzzle +3.46, double-baffle brake;
+muzzle stays 0.9 m past nose to mirror the oracle (real overhang is ~2.3 m —
+oracle wins for scoring).
 
 **Oracle re-processed (repair_oracles.py): turret seated** — fused Turret node
 lifted +4.0 model units onto the deck and recentred (+5.4 x) on the hull

@@ -53,3 +53,4 @@ Width-normalized (3.78 m) probe:
 |---|---|---|---|---|---|---|---|
 | 2026-07-30 | 72.9 | 77.4 | 81 | 47 | 64 | 87 | baseline (t90m donor + bustle kit) |
 | 2026-07-30 | 80.2 | 81.0 | 81 | 75 | 77 | 80 | donor->standalone: hull 7.63, welded-look dome 3.35x3.20 + crown cap + side panels, big squared bustle+slat, pano tower + RWS, 6.38 m fat-sleeved gun |
+| 2026-07-30 r2 | 81.8 | — | 84 | 74 | 83 | 81 | shaded r2: WELDED faceted turret (polyTurret + cheek slabs) replaces cast dome, UDP RWS w/ barrel+yoke+sight, bustle slat + top boxes, Relikt cassettes, pano tower, evac |

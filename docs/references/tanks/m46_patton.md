@@ -44,9 +44,10 @@ hull tail −3.43 / nose +2.66 / roof 1.66 / knee +2.15 / toe y 1.15; fender
 mufflers (hull bucket) ±1.15, z −0.95…−2.95, top 1.78; 6 wheels r 0.33 span
 −2.50…+1.80, sprocket −2.90, idler +2.20, tension wheel −2.55; turret ring
 (−0.85, 1.66), dome HW 1.22, roof 2.29, front −0.03, bustle to −2.40 top 1.92,
-stow to −2.95 top ≤ 1.85; .50cal at x −0.85 topping 2.33; gun axis y 1.92,
-r 0.125, evac 0.80 (drum just behind brake), single-baffle brake, muzzle
-+3.45.
+stow to −2.95 top ≤ 1.85; .50cal at x −0.85 topping 2.33; gun axis y 1.70 (wave 2: mantlet-center
+mount per the shaded critique — the wave-1 oracle-matched low mount read as a
+tube exiting at deck height), r 0.125, evacuator drum just behind the
+single-baffle brake, muzzle +3.45.
 
 **Oracle re-processed (repair_oracles.py): turret seated** — fused Turret node
 lifted +4.2 model units onto the muffler-line deck, recentred +7.1 x, origin

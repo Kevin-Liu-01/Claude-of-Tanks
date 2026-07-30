@@ -45,8 +45,8 @@ hull tail −3.37 / nose +2.85 / roof 1.64 / knee +2.33 / toe y 1.15; mufflers
 top 1.78 (−0.8…−3.0); 6 wheels r 0.33 span −2.55…+1.95, sprocket −2.95, idler
 +2.30, tension wheel −2.60; turret ring (−0.70, 1.64), roof 2.50 over
 +0.07…−1.55, HW 1.14, nose taper, bustle step 2.12 to −1.95, rack band 1.78–
-1.95 to −3.30, blisters ±1.05 at y ~2.16, cupola x −0.55 top 2.58; gun axis
-y 1.92, r 0.125, small evac 0.55, custom twin-drum blast deflector ~0.55 plan,
+1.95 to −3.30, blisters ±1.05 at y ~2.16, cupola x −0.55 top 2.58; gun axis y 1.66 (wave 2: mantlet-center mount per the shaded critique),
+r 0.125, small bore evacuator, oblong twin-drum blast deflector ~0.55 plan,
 muzzle +3.37.
 
 **Oracle re-processed (repair_oracles.py): turret seated** — fused Turret node

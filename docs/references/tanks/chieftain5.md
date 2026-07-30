@@ -39,6 +39,24 @@ UK-family file ownership.
 - Procedural hull nose overshoots low-forward (cyan lower-nose spill in side views).
 - Ref bustle/basket reaches farther aft; ref cupola/antenna cluster taller.
 
+## Mismatch log — shaded-parity r2 (2026-07-30)
+- ORACLE DEFECT note above is STALE: tools/repair_oracles.py landed mid-round — the GLB now
+  carries real `Turret`/`Gun` nodes (userdrops5.js maps them; pre-repair total 56.7 → 77.2
+  with identical geometry). Component T/G scores are honest now.
+- Rebuilt the turret as ONE cast lathe egg (r 1.08, plan stretch 1.32) + forward-leaning
+  mantlet-less chin slabs; deleted the donor's faceted polyTurret + Stillbrew slabs whose
+  flat cheek + smoke dots read as a welded box with drilled holes.
+- L11 re-seated straight on the chin axis (cast collar → sleeve → evacuator → MRS/counter-
+  weight collar). Four floating ground-level corner plates deleted; replaced with fender-hung
+  deep rubber flaps (ref front mask shows filled track corners, so the plates existed to
+  chase real geometry — they are now attached).
+- Added Mk.5 skirt band (6 panels, hem at wheel-top line like the ref), NBC pack + rear
+  basket, flank bins + rails to the full ±1.78 shoulder width, searchlight + glass, proud
+  2x6 smoke clusters on brackets, antennas on bin-lid base pots (ref masts reach y≈3.77).
+- Residual gaps (accepted): turret component score ~42 — the ref casting reads slightly
+  wider at the shoulders and longer in plan than my egg+bins at equal silhouette total;
+  ref masts sit closer to centerline. Whole-model total holds 77.1 vs 77.2 committed.
+
 **Oracle re-processed (repair_oracles.py): rig mapping fixed** — the GLB's
 'Turret' node (actually the chassis) renamed 'Chassis'; the real casting +
 roof gear re-grouped under a new 'Turret' (ring pivot at the authored y=0
