@@ -11,11 +11,14 @@ import puppeteer from 'puppeteer';
 const ROOT = process.cwd();
 const args = process.argv.slice(2);
 const option = (name, fallback = null) => {
+  const eq = args.find((arg) => arg.startsWith(`--${name}=`));
+  if (eq) return eq.slice(name.length + 3);
   const index = args.indexOf(`--${name}`);
   return index >= 0 ? args[index + 1] : fallback;
 };
 const requested = option('ids')?.split(',').map((id) => id.trim()).filter(Boolean) || null;
 const shotCount = Math.max(0, Number(option('shots', '0')) || 0);
+const BOARD = args.includes('--board'); // per-id shaded + articulation boards
 const CHECK = args.includes('--check');
 const PASS = 90;
 const VIEW_FLOOR = 90;
@@ -78,6 +81,21 @@ try {
       await page.goto(urlFor(row.id), { waitUntil:'domcontentloaded', timeout:90000 });
       await page.waitForFunction('window.__FIDELITY_READY === true', { timeout:90000, polling:60 });
       await page.screenshot({ path:path.join(shotDir,`${row.id}.png`), fullPage:true });
+    }
+  }
+  if (BOARD) {
+    // HANDOFF-FABLE §6 evidence boards: shaded pair + articulation strip +
+    // 24-frame turntable, captured at native canvas resolution (wide viewport
+    // so the page never downscales the strips).
+    const boardDir = path.join(ROOT,'shots','procedural-fidelity','boards');
+    fs.mkdirSync(boardDir,{recursive:true});
+    await page.setViewport({ width:2520, height:1200, deviceScaleFactor:1 });
+    for (const row of rows) {
+      if (row.error) continue;
+      await page.goto(`${urlFor(row.id)}&board=1`, { waitUntil:'domcontentloaded', timeout:120000 });
+      await page.waitForFunction('window.__FIDELITY_READY === true', { timeout:120000, polling:60 });
+      await page.screenshot({ path:path.join(boardDir,`${row.id}.png`), fullPage:true });
+      console.log(`[board] ${row.id}`);
     }
   }
 } finally {

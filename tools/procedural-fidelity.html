@@ -7,7 +7,9 @@
   header { display:flex; align-items:end; justify-content:space-between; gap:20px; margin-bottom:16px }
   h1 { margin:0; font-size:22px } #summary { color:#9eabb2 }
   #score { font:700 32px/1 ui-monospace,monospace; color:#f5b64b }
-  #grid { display:grid; grid-template-columns:repeat(4,minmax(180px,1fr)); gap:12px }
+  #grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px }
+  #board figure { margin:0 0 14px; border:1px solid #263038; background:#050708; padding:8px; overflow-x:auto }
+  #board canvas { width:auto; max-width:none }
   figure { margin:0; border:1px solid #263038; background:#050708; padding:8px }
   canvas { display:block; width:100%; height:auto; image-rendering:auto }
   figcaption { display:flex; justify-content:space-between; padding-top:6px; text-transform:uppercase; letter-spacing:.08em }
@@ -166,11 +168,19 @@ const center = sharedBox.getCenter(new THREE.Vector3());
 const corners = [];
 forEachBoxCorner(sharedBox, (p) => corners.push(p));
 
+// HANDOFF-FABLE §6: nine fixed proof cameras. Quarter views catch compound
+// slopes and bustle shapes that pure orthographic axes hide; both sides are
+// scored because real vehicles are asymmetric (exhausts, sights, stowage).
 const ANGLES = {
   front: new THREE.Vector3(0, 0.08, 1),
-  side: new THREE.Vector3(1, 0.05, 0),
+  frontLeft: new THREE.Vector3(-1, 0.08, 1),
+  left: new THREE.Vector3(-1, 0.05, 0),
+  rearLeft: new THREE.Vector3(-1, 0.28, -1),
+  rear: new THREE.Vector3(0, 0.08, -1),
+  rearRight: new THREE.Vector3(1, 0.28, -1),
+  right: new THREE.Vector3(1, 0.05, 0),
+  frontRight: new THREE.Vector3(1, 0.08, 1),
   top: new THREE.Vector3(0, 1, 0.02),
-  rearQuarter: new THREE.Vector3(1, 0.28, -1),
 };
 
 function cameraFor(direction) {
@@ -328,31 +338,32 @@ for (const [name,dir] of Object.entries(ANGLES)) {
 // remain excellent whole-silhouette references, but their "hull" rig node also
 // contains the turret and cannon. Do not manufacture a zero component score
 // for information that the source file simply cannot provide.
-const refSideUpper=subtract(rawMasks.side.refWhole,rawMasks.side.refHull);
-const procSideUpper=subtract(rawMasks.side.procWhole,rawMasks.side.procHull);
+const refSideUpper=subtract(rawMasks.right.refWhole,rawMasks.right.refHull);
+const procSideUpper=subtract(rawMasks.right.procWhole,rawMasks.right.procHull);
 const segmentedReference=bounds(refSideUpper).area > 20;
 const segmentedProcedural=bounds(procSideUpper).area > 20;
 const componentMasksAvailable=segmentedReference && segmentedProcedural;
 
 const [refTrack,procTrack]=lowerBand(
-  componentMasksAvailable ? rawMasks.side.refHull : rawMasks.side.refWhole,
-  componentMasksAvailable ? rawMasks.side.procHull : rawMasks.side.procWhole,
+  componentMasksAvailable ? rawMasks.right.refHull : rawMasks.right.refWhole,
+  componentMasksAvailable ? rawMasks.right.procHull : rawMasks.right.procWhole,
 );
 const trackMetric=compare(refTrack,procTrack);
-const hullSideBounds=bounds(rawMasks.side.refHull);
-const procHullSideBounds=bounds(rawMasks.side.procHull);
+const hullSideBounds=bounds(rawMasks.right.refHull);
+const procHullSideBounds=bounds(rawMasks.right.procHull);
 const commonHullBounds={
   minX:Math.min(hullSideBounds.minX,procHullSideBounds.minX),
   maxX:Math.max(hullSideBounds.maxX,procHullSideBounds.maxX),
 };
-const refGun=overhang(rawMasks.side.refWhole,rawMasks.side.refHull,commonHullBounds);
-const procGun=overhang(rawMasks.side.procWhole,rawMasks.side.procHull,commonHullBounds);
+const refGun=overhang(rawMasks.right.refWhole,rawMasks.right.refHull,commonHullBounds);
+const procGun=overhang(rawMasks.right.procWhole,rawMasks.right.procHull,commonHullBounds);
 const gunMetric=componentMasksAvailable ? compare(refGun,procGun) : null;
 
 const mean=(values) => values.reduce((sum,v)=>sum+v,0)/Math.max(values.length,1);
 const overallScore=mean(Object.values(angleRows).map((v)=>v.score));
-const hullScore=componentMasksAvailable ? mean(['front','side','top'].map((name)=>hullRows[name].score)) : null;
-const turretScore=componentMasksAvailable ? mean(['front','side','top'].map((name)=>upperRows[name].score)) : null;
+const COMPONENT_VIEWS=['front','right','left','rear','top'];
+const hullScore=componentMasksAvailable ? mean(COMPONENT_VIEWS.map((name)=>hullRows[name].score)) : null;
+const turretScore=componentMasksAvailable ? mean(COMPONENT_VIEWS.map((name)=>upperRows[name].score)) : null;
 const gunScore=gunMetric?.score ?? null;
 const tracksScore=trackMetric.score;
 const weighted=[
@@ -379,6 +390,105 @@ window.__FIDELITY_REPORT={
   angles:Object.fromEntries(Object.entries(angleRows).map(([name,row])=>[name,{score:rounded(row.score),iou:rounded(row.iou*100)}])),
   boxes:{reference:referenceBox.getSize(new THREE.Vector3()).toArray().map(rounded),procedural:proceduralBox.getSize(new THREE.Vector3()).toArray().map(rounded)},
 };
+// ---- HANDOFF-FABLE §6 board mode (&board=1, driver --board): shaded beauty
+// pair, articulation strip, procedural turntable. Rendered strictly AFTER
+// scoring so pose/visibility mutations can never contaminate the masks.
+if (params.get('board')) {
+  scene.overrideMaterial = null;
+  renderer.setClearColor(0x151b20, 1);
+  const hemi = new THREE.HemisphereLight(0xcfd8e0, 0x2a2f26, 1.05);
+  const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+  sun.position.set(30, 42, 24);
+  scene.add(hemi, sun);
+  const boardDiv = document.createElement('div');
+  boardDiv.id = 'board';
+  document.body.append(boardDiv);
+
+  const shadedInto = (ctx2d, visual, other, camera, dx, dy, px) => {
+    visual.root.visible = true;
+    other.root.visible = false;
+    setPart(visual.root, 'whole');
+    renderer.setSize(px, px, false);
+    renderer.setRenderTarget(null);
+    renderer.render(scene, camera);
+    ctx2d.drawImage(renderer.domElement, dx, dy, px, px);
+  };
+  // Locked mild-perspective beauty camera — identical for every cell so
+  // before/after boards from different runs stay comparable.
+  const heroCamera = () => {
+    const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 400);
+    const radius = sharedBox.getSize(new THREE.Vector3()).length() * 1.06;
+    cam.position.copy(center).addScaledVector(new THREE.Vector3(0.75, 0.32, 1).normalize(), radius);
+    cam.lookAt(center);
+    cam.updateProjectionMatrix();
+    cam.updateMatrixWorld(true);
+    return cam;
+  };
+  const addBoard = (title, canvas) => {
+    canvas.style.width = `${canvas.width}px`;
+    const figure = document.createElement('figure');
+    const caption = document.createElement('figcaption');
+    caption.innerHTML = `<span>${title}</span>`;
+    figure.append(canvas, caption);
+    boardDiv.append(figure);
+  };
+  const cam = heroCamera();
+
+  { // shaded hero pair, 1600 px combined
+    const px = 800;
+    const cv = document.createElement('canvas'); cv.width = px * 2; cv.height = px;
+    const ctx = cv.getContext('2d');
+    shadedInto(ctx, reference, procedural, cam, 0, 0, px);
+    shadedInto(ctx, procedural, reference, cam, px, 0, px);
+    addBoard('shaded — reference | procedural', cv);
+  }
+
+  { // articulation: turret -90/0/+90/180 at level gun, then gun -dep/+elev.
+    // Reference row above procedural row so detached/floating children in
+    // either rig are directly comparable cell by cell.
+    const dep = spec.gunDepressionDeg ?? 8;
+    const elev = spec.gunElevationDeg ?? 15;
+    const poses = [
+      { yawDeg: -90, pitchDeg: 0 }, { yawDeg: 0, pitchDeg: 0 },
+      { yawDeg: 90, pitchDeg: 0 }, { yawDeg: 180, pitchDeg: 0 },
+      { yawDeg: 0, pitchDeg: -dep }, { yawDeg: 0, pitchDeg: elev },
+    ];
+    const px = 380;
+    const cv = document.createElement('canvas'); cv.width = px * poses.length; cv.height = px * 2;
+    const ctx = cv.getContext('2d');
+    const applyPose = (visual, pose) => {
+      const turret = visual.root.getObjectByName('rig_turret');
+      const gun = visual.root.getObjectByName('rig_gun');
+      if (turret) turret.rotation.y = pose.yawDeg * Math.PI / 180;
+      if (gun) gun.rotation.x = -pose.pitchDeg * Math.PI / 180;
+      visual.root.updateMatrixWorld(true);
+    };
+    poses.forEach((pose, i) => {
+      applyPose(reference, pose);
+      shadedInto(ctx, reference, procedural, cam, i * px, 0, px);
+      applyPose(procedural, pose);
+      shadedInto(ctx, procedural, reference, cam, i * px, px, px);
+    });
+    for (const visual of [reference, procedural]) applyPose(visual, { yawDeg: 0, pitchDeg: 0 });
+    addBoard(`articulation — turret −90/0/+90/180 · gun −${dep}°/+${elev}° (reference top, procedural bottom)`, cv);
+  }
+
+  { // 24-frame procedural turntable at 15° — continuity / floating-part sweep
+    const px = 300, cols = 8;
+    const cv = document.createElement('canvas'); cv.width = px * cols; cv.height = px * 3;
+    const ctx = cv.getContext('2d');
+    const baseYaw = procedural.root.rotation.y;
+    for (let i = 0; i < 24; i++) {
+      procedural.root.rotation.y = baseYaw + i * (Math.PI / 12);
+      procedural.root.updateMatrixWorld(true);
+      shadedInto(ctx, procedural, reference, cam, (i % cols) * px, Math.floor(i / cols) * px, px);
+    }
+    procedural.root.rotation.y = baseYaw;
+    procedural.root.updateMatrixWorld(true);
+    addBoard('procedural turntable — 24 × 15°', cv);
+  }
+}
+
 window.__FIDELITY_READY=true;
 renderer.setRenderTarget(null);
 </script>
