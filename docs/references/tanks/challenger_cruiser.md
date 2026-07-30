@@ -1,0 +1,33 @@
+# A30 Challenger (`challenger_cruiser`) — reference packet
+
+Exact variant: Tank, Cruiser, Challenger (A30) — 17-pounder on a lengthened Cromwell chassis.
+
+## Corroborated real dimensions
+- Overall length 26 ft 4 in ≈ 8.03–8.15 m (the 17-pdr barely clears the long nose);
+  width 2.91 m; height 2.77 m.
+  Sources: https://en.wikipedia.org/wiki/Challenger_(tank) ,
+  https://tanks-encyclopedia.com/ww2/gb/A30_Challenger.php ,
+  https://www.militaryfactory.com/armor/detail.php?armor_id=189
+- Gun: QF 17-pounder, 76.2 mm L/55 ≈ 4.2 m tube with muzzle counterweight/brake-less
+  early configuration; small forward overhang (≈ 0.1–0.5 m).
+- Running gear: 6 large Christie road wheels per side (lengthened Cromwell), front idler,
+  rear sprocket, flat full-length track guards.
+- Distinctive identity: very long low Cromwell-style hull; TALL NARROW turret (high
+  slab-sided welded turret with a rounded cast front, tall enough for the 17-pdr's
+  vertical breech travel) set mid-hull; hull deck flat with panniers.
+
+## Local GLB oracle (m_bergman print pack)
+Width-normalized reference: hull z ±3.37 (6.74 long — the print hull is proportionally
+shorter than the 8.03 m real figure), hull top 1.64, whole top 1.84.
+**ORACLE DEFECT:** unassembled print layout — turret at ground level, no barrel clears the
+hull bounds (see charioteer packet; same userdrops6.js articulated() issue). Turret
+component structurally ~25; gun scores 100 only while BOTH models keep the barrel within
+the union hull length (the real A30's overhang is genuinely tiny, so honest geometry keeps
+gun ≈ 100 here). Hull + tracks components legitimate.
+
+## Procedural gaps identified (before edits)
+- Procedural hull 8.05 normalized vs oracle 6.74 — far too long (oracle proportion wins
+  for scoring; real ratio noted above for the record).
+- 5 wheels vs the A30's 6; turret was the generic `western` wedge — needs the tall narrow
+  A30 turret; barrel previously reached z 3.83 (past the oracle nose) — keep it just
+  inside the hull nose to preserve both identity (tiny real overhang) and the gun mask.
