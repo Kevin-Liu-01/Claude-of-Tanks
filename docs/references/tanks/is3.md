@@ -56,3 +56,9 @@ dark wheel-face contrast. Mismatch log: BDSh canisters must stay inside the
 oracle hull z-bound −3.41 — letting them overhang the tail shifted the
 gun-overhang crop (−6 G). Drum split gap + rails cost ~0.4 total vs r1 masks;
 side turret views still cap ~72-75 on the oracle's hollow-hull dome flanks.
+
+r3 (shaded-parity r2 #3): 88.2 → 88.6 (gun 88 → 91). The r2 "reading brake" measurably
+existed but zoomed to a faint stepped collar — rebuilt as a real D-25T double-baffle:
+flat discs at 1.6x tube radius (r 0.20 vs 0.125), wide open slot w/ dark core punched
+through the side windows, dark rings on every disc face, gas-divider spine. The r2a
+overhang-mask fear did not materialize.

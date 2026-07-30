@@ -53,3 +53,7 @@ hooks + headlight guards; dark wheel-face contrast. Mismatch log: the
 oracle's brake blob remains slightly taller/shorter than the twin-drum
 build — G caps ~85; dome fittings deliberately stay sub-scale to protect the
 no-spike turret mask.
+
+r3 (shaded-parity r2): 90.5 → 90.6 (gun 85 → 87). D-30 compact brake enlarged to read:
+drums 1.65x tube radius, wider slot w/ fattened dark core, dark rings on both faces of
+both drums. Still >= 90 gate.

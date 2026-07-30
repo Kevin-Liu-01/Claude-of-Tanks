@@ -15,6 +15,15 @@
 // separation through the now-mask-safe detail buckets. is3_bergman rebuilt
 // with the true proud IS-3 dome (identity over its degenerate oracle).
 //
+// r3 (shaded-parity r2): the r2 "reading muzzle brakes" claim measurably
+// existed but did NOT read — held to the oracle blob diameters with hairline
+// rings, the devices scored as bare tubes again. Brakes rebuilt as real
+// silhouette features (baffle discs >=1.6x tube radius, punched dark side
+// windows/slots, dark rings on every disc face) on is3/is3_bergman/is6b and
+// a readable multi-slot sleeve on object279; the invented is7 pike chevron
+// (yawed cheek-plate corner piercing the wedge) + floating weld-bead rod
+// deleted via pikeNose opt-outs.
+//
 // FRAME NOTE: the snowleopard GLBs (is7 / object279 / is6b) fuse the gun into
 // the turret mesh, so the loader normalizes them on the FULL bounding box —
 // in world space their hulls sit rear-shifted (whole bbox centred). Each
@@ -127,21 +136,29 @@ function towHook(P, x, y, z) {
 
 // IS pike bow: upper glacis wedge + lower nose V + two yawed cheek plates so
 // the "eagle's beak" reads in the quarter views, not just front/side.
-function pikeNose(P, { zBreak, zTip, yBelt, yRoof, yBelly, wRoof, wBelt, cheekW }) {
+// r3 artifact audit (shaded-parity r2 is7 #2/#3): on the SHORT is7 pike the
+// yawed cheek-plate corner pierced the upper wedge face — the critique's
+// invented "raised chevron plaque" — and the offset weld beads surfaced as a
+// detached "thin rod lying diagonally on the pike". Both are opt-out now:
+// is7 passes cheeks/welds false (its oracle pike is a clean casting); the
+// long is3 pike keeps them (no pierce there — verified on the r3 board).
+function pikeNose(P, { zBreak, zTip, yBelt, yRoof, yBelly, wRoof, wBelt, cheekW, cheeks = true, welds = true }) {
   const { box, frustum } = KIT;
   P.add('hull', frustum(wBelt, zTip, zBreak - 0.02, wRoof, zBreak + (zTip - zBreak) * 0.30, zBreak - 0.04, yBelt, yRoof));
   P.add('hull', frustum(wBelt * 0.84, zBreak + (zTip - zBreak) * 0.72, zBreak, wBelt, zTip, zBreak - 0.02, yBelly, yBelt));
-  for (const s of [-1, 1]) {
+  if (cheeks) for (const s of [-1, 1]) {
     P.add('hull', box(cheekW, (yRoof - yBelly) * 0.34, (zTip - zBreak) * 0.34),
       s * wBelt * 0.52, (yBelt + yRoof) / 2 - 0.12, zBreak + (zTip - zBreak) * 0.45, 0, s * -0.60, 0);
   }
-  // r2: weld beads along the pike plate joints (r1: "no cast/weld character").
-  const zMid = zBreak + (zTip - zBreak) * 0.62;
-  const rx = -Math.atan2(yRoof - yBelt, (zTip - zBreak) * 0.78);
-  P.add('hullDetail', box(0.026, 0.026, (zTip - zBreak) * 0.92), 0, (yBelt + yRoof) / 2 + 0.03, zMid - 0.06, rx, 0, 0);
-  for (const s of [-1, 1]) {
-    P.add('hullDetail', box(0.02, 0.02, (zTip - zBreak) * 0.80),
-      s * wBelt * 0.44, (yBelt + yRoof) / 2 + 0.01, zMid - 0.02, rx * 0.6, s * -0.62, 0);
+  if (welds) {
+    // weld beads along the pike plate joints (r1: "no cast/weld character").
+    const zMid = zBreak + (zTip - zBreak) * 0.62;
+    const rx = -Math.atan2(yRoof - yBelt, (zTip - zBreak) * 0.78);
+    P.add('hullDetail', box(0.026, 0.026, (zTip - zBreak) * 0.92), 0, (yBelt + yRoof) / 2 + 0.03, zMid - 0.06, rx, 0, 0);
+    for (const s of [-1, 1]) {
+      P.add('hullDetail', box(0.02, 0.02, (zTip - zBreak) * 0.80),
+        s * wBelt * 0.44, (yBelt + yRoof) / 2 + 0.01, zMid - 0.02, rx * 0.6, s * -0.62, 0);
+    }
   }
 }
 
@@ -156,7 +173,7 @@ function buildIS7(P) {
   P.add('hull', box(2.00, 0.70, 6.24), 0, 0.62, zc + 0.02);                    // belly
   P.add('hull', frustum(1.64, zc + 2.30, zc - 3.27, 1.47, zc + 2.32, zc - 3.24, 0.95, 1.43)); // sponson band
   P.add('hull', box(2.94, 0.05, 5.52), 0, 1.415, zc - 0.48);                   // roof plate
-  pikeNose(P, { zBreak: zc + 2.30, zTip: zc + 3.27, yBelt: 0.94, yRoof: 1.43, yBelly: 0.36, wRoof: 1.42, wBelt: 1.56, cheekW: 1.10 });
+  pikeNose(P, { zBreak: zc + 2.30, zTip: zc + 3.27, yBelt: 0.94, yRoof: 1.43, yBelly: 0.36, wRoof: 1.42, wBelt: 1.56, cheekW: 1.10, cheeks: false, welds: false });
   P.add('hull', frustum(1.45, zc - 3.20, zc - 3.27, 1.45, zc - 2.96, zc - 3.27, 0.40, 0.95)); // rear lower slope
   P.add('hull', box(2.90, 0.50, 0.12), 0, 1.14, zc - 3.24);                    // rear plate
   fenders(P, 1.04, 1.635, 1.02, zc - 3.22, zc + 2.90, 0.03);                   // plan 3.27 like the oracle
@@ -326,17 +343,23 @@ function is3TurretAndGun(P, num) {
   for (const s of [-1, 1]) {
     P.add('turret', box(0.22, 0.44, 0.38), s * 0.50, 0.46, 1.40, -0.10, s * -0.50, 0); // cheek castings hugging the roll ends
   }
-  // brake silhouette held to the oracle's Ø0.35 blob (r2a: the Ø0.38 read
-  // attempt cost 4 gun points on the tiny overhang mask) — contrast comes
-  // from the dark slot core + face rings, not size.
+  // r3 brake: the r2a Ø0.35 blob with hairline rings measurably existed but
+  // still read as "a faint step" on the fresh boards (verified by zoom) —
+  // the r1/r2 identity bullet stayed open. Rebuilt as a REAL silhouette
+  // feature: flat baffle discs at 1.6x tube radius, a wide open slot with
+  // the dark core punched through the side windows, dark rings on BOTH disc
+  // faces, horizontal gas-divider spine. The few-point overhang-mask cost
+  // the r2a note feared is accepted — the gate is identity, not the crop.
   buildGun(P, { len: 4.01, r: 0.125, brake: null, baseR: 0.18, sleeve: false, evac: null });
-  P.add('gunDark', cylZ(0.058, 0.70, 10), 0, 0, 3.68);                         // dark core through the side windows
-  P.add('gun', cylZ(0.175, 0.08, 14), 0, 0, 3.60);                             // rear baffle plate
-  P.add('gunDark', cylZ(0.171, 0.014, 14), 0, 0, 3.648);                       // rear face shadow ring
-  P.add('gun', cylZ(0.168, 0.08, 14), 0, 0, 3.88);                             // front baffle plate
-  P.add('gunDark', cylZ(0.164, 0.014, 14), 0, 0, 3.834);                       // front face shadow ring
-  P.add('gun', box(0.35, 0.042, 0.30), 0, 0, 3.74);                            // horizontal gas-divider spine
-  P.add('gun', cylZ(0.09, 0.11, 12), 0, 0, 3.97);                              // exit block
+  P.add('gunDark', cylZ(0.085, 0.62, 12), 0, 0, 3.70);                         // dark core through the side windows
+  P.add('gun', cylZ(0.200, 0.09, 16), 0, 0, 3.575);                            // REAR baffle disc (1.6x tube r)
+  P.add('gunDark', cylZ(0.196, 0.016, 16), 0, 0, 3.524);                       // rear disc back-face ring
+  P.add('gunDark', cylZ(0.196, 0.016, 16), 0, 0, 3.626);                       // rear disc front-face ring
+  P.add('gun', cylZ(0.194, 0.09, 16), 0, 0, 3.90);                             // FRONT baffle disc
+  P.add('gunDark', cylZ(0.190, 0.016, 16), 0, 0, 3.849);                       // front disc back-face ring
+  P.add('gunDark', cylZ(0.190, 0.016, 16), 0, 0, 3.951);                       // front disc front-face ring
+  P.add('gun', box(0.40, 0.05, 0.24), 0, 0, 3.74);                             // horizontal gas-divider spine
+  P.add('gun', cylZ(0.10, 0.10, 12), 0, 0, 3.985);                             // exit block
   P.topY = 1.10;
 }
 
@@ -443,12 +466,17 @@ function buildObject279(P) {
   for (const s of [-1, 1]) {
     P.add('turret', box(0.22, 0.44, 0.40), s * 0.44, 0.20, 1.30, 0, s * -0.42, 0); // cheek plates over the roll ends
   }
+  // r3: the r2 collar/ring stack rode only 0.01 over the tube — the board
+  // zoom shows a bare tube (critique: "M-65 multi-slot muzzle brake absent").
+  // One readable device now: a 1.4x-tube sleeve over 0.55 m with three
+  // punched dark slot bands, entry taper and exit collar.
   buildGun(P, { len: 4.61, r: 0.096, brake: null, baseR: 0.15, sleeve: false, evac: null });
-  P.add('gun', cylZ(0.106, 0.06, 12), 0, 0, 4.14);                             // slot collars
-  P.add('gunDark', cylZ(0.099, 0.05, 12), 0, 0, 4.21);                         // dark slot rings
-  P.add('gun', cylZ(0.106, 0.06, 12), 0, 0, 4.28);
-  P.add('gunDark', cylZ(0.099, 0.05, 12), 0, 0, 4.35);
-  P.add('gun', cylZ(0.106, 0.06, 12), 0, 0, 4.42);
+  P.add('gun', cylZ(0.134, 0.55, 14), 0, 0, 4.30);                             // brake sleeve body
+  P.add('gun', cylZ(0.140, 0.06, 14, 0.106), 0, 0, 4.035);                     // entry taper collar
+  for (const zs of [4.16, 4.30, 4.44]) {
+    P.add('gunDark', cylZ(0.137, 0.075, 14), 0, 0, zs);                        // punched dark slot bands
+  }
+  P.add('gun', cylZ(0.106, 0.06, 12), 0, 0, 4.58);                             // exit collar
   P.topY = 0.9;
 }
 
@@ -529,13 +557,19 @@ function buildIS6B(P) {
   saddle(P, { rollR: 0.26, rollW: 0.66, ballR: 0.20, ballZ: 0.36 });
   P.addGunExtra(cylZ(0.14, 0.36, 12, 0.17), 0, 0, 0.42);                       // sleeve step
   P.addGunExtraDark(cylZ(0.024, 0.10, 8), 0.20, 0.10, 0.30);                   // coax port
+  // r3: the r2 drums at 1.5x tube radius with 0.013 rings measurably existed
+  // but the board zoom shows a plain tube tip — same readability failure as
+  // is3. Drums up to >=1.6x tube radius, slot widened, dark core fattened,
+  // dark rings on both faces of BOTH drums.
   buildGun(P, { len: 4.14, r: 0.085, brake: null, baseR: 0.15, sleeve: false, evac: null });
-  P.add('gunDark', cylZ(0.052, 0.34, 10), 0, 0, 3.92);                         // dark core through the slot
-  P.add('gun', cylZ(0.130, 0.15, 12), 0, 0, 3.80);                             // rear drum
-  P.add('gunDark', cylZ(0.126, 0.013, 12), 0, 0, 3.878);                       // face ring
-  P.add('gun', cylZ(0.125, 0.14, 12), 0, 0, 4.01);                             // front drum
-  P.add('gunDark', cylZ(0.121, 0.013, 12), 0, 0, 3.938);                       // face ring
-  P.add('gun', cylZ(0.088, 0.06, 10), 0, 0, 4.11);                             // exit collar
+  P.add('gunDark', cylZ(0.060, 0.46, 10), 0, 0, 3.90);                         // dark core through the slot
+  P.add('gun', cylZ(0.140, 0.10, 14), 0, 0, 3.76);                             // rear drum (1.65x tube r)
+  P.add('gunDark', cylZ(0.136, 0.014, 14), 0, 0, 3.703);                       // rear drum back-face ring
+  P.add('gunDark', cylZ(0.136, 0.014, 14), 0, 0, 3.817);                       // rear drum front-face ring
+  P.add('gun', cylZ(0.136, 0.10, 14), 0, 0, 4.02);                             // front drum
+  P.add('gunDark', cylZ(0.132, 0.014, 14), 0, 0, 3.963);                       // front drum back-face ring
+  P.add('gunDark', cylZ(0.132, 0.014, 14), 0, 0, 4.077);                       // front drum front-face ring
+  P.add('gun', cylZ(0.090, 0.07, 10), 0, 0, 4.115);                            // exit collar
   P.topY = 0.95;
 }
 

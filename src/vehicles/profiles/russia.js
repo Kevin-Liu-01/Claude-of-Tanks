@@ -17,6 +17,15 @@
 // band pulled inboard so its rust edge can no longer clip through the
 // coplanar skirt panels.
 //
+// Shaded-parity round 3 (docs/critique/shaded-parity-r2.md): resolved the
+// r2 report-vs-critique contradiction — the r2 Shtora/ERA geometry EXISTED
+// but was placed at fixed radius fractions INSIDE the cast dome and the
+// evacuator drowned in a 0.06*len sleeve gap, so none of it read on boards.
+// All front-arc fittings now seat on the computed dome skin (domeSkinF),
+// ERA reads steel-dark, the evacuator owns a >=0.54 m gap with dark seam
+// rings, skirts run fender-lip -> wheel-axle (wheels finally visible), and
+// the return-run rollers dropped so the rusty band top stays covered.
+//
 // Coordinate convention: several recovered GLBs are normalized on their
 // OVERALL bounding box (long 125 mm gun included), so their hull sits well
 // aft of the origin. p.zC bakes that same offset into our geometry so the
@@ -130,26 +139,38 @@ function buildRuHull(P, p) {
   // xc pulls 4.5 cm inboard of the skirt plane: the cast track band's outer
   // face used to be exactly coplanar with the skirt panels and its rust edge
   // clipped through as an orange stripe at the fender line (r1 bullet 2).
+  // r3 rust-stripe ROOT CAUSE (r2 critique: "still leaks above the skirt
+  // line"): the return-run band rides ON the roller supports at
+  // rollerY + rollerR + bandTh — with rollers at trackTop*0.84 that support
+  // line sat ABOVE the r2 skirt top (trackTop*1.02), so the rusty band edge
+  // poked out along the whole fender line. Rollers drop to trackTop*0.78 AND
+  // the skirts now run fender-lip -> wheel-axle (below), which both covers
+  // the return run and finally shows the road wheels the way every oracle
+  // does (r2 critique #4: "the procedural shows none").
   const wheelCount = p.wheels || 6;
   const wheelR = p.wheelR || Math.min(0.40, length / (wheelCount * 3.2));
   const wheelSpan = p.wheelSpan || length * 0.72;
   const wheelZs = (p.wheelZsRel ? p.wheelZsRel.slice() : evenStations(wheelCount, wheelSpan, p.wheelBias || 0)).map((z) => z + zC);
   const xc = width / 2 - trackW / 2 - 0.045;
+  const wheelY = p.wheelY || wheelR + 0.09;
   buildRunningGear(P, {
     style: p.wheelStyle || 'rubber', wheelR, wheelW: Math.min(0.22, trackW * 0.36),
-    wheelY: p.wheelY || wheelR + 0.09, xc, wheelZs, dishR: p.dishR ?? 0.84,
+    wheelY, xc, wheelZs, dishR: p.dishR ?? 0.84,
     sprocket: { z: -halfL * 0.85 + zC, y: wheelR + 0.10, r: wheelR * 0.88 },
     idler: { z: halfL * 0.85 + zC, y: wheelR + 0.08, r: wheelR * 0.84 },
-    rollers: evenStations(p.rollers || 3, wheelSpan * 0.68, zC).map((z) => ({ z, y: trackTop * 0.84, r: wheelR * 0.23 })),
+    rollers: evenStations(p.rollers || 3, wheelSpan * 0.68, zC).map((z) => ({ z, y: trackTop * 0.78, r: wheelR * 0.23 })),
     trackW, topY: trackTop * 0.86, botY: p.botY ?? 0.075, paintedEnds: true,
     coveredTop: p.skirts !== false, arms: p.arms !== false,
   });
   if (p.skirts !== false) {
-    ruSkirts(S, width, p.skirtLength ?? length * 0.84, p.skirtY ?? trackTop * 0.72,
-      p.skirtHeight ?? trackTop * 0.60, p.skirtPanels || wheelCount);
+    const fenderY = Math.min(roofY - 0.16, trackTop + 0.25);
+    const sTop = fenderY - 0.015;
+    const sH = p.skirtHeight ?? (sTop - (wheelY + 0.03));
+    const sY = p.skirtY ?? (sTop - sH / 2);
+    ruSkirts(S, width, p.skirtLength ?? length * 0.84, sY, sH, p.skirtPanels || wheelCount);
     for (const side of [-1, 1]) for (let i = 0; i < wheelCount; i++) {
       const z = length * 0.36 - i * (length * 0.72 / Math.max(1, wheelCount - 1));
-      S.add('hullDark', cylZ(0.022, 0.018, 8), side * (width / 2 + 0.035), trackTop * 0.78, z, 0, side * Math.PI / 2, 0);
+      S.add('hullDark', cylZ(0.022, 0.018, 8), side * (width / 2 + 0.035), sY - sH * 0.28, z, 0, side * Math.PI / 2, 0);
     }
   }
   return { width, length, halfL, roofY, trackTop };
@@ -207,15 +228,37 @@ function ruTurretAndGun(P, p) {
   }
   P.addGunExtra(box(p.mantletWidth || 0.48, p.mantletHeight || 0.44, 0.24), 0, 0.01, p.turretFront * 0.62);
   P.addGunExtra(cylZ(Math.max(0.10, (p.gunRadius || 0.10) * 1.55), 0.28, 14), 0, 0, p.turretFront * 0.82);
-  // 2A46 family tube: bore-evacuator bulge in the bare gap BETWEEN the two
-  // thermal-sleeve segments (0.46-0.52 of tube) so the bulge reads as its
-  // own fitting; evacR 1.9 — the 1.62 default vanished inside the sleeve.
+  // 2A46/U-5TS tube (r3): the kit sleeve left only a 0.06*len gap and the
+  // camo-painted drum melted into it — measurably present, unreadable at
+  // board scale (r2 critique: "root sleeves only"). The sleeve/evacuator
+  // language is built locally instead: thermal-sleeve segments flanking a
+  // WIDE gap (>=0.54 m), the bore-evacuator drum filling it at >=1.25x tube
+  // radius, and a DARK seam ring at each drum end so the swell reads as its
+  // own fitting from any garage angle.
+  const gLen = p.gunLength, gR = p.gunRadius || 0.10;
   buildGun(P, {
-    len: p.gunLength, r: p.gunRadius || 0.10,
-    sleeve: p.sleeve !== false,
-    evac: Object.hasOwn(p, 'evac') ? p.evac : 0.49, evacR: p.evacR ?? 1.9,
-    collar: true, baseR: p.gunBaseR ?? Math.max(0.12, (p.gunRadius || 0.10) * 1.7),
+    len: gLen, r: gR, sleeve: false, evac: null,
+    collar: true, baseR: p.gunBaseR ?? Math.max(0.12, gR * 1.7),
   });
+  const evacF = Object.hasOwn(p, 'evac') ? p.evac : 0.49;
+  if (evacF !== null) {
+    const eZ = evacF * gLen;
+    const gapHalf = Math.max(0.27, gLen * 0.055);
+    const eR = (p.evacR ?? 1.9) * gR;
+    if (p.sleeve !== false) {
+      for (const [f0, f1] of [[0.16, (eZ - gapHalf) / gLen], [(eZ + gapHalf) / gLen, 0.82]]) {
+        const sl = (f1 - f0) * gLen;
+        P.add('gun', cylZ(gR * 1.22, sl, 14), 0, 0, f0 * gLen + sl / 2);
+        P.add('gunDark', cylZ(gR * 1.24, 0.045, 14), 0, 0, f0 * gLen + 0.02); // start seam ring
+        P.add('gunDark', cylZ(gR * 1.31, 0.06, 14), 0, 0, f1 * gLen + 0.03);  // clamp ring
+      }
+    }
+    P.add('gun', cylZ(eR, gapHalf * 0.92, 14), 0, 0, eZ);                     // evacuator drum
+    P.add('gun', cylZ(eR, gapHalf * 0.44, 14, gR * 1.12), 0, 0, eZ - gapHalf * 0.64);
+    P.add('gun', cylZ(gR * 1.12, gapHalf * 0.44, 14, eR), 0, 0, eZ + gapHalf * 0.64);
+    P.add('gunDark', cylZ(eR * 1.02, 0.042, 14), 0, 0, eZ - gapHalf * 0.42);  // dark seam ring each end
+    P.add('gunDark', cylZ(eR * 1.02, 0.042, 14), 0, 0, eZ + gapHalf * 0.42);
+  }
   P.topY = h + (p.pano ? 0.46 : 0.25);
 }
 
@@ -226,8 +269,18 @@ function buildRu(P, p) {
   P.turretG.position.set(p.turretPivotX || 0, p.turretPivotY ?? p.roofY, (p.turretPivotZ || 0) + zC);
   P.gunG.position.set(p.gunX || 0, p.gunY ?? p.turretHeight * 0.43, p.gunZ || 0);
   ruTurretAndGun(P, p);
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.25,
-    [p.turretWidth / 2 * 0.90, p.turretHeight * 0.34, -p.turretDepth * 0.24], Math.PI / 2);
+  // Turret number seated ON the dome skin at its (y, z) station. The r2
+  // fixed 0.90-radius decal plane sat off the true skin per tank — buried on
+  // wide domes (vladimir: only a clipping sliver surfaced, the r2 critique's
+  // "red streak" companion) or floating on narrow ones.
+  const dy = p.turretHeight * 0.34, dz = -p.turretDepth * 0.24;
+  let dx = p.turretWidth / 2 * 0.99;              // welded prism flats
+  if (p.turretStyle !== 'welded') {
+    const f = domeSkinF(p, dy);
+    const A = p.turretWidth / 2 * f, B = p.turretDepth / 2 * f;
+    dx = A * Math.sqrt(Math.max(0.05, 1 - (dz / B) ** 2)) + 0.02;
+  }
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [dx, dy, dz], Math.PI / 2);
   if (p.extras) p.extras(zShift(P, zC), p);
 }
 
@@ -296,55 +349,95 @@ function mast(P, x, yBase, z, yTop, r = 0.028, head = 0.11) {
 function eraCheekArrays(P, p, kind) {
   const { box } = KIT;
   const a = p.turretWidth / 2, b = p.turretDepth / 2;
-  const put = (t, y, w, hgt, d, tilt, bucket = 'turretDetail', rIn = 0.97) => {
-    const x = Math.cos(t) * a * rIn, z = Math.sin(t) * b * rIn;
-    P.add(bucket, box(w, hgt, d), x, y, z, tilt, Math.PI / 2 - t, 0);
+  // r3 REWORK. Root cause of the r2 "ERA placed not built" critique: every
+  // array was positioned at a FIXED fraction of the plan radius (0.81-0.97)
+  // while the dome skin bulges past it — most bricks/wedges/tiles were
+  // swallowed whole and only paper lips surfaced (the vladimir "red thread"
+  // was one buried end-plate sliver). skinD() returns the true plan-radius
+  // of the casting at azimuth t and height y, so every block now seats ON
+  // the skin with real proud volume. Blocks render STEEL-dark (spareTrack
+  // via the *Track buckets) against the paint (r2 materials bullet: "bricks
+  // are hull-colored").
+  const skinD = (t, y) => {
+    const f = domeSkinF(p, y);
+    const A = a * f, B = b * f;
+    return 1 / Math.sqrt((Math.cos(t) / A) ** 2 + (Math.sin(t) / B) ** 2);
+  };
+  const put = (t, y, w, hgt, d, tilt, bucket, dist) => {
+    P.add(bucket, box(w, hgt, d), Math.cos(t) * dist, y, Math.sin(t) * dist, tilt, Math.PI / 2 - t, 0);
   };
   if (kind === 'k1') {
-    // Kontakt-1: 3-course brick rafts on both front cheeks.
+    // Kontakt-1: 3-course brick RAFTS on both front cheeks (t72b_1987's
+    // "Super Dolly" name cue — r2 saw one row read as trim).
     for (const s of [1, -1]) for (let row = 0; row < 3; row++) {
+      const y = 0.10 + row * 0.17;
       for (let i = 0; i < 4; i++) {
-        const t = Math.PI / 2 + s * (0.28 + i * 0.21);
-        put(t, 0.10 + row * 0.15, 0.26, 0.135, 0.18, -0.30 - row * 0.06, i % 2 ? 'turretDetail' : 'turret', 0.97 - row * 0.05);
+        const t = Math.PI / 2 + s * (0.26 + i * 0.21);
+        put(t, y, 0.26, 0.155, 0.20, -0.28 - row * 0.07, 'turretTrack', skinD(t, y) + 0.035);
       }
     }
   } else if (kind === 'k5') {
-    // Kontakt-5 clamshell: two stacked wedge courses per cheek with end
-    // plates and a dark gap seam; flat K-5 tiles along both flanks.
+    // Kontakt-5 clamshell: two stacked wedge courses per cheek seated on the
+    // skin, welded end caps, dark course seam — plus proud flank tiles. The
+    // wedge pair meets at the mantlet like the real clamshell.
     for (const s of [1, -1]) {
-      for (const [row, y0] of [[0, 0.10], [1, 0.44]]) {
-        const t = Math.PI / 2 + s * 0.60;
-        const x = Math.cos(t) * a * 0.81, z = Math.sin(t) * b * 0.81;
-        P.add('turret', box(0.94, 0.30, 0.34), x, y0 + 0.14, z, -0.50 + row * 0.14, Math.PI / 2 - t, 0);
-        P.add('turretDark', box(0.96, 0.03, 0.30), x, y0 + 0.30, z, -0.50 + row * 0.14, Math.PI / 2 - t, 0);
-        P.add('turretDetail', box(0.05, 0.28, 0.30), x + Math.cos(t + s * 0.55) * 0.48, y0 + 0.13, z + Math.sin(t + s * 0.55) * 0.48, -0.5, Math.PI / 2 - t, 0);
+      const t = Math.PI / 2 + s * 0.55;
+      for (const [row, y0] of [[0, 0.10], [1, 0.46]]) {
+        const yc = y0 + 0.15;
+        const D = skinD(t, yc) - 0.10;
+        const x = Math.cos(t) * D, z = Math.sin(t) * D;
+        const ry = Math.PI / 2 - t, tilt = -0.46 + row * 0.14;
+        P.add('turretTrack', box(1.00, 0.32, 0.44), x, yc, z, tilt, ry, 0);
+        P.add('turretDark', box(1.02, 0.035, 0.40), x, yc + 0.17, z, tilt, ry, 0);
+        // end caps welded to BOTH wedge ends (the r2 free-floating end plate
+        // surfaced as the vladimir red-thread sliver)
+        for (const e of [-1, 1]) {
+          P.add('turretTrack', box(0.06, 0.30, 0.42),
+            x + e * -Math.sin(t) * 0.52, yc, z + e * Math.cos(t) * 0.52, tilt, ry, 0);
+        }
       }
-      for (let i = 0; i < 3; i++) put(s * (0.16 + i * 0.16), 0.30, 0.34, 0.30, 0.06, -0.10);
+      for (let i = 0; i < 3; i++) {
+        const tf = s * (0.14 + i * 0.17);
+        put(tf, 0.30, 0.34, 0.30, 0.07, -0.10, 'turretTrack', skinD(tf, 0.30) + 0.02);
+      }
     }
   } else if (kind === 'erawa') {
-    // ERAWA: regular flat tile FIELD over the front arc + chevron corner
-    // stacks at both cheek corners.
-    for (const s of [1, -1]) for (let row = 0; row < 3; row++) {
-      for (let i = 0; i < 4; i++) {
-        const t = Math.PI / 2 + s * (0.16 + i * 0.20);
-        put(t, 0.08 + row * 0.24, 0.30, 0.235, 0.055, -0.24 - row * 0.10, 'turretDetail', 0.985 - row * 0.06);
+    // ERAWA: regular flat tile FIELD over the front arc (3 rows x 5 tiles a
+    // cheek — r2: "tiles sparse instead of fields") + chevron corner stacks.
+    for (const s of [1, -1]) {
+      for (let row = 0; row < 3; row++) {
+        const y = 0.10 + row * 0.26;
+        for (let i = 0; i < 5; i++) {
+          const t = Math.PI / 2 + s * (0.13 + i * 0.185);
+          put(t, y, 0.295, 0.245, 0.065, -0.22 - row * 0.10, 'turretTrack', skinD(t, y) + 0.015);
+        }
       }
-      const tc = Math.PI / 2 + s * 0.98;
+      const tc = Math.PI / 2 + s * 1.06;
       for (let row = 0; row < 2; row++) {
-        const x = Math.cos(tc) * a * 0.90, z = Math.sin(tc) * b * 0.90;
-        P.add('turret', box(0.40, 0.26, 0.30), x, 0.16 + row * 0.30, z, -0.45, Math.PI / 2 - tc, 0);
+        const y = 0.16 + row * 0.30;
+        put(tc, y, 0.42, 0.27, 0.30, -0.42, 'turretTrack', skinD(tc, y) - 0.06);
       }
     }
   } else if (kind === 'relikt') {
-    // Relikt: two-course hard cassettes with seams + cheek corner stacks.
+    // Relikt: two-course hard cassettes with seams, closed cheek-corner end
+    // caps (r2 b3m: "the wedge rows end open at the cheek corners").
+    // t90sm's welded prism sits near 0.96a — skinD would overshoot its flat
+    // facets, so cassettes keep radius-fraction seating there.
+    const welded = p.turretStyle === 'welded';
     for (const s of [1, -1]) {
       for (let i = 0; i < 3; i++) {
         const t = Math.PI / 2 + s * (0.30 + i * 0.30);
         for (const [row, y0] of [[0, 0.10], [1, 0.42]]) {
-          put(t, y0 + 0.14, 0.50, 0.30, 0.22, -0.38 + row * 0.10, row ? 'turretDetail' : 'turret', 0.94 - row * 0.06);
+          const yc = y0 + 0.14;
+          const D = welded ? a * (0.94 - row * 0.06) : skinD(t, yc) - 0.06;
+          put(t, yc, 0.50, 0.30, 0.24, -0.38 + row * 0.10, 'turretTrack', D);
         }
-        put(t, 0.41, 0.52, 0.035, 0.20, -0.34, 'turretDark', 0.95);
+        const Ds = welded ? a * 0.95 : skinD(t, 0.41) - 0.04;
+        put(t, 0.41, 0.52, 0.035, 0.22, -0.34, 'turretDark', Ds);
       }
+      const te = Math.PI / 2 + s * 1.02;
+      const De = welded ? a * 0.93 : skinD(te, 0.28) - 0.05;
+      put(te, 0.28, 0.06, 0.56, 0.22, -0.30, 'turretTrack', De);
     }
   }
 }
@@ -359,13 +452,32 @@ function skirtArmor(P, p, count = 4, tall = 0.34) {
   }
 }
 
+// Dome-skin radius helper: fraction of the plan radius the lathe profile
+// keeps at height y (profile: 1.0 at 0.10, 0.97 at 0.42h, domeShoulder at
+// 0.75h) — used to seat front-arc fittings ON the casting instead of
+// inside it.
+function domeSkinF(p, y) {
+  const h = p.turretHeight, sh = p.domeShoulder ?? 0.88;
+  if (y <= 0.42 * h) return 1 - (y / (0.42 * h)) * 0.03;
+  return 0.97 - (Math.min(1, (y - 0.42 * h) / (0.33 * h))) * (0.97 - sh);
+}
+
 // Shtora-1 OTShU-1-7 IR dazzler pair flanking the mantlet — THE T-90 cue.
+// r3: the r2 boxes sat at turretFront*0.86, which is INSIDE the cast dome's
+// ellipse at x = +/-0.56 on every K-5 dome (t90a: box front face z 1.31 vs
+// skin z 1.47) — both eyes were swallowed whole and the critique correctly
+// scored them absent. The housings now seat ON the computed skin: boxy
+// >=0.30 m dark housings, glass faces proud, detail brow hood on top.
 function shtoraEyes(P, p, y) {
   const { box } = KIT;
+  const f = domeSkinF(p, y);
+  const A = (p.turretWidth / 2) * f, B = (p.turretDepth / 2) * f, x = 0.56;
+  const zSkin = B * Math.sqrt(Math.max(0.1, 1 - (x / A) ** 2));
+  const zc = zSkin + 0.07;                        // 0.24-deep box embeds 5 cm
   for (const s of [-1, 1]) {
-    P.add('turretDark', box(0.26, 0.28, 0.22), s * 0.56, y, p.turretFront * 0.86);
-    P.add('turretGlass', box(0.18, 0.18, 0.025), s * 0.56, y, p.turretFront * 0.86 + 0.12);
-    P.add('turretDetail', box(0.30, 0.04, 0.24), s * 0.56, y + 0.17, p.turretFront * 0.86);
+    P.add('turretDark', box(0.26, 0.30, 0.24), s * x, y, zc);
+    P.add('turretGlass', box(0.19, 0.20, 0.03), s * x, y, zc + 0.125);
+    P.add('turretDetail', box(0.30, 0.045, 0.27), s * x, y + 0.175, zc + 0.01);
   }
 }
 

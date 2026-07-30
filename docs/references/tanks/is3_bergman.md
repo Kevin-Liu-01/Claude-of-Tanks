@@ -61,3 +61,6 @@ the race (+1.45 x, +27.49 z, lift +8.0; mantlet butted to the dome face —
 muzzle 2.44 m past the bow at axis 1.91 m), fenders/drums re-tagged to the
 hull in place. 61.6 -> 81.6 (H93 T70 G55 R87); automated numbers on this id
 are meaningful again (residual T/G gap = the print's tall dome / fat tube).
+
+r3: inherits the is3 double-baffle brake rebuild (shared is3TurretAndGun) — the brake
+now reads at board scale. Total 81.5 on the still-degenerate oracle.

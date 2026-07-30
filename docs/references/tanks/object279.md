@@ -54,3 +54,8 @@ oracle's open centre-bottom (front 91.9→87.4) and a lifted pair leaks through
 the outer band's scallop windows from the side (R 93→88). Head-on the stubs
 give the twin-beam read; a true always-visible 4-track run is incompatible
 with this oracle's silhouette.
+
+r3 (shaded-parity r2): 91.0 → 90.9 (turret 85 → 87, gun 91 → 87 — the readable brake
+costs a little crop mask, identity wins). M-65 multi-slot brake rebuilt from the r2
+±0.01 collar stack (read as a bare tube) to a 1.4x-tube sleeve over 0.55 m with three
+punched dark slot bands + entry taper + exit collar. Still >= 90 gate.

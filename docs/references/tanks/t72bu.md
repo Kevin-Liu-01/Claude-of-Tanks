@@ -55,3 +55,10 @@ Oracle defects: hull-parented barrel; proportionally tall model
 | 2026-07-30 | 73.8 | 75.4 | 80 | 30 | 100 | 84 | baseline (t90a donor spec, SOVIET template) |
 | 2026-07-30 | 74.3 | 80.1 | 79 | 32 | 100 | 84 | donor->standalone: zC -1.425, tall 1.80 deck 8.0 hull, dome 3.35x2.50 +0.575 fwd, muzzle kept just short of oracle hull-parented barrel tip (G stays 100); T capped: oracle upper mask has no gun |
 | 2026-07-30 r2 | 74.9 | — | 81 | 32 | 100 | 84 | shaded r2: radial-fin ERA replaced w/ K-5 clamshell + flat flank tiles, Shtora eyes, evac, NSVT, snorkel on deck brackets, drums+log, skirt armor; T still capped by oracle hull-parented barrel |
+
+r3 (shaded-parity r2 items): 74.9 → 75.0. The K-5 kit finally has clamshell VOLUME —
+two proud wedge courses per cheek seated on the dome skin with end caps + dark seams,
+steel-dark tone; Shtora eyes read as boxed housings w/ glass flanking the mantlet
+(r2 geometry existed but sat inside the dome ellipse); evacuator drum + dark seam rings
+in a 0.67 m sleeve gap; skirts fender-lip→axle. Turret mask (31.7) still gates the id —
+dome re-proportion remains the round-4 item.

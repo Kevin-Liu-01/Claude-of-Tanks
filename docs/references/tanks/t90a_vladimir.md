@@ -50,3 +50,11 @@ Width-normalized (3.78 m) probe measurements:
 | 2026-07-30 | 64.6 | 72.2 | 80 | 36 | 26 | 77 | baseline (shared SOVIET template) |
 | 2026-07-30 | 75.2 | 77.5 | 82 | 50 | 84 | 79 | standalone rebuild: zC -1.29, hull 7.83, dome 3.44x2.90 h1.18 + roof cap, basket+met mast, hull-bucket filler matching oracle LOD ghosts, drums/bins, floaty-track botY |
 | 2026-07-30 r2 | 76.3 | — | 83 | 51 | 84 | 79 | shaded r2: K-5 clamshell, Shtora eyes, crowded roof cluster + pano drum, crate-rack rails seated, decal moved off mantlet, drums/bins low, skirt armor course, dark skirt lip |
+
+r3 (shaded-parity r2 items): 76.3 → 76.5. K-5 clamshell wedges re-seated on the computed
+dome skin with welded end caps (the r2 buried end-plate sliver was the critique's "red
+thread from the right cheek"); turret number decal re-seated on the skin (was 9 cm off,
+edge-on sliver); Shtora eyes now read as paired dark housings w/ glass; evacuator owns a
+0.58 m sleeve gap w/ dark rings; skirts fender-lip→axle (wheels visible), rollers lowered
+— the fender-line rust band in turntable frames 1–3 is gone (root cause: return-run
+supports rode above the skirt top).

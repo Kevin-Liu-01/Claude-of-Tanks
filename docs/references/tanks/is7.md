@@ -52,3 +52,9 @@ rails, lifting bosses, headlight guards, dark wheel-face contrast.
 Mismatch log: the oracle keeps its broad turret skirt band (T holds ~81 as
 committed); rear bins are held to z < −3.5 so the yawed egg never sweeps
 them; track sag left as committed (R93) — end-connector greeble skipped.
+
+r3 (shaded-parity r2 #2/#3 artifact audit): 88.9 → 89.0. The "raised chevron plaque on
+the pike center" was the yawed pikeNose cheek plate's corner piercing the upper wedge
+face, and the "thin rod lying diagonally on the right pike face" was the offset weld
+bead — both deleted via pikeNose cheeks/welds opt-outs (no IS-7 carries either fitting).
+Pike quarter-read held (masks flat).

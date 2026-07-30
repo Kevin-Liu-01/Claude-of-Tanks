@@ -58,3 +58,8 @@ Oracle defects: model proportionally tall (scale 1.34 after width norm).
 | 2026-07-30 | 70.5 | 75.8 | 82 | 41 | 60 | 87 | baseline (t72b3 donor + small kit) |
 | 2026-07-30 | 77.5 | 77.3 | 83 | 57 | 87 | 78 | donor->standalone: hull 7.67 roof 1.52, dome 3.15x3.10 h1.10 + flat crown cap, ERAWA tile arcs, met mast, basket, tall rear powerpack stack, 6.05 m gun |
 | 2026-07-30 r2 | 79.2 | — | 85 | 58 | 91 | 79 | shaded r2: ERAWA tile field + corner chevrons, met mast full height + sensor cross, louvered powerpack stack, rear drums added, basket mesh face, evac, NSVT |
+
+r3 (shaded-parity r2 items): 79.2 → 79.3. ERAWA tile FIELD (3 rows x 5 tiles per cheek,
+steel-dark, seated on the dome skin — r2 rows above the first were buried) + corner
+chevron stacks re-seated; evacuator w/ dark seam rings in a 0.61 m gap; skirts
+fender-lip→axle, rollers lowered (rust-band cover).
