@@ -95,6 +95,18 @@ if (!swapped(reference)) throw new Error(`${id} reference GLB did not load`);
 
 reference.root.updateMatrixWorld(true);
 procedural.root.updateMatrixWorld(true);
+// THREE.LOD re-asserts its children's visibility from camera distance during
+// every render, silently overriding setPart()'s hull/turret split — detail
+// buckets bled into the hull mask and punched holes out of the turret mask.
+// Pin every LOD to level 0 (the close-range silhouette the game shows in the
+// garage) and freeze it so the masks obey setPart exclusively.
+for (const root of [reference.root, procedural.root]) {
+  root.traverse((o) => {
+    if (!o.isLOD) return;
+    o.autoUpdate = false;
+    o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
+  });
+}
 const baseVisible = new WeakMap();
 for (const root of [reference.root, procedural.root]) {
   root.traverse((o) => { if (isRenderNode(o)) baseVisible.set(o, effectivelyVisible(o) && !isShadowHelper(o)); });
