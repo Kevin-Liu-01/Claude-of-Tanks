@@ -49,3 +49,9 @@ run. Fused mesh: component masks N/A.
 | Date | total | minView | whole | tracks | change |
 |---|---|---|---|---|---|
 | 2026-07-30 | 80.0 | 75.3 | 83.4 | 65.3 | baseline (slab box, tracks fully hidden — worst tracks band in family) |
+| 2026-07-30 | 82.4 | 73.3 | 83.8 | 76.1 | bespoke rebuild: raked louvred glacis w/ splash rail, fixed L74 exiting mid-glacis + travel clamp, dozer blade, flotation-screen rim, cupola + obs dome + fender MG box, ribbed skirt band over 4 exposed wheels + raised idler, dark bay walls (tracks band 65→76) |
+
+Remaining gap: left/right ≈73 — the wesiora oracle carries a busier rear
+deck massing and larger wheel read than the packet photos; its baked
+texture also 404s one map in the lab (oracle-side quirk). Next lever:
+deck piping + rear stowage massing.

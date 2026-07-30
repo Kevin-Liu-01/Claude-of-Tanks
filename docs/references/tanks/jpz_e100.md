@@ -50,3 +50,9 @@ masks N/A. For a paper vehicle the oracle IS the identity target.
 | Date | total | minView | whole | tracks | change |
 |---|---|---|---|---|---|
 | 2026-07-30 | 83.3 | 81.6 | 83.8 | 81.4 | baseline (parametric CASEMATE box) |
+| 2026-07-30 | 83.4 | 78.4 | 83.9 | 81.4 | bespoke rebuild: Maus-like 46° glacis + long fore deck w/ grilles (front powerpack), REAR-set casemate (roof to z −3.38), saukopf collar on bolted ring (sealed), 17 cm tube to the oracle's +6.72 muzzle, heavy slab skirts w/ panel joints, hidden dished gear |
+
+Remaining gap: rear 78.4 — the oracle's rear face is bulkier low (its
+casemate rear blends into a fuller tail); front/rear masks trade against
+the side views on this print. Paper vehicle: oracle is the identity
+target per the packet.

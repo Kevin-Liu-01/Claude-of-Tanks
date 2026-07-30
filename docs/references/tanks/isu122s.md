@@ -46,3 +46,7 @@ component masks N/A.
 | Date | total | minView | whole | tracks | change |
 |---|---|---|---|---|---|
 | 2026-07-30 | 85.2 | 79.5 | 85.6 | 83.7 | baseline (parametric CASEMATE box) |
+| 2026-07-30 | 88.8 | 85.2 | 88.8 | 88.6 | bespoke rebuild shared with isu152 + D-25S: slim tube to the oracle's +6.47 muzzle, recoil sleeve step, German-pattern double-baffle brake w/ dark slot core, smaller ball shield |
+
+Remaining gap: left/right 85-86 — print's fender line runs slightly
+higher; acceptable within the shared-hull compromise with isu152.

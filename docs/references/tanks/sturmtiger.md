@@ -47,3 +47,8 @@ muzzle sits nearly flush with the bow. Fused mesh: component masks N/A.
 | Date | total | minView | whole | tracks | change |
 |---|---|---|---|---|---|
 | 2026-07-30 | 85.7 | 76.6 | 84.8 | 89.6 | baseline (parametric CASEMATE box, no crane) |
+| 2026-07-30 | 90.0 | 87.9 | 89.5 | 91.9 | bespoke rebuild: Tiger I three-plate bow, 47° casemate (roof 2.82), sealed ball mount + vent-hole muzzle ring, MG ball + driver visor, erected loading crane (rear-left, oracle pose), Tiger grilles/fans/shrouded exhausts, 8 interleaved dished wheels, frame compressed to the oracle's ±3.08 |
+
+Remaining gap: front 87.9 — the oracle's crane/jib pose and bow flap shapes
+differ in detail; the tomrs print carries zimmerit (paint-level, visual
+flag not owned here).

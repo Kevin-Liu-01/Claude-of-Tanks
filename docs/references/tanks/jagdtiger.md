@@ -55,3 +55,9 @@ whole silhouette + tracks band.
 | Date | total | minView | whole | tracks | change |
 |---|---|---|---|---|---|
 | 2026-07-30 | 85.0 | 79.6 | 84.5 | 87.4 | baseline (parametric CASEMATE box) |
+| 2026-07-30 | 88.9 | 86.9 | 88.9 | 89.0 | bespoke rebuild: Tiger II bow + sponson box, narrowed 21°-side casemate (base 3.08/roof 2.20), pot mantlet on bolted ring (sealed −7.5/+15°), 9 interleaved dished wheels + front drive, fenders/tools/exhausts/spare-track side racks, two-section 12.8 cm tube to the oracle's +6.26 muzzle |
+
+Remaining gap: left/right 86.4-ish — the oracle's tube is ~0.7 m shorter
+proportionally than the real 10.65 m gun; matching it caps identity (kept
+at the oracle length). Zimmerit is paint-level (visual flag not owned by
+this module).
