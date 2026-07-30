@@ -469,7 +469,22 @@ function wheelGeo(style, r, w, seg, dishR = 0.90) {
   discs.push(cylX(r * 0.24, w * 1.38, 10));              // hub
   discs.push(cylX(r * 0.14, w * 1.54, 8));               // hub cap
   boltRing(discs, r * dishR / 0.9, w, 8);
-  return { tire, disc: mergeAll(discs), dark: null };
+  // shaded-parity r1 ("every road wheel in all 5 families is a flat disc"):
+  // the rubber style merged hub, dish and bolts into ONE painted material, so
+  // under uniform camo every feature vanished. Give it the same dark contrast
+  // set the dished/holes styles have — recessed annulus between dish and hub,
+  // dark hub-drum sidewall, and a dark bolt ring standing on the dish — so
+  // the wheel reads as a wheel under any paint scheme.
+  const dk = [
+    cylX(r * 0.46, w * 1.08, seg),                       // dish/hub recess annulus
+    cylX(r * 0.205, w * 1.40, 10),                       // hub drum sidewall shadow
+  ];
+  for (let k = 0; k < 12; k++) {
+    const a = (k / 12) * Math.PI * 2 + 0.13;
+    dk.push(xform(cylX(r * 0.045, w * 1.20, 6),
+      0, Math.sin(a) * r * dishR * 0.72, Math.cos(a) * r * dishR * 0.72));
+  }
+  return { tire, disc: mergeAll(discs), dark: mergeAll(dk) };
 }
 
 // Idler (r9 rework — judged-shot hard fail): the r8 stack buried its dished
