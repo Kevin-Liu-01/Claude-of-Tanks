@@ -64,3 +64,13 @@ rough-height anchor), raised rear idler, deep side skirts. v9: min 47.5
 Remaining: face-region widths (front rows +-1.3-1.6 still ~0.2 off), dims
 heightM measured 3.14 vs authored 3.19-3.20 plateau (p95 discount - widen
 the arm run by ~2 columns).
+
+
+## Geometry gate v10 round-2 (2026-07-31)
+Round-2 row: hull 47.7 whole 47.7 turret 100 (fixedMount) stations 74.4
+dims 100 floaters 100 (ledger: 47.5/47.5/100/73.6/85.5/100).
+Dims closed: body span grown to published 6.28 (bow +3.17 / tail -3.16,
+pixel span 6.33 within grace) and the crane beam raised to 2.93..3.23 so
+published heightM 3.2 rides the p95 line on the beam's ~12 columns.
+front_hull (47.7) remains the floor — casemate face/wall width iteration is
+live work against the print's 47-deg face.

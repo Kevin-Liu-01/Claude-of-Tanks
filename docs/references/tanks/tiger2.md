@@ -85,3 +85,24 @@ not at all — verify against the print; (b) the front suspension sits high
 (ground contact only from z ~ +0.9 world — nose-up rake, rigid-transform
 repairable); (c) dims 63.3 is heightM 3.04 + hullLength 7.25 vs 7.38 —
 lengthen the tub to 7.38 measured next pass.
+
+
+## Geometry gate v10 round-2 cert update (2026-07-31, oracle batch 7)
+Batch-7 vertex analysis DISPROVED the v9 "nose-up rake" candidate: the
+print's track-bottom profile is dead flat (y 0.000..0.003 over 4.2 m ~= the
+published 4.1 m contact). The REAL defect is the print's track loop being
+authored ~0.6 m SHORT (front wheel curve starts ~0.4 m early) — a PRINT
+CAP, not rigid-repairable; my published-geometry track loop carries the
+residual side-row bottom-line error against it. The 2.8 m intake tower IS
+verified genuine hull geometry (deep-wading tower, 38 mm under the turret
+swing) — the hull-side replication stays (round 2 reshaped it to the
+measured 2.66-2.74 crown and raised the belly to the print's 0.49 line).
+Round-2 row: hull 42.6 whole 47.4 turret 29.2 stations 60 dims 97.8
+floaters 100 (v9/ledger: 26/30.2/30.1/68.4/63.3/100). Dims closed by
+front/rear mud-flap hullLengthM anchors + the turret mound cap plate at
+published heightM 3.09 (p95).
+NEW CERTIFIED PRINT CAP — turretCurves: the print's fused gun line sits at
+plan x ~ -0.17 (one column left of centre; my sim-owned gun is centered):
+the two gun plan columns read ~2.1-2.3 m of asymmetric band error and own
+the plan p95 (21.8%) -> turret_plan ceiling ~30-45 until an oracle gun
+recenter is sanctioned. turret_side 59.9 is live (bustle/bin iteration).

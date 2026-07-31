@@ -65,3 +65,16 @@ curve row is a certified proportion cap (the width-normalized toy cannot be
 tracked from a published-size build): hull/whole/turret/stations 0. If the
 spec row is ever re-derived from the oracle (5.44/6.44/3.6/1.71), the
 previous curve-matched geometry scores hull ~47 / turret ~56.
+
+
+## Geometry gate v10 round-2 cap re-verification (2026-07-31)
+Re-verified against this round's gate run (post kit track-clamp): row is
+hull 0 whole 0 turret 0 stations 0 dims 94.1 floaters 100 — exactly the v9
+DIMS-FIRST cert shape. The cap holds unchanged: the committed published
+spec row (7.2 x 3.6 x 3.0, overall 8.8) is ~1.37x longer / ~1.75x taller
+than the Quaternius toy oracle at matched width (5.44 x 1.71 measured), so
+with dims sovereign every curve/station row remains a certified proportion
+cap (mean errors 18-45% are the envelope difference itself, not authoring
+error). No round-2 geometry changes; the build still tracks the oracle's
+SHAPE inside the published envelope. If the spec row is ever re-derived
+from the oracle, the v9 measurement (hull ~47 / turret ~56) stands.

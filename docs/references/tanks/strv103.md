@@ -76,3 +76,18 @@ CERTIFIED ORACLE-DEFECT CAPS (dims held sovereign):
 Stations 30.8: two onlyOne slices at the muzzle-side (the ref's fused-gun
 z-range vs the build's thin tube) — improvable by fattening the exposed tube
 band toward the oracle's 0.18-0.2 read.
+
+
+## Geometry gate v10 round-2 (2026-07-31)
+Round-2 row: hull 41.5 whole 41.5 turret 100 (fixedMount) stations 37.1
+dims 98.2 floaters 100 (ledger: 42.9/43.3/100/30.8/91.4/100).
+Changes: dims closed (muzzle/exhaust trimmed to published overall 8.99);
+station width killers fixed per the slice probe — tail underside wedge
+narrowed to the print's ±1.18, fender plates pulled to its ±1.63 line,
+5 cm antenna masts (the print's own pair to 2.80) so the slices rasterize
+them, dozer blade widened to ±1.20, muzzle collar to the print's 0.22 dia.
+REMAINING (live): slice 11 width (print's full-width dozer/fender assembly
+at +3.4..+4.0 vs my capped blade — the packet cap: sub-gun geometry past
++3.52 would lift hullLengthM over published); the 2.33-2.38 cupola-cluster
+stature cap (published heightM 2.14 pins the build at 2.18) still costs
+~6-8 topPct on 3 slices and the side-row crown columns.

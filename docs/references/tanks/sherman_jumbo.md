@@ -76,3 +76,18 @@ print's fused gun line sits at x ~ -0.3 with the turret visibly rest-yawed
 (~7 deg) - ORACLE-REPAIR CANDIDATE (zero Turret rest yaw); a matching
 procedural yaw is not legal (the sim owns turret yaw). Certified turret
 ceiling until repair: ~30-40.
+
+
+## Geometry gate v10 round-2 cert update (2026-07-31, oracle batch 7)
+The v9 "~7 deg turret rest yaw" cert was DISPROVEN (batch 7): the print's
+whole fused turret (dome + basket + 75 mm) was authored 0.218 m LEFT of its
+own ring pit and has been rigidly translated onto the ring (gun x ~= 0).
+Round-2 honest casting iteration against the repaired print:
+- the print's turret node carries its BASKET (r 0.610 ring at y 1.21): the
+  gate's isolated turret mask reaches ~0.75 below the ring. The build now
+  models the basket drum (r 0.60-0.61, inside the hull at every yaw) — this
+  was the single largest turret_side cost (12 columns x ~0.5 m).
+- the dome was rebuilt to the print's true plan radius (~1.25, was 1.44)
+  and the bustle pulled in to ±0.82/-1.55.
+Round-2 row: hull 47 whole 43.2 turret 69.9 stations 50.3 dims 93.8
+floaters 100 (ledger: 46.9/22.6/27.6/50.3/93.8/100 — turretCurves +42).

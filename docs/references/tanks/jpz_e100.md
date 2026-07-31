@@ -67,3 +67,15 @@ hullLengthM, oracle-fat 17cm tube (r 0.15-0.185). v9: min 31.9 with dims
 (crown width + skirt band lip) — the cleanest oracle in the family, no cap
 needed beyond the +-0.26 m hull-span stretch (oracle body 8.18 vs published
 8.7) which costs ~4 end columns and every plan column ~0.25 m.
+
+
+## Geometry gate v10 round-2 (2026-07-31)
+Round-2 row: hull 66.6 whole 66.5 turret 100 (fixedMount) stations 68.6
+dims 99.6 floaters 100 (ledger: 31.9/31.9/100/68.4/99.6/100 — front_hull
+was the 31.9 floor at mean 5.3%).
+Front-view fixes per the differ: the bow rows carried b 0.08-0.14 across
+the full 1.60 half-width (the ref's belly line between the tracks is 0.45
+— raised, prow narrowed to its ±0.72/±1.05 point); the tail-chamfer rows'
+top edge projected a wide diagonal in front view (narrowed to the ref's
+(1.02, 3.04)->(1.30, 2.58) corner line); fender lip pulled inboard to
+±1.72 (the ref's skirt tops at x 2.0-2.15 are 1.0-1.45).

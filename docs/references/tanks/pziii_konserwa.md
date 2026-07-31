@@ -56,3 +56,10 @@ gun). Width-normalized probe (scale 0.958):
 
 Remaining gap: turret 81 (same fused-lump cupola read as newc_pziii); front/rear
 views ~88.5 from the low-poly track band edges.
+
+
+## Geometry gate v10 round-2 (2026-07-31)
+Round-2 row: hull 52.2 whole 42.7 turret 64.6 stations 77.9 dims 100
+floaters 100 (ledger: 49.7/46.5/68.2/78.5/82.5/100).
+Dims closed: cupola stack raised to published heightM 2.5 (p95) and the
+3.7 cm KwK 36 lengthened to published overall 6.28 (muzzle +3.15).

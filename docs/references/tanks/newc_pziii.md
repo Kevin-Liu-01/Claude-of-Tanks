@@ -63,3 +63,21 @@ Gun x +0.12 (print turret rest yaw - repair candidate; also its gun rests
 visibly ELEVATED: whole-curve gun-line ~0.5 m high at the muzzle columns -
 rotate the Gun node's rest pitch to zero in the repair batch). turret
 43.9 -> 67. min 28.7 -> 31.2 (whole-limited by the elevated oracle gun).
+
+
+## Geometry gate v10 round-2 cert update (2026-07-31, oracle batch 7)
+The v9 cert ("gun x +0.12 print turret rest yaw; gun rests visibly ELEVATED
+~0.5 m — rotate the Gun node's rest pitch to zero") is DOUBLE-DISPROVEN by
+vertex + runtime analysis (tools/repair_oracles.py batch 7, no-recipe entry):
+- rest PITCH is ZERO (tube centroid line level to the millimetre);
+- rest YAW is ZERO (shell facet azimuth -0.045 deg, plan centres -0.007);
+- the gun-x offset is REAL but authored INSIDE the fused Gun mesh (+0.06 raw
+  off the mantlet's own centre, amplified to +0.10 visible by modelLoader's
+  1.5x gun scale). Any rigid node move trades tube error for mantlet error
+  1:1 — the file is byte-identical and the offset is a DOCUMENTED PRINT CAP.
+Build keeps gun x +0.12 to match the runtime-amplified tube line (this is
+mask parity with the shipped reference, not a yaw replication).
+Round-2 row: hull 38 whole 32.1 turret 67.6 stations 66.9 dims 100
+floaters 100 (dims closed from 82.2: KwK 39 L/60 lengthened to published
+overall 6.41; cupola stack lowered 0.03 to published heightM p95; muffler
+tucked inside the hullLengthM span).

@@ -73,3 +73,19 @@ Known-good levers left: casemate crown width (front rows still +0.2-0.3 at
 (measured 8.00 vs 7.8), humps at 2.93 measured 2.85-2.92 (p95 discount).
 SHORT-BARRELLED ORACLE: muzzle +6.06 vs published overall 10.65 (build
 carries +6.37) — wholeCurves keeps ~3 cover columns by contract.
+
+
+## Geometry gate v10 round-2 (2026-07-31)
+Round-2 row: hull 31.1 whole 31.1 turret 100 (fixedMount) stations 53.6
+dims 99.7 floaters 100 (ledger: 34.3/34.3/100/54.2/85.4/100).
+Dims closed: the print's 8.06 m body span is longer than published 7.8 —
+bow tip pulled to +3.80, tail foot to -3.98, KIT.fenders z-span trimmed to
++3.58 (the fender plane was the hidden hullLengthM carrier: fender + glacis
+share side columns and the band rule includes gaps), rear exhausts tucked;
+brake moved to published overall 10.65; periscope/vent humps raised to
+published heightM 2.95 (p95 at 2.975).
+NOTE: hull/whole dipped ~3 pts with the span trim (the print's longer bow
+now reads as ~2 REF-only columns) — the dims trade is sovereign and the
+cost is certified: short-vs-print span ~0.26 m = cover ~1.5-2% on side rows.
+front_hull (31.1, mean 5.1%) is live authoring work (casemate face/side
+widths), not a cap.

@@ -70,3 +70,18 @@ toward published 3.0 — measured 2.83, needs ~4 more columns of cluster or
 20.8; whole 20.8 is the muzzle-region (published 8.45 vs oracle 8.29) plus
 the hull-side rear stack (side rows -2.1: ref 2.3-2.8 hull-mask mass -
 same intake-tower pattern as tiger2, verify and replicate next pass).
+
+
+## Geometry gate v10 round-2 cert update (2026-07-31, oracle batch 7)
+Batch-7 DISPROVED the v9 "rest yaw" cert (m1a2 pattern): the tube is exactly
+parallel to the hull axis; the whole turret assembly was authored +0.043
+right of the hull mirror and has been rigidly re-seated on the axis (gun
+x ~= 0). The v9 build's replicated +0.10 gun x offset is DROPPED.
+Round-2 row: hull 43.8 whole 19.2 turret 58.5 stations 23.4 dims 97.2
+floaters 100 (ledger: 45/22.3/49.2/38.3/78.7/100). Dims closed via
+front/rear mud-flap hullLengthM anchors (published 6.32), a muzzle-brake
+tip collar (published overall 8.45) and the cupola stack at published
+heightM 3.0 (p95). Stations regressed with the flap anchors (the proc hull
+z-range now includes them) — next pass should rebalance the flap z toward
+±3.10 or slim their band. front_whole (19.2) is the turret-face/drum width
+vs the print — live work, not a cap.

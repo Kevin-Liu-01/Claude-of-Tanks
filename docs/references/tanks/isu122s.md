@@ -67,3 +67,24 @@ best legal build mis-registers ~0.9-1.6 m or eats ~25 cover columns
 (published overall 9.85 vs oracle 9.91 muzzle is fine; the hull frame isn't).
 Ceiling ~45-55 hull/whole. REPAIR: slim the fused tube (vertex edit) — the
 single highest-value oracle repair in the casemate family.
+
+
+## Geometry gate v10 round-2 (2026-07-31, post oracle batch 7)
+Oracle repair (tools/repair_oracles.py batch 7) radially slimmed the fused
+D-25S (tube 0.28 -> 0.20 m): the print's 12%-band span now ends at the BOW
+and hull-anchored registration is restored. The v9 "landed frame" and
+"beam-lug 12%-band frame anchor" COMPENSATIONS ARE DROPPED — the build is
+authored in the oracle-true frame (fresh docs/references/profiles/isu122s.json,
+body mid z=0; bow +3.28, tail -3.30, muzzle +6.54).
+Round-2 row: hull 79.2 whole 79.3 turret 100 (vacuous) stations 75.6
+dims 100 floaters 100 (v9: 0/0/100/0/81.5/100).
+Dims mechanics: published hullLengthM carried by a rod-stowage beam riding
+the slim tube line past the bow (band 0.35 incl gaps, <6 cm off the ref's
+own tube columns) + the rear mud-flap band; published heightM by a single
+panorama stalk + hump pedestal on the ref's OWN 2.36 roof hump (p95 rule,
+~4 columns of +0.11 top error); published overall by the muzzle collar.
+REMAINING HONEST COSTS (quantified, not oracle-repairable):
+- print squat: roof 2.36 vs published 2.48 -> stalk carries p95 (+0.11 x 4 cols);
+- print hull short: body 6.5 vs 6.77 -> beam/flap carriers (~2 low-err cols);
+- fused-print texture: sponson/skirt lip fine structure ~0.05-0.1 per col.
+Ceiling estimate with perfect authoring ~85 hull/whole; stations ~80-85.

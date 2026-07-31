@@ -68,3 +68,19 @@ glacis with brackets. Gun extended to published overall 4.87 (oracle span
 4.54 — short-gun whole-curves cover accepted). dims 51.6 -> 91.5.
 min 0 -> 11.5; whole 11.5 next lever: the raised cab/deck line (side rows
 +0.1-0.15 high) and the turret dome profile.
+
+
+## Geometry gate v10 round-2 (2026-07-31)
+Round-2 row: hull 27.5 whole 15.9 turret 35.5 stations 52.7 dims 97.5
+floaters 100 (ledger: 28.2/11.5/36.9/50.2/91.5/100).
+Dims mechanics found this round: the sprocket/idler LINK-PAD wrap overhang
+(pads ride 0.057 outside the band centerline) reached z ±2.3 and silently
+carried hullLengthM to 4.54-4.68 (+3-6%) — end wheels pulled inboard to
+z -1.72/+1.70 (published 4.4 now measures 4.38). Published overall 4.87 is
+carried by a band-THIN rear tow bar (0.05 band) + the 37 mm shortened to
+muzzle +2.43 with the gun line lowered (the print's tube barely passes its
+own bow).
+CERTIFIED PRINT CAP (short gun, quantified): the print's tube ends ~z +1.2;
+the published-overall build tube spans +1.2..+2.43 as PROC-only/high-error
+columns: ~5 cover columns + ~10 columns of ~0.35-0.5 m top error on
+side_whole = ceiling ~55-65 side_whole (front/turret rows unaffected).
