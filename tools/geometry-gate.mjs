@@ -65,15 +65,24 @@ try {
   await server.close();
 }
 
-rows.sort((a, b) => a.geoMin - b.geoMin);
-const passed = rows.filter((r) => r.gatePassed).length;
-const ledger = {
+// --ids runs MERGE into the fleet ledger (never shrink it to the subset)
+const ledgerPath = path.join(OUT, 'ledger.json');
+const byId = new Map();
+if (requested && fs.existsSync(ledgerPath)) {
+  try {
+    for (const r of JSON.parse(fs.readFileSync(ledgerPath, 'utf8')).rows || []) byId.set(r.id, r);
+  } catch { /* corrupted ledger rebuilds from this run */ }
+}
+for (const r of rows) byId.set(r.id, { id: r.id, geoMin: r.geoMin, gatePassed: r.gatePassed, components: r.components });
+const all = [...byId.values()].sort((a, b) => a.geoMin - b.geoMin);
+const passed = all.filter((r) => r.gatePassed).length;
+fs.writeFileSync(ledgerPath, `${JSON.stringify({
   generatedAt: new Date().toISOString(),
   gate: 'every component >= 90; min is the headline',
-  passed, total: rows.length,
-  rows: rows.map((r) => ({ id: r.id, geoMin: r.geoMin, gatePassed: r.gatePassed, components: r.components })),
-};
-fs.writeFileSync(path.join(OUT, 'ledger.json'), `${JSON.stringify(ledger, null, 1)}\n`);
-console.log(`\ngeometry-gate: ${passed}/${rows.length} pass (all components >= 90); ` +
-  `worst ${rows[0]?.id} (${rows[0]?.geoMin})`);
-if (CHECK && passed < rows.length) process.exitCode = 1;
+  passed, total: all.length, rows: all,
+}, null, 1)}\n`);
+const runSorted = rows.slice().sort((a, b) => a.geoMin - b.geoMin);
+const runPassed = rows.filter((r) => r.gatePassed).length;
+console.log(`\ngeometry-gate: ${runPassed}/${rows.length} pass this run (fleet ${passed}/${all.length}); ` +
+  `worst ${runSorted[0]?.id} (${runSorted[0]?.geoMin})`);
+if (CHECK && runPassed < rows.length) process.exitCode = 1;
