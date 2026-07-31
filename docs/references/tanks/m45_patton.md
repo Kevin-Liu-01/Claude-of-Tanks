@@ -56,3 +56,22 @@ shortened + fattened per the shaded critique), axis y 1.58, muzzle +2.45
 **Oracle re-processed (repair_oracles.py): turret seated** — fused Turret node
 lifted +3.6 model units onto the deck, recentred +5.4 x, origin on the ring
 axis. Sunken-turret defect above is historical.
+
+## Round-3 mismatch log (shaded-parity-r2 turret rebuild, 2026-07-30)
+Repaired-oracle re-measurement (turret-only masks): ring (0, 1.54, −1.155);
+dome +0.30…−2.05, plateau ≈2.25–2.33 over −1.4…−2.1; bustle to −2.82 (top
+2.02–2.20 with a stowage bump at −2.5…−2.7); rack band 1.44…1.93 to −3.14;
+M2 .50cal FRONT-RIGHT at x ≈−0.42 (spike top 2.68, barrel forward to +0.36).
+The seated howitzer's muzzle ends at ≈+1.45 — the wave-2 +2.45 tube painted a
+metre of false barrel into the whole/upper masks; procedural muzzle now +1.48
+(both gun-overhang masks stay empty, gun = 100 preserved).
+Artifact audit (r2 §9): the "hovering muffler over an open deck void" was the
+turret stow tarp floating at deck height across the dark grille plates — the
+stowage now rides a railed rack hung off the bustle, and the rear-deck grille
+is framed louver bays (rails + spine + 7 deep slats per bay). The tilted
+exhaust-deflector shelf was DELETED (not present on the repaired oracle; the
+rear overhang junk is carried by the hull tail fixture to −3.34, which stays).
+Rack rails run to −3.36 so their tips match the oracle's sparse tail pixels in
+the top view without entering the side gun-overhang bound (−3.38).
+No fender boxes: the oracle's flanks are bare and the howitzer band sits just
+above the deck line. Turret component 51 → 66.

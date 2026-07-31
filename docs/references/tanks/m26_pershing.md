@@ -58,3 +58,18 @@ oracle wins for scoring).
 lifted +4.0 model units onto the deck and recentred (+5.4 x) on the hull
 centreline; node origin parked on the ring axis for autoPivot. Sunken-turret
 defect above is historical.
+
+## Round-3 mismatch log (shaded-parity-r2 turret rebuild, 2026-07-30)
+Re-measured the REPAIRED oracle via turret-only subtree masks (world coords):
+ring axis (0, 1.54, −1.55); dome plan front −0.23 (center), widest ±1.26 at
+z −1.2…−1.8, dome mass to −2.1; bustle (halfW ~0.8) to −2.9; stowage rack to
+−3.48 in the 1.45…1.98 band; roof plateau 2.26–2.38; cupola on the vehicle
+RIGHT (world x −0.3…−0.6, top 2.38); M2 .50cal at x 0…+0.5 topping 2.75 with
+the barrel running FORWARD from a bustle pintle (band 2.67 to z −1.3); gun
+axis y ≈1.60, muzzle band stays 0.35 dia (double-baffle body) from +2.7 all
+the way to ≈+3.52 — the wave-2 "muzzle +3.46 with waisted drums" undershot
+both. Procedural rebuilt to these numbers (turret component 60 → 76).
+Wave-2 fitting corrections: fender stowage/tools moved from sponson height
+(inside the full-width hull, invisible) to the glacis deck edge; the tow-cable
+run was deleted — the oracle's flank along the gun-tube band is bare, and any
+deck-edge kit there subtracts the tube band out of the upper-assembly mask.

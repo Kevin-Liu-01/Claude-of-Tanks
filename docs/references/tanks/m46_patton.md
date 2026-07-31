@@ -52,3 +52,19 @@ single-baffle brake, muzzle +3.45.
 **Oracle re-processed (repair_oracles.py): turret seated** — fused Turret node
 lifted +4.2 model units onto the muffler-line deck, recentred +7.1 x, origin
 on the ring axis. Sunken-turret defect above is historical.
+
+## Round-3 mismatch log (shaded-parity-r2 turret rebuild, 2026-07-30)
+Repaired-oracle re-measurement: same T26 casting as m26 — ring (0, 1.66,
+−1.53); dome −0.23…−2.4, roof 2.31–2.39; bustle top 2.16–2.29 to −3.0; rack
+band 1.63…2.02 to −3.48; MG cluster at x −0.3…−0.6 topping 2.75, barrel
+forward to ≈0.0; gun axis y ≈1.62 (the wave-2 1.70 "mantlet-center" mount was
+measured against the SUNKEN oracle — the seated one carries the tube at 1.62,
+procedural now 1.64). The M3A1's overhang silhouette is a CONTINUOUS 0.33-dia
+band from +2.1 to ≈+3.53 (long evacuator sleeve + single baffle) — modelled
+as such; muzzle moved +3.45 → +3.53 (gun component 84 → 94).
+Artifact audit: fender mufflers rebuilt as proud cylinders (r 0.15, top 1.78
+per oracle deck band) with end caps, intake elbows off the deck lip, angled
+dark tailpipes, cinch straps and fender saddle legs — the wave-2 full-length
+dark heat-shield lid that read as "flat grey slabs" is deleted. Deck grille
+bays framed as on m45. Fender box kept only on the glacis edge (z ≈ +2.4)
+where the oracle carries kit and the tube band clears. Turret 53 → 73.

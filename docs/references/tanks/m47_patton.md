@@ -52,3 +52,23 @@ muzzle +3.37.
 **Oracle re-processed (repair_oracles.py): turret seated** — fused Turret node
 lifted +4.0 model units (bustle rack lands in the 1.78-1.95 band), recentred
 +6.3 x, origin on the ring axis. Sunken-turret defect above is historical.
+
+## Round-3 mismatch log (shaded-parity-r2 turret rebuild, 2026-07-30)
+Repaired-oracle re-measurement: ring (0, 1.64, −1.00); needle nose to +0.38
+(pinched band 1.39…1.92 at +0.2…+0.5); dome widest ±1.13 over −0.6…−1.6 with
+the roof plateau 2.50 over −0.5…−1.9; rear step ≈2.35, then the LONG bustle
+band top ≈2.15–2.25 / floor ≈1.50 running to −3.41 (stowage bump 2.35 at
+−2.5); blister shoulders ≈2.2 at ±0.9–1.0; cupola top 2.55 (right); M2 band
+2.87…2.94 with the barrel forward to +0.1; gun axis y ≈1.60 (gun node 1.657
+is the mount, not the bore); M36 device = evacuator band ±0.15 over
++2.6…+3.1 + a SHORT WIDE deflector ±0.34 at +3.2…+3.4, muzzle ≈+3.45.
+Two scorer findings recorded for future waves: (1) the oracle's hull PLAN
+ends ≈−3.2 under the bustle overhang while its side profile runs to −3.37 —
+the procedural rear deck now stops at −3.20 with twin deck tongues to −3.36
+so the top-view upper strip matches the oracle's sparse rack read; (2) the
+top-view compare registers masks by CENTROID, so the rear strip must carry
+the oracle's ~24% mass share or the aligned masks shear and the top view
+collapses — this, not shape, was most of the "worst turret mask" residue.
+Turret component 50 → 64 (front 77 / sides 69–70 / rear 72 / top ≈32; the
+top view is capped by the oracle's open-interior and below-deck junk pixels
+the full-width procedural hull cannot reproduce). Total 80.2 → 85.1.
