@@ -642,7 +642,7 @@ function m60Loft(P, bucket, secs, profile, oy, oz, creases = [0]) {
 //   hullLengthM keeps its -3.445 anchor); pintle to -3.52 at |x|<0.17.
 // ---------------------------------------------------------------------------
 function buildM60(P, cfg) {
-  const { box, slab, cylY, cylZ, cylX, sph, xform, liftEye, buildGun, tarpRoll, ammoCan, towCable } = KIT;
+  const { box, slab, cylY, cylZ, cylX, sph, xform, liftEye, buildGun, tarpRoll, torus, towCable } = KIT;
   // SHADED-PARITY r3 item 3 (m60-scoped material lift): 'glass' (near-black
   // metallic) never read as optics on the proof board — the reference pods
   // carry twin PALE lenses. createTankMaterials builds PER-INSTANCE
@@ -652,10 +652,54 @@ function buildM60(P, cfg) {
   // already restored the shade-side gunmetal read, and the extra albedo +
   // metalness pushed sun-facing fittings (searchlight lid, M85 box) to a
   // bare-aluminum tan.
-  P.mats.glass.color.setHex(0x9fb2ba);
-  P.mats.glass.roughness = 0.30;
-  P.mats.glass.metalness = 0.35;
+  // r4 tell 2 (glass calm-down, material-only): the r3 pale lens (0x9fb2ba /
+  // rough 0.30) BLEW OUT to white on sun-normal tilted panes — the two glacis
+  // hood panes were the brightest pixels on the tank (the ref glacis carries
+  // NO pale optics), cupola blocks the same family. Smoked glass instead:
+  // dark blue-grey albedo with a soft specular hint (rough 0.42 keeps a
+  // glassy sheen at closeup, near-invisible at distance like the ref).
+  // Measured (tools/tmp-m60-closeround.mjs, board rig): proc front-view
+  // brightest pixel is no longer a glass pane and pane median sits below the
+  // lit camo plates.
+  P.mats.glass.color.setHex(0x46525b);
+  P.mats.glass.roughness = 0.52;
+  P.mats.glass.metalness = 0.50;
   const hull = curveHull(P, cfg.hull);
+  // r4 tell 5 (undercarriage tone wash, MATERIAL-ONLY, m60-scoped): the proc
+  // track rendered near-black gunmetal against the reference's camo-washed
+  // grey-olive band — the largest-area delta in every side/3-4 view, with the
+  // guide-horn comb reading as a crisp black sawtooth above the wheels.
+  // Direction note: r3 called the band "slightly warm/tan", r4 measured it
+  // too DARK (the fleet shade fix re-based both models) — land in the middle:
+  // dusty grey-olive, measured against the ref band in the board pairs
+  // (ref dark-hardware luma ~53-61 under the board rig vs proc ~25-32).
+  // Mechanics: the shoe-pad / inner-chain materials are per-build CLONES
+  // whose colors buildRunningGear pins (0x171614 / 0x27251f) — retone them by
+  // hex match on this build's own subtree; the band meshes and the
+  // sprocket/idler dark rings share this instance's live mats (trackL/R
+  // color is a linear multiplier over the band map, so link shading/grouser
+  // variation survives the lift). Wheels/tires stay untouched — the r4 crop
+  // measures proc wheels already at/above the ref wheel tone.
+  P.mats.trackL.color.setRGB(1.82, 1.78, 1.52);
+  P.mats.trackR.color.setRGB(1.82, 1.78, 1.52);
+  P.mats.spareTrack.color.setHex(0x4d4838);
+  {
+    // pads (0x171614) and the inner chain/guide-horn layer (0x27251f) — the
+    // env bump gives the down-facing horn teeth sky fill in the wheel-bay
+    // shade (the r4 "crisp black horn-comb" is mostly self-shadowed geometry
+    // once the albedo is in the ref's grey-olive family).
+    const retone = new Map([[0x171614, [0x423e33, 0.22]], [0x27251f, [0x4e4a3c, 0.30]]]);
+    P.hullG.traverse((o) => {
+      const m = o.material;
+      if (m && m.color && m.color.getHex && retone.has(m.color.getHex())) {
+        const [hex, env] = retone.get(m.color.getHex());
+        m.color.setHex(hex);
+        m.envMapIntensity = env;
+      }
+    });
+  }
+  P.mats.trackL.envMapIntensity = 0.2;
+  P.mats.trackR.envMapIntensity = 0.2;
   // centre engine crown over the fender-level band deck, CAMBERED: full
   // height only |x|<=0.78, wing wedges taper to the band by |x| 1.02 (the
   // reference front-hull columns read 1.82 at x 0.88, 1.79 by 1.08).
@@ -774,11 +818,38 @@ function buildM60(P, cfg) {
   P.add('hullDark', cylZ(0.26, 0.02, P.q ? 18 : 12), 0, 1.05, -3.28);
   P.add('hullDetail', box(0.34, 0.18, 0.06), 0, 1.16, -3.31);
   P.add('hullDetail', cylZ(0.05, 0.24, 8), 0, 1.16, -3.40);
-  // rear-plate grille slats over the recessed dark panel (r3: "rear plate is
-  // an empty camo wall vs the reference's grille texture") — bar faces at
-  // -3.2805, flush with the measured -3.28 plate plane
-  for (let k = 0; k < 4; k++) {
-    P.add('hullDetail', box(1.18, 0.022, 0.006), 0, 1.065 + k * 0.05, -3.2775);
+  // rear-plate louver wall (r4 tell 3): the r3 patch (4 slats x 1.18 m) left
+  // the ref's rear reading "ribbed machinery" vs proc "camo wall with a
+  // vent". Full-width treatment now: two mirrored HERRINGBONE banks of
+  // diagonal slats (the ref carries two diagonal banks over the upper 2/3 of
+  // the plate) across x +-0.13..0.945, y 1.09..1.43, each strip clipped to
+  // the bank field. Inset language proven in r3 holds: slat faces at
+  // -3.2805 (0.5 mm proud of the measured -3.28 plate plane, zero
+  // silhouette); the dark panels behind sit recessed at -3.274 (the widened
+  // usKit panel carries the lower band, a second panel carries the upper).
+  P.add('hullDark', box(1.90, 0.185, 0.03), 0, 1.3555, -3.259);
+  {
+    const aSlat = 0.30, sinA = Math.sin(aSlat), cosA = Math.cos(aSlat);
+    const y0 = 1.09, y1 = 1.43, yc = (y0 + y1) / 2;
+    for (const side of [-1, 1]) {
+      const bx0 = 0.13, bx1 = 0.945, bxc = side * (bx0 + bx1) / 2;
+      // slat long axis: rising toward the centre spine on both banks
+      const th = side > 0 ? -aSlat : aSlat;
+      const dx = Math.cos(th), dy = Math.sin(th);
+      const nx = -Math.sin(th), ny = Math.cos(th);
+      const maxO = ((bx1 - bx0) / 2) * sinA + ((y1 - y0) / 2) * cosA;
+      for (let o = -maxO + 0.016; o <= maxO - 0.010; o += 0.048) {
+        const px = bxc + o * nx, py = yc + o * ny;
+        // clip the strip centre line to the bank rectangle
+        const tx = [(side * bx0 - px) / dx, (side * bx1 - px) / dx].sort((a, b) => a - b);
+        const ty = [(y0 - py) / dy, (y1 - py) / dy].sort((a, b) => a - b);
+        const t0 = Math.max(tx[0], ty[0]), t1 = Math.min(tx[1], ty[1]);
+        if (t1 - t0 < 0.09) continue;
+        const tm = (t0 + t1) / 2;
+        P.add('hullDetail', box(t1 - t0 - 0.014, 0.020, 0.006),
+          px + tm * dx, py + tm * dy, -3.2775, 0, 0, th);
+      }
+    }
   }
 
   const py = 1.76, pz = 0.30;
@@ -834,38 +905,114 @@ function buildM60(P, cfg) {
   }
   liftEye(P, 'turretDetail', -0.70, yl(3.00), zl(0.45));
   liftEye(P, 'turretDetail', 0.70, yl(2.66), zl(0.62));
-  // bustle roof stowage rides SUNK to the measured flat 2.664 roofline
-  tarpRoll(P, 'turretDark', -0.40, yl(2.578), zl(-1.30), 0.95, 0.085, true, P.q ? 12 : 8);
-  ammoCan(P, 'turretDark', 0.52, yl(2.60), zl(-1.28), 0.32);
-  // wrap-around bustle stowage rack (r3 critique: "the reference's
-  // wrap-around bustle RACK ... is absent; its silhouette is part of the
-  // M60A1's rear identity"). GATE LESSON (this round): the reference's thin
-  // rack rails do NOT survive the geometry-gate side/front traces — they
-  // only read in the 9-view IoU masks at yaw obliques — so a proud rack is
-  // pure curve error (a 2.715 wall-x rail cost front_whole 3.6: the right
-  // roof falls to ~2.3 at x 1.2, only the bustle roof carries 2.664 out to
-  // x 1.05). This frame is SILHOUETTE-FLUSH by construction: rail tops at
-  // 2.6635 (0.5 mm under the flat 2.664 roofline that the front/side
-  // silhouette already carries at |x| <= 1.04), everything inside the plan
-  // taper, rear extent -1.916 (>0.10 m clear of the -2.045 boundary). The
-  // rack reads in shaded oblique views as frame-over-roof contrast + the
-  // rear drop posts on the taper walls.
+  // REAL bustle rack + stowage volume (r4 tell 1, gate-in-loop). The r3
+  // roofline-flush frame gated at zero but read only from high angles; the
+  // critic's rear-identity list = rails + stowage boxes + jerry can + M19
+  // roof ring as a SHADED VOLUME. Rebuilt against the reference GLB's own
+  // measured rack envelope (tools/tmp-m60-rack-probe.mjs vertex slices):
+  //   - ref rail tops read 2.670-2.687 (only +8..23 mm over the 2.664
+  //     roofline — the ref's rack itself is near-flush; its identity is rim
+  //     + posts + stowage CONTRAST, not silhouette height);
+  //   - the rear wrap runs (+-0.97,-1.80) -> (+-0.45,-1.96), INSIDE our
+  //     loft taper plan (casting z-extent -1.86 @ x .97, -1.988 @ x .45);
+  //   - the roof tarp ring lies FLAT at (-0.62,-1.24), r ~0.25-0.30;
+  //   - a loader-area mast at (0.16..0.20, -0.90..-1.0) tops 2.772-2.778 in
+  //     the ref side trace — a ref-only sliver our build was EATING ~0.11
+  //     err on: adding it is a measured gate GAIN, not a cost.
+  // Trace laws respected: rails at 2.670 (+6 mm, sub-centimeter even if
+  // they rasterize; the ref's own thin rails do not — r3 law); everything
+  // else tops <= 2.665; side-wall slabs stay inside the plan taper and
+  // under the z -0.95 chamfer cover in the front trace (right columns
+  // x <= 1.158 are covered to 2.587; nothing new above 2.3 outboard).
   {
-    const railY = yl(2.650); // rail TOP 2.664 == the global roofline: never
-    // proud in the side/front traces, but standing up to 13 mm over the
-    // LOCAL roof as it falls across the rear taper — the rack reads exactly
-    // where the critic wants the rear identity, at zero trace cost.
-    const seg = (x0, z0, x1, z1) => {
-      const len = Math.hypot(x1 - x0, z1 - z0) + 0.028;
-      P.add('turretDetail', box(0.028, 0.028, len),
-        (x0 + x1) / 2, railY, zl((z0 + z1) / 2), 0, Math.atan2(x0 - x1, z0 - z1), 0);
+    const railT = yl(2.656);              // top rail: top face 2.670
+    const rseg = (b, y, x0, z0, x1, z1, s = 0.034) => {
+      const len = Math.hypot(x1 - x0, z1 - z0) + s;
+      P.add(b, box(s, s, len),
+        (x0 + x1) / 2, y, zl((z0 + z1) / 2), 0, Math.atan2(x0 - x1, z0 - z1), 0);
+    };
+    // top rail along the roof shoulder (LEFT wider than RIGHT: hw vs hwR)
+    const RAIL = {
+      [-1]: [[-1.025, -1.02], [-1.005, -1.42], [-0.952, -1.78], [-0.45, -1.950]],
+      [1]: [[1.015, -1.02], [0.975, -1.42], [0.900, -1.78], [0.45, -1.950]],
+    };
+    // BASKET rail: stands OFF the wall over the side band (the r4 "rail
+    // frame standing off the bustle" read). PLAN-TRACE LAW exploited: the
+    // top-down plan mask is covered by the LOW wall bulge (fx 1.0 band at
+    // y 1.84-2.09 reaches hw), so a rail INBOARD of hw at any height adds
+    // zero plan pixels. The LEFT rail therefore rides HIGH (y 2.647, top
+    // 2.658 — still under the 2.664 roofline) at x 1.185, an ~11 cm air
+    // gap above the chamfer skin (the reference's own rail-over-chamfer
+    // gap read); hanging posts drop into the wall band. FRONT-trace cover:
+    // the left cliff covers x 1.196 to y 2.695. The RIGHT side is capped
+    // by its z -0.95 chamfer cover line (2.601 at x 1.138) — its rail
+    // stays at y 2.589 (top 2.600), a shallower but still-off-the-wall
+    // read (the reference is itself asymmetric here: hwR < hw).
+    const BASKET = {
+      [-1]: { y: yl(2.647), pts: [[-1.040, -1.04], [-1.185, -1.14], [-1.185, -1.50], [-1.070, -1.70], [-0.952, -1.80]] },
+      [1]: { y: yl(2.589), pts: [[1.028, -1.04], [1.138, -1.16], [1.138, -1.38], [1.010, -1.62], [0.900, -1.78]] },
     };
     for (const side of [-1, 1]) {
-      seg(side * 0.84, -1.08, side * 0.84, -1.62);       // roof-edge rails
-      seg(side * 0.84, -1.62, side * 0.55, -1.902);      // taper diagonals
+      const pts = RAIL[side];
+      for (let i = 0; i < pts.length - 1; i++) {
+        rseg('turretDark', railT, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
+      }
+      const bk = BASKET[side];
+      for (let i = 0; i < bk.pts.length - 1; i++) {
+        rseg('turretDark', bk.y, bk.pts[i][0], bk.pts[i][1], bk.pts[i + 1][0], bk.pts[i + 1][1], 0.030);
+      }
+      // hanging posts: from the basket rail down across the air gap into
+      // the wall band — the post-over-gap rhythm is the side/rear-3/4 read
+      const py = side < 0 ? 2.50 : 2.46;
+      for (const pz of [-1.16, -1.31, -1.46]) {
+        P.add('turretDark', box(0.028, 0.30, 0.028), bk.pts[1][0], yl(py), zl(pz));
+      }
+      // taper-leg posts + rear wrap drops
+      for (const [px, pz] of [[(bk.pts[2][0] + bk.pts[3][0]) / 2, -1.60], [pts[2][0], -1.79],
+        [side * 0.68, -1.862], [side * 0.46, -1.938], [side * 0.22, -1.949]]) {
+        P.add('turretDark', box(0.028, 0.13, 0.028), px, yl(2.598), zl(pz));
+      }
+      // tie stubs bridge basket rail -> shoulder (the stand-off read)
+      for (const [tz, bi] of [[-1.16, 1], [-1.34, 2], [-1.62, 3]]) {
+        const bx = bk.pts[bi][0];
+        const sx = side * (Math.abs(bx) - 0.15);
+        P.add('turretDark', box(Math.abs(bx - sx) + 0.02, 0.018, 0.018),
+          (bx + sx) / 2, yl(side < 0 ? 2.652 : 2.62), zl(tz), 0, 0, side * (side < 0 ? -0.10 : -0.38));
+      }
     }
-    seg(-0.55, -1.902, 0.55, -1.902);                    // rear cross rail
-    seg(-0.84, -1.08, 0.84, -1.08);                      // front tie rail
+    rseg('turretDark', railT, -0.45, -1.950, 0.45, -1.950); // rear cross
+    rseg('turretDark', yl(2.586), -0.44, -1.944, 0.44, -1.944, 0.028);
+    rseg('turretDark', railT, -1.02, -1.04, 1.01, -1.04);   // front tie
+    // stowage INSIDE the rear wrap (tops <= 2.665, on the taper roof):
+    // tarp roll + two duffel slabs + a jerry can lying on its side
+    tarpRoll(P, 'turretCloth', -0.25, yl(2.596), zl(-1.845), 0.80, 0.060, true, P.q ? 12 : 8);
+    P.add('turretCloth', box(0.32, 0.12, 0.22), 0.38, yl(2.60), zl(-1.80), 0, 0.10, 0);
+    P.add('turretCloth', box(0.26, 0.10, 0.20), -0.55, yl(2.605), zl(-1.78), 0, -0.08, 0);
+    for (const dz of [-1.73, -1.87]) { // hold-down straps over the cluster
+      P.add('turretDark', box(0.30, 0.012, 0.03), 0.38, yl(2.662), zl(dz + 0.06));
+    }
+    P.add('turretDetail', box(0.34, 0.155, 0.24), 0.62, yl(2.585), zl(-1.60), 0, 0.06, 0); // jerry can (lying)
+    P.add('turretDark', box(0.05, 0.05, 0.16), 0.62, yl(2.585), zl(-1.60), 0, 0.06, 0);    // handle bar
+    P.add('turretDark', cylZ(0.028, 0.05, 8), 0.75, yl(2.60), zl(-1.66));                  // spout cap
+    // side-basket duffel slabs INSIDE the basket rail (biased LEFT like the
+    // reference's own stowage bulge; the rail line + straps carry the
+    // "strapped into the basket" read)
+    P.add('turretCloth', box(0.038, 0.17, 0.40), -1.160, yl(2.520), zl(-1.31));
+    P.add('turretCloth', box(0.034, 0.15, 0.29), 1.110, yl(2.477), zl(-1.24));
+    for (const [sx, sz, sy] of [[-1.164, -1.22, 2.52], [-1.164, -1.42, 2.52], [1.113, -1.16, 2.48], [1.113, -1.32, 2.48]]) {
+      P.add('turretDark', box(0.040, 0.15, 0.014), sx, yl(sy), zl(sz)); // straps
+    }
+    // M19 roof tarp ring, flat on the bustle roof at the reference's own
+    // station (crop (565-760, 330-420)): dark strap ring, top 2.680.
+    // KIT torus is already FLAT (normal +y) — no rotation (an rx pi/2 here
+    // STOOD the ring up and cost turret side 0.15 err at z -1.19, caught by
+    // the gate loop).
+    P.add('turretDark', torus(0.275, 0.008, P.q ? 26 : 18), -0.62, yl(2.672), zl(-1.24));
+    P.add('turretDark', box(0.05, 0.012, 0.09), -0.62, yl(2.678), zl(-0.975)); // ring latch
+    // loader-area periscope/vane mast (ref-only side-trace sliver at
+    // z -0.90..-1.00, tops 2.772-2.778 — closing a measured red sliver)
+    P.add('turretDark', box(0.05, 0.115, 0.10), 0.18, yl(2.7205), zl(-0.95));
+    P.add('turretDark', box(0.085, 0.026, 0.05), 0.18, yl(2.765), zl(-0.93));
   }
   // antenna pot: LEFT-REAR bustle roof (the measured one-column 2.835 spike
   // at z -1.41; front-hidden under the ridge at x -0.38)
@@ -1054,9 +1201,11 @@ const M60_FIT = {
   // the crown was tried and cost ~0.6 whole / 0.7 stations (full-width end
   // rails) — the visible louvres are the flush m60-scoped bays in buildM60.
   grille: { z0: -1.90, z1: -2.62, y: 1.840, rx: 0.026, x: 0.40, w: 0.62 }, caps: [1.18, -1.35],
-  // rear-plate grille: panel recessed 6 mm so the slat bars (added in
-  // buildM60) read against it; bar faces stay flush with the -3.28 plate.
-  rearGrilleY: 1.15, rearGrilleW: 1.24, rearGrilleZ: -3.259, noRearEyes: true,
+  // rear-plate grille: panel recessed 6 mm so the louver slats (added in
+  // buildM60) read against it; slat faces stay flush with the -3.28 plate.
+  // r4 tell 3: panel widened 1.24 -> 1.90 (lower band of the full-width
+  // louver wall; the upper band panel is m60-local in buildM60).
+  rearGrilleY: 1.155, rearGrilleW: 1.90, rearGrilleZ: -3.259, noRearEyes: true,
 };
 
 // M60 casting cross profiles (signed fractions of hw / bot->top): the LEFT
