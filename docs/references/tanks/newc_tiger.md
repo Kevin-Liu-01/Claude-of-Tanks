@@ -60,3 +60,13 @@ Width-normalized probe (scale 0.963):
 
 Remaining gap: front view ~88 from the drum turret's low-poly faceting vs my
 smooth polygon; gun 85 on the thin brake-bulge mask.
+
+
+## Geometry gate v9 (2026-07-31, from-scratch agent)
+
+dims 0 -> 78.7 (hull lengthened to the published 6.32 span, cupola raised
+toward published 3.0 — measured 2.83, needs ~4 more columns of cluster or
++0.05); gun x +0.10 per the print's rest yaw (repair candidate). min 0 ->
+20.8; whole 20.8 is the muzzle-region (published 8.45 vs oracle 8.29) plus
+the hull-side rear stack (side rows -2.1: ref 2.3-2.8 hull-mask mass -
+same intake-tower pattern as tiger2, verify and replicate next pass).

@@ -50,3 +50,20 @@ component masks N/A.
 
 Remaining gap: left/right 85-86 — print's fender line runs slightly
 higher; acceptable within the shared-hull compromise with isu152.
+
+
+## Geometry gate v9 (2026-07-31, from-scratch agent)
+
+Same rebuild pattern as isu152 (landed frame, beam-lug 12%-band anchor,
+brake drums band-thin). v9: dims 81.5 (was 78-93 unstable), floaters 100;
+hull/whole 0 (hardest cap in the family).
+
+CERTIFIED ORACLE-DEFECT CAP: the fused D-25S is modelled ~2x true diameter
+(side band 0.27-0.33 m), so the oracle's 12%-band span runs muzzle-to-tail:
+it self-measures hullLength 9.78 vs published 6.77 and its registration mid
+sits ~1.65 m ahead of the physical hull. With R pinned at the build's tail,
+span 6.77 and mid alignment are mutually exclusive — proven unsatisfiable:
+best legal build mis-registers ~0.9-1.6 m or eats ~25 cover columns
+(published overall 9.85 vs oracle 9.91 muzzle is fine; the hull frame isn't).
+Ceiling ~45-55 hull/whole. REPAIR: slim the fused tube (vertex edit) — the
+single highest-value oracle repair in the casemate family.

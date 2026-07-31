@@ -58,3 +58,13 @@ Remaining gap: front/rear views ~87 — the oracle's swooping diagonal fender
 band across the track frame is a single sculpted surface; the straight framed
 read keeps the real prototype's language instead (stylized-oracle judgment
 call, noted).
+
+
+## Geometry gate v9 (2026-07-31, from-scratch agent)
+
+FLOATERS FIXED (0 -> 100): the cupola lid disc floated 6.6 cm above its
+drum (satellite island in every pose); headlights also re-seated on the
+glacis with brackets. Gun extended to published overall 4.87 (oracle span
+4.54 — short-gun whole-curves cover accepted). dims 51.6 -> 91.5.
+min 0 -> 11.5; whole 11.5 next lever: the raised cab/deck line (side rows
++0.1-0.15 high) and the turret dome profile.

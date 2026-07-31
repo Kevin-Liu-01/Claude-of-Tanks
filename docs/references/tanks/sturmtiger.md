@@ -52,3 +52,15 @@ muzzle sits nearly flush with the bow. Fused mesh: component masks N/A.
 Remaining gap: front 87.9 — the oracle's crane/jib pose and bow flap shapes
 differ in detail; the tomrs print carries zimmerit (paint-level, visual
 flag not owned here).
+
+
+## Geometry gate v9 (2026-07-31, from-scratch agent)
+
+Rebuilt: 47deg face crest 2.33, saddle, roof plate 2.59 + hatch hump 2.76,
+crane re-read as the print's NARROW folded arm at x -0.85..-1.15 (beam
+2.90..3.20 carrying published heightM p95, post spike to 4.14 = the oracle's
+rough-height anchor), raised rear idler, deep side skirts. v9: min 47.5
+(hull=whole 47.5, stations 73.6, dims 85.5, floaters 100) — family best.
+Remaining: face-region widths (front rows +-1.3-1.6 still ~0.2 off), dims
+heightM measured 3.14 vs authored 3.19-3.20 plateau (p95 discount - widen
+the arm run by ~2 columns).

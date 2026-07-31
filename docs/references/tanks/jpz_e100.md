@@ -56,3 +56,14 @@ Remaining gap: rear 78.4 — the oracle's rear face is bulkier low (its
 casemate rear blends into a fuller tail); front/rear masks trade against
 the side views on this print. Paper vehicle: oracle is the identity
 target per the packet.
+
+
+## Geometry gate v9 (2026-07-31, from-scratch agent)
+
+Two-layer rebuild: piecewise sloped roof (2.76@+0.76 -> 3.30@-3.0), skirts
+0.95..1.50 at exactly +-2.15, prow beam + cheeks carrying published
+hullLengthM, oracle-fat 17cm tube (r 0.15-0.185). v9: min 31.9 with dims
+99.6, stations 68.4, floaters 100; hull=whole 31.9 is front-view-limited
+(crown width + skirt band lip) — the cleanest oracle in the family, no cap
+needed beyond the +-0.26 m hull-span stretch (oracle body 8.18 vs published
+8.7) which costs ~4 end columns and every plan column ~0.25 m.

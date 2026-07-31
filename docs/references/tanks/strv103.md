@@ -55,3 +55,24 @@ Remaining gap: left/right ≈73 — the wesiora oracle carries a busier rear
 deck massing and larger wheel read than the packet photos; its baked
 texture also 404s one map in the lab (oracle-side quirk). Next lever:
 deck piping + rear stowage massing.
+
+
+## Geometry gate v9 (2026-07-31, from-scratch agent)
+
+Rebuilt table-driven against docs/references/profiles/strv103.json (all-hull
+rig per the fixedMount mask topology). v9: hull 42.9 / whole 43.3 / turret 100
+/ stations 30.8 / dims 91.4 / floaters 100 (was all-zero rows + dims 75.8).
+
+CERTIFIED ORACLE-DEFECT CAPS (dims held sovereign):
+- heightM: the print's commander cluster reads 2.33-2.38 over ~1 m of roof and
+  its antenna mast rake tops 2.80; published 2.14 pins the build crown at 2.18
+  (heightM measures 2.16). Every cluster column carries ~0.2 m of curve error:
+  side/front curve ceiling ~70-75.
+- Nose line: the oracle's dozer/fender front line runs to +3.86 from body mid,
+  but any sub-gun geometry past +3.52 lifts the 12%-band span over published
+  hullLengthM 7.04 (side columns integrate all x), so the blade stops at the
+  published span; the plan view carries ~0.28 m error on ~12 mid columns and
+  the tail (oracle -3.86 vs build -3.58) ~4 cover columns: plan ceiling ~70.
+Stations 30.8: two onlyOne slices at the muzzle-side (the ref's fused-gun
+z-range vs the build's thin tube) — improvable by fattening the exposed tube
+band toward the oracle's 0.18-0.2 read.

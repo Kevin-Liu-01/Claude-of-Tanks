@@ -71,3 +71,17 @@ the reference's turret and credit them to its hull, so a correctly-rigged
 procedural (cupola/collar on the yawing turret/gun, per the m1a1_aim lesson)
 is structurally capped near T≈55/H≈84 while the whole-view silhouettes sit at
 87-96. Identity wins over the metric; whole-mask overall is 89.7.
+
+
+## Geometry gate v9 (2026-07-31, from-scratch agent)
+
+v9 iteration on the batch-3-repaired oracle: added the print's hull-side
+deep-wading intake tower over the rear deck (hull mask carries a 2.5-2.8 m
+mass at z -2.1..-3.4 world), steeper lower nose, hull side plates, KwK43 to
+published overall (repaired oracle still short: 9.93 vs 10.29), fenders
+1.83. min 0 -> 26.3 (hull 26.3, whole 30.8, stations 68.8, dims 63.3).
+ORACLE-REPAIR CANDIDATES: (a) the intake-tower mass belongs turret-side or
+not at all — verify against the print; (b) the front suspension sits high
+(ground contact only from z ~ +0.9 world — nose-up rake, rigid-transform
+repairable); (c) dims 63.3 is heightM 3.04 + hullLength 7.25 vs 7.38 —
+lengthen the tub to 7.38 measured next pass.

@@ -61,3 +61,15 @@ Remaining gap: left/right 86.4-ish — the oracle's tube is ~0.7 m shorter
 proportionally than the real 10.65 m gun; matching it caps identity (kept
 at the oracle length). Zimmerit is paint-level (visual flag not owned by
 this module).
+
+
+## Geometry gate v9 (2026-07-31, from-scratch agent)
+
+Two-layer rebuild (tub + 21deg leaned casemate, deck 1.81 per the oracle,
+slim pot, fat muzzle-brake drums; fenders to the oracle's +3.7 nose line).
+v9: min 34.3 (hull=whole 34.3, stations 54.2, dims 85.4, floaters 100).
+Known-good levers left: casemate crown width (front rows still +0.2-0.3 at
+|x| 0.9-1.4), tail-plate band tuning for the last hullLengthM points
+(measured 8.00 vs 7.8), humps at 2.93 measured 2.85-2.92 (p95 discount).
+SHORT-BARRELLED ORACLE: muzzle +6.06 vs published overall 10.65 (build
+carries +6.37) — wholeCurves keeps ~3 cover columns by contract.

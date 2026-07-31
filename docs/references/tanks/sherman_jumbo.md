@@ -65,3 +65,14 @@ every front/rear mask carries a fixed red/cyan seam after centroid alignment;
 noise (G swings 64-67 across identical reruns); the tube diameter/axis match
 the probe (Ø0.19 at y 2.22..2.41). Turret 73 is capped by the same top-view
 thin-tube subtract mask.
+
+
+## Geometry gate v9 (2026-07-31, from-scratch agent)
+
+dims 60.2 -> 93.8 (the pintle .50cal stowed low - it owned heightM p95 at
+3.10 vs published 2.95); turret dome raised at the rear + bustle skirt
+dropped per the gate rows. turretCurves 4.6 unchanged and plan-limited: the
+print's fused gun line sits at x ~ -0.3 with the turret visibly rest-yawed
+(~7 deg) - ORACLE-REPAIR CANDIDATE (zero Turret rest yaw); a matching
+procedural yaw is not legal (the sim owns turret yaw). Certified turret
+ceiling until repair: ~30-40.

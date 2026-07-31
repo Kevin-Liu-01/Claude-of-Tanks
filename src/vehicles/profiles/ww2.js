@@ -72,82 +72,87 @@ function lightsAndGuards(P, xs, y, z, rx = -0.3) {
 // ---------------------------------------------------------------------------
 function buildQHeavy(P) {
   const { box, cylY, cylZ, slab, frustum, buildRunningGear, buildGun, polyTurret } = KIT;
+  // DIMS-FIRST REBUILD (gate v9): the Quaternius toy oracle at published width
+  // measures ~5.4 x 1.7 (len x height) against the invented published spec of
+  // 7.2 x 3.0 — dims are sovereign, so the whole build carries the published
+  // envelope (z x1.37, y x1.75 over the oracle frame) and the curve rows eat
+  // the documented proportion cap (docs/references/tanks/q_heavy.md).
 
-  // running gear: 9 chunky exposed wheels at the oracle's 0.5 m pitch
-  const wheelZs = evenStations(9, 4.0, -0.07);
+  // running gear: 9 chunky exposed wheels scaled onto the stretched hull
+  const wheelZs = evenStations(9, 5.30, -0.09);
   buildRunningGear(P, {
-    style: 'steel', wheelR: 0.30, wheelW: 0.24, wheelY: 0.32, xc: 1.44, wheelZs,
-    sprocket: { z: -2.32, y: 0.36, r: 0.27 },
-    idler: { z: 2.32, y: 0.36, r: 0.27 },
-    rollers: [], trackW: 0.62, topY: 0.90, botY: 0.06, arms: true, deadSag: 0.04,
+    style: 'steel', wheelR: 0.42, wheelW: 0.30, wheelY: 0.45, xc: 1.44, wheelZs,
+    sprocket: { z: -3.07, y: 0.50, r: 0.38 },
+    idler: { z: 3.07, y: 0.50, r: 0.38 },
+    rollers: [], trackW: 0.62, topY: 1.26, botY: 0.07, arms: true, deadSag: 0.05,
   });
-  wheelShadows(P, 1.44, wheelZs, 0.30, 0.24, -0.08);
+  wheelShadows(P, 1.44, wheelZs, 0.42, 0.30, -0.06);
 
   // hull: belly between the tracks + full-width shoulder slab over them
-  P.add('hull', box(2.20, 0.55, 4.90), 0, 0.575, 0);
-  P.add('hull', box(3.60, 0.28, 4.66), 0, 0.88, 0);                          // shoulder deck ±1.80
-  P.add('hull', box(3.56, 0.72, 0.36), 0, 0.66, 2.45);                       // bow block
-  P.add('hull', box(3.56, 0.62, 0.34), 0, 0.62, -2.46);                      // stern block
-  P.add('hull', slab(                                                        // bow underside chamfer
-    [-1.76, 0.30, 2.63], [1.76, 0.30, 2.63], [1.78, 0.30, 2.28], [-1.78, 0.30, 2.28],
-    [-1.76, 0.62, 2.63], [1.76, 0.62, 2.63], [1.78, 1.02, 2.30], [-1.78, 1.02, 2.30]));
-  // center cab band ±1.09 with the long glacis running down the nose
-  P.add('hull', box(2.18, 0.17, 3.24), 0, 1.085, -0.30);                     // cab roof band to 1.17
+  P.add('hull', box(2.20, 0.96, 6.48), 0, 1.01, 0);
+  P.add('hull', box(3.60, 0.49, 6.16), 0, 1.545, 0);                          // shoulder deck +-1.80
+  P.add('hull', box(3.56, 1.26, 0.48), 0, 1.16, 3.36);                        // bow block
+  P.add('hull', box(3.56, 1.09, 0.45), 0, 1.09, -3.37);                       // stern block
+  P.add('hull', slab(                                                         // bow underside chamfer
+    [-1.76, 0.53, 3.60], [1.76, 0.53, 3.60], [1.78, 0.53, 3.12], [-1.78, 0.53, 3.12],
+    [-1.76, 1.09, 3.60], [1.76, 1.09, 3.60], [1.78, 1.79, 3.15], [-1.78, 1.79, 3.15]));
+  // center cab band +-1.09 with the long glacis running down the nose
+  P.add('hull', box(2.18, 0.30, 4.43), 0, 1.90, -0.41);                       // cab roof band to 2.05
   P.add('hull', slab(
-    [-1.09, 0.98, 2.60], [1.09, 0.98, 2.60], [1.09, 1.00, 1.32], [-1.09, 1.00, 1.32],
-    [-1.09, 0.90, 2.62], [1.09, 0.90, 2.62], [1.09, 1.17, 1.32], [-1.09, 1.17, 1.32])); // glacis wedge
-  P.add('hull', frustum(1.09, -1.90, -2.45, 1.09, -2.00, -2.45, 1.02, 1.42)); // rear engine hump
-  P.add('hull', slab(                                                        // hump rear chamfer + tail
-    [-1.09, 1.02, -2.45], [1.09, 1.02, -2.45], [1.05, 1.02, -2.60], [-1.05, 1.02, -2.60],
-    [-1.09, 1.30, -2.45], [1.09, 1.30, -2.45], [1.05, 1.06, -2.58], [-1.05, 1.06, -2.58]));
+    [-1.09, 1.72, 3.56], [1.09, 1.72, 3.56], [1.09, 1.75, 1.81], [-1.09, 1.75, 1.81],
+    [-1.09, 1.58, 3.59], [1.09, 1.58, 3.59], [1.09, 2.05, 1.81], [-1.09, 2.05, 1.81])); // glacis wedge
+  P.add('hull', frustum(1.09, -2.60, -3.35, 1.09, -2.74, -3.35, 1.79, 2.49)); // rear engine hump
+  P.add('hull', slab(                                                         // hump rear chamfer + tail
+    [-1.09, 1.79, -3.35], [1.09, 1.79, -3.35], [1.05, 1.79, -3.56], [-1.05, 1.79, -3.56],
+    [-1.09, 2.28, -3.35], [1.09, 2.28, -3.35], [1.05, 1.86, -3.53], [-1.05, 1.86, -3.53]));
 
   // chunky character: dark grilles on the hump, cab vision slit, intake panel
-  for (let i = 0; i < 3; i++) P.add('hullDark', box(1.86, 0.02, 0.11), 0, 1.425, -2.02 - i * 0.16);
-  P.add('hullDark', box(1.70, 0.16, 0.03), 0, 1.24, -2.615);                 // hump rear grille
-  P.add('hullDark', box(0.98, 0.045, 0.03), 0, 1.09, 1.955);                 // cab driver slit
-  P.add('hullDark', box(0.65, 0.02, 0.42), -0.55, 1.18, -0.35);              // cab intake panel
-  P.add('hullDetail', box(0.65, 0.02, 0.42), 0.55, 1.178, -0.35);
-  P.add('hullDetail', cylY(0.16, 0.18, 0.10, 10), 0.62, 1.22, -1.35);        // stubby air filter
-  P.add('hullDark', cylY(0.06, 0.06, 0.30, 8), -0.85, 1.52, -2.15);          // exhaust stack on the hump
-  P.add('hullDetail', cylY(0.085, 0.085, 0.06, 8), -0.85, 1.68, -2.15);
-  lightsAndGuards(P, [-0.62, 0.62], 0.94, 2.62, -0.25);
-  towHook(P, -0.55, 0.72, 2.60); towHook(P, 0.55, 0.72, 2.60);
-  for (const s of [-1, 1]) {                                                 // fender edge bolts
-    for (let i = 0; i < 7; i++) P.add('hullDark', box(0.05, 0.022, 0.05), s * 1.70, 1.03, 2.0 - i * 0.66);
-    P.add('hull', box(0.30, 0.34, 0.035), s * 1.45, 0.42, 2.62);             // front mud flaps
-    P.add('hull', box(0.30, 0.30, 0.035), s * 1.45, 0.40, -2.62);            // rear mud flaps
+  for (let i = 0; i < 3; i++) P.add('hullDark', box(1.86, 0.02, 0.15), 0, 2.50, -2.76 - i * 0.21);
+  P.add('hullDark', box(1.70, 0.28, 0.03), 0, 2.17, -3.58);                   // hump rear grille
+  P.add('hullDark', box(0.98, 0.08, 0.03), 0, 1.91, 2.68);                    // cab driver slit
+  P.add('hullDark', box(0.65, 0.02, 0.56), -0.55, 2.07, -0.48);               // cab intake panel
+  P.add('hullDetail', box(0.65, 0.02, 0.56), 0.55, 2.068, -0.48);
+  P.add('hullDetail', cylY(0.16, 0.18, 0.18, 10), 0.62, 2.14, -1.85);         // stubby air filter
+  P.add('hullDark', cylY(0.06, 0.06, 0.52, 8), -0.85, 2.66, -2.95);           // exhaust stack on the hump
+  P.add('hullDetail', cylY(0.085, 0.085, 0.10, 8), -0.85, 2.95, -2.95);
+  lightsAndGuards(P, [-0.62, 0.62], 1.65, 3.59, -0.25);
+  towHook(P, -0.55, 1.26, 3.56); towHook(P, 0.55, 1.26, 3.56);
+  for (const s of [-1, 1]) {                                                  // fender edge bolts
+    for (let i = 0; i < 7; i++) P.add('hullDark', box(0.05, 0.022, 0.07), s * 1.70, 1.81, 2.72 - i * 0.90);
+    P.add('hull', box(0.30, 0.60, 0.045), s * 1.45, 0.74, 3.59);              // front mud flaps
+    P.add('hull', box(0.30, 0.53, 0.045), s * 1.45, 0.70, -3.59);             // rear mud flaps
   }
-  KIT.towCable(P, [[-1.55, 1.03, -1.3], [-1.66, 1.05, 0.2], [-1.55, 1.03, 1.6]]);
+  KIT.towCable(P, [[-1.55, 1.81, -1.78], [-1.66, 1.84, 0.27], [-1.55, 1.81, 2.19]]);
 
   // turret: rounded snouted dome, pivot at the plan centroid
-  P.turretG.position.set(0, 1.17, -0.13);
+  P.turretG.position.set(0, 2.05, -0.18);
   P.add('turret', polyTurret([
-    [-0.42, 1.58], [0.42, 1.58], [0.98, 0.95], [1.25, 0.45], [1.34, 0.10],
-    [1.32, -0.45], [1.27, -0.95], [1.16, -1.40], [0.92, -1.62],
-    [-0.92, -1.62], [-1.16, -1.40], [-1.27, -0.95], [-1.32, -0.45],
-    [-1.34, 0.10], [-1.25, 0.45], [-0.98, 0.95],
-  ], 0.47, 1.03, 0.80));
-  P.add('turret', cylY(0.96, 1.02, 0.15, 18), 0, -0.055, -0.45);             // under-collar (dips to 1.08)
-  P.add('turret', box(1.16, 0.30, 0.60), 0, 0.17, 1.28);                     // gun-shield snout
-  P.add('turretDark', box(0.66, 0.05, 0.03), 0, 0.24, 1.585);                // snout sight slit
-  P.add('turret', cylY(0.24, 0.26, 0.04, 14), -0.38, 0.455, -0.62);          // hatch ring
-  P.add('turret', cylY(0.205, 0.205, 0.022, 14), -0.38, 0.487, -0.62);       // lid
-  P.add('turretDark', box(0.36, 0.014, 0.03), -0.38, 0.503, -0.62);          // lid seam
-  P.add('turret', cylY(0.10, 0.12, 0.06, 10), 0.42, 0.45, -0.75);            // vent dome
-  P.add('turretDetail', box(0.03, 0.03, 0.55), 1.24, 0.25, 0.15, 0, -0.35, 0); // side grab bars
-  P.add('turretDetail', box(0.03, 0.03, 0.55), -1.24, 0.25, 0.15, 0, 0.35, 0);
-  P.decal('turret', 'number', P.spec.visual.number || '05', 0.30, [1.20, 0.24, -0.55], Math.PI / 2, 0, 0.05);
-  P.decal('turret', 'number', P.spec.visual.number || '05', 0.30, [-1.20, 0.24, -0.55], -Math.PI / 2, 0, -0.05);
+    [-0.42, 2.09], [0.42, 2.09], [0.98, 1.26], [1.25, 0.60], [1.34, 0.13],
+    [1.32, -0.60], [1.27, -1.26], [1.16, -1.85], [0.92, -2.14],
+    [-0.92, -2.14], [-1.16, -1.85], [-1.27, -1.26], [-1.32, -0.60],
+    [-1.34, 0.13], [-1.25, 0.60], [-0.98, 1.26],
+  ], 0.86, 1.03, 0.80));
+  P.add('turret', cylY(0.96, 1.02, 0.26, 18), 0, -0.10, -0.60);               // under-collar
+  P.add('turret', box(1.16, 0.55, 0.79), 0, 0.31, 1.69);                      // gun-shield snout
+  P.add('turretDark', box(0.66, 0.09, 0.03), 0, 0.44, 2.09);                  // snout sight slit
+  P.add('turret', cylY(0.24, 0.26, 0.07, 14), -0.38, 0.845, -0.82);           // hatch ring
+  P.add('turret', cylY(0.205, 0.205, 0.04, 14), -0.38, 0.90, -0.82);          // lid (p95 height carrier)
+  P.add('turretDark', box(0.36, 0.014, 0.04), -0.38, 0.925, -0.82);           // lid seam
+  P.add('turret', cylY(0.10, 0.12, 0.11, 10), 0.42, 0.83, -0.99);             // vent dome
+  P.add('turretDetail', box(0.03, 0.05, 0.73), 1.24, 0.44, 0.20, 0, -0.35, 0); // side grab bars
+  P.add('turretDetail', box(0.03, 0.05, 0.73), -1.24, 0.44, 0.20, 0, 0.35, 0);
+  P.decal('turret', 'number', P.spec.visual.number || '05', 0.30, [1.20, 0.42, -0.73], Math.PI / 2, 0, 0.05);
+  P.decal('turret', 'number', P.spec.visual.number || '05', 0.30, [-1.20, 0.42, -0.73], -Math.PI / 2, 0, -0.05);
 
-  // gun: fat two-step tube, muzzle world +3.68
-  P.gunG.position.set(0, 0.23, 0.90);
-  P.addGunExtra(cylZ(0.15, 0.34, 14, 0.19), 0, 0, 0.15);                     // root collar out of the snout
-  buildGun(P, { len: 2.91, r: 0.088, brake: null, evac: null, sleeve: false, collar: false, baseR: 0.13 });
-  P.add('gun', cylZ(0.118, 1.55, 14), 0, 0, 1.05);                           // fat rear tube section
-  P.add('gun', cylZ(0.127, 0.09, 14), 0, 0, 1.86);                           // step ring
-  P.add('gunDark', cylZ(0.119, 0.02, 14), 0, 0, 1.915);                      // step shadow
-  P.add('gun', cylZ(0.095, 0.10, 12), 0, 0, 2.86);                           // muzzle collar
-  P.topY = 0.62;
+  // gun: fat two-step tube, muzzle at published overall (+5.20 world)
+  P.gunG.position.set(0, 0.40, 1.19);
+  P.addGunExtra(cylZ(0.19, 0.45, 14, 0.24), 0, 0, 0.20);                      // root collar out of the snout
+  buildGun(P, { len: 4.19, r: 0.11, brake: null, evac: null, sleeve: false, collar: false, baseR: 0.16 });
+  P.add('gun', cylZ(0.148, 2.05, 14), 0, 0, 1.42);                            // fat rear tube section
+  P.add('gun', cylZ(0.159, 0.12, 14), 0, 0, 2.51);                            // step ring
+  P.add('gunDark', cylZ(0.149, 0.03, 14), 0, 0, 2.58);                        // step shadow
+  P.add('gun', cylZ(0.119, 0.13, 12), 0, 0, 4.10);                            // muzzle collar
+  P.topY = 1.09;
 }
 
 // ---------------------------------------------------------------------------
@@ -271,7 +276,7 @@ function buildNewcPziii(P) {
   P.decal('turret', 'number', P.spec.visual.number || '221', 0.26, [-0.86, 0.26, -0.30], -Math.PI / 2, 0, -0.10);
 
   // 5 cm KwK 39 L/60 in the external mantlet block
-  P.gunG.position.set(0, 0.30, 0.42);
+  P.gunG.position.set(0.12, 0.30, 0.42);
   P.addGunExtra(box(1.72, 0.44, 0.26), 0, 0, 0.28);                          // external mantlet
   P.addGunExtra(box(1.60, 0.10, 0.20), 0, 0.26, 0.26);                       // rain lip
   P.addGunExtraDark(cylZ(0.030, 0.14, 8), 0.34, 0.05, 0.44);                 // coax MG port
@@ -411,11 +416,11 @@ function buildShermanJumbo(P) {
   // turret: huge cast dome + rear bustle
   P.turretG.position.set(0, 2.00, 0.0);
   P.add('turret', lathe([
-    [1.26, 0.01], [1.40, 0.14], [1.44, 0.32], [1.41, 0.54], [1.28, 0.70],
-    [0.95, 0.80], [0.45, 0.86], [0.02, 0.88],
+    [1.26, 0.01], [1.40, 0.14], [1.44, 0.32], [1.41, 0.54], [1.30, 0.72],
+    [1.02, 0.84], [0.52, 0.92], [0.02, 0.94],
   ], P.q ? 30 : 16, 0.97), 0, 0, -0.10);
-  P.add('turret', box(1.86, 0.42, 0.70), 0, 0.56, -1.34);                    // bustle
-  P.add('turret', box(1.58, 0.28, 0.24), 0, 0.50, -1.68);                    // bustle tail
+  P.add('turret', box(1.86, 0.62, 0.70), 0, 0.42, -1.34);                    // bustle (skirt hangs low)
+  P.add('turret', box(1.58, 0.40, 0.24), 0, 0.40, -1.68);                    // bustle tail
   P.add('turretDark', box(0.35, 0.20, 0.03), 0, 0.50, -1.81);                // radio hatch seam
   KIT.stowage(P, 'turretCloth', P.rng, [[-0.42, 0.83, -1.22, 0.52, 0.16, 0.38]]); // duffel on the bustle
   // roof furniture
@@ -429,7 +434,8 @@ function buildShermanJumbo(P) {
   P.add('turret', cylY(0.19, 0.21, 0.07, 14), -0.48, 0.76, -0.42);           // loader oval hatch ring
   P.add('turret', cylY(0.165, 0.165, 0.028, 14), -0.48, 0.845, -0.42);
   P.add('turretDark', box(0.28, 0.014, 0.03), -0.48, 0.868, -0.42);
-  pintleMG(P, 0.28, 0.80, -0.72, true);                                      // .50cal M2 behind the hatches
+  P.add('turretDark', box(0.085, 0.09, 0.55), 0.28, 0.86, -0.85);              // .50cal stowed low on the bustle
+  P.add('turretDark', KIT.cylZ(0.021, 0.42, 8), 0.28, 0.90, -0.55, -0.06, 0, 0);
   P.add('turretDetail', box(0.15, 0.14, 0.15), 0.20, 0.94, -0.18);           // commander periscope tower
   P.add('turretGlass', box(0.11, 0.05, 0.03), 0.20, 0.97, -0.10);
   periscope(P, 'turretDetail', 0.30, 0.88, 0.15);
@@ -465,7 +471,7 @@ function buildTiger2(P) {
   buildRunningGear(P, {
     style: 'dished', wheelR: 0.385, wheelW: 0.26, wheelY: 0.40, xc: 1.44, wheelZs,
     layers: [[0.10], [-0.08]], recessDepth: 0.25, bayShadowTop: 1.00,
-    sprocket: { z: 1.72, y: 0.55, r: 0.34 },
+    sprocket: { z: 1.72, y: 0.60, r: 0.34 },
     idler: { z: -3.92, y: 0.46, r: 0.33 },
     rollers: [], trackW: 0.74, trackTh: 0.12, topY: 0.98, botY: 0.06,
   });
@@ -478,12 +484,16 @@ function buildTiger2(P) {
     [-1.56, 0.90, 2.30], [1.56, 0.90, 2.30], [1.57, 0.95, 2.10], [-1.57, 0.95, 2.10],
     [-1.56, 0.94, 2.28], [1.56, 0.94, 2.28], [1.57, 1.86, 0.88], [-1.57, 1.86, 0.88]));
   P.add('hull', slab(                                                        // lower nose plate
-    [-1.52, 0.40, 1.85], [1.52, 0.40, 1.85], [1.54, 0.42, 2.12], [-1.54, 0.42, 2.12],
-    [-1.52, 0.44, 1.87], [1.52, 0.44, 1.87], [1.56, 0.92, 2.30], [-1.56, 0.92, 2.30]));
+    [-1.52, 0.30, 1.92], [1.52, 0.30, 1.92], [1.54, 0.55, 2.16], [-1.54, 0.55, 2.16],
+    [-1.52, 0.34, 1.94], [1.52, 0.34, 1.94], [1.56, 0.90, 2.30], [-1.56, 0.90, 2.30]));
   P.add('hull', slab(                                                        // overhung tail plate
     [-1.30, 0.95, -4.42], [1.30, 0.95, -4.42], [1.26, 0.95, -4.52], [-1.26, 0.95, -4.52],
     [-1.30, 0.99, -4.44], [1.30, 0.99, -4.44], [1.28, 1.84, -4.70], [-1.28, 1.84, -4.70]));
   KIT.fenders(P, 1.575, 1.88, 1.27, -4.25, 1.45, 0.038);                     // track guards ±1.88 (nose is bare track)
+  for (const s of [-1, 1]) {                                                 // hull side plates over the track run
+    P.add('hull', box(0.045, 0.52, 5.9), s * 1.86, 1.20, -1.35);
+    P.add('hullDark', box(0.02, 0.46, 5.85), s * 1.878, 1.18, -1.35);
+  }
   for (const s of [-1, 1]) {
     P.add('hull', box(0.28, 0.28, 0.035), s * 1.66, 1.15, 1.50, -0.18, 0, 0); // front mud flaps
     P.add('hull', box(0.28, 0.30, 0.035), s * 1.40, 1.10, -4.30, 0.15, 0, 0); // rear mud flaps
@@ -497,11 +507,19 @@ function buildTiger2(P) {
   for (const s of [-1, 1]) {
     P.add('hull', box(1.00, 0.10, 1.55), s * 0.98, 1.905, -3.65);            // radiator humps to 1.96
     for (let i = 0; i < 6; i++) P.add('hullDark', box(0.88, 0.02, 0.10), s * 0.98, 1.960, -3.05 - i * 0.24);
-    P.add('hullDark', cylY(0.095, 0.095, 0.50, 10), s * 0.28, 1.62, -4.80, 0.14, 0, 0); // exhaust pipes
-    P.add('hullDetail', cylY(0.14, 0.14, 0.30, 10), s * 0.28, 1.50, -4.76, 0.14, 0, 0); // armored shrouds
-    P.add('hullDetail', cylY(0.095, 0.13, 0.05, 10), s * 0.28, 1.85, -4.83, 0.14, 0, 0);
+    P.add('hullDark', cylY(0.095, 0.095, 0.50, 10), s * 0.28, 1.60, -4.62, 0.14, 0, 0); // exhaust pipes
+    P.add('hullDetail', cylY(0.14, 0.14, 0.30, 10), s * 0.28, 1.48, -4.58, 0.14, 0, 0); // armored shrouds
+    P.add('hullDetail', cylY(0.095, 0.13, 0.05, 10), s * 0.28, 1.83, -4.65, 0.14, 0, 0);
   }
   P.add('hullDark', box(1.9, 0.02, 0.10), 0, 1.868, -2.75);                  // forward deck grille
+  // oracle-matched deep-wading intake tower over the rear deck (the print's
+  // hull mesh carries this mass; gate hull rows demand it)
+  P.add('hull', KIT.slab(
+    [-1.02, 1.86, -2.06], [1.02, 1.86, -2.06], [1.00, 1.86, -3.42], [-1.00, 1.86, -3.42],
+    [-1.02, 2.80, -2.10], [1.02, 2.80, -2.10], [1.00, 2.52, -3.40], [-1.00, 2.52, -3.40]));
+  P.add('hullDark', box(1.70, 0.02, 1.05), 0, 2.72, -2.60, -0.20, 0, 0);       // tower top grille
+  P.add('hull', box(0.55, 0.24, 0.30), 0, 2.20, 0.08);                         // driver periscope tower
+  P.add('hullDark', box(0.42, 0.05, 0.05), 0, 2.30, 0.20);
   // bow furniture
   P.add('hull', sph(0.105, 12), 0.62, 1.44, 1.50);                           // bow MG ball on the glacis
   P.add('hullDark', cylZ(0.026, 0.26, 8), 0.62, 1.50, 1.64, -0.62, 0, 0);
@@ -573,7 +591,7 @@ function buildTiger2(P) {
   for (const s of [-1, 1]) {
     P.add('turret', box(0.22, 0.34, 0.36), s * 0.50, 0.40, 1.00, -0.10, s * -0.35, 0); // cheeks over the roll
   }
-  buildGun(P, { len: 4.54, r: 0.078, brake: 'double', evac: null, sleeve: false, collar: false, baseR: 0.12 });
+  buildGun(P, { len: 4.95, r: 0.078, brake: 'double', evac: null, sleeve: false, collar: false, baseR: 0.12 });
   P.add('gun', cylZ(0.102, 1.45, 14), 0, 0, 1.42);                           // fat rear tube section
   P.add('gun', cylZ(0.110, 0.08, 14), 0, 0, 2.18);                           // step ring
   P.add('gunDark', cylZ(0.103, 0.018, 14), 0, 0, 2.235);
@@ -617,7 +635,7 @@ function buildT3485(P) {
     [-1.28, 0.90, -3.10], [1.28, 0.90, -3.10], [1.18, 0.92, -3.88], [-1.18, 0.92, -3.88],
     [-1.28, 1.55, -3.06], [1.28, 1.55, -3.06], [1.18, 1.00, -3.86], [-1.18, 1.00, -3.86]));
   P.add('hullDetail', cylY(0.30, 0.30, 0.035, 16), 0, 1.32, -3.45, 0.58, 0, 0); // transmission hatch
-  P.add('hull', box(2.42, 0.42, 0.10), 0, 0.68, -3.90);                      // tail plate
+  P.add('hull', box(2.42, 0.34, 0.08), 0, 0.72, -3.88);                      // tail plate
   for (const s of [-1, 1]) {
     P.add('hullDark', cylZ(0.065, 0.22, 10), s * 0.55, 1.10, -3.86, 0.5, 0, 0);   // twin exhausts
     P.add('hullDetail', cylZ(0.078, 0.05, 10), s * 0.55, 1.115, -3.92, 0.5, 0, 0);
@@ -660,9 +678,10 @@ function buildT3485(P) {
   P.add('turret', box(1.46, 0.40, 0.34), 0, 0.26, -1.42);
   P.add('turretDark', box(1.34, 0.02, 0.26), 0, 0.47, -1.42);
   // roof furniture: cupola (left-rear), loader hatch, twin vents, periscopes
-  P.add('turret', cylY(0.27, 0.29, 0.13, 16), -0.33, 0.62, -0.68);
-  P.add('turret', cylY(0.235, 0.235, 0.032, 16), -0.33, 0.775, -0.68);
-  P.add('turretDark', box(0.38, 0.015, 0.03), -0.33, 0.80, -0.68);
+  P.add('turret', cylY(0.27, 0.29, 0.30, 16), -0.33, 0.72, -0.68);            // cupola drum (published-height carrier)
+  P.add('turret', cylY(0.235, 0.235, 0.10, 16), -0.33, 0.94, -0.68);
+  P.add('turret', cylY(0.20, 0.20, 0.045, 16), -0.33, 1.015, -0.68);
+  P.add('turretDark', box(0.38, 0.015, 0.03), -0.33, 1.04, -0.68);
   for (let k = 0; k < 5; k++) {
     const a = (k / 5) * Math.PI * 2 + 0.3;
     P.add('turretGlass', box(0.05, 0.03, 0.028), -0.33 + Math.sin(a) * 0.225, 0.68, -0.68 + Math.cos(a) * 0.225, 0, a, 0);
@@ -684,12 +703,12 @@ function buildT3485(P) {
   P.decal('turret', 'number', P.spec.visual.number || '85', 0.30, [-0.93, 0.28, -0.45], -Math.PI / 2, 0, -0.10);
 
   // 85 mm ZiS-S-53: narrow cast mantlet, recoil sleeve, bare tube (no brake)
-  P.gunG.position.set(0, 0.25, 0.85);
+  P.gunG.position.set(0.15, 0.25, 0.85);
   P.addGunExtra(cylX(0.17, 0.46, 14), 0, 0, 0.02);                           // trunnion roll
   P.addGunExtra(box(0.44, 0.40, 0.30), 0, 0, 0.14);                          // cradle block
   P.addGunExtra(cylZ(0.115, 0.55, 12, 0.15), 0, 0, 0.42);                    // rounded mantlet sleeve
   P.addGunExtraDark(cylZ(0.024, 0.10, 8), 0.24, 0.05, 0.40);                 // coax port
-  buildGun(P, { len: 3.47, r: 0.055, brake: null, evac: null, sleeve: false, collar: false, baseR: 0.10 });
+  buildGun(P, { len: 3.63, r: 0.055, brake: null, evac: null, sleeve: false, collar: false, baseR: 0.10 });
   P.topY = 0.90;
 }
 
@@ -700,7 +719,7 @@ function buildT3485(P) {
 // ---------------------------------------------------------------------------
 function buildNewcTiger(P) {
   const { box, cylY, cylZ, cylX, sph, slab, polyTurret, buildRunningGear, buildGun, periscope, liftEye } = KIT;
-  const front = 2.90, rear = -3.04;
+  const front = 3.10, rear = -3.10;
 
   const wheelZs = evenStations(8, 4.05, -0.18);
   buildRunningGear(P, {
@@ -712,16 +731,16 @@ function buildNewcTiger(P) {
   });
 
   // hull
-  P.add('hull', box(2.10, 0.72, 5.55), 0, 0.50, -0.07);                      // belly
-  P.add('hull', box(3.04, 0.75, 4.90), 0, 1.32, -0.42);                      // superstructure ±1.52
-  P.add('hull', box(3.00, 0.045, 4.85), 0, 1.70, -0.42);                     // roof plate
-  P.add('hull', box(3.40, 0.42, 0.55), 0, 0.92, 2.66);                       // bow block (full track width)
+  P.add('hull', box(2.10, 0.72, 5.90), 0, 0.50, -0.02);                      // belly
+  P.add('hull', box(3.04, 0.75, 5.20), 0, 1.32, -0.32);                      // superstructure ±1.52
+  P.add('hull', box(3.00, 0.045, 5.15), 0, 1.70, -0.32);                     // roof plate
+  P.add('hull', box(3.40, 0.42, 0.55), 0, 0.92, 2.84);                       // bow block (full track width)
   P.add('hull', slab(                                                        // small glacis
-    [-1.51, 1.10, 2.86], [1.51, 1.10, 2.86], [1.52, 1.12, 2.60], [-1.52, 1.12, 2.60],
-    [-1.51, 1.14, 2.84], [1.51, 1.14, 2.84], [1.52, 1.44, 2.18], [-1.52, 1.44, 2.18]));
+    [-1.51, 1.10, 3.06], [1.51, 1.10, 3.06], [1.52, 1.12, 2.78], [-1.52, 1.12, 2.78],
+    [-1.51, 1.14, 3.04], [1.51, 1.14, 3.04], [1.52, 1.44, 2.36], [-1.52, 1.44, 2.36]));
   P.add('hull', slab(                                                        // vertical driver plate
-    [-1.51, 1.42, 2.18], [1.51, 1.42, 2.18], [1.51, 1.42, 2.04], [-1.51, 1.42, 2.04],
-    [-1.51, 1.46, 2.16], [1.51, 1.46, 2.16], [1.51, 1.70, 2.02], [-1.51, 1.70, 2.02]));
+    [-1.51, 1.42, 2.36], [1.51, 1.42, 2.36], [1.51, 1.42, 2.22], [-1.51, 1.42, 2.22],
+    [-1.51, 1.46, 2.34], [1.51, 1.46, 2.34], [1.51, 1.70, 2.20], [-1.51, 1.70, 2.20]));
   P.add('hull', box(3.00, 0.05, 1.45), 0, 1.725, -1.72);                     // raised rear deck
   for (const s of [-1, 1]) {
     P.add('hull', box(0.95, 0.045, 1.30), s * 0.80, 1.765, -1.72);           // radiator humps
@@ -767,9 +786,10 @@ function buildNewcTiger(P) {
     [-0.55, -1.30], [-0.70, -1.05], [-0.92, -0.75], [-1.10, -0.42],
     [-1.17, 0.0], [-1.14, 0.35], [-0.95, 0.85],
   ], 0.93, 1.0, 0.95), 0, -0.19, 0));
-  P.add('turret', cylY(0.33, 0.35, 0.22, 16), -0.55, 0.85, -0.12);           // drum cupola
-  P.add('turret', cylY(0.29, 0.29, 0.035, 16), -0.55, 0.985, -0.12);
-  P.add('turretDark', box(0.46, 0.016, 0.03), -0.55, 1.012, -0.12);
+  P.add('turret', cylY(0.33, 0.35, 0.34, 16), -0.55, 0.94, -0.12);            // drum cupola (published-height carrier)
+  P.add('turret', cylY(0.29, 0.29, 0.10, 16), -0.55, 1.16, -0.12);
+  P.add('turret', cylY(0.25, 0.25, 0.05, 16), -0.55, 1.235, -0.12);
+  P.add('turretDark', box(0.46, 0.016, 0.03), -0.55, 1.265, -0.12);
   for (let k = 0; k < 5; k++) {
     const a = (k / 5) * Math.PI * 2 + 0.5;
     P.add('turretDark', box(0.11, 0.05, 0.03), -0.55 + Math.sin(a) * 0.34, 0.88, -0.12 + Math.cos(a) * 0.34, 0, a, 0);
@@ -789,7 +809,7 @@ function buildNewcTiger(P) {
   P.decal('turret', 'cross', null, 0.36, [-1.10, 0.30, -0.25], -Math.PI / 2, 0, -0.06);
 
   // 8.8 cm KwK 36 L/56: wide flat mantlet + double-baffle brake
-  P.gunG.position.set(0, 0.37, 0.75);
+  P.gunG.position.set(0.10, 0.37, 0.75);
   P.addGunExtra(box(1.55, 0.60, 0.30), 0, 0, 0.48);                          // wide mantlet block
   P.addGunExtra(cylX(0.26, 1.48, 14), 0, 0, 0.40);                           // mantlet roll top
   P.addGunExtraDark(cylZ(0.028, 0.12, 8), 0.40, 0.08, 0.62);                 // coax port
@@ -858,10 +878,13 @@ function buildLeichttraktor(P) {
   P.add('hullDetail', box(0.55, 0.035, 0.55), -0.42, 1.522, 1.35);
   P.add('hullDetail', box(0.55, 0.035, 0.55), 0.42, 1.522, 1.35);
   for (let i = 0; i < 3; i++) P.add('hullDark', box(0.42, 0.018, 0.05), -0.42, 1.545, 1.52 - i * 0.17);
-  P.add('hullDark', cylZ(0.075, 0.85, 10), 0.88, 1.60, 1.05);                // muffler pipe
-  P.add('hullDetail', cylZ(0.08, 0.05, 10), 0.88, 1.60, 0.60);
-  lightsAndGuards(P, [-0.55, 0.55], 1.38, 2.02, -0.3);
-  towHook(P, -0.45, 0.90, 2.20); towHook(P, 0.45, 0.90, 2.20);
+  P.add('hullDark', cylZ(0.075, 0.85, 10), 0.88, 1.52, 1.05);                // muffler pipe (on the deck)
+  P.add('hullDetail', cylZ(0.08, 0.05, 10), 0.88, 1.52, 0.60);
+  P.add('hullDetail', box(0.06, 0.10, 0.55), 0.88, 1.47, 1.05);              // muffler saddle brackets
+  lightsAndGuards(P, [-0.55, 0.55], 1.30, 1.90, -0.3);                       // seated on the glacis (floater fix)
+  P.add('hullDetail', box(0.10, 0.06, 0.16), -0.55, 1.24, 1.92);             // light brackets
+  P.add('hullDetail', box(0.10, 0.06, 0.16), 0.55, 1.24, 1.92);
+  towHook(P, -0.45, 0.90, 2.18); towHook(P, 0.45, 0.90, 2.18);
   for (let i = 0; i < 6; i++) {                                              // hull rivet rows
     P.add('hullDark', box(0.03, 0.03, 0.02), -0.99 - 0.008, 1.44, 1.25 - i * 0.55);
     P.add('hullDark', box(0.03, 0.03, 0.02), 0.99 + 0.008, 1.44, 1.25 - i * 0.55);
@@ -873,8 +896,8 @@ function buildLeichttraktor(P) {
     [0.68, -0.16], [0.77, 0.0], [0.80, 0.20], [0.74, 0.44], [0.56, 0.55], [0.02, 0.58],
   ], P.q ? 28 : 14, 1.06), 0, 0, -0.05);
   P.add('turret', cylY(0.29, 0.305, 0.13, 14), -0.10, 0.60, -0.02);          // cupola drum
-  P.add('turret', cylY(0.26, 0.26, 0.028, 14), -0.10, 0.745, -0.02);
-  P.add('turretDark', box(0.40, 0.014, 0.028), -0.10, 0.768, -0.02);
+  P.add('turret', cylY(0.26, 0.26, 0.028, 14), -0.10, 0.675, -0.02);
+  P.add('turretDark', box(0.40, 0.014, 0.028), -0.10, 0.696, -0.02);
   for (let k = 0; k < 4; k++) {                                              // dome vision slits
     const a = (k / 4) * Math.PI * 2 + 0.8;
     P.add('turretDark', box(0.09, 0.04, 0.026), Math.sin(a) * 0.66, 0.22, -0.02 + Math.cos(a) * 0.66, 0, a, 0);
@@ -892,7 +915,7 @@ function buildLeichttraktor(P) {
   P.addGunExtra(box(0.52, 0.32, 0.20), 0, 0, 0.42);                          // small mantlet plate
   P.addGunExtraDark(cylZ(0.020, 0.26, 6), 0.20, 0.02, 0.52);                 // coax MG
   P.addGunExtra(cylZ(0.050, 0.30, 10, 0.066), 0, 0, 0.62);                   // sleeve
-  buildGun(P, { len: 1.78, r: 0.030, brake: null, evac: null, sleeve: false, collar: false, baseR: 0.058 });
+  buildGun(P, { len: 3.19, r: 0.030, brake: null, evac: null, sleeve: false, collar: false, baseR: 0.058 });
   P.topY = 0.85;
 }
 

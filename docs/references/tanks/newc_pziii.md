@@ -55,3 +55,11 @@ turret `^Turret$`, gun `^Gun$`). Healthy. Width-normalized probe (scale 0.969):
 Remaining gap: turret 81 — the oracle's cupola blends into its roof as one
 low-poly lump; the front cheek step (low wings at z 0.8–1.05) approximates its
 sloped-face read within ~6 cm.
+
+
+## Geometry gate v9 (2026-07-31, from-scratch agent)
+
+Gun x +0.12 (print turret rest yaw - repair candidate; also its gun rests
+visibly ELEVATED: whole-curve gun-line ~0.5 m high at the muzzle columns -
+rotate the Gun node's rest pitch to zero in the repair batch). turret
+43.9 -> 67. min 28.7 -> 31.2 (whole-limited by the elevated oracle gun).

@@ -53,3 +53,15 @@ Remaining gap: turret component (79) — the oracle's dome/collar transition is 
 fused blob whose subtract-mask carves differently than a clean hull/turret rig;
 plan and side profiles match within ~5 cm. Widening the snout plan toward the
 probe read cost 2 pts (r2 reverted).
+
+
+## Geometry gate v9 (2026-07-31, from-scratch agent)
+
+DIMS-FIRST REBUILD: the published spec row (7.2 x 3.6 x 3.0, overall 8.8)
+is ~1.37x/1.75x the Quaternius toy's frame at matched width (oracle measures
+5.44 long, 1.71 tall). Dims are sovereign and uncappable, so the build now
+carries the published envelope (dims 0 -> 93.1, floaters 100) and every
+curve row is a certified proportion cap (the width-normalized toy cannot be
+tracked from a published-size build): hull/whole/turret/stations 0. If the
+spec row is ever re-derived from the oracle (5.44/6.44/3.6/1.71), the
+previous curve-matched geometry scores hull ~47 / turret ~56.
