@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 23 424 102" role="img" aria-label="Claude of Tanks">
+  <!-- Claude of Tanks full lockup: brand mark + Inter wordmark (subset of Inter
+       wght 800/700 opsz 32 embedded as woff2 data URIs so the file is
+       self-contained; Inter is OFL — see docs/ATTRIBUTION.md). -->
+  <style>
+    @font-face { font-family: 'CotInter800'; src: url(data:font/woff2;base64,d09GMgABAAAAAAXIAA4AAAAACpAAAAVwAAQAQgAAAAAAAAAAAAAAAAAAAAAAAAAAGhYbglQcKgZgP1NUQVRaAFwKh1yGFgE2AiQDOAseAAQgBYQiByAbswhRVHLaQPxMsG0ZbFMzCIUQvs/HYnnXhi1mQvNiHtEqLPZ8CDf9d5cEUkioWlaVTESRCqGqdOZ0KgLbV6P9xszsaG43tJmmT0ssQaO552Pc9OeH9gQPT6e+f3dJNIAdWitorbUCrsk4hWu4qOl/ALOL/3OpmrEwZ3nR5GcA2N1lztmJxZKOsbAUgS7AvlJ1LMAFgFU3RNrBYKC3f1qjdQr/JkEAAgAAKIIQEASg0U6OzGS6PkNn8Y0lqJuYXFCPyD6oWAC+fEEgbitADxT7UKjCNQABMn1VBIviETxqNxZwlAtaalbzZXv44tAlhnSbtHIyMmwKgMuhFdTcCylOXtTzmtlKPUz6VSKq34umd13sg+nWaADFL3EyQ0PNDUCocFiChhki/dJRxbeVEyMOVRW2kt7SsePZKjlLOODG5W/AaihEX+7QsQ/EZQAUCyBk38z55gR/SMzNj38vKNZ4TOtge5ULIB3xT8NjAD4YQBJ6CZOfkgCjNhYrBGTHKJVklIqXMAQAMiIBCAKkzRKAQdFIgaOWTa4iEGH1cunwEx4l6WxqbefSgZDgyMrW6TG/PPKjH3zja8cijE3oPG0IwBNIC+QKAAD2uPDGJBiZO3kCuhLzjR8raDRqVhXi4dGU99PaxDFC0enzivbk2eyCPMaTDph9/TyZdOGGds4pY5mFzafzNLNPnsTEikblZxSJFE8G3AVGVJSLEXDv6GvnMPHs1bFjBJvW5k111P1H5p6XrWZOnDmTVS0O1wy3iZSCdbfmj9GqkufVibX7Tp3qnH3a8gknjhGs+7FdsZwSG9j1SHJo8tJKF4VRwqeJeGp1eWSS67SifFCoPDPGe8oscOX/uwbzKdsSE09etTHeVOAFt9Eetah6NdzDCP8TJ3Gu81Jz1+K/5qdtKdan/1za9OcSvbzl3/mxYYHhgbDGbo6vLc9efJ3Tzd44847p4NKB/3pMrNvTrFDfqbJJu2EbBmQ3zJ+X5dw4YFi7CknfuVmB0+oxYeC/h5beNmLW3KSxsw6Wm39fvET57XD57PqkxTcMDrv+5s2j+n6OoBEucK4acC6UgHMp8uNwe7w95rEcuUIzubH9hrgNbXH1V2GV4yrqU/qt2DHkXviqO+MOGbx4d0y7pePP6KKXzEdJM29c2i4zfPvW4d1t+nnh8SVMb+57eqjZ9CwTGjGl7jvzogp7s9KuoSor9xtZmTgAH+fs4vjG8uzFNzld7E5nZztkvXj+jWW9v1rXrbWanQsXmRvgOnXWdValYdFCxQnvMQ76/+47etHtrRbSo3tlfXOzfnBsh17pCYbBKbleK8POJV06uWXO4n/Vww8cIcPnn2NX6lUFU2vrutbEtumRGh9Um5jtMTnQFnC4z9DqFjOV5YtOeg4B3bpRPiU7NtZsxP/7PnDmmtdbfy/eZeg+xtYjK8vWvdsY467i37d2XIeAmSgBABN+AsDq8mwyoVtcbPfmGR4AcKNwqQwAtxeva/Zu5Kepz3K3DIBBAQCBPwm974zAeDtciGcX0VWdlF7ZO7jKpVm1TUl5+RC+N1TbIWM6xXlRvOt+thwYVfESqi2KYhWAAHSmEgyWR5g4dJJoMwYpbgBMwAUihAkonf7AKPCbzdKA08JprkpQCBWEQIgYAQ9eIUOCgOgGSXRRAMmEsP7MKTQxEkYCoa+YzWRhgixNuhYk2SxE6M3HSEwwiQUcRMeEzp6YJRBLyC4FTn00upPIETE9ya5UX4q0ZF+lrWo2pmlNJktXhpCHnrYynWycDKYffs+niepKXA0JW8An0o2bwndDW5SY+OCCoOGfSnrYCTGbDklCFtsPGbMlQhL6WmBIsumOAh7kSwMAfJnTHRgAAA==) format('woff2'); font-weight: 800; }
+    @font-face { font-family: 'CotInter700'; src: url(data:font/woff2;base64,d09GMgABAAAAAAWoAA4AAAAACnwAAAVPAAQAQgAAAAAAAAAAAAAAAAAAAAAAAAAAGhYbglQcKgZgP1NUQVRaAFwKh1SGGQE2AiQDOAseAAQgBYQYByAbrAhRlE3SEmRfJJh4+qagEE6Po1rCUQ0LiYTC94Xw3nj4b7//7TN35ot4wsUb0UOCRiQSWZQqnvHQrL0f2OW/JribzMZ2XZjAD6pPOf/bAQZOt/+pR1cDCug+7dv2KV2RlkWy07tUEQD+//vNimjjVypcJBIzpbz3EPMoYhMNcamKSCVN7HQPbWfJEm0hbmbgeZ9iUMasIP5IgRZAEkKLEGiywhECGwLC4kDtfBWFg9FlCisBoxvZDBeMZKj9L4TVTrqOUVyQuskrIGAmkujHJQ1Cg+QFAbxyibh67Kitf9s2WYtUrS3j5GEKLAsIbeIklg9OnNhTu2tZxoS9j3lGDdOxq8XvttB3AUNiIerGH19pUq8RoU6RI6hKGnjaEshwiiaZIpmkhpCrYsNH5yKb9hKkzM9nATwTufQazqbqdyoVkGQE7Llvf3gssHQcrGf/yYFrBHkH0e15olwCMGFq2zSo0ENDzJBu8+hqxIy7lwsZBIG4ymTjCKrZwi5jRiNmmEAIoo1vL1BJUnCYYl2hphAq2xJq01DQYRPWChAmUnxNnLK+QkWI/UhjHbDHbjtCsDC0+dwRdBIdxEsA8jSRtyBUOuvigxyHZDWEoSgcwRKCUCI02mMdZny8tuno3BzCoAg4/vcKrm8/ehMz1WKOBZQfRcAbcutPRHXYKMEzMEsoFo4g5uGfC/D8dh3Goz0Z4iD+rbPOikzg8HRqTFid0j0WggD8vOPQZCRiNLCzXRyXm0cuBFHWYeb7v79diREDrGqizt3Ur26gMTgqcATZeBba195uv5EgCzecqDo90GrFvCkwenuwDDEEQ6aL4CzWJWLiiCSZOQTb95qtf1S0i/4Ujh0b78Ce3ppF/8crG781f4M5c1TOeO3envTm3fZkr11nWu6Hrx0oPSlb6yjh7ZqfGMAz8G3YXJV5b2oy4+6WqgZfQj8x0BWT8nKQrSk9uW7gXhjUPeAnxw/zMm/MzWVeP0SM1vD3fw3cuin86dNNEUHb1L9eIvjBDg4gtE1QkZ/JLMIW/mywDyEhcoO7HJafgLBFdShWlV+FEutI5qpq7u8UB8xWDZsX712886UR3QfEw31q2eNB/O79jPEtC22X0tvF5yu4MZbMemgL5YP/pk2ro7vzNtrnxAiWCrLI8LQt8Ef5hPvuHUlv3r2RNJw46bZ7Z9K7N0BY64Q0vYnOvTu/IPee2GmKEOwL5p0IrxoW9x+QrBx4utgUiQ6hu9wzE+o5AfEuVg4BjH2G/KzuXcvrZxd29p36R65a85PuviYwNiFcNFJVGcpwfGIcObY+pHWKfL9Wueq6ECLfvi1uoP+CCAF8n06J7Gk4fMruFFzo3y3XOfFl0Wl0c1JYR294RmZPeHhH0mb09KKAxyDfCYB7/wWydU/ZpqWZ0m5/RPhFAH6cHLUB/H4y5/Rz5m+0wojIb6CSQLBD2Hs3RvB/1M8HfJ624oUECW4jWs6DZ5lF5Ltv2gpHqRUeA4azMPwOHpmTTUXRzLIYHjuAQJvHJNwhLLDaeVyr5/hFFgX2AAvCiD2QtLkBlROqZ+doKBb5Iq4zFBJVCAItYQSQgoawATMD4QIW2iIGUC2R9T9zNAUOvgg8VShFChRi6JhnjrkWmXBAIYyOrbgYGIqOPSiEYphcDB1rlWEUIlDoRKFDsos8PFsOHCYGpkAZPChtZ5Y5lfyW5S4rwkAtNc88c52DweSxtdw+scLFci12fH0+FKaEBCuBVoTApVPNZIuOJcKG5rp8EHB5IvEwiuTKhtOxX5FqGD9FaLxGKFYJxsiGH5IrBqFUNi5+rKxGOgsAAAA=) format('woff2'); font-weight: 700; }
+    .wm1 { font: 800 50px 'CotInter800', 'Inter', 'Segoe UI', sans-serif; letter-spacing: 2px; fill: #f2f7fb; }
+    .wm2 { font: 700 23.4px 'CotInter700', 'Inter', 'Segoe UI', sans-serif; letter-spacing: 9.8px; fill: #f5b64b; }
+  </style>
+  <g transform="translate(6 2.5) scale(0.82)">
+
+  <!-- Claude of Tanks brand mark: stylized modern MBT (original vector art),
+       Claude Code mascot (Anthropic; via thesvg.org — see docs/ATTRIBUTION.md)
+       commanding from the open hatch, tanker helmet on. Flat two-tone shading,
+       game palette: steel blues + amber #f5b64b, mascot #D97757. -->
+  <defs>
+    <clipPath id="cotHatchClipF"><rect x="70" y="26" width="68" height="44"/></clipPath>
+  </defs>
+
+  <!-- motion dashes + dust (tank advancing right) -->
+  <g fill="#1f2b37">
+    <rect x="4" y="112" width="20" height="4.5" rx="2.25"/>
+    <rect x="0" y="121" width="26" height="4.5" rx="2.25"/>
+    <rect x="8" y="130" width="16" height="4.5" rx="2.25"/>
+    <circle cx="32" cy="130" r="6.5"/><circle cx="23" cy="133" r="4.5"/><circle cx="42" cy="133.5" r="4"/>
+  </g>
+
+  <!-- whip antenna + pennant (streaming back as the tank advances) -->
+  <path d="M64 79 56 41" stroke="#55697e" stroke-width="1.5" fill="none"/>
+  <path d="M56 38.5 41 43l15 4.5Z" fill="#f5b64b"/>
+
+  <!-- running gear -->
+  <path d="M52 107h122a15 15 0 0 1 0 30H52a15 15 0 0 1 0-30Z" fill="#10171f"/>
+  <path d="M44 132.5h138" stroke="#2a3846" stroke-width="4" stroke-dasharray="6 5" fill="none"/>
+  <g fill="#2b3947">
+    <circle cx="52" cy="122" r="10"/><circle cx="76.4" cy="122" r="10"/><circle cx="100.8" cy="122" r="10"/>
+    <circle cx="125.2" cy="122" r="10"/><circle cx="149.6" cy="122" r="10"/><circle cx="174" cy="122" r="10"/>
+  </g>
+  <g fill="#10171f">
+    <circle cx="52" cy="122" r="3.2"/><circle cx="76.4" cy="122" r="3.2"/><circle cx="100.8" cy="122" r="3.2"/>
+    <circle cx="125.2" cy="122" r="3.2"/><circle cx="149.6" cy="122" r="3.2"/><circle cx="174" cy="122" r="3.2"/>
+  </g>
+
+  <!-- hull: low profile, long wedge glacis -->
+  <path d="M34 116 40 94h108l52 18-3 6Z" fill="#2a3947"/>
+  <path d="M148 94l52 18-1.9 3.8-51.6-17.6Z" fill="#3a4c5f"/>
+  <rect x="40" y="94" width="108" height="2.4" fill="#3a4c5f"/>
+
+  <!-- side skirt over the track top -->
+  <path d="M46 106h136v8l-9 12H46Z" fill="#222e3a"/>
+  <rect x="41" y="106" width="5" height="18" fill="#1c2833"/>
+  <g stroke="#16202a" stroke-width="1.6">
+    <path d="M72 107.5V124M98 107.5V124M124 107.5V124M150 107.5V124"/>
+  </g>
+
+  <!-- turret: long low wedge + bustle rack -->
+  <rect x="60" y="79" width="16" height="14" rx="1.5" fill="#1c2833"/>
+  <path d="M61 83.7h14M61 88.3h14" stroke="#10171f" stroke-width="1.3"/>
+  <path d="M72 96 82 74l58 3.5L154 96Z" fill="#3a4c5f"/>
+  <path d="M82 74 140 77.5 138.8 80.8 81 77.2Z" fill="#4d637a"/>
+  <path d="M124 80l7 .5 6 15.5h-7Z" fill="#f5b64b"/>
+
+  <!-- the commander: Claude Code mascot, faithful source path (legs clipped by the hatch) -->
+  <rect x="91" y="57" width="30" height="8" fill="#0e151d"/>
+  <g clip-path="url(#cotHatchClipF)">
+    <path clip-rule="evenodd" fill-rule="evenodd" fill="#D97757" transform="translate(82.65 42.75) scale(1.95)"
+      d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z"/>
+  </g>
+  <!-- hatch coaming (arms rest on the ring) -->
+  <rect x="81" y="68" width="50" height="6.5" rx="1.2" fill="#3a4c5f"/>
+  <rect x="81" y="68" width="50" height="1.8" rx="0.9" fill="#4d637a"/>
+
+  <!-- tanker helmet: dome + rim + goggles -->
+  <path d="M87.5 52.5a18.5 12 0 0 1 37 0Z" fill="#4d637a"/>
+  <rect x="85.5" y="52.3" width="41" height="4.2" rx="2.1" fill="#3a4c5f"/>
+  <rect x="94" y="45.2" width="24.5" height="5.2" rx="1.3" fill="#0e151d"/>
+  <circle cx="102.5" cy="47.8" r="3.8" fill="#0e151d" stroke="#7d90a3" stroke-width="1.4"/>
+  <circle cx="111" cy="47.8" r="3.8" fill="#0e151d" stroke="#7d90a3" stroke-width="1.4"/>
+
+  <!-- main gun, elevated 10 degrees -->
+  <g transform="rotate(-10 140 82)">
+    <rect x="136" y="76" width="18" height="12" rx="1.5" fill="#24313f"/>
+    <rect x="154" y="78.3" width="52" height="7.4" fill="#2b3947"/>
+    <rect x="154" y="78.3" width="52" height="1.9" fill="#4d637a"/>
+    <rect x="168" y="76.4" width="16" height="11.2" rx="4.4" fill="#24313f"/>
+    <rect x="203" y="77.3" width="7" height="9.4" rx="1" fill="#4d637a"/>
+  </g>
+  </g>
+  <text id="wm1" class="wm1" x="200" y="76">CLAUDE</text>
+  <text id="wm2" class="wm2" x="202" y="106">OF TANKS</text>
+</svg>

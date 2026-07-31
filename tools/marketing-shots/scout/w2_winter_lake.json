@@ -1,0 +1,22 @@
+{
+  "map": "winter",
+  "seed": 5000,
+  "actors": [],
+  "effects": [],
+  "camera": {
+    "pos": [
+      195,
+      220,
+      -119.99
+    ],
+    "lookAt": [
+      195,
+      0,
+      -120
+    ],
+    "groundRel": false,
+    "fov": 60
+  },
+  "fxTime": 0,
+  "timeScale": 0
+}

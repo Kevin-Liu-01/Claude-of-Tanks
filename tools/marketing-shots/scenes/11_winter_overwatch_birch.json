@@ -1,0 +1,92 @@
+{
+  "map": "winter",
+  "seed": 5111,
+  "actors": [
+    {
+      "id": "t90m",
+      "name": "far",
+      "pos": [
+        -120,
+        60
+      ],
+      "facingDeg": 95,
+      "gunDeg": 1,
+      "camo": "winter",
+      "camoSeed": 111,
+      "turretDeg": -1.2
+    },
+    {
+      "id": "t90a",
+      "name": "near",
+      "pos": [
+        -112,
+        42
+      ],
+      "facingDeg": 100,
+      "turretDeg": -35,
+      "gunDeg": 1,
+      "camo": "winter",
+      "camoSeed": 112
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        -101,
+        53
+      ],
+      "tMs": 180,
+      "params": {
+        "size": "small"
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -119,
+        41
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 12,
+        "intensity": 1,
+        "dirDeg": 280
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "far",
+      "tMs": 200,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "near",
+      "tMs": 578,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -150,
+      4.2,
+      62
+    ],
+    "lookAt": [
+      -100,
+      2,
+      44
+    ],
+    "groundRel": true,
+    "fov": 27
+  },
+  "fxTime": 600,
+  "timeScale": 0
+}

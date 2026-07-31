@@ -1,0 +1,58 @@
+{
+  "map": "desert",
+  "seed": 5106,
+  "actors": [
+    {
+      "id": "kf51",
+      "name": "hero",
+      "pos": [
+        0,
+        0
+      ],
+      "facingDeg": 205,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "camo": "desert",
+      "camoSeed": 61
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -2.5,
+        -5.6
+      ],
+      "tMs": 20,
+      "params": {
+        "count": 8,
+        "intensity": 0.8,
+        "dirDeg": 205
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 300,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      5.9,
+      1.35,
+      -9.4
+    ],
+    "lookAt": [
+      -1.4,
+      2.35,
+      1.8
+    ],
+    "groundRel": true,
+    "fov": 46
+  },
+  "fxTime": 300,
+  "timeScale": 0
+}

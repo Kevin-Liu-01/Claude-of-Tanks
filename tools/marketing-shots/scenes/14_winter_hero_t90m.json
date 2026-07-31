@@ -1,0 +1,58 @@
+{
+  "map": "winter",
+  "seed": 5114,
+  "actors": [
+    {
+      "id": "t90m",
+      "name": "hero",
+      "pos": [
+        162,
+        -78
+      ],
+      "facingDeg": 205,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "factory",
+      "camoSeed": 141
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        160,
+        -84
+      ],
+      "tMs": 50,
+      "params": {
+        "count": 6,
+        "intensity": 0.5,
+        "dirDeg": 205
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 300,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      168.2,
+      1.3,
+      -87.6
+    ],
+    "lookAt": [
+      161,
+      2.2,
+      -77
+    ],
+    "groundRel": true,
+    "fov": 48
+  },
+  "fxTime": 300,
+  "timeScale": 0
+}

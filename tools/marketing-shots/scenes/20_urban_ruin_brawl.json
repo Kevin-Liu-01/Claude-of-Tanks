@@ -1,0 +1,99 @@
+{
+  "map": "urban",
+  "seed": 5120,
+  "actors": [
+    {
+      "id": "abramsx",
+      "name": "a1",
+      "pos": [
+        111,
+        40
+      ],
+      "facingDeg": 355,
+      "gunDeg": 0.5,
+      "camo": "auto",
+      "turretDeg": 11.6
+    },
+    {
+      "id": "leo2a6",
+      "name": "a2",
+      "pos": [
+        90,
+        58
+      ],
+      "facingDeg": 92,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 201,
+      "turretDeg": -20.4
+    },
+    {
+      "id": "t90a",
+      "name": "cornered",
+      "pos": [
+        114,
+        66
+      ],
+      "facingDeg": 250,
+      "gunDeg": 1,
+      "camo": "factory",
+      "turretDeg": 1.6
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        122,
+        72
+      ],
+      "tMs": 190,
+      "params": {
+        "size": "small"
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "a1",
+      "tMs": 540,
+      "params": {
+        "caliberMm": 125,
+        "hFrac": 0.7
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "cornered",
+      "tMs": 605,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "a1",
+      "tMs": 620,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      120,
+      3.2,
+      30
+    ],
+    "lookAt": [
+      106,
+      2,
+      60
+    ],
+    "groundRel": true,
+    "fov": 36
+  },
+  "fxTime": 640,
+  "timeScale": 0
+}

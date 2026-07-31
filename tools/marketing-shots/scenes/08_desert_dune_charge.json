@@ -1,0 +1,124 @@
+{
+  "map": "desert",
+  "seed": 5108,
+  "actors": [
+    {
+      "id": "m1a2",
+      "name": "lead",
+      "pos": [
+        -2,
+        -2
+      ],
+      "facingDeg": 208,
+      "turretDeg": -8,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 81
+    },
+    {
+      "id": "leclerc",
+      "name": "wing1",
+      "pos": [
+        10,
+        4
+      ],
+      "facingDeg": 215,
+      "turretDeg": 6,
+      "gunDeg": 1,
+      "camo": "desert",
+      "camoSeed": 82
+    },
+    {
+      "id": "abramsx",
+      "name": "wing2",
+      "pos": [
+        -14,
+        4
+      ],
+      "facingDeg": 198,
+      "turretDeg": 3,
+      "gunDeg": 1,
+      "camo": "digital",
+      "camoSeed": 83
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        1,
+        4
+      ],
+      "tMs": 220,
+      "params": {
+        "count": 20,
+        "intensity": 1.5,
+        "dirDeg": 28
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        13,
+        10
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 16,
+        "intensity": 1.3,
+        "dirDeg": 35
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -11,
+        10
+      ],
+      "tMs": 240,
+      "params": {
+        "count": 16,
+        "intensity": 1.3,
+        "dirDeg": 18
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -1,
+        8
+      ],
+      "tMs": 60,
+      "params": {
+        "count": 10,
+        "intensity": 0.9,
+        "dirDeg": 28
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "lead",
+      "tMs": 478,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -8,
+      1.2,
+      -14
+    ],
+    "lookAt": [
+      -1,
+      2.4,
+      0
+    ],
+    "groundRel": true,
+    "fov": 50
+  },
+  "fxTime": 500,
+  "timeScale": 0
+}

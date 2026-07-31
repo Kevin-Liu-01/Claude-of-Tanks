@@ -1,0 +1,96 @@
+{
+  "map": "verdant",
+  "seed": 5130,
+  "actors": [
+    {
+      "id": "leo2a7v",
+      "name": "lead",
+      "pos": [
+        13,
+        -64
+      ],
+      "facingDeg": 8,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 301,
+      "turretDeg": 23.5
+    },
+    {
+      "id": "m1a2",
+      "name": "wing",
+      "pos": [
+        9,
+        -84
+      ],
+      "facingDeg": 5,
+      "turretDeg": -12,
+      "gunDeg": 1,
+      "camo": "desert",
+      "camoSeed": 302
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        -2,
+        -70
+      ],
+      "tMs": 190,
+      "params": {
+        "size": "small"
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        12,
+        -72
+      ],
+      "tMs": 200,
+      "params": {
+        "count": 14,
+        "intensity": 1.2,
+        "dirDeg": 186
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        8,
+        -92
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 14,
+        "intensity": 1.2,
+        "dirDeg": 184
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "lead",
+      "tMs": 575,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      28,
+      22,
+      -104
+    ],
+    "lookAt": [
+      10,
+      0,
+      -64
+    ],
+    "groundRel": true,
+    "fov": 42
+  },
+  "fxTime": 600,
+  "timeScale": 0
+}

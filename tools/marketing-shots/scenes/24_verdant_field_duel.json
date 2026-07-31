@@ -1,0 +1,76 @@
+{
+  "map": "verdant",
+  "seed": 5124,
+  "actors": [
+    {
+      "id": "leo2a6",
+      "name": "shooter",
+      "pos": [
+        -95,
+        10
+      ],
+      "facingDeg": 72,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 241,
+      "turretDeg": -3.1
+    },
+    {
+      "id": "challenger1",
+      "name": "victim",
+      "pos": [
+        -38,
+        32
+      ],
+      "facingDeg": 250,
+      "turretDeg": -12,
+      "camo": "factory"
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 60,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "shooter",
+      "tMs": 300,
+      "params": {
+        "count": 8,
+        "intensity": 0.8,
+        "dirDeg": 250
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "shooter",
+      "tMs": 605,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -105,
+      2.2,
+      -6
+    ],
+    "lookAt": [
+      -64,
+      2.4,
+      24
+    ],
+    "groundRel": true,
+    "fov": 40
+  },
+  "fxTime": 630,
+  "timeScale": 0
+}

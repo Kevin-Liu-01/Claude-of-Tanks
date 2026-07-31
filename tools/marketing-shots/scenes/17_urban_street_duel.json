@@ -1,0 +1,66 @@
+{
+  "map": "urban",
+  "seed": 5117,
+  "actors": [
+    {
+      "id": "m1a2",
+      "name": "hero",
+      "pos": [
+        36,
+        -64
+      ],
+      "facingDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "auto",
+      "turretDeg": 0.7
+    },
+    {
+      "id": "t90m",
+      "name": "victim",
+      "pos": [
+        37,
+        6
+      ],
+      "facingDeg": 182,
+      "turretDeg": 10,
+      "camo": "digital",
+      "camoSeed": 171
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 0,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "hero",
+      "tMs": 595,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      31,
+      2.2,
+      -78
+    ],
+    "lookAt": [
+      38,
+      2.5,
+      -6
+    ],
+    "groundRel": true,
+    "fov": 40
+  },
+  "fxTime": 620,
+  "timeScale": 0
+}

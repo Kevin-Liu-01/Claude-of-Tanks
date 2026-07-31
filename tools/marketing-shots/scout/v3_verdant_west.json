@@ -1,0 +1,22 @@
+{
+  "map": "verdant",
+  "seed": 5000,
+  "actors": [],
+  "effects": [],
+  "camera": {
+    "pos": [
+      -140,
+      220,
+      40.01
+    ],
+    "lookAt": [
+      -140,
+      0,
+      40
+    ],
+    "groundRel": false,
+    "fov": 60
+  },
+  "fxTime": 0,
+  "timeScale": 0
+}

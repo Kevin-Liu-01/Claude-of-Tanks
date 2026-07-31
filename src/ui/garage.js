@@ -11,7 +11,18 @@ import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } fr
 // palette from materials.js) instead of hand-approximated CSS gradients.
 import { resolveCamoVisual } from '../vehicles/materials.js';
 import { MODEL_SOURCE } from '../vehicles/specs.js';
-import { EQUIPMENT } from '../sim/spotting.js';
+// EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.js), the
+// white-silhouette icon set (equipIcons.js), and the spotting-side math the
+// stat card folds into its view/camo rows so the garage can never disagree
+// with the battle sim.
+import {
+  EQUIPMENT_CATALOG, EQUIPMENT_BY_ID, EQUIP_SLOTS, EQUIP_CATEGORIES,
+  loadEquipment, saveEquipment, equipEligible, computeEquipMults,
+} from '../game/equipment.js';
+import { equipIconSVG } from './equipIcons.js';
+import {
+  viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
+} from '../sim/spotting.js';
 
 const NATION_LABEL = {
   USA: 'USA', Germany: 'GER', USSR: 'USSR', Russia: 'RUS', 'USSR/Russia': 'RUS',
@@ -76,14 +87,20 @@ const GARAGE_CSS = `
   background:linear-gradient(90deg,rgba(5,8,11,.8),rgba(5,8,11,0));}
 .cot-garage .band-r{position:absolute;right:0;top:0;bottom:0;width:30%;
   background:linear-gradient(270deg,rgba(5,8,11,.85) 0%,rgba(5,8,11,.35) 60%,rgba(5,8,11,0) 100%);}
-.cot-garage .title{position:absolute;top:22px;left:34px;font-size:17px;font-weight:800;
-  letter-spacing:.30em;color:#9fb0bf;text-transform:uppercase;}
+.cot-garage .title{position:absolute;top:20px;left:34px;font-size:17px;font-weight:800;
+  letter-spacing:.30em;color:#9fb0bf;text-transform:uppercase;
+  display:flex;align-items:center;gap:10px;}
 .cot-garage .title b{color:#f0a030;}
+/* garage_ui: compact brand badge (v3 colored crest, tank + Claude Code
+   commander, same art as the boot splash; public/brand/logo-mark.svg)
+   instead of bare text */
+.cot-garage .title .mark{display:block;width:36px;height:36px;flex:0 0 auto;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.55));}
 /* r6-2 (round critique: vehicle name + flag + class line appeared TWICE —
    top-left header and right stats panel): the top-left corner now carries
    only the game logo + a quiet screen-mode tag; the vehicle identity lives
    solely on the stats card. */
-.cot-garage .modetag{position:absolute;top:47px;left:35px;font-size:10px;
+.cot-garage .modetag{position:absolute;top:60px;left:80px;font-size:10px;
   font-weight:700;letter-spacing:.30em;color:#68747f;text-transform:uppercase;}
 .cot-tech{position:absolute;top:70px;left:34px;pointer-events:auto;cursor:pointer;
   display:flex;align-items:center;gap:8px;
@@ -91,9 +108,13 @@ const GARAGE_CSS = `
   color:#c6d2dc;text-transform:uppercase;padding:8px 16px 7px;
   background:rgba(11,15,20,.82);border:1px solid rgba(146,164,180,.35);
   border-bottom:2px solid rgba(146,164,180,.45);
-  transition:color .12s,border-color .12s;}
-.cot-tech:hover{color:#ffd27a;border-color:rgba(240,176,74,.65);}
-.cot-tech .tt-ico{font-size:12px;line-height:1;color:#f0b04a;}
+  transition:color .15s,border-color .15s,background .15s;}
+.cot-tech:hover{color:#ffd27a;border-color:rgba(240,176,74,.65);
+  background:rgba(20,17,11,.88);}
+/* garage_ui: research-ladder glyph (SVG, currentColor) replaces the old
+   hamburger text glyph — crisper and it actually depicts a tech tree */
+.cot-tech .tt-ico{display:block;color:#f0b04a;transition:color .15s;}
+.cot-tech:hover .tt-ico{color:#ffd27a;}
 /* r7: ONE flat orange plate, no gloss, no bevel highlight, no text shadow —
    the r5 two-stop gradient + inset bevels + letterform shadow still read as
    2012 Flash-game chrome, and the clip-path chamfer aliased at 1080p. The
@@ -145,8 +166,9 @@ const GARAGE_CSS = `
   border-bottom:2px solid rgba(146,164,180,.4);background:rgba(11,15,20,.82);
   color:#9fb0bf;font-family:${FONT_STACK};font-size:10px;font-weight:800;
   letter-spacing:.20em;text-transform:uppercase;padding:7px 18px 6px;
-  transition:color .12s,border-color .12s;outline:none;}
-.cot-era-chip:hover{color:#c6d2dc;border-color:rgba(210,225,240,.5);}
+  transition:color .15s,border-color .15s,background .15s,transform .15s;outline:none;}
+.cot-era-chip:hover{color:#c6d2dc;border-color:rgba(210,225,240,.5);
+  transform:translateY(-1px);}
 .cot-era-chip.sel{color:#ffd27a;border-color:rgba(240,176,74,.65);
   border-bottom-color:#f0a030;
   background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
@@ -155,23 +177,32 @@ const GARAGE_CSS = `
 .cot-carousel{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);
   display:flex;align-items:stretch;gap:8px;pointer-events:auto;max-width:96vw;}
 .cot-car-arrow{width:34px;border:1px solid rgba(146,164,180,.3);cursor:pointer;
-  background:rgba(11,15,20,.8);color:#9fb0bf;font-size:20px;font-family:${FONT_STACK};
-  transition:color .12s,border-color .12s;outline:none;}
-.cot-car-arrow:hover{color:#f0b04a;border-color:rgba(240,176,74,.6);}
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(11,15,20,.8);color:#9fb0bf;
+  transition:color .15s,border-color .15s,background .15s;outline:none;}
+.cot-car-arrow svg{display:block;}
+.cot-car-arrow:hover{color:#f0b04a;border-color:rgba(240,176,74,.6);
+  background:rgba(20,17,11,.88);}
+.cot-car-arrow:active{color:#ffd27a;}
 /* r7-2 (round critique: "'Type 99A (ZTZ-9' truncates with no ellipsis at
    the strip edge"): the overflow container hard-clipped the last partially
    visible card mid-glyph. A right-edge fade mask dissolves the partial card
    into the strip edge instead — the standard carousel "more content"
    affordance — while each card's own label keeps its CSS ellipsis. */
 .cot-cards{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;
+  cursor:grab;touch-action:pan-x;
   -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 64px),transparent 100%);
   mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 64px),transparent 100%);}
 .cot-cards::-webkit-scrollbar{display:none;}
+/* DRAG-SCROLL CAROUSEL: grabbing cursor while the strip is being panned */
+.cot-cards.dragging{cursor:grabbing;}
+.cot-cards.dragging .cot-card{cursor:grabbing;}
 .cot-card{width:132px;flex:0 0 auto;cursor:pointer;position:relative;
   background:linear-gradient(180deg,rgba(13,18,23,.86),rgba(8,11,14,.92));
   border:1px solid rgba(146,164,180,.26);border-top:2px solid rgba(146,164,180,.26);
-  padding:9px 10px 8px;transition:border-color .12s,transform .12s,box-shadow .12s;}
-.cot-card:hover{border-color:rgba(210,225,240,.5);}
+  padding:9px 10px 8px;transition:border-color .15s,transform .15s,box-shadow .15s;}
+.cot-card:hover{border-color:rgba(210,225,240,.5);transform:translateY(-2px);}
+.cot-card.sel:hover{transform:translateY(-6px);}
 .cot-card.sel{border-color:#f0a030;border-top-color:#f0a030;transform:translateY(-6px);
   box-shadow:0 8px 26px rgba(240,140,20,.28);
   background:linear-gradient(180deg,rgba(32,24,12,.92),rgba(14,10,6,.94));}
@@ -206,20 +237,26 @@ const GARAGE_CSS = `
    never overlap at short viewports (the old absolute anchors collided at
    1600x900 — the RANDOM card's conic-gradient thumb showed through the camo
    grid's 5px gaps as a phantom "white national cross"). */
-.cot-leftcol{position:absolute;left:34px;top:122px;bottom:calc(36% + 10px);
-  width:224px;display:flex;flex-direction:column;gap:14px;overflow:hidden;pointer-events:auto;}
+.cot-leftcol{position:absolute;left:34px;top:110px;bottom:calc(36% + 10px);
+  width:224px;display:flex;flex-direction:column;gap:12px;overflow:hidden;pointer-events:auto;}
+  /* MAPS r1: top 122 -> 110, gap 14 -> 12 — the doubled battlefield roster
+     needs the slack; the TECH TREE button ends ~98px so nothing collides */
 .cot-maps{position:static;width:224px;min-height:0;overflow-y:auto;
   scrollbar-width:none;flex:0 1 auto;pointer-events:auto;}
 .cot-maps .mtitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
   text-transform:uppercase;margin-bottom:7px;}
-.cot-map-card{display:flex;align-items:center;gap:9px;cursor:pointer;margin-bottom:4px;
+/* MAPS r1: the battlefield roster DOUBLED (8 + Random) — cards run COMPACT
+   so ~7 rows show above the camo section at 1080p, with the next card
+   half-cut at the fold as the scroll affordance (the list wheel-scrolls;
+   taller windows show all nine). */
+.cot-map-card{display:flex;align-items:center;gap:7px;cursor:pointer;margin-bottom:2px;
   background:linear-gradient(180deg,rgba(13,18,23,.82),rgba(8,11,14,.9));
   border:1px solid rgba(146,164,180,.24);border-left:2px solid rgba(146,164,180,.24);
-  padding:3px 8px 3px 5px;transition:border-color .12s,background .12s;}
+  padding:2px 6px 2px 3px;transition:border-color .12s,background .12s;}
 .cot-map-card:hover{border-color:rgba(210,225,240,.5);}
 .cot-map-card.sel{border-color:#f0a030;border-left-color:#f0a030;
   background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
-.cot-map-card .mthumb{width:72px;height:34px;flex:0 0 auto;background-size:112% auto;
+.cot-map-card .mthumb{width:44px;height:21px;flex:0 0 auto;background-size:112% auto;
   background-position:center;border:1px solid rgba(0,0,0,.55);position:relative;
   box-shadow:inset 0 0 0 1px rgba(235,243,250,.14);
   transition:background-size .18s ease;}
@@ -229,8 +266,13 @@ const GARAGE_CSS = `
 .cot-map-card .mthumb.desert{background-color:#b3925c;background-image:linear-gradient(135deg,#c9a86e,#8f6f42);}
 .cot-map-card .mthumb.winter{background-color:#aeb9c4;background-image:linear-gradient(135deg,#cdd6de,#7f8d9b);}
 .cot-map-card .mthumb.urban{background-color:#5c6066;background-image:linear-gradient(135deg,#75797e,#3e4247);}
+/* MAPS r1: gradient fallbacks for the second four (data-URI thumbs override) */
+.cot-map-card .mthumb.coastal{background-color:#4a7a86;background-image:linear-gradient(135deg,#5f93a0,#2f5560);}
+.cot-map-card .mthumb.autumn{background-color:#9a5a28;background-image:linear-gradient(135deg,#c07030,#6b3d1a);}
+.cot-map-card .mthumb.steppe{background-color:#b09a50;background-image:linear-gradient(135deg,#c9b264,#8a763c);}
+.cot-map-card .mthumb.railyard{background-color:#565049;background-image:linear-gradient(135deg,#6e6860,#3a352f);}
 .cot-map-card .mthumb.random{background-image:conic-gradient(#4c6b38 0 25%,#c9a86e 0 50%,#cdd6de 0 75%,#5c6066 0);}
-.cot-map-card .mname{font-size:11px;font-weight:600;color:#e6edf3;letter-spacing:.02em;}
+.cot-map-card .mname{font-size:10.5px;font-weight:600;color:#e6edf3;letter-spacing:.02em;}
 .cot-map-card .msub{font-size:8.5px;font-weight:700;letter-spacing:.14em;color:#8a97a3;
   text-transform:uppercase;margin-top:1px;}
 .cot-map-card.sel .msub{color:#d8a04c;}
@@ -239,6 +281,14 @@ const GARAGE_CSS = `
 .cot-camos .ctitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
   text-transform:uppercase;margin-bottom:7px;}
 .cot-camos .cgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
+/* camo r8: the paint roster grew 6 -> 16 — the CAMO grid scrolls (equipment
+   grid below stays static). Thin styled scrollbar so the affordance reads
+   without stealing column width from the swatches. */
+.cot-camos .cgrid.camo{max-height:157px;overflow-y:auto;overscroll-behavior:contain;
+  padding-right:3px;scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.45) rgba(8,11,14,.6);}
+.cot-camos .cgrid.camo::-webkit-scrollbar{width:5px;}
+.cot-camos .cgrid.camo::-webkit-scrollbar-track{background:rgba(8,11,14,.6);}
+.cot-camos .cgrid.camo::-webkit-scrollbar-thumb{background:rgba(146,164,180,.45);}
 .cot-camo-card{cursor:pointer;text-align:center;padding:4px 3px 3px;
   background:linear-gradient(180deg,rgba(13,18,23,.82),rgba(8,11,14,.9));
   border:1px solid rgba(146,164,180,.24);border-bottom:2px solid rgba(146,164,180,.24);
@@ -264,23 +314,160 @@ const GARAGE_CSS = `
   color:#8a97a3;text-transform:uppercase;margin-top:6px;line-height:1.55;
   text-shadow:0 1px 2px rgba(0,0,0,.7);}
 
+/* EQUIPMENT SYSTEM: 3 loadout slots at the foot of the stats card. Same
+   plate/border language as the camo cards; equipped slots carry the item's
+   white-silhouette glyph (equipIcons.js), empty ones a quiet dashed +. */
+.cot-garage .stats{max-height:calc(100vh - 148px);overflow-y:auto;overflow-x:hidden;
+  scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.45) rgba(8,11,14,.6);}
+.cot-garage .stats::-webkit-scrollbar{width:5px;}
+.cot-garage .stats::-webkit-scrollbar-track{background:rgba(8,11,14,.6);}
+.cot-garage .stats::-webkit-scrollbar-thumb{background:rgba(146,164,180,.45);}
+/* stat values boosted by equipment tint green (base value in the tooltip) */
+.cot-garage .srow .lr b.eqmod{color:#9fd8a0;}
+.cot-garage .eqhead{display:flex;justify-content:space-between;align-items:baseline;
+  font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
+  text-transform:uppercase;margin-bottom:7px;}
+.cot-garage .eqhead i{font-style:normal;color:#6d7a86;letter-spacing:.08em;}
+.cot-garage .eqrow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.cot-garage .eqslot{cursor:pointer;height:58px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;
+  background:linear-gradient(180deg,rgba(13,18,23,.82),rgba(8,11,14,.9));
+  border:1px solid rgba(146,164,180,.24);border-bottom:2px solid rgba(146,164,180,.24);
+  transition:border-color .12s,background .12s;}
+.cot-garage .eqslot:hover{border-color:rgba(210,225,240,.5);}
+.cot-garage .eqslot.open{border-color:#f0a030;border-bottom-color:#f0a030;
+  background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
+.cot-garage .eqslot svg{display:block;}
+.cot-garage .eqslot .sl{font-size:7.5px;font-weight:700;letter-spacing:.08em;
+  color:#9fb0bf;text-transform:uppercase;max-width:92%;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;}
+.cot-garage .eqslot.empty .plus{font-size:19px;line-height:1;color:#5b6873;
+  font-weight:400;}
+.cot-garage .eqslot.empty .sl{color:#5b6873;}
+.cot-garage .eqslot.empty:hover .plus{color:#9fb0bf;}
+/* EQUIPMENT PICKER: side panel opened by a slot click — icon+name+effect
+   tiles, category filter chips, era-locked tiles stay visible but inert. */
+.cot-eqpick{position:absolute;right:344px;top:110px;width:372px;display:none;
+  pointer-events:auto;z-index:70;font-family:${FONT_STACK};
+  background:linear-gradient(180deg,rgba(11,15,20,.94),rgba(7,10,13,.96));
+  border:1px solid rgba(146,164,180,.32);box-shadow:0 10px 36px rgba(0,0,0,.65);
+  padding:13px 14px 12px;}
+.cot-eqpick.open{display:block;}
+.cot-eqpick .ph{display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:9px;}
+.cot-eqpick .ph .t{font-size:11px;font-weight:800;letter-spacing:.22em;
+  color:#c6d2dc;text-transform:uppercase;}
+.cot-eqpick .ph .t i{font-style:normal;color:#f0b04a;}
+.cot-eqpick .ph .x{cursor:pointer;border:none;background:none;color:#8a97a3;
+  font-size:15px;line-height:1;padding:2px 4px;font-family:inherit;}
+.cot-eqpick .ph .x:hover{color:#ffd27a;}
+.cot-eqpick .chips{display:flex;gap:4px;margin-bottom:9px;flex-wrap:wrap;}
+.cot-eqpick .chip{cursor:pointer;border:1px solid rgba(146,164,180,.28);
+  background:rgba(11,15,20,.8);color:#8a97a3;font-family:inherit;
+  font-size:8.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  padding:4px 9px 3px;transition:color .12s,border-color .12s;}
+.cot-eqpick .chip:hover{color:#c6d2dc;}
+.cot-eqpick .chip.sel{color:#ffd27a;border-color:rgba(240,176,74,.65);
+  background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
+.cot-eqpick .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
+  max-height:min(46vh,430px);overflow-y:auto;overscroll-behavior:contain;
+  padding-right:3px;scrollbar-width:thin;
+  scrollbar-color:rgba(146,164,180,.45) rgba(8,11,14,.6);}
+.cot-eqpick .pgrid::-webkit-scrollbar{width:5px;}
+.cot-eqpick .pgrid::-webkit-scrollbar-track{background:rgba(8,11,14,.6);}
+.cot-eqpick .pgrid::-webkit-scrollbar-thumb{background:rgba(146,164,180,.45);}
+.cot-eqtile{cursor:pointer;position:relative;text-align:center;padding:9px 5px 7px;
+  background:linear-gradient(180deg,rgba(13,18,23,.82),rgba(8,11,14,.9));
+  border:1px solid rgba(146,164,180,.24);border-bottom:2px solid rgba(146,164,180,.24);
+  transition:border-color .12s,background .12s;}
+.cot-eqtile:hover{border-color:rgba(210,225,240,.5);}
+.cot-eqtile.sel{border-color:#f0a030;border-bottom-color:#f0a030;
+  background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
+.cot-eqtile svg{display:block;margin:0 auto 5px;}
+.cot-eqtile .n{font-size:8.5px;font-weight:700;letter-spacing:.06em;color:#e6edf3;
+  text-transform:uppercase;line-height:1.25;min-height:20px;
+  display:flex;align-items:center;justify-content:center;}
+.cot-eqtile .e{font-size:7.5px;font-weight:600;letter-spacing:.02em;color:#8a97a3;
+  line-height:1.35;margin-top:3px;min-height:29px;}
+.cot-eqtile.sel .n{color:#ffd27a;}
+.cot-eqtile .tag{position:absolute;top:3px;right:3px;font-size:6.5px;font-weight:800;
+  letter-spacing:.1em;color:#d8a04c;background:rgba(20,14,6,.85);
+  border:1px solid rgba(240,176,74,.4);padding:1px 4px;text-transform:uppercase;}
+.cot-eqtile.inother .tag{color:#9fb0bf;border-color:rgba(146,164,180,.4);
+  background:rgba(10,14,18,.85);}
+.cot-eqtile.locked{cursor:default;opacity:.38;}
+.cot-eqtile.locked:hover{border-color:rgba(146,164,180,.24);}
+.cot-eqtile.remove .n{color:#9fb0bf;}
+.cot-eqtile.remove svg{opacity:.55;}
+
+/* garage_ui: entrance transition — the garage used to hard-cut in (boot and
+   battle-exit both flipped display:none→block in one frame). show() re-arms
+   the .enter class; the UI chrome fades/rises in around the live 3D stage.
+   Centered elements keep their translateX(-50%) inside the keyframes. */
+.cot-garage.enter .band-top,.cot-garage.enter .band-bot,
+.cot-garage.enter .band-l,.cot-garage.enter .band-r{
+  animation:cot-g-fade .30s ease-out backwards;}
+.cot-garage.enter .title,.cot-garage.enter .modetag,.cot-garage.enter .cot-tech,
+.cot-garage.enter .cot-leftcol,.cot-garage.enter .cot-topbar,
+.cot-garage.enter .hint{animation:cot-g-fade .34s ease-out .05s backwards;}
+.cot-garage.enter .stats{animation:cot-g-rise .36s ease-out .08s backwards;}
+.cot-garage.enter .cot-battle{animation:cot-g-drop-c .36s ease-out .05s backwards;}
+.cot-garage.enter .cot-era-chips{animation:cot-g-rise-c .32s ease-out .10s backwards;}
+.cot-garage.enter .cot-carousel{animation:cot-g-rise-c .36s ease-out .14s backwards;}
+/* MARKETING FEATURED PANEL: rotating in-engine action stills (see
+   tools/marketing-shots). Bottom-anchored under the camo grid in the left
+   column; purely decorative, so on short viewports it is the element that
+   clips first (leftcol overflow:hidden), never the functional pickers. */
+.cot-featured{width:224px;flex:0 0 auto;margin-top:12px;pointer-events:auto;}
+.cot-featured .ftitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
+  text-transform:uppercase;margin-bottom:7px;display:flex;justify-content:space-between;
+  align-items:baseline;}
+.cot-featured .fdots{display:flex;gap:4px;}
+.cot-featured .fdots span{width:5px;height:5px;background:rgba(146,164,180,.35);
+  transition:background .2s;}
+.cot-featured .fdots span.on{background:#f0a030;}
+.cot-featured .fshot{position:relative;width:224px;height:104px;overflow:hidden;
+  border:1px solid rgba(146,164,180,.28);cursor:pointer;background:#0a0e12;
+  box-shadow:0 6px 20px rgba(0,0,0,.45);transition:border-color .15s;}
+.cot-featured .fshot:hover{border-color:rgba(240,176,74,.6);}
+.cot-featured .fly{position:absolute;inset:0;background-size:cover;background-position:center 40%;
+  opacity:0;transform:scale(1.05);transition:opacity .8s ease;}
+.cot-featured .fly.on{opacity:1;transform:scale(1);
+  transition:opacity .8s ease,transform 8.5s linear;}
+.cot-featured .fcap{position:absolute;left:0;right:0;bottom:0;padding:14px 9px 5px;
+  font-size:8.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#d9e3ec;
+  background:linear-gradient(0deg,rgba(5,8,11,.9),rgba(5,8,11,0));white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;}
+@keyframes cot-g-fade{from{opacity:0;}}
+@keyframes cot-g-rise{from{opacity:0;transform:translateY(12px);}}
+@keyframes cot-g-rise-c{from{opacity:0;transform:translateX(-50%) translateY(12px);}
+  to{opacity:1;transform:translateX(-50%);}}
+@keyframes cot-g-drop-c{from{opacity:0;transform:translateX(-50%) translateY(-10px);}
+  to{opacity:1;transform:translateX(-50%);}}
+@media (prefers-reduced-motion:reduce){
+  .cot-garage.enter,.cot-garage.enter *{animation:none !important;}
+}
+
 /* Compact touch garage: keep the tank, BATTLE action and vehicle roster
    dominant on a phone-sized landscape screen. The full stat sheet remains
    available on desktop, while mobile keeps the interactive loadout column. */
 @media (max-width:900px){
   .cot-garage .band-top{height:23%;}.cot-garage .band-bot{height:31%;}
   .cot-garage .band-r{display:none;}
-  .cot-garage .title{top:14px;left:14px;font-size:13px;letter-spacing:.22em;}
-  .cot-garage .modetag{top:35px;left:15px;font-size:7.5px;letter-spacing:.24em;}
+  .cot-garage .title{top:12px;left:14px;font-size:13px;letter-spacing:.22em;gap:7px;}
+  .cot-garage .title .mark{width:22px;height:22px;}
+  .cot-garage .modetag{top:34px;left:41px;font-size:7.5px;letter-spacing:.24em;}
   .cot-tech{top:56px;left:14px;padding:6px 10px 5px;font-size:8px;}
   .cot-battle{top:12px;width:214px;height:40px;font-size:15px;}
   .cot-garage .stats{display:none;}
   .cot-topbar{top:8px;right:8px;gap:3px;transform:scale(.72);transform-origin:right top;}
   .cot-leftcol{left:14px;top:98px;bottom:112px;width:180px;gap:7px;overflow:visible;}
   .cot-maps{display:none;}
+  .cot-featured{display:none;}
   .cot-camos{width:180px;margin-top:0;padding:7px;
     background:rgba(7,11,15,.62);border:1px solid rgba(146,164,180,.18);}
   .cot-camos .ctitle{font-size:8px;margin-bottom:5px;}
+  .cot-camos .cgrid.camo{max-height:118px;} /* camo r8: ~3 compact rows */
   .cot-camo-card{padding:3px 2px 2px;}.cot-camo-card .sw{height:22px;margin-bottom:2px;}
   .cot-camo-card .cl{font-size:6.5px;letter-spacing:.06em;}
   .cot-camos .cnote{display:none;}
@@ -310,6 +497,11 @@ function ensureStyle(id, css) {
     document.head.appendChild(s);
   }
 }
+
+// garage_ui: one shared accessibility gate for the WAAPI micro-transitions
+// (the CSS entrance set is gated by the same media query in GARAGE_CSS).
+const REDUCED_MOTION = typeof matchMedia === 'function' &&
+  matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 
 // --- CAMO PICKER SECTION: swatch painter ------------------------------------
@@ -459,20 +651,119 @@ function paintCamoSwatch(canvas, spec, pid) {
         c.fill();
       }
     }
-  } else if ((scheme === 'stripes' || scheme === 'ambush') && patches.length) {
+  } else if (scheme === 'stripes' && patches.length) {
+    // camo r8: bands, not blobs — the r5 painter rewrite made 'stripes'
+    // broad sprayed BANDS and the old blob swatch stopped matching the hull.
+    // vis.bandAngle (naval waves) pins the direction like the painter does.
+    const ang = vis.bandAngle != null ? vis.bandAngle + 0.05 : 0.9 + rng() * 0.5;
+    for (let i = 0; i < 6; i++) {
+      const col = swMix(patches[i % patches.length], base, 0.1);
+      const w2 = S * (0.035 + rng() * 0.03);
+      const x0 = rng() * W, y0 = rng() * H, len = S * 0.5;
+      c.strokeStyle = swRgb(col, 0.8);
+      c.lineWidth = w2;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(x0 - Math.cos(ang) * len / 2, y0 - Math.sin(ang) * len / 2);
+      c.quadraticCurveTo(x0 + (rng() - 0.5) * w2 * 2, y0 + (rng() - 0.5) * w2 * 2,
+        x0 + Math.cos(ang) * len / 2, y0 + Math.sin(ang) * len / 2);
+      c.stroke();
+    }
+  } else if (scheme === 'ambush' && patches.length) {
     for (let i = 0; i < 6; i++) {
       const col = swMix(patches[i % patches.length], base, 0.1);
       swBlob(c, rng, rng() * W, rng() * H, S * (0.04 + rng() * 0.05));
       c.fillStyle = swRgb(col, 0.85);
       c.fill();
     }
-    if (scheme === 'ambush') {
-      for (let i = 0; i < 90; i++) {
-        c.fillStyle = swRgb([base, ...patches][(rng() * (patches.length + 1)) | 0], 0.9);
-        c.beginPath();
-        c.arc(rng() * W, rng() * H, 0.8 + rng() * 0.9, 0, Math.PI * 2);
-        c.fill();
-      }
+    for (let i = 0; i < 90; i++) {
+      c.fillStyle = swRgb([base, ...patches][(rng() * (patches.length + 1)) | 0], 0.9);
+      c.beginPath();
+      c.arc(rng() * W, rng() * H, 0.8 + rng() * 0.9, 0, Math.PI * 2);
+      c.fill();
+    }
+  } else if (scheme === 'merdc' && patches.length) {
+    // two dominant fields + sand/black accents (camo r8)
+    const dom = patches[0], sand = patches[1] || base, black = patches[2] || [43, 43, 40];
+    for (let i = 0; i < 4; i++) {
+      swBlob(c, rng, rng() * W, rng() * H, S * (0.06 + rng() * 0.05));
+      c.fillStyle = swRgb(dom, 0.95);
+      c.fill();
+    }
+    for (let i = 0; i < 3; i++) {
+      swBlob(c, rng, rng() * W, rng() * H, S * (0.02 + rng() * 0.02));
+      c.fillStyle = swRgb(i < 2 ? sand : black, 0.92);
+      c.fill();
+    }
+  } else if (scheme === 'blotch' && patches.length) {
+    for (let i = 0; i < 9; i++) {
+      const col = patches[i % patches.length];
+      swBlob(c, rng, rng() * W, rng() * H, S * (0.03 + rng() * 0.045));
+      c.fillStyle = swRgb(col, 0.9);
+      c.fill();
+    }
+  } else if (scheme === 'blocks' && patches.length) {
+    for (let i = 0; i < 8; i++) {
+      const col = patches[(rng() * patches.length) | 0];
+      const w2 = S * (0.04 + rng() * 0.07), h2 = S * (0.03 + rng() * 0.05);
+      c.fillStyle = swRgb(col, 0.94);
+      c.fillRect(rng() * W - w2 / 2, rng() * H - h2 / 2, w2, h2);
+    }
+  } else if (scheme === 'washworn') {
+    const under = patches.length ? patches[0] : [70, 80, 55];
+    for (let i = 0; i < 26; i++) { // opaque mop swathes
+      swBlob(c, rng, rng() * W, rng() * H, S * (0.025 + rng() * 0.03));
+      c.fillStyle = swRgb(swMix(base, [255, 255, 255], 0.06), 0.7);
+      c.fill();
+    }
+    for (let i = 0; i < 7; i++) { // worn-through factory bands
+      swBlob(c, rng, rng() * W, rng() * H, S * (0.018 + rng() * 0.022));
+      c.fillStyle = swRgb(under, 0.55 + rng() * 0.25);
+      c.fill();
+    }
+  } else if (scheme === 'caunter' && patches.length) {
+    const ang = 0.7;
+    for (let i = 0; i < 4; i++) {
+      const col = patches[i % patches.length];
+      const w2 = S * (0.03 + rng() * 0.025);
+      const x0 = rng() * W, y0 = rng() * H;
+      c.strokeStyle = swRgb(col, 0.94);
+      c.lineWidth = w2;
+      c.lineCap = 'butt';
+      c.beginPath();
+      c.moveTo(x0 - Math.cos(ang) * S * 0.3, y0 - Math.sin(ang) * S * 0.3);
+      c.lineTo(x0 + Math.cos(ang) * S * 0.3, y0 + Math.sin(ang) * S * 0.3);
+      c.stroke();
+    }
+  } else if (scheme === 'splinter' && patches.length) {
+    for (let i = 0; i < 6; i++) {
+      const col = patches[i % patches.length];
+      swPoly(c, rng, rng() * W, rng() * H, S * (0.035 + rng() * 0.04), 5);
+      c.fillStyle = swRgb(col, 0.95);
+      c.fill();
+    }
+    c.strokeStyle = swRgb(swMix(patches[0], [40, 44, 38], 0.55), 0.7);
+    c.lineWidth = 1;
+    for (let i = 0; i < 26; i++) { // rain strokes
+      const x0 = rng() * W, y0 = rng() * H, len = 4 + rng() * 6;
+      c.beginPath();
+      c.moveTo(x0, y0);
+      c.lineTo(x0 + len * 0.45, y0 + len);
+      c.stroke();
+    }
+  } else if (scheme === 'dazzle' && patches.length) {
+    for (let i = 0; i < 7; i++) {
+      const col = patches[i % patches.length];
+      const ang = (i % 3 === 2 ? 1 : -1) * (0.6 + rng() * 0.3);
+      const w2 = S * (0.025 + rng() * 0.03);
+      const x0 = rng() * W, y0 = rng() * H;
+      c.strokeStyle = swRgb(col, 0.96);
+      c.lineWidth = w2;
+      c.lineCap = 'butt';
+      c.beginPath();
+      c.moveTo(x0 - Math.cos(ang) * S * 0.35, y0 - Math.sin(ang) * S * 0.35);
+      c.lineTo(x0 + Math.cos(ang) * S * 0.35, y0 + Math.sin(ang) * S * 0.35);
+      c.stroke();
     }
   }
   // faint top-light so the tile reads as painted steel, not a flat chip
@@ -522,7 +813,11 @@ export function createGarage(opts) {
   root.innerHTML =
     `<div class="band-top"></div><div class="band-bot"></div>` +
     `<div class="band-l"></div><div class="band-r"></div>` +
-    `<div class="title">CLAUDE <b>OF TANKS</b></div>` +
+    `<div class="title">` +
+    // brand mark (tank + Claude Code commander) so the garage brand matches
+    // the entry screen; master copy public/brand/logo-mark.svg
+    `<img class="mark" src="/brand/logo-mark.svg" alt="" draggable="false">` +
+    `<span>CLAUDE <b>OF TANKS</b></span></div>` +
     `<div class="modetag">Garage</div>` +
     `<div class="cot-topbar">` +
     `<div class="res"><svg viewBox="0 0 14 14" width="13" height="13">` +
@@ -537,19 +832,86 @@ export function createGarage(opts) {
     `<path d="M7 .8 8.7 5.3 13.2 7 8.7 8.7 7 13.2 5.3 8.7 .8 7 5.3 5.3Z" fill="#9fd8ec"/></svg>` +
     `<span>48 250</span></div>` +
     `</div>` +
-    `<button class="cot-tech" type="button"><span class="tt-ico">&#9776;</span>TECH TREE</button>` +
+    `<button class="cot-tech" type="button">` +
+    `<svg class="tt-ico" viewBox="0 0 14 14" width="13" height="13" aria-hidden="true">` +
+    `<path d="M4.4 7h3M7.4 7V3.4h2.2M7.4 7v3.6h2.2" fill="none" stroke="currentColor" stroke-width="1.3"/>` +
+    `<circle cx="2.7" cy="7" r="1.9" fill="currentColor"/>` +
+    `<circle cx="11.3" cy="3.4" r="1.6" fill="currentColor"/>` +
+    `<circle cx="11.3" cy="10.6" r="1.6" fill="currentColor"/></svg>` +
+    `TECH TREE</button>` +
     `<button class="cot-battle" type="button">BATTLE</button>` +
     `<div class="stats"></div>` +
     `<div class="cot-era-chips"></div>` +
     `<div class="cot-carousel">` +
-    `<button class="cot-car-arrow prev" type="button">&#8249;</button>` +
+    `<button class="cot-car-arrow prev" type="button" aria-label="Previous vehicle">` +
+    `<svg viewBox="0 0 10 16" width="9" height="15" aria-hidden="true">` +
+    `<path d="M8 1.6 2.4 8 8 14.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>` +
     `<div class="cot-cards"></div>` +
-    `<button class="cot-car-arrow next" type="button">&#8250;</button>` +
+    `<button class="cot-car-arrow next" type="button" aria-label="Next vehicle">` +
+    `<svg viewBox="0 0 10 16" width="9" height="15" aria-hidden="true">` +
+    `<path d="M2 1.6 7.6 8 2 14.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>` +
     `</div>` +
     `<div class="cot-leftcol"><div class="cot-maps"></div>` +
     `<div class="cot-camos"></div></div>` +
     `<div class="hint">&#8592; &#8594; select &nbsp;&middot;&nbsp; enter to battle</div>`;
   document.body.appendChild(root);
+
+  // --- MARKETING FEATURED PANEL: rotating in-engine action stills ------------
+  // Assets + captions come from the marketing-shots pipeline
+  // (tools/marketing-shots, encoded to public/media/featured/). The panel is
+  // created programmatically so the main markup block stays untouched; it
+  // crossfades every 8 s, click advances, hover pauses. Images lazy-load —
+  // a missing set simply never shows the panel's layers (gradient card).
+  const FEATURED_SHOTS = [
+    { img: '/media/featured/f1_09_winter_lake_duel.webp', cap: 'Frosthollow — ammo-rack kill' },
+    { img: '/media/featured/f2_17_urban_street_duel.webp', cap: 'Steinburg — street duel' },
+    { img: '/media/featured/f3_06_desert_hero_kf51.webp', cap: 'Sirocco Wadi — KF51 firing' },
+    { img: '/media/featured/f4_27_verdant_village_brawl.webp', cap: 'Verdant Fields — village push' },
+    { img: '/media/featured/f5_01_desert_duel_leclerc_kill.webp', cap: 'Sirocco Wadi — Leclerc duel' },
+  ];
+  (() => {
+    const col = root.querySelector('.cot-leftcol');
+    if (!col || !FEATURED_SHOTS.length) return;
+    const panel = document.createElement('div');
+    panel.className = 'cot-featured';
+    panel.innerHTML =
+      `<div class="ftitle"><span>Battle gallery</span><span class="fdots">` +
+      FEATURED_SHOTS.map(() => '<span></span>').join('') +
+      `</span></div>` +
+      `<div class="fshot"><div class="fly"></div><div class="fly"></div><div class="fcap"></div></div>`;
+    col.appendChild(panel);
+    const layers = panel.querySelectorAll('.fly');
+    const capEl = panel.querySelector('.fcap');
+    const dots = panel.querySelectorAll('.fdots span');
+    const shotEl = panel.querySelector('.fshot');
+    let idx = -1;
+    let front = 0;
+    let timer = 0;
+    const show = (i) => {
+      front ^= 1;
+      layers[front].style.backgroundImage = `url("${FEATURED_SHOTS[i].img}")`;
+      layers[front].classList.add('on');
+      layers[front ^ 1].classList.remove('on');
+      capEl.textContent = FEATURED_SHOTS[i].cap;
+      dots.forEach((d, k) => d.classList.toggle('on', k === i));
+      idx = i;
+    };
+    const preload = (i, cb) => {
+      const im = new Image();
+      im.onload = () => cb();
+      im.onerror = () => { /* missing still — stay on the current frame */ };
+      im.src = FEATURED_SHOTS[i].img;
+    };
+    const advance = () => {
+      const next = (idx + 1) % FEATURED_SHOTS.length;
+      preload(next, () => show(next));
+    };
+    const arm = () => { if (!timer) timer = setInterval(advance, 8000); };
+    preload(0, () => { show(0); arm(); });
+    shotEl.addEventListener('click', advance);
+    shotEl.addEventListener('mouseenter', () => { if (timer) { clearInterval(timer); timer = 0; } });
+    shotEl.addEventListener('mouseleave', arm);
+  })();
 
   const statsEl = root.querySelector('.stats');
   const cardsEl = root.querySelector('.cot-cards');
@@ -614,16 +976,21 @@ export function createGarage(opts) {
     title.textContent = 'Camouflage';
     camosEl.appendChild(title);
     const grid = document.createElement('div');
-    grid.className = 'cgrid';
+    // camo r8: 'camo' modifier — the pattern roster grew 6 -> 16, so THIS
+    // grid scrolls (max-height in css) while the equipment grid below stays
+    // static. Tools query `.cot-camos .cgrid` first-match as before.
+    grid.className = 'cgrid camo';
     camosEl.appendChild(grid);
     for (const pid of camoOpts.patterns) {
       const card = document.createElement('div');
       card.className = 'cot-camo-card';
+      card.dataset.pid = pid; // camo r8: stable hook for tools + tests
       card.innerHTML = pid === 'auto'
         ? `<div class="sw auto"></div><div class="cl"></div>`
         : `<div class="sw"><canvas></canvas></div><div class="cl"></div>`;
       card.querySelector('.cl').textContent =
         (camoOpts.label && camoOpts.label[pid]) || pid;
+      card.title = (camoOpts.label && camoOpts.label[pid]) || pid;
       card.addEventListener('click', () => {
         emit('ui:click', {});
         if (!selectedId) return;
@@ -643,84 +1010,143 @@ export function createGarage(opts) {
     note.textContent = '+3.5% concealment on matching maps · auto always matches';
     camosEl.appendChild(note);
   }
-  // --- EQUIPMENT PICKER (camo_spotting r1): 3-slot loadout toggles ---------
-  // Persistence mirrors the camo picker: localStorage `cot.equip.<specId>`
-  // (read battle-side by game/state.js loadEquipment -> spotting sim).
-  const equipCardById = new Map();
-  {
-    const title = document.createElement('div');
-    title.className = 'ctitle';
-    title.style.marginTop = '10px';
-    title.textContent = 'Equipment';
-    camosEl.appendChild(title);
-    const grid = document.createElement('div');
-    grid.className = 'cgrid';
-    camosEl.appendChild(grid);
-    const SHORT = { camo_net: 'Camo Net', binoculars: 'Binocs', vents: 'Vents' };
-    // distinct procedural icon per item (r3): net = diamond mesh,
-    // binoculars = twin objectives + bridge, vents = fan rotor
-    const INK = '#cfd9e2';
-    const EQUIP_SVG = {
-      camo_net:
-        `<svg viewBox="0 0 24 18" width="26" height="20">` +
-        `<g stroke="${INK}" stroke-width="1.1" fill="none" opacity=".9">` +
-        `<path d="M2 4 8 14M8 2 16 14M16 2 22 12M22 4 16 14M16 2 8 14M8 2 2 10"/>` +
-        `</g><path d="M1 3q6 -2.5 11 0q6 2.5 11 0" stroke="${INK}" stroke-width="1.4" fill="none"/></svg>`,
-      binoculars:
-        `<svg viewBox="0 0 24 18" width="26" height="20">` +
-        `<circle cx="7" cy="11" r="5" fill="none" stroke="${INK}" stroke-width="1.7"/>` +
-        `<circle cx="17" cy="11" r="5" fill="none" stroke="${INK}" stroke-width="1.7"/>` +
-        `<circle cx="7" cy="11" r="1.6" fill="${INK}"/><circle cx="17" cy="11" r="1.6" fill="${INK}"/>` +
-        `<rect x="10.6" y="9.6" width="2.8" height="2.8" fill="${INK}"/>` +
-        `<rect x="5.4" y="2.6" width="3.2" height="3" fill="${INK}"/>` +
-        `<rect x="15.4" y="2.6" width="3.2" height="3" fill="${INK}"/></svg>`,
-      vents:
-        `<svg viewBox="0 0 24 18" width="26" height="20">` +
-        `<circle cx="12" cy="9" r="7.4" fill="none" stroke="${INK}" stroke-width="1.4"/>` +
-        `<g fill="${INK}"><path d="M12 9 10.4 3.2q1.6-.9 3.2 0Z"/>` +
-        `<path d="M12 9 17.4 11.4q-.2 1.9-1.8 2.7Z"/>` +
-        `<path d="M12 9 8.4 13.9q-1.6-.8-1.8-2.7Z"/></g>` +
-        `<circle cx="12" cy="9" r="1.7" fill="${INK}"/></svg>`,
-    };
-    for (const eid of Object.keys(EQUIPMENT)) {
-      const card = document.createElement('div');
-      card.className = 'cot-camo-card';
-      card.title = EQUIPMENT[eid].label;
-      card.innerHTML = `<div class="sw eq">${EQUIP_SVG[eid] || ''}</div><div class="cl"></div>`;
-      card.querySelector('.cl').textContent = SHORT[eid] || EQUIPMENT[eid].label;
-      card.addEventListener('click', () => {
-        emit('ui:click', {});
-        if (!selectedId) return;
-        const cur = loadEquipIds(selectedId);
-        const i = cur.indexOf(eid);
-        if (i >= 0) cur.splice(i, 1);
-        else cur.push(eid);
-        try { localStorage.setItem(`cot.equip.${selectedId}`, JSON.stringify(cur)); } catch { /* private mode */ }
-        refreshEquipSel();
-      });
-      grid.appendChild(card);
-      equipCardById.set(eid, card);
+  // --- EQUIPMENT SYSTEM: slot boxes on the stats card + item picker --------
+  // Catalog/persistence/era-gating live in game/equipment.js (localStorage
+  // `cot.equip.<specId>`, read battle-side by game/state.js at spawn). The
+  // three slot boxes are rendered INTO the stats card by renderStats (the
+  // card rebuilds its innerHTML per vehicle), so slot clicks are delegated
+  // from statsEl here; the picker is a side panel anchored next to the card.
+  const eqpickEl = document.createElement('div');
+  eqpickEl.className = 'cot-eqpick';
+  root.appendChild(eqpickEl);
+  let eqOpenSlot = -1;   // -1 = picker closed
+  let eqCat = 'all';     // active category chip
+
+  const curLoadout = () =>
+    selectedId ? loadEquipment(selectedId, specById.get(selectedId)) : [];
+
+  /** Assign/remove an item in the open slot, persist, refresh the card. */
+  function eqAssign(itemId) {
+    if (!selectedId || eqOpenSlot < 0) return;
+    const spec = specById.get(selectedId);
+    const cur = curLoadout();
+    const prev = cur.indexOf(itemId);
+    if (itemId && prev === eqOpenSlot) {
+      // re-picking the item already in this slot = unequip it
+      cur.splice(eqOpenSlot, 1);
+    } else if (itemId) {
+      if (prev >= 0) cur.splice(prev, 1); // moving from another slot
+      if (eqOpenSlot < cur.length) cur.splice(eqOpenSlot, 1, itemId);
+      else cur.push(itemId);
+    } else if (eqOpenSlot < cur.length) {
+      cur.splice(eqOpenSlot, 1); // REMOVE tile
+    }
+    saveEquipment(selectedId, cur, spec);
+    closeEqPicker();
+    renderStats(spec); // slots + modified stat bars
+  }
+
+  function renderEqPicker() {
+    if (!selectedId || eqOpenSlot < 0) return;
+    const spec = specById.get(selectedId);
+    const cur = curLoadout();
+    let chips = '';
+    for (const c of EQUIP_CATEGORIES) {
+      chips += `<button type="button" class="chip${c.id === eqCat ? ' sel' : ''}" data-cat="${c.id}">${c.label}</button>`;
+    }
+    let tiles =
+      `<div class="cot-eqtile remove" data-eq="">` +
+      `<svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true">` +
+      `<circle cx="12" cy="12" r="8.6" fill="none" stroke="rgba(238,244,250,.86)" stroke-width="1.8"/>` +
+      `<path d="M8.4 8.4l7.2 7.2M15.6 8.4l-7.2 7.2" stroke="rgba(238,244,250,.86)" stroke-width="1.8"/></svg>` +
+      `<div class="n">Empty</div><div class="e">remove equipment from this slot</div></div>`;
+    for (const it of EQUIPMENT_CATALOG) {
+      if (eqCat !== 'all' && it.cat !== eqCat) continue;
+      const locked = !equipEligible(it, spec);
+      const at = cur.indexOf(it.id);
+      const cls = ['cot-eqtile'];
+      let tag = '';
+      if (locked) { cls.push('locked'); tag = `<span class="tag">${it.era}</span>`; }
+      else if (at === eqOpenSlot) { cls.push('sel'); tag = `<span class="tag">Fitted</span>`; }
+      else if (at >= 0) { cls.push('inother'); tag = `<span class="tag">Slot ${at + 1}</span>`; }
+      tiles += `<div class="${cls.join(' ')}" data-eq="${locked ? '' : it.id}" ` +
+        `title="${it.name} — ${it.desc}${locked ? ' (modern vehicles only)' : ''}">` +
+        `${tag}${equipIconSVG(it.id, 34)}<div class="n">${it.name}</div>` +
+        `<div class="e">${it.desc}</div></div>`;
+    }
+    eqpickEl.innerHTML =
+      `<div class="ph"><span class="t">Equipment &middot; <i>Slot ${eqOpenSlot + 1}</i></span>` +
+      `<button type="button" class="x" aria-label="Close">&#10005;</button></div>` +
+      `<div class="chips">${chips}</div>` +
+      `<div class="pgrid">${tiles}</div>`;
+    // slot highlight on the card
+    for (const el of statsEl.querySelectorAll('.eqslot')) {
+      el.classList.toggle('open', Number(el.dataset.slot) === eqOpenSlot);
     }
   }
-  function loadEquipIds(specId) {
-    try {
-      const arr = JSON.parse(localStorage.getItem(`cot.equip.${specId}`) || '[]');
-      return Array.isArray(arr) ? arr : [];
-    } catch {
-      return [];
-    }
+
+  function openEqPicker(slot) {
+    eqOpenSlot = slot;
+    eqpickEl.classList.add('open');
+    renderEqPicker();
+    document.addEventListener('keydown', eqKeydown);
+    document.addEventListener('mousedown', eqOutside, true);
   }
+  function closeEqPicker() {
+    if (eqOpenSlot < 0) return;
+    eqOpenSlot = -1;
+    eqpickEl.classList.remove('open');
+    for (const el of statsEl.querySelectorAll('.eqslot')) el.classList.remove('open');
+    document.removeEventListener('keydown', eqKeydown);
+    document.removeEventListener('mousedown', eqOutside, true);
+  }
+  function eqKeydown(e) {
+    if (e.code === 'Escape') { e.stopPropagation(); closeEqPicker(); }
+  }
+  function eqOutside(e) {
+    if (!eqpickEl.contains(e.target) && !e.target.closest('.eqslot')) closeEqPicker();
+  }
+
+  eqpickEl.addEventListener('click', (e) => {
+    const chip = e.target.closest('.chip');
+    if (chip) {
+      emit('ui:click', {});
+      eqCat = chip.dataset.cat;
+      renderEqPicker();
+      return;
+    }
+    if (e.target.closest('.x')) { emit('ui:click', {}); closeEqPicker(); return; }
+    const tile = e.target.closest('.cot-eqtile');
+    if (!tile || tile.classList.contains('locked')) return;
+    emit('ui:click', {});
+    eqAssign(tile.dataset.eq || null);
+  });
+
+  // slot boxes are re-created by every renderStats — delegate their clicks
+  statsEl.addEventListener('click', (e) => {
+    const slot = e.target.closest('.eqslot');
+    if (!slot) return;
+    emit('ui:click', {});
+    const idx = Number(slot.dataset.slot);
+    if (idx === eqOpenSlot) closeEqPicker();
+    else openEqPicker(idx);
+  });
+
+  /** Tank switch: the card re-renders its own slots; just drop a stale picker. */
   function refreshEquipSel() {
-    if (!selectedId) return;
-    const cur = loadEquipIds(selectedId);
-    for (const [eid, card] of equipCardById) card.classList.toggle('sel', cur.includes(eid));
+    closeEqPicker();
   }
-  // --- END EQUIPMENT PICKER ------------------------------------------------
+  // --- END EQUIPMENT SYSTEM -------------------------------------------------
   let swatchesFor = null; // spec id the swatches are currently painted for
   function refreshCamoSel() {
     if (!camoOpts || !selectedId) return;
     const cur = camoOpts.get(selectedId);
-    for (const [pid, card] of camoCardById) card.classList.toggle('sel', pid === cur);
+    for (const [pid, card] of camoCardById) {
+      card.classList.toggle('sel', pid === cur);
+      // camo r8: the grid scrolls now — keep the active pattern in view when
+      // selection changes (tank switch restoring a persisted pick).
+      if (pid === cur && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
+    }
     // repaint swatch tiles for THIS tank (factory palette + nation digital
     // differ per vehicle — the preview must show what the hull will wear)
     if (swatchesFor !== selectedId) {
@@ -736,10 +1162,19 @@ export function createGarage(opts) {
   }
   // --- END CAMO PICKER SECTION ---------------------------------------------
 
-  // era-group classifier hoisted (r5-2): both the stat-bar normalization and
-  // the carousel filter chips below key off it.
+  // CATALOG GROUPS (garage_ui): the roster is catalogued by PROVENANCE first,
+  // then era — exactly three buckets, every vehicle in exactly one:
+  //   (1) 'custom'  tanks WE built: pure procedural geometry, no sourced GLB
+  //                 registered in MODEL_SOURCE (mixed WWII/modern eras);
+  //   (2) 'ww2'     sourced (GLB-backed) vehicles with WWII-era styling;
+  //   (3) 'modern'  sourced vehicles that are not WWII — community fictional
+  //                 designs bucket by their era styling, and anything
+  //                 ambiguous lands here (era defaults to modern).
+  // Classifier hoisted (r5-2): the carousel filter chips, arrow stepping and
+  // group cross-links all key off it.
+  const isSourced = (s) => (MODEL_SOURCE[s.id] && MODEL_SOURCE[s.id].source) === 'glb';
   const groupOf = (s) =>
-    (s.community && !s.variantOf) ? 'community' : (s.era === 'ww2' ? 'ww2' : 'modern');
+    !isSourced(s) ? 'custom' : (s.era === 'ww2' ? 'ww2' : 'modern');
 
   // PER-CLASS stat ranges for the normalized bars. r6-2 (round critique:
   // "6.0 s reload renders ~90% full / bars carry no comparative scale"): the
@@ -748,8 +1183,10 @@ export function createGarage(opts) {
   // arbitrary-looking lengths. Bars now normalize min→max within the
   // vehicle's own ERA + CLASS peer group (an Abrams compares against MBTs,
   // a Bradley against IFVs), higher-is-better on every row (reload
-  // inverted: faster = fuller).
-  const statGroupOf = (s) => `${groupOf(s)}/${s.class || 'medium'}`;
+  // inverted: faster = fuller). garage_ui: stat peers stay ERA-based even
+  // though the catalog chips now group by provenance — a procedurally built
+  // Tiger I must range against WWII heavies, not against a custom Leo 2A7.
+  const statGroupOf = (s) => `${s.era === 'ww2' ? 'ww2' : 'modern'}/${s.class || 'medium'}`;
   const STAT_RANGES = new Map(); // era/class -> {hp,speed,hpt,dmg,reload:[lo,hi]}
   for (const s of allSpecs) {
     const g = statGroupOf(s);
@@ -759,6 +1196,10 @@ export function createGarage(opts) {
         hp: [Infinity, -Infinity], speed: [Infinity, -Infinity],
         hpt: [Infinity, -Infinity], dmg: [Infinity, -Infinity],
         reload: [Infinity, -Infinity],
+        // EQUIPMENT SYSTEM rows: aim time + the spotting pair, so optics/
+        // nets/rammers visibly move their bars against the same peer group
+        aim: [Infinity, -Infinity], view: [Infinity, -Infinity],
+        camo: [Infinity, -Infinity],
       };
       STAT_RANGES.set(g, r);
     }
@@ -771,6 +1212,9 @@ export function createGarage(opts) {
     add('speed', s.topSpeedKmh);
     add('hpt', s.enginePowerHp / s.weightTons);
     add('reload', s.gun.reloadS);
+    add('aim', s.gun.aimTimeS);
+    add('view', viewRangeOf(s));
+    add('camo', baseCamoOf(s, false));
     const shells = (s.gun && s.gun.shells) || [];
     add('dmg', shells.length ? Math.max(...shells.map((sh) => sh.dmg || 0)) : null);
   }
@@ -787,24 +1231,19 @@ export function createGarage(opts) {
     return 0.14 + Math.max(0, Math.min(1, f)) * 0.86;
   }
 
-  // --- MODERN EXPANSION: era filter chips (WWII / MODERN / COMMUNITY) ------
-  // The carousel shows ONE group at a time so a 35+ vehicle roster stays
-  // navigable. Nation-roster variants (spec.variantOf) count as MODERN;
-  // sourced third-party vehicles (spec.community without variantOf) are
-  // COMMUNITY regardless of era. (groupOf hoisted above the stat ranges.)
+  // --- CATALOG FILTER CHIPS (CUSTOM / WWII / MODERN) ------------------------
+  // The carousel shows ONE group at a time so a 90-vehicle roster stays
+  // navigable. Exactly three chips, keyed by provenance then era (see groupOf
+  // above): tanks we built ourselves, sourced WWII vehicles, sourced modern
+  // vehicles. Partition, not overlay — the old LOCAL overlay chip (a tank in
+  // its era group AND in local) double-listed 69 vehicles. A chip with zero
+  // members auto-hides (a public build may strip the sourced fleet).
   const ERA_GROUPS = [
+    { id: 'custom', label: 'Custom' },
     { id: 'ww2', label: 'WWII' },
     { id: 'modern', label: 'Modern' },
-    { id: 'community', label: 'Community' },
-    // LOCAL: every vehicle whose registered model source is a real local GLB
-    // in THIS build (private/local builds register the recovered fleet; the
-    // public build strips them, so the chip auto-hides on zero members).
-    // Overlay group — a tank stays in its era group AND appears here.
-    { id: 'local', label: 'Local' },
   ];
-  const inGroup = (s, gid) => gid === 'local'
-    ? MODEL_SOURCE[s.id]?.source === 'glb'
-    : groupOf(s) === gid;
+  const inGroup = (s, gid) => groupOf(s) === gid;
   let eraFilter = specs.length ? groupOf(specs[0]) : 'modern';
   const chipsEl = root.querySelector('.cot-era-chips');
   const chipById = new Map();
@@ -831,17 +1270,29 @@ export function createGarage(opts) {
   function applyEraFilter(gid) {
     eraFilter = gid;
     for (const [id, chip] of chipById) chip.classList.toggle('sel', id === gid);
+    let vis = 0; // garage_ui: stagger budget for the reveal animation
     for (const s of specs) {
       const card = cardById.get(s.id);
       if (!card) continue;
-      card.style.display = inGroup(s, gid) ? '' : 'none';
+      const showCard = inGroup(s, gid);
+      const wasShown = card.style.display !== 'none';
+      card.style.display = showCard ? '' : 'none';
+      // garage_ui: a freshly revealed strip fades in with a light stagger
+      // instead of teleporting 20-60 cards in one style flush (opacity only —
+      // transform stays owned by the sel/hover lift). Cards already on screen
+      // and the initial hidden-root pass don't animate.
+      if (showCard && !wasShown && api.isOpen && card.animate && !REDUCED_MOTION) {
+        card.animate([{ opacity: 0 }, { opacity: 1 }],
+          { duration: 200, delay: Math.min(vis, 12) * 16, easing: 'ease-out', fill: 'backwards' });
+      }
+      if (showCard) vis++;
       // r3: the per-card era tag is REDUNDANT while the matching era chip is
       // the active filter (every visible card would repeat "MODERN" under a
-      // selected MODERN chip). It only stays on the mixed-era COMMUNITY tab,
+      // selected MODERN chip). It only stays on the mixed-era CUSTOM tab,
       // where it actually disambiguates.
       const tag = card.querySelector('.era');
       if (tag) {
-        // mixed-era tabs (community, local) keep the per-card era tag
+        // the mixed-era custom tab keeps the per-card era tag
         tag.style.display = (s.era === 'ww2' ? 'ww2' : 'modern') === gid ? 'none' : '';
       }
     }
@@ -872,13 +1323,28 @@ export function createGarage(opts) {
   // across the garage carousel, tech tree, and screenshot harness.
   ensureTankThumbs(allSpecs, { canWork: () => api.isOpen });
 
-  function statBar(label, valueText, frac) {
+  function statBar(label, valueText, frac, opts) {
     const pct = Math.max(2, Math.min(100, frac * 100)).toFixed(1);
-    return `<div class="srow"><div class="lr"><span>${label}</span><b>${valueText}</b></div>` +
+    // EQUIPMENT SYSTEM: values changed by the mounted loadout render in the
+    // boost tint with the stock value + contributing items in the tooltip.
+    const mod = opts && opts.mod;
+    const title = opts && opts.title ? ` title="${opts.title}"` : '';
+    return `<div class="srow"><div class="lr"><span>${label}</span>` +
+      `<b${mod ? ' class="eqmod"' : ''}${title}>${valueText}</b></div>` +
       `<div class="track"><div class="fill" style="width:${pct}%"></div></div></div>`;
   }
 
+  let statsFor = null; // last spec rendered — gates the swap micro-fade
   function renderStats(spec) {
+    // garage_ui: vehicle-switch micro-fade — the stats card content used to
+    // teleport; a 190 ms fade/rise sells the swap without delaying the data.
+    if (statsFor !== spec.id && statsFor !== null &&
+        statsEl.animate && !REDUCED_MOTION) {
+      statsEl.animate(
+        [{ opacity: 0.25, transform: 'translateY(5px)' }, { opacity: 1, transform: 'none' }],
+        { duration: 190, easing: 'ease-out' });
+    }
+    statsFor = spec.id;
     const hpT = spec.enginePowerHp / spec.weightTons;
     const shells = (spec.gun && spec.gun.shells) || [];
     let shellRows = '';
@@ -899,13 +1365,52 @@ export function createGarage(opts) {
     // r6-2: every bar normalizes within the vehicle's OWN era+class peer
     // group, higher-is-better (reload inverted) — see STAT_RANGES above
     const grp = statGroupOf(spec);
+    // EQUIPMENT SYSTEM: fold the mounted loadout into the displayed stats —
+    // the same multipliers/tables the battle sim reads (equipment.js +
+    // spotting.js), so the card IS the loadout preview. Modified values tint
+    // green with the stock number in the tooltip.
+    const eqIds = loadEquipment(spec.id, spec);
+    const eqM = computeEquipMults(eqIds);
+    const eqNames = eqIds.map((id) => EQUIPMENT_BY_ID.get(id).name).join(', ');
+    const reloadS = spec.gun.reloadS * eqM.reload;
+    const aimS = spec.gun.aimTimeS * eqM.aimTime;
+    const vrBase = viewRangeOf(spec);
+    const vrMove = vrBase * equipViewMult(eqIds, true);   // always-on items
+    const vrStill = vrBase * equipViewMult(eqIds, false); // + binoculars
+    const camoStill = Math.min(0.95, baseCamoOf(spec, false) + equipCamoBonus(eqIds, false));
+    const camoMove = Math.min(0.95, baseCamoOf(spec, true) + equipCamoBonus(eqIds, true));
+    const camoModded = equipCamoBonus(eqIds, false) > 0;
+    const viewText = vrStill > vrMove + 0.5
+      ? `${Math.round(vrMove)} / ${Math.round(vrStill)} m`
+      : `${Math.round(vrMove)} m`;
+    const eqTitle = (base) => `Stock ${base} &middot; ${eqNames}`;
+    let slotBoxes = '';
+    for (let i = 0; i < EQUIP_SLOTS; i++) {
+      const it = eqIds[i] ? EQUIPMENT_BY_ID.get(eqIds[i]) : null;
+      slotBoxes += it
+        ? `<div class="eqslot" data-slot="${i}" title="${it.name} &mdash; ${it.desc}">` +
+          `${equipIconSVG(it.id, 26)}<span class="sl">${it.short}</span></div>`
+        : `<div class="eqslot empty" data-slot="${i}" title="Mount equipment">` +
+          `<span class="plus">+</span><span class="sl">Empty</span></div>`;
+    }
     statsEl.innerHTML =
       `<h3></h3><div class="sub">${flagSVG(spec.nation, spec.era, 20, 13)}<span>${spec.nation} &middot; ${spec.class} &middot; ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}</span></div>` +
       statBar('Hit points', `${spec.hp}`, statFrac(grp, 'hp', spec.hp)) +
       statBar('Top speed', `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh)) +
       statBar('Power / weight', `${hpT.toFixed(1)} hp/t`, statFrac(grp, 'hpt', hpT)) +
-      statBar('Reload', `${spec.gun.reloadS.toFixed(1)} s`, statFrac(grp, 'reload', spec.gun.reloadS, true)) +
+      statBar('Reload', `${reloadS.toFixed(1)} s`, statFrac(grp, 'reload', reloadS, true),
+        { mod: eqM.reload !== 1, title: eqTitle(`${spec.gun.reloadS.toFixed(1)} s`) }) +
+      statBar('Aim time', `${aimS.toFixed(1)} s`, statFrac(grp, 'aim', aimS, true),
+        { mod: eqM.aimTime !== 1, title: eqTitle(`${spec.gun.aimTimeS.toFixed(1)} s`) }) +
       statBar('Damage', `${bestDmg} hp`, statFrac(grp, 'dmg', bestDmg)) +
+      statBar('View range', viewText, statFrac(grp, 'view', vrMove),
+        { mod: vrMove > vrBase || vrStill > vrMove + 0.5,
+          title: vrStill > vrMove + 0.5 ? `Moving / stationary &middot; stock ${vrBase} m`
+            : eqTitle(`${vrBase} m`) }) +
+      statBar('Camouflage', `${Math.round(camoStill * 100)} / ${Math.round(camoMove * 100)} %`,
+        statFrac(grp, 'camo', camoStill),
+        { mod: camoModded, title: 'Stationary / moving' +
+          (camoModded ? ` &middot; stock ${Math.round(baseCamoOf(spec, false) * 100)} %` : '') }) +
       `<div class="sep"></div>` + shellRows +
       `<div class="sep"></div>` +
       `<div class="armorline"><span>Hull front</span><b>${hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;'}</b></div>` +
@@ -914,7 +1419,11 @@ export function createGarage(opts) {
       `<div class="armorline"><span>Depression</span><b>&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;</b></div>` +
       (spec.community
         ? `<div class="sep"></div><div class="armorline"><span>Community model</span><b class="cr"></b></div>`
-        : '');
+        : '') +
+      // EQUIPMENT SYSTEM: the 3 loadout slots (picker opens on click)
+      `<div class="sep"></div>` +
+      `<div class="eqhead"><span>Equipment</span><i>${eqIds.length}/${EQUIP_SLOTS}</i></div>` +
+      `<div class="eqrow">${slotBoxes}</div>`;
     statsEl.querySelector('h3').textContent = spec.name;
     if (spec.community) {
       const cr = statsEl.querySelector('.cr');
@@ -973,6 +1482,105 @@ export function createGarage(opts) {
   root.querySelector('.prev').addEventListener('click', () => step(-1));
   root.querySelector('.next').addEventListener('click', () => step(1));
 
+  // --- DRAG-SCROLL CAROUSEL (garage_ui) -------------------------------------
+  // The strip pans 1:1 with a held pointer and coasts with momentum on
+  // release; a press that moves less than DRAG_MIN_PX still reads as a plain
+  // card click (no accidental drag-selects). Mouse/pen get the JS drag; touch
+  // keeps the browser's native pan+fling (touch-action: pan-x in the CSS —
+  // the browser takes the gesture over via pointercancel, which lands in the
+  // same end handler). Arrows and wheel behavior stay.
+  {
+    const DRAG_MIN_PX = 5;      // movement below this stays a click
+    const COAST_TAU_S = 0.32;   // momentum decay time constant
+    const COAST_MAX = 3600;     // px/s flick velocity clamp
+    const COAST_MIN = 40;       // px/s — coast ends below this
+    let ptrId = -1;
+    let startX = 0, startScroll = 0;
+    let engaged = false;        // true once the drag threshold is crossed
+    let suppressClick = false;  // swallow the click that follows a real drag
+    let vel = 0, lastX = 0, lastT = 0;
+    let coastRaf = 0;
+
+    const stopCoast = () => {
+      if (coastRaf) { cancelAnimationFrame(coastRaf); coastRaf = 0; }
+    };
+    const coast = () => {
+      let prev = performance.now();
+      const frame = (now) => {
+        coastRaf = 0;
+        const dt = Math.min(0.05, Math.max(0.001, (now - prev) / 1000));
+        prev = now;
+        const before = cardsEl.scrollLeft;
+        cardsEl.scrollLeft = before - vel * dt;
+        vel *= Math.exp(-dt / COAST_TAU_S);
+        // hitting either end of the strip kills the coast (no rubber-band)
+        if (cardsEl.scrollLeft === before) vel = 0;
+        if (Math.abs(vel) > COAST_MIN) coastRaf = requestAnimationFrame(frame);
+      };
+      coastRaf = requestAnimationFrame(frame);
+    };
+
+    cardsEl.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      stopCoast();
+      ptrId = e.pointerId;
+      startX = lastX = e.clientX;
+      startScroll = cardsEl.scrollLeft;
+      lastT = performance.now();
+      vel = 0;
+      engaged = false;
+      suppressClick = false;
+    });
+    cardsEl.addEventListener('pointermove', (e) => {
+      if (e.pointerId !== ptrId) return;
+      const dx = e.clientX - startX;
+      if (!engaged) {
+        if (Math.abs(dx) < DRAG_MIN_PX) return;
+        engaged = true;
+        cardsEl.classList.add('dragging');
+        try { cardsEl.setPointerCapture(ptrId); } catch (_) { /* embedded panes */ }
+      }
+      cardsEl.scrollLeft = startScroll - dx;  // 1:1 strip follow
+      const now = performance.now();
+      const dt = Math.max(4, now - lastT) / 1000;
+      // EMA over the last ~2-3 pointer events → release flick velocity
+      const inst = (e.clientX - lastX) / dt;
+      vel = Math.max(-COAST_MAX, Math.min(COAST_MAX, vel * 0.55 + inst * 0.45));
+      lastX = e.clientX;
+      lastT = now;
+    });
+    const endStripDrag = (e) => {
+      if (e.pointerId !== ptrId) return;
+      ptrId = -1;
+      if (!engaged) return;
+      engaged = false;
+      suppressClick = true;
+      cardsEl.classList.remove('dragging');
+      try { cardsEl.releasePointerCapture(e.pointerId); } catch (_) { /* released */ }
+      // a pointer that rested before release has a stale flick — don't coast
+      if (performance.now() - lastT < 90 && Math.abs(vel) > COAST_MIN) coast();
+    };
+    cardsEl.addEventListener('pointerup', endStripDrag);
+    cardsEl.addEventListener('pointercancel', endStripDrag);
+    // pointer capture retargets the post-drag click at cardsEl itself in most
+    // engines, but not all — swallow it in the capture phase either way.
+    cardsEl.addEventListener('click', (e) => {
+      if (!suppressClick) return;
+      suppressClick = false;
+      e.stopPropagation();
+      e.preventDefault();
+    }, true);
+    // vertical trackpad/mouse wheel pans the strip too (horizontal deltas
+    // already pan natively via overflow-x; that path is untouched)
+    cardsEl.addEventListener('wheel', (e) => {
+      if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+      stopCoast();
+      cardsEl.scrollLeft += e.deltaY;
+      e.preventDefault();
+    }, { passive: false });
+  }
+  // --- END DRAG-SCROLL CAROUSEL ---------------------------------------------
+
   // --- tech tree (research screen layered over the garage) ---
   const techtree = createTechTree({
     specs: allSpecs,
@@ -1012,6 +1620,11 @@ export function createGarage(opts) {
      */
     show(selected = 'm1a2') {
       root.style.display = 'block';
+      // garage_ui entrance: re-arm the chrome fade/rise on every open (boot
+      // and battle-exit both used to hard-cut the whole screen in one frame)
+      root.classList.remove('enter');
+      void root.offsetWidth; // restart the CSS animation set
+      root.classList.add('enter');
       if (!api.isOpen) window.addEventListener('keydown', onKey);
       api.isOpen = true;
       api.setSelected(specById.has(selected) ? selected : selectedId);

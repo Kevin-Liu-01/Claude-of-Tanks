@@ -1,0 +1,77 @@
+{
+  "map": "desert",
+  "seed": 5107,
+  "actors": [
+    {
+      "id": "challenger1",
+      "name": "shooter",
+      "pos": [
+        -40,
+        20
+      ],
+      "facingDeg": 60,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 71,
+      "turretDeg": -9.1
+    },
+    {
+      "id": "leo2a6",
+      "name": "victim",
+      "pos": [
+        24,
+        72
+      ],
+      "facingDeg": 250,
+      "turretDeg": 15,
+      "camo": "digital",
+      "camoSeed": 72
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 60,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "shooter",
+      "tMs": 320,
+      "params": {
+        "count": 10,
+        "intensity": 0.9,
+        "dirDeg": 240
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "shooter",
+      "tMs": 635,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      30,
+      36,
+      22
+    ],
+    "lookAt": [
+      16,
+      0,
+      64
+    ],
+    "groundRel": true,
+    "fov": 44
+  },
+  "fxTime": 660,
+  "timeScale": 0
+}

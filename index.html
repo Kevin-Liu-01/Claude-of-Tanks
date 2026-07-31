@@ -4,12 +4,24 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Claude of Tanks</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎖️</text></svg>" />
+  <!-- social cards (brand set lives in public/brand/, see docs/ATTRIBUTION.md) -->
+  <meta property="og:title" content="Claude of Tanks" />
+  <meta property="og:description" content="Free-roam armored warfare in the browser — 48 tanks, 4 battlefields, pure Three.js." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="/brand/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Claude of Tanks" />
+  <meta name="twitter:image" content="/brand/og-image.png" />
+  <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/brand/favicon-192.png" />
+  <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
   <!-- BOOT SCREEN: the wordmark weights are on the critical paint path, so they
        are preloaded ahead of the module graph (the splash markup below is inline
        for exactly the same reason — first paint must not wait on /src/main.js). -->
-  <link rel="preload" href="/fonts/switzer/Switzer-Extrabold.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="preload" href="/fonts/switzer/SwitzerCondensed-Bold.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/inter/InterVariable.woff2" as="font" type="font/woff2" crossorigin />
   <style>
     :root {
       /* One raster-quality contract for every DOM HUD mounted by the game.
@@ -20,6 +32,9 @@
       text-rendering: optimizeLegibility;
       font-kerning: normal;
       font-synthesis: none;
+      /* InterVariable carries an opsz axis (14-32): auto lets the display
+         sizes (boot wordmark, garage title) take the tighter optical cut. */
+      font-optical-sizing: auto;
     }
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #05080b; }
     body, button, input, select, textarea {
@@ -27,6 +42,9 @@
       text-rendering: optimizeLegibility;
       font-kerning: inherit;
       font-synthesis: none;
+      font-optical-sizing: auto;
+      /* type mandate: UI weight floor is 500 — nothing renders at book/regular */
+      font-weight: 500;
     }
     #app { width: 100%; height: 100%; }
     canvas, img { image-rendering: auto; }
@@ -41,21 +59,18 @@
        a single module is fetched, and the bar below is driven by real load
        stages (see bootScreen.js / main.js BOOT STAGES).
        --------------------------------------------------------------------- */
-    @font-face { font-family: 'Switzer'; src: url('/fonts/switzer/Switzer-Extrabold.woff2') format('woff2');
-      font-weight: 800; font-style: normal; font-display: swap; }
-    @font-face { font-family: 'Switzer'; src: url('/fonts/switzer/Switzer-Bold.woff2') format('woff2');
-      font-weight: 700; font-style: normal; font-display: swap; }
-    @font-face { font-family: 'Switzer'; src: url('/fonts/switzer/Switzer-Medium.woff2') format('woff2');
-      font-weight: 500; font-style: normal; font-display: swap; }
-    @font-face { font-family: 'Switzer Condensed'; src: url('/fonts/switzer/SwitzerCondensed-Bold.woff2') format('woff2');
-      font-weight: 700; font-style: normal; font-display: swap; }
-    @font-face { font-family: 'Switzer Condensed'; src: url('/fonts/switzer/SwitzerCondensed-Semibold.woff2') format('woff2');
-      font-weight: 600; font-style: normal; font-display: swap; }
+    /* Inter variable (rsms/inter v4.1, wght 100-900 x opsz 14-32, OFL — see
+       docs/ATTRIBUTION.md for provenance). Owner-directed swap replacing the
+       previous face. Inter has no width axis, so the old condensed layer is
+       now Inter + tightened tracking at the rules that used it (usage weight
+       floor: 500). */
+    @font-face { font-family: 'Inter'; src: url('/fonts/inter/InterVariable.woff2') format('woff2');
+      font-weight: 100 900; font-style: normal; font-display: swap; }
 
     #cot-boot {
       position: fixed; inset: 0; z-index: 200; overflow: hidden;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      font-family: 'Switzer', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       color: #e6edf3; -webkit-user-select: none; user-select: none; cursor: default;
       background:
         radial-gradient(118% 82% at 50% 22%, #16202b 0%, #0b1117 42%, #05080b 78%),
@@ -63,14 +78,30 @@
       opacity: 1; transition: opacity .5s ease;
     }
     #cot-boot.cot-boot-out { opacity: 0; pointer-events: none; }
+    /* MARKETING BACKDROP (in-engine action stills, lazy-loaded by
+       bootScreen.js AFTER first paint — never on the boot critical path).
+       Two stacked layers crossfade for the gate-idle slideshow; the scrim
+       gradient keeps the splash chrome/wordmark contrast on any frame. */
+    #cot-boot-hero { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+    #cot-boot-hero .hly {
+      position: absolute; inset: 0; opacity: 0; transition: opacity 1.2s ease;
+      background-size: cover; background-position: center 38%;
+    }
+    #cot-boot-hero .hly.on { opacity: 1; }
+    #cot-boot-hero::after {
+      content: ''; position: absolute; inset: 0;
+      background:
+        linear-gradient(180deg, rgba(5,8,11,.78) 0%, rgba(5,8,11,.46) 26%, rgba(5,8,11,.40) 55%, rgba(5,8,11,.84) 100%),
+        radial-gradient(120% 95% at 50% 34%, rgba(5,8,11,.10) 0%, rgba(5,8,11,.58) 88%);
+    }
     /* horizon glow + a faint armour-plate grid so the field is never flat black */
     #cot-boot::before {
-      content: ''; position: absolute; left: -10%; right: -10%; bottom: -8%; height: 62%;
+      content: ''; position: absolute; left: -10%; right: -10%; bottom: -8%; height: 62%; z-index: 1;
       background: radial-gradient(60% 100% at 50% 100%, rgba(240,160,48,.20) 0%, rgba(240,160,48,.05) 45%, rgba(240,160,48,0) 72%);
       pointer-events: none;
     }
     #cot-boot::after {
-      content: ''; position: absolute; inset: 0; pointer-events: none;
+      content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
       background-image:
         linear-gradient(rgba(146,164,180,.055) 1px, transparent 1px),
         linear-gradient(90deg, rgba(146,164,180,.055) 1px, transparent 1px);
@@ -81,34 +112,49 @@
     .cot-boot-inner { position: relative; z-index: 2; width: min(760px, 86vw); text-align: center; }
 
     /* --- emblem + wordmark ------------------------------------------------ */
-    .cot-boot-mark { display: block; width: 118px; height: 118px; margin: 0 auto 22px; }
+    /* garage_ui: staggered entrance — the splash used to pop in fully formed.
+       Pure CSS with `backwards` fill, so it runs from the very first paint
+       (no JS on the path) and every element still lands exactly where the
+       static layout put it. */
+    .cot-boot-mark { display: block; width: 120px; height: 120px; margin: 0 auto 20px;
+      animation: cot-boot-pop .62s cubic-bezier(.18,.7,.3,1) backwards; }
     .cot-boot-word { line-height: .92; }
     .cot-boot-word .l1 {
       display: block; font-weight: 800; letter-spacing: .17em; text-indent: .17em;
       font-size: clamp(34px, 6.4vw, 62px); color: #f2f7fb;
       text-shadow: 0 2px 26px rgba(0,0,0,.75);
+      animation: cot-boot-rise .5s ease-out .10s backwards;
     }
     .cot-boot-word .l2 {
       display: flex; align-items: center; justify-content: center; gap: 14px;
-      margin-top: 12px; font-family: 'Switzer Condensed', 'Arial Narrow', Arial, sans-serif;
+      margin-top: 12px; font-family: 'Inter', 'Arial Narrow', Arial, sans-serif;
       font-weight: 700; letter-spacing: .42em; text-indent: .42em;
       font-size: clamp(14px, 2.05vw, 21px); color: #f0a030;
+      animation: cot-boot-rise .5s ease-out .18s backwards;
     }
     .cot-boot-word .l2 i { display: block; height: 1px; width: clamp(28px, 8vw, 92px);
       background: linear-gradient(90deg, rgba(240,160,48,0), #f0a030); }
     .cot-boot-word .l2 i + span + i { background: linear-gradient(270deg, rgba(240,160,48,0), #f0a030); }
     .cot-boot-tag {
-      margin-top: 20px; font-family: 'Switzer Condensed', 'Arial Narrow', Arial, sans-serif;
+      margin-top: 20px; font-family: 'Inter', 'Arial Narrow', Arial, sans-serif;
       font-weight: 600; font-size: 10.5px; letter-spacing: .34em; text-indent: .34em;
       color: #6e7d8a; text-transform: uppercase;
+      animation: cot-boot-rise .5s ease-out .26s backwards;
+    }
+    @keyframes cot-boot-pop { from { opacity: 0; transform: scale(.85) translateY(8px); } }
+    @keyframes cot-boot-rise { from { opacity: 0; transform: translateY(12px); } }
+    @keyframes cot-boot-fade { from { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .cot-boot-mark, .cot-boot-word .l1, .cot-boot-word .l2, .cot-boot-tag,
+      .cot-boot-load, .cot-boot-tip, .cot-boot-foot { animation: none; }
     }
 
     /* --- progress ---------------------------------------------------------- */
-    .cot-boot-load { margin-top: 46px; }
+    .cot-boot-load { margin-top: 46px; animation: cot-boot-rise .55s ease-out .36s backwards; }
     .cot-boot-meta {
       display: flex; align-items: flex-end; justify-content: space-between; gap: 18px;
       margin-bottom: 9px;
-      font-family: 'Switzer Condensed', 'Arial Narrow', Arial, sans-serif;
+      font-family: 'Inter', 'Arial Narrow', Arial, sans-serif;
       font-variant-numeric: tabular-nums;
     }
     .cot-boot-stage {
@@ -147,17 +193,18 @@
       margin-top: 34px; min-height: 44px; padding: 0 6%;
       font-size: 13px; font-weight: 500; line-height: 1.55; color: #aebbc7;
       opacity: 1; transition: opacity .35s ease;
+      animation: cot-boot-rise .55s ease-out .46s backwards;
     }
     .cot-boot-tip.fade { opacity: 0; }
     .cot-boot-tip b {
       display: block; margin-bottom: 5px;
-      font-family: 'Switzer Condensed', 'Arial Narrow', Arial, sans-serif;
+      font-family: 'Inter', 'Arial Narrow', Arial, sans-serif;
       font-size: 9.5px; font-weight: 700; letter-spacing: .3em; color: #f0a030;
       text-transform: uppercase;
     }
     .cot-boot-gate {
       margin-top: 26px; height: 22px;
-      font-family: 'Switzer Condensed', 'Arial Narrow', Arial, sans-serif;
+      font-family: 'Inter', 'Arial Narrow', Arial, sans-serif;
       font-size: 12.5px; font-weight: 700; letter-spacing: .34em; text-indent: .34em;
       color: #ffe4b0; text-transform: uppercase; opacity: 0;
       transition: opacity .4s ease;
@@ -166,44 +213,88 @@
     @keyframes cot-gate { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
     .cot-boot-foot {
       position: absolute; left: 0; right: 0; bottom: 20px; z-index: 2;
-      font-family: 'Switzer Condensed', 'Arial Narrow', Arial, sans-serif;
+      font-family: 'Inter', 'Arial Narrow', Arial, sans-serif;
       font-size: 9px; font-weight: 600; letter-spacing: .26em; color: #4b5865;
       text-transform: uppercase; text-align: center;
+      animation: cot-boot-fade .6s ease-out .55s backwards;
     }
-    @media (max-width: 760px) { .cot-boot-mark { width: 88px; height: 88px; } .cot-boot-load { margin-top: 32px; } }
+    @media (max-width: 760px) { .cot-boot-mark { width: 92px; height: 92px; } .cot-boot-load { margin-top: 32px; } }
   </style>
 </head>
 <body>
   <div id="app"></div>
 
   <div id="cot-boot">
+    <!-- marketing backdrop (two crossfade layers; bootScreen.js lazy-loads
+         the images after first paint — see #cot-boot-hero styles above) -->
+    <div id="cot-boot-hero" aria-hidden="true"><div class="hly"></div><div class="hly"></div></div>
     <div class="cot-boot-inner">
-      <!-- Procedural emblem: chamfered armour plate + tank silhouette.
-           Inline SVG so it needs no network round-trip at all. -->
-      <svg class="cot-boot-mark" viewBox="0 0 120 120" aria-label="Claude of Tanks">
+      <!-- Brand badge: v3 colored crest, side-profile MBT with the Claude Code
+           commander in the hatch (master copy: public/brand/logo-mark.svg —
+           keep in sync). Inline SVG so it needs no network round-trip at all. -->
+      <svg class="cot-boot-mark" viewBox="0 0 256 256" aria-label="Claude of Tanks">
         <defs>
-          <linearGradient id="cotPlate" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#1d2937" /><stop offset="1" stop-color="#0a1016" />
-          </linearGradient>
-          <linearGradient id="cotEdge" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#ffc978" /><stop offset="1" stop-color="#c07713" />
-          </linearGradient>
+          <clipPath id="cotHatchClip"><rect x="70" y="26" width="68" height="44"/></clipPath>
         </defs>
-        <!-- chamfered hex shield -->
-        <path d="M60 3 108 27v48L60 117 12 75V27Z" fill="url(#cotPlate)" stroke="url(#cotEdge)" stroke-width="2.4" />
-        <path d="M60 11 100 31v42L60 108 20 73V31Z" fill="none" stroke="rgba(146,164,180,.30)" stroke-width="1" />
-        <!-- tank silhouette, hull-down 3/4-side reading right -->
-        <g fill="#e9f1f8">
-          <path d="M28 74h58l7 5v6H26l-4-5Z" />
-          <path d="M31 60h48l6 5v8H29l-3-8Z" />
-          <path d="M47 48h20l9 4 1 8H45l-1-8Z" />
-          <rect x="76" y="51" width="24" height="3.6" />
-          <rect x="94" y="49" width="6" height="7.6" />
-        </g>
-        <g fill="#0a1016">
-          <circle cx="34" cy="80" r="2.7" /><circle cx="44" cy="80" r="2.7" />
-          <circle cx="54" cy="80" r="2.7" /><circle cx="64" cy="80" r="2.7" />
-          <circle cx="74" cy="80" r="2.7" /><circle cx="84" cy="80" r="2.7" />
+        <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"
+              fill="#151f29" stroke="#0b0f12" stroke-width="16" stroke-linejoin="miter"/>
+        <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"
+              fill="none" stroke="#f5b64b" stroke-width="3"/>
+        <g transform="translate(10 28) scale(1.12)">
+          <rect x="36" y="135" width="134" height="10" rx="5" fill="#0b0f12"/>
+          <path d="M60 140h104" stroke="#f5b64b" stroke-width="3" stroke-dasharray="7 6" fill="none"/>
+          <rect x="64" y="152" width="76" height="8" rx="4" fill="#0b0f12"/>
+          <rect x="86" y="165" width="40" height="7" rx="3.5" fill="#0b0f12"/>
+          <g fill="#1f2b37">
+            <rect x="26" y="112" width="12" height="4.5" rx="2.25"/>
+            <rect x="24" y="121" width="14" height="4.5" rx="2.25"/>
+            <rect x="34" y="130" width="10" height="4.5" rx="2.25"/>
+            <circle cx="48" cy="131" r="6"/><circle cx="57" cy="133.5" r="4"/>
+          </g>
+          <path d="M64 79 50 30" stroke="#55697e" stroke-width="2.5" fill="none"/>
+          <path d="M50 26.5 32 31l18 4.5Z" fill="#f5b64b"/>
+          <path d="M52 107h122a15 15 0 0 1 0 30H52a15 15 0 0 1 0-30Z" fill="#0c1218"/>
+          <g fill="#33424f">
+            <circle cx="52" cy="122" r="10"/><circle cx="76.4" cy="122" r="10"/><circle cx="100.8" cy="122" r="10"/>
+            <circle cx="125.2" cy="122" r="10"/><circle cx="149.6" cy="122" r="10"/><circle cx="174" cy="122" r="10"/>
+          </g>
+          <g fill="#0c1218">
+            <circle cx="52" cy="122" r="3.2"/><circle cx="76.4" cy="122" r="3.2"/><circle cx="100.8" cy="122" r="3.2"/>
+            <circle cx="125.2" cy="122" r="3.2"/><circle cx="149.6" cy="122" r="3.2"/><circle cx="174" cy="122" r="3.2"/>
+          </g>
+          <path d="M34 116 40 94h108l52 18-3 6Z" fill="#2a3947"/>
+          <path d="M148 94l52 18-1.9 3.8-51.6-17.6Z" fill="#4d637a"/>
+          <rect x="40" y="94" width="108" height="2.4" fill="#4d637a"/>
+          <path d="M46 106h136v8l-9 12H46Z" fill="#3d5062" stroke="#0c1218" stroke-width="2.5" stroke-linejoin="round"/>
+          <rect x="41" y="106" width="5" height="18" fill="#1c2833"/>
+          <g stroke="#1a232d" stroke-width="2.2">
+            <path d="M72 107.5V124M98 107.5V124M124 107.5V124M150 107.5V124"/>
+          </g>
+          <rect x="60" y="79" width="16" height="14" rx="1.5" fill="#1c2833"/>
+          <path d="M61 83.7h14M61 88.3h14" stroke="#0c1218" stroke-width="1.6"/>
+          <path d="M72 96 82 74l58 3.5L154 96Z" fill="#3a4c5f"/>
+          <path d="M82 74 140 77.5 138.8 80.8 81 77.2Z" fill="#4d637a"/>
+          <path d="M124 80l7 .5 6 15.5h-7Z" fill="#f5b64b"/>
+          <rect x="91" y="57" width="30" height="12" fill="#0c1218"/>
+          <g clip-path="url(#cotHatchClip)">
+            <path clip-rule="evenodd" fill-rule="evenodd" fill="#D97757" stroke="#0b0f12"
+              stroke-width="1.5" paint-order="stroke" transform="translate(82.65 42.75) scale(1.95)"
+              d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z"/>
+          </g>
+          <rect x="81" y="68" width="50" height="6.5" rx="1.2" fill="#3a4c5f" stroke="#0c1218" stroke-width="2.5"/>
+          <path d="M87.5 52.5a18.5 12 0 0 1 37 0Z" fill="#7d90a3" stroke="#0c1218" stroke-width="2.5" stroke-linejoin="round"/>
+          <rect x="85.5" y="52.3" width="41" height="4.2" rx="2.1" fill="#0e151d"/>
+          <rect x="94" y="45.2" width="24.5" height="5.2" rx="1.3" fill="#0e151d"/>
+          <circle cx="102.5" cy="47.8" r="3.8" fill="#0e151d" stroke="#9fb2c4" stroke-width="1.8"/>
+          <circle cx="111" cy="47.8" r="3.8" fill="#0e151d" stroke="#9fb2c4" stroke-width="1.8"/>
+          <g transform="rotate(-10 140 82)">
+            <rect x="136" y="76" width="18" height="12" rx="1.5" fill="#24313f"/>
+            <rect x="154" y="78.3" width="54" height="7.4" fill="#2b3947"/>
+            <rect x="154" y="78.5" width="54" height="1.9" fill="#4d637a"/>
+            <rect x="154" y="83.9" width="54" height="1.2" fill="#1a232d"/>
+            <rect x="168" y="76.4" width="16" height="11.2" rx="4.4" fill="#24313f" stroke="#7d90a3" stroke-width="1.8"/>
+            <rect x="205.5" y="76.2" width="11" height="11.6" rx="1.4" fill="#7d90a3" stroke="#0b0f12" stroke-width="2.5"/>
+          </g>
         </g>
       </svg>
 

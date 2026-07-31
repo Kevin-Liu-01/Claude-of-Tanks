@@ -1,0 +1,90 @@
+{
+  "map": "desert",
+  "seed": 5103,
+  "actors": [
+    {
+      "id": "m1a2_sepv2",
+      "name": "left",
+      "pos": [
+        -14,
+        -18
+      ],
+      "facingDeg": 10,
+      "gunDeg": 1.5,
+      "camo": "desert",
+      "camoSeed": 31,
+      "turretDeg": -5.6
+    },
+    {
+      "id": "leo2a7v",
+      "name": "mid",
+      "pos": [
+        2,
+        -24
+      ],
+      "facingDeg": 4,
+      "gunDeg": 2,
+      "camo": "desert",
+      "camoSeed": 32,
+      "turretDeg": 1.4
+    },
+    {
+      "id": "challenger1",
+      "name": "right",
+      "pos": [
+        18,
+        -16
+      ],
+      "facingDeg": 358,
+      "gunDeg": 1.5,
+      "camo": "desert",
+      "camoSeed": 33,
+      "turretDeg": 8
+    }
+  ],
+  "effects": [
+    {
+      "type": "fire",
+      "actor": "right",
+      "tMs": 100,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "mid",
+      "tMs": 552,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "left",
+      "tMs": 578,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -26,
+      2.6,
+      -34
+    ],
+    "lookAt": [
+      2,
+      2.6,
+      -10
+    ],
+    "groundRel": true,
+    "fov": 34
+  },
+  "fxTime": 600,
+  "timeScale": 0
+}

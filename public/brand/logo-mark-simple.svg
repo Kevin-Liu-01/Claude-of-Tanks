@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Claude of Tanks">
+  <!-- Claude of Tanks simple mark: 16-32px simplification of the v3 crest
+       (logo-mark.svg). Same chamfer-top shield silhouette, but the colored
+       language promoted to fat shapes: full amber band (no pinstripe), dark
+       steel field, tank as a light-steel mass with ink cutouts, commander
+       reduced to the orange helmet dome, stepped muzzle still breaking the
+       shield wall. Keep in sync with favicon.svg (same art). -->
+  <!-- shield: thin ink die-cut edge + amber band + dark steel field -->
+  <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"
+        fill="#131c26" stroke="#0b0f12" stroke-width="19" stroke-linejoin="miter"/>
+  <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"
+        fill="none" stroke="#f5b64b" stroke-width="13" stroke-linejoin="miter"/>
+
+  <!-- ground bar -->
+  <rect x="84" y="192" width="88" height="11" rx="5.5" fill="#f5b64b"/>
+
+  <!-- gun: light barrel + muzzle step breaking the shield wall -->
+  <g transform="rotate(-8 178 94)">
+    <rect x="168" y="88" width="62" height="13" fill="#9db0c2"/>
+    <rect x="168" y="88" width="62" height="3" fill="#c6d2dc"/>
+    <rect x="226" y="84" width="14" height="21" rx="2" fill="#c6d2dc" stroke="#0b0f12" stroke-width="3.5"/>
+  </g>
+
+  <!-- turret + orange helmet-dome commander -->
+  <path d="M84 116 96 82h64l12 34Z" fill="#9db0c2"/>
+  <path d="M103 82a20 14 0 0 1 40 0Z" fill="#D97757" stroke="#0b0f12" stroke-width="3.5" stroke-linejoin="round"/>
+  <rect x="108" y="70" width="30" height="6.5" rx="2" fill="#0b0f12"/>
+
+  <!-- hull + ink skirt stripe -->
+  <path d="M40 146 52 114h150l16 32Z" fill="#9db0c2"/>
+  <rect x="62" y="124" width="130" height="12" fill="#0b0f12"/>
+  <path d="M105 124v12M148 124v12" stroke="#9db0c2" stroke-width="3" fill="none"/>
+
+  <!-- track: light capsule, three ink wheels -->
+  <rect x="52" y="144" width="152" height="44" rx="22" fill="#9db0c2"/>
+  <g fill="#0b0f12">
+    <circle cx="85" cy="166" r="13.5"/><circle cx="128" cy="166" r="13.5"/><circle cx="171" cy="166" r="13.5"/>
+  </g>
+  <g fill="#9db0c2">
+    <circle cx="85" cy="166" r="4.5"/><circle cx="128" cy="166" r="4.5"/><circle cx="171" cy="166" r="4.5"/>
+  </g>
+</svg>

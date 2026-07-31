@@ -1,0 +1,62 @@
+{
+  "map": "verdant",
+  "seed": 5128,
+  "actors": [
+    {
+      "id": "leclerc",
+      "name": "wreck",
+      "pos": [
+        11,
+        -98
+      ],
+      "facingDeg": 195,
+      "state": "turret-popped",
+      "stateAgeS": 140,
+      "burning": true
+    },
+    {
+      "id": "t90m",
+      "name": "survivor",
+      "pos": [
+        13,
+        -116
+      ],
+      "facingDeg": 5,
+      "turretDeg": -10,
+      "gunDeg": 1,
+      "camo": "summer",
+      "camoSeed": 281
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        14,
+        -122
+      ],
+      "tMs": 2600,
+      "params": {
+        "count": 8,
+        "intensity": 0.7,
+        "dirDeg": 188
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      10,
+      2,
+      -80
+    ],
+    "lookAt": [
+      12.5,
+      2.2,
+      -102
+    ],
+    "groundRel": true,
+    "fov": 38
+  },
+  "fxTime": 3000,
+  "timeScale": 0
+}

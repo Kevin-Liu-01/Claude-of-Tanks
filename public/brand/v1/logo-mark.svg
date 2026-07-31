@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-3 34 216 106" role="img" aria-label="Claude of Tanks — Claude Code commander in a tank">
+  <!-- Claude of Tanks brand mark: stylized modern MBT (original vector art),
+       Claude Code mascot (Anthropic; via thesvg.org — see docs/ATTRIBUTION.md)
+       commanding from the open hatch, tanker helmet on. Flat two-tone shading,
+       game palette: steel blues + amber #f5b64b, mascot #D97757. -->
+  <defs>
+    <clipPath id="cotHatchClip"><rect x="70" y="26" width="68" height="44"/></clipPath>
+  </defs>
+
+  <!-- motion dashes + dust (tank advancing right) -->
+  <g fill="#1f2b37">
+    <rect x="4" y="112" width="20" height="4.5" rx="2.25"/>
+    <rect x="0" y="121" width="26" height="4.5" rx="2.25"/>
+    <rect x="8" y="130" width="16" height="4.5" rx="2.25"/>
+    <circle cx="32" cy="130" r="6.5"/><circle cx="23" cy="133" r="4.5"/><circle cx="42" cy="133.5" r="4"/>
+  </g>
+
+  <!-- whip antenna + pennant (streaming back as the tank advances) -->
+  <path d="M64 79 56 41" stroke="#55697e" stroke-width="1.5" fill="none"/>
+  <path d="M56 38.5 41 43l15 4.5Z" fill="#f5b64b"/>
+
+  <!-- running gear -->
+  <path d="M52 107h122a15 15 0 0 1 0 30H52a15 15 0 0 1 0-30Z" fill="#10171f"/>
+  <path d="M44 132.5h138" stroke="#2a3846" stroke-width="4" stroke-dasharray="6 5" fill="none"/>
+  <g fill="#2b3947">
+    <circle cx="52" cy="122" r="10"/><circle cx="76.4" cy="122" r="10"/><circle cx="100.8" cy="122" r="10"/>
+    <circle cx="125.2" cy="122" r="10"/><circle cx="149.6" cy="122" r="10"/><circle cx="174" cy="122" r="10"/>
+  </g>
+  <g fill="#10171f">
+    <circle cx="52" cy="122" r="3.2"/><circle cx="76.4" cy="122" r="3.2"/><circle cx="100.8" cy="122" r="3.2"/>
+    <circle cx="125.2" cy="122" r="3.2"/><circle cx="149.6" cy="122" r="3.2"/><circle cx="174" cy="122" r="3.2"/>
+  </g>
+
+  <!-- hull: low profile, long wedge glacis -->
+  <path d="M34 116 40 94h108l52 18-3 6Z" fill="#2a3947"/>
+  <path d="M148 94l52 18-1.9 3.8-51.6-17.6Z" fill="#3a4c5f"/>
+  <rect x="40" y="94" width="108" height="2.4" fill="#3a4c5f"/>
+
+  <!-- side skirt over the track top -->
+  <path d="M46 106h136v8l-9 12H46Z" fill="#222e3a"/>
+  <rect x="41" y="106" width="5" height="18" fill="#1c2833"/>
+  <g stroke="#16202a" stroke-width="1.6">
+    <path d="M72 107.5V124M98 107.5V124M124 107.5V124M150 107.5V124"/>
+  </g>
+
+  <!-- turret: long low wedge + bustle rack -->
+  <rect x="60" y="79" width="16" height="14" rx="1.5" fill="#1c2833"/>
+  <path d="M61 83.7h14M61 88.3h14" stroke="#10171f" stroke-width="1.3"/>
+  <path d="M72 96 82 74l58 3.5L154 96Z" fill="#3a4c5f"/>
+  <path d="M82 74 140 77.5 138.8 80.8 81 77.2Z" fill="#4d637a"/>
+  <path d="M124 80l7 .5 6 15.5h-7Z" fill="#f5b64b"/>
+
+  <!-- the commander: Claude Code mascot, faithful source path (legs clipped by the hatch) -->
+  <rect x="91" y="57" width="30" height="8" fill="#0e151d"/>
+  <g clip-path="url(#cotHatchClip)">
+    <path clip-rule="evenodd" fill-rule="evenodd" fill="#D97757" transform="translate(82.65 42.75) scale(1.95)"
+      d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z"/>
+  </g>
+  <!-- hatch coaming (arms rest on the ring) -->
+  <rect x="81" y="68" width="50" height="6.5" rx="1.2" fill="#3a4c5f"/>
+  <rect x="81" y="68" width="50" height="1.8" rx="0.9" fill="#4d637a"/>
+
+  <!-- tanker helmet: dome + rim + goggles -->
+  <path d="M87.5 52.5a18.5 12 0 0 1 37 0Z" fill="#4d637a"/>
+  <rect x="85.5" y="52.3" width="41" height="4.2" rx="2.1" fill="#3a4c5f"/>
+  <rect x="94" y="45.2" width="24.5" height="5.2" rx="1.3" fill="#0e151d"/>
+  <circle cx="102.5" cy="47.8" r="3.8" fill="#0e151d" stroke="#7d90a3" stroke-width="1.4"/>
+  <circle cx="111" cy="47.8" r="3.8" fill="#0e151d" stroke="#7d90a3" stroke-width="1.4"/>
+
+  <!-- main gun, elevated 10 degrees -->
+  <g transform="rotate(-10 140 82)">
+    <rect x="136" y="76" width="18" height="12" rx="1.5" fill="#24313f"/>
+    <rect x="154" y="78.3" width="52" height="7.4" fill="#2b3947"/>
+    <rect x="154" y="78.3" width="52" height="1.9" fill="#4d637a"/>
+    <rect x="168" y="76.4" width="16" height="11.2" rx="4.4" fill="#24313f"/>
+    <rect x="203" y="77.3" width="7" height="9.4" rx="1" fill="#4d637a"/>
+  </g>
+</svg>

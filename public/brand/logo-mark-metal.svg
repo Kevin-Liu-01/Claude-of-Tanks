@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Claude of Tanks — embossed metal crest: Claude Code commander in a tank">
+  <!-- Claude of Tanks v3 crest mark — METAL treatment (embossed badge for
+       premium/medal surfaces). Same shield geometry + tank composition as
+       logo-mark-bw.svg / logo-mark.svg (keep in sync). This variant alone is
+       ALLOWED gradients: brushed-steel field (vertical banded gradient),
+       gunmetal border band lit at 135deg (light top-left rim, dark
+       bottom-right rim), polished inner groove, diagonal glass sheen, tank in
+       dark gunmetal relief with silver specular seams. Mascot stays brand
+       orange #D97757 so the commander reads (steel-mascot variant tried and
+       rejected: vanished into the field at 64px). Mascot: Anthropic (via
+       thesvg.org) — see docs/ATTRIBUTION.md. -->
+  <defs>
+    <clipPath id="cotHatchClipM"><rect x="70" y="26" width="68" height="44"/></clipPath>
+    <clipPath id="cotShieldClipM">
+      <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"/>
+    </clipPath>
+    <clipPath id="cotLightHalfM"><path d="M-20 -20 H276 L-20 276 Z"/></clipPath>
+    <clipPath id="cotDarkHalfM"><path d="M276 -20 V276 H-20 Z"/></clipPath>
+    <linearGradient id="cotFieldSteelM" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#dbe2e9"/>
+      <stop offset=".16" stop-color="#c3ced7"/>
+      <stop offset=".2" stop-color="#cfdae2"/>
+      <stop offset=".44" stop-color="#a0adb8"/>
+      <stop offset=".5" stop-color="#93a1ad"/>
+      <stop offset=".56" stop-color="#9fadb8"/>
+      <stop offset=".8" stop-color="#75828e"/>
+      <stop offset="1" stop-color="#5c6873"/>
+    </linearGradient>
+    <linearGradient id="cotBandSteelM" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f2f6f9"/>
+      <stop offset=".38" stop-color="#aab5c0"/>
+      <stop offset=".7" stop-color="#5e6a75"/>
+      <stop offset="1" stop-color="#39434c"/>
+    </linearGradient>
+    <linearGradient id="cotGrooveM" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".5" stop-color="#c6d1da"/>
+      <stop offset="1" stop-color="#78848f"/>
+    </linearGradient>
+    <linearGradient id="cotHullM" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#39434e"/>
+      <stop offset="1" stop-color="#20272f"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ===== badge plate: die-cut edge, beveled band, brushed field ===== -->
+  <!-- soft drop shadow -->
+  <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"
+        transform="translate(0 3)" fill="none" stroke="#05080b" stroke-width="17"
+        stroke-linejoin="miter" opacity=".35"/>
+  <!-- brushed field -->
+  <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"
+        fill="url(#cotFieldSteelM)"/>
+  <!-- bevel rims: light top-left / dark bottom-right, peeking 1px past the band -->
+  <g fill="none" stroke-linejoin="miter">
+    <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"
+          stroke="#f7fafc" stroke-width="18.5" clip-path="url(#cotLightHalfM)"/>
+    <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"
+          stroke="#232b33" stroke-width="18.5" clip-path="url(#cotDarkHalfM)"/>
+  </g>
+  <!-- gunmetal band, lit at 135 degrees -->
+  <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"
+        fill="none" stroke="url(#cotBandSteelM)" stroke-width="15" stroke-linejoin="miter"/>
+  <!-- polished inner groove at band center -->
+  <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"
+        fill="none" stroke="url(#cotGrooveM)" stroke-width="2.5"/>
+
+  <g transform="translate(10 28) scale(1.12)">
+    <!-- ground bar + silver speed dashes + taper bars -->
+    <rect x="36" y="135" width="134" height="10" rx="5" fill="#232a33"/>
+    <path d="M60 140h104" stroke="#b7c2cc" stroke-width="3" stroke-dasharray="7 6" fill="none"/>
+    <rect x="64" y="152" width="76" height="8" rx="4" fill="#2c343d"/>
+    <rect x="86" y="165" width="40" height="7" rx="3.5" fill="#333c46"/>
+
+    <!-- motion dashes + dust (relief-engraved) -->
+    <g fill="#4d5964">
+      <rect x="26" y="112" width="12" height="4.5" rx="2.25"/>
+      <rect x="24" y="121" width="14" height="4.5" rx="2.25"/>
+      <rect x="34" y="130" width="10" height="4.5" rx="2.25"/>
+      <circle cx="48" cy="131" r="6"/><circle cx="57" cy="133.5" r="4"/>
+    </g>
+
+    <!-- whip antenna + pennant (dark gunmetal, silver edge) -->
+    <path d="M64 79 50 30" stroke="#2b333c" stroke-width="2.5" fill="none"/>
+    <path d="M50 26.5 32 31l18 4.5Z" fill="#2b333c" stroke="#cfd9e2" stroke-width="1" stroke-linejoin="round"/>
+
+    <!-- running gear: gunmetal track band, silver wheel cutouts -->
+    <path d="M52 107h122a15 15 0 0 1 0 30H52a15 15 0 0 1 0-30Z" fill="#1d242c"/>
+    <g fill="#aeb9c4">
+      <circle cx="52" cy="122" r="10"/><circle cx="76.4" cy="122" r="10"/><circle cx="100.8" cy="122" r="10"/>
+      <circle cx="125.2" cy="122" r="10"/><circle cx="149.6" cy="122" r="10"/><circle cx="174" cy="122" r="10"/>
+    </g>
+    <g fill="#1d242c">
+      <circle cx="52" cy="122" r="3.2"/><circle cx="76.4" cy="122" r="3.2"/><circle cx="100.8" cy="122" r="3.2"/>
+      <circle cx="125.2" cy="122" r="3.2"/><circle cx="149.6" cy="122" r="3.2"/><circle cx="174" cy="122" r="3.2"/>
+    </g>
+
+    <!-- hull: gunmetal relief mass, silver specular seams -->
+    <path d="M34 116 40 94h108l52 18-3 6Z" fill="url(#cotHullM)"/>
+    <path d="M148 94l52 18-1.9 3.8-51.6-17.6Z" fill="#cfd9e2"/>
+    <rect x="40" y="94" width="108" height="2.4" fill="#cfd9e2"/>
+
+    <!-- side skirt: lighter gunmetal panel, engraved seams -->
+    <path d="M46 106h136v8l-9 12H46Z" fill="#525e69" stroke="#1d242c" stroke-width="2.5" stroke-linejoin="round"/>
+    <rect x="41" y="106" width="5" height="18" fill="#1d242c"/>
+    <g stroke="#1d242c" stroke-width="2.2">
+      <path d="M72 107.5V124M98 107.5V124M124 107.5V124M150 107.5V124"/>
+    </g>
+    <path d="M47.5 107.3h133" stroke="#dde5ec" stroke-width="1.2" fill="none"/>
+
+    <!-- turret: gunmetal wedge + bustle rack + specular facet -->
+    <rect x="60" y="79" width="16" height="14" rx="1.5" fill="#2b333c"/>
+    <path d="M61 83.7h14M61 88.3h14" stroke="#161c22" stroke-width="1.6"/>
+    <path d="M72 96 82 74l58 3.5L154 96Z" fill="url(#cotHullM)"/>
+    <path d="M82 74 140 77.5 138.8 80.8 81 77.2Z" fill="#cfd9e2"/>
+    <path d="M124 80l7 .5 6 15.5h-7Z" fill="#8d99a4"/>
+
+    <!-- the commander: Claude Code mascot, faithful source path (brand orange
+         keeps the commander readable against the steel) -->
+    <rect x="91" y="57" width="30" height="12" fill="#161c22"/>
+    <g clip-path="url(#cotHatchClipM)">
+      <path clip-rule="evenodd" fill-rule="evenodd" fill="#D97757" stroke="#161c22"
+        stroke-width="1.5" paint-order="stroke" transform="translate(82.65 42.75) scale(1.95)"
+        d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z"/>
+    </g>
+    <!-- hatch coaming -->
+    <rect x="81" y="68" width="50" height="6.5" rx="1.2" fill="#525e69" stroke="#161c22" stroke-width="2.5"/>
+    <path d="M83 68.8h46" stroke="#dde5ec" stroke-width="1.1" fill="none"/>
+
+    <!-- tanker helmet: silver dome + gunmetal rim + goggles -->
+    <path d="M87.5 52.5a18.5 12 0 0 1 37 0Z" fill="#aeb9c4" stroke="#161c22" stroke-width="2.5" stroke-linejoin="round"/>
+    <rect x="85.5" y="52.3" width="41" height="4.2" rx="2.1" fill="#2b333c"/>
+    <rect x="94" y="45.2" width="24.5" height="5.2" rx="1.3" fill="#161c22"/>
+    <circle cx="102.5" cy="47.8" r="3.8" fill="#161c22" stroke="#cfd9e2" stroke-width="1.8"/>
+    <circle cx="111" cy="47.8" r="3.8" fill="#161c22" stroke="#cfd9e2" stroke-width="1.8"/>
+
+    <!-- main gun, elevated 10 degrees: gunmetal barrel, specular keylines,
+         bright muzzle step breaking the shield wall -->
+    <g transform="rotate(-10 140 82)">
+      <rect x="136" y="76" width="18" height="12" rx="1.5" fill="#2b333c"/>
+      <rect x="154" y="78.3" width="54" height="7.4" fill="#333c46"/>
+      <rect x="154" y="78.5" width="54" height="1.9" fill="#dde5ec"/>
+      <rect x="154" y="83.9" width="54" height="1.2" fill="#12181e"/>
+      <rect x="168" y="76.4" width="16" height="11.2" rx="4.4" fill="#2b333c" stroke="#cfd9e2" stroke-width="1.8"/>
+      <rect x="205.5" y="76.2" width="11" height="11.6" rx="1.4" fill="#e9eff4" stroke="#1d242c" stroke-width="2.5"/>
+    </g>
+  </g>
+
+  <!-- diagonal glass sheen across the plate (over tank, under nothing) -->
+  <g clip-path="url(#cotShieldClipM)">
+    <path d="M-10 60 L120 -30 L170 -30 L-10 128 Z" fill="#ffffff" opacity=".14"/>
+    <path d="M30 250 L230 60 L252 92 L80 262 Z" fill="#ffffff" opacity=".05"/>
+  </g>
+</svg>

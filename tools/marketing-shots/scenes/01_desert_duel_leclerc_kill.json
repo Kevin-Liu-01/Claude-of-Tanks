@@ -1,0 +1,81 @@
+{
+  "map": "desert",
+  "seed": 5101,
+  "actors": [
+    {
+      "id": "leclerc",
+      "name": "hero",
+      "pos": [
+        0,
+        -14
+      ],
+      "facingDeg": 100,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 101,
+      "turretDeg": -2.4
+    },
+    {
+      "id": "t90a",
+      "name": "victim",
+      "pos": [
+        30,
+        -18
+      ],
+      "facingDeg": 285,
+      "turretDeg": 15,
+      "gunDeg": 0,
+      "camo": "factory"
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 40,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        2,
+        -19
+      ],
+      "tMs": 300,
+      "params": {
+        "count": 12,
+        "intensity": 1,
+        "dirDeg": 280
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "hero",
+      "tMs": 598,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -9,
+      1.6,
+      -22
+    ],
+    "lookAt": [
+      10,
+      2.2,
+      -15
+    ],
+    "groundRel": true,
+    "fov": 46
+  },
+  "fxTime": 620,
+  "timeScale": 0
+}

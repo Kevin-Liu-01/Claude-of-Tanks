@@ -1,0 +1,22 @@
+{
+  "map": "urban",
+  "seed": 5000,
+  "actors": [],
+  "effects": [],
+  "camera": {
+    "pos": [
+      0,
+      260,
+      0.01
+    ],
+    "lookAt": [
+      0,
+      0,
+      0
+    ],
+    "groundRel": false,
+    "fov": 60
+  },
+  "fxTime": 0,
+  "timeScale": 0
+}

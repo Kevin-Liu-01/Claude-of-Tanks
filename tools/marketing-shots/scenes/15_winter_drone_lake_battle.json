@@ -1,0 +1,88 @@
+{
+  "map": "winter",
+  "seed": 5115,
+  "actors": [
+    {
+      "id": "challenger1",
+      "name": "shooter",
+      "pos": [
+        170,
+        -150
+      ],
+      "facingDeg": 25,
+      "gunDeg": 0.5,
+      "camo": "winter",
+      "camoSeed": 151,
+      "turretDeg": 27.4
+    },
+    {
+      "id": "leo2a7v",
+      "name": "foe",
+      "pos": [
+        235,
+        -100
+      ],
+      "facingDeg": 235,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 152,
+      "turretDeg": -2.6
+    },
+    {
+      "id": "kf51",
+      "name": "casualty",
+      "pos": [
+        205,
+        -158
+      ],
+      "facingDeg": 330,
+      "turretDeg": 30,
+      "camo": "factory"
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "casualty",
+      "tMs": 60,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "shooter",
+      "tMs": 640,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "foe",
+      "tMs": 652,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      146,
+      24,
+      -172
+    ],
+    "lookAt": [
+      206,
+      0,
+      -126
+    ],
+    "groundRel": true,
+    "fov": 46
+  },
+  "fxTime": 675,
+  "timeScale": 0
+}

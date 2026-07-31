@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Claude of Tanks — unit badge: Claude Code commander in a tank">
+  <!-- Claude of Tanks v2 badge mark (B/W primary).
+       The owner-approved v1 side-profile composition — stylized modern MBT
+       (original vector art) with the Claude Code mascot (Anthropic; via
+       thesvg.org — see docs/ATTRIBUTION.md) commanding from the open hatch —
+       recolored to a bold black-and-white comic/sticker treatment (near-black
+       #0b0f12 ink masses, white #f2f6f9 panel cutouts, zero gradients) and set
+       in a circular armored-unit roundel: ink ring, white pinstripe, white
+       field. The gun muzzle deliberately breaks the ring; an ink ground bar
+       seats the tank in the circle.
+       Accent variant (orange mascot + amber pennant): logo-mark-accent.svg. -->
+  <defs>
+    <clipPath id="cotHatchClip"><rect x="70" y="26" width="68" height="44"/></clipPath>
+  </defs>
+
+  <!-- ===== badge: ink ring, white pinstripe groove, white field ===== -->
+  <circle cx="128" cy="128" r="120" fill="#0b0f12"/>
+  <circle cx="128" cy="128" r="112.5" fill="none" stroke="#f2f6f9" stroke-width="3"/>
+  <circle cx="128" cy="128" r="104" fill="#f2f6f9"/>
+
+  <g transform="translate(12.5 26) scale(1.1)">
+    <!-- ground bar + white speed dashes (seats the tank in the roundel) -->
+    <rect x="28" y="135" width="148" height="10" rx="5" fill="#0b0f12"/>
+    <path d="M56 140h116" stroke="#f2f6f9" stroke-width="3" stroke-dasharray="7 6" fill="none"/>
+
+    <!-- motion dashes + dust (tank advancing right; trimmed to the field) -->
+    <g fill="#0b0f12">
+      <rect x="16" y="112" width="12" height="4.5" rx="2.25"/>
+      <rect x="14" y="121" width="14" height="4.5" rx="2.25"/>
+      <rect x="18" y="130" width="10" height="4.5" rx="2.25"/>
+      <circle cx="32" cy="130" r="6.5"/><circle cx="23" cy="133" r="4.5"/><circle cx="42" cy="133.5" r="4"/>
+    </g>
+
+    <!-- whip antenna + pennant (streaming back as the tank advances) -->
+    <path d="M64 79 52 38" stroke="#0b0f12" stroke-width="2.5" fill="none"/>
+    <path d="M52 34.5 34 39l18 4.5Z" fill="#0b0f12"/>
+
+    <!-- running gear: ink track band, white wheel cutouts -->
+    <path d="M52 107h122a15 15 0 0 1 0 30H52a15 15 0 0 1 0-30Z" fill="#0b0f12"/>
+    <g fill="#f2f6f9">
+      <circle cx="52" cy="122" r="10"/><circle cx="76.4" cy="122" r="10"/><circle cx="100.8" cy="122" r="10"/>
+      <circle cx="125.2" cy="122" r="10"/><circle cx="149.6" cy="122" r="10"/><circle cx="174" cy="122" r="10"/>
+    </g>
+    <g fill="#0b0f12">
+      <circle cx="52" cy="122" r="3.2"/><circle cx="76.4" cy="122" r="3.2"/><circle cx="100.8" cy="122" r="3.2"/>
+      <circle cx="125.2" cy="122" r="3.2"/><circle cx="149.6" cy="122" r="3.2"/><circle cx="174" cy="122" r="3.2"/>
+    </g>
+
+    <!-- hull: low profile, long wedge glacis (ink mass, white edge seams) -->
+    <path d="M34 116 40 94h108l52 18-3 6Z" fill="#0b0f12"/>
+    <path d="M148 94l52 18-1.9 3.8-51.6-17.6Z" fill="#f2f6f9"/>
+    <rect x="40" y="94" width="108" height="2.4" fill="#f2f6f9"/>
+
+    <!-- side skirt: white panel over the track top -->
+    <path d="M46 106h136v8l-9 12H46Z" fill="#f2f6f9" stroke="#0b0f12" stroke-width="2.5" stroke-linejoin="round"/>
+    <rect x="41" y="106" width="5" height="18" fill="#0b0f12"/>
+    <g stroke="#0b0f12" stroke-width="2.2">
+      <path d="M72 107.5V124M98 107.5V124M124 107.5V124M150 107.5V124"/>
+    </g>
+
+    <!-- turret: long low wedge (ink) + bustle rack + white facet flash -->
+    <rect x="60" y="79" width="16" height="14" rx="1.5" fill="#0b0f12"/>
+    <path d="M61 83.7h14M61 88.3h14" stroke="#f2f6f9" stroke-width="1.6"/>
+    <path d="M72 96 82 74l58 3.5L154 96Z" fill="#0b0f12"/>
+    <path d="M82 74 140 77.5 138.8 80.8 81 77.2Z" fill="#f2f6f9"/>
+    <path d="M124 80l7 .5 6 15.5h-7Z" fill="#f2f6f9"/>
+
+    <!-- the commander: Claude Code mascot, faithful source path (white cutout,
+         ink sticker outline; legs clipped by the hatch) -->
+    <rect x="91" y="57" width="30" height="12" fill="#0b0f12"/>
+    <g clip-path="url(#cotHatchClip)">
+      <path clip-rule="evenodd" fill-rule="evenodd" fill="#f2f6f9" stroke="#0b0f12"
+        stroke-width="1.5" paint-order="stroke" transform="translate(82.65 42.75) scale(1.95)"
+        d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z"/>
+    </g>
+    <!-- hatch coaming (arms rest on the ring) -->
+    <rect x="81" y="68" width="50" height="6.5" rx="1.2" fill="#f2f6f9" stroke="#0b0f12" stroke-width="2.5"/>
+
+    <!-- tanker helmet: white dome + ink rim + goggles -->
+    <path d="M87.5 52.5a18.5 12 0 0 1 37 0Z" fill="#f2f6f9" stroke="#0b0f12" stroke-width="2.5" stroke-linejoin="round"/>
+    <rect x="85.5" y="52.3" width="41" height="4.2" rx="2.1" fill="#0b0f12"/>
+    <rect x="94" y="45.2" width="24.5" height="5.2" rx="1.3" fill="#0b0f12"/>
+    <circle cx="102.5" cy="47.8" r="3.8" fill="#0b0f12" stroke="#f2f6f9" stroke-width="1.8"/>
+    <circle cx="111" cy="47.8" r="3.8" fill="#0b0f12" stroke="#f2f6f9" stroke-width="1.8"/>
+
+    <!-- main gun, elevated 10 degrees: ink barrel, white keylines + muzzle step -->
+    <g transform="rotate(-10 140 82)">
+      <rect x="136" y="76" width="18" height="12" rx="1.5" fill="#0b0f12"/>
+      <rect x="154" y="78.3" width="54" height="7.4" fill="#0b0f12"/>
+      <rect x="154" y="78.5" width="54" height="1.9" fill="#f2f6f9"/>
+      <rect x="154" y="83.9" width="54" height="1.2" fill="#f2f6f9"/>
+      <rect x="168" y="76.4" width="16" height="11.2" rx="4.4" fill="#0b0f12" stroke="#f2f6f9" stroke-width="1.8"/>
+      <rect x="205.5" y="76.2" width="11" height="11.6" rx="1.4" fill="#f2f6f9" stroke="#0b0f12" stroke-width="2.5"/>
+    </g>
+  </g>
+</svg>

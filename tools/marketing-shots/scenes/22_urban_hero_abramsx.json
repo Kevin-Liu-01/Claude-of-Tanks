@@ -1,0 +1,57 @@
+{
+  "map": "urban",
+  "seed": 5122,
+  "actors": [
+    {
+      "id": "abramsx",
+      "name": "hero",
+      "pos": [
+        36,
+        60
+      ],
+      "facingDeg": 212,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "auto"
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        32,
+        54
+      ],
+      "tMs": 60,
+      "params": {
+        "count": 6,
+        "intensity": 0.6,
+        "dirDeg": 212
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 300,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      44.6,
+      1.1,
+      52
+    ],
+    "lookAt": [
+      34,
+      2.4,
+      61
+    ],
+    "groundRel": true,
+    "fov": 52
+  },
+  "fxTime": 300,
+  "timeScale": 0
+}

@@ -1,0 +1,66 @@
+{
+  "map": "urban",
+  "seed": 5123,
+  "actors": [
+    {
+      "id": "leclerc",
+      "name": "shooter",
+      "pos": [
+        -38,
+        -15
+      ],
+      "facingDeg": 80,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 231,
+      "turretDeg": 11.7
+    },
+    {
+      "id": "leo2a7v",
+      "name": "victim",
+      "pos": [
+        28,
+        -16
+      ],
+      "facingDeg": 265,
+      "turretDeg": 8,
+      "camo": "auto"
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 40,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "shooter",
+      "tMs": 615,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -2,
+      40,
+      -58
+    ],
+    "lookAt": [
+      10,
+      0,
+      -16
+    ],
+    "groundRel": true,
+    "fov": 40
+  },
+  "fxTime": 640,
+  "timeScale": 0
+}

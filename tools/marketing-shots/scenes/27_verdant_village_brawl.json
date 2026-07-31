@@ -1,0 +1,101 @@
+{
+  "map": "verdant",
+  "seed": 5127,
+  "actors": [
+    {
+      "id": "kf51",
+      "name": "p1",
+      "pos": [
+        8,
+        74
+      ],
+      "facingDeg": 75,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 271,
+      "turretDeg": 6
+    },
+    {
+      "id": "t90a",
+      "name": "p2",
+      "pos": [
+        20,
+        106
+      ],
+      "facingDeg": 175,
+      "gunDeg": 0.5,
+      "camo": "factory",
+      "turretDeg": -40
+    },
+    {
+      "id": "leo2a5",
+      "name": "holdout",
+      "pos": [
+        46,
+        80
+      ],
+      "facingDeg": 250,
+      "gunDeg": 1,
+      "camo": "digital",
+      "camoSeed": 272,
+      "turretDeg": 11
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        30,
+        94
+      ],
+      "tMs": 145,
+      "params": {
+        "size": "medium"
+      }
+    },
+    {
+      "type": "impact",
+      "actor": "holdout",
+      "tMs": 545,
+      "params": {
+        "kind": "pen",
+        "caliberMm": 130,
+        "hFrac": 0.6
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "holdout",
+      "tMs": 613,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "p1",
+      "tMs": 625,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -2,
+      2.7,
+      58
+    ],
+    "lookAt": [
+      30,
+      2.1,
+      82
+    ],
+    "groundRel": true,
+    "fov": 42
+  },
+  "fxTime": 645,
+  "timeScale": 0
+}

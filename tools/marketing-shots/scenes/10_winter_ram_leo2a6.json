@@ -1,0 +1,93 @@
+{
+  "map": "winter",
+  "seed": 5110,
+  "actors": [
+    {
+      "id": "leo2a6",
+      "name": "rammer",
+      "pos": [
+        76,
+        -44
+      ],
+      "facingDeg": 65,
+      "turretDeg": 0,
+      "gunDeg": -2,
+      "camo": "winter",
+      "camoSeed": 15
+    },
+    {
+      "id": "challenger1",
+      "name": "victim",
+      "pos": [
+        81.4,
+        -41.6
+      ],
+      "facingDeg": 15,
+      "turretDeg": 100,
+      "gunDeg": 3,
+      "camo": "factory"
+    }
+  ],
+  "effects": [
+    {
+      "type": "detrack",
+      "actor": "victim",
+      "tMs": 120,
+      "params": {
+        "side": "L"
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        79,
+        -43
+      ],
+      "tMs": 180,
+      "params": {
+        "count": 26,
+        "intensity": 1.8,
+        "dirDeg": 65
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        72,
+        -48
+      ],
+      "tMs": 200,
+      "params": {
+        "count": 12,
+        "intensity": 1.1,
+        "dirDeg": 245
+      }
+    },
+    {
+      "type": "impact",
+      "actor": "victim",
+      "tMs": 330,
+      "params": {
+        "kind": "nonpen",
+        "caliberMm": 30,
+        "hFrac": 0.35
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      75,
+      1.1,
+      -33.5
+    ],
+    "lookAt": [
+      79.5,
+      1.5,
+      -42.8
+    ],
+    "groundRel": true,
+    "fov": 48
+  },
+  "fxTime": 460,
+  "timeScale": 0
+}

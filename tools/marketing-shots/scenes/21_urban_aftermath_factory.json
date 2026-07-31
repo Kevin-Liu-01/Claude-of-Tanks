@@ -1,0 +1,76 @@
+{
+  "map": "urban",
+  "seed": 5121,
+  "actors": [
+    {
+      "id": "leo2a5",
+      "name": "wreck2",
+      "pos": [
+        -52,
+        64
+      ],
+      "facingDeg": 10,
+      "state": "turret-popped",
+      "stateAgeS": 300,
+      "burning": true
+    },
+    {
+      "id": "t90a",
+      "name": "wreck1",
+      "pos": [
+        -34,
+        55
+      ],
+      "facingDeg": 130,
+      "turretDeg": 35,
+      "state": "wrecked-burnt",
+      "stateAgeS": 400,
+      "burning": true
+    },
+    {
+      "id": "kf51",
+      "name": "survivor",
+      "pos": [
+        -16,
+        59
+      ],
+      "facingDeg": 268,
+      "turretDeg": 5,
+      "gunDeg": 0.5,
+      "camo": "auto"
+    }
+  ],
+  "effects": [
+    {
+      "type": "engine_smoke",
+      "actor": "wreck1",
+      "tMs": 0
+    },
+    {
+      "type": "dust",
+      "actor": "survivor",
+      "tMs": 2650,
+      "params": {
+        "count": 8,
+        "intensity": 0.7,
+        "dirDeg": 88
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -68,
+      2.2,
+      64
+    ],
+    "lookAt": [
+      -24,
+      2.3,
+      60
+    ],
+    "groundRel": true,
+    "fov": 38
+  },
+  "fxTime": 3000,
+  "timeScale": 0
+}

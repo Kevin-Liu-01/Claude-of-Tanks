@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Claude of Tanks">
+  <!-- Favicon-grade simplification of the Claude of Tanks mark: the Claude Code
+       commander's head (tanker helmet + goggles) over the hatch ring.
+       Mascot: Anthropic (via thesvg.org) — see docs/ATTRIBUTION.md. -->
+  <g transform="translate(-103.68 -41.6) scale(1.28)">
+    <!-- face -->
+    <rect x="88.5" y="53" width="35" height="16" fill="#D97757"/>
+    <rect x="94.35" y="58.55" width="2.9" height="5.55" fill="#0e151d"/>
+    <rect x="114.84" y="58.55" width="2.9" height="5.55" fill="#0e151d"/>
+    <!-- hatch ring -->
+    <rect x="81" y="68" width="50" height="6.5" rx="1.2" fill="#3a4c5f"/>
+    <rect x="81" y="68" width="50" height="1.8" rx="0.9" fill="#4d637a"/>
+    <!-- tanker helmet -->
+    <path d="M87.5 52.5a18.5 12 0 0 1 37 0Z" fill="#4d637a"/>
+    <rect x="85.5" y="52.3" width="41" height="4.2" rx="2.1" fill="#3a4c5f"/>
+    <rect x="94" y="45.2" width="24.5" height="5.2" rx="1.3" fill="#0e151d"/>
+    <circle cx="102.5" cy="47.8" r="3.8" fill="#0e151d" stroke="#7d90a3" stroke-width="1.4"/>
+    <circle cx="111" cy="47.8" r="3.8" fill="#0e151d" stroke="#7d90a3" stroke-width="1.4"/>
+  </g>
+</svg>

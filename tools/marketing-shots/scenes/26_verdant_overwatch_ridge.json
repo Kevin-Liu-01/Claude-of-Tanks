@@ -1,0 +1,90 @@
+{
+  "map": "verdant",
+  "seed": 5126,
+  "actors": [
+    {
+      "id": "m1a2",
+      "name": "left",
+      "pos": [
+        -56,
+        -14
+      ],
+      "facingDeg": 92,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 261,
+      "turretDeg": -17.6
+    },
+    {
+      "id": "abramsx",
+      "name": "mid",
+      "pos": [
+        -64,
+        -30
+      ],
+      "facingDeg": 96,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 262,
+      "turretDeg": -15.7
+    },
+    {
+      "id": "leclerc",
+      "name": "right",
+      "pos": [
+        -46,
+        -2
+      ],
+      "facingDeg": 88,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 263,
+      "turretDeg": -18.2
+    }
+  ],
+  "effects": [
+    {
+      "type": "fire",
+      "actor": "left",
+      "tMs": 578,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "mid",
+      "tMs": 555,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "right",
+      "tMs": 540,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -18,
+      3,
+      2
+    ],
+    "lookAt": [
+      -52,
+      2.2,
+      -12
+    ],
+    "groundRel": true,
+    "fov": 42
+  },
+  "fxTime": 600,
+  "timeScale": 0
+}

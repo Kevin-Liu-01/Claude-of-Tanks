@@ -57,6 +57,65 @@ const STAGES = [
 
 const $ = (id) => document.getElementById(id);
 
+// Marketing backdrop set (in-engine action stills — tools/marketing-shots).
+// The first entry is the boot hero; the rest crossfade in while the entry
+// gate idles. All are lazy-loaded AFTER the splash has painted, so the boot
+// critical path never waits on them (bootgate-probe guards the timing).
+const HERO_SHOTS = [
+  '/media/featured/f1_09_winter_lake_duel.webp',
+  '/media/featured/f2_17_urban_street_duel.webp',
+  '/media/featured/f3_06_desert_hero_kf51.webp',
+  '/media/featured/f4_27_verdant_village_brawl.webp',
+  '/media/featured/f5_01_desert_duel_leclerc_kill.webp',
+];
+const HERO_ROTATE_MS = 9000;
+
+/**
+ * Lazy marketing backdrop behind the splash chrome. Fades the first still in
+ * once it has decoded, then slow-crossfades through the set while the screen
+ * is up. Returns a stop() used by dismiss().
+ * @returns {() => void}
+ */
+function startBootHero() {
+  const wrap = $('cot-boot-hero');
+  if (!wrap || !HERO_SHOTS.length || window.__COT_NO_BOOT_HERO) return () => {};
+  let q = '';
+  try { q = window.location.search || ''; } catch (_) { q = ''; }
+  if (/[?&]nohero\b/.test(q)) return () => {}; // A/B timing escape hatch
+  const layers = wrap.querySelectorAll('.hly');
+  if (layers.length < 2) return () => {};
+  let idx = -1;
+  let front = 0;
+  let timer = 0;
+  let stopped = false;
+  const show = (i) => {
+    front ^= 1;
+    layers[front].style.backgroundImage = `url("${HERO_SHOTS[i]}")`;
+    layers[front].classList.add('on');
+    layers[front ^ 1].classList.remove('on');
+    idx = i;
+  };
+  const preload = (i, cb) => {
+    const im = new Image();
+    im.onload = () => { if (!stopped) cb(); };
+    im.onerror = () => { /* missing still — keep the gradient field */ };
+    im.src = HERO_SHOTS[i];
+  };
+  const advance = () => {
+    const next = (idx + 1) % HERO_SHOTS.length;
+    preload(next, () => { if (!stopped) show(next); });
+  };
+  // first still: decode fully off the critical path, then fade in
+  preload(0, () => {
+    show(0);
+    if (HERO_SHOTS.length > 1) timer = setInterval(advance, HERO_ROTATE_MS);
+  });
+  return () => {
+    stopped = true;
+    if (timer) clearInterval(timer);
+  };
+}
+
 /**
  * Should the entry gate be dismissed without a keypress?
  * @returns {boolean} true for headless harnesses / explicit ?nosplash
@@ -150,6 +209,7 @@ export function createBootScreen() {
   }
   showTip(tipIdx);
   if (root) tipTimer = setInterval(rotateTip, 5200);
+  const stopHero = root ? startBootHero() : () => {};
 
   function stageLabel(key) {
     const s = STAGES.find((x) => x[0] === key);
@@ -218,6 +278,7 @@ export function createBootScreen() {
     dismiss() {
       if (dismissed) return;
       dismissed = true;
+      stopHero();
       if (tipTimer) clearInterval(tipTimer);
       if (raf) cancelAnimationFrame(raf);
       if (!root) return;

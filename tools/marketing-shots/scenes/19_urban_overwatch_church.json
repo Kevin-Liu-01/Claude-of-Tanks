@@ -1,0 +1,67 @@
+{
+  "map": "urban",
+  "seed": 5119,
+  "actors": [
+    {
+      "id": "challenger1",
+      "name": "front",
+      "pos": [
+        0,
+        58
+      ],
+      "facingDeg": 88,
+      "gunDeg": 0.5,
+      "camo": "auto",
+      "turretDeg": 9.9
+    },
+    {
+      "id": "m1a2_sepv2",
+      "name": "rear",
+      "pos": [
+        -20,
+        63
+      ],
+      "facingDeg": 92,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 191,
+      "turretDeg": -7.1
+    }
+  ],
+  "effects": [
+    {
+      "type": "fire",
+      "actor": "front",
+      "tMs": 575,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "rear",
+      "tMs": 555,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      28,
+      3.2,
+      60
+    ],
+    "lookAt": [
+      -16,
+      2.2,
+      60
+    ],
+    "groundRel": true,
+    "fov": 30
+  },
+  "fxTime": 600,
+  "timeScale": 0
+}

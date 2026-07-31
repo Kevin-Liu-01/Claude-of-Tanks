@@ -1,0 +1,58 @@
+{
+  "map": "verdant",
+  "seed": 5129,
+  "actors": [
+    {
+      "id": "challenger1",
+      "name": "hero",
+      "pos": [
+        -80,
+        30
+      ],
+      "facingDeg": 200,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "camo": "summer",
+      "camoSeed": 291
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -82,
+        24.4
+      ],
+      "tMs": 40,
+      "params": {
+        "count": 8,
+        "intensity": 0.8,
+        "dirDeg": 200
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 300,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -74.6,
+      1.15,
+      21.4
+    ],
+    "lookAt": [
+      -81.2,
+      2.05,
+      30.8
+    ],
+    "groundRel": true,
+    "fov": 48
+  },
+  "fxTime": 300,
+  "timeScale": 0
+}

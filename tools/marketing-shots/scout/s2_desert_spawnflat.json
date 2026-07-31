@@ -1,0 +1,22 @@
+{
+  "map": "desert",
+  "seed": 5000,
+  "actors": [],
+  "effects": [],
+  "camera": {
+    "pos": [
+      68,
+      160,
+      -81.99
+    ],
+    "lookAt": [
+      68,
+      0,
+      -82
+    ],
+    "groundRel": false,
+    "fov": 60
+  },
+  "fxTime": 0,
+  "timeScale": 0
+}

@@ -1,0 +1,67 @@
+{
+  "map": "winter",
+  "seed": 5109,
+  "actors": [
+    {
+      "id": "leo2a7v",
+      "name": "shooter",
+      "pos": [
+        166,
+        -98
+      ],
+      "facingDeg": 118,
+      "gunDeg": 0.5,
+      "camo": "winter",
+      "camoSeed": 91,
+      "turretDeg": 5
+    },
+    {
+      "id": "t90m",
+      "name": "victim",
+      "pos": [
+        206,
+        -124
+      ],
+      "facingDeg": 300,
+      "turretDeg": 40,
+      "camo": "winter",
+      "camoSeed": 92
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 60,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "shooter",
+      "tMs": 595,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      216,
+      1.8,
+      -136
+    ],
+    "lookAt": [
+      176,
+      2.2,
+      -106
+    ],
+    "groundRel": true,
+    "fov": 40
+  },
+  "fxTime": 620,
+  "timeScale": 0
+}

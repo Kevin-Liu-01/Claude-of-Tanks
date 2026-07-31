@@ -1,0 +1,93 @@
+{
+  "map": "desert",
+  "seed": 5102,
+  "actors": [
+    {
+      "id": "abramsx",
+      "name": "rammer",
+      "pos": [
+        18,
+        68
+      ],
+      "facingDeg": 66,
+      "turretDeg": 3,
+      "gunDeg": -3,
+      "camo": "digital",
+      "camoSeed": 77
+    },
+    {
+      "id": "t90m",
+      "name": "victim",
+      "pos": [
+        23.8,
+        70.6
+      ],
+      "facingDeg": 155,
+      "turretDeg": -55,
+      "gunDeg": 2,
+      "camo": "factory"
+    }
+  ],
+  "effects": [
+    {
+      "type": "detrack",
+      "actor": "victim",
+      "tMs": 150,
+      "params": {
+        "side": "L"
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        21,
+        69.3
+      ],
+      "tMs": 140,
+      "params": {
+        "count": 22,
+        "intensity": 1.6,
+        "dirDeg": 66
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        15,
+        66
+      ],
+      "tMs": 60,
+      "params": {
+        "count": 12,
+        "intensity": 1.1,
+        "dirDeg": 246
+      }
+    },
+    {
+      "type": "impact",
+      "actor": "victim",
+      "tMs": 330,
+      "params": {
+        "kind": "nonpen",
+        "caliberMm": 40,
+        "hFrac": 0.45
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      27,
+      1.4,
+      57
+    ],
+    "lookAt": [
+      20.5,
+      1.6,
+      70
+    ],
+    "groundRel": true,
+    "fov": 46
+  },
+  "fxTime": 460,
+  "timeScale": 0
+}

@@ -1,0 +1,94 @@
+{
+  "map": "verdant",
+  "seed": 5125,
+  "actors": [
+    {
+      "id": "t90m",
+      "name": "rammer",
+      "pos": [
+        90,
+        96
+      ],
+      "facingDeg": 120,
+      "turretDeg": 5,
+      "gunDeg": -2,
+      "camo": "summer",
+      "camoSeed": 251
+    },
+    {
+      "id": "m1a2_sepv2",
+      "name": "victim",
+      "pos": [
+        95.4,
+        92.9
+      ],
+      "facingDeg": 40,
+      "turretDeg": 95,
+      "gunDeg": 2,
+      "camo": "desert",
+      "camoSeed": 252
+    }
+  ],
+  "effects": [
+    {
+      "type": "detrack",
+      "actor": "victim",
+      "tMs": 150,
+      "params": {
+        "side": "R"
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        92.5,
+        94.5
+      ],
+      "tMs": 140,
+      "params": {
+        "count": 18,
+        "intensity": 1.4,
+        "dirDeg": 120
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        87,
+        98
+      ],
+      "tMs": 60,
+      "params": {
+        "count": 10,
+        "intensity": 1,
+        "dirDeg": 300
+      }
+    },
+    {
+      "type": "impact",
+      "actor": "victim",
+      "tMs": 330,
+      "params": {
+        "kind": "nonpen",
+        "caliberMm": 30,
+        "hFrac": 0.4
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      83,
+      1.35,
+      83.4
+    ],
+    "lookAt": [
+      92.6,
+      1.6,
+      93.4
+    ],
+    "groundRel": true,
+    "fov": 52
+  },
+  "fxTime": 460,
+  "timeScale": 0
+}

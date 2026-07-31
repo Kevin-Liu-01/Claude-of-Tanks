@@ -1,0 +1,97 @@
+{
+  "map": "winter",
+  "seed": 5116,
+  "actors": [
+    {
+      "id": "leo2a5",
+      "name": "hunter",
+      "pos": [
+        -20,
+        -48
+      ],
+      "facingDeg": 187,
+      "gunDeg": 0.5,
+      "camo": "winter",
+      "camoSeed": 161,
+      "turretDeg": -10.2
+    },
+    {
+      "id": "t90a",
+      "name": "prey",
+      "pos": [
+        -18,
+        -84
+      ],
+      "facingDeg": 190,
+      "turretDeg": 170,
+      "gunDeg": 1,
+      "camo": "factory"
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -21,
+        -40
+      ],
+      "tMs": 140,
+      "params": {
+        "count": 12,
+        "intensity": 1.1,
+        "dirDeg": 7
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -19,
+        -75
+      ],
+      "tMs": 100,
+      "params": {
+        "count": 12,
+        "intensity": 1.1,
+        "dirDeg": 10
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -20,
+        -62
+      ],
+      "tMs": 280,
+      "params": {
+        "count": 8,
+        "intensity": 0.8,
+        "dirDeg": 8
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "hunter",
+      "tMs": 475,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      14,
+      2.3,
+      -100
+    ],
+    "lookAt": [
+      -28,
+      2.3,
+      -64
+    ],
+    "groundRel": true,
+    "fov": 44
+  },
+  "fxTime": 500,
+  "timeScale": 0
+}

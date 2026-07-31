@@ -13,12 +13,24 @@ served locally from `public/`, no CDN or network fetches in game code.
 The game logo is a hand-authored original flat-vector composition (stylized
 modern MBT, side profile, original art — not based on any specific real
 vehicle or third-party tank art) with the **Claude Code mascot** seated in the
-commander's hatch wearing a tanker helmet. Only the mascot glyph is a sourced
-asset; everything else in `public/brand/` is first-party:
+commander's hatch wearing a tanker helmet. v3 (2026-07-31, owner-directed):
+the approved composition moved from the v2 circular roundel into a
+chamfer-top crest SHIELD (one midline path stroked as band + pinstripe +
+field; the gun muzzle breaks the shield wall), in three treatments —
+`logo-mark.svg` is the COLORED PRIMARY used by all game surfaces (dark steel
+field #151f29, steel-blue two-tone tank, mascot #D97757, amber #f5b64b
+pinstripe/pennant/dashes), `logo-mark-bw.svg` is the black-and-white sticker
+treatment, and `logo-mark-metal.svg` is the embossed brushed-steel/gunmetal
+badge (the only variant using gradients). `favicon.svg`/`logo-mark-simple.svg`
+are the fat-shape 16–32 px simplification (amber band, helmet-dome commander).
+The v1 steel-blue set is archived under `public/brand/v1/`, the v2 B/W
+roundel set under `public/brand/v2-roundel/`.
+Only the mascot glyph is a sourced asset; everything else in `public/brand/`
+is first-party:
 
 | Asset | Author | Source | License | Files |
 |---|---|---|---|---|
-| Claude Code mascot icon (pristine 24×24 path; `color.svg` and `default.svg` on the source CDN are byte-identical, fill `#D97757`). Used verbatim inside the brand marks via `translate(...) scale(...)` with the legs clipped below the hatch ring — the glyph geometry itself is unmodified; the helmet/goggles are drawn as separate first-party shapes layered on top. | Anthropic (Claude Code branding; icon page curated by theSVG) | https://thesvg.org/icon/claude-code (file: https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/claude-code/color.svg) | Anthropic trademark/branding, © Anthropic. Used in this PRIVATE, personal-use, never-published fan project only; not an endorsement. Would require Anthropic's permission for any public/commercial use — strip `public/brand/` mascot art if that ever changes. | pristine source: `public/brand/claude-code-source.svg`; composed into `public/brand/logo-mark.svg`, `logo-mark-simple.svg`, `logo-full.svg`, `favicon.svg` (+ PNG exports `favicon-32.png`, `favicon-192.png`, `apple-touch-icon.png`, `og-logo.png`, `og-logo-transparent.png`), and inlined in `index.html` boot splash |
+| Claude Code mascot icon (pristine 24×24 path; `color.svg` and `default.svg` on the source CDN are byte-identical, fill `#D97757`). Used verbatim inside the brand marks via `translate(...) scale(...)` with the legs clipped below the hatch ring — the glyph geometry itself is unmodified; the helmet/goggles are drawn as separate first-party shapes layered on top. | Anthropic (Claude Code branding; icon page curated by theSVG) | https://thesvg.org/icon/claude-code (file: https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/claude-code/color.svg) | Anthropic trademark/branding, © Anthropic. Used in this PRIVATE, personal-use, never-published fan project only; not an endorsement. Would require Anthropic's permission for any public/commercial use — strip `public/brand/` mascot art if that ever changes. | pristine source: `public/brand/claude-code-source.svg`; composed into `public/brand/logo-mark.svg` (colored crest primary), `logo-mark-bw.svg`, `logo-mark-metal.svg`, `logo-full.svg` (v3 crest marks; `logo-mark-simple.svg`/`favicon.svg` drop the mascot to a helmet dome; PNG exports `favicon-32.png`, `favicon-192.png`, `apple-touch-icon.png`, `og-logo.png`, `og-logo-transparent.png`; v1 set archived in `public/brand/v1/`, v2 roundel set — incl. the retired `logo-mark-accent.svg` — in `public/brand/v2-roundel/`), and inlined in `index.html` boot splash |
 | Inter wordmark subsets inside `logo-full.svg` (two static instances of the repo's Inter variable font — wght 800 and 700 at opsz 32 — subset to the 13 glyphs of "CLAUDE OF TANKS" with fontTools and embedded as ~1.5 KB woff2 data URIs so the lockup renders correctly standalone). | Rasmus Andersson (The Inter Project Authors) | derived from `public/fonts/inter/InterVariable.woff2` (see Inter row above) | SIL OFL 1.1 — modification/subsetting and embedding permitted; license at `public/fonts/inter/OFL.txt` | embedded in `public/brand/logo-full.svg` |
 
 PNG exports are produced by `tools/brand-render.mjs` (export mode) and the og

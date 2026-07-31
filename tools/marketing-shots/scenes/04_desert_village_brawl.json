@@ -1,0 +1,100 @@
+{
+  "map": "desert",
+  "seed": 5104,
+  "actors": [
+    {
+      "id": "kf51",
+      "name": "push1",
+      "pos": [
+        8,
+        50
+      ],
+      "facingDeg": 60,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 41,
+      "turretDeg": 6.4
+    },
+    {
+      "id": "leclerc",
+      "name": "push2",
+      "pos": [
+        20,
+        94
+      ],
+      "facingDeg": 165,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 42,
+      "turretDeg": -18.7
+    },
+    {
+      "id": "t90a",
+      "name": "defender",
+      "pos": [
+        40,
+        64
+      ],
+      "facingDeg": 285,
+      "gunDeg": 1,
+      "camo": "factory",
+      "turretDeg": 41.3
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        30,
+        78
+      ],
+      "tMs": 145,
+      "params": {
+        "size": "medium"
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "push1",
+      "tMs": 550,
+      "params": {
+        "caliberMm": 125,
+        "hFrac": 0.7
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "defender",
+      "tMs": 612,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "push1",
+      "tMs": 622,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      6,
+      2.2,
+      44
+    ],
+    "lookAt": [
+      32,
+      2,
+      68
+    ],
+    "groundRel": true,
+    "fov": 46
+  },
+  "fxTime": 645,
+  "timeScale": 0
+}

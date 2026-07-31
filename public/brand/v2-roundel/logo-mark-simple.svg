@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Claude of Tanks">
+  <!-- Favicon-grade simplification of the Claude of Tanks v2 badge: same
+       B/W roundel language as logo-mark.svg but redrawn with fat shapes for
+       16-32 px — no pinstripe, commander reduced to the helmet dome, three
+       chunky wheels, stepped muzzle still breaking the ring. -->
+  <circle cx="128" cy="128" r="120" fill="#0b0f12"/>
+  <circle cx="128" cy="128" r="102" fill="#f2f6f9"/>
+
+  <!-- ground bar -->
+  <rect x="64" y="210" width="128" height="11" rx="5.5" fill="#0b0f12"/>
+
+  <!-- pennant -->
+  <path d="M78 92 70 58" stroke="#0b0f12" stroke-width="3.5" fill="none"/>
+  <path d="M70 54 52 59l18 5Z" fill="#0b0f12"/>
+
+  <!-- gun: ink barrel + white muzzle step breaking the ring -->
+  <g transform="rotate(-8 178 106)">
+    <rect x="172" y="100" width="56" height="12" fill="#0b0f12"/>
+    <rect x="172" y="100.5" width="56" height="2.2" fill="#f2f6f9"/>
+    <rect x="226" y="96" width="13" height="20" rx="2" fill="#f2f6f9" stroke="#0b0f12" stroke-width="3.5"/>
+  </g>
+
+  <!-- turret + helmet dome commander -->
+  <path d="M82 126 94 90h72l12 36Z" fill="#0b0f12"/>
+  <path d="M106 90a19 13 0 0 1 38 0Z" fill="#f2f6f9" stroke="#0b0f12" stroke-width="3.5" stroke-linejoin="round"/>
+  <rect x="110" y="78" width="30" height="6.5" rx="2" fill="#0b0f12"/>
+
+  <!-- hull + white skirt stripe -->
+  <path d="M32 158 46 124h152l24 34Z" fill="#0b0f12"/>
+  <rect x="62" y="134" width="132" height="13" fill="#f2f6f9"/>
+  <path d="M106 134v13M150 134v13" stroke="#0b0f12" stroke-width="3" fill="none"/>
+
+  <!-- track: ink capsule, three white wheels -->
+  <rect x="44" y="156" width="168" height="48" rx="24" fill="#0b0f12"/>
+  <g fill="#f2f6f9">
+    <circle cx="80" cy="180" r="15"/><circle cx="128" cy="180" r="15"/><circle cx="176" cy="180" r="15"/>
+  </g>
+  <g fill="#0b0f12">
+    <circle cx="80" cy="180" r="5"/><circle cx="128" cy="180" r="5"/><circle cx="176" cy="180" r="5"/>
+  </g>
+</svg>

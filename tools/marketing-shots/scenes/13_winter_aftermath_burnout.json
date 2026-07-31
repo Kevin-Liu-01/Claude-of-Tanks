@@ -1,0 +1,64 @@
+{
+  "map": "winter",
+  "seed": 5113,
+  "actors": [
+    {
+      "id": "abramsx",
+      "name": "wreck",
+      "pos": [
+        198,
+        -118
+      ],
+      "facingDeg": 240,
+      "state": "turret-popped",
+      "stateAgeS": 160,
+      "burning": true
+    },
+    {
+      "id": "leo2a5",
+      "name": "survivor",
+      "pos": [
+        172,
+        -86
+      ],
+      "facingDeg": 205,
+      "turretDeg": -20,
+      "gunDeg": 0.5,
+      "camo": "winter",
+      "camoSeed": 131
+    }
+  ],
+  "effects": [
+    {
+      "type": "engine_smoke",
+      "actor": "wreck",
+      "tMs": 0
+    },
+    {
+      "type": "dust",
+      "actor": "survivor",
+      "tMs": 3000,
+      "params": {
+        "count": 8,
+        "intensity": 0.6,
+        "dirDeg": 25
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      187,
+      1.8,
+      -147
+    ],
+    "lookAt": [
+      183,
+      2.7,
+      -95
+    ],
+    "groundRel": true,
+    "fov": 37
+  },
+  "fxTime": 3400,
+  "timeScale": 0
+}
