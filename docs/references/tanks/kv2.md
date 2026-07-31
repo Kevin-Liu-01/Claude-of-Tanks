@@ -132,3 +132,83 @@ throwaway probe that dumps gate-pipeline curves for BOTH models in world coords)
   published overall 6.95 (muzzle 3.365 max at dims 100) -> 3 uncoverable muzzle columns
   = 2.3% cover on turret-side + side_whole (~3.4 pts each); the two hook-bracket columns
   (~0.17 errM). Both views still clear 90 over them.
+
+## Shaded-parity r3 response — visual pass with the gate held (2026-07-31)
+Critique: docs/critique/shaded-parity-kv2-r3.md (FAIL, min view 5). Item #1
+(global shade-side material collapse) fixed separately in materials.js
+(412399e). This pass covers items #2-7 in soviet-heavy.js only.
+Gate before 90.1 -> after **90.2 PASS** (hull 92.2 whole 90.2 turret 90.3
+stations 95.7 dims 100 floaters 100). Shade parity re-measured after both
+fixes (tmp-shadeparity probe, board lights, fixed world dirs): front 1.13x /
+right 1.09 / left 1.02 / rear34 1.03 / rear 1.07 / top 1.15 (was 3.55/3.29/
+2.68 on the shade sides).
+
+What shipped per critique item:
+- #2 gear: sovGear grew an optional `style` (default 'steel' — other ids
+  byte-identical); kv2 runs 'holes' so the six deep pocket voids ride the
+  SAME instanced mesh as the dish (they spin+bob with the wheel — the only
+  static-artifact-free deep-pocket path without kit edits). Static overlays:
+  12-seg worn-steel rim ring per wheel (polygonal rim read), spoked idler
+  face (dark void annulus + 6 steel spokes + hub ring over the kit cap),
+  sprocket steel hub ring + dark core. Track-band gunmetal itself lives in
+  materials.js (delegated; 412399e already retoned the fleet).
+- #3 de-comb: the 16 width-anchor cleats keep x 1.6515..1.6595 and tops 1.22
+  (station contract intact — stations 95.7) but shorten to 1.10..1.22 bumps
+  hanging from a continuous guard rail (top 1.22) with wall-hugging hanger
+  straps at x 1.612. The top run reads above the wheels now.
+- #4 bow kit: second draped bow cable restored (both now r 0.03 + clevis
+  shackle plates/pins at the toes), MG ball re-domed r 0.09 in a dark socket
+  ring ON the plate (footprint matched to the ref's own ball bump z 2.12..
+  2.31), headlight dressed at the r2 crest-shadow seat (post + r 0.062 drum +
+  glass lens + brush-guard hoop top 1.693), three low bright gussets per side
+  on the fenders (z 1.80/1.92/2.03, tops 1.658). Hooks: the four anchors keep
+  their exact 0.42-tall band and 3.26/-3.615 faces but slim to forged hook
+  plates + boss + horn wedge + dark throat + (tail) hanging shackle rings
+  with bottoms at the old plate line (0.718).
+- #5 deck/rear: two embossed fan rings (x ±0.33, z -1.50, r 0.195, rim top
+  1.715, dark well + 5 blades + hub + 8 studs — whole z-span hides under the
+  turret bulge/handle side cols and clears the yaw-swept trapezoid bottom
+  1.755 by 3.5 cm); framed dark-mesh intake panels at z -1.87 (net-zero vs
+  the ref hump line); dark mesh insets on humps B/C; engine hatch pulled to
+  z -2.665 r 0.243 (flush relief + dark seam + 6 bolts); tail exhausts as
+  weld collar + rim + fat dark bore (tips -3.54); tail-plate access door
+  frame + hinges + latch. Turret rear: real door FRAME (all faces flush to
+  the door's own -1.35W plan line) + hinges/latch + dark seam field; MG ball
+  moved off the door to the ref's upper-left seat (sph 0.095 + socket +
+  stub tip -1.40W inside the wedge shadow).
+- #6 mantlet: dark cast-seam torus (r 0.345) on the bolted disc, bolt heads
+  0.017->0.022, 45° corner fillets in the frame shoulders + dark diagonal
+  cast seams on the apron corners, SECOND sleeve step (r 0.19) at the tube
+  exit ending 2.13W, rounded chin toe (cylX r 0.13 -> band bottom 2.15
+  toward the ref's 2.12).
+- #7: pannier rivet row + seam line under the fender lip (x 1.606, 15 studs
+  per side); dome caps on both hatch rings (tops 3.198-3.201W) + ventilator
+  drum/cap on the strip (3.185W); "2" decal position re-checked on the fresh
+  board (mid-slab, both sides — kept).
+- m60a1 loft lesson: n/a structurally — the kv2 turret is boxes/slabs (true
+  plate build, no contour-brick loft); board oblique frames show clean flat
+  shading, no slice banding.
+
+Hard-won margins for future kv2 rounds (all cost gate points when violated):
+- KIT.torus() is PRE-ROTATED FLAT (XZ plane, +Y normal): wheel-face rings
+  need rz π/2, z-facing rings rx π/2. A flat idler ring reached |x| 1.771 ->
+  safeScale 0.937 -> every dim shrank ~4-6% (dims 0, stations 20).
+- x=1.66 front-column contract: nothing above y 1.22 may paint inside the
+  1.62..1.70 window (fender hanger straps at 1.6545 cost 5 pts front_hull).
+- Bow-kit height ceilings (ref side_hull tops): 1.39-1.44 over the nose deck
+  (z 2.4-3.0), 1.51-1.58 at the plate flanks (2.14-2.31), 1.69-1.70 only on
+  the crest cols (z<=2.06). The ball/gussets/stub all live under these now.
+- Rear door dressing must not cross the -1.35W plan face (hinges/latch depth
+  0.014 max); frame strips must not overshoot the door's own edges (the
+  bulge-wedge slope owns the side cols beyond).
+- Engine-hatch rim must stay inside the deck-plate edge (-2.905): the old
+  r 0.268 ring overhung the falling slope and owned side_whole's p95 column
+  at world -2.96.
+- Hump C re-measured against the ref: span -1.86..-2.02 (the authored
+  -1.88..-2.045 overhang put +8 cm on the -2.07 column).
+- The second sleeve step must end by 2.13W — 2.14+ is a bare-tube column.
+- Roof dome caps: tops <=3.201W and fwd z-reach aft of world -0.34 (the rear
+  pods' shadow); the 3.235 pod columns own heightM p95 — never approach.
+- Deck relief budget: the rear-deck ref tops are 1.644-1.654 by z -2.6 —
+  even 3 mm of proud hatch relief flips gate pixels there. Reads come from
+  dark contrast, not height, everywhere aft of the turret well.
