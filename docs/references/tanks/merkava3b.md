@@ -34,3 +34,4 @@ oracle with a slightly narrower turret:
 | 3 (shaded-parity r2: strapped cloth roof bundles, gunmetal basket mesh/chains, detail-tone gun-mount cheeks + rotor recess rings, dished wheels, deck grilles/headlight guards/tow eyes/tail hinges, skirt bolts + hem, front fender boards) | 82.0 | — | 89 | 57 | 87 | 87 | material/furniture pass — silhouette pinned |
 
 Remaining gaps: follower skirt capture in the ref turret mask (as 3D).
+| 4 (r3 turret reconstruction: ONE continuous raked cheek plane per side from the gun notch to the roof shoulders (mount-box + detail-cheek slabs deleted), plateau re-seated to the measured z 0..-0.8, bustle walls flush with the shell (no parapet step), SHORT open basket -2.9..-3.2 + low chain band, twin pintle MGs + port-cheek smoke cluster on the beak plane, cloth roof bundles, skirt hem + scallop tabs) | 81.4 | — | 89 | 55 | 87 | 87 | ref upper mask still carries captured rear sponson strips (8 ex_armor_[lr] nodes) |

@@ -38,3 +38,4 @@ whole z −3.62..+4.51.
 
 Remaining gaps: partial follower skirt capture in the ref turret mask
 (smaller than 2B's but present: front sections + rows).
+| 4 (r3 turret reconstruction: as 2B (shared small-turret rebuild) + cheek applique wedges rebuilt as proud overlays ON the beak planes — the detached standing-plate sliver and the floating apex box are DELETED; low 2D thermal sight box on the plateau; open basket + coil + chains; skirt scallops) | 82.3 | — | 91 | 52 | 91 | 90 | turret comp ~52 cap: 12 rear-half skirt panels ride the ref turret mask (see 2B note) |

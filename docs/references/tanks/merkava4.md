@@ -59,3 +59,4 @@ GLB costs every quarter/top view (top 81 vs 95+ on the recovered marks);
 barrel from ITS upper-assembly mask while the procedural barrel legitimately
 stays in ours — turret IoU ceiling ~0.65 (fixing either needs an oracle
 re-split in userdrops3.js, outside this family's file ownership).
+| 4 (r3 turret reconstruction: full-rake cheek planes to the narrow roof (pillbox verticals + square mount box deleted), V-notch + small stepped rotor collar, flush Trophy launcher panels lying ON the 45-degree walls with seam strips + wedge heads + radar aperture (standalone radar plates deleted as floaters), recessed 4-tube smoke rosette ON the port cheek plane, .50 on the mantlet bridge, commander MG left-rear, LOW pano pod + sight hood on the plateau, open basket + chains, tarp roll, corner bins lowered, antennas 0.45->1.15) | 78.0 | — | 80 | 52 | 100 | 87 | turret comp ceiling still set by the oracle yaw + barrel-fragment defects (packet header) |

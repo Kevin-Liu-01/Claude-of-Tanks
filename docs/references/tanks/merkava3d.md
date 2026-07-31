@@ -41,3 +41,4 @@ Width-normalized to 3.72. Whole z −4.14..+4.14:
 Remaining gaps: ref turret mask carries rear+front skirt sections and the
 hull rack (followers config), inflating the ref upper mask my clean turret
 cannot fully cover.
+| 4 (r3 turret reconstruction: shared Mk.3 rebuild + Dor-Dalet bulged cheek overlays for variant differentiation + rear-roof tarp roll; rear chain-rail tip rebuilt as rail + hanging chain-mat vane + drops at the ORIGINAL mass/height) | 82.8 | — | 88 | 58 | 89 | 89 | gun-metric lesson: the overhang compare aligns masks by combined centroid — pass-1 lightened/raised the rear tip mass and the aligned barrel line dropped, G 89->70; restoring the measured mass/height at basketBot+0.02 restored G 89 |

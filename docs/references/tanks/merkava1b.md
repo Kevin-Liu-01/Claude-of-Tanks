@@ -43,3 +43,12 @@ metric): whole z −3.94..+4.06.
 
 Remaining gaps: ref turret mask captured a mid-hull skirt trapezoid
 (followers config); ref stowage silhouette atop the bustle is irregular.
+| 4 (r3 turret reconstruction: compact cast wedge in ONE polyTurret + full-rake beak cheeks converging on the rotor (no mount box), open pipe-frame basket + coil + chains replacing the solid bin, soft cloth stowage mounds to the measured 2.5-2.8 band, busy roof (cupola dome + twin MGs + mortar lid + sight hood + mast), port-cheek smoke cluster, cast lifting lugs, antennas moved to the basket rear corners, clevis tow points, glacis-slope louvres) | 83.4 | — | 92 | 58 | 88 | 89 | turret comp 59->58: ref upper mask carries solid packed stowage; open-frame parity is its practical cap |
+
+## r3 notes (turret reconstruction)
+- Artifacts deleted: drawer-cabinet bustle stack, solid basket bin, roof-comb
+  read (deck louvres moved onto the glacis slope), bow tow-eye torus ("cannon
+  bore" ring -> clevis bracket), gunner-hatch jewelry ring, hull-mounted
+  antenna read (masts now on basket corners).
+- Beak lesson: cheek planes must run to the shell's TOP RING (ending at the
+  base ring leaves a hidden trench + floating roof fittings).

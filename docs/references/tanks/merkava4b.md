@@ -46,3 +46,4 @@ Remaining gaps: oracle is 1.313x width-normalized (proportionally very tall);
 its turret node also captured a front skirt section (MERKAVA_TURRET_FOLLOWERS
 `ex_armor_(?!body)` in userdrops5.js), which the procedural turret cannot
 mirror without swinging hull armor on turret yaw.
+| 4 (r3 turret reconstruction: as merkava4 (shared modular rebuild — beak per the oracle low cheek tip y 1.93..2.23), paneled flanks (the r2-flagged missing kit), plateau/bustle/basket re-seated to the measured bands (basket -2.4..-3.9 top 2.56), rearTip bar DELETED (the r2 deck-skimming rail) — chains hang from the basket rim; smoke rosette on the cheek plane; hwMax 1.50 per plan ±1.5) | 79.3 | — | 82 | 53 | 86 | 86 | +0.6 total vs r2; clean-ref turret comp gains capped by the tall-oracle proportions |

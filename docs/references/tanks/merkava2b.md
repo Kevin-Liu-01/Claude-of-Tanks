@@ -42,3 +42,20 @@ skirt bands in every component view and the reference hull mask LACKS them
 Whole-silhouette views are 87-96 and are what this pass optimizes. Fix
 belongs in userdrops5.js (per-mark follower regex) — outside Merkava-family
 file ownership.
+| 4 (r3 turret reconstruction: ring re-seated — plateau front 0.88->0.52, casting ends at the measured -1.6 with the solid bustle box + basket bin DELETED; open rail basket + coil + chain curtain to ~-3.1; full-rake cast beak cheeks + small stepped rotor collar replace the square gun-mount box; busy roof kit; port-cheek smoke cluster; skirt hem 0.31->0.38 with scallop tabs so wheel arcs read; clevis tow points, glacis-slope louvres) | 75.1 | — | 81 | 27 | 89 | 92 | turret comp pinned ~27 by the oracle defect below |
+
+## r3 notes (turret reconstruction + oracle-defect quantification)
+- VERIFIED via GLB node audit: 26 `ex_armor_[lr]_NN` nodes (the full 13-panel
+  skirt run per side, x ±1.9, full hull length) match MERKAVA_TURRET_FOLLOWERS
+  `ex_armor_(?!body)` and ride the reference TURRET assembly. The ref upper
+  mask therefore contains both full skirt bands in every component view —
+  turret comp is structurally pinned at ~26-27 for ANY procedural turret.
+  Pipeline fix (userdrops5.js, outside family ownership): per-mark follower
+  regex for merkava2b/merkava2d excluding `ex_armor_[lr]_` (2b captures 26
+  skirt nodes, 2d captures its 12 rear-half panels; 1b/4b capture none, which
+  is why their comps read sane).
+- Artifacts deleted: square gun-mount box, drawer-cabinet bustle, deck-comb
+  read, bow torus ring, rearTip bar (chains now end at the measured -3.1).
+- r2 critique items closed: ring forward + roof drop (plateau 0.5..-0.6 at
+  2.40-2.46 exactly per oracle), skirt scallops with exposed wheels, bow
+  periscope strip left as the only bow fitting (clevis is toe hardware).
