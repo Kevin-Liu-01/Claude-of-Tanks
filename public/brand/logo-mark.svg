@@ -1,14 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Claude of Tanks — unit crest: Claude Code commander in a tank">
-  <!-- Claude of Tanks v3 crest mark — COLORED PRIMARY (the one the game uses:
+  <!-- Claude of Tanks v4 crest mark — COLORED PRIMARY (the one the game uses:
        splash, garage, favicons, og cards). Owner-approved side-profile
        composition — stylized modern MBT (original vector art) with the Claude
        Code mascot (Anthropic; via thesvg.org — see docs/ATTRIBUTION.md)
        commanding from the open hatch — in the game palette: dark steel field
        (#151f29), steel-blue two-tone tank (v1 body tones #2a3947/#3a4c5f/
-       #4d637a), mascot #D97757, amber #f5b64b pennant/pinstripe/dash accents.
-       Shield geometry identical to logo-mark-bw.svg (keep in sync): one
-       midline path stroked ink band w16 + amber pinstripe w3 + field fill;
-       muzzle breaks the shield wall. Metal treatment: logo-mark-metal.svg. -->
+       #4d637a), mascot #D97757, amber #f5b64b pennant/pinstripe/keel accents.
+       v4 (owner-directed cleanup; v3 archived in public/brand/v3-shield/):
+       tank rescaled to fit FULLY inside the shield's inner border (muzzle no
+       longer breaks the wall), two stroke weights only (2.5 primary / 1.8
+       detail), skirt seams locked to the wheel pitch, vertical flag pole +
+       one diagonal whip antenna, and the blobby dashes replaced by three
+       rounded speed strokes (left-aligned, long to short). Shield geometry
+       identical to logo-mark-bw.svg (keep in sync): one midline path stroked
+       ink band w16 + amber pinstripe w3 + field fill. Metal treatment:
+       logo-mark-metal.svg. -->
   <defs>
     <clipPath id="cotHatchClipC"><rect x="70" y="26" width="68" height="44"/></clipPath>
   </defs>
@@ -19,26 +25,26 @@
   <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"
         fill="none" stroke="#f5b64b" stroke-width="3"/>
 
-  <g transform="translate(10 28) scale(1.12)">
-    <!-- ground bar + amber speed dashes + taper bars (seat the tank, echo the point) -->
-    <rect x="36" y="135" width="134" height="10" rx="5" fill="#0b0f12"/>
-    <path d="M60 140h104" stroke="#f5b64b" stroke-width="3" stroke-dasharray="7 6" fill="none"/>
-    <rect x="64" y="152" width="76" height="8" rx="4" fill="#0b0f12"/>
-    <rect x="86" y="165" width="40" height="7" rx="3.5" fill="#0b0f12"/>
-
-    <!-- motion dashes + dust (tank advancing right; trimmed to the tapered field) -->
-    <g fill="#1f2b37">
-      <rect x="26" y="112" width="12" height="4.5" rx="2.25"/>
-      <rect x="24" y="121" width="14" height="4.5" rx="2.25"/>
-      <rect x="34" y="130" width="10" height="4.5" rx="2.25"/>
-      <circle cx="48" cy="131" r="6"/><circle cx="57" cy="133.5" r="4"/>
+  <g transform="translate(7 22)">
+    <!-- ground bar + amber keel line (seats the tank; clean solid accent) -->
+    <rect x="44" y="136" width="136" height="10" rx="5" fill="#0b0f12"/>
+    <path d="M58 141h108" stroke="#f5b64b" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <!-- speed lines: three rounded strokes, even 12px rhythm, left-aligned,
+         graduated long to short, all inside the shield bowl -->
+    <g stroke="#0b0f12" stroke-width="7" stroke-linecap="round" fill="none">
+      <path d="M73 153h88"/>
+      <path d="M73 165h56"/>
+      <path d="M73 177h24"/>
     </g>
 
-    <!-- whip antenna + amber pennant (streaming back into the top field) -->
-    <path d="M64 79 50 30" stroke="#55697e" stroke-width="2.5" fill="none"/>
-    <path d="M50 26.5 32 31l18 4.5Z" fill="#f5b64b"/>
+    <!-- whip antenna: one clean 45-degree diagonal off the rear deck -->
+    <path d="M52 96 32 76" stroke="#55697e" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+    <!-- flag: vertical pole from the bustle rack + amber pennant streaming back -->
+    <path d="M68 84V34" stroke="#55697e" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+    <path d="M68 34 46 39.5 68 45Z" fill="#f5b64b"/>
 
-    <!-- running gear: near-black track band, steel wheel two-tone -->
+    <!-- running gear: near-black track band, steel wheel two-tone
+         (six identical road wheels on an exact 24.4 pitch) -->
     <path d="M52 107h122a15 15 0 0 1 0 30H52a15 15 0 0 1 0-30Z" fill="#0c1218"/>
     <g fill="#33424f">
       <circle cx="52" cy="122" r="10"/><circle cx="76.4" cy="122" r="10"/><circle cx="100.8" cy="122" r="10"/>
@@ -54,47 +60,48 @@
     <path d="M148 94l52 18-1.9 3.8-51.6-17.6Z" fill="#4d637a"/>
     <rect x="40" y="94" width="108" height="2.4" fill="#4d637a"/>
 
-    <!-- side skirt: lighter steel panel over the track top (two-tone body) -->
+    <!-- side skirt: lighter steel panel; seams sit exactly midway between
+         wheel centers so panels and wheels share one rhythm -->
     <path d="M46 106h136v8l-9 12H46Z" fill="#3d5062" stroke="#0c1218" stroke-width="2.5" stroke-linejoin="round"/>
-    <rect x="41" y="106" width="5" height="18" fill="#1c2833"/>
-    <g stroke="#1a232d" stroke-width="2.2">
-      <path d="M72 107.5V124M98 107.5V124M124 107.5V124M150 107.5V124"/>
+    <rect x="41" y="106" width="5" height="20" fill="#1c2833"/>
+    <g stroke="#1a232d" stroke-width="1.8">
+      <path d="M64.2 107.5V124M88.6 107.5V124M113 107.5V124M137.4 107.5V124M161.8 107.5V124"/>
     </g>
 
     <!-- turret: long low wedge + bustle rack + facet flash -->
     <rect x="60" y="79" width="16" height="14" rx="1.5" fill="#1c2833"/>
-    <path d="M61 83.7h14M61 88.3h14" stroke="#0c1218" stroke-width="1.6"/>
+    <path d="M61 83.7h14M61 88.3h14" stroke="#0c1218" stroke-width="1.8"/>
     <path d="M72 96 82 74l58 3.5L154 96Z" fill="#3a4c5f"/>
     <path d="M82 74 140 77.5 138.8 80.8 81 77.2Z" fill="#4d637a"/>
     <path d="M124 80l7 .5 6 15.5h-7Z" fill="#f5b64b"/>
 
     <!-- the commander: Claude Code mascot, faithful source path (brand orange;
-         legs clipped by the hatch) -->
+         legs clipped by the hatch), centered on x=106 with the hatch ring -->
     <rect x="91" y="57" width="30" height="12" fill="#0c1218"/>
     <g clip-path="url(#cotHatchClipC)">
       <path clip-rule="evenodd" fill-rule="evenodd" fill="#D97757" stroke="#0b0f12"
-        stroke-width="1.5" paint-order="stroke" transform="translate(82.65 42.75) scale(1.95)"
+        stroke-width="1.5" paint-order="stroke" transform="translate(82.6 42.75) scale(1.95)"
         d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z"/>
     </g>
     <!-- hatch coaming (arms rest on the ring) -->
-    <rect x="81" y="68" width="50" height="6.5" rx="1.2" fill="#3a4c5f" stroke="#0c1218" stroke-width="2.5"/>
+    <rect x="81" y="68" width="50" height="6.5" rx="1.5" fill="#3a4c5f" stroke="#0c1218" stroke-width="2.5"/>
 
-    <!-- tanker helmet: light steel dome + rim + goggles (must read on the dark field) -->
+    <!-- tanker helmet: light steel dome + rim + goggles, all symmetric on x=106 -->
     <path d="M87.5 52.5a18.5 12 0 0 1 37 0Z" fill="#7d90a3" stroke="#0c1218" stroke-width="2.5" stroke-linejoin="round"/>
-    <rect x="85.5" y="52.3" width="41" height="4.2" rx="2.1" fill="#0e151d"/>
-    <rect x="94" y="45.2" width="24.5" height="5.2" rx="1.3" fill="#0e151d"/>
-    <circle cx="102.5" cy="47.8" r="3.8" fill="#0e151d" stroke="#9fb2c4" stroke-width="1.8"/>
-    <circle cx="111" cy="47.8" r="3.8" fill="#0e151d" stroke="#9fb2c4" stroke-width="1.8"/>
+    <rect x="85.5" y="52.3" width="41" height="4.2" rx="2" fill="#0e151d"/>
+    <rect x="93.75" y="45.2" width="24.5" height="5.2" rx="1.5" fill="#0e151d"/>
+    <circle cx="101.75" cy="47.8" r="3.8" fill="#0e151d" stroke="#9fb2c4" stroke-width="1.8"/>
+    <circle cx="110.25" cy="47.8" r="3.8" fill="#0e151d" stroke="#9fb2c4" stroke-width="1.8"/>
 
-    <!-- main gun, elevated 10 degrees: steel barrel, light keylines + muzzle step
-         (the step is the piece that breaks the shield wall) -->
+    <!-- main gun, elevated 10 degrees: steel barrel, light keylines + muzzle
+         step — trimmed so the muzzle stays inside the shield's inner border -->
     <g transform="rotate(-10 140 82)">
       <rect x="136" y="76" width="18" height="12" rx="1.5" fill="#24313f"/>
-      <rect x="154" y="78.3" width="54" height="7.4" fill="#2b3947"/>
-      <rect x="154" y="78.5" width="54" height="1.9" fill="#4d637a"/>
-      <rect x="154" y="83.9" width="54" height="1.2" fill="#1a232d"/>
-      <rect x="168" y="76.4" width="16" height="11.2" rx="4.4" fill="#24313f" stroke="#7d90a3" stroke-width="1.8"/>
-      <rect x="205.5" y="76.2" width="11" height="11.6" rx="1.4" fill="#7d90a3" stroke="#0b0f12" stroke-width="2.5"/>
+      <rect x="154" y="78.3" width="48" height="7.4" fill="#2b3947"/>
+      <rect x="154" y="78.3" width="48" height="1.9" fill="#4d637a"/>
+      <rect x="154" y="84.5" width="48" height="1.2" fill="#1a232d"/>
+      <rect x="166" y="76.4" width="16" height="11.2" rx="4.4" fill="#24313f" stroke="#7d90a3" stroke-width="1.8"/>
+      <rect x="199.5" y="76.2" width="11" height="11.6" rx="1.5" fill="#7d90a3" stroke="#0b0f12" stroke-width="2.5"/>
     </g>
   </g>
 </svg>
