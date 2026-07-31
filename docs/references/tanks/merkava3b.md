@@ -97,3 +97,45 @@ whips at x 0.19/-3.15 and x 1.01/-2.97 per the front+side traces.
 - OBSOLETE: v8 root-gun/follower-sweep turret caps (86d1071).
 Standing (gate v10): hull 77.9 / whole 69.7 / turret 52.9 / stations 84.9
 / dims 99 / floaters 100 (was 58.7/39.5/2.4/81/96.8/100 at v10 start).
+
+### Round-3 measured re-lay + registration nulling (2026-07-31, gate v10 + kit track fix)
+THE ROUND'S MASTER LAW — NULL THE REGISTRATION: the gate registers each
+view once from the HULL body span (12%-band columns) and a half-pitch
+dAlong (side pitch 0.104 m, front pitch 0.042 m!) makes the worst-row
+interpolation sample BETWEEN proc columns — every sharp feature (whips,
+pack edges, crest face) reads as smeared midpoints (whips at half height).
+Fixing spans is worth more than any shape edit: 3b went 67->81 the moment
+side dAlong hit 0. Mechanics used here:
+- Hull-mask 12% threshold is ~0.21-0.29 (hull rough 1.75-2.4), whole-mask
+  ~0.32. METROLOGY-SELECTIVE structures: sub-threshold geometry UNDER the
+  gun makes whole-only body columns — the published hullLength rides on
+  pods/posts the hull registration cannot see. Hairline tailPins carry
+  overallLengthM's pixel span with no body-column effect.
+- p95 height spike budget is TWO columns on this print (whips own it); a
+  third 3.22 whip-can column put heightM at 3.22 and dims to 0. Pot capped.
+- Sleeve clamp rings (r*1.31) straddled the plan +-0.15 column at the AA
+  boundary and flickered run-to-run; gunR 0.085 pins them IN (they match
+  the ref's own sleeve-end content there).
+Turret re-laid to the dumped full curves: narrow rotor-crest nose
+(|x|<=0.18) standing at z 1.76 side-apex 2.56, widening 0.41 by z 1.21;
+cheek plan plateau z +1.20 with ASYMMETRIC sweeps (left cuts to 0.48 by
+x 0.85; right holds 1.19 to x 0.64 + sight pod bump 0.90 at x 1.06-1.37);
+near-vertical casting walls (inset 0.94), carved-ring bottoms 1.53 rising
+1.85 at the face and ramping 1.70->1.93 under the bustle; shell capped at
+the 2.41 saddle (z +0.16..-0.28); LEFT sight plinth at the 2.655 cap over
+x -0.20..-0.94 with the RIGHT deck LOW at 2.47 (the old symmetric cap band
+overshot the right roof 0.2); rear-deck dip 2.53 then pot bump 2.65; vane
+V-taper (full rear only |x|<=0.7, two-segment, xoff -0.05); mantlet drum
+laid 1.84..2.50 at r 0.165 (evac at its measured 2.0-2.5, evacR 1.94).
+Hull: blunt prow (plan fwd 3.12 to |x| 1.29), deck-edge fender step (body
+wT 1.66 under the 1.60-1.67 plank line), rearPack at the measured stack
+(x -1.01..0.85, z -3.06..-4.12, top 2.38), glacis fittings on LOCAL slope
+(rxAt — the average-rake tilt poked the louvre bank 0.15 proud).
+Standing: min 52.9 -> 81.0 (hull 86.7 / whole 81.0 / turret 83.1 /
+stations 82.1 / dims 99.9 / floaters 100). Whole is gun-cap-bounded:
+side_whole cover 4.05% (muzzle 4.73 vs oracle 4.13) caps it ~86-87;
+plan p95 4.3 is the same cap in plan (~89 ceiling); t_plan col 1.26
+carries a ~0.6 anomaly (suspect gate-side interp at a proc grid boundary).
+Stations 82: s4-s6 tops ~3.5% unexplained at 384-probe parity (windows
+match, tops match within 0.014 — 1024-only effect, unresolved); s11 whip
+window luck; both trimmed. Remaining honest headroom: stations, front rows.

@@ -88,3 +88,9 @@ glacis bracket post at (-0.60, 2.85); wedge-face casting deepened
   (absorbed under Gun in 86d1071).
 Standing (gate v10): hull 73.3 / whole 56.8 / turret 39.6 / stations 71.7
 / dims 99.4 / floaters 100 (was 40.6/28.5/7.9/71.8/100/100 at v10 start).
+
+### Round-3 note (2026-07-31): same rig-split wall as 2B
+See merkava2b round-3: side dAlong -0.545 from the print's short hull-body
+mask; reconstruction attempts reverted, r2 caps stand. Standing min 37.0
+(hull 73.3 / whole 56.4 / turret 37.0 / stations 73.7 / dims 96.2).
+Batch-8 forensics with 2B.

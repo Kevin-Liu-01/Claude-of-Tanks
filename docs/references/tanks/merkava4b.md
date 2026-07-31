@@ -101,3 +101,18 @@ Re-lined: FIVE whips on the measured columns (trio at z -3.22, x -1.00/
   +4.80 (wholeCurves coverage only).
 Standing (gate v10): hull 59.9 / whole 39.9 / turret 26 / stations 70 /
 dims 99.9 / floaters 100 (was 0/0/0/63.8/99.8/100 at v10 start).
+
+### Round-3 (2026-07-31): registration nulled; stature ceilings RE-DERIVED
+Side dAlong nulled (nose to the print's 3.24 toe + wings rails -4.17):
+side_whole 39.7 -> 63.8, side_hull 79.8. dims 100 (bow post 3.43 + tail
+pins -4.24 carry the published lengths). RE-DERIVED CEILINGS under v10
+pixel metrology (supersede the r2 "turret 60-75 / whole 75-80 / stations
+~80" bands, which predate hull-anchored dy and pixel dims): the 1.313x
+print rides its plateau 2.99-3.12 and hull skirts high; front_whole is
+the binder — the capped 2.655 roof loses ~0.35 x 20+ columns = mean +3%
+(ceiling ~45-50); front_hull ~60 (its hull rides the stature too, dy
+absorbs only the mean); stations tops 3-9% capped residuals (~60).
+Standing: min 26 -> 42.7 (hull 59.9 / whole 42.7 / turret 51.0 /
+stations 58.7 / dims 100 / floaters 100) — at/near the re-derived
+ceilings everywhere except turret plan (~5 pts of honest wedge work
+left, r3 anatomy params are mechanical scales).

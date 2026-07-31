@@ -114,3 +114,21 @@ trace; shoulder bins at +-1.26 (the measured 2.68 front band at x 1.4).
   node" caps (repair 6fa0335 + 86d1071) — hull and turret rows are live.
 Standing (gate v10): hull 78.6 / whole 56.3 / turret 44.4 / stations 81.6
 / dims 96.3 / floaters 100 (was 72.5/43.3/23.9/74/99.4/100 at v10 start).
+
+### Round-3 note (2026-07-31): rig-split forensics UNRESOLVED — r2 caps stand
+The 2B print's side hull BODY span ends at z -3.62 (its hull plate is
+short; the tail cluster reads sub-threshold or turret-side) while its plan
+hull bands keep the full rear reach — our full-depth hull tailRack drags
+side dAlong to -0.55..-0.60 (5+ columns of interpolation smear on every
+z-feature). THREE reconstructions failed: (a) turret-node rack nulled side
+reg (hull 80.5) but collapsed plan_turret to 0 via plan dy -0.45..-0.52
+(the plan HULL band centers moved); (b) thin hull rails + turret wall:
+same; (c) hull-plate cut at -3.62 + bow podGuard (matches ref front body
+3.43): side mid still read -0.36 (stale-dump confusion; un-diagnosed).
+ORACLE BATCH-8 CANDIDATE: measure the 2B/2D rigs' actual hull-node rear
+extent and per-node rack membership before the next build attempt — the
+r2 packet's "rack band [0.46..1.62] hull-side" contradicts today's
+bodySpan read. Profile reverted to the r2 configuration; standing
+min 41.6 (hull 78.3 / whole 56.7 / turret 41.6 / stations 79.9 /
+dims 95.3) — turret -2.8 vs r2 from shared-code deltas (mantlet/mortar
+excluded by test; residual in the vane/chain or glacis-fitting path).

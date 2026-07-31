@@ -90,3 +90,14 @@ tail door recess -3.28; cheek bulges tucked (z ~0.9, yaw 0.42).
 - RE-CERTIFIED caps as 3B (cupola band, short gun +4.14 vs +4.73).
 Standing (gate v10): hull 64.4 / whole 56.2 / turret 40.4 / stations 82.7
 / dims 94 / floaters 100 (was 21/18.8/8.5/73.3/97.8/100 at v10 start).
+
+### Round-3 note (2026-07-31): dims closed via selective carriers
+Bow post (x -0.60, z 3.46, sub-hull-threshold band) + tail pins (-4.30)
+close dims 92.2 -> 100 (the r3 selective-carrier law, see merkava3b).
+Turret converted to the r3 modular anatomy with mechanically-scaled
+parameters (hwMax 1.55 wedge) — measured re-lay NOT yet done: its t_plan
+carries a symmetric fwd~2.67 anomaly at |x|~0.25 (unidentified mesh, cf.
+3b's col-1.26 note) and the Dor-Dalet dome/plateau needs its own trace
+pass. Standing min 40.4 -> 38.4 (hull 64.9 / whole 58.0 / turret 38.4 /
+stations 74.0 / dims 100) — turret -2 pending the measured pass; hull
+row unchanged (its certified bustle-in-hull cap).

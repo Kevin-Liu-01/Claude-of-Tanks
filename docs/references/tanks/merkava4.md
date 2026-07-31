@@ -113,3 +113,9 @@ against the current oracle state:
   basket were print shadows; the mark is authored to the published
   Mk.4M envelope: low rear rack [0.6..1.68], basket to -4.00, ring
   apron, capped 2.66 roof). floaters 100, rig-probe PASS.
+
+### Round-3 note (2026-07-31): dims-only cap holds
+Unrepairable print (yawed, foreshortened, fused barrel — r2 cert stands):
+curves/stations 0 by construction, dims 91.8, floaters 100. The build
+keeps the published-envelope shape (r3 modular params applied so the
+family code path stays uniform). No further action this round.

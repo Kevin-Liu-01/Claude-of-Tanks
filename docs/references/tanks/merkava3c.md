@@ -72,3 +72,12 @@ re-seat. Kasag bundles anchored to the measured 2.46-2.51 rear roof.
 - OBSOLETE: the v8 "bustle-in-hull band" hullCurves residue (absorbed).
 Standing (gate v10): hull 76.6 / whole 65.5 / turret 52.9 / stations 85.8
 / dims 99 / floaters 100 (was 49.2/41.2/2.4/84.6/96.8/100 at v10 start).
+
+### Round-3 (2026-07-31): shared 3B re-lay + own whip stations
+Same sculpt re-lay as 3B (see its round-3 notes for the registration-null
+law). 3C-SPECIFIC: its print's whips ride x -0.62 (z -3.19) and +1.03
+(z -2.99) — NOT 3B's +0.19/+0.97; the wrong-x whips were most of its
+front_whole deficit (50.6 -> 81+ after re-seat). Its stations s4-s6 are
+CLEAN (1.7-2.0) where 3B's read 3.5 — the s4-6 station-top anomaly is
+3B-print-specific. Standing: min 52.9 -> 81.2 (hull 85.8 / whole 81.2 /
+turret 83.1 / stations 84.3 / dims 99.9 / floaters 100).

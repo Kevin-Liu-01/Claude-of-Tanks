@@ -129,3 +129,27 @@ left-offset -0.055 per the measured asymmetric plan.
   hull — 1-2 sub-margin cover columns at each end (dims-sovereign trade).
 Standing (gate v10): hull 78.7 / whole 55.5 / turret 54.2 / stations 77.2
 / dims 100 / floaters 100 (was 68.7/61.3/12.8/67.4/100/100 at v10 start).
+
+### Round-3 measured re-lay (2026-07-31, gate v10 + kit track fix)
+Registration nulled on BOTH axes (see merkava3b round-3 for the law):
+side via wings z1 -4.03 + rearPack alignment (ref hull body [2.98..-4.05]);
+front via per-side fender-drop x [1.805, 1.745] — the ref front span is
+ASYMMETRIC (true mid -0.038) and the drops are the span carriers; whips
+land their exact front columns (x -0.85 / +0.80) only at dAlong 0.
+hullLength rides a single bow wire-cutter post (x -0.60, z 3.42, band
+[0.97..1.155] — UNDER the hull-mask 12% threshold 0.21, whole-column with
+the gun above), tail pins carry overall to -4.24; pods sit at the ref's
+own 3.05-3.18 nubs. Turret: explicit planPts wedge ([0.33,1.15] plateau,
+sweep to [0.66,0.36], max width pulled to z -0.42..-0.85, rear corner
+[1.18,-1.90]); shell capped at the 2.35 saddle (plateau->saddle break at
+z +0.13, dome drum starts -0.40); per-station roof widths track the wedge;
+apron gets per-station halfwidths (a full-width apron nose poisoned the
+plan); casting bottoms 1.90 at the face; M64 mantlet is a WIDE-FLAT drum
+r 0.148 ending z 1.98 (r5's "band to 2.45" was the muzzle-collar read;
+collar r 0.145 matches the ref muzzle mass), tube bare (evac: null,
+collar: false); right-rear cheek pot (x 1.33, z -1.0, top 2.63) restored
+from the front 2.64 band; whip-can pots capped 2.64 (p95 budget = whips).
+Standing: min 54.2 -> 75.3 (hull 81.8 / whole 77.1 / turret 75.3 /
+stations 76.6 / dims 99.8 / floaters 100). Residuals: dome band 2.81-2.87
+capped at 2.66 (~18 side cols, certified stature); short-gun cover
+(oracle M64 +4.06 vs published-true 4.39); stations s11/s12 window luck.
