@@ -212,3 +212,115 @@ Hard-won margins for future kv2 rounds (all cost gate points when violated):
 - Deck relief budget: the rear-deck ref tops are 1.644-1.654 by z -2.6 —
   even 3 mm of proud hatch relief flips gate pixels there. Reads come from
   dark contrast, not height, everywhere aft of the turret well.
+
+## Shaded-parity r4 response — closing round for the r5 verdict (2026-07-31)
+Critique: docs/critique/shaded-parity-kv2-r4.md (FAIL, min view 7 — "the
+narrowest fail of the program"). All five tells closed in soviet-heavy.js
+only (per-instance material work included — materials.js/kit/factory
+untouched). Gate held through every edit: before 90.2 -> after **90.2 PASS**
+(hull 92.1 whole 90.2 turret 90.3 stations 96 dims 100 floaters 100; the
+0.1 hull tick = the raised headlight). Legacy fidelity row byte-identical
+(overall 96.3 hull 96.1 turret 86.6 gun 28.3 [certified residual] tracks
+92.3, minView 95.0). Fresh board shots/procedural-fidelity/boards/kv2.png;
+rig probe kv2 8/8 PASS.
+
+Measurement rig (tools/tmp-kv2r5-parity.{html,mjs} — kept for the r5
+critic): reproduces the r4 rig (1100px tiles, board lights, fixed world
+dirs, white-mask median) and MECHANIZES the critic's track-band number,
+which is NOT a rect median (re-measured on the critic's own pair-left.png:
+their stated rect medians 55.3 — paint behind the gear dominates any rect).
+It is a COMPONENT measurement: occlusion-preserving white/black material
+mask over the track hardware, bottom-run slice = rows below world y 0.48.
+That reproduces ref left bottom-run 55.6 exactly and our baseline 13.5
+(critic: 15.1/55.6 = 3.7x; their strict set included the hullDark cleats).
+
+Tell-by-tell:
+1. Gear near-black -> rusty-warm family (BIGGEST): root cause was TWO
+   stacked mechanisms: (a) albedos authored into the sub-0.09 floor-exempt
+   band, and (b) the buildRunningGear pad/inner materials are CLONES —
+   Material.clone() drops onBeforeCompile, so the pads render FLOORLESS and
+   crush in shade while hooked paint floats (the exact 3.7x split). Fix:
+   per-build retone block after sovGear — trackL/R map multiplier
+   setRGB(1.45,1.30,1.08); spareTrack 0x3f382c; pad clones 0x171614 ->
+   0x423a2e; inner 0x27251f -> 0x342e24; cleats hullDark -> hullTrack; end
+   -wheel drums -> wornDrum clone 0x39352c; pocket inserts -> 0x191715 AO
+   clone; and vehicleAmbientFloorHook re-attached to the clones (imported
+   from materials.js; PLAIN assignment only — never the chained CSM closure,
+   which registers shaders under the SOURCE material key). Measured after:
+   left bottom-run 13.5 -> 60.6 vs ref 55.6 = **0.92x** (was 4.11x on this
+   rig), right 1.01x, hue family matched (proc rgb(67,60,48) vs ref
+   (61,55,45)). Full-view medians: front 1.01 right 1.05 left 1.00 rear34
+   1.01 rear 1.03 top 1.14; means 1.01-1.13 (the r4 median/mean split is
+   closed).
+2. Drum faces/links: r3 post-mortem — the r3 sprocket overlays sat BEHIND
+   the kit carrier-ring disc (solid r*0.94 disc, outer face 1.6492: THAT
+   was the "blank pale plate"), and the idler set was seated at z 2.745 vs
+   the kit idler axis 2.79 (4.5 cm off-centre = "six small dots"). New
+   face sets sit ON the visible planes, concentric, max |x| 1.6585 (cleat
+   anchors 1.6595 stay the width guard): sprocket = dark recessed core +
+   warm hub-bolt ring + hub ring at 1.649+, drums darkened via the clone,
+   teeth/root rings ride the warm spareTrack; idler = big near-black
+   annulus PROUD of the kit hub drum (1.578 > 1.5712 — the drum was
+   poking through the r3 annulus = "hub-cap idler") + 6 warm spokes +
+   rim/hub rings, kit cap pokes the hub ring like the ref's small hub.
+   Links: pads warm/inner dark two-tone kills the black-bead read (the
+   beads were the pin caps against a void band).
+3. Turret rear: TWO measured discoveries. (a) DEAD-ASTERN OCCLUSION: the
+   bulge cheek wedges don't just shadow the plan — from dead astern they
+   occlude the whole x 0.17..0.46 band out to their -1.73 corners; the r3
+   flush dressing sat entirely inside that band, which is WHY it never
+   registered. The provable windows are the centre strip |x|<0.17 (cap
+   -1.67) + anything past x 0.46. (b) The r3 "upper-left" ball seat was
+   IMAGE space: on the ref the ball collar is at tank-RIGHT x ~ +0.53 —
+   outside the wedge band, proud of the -1.59 wall — and the door is
+   offset tank-LEFT (centre ~ -0.10) with wall-mounted L-bracket hinges at
+   its left edge. Rebuilt to match: base recedes to -1.63, dark moat ring,
+   0.70x0.70 PROUD plate (face exactly -1.67 = -1.35W, turretDetail = the
+   ref's lighter worn skin), corner bolts, vision slot, horizontal strap
+   hinges + latch + pistol port in the centre strip, L-brackets on the
+   wall at -0.50, and the ball at (0.53, 1.00) r 0.105 tip -1.665
+   (-1.345W) with a big detail collar + dark socket + aperture — fully
+   visible dead astern, and where it bulges the plan the REF's own ball
+   bump sits (parity, not cost — gate confirmed). turretGlass was tried
+   for a near-black moat and rendered BLUE hemi sheen (rgb 46,57,68) —
+   reverted to turretDark; the plate/moat/bolt/strap VALUE stack carries.
+4. Deck de-pink: fan rims/blades/hubs, intake frames/ribs, hump-C ribs,
+   engine-hatch disc -> hullDetail; dome caps (+ new dark seat seams) and
+   ventilator -> turretDetail (the pink was scheme-camo box-UV sampling
+   warm patches + the up-face dust bake; detail = solid crisp olive, the
+   ref's fitting family). Wells/meshes stay dark for rim-vs-well value.
+   Spare-links board gets pin-gap seams + grouser bar (flat — the
+   1.39-1.44 nose-deck ceiling holds) and rides the warm track family.
+   Top view is pink-free; top paint ratio stays 1.14 (inside the ~1.3x
+   gate; the global up-face paint response is materials.js-owned — left
+   as the documented residual).
+5. Bow: cables 0.03 -> 0.046 with a 0.032 contact-shadow seam tube slung
+   under each run (the ref's read is 90% contrast) — re-draped to keep the
+   fatter top under the measured ceilings (mid z 2.26, toes 1.19/2.86);
+   headlight SELF-OCCLUSION confirmed (axis-1.60 lens hid behind the
+   driver-plate slope edge dead-on): axis 1.615, drum 0.075 (top 1.690 <
+   1.695 crest), dark bezel + detail lens ring + glass pupil, hoop ->
+   flat guard bar at 1.694 with legs — reads dead-on now; shelf face gets
+   plate seams + 11-stud row + the ref's dashed nose weld line (12 dashes
+   on the nose deck). Micros: honeycomb muzzle face (7 dark bores, 2.5 mm
+   proud of the 3.36W plane — inside dims grace), "2" decal REMOVED
+   (parity-strict: the print carries none), stale ±0.30 door-frame stud
+   columns deleted with the door move.
+
+New hard-won margins (r5):
+- buildRunningGear pad/inner mats are per-build clones with HARDCODED hex
+  (0x171614/0x27251f) and NO floor hook — any retone must both recolor and
+  re-hook per instance; match them by those exact hex keys.
+- The kit sprocket carrier ring is a SOLID painted disc to r*0.94 with
+  outer face at xc+ringSpan/2*0.99+w*0.145/2 — face overlays must sit
+  outboard of it (and inboard of the cleat anchors: 7 mm of budget).
+- Dead-astern turret-rear budget: |x|<0.17 strip + x>0.46 only (wedge
+  occlusion, see tell 3). Side-view wedge boundary for proud rear pieces:
+  full -1.73 cover only y 0.85..1.075; 0.45..0.85 boundary =
+  -1.63-0.25*(y-0.45); above 1.075 it shallows by +0.10/0.21 per metre.
+- turretGlass renders BLUE under the board hemi (metalness sky sheen) —
+  never use it for shadow/recess fields; turretDark is the deep ceiling
+  for turret-frame recesses (~46 rendered on the shade side).
+- The probe's strict-track component mask keys on envMapIntensity <= 0.101
+  (trackL/R 0.10, spareTrack 0.06, pads 0.08) — keep new track-family
+  materials at env <= 0.10 or the band metric loses them.
