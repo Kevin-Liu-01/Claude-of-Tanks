@@ -2378,6 +2378,28 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       }
     }
   }
+  // maps r1 (ADDITIVE, config-gated): WINDBREAK BELTS — authored tree LINES
+  // ({x0,z0,x1,z1, gap?, jitter?, species?}) for steppe shelterbelts and
+  // field-boundary rows. Runs only when cfg.vegetation.belts exists, so no
+  // pre-existing map consumes a single extra rng() draw (their layouts stay
+  // bit-identical). Trees go through addTree => full siteOk rules + obstacles
+  // + concealment, i.e. belts are real cover, not dressing.
+  if (veg.belts) {
+    for (const b of veg.belts) {
+      const len = Math.hypot(b.x1 - b.x0, b.z1 - b.z0);
+      const gap = b.gap ?? 8;
+      const jit = b.jitter ?? 2.5;
+      const nB = Math.max(2, Math.round(len / gap));
+      for (let i = 0; i <= nB; i++) {
+        const t = i / nB;
+        const bx = b.x0 + (b.x1 - b.x0) * t + (rng() - 0.5) * jit;
+        const bz = b.z0 + (b.z1 - b.z0) * t + (rng() - 0.5) * jit;
+        if (rng() < (b.skip ?? 0.12)) continue; // storm gaps read planted-then-weathered
+        addTree(bx, bz, b.species || pickSpecies(veg.loneMix, rng()));
+      }
+    }
+  }
+
   // horizon rim forest: dense clustered blocks on the raised map border so
   // distant ridgelines carry massed silhouettes instead of scattered lollipops
   // r6 (content_breadth): DE-COMB. The blocks were laid at even angular
@@ -2407,6 +2429,10 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     for (let i = 0; i < n; i++) {
       const x = cx + (rng() - 0.5) * bw, z = cz + (rng() - 0.5) * bw;
       if (Math.max(Math.abs(x), Math.abs(z)) > 506) continue;
+      // maps r1: the rim ring can cross open WATER now (coastal bay fills the
+      // east rim) — no forest wading in the sea. noVeg is false along every
+      // pre-existing map's rim, so this is a no-op for them.
+      if (noVeg(x, z)) continue;
       pushTree(x, z, rng() < 0.85 ? species : pickSpecies(veg.rimMix, rng()), 1.35, 2.2, false);
     }
     for (let i = b0; i < trees.length; i++) trees[i].tint.multiply(_standTint);
@@ -2418,6 +2444,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     const x = Math.cos(a) * rad + (rng() - 0.5) * 18;
     const z = Math.sin(a) * rad + (rng() - 0.5) * 18;
     if (Math.max(Math.abs(x), Math.abs(z)) > 506) continue;
+    if (noVeg(x, z)) continue; // maps r1: see the rim-block note (sea rim)
     pushTree(x, z, pickSpecies(veg.rimMix, rng()), 1.2, 1.9, false);
   }
 

@@ -528,6 +528,11 @@ function jetty(buckets, rng, x0, z0, ang, y, len = 7.5) {
  * @param {object} ctx {mapId, L (layout), heightField, rng, buckets}
  */
 export function dressMapExtras({ mapId, L, heightField, rng, buckets }) {
+  // maps r1 (ADDITIVE): per-map branches dispatch BEFORE the winter guard —
+  // the winter path below consumes exactly the rng stream it always has.
+  if (mapId === 'coastal') return dressCoastalShore({ L, heightField, rng, buckets });
+  if (mapId === 'autumn') return dressAutumnRiver({ L, heightField, rng, buckets });
+  if (mapId === 'railyard') return dressRailYard({ L, heightField, rng, buckets });
   if (mapId !== 'winter' || !L.lakes || !L.lakes.length) return;
   for (const lake of L.lakes) {
     const big = lake.r >= 80; // the signature basin gets the full treatment
@@ -643,5 +648,325 @@ export function dressMapExtras({ mapId, L, heightField, rng, buckets }) {
     const jx = lake.x + Math.cos(ja) * lake.r * 1.02;
     const jz = lake.z + Math.sin(ja) * lake.r * 1.02;
     jetty(buckets, rng, jx, jz, ja + Math.PI, heightField.getHeightAt(jx, jz));
+  }
+}
+
+// =============================================================================
+// maps r1 — COASTAL SHORE dressing (beached boats, driftwood, buoys, jetty)
+// =============================================================================
+
+// Open clinker fishing boat beached above the surf: planked sides, transom,
+// thwarts, a short mast with a furled boom. Reads "working beach" at range.
+function beachedBoat(buckets, rng, x, y, z, yaw, withMast) {
+  const parts = [];
+  const L = 4.6 + rng() * 1.2, W = 1.6, H = 0.72;
+  for (const s of [-1, 1]) {
+    for (let r = 0; r < 3; r++) { // three lapped strakes each side
+      const pl = box(L - r * 0.55, 0.20, 0.07, 1.2);
+      pl.rotateZ((rng() - 0.5) * 0.03);
+      pl.translate(0, 0.16 + r * 0.20, s * (W / 2 - r * 0.07));
+      parts.push(pl);
+    }
+  }
+  const bow = box(0.08, H * 0.9, W * 0.8, 1.2);
+  bow.rotateY(Math.PI / 4);
+  bow.translate(L / 2 - 0.14, H * 0.45, 0);
+  parts.push(bow);
+  const transom = box(0.08, H * 0.8, W * 0.9, 1.2);
+  transom.translate(-L / 2 + 0.12, H * 0.42, 0);
+  parts.push(transom);
+  for (const tx of [-L * 0.24, L * 0.18]) {
+    const th = box(0.30, 0.06, W * 0.94, 1.2);
+    th.translate(tx, H * 0.68, 0);
+    parts.push(th);
+  }
+  const keelList = 0.10 + rng() * 0.08; // beached hulls heel over a touch
+  for (const g of parts) {
+    g.rotateZ(keelList);
+    g.rotateY(yaw);
+    g.translate(x, y - 0.06, z);
+    buckets.wood.push(jitterUV(g, rng));
+  }
+  if (withMast) {
+    const mast = box(0.11, 3.4, 0.11, 2.0);
+    mast.rotateZ(keelList);
+    mast.rotateY(yaw);
+    mast.translate(x, y + 1.7, z);
+    buckets.wood.push(mast);
+    const boom = box(0.08, 0.08, 2.3, 2.0);
+    boom.rotateY(yaw + (rng() - 0.5) * 0.4);
+    boom.translate(x, y + 1.15, z);
+    buckets.wood.push(boom);
+  }
+}
+
+function dressCoastalShore({ L, heightField, rng, buckets }) {
+  if (!L.lakes || !L.lakes.length) return;
+  // land direction: the sea circles sit on the east edge, land is -x — the
+  // dressing hugs whichever shore arc faces the map interior
+  for (const lake of L.lakes) {
+    const big = lake.r >= 110; // main bay arcs get boats + the jetty
+    // --- beached boats + driftwood on the landward arc ----------------------
+    const nBoat = big ? 3 : 1;
+    for (let i = 0; i < nBoat; i++) {
+      const a = Math.PI + (rng() - 0.5) * 1.5; // landward bearing (cos<0 => -x)
+      const rr = lake.r * (1.045 + rng() * 0.05); // just above the surf line
+      const x = lake.x + Math.cos(a) * rr, z = lake.z + Math.sin(a) * rr;
+      if (Math.max(Math.abs(x), Math.abs(z)) > 470) continue;
+      if (heightField._roadDist(x, z) < 7) continue;
+      beachedBoat(buckets, rng, x, heightField.getHeightAt(x, z), z,
+        a + Math.PI / 2 + (rng() - 0.5) * 0.5, rng() < 0.55);
+    }
+    // driftwood: silvered logs strewn along the wrack line
+    const nDrift = Math.round(lake.r * 0.14);
+    for (let i = 0; i < nDrift; i++) {
+      const a = Math.PI + (rng() - 0.5) * 2.2;
+      const rr = lake.r * (1.03 + rng() * 0.09);
+      const x = lake.x + Math.cos(a) * rr, z = lake.z + Math.sin(a) * rr;
+      if (Math.max(Math.abs(x), Math.abs(z)) > 470) continue;
+      if (heightField._roadDist(x, z) < 6) continue;
+      const len = 1.6 + rng() * 2.6;
+      const log = box(len, 0.16 + rng() * 0.12, 0.16 + rng() * 0.12, 1.4);
+      log.rotateY(a + Math.PI / 2 + (rng() - 0.5) * 0.8);
+      log.translate(x, heightField.getHeightAt(x, z) + 0.06, z);
+      buckets.wood.push(jitterUV(log, rng));
+    }
+    // mooring buoys bobbing in the shallows (plaster = whitewash tone)
+    const nBuoy = big ? 5 : 2;
+    for (let i = 0; i < nBuoy; i++) {
+      const a = Math.PI + (rng() - 0.5) * 1.8;
+      const rr = lake.r * (0.72 + rng() * 0.2);
+      const x = lake.x + Math.cos(a) * rr, z = lake.z + Math.sin(a) * rr;
+      if (Math.max(Math.abs(x), Math.abs(z)) > 480) continue;
+      const b = new THREE.SphereGeometry(0.32 + rng() * 0.12, 8, 6);
+      scaleUV(b, 1.5, 1);
+      b.translate(x, heightField.getHeightAt(x, z) + 0.16, z);
+      buckets.plaster.push(jitterUV(b, rng));
+    }
+    if (!big) continue;
+    // --- the village jetty: walks off the landward shore into the bay ------
+    const ja = Math.PI + (rng() - 0.5) * 0.5;
+    const jx = lake.x + Math.cos(ja) * lake.r * 1.05;
+    const jz = lake.z + Math.sin(ja) * lake.r * 1.05;
+    jetty(buckets, rng, jx, jz, ja + Math.PI, heightField.getHeightAt(jx, jz), 11);
+  }
+}
+
+// =============================================================================
+// maps r1 — AUTUMN RIVER dressing (ruined bridge, ford posts, bank reeds)
+// =============================================================================
+
+function dressAutumnRiver({ L, heightField, rng, buckets }) {
+  const links = (L.marshes || []).filter((m) => m.r <= 40); // river chain links
+  if (links.length < 3) return;
+  // --- bank reeds: clumps along both banks of every link -------------------
+  for (const m of links) {
+    const clumps = 2 + ((rng() * 3) | 0);
+    for (let i = 0; i < clumps; i++) {
+      const a = rng() * Math.PI * 2;
+      const rr = m.r * (0.85 + rng() * 0.3);
+      const x = m.x + Math.cos(a) * rr, z = m.z + Math.sin(a) * rr;
+      if (Math.max(Math.abs(x), Math.abs(z)) > 470) continue;
+      if (heightField._roadDist(x, z) < 6) continue;
+      reedClump(buckets, rng, x, heightField.getHeightAt(x, z), z);
+    }
+  }
+  // --- ruined stone bridge at ~40% along the chain --------------------------
+  {
+    const i0 = Math.floor(links.length * 0.4);
+    const a = links[Math.max(0, i0 - 1)], b = links[Math.min(links.length - 1, i0 + 1)];
+    const cx = links[i0].x, cz = links[i0].z;
+    const flow = Math.atan2(b.z - a.z, b.x - a.x);
+    const cross = flow + Math.PI / 2; // bridge axis spans the channel
+    const halfSpan = links[i0].r * 1.02; // abutments sit right at the banks
+    for (const s of [-1, 1]) {
+      const ax = cx + Math.cos(cross) * halfSpan * s;
+      const az = cz + Math.sin(cross) * halfSpan * s;
+      const ay = heightField.getHeightAt(ax, az);
+      // r4: bulked up — the first-cut 3.4 m blocks read as lone crates from
+      // any gameplay camera. Abutment mass + arch stub + parapet remnant.
+      const ab = box(6.2, 3.2, 5.4, 0.6);
+      ab.rotateY(-cross);
+      ab.translate(ax, ay + 1.2, az);
+      buckets.stone.push(jitterUV(ab, rng));
+      const stub = box(3.8, 1.6, 4.6, 0.6); // broken arch springing
+      stub.rotateY(-cross);
+      stub.rotateZ(-s * Math.cos(cross) * 0.30);
+      stub.rotateX(s * Math.sin(cross) * 0.30);
+      stub.translate(ax - Math.cos(cross) * s * 4.0, ay + 2.2, az - Math.sin(cross) * s * 4.0);
+      buckets.stone.push(jitterUV(stub, rng));
+      const para = box(0.5, 1.1, 5.8, 0.8); // surviving parapet stump
+      para.rotateY(-cross);
+      para.translate(ax + Math.cos(cross + Math.PI / 2) * 2.6, ay + 3.2, az + Math.sin(cross + Math.PI / 2) * 2.6);
+      buckets.stone.push(jitterUV(para, rng));
+      const wing = box(1.6, 1.8, 6.4, 0.6); // splayed wing wall
+      wing.rotateY(-cross + s * 0.5);
+      wing.translate(ax + Math.cos(cross) * s * 2.2, ay + 0.6, az + Math.sin(cross) * s * 2.2);
+      buckets.stone.push(jitterUV(wing, rng));
+    }
+    // fallen arch slabs canted in the channel
+    for (let k = 0; k < 5; k++) {
+      const t = (rng() - 0.5) * halfSpan * 1.2;
+      const sx = cx + Math.cos(cross) * t, sz = cz + Math.sin(cross) * t;
+      const slab = box(2.2 + rng() * 1.6, 0.7, 2.6 + rng() * 1.0, 0.7);
+      slab.rotateY(-cross + (rng() - 0.5) * 0.8);
+      slab.rotateZ((rng() - 0.5) * 0.5);
+      slab.translate(sx, heightField.getHeightAt(sx, sz) + 0.3, sz);
+      buckets.stone.push(jitterUV(slab, rng));
+    }
+  }
+  // --- ford marker posts where the roads wade the river ---------------------
+  // scan each road polyline for enter/exit transitions across the channel
+  const inRiver = (x, z) => {
+    for (const m of links) if (Math.hypot(x - m.x, z - m.z) < m.r * 0.85) return true;
+    return false;
+  };
+  for (const nodes of L.roads) {
+    let prev = false;
+    for (let i = 0; i < nodes.length; i++) {
+      const [nx, nz] = nodes[i];
+      const now = inRiver(nx, nz);
+      if (now !== prev && i > 0) {
+        // transition — plant a white-tipped post pair either side of the lane
+        const [px, pz] = nodes[i - 1];
+        const tx = nx - px, tz = nz - pz;
+        const tl = Math.hypot(tx, tz) || 1;
+        const lx = -tz / tl, lz = tx / tl;
+        for (const s of [-1, 1]) {
+          const wx = nx + lx * 4.6 * s, wz = nz + lz * 4.6 * s;
+          if (Math.max(Math.abs(wx), Math.abs(wz)) > 470) continue;
+          const wy = heightField.getHeightAt(wx, wz);
+          const post = box(0.16, 1.5, 0.16, 1.6);
+          post.rotateY(rng() * Math.PI);
+          post.translate(wx, wy + 0.72, wz);
+          buckets.wood.push(jitterUV(post, rng));
+          const tip = box(0.19, 0.22, 0.19, 1.0);
+          tip.translate(wx, wy + 1.45, wz);
+          buckets.plaster.push(tip);
+        }
+      }
+      prev = now;
+    }
+  }
+}
+
+// =============================================================================
+// maps r1 — RAIL YARD dressing (track fans, buffers, coal heaps, cable drums)
+// =============================================================================
+
+// One rail line: ballast bed + twin rails + sleepers, laid in ~10 m segments
+// that follow the terrain (the yard is near-flat; segments tilt to match).
+// Soft dressing by contract — hulls roll over the 0.2 m bed like a curb.
+function railLine(buckets, rng, heightField, x, z0, z1) {
+  const segL = 10;
+  const n = Math.max(1, Math.round((z1 - z0) / segL));
+  for (let k = 0; k < n; k++) {
+    const za = z0 + k * segL, zb = Math.min(z1, za + segL);
+    const ya = heightField.getHeightAt(x, za), yb = heightField.getHeightAt(x, zb);
+    const zm = (za + zb) / 2, ym = (ya + yb) / 2;
+    const len = Math.hypot(zb - za, yb - ya);
+    const tilt = Math.atan2(yb - ya, zb - za);
+    // ballast slab — grey crushed-stone vertex paint on the matte 'baked'
+    // bucket (the 'stone' bucket is BRICK on railyard and read as brick beds)
+    const bal = box(3.0, 0.16, len + 0.35, 0.55);
+    {
+      const n = bal.attributes.position.count;
+      const col = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        const v = 0.040 + rng() * 0.018;
+        col[i * 3] = v; col[i * 3 + 1] = v * 0.98; col[i * 3 + 2] = v * 0.94;
+      }
+      bal.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    }
+    bal.rotateX(-tilt);
+    bal.translate(x, ym + 0.07, zm);
+    (buckets.baked || buckets.stone).push(bal);
+    // twin rails
+    for (const s of [-0.72, 0.72]) {
+      const rail = box(0.09, 0.17, len + 0.06, 2.0);
+      rail.rotateX(-tilt);
+      rail.translate(x + s, ym + 0.24, zm);
+      buckets.dark.push(rail);
+    }
+    // sleepers every ~1.4 m
+    const nS = Math.round(len / 1.4);
+    for (let sI = 0; sI < nS; sI++) {
+      const t = (sI + 0.5) / nS;
+      const sz = za + (zb - za) * t, sy = ya + (yb - ya) * t;
+      const sl = box(2.1, 0.09, 0.28, 1.4);
+      sl.translate(x + (rng() - 0.5) * 0.05, sy + 0.17, sz);
+      buckets.wood.push(sl);
+    }
+  }
+}
+
+// timber-and-steel buffer stop closing a stub track
+function bufferStop(buckets, rng, heightField, x, z) {
+  const y = heightField.getHeightAt(x, z);
+  for (const s of [-0.72, 0.72]) {
+    const strut = box(0.18, 1.5, 0.18, 1.4);
+    strut.rotateX(-0.5);
+    strut.translate(x + s, y + 0.75, z + 0.3);
+    buckets.dark.push(strut);
+  }
+  const beam = box(2.2, 0.45, 0.28, 1.0);
+  beam.translate(x, y + 1.05, z - 0.05);
+  buckets.wood.push(jitterUV(beam, rng));
+}
+
+function dressRailYard({ L, heightField, rng, buckets }) {
+  const v = L.village;
+  // --- the track fan: parallel sidings east of the yard's center road ------
+  // (positions authored against the railyard.js grid: roads at x=-120/0/130)
+  const LINES = [
+    { x: 40, z0: -235, z1: 235 },
+    { x: 49, z0: -235, z1: 235 },
+    { x: 58, z0: -205, z1: 210 },  // stubs — staggered ends read as a yard fan
+    { x: 67, z0: -175, z1: 185 },
+    { x: 76, z0: -150, z1: 160 },
+    { x: -66, z0: -235, z1: 235 }, // through line west of the center road
+    { x: -57, z0: -190, z1: 200 },
+  ];
+  for (const ln of LINES) railLine(buckets, rng, heightField, ln.x, ln.z0, ln.z1);
+  for (const ln of LINES) {
+    if (ln.z1 < 230) bufferStop(buckets, rng, heightField, ln.x, ln.z1 + 0.8);
+    if (ln.z0 > -230) bufferStop(buckets, rng, heightField, ln.x, ln.z0 - 0.8);
+  }
+  // --- coal heaps between sidings (dark matte cones read at range) ---------
+  for (let i = 0; i < 7; i++) {
+    const x = 34 + rng() * 50, z = -140 + rng() * 280;
+    if (heightField._roadDist(x, z) < 7) continue;
+    const r = 2.2 + rng() * 2.4;
+    const heap = new THREE.SphereGeometry(1, 10, 6);
+    scaleUV(heap, 2, 1);
+    heap.scale(r, r * 0.36, r * (0.7 + rng() * 0.4));
+    heap.rotateY(rng() * Math.PI);
+    heap.translate(x, heightField.getHeightAt(x, z) + r * 0.05, z);
+    buckets.dark.push(heap);
+  }
+  // --- cable drums + sleeper stacks along the western fence line -----------
+  for (let i = 0; i < 9; i++) {
+    const x = v.x0 + 8 + rng() * 30, z = v.z0 + 12 + rng() * (v.z1 - v.z0 - 24);
+    if (heightField._roadDist(x, z) < 7) continue;
+    const y = heightField.getHeightAt(x, z);
+    if (rng() < 0.5) { // cable drum on its side
+      const r = 0.7 + rng() * 0.4;
+      const drum = new THREE.CylinderGeometry(r, r, r * 1.1, 10, 1);
+      scaleUV(drum, 3, 1);
+      drum.rotateZ(Math.PI / 2);
+      drum.rotateY(rng() * Math.PI);
+      drum.translate(x, y + r, z);
+      buckets.wood.push(jitterUV(drum, rng));
+    } else { // stacked sleeper cribbing
+      for (let layer = 0; layer < 3; layer++) {
+        for (let s = -1; s <= 1; s += 2) {
+          const sl = box(2.2, 0.14, 0.30, 1.2);
+          if (layer % 2) sl.rotateY(Math.PI / 2);
+          sl.translate(x + (layer % 2 ? s * 0.7 : 0), y + 0.1 + layer * 0.16,
+            z + (layer % 2 ? 0 : s * 0.7));
+          buckets.wood.push(jitterUV(sl, rng));
+        }
+      }
+    }
   }
 }

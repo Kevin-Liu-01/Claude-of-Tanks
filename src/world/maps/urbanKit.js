@@ -11,6 +11,7 @@
 
 import * as THREE from 'three';
 import { MARKET_BUILDERS } from './mapKits.js';
+import { RAIL_BUILDERS } from './railKit.js'; // maps r1: railyard + coastal kits
 
 // --- tiny local twins of the props.js geometry helpers (not exported there) --
 function box(w, h, d, uvScale = 0.5) {
@@ -161,4 +162,5 @@ export function makeFactory(rng, buckets) {
  * no props.js change. */
 export const URBAN_BUILDERS = {
   church: makeChurch, factory: makeFactory, ...MARKET_BUILDERS,
+  ...RAIL_BUILDERS, // maps r1: warehouse/gantry/containerRow/… + coastal kit
 };

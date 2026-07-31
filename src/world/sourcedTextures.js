@@ -103,6 +103,40 @@ const TERRAIN_PLAN = {
     // no residual sheen survives on the carriageway
     R: { set: 'cobble', tint: [1.0, 0.94, 0.84], roughMul: 1.45 }, M: null,
   },
+  // maps r1 (ADDITIVE — new battlefields only; M stays procedural everywhere,
+  // it carries the authored water/ice gloss response):
+  coastal: {
+    // maritime meadow: grass pulled toward wind-cured dune sward
+    G: { set: 'grass', tint: [1.04, 0.99, 0.84], roughMul: 1.25 },
+    // D doubles as the BEACH layer (the uSea shore apron + shoals sample it):
+    // pale dry strand sand
+    D: { set: 'sand', tint: [0.92, 0.87, 0.76], roughMul: 1.25 },
+    R: { set: 'rock', tint: [1.06, 1.05, 1.02], roughMul: 1.15 }, M: null,
+  },
+  autumn: {
+    // fall meadow: green grass multiplied toward olive-gold hay
+    G: { set: 'grass', tint: [1.22, 1.04, 0.68], roughMul: 1.25 },
+    D: { set: 'dirt', tint: [0.84, 0.78, 0.70], roughMul: 1.3 },
+    R: { set: 'rock', tint: [1.02, 1.0, 0.94], roughMul: 1.15 }, M: null,
+  },
+  steppe: {
+    // the golden grassland IS the withered-grass set (its straw mottle reads
+    // as cured feather-grass here; on desert sand it read as film grain).
+    // r2: tint pulled DOWN toward olive-gold — at 1.06/0.98/0.80 the pale
+    // straw set + warm sun rendered as orange desert sand, not grassland
+    G: { set: 'dryGrass', tint: [0.80, 0.82, 0.58], roughMul: 1.25 },
+    D: { set: 'dirt', tint: [0.84, 0.78, 0.62], roughMul: 1.3 },
+    // r3: Rock058 ships cool grey — sun-warm it so fold-crest rock reads as
+    // dry earth/stone, not blue slag
+    R: { set: 'rock', tint: [1.26, 1.12, 0.90], roughMul: 1.15 }, M: null,
+  },
+  railyard: {
+    // brownfield: trodden grey-green verge grass, ash/cinder dirt, and the
+    // R layer doubles as CONCRETE hardstand + road paving (uRoadTex)
+    G: { set: 'grass', tint: [0.80, 0.78, 0.66], roughMul: 1.3 }, // r3: duller — read as mowed lawn
+    D: { set: 'dirt', tint: [0.66, 0.64, 0.60], roughMul: 1.35 },
+    R: { set: 'cobble', tint: [0.88, 0.88, 0.86], roughMul: 1.5 }, M: null,
+  },
 };
 
 const _imgCache = new Map();
@@ -238,12 +272,25 @@ const BUILDING_TINTS = {
   // Cooled + 62% desaturated + lifted frost; the props.js up-face snow-cap
   // shader lays the actual white load on the slopes.
   winter: { roof: { tint: [0.96, 1.02, 1.14], desat: 0.62, lift: 0.10 } },
+  // maps r1 (ADDITIVE):
+  coastal: { plaster: [1.04, 1.02, 0.96], wood: { tint: [0.82, 0.83, 0.84], desat: 0.30 } }, // whitewash + salt-silvered timber
+  autumn:  { plaster: [1.02, 0.97, 0.88], wood: [0.94, 0.86, 0.74] },   // warm farm render + aged oak
+  steppe:  { plaster: [1.06, 1.0, 0.86], wood: [1.0, 0.92, 0.78] },     // sun-baked khutor lime wash
+  railyard: {
+    plaster: { tint: [0.84, 0.83, 0.80], desat: 0.25 },                 // soot-dulled render
+    // r3: both lifted — under the overcast fill the first-cut tints rendered
+    // the halls as near-black chocolate slabs
+    roof: { tint: [0.88, 0.90, 0.94], desat: 0.60, lift: 0.05 },        // weathered sheet grey
+    wood: { tint: [0.78, 0.76, 0.72], desat: 0.20 },
+    stone: { tint: [1.10, 0.98, 0.88], desat: 0.10 },                   // smoke-stained brick
+  },
 };
 
 export function applySourcedBuildings(sets, mapId) {
   if (!USE_SOURCED_BUILDINGS) return;
   const plan = { plaster: 'plaster', roof: 'roof', wood: 'wood' };
-  if (mapId === 'urban' && sets.stone) plan.stone = 'brick';
+  // maps r1: the rail yard's industrial halls are brick like the town's
+  if ((mapId === 'urban' || mapId === 'railyard') && sets.stone) plan.stone = 'brick';
   // urban keeps the PROCEDURAL roof sheet: its tone hook bakes a slate/clay
   // patchwork (cfg.props.tones.roof) that the single-tint sourced set cannot
   // reproduce — the uniform maroon roofscape was a top critic complaint

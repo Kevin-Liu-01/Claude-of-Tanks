@@ -37,22 +37,28 @@ function buildCountryRoads() {
   return [roadA, roadB];
 }
 
-// straight-ish grid streets (urban): N-S lines at xs[], E-W lines at zs[]
+// straight-ish grid streets (urban): N-S lines at xs[], E-W lines at zs[].
+// maps r1 (ADDITIVE): an entry may be an OBJECT {at, lo?, hi?} clipping the
+// line's along-axis extent (coastal roads must END at the shore, not pave
+// across the bay). Plain numbers keep the classic full-map span.
 function buildGridRoads(grid) {
   const roads = [];
   const jit = grid.jitter ?? 2.5;
+  const parse = (e) => (typeof e === 'number'
+    ? { at: e, lo: -HALF, hi: HALF }
+    : { at: e.at, lo: e.lo ?? -HALF, hi: e.hi ?? HALF });
   for (let gi = 0; gi < grid.xs.length; gi++) {
-    const gx = grid.xs[gi];
+    const { at: gx, lo, hi } = parse(grid.xs[gi]);
     const line = [];
-    for (let z = -HALF; z <= HALF; z += 32) {
+    for (let z = lo; z <= hi; z += 32) {
       line.push([gx + Math.sin(z * 0.011 + gi * 2.3) * jit, z]);
     }
     roads.push(line);
   }
   for (let gi = 0; gi < grid.zs.length; gi++) {
-    const gz = grid.zs[gi];
+    const { at: gz, lo, hi } = parse(grid.zs[gi]);
     const line = [];
-    for (let x = -HALF; x <= HALF; x += 32) {
+    for (let x = lo; x <= hi; x += 32) {
       line.push([x, gz + Math.sin(x * 0.011 + gi * 1.7) * jit]);
     }
     roads.push(line);
@@ -104,7 +110,10 @@ export function createLayout(cfg) {
     : buildGridRoads(t.roads.grid);
   return {
     village,
-    marshes: (t.marshes || []).map((m) => ({ ...m })),
+    // maps r1 (ADDITIVE): per-marsh carve depth `dip` (m). Default 2.6 = the
+    // classic soggy bowl every pre-existing map bakes; river maps author
+    // shallow fordable channels by chaining small-dip marshes along a curve.
+    marshes: (t.marshes || []).map((m) => ({ dip: 2.6, ...m })),
     lakes: (t.lakes || []).map((l) => ({ ...l })),
     spawns: { player, enemies },
     roads,
@@ -235,7 +244,7 @@ export function createHeightField(seed = 1337, cfg = null) {
       const md = Math.hypot(x - m.x, z - m.z);
       if (md < m.r) {
         const t = 1 - md / m.r;
-        h -= 2.6 * t * t * (3 - 2 * t);
+        h -= m.dip * t * t * (3 - 2 * t); // dip normalized to 2.6 in createLayout
         marshW = Math.max(marshW, t);
       }
     }
@@ -397,7 +406,10 @@ export function createHeightField(seed = 1337, cfg = null) {
         lk.z + Math.sin(a * 0.5236) * lk.r * 0.95, false, false, false);
       if (hh < lo) lo = hh;
     }
-    lakeLevels[li] = Math.min(lo, heightAt(lk.x, lk.z, false, false, false)) - (lk.depth ?? 1.4);
+    // maps r1 (ADDITIVE): lk.level pins the sheet elevation absolutely — a
+    // multi-circle SEA must share one waterline (per-circle auto levels step
+    // where the sheets overlap). Default stays the auto shoreline formula.
+    lakeLevels[li] = lk.level ?? (Math.min(lo, heightAt(lk.x, lk.z, false, false, false)) - (lk.depth ?? 1.4));
   }
   for (let p = 0; p < padPts.length; p++) padYs[p] = heightAt(padPts[p].x, padPts[p].z, false, true);
 
@@ -414,7 +426,9 @@ export function createHeightField(seed = 1337, cfg = null) {
   function getGroundType(x, z) {
     if (gridSample(gRoadDist, x, z) < 4.3) return 'hard';
     for (const lk of _LAKES) {
-      if (Math.hypot(x - lk.x, z - lk.z) < lk.r * 0.95) return 'hard'; // ice sheet
+      // maps r1 (ADDITIVE): terrain.softLakes = liquid-water sheets (coastal
+      // shallows) drive as bogged 'soft' ground; default stays 'hard' (ice).
+      if (Math.hypot(x - lk.x, z - lk.z) < lk.r * 0.95) return T.softLakes ? 'soft' : 'hard';
     }
     for (const m of _MARSHES) {
       const md = Math.hypot(x - m.x, z - m.z);
@@ -430,6 +444,10 @@ export function createHeightField(seed = 1337, cfg = null) {
     }
     for (const m of _MARSHES) {
       if (T.frozenMarshes && Math.hypot(x - m.x, z - m.z) < m.r) return true;
+      // maps r1 (ADDITIVE): river maps keep the CHANNEL clear — tufts spawned
+      // mid-stream read as flooded stubble. The outer soft band keeps its
+      // sparse bank reeds. Default off => pre-existing maps unchanged.
+      if (T.clearMarshVeg && Math.hypot(x - m.x, z - m.z) < m.r * 0.55) return true;
     }
     return false;
   }
@@ -906,6 +924,76 @@ function makeIceLayer(seed, anisotropy) {
   };
 }
 
+// Open-water layer (maps r1, ADDITIVE — coastal sea / river channels, routed
+// by cfg.splat.seaLake). Authored DARK so the fresnel sky sheen and foam have
+// value range to play against: broad swell fields (long-wavelength tone
+// drift), fine wind chop, darker deep-water blotches and sparse pale foam
+// streaks. Roughness (packed in alpha) runs LOW on open water — the splat
+// shader's marsh-gloss + fresnel terms give it the specular water identity —
+// and high on the foam streaks so they read matte.
+function makeSeaLayer(seed, anisotropy, tone = null) {
+  const s = 512;
+  const noi = new SimplexNoise({ random: mulberry32(seed) });
+  const rng = mulberry32(seed ^ 0x5EA1);
+  const c = document.createElement('canvas');
+  c.width = c.height = s;
+  const ctx = c.getContext('2d');
+  const base = ctx.createImageData(s, s);
+  for (let y = 0; y < s; y++) {
+    const v = y / s;
+    for (let x = 0; x < s; x++) {
+      const u = x / s, j = (y * s + x) * 4;
+      // swell: long-wavelength anisotropic fields (stretched u) so the tone
+      // drift reads as rolling water, not blobs; chop: fine isotropic octave
+      const swell = torusNoise(noi, u, v, 2, 3, 19) * 0.6 + torusNoise(noi, u, v, 5, 7, 47) * 0.4;
+      const chop = torusNoise(noi, u, v, 23, 23, 83) * 0.5 + 0.5;
+      const s01 = swell * 0.5 + 0.5;
+      const deep = smoothstep(0.60, 0.90, 1 - s01); // dark deep-water fields
+      _col.setHSL(
+        0.545 - s01 * 0.035,             // teal -> blue-green drift
+        0.30 + deep * 0.10 - chop * 0.05,
+        0.135 + s01 * 0.075 - deep * 0.05 + chop * 0.025);
+      base.data[j] = _col.r * 255; base.data[j + 1] = _col.g * 255; base.data[j + 2] = _col.b * 255;
+      base.data[j + 3] = 255;
+    }
+  }
+  ctx.putImageData(base, 0, 0);
+  // wind-lane foam streaks: sparse pale curved strokes, one global direction
+  const dir = 0.5;
+  ctx.lineCap = 'round';
+  for (let k = 0; k < 42; k++) {
+    const x = rng() * s, y = rng() * s;
+    const len = 24 + rng() * 70, wdt = 1.2 + rng() * 2.6;
+    ctx.globalAlpha = 0.07 + rng() * 0.14;
+    ctx.strokeStyle = _css(0.52, 0.10, 0.62 + rng() * 0.2);
+    ctx.lineWidth = wdt;
+    drawWrapped(ctx, s, () => {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(
+        x + Math.cos(dir) * len * 0.5, y + Math.sin(dir) * len * 0.5 + (rng() - 0.5) * 10,
+        x + Math.cos(dir) * len, y + Math.sin(dir) * len);
+      ctx.stroke();
+    });
+  }
+  ctx.globalAlpha = 1;
+  const out = ctx.getImageData(0, 0, s, s);
+  const px = new Uint8ClampedArray(out.data);
+  const hgt = new Float32Array(s * s);
+  for (let i = 0; i < s * s; i++) {
+    const l = (px[i * 4] * 0.3 + px[i * 4 + 1] * 0.45 + px[i * 4 + 2] * 0.25) / 255;
+    hgt[i] = l * 0.6 + 0.2; // gentle wave-relief normal source
+    // pale texels = foam lanes (matte); dark open water = glossy
+    const foamy = smoothstep(0.40, 0.62, l);
+    px[i * 4 + 3] = clamp(0.08 + foamy * 0.70, 0.05, 1) * 255;
+  }
+  applyTone(px, tone);
+  return {
+    albedo: canvasToTexture(px, s, { srgb: true, anisotropy }),
+    normal: normalFromHeight(hgt, s, 1.0, anisotropy),
+  };
+}
+
 // Stratified sandstone layer (r7, desert cliffs). The generic rock layer —
 // and the sourced Rock063 set that replaced it — both read as swirly
 // Perlin-marble smears on the canyon walls ("wet-sand swirls" critique).
@@ -1185,7 +1273,11 @@ uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour s
 uniform vec3 uIceSky;     // r3: fresnel sky tint reflected by clear lake ice
 uniform float uMidFar;    // r3: far edge of the mid-relief dapple band (m)
 uniform float uRockGate;  // r6: 1 = slope-rock takeover keyed to the mask-B landform weight (desert mesas)
+uniform float uSea;       // maps r1: 1 = M layer is OPEN WATER (sea/river), 0 = legacy mud/ice
+uniform float uSeaFoam;   // maps r1: surf/whitecap strength (0 disables)
+uniform vec2 uSeaRamp;    // maps r1: fM band that ramps to open water (sea wide, river tight)
 vec3 gSplatAlbedo; float gSplatRough; vec3 gSplatNrm; float gSplatFar; float gSplatSteepAtt;
+float gSeaFoam; // maps r1: foam coverage this fragment (mattes the water gloss)
 // r7 axis-triplanar wall basis (set in splatCompute): two FIXED world-axis
 // projections + a pow-sharpened blend weight. The r6 tangent projection built
 // its U axis from the interpolated normal — on undulating cliff walls that
@@ -1326,6 +1418,18 @@ void splatCompute() {
   // banks around a frozen lake inherit the sheet's glossy blue ice response
   // and read as icy walls — anything steeper than ~10 deg is snow bank
   fM *= 1.0 - smoothstep(0.03, 0.08, slope);
+  // >>> maps r1 (ADDITIVE, uSea-gated — uSea is 0 on every pre-existing map,
+  // so fMs == fM and everything below is bit-identical there). Open-water
+  // mode splits fM's wide shore ramp into: a bare sand/mud apron (seaSand,
+  // fed from the D layer), a surf waterline, and the open-water weight fMs.
+  gSeaFoam = 0.0;
+  float fMs = fM;
+  float seaSand = 0.0;
+  if (uSea > 0.5) {
+    fMs = smoothstep(uSeaRamp.x, uSeaRamp.y, fM);
+    seaSand = smoothstep(0.02, uSeaRamp.x, fM) * (1.0 - fMs);
+  }
+  // <<< maps r1 ---------------------------------------------------------------
   // r6 terrain_environment LANDFORM ROCK GATE (rockGate, decoded above): with
   // uRockGate on (desert), the slope-driven rock/sandstone takeover only
   // fires where the mask-B landform weight says the terrain IS mesa/rim rock.
@@ -1424,7 +1528,11 @@ void splatCompute() {
   // downslope smears ("dirt/grime streaks" critique); steep faces run clean
   fD *= 1.0 - triW * 0.7;
   a = mix(a, groundSamp(uAlbD, uv * 0.210, df, mipB), fD); n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), fD);
-  a = mix(a, groundSamp(uAlbM, uv * 0.190, df, mipB), fM); n = mix(n, groundNrm(uNrmM, uv * 0.190, df, mipB), fM);
+  if (seaSand > 0.003) { // maps r1: bare shoreline apron under the surf line
+    a = mix(a, groundSamp(uAlbD, uv * 0.210, df, mipB), seaSand);
+    n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), seaSand);
+  }
+  a = mix(a, groundSamp(uAlbM, uv * 0.190, df, mipB), fMs); n = mix(n, groundNrm(uNrmM, uv * 0.190, df, mipB), fMs);
   // rock layer: pre-blend planar/wall by triW so the partial-fR band (24-45
   // deg) never lays stretched planar rock over the triplanar sand
   {
@@ -1775,8 +1883,10 @@ void splatCompute() {
     n.xy += rutG * 0.9 * (1.0 - df * 0.55);
   }
   // wind-blown snow drifts across the ice sheet + snowbank shoreline blend
+  // (maps r1: the whole sheet block reads fMs — identical to fM everywhere
+  // uSea is 0, i.e. on every pre-existing map)
   float driftW = 0.0;
-  if (uIceDrift > 0.001 && fM > 0.02) {
+  if (uIceDrift > 0.001 && fMs > 0.02) {
     // macro ice re-projection: the detail ice layer tiles every ~5 m, so its
     // cracks/depth blotches average away by 150 m and the whole sheet read
     // as snowfield in establishing shots — overlay the same texture at a
@@ -1791,24 +1901,33 @@ void splatCompute() {
     // r6: macro contrast up (0.55+0.80 -> 0.45+1.00) so the 75 m-scale
     // pressure cracks and clear-ice fields dominate at range...
     // r4: 0.45+1.00 -> 0.36+1.18 — one more contrast step (see makeIceLayer)
-    a.rgb = mix(a.rgb, a.rgb * (0.36 + iceLum * 1.18), fM * 0.9);
+    a.rgb = mix(a.rgb, a.rgb * (0.36 + iceLum * 1.18), fMs * 0.9);
     // ...and DESATURATE the sheet with distance: the 5 m detail tile can only
     // resolve as blue salt-speckle from the establishing camera — pull the
     // far sheet toward a cool gray so it reads as one ice surface with crack
     // veins, not a blue static field
     float iceGrey = dot(a.rgb, vec3(0.30, 0.45, 0.25));
-    a.rgb = mix(a.rgb, vec3(iceGrey) * vec3(0.965, 1.0, 1.05), fM * farM * 0.6);
+    a.rgb = mix(a.rgb, vec3(iceGrey) * vec3(0.965, 1.0, 1.05), fMs * farM * 0.6 * (1.0 - uSea));
     float drift = smoothstep(0.52, 0.78,
       texture2D(uNoise, uv * 0.021 + vec2(0.31, 0.77)).r + (n1h - 0.5) * 0.30);
-    float bank = 1.0 - smoothstep(0.25, 0.75, fM); // shoreline band drifts hardest
-    driftW = clamp(drift * uIceDrift * (0.48 + bank * 0.52), 0.0, 1.0) * fM;
-    a = mix(a, groundSamp(uAlbG, uv * 0.240, df, mipB), driftW);
-    n = mix(n, groundNrm(uNrmG, uv * 0.240, df, mipB), driftW);
+    float bank = 1.0 - smoothstep(0.25, 0.75, fMs); // shoreline band drifts hardest
+    driftW = clamp(drift * uIceDrift * (0.48 + bank * 0.52), 0.0, 1.0) * fMs;
+    // maps r1: sand/mud shoals belong in the SHALLOWS — deep-water "drift"
+    // read as pale mottling across the whole sheet (uSea=0: multiplier 1)
+    driftW *= mix(1.0, 0.30 + bank * 0.70, uSea);
+    if (uSea > 0.5) { // maps r1: open water "drifts" are sand shoals, not snow
+      a = mix(a, groundSamp(uAlbD, uv * 0.210, df, mipB), driftW * 0.85);
+      n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), driftW * 0.85);
+    } else {
+      a = mix(a, groundSamp(uAlbG, uv * 0.240, df, mipB), driftW);
+      n = mix(n, groundNrm(uNrmG, uv * 0.240, df, mipB), driftW);
+    }
     // r6: pressure ridges — concentric normal waves + a bright refrozen crest
     // following the shoreline contour (fM isolines via the mask-B gradient).
     // Real lake ice buckles against its banks; the flat noise disc was the
     // last tell. Ridges fade where snow drifts bury the sheet.
-    float ridgeBand = smoothstep(0.08, 0.38, fM) * (1.0 - smoothstep(0.55, 0.88, fM));
+    float ridgeBand = smoothstep(0.08, 0.38, fMs) * (1.0 - smoothstep(0.55, 0.88, fMs))
+      * (1.0 - uSea); // maps r1: pressure ridges are an ICE feature
     if (ridgeBand > 0.004) {
       float texelR = 2.0 / 1024.0;
       vec2 gM;
@@ -1820,7 +1939,7 @@ void splatCompute() {
         // ~14 cycles across the shore ramp (the first 44 aliased into a
         // moire groove pattern from the establishing camera); n1 breaks the
         // ring phase so buckle lines wander instead of tracing isolines
-        float ridge = sin(fM * 14.0 + n1h * 2.2 + n1 * 4.0) * ridgeBand * (1.0 - driftW);
+        float ridge = sin(fMs * 14.0 + n1h * 2.2 + n1 * 4.0) * ridgeBand * (1.0 - driftW);
         n.xy += gd * ridge * 0.45;
         a.rgb *= 1.0 + max(ridge, 0.0) * 0.07;
       }
@@ -1838,15 +1957,18 @@ void splatCompute() {
     // macro normal waviness from the ice layer's own normal map so the
     // fresnel/sun response breaks into streaks instead of one flat sheen.
     {
-      float deepW = smoothstep(0.45, 0.95, fM) * (1.0 - driftW);
-      a.rgb *= mix(vec3(1.0), vec3(0.74, 0.86, 1.05), deepW * 0.5);
+      float deepW = smoothstep(0.45, 0.95, fMs) * (1.0 - driftW);
+      // maps r1: open water deepens toward a darker blue-green (uSea-gated);
+      // ice keeps its pale blue depth cue
+      vec3 deepTint = mix(vec3(0.74, 0.86, 1.05), vec3(0.52, 0.72, 0.80), uSea);
+      a.rgb *= mix(vec3(1.0), deepTint, deepW * mix(0.5, 0.65, uSea));
       vec3 iceN = texture2D(uNrmM, uv * 0.0134).xyz * 2.0 - 1.0;
-      n.xy += iceN.xy * 0.5 * fM * (1.0 - driftW);
+      n.xy += iceN.xy * 0.5 * fMs * (1.0 - driftW);
     }
     {
       vec3 vDirIce = normalize(cameraPosition - wp);
       float fresI = pow(1.0 - clamp(dot(vDirIce, wn), 0.0, 1.0), 3.0);
-      float clearIce = fM * (1.0 - driftW);
+      float clearIce = fMs * (1.0 - driftW);
       // r4: 0.30 -> 0.48 — the sheet still read as a matte pale splat from
       // the establishing camera; a stronger grazing sky sheen (plus the 0.14
       // roughness floor below) finally gives it a specular ice identity
@@ -1854,8 +1976,26 @@ void splatCompute() {
       // 0.60 -> 0.32 to kill the albedo-independent pale wash on props; the
       // ice sheet keeps its DIRECTIONAL sheen by leaning harder on its own
       // fresnel term instead of the scene-wide env (ice vs snow separation).
-      a.rgb = mix(a.rgb, uIceSky, fresI * clearIce * 0.62);
+      // maps r1: open water runs the sheen a step weaker than clear ice —
+      // at establishing grazing angles the full 0.62 painted the whole
+      // sea/river pale sky-grey (uSea=0 keeps the winter value exactly)
+      a.rgb = mix(a.rgb, uIceSky, fresI * clearIce * mix(0.62, 0.42, uSea));
     }
+    // >>> maps r1 (uSea-gated): surf line + sparse whitecaps. The surf band
+    // rides the RAW fM ramp (it peaks just shoreward of where fMs starts),
+    // broken by two noise octaves so the foam edge is ragged, never a ring.
+    if (uSea > 0.5 && uSeaFoam > 0.001) {
+      // the surf band hugs the fMs waterline whatever ramp the map runs
+      float surfBand = smoothstep(0.012, 0.10, fMs) * (1.0 - smoothstep(0.30, 0.62, fMs));
+      float fno = texture2D(uNoise, uv * 0.045 + vec2(0.63, 0.17)).r * 0.55
+                + texture2D(uNoise, uv * 0.17 + vec2(0.29, 0.83)).g * 0.45;
+      float foam = surfBand * smoothstep(0.42, 0.78, fno + (n1h - 0.5) * 0.20) * uSeaFoam;
+      float caps = fMs * smoothstep(0.87, 0.97, texture2D(uNoise, uvW * 0.031 + vec2(0.51, 0.07)).r)
+                 * 0.45 * uSeaFoam * (1.0 - farM * 0.6);
+      gSeaFoam = clamp(foam + caps, 0.0, 1.0);
+      a.rgb = mix(a.rgb, vec3(0.84, 0.89, 0.91), gSeaFoam * 0.9);
+    }
+    // <<< maps r1 -------------------------------------------------------------
   }
   // r7: the unconditional macro term reads the PLANAR n2 field — degenerate
   // down vertical faces, it printed full-height value stripes (taffy smear);
@@ -1863,7 +2003,11 @@ void splatCompute() {
   a.rgb *= 0.90 + mix(n2, n2Wall, projW) * 0.20;
   // wet/dark shoreline band where ground meets a marsh or ice sheet: the
   // sheet blends into darkened damp banks instead of ending on a hard seam
-  float shoreW = smoothstep(0.04, 0.30, fM) * (1.0 - smoothstep(0.55, 0.95, fM));
+  // maps r1: in open-water mode the damp band hugs the waterline instead of
+  // spanning the whole beach apron (which would read as one wet smear)
+  float shoreW = uSea > 0.5
+    ? smoothstep(0.16, 0.36, fM) * (1.0 - smoothstep(0.48, 0.78, fM))
+    : smoothstep(0.04, 0.30, fM) * (1.0 - smoothstep(0.55, 0.95, fM));
   a.rgb *= 1.0 - shoreW * 0.30 * (1.0 - driftW);
   // >>> terrain_environment r2: agrarian field patchwork + far turf relief. --
   // The 150-800 m band used to collapse into one smooth green wash (the bald
@@ -1998,9 +2142,9 @@ void splatCompute() {
   }
   // <<< gameplay_feel r4 -----------------------------------------------------
   gSplatAlbedo = a.rgb;
-  float iceW = clamp(fM * uMarshGloss * 1.3, 0.0, 1.0) * (1.0 - driftW);
+  float iceW = clamp(fMs * uMarshGloss * 1.3, 0.0, 1.0) * (1.0 - driftW);
   float rough0 = clamp(a.a * (1.0 - roadCore * 0.12) * (1.0 + rut * 0.1)
-    * (1.0 - fM * uMarshGloss * (1.0 - driftW)), 0.05, 1.0);
+    * (1.0 - fMs * uMarshGloss * (1.0 - driftW)), 0.05, 1.0);
   // ice roughness floor: at 0.05 the grazing-angle Fresnel term mirrors the
   // bright sky across the whole sheet and buries the crack/depth albedo —
   // ~0.45 keeps a satin sheen while the ice texture stays legible from the
@@ -2015,7 +2159,10 @@ void splatCompute() {
   // above; the clear-ice fields need a genuine specular identity (0.13 let
   // the bright overcast env reflection blow the sheet out to snow-white)
   // r4: 0.17 -> 0.14 — one step glossier with the stronger fresnel term
-  rough0 = max(rough0, iceW * 0.14);
+  // maps r1: water is choppier than clear ice — a higher roughness floor
+  // stops the sun's GGX lobe washing the whole sheet bright (uSea=0: 0.14)
+  rough0 = max(rough0, iceW * mix(0.14, 0.32, uSea));
+  rough0 = max(rough0, gSeaFoam * 0.88); // maps r1: foam is matte (0 off sea maps)
   // matte floor: kills the wet-plastic sheen / white sparkle glints on every
   // ground type except intentionally glossy lake ice
   gSplatRough = max(rough0, 0.78 * (1.0 - iceW) + shoreW * -0.12);
@@ -2066,7 +2213,9 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant', lan
       : makeGroundLayer(3002, 'rock', aniso, S.rockTone || null),
     M: S.iceLake
       ? makeIceLayer(3003, aniso)
-      : makeGroundLayer(3003, 'mud', aniso, S.mudTone || null, S.mudRough ?? 1),
+      : S.seaLake // maps r1 (ADDITIVE): open-water sheet (coastal sea / rivers)
+        ? makeSeaLayer(3003, aniso, S.mudTone || null)
+        : makeGroundLayer(3003, 'mud', aniso, S.mudTone || null, S.mudRough ?? 1),
   };
   // Deep-hunt 2026-07: sourced CC0 PBR sets (ambientCG/Poly Haven, see
   // docs/ATTRIBUTION.md) replace the procedural layer textures in place when
@@ -2108,7 +2257,14 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant', lan
     shader.uniforms.uStrata = { value: S.strata ?? 0 };
     shader.uniforms.uRoadTex = { value: S.pavedRoads ? 1 : clamp(S.roadTexMix ?? 0, 0, 1) };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
-    shader.uniforms.uIceDrift = { value: S.iceLake ? (S.iceDrift ?? 0.85) : 0 };
+    shader.uniforms.uIceDrift = { value: (S.iceLake || S.seaLake) ? (S.iceDrift ?? 0.85) : 0 };
+    // maps r1 (ADDITIVE, uSea-gated in the shader — 0 on every pre-existing
+    // map): open-water mode. Remaps the wide marsh-mask shore ramp into a
+    // bare sand/mud apron + surf line + open-water weight; the "drift" field
+    // becomes sand shoals (D layer) instead of snow (G layer).
+    shader.uniforms.uSea = { value: S.seaLake ? 1 : 0 };
+    shader.uniforms.uSeaFoam = { value: S.seaLake ? (S.seaFoam ?? 0.8) : 0 };
+    shader.uniforms.uSeaRamp = { value: new THREE.Vector2(...(S.seaRamp || [0.40, 0.78])) };
     shader.uniforms.uMidRelief = { value: S.midRelief ?? 1 };
     // r2: agrarian field patchwork — only sensible on temperate farmland maps
     shader.uniforms.uFieldPatch = { value: S.fieldPatch ?? 0 };
@@ -2140,7 +2296,7 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant', lan
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v19'; // r7: meadow de-repeat + edge gravel + slip-face ripples
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v20'; // maps r1: uSea open-water mode (inert at uSea=0)
   return mat;
 }
 

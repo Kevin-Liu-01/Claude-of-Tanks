@@ -1,0 +1,176 @@
+// src/world/maps/coastal.js — maps r1: Fisherman's Bay / Overlord vibes. A
+// turquoise bay fills the east edge (uSea open-water splat mode), fronted by
+// a strand of beach apron + surf line, a dune band, headland bluffs, and a
+// whitewashed fishing village on the coast road. Sea sheets are terrain
+// `lakes` (flattened to sea level, softLakes = wading is bogged-slow) paired
+// with wide `marshes` rings that give the splat mask its beach ramp.
+
+const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+
+export default {
+  id: 'coastal',
+  name: 'Saltmere Bay',
+  blurb: 'Turquoise bay, dune-backed strand and a whitewashed fishing village',
+
+  terrain: {
+    hillScale: 0.95,
+    microScale: 0.9,
+    rimH: 26,
+    // the bay: three overlapping sheets along the east edge; softLakes =
+    // liquid water (bogged 'soft' ground), not a drivable ice pan
+    softLakes: true,
+    // all three sheets pinned to ONE sea level so the bay never steps
+    // (depth kept: its presence selects the hard-edged lake MASK branch, so
+    // fM hits 1 right at the sheet edge and the open water reads to shore)
+    lakes: [
+      { x: 460, z: -60, r: 190, level: -4.0, depth: 0.6 },
+      { x: 470, z: 160, r: 170, level: -4.0, depth: 0.6 },
+      { x: 480, z: -270, r: 150, level: -4.0, depth: 0.6 },
+    ],
+    // matching shore rings: these paint the WIDE feathered mask ramp the
+    // uSea shader splits into beach apron / surf line / open water, and add
+    // a gentle strand dip so the beach grades below the meadow
+    marshes: [
+      { x: 460, z: -60, r: 218, dip: 0.5 },
+      { x: 470, z: 160, r: 196, dip: 0.5 },
+      { x: 480, z: -270, r: 172, dip: 0.45 },
+    ],
+    dunes: { amp: 3.4 }, // low transverse dune band over the open ground
+    // (r2: the mesa bluffs are OUT — the noise-placed walls landed as grey
+    // slab cliffs mid-meadow and read as artifacts, not headlands)
+    village: { x0: 40, x1: 250, z0: -80, z1: 150, cx: 150, cz: 30, feather: 45, flatten: 0.86 },
+    // E-W lanes CLIP at the strand (hi: 262) so no road paves into the bay
+    roads: { grid: { xs: [-90, 168], zs: [{ at: -52, hi: 262 }, { at: 96, hi: 262 }], jitter: 2.2 } },
+  },
+
+  spawns: {
+    // flat-scanned strand-side pad (minNy 0.926, Δh 1.9 over the ally arc;
+    // r4: shifted +22 m east — the first pad's exit lane wedged on a rock
+    // cluster ~13 m out, probed live via tools/tmp-coastal-spawn-test)
+    player: { x: 232, z: -352 },
+    enemies: [
+      { x: -60, z: 330 }, { x: 90, z: 355 }, { x: 240, z: 300 }, { x: -240, z: 270 },
+      { x: -350, z: 130 }, { x: 180, z: 215 }, { x: -20, z: 430 },
+    ],
+  },
+
+  splat: {
+    // wind-cured maritime sward (procedural fallback; sourced grass carries
+    // the real albedo — see sourcedTextures TERRAIN_PLAN.coastal)
+    grassTone: (h, s, l) => [0.185, clamp01(s * 0.85), clamp01(l * 1.0 + 0.02)],
+    // D layer doubles as the BEACH: pale dry strand sand
+    dirtTone: (h, s, l) => [0.105, 0.30, clamp01(0.30 + l * 0.62)],
+    // pale grey headland rock (chalk-adjacent, never desert-red)
+    rockTone: (h, s, l) => [0.10, clamp01(s * 0.35), clamp01(l * 1.06 + 0.05)],
+    // r3: deepen + green the authored water — the raw layer under fresnel +
+    // sun spec read as pale sparkle, not a teal bay
+    mudTone: (h, s, l) => [clamp01(h * 0.98), clamp01(s * 1.1), clamp01(l * 0.82)],
+    // open-water mode: surf line + whitecaps + sand shoals in the shallows
+    seaLake: true,
+    seaFoam: 0.9,
+    seaRamp: [0.30, 0.62], // the lake mask is hard-edged — water reads to shore
+    iceDrift: 0.12,     // sand-shoal coverage in the SHALLOWS (D layer)
+    marshGloss: 0.95,   // water gloss response
+    iceSky: [0.55, 0.68, 0.78], // maritime sky sheen (r3: darker — it owns the far sheet)
+    tintA: [1.10, 1.04, 0.82], tintB: [0.80, 0.82, 0.68], tintC: [1.06, 1.05, 0.92],
+    roadTint: [0.96, 0.90, 0.78], // sandy coast lanes
+    microAmp: 0.8,
+    rippleDir: [0.85, 0.5],
+    rippleAmp: 0.20, // faint wind ripple on the dune band
+  },
+
+  vegetation: {
+    species: ['pine', 'oak', 'palm'],
+    clusterMix: [['pine', 0.75], ['oak', 0.25]],
+    loneMix: [['pine', 0.45], ['oak', 0.35], ['palm', 0.20]],
+    rimMix: [['pine', 0.8], ['oak', 0.2]],
+    clusterCount: 34,
+    loneCount: 88,
+    rimCount: 70,
+    grassDensity: 0.85,
+    bushCount: 0.9,
+    bushSpecies: 'oak',
+    grassTexTone: (h, s, l) => [0.155, clamp01(s * 0.8), clamp01(l * 1.02 + 0.04)],
+    tuftTone: (h, s, l) => [0.145, 0.26, clamp01(l * 0.92 + 0.08)],
+    palettes: {
+      // maritime pines: a touch bluer/darker than the verdant stand
+      pine: {
+        texTone: (h, s, l) => [clamp01(h * 1.04), clamp01(s * 0.9), clamp01(l * 0.98)],
+        canopy: { hue: 0.34, sat: 0.22, l0: 0.16, l1: 0.30 },
+      },
+      // shore palms: real green (the desert palette's dusty olive would read
+      // dead against the bay), still desaturated enough to sit in the grade
+      palm: {
+        texTone: (h, s, l) => [clamp01(h), clamp01(s * 0.85), clamp01(l * 0.95)],
+        cardHue: 0.25, cardSat: 0.30,
+        frond: { hue: 0.25, sat: 0.30, l: 0.36 },
+        canopy: { hue: 0.26, sat: 0.28, l0: 0.28, l1: 0.44 },
+      },
+      oak: { // salt-pruned coastal scrub
+        texTone: (h, s, l) => [clamp01(h * 0.92), clamp01(s * 0.72), clamp01(l * 1.0 + 0.05)],
+        cardHue: 0.20, cardSat: 0.24,
+        canopy: { hue: 0.21, sat: 0.24, l0: 0.30, l1: 0.44 },
+      },
+    },
+  },
+
+  props: {
+    plan: ['cottage', 'boatshed', 'cottage', 'netyard', 'market', 'cottage',
+      'lighthouse', 'cottage', 'ruin', 'barn', 'cottage', 'boatshed',
+      'netyard', 'cottage', 'tower', 'cottage'],
+    sideSkip: 0.12, spacingPad: 7,
+    buildingLat: [11, 4.5], maxSpread: 2.2,
+    tones: {
+      plaster: (h, s, l) => [0.095, clamp01(s * 0.35), clamp01(l * 1.10 + 0.08)], // whitewash
+      roof: (h, s, l) => [0.575, clamp01(s * 0.30 + 0.04), clamp01(l * 0.80)],    // slate blue-grey
+      stone: (h, s, l) => [0.10, clamp01(s * 0.5), clamp01(l * 1.0 + 0.02)],
+      wood: (h, s, l) => [0.09, clamp01(s * 0.38), clamp01(l * 1.10 + 0.05)],     // salt-silvered timber (r3: lifted — read as tar)
+      straw: null,
+    },
+    rockTone: (h, s, l) => [0.10, 0.08, clamp01(l * 1.02 + 0.04)], // grey shore boulders
+    wallStoneChance: 0.85,
+    wallRuns: [
+      // village crofts
+      [60, -34, 118, -34, 2], [196, 60, 196, 116, 3], [80, 120, 140, 120, 1],
+      [126, -64, 126, -18, 2],
+      // inland field boundaries staging the approach lanes
+      [-200, -80, -140, -80, 3], [-140, -80, -140, -22, 1],
+      [-60, 190, 10, 190, 2], [-260, 120, -196, 120, 1],
+      [-120, -220, -52, -220, 2], [30, -180, 96, -180, 3],
+      [-320, -20, -258, -20, 2],
+    ],
+    well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
+    haystacks: 8, rocks: 200, outcrops: 22, craters: 30, rubblePiles: 0,
+    wrecks: 4,
+    cropFields: 3,
+  },
+
+  horizon: {
+    // soft coastal uplands ringing the bay, heavily hazed so the wall melts
+    // toward the bright maritime sky instead of boxing the sea in
+    baseHex: 0x5b6a50, amp: 0.75, style: 'rolling', treeline: 0.90,
+    forestHex: 0x3d5539, rockHex: 0x757a6c, haze: 1.25, grain: 0.8,
+  },
+
+  sky: {
+    sunElevationDeg: 38, sunAzimuthDeg: 115,
+    turbidity: 2.8, rayleigh: 1.8, mieCoefficient: 0.004, mieDirectionalG: 0.80,
+    // r2: 0.00060 -> 0.00046 — the bay sits 300-700 m from every meaningful
+    // camera; the heavier marine fog washed the water to featureless grey
+    fogDensity: 0.00046, fogTintHex: 0x93a7bd, fogMix: 0.6, envIntensity: 0.24,
+    cloudOpacity: 0.85, cloudOpacity2: 0.55, cloudTintHex: 0xffffff,
+    sunIntensity: 4.5, sunColorHex: 0xfff3e0, hemiIntensity: 0.36,
+  },
+
+  minimap: {
+    base: [96, 106, 66], hard: [128, 120, 96], soft: [168, 154, 116],
+    forest: 'rgba(40,68,36,0.82)', forestStroke: 'rgba(24,44,22,0.9)',
+    water: 'rgba(46,102,118,0.88)', waterStroke: 'rgba(26,64,76,0.9)',
+    roadCasing: 'rgba(52,46,32,0.9)', roadFill: 'rgba(206,188,148,0.95)',
+    buildingFill: '#e6e4da',
+  },
+
+  // over the shallows looking up the coastline: surf + strand run the frame
+  // diagonal, village + lighthouse mid-left, uplands behind
+  shot: { pos: [356, 40, -300], look: [96, -10, 190] },
+};
