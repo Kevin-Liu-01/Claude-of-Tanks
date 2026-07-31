@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude of Tanks — Brand &amp; Media Kit</title>
+<style>
+  @font-face {
+    font-family: 'Inter';
+    src: url('/fonts/inter/InterVariable.woff2') format('woff2');
+    font-weight: 100 900; font-style: normal; font-display: swap;
+  }
+  :root {
+    --bg: #0b0e11; --panel: #14181d; --panel2: #1a2027; --line: #2a323b;
+    --ink: #e8edf2; --dim: #9fb0bf; --gold: #ffd27a; --accent: #f0a12e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif; font-weight: 500;
+    padding-bottom: 96px;
+  }
+  a { color: inherit; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 28px; }
+
+  header.hero {
+    display: flex; align-items: center; gap: 28px;
+    padding: 56px 0 40px; border-bottom: 1px solid var(--line); margin-bottom: 48px;
+  }
+  header.hero img.mark { width: 132px; height: auto; }
+  header.hero h1 {
+    font-size: 40px; font-weight: 800; letter-spacing: .04em; line-height: 1.05;
+  }
+  header.hero h1 .of { color: var(--gold); }
+  header.hero p { color: var(--dim); margin-top: 10px; max-width: 56ch; }
+
+  h2 {
+    font-size: 13px; font-weight: 700; letter-spacing: .28em; color: var(--gold);
+    text-transform: uppercase; margin: 56px 0 6px;
+  }
+  .sub { color: var(--dim); font-size: 14px; margin-bottom: 22px; }
+
+  .grid { display: grid; gap: 18px; }
+  .logos { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    overflow: hidden; display: flex; flex-direction: column;
+  }
+  .card .stage {
+    display: flex; align-items: center; justify-content: center;
+    padding: 26px; min-height: 190px;
+    background:
+      repeating-conic-gradient(#161b21 0% 25%, #12161b 0% 50%) 0 0 / 22px 22px;
+  }
+  .card .stage.dark { background: #0d1014; }
+  .card .stage.light { background: #d7dde3; }
+  .card .stage img { max-width: 100%; max-height: 170px; }
+  .card .meta {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 11px 14px; border-top: 1px solid var(--line); font-size: 12.5px;
+  }
+  .card .meta .name { font-weight: 700; }
+  .card .meta .path { color: var(--dim); font-size: 11px; word-break: break-all; }
+  .card .meta a.dl {
+    flex: 0 0 auto; text-decoration: none; font-weight: 700; font-size: 11px;
+    letter-spacing: .08em; color: #10141a; background: var(--gold);
+    padding: 5px 10px; border-radius: 5px;
+  }
+  .card .meta a.dl:hover { background: var(--accent); }
+
+  .shots { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+  .shots.small { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+  .shot { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .shot img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+  .shot .bar {
+    display: flex; align-items: baseline; gap: 10px; padding: 10px 13px;
+  }
+  .shot .bar .t { font-size: 12.5px; font-weight: 700; }
+  .shot .bar .map { color: var(--dim); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+  .shot .score {
+    position: absolute; top: 10px; right: 10px;
+    background: rgba(10, 13, 17, .82); border: 1px solid var(--line);
+    color: var(--gold); font-weight: 800; font-size: 13px;
+    padding: 3px 9px; border-radius: 6px;
+  }
+  .shot .cap { padding: 0 13px 12px; color: var(--dim); font-size: 12px; line-height: 1.45; }
+  .hero-badge {
+    position: absolute; top: 10px; left: 10px; background: var(--gold); color: #10141a;
+    font-size: 10px; font-weight: 800; letter-spacing: .14em; padding: 3px 8px; border-radius: 5px;
+  }
+
+  .note {
+    margin-top: 14px; padding: 12px 16px; border: 1px solid var(--line);
+    border-left: 3px solid var(--gold); border-radius: 6px; color: var(--dim); font-size: 13px;
+    background: var(--panel);
+  }
+  footer { margin-top: 72px; color: var(--dim); font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <img class="mark" src="/brand/logo-mark.svg" alt="Claude of Tanks shield">
+    <div>
+      <h1>CLAUDE <span class="of">OF TANKS</span></h1>
+      <p>Brand &amp; media kit — every logo variant and marketing shot in the project, served live from the repo. Click any asset to open it full-size; Download saves the original file.</p>
+    </div>
+  </header>
+
+  <h2>Shield Logos</h2>
+  <div class="sub">Primary mark and variants · <code>public/brand/</code> · SVG masters, PNG derivatives below</div>
+  <div class="grid logos" id="logos"></div>
+
+  <h2>PNG Derivatives</h2>
+  <div class="sub">Favicons, touch icon, and OpenGraph assets generated from the masters</div>
+  <div class="grid logos" id="pngs"></div>
+
+  <h2>Archive</h2>
+  <div class="sub">Earlier rounds kept for reference · v1 comic mark · v2 roundel</div>
+  <div class="grid logos" id="archive"></div>
+
+  <h2>Featured Battle Shots</h2>
+  <div class="sub">The 10 picked finals from the 30-shot marketing production · full grades in <code>docs/marketing-shots-report.md</code></div>
+  <div class="grid shots" id="finals"></div>
+
+  <h2>Full Production — All 30 Shots</h2>
+  <div class="sub">Raw captures at production resolution · <code>shots/marketing/raw/</code> · set average 7.62</div>
+  <div class="grid shots small" id="raws"></div>
+
+  <footer>Claude of Tanks · private project · this page is a dev tool (tools/brand.html) and ships in no build</footer>
+</div>
+
+<script>
+const LOGOS = [
+  ['logo-mark.svg',        'Shield — colored (primary)', 'dark'],
+  ['logo-mark-bw.svg',     'Shield — black &amp; white',  'light'],
+  ['logo-mark-metal.svg',  'Shield — metal',             'dark'],
+  ['logo-mark-simple.svg', 'Shield — simple',            'dark'],
+  ['logo-full.svg',        'Full lockup',                'dark'],
+  ['favicon.svg',          'Favicon master',             'dark'],
+];
+const PNGS = [
+  ['favicon-32.png',          'Favicon 32'],
+  ['favicon-192.png',         'Favicon 192'],
+  ['apple-touch-icon.png',    'Apple touch icon'],
+  ['og-logo.png',             'OG logo'],
+  ['og-logo-transparent.png', 'OG logo (transparent)'],
+  ['og-image.png',            'OG image (1200×630)'],
+];
+const ARCHIVE = [
+  ['v1/logo-mark.svg',         'v1 — comic mark'],
+  ['v1/logo-full.svg',         'v1 — lockup'],
+  ['v2-roundel/logo-mark.svg', 'v2 — roundel'],
+  ['v2-roundel/logo-mark-accent.svg', 'v2 — roundel accent'],
+];
+// id → [score, caption] from docs/marketing-shots-report.md
+const GRADES = {
+  '01': [8.1, 'Leclerc muzzle star foreground-right, T-90A ammo-rack fire at the palm line.'],
+  '02': [7.4, 'Nose-to-flank contact at the adobe crossing.'],
+  '03': [7.5, 'Two-tank foreground line firing over the compounds.'],
+  '04': [8.0, 'KF51 with ricochet sparks, twin tracers overhead.'],
+  '05': [7.0, 'Survivor M1A2 pushing past two smoking hulks.'],
+  '06': [8.2, 'KF51 low ¾ firing still — flash core in frame.'],
+  '07': [7.3, 'Drone over the crossroads kill, inbound tracer visible.'],
+  '08': [7.1, 'Lead M1A2 firing on the move toward camera.'],
+  '09': [8.6, 'Set hero. T-90M mid-ammo-rack: turret sailing through the fireball, glow on the ice.'],
+  '10': [7.8, 'Hull-displacing T-bone, thrown-track debris mid-air.'],
+  '11': [7.4, 'Whitewash pair advancing up the farm road under fire.'],
+  '12': [7.5, 'Dead-center road POV, HE burst mid-street.'],
+  '13': [7.1, 'Charred AbramsX on the ice, 2A5 silhouette beyond.'],
+  '14': [7.6, 'Factory-green T-90M pops off the snow.'],
+  '15': [7.7, 'Dark-ice map-poster drone: kill column left.'],
+  '16': [7.2, 'Hunter firing on the move, prey running turret-rearward.'],
+  '17': [8.0, 'Urban-digital M1A2 firing up the cobbled canyon.'],
+  '18': [7.1, 'KF51 T-boning the Leclerc through the crossing.'],
+  '19': [8.2, 'Twin muzzle flashes lighting the golden-hour canyon — pure key art.'],
+  '20': [8.1, 'Highest energy: crossing tracers, AbramsX 4-petal flash.'],
+  '21': [7.5, 'Two burning hulks blocking the street.'],
+  '22': [8.0, 'AbramsX profile, blast jet raking the cobbles.'],
+  '23': [7.6, 'Kill fireball at the T-junction from above.'],
+  '24': [7.5, 'Leopard 2A6 firing through the wheat.'],
+  '25': [7.2, 'Tan-vs-green shoving match at the forest margin.'],
+  '26': [7.1, 'Frontal firing line, tracer whipping past camera.'],
+  '27': [8.0, 'KF51 advancing past sandbags as the cottage roof burns.'],
+  '28': [7.4, 'Burning turretless Leclerc, survivor’s flash beyond.'],
+  '29': [7.8, 'Challenger 1 firing still with frozen sabot petals.'],
+  '30': [7.7, 'Road-column drone: lead 2A7V firing at the treeline.'],
+};
+const FINALS = ['01_desert_duel_leclerc_kill','04_desert_village_brawl','06_desert_hero_kf51',
+  '09_winter_lake_duel','10_winter_ram_leo2a6','17_urban_street_duel','19_urban_overwatch_church',
+  '20_urban_ruin_brawl','22_urban_hero_abramsx','27_verdant_village_brawl'];
+const RAWS = ['01_desert_duel_leclerc_kill','02_desert_ram_abramsx_t90m','03_desert_overwatch_line',
+  '04_desert_village_brawl','05_desert_aftermath_sunline','06_desert_hero_kf51','07_desert_drone_mesa_duel',
+  '08_desert_dune_charge','09_winter_lake_duel','10_winter_ram_leo2a6','11_winter_overwatch_birch',
+  '12_winter_village_brawl','13_winter_aftermath_burnout','14_winter_hero_t90m','15_winter_drone_lake_battle',
+  '16_winter_flank_chase','17_urban_street_duel','18_urban_ram_plaza','19_urban_overwatch_church',
+  '20_urban_ruin_brawl','21_urban_aftermath_factory','22_urban_hero_abramsx','23_urban_drone_grid',
+  '24_verdant_field_duel','25_verdant_ram_hedgerow','26_verdant_overwatch_ridge','27_verdant_village_brawl',
+  '28_verdant_aftermath_meadow','29_verdant_hero_challenger1','30_verdant_drone_flank'];
+
+const el = (h) => { const d = document.createElement('div'); d.innerHTML = h.trim(); return d.firstChild; };
+
+function assetCard(base, path, label, stage) {
+  return el(`<div class="card">
+    <a class="stage ${stage || 'dark'}" href="${base}${path}" target="_blank"><img loading="lazy" src="${base}${path}" alt="${label}"></a>
+    <div class="meta"><div><div class="name">${label}</div><div class="path">${base}${path}</div></div>
+    <a class="dl" href="${base}${path}" download>SVG/PNG</a></div>
+  </div>`);
+}
+LOGOS.forEach(([f, l, s]) => logos.appendChild(assetCard('/brand/', f, l, s)));
+PNGS.forEach(([f, l]) => pngs.appendChild(assetCard('/brand/', f, l, 'dark')));
+ARCHIVE.forEach(([f, l]) => archive.appendChild(assetCard('/brand/', f, l, 'dark')));
+
+function shotCard(name, dir, withCap) {
+  const id = name.slice(0, 2);
+  const [score, cap] = GRADES[id] || ['—', ''];
+  const map = name.split('_')[1];
+  const title = name.slice(3).replace(/_/g, ' ');
+  const hero = id === '09' ? '<div class="hero-badge">SET HERO</div>' : '';
+  return el(`<div class="shot">${hero}
+    <a href="${dir}${name}.png" target="_blank"><img loading="lazy" src="${dir}${name}.png" alt="${title}"></a>
+    <div class="score">${score}</div>
+    <div class="bar"><span class="t">${title}</span><span class="map">${map}</span></div>
+    ${withCap ? `<div class="cap">${cap}</div>` : ''}
+  </div>`);
+}
+FINALS.forEach((n) => finals.appendChild(shotCard(n, '/shots/marketing/final/', true)));
+RAWS.forEach((n) => raws.appendChild(shotCard(n, '/shots/marketing/raw/', false)));
+</script>
+</body>
+</html>
