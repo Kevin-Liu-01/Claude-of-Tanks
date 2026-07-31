@@ -90,3 +90,45 @@ v10 measurement mechanics established this round (probe-verified, family-wide):
 - 12% body filter vs fat muzzle furniture: is3's 0.35-band brake discs crossed
   rough*0.12=0.324 and hullLengthM swallowed the gun (9.86); discs sized to 0.33 with
   the DShK mast lifting rough to 2.94 restored the filter margin.
+
+## Geometry-gate v10 round-3 — FIRST FLEET PASS (2026-07-31, gate 146d25c)
+Final row: hull 91.8 whole 90.1 turret 90.3 stations 95.8 dims 100 floaters 100 -> min 90.1 PASS
+(from 66.8/61.6/74.4/84/100 at round start; fleet 1/73). Dims held 100 the whole way:
+heightM 3.23-3.27, hullLengthM 6.90-6.92, overallLengthM 6.98-7.01, widthM 3.32.
+
+Mechanism log (world-coordinate re-lay against tools/tmp-sovr3-worldtrace.mjs — a
+throwaway probe that dumps gate-pipeline curves for BOTH models in world coords):
+- Ref truths: belly floor 0.42 (x±0.93); deck 1.67 with sponson band 1.68 only
+  x0.58..0.94 + centre humps 1.70/1.755/1.73; fenders 1.585-1.60 to x1.615; tracks own
+  x1.0..1.66 (wrap span −3.51..+3.21, front band top 1.23); roofline crest 1.69@1.86..2.09,
+  driver slope (2.09,1.60)->(2.42,1.41), nose deck 1.40, lip 1.31, shelf 1.13 face 3.07;
+  tail slope 1.645@−2.83->1.55@−3.41, chamfer ->1.39@−3.49, plate face −3.50 top 1.30.
+- Published 6.95 vs ref body 6.80: the length lives in four TOW-HOOK BRACKETS at x±0.52
+  (bow face 3.26/tail −3.615, band 0.42 tall for the 12% body rule) exactly where the ref
+  shows hook slivers; costs ONE structural column per end (~0.17 errM).
+- Turret: skirt drops to 1.6675 (ref 1.68) full width; walls ±0.945 to 3.04; roof 3.13
+  front-low camber; raised 3.165 strip z −0.22..−0.62 with flush hatch rings; the 3.25
+  heightM p95 rides FOUR fwd pod cols (3.26, z 0.58..0.87 = the ref's own pods) + THREE
+  rear pod cols (3.235) so the 5th-highest column stays >=3.23 (grace) without faking the
+  ref's flat roof; front-top chamfer (1.70,2.83)->(1.36,3.09) x±0.55 only (a full-width
+  chamfer box polluted plan corners); mantlet FRAME cheeks x0.44..0.56 carry the face to
+  1.62-1.66w (the v6 "face 0.3 fwd" finding = the frame, not the slab); bustle: full-width
+  plateau to −1.31 + centre-only cheek wedges (x0.17..0.46, faces at −1.31, rear −1.41)
+  so plan centre keeps the −1.35 door face; ONE right corner handle (x0.54, y2.69,
+  z −1.38..−1.70) = the ref plan spike + side sliver.
+- KIT findings (documented for the family, kit UNTOUCHED):
+  * track-link shoe pads paint ~0.10-0.25 BELOW the band centerline on ramps/wraps —
+    fit end wheels so the PAD line (not the anchor line) meets the ref: sprocket
+    (−3.02, 0.73, r.335), idler (2.79, 0.76, r.255), botY 0.13 (keeps pad noise above
+    the wheel floor so procBox.min.y stays put — a −0.012 pad dip once shifted every
+    station top by +0.59%).
+  * sprocket carrier rings ride band edges at xc+trackW/2+0.045 -> they are the width
+    guard anchor (1.66 = spec 3.32 exactly; safeScale rescales BOTH directions).
+  * the ref measures FULL 3.316 width at EVERY station slice, wider than the kit shoes
+    reach; a thin lip is EDGE-ON to the front camera (zero pixels mid-span) — the width
+    rides in 16+6 track-guard CLEAT nubs per side (x1.6515..1.6595, tops 1.22 = the ref
+    x1.66 front column) whose ±z faces paint in every slice window: stations 87.5 -> 96.3.
+- Certified residuals (structural, not caps): the print's howitzer reaches 3.60 vs
+  published overall 6.95 (muzzle 3.365 max at dims 100) -> 3 uncoverable muzzle columns
+  = 2.3% cover on turret-side + side_whole (~3.4 pts each); the two hook-bracket columns
+  (~0.17 errM). Both views still clear 90 over them.

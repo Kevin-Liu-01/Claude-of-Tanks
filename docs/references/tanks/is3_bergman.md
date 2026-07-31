@@ -86,3 +86,10 @@ Dims vs published (all inside the 1% grace -> dims 100): heightM 2.47/2.45 (0.97
 Oracle re-derivation (TRUE_AXES profile trace, width-normalized, 12% body filter): turret node degenerate (fenders/drums parented into it, shell sunken); shares the is3 hull; whole-mask body span reads 9.12 (fused)
 Cap verdict: HOLDS — degenerate-print cap stands (dims+floaters only for turret/stations rows); identity build over the broken oracle
 A cap never excuses dims: this build measures published spec.dims at 100 with zero floaters across all five articulation poses.
+
+## r3 heightM restoration (2026-07-31, post kit-track-round 146d25c)
+The degenerate bergman print frames the shared is3 build on its own pixel grid: heightM
+read 2.49 vs published 2.45 (1.45% -> dims 96.4) while is3 itself read 2.47 (inside grace).
+buildIS3Bergman now seats the turret 25mm lower on this id only (identity geometry shared
+with is3 is untouched): dims 100. Curve/station rows remain the certified degenerate-print
+caps (dims+floaters only id).

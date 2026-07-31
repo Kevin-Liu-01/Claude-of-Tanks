@@ -274,7 +274,7 @@ function buildT90A(P) {
   }
 
   // ---- turret: forward-seated dome, crown plateau at the dims ceiling ----
-  P.turretG.position.set(0, 1.36, 0.35);
+  P.turretG.position.set(0, 1.335, 0.35);  // r3: −0.025 — kit track round lifted heightM to 2.26 vs pub 2.23 (1.39%)
   const rings = [[1.30, -0.05], [1.36, 0.10], [1.33, 0.42], [1.22, 0.62], [1.04, 0.77], [0.60, 0.87], [0.02, 0.90]];
   meshDome(P, rings, 1.15);
   const p5 = { rings, sz: 1.15 };
@@ -719,7 +719,7 @@ function buildT72B87(P) {
   ruSkirtBand(P, { x: 1.75, z0: -4.15, z1: 2.10, yTop: 1.30, yBot: 0.60, panels: 7 });
 
   // ---- turret: Super-Dolly dome + K-1 + 902B left bank (roof at 2.26) ----
-  P.turretG.position.set(0, 1.47, -0.70);
+  P.turretG.position.set(0, 1.455, -0.70); // r3: −0.015 — heightM 2.25 vs pub 2.23 (1.02%) after the kit track round
   const rings = [[1.30, -0.03], [1.36, 0.10], [1.31, 0.36], [1.16, 0.56], [0.86, 0.70], [0.42, 0.755], [0.02, 0.77]];
   meshDome(P, rings, 0.82);
   const pD = { rings, sz: 0.82, k1Y: 0.10, k1Pitch: 0.24 };
@@ -977,7 +977,7 @@ function buildT90SM(P) {
   }
 
   // ---- WELDED turret: faceted prism + squared removable bustle ----
-  P.turretG.position.set(0, 1.55, 0.10);
+  P.turretG.position.set(0, 1.525, 0.10);  // r3: −0.025 — heightM 2.26 vs pub 2.23 (1.28%) after the kit track round
   const tw = 1.55, f = 1.55, b = -1.45, h = 0.70;
   P.add('turret', polyTurret([
     [-tw * 0.15, f], [tw * 0.15, f], [tw * 0.60, f * 0.62], [tw, f * 0.14],

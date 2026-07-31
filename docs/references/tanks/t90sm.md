@@ -81,3 +81,8 @@ Oracle re-derivation (TRUE_AXES profile trace, width-normalized, 12% body filter
 Cap verdict: HOLDS — round-1 claim +38.4% re-derives to +39.5%
 A cap never excuses dims: this build measures published spec.dims at 100 with zero floaters across all five articulation poses.
 FALLEN v6 record: round-1 dims 86.2 was the v6-era width quantization, not a defect - v10 pixel-resolved width reads 3.78/3.78 and dims is 100. The +39.5% stature cap on curves HELD.
+
+## r3 heightM restoration (2026-07-31, post kit-track-round 146d25c)
+Kit track round lifted heightM to 2.26 vs published 2.23 (1.28% -> dims 97.8). Turret group
+seated 25mm lower (1.55 -> 1.525): dims back to 100. Turret row 25.7->20.1 — far under the
++39.5% stature-cap ceiling either way; the published-dims anchor is the hard requirement.
