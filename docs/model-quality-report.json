@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-30T05:30:12.088Z",
+  "generatedAt": "2026-07-31T00:29:41.886Z",
   "passThreshold": 8.5,
   "rubric": {
     "source": 1,
@@ -16,12 +16,12 @@
     ]
   },
   "summary": {
-    "vehicles": 91,
-    "selectedPassed": 91,
+    "vehicles": 92,
+    "selectedPassed": 92,
     "selectedFailed": 0,
     "retainedCandidates": 2,
     "candidatesRejected": 2,
-    "selectedMedian": 9.3
+    "selectedMedian": 9.32
   },
   "rows": [
     {
@@ -182,8 +182,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "M1A2 Abrams SEPv3",
-      "peerMedian": 9.41,
-      "peerDelta": -0.21
+      "peerMedian": 9.5,
+      "peerDelta": -0.3
     },
     {
       "id": "t90m",
@@ -339,8 +339,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "T-90M Proryv",
-      "peerMedian": 9.41,
-      "peerDelta": 0.37
+      "peerMedian": 9.5,
+      "peerDelta": 0.28
     },
     {
       "id": "leo2a7",
@@ -356,8 +356,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Leopard 2A7",
-      "peerMedian": 9.41,
-      "peerDelta": 0.09
+      "peerMedian": 9.5,
+      "peerDelta": 0
     },
     {
       "id": "strv103",
@@ -1207,8 +1207,8 @@
       "era": "ww2",
       "class": "td",
       "name": "Jagdtiger",
-      "peerMedian": 8.77,
-      "peerDelta": 0.16
+      "peerMedian": 8.93,
+      "peerDelta": 0
     },
     {
       "id": "jpz_e100",
@@ -1253,8 +1253,8 @@
       "era": "ww2",
       "class": "td",
       "name": "Jagdpanzer E100",
-      "peerMedian": 8.77,
-      "peerDelta": 0.22
+      "peerMedian": 8.93,
+      "peerDelta": 0.06
     },
     {
       "id": "sturmtiger",
@@ -1353,8 +1353,8 @@
       "era": "ww2",
       "class": "td",
       "name": "Sturmtiger",
-      "peerMedian": 8.77,
-      "peerDelta": 0
+      "peerMedian": 8.93,
+      "peerDelta": -0.16
     },
     {
       "id": "t95",
@@ -1399,8 +1399,8 @@
       "era": "ww2",
       "class": "td",
       "name": "T95 Doomturtle",
-      "peerMedian": 8.77,
-      "peerDelta": -0.02
+      "peerMedian": 8.93,
+      "peerDelta": -0.18
     },
     {
       "id": "t30",
@@ -1418,8 +1418,8 @@
       "era": "ww2",
       "class": "td",
       "name": "T30",
-      "peerMedian": 8.77,
-      "peerDelta": -0.27
+      "peerMedian": 8.93,
+      "peerDelta": -0.43
     },
     {
       "id": "t30",
@@ -1464,8 +1464,8 @@
       "era": "ww2",
       "class": "td",
       "name": "T30",
-      "peerMedian": 8.77,
-      "peerDelta": -5.99
+      "peerMedian": 8.93,
+      "peerDelta": -6.15
     },
     {
       "id": "is7",
@@ -1693,8 +1693,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Chieftain Mk 10",
-      "peerMedian": 9.41,
-      "peerDelta": 0.09
+      "peerMedian": 9.5,
+      "peerDelta": 0
     },
     {
       "id": "k2",
@@ -1710,8 +1710,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "K2 Black Panther",
-      "peerMedian": 9.41,
-      "peerDelta": 0.09
+      "peerMedian": 9.5,
+      "peerDelta": 0
     },
     {
       "id": "type10",
@@ -1727,8 +1727,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Type 10",
-      "peerMedian": 9.41,
-      "peerDelta": 0.09
+      "peerMedian": 9.5,
+      "peerDelta": 0
     },
     {
       "id": "m2a2_bradley",
@@ -1778,8 +1778,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "C1 Ariete",
-      "peerMedian": 9.41,
-      "peerDelta": 0.09
+      "peerMedian": 9.5,
+      "peerDelta": 0
     },
     {
       "id": "leo2a4",
@@ -1795,8 +1795,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Leopard 2A4",
-      "peerMedian": 9.41,
-      "peerDelta": 0.09
+      "peerMedian": 9.5,
+      "peerDelta": 0
     },
     {
       "id": "t80u",
@@ -1893,8 +1893,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "T-80U",
-      "peerMedian": 9.41,
-      "peerDelta": 0.23
+      "peerMedian": 9.5,
+      "peerDelta": 0.14
     },
     {
       "id": "leclerc",
@@ -1937,8 +1937,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Leclerc S2",
-      "peerMedian": 9.41,
-      "peerDelta": 0.44
+      "peerMedian": 9.5,
+      "peerDelta": 0.35
     },
     {
       "id": "type99a",
@@ -1954,8 +1954,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Type 99A (ZTZ-99A)",
-      "peerMedian": 9.41,
-      "peerDelta": 0.09
+      "peerMedian": 9.5,
+      "peerDelta": 0
     },
     {
       "id": "leo1a5",
@@ -1971,8 +1971,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Leopard 1A5",
-      "peerMedian": 9.41,
-      "peerDelta": 0.09
+      "peerMedian": 9.5,
+      "peerDelta": 0
     },
     {
       "id": "t14",
@@ -1988,8 +1988,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "T-14 Armata",
-      "peerMedian": 9.41,
-      "peerDelta": 0.09
+      "peerMedian": 9.5,
+      "peerDelta": 0
     },
     {
       "id": "t72b3",
@@ -2005,8 +2005,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "T-72B3",
-      "peerMedian": 9.41,
-      "peerDelta": 0.09
+      "peerMedian": 9.5,
+      "peerDelta": 0
     },
     {
       "id": "challenger2",
@@ -2022,8 +2022,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Challenger 2",
-      "peerMedian": 9.41,
-      "peerDelta": 0.09
+      "peerMedian": 9.5,
+      "peerDelta": 0
     },
     {
       "id": "merkava4",
@@ -2070,8 +2070,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Merkava IVm Windbreaker",
-      "peerMedian": 9.41,
-      "peerDelta": -0.81
+      "peerMedian": 9.5,
+      "peerDelta": -0.9
     },
     {
       "id": "leo2a6",
@@ -2153,8 +2153,25 @@
       "era": "modern",
       "class": "mbt",
       "name": "Leopard 2A6",
-      "peerMedian": 9.41,
-      "peerDelta": -0.01
+      "peerMedian": 9.5,
+      "peerDelta": -0.1
+    },
+    {
+      "id": "type74",
+      "role": "selected",
+      "kind": "procedural",
+      "path": null,
+      "score": 9.5,
+      "pass": true,
+      "turretless": false,
+      "issues": [],
+      "hardCaps": [],
+      "inspection": null,
+      "era": "modern",
+      "class": "mbt",
+      "name": "Type 74",
+      "peerMedian": 9.5,
+      "peerDelta": 0
     },
     {
       "id": "m1a1",
@@ -2215,8 +2232,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "M1A1 Abrams",
-      "peerMedian": 9.41,
-      "peerDelta": 0.11
+      "peerMedian": 9.5,
+      "peerDelta": 0.02
     },
     {
       "id": "t90a",
@@ -2262,8 +2279,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "T-90A",
-      "peerMedian": 9.41,
-      "peerDelta": 0.39
+      "peerMedian": 9.5,
+      "peerDelta": 0.3
     },
     {
       "id": "m1a2_tusk",
@@ -2324,8 +2341,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "M1A2 Abrams TUSK",
-      "peerMedian": 9.41,
-      "peerDelta": 0.11
+      "peerMedian": 9.5,
+      "peerDelta": 0.02
     },
     {
       "id": "kf51",
@@ -2372,8 +2389,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "KF51 Panther",
-      "peerMedian": 9.41,
-      "peerDelta": 0.46
+      "peerMedian": 9.5,
+      "peerDelta": 0.37
     },
     {
       "id": "m1a2_tejas",
@@ -2434,8 +2451,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "M1A2 Abrams (Tejas)",
-      "peerMedian": 9.41,
-      "peerDelta": 0.11
+      "peerMedian": 9.5,
+      "peerDelta": 0.02
     },
     {
       "id": "abramsx",
@@ -2520,15 +2537,15 @@
       "era": "modern",
       "class": "mbt",
       "name": "AbramsX",
-      "peerMedian": 9.41,
-      "peerDelta": -0.06
+      "peerMedian": 9.5,
+      "peerDelta": -0.15
     },
     {
       "id": "challenger1",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/challenger1.glb",
-      "score": 9.41,
+      "score": 9.56,
       "pass": true,
       "turretless": false,
       "issues": [
@@ -2690,42 +2707,42 @@
         "gun": 2,
         "hierarchy": 0.8,
         "pivot": 1,
-        "proportions": 0.61,
+        "proportions": 0.76,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "Challenger 1 Mk.3",
-      "peerMedian": 9.41,
-      "peerDelta": 0
+      "peerMedian": 9.5,
+      "peerDelta": 0.06
     },
     {
       "id": "chieftain5",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/chieftain5.glb",
-      "score": 8.76,
+      "score": 9.74,
       "pass": true,
       "turretless": false,
-      "issues": [
-        "gun is fused to turret; elevation remains virtual"
-      ],
-      "hardCaps": [
-        "fused gun caps score at 9.0"
-      ],
+      "issues": [],
+      "hardCaps": [],
       "inspection": {
-        "nodeCount": 3,
-        "meshCount": 2,
+        "nodeCount": 7,
+        "meshCount": 4,
         "names": [
           "Chieftain_MK-5_Main_Battle_Tank",
+          "ChassisMesh",
+          "Chassis",
+          "Turret",
           "TurretMesh",
-          "Turret"
+          "Gun",
+          "GunMesh"
         ],
         "turret": "Turret",
-        "gun": null,
+        "gun": "Gun",
         "turretMatchCount": 1,
-        "gunMatchCount": 0,
-        "gunInsideTurret": false,
+        "gunMatchCount": 1,
+        "gunInsideTurret": true,
         "size": [
           154.1732,
           167.3229,
@@ -2735,33 +2752,33 @@
       "components": {
         "source": 1,
         "turret": 3,
-        "gun": 1.25,
-        "hierarchy": 0.75,
+        "gun": 2,
+        "hierarchy": 1,
         "pivot": 1,
-        "proportions": 0.76,
+        "proportions": 0.74,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "Chieftain Mk.5",
-      "peerMedian": 9.41,
-      "peerDelta": -0.65
+      "peerMedian": 9.5,
+      "peerDelta": 0.24
     },
     {
       "id": "fv510",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/fv510.glb",
-      "score": 9.64,
+      "score": 9.55,
       "pass": true,
       "turretless": false,
       "issues": [],
       "hardCaps": [],
       "inspection": {
         "nodeCount": 7,
-        "meshCount": 4,
+        "meshCount": 5,
         "names": [
-          "Object_default-greyjpg",
+          "BowPlating",
           "Object_Main_Bodyjpg",
           "Object_Trackjpg",
           "GunMesh",
@@ -2786,26 +2803,24 @@
         "gun": 2,
         "hierarchy": 1,
         "pivot": 1,
-        "proportions": 0.64,
+        "proportions": 0.55,
         "hygiene": 1
       },
       "era": "modern",
       "class": "ifv",
       "name": "FV510 Warrior",
       "peerMedian": 9.5,
-      "peerDelta": 0.14
+      "peerDelta": 0.05
     },
     {
       "id": "leo2_revolution",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/leo2_revolution.glb",
-      "score": 9.5,
+      "score": 9.62,
       "pass": true,
       "turretless": false,
-      "issues": [
-        "overall proportions differ 45% from spec"
-      ],
+      "issues": [],
       "hardCaps": [],
       "inspection": {
         "nodeCount": 27,
@@ -2856,26 +2871,25 @@
         "gun": 2,
         "hierarchy": 1,
         "pivot": 1,
-        "proportions": 0.5,
+        "proportions": 0.62,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "Leopard 2 Revolution",
-      "peerMedian": 9.41,
-      "peerDelta": 0.09
+      "peerMedian": 9.5,
+      "peerDelta": 0.12
     },
     {
       "id": "leo2a5",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/leo2a5.glb",
-      "score": 9.3,
+      "score": 9.43,
       "pass": true,
       "turretless": false,
       "issues": [
-        "gun is a turret sibling; loader reparent required",
-        "overall proportions differ 41% from spec"
+        "gun is a turret sibling; loader reparent required"
       ],
       "hardCaps": [],
       "inspection": {
@@ -3011,14 +3025,14 @@
         "gun": 2,
         "hierarchy": 0.8,
         "pivot": 1,
-        "proportions": 0.5,
+        "proportions": 0.63,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "Leopard 2A5",
-      "peerMedian": 9.41,
-      "peerDelta": -0.11
+      "peerMedian": 9.5,
+      "peerDelta": -0.07
     },
     {
       "id": "leo2a7v",
@@ -3030,7 +3044,7 @@
       "turretless": false,
       "issues": [
         "gun is fused to turret; elevation remains virtual",
-        "overall proportions differ 48% from spec"
+        "overall proportions differ 51% from spec"
       ],
       "hardCaps": [
         "fused gun caps score at 9.0"
@@ -3067,8 +3081,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Leopard 2A7V",
-      "peerMedian": 9.41,
-      "peerDelta": -0.91
+      "peerMedian": 9.5,
+      "peerDelta": -1
     },
     {
       "id": "m1a1ha",
@@ -3129,8 +3143,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "M1A1HA Abrams",
-      "peerMedian": 9.41,
-      "peerDelta": 0.11
+      "peerMedian": 9.5,
+      "peerDelta": 0.02
     },
     {
       "id": "m1a2_sepv2",
@@ -3275,15 +3289,15 @@
       "era": "modern",
       "class": "mbt",
       "name": "M1A2 Abrams SEPv2",
-      "peerMedian": 9.41,
-      "peerDelta": -0.11
+      "peerMedian": 9.5,
+      "peerDelta": -0.2
     },
     {
       "id": "m60a1",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/m60a1.glb",
-      "score": 9.8,
+      "score": 9.98,
       "pass": true,
       "turretless": false,
       "issues": [],
@@ -3386,21 +3400,21 @@
         "gun": 2,
         "hierarchy": 1,
         "pivot": 1,
-        "proportions": 0.8,
+        "proportions": 0.98,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "M60A1 Patton",
-      "peerMedian": 9.41,
-      "peerDelta": 0.39
+      "peerMedian": 9.5,
+      "peerDelta": 0.48
     },
     {
       "id": "pt91m",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/pt91m.glb",
-      "score": 9.57,
+      "score": 9.55,
       "pass": true,
       "turretless": false,
       "issues": [],
@@ -3443,14 +3457,14 @@
         "gun": 2,
         "hierarchy": 1,
         "pivot": 1,
-        "proportions": 0.57,
+        "proportions": 0.55,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "PT-91M Pendekar",
-      "peerMedian": 9.41,
-      "peerDelta": 0.16
+      "peerMedian": 9.5,
+      "peerDelta": 0.05
     },
     {
       "id": "merkava1b",
@@ -3462,7 +3476,7 @@
       "turretless": false,
       "issues": [
         "gun is a turret sibling; loader reparent required",
-        "overall proportions differ 57% from spec"
+        "overall proportions differ 51% from spec"
       ],
       "hardCaps": [],
       "inspection": {
@@ -3613,8 +3627,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Merkava Mk.1B",
-      "peerMedian": 9.41,
-      "peerDelta": -0.11
+      "peerMedian": 9.5,
+      "peerDelta": -0.2
     },
     {
       "id": "merkava2b",
@@ -3626,7 +3640,7 @@
       "turretless": false,
       "issues": [
         "gun is a turret sibling; loader reparent required",
-        "overall proportions differ 56% from spec"
+        "overall proportions differ 53% from spec"
       ],
       "hardCaps": [],
       "inspection": {
@@ -3803,8 +3817,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Merkava Mk.2B",
-      "peerMedian": 9.41,
-      "peerDelta": -0.11
+      "peerMedian": 9.5,
+      "peerDelta": -0.2
     },
     {
       "id": "merkava2d",
@@ -3816,7 +3830,7 @@
       "turretless": false,
       "issues": [
         "gun is a turret sibling; loader reparent required",
-        "overall proportions differ 57% from spec"
+        "overall proportions differ 53% from spec"
       ],
       "hardCaps": [],
       "inspection": {
@@ -4018,8 +4032,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Merkava Mk.2D",
-      "peerMedian": 9.41,
-      "peerDelta": -0.11
+      "peerMedian": 9.5,
+      "peerDelta": -0.2
     },
     {
       "id": "merkava3b",
@@ -4203,8 +4217,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Merkava Mk.3B",
-      "peerMedian": 9.41,
-      "peerDelta": -0.11
+      "peerMedian": 9.5,
+      "peerDelta": -0.2
     },
     {
       "id": "merkava3c",
@@ -4385,8 +4399,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Merkava Mk.3C",
-      "peerMedian": 9.41,
-      "peerDelta": -0.11
+      "peerMedian": 9.5,
+      "peerDelta": -0.2
     },
     {
       "id": "merkava3d",
@@ -4557,8 +4571,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Merkava Mk.3D",
-      "peerMedian": 9.41,
-      "peerDelta": -0.11
+      "peerMedian": 9.5,
+      "peerDelta": -0.2
     },
     {
       "id": "merkava4b",
@@ -4767,15 +4781,15 @@
       "era": "modern",
       "class": "mbt",
       "name": "Merkava Mk.4B",
-      "peerMedian": 9.41,
-      "peerDelta": -0.11
+      "peerMedian": 9.5,
+      "peerDelta": -0.2
     },
     {
       "id": "t62mv1",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/t62mv1.glb",
-      "score": 8.95,
+      "score": 8.9,
       "pass": true,
       "turretless": false,
       "issues": [
@@ -4810,21 +4824,21 @@
         "gun": 1.25,
         "hierarchy": 0.75,
         "pivot": 1,
-        "proportions": 0.95,
+        "proportions": 0.9,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "T-62MV-1",
-      "peerMedian": 9.41,
-      "peerDelta": -0.46
+      "peerMedian": 9.5,
+      "peerDelta": -0.6
     },
     {
       "id": "t64bv1",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/t64bv1.glb",
-      "score": 8.88,
+      "score": 8.87,
       "pass": true,
       "turretless": false,
       "issues": [
@@ -4859,14 +4873,14 @@
         "gun": 1.25,
         "hierarchy": 0.75,
         "pivot": 1,
-        "proportions": 0.88,
+        "proportions": 0.87,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "T-64BV1",
-      "peerMedian": 9.41,
-      "peerDelta": -0.53
+      "peerMedian": 9.5,
+      "peerDelta": -0.63
     },
     {
       "id": "t72b_1987",
@@ -4914,8 +4928,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "T-72B obr. 1987",
-      "peerMedian": 9.41,
-      "peerDelta": -0.6
+      "peerMedian": 9.5,
+      "peerDelta": -0.69
     },
     {
       "id": "t72b3m",
@@ -4967,8 +4981,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "T-72B3M obr. 2022",
-      "peerMedian": 9.41,
-      "peerDelta": 0
+      "peerMedian": 9.5,
+      "peerDelta": -0.09
     },
     {
       "id": "t72bu",
@@ -5016,8 +5030,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "T-72BU",
-      "peerMedian": 9.41,
-      "peerDelta": -0.76
+      "peerMedian": 9.5,
+      "peerDelta": -0.85
     },
     {
       "id": "t90sm",
@@ -5086,8 +5100,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "T-90SM",
-      "peerMedian": 9.41,
-      "peerDelta": 0.14
+      "peerMedian": 9.5,
+      "peerDelta": 0.05
     },
     {
       "id": "type90",
@@ -5136,8 +5150,8 @@
       "era": "modern",
       "class": "mbt",
       "name": "Type 90 Kyu-maru",
-      "peerMedian": 9.41,
-      "peerDelta": -0.91
+      "peerMedian": 9.5,
+      "peerDelta": -1
     },
     {
       "id": "t90a_vladimir",
@@ -5196,15 +5210,15 @@
       "era": "modern",
       "class": "mbt",
       "name": "T-90A Vladimir",
-      "peerMedian": 9.41,
-      "peerDelta": -0.84
+      "peerMedian": 9.5,
+      "peerDelta": -0.93
     },
     {
       "id": "is3_bergman",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/bergman_is3.glb",
-      "score": 8.55,
+      "score": 8.77,
       "pass": true,
       "turretless": false,
       "issues": [
@@ -5214,13 +5228,14 @@
         "fused gun caps score at 9.0"
       ],
       "inspection": {
-        "nodeCount": 4,
-        "meshCount": 2,
+        "nodeCount": 5,
+        "meshCount": 4,
         "names": [
+          "FenderKit",
           "HullMesh",
+          "PrintSpares",
           "TurretMesh",
-          "Turret",
-          "Root"
+          "Turret"
         ],
         "turret": "Turret",
         "gun": null,
@@ -5229,8 +5244,8 @@
         "gunInsideTurret": false,
         "size": [
           33.3446,
-          23.4,
-          74.0242
+          31.4,
+          98.3142
         ]
       },
       "components": {
@@ -5239,26 +5254,25 @@
         "gun": 1.25,
         "hierarchy": 0.75,
         "pivot": 1,
-        "proportions": 0.55,
+        "proportions": 0.77,
         "hygiene": 1
       },
       "era": "ww2",
       "class": "heavy",
       "name": "IS-3 (Bergman)",
       "peerMedian": 8.96,
-      "peerDelta": -0.41
+      "peerDelta": -0.19
     },
     {
       "id": "isu152",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/isu152.glb",
-      "score": 8.5,
+      "score": 8.93,
       "pass": true,
       "turretless": true,
       "issues": [
-        "fixed-mount gun is fused; visual elevation remains virtual",
-        "overall proportions differ 42% from spec"
+        "fixed-mount gun is fused; visual elevation remains virtual"
       ],
       "hardCaps": [
         "fused fixed-mount gun caps score at 9.0"
@@ -5287,21 +5301,21 @@
         "gun": 1.25,
         "hierarchy": 0.75,
         "pivot": 1,
-        "proportions": 0.5,
+        "proportions": 0.93,
         "hygiene": 1
       },
       "era": "ww2",
       "class": "td",
       "name": "ISU-152",
-      "peerMedian": 8.77,
-      "peerDelta": -0.27
+      "peerMedian": 8.93,
+      "peerDelta": 0
     },
     {
       "id": "isu122s",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/isu122s.glb",
-      "score": 8.84,
+      "score": 8.97,
       "pass": true,
       "turretless": true,
       "issues": [
@@ -5334,21 +5348,21 @@
         "gun": 1.25,
         "hierarchy": 0.75,
         "pivot": 1,
-        "proportions": 0.84,
+        "proportions": 0.97,
         "hygiene": 1
       },
       "era": "ww2",
       "class": "td",
       "name": "ISU-122S",
-      "peerMedian": 8.77,
-      "peerDelta": 0.07
+      "peerMedian": 8.93,
+      "peerDelta": 0.04
     },
     {
       "id": "centurion3",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/centurion3.glb",
-      "score": 8.72,
+      "score": 8.98,
       "pass": true,
       "turretless": false,
       "issues": [
@@ -5362,9 +5376,9 @@
         "meshCount": 2,
         "names": [
           "HullMesh",
-          "TurretMesh",
+          "TurretMesh001",
           "Turret",
-          "Root"
+          "TurretMesh"
         ],
         "turret": "Turret",
         "gun": null,
@@ -5373,8 +5387,8 @@
         "gunInsideTurret": false,
         "size": [
           33.8,
-          22,
-          74.9873
+          28.5,
+          97.2698
         ]
       },
       "components": {
@@ -5383,21 +5397,21 @@
         "gun": 1.25,
         "hierarchy": 0.75,
         "pivot": 1,
-        "proportions": 0.72,
+        "proportions": 0.98,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "Centurion Mk.3",
-      "peerMedian": 9.41,
-      "peerDelta": -0.69
+      "peerMedian": 9.5,
+      "peerDelta": -0.52
     },
     {
       "id": "centurion5",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/centurion5.glb",
-      "score": 8.8,
+      "score": 8.98,
       "pass": true,
       "turretless": false,
       "issues": [
@@ -5411,9 +5425,9 @@
         "meshCount": 2,
         "names": [
           "HullMesh",
-          "TurretMesh",
+          "TurretMesh001",
           "Turret",
-          "Root"
+          "TurretMesh"
         ],
         "turret": "Turret",
         "gun": null,
@@ -5422,8 +5436,8 @@
         "gunInsideTurret": false,
         "size": [
           33.8,
-          21.9984,
-          78.8
+          28.4984,
+          97.27
         ]
       },
       "components": {
@@ -5432,21 +5446,21 @@
         "gun": 1.25,
         "hierarchy": 0.75,
         "pivot": 1,
-        "proportions": 0.8,
+        "proportions": 0.98,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "Centurion Mk.5/2",
-      "peerMedian": 9.41,
-      "peerDelta": -0.61
+      "peerMedian": 9.5,
+      "peerDelta": -0.52
     },
     {
       "id": "comet",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/comet.glb",
-      "score": 8.78,
+      "score": 8.93,
       "pass": true,
       "turretless": false,
       "issues": [
@@ -5460,9 +5474,9 @@
         "meshCount": 2,
         "names": [
           "HullMesh",
-          "TurretMesh",
+          "TurretMesh001",
           "Turret",
-          "Root"
+          "TurretMesh"
         ],
         "turret": "Turret",
         "gun": null,
@@ -5470,9 +5484,9 @@
         "gunMatchCount": 0,
         "gunInsideTurret": false,
         "size": [
-          29.2,
-          17.9228,
-          66.6
+          29.7003,
+          25.4,
+          77.5874
         ]
       },
       "components": {
@@ -5481,21 +5495,21 @@
         "gun": 1.25,
         "hierarchy": 0.75,
         "pivot": 1,
-        "proportions": 0.78,
+        "proportions": 0.93,
         "hygiene": 1
       },
       "era": "ww2",
       "class": "medium",
       "name": "A34 Comet",
       "peerMedian": 8.96,
-      "peerDelta": -0.18
+      "peerDelta": -0.03
     },
     {
       "id": "challenger_cruiser",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/challenger_cruiser.glb",
-      "score": 8.8,
+      "score": 8.94,
       "pass": true,
       "turretless": false,
       "issues": [
@@ -5509,9 +5523,9 @@
         "meshCount": 2,
         "names": [
           "HullMesh",
-          "TurretMesh",
+          "TurretMesh001",
           "Turret",
-          "Root"
+          "TurretMesh"
         ],
         "turret": "Turret",
         "gun": null,
@@ -5520,8 +5534,8 @@
         "gunInsideTurret": false,
         "size": [
           30.4,
-          19.2,
-          70.4708
+          26.4,
+          81.6183
         ]
       },
       "components": {
@@ -5530,21 +5544,21 @@
         "gun": 1.25,
         "hierarchy": 0.75,
         "pivot": 1,
-        "proportions": 0.8,
+        "proportions": 0.94,
         "hygiene": 1
       },
       "era": "ww2",
       "class": "medium",
       "name": "A30 Challenger",
       "peerMedian": 8.96,
-      "peerDelta": -0.16
+      "peerDelta": -0.02
     },
     {
       "id": "charioteer",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/charioteer.glb",
-      "score": 8.77,
+      "score": 8.94,
       "pass": true,
       "turretless": false,
       "issues": [
@@ -5558,9 +5572,9 @@
         "meshCount": 2,
         "names": [
           "HullMesh",
-          "TurretMesh",
+          "TurretMesh001",
           "Turret",
-          "Root"
+          "TurretMesh"
         ],
         "turret": "Turret",
         "gun": null,
@@ -5569,8 +5583,8 @@
         "gunInsideTurret": false,
         "size": [
           30.6,
-          18.1,
-          67.3608
+          25.1,
+          86.7278
         ]
       },
       "components": {
@@ -5579,14 +5593,14 @@
         "gun": 1.25,
         "hierarchy": 0.75,
         "pivot": 1,
-        "proportions": 0.77,
+        "proportions": 0.94,
         "hygiene": 1
       },
       "era": "ww2",
       "class": "td",
       "name": "FV4101 Charioteer",
-      "peerMedian": 8.77,
-      "peerDelta": 0
+      "peerMedian": 8.93,
+      "peerDelta": 0.01
     },
     {
       "id": "leopard2_proto",
@@ -5634,15 +5648,15 @@
       "era": "modern",
       "class": "mbt",
       "name": "Leopard 2 Prototype",
-      "peerMedian": 9.41,
-      "peerDelta": -0.54
+      "peerMedian": 9.5,
+      "peerDelta": -0.63
     },
     {
       "id": "m1a1_aim",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/m1a1_aim.glb",
-      "score": 8.61,
+      "score": 8.55,
       "pass": true,
       "turretless": false,
       "issues": [
@@ -5652,13 +5666,14 @@
         "fused gun caps score at 9.0"
       ],
       "inspection": {
-        "nodeCount": 4,
-        "meshCount": 2,
+        "nodeCount": 5,
+        "meshCount": 4,
         "names": [
           "HullMesh",
+          "HullPlating",
+          "PrintSpares",
           "TurretMesh",
-          "Turret",
-          "Root"
+          "Turret"
         ],
         "turret": "Turret",
         "gun": null,
@@ -5667,7 +5682,7 @@
         "gunInsideTurret": false,
         "size": [
           36.6041,
-          24.1,
+          26.0223,
           90.8578
         ]
       },
@@ -5677,21 +5692,21 @@
         "gun": 1.25,
         "hierarchy": 0.75,
         "pivot": 0.7,
-        "proportions": 0.91,
+        "proportions": 0.85,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "M1A1 AIM Abrams",
-      "peerMedian": 9.41,
-      "peerDelta": -0.8
+      "peerMedian": 9.5,
+      "peerDelta": -0.95
     },
     {
       "id": "m46_patton",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/m46_patton.glb",
-      "score": 8.57,
+      "score": 8.82,
       "pass": true,
       "turretless": false,
       "issues": [
@@ -5716,7 +5731,7 @@
         "gunInsideTurret": false,
         "size": [
           36,
-          23.9,
+          28.1,
           71.4133
         ]
       },
@@ -5726,71 +5741,21 @@
         "gun": 1.25,
         "hierarchy": 0.75,
         "pivot": 1,
-        "proportions": 0.57,
+        "proportions": 0.82,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "M46 Patton",
-      "peerMedian": 9.41,
-      "peerDelta": -0.84
+      "peerMedian": 9.5,
+      "peerDelta": -0.68
     },
     {
       "id": "m47_patton",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/m47_patton.glb",
-      "score": 8.5,
-      "pass": true,
-      "turretless": false,
-      "issues": [
-        "gun is fused to turret; elevation remains virtual",
-        "overall proportions differ 41% from spec"
-      ],
-      "hardCaps": [
-        "fused gun caps score at 9.0"
-      ],
-      "inspection": {
-        "nodeCount": 4,
-        "meshCount": 2,
-        "names": [
-          "HullMesh",
-          "TurretMesh",
-          "Turret",
-          "Root"
-        ],
-        "turret": "Turret",
-        "gun": null,
-        "turretMatchCount": 1,
-        "gunMatchCount": 0,
-        "gunInsideTurret": false,
-        "size": [
-          36,
-          26.2,
-          70.1256
-        ]
-      },
-      "components": {
-        "source": 1,
-        "turret": 3,
-        "gun": 1.25,
-        "hierarchy": 0.75,
-        "pivot": 1,
-        "proportions": 0.5,
-        "hygiene": 1
-      },
-      "era": "modern",
-      "class": "mbt",
-      "name": "M47 Patton",
-      "peerMedian": 9.41,
-      "peerDelta": -0.91
-    },
-    {
-      "id": "m26_pershing",
-      "role": "selected",
-      "kind": "glb",
-      "path": "/models/tanks/community/recovered/m26_pershing.glb",
-      "score": 8.73,
+      "score": 8.77,
       "pass": true,
       "turretless": false,
       "issues": [
@@ -5815,8 +5780,8 @@
         "gunInsideTurret": false,
         "size": [
           36,
-          24.2,
-          71.4126
+          30.2,
+          70.1256
         ]
       },
       "components": {
@@ -5825,20 +5790,20 @@
         "gun": 1.25,
         "hierarchy": 0.75,
         "pivot": 1,
-        "proportions": 0.73,
+        "proportions": 0.77,
         "hygiene": 1
       },
-      "era": "ww2",
-      "class": "medium",
-      "name": "M26 Pershing",
-      "peerMedian": 8.96,
-      "peerDelta": -0.23
+      "era": "modern",
+      "class": "mbt",
+      "name": "M47 Patton",
+      "peerMedian": 9.5,
+      "peerDelta": -0.73
     },
     {
-      "id": "m45_patton",
+      "id": "m26_pershing",
       "role": "selected",
       "kind": "glb",
-      "path": "/models/tanks/community/recovered/m45_patton.glb",
+      "path": "/models/tanks/community/recovered/m26_pershing.glb",
       "score": 8.69,
       "pass": true,
       "turretless": false,
@@ -5864,8 +5829,8 @@
         "gunInsideTurret": false,
         "size": [
           36,
-          23.9,
-          64.4929
+          28.2,
+          71.4126
         ]
       },
       "components": {
@@ -5879,16 +5844,66 @@
       },
       "era": "ww2",
       "class": "medium",
-      "name": "M45 Patton",
+      "name": "M26 Pershing",
       "peerMedian": 8.96,
       "peerDelta": -0.27
+    },
+    {
+      "id": "m45_patton",
+      "role": "selected",
+      "kind": "glb",
+      "path": "/models/tanks/community/recovered/m45_patton.glb",
+      "score": 8.53,
+      "pass": true,
+      "turretless": false,
+      "issues": [
+        "gun is fused to turret; elevation remains virtual",
+        "overall proportions differ 35% from spec"
+      ],
+      "hardCaps": [
+        "fused gun caps score at 9.0"
+      ],
+      "inspection": {
+        "nodeCount": 4,
+        "meshCount": 2,
+        "names": [
+          "HullMesh",
+          "TurretMesh",
+          "Turret",
+          "Root"
+        ],
+        "turret": "Turret",
+        "gun": null,
+        "turretMatchCount": 1,
+        "gunMatchCount": 0,
+        "gunInsideTurret": false,
+        "size": [
+          36,
+          27.5,
+          64.4929
+        ]
+      },
+      "components": {
+        "source": 1,
+        "turret": 3,
+        "gun": 1.25,
+        "hierarchy": 0.75,
+        "pivot": 1,
+        "proportions": 0.53,
+        "hygiene": 1
+      },
+      "era": "ww2",
+      "class": "medium",
+      "name": "M45 Patton",
+      "peerMedian": 8.96,
+      "peerDelta": -0.43
     },
     {
       "id": "m60a3",
       "role": "selected",
       "kind": "glb",
       "path": "/models/tanks/community/recovered/m60a1.glb",
-      "score": 9.8,
+      "score": 9.98,
       "pass": true,
       "turretless": false,
       "issues": [],
@@ -5991,14 +6006,14 @@
         "gun": 2,
         "hierarchy": 1,
         "pivot": 1,
-        "proportions": 0.8,
+        "proportions": 0.98,
         "hygiene": 1
       },
       "era": "modern",
       "class": "mbt",
       "name": "M60A3",
-      "peerMedian": 9.41,
-      "peerDelta": 0.39
+      "peerMedian": 9.5,
+      "peerDelta": 0.48
     }
   ]
 }

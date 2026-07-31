@@ -102,7 +102,7 @@ const CSS = `
 /* --- footer: progress + countdown --------------------------------------- */
 .cot-bl .foot{flex:0 0 auto;padding:18px clamp(18px,5vw,74px) 26px;}
 .cot-bl .fmeta{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
-  margin-bottom:8px;font-family:${FONT_COND};font-variant-numeric:tabular-nums;}
+  margin-bottom:8px;font-family:${FONT_COND};letter-spacing:-.01em;font-variant-numeric:tabular-nums;}
 .cot-bl .fstage{font-size:11px;font-weight:700;letter-spacing:.26em;color:#9fb0bf;
   text-transform:uppercase;}
 .cot-bl .fpct{font-size:19px;font-weight:700;color:#ffd27a;}

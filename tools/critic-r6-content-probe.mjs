@@ -70,14 +70,14 @@ try {
     await document.fonts.ready;
     const loaded = [...document.fonts].map((f) => `${f.family} ${f.weight} ${f.status}`);
     const checks = {
-      switzer400: document.fonts.check('400 16px Switzer'),
-      switzer700: document.fonts.check('700 16px Switzer'),
-      switzerCond600: document.fonts.check("600 16px 'Switzer Condensed'"),
+      inter500: document.fonts.check('500 16px Inter'),
+      inter600: document.fonts.check('600 16px Inter'),
+      inter700: document.fonts.check('700 16px Inter'),
     };
-    // canvas metric: Switzer vs Arial width must differ if really rendering
+    // canvas metric: Inter vs Arial width must differ if really rendering
     const c = document.createElement('canvas').getContext('2d');
-    c.font = "400 32px Switzer"; const wS = c.measureText('Hamburgefonstiv 0123').width;
-    c.font = "400 32px Arial"; const wA = c.measureText('Hamburgefonstiv 0123').width;
+    c.font = "500 32px Inter"; const wS = c.measureText('Hamburgefonstiv 0123').width;
+    c.font = "500 32px Arial"; const wA = c.measureText('Hamburgefonstiv 0123').width;
     return { loadedCount: loaded.length, loadedSample: loaded.slice(0, 6), checks, metricDiff: Math.abs(wS - wA) > 0.5, wS, wA };
   });
 
@@ -91,9 +91,9 @@ try {
       if (!el.checkVisibility || !el.checkVisibility()) continue;
       total++;
       const ff = cs.fontFamily;
-      if (!/Switzer/i.test(ff)) bad.set(ff, (bad.get(ff) || 0) + 1);
+      if (!/Inter/i.test(ff)) bad.set(ff, (bad.get(ff) || 0) + 1);
     }
-    return { total, nonSwitzer: [...bad.entries()] };
+    return { total, nonInter: [...bad.entries()] };
   });
 
   // ---------- 2. TECH TREE ----------
@@ -211,9 +211,9 @@ try {
         if (!el.checkVisibility || !el.checkVisibility()) continue;
         total++;
         const ff = cs.fontFamily;
-        if (!/Switzer/i.test(ff)) bad.set(ff, (bad.get(ff) || 0) + 1);
+        if (!/Inter/i.test(ff)) bad.set(ff, (bad.get(ff) || 0) + 1);
       }
-      return { total, nonSwitzer: [...bad.entries()] };
+      return { total, nonInter: [...bad.entries()] };
     });
   }
 
