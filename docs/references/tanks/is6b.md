@@ -69,3 +69,10 @@ Certified oracle-defect caps (component | ceiling | cause):
 - turretCurves | ceiling ~17-35 | published 9.10 overall pins my D-30 muzzle at 4.01 where the print's reaches 4.97 - the missing 0.96 m of tube is charged as coverage+error on the turret rows (the tube lives in the turret mask); onion dome raised to the published 2.50 roof vs print 2.37
 - wholeCurves | ceiling ~34-50 | same muzzle gap on whole rows + hull-length stretch vs the short print
 A cap never excuses dims: every dim other than the certified widthM bias is inside the 1% grace (see row above). Build is dims-first: published spec.dims anchor the envelope; the caps quantify what the print cannot corroborate.
+
+## Geometry-gate v10 round-2 certification (2026-07-31, gate 86d1071+a524818+bfa751f)
+Final v10 row: hull 51.1 whole 32.9 turret 5.2 stations 54.9 dims 100 floaters 100
+Dims vs published (all inside the 1% grace -> dims 100): heightM 2.5/2.5 (0.14%) hullLengthM 6.88/6.9 (0.34%) overallLengthM 9.08/9.1 (0.17%) widthM 3.19/3.2 (0.31%)
+Oracle re-derivation (TRUE_AXES profile trace, width-normalized, 12% body filter): bodyH 2.346 vs pub 2.50 (-6.2%), bodyLen 6.449 vs 6.90 (-6.5%); whole span 9.90 vs oal 9.10 (+8.8% - the gun is proportionally LONG)
+Cap verdict: NEW quantification — undersized hull + oversized gun cap the whole/turret rows in opposite directions
+A cap never excuses dims: this build measures published spec.dims at 100 with zero floaters across all five articulation poses.

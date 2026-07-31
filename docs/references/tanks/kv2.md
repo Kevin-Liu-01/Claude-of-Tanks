@@ -69,3 +69,24 @@ Oracle audit (v6 true cameras, width-normalized frame): closest print in the fam
 Certified oracle-defect caps (component | ceiling | cause):
 - turretCurves | ceiling ~27-45 | hull-frame registration exposes the print's turret seat: its slab face/rear proportions differ ~0.2-0.5 m from the published-height rebuild (slab re-based on the ring deck this round: 10.9 -> 26.6)
 A cap never excuses dims: every dim other than the certified widthM bias is inside the 1% grace (see row above). Build is dims-first: published spec.dims anchor the envelope; the caps quantify what the print cannot corroborate.
+
+## Geometry-gate v10 round-2 certification (2026-07-31, gate 86d1071+a524818+bfa751f)
+Final v10 row: hull 66.1 whole 61.1 turret 74.4 stations 84.1 dims 100 floaters 100
+Dims vs published (all inside the 1% grace -> dims 100): heightM 3.27/3.25 (0.55%) hullLengthM 6.89/6.95 (0.82%) overallLengthM 6.97/6.95 (0.27%) widthM 3.31/3.32 (0.2%)
+Oracle re-derivation (TRUE_AXES profile trace, width-normalized, 12% body filter): bodyH 3.172 vs pub 3.25 (-2.4%), bodyLen 6.799 vs 6.95 (-2.2%)
+Cap verdict: HONEST ORACLE — no cap; driven by iteration: min 26.6 -> 61.1 (turret 26.6 -> 74.4, stations 65.1 -> 84.1, dims 94.4 -> 100)
+A cap never excuses dims: this build measures published spec.dims at 100 with zero floaters across all five articulation poses.
+
+v10 measurement mechanics established this round (probe-verified, family-wide):
+- Column band = top minus bottom INCLUDING GAPS: any furniture that shares a side-view
+  column with the gun tube reads as body for hullLengthM no matter how thin it is.
+  The measured bow/tail anchors must be planned around the gun's shadow (t90a read
+  7.00 from idler-wrap-under-gun + drums-over-rear-rake; both ends re-planned).
+- safeScale guard: the track BAND extends ~0.04 past trackW/2 - kv2's committed width
+  was 3.39 vs spec 3.32 and safeScale 0.979 silently shrank every authored dimension
+  2.1%. Real width must equal spec width exactly at a solid >=0.35m-band element.
+- heightM p95 spike budget: at most ~4 columns may sit above the intended p95 line
+  (kv2's second periscope pod and is3's raised MG receiver band each flipped p95 up).
+- 12% body filter vs fat muzzle furniture: is3's 0.35-band brake discs crossed
+  rough*0.12=0.324 and hullLengthM swallowed the gun (9.86); discs sized to 0.33 with
+  the DShK mast lifting rough to 2.94 restored the filter margin.

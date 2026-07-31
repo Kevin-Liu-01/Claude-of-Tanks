@@ -80,3 +80,10 @@ Oracle audit (v6 true cameras, width-normalized frame): height +30.5% (2.911), h
 Certified oracle-defect caps (component | ceiling | cause):
 - hullCurves + wholeCurves + turretCurves + stations | ceiling ~0 (all four) | the print's barrel is fused into the hull-node mesh as a SINGLE primitive (repair_oracles inspect: mesh#0 1p spanning x -84.6..143.3 raw - node-level surgery cannot split it; the chieftain5-style regroup needs separate primitives). Under gate v6 the hull-anchored registration inherits the barrel-extended hull span: measured reg dAlong -1.10 m on the side view, which misaligns EVERY column of every row and zeroes the curves and the station slicing. The correct rig is kept (barrel articulates on rig_gun; rig probe green) - matching the defective parenting would break articulation and the floater poses.
 A cap never excuses dims: every dim other than the certified widthM bias is inside the 1% grace (see row above). Build is dims-first: published spec.dims anchor the envelope; the caps quantify what the print cannot corroborate.
+
+## Geometry-gate v10 round-2 certification (2026-07-31, gate 86d1071+a524818+bfa751f)
+Final v10 row: hull 0 whole 0 turret 0 stations 0 dims 100 floaters 100
+Dims vs published (all inside the 1% grace -> dims 100): heightM 2.25/2.23 (1%) hullLengthM 6.87/6.86 (0.09%) overallLengthM 9.53/9.53 (0.04%) widthM 3.75/3.78 (0.9%)
+Oracle re-derivation (TRUE_AXES profile trace, width-normalized, 12% body filter): bodyH 2.884 vs pub 2.23 (+29.3%); side-hull body span reads 9.44 (barrel fused into the hull mesh)
+Cap verdict: HOLDS — degenerate single-fused-primitive print (batch-3 certification) PLUS +29.3% stature; dims+floaters only
+A cap never excuses dims: this build measures published spec.dims at 100 with zero floaters across all five articulation poses.

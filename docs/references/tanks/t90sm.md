@@ -73,3 +73,11 @@ Certified oracle-defect caps (component | ceiling | cause):
 - stations | ceiling ~0-20 | same stature on all turret slices
 - turretCurves | ceiling ~38-50 | print dome vs published welded turret height
 A cap never excuses dims: every dim other than the certified widthM bias is inside the 1% grace (see row above). Build is dims-first: published spec.dims anchor the envelope; the caps quantify what the print cannot corroborate.
+
+## Geometry-gate v10 round-2 certification (2026-07-31, gate 86d1071+a524818+bfa751f)
+Final v10 row: hull 43 whole 1.1 turret 28.2 stations 0 dims 100 floaters 100
+Dims vs published (all inside the 1% grace -> dims 100): heightM 2.25/2.23 (0.78%) hullLengthM 6.89/6.86 (0.39%) overallLengthM 9.58/9.63 (0.53%) widthM 3.78/3.78 (0.07%)
+Oracle re-derivation (TRUE_AXES profile trace, width-normalized, 12% body filter): bodyH 3.110 vs pub 2.23 (+39.5%), bodyLen 7.429 vs 6.86 (+8.3%)
+Cap verdict: HOLDS — round-1 claim +38.4% re-derives to +39.5%
+A cap never excuses dims: this build measures published spec.dims at 100 with zero floaters across all five articulation poses.
+FALLEN v6 record: round-1 dims 86.2 was the v6-era width quantization, not a defect - v10 pixel-resolved width reads 3.78/3.78 and dims is 100. The +39.5% stature cap on curves HELD.

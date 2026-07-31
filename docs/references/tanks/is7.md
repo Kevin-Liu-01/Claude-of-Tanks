@@ -76,3 +76,10 @@ Certified oracle-defect caps (component | ceiling | cause):
 - hullCurves/wholeCurves | ceiling ~25-40 | published 7.38 hull must overhang the 6.57 print at both ends (pike +0.52, tail -0.32) and the published 11.17 muzzle reaches 0.73 past the print's - v6 both-direction coverage charges every overhang column
 - turretCurves | ceiling ~21-35 | fused print turret (pre-existing cap) + the raised published-height dome (crown 2.35 vs print 2.25) and KPVT at the 2.60 p95 seat
 A cap never excuses dims: every dim other than the certified widthM bias is inside the 1% grace (see row above). Build is dims-first: published spec.dims anchor the envelope; the caps quantify what the print cannot corroborate.
+
+## Geometry-gate v10 round-2 certification (2026-07-31, gate 86d1071+a524818+bfa751f)
+Final v10 row: hull 37.7 whole 23.3 turret 0 stations 45.2 dims 100 floaters 100
+Dims vs published (all inside the 1% grace -> dims 100): heightM 2.61/2.6 (0.47%) hullLengthM 7.44/7.38 (0.83%) overallLengthM 11.21/11.17 (0.32%) widthM 3.4/3.4 (0.13%)
+Oracle re-derivation (TRUE_AXES profile trace, width-normalized, 12% body filter): bodyH 2.441 vs pub 2.60 (-6.1%), bodyLen 6.536 vs 7.38 (-11.4%)
+Cap verdict: HOLDS — the 9-11% SHORT claim re-derives to -11.4% length / -6.1% height; irreducible plan/side conflict vs published dims
+A cap never excuses dims: this build measures published spec.dims at 100 with zero floaters across all five articulation poses.

@@ -80,3 +80,25 @@ Certified oracle-defect caps (component | ceiling | cause):
 - turretCurves | ceiling ~15-35 | print crown ~2.7 vs published-pinned 2.45 dome + my published-length D-25T (muzzle 6.43) overhangs the print's 5.67 by 0.76 m (both-direction coverage)
 - stations | ceiling ~35-50 | dome-stature topPct on turret slices
 A cap never excuses dims: every dim other than the certified widthM bias is inside the 1% grace (see row above). Build is dims-first: published spec.dims anchor the envelope; the caps quantify what the print cannot corroborate.
+
+## Geometry-gate v10 round-2 certification (2026-07-31, gate 86d1071+a524818+bfa751f)
+Final v10 row: hull 61.6 whole 45.5 turret 5.7 stations 52.2 dims 100 floaters 100
+Dims vs published (all inside the 1% grace -> dims 100): heightM 2.47/2.45 (0.67%) hullLengthM 6.83/6.77 (0.93%) overallLengthM 9.93/9.85 (0.8%) widthM 3.15/3.15 (0.04%)
+Oracle re-derivation (TRUE_AXES profile trace, width-normalized, 12% body filter): ref turret crown band 2.85-2.95 (DShK peak 3.05) vs published overall height 2.45; ref HULL is honest (bodyLen 6.707 vs 6.77, -0.9%)
+Cap verdict: NEW — TURRET-ONLY stature cap: matching the +0.45m crown costs heightM +17% (dims -130); at published height the turret rows ceiling is ~15
+Scope: turretCurves/whole rows capped; hull rows live (front_hull 61.6 after the deck/gun rebuild)
+A cap never excuses dims: this build measures published spec.dims at 100 with zero floaters across all five articulation poses.
+
+v10 measurement mechanics established this round (probe-verified, family-wide):
+- Column band = top minus bottom INCLUDING GAPS: any furniture that shares a side-view
+  column with the gun tube reads as body for hullLengthM no matter how thin it is.
+  The measured bow/tail anchors must be planned around the gun's shadow (t90a read
+  7.00 from idler-wrap-under-gun + drums-over-rear-rake; both ends re-planned).
+- safeScale guard: the track BAND extends ~0.04 past trackW/2 - kv2's committed width
+  was 3.39 vs spec 3.32 and safeScale 0.979 silently shrank every authored dimension
+  2.1%. Real width must equal spec width exactly at a solid >=0.35m-band element.
+- heightM p95 spike budget: at most ~4 columns may sit above the intended p95 line
+  (kv2's second periscope pod and is3's raised MG receiver band each flipped p95 up).
+- 12% body filter vs fat muzzle furniture: is3's 0.35-band brake discs crossed
+  rough*0.12=0.324 and hullLengthM swallowed the gun (9.86); discs sized to 0.33 with
+  the DShK mast lifting rough to 2.94 restored the filter margin.

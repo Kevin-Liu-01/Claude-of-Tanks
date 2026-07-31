@@ -214,6 +214,12 @@ function ruFlaps(P, o) {
 // z -1.7..-1.05, crown plateau pushed to the dims ceiling, wedges to +2.3.
 function buildT90A(P) {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage } = KIT;
+  // v10 body-span note: the 12% filter measures top-minus-bottom PER COLUMN,
+  // gaps included — every column under the gun tube (top 1.69) reads as body
+  // no matter how thin the furniture below it is, and the tail drums over
+  // the rear rake merge the same way. Measured budget (probe-verified):
+  // rear = drums-over-rake column at -3.32, front = idler-wrap-under-gun
+  // column at +3.57 -> 6.89 vs published 6.86.
   loftHull(P, {
     deck: [[-3.26, 1.30], [-3.15, 1.36], [-2.60, 1.375], [-0.60, 1.375], [0.90, 1.375], [2.20, 1.30], [3.16, 1.20], [3.44, 1.08]],
     belly: [[-3.26, 1.10], [-3.08, 0.86], [-2.86, 0.44], [-2.64, 0.32], [2.70, 0.30], [3.24, 0.62], [3.44, 1.00]],
@@ -221,8 +227,8 @@ function buildT90A(P) {
     wLo: [[-3.26, 0.88], [3.44, 1.02]],
     sponsonY: 0.86,
   });
-  // fender tips end at the body boundary (bodyLen 6.86 = -3.30..3.56)
-  for (const s of [-1, 1]) P.add('hull', box(0.64, 0.07, 0.26), s * 1.43, 0.94, 3.35);
+  // fender tips held behind the loft bow (they merge with the gun band)
+  for (const s of [-1, 1]) P.add('hull', box(0.64, 0.07, 0.26), s * 1.43, 0.94, 3.29);
   // deck furniture: driver hatch fwd-center, transverse engine grilles aft
   ruDeck(P, { deckY: 1.365, hatchZ: 2.35, gz: -1.9, grilles: 5, gw: 1.5 });
   ruGlacisKit(P, { w: 3.5, y: 1.10, z: 3.08, eyeZ: 3.30, hookY: 0.62, hookZ: 3.36 });
@@ -234,26 +240,32 @@ function buildT90A(P) {
   // thin tail rack past the rear plate (band < 12% of height, so the body
   // span holds 6.86 while the silhouette runs to the ref's -3.6..-3.75):
   // drums + stowage riding the tail at the measured ~1.58 top line.
+  // v10: drum r 0.135 gave a 0.27m band — exactly the 12% threshold (rough
+  // 2.21m) — so the tail read as body and hullLengthM ran +2.07%. r 0.112
+  // keeps the drums 4cm under the filter with everything else on the plate.
   stowage(P, 'hull', P.rng, [[-0.85, 1.42, -3.06, 1.3, 0.14, 0.28], [0.75, 1.42, -3.06, 1.35, 0.14, 0.28]]);
   for (const s of [-1, 1]) {
-    P.add('hull', cylZ(0.135, 0.62, 12), s * 0.72, 1.44, -3.33);
-    P.add('hullDark', cylZ(0.14, 0.03, 12), s * 0.72, 1.44, -3.13);
-    P.add('hullDark', box(0.05, 0.12, 0.05), s * 0.72, 1.44, -3.38);
+    P.add('hull', cylZ(0.112, 0.62, 12), s * 0.72, 1.44, -3.33);
+    P.add('hullDark', cylZ(0.116, 0.03, 12), s * 0.72, 1.44, -3.13);
+    P.add('hullDark', box(0.05, 0.11, 0.05), s * 0.72, 1.44, -3.38);
   }
   P.add('hullDark', cylX(0.115, 2.55, 10), 0, 1.56, -1.56);
   for (const s of [-0.5, 0.5]) P.add('hullDetail', box(0.06, 0.16, 0.09), s * 2, 1.46, -1.56);
-  P.add('hullWood', cylX(0.095, 2.1, 10), 0, 1.00, -3.14);   // log low on the tail plate (inside the body span)
-  for (const s of [-0.55, 0.55]) P.add('hullDark', cylX(0.102, 0.045, 10), s * 1.05, 1.00, -3.14);
+  // log rides BETWEEN the drums at the same y-band (1.33..1.55) so the tail
+  // columns keep one thin 0.22m band — stacking it lower would fuse a >12%
+  // column with the drums and re-extend hullLengthM (the 7.00 lesson)
+  P.add('hullWood', cylX(0.095, 2.1, 10), 0, 1.44, -3.45);
+  for (const s of [-0.55, 0.55]) P.add('hullDark', cylX(0.102, 0.045, 10), s * 1.05, 1.44, -3.45);
   // running gear: 6 dished wheels; sprocket/idler pulled inside the 6.86
   // body span (the print's rear gear is MISSING below z<-2 — packet cap)
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.385, wheelW: 0.21, wheelY: 0.455, xc: 1.44, dishR: 0.84,
     wheelZs: evenStations(6, 4.4, 0.15),
-    sprocket: { z: -2.78, y: 0.86, r: 0.30 }, idler: { z: 3.18, y: 0.62, r: 0.30 },
+    sprocket: { z: -2.86, y: 0.86, r: 0.30 }, idler: { z: 3.08, y: 0.62, r: 0.30 },
     rollers: [-1.5, 0.15, 1.8].map((z) => ({ z, y: 0.82, r: 0.086 })),
     trackW: 0.58, topY: 0.86, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
   });
-  ruSkirtBand(P, { x: 1.845, z0: -3.0, z1: 3.30, yTop: 1.02, yBot: 0.50, panels: 7 });
+  ruSkirtBand(P, { x: 1.845, z0: -3.14, z1: 3.30, yTop: 1.02, yBot: 0.50, panels: 7 });
   // K-5 heavy side plates over the front third (the ±1.885 plan course)
   widthAnchor(P, 1.89, 0.95, 0.5);
   for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
@@ -776,11 +788,18 @@ function buildT72B3M(P) {
     P.add('hullTrack', box(0.70, 0.075, 0.28), s * 0.40, 1.24 - row * 0.07, 1.30 + row * 0.30, -0.38, s * 0.34, 0);
   }
   KIT.towCable(P, [[-1.2, 1.28, 1.0], [0, 1.34, 0.5], [1.2, 1.28, 1.0]]);
-  ruFlaps(P, { x: 1.46, w: 0.60, front: [0.55, 0.50], frontZ: 2.30 });
+  // v10: ANY column under the gun tube reads as body (top≈1.78 minus flap
+  // bottom clears the 12% filter no matter the flap height) — the flap face
+  // IS the measured bow. frontZ 2.29 puts the body front at 2.31 so
+  // -4.36..2.31 = the published 6.67 exactly.
+  ruFlaps(P, { x: 1.46, w: 0.60, front: [0.55, 0.50], frontZ: 2.29 });
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.375, wheelW: 0.21, wheelY: 0.45, xc: 1.45, dishR: 0.84,
     wheelZs: evenStations(6, 4.3, -1.0),
-    sprocket: { z: -3.75, y: 0.72, r: 0.30 }, idler: { z: 1.95, y: 0.60, r: 0.28 },
+    // v10: idler wrap+pads reach z+r+0.15 and read as body under the gun —
+    // 1.95/0.28 put the measured bow at 2.38 (hullLengthM +1.21%); 1.90/0.26
+    // ends the wrap at the published 6.67 body line.
+    sprocket: { z: -3.75, y: 0.72, r: 0.30 }, idler: { z: 1.90, y: 0.60, r: 0.26 },
     rollers: [-2.5, -0.95, 0.6].map((z) => ({ z, y: 0.82, r: 0.086 })),
     trackW: 0.58, topY: 0.86, botY: 0.045, paintedEnds: true, coveredTop: true, arms: true,
   });

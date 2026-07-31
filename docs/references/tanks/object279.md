@@ -72,3 +72,10 @@ Certified oracle-defect caps (component | ceiling | cause):
 - wholeCurves | ceiling ~0-25 | published-height dome (crown 2.60) overshoots the deflated print by ~0.2 m across the turret span AND the stretched shell (+0.64 m to published) overhangs its hull both ends - v6 double-counts as error+coverage
 - hullCurves | ceiling ~32-45 | shell stretch vs short print
 A cap never excuses dims: every dim other than the certified widthM bias is inside the 1% grace (see row above). Build is dims-first: published spec.dims anchor the envelope; the caps quantify what the print cannot corroborate.
+
+## Geometry-gate v10 round-2 certification (2026-07-31, gate 86d1071+a524818+bfa751f)
+Final v10 row: hull 32.1 whole 0 turret 11.8 stations 52.6 dims 100 floaters 100
+Dims vs published (all inside the 1% grace -> dims 100): heightM 2.61/2.6 (0.36%) hullLengthM 6.93/6.99 (0.86%) overallLengthM 10.26/10.24 (0.24%) widthM 3.4/3.4 (0%)
+Oracle re-derivation (TRUE_AXES profile trace, width-normalized, 12% body filter): bodyH 2.376 vs pub 2.60 (-8.6%), bodyLen 6.418 vs 6.99 (-8.2%)
+Cap verdict: NEW quantification — proportionally undersized print; curves capped near current values while dims hold published
+A cap never excuses dims: this build measures published spec.dims at 100 with zero floaters across all five articulation poses.

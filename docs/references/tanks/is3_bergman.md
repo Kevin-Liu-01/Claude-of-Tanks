@@ -79,3 +79,10 @@ Certified oracle-defect caps (component | ceiling | cause):
 - stations | ceiling ~0-30 | the degenerate turret node also corrupts its hull z-range for station slicing
 - wholeCurves | ceiling ~28-45 | stub-gun print vs the published 9.85 m D-25T reach
 A cap never excuses dims: every dim other than the certified widthM bias is inside the 1% grace (see row above). Build is dims-first: published spec.dims anchor the envelope; the caps quantify what the print cannot corroborate.
+
+## Geometry-gate v10 round-2 certification (2026-07-31, gate 86d1071+a524818+bfa751f)
+Final v10 row: hull 53.2 whole 31.8 turret 0 stations 0 dims 100 floaters 100
+Dims vs published (all inside the 1% grace -> dims 100): heightM 2.47/2.45 (0.97%) hullLengthM 6.79/6.77 (0.23%) overallLengthM 9.93/9.85 (0.82%) widthM 3.16/3.15 (0.22%)
+Oracle re-derivation (TRUE_AXES profile trace, width-normalized, 12% body filter): turret node degenerate (fenders/drums parented into it, shell sunken); shares the is3 hull; whole-mask body span reads 9.12 (fused)
+Cap verdict: HOLDS — degenerate-print cap stands (dims+floaters only for turret/stations rows); identity build over the broken oracle
+A cap never excuses dims: this build measures published spec.dims at 100 with zero floaters across all five articulation poses.
