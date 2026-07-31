@@ -50,18 +50,25 @@ try {
   // ---- 1. garage camo picker + live repaint --------------------------------
   const picker = await page.evaluate(() => {
     // camo_spotting r3: the 3-slot equipment picker reuses .cot-camo-card —
-    // scope the query to the first camo grid (count stays 6)
+    // scope the query to the first camo grid.
+    // camo r8: the roster grew past 6 (new selectable schemes); the ORDER
+    // CONTRACT keeps the original six ids at indexes 0-5, so the winter[4] /
+    // factory[1] clicks below stay valid. Cards also carry data-pid now.
     const cards = [...document.querySelectorAll('.cot-camos .cgrid')[0]
       .querySelectorAll('.cot-camo-card')];
-    if (cards.length !== 6) return { n: cards.length };
+    if (cards.length < 6) return { n: cards.length };
+    if (cards[1].dataset.pid !== 'factory' || cards[4].dataset.pid !== 'winter') {
+      return { n: cards.length, orderBroken: true };
+    }
     cards[4].click(); // winter
     const selAfter = cards[4].classList.contains('sel');
     cards[1].click(); // back to factory
     return { n: cards.length, selAfter, factorySel: cards[1].classList.contains('sel') };
   });
-  if (picker.n !== 6) fail(`camo picker cards: ${picker.n} (want 6)`);
+  if (picker.n < 6) fail(`camo picker cards: ${picker.n} (want >= 6)`);
+  else if (picker.orderBroken) fail('camo picker order contract broken (factory/winter moved)');
   else if (!picker.selAfter || !picker.factorySel) fail('camo picker selection did not toggle');
-  else pass('garage camo picker present; winter repaint + revert without errors');
+  else pass(`garage camo picker present (${picker.n} patterns); winter repaint + revert without errors`);
 
   // ---- 2/3/4. bush concealment on the live battlefield ---------------------
   const res = await page.evaluate(() => {
