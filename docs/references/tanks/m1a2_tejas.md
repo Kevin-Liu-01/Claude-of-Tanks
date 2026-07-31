@@ -64,3 +64,54 @@ CROWS RWS: slew ring + pedestal, EO housing with dark sensor face + glass
 lens plate, cradled M2 + ammo can — visibly differentiating this id from the
 m1a1/m1a1ha manual-station dressing on the same oracle massing (critique ask).
 Score 87.1 -> 86.6 (T 78 -> 80).
+
+## Round 4 — from-scratch rebuild + geometry-gate v5 (2026-07-31)
+Rebuilt from docs/references/profiles/m1a2_tejas.json measured curves (hull
+lofted on the deck/belly polylines, new swept-cheek shell, curve-seated kit).
+IoU fidelity recovered to the committed 86.6 (H92 T78 G80 R91) BEFORE the
+geometry gate landed; the gate then forced published-dims-first authoring.
+Three mechanisms discovered while closing dims (apply fleet-wide):
+- WIDTH GUARD (real breach): the family mud flaps at (skirtX-0.02) reached
+  x ±1.97 — safeScale silently shrank every Abrams ~6.6% in the lab. All
+  committed-era tables were tuned inside that shrunken frame. Flaps now sit
+  flush inside the skirt plane; curve scores jumped ~10-30 pts fleet-wide.
+- HEIGHT p95 BUDGET: gate heightM = p95 of body-column tops. Only ~3 mask
+  columns (~0.33 m of z) may exceed published height. Whip antennas cost 2
+  columns each (they straddle the trace grid) — now stowed (base pots);
+  the budget is spent on the compact CROWS/CWS head (station rebuilt as a
+  slim mast + <=0.2 m-deep head + transverse M2).
+- TILT INFLATION: the side proof camera's 2.86 deg tilt renders full-width
+  tops +0.09 and bottoms -0.09 — gate heightM reads ~0.20 over the physical
+  roof. Published height therefore requires PHYSICAL roof ~= published-0.20
+  (shell roofs dropped to 2.24 world; dims heightM now 2.44, 0.02%).
+CAP (documented): the tejas oracle is ~7% short in hull length and carries
+its CROWS/antennas at 3.3-4.1; with published dims sovereign (hull 7.92 /
+overall 9.77 / width 3.66 / height 2.44 all <=0.31% now), the oracle-frame
+curve components carry a scale mismatch the translation-only registration
+cannot absorb. turretCurves/stations vs this oracle are capped accordingly;
+judge the shell on the shaded board + dims.
+
+
+## Round 5 — gate v6/v7 iteration (2026-07-31)
+TILT-COMPENSATION REVERT: every v5 'published-0.20' constant is gone. The
+shell roofs are physically true again (cheek tips 2.15, shoulders 2.30,
+main/bustle roof 2.36 world; v5 had dropped the family roof to 2.24), the
+glacis hump/splash board are flush (the v5 deck was authored to the tilted
+silhouette), and the bustle rack top rides at the published 2.44.
+WIDTH GUARD: the v5 skirt bolts/handles/joint plates poked 1.5-2.5 cm past
+the skirt face and the rear soot decals (render meshes!) poked 0.17 above
+the deck and 0.05 past the tail — all seated flush; the widest mesh is now
+exactly the committed +-1.83 (procScale 1.000).
+DIMS DISCIPLINE (v6 heightM = p95 of side body-column tops): the rack rails,
+rear-roof block and hatches form a deliberate 2.44 plateau; only the compact
+CWS/CROWS head (z-local 0.11..0.32, ~2 columns, top 3.27 = the oracle's
+cluster peak) rises above it. Whips stay stowed as base pots.
+CERTIFIED CAP (v6 numbers): the oracle carries its CROWS/M240/doghouse
+cluster as a 1.6 m-long solid at 3.21-3.29 world (z 0..1.6) plus twin whips
+at 4.09 — matching more than ~2 columns of that under the published 2.44
+p95 breaks dims by construction. wholeCurves/turretCurves/stations are
+capped ~50/52/61 by exactly those columns (each carries ~0.83-1.65 m of
+unmatchable top error); hullCurves 90.1, dims 98.1, floaters 100 are the
+achievable components and are green.
+Final: hull 90.1 / whole 51.8 / turret 52.5 / stations 60.9 / dims 98.1 /
+floaters 100.

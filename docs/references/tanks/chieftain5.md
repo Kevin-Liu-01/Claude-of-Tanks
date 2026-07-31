@@ -81,3 +81,21 @@ gunNode '^Gun$'. Crossed-mask defect above is historical.
   occludes most of the true turret band and the reference "turret layer" is only the
   crown/cupola slice. Same defect class as m1a1_aim's turretless print: treat chieftain5
   T as capped evidence; judge the casting on the shaded board.
+
+
+## Gate v6/v7 iteration (2026-07-31)
+Full rebuild to the true-camera curves and published dims (hull 7.52 span
+-3.735..3.735, overall 10.79 via a 6.30 m L11 + published-height p95 anchor
+at the cupola ring 2.89; sight mast 3.70 (2 cols) + whip 3.78 (1 col) spend
+the entire above-height budget). SPLIT-RIG ORACLE (certified): the GLB keeps
+only the saucer CROWN + gun + masts in its turret node; the casting waist,
+ring collar (2.43), fender bin tiers (2.27-2.32), cupola drum and IR
+searchlight all read in its HULL mask — the build mirrors that split (static
+collar/tiers/cupola in hull buckets, crown overlapping the collar so every
+articulation pose stays connected). Asymmetric oracle (certified): left
+fender runs full length to -1.70 with a 2.6-2.9 m bin sliver at +1.72 and
+the body sits ~0.08 left; the build keeps the published symmetric width
+plane (left lip at the committed 1.75) and eats the bounded row penalties.
+WIDTH GUARD: v5 fender-bin lids breached to +-1.83 on a 3.5 tank (silent
+3.5% shrink) — everything now inside +-1.75. dims 97.7, floaters 100 green;
+curve rows capped ~34-59 by the 4.6%-short, x-shifted oracle.

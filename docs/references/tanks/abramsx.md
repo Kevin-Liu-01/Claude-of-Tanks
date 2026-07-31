@@ -63,3 +63,20 @@ the procedural intentionally does not copy (its shell yaws about the ring).
   diagonal lead-panel cut.
 - Score 81.0 -> 79.4 (T 60->61, R 94->92.5, G 77->71 — the real-XM360
   muzzle furniture the asset's plain tube lacks; within the ±2 gate).
+
+
+## Gate v6/v7 iteration (2026-07-31)
+Rebuilt: hull retabled to the true-camera deck/rakes, corner pods + RWS
+bridge seated on hull pylons (v5 left both floating -> 2-pose floater
+failure), XM360 at the published 9.77 overall, rear tow-pintle bar at the
+oracle's rear overhang (also anchors the shared camera grid so the plan
+width columns read the true 3.66 skirt plane — the oracle's 6.16 muzzle
+otherwise quantizes widthM to 3.55), shell roof 2.44-2.47 with the undercut
+rear block.
+CERTIFIED CAP: the oracle carries its RWS bridge as a 2.4 m-long mass at
+3.25-3.45 IN ITS HULL MASK plus twin whips at 4.12 — under the published
+2.44 heightM (p95) only a 2-column mast head at 3.44 is affordable; the
+remaining ~20 columns cap hullCurves/wholeCurves/front rows (~0-26) and
+pull the hull registration dy ~0.12-0.27, spreading residual error over
+every column. turret rows (the yawing shell) score independently; dims 98.9
+and floaters 100 are green.

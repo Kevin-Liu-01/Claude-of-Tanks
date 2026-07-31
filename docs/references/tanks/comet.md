@@ -62,3 +62,14 @@ hull. Unassembled-layout defect above is historical.
 - Headline 69.0 -> 75.5 (T 49.9* -> 60, G 0* -> 45 honest).
 - Procedural re-seat: turret pivot -0.12 -> +0.60 (print ring at +9% of hull length);
   gunLength 4.42 -> 3.70 keeps the muzzle at the print's +4.7 station.
+
+
+## Gate v6/v7 iteration (2026-07-31)
+Rebuilt to published dims: hull 6.55 (the print is ~4% long — mission-known
+'comet print 10% long' moderated to +4% under v7 true cameras), overall 7.66
+(muzzle 4.39), width 3.05 with the track-guard faces exactly on the
+committed plane (v5 guards breached by 2.8 cm -> silent shrink), cupola on a
+riser as the 2.68 p95 anchor, deep breech mass matched, Christie gear pulled
+inside the hull span (the end-wheel wraps were defining hullLengthM).
+CERTIFIED CAP: the print sits z-shifted (+0.75 registration) and ~4% long —
+whole/hull rows carry the bounded stretch; dims 97.9 and floaters 100 green.

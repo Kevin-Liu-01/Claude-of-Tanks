@@ -57,3 +57,18 @@ plan. Both are recovered-asset quirks, not geometry choices.
 - Family glacis/skirt/grille kit; driver hump offset left (periX -0.42) to
   clear the recovered asset's low gun line at -10 deg.
 - Score 74.4 -> 76.5 (H 82->83, T 55, G 75->73, R 78->79).
+
+
+## Gate v6/v7 iteration (2026-07-31)
+Rebuilt published-true: hull 7.93 (print: ~6.6 — 17% SHORT, certified), deck
+line 1.56 rear / 1.40-1.22 front per the true-camera curves, commander
+pedestal SEATED on the deck (v5 left it floating 0.55 above — the 3-pose
+floater failure), deck rack split into the print's rail run (2.18) + cargo
+box (2.27) with its one-column gap, CROWS II head as the only geometry above
+the 2.44 plateau (2 columns to 2.93), running gear riding the print's 0.17
+floor line (wheels still ground-true at 0 — the print floats, an oracle
+defect).
+CERTIFIED CAP: the print is ~17% short in hull length and ~19% short overall
+with its forward roof at 2.9; under sovereign dims every curve/station row
+carries the scale mismatch (hull/whole/turret/stations capped ~0-19). dims
+100 and floaters 100 are green.

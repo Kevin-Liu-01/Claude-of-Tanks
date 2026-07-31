@@ -48,3 +48,19 @@ ends z −1.87. This oracle is trustworthy for all five component masks.
   lifting handles, dished road wheels (hub caps + rubber rings).
 - Fidelity 81.5 vs 80.3 committed (T 71 -> 78). Remaining gap: R ~73 — ref track band
   reads wider/lower at the sprocket taper; would need shared running-gear geometry work.
+
+
+## Gate v6/v7 iteration (2026-07-31)
+Rebuilt to published dims: hull 8.32 (was built 7.4 to match the small
+oracle), overall 11.50 (L11 to +7.34), height anchor 2.95 at the commander
+sight block (masts 3.04/2.99 = the 3-column budget), width plane +-1.755.
+Floater fixes: the v5 mud flaps hung over the raked bow 0.1 off the deck
+(5-pose failure) — UK flaps now mount on the fender tips; the whip antennas
+and sight block were re-seated on the roof/bustle. The oracle's deep
+trunnion mass (turret mask to y 0.89, z 0.1..1.55) is matched.
+CERTIFIED CAP: safeScale keys on the oracle's wing mirrors (wider than its
+skirts), shrinking its whole body ~7.4%, and its hull is ~0.9 m short of
+8.32 — with dims sovereign every curve/station row carries that scale
+mismatch (hull/whole/stations capped ~0-14). dims 94.6, floaters 100 green.
+Repair note: mirror-trim + rescale is NOT a rigid transform; loader-side
+width-anchor fix required.

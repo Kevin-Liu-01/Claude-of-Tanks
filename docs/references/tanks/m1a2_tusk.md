@@ -66,3 +66,31 @@ the reference's tube at mask resolution.
   the clamped oracle body lacks. 0.4 outside the ±2 gate — flagged rather
   than re-fattened, since the fat blobs are exactly what the shaded gate
   rejected.
+
+## Round 4 — geometry gate forces full scale (2026-07-31)
+The gate's dims anchor (published 7.93/9.77/3.66/2.44) cannot be met by the
+0.727 oracle-scale body: the build now uses the FULL-SCALE tejas family hull
++ shell with the (already real-scale) ARAT/slat/TIP kit. IoU vs the small
+oracle collapses by construction (~52 at full scale vs 85.4 at 0.727) — this
+is the certified oracle-defect cap (modelLoader height-clamp normalization,
+see the scale quirk section above); dims + published proportions win per
+docs/GEOMETRY-GATE.md. The 0.727 table remains reproducible via
+`oracleScale: 0.727` in ABRAMS_PROFILES.m1a2_tusk if the oracle is ever
+re-normalized.
+
+
+## Round 5 — gate v6/v7 iteration (2026-07-31)
+PUBLISHED-TRUE REBUILD: the v5 0.727-scale body is retired. The tusk build
+is now the full-scale tejas-family body + real-scale ARAT/slat/TIP kit, all
+inside the committed +-1.83 width (lower ARAT course flush on the skirt
+plane).
+CERTIFIED CHIMERA ORACLE: MODEL_SOURCE.m1a2_tusk loads the tejas GLB, whose
+modelLoader scale is height-clamped ~0.727, then addRuntimeTuskKit() attaches
+the ARAT/slat kit in REAL meters (modelLoader.js:2261) — the reference is a
+~0.68-scale body wearing a ~0.94-scale kit after the lab's width
+re-normalization keys on the kit at +-1.94. No build can satisfy both that
+mask and the published dims; hull/whole/turret/stations are capped at ~0 by
+the certification, dims (97) and floaters (100) are green and sovereign.
+Repair note: not rigid-transform repairable (two inconsistent scales inside
+one oracle); the fix is loader-side (scale the kit with the GLB or exclude
+it from the swap).

@@ -65,3 +65,12 @@ print's turret is stubbier than the tall A30 slab.
 - Procedural: the 17-pdr was nose-length (muzzle AT the bow, G 0.0 vs the honest print) —
   gunLength 3.30 -> 4.10, bore dropped 0.60 -> 0.46 (print bore ~1.9 world), muzzle
   counterweight collar added, turret pivot -0.30 -> +0.12 (print race station).
+
+
+## Gate v6/v7 iteration (2026-07-31)
+Rebuilt to published dims: hull 8.03 (the print is ~6.8 m — 15% SHORT,
+certified), overall 8.15 (17-pdr muzzle 4.14 — the A30's tube barely clears
+its long hull), lowered deck line (roofY 1.50) per the true-camera curves,
+cupola on a tall riser as the 2.77 p95 anchor, deep breech mass matched,
+guard faces on the committed +-1.455 plane. dims 91.7, floaters 100 green;
+every curve/station row carries the certified 15% length mismatch (~0).

@@ -70,3 +70,16 @@ front (assembled) plus flat-pack panels no rigid move can assemble.
   (muzzle keeps the print's +6.0 station); the r2 "bead necklace" cheek dischargers are
   rebuilt as dark solid discharger BINS on bracket arms, angled outboard, tubes clear of
   the dome (bumps no longer project onto the face).
+
+
+## Gate v6/v7 iteration (2026-07-31)
+Retabled to the true-camera curves: high pointed prow (deck falling
+1.68 -> 1.16 at the tip), two-step tail shelf, skirt hem 0.60 at the
+committed +-1.685 plane, crown 2.74 with the cupola riser as the published
+2.94 p95 anchor (2.92), long bustle bin raised to 2.50, deep breech mass
+(0.86) matched inside the hull, 20-pdr/L7 at the published 9.83 overall
+(muzzle 6.10 vs oracle 5.89 — small bounded cover). The oracle's hull length
+matches published within 0.2% (best-conditioned UK print); its body sits
+z-shifted ~1.0 which the hull-anchored registration absorbs.
+dims 92.2, floaters 100 green; turretCurves still capped by the fused
+breech/crown interplay (in progress, honest 0-18 today).

@@ -69,3 +69,12 @@ barrel (only a 0.4 m collar ships).
 - Procedural re-seat vs the honest print: turret pivot -0.18 -> +0.55 (ring race sits at
   +9.7% of hull length, forward); gunLength 5.45 -> 4.62 keeps the muzzle at the print's
   +5.5 station.
+
+
+## Gate v6/v7 iteration (2026-07-31)
+Rebuilt to published dims: hull 6.55, overall 9.20 (20-pdr muzzle 5.93 vs
+the print's 5.59 — bounded cover), width 3.05 with guard faces on the
+committed plane, cupola riser as the 2.58 p95 anchor, deep breech mass
+matched, gear inside the hull span. The print sits z-shifted (+1.31) —
+absorbed by registration. dims 100, floaters 100 green; curve rows capped by
+the short/shifted print (~14-32).

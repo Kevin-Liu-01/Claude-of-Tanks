@@ -71,3 +71,19 @@ m1a1_aim) — casting + basket + M256 lifted +7.6 units to the rim-on-deck seat
 exhaust stack and glacis skin carved out of the Turret node to the hull in
 place. 66.9 -> 74.3 (H90 T49 G58 R90); remaining T/G gap is the print's round
 near-full-width casting and fat tube, not rig breakage.
+
+
+## Gate v6/v7 iteration (2026-07-31)
+Reverted the v5 tilt compensations: casting crown back up to 2.46 (clamped
+from the print's 2.59 under published 2.44 + grace), deck/fender walls to
+the true-camera line (tall fender walls 1.80-1.89 added), exhaust stack
+re-seated at the print's station (x -0.05, z -3.40, top 2.41), rear rack at
+the very tail (-4.44), fat L/44 slimmed so its sleeve/collar stay under the
+12%-band threshold (v6 lesson: the fat collar re-classified the barrel as
+hull and read hullLength 9.33). The print's deep crew basket (turret mask
+to y 0.77, z -1.8..-0.2) is now matched by a dark basket. M2/whips removed
+(p95 budget).
+CERTIFIED CAP: print muzzle 4.46 vs published 9.77 overall (build carries
++0.86 m of correct tube = bounded wholeCurves cover); print crown 2.59 vs
+published height (crown clamped 2.46, ~20 columns x 0.13 err); print hull
+z-mid sits -0.6 (registration absorbs). dims 97.8, floaters 100 green.
