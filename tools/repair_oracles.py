@@ -238,6 +238,26 @@ def reparent_node(gltf, child_name, new_parent_name):
     parent.setdefault('children', []).append(child)
 
 
+def absorb_into(gltf, child_name, parent_name):
+    """Re-parent, preserving the child's WORLD transform.
+
+    Restricted (deliberately) to the recovered WoT-kit layout this tool
+    repairs: every node is a scene root carrying the identical rotation
+    quaternion and no translation/scale/matrix. inv(parent) * child is then
+    the identity, so the move is exact: drop the child's rotation and hang it
+    under the parent. Anything else is refused loudly rather than guessed at.
+    """
+    child = gltf['nodes'][find_node(gltf, child_name)]
+    parent = gltf['nodes'][find_node(gltf, parent_name)]
+    for node, name in ((child, child_name), (parent, parent_name)):
+        if any(k in node for k in ('translation', 'scale', 'matrix')):
+            raise ValueError(f'{name}: absorb_into needs a rotation-only node')
+    if child.get('rotation') != parent.get('rotation'):
+        raise ValueError(f'{child_name} vs {parent_name}: rotations differ')
+    child.pop('rotation', None)   # inv(parent_rot) * child_rot == identity
+    reparent_node(gltf, child_name, parent_name)
+
+
 # Per-oracle repair recipes. Each is a list of ops in model-space units of
 # that GLB (verified against docs/references/tanks/<id>.md world measures and
 # the inspect dump).
@@ -341,6 +361,106 @@ def repair_chieftain5(gltf):
 
 
 REPAIRS['chieftain5'] = [('py', repair_chieftain5)]
+
+
+# --------------------------------------------------------------- merkava2b --
+# Batch-3 diagnosis (all 146 nodes are flat scene roots sharing one +90degX
+# quat; the loader classifies them purely via MERKAVA_TURRET_FOLLOWERS in
+# src/vehicles/userdrops5.js — turretNode ^Turret$, gunNode ^Gun$). After the
+# round-3 regex fix (skirts excluded), two defect classes remain:
+#
+#  1. TURRET furniture stranded hull-side (regex never matches their names, so
+#     they sit in the hull mask and stay behind when rig_turret yaws):
+#       gun_mask_34        mantlet block, y 1.55..2.50 z -0.91..1.21
+#       turret_inside_46   casting interior + basket, y 0.61..2.59 — this is
+#                          the "casting partly in the hull node" phantom that
+#                          topped the hull mask at 2.59 through the ring zone
+#       mg_01/mg_aa_01/mg_aa_mount_h/v/mg_mount_h/v  roof MGs, y 2.69..3.06
+#       mg_twin_36         coax MG block inside the casting cheek, y 1.89..2.12
+#       optic_turret_81    commander optic, y 2.52..2.76
+#       ammo_01_44/ammo_40 roof ammo boxes, y 2.85..3.00
+#       ex_decor_11/12/14/15/16  bustle/roof stowage, y 2.07..2.64
+#     Fix: hang them under `Turret` (physical children ride rig_turret and
+#     yaw with it). World transforms preserved exactly — see absorb_into.
+#
+#  2. HULL rear-plate fittings whose names FALSELY match the follower regex
+#     ex_decor_(?:0[1-9]|13): ex_decor_08_140 / ex_decor_09_141 sit at
+#     y 1.34..1.67 on the rear plate (deck is ~1.75) yet rode the turret —
+#     at 180 deg yaw they orbited to the bow. Fix: renumber to the unused
+#     ex_decor_17/18 slots so the regex ignores them (numbering is the only
+#     semantics those WoT kit names carry).
+#
+# Turret bbox afterwards: x -1.41..1.53, y 0.61..3.21, z -3.94..1.61 — the
+# autoPivot footprint fallback stays within 4 cm of the old axis, so the
+# articulation frame is unchanged; the mask content is what moves.
+MERKAVA2B_TURRET_STRAYS = [
+    'vehicle#ammo_01_44', 'vehicle#ammo_40', 'vehicle#gun_mask_34',
+    'vehicle#mg_01_39', 'vehicle#mg_aa_01_42', 'vehicle#mg_aa_mount_h_41',
+    'vehicle#mg_aa_mount_v_43', 'vehicle#mg_mount_h_37',
+    'vehicle#mg_mount_v_38', 'vehicle#mg_twin_36', 'vehicle#optic_turret_81',
+    'vehicle#turret_inside_46', 'vehicle#ex_decor_11_63',
+    'vehicle#ex_decor_12_64', 'vehicle#ex_decor_14_66',
+    'vehicle#ex_decor_15_67', 'vehicle#ex_decor_16_80',
+]
+
+
+def repair_merkava2b(gltf):
+    for name in MERKAVA2B_TURRET_STRAYS:
+        absorb_into(gltf, name, 'Turret')
+    rename_node(gltf, 'vehicle#ex_decor_08_140', 'vehicle#ex_decor_17_140')
+    rename_node(gltf, 'vehicle#ex_decor_09_141', 'vehicle#ex_decor_18_141')
+
+
+REPAIRS['merkava2b'] = [('py', repair_merkava2b)]
+
+
+# ------------------------------------------------------------------ leo2a5 --
+# Batch-3 diagnosis (111 flat scene roots, one shared +90degX quat; config is
+# plain articulated('leo2a5') — turretNode ^Turret$, gunNode ^Gun$, NO
+# follower regexes, so only the Turret/Gun subtrees articulate). The `Turret`
+# node (mesh 'vehicle#bone_turret_40') is the bare wedge SHELL and does yaw,
+# but every fitting that makes it read as an A5 turret is a stranded scene
+# root that stays frozen on the hull (baseline board: at yaw 180 the shell's
+# wedge nose swings aft while a complete phantom turret — wedge add-on
+# modules, EMES cover, PERI, hatches, MGs, antennas, bustle bins — stays
+# facing forward):
+#   ex_armor_l_14/15, ex_armor_r_14/15   arrowhead wedge modules + side skins
+#   turret_cap_50                        EMES roof cover, y 2.31..2.39
+#   optic_commander_56                   PERI R17, y 2.59..2.98
+#   hatch_05/06/07                       roof hatches + bustle roof panel
+#   mg_aa_01_47, mg_mount_v_46           loader MG + mount, y 2.61..2.89
+#   bone_mg_aa_h_01_45, ammo_110         MG cradle + ammo, y 2.61..2.88
+#   antenna_01_109, antenna_02_108       whips at z -2.0/-2.2, y to 4.07
+#   ex_decor_l_10_44, ex_decor_r_07_43   bustle stowage bins, y 1.89..2.42
+# The mantlet ('vehicle#bone_gun_48', y 1.69..2.49 z 1.48..2.96) is likewise
+# stranded; it belongs on the GUN so it elevates with the tube (its bbox is
+# inside the Gun node's, so the loader's auto trunnion/muzzle stay put).
+#
+# Side effect that also fixes articulation: the Turret footprint used by the
+# autoPivot fallback was z -3.13..2.12 (centre -0.51, visibly aft of the
+# ring); with the wedges absorbed it becomes z -3.13..2.96 (centre -0.09).
+#
+# NOT moved: the engine-deck louvre banks and the rear stowage frames inside
+# 'vehicle#x_root_107' (fused hull mesh) — see tools/repair_oracles_blender.py
+# for the follow-up carve decision on the rear rack.
+LEO2A5_TURRET_STRAYS = [
+    'vehicle#ammo_110', 'vehicle#antenna_01_109', 'vehicle#antenna_02_108',
+    'vehicle#bone_mg_aa_h_01_45', 'vehicle#ex_armor_l_14_54',
+    'vehicle#ex_armor_l_15_53', 'vehicle#ex_armor_r_14_41',
+    'vehicle#ex_armor_r_15_42', 'vehicle#ex_decor_l_10_44',
+    'vehicle#ex_decor_r_07_43', 'vehicle#hatch_05_51', 'vehicle#hatch_06_52',
+    'vehicle#hatch_07_55', 'vehicle#mg_aa_01_47', 'vehicle#mg_mount_v_46',
+    'vehicle#optic_commander_56', 'vehicle#turret_cap_50',
+]
+
+
+def repair_leo2a5(gltf):
+    for name in LEO2A5_TURRET_STRAYS:
+        absorb_into(gltf, name, 'Turret')
+    absorb_into(gltf, 'vehicle#bone_gun_48', 'Gun')
+
+
+REPAIRS['leo2a5'] = [('py', repair_leo2a5)]
 
 
 def repair(tank_id):

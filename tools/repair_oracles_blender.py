@@ -21,15 +21,18 @@
 # Usage:
 #   blender -b --python tools/repair_oracles_blender.py -- dump <glb> <Mesh...>
 #   blender -b --python tools/repair_oracles_blender.py -- repair <id>
+#   blender -b --python tools/repair_oracles_blender.py -- retag <id>
 #
 # `repair` reads public/models/tanks/community/recovered/<id>.glb.bak (created
 # from the shipping file on first run) and rewrites <id>.glb.
+# `retag` (batch-3) re-groups fused/mis-parented rigs IN PLACE — no lifts, no
+# parking: see RETAG_RECIPES.
 import bpy
 import bmesh
 import shutil
 import sys
 from pathlib import Path
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 ROOT = Path(__file__).resolve().parent.parent
 RECOVERED = ROOT / 'public' / 'models' / 'tanks' / 'community' / 'recovered'
@@ -198,6 +201,332 @@ RECIPES = {
 }
 
 
+# ------------------------------------------------------- retag recipes -----
+# Batch-3 mode: IN-PLACE re-grouping only. Nothing is translated, lifted or
+# parked — parts stay at their authored world positions and only change which
+# articulation subtree owns them. Two op kinds work at loose-part / vertex-
+# region granularity (for material-merged or fused skins); 'parent' moves a
+# whole node. All boxes are glb-world [x0,x1, y0,y1, z0,z1] as printed by
+# `dump`.
+#
+#   ('parent', child, parent)
+#       hang an existing object under another, world transform preserved.
+#   ('carve_parts', source, rules, dest, parent|None)
+#       separate(LOOSE) the source mesh, classify each loose part by its
+#       world bbox, join every match into `dest` (parented under `parent`),
+#       join the rest back under the original source name. rules is a list;
+#       a part matches if ANY rule matches:
+#         ('center', box)      part bbox centre inside box
+#         ('bbox', box, pad)   part bbox inside box grown by pad
+#   ('carve_region', source, box, dest, parent|None)
+#       vertex-region separate (duplicates the boundary ring only) — for
+#       continuous shells that cross an articulation boundary, e.g. a turret
+#       interior liner that dives below the ring plane. parent=None leaves
+#       the carved piece a scene root.
+#
+# 'src': 'bak' rebuilds from <stem>.glb.bak (created on first run — the
+# whole repair lives in this file). 'src': 'current' layers on the shipping
+# file as-is (used when tools/repair_oracles.py owns step 1 — re-run that
+# first for a from-scratch rebuild; carve ops are no-ops when already cut).
+RETAG_RECIPES = {
+    # leopard2_proto: NO RECIPE — assessed unrepairable by rigid means
+    # (batch-3). The m_bergman print's TurretMesh is ONE fully-connected
+    # component spanning the entire vehicle (x 0..29, y 0..21.4, z 0..84.7
+    # model units, hull walls at 18.85): the turret is genuinely melted to
+    # deck level (rises 2.5 units where a Leopard 2 turret needs ~8) and the
+    # gun is a bar printed at deck height. There is no displaced authored
+    # turret anywhere in the file to move onto the ring — unlike the UK
+    # prints there are no loose parts at all. Any "repair" would mean
+    # sculpting new geometry. Stays a documented oracle cap
+    # (docs/references/tanks/leopard2_proto.md TURRET+GUN ORACLE CAP).
+
+    # tiger2-maximus (community/, not recovered/): 20 flat material-merged
+    # Object_N meshes; turretNode ^Object_2$ (turret+gun fused, explicit
+    # cfg.pivot). docs/references/tanks/tiger2.md ORACLE CAP: mantlet collar
+    # (z 0.42..1.09 world, to y 2.6), cupola drum band (z -1.10..-1.72, to
+    # y 3.15) and the aerial/rod farm (z -2.0..-3.4, y 2.6..2.95) are baked
+    # into HULL meshes and hover in mid-air when Object_2 yaws (baseline
+    # board: the collar ring floats at the bow at yaw 180).
+    #   Object_4  = turret furniture mesh (periscopes, collar face plates,
+    #               bustle antenna, cupola bits) — every loose part is in the
+    #               turret zone -> whole node onto the turret.
+    #   Object_10 = the aerial/bracket cluster (x +-1.05, y 2.26..2.87,
+    #               z -3.17..-2.24) -> whole node onto the turret.
+    #   Object_8 / Object_9 mix hull plating with collar/cupola/aerial
+    #               pieces -> loose-part carve:
+    #     rule A ('center'): y > 2.55 inside z -3.45..0.30 — cupola drum
+    #            pieces, roof plates, aerial bits. Hull tops out at 2.12
+    #            there (deck) so nothing legitimate matches.
+    #     rule B ('bbox'):  the collar box x -0.52..0.38, y 1.98..2.85,
+    #            z 0.26..1.40 — collar rings/plates. Hull roof under it
+    #            stays y <= 2.0 (parts at 1.96..2.01 tested OUT).
+    #   Names: carved joins are 'Turret_Extras_8/9' — deliberately NOT
+    #   Object_N so the loader's tiger2 gear regexes (^Object_(14|15|18|19)$
+    #   etc.) and the Object_2 vertex split can never collide with them.
+    'tiger2': {
+        'file': 'tiger2-maximus',
+        'dir': 'community',
+        'src': 'bak',
+        'ops': [
+            ('parent', 'Object_4', 'Object_2'),
+            ('parent', 'Object_10', 'Object_2'),
+            ('carve_parts', 'Object_8', [
+                ('center', (-1.10, 1.10, 2.55, 3.40, -3.45, 0.30)),
+                ('bbox', (-0.52, 0.38, 1.98, 2.85, 0.26, 1.40), 0.02),
+            ], 'Turret_Extras_8', 'Object_2'),
+            ('carve_parts', 'Object_9', [
+                ('center', (-1.10, 1.10, 2.55, 3.40, -3.45, 0.30)),
+                ('bbox', (-0.52, 0.38, 1.98, 2.85, 0.26, 1.40), 0.02),
+            ], 'Turret_Extras_9', 'Object_2'),
+        ],
+    },
+    # leo2a5 phase 2 (phase 1 = tools/repair_oracles.py absorbs the stranded
+    # wedge/roof fittings into Turret/Gun — run it first). Residuals proven
+    # by docs/geometry-gate/leo2a5.json after phase 1:
+    #  * side turret curve: refBot ~1 unit under procBot across the ring
+    #    columns — the Turret mesh's own interior floor/basket (y 0.80..1.62,
+    #    z -1.82..1.45) hangs below the deck line in the turret mask. Carve
+    #    at y 1.62 (shell walls stop at 1.65, so only the liner moves) and
+    #    leave the lower liner a hull-side root: it is entirely inside the
+    #    hull tub silhouette (x +-1.5 < 1.83, y 0.80..1.62 < 1.99), i.e.
+    #    mask-neutral where it now lives.
+    #  * NOT carved — the rear stowage frame fused in 'vehicle#x_root_107'
+    #    (x +-1.64, y 0.74..1.82, z -4.15..-2.0 overhanging the tail): a
+    #    trial carve onto the turret was REVERTED. When yawed 180 deg the
+    #    frame impales the glacis (it is authored at deck-to-skirt height —
+    #    a real 2A5 bustle rack rides high exactly so it clears the deck),
+    #    so it is Strv-pattern HULL rear stowage, not the turret rack the
+    #    round-2 audit guessed. The proc's own full-width turret rack vs
+    #    this hull frame stays a documented plan-view cap (~17).
+    'leo2a5': {
+        'file': 'leo2a5',
+        'src': 'current',
+        'ops': [
+            ('carve_region', 'Turret', (-2.0, 2.0, -1.0, 1.62, -4.3, 3.0),
+             'vehicle#turret_liner_low', None),
+        ],
+    },
+    # leo2a7v (desirefx print; turretNode ^desirefx_me_003$). The scan +
+    # baseline board read: me_003 is a COMPLETE flat A7V turret (roof
+    # plateau, bustle deck, side wedge bins, mast farm, fused L/55 authored
+    # drooping to the fender line) — but it is authored SUNKEN: roof plateau
+    # y 0.96 vs hull deck plates y 0.83 (0.13 proud instead of ~0.57), walls
+    # burying to y 0.17 through the sponson band. The round-3 audit read
+    # those buried walls as "hull-side armor and sponson courses" — solo
+    # yaw cells show they are the turret's own skin. Additionally the
+    # commander plinth / EMES tower (y 0.85..1.25 over z -0.55..0.55) is
+    # authored in the HULL mesh me_002 — taller than the sunken roof, it
+    # impales the turret at every yaw angle.
+    # Repair, rigid only:
+    #  * authored-origin: park me_003's node origin on the ring axis
+    #    (x 0, z -0.40 = roof-plateau centre; the old footprint fallback sat
+    #    at z +1.16 because the fused L/55 drags the bbox bow-ward, so the
+    #    yaw circle orbited a point ahead of the hull centre),
+    #  * carve the plinth out of me_002 and hang it on the turret at its
+    #    authored height (its base sits on the sunken roof exactly as
+    #    printed) — it now yaws with the shell instead of impaling it.
+    # NOT done — lifting the turret onto the deck race (+0.44): verified
+    # geometrically correct, but the mast farm fused into me_003 already
+    # drives the loader's height-limited normalization; lifting it grew the
+    # box 3.47 -> 3.91 and pushed the lab's width re-normalization into its
+    # 1.65 safeScale clamp — the whole reference rendered ~4% narrow and
+    # every gate component (hull included) collapsed to 0. The sunken seat
+    # stays a documented print defect; the procedural 2A7V was deliberately
+    # built to this print's own chunky frame (docs r3 notes), so the masks
+    # still compare like for like.
+    'leo2a7v': {
+        'file': 'leo2a7v',
+        'src': 'bak',
+        'ops': [
+            ('set_origin', 'desirefx_me_003', (0.0, 0.90, -0.40)),
+            ('carve_region', 'desirefx_me_002',
+             (-1.0, 1.0, 0.845, 1.35, -0.65, 0.65), 'TurretRoofPlinth', None),
+            ('parent', 'TurretRoofPlinth', 'desirefx_me_003'),
+        ],
+    },
+    # merkava2b phase 2 (phase 1 = tools/repair_oracles.py — run it first).
+    # 'vehicle#turret_inside_46' is the casting interior + crew-tunnel liner
+    # (y 0.61..2.59): physically it yaws with the casting (phase 1 parents it
+    # under Turret), but its below-ring half also drops the reference turret
+    # side-mask bottom a full metre under the procedural's (gate worst
+    # columns refBot -1.84 vs procBot -0.75). Split it at the ring plane
+    # y 1.70 (casting shell bottoms at 1.57 stay): the upper liner keeps
+    # riding the turret hidden inside the casting silhouette, the lower
+    # tunnel half returns to the hull where it is entirely inside the tub
+    # (x +-1.40 < 1.94, y 0.61..1.70 < 1.85) — mask-neutral on both sides.
+    'merkava2b': {
+        'file': 'merkava2b',
+        'src': 'current',
+        'ops': [
+            ('carve_region', 'vehicle#turret_inside_46',
+             (-1.6, 1.6, 0.0, 1.70, -3.2, 1.2),
+             'vehicle#turret_inside_low', None),
+        ],
+    },
+}
+
+
+def world_bbox_min_max(obj):
+    lo, hi = world_box(obj)
+    return lo, hi
+
+
+def rule_matches(part, rules):
+    lo, hi = world_box(part)
+    c = [(lo[i] + hi[i]) / 2 for i in range(3)]
+    for rule in rules:
+        kind, box = rule[0], rule[1]
+        x0, x1, y0, y1, z0, z1 = box
+        if kind == 'center':
+            if x0 <= c[0] <= x1 and y0 <= c[1] <= y1 and z0 <= c[2] <= z1:
+                return True
+        elif kind == 'bbox':
+            pad = rule[2] if len(rule) > 2 else 0.0
+            if (lo[0] >= x0 - pad and hi[0] <= x1 + pad and
+                    lo[1] >= y0 - pad and hi[1] <= y1 + pad and
+                    lo[2] >= z0 - pad and hi[2] <= z1 + pad):
+                return True
+        elif kind == 'reach':
+            # bbox inside the padded box AND extending past z_reach (rear
+            # overhang test — separates tail-crossing racks from deck gear)
+            pad, z_reach = rule[2], rule[3]
+            if (lo[0] >= x0 - pad and hi[0] <= x1 + pad and
+                    lo[1] >= y0 - pad and hi[1] <= y1 + pad and
+                    lo[2] >= z0 - pad and hi[2] <= z1 + pad and
+                    lo[2] <= z_reach):
+                return True
+        else:
+            raise ValueError(f'unknown rule kind {kind}')
+    return False
+
+
+def parent_keep_world(child, parent):
+    child.parent = parent
+    child.matrix_parent_inverse = parent.matrix_world.inverted()
+
+
+def bisect_box(obj, box):
+    """Cut obj's mesh along every box face that passes through it.
+
+    Coplanar cuts only — the surface is unchanged; this just guarantees the
+    subsequent region carve separates exactly ON the box faces instead of
+    wherever whole triangles happen to end.
+    """
+    lo, hi = world_box(obj)
+    planes = []
+    for axis in range(3):
+        for v in (box[axis * 2], box[axis * 2 + 1]):
+            if lo[axis] < v < hi[axis]:
+                planes.append((axis, v))
+    if not planes:
+        return
+    bpy.ops.object.select_all(action='DESELECT')
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.mode_set(mode='EDIT')
+    for axis, v in planes:
+        bpy.ops.mesh.select_all(action='SELECT')
+        # glb axis -> blender world: x -> +x, y -> +z, z -> -y
+        if axis == 0:
+            co, no = (v, 0.0, 0.0), (1.0, 0.0, 0.0)
+        elif axis == 1:
+            co, no = (0.0, 0.0, v), (0.0, 0.0, 1.0)
+        else:
+            co, no = (0.0, -v, 0.0), (0.0, -1.0, 0.0)
+        bpy.ops.mesh.bisect(plane_co=co, plane_no=no)
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+
+def separate_loose(obj):
+    bpy.ops.object.select_all(action='DESELECT')
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    before = set(bpy.data.objects)
+    bpy.ops.mesh.separate(type='LOOSE')
+    return [obj] + [o for o in bpy.data.objects if o not in before]
+
+
+def run_retag(tank_id):
+    recipe = RETAG_RECIPES[tank_id]
+    stem = recipe.get('file', tank_id)
+    base = ROOT / 'public' / 'models' / 'tanks' / recipe['dir'] \
+        if 'dir' in recipe else RECOVERED
+    src = base / f'{stem}.glb'
+    bak = base / f'{stem}.glb.bak'
+    if not bak.exists():
+        shutil.copy2(src, bak)
+    load(bak if recipe.get('src', 'bak') == 'bak' else src)
+
+    for op in recipe['ops']:
+        if op[0] == 'parent':
+            _, child, parent = op
+            parent_keep_world(bpy.data.objects[child], bpy.data.objects[parent])
+        elif op[0] == 'lift':
+            # rigid world +y translate (blender +z). Applied via location so
+            # it exports as the node's translation.
+            _, name, dy = op
+            bpy.data.objects[name].location.z += dy
+            bpy.context.view_layer.update()
+        elif op[0] == 'set_origin':
+            # park the node origin on a glb-world point WITHOUT moving any
+            # geometry (mesh data shifts by the inverse) — the loader's
+            # autoPivot then uses the authored origin instead of a bbox
+            # fallback. Only for parentless, unrotated (post-apply) objects.
+            _, name, point = op
+            obj = bpy.data.objects[name]
+            assert obj.parent is None
+            target = point_to_blender(point)
+            delta = target - obj.location
+            obj.data.transform(Matrix.Translation(-delta))
+            obj.location += delta
+            bpy.context.view_layer.update()
+        elif op[0] == 'carve_parts':
+            _, source, rules, dest, parent = op
+            source_obj = bpy.data.objects[source]
+            keep_parent = source_obj.parent
+            pieces = separate_loose(source_obj)
+            hits = [p for p in pieces if rule_matches(p, rules)]
+            rest = [p for p in pieces if p not in hits]
+            print(f'[retag] {tank_id}: {source} -> {len(hits)} part(s) '
+                  f'to {dest}, {len(rest)} stay')
+            if not hits:
+                join(rest, source)
+                continue
+            dest_obj = join(hits, dest)
+            rest_obj = join(rest, source)
+            if keep_parent is not None and rest_obj is not None:
+                parent_keep_world(rest_obj, keep_parent)
+            if parent:
+                parent_keep_world(dest_obj, bpy.data.objects[parent])
+        elif op[0] == 'carve_region':
+            _, source, box, dest, parent = op
+            source_obj = bpy.data.objects[source]
+            # Bisect along the box faces that cut through the mesh first, so
+            # faces straddling the region boundary split exactly ON it (the
+            # cut is coplanar — surface shape is unchanged). Without this,
+            # separate(SELECTED) leaves every straddling face behind and the
+            # split line wanders a full triangle-height off the plane.
+            bisect_box(source_obj, box)
+            piece = carve(source_obj, box)
+            if piece is None:
+                print(f'[retag] {tank_id}: {source} region already cut — no-op')
+                continue
+            mw = piece.matrix_world.copy()
+            piece.parent = None
+            piece.matrix_world = mw
+            piece.name = dest
+            piece.data.name = dest
+            if parent:
+                parent_keep_world(piece, bpy.data.objects[parent])
+        else:
+            raise ValueError(f'unknown retag op {op[0]}')
+
+    bpy.context.view_layer.update()
+    bpy.ops.export_scene.gltf(filepath=str(src), export_format='GLB',
+                              export_yup=True, export_apply=False)
+    print(f'[retag] {tank_id}: -> {src} (pristine original at {bak.name})')
+
+
 # Blender's glTF importer converts the file's +Y-up world to Blender Z-up:
 # blender (x, y, z) = glb (x, -z, y).
 def to_glb(v):
@@ -241,10 +570,12 @@ def carve(obj, box):
     bm.verts.ensure_lookup_table()
     mw = obj.matrix_world
     hit = 0
+    e = 5e-4  # verts bisected exactly onto a box face must count as inside
     for v in bm.verts:
         g = to_glb(mw @ v.co)
-        inside = (box[0] <= g[0] <= box[1] and box[2] <= g[1] <= box[3]
-                  and box[4] <= g[2] <= box[5])
+        inside = (box[0] - e <= g[0] <= box[1] + e
+                  and box[2] - e <= g[1] <= box[3] + e
+                  and box[4] - e <= g[2] <= box[5] + e)
         v.select = inside
         hit += inside
     bm.select_flush(True)
@@ -279,6 +610,10 @@ def join(parts, name):
 def main():
     argv = sys.argv[sys.argv.index('--') + 1:]
     mode = argv[0]
+
+    if mode == 'retag':
+        run_retag(argv[1])
+        return
 
     if mode == 'dump':
         load(argv[1])
