@@ -235,7 +235,9 @@ function setPart(root, part) {
   root.traverse((o) => {
     if (!isRenderNode(o)) return;
     const base = baseVisible.get(o) === true;
-    const allowed = part === 'whole' || (part === 'hull' && isBelow(o, hull) && !isBelow(o, turret));
+    const allowed = part === 'whole'
+      || (part === 'hull' && isBelow(o, hull) && !isBelow(o, turret))
+      || (part === 'turret' && isBelow(o, turret));
     o.visible = base && allowed;
   });
 }
@@ -622,6 +624,308 @@ if (params.get('profiles')) {
   renderer.setSize(SIZE, SIZE, false);
   ptarget.dispose();
   window.__PROFILES = profiles;
+}
+
+// ---- &geo=1: THE GEOMETRY GATE --------------------------------------------
+// Authoritative curve-to-curve comparison. Extracts the SAME measured curves
+// from BOTH models with the same pipeline (no self-reporting), then scores:
+//   curves   — mean+max deviation between ref/proc silhouette polylines,
+//              normalized by vehicle size (side/plan/front, whole + hull)
+//   turret   — the subtracted (whole−hull) curves, scored separately so the
+//              historically weakest assembly can never hide in an average
+//   stations — per-station width/top/bottom errors across 14 hull slices
+//   dims     — the PROCEDURAL build vs PUBLISHED spec dims (anchors to the
+//              real vehicle: a defective oracle cannot drag the build wrong)
+//   floaters — connected-component check across articulation poses (a
+//              detached mesh island fails the gate outright)
+// GATE: every component >= 90. min() is the headline. No averaging.
+if (params.get('geo')) {
+  const GSIZE = 1024;
+  const gtarget = new THREE.WebGLRenderTarget(GSIZE, GSIZE, { depthBuffer:true, stencilBuffer:false });
+  const gMask = (visual, other, camera, part) => {
+    visual.root.visible = true; other.root.visible = false;
+    setPart(visual.root, part);
+    renderer.setRenderTarget(gtarget);
+    renderer.setSize(GSIZE, GSIZE, false);
+    renderer.clear(true, true, true);
+    renderer.render(scene, camera);
+    const rgba = new Uint8Array(GSIZE * GSIZE * 4);
+    renderer.readRenderTargetPixels(gtarget, 0, 0, GSIZE, GSIZE, rgba);
+    const m = new Uint8Array(GSIZE * GSIZE);
+    for (let i = 0; i < m.length; i++) m[i] = rgba[i * 4] > 40 ? 1 : 0;
+    return m;
+  };
+  const gTrace = (mask, cam, N = 96) => {
+    const half = cam.right;
+    const out = [];
+    const step = GSIZE / N;
+    for (let c = 0; c < N; c++) {
+      const x0 = Math.floor(c * step), x1 = Math.min(GSIZE, Math.floor((c + 1) * step));
+      let top = -1, bot = -1;
+      for (let x = x0; x < x1; x++) {
+        for (let y = GSIZE - 1; y >= 0; y--) if (mask[y * GSIZE + x]) { if (y > top) top = y; break; }
+        for (let y = 0; y < GSIZE; y++) if (mask[y * GSIZE + x]) { if (bot < 0 || y < bot) bot = y; break; }
+      }
+      out.push(top >= 0 ? [((x0 + x1) / 2 + 0.5) / GSIZE * 2 * half - half,
+        ((top + 0.5) / GSIZE * 2 - 1) * half, ((bot + 0.5) / GSIZE * 2 - 1) * half] : null);
+    }
+    return out;
+  };
+  const clamp01 = (v) => Math.max(0, Math.min(100, v));
+  // Curve deviation: mean+max |ref−proc| over columns where BOTH exist, plus
+  // a coverage penalty where exactly one silhouette exists (missing/excess
+  // volume is worse than displaced volume).
+  const curveScore = (refC, procC, normDim, fixedReg) => {
+    // Registration: translation-only, BOTH axes. The two models sit at
+    // different world spots in the shared camera, so align each curve pair by
+    // its valid-span midpoint (along) and mean band center (vertical), then
+    // resample the procedural curve onto the reference stations. Shape error
+    // survives untouched; placement error disappears. fixedReg pins BOTH
+    // offsets to the whole-vehicle frame so hull/turret PLACEMENT counts —
+    // without it a turret 40 cm out of position would self-register away.
+    const span = (c) => {
+      let a = null, b = null;
+      for (const p of c) if (p) { if (a === null) a = p[0]; b = p[0]; }
+      return a === null ? null : [a, b];
+    };
+    const rs = span(refC), ps = span(procC);
+    if (!rs || !ps) return { score: 0, meanPct: 100, maxPct: 100, coverPct: 100 };
+    const dAlong = fixedReg ? fixedReg.dAlong : (rs[0] + rs[1]) / 2 - (ps[0] + ps[1]) / 2;
+    const valid = procC.filter(Boolean);
+    const interp = (along) => {
+      const a = along - dAlong;                 // sample in proc's own frame
+      if (a < ps[0] - 0.02 || a > ps[1] + 0.02) return null;
+      let lo = null, hi = null;
+      for (const p of valid) {
+        if (p[0] <= a && (!lo || p[0] > lo[0])) lo = p;
+        if (p[0] >= a && (!hi || p[0] < hi[0])) hi = p;
+      }
+      if (!lo || !hi) return null;
+      if (hi[0] === lo[0]) return lo;
+      const t = (a - lo[0]) / (hi[0] - lo[0]);
+      return [a, lo[1] + (hi[1] - lo[1]) * t, lo[2] + (hi[2] - lo[2]) * t];
+    };
+    let dy = 0;
+    if (fixedReg) { dy = fixedReg.dy; } else {
+      let dySum = 0, dyN = 0;
+      for (const r of refC) if (r) { const p = interp(r[0]); if (p) { dySum += ((r[1] + r[2]) - (p[1] + p[2])) / 2; dyN++; } }
+      dy = dyN ? dySum / dyN : 0;
+    }
+    const errs = [], cols = [];
+    let onlyOne = 0, either = 0;
+    for (const r of refC) {
+      if (!r) continue;
+      either++;
+      const p = interp(r[0]);
+      if (!p) { onlyOne++; continue; }
+      const e = (Math.abs(r[1] - (p[1] + dy)) + Math.abs(r[2] - (p[2] + dy))) / 2;
+      errs.push(e);
+      cols.push({ at: +r[0].toFixed(2), refTop: +r[1].toFixed(2), refBot: +r[2].toFixed(2),
+        procTop: +(p[1] + dy).toFixed(2), procBot: +(p[2] + dy).toFixed(2), errM: +e.toFixed(3) });
+    }
+    if (!errs.length) return { score: 0, meanPct: 100, p95Pct: 100, coverPct: 100 };
+    cols.sort((a, b) => b.errM - a.errM);
+    const worst = cols.slice(0, 12);
+    errs.sort((a, b) => a - b);
+    const meanPct = (errs.reduce((a, b) => a + b, 0) / errs.length) / normDim * 100;
+    // p95 instead of raw max: one aliased column or fitting edge must not own
+    // the score; systematic shape error still shows in the tail.
+    const p95Pct = errs[Math.min(errs.length - 1, Math.floor(errs.length * 0.95))] / normDim * 100;
+    const coverPct = either ? onlyOne / either * 100 : 0;
+    return { score: Math.max(0, Math.min(100, 100 - 12 * meanPct - 0.6 * p95Pct - 1.5 * coverPct)),
+      meanPct: +meanPct.toFixed(2), p95Pct: +p95Pct.toFixed(2), coverPct: +coverPct.toFixed(2),
+      reg: { dAlong: +dAlong.toFixed(3), dy: +dy.toFixed(3) }, worst };
+  };
+  const sub = (whole, hull) => whole.map((w, i) => {
+    const h = hull[i];
+    if (!w) return null;
+    if (!h) return w;                       // hull absent → whole IS upper here
+    return w[1] - h[1] > 0.04 ? [w[0], w[1], h[1]] : null; // upper band only
+  });
+
+  const refBoxG = visibleBox(reference.root);
+  const height = refBoxG.max.y - refBoxG.min.y;
+  const length = refBoxG.max.z - refBoxG.min.z;
+  const camsG = { side: cameraFor(ANGLES.right), plan: cameraFor(ANGLES.top), front: cameraFor(ANGLES.front) };
+  const curves = {};
+  for (const [view, cam] of Object.entries(camsG)) {
+    for (const part of ['whole', 'hull']) {
+      curves[`${view}_${part}_ref`] = gTrace(gMask(reference, procedural, cam, part), cam);
+      curves[`${view}_${part}_proc`] = gTrace(gMask(procedural, reference, cam, part), cam);
+    }
+  }
+  // plan-view band errors live on the LENGTH axis (z); side/front on height
+  const norm = { side: height, plan: length, front: height };
+  const curveRows = {};
+  const viewReg = {};
+  for (const view of ['side', 'plan', 'front']) {
+    curveRows[`${view}_whole`] = curveScore(curves[`${view}_whole_ref`], curves[`${view}_whole_proc`], norm[view]);
+    viewReg[view] = curveRows[`${view}_whole`].reg; // one frame per view:
+    curveRows[`${view}_hull`] = curveScore(          // placement counts
+      curves[`${view}_hull_ref`], curves[`${view}_hull_proc`], norm[view], viewReg[view]);
+  }
+  for (const view of ['side', 'plan']) {
+    curves[`${view}_turret_ref`] = gTrace(gMask(reference, procedural, camsG[view], 'turret'), camsG[view]);
+    curves[`${view}_turret_proc`] = gTrace(gMask(procedural, reference, camsG[view], 'turret'), camsG[view]);
+  }
+  const turretEmpty = (c) => !c.some(Boolean);
+  // fixedMount is the committed casemate registration — spec-driven, so an
+  // emptied rig_turret can't fake it; the whole/hull curves carry the body.
+  const noTurretBoth = source?.glb?.fixedMount
+    || (turretEmpty(curves.side_turret_ref) && turretEmpty(curves.side_turret_proc));
+  const turretRows = noTurretBoth
+    ? { side: { score: 100, note: 'no turret (casemate)' }, plan: { score: 100, note: 'no turret (casemate)' } }
+    : {
+      side: curveScore(curves.side_turret_ref, curves.side_turret_proc, height, viewReg.side),
+      plan: curveScore(curves.plan_turret_ref, curves.plan_turret_proc, length, viewReg.plan),
+    };
+  // Stations: 14 front-view slices, width/top errors between the two models.
+  const stationErr = [];
+  {
+    const procBoxS = visibleBox(procedural.root);
+    for (let i = 0; i < 14; i++) {
+      const meas = (visual, other, box) => {
+        const sz = box.max.z - box.min.z;
+        const z0 = box.min.z + (i / 14) * sz, z1 = box.min.z + ((i + 1) / 14) * sz;
+        const cam = cameraFor(ANGLES.front);
+        cam.near = Math.max(0.1, cam.position.z - z1); cam.far = cam.position.z - z0;
+        cam.updateProjectionMatrix();
+        const m = gMask(visual, other, cam, 'whole');
+        let minX = 1e9, maxX = -1e9, maxY = -1e9, any = false;
+        const half = cam.right;
+        for (let y = 0; y < GSIZE; y++) for (let x = 0; x < GSIZE; x++) {
+          if (!m[y * GSIZE + x]) continue;
+          any = true;
+          const wx = ((x + 0.5) / GSIZE * 2 - 1) * half, wy = ((y + 0.5) / GSIZE * 2 - 1) * half;
+          if (wx < minX) minX = wx; if (wx > maxX) maxX = wx; if (wy > maxY) maxY = wy;
+        }
+        return any ? { w: maxX - minX, top: maxY } : null;
+      };
+      const r = meas(reference, procedural, refBoxG), p = meas(procedural, reference, procBoxS);
+      if (r && p) stationErr.push({ i,
+        wPct: +((Math.abs(r.w - p.w) / Math.max(r.w, 0.2)) * 100).toFixed(2),
+        topPct: +((Math.abs((r.top - refBoxG.min.y) - (p.top - procBoxS.min.y)) / height) * 100).toFixed(2) });
+      else if (r || p) stationErr.push({ i, wPct: 100, topPct: 100, onlyOne: true });
+    }
+  }
+  const trimmed = (arr) => {
+    const v = arr.slice().sort((a, b) => a - b);
+    const keep = v.slice(0, Math.max(1, v.length - 2)); // drop the 2 worst:
+    return keep.reduce((a, b) => a + b, 0) / keep.length; // one bustle station
+  };                                                       // must not own it
+  const mW = trimmed(stationErr.map((e) => e.wPct));
+  const mT = trimmed(stationErr.map((e) => e.topPct));
+  const stationScore = clamp01(100 - 10 * mW - 10 * mT);
+  // Published-dimension anchor: PROCEDURAL vs spec.dims (real vehicle).
+  // Antenna-robust: measured from silhouette curves counting only columns
+  // whose band thickness exceeds 12% of height (whip antennas/masts are
+  // authoring metadata, not the vehicle's published envelope).
+  const bodyExtent = (curve) => {
+    const cols = curve.filter(Boolean);
+    if (!cols.length) return null;
+    const rough = Math.max(...cols.map((c) => c[1])) - Math.min(...cols.map((c) => c[2]));
+    const body = cols.filter((c) => c[1] - c[2] > rough * 0.12);
+    if (!body.length) return null;
+    // p95 of column tops: a 2-column antenna mast must not define the roof
+    const tops = body.map((c) => c[1]).sort((a, b) => a - b);
+    const top = tops[Math.min(tops.length - 1, Math.floor(tops.length * 0.95))];
+    const bot = Math.min(...body.map((c) => c[2]));
+    return { h: top - bot, len: Math.abs(body[body.length - 1][0] - body[0][0]) };
+  };
+  const procExt = bodyExtent(curves.side_whole_proc);
+  const fullSpan = (curve) => {
+    let a = null, b = null;
+    for (const p of curve) if (p) { if (a === null) a = p[0]; b = p[0]; }
+    return a === null ? 0 : Math.abs(b - a);
+  };
+  const colSpan = (curve, minBand) => {
+    let a = null, b = null;
+    for (const p of curve) if (p && p[1] - p[2] > minBand) { if (a === null) a = p[0]; b = p[0]; }
+    return a === null ? 0 : Math.abs(b - a);
+  };
+  const dimRows = [];
+  const pub = spec.dims || {};
+  const dimCheck = (name, actual, published) => {
+    if (!published || !Number.isFinite(actual) || actual <= 0) return;
+    const pct = Math.abs(actual - published) / published * 100;
+    dimRows.push({ name, actual: +actual.toFixed(2), published, pct: +pct.toFixed(2) });
+  };
+  if (procExt) dimCheck('heightM', procExt.h, pub.heightM);
+  if (procExt) dimCheck('hullLengthM', procExt.len, pub.hullLengthM);
+  dimCheck('overallLengthM', fullSpan(curves.side_whole_proc), pub.overallLengthM);
+  // plan columns run across the WIDTH axis; substantial band = the hull body
+  dimCheck('widthM', colSpan(curves.plan_whole_proc, 1.0), pub.widthM);
+  const dimScore = clamp01(100 - dimRows.reduce((s, d) => s + Math.max(0, d.pct - 1) * 8, 0));
+  // Floater detection: connected components of the whole mask across poses.
+  const islands = (raw) => {
+    // two-pass dilation bridges aliasing gaps on thin antennas/chains
+    let mask = raw;
+    for (let pass = 0; pass < 2; pass++) {
+      const next = new Uint8Array(mask.length);
+      for (let y = 0; y < GSIZE; y++) for (let x = 0; x < GSIZE; x++) {
+        const i = y * GSIZE + x;
+        if (mask[i] || (x > 0 && mask[i - 1]) || (x < GSIZE - 1 && mask[i + 1]) ||
+            (y > 0 && mask[i - GSIZE]) || (y < GSIZE - 1 && mask[i + GSIZE])) next[i] = 1;
+      }
+      mask = next;
+    }
+    const seen = new Uint8Array(mask.length);
+    let count = 0;
+    const stack = [];
+    for (let i = 0; i < mask.length; i++) {
+      if (!mask[i] || seen[i]) continue;
+      let area = 0; stack.push(i); seen[i] = 1;
+      while (stack.length) {
+        const j = stack.pop(); area++;
+        const x = j % GSIZE, y = (j / GSIZE) | 0;
+        for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= GSIZE || ny >= GSIZE) continue;
+          const k = ny * GSIZE + nx;
+          if (mask[k] && !seen[k]) { seen[k] = 1; stack.push(k); }
+        }
+      }
+      if (area > 400) count++;              // chains/straps read as small islands
+    }
+    return count;
+  };
+  let floaterFails = 0;
+  {
+    const turretN = procedural.root.getObjectByName('rig_turret');
+    const gunN = procedural.root.getObjectByName('rig_gun');
+    const dep = spec.gunDepressionDeg ?? 8, elev = spec.gunElevationDeg ?? 15;
+    const poses = [[0, 0], [90, 0], [180, 0], [0, -dep], [0, elev]];
+    const camF = cameraFor(ANGLES.frontRight);
+    for (const [yaw, pitch] of poses) {
+      if (turretN) turretN.rotation.y = yaw * Math.PI / 180;
+      if (gunN) gunN.rotation.x = -pitch * Math.PI / 180;
+      procedural.root.updateMatrixWorld(true);
+      if (islands(gMask(procedural, reference, camF, 'whole')) > 1) floaterFails++;
+    }
+    if (turretN) turretN.rotation.y = 0;
+    if (gunN) gunN.rotation.x = 0;
+    procedural.root.updateMatrixWorld(true);
+  }
+  const floaterScore = floaterFails ? 0 : 100;
+  const components = {
+    hullCurves: Math.min(...['side_hull', 'plan_hull', 'front_hull'].map((k) => curveRows[k].score)),
+    wholeCurves: Math.min(...['side_whole', 'plan_whole', 'front_whole'].map((k) => curveRows[k].score)),
+    turretCurves: Math.min(turretRows.side.score, turretRows.plan.score),
+    stations: +stationScore.toFixed(1),
+    dims: +dimScore.toFixed(1),
+    floaters: floaterScore,
+  };
+  const geoMin = Math.min(...Object.values(components).map((v) => +v));
+  window.__GEO_REPORT = {
+    id, geoMin: +geoMin.toFixed(1), gatePassed: geoMin >= 90,
+    components: Object.fromEntries(Object.entries(components).map(([k, v]) => [k, +(+v).toFixed(1)])),
+    curveRows: Object.fromEntries(Object.entries(curveRows).map(([k, v]) => [k, v])),
+    turretRows, stationErr, dimRows, floaterFails,
+  };
+  setPart(reference.root, 'whole');
+  setPart(procedural.root, 'whole');
+  renderer.setSize(SIZE, SIZE, false);
+  gtarget.dispose();
 }
 
 // Diagnosis hook for headless probes (ancestry/classification questions).

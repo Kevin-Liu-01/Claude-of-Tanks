@@ -1,0 +1,135 @@
+# The Geometry Gate
+
+The authoritative, ruthless scoring mechanism for the from-scratch rebuild
+program. A tank ships only when it passes **BOTH** gates:
+
+1. **Geometric gate** — `node tools/geometry-gate.mjs --ids=<id>` reports
+   **every component ≥ 90** (the minimum is the headline; nothing averages
+   away a failure).
+2. **Visual gate** — the independent shaded-parity critic scores the tank
+   ≥ 9.0/10 on every view of its board (`&board=1`), i.e. "same vehicle,
+   same tier" against the reference render.
+
+IoU (`npm run model:fidelity`) remains a regression floor, not a pass bar.
+
+## What the geometric gate measures
+
+Run per tank: `tools/procedural-fidelity.html?id=<id>&geo=1`, driven by
+`tools/geometry-gate.mjs`. Both models — reference GLB and procedural build —
+go through the **identical** measurement pipeline (1024-px ortho masks →
+column polylines). Nothing is self-reported; the procedural build can only
+score by actually matching the measured reference geometry.
+
+### Components (all must be ≥ 90)
+
+| Component | What it is |
+|---|---|
+| `hullCurves` | min of side/plan/front hull-only silhouette curve scores |
+| `wholeCurves` | min of side/plan/front whole-vehicle curve scores |
+| `turretCurves` | min of side/plan turret-only (mask below `rig_turret`) curve scores; vacuous 100 for `fixedMount` casemates (spec-driven — an emptied rig cannot fake it) |
+| `stations` | 14 hull cross-sections: width + roof-height error, trimmed mean |
+| `dims` | published real-vehicle dimensions vs the procedural build |
+| `floaters` | disconnected-geometry islands across 5 articulation poses |
+
+### Curve scoring
+
+Each curve is ~90 columns of `[along, top, bottom]` in metres, traced from
+the mask. Registration is translation-only (span midpoint along the axis,
+mean-Δy vertical) — rotation/scale are NOT compensated, so a mis-scaled or
+listing build fails. The registration is computed ONCE per view from the
+whole-vehicle curves and **reused** for that view's hull and turret rows:
+a turret 40 cm out of position (or floating high) cannot self-register the
+error away. Errors are per-column band-edge deviations, normalised by the
+reference's governing dimension (height for side/front, length for plan):
+
+```
+score = 100 − 12·meanPct − 0.6·p95Pct − 1.5·coverPct
+```
+
+- `meanPct` — mean per-column error. The dominant term: 90 requires the
+  build to track the reference within ≈0.6% (≈2 cm on a 3.3 m tank).
+- `p95Pct` — 95th-percentile error. Catches systematic regional misses
+  without letting one aliased column own the score (raw max was gamed by
+  noise, p95 cannot be gamed by hiding a bad region under 5% of columns
+  wider than one feature).
+- `coverPct` — columns where only one model has geometry (overhang/length
+  mismatch).
+
+Every curve row in the report carries `worst`: the 12 worst columns with
+`at / refTop / refBot / procTop / procBot / errM` — the exact work order
+("at z=+4.36 your bow bottom is 0.58 m too deep").
+
+### Stations
+
+14 slices along each model's own hull, comparing width% and roof-height%
+(relative to height). Trimmed mean (2 worst slices dropped — a bustle
+overhang must not mask everything else, but systematic width error still
+fails): `100 − 10·trimW − 10·trimTop`.
+
+### Dims — the published-spec anchor
+
+Measured **from the procedural build's curves** against `spec.dims`
+(published real-vehicle data): `heightM` and `hullLengthM` from the side
+body extent (columns with band > 12% of height, so gun barrels don't count;
+roof = p95 of column tops, so a 2-column antenna mast doesn't define the
+height), `overallLengthM` from the full side span (gun included), `widthM`
+from the plan columns with > 1 m of body. Score:
+`100 − Σ max(0, pct − 1)·8` — 1% grace per dim, then 8 points per percent.
+
+This is the anti-gaming anchor: a build that "matches" a defective oracle
+(sunken hull, sky-high fused turret) still fails dims, and a build that
+matches dims but not the curves fails the curves. You cannot satisfy both
+without being actually right.
+
+### Floaters
+
+Articulation poses (turret 0/90/180, gun full depression/elevation), 2-pass
+dilated mask, any disconnected island > 400 px in any pose = fail. Turrets
+that leave their baskets, guns that separate from mantlets.
+
+## The loop
+
+```
+node tools/geometry-gate.mjs --ids=<family ids>
+  → docs/geometry-gate/<id>.json   (scores + per-column work orders)
+  → docs/geometry-gate/ledger.json (tool-written only, never by hand)
+```
+
+1. Builder reads its family's JSONs, fixes the worst component using the
+   `worst` columns and station/dim rows as the work order.
+2. Re-run the gate. Repeat until every component ≥ 90. There is no
+   iteration cap — the gate defines done.
+3. Then the visual gate: regenerate boards, independent critic scores
+   shaded parity ≥ 9.0/10 per view. Geometry ≥ 90 with a failed critic
+   means readability/material work, not silhouette work — fix and re-run
+   BOTH (any geometry edit invalidates the previous critic verdict).
+4. Family commit only when both gates pass (or a defect cap is certified).
+
+### Certified oracle-defect caps
+
+Some references are physically defective (fused rigs, yawed bodies —
+see `tools/repair_oracles*.py`). If a component is provably capped by an
+oracle defect: document the cap in `docs/references/tanks/<id>.md`, repair
+the oracle if a rigid transform can (batch queue), and the build must then
+match **published dims + the undamaged views**. A cap certification never
+excuses `dims`.
+
+### Anti-gaming rules
+
+- Both models are measured by the same pipeline; builders never hand the
+  gate numbers.
+- `min()` everywhere — no averaging across views, components, or tanks.
+- Published dims anchor the scale; width normalisation in the game loader
+  means exceeding the committed max width silently rescales the whole tank
+  (WIDTH GUARD comments in the profile files).
+- The ledger is tool-written; hand edits are a program violation.
+- Reference GLBs remain **measurement oracles**: dimensions may be read,
+  vertices may never be extracted, traced, or embedded (HANDOFF-FABLE §
+  licensing; measured polylines in `docs/references/profiles/` are
+  dimension data, like reading a blueprint).
+
+## Current baseline
+
+See `docs/geometry-gate/ledger.json`. At gate freeze the fleet's best tank
+(m60a1) scores min 40 — the gate is deliberately far ahead of the fleet.
+That is the point: it is the definition of done, not a description of today.
