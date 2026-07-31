@@ -58,7 +58,8 @@ score = 100 − 12·meanPct − 0.6·p95Pct − 1.5·coverPct
   noise, p95 cannot be gamed by hiding a bad region under 5% of columns
   wider than one feature).
 - `coverPct` — columns where only one model has geometry (overhang/length
-  mismatch).
+  mismatch), with a margin of 0.75 column-pitch so sub-pixel edge jitter
+  never counts as missing volume.
 
 Every curve row in the report carries `worst`: the 12 worst columns with
 `at / refTop / refBot / procTop / procBot / errM` — the exact work order
@@ -80,7 +81,9 @@ Measured **from the procedural build's curves** against `spec.dims`
 body extent (columns with band > 12% of height, so gun barrels don't count;
 roof = p95 of column tops, so a 2-column antenna mast doesn't define the
 height), `overallLengthM` from the full side span (gun included), `widthM`
-from the plan columns with > 1 m of body. Score:
+from the plan columns with > 0.35 m of band — skirts and fenders count
+toward width (published widths include them); whip antennas (< 0.1 m
+plan-band) don't. Score:
 `100 − Σ max(0, pct − 1)·8` — 1% grace per dim, then 8 points per percent.
 
 This is the anti-gaming anchor: a build that "matches" a defective oracle

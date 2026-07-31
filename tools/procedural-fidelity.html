@@ -721,11 +721,15 @@ if (params.get('geo')) {
     }
     const errs = [], cols = [];
     let onlyOne = 0, either = 0;
+    let pitch = 0;
+    { let prev = null;
+      for (const p of refC) { if (p) { if (prev !== null) { pitch = Math.abs(p[0] - prev); break; } prev = p[0]; } } }
+    const margin = Math.max(0.05, pitch * 0.75);
     for (const p of procC) {          // proc-only columns: geometry the ref
       if (!p) continue;               // doesn't have (e.g. excess overhang)
       either++;
       const a = p[0] + dAlong;
-      if (a < rs[0] - 0.05 || a > rs[1] + 0.05) onlyOne++;
+      if (a < rs[0] - margin || a > rs[1] + margin) onlyOne++;
     }
     for (const r of refC) {
       if (!r) continue;
@@ -866,6 +870,13 @@ if (params.get('geo')) {
     return { h: top - bot, len: Math.abs(body[body.length - 1][0] - body[0][0]) };
   };
   const procExt = bodyExtent(curves.side_whole_proc);
+  // columns are CENTERS: a span between first/last centers is one pitch
+  // short of the physical extent (refs self-measured ~3% narrow on width)
+  const colPitch = (curve) => {
+    let prev = null;
+    for (const p of curve) { if (p) { if (prev !== null) return Math.abs(p[0] - prev); } if (p) prev = p[0]; }
+    return 0;
+  };
   const fullSpan = (curve) => {
     let a = null, b = null;
     for (const p of curve) if (p) { if (a === null) a = p[0]; b = p[0]; }
@@ -887,7 +898,7 @@ if (params.get('geo')) {
   if (procExt) dimCheck('hullLengthM', procExt.len, pub.hullLengthM);
   dimCheck('overallLengthM', fullSpan(curves.side_whole_proc), pub.overallLengthM);
   // plan columns run across the WIDTH axis; substantial band = the hull body
-  dimCheck('widthM', colSpan(curves.plan_whole_proc, 1.0), pub.widthM);
+  dimCheck('widthM', colSpan(curves.plan_whole_proc, 0.35), pub.widthM);
   const dimScore = clamp01(100 - dimRows.reduce((s, d) => s + Math.max(0, d.pct - 1) * 8, 0));
   // Floater detection: connected components of the whole mask across poses.
   const islands = (raw) => {
