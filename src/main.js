@@ -97,6 +97,33 @@ const _aimPose = { pos: new THREE.Vector3() };
 // top-level consts are still in their temporal dead zone.
 // ---------------------------------------------------------------------------
 const boot = createBootScreen();
+// Boot splash subtitle: the inline index.html line was hardcoded
+// ('48 Vehicles · 4 Battlefields · Tiers I–X') and went stale as the roster
+// and map registry grew. Derive the real numbers from the same sources the
+// game plays from (ALL_TANK_IDS roster + maps registry + tier table),
+// identical formatting; runs at module eval so the splash updates within the
+// first paint beats. __BOOT_TAG mirrors the text for probes (the splash node
+// is torn down on dismiss).
+(() => {
+  try {
+    const el = document.querySelector('#cot-boot .cot-boot-tag');
+    if (!el) return;
+    const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const id of ALL_TANK_IDS) {
+      const t = ROMAN.indexOf(tierNumeral(id));
+      if (t < 0) continue;
+      if (t < lo) lo = t;
+      if (t > hi) hi = t;
+    }
+    const tiers = lo <= hi ? ` · Tiers ${ROMAN[lo]}–${ROMAN[hi]}` : '';
+    const text =
+      `${ALL_TANK_IDS.length} Vehicles · ${MAP_IDS.length} Battlefields${tiers}`;
+    el.textContent = text;
+    if (typeof window !== 'undefined') window.__BOOT_TAG = text;
+  } catch (_) { /* splashless build — never block boot on chrome text */ }
+})();
 const BOOT_TIMINGS = {};
 let bootComplete = false;
 // LOADING PERF: attribute the WHOLE boot, not just the staged work. `_lastMark`
@@ -165,8 +192,14 @@ const container = document.getElementById('app');
 boot.begin('renderer');
 const renderer = createRenderer(container);
 const scene = new THREE.Scene();
+// zero-viewport boot hardening: booting inside a pane that has not laid out
+// yet (innerWidth/innerHeight 0) used to seed a NaN aspect (0/0) that poisons
+// the projection matrix; fall back to 16:9 — the first real layout re-derives
+// it through the shared resize seam below.
+const _bootVw = container.clientWidth || window.innerWidth;
+const _bootVh = container.clientHeight || window.innerHeight;
 const camera = new THREE.PerspectiveCamera(
-  60, (container.clientWidth || window.innerWidth) / (container.clientHeight || window.innerHeight),
+  60, _bootVw > 0 && _bootVh > 0 ? _bootVw / _bootVh : 16 / 9,
   0.5, 4000,
 );
 boot.end('renderer');
@@ -320,6 +353,17 @@ function setGarageSunTrim(on) {
 let pedestalVisual = null;
 let selectedSpecId = 'm1a2';
 let pedestalPollToken = 0; // content_breadth r1: cancels stale GLB polls
+// switch-desync r1: convergence bookkeeping. A switch is "pending" from the
+// moment its call bumps pedestalPollToken until any reveal path records it
+// (pedestalShownToken catches up). The watchdog below only intervenes when
+// nothing is pending — a live GLB poll is never fought.
+let pedestalShownToken = 0;
+let pedestalPendingSince = 0;
+const PEDESTAL_PENDING_GRACE_MS = 8000; // > the poll's 6 s reveal deadline
+function pedestalSwitchPending() {
+  return pedestalPollToken !== pedestalShownToken &&
+    performance.now() - pedestalPendingSince < PEDESTAL_PENDING_GRACE_MS;
+}
 
 // ---------------------------------------------------------------------------
 // TANK-SWITCH PERF (switching r1): warm LRU of built pedestal visuals.
@@ -348,22 +392,72 @@ const pedestalCache = new Map(); // specId -> visual, oldest-first (LRU)
 const PEDESTAL_CACHE_MAX = 6;
 const PEDESTAL_PARK_Y = -200;
 if (typeof window !== 'undefined') window.__SWITCH_TIMINGS = [];
+// switch-desync r1: bounded event trace of the pedestal switch pipeline —
+// every call, path, reveal, retire, supersede and eviction lands here so a
+// live desync (stats card vs pedestal) can be root-caused from the page.
+const PED_TRACE_MAX = 500;
+if (typeof window !== 'undefined') window.__PED_TRACE = [];
+function pedTrace(ev, data) {
+  const log = (typeof window !== 'undefined' && window.__PED_TRACE) || null;
+  if (!log) return;
+  log.push(Object.assign({ t: Math.round(performance.now()), ev }, data));
+  if (log.length > PED_TRACE_MAX) log.splice(0, log.length - PED_TRACE_MAX);
+}
+function pedVisState(vis) {
+  if (!vis) return null;
+  const r = vis.root;
+  return `${vis.specId}${r.parent ? '' : '/detached'}${r.visible === false ? '/hidden' : ''}` +
+    `${r.position.y < GARAGE_POS.y - 50 ? '/parked' : ''}`;
+}
 function recordSwitch(specId, t0, path) {
   // every reveal path lands here — the moment a hero is ACTUALLY SHOWN.
   // __everShown feeds the LRU eviction policy (shown heroes outlive idle
   // prefetches, see touchCache).
   if (pedestalVisual) pedestalVisual.__everShown = true;
+  // switch-desync r1: every recordSwitch call site is token-current (sync
+  // paths run inside their own call; async polls re-check the token first),
+  // so this is exactly "the latest requested switch has converged".
+  pedestalShownToken = pedestalPollToken;
+  // Stale-cover sweep: the hero is visibly on stage NOW — any other visual
+  // still standing there is a cover whose park was deferred (see parkVisual)
+  // or whose retire chain was superseded. Park them in the same beat so the
+  // hand-over never shows two hulls or leaves a stale one behind.
+  for (const v of pedestalCache.values()) {
+    if (v !== pedestalVisual && onStage(v)) parkVisual(v);
+  }
   const ms = Math.round(performance.now() - t0);
   const log = (typeof window !== 'undefined' && window.__SWITCH_TIMINGS) || null;
   if (log) log.push({ id: specId, ms, path });
+  pedTrace('reveal', { id: specId, ms, path, pv: pedVisState(pedestalVisual) });
 }
 function pedestalPose(vis) {
   vis.root.position.set(GARAGE_POS.x, GARAGE_POS.y + 0.35, GARAGE_POS.z);
 }
 function parkVisual(vis) {
   if (!vis || vis === pedestalVisual) return; // re-selected while retiring
+  // switch-desync r1: NEVER strip the last visible cover off the stage while
+  // the incoming hero is still hidden (chained rapid switches: B's superseded
+  // poll used to park A — the only visible hero — while C was still awaiting
+  // its GLB, leaving a bare pedestal for the whole parse). The deferred park
+  // is completed by the stale-cover sweep in recordSwitch the moment the
+  // current hero actually shows.
+  if (onStage(vis) && !onStage(pedestalVisual)) {
+    pedTrace('park-deferred', { id: vis.specId, pv: pedVisState(pedestalVisual) });
+    return;
+  }
+  pedTrace('park', { id: vis.specId });
   if (vis.setVisible) vis.setVisible(false);
   vis.root.position.y = GARAGE_POS.y + PEDESTAL_PARK_Y;
+}
+/** True when a visual is standing visibly on the garage stage (not hidden,
+ * not parked 200 m down, not detached) — i.e. the player can see it. */
+function onStage(vis) {
+  if (!vis || !vis.root) return false;
+  const r = vis.root;
+  return !!r.parent && r.visible !== false &&
+    Math.abs(r.position.x - GARAGE_POS.x) < 4 &&
+    Math.abs(r.position.z - GARAGE_POS.z) < 4 &&
+    r.position.y > GARAGE_POS.y - 50;
 }
 function touchCache(specId, vis) {
   pedestalCache.delete(specId);
@@ -372,7 +466,22 @@ function touchCache(specId, vis) {
   // actually LOOKED AT out of the cache (real-browser session: two clicks +
   // four neighbor prefetches evicted the boot hero). Pass 1 evicts oldest
   // never-shown prefetches; pass 2 falls back to plain LRU order.
+  //
+  // switch-desync r1 (ROOT CAUSE of the garage tank-switch desync): touchCache
+  // runs INSIDE buildPedestalVisual, BEFORE the caller assigns pedestalVisual —
+  // so the just-built INCOMING hero is not covered by the pedestalVisual guard,
+  // and (never shown yet) pass 1 treated it as a stale prefetch. Once six
+  // already-viewed heroes filled the LRU, every new build evicted ITSELF at
+  // birth: scene.remove + dispose, then the disposed visual became the
+  // pedestal hero — empty/stale stage, and the prefetch loop rebuilt/evicted
+  // the same neighbor forever. Two additional shields:
+  //   - `vis` (the entry this call inserts) is never evictable;
+  //   - a visual standing VISIBLY on the stage (the outgoing hero covering
+  //     while the incoming one loads) is never evictable — evicting it left
+  //     a bare pedestal for the whole incoming GLB parse. The cache may sit
+  //     one entry over budget for that window; the next touch settles it.
   const evict = (v) => {
+    pedTrace('evict', { id: v.specId, state: pedVisState(v) });
     scene.remove(v.root); // detach BEFORE dispose: pending swap jobs bail
     v.dispose();
   };
@@ -380,6 +489,8 @@ function touchCache(specId, vis) {
     for (const [id, v] of pedestalCache) {
       if (pedestalCache.size <= PEDESTAL_CACHE_MAX) return;
       if (v === pedestalVisual) continue; // never evict the live hero
+      if (v === vis) continue;            // never evict the entry just inserted
+      if (onStage(v)) continue;           // never strip a hero off the stage
       if (pass === 1 && v.__everShown) continue;
       pedestalCache.delete(id);
       evict(v);
@@ -411,6 +522,17 @@ function buildPedestalVisual(specId) {
   // vehicle (visual.garageYawDeg, authored per spec; 0 keeps today's pose).
   vis.root.rotation.y =
     (162 + ((pedSpec && pedSpec.visual && pedSpec.visual.garageYawDeg) || 0)) * DEG;
+  // switch-desync r1: a sourced hero whose GLB has not swapped yet is born
+  // HIDDEN. It used to be born visible and only hidden a beat later inside
+  // setPedestalTank's import().then — during that beat the procedural
+  // stand-in flashed on stage AND stale retire chains mistook it for the
+  // live cover and parked the real one, leaving a bare pedestal when the
+  // hide landed. The reveal poll / modelLoader's in-place swap shows it the
+  // moment the real model is on the hull; the outgoing hero covers till then.
+  const srcB = MODEL_SOURCE[specId];
+  if (srcB && srcB.source === 'glb' && srcB.glb && !isGlbSwapped(vis) && vis.setVisible) {
+    vis.setVisible(false);
+  }
   pedestalPose(vis);
   scene.add(vis.root);
   touchCache(specId, vis);
@@ -450,14 +572,36 @@ function schedulePedestalPrefetch() {
     _idle(() => {
       if (game.phase !== 'garage') return;
       const id = want.find((x) => !pedestalCache.has(x));
-      if (id) parkVisual(buildPedestalVisual(id));
+      if (id) {
+        const v = buildPedestalVisual(id);
+        // switch-desync r1: hide BEFORE parking — parkVisual now refuses to
+        // strip a visible on-stage visual while the hero is hidden (cover
+        // protection), and a freshly built procedural prefetch is exactly
+        // that shape if it lands mid-switch. Hidden first, it parks cleanly.
+        if (v.setVisible) v.setVisible(false);
+        parkVisual(v);
+      }
       schedulePedestalPrefetch(); // second neighbor (or done — idempotent)
     }, 3000);
   }, 700); // let the selected hero reveal + texture upgrade land first
 }
-function setPedestalTank(specId) {
-  if (pedestalVisual && pedestalVisual.specId === specId) return;
+function setPedestalTank(specId, force = false) {
+  if (!force && pedestalVisual && pedestalVisual.specId === specId) {
+    // switch-desync r1: a same-spec call is a no-op ONLY while the hero is
+    // actually converging (its reveal poll owns the stage) or already stands
+    // visible on the pedestal. A hidden/parked/detached same-spec visual
+    // (superseded mid-load, evicted, poll died) must RE-RUN the pipeline —
+    // the old unconditional return silently swallowed the player's last
+    // click and left the stage stale or empty forever.
+    if (pedestalSwitchPending() || onStage(pedestalVisual)) {
+      pedTrace('same-spec-return', { id: specId, pv: pedVisState(pedestalVisual) });
+      return;
+    }
+    pedTrace('same-spec-rerun', { id: specId, pv: pedVisState(pedestalVisual) });
+  }
   pedestalPollToken++;
+  pedestalPendingSince = performance.now();
+  pedTrace('call', { id: specId, tok: pedestalPollToken, pv: pedVisState(pedestalVisual) });
   const t0 = performance.now();
   // content_breadth r2: the OUTGOING hero stays on stage until the incoming
   // model is ready — parking it immediately left 1-6 s of bare pedestal
@@ -471,9 +615,24 @@ function setPedestalTank(specId) {
     prevRetired = true;
     parkVisual(prev);
   };
+  // switch-desync r1: a HIDDEN prev covers nothing — park it the moment the
+  // new call takes over (after pedestalVisual is reassigned below) so a late
+  // GLB swap's auto-reveal (modelLoader re-shows hidden roots in place) can
+  // never pop a stale hero back onto the pedestal mid-switch. The VISIBLE
+  // covering prev keeps the deferred retire (no bare-stage gap).
+  const parkHiddenPrev = () => {
+    if (prev && prev !== pedestalVisual && prev.root.visible === false) retirePrev();
+  };
 
   // WARM PATH: parked hero — restore pose + visibility, done this frame.
-  const cached = pedestalCache.get(specId);
+  let cached = pedestalCache.get(specId);
+  if (cached && !cached.root.parent) {
+    // evicted/disposed while it was (or was becoming) the hero — a detached
+    // root can never be re-shown; drop the corpse and rebuild from scratch.
+    pedTrace('purge-detached', { id: specId });
+    pedestalCache.delete(specId);
+    cached = undefined;
+  }
   if (cached) {
     pedestalVisual = cached;
     touchCache(specId, cached);
@@ -488,10 +647,12 @@ function setPedestalTank(specId) {
       recordSwitch(specId, t0, 'cached');
       return;
     }
+    pedTrace('cached-unswapped', { id: specId, tok: pedestalPollToken });
     // parked before its GLB landed (prefetch raced the queue): fall through
     // to the standard hide-until-swapped poll below with the cached visual.
   }
   pedestalVisual = cached || buildPedestalVisual(specId);
+  parkHiddenPrev(); // stale hidden loader can't auto-reveal onto the stage
   // content_breadth r1: never show the three-box procedural placeholder on
   // the garage pedestal while the hero's GLB parses (the hard pop landed
   // directly above the model's CC-BY credit line). createTank already kicked
@@ -506,7 +667,11 @@ function setPedestalTank(specId) {
     const token = pedestalPollToken;
     const vis = pedestalVisual;
     import('./vehicles/modelLoader.js').then((m) => {
-      if (token !== pedestalPollToken) { retirePrev(); return; }
+      if (token !== pedestalPollToken) {
+        pedTrace('then-stale', { id: specId, tok: token });
+        retirePrev();
+        return;
+      }
       if (m.hasCachedGlb(src.glb.path) && isGlbSwapped(vis)) {
         // parse cache was warm — createTank swapped synchronously
         if (vis.setVisible) vis.setVisible(true);
@@ -516,13 +681,22 @@ function setPedestalTank(specId) {
         return;
       }
       if (vis.setVisible) vis.setVisible(false); // prev covers the stage
+      pedTrace('hide-await-glb', { id: specId, tok: token });
       const stats = (typeof window !== 'undefined' && window.__GLB_STATS) || null;
       // tank_models r4: 6 s timeout fallback — on asset 404/parse fail the
       // procedural stand-in is what exists; reveal it rather than leaving
       // the OUTGOING hero parked on the pedestal forever (swap-race minor).
       const deadline = performance.now() + 6000;
-      const poll = () => {
-        if (token !== pedestalPollToken) { retirePrev(); return; } // superseded
+      // switch-desync r1: the poll body is exception-guarded — a transient
+      // throw (e.g. a traverse racing an eviction/dispose elsewhere) used to
+      // kill the setTimeout chain silently: no reveal, no retire, stage stuck
+      // on the outgoing hero while the stats card showed the new selection.
+      const poll = () => { try {
+        if (token !== pedestalPollToken) {
+          pedTrace('poll-stale', { id: specId, tok: token });
+          retirePrev();
+          return;
+        } // superseded
         if (performance.now() > deadline) {
           if (vis.setVisible) vis.setVisible(true);
           retirePrev();
@@ -547,7 +721,10 @@ function setPedestalTank(specId) {
         retirePrev(); // hand-over, no gap
         scheduleHeroUpgrade(specId);
         recordSwitch(specId, t0, 'glb-load');
-      };
+      } catch (e) {
+        pedTrace('poll-error', { id: specId, err: String(e && e.message || e) });
+        setTimeout(poll, 120); // keep converging; the deadline still bounds us
+      } };
       // switching r1: 150 ms fixed cadence added a flat ~150 ms to EVERY
       // sourced-hero switch — poll at 50 ms (a light traverse) instead.
       setTimeout(poll, 50);
@@ -559,6 +736,21 @@ function setPedestalTank(specId) {
   }
   schedulePedestalPrefetch();
 }
+// switch-desync r1: CONVERGENCE WATCHDOG — the last line of defense. Whatever
+// interleaving the async seams produce (superseded polls, late GLB swaps,
+// evictions, dead timers), the invariant is: in the garage, the SELECTED id
+// ends up visible on the pedestal. The watchdog re-runs the pipeline whenever
+// the stage disagrees with the selection AND no switch is legitimately in
+// flight (pedestalSwitchPending covers the whole 6 s GLB reveal window, so a
+// live poll is never fought). Cheap: two field reads per tick when healthy.
+setInterval(() => {
+  if (!bootComplete || game.phase !== 'garage') return;
+  const want = selectedSpecId;
+  if (!want || pedestalSwitchPending()) return;
+  if (pedestalVisual && pedestalVisual.specId === want && onStage(pedestalVisual)) return;
+  pedTrace('watchdog-resync', { want, pv: pedVisState(pedestalVisual) });
+  setPedestalTank(want, true);
+}, 500);
 // The hero on the pedestal is the ONE vehicle the boot path may bake: it is
 // the only one the player can see. Every other roster entry (48 specs) stays
 // lazy — carousel portraits come from the pre-rendered public/icons/ set, and
@@ -2126,11 +2318,41 @@ function tick(nowMs) {
   post.render(dtR);
 }
 
-window.addEventListener('resize', () => {
+function applyViewportSize() {
   onResize(renderer, camera);
   post.setSize(container.clientWidth || window.innerWidth, container.clientHeight || window.innerHeight);
   lighting.updateFrustums();
-});
+}
+window.addEventListener('resize', applyViewportSize);
+// zero-viewport boot hardening: embedded panes can boot while the layout is
+// still 0×0 — the renderer/canvas stay zero-sized and the screen is black
+// until something fires a real window `resize` event (which such hosts may
+// never send). If boot happened at zero size, watch for the FIRST non-zero
+// layout (ResizeObserver on the container, plus a cheap interval fallback
+// for hosts that only lie through the window metrics) and run the shared
+// resize seam once. Inert on normal boots.
+(() => {
+  const zeroNow = () =>
+    !(container.clientWidth || window.innerWidth) ||
+    !(container.clientHeight || window.innerHeight);
+  if (!zeroNow() && renderer.domElement.width > 0 && renderer.domElement.height > 0) return;
+  let ro = null;
+  let iv = 0;
+  const tryFix = () => {
+    if (zeroNow()) return false;
+    applyViewportSize();
+    if (ro) { ro.disconnect(); ro = null; }
+    if (iv) { clearInterval(iv); iv = 0; }
+    return true;
+  };
+  if (typeof ResizeObserver === 'function') {
+    ro = new ResizeObserver(() => tryFix());
+    ro.observe(container);
+    ro.observe(document.documentElement);
+  }
+  iv = setInterval(tryFix, 250);
+  tryFix();
+})();
 
 // ---------------------------------------------------------------------------
 // Screenshot contract (docs/SCREENSHOT_CONTRACT.md, ARCHITECTURE.md §5)
@@ -3302,6 +3524,10 @@ window.__DEBUG = {
   input, // controls probe: isLocked/isCursorAim/binding introspection
   garage,
   get pedestalVisual() { return pedestalVisual; },
+  // switch-desync r1: the id the garage UI (stats card / card highlight)
+  // believes is selected — probes assert pedestalVisual.specId === this.
+  get selectedSpecId() { return selectedSpecId; },
+  get pedestalCacheIds() { return [...pedestalCache.keys()]; },
   selectGarageTank: (id) => garage.setSelected(id),
   get world() { return world; },
   switchMap,

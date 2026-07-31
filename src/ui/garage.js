@@ -1253,6 +1253,7 @@ export function createGarage(opts) {
     const chip = document.createElement('button');
     chip.type = 'button';
     chip.className = 'cot-era-chip';
+    chip.dataset.era = g.id; // switch-desync r1: stable hook for tools/tests
     chip.innerHTML = `${g.label}<span class="ct">${count}</span>`;
     chip.addEventListener('click', () => {
       emit('ui:click', {});
@@ -1303,6 +1304,7 @@ export function createGarage(opts) {
   for (const s of specs) {
     const card = document.createElement('div');
     card.className = 'cot-card';
+    card.dataset.specId = s.id; // switch-desync r1: stable hook for tools/tests
     // Stable pre-rendered 3/4 portrait. These are generated only after the
     // final model has loaded, so async GLB stand-ins can never replace a card.
     card.innerHTML =
@@ -1672,6 +1674,9 @@ export function createGarage(opts) {
     setSelected(specId) {
       if (applySelection(specId) && onSelect) onSelect(specId);
     },
+
+    /** Currently highlighted vehicle id (probe/tooling hook). @returns {?string} */
+    getSelected() { return selectedId; },
 
     // --- MAP-CONFIG WIRING ---
     /** Currently selected battlefield id ('random' allowed). @returns {string} */
