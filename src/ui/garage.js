@@ -10,6 +10,7 @@ import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } fr
 // CAMO PICKER SECTION: swatches preview the REAL resolved pattern (scheme +
 // palette from materials.js) instead of hand-approximated CSS gradients.
 import { resolveCamoVisual } from '../vehicles/materials.js';
+import { MODEL_SOURCE } from '../vehicles/specs.js';
 import { EQUIPMENT } from '../sim/spotting.js';
 
 const NATION_LABEL = {
@@ -795,12 +796,20 @@ export function createGarage(opts) {
     { id: 'ww2', label: 'WWII' },
     { id: 'modern', label: 'Modern' },
     { id: 'community', label: 'Community' },
+    // LOCAL: every vehicle whose registered model source is a real local GLB
+    // in THIS build (private/local builds register the recovered fleet; the
+    // public build strips them, so the chip auto-hides on zero members).
+    // Overlay group — a tank stays in its era group AND appears here.
+    { id: 'local', label: 'Local' },
   ];
+  const inGroup = (s, gid) => gid === 'local'
+    ? MODEL_SOURCE[s.id]?.source === 'glb'
+    : groupOf(s) === gid;
   let eraFilter = specs.length ? groupOf(specs[0]) : 'modern';
   const chipsEl = root.querySelector('.cot-era-chips');
   const chipById = new Map();
   for (const g of ERA_GROUPS) {
-    const count = specs.filter((s) => groupOf(s) === g.id).length;
+    const count = specs.filter((s) => inGroup(s, g.id)).length;
     if (!count) continue;
     const chip = document.createElement('button');
     chip.type = 'button';
@@ -811,8 +820,8 @@ export function createGarage(opts) {
       applyEraFilter(g.id);
       // moving to a new group: select its first vehicle so the pedestal,
       // stats card and highlighted card stay in sync with the visible strip
-      const first = specs.find((s) => groupOf(s) === g.id);
-      if (first && groupOf(specById.get(selectedId) || first) !== g.id) {
+      const first = specs.find((s) => inGroup(s, g.id));
+      if (first && !inGroup(specById.get(selectedId) || first, g.id)) {
         api.setSelected(first.id);
       }
     });
@@ -825,13 +834,14 @@ export function createGarage(opts) {
     for (const s of specs) {
       const card = cardById.get(s.id);
       if (!card) continue;
-      card.style.display = groupOf(s) === gid ? '' : 'none';
+      card.style.display = inGroup(s, gid) ? '' : 'none';
       // r3: the per-card era tag is REDUNDANT while the matching era chip is
       // the active filter (every visible card would repeat "MODERN" under a
       // selected MODERN chip). It only stays on the mixed-era COMMUNITY tab,
       // where it actually disambiguates.
       const tag = card.querySelector('.era');
       if (tag) {
+        // mixed-era tabs (community, local) keep the per-card era tag
         tag.style.display = (s.era === 'ww2' ? 'ww2' : 'modern') === gid ? 'none' : '';
       }
     }

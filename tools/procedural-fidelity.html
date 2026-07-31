@@ -520,6 +520,110 @@ if (params.get('board')) {
   }
 }
 
+// ---- &profiles=1: measure the REFERENCE model into authoring data --------
+// Silhouette polylines + station cross-sections extracted from ortho mask
+// renders (never vertex data): the from-scratch rebuild program authors
+// procedural geometry against these measured curves. All values in the
+// width-normalized world meters the game/lab share.
+if (params.get('profiles')) {
+  const PSIZE = 1024;
+  const ptarget = new THREE.WebGLRenderTarget(PSIZE, PSIZE, { depthBuffer:true, stencilBuffer:false });
+  const readMask = (camera, part) => {
+    reference.root.visible = true;
+    procedural.root.visible = false;
+    setPart(reference.root, part);
+    renderer.setRenderTarget(ptarget);
+    renderer.setSize(PSIZE, PSIZE, false);
+    renderer.clear(true, true, true);
+    renderer.render(scene, camera);
+    const rgba = new Uint8Array(PSIZE * PSIZE * 4);
+    renderer.readRenderTargetPixels(ptarget, 0, 0, PSIZE, PSIZE, rgba);
+    const m = new Uint8Array(PSIZE * PSIZE);
+    for (let i = 0; i < m.length; i++) m[i] = rgba[i * 4] > 40 ? 1 : 0;
+    return m;
+  };
+  // Column trace: for each pixel column, the top/bottom silhouette edge in
+  // world units. Returns ~N stations of [along, top, bottom].
+  const trace = (mask, cam, N = 96) => {
+    const half = cam.right; // symmetric ortho
+    const toWorldX = (px) => ((px + 0.5) / PSIZE * 2 - 1) * half;
+    const toWorldY = (py) => ((py + 0.5) / PSIZE * 2 - 1) * half;
+    const out = [];
+    const step = PSIZE / N;
+    for (let c = 0; c < N; c++) {
+      const x0 = Math.floor(c * step), x1 = Math.min(PSIZE, Math.floor((c + 1) * step));
+      let top = -1, bot = -1;
+      for (let x = x0; x < x1; x++) {
+        for (let y = PSIZE - 1; y >= 0; y--) if (mask[y * PSIZE + x]) { if (y > top) top = y; break; }
+        for (let y = 0; y < PSIZE; y++) if (mask[y * PSIZE + x]) { if (bot < 0 || y < bot) bot = y; break; }
+      }
+      if (top >= 0) out.push([Number(toWorldX((x0 + x1) / 2).toFixed(3)),
+        Number(toWorldY(top).toFixed(3)), Number(toWorldY(bot).toFixed(3))]);
+    }
+    return out;
+  };
+  const refBox = visibleBox(reference.root);
+  const rc = refBox.getCenter(new THREE.Vector3());
+  const mkCam = (dir) => {
+    const c = cameraFor(dir);
+    return c;
+  };
+  // Side (camera on +x): columns = world -z (flip to +z later), rows = world y.
+  const sideCam = mkCam(ANGLES.right);
+  const topCam = mkCam(ANGLES.top);
+  const frontCam = mkCam(ANGLES.front);
+  const profiles = {
+    id, generated: 'mask-trace-1024',
+    frame: { center: rc.toArray().map((v) => Number(v.toFixed(3))),
+      box: { min: refBox.min.toArray().map((v)=>Number(v.toFixed(3))), max: refBox.max.toArray().map((v)=>Number(v.toFixed(3))) } },
+    // whole-vehicle: side profile (z, deckY, bellyY), plan (z, +x half-width),
+    // front (x, topY, bottomY)
+    side_whole: trace(readMask(sideCam, 'whole'), sideCam),
+    side_hull: trace(readMask(sideCam, 'hull'), sideCam),
+    plan_whole: trace(readMask(topCam, 'whole'), topCam),
+    plan_hull: trace(readMask(topCam, 'hull'), topCam),
+    front_whole: trace(readMask(frontCam, 'whole'), frontCam),
+    front_hull: trace(readMask(frontCam, 'hull'), frontCam),
+  };
+  // Station cross-sections: slice the front camera's near/far around 12 z
+  // stations; each slice's mask bounds give hull width/height at that station.
+  const size = refBox.getSize(new THREE.Vector3());
+  const stations = [];
+  const S = 14;
+  for (let i = 0; i < S; i++) {
+    const z0 = refBox.min.z + (i / S) * size.z;
+    const z1 = refBox.min.z + ((i + 1) / S) * size.z;
+    const cam = mkCam(ANGLES.front);
+    // camera sits at center + dir*60 looking -dir; distance to plane z=zs:
+    const camZ = cam.position.z;
+    cam.near = Math.max(0.1, camZ - z1);
+    cam.far = camZ - z0;
+    cam.updateProjectionMatrix();
+    const m = readMask(cam, 'whole');
+    // bounds in world units
+    let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9, area = 0;
+    const half = cam.right;
+    for (let y = 0; y < PSIZE; y++) for (let x = 0; x < PSIZE; x++) {
+      if (!m[y * PSIZE + x]) continue;
+      area++;
+      const wx = ((x + 0.5) / PSIZE * 2 - 1) * half;
+      const wy = ((y + 0.5) / PSIZE * 2 - 1) * half;
+      if (wx < minX) minX = wx; if (wx > maxX) maxX = wx;
+      if (wy < minY) minY = wy; if (wy > maxY) maxY = wy;
+    }
+    stations.push(area ? {
+      z: Number(((z0 + z1) / 2).toFixed(3)),
+      w: Number((maxX - minX).toFixed(3)), x0: Number(minX.toFixed(3)), x1: Number(maxX.toFixed(3)),
+      y0: Number(minY.toFixed(3)), y1: Number(maxY.toFixed(3)),
+    } : { z: Number(((z0 + z1) / 2).toFixed(3)), empty: true });
+  }
+  profiles.stations = stations;
+  setPart(reference.root, 'whole');
+  renderer.setSize(SIZE, SIZE, false);
+  ptarget.dispose();
+  window.__PROFILES = profiles;
+}
+
 // Diagnosis hook for headless probes (ancestry/classification questions).
 window.__FIDELITY_DEBUG = { reference, procedural, setPart, baseVisible, renderMask, cameraFor, ANGLES, bounds };
 window.__FIDELITY_READY=true;
