@@ -9,9 +9,11 @@
  *
  * Pure-logic module (ARCHITECTURE.md §3.5.3). RNG consumption order is fixed
  * for determinism: pen roll, damage roll, then per-intersection
- * (save, moduleDmg, fire). HE blast sweeps roll modules (model order) then
- * crew (model order). Wreck hits consume no RNG beyond the once-per-shot
- * pen/dmg rolls.
+ * (save, moduleDmg, fire) in trace order — module/crew boxes that STRADDLE
+ * the penetrated plate (entered before it, exited past it) roll immediately
+ * at the pen, still in trace order. HE blast sweeps roll modules (model
+ * order) then crew (model order). Wreck hits consume no RNG beyond the
+ * once-per-shot pen/dmg rolls.
  */
 
 import { Vector3, Matrix4, Quaternion, Euler } from 'three';
@@ -105,8 +107,8 @@ const BARREL_SCREEN_MIN_MM = 30;
 const BARREL_SCREEN_MAX_MM = 60;
 const BARREL_SCREEN_MM_PER_RADIUS_M = 500;
 const BARREL_DEFAULT_RADIUS_M = 0.08;
-/** Red-module repair duration (seconds) — the count-up target used by the
- * game-loop repair ticker (game/state.js MODULE_REPAIR_S must match). */
+/** Red-module repair duration (seconds) — the count-up target consumed by
+ * tickModuleRepairs below (the game loop calls it; no duplicate constant). */
 export const REPAIR_S = 10;
 const FIRE_BASE_TICKS = 10;
 const FIRE_TICK_HP_FRAC = 0.005;
@@ -142,6 +144,22 @@ const HE_NEAREST_INSET_M = 0.01;
 /** ±25% uniform roll. @param {function} rng @param {number} avg @returns {number} */
 function rollUniform(rng, avg) {
   return avg * (0.75 + rng() * 0.5);
+}
+
+/**
+ * EQUIPMENT SYSTEM (game/equipment.js): multiplier off CombatState.equipMults,
+ * defaulting to 1 so combat states without a loadout (probes, selftests,
+ * throwaway states) resolve exactly as before. The record is attached once
+ * per battle by applyEquipmentToCombat; damage.js stays pure — the loadout
+ * travels WITH the combat state.
+ * @param {?object} combat CombatState
+ * @param {string} key equipMults field
+ * @returns {number}
+ */
+function equipMult(combat, key) {
+  const m = combat && combat.equipMults;
+  const v = m && m[key];
+  return typeof v === 'number' && isFinite(v) ? v : 1;
 }
 
 /**
@@ -290,13 +308,19 @@ function rollModuleDamage(ctx, moduleName) {
     // engines roll ENGINE_FIRE_CHANCE on every damaging hit; fuel tanks have
     // NO fire chance while yellow and ignite at 100% only when destroyed.
     const fireRoll = ctx.rng();
-    const ignite =
-      moduleName === 'engine' ? fireRoll < ENGINE_FIRE_CHANCE : newState === 'red';
+    // EQUIPMENT SYSTEM: safety fuel tanks halve the ENGINE ignition odds
+    // (fuel-tank ignition stays the locked 100%-on-red rule — the equipment
+    // path to fewer fuel fires is its +50% module HP). Auto extinguishers
+    // shorten the burn: fires start with half the tick budget (floor 2 so a
+    // fire is never a free no-op).
+    const ignite = moduleName === 'engine'
+      ? fireRoll < ENGINE_FIRE_CHANCE * equipMult(ctx.combat, 'engineFire')
+      : newState === 'red';
     if (ignite) {
       const fire = ctx.combat.fire;
       if (!fire.burning) res.fireStarted = true;
       fire.burning = true;
-      fire.ticksLeft = FIRE_BASE_TICKS;
+      fire.ticksLeft = Math.max(2, Math.round(FIRE_BASE_TICKS * equipMult(ctx.combat, 'fireTicks')));
       fire.tickTimer = 0;
     }
   }
@@ -311,9 +335,14 @@ function rollModuleDamage(ctx, moduleName) {
  * @returns {void}
  */
 function rollCrewHit(ctx, crewName, isHe) {
-  const roll = ctx.rng();
+  const roll = ctx.rng(); // always consumed — fixed order
   if (!(crewName in ctx.combat.crew) || ctx.combat.crew[crewName] === false) return;
-  if (roll < (isHe ? CREW_HIT_CHANCE_HE : CREW_HIT_CHANCE)) {
+  // EQUIPMENT SYSTEM: spall liner halves crew hits from HE splash only —
+  // direct penetrations bypass the liner.
+  const chance = isHe
+    ? CREW_HIT_CHANCE_HE * equipMult(ctx.combat, 'crewHe')
+    : CREW_HIT_CHANCE;
+  if (roll < chance) {
     ctx.combat.crew[crewName] = false;
     ctx.crewHit.push(crewName);
   }
@@ -570,6 +599,14 @@ export function resolveShellHit(shell, target, hits, rng) {
   let entryPoint = null;
   const limitM = (spec.caliberMm * POSTPEN_CALIBERS) / 1000;
   let decided = false;
+  // STRADDLING-BOX DEFERRAL (module_hitbox r1): internal module/crew boxes are
+  // reported once, at their ENTRY t — a box whose entry face sits OUTSIDE the
+  // armor (Tiger sponson racks hugging the hull side, Merkava front engines
+  // wrapping past the glacis) used to be consumed pre-pen and never rolled,
+  // even though the shell crosses the box interior after penetrating. Such
+  // boxes are parked here and rolled at the pen when their span (t..tExit)
+  // extends past the penetrated plate.
+  const straddlers = [];
 
   for (const hit of hits) {
     if (hullPen && entryPoint && hit.point.distanceTo(entryPoint) > limitM) break;
@@ -580,6 +617,8 @@ export function resolveShellHit(shell, target, hits, rng) {
         const r = rollModuleDamage(ctx, hit.module);
         event.fireStarted = event.fireStarted || r.fireStarted;
         event.ammoRacked = event.ammoRacked || r.ammoRacked;
+      } else if (!hit.barrel) {
+        straddlers.push(hit);
       }
       // The barrel doubles as a spaced layer (armor doc §4/§7): crossing the
       // cylinder costs pen whether or not the gun-damage save landed.
@@ -598,6 +637,7 @@ export function resolveShellHit(shell, target, hits, rng) {
     }
     if (hit.kind === 'crew') {
       if (hullPen) rollCrewHit(ctx, hit.crew, false);
+      else straddlers.push(hit);
       continue;
     }
 
@@ -695,6 +735,21 @@ export function resolveShellHit(shell, target, hits, rng) {
         event.damage = dmgRoll;
         combat.hp -= dmgRoll;
         decided = true;
+        // STRADDLING-BOX FLUSH: deferred boxes whose span extends past this
+        // plate lie on the post-pen path — their overlap BEGINS at the pen
+        // point (distance 0, so the 10-caliber limit can't exclude them).
+        // Rolled in trace order, before any deeper intersection, keeping the
+        // per-shot RNG sequence deterministic.
+        for (const pb of straddlers) {
+          if (!(pb.tExit > hit.t)) continue;
+          if (pb.kind === 'crew') {
+            rollCrewHit(ctx, pb.crew, false);
+          } else {
+            const r = rollModuleDamage(ctx, pb.module);
+            event.fireStarted = event.fireStarted || r.fireStarted;
+            event.ammoRacked = event.ammoRacked || r.ammoRacked;
+          }
+        }
       }
       pen -= effMm;
     } else {
@@ -1084,8 +1139,12 @@ function heDirectHit(shell, target, hits, dmgRoll, rng) {
     combat.hp -= dmgRoll;
     const limitM = (spec.caliberMm * POSTPEN_CALIBERS) / 1000;
     for (const hit of hits) {
-      if (hit.t <= plateHit.t) continue;
-      if (hit.point.distanceTo(plateHit.point) > limitM) break;
+      // Span-aware skip (module_hitbox r1, mirrors resolveShellHit's
+      // straddler flush): a box ENTERED before the burst plate still counts
+      // when its span extends past it — the blast crosses its interior.
+      const spanEnd = hit.tExit !== undefined ? hit.tExit : hit.t;
+      if (spanEnd <= plateHit.t) continue;
+      if (hit.t > plateHit.t && hit.point.distanceTo(plateHit.point) > limitM) break;
       if (hit.kind === 'module') {
         const r = rollModuleDamage(ctx, hit.module);
         event.fireStarted = event.fireStarted || r.fireStarted;
@@ -1106,7 +1165,10 @@ function heDirectHit(shell, target, hits, dmgRoll, rng) {
     const distM = stack.gapM;
     const falloff = Math.max(0, 1 - Math.min(1, distM / radiusM));
     const spall = behaviorOf(spec.type).spallBonus ?? 1; // HESH 1.25 (shells doc §6)
-    const dmg = Math.max(0, 0.5 * dmgRoll * falloff - HE_ARMOR_ABSORB * armorMm) * spall;
+    // EQUIPMENT SYSTEM: spall liner soaks NON-PENETRATING blast (×0.75);
+    // full HE penetrations above are never reduced (WoT parity).
+    const dmg = Math.max(0, 0.5 * dmgRoll * falloff - HE_ARMOR_ABSORB * armorMm) *
+      spall * equipMult(combat, 'heSplash');
     stampImpact(event, plateHit, effMm, shell.remainingPenMm);
     stampShotInfo(event, plateHit, spec, target, shell.vel); // SHOT-INFO (additive)
     event.damage = dmg;
@@ -1320,7 +1382,9 @@ export function resolveHeBurst(shell, burstPoint, tanks, directTarget, directHit
     const distM = surfaceDistM + stack.gapM;
     const falloff = Math.max(0, 1 - Math.min(1, distM / radiusM));
     const spall = behaviorOf(spec.type).spallBonus ?? 1; // HESH 1.25 (shells doc §6)
-    const dmg = Math.max(0, 0.5 * dmgRoll * falloff - HE_ARMOR_ABSORB * armorMm) * spall;
+    // EQUIPMENT SYSTEM: spall liner soaks blast-sphere splash too (×0.75).
+    const dmg = Math.max(0, 0.5 * dmgRoll * falloff - HE_ARMOR_ABSORB * armorMm) *
+      spall * equipMult(tank.combat, 'heSplash');
     stampImpact(event, plateHit, armorMm, shell.remainingPenMm);
     // SHOT-INFO (additive): blast direction = burst point toward the plate.
     _siDir.subVectors(plateHit.point, burstPoint);
@@ -1377,13 +1441,71 @@ export function tickFire(entity, rng) {
 
   combat.fire.ticksLeft -= 1;
   let extinguished = false;
-  if (rng() < FIRE_EXTINGUISH_CHANCE || combat.fire.ticksLeft <= 0) {
+  // EQUIPMENT SYSTEM: auto extinguishers double the per-tick self-out roll.
+  if (rng() < Math.min(1, FIRE_EXTINGUISH_CHANCE * equipMult(combat, 'extinguish')) ||
+      combat.fire.ticksLeft <= 0) {
     combat.fire.burning = false;
     extinguished = true;
   }
   const destroyed = finalizeTarget(combat, ammoRacked);
   if (destroyed) extinguished = true;
   return { damage, extinguished, destroyed };
+}
+
+/**
+ * Advance red-module auto-repairs one tick (armor doc §9; ARCHITECTURE §2.4
+ * locked: a red module self-repairs to YELLOW at 50% HP after REPAIR_S).
+ * This is the one module state transition that used to live outside this
+ * file — game/state.js hand-rolled the red→yellow flip next to a duplicate
+ * of REPAIR_S (module_hitbox r1 consolidation). The toolbox equipment
+ * multiplies the count-up RATE (equipMults.repair, default 1): ×1.25 turns
+ * yellow at 8 s while the §2.4 duration stays the unequipped baseline.
+ *
+ * No RNG. Returns the modules that finished repairing this tick so the
+ * caller can broadcast 'module:state' events.
+ *
+ * @param {object} combat CombatState
+ * @param {number} dt seconds since the last tick
+ * @returns {string[]} module names that just turned yellow
+ */
+export function tickModuleRepairs(combat, dt) {
+  const repaired = [];
+  if (!combat || combat.destroyed || !combat.modules) return repaired;
+  const rate = equipMult(combat, 'repair');
+  for (const name of Object.keys(combat.modules)) {
+    const m = combat.modules[name];
+    if (m.state !== 'red') continue;
+    m.repairT += dt * rate;
+    if (m.repairT >= REPAIR_S) {
+      m.hp = m.maxHp * 0.5;
+      // Route the flip through the shared state machine (hp 50% ⇒ yellow;
+      // leaving red also clears repairT).
+      if (refreshModuleState(m) !== 'red') repaired.push(name);
+    }
+  }
+  return repaired;
+}
+
+/**
+ * Repair-kit consumable: every damaged module back to full HP / 'ok'
+ * (module_hitbox r1 — main.js used to hand-roll this transition). Routed
+ * through the shared state machine; returns the module names fixed so the
+ * caller can broadcast 'module:state' events (and decide whether the kit
+ * was consumed at all).
+ * @param {object} combat CombatState
+ * @returns {string[]} module names restored to 'ok'
+ */
+export function repairAllModules(combat) {
+  const fixed = [];
+  if (!combat || !combat.modules) return fixed;
+  for (const name of Object.keys(combat.modules)) {
+    const m = combat.modules[name];
+    if (m.state === 'ok') continue;
+    m.hp = m.maxHp;
+    refreshModuleState(m); // full HP ⇒ 'ok', repairT cleared
+    fixed.push(name);
+  }
+  return fixed;
 }
 
 /**
@@ -1414,6 +1536,9 @@ export function startReload(combatState, spec) {
   if ('loader' in combatState.crew && combatState.crew.loader === false) mult *= 1.5;
   const rack = combatState.modules && combatState.modules.ammoRack;
   if (rack && rack.state !== 'ok') mult *= AMMORACK_RELOAD_MULT;
+  // EQUIPMENT SYSTEM: gun rammer / vents (× <1) — re-derived per reload like
+  // the debuffs above, from the loadout attached to this combat state.
+  mult *= equipMult(combatState, 'reload');
   const totalS = spec.gun.reloadS * mult;
   combatState.reload.totalS = totalS;
   combatState.reload.t = totalS;

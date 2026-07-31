@@ -2,7 +2,7 @@
 // source archives. Geometry was normalized by tools/build_recovered_fleet.sh;
 // class stats inherit the nearest researched vehicle and are then adjusted to
 // keep each variant identifiable and matchmaking-safe.
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
 
 const copy = (v) => JSON.parse(JSON.stringify(v));
 const ALLOW_LOCAL_RECOVERED_MODELS = typeof import.meta !== 'undefined' &&
@@ -29,6 +29,11 @@ const make = (baseId, id, name, nation, patch = {}) => {
   if (patch.gun) spec.gun = { ...baseGun, ...patch.gun };
   if (patch.dims) spec.dims = { ...baseDims, ...patch.dims };
   if (patch.visual) spec.visual = { ...baseVisual, ...patch.visual };
+  // MODULE HITBOXES (module_hitbox r1): the visual renders at spec.dims (the
+  // geometry gate enforces it) while the copied armor stayed donor-sized —
+  // e.g. m60a1 carried Leopard-1-sized armor 1.2 m shorter than its render,
+  // so shots at the rendered turret resolved as air. Refit the copy.
+  if (patch.dims) fitArmorToDims(spec.armor, baseDims, spec.dims);
   return spec;
 };
 

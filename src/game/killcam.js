@@ -31,6 +31,7 @@
  */
 import * as THREE from 'three';
 import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.js';
+import { MODULE_LABEL, CREW_LABEL } from '../ui/moduleRegistry.js';
 import { getSpec, ALL_TANK_IDS } from '../vehicles/specs.js';
 import { penAtDistanceMm } from '../sim/ballistics.js';
 
@@ -57,12 +58,7 @@ const _Y = new THREE.Vector3(0, 1, 0);
 // scratch camera for the x-ray framing solve (fov/aspect set per solve)
 const _fitCam = new THREE.PerspectiveCamera(42, 16 / 9, 0.5, 4000);
 
-const MODULE_LABEL = {
-  trackL: 'Track L', trackR: 'Track R', engine: 'Engine', fuelTank: 'Fuel Tank',
-  ammoRack: 'Ammo Rack', gun: 'Gun', radio: 'Radio', optics: 'Optics',
-  turretRing: 'Turret Ring',
-};
-const CREW_LABEL = { commander: 'Commander', gunner: 'Gunner', driver: 'Driver', loader: 'Loader' };
+// MODULE_LABEL / CREW_LABEL come from ui/moduleRegistry.js (single source).
 
 /** 'turret_cheek_R' -> 'turret cheek R' (same formatter as shotInfo.js). */
 function zoneLabel(zone) {
@@ -807,30 +803,30 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 @keyframes cotKcInLine{from{opacity:0;}to{opacity:.85;}}
 .cot-kc-micro{position:absolute;white-space:nowrap;background:rgba(6,9,12,.6);
   border:1px solid rgba(146,164,180,.25);color:#9fc0da;padding:1px 5px 2px;
-  font-family:${FONT_COND};font-stretch:condensed;font-weight:700;font-size:9px;
+  font-family:${FONT_COND};font-weight:700;font-size:9px;
   letter-spacing:.14em;text-transform:uppercase;line-height:1.2;}
 .cot-kc-bart,.cot-kc-barb{position:absolute;left:0;right:0;height:9vh;}
 .cot-kc-bart{top:0;background:linear-gradient(180deg,rgba(0,0,0,.94),rgba(0,0,0,.6) 70%,transparent);}
 .cot-kc-barb{bottom:0;background:linear-gradient(0deg,#000 38%,rgba(0,0,0,.72) 68%,transparent);}
 .cot-kc-title{position:absolute;top:2.4vh;left:50%;transform:translateX(-50%);text-align:center;}
-.cot-kc-title .t{font-family:${FONT_COND};font-stretch:condensed;font-weight:800;
+.cot-kc-title .t{font-family:${FONT_COND};font-weight:800;
   font-size:17px;letter-spacing:.46em;color:#ffd9a0;text-shadow:0 1px 10px rgba(0,0,0,.9);}
 .cot-kc-title .s{font-size:10.5px;letter-spacing:.18em;color:#aeb9c4;margin-top:3px;
   font-variant-numeric:tabular-nums;}
 .cot-kc-skip{position:absolute;bottom:1.6vh;right:30px;font-family:${FONT_COND};
-  font-stretch:condensed;font-weight:700;font-size:10.5px;letter-spacing:.26em;color:#93a1ad;}
+  font-weight:700;font-size:10.5px;letter-spacing:.26em;color:#93a1ad;}
 .cot-kc-annot{position:absolute;left:28px;bottom:11.5vh;width:272px;
   background:linear-gradient(180deg,rgba(10,14,18,.9),rgba(6,9,12,.92));
   border:1px solid rgba(146,164,180,.32);border-left:2px solid #ffb04a;
   box-shadow:0 6px 24px rgba(0,0,0,.55);padding:0 0 8px;}
 .cot-kc-annot .hd{padding:6px 10px 5px;border-bottom:1px solid rgba(146,164,180,.18);}
-.cot-kc-annot .hd .k{font-family:${FONT_COND};font-stretch:condensed;font-weight:800;
+.cot-kc-annot .hd .k{font-family:${FONT_COND};font-weight:800;
   font-size:13px;letter-spacing:.1em;color:#ffcf8a;}
 .cot-kc-annot .hd .w{font-size:10.5px;color:#c6d2dc;margin-top:2px;letter-spacing:.03em;}
 .cot-kc-rows{padding:5px 10px 0;display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;}
 .cot-kc-kv{display:flex;justify-content:space-between;font-size:10.5px;color:#8a97a3;
   font-variant-numeric:tabular-nums;letter-spacing:.03em;}
-.cot-kc-kv b{color:#e4edf4;font-weight:700;font-family:${FONT_COND};font-stretch:condensed;}
+.cot-kc-kv b{color:#e4edf4;font-weight:700;font-family:${FONT_COND};letter-spacing:-.01em;}
 /* r8: the pen row spans the card on ONE line (it wrapped into a mangled
    two-line label/value jumble); the ERA/screens qualifier is a suffix chip
    and a dim caption legends the number format once. */
@@ -842,13 +838,13 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-pencap{grid-column:1/-1;font-size:8.5px;color:#5f6d7a;letter-spacing:.05em;
   text-align:right;margin-top:-2px;}
 .cot-kc-banner{margin:7px 10px 0;padding:3px 8px;text-align:center;display:none;
-  font-family:${FONT_COND};font-stretch:condensed;font-weight:800;font-size:11px;
+  font-family:${FONT_COND};font-weight:800;font-size:11px;
   letter-spacing:.2em;color:#ff6a5a;border:1px solid rgba(255,106,90,.7);
   background:rgba(120,20,10,.35);}
 .cot-kc-banner.on{display:block;}
 .cot-kc-label{position:absolute;white-space:nowrap;
   background:rgba(6,9,12,.86);border:1px solid currentColor;padding:3px 8px 4px;
-  font-family:${FONT_COND};font-stretch:condensed;font-weight:800;font-size:11.5px;
+  font-family:${FONT_COND};font-weight:800;font-size:11.5px;
   letter-spacing:.09em;text-transform:uppercase;line-height:1.25;
   box-shadow:0 2px 10px rgba(0,0,0,.6);}
 .cot-kc-label .s{display:block;font-size:9.5px;font-weight:700;letter-spacing:.06em;
@@ -868,7 +864,7 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
   transform:translate(-50%,-50%);background:currentColor;box-shadow:0 0 9px currentColor;}
 .cot-kc-dot.ok{background:transparent;border:1.5px solid currentColor;box-shadow:none;}
 .cot-kc-dmg{position:absolute;font-family:${FONT_COND};
-  font-stretch:condensed;font-weight:800;font-size:24px;color:#ffd166;
+  font-weight:800;font-size:24px;color:#ffd166;
   letter-spacing:.04em;text-shadow:0 2px 12px rgba(0,0,0,.9);font-variant-numeric:tabular-nums;
   background:rgba(6,9,12,.6);border:1px solid rgba(255,209,102,.4);
   padding:1px 9px 2px;line-height:1.2;}

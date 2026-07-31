@@ -30,6 +30,7 @@ import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
 // vector class-glyph/arrow language instead (WoT reads class + heading, not
 // per-vehicle profiles, at those sizes).
 import { maskIcon, tintedIcon } from './icons.js';
+import { moduleAlertLabel } from './moduleRegistry.js';
 // SHOT-INFO SECTION: combat-intelligence panels (shot cards, armor diagrams,
 // incoming toasts, shot log, session stats) — logic lives in src/ui/shotInfo.js.
 import { createShotInfo } from './shotInfo.js';
@@ -2788,11 +2789,11 @@ export function initHud(bus) {
   });
   bus.on('module:state', (p) => {
     if (playerId == null || p.id !== playerId || p.state === 'ok') return;
-    const label = p.module === 'trackL' || p.module === 'trackR' ? 'TRACK'
-      : p.module === 'ammoRack' ? 'AMMO RACK'
-      : p.module === 'fuelTank' ? 'FUEL TANK'
-      : p.module === 'turretRing' ? 'TURRET RING'
-      : p.module.toUpperCase();
+    const label = moduleAlertLabel(p.module);
+    // repaired:true = auto-repair finished (red → yellow). This used to toast
+    // '<MODULE> DAMAGED' — a recovery announced as fresh damage (the audio
+    // layer already said 'repairs' over it). WoT language: 'Track repaired'.
+    if (p.repaired) { showAlert(`${label} REPAIRED`, false); return; }
     showAlert(p.state === 'red' ? `${label} DESTROYED` : `${label} DAMAGED`, p.state === 'red');
   });
 

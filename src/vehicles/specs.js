@@ -1948,6 +1948,47 @@ Object.assign(MODEL_SOURCE, {
 });
 
 /**
+ * Fit a (deep-copied) donor armor model to a recipient's published dims
+ * (module_hitbox r1). Recovered/derived vehicles copy their donor's spec and
+ * patch `dims` — but the armor GEOMETRY (plates, module/crew boxes, pivots)
+ * stayed donor-sized, so hit resolution disagreed with the rendered vehicle
+ * by up to 1.2 m (m60a1 carried Leopard-1 armor: every shot at its rendered
+ * upper hull/turret passed through air). The geometry gate pins every visual
+ * to spec.dims, so a per-axis affine fit re-derives the armor envelope from
+ * the same measured truth the visual is built to.
+ *
+ * Scales positions only — plate thickness/ratings (physicalMm/keMm/ceMm) and
+ * ERA values are design stats and stay untouched. Slopes change by the axis
+ * ratio (second-order next to the envelope error being fixed). MUTATES and
+ * returns `armor`; call on a copy, never a shared donor reference.
+ *
+ * @param {object} armor ArmorModel (deep copy, mutated in place)
+ * @param {object} fromDims donor spec.dims
+ * @param {object} toDims recipient spec.dims
+ * @returns {object} the same armor object, fitted
+ */
+export function fitArmorToDims(armor, fromDims, toDims) {
+  if (!armor || !fromDims || !toDims) return armor;
+  const ratio = (a, b) => (a > 0 && b > 0 ? b / a : 1);
+  const sx = ratio(fromDims.widthM, toDims.widthM);
+  const sy = ratio(fromDims.heightM, toDims.heightM);
+  const sz = ratio(fromDims.hullLengthM, toDims.hullLengthM);
+  if (Math.abs(sx - 1) < 1e-3 && Math.abs(sy - 1) < 1e-3 && Math.abs(sz - 1) < 1e-3) return armor;
+  const v3 = (v) => { v[0] *= sx; v[1] *= sy; v[2] *= sz; };
+  for (const plates of [armor.hullPlates, armor.turretPlates]) {
+    for (const p of plates || []) for (const v of p.verts) v3(v);
+  }
+  for (const list of [armor.modules, armor.crew]) {
+    for (const b of list || []) { v3(b.min); v3(b.max); }
+  }
+  if (armor.turretPivot) v3(armor.turretPivot);
+  if (armor.gunPivot) v3(armor.gunPivot);
+  if (armor.gunBarrel) armor.gunBarrel.lengthM *= sz;
+  if (armor.boundingRadiusM) armor.boundingRadiusM *= Math.max(sx, sz);
+  return armor;
+}
+
+/**
  * Look up a tank spec by id.
  * @param {string} id one of TANK_IDS
  * @returns {object} TankSpec (ARCHITECTURE §2.2)

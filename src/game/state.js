@@ -14,19 +14,26 @@ import {
 } from '../sim/ballistics.js';
 import { tankPoseFromState, traceTank } from '../sim/armor.js';
 import {
-  createCombatState, resolveShellHit, resolveHeBurst, tickFire, startReload, isHeClass,
+  createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,
+  startReload, isHeClass,
 } from '../sim/damage.js';
 import { createAI } from './ai.js';
 import { getStoredDifficulty } from './input.js';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.js';
 import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.js';
+// EQUIPMENT SYSTEM (game/equipment.js): per-tank loadouts — the player's
+// persisted picks, per-class AI defaults, and the equipMults record the
+// damage/movement/repair hooks read off CombatState.
+import {
+  loadEquipment as loadEquipmentCatalog, applyEquipmentToCombat, defaultLoadoutFor,
+} from './equipment.js';
 
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
 const COMBAT_SEED = 6000;
-const MODULE_REPAIR_S = 10;
+// module repair duration lives with the state machine: sim/damage.js REPAIR_S
 const FIRE_TICK_S = 0.5;
 const BATTLE_TIME_LIMIT_S = 900; // 15:00 clock (HUD counts it down) — timeout = draw
 
@@ -368,21 +375,16 @@ function pickParticipants(game, playerSpecId, randomize, mixedEra = false) {
  * @returns {void}
  */
 /**
- * EQUIPMENT (camo_spotting r1): per-tank loadout persisted in localStorage
- * (`cot.equip.<specId>` — JSON array of ids from spotting.js EQUIPMENT).
- * Camo net / binoculars / vents effects are applied inside spotting.js.
+ * EQUIPMENT (camo_spotting r1 → EQUIPMENT SYSTEM): per-tank loadout persisted
+ * in localStorage (`cot.equip.<specId>`). Now delegates to game/equipment.js,
+ * which validates ids against the full catalog, era-gates modern-only gear
+ * and clamps to the 3 slots. Kept as an export for compatibility.
  * @param {string} specId
  * @returns {?Array<string>} equipped item ids, or null when none saved
  */
 export function loadEquipment(specId) {
-  try {
-    const raw = localStorage.getItem(`cot.equip.${specId}`);
-    if (!raw) return null;
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr : null;
-  } catch {
-    return null;
-  }
+  const arr = loadEquipmentCatalog(specId, getSpec(specId));
+  return arr.length ? arr : null;
 }
 
 export function setupBattle(game, playerSpecId, world, opts = {}) {
@@ -467,9 +469,11 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     raycast: world.raycast,
     concealers: world.getConcealment ? world.getConcealment() : [],
     getCamoBonus: (ent) => (hasCamoPaint(ent.specId) ? CAMO_PAINT_BONUS : 0),
-    // EQUIPMENT layer (camo_spotting r1): camo net (+0.12 still), binoculars
-    // (+25% spotter view still), vents (+2%/+2%) — table in spotting.js.
-    getEquipment: (ent) => loadEquipment(ent.specId),
+    // EQUIPMENT layer: vision/concealment items resolve from the loadout
+    // attached at spawn (player = saved picks, AI = class defaults) — the
+    // old per-check localStorage read leaked the PLAYER'S saved loadout onto
+    // any bot fielding the same spec.
+    getEquipment: (ent) => ent.equip || null,
     rng: mulberry32(9100),
   });
 
@@ -545,6 +549,15 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     ent.isPlayer = isPlayer;
     ent.state = createTankState(ent.spec, _spawnPos, spawn.yaw);
     ent.combat = createCombatState(ent.spec);
+    // EQUIPMENT SYSTEM: attach the loadout — player fights with the garage
+    // picks, every bot gets its class-default kit (AI parity: the player is
+    // never uniquely advantaged). applyEquipmentToCombat stores the
+    // equipMults record the damage/movement/repair hooks read and scales
+    // module durability (wet rack / suspension / safety fuel).
+    ent.equip = isPlayer
+      ? (loadEquipment(ent.specId) || [])
+      : defaultLoadoutFor(ent.spec);
+    applyEquipmentToCombat(ent.combat, ent.equip, ent.spec);
     ent.input.throttle = 0;
     ent.input.steer = 0;
     ent.input.brake = false;
@@ -1249,21 +1262,18 @@ function stepShells(game, bus, world) {
   }
 }
 
-/** Red-module auto-repair to yellow (hp = 50%) after 10 s (§2.4 locked). */
+/** Red-module auto-repair to yellow after REPAIR_S (§2.4 locked). The state
+ * transition lives in sim/damage.js tickModuleRepairs — ONE module state
+ * machine (module_hitbox r1); the toolbox repair-rate equipment multiplier
+ * is honored there. This wrapper only broadcasts the results. */
 function tickRepairs(game, bus, dt) {
   for (const ent of game.tanks) {
-    const c = ent.combat;
-    if (!c || c.destroyed) continue;
-    for (const name of Object.keys(c.modules)) {
-      const m = c.modules[name];
-      if (m.state !== 'red') continue;
-      m.repairT += dt;
-      if (m.repairT >= MODULE_REPAIR_S) {
-        m.repairT = 0;
-        m.hp = m.maxHp * 0.5;
-        m.state = 'yellow';
-        bus.emit('module:state', { id: ent.id, module: name, state: 'yellow' });
-      }
+    if (!ent.combat) continue;
+    for (const name of tickModuleRepairs(ent.combat, dt)) {
+      // repaired:true = this yellow is a RECOVERY (red → yellow), so the HUD
+      // toasts 'REPAIRED', not 'DAMAGED'. Audio infers direction on its own
+      // prev-state tracker; the flag is additive for everyone else.
+      bus.emit('module:state', { id: ent.id, module: name, state: 'yellow', repaired: true });
     }
   }
 }

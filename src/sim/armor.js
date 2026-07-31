@@ -190,12 +190,16 @@ function edgeInside(a, b) {
 }
 
 /**
- * Segment-vs-AABB slab test in a local frame.
+ * Segment-vs-AABB slab test in a local frame. On hit, `_aabbExitT` holds the
+ * exit parameter (the box SPAN along the segment is [entry, _aabbExitT] —
+ * damage.js rolls a module when the post-penetration path overlaps that span,
+ * not merely when the entry face sits behind armor).
  * @param {number} frame frame index
  * @param {Array} min [x,y,z]
  * @param {Array} max [x,y,z]
  * @returns {number} entry parameter t in [0,1] (0 when starting inside), or -1
  */
+let _aabbExitT = 1;
 function intersectAABB(frame, min, max) {
   const f = _fromL[frame];
   const d = _dirL[frame];
@@ -219,6 +223,7 @@ function intersectAABB(frame, min, max) {
       if (t0 > t1) return -1;
     }
   }
+  _aabbExitT = t1;
   return t0;
 }
 
@@ -296,6 +301,7 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
       if (t < 0) continue;
       out.push({
         t,
+        tExit: _aabbExitT,
         kind: 'module',
         module: box.module,
         // Damageable without hull penetration (armor doc §12: viewports are
@@ -313,6 +319,7 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
       if (t < 0) continue;
       out.push({
         t,
+        tExit: _aabbExitT,
         kind: 'crew',
         crew: box.crew,
         point: _pt.copy(_fromL[fr]).addScaledVector(_dirL[fr], t).clone().applyMatrix4(_forward[fr]),

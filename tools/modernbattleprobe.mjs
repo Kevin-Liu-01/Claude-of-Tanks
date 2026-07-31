@@ -73,13 +73,23 @@ try {
       D.fastForward(6);
       D.game.player.input.throttle = 0;
       res.moved = Math.hypot(D.game.player.state.pos.x - p0.x, D.game.player.state.pos.z - p0.z);
-      // aim at nearest enemy and volley for up to 30 s of sim time
-      D.aimAtNearest();
+      // aim at nearest enemy and volley for up to 48 s of sim time.
+      // task_9db94319 diagnosis: the old parked 30 s volley was at the mercy
+      // of the battle instance — when every lane from the spawn stayed
+      // LOS/muzzle-blocked (aimAtNearest -> null), forceFire emptied the gun
+      // into a stale terrain aim point and the hit gate flaked (t90a's
+      // battle: 7 blind shells, 0 acquisitions, 4/4 runs). Play it like a
+      // player instead: while no target is acquirable, keep ADVANCING
+      // (throttle 1) — bots also converge on the muzzle flashes — and stop
+      // to shoot once a lane opens. Settled shells measure 0.0-0.2 m off the
+      // commanded aim point, so acquired attempts convert.
       D.flags.forceFire = true;
-      for (let i = 0; i < 10 && hitsN < 1; i++) {
-        D.aimAtNearest();
+      for (let i = 0; i < 16 && hitsN < 1; i++) {
+        const acquired = !!D.aimAtNearest();
+        D.game.player.input.throttle = acquired ? 0 : 1;
         D.fastForward(3);
       }
+      D.game.player.input.throttle = 0;
       D.flags.forceFire = false;
       res.fired = firedN;
       res.hits = hitsN;

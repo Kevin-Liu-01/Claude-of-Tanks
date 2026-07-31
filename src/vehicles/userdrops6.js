@@ -1,6 +1,6 @@
 // Recovered m_bergman pack: every distinct tank/assault-gun in part 1 that
 // was not already represented by the earlier BMP/Stryker imports.
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
 
 const copy = (v) => JSON.parse(JSON.stringify(v));
 const ALLOW_LOCAL_RECOVERED_MODELS = typeof import.meta !== 'undefined' &&
@@ -22,6 +22,14 @@ const make = (baseId, id, name, nation, patch = {}) => {
   if (patch.gun) s.gun = { ...gun, ...patch.gun };
   if (patch.dims) s.dims = { ...dims, ...patch.dims };
   if (patch.visual) s.visual = { ...visual, ...patch.visual };
+  // A patched armor arrives as a top-level spread over a DONOR's armor — its
+  // plate/box arrays are shared references. Deep-copy before the dims fit
+  // below may mutate them (charioteer would otherwise rescale the Jagdtiger).
+  if (patch.armor) s.armor = copy(patch.armor);
+  // MODULE HITBOXES (module_hitbox r1): visuals render at spec.dims (geometry
+  // gate) while copied armor stayed donor-sized — refit the copy so hit
+  // resolution agrees with the rendered vehicle (see specs.fitArmorToDims).
+  if (patch.dims) fitArmorToDims(s.armor, dims, s.dims);
   return s;
 };
 

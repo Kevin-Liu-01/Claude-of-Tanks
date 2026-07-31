@@ -15,6 +15,7 @@
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
 import { maskIcon, iconUrl } from './icons.js';
+import { MODULE_LABEL, CREW_LABEL, STATE_COLOR } from './moduleRegistry.js';
 import { getSpec, ALL_TANK_IDS } from '../vehicles/specs.js';
 import { penAtDistanceMm } from '../sim/ballistics.js';
 import { getMapConfig } from '../world/maps/index.js';
@@ -42,12 +43,9 @@ const SHELL_TYPE_COLOR = {
 const BOUNCE_KINDS = new Set(['ricochet', 'nonpen', 'spaced_absorb', 'era']);
 const PEN_KINDS = new Set(['pen', 'he_pen']);
 
-const MODULE_LABEL = {
-  trackL: 'Track L', trackR: 'Track R', engine: 'Engine', fuelTank: 'Fuel',
-  ammoRack: 'Ammo Rack', gun: 'Gun', radio: 'Radio', optics: 'Optics',
-  turretRing: 'Turret Ring',
-};
-const CREW_LABEL = { commander: 'Commander', gunner: 'Gunner', driver: 'Driver', loader: 'Loader' };
+// MODULE_LABEL / CREW_LABEL come from ui/moduleRegistry.js (single source —
+// this file's local copy had already drifted to 'Fuel' vs the killcam's
+// 'Fuel Tank').
 
 // Crisp 12px module/crew glyphs (currentColor) — same visual language as the
 // damage panel's canvas icons, redrawn as inline SVG for DOM cards.
@@ -79,18 +77,18 @@ const SI_CSS = `
 .cot-si-card.out{opacity:0;}
 .cot-si-hd{display:flex;align-items:baseline;justify-content:space-between;
   padding:5px 9px 4px;border-bottom:1px solid rgba(146,164,180,.18);}
-.cot-si-badge{font-family:${FONT_COND};font-stretch:condensed;font-weight:800;
+.cot-si-badge{font-family:${FONT_COND};font-weight:800;
   font-size:12.5px;letter-spacing:.12em;}
-.cot-si-dmg{font-family:${FONT_COND};font-stretch:condensed;font-weight:800;font-size:16px;
+.cot-si-dmg{font-family:${FONT_COND};letter-spacing:-.01em;font-weight:800;font-size:16px;
   font-variant-numeric:tabular-nums;color:#ffd166;}
 .cot-si-sub{padding:4px 9px 0;font-size:10.5px;color:#c6d2dc;letter-spacing:.03em;
   display:flex;justify-content:space-between;gap:6px;font-variant-numeric:tabular-nums;}
 .cot-si-sub .ty{font-weight:800;font-size:9.5px;letter-spacing:.08em;
-  font-family:${FONT_COND};font-stretch:condensed;}
+  font-family:${FONT_COND};}
 .cot-si-rows{padding:3px 9px 0;display:grid;grid-template-columns:1fr 1fr;gap:1px 10px;}
 .cot-si-kv{display:flex;justify-content:space-between;font-size:10px;color:${COL.dim};
   font-variant-numeric:tabular-nums;letter-spacing:.03em;}
-.cot-si-kv b{color:#dbe6ef;font-weight:700;font-family:${FONT_COND};font-stretch:condensed;}
+.cot-si-kv b{color:#dbe6ef;font-weight:700;font-family:${FONT_COND};letter-spacing:-.01em;}
 /* r8: the pen row spans the card on ONE line (the 'Pen roll' label broke
    across two lines and the value wrapped, r7 critic); the ERA/screens
    qualifier is an unbreakable suffix chip and a dim caption legends the
@@ -120,13 +118,13 @@ const SI_CSS = `
 .cot-si-diag svg.ov .wdg{animation:cotSiWedge 1.6s ease-in-out infinite;}
 @keyframes cotSiWedge{0%,100%{opacity:.5;}50%{opacity:1;}}
 .cot-si-zone{font-size:10px;color:#f0c987;font-weight:700;letter-spacing:.06em;
-  text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;flex:1;
+  text-transform:uppercase;font-family:${FONT_COND};flex:1;
   text-align:right;line-height:1.35;}
 .cot-si-zone .tn{display:block;color:${COL.dim};font-weight:600;text-transform:none;
   letter-spacing:.02em;font-size:9.5px;}
 .cot-si-mods{display:flex;flex-wrap:wrap;gap:4px;padding:6px 9px 0;}
 .cot-si-mod{display:flex;align-items:center;gap:3px;font-size:8.5px;font-weight:800;
-  letter-spacing:.06em;font-family:${FONT_COND};font-stretch:condensed;text-transform:uppercase;
+  letter-spacing:.06em;font-family:${FONT_COND};text-transform:uppercase;
   border:1px solid currentColor;padding:1.5px 4px 1.5px 3px;line-height:1;}
 .cot-si-mod svg{width:11px;height:11px;display:block;}
 .cot-si-log{position:absolute;right:16px;top:288px;width:286px;display:none;
@@ -135,15 +133,15 @@ const SI_CSS = `
   max-height:calc(100vh - 560px);min-height:120px;overflow-y:auto;}
 .cot-si-log.open{display:block;}
 .cot-si-log .sec{font-size:9.5px;font-weight:800;letter-spacing:.18em;color:${COL.dim};
-  font-family:${FONT_COND};font-stretch:condensed;text-transform:uppercase;
+  font-family:${FONT_COND};text-transform:uppercase;
   padding:6px 9px 3px;display:flex;justify-content:space-between;
   border-bottom:1px solid rgba(146,164,180,.16);}
 .cot-si-lrow{display:flex;align-items:baseline;gap:6px;padding:3px 9px;font-size:10px;
   color:#c6d2dc;font-variant-numeric:tabular-nums;border-bottom:1px solid rgba(146,164,180,.08);}
-.cot-si-lrow .b{font-family:${FONT_COND};font-stretch:condensed;font-weight:800;
+.cot-si-lrow .b{font-family:${FONT_COND};font-weight:800;
   font-size:9px;letter-spacing:.08em;width:58px;flex:0 0 auto;}
 .cot-si-lrow .d{font-weight:800;color:#ffd166;width:36px;flex:0 0 auto;text-align:right;
-  font-family:${FONT_COND};font-stretch:condensed;}
+  font-family:${FONT_COND};letter-spacing:-.01em;}
 .cot-si-lrow .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-lrow .z{color:${COL.dim};font-size:9px;flex:0 0 auto;}
 .cot-si-empty{padding:6px 9px;font-size:9.5px;color:${COL.dim};letter-spacing:.04em;}
@@ -155,12 +153,12 @@ const SI_CSS = `
 .cot-si-toast.out{opacity:0;}
 .cot-si-toast .l1{display:flex;justify-content:space-between;align-items:baseline;gap:6px;
   font-size:11px;font-weight:700;color:#f2c6bf;}
-.cot-si-toast .l1 b{color:#ff8f80;font-family:${FONT_COND};font-stretch:condensed;
+.cot-si-toast .l1 b{color:#ff8f80;font-family:${FONT_COND};letter-spacing:-.01em;
   font-variant-numeric:tabular-nums;font-size:13px;}
 .cot-si-toast .l2{font-size:9.5px;color:#c9a9a2;letter-spacing:.04em;display:flex;
   justify-content:space-between;gap:6px;font-variant-numeric:tabular-nums;}
 .cot-si-toast .l2 .m{font-weight:800;text-transform:uppercase;
-  font-family:${FONT_COND};font-stretch:condensed;letter-spacing:.07em;text-align:right;}
+  font-family:${FONT_COND};letter-spacing:.07em;text-align:right;}
 .cot-si-stats{position:fixed;inset:0;z-index:71;display:none;pointer-events:none;
   flex-direction:column;align-items:center;justify-content:center;
   padding:2vh 0 4vh;overflow:hidden;
@@ -194,13 +192,13 @@ body.cot-si-report .cot-shells,body.cot-si-report .cot-minimap,
 body.cot-si-report .cot-hpbars,body.cot-si-report .cot-dmglayer,
 body.cot-si-report .cot-dp,body.cot-si-report .cot-si-log,
 body.cot-si-report .cot-ret{display:none !important;}
-.cot-si-ban{font-family:${FONT_COND};font-stretch:condensed;font-weight:800;font-size:56px;
+.cot-si-ban{font-family:${FONT_COND};font-weight:800;font-size:56px;
   letter-spacing:.34em;text-indent:.34em;line-height:1;text-shadow:0 2px 22px rgba(0,0,0,.85);}
 .cot-si-ban.v{color:#7ee87e;}.cot-si-ban.d{color:#f05a5a;}.cot-si-ban.n{color:#cfd9e2;}
 .cot-si-bansub{font-size:10px;letter-spacing:.32em;color:${COL.dim};margin:7px 0 2.6vh;
-  text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;font-weight:800;}
+  text-transform:uppercase;font-family:${FONT_COND};font-weight:800;}
 .cot-si-hdr{font-size:10.5px;letter-spacing:.2em;color:#a9b6c2;margin:0 0 2.2vh;
-  text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;font-weight:700;
+  text-transform:uppercase;font-family:${FONT_COND};font-weight:700;
   font-variant-numeric:tabular-nums;}
 .cot-si-hdr b{color:#dbe6ef;font-weight:800;}
 .cot-si-cols{display:flex;gap:16px;width:1120px;max-width:94vw;align-items:stretch;
@@ -209,7 +207,7 @@ body.cot-si-report .cot-ret{display:none !important;}
   border:1px solid rgba(146,164,180,.3);box-shadow:0 10px 40px rgba(0,0,0,.5);
   padding:14px 20px 16px;min-height:0;overflow:hidden;}
 .cot-si-panel .ph{font-size:9.5px;font-weight:800;letter-spacing:.22em;color:${COL.dim};
-  text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;
+  text-transform:uppercase;font-family:${FONT_COND};
   padding-bottom:6px;border-bottom:1px solid rgba(146,164,180,.2);margin-bottom:7px;
   display:flex;justify-content:space-between;}
 .cot-si-pl{flex:1.15;}
@@ -219,16 +217,16 @@ body.cot-si-report .cot-ret{display:none !important;}
   margin-bottom:5px;}
 .cot-si-you .si{width:62px;height:24px;flex:0 0 auto;}
 .cot-si-you .n{flex:1;color:#f2f7fb;font-weight:800;font-family:${FONT_COND};
-  font-stretch:condensed;letter-spacing:.1em;}
+  letter-spacing:.1em;}
 .cot-si-meta{margin-top:12px;font-size:9.5px;letter-spacing:.2em;color:${COL.dim};
-  text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;
+  text-transform:uppercase;font-family:${FONT_COND};
   font-weight:700;text-align:center;}
 .cot-si-you .s{color:${COL.dim};font-size:10px;}
-.cot-si-you .dm{color:#ffd166;font-weight:800;font-family:${FONT_COND};
-  font-stretch:condensed;width:60px;text-align:right;}
+.cot-si-you .dm{color:#ffd166;font-weight:800;font-family:${FONT_COND};letter-spacing:-.01em;
+  width:60px;text-align:right;}
 .cot-si-ribbons{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;}
 .cot-si-rib{border:1px solid rgba(214,178,94,.75);color:#e8c86a;font-family:${FONT_COND};
-  font-stretch:condensed;font-weight:800;font-size:9px;letter-spacing:.14em;
+  font-weight:800;font-size:9px;letter-spacing:.14em;
   padding:3px 8px;text-transform:uppercase;background:rgba(120,90,20,.16);
   display:inline-flex;align-items:center;gap:5px;}
 .cot-si-rib svg{width:12px;height:12px;display:block;flex:0 0 auto;}
@@ -236,8 +234,8 @@ body.cot-si-report .cot-ret{display:none !important;}
 .cot-si-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 16px;margin-bottom:12px;}
 .cot-si-grid.c5{grid-template-columns:repeat(5,1fr);}
 .cot-si-stat{text-align:center;}
-.cot-si-stat .v{font-size:28px;font-weight:800;font-family:${FONT_COND};
-  font-stretch:condensed;font-variant-numeric:tabular-nums;color:#f2f7fb;line-height:1.1;}
+.cot-si-stat .v{font-size:28px;font-weight:800;font-family:${FONT_COND};letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums;color:#f2f7fb;line-height:1.1;}
 .cot-si-econ{display:flex;gap:16px;width:1120px;max-width:94vw;margin-bottom:14px;}
 .cot-si-ecoitem{flex:1;display:flex;flex-direction:column;
   background:linear-gradient(180deg,rgba(10,14,18,.92),rgba(6,9,12,.95));
@@ -245,9 +243,9 @@ body.cot-si-report .cot-ret{display:none !important;}
   padding:10px 16px 11px;}
 .cot-si-ecoitem .et{display:flex;align-items:baseline;justify-content:center;gap:10px;}
 .cot-si-ecoitem .ek{font-size:9.5px;font-weight:800;letter-spacing:.22em;color:${COL.dim};
-  text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;}
-.cot-si-ecoitem .ev{font-size:30px;font-weight:800;font-family:${FONT_COND};
-  font-stretch:condensed;font-variant-numeric:tabular-nums;line-height:1;}
+  text-transform:uppercase;font-family:${FONT_COND};}
+.cot-si-ecoitem .ev{font-size:30px;font-weight:800;font-family:${FONT_COND};letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums;line-height:1;}
 .cot-si-ecoitem.cr .ev{color:#ffd166;}
 .cot-si-ecoitem.xp .ev{color:#9fd0ff;}
 .cot-si-ecoitem .eb{font-size:9px;color:${COL.dim};letter-spacing:.05em;
@@ -259,8 +257,8 @@ body.cot-si-report .cot-ret{display:none !important;}
   padding-top:5px;display:flex;flex-direction:column;gap:1px;}
 .cot-si-erows>div{display:flex;justify-content:space-between;font-size:9.5px;
   color:${COL.dim};font-variant-numeric:tabular-nums;letter-spacing:.03em;}
-.cot-si-erows b{color:#cfdae4;font-weight:700;font-family:${FONT_COND};
-  font-stretch:condensed;}
+.cot-si-erows b{color:#cfdae4;font-weight:700;font-family:${FONT_COND};letter-spacing:-.01em;
+  }
 .cot-si-erows .tot{border-top:1px solid rgba(146,164,180,.22);margin-top:3px;
   padding-top:3px;}
 .cot-si-ecoitem.cr .tot b{color:#ffd166;}
@@ -279,10 +277,10 @@ body.cot-si-report .cot-ret{display:none !important;}
 .cot-si-xd .xr{display:flex;gap:7px;align-items:baseline;font-size:9.5px;
   color:#b9c6d2;font-variant-numeric:tabular-nums;padding:1px 0;}
 .cot-si-xd .xr .t{color:${COL.dim};width:30px;flex:0 0 auto;}
-.cot-si-xd .xr .w{font-family:${FONT_COND};font-stretch:condensed;font-weight:800;
+.cot-si-xd .xr .w{font-family:${FONT_COND};font-weight:800;
   font-size:8.5px;letter-spacing:.08em;width:52px;flex:0 0 auto;}
 .cot-si-xd .xr .d{color:#ffd166;font-weight:700;width:34px;text-align:right;
-  flex:0 0 auto;font-family:${FONT_COND};font-stretch:condensed;}
+  flex:0 0 auto;font-family:${FONT_COND};letter-spacing:-.01em;}
 .cot-si-xd .xr .z{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   color:#93a2af;}
 /* roster clicks must reach the report — the transparent integration overlay
@@ -290,42 +288,42 @@ body.cot-si-report .cot-ret{display:none !important;}
 body.cot-si-report .cot-end{pointer-events:none !important;}
 body.cot-si-report .cot-end button{pointer-events:auto !important;}
 .cot-si-stat .k{font-size:8.5px;font-weight:700;letter-spacing:.16em;color:${COL.dim};
-  text-transform:uppercase;font-family:${FONT_COND};font-stretch:condensed;}
+  text-transform:uppercase;font-family:${FONT_COND};}
 .cot-si-shell{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;
   font-size:9.5px;color:${COL.dim};font-variant-numeric:tabular-nums;letter-spacing:.05em;}
-.cot-si-shell b{color:#dbe6ef;font-family:${FONT_COND};font-stretch:condensed;font-weight:800;}
-.cot-si-shell .ty{font-weight:800;font-family:${FONT_COND};font-stretch:condensed;
+.cot-si-shell b{color:#dbe6ef;font-family:${FONT_COND};letter-spacing:-.01em;font-weight:800;}
+.cot-si-shell .ty{font-weight:800;font-family:${FONT_COND};
   letter-spacing:.08em;font-size:9px;}
 .cot-si-tl{margin-bottom:9px;}
 .cot-si-tl svg{display:block;width:100%;height:58px;}
 .cot-si-tl .cap{font-size:8px;letter-spacing:.14em;color:${COL.dim};text-transform:uppercase;
-  font-family:${FONT_COND};font-stretch:condensed;font-weight:700;text-align:center;margin-top:2px;}
+  font-family:${FONT_COND};font-weight:700;text-align:center;margin-top:2px;}
 .cot-si-kills{padding-top:2px;margin-bottom:6px;}
 .cot-si-kill{display:flex;align-items:center;gap:8px;font-size:11.5px;padding:3px 0;
   font-variant-numeric:tabular-nums;border-bottom:1px solid rgba(146,164,180,.08);}
 .cot-si-kill .si{width:34px;height:14px;flex:0 0 auto;}
 .cot-si-kill .n{flex:1;color:#dbe6ef;font-weight:600;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;}
-.cot-si-kill .n .you{color:#ffd166;font-family:${FONT_COND};font-stretch:condensed;
+.cot-si-kill .n .you{color:#ffd166;font-family:${FONT_COND};
   font-weight:800;font-size:9px;letter-spacing:.12em;border:1px solid rgba(255,209,102,.6);
   padding:0 4px 1px;margin-right:4px;vertical-align:1px;}
 .cot-si-kill .kd{color:${COL.red};font-weight:800;font-size:9px;letter-spacing:.12em;
-  font-family:${FONT_COND};font-stretch:condensed;width:38px;text-align:right;flex:0 0 auto;}
+  font-family:${FONT_COND};width:38px;text-align:right;flex:0 0 auto;}
 .cot-si-kill .al{color:${COL.green};font-weight:800;font-size:9px;letter-spacing:.12em;
-  font-family:${FONT_COND};font-stretch:condensed;width:38px;text-align:right;flex:0 0 auto;
+  font-family:${FONT_COND};width:38px;text-align:right;flex:0 0 auto;
   opacity:.75;}
 .cot-si-kill .s{color:${COL.dim};font-size:10px;}
-.cot-si-kill .k{color:#dbe6ef;font-weight:800;font-family:${FONT_COND};
-  font-stretch:condensed;width:30px;text-align:right;font-size:10px;flex:0 0 auto;}
-.cot-si-kill .dm{color:#ffd166;font-weight:800;font-family:${FONT_COND};
-  font-stretch:condensed;width:48px;text-align:right;flex:0 0 auto;}
+.cot-si-kill .k{color:#dbe6ef;font-weight:800;font-family:${FONT_COND};letter-spacing:-.01em;
+  width:30px;text-align:right;font-size:10px;flex:0 0 auto;}
+.cot-si-kill .dm{color:#ffd166;font-weight:800;font-family:${FONT_COND};letter-spacing:-.01em;
+  width:48px;text-align:right;flex:0 0 auto;}
 /* roster column micro-captions (r6): the right-hand figure is the
    combatant's TOTAL battle damage output — un-headed it read as damage
    done to you next to 'no engagement with you' */
 .cot-si-kill.cap{padding:0 0 1px;border-bottom:none;}
 .cot-si-kill.cap span{color:${COL.dim} !important;font-size:7.5px;font-weight:700;
   letter-spacing:.12em;text-transform:uppercase;font-family:${FONT_COND};
-  font-stretch:condensed;}
+  }
 `;
 
 function ensureStyle(id, css) {
@@ -839,8 +837,11 @@ export function createShotInfo(bus) {
     }
     for (const m of ev.modulesHit || []) {
       // chip color tracks the sim's post-hit state: red destroyed, yellow
-      // damaged, dim for a hit that left the module 'ok' (never imply worse)
-      const col = m.newState === 'red' ? COL.red : m.newState === 'yellow' ? COL.yellow : COL.dim;
+      // damaged, dim for a hit that left the module 'ok' (never imply worse).
+      // State hues come from the shared registry ramp — the same orange/red
+      // the damage panel paints, so one module state reads as ONE color.
+      const col = m.newState === 'red' ? STATE_COLOR.red
+        : m.newState === 'yellow' ? STATE_COLOR.yellow : COL.dim;
       items.push({ glyph: GLYPH[m.module] || GLYPH.gun, label: MODULE_LABEL[m.module] || m.module, col });
     }
     for (const c of ev.crewHit || []) {
@@ -1029,7 +1030,8 @@ export function createShotInfo(bus) {
     // Same state-colored policy as the shot card's modChips — never imply
     // worse: dim for a hit that left the module 'ok', yellow damaged, red
     // destroyed (an 'ok' Track R styled as a red casualty lied, r3 critique).
-    const stateCol = (s) => (s === 'red' ? COL.red : s === 'yellow' ? COL.yellow : COL.dim);
+    // Registry ramp = the damage panel's exact hues (one state, one color).
+    const stateCol = (s) => (s === 'red' ? STATE_COLOR.red : s === 'yellow' ? STATE_COLOR.yellow : COL.dim);
     const modsLost = (ev.eraPlate
       ? [`<span style="color:${COL.yellow}">ERA</span>`] : [])
       .concat((ev.modulesHit || [])

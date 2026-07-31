@@ -12,11 +12,15 @@
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
 import { iconUrl } from './icons.js';
+// EQUIPMENT SYSTEM: quiet mounted-loadout readout at the panel foot — the
+// same white-silhouette glyphs as the garage slots, at healthy-pip alpha.
+import { equipIconSVG } from './equipIcons.js';
+import { EQUIPMENT_BY_ID } from '../game/equipment.js';
 
-// WoT module-state ramp: ORANGE damaged, RED knocked out. Healthy modules
-// show as dim ~25%-alpha pips — present but quiet.
-const STATE_COLOR = { ok: '#eef4f9', yellow: '#f0952e', red: '#f05a5a' };
-const CREW_ORDER = ['commander', 'gunner', 'driver', 'loader'];
+// WoT module-state ramp (ORANGE damaged, RED knocked out) + crew order come
+// from the shared module registry — one presentation truth across the damage
+// panel, shot cards, killcam and HUD alerts (module_hitbox r1).
+import { STATE_COLOR, CREW_ORDER } from './moduleRegistry.js';
 
 // distinct micro-icon per crew role (WoT reads roles at a glance):
 // commander = binoculars, gunner = crosshair, driver = steering wheel,
@@ -50,9 +54,9 @@ const DP_CSS = `
 .cot-dp *{box-sizing:border-box;margin:0;padding:0;}
 .cot-dp .hprow{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;}
 .cot-dp .hplabel{font-size:9px;font-weight:700;letter-spacing:.12em;color:#8a97a3;
-  font-family:${FONT_COND};font-stretch:condensed;}
+  font-family:${FONT_COND};}
 .cot-dp .hpnum{font-size:11.5px;font-weight:700;color:#d6e2ec;font-variant-numeric:tabular-nums;
-  font-family:${FONT_COND};font-stretch:condensed;}
+  font-family:${FONT_COND};letter-spacing:-.01em;}
 .cot-dp .hptrack{height:5px;background:rgba(4,6,8,.75);border:1px solid rgba(0,0,0,.6);margin-bottom:5px;}
 .cot-dp .hpfill{height:100%;width:100%;transition:width .15s linear;}
 .cot-dp canvas{display:block;margin:0 auto;}
@@ -69,6 +73,13 @@ const DP_CSS = `
   animation:cotDmgPop .22s ease-out;}
 .cot-dp .cm svg{display:block;width:14px;height:14px;}
 @keyframes cotDmgPop{from{transform:scale(.55);opacity:0}to{transform:scale(1);opacity:1}}
+/* EQUIPMENT SYSTEM: mounted-loadout readout — three quiet glyphs at healthy-
+   pip alpha under the crew row; hides itself when the tank runs empty. */
+.cot-dp .equiprow{display:flex;justify-content:center;gap:8px;margin-top:6px;
+  padding-top:5px;border-top:1px solid rgba(146,164,180,.16);}
+.cot-dp .equiprow:empty{display:none;}
+.cot-dp .equiprow .eq{display:flex;opacity:.5;}
+.cot-dp .equiprow .eq svg{display:block;}
 .cot-dp .fire{position:absolute;top:34px;right:10px;font-size:9px;font-weight:800;
   letter-spacing:.14em;color:#ff6a3c;text-shadow:0 0 8px rgba(255,80,30,.8);display:none;
   animation:cotFirePulse .7s ease-in-out infinite alternate;}
@@ -292,6 +303,11 @@ export function createDamagePanel() {
   root.appendChild(crewRow);
   const crewEls = new Map();
 
+  // EQUIPMENT SYSTEM: loadout readout row (populated via setEquipment)
+  const equipRow = document.createElement('div');
+  equipRow.className = 'equiprow';
+  root.appendChild(equipRow);
+
   let spec = null;
   let combat = null;
   let lastHpText = '';
@@ -303,6 +319,21 @@ export function createDamagePanel() {
   // barrel rotate with it (WoT's signature damage-panel behavior). Fed every
   // frame by hud.update via setTurretYaw.
   let turretYawDisp = 0;
+  // Canvas dirty signature (module_hitbox r1): the schematic only depends on
+  // the non-ok module states and the (quantized, ~0.5°) turret bearing — the
+  // per-frame update() used to run the full 12+-pass canvas repaint at 60 Hz
+  // for a picture that almost never changes. null forces the next draw.
+  let lastDrawSig = null;
+  function drawSignature() {
+    let s = `${Math.round(turretYawDisp / 0.008)}|`;
+    if (combat && combat.modules) {
+      for (const k in combat.modules) {
+        const st = combat.modules[k].state;
+        if (st && st !== 'ok') s += `${k}:${st};`;
+      }
+    }
+    return s;
+  }
 
   // --- top mapping: world +X (lateral) -> canvas right, +Z (forward) -> up.
   // Horizontal span destX..destX+destW covers x in [-W/2, W/2]; vertical
@@ -722,12 +753,19 @@ export function createDamagePanel() {
 
     /**
      * Refresh the panel from the live combat state (call every frame).
+     * DOM (HP bar, fire, crew chips) refreshes cheaply every call; the canvas
+     * schematic repaints only when its dirty signature (module states +
+     * quantized turret bearing) actually changes.
      * @param {CombatState} c
      */
     update(c) {
       combat = c;
       refreshDom();
-      draw();
+      const sig = drawSignature();
+      if (sig !== lastDrawSig) {
+        lastDrawSig = sig;
+        draw();
+      }
     },
 
     /**
@@ -739,6 +777,21 @@ export function createDamagePanel() {
      */
     setTurretYaw(yaw) {
       if (yaw != null && isFinite(yaw)) turretYawDisp = yaw;
+    },
+
+    /**
+     * EQUIPMENT SYSTEM: show the mounted loadout (call with the player's
+     * equip ids after setTank; null/[] clears the row and it collapses).
+     * @param {?Array<string>} ids equipment ids (game/equipment.js catalog)
+     */
+    setEquipment(ids) {
+      let html = '';
+      for (const id of Array.isArray(ids) ? ids : []) {
+        const it = EQUIPMENT_BY_ID.get(id);
+        if (!it) continue;
+        html += `<span class="eq" title="${it.name} — ${it.desc}">${equipIconSVG(id, 15)}</span>`;
+      }
+      equipRow.innerHTML = html;
     },
 
     /**
