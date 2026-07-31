@@ -62,3 +62,22 @@ UK-family file ownership.
 roof gear re-grouped under a new 'Turret' (ring pivot at the authored y=0
 station) and the L11 under 'Gun' (trunnion origin); userdrops5.js adds
 gunNode '^Gun$'. Crossed-mask defect above is historical.
+
+## Round-3 log — turret casting rebuild (2026-07-30)
+- r2 TC 3/10 ("still not the rounded Mk.5 casting — flat roof plane + slab cheeks",
+  turret mask 41.9): the r1 lathe egg was too TALL and too SHORT. Rebuilt as the oracle's
+  LONG LOW cast saucer: z-stretched main lathe (crown 0.79, span ~3.3), flat chin saucer
+  carrying the recline to the gun collar, ONE shallow reclined face plane chin->crown;
+  roof furniture (cupola + ring rail, loader ring, sights) dropped onto the low crown.
+- r2 artifact #1 "teeth-mouth stud row" KILLED: the old smoke clusters sat half-buried in
+  the casting face (tube tips = drilled studs). Rebuilt as dark solid discharger BINS on
+  bracket arms off the chin cheeks, tubes short and outboard, below the brow line.
+- Sponson bin row added at the fender line (hull bucket): the oracle carries TALL
+  full-length bins there; the empty 1.45-1.85 side band was half of the turret-layer
+  mask deficit. Tops capped at 1.80 so the yawing turret bins never clip.
+- Headline 77.1 -> 78.2. NOTE: the turret component mask stays ~43 for a structural
+  reason — the reference GLB ships its hull furniture (fenders, bins, skirts, deck kit,
+  ~23k verts, heights to ~2.5 m) as a fused ROOT mesh, so the mask pipeline's hull layer
+  occludes most of the true turret band and the reference "turret layer" is only the
+  crown/cupola slice. Same defect class as m1a1_aim's turretless print: treat chieftain5
+  T as capped evidence; judge the casting on the shaded board.

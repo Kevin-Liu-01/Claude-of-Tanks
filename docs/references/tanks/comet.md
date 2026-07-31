@@ -51,3 +51,14 @@ hull. Unassembled-layout defect above is historical.
 - Turret: cupola vision ring, split-hatch seam on loader hatch, 4 lifting eyes, right-cheek
   smoke discharger cluster on a bracket, strapped radio bustle.
 - Fidelity 69.0 vs 68.9 committed (T49 — print turret remains stubby vs the real casting).
+
+## Round-3 log — oracle re-repair + re-seat (2026-07-30)
+- ORACLE RE-REPAIRED from .bak: the print's TurretMesh is ONE assembled turret — 77 mm HV
+  with its muzzle brake ATTACHED, bustle bin and cheek box intact (the r2 park boxes were
+  carving off the bin's left wall and the cheek stowage; the "brake piece on the face" was
+  already part of the gun). New recipe = one rigid move: basket ring c=(11.573,18.100) r6.0
+  onto the hull race c=(14.600,39.000) r6.2, dx +3.027 dz +20.900 lift 7.5,
+  pivot [14.60,15.5,39.00]. One assembled tank in all 9 views.
+- Headline 69.0 -> 75.5 (T 49.9* -> 60, G 0* -> 45 honest).
+- Procedural re-seat: turret pivot -0.12 -> +0.60 (print ring at +9% of hull length);
+  gunLength 4.42 -> 3.70 keeps the muzzle at the print's +4.7 station.

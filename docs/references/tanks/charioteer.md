@@ -55,3 +55,17 @@ barrel (only a 0.4 m collar ships).
 - Turret: cupola vision ring, loader split-hatch seam, 4 corner lifting eyes, 2" smoke
   discharger boxes with tube triplets on both cheeks, strapped bustle stowage bin.
 - Fidelity 67.4 vs 67.9 committed (T50 — print turret stubbier than the real slab; noted).
+
+## Round-3 log — oracle re-repair + re-seat (2026-07-30)
+- ORACLE RE-REPAIRED from .bak: solo-mesh renders proved the print's TurretMesh is ONE
+  fully-assembled turret (complete 20-pdr with counterweight muzzle ATTACHED, rear
+  stowage/spare wheel intact) sunk in the rear hull. The r2 "muzzle stub" and the parked
+  "tail spares" were carve artifacts — the old recipe sliced the barrel and stole rear
+  furniture. New recipe = one rigid move of the whole mesh: basket ring (36-vert circle,
+  Kasa fit c=(11.795,18.033) r6.0) onto the hull ring race (c=(15.300,37.400) r6.2),
+  dx +3.505 dz +19.367 lift 7.0, pivot [15.30,15.2,37.40]. Reference now renders as ONE
+  assembled tank in all 9 views; turret yaws cleanly with the full gun.
+- Headline 67.4 -> 76.2 (T 50.3* -> 65, G 0* -> 46 — both honest for the first time).
+- Procedural re-seat vs the honest print: turret pivot -0.18 -> +0.55 (ring race sits at
+  +9.7% of hull length, forward); gunLength 5.45 -> 4.62 keeps the muzzle at the print's
+  +5.5 station.

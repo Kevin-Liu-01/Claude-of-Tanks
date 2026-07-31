@@ -120,7 +120,9 @@ function cromwellHull(P, o) {
 function cometBuild(P, o) {
   const { box, polyTurret, cylY, cylZ, cupola, periscope, liftEye, smokeCluster, buildGun } = KIT;
   cromwellHull(P, o);
-  P.turretG.position.set(0, o.roofY, -0.12);
+  // r3: re-repaired oracle seats the turret ON the ring race at +0.60 of the
+  // hull (the old -0.12 chased the broken print's displaced turret)
+  P.turretG.position.set(0, o.roofY, 0.60);
   // 77 mm HV seated at the FACE CENTER (r1 critique: tube exited at the
   // turret/hull seam) in the big bolted internal mantlet plate.
   P.gunG.position.set(0, 0.50, 0.30);
@@ -167,7 +169,8 @@ function cometBuild(P, o) {
 function charioteerBuild(P, o) {
   const { box, frustum, cylY, cylZ, cupola, periscope, liftEye, buildGun } = KIT;
   cromwellHull(P, o);
-  P.turretG.position.set(0, o.roofY, -0.18);
+  // r3: oracle ring race sits at +0.55 (turret forward, long rear deck)
+  P.turretG.position.set(0, o.roofY, 0.55);
   // 20-pdr re-seated at the upper-tier face CENTER (r1 critique: it emerged
   // from the tier seam) behind a narrow internal mantlet.
   P.gunG.position.set(0, 0.64, 0.35);
@@ -217,8 +220,12 @@ function charioteerBuild(P, o) {
 function a30Build(P, o) {
   const { box, cylX, frustum, cylY, cylZ, cupola, periscope, liftEye, buildGun } = KIT;
   cromwellHull(P, o);
-  P.turretG.position.set(0, o.roofY, -0.30);
-  P.gunG.position.set(0, 0.60, 0.35);
+  // r3: oracle ring race at +0.12 (was -0.30 against the exploded print)
+  P.turretG.position.set(0, o.roofY, 0.12);
+  // round-3: the re-assembled oracle carries the full 17-pdr — bore sits at
+  // ~1.9 world (not 2.16) and the muzzle clears the bow by ~1.1 (gun mask
+  // was 0.0 against the honest print with the old nose-length tube)
+  P.gunG.position.set(0, 0.46, 0.35);
   const h = 1.12;
   // narrow tall shell, lightly sloped, with a rounded cast front
   P.add('turret', frustum(0.86, 1.02, -1.18, 0.78, 0.86, -1.06, 0, h));
@@ -241,13 +248,13 @@ function a30Build(P, o) {
   periscope(P, 'turretDetail', 0.30, h + 0.04, -0.05);
   P.add('turretDetail', box(0.022, 0.85, 0.022), 0.70, h + 0.28, -0.90, 0, 0, 0.05);
   // 17-pdr: narrow internal mantlet slot, recoil housing collar, then the
-  // slim tube with a visible sleeve step (oracle print carries a stub tube —
-  // gun identity kept at the real proportions instead)
+  // slim full-length tube with a sleeve step and the muzzle swell the
+  // re-assembled oracle shows (r3: print barrel is complete, not a stub)
   P.addGunExtra(box(0.44, 0.42, 0.20), 0, 0, 0.55);
   P.addGunExtraDark(box(0.30, 0.30, 0.03), 0, 0, 0.665);                     // recessed slot shadow
   P.addGunExtra(cylZ(0.088, 0.44, 12, 0.115), 0, 0, 0.80);                   // recoil housing
   P.addGunExtra(cylZ(0.062, 0.10, 10), 0, 0, 1.04);                          // sleeve step ring
-  buildGun(P, { len: o.gunLength, r: 0.046, sleeve: false, evac: null, collar: false, baseR: 0.10 });
+  buildGun(P, { len: o.gunLength, r: 0.046, sleeve: false, evac: null, collar: true, baseR: 0.10 });
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [0.86, h * 0.35, -0.35], Math.PI / 2);
   P.topY = h + 0.25;
 }
@@ -264,31 +271,34 @@ function chieftain5Kit(P) {
   P.clear('turret', 'turretDetail', 'turretDark', 'turretCloth', 'turretGlass',
     'turretTrack', 'gun', 'gunDark', 'gunMount', 'gunMountDark');
 
-  // ---- cast turret shell (lathe profiles only, no facets) ----
-  P.add('turret', cylY(1.06, 1.12, 0.10, 26), 0, 0.05, -0.20);               // ring seat
+  // ---- cast turret shell (r2 critique, mask 41.9: the r1 lathe egg was too
+  // TALL and too SHORT front-to-back — the repaired oracle shows the Mk.5's
+  // LONG LOW cast saucer whose face RECLINES in one shallow sweep from the
+  // gun collar to a low rounded crown, running rearward past the ring) ----
+  P.add('turret', cylY(1.10, 1.16, 0.09, 28), 0, 0.045, -0.30);              // ring seat
   P.add('turret', lathe([
-    [0.84, 0.00], [1.02, 0.10], [1.08, 0.30], [1.02, 0.52], [0.88, 0.70],
-    [0.64, 0.84], [0.34, 0.93], [0.02, 0.96],
-  ], 30, 1.32), 0, 0.02, -0.28);                                             // main casting, egg in plan
-  // forward-leaning chin: roof edge sweeps DOWN and FORWARD to the gun collar
+    [0.90, 0.00], [1.08, 0.07], [1.15, 0.20], [1.10, 0.36], [0.98, 0.52],
+    [0.78, 0.64], [0.50, 0.74], [0.02, 0.79],
+  ], 30, 1.42), 0, 0.02, -0.42);                                             // long saucer, egg in plan
+  P.add('turret', lathe([
+    [0.56, 0.00], [0.70, 0.10], [0.72, 0.22], [0.60, 0.36], [0.38, 0.48], [0.02, 0.54],
+  ], 24, 1.55), 0, 0.02, 0.42);                                              // flat chin saucer to the collar
+  // reclined upper face: ONE shallow smooth plane, chin brow -> crown
   P.add('turret', slab(
-    [-0.46, 0.06, 1.28], [0.46, 0.06, 1.28], [0.42, 0.06, 0.30], [-0.42, 0.06, 0.30],
-    [-0.60, 0.78, 0.72], [0.60, 0.78, 0.72], [0.66, 0.82, -0.28], [-0.66, 0.82, -0.28]));
-  P.add('turret', slab(                                                      // cast jaw under the beak
-    [-0.40, 0.02, 0.95], [0.40, 0.02, 0.95], [0.46, 0.02, 0.10], [-0.46, 0.02, 0.10],
-    [-0.44, 0.30, 1.24], [0.44, 0.30, 1.24], [0.48, 0.30, 0.20], [-0.48, 0.30, 0.20]));
+    [-0.52, 0.24, 1.46], [0.52, 0.24, 1.46], [0.58, 0.24, 0.30], [-0.58, 0.24, 0.30],
+    [-0.30, 0.76, 0.05], [0.30, 0.76, 0.05], [0.52, 0.78, -0.55], [-0.52, 0.78, -0.55]));
 
-  // ---- roof furniture ----
-  cupola(P, 'turret', -0.50, 0.84, -0.32, 0.28, 0.20, 7);                    // No.15 cupola LEFT
-  P.add('turretDark', torus(0.315, 0.02, 20), -0.50, 1.10, -0.32);           // cupola sight ring rail
-  pintleMG(P, -0.50, 1.04, -0.48, false);                                    // commander GPMG
-  P.add('turret', cylY(0.21, 0.23, 0.07, 16), 0.48, 0.90, -0.40);            // loader hatch ring
-  P.add('turretDark', box(0.34, 0.016, 0.03), 0.48, 0.945, -0.40);           // hatch seam
-  periscope(P, 'turretDetail', 0.34, 0.90, 0.18);                            // gunner sight
-  P.add('turretDetail', box(0.20, 0.14, 0.24), -0.16, 0.92, 0.05);           // commander sight hood
-  P.add('turretGlass', box(0.14, 0.05, 0.03), -0.16, 0.95, 0.18);
-  liftEye(P, 'turretDetail', -0.78, 0.62, 0.55, 0.4);
-  liftEye(P, 'turretDetail', 0.78, 0.62, 0.55, -0.4);
+  // ---- roof furniture (dropped onto the low crown) ----
+  cupola(P, 'turret', -0.50, 0.66, -0.42, 0.28, 0.20, 7);                    // No.15 cupola LEFT
+  P.add('turretDark', torus(0.315, 0.02, 20), -0.50, 0.92, -0.42);           // cupola sight ring rail
+  pintleMG(P, -0.50, 0.86, -0.58, false);                                    // commander GPMG
+  P.add('turret', cylY(0.21, 0.23, 0.07, 16), 0.46, 0.70, -0.52);            // loader hatch ring
+  P.add('turretDark', box(0.34, 0.016, 0.03), 0.46, 0.745, -0.52);           // hatch seam
+  periscope(P, 'turretDetail', 0.34, 0.71, -0.02);                           // gunner sight
+  P.add('turretDetail', box(0.20, 0.14, 0.24), -0.14, 0.70, -0.14);          // commander sight hood
+  P.add('turretGlass', box(0.14, 0.05, 0.03), -0.14, 0.73, -0.01);
+  liftEye(P, 'turretDetail', -0.84, 0.54, 0.35, 0.4);
+  liftEye(P, 'turretDetail', 0.84, 0.54, 0.35, -0.4);
 
   // ---- searchlight housing on the LEFT cheek ----
   P.add('turret', box(0.46, 0.50, 0.36), -1.00, 0.36, 0.30, 0, -0.42, 0);
@@ -296,11 +306,15 @@ function chieftain5Kit(P) {
   P.add('turretGlass', box(0.30, 0.30, 0.02), -1.14, 0.36, 0.45, 0, -0.42, 0);
   P.add('turretDetail', box(0.04, 0.44, 0.04), -1.26, 0.36, 0.32, 0, -0.42, 0);
 
-  // ---- smoke dischargers: 2x6 tube clusters on bracket plates, proud of
-  // the casting (the old surface-flush tubes read as drilled dots) ----
+  // ---- smoke dischargers: r2 "teeth-mouth" artifact — the old clusters sat
+  // half-buried against the casting face and read as a row of drilled studs
+  // under the gun. Rebuilt as the oracle's discharger BINS: dark solid bank
+  // bodies hung off the chin cheeks on bracket arms, short tubes rising from
+  // the bins, angled outboard and kept BELOW the reclined brow line ----
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.06, 0.16, 0.30), s * 0.92, 0.32, 0.78, 0, s * 0.55, 0);
-    smokeCluster(P, s * 1.02, 0.44, 0.86, 6, s * 0.95, 0.75);
+    P.add('turretDetail', box(0.36, 0.05, 0.05), s * 0.70, 0.30, 0.74, 0, s * 0.35, 0);   // bracket arm
+    P.add('turretDark', box(0.16, 0.18, 0.38), s * 0.94, 0.26, 0.76, 0, s * 1.10, 0);     // bank body
+    smokeCluster(P, s * 0.99, 0.38, 0.82, 6, s * 1.20, 0.80);
   }
 
   // ---- flank stowage wrapping both sides (shoulders reach the hull width
@@ -355,8 +369,22 @@ function chieftain5Kit(P) {
   P.addGunExtraDark(cylZ(0.152, 0.05, 16), 0, 0, 0.72);                      // collar seam ring
   buildGun(P, { len: 6.26, r: 0.098, sleeve: true, evac: 0.58, collar: true, baseR: 0.16 });
 
-  // ---- hull: full-length skirt panels hung from the fender line (Mk.5 is
-  // skirted; the exposed toothed top run read as a WW2 chassis) ----
+  // ---- hull: the oracle's sponson bin row stands TALL at the fender line
+  // (tops near the ring plane, running most of the hull) — the base build's
+  // low flat bins leave the whole 1.45-1.85 side band empty, which is half
+  // of what kept the turret-layer mask down. Raised bin walls, capped just
+  // below the yawing turret-bin sweep ----
+  for (const s of [-1, 1]) {
+    for (const [zc, len2] of [[1.45, 2.10], [-0.85, 1.85]]) {
+      P.add('hull', box(0.30, 0.36, len2), s * 1.66, 1.62, zc);
+      P.add('hullDark', box(0.31, 0.02, len2 - 0.06), s * 1.66, 1.775, zc);        // lid seam
+      for (const f of [-0.31, 0.31]) {
+        P.add('hullDark', box(0.315, 0.37, 0.025), s * 1.665, 1.62, zc + f * len2); // strap bands
+      }
+    }
+  }
+  // full-length skirt panels hung from the fender line (Mk.5 is skirted;
+  // the exposed toothed top run read as a WW2 chassis)
   addSegmentedSkirts(P, 3.68, 6.5, 0.955, 0.31, 6);
   // deep corner mud flaps HUNG FROM the fender tips (replaces the four
   // free-floating ground plates the critique flagged; the reference carries
@@ -383,46 +411,50 @@ function fv510Build(P, o) {
   P.turretG.position.set(0, o.turretPivotY, o.turretPivotZ);
   P.gunG.position.set(o.gunX, o.gunY, o.gunZ);
 
-  // ---- square welded two-man turret ----
-  const h = 1.00, tw = 0.85;
-  P.add('turret', KIT.frustum(tw, 0.95, -1.10, tw * 0.93, 0.80, -1.04, 0, h));
+  // ---- compact welded two-man turret (round-3, mask 45.1: measured against
+  // the repaired oracle — turret body walls span only ~1.26 profile units of
+  // depth and rise ~0.5 over the deck; the r2 box was ~40% too deep and too
+  // tall, spilling cyan in every mask view. Shrunk to the oracle envelope) ----
+  const h = 0.85, tw = 0.85;
+  P.add('turret', KIT.frustum(tw, 0.78, -0.72, tw * 0.93, 0.64, -0.66, 0, h));
   for (const s of [-1, 1]) {
-    P.add('turretDark', box(0.34, 0.09, 0.05), s * 0.36, h * 0.80, 0.86);    // face vision blocks
-    P.add('turretGlass', box(0.26, 0.045, 0.03), s * 0.36, h * 0.80, 0.885);
+    P.add('turretDark', box(0.32, 0.09, 0.05), s * 0.34, h * 0.78, 0.685);   // face vision blocks
+    P.add('turretGlass', box(0.24, 0.045, 0.03), s * 0.34, h * 0.78, 0.71);
   }
-  for (const zs of [0.15, -0.35]) {
-    P.add('turretDark', box(0.05, 0.09, 0.26), -tw - 0.01, h * 0.78, zs);    // left-side blocks
+  for (const zs of [0.12, -0.30]) {
+    P.add('turretDark', box(0.05, 0.09, 0.24), -tw - 0.01, h * 0.76, zs);    // left-side blocks
   }
   // gunner sight pod (cylinder + cap) front-left roof + wire cutter
-  P.add('turret', cylY(0.17, 0.19, 0.30, 14), -0.32, h + 0.14, 0.32);
-  P.add('turret', cylY(0.10, 0.155, 0.10, 12), -0.32, h + 0.33, 0.32);
-  P.add('turretGlass', box(0.20, 0.07, 0.03), -0.32, h + 0.19, 0.50);
-  P.add('turretDark', box(0.035, 0.42, 0.035), 0.05, h + 0.24, 0.70, -0.4, 0, 0);
+  P.add('turret', cylY(0.16, 0.18, 0.24, 14), -0.34, h + 0.11, 0.22);
+  P.add('turret', cylY(0.10, 0.15, 0.09, 12), -0.34, h + 0.27, 0.22);
+  P.add('turretGlass', box(0.19, 0.06, 0.03), -0.34, h + 0.15, 0.38);
+  P.add('turretDark', box(0.035, 0.38, 0.035), 0.06, h + 0.20, 0.54, -0.4, 0, 0);
   // commander + gunner hatch rings with lids
-  for (const [hx, hz, hr] of [[-0.30, -0.55, 0.20], [0.36, -0.25, 0.18]]) {
+  for (const [hx, hz, hr] of [[-0.30, -0.40, 0.20], [0.36, -0.14, 0.18]]) {
     P.add('turret', cylY(hr, hr + 0.02, 0.06, 14), hx, h + 0.03, hz);
     P.add('turret', cylY(hr - 0.03, hr - 0.03, 0.025, 14), hx, h + 0.075, hz);
     P.add('turretDark', box(hr * 1.7, 0.014, 0.03), hx, h + 0.095, hz);
   }
-  periscope(P, 'turretDetail', 0.10, h + 0.05, -0.10);
-  liftEye(P, 'turretDetail', -0.70, h + 0.01, 0.70, 0.4);
-  liftEye(P, 'turretDetail', 0.70, h + 0.01, 0.70, -0.4);
-  // 2x4 smoke discharger banks on both cheeks
+  periscope(P, 'turretDetail', 0.12, h + 0.05, 0.06);
+  liftEye(P, 'turretDetail', -0.68, h + 0.01, 0.52, 0.4);
+  liftEye(P, 'turretDetail', 0.68, h + 0.01, 0.52, -0.4);
+  // 2x4 smoke discharger banks hung off the face corners, tubes clear of
+  // the cheeks so they never read as face studs
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.06, 0.14, 0.30), s * 0.80, 0.42, 0.72, 0, s * 0.6, 0);
-    smokeCluster(P, s * 0.90, 0.52, 0.80, 4, s * 1.0, 0.55);
-    smokeCluster(P, s * 0.87, 0.40, 0.84, 4, s * 1.0, 0.55);
+    P.add('turretDetail', box(0.06, 0.14, 0.28), s * 0.80, 0.36, 0.58, 0, s * 0.7, 0);
+    smokeCluster(P, s * 0.92, 0.46, 0.64, 4, s * 1.05, 0.55);
+    smokeCluster(P, s * 0.88, 0.34, 0.68, 4, s * 1.05, 0.55);
   }
   // rear stowage basket: rails + mesh + bundles
-  P.add('turretDetail', box(1.55, 0.04, 0.04), 0, h * 0.55, -1.42);
-  P.add('turretDetail', box(1.55, 0.04, 0.04), 0, h * 0.18, -1.42);
-  for (let k = 0; k < 6; k++) P.add('turretDetail', box(0.028, h * 0.40, 0.028), -0.70 + k * 0.28, h * 0.37, -1.42);
-  P.add('turretDark', box(1.45, 0.018, 0.30), 0, h * 0.20, -1.26);
-  stowage(P, 'turretCloth', P.rng, [[-0.35, h * 0.42, -1.24, 0.6, 0.24, 0.3], [0.42, h * 0.40, -1.24, 0.5, 0.22, 0.3]]);
+  P.add('turretDetail', box(1.55, 0.04, 0.04), 0, h * 0.55, -1.02);
+  P.add('turretDetail', box(1.55, 0.04, 0.04), 0, h * 0.18, -1.02);
+  for (let k = 0; k < 6; k++) P.add('turretDetail', box(0.028, h * 0.40, 0.028), -0.70 + k * 0.28, h * 0.37, -1.02);
+  P.add('turretDark', box(1.45, 0.018, 0.26), 0, h * 0.20, -0.88);
+  stowage(P, 'turretCloth', P.rng, [[-0.35, h * 0.42, -0.86, 0.6, 0.22, 0.28], [0.42, h * 0.40, -0.86, 0.5, 0.20, 0.28]]);
   // twin whip antennas on roof base pots
   for (const s of [-1, 1]) {
-    P.add('turretDetail', cylY(0.045, 0.058, 0.12, 8), s * 0.58, h + 0.06, -0.85);
-    P.add('turretDetail', box(0.022, 1.55, 0.022), s * 0.58, h + 0.90, -0.85, 0, 0, s * 0.04);
+    P.add('turretDetail', cylY(0.045, 0.058, 0.12, 8), s * 0.58, h + 0.06, -0.56);
+    P.add('turretDetail', box(0.022, 1.55, 0.022), s * 0.58, h + 0.90, -0.56, 0, 0, s * 0.04);
   }
   // RARDEN: mantlet block, then the LONG THIN stepped tube + flash hider
   P.addGunExtra(box(0.28, 0.32, 0.38), 0, 0, 0.30);
@@ -528,12 +560,19 @@ function centurionBuild(P, o, mk) {
   liftEye(P, 'turretDetail', 0.80, 0.50, 0.40, -0.5);
   liftEye(P, 'turretDetail', -0.68, h * 0.78, -1.25, 2.6);
   liftEye(P, 'turretDetail', 0.68, h * 0.78, -1.25, -2.6);
-  // smoke dischargers on cheek brackets: Mk.5/2 carries the full 2x6 banks,
-  // Mk.3 a lighter triple (replaces the "three painted dots")
+  // smoke dischargers: r2 "bead necklace" artifact — the old bare tube tips
+  // projected onto the dome face and read as a row of bumps. Rebuilt as the
+  // oracle's discharger BINS: a dark solid bank body hung off each cheek on
+  // a bracket arm, short tubes rising from the bin, everything angled
+  // outboard and kept under the cheek brow (Mk.5/2 twin bins, Mk.3 single)
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.06, 0.15, 0.36), s * 0.95, 0.26, 0.50, 0, s * 0.55, 0);
-    smokeCluster(P, s * 1.05, 0.37, 0.58, mk === 5 ? 6 : 3, s * 0.95, 0.7);
-    if (mk === 5) smokeCluster(P, s * 1.02, 0.27, 0.62, 6, s * 0.95, 0.7);
+    P.add('turretDetail', box(0.34, 0.05, 0.06), s * 0.90, 0.34, 0.58, 0, s * 0.50, 0);   // bracket arm
+    P.add('turretDark', box(0.16, 0.18, 0.40), s * 1.10, 0.30, 0.62, 0, s * 1.15, 0);     // bank body
+    smokeCluster(P, s * 1.14, 0.42, 0.68, mk === 5 ? 6 : 3, s * 1.25, 0.85);
+    if (mk === 5) {
+      P.add('turretDark', box(0.14, 0.16, 0.36), s * 1.22, 0.28, 0.44, 0, s * 1.15, 0);
+      smokeCluster(P, s * 1.26, 0.40, 0.50, 6, s * 1.25, 0.85);
+    }
   }
   // recessed internal mantlet: slim shadow ring buried in the dome tip + a
   // low canvas hood draping from the brow over the gun root (the r1 pass
@@ -713,10 +752,11 @@ export const UK_PROFILES = {
     hull: 'warrior', width: 3.03, hullLength: 6.38, roofY: 2.40, trackTop: 1.00, trackW: 0.52,
     wheels: 6, wheelR: 0.40, wheelY: 0.51, wheelSpan: 4.88, frontSprocket: true, skirts: true,
     skirtHeight: 0.82, skirtY: 1.18, skirtLength: 5.56, skirtPanels: 6, rearDoor: true,
-    // Post-repair oracle re-tune: the truthful turret is the real two-man
-    // square box (~±0.85) — the r1 ±1.31 shell chased the fused turret+bow
-    // mask. RARDEN stays inside the hull nose (tip 3.18 vs nose 3.19).
-    turretPivotY: 2.02, turretPivotZ: 0.93, gunX: 0.22, gunY: 0.30, gunZ: 0.40, gunLength: 1.85,
+    // Round-3 oracle re-measure (turret walls in the repaired print): body
+    // is a COMPACT box — center z ≈ +0.5 world (the old +0.93 pivot chased
+    // the fused turret+bow mask), walls ~1.26 deep, ~0.5 visible over the
+    // deck. RARDEN stays inside the hull nose (tip < nose).
+    turretPivotY: 2.02, turretPivotZ: 0.55, gunX: 0.22, gunY: 0.30, gunZ: 0.40, gunLength: 1.85,
   },
   // Centurion chassis pair: hull band raised to the oracle's 1.74 fender line
   // with the signature full-length armoured skirts over the Horstmann run.
@@ -726,37 +766,40 @@ export const UK_PROFILES = {
     ...CLASSIC, build: centurion3Build, width: 3.38, hullLength: 7.56, roofY: 1.70, trackTop: 0.88,
     trackW: 0.57, wheels: 6, wheelR: 0.40, wheelY: 0.50, wheelStyle: 'dished', skirts: true,
     skirtY: 1.04, skirtHeight: 0.60, skirtLength: 6.60,
-    skirtPanels: 6, turretPivotY: 1.69, turretPivotZ: -0.12, turretWidth: 2.52, turretDepth: 3.30,
+    skirtPanels: 6, turretPivotY: 1.69, turretPivotZ: 0.40, turretWidth: 2.52, turretDepth: 3.30,
     turretHeight: 0.76, turretFront: 1.06, turretRear: -2.02, pano: false,
     mg: false, antennas: false, smoke: false,          // replaced by centurionBuild kit
     // 20-pdr Type B: mid-tube fume extractor (ref gun is a print stub — G is
     // structurally capped; the honest barrel stays)
-    gunY: 0.34, gunZ: 0.55, gunLength: 5.60, gunRadius: 0.048, sleeve: false, evac: 0.55,
+    gunY: 0.34, gunZ: 0.55, gunLength: 5.08, gunRadius: 0.048, sleeve: false, evac: 0.55,
   },
   centurion5: {
     ...CLASSIC, build: centurion5Build, width: 3.38, hullLength: 7.56, roofY: 1.70, trackTop: 0.88,
     trackW: 0.57, wheels: 6, wheelR: 0.40, wheelY: 0.50, wheelStyle: 'dished', skirts: true,
     skirtY: 1.04, skirtHeight: 0.60, skirtLength: 6.60,
-    skirtPanels: 6, turretPivotY: 1.69, turretPivotZ: -0.12, turretWidth: 2.56, turretDepth: 3.36,
+    skirtPanels: 6, turretPivotY: 1.69, turretPivotZ: 0.40, turretWidth: 2.56, turretDepth: 3.36,
     turretHeight: 0.78, turretFront: 1.08, turretRear: -2.06, pano: false,
     mg: false, antennas: false, smoke: false,          // replaced by centurionBuild kit
     // L7 105 mm (fat mid-tube fume extractor added in centurionBuild)
-    gunY: 0.35, gunZ: 0.55, gunLength: 5.45, gunRadius: 0.053, sleeve: false, evac: 0.62,
+    gunY: 0.35, gunZ: 0.55, gunLength: 4.98, gunRadius: 0.053, sleeve: false, evac: 0.62,
   },
   comet: {
     build: cometBuild, width: 3.05, hullLength: 6.32, roofY: 1.64, bandY: 0.96, trackW: 0.46,
-    wheels: 5, wheelR: 0.45, wheelSpan: 4.40, gunLength: 4.42,
+    wheels: 5, wheelR: 0.45, wheelSpan: 4.40, gunLength: 3.70,   // r3: muzzle station +4.7 (ref-assembled)
     // Comet cue: FOUR return rollers, visible in the gaps between the big
     // Christie wheels (the Cromwell/Charioteer run has none).
     rollers: evenStations(4, 3.30).map((z) => ({ z, y: 0.76, r: 0.085 })),
   },
   challenger_cruiser: {
     build: a30Build, width: 2.91, hullLength: 6.10, roofY: 1.56, bandY: 0.92, trackW: 0.44,
-    wheels: 6, wheelR: 0.41, wheelSpan: 4.75, gunLength: 3.30,
+    // r3 gun re-length: the re-repaired oracle's 17-pdr clears the bow by
+    // ~1.1 (print muzzle bow+11.6 units at 0.0957 width-anchored scale); the
+    // old 3.30 tube stopped AT the nose and scored gun 0.0 vs the honest ref
+    wheels: 6, wheelR: 0.41, wheelSpan: 4.75, gunLength: 4.10,
     mgBall: false,   // A30 deleted the hull Besa — visor + hooded periscopes instead
   },
   charioteer: {
     build: charioteerBuild, width: 3.05, hullLength: 5.66, roofY: 1.60, bandY: 0.94, trackW: 0.46,
-    wheels: 5, wheelR: 0.44, wheelSpan: 4.00, gunLength: 5.45,
+    wheels: 5, wheelR: 0.44, wheelSpan: 4.00, gunLength: 4.62,   // r3: muzzle station +5.5 (ref-assembled)
   },
 };

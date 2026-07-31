@@ -57,3 +57,16 @@ front (assembled) plus flat-pack panels no rigid move can assemble.
   strips + lifting handles. Wheels: 'dished' style (hub drum, bolt ring, rubber tire).
 - Fidelity 66.6 vs 66.9 committed. T38 capped: the print turret remains part flat-pack
   (see oracle note above).
+
+## Round-3 log — oracle re-repair + re-seat (2026-07-30)
+- ORACLE RE-REPAIRED from .bak: the "flat-pack plates piled over the rear deck" the r2
+  recipe parked WERE the casting — the print's TurretMesh is the complete assembled
+  Centurion turret (full 20-pdr attached, dischargers, bustle bin) sunk in the rear well.
+  New recipe = one rigid move: basket ring c=(15.374,19.430) r7.0 onto the hull race
+  c=(16.900,41.870) r7.2, dx +1.526 dz +22.440 lift 6.5 (roof lands ~2.9 m),
+  pivot [16.90,15.8,41.87]. One assembled tank in all 9 views; gun mask honest (0* -> 44).
+- Headline 66.6 -> 76.0 (T 38.2* -> 58).
+- Procedural: turret pivot -0.12 -> +0.40 (race at +5.8% of hull), gunLength 5.60 -> 5.08
+  (muzzle keeps the print's +6.0 station); the r2 "bead necklace" cheek dischargers are
+  rebuilt as dark solid discharger BINS on bracket arms, angled outboard, tubes clear of
+  the dome (bumps no longer project onto the face).

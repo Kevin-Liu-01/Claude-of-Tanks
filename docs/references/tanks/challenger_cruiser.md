@@ -52,3 +52,16 @@ print's turret is stubbier than the tall A30 slab.
 - Turret component stays ~34: the print turret is stubbier than the real A30 slab AND
   levitates above the ring in its own articulation row (reference defect, outside UK file
   ownership). Fidelity 77.4 vs 77.4 committed.
+
+## Round-3 log — oracle re-repair + re-seat (2026-07-30)
+- ORACLE RE-REPAIRED from .bak: the r2 "exploded splat over an open ring" was the old
+  carve box (y 10.3..19.7) slicing only the TOP HALF of the sunken turret and floating it
+  +8.5/+18 — the lower half stayed in the tail. The print's TurretMesh is one assembled
+  A30 turret (full 17-pdr attached, twin hatches, rear bin). New recipe = one rigid move:
+  basket ring c=(13.208,15.010) r6.0 onto the race c=(15.200,37.031), dx +1.992
+  dz +22.021 lift 7.2, pivot [15.20,15.5,37.03]. One assembled tank in all 9 views.
+- Headline 77.4 -> 76.9 (T 34.4* -> 64 honest; G 100 -> 39: the old G was fiction — the
+  print had no gun overhang at all; now it carries the real 17-pdr).
+- Procedural: the 17-pdr was nose-length (muzzle AT the bow, G 0.0 vs the honest print) —
+  gunLength 3.30 -> 4.10, bore dropped 0.60 -> 0.46 (print bore ~1.9 world), muzzle
+  counterweight collar added, turret pivot -0.30 -> +0.12 (print race station).

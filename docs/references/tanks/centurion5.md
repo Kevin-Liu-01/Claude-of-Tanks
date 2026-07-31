@@ -40,3 +40,16 @@ segments on the bore line lifted to the throat (muzzle keeps its authored
   cheek (Mk.3 carries triples) + canvas stowage baskets on both bustle flanks.
 - G stays 15: the repaired print keeps only partial tube segments on the bore line (cap;
   honest 5.45 m barrel kept). Fidelity 73.1 vs 73.4 committed.
+
+## Round-3 log — oracle re-repair + re-seat (2026-07-30)
+- ORACLE RE-REPAIRED from .bak: the r2 state ("L7 lies detached across the glacis") was a
+  carve artifact — in the print the L7 is CO-AXIAL with the casting (bore x15.37 y12.60,
+  muzzle authored at bow+3.9) and the whole TurretMesh is one assembled turret. The old
+  recipe parked the entire casting inside the hull and lifted only tube slices. New
+  recipe = one rigid move: basket ring c=(15.374,23.400) r7.0 onto the race
+  c=(16.900,41.870) r7.2, dx +1.526 dz +18.470 lift 6.5, pivot [16.90,15.8,41.87].
+  One assembled tank in all 9 views; fume extractor + discharger clusters all present.
+- Headline 73.1 -> 75.8 (T 56.8* -> 59, G 15.2* -> 44 honest).
+- Procedural: turret pivot -0.12 -> +0.40, gunLength 5.45 -> 4.98 (muzzle keeps the
+  print's +6.0 station); cheek dischargers rebuilt as dark twin BINS per cheek on bracket
+  arms (r2 "bead necklace" + "solid slab with surface tubes" both closed).

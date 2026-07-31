@@ -45,81 +45,73 @@ RECOVERED = ROOT / 'public' / 'models' / 'tanks' / 'community' / 'recovered'
 # The unmatched residual of every carved source mesh is parked too unless
 # 'residual' says 'keep'.
 RECIPES = {
+    # ------------------------------------------------------------------ UK --
+    # Round-3 correction (r2 critique: "turret aft of an open ring pit",
+    # "detached barrel", "exploded splat"). Solo-mesh renders of the .baks
+    # prove every UK print's TurretMesh is ONE fully-assembled turret —
+    # casting + complete gun (extractor/brake and all) + basket cylinder —
+    # authored sunk into the rear hull with the barrel resting past the nose.
+    # There are NO print-bed spares: the r1 "spares"/"flat-pack plates" boxes
+    # were carving real turret furniture off (centurion castings, comet bin
+    # walls, charioteer rear stowage), and the "gun stub" regions were slicing
+    # the attached barrel. The correct repair is a single rigid move of the
+    # whole mesh: basket ring (36-vert circle at y0, Kasa fit) onto the hull
+    # deck's authored ring-pit race (Kasa fit at deck band), casting base on
+    # the deck plate, pivot at the pit centre.
     'charioteer': {
         'sources': ['TurretMesh'],
-        'pivot': [15.3, 15.0, 23.0],
-        'park': [15.3, 6.0, 30.0],
-        'lift': 8.0,  # sweepable turret lift (tuned: casting base on the deck)
+        'pivot': [15.30, 15.2, 37.40],   # hull pit race c=(15.300,37.400) r6.2
+        'park': None,
+        'lift': 7.0,   # casting base y7.0 -> deck plate y14.0
         'regions': [
-            # tail spares (left slab, right bracket) — printed beside the hull
-            ((1.0, 10.9, 8.1, 15.6, -0.5, 7.15), 'park', None),
-            ((12.9, 20.9, 8.1, 15.6, -0.5, 3.4), 'park', None),
-            # 20-pdr base collar printed past the nose at track height: seat
-            # it on the turret face at the gun throat
-            ((9.9, 13.7, 9.7, 13.5, 62.8, 67.9), 'turret', (3.3, 'lift', -32.0)),
-            # the tall angular turret, sunk to the basket: onto the ring
-            ((-0.5, 24.1, 6.3, 18.6, 5.1, 31.8), 'turret', (3.3, 'lift', 0.0)),
+            # whole assembled turret: basket c=(11.795,18.033) -> pit
+            ((-0.5, 24.1, -0.5, 18.6, -0.5, 67.9), 'turret',
+             (3.505, 'lift', 19.367)),
         ],
     },
     'comet': {
         'sources': ['TurretMesh'],
-        'pivot': [14.6, 16.4, 17.5],
-        'park': [14.6, 6.0, 40.0],
-        'lift': 8.5,  # tuned: casting base on the deck plate
+        'pivot': [14.60, 15.5, 39.00],   # hull pit race c=(14.600,39.000) r6.2
+        'park': None,
+        'lift': 7.5,   # casting base y7.5 -> deck plate y15.0
         'regions': [
-            # spare wall plates at the tail and along the left edge
-            ((3.9, 19.3, 9.1, 15.7, -0.5, 2.0), 'park', None),
-            ((-0.5, 5.2, 7.1, 17.3, 6.2, 16.8), 'park', None),
-            ((-0.5, 2.0, 11.3, 14.7, 19.6, 24.8), 'park', None),
-            # 77 mm HV muzzle-brake barrel piece + mantlet collar: onto the face
-            ((9.3, 13.8, 8.8, 13.2, 50.6, 57.2), 'turret', (0.0, 'lift', -18.6)),
-            ((7.4, 13.2, 9.4, 12.6, 30.2, 32.4), 'turret', (0.0, 'lift', -2.0)),
-            # welded turret with cast front, sunk to the basket
-            ((0.9, 27.2, 7.1, 18.4, 4.2, 28.6), 'turret', (0.0, 'lift', 0.0)),
+            # whole assembled turret: basket c=(11.573,18.100) -> pit
+            ((-0.5, 27.2, -0.5, 18.4, -0.5, 57.2), 'turret',
+             (3.027, 'lift', 20.900)),
         ],
     },
     'challenger_cruiser': {
         'sources': ['TurretMesh'],
-        'pivot': [15.2, 14.4, 14.5],
-        'park': [15.2, 6.0, 40.0],
-        'lift': 8.5,  # tuned against the tall procedural A30 turret
-        'dz': 18.0,  # print packs the turret at the tail; the A30's is mid-hull
+        'pivot': [15.20, 15.5, 37.03],   # hull pit race c=(15.200,37.031)
+        'park': None,
+        'lift': 7.2,   # wall base y7.5 -> deck plate y14.7
         'regions': [
-            # spare plates at the tail
-            ((7.3, 19.1, 7.1, 15.1, -0.5, 2.1), 'park', None),
-            # 17-pdr barrel piece past the nose: onto the tall turret's face
-            ((11.0, 15.4, 10.6, 15.0, 53.5, 60.1), 'turret', (2.0, 'lift', -27.0)),
-            # the tall narrow A30 turret
-            ((-0.5, 24.0, 10.3, 19.7, 0.8, 27.1), 'turret', (3.4, 'lift', 0.0)),
+            # whole assembled A30 turret: basket c=(13.208,15.010) -> pit
+            ((-0.5, 24.0, -0.5, 19.7, -0.5, 60.1), 'turret',
+             (1.992, 'lift', 22.021)),
         ],
     },
     'centurion3': {
         'sources': ['TurretMesh'],
-        'pivot': [16.9, 16.6, 30.6],
-        'park': [16.9, 8.0, 37.0],
-        'lift': 8.0,  # tuned
+        'pivot': [16.90, 15.8, 41.87],   # hull pit race c=(16.900,41.870) r7.2
+        'park': None,
+        'lift': 6.5,   # skirt tips y8.5 -> deck plate y15.0 (roof lands 2.9 m)
         'regions': [
-            # 20-pdr stub printed on the glacis: onto the casting face
-            ((13.2, 17.5, 10.5, 14.7, 70.3, 75.3), 'turret', (0.7, 'lift', -34.5)),
-            # cast turret front/sides, sunk at the ring station
-            ((2.9, 29.5, 7.9, 17.0, 24.9, 36.3), 'turret', (0.7, 'lift', 0.0)),
-            # flat-pack plates (roof/bin walls) piled over the rear deck
-            ((-0.5, 31.3, 7.9, 22.5, -0.5, 24.2), 'park', None),
+            # whole assembled turret: basket c=(15.374,19.430) -> pit
+            ((-0.5, 31.3, -0.5, 22.5, -0.5, 75.3), 'turret',
+             (1.526, 'lift', 22.440)),
         ],
     },
     'centurion5': {
         'sources': ['TurretMesh'],
-        'pivot': [15.4, 16.6, 34.5],
-        'park': [15.4, 8.0, 15.0],
-        'lift': 8.5,  # tuned
+        'pivot': [16.90, 15.8, 41.87],   # same hull print as centurion3
+        'park': None,
+        'lift': 6.5,   # bore lands y19.1 (~2.0 m), roof 28.5 (~2.97 m)
         'regions': [
-            # L7 tube segments + muzzle ring already laid out along the bore
-            # line toward the nose: lift them to the throat, keep their z
-            ((13.2, 17.6, 10.6, 15.1, 41.7, 79.3), 'turret', (0.0, 'lift', 0.0)),
-            # cast turret front, sunk at the ring station (z 30-40)
-            ((2.9, 27.8, 7.9, 16.6, 29.5, 41.2), 'turret', (0.0, 'lift', 0.0)),
-            # flat-pack plates piled over the rear deck
-            ((-0.5, 31.3, 7.9, 22.5, -0.5, 29.5), 'park', None),
+            # whole assembled turret incl. co-axial L7 (bore x15.37 y12.60,
+            # authored muzzle at bow+3.9): basket c=(15.374,23.400) -> pit
+            ((-0.5, 31.3, -0.5, 22.5, -0.5, 79.3), 'turret',
+             (1.526, 'lift', 18.470)),
         ],
     },
     'fv510': {
