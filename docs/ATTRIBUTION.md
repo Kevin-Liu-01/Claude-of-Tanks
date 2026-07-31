@@ -6,8 +6,24 @@ served locally from `public/`, no CDN or network fetches in game code.
 
 | Asset | Author | Source | License | Files |
 |---|---|---|---|---|
-| Switzer font family (Regular 400, Medium 500, Semibold 600, Bold 700, Extrabold 800 — woff2 web kit) | Jérémie Hornus / Indian Type Foundry | https://www.fontshare.com/fonts/switzer (downloaded via https://api.fontshare.com/v2/fonts/download/switzer) | Fontshare Free Font License (ITF FF EULA) — free for personal & commercial use; license text committed alongside the fonts | `public/fonts/switzer/Switzer-{Regular,Medium,Semibold,Bold,Extrabold}.woff2`, license: `public/fonts/switzer/LICENSE-FFL.txt` |
-| Switzer Condensed (derivative faces) | derived locally from the hosted Switzer woff2s (glyph outlines and advances condensed to 86% width via fontTools; family renamed to avoid collision) | generated in-repo — no new third-party download | Same license and license file as Switzer: Fontshare Free Font License (ITF FF EULA), permits modification | `public/fonts/switzer/SwitzerCondensed-{Regular,Medium,Semibold,Bold,Extrabold}.woff2`, license: `public/fonts/switzer/LICENSE-FFL.txt` |
+| Inter variable font v4.1 (InterVariable.woff2 straight from the official release, unmodified; wght 100–900 × opsz 14–32, roman only — the UI sets no italics). OWNER-DIRECTED CHOICE replacing Archivo, with a UI usage floor of weight 500 (medium) — body/default 500, hierarchy 600/700/800. PROVENANCE NOTE (kept for the record): the owner originally requested Klim Type Foundry's "Die Grotesk" (https://klim.co.nz/fonts/die-grotesk/) — that face is commercial-only and Klim's test-font licence (https://klim.co.nz/licences/test-fonts/) is evaluation-only and excludes personal projects/games, so it remains unobtainable for this project; Archivo shipped as the interim free substitute and has now been replaced by Inter (removed from `public/fonts/archivo/`). Inter has no width axis: the former condensed HUD layer (once 'Archivo Condensed' at 79% stretch, before that SwitzerCondensed, removed from `public/fonts/switzer/`) is now plain Inter with tightened letter-spacing at the consuming rules. | Rasmus Andersson (The Inter Project Authors) | https://rsms.me/inter/ (release: https://github.com/rsms/inter/releases/tag/v4.1) | SIL Open Font License 1.1 — free for personal & commercial use, modification and redistribution allowed; license committed alongside the font. No public-build strip needed (not NC/personal-use restricted). | `public/fonts/inter/InterVariable.woff2`, license: `public/fonts/inter/OFL.txt` |
+
+## Brand / logo set (public/brand/) — added 2026-07-31
+
+The game logo is a hand-authored original flat-vector composition (stylized
+modern MBT, side profile, original art — not based on any specific real
+vehicle or third-party tank art) with the **Claude Code mascot** seated in the
+commander's hatch wearing a tanker helmet. Only the mascot glyph is a sourced
+asset; everything else in `public/brand/` is first-party:
+
+| Asset | Author | Source | License | Files |
+|---|---|---|---|---|
+| Claude Code mascot icon (pristine 24×24 path; `color.svg` and `default.svg` on the source CDN are byte-identical, fill `#D97757`). Used verbatim inside the brand marks via `translate(...) scale(...)` with the legs clipped below the hatch ring — the glyph geometry itself is unmodified; the helmet/goggles are drawn as separate first-party shapes layered on top. | Anthropic (Claude Code branding; icon page curated by theSVG) | https://thesvg.org/icon/claude-code (file: https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/claude-code/color.svg) | Anthropic trademark/branding, © Anthropic. Used in this PRIVATE, personal-use, never-published fan project only; not an endorsement. Would require Anthropic's permission for any public/commercial use — strip `public/brand/` mascot art if that ever changes. | pristine source: `public/brand/claude-code-source.svg`; composed into `public/brand/logo-mark.svg`, `logo-mark-simple.svg`, `logo-full.svg`, `favicon.svg` (+ PNG exports `favicon-32.png`, `favicon-192.png`, `apple-touch-icon.png`, `og-logo.png`, `og-logo-transparent.png`), and inlined in `index.html` boot splash |
+| Inter wordmark subsets inside `logo-full.svg` (two static instances of the repo's Inter variable font — wght 800 and 700 at opsz 32 — subset to the 13 glyphs of "CLAUDE OF TANKS" with fontTools and embedded as ~1.5 KB woff2 data URIs so the lockup renders correctly standalone). | Rasmus Andersson (The Inter Project Authors) | derived from `public/fonts/inter/InterVariable.woff2` (see Inter row above) | SIL OFL 1.1 — modification/subsetting and embedding permitted; license at `public/fonts/inter/OFL.txt` | embedded in `public/brand/logo-full.svg` |
+
+PNG exports are produced by `tools/brand-render.mjs` (export mode) and the og
+composition script; regenerate any raster from its SVG master rather than
+editing pixels.
 
 ## Vehicles (public/models/tanks/) — 2 shipped assets (M1A2, Leopard 2A6)
 
@@ -562,6 +578,23 @@ therefore uses the recovered M60A1 visual as the nearest honest family model.
   captured from the game's own render; derivative only of this repo's
   procedural world + the CC0 texture sets listed above (no attribution duty
   for CC0).
+
+## Audio (public/audio/) — 100% original synthesis, no third-party recordings
+
+The runtime sound stack (`src/audio/audio.js`) is synthesized live in WebAudio
+(oscillators, seeded noise buffers, pre-rendered PCM gun beds) — no downloaded
+samples anywhere. The ONE on-disk audio category is the crew radio voice set,
+and it is generated, not sourced:
+
+| Asset | Author/Method | Source | License | Files |
+|---|---|---|---|---|
+| Crew radio voice lines (17 calls: "Enemy spotted", "Target destroyed", "We're hit!", "Ricochet!", "They bounced us!", "Ammo rack's hit!", "Fire! Put it out!", "Fire's out", "Engine's damaged", "Track's gone!", "Gun's damaged!", "Reloaded", "Up!", "On the move", "Firing!", "Enemy tank down", "Repairs complete") | Generated by this project via `tools/make-voices.mjs`: macOS built-in `say` text-to-speech (system voices Daniel/Ralph/Fred = commander/gunner/driver) → ffmpeg intercom chain (silence trim, speechnorm, 300–3000 Hz bandpass, 6:1 compression, bit-crush grit, seeded pink-noise static bed, squelch clicks) → mono 24 kHz Opus | Original synthesis — this repo (re-runnable: `node tools/make-voices.mjs`) | Original work of this project; macOS TTS output used per Apple's macOS license for user-generated content in a private, never-distributed project. No third-party recordings sampled. | `public/audio/voice/*.ogg` (17 files, ~48 KiB total) |
+
+Sourcing note (2026-07-31): CC0 sample packs were considered for gunfire and
+impacts (kenney.nl audio packs are UI/arcade-flavored — no armored-vehicle
+combat set; freesound.org requires an account for downloads — skipped per the
+no-account rule). Procedural synthesis + the pre-rendered caliber beds won on
+cohesion, payload (zero download) and licensing simplicity.
 
 ## PERSONAL-USE / NC QUARANTINE (remove before any public distribution or commercialization)
 

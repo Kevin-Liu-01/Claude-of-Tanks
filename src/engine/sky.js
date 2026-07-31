@@ -880,8 +880,41 @@ export function createSky(scene, renderer) {
     scene.add(mesh);
     return mesh;
   };
+  // LOADING PERF (boot r9): the two cloud sprite bakes (makeCloudTexture +
+  // makeCirrusTexture, ~330 ms of fbm/canvas work — the bulk of the boot 'sky'
+  // stage) are DEFERRED. The garage bay is fully enclosed, so nothing on the
+  // boot path can see a cloud; each deck starts on a transparent placeholder
+  // (alpha 0 → the deck shader outputs nothing) and ensureCloudTextures()
+  // image-swaps the real bakes in later. Every path that can show the outdoor
+  // sky funnels through world activation / applyPreset, and both call it —
+  // main.js also runs it from a post-ready idle slice so a long garage dwell
+  // absorbs the cost first. The bakes are seed-deterministic and order-
+  // independent (separate mulberry32 streams), so deferral changes no pixels.
+  const lazyCloudTex = () => {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 4;
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.anisotropy = CLOUD_ANISOTROPY;
+    return tex;
+  };
+  let cloudsBaked = false;
+  const ensureCloudTextures = () => {
+    if (cloudsBaked) return;
+    cloudsBaked = true;
+    const swap = (deck, baked) => {
+      const tex = deck.material.uniforms.uMap.value;
+      tex.image = baked.image;
+      tex.needsUpdate = true;
+      baked.dispose(); // wrapper never uploaded — frees only CPU-side state
+    };
+    swap(cloudsFar, makeCirrusTexture());
+    swap(clouds, makeCloudTexture());
+  };
   const cloudsFar = mkCloudDeck(
-    makeCirrusTexture(), CIRRUS_ALT, CIRRUS_UV_METERS, CLOUD_LAYER2_OPACITY,
+    lazyCloudTex(), CIRRUS_ALT, CIRRUS_UV_METERS, CLOUD_LAYER2_OPACITY,
     CIRRUS_DOME_RADIUS, CIRRUS_HAZE_K, [0.31, 0.77], 'cloudLayerFar',
     // cirrus rides perpendicular to the sun rotation — its -v axis is NOT
     // sunward, so the mass-shading term stays subtle there
@@ -895,7 +928,7 @@ export function createSky(scene, renderer) {
   // "stretched billboard artifact" read). Cross-wind cirrus is also the
   // meteorologically common case.
   const clouds = mkCloudDeck(
-    makeCloudTexture(), CLOUD_ALT, CLOUD_UV_METERS, 1.0,
+    lazyCloudTex(), CLOUD_ALT, CLOUD_UV_METERS, 1.0,
     CLOUD_DOME_RADIUS, CLOUD_HAZE_K, [0, 0], 'cloudLayer', 0.30,
   );
   clouds.renderOrder = -2;
@@ -977,6 +1010,13 @@ export function createSky(scene, renderer) {
     sunDir,
 
     /**
+     * LOADING PERF (boot r9): finish the deferred cloud-deck sprite bakes
+     * (idempotent, ~330 ms once). applyPreset runs it on every map re-key;
+     * main.js runs it on first world activation and from post-ready idle.
+     */
+    ensureCloudTextures,
+
+    /**
      * Bake the procedural sky into a PMREM environment map and install it as
      * `scene.environment` (the IBL specular-ambient layer — the biggest single
      * AAA-ness lever per graphics-aaa.md §2). Uses a SEPARATE Sky instance
@@ -1052,6 +1092,7 @@ export function createSky(scene, renderer) {
      * @returns {void}
      */
     applyPreset(p, targetScene) {
+      ensureCloudTextures(); // deferred boot bake — decks must be real now
       preset = { ...DEFAULT_PRESET, ...(p || {}) };
       sunDir.setFromSphericalCoords(
         1,

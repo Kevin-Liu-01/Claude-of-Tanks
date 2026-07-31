@@ -62,9 +62,11 @@ const CLIMB_TAU_S = 0.35;     // assist ease time constant
 const COLLISION_PAD_M = 0.3;
 const CAMERA_MIN_CLEARANCE_M = 1.0; // auto-height above terrain
 const TRAUMA_DECAY_PER_S = 1.4;
-// Scope-in aim policy (enterSniper): keep the aim point if it is at least
-// this far away; otherwise lift the view to a shallow just-below-horizon
-// scan pitch so the first zoom of a battle opens on the battlefield.
+// Scope-in aim policy (enterSniper): the reticle's world point is PRESERVED
+// across the boundary (gunnery r1, owner mandate — see enterSniper). The
+// scan-lift below survives ONLY for a battle where the player has not aimed
+// yet (aimTouched false): the arcade default pitch rests the aim on grass a
+// dozen meters ahead and the first scope used to open on dirt.
 const SNIPER_KEEP_AIM_M = 50;
 const SNIPER_ENTRY_PITCH_RAD = THREE.MathUtils.degToRad(-1.5);
 const SHAKE_FREQ = 11;
@@ -107,6 +109,11 @@ function nearestZoomIndex(zoom, list) {
  * @property {number} wheel - accumulated wheel notches this frame (int, ±3 max): +N zoom in, -N zoom out
  * @property {boolean} rmb - right button held (gun lock: free look, aim frozen)
  * @property {boolean} shiftPressed - Shift held (rising edge toggles sniper)
+ * @property {boolean} [aimHold] - RMB hold-to-aim level (gunnery r1, settings
+ *   rmbMode 'hold'): rising edge enters sniper from ARCADE, falling edge
+ *   returns to the pre-scope arcade orbit with the aim ray preserved. Only
+ *   an entry latched by THIS hold is exited by its release — Shift/wheel
+ *   scopes are never yanked by a stray RMB release.
  * @property {boolean} [cursorAim] - CURSOR-AIM FALLBACK: pointer lock is
  *   unavailable — run the server-aim raycast through the real cursor position
  *   (cursorX/cursorY) instead of screen center; the turret then slews toward
@@ -157,6 +164,13 @@ export function createCameraRig(camera, deps) {
   // RMB free-look offsets (arcade): camera moves, turret/aim stay frozen.
   let freeYaw = 0;
   let freePitch = 0;
+  // gunnery r1: has the player actively mouse-aimed since the last battle
+  // snap? Gates enterSniper's dirt-guard scan-lift — once the player owns the
+  // pitch, scoping preserves it exactly (see enterSniper).
+  let aimTouched = false;
+  // gunnery r1: RMB hold-to-aim edge state (camInput.aimHold).
+  let prevAimHold = false;
+  let aimHoldLatched = false;
 
   let step = 2; // ORBIT_STEPS index — 13 m default
   let dist = ORBIT_STEPS[step];
@@ -566,6 +580,25 @@ export function createCameraRig(camera, deps) {
       }
       prevShift = camInput.shiftPressed;
 
+      // RMB HOLD-TO-AIM (gunnery r1, settings rmbMode 'hold' — the default):
+      // press enters sniper, release returns to the pre-scope arcade orbit
+      // with the aim ray preserved (bug-2 rules). The latch ties the exit to
+      // an entry THIS hold made: releasing RMB over a Shift- or wheel-entered
+      // scope must not kick the player out of it.
+      if (camInput.aimHold && !prevAimHold) {
+        if (rig.mode === 'ARCADE') {
+          aimHoldLatched = true;
+          rig.enterSniper();
+        }
+      } else if (!camInput.aimHold && prevAimHold && aimHoldLatched) {
+        aimHoldLatched = false;
+        if (rig.mode === 'SNIPER') rig.exitSniper(true);
+      }
+      if (!camInput.aimHold && aimHoldLatched && rig.mode === 'ARCADE') {
+        aimHoldLatched = false; // scope left by other means mid-hold
+      }
+      prevAimHold = !!camInput.aimHold;
+
       // Consume ALL wheel notches accumulated this frame (main.js clamps to
       // ±3): fast flicks used to collapse to one step per render frame.
       if (camInput.wheel) {
@@ -593,6 +626,7 @@ export function createCameraRig(camera, deps) {
       } else {
         freeYaw = 0;
         freePitch = 0;
+        if (camInput.mouseDX !== 0 || camInput.mouseDY !== 0) aimTouched = true;
         aimYaw += camInput.mouseDX * sens;
         aimPitch = THREE.MathUtils.clamp(aimPitch - camInput.mouseDY * sens, PITCH_MIN, PITCH_MAX);
       }
@@ -762,21 +796,30 @@ export function createCameraRig(camera, deps) {
       preSniperStep = step; // gameplay_feel r6: restored on Shift-exit
       freeYaw = 0;
       freePitch = 0;
-      // Scope-in must open on the BATTLEFIELD, not the dirt: the arcade
-      // default pitch (-10 deg from a camera 5+ m up) rests the aim on
-      // ground a dozen meters ahead, so entering sniper at the gun trunnion
-      // stared at grass at 13 m ("aim 13 m" on the first scope of every
-      // battle). Preserve the arcade aim POINT when it is a real target
-      // (beyond SNIPER_KEEP_AIM_M); otherwise lift the view to a shallow
-      // scan pitch just under the horizon.
-      if (rig.aimDist < SNIPER_KEEP_AIM_M) {
+      // AIM PRESERVATION (gunnery r1, owner bug 2 — bidirectional with
+      // exitSniper): scoping in keeps the reticle's WORLD POINT — yaw/pitch
+      // are re-solved from the gun trunnion, because the camera is about to
+      // jump there from the orbit position (different parallax). The old
+      // unconditional close-aim scan-lift re-pitched every deliberate
+      // close-quarters scope toward the horizon and, against rising ground,
+      // stepped it clear up to PITCH_MAX — the SKY — with nothing ever
+      // restoring it (owner: "aimed by scrolling → looking at the sky, have
+      // to come down"; each in/out cycle ratcheted the pitch further up).
+      //
+      // The scan-lift survives for exactly one case: the player has not
+      // aimed at all since the battle snapped (aimTouched false), where the
+      // arcade default pitch rests the aim on grass a dozen meters ahead and
+      // the first scope of a battle used to open on dirt ("aim 13 m" —
+      // gameplay_feel r4). Once the player owns the aim, their pitch is
+      // their pitch.
+      const player = getPlayer();
+      if (!aimTouched && rig.aimDist < SNIPER_KEEP_AIM_M) {
         aimPitch = Math.max(aimPitch, SNIPER_ENTRY_PITCH_RAD);
         // gameplay_feel r1: facing RISING ground the flat-ground scan pitch
         // still ray-hits the slope a few meters out (full-screen grass at
         // 6 m). Raise the entry pitch in 2-degree steps until the scope
         // opens at least SNIPER_KEEP_AIM_M into the battlefield (PITCH_MAX
         // stops the loop when a genuine wall fills the view).
-        const player = getPlayer();
         if (player) {
           sniperAnchorFor(player, _desired);
           const stepR = THREE.MathUtils.degToRad(2);
@@ -787,22 +830,16 @@ export function createCameraRig(camera, deps) {
             aimPitch = Math.min(aimPitch + stepR, PITCH_MAX);
           }
         }
-      } else {
-        // re-derive the pitch that keeps the current aim point centered
-        // from the sniper anchor (the camera is about to jump from the
-        // orbit position to the gun trunnion — different parallax)
-        const player = getPlayer();
-        if (player) {
-          sniperAnchorFor(player, _desired);
-          const dx = rig.aimPoint.x - _desired.x;
-          const dy = rig.aimPoint.y - _desired.y;
-          const dz = rig.aimPoint.z - _desired.z;
-          const h = Math.hypot(dx, dz);
-          if (h > 1e-3) {
-            aimPitch = THREE.MathUtils.clamp(
-              Math.atan2(dy, h), PITCH_MIN, PITCH_MAX);
-            aimYaw = Math.atan2(dx, dz);
-          }
+      } else if (player) {
+        sniperAnchorFor(player, _desired);
+        const dx = rig.aimPoint.x - _desired.x;
+        const dy = rig.aimPoint.y - _desired.y;
+        const dz = rig.aimPoint.z - _desired.z;
+        const h = Math.hypot(dx, dz);
+        if (h > 1e-3) {
+          aimPitch = THREE.MathUtils.clamp(
+            Math.atan2(dy, h), PITCH_MIN, PITCH_MAX);
+          aimYaw = Math.atan2(dx, dz);
         }
       }
       applyPlayerVisibility(getPlayer(), false);
@@ -811,11 +848,26 @@ export function createCameraRig(camera, deps) {
     /**
      * Exit sniper back to arcade, with the orbit oriented behind the current
      * gun (aim yaw synced to hull yaw + turret yaw) so the camera comes out
-     * behind the barrel. gameplay_feel r6 (round critique MINOR): a Shift
-     * TOGGLE exit (`restorePrev` true) returns to the orbit distance the
-     * player scoped in from — WoT restores the pre-sniper arcade distance —
-     * while the wheel-out path keeps the closest 4 m step for zoom
-     * continuity.
+     * behind the barrel — the classic cannon-following camera, unchanged.
+     * gameplay_feel r6 (round critique MINOR): a Shift TOGGLE exit
+     * (`restorePrev` true) returns to the orbit distance the player scoped
+     * in from — WoT restores the pre-sniper arcade distance — while the
+     * wheel-out path keeps the closest 4 m step for zoom continuity.
+     *
+     * PITCH PRESERVATION (gunnery r1, owner scope-aim fix — bidirectional
+     * with enterSniper): the arcade PITCH is re-solved from the CURRENT
+     * reticle world point (its elevation as seen from the orbit pivot), so
+     * the scope's pitch — including any never-aimed entry scan-lift — can no
+     * longer ratchet the arcade view toward the sky ("aimed by scrolling →
+     * looking at the sky, have to come down": the old exit kept the
+     * scope-mutated pitch verbatim, +8.5 deg per close-aim scope cycle).
+     * Yaw stays the classic behind-the-cannon line above; only the pitch
+     * component of the preserved aim ray is applied.
+     *
+     * Cursor-aim mode keeps the fully legacy exit (pitch untouched): there
+     * the aim point is the ray through the real CURSOR, and re-solving the
+     * view pitch from it would tilt the camera toward wherever the cursor
+     * happened to rest.
      * @param {boolean} [restorePrev=false] restore the pre-sniper orbit step
      * @returns {void}
      */
@@ -828,6 +880,17 @@ export function createCameraRig(camera, deps) {
       dist = ORBIT_STEPS[step];
       const player = getPlayer();
       if (player && player.state) aimYaw = player.state.yaw + player.state.turretYaw;
+      if (!cursorAimOn && player) {
+        pivotTargetFor(player, _pivotTarget);
+        const dx = rig.aimPoint.x - _pivotTarget.x;
+        const dy = rig.aimPoint.y - _pivotTarget.y;
+        const dz = rig.aimPoint.z - _pivotTarget.z;
+        const h = Math.hypot(dx, dz);
+        if (h > 1e-3) {
+          aimPitch = THREE.MathUtils.clamp(
+            Math.atan2(dy, h), PITCH_MIN, PITCH_MAX);
+        }
+      }
       applyPlayerVisibility(player, true);
     },
 
@@ -890,6 +953,9 @@ export function createCameraRig(camera, deps) {
       aimPitch = THREE.MathUtils.clamp(orbitPitch, PITCH_MIN, PITCH_MAX);
       freeYaw = 0;
       freePitch = 0;
+      aimTouched = false; // gunnery r1: fresh battle/staged pose — dirt-guard re-arms
+      prevAimHold = false;
+      aimHoldLatched = false;
       trauma = 0;
       shakeT = 0;
       const player = getPlayer();
@@ -921,6 +987,9 @@ export function createCameraRig(camera, deps) {
       aimPitch = THREE.MathUtils.clamp(aimPitch_, PITCH_MIN, PITCH_MAX);
       freeYaw = 0;
       freePitch = 0;
+      aimTouched = false; // gunnery r1: staged pose — see snapArcade
+      prevAimHold = false;
+      aimHoldLatched = false;
       trauma = 0;
       shakeT = 0;
       const player = getPlayer();

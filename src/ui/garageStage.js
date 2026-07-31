@@ -206,34 +206,58 @@ function makeWallTexture(rng) {
 }
 
 // stenciled bay signage plate (dark steel board, worn yellow stencil)
+// Inter has no condensed cut: bake at 44px but shrink-to-fit against the
+// plate's inner width (the old 79%-width face fit 'NO SMOKING' at 44px flat).
+const SIGN_FONT = "700 44px 'Inter', 'Arial Narrow', Arial, sans-serif";
 function makeSignTexture(rng, text) {
   const W = 256, H = 128;
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
   const g = c.getContext('2d');
-  g.fillStyle = '#23282c';
-  g.fillRect(0, 0, W, H);
-  g.strokeStyle = '#c9a22c';
-  g.lineWidth = 6;
-  g.strokeRect(7, 7, W - 14, H - 14);
-  // hazard chevron strip along the bottom
-  g.save();
-  g.beginPath(); g.rect(14, H - 34, W - 28, 20); g.clip();
-  for (let x = 0; x < W + 40; x += 28) {
-    g.fillStyle = (x / 28) % 2 ? '#c9a22c' : '#1c1e20';
-    g.beginPath();
-    g.moveTo(x, H - 14); g.lineTo(x + 14, H - 34); g.lineTo(x + 28, H - 34); g.lineTo(x + 14, H - 14);
-    g.closePath(); g.fill();
-  }
-  g.restore();
-  g.fillStyle = '#d8b23a';
-  g.font = '700 44px "Arial Narrow", Arial, sans-serif';
-  g.textAlign = 'center';
-  g.fillText(text, W / 2, 62);
-  // wear: chips + grime so the stencil never reads as crisp UI text
+  // wear specks precomputed so the rng stream stays deterministic even when
+  // the plate re-bakes after the webfont resolves (draw() below is re-run).
+  const wear = [];
   for (let i = 0; i < 260; i++) {
-    g.fillStyle = rng() < 0.6 ? 'rgba(20,22,24,0.35)' : 'rgba(160,150,120,0.12)';
-    g.fillRect(rng() * W, rng() * H, 1 + rng() * 3, 1 + rng() * 2);
+    wear.push([rng() < 0.6, rng() * W, rng() * H, 1 + rng() * 3, 1 + rng() * 2]);
+  }
+  const draw = () => {
+    g.fillStyle = '#23282c';
+    g.fillRect(0, 0, W, H);
+    g.strokeStyle = '#c9a22c';
+    g.lineWidth = 6;
+    g.strokeRect(7, 7, W - 14, H - 14);
+    // hazard chevron strip along the bottom
+    g.save();
+    g.beginPath(); g.rect(14, H - 34, W - 28, 20); g.clip();
+    for (let x = 0; x < W + 40; x += 28) {
+      g.fillStyle = (x / 28) % 2 ? '#c9a22c' : '#1c1e20';
+      g.beginPath();
+      g.moveTo(x, H - 14); g.lineTo(x + 14, H - 34); g.lineTo(x + 28, H - 34); g.lineTo(x + 14, H - 14);
+      g.closePath(); g.fill();
+    }
+    g.restore();
+    g.font = SIGN_FONT;
+    g.textAlign = 'center';
+    // shrink-to-fit: Inter is wider than the retired condensed cut, and the
+    // longest plate ('NO SMOKING') would otherwise run through the keyline.
+    const maxW = W - 44;
+    const w0 = g.measureText(text).width;
+    if (w0 > maxW) {
+      g.font = SIGN_FONT.replace('44px', `${Math.max(24, Math.floor((44 * maxW) / w0))}px`);
+    }
+    g.fillStyle = '#d8b23a';
+    g.fillText(text, W / 2, 62);
+    // wear: chips + grime so the stencil never reads as crisp UI text
+    for (const [dark, x, y, w, h] of wear) {
+      g.fillStyle = dark ? 'rgba(20,22,24,0.35)' : 'rgba(160,150,120,0.12)';
+      g.fillRect(x, y, w, h);
+    }
+  };
+  draw();
+  // font mandate: bake in Inter — redraw once if the face lands
+  // after the first bake (caller flips needsUpdate on the wrapping texture).
+  if (document.fonts && !document.fonts.check(SIGN_FONT)) {
+    document.fonts.ready.then(draw).catch(() => {});
   }
   return c;
 }
@@ -702,6 +726,13 @@ export function createGarageStage(engineCtx, pos) {
   const signGeoSmall = track(new THREE.PlaneGeometry(2.2, 1.1));
   const signTex1 = track(canvasTexture(makeSignTexture(rng, 'BAY 01'), { aniso }));
   const signTex2 = track(canvasTexture(makeSignTexture(rng, 'NO SMOKING'), { aniso }));
+  // sign plates re-bake themselves on fonts.ready (see makeSignTexture) —
+  // this pushes the refreshed canvases to the GPU.
+  if (document.fonts && !document.fonts.check(SIGN_FONT)) {
+    document.fonts.ready
+      .then(() => { signTex1.needsUpdate = true; signTex2.needsUpdate = true; })
+      .catch(() => {});
+  }
   const signMat1 = track(shadowMat(new THREE.MeshStandardMaterial({
     map: signTex1, emissive: 0xffffff, emissiveMap: signTex1, emissiveIntensity: 0.16,
     roughness: 0.6, metalness: 0.2,

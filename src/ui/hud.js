@@ -22,8 +22,8 @@ const CIRCLE_COL = 'rgba(208,233,211,0.85)';
 const SNIPER_COL = 'rgba(140,242,140,0.95)';      // sniper circle + furniture
 const SNIPER_NONE = 'rgba(186,248,186,0.97)';     // sniper neutral marker ink
 const RELOAD_ACCENT = 'rgba(240,160,48,0.95)';    // reload sweep + countdown
-// Shared Switzer type system (see src/ui/fonts.js): FONT_COND drives the
-// numeral/label hierarchy with tabular figures.
+// Shared Inter type system (see src/ui/fonts.js): FONT_COND drives the
+// numeral/label hierarchy with tabular figures (weight floor 500).
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
 // Pre-rendered tank icons (tools/genIcons.mjs): side silhouettes drive the
 // kill feed + ambient nameplates. Minimap blips and team-panel rows use the
@@ -284,13 +284,13 @@ const HUD_CSS = `
    segment bar hugs each numeral at a 2px gap so numeral+bar read as one
    counter unit. */
 .cot-top .fg{color:${PEN_GREEN};font-size:30px;font-weight:700;line-height:1;
-  font-family:${FONT_COND};font-stretch:condensed;
+  font-family:${FONT_COND};letter-spacing:-.01em;
   font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.6);}
 .cot-top .fe{color:${PEN_RED};font-size:30px;font-weight:700;line-height:1;
-  font-family:${FONT_COND};font-stretch:condensed;
+  font-family:${FONT_COND};letter-spacing:-.01em;
   font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.6);}
 .cot-top .tm{font-size:15.5px;font-weight:600;color:#d6e2ec;letter-spacing:.1em;
-  font-family:${FONT_COND};font-stretch:condensed;text-shadow:0 1px 2px rgba(0,0,0,.8);
+  font-family:${FONT_COND};text-shadow:0 1px 2px rgba(0,0,0,.8);
   font-variant-numeric:tabular-nums;line-height:1;padding:0 4px;}
 /* frag counter (WoT tug-of-war semantics): one kill PIP per opposing
    vehicle under each numeral; each kill fills one pip solid in the scoring
@@ -314,14 +314,14 @@ const HUD_CSS = `
    corner at 10px/0.6 alpha (WoT's placement); parked top-left at full HUD
    weight it read as a dev overlay burned into the frame */
 .cot-net{position:absolute;top:5px;right:10px;font-size:10px;font-weight:700;
-  font-family:${FONT_COND};font-stretch:condensed;letter-spacing:.1em;
+  font-family:${FONT_COND};letter-spacing:.1em;
   color:#c8d4de;opacity:.6;font-variant-numeric:tabular-nums;line-height:1;
   text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.85);}
 .cot-ear{position:absolute;top:52px;width:194px;display:flex;flex-direction:column;gap:1px;}
 .cot-ear.l{left:0;}
 .cot-ear.r{right:0;}
 .cot-ear .hd{font-size:10px;font-weight:700;letter-spacing:.2em;color:#8a97a3;
-  font-family:${FONT_COND};font-stretch:condensed;
+  font-family:${FONT_COND};
   text-transform:uppercase;padding:2px 10px 3px;display:flex;justify-content:space-between;
   background:rgba(7,10,14,.55);}
 .cot-ear.l .hd{border-left:2px solid rgba(126,232,126,.75);}
@@ -347,7 +347,7 @@ const HUD_CSS = `
 .cot-er .n .nick{font-size:10.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap;max-width:100%;}
 .cot-er .n .veh{font-size:8.5px;font-weight:600;color:#8a97a3;letter-spacing:.05em;
-  font-family:${FONT_COND};font-stretch:condensed;text-transform:uppercase;
+  font-family:${FONT_COND};text-transform:uppercase;
   max-width:100%;display:flex;gap:4px;align-items:baseline;}
 .cot-ear.r .cot-er .n .veh{justify-content:flex-end;}
 /* r7: BARE roman tier numeral next to the vehicle name (WoT) — the boxed
@@ -381,7 +381,7 @@ const HUD_CSS = `
 .cot-kf.out{opacity:0;}
 .cot-kf .k{color:#cfe3f4;font-weight:600;}
 .cot-kf .v{color:#f28f8f;font-weight:600;}
-.cot-kf .d{color:#8a97a3;font-weight:400;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;}
+.cot-kf .d{color:#8a97a3;font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;}
 .cot-kf .c{color:#f0b04a;font-size:10px;letter-spacing:.1em;font-weight:700;}
 .cot-kf .si{width:30px;height:12px;flex:0 0 auto;align-self:center;display:inline-block;}
 .cot-dlog{position:absolute;left:12px;bottom:248px;display:flex;flex-direction:column;gap:2px;}
@@ -400,7 +400,7 @@ const HUD_CSS = `
 @keyframes cotFloat{0%{opacity:0;transform:translate(-50%,-30%)}10%{opacity:1}
   70%{opacity:.95}100%{opacity:0;transform:translate(-50%,-190%)}}
 .cot-alert{position:absolute;left:50%;bottom:23%;transform:translateX(-50%);font-size:15px;
-  font-family:${FONT_COND};font-stretch:condensed;
+  font-family:${FONT_COND};
   font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#f0b04a;
   text-shadow:0 1px 3px rgba(0,0,0,.9);opacity:0;transition:opacity .25s ease;}
 .cot-alert.red{color:#f05a5a;}
@@ -426,15 +426,15 @@ const HUD_CSS = `
 .cot-shell.sel .clr{bottom:0;}
 .cot-shell canvas{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);}
 .cot-shell .key{position:absolute;top:2px;left:3px;font-size:9.5px;font-weight:700;color:#8a97a3;
-  font-family:${FONT_COND};font-stretch:condensed;
+  font-family:${FONT_COND};letter-spacing:-.01em;
   border:1px solid rgba(146,164,180,.4);padding:0 3.5px;line-height:13px;z-index:2;}
 .cot-shell.sel .key{color:#f0b04a;border-color:rgba(240,176,74,.6);}
 .cot-shell .cnt{position:absolute;bottom:1px;right:4px;font-size:13px;font-weight:700;
-  font-family:${FONT_COND};font-stretch:condensed;
+  font-family:${FONT_COND};
   color:#e6edf3;font-variant-numeric:tabular-nums;letter-spacing:.02em;z-index:2;
   text-shadow:0 1px 2px rgba(0,0,0,.9);}
 .cot-shell .ty{position:absolute;bottom:2px;left:4px;font-size:8px;font-weight:800;
-  font-family:${FONT_COND};font-stretch:condensed;
+  font-family:${FONT_COND};
   letter-spacing:.08em;z-index:2;text-shadow:0 1px 2px rgba(0,0,0,.9);}
 .cot-shell .cool{position:absolute;left:0;right:0;top:0;height:0;
   background:rgba(4,6,9,.72);pointer-events:none;z-index:3;}
@@ -455,10 +455,10 @@ const HUD_CSS = `
   display:flex;align-items:center;justify-content:center;transition:border-color .12s;}
 .cot-con:hover{border-color:rgba(210,225,240,.5);}
 .cot-con .key{position:absolute;top:3px;left:4px;font-size:9px;font-weight:700;color:#8a97a3;
-  font-family:${FONT_COND};font-stretch:condensed;
+  font-family:${FONT_COND};letter-spacing:-.01em;
   border:1px solid rgba(146,164,180,.4);padding:0 3px;line-height:12px;}
 .cot-con .cnt{position:absolute;bottom:2px;right:4px;font-size:11px;font-weight:700;
-  font-family:${FONT_COND};font-stretch:condensed;color:#cfd9e2;
+  font-family:${FONT_COND};letter-spacing:-.01em;color:#cfd9e2;
   font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.9);}
 .cot-con .cool{position:absolute;inset:0;display:none;
   background:conic-gradient(rgba(4,6,9,.8) var(--cool,0%),transparent 0);}
@@ -468,7 +468,7 @@ const HUD_CSS = `
 .cot-hpbars{position:absolute;inset:0;}
 .cot-hpb{position:absolute;width:108px;transform:translate(-50%,-100%);text-align:center;will-change:transform;}
 .cot-hpb .nm{font-size:11.5px;font-weight:700;letter-spacing:.04em;color:#ff5555;
-  font-family:${FONT_COND};font-stretch:condensed;
+  font-family:${FONT_COND};
   text-shadow:0 0 3px #000,0 1px 2px #000,1px 0 2px #000,-1px 0 2px #000,0 -1px 2px #000;
   margin-bottom:2px;white-space:nowrap;
   display:flex;align-items:center;justify-content:center;gap:4px;}
@@ -499,10 +499,10 @@ const HUD_CSS = `
   filter:drop-shadow(0 1px 1px rgba(0,0,0,.7));}
 .cot-tgt .cg svg{display:block;}
 .cot-tgt .tier{font-size:9px;font-weight:800;line-height:1;color:#e8bcb5;
-  font-family:${FONT_COND};font-stretch:condensed;letter-spacing:.04em;
+  font-family:${FONT_COND};letter-spacing:.04em;
   text-shadow:0 1px 2px rgba(0,0,0,.75),0 0 6px rgba(0,0,0,.5);}
 .cot-tgt .veh{font-size:10px;font-weight:700;color:#f0d4ce;letter-spacing:.08em;
-  font-family:${FONT_COND};font-stretch:condensed;text-transform:uppercase;
+  font-family:${FONT_COND};text-transform:uppercase;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   text-shadow:0 1px 2px rgba(0,0,0,.75),0 0 6px rgba(0,0,0,.5);}
 /* r7-2 (round critique: "thick full-width red bar + separate 1000/1000 line
@@ -515,7 +515,7 @@ const HUD_CSS = `
   border:1px solid rgba(0,0,0,.9);box-shadow:0 1px 3px rgba(0,0,0,.7);}
 .cot-tgt .fl{height:100%;background:linear-gradient(180deg,#ff7a6e,#d63a30);}
 .cot-tgt .hp{font-size:9.5px;font-weight:700;color:rgba(255,255,255,.92);line-height:1;
-  font-family:${FONT_COND};font-stretch:condensed;font-variant-numeric:tabular-nums;
+  font-family:${FONT_COND};font-variant-numeric:tabular-nums;
   letter-spacing:.04em;
   text-shadow:0 1px 2px rgba(0,0,0,.75),0 0 6px rgba(0,0,0,.5);}
 /* r5: anchor chevron — small downward triangle tying the plate to its
@@ -537,7 +537,7 @@ const HUD_CSS = `
   animation:cotSixthPulse 1.1s ease-in-out infinite;}
 @keyframes cotSixthPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
 .cot-sixth .lb{font-size:11px;font-weight:800;letter-spacing:.32em;color:#ffb02e;
-  font-family:${FONT_COND};font-stretch:condensed;text-transform:uppercase;
+  font-family:${FONT_COND};text-transform:uppercase;
   text-shadow:0 1px 3px rgba(0,0,0,.95);}
 /* SPOTTING SECTION: spotted-eye lamp — r2: three states. Red wide-open eye
    while actively spotted (sixth-sense gated), dim green closed eye while the

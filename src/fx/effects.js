@@ -2500,6 +2500,13 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     group,
 
     /**
+     * LOADING PERF (boot r9): finish the deferred particle sprite bakes
+     * (idempotent, ~200 ms once). Must run before the first fx-visible frame;
+     * main.js warmCombatPipeline() is the enforcing call site.
+     */
+    warmTextures() { particles.warmTextures(); },
+
+    /**
      * Per-render-frame advance: particle clock, timers, lights, smoke columns,
      * and tracer ribbons rebuilt from live shell entities.
      * @param {number} dt render delta seconds

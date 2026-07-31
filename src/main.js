@@ -37,6 +37,7 @@ import { createTank } from './vehicles/tankFactory.js';
 import {
   CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, getCamoSelection, setCamoSelection,
   setCamoBiome, applyCamoPatterns, clearCamoOverrides, warmWreckTextures,
+  upgradeSharedTextures,
 } from './vehicles/materials.js';
 import { computeDispersionRadM, SIM_DT } from './sim/movement.js';
 import { tankPoseFromState, queryAimArmor, traceTank } from './sim/armor.js';
@@ -61,6 +62,8 @@ import {
 // paint never waits on this module graph) and the pre-battle roster screen.
 import { createBootScreen } from './ui/bootScreen.js';
 import { createBattleLoadScreen, tierNumeral } from './ui/battleLoad.js';
+// SCENE STUDIO (src/game/studio.js): staging rig + scripted-shot API.
+import { createStudio } from './game/studio.js';
 
 const DEG = Math.PI / 180;
 const GARAGE_POS = new THREE.Vector3(-1500, 0, -1500);
@@ -94,6 +97,17 @@ const _aimPose = { pos: new THREE.Vector3() };
 const boot = createBootScreen();
 const BOOT_TIMINGS = {};
 let bootComplete = false;
+// LOADING PERF: attribute the WHOLE boot, not just the staged work. `_lastMark`
+// tracks the end of the previous stage so the un-staged code BETWEEN stages
+// (spawn, fx, rig, input wiring, ...) shows up as `gap>stage` rows in
+// __BOOT_TIMINGS instead of vanishing from the report. `imports` is the module
+// graph fetch+eval time before this module body ran (BOOT_T0 is measured from
+// timeOrigin, so it includes vite/network + three.js eval).
+let _lastMark = 0;
+function markGap(key, t0) {
+  const gap = Math.round(t0 - _lastMark);
+  if (gap > 1) BOOT_TIMINGS[`gap>${key}`] = gap;
+}
 /**
  * Yield to the browser so the loading screen can paint. Falls back to a timer:
  * some embedded/headless panes report `hidden` and never deliver rAF, and a
@@ -115,16 +129,32 @@ function nextFrame() {
  * @returns {Promise<*>} fn's result
  */
 async function bootStage(key, fn) {
+  markGap(key, performance.now());
   boot.begin(key);
   await nextFrame();
   const t0 = performance.now();
   const out = fn ? await fn() : undefined;
-  BOOT_TIMINGS[key] = Math.round(performance.now() - t0);
+  const t1 = performance.now();
+  BOOT_TIMINGS[key] = Math.round(t1 - t0);
   boot.end(key);
-  await nextFrame();
+  // LOADING PERF: the second frame-yield existed so the bar's end-of-stage
+  // advance paints — but for sub-20 ms stages the begin() yield of the NEXT
+  // stage repaints within a frame anyway, and 9 stages x 2 yields at the
+  // 34 ms starved-rAF fallback billed ~300 ms of pure waiting onto boot.
+  // Only heavy stages pay the extra paint yield now.
+  if (t1 - t0 > 20) await nextFrame();
+  _lastMark = performance.now();
   return out;
 }
 const BOOT_T0 = performance.now();
+BOOT_TIMINGS.imports = Math.round(BOOT_T0);
+_lastMark = BOOT_T0;
+// LOADING PERF (boot r9): hold the GLB idle queue (parse + swap, ~300-600 ms
+// main-thread chunks) out of the boot-critical window — modelLoader polls this
+// flag. GLB FETCHES still start immediately and overlap the boot stages; the
+// parse/swap work lands right after ready() arms the entry gate, behind the
+// splash/gate dwell. Cleared beside boot.ready() below.
+if (typeof window !== 'undefined') window.__COT_BOOT_HOLD = true;
 
 // ---------------------------------------------------------------------------
 // Engine bootstrap (§4 startup order)
@@ -138,6 +168,8 @@ const camera = new THREE.PerspectiveCamera(
   0.5, 4000,
 );
 boot.end('renderer');
+BOOT_TIMINGS.renderer = Math.round(performance.now() - BOOT_T0);
+_lastMark = performance.now();
 
 const sky = await bootStage('sky', () => {
   const s = createSky(scene, renderer);
@@ -286,47 +318,201 @@ function setGarageSunTrim(on) {
 let pedestalVisual = null;
 let selectedSpecId = 'm1a2';
 let pedestalPollToken = 0; // content_breadth r1: cancels stale GLB polls
+
+// ---------------------------------------------------------------------------
+// TANK-SWITCH PERF (switching r1): warm LRU of built pedestal visuals.
+//
+// Every carousel click used to run a FULL createTank (texture bake + geometry
+// merge + GLB clone/surgery/composite) and dispose the outgoing hero —
+// re-selecting a tank you looked at two clicks ago paid the whole build again
+// (measured 200-1200 ms to visible swap). Built heroes now PARK instead of
+// disposing: hidden, dropped 200 m below the stage (so the GLB queue's
+// late-swap auto-reveal — modelLoader re-shows a hidden tank root when its
+// swap lands — can never flash a stale hero on the pedestal), and keyed by
+// specId in insertion order (Map = LRU). Re-selecting restores position +
+// visibility in the same frame: near-zero switch.
+//
+// VRAM: parked visuals hold their per-spec texture-cache refs, so the cache
+// is capped at PEDESTAL_CACHE_MAX = 6 entries (perfprobe budget: a hero set
+// is ~35 MB; 6 parked sets stay well inside the 512 MB scene gate, and battle
+// rosters share the same refcounted entries). Eviction is dispose-aware:
+// detach first (a pending GLB swap job sees the detached root and bails —
+// modelLoader applyGlbModel guards exactly this), then dispose, which also
+// releases the refcounted shared textures.
+//
+// Switch latency is instrumented end-to-end: window.__SWITCH_TIMINGS rows are
+// { id, ms, path } where ms is click → hero visibly on stage.
+const pedestalCache = new Map(); // specId -> visual, oldest-first (LRU)
+const PEDESTAL_CACHE_MAX = 6;
+const PEDESTAL_PARK_Y = -200;
+if (typeof window !== 'undefined') window.__SWITCH_TIMINGS = [];
+function recordSwitch(specId, t0, path) {
+  // every reveal path lands here — the moment a hero is ACTUALLY SHOWN.
+  // __everShown feeds the LRU eviction policy (shown heroes outlive idle
+  // prefetches, see touchCache).
+  if (pedestalVisual) pedestalVisual.__everShown = true;
+  const ms = Math.round(performance.now() - t0);
+  const log = (typeof window !== 'undefined' && window.__SWITCH_TIMINGS) || null;
+  if (log) log.push({ id: specId, ms, path });
+}
+function pedestalPose(vis) {
+  vis.root.position.set(GARAGE_POS.x, GARAGE_POS.y + 0.35, GARAGE_POS.z);
+}
+function parkVisual(vis) {
+  if (!vis || vis === pedestalVisual) return; // re-selected while retiring
+  if (vis.setVisible) vis.setVisible(false);
+  vis.root.position.y = GARAGE_POS.y + PEDESTAL_PARK_Y;
+}
+function touchCache(specId, vis) {
+  pedestalCache.delete(specId);
+  pedestalCache.set(specId, vis);
+  // Eviction policy: idle prefetches must never push a hero the player
+  // actually LOOKED AT out of the cache (real-browser session: two clicks +
+  // four neighbor prefetches evicted the boot hero). Pass 1 evicts oldest
+  // never-shown prefetches; pass 2 falls back to plain LRU order.
+  const evict = (v) => {
+    scene.remove(v.root); // detach BEFORE dispose: pending swap jobs bail
+    v.dispose();
+  };
+  for (const pass of [1, 2]) {
+    for (const [id, v] of pedestalCache) {
+      if (pedestalCache.size <= PEDESTAL_CACHE_MAX) return;
+      if (v === pedestalVisual) continue; // never evict the live hero
+      if (pass === 1 && v.__everShown) continue;
+      pedestalCache.delete(id);
+      evict(v);
+    }
+  }
+}
+/** True once this visual's sourced GLB landed (applySwap stamps the flag). */
+function isGlbSwapped(vis) {
+  let swapped = false;
+  vis.root.traverse((o) => {
+    if (o.userData && o.userData.__glbSwapped) swapped = true;
+  });
+  return swapped;
+}
+/**
+ * Build a pedestal-grade visual for the LRU (shared camoSeed/pose contract).
+ * Texture tier is 'ai' — HALF-RES bake, ~4x cheaper on the switch/boot path;
+ * scheduleHeroUpgrade() re-bakes the shared canvases to 'high' IN PLACE from
+ * an idle slice right after the reveal (needsUpdate flips live materials, so
+ * the visible hero crispens without a rebuild — same mechanism the garage
+ * always used when selecting a spec the AI roster had baked at 'ai').
+ */
+function buildPedestalVisual(specId) {
+  const vis = createTank(specId, engineCtx, { camoSeed: 4200, quality: 'ai' });
+  const pedSpec = getSpec(specId);
+  vis.spec = pedSpec;
+  // camo_spotting r4: same front-3/4 presentation for every hero — long
+  // hulls may carry a yaw trim so the camo picker repaints a fully framed
+  // vehicle (visual.garageYawDeg, authored per spec; 0 keeps today's pose).
+  vis.root.rotation.y =
+    (162 + ((pedSpec && pedSpec.visual && pedSpec.visual.garageYawDeg) || 0)) * DEG;
+  pedestalPose(vis);
+  scene.add(vis.root);
+  touchCache(specId, vis);
+  return vis;
+}
+let heroUpgradeTimer = 0;
+function scheduleHeroUpgrade(specId) {
+  clearTimeout(heroUpgradeTimer);
+  heroUpgradeTimer = setTimeout(() => {
+    // never bill the 2048² re-bake to the boot-critical window — a timer can
+    // fire between staged-boot awaits (procedural boot hero path)
+    if (!bootComplete) { scheduleHeroUpgrade(specId); return; }
+    if (!pedestalVisual || pedestalVisual.specId !== specId) return;
+    upgradeSharedTextures(specId);
+  }, 350); // one settle beat after the reveal; superseded by the next switch
+}
+// TANK-SWITCH PERF (switching r1): idle-time neighbor prefetch. The carousel
+// is ordered by ALL_TANK_IDS (createGarage receives exactly that list), so
+// after a selection settles, quietly build the two adjacent heroes into the
+// parked LRU — the most likely next clicks become warm-path instant switches.
+// One build per idle slice, garage phase only (GLB parse jobs those builds
+// enqueue are already battle-safe via the modelLoader idle queue).
+let prefetchTimer = 0;
+function schedulePedestalPrefetch() {
+  clearTimeout(prefetchTimer);
+  prefetchTimer = setTimeout(() => {
+    // boot: later module consts (_idle) are still in their temporal dead
+    // zone while the staged boot awaits — try again once boot completed.
+    if (!bootComplete) { schedulePedestalPrefetch(); return; }
+    if (game.phase !== 'garage') return;
+    const ids = ALL_TANK_IDS;
+    const i = ids.indexOf(selectedSpecId);
+    if (i < 0) return;
+    const want = [ids[(i + 1) % ids.length], ids[(i - 1 + ids.length) % ids.length]]
+      .filter((id) => !pedestalCache.has(id));
+    if (!want.length) return;
+    _idle(() => {
+      if (game.phase !== 'garage') return;
+      const id = want.find((x) => !pedestalCache.has(x));
+      if (id) parkVisual(buildPedestalVisual(id));
+      schedulePedestalPrefetch(); // second neighbor (or done — idempotent)
+    }, 3000);
+  }, 700); // let the selected hero reveal + texture upgrade land first
+}
 function setPedestalTank(specId) {
   if (pedestalVisual && pedestalVisual.specId === specId) return;
   pedestalPollToken++;
+  const t0 = performance.now();
   // content_breadth r2: the OUTGOING hero stays on stage until the incoming
-  // model is ready — disposing it immediately left 1-6 s of bare pedestal
+  // model is ready — parking it immediately left 1-6 s of bare pedestal
   // while the incoming GLB settled. Each call retires only ITS OWN prev; a
   // superseded poll retires its prev on the token-mismatch path, so rapid
-  // carousel scrubbing cannot leak visuals.
+  // carousel scrubbing cannot leak visuals onto the stage.
   const prev = pedestalVisual;
   let prevRetired = false;
   const retirePrev = () => {
     if (prevRetired || !prev) return;
     prevRetired = true;
-    prev.dispose();
+    parkVisual(prev);
   };
-  pedestalVisual = createTank(specId, engineCtx, { camoSeed: 4200, quality: 'high' });
-  pedestalVisual.root.position.set(GARAGE_POS.x, GARAGE_POS.y + 0.35, GARAGE_POS.z);
-  // camo_spotting r4: same front-3/4 presentation for every hero — long
-  // hulls may carry a yaw trim so the camo picker repaints a fully framed
-  // vehicle (visual.garageYawDeg, authored per spec; 0 keeps today's pose).
-  const pedSpec = getSpec(specId);
-  pedestalVisual.spec = pedSpec;
-  pedestalVisual.root.rotation.y =
-    (162 + ((pedSpec && pedSpec.visual && pedSpec.visual.garageYawDeg) || 0)) * DEG;
-  scene.add(pedestalVisual.root);
+
+  // WARM PATH: parked hero — restore pose + visibility, done this frame.
+  const cached = pedestalCache.get(specId);
+  if (cached) {
+    pedestalVisual = cached;
+    touchCache(specId, cached);
+    pedestalPose(cached);
+    const src0 = MODEL_SOURCE[specId];
+    const wantsGlb = !!(src0 && src0.source === 'glb' && src0.glb);
+    if (!wantsGlb || isGlbSwapped(cached)) {
+      if (cached.setVisible) cached.setVisible(true);
+      retirePrev();
+      scheduleHeroUpgrade(specId);
+      schedulePedestalPrefetch();
+      recordSwitch(specId, t0, 'cached');
+      return;
+    }
+    // parked before its GLB landed (prefetch raced the queue): fall through
+    // to the standard hide-until-swapped poll below with the cached visual.
+  }
+  pedestalVisual = cached || buildPedestalVisual(specId);
   // content_breadth r1: never show the three-box procedural placeholder on
   // the garage pedestal while the hero's GLB parses (the hard pop landed
   // directly above the model's CC-BY credit line). createTank already kicked
   // the async GLB swap for THIS visual — the swap lands IN PLACE on the same
   // hull/turret groups, so we only hide the stand-in and poll the loader
-  // bookkeeping (~150 ms) until every started job settled, then reveal the
-  // real model. No dispose/re-create: tearing the visual down mid-swap races
-  // three's compileAsync material poll (unhandled TypeError). Dynamic import
-  // keeps GLTFLoader off the boot-critical bundle path (perf-budget rule).
+  // bookkeeping until every started job settled, then reveal the real model.
+  // No dispose/re-create: tearing the visual down mid-swap races three's
+  // compileAsync material poll (unhandled TypeError). Dynamic import keeps
+  // GLTFLoader off the boot-critical bundle path (perf-budget rule).
   const src = MODEL_SOURCE[specId];
   if (src && src.source === 'glb' && src.glb) {
     const token = pedestalPollToken;
     const vis = pedestalVisual;
     import('./vehicles/modelLoader.js').then((m) => {
       if (token !== pedestalPollToken) { retirePrev(); return; }
-      if (m.hasCachedGlb(src.glb.path)) { retirePrev(); return; }
+      if (m.hasCachedGlb(src.glb.path) && isGlbSwapped(vis)) {
+        // parse cache was warm — createTank swapped synchronously
+        if (vis.setVisible) vis.setVisible(true);
+        retirePrev();
+        scheduleHeroUpgrade(specId);
+        recordSwitch(specId, t0, 'sync-swap');
+        return;
+      }
       if (vis.setVisible) vis.setVisible(false); // prev covers the stage
       const stats = (typeof window !== 'undefined' && window.__GLB_STATS) || null;
       // tank_models r4: 6 s timeout fallback — on asset 404/parse fail the
@@ -338,6 +524,7 @@ function setPedestalTank(specId) {
         if (performance.now() > deadline) {
           if (vis.setVisible) vis.setVisible(true);
           retirePrev();
+          recordSwitch(specId, t0, 'timeout');
           return;
         }
         // tank_models r3: gate on THIS visual's swap, not global settle —
@@ -345,21 +532,30 @@ function setPedestalTank(specId) {
         // asset) would re-open the empty-pedestal window. applySwap stamps
         // __glbSwapped on success and re-shows the root itself; the poll
         // only handles reveal + retire.
-        let swapped = false;
-        vis.root.traverse((o) => {
-          if (o.userData && o.userData.__glbSwapped) swapped = true;
-        });
-        const settled = swapped ||
-          (m.hasCachedGlb(src.glb.path) && (!stats || stats.settled >= stats.started));
-        if (!settled) { setTimeout(poll, 150); return; }
+        // switching r1: the stats fallback must also confirm no swap job is
+        // still queued for THIS root — at the 50 ms cadence the poll can land
+        // in the gap between the parse settling and the swap running, which
+        // revealed the procedural stand-in for a beat (real-browser session).
+        const settled = isGlbSwapped(vis) ||
+          (!(m.hasPendingSwap && m.hasPendingSwap(vis.root)) &&
+           m.hasCachedGlb(src.glb.path) && (!stats || stats.settled >= stats.started));
+        if (!settled) { setTimeout(poll, 50); return; }
         if (vis.setVisible) vis.setVisible(true); // swap landed in place
+        pedestalPose(vis); // late swap on a parked prefetch: re-seat on stage
         retirePrev(); // hand-over, no gap
+        scheduleHeroUpgrade(specId);
+        recordSwitch(specId, t0, 'glb-load');
       };
-      setTimeout(poll, 150);
+      // switching r1: 150 ms fixed cadence added a flat ~150 ms to EVERY
+      // sourced-hero switch — poll at 50 ms (a light traverse) instead.
+      setTimeout(poll, 50);
     }).catch(retirePrev); // loader unavailable — keep the procedural stand-in
   } else {
     retirePrev(); // procedural: instant
+    scheduleHeroUpgrade(specId);
+    recordSwitch(specId, t0, 'procedural');
   }
+  schedulePedestalPrefetch();
 }
 // The hero on the pedestal is the ONE vehicle the boot path may bake: it is
 // the only one the player can see. Every other roster entry (48 specs) stays
@@ -367,6 +563,12 @@ function setPedestalTank(specId) {
 // the battle participants are baked by ensureStagedVisuals during the garage
 // dwell / behind the battle loading screen.
 await bootStage('vehicle', () => setPedestalTank(selectedSpecId));
+// LOADING PERF note (boot r9): a KHR_parallel_shader_compile overlap
+// (renderer.compileAsync kicked here, awaited in the 'post' stage) was
+// measured and REMOVED — headless/ANGLE A/B showed no repeatable win (the
+// 'post' stage is dominated by the CSM cascade renders and the post-chain's
+// own fullscreen-pass compiles, which compileAsync(scene, camera) does not
+// cover), and compileAsync carries a known disposal race (camo_spotting r5).
 
 function garageCameraPose() {
   // hud_ui r4: camera pulled in ~10% + slightly lower — kills the dead
@@ -407,6 +609,11 @@ function activateWorld(next) {
   world = next;
   worldDormant = false;
   world.group.visible = true;
+  // LOADING PERF (boot r9): the cloud-deck sprites bake lazily (see sky.js) —
+  // an active battlefield is the first thing that can see the sky, so finish
+  // them here (idempotent; usually already done by the post-ready idle chain,
+  // and applyPreset below re-asserts it on map re-keys).
+  sky.ensureCloudTextures();
   pendingMapId = world.mapId;
   collider = createCollider(game, world);
   const skyCfg = world.config.sky || {};
@@ -656,9 +863,14 @@ const showroom = (() => {
   const ctl = createShowroomOrbit(camera, rig, {
     getSubject: () => (pedestalVisual ? pedestalVisual.root : null),
     getStageRect: () => (garage.getStageRect ? garage.getStageRect() : null),
-    // the hand-tuned garageCameraPose() composition expressed as orbit
-    // angles: eye offset (+7.4, +1.2, +8.0) m from the pedestal look target
-    heroYawRad: Math.atan2(7.4, 8.0),
+    // HERO POSE (garage_ui: front+side three-quarter). The pedestal hull is
+    // yawed 162° (setPedestalTank), so its nose points at world azimuth 162°;
+    // the old eye azimuth atan2(7.4, 8.0) ≈ 42.8° sat 119° off the nose and
+    // read as left-flank + rear. Park the eye 45° off the nose on the
+    // vehicle's RIGHT (162° + 45° = 207°): classic WoT front-right 3/4 —
+    // gun sweeps toward camera-left, front plate and one flank both read.
+    heroYawRad: (162 + 45) * DEG,
+    // elevation keeps the original garageCameraPose() composition (~6.3°)
     heroPitchRad: Math.atan2(1.2, Math.hypot(7.4, 8.0)),
     floorY: () => GARAGE_POS.y,
   });
@@ -899,7 +1111,7 @@ const endOverlay = document.createElement('div');
 endOverlay.style.cssText =
   'position:fixed;inset:0;display:none;z-index:70;align-items:center;justify-content:center;' +
   'flex-direction:column;gap:22px;background:rgba(4,7,10,0.55);' +
-  "font-family:'Switzer','Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#eef4f9;";
+  "font-family:'Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#eef4f9;";
 endOverlay.className = 'cot-end';
 const endTitle = document.createElement('div');
 endTitle.style.cssText = 'font-size:52px;font-weight:800;letter-spacing:0.3em;text-shadow:0 2px 18px rgba(0,0,0,0.8);';
@@ -913,7 +1125,7 @@ endBtn.textContent = 'RETURN TO GARAGE';
 endBtn.style.cssText =
   'font-size:16px;font-weight:700;letter-spacing:0.2em;padding:14px 44px;cursor:pointer;' +
   'color:#fff7ea;border:1px solid #ffc169;background:linear-gradient(180deg,#ffa02e,#d95f00);' +
-  "font-family:'Switzer','Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
+  "font-family:'Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
 endOverlay.append(endTitle, endEarn, endBtn);
 document.body.appendChild(endOverlay);
 endBtn.addEventListener('click', () => { bus.emit('ui:click', {}); enterGarage(); });
@@ -930,7 +1142,7 @@ leaveBattleBtn.style.cssText =
   'position:fixed;top:18px;right:20px;z-index:69;display:none;cursor:pointer;' +
   'padding:8px 13px;color:#d8e0e7;background:rgba(7,11,15,.72);' +
   'border:1px solid rgba(190,204,216,.35);border-left:2px solid #e69a2d;' +
-  "font-family:'Switzer','Segoe UI',Roboto,Helvetica,Arial,sans-serif;" +
+  "font-family:'Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;" +
   'font-size:10px;font-weight:800;letter-spacing:.16em;backdrop-filter:blur(4px);';
 document.body.appendChild(leaveBattleBtn);
 leaveBattleBtn.addEventListener('mousedown', (ev) => ev.stopPropagation());
@@ -995,6 +1207,19 @@ let lockToastShown = false;
 input.onLockDenied(() => {
   if (lockToastShown) return;
   lockToastShown = true;
+  // gunnery r1: the denial usually lands on the BATTLE click itself — before
+  // the battle-load screen (z 150) has even mounted and ~10 s before it
+  // clears — so an immediate toast (z 66) lived and died entirely underneath
+  // it. Defer the append until the battlefield is actually on screen (phase
+  // battle, load screen gone) so the player reads the control change.
+  const waitForStage = (fn) => {
+    if (game.phase !== 'battle' || document.querySelector('.cot-bl.on')) {
+      setTimeout(() => waitForStage(fn), 400);
+    } else fn();
+  };
+  waitForStage(() => showLockToast());
+});
+function showLockToast() {
   const t = document.createElement('div');
   t.textContent = 'Mouse capture unavailable — cursor aim enabled';
   t.className = 'cot-lock-toast';
@@ -1002,7 +1227,7 @@ input.onLockDenied(() => {
     'position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:66;' +
     'padding:9px 22px;pointer-events:none;background:rgba(9,13,17,.88);' +
     'border:1px solid rgba(240,176,74,.55);color:#ffd27a;' +
-    "font-family:'Switzer','Segoe UI',Roboto,Helvetica,Arial,sans-serif;" +
+    "font-family:'Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;" +
     'font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;' +
     'box-shadow:0 4px 18px rgba(0,0,0,.5);opacity:1;transition:opacity 1.2s ease;';
   document.body.appendChild(t);
@@ -1014,7 +1239,7 @@ input.onLockDenied(() => {
     setTimeout(() => { t.style.opacity = '0'; }, 4500);
     setTimeout(() => { t.remove(); }, 5900);
   });
-});
+}
 
 // Accumulate wheel notches (clamped ±3) instead of a single ±1 latch: two
 // physical notches inside one render frame used to collapse to ONE zoom step
@@ -1513,6 +1738,8 @@ let blockedSinceMs = -1;
 // ---------------------------------------------------------------------------
 const camInput = {
   mouseDX: 0, mouseDY: 0, wheel: 0, rmb: false, shiftPressed: false,
+  // gunnery r1: RMB hold-to-aim level (settings rmbMode 'hold' — the default)
+  aimHold: false,
   // CURSOR-AIM FALLBACK (no-pointer-lock environments — see input.isCursorAim)
   cursorAim: false, cursorX: 0, cursorY: 0,
 };
@@ -1675,6 +1902,10 @@ function tick(nowMs) {
     scene.fog.density = baseFogDensity * fogScale;
   }
 
+  // SCENE STUDIO: while active the studio owns the whole frame — no battle
+  // sim, no rig, no HUD chrome (src/game/studio.js drives world/fx/render).
+  if (studio.active) { studio.tick(dtR); return; }
+
   if (shotMode) {
     // Deterministic screenshot hold: no sim, no rig, frozen fx clock.
     // (dt = 0 also snaps the foliage occlusion fade to zero — see vegetation.)
@@ -1746,16 +1977,27 @@ function tick(nowMs) {
     camInput.cursorX = _cursorNdc.x;
     camInput.cursorY = _cursorNdc.y;
   }
-  // Desktop default binds are WoT-classic (Shift = sniper, RMB hold = free
-  // look; see input.js DEFAULT_BINDINGS — locked by movement-physics.md §9.2).
-  // In CURSOR-AIM mode RMB is routed to the sniper toggle instead: free look
-  // is meaningless there (the camera never mouselooks), and no-pointer-lock
-  // embeds need a mouse-reachable sniper toggle on the button players expect
-  // to aim with. isDown() consumes the tap latch, so each branch reads
-  // 'freeCamera' at most once per frame.
-  camInput.rmb = cursorAimNow ? false : input.isDown('freeCamera');
+  // RMB ROUTING (gunnery r1, owner feature): what the RMB-bound 'freeCamera'
+  // action does is the player's settings.rmbMode pick —
+  //   'hold' (DEFAULT, owner ask): hold-to-aim — the rig enters sniper while
+  //     held and returns to the prior arcade zoom + preserved aim pitch on
+  //     release (CamInput.aimHold; edges live in cameraRig).
+  //   'toggle': tap toggles sniper — routed through the same rising-edge
+  //     lane as Shift.
+  //   'freelook': the WoT-classic gun-lock free look (pre-r1 behavior).
+  //     Meaningless in CURSOR-AIM mode (the camera never mouselooks), where
+  //     it degrades to the legacy RMB sniper toggle so no-pointer-lock embeds
+  //     keep a mouse-reachable scope on the button players aim with.
+  // Shift = sniper stays live in EVERY mode (movement-physics.md §9.2).
+  // isDown() consumes the sub-frame tap latch, so 'freeCamera' is read
+  // exactly once per frame.
+  const rmbMode = input.getSettings().rmbMode || 'hold';
+  const rmbHeld = input.isDown('freeCamera');
+  camInput.rmb = rmbMode === 'freelook' && !cursorAimNow ? rmbHeld : false;
+  camInput.aimHold = inBattle && !paused && rmbMode === 'hold' && rmbHeld;
   camInput.shiftPressed = input.isDown('sniperToggle') ||
-    (cursorAimNow && input.isDown('freeCamera'));
+    (rmbMode === 'toggle' && rmbHeld) ||
+    (rmbMode === 'freelook' && cursorAimNow && rmbHeld);
   wheelStep = 0;
 
   // 2. fixed-step simulation (held while the settings panel is open)
@@ -1907,6 +2149,11 @@ const VIEW_TIME = {
   battlefield_desert: 2.0,
   battlefield_winter: 2.0,
   battlefield_urban: 2.0,
+  // MAPS r1: the second four battlefields
+  battlefield_coastal: 2.0,
+  battlefield_autumn: 2.0,
+  battlefield_steppe: 2.0,
+  battlefield_railyard: 2.0,
   killcam_xray: 1.0, // KILL-CAM
 };
 
@@ -1915,6 +2162,11 @@ const VIEW_MAP = {
   battlefield_desert: 'desert',
   battlefield_winter: 'winter',
   battlefield_urban: 'urban',
+  // MAPS r1
+  battlefield_coastal: 'coastal',
+  battlefield_autumn: 'autumn',
+  battlefield_steppe: 'steppe',
+  battlefield_railyard: 'railyard',
 };
 
 // MAP-CONFIG WIRING: pin the shot to its map, re-seating the staged battle
@@ -2382,6 +2634,11 @@ const SHOT_VIEWS = {
   battlefield_desert() { mapEstablishingShot(); },
   battlefield_winter() { mapEstablishingShot(); },
   battlefield_urban() { mapEstablishingShot(); },
+  // MAPS r1
+  battlefield_coastal() { mapEstablishingShot(); },
+  battlefield_autumn() { mapEstablishingShot(); },
+  battlefield_steppe() { mapEstablishingShot(); },
+  battlefield_railyard() { mapEstablishingShot(); },
   // KILL-CAM: deterministic staged x-ray replay frame. A synthetic shot from
   // the player's M1A2 into the Tiger I at its spawn is resolved through the
   // REAL sim pipeline (traceTank + resolveShellHit, seeded rng, throwaway
@@ -2480,6 +2737,8 @@ window.__SHOTS = {
     'tank_closeup_ww2', 'tank_closeup_t90m', 'tank_closeup_leo2a7',
     'detrack', 'combat_firing', 'explosion', 'garage', 'techtree',
     'battlefield_desert', 'battlefield_winter', 'battlefield_urban',
+    'battlefield_coastal', 'battlefield_autumn', 'battlefield_steppe',
+    'battlefield_railyard', // MAPS r1
     'killcam_xray', // KILL-CAM
   ],
   set(name) {
@@ -2575,6 +2834,10 @@ let combatPipelineWarmed = false;
 function warmCombatPipeline() {
   if (combatPipelineWarmed) return;
   combatPipelineWarmed = true;
+  // LOADING PERF (boot r9): the particle sprite sheets bake lazily now (see
+  // particles.js warmTextures) — they MUST be real before the fx texture
+  // uploads below and before any battle/shot frame samples them. Idempotent.
+  if (fx.warmTextures) fx.warmTextures();
   // PERF (performance_budget r3): boot builds only the player's visual —
   // finish the staged roster before anything renders the battlefield (this
   // runs synchronously from __SHOTS.set() and startBattle(), and from the
@@ -2608,10 +2871,51 @@ function warmCombatPipeline() {
 const _idle = (fn, t) => (window.requestIdleCallback || ((f) => setTimeout(f, 250)))(fn, { timeout: t });
 function pumpStagedVisuals() {
   if (combatPipelineWarmed) return; // warm already ran synchronously — done
+  // TANK-SWITCH PERF (switching r1): yield the idle slot while GLB parse/swap
+  // jobs are in flight — a clicked pedestal hero's swap must not queue behind
+  // 150-350 ms staged-roster bakes (real-browser session: early clicks paid
+  // ~2.3 s waiting out this pump). The GLB queue drains in idle too, so this
+  // strictly orders "player-visible swaps first, roster bakes after";
+  // startBattle's synchronous warmCombatPipeline fallback is untouched.
+  const glb = (typeof window !== 'undefined' && window.__GLB_STATS) || null;
+  if (glb && glb.started > glb.settled) { _idle(pumpStagedVisuals, 2500); return; }
   if (ensureStagedVisuals(game, 1)) warmCombatPipeline();
   else _idle(pumpStagedVisuals, 1500);
 }
-_idle(pumpStagedVisuals, 2000);
+// LOADING PERF (boot r9): everything evicted from the boot-critical path
+// drains here, one bake per idle slice, cheapest-user-facing first: the fx
+// sprite sheets and cloud decks (both also force-finished synchronously by
+// warmCombatPipeline / world activation if a battle outruns the idle pump),
+// then the carousel-neighbor prefetch (switching r1), then the staged battle
+// roster + combat warm exactly as before.
+const postReadyIdleTasks = [
+  () => { if (fx.warmTextures) fx.warmTextures(); },
+  () => sky.ensureCloudTextures(),
+  () => schedulePedestalPrefetch(),
+];
+function pumpPostReadyIdle() {
+  const task = postReadyIdleTasks.shift();
+  if (!task) { pumpStagedVisuals(); return; }
+  try { task(); } catch (_) { /* warm-up only */ }
+  _idle(pumpPostReadyIdle, 1500);
+}
+// Start AFTER the splash teardown window: dismiss() removes the splash root
+// on a 620 ms timer, and a 200-350 ms bake landing first (rIC fires almost
+// immediately on an idle main thread) delays that removal past the bootgate
+// probe's auto-dismiss spot-check. 1 s covers the harness path; the human
+// path is gate-dwelling anyway.
+setTimeout(() => _idle(pumpPostReadyIdle, 2000), 1000);
+
+// SCENE STUDIO (staging rig + scripted marketing-shot API, src/game/studio.js):
+// entered via ?studio=1 (map via ?map=…) or F8 from the garage; scriptable via
+// window.__STUDIO (schema in docs/STUDIO.md). main.js only hands it these
+// integration seams plus the one tick() branch above — entry keys, panel,
+// actors, effects, capture all live in the studio module.
+const studio = createStudio({
+  renderer, scene, camera, post, lighting, fx, game, hud, garage, showroom,
+  hfProxy, getWorld: () => world, ensureWorld, setWorldDormant,
+  setGarageSpots, setGarageSunTrim, enterGarage, warmCombatPipeline,
+});
 
 bootComplete = true;
 scheduleRaf();
@@ -3029,6 +3333,11 @@ await bootStage('ready', null);
 // ?nosplash / webdriver). Deliberately not awaited: __GAME_READY means
 // "fully initialised" and must not depend on a keypress.
 boot.ready();
+// LOADING PERF (boot r9): release the GLB parse/swap queue — the pedestal
+// hero's swap is the hot job and lands within a few frames of the gate
+// arming (behind the splash for a human, inside the settle window for
+// harnesses).
+if (typeof window !== 'undefined') window.__COT_BOOT_HOLD = false;
 window.__GAME_READY = true;
 window.__BOOT_TIMINGS = BOOT_TIMINGS;
 window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);

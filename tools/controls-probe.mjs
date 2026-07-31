@@ -157,10 +157,29 @@ async function runMode(mode, { stubNoLock, width, height }) {
 
   // --- battle entry via a REAL mouse click on the DOM button ----------------
   await page.mouse.click(btn.cx, btn.cy);
-  await sleep(900);
-  const phase = await page.evaluate(() => window.__DEBUG.game.phase);
+  // boot r9 loading flow: entry now runs a real loading screen (world build +
+  // staged roster + countdown, ~10 s) — wait for the phase flip and for the
+  // screen (.cot-bl.on) to clear instead of the old fixed 900 ms dwell.
+  let phase = 'garage';
+  try {
+    await page.waitForFunction('window.__DEBUG.game.phase === "battle"', { timeout: 90000 });
+    await page.waitForFunction('!document.querySelector(".cot-bl.on")', { timeout: 90000 });
+    phase = 'battle';
+  } catch (_) {
+    phase = await page.evaluate(() => window.__DEBUG.game.phase);
+  }
   check(mode, 'real BATTLE click enters battle', phase === 'battle', `phase=${phase}`);
   if (phase !== 'battle') { await page.close(); return; } // everything below needs a battle
+  await sleep(800); // openBattle snap + first live frames
+  // The entry-click gesture is long gone once the loading screen clears — a
+  // real player's first battle click re-grabs the pointer; do the same.
+  if (!stubNoLock) {
+    const locked0 = await page.evaluate(() => window.__DEBUG.input.isLocked());
+    if (!locked0) {
+      await page.mouse.click(Math.round(width / 2), Math.round(height * 0.55));
+      await sleep(500);
+    }
+  }
 
   // lock state + toast expectations differ per mode
   const lockState = await page.evaluate(() => ({
@@ -246,34 +265,40 @@ async function runMode(mode, { stubNoLock, width, height }) {
     check(mode, 'shot flies in reticle direction', ang < 0.12, `angle to converged aim point ${ang.toFixed(4)} rad`);
   }
 
-  // --- sniper toggle (FOV drop and restore) -------------------------------------
-  // cursor-aim mode: RMB toggles sniper (mouse-reachable, main.js routing);
-  // lock mode: Shift toggles sniper (WoT-classic desktop default).
-  const sniperTap = async () => {
-    if (stubNoLock) {
-      await page.mouse.down({ button: 'right' });
-      await sleep(80);
-      await page.mouse.up({ button: 'right' });
-    } else {
-      await page.keyboard.down('ShiftLeft');
-      await sleep(80);
-      await page.keyboard.up('ShiftLeft');
-    }
-  };
-  const sniperKey = stubNoLock ? 'RMB (cursor-aim)' : 'Shift';
+  // --- sniper entry: Shift toggle + RMB hold-to-aim ------------------------------
+  // gunnery r1 (owner): the RMB default is HOLD-TO-AIM in every environment —
+  // hold enters sniper, release restores the prior arcade view (settings
+  // rmbMode also offers 'toggle' and the classic 'freelook'). Shift stays the
+  // mode-independent sniper toggle. Both are asserted in both probe modes.
+  const rigView = () => page.evaluate(() =>
+    ({ fov: window.__DEBUG.camera.fov, rigMode: window.__DEBUG.rig.mode }));
   const fov0 = await page.evaluate(() => window.__DEBUG.camera.fov);
-  await sniperTap();
+  await page.keyboard.down('ShiftLeft');
+  await sleep(80);
+  await page.keyboard.up('ShiftLeft');
   await sleep(450);
-  const fovSniper = await page.evaluate(() =>
-    ({ fov: window.__DEBUG.camera.fov, rigMode: window.__DEBUG.rig.mode }));
-  check(mode, `${sniperKey} enters sniper (FOV zoom)`, fovSniper.rigMode === 'SNIPER' && fovSniper.fov < 40,
+  const fovSniper = await rigView();
+  check(mode, 'Shift enters sniper (FOV zoom)', fovSniper.rigMode === 'SNIPER' && fovSniper.fov < 40,
     `fov ${fov0.toFixed(1)} -> ${fovSniper.fov.toFixed(1)}, mode=${fovSniper.rigMode}`);
-  await sniperTap();
+  await page.keyboard.down('ShiftLeft');
+  await sleep(80);
+  await page.keyboard.up('ShiftLeft');
   await sleep(450);
-  const fovBack = await page.evaluate(() =>
-    ({ fov: window.__DEBUG.camera.fov, rigMode: window.__DEBUG.rig.mode }));
-  check(mode, `${sniperKey} again exits sniper`, fovBack.rigMode === 'ARCADE' && fovBack.fov > 50,
+  const fovBack = await rigView();
+  check(mode, 'Shift again exits sniper', fovBack.rigMode === 'ARCADE' && fovBack.fov > 50,
     `fov=${fovBack.fov.toFixed(1)}, mode=${fovBack.rigMode}`);
+  await page.mouse.down({ button: 'right' });
+  await sleep(450);
+  const rmbHeld = await rigView();
+  check(mode, 'RMB hold enters sniper (hold-to-aim default)',
+    rmbHeld.rigMode === 'SNIPER' && rmbHeld.fov < 40,
+    `fov=${rmbHeld.fov.toFixed(1)}, mode=${rmbHeld.rigMode}`);
+  await page.mouse.up({ button: 'right' });
+  await sleep(450);
+  const rmbBack = await rigView();
+  check(mode, 'RMB release exits sniper (restores arcade)',
+    rmbBack.rigMode === 'ARCADE' && rmbBack.fov > 50,
+    `fov=${rmbBack.fov.toFixed(1)}, mode=${rmbBack.rigMode}`);
 
   // --- A/D hull turn, W drive ---------------------------------------------------
   const hull0 = await page.evaluate(() => window.__DEBUG.game.player.state.yaw);
@@ -300,6 +325,29 @@ async function runMode(mode, { stubNoLock, width, height }) {
   const speedS = await page.evaluate(() => window.__DEBUG.game.player.state.speed);
   await page.keyboard.up('KeyS');
   check(mode, 'S brakes/reverses', speedS < speedW - 0.2, `speed ${speedW.toFixed(2)} -> ${speedS.toFixed(2)}`);
+
+  // --- rebind persistence (gunnery r1; lock mode only to keep runtime sane) --
+  // Rebind fire onto KeyF through the input API (the settings chips call the
+  // same setBinding), assert the new key actually fires a shell, then reload
+  // the page and assert the binding survived localStorage round-trip.
+  if (!stubNoLock) {
+    await page.evaluate(() => window.__DEBUG.input.setBinding('fire', 'KeyF', 0));
+    const firedBefore = await page.evaluate(() => window.__PROBE.fired.length);
+    await page.keyboard.down('KeyF');
+    await sleep(60);
+    await page.keyboard.up('KeyF');
+    await sleep(700);
+    const firedAfter = await page.evaluate(() => window.__PROBE.fired.length);
+    check(mode, 'rebound fire key (F) fires a shell', firedAfter === firedBefore + 1,
+      `player shells ${firedBefore} -> ${firedAfter}`);
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 90000 });
+    await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+    const persisted = await page.evaluate(() => window.__DEBUG.input.getBinding('fire', 0));
+    check(mode, 'fire rebind persists across reload', persisted === 'KeyF', `fire=${persisted}`);
+    await page.evaluate(() => window.__DEBUG.input.resetBindings());
+    const restored = await page.evaluate(() => window.__DEBUG.input.getBinding('fire', 0));
+    check(mode, 'reset restores the default fire bind', restored === 'Mouse0', `fire=${restored}`);
+  }
 
   check(mode, 'no page errors', pageErrors.length === 0,
     pageErrors.slice(0, 3).join(' | ') || 'clean');

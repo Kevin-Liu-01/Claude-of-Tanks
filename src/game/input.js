@@ -55,7 +55,9 @@ export const ACTION_DEFS = [
   { id: 'consumable1', label: 'Repair Kit', group: 'Consumables' },
   { id: 'consumable2', label: 'First Aid Kit', group: 'Consumables' },
   { id: 'consumable3', label: 'Fire Extinguisher', group: 'Consumables' },
-  { id: 'freeCamera', label: 'Free Camera (hold)', group: 'Camera' },
+  // gunnery r1: RMB's FUNCTION is picked by settings.rmbMode (hold-to-aim /
+  // toggle-aim / free-look classic); this action owns the physical binding.
+  { id: 'freeCamera', label: 'Aim / Free Look (RMB)', group: 'Camera' },
   { id: 'zoomIn', label: 'Zoom In', group: 'Camera' },
   { id: 'zoomOut', label: 'Zoom Out', group: 'Camera' },
   { id: 'minimapZoom', label: 'Minimap Zoom', group: 'Interface' },
@@ -63,15 +65,18 @@ export const ACTION_DEFS = [
   { id: 'settingsMenu', label: 'Settings Menu', group: 'Interface' },
 ];
 
-/** Default primary bindings: WASD move, LMB fire, Shift sniper, RMB free-look,
+/** Default primary bindings: WASD move, LMB fire, Shift sniper, RMB aim,
  *  1/2/3 shells, 4/5/6 consumables, wheel zoom, Space handbrake, Esc menu.
  *  WoT PC CLASSIC LAYOUT — locked by movement-physics.md §9.2 ("Enter: Shift
  *  key or wheel-in") and cameraRig's CamInput contract (shiftPressed rising
  *  edge toggles sniper). gameplay_feel r3: an uncommitted edit swapped
  *  sniperToggle/freeCamera onto Mouse2/ShiftLeft — that killed the Shift tap
  *  (sniper no-op on every desktop) and broke WoT muscle memory, so the swap
- *  is reverted. If an RMB sniper toggle is ever wanted for no-pointer-lock
- *  embeds, gate it on input.isCursorAim() — never as the desktop default.
+ *  is reverted. gunnery r1 (owner): RMB keeps the 'freeCamera' BINDING slot,
+ *  but its FUNCTION is now settings.rmbMode — 'hold' (hold-to-aim sniper,
+ *  the owner-mandated default), 'toggle' (tap toggles sniper), or
+ *  'freelook' (the classic gun-lock free look). Shift sniper is unaffected
+ *  in every mode. main.js routes the action per mode each frame.
  *  Mouse buttons are encoded as synthetic codes "Mouse0".."Mouse4"; the wheel
  *  as "WheelUp"/"WheelDown". `null` means unbound. */
 export const DEFAULT_BINDINGS = {
@@ -133,6 +138,13 @@ const DEFAULT_SETTINGS = {
   sniperSensScale: 1, // extra multiplier while in sniper mode (0.2x .. 3x)
   aimSmoothing: 0.5, // 0 = raw 1:1 deltas, 1 = heavy (56 ms EMA); 0.5 = classic 28 ms
   padSensitivity: 1, // 0.2x .. 3x multiplier on right-stick aim
+  // gunnery r1 (owner): what the RMB-bound 'freeCamera' action DOES —
+  // 'hold' = hold-to-aim (enter sniper while held, release restores the
+  // prior arcade zoom + preserved aim pitch; the owner-mandated default),
+  // 'toggle' = tap toggles sniper like Shift, 'freelook' = classic WoT
+  // gun-lock free look. Routed per frame by main.js; cameraRig owns the
+  // hold/exit semantics (CamInput.aimHold).
+  rmbMode: 'hold',
   aiDifficulty: 'normal', // bot tier for the NEXT battle: 'easy'|'normal'|'hard'
   // FPS/ping readout (hud.js cot-net corner element). DEFAULT OFF —
   // controls_gunnery r3 minor: a raw "41 FPS 33 MS" string in the top corner
@@ -147,11 +159,15 @@ const DEFAULT_SETTINGS = {
   volMaster: 0.8, // final output gain 0..1
   volEngine: 1, // engine loops
   volCombat: 1, // gunfire / impacts / explosions
-  volAmbience: 1, // wind + birds bed
-  volUi: 1, // UI clicks + garage stings
+  volAmbience: 1, // wind + birds bed / garage workshop room tone
+  volUi: 1, // UI clicks + garage stings / battle horn / result fanfares
+  volVoice: 1, // crew radio voice lines + tank alarms (SOUND overhaul)
+  // Critical-HP heartbeat alarm (short pulse window per threshold crossing).
+  // Optional per the sound-system spec; some players find HP alarms stressful.
+  alarmHeartbeat: true,
 };
 
-const VOLUME_KEYS = ['volMaster', 'volEngine', 'volCombat', 'volAmbience', 'volUi'];
+const VOLUME_KEYS = ['volMaster', 'volEngine', 'volCombat', 'volAmbience', 'volUi', 'volVoice'];
 
 // One shot per trigger pull (WoT PC): fire reports a PRESS EDGE through
 // getState() instead of held state, so a button held across the reload can
@@ -176,6 +192,7 @@ const VOLUME_KEYS = ['volMaster', 'volEngine', 'volCombat', 'volAmbience', 'volU
 const FIRE_PRESS_BUFFER_MS = 250;
 
 const AI_DIFFICULTIES = ['easy', 'normal', 'hard'];
+const RMB_MODES = ['hold', 'toggle', 'freelook']; // gunnery r1: see rmbMode
 
 /**
  * AI difficulty persisted with the other gameplay settings (cot.settings.v1,
@@ -334,7 +351,9 @@ export function createInput(opts = {}) {
     if (typeof storedSettings.aimSmoothing === 'number') settings.aimSmoothing = clamp(storedSettings.aimSmoothing, 0, 1);
     if (typeof storedSettings.padSensitivity === 'number') settings.padSensitivity = clamp(storedSettings.padSensitivity, 0.2, 3);
     if (AI_DIFFICULTIES.includes(storedSettings.aiDifficulty)) settings.aiDifficulty = storedSettings.aiDifficulty;
+    if (RMB_MODES.includes(storedSettings.rmbMode)) settings.rmbMode = storedSettings.rmbMode;
     if (typeof storedSettings.showPerfMeter === 'boolean') settings.showPerfMeter = storedSettings.showPerfMeter;
+    if (typeof storedSettings.alarmHeartbeat === 'boolean') settings.alarmHeartbeat = storedSettings.alarmHeartbeat;
     for (const k of VOLUME_KEYS) {
       if (typeof storedSettings[k] === 'number') settings[k] = clamp(storedSettings[k], 0, 1);
     }
@@ -784,14 +803,26 @@ export function createInput(opts = {}) {
     /** Recent touch activity relaxes pointer-lock-only fire gating. */
     virtualActive() { return nowMillis() - virtualLastActiveMs < PAD_ACTIVE_WINDOW_MS; },
 
-    /** Coarse/narrow devices use the Blitz-style touch HUD and skip pointer lock. */
+    /** Coarse-pointer devices use the Blitz-style touch HUD and skip pointer
+     *  lock. gunnery r1 REGRESSION FIX (owner bug 1 root cause): the mobile
+     *  battle flow gated this on `innerWidth <= 900` alone, which reclassified
+     *  every narrow DESKTOP window — the embedded panes the owner plays in —
+     *  as a phone: pointer lock was never requested, the lock-denial latch
+     *  (cursor-aim fallback) never armed, and MOUSE AIM WENT COMPLETELY DEAD
+     *  (camera and turret both ignored the mouse; only WASD/Shift worked).
+     *  Width now only counts when the device has no fine pointer at all — a
+     *  mouse-equipped narrow window keeps the desktop control path. */
     isTouchLayout() {
-      const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
-      return coarse || (typeof innerWidth === 'number' && innerWidth <= 900);
+      const mm = typeof matchMedia === 'function' ? matchMedia : null;
+      const coarse = !!mm && mm('(pointer: coarse)').matches;
+      const fine = !!mm && mm('(pointer: fine)').matches;
+      const narrow = typeof innerWidth === 'number' && innerWidth <= 900;
+      return coarse || (narrow && !fine);
     },
 
     /** @returns {{sensitivity:number,invertY:boolean,sniperSensScale:number,
-     *  aimSmoothing:number,padSensitivity:number,aiDifficulty:string}} live settings object */
+     *  aimSmoothing:number,padSensitivity:number,aiDifficulty:string,
+     *  rmbMode:('hold'|'toggle'|'freelook')}} live settings object */
     getSettings() { return settings; },
 
     /** Set + clamp + persist one gameplay setting. Numeric input is parsed
@@ -806,11 +837,13 @@ export function createInput(opts = {}) {
       };
       if (key === 'invertY') settings.invertY = !!value;
       else if (key === 'showPerfMeter') settings.showPerfMeter = !!value;
+      else if (key === 'alarmHeartbeat') settings.alarmHeartbeat = !!value;
       else if (key === 'sensitivity') settings.sensitivity = num(1, 0.2, 3);
       else if (key === 'sniperSensScale') settings.sniperSensScale = num(1, 0.2, 3);
       else if (key === 'aimSmoothing') settings.aimSmoothing = num(0.5, 0, 1);
       else if (key === 'padSensitivity') settings.padSensitivity = num(1, 0.2, 3);
       else if (key === 'aiDifficulty') settings.aiDifficulty = AI_DIFFICULTIES.includes(value) ? value : settings.aiDifficulty;
+      else if (key === 'rmbMode') settings.rmbMode = RMB_MODES.includes(value) ? value : settings.rmbMode;
       else if (VOLUME_KEYS.includes(key)) settings[key] = num(0, 0, 1);
       saveJson(SETTINGS_KEY, settings);
     },

@@ -1,0 +1,207 @@
+# SCENE STUDIO — staging rig & scripted-shot API
+
+The studio is a first-class game mode for composing shots: the chosen battle
+map fully live (terrain, vegetation, props, sky, lighting, post) with **no
+battle sim** — no AI, no spotting, no HUD combat chrome — plus placeable tank
+actors with full pose/damage-state control, the game's real effects language,
+a free camera, an fx time scale with freeze, and a hi-res capture path.
+
+Code: `src/game/studio.js` (logic + `window.__STUDIO`),
+`src/ui/studioPanel.js` (panel UI). main.js integration is one import, one
+`createStudio(ctx)` call and one `tick()` branch.
+
+## Entering / leaving
+
+| Path | How |
+|---|---|
+| URL | `?studio=1` (optionally `&map=desert\|winter\|urban\|verdant`) — auto-enters once `__GAME_READY` |
+| Garage | **F8** (toggle; also the panel's EXIT button) |
+| Script | `window.__STUDIO.enter({ map })` / `window.__STUDIO.exit()` |
+| Leave | F8 / Esc / EXIT → back to the garage |
+
+Battle-pool tank visuals are hidden while the studio is active; exit restores
+them and hands control back through the normal garage entry (camo overrides
+cleared, pedestal key restored).
+
+Note for headless drivers: the boot "press any key" gate auto-dismisses under
+webdriver (and `?nogate`), exactly like the screenshot harness.
+
+## Interactive controls
+
+- **LMB-drag** on the world: look around (no pointer lock needed — embed-safe)
+- **WASD** fly, **Q/E** down/up, **Shift** 4× speed, **wheel** dolly
+  (orbit mode: wheel = distance)
+- **Click terrain**: move the effect marker (amber ring)
+- **Click a tank**: select · **drag a tank**: move it (terrain re-conform live)
+- **Space**: freeze/unfreeze fx time · **Delete**: remove selected actor
+- Panel: map switcher, actor add/list, pose sliders (facing/turret/gun within
+  spec limits), camo, damage state, effect buttons, fx time scale + step,
+  camera fly/orbit + FOV/roll/speed, CAPTURE, scene save/load (JSON download /
+  upload / 3 localStorage slots, shift-click a slot to save).
+
+## `window.__STUDIO` (scripted-shoot contract)
+
+```js
+await __STUDIO.load(sceneJson)      // deterministic build → returns state()
+__STUDIO.capture(opts)              // {dataURL, width, height} hi-res PNG
+__STUDIO.listActors()               // [{index, uid, name, id, pos, facingDeg, …, state}]
+__STUDIO.state()                    // round-trippable scene JSON (see schema)
+```
+
+Extras (same machinery the panel uses):
+
+```js
+__STUDIO.enter({map}) / .exit() / .setMap(mapId)      // async
+__STUDIO.addActor(cfg) / .updateActor(ref, patch) / .removeActor(ref)
+__STUDIO.setActorState(ref, state, ageS?) / .selectActor(ref) / .clearActors()
+__STUDIO.effect({type, actor|at, params})             // fire one effect NOW
+__STUDIO.clearEffects()                               // reset fx timeline (keeps actors)
+__STUDIO.advanceFx(ms)                                // step frozen fx forward
+__STUDIO.setTimeScale(v) / .timeScale / .fxTimeMs
+__STUDIO.setCamera(cfg) / .getCamera()
+__STUDIO.TANK_IDS / .MAP_IDS / .ACTOR_STATES / .EFFECT_TYPES / .CAMO_PATTERN_IDS
+__STUDIO.getSpecInfo(id)            // {name, gunElevationDeg, gunDepressionDeg, shells}
+__STUDIO.active / .mapId
+```
+
+`ref` = actor `uid` (`"a1"`), `name`, roster index, or the actor object.
+
+### capture(opts)
+
+`{ width?, height?, scale?, download?, name?, type?, quality? }` → renders the
+current frame once at the requested resolution (renderer + full post chain
+temporarily resized at pixelRatio 1, all shadow cascades forced, `dt = 0`) and
+returns `{ dataURL, width, height }`. Default width =
+`max(2560, 2 × viewport)` at the live aspect; height defaults to the aspect.
+Clamped to the GPU max texture size (≤ 6144). `download: true` also saves the
+PNG from the browser. Headless drivers read `dataURL` and write the file
+themselves (see `tools/studio-selftest.mjs`).
+
+## Scene JSON schema
+
+```jsonc
+{
+  "map": "desert",              // verdant | desert | winter | urban (default verdant)
+  "seed": 5000,                 // fx rng seed (default 5000)
+
+  "actors": [
+    {
+      "id": "t90m",             // any TANK_SPECS id (see __STUDIO.TANK_IDS)
+      "name": "hero",           // optional label; usable as an effect target ref
+      "pos": [12, -40],         // [x, z] world meters — y is solved from terrain
+      "facingDeg": 120,         // hull heading (0 = +Z, increases toward +X)
+      "turretDeg": -35,         // turret yaw relative to hull
+      "gunDeg": 8,              // gun elevation, + up — clamped to the spec's
+                                //   gunElevationDeg / gunDepressionDeg
+      "camo": "desert",         // auto|factory|summer|desert|winter|digital
+                                //   (omit = the garage-picked scheme)
+      "camoSeed": 4207,         // paint bake seed
+      "state": "intact",        // intact | engine-smoking | burning | wrecked
+                                //   | wrecked-burnt | turret-popped
+      "stateAgeS": 60,          // optional wreck age (char sweep / settle)
+      "recoilAgeS": 0.05,       // optional: freeze the recuperator at this stroke age
+      "smoking": true,          // optional additive layers over any mesh state
+      "burning": true           //   (engine-deck smoke / keyed fire column)
+    }
+  ],
+
+  "effects": [                  // one-shots fired on the fx timeline
+    { "type": "fire",      "actor": "hero", "tMs": 0,
+      "params": { "slot": 0, "tracer": true, "recoil": true } },
+    { "type": "tank_kill", "actor": 1, "tMs": 100,
+      "params": { "cause": "ammorack", "pop": true } },
+    { "type": "explosion", "at": [10, -20], "tMs": 0,
+      "params": { "size": "large" } },
+    { "type": "dust",      "actor": 2, "tMs": 0,
+      "params": { "count": 12, "intensity": 1, "dirDeg": 90 } }
+  ],
+
+  "camera": {
+    "pos": [24, 6, -52],
+    "lookAt": [12, 2, -40],     // OR "yawDeg"/"pitchDeg" (lookAt wins if both)
+    "groundRel": true,          // y values are heights ABOVE the terrain at
+                                //   their x/z (recommended for scripts —
+                                //   absolute y is a footgun on dunes/hills)
+    "fov": 45,
+    "rollDeg": 0,
+    "mode": "fly"               // fly | orbit (orbit needs lookAt)
+  },
+
+  "fxTime": 600,                // ms: advance the fx timeline exactly this far
+                                //   after firing the effects, then FREEZE
+  "timeScale": 0                // post-load time scale (default 0 = stay frozen)
+}
+```
+
+### Effect types
+
+Anchor: `actor` (position resolved at fire time, `hFrac` optional height
+fraction) or `at: [x, z]` / `[x, y, z]` (2-form solves y from terrain). With
+neither, the panel marker (or the ground ahead of the camera) is used.
+
+| type | needs | params | what it is |
+|---|---|---|---|
+| `fire` | actor | `slot` (shell index), `tracer` (default true), `recoil` (default true) | full firing event: real muzzle flash (+APFSDS sabot petals), recuperator recoil, a live shell that flies and impacts terrain through the real event path |
+| `muzzle_flash` | actor or point | `caliberMm`, `dirDeg` (point form) | flash + smoke ring + ground dust only |
+| `tracer` | `from:[x,y,z]`, `to:[x,y,z]` | `shellType` (AP/APCR/APFSDS/HEAT/HE), `speedMps`, `caliberMm` | a real shell entity flying from→to; freeze mid-flight via `fxTime` |
+| `impact` | point/actor | `kind` (pen/nonpen/ricochet/he_pen/he_splash/era/spaced_absorb/terrain), `caliberMm`, `normal:[x,y,z]` | armor/terrain impact language |
+| `sparks` | point/actor | `caliberMm` | ricochet spark fan (alias of impact ricochet) |
+| `explosion` | point/actor | `size`: `small` (HE dirt plume) / `medium` (destruction, no rack) / `large` (full ammo-rack fireball + debris + smoke column), `cause` | standalone explosion |
+| `tank_kill` | actor | `cause` (ammorack/shot/fire), `pop` (default true) | the real kill: fireball/debris/column + burn-sweep wreck swap + turret pop on the actor |
+| `dust` | point/actor | `count`, `intensity`, `dirDeg` | dust burst (track-dust language) |
+| `engine_smoke` | actor | `off` | ADDITIVE: continuous sooty engine-deck smoke, layers over any mesh state (a smoldering wreck) |
+| `burning` | actor | `off` | ADDITIVE: the keyed fire/smoke column, layers over any mesh state |
+| `detrack` | actor | `side`: `L`/`R` | thrown-track visual + link/spark/dust burst |
+| `firing_moment` | actor | `ageS` (default 0.05), `caliberMm`, `shellType` | the composed frozen firing still (contract `combat_firing` language) |
+| `explosion_moment` | point/actor | `ageS` (default 0.6) | the composed frozen destruction still |
+
+### Determinism contract
+
+`load()`:
+1. enters/switches to `map` (chunked build, cached per map),
+2. waits for every started GLB swap to settle (`waitModels: false` in the
+   second argument skips this), re-conforms poses after swaps,
+3. resets the fx system (`resetAll` + `resetSeed(seed)`), studio clock to 0,
+4. builds actors in order; poses conform to terrain through the movement
+   module's real support solve (zero-input handbrake settle), then the
+   authored facing/turret/gun values are pinned exactly,
+5. applies the camera,
+6. fires effects sorted by `tMs`, advancing the shared fx clock between them
+   in fixed 1/60 s steps (the same cadence live play emits at — smoke
+   columns, engine smoke, shell flight and light/ring timelines all age
+   through their real update paths),
+7. advances to exactly `fxTime` and freezes (`timeScale 0` unless the JSON
+   says otherwise). Wind is pinned to a deterministic phase.
+
+Same JSON in → same frame out. Effects with `tMs > fxTime` are kept in
+`state()` but do not fire inside the composition.
+
+`state()` returns the schema above (actors in creation order with their
+current pose/state, the effect log with authored `tMs`, the live camera,
+`fxTime` = current clock). `load(state())` round-trips.
+
+## Known limitations
+
+- **Camo is per-spec**: two actors of the same tank id share one paint bake
+  (`camo`/`camoSeed` of the most recent application wins). Different specs are
+  fully independent.
+- Wrecked/burning states and effects **do not run combat math** — no damage
+  numbers, no module sim; this is a staging rig.
+- `timeOfDayish` is accepted but ignored (sun/sky presets are authored per
+  map; re-lighting would need a sky re-bake).
+- The garage bay set-dressing physically exists at the map edge (−1500,−1500)
+  and can be framed if you fly there.
+- Studio shells collide with terrain only (props/tanks don't stop them); aim
+  `tracer`/`fire` accordingly or freeze before contact.
+- Engine-smoke/burning emission while `timeScale > 0` runs on the live render
+  cadence; the frozen composition path (`load`/`advanceFx`) is the
+  deterministic one.
+
+## Self-test
+
+`tools/studio-selftest.mjs` (own vite on a 7xxx port, puppeteer) drives:
+enter via `?studio=1&map=desert`, `load()` a 3-tank scene (firing / exploding
+mid-fireball / burnt wreck, plus dust and engine smoke), asserts no battle sim
+and fx frozen at `fxTime`, captures ≥2560-px PNGs on desert and winter with
+different cameras/FOVs, and verifies the scene JSON round-trip. Output:
+`shots/studio-selftest/*.png`.

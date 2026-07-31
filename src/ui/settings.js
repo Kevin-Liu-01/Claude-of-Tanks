@@ -397,7 +397,8 @@ export function createSettings(opts) {
     note.innerHTML =
       'Click a chip, then press any key, mouse button or wheel notch to rebind — pad chips listen for a ' +
       'controller button. Tap Esc to cancel; <b>hold Esc</b> to bind Escape itself. Right-click a chip to clear it.<br>' +
-      'Controller: left stick drives, right stick aims, START opens this menu.';
+      'What <b>Aim / Free Look</b> does (hold-to-aim, toggle-aim or classic free look) is picked on the ' +
+      'GAMEPLAY tab. Controller: left stick drives, right stick aims, START opens this menu.';
     refreshChips();
   }
 
@@ -479,6 +480,37 @@ export function createSettings(opts) {
       emit('ui:click', {});
     });
 
+    // gunnery r1 (owner): what right-click does — hold-to-aim (default),
+    // toggle-aim, or the classic gun-lock free look. Persisted as
+    // settings.rmbMode; main.js routes the RMB-bound action per frame.
+    const RMB_MODE_DEFS = [
+      ['hold', 'hold-to-aim'],
+      ['toggle', 'toggle-aim'],
+      ['freelook', 'free look'],
+    ];
+    const rmbRow = el('div', 'cot-set-row', body);
+    el('span', 'lb', rmbRow).textContent = 'Right click (RMB)';
+    const rmbSeg = el('div', 'cot-set-seg', rmbRow);
+    const rmbBtns = [];
+    for (const [value, label] of RMB_MODE_DEFS) {
+      const b = el('button', '', rmbSeg);
+      b.type = 'button';
+      b.textContent = label;
+      b.dataset.mode = value;
+      b.addEventListener('click', () => {
+        input.setSetting('rmbMode', value);
+        for (const x of rmbBtns) x.classList.toggle('sel', x.dataset.mode === value);
+        emit('ui:click', {});
+      });
+      rmbBtns.push(b);
+    }
+    for (const x of rmbBtns) x.classList.toggle('sel', x.dataset.mode === input.getSettings().rmbMode);
+    const rmbNote = el('div', 'cot-set-note', body);
+    rmbNote.textContent =
+      'Hold-to-aim: hold RMB to zoom into sniper, release to return to your previous view ' +
+      '(aim pitch is preserved both ways). Toggle-aim: tap RMB like Shift. Free look: hold RMB ' +
+      'to look around while the gun stays put (classic). Shift always toggles sniper.';
+
     el('div', 'cot-set-group', body).textContent = 'Battle';
     const diffRow = el('div', 'cot-set-row', body);
     el('span', 'lb', diffRow).textContent = 'AI difficulty (next battle)';
@@ -530,10 +562,11 @@ export function createSettings(opts) {
   // --- SOUND tab ---------------------------------------------------------------
   const VOLUME_DEFS = [
     ['volMaster', 'Master volume'],
-    ['volEngine', 'Engine volume'],
+    ['volEngine', 'Engine & mechanical volume'],
     ['volCombat', 'Gunfire & impacts volume'],
-    ['volAmbience', 'Ambience volume (wind, birds)'],
-    ['volUi', 'Interface volume'],
+    ['volAmbience', 'Ambience volume (wind, birds, garage)'],
+    ['volUi', 'Interface & music volume'],
+    ['volVoice', 'Crew voices & alarms volume'],
   ];
 
   /** Broadcast the FPS/ping readout preference (hud.js 'cot-net' element).
@@ -553,6 +586,8 @@ export function createSettings(opts) {
       combat: s.volCombat,
       ambience: s.volAmbience,
       ui: s.volUi,
+      voice: s.volVoice,
+      alarmHeartbeat: !!s.alarmHeartbeat,
     });
   }
 
@@ -566,11 +601,25 @@ export function createSettings(opts) {
         onChange: emitVolumes, blipOnCommit: true,
       });
     }
+    el('div', 'cot-set-group', body).textContent = 'Alarms';
+    const hbRow = el('div', 'cot-set-row', body);
+    el('span', 'lb', hbRow).textContent = 'Critical-damage heartbeat pulse';
+    const hbTog = el('div', `cot-set-toggle${input.getSettings().alarmHeartbeat ? ' on' : ''}`, hbRow);
+    el('i', '', hbTog);
+    hbTog.addEventListener('click', () => {
+      input.setSetting('alarmHeartbeat', !input.getSettings().alarmHeartbeat);
+      hbTog.classList.toggle('on', input.getSettings().alarmHeartbeat);
+      emitVolumes();
+      emit('ui:click', {});
+    });
+
     const note = el('div', 'cot-set-note', body);
     note.textContent =
-      'All audio is synthesized in real time — no samples. Engine, gunfire, ambience and ' +
-      'interface mix under the master fader; changes apply instantly and persist. ' +
-      'Release a slider to hear a reference blip at the new level.';
+      'Effects, engines and music are synthesized in real time; the crew radio lines are ' +
+      'original voice takes generated offline (no third-party recordings). Everything mixes ' +
+      'under the master fader; changes apply instantly and persist. Release a slider to hear ' +
+      'a reference blip at the new level. The heartbeat pulse plays a short low throb when ' +
+      'your tank drops below quarter health.';
   }
 
   // --- GRAPHICS tab -----------------------------------------------------------
@@ -869,9 +918,10 @@ export function createSettings(opts) {
     }
     if (activeTab === 'sound') {
       input.setSetting('volMaster', 0.8);
-      for (const key of ['volEngine', 'volCombat', 'volAmbience', 'volUi']) {
+      for (const key of ['volEngine', 'volCombat', 'volAmbience', 'volUi', 'volVoice']) {
         input.setSetting(key, 1);
       }
+      input.setSetting('alarmHeartbeat', true);
       emitVolumes();
       renderTab();
       emit('ui:click', {});
@@ -987,6 +1037,10 @@ export function createSettings(opts) {
       hintGroup('Move', ['forward', 'left', 'back', 'right']) +
       hintGroup('Fire', ['fire']) +
       hintGroup('Sniper', ['sniperToggle']) +
+      // gunnery r1: RMB's live role (settings.rmbMode) — aim zoom or free look
+      hintGroup(
+        input.getSettings().rmbMode === 'freelook' ? 'Free Look' : 'Aim',
+        ['freeCamera']) +
       hintGroup('Shells', ['shell1', 'shell2', 'shell3']) +
       hintGroup('Repairs', ['consumable1', 'consumable2', 'consumable3']) +
       hintGroup('Handbrake', ['handbrake']) +

@@ -61,6 +61,10 @@ console.log(`[gunnery-gate] vite up at ${url}`);
 const browser = await puppeteer.launch({
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+  // gunnery r1: the whole 8-battle run is ONE page.evaluate; battle staging
+  // got slower (boot r9 defers all visuals into battle setup) and the run
+  // now exceeds puppeteer's default 180 s protocol timeout.
+  protocolTimeout: 1200000,
 });
 const page = await browser.newPage();
 await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 });

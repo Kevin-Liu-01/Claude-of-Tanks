@@ -1103,7 +1103,19 @@ class Pool {
   flush() {
     if (this.dirtyStart < 0) return;
     for (const a of this.attrList) {
-      a.clearUpdateRanges();
+      // ACCUMULATE ranges — never clearUpdateRanges() here. The renderer
+      // consumes AND clears them itself after upload (three r185
+      // WebGLAttributes.update sorts + merges + bufferSubDatas +
+      // clearUpdateRanges), so with one flush per rendered frame this is
+      // identical to before. Clearing here instead WIPED any ranges a
+      // previous flush queued when several fx.update() steps run between
+      // renders — the SCENE STUDIO's stepped timeline (advanceFx) does
+      // exactly that, and every particle emitted before the final step
+      // stayed stale on the GPU (invisible smoke columns / engine smoke
+      // while one-burst fireballs rendered). Ranges can only accumulate
+      // within one synchronous multi-step advance (every rendered frame
+      // drains them), and three merges the list in one sort, so unbounded
+      // accumulation is not a perf risk.
       a.addUpdateRange(this.dirtyStart * a.itemSize,
         (this.dirtyEnd - this.dirtyStart) * a.itemSize);
       if (this.dirtyStart2 >= 0) {
@@ -1149,12 +1161,60 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   const uTime = { value: 0 };
   let frozen = false;
 
-  const smokeTex = makeFlipbookTexture(texRng, 'smoke');
-  const fireTex = makeFlipbookTexture(texRng, 'fire');
-  const propTex = makeFlipbookTexture(texRng, 'prop');
-  const dustTex = makeFlipbookTexture(texRng, 'dust');
-  const flashTex = makeFlashTexture(texRng);
-  const jetTex = makeJetTexture(texRng);
+  // LOADING PERF (boot r9): the six procedural sprite bakes (~200 ms of
+  // canvas/fbm work) used to run inline here, on the boot-critical path — for
+  // textures nothing can sample before the first battle/shot frame (the
+  // garage emits no fx). Each material now starts on a 4×4 transparent
+  // placeholder CanvasTexture and warmTextures() paints the real canvases in
+  // by image-swap. DETERMINISM: the bakes still consume the SAME seeded
+  // texRng stream in the SAME order as before — only later — so every frozen
+  // capture keeps its exact noise layout. main.js calls warmTextures() from a
+  // post-ready idle slice and synchronously from warmCombatPipeline(), which
+  // startBattle()/__SHOTS.set() already run before any fx frame can render.
+  const lazyTex = () => {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 4;
+    const tex = new THREE.CanvasTexture(cv);
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+  };
+  const smokeTex = lazyTex();
+  const fireTex = lazyTex();
+  const propTex = lazyTex();
+  const dustTex = lazyTex();
+  const flashTex = lazyTex();
+  const jetTex = lazyTex();
+  let texturesBaked = false;
+  function warmTextures() {
+    if (texturesBaked) return;
+    texturesBaked = true;
+    // exact original bake order — the shared rng stream must not shift
+    const swaps = [
+      [smokeTex, makeFlipbookTexture(texRng, 'smoke')],
+      [fireTex, makeFlipbookTexture(texRng, 'fire')],
+      [propTex, makeFlipbookTexture(texRng, 'prop')],
+      [dustTex, makeFlipbookTexture(texRng, 'dust')],
+      [flashTex, makeFlashTexture(texRng)],
+      [jetTex, makeJetTexture(texRng)],
+    ];
+    for (const [tex, baked] of swaps) {
+      // STUDIO selftest fix: the 4×4 placeholder HAS usually been uploaded by
+      // now — pool meshes render every frame at instanceCount 0, and a zero-
+      // instance draw still binds the material and allocates the sampler's GL
+      // storage. Swapping `image` to a different-sized canvas with only
+      // needsUpdate re-uses that 4×4 allocation and the upload silently
+      // no-ops, leaving every puff pool sampling fully-transparent texels
+      // (fireballs/smoke/dust invisible in battle AND studio; proven by a
+      // dispose-then-recapture probe). dispose() first, so the next bind
+      // re-creates the GL object at the real sprite-sheet size.
+      tex.dispose();
+      tex.image = baked.image;
+      tex.needsUpdate = true;
+      // the baked wrapper itself was never uploaded; dropping it frees only
+      // CPU-side state
+      baked.dispose();
+    }
+  }
 
   const fogUniforms = () => THREE.UniformsUtils.clone(THREE.UniformsLib.fog);
   // world-space sun direction matching the sky/lighting rig
@@ -1248,7 +1308,14 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
         side: THREE.DoubleSide,   // streak ribbon winding flips with view direction
         fog: true,
       }), STREAK_LAYOUT, POOL_SIZES.sparks, 'aVL', 3),
-    debris: new Pool('debris', makeChunkGeometry(POOL_SIZES.debris, texRng),
+    // LOADING PERF (boot r9): the chunk shards get a DEDICATED stream — they
+    // used to pull texRng AFTER the six texture bakes, and with those bakes
+    // deferred (warmTextures) this call would otherwise consume texRng FIRST
+    // and shift every sprite sheet's noise layout. On a private stream the
+    // deferred bakes read the exact values the old boot-path bakes read
+    // (textures ran first, values 1..K); only the shard silhouettes re-roll
+    // once, at identical distribution/quality.
+    debris: new Pool('debris', makeChunkGeometry(POOL_SIZES.debris, mulberry32((seed ^ 0x51ed) | 0)),
       new THREE.ShaderMaterial({
         vertexShader: DEBRIS_VERT,
         fragmentShader: DEBRIS_FRAG,
@@ -1351,6 +1418,13 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   return {
     group,
     pools,
+
+    /**
+     * Bake the real sprite sheets into the placeholder textures (idempotent).
+     * LOADING PERF (boot r9): must run before the first frame that samples an
+     * fx material — warmCombatPipeline() covers every battle/shot path.
+     */
+    warmTextures,
 
     /** Current internal clock (seconds). @returns {number} */
     getTime() { return uTime.value; },

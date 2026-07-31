@@ -192,9 +192,42 @@ export function pauseIdleQueue(v) {
   scheduleIdlePump();
 }
 
+// LOADING PERF (boot r9): while main.js holds window.__COT_BOOT_HOLD the
+// queue runs NOTHING — not even hot priority-lane jobs. Without this the
+// pedestal hero's parse+swap raced the boot stages (rIC's 350 ms timeout
+// fires between stage yields) and landed a 300-600 ms GLB chunk INSIDE
+// boot-to-ready on some runs and after it on others. Fetches are not gated
+// (network overlaps boot); main.js clears the flag the moment boot.ready()
+// arms the entry gate, and the 100 ms poll below resumes the pump without
+// needing an import-order-sensitive export.
+//
+// SPLASH-TEARDOWN GRACE: after the flag clears, the queue also stays parked
+// while the boot splash is auto-dismissing (harness/webdriver path) — its
+// removal is a 620 ms setTimeout in bootScreen.dismiss(), and a 300-600 ms
+// parse/swap chunk landing first delays that timer past the bootgate probe's
+// spot-check. While the entry gate is ARMED and waiting on a keypress
+// (#cot-boot-gate.on), jobs DO run — that dwell is exactly where the pedestal
+// hero's swap should land.
+function bootHeld() {
+  try {
+    if (typeof window === 'undefined' || !window.document) return false;
+    if (window.__COT_BOOT_HOLD === true) return true;
+    const el = document.getElementById('cot-boot');
+    if (!el) return false; // splash gone (or never existed) — run freely
+    const gate = document.getElementById('cot-boot-gate');
+    if (gate && gate.classList.contains('on')) return false; // player dwell
+    return true; // splash up without an armed gate: dismissal in flight
+  } catch (_) { return false; }
+}
+
 function pumpIdle() {
   _idlePumpScheduled = false;
   if (!_idleQueue.length) return;
+  if (bootHeld()) {
+    _idlePumpScheduled = true;
+    setTimeout(pumpIdle, 100);
+    return;
+  }
   let takeIdx = -1;
   if (_queuePaused) {
     // r3 (critic critical, second face of the empty-garage bug): the harness
@@ -375,6 +408,24 @@ function loadGltf(url, texCaps = GLB_TEX_CAPS) {
 
 /** True when the GLB is parsed and applyGlbModelSync can run. */
 export function hasCachedGlb(url) { return _resolved.has(url); }
+
+/**
+ * TANK-SWITCH PERF (switching r1): true while a queued/in-flight applyGlbModel
+ * swap targets the given tank root. The garage reveal poll's stats fallback
+ * (hasCachedGlb + all loads settled) could catch the ~16-60 ms window between
+ * a hero's PARSE settling and its SWAP job running, revealing the procedural
+ * stand-in for a beat before the GLB landed in place. A rejected swap clears
+ * its ctx (finally), so "no pending swap + parse cached" still correctly means
+ * "the procedural IS the final model" on the reject path.
+ * @param {THREE.Object3D} root tank root (hullG's parent)
+ * @returns {boolean}
+ */
+export function hasPendingSwap(root) {
+  for (const ctx of _pendingSwapCtx) {
+    if (ctx.hullG && (ctx.hullG.parent === root || ctx.hullG === root)) return true;
+  }
+  return false;
+}
 
 /** Case-insensitive node search by regex over names. */
 function findNode(root, re) {
@@ -1763,16 +1814,24 @@ function addGlbTurretNumber(turret, text, spots, size = 0.6) {
   const cnv = document.createElement('canvas');
   cnv.width = cnv.height = 256;
   const c2 = cnv.getContext('2d');
-  c2.clearRect(0, 0, 256, 256);
-  c2.font = `bold ${Math.min(150, Math.floor(430 / Math.max(1, text.length)))}px sans-serif`;
-  c2.textAlign = 'center';
-  c2.textBaseline = 'middle';
-  c2.lineWidth = 12;
-  c2.strokeStyle = 'rgba(20,20,20,0.6)';
-  c2.strokeText(text, 128, 128);
-  c2.fillStyle = 'rgba(216,214,206,0.95)';
-  c2.fillText(text, 128, 128);
+  const draw = () => {
+    c2.clearRect(0, 0, 256, 256);
+    c2.font = `bold ${Math.min(150, Math.floor(430 / Math.max(1, text.length)))}px 'Inter', sans-serif`;
+    c2.textAlign = 'center';
+    c2.textBaseline = 'middle';
+    c2.lineWidth = 12;
+    c2.strokeStyle = 'rgba(20,20,20,0.6)';
+    c2.strokeText(text, 128, 128);
+    c2.fillStyle = 'rgba(216,214,206,0.95)';
+    c2.fillText(text, 128, 128);
+  };
+  draw();
   const tex = new THREE.CanvasTexture(cnv);
+  // font mandate: tactical numbers bake in Inter — GLBs usually land after
+  // the webfont, but if this raced it, redraw + re-upload on fonts.ready.
+  if (document.fonts && !document.fonts.check("bold 16px 'Inter'")) {
+    document.fonts.ready.then(() => { draw(); tex.needsUpdate = true; }).catch(() => {});
+  }
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
   const mat = new THREE.MeshStandardMaterial({

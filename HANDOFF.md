@@ -64,7 +64,7 @@ src/main.js    integration: boot order, game flow, update loop, __SHOTS/__DEBUG 
 tools/         verification gates (see §4), genIcons.mjs, blend2glb.sh, strip-nc-assets.mjs
 docs/          research specs, ARCHITECTURE.md, ATTRIBUTION.md, EVALUATION.md, perf evidence,
                handoff/ (the fix-loop patch convention), agents/ (workflow specs)
-public/        models (tanks + community), icons (generated), fonts (Switzer), maps
+public/        models (tanks + community), icons (generated), fonts (Inter), maps
 ```
 
 Sim modules are pure logic and run under plain `node` — that is what makes the

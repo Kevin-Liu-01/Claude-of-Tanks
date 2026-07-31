@@ -749,30 +749,61 @@ Tracer colors/widths per shells doc §10 table. Dynamic light budget: ≤2 Point
 near a tree — SKIP for v1 unless cheap (props are static; do not add cross-module
 coupling for it).
 
-### 3.9 audio — `src/audio/audio.js`
+### 3.9 audio — `src/audio/audio.js` (+ `src/audio/voices.js`)
 ```js
 export function createAudio() => Audio
 Audio = {
   resume(),            // MUST be called from a user gesture; creates AudioContext lazily.
                        // Before resume(): every method is a silent no-op (no errors,
-                       // no context creation — headless screenshot safety).
+                       // no context creation — headless screenshot safety). resume()
+                       // also lazily fetch+decodes the crew radio lines (tolerant:
+                       // a missing file mutes that line only).
   bindBus(bus),        // shell:fired → gunshot by caliber class (≤76 crack / ≤105 boom /
-                       // ≥120 heavy boom, layered noise burst + 40–60 Hz sine thump,
-                       // lowpass by distance); shell:hit → clang (pen) / ping-whine
-                       // (ricochet/nonpen) / explosion (he_*); tank:destroyed → big
-                       // explosion + debris patter; ui:click → click; tank:fire → loop
+                       // ≤130 heavy / >130 siege; pre-rendered PCM bed + per-shot ±6%
+                       // pitch jitter; player shots add breech clank + brass tinkle) +
+                       // 'Firing!' radio (prob-gated); shell:hit → clang w/ interior
+                       // echo+spall (pen) / 3-variant metallic zing (ricochet) / blunt
+                       // shatter (nonpen) / explosion (he_*) + crew reactions
+                       // ("We're hit!", "They bounced us!", "Ricochet!");
+                       // shell:expired(hitTerrain) → dirt splash; tank:destroyed → big
+                       // explosion + debris, kill sting + "Target destroyed" on player
+                       // kills; module:state → track snap (world), ammo-rack beep +
+                       // damage/repair radio calls (player); tank:fire → burning loop +
+                       // fire klaxon + "Fire! Put it out!" (player); tank:spotted →
+                       // "Enemy spotted"; player:reload(done) → breech latch +
+                       // "Reloaded"; phase:change → battle horn / garage room tone;
+                       // battle:ended → victory/defeat/draw fanfare; killcam:begin/done
+                       // → duck combat/engine/ambience ×0.35; ui:click → click;
+                       // ui:volumes → live 5-channel mix {master, engine, combat,
+                       // ambience, ui, voice, alarmHeartbeat}
   update(dt, listener /* {pos: Vector3, forward: Vector3} */, tanks: TankEntity[]),
                        // engine loops: per audible tank, saw+noise loop, RPM pitch =
                        //   0.8 + 0.6×|speed|/topSpeed (turbine whine preset for m1a2:
                        //   add high sine 900→1400 Hz); track squeak above 2 m/s;
-                       //   shell whizz for player-passing shells (dist<15 m, speed>300)
+                       //   shell whizz for player-passing shells (dist<15 m, speed>300);
+                       //   player turret-traverse whir + gun-elevation servo (from
+                       //   state.turretYawRate / gunPitch delta); suspension landing
+                       //   thumps (listener-side vy tracking); critical-HP heartbeat
+                       //   pulse windows (optional, settings.alarmHeartbeat); radio
+                       //   queue drain
   setMasterVolume(v /* 0..1 */), mute(m: boolean),
   playGarageSting(), ambientOn(on),      // wind + sparse birds, seeded noise
+  hitConfirm(kind, damage),              // non-spatial player shot-result blip
 }
 ```
-Distance model: gain = `clamp(10/dist, 0, 1)`², equal-power stereo pan from
-listener-relative azimuth. Everything synthesized (oscillators, noise buffers built
-once). Max ~24 simultaneous voices; steal oldest.
+Bus graph: `{combat, engine, ambience, ui/music, voice} → compressor → master`.
+Channel gains follow the settings SOUND tab (`cot.settings.v1`, live via
+'ui:volumes'); crew radio + alarms sit on the voice bus. Distance model:
+gain = `clamp(10/dist, 0, 1)`², equal-power stereo pan from listener-relative
+azimuth, air-absorption lowpass + speed-of-sound delay for far events. Max ~24
+simultaneous one-shot voices; steal oldest. Everything is synthesized at
+runtime (oscillators, seeded noise, pre-rendered gun beds) EXCEPT the crew
+radio lines: original macOS-TTS takes processed offline into ~48 KiB of Opus
+under `public/audio/voice/` (`tools/make-voices.mjs`, docs/ATTRIBUTION.md).
+Radio discipline lives in `src/audio/voices.js`: one line at a time, priority
+ladder (survival calls interrupt flavor), per-line cooldowns, ±3% rate jitter.
+Debug: `window.__COT_AUDIO` (after resume) exposes the ctx, a master PCM tap
+and the voice log for `tools/audio-probe.mjs`.
 
 ---
 

@@ -3,7 +3,7 @@
 // connecting lines, the 8 real roster tanks placed at sensible tiers as
 // unlocked + clickable nodes (click -> select in garage), plus greyed
 // silhouette placeholder nodes for flavor (clearly non-functional).
-// Smooth pointer pan / wheel zoom. Switzer typography, procedural flags.
+// Smooth pointer pan / wheel zoom. Inter typography, procedural flags.
 
 import { FONT_STACK, ensureFonts } from './fonts.js';
 import { flagSVG } from './flags.js';
@@ -419,11 +419,14 @@ const TT_CSS = `
   background:linear-gradient(90deg,rgba(240,160,48,0),#f0a030,rgba(240,160,48,0));}
 /* META-GAME: research footer strip on ghost nodes (cost / locked / researched) */
 .cot-tt-node .res{position:absolute;left:0;right:0;bottom:0;padding:3px 4px 4px;
-  text-align:center;font-size:8.5px;font-weight:800;letter-spacing:.14em;
+  /* fit history: .14em clipped 6px under the old condensed face -> .10em;
+     Inter (no condensed cut) ran 11px over at 8.5px/.10em — one size step
+     down + tracking trim clears the longest line (pips + next gun + 5-digit XP). */
+  text-align:center;font-size:8px;font-weight:800;letter-spacing:.08em;
   color:#67727d;text-transform:uppercase;white-space:nowrap;overflow:hidden;
   background:linear-gradient(180deg,rgba(146,164,180,.07),rgba(146,164,180,.02));}
 /* r4: gun/engine/tracks module pips on research cards */
-.cot-tt-node .res .mp{font-style:normal;font-size:8px;letter-spacing:.10em;
+.cot-tt-node .res .mp{font-style:normal;font-size:7.5px;letter-spacing:.08em;
   margin-right:3px;color:#8a97a3;}
 .cot-tt-node.ghost.available .res .mp{color:#e0b060;}
 .cot-tt-node.ghost.available{opacity:.78;cursor:pointer;
