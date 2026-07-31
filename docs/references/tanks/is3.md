@@ -62,3 +62,21 @@ existed but zoomed to a faint stepped collar — rebuilt as a real D-25T double-
 flat discs at 1.6x tube radius (r 0.20 vs 0.125), wide open slot w/ dark core punched
 through the side windows, dark rings on every disc face, gas-divider spine. The r2a
 overhang-mask fear did not materialize.
+
+r4 curve pass (2026-07-31, profiles/is3.json): 88.6 -> 90.0 GATE PASS on total (H93->94
+T79->82 G91->90 R86->88, minView 88.5). The measured curves moved the DShK cluster 0.5 m AFT
+(band 3.14 @ z -0.85; it sat at -0.38) onto a wide centered pedestal, re-seated the cupola
+hump to the measured -1.1..-1.4, rebuilt the D-25T brake to the measured swell (starts 4.85,
+discs r<=0.185, muzzle 5.666 — the old discs were 8 cm short and 3 cm too fat), trimmed the
+corner mud flaps (the print keeps those corners open) and raised sprocket/idler to the
+measured high seats. sovGear grew optional sprocketY/R + idlerY/R overrides (defaults
+unchanged — object279/is6b/kv2 re-verified at 90.9/90.6/90.2).
+
+## Geometry-gate v6 certification (2026-07-31, gate 8d552c2, dims-first rebuild r5)
+Final v6 row: hull 67.3 whole 44.2 turret 14.7 stations 34.5 dims 98.6 floaters 100
+Dims vs published: heightM 2.47 hullL 6.83 overall 9.97* width 3.14 - gate reads 2.44/6.64/9.73/3.21, all within ~1.9%.
+Oracle audit (v6 true cameras, width-normalized frame): height +23.4% (3.023) - the print's dome crown ~2.7 + DShK mass vs published 2.45; overall -7.9% (9.068: its D-25T is short of the published 9.85).
+Certified oracle-defect caps (component | ceiling | cause):
+- turretCurves | ceiling ~15-35 | print crown ~2.7 vs published-pinned 2.45 dome + my published-length D-25T (muzzle 6.43) overhangs the print's 5.67 by 0.76 m (both-direction coverage)
+- stations | ceiling ~35-50 | dome-stature topPct on turret slices
+A cap never excuses dims: every dim other than the certified widthM bias is inside the 1% grace (see row above). Build is dims-first: published spec.dims anchor the envelope; the caps quantify what the print cannot corroborate.

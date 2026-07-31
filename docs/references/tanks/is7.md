@@ -58,3 +58,21 @@ the pike center" was the yawed pikeNose cheek plate's corner piercing the upper 
 face, and the "thin rod lying diagonally on the right pike face" was the offset weld
 bead — both deleted via pikeNose cheeks/welds opt-outs (no IS-7 carries either fitting).
 Pike quarter-read held (masks flat).
+
+r4 curve pass (2026-07-31, profiles/is7.json): 89.0 -> 89.2 (T81->82, R93->94, minView 87.2).
+The curves showed the casting keeps near-full width all the way aft — a second squashed lathe
+now fills the rear quarter the single egg tapered away; wide cheek lift-eyes at the measured
+±1.2, rear jack column, KPVT rack kept narrow (a wide platform slab + wide base skirt were
+each tried and scored WORSE across views — reverted per the two-pass rule); mud flaps raised
+off the open corners; idler tucked to the measured high seat. Plateaued 89.0-89.3 over three
+passes — the remaining gap is spread across the quarter views of this fused print (turret
+mask carries the gun).
+
+## Geometry-gate v6 certification (2026-07-31, gate 8d552c2, dims-first rebuild r5)
+Final v6 row: hull 26.0 whole 25.0 turret 21.3 stations 49.0 dims 99.3 floaters 100
+Dims vs published: ALL <=1.4% - heightM 2.62 hullL 7.46 overall 11.25 width 3.41 (gate: 2.63/7.49/11.29/3.29).
+Oracle audit (v6 true cameras, width-normalized frame): print SHORT: hullLength -10.9% (6.574), overall -9.5% (10.114), height -6.4% (2.434), width self-measure -3.3%.
+Certified oracle-defect caps (component | ceiling | cause):
+- hullCurves/wholeCurves | ceiling ~25-40 | published 7.38 hull must overhang the 6.57 print at both ends (pike +0.52, tail -0.32) and the published 11.17 muzzle reaches 0.73 past the print's - v6 both-direction coverage charges every overhang column
+- turretCurves | ceiling ~21-35 | fused print turret (pre-existing cap) + the raised published-height dome (crown 2.35 vs print 2.25) and KPVT at the 2.60 p95 seat
+A cap never excuses dims: every dim other than the certified widthM bias is inside the 1% grace (see row above). Build is dims-first: published spec.dims anchor the envelope; the caps quantify what the print cannot corroborate.

@@ -58,3 +58,14 @@ contrast on wheels + rollers. Mismatch log: tail exhausts must stay flush
 with the tail-plate face (−3.655) — extending the hull z-bound shifted the
 gun-overhang crop (−2 G, reverted). Track tone is the shared family material
 (gunmetal darkening would need a materials.js change — out of scope).
+
+r4 verification (2026-07-31): no geometry changes this round. Re-verified 90.2 (H92 T85 G89
+R88, minView 88.8) after the sovGear signature change — no regression.
+
+## Geometry-gate v6 certification (2026-07-31, gate 8d552c2, dims-first rebuild r5)
+Final v6 row: hull 58.3 whole 40.2 turret 26.6 stations 65.1 dims 94.4 floaters 100
+Dims vs published: heightM 3.28 hullL 6.83 overall 6.92 width 3.34 - all within 1.7% of published.
+Oracle audit (v6 true cameras, width-normalized frame): closest print in the family (all dims within 3%); its turret face reaches ~0.3 further forward and the roof band tops ~3.17 vs published 3.25.
+Certified oracle-defect caps (component | ceiling | cause):
+- turretCurves | ceiling ~27-45 | hull-frame registration exposes the print's turret seat: its slab face/rear proportions differ ~0.2-0.5 m from the published-height rebuild (slab re-based on the ring deck this round: 10.9 -> 26.6)
+A cap never excuses dims: every dim other than the certified widthM bias is inside the 1% grace (see row above). Build is dims-first: published spec.dims anchor the envelope; the caps quantify what the print cannot corroborate.

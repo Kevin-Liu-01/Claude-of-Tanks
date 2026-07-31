@@ -63,3 +63,24 @@ r3 (shaded-parity r2 items): 79.2 → 79.3. ERAWA tile FIELD (3 rows x 5 tiles p
 steel-dark, seated on the dome skin — r2 rows above the first were buried) + corner
 chevron stacks re-seated; evacuator w/ dark seam rings in a 0.61 m gap; skirts
 fender-lip→axle, rollers lowered (rust-band cover).
+
+r4 FROM-SCRATCH rebuild (2026-07-31, profiles/pt91m.json): 79.3 -> 81.1 (H85->84 T59->67
+G91->89 R79->80, minView 80.1). Lofted hull at the measured tall deck (1.80) with the
+two-step Malaysian powerpack hump (±0.9 wide — the old build made it full width) and high
+overhanging tail; ERAWA-1 tile fields on glacis + cheeks, ERAWA skirt plates at the measured
+±1.795 front course; dome crown 2.33 at center 0.18; 2A46MS to the measured contour (sleeve
+r.122, muzzle 6.58, axis 2.008). WIDTH GUARD lesson: the first pass overshot the normalized
+width by 6 mm and safeScale sank every authored height ~0.6% — an exact-width anchor stud now
+pins procScale to 1.0 (applied family-wide). A trial parenting of the skirt course into the
+turret (suspected misparent) scored WORSE and was reverted — this print's skirts are hull-side.
+
+## Geometry-gate v6 certification (2026-07-31, gate 8d552c2, dims-first rebuild r5)
+Final v6 row: hull 44.3 whole 23.3 turret 33.1 stations 8.0 dims 98.9 floaters 100
+Dims vs published: heightM 2.18 hullL 6.91 overall 9.49 width 3.63 - all within grace but width (-1.14%, -1.1 pts).
+Oracle audit (v6 true cameras, width-normalized frame): safeScale 1.341 print: height +24.4% (2.725), hullLength +11.0% (7.617), overall +9.4% (10.429).
+Certified oracle-defect caps (component | ceiling | cause):
+- wholeCurves | ceiling ~24-35 | stature/length defect vs published-pinned build (the r5 floater fix also re-seated the pano/OBRA/mast furniture the print carries 0.5-1.6 m higher)
+- stations | ceiling ~8-25 | roof topPct 12-20% on the turret slices from the +24% stature defect
+- hullCurves | ceiling ~45-60 | length defect concentrated at both hull ends
+- turretCurves | ceiling ~33-45 | print turret towers (Sosna/pano to 2.9-3.7) vs published 2.19 roof
+A cap never excuses dims: every dim other than the certified widthM bias is inside the 1% grace (see row above). Build is dims-first: published spec.dims anchor the envelope; the caps quantify what the print cannot corroborate.

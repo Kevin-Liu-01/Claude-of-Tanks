@@ -57,3 +57,15 @@ no-spike turret mask.
 r3 (shaded-parity r2): 90.5 → 90.6 (gun 85 → 87). D-30 compact brake enlarged to read:
 drums 1.65x tube radius, wider slot w/ fattened dark core, dark rings on both faces of
 both drums. Still >= 90 gate.
+
+r4 verification (2026-07-31): no geometry changes this round. Re-verified 90.6 (H92 T87 G87
+R92, minView 90.5) after the sovGear signature change — no regression.
+
+## Geometry-gate v6 certification (2026-07-31, gate 8d552c2, dims-first rebuild r5)
+Final v6 row: hull 51.1 whole 33.8 turret 17.0 stations 54.9 dims 90.6 floaters 100
+Dims vs published: heightM 2.50 (0.14%) hullL 6.88 overall 9.13 width 3.27 (+2.17%, -9.4 - fenders sit at the committed 3.20; the overshoot is grid quantization).
+Oracle audit (v6 true cameras, width-normalized frame): print gun is LONG vs published: overall +9.0% (9.915 vs 9.10) while its hull is -5.3% short; height -5.4%.
+Certified oracle-defect caps (component | ceiling | cause):
+- turretCurves | ceiling ~17-35 | published 9.10 overall pins my D-30 muzzle at 4.01 where the print's reaches 4.97 - the missing 0.96 m of tube is charged as coverage+error on the turret rows (the tube lives in the turret mask); onion dome raised to the published 2.50 roof vs print 2.37
+- wholeCurves | ceiling ~34-50 | same muzzle gap on whole rows + hull-length stretch vs the short print
+A cap never excuses dims: every dim other than the certified widthM bias is inside the 1% grace (see row above). Build is dims-first: published spec.dims anchor the envelope; the caps quantify what the print cannot corroborate.

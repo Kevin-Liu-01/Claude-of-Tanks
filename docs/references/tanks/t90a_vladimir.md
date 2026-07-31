@@ -58,3 +58,25 @@ edge-on sliver); Shtora eyes now read as paired dark housings w/ glass; evacuato
 0.58 m sleeve gap w/ dark rings; skirts fender-lip→axle (wheels visible), rollers lowered
 — the fender-line rust band in turntable frames 1–3 is gone (root cause: return-run
 supports rode above the skirt top).
+
+r4 FROM-SCRATCH rebuild (2026-07-31, profiles/t90a_vladimir.json): 76.5 -> 79.7 (H84->86
+T51->63 G86->83 R79->84, minView 79.7). Lofted hull with the print's full-width hull-parented
+stowage STACK (top 2.26 authored, z -2.84..-0.94) and overhanging tail drum rack (-4.5..-5.35)
+authored as strapped deck cargo; dome re-lathed to the measured low crown (2.32) under the
+2.9-3.1 roof cluster + tall left/right bin stacks; met mast 3.81 at (-0.24, -2.25); tube to the
+measured axis 1.90 / muzzle 5.20. WHAT THE CURVES REVEALED: the print floats its running gear
+~0.2 above ground (front flaps set the y-floor) — gear re-seated at botY 0.15; the oracle also
+carries a fender-line LOD copy inside its Turret node (upper-mask strip along the whole hull)
+— NOT chased (a swinging fender strip is print garbage; documented cap on T). Turntable: zero
+floaters; rack/stack read as the print's own boxy silhouette.
+
+## Geometry-gate v6 certification (2026-07-31, gate 8d552c2, dims-first rebuild r5)
+Final v6 row: hull 33.3 whole 11.1 turret 18.8 stations 0 dims 100 floaters 100
+Dims vs published: ALL <=0.9% - heightM 2.22 hullL 6.91 overall 9.49 width 3.75.
+Oracle audit (v6 true cameras, width-normalized frame): worst print in the family: safeScale 1.313; height +28.7% (2.871), hullLength +12.7% (7.733), overall +9.4% (10.428).
+Certified oracle-defect caps (component | ceiling | cause):
+- wholeCurves | ceiling ~12-25 | the +29%/+13% stature/length defect is unremovable while dims pins the build at published scale; every whole-frame column carries 0.2-0.6 m of print excess
+- hullCurves | ceiling ~35-45 | same, hull rows; the print's orphaned domes/LOD copies inside the turret node (pre-existing cap) additionally pollute its turret/hull mask split
+- turretCurves | ceiling ~20-30 | orphaned dome/LOD copies in the print's turret node + stature
+- stations | ceiling ~0-20 | roof-height topPct 15-25% across most slices from the stature defect
+A cap never excuses dims: every dim other than the certified widthM bias is inside the 1% grace (see row above). Build is dims-first: published spec.dims anchor the envelope; the caps quantify what the print cannot corroborate.

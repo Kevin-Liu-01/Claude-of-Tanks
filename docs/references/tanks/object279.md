@@ -59,3 +59,16 @@ r3 (shaded-parity r2): 91.0 → 90.9 (turret 85 → 87, gun 91 → 87 — the re
 costs a little crop mask, identity wins). M-65 multi-slot brake rebuilt from the r2
 ±0.01 collar stack (read as a bare tube) to a 1.4x-tube sleeve over 0.55 m with three
 punched dark slot bands + entry taper + exit collar. Still >= 90 gate.
+
+r4 verification (2026-07-31): untouched except the shared sovGear signature gaining optional
+override params (defaults identical). Re-verified 90.9 (H93 T87 G87 R93, minView 91.6) — no
+regression; still the family best.
+
+## Geometry-gate v6 certification (2026-07-31, gate 8d552c2, dims-first rebuild r5)
+Final v6 row: hull 31.7 whole 0 turret 37.5 stations 55.6 dims 94.1 floaters 100
+Dims vs published: heightM 2.57 hullL 6.93 overall 10.28 width 3.35 - gate: -1.27%/-1.24%/0.01%/-1.82% (width at the 3.40 committed flare).
+Oracle audit (v6 true cameras, width-normalized frame): print DEFLATED: height -7.8% (2.397), hullLength -9.1% (6.352), overall -5.3% (9.702).
+Certified oracle-defect caps (component | ceiling | cause):
+- wholeCurves | ceiling ~0-25 | published-height dome (crown 2.60) overshoots the deflated print by ~0.2 m across the turret span AND the stretched shell (+0.64 m to published) overhangs its hull both ends - v6 double-counts as error+coverage
+- hullCurves | ceiling ~32-45 | shell stretch vs short print
+A cap never excuses dims: every dim other than the certified widthM bias is inside the 1% grace (see row above). Build is dims-first: published spec.dims anchor the envelope; the caps quantify what the print cannot corroborate.

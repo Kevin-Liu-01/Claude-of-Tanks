@@ -64,3 +64,18 @@ are meaningful again (residual T/G gap = the print's tall dome / fat tube).
 
 r3: inherits the is3 double-baffle brake rebuild (shared is3TurretAndGun) — the brake
 now reads at board scale. Total 81.5 on the still-degenerate oracle.
+
+r4 (2026-07-31): inherits the is3 curve pass (shared hull + proud turret): 81.5 -> 82.2
+(T70->73, R87->89, minView 83.6). The degenerate print cap stands (sunken turret shell,
+drums parented into Turret, G pinned ~52 by the fused stub gun) — identity build unchanged
+per the packet's oracle-cap note.
+
+## Geometry-gate v6 certification (2026-07-31, gate 8d552c2, dims-first rebuild r5)
+Final v6 row: hull 53.2 whole 27.6 turret 0 stations 0 dims 100 floaters 100
+Dims vs published: ALL <=1% at the gate (heightM 2.46 hullL 6.79 overall 9.92 width 3.14).
+Oracle audit (v6 true cameras, width-normalized frame): DEGENERATE turret node (pre-existing cap): fenders/drums parented into it, shell sunken into the hull; its hull-length self-measures +35.5% (9.173) because the fused stub gun band merges with the hull.
+Certified oracle-defect caps (component | ceiling | cause):
+- turretCurves | ceiling 0 | the print's turret node is degenerate (sunken shell + hull furniture inside it); identity (the real proud IS-3 dome + full D-25T) is kept over matching a broken mask - certified at 0
+- stations | ceiling ~0-30 | the degenerate turret node also corrupts its hull z-range for station slicing
+- wholeCurves | ceiling ~28-45 | stub-gun print vs the published 9.85 m D-25T reach
+A cap never excuses dims: every dim other than the certified widthM bias is inside the 1% grace (see row above). Build is dims-first: published spec.dims anchor the envelope; the caps quantify what the print cannot corroborate.

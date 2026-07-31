@@ -62,3 +62,21 @@ steel-dark tone; Shtora eyes read as boxed housings w/ glass flanking the mantle
 (r2 geometry existed but sat inside the dome ellipse); evacuator drum + dark seam rings
 in a 0.67 m sleeve gap; skirts fender-lip→axle. Turret mask (31.7) still gates the id —
 dome re-proportion remains the round-4 item.
+
+r4 FROM-SCRATCH rebuild (2026-07-31, profiles/t72bu.json): 75.0 -> 78.4 (H81->84 T32->37
+G100 R84->88, minView 86.1). Lofted hull with the print's hull-parented dome-filler band
+(matched as a hull-bucket collar) and overhanging tail rack; wide low dome (the tall-dome
+read of the side band was tried across two passes and scored worse — the 2.8-2.9 tops are
+the print's sight cluster, kept as the big left cluster box); K-5 + Shtora on the measured
+skin; tube to the measured contour (axis 1.715, muzzle 5.448). DOCUMENTED CAP (unchanged):
+the oracle's BARREL is hull-parented, so both component masks split the tube across rigs —
+G pins at 100 (empty overhang crop) while T stays capped in the 30s; the whole-silhouette
+views run 87-94.
+
+## Geometry-gate v6 certification (2026-07-31, gate 8d552c2, dims-first rebuild r5)
+Final v6 row: hull 0 whole 0 turret 0 stations 0 dims 100 floaters 100
+Dims vs published: ALL <=1% - heightM 2.25 hullL 6.87 overall 9.56 width 3.80.
+Oracle audit (v6 true cameras, width-normalized frame): height +30.5% (2.911), hullLength +16.1% (7.967), overall +14.5% (10.909); BARREL FUSED INTO THE HULL MESH.
+Certified oracle-defect caps (component | ceiling | cause):
+- hullCurves + wholeCurves + turretCurves + stations | ceiling ~0 (all four) | the print's barrel is fused into the hull-node mesh as a SINGLE primitive (repair_oracles inspect: mesh#0 1p spanning x -84.6..143.3 raw - node-level surgery cannot split it; the chieftain5-style regroup needs separate primitives). Under gate v6 the hull-anchored registration inherits the barrel-extended hull span: measured reg dAlong -1.10 m on the side view, which misaligns EVERY column of every row and zeroes the curves and the station slicing. The correct rig is kept (barrel articulates on rig_gun; rig probe green) - matching the defective parenting would break articulation and the floater poses.
+A cap never excuses dims: every dim other than the certified widthM bias is inside the 1% grace (see row above). Build is dims-first: published spec.dims anchor the envelope; the caps quantify what the print cannot corroborate.

@@ -54,3 +54,22 @@ Width-normalized (3.78 m) probe:
 | 2026-07-30 | 72.9 | 77.4 | 81 | 47 | 64 | 87 | baseline (t90m donor + bustle kit) |
 | 2026-07-30 | 80.2 | 81.0 | 81 | 75 | 77 | 80 | donor->standalone: hull 7.63, welded-look dome 3.35x3.20 + crown cap + side panels, big squared bustle+slat, pano tower + RWS, 6.38 m fat-sleeved gun |
 | 2026-07-30 r2 | 81.8 | — | 84 | 74 | 83 | 81 | shaded r2: WELDED faceted turret (polyTurret + cheek slabs) replaces cast dome, UDP RWS w/ barrel+yoke+sight, bustle slat + top boxes, Relikt cassettes, pano tower, evac |
+
+r4 FROM-SCRATCH rebuild (2026-07-31, profiles/t90sm.json): 81.8 -> 83.9 (H84->86 T74->78
+G83->90 R81->79, minView 80.7). Lofted hull (deck 1.55, measured glacis break); WELDED
+faceted turret kept from r3 but re-proportioned to the measured 3.3 plan + squared bustle
+to the measured -2.9 (top 2.20); pano/RWS towers to the measured 3.15 pair; Relikt cassettes
+on the prism facets; 2A46M-5 to the measured contour with the MRS bulge at world 5.17..5.29
+and muzzle 6.732 (axis 1.912). Shaded pair: both read as the welded-turret T-90SM; my roof
+furniture is sparser than the print's cage but the silhouette and bustle now track it.
+
+## Geometry-gate v6 certification (2026-07-31, gate 8d552c2, dims-first rebuild r5)
+Final v6 row: hull 40.7 whole 0 turret 37.7 stations 0 dims 86.2 floaters 100
+Dims vs published: heightM 2.25 hullL 6.89 overall 9.61 all within grace; width 3.68/3.78 (-2.72%, -13.8 pts) is the certified measurement bias below.
+Oracle audit (v6 true cameras, width-normalized frame): height +38.4% (3.086) - the print's dome+towers ride 0.85 over the published envelope; hullLength +7.3%, overall +9.7%.
+Certified oracle-defect caps (component | ceiling | cause):
+- dims | ceiling ~86 | widthM measurement bias (certified): the gate's plan colSpan reads first/last column CENTERS on the shared 96-column grid, under-reading a full-width envelope by up to one column (~0.10 m). Evidence: this print's own width-normalized reference (bbox == published width by safeScale) self-measures widthM 3.679 vs published 3.78 (-2.7%). A geometrically correct build cannot exceed the same grid's reading (verified by anchor/skirt sweep: measured width invariant at 3.68).
+- wholeCurves | ceiling ~0-20 | +38% stature defect vs published-pinned welded roof at 2.25
+- stations | ceiling ~0-20 | same stature on all turret slices
+- turretCurves | ceiling ~38-50 | print dome vs published welded turret height
+A cap never excuses dims: every dim other than the certified widthM bias is inside the 1% grace (see row above). Build is dims-first: published spec.dims anchor the envelope; the caps quantify what the print cannot corroborate.
