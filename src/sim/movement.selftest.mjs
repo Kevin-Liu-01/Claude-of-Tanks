@@ -95,7 +95,9 @@ function makeEntity(field, x = 0, z = 0, yaw = 0) {
 // report the worst penetration (< 0 gap) and the smallest gap (contact proof).
 const SUSP_VIS_P = 2.6;
 const SUSP_VIS_R = 2.1;
-const SWAY_VIS = 2.3;
+// MOVEMENT r1: 2.3 was a stale mirror — movement.js/tankFactory lock SWAY_VIS
+// at 3.2 (effects_combat r1), so floats during hard turns were under-measured.
+const SWAY_VIS = 3.2;
 function contactStats(state, field) {
   const hw = 0.5 * SPEC.dims.widthM;
   const sl = 0.45 * SPEC.dims.hullLengthM;
@@ -108,10 +110,17 @@ function contactStats(state, field) {
   const sinP = Math.sin(pitch), cosP = Math.cos(pitch);
   const sinR = Math.sin(roll);
   let minGap = Infinity;
+  // MOVEMENT r1: sample the EXACT line ends too — 2·sl is not a multiple of
+  // the 0.1 m step, so the walk used to stop 4.3 cm short of +sl. The solve's
+  // touching sample often IS the line end (crest exits), and the truncated
+  // grid read up to ~4 cm of phantom float there.
+  const zs = [];
+  for (let z = -sl; z < sl; z += 0.1) zs.push(z);
+  zs.push(sl);
   for (const side of [-1, 1]) {
     const x = side * hw;
     const x1 = x * cr, y1 = x * sr;
-    for (let z = -sl; z <= sl + 1e-9; z += 0.1) {
+    for (const z of zs) {
       const z2 = y1 * sa + z * ca;
       const wx = state.pos.x + x1 * cb + z2 * sb;
       const wz = state.pos.z - x1 * sb + z2 * cb;

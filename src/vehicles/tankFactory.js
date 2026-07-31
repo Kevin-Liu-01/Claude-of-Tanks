@@ -1096,6 +1096,83 @@ function buildRunningGear(P, cfg) {
   // rigid road wheels on straight ground — only whole-hull pitch).
   let bobPrevL = 0, bobPrevR = 0, bobAmpL = 0, bobAmpR = 0;
 
+  // ---- movement-solve contact metadata (RUNTIME DATA ONLY — no geometry) ----
+  // gameplay_feel MOVEMENT r1 (fidelity-rebuild fallout): the movement.js
+  // support solve assumed every procedural visual's contact run spans
+  // ±0.45 × hullLengthM at hull-local y = 0. The measured-curve rebuilds moved
+  // wheelZs/wheelY/botY per tank (russia botY up to 0.15, patton/leopard
+  // wheelY − wheelR down to 0.03, sepv2's whole gear deliberately riding the
+  // print's raised floor line), so that assumption is stale fleet-wide:
+  // parked tanks rendered up to +3.7 cm of daylight (procedural) and crest
+  // driving perched on up to ~1 m of phantom contact per end. Publish the
+  // EXACT as-built numbers for the solve (state.js stamps ent.contactGeom):
+  //   halfLenM/zCenterM — the flat ground-contact run (the trapezoid base
+  //     trackLoopPoints actually lays down: road-wheel patch ± 0.5 wheelR);
+  //   halfWidM          — outer track edge (xc + trackW/2);
+  //   bottomYM          — hull-local Y of the lowest RENDERED gear surface at
+  //     rest: min of band outer face, ground-run pad underside (pad centers
+  //     clamp to y ≥ 0.078 in placeLinks, grouser face 0.073 below center),
+  //     road-wheel bottoms and end-wheel wraps. createTank folds in the
+  //     whole-visual rest scan (hull keels can undercut the gear on
+  //     mask-sovereign rebuilds), so this is the gear-only floor.
+  const gearPadBotY = Math.max(botY - rOut, 0.078) - 0.073;
+  const gearBandBotY = botY - trackTh / 2;
+  let gearWheelBotY = Infinity;
+  for (const e of entries) if (e.road) gearWheelBotY = Math.min(gearWheelBotY, e.y - e.r);
+  if (!Number.isFinite(gearWheelBotY)) gearWheelBotY = gearBandBotY;
+  const gearEndBotY = Math.min(
+    sprocket.y - (sprocket.r + bandOuterR),
+    idler.y - (idler.r + bandOuterR),
+  );
+  const gearContactGeom = {
+    halfLenM: (contact.zF - contact.zR) / 2,
+    zCenterM: (contact.zF + contact.zR) / 2,
+    halfWidM: xc + trackW / 2,
+    bottomYM: Math.min(gearBandBotY, gearPadBotY, gearWheelBotY, gearEndBotY),
+  };
+  // Wrap approach-rise: lowest band-centerline height in the 0.45 m just
+  // BEYOND each end of the flat contact run, relative to the run. The solve
+  // samples one guard point past each line end at this height so the rising
+  // wrap pads cannot spear a steep bank the (correctly shorter) measured
+  // contact span no longer touches — parked nose-to-wall, the pre-rebuild
+  // 0.45 L phantom line used to prop the hull there by accident.
+  {
+    // Interpolate the band centerline exactly at the guard z (loop points are
+    // sparse — a whole approach tangent is two endpoints, and window-min
+    // sampling caught upper-arc points on short overhangs). Min over all
+    // loop crossings picks the bottom run/ramp, not the return run.
+    const bandYAtZ = (zq) => {
+      let best = Infinity;
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i], b = pts[(i + 1) % pts.length];
+        if ((a[0] - zq) * (b[0] - zq) > 0) continue; // segment doesn't cross zq
+        const dz2 = b[0] - a[0];
+        const y = Math.abs(dz2) < 1e-6
+          ? Math.min(a[1], b[1])
+          : a[1] + (b[1] - a[1]) * ((zq - a[0]) / dz2);
+        if (y < best) best = y;
+      }
+      return best;
+    };
+    const yF = bandYAtZ(contact.zF + 0.4);
+    const yR = bandYAtZ(contact.zR - 0.4);
+    // Clamped to the physical approach-rise band; no crossing (overhang past
+    // the whole loop) keeps the guard near-inert at the max rise.
+    const clampRise = (y) => Math.min(0.35, Math.max(0.02, y));
+    gearContactGeom.endRise = {
+      dzM: 0.4,
+      frontM: Number.isFinite(yF) ? clampRise(yF - botY) : 0.35,
+      rearM: Number.isFinite(yR) ? clampRise(yR - botY) : 0.35,
+    };
+  }
+  // The conform solve rests each wheel on the ground measured relative to the
+  // CONTACT plane (hull-local y = bottomYM — the surface the movement support
+  // solve now seats on the terrain), not the y = 0 plane the pre-rebuild gear
+  // happened to sit at. Without this, a bottomYM ≠ 0 rig would read a constant
+  // ±bottomYM terrain deviation at every wheel and float/sink the whole wheel
+  // train by 1.35 × that at rest.
+  const conformPlaneY = gearContactGeom.bottomYM;
+
   // r1 per-bogie articulation: per-side sorted PROUD road wheels drive a
   // piecewise-linear offset field the deformable band bottom run and the
   // ground-run link pads sample, so wheel travel reads as suspension travel
@@ -1240,8 +1317,11 @@ function buildRunningGear(P, cfg) {
         for (let i = 0; i < list.length; i++) {
           const e = list[i];
           if (!e.road) continue;
-          // world position of the hull-plane point under this wheel (YXZ)
-          const x1 = e.x * cr, y1 = e.x * sr, z1 = e.z;
+          // world position of the CONTACT-plane point under this wheel (YXZ;
+          // hull-local y = conformPlaneY — see the contact-metadata note)
+          const x1 = e.x * cr - conformPlaneY * sr;
+          const y1 = e.x * sr + conformPlaneY * cr;
+          const z1 = e.z;
           const y2 = y1 * ca - z1 * sa, z2 = y1 * sa + z1 * ca;
           const wx = px + x1 * cb + z2 * sb;
           const wy = py + y2;
@@ -1338,6 +1418,7 @@ function buildRunningGear(P, cfg) {
       if (pick) pick.thrown = !!broken;
     },
   };
+  P.gear.contactGeom = gearContactGeom;
 }
 
 // ---------------------------------------------------------------------------
@@ -3127,6 +3208,141 @@ function bakeDirt(geo, yOffset, strength = 1) {
  *   resolution (materials.js QUALITY_SIZES); 'high' is hero-grade.
  * @returns {object} TankVisual (ARCHITECTURE §3.3.2)
  */
+// ---------------------------------------------------------------------------
+// Rest-pose contact scan (movement-solve metadata — reads geometry, never
+// writes it). Runs once per createTank, after the gear instances are seated
+// at rest: strided vertices of every visible color-writing Mesh plus every
+// live InstancedMesh instance, in root-local (= hull) space. Returns the
+// SURFACE floor (robust low quantile — see below) and the 5 cm low-band
+// footprint. The whole-visual floor matters because mask-sovereign rebuilds
+// may sink a hull keel BELOW the gear line (m1a2_sepv2: keel +0.055 vs gear
+// +0.10) — the support solve must seat whatever actually renders lowest.
+//
+// FLOOR = FIRST DENSE SHELL, NOT MIN: the absolute lowest vertex is
+// routinely a single tilted approach-ramp pad corner grazing ~1.6 cm under
+// the flat run (its center clamps to y ≥ 0.078, the rotated grouser corner
+// swings below) — seating THAT on the terrain would float the entire visible
+// contact run to protect one grouser tip. A load-bearing surface shows up as
+// a DENSE shell of samples, so the floor is the lowest level where 12
+// samples fit inside a 1.5 cm band. (A global percentile fails both ways:
+// vertex counts follow tessellation, not area — a huge keel plate is 4
+// corner verts, a pad field is thousands.)
+const _rcM = new THREE.Matrix4();
+const _rcM2 = new THREE.Matrix4();
+const _rcV = new THREE.Vector3();
+function robustFloorY(ys) {
+  ys.sort((a, b) => a - b);
+  if (ys.length < 12) return ys[0];
+  for (let i = 0; i + 11 < ys.length; i++) {
+    if (ys[i + 11] - ys[i] <= 0.015) return ys[i];
+  }
+  return ys[0];
+}
+function measureRestContact(root) {
+  try {
+    root.updateMatrixWorld(true);
+    const invRoot = _rcM2.copy(root.matrixWorld).invert().clone();
+    const isVisible = (o) => {
+      for (let p = o; p && p !== root; p = p.parent) if (!p.visible) return false;
+      return true;
+    };
+    const pts = [];
+    const ys = [];
+    // Hull-pan floor candidates: lowest root-local bbox bottom over
+    // non-instanced meshes whose bbox SPANS the centerline (vertex sampling
+    // cannot see a wide belly plate — a 1.9 m box face crossing the center
+    // strip has all its vertices at the ±corners, outside any strip). Track
+    // bands/skirts sit one-sided; wheels/pads are instanced — excluded.
+    let panYM = null;
+    const panConsider = (o) => {
+      if (o.isInstancedMesh || !o.isMesh) return;
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      const bb = o.geometry.boundingBox;
+      _rcM2.multiplyMatrices(invRoot, o.matrixWorld);
+      let mnX = Infinity, mxX = -Infinity, mnY = Infinity;
+      for (const cx of [bb.min.x, bb.max.x]) {
+        for (const cy of [bb.min.y, bb.max.y]) {
+          for (const cz of [bb.min.z, bb.max.z]) {
+            _rcV.set(cx, cy, cz).applyMatrix4(_rcM2);
+            if (_rcV.x < mnX) mnX = _rcV.x;
+            if (_rcV.x > mxX) mxX = _rcV.x;
+            if (_rcV.y < mnY) mnY = _rcV.y;
+          }
+        }
+      }
+      if (mnX < -0.2 && mxX > 0.2 && (panYM === null || mnY < panYM)) panYM = mnY;
+    };
+    root.traverse((o) => {
+      if (!o.geometry) return;
+      if (o.material && o.material.colorWrite === false) return; // shadow proxies
+      if (!isVisible(o)) return;
+      const pa = o.geometry.getAttribute && o.geometry.getAttribute('position');
+      if (!pa || !pa.count) return;
+      panConsider(o);
+      if (o.isInstancedMesh) {
+        const per = Math.max(1, Math.floor(pa.count / 48));
+        for (let i = 0; i < o.count; i++) {
+          o.getMatrixAt(i, _rcM);
+          const el = _rcM.elements;
+          // skip collapsed instances (covered-top pads, thrown gear)
+          if (Math.abs(el[0]) + Math.abs(el[5]) + Math.abs(el[10]) < 1e-5) continue;
+          _rcM2.multiplyMatrices(o.matrixWorld, _rcM);
+          _rcM2.premultiply(invRoot);
+          for (let k = 0; k < pa.count; k += per) {
+            _rcV.fromBufferAttribute(pa, k).applyMatrix4(_rcM2);
+            pts.push(_rcV.x, _rcV.y, _rcV.z);
+            ys.push(_rcV.y);
+          }
+        }
+      } else if (o.isMesh) {
+        _rcM2.multiplyMatrices(invRoot, o.matrixWorld);
+        const step = Math.max(1, Math.floor(pa.count / 20000));
+        for (let i = 0; i < pa.count; i += step) {
+          _rcV.fromBufferAttribute(pa, i).applyMatrix4(_rcM2);
+          pts.push(_rcV.x, _rcV.y, _rcV.z);
+          ys.push(_rcV.y);
+        }
+      }
+    });
+    if (!ys.length) return null;
+    let absMinYM = Infinity;
+    for (let i = 0; i < pts.length; i += 3) {
+      if (pts[i + 1] < absMinYM) absMinYM = pts[i + 1];
+    }
+    const bottomYM = robustFloorY(ys);
+    // Hull-pan floor (see panConsider above). The movement belly guard used a
+    // fixed 0.34 m line on the premise every pan sits ≥ 0.40 m — stale on the
+    // rebuilt profiles (soviet-heavy/sepv2 bellies at 0.30): sharing the fan
+    // yield there let ridge crests clip a parked pan ~15 cm. With the real
+    // pan height the guard clamps HARD at the measured plate. Floored just
+    // above the contact plane so keel-seated defects (sepv2) cannot collapse
+    // the guard below the seated floor.
+    if (panYM !== null) panYM = Math.max(panYM, bottomYM + 0.05);
+    const band = bottomYM + 0.05;
+    let zMin = Infinity, zMax = -Infinity, xMin = Infinity, xMax = -Infinity, n = 0;
+    for (let i = 0; i < pts.length; i += 3) {
+      if (pts[i + 1] > band) continue;
+      const x = pts[i], z = pts[i + 2];
+      if (z < zMin) zMin = z;
+      if (z > zMax) zMax = z;
+      if (x < xMin) xMin = x;
+      if (x > xMax) xMax = x;
+      n++;
+    }
+    if (n < 8) return { bottomYM, absMinYM, panYM, halfLenM: null, halfWidM: null, zCenterM: null };
+    return {
+      bottomYM,
+      absMinYM,
+      panYM,
+      halfLenM: (zMax - zMin) / 2,
+      halfWidM: (xMax - xMin) / 2,
+      zCenterM: (zMax + zMin) / 2,
+    };
+  } catch (e) {
+    return null; // best-effort: the solve falls back to spec fractions
+  }
+}
+
 export function createTank(specId, engineCtx, opts = {}) {
   const { camoSeed = 4000, quality = 'high', proceduralOnly = false } = opts;
   const spec = getSpec(specId);
@@ -3278,6 +3494,55 @@ export function createTank(specId, engineCtx, opts = {}) {
   turretTop.position.set(0, P.topY, 0);
   turretG.add(turretTop);
 
+  // ---- movement-solve contact metadata (data only — no geometry writes) ----
+  // Seat the running-gear instance matrices at their rest pose first (scroll
+  // 0/0 — exactly what the first syncFromState composes; instanced wheels and
+  // link pads otherwise still carry identity matrices at this point), then
+  // scan the whole visual for the lowest rendered surface and the contact
+  // footprint. state.js stamps this onto the entity for movement.js; the
+  // gear's analytic flat-run span wins over the scan's low band (the band
+  // includes approach/departure ramps), while the scan owns the bottom (a
+  // rebuilt hull keel can undercut the gear floor).
+  if (P.gear) P.gear.update(0, 0);
+  const restScan = measureRestContact(root);
+  const gearCG = P.gear ? P.gear.contactGeom : null;
+  let contactGeom = null;
+  if (gearCG || restScan) {
+    // Floor selection: the gear's analytic flat-run underside is the
+    // load-bearing surface and the anchor. The scan's ABSOLUTE min only
+    // overrides when a real surface sits well below the gear line (> 2.5 cm —
+    // the m1a2_sepv2 hull keel renders 4.5 cm under its print-raised tracks;
+    // capped at 12 cm so one mis-seated greeble cannot hover the tank).
+    // Small sub-gear protrusions (tilted approach-ramp pad corners graze
+    // ~1.6 cm under the flat run) stay IGNORED: seating them would float the
+    // whole visible contact run to protect one grouser tip. Gearless builds
+    // (community placeholder) trust the scan outright.
+    let bottomYM;
+    if (gearCG) {
+      bottomYM = gearCG.bottomYM;
+      if (restScan && restScan.absMinYM < bottomYM - 0.025) {
+        bottomYM = Math.max(restScan.absMinYM, bottomYM - 0.12);
+      }
+    } else {
+      bottomYM = restScan.bottomYM;
+    }
+    contactGeom = {
+      halfLenM: gearCG ? gearCG.halfLenM : restScan.halfLenM,
+      halfWidM: gearCG ? gearCG.halfWidM : restScan.halfWidM,
+      zCenterM: gearCG ? gearCG.zCenterM : restScan.zCenterM,
+      bottomYM,
+      // measured hull-pan floor (belly-guard line — see measureRestContact)
+      panYM: restScan ? restScan.panYM : null,
+      // wrap approach-rise for the line-end guard samples (see buildRunningGear)
+      endRise: gearCG ? gearCG.endRise : null,
+      // gear-only floor, for diagnostics: bottomYM < gearBottomYM means a
+      // non-gear surface (hull keel/pan) renders below the tracks — a
+      // rest-geometry fidelity defect the runtime can only split, not fix.
+      gearBottomYM: gearCG ? gearCG.bottomYM : null,
+    };
+    root.userData.contactGeom = contactGeom;
+  }
+
   // ---- state ----
   let destroyed = false;
   let recoilT = 1e9;
@@ -3312,6 +3577,78 @@ export function createTank(specId, engineCtx, opts = {}) {
   // construction, so a construction-time traverse missed every GLB mesh and
   // their wrecks stayed pristine painted camo (r4 destroy-probe finding).
   const originalMats = [];
+
+  // ---- GLB running-gear spin (MOVEMENT r1, runtime-only) -------------------
+  // modelLoader.applySwap replaces the procedural gear with rigid GLB meshes,
+  // which drove with FROZEN wheels (every swapped tank, incl. the default
+  // player m1a2). Where the asset exposes individual wheel-like MESH nodes,
+  // spin them at ground-speed-correct rates (scroll / r about the wheel's own
+  // axle THROUGH ITS OWN CENTER — most exports keep node pivots at the hull
+  // origin, so the spin is composed into node.matrix as T(c)·R·T(−c) about
+  // the geometry bbox center: pure runtime transform, no reparenting, no
+  // vertex writes). Detection is conservative — name-matched AND round AND
+  // wheel-sized AND lateral-axled; any test failing leaves that node exactly
+  // as static as before, so a merged-gear asset keeps its current look.
+  // Scanned lazily once per swap.
+  let glbSpinners = null; // null = not scanned; [] = nothing safely spinnable
+  const GLB_SPIN_RE = /wheel|sprocket|idler|roller|road/i;
+  const _spinM = new THREE.Matrix4();
+  const _spinM2 = new THREE.Matrix4();
+  const _spinV = new THREE.Vector3();
+  function scanGlbSpinners() {
+    const found = [];
+    try {
+      hullG.updateMatrixWorld(true);
+      const inv = new THREE.Matrix4().copy(hullG.matrixWorld).invert();
+      const relM = new THREE.Matrix4();
+      const axGeom = new THREE.Vector3();
+      const axHull = new THREE.Vector3();
+      const ctr = new THREE.Vector3();
+      const size = new THREE.Vector3();
+      hullG.traverse((o) => {
+        if (found.length >= 48) return;
+        if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || !o.geometry) return;
+        if (!o.visible || (o.material && o.material.colorWrite === false)) return;
+        const name = `${o.name || ''} ${(o.parent && o.parent.name) || ''}`;
+        if (!GLB_SPIN_RE.test(name)) return;
+        if (/track|tread/i.test(o.name || '')) return; // track loops, not wheels
+        if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+        const bbox = o.geometry.boundingBox;
+        bbox.getSize(size);
+        bbox.getCenter(ctr);
+        const ext = [size.x, size.y, size.z];
+        // axle = smallest extent axis; the two radial extents must agree
+        let ai = 0;
+        if (ext[1] < ext[ai]) ai = 1;
+        if (ext[2] < ext[ai]) ai = 2;
+        const ri = [0, 1, 2].filter((k) => k !== ai);
+        const rA = ext[ri[0]] / 2, rB = ext[ri[1]] / 2;
+        const r = (rA + rB) / 2;
+        if (r < 0.12 || r > 0.75) return;                      // not wheel-sized
+        if (Math.abs(rA - rB) > 0.3 * Math.max(rA, rB)) return; // not round
+        if (ext[ai] > 1.5 * r) return;                          // too wide: drum/hull
+        // axle must be lateral in hull space (±X)
+        axGeom.set(ai === 0 ? 1 : 0, ai === 1 ? 1 : 0, ai === 2 ? 1 : 0);
+        relM.multiplyMatrices(inv, o.matrixWorld);
+        axHull.copy(axGeom).transformDirection(relM);
+        if (Math.abs(axHull.x) < 0.85) return;
+        const cGeom = ctr.clone(); // spin pivot: wheel center in GEOMETRY space
+        ctr.applyMatrix4(relM);    // wheel center in hull space -> which track
+        o.updateMatrix();
+        o.matrixAutoUpdate = false; // this layer owns the node's local matrix
+        found.push({
+          node: o,
+          m0: o.matrix.clone(),
+          axis: axGeom.clone(),
+          c: cGeom,
+          r,
+          side: ctr.x < 0 ? -1 : 1,
+          sign: Math.sign(axHull.x) || 1,
+        });
+      });
+    } catch (e) { /* stay static on any surprise */ }
+    return found;
+  }
 
   // ---- animation-layer state (visual only, self-timed at SIM_STEP) ---------
   let groundSampler = null;          // (x, z) => terrain height, set by integration
@@ -3440,6 +3777,9 @@ export function createTank(specId, engineCtx, opts = {}) {
     specId,
     dims: { lengthM: spec.dims.overallLengthM, widthM: spec.dims.widthM, heightM: spec.dims.heightM },
     boundingRadiusM: armor.boundingRadiusM,
+    // as-built rest contact metadata for the movement support solve (see the
+    // measureRestContact note; state.js stamps it onto the battle entity)
+    contactGeom,
 
     /**
      * Apply a TankState (§2.4) to the visual hierarchy.
@@ -3577,6 +3917,26 @@ export function createTank(specId, engineCtx, opts = {}) {
           state.visualRoll + suspR + sway + flinchR);
       }
       if (P.gear) P.gear.update(state.trackScroll.l, state.trackScroll.r);
+      // GLB gear spin (see scanGlbSpinners): ground-speed-correct wheel
+      // rotation for swapped visuals; wrecks freeze with everything else.
+      if (!destroyed && hullG.userData.__glbSwapped) {
+        if (glbSpinners === null) {
+          glbSpinners = scanGlbSpinners();
+          hullG.userData.__glbSpinnerCount = glbSpinners.length; // probe/debug
+        }
+        for (let i = 0; i < glbSpinners.length; i++) {
+          const g = glbSpinners[i];
+          const scroll = g.side < 0 ? state.trackScroll.l : state.trackScroll.r;
+          // local matrix = m0 · T(c) · R(axle, ang) · T(−c) — spin about the
+          // wheel's own center regardless of where the export put the pivot
+          _spinM.makeRotationAxis(g.axis, (scroll / g.r) * g.sign);
+          _spinV.copy(g.c).applyMatrix4(_spinM);
+          _spinM.setPosition(g.c.x - _spinV.x, g.c.y - _spinV.y, g.c.z - _spinV.z);
+          _spinM2.multiplyMatrices(g.m0, _spinM);
+          g.node.matrix.copy(_spinM2);
+          g.node.matrixWorldNeedsUpdate = true;
+        }
+      }
       if (recoilT < REC_BACK + REC_HOLD + REC_RETURN) {
         recoilT += adv; // r5: recuperator rides the fx clock (see lastFxS)
         const t = recoilT;

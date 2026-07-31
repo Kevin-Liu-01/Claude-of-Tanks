@@ -496,7 +496,7 @@ export function createTankState(spec, pos, yaw) {
     _susp: { p: 0, r: 0, pv: 0, rv: 0 }, // mirror of the visual susp rock layer
     _flinch: { p: 0, r: 0, pv: 0, rv: 0 }, // hit-flinch rock (impulses fed by the visual)
     _sup: {                        // static-pose support cache (skip resampling)
-      x: NaN, z: NaN, yaw: 0, pitch: 0, roll: 0, y: pos.y, rigid: false,
+      x: NaN, z: NaN, yaw: 0, pitch: 0, roll: 0, y: pos.y, rigid: false, cg: null,
     },
   };
 }
@@ -542,8 +542,17 @@ export function updateTank(entity, heightField, dt, collide = null) {
   // r7 float gate: GLB-swapped visuals carry MEASURED contact geometry (see
   // the SUPPORT_LEN_FRAC note) — the support lines must ride the rendered
   // track bottoms, not the spec hull box.
+  // MOVEMENT r1 (fidelity-rebuild fallout): EVERY visual now publishes its
+  // as-built footprint (state.js stamps it from tankFactory's rest scan /
+  // gear metadata — the rebuilt profiles moved wheel/track lines off the old
+  // hull-local y = 0 / ±0.45 L assumption). cg.bottomYM is the hull-local
+  // height of the lowest rendered surface: the support lines live at THAT
+  // plane, so the solve seats the rendered contact on the terrain instead of
+  // floating a raised track line (russia pads +2 cm, placeholder pontoons
+  // +10 cm) or burying a dropped one.
   const cg = entity.contactGeom;
   const hw = cg ? cg.halfWidM : HALF_WID_FRAC * spec.dims.widthM;
+  const yBot = cg && cg.bottomYM ? cg.bottomYM : 0;
   const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);   // forwardAxis
   const rx = Math.cos(state.yaw), rz = -Math.sin(state.yaw);  // rightAxis
   const terrPitch = state._terr.pitch;
@@ -894,7 +903,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
     Math.abs(state.pos.x - sup.x) < 0.004 && Math.abs(state.pos.z - sup.z) < 0.004 &&
     Math.abs(wrapAngle(state.yaw - sup.yaw)) < 0.0012 &&
     Math.abs(pitchEff - sup.pitch) < 0.0012 && Math.abs(rollEff - sup.roll) < 0.0012 &&
-    sup.rigid === rigidGear;
+    sup.rigid === rigidGear && sup.cg === cg;
   if (!supFresh) {
     // Measured contact run for GLB gear (see the SUPPORT_LEN_FRAC r7 note):
     // half-length + longitudinal center come from the rendered track-bottom
@@ -919,13 +928,38 @@ export function updateTank(entity, heightField, dt, collide = null) {
     let sumD = 0, nD = 0;     // all yOff=0 deficits — patch roughness estimate
     // Two-point settle bookkeeping (r3): deepest contact overall + deepest in
     // each longitudinal half (center band excluded — no lever there).
+    // MOVEMENT r1 FLAT-GROUND POSE LOCK (pre-existing, HEAD-reproducible):
+    // settle/roughness used to read the RENDERED-pose deficits d. The
+    // rendered pose carries the ×SUSP_VIS_P-amplified susp rock, so a small
+    // squat fed the settle a spurious tip, the spring chased it, the susp
+    // mirror re-amplified the difference, and the loop ramped until tipRaw
+    // pinned at the ±0.09 clamp: on an ANALYTICALLY FLAT field every tank
+    // cruised pitched ~5.7° nose-up with pos.y ridden up +0.35 m (rear pads
+    // kissing, front track hanging in daylight), perch engaged and the fan
+    // yield opened 0.25 m — and the phantom "downhill" pitch fed a top-speed
+    // bonus. Settle, perch and roughness are TERRAIN-adaptation terms, so
+    // they now read deficits dS in the PREVIOUS FIT frame (state._terr —
+    // pose-decoupled: identically zero spread on flat/planar ground at any
+    // rendered attitude, unchanged semantics in the V-trough/crest cases the
+    // r3 settle was built for). The SUPPORT terms (outerMax/fanMax/bellyMax
+    // and the pos.y clamp) stay at the rendered pose — the no-burial
+    // guarantee is exactly about what reaches the screen.
     const zHalf = 0.25 * sl;
     let argZ = 0;
+    let outerMaxS = -Infinity;
     let frontMax = -Infinity, frontZ = sl;
     let rearMax = -Infinity, rearZ = -sl;
+    const sinPf = Math.sin(terrPitch), cosPf = Math.cos(terrPitch);
+    const sinRf = Math.sin(state._terr.roll), cosRf = Math.cos(state._terr.roll);
+    // MOVEMENT r1: the contact lines live at hull-local y = yBot (the measured
+    // bottom of the rendered gear — 0 without metadata). Same composition as
+    // the fan lines below: a point (x, yBot, z) renders at
+    //   worldY = pos.y + (x·sinR + yBot·cosR)·cosP + z·sinP.
+    const yLift = yBot * cr0 * cosP;
+    const yLiftF = yBot * cosRf * cosPf;
     for (let side = -1; side <= 1; side += 2) {
       const x = side * hw;
-      const x1 = x * cr0, y1 = x * sr0;
+      const x1 = x * cr0 - yBot * sr0, y1 = x * sr0 + yBot * cr0;
       for (let k = 0; k < nLine; k++) {
         const zr = -sl + k * step; // lever about the contact-run center (fit)
         const z = zc + zr;         // actual hull-local z (deficit / projection)
@@ -937,12 +971,37 @@ export function updateTank(entity, heightField, dt, collide = null) {
         nLR++;
         // support deficit at the rendered pose (worldY of the contact point
         // relative to pos.y): pos.y must sit at max over samples of
-        // h − (x·sinR·cosP + z·sinP)
-        const d = h - (x * sinR * cosP + z * sinP);
-        if (d > outerMax) { outerMax = d; argZ = zr; }
-        if (zr < -zHalf && d > rearMax) { rearMax = d; rearZ = zr; }
-        else if (zr > zHalf && d > frontMax) { frontMax = d; frontZ = zr; }
-        sumD += d; nD++;
+        // h − ((x·sinR + yBot·cosR)·cosP + z·sinP)
+        const d = h - (x * sinR * cosP + yLift + z * sinP);
+        if (d > outerMax) outerMax = d;
+        // settle/perch/roughness deficit in the previous-fit frame (see the
+        // pose-lock note above)
+        const dS = h - (x * sinRf * cosPf + yLiftF + z * sinPf);
+        if (dS > outerMaxS) { outerMaxS = dS; argZ = zr; }
+        if (zr < -zHalf && dS > rearMax) { rearMax = dS; rearZ = zr; }
+        else if (zr > zHalf && dS > frontMax) { frontMax = dS; frontZ = zr; }
+        sumD += dS; nD++;
+      }
+      // MOVEMENT r1 wrap-end guard (support only): one sample just past each
+      // end of the flat run, raised by the measured wrap approach-rise, so
+      // the rising track ends cannot spear a steep bank the (true, shorter)
+      // contact span no longer touches — parked nose-to-wall, the old 0.45 L
+      // phantom line propped the hull there by accident (leo2a4 pad: wrap
+      // pads −14 cm into a rise). Excluded from the fit/settle: it is a
+      // clearance guard, not ground contact.
+      if (cg && cg.endRise) {
+        for (const [zg, rise] of [
+          [zc + sl + cg.endRise.dzM, cg.endRise.frontM],
+          [zc - sl - cg.endRise.dzM, cg.endRise.rearM],
+        ]) {
+          const yg = yBot + rise;
+          const xg = x * cr0 - yg * sr0;
+          const yg1 = x * sr0 + yg * cr0;
+          const z2g = yg1 * sa0 + zg * ca0;
+          const hg = heightField.getHeightAt(px1 + xg * cb + z2g * sb, pz1 - xg * sb + z2g * cb);
+          const dg = hg - ((x * sinR + yg * cr0) * cosP + zg * sinP);
+          if (dg > outerMax) outerMax = dg;
+        }
       }
     }
     // r5 lateral fan (see SUPPORT_FAN): support-only lines between the outer
@@ -964,12 +1023,28 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // resolution (r5 drive gate: a 4 cm terrain bulge between 0.66 m-spaced
     // fan samples put a GLB track vertex −3.1 cm under at 27 km/h).
     const fanStride = rigidGear ? 1 : 2;
+    // MOVEMENT r1 BELLY GUARD AT THE MEASURED PAN: the fixed 0.34 m guard
+    // line assumed "every roster hull bottom is ≥ 0.40 m" — stale on the
+    // rebuilt profiles (soviet-heavy / sepv2 pans at 0.30, i.e. BELOW the
+    // guard) — and it shared the fan yield on the premise the first 6 cm
+    // never reach rendered geometry. Result: a ridge crest under a parked
+    // hull buried the pan up to 15 cm (is1, live verdant pad). With measured
+    // pan metadata the guard samples 1.5 cm under the REAL plate and clamps
+    // HARD (the pan is rigid — no conform absorbs a yielded crest there).
+    // Metadata-less entities (selftest fixtures) keep the r5 soft behavior.
+    const panY = cg && cg.panYM ? cg.panYM - 0.015 : null;
     for (const ln of SUPPORT_FAN) {
+      // MOVEMENT r1: the whole fan translates with the measured contact plane
+      // (wheel-run lines ride the rendered gear bottom; the belly guard keeps
+      // its clearance above the contact surface — conservative when the
+      // rebuilt pan sits lower than spec, which only lifts, never buries).
+      const yo = ln.yOff > 0 && panY !== null ? panY : ln.yOff + yBot;
       for (let side = -1; side <= 1; side += 2) {
         const x = side * hw * ln.f;
-        const x1 = x * cr0 - ln.yOff * sr0;
-        const y1 = x * sr0 + ln.yOff * cr0;
-        const lift = (x * sinR + ln.yOff * cr0) * cosP;
+        const x1 = x * cr0 - yo * sr0;
+        const y1 = x * sr0 + yo * cr0;
+        const lift = (x * sinR + yo * cr0) * cosP;
+        const liftF = (x * sinRf + yo * cosRf) * cosPf; // settle-frame (pose lock)
         for (let k = 0; k < nLine; k += fanStride) {
           const z = zc + (k === nLine - 2 ? sl : -sl + k * step); // keep the far end
           const z2 = y1 * sa0 + z * ca0;
@@ -977,9 +1052,27 @@ export function updateTank(entity, heightField, dt, collide = null) {
           const d = h - (lift + z * sinP);
           if (ln.yOff === 0) {
             if (d > fanMax) fanMax = d;
-            sumD += d; nD++;
+            sumD += h - (liftF + z * sinPf); nD++;
           } else if (d > bellyMax) {
             bellyMax = d;
+          }
+        }
+        // wrap-end guard on the wheel-run lines too (HARD — wrap pads past
+        // the last road wheel get little conform): a sharp crest under an
+        // INBOARD rear/front wrap corner buried a parked type90 12 cm on
+        // desert dunes while the outer-line guards straddled it.
+        if (ln.yOff === 0 && cg && cg.endRise) {
+          for (const [zg, rise] of [
+            [zc + sl + cg.endRise.dzM, cg.endRise.frontM],
+            [zc - sl - cg.endRise.dzM, cg.endRise.rearM],
+          ]) {
+            const ygr = yBot + rise;
+            const xg1 = x * cr0 - ygr * sr0;
+            const yg1 = x * sr0 + ygr * cr0;
+            const z2g = yg1 * sa0 + zg * ca0;
+            const hg = heightField.getHeightAt(px1 + xg1 * cb + z2g * sb, pz1 - xg1 * sb + z2g * cb);
+            const dg = hg - ((x * sinR + ygr * cr0) * cosP + zg * sinP);
+            if (dg > outerMax) outerMax = dg;
           }
         }
         if (ln.f === 0) break; // centerline: one line, not two
@@ -1006,7 +1099,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // the very tick the swap is detected. Entities without a visual (selftest
     // fixtures, headless sim, pre-build pool entries) keep procedural
     // semantics — nothing renders for them until a visual exists.
-    const rough = outerMax - sumD / nD;
+    const rough = outerMaxS - sumD / nD; // settle-frame: pose-decoupled (see above)
     const yieldWant = rigidGear
       ? 0
       : clamp(rough - FAN_YIELD_FREE_M, 0, FAN_YIELD_MAX_M);
@@ -1017,13 +1110,15 @@ export function updateTank(entity, heightField, dt, collide = null) {
     state._fanYield = fanYield;
     let supportY = outerMax;
     if (fanMax - fanYield > supportY) supportY = fanMax - fanYield;
-    // The belly guard shares the roughness yield: on ≤ 4 m-cell live maps a
-    // pan-threatening crest between the tracks cannot exist while the patch
-    // is smooth (guard fully hard there, r5 behavior), and on high-frequency
-    // synthetic fields honoring it would hover the whole contact patch (the
-    // selftest levitation gate). Real hull pans sit ≥ 0.40 m vs the 0.34 m
-    // guard, so the first 6 cm of yield never even reaches rendered geometry.
-    if (bellyMax - fanYield > supportY) supportY = bellyMax - fanYield;
+    // The METADATA-LESS belly guard shares the roughness yield: on ≤ 4 m-cell
+    // live maps a pan-threatening crest between the tracks cannot exist while
+    // the patch is smooth (guard fully hard there, r5 behavior), and on
+    // high-frequency synthetic fields honoring it would hover the whole
+    // contact patch (the selftest levitation gate). With MEASURED pan
+    // metadata the guard line sits at the real plate and clamps HARD — see
+    // the panY note above (the is1 ridge burial).
+    const bellyYield = panY !== null ? 0 : fanYield;
+    if (bellyMax - bellyYield > supportY) supportY = bellyMax - bellyYield;
     // Least-squares plane: pitch from the along-track height gradient (Σz = 0
     // by symmetry), roll from the mean left/right line difference. RENDERER
     // ROLL SIGN: positive roll lifts the right side, so ground higher on the
@@ -1042,9 +1137,9 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // pure fit; the attitude spring provides the damping/rate limit.
     let tipRaw = 0;
     if (argZ > zHalf && rearMax > -Infinity) {
-      tipRaw = (outerMax - rearMax) / (argZ - rearZ);
+      tipRaw = (outerMaxS - rearMax) / (argZ - rearZ);
     } else if (argZ < -zHalf && frontMax > -Infinity) {
-      tipRaw = (outerMax - frontMax) / (argZ - frontZ);
+      tipRaw = (outerMaxS - frontMax) / (argZ - frontZ);
     }
     state._terr.pitch += clamp(tipRaw, -SETTLE_CLAMP_RAD, SETTLE_CLAMP_RAD);
     // PERCH factor (see PERCH_W_BOOST): settle demand past the clamp means the
@@ -1073,6 +1168,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
     sup.x = state.pos.x; sup.z = state.pos.z; sup.yaw = state.yaw;
     sup.pitch = pitchEff; sup.roll = rollEff; sup.y = supportY;
     sup.rigid = rigidGear;
+    sup.cg = cg; // measured-footprint identity: a new stamp re-solves a parked tank
   } else {
     state.pos.y = sup.y;
   }

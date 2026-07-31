@@ -178,12 +178,20 @@ export function spawnTanks(game, engineCtx) {
   // single biggest load-to-ready block (~2.2 s of 2048² canvas painting +
   // SimplexNoise + first-use GPU uploads on the boot path; bootprobe:
   // heightToNormal 1050 ms + noise 2.2 s). Nobody can see the staged battle
-  // behind the garage screen, so boot builds ONLY the player's visual;
-  // ensureStagedVisuals() (idempotent, chunked by the caller) builds the
-  // rest post-ready — and main.js runs it synchronously from
-  // warmCombatPipeline(), which __SHOTS.set() and startBattle() already
-  // invoke before anything can look at the battlefield.
-  ensureTankVisual(game, game.tanks[0]);
+  // behind the garage screen, so boot builds NONE of it — ensureStagedVisuals()
+  // (idempotent, chunked by the caller) builds the roster post-ready, and
+  // main.js runs it synchronously from warmCombatPipeline(), which
+  // __SHOTS.set() and startBattle() already invoke before anything can look
+  // at the battlefield.
+  //
+  // LOADING PERF (boot r9): the PLAYER's visual used to be built right here,
+  // on the boot-critical path — a full hero-tier build (~300-400 ms: 2048²
+  // texture bake + geometry + GLB swap kick) for a tank the garage never
+  // renders (the pedestal hero is a separate visual; battle visuals are
+  // guaranteed by warmCombatPipeline before any battlefield frame). It now
+  // streams in with the rest of the staged roster via the post-ready idle
+  // pump — the tick loop already guards `!ent.visual` for exactly this
+  // deferred window.
 }
 
 /**
@@ -647,6 +655,44 @@ function refreshRigidGear(ent) {
       return;
     }
   }
+  // MOVEMENT r1 (fidelity-rebuild fallout): PROCEDURAL visuals carry as-built
+  // contact metadata too (tankFactory measures the rest pose at construction —
+  // the rebuilt profiles moved wheel/track lines off the old y = 0 /
+  // ±0.45 L assumption, floating some parked tanks past the 3 cm gate and
+  // resting crest drives on up to ~1 m of phantom contact per end). Stamp it
+  // once per visual; a later GLB swap overwrites with the swap scan above.
+  if (!ent.contactGeom && ent.visual.contactGeom) {
+    const cg = ent.visual.contactGeom;
+    const d = ent.spec && ent.spec.dims;
+    if (d) {
+      const L = d.hullLengthM;
+      const W = d.widthM;
+      const clamp = (x, lo, hi) => (x < lo ? lo : (x > hi ? hi : x));
+      ent.contactGeom = {
+        halfLenM: cg.halfLenM != null
+          ? clamp(cg.halfLenM, CONTACT_LEN_FRAC_MIN * L, CONTACT_LEN_FRAC_MAX * L)
+          : 0.45 * L,
+        halfWidM: cg.halfWidM != null
+          ? clamp(cg.halfWidM, CONTACT_WID_FRAC_MIN * W, CONTACT_WID_FRAC_MAX * W)
+          : 0.5 * W,
+        zCenterM: cg.zCenterM != null
+          ? clamp(cg.zCenterM, -CONTACT_ZC_FRAC_MAX * L, CONTACT_ZC_FRAC_MAX * L)
+          : 0,
+        bottomYM: clamp(cg.bottomYM || 0, CONTACT_BOTY_MIN, CONTACT_BOTY_MAX),
+        // measured hull-pan floor: the movement belly guard hard-clamps at the
+        // real plate instead of the stale fixed 0.34 m line (see tankFactory)
+        panYM: cg.panYM != null ? clamp(cg.panYM, CONTACT_PAN_MIN, CONTACT_PAN_MAX) : null,
+        // wrap approach-rise for the line-end guard samples (tankFactory)
+        endRise: cg.endRise
+          ? {
+            dzM: clamp(cg.endRise.dzM || 0.4, 0.2, 0.6),
+            frontM: clamp(cg.endRise.frontM, 0.02, 0.5),
+            rearM: clamp(cg.endRise.rearM, 0.02, 0.5),
+          }
+          : null,
+      };
+    }
+  }
 }
 
 // gameplay_feel r7 (round critique CRITICAL — resting/rolling FLOAT): the
@@ -670,6 +716,18 @@ const CONTACT_LEN_FRAC_MAX = 0.50; // lands outside these is wrong, not novel
 const CONTACT_WID_FRAC_MIN = 0.30;
 const CONTACT_WID_FRAC_MAX = 0.58;
 const CONTACT_ZC_FRAC_MAX = 0.12; // contact-run center offset cap (× hull L)
+// MOVEMENT r1: hull-local Y of the lowest rendered surface — the support
+// solve seats THIS plane on the terrain (pos.y = ground − bottomY + margin).
+// The rebuilt profiles park it anywhere from −0.016 (pad grousers a hair
+// under the old plane) to +0.10 (community placeholder pontoons / raised
+// print floor lines); outside this band the scan hit paint, not a track.
+const CONTACT_BOTY_MIN = -0.20;
+const CONTACT_BOTY_MAX = 0.30;
+// Measured hull-pan floor band (belly-guard line): pans outside this are a
+// mis-scan (gun barrel over the bow, open-topped interiors) — fall back to
+// the fixed guard rather than trust them.
+const CONTACT_PAN_MIN = 0.12;
+const CONTACT_PAN_MAX = 0.70;
 function measureContactGeom(ent) {
   const root = ent.visual && ent.visual.root;
   const spec = ent.spec;
@@ -694,9 +752,16 @@ function measureContactGeom(ent) {
       meshes.push({ o, pa });
     });
     if (!meshes.length) return null;
-    // pass 1: hull-local Y of every (strided) vertex + overall min
-    let minY = Infinity;
+    // pass 1: hull-local Y of every (strided) vertex. The floor is the FIRST
+    // DENSE SHELL (lowest level with 12 samples inside 1.5 cm), not the
+    // absolute min — a stray low vertex (loose export debris, a tow-hook tip)
+    // would otherwise float the whole seated contact run by its depth, while
+    // a global percentile overshoots sparse-bottomed exports (merkava4b's
+    // track underside holds few verts against a dense upper hull — the 0.4 %
+    // quantile called its floor +0.086 and buried the real one 3.8 cm).
+    // Mirrors tankFactory robustFloorY (MOVEMENT r1).
     const pts = [];
+    const ys = [];
     const v = new THREE.Vector3();
     for (const { o, pa } of meshes) {
       rel.multiplyMatrices(invRoot, o.matrixWorld);
@@ -704,10 +769,46 @@ function measureContactGeom(ent) {
       for (let i = 0; i < pa.count; i += step) {
         v.fromBufferAttribute(pa, i).applyMatrix4(rel);
         pts.push(v.x, v.y, v.z);
-        if (v.y < minY) minY = v.y;
+        ys.push(v.y);
       }
     }
-    if (!Number.isFinite(minY)) return null;
+    if (!ys.length) return null;
+    ys.sort((a, b) => a - b);
+    let minY = ys[0];
+    if (ys.length >= 12) {
+      for (let i = 0; i + 11 < ys.length; i++) {
+        if (ys[i + 11] - ys[i] <= 0.015) { minY = ys[i]; break; }
+      }
+    }
+    // hull-pan floor for the belly guard — lowest root-local bbox bottom over
+    // meshes whose bbox SPANS the centerline (vertex sampling cannot see a
+    // wide belly plate; mirrors tankFactory measureRestContact). Floored
+    // above the contact plane; see the CONTACT_PAN_* note.
+    let panYM = null;
+    {
+      const corner = new THREE.Vector3();
+      for (const { o } of meshes) {
+        if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+        const bb = o.geometry.boundingBox;
+        rel.multiplyMatrices(invRoot, o.matrixWorld);
+        let mnX = Infinity, mxX = -Infinity, mnY = Infinity;
+        for (const cx of [bb.min.x, bb.max.x]) {
+          for (const cy of [bb.min.y, bb.max.y]) {
+            for (const cz of [bb.min.z, bb.max.z]) {
+              corner.set(cx, cy, cz).applyMatrix4(rel);
+              if (corner.x < mnX) mnX = corner.x;
+              if (corner.x > mxX) mxX = corner.x;
+              if (corner.y < mnY) mnY = corner.y;
+            }
+          }
+        }
+        if (mnX < -0.2 && mxX > 0.2 && (panYM === null || mnY < panYM)) panYM = mnY;
+      }
+      if (panYM !== null) {
+        panYM = Math.max(panYM, minY + 0.05);
+        if (!(panYM >= CONTACT_PAN_MIN && panYM <= CONTACT_PAN_MAX)) panYM = null;
+      }
+    }
     // pass 2: extents of the low band
     const band = minY + CONTACT_BAND_M;
     let zMin = Infinity, zMax = -Infinity, xMin = Infinity, xMax = -Infinity, n = 0;
@@ -728,6 +829,15 @@ function measureContactGeom(ent) {
       halfLenM: clamp((zMax - zMin) / 2, CONTACT_LEN_FRAC_MIN * L, CONTACT_LEN_FRAC_MAX * L),
       halfWidM: clamp((xMax - xMin) / 2, CONTACT_WID_FRAC_MIN * W, CONTACT_WID_FRAC_MAX * W),
       zCenterM: clamp((zMax + zMin) / 2, -CONTACT_ZC_FRAC_MAX * L, CONTACT_ZC_FRAC_MAX * L),
+      // MOVEMENT r1: the support solve seats the measured bottom plane on the
+      // terrain. Sourced GLBs are ground-normalized by modelLoader so this is
+      // ~0 for most, but a handful ride their export's floor line (is6b
+      // parked +1.5 cm of daylight before this).
+      bottomYM: clamp(minY, CONTACT_BOTY_MIN, CONTACT_BOTY_MAX),
+      panYM,
+      // GLB wraps curl up right past the measured run — a conservative fixed
+      // rise for the line-end guard samples (procedural rigs export exact)
+      endRise: { dzM: 0.4, frontM: 0.12, rearM: 0.12 },
     };
   } catch (e) {
     return null; // scan is best-effort: fall back to spec fractions
