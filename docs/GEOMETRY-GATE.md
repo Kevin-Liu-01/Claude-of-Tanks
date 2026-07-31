@@ -37,10 +37,15 @@ Each curve is ~90 columns of `[along, top, bottom]` in metres, traced from
 the mask. Registration is translation-only (span midpoint along the axis,
 mean-Δy vertical) — rotation/scale are NOT compensated, so a mis-scaled or
 listing build fails. The registration is computed ONCE per view from the
-whole-vehicle curves and **reused** for that view's hull and turret rows:
-a turret 40 cm out of position (or floating high) cannot self-register the
-error away. Errors are per-column band-edge deviations, normalised by the
-reference's governing dimension (height for side/front, length for plan):
+**hull curves** (the hull mask contains no barrel, so gun-length deltas
+cannot shift the frame — building the published-length gun against a
+short-barrelled oracle stays satisfiable) and **reused** for that view's
+whole and turret rows: a turret 40 cm out of position (or floating high)
+cannot self-register the error away. Coverage counts BOTH directions —
+reference columns the build misses AND build columns the reference lacks —
+so excess geometry is as visible as missing geometry. Errors are per-column
+band-edge deviations, normalised by the reference's governing dimension
+(height for side/front, length for plan):
 
 ```
 score = 100 − 12·meanPct − 0.6·p95Pct − 1.5·coverPct
@@ -61,10 +66,12 @@ Every curve row in the report carries `worst`: the 12 worst columns with
 
 ### Stations
 
-14 slices along each model's own hull, comparing width% and roof-height%
-(relative to height). Trimmed mean (2 worst slices dropped — a bustle
-overhang must not mask everything else, but systematic width error still
-fails): `100 − 10·trimW − 10·trimTop`.
+14 slices along each model's own hull **z-range measured from its side
+hull mask** (gun-invariant — a long barrel cannot skew the slice positions
+onto empty air), comparing width% and roof-height% (relative to height).
+Trimmed mean (2 worst slices dropped — a bustle overhang must not mask
+everything else, but systematic width error still fails):
+`100 − 10·trimW − 10·trimTop`.
 
 ### Dims — the published-spec anchor
 
@@ -107,12 +114,16 @@ node tools/geometry-gate.mjs --ids=<family ids>
 
 ### Certified oracle-defect caps
 
-Some references are physically defective (fused rigs, yawed bodies —
-see `tools/repair_oracles*.py`). If a component is provably capped by an
-oracle defect: document the cap in `docs/references/tanks/<id>.md`, repair
-the oracle if a rigid transform can (batch queue), and the build must then
-match **published dims + the undamaged views**. A cap certification never
-excuses `dims`.
+Some references are physically defective (fused rigs, yawed bodies,
+short-modelled barrels — see `tools/repair_oracles*.py`). If a component is
+provably capped by an oracle defect: document the cap in
+`docs/references/tanks/<id>.md`, repair the oracle if a rigid transform can
+(batch queue), and the build must then match **published dims + the
+undamaged views**. A cap certification never excuses `dims`. Because
+registration is hull-anchored, a short-barrelled oracle caps ONLY
+`wholeCurves` (via the symmetric-coverage penalty on the build's correct,
+longer gun) — hull, turret, stations and dims all remain fully satisfiable,
+and a cap claiming more than wholeCurves on such an oracle is invalid.
 
 ### Anti-gaming rules
 

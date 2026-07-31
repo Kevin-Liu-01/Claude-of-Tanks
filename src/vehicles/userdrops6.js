@@ -70,7 +70,9 @@ const SPECS = [
       dims: { hullLengthM: 6.33, overallLengthM: 8.65, widthM: 3.51, heightM: 2.78 } }),
   make('m4a3e8', 'm45_patton', 'M45 Patton', 'USA',
     { hp: 1500, weightTons: 42, topSpeedKmh: 40, gun: { caliberMm: 105, reloadS: 9.0 },
-      dims: { hullLengthM: 6.33, overallLengthM: 8.65, widthM: 3.51, heightM: 2.78 } }),
+      // stub 105mm howitzer barely clears the bow: overall ~= hull length
+      // (the previous 8.65 was a copy of the M26's long-90mm figure)
+      dims: { hullLengthM: 6.33, overallLengthM: 6.4, widthM: 3.51, heightM: 2.78 } }),
   make('m60a1', 'm60a3', 'M60A3', 'USA',
     { hp: 1800, weightTons: 52.6, topSpeedKmh: 48, gun: { reloadS: 7.2 },
       dims: { hullLengthM: 6.946, overallLengthM: 9.436, widthM: 3.631, heightM: 3.27 } }),

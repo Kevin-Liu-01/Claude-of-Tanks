@@ -713,6 +713,12 @@ if (params.get('geo')) {
     }
     const errs = [], cols = [];
     let onlyOne = 0, either = 0;
+    for (const p of procC) {          // proc-only columns: geometry the ref
+      if (!p) continue;               // doesn't have (e.g. excess overhang)
+      either++;
+      const a = p[0] + dAlong;
+      if (a < rs[0] - 0.05 || a > rs[1] + 0.05) onlyOne++;
+    }
     for (const r of refC) {
       if (!r) continue;
       either++;
@@ -759,10 +765,12 @@ if (params.get('geo')) {
   const curveRows = {};
   const viewReg = {};
   for (const view of ['side', 'plan', 'front']) {
-    curveRows[`${view}_whole`] = curveScore(curves[`${view}_whole_ref`], curves[`${view}_whole_proc`], norm[view]);
-    viewReg[view] = curveRows[`${view}_whole`].reg; // one frame per view:
-    curveRows[`${view}_hull`] = curveScore(          // placement counts
-      curves[`${view}_hull_ref`], curves[`${view}_hull_proc`], norm[view], viewReg[view]);
+    // hull anchors the frame: it contains no barrel, so gun-length deltas
+    // cannot shift registration (dims stays satisfiable vs short-gun oracles)
+    curveRows[`${view}_hull`] = curveScore(curves[`${view}_hull_ref`], curves[`${view}_hull_proc`], norm[view]);
+    viewReg[view] = curveRows[`${view}_hull`].reg; // may be undefined if hull empty
+    curveRows[`${view}_whole`] = curveScore(
+      curves[`${view}_whole_ref`], curves[`${view}_whole_proc`], norm[view], viewReg[view]);
   }
   for (const view of ['side', 'plan']) {
     curves[`${view}_turret_ref`] = gTrace(gMask(reference, procedural, camsG[view], 'turret'), camsG[view]);
@@ -783,10 +791,27 @@ if (params.get('geo')) {
   const stationErr = [];
   {
     const procBoxS = visibleBox(procedural.root);
+    // hull z-range from the side HULL mask (no barrel in it): stations stay
+    // on the body for both models regardless of gun overhang
+    const hullZRange = (visual, other) => {
+      const cam = camsG.side;
+      const rightVec = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
+      const t = gTrace(gMask(visual, other, cam, 'hull'), cam);
+      let z0 = 1e9, z1 = -1e9;
+      for (const c of t) {
+        if (!c) continue;
+        const z = cam.position.z + rightVec.z * c[0];
+        if (z < z0) z0 = z; if (z > z1) z1 = z;
+      }
+      return z1 > z0 ? [z0, z1] : null;
+    };
+    const refZR = hullZRange(reference, procedural);
+    const procZR = hullZRange(procedural, reference);
     for (let i = 0; i < 14; i++) {
-      const meas = (visual, other, box) => {
-        const sz = box.max.z - box.min.z;
-        const z0 = box.min.z + (i / 14) * sz, z1 = box.min.z + ((i + 1) / 14) * sz;
+      const meas = (visual, other, box, zr) => {
+        const sz = (zr ? zr[1] - zr[0] : box.max.z - box.min.z);
+        const zb = zr ? zr[0] : box.min.z;
+        const z0 = zb + (i / 14) * sz, z1 = zb + ((i + 1) / 14) * sz;
         const cam = cameraFor(ANGLES.front);
         cam.near = Math.max(0.1, cam.position.z - z1); cam.far = cam.position.z - z0;
         cam.updateProjectionMatrix();
@@ -801,7 +826,7 @@ if (params.get('geo')) {
         }
         return any ? { w: maxX - minX, top: maxY } : null;
       };
-      const r = meas(reference, procedural, refBoxG), p = meas(procedural, reference, procBoxS);
+      const r = meas(reference, procedural, refBoxG, refZR), p = meas(procedural, reference, procBoxS, procZR);
       if (r && p) stationErr.push({ i,
         wPct: +((Math.abs(r.w - p.w) / Math.max(r.w, 0.2)) * 100).toFixed(2),
         topPct: +((Math.abs((r.top - refBoxG.min.y) - (p.top - procBoxS.min.y)) / height) * 100).toFixed(2) });
