@@ -799,6 +799,20 @@ if (params.get('geo')) {
     curves[`${view}_turret_ref`] = gTrace(gMask(reference, procedural, camsG[view], 'turret'), camsG[view]);
     curves[`${view}_turret_proc`] = gTrace(gMask(procedural, reference, camsG[view], 'turret'), camsG[view]);
   }
+  const spanAll = (c) => {
+    let a = null, b = null;
+    for (const p of c) if (p) { if (a === null) a = p[0]; b = p[0]; }
+    return a === null ? null : [Math.min(a, b), Math.max(a, b)];
+  };
+  const trimToHull = (c, hullC, m = 0.6) => {
+    const sp = spanAll(hullC);
+    if (!sp) return c;
+    return c.map((p) => (p && (p[0] < sp[0] - m || p[0] > sp[1] + m)) ? null : p);
+  };
+  for (const view of ['side', 'plan']) {
+    curves[`${view}_turret_ref`] = trimToHull(curves[`${view}_turret_ref`], curves[`${view}_hull_ref`]);
+    curves[`${view}_turret_proc`] = trimToHull(curves[`${view}_turret_proc`], curves[`${view}_hull_proc`]);
+  }
   const turretEmpty = (c) => !c.some(Boolean);
   // fixedMount is the committed casemate registration — spec-driven, so an
   // emptied rig_turret can't fake it; the whole/hull curves carry the body.
@@ -909,7 +923,25 @@ if (params.get('geo')) {
   if (procExt) dimCheck('hullLengthM', procExt.len, pub.hullLengthM);
   dimCheck('overallLengthM', fullSpan(curves.side_whole_proc), pub.overallLengthM);
   // plan columns run across the WIDTH axis; substantial band = the hull body
-  dimCheck('widthM', colSpan(curves.plan_whole_proc, 0.35), pub.widthM);
+  // pixel-resolution width: trace columns quantize to ~11cm when a long
+  // gun pins the plan frame; lit-pixel extent resolves to ~2-3cm. The
+  // 0.35m band rule applies per pixel column so whip antennas don't count.
+  const pixelWidth = (() => {
+    const cam = camsG.plan;
+    const m = gMask(procedural, reference, cam, 'whole');
+    const half = cam.right;
+    const px = 2 * half / GSIZE;
+    let minX = null, maxX = null;
+    for (let x = 0; x < GSIZE; x++) {
+      let top = -1, bot = -1;
+      for (let y = 0; y < GSIZE; y++) if (m[y * GSIZE + x]) { if (bot < 0) bot = y; top = y; }
+      if (top < 0 || (top - bot + 1) * px < 0.35) continue;
+      if (minX === null) minX = x;
+      maxX = x;
+    }
+    return minX === null ? 0 : (maxX - minX + 1) * px;
+  })();
+  dimCheck('widthM', pixelWidth, pub.widthM);
   const dimScore = clamp01(100 - dimRows.reduce((s, d) => s + Math.max(0, d.pct - 1) * 8, 0));
   // Floater detection: connected components of the whole mask across poses.
   const islands = (raw) => {

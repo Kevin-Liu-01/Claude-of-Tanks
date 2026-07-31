@@ -26,7 +26,7 @@ score by actually matching the measured reference geometry.
 |---|---|
 | `hullCurves` | min of side/plan/front hull-only silhouette curve scores |
 | `wholeCurves` | min of side/plan/front whole-vehicle curve scores |
-| `turretCurves` | min of side/plan turret-only (mask below `rig_turret`) curve scores; vacuous 100 for `fixedMount` casemates (spec-driven — an emptied rig cannot fake it) |
+| `turretCurves` | min of side/plan turret-only (mask below `rig_turret`) curve scores, trimmed to each model's hull footprint ±0.6 m — barrels leave the turret comparison (they belong to wholeCurves + overallLengthM) while bustles and mantlets stay; vacuous 100 for `fixedMount` casemates (spec-driven — an emptied rig cannot fake it) |
 | `stations` | 14 hull cross-sections: width + roof-height error, trimmed mean |
 | `dims` | published real-vehicle dimensions vs the procedural build |
 | `floaters` | disconnected-geometry islands across 5 articulation poses |
@@ -81,9 +81,10 @@ Measured **from the procedural build's curves** against `spec.dims`
 body extent (columns with band > 12% of height, so gun barrels don't count;
 roof = p95 of column tops, so a 2-column antenna mast doesn't define the
 height), `overallLengthM` from the full side span (gun included), `widthM`
-from the plan columns with > 0.35 m of band — skirts and fenders count
-toward width (published widths include them); whip antennas (< 0.1 m
-plan-band) don't. Score:
+at PIXEL resolution from the plan mask (trace columns quantize to ~11 cm
+when a long gun pins the frame; lit-pixel extent resolves ~2-3 cm) over
+pixel columns with > 0.35 m of band — skirts and fenders count toward
+width (published widths include them); whip antennas don't. Score:
 `100 − Σ max(0, pct − 1)·8` — 1% grace per dim, then 8 points per percent.
 
 This is the anti-gaming anchor: a build that "matches" a defective oracle
