@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Claude of Tanks — Brand &amp; Media Kit</title>
+<title>Claude of Tanks — a three.js armored warfare demo</title>
+<link rel="icon" href="/brand/favicon.svg">
 <style>
   @font-face {
     font-family: 'Inter';
@@ -11,222 +12,387 @@
     font-weight: 100 900; font-style: normal; font-display: swap;
   }
   :root {
-    --bg: #0b0e11; --panel: #14181d; --panel2: #1a2027; --line: #2a323b;
-    --ink: #e8edf2; --dim: #9fb0bf; --gold: #ffd27a; --accent: #f0a12e;
+    --paper: #f5f5f3; --ink: #070707; --hair: rgba(138,143,152,.26);
+    --ink63: rgba(7,7,7,.63); --ink45: rgba(7,7,7,.45); --ink27: rgba(7,7,7,.27);
+    --w70: rgba(255,255,255,.7); --w45: rgba(255,255,255,.45); --w16: rgba(255,255,255,.16);
+    --amber: #f0a12e; --gold: #ffd27a;
+    --serif: Georgia, 'Times New Roman', serif;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
   body {
-    background: var(--bg); color: var(--ink);
-    font-family: 'Inter', system-ui, sans-serif; font-weight: 500;
-    padding-bottom: 96px;
+    background: var(--paper); color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif; font-weight: 450;
+    font-size: 15px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
   }
-  a { color: inherit; }
-  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 28px; }
+  a { color: inherit; text-decoration: none; }
+  img { display: block; max-width: 100%; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
 
-  header.hero {
-    display: flex; align-items: center; gap: 28px;
-    padding: 56px 0 40px; border-bottom: 1px solid var(--line); margin-bottom: 48px;
+  /* micro-label: uppercase with middots */
+  .micro {
+    font-size: 11px; font-weight: 600; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--ink45);
   }
-  header.hero img.mark { width: 132px; height: auto; }
-  header.hero h1 {
-    font-size: 40px; font-weight: 800; letter-spacing: .04em; line-height: 1.05;
-  }
-  header.hero h1 .of { color: var(--gold); }
-  header.hero p { color: var(--dim); margin-top: 10px; max-width: 56ch; }
+  .micro b { color: var(--ink); font-weight: 700; }
+  .serif { font-family: var(--serif); font-style: italic; font-weight: 400; }
 
-  h2 {
-    font-size: 13px; font-weight: 700; letter-spacing: .28em; color: var(--gold);
-    text-transform: uppercase; margin: 56px 0 6px;
-  }
-  .sub { color: var(--dim); font-size: 14px; margin-bottom: 22px; }
-
-  .grid { display: grid; gap: 18px; }
-  .logos { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-  .card {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-    overflow: hidden; display: flex; flex-direction: column;
-  }
-  .card .stage {
-    display: flex; align-items: center; justify-content: center;
-    padding: 26px; min-height: 190px;
-    background:
-      repeating-conic-gradient(#161b21 0% 25%, #12161b 0% 50%) 0 0 / 22px 22px;
-  }
-  .card .stage.dark { background: #0d1014; }
-  .card .stage.light { background: #d7dde3; }
-  .card .stage img { max-width: 100%; max-height: 170px; }
-  .card .meta {
-    display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    padding: 11px 14px; border-top: 1px solid var(--line); font-size: 12.5px;
-  }
-  .card .meta .name { font-weight: 700; }
-  .card .meta .path { color: var(--dim); font-size: 11px; word-break: break-all; }
-  .card .meta a.dl {
-    flex: 0 0 auto; text-decoration: none; font-weight: 700; font-size: 11px;
-    letter-spacing: .08em; color: #10141a; background: var(--gold);
-    padding: 5px 10px; border-radius: 5px;
-  }
-  .card .meta a.dl:hover { background: var(--accent); }
-
-  .shots { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
-  .shots.small { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
-  .shot { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-  .shot img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
-  .shot .bar {
-    display: flex; align-items: baseline; gap: 10px; padding: 10px 13px;
-  }
-  .shot .bar .t { font-size: 12.5px; font-weight: 700; }
-  .shot .bar .map { color: var(--dim); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
-  .shot .score {
-    position: absolute; top: 10px; right: 10px;
-    background: rgba(10, 13, 17, .82); border: 1px solid var(--line);
-    color: var(--gold); font-weight: 800; font-size: 13px;
-    padding: 3px 9px; border-radius: 6px;
-  }
-  .shot .cap { padding: 0 13px 12px; color: var(--dim); font-size: 12px; line-height: 1.45; }
-  .hero-badge {
-    position: absolute; top: 10px; left: 10px; background: var(--gold); color: #10141a;
-    font-size: 10px; font-weight: 800; letter-spacing: .14em; padding: 3px 8px; border-radius: 5px;
+  /* hatched divider */
+  .hatch {
+    height: 26px; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair);
+    background: repeating-linear-gradient(45deg, transparent 0 7px, var(--hair) 7px 8px);
   }
 
-  .note {
-    margin-top: 14px; padding: 12px 16px; border: 1px solid var(--line);
-    border-left: 3px solid var(--gold); border-radius: 6px; color: var(--dim); font-size: 13px;
-    background: var(--panel);
+  /* ---- nav ---- */
+  nav {
+    position: sticky; top: 0; z-index: 50; background: var(--paper);
+    border-bottom: 1px solid var(--hair);
   }
-  footer { margin-top: 72px; color: var(--dim); font-size: 12px; text-align: center; }
+  nav .row {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 52px;
+  }
+  nav .id { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .02em; }
+  nav .id img { width: 26px; }
+  nav .links { display: flex; gap: 26px; font-size: 13px; color: var(--ink63); }
+  nav .links a:hover { color: var(--ink); }
+  nav .links a.play { color: var(--ink); font-weight: 700; }
+  nav .links a.play::before { content: '▶ '; font-size: 10px; color: var(--amber); }
+
+  /* ---- hero ---- */
+  header.hero { padding: 72px 0 0; }
+  .hero .plate { border-bottom: 1px solid var(--hair); padding-bottom: 34px; }
+  .hero h1 {
+    font-size: clamp(52px, 9vw, 108px); font-weight: 800; letter-spacing: -.025em;
+    line-height: .96; text-transform: lowercase;
+  }
+  .hero h1 .of { font-family: var(--serif); font-style: italic; font-weight: 400; letter-spacing: 0; }
+  .hero h1 .shield { display: inline-block; width: .82em; vertical-align: -.06em; margin-right: .08em; }
+  .hero .def {
+    margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px 34px; align-items: baseline;
+  }
+  .hero .def .d1 { font-family: var(--serif); font-style: italic; font-size: 17px; color: var(--ink63); }
+  .hero .lede { margin-top: 26px; max-width: 62ch; color: var(--ink63); font-size: 16.5px; }
+  .hero .cta { margin-top: 30px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; border: 1px solid var(--ink); padding: 11px 22px;
+    font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  }
+  .btn.solid { background: var(--ink); color: var(--paper); }
+  .btn.solid:hover { background: var(--amber); border-color: var(--amber); color: var(--ink); }
+  .btn.ghost:hover { border-color: var(--amber); color: var(--amber); }
+  .btn.solid::before { content: '▶ '; font-size: 10px; }
+
+  /* hero figure */
+  .figure { margin: 44px 0 0; border: 1px solid var(--hair); }
+  .figure img { width: 100%; aspect-ratio: 21 / 9; object-fit: cover; }
+  .figcap {
+    display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+    padding: 10px 14px; border-top: 1px solid var(--hair);
+  }
+
+  /* ---- section scaffolding ---- */
+  section { padding: 84px 0; }
+  .shead {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 18px;
+    border-bottom: 1px solid var(--ink); padding-bottom: 14px; margin-bottom: 34px;
+  }
+  .shead h2 { font-size: clamp(26px, 4vw, 40px); font-weight: 800; letter-spacing: -.02em; }
+  .shead h2 .no { color: var(--ink27); font-weight: 700; margin-right: 14px; }
+  .shead .ann { font-family: var(--serif); font-style: italic; color: var(--ink45); font-size: 15px; text-align: right; }
+
+  /* bento stat row */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--hair); }
+  .stats .cell { padding: 22px 20px; border-right: 1px solid var(--hair); }
+  .stats .cell:last-child { border-right: 0; }
+  .stats .n { font-size: 40px; font-weight: 800; letter-spacing: -.02em; line-height: 1; }
+  .stats .n em { font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 26px; color: var(--amber); }
+  .stats .l { margin-top: 8px; }
+  @media (max-width: 860px) { .stats { grid-template-columns: repeat(2, 1fr); } .stats .cell { border-bottom: 1px solid var(--hair); } }
+
+  /* battlefield bento */
+  .maps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0; border: 1px solid var(--hair); }
+  .map { position: relative; border: 0 solid var(--hair); }
+  .map:nth-child(odd) { border-right: 1px solid var(--hair); }
+  .map:nth-child(-n+2) { border-bottom: 1px solid var(--hair); }
+  .map img { width: 100%; aspect-ratio: 16 / 8.4; object-fit: cover; filter: saturate(.92); }
+  .map:hover img { filter: saturate(1.05); }
+  .map .tag {
+    position: absolute; top: 12px; left: 12px; background: var(--paper); color: var(--ink);
+    font-size: 10px; font-weight: 700; letter-spacing: .16em; padding: 4px 9px; text-transform: uppercase;
+  }
+  .map .bar { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 14px; border-top: 1px solid var(--hair); background: var(--paper); }
+  .map .bar .t { font-weight: 700; font-size: 14px; }
+  @media (max-width: 700px) { .maps { grid-template-columns: 1fr; } .map { border-right: 0 !important; border-bottom: 1px solid var(--hair); } }
+
+  /* ---- dark fleet band ---- */
+  .dark { background: var(--ink); color: #fff; }
+  .dark .shead { border-bottom-color: rgba(255,255,255,.9); }
+  .dark .shead .ann, .dark .micro { color: var(--w45); }
+  .dark .shead h2 .no { color: var(--w16); }
+  .rows { border-top: 1px solid var(--w16); }
+  .rowi {
+    display: grid; grid-template-columns: 54px 1fr auto; gap: 18px; align-items: baseline;
+    padding: 15px 4px; border-bottom: 1px solid var(--w16); font-size: 15px;
+  }
+  .rowi .no { color: var(--w45); font-weight: 600; }
+  .rowi .t { font-weight: 700; }
+  .rowi .t small { display: block; font-weight: 450; color: var(--w70); font-size: 13.5px; margin-top: 2px; }
+  .rowi .ann { font-family: var(--serif); font-style: italic; color: var(--w45); font-size: 14px; text-align: right; }
+  .rowi .ann b { color: var(--gold); font-style: normal; font-family: 'Inter', sans-serif; font-weight: 700; }
+  .dark .lede { color: var(--w70); max-width: 68ch; font-size: 16px; }
+
+  /* ---- gallery ---- */
+  .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .shot { border: 1px solid var(--hair); background: #fff; }
+  .shot img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+  .shot .bar { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; padding: 9px 12px; border-top: 1px solid var(--hair); }
+  .shot .t { font-size: 12.5px; font-weight: 700; }
+  .shot .sc { font-size: 12px; font-weight: 800; color: var(--amber); }
+  .shot.wide { grid-column: span 2; }
+  @media (max-width: 860px) { .shots { grid-template-columns: 1fr 1fr; } .shot.wide { grid-column: span 2; } }
+  @media (max-width: 560px) { .shots { grid-template-columns: 1fr; } .shot.wide { grid-column: span 1; } }
+
+  /* ---- media kit ---- */
+  .kit { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--hair); }
+  .kit .item { border-right: 1px solid var(--hair); border-bottom: 1px solid var(--hair); }
+  .kit .item:nth-child(3n) { border-right: 0; }
+  .kit .stage { display: flex; align-items: center; justify-content: center; min-height: 200px; padding: 26px; }
+  .kit .stage.dark2 { background: var(--ink); }
+  .kit .stage.grid {
+    background: repeating-linear-gradient(0deg, transparent 0 21px, var(--hair) 21px 22px),
+                repeating-linear-gradient(90deg, transparent 0 21px, var(--hair) 21px 22px);
+  }
+  .kit .stage img { max-height: 150px; }
+  .kit .meta { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--hair); font-size: 12.5px; }
+  .kit .meta .p { color: var(--ink45); font-size: 11px; }
+  .kit .meta a { font-weight: 700; letter-spacing: .08em; font-size: 11px; text-transform: uppercase; }
+  .kit .meta a:hover { color: var(--amber); }
+  @media (max-width: 700px) { .kit { grid-template-columns: 1fr; } .kit .item { border-right: 0; } }
+  .pngrow { display: flex; flex-wrap: wrap; gap: 10px 26px; margin-top: 18px; align-items: center; }
+  .pngrow a { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink63); border-bottom: 1px solid var(--hair); padding-bottom: 2px; }
+  .pngrow a:hover { color: var(--ink); border-color: var(--ink); }
+  .pngrow img { height: 20px; }
+
+  /* ---- footer ---- */
+  footer { background: var(--ink); color: #fff; padding: 64px 0 44px; }
+  footer .grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 40px; }
+  footer h3 { font-size: clamp(30px, 5vw, 46px); font-weight: 800; letter-spacing: -.02em; line-height: 1; }
+  footer h3 .serif { color: var(--gold); }
+  footer p { color: var(--w45); margin-top: 14px; max-width: 44ch; font-size: 14px; }
+  footer .idx { border-top: 1px solid var(--w16); }
+  footer .idx a { display: flex; justify-content: space-between; gap: 14px; padding: 11px 2px; border-bottom: 1px solid var(--w16); font-size: 13.5px; color: var(--w70); }
+  footer .idx a:hover { color: #fff; }
+  footer .idx a span:last-child { font-family: var(--serif); font-style: italic; color: var(--w45); }
+  footer .base { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--w16); display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; align-items: center; }
+  footer .base img { width: 30px; }
+  footer .base .micro { color: var(--w45); }
+  @media (max-width: 760px) { footer .grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <header class="hero">
-    <img class="mark" src="/brand/logo-mark.svg" alt="Claude of Tanks shield">
-    <div>
-      <h1>CLAUDE <span class="of">OF TANKS</span></h1>
-      <p>Brand &amp; media kit — every logo variant and marketing shot in the project, served live from the repo. Click any asset to open it full-size; Download saves the original file.</p>
+<nav>
+  <div class="wrap row">
+    <a class="id" href="#top"><img src="/brand/logo-mark.svg" alt=""><span>claude<span class="serif">·of·</span>tanks</span></a>
+    <div class="links">
+      <a href="#battlefields">Battlefields</a>
+      <a href="#fleet">Fleet</a>
+      <a href="#gallery">Gallery</a>
+      <a href="#kit">Media kit</a>
+      <a class="play" href="https://claude-of-tanks.vercel.app" target="_blank">Play</a>
     </div>
-  </header>
+  </div>
+</nav>
 
-  <h2>Shield Logos</h2>
-  <div class="sub">Primary mark and variants · <code>public/brand/</code> · SVG masters, PNG derivatives below</div>
-  <div class="grid logos" id="logos"></div>
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="plate">
+      <h1><img class="shield" src="/brand/logo-mark.svg" alt="shield">claude <span class="of">of</span> tanks</h1>
+      <div class="def">
+        <span class="d1">ar·mor — the working model · rendered live in your browser</span>
+        <span class="micro"><b>90 vehicles</b> · <b>8 battlefields</b> · tiers I–X · three.js</span>
+      </div>
+      <p class="lede">A complete armored-warfare technology demo: procedurally built tanks measured against
+      reference geometry, eight hand-tuned battlefields, a five-bus sound stage with a radio crew,
+      and a scene studio for staging shots like the ones on this page. No installs, no accounts — it runs where the browser is.</p>
+      <div class="cta">
+        <a class="btn solid" href="https://claude-of-tanks.vercel.app" target="_blank">Play in browser</a>
+        <a class="btn ghost" href="#gallery">See the shots</a>
+      </div>
+    </div>
+    <figure class="figure">
+      <a href="/shots/marketing/final/09_winter_lake_duel.png" target="_blank">
+        <img src="/shots/marketing/final/09_winter_lake_duel.png" alt="Winter lake duel — T-90M ammo-rack detonation on the ice">
+      </a>
+      <figcaption class="figcap">
+        <span class="micro"><b>09 · winter lake duel</b> — turret sailing through the fireball, glow on the ice</span>
+        <span class="micro">set hero · graded <b>8.6</b></span>
+      </figcaption>
+    </figure>
+  </div>
+</header>
 
-  <h2>PNG Derivatives</h2>
-  <div class="sub">Favicons, touch icon, and OpenGraph assets generated from the masters</div>
-  <div class="grid logos" id="pngs"></div>
+<div style="height:56px"></div>
+<div class="hatch"></div>
 
-  <h2>Archive</h2>
-  <div class="sub">Earlier rounds kept for reference · v1 comic mark · v2 roundel</div>
-  <div class="grid logos" id="archive"></div>
+<section id="game">
+  <div class="wrap">
+    <div class="shead">
+      <h2><span class="no">01</span>The game</h2>
+      <span class="ann">what ships in the demo</span>
+    </div>
+    <div class="stats">
+      <div class="cell"><div class="n">90<em>+</em></div><div class="l micro"><b>vehicles</b> · custom &amp; sourced</div></div>
+      <div class="cell"><div class="n">8</div><div class="l micro"><b>battlefields</b> · four biomes</div></div>
+      <div class="cell"><div class="n">16</div><div class="l micro"><b>camouflages</b> · map-matched</div></div>
+      <div class="cell"><div class="n">14</div><div class="l micro"><b>equipment items</b> · real modifiers</div></div>
+    </div>
+  </div>
+</section>
 
-  <h2>Featured Battle Shots</h2>
-  <div class="sub">The 10 picked finals from the 30-shot marketing production · full grades in <code>docs/marketing-shots-report.md</code></div>
-  <div class="grid shots" id="finals"></div>
+<section id="battlefields" style="padding-top: 0;">
+  <div class="wrap">
+    <div class="shead">
+      <h2><span class="no">02</span>Battlefields</h2>
+      <span class="ann">four biomes, eight maps, one light rig each</span>
+    </div>
+    <div class="maps">
+      <a class="map" href="/shots/marketing/final/06_desert_hero_kf51.png" target="_blank">
+        <span class="tag">Desert</span>
+        <img loading="lazy" src="/shots/marketing/final/06_desert_hero_kf51.png" alt="Desert — KF51 firing still">
+        <div class="bar"><span class="t">Sirocco Wadi</span><span class="micro">adobe · mesa · palm lines</span></div>
+      </a>
+      <a class="map" href="/shots/marketing/final/09_winter_lake_duel.png" target="_blank">
+        <span class="tag">Winter</span>
+        <img loading="lazy" src="/shots/marketing/final/09_winter_lake_duel.png" alt="Winter — lake duel">
+        <div class="bar"><span class="t">Frosthollow</span><span class="micro">alpine ring · black ice</span></div>
+      </a>
+      <a class="map" href="/shots/marketing/final/19_urban_overwatch_church.png" target="_blank">
+        <span class="tag">Urban</span>
+        <img loading="lazy" src="/shots/marketing/final/19_urban_overwatch_church.png" alt="Urban — golden hour canyon">
+        <div class="bar"><span class="t">Steinburg</span><span class="micro">cobbled canyons · golden hour</span></div>
+      </a>
+      <a class="map" href="/shots/marketing/final/27_verdant_village_brawl.png" target="_blank">
+        <span class="tag">Verdant</span>
+        <img loading="lazy" src="/shots/marketing/final/27_verdant_village_brawl.png" alt="Verdant — village brawl">
+        <div class="bar"><span class="t">Verdant Fields</span><span class="micro">wheat · hedgerows · villages</span></div>
+      </a>
+    </div>
+  </div>
+</section>
 
-  <h2>Full Production — All 30 Shots</h2>
-  <div class="sub">Raw captures at production resolution · <code>shots/marketing/raw/</code> · set average 7.62</div>
-  <div class="grid shots small" id="raws"></div>
+<div class="hatch"></div>
 
-  <footer>Claude of Tanks · private project · this page is a dev tool (tools/brand.html) and ships in no build</footer>
-</div>
+<section class="dark" id="fleet">
+  <div class="wrap">
+    <div class="shead">
+      <h2><span class="no">03</span>The fleet</h2>
+      <span class="ann">measured, not eyeballed</span>
+    </div>
+    <p class="lede">Every hull in the library is being rebuilt from scratch against reference geometry and
+    published dimensions — a tank ships only when every measured component scores <b style="color:var(--gold)">≥ 90</b> and an
+    independent critic scores every view <b style="color:var(--gold)">≥ 9/10</b> for shaded parity. The scoreboard so far:</p>
+    <div style="height:26px"></div>
+    <div class="rows">
+      <div class="rowi"><span class="no">01</span><span class="t">M60A1 Patton<small>welded hull loft · measured fittings · searchlight rig</small></span><span class="ann">first dual-gate pass · geometry min <b>90.7</b> · views min <b>9/10</b></span></div>
+      <div class="rowi"><span class="no">02</span><span class="t">KV-2<small>the fridge — rebuilt turret rear, machined gear faces</small></span><span class="ann">second dual-gate pass · geometry min <b>90.2</b> · views min <b>9/10</b></span></div>
+      <div class="rowi"><span class="no">03</span><span class="t">Leopard 2A6 · Merkava III · ISU-152<small>wave one — in the gate loop now</small></span><span class="ann">in progress · the whole library follows</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="gallery">
+  <div class="wrap">
+    <div class="shead">
+      <h2><span class="no">04</span>Gallery</h2>
+      <span class="ann">ten finals from a thirty-shot production · every frame staged in-engine</span>
+    </div>
+    <div class="shots" id="shotgrid"></div>
+  </div>
+</section>
+
+<div class="hatch"></div>
+
+<section id="kit">
+  <div class="wrap">
+    <div class="shead">
+      <h2><span class="no">05</span>Media kit</h2>
+      <span class="ann">the shield, three ways · click to open, link to download</span>
+    </div>
+    <div class="kit">
+      <div class="item"><div class="stage grid"><img src="/brand/logo-mark.svg" alt="colored shield"></div>
+        <div class="meta"><span><b>Shield — colored</b><div class="p">public/brand/logo-mark.svg</div></span><a href="/brand/logo-mark.svg" download>Download</a></div></div>
+      <div class="item"><div class="stage"><img src="/brand/logo-mark-bw.svg" alt="black and white shield"></div>
+        <div class="meta"><span><b>Shield — black &amp; white</b><div class="p">public/brand/logo-mark-bw.svg</div></span><a href="/brand/logo-mark-bw.svg" download>Download</a></div></div>
+      <div class="item"><div class="stage dark2"><img src="/brand/logo-mark-metal.svg" alt="metal shield"></div>
+        <div class="meta"><span><b>Shield — metal</b><div class="p">public/brand/logo-mark-metal.svg</div></span><a href="/brand/logo-mark-metal.svg" download>Download</a></div></div>
+      <div class="item"><div class="stage"><img src="/brand/logo-full.svg" alt="full lockup"></div>
+        <div class="meta"><span><b>Full lockup</b><div class="p">public/brand/logo-full.svg</div></span><a href="/brand/logo-full.svg" download>Download</a></div></div>
+      <div class="item"><div class="stage grid"><img src="/brand/logo-mark-simple.svg" alt="simple mark"></div>
+        <div class="meta"><span><b>Simple mark</b><div class="p">public/brand/logo-mark-simple.svg</div></span><a href="/brand/logo-mark-simple.svg" download>Download</a></div></div>
+      <div class="item"><div class="stage dark2"><img src="/brand/og-image.png" alt="opengraph image" style="max-height:130px"></div>
+        <div class="meta"><span><b>OpenGraph image</b><div class="p">public/brand/og-image.png</div></span><a href="/brand/og-image.png" download>Download</a></div></div>
+    </div>
+    <div class="pngrow">
+      <span class="micro"><b>Derivatives</b> ·</span>
+      <a href="/brand/favicon.svg" download><img src="/brand/favicon.svg" alt="">favicon.svg</a>
+      <a href="/brand/favicon-32.png" download><img src="/brand/favicon-32.png" alt="">favicon-32</a>
+      <a href="/brand/favicon-192.png" download><img src="/brand/favicon-192.png" alt="">favicon-192</a>
+      <a href="/brand/apple-touch-icon.png" download><img src="/brand/apple-touch-icon.png" alt="">apple-touch-icon</a>
+      <a href="/brand/og-logo.png" download><img src="/brand/og-logo.png" alt="">og-logo</a>
+      <a href="/brand/og-logo-transparent.png" download><img src="/brand/og-logo-transparent.png" alt="">og-logo-transparent</a>
+      <span class="micro">archives: <a href="/brand/v1/logo-mark.svg" style="text-transform:none">v1</a> · <a href="/brand/v2-roundel/logo-mark.svg" style="text-transform:none">v2 roundel</a></span>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="grid">
+      <div>
+        <h3>Ready when <span class="serif">you</span> are.</h3>
+        <p>The whole demo runs in the browser tab you already have open — pick a tank, pick a battlefield, and roll out.</p>
+        <div style="margin-top:22px"><a class="btn solid" href="https://claude-of-tanks.vercel.app" target="_blank" style="border-color:#fff">Play in browser</a></div>
+      </div>
+      <div class="idx">
+        <a href="#game"><span>01 The game</span><span>what ships</span></a>
+        <a href="#battlefields"><span>02 Battlefields</span><span>eight maps</span></a>
+        <a href="#fleet"><span>03 The fleet</span><span>the dual gate</span></a>
+        <a href="#gallery"><span>04 Gallery</span><span>the thirty</span></a>
+        <a href="#kit"><span>05 Media kit</span><span>the shield</span></a>
+      </div>
+    </div>
+    <div class="base">
+      <img src="/brand/logo-mark-metal.svg" alt="">
+      <span class="micro">claude of tanks · three.js technology demo · private project · shots staged in the in-engine studio</span>
+    </div>
+  </div>
+</footer>
 
 <script>
-const LOGOS = [
-  ['logo-mark.svg',        'Shield — colored (primary)', 'dark'],
-  ['logo-mark-bw.svg',     'Shield — black &amp; white',  'light'],
-  ['logo-mark-metal.svg',  'Shield — metal',             'dark'],
-  ['logo-mark-simple.svg', 'Shield — simple',            'dark'],
-  ['logo-full.svg',        'Full lockup',                'dark'],
-  ['favicon.svg',          'Favicon master',             'dark'],
+const FINALS = [
+  ['09_winter_lake_duel', 8.6, 'winter lake duel', true],
+  ['19_urban_overwatch_church', 8.2, 'urban overwatch — church'],
+  ['06_desert_hero_kf51', 8.2, 'desert hero — KF51'],
+  ['01_desert_duel_leclerc_kill', 8.1, 'desert duel — Leclerc kill'],
+  ['20_urban_ruin_brawl', 8.1, 'urban ruin brawl'],
+  ['04_desert_village_brawl', 8.0, 'desert village brawl'],
+  ['17_urban_street_duel', 8.0, 'urban street duel'],
+  ['22_urban_hero_abramsx', 8.0, 'urban hero — AbramsX'],
+  ['27_verdant_village_brawl', 8.0, 'verdant village brawl'],
+  ['10_winter_ram_leo2a6', 7.8, 'winter ram — Leo 2A6'],
 ];
-const PNGS = [
-  ['favicon-32.png',          'Favicon 32'],
-  ['favicon-192.png',         'Favicon 192'],
-  ['apple-touch-icon.png',    'Apple touch icon'],
-  ['og-logo.png',             'OG logo'],
-  ['og-logo-transparent.png', 'OG logo (transparent)'],
-  ['og-image.png',            'OG image (1200×630)'],
-];
-const ARCHIVE = [
-  ['v1/logo-mark.svg',         'v1 — comic mark'],
-  ['v1/logo-full.svg',         'v1 — lockup'],
-  ['v2-roundel/logo-mark.svg', 'v2 — roundel'],
-  ['v2-roundel/logo-mark-accent.svg', 'v2 — roundel accent'],
-];
-// id → [score, caption] from docs/marketing-shots-report.md
-const GRADES = {
-  '01': [8.1, 'Leclerc muzzle star foreground-right, T-90A ammo-rack fire at the palm line.'],
-  '02': [7.4, 'Nose-to-flank contact at the adobe crossing.'],
-  '03': [7.5, 'Two-tank foreground line firing over the compounds.'],
-  '04': [8.0, 'KF51 with ricochet sparks, twin tracers overhead.'],
-  '05': [7.0, 'Survivor M1A2 pushing past two smoking hulks.'],
-  '06': [8.2, 'KF51 low ¾ firing still — flash core in frame.'],
-  '07': [7.3, 'Drone over the crossroads kill, inbound tracer visible.'],
-  '08': [7.1, 'Lead M1A2 firing on the move toward camera.'],
-  '09': [8.6, 'Set hero. T-90M mid-ammo-rack: turret sailing through the fireball, glow on the ice.'],
-  '10': [7.8, 'Hull-displacing T-bone, thrown-track debris mid-air.'],
-  '11': [7.4, 'Whitewash pair advancing up the farm road under fire.'],
-  '12': [7.5, 'Dead-center road POV, HE burst mid-street.'],
-  '13': [7.1, 'Charred AbramsX on the ice, 2A5 silhouette beyond.'],
-  '14': [7.6, 'Factory-green T-90M pops off the snow.'],
-  '15': [7.7, 'Dark-ice map-poster drone: kill column left.'],
-  '16': [7.2, 'Hunter firing on the move, prey running turret-rearward.'],
-  '17': [8.0, 'Urban-digital M1A2 firing up the cobbled canyon.'],
-  '18': [7.1, 'KF51 T-boning the Leclerc through the crossing.'],
-  '19': [8.2, 'Twin muzzle flashes lighting the golden-hour canyon — pure key art.'],
-  '20': [8.1, 'Highest energy: crossing tracers, AbramsX 4-petal flash.'],
-  '21': [7.5, 'Two burning hulks blocking the street.'],
-  '22': [8.0, 'AbramsX profile, blast jet raking the cobbles.'],
-  '23': [7.6, 'Kill fireball at the T-junction from above.'],
-  '24': [7.5, 'Leopard 2A6 firing through the wheat.'],
-  '25': [7.2, 'Tan-vs-green shoving match at the forest margin.'],
-  '26': [7.1, 'Frontal firing line, tracer whipping past camera.'],
-  '27': [8.0, 'KF51 advancing past sandbags as the cottage roof burns.'],
-  '28': [7.4, 'Burning turretless Leclerc, survivor’s flash beyond.'],
-  '29': [7.8, 'Challenger 1 firing still with frozen sabot petals.'],
-  '30': [7.7, 'Road-column drone: lead 2A7V firing at the treeline.'],
-};
-const FINALS = ['01_desert_duel_leclerc_kill','04_desert_village_brawl','06_desert_hero_kf51',
-  '09_winter_lake_duel','10_winter_ram_leo2a6','17_urban_street_duel','19_urban_overwatch_church',
-  '20_urban_ruin_brawl','22_urban_hero_abramsx','27_verdant_village_brawl'];
-const RAWS = ['01_desert_duel_leclerc_kill','02_desert_ram_abramsx_t90m','03_desert_overwatch_line',
-  '04_desert_village_brawl','05_desert_aftermath_sunline','06_desert_hero_kf51','07_desert_drone_mesa_duel',
-  '08_desert_dune_charge','09_winter_lake_duel','10_winter_ram_leo2a6','11_winter_overwatch_birch',
-  '12_winter_village_brawl','13_winter_aftermath_burnout','14_winter_hero_t90m','15_winter_drone_lake_battle',
-  '16_winter_flank_chase','17_urban_street_duel','18_urban_ram_plaza','19_urban_overwatch_church',
-  '20_urban_ruin_brawl','21_urban_aftermath_factory','22_urban_hero_abramsx','23_urban_drone_grid',
-  '24_verdant_field_duel','25_verdant_ram_hedgerow','26_verdant_overwatch_ridge','27_verdant_village_brawl',
-  '28_verdant_aftermath_meadow','29_verdant_hero_challenger1','30_verdant_drone_flank'];
-
-const el = (h) => { const d = document.createElement('div'); d.innerHTML = h.trim(); return d.firstChild; };
-
-function assetCard(base, path, label, stage) {
-  return el(`<div class="card">
-    <a class="stage ${stage || 'dark'}" href="${base}${path}" target="_blank"><img loading="lazy" src="${base}${path}" alt="${label}"></a>
-    <div class="meta"><div><div class="name">${label}</div><div class="path">${base}${path}</div></div>
-    <a class="dl" href="${base}${path}" download>SVG/PNG</a></div>
-  </div>`);
-}
-LOGOS.forEach(([f, l, s]) => logos.appendChild(assetCard('/brand/', f, l, s)));
-PNGS.forEach(([f, l]) => pngs.appendChild(assetCard('/brand/', f, l, 'dark')));
-ARCHIVE.forEach(([f, l]) => archive.appendChild(assetCard('/brand/', f, l, 'dark')));
-
-function shotCard(name, dir, withCap) {
-  const id = name.slice(0, 2);
-  const [score, cap] = GRADES[id] || ['—', ''];
-  const map = name.split('_')[1];
-  const title = name.slice(3).replace(/_/g, ' ');
-  const hero = id === '09' ? '<div class="hero-badge">SET HERO</div>' : '';
-  return el(`<div class="shot">${hero}
-    <a href="${dir}${name}.png" target="_blank"><img loading="lazy" src="${dir}${name}.png" alt="${title}"></a>
-    <div class="score">${score}</div>
-    <div class="bar"><span class="t">${title}</span><span class="map">${map}</span></div>
-    ${withCap ? `<div class="cap">${cap}</div>` : ''}
-  </div>`);
-}
-FINALS.forEach((n) => finals.appendChild(shotCard(n, '/shots/marketing/final/', true)));
-RAWS.forEach((n) => raws.appendChild(shotCard(n, '/shots/marketing/raw/', false)));
+const grid = document.getElementById('shotgrid');
+FINALS.forEach(([f, sc, t, wide], i) => {
+  const d = document.createElement('div');
+  d.className = 'shot' + (wide || i === 1 ? ' wide' : '');
+  d.innerHTML = `<a href="/shots/marketing/final/${f}.png" target="_blank">
+      <img loading="lazy" src="/shots/marketing/final/${f}.png" alt="${t}"></a>
+    <div class="bar"><span class="t">${String(i+1).padStart(2,'0')} · ${t}</span><span class="sc">${sc.toFixed(1)}</span></div>`;
+  grid.appendChild(d);
+});
 </script>
 </body>
 </html>
