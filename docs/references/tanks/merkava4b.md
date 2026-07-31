@@ -77,3 +77,27 @@ floaters 100.
   vs published 2.66); dims anchors the build at 2.66 so 4-5 mid slices carry
   a structural 7-9% roof-height delta (2 absorbed by the trimmed mean).
 - wholeCurves gun cap: oracle MG253 muzzle +4.30 vs published-true +4.80.
+
+### Round-2 mimic purge + cap re-certification (2026-07-31, gate v10)
+Removed: ringFloor (repaired turret mask bottoms 1.53-1.79 at the carved
+ring); deckPack (the "casting fused to a hull node" band was 18 stranded
+fittings, ALL absorbed onto rig_turret in 86d1071 — the repaired hull
+mask is a bare 1.76 deck, so the old hullCurves cap is REVOKED, not
+excused); the 2.44 tall tailRack wall (measured low band [0.6..1.69]
+with a thin high rail to -4.2); short skirts (ref skirt band is TALL
+[0.80..1.78] at the corner columns and runs 2.50..-3.30).
+Re-lined: FIVE whips on the measured columns (trio at z -3.22, x -1.00/
+-0.20/+0.98 tops 4.53; flankers x -1.56/z -2.41 and x +1.62/z -2.21 tops
+~4.31); basket to -3.90 (bot 1.96); wider turret shell (hwMax 1.60).
+- RE-CERTIFIED STATURE CAP (the one TRUE 4B cap): the 1.313x
+  width-normalized print rides its roof plateau at 2.99-3.12 and the
+  cupola/pano band to 3.1+ vs published height 2.66; heightM (p95 of
+  tops) pins the whole build roof at 2.655-2.665, leaving a structural
+  0.25-0.45 m top delta across the ~50-column turret span:
+  turretCurves ceiling ~60-75, wholeCurves ceiling ~75-80, stations
+  ceiling ~80 (4-5 mid slices carry 7.5-9.6% roof deltas, 2 absorbed by
+  the trimmed mean). hullCurves is NOT excused by this cap.
+- RE-CERTIFIED short-gun cap: oracle MG253 tip +4.30..4.39 vs published
+  +4.80 (wholeCurves coverage only).
+Standing (gate v10): hull 59.9 / whole 39.9 / turret 26 / stations 70 /
+dims 99.9 / floaters 100 (was 0/0/0/63.8/99.8/100 at v10 start).

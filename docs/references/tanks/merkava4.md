@@ -97,3 +97,19 @@ never excuses dims. This mark is now authored to the real Mk.4M envelope
   print defects; a de-yaw is rigid (repair-queue candidate) but the
   foreshortening is not — scoring vs this print stays capped until a
   replacement oracle lands.
+
+### Round-2 re-certification vs the batch-4 program (2026-07-31, gate v10)
+The arlassar print was NOT in the batch-4 rigid-repair queue and remains
+defective beyond rigid repair: ~5.4 deg yawed in its own frame, globally
+FORESHORTENED (whole span ~6.9 m at 3.72 m width vs 9.04 published, hull
+~6.4 vs 7.60), barrel sleeve fused into the hull node. A rigid transform
+cannot fix foreshortening, so the v8 cap wording stands re-certified
+against the current oracle state:
+- hullCurves / wholeCurves / turretCurves / stations: CAPPED (observed 0)
+  — no published-scale straight build can match the foreshortened,
+  yawed masks. Replacement oracle required.
+- dims: SOVEREIGN and never excused — improved 90.8 -> 91.8 this round
+  (hullLengthM 7.76 -> ~7.6: the old 2.36 tall-rack wall and -4.16
+  basket were print shadows; the mark is authored to the published
+  Mk.4M envelope: low rear rack [0.6..1.68], basket to -4.00, ring
+  apron, capped 2.66 roof). floaters 100, rig-probe PASS.

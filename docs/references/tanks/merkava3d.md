@@ -65,3 +65,28 @@ floaters 100. Caps as merkava3c (root gun, follower sweep, bustle-in-hull
 band). Measured this pass: LOW rear rack (tops 1.56-1.63 falling to 1.27),
 chain-mat tip [0.74..1.43] at -4.1, one whip near CENTER (x ~ +0.2, z -3.4)
 plus one at x +0.9 / z -2.9, basket band flat 2.44 to -3.9.
+
+### Round-2 mimic purge + gate v10 standing (2026-07-31, post-repair 86d1071)
+The defect-mimic packs tuned to the BROKEN oracles are deleted from
+`src/vehicles/profiles/merkava.js`: the turret ring-interior column (bot
+y~0.6 — the repaired refs carve the crew tunnel at the ring plane, so the
+turret masks bottom at ~1.5 world), the hull-node `deckPack` casting-band
+crate, and the oracle-matching rear stacks/rod reads listed per mark below.
+Whips are seated on the measured reference trace columns (a half-column
+offset costs two worst-list columns per whip per view). MEASUREMENT
+MECHANICS (extends the Pershing/m60 notes): an unbroken axis-aligned
+box is EDGE-ON INVISIBLE to the near/far-clipped station-slice cameras —
+width carriers (fender lip/planks) are now SEGMENTED (~0.45 m, hairline
+gaps) so every slice window catches an end cap; that alone moved 1b
+stations 60 -> 77-79.
+Removed here: ringFloor; deckPack; the old LOW rear chain-mat tip read
+[0.74..1.43] (the repaired turret tail is a THIN rail [2.22..2.30] at
+-4.08 over the mats band [1.94..2.37]); the deep low wings (ref side is
+[1.05..1.33] at the tail; wings now carry the dims band at [0.62..1.33]).
+Re-lined: ONE tall whip at (x 0.21, z -3.17, top 4.73) + the short pot
+whip at -2.60 (the old second tall whip at -3.40 was a broken read);
+wide rear bustle (bustleHW 1.55, hwMax 1.62) with a narrow 1.05 basket;
+tail door recess -3.28; cheek bulges tucked (z ~0.9, yaw 0.42).
+- RE-CERTIFIED caps as 3B (cupola band, short gun +4.14 vs +4.73).
+Standing (gate v10): hull 64.4 / whole 56.2 / turret 40.4 / stations 82.7
+/ dims 94 / floaters 100 (was 21/18.8/8.5/73.3/97.8/100 at v10 start).

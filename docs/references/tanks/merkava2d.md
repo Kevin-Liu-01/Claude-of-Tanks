@@ -60,3 +60,31 @@ floaters 100.
   until an oracle re-rig; matching the wedge split would break articulation.
 - hullCurves residue: the hull-node wedges (above) cost side/front hull rows
   a few points; reproduced partially with the hull deck pack.
+
+### Round-2 mimic purge + gate v10 standing (2026-07-31, post-repair 86d1071)
+The defect-mimic packs tuned to the BROKEN oracles are deleted from
+`src/vehicles/profiles/merkava.js`: the turret ring-interior column (bot
+y~0.6 — the repaired refs carve the crew tunnel at the ring plane, so the
+turret masks bottom at ~1.5 world), the hull-node `deckPack` casting-band
+crate, and the oracle-matching rear stacks/rod reads listed per mark below.
+Whips are seated on the measured reference trace columns (a half-column
+offset costs two worst-list columns per whip per view). MEASUREMENT
+MECHANICS (extends the Pershing/m60 notes): an unbroken axis-aligned
+box is EDGE-ON INVISIBLE to the near/far-clipped station-slice cameras —
+width carriers (fender lip/planks) are now SEGMENTED (~0.45 m, hairline
+gaps) so every slice window catches an end cap; that alone moved 1b
+stations 60 -> 77-79.
+Removed here: ringFloor; deckPack (its 2.34 band was the stranded turret
+kit, absorbed in 86d1071 — the repaired deck reads 1.72 FLAT); the old
+rearPack tall-center-pack read (the 2.26 stack was the absorbed
+ex_decor_10 trailing stowage, now turret-side); pod-guard tower.
+Re-lined: marker rods at z -3.50 both ~0.9 tall (post-repair front trace:
+L 2.55 / R 2.51 — the old per-side [0.75/0.34] was a broken read);
+glacis bracket post at (-0.60, 2.85); wedge-face casting deepened
+(shellRear -2.55, stow to +-1.40); whips stay LEFT (-2.94/-2.19).
+- RE-CERTIFIED dome/pot stature residual (as 2B).
+- RE-CERTIFIED short-gun cap: oracle tip ~+4.03 vs published +4.50.
+- OBSOLETE: the v8 "cheek wedges ride the HULL node" hullCurves residue
+  (absorbed under Gun in 86d1071).
+Standing (gate v10): hull 73.3 / whole 56.8 / turret 39.6 / stations 71.7
+/ dims 99.4 / floaters 100 (was 40.6/28.5/7.9/71.8/100/100 at v10 start).

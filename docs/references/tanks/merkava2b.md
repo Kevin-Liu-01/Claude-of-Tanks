@@ -85,3 +85,32 @@ hull 72.5 / whole 43.3 / turret 23.9 / stations 74 / dims 99.4 / floaters
 muzzle +4.12 vs published-true +4.55) plus capped-clutter deltas (its dome
 band rides 2.8-2.9 vs published 2.65 — dims anchors the build at 2.66).
 turretCurves now meaningful and iterating (23.9, was 4.4 pre-repair).
+
+### Round-2 mimic purge + gate v10 standing (2026-07-31, post-repair 86d1071)
+The defect-mimic packs tuned to the BROKEN oracles are deleted from
+`src/vehicles/profiles/merkava.js`: the turret ring-interior column (bot
+y~0.6 — the repaired refs carve the crew tunnel at the ring plane, so the
+turret masks bottom at ~1.5 world), the hull-node `deckPack` casting-band
+crate, and the oracle-matching rear stacks/rod reads listed per mark below.
+Whips are seated on the measured reference trace columns (a half-column
+offset costs two worst-list columns per whip per view). MEASUREMENT
+MECHANICS (extends the Pershing/m60 notes): an unbroken axis-aligned
+box is EDGE-ON INVISIBLE to the near/far-clipped station-slice cameras —
+width carriers (fender lip/planks) are now SEGMENTED (~0.45 m, hairline
+gaps) so every slice window catches an end cap; that alone moved 1b
+stations 60 -> 77-79.
+Removed here: ringFloor; pod-guard tower; per-side clipped plank; the old
+tall-wing rear read (ref rail at -4.2 is [1.25..1.50] THIN — dims
+hullLength now rides the bow pods at 3.37, certified sub-margin cover).
+Re-lined: rack wall hangs LOW ([0.50..1.62]); dome drum z -0.56..-1.72
+capped 2.66 with the station on the RIGHT (x +0.42 — the front trace put
+the old left seat on the wrong side); rising cast roof 2.17@0.88 ->
+2.38@-0.44; whips split L/R (-0.89/-2.90, +0.78/-2.20) per the front
+trace; shoulder bins at +-1.26 (the measured 2.68 front band at x 1.4).
+- RE-CERTIFIED dome/pot stature residual (as 1B: oracle dome 2.83-2.90,
+  pots 3.03; build capped 2.66 by published height p95).
+- RE-CERTIFIED short-gun cap: oracle tip ~+4.08 vs published +4.53.
+- OBSOLETE: the v8 "skirts ride the turret node / casting rides the hull
+  node" caps (repair 6fa0335 + 86d1071) — hull and turret rows are live.
+Standing (gate v10): hull 78.6 / whole 56.3 / turret 44.4 / stations 81.6
+/ dims 96.3 / floaters 100 (was 72.5/43.3/23.9/74/99.4/100 at v10 start).

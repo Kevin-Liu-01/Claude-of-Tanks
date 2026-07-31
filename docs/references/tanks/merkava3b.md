@@ -66,3 +66,34 @@ floaters 100.
 - Measured findings this pass: tall rear stowage is a NARROW center stack
   (front hull tops 2.2-2.47 only inside |x|<0.8) over a low full-width frame;
   skirts ride 0.62-1.36; whips both at x ~ +1.0, tops 4.83-4.86.
+
+### Round-2 mimic purge + gate v10 standing (2026-07-31, post-repair 86d1071)
+The defect-mimic packs tuned to the BROKEN oracles are deleted from
+`src/vehicles/profiles/merkava.js`: the turret ring-interior column (bot
+y~0.6 — the repaired refs carve the crew tunnel at the ring plane, so the
+turret masks bottom at ~1.5 world), the hull-node `deckPack` casting-band
+crate, and the oracle-matching rear stacks/rod reads listed per mark below.
+Whips are seated on the measured reference trace columns (a half-column
+offset costs two worst-list columns per whip per view). MEASUREMENT
+MECHANICS (extends the Pershing/m60 notes): an unbroken axis-aligned
+box is EDGE-ON INVISIBLE to the near/far-clipped station-slice cameras —
+width carriers (fender lip/planks) are now SEGMENTED (~0.45 m, hairline
+gaps) so every slice window catches an end cap; that alone moved 1b
+stations 60 -> 77-79.
+Removed here: ringFloor; deckPack (ref deck is bare 1.60 across the old
+2.44 band). rearPack RE-FIT, not removed: the repair healed the tall rear
+stack HULL-side (x -1.08..0.93, y to 2.55, z -3.1..-4.13) — authored as
+the measured center stack [1.50..2.32] to -4.14 with a thin high rail
+[1.19..1.45] to -4.18 (bot 0.80 keeps the dims hullLength band).
+Re-lined: crest from z 1.78 (2.56-2.64), saddle 2.41 at 0.0..-0.25,
+sight band capped 2.655 (-0.36..-1.70), rear roof 2.64; chain-mat vane
+(the absorbed ex_armor mats) z -3.30..-4.06 [1.90..2.33] hw 0.92;
+casting wide to maxWZ +0.35 / rearWide 0.97 with a slim 1.08 bustle;
+whips at x 0.19/-3.15 and x 1.01/-2.97 per the front+side traces.
+- RE-CERTIFIED cupola/pano stature residual: repaired oracle band 2.71-
+  2.87 over -0.34..-1.65 vs published 2.66 (p95) — build capped 2.655.
+- RE-CERTIFIED short-gun cap: oracle MG251 tip +4.13 vs published-true
+  +4.73 (~6 proc-only side_whole columns).
+- OBSOLETE: v8 root-gun/follower-sweep turret caps (86d1071).
+Standing (gate v10): hull 77.9 / whole 69.7 / turret 52.9 / stations 84.9
+/ dims 99 / floaters 100 (was 58.7/39.5/2.4/81/96.8/100 at v10 start).

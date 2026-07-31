@@ -95,3 +95,37 @@ floaters 100.
 - wholeCurves gun cap: oracle M64 muzzle +4.09 vs published-true +4.42
   (overall 8.63); ~4 proc-only columns of coverage on side_whole.
   dims is fully satisfied (100) and is never excused by these caps.
+
+### Round-2 mimic purge + gate v10 standing (2026-07-31, post-repair 86d1071)
+The defect-mimic packs tuned to the BROKEN oracles are deleted from
+`src/vehicles/profiles/merkava.js`: the turret ring-interior column (bot
+y~0.6 — the repaired refs carve the crew tunnel at the ring plane, so the
+turret masks bottom at ~1.5 world), the hull-node `deckPack` casting-band
+crate, and the oracle-matching rear stacks/rod reads listed per mark below.
+Whips are seated on the measured reference trace columns (a half-column
+offset costs two worst-list columns per whip per view). MEASUREMENT
+MECHANICS (extends the Pershing/m60 notes): an unbroken axis-aligned
+box is EDGE-ON INVISIBLE to the near/far-clipped station-slice cameras —
+width carriers (fender lip/planks) are now SEGMENTED (~0.45 m, hairline
+gaps) so every slice window catches an end cap; that alone moved 1b
+stations 60 -> 77-79.
+Removed here: ringFloor; rearShelf mid-rail at deckY+0.10 (repaired deck is
+bare 1.63-1.75); pod-guard tower (ref bow band is [0.95..1.07] pod nubs);
+per-side clipped plank z0 (post-repair plan runs symmetric 2.95..-3.95);
+oracle chain drops (ref turret bottoms ~1.9 at the tail, not 1.55).
+Re-lined: rising deck (1.63 flat -2.4..-0.2, shelf crest 1.75 at -2.55),
+tail door recess -3.55 (tailNotch), casting-ring apron [1.48..1.86],
+roof plateau 2.58-2.62 / saddle 2.35 / flat dome drum 2.66 (capped),
+narrow brow (2.56, |x|<=0.19 inside the gun's plan columns), basket
+left-offset -0.055 per the measured asymmetric plan.
+- RE-CERTIFIED dome-band stature residual: the repaired oracle rides its
+  commander dome band at 2.80-2.87 over z -0.6..-1.7 (and pots 2.85 at
+  -2.4) vs published height 2.65; heightM is p95 of column tops, so the
+  build caps at 2.66 — a structural ~0.19 m top delta over ~12 side
+  columns and 1 station slice after trim. dims stays 100.
+- RE-CERTIFIED short-gun cap: oracle M64 tip +4.00..4.09 vs published-true
+  +4.40 (overall 8.63); ~4-5 proc-only side_whole columns.
+- Published-length tension: hullLengthM 7.45 vs the repaired print's ~7.2
+  hull — 1-2 sub-margin cover columns at each end (dims-sovereign trade).
+Standing (gate v10): hull 78.7 / whole 55.5 / turret 54.2 / stations 77.2
+/ dims 100 / floaters 100 (was 68.7/61.3/12.8/67.4/100/100 at v10 start).

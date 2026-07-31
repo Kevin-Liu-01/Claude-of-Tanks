@@ -51,3 +51,24 @@ floaters 100. Caps identical in kind to merkava3b (root-level gun, follower
 sweep) PLUS the 3C-specific bustle-in-hull band: its hull mask carries
 2.48-2.55 tops over z -0.7..-2.2 that no articulated build can copy exactly
 (deck pack reproduces the band shape on the deck).
+
+### Round-2 mimic purge + gate v10 standing (2026-07-31, post-repair 86d1071)
+The defect-mimic packs tuned to the BROKEN oracles are deleted from
+`src/vehicles/profiles/merkava.js`: the turret ring-interior column (bot
+y~0.6 — the repaired refs carve the crew tunnel at the ring plane, so the
+turret masks bottom at ~1.5 world), the hull-node `deckPack` casting-band
+crate, and the oracle-matching rear stacks/rod reads listed per mark below.
+Whips are seated on the measured reference trace columns (a half-column
+offset costs two worst-list columns per whip per view). MEASUREMENT
+MECHANICS (extends the Pershing/m60 notes): an unbroken axis-aligned
+box is EDGE-ON INVISIBLE to the near/far-clipped station-slice cameras —
+width carriers (fender lip/planks) are now SEGMENTED (~0.45 m, hairline
+gaps) so every slice window catches an end cap; that alone moved 1b
+stations 60 -> 77-79.
+Changes as merkava3b (same sculpt): ringFloor/deckPack removed, healed
+stack re-fit hull-side, crest/sight-band/vane/casting re-line, whip
+re-seat. Kasag bundles anchored to the measured 2.46-2.51 rear roof.
+- RE-CERTIFIED caps as 3B (cupola band stature, short gun +4.13 vs +4.73).
+- OBSOLETE: the v8 "bustle-in-hull band" hullCurves residue (absorbed).
+Standing (gate v10): hull 76.6 / whole 65.5 / turret 52.9 / stations 85.8
+/ dims 99 / floaters 100 (was 49.2/41.2/2.4/84.6/96.8/100 at v10 start).
