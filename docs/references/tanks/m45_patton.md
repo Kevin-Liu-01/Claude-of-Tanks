@@ -75,3 +75,50 @@ Rack rails run to −3.36 so their tips match the oracle's sparse tail pixels in
 the top view without entering the side gun-overhang bound (−3.38).
 No fender boxes: the oracle's flanks are bare and the howitzer band sits just
 above the deck line. Turret component 51 → 66.
+
+## From-scratch rebuild (2026-07-31, measured-curve program)
+Rebuilt from `docs/references/profiles/m45_patton.json`: toe (+3.15, 1.04),
+knee (+2.55, 1.52), deck 1.55; the full-width hull ENDS at −2.50 with the
+narrow (±0.70) centre tail block to −3.09 (the old −3.34 tail fixture
+overshot the repaired oracle and was removed); rack tips −2.96..−3.06 (the
+old −3.36 rails painted phantom tail mass). Howitzer: axis 1.54, r 0.125,
+muzzle +1.44, small recessed shield (the measured turret-plan shows the
+oracle's M71 shield is narrow, not the wide casting wave-2 assumed). Dome
+crest 2.32–2.34 with cupola at (−0.62, −1.62) top 2.30 and the M2 cluster
+front-right (x −0.32, barrel to +0.34). Gear measured: idler (+2.58, 0.54),
+HIGH sprocket (−2.44, 0.74), tension idler as the band's low support.
+IoU 86.1 → 86.8-87.6 band; gun stays 100 (both overhang masks empty).
+
+### Geometry-gate findings + certified cap (dims)
+Gate baseline: hull 51.9 / whole 50.5 / turret 0 / stations 79 / dims 0.
+After rounds: turret ~49 (ring basket to y≈0.34 added; the oracle's turret
+subtree reaches that deep), hull/whole ~50.
+**CERTIFIED CAP — dims.overallLengthM AND dims.hullLengthM**: this packet
+already documents that the published 8.65 m row is a copy of the M26
+gun-forward figure and "does not apply to the stub howitzer" (real M45
+overall ≈ hull length). The oracle measures 6.08–6.37 m overall. Passing
+dims would demand a 2.4 m 105 mm howitzer barrel — historically false and
+curve-breaking (same span-midpoint registration argument as m26). Capped;
+the spec.dims row itself needs the correction to ≈6.4 m.
+
+## Gate v7 rebuild round (2026-07-31)
+spec.dims.overallLengthM was corrected to 6.4 m (bow-flush stub howitzer) —
+the old dims cap is RETIRED and dims now scores 100 (heightM 0.01% /
+hullLengthM 0.21% / overallLengthM 0.15% / widthM 0.19%). The howitzer
+muzzle stays +1.44 (inside the hull span); overall length is carried by the
+hull: narrow tail block to -3.20 plus the toe/flap at +3.14 = 6.39 m read.
+v6/v7 true-camera turret: dome plan narrowed hard (peak hw 1.21 @ -1.25,
+ref band at x 1.12 is only z -0.93..-1.41), M45 M2 cluster at (-0.32,-0.90)
+with the raised published-height mast top 2.79 (oracle's own reads 2.68),
+cupola rebuilt as a TALL ring (base 2.34, h 0.26 — the old thin floating
+lid at 2.555 was the articulation-floater source), rack halfW 0.46 with
+tips -3.16. Sprocket raised to (-2.42, 0.85) for the measured departure
+ramp; tension idler kept as the return-run support.
+NO caps: this oracle's howitzer is bow-flush like the real vehicle, so every
+component is satisfiable. Remaining work orders: side_whole mean 3.65
+(front ramp columns +2.5..+2.9 vs the kit contact flat; M2 cluster tops
++0.1 high in 4 columns), turret_side mean 3.79 (dome front sections still
+~6 cm proud at z +0.1..-0.4; cupola edge bin at -1.86), stations 57.2
+(slice 3/9 tops — howitzer-tube slice visibility differs between models).
+Final components: hull 63.5 / whole 48.4 / turret 49.5 / stations 57.2 /
+dims 100 / floaters 100.

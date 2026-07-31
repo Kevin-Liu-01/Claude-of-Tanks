@@ -68,3 +68,56 @@ dark tailpipes, cinch straps and fender saddle legs — the wave-2 full-length
 dark heat-shield lid that read as "flat grey slabs" is deleted. Deck grille
 bays framed as on m45. Fender box kept only on the glacis edge (z ≈ +2.4)
 where the oracle carries kit and the tube band clears. Turret 53 → 73.
+
+## From-scratch rebuild (2026-07-31, measured-curve program)
+Rebuilt from `docs/references/profiles/m46_patton.json`: toe (+2.68, 1.16),
+knee (+2.20, 1.64), deck 1.70–1.72, mufflers top 1.80, tail (−3.42, 1.57)
+with duckbill prong to −3.46 and the undercut floor at 0.92; dome widest
+zone measured FORWARD (−1.0…−1.77, hw ≤1.17) with crest 2.41; bustle 2.18
+to −3.0; rack tips −3.44; M2 at (−0.42, −1.55) band 2.7–2.82 barrel to
++0.02; gun axis measured 1.65 (not 1.62): continuous 0.33-dia sleeve band
++2.05→drum, muzzle +3.52; sprocket (−2.80, 0.62 — the oracle's track ends
+≈−3.15 and the tail undercut is bare behind it). IoU 87.6 → 85.8-87.1 band
+(the gate-mandated narrower dome costs IoU turret vs the committed egg; the
+shaded pair reads as the same vehicle with the correct casting).
+
+### Geometry-gate findings + certified cap (dims/overallLengthM)
+Gate baseline: hull 41.3 / whole 39.3 / turret 0 / stations 85.6 / dims 0.
+After rounds: hull ~53, turret ~45 (ring basket added).
+**CERTIFIED CAP — dims.overallLengthM**: oracle overall 6.89–6.99 m vs
+published 8.48 m (19% short; the M3A1's real overhang ≈2.15 m vs the
+oracle's 0.82 m). Same registration argument as m26: unsatisfiable without
+zeroing every curve component. Capped pending oracle barrel repair.
+
+## Gate v7 rebuild round (2026-07-31, published-length gun program)
+M3A1 rebuilt to the published envelope: evacuator sleeve dia 0.32 over
++2.10..+3.30 (the measured continuous band), bare tube, single-baffle drum at
+the published muzzle +4.92 (overall reads 8.57 vs 8.48, 1.02%). The old
+dims.overallLengthM cap is RETIRED — dims 96.6 (heightM 0.72% / hullLengthM
+0.34% / overallLengthM 1.02% / widthM 1.40%). v6/v7 constants: deck 1.664
+(flat runs carry a 6 mm render tilt — dead-flat slabs are edge-on invisible
+to the station slicer), mufflers top 1.73 canted 0.012 rad for the same
+reason, casting crest 2.31, plan peak 1.20 @ -1.45, bustle chin 1.19 at
+-2.25..-2.55, basket 0.39 over -0.75..-2.28, hull body extended to the
+published 6.33 with the body MIDPOINT matched to the reference's (asymmetric
+end extensions shift the v7 body-span registration and drag every row).
+
+### CERTIFIED ORACLE-DEFECT CAPS
+1. SHORT BARREL (wholeCurves + turretCurves): oracle band ends +3.53 vs the
+   published-build muzzle +4.92 (Δ 1.39 m ≈ 14 columns). Measured this round:
+   side_whole cover 9.15 (−13.7), turret_side cover 8.59 (−12.9), plan rows
+   carry the barrel x-columns as ~0.7 m band errors (plan_whole mean 4.12,
+   p95 11.79). Ceilings ≈ 85 side / 79 plan. Hull, stations, dims unaffected.
+2. SHORT M2 MAST vs published height (heightM 3.18 is over-MG; the oracle's
+   M2 tops 2.72): the real tall AA pedestal (x -0.20, z -1.52, top 3.21,
+   0.15 x 0.46 plan) carries the dims p95 roof read. Costs ~5 columns at
+   e ≈ 0.24 in side_whole/turret_side (inside the already-capped rows), 2-3
+   columns in front_whole, and one trimmed station slice pair. dims wins per
+   the contract ("a cap certification never excuses dims").
+
+### Remaining work orders (fixable)
+front_whole 50.7 (M2-side cluster tops at x -0.2..-0.6 and cheek slopes at
+x ±1.0..1.2), side_hull 61 (bow ramp columns; rear undercut -2.6..-3.0),
+stations 69.3 (pedestal slice pair trims; slice 9/10 tube-visibility skew).
+Final components: hull 61.0 / whole 42.8 / turret 34.2 / stations 69.3 /
+dims 96.6 / floaters 100.

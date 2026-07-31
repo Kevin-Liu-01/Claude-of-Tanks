@@ -72,3 +72,55 @@ collapses — this, not shape, was most of the "worst turret mask" residue.
 Turret component 50 → 64 (front 77 / sides 69–70 / rear 72 / top ≈32; the
 top view is capped by the oracle's open-interior and below-deck junk pixels
 the full-width procedural hull cannot reproduce). Total 80.2 → 85.1.
+
+## From-scratch rebuild (2026-07-31, measured-curve program)
+Rebuilt from `docs/references/profiles/m47_patton.json`: toe (+2.87, 1.17),
+knee (+2.36, 1.58), deck 1.72–1.75, tail deck to −3.28 + narrow duckbill
+prong to −3.47 + twin tongues to −3.30 (hull plan ends ≈−3.25 per the gate
+trace); needle nose tip +0.72 (band 1.50→1.76) rising to the 2.52 plateau
+over −0.6…−1.9; bustle 2.24→2.16 with the tail held ≥±0.66 wide to −3.40
+(gate trace) and floor 1.50→1.56; blisters at ±0.88 ending ≤±1.06; M2 at
+(+0.04, −1.42) band to 2.94 with the barrel to +0.12; M36 gun: tube emerges
+at +0.92 (the reference's tube starts there — behind it the needle nose
+carries the silhouette), evac +2.60…+3.08 r 0.15, twin 0.65-plan deflector
+drums to +3.42, muzzle +3.45; gear: idler (+2.16 — the oracle's front wrap
+ends ≈+2.55), sprocket (−2.82, 0.60). Known cap (unchanged): top-view
+turret centroid shear vs the oracle's open-interior pixels.
+IoU 85.1 → 84.6-85.7 band; gate turret 0 → ~56, hull 29 → ~44.
+
+### Geometry-gate findings + certified cap (dims/overallLengthM)
+**CERTIFIED CAP — dims.overallLengthM**: oracle overall 6.86–6.87 m vs
+published 8.51 m (19% short; real M36 overhang ≈1.9 m vs the oracle's
+0.58 m). Same span-midpoint registration incompatibility as m26. Capped
+pending oracle barrel repair.
+
+## Gate v7 rebuild round (2026-07-31, published-length gun program)
+M36 rebuilt to the published envelope: tube from +0.92, evacuator +2.38..
++3.04, wide flat deflector drums at the published muzzle +5.06 (overall
+reads 8.57 vs 8.51, 0.66%). Old dims cap RETIRED — dims 95.5 (heightM 0.45%
+/ hullLengthM 1.16% / overallLengthM 0.66% / widthM 1.40%). v6/v7 turret:
+casting nose tip pulled to +0.45 (the old +0.72 needle overshot — the
+reference's needle read is its M2 barrel corridor over the nose), near-
+vertical face to the 2.50 plateau over -0.45..-1.45 (plan peak 1.14 wide
+only over -0.6..-1.45), bustle w0 0.94 at -1.95 with roof rails inboard at
+w1, chin box under the bustle throat, basket 0.39 over -0.32..-1.70. M2
+corridor at 2.87-2.94 with the barrel to +0.13; published-height pedestal
+(x -0.22, z -1.38, top 3.36) per the m46-style heightM certification
+(oracle M2 2.94 vs published 3.35 over-MG).
+
+### CERTIFIED ORACLE-DEFECT CAP — wholeCurves + turretCurves (short barrel)
+Oracle deflector ends +3.45 vs published muzzle +5.06 (Δ 1.61 m ≈ 16-17
+columns): side_whole cover 11.18 (−16.8), turret_side cover 11.32 (−17.0),
+plan gun x-columns (deflector half-width 0.34 → 8 columns) read ~0.8-0.9 m
+band errors: turret_plan mean 5.79 / p95 13.52 → ceiling ≈ 74-78 plan,
+83 side. Hull/stations/dims unaffected by the barrel (hull-anchored).
+
+### Remaining work orders (fixable)
+stations 33.8 — the pedestal spike pair straddles the slice-4/5 boundary and
+the M2-tip slice-8 read flip-flops with the union-frame bin phase between
+runs (proc/ref hull spans differ by ~2 cm; slice boundaries land on the
+corridor edges). Needs a settle round pinning proc hull span to the ref's
+6.27 m. front_whole 45.0 (cheek slopes at ±0.8..1.2 and the blister line),
+side_hull 64.9 (bow ramp + rear undercut columns).
+Final components: hull 64.9 / whole 41.5 / turret 22.4 / stations 33.8 /
+dims 95.5 / floaters 100.

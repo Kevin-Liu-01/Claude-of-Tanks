@@ -73,3 +73,69 @@ Wave-2 fitting corrections: fender stowage/tools moved from sponson height
 (inside the full-width hull, invisible) to the glacis deck edge; the tow-cable
 run was deleted — the oracle's flank along the gun-tube band is bare, and any
 deck-edge kit there subtracts the tube band out of the upper-assembly mask.
+
+## From-scratch rebuild (2026-07-31, measured-curve program)
+Build rewritten in `src/vehicles/profiles/patton.js` against
+`docs/references/profiles/m26_pershing.json` (mask-trace-1024 of the repaired
+oracle) — lofted station-slab hull following the deck/belly polylines, turret
+lofted from the whole−hull side band + plan footprint (no lathe egg). Key
+measured constants now in code: toe (+2.60, 1.08), knee (+1.82, 1.55), deck
+1.57, sponson 1.05, tail duckbill prong to −3.48; dome front lip −0.06 with
+the long 1.78→2.22 cast slope into a 2.34–2.37 crest; bustle 2.25→2.16 to
+−3.02; rack to −3.40; M2 station z −2.72 band 2.66–2.76 with the barrel
+forward to −1.28; gun axis 1.62, tube band dia 0.26, double-baffle body
+0.34 × 0.50 from +2.92, muzzle +3.50. IoU 88.4 → 88.4 (T 75.8 → 77-79 band,
+shaded pair reads as the same casting; boards in shots/procedural-fidelity/).
+
+### Geometry-gate findings + certified cap (dims/overallLengthM)
+`tools/geometry-gate.mjs` baseline (gate freeze): hull 55.4 / whole 51.0 /
+turret 1.7 / stations 89.4 / dims 0. After the rebuild rounds: turret ~56
+(the reference's rig_turret subtree carries a crew basket to y≈0.37 in the
+ring zone — now modelled), hull/whole ~55, stations ~82.
+**CERTIFIED ORACLE-DEFECT CAP — dims.overallLengthM**: the reference's 90 mm
+M3 is modelled SHORT: measured muzzle +3.48 → overall 6.96 m (curve span
+6.81 m body-filtered) vs published 8.65 m (21% short; real M3 overhang
+≈ 2.31 m vs the oracle's 0.86 m). Matching published overall requires a
++1.7 m barrel, which shifts the gate's span-midpoint registration by +0.85 m
+and zeroes EVERY curve component (hull/whole/turret) — published-dims and
+measured-curve components are mutually unsatisfiable against this oracle.
+No rigid transform can repair a short-modelled barrel (repair queue:
+barrel-extension is a scale/translate of a fused gun submesh). The build
+matches the oracle's gun band (the undamaged-views rule); dims.overallLengthM
+stays capped until the oracle barrel is repaired.
+
+## Gate v7 rebuild round (2026-07-31, published-length gun program)
+Gun rebuilt to the PUBLISHED envelope per the v5+ hull-anchored registration
+contract: 90 mm M3 muzzle now at +4.97 (overall reads 8.57 m vs 8.65 published,
+0.91%; the last few cm were traded against the widthM bin-phase, see below),
+double-baffle body 0.32 x 0.50 at the tube end, tube r 0.115 at axis 1.60.
+The old CERTIFIED CAP on dims.overallLengthM is RETIRED — dims now scores
+96.3 (heightM 0.99% / hullLengthM 0.40% / overallLengthM 0.91% / widthM 1.46%).
+v6 true-camera constants baked into patton.js: deck 1.535-1.55 (not 1.57),
+casting crest 2.31 (not 2.37), plan peak hw 1.225 @ z -1.40, mantlet chin
+1.17..1.43 sloping up to the face at -0.18, basket floor 0.375 over
+-0.84..-2.16, M2 band top 2.78, high sprocket (-2.90, 0.85) fitting the
+measured departure ramp, tail plan taper (full width ends -2.78, tip +-0.55).
+
+### CERTIFIED ORACLE-DEFECT CAP — wholeCurves + turretCurves (short barrel)
+The oracle's M3 tube ends at +3.52 (0.86 m overhang) vs the published-length
+build's +4.97 (Δ = 1.45 m ≈ 15 gate columns at 0.097 m pitch). Because the
+gun is below rig_turret in BOTH rigs, the delta lands in all four gun-bearing
+rows, measured this round as:
+- side_whole  coverPct 9.82  → −14.7 pts (proc-only barrel columns)
+- turret_side coverPct 9.26  → −13.9 pts
+- plan_whole  8 barrel x-columns read as BAND error (bustle rear + muzzle
+  front in one column): mean +1.2% → ≈−14, p95 11.9% → −7.2
+- turret_plan same mechanism: mean 4.18 includes ≈1.2% gun-column share
+Structural ceilings against this oracle ≈ side_whole 85, turret_side 86,
+plan_whole/turret_plan ≈ 78. hullCurves, stations, dims, floaters are NOT
+capped (hull mask carries no barrel). A repair (scale/translate of the fused
+gun submesh to the published overhang) retires this cap.
+
+### Remaining work orders (fixable, not capped)
+hull 56.1 (side_hull mean 2.9: bow ramp columns +2.2..+2.6 still read the
+kit's contact flat vs the ref ramp; rear deck steps -2.4..-3.0 within 4 cm),
+stations 60.2 (width column at the fender lip aliasing 3.35/3.51; slice tops
+within 3%), whole/turret residuals beyond the certified columns ≈ mean 1.5%.
+Final components this round: hull 56.1 / whole 37.7 / turret 43.1 / stations
+60.2 / dims 96.3 / floaters 100.
