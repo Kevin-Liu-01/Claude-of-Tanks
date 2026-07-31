@@ -365,6 +365,45 @@ RETAG_RECIPES = {
     },
 }
 
+# ---------------------------------------------------- merkava batch 4 -------
+# Phase 2 for merkava1b/2d/3b/3c/3d/4b (phase 1 = tools/repair_oracles.py —
+# ALWAYS run it first; it rebuilds from the pristine .bak, so this carve is
+# re-applied on top of a fresh phase-1 output). Unlike merkava2b, these six
+# fuse the crew-basket interior INTO the Turret mesh itself, so the split
+# runs on 'Turret' directly. Loose-part dumps prove the below-ring content
+# is a compact tunnel/basket interior that never touches the basket rails or
+# the chain curtain (chains bottom out ~y 1.9 and start ~1 m behind every
+# box's rear face):
+#   1b/2d interior x ±1.14  y 0.61..1.60  z -1.87..+0.42 (ring discs at
+#         y 1.5742 / 1.6998; casting side walls bottom exactly ON 1.6998)
+#   3b/3c/3d interior x -1.06..0.92  y 0.60..1.59  z -1.80..+0.27
+#   4b interior x -0.99..1.00  y 0.66..1.58  z -1.34..+0.64
+# The cut plane is y 1.60: everything WHOLLY below it is interior-only
+# (proven by the census), the handful of straddling seat/periscope posts are
+# bisected exactly on the plane, and the 1.60..1.70 liner ring band that
+# stays turret-side is hidden inside the casting silhouette (hull deck line
+# 1.63..1.79 on all six). The lower tunnel becomes a hull-side root fully
+# inside the hull tub in every mask view — the reference turret side-mask
+# bottom returns from ~0.6 to the ring line (gate worst columns pre-repair:
+# refBot ~1.1 m under procBot through the ring zone). Turret bbox is
+# unchanged by the carve (interior is strictly interior), so the autoPivot
+# footprint fallback does not move.
+for _id, _box in {
+    'merkava1b': (-1.30, 1.30, 0.0, 1.60, -2.00, 0.60),
+    'merkava2d': (-1.30, 1.30, 0.0, 1.60, -2.00, 0.60),
+    'merkava3b': (-1.20, 1.20, 0.0, 1.60, -1.95, 0.45),
+    'merkava3c': (-1.20, 1.20, 0.0, 1.60, -1.95, 0.45),
+    'merkava3d': (-1.20, 1.20, 0.0, 1.60, -1.95, 0.45),
+    'merkava4b': (-1.15, 1.15, 0.0, 1.60, -1.50, 0.80),
+}.items():
+    RETAG_RECIPES[_id] = {
+        'file': _id,
+        'src': 'current',
+        'ops': [
+            ('carve_region', 'Turret', _box, 'vehicle#turret_inside_low', None),
+        ],
+    }
+
 
 def world_bbox_min_max(obj):
     lo, hi = world_box(obj)

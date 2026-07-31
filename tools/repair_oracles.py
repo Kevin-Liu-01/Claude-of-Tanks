@@ -221,7 +221,18 @@ def translate_node(gltf, name, delta):
 
 
 def rename_node(gltf, old, new):
+    """Rename a node AND its same-named mesh entries.
+
+    The recovered WoT kits name each mesh after its node, and three.js
+    (GLTFLoader) names MULTI-primitive mesh children after the MESH, not the
+    node — so a node-only rename leaves runtime children under the old name
+    and the loader's follower regexes re-sweep them (batch-4 finding: the
+    renamed-away merkava3d rack wings still rode rig_turret as 2-primitive
+    child meshes named 'vehicle#ex_armor_10_111' etc.)."""
     gltf['nodes'][find_node(gltf, old)]['name'] = new
+    for mesh in gltf.get('meshes', []):
+        if mesh.get('name') == old:
+            mesh['name'] = new
 
 
 def reparent_node(gltf, child_name, new_parent_name):
@@ -461,6 +472,211 @@ def repair_leo2a5(gltf):
 
 
 REPAIRS['leo2a5'] = [('py', repair_leo2a5)]
+
+
+# ------------------------------------------------- merkava batch 4 (1b/2d/3b/
+# 3c/3d/4b) -------------------------------------------------------------------
+# Same recovered-kit layout as merkava2b (all nodes flat scene roots, one
+# shared +90degX quat; loader config userdrops5.js: turretNode ^Turret$,
+# gunNode ^Gun$, MERKAVA_TURRET_FOLLOWERS / MERKAVA_GUN_FOLLOWERS sweeps).
+# Diagnosis basis: loader's-eye rig probe (which rig group every node lands
+# in) + blender loose-part dumps of each Turret mesh. Three defect classes:
+#
+#  1. TURRET kit stranded hull-side — roof/basket furniture whose names miss
+#     every follower family (ammo_, mg_, optic_commander_, ex_lantern (roof
+#     pano), turret_cable_, gun_roller_, hatch_03/14..17, ex_decor_10/14) or
+#     whose names carry the [lr]_ marker the regex deliberately excludes
+#     (3b/3c chain-curtain mats named ex_armor_[lr]_04). They sit frozen on
+#     the hull while the turret yaws and top the HULL mask at casting height
+#     (merkava4b's certified "casting fused to a hull node" band 2.57-3.02 is
+#     exactly these 18 fittings). Fix: absorb_into(Turret) — physical
+#     children ride rig_turret with world transforms preserved exactly.
+#
+#  2. HULL kit orbiting with the turret — hull fittings whose kit numbers
+#     falsely match a follower family: front sponson skirt strips
+#     (2d ex_armor_01..05), rear-deck plates at deck height y 1.72-1.82
+#     (2d hatch_13, 3b ex_decor_03/04/05, 3c ex_decor_03/04, 3d ex_decor_02),
+#     the LOW rear escape door y 0.44..0.97 (3b/3c/3d hatch_09!), tail-lamp
+#     brackets (2d ex_decor_13), low rear-corner boxes (2d ex_decor_[lr]_02),
+#     hull tail rack wings y 0.75..1.64 (3d ex_armor_10..13), bow-fender
+#     marker rods + glacis/deck/fender kit (4b antenna_06/07, ex_decor_01/02/
+#     07/08, ex_decor_[lr]_02), and the 3b/3c halves of the tall rear stack
+#     the builder certified as HULL furniture (3b ex_decor_08/09, 3c
+#     ex_decor_07/08/09 — their twins already sit hull-side; healing the
+#     split to the certified side ends the half-flying stack). At yaw 180
+#     all of these orbited to the bow. Fix: renumber/rename into slots the
+#     regexes ignore (2b precedent: numbering is the only semantics these
+#     WoT kit names carry; side pieces keep honest [lr] markers).
+#
+#  3. rig_gun at the GLB root — the print's Gun node is a scene root and the
+#     tube lives in a SEPARATE root (vehicle#gun_barrel_NN) that only the
+#     gunFollowers regex rescues. Probed at runtime: cfg.gunNode resolves
+#     scene-wide and the follower sweep seats the tube under rig_recoil, so
+#     masks and articulation are CORRECT as-is. Absorbing the tube under Gun
+#     was TRIALLED on merkava1b and REVERTED: pulling the tube out of the
+#     loader's hull-length box recenters the reference ~0.7 raw z, which
+#     re-phases the gate's shared 96-column measurement grid and flipped the
+#     certified dims anchor by a full column (100 -> 89.1 on quantization
+#     alone, nothing physical). The tube-at-root layout costs only the
+#     muzzle-fx anchor nicety; it stays, documented, and the "root gun" cap
+#     wording in the certs is answered by classes 1-2 (the mask defects).
+#     EXCEPTION merkava2d: its Gun already carries the tube, and its stray
+#     mantlet bone_gun_34 (z max 1.62, far inside the hull box — cannot
+#     recenter anything) rode rig_turret via the bone_ sweep and never
+#     pitched; it is absorbed under Gun.
+#
+# Turret-node pivot audit (autoPivot footprint fallback must not drift):
+# every absorb above lands INSIDE the existing Turret subtree bbox except on
+# merkava4b, where the coax mg_twin_100 (z to +2.81) extends it: bbox
+# z -3.82..1.15 -> -3.83..2.81, footprint-centre pivot z -1.34 -> -0.51.
+# That shift is the repair: the casting's authored ring (crew tunnel,
+# z -1.34..0.64) centres at z -0.35, so the old basket-dragged pivot sat
+# 1.0 m aft of the ring and the new one sits 0.16 m aft. All other files'
+# Turret bboxes are byte-identical before/after.
+#
+# Phase 2 lives in tools/repair_oracles_blender.py (RETAG 'merkava1b' etc.):
+# every Turret mesh fuses the crew-basket interior (y 0.60..1.60, proven by
+# loose-part dumps to stay clear of basket rails/chains) which drags the
+# reference turret side-mask bottom ~1.1 m under the ring; it is split at
+# the ring plane exactly like merkava2b's turret_inside_46. RE-RUN ORDER:
+# python repair first (rebuilds from the pristine .bak), blender retag
+# second (layers the carve on the shipping file).
+def merkava_batch4(absorb_turret=(), absorb_gun=(), renames=()):
+    def fix(gltf, absorb_turret=tuple(absorb_turret),
+            absorb_gun=tuple(absorb_gun), renames=tuple(renames)):
+        for name in absorb_turret:
+            absorb_into(gltf, name, 'Turret')
+        for name in absorb_gun:
+            absorb_into(gltf, name, 'Gun')
+        for old, new in renames:
+            rename_node(gltf, old, new)
+    return [('py', fix)]
+
+
+# merkava1b: cleanest of the six — the sweep classifies every root correctly
+# (rear kit is luckily numbered ex_decor_10/11/12, hatch_14..17; the class-3
+# tube layout stays per the note above). Only the phase-2 interior split
+# applies; this entry exists so `repair merkava1b` still restores the file
+# from its pristine .bak before the blender phase re-carves it.
+REPAIRS['merkava1b'] = merkava_batch4()
+
+# merkava2d: Gun already carries the tube; the stray mantlet bone_gun_34
+# (y 1.54..2.76 z -0.91..1.62) rode rig_turret via the bone_ sweep and never
+# pitched — absorb under Gun. Strays hull-side: roof hatch hatch_03_88
+# (y 2.33..2.61), roof box ex_decor_14_89 (y 2.38..2.48 z 0.25..0.45),
+# trailing basket stowage ex_decor_10_78 (y 2.12..2.30 z -3.78..-3.67; the
+# 1b/2b twins of this piece are swept, and this sculpt's turret content
+# genuinely runs to z -3.94). Orbiting hull kit: front sponson strips
+# ex_armor_01/02 (x -1.93..-1.86, right) + 03/04/05 (x +1.50..1.95, left) at
+# y 1.31..1.81 over z +0.48..2.91; rear-deck hatch hatch_13_155 (y 1.72..1.82
+# z -3.25..-2.92); tail-lamp bracket ex_decor_13_146 (y 1.34..1.67); low rear
+# corner boxes ex_decor_[lr]_02 (y 0.94..1.36 z -3.93..-3.38).
+REPAIRS['merkava2d'] = merkava_batch4(
+    absorb_turret=['vehicle#hatch_03_88', 'vehicle#ex_decor_14_89',
+                   'vehicle#ex_decor_10_78'],
+    absorb_gun=['vehicle#bone_gun_34'],
+    renames=[
+        ('vehicle#ex_armor_01_92', 'vehicle#ex_armor_r_07_92'),
+        ('vehicle#ex_armor_02_93', 'vehicle#ex_armor_r_08_93'),
+        ('vehicle#ex_armor_03_94', 'vehicle#ex_armor_l_07_94'),
+        ('vehicle#ex_armor_04_95', 'vehicle#ex_armor_l_08_95'),
+        ('vehicle#ex_armor_05_96', 'vehicle#ex_armor_l_09_96'),
+        ('vehicle#ex_decor_13_146', 'vehicle#ex_decor_15_146'),
+        ('vehicle#ex_decor_l_02_148', 'vehicle#ex_decor_l_03_148'),
+        ('vehicle#ex_decor_r_02_150', 'vehicle#ex_decor_r_03_150'),
+        ('vehicle#hatch_13_155', 'vehicle#hatch_17_155'),
+    ],
+)
+
+# merkava3b: strays hull-side: roof hatch hatch_03_72 (y 2.53..2.63) and the
+# chain-curtain mats ex_armor_[lr]_04 (y 2.04..2.25 z -3.91..-3.48 — they
+# hang off the basket rim; the [lr] marker excluded them from the sweep).
+# Orbiting hull kit: rear-deck plates ex_decor_03/04/05 (y 1.72..1.79
+# z -2.77..-2.37), the LOW rear escape door hatch_09_135 (y 0.44..0.97!),
+# and the swept half of the tall rear stack ex_decor_08_79 (x -1.08..0.93
+# y 1.96..2.55 z -4.13..-3.11) + 09_78 — the builder certified that stack as
+# HULL furniture (its 10/11/12 twins already sit hull-side).
+REPAIRS['merkava3b'] = merkava_batch4(
+    absorb_turret=['vehicle#hatch_03_72', 'vehicle#ex_armor_l_04_60',
+                   'vehicle#ex_armor_r_04_61'],
+    renames=[
+        ('vehicle#ex_decor_03_132', 'vehicle#ex_decor_14_132'),
+        ('vehicle#ex_decor_04_134', 'vehicle#ex_decor_15_134'),
+        ('vehicle#ex_decor_05_133', 'vehicle#ex_decor_16_133'),
+        ('vehicle#ex_decor_08_79', 'vehicle#ex_decor_17_79'),
+        ('vehicle#ex_decor_09_78', 'vehicle#ex_decor_18_78'),
+        ('vehicle#hatch_09_135', 'vehicle#hatch_14_135'),
+    ],
+)
+
+# merkava3c: as 3b (same sculpt) + the commander sight optic_commander_81
+# (y 2.54..2.84) is stranded hull-side — with hatch_03_62 it IS the
+# certified "3C bustle-in-hull band 2.48-2.55 over z -0.7..-2.2".
+REPAIRS['merkava3c'] = merkava_batch4(
+    absorb_turret=['vehicle#hatch_03_62', 'vehicle#optic_commander_81',
+                   'vehicle#ex_armor_l_04_79', 'vehicle#ex_armor_r_04_80'],
+    renames=[
+        ('vehicle#ex_decor_03_137', 'vehicle#ex_decor_12_137'),
+        ('vehicle#ex_decor_04_138', 'vehicle#ex_decor_14_138'),
+        ('vehicle#ex_decor_07_72', 'vehicle#ex_decor_15_72'),
+        ('vehicle#ex_decor_08_73', 'vehicle#ex_decor_16_73'),
+        ('vehicle#ex_decor_09_74', 'vehicle#ex_decor_17_74'),
+        ('vehicle#hatch_09_132', 'vehicle#hatch_14_132'),
+    ],
+)
+
+# merkava3d: strays hull-side: hatch_03_70 + optic_commander_71 (as 3c). Its
+# chain mats (ex_armor_08/09) and tall rear band (ex_decor_05 etc.) already
+# ride the turret and the builder certified that band as TURRET-borne — kept.
+# Orbiting hull kit: the LOW hull tail-rack wings ex_armor_10..13
+# (y 0.75..1.64 z -4.21..-3.49; the certified proc puts these racks on the
+# HULL), rear-deck plate ex_decor_02_121, and the rear door hatch_09_128.
+REPAIRS['merkava3d'] = merkava_batch4(
+    absorb_turret=['vehicle#hatch_03_70', 'vehicle#optic_commander_71'],
+    renames=[
+        ('vehicle#ex_armor_10_111', 'vehicle#ex_armor_l_04_111'),
+        ('vehicle#ex_armor_11_112', 'vehicle#ex_armor_l_05_112'),
+        ('vehicle#ex_armor_12_113', 'vehicle#ex_armor_r_04_113'),
+        ('vehicle#ex_armor_13_114', 'vehicle#ex_armor_r_05_114'),
+        ('vehicle#ex_decor_02_121', 'vehicle#ex_decor_14_121'),
+        ('vehicle#hatch_09_128', 'vehicle#hatch_14_128'),
+    ],
+)
+
+# merkava4b: the "casting fused to a hull node" certified cap is a PHANTOM
+# built from 18 stranded roof/basket fittings (hull mask tops 2.57-3.02
+# across z +2.8..-3.2 = coax mg_twin_100 z 1.15..2.81, saddle ammo_02_101,
+# roof cable tray turret_cable_166 + gun_roller_102, commander hatch
+# hatch_03_120, pano head optic_commander_154, searchlight ex_lantern_143,
+# bustle hatches hatch_14..17, basket stowage ex_decor_10..17) — the hull
+# node x_root_159 itself tops out at y 1.88. All absorbed onto Turret.
+# Orbiting hull kit renamed out of the sweep: bow-fender marker rods
+# antenna_06/07 (y 1.57..2.08 at z +3.41 — no antenna-family escape exists,
+# so they leave the family), glacis box ex_decor_01_45, deck plate
+# ex_decor_02_52 (y 1.70..1.81), rear-deck bits ex_decor_07_46/08_18, front
+# fender boxes ex_decor_[lr]_02 (z +3.20..4.04). The certified 1.31x-tall
+# stature is NOT touched (not rigidly repairable).
+REPAIRS['merkava4b'] = merkava_batch4(
+    absorb_turret=['vehicle#ammo_02_101', 'vehicle#ex_decor_10_151',
+                   'vehicle#ex_decor_11_144', 'vehicle#ex_decor_12_145',
+                   'vehicle#ex_decor_14_147', 'vehicle#ex_decor_15_148',
+                   'vehicle#ex_decor_16_149', 'vehicle#ex_decor_17_152',
+                   'vehicle#ex_lantern_143', 'vehicle#gun_roller_102',
+                   'vehicle#hatch_03_120', 'vehicle#hatch_14_140',
+                   'vehicle#hatch_15_141', 'vehicle#hatch_16_132',
+                   'vehicle#hatch_17_109', 'vehicle#mg_twin_100',
+                   'vehicle#optic_commander_154', 'vehicle#turret_cable_166'],
+    renames=[
+        ('vehicle#antenna_06_158', 'vehicle#marker_rod_l_158'),
+        ('vehicle#antenna_07_157', 'vehicle#marker_rod_r_157'),
+        ('vehicle#ex_decor_01_45', 'vehicle#ex_decor_18_45'),
+        ('vehicle#ex_decor_02_52', 'vehicle#ex_decor_19_52'),
+        ('vehicle#ex_decor_07_46', 'vehicle#ex_decor_20_46'),
+        ('vehicle#ex_decor_08_18', 'vehicle#ex_decor_21_18'),
+        ('vehicle#ex_decor_l_02_36', 'vehicle#ex_decor_l_07_36'),
+        ('vehicle#ex_decor_r_02_35', 'vehicle#ex_decor_r_07_35'),
+    ],
+)
 
 
 def repair(tank_id):

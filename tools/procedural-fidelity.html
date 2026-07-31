@@ -921,7 +921,21 @@ if (params.get('geo')) {
   };
   if (procExt) dimCheck('heightM', procExt.h, pub.heightM);
   if (procExt) dimCheck('hullLengthM', procExt.len, pub.hullLengthM);
-  dimCheck('overallLengthM', fullSpan(curves.side_whole_proc), pub.overallLengthM);
+  const pixelSpanZ = (part) => {
+    const cam = camsG.side;
+    const m = gMask(procedural, reference, cam, part);
+    const px = 2 * cam.right / GSIZE;
+    let minX = null, maxX = null;
+    for (let x = 0; x < GSIZE; x++) {
+      let lit = false;
+      for (let y = 0; y < GSIZE; y++) if (m[y * GSIZE + x]) { lit = true; break; }
+      if (!lit) continue;
+      if (minX === null) minX = x;
+      maxX = x;
+    }
+    return minX === null ? 0 : (maxX - minX + 1) * px;
+  };
+  dimCheck('overallLengthM', pixelSpanZ('whole'), pub.overallLengthM);
   // plan columns run across the WIDTH axis; substantial band = the hull body
   // pixel-resolution width: trace columns quantize to ~11cm when a long
   // gun pins the plan frame; lit-pixel extent resolves to ~2-3cm. The
