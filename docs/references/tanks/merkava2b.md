@@ -59,3 +59,29 @@ file ownership.
 - r2 critique items closed: ring forward + roof drop (plateau 0.5..-0.6 at
   2.40-2.46 exactly per oracle), skirt scallops with exposed wheels, bow
   periscope strip left as the only bow fitting (clevis is toe hardware).
+| 5 (r5 FROM-SCRATCH curve rebuild: hull lofted from docs/references/profiles/merkava2b.json (glacis knee (2.70,1.57), keel (3.49,0.90)→(2.35,0.0), fender planks ±1.74 to z 3.46, pod bulges to 3.66, clipped tail corners); small turret re-authored: face z 1.15, roof RISING (0.85,2.26)→(−1.35,2.42) (r4 held a flat 2.40–2.46 plateau far forward), rounded commander dome band to 2.80 over −0.05..−1.20, basket −1.70..−3.05 + trailing stow/chain vane to −3.52, antenna spring-can stems to 2.85 with whips to 4.85 at the measured z −1.80/−2.28, corner marker rods on the rear fenders, M64 mantlet sleeve + evac at the measured z 2.4–2.6 | 76.0 | 88.0 | 81 | 29 | 92 | 92 | +0.3 over r4 75.7; whole views 88–97.6, T pinned at the documented follower cap |
+
+## r5 notes (curve rebuild — shaded-pair verdicts, one per view)
+- front: matching prow, pods and skirt shoulders; ref carries busier roof
+  clutter above the dome band.
+- side L/R: rising roof line + dome + long mantlet now match the print; the
+  ref's bustle stow is raggedier than my strapped cloth.
+- rear: basket, chains and marker rods line up; ref's rear band trails a touch
+  wider at the corners.
+- quarters: same vehicle read; my turret face is smoother than the cast print.
+- top: footprints nearly identical (97.6).
+- CURVE FINDINGS vs r4: the roof RISES rearward like the 1B (r4's flat plateau
+  0.52..−0.60 was mis-seated); the commander station is a 1.2 m rounded DOME
+  band, not discrete bumps; rear turret content continues to −3.5 (r4 chains
+  stopped at −3.3); the oracle's turret/hull split remains scrambled (skirts in
+  the turret node, casting partly in the hull node) so T ~29 is structural.
+
+### Post-repair standing (2026-07-31, geometry gate v8)
+Oracle repair 6fa0335 (followers absorbed, casting split at the ring, rear
+fittings unswept) OBSOLETES the old skirts-on-turret-node cap: hull rows
+jumped 30 -> 72.5 after removing the defect-mimic deck/rear packs. Standing:
+hull 72.5 / whole 43.3 / turret 23.9 / stations 74 / dims 99.4 / floaters
+100. Remaining wholeCurves gap is the certified short-gun coverage (oracle
+muzzle +4.12 vs published-true +4.55) plus capped-clutter deltas (its dome
+band rides 2.8-2.9 vs published 2.65 — dims anchors the build at 2.66).
+turretCurves now meaningful and iterating (23.9, was 4.4 pre-repair).

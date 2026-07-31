@@ -33,3 +33,21 @@ Width-normalized to 3.72. Whole z −4.14..+4.14; same sculpt family as 3B/3D:
 
 Remaining gaps: follower skirt capture in the ref turret mask (as 3D).
 | 4 (r3 turret reconstruction: shared Mk.3 rebuild (see 3B row) + Kasag cloth clutter; cheek-vent louvres never re-added to the turret (r2 flagged them as belonging on the hull sponson) | 82.9 | — | 87 | 65 | 86 | 88 | best family turret comp holds |
+| 5 (r5 FROM-SCRATCH curve rebuild: shared Mk.3 loft + turret re-seat (see 3B r5 — face z 1.75, crest 2.55, roof 2.40, axis 1.97, evac at 2.4–2.6, low full-width rear rack) + Kasag cloth clutter | 84.3 | 85.2 | 87 | 67 | 95 | 89 | +1.5 over r4 82.8; best family turret comp 67 |
+
+## r5 notes (curve rebuild — shaded-pair verdicts, one per view)
+- front: crest + wide roof ring + bundles match the print's massing.
+- side L/R: measured face/crest/saddle/cupola line reads the same; ref keeps
+  finer greebles on the cheeks.
+- rear: basket + rack bands align.
+- quarters: same-vehicle read throughout.
+- top: near-identical (97.0).
+- CURVE FINDINGS vs r4: identical structure to 3B (same sculpt family); the
+  1.97 axis + forward evac were worth +9 G.
+
+### Certified caps + standing (2026-07-31, geometry gate v8)
+Standing: hull 55.4 / whole 40.5 / turret 2.4 / stations 84.6 / dims 96.8 /
+floaters 100. Caps identical in kind to merkava3b (root-level gun, follower
+sweep) PLUS the 3C-specific bustle-in-hull band: its hull mask carries
+2.48-2.55 tops over z -0.7..-2.2 that no articulated build can copy exactly
+(deck pack reproduces the band shape on the deck).

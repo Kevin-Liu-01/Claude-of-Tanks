@@ -47,3 +47,33 @@ its turret node also captured a front skirt section (MERKAVA_TURRET_FOLLOWERS
 `ex_armor_(?!body)` in userdrops5.js), which the procedural turret cannot
 mirror without swinging hull armor on turret yaw.
 | 4 (r3 turret reconstruction: as merkava4 (shared modular rebuild — beak per the oracle low cheek tip y 1.93..2.23), paneled flanks (the r2-flagged missing kit), plateau/bustle/basket re-seated to the measured bands (basket -2.4..-3.9 top 2.56), rearTip bar DELETED (the r2 deck-skimming rail) — chains hang from the basket rim; smoke rosette on the cheek plane; hwMax 1.50 per plan ±1.5) | 79.3 | — | 82 | 53 | 86 | 86 | +0.6 total vs r2; clean-ref turret comp gains capped by the tall-oracle proportions |
+| 5 (r5 FROM-SCRATCH curve rebuild: hull lofted from docs/references/profiles/merkava4b.json (deck 1.76, glacis (3.53,1.12)→(2.85,1.44)→(1.10,1.76), keel to (2.15,0.03), body ±1.66 with skirts ±1.835 over 2.48..−1.95, fender horns to 3.35); turret re-authored on the measured lines — beak tip (2.60, band 1.93..2.24) rising to the CREST (0.60,2.79), saddle 2.53 at 0.2..0.45, plateau 2.82 from −0.05 (r4 roofFront sat at −0.20), pano band to 3.08 with mast stubs, basket −2.36..−4.00 top 2.55, whips at −2.2/−2.5/−3.35; tail rack lowered to [1.42..1.94] (the 2.42 band erased our own basket — subtraction lesson), right-side frame kept to −4.24 | 79.5 | 85.3 | 83 | 55 | 84 | 86 | +0.2 over r4 79.3; T 53 → 55, H 82 → 83 |
+
+## r5 notes (curve rebuild — shaded-pair verdicts, one per view)
+- front: beak + crest + saddle + wide plateau match the tall oracle's massing.
+- side L/R: the crest-forward roof line (2.79@0.6 → 2.82 plateau) replaces the
+  r4 flat roof that started 0.9 too far back; ref keeps its captured front
+  skirt section in the turret node.
+- rear: long basket band to −4.0 with the whip trio aligns; ref's rack band
+  sits slightly higher than my lowered frame.
+- quarters: same vehicle; my paneled flanks are flatter than the print's.
+- top: near-identical (96.5).
+- CURVE FINDINGS vs r4: the roof CRESTS at z 0.5–0.75 (2.79) with a saddle
+  behind it — the plateau begins at −0.05, not −0.20; the basket runs to
+  −4.02 (r4 stopped at −3.88); the hull's 2.42 rear band belongs to the
+  oracle's hull but erases our own turret mask if copied at height.
+
+### Certified caps + standing (2026-07-31, geometry gate v8)
+Standing: hull 24.6 / whole 17.5 / turret 0 / stations 63.8 / dims 93.7 /
+floaters 100.
+- hullCurves CAP: the print's turret casting is fused to its HULL node (hull
+  mask tops 2.57-3.02 across z +2.0..-3.0) and mantlet fragments sit in the
+  hull out to z 3.5. The deck pack reproduces part of the band; full parity
+  would require a fixed (non-articulated) casting — program violation.
+- turretCurves CAP: complementary defect — its rig_turret holds only sparse
+  furniture (pano head, whips, basket sliver), so a complete turret can not
+  match it. Needs an oracle re-rig (cf. 6fa0335).
+- stations partial cap: the print is ~1.31x TALL (its plateau rides 2.80-3.14
+  vs published 2.66); dims anchors the build at 2.66 so 4-5 mid slices carry
+  a structural 7-9% roof-height delta (2 absorbed by the trimmed mean).
+- wholeCurves gun cap: oracle MG253 muzzle +4.30 vs published-true +4.80.

@@ -39,3 +39,24 @@ whole z −3.62..+4.51.
 Remaining gaps: partial follower skirt capture in the ref turret mask
 (smaller than 2B's but present: front sections + rows).
 | 4 (r3 turret reconstruction: as 2B (shared small-turret rebuild) + cheek applique wedges rebuilt as proud overlays ON the beak planes — the detached standing-plate sliver and the floating apex box are DELETED; low 2D thermal sight box on the plateau; open basket + coil + chains; skirt scallops) | 82.3 | — | 91 | 52 | 91 | 90 | turret comp ~52 cap: 12 rear-half skirt panels ride the ref turret mask (see 2B note) |
+| 5 (r5 FROM-SCRATCH curve rebuild: shared 2-series loft (see 2B r5) with the 2D deltas measured from docs/references/profiles/merkava2d.json — wedge-module cheek face at z 1.31 (2B: 1.15), roof (0.90,2.30)→(−1.35,2.42), basket to −3.00 + vane to −3.46, tail −3.55, tip 4.51 | 83.7 | 86.8 | 92 | 55 | 94 | 90 | +1.2 over r4 82.5; T 52 → 55 |
+
+## r5 notes (curve rebuild — shaded-pair verdicts, one per view)
+- front: wedge cheeks + dome match; ref smoke/fitting clutter is finer grained.
+- side L/R: face at 1.31 with the rising roof and mantlet-evac line tracks the
+  print closely.
+- rear: basket + chains + marker rods align; ref rear band slightly busier.
+- quarters: same-vehicle read at every angle.
+- top: near-identical (97.8).
+- CURVE FINDINGS vs r4: same rising-roof/dome anatomy as 2B (r4 plateau was
+  mis-seated); the wedge front face sits 0.16 further forward than 2B's.
+
+### Certified caps + standing (2026-07-31, geometry gate v8)
+Standing: hull 61.1 / whole 47 / turret 0 / stations 71.8 / dims 95.4 /
+floaters 100.
+- turretCurves CAP: same unrepaired rig class as merkava1b (root-level gun
+  absent from the reference turret mask; cheek-applique wedges ride the HULL
+  node - front hull trace tops 2.34-2.48 at center). Observed ceiling ~0-15
+  until an oracle re-rig; matching the wedge split would break articulation.
+- hullCurves residue: the hull-node wedges (above) cost side/front hull rows
+  a few points; reproduced partially with the hull deck pack.

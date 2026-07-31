@@ -42,3 +42,26 @@ Remaining gaps: ref turret mask carries rear+front skirt sections and the
 hull rack (followers config), inflating the ref upper mask my clean turret
 cannot fully cover.
 | 4 (r3 turret reconstruction: shared Mk.3 rebuild + Dor-Dalet bulged cheek overlays for variant differentiation + rear-roof tarp roll; rear chain-rail tip rebuilt as rail + hanging chain-mat vane + drops at the ORIGINAL mass/height) | 82.8 | — | 88 | 58 | 89 | 89 | gun-metric lesson: the overhang compare aligns masks by combined centroid — pass-1 lightened/raised the rear tip mass and the aligned barrel line dropped, G 89->70; restoring the measured mass/height at basketBot+0.02 restored G 89 |
+| 5 (r5 FROM-SCRATCH curve rebuild: shared Mk.3 loft + turret re-seat (see 3B r5) at the 3D widths (hwMax 1.78, roofHW 1.34) + Dor-Dalet cheek bulges; the measured 3D rear differs from 3B/3C — its tall band z −3.3..−4.07 tops 2.28–2.40 and rides the ORACLE'S TURRET mask (followers), while its hull rack line falls 1.67→1.33, so: LOW hull side-wing racks [0.80..1.42] with the open center, TURRET basket extended to −3.92 (topRear 2.20) + rear chain tip [1.02..2.02] at −4.09; gun axis 1.97 (1.96/1.98 each cost 2–6 G points), r 0.082, mantlet drop −0.04 | 83.0 | 86.7 | 88 | 59 | 91 | 88 | +0.1 over r4 82.9; T 58 → 59.4 |
+
+## r5 notes (curve rebuild — shaded-pair verdicts, one per view)
+- front: bulged cheeks + crest match; ref scatters more sensor boxes on the
+  roof band.
+- side L/R: the long rear basket band at the measured 2.28–2.40 out to −3.9
+  now carries the silhouette the r4 low tip missed; ref's captured-skirt
+  turret strips remain unmatchable.
+- rear: chain tip + wing racks + clipped corners align; ref's frame drops to
+  ~0.7 where mine stops at 1.0.
+- quarters: same vehicle; my bulges read cleaner than the print's castings.
+- top: near-identical (96.8).
+- CURVE FINDINGS vs r4: the 3D rear band is TURRET-borne to −4.07 (the r4
+  packet note underestimated it as chains 1.9..2.15); its hull rack is LOW
+  (0.76..1.35, falling) unlike 3B/3C's 2.35–2.40 wall; the plan's deep rear
+  extents only span the outboard strips (center recessed to −3.58).
+
+### Certified caps + standing (2026-07-31, geometry gate v8)
+Standing: hull 43 / whole 37 / turret 0 / stations 71.4 / dims 97.8 /
+floaters 100. Caps as merkava3c (root gun, follower sweep, bustle-in-hull
+band). Measured this pass: LOW rear rack (tops 1.56-1.63 falling to 1.27),
+chain-mat tip [0.74..1.43] at -4.1, one whip near CENTER (x ~ +0.2, z -3.4)
+plus one at x +0.9 / z -2.9, basket band flat 2.44 to -3.9.
