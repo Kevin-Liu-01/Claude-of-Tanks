@@ -269,6 +269,60 @@ def absorb_into(gltf, child_name, parent_name):
     reparent_node(gltf, child_name, parent_name)
 
 
+def quat_mul(a, b):
+    """glTF (x,y,z,w) quaternion product a*b (apply b first, then a)."""
+    ax, ay, az, aw = a
+    bx, by, bz, bw = b
+    return [
+        aw * bx + bw * ax + ay * bz - az * by,
+        aw * by + bw * ay + az * bx - ax * bz,
+        aw * bz + bw * az + ax * by - ay * bx,
+        aw * bw - ax * bx - ay * by - az * bz,
+    ]
+
+
+def quat_rotate(q, v):
+    """Rotate vector v by glTF quaternion q."""
+    x, y, z, w = q
+    # v' = v + 2*cross(q.xyz, cross(q.xyz, v) + w*v)
+    cx = y * v[2] - z * v[1] + w * v[0]
+    cy = z * v[0] - x * v[2] + w * v[1]
+    cz = x * v[1] - y * v[0] + w * v[2]
+    return [
+        v[0] + 2 * (y * cz - z * cy),
+        v[1] + 2 * (z * cx - x * cz),
+        v[2] + 2 * (x * cy - y * cx),
+    ]
+
+
+def fold_node(gltf, name, axis, angle_deg, pivot_world):
+    """Rigid rotation of a whole (scene-root) node about a WORLD axis line.
+
+    Physically a hinge fold: the node's subtree rotates by angle_deg about the
+    axis-parallel line through pivot_world. Node-level only — mesh bytes are
+    untouched. Implemented as world = T(p - R*p) * R * old_world, baked into
+    the node's TRS (works for the recovered-kit layout: scene roots whose only
+    transform is the shared rotation quaternion, plus any translation).
+    """
+    import math
+    node = gltf['nodes'][find_node(gltf, name)]
+    if 'matrix' in node or 'scale' in node:
+        raise ValueError(f'{name}: fold_node needs a TRS node without scale')
+    h = math.radians(angle_deg) / 2
+    ax = {'x': [1, 0, 0], 'y': [0, 1, 0], 'z': [0, 0, 1]}[axis]
+    qf = [ax[0] * math.sin(h), ax[1] * math.sin(h), ax[2] * math.sin(h), math.cos(h)]
+    q0 = node.get('rotation', [0.0, 0.0, 0.0, 1.0])
+    t0 = node.get('translation', [0.0, 0.0, 0.0])
+    rp = quat_rotate(qf, pivot_world)
+    rt = quat_rotate(qf, t0)
+    node['rotation'] = quat_mul(qf, q0)
+    node['translation'] = [
+        pivot_world[0] - rp[0] + rt[0],
+        pivot_world[1] - rp[1] + rt[1],
+        pivot_world[2] - rp[2] + rt[2],
+    ]
+
+
 # Per-oracle repair recipes. Each is a list of ops in model-space units of
 # that GLB (verified against docs/references/tanks/<id>.md world measures and
 # the inspect dump).
@@ -330,6 +384,17 @@ REPAIRS = {
 # it: body spans -5.22..+1.97 with the origin on the ring). Ring plane sits
 # at the chassis deck, world z ~74; the L11 trunnion at world (-4.7, 6, 85).
 def repair_chieftain5(gltf):
+    # GUARD (batch 5): this recipe slices mesh#0 by the ORIGINAL 8-prim
+    # indices, so it must only ever run on the pristine print. If the .bak
+    # were ever lost, repair() would snapshot the already-repaired shipping
+    # file as .bak and a re-run would silently corrupt it — refuse instead.
+    # Phase 2 (stranded waist / rack-content absorb) lives in
+    # tools/repair_oracles_blender.py RETAG 'chieftain5'; re-run order is
+    # python repair first (from the pristine .bak), blender retag second.
+    if any(n.get('name') == 'Chassis' for n in gltf['nodes']):
+        raise SystemExit('chieftain5: input already carries the phase-1 '
+                         'repair (its .bak is not pristine) — refusing to '
+                         'double-apply. Restore a pristine .bak first.')
     quat = [0.7071068286895752, 0, 0, 0.7071068286895752]
     mesh0 = gltf['meshes'][0]
     prims = mesh0['primitives']
@@ -679,12 +744,89 @@ REPAIRS['merkava4b'] = merkava_batch4(
 )
 
 
+# ------------------------------------------------------ m1a2 (batch 5) -----
+# The certified "oracle turret rests ~2 deg yawed (gun tip ~0.17 left)" cap is
+# a MIS-DIAGNOSIS — the print carries a lateral TRANSLATION, not a yaw.
+# Vertex-level proof (raw asset frame: x lateral +right, -y front, z up;
+# scratch analysis batch-5):
+#   * area-weighted plan-azimuth histograms of near-vertical facets: hull
+#     meshes (Object_2/8/11) peak EXACTLY on 0/90/180/-90 deg; turret meshes
+#     (Object_4/17/23/6/18) peak within +-0.4 deg of the same cardinals =
+#     NO coherent yaw anywhere.
+#   * M256 bore endcap-ring centroids: breech (-0.077, -1.887), muzzle
+#     (-0.055, -6.974) -> tube runs 0.25 deg off the long axis (parallel).
+#   * hull mirror axis: x = +0.1906 (Object_2/21 quantile symmetry, residual
+#     ~0); hull deck ring-hole centre x +0.19..0.23. The hull box is exactly
+#     symmetric about it (raw x -2.23..2.61 = +-2.42 about +0.19).
+#   * turret group mirror axis: shell/kit x ~= -0.043, mantlet -0.02, bore
+#     -0.066 -> the ENTIRE TurretPivot subtree is authored ~0.234 left of the
+#     hull centreline. That offset is what read as "-0.16 gun x offset" after
+#     the loader recentred on the turret-dragged hull box.
+# Repair: one rigid +x translation of TurretPivot (GunPivot rides along).
+# Chosen delta re-centres the shell mirror axis on the hull's: the hull box
+# stops being dragged left (recentring lands scoring x=0 on the true hull
+# axis), the bore lands 0.017 left (~1.4 cm) of centre, and the certified
+# "asymmetric hull x -1.71..1.83" front-mask cap dissolves (it was the offset
+# turret's left overhang). Ring seat verified while in there: turret content
+# bottoms z 2.01..2.20 vs deck top band 2.18..2.22 (seated, no float); below-
+# deck content (gun breech, Object_18 sponson lips) stays clear of the ring-
+# hole edge after the shift (hidden interior overlap only).
+# Runtime-surgery compatibility (modelLoader applyModelFixes): carve boxes are
+# GEOMETRY-local (unchanged by a node transform); the add-on roof/cheek kit is
+# authored TurretPivot-LOCAL, so it rides the translation and stays matched to
+# the shell. applySwap re-parents TurretPivot under rig_turret with the world
+# transform preserved, so the baked translation survives articulation.
+REPAIRS['m1a2'] = {
+    'path': 'public/models/tanks/m1a2_sepv3_dannzjs.glb',
+    'ops': [('translate', 'TurretPivot', [0.2336, 0.0, 0.0])],
+}
+
+
+# ------------------------------------------------- challenger1 (batch 5) ----
+# Certified cap (docs/references/tanks/challenger1.md): "safeScale keys on the
+# oracle's wing mirrors (wider than its skirts), shrinking its whole body
+# ~7.4%". The width-setters are four flat scene-root stowage panniers standing
+# proud of the skirt/ERA run (119 loose parts each — basket + strapped
+# contents, the audit's "wing mirrors"), 2 per side:
+#   vehicle#ex_decor_l_09_109 / l_10_114   x  1.9023..2.0926
+#   vehicle#ex_decor_r_11_104 / r_12_98    x -2.0937..-1.9035
+#   all four: y 0.6832..1.5536, z  1.8422..2.2841 / -0.8839..-0.4420
+# Next-widest body: the skirts themselves (vehicle#ex_armor_l_01_93 x 1.9319),
+# so these four alone set size.x = 4.186 and the loader's safeScale goes
+# width-keyed (3.8016/4.186 = 0.908) instead of length-keyed (8.32/8.775 =
+# 0.948); the lab's width re-normalisation then squeezes the whole body to
+# ~92.6% (the packet's "scale x0.926") — body width 3.23 m vs published 3.52.
+# Repair: rigid 90-deg HINGE FOLD of each pannier about its inboard-top edge
+# (the mount line against the skirt), swinging it in/onto the sponson band:
+#   left  pair: -90 deg about +z through (x 1.902325, y 1.553626)
+#   right pair: +90 deg about +z through (x -1.903487, y 1.553626)
+# Folded bboxes: x +-(1.032..1.902), y 1.363..1.554 — inside the hull tub
+# (x_root +-1.90, deck 1.99) and under the fender line, so they vanish from
+# every mask view without deleting a vertex. size.x drops to 3.864 (skirts
+# rule), safeScale goes length-keyed and the oracle self-measures ~8% larger.
+# Names keep their ex_decor_[lr]_NN form: the [lr] marker keeps them out of
+# CHALLENGER_TURRET_FOLLOWERS (they stay hull-side — "mirrors stay planted").
+REPAIRS['challenger1'] = [
+    ('py', lambda gltf: [
+        fold_node(gltf, 'vehicle#ex_decor_l_09_109', 'z', -90.0, [1.902325, 1.553626, 0.0]),
+        fold_node(gltf, 'vehicle#ex_decor_l_10_114', 'z', -90.0, [1.902325, 1.553626, 0.0]),
+        fold_node(gltf, 'vehicle#ex_decor_r_11_104', 'z', 90.0, [-1.903487, 1.553626, 0.0]),
+        fold_node(gltf, 'vehicle#ex_decor_r_12_98', 'z', 90.0, [-1.903487, 1.553626, 0.0]),
+    ] and None),
+]
+
+
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)
     if ops is None:
         raise SystemExit(f'no repair recipe for {tank_id}')
-    path = RECOVERED / f'{tank_id}.glb'
-    bak = RECOVERED / f'{tank_id}.glb.bak'
+    if isinstance(ops, dict):        # custom-path recipe (m1a2 hero GLB)
+        path = ROOT / ops['path']
+        bak = path.with_suffix('.glb.bak')
+        ops = ops['ops']
+    else:
+        path = RECOVERED / f'{tank_id}.glb'
+        bak = RECOVERED / f'{tank_id}.glb.bak'
     if not bak.exists():
         shutil.copy2(path, bak)
     gltf, chunks = read_glb(bak)  # always start from the pristine original
@@ -696,6 +838,8 @@ def repair(tank_id):
             rename_node(gltf, op[1], op[2])
         elif kind == 'reparent':
             reparent_node(gltf, op[1], op[2])
+        elif kind == 'fold':
+            fold_node(gltf, op[1], op[2], op[3], op[4])
         elif kind == 'py':
             op[1](gltf)
         else:

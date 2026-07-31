@@ -404,6 +404,58 @@ for _id, _box in {
         ],
     }
 
+# ---------------------------------------------------- chieftain5 (batch 5) --
+# SPLIT-RIG PRINT, phase 2. Phase 1 (tools/repair_oracles.py batch-2) built
+# the Turret/Gun rig by re-grouping mesh#0's material prims: the Turret node
+# holds the saucer shell (Turret_995: crown + cupola dome + searchlight
+# housing + flank-rack WALLS + bustle basket) + masts (Gear_921) + the L11.
+# RE-RUN ORDER: python `repair chieftain5` first (rebuilds phase 1 from the
+# pristine .bak — the recipe guards against running on a non-pristine input),
+# THEN this retag ('src': 'current' layers on the phase-1 output).
+# Residual defect (docs/references/tanks/chieftain5.md v6/v7 cert "SPLIT-RIG
+# ORACLE": casting waist / collar band / cupola glass / IR searchlight face
+# read in the HULL mask): the fused hull-root mesh 'Chieftain MK-5 Main
+# Battle Tank' (2071 loose parts: Gear_938/Glass_996/Applique_155/Hull_361/
+# SideSkirts_361) still carries ~290 physically TURRET-BORNE parts that stay
+# frozen at yaw (baseline board, turret 180: the chin casting + smoke
+# dischargers still face the bow while the crown yaws away). Loose-part
+# census + solo colour renders (batch-5 scratch classifier) prove four
+# clean center-in-box families, glb-world (x width, y long axis with the
+# ring at y=0 and the bow at -y, z up; deck plates top z 74..75.3):
+#   1. chin/cheek casting band + discharger banks + searchlight face +
+#      cupola/periscope glass + waist kit: (-67, 67, -45, 78, 75.5, 130)
+#      — 280 parts, union x -65.7..46.5  y -14.2..81.8  z 75.0..119.4;
+#      nothing hull-legit matches (deck kit centers sit z <= 74.9, glacis
+#      zone y < -45 has zero parts above z 72).
+#   2. RIGHT flank-rack CONTENTS (strapped duffels/box between the
+#      TurretMesh rack walls x 36..69.8 y 81..145.7): (34, 63, 82, 146, 77, 104)
+#   3. LEFT rack trim/straps (same rack, x -66.6..-44.7 walls):
+#      (-63, -34, 82, 146, 76.5, 102.5) — excludes the deck-edge handrail
+#      at x -65..-63 (center x -64, outside the box).
+#   4. crown-rear cable run at z ~105 (the cert's "ring collar 2.43 m" band):
+#      (-46, -4, 78, 110, 102, 109)
+# All joins land in ONE 'TurretWaist' object hung under the Turret empty with
+# world transform preserved (absorb world-exactly, no lifts). The Turret node
+# ORIGIN (authored ring centre 0,0,74) is untouched, so the loader's
+# autoPivot origin branch — and the articulation frame — do not move.
+RETAG_RECIPES['chieftain5'] = {
+    'file': 'chieftain5',
+    'src': 'current',
+    'ops': [
+        ('carve_parts', 'Chieftain MK-5 Main Battle Tank', [
+            ('center', (-67.0, 67.0, -45.0, 78.0, 75.5, 130.0)),
+            ('center', (34.0, 63.0, 82.0, 146.0, 77.0, 104.0)),
+            ('center', (-63.0, -34.0, 82.0, 146.0, 76.5, 102.5)),
+            ('center', (-46.0, -4.0, 78.0, 110.0, 102.0, 109.0)),
+        ], 'TurretWaist', 'Turret'),
+    ],
+    # the python phase authored these pivot origins (ring centre / trunnion);
+    # the export round-trip flattens empties to the world origin, which would
+    # flip the loader's autoPivot origin branch to the gun-dragged footprint
+    # fallback. Parent-first order.
+    'restore_origins': [('Turret', [0.0, 0.0, 74.0]), ('Gun', [-4.7, 6.0, 85.0])],
+}
+
 
 def world_bbox_min_max(obj):
     lo, hi = world_box(obj)
@@ -563,7 +615,64 @@ def run_retag(tank_id):
     bpy.context.view_layer.update()
     bpy.ops.export_scene.gltf(filepath=str(src), export_format='GLB',
                               export_yup=True, export_apply=False)
+    restore_origins(src, recipe.get('restore_origins'))
     print(f'[retag] {tank_id}: -> {src} (pristine original at {bak.name})')
+
+
+def restore_origins(src, wanted):
+    """Re-park node ORIGINS on authored glb-world points after export.
+
+    load() transform-applies every object, and empties (pure pivot nodes such
+    as chieftain5's python-repair 'Turret'/'Gun') come out of the round-trip
+    at the world origin — the loader's autoPivot origin branch (`to.y > 0.25`)
+    would then fall back to the gun-dragged footprint centre and the
+    articulation frame would move. This restores each named node's origin
+    WITHOUT moving any geometry: node.translation = authored world point,
+    every direct child compensated by the inverse. Requires (asserts) the
+    exported file to be rotation-free on the touched paths — true for these
+    baked exports. Runs on the GLB JSON via tools/repair_oracles.py helpers;
+    idempotent, ordered parent-first.
+
+    wanted: ordered list of (node_name, [wx, wy, wz]) in glb world coords.
+    """
+    if not wanted:
+        return
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        'repair_oracles', Path(__file__).resolve().parent / 'repair_oracles.py')
+    ro = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ro)
+    gltf, chunks = ro.read_glb(src)
+    nodes = gltf['nodes']
+    parent_of = {}
+    for i, n in enumerate(nodes):
+        for c in n.get('children', []):
+            parent_of[c] = i
+
+    def world_of(idx):
+        t = [0.0, 0.0, 0.0]
+        while idx is not None:
+            n = nodes[idx]
+            assert 'rotation' not in n and 'matrix' not in n and 'scale' not in n
+            nt = n.get('translation', [0, 0, 0])
+            t = [t[k] + nt[k] for k in range(3)]
+            idx = parent_of.get(idx)
+        return t
+
+    for name, point in wanted:
+        idx = ro.find_node(gltf, name)
+        node = nodes[idx]
+        assert 'rotation' not in node and 'matrix' not in node
+        parent_world = world_of(parent_of[idx]) if idx in parent_of else [0, 0, 0]
+        old_local = node.get('translation', [0.0, 0.0, 0.0])
+        new_local = [point[k] - parent_world[k] for k in range(3)]
+        delta = [new_local[k] - old_local[k] for k in range(3)]
+        node['translation'] = new_local
+        for c in node.get('children', []):
+            ct = nodes[c].get('translation', [0.0, 0.0, 0.0])
+            nodes[c]['translation'] = [ct[k] - delta[k] for k in range(3)]
+    ro.write_glb(src, gltf, chunks)
+    print(f'[retag] origins restored: {[n for n, _ in wanted]}')
 
 
 # Blender's glTF importer converts the file's +Y-up world to Blender Z-up:
