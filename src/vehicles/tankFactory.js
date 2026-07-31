@@ -372,6 +372,10 @@ function trackLoopPoints({ idler, sprocket, botY, topY, sag = 0.03, supports = n
   arc(sprocket, Math.max(aSprk, 184), 360, 7); // around the sprocket (rear)
   // drop duplicate closing point
   pts.pop();
+  // ground clamp: the band centerline can never pass below its own ground
+  // run — raised end-wheel wraps (y - r - CLEAR < botY) dipped 6cm+ below
+  // ground and inflated every heightM reading (geo-gate round-2 finding)
+  for (const p of pts) if (p[1] < botY) p[1] = botY;
   return pts;
 }
 
@@ -796,11 +800,13 @@ function buildRunningGear(P, cfg) {
   // patch; approach/departure rise tangentially to the raised end wraps
   // instead of running at ground level past both end wheels.
   const contact = {
-    // A real track's loaded ground run is the stable base of the profile.
-    // Give it a slight approach/departure overhang beyond both raised end
-    // wheel centres; the top return run must never be the wider trapezoid.
-    zF: Math.max(Math.max(...wheelZs) + wheelR * 0.5, frontEnd.z + frontEnd.r * 0.12),
-    zR: Math.min(Math.min(...wheelZs) - wheelR * 0.5, rearEnd.z - rearEnd.r * 0.12),
+    // A real track's loaded ground run spans the ROAD-WHEEL patch only —
+    // the departure ramps from the last road wheel up to raised end-wheel
+    // wraps (references do; the old extension to the end wheels ran the
+    // flat band underneath raised sprockets). The ground run stays the
+    // trapezoid's wide base: the tangent overhang lands outside the patch.
+    zF: Math.max(...wheelZs) + wheelR * 0.5,
+    zR: Math.min(...wheelZs) - wheelR * 0.5,
   };
   const pts = trackLoopPoints({ idler: { ...frontEnd }, sprocket: { ...rearEnd }, botY, topY, sag, supports, contact });
   // Track-band normals and individual link orientation assume a clockwise

@@ -6,6 +6,21 @@ translations, and re-parent nodes so each oracle assembles correctly
 (turret seated on the hull ring, gun on the mantlet). Mesh/vertex data is
 never modified — the binary chunk passes through byte-identical.
 
+BATCH-7 EXCEPTION (the ONE sanctioned vertex edit): `slim_radial` — a
+measured radial-only rescale of an ISOLATED fused gun tube about its own
+bore axis (isu122s / isu152 print authoring error: tube+brake modelled fat
+enough to pass the gate's 12%-band body rule, dragging registration off the
+hull). Selection is provably tube-only (census guards refuse to run
+otherwise), z/length is never touched, and only the selected POSITION
+floats change in the binary chunk. Everything else still passes through
+byte-identical.
+
+BATCH-6 EXCEPTION (leo2a6): one 'py2' op class may rigidly ROTATE a proven,
+counted vertex subset in place (a stowed-antenna fold — the only mesh-byte
+mutation this tool performs). The op asserts the exact expected vertex count
+before writing and rebuilds the POSITION min/max; everything else in the bin
+chunk passes through byte-identical.
+
 Usage:
   python3 tools/repair_oracles.py inspect <file.glb> [--verbose]
   python3 tools/repair_oracles.py repair  <id>            # applies REPAIRS[id]
@@ -782,6 +797,131 @@ REPAIRS['m1a2'] = {
 }
 
 
+# ------------------------------------------------------ leo2a6 (batch 6) ----
+# GATE-V9 cert (docs/references/tanks/leo2a6.md): "wholeCurves ceiling 82-86,
+# the print's L/55 muzzle reads +8.28 / overall 11.99 m vs published 10.97".
+# Batch-6 diagnosis: THE FILE'S GUN IS CORRECT — raw overall 10.96 on a 7.63
+# hull (published 10.97/7.72). The +1.0 m is manufactured at RUNTIME:
+#   * the print's two bustle whip antennas (thin card rods, 52 topological /
+#     104 accessor verts, x +-0.87..0.92, y 1.431..3.076, z 2.12..2.35
+#     glb-world) stand 4.16 m over the track bed — past the loader's height
+#     headroom (heightM 2.64 x 1.30 = 3.432), so modelLoader's conservative
+#     scale s = min(len, width, height) height-clamps to 0.825 instead of the
+#     length key 1.0118 (the tank shipped 18% undersized in-game, hull 6.3 m);
+#   * the leo2a6-specific L/55 remap (modelLoader "tank_models r5") computes
+#     wantMuzzleZ = 0.9 x hullLengthM in that shrunken frame and re-stretches
+#     the tube to a 3.8 m overhang on a 6.3 m hull — that is the whole +9.3%.
+# Repair (rigid, in-file): STOW THE WHIPS — fold both antenna rods -90 deg
+# about the x-parallel line through their base (y 1.4310, z 2.1243), tips
+# landing flat over the roof (y 1.43..1.66, z 0.48..2.16 — inside the turret
+# silhouette in every mask view; real Bundeswehr whips tie down exactly so).
+# Next-highest turret vert is y 1.8175 -> model height 2.90, s goes
+# length-keyed (1.0118), the remap's own guard (wantReach <= reach x 1.05)
+# disables the stretch, and the normalized muzzle lands at +7.03 vs the
+# procedural's +7.01 (hull-anchored registration: ZERO ref-only barrel
+# columns). No scaling, no deletion — a rigid rotation of 104 verts.
+LEO2A6_WHIP_BOXES = [  # glb-world, [x0,x1,y0,y1,z0,z1] — proven by census:
+    (-0.95, -0.88, 1.42, 3.10, 2.05, 2.40),   # exactly 104 accessor verts
+    (0.85, 0.92, 1.42, 3.10, 2.05, 2.40),     # match, all whip (52 topo x2)
+]
+LEO2A6_WHIP_PIVOT = (1.4310, 2.1243)  # (y, z) of the whip base line
+LEO2A6_WHIP_VERTS = 104
+
+
+def mat_rigid_inverse(m):
+    """Inverse of a rotation+translation column-major 4x4 (no scale)."""
+    r = [m[0], m[4], m[8], 0,
+         m[1], m[5], m[9], 0,
+         m[2], m[6], m[10], 0,
+         0, 0, 0, 1]
+    t = transform_point(r, (-m[12], -m[13], -m[14]))
+    r[12], r[13], r[14] = t
+    return r
+
+
+def node_world_matrix(gltf, index):
+    parent = {}
+    for i, n in enumerate(gltf['nodes']):
+        for c in n.get('children', []):
+            parent[c] = i
+    chain = [index]
+    while chain[-1] in parent:
+        chain.append(parent[chain[-1]])
+    m = IDENT
+    for i in reversed(chain):
+        m = mat_mul(m, local_matrix(gltf['nodes'][i]))
+    return m
+
+
+def repair_leo2a6(gltf, chunks):
+    import struct as _s
+    node = find_node(gltf, 'turret_0')
+    m = node_world_matrix(gltf, node)
+    minv = mat_rigid_inverse(m)
+    bi = next(i for i, (t, _) in enumerate(chunks) if t == BIN_CHUNK)
+    data = bytearray(chunks[bi][1])
+    prim = gltf['meshes'][gltf['nodes'][node]['mesh']]['primitives'][0]
+
+    def layout(attr):
+        acc = gltf['accessors'][prim['attributes'][attr]]
+        bv = gltf['bufferViews'][acc['bufferView']]
+        off = bv.get('byteOffset', 0) + acc.get('byteOffset', 0)
+        return acc, off, (bv.get('byteStride') or 12)
+
+    pacc, poff, pstride = layout('POSITION')
+    nacc, noff, nstride = layout('NORMAL')
+    py, pz = LEO2A6_WHIP_PIVOT
+
+    def fold_pt(w):        # -90 deg about the x-parallel line through pivot
+        dy, dz = w[1] - py, w[2] - pz
+        return (w[0], py + dz, pz - dy)
+
+    def fold_dir(w):
+        return (w[0], w[2], -w[1])
+
+    hits = 0
+    lo = [float('inf')] * 3
+    hi = [float('-inf')] * 3
+    for i in range(pacc['count']):
+        p = _s.unpack_from('<fff', data, poff + i * pstride)
+        w = transform_point(m, p)
+        inside = any(b[0] <= w[0] <= b[1] and b[2] <= w[1] <= b[3]
+                     and b[4] <= w[2] <= b[5] for b in LEO2A6_WHIP_BOXES)
+        if inside:
+            hits += 1
+            w = fold_pt(w)
+            p = transform_point(minv, w)
+            _s.pack_into('<fff', data, poff + i * pstride, *p)
+            n = _s.unpack_from('<fff', data, noff + i * nstride)
+            nw = (n[0] * m[0] + n[1] * m[4] + n[2] * m[8],
+                  n[0] * m[1] + n[1] * m[5] + n[2] * m[9],
+                  n[0] * m[2] + n[1] * m[6] + n[2] * m[10])
+            nw = fold_dir(nw)
+            nl = (nw[0] * m[0] + nw[1] * m[1] + nw[2] * m[2],
+                  nw[0] * m[4] + nw[1] * m[5] + nw[2] * m[6],
+                  nw[0] * m[8] + nw[1] * m[9] + nw[2] * m[10])
+            _s.pack_into('<fff', data, noff + i * nstride, *nl)
+        for k in range(3):
+            lo[k] = min(lo[k], p[k])
+            hi[k] = max(hi[k], p[k])
+    if hits != LEO2A6_WHIP_VERTS:
+        raise SystemExit(f'leo2a6: whip census mismatch — expected '
+                         f'{LEO2A6_WHIP_VERTS} verts in the fold boxes, hit '
+                         f'{hits}; refusing to write (wrong input file?)')
+    pacc['min'] = list(lo)   # exact float32 round-trips (no rounding)
+    pacc['max'] = list(hi)
+    chunks[bi] = (BIN_CHUNK, bytes(data))
+    print(f'[repair] leo2a6: stowed both bustle whips ({hits} verts folded '
+          f'-90deg about y={py} z={pz}); turret_0 y-max now '
+          f'{max(hi[1], 0):.4f} (local)')
+
+
+REPAIRS['leo2a6'] = {
+    'path': 'public/models/tanks/leo2a6_buh.glb',
+    'ops': [('py2', repair_leo2a6)],
+}
+
+
 # ------------------------------------------------- challenger1 (batch 5) ----
 # Certified cap (docs/references/tanks/challenger1.md): "safeScale keys on the
 # oracle's wing mirrors (wider than its skirts), shrinking its whole body
@@ -816,6 +956,295 @@ REPAIRS['challenger1'] = [
 ]
 
 
+# ================================================================ batch 7 ===
+# WWII + casemate wave. Diagnosis basis: vertex-level scratch analysis
+# (per-z-band plan-extent centres, area-weighted facet-azimuth circular
+# means, bore-line fits from tube end-ring centroids, Kasa circle fits of
+# authored basket rings) plus a runtime rig dump of the fidelity harness.
+# Three of the five certified "rest yaw" caps were the batch-5 m1a2 pattern
+# again: a rigid lateral OFFSET (or nothing at all) misread as a yaw.
+
+# ------------------------------------------------ sherman_jumbo (batch 7) ---
+# Cert (docs/references/tanks/sherman_jumbo.md v9): "the print's fused gun
+# line sits at x ~ -0.3 with the turret visibly rest-yawed (~7 deg)".
+# MIS-DIAGNOSIS, same class as batch-5 m1a2 — the turret is TRANSLATED, not
+# yawed. Vertex proof (raw frame ~= metres, scale 1.001):
+#   * plan-extent centre of the turret mesh is CONSTANT in z: rear bustle
+#     -0.217 (z -1.68) ... dome -0.225 (z -0.9..0.3) ... mantlet -0.222
+#     (z 1.07) ... muzzle ring centroid -0.211 (z 3.08..3.15). A 7 deg yaw
+#     over that z range would spread the centres ~0.59; measured spread is
+#     0.01. Facet-azimuth circular mean: hull 0.003 deg, turret 0.267 deg.
+#   * the authored basket bottom ring (y 1.21, 112 verts) is a PERFECT
+#     circle (radial spread 0.000): centre (x -0.2176, z -0.0088), r 0.610;
+#     basket top band centre (-0.2229, -0.0017); hull ring-pit rim fit
+#     centre (-0.025, +0.131) r 1.161; hull slab-side mirror x -0.0026;
+#     cfg pivot [0, 1.25, 0] expects the ring axis at x 0, z 0.
+# The whole fused turret (dome + basket + 75 mm) is authored 0.218 LEFT of
+# its own ring pit. Repair: one rigid +x translation seating the basket
+# ring on the cfg-pivot/hull axis. After: basket ring x -0.0000, muzzle
+# centroid x +0.007 (gun x ~= 0), shell centres -0.004.
+REPAIRS['sherman_jumbo'] = {
+    'path': 'public/models/tanks/community/sherman-jumbo.glb',
+    'ops': [('translate', 'turret', [0.2176, 0.0, 0.0])],
+}
+
+# ------------------------------------------------- t34_85_cad (batch 7) -----
+# Cert (docs/references/tanks/t34_85_cad.md v9): "Gun offset +0.15 x per the
+# print's resting turret yaw (~2-3 deg)" — CONFIRMED, the one true rest yaw
+# of the batch. Vertex proof (raw ~= metres, scale 0.979):
+#   * fused ZiS-S-53 is a single frustum: root ring c=(0.0483, 1.8949) at
+#     z 1.003 (53 verts, found via muzzle-ring triangle partners), muzzle
+#     ring c=(0.1410, 1.8961) at z 3.992 (167 verts) -> bore azimuth
+#     +1.776 deg, elevation +0.02 deg (level).
+#   * facet-azimuth circular mean: hull +0.05 deg, turret +3.2 deg (the
+#     curved egg dome skews the mod-90 fold; the bore line is the precise
+#     instrument). Shell plan-centres tilt front-positive/rear-negative,
+#     consistent with the same yaw.
+#   * the bore plan-line extended backward passes 0.011 from the turret
+#     node's authored origin (0.016, 1.612, -0.393) — the print yawed the
+#     turret about its own ring pivot, and the gun is boresighted through
+#     it. autoPivot already articulates about that origin (origin branch).
+# Repair: rigid yaw of the turret node about the vertical axis through its
+# OWN origin (pivot == node translation -> pure local rotation; origin,
+# and therefore the loader's articulation frame, do not move). After:
+# muzzle centroid x +0.005, root ring x +0.005 (gun x ~= 0).
+REPAIRS['t34_85_cad'] = {
+    'path': 'public/models/tanks/community/t34_85_weihe.glb',
+    'ops': [('fold', 'turret', 'y', -1.7763, [0.016, 1.612, -0.393])],
+}
+
+# -------------------------------------------------- newc_tiger (batch 7) ----
+# Cert (docs/references/tanks/newc_tiger.md v9): "gun x +0.10 per the
+# print's rest yaw". MIS-DIAGNOSIS (m1a2 pattern): the tube is exactly
+# parallel to the hull axis — per-z-bin tube centroid is CONSTANT
+# (cx +0.0463, cy 2.1347 raw over z 2.2..5.2; runtime dump: cx +0.045,
+# cy 2.070 over the whole free tube). Facet azimuth: hull 0.006 deg,
+# turret shell 0.027 deg, barrel 0.58 deg -> nothing is rotated.
+# The WHOLE assembly is authored +0.043 right of the hull mirror
+# (x +0.0023): Turret node origin x +0.043, shell plan-centres +0.043
+# (constant rear-to-front), mantlet centre +0.043, bore +0.046.
+# Repair: one rigid -x translation of the Turret node (Barrel rides
+# along; the node origin lands on the hull axis, so the autoPivot origin
+# branch and the yaw circle recentre with it). After: origin x 0.000,
+# shell centres 0.000, bore x +0.003 (gun x ~= 0).
+REPAIRS['newc_tiger'] = {
+    'path': 'public/models/tanks/community/tiger_newc42.glb',
+    'ops': [('translate', 'Turret', [-0.0430, 0.0, 0.0])],
+}
+
+# -------------------------------------------------- newc_pziii (batch 7) ----
+# NO RECIPE — assessed NOT REPAIRABLE BY RIGID MEANS, and the certified
+# defect is a mis-diagnosis (docs/references/tanks/newc_pziii.md v9: "Gun
+# x +0.12 print turret rest yaw; gun rests visibly ELEVATED ~0.5 m at the
+# muzzle columns — rotate the Gun node's rest pitch to zero").
+# Measured truth (vertex + runtime dumps):
+#   * rest pitch is ZERO: the authored tube centroid line is CONSTANT
+#     (cx +0.0600, cy 1.9582 raw over z 1.77..3.48; runtime cx +0.100,
+#     cy 1.984 over z 1.75..3.50 — level to the millimetre). rig_turret /
+#     rig_gun / rig_recoil eulers are all 0 in the harness.
+#   * rest yaw is ZERO: turret shell facet azimuth -0.045 deg (hull
+#     +0.003), shell plan-centres constant -0.007.
+#   * the "elevated gun-line" gate columns are the cupola/turret-rear
+#     region (ref cupola crown vs proc turret-end, at ~ -1.4..-1.6) and
+#     bow-length coverage columns — not the gun.
+#   * the gun-x offset is REAL but is an authoring error INSIDE the fused
+#     Gun mesh: the tube is drawn +0.060 raw off the mantlet's own centre
+#     (-0.011); modelLoader's newc_pziii fix then scales gun x/y by 1.5
+#     about the node origin (x -0.010, 0.07 left of the bore), amplifying
+#     the visible offset to +0.10. Any rigid node move trades tube error
+#     for mantlet error 1:1 (translating the node centres the tube but
+#     off-centres the mantlet by the same amount; re-seating the origin on
+#     the bore axis halves the tube offset but shifts the runtime-fattened
+#     mantlet left by the gain) — net zero for the masks, so the file is
+#     left byte-identical and the 6 cm authored tube offset stays a
+#     documented print cap.
+
+# ------------------------------------------------------ tiger2 (batch 7) ----
+# NO RECIPE HERE (the batch-3 retag in tools/repair_oracles_blender.py owns
+# this file) — both v9 repair candidates resolve to NO-OP:
+#  (b) "nose-up rake, ground contact only from z ~ +0.9, rigid-transform
+#      repairable" — MIS-DIAGNOSIS. The track-bottom profile is DEAD FLAT
+#      at y 0.000..0.003 over z -3.1..+1.1 (4.2 m ~= the published 4.1 m
+#      ground-contact length, both runs identical, .bak and shipping file
+#      alike); a pitch of even 1 deg would slope that patch 73 mm. The
+#      hull roof/deck bands are level. What the gate saw is the print's
+#      front track/wheel run curling UP from z ~ +1.2 (the wheel curve is
+#      authored ~0.4 m early; the whole track loop is ~0.6 m shorter than
+#      the real 7.2 m envelope, front-aligned at the bow). No rigid
+#      transform can extend a short track loop; pitching the model would
+#      lift the rear run and tilt the level decks — worse on every row.
+#  (a) the 2.5-2.8 m hull-mask mass at z -2.1..-3.4 ("intake tower") IS
+#      genuine hull geometry: blender loose-part dump of Object_9 shows a
+#      centreline deep-wading intake tower (parts v=18 + v=14 + base
+#      collar v=11, footprint x -0.34..0.39, z -3.16..-3.46, deck 2.06 up
+#      to y 2.714) standing on the engine deck between the radiator hump
+#      gratings (the +-0.96 deck-level parts). The turret bustle underside
+#      (Object_2 subtree) is y 2.752 over that zone — the print author
+#      built the tower 38 mm UNDER the turret swing. It never yaws, never
+#      floats: hull-side is correct, matching the geometry agent's v9
+#      hull-side replication.
+
+
+def _slim_radial(tank_id, node_name, *, axis_lx, axis_lz, along_min, r_max,
+                 factor, expect_verts):
+    """Builder for THE ONE SANCTIONED VERTEX EDIT (batch-7, docstring head).
+
+    Radial-only rescale of the isolated fused gun tube of a recovered ISU
+    print, about its own (authored, parallel-to-z) bore axis. Works in the
+    MESH-LOCAL frame of `node_name` (the recovered kits hang the fused skin
+    under a +90degX Root: local x = world x, local y = world z fwd, local
+    z = -world y): verts with local_y > along_min AND radial distance from
+    the bore axis < r_max get lx/lz scaled toward the axis by `factor`.
+    local_y (= world z, the tube length) is NEVER touched.
+
+    Guards (refuse loudly rather than carve blindly):
+      * exact selected-vert census must equal `expect_verts`;
+      * the isolation annulus r_max..7.0 forward of along_min must be EMPTY
+        (proves everything selected is tube/brake, nothing hull/bow);
+    Normals of selected verts get the inverse-transpose fix (radial
+    components / factor, renormalized) — exact for tube walls and axial
+    faces, corrects the taper faces. POSITION accessor min/max rebuilt.
+    """
+    def op(gltf, chunks, _id=tank_id, node=node_name, ax=axis_lx, az=axis_lz,
+           ymin=along_min, rmax=r_max, s=factor, expect=expect_verts):
+        import struct as _s
+        import math as _m
+        ni = find_node(gltf, node)
+        prims = gltf['meshes'][gltf['nodes'][ni]['mesh']]['primitives']
+        if len(prims) != 1:
+            raise SystemExit(f'{_id}: expected 1 primitive, got {len(prims)}')
+        prim = prims[0]
+        bi = next(i for i, (t, _) in enumerate(chunks) if t == BIN_CHUNK)
+        data = bytearray(chunks[bi][1])
+
+        def layout(attr):
+            acc = gltf['accessors'][prim['attributes'][attr]]
+            bv = gltf['bufferViews'][acc['bufferView']]
+            off = bv.get('byteOffset', 0) + acc.get('byteOffset', 0)
+            return acc, off, (bv.get('byteStride') or 12)
+
+        pacc, poff, pstride = layout('POSITION')
+        has_normals = 'NORMAL' in prim['attributes']
+        if has_normals:
+            nacc, noff, nstride = layout('NORMAL')
+        # census first — nothing is written unless both guards hold
+        sel = []
+        annulus = 0
+        for i in range(pacc['count']):
+            lx, ly, lz = _s.unpack_from('<fff', data, poff + i * pstride)
+            if ly <= ymin:
+                continue
+            r = _m.hypot(lx - ax, lz - az)
+            if r < rmax:
+                sel.append(i)
+            elif r < 7.0:
+                annulus += 1
+        if annulus:
+            raise SystemExit(f'{_id}: isolation annulus not empty ({annulus} '
+                             f'verts at r {rmax}..7.0 fwd of y {ymin}) — the '
+                             f'tube is not cleanly separable; refusing')
+        if len(sel) != expect:
+            raise SystemExit(f'{_id}: tube census mismatch — expected '
+                             f'{expect} verts, selected {len(sel)}; refusing '
+                             f'to write (wrong input file?)')
+        selset = set(sel)
+        lo = [float('inf')] * 3
+        hi = [float('-inf')] * 3
+        for i in range(pacc['count']):
+            p = _s.unpack_from('<fff', data, poff + i * pstride)
+            if i in selset:
+                p = (ax + (p[0] - ax) * s, p[1], az + (p[2] - az) * s)
+                _s.pack_into('<fff', data, poff + i * pstride, *p)
+                if has_normals:
+                    n = _s.unpack_from('<fff', data, noff + i * nstride)
+                    nx, ny, nz = n[0] / s, n[1], n[2] / s
+                    ln = _m.sqrt(nx * nx + ny * ny + nz * nz) or 1.0
+                    _s.pack_into('<fff', data, noff + i * nstride,
+                                 nx / ln, ny / ln, nz / ln)
+            for k in range(3):
+                lo[k] = min(lo[k], p[k])
+                hi[k] = max(hi[k], p[k])
+        pacc['min'] = list(lo)
+        pacc['max'] = list(hi)
+        chunks[bi] = (BIN_CHUNK, bytes(data))
+        print(f'[repair] {_id}: radial-slimmed {len(sel)} tube verts by '
+              f'x{s} about local axis ({ax}, {az}), fwd of local y {ymin}')
+    return op
+
+
+# ---------------------------------------------- isu122s / isu152 (batch 7) --
+# Certified caps (docs/references/tanks/isu{122s,152}.md v9, hull/whole/
+# stations 0-14): the fused D-25S / ML-20S guns are modelled fat enough that
+# their forward-of-bow silhouette columns pass the gate's 12%-of-height
+# body-band rule (bodySpan, procedural-fidelity.html), so the oracle's
+# registration span runs muzzle-to-tail instead of over the hull:
+#   isu122s: threshold 0.12 x 24.5 = 2.94 raw units (0.285 m at 0.09703
+#     m/unit). Tube wall dia 2.80-2.91 sits just under, but the double-
+#     baffle BRAKE rings (z 94.5 dia 3.69 / z 97.5..101.8 dia 3.39-3.60 =
+#     0.33-0.36 m vs the real brake's ~0.28) all pass -> last body column
+#     at the muzzle, span 9.88 raw (self-measured "hull" 9.78 vs published
+#     6.77), registration mid +1.65 m off the physical hull -> hull 0,
+#     whole 0, stations 0.
+#   isu152: threshold 2.94 units (0.267 m at 0.09083). Tube root ring dia
+#     3.12 (z 72.5) and mid rings 3.20 (z 85.5-87.5) = 0.283-0.291 m pass
+#     (real ML-20S tube ~0.24-0.28); the brake-less muzzle section 2.80
+#     does not -> last body column ~z 88, span self-measures 7.86 vs 6.77,
+#     mid +0.8 m off -> hull 14, whole 14.1, stations 0.
+# The bore axes are authored PARALLEL to z (end-ring centroids identical
+# at both ends: isu122s (x 13.22, y 17.20), isu152 (x 14.30, y 18.205) —
+# the real vehicles' offset-right mounts, 0.24-0.25 m right of centre).
+# ISOLATION PROOF (mesh census, this file's guards re-verify every run):
+#   isu122s: forward of world z 63 there are exactly 1235 verts within
+#     r<2.5 of the axis (sleeve-step ring z 65.6 + wall + muzzle ring
+#     z 93.5 + brake to z 101.8) and ZERO verts in the r 2.5..7.0 annulus;
+#     all 216 boundary-crossing triangles anchor on the ball/sleeve at
+#     r<3 behind the cut (0 stray hull links). The bow tip (r 7.1-9,
+#     z<=67.6) is untouched by the radius filter.
+#   isu152: forward of world z 71.2: exactly 931 verts within r<2.5 (root
+#     ring z 72.8 + wall + rings to the muzzle disc z 92.4, which includes
+#     its r~0 centre vert), ZERO annulus verts, 180 taper anchors on the
+#     ball snout (r 1.7-2.1, z<=69.5), 0 strays.
+# REPAIR (radial-only, no length change, re-runnable from the .bak):
+#   isu122s: scale r by 0.72 -> tube dia 0.196-0.203 m (real D-25S
+#     0.19-0.21), brake 0.25-0.26 m (real ~0.28, task envelope 0.25-0.30);
+#     worst forward band 15.1% -> 10.8% of height.
+#   isu152: scale r by 0.82 -> tube 0.232-0.239 m (real ML-20S ~0.24-0.28),
+#     muzzle 0.209 m; worst forward band 13.1% -> 10.7%.
+# The taper triangles that close the slim tube onto the untouched ball/
+# sleeve sit BEHIND the bow tip, inside full-height hull columns, where
+# the band rule is already saturated by the casemate. Hull bbox / width /
+# height / length are set by the hull everywhere, so loader normalization,
+# grounding and the fixedMount registration frame are unchanged.
+# GATE PROOF (before -> after, side_hull row): the pristine prints
+# registered with dAlong -0.129 / +0.166 — the FAT-TUBE body mids happened
+# to coincide with the procs' mids while the hulls inside that frame sat
+# ~1.65 / ~0.8 m apart (isu122s cover 16.6%, p95 31.9). Repaired, the ref
+# bodySpan ends at the bow (vertex emulation: span 6.25 m, mid -1.625 in
+# ref-root coords) and the gate discovers the TRUE hull-to-hull alignment
+# (dAlong +1.54 / +0.887 = the two models' placement offset, exactly what
+# registration exists to absorb): isu122s cover 16.6 -> 1.3, p95 31.9 ->
+# 24.0. Residual row errors are PROC-side: the v9 procedurals were
+# deliberately built "in the landed registration frame" (isu152) / with a
+# "beam-lug 12%-band anchor" (isu122s) to match the BROKEN oracle
+# registration (their certs say so), so in the true frame they read
+# shifted by the old bias — the next builder pass drops those
+# compensations and rebuilds hull-anchored (src/, not this tool's scope).
+# A deeper slim (0.62/0.72) was trialled and produced IDENTICAL gate rows
+# (both depths clear the 12% rule; bands under threshold do not
+# participate) — the shallower factors stay because they keep the tubes
+# on the published envelope.
+REPAIRS['isu122s'] = [
+    ('py2', _slim_radial('isu122s', 'HullMesh', axis_lx=13.22, axis_lz=-17.20,
+                         along_min=63.0, r_max=2.5, factor=0.72,
+                         expect_verts=1235)),
+]
+REPAIRS['isu152'] = [
+    ('py2', _slim_radial('isu152', 'HullMesh', axis_lx=14.30, axis_lz=-18.205,
+                         along_min=71.2, r_max=2.5, factor=0.82,
+                         expect_verts=931)),
+]
+
+
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)
     if ops is None:
@@ -842,6 +1271,8 @@ def repair(tank_id):
             fold_node(gltf, op[1], op[2], op[3], op[4])
         elif kind == 'py':
             op[1](gltf)
+        elif kind == 'py2':      # batch-6: ops that also patch the bin chunk
+            op[1](gltf, chunks)
         else:
             raise ValueError(f'unknown op {kind}')
     write_glb(path, gltf, chunks)

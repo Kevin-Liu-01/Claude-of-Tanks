@@ -22,11 +22,15 @@
 #   blender -b --python tools/repair_oracles_blender.py -- dump <glb> <Mesh...>
 #   blender -b --python tools/repair_oracles_blender.py -- repair <id>
 #   blender -b --python tools/repair_oracles_blender.py -- retag <id>
+#   blender -b --python tools/repair_oracles_blender.py -- rerig <id>
 #
 # `repair` reads public/models/tanks/community/recovered/<id>.glb.bak (created
 # from the shipping file on first run) and rewrites <id>.glb.
 # `retag` (batch-3) re-groups fused/mis-parented rigs IN PLACE — no lifts, no
 # parking: see RETAG_RECIPES.
+# `rerig` (batch-6) bakes a skinned single-mesh armature at its rest pose and
+# splits the static result by dominant bone weight into hull / turret / gun
+# subtrees the gate's setPart() can separate: see RERIG_RECIPES.
 import bpy
 import bmesh
 import shutil
@@ -263,6 +267,17 @@ RETAG_RECIPES = {
     #   Names: carved joins are 'Turret_Extras_8/9' — deliberately NOT
     #   Object_N so the loader's tiger2 gear regexes (^Object_(14|15|18|19)$
     #   etc.) and the Object_2 vertex split can never collide with them.
+    # BATCH-7 AUDIT (no further ops): both v9 repair candidates in
+    # docs/references/tanks/tiger2.md resolved to NO-OP — (a) the 2.5-2.8 m
+    # hull-mask "intake tower" at z -2.1..-3.4 is a genuine centreline
+    # deep-wading tower standing on the engine deck (Object_9 loose parts
+    # v=18/14/11, x -0.34..0.39, z -3.16..-3.46, top y 2.714 — 38 mm UNDER
+    # the turret bustle's y 2.752 swing plane; it must stay hull-side);
+    # (b) the "nose-up rake" is a mis-read: the track-bottom profile is
+    # flat at y 0.000..0.003 over z -3.1..+1.1 in .bak and shipping alike
+    # (a 1 deg pitch would slope that 4.2 m patch 73 mm) — the front wheel
+    # run is simply authored curling up from z ~+1.2. Full derivation in
+    # tools/repair_oracles.py "tiger2 (batch 7)".
     'tiger2': {
         'file': 'tiger2-maximus',
         'dir': 'community',
@@ -304,6 +319,50 @@ RETAG_RECIPES = {
         'ops': [
             ('carve_region', 'Turret', (-2.0, 2.0, -1.0, 1.62, -4.3, 3.0),
              'vehicle#turret_liner_low', None),
+            # phase 3 (batch-6). Post-phase-2 hull census (loose-part dump of
+            # x_root_107): the wedge fragments + the 4.0 m whips the round-3
+            # cert flagged are ALREADY turret-side — the one hull-side part
+            # left above the deck line is a thin aerial ROD on the rear
+            # stowage frame (2 loose parts, 26 verts: shaft y 1.871..2.333 +
+            # tip knob to y 2.347, x -0.09, z -4.15..-4.04). It tops the hull
+            # mask at the tail columns (gate hull y-max 2.378 vs deck ~1.9).
+            # The frame it stands on stays HULL (batch-3 certified Strv-
+            # pattern rear stowage). Repair: carve the rod and fold it +90deg
+            # about its base line (stowed whip) — it lies forward along the
+            # frame top (y 1.87..1.98, z -4.04..-3.57), inside the frame/deck
+            # band in every mask view. center-rule box floor y 1.95 proven:
+            # the nearest frame-top knob centers at y 1.8675.
+            ('carve_parts', 'vehicle#x_root_107', [
+                ('center', (-0.15, -0.02, 1.95, 2.40, -4.20, -3.95)),
+            ], 'vehicle#aerial_stowed', None,
+             {'fold': (90.0, [0.0, 1.871, -4.037])}),
+        ],
+    },
+    # leo2_revolution (batch-6). GATE-V9 cert: "gun fused into the hull node"
+    # — plan/side hull masks run to the muzzle (+4.9 gate frame), plan
+    # registration dy -0.18, stations out of phase. Loose-part dump of the
+    # hull-side 'chassis_vlo' node (4218 parts): the ONLY muzzle-reaching
+    # content is one degenerate 3-VERTEX LINE along the bore (x -0.015..
+    # 0.026, y 1.005..1.016, z -6.041..-1.122 glb-world) fused into the
+    # material-.1 primitive; every other part stops at the bow (z -3.752).
+    # The articulated GunMesh tube (y 0.81..1.07, x +-0.15) fully contains
+    # the line's silhouette, so re-homing it under `Gun` is mask-neutral
+    # inside the tube and it elevates with the rig. 'reach' rule: only a
+    # part crossing z -5.5 matches — nothing else in the file reaches past
+    # the bow. Origins restored post-export (authored ring / trunnion, from
+    # the pristine node tree; the Gun pivot is authored 0.84 left + 0.68 up
+    # — x is irrelevant to a pitch axis, preserved exactly regardless).
+    'leo2_revolution': {
+        'file': 'leo2_revolution',
+        'src': 'bak',
+        'ops': [
+            ('carve_parts', 'chassis_vlo', [
+                ('reach', (-0.05, 0.06, 0.97, 1.05, -6.06, -1.10), 0.012, -5.5),
+            ], 'vehicle#gun_tube_vlo', 'Gun'),
+        ],
+        'restore_origins': [
+            ('Turret', [-0.013006508350372314, 0.713523805141449, 0.47113943099975586]),
+            ('Gun', [-0.8423629999160767, 0.6801067590713501, -1.1223750114440918]),
         ],
     },
     # leo2a7v (desirefx print; turretNode ^desirefx_me_003$). The scan +
@@ -457,6 +516,172 @@ RETAG_RECIPES['chieftain5'] = {
 }
 
 
+# ------------------------------------------------------ type74 (batch 6) ----
+# GATE-V9 cert (docs/references/tanks/type74.md): the NullOps print is a
+# skinned armature whose bones (Tower_9 yaw > Gun_7 pitch, wheels) carry no
+# meshes — the whole tank is skinned layer meshes under one skin, so the
+# gate's setPart() subtree split reads hull == whole and an EMPTY turret mask
+# (hull/whole/turret/stations certified 0). The bones DO articulate at
+# runtime, but mask ownership follows the mesh-node ancestry, not bones.
+#
+# Repair = mechanical RE-RIG (no geometry invention): bake the armature at
+# its authored pose (imported pose == rest pose, asserted below, so the bake
+# reproduces the bind geometry exactly), split each of the 5 layer meshes by
+# DOMINANT BONE WEIGHT into hull / turret / gun face sets (majority vote per
+# face; gun > turret > hull on ties so articulated parts stay intact — the
+# batch-6 weight census: Object_7 hull+wheels only, Object_8 = 8966 Hull /
+# 8956 Tower_9 / 4050 Gun_7 / 3287 Turret_8, Object_9 = 1230 Tower_9 / 860
+# Hull, Object_10 = 646 Hull / 32 Gun_7, Object_12 pure hull; only 666 verts
+# carry any secondary weight >0.01, so the dominant-bone boundary is sharp),
+# then rebuild the static node tree the loader's registration expects:
+# 'Tower_9' empty (authored yaw-bone head = ring axis) holding the turret
+# pieces + 'Gun_7' empty (pitch-bone head = trunnion) holding the gun pieces;
+# hull pieces stay scene roots. Config regexes (^Tower_9$ / ^Gun_7$,
+# LOCAL_REFERENCE_OVERRIDES) resolve the empties; scaleToOverall keeps the
+# same normalization as the skinned original.
+RERIG_RECIPES = {
+    'type74': {
+        'file': 'type74-nullops',
+        'dir': 'community',
+        'turret_bones': ('Tower_9', 'Turret_8'),
+        'gun_bones': ('Gun_7',),
+        'origins': ('Tower_9', 'Gun_7'),   # empties, parented in this order
+    },
+}
+
+
+def run_rerig(tank_id):
+    recipe = RERIG_RECIPES[tank_id]
+    stem = recipe.get('file', tank_id)
+    base = ROOT / 'public' / 'models' / 'tanks' / recipe['dir'] \
+        if 'dir' in recipe else RECOVERED
+    src = base / f'{stem}.glb'
+    bak = base / f'{stem}.glb.bak'
+    if not bak.exists():
+        shutil.copy2(src, bak)
+    # NO transform_apply on import: the armature must keep its pose/rest
+    # relationship until the bake; transforms are applied per-piece after.
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.import_scene.gltf(filepath=str(bak))
+    bpy.context.view_layer.update()
+
+    arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
+    # Assert the imported pose IS the rest pose — then applying the armature
+    # modifier reproduces the authored bind geometry exactly (world-exact).
+    for pb in arm.pose.bones:
+        basis = pb.matrix_basis
+        assert max(abs(basis[i][j] - (1.0 if i == j else 0.0))
+                   for i in range(4) for j in range(4)) < 1e-5, \
+            f'{pb.name}: posed away from rest — bake would move geometry'
+    bone_world = {}
+    for name in recipe['origins']:
+        head = arm.matrix_world @ arm.data.bones[name].head_local
+        bone_world[name] = to_glb(head)
+        print(f'[rerig] {tank_id}: bone {name} head glb-world '
+              f'({bone_world[name][0]:.6f}, {bone_world[name][1]:.6f}, '
+              f'{bone_world[name][2]:.6f})')
+
+    gun_bones = set(recipe['gun_bones'])
+    turret_bones = set(recipe['turret_bones'])
+    meshes = [o for o in bpy.data.objects if o.type == 'MESH'
+              and any(m.type == 'ARMATURE' for m in o.modifiers)]
+    out = {'turret': [], 'gun': []}
+    for obj in list(meshes):
+        gi = {g.index: g.name for g in obj.vertex_groups}
+
+        def vert_class(v):
+            best, bw = None, -1.0
+            for ge in v.groups:
+                if ge.weight > bw:
+                    best, bw = gi.get(ge.group), ge.weight
+            if best in gun_bones:
+                return 'gun'
+            if best in turret_bones:
+                return 'turret'
+            return 'hull'
+
+        classes = [vert_class(v) for v in obj.data.vertices]
+        for cls in ('gun', 'turret'):        # gun first: tie-priority on
+            if not any(c == cls for c in classes):     # boundary faces
+                continue
+            bpy.ops.object.select_all(action='DESELECT')
+            obj.select_set(True)
+            bpy.context.view_layer.objects.active = obj
+            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.mesh.select_mode(type='FACE')
+            bpy.ops.mesh.select_all(action='DESELECT')
+            bpy.ops.object.mode_set(mode='OBJECT')
+            # majority vote per face; ties resolve to the articulated class
+            # (gun before turret before hull) so mantlet-root rings never
+            # strand hull-side. Face selection set in object mode, then
+            # separated in edit mode.
+            order = ('gun', 'turret', 'hull')
+            for poly in obj.data.polygons:
+                votes = {'gun': 0, 'turret': 0, 'hull': 0}
+                for vi in poly.vertices:
+                    votes[classes[vi]] += 1
+                win = max(order, key=lambda k: (votes[k], -order.index(k)))
+                poly.select = (win == cls)
+            bpy.ops.object.mode_set(mode='EDIT')
+            before = set(bpy.data.objects)
+            bpy.ops.mesh.separate(type='SELECTED')
+            bpy.ops.object.mode_set(mode='OBJECT')
+            new = [o for o in bpy.data.objects if o not in before]
+            if new:
+                piece = new[0]
+                piece.name = f'{obj.name}_{cls}'
+                piece.data.name = piece.name
+                out[cls].append(piece)
+                print(f'[rerig] {tank_id}: {obj.name} -> {piece.name} '
+                      f'({len(piece.data.vertices)} verts)')
+            # vertex indices changed after separate — recompute classes
+            classes = [vert_class(v) for v in obj.data.vertices]
+
+    # bake: apply the armature modifier on every (still-skinned) mesh at the
+    # asserted rest pose, then unparent keep-transform and flatten transforms.
+    static = [o for o in bpy.data.objects if o.type == 'MESH']
+    for obj in static:
+        bpy.ops.object.select_all(action='DESELECT')
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        for m in [m for m in obj.modifiers if m.type == 'ARMATURE']:
+            bpy.ops.object.modifier_apply(modifier=m.name)
+        mw = obj.matrix_world.copy()
+        obj.parent = None
+        obj.matrix_world = mw
+    for obj in list(bpy.data.objects):
+        if obj.type != 'MESH':
+            bpy.data.objects.remove(obj, do_unlink=True)   # armature+wrappers
+    bpy.ops.object.select_all(action='SELECT')
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+
+    # rebuild the articulation tree: Tower_9 > (turret pieces, Gun_7 > gun
+    # pieces); hull pieces stay scene roots. Origins land on the bone heads.
+    empties = {}
+    parent_of = {recipe['origins'][0]: None,
+                 recipe['origins'][1]: recipe['origins'][0]}
+    for name in recipe['origins']:
+        e = bpy.data.objects.new(name, None)
+        bpy.context.scene.collection.objects.link(e)
+        e.location = point_to_blender(bone_world[name])
+        empties[name] = e
+    bpy.context.view_layer.update()
+    if parent_of[recipe['origins'][1]]:
+        parent_keep_world(empties[recipe['origins'][1]],
+                          empties[recipe['origins'][0]])
+    bpy.context.view_layer.update()
+    for piece in out['turret']:
+        parent_keep_world(piece, empties[recipe['origins'][0]])
+    for piece in out['gun']:
+        parent_keep_world(piece, empties[recipe['origins'][1]])
+    bpy.context.view_layer.update()
+
+    bpy.ops.export_scene.gltf(filepath=str(src), export_format='GLB',
+                              export_yup=True, export_apply=False)
+    restore_origins(src, [(n, list(bone_world[n])) for n in recipe['origins']])
+    print(f'[rerig] {tank_id}: -> {src} (pristine original at {bak.name})')
+
+
 def world_bbox_min_max(obj):
     lo, hi = world_box(obj)
     return lo, hi
@@ -548,16 +773,21 @@ def run_retag(tank_id):
         shutil.copy2(src, bak)
     load(bak if recipe.get('src', 'bak') == 'bak' else src)
 
+    changed = False   # batch-6: only export when an op actually did work, so
+                      # a fully-applied 'src: current' recipe re-runs as a
+                      # byte-identical no-op instead of a jittery round-trip
     for op in recipe['ops']:
         if op[0] == 'parent':
             _, child, parent = op
             parent_keep_world(bpy.data.objects[child], bpy.data.objects[parent])
+            changed = True
         elif op[0] == 'lift':
             # rigid world +y translate (blender +z). Applied via location so
             # it exports as the node's translation.
             _, name, dy = op
             bpy.data.objects[name].location.z += dy
             bpy.context.view_layer.update()
+            changed = True
         elif op[0] == 'set_origin':
             # park the node origin on a glb-world point WITHOUT moving any
             # geometry (mesh data shifts by the inverse) — the loader's
@@ -571,8 +801,16 @@ def run_retag(tank_id):
             obj.data.transform(Matrix.Translation(-delta))
             obj.location += delta
             bpy.context.view_layer.update()
+            changed = True
         elif op[0] == 'carve_parts':
-            _, source, rules, dest, parent = op
+            _, source, rules, dest, parent = op[:5]
+            extras = op[5] if len(op) > 5 else {}
+            if bpy.data.objects.get(dest) is not None:
+                # idempotency guard (batch-6): the carve output already
+                # exists, so the source no longer holds those parts — skip
+                # the separate/join churn entirely.
+                print(f'[retag] {tank_id}: {dest} already exists — skip')
+                continue
             source_obj = bpy.data.objects[source]
             keep_parent = source_obj.parent
             pieces = separate_loose(source_obj)
@@ -583,14 +821,41 @@ def run_retag(tank_id):
             if not hits:
                 join(rest, source)
                 continue
+            changed = True
             dest_obj = join(hits, dest)
             rest_obj = join(rest, source)
             if keep_parent is not None and rest_obj is not None:
                 parent_keep_world(rest_obj, keep_parent)
+            # optional rigid stow fold: rotate the carved join about an
+            # x-parallel world line ('fold': (angle_deg, [x, y, z] glb pivot);
+            # glb +x == blender +x, so the angle carries over unchanged).
+            # Applied to the carve output only — a re-run that matches 0
+            # parts skips it, keeping 'src: current' recipes idempotent.
+            if extras.get('fold'):
+                import math
+                angle_deg, pivot = extras['fold']
+                pb = point_to_blender(pivot)
+                mfold = (Matrix.Translation(pb)
+                         @ Matrix.Rotation(math.radians(angle_deg), 4, 'X')
+                         @ Matrix.Translation(-pb))
+                dest_obj.matrix_world = mfold @ dest_obj.matrix_world
+                bpy.context.view_layer.update()
+                bpy.ops.object.select_all(action='DESELECT')
+                dest_obj.select_set(True)
+                bpy.context.view_layer.objects.active = dest_obj
+                bpy.ops.object.transform_apply(location=True, rotation=True,
+                                               scale=True)
             if parent:
                 parent_keep_world(dest_obj, bpy.data.objects[parent])
         elif op[0] == 'carve_region':
             _, source, box, dest, parent = op
+            if bpy.data.objects.get(dest) is not None:
+                # batch-6 idempotency guard: on 'src: current' re-runs the
+                # carved piece already exists as its own object; re-carving
+                # only shaves the bisect ring off the old cut edge into a
+                # vertex-less duplicate-named stub. Skip outright.
+                print(f'[retag] {tank_id}: {dest} already exists — skip')
+                continue
             source_obj = bpy.data.objects[source]
             # Bisect along the box faces that cut through the mesh first, so
             # faces straddling the region boundary split exactly ON it (the
@@ -607,11 +872,15 @@ def run_retag(tank_id):
             piece.matrix_world = mw
             piece.name = dest
             piece.data.name = dest
+            changed = True
             if parent:
                 parent_keep_world(piece, bpy.data.objects[parent])
         else:
             raise ValueError(f'unknown retag op {op[0]}')
 
+    if not changed:
+        print(f'[retag] {tank_id}: nothing to do — {src.name} left untouched')
+        return
     bpy.context.view_layer.update()
     bpy.ops.export_scene.gltf(filepath=str(src), export_format='GLB',
                               export_yup=True, export_apply=False)
@@ -761,6 +1030,10 @@ def main():
 
     if mode == 'retag':
         run_retag(argv[1])
+        return
+
+    if mode == 'rerig':
+        run_rerig(argv[1])
         return
 
     if mode == 'dump':
