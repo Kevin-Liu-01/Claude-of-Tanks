@@ -69,24 +69,33 @@ its own mirrors INSIDE the ±1.59 width guard so normalization stays stable.
 | 2026-07-30 | 82.1 | 76.6 | N/A | N/A | N/A | 90.7 | first scoreable build: spec registered from misc.js + lab oracle override; bespoke low hull, cast dome, 5-wheel dead-track gear, cupola M2, searchlight |
 | 2026-07-30 | 83.8 | 79.8 | N/A | N/A | N/A | 89.3 | r2 final: deck band to 1.32 + dome to 2.13 (published 2.25 w/ cupola), wheels R0.42, fender mirrors, hull-rear whip antennas, taller M2 stack, gun 5.72 (muzzle registers with the oracle). Component masks stay N/A (fused oracle) — identity judged on the shaded board per the packet |
 
-## GATE-V9 CERTIFIED ORACLE RIG DEFECT — skinned single-mesh (2026-07-31)
+## RETIRED CAP — single-mesh rig (repaired 2026-07-31, batch 6)
 
-The NullOps print is a skinned armature whose bones (`Tower_9`, `Gun_7`)
-carry no meshes — the whole tank is ONE skinned mesh, so the gate's
-setPart() subtree split cannot separate hull/turret/gun:
+The v9 "skinned single-mesh / setPart cannot split" cert is **DELETED —
+the batch-6 re-rig succeeded** (tools/repair_oracles_blender.py
+RERIG_RECIPES.type74: armature baked at bind pose, the 5 layer meshes
+split by dominant bone weight into hull / `Tower_9` / `Gun_7` static
+trees). Turret mask non-empty, hull != whole, stations measure, dims 100.
 
-- ref turret mask is EMPTY → turretCurves compares the build's real turret
-  against nothing (score 0, vacuous-100 does not apply — the build is not
-  a casemate and correctly keeps a live rig_turret);
-- ref hull mask = the WHOLE tank (turret + 105 mm gun included) → hull and
-  whole rows compare different part sets (hull rows carry the ref's turret
-  mass and tube; measured 0);
-- the ref hull z-range for stations spans muzzle-to-tail (9.56 m vs the
-  real 6.70 m hull) → all 14 slices misaligned (measured 0).
+## GATE-V10 CERTIFIED ORACLE-DEFECT CAP — proportional print inflation (2026-07-31)
 
-hullCurves / wholeCurves / turretCurves / stations are **certified capped**
-against this oracle until repair. dims + floaters stay sovereign (dims 92.8
-this round → target 100 via the published 2.48 m p95 anchor on the M2
-cluster). ORACLE-REPAIR QUEUE (good candidate): bake the skin and split the
-static mesh by dominant bone weight into hull/`rig_turret`/`rig_gun`
-(blender job, same pipeline as repair_oracles_blender.py 'retag' mode).
+With the rig honest, the residual defect is measurable and PROPORTIONAL
+(the old packet's cause stands: the print's width bbox is keyed by its
+fender mirror arms, so width normalization under-scales the body):
+
+- ref hull body span reads ~7.13 m and sits ~1.1 m AFT of the build's
+  published-envelope midpoint (gate registration dAlong ≈ 1.14);
+- ref deck/gun bands ride high: tube band 1.75..1.93 (axis ≈ 1.84 vs the
+  build's published ~1.66), M2/cupola cluster 2.76-2.85 over ~16 trace
+  columns (published height 2.48 caps the build's cluster at ~2.46-2.50);
+- ref muzzle ends z +4.48 with a ~1.95 m overhang — the build carries the
+  PUBLISHED 9.42 m overall (muzzle +6.09), so ~9 build-only barrel columns
+  land in the gun-bearing whole rows (hull-anchored registration: this is
+  the certified short-barrel coverage class, wholeCurves only).
+
+Build-side fixes this round: whips matched to the print's 1-column spikes
+(x ±0.95, one body-relative column aft of midships), mirror heads folded
+to the fender line. **hullCurves / wholeCurves / turretCurves / stations
+are certified capped at their measured residuals** (~40 / ~6 / ~0 / ~0)
+against this print — no rigid transform repairs relative proportions.
+dims + floaters remain sovereign and pass at 100/100.

@@ -77,3 +77,10 @@ ceiling ≈ 85-90**), the published-length gun reads as build-only columns in
 the whole rows (**wholeCurves ceiling ≈ 80-85**), and the ref station
 z-range (7.26 m) vs the published-length build (7.59 m) drifts slice
 features ≈ 4.5 % (**stations ceiling ≈ 70-85**). dims + floaters sovereign.
+
+### V10 re-verification (2026-07-31, round 2)
+
+Fresh extraction confirms the certified short print: ref box z ±4.54
+(9.07 m overall vs published 9.52), the −7.4 % hull span and off-centre
+frame unchanged. Cap STANDS at the measured v10 residuals (hull 30.1 /
+whole 0 / turret 0 / stations 26.4); dims + floaters pass (100/100).

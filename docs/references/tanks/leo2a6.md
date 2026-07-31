@@ -70,16 +70,41 @@ seams, rubber skirt lip + flaps + anti-slip, glass EMES/PERI/headlights, cloth
 bustle duffels); 7 rubber-rimmed wheels w/ dark hub contrast behind skirts;
 zero floaters through the 24-frame turntable.
 
-## GATE-V9 CERTIFIED ORACLE-DEFECT CAP — wholeCurves (long-modelled gun, 2026-07-31)
+## RETIRED CAP + oracle repair note (2026-07-31, batch 6)
 
-The buh print's L/55 muzzle reads z +8.28 after width normalization —
-oracle overall 11.99 m vs the published 10.97 m (+9.3 %) on a hull that
-prints 7.36-7.50 m (−3..−5 % of 7.72). The gun is modelled ~1.0 m too long
-relative to the published envelope. The build carries the PUBLISHED gun
-(muzzle at tail +10.97): because v9 registration is hull-anchored, the
-delta lands ONLY in the gun-bearing whole rows as ~8 reference-only barrel
-columns — side_whole/plan_whole cover ≈ 5-9 % → **wholeCurves ceiling
-≈ 82-86** against this oracle. hullCurves, turretCurves (v9 hull-footprint
-trim drops barrels), stations, dims and floaters are NOT capped. Repair
-queue: rigid scale/translate of the gun submesh to the published overhang
-would retire this cap (same class as the m26_pershing short-barrel entry).
+The GATE-V9 "gun modelled ~1.0 m long / wholeCurves ceiling 82-86" cap is
+**DELETED — it was DISPROVEN by the batch-6 oracle repair**. The print's
+gun was correct all along (raw overall 10.96 on a 7.63 hull): the +1.0 m
+was manufactured at runtime by the bustle whip antennas height-clamping
+the loader (scale 0.825) and the leo2a6 L/55 remap re-stretching the tube
+in that shrunken frame (tools/repair_oracles.py, leo2a6 batch-6 entry).
+The whips are now FOLDED STOWED in the file; the loader keys on length
+(s 1.0118), the remap guard disables, and the honest frame reads: muzzle
++7.03..7.05, hull −3.77..+3.79, PERI blister 2.85 at x −0.32 / z −0.45,
+roof 2.51-2.62, wedge crest falling 2.61@x1.0 → 2.05@x1.47, plan nose
+3.08 → tips ±1.50 @ z 0.65..1.90, rack ±1.1 to −2.78, fenders ±1.73,
+heavy skirt blocks ±1.875 over z 1.44..3.56. NOTE: the fold also dropped
+the gate's normalization height 4.09 → 2.85, so all percentage errors
+read ≈1.43× larger than the v9 rounds — score deltas across the repair
+are not comparable.
+
+## GATE-V10 from-scratch re-lay (2026-07-31, round 2)
+
+Both hull and turret rebuilt in `src/vehicles/profiles/leopard.js`
+(leoHullV3 + wedgeTurretV3, measured-loft builders) against the repaired
+curves: lofted deck polyline (1.67 fore / 1.60 dip / 1.83 aft), two-slope
+glacis with the clipped beak centre (3.60) + wing tips (3.81), rear wall
+undercut at −3.62/y 1.13 with the lip to −3.78 and corner mud flaps
+carrying the tail body span, segmented fender planks ±1.60..1.74 (station
+width carriers), rear skirt ±1.73, high sprocket (−3.22, 0.92) / idler
+(3.30, 0.90) with band-derived ramps, stepped body taper 1.38→1.10, low
+wedge tips at the measured crest fall, mantlet block top 2.14 over z
+3.35..3.91, L/55 axis 1.94 muzzle +7.10, no proud evacuator (the print's
+side band is constant), third sleeve section to z 6.93. Fleet-visible
+mechanics fixed here: the kit track band's inboard end-wheel wrap dipped
+to −0.065 below ground and inflated dims.heightM (p95 top − MIN BOT) by
+~6 cm on every raisedEnds user — the wrap radius is now clamped
+(leoGear); this was the round-1 "+0.9 m turret-local column" class error
+on a6/a5 heightM. Round-2 standing (gate v10): min 12.4 → 66+ (hull
+35→74, whole 12→66, turret 30→76, stations 26→80, dims 90→97+); no caps
+— every component is honestly iterable against this repaired oracle.

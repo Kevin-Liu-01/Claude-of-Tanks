@@ -94,3 +94,14 @@ overall. Against this oracle every curve row therefore reads a systematic
 oracle-capped at their measured residuals** (single digits to low tens).
 The cap does NOT excuse dims or floaters (both must be 100). Repair queue:
 none possible short of re-sourcing a correctly-proportioned print.
+
+### V10 re-verification (2026-07-31, round 2)
+
+Fresh post-batch-6 extraction confirms the certified proportional defect
+unchanged: ref box z ±5.93 (11.86 m vs published 10.97), y to 5.56 (mast
+farm), hull span/roof unchanged from the v9 numbers. The batch-6 rigid
+repair (authored ring origin + plinth carve) fixed articulation only; the
+proportions remain unrepairable. Cap STANDS at the measured v10 residuals
+(hull 0 / whole 5.9 / turret 0 / stations 5.6); dims + floaters pass
+(100/100) — the dims-sovereign rebuild's published envelope held through
+the round-2 shared-builder changes.

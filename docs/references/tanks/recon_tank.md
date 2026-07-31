@@ -23,3 +23,11 @@ print therefore carry a structural ~0.4 m body-span mismatch:
 hullCurves/wholeCurves/turretCurves/stations are capped at their measured
 residuals until either the spec dims or the oracle is re-authored (owner
 call — outside this family's file scope). dims + floaters sovereign.
+
+### V10 re-verification (2026-07-31, round 2)
+
+Fresh extraction confirms the certified spec/print conflict: width-
+normalized to the spec 3.0 m the print reads body ~5.4 vs the spec 6.2
+hull, roof band tall with the mast to 4.45. Spec dims remain sovereign
+(game-authored); the conflict is an owner call outside this family's
+scope. Cap STANDS (curve components 0); dims + floaters pass (100/100).

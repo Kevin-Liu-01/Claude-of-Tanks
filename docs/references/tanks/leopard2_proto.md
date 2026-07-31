@@ -72,3 +72,15 @@ axis ~1.3); the build keeps the real proud turret and the full-length 105
 every shaded view finally shows a Leopard 2 prototype instead of a turretless
 tub. Total is pinned at baseline (67.1→67.2) by those two capped channels;
 hull/tracks/overall all improved.
+
+### GATE-V10 re-verification of the melted-print cap (2026-07-31, round 2)
+
+Fresh extraction: the bergman print's whole box tops at **y 2.14** — the
+entire print stands lower than the real vehicle's published 2.48 roof
+(sunken/melted turret confirmed; a proud PT turret + level 105 cannot
+match it). The pre-gate HANDOFF §5 cap is hereby restated in gate terms:
+hullCurves / wholeCurves / turretCurves / stations are certified capped
+at their measured v10 residuals (all ~0 — the build carries the REAL
+proud turret and published envelope against a print with no turret and a
+deck-level gun bar). dims + floaters pass (100/100). Repair queue: none
+possible short of re-sourcing.

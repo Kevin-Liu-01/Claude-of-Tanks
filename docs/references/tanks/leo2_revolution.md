@@ -89,3 +89,28 @@ and floaters remain sovereign (build measures 90.8+ dims this round; target
 100). ORACLE-REPAIR QUEUE: rigid reparent of the gun submesh (tube +
 mantlet sleeve) from the hull node to `rig_gun` — same recipe class as the
 batch-3 leo2a5 mantlet absorption (tools/repair_oracles_blender.py).
+
+## RETIRED CAP + GATE-V10 re-lay (2026-07-31, round 2)
+
+The v9 "gun fused into the hull node" cert is **RETIRED — batch 6 carved
+the 3-vertex bore line to `Gun`** (tools/repair_oracles_blender.py) and
+the print re-normalized to an honest frame ~1 m forward of the phantom
+one: hull now reads −3.88..+3.85 (7.73 ≈ published 7.72!), muzzle +5.93,
+walls ±2.0 full length, plan_hull 55 → 93 against the round-1 build.
+The build was RE-LAID from scratch on the honest curves (leopard.js):
+deck 2.06 / fore shelf 1.97-2.03 to 2.83 with the beak plate to the 3.85
+toe, gun travel-clamp rod (top 2.03, z 2.87..3.42), THICK AMAP courses
+with outer faces at EXACTLY ±2.00 (an inset widest-mesh silently rescales
+the whole build ×1.018 in the lab — this was a round-2 regression, fixed),
+raised engine course 2.21 / corner posts 2.33 (x ±1.0-1.28) / low tail
+1.71 to −3.85, high sprocket/idler with band ramps, ASYMMETRIC turret
+cheeks per the print (right wing y 1.79..2.03 to z 3.55, left cheek to
+2.11 with the 1.33 notch at x −0.55..−0.90), RWS station z −0.75..−2.05
+capped at the 2.66 p95 line (print reads 2.74-2.86 — dims-sovereign
+tradeoff, ~11 columns), whips matched 1-col at x ±1.04 / z −2.10,−2.23
+(tips ~3.9-4.0 = the spike budget), roof rising 2.19→2.37, basket to
+−2.76 with scalloped centre, L/44 axis 1.85 muzzle +6.02 (print tube ends
+5.93: the last build-only column is documented cover). Standing: min 6.4
+→ 40.8 (hull 72.5 / whole 49 / turret 47.2 / stations 40.8 / dims 100 /
+floaters 100). No oracle caps remain — every component is honestly
+iterable; stations/turret are shape work, not defects.

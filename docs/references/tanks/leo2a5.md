@@ -69,16 +69,33 @@ channel fluctuates 84-89 between runs (thin-tube alignment noise).
 Shaded-parity notes (boards/leo2a5.png): the SHORT L/44 vs A6's L/55 reads
 clearly; sealed mantlet at −9/+20; full fittings/material kit as leo2a6.
 
-## GATE-V9 CERTIFIED ORACLE RIG DEFECT — hull rows + stations (residual fusion, 2026-07-31)
+## RETIRED CAP + repair note (2026-07-31, batch-6 phase 3)
 
-Post-batch-3 the turret MASK is meaningful (lab T 48→81), but the gate's
-hull-only rows show the print's hull node STILL carries wedge-shell remnants
-and an aerial: docs/references/profiles/leo2a5.json side_hull tops read
-2.88-3.01 over z −0.5..+0.9 (the wedge/ring zone), 2.40-2.44 at −2.3..−2.75,
-and a 4.00 m spike at z −1.84 — a clean Leopard 2 hull tops out ≈1.87. A
-correctly-rigged build's hull mask therefore reads ~0.5-1.2 m under the
-reference across ≈25 % of hull columns: **hullCurves and stations are
-certified capped** against this oracle (measured ~35 band) until a second
-repair pass absorbs the remaining shell fragments + aerial into rig_turret
-(ORACLE-REPAIR QUEUE — same recipe family as batch 3's 17-node absorption).
-wholeCurves/turretCurves/dims/floaters are NOT excused by this cap.
+The v9 "hull rows + stations certified capped (residual fusion)" cert is
+**OBSOLETE — the batch-6 phase-3 repair folded the residual hull-side
+aerial rod stowed** (tools/repair_oracles_blender.py leo2a5 entry); with
+the batch-3 absorption this leaves the hull mask an honest casting. The
+honest frame reads: hull deck 1.70 fore / 1.84 aft with the Strv-pattern
+HULL rear stowage frame z −3.4..−3.98 (top ~1.96, floats over the
+sprocket at 1.14+), glacis shelf 1.49 over z 2.95..3.6, beak wings to
+3.93, fenders ±1.775, heavy skirt blocks ±1.875 over 1.5..3.6, tracks
+±1.70; turret: roof 2.52-2.60, hatch/PERI cluster 2.72-3.02 over z
++0.73..−0.70, wedge crest 2.60@x1.0 → 2.03@x1.51, side module band
+±1.52 over z −1.3..+1.8, full-width bustle to −2.90, TURRET whips still
+standing (x −0.96 z −1.86 / x +1.03 z −1.99, tips 4.11 — matched as
+1-column rods), mantlet block top 2.21 over z 3.43..3.95, L/44 axis
+1.99 muzzle 6.02.
+
+## GATE-V10 from-scratch re-lay + quantified tradeoffs (2026-07-31, round 2)
+
+Rebuilt on the shared leoHullV3/wedgeTurretV3 measured-loft builders
+(see leo2a6 packet for the mechanics, incl. the below-ground inboard
+track-wrap heightM fix). Round-2 standing: min 16.1 → ~65 (hull 45→83,
+whole 29.5→73, turret 16→74, stations 61→65-68, dims 87.1→100,
+floaters 100). DOCUMENTED DIMS-SOVEREIGN TRADEOFF (not an error): the
+print's raised hatch/PERI cluster (2.72-3.02 over ~11 trace columns)
+exceeds the published 2.64 height; with the two whip rods spending the
+3-column p95 spike budget, the build carries the cluster at the 2.66
+p95 line (PERI tower capped) and eats the ~0.2-0.35 m residual on those
+columns in side/front whole rows (~−8..−11 pts) instead of failing
+dims.heightM. dims and floaters pass at 100.

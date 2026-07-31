@@ -56,3 +56,17 @@ skirt blocks stand slightly narrower at the bottom than the track guards.
 | 2026-07-30 | 81.5 | 82.1 | 89.6 | 71.2 | 65.4 | 82.0 | baseline (modern2 canonical builder) |
 | 2026-07-30 | 83.0 | — | 90 | 76 | 65 | 81 | bespoke misc.js build: turret widened via cheek armor boxes + side baskets (3.02 m), roof 2.40, HL-70 armored head forward-right, THIN pano mast, raised engine run, rear hull rack, low-seated gun w/ trunnion roll |
 | 2026-07-30 | 83.0 | 84.8 | 89.6 | 76.4 | 66.1 | 79.8 | r2/r3 final: gun len 6.17 (muzzle tips now register), taller/deeper mantlet plate, rack deepened. CAP: the oracle's hull rig node under-covers its glacis, so part of the procedural bow is scored inside the gun-overhang window — G plateaus mid-60s with the correct L/52 |
+
+## GATE-V10 round-2 notes (2026-07-31)
+
+dims repaired 100 → 86.6 → 99.9 across the round (heightM p95 discipline:
+the crosswind mast moved to the print's single tall column at x −1.10,
+centre antenna pot + pano head + HL-70 lid held under the 2.55 line, and
+the round-1 whip pair stowed — the print carries no spikes at ±0.98).
+Curve work applied: tall front skirt blocks (top 1.46, bottoms 0.48-0.90)
+with the tracks pulled inboard to the print's ~1.60 outer edge (the old
+build's track columns read to the ground at ±1.72-1.80 where the print
+shows floating skirts). Standing min 9 (stations) — the remaining stations/
+turret work needs the full measured re-lay this round gave a6/a5
+(leoHullV3-class): the hull deck/glacis lines and the bustle scallop are
+still the round-1 shapes. No caps — the andertan print is honest.

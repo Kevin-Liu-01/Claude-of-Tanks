@@ -61,15 +61,15 @@ rack overhang, long raked whip antennas, gun overhang ≈ 2.26 m real
 | 2026-07-30 | 78.9 | 76.2 | 87.8 | 61.6 | 73.4 | 84.0 | baseline (generic kit profile in misc.js; muzzle 0.8 m SHORT of the real L/44 station) |
 | 2026-07-30 | 79.0 | 80.4 | 87.3 | 73.0 | 49.7 | 81.0 | wave-2 final: turret raised to the real 2.33 roof (+0.22), commander sight tower + center M2 + rear rack overhang + vertical whips, evacR 1.9 gun rebuild, L/44 muzzle at the TRUE bow+2.26 station (gunZ stays 0 — a forward gun origin detached the kit mantlet, r1 floater fixed). GUN CAP ACCEPTED: the oracle is width-under-normalized (~20% tall/long), so its hull swallows most of the true overhang window — the honest muzzle costs G 73→50 while every view score RISES (minView 76.2→80.4); HANDOFF §4 says published dims win |
 
-## GATE-V9 CERTIFIED ORACLE-DEFECT CAP — all curve components + stations (2026-07-31)
+## GATE-V10 RE-VERIFIED ORACLE-DEFECT CAP — all curve components + stations (2026-07-31)
 
-Gate-era confirmation of the pre-gate normalization defect: width-normalized
-to 3.43 m the print reads p95 roof **3.55 m vs the published 2.34 m
-(+51.7 %)**, overall 9.24 vs 9.76, with mast/antenna columns to 4.42 and the
-hull mask carrying fused appendages (ref side rows show 4.2 m tops at the
-tail). The whole print is ~20 % tall/long relative to its width; no rigid
-transform repairs proportions. The build carries PUBLISHED dims (sovereign):
-hull 7.45 / overall 9.76 / width 3.43 / p95 height 2.34 (M2 cluster + sight
-held at the roofline; whips are the spike budget). hullCurves / wholeCurves /
-turretCurves / stations are **certified capped** at their measured residuals
-against this oracle (~0-50). dims + floaters must still pass.
+Re-measured under gate v10 from the fresh post-batch-6 extraction
+(docs/references/profiles/type90.json, mask-trace-1024): width-normalized
+to 3.43 m the print reads **p95 body roof 3.35 m vs the published 2.34 m
+(+43 %)**, box height 4.42 (raked antennas), box length 9.29 vs the
+published 9.76 — the whole print remains ~20 % tall/long relative to its
+width; no rigid transform repairs proportions, so the v9 cap STANDS with
+the v10 numbers. The build carries PUBLISHED dims (sovereign): hull 7.45 /
+overall 9.76 / width 3.43 / p95 height 2.34. hullCurves / wholeCurves /
+turretCurves / stations are **certified capped at their measured v10
+residuals (53 / 31.3 / 3.1 / 0)**. dims + floaters pass (96.7 / 100).
