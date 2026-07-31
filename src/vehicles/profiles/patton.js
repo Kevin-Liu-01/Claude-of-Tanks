@@ -44,6 +44,7 @@
 // 8.65 m, m46 8.48 m, m47 8.51 m, m45 6.40 m (bow-flush stub). The four
 // reference barrels are modelled short (see the packets) — the coverage cost
 // lands ONLY in wholeCurves/turretCurves and is certified per packet.
+import * as THREE from 'three';
 import { KIT, evenStations } from './kit.js';
 
 // ---------------------------------------------------------------------------
@@ -554,32 +555,75 @@ function buildPershing(P, cfg) {
 // cross profile ([fx, fy] pairs, fx of hw, fy of bot->top) so the LEFT ridge
 // cliff and the LONG low RIGHT roof of the real casting both read (the
 // symmetric loftBody trapezoids cannot carry a +0.4 m left/right roof split).
-// Emitted as a shell: outer surface strips + an inward offset for solidity.
+//
+// SHADED-PARITY r3 KILL ITEM (weld): the round-3 loft emitted every quad as
+// an independent closed slab brick — flat per-brick normals corrugated the
+// whole dome ("venetian blinds"), exposed brick end-faces serrated the
+// bustle taper, and the inward-jutting end cap read as an open black box.
+// Now ONE indexed vertex grid per smooth run: vertices are SHARED along the
+// section direction and across profile points, computeVertexNormals()
+// averages them (a cast surface), and hard edges exist ONLY at the true
+// profile knuckles listed in `creases` (runs split there, so boundary
+// vertices are duplicated and keep one-sided normals). Outer vertex
+// COORDINATES are identical to the old bricks — silhouette-identical by
+// construction; the inner offset shell is gone (strictly interior of the
+// now-closed skin) and both end caps are FLUSH full-ring faces at the exact
+// end-section planes (inside the old rim + end-annulus footprint).
 // ---------------------------------------------------------------------------
-function m60Loft(P, bucket, secs, profile, oy, oz) {
-  const { slab } = KIT;
+function m60Loft(P, bucket, secs, profile, oy, oz, creases = [0]) {
   const pt = (s, f) => [f[0] * (f[0] > 0 && s.hwR ? s.hwR : s.hw), s.bot + (s.top - s.bot) * f[1]];
-  const inn = (s, p) => [p[0] * 0.84, p[1] + ((s.top + s.bot) / 2 - p[1]) * 0.16];
-  const ring = profile.concat([profile[0]]);
-  for (let i = 0; i < secs.length - 1; i++) {
-    const a = secs[i], b = secs[i + 1];
-    const az = a.z - oz, bz = b.z - oz;
-    for (let k = 0; k < ring.length - 1; k++) {
-      const a0 = pt(a, ring[k]), a1 = pt(a, ring[k + 1]);
-      const b0 = pt(b, ring[k]), b1 = pt(b, ring[k + 1]);
-      const ia0 = inn(a, a0), ia1 = inn(a, a1), ib0 = inn(b, b0), ib1 = inn(b, b1);
-      P.add(bucket, slab(
-        [a0[0], a0[1] - oy, az], [a1[0], a1[1] - oy, az], [b1[0], b1[1] - oy, bz], [b0[0], b0[1] - oy, bz],
-        [ia0[0], ia0[1] - oy, az], [ia1[0], ia1[1] - oy, az], [ib1[0], ib1[1] - oy, bz], [ib0[0], ib0[1] - oy, bz]));
+  const M = profile.length, nS = secs.length;
+  const cs = [...new Set(creases.map((k) => ((k % M) + M) % M))].sort((a, b) => a - b);
+  // smooth runs of consecutive ring indices between creases (ring wraps
+  // k(M-1) -> k0 along the flat underside)
+  const runs = [];
+  for (let c = 0; c < cs.length; c++) {
+    const run = [cs[c]];
+    const end = cs[(c + 1) % cs.length];
+    for (let k = (cs[c] + 1) % M; ; k = (k + 1) % M) {
+      run.push(k);
+      if (k === end) break;
     }
+    runs.push(run);
   }
-  // flush end caps (jut INWARD so the cap never extends the loft footprint —
-  // a 2 cm forward cap at the bustle tail straddled a station boundary)
-  for (const [s, dir] of [[secs[0], -1], [secs[secs.length - 1], 1]]) {
-    const z0 = s.z - oz, z1 = s.z - oz + dir * 0.025;
-    P.add(bucket, slab(
-      [-s.hw * 0.90, s.bot + 0.03 - oy, z0], [s.hw * 0.90, s.bot + 0.03 - oy, z0], [s.hw * 0.86, s.bot + 0.03 - oy, z1], [-s.hw * 0.86, s.bot + 0.03 - oy, z1],
-      [-s.hw * 0.90, s.top - 0.10 - oy, z0], [s.hw * 0.90, s.top - 0.10 - oy, z0], [s.hw * 0.86, s.top - 0.12 - oy, z1], [-s.hw * 0.86, s.top - 0.12 - oy, z1]));
+  const emit = (pos, idx) => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((pos.length / 3) * 2).fill(0), 2));
+    if (idx) g.setIndex(idx);
+    g.computeVertexNormals();
+    P.add(bucket, g);
+  };
+  for (const run of runs) {
+    const nR = run.length, pos = [], idx = [];
+    for (let i = 0; i < nS; i++) {
+      for (let j = 0; j < nR; j++) {
+        const p = pt(secs[i], profile[run[j]]);
+        pos.push(p[0], p[1] - oy, secs[i].z - oz);
+      }
+    }
+    for (let i = 0; i < nS - 1; i++) {
+      for (let j = 0; j < nR - 1; j++) {
+        const a0 = i * nR + j, a1 = a0 + 1, b0 = a0 + nR, b1 = b0 + 1;
+        idx.push(a0, a1, b1, a0, b1, b0); // outward for front->rear sections
+      }
+    }
+    emit(pos, idx);
+  }
+  // FLUSH end caps: flat full-ring fans in the exact end-section planes.
+  // Own geometry -> flat normals -> a hard cast rim edge (correct), and the
+  // bustle tail stops reading as an open-backed box.
+  for (const [s, sign] of [[secs[0], 1], [secs[nS - 1], -1]]) {
+    const ring = profile.map((f) => pt(s, f));
+    const cx = ring.reduce((t, p) => t + p[0], 0) / M;
+    const cy = ring.reduce((t, p) => t + p[1], 0) / M;
+    const z = s.z - oz, pos = [];
+    for (let k = 0; k < M; k++) {
+      const a = ring[k], b = ring[(k + 1) % M];
+      if (sign > 0) pos.push(cx, cy - oy, z, b[0], b[1] - oy, z, a[0], a[1] - oy, z);
+      else pos.push(cx, cy - oy, z, a[0], a[1] - oy, z, b[0], b[1] - oy, z);
+    }
+    emit(pos, null);
   }
 }
 
@@ -598,7 +642,19 @@ function m60Loft(P, bucket, secs, profile, oy, oz) {
 //   hullLengthM keeps its -3.445 anchor); pintle to -3.52 at |x|<0.17.
 // ---------------------------------------------------------------------------
 function buildM60(P, cfg) {
-  const { box, slab, cylY, cylZ, cylX, sph, xform, liftEye, buildGun, tarpRoll, ammoCan } = KIT;
+  const { box, slab, cylY, cylZ, cylX, sph, xform, liftEye, buildGun, tarpRoll, ammoCan, towCable } = KIT;
+  // SHADED-PARITY r3 item 3 (m60-scoped material lift): 'glass' (near-black
+  // metallic) never read as optics on the proof board — the reference pods
+  // carry twin PALE lenses. createTankMaterials builds PER-INSTANCE
+  // materials, so this scopes to m60a1/m60a3 only. NOTE: an accompanying
+  // 'dark' albedo lift was tried and REVERTED — the fleet shade-collapse fix
+  // (materials.js 412399e, ambient-floor hook now survives stub contexts)
+  // already restored the shade-side gunmetal read, and the extra albedo +
+  // metalness pushed sun-facing fittings (searchlight lid, M85 box) to a
+  // bare-aluminum tan.
+  P.mats.glass.color.setHex(0x9fb2ba);
+  P.mats.glass.roughness = 0.30;
+  P.mats.glass.metalness = 0.35;
   const hull = curveHull(P, cfg.hull);
   // centre engine crown over the fender-level band deck, CAMBERED: full
   // height only |x|<=0.78, wing wedges taper to the band by |x| 1.02 (the
@@ -615,6 +671,29 @@ function buildM60(P, cfg) {
       P.add('hull', slab(
         [side * 0.77, 1.70, z0], [side * 1.02, 1.70, z0], [side * 1.02, 1.70, z1], [side * 0.77, 1.70, z1],
         [side * 0.77, y0 - 0.050, z0], [side * 1.02, y0 - 0.058, z0], [side * 1.02, y1 - 0.058, z1], [side * 0.77, y1 - 0.050, z1]));
+    }
+  }
+  // engine-deck louver banks ON the crown (r3 critique: "engine deck without
+  // louvers ... deck reads bare" — the usKit grille bays at y 1.84 sit fully
+  // BURIED under the 1.85-1.886 crown). Inset treatment, gate-conservative:
+  // dark bay panels +6 mm over the crown surface and slat strips +12 mm,
+  // flat-seated per short bay (tops <= 1.904, inside the reference's
+  // 1.81-1.91 rear-deck band; no full-width frame rails).
+  const crownAt = (z) => {
+    for (let i = 0; i < CROWN.length - 1; i++) {
+      const [z0, y0] = CROWN[i], [z1, y1] = CROWN[i + 1];
+      if (z <= z0 && z >= z1) return y0 + (y1 - y0) * ((z - z0) / (z1 - z0));
+    }
+    return CROWN[CROWN.length - 1][1];
+  };
+  for (const side of [-1, 1]) {
+    for (const [gz0, gz1] of [[-1.92, -2.24], [-2.30, -2.60]]) {
+      const gm = (gz0 + gz1) / 2, gd = gz0 - gz1, gy = crownAt(gm);
+      P.add('hullDark', box(0.56, 0.012, gd), side * 0.40, gy + 0.006, gm);
+      for (let i = 0; i < 4; i++) {
+        const z = gz0 - (i + 0.5) * (gd / 4);
+        P.add('hullDetail', box(0.52, 0.012, (gd / 4) * 0.55), side * 0.40, gy + 0.012, z);
+      }
     }
   }
   // fender flares: SEGMENTED strips carry the true 3.631 width envelope (the
@@ -650,8 +729,10 @@ function buildM60(P, cfg) {
   P.add('hullDetail', box(1.15, 0.045, 0.10), -0.55, 1.652, 2.30, -0.28, -0.18, 0);
   P.add('hullDetail', box(1.15, 0.045, 0.10), 0.55, 1.652, 2.30, -0.28, 0.18, 0);
   // periscope/IR hood pods on the glacis (measured band 1.559 @ 2.77..2.99)
+  // + glass faces under the hood lips (r3: "no glass anywhere")
   for (const side of [-1, 1]) {
     P.add('hullDetail', box(0.22, 0.105, 0.22), side * 0.35, 1.505, 2.90, -0.10, 0, 0);
+    P.add('hullGlass', box(0.16, 0.048, 0.012), side * 0.35, 1.512, 3.006, -0.10, 0, 0);
   }
   // headlight brush-guard hoops + cross bar (measured bow band 1.549-1.559
   // over +3.31..+3.41 — kept under the published-length hull span)
@@ -661,15 +742,44 @@ function buildM60(P, cfg) {
     }
     P.add('hullDetail', box(0.24, 0.018, 0.018), side * cfg.fit.lights.x, 1.548, 3.41);
     // front mud flap: wedge from the toe over the idler (ref top 1.297 /
-    // bot 1.117 at +3.52, plan front extent +3.545 at the track columns)
-    P.add('hullRubber', slab(
+    // bot 1.117 at +3.52, plan front extent +3.545 at the track columns).
+    // r3 critique "black void fender box front-left": the wedge is painted
+    // steel-backed rubber on the reference — detail (scheme paint) bucket,
+    // not raw rubber, lifts it ~2 stops. Same vertices.
+    P.add('hullDetail', slab(
       [side * 1.10, 1.10, 3.44], [side * 1.78, 1.10, 3.44], [side * 1.78, 1.10, 3.53], [side * 1.10, 1.10, 3.53],
       [side * 1.10, 1.278, 3.44], [side * 1.78, 1.278, 3.44], [side * 1.78, 1.264, 3.53], [side * 1.10, 1.264, 3.53]));
+    // twin lamp pods (r3: "headlights are dark sockets, not lights" — the
+    // reference carries a second smaller IR lamp inboard and PALE lenses;
+    // the pale read comes from the lifted per-instance glass material)
+    P.add('hullDetail', cylZ(0.042, 0.062, 12), side * 0.825, 1.462, 3.085, -0.24, 0, 0);
+    P.add('hullGlass', xform(cylZ(0.034, 0.016, 12), 0, 0, 0.033), side * 0.825, 1.462, 3.085, -0.24, 0, 0);
+  }
+  // left-fender tow cable with cleats (r3 critique: "the cable is the
+  // reference's most visible hull-side furniture"). Slim run seated LOW
+  // (top = deck +32 mm, matching the ~3 cm high band the reference's own
+  // side trace shows over z -0.7..-2.6; the full-height first attempt cost
+  // hull -1.3 via registration drift), plan-inside the 1.70 band.
+  {
+    const cy = (z) => hull.deckAt(z) + 0.014;
+    towCable(P, [
+      [-1.36, cy(0.30) - 0.010, 0.30], [-1.43, cy(-0.55), -0.55],
+      [-1.44, cy(-1.45), -1.45], [-1.36, cy(-2.55) - 0.008, -2.55],
+    ], 0.018);
+    for (const cz of [-0.55, -1.45]) {
+      P.add('hullDetail', box(0.09, 0.032, 0.055), -1.43, hull.deckAt(cz) + 0.010, cz);
+    }
   }
   // rear plate: flush transmission access ring + towing pintle (to -3.52)
   P.add('hullDark', cylZ(0.26, 0.02, P.q ? 18 : 12), 0, 1.05, -3.28);
   P.add('hullDetail', box(0.34, 0.18, 0.06), 0, 1.16, -3.31);
   P.add('hullDetail', cylZ(0.05, 0.24, 8), 0, 1.16, -3.40);
+  // rear-plate grille slats over the recessed dark panel (r3: "rear plate is
+  // an empty camo wall vs the reference's grille texture") — bar faces at
+  // -3.2805, flush with the measured -3.28 plate plane
+  for (let k = 0; k < 4; k++) {
+    P.add('hullDetail', box(1.18, 0.022, 0.006), 0, 1.065 + k * 0.05, -3.2775);
+  }
 
   const py = 1.76, pz = 0.30;
   P.turretG.position.set(0, py, pz);
@@ -687,8 +797,8 @@ function buildM60(P, cfg) {
   P.add('turret', box(0.03, 0.07, 0.64), 1.405, yl(1.895), zl(0.40));
   // the casting, TWO lofts: the crowned front body (left ridge cliff, long
   // low right roof) and the flat-roofed bustle (roof 2.664 to -2.02).
-  m60Loft(P, 'turret', cfg.sections, M60_PROFILE, py, pz);
-  m60Loft(P, 'turret', cfg.bustle, M60_BUSTLE_PROFILE, py, pz);
+  m60Loft(P, 'turret', cfg.sections, M60_PROFILE, py, pz, M60_PROFILE_CREASES);
+  m60Loft(P, 'turret', cfg.bustle, M60_BUSTLE_PROFILE, py, pz, M60_BUSTLE_CREASES);
   // right roof shelf: the measured flat 2.716-2.72 band (x 0.06..0.80 over
   // the crest zone) with the loader hatch riding it at 2.80
   P.add('turret', box(0.78, 0.10, 1.00), 0.45, yl(2.665), zl(0.08), 0.006, 0, 0);
@@ -703,25 +813,60 @@ function buildM60(P, cfg) {
   const cx = -0.60, cz = zl(0.20);
   P.add('turret', cylY(0.28, 0.315, 0.11, P.q ? 20 : 12), cx, yl(3.005), cz);
   P.add('turret', cylY(0.175, 0.185, 0.09, P.q ? 20 : 12), cx, yl(3.105), zl(0.24));
+  // 7 vision blocks: a touch taller than r3 (0.05 -> 0.065, still inside the
+  // ring band) with pale glass panes outboard so they read as optics, not
+  // sub-pixel black chips (critique item; glass = lifted per-instance mat)
   for (let k = 0; k < 7; k++) {
     const a = (k / 7) * Math.PI * 2 + 0.3;
-    P.add('turretDark', box(0.07, 0.05, 0.02), cx + Math.sin(a) * 0.17, yl(3.115), zl(0.24) + Math.cos(a) * 0.17, 0, a, 0);
+    P.add('turretDark', box(0.07, 0.065, 0.024), cx + Math.sin(a) * 0.17, yl(3.118), zl(0.24) + Math.cos(a) * 0.17, 0, a, 0);
+    P.add('turretGlass', box(0.05, 0.038, 0.012), cx + Math.sin(a) * 0.181, yl(3.121), zl(0.24) + Math.cos(a) * 0.181, 0, a, 0);
   }
   P.add('turret', cylY(0.180, 0.190, 0.047, P.q ? 20 : 12), cx - 0.01, yl(3.173), zl(0.245));
   P.add('turretDark', box(0.05, 0.074, 0.39), cx, yl(3.223), zl(0.25));
   P.add('turretDark', box(0.11, 0.07, 0.14), cx + 0.05, yl(3.055), zl(0.37));
-  P.add('turretDark', cylZ(0.020, 0.14, 8), cx + 0.05, yl(3.045), zl(0.50));
+  P.add('turretDark', cylZ(0.020, 0.20, 8), cx + 0.05, yl(3.045), zl(0.53));
 
-  // grab rails on both cheeks (measured 2.33 @ x 1.21) + sunk lift eyes
+  // grab rails on both cheeks (measured 2.33 @ x 1.21) + sunk lift eyes;
+  // r3 readability: 0.022 -> 0.034 stock (still fully inside the wall plan)
   for (const side of [-1, 1]) {
-    P.add('turretDetail', box(0.022, 0.022, 1.10), side * 1.22, yl(2.36), zl(0.50));
-    for (const dz of [0.0, 1.00]) P.add('turretDetail', box(0.022, 0.08, 0.022), side * 1.22, yl(2.32), zl(dz));
+    P.add('turretDetail', box(0.034, 0.034, 1.10), side * 1.22, yl(2.36), zl(0.50));
+    for (const dz of [0.0, 1.00]) P.add('turretDetail', box(0.034, 0.09, 0.034), side * 1.22, yl(2.315), zl(dz));
   }
   liftEye(P, 'turretDetail', -0.70, yl(3.00), zl(0.45));
   liftEye(P, 'turretDetail', 0.70, yl(2.66), zl(0.62));
   // bustle roof stowage rides SUNK to the measured flat 2.664 roofline
   tarpRoll(P, 'turretDark', -0.40, yl(2.578), zl(-1.30), 0.95, 0.085, true, P.q ? 12 : 8);
   ammoCan(P, 'turretDark', 0.52, yl(2.60), zl(-1.28), 0.32);
+  // wrap-around bustle stowage rack (r3 critique: "the reference's
+  // wrap-around bustle RACK ... is absent; its silhouette is part of the
+  // M60A1's rear identity"). GATE LESSON (this round): the reference's thin
+  // rack rails do NOT survive the geometry-gate side/front traces — they
+  // only read in the 9-view IoU masks at yaw obliques — so a proud rack is
+  // pure curve error (a 2.715 wall-x rail cost front_whole 3.6: the right
+  // roof falls to ~2.3 at x 1.2, only the bustle roof carries 2.664 out to
+  // x 1.05). This frame is SILHOUETTE-FLUSH by construction: rail tops at
+  // 2.6635 (0.5 mm under the flat 2.664 roofline that the front/side
+  // silhouette already carries at |x| <= 1.04), everything inside the plan
+  // taper, rear extent -1.916 (>0.10 m clear of the -2.045 boundary). The
+  // rack reads in shaded oblique views as frame-over-roof contrast + the
+  // rear drop posts on the taper walls.
+  {
+    const railY = yl(2.650); // rail TOP 2.664 == the global roofline: never
+    // proud in the side/front traces, but standing up to 13 mm over the
+    // LOCAL roof as it falls across the rear taper — the rack reads exactly
+    // where the critic wants the rear identity, at zero trace cost.
+    const seg = (x0, z0, x1, z1) => {
+      const len = Math.hypot(x1 - x0, z1 - z0) + 0.028;
+      P.add('turretDetail', box(0.028, 0.028, len),
+        (x0 + x1) / 2, railY, zl((z0 + z1) / 2), 0, Math.atan2(x0 - x1, z0 - z1), 0);
+    };
+    for (const side of [-1, 1]) {
+      seg(side * 0.84, -1.08, side * 0.84, -1.62);       // roof-edge rails
+      seg(side * 0.84, -1.62, side * 0.55, -1.902);      // taper diagonals
+    }
+    seg(-0.55, -1.902, 0.55, -1.902);                    // rear cross rail
+    seg(-0.84, -1.08, 0.84, -1.08);                      // front tie rail
+  }
   // antenna pot: LEFT-REAR bustle roof (the measured one-column 2.835 spike
   // at z -1.41; front-hidden under the ridge at x -0.38)
   P.add('turretDetail', cylY(0.045, 0.06, 0.10, 8), -0.38, yl(2.714), zl(-1.41));
@@ -729,6 +874,9 @@ function buildM60(P, cfg) {
   // right-roof whip base (the measured one-column 2.955 front spike at
   // x +0.84; side-hidden under the crest)
   P.add('turretDetail', cylY(0.020, 0.022, 0.54, 6), 0.835, yl(2.685), zl(-0.05));
+  // '123' flank decals: seated 4-5 mm proud of the WELDED bustle wall and
+  // yaw-tilted to follow the plan taper (the right wall pinches from hwR —
+  // the r3 plane floated 36 mm off it and read as detached at obliques)
   P.decal('turret', 'number', P.spec.visual.number || '', 0.28, [1.225, yl(2.30), zl(-1.20)], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.28, [-1.225, yl(2.30), zl(-1.20)], -Math.PI / 2);
 
@@ -751,20 +899,44 @@ function buildM60(P, cfg) {
   P.addGunExtraDark(box(0.48, 0.26, 0.05), 0, -0.03, 0.98);
   if (cfg.searchlight) { // AN/VSS-1 over the mantlet (pitches with the gun)
     // measured: rear roof 2.66 rising to the 2.765 front lip, z 2.02..2.75;
-    // plan reads only |x| < 0.22 (the ±0.27 trace columns stay clean)
-    P.addGunExtra(box(0.40, 0.34, 0.73), 0.0, 0.45, 0.79);
-    P.addGunExtra(box(0.40, 0.06, 0.34), 0.0, 0.645, 0.945);
-    P.addGunExtraDark(xform(cylZ(0.135, 0.025, 14), 0, 0, 0), 0.0, 0.47, 1.13);
+    // plan reads only |x| < 0.22 (the ±0.27 trace columns stay clean).
+    // r3 critique ("two stacked camo boxes ... lens is a 2.5 cm dark disc
+    // ... no yoke read"): body + lid are DARK STEEL now (gunMountDark rides
+    // the lifted per-instance dark mat), the face carries a proud bezel
+    // ring with a recessed lens disc, and a real two-arm yoke + trunnion
+    // pin bridges the mantlet gap. Everything stays inside the prior
+    // envelope: bezel face 2.705 (< the 2.73 column boundary), bezel top
+    // 0.615 under the 0.62 body top, yoke |x| <= 0.19.
+    P.addGunExtraDark(box(0.40, 0.34, 0.73), 0.0, 0.45, 0.79);
+    P.addGunExtraDark(box(0.40, 0.06, 0.34), 0.0, 0.645, 0.945);
+    P.addGunExtraDark(xform(cylZ(0.145, 0.04, 18), 0, 0, 0), 0.0, 0.47, 1.135);
+    P.addGunExtraDark(xform(cylZ(0.120, 0.014, 18), 0, 0, 0), 0.0, 0.47, 1.138);
     for (const side of [-1, 1]) {
-      P.addGunExtra(box(0.05, 0.26, 0.05), side * 0.15, 0.26, 0.80, 0.2, 0, 0);
+      P.addGunExtraDark(box(0.06, 0.30, 0.06), side * 0.16, 0.27, 0.83, 0.22, 0, 0);
     }
+    P.addGunExtraDark(xform(cylX(0.035, 0.36, 10), 0, 0, 0), 0, 0.24, 0.86);
   }
-  // M68: bare tube dia 0.164 (measured band 2.001-2.162, axis 2.08), bore
-  // evacuator drum 0.24 dia over +3.31..+3.95, muzzle +5.96, no brake.
+  // M68: bare tube dia 0.164 (measured band 2.001-2.162, axis 2.08), muzzle
+  // +5.96, no brake. r3 critique: the kit drum (0.62-long body) read
+  // "~0.50 m long ... root-biased; the reference carries a compact
+  // ~0.16-0.3 m collar further out" — kit evac off, compact collar built
+  // here on the reference's own +3.65..+3.81 band (blends to +3.60/+3.86).
+  // (A3 keeps the kit drum: its sleeved tube gates 0.5 weaker against the
+  // shared reference with the compact collar — measured this round.)
   buildGun(P, {
     len: cfg.gunLen, r: cfg.sleeve ? 0.076 : 0.082, sleeve: !!cfg.sleeve,
-    evac: 0.462, evacR: cfg.sleeve ? 1.62 : 1.47, collar: false, baseR: 0.15,
+    evac: cfg.sleeve ? 0.462 : null, evacR: 1.62, collar: false, baseR: 0.15,
   });
+  if (!cfg.sleeve) {
+    const gseg = P.q ? 20 : 12;
+    P.add('gun', cylZ(0.128, 0.16, gseg), 0, 0, 2.18);
+    P.add('gun', cylZ(0.128, 0.05, gseg, 0.098), 0, 0, 2.075);
+    P.add('gun', cylZ(0.098, 0.05, gseg, 0.128), 0, 0, 2.285);
+  }
+  // muzzle counterbore (r3: "muzzle ends in a flat body-color cap — no
+  // bore"): dark disc recessed into the tube face — strictly inside the
+  // existing face plane and radius, zero silhouette
+  P.add('gunDark', cylZ(0.058, 0.014, P.q ? 20 : 12), 0, 0, cfg.gunLen - 0.028);
   P.topY = 3.26 - py + 0.12;
 }
 
@@ -877,8 +1049,14 @@ const M60_FIT = {
   singleHatch: true, hatchX0: 0, hatchZ: 2.56,
   lights: { x: 0.92, y: 1.47, z: 3.10, rx: -0.24 },
   shackleY: 1.18, shackleZ: 3.34,
+  // NOTE (r3 shaded pass): these usKit bays sit BURIED under the 1.85-1.886
+  // engine crown (invisible; kept for config parity). A usKit re-seat onto
+  // the crown was tried and cost ~0.6 whole / 0.7 stations (full-width end
+  // rails) — the visible louvres are the flush m60-scoped bays in buildM60.
   grille: { z0: -1.90, z1: -2.62, y: 1.840, rx: 0.026, x: 0.40, w: 0.62 }, caps: [1.18, -1.35],
-  rearGrilleY: 1.15, rearGrilleW: 1.24, rearGrilleZ: -3.265, noRearEyes: true,
+  // rear-plate grille: panel recessed 6 mm so the slat bars (added in
+  // buildM60) read against it; bar faces stay flush with the -3.28 plate.
+  rearGrilleY: 1.15, rearGrilleW: 1.24, rearGrilleZ: -3.259, noRearEyes: true,
 };
 
 // M60 casting cross profiles (signed fractions of hw / bot->top): the LEFT
@@ -887,9 +1065,16 @@ const M60_FIT = {
 const M60_PROFILE = [
   [-1, 0], [-1, 0.29], [-0.94, 0.445], [-0.919, 0.795], [-0.837, 0.927],
   [-0.268, 1.0], [0.038, 0.915], [0.23, 0.72], [1, 0.29], [1, 0]];
+// True profile knuckles (weld crease list — everything else shades smooth):
+// k4 left cliff-top shoulder (52 deg turn), k5 ridge crest, k6 right roof
+// break (31 deg), k8 right wall top (59 deg), k9/k0 wall-to-underside.
+const M60_PROFILE_CREASES = [0, 4, 5, 6, 8, 9];
 const M60_BUSTLE_PROFILE = [
   [-1, 0], [-1, 0.30], [-0.965, 0.66], [-0.945, 0.91], [-0.848, 1.0],
   [0.848, 1.0], [0.945, 0.91], [0.965, 0.66], [1, 0.30], [1, 0]];
+// Bustle knuckles: roof-chamfer shoulders both sides (53/30 deg) + the
+// wall-to-underside edges; the walls and the flat 2.664 roof stay smooth.
+const M60_BUSTLE_CREASES = [0, 3, 4, 5, 6, 9];
 // Front casting loft (world coords; tops/hw from the true-axis trace: saddle
 // 2.564 @ 1.70..1.91, forehead shelf 2.895 @ 1.06..1.59, crest 3.09 @ ~0,
 // falling 2.845 @ -0.77; nose underside hangs to the measured 1.74-1.78)
