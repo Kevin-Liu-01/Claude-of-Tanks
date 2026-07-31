@@ -696,9 +696,20 @@ if (params.get('geo')) {
       for (const p of c) if (p) { if (a === null) a = p[0]; b = p[0]; }
       return a === null ? null : [a, b];
     };
+    // registration uses BODY columns only: a barrel fused into a print's
+    // hull mesh is band-thin and must not steer the frame midpoint
+    const bodySpan = (c) => {
+      const cols = c.filter(Boolean);
+      if (!cols.length) return null;
+      const rough = Math.max(...cols.map((p) => p[1])) - Math.min(...cols.map((p) => p[2]));
+      let a = null, b = null;
+      for (const p of c) if (p && p[1] - p[2] > rough * 0.12) { if (a === null) a = p[0]; b = p[0]; }
+      return a === null ? null : [a, b];
+    };
     const rs = span(refC), ps = span(procC);
+    const rsB = bodySpan(refC) || rs, psB = bodySpan(procC) || ps;
     if (!rs || !ps) return { score: 0, meanPct: 100, maxPct: 100, coverPct: 100 };
-    const dAlong = fixedReg ? fixedReg.dAlong : (rs[0] + rs[1]) / 2 - (ps[0] + ps[1]) / 2;
+    const dAlong = fixedReg ? fixedReg.dAlong : (rsB[0] + rsB[1]) / 2 - (psB[0] + psB[1]) / 2;
     const valid = procC.filter(Boolean);
     const interp = (along) => {
       const a = along - dAlong;                 // sample in proc's own frame
