@@ -69,3 +69,17 @@ trunnion roll — no void at −9/+20; materials split (dark grilles/fan discs/
 seams, rubber skirt lip + flaps + anti-slip, glass EMES/PERI/headlights, cloth
 bustle duffels); 7 rubber-rimmed wheels w/ dark hub contrast behind skirts;
 zero floaters through the 24-frame turntable.
+
+## GATE-V9 CERTIFIED ORACLE-DEFECT CAP — wholeCurves (long-modelled gun, 2026-07-31)
+
+The buh print's L/55 muzzle reads z +8.28 after width normalization —
+oracle overall 11.99 m vs the published 10.97 m (+9.3 %) on a hull that
+prints 7.36-7.50 m (−3..−5 % of 7.72). The gun is modelled ~1.0 m too long
+relative to the published envelope. The build carries the PUBLISHED gun
+(muzzle at tail +10.97): because v9 registration is hull-anchored, the
+delta lands ONLY in the gun-bearing whole rows as ~8 reference-only barrel
+columns — side_whole/plan_whole cover ≈ 5-9 % → **wholeCurves ceiling
+≈ 82-86** against this oracle. hullCurves, turretCurves (v9 hull-footprint
+trim drops barrels), stations, dims and floaters are NOT capped. Repair
+queue: rigid scale/translate of the gun submesh to the published overhang
+would retire this cap (same class as the m26_pershing short-barrel entry).

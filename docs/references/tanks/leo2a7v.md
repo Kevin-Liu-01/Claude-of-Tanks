@@ -71,3 +71,26 @@ topping 3.2 that no sane articulated rig can reproduce (a hull plinth taller
 than the turret roof would clip through the yawing shell). The turret score
 is committed at ~40; the whole-silhouette views carry the identity. The r3
 apex/rack changes traded ~0.1 total for honest articulation — kept.
+
+## GATE-V9 CERTIFIED ORACLE-DEFECT CAP — all curve components + stations (2026-07-31)
+
+Measured via `docs/references/profiles/leo2a7v.json` (mask-trace-1024,
+width-normalized to the committed 4.00 m): the desirefx print is
+**proportionally defective as a whole**, not merely mis-rigged:
+
+- hull body span reads **8.47 m** vs the published 7.72 m (**+9.7 %**);
+- p95 roof plateau reads **3.24 m** vs the published 2.64 m (**+22.7 %**),
+  with the bare DECK at ~2.7 m — taller than the entire real vehicle;
+- overall length reads 11.83 m vs the published 10.97 m (+7.9 %).
+
+No rigid transform can repair relative proportions (width normalization is
+already applied; scaling height would break width). Per the contract, dims
+is sovereign: the build (2026-07-31 rebuild) carries the PUBLISHED envelope
+— hull ≈7.72, roof 2.64 (EMES-hood anchored, PERI+mast as the spike-column
+budget), width 4.00 over the modular skirts, muzzle at the published
+overall. Against this oracle every curve row therefore reads a systematic
+~0.6-0.9 m band error over most columns (≈11-16 % of the 5.56 m norm):
+**hullCurves / wholeCurves / turretCurves / stations are certified
+oracle-capped at their measured residuals** (single digits to low tens).
+The cap does NOT excuse dims or floaters (both must be 100). Repair queue:
+none possible short of re-sourcing a correctly-proportioned print.

@@ -68,3 +68,17 @@ oracle notes; the proud wedge turret is correct against photos). The gun
 channel fluctuates 84-89 between runs (thin-tube alignment noise).
 Shaded-parity notes (boards/leo2a5.png): the SHORT L/44 vs A6's L/55 reads
 clearly; sealed mantlet at −9/+20; full fittings/material kit as leo2a6.
+
+## GATE-V9 CERTIFIED ORACLE RIG DEFECT — hull rows + stations (residual fusion, 2026-07-31)
+
+Post-batch-3 the turret MASK is meaningful (lab T 48→81), but the gate's
+hull-only rows show the print's hull node STILL carries wedge-shell remnants
+and an aerial: docs/references/profiles/leo2a5.json side_hull tops read
+2.88-3.01 over z −0.5..+0.9 (the wedge/ring zone), 2.40-2.44 at −2.3..−2.75,
+and a 4.00 m spike at z −1.84 — a clean Leopard 2 hull tops out ≈1.87. A
+correctly-rigged build's hull mask therefore reads ~0.5-1.2 m under the
+reference across ≈25 % of hull columns: **hullCurves and stations are
+certified capped** against this oracle (measured ~35 band) until a second
+repair pass absorbs the remaining shell fragments + aerial into rig_turret
+(ORACLE-REPAIR QUEUE — same recipe family as batch 3's 17-node absorption).
+wholeCurves/turretCurves/dims/floaters are NOT excused by this cap.

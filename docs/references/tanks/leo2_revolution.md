@@ -67,3 +67,25 @@ totals quoted from the final full run. Shaded-parity notes
 (boards/leo2_revolution.png): AMAP course seams, slat course standing off the
 tail on brackets, raised RWS station with glass optic, sealed mantlet at
 −9/+20, zero floaters on the turntable.
+
+## GATE-V9 CERTIFIED ORACLE RIG DEFECT — gun fused into the hull node (2026-07-31)
+
+Gate evidence (docs/geometry-gate/leo2_revolution.json, 2026-07-31 runs):
+the print's **gun tube is part of the hull node** (not `rig_turret`):
+
+- ref plan_hull columns at x ≈ 0 extend to z ≈ +4.5 (the tube; a clean hull
+  mask ends at the bow ≈ +2.8) — side_hull shows ref-only tube columns as
+  ~7.3 % cover against a correctly-rigged build (≈ −11 pts on hullCurves);
+- plan-view registration (dy from ALL hull columns' band centers) is pulled
+  **−0.18 m** by the tube → a systematic ~1.8 %-of-norm error on every
+  plan row (plan_hull/plan_whole/turret_plan capped ≈ 70-80);
+- the ref hull z-range used for stations stretches to the muzzle (+4.5),
+  so the 14 slices land ≈ 1.7 m out of phase with a clean hull — station
+  width/top comparisons are structurally misaligned (measured 0-50 band).
+
+hullCurves (plan row), turretCurves (plan row), wholeCurves (plan row) and
+stations are **certified capped** against this oracle until repair. dims
+and floaters remain sovereign (build measures 90.8+ dims this round; target
+100). ORACLE-REPAIR QUEUE: rigid reparent of the gun submesh (tube +
+mantlet sleeve) from the hull node to `rig_gun` — same recipe class as the
+batch-3 leo2a5 mantlet absorption (tools/repair_oracles_blender.py).

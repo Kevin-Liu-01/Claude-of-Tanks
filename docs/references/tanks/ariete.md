@@ -61,3 +61,19 @@ the bow ≈ 1.7–1.9 m, wheels visible below the skirt line.
 | 2026-07-30 | 79.0 | — | 89 | 76 | 46 | 76 | bespoke misc.js build: taller welded turret (roof 2.38) + angular mantlet cheek wedges, sealed trunnion roll, TURMS box + pano, bustle + basket, GALIX, 7-wheel gear w/ dark recesses, L/44 re-seated |
 | 2026-07-30 | 80.0 | — | 89 | 76 | 50 | 77 | r2: gun len to the oracle overhang (4.90) + fatter sleeve, skirt bottom raised (wheels exposed), side shelves + GALIX outboard, sight cluster forward, whips raked aft |
 | 2026-07-30 | 79.8 | 82.1 | 88.9 | 75.8 | 50.2 | 76.9 | r3 final: glacis headlight pods + fender rib, evac at 0.44. CAPS: the oracle tube DROOPS (fused ~1.5° decl.) — a level tube tops out near G≈50; oracle hull is ~8% stubbier than the published 7.59 m (kept real), costing edge overlap in side views |
+
+## GATE-V9 CERTIFIED ORACLE-DEFECT CAP — hull/whole coverage + stations (2026-07-31)
+
+Measured from docs/references/profiles/ariete.json: the dustymojito print's
+hull body spans **7.03 m vs the published 7.59 m (−7.4 %)** (hull-mask span
+7.26), its gun tube ends 0.63 m short of the published overall (9.04 vs
+9.67), and the print sits ~1.2 m off-centre in its normalized frame (hull
+z −4.97..+2.29 in the trace frame) with a band-thin fender tail that drops
+out of the 12 % body rule — shifting the hull-anchored registration
+midpoint (measured dAlong ≈ 0.75). The dims-sovereign build carries the
+published envelope: after mid-alignment its body overhangs the oracle's by
+≈ 0.28 m per end (cover + tail/nose band error → **side/plan hullCurves
+ceiling ≈ 85-90**), the published-length gun reads as build-only columns in
+the whole rows (**wholeCurves ceiling ≈ 80-85**), and the ref station
+z-range (7.26 m) vs the published-length build (7.59 m) drifts slice
+features ≈ 4.5 % (**stations ceiling ≈ 70-85**). dims + floaters sovereign.
