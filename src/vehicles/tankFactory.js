@@ -362,19 +362,46 @@ function trackLoopPoints({ idler, sprocket, botY, topY, sag = 0.03, supports = n
   // near-full wrap instead of an open or crossed loop
   const aIdler = Math.max((contact && tangentDeg(idler, cF, botY, 1)) || 170, 120);
   const aSprk = Math.min((contact && tangentDeg(sprocket, cR, botY, -1)) || 190, 244);
-  arc(idler, 0, Math.min(aIdler, 176), 7);     // around the idler (front)
-  // bottom run: approach point -> flat contact span -> departure point
+  // GROUND TERMINATION (geo-gate round-2 clamp, reworked): a wrap whose
+  // bottom dips below the ground run used to emit sub-ground arc samples
+  // that the final clamp FLATTENED IN PLACE — several points collapsed onto
+  // y = botY at their original arc z's, z-folding the loop back on itself at
+  // ground level (degenerate band normals + link pads walking the fold).
+  // Terminate each wrap arc where its circle crosses y = botY instead: the
+  // band hugs the wheel down to ground level, then runs flat. Wraps fully
+  // above ground (every currently-passing rig — audited: no verification
+  // tank emits a sub-ground point) have no crossing, so their loops are
+  // bit-identical to the pre-rework output.
+  const groundDeg = (c) => {
+    const cosA = (botY - c.y) / (c.r + CLEAR);
+    return cosA <= -1 ? Infinity : Math.acos(Math.min(1, cosA)) / D2R;
+  };
+  const gF = groundDeg(idler);                 // front wrap ground crossing (deg)
+  const gR = groundDeg(sprocket);              // rear wrap ground crossing (deg)
+  const aF = Math.min(aIdler, 176, gF);        // front arc end
+  const aGR = 360 - gR;                        // rear crossing in arc() angles
+  const aR = Math.max(aSprk, 184, aGR);        // rear arc start
+  arc(idler, 0, aF, 7);                        // around the idler (front)
+  // bottom run: approach point -> flat contact span -> departure point.
+  // A ground-terminated wrap enters the ground at its own crossing point —
+  // never emit a flat-run endpoint past it (a contact span reaching beyond a
+  // sunken wrap would double the run back under the wheel).
+  const zEnterF = aF === gF ? idler.z + Math.sin(aF * D2R) * (idler.r + CLEAR) : cF;
+  const zEnterR = aR === aGR ? sprocket.z + Math.sin(aR * D2R) * (sprocket.r + CLEAR) : cR;
   if (contact) {
-    for (let k = 0; k <= 5; k++) pts.push([cF + (cR - cF) * (k / 5), botY]);
+    const zf = Math.min(cF, zEnterF), zr = Math.max(cR, zEnterR);
+    for (let k = 0; k <= 5; k++) pts.push([zf + (zr - zf) * (k / 5), botY]);
   } else {
     for (let k = 1; k <= 5; k++) pts.push([zi + (zs - zi) * (k / 6), botY]);
   }
-  arc(sprocket, Math.max(aSprk, 184), 360, 7); // around the sprocket (rear)
+  arc(sprocket, aR, 360, 7);                   // around the sprocket (rear)
   // drop duplicate closing point
   pts.pop();
-  // ground clamp: the band centerline can never pass below its own ground
-  // run — raised end-wheel wraps (y - r - CLEAR < botY) dipped 6cm+ below
-  // ground and inflated every heightM reading (geo-gate round-2 finding)
+  // ground clamp, kept as the last-resort safety net (pathological cfgs
+  // only — e.g. an end wheel entirely below its own ground run): the band
+  // centerline can never pass below its own ground run — raised end-wheel
+  // wraps (y - r - CLEAR < botY) dipped 6cm+ below ground and inflated every
+  // heightM reading (geo-gate round-2 finding)
   for (const p of pts) if (p[1] < botY) p[1] = botY;
   return pts;
 }
@@ -1230,7 +1257,7 @@ function buildRunningGear(P, cfg) {
     attr.needsUpdate = true;
   }
 
-  P.gear = {
+  const gearUnit = {
     update(l, r) {
       const dl = Math.abs(l - bobPrevL), dr = Math.abs(r - bobPrevR);
       bobPrevL = l; bobPrevR = r;
@@ -1418,7 +1445,68 @@ function buildRunningGear(P, cfg) {
       if (pick) pick.thrown = !!broken;
     },
   };
-  P.gear.contactGeom = gearContactGeom;
+  gearUnit.contactGeom = gearContactGeom;
+  // Seat this unit's InstancedMesh matrices at rest NOW (scroll 0/0). The
+  // instanced wheels/link pads otherwise carry identity matrices — an origin
+  // blob reaching ~0.4 m below ground — until someone calls update(). The
+  // factory does call update(0,0) once after the profile builds, but through
+  // P.gear, which a LATER buildRunningGear call used to replace: on
+  // multi-unit rigs (t95 four-track) the earlier units never got seated and
+  // poisoned every silhouette/height measurement. Seating here is idempotent
+  // (the rest pose is exactly what the first syncFromState composes at 0/0),
+  // so profile-side warm-up calls and the factory's own remain harmless.
+  gearUnit.update(0, 0);
+  registerGearUnit(P, gearUnit);
+}
+
+/**
+ * Register a built running-gear unit as/into P.gear.
+ *
+ * Single-unit rigs (every stock builder): P.gear IS the unit — the exact
+ * legacy object shape and semantics (update/conform/setBroken/contactGeom).
+ *
+ * Multi-unit rigs (a profile calling buildRunningGear more than once — the
+ * t95 four-track builds two units per side): each call used to overwrite
+ * P.gear wholesale, so the factory rest-seat, the per-frame update/conform
+ * and module setBroken reached only the LAST unit; earlier units kept
+ * identity instance matrices and never animated, conformed or de-tracked.
+ * P.gear becomes a registry that fans every call out to ALL units and
+ * exports the UNION of their movement-solve contact metadata:
+ *   halfLenM/zCenterM — union of the units' flat ground-contact spans;
+ *   halfWidM          — outermost track edge across units;
+ *   bottomYM          — lowest rendered gear surface across units;
+ *   endRise           — most restrictive (lowest) approach rise per end
+ *                       (guards sample the lowest rising wrap so no unit's
+ *                       pads can spear a bank the solve cleared).
+ * @param {object} P profile build context
+ * @param {object} unit one buildRunningGear result (update/conform/setBroken)
+ */
+function registerGearUnit(P, unit) {
+  const prev = P.gear;
+  if (!prev) { P.gear = unit; return; }
+  const units = (prev.__units || [prev]).concat(unit);
+  const cgs = units.map((u) => u.contactGeom);
+  const zF = Math.max(...cgs.map((c) => c.zCenterM + c.halfLenM));
+  const zR = Math.min(...cgs.map((c) => c.zCenterM - c.halfLenM));
+  P.gear = {
+    __units: units,
+    update(l, r) { for (const u of units) u.update(l, r); },
+    conform(state, sampler, pitchEff, rollEff) {
+      for (const u of units) u.conform(state, sampler, pitchEff, rollEff);
+    },
+    setBroken(module, broken) { for (const u of units) u.setBroken(module, broken); },
+    contactGeom: {
+      halfLenM: (zF - zR) / 2,
+      zCenterM: (zF + zR) / 2,
+      halfWidM: Math.max(...cgs.map((c) => c.halfWidM)),
+      bottomYM: Math.min(...cgs.map((c) => c.bottomYM)),
+      endRise: {
+        dzM: cgs[0].endRise.dzM,
+        frontM: Math.min(...cgs.map((c) => c.endRise.frontM)),
+        rearM: Math.min(...cgs.map((c) => c.endRise.rearM)),
+      },
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------

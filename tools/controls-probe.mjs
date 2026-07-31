@@ -17,6 +17,33 @@
 //   and combat assertions through the classic pointer-lock path, plus lock
 //   actually engaging and the toast NOT appearing (no fallback regression).
 //
+// BATTLE-ENTRY GATE DECISION (boot r9 loading flow): entering battle
+// deliberately takes SECONDS — spawnTanks defers every staged visual to the
+// post-ready idle pump (state.js perf r3/r4), and the entry path builds the
+// world + roster texture bakes behind the pre-battle loading screen
+// (~10 s on a cold first entry). The probe's original contract — phase ===
+// 'battle' within 900 ms of the click — asserted an implementation detail
+// that no longer exists, and failed both modes against a perfectly healthy
+// entry. A state.js-side reordering (warming the roster before the click)
+// was evaluated and REJECTED: pre-building visuals is exactly the
+// load-to-ready regression the deferral ships to avoid, and the loading
+// screen is the designed entry experience. The probe therefore treats the
+// LOADING SCREEN as the contract and asserts the user-facing promise in two
+// halves:
+//   1. FEEDBACK IS IN-GESTURE — battleLoad.show() flips .cot-bl.on
+//      synchronously inside the click handler; measured, the class lands
+//      ~1 ms after the click event dispatches. This MUST be measured with
+//      IN-PAGE timestamps (capturing click listener + MutationObserver):
+//      harness-side measurement (post-click waitForFunction, rAF polling)
+//      reads 750 ms+ of pure scheduling noise — the click's DISPATCH queues
+//      behind idle-pump/world-build long tasks and the first rAF poll
+//      starves past them — and fails a healthy entry (that scheduling
+//      artifact, not the game, is what sank the old 900 ms assert).
+//   2. ENTRY COMPLETES — the phase flips to 'battle' and the screen clears
+//      (countdown included), each under a generous 20 s ceiling (~2x the
+//      measured cold entry), so a real hang still fails the gate instead of
+//      burning 90 s waits.
+//
 // A garage BATTLE click must never latch a fire edge in either mode (asserted
 // as zero player shells before the first deliberate battle click).
 //
@@ -49,7 +76,7 @@ const server = await createServer({
   // otherwise hot-reload the page, wiping the probe's instrumentation and the
   // battle state under our feet (observed: __PROBE vanished mid-assertions).
   server: {
-    port: 5300 + Math.floor(Math.random() * 600),
+    port: 7000 + Math.floor(Math.random() * 300),
     strictPort: false,
     hmr: false,
     watch: null,
@@ -141,7 +168,7 @@ async function runMode(mode, { stubNoLock, width, height }) {
   // instrument player shell events BEFORE entering battle; rig.aimPoint is
   // captured AT fire time — a post-hoc read races camera motion under lock
   await page.evaluate(() => {
-    window.__PROBE = { fired: [] };
+    window.__PROBE = { fired: [], blShowMs: -1 };
     window.__DEBUG.bus.on('shell:fired', (p) => {
       if (p.isPlayer) {
         const ap = window.__DEBUG.rig.aimPoint;
@@ -153,22 +180,51 @@ async function runMode(mode, { stubNoLock, width, height }) {
         });
       }
     });
+    // loading-screen latency, measured IN-PAGE (see header): first click's
+    // dispatch time vs the .cot-bl 'on' class flip. MutationObserver
+    // delivery is a microtask at the end of the click task, so the delta is
+    // the user-felt in-gesture latency — and any slow work a regression
+    // ever inserts before battleLoad.show() lands inside it.
+    let clickAt = -1;
+    document.addEventListener('click', () => {
+      if (clickAt < 0) clickAt = performance.now();
+    }, { capture: true });
+    const seen = () => {
+      const el = document.querySelector('.cot-bl');
+      return !!(el && el.classList.contains('on'));
+    };
+    if (seen()) { window.__PROBE.blShowMs = -2; return; } // up before any click?!
+    const mo = new MutationObserver(() => {
+      if (window.__PROBE.blShowMs !== -1 || !seen()) return;
+      window.__PROBE.blShowMs = clickAt < 0 ? -2 : Math.round(performance.now() - clickAt);
+      mo.disconnect();
+    });
+    mo.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'], childList: true });
   });
 
   // --- battle entry via a REAL mouse click on the DOM button ----------------
+  // Two-part loading-screen contract — see BATTLE-ENTRY GATE DECISION header.
   await page.mouse.click(btn.cx, btn.cy);
-  // boot r9 loading flow: entry now runs a real loading screen (world build +
-  // staged roster + countdown, ~10 s) — wait for the phase flip and for the
-  // screen (.cot-bl.on) to clear instead of the old fixed 900 ms dwell.
+  // entry completes behind the loading screen: phase flip + screen clear
+  // (countdown included), each under a generous-but-hang-detecting 20 s
+  // ceiling (cold first entry measures ~10 s)
   let phase = 'garage';
   try {
-    await page.waitForFunction('window.__DEBUG.game.phase === "battle"', { timeout: 90000 });
-    await page.waitForFunction('!document.querySelector(".cot-bl.on")', { timeout: 90000 });
+    await page.waitForFunction('window.__DEBUG.game.phase === "battle"', { timeout: 20000 });
+    await page.waitForFunction('!document.querySelector(".cot-bl.on")', { timeout: 20000 });
     phase = 'battle';
   } catch (_) {
     phase = await page.evaluate(() => window.__DEBUG.game.phase);
   }
   check(mode, 'real BATTLE click enters battle', phase === 'battle', `phase=${phase}`);
+  // in-gesture feedback: the loading screen's class flip vs the click's
+  // dispatch, both stamped in-page (the value is pinned by now — reading it
+  // after the entry avoids polling across the world-build long tasks)
+  const blShowMs = await page.evaluate(() => window.__PROBE.blShowMs);
+  check(mode, 'loading screen shows inside the click gesture (<900ms)',
+    blShowMs >= 0 && blShowMs < 900,
+    blShowMs >= 0 ? `class flip ${blShowMs}ms after click dispatch`
+      : (blShowMs === -2 ? 'screen was up before the click' : 'screen never appeared'));
   if (phase !== 'battle') { await page.close(); return; } // everything below needs a battle
   await sleep(800); // openBattle snap + first live frames
   // The entry-click gesture is long gone once the loading screen clears — a
