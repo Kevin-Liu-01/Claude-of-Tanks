@@ -105,3 +105,10 @@ proportions remain unrepairable. Cap STANDS at the measured v10 residuals
 (hull 0 / whole 5.9 / turret 0 / stations 5.6); dims + floaters pass
 (100/100) — the dims-sovereign rebuild's published envelope held through
 the round-2 shared-builder changes.
+
+## Round-3 cap re-verification (2026-07-31, post kit track fix 146d25c)
+Re-measured on gate v10 after the kit contact-span/ground-clamp fix and
+the family-wide raisedEnds-workaround removal: the certified oracle/print
+defect cap STANDS (curve/station rows unchanged at their capped levels)
+and dims HOLDS >= 90. No compensation was re-introduced; end wheels are
+plain kit-native fits.

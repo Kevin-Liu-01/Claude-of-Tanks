@@ -114,3 +114,31 @@ tradeoff, ~11 columns), whips matched 1-col at x ±1.04 / z −2.10,−2.23
 → 40.8 (hull 72.5 / whole 49 / turret 47.2 / stations 40.8 / dims 100 /
 floaters 100). No oracle caps remain — every component is honestly
 iterable; stations/turret are shape work, not defects.
+
+## GATE-V10 round-3 (2026-07-31, post kit track fix 146d25c)
+
+Round standing: min 37.5 -> **45.9** (hull 72.6 -> 72.8, whole 49.5 ->
+49.7, turret 47.3 -> **50.9**, stations 37.5 -> 45.9, dims 100 after a
+mid-round 89.6 dip, floaters 100).
+
+- DIMS GUARD (family law, new failure mode): the kit-native idler at
+  the print's measured far edge (3.94) merged with the beak in
+  gap-inclusive side columns and read as BODY — hullLengthM inflated
+  2.3% and dims FAILED 89.6. The idler is held to a 3.88 pad-wrapped
+  far edge (3.48, 1.06, 0.25) — a documented dims-vs-curve trade: the
+  ref's last two ramp columns stay uncovered.
+- raisedEnds statics deleted; kit-native ramps fit the measured long
+  climbs (rear 0.07@-2.46 -> 0.91@-3.68 via sprocket -3.40/1.10/0.26).
+- Whips consolidated to the re-normalized print's SINGLE 4.0-tall spike
+  column at w -2.07 (the round-1 -2.12/-2.21 pair was a stale-frame
+  constant that read as two proc-only towers).
+- Rear basket re-read: the print carries a THIN HIGH band (2.13..2.16w)
+  at the bustle tail, not a deep tub — rails only, cargo deleted;
+  turret underride/ring shading raised to the 1.82-2.08 ref underside.
+
+Remaining work order: stations 45.9 (slice widths across the AMAP
+courses — the walls are still monolithic 6.85 m boxes and edge-on
+invisible to slice cameras; segmenting them like the a5/kf51 skirts is
+the next single largest win), whole 49.7 (RWS station carried at the
+2.66 grace line vs the print's 2.74-2.85 — same stature class as a5's
+certified cluster; ~11 side columns), turret 50.9 (basket/RWS bounds).

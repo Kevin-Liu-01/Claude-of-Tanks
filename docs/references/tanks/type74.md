@@ -99,3 +99,10 @@ to the fender line. **hullCurves / wholeCurves / turretCurves / stations
 are certified capped at their measured residuals** (~40 / ~6 / ~0 / ~0)
 against this print — no rigid transform repairs relative proportions.
 dims + floaters remain sovereign and pass at 100/100.
+
+## Round-3 cap re-verification (2026-07-31, post kit track fix 146d25c)
+Re-measured on gate v10 after the kit contact-span/ground-clamp fix and
+the family-wide raisedEnds-workaround removal: the certified oracle/print
+defect cap STANDS (curve/station rows unchanged at their capped levels)
+and dims HOLDS >= 90. No compensation was re-introduced; end wheels are
+plain kit-native fits.

@@ -73,3 +73,10 @@ the v10 numbers. The build carries PUBLISHED dims (sovereign): hull 7.45 /
 overall 9.76 / width 3.43 / p95 height 2.34. hullCurves / wholeCurves /
 turretCurves / stations are **certified capped at their measured v10
 residuals (53 / 31.3 / 3.1 / 0)**. dims + floaters pass (96.7 / 100).
+
+## Round-3 cap re-verification (2026-07-31, post kit track fix 146d25c)
+Re-measured on gate v10 after the kit contact-span/ground-clamp fix and
+the family-wide raisedEnds-workaround removal: the certified oracle/print
+defect cap STANDS (curve/station rows unchanged at their capped levels)
+and dims HOLDS >= 90. No compensation was re-introduced; end wheels are
+plain kit-native fits.

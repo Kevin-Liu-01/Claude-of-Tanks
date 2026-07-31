@@ -84,3 +84,10 @@ Fresh extraction confirms the certified short print: ref box z ±4.54
 (9.07 m overall vs published 9.52), the −7.4 % hull span and off-centre
 frame unchanged. Cap STANDS at the measured v10 residuals (hull 30.1 /
 whole 0 / turret 0 / stations 26.4); dims + floaters pass (100/100).
+
+## Round-3 cap re-verification (2026-07-31, post kit track fix 146d25c)
+Re-measured on gate v10 after the kit contact-span/ground-clamp fix and
+the family-wide raisedEnds-workaround removal: the certified oracle/print
+defect cap STANDS (curve/station rows unchanged at their capped levels)
+and dims HOLDS >= 90. No compensation was re-introduced; end wheels are
+plain kit-native fits.

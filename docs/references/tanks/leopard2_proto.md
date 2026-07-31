@@ -84,3 +84,10 @@ at their measured v10 residuals (all ~0 — the build carries the REAL
 proud turret and published envelope against a print with no turret and a
 deck-level gun bar). dims + floaters pass (100/100). Repair queue: none
 possible short of re-sourcing.
+
+## Round-3 cap re-verification (2026-07-31, post kit track fix 146d25c)
+Re-measured on gate v10 after the kit contact-span/ground-clamp fix and
+the family-wide raisedEnds-workaround removal: the certified oracle/print
+defect cap STANDS (curve/station rows unchanged at their capped levels)
+and dims HOLDS >= 90. No compensation was re-introduced; end wheels are
+plain kit-native fits.

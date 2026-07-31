@@ -108,3 +108,51 @@ to −0.065 below ground and inflated dims.heightM (p95 top − MIN BOT) by
 on a6/a5 heightM. Round-2 standing (gate v10): min 12.4 → 66+ (hull
 35→74, whole 12→66, turret 30→76, stations 26→80, dims 90→97+); no caps
 — every component is honestly iterable against this repaired oracle.
+
+## GATE-V10 round-3 (2026-07-31, post kit track fix 146d25c)
+
+Round standing: min 66.1 -> **81.6** (hull 74 -> 83.9, whole 66.1 -> 81.6,
+turret 76.4 -> 84.8, stations 80.3 -> **93.2 PASS**, dims 97 -> **100**,
+floaters 100). Fleet #1. No caps — every remaining point is iterable.
+
+Workaround simplification: the leoGear raisedEnds machinery (inboard
+wheel-height end wheels + wrap-radius ground clamp + static wrap rings,
+tooth boxes and ramp slabs) is DELETED — the kit's contact-span/ground-
+clamp fix handles raised end wheels natively. End wheels are now measured
+FITS: idler (3.34, 1.04, r 0.27), sprocket (-3.26, 1.05, r 0.29), wheel
+span [2.66, -2.28] — chosen so the pad-wrapped far edges land on the
+measured -3.73/+3.76 lines (link pads ride ~6 cm outside the band; a far
+edge 0.05 too long reads as a proc-only tail column).
+
+Mechanics established this round (probe-verified, family-visible):
+- WALL-STEP-ROOF: a single frustum chamfer from wall to roof edge always
+  tops ~2.58 at front x 1.0 (the face crosses that column just under the
+  roof); the ref reads 2.39 there. Walls stop at 2.39 and the roof is a
+  separate narrower course (x 0.96) — front_whole +2.4 in one edit.
+- STATION SEGMENTATION (merkava law confirmed on this family): unbroken
+  skirt courses are edge-on invisible to the near/far-clipped slice
+  cameras; all courses now lay as ~0.44 m segments (stations 80 -> 93).
+- Tracks re-laid to the measured front ground band 0.99..1.63 per side:
+  trackW 0.60 @ xc 1.305 — the shoe PIN CAPS add trackW*0.49+0.03 beyond
+  xc and set the true outer edge (1.63); the narrower tub then puts the
+  belly floor at +-0.95 like the ref.
+- Tail: the low rear mud flaps (0.45..1.12) were the worst side_hull
+  column (ref tail is a bare 1.5-1.8 strip); replaced by a tail frame
+  (rails 1.485/1.795, z -3.62..-3.88) whose 0.36-band clears the 12%
+  body filter and carries hullLengthM (dims 100 at 7.7 measured).
+- heightM p95 budget: PERI d 0.36 = exactly 3 side columns at 2.85; a
+  loader-periscope riser at 2.64 (inside the 1% grace, budget-free) is
+  the 4th-highest column and anchors heightM. d 0.40 put a 4th column at
+  2.85 and dims.heightM jumped to 2.84 (-30 dims) — reverted.
+- Print asymmetries matched: left cheek crests ~0.3 taller (crestL
+  table), tip pads left x 1.53 / right 1.47 BELOW the deck line (front
+  reads bare deck at their x; only the turret-plan mask sees them),
+  right-side rack extension to x 1.20.
+
+Remaining work order (all fixable, no caps): side_whole 81.6 — sprocket
+wrap shelf reads ~0.15 low on 2-3 columns (unidentified ~0.45-bottom
+around z -3.3; candidates exhausted armchair, needs a mask bisect);
+front_whole 81.2-ish — PERI boundary columns (ref head spans 4 columns,
+p95 budget allows 3 — certified budget residual ~0.1 x 2 cols), EMES
+saddle microshape; turret_side 84.8 — nose apex tier +0.05..0.1 over
+z 2.0-2.7; turret_plan 89.7 — gun-taper columns.

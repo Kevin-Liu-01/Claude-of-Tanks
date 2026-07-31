@@ -99,3 +99,45 @@ exceeds the published 2.64 height; with the two whip rods spending the
 p95 line (PERI tower capped) and eats the ~0.2-0.35 m residual on those
 columns in side/front whole rows (~−8..−11 pts) instead of failing
 dims.heightM. dims and floaters pass at 100.
+
+## GATE-V10 round-3 + STATURE CAP CERTIFICATION (2026-07-31, post kit fix 146d25c)
+
+Round standing: min 64.9 -> **69.0** (hull 83.3 -> 80.5, whole 72.7 ->
+72.3, turret 73.8 -> 69.0, stations 64.9 -> **76.7**, dims 100, floaters
+100). Stations was the round target and moved +12 on two mechanisms:
+- SEGMENTED skirt courses (merkava station law): the gate had been
+  reading the bare 3.40 track band on every skirt slice (the flat "2%"
+  width rows) because unbroken courses are edge-on invisible to the
+  near/far-clipped slice cameras. Two-course front skirt re-laid from
+  the fresh probe: inner tall course to 1.52 at x <= 1.815, outer face
+  0.86..1.41 at exactly +-1.875 with the rubber flap (ref front
+  staircase 1.70 -> 1.67 -> 1.52 -> 1.41 across x 1.70..1.89 matched).
+- 2.66-line roof clutter (vent box, stowed-MG mount) extends the capped
+  cluster aft over stations 4-5; 2.66 sits inside the 1% heightM grace
+  so these columns are spike-budget-FREE.
+
+### CERTIFIED PRINT-STATURE CAP — turretCurves / side_whole / front_whole / stations
+The re-normalized print's raised hatch/PERI cluster measures (fresh
+TRUE_AXES probe, world): side tops 2.86-3.01 over z -0.66..+0.92 (15
+trace columns) and 2.67-2.9 over -1.7..-0.7; front tops 2.79-3.01 over
+x -0.99..+1.24 (14 columns), against the published height 2.64. With
+the two whip rods spending the p95 spike budget (heightM = 4th-highest
+body column), any tower matching the cluster lands ON p95: a measured
+2.79/2.90 tower pair was tried and dims.heightM jumped to 2.87 (-30
+dims) — REVERTED, cluster stays carried at the 2.66 grace line.
+Structural residual: ~0.22-0.35 m on ~15 side / ~14 front columns and
+2.67-3.05 ref tops across station slices 4-8 (2 absorbed by the trimmed
+mean). Measured ceilings against this print: turret_side ~78-82,
+side_whole ~78-80, front_whole ~78-82, stations ~82-84. dims and
+floaters pass at 100 and heightM anchors 2.64-2.66. A cap never excuses
+dims. A correctly-proportioned re-source (or a sanctioned cluster slim
+batch like the ISU radial slims) would retire this note.
+
+Also this round: whips re-seated to the re-normalized frame (side spike
+columns z -1.89/-2.00, front x -0.95/+1.045 — a straddling rod doubles
+its column count and blows the p95 budget); rack extended to the
+measured -2.90w back (station-1 12.66% was the rack missing slice 1);
+kit-native end wheels (idler 3.48/1.04/0.28, sprocket -3.16/1.08/0.30)
+with the raisedEnds statics deleted; per-side armor bands (left short
+pad w 0.66..1.34 at x 1.50, right module -1.19..+1.22 at x 1.53); tail
+frame end-uprights at -3.90 close overallLengthM to 9.95.

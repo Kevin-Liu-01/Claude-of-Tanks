@@ -70,3 +70,25 @@ shows floating skirts). Standing min 9 (stations) — the remaining stations/
 turret work needs the full measured re-lay this round gave a6/a5
 (leoHullV3-class): the hull deck/glacis lines and the bustle scallop are
 still the round-1 shapes. No caps — the andertan print is honest.
+
+## GATE-V10 round-3 (2026-07-31, partial — dims recovery + flank re-lay)
+
+Round standing: min 8.1 -> **21.9** (hull 45.4 -> 50.6, whole 37 ->
+36.8, turret 14.3 -> 21.9, stations 8.1 -> **25.0**, dims **100**,
+floaters 100). The kit-native end wheels at the measured ramp positions
+first inflated hullLengthM to 7.14 (3.79%, dims 77.7): the pad-wrapped
+far edges merged with the skirts in gap-inclusive columns and read as
+BODY. Ends held to +-3.36 far edges (sprocket -2.94/1.02/0.27, idler
+2.94/0.96/0.26) restore dims 100 — dims is a protected metric on this
+tank — and the tightened hull z-range also re-phased the station slice
+windows (stations 9 -> 25). The ref's outer ramp columns stay uncovered
+(documented dims-sovereign trade, same law as leo2_revolution). Also this round: skirts SEGMENTED (station law),
+6-wheel span re-laid to the measured contact patch [1.97, -2.52], pano
+mast moved to the measured w -1.18 spike column, rear hull rack held to
+the 1.29..1.57 band, bustle basket pulled inside the -2.52w turret
+rear, deep mantlet housing to w 1.48 (ref side band 2.24).
+Remaining (next round's work order): stations 25 — the turret-band
+tops need the full a5 treatment (probe-driven cluster mapping); turret
+rows carry ~0.3-0.5 m band errors across the autoloader roof furniture.
+dims must be re-checked after any end-wheel retune (the +-3.36/3.40
+far-edge guard).
