@@ -216,14 +216,18 @@ export function fireCamoLossFor(caliberMm) {
 // deps.getEquipment(ent) returns an array of ids from this table; effects:
 //   camo      — flat own-camo bonus, always active           (vents)
 //   camoStill — own-camo bonus while the TANK sits still     (camo net)
-//   view      — view-range multiplier bonus, always active   (vents)
+//   view      — view-range multiplier bonus, always active   (vents/optics)
 //   viewStill — view-range bonus while the SPOTTER is still  (binoculars)
 // Wire-up lives in game/state.js (getEquipment dep) + the garage loadout UI.
+// EQUIPMENT SYSTEM: this table owns only the VISION/CONCEALMENT effects; the
+// full catalog (reload/aim/repair/durability/fire gear + slot logic + AI
+// defaults) lives in game/equipment.js and references these same ids.
 // ---------------------------------------------------------------------------
 export const EQUIPMENT = {
   camo_net:   { label: 'Camouflage Net',       camoStill: 0.12 },
   binoculars: { label: 'Binocular Telescope',  viewStill: 0.25 },
-  vents:      { label: 'Improved Ventilation', camo: 0.02, view: 0.02 },
+  vents:      { label: 'Improved Ventilation', camo: 0.02, view: 0.025 },
+  optics:     { label: 'Coated Optics',        view: 0.10 },
 };
 
 /**

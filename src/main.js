@@ -41,7 +41,9 @@ import {
 } from './vehicles/materials.js';
 import { computeDispersionRadM, SIM_DT } from './sim/movement.js';
 import { tankPoseFromState, queryAimArmor, traceTank } from './sim/armor.js';
-import { estimatePenRatio, selectShell, resolveShellHit, createCombatState } from './sim/damage.js';
+import {
+  estimatePenRatio, selectShell, resolveShellHit, createCombatState, repairAllModules,
+} from './sim/damage.js';
 import { createShell } from './sim/ballistics.js';
 import { createKillCam } from './game/killcam.js';
 import { createFx } from './fx/effects.js';
@@ -683,6 +685,7 @@ function ensureBattleStaged() {
   setupBattle(game, selectedSpecId, world, { deferVisuals: true });
   buildShellCards(game.player.spec);
   damagePanel.setTank(game.player.spec);
+  damagePanel.setEquipment(game.player.equip); // EQUIPMENT SYSTEM: loadout readout
   for (const ent of game.allTanks) {
     if (ent.visual && ent.visual.setGroundSampler) ent.visual.setGroundSampler(groundSampler);
   }
@@ -1297,13 +1300,10 @@ bus.on('ui:consumable', ({ slot }) => {
   const c = p.combat;
   let ok = false;
   if (slot === 0) {
-    for (const name of Object.keys(c.modules)) {
-      const m = c.modules[name];
-      if (m.state !== 'ok') {
-        m.hp = m.maxHp; m.state = 'ok'; m.repairT = 0;
-        bus.emit('module:state', { id: p.id, module: name, state: 'ok' });
-        ok = true;
-      }
+    // Module state transitions live in sim/damage.js (module_hitbox r1).
+    for (const name of repairAllModules(c)) {
+      bus.emit('module:state', { id: p.id, module: name, state: 'ok' });
+      ok = true;
     }
   } else if (slot === 1) {
     for (const name of Object.keys(c.crew)) {
@@ -1494,6 +1494,7 @@ function startBattle(specId, mapId = null, opts = {}) {
   fx.resetAll();
   buildShellCards(game.player.spec);
   damagePanel.setTank(game.player.spec);
+  damagePanel.setEquipment(game.player.equip); // EQUIPMENT SYSTEM: loadout readout
   garage.hide();
   endOverlay.style.display = 'none';
   endShown = false; // KILL-CAM: fresh battle — re-arm the end-of-battle gate
@@ -2189,6 +2190,7 @@ function ensureShotWorld(mapId) {
   battleStaged = true;
   buildShellCards(game.player.spec);
   damagePanel.setTank(game.player.spec);
+  damagePanel.setEquipment(game.player.equip); // EQUIPMENT SYSTEM: loadout readout
   for (const ent of game.allTanks) {
     if (ent.visual && ent.visual.setGroundSampler) ent.visual.setGroundSampler(groundSampler);
   }

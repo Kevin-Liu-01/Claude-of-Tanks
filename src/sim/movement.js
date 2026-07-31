@@ -407,6 +407,7 @@ function readDebuffs(combat) {
   let traverseMult = 1;
   let turretMult = 1;
   let aimTimeMult = 1;
+  let bloomMult = 1;
   let gunYellow = false;
   if (combat) {
     if (combat.destroyed) immobile = true;
@@ -431,8 +432,22 @@ function readDebuffs(combat) {
       if (crew.driver === false) { accelMult = DRIVER_DEAD_MULT; traverseMult = DRIVER_DEAD_MULT; }
       if (crew.gunner === false) aimTimeMult = GUNNER_DEAD_AIMTIME_MULT;
     }
+    // EQUIPMENT SYSTEM (game/equipment.js): loadout multipliers attached to
+    // the combat state once per battle. Improved rotation raises hull+turret
+    // traverse (traverse >1 ⇒ rate UP), GLD/vents cut aim time (aimTime <1 ⇒
+    // faster settle), vertical stabilizer shrinks the movement-bloom EXCESS
+    // (bloomMult <1, applied at the bloom target below). All stack
+    // multiplicatively with the damage/crew debuffs above, exactly like the
+    // ammo-rack × loader stack in damage.js startReload.
+    const em = combat.equipMults;
+    if (em) {
+      if (typeof em.traverse === 'number') traverseMult *= em.traverse;
+      if (typeof em.turret === 'number') turretMult *= em.turret;
+      if (typeof em.aimTime === 'number') aimTimeMult *= em.aimTime;
+      if (typeof em.bloom === 'number') bloomMult = em.bloom;
+    }
   }
-  return { immobile, powerMult, accelMult, traverseMult, turretMult, aimTimeMult, gunYellow };
+  return { immobile, powerMult, accelMult, traverseMult, turretMult, aimTimeMult, gunYellow, bloomMult };
 }
 
 /** Hull-local height of the gun trunnion above ground contact (for aim angles). */
@@ -1287,6 +1302,10 @@ export function updateTank(entity, heightField, dt, collide = null) {
     (b.move * Math.abs(state.speed) * 3.6) ** 2 +
     (b.hullRot * Math.abs(state.yawRate) * RAD2DEG) ** 2 +
     (b.turret * Math.abs(state.turretYawRate) * RAD2DEG) ** 2);
+  // EQUIPMENT SYSTEM: vertical stabilizer scales the movement-bloom EXCESS
+  // (the part above the fully-aimed 1.0 floor) so a parked tank gains
+  // nothing — WoT's -20% dispersion-on-move semantics.
+  if (debuff.bloomMult !== 1) bloomTarget = 1 + (bloomTarget - 1) * debuff.bloomMult;
   if (debuff.gunYellow) bloomTarget = Math.max(bloomTarget * 2, GUN_YELLOW_BLOOM_FLOOR);
   const tau = bloomTarget > state.bloomF
     ? BLOOM_GROW_TAU
