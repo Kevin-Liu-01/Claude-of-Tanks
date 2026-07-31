@@ -196,6 +196,14 @@ forEachBoxCorner(sharedBox, (p) => corners.push(p));
 // HANDOFF-FABLE §6: nine fixed proof cameras. Quarter views catch compound
 // slopes and bustle shapes that pure orthographic axes hide; both sides are
 // scored because real vehicles are asymmetric (exhausts, sights, stowage).
+// Metrology-only axes: PURE orthographic views. The display ANGLES below
+// carry deliberate small tilts (deck hint) which distort measurements —
+// never use them for curves, stations, or dims.
+const TRUE_AXES = {
+  side: new THREE.Vector3(1, 0, 0),
+  plan: new THREE.Vector3(0, 1, 0),
+  front: new THREE.Vector3(0, 0, 1),
+};
 const ANGLES = {
   front: new THREE.Vector3(0, 0.08, 1),
   frontLeft: new THREE.Vector3(-1, 0.08, 1),
@@ -571,9 +579,9 @@ if (params.get('profiles')) {
     return c;
   };
   // Side (camera on +x): columns = world -z (flip to +z later), rows = world y.
-  const sideCam = mkCam(ANGLES.right);
-  const topCam = mkCam(ANGLES.top);
-  const frontCam = mkCam(ANGLES.front);
+  const sideCam = mkCam(TRUE_AXES.side);
+  const topCam = mkCam(TRUE_AXES.plan);
+  const frontCam = mkCam(TRUE_AXES.front);
   const profiles = {
     id, generated: 'mask-trace-1024',
     frame: { center: rc.toArray().map((v) => Number(v.toFixed(3))),
@@ -595,7 +603,7 @@ if (params.get('profiles')) {
   for (let i = 0; i < S; i++) {
     const z0 = refBox.min.z + (i / S) * size.z;
     const z1 = refBox.min.z + ((i + 1) / S) * size.z;
-    const cam = mkCam(ANGLES.front);
+    const cam = mkCam(TRUE_AXES.front);
     // camera sits at center + dir*60 looking -dir; distance to plane z=zs:
     const camZ = cam.position.z;
     cam.near = Math.max(0.1, camZ - z1);
@@ -752,7 +760,7 @@ if (params.get('geo')) {
   const refBoxG = visibleBox(reference.root);
   const height = refBoxG.max.y - refBoxG.min.y;
   const length = refBoxG.max.z - refBoxG.min.z;
-  const camsG = { side: cameraFor(ANGLES.right), plan: cameraFor(ANGLES.top), front: cameraFor(ANGLES.front) };
+  const camsG = { side: cameraFor(TRUE_AXES.side), plan: cameraFor(TRUE_AXES.plan), front: cameraFor(TRUE_AXES.front) };
   const curves = {};
   for (const [view, cam] of Object.entries(camsG)) {
     for (const part of ['whole', 'hull']) {
@@ -812,7 +820,7 @@ if (params.get('geo')) {
         const sz = (zr ? zr[1] - zr[0] : box.max.z - box.min.z);
         const zb = zr ? zr[0] : box.min.z;
         const z0 = zb + (i / 14) * sz, z1 = zb + ((i + 1) / 14) * sz;
-        const cam = cameraFor(ANGLES.front);
+        const cam = cameraFor(TRUE_AXES.front);
         cam.near = Math.max(0.1, cam.position.z - z1); cam.far = cam.position.z - z0;
         cam.updateProjectionMatrix();
         const m = gMask(visual, other, cam, 'whole');
