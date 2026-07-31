@@ -113,8 +113,12 @@ const articulated = (id, cfg = {}) => source(id, {
 const CHALLENGER_TURRET_FOLLOWERS =
   'vehicle#(?:ammo_|antenna_|bone_mg_aa_|ex_decor_(?:0[1-3]|0[5-9]|1[0-2])_|hatch_0[2-5]_)';
 const CHALLENGER_GUN_FOLLOWERS = 'vehicle#(?:gun_mask_|bone_mg_gun_twin_)';
+// ex_armor_[lr]_NN are the HULL SKIRT runs (26 nodes on the 2B print) — the
+// old (?!body) lookahead swept them into rig_turret and capped the family's
+// reference turret masks at 26-58 no matter what the procedural built
+// (round-3 finding, quantified in docs/references/tanks/merkava2b.md).
 const MERKAVA_TURRET_FOLLOWERS =
-  'vehicle#(?:antenna_|bone_|ex_armor_(?!body)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))';
+  'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))';
 const MERKAVA_GUN_FOLLOWERS = 'vehicle#gun_barrel_';
 
 // Specs/gameplay ship everywhere. Public builds deliberately omit the
