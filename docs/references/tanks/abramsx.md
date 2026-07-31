@@ -80,3 +80,12 @@ remaining ~20 columns cap hullCurves/wholeCurves/front rows (~0-26) and
 pull the hull registration dy ~0.12-0.27, spreading residual error over
 every column. turret rows (the yawing shell) score independently; dims 98.9
 and floaters 100 are green.
+
+
+## Gate v10 cap re-verification (2026-07-31)
+The RWS-in-hull-mask cert STANDS under v10: the oracle's hull mask carries
+the 3.25-3.45 sensor bridge over 2.4 m plus 4.1 whips; under published
+heightM 2.44 those clamp to the 2.44 bridge deck + single 3-column mast
+head (hull/whole capped at 0 by the bridge band, turret ~26-31). The
+XM360 runs to the published 9.77 overall against the oracle's long tube
+(cover-capped). Dims green 98.9; floaters 100.

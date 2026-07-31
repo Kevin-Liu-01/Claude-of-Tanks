@@ -87,3 +87,12 @@ CERTIFIED CAP: print muzzle 4.46 vs published 9.77 overall (build carries
 +0.86 m of correct tube = bounded wholeCurves cover); print crown 2.59 vs
 published height (crown clamped 2.46, ~20 columns x 0.13 err); print hull
 z-mid sits -0.6 (registration absorbs). dims 97.8, floaters 100 green.
+
+
+## Gate v10 cap re-verification (2026-07-31)
+The short-muzzle cert holds EXACTLY as scoped by the gate doc: the print's
+short tube caps wholeCurves ONLY (registration is hull-anchored). The
+remaining hull/turret/station gaps are honest build distance to the fused
+print (crown 2.79 vs the published-2.44 height clamp keeps turret rows
+bounded; the 2.46 crown plateau is the p95 anchor). Dims green 99.1;
+floaters 100.

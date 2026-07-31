@@ -99,3 +99,34 @@ plane (left lip at the committed 1.75) and eats the bounded row penalties.
 WIDTH GUARD: v5 fender-bin lids breached to +-1.83 on a 3.5 tank (silent
 3.5% shrink) — everything now inside +-1.75. dims 97.7, floaters 100 green;
 curve rows capped ~34-59 by the 4.6%-short, x-shifted oracle.
+
+
+## Round 2 — oracle batch 5 + gate v10 (2026-07-31)
+OBSOLETE CERT REMOVED: the v6/v7 "SPLIT-RIG ORACLE" cert (casting waist /
+ring collar / cupola / fender tiers read in the HULL mask; build mirrored
+the split) is OBSOLETE — batch 5 absorbed the 369 stranded turret members
+(chin casting band, discharger banks, searchlight face, cupola glass, rack
+contents, waist kit) into the oracle's turret. The build is UN-MIRRORED:
+collar (2.43), right forward waist tier (2.29), IR searchlight step, chin
+band over the driver (2.09 at z 1.93 -> 2.32 at 1.44), cupola drum (p95
+anchor ring 2.875), flank rack tiers (2.31/2.20 to z -2.1, x to ±1.46 with
+±1.51 outer walls) all live in the TURRET buckets and yaw together.
+Hull keeps the print's hull-side furniture: the RIGHT engine-bay bin run
+(top 2.2, z -0.25..-1.41 — its face is the right width plane at 1.75) and
+the LEFT full-length fender (the fender ASYMMETRY cert STANDS: left plane
+-1.65..-1.77 full length, right fender stops ~1.53). Left track-guard planes
+added (outer lip band 0.6..1.6 at -1.74, inner deep run to the ground at
+-1.65..-1.69); fenders sit under the deck line with crest plates at z ~1.7
+and -1.7..-2.35 only; body rakes at the belly line (idler y 0.42 / sprocket
+y 0.48 own the ground bow/tail lines); track narrowed to x 1.07..1.51.
+Masts: the oracle's twin sight/searchlight masts are SLIM columns that read
+at (x +0.89, 3.70) and (x -1.23, 3.52) with the whip at (x +0.71, 3.78,
+z -0.90) — built as thin rods at those stations; heightM anchors on the
+cupola ring 2.875 (p95) regardless of mast aliasing.
+RE-CERTIFIED CAPS (v10): hull print 7.24 m vs published 7.52 (3.7% short) —
+bounded cover on hull/whole rows; the print's plan is narrow-bodied (full
+length only to |x| 1.53 with the right bin at 1.65-1.74), so the committed
+3.5 width plane carries bounded plan-row cost. A cap never excuses dims:
+dims 100, floaters 100.
+Numbers (baseline -> now): hull 0 -> 63, whole 0 -> 47, turret 24.8 -> 44.9,
+stations 58.5 -> 62.7, dims 100 -> 100, floaters 100.

@@ -66,3 +66,31 @@ matches published within 0.2% (best-conditioned UK print); its body sits
 z-shifted ~1.0 which the hull-anchored registration absorbs.
 dims 92.2, floaters 100 green; turretCurves still capped by the fused
 breech/crown interplay (in progress, honest 0-18 today).
+
+
+## Gate v10 iteration round 2 (2026-07-31)
+The bergman print authors its steel far REAR of the loader frame (hull mask
+z -5.03..2.15 with junk to -4.86; body-span registration lands dAlong
+~+1.17), and docs/references/profiles/<id>.json for this print decodes at a
+DIFFERENT lab scale than the gate renders — authoring targets for this
+family must come from gate-frame probes, not the profile JSON.
+Probe-true retune: gun axis 1.95 (tube top 2.06) with the print's FAT tube
+band built as sleeve/extractor drums kept INSIDE the bow footprint (r <=
+0.21 so hullLengthM never re-classifies the barrel as body) plus a slim
+0.14 taper toward the muzzle (print plan gun reads ±0.15-0.2 to its 6.03
+registered muzzle = the published overall); casting registered FORWARD:
+face line 2.12 at world z 1.84 rising to the 2.46 crown (dome ±1.40 plan),
+2.64 crest pad at 0.72, cupola stack at world -0.18, raised rear crown 2.74
+to -0.6, bustle 2.58 to -1.2, bin tail 2.41 to -1.9, basket mass hanging to
+0.65 over z -0.7..+1.2. No tall antenna masts (the print's whole box tops
+2.85 — the old "masts to 3.77" read predates the width-keyed
+renormalization).
+CERTIFIED CAPS (v10): the print cupola tops 2.86 vs published height 2.94 —
+the 2.92 cupola stack is the dims p95 anchor (dims sovereign, ~0.06 over
+the print on 4-5 columns). The print carries a phantom stern band at
+z -4.4..-4.9 (a stowage beam floating past its tail): matching it would
+stretch overallLengthM (full-span, v10) past published — it stays
+unmatched, a bounded 2-4 column cover/err cost on side/plan whole rows.
+Numbers (baseline -> now): centurion5 hull 45.7 -> 47.2, whole 18 -> 27.5,
+turret 0.2 -> 26, stations 51.2 -> 74.2, dims 100, floaters 100 (centurion3
+tracks the same build: turret 0 -> 24.1, stations 50.7 -> 60.5).

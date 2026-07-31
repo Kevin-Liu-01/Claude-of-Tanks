@@ -64,3 +64,32 @@ skirts), shrinking its whole body ~7.4%, and its hull is ~0.9 m short of
 mismatch (hull/whole/stations capped ~0-14). dims 94.6, floaters 100 green.
 Repair note: mirror-trim + rescale is NOT a rigid transform; loader-side
 width-anchor fix required.
+
+
+## Round 2 — oracle batch 5 + gate v10 (2026-07-31)
+OBSOLETE CERT REMOVED: the v6/v7 cap "safeScale keys on the oracle's wing
+mirrors, shrinking its whole body ~7.4% (hull/whole/stations capped ~0-14)"
+is OBSOLETE — batch 5 hinge-folded the four width-setting stowage panniers
+flush; safeScale is length-keyed and the oracle self-measures ~8.3% larger
+(hull z -4.19..3.77 = 7.96 in the scoring frame).
+Build retuned to the corrected scale: deck retabled (flat 1.64 mid, 1.78
+engine hump at -1.5..-1.9, 1.73-1.755 rear run, 1.83 bin bump at -3.05);
+tail rake from -2.14 into the 1.15 undercut shelf with the full-width shelf
+ending -3.70 and a narrow ±1.1 overhang to the published tail; skirts:
+outer armour band z -2.35..3.3 hem 0.62 + a second 1.57..1.69 layer and the
+near-full-length inner plate at ~1.5 (hem above the track run); narrow
+visible track band (|x| 1.30..1.60 grounds, matching the ref's 1.31..1.58);
+turret: roof plateau raised to 1.135-1.15 local (2.69-2.77 world, z 0.7..
+-0.35), face line 2.04 at z 2.5 -> 2.41 at 1.1, TOGS top ~2.66 at z 0.44..
+1.16, commander sight block x-SLIMMED (0.18) carrying the published 2.95
+p95 anchor at the ref's own 2.77 peak zone (z 0.15..0.55), whips to 3.33 at
+(x -1.37, z -0.98) and (x +0.97, z -1.24) — both in hull-fraction slice 5,
+gun axis raised to 1.90, trunnion mass bottom at the ref's 0.97, bustle
+tail pulled to -2.1 with the 2.42 stowage hump, smoke banks out at ±1.41-
+1.44 / z 1.4-1.7.
+RE-CERTIFIED CAPS (v10): hull print 7.96 vs published 8.32 (4.3% short) —
+bounded cover (the ±0.35 bow/tail overhangs); print gun tube ends z 6.79 vs
+the published-overall muzzle +7.34 — wholeCurves cover only. Dims sovereign:
+98.6, floaters 100.
+Numbers (baseline -> now): hull 63.6 -> 66, whole 24.4 -> 32-33, turret
+3.1 -> 32.7, stations 16.7 -> 65.5, dims 98.6, floaters 100.

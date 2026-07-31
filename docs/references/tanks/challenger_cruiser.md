@@ -74,3 +74,11 @@ its long hull), lowered deck line (roofY 1.50) per the true-camera curves,
 cupola on a tall riser as the 2.77 p95 anchor, deep breech mass matched,
 guard faces on the committed +-1.455 plane. dims 91.7, floaters 100 green;
 every curve/station row carries the certified 15% length mismatch (~0).
+
+
+## Gate v10 cap re-verification (2026-07-31)
+The short-print cert STANDS under v10 (curve rows 0, stations 0 remain
+structurally capped by the print). Dims hold >= 90 under the v10 pixel
+semantics (90.4: hullLengthM reads 7.88 vs 8.03 = 1.81% — the thin bow
+visor band trims the measured body span; heightM 1.22%, overall 1.17%,
+width 0.14%). Floaters 100. A cap never excuses dims — dims stays green.

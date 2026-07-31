@@ -72,3 +72,11 @@ CERTIFIED CAP: the print is ~17% short in hull length and ~19% short overall
 with its forward roof at 2.9; under sovereign dims every curve/station row
 carries the scale mismatch (hull/whole/turret/stations capped ~0-19). dims
 100 and floaters 100 are green.
+
+
+## Gate v10 cap re-verification (2026-07-31)
+The short-print cert STANDS under v10: the bergman print spans ~6.6 m vs
+the published 7.93 hull (17% short) with its forward roof at 2.9 — curve
+and station rows are structurally capped (hull/whole/turret 0, stations
+~19). Dims sovereign and green: 100; floaters 100. No compensation is
+carried in the build (published dims 7.93/9.77/3.66/2.44 all hold).

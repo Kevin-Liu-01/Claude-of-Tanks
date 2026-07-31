@@ -51,3 +51,8 @@ unmatchable top error); hullCurves 90.1, dims 98.1, floaters 100 are the
 achievable components and are green.
 Final: hull 90.1 / whole 51.8 / turret 52.5 / stations 60.9 / dims 98.1 /
 floaters 100.
+
+
+## Gate v10 note (2026-07-31)
+Shares the m1a1 build and caps (tejas-family CROWS-cluster height cap
+STANDS). hull 90.1 passes v10; dims 98.1, floaters 100.

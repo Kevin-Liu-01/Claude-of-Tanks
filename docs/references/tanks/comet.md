@@ -73,3 +73,25 @@ riser as the 2.68 p95 anchor, deep breech mass matched, Christie gear pulled
 inside the hull span (the end-wheel wraps were defining hullLengthM).
 CERTIFIED CAP: the print sits z-shifted (+0.75 registration) and ~4% long —
 whole/hull rows carry the bounded stretch; dims 97.9 and floaters 100 green.
+
+
+## Gate v10 iteration round 2 (2026-07-31)
+Probe-true retune (the profile JSON for this print decodes at a different
+lab scale — gate-frame probes only). The print registers rear-heavy
+(dAlong ~+0.70). Changes: hull pannier band narrowed to ±1.26 with 1.54
+fender aprons (the print's front hull tops 1.54 at |x| 1.29..1.53 — the
+old full-width 1.70 band read as excess); hull pannier bins DELETED from
+the hull mask; the print carries its tall fender bin in the TURRET mask,
+RIGHT side only (front band 1.96..2.32 at x +1.42..1.53) — built as a
+turret-bucket bin at x 1.08..1.52 (fused-print quirk, documented cap);
+turret crown raised to 2.55 (h 0.85) with the cupola cluster at the
+print's +x station (x +0.68, torus 2.68 = the published-height p95
+anchor); radio bustle at world -0.14..-1.09 (top 2.28); breech/basket mask
+bottoming 0.73 over world -0.3..+1.03; gun axis 1.86.
+CERTIFIED CAPS (v10): the print's front-view roof is asymmetric (2.48 at
+x +0.6..0.9 vs 2.27 centre-left) while its side crown reads 2.51-2.55 —
+the two views cannot both be matched by mirrored geometry; bounded row
+cost. Published height 2.68 vs print crown 2.55: the 2.66-2.68 cupola
+anchor carries the dims-sovereign delta. Dims 100, floaters 100.
+Numbers (baseline -> now): hull 28.3 -> 35.2, whole 0 -> ~0.5, turret
+6.7 -> 13.4, stations 29.8 -> 24.7 (front-view caps dominate; see above).

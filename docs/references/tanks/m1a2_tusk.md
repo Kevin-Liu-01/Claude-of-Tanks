@@ -94,3 +94,12 @@ the certification, dims (97) and floaters (100) are green and sovereign.
 Repair note: not rigid-transform repairable (two inconsistent scales inside
 one oracle); the fix is loader-side (scale the kit with the GLB or exclude
 it from the swap).
+
+
+## Gate v10 cap re-verification (2026-07-31)
+The chimera cert STANDS under v10: the tusk oracle remains the tejas GLB
+height-clamped small PLUS a real-scale runtime kit — hull/whole/turret/
+stations are structurally capped (0-18 range); the build keeps the
+published-true full-scale body + real-scale ARAT/slat/TIP kit. Achievable
+components green: dims 97 (heightM/width within grace), floaters 100.
+A cap never excuses dims — dims holds >= 90.

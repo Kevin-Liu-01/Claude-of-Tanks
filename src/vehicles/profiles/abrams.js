@@ -621,96 +621,133 @@ function buildTejasFamily(P, p) {
 }
 
 // ---------------------------------------------------------------------------
-// m1a2 — dannzjs SEPv3 oracle. v6: the oracle hull is ~0.7 m SHORT of the
-// published 7.93 (dims sovereign — hull built full length, the overhangs
-// carry a small bounded cover penalty), its roof plateau sits at 2.43 with
-// NO tall mast farm (CROWS-LP head 2.85 max) — the v5 mast/antenna forest is
-// deleted. Gun axis 2.02, muzzle at the published 9.77 overall.
+// m1a2 — dannzjs SEPv3 oracle, BATCH-5 REPAIRED: the TurretPivot subtree was
+// authored 0.234 units left of the hull axis (a lateral TRANSLATION, not the
+// previously-certified "~2 deg yaw") and is now seated on the ring — the
+// v6/v7 -0.16 gun x-offset compensation is REMOVED (gun x = 0). The repaired
+// print re-normalizes ~4.3% larger: hull z -3.67..3.90 (7.57 vs published
+// 7.93 — dims sovereign), deck 1.53 mid with the 1.47 periscope hump at
+// z 3.4-3.6, ground-brushing INNER skirts (outer armour band hems at 0.75),
+// bustle boxes 2.5-2.9 (height-capped) and twin 4.0 whips at z -1.5..-1.7.
 // ---------------------------------------------------------------------------
 const SEPV3_HULL = {
   bodyHalfW: 1.70, nose: 3.97,
-  planTaper: { bowHalfW: 1.0, bowPull: 0.38, tailHalfW: 1.2, tailPull: 0.33 },
-  deck: [[3.97, 1.10], [3.50, 1.12], [3.37, 1.20], [3.20, 1.25], [2.84, 1.27],
-    [2.40, 1.38], [1.90, 1.46], [-1.50, 1.55], [-2.50, 1.62], [-3.35, 1.65],
-    [-3.55, 1.74], [-3.75, 1.74], [-3.97, 1.70]],
-  beltTop: 1.02, belly: 0.35,
-  noseRake: [[2.65, 0.35], [3.35, 0.50], [3.60, 0.90], [3.97, 1.08]],
-  tailRake: [[-2.55, 0.35], [-3.40, 0.62]],
-  tailShelf: { z0: -3.40, z1: -3.97, yBot: 0.64 },
-  skirt: { x: 1.828, top: 1.55, bot: 0.71, z0: -2.60, z1: 2.98 },
-  engineZ: -2.95, glacisTopZ: 2.40, periZ: 3.10, periHump: true, periHumpH: 0.16, noFrontFlaps: true,
-  trackXc: 1.22, trackW: 0.60, wheelR: 0.40, wheelY: 0.51,
+  planTaper: { bowHalfW: 1.55, bowPull: 0.30, tailHalfW: 1.60, tailPull: 0.26 },
+  deck: [[3.97, 1.08], [3.86, 1.11], [3.67, 1.15], [3.60, 1.30], [3.56, 1.47],
+    [3.44, 1.47], [3.36, 1.40], [3.12, 1.40], [3.00, 1.35], [2.89, 1.31],
+    [2.78, 1.32], [2.56, 1.34], [2.34, 1.41], [2.12, 1.45], [2.00, 1.50],
+    [1.89, 1.52], [0.80, 1.53], [-0.78, 1.53], [-1.45, 1.56], [-1.89, 1.60],
+    [-2.23, 1.61], [-2.42, 1.62], [-2.52, 1.70], [-3.20, 1.70], [-3.36, 1.76],
+    [-3.50, 1.79], [-3.62, 1.85], [-3.80, 1.79], [-3.97, 1.72]],
+  beltTop: 1.02, belly: 0.60,
+  // The GROUND-level bow/tail lines belong to the tracks (idler/sprocket
+  // descents) — the BODY rakes stay at the ref's inner-column belly line so
+  // the front view keeps its 0.57-0.64 floor.
+  noseRake: [[2.60, 0.56], [3.30, 0.52], [3.55, 0.60], [3.75, 0.78], [3.97, 1.04]],
+  tailRake: [[-2.45, 0.56], [-2.95, 0.55], [-3.12, 0.52], [-3.34, 0.60]],
+  tailShelf: { z0: -3.34, z1: -3.72, yBot: 0.64 },
+  skirt: { x: 1.828, top: 1.52, bot: 0.75, z0: -2.60, z1: 2.98 },
+  engineZ: -2.95, glacisTopZ: 2.40, periZ: 3.44, noFrontFlaps: true,
+  trackXc: 1.28, trackW: 0.58, wheelR: 0.40, wheelY: 0.51,
   wheelZs: [2.45, 1.63, 0.81, -0.01, -0.83, -1.65, -2.45],
-  idlerZ: 2.62, idlerY: 0.66, idlerR: 0.30, sprocketZ: -2.55, sprocketY: 0.66, sprocketR: 0.32,
+  idlerZ: 3.0, idlerY: 0.45, idlerR: 0.28, sprocketZ: -2.67, sprocketY: 0.42, sprocketR: 0.32,
 };
 
-// Ring (0, 1.80, -0.245). World: cheek roof flat 2.43 to the tips, shell
-// bottom 1.51 fwd / 1.70 at the bustle, shell+rack rear -3.02, rack top
-// level with the roof (2.43), gun axis 2.02.
+// Ring (0, 1.80, -0.245). World: cheek tips 2.34 falling from the doghouse
+// line, roof plateau 2.44-2.46, shell bottom 1.51 fwd / 1.70 at the bustle,
+// shell+rack rear -3.05, gun axis 2.05 on the hull centreline (repair).
 const SEPV3_TURRET = {
-  tw: 1.60, throat: 0.62, zTip: 2.40, zWide: 0.85, zMain: -0.30, zRear: -2.35,
-  yBot: -0.29, yBotRear: -0.10, roofTip: 0.62, roofWide: 0.63, roofMain: 0.64, roofRear: 0.62,
-  inset: 0.12, faceRake: 0.40, rackTop: 0.63, rackBot: -0.10, rackDepth: 0.45, rackRearDrop: 0.40,
-  ring: [0, 1.80, -0.245], gun: [-0.16, 0.22, 0.70], gunLen: 5.36, gunR: 0.095,
+  tw: 1.64, throat: 0.62, zTip: 2.60, zWide: 1.95, zMain: -0.30, zRear: -2.35,
+  yBot: -0.29, yBotRear: -0.10, roofTip: 0.48, roofWide: 0.54, roofMain: 0.64, roofRear: 0.62,
+  inset: 0.12, faceRake: 0.40, rackTop: 0.63, rackBot: -0.10, rackDepth: 0.45, rackRearDrop: 0.22,
+  ring: [0, 1.80, -0.245], gun: [0, 0.25, 0.70], gunLen: 5.36, gunR: 0.095,
 };
 
 function buildSepv3(P) {
   const g = SEPV3_HULL;
   const t = SEPV3_TURRET;
   abramsHull(P, g);
-  // Rear cross-rack over the grille doors (oracle: top 1.80 at z -3.45..-3.75
-  // in its own frame; carried on the extended published-length tail).
-  P.add('hullDetail', box(3.0, 0.06, 0.06), 0, 1.76, -3.50);
-  P.add('hullDetail', box(3.0, 0.06, 0.06), 0, 1.76, -3.90);
-  P.add('hullDark', box(2.9, 0.4, 0.02), 0, 1.35, -3.92);
-  for (const x of [-1.45, -0.75, 0, 0.75, 1.45]) {
-    P.add('hullDetail', box(0.05, 0.5, 0.24), x, 1.5, -3.75);
+  // Inner deep skirt band: the repaired oracle brushes the GROUND at
+  // |x| 1.1..1.6 over z -2.45..2.62 while the outer armour plane hems at
+  // 0.75 — both planes are built (WIDTH GUARD: inner band well inside).
+  for (const side of [-1, 1]) {
+    P.add('hull', box(0.24, 0.72, 5.07), side * 1.44, 0.41, 0.085);
   }
-  P.add('hullCloth', box(1.1, 0.32, 0.3), -0.6, 1.6, -3.72);
+  // Fender strips at the plan's ±1.72-1.83 run (z -2.85..3.45) + the ref's
+  // 2.12-high mirror stubs at ±1.79.
+  for (const side of [-1, 1]) {
+    P.add('hullDetail', box(0.15, 0.035, 6.3), side * 1.745, 1.50, 0.30);
+    P.add('hullDetail', box(0.04, 0.42, 0.04), side * 1.77, 1.70, 2.45);
+    P.add('hullDark', box(0.07, 0.22, 0.11), side * 1.77, 2.00, 2.45);
+  }
+  // Thin rear overhang lip out to the published tail (the ref tail tip is a
+  // one-pixel 1.57 band — a full-depth shelf there reads as excess volume).
+  P.add('hull', box(3.36, 0.48, 0.25), 0, 1.49, -3.845);
+  // Rear cross-rack over the grille doors (ref top 1.79-1.86, z -3.36..-3.67
+  // side; its FRONT view keeps the ±0.7 middle at the 1.71 deck line, so the
+  // rack rides as two outboard segments).
+  for (const side of [-1, 1]) {
+    P.add('hullDetail', box(0.70, 0.06, 0.06), side * 1.08, 1.80, -3.50);
+    P.add('hullDetail', box(0.70, 0.06, 0.06), side * 1.08, 1.82, -3.90);
+    P.add('hullDetail', box(0.05, 0.55, 0.24), side * 0.75, 1.53, -3.75);
+    P.add('hullDetail', box(0.05, 0.55, 0.24), side * 1.42, 1.53, -3.75);
+  }
+  P.add('hullDark', box(2.9, 0.4, 0.02), 0, 1.40, -3.92);
+  P.add('hullCloth', box(0.62, 0.30, 0.3), -1.05, 1.63, -3.72);
   P.turretG.position.set(t.ring[0], t.ring[1], t.ring[2]);
   P.gunG.position.set(t.gun[0], t.gun[1], t.gun[2]);
   abramsShell(P, t);
-  abramsBustleRack(P, { ...t, tw: t.tw * 0.92 }, 1);
+  abramsBustleRack(P, { ...t, tw: t.tw * 0.90 }, 1);
   const roof = t.roofMain;                    // 0.64 local = 2.44 world
-  // GPS doghouse on the right cheek — clamped to the published plateau.
-  P.add('turret', box(0.55, 0.22, 0.7), 0.95, t.roofWide - 0.12, 1.45);
-  P.add('turret', box(0.59, 0.05, 0.74), 0.95, t.roofWide + 0.005, 1.45);
-  P.add('turretDark', box(0.42, 0.13, 0.04), 0.95, t.roofWide - 0.10, 1.82);
-  P.add('turretGlass', box(0.34, 0.08, 0.02), 0.95, t.roofWide - 0.10, 1.845);
-  // CITV left-forward: slim pedestal + single-column head at the oracle's
-  // 2.75 (z_world ≈ 1.2 — one mask column of the p95 budget).
-  P.add('turret', cylY(0.13, 0.16, 0.10, 14), -0.85, roof - 0.03, 1.44);
-  P.add('turret', box(0.30, 0.22, 0.14), -0.85, roof - 0.09, 1.44);
-  P.add('turretDark', box(0.24, 0.14, 0.03), -0.85, roof - 0.09, 1.52);
-  P.add('turretGlass', box(0.18, 0.10, 0.02), -0.85, roof - 0.09, 1.54);
-  turretHatch(P, 0.7, roof - 0.10, -0.15, 0.2, 4);
-  turretHatch(P, -0.75, roof - 0.10, -0.35, 0.24, 6);
-  // CROWS-LP: compact pedestal + head, peak 2.85 world (local 1.05) at
-  // z_local -0.58..-0.78 — two mask columns of the p95 budget, at the
-  // oracle's 2.81-2.84 cluster station.
-  P.add('turretDetail', cylY(0.14, 0.17, 0.05, 12), -0.35, roof - 0.015, -0.68);
-  P.add('turret', cylY(0.06, 0.07, 0.22, 10), -0.35, roof + 0.17, -0.68);
-  P.add('turret', box(0.34, 0.28, 0.20), -0.35, roof + 0.25, -0.68);
-  P.add('turretDark', box(0.26, 0.18, 0.035), -0.35, roof + 0.25, -0.57);
-  P.add('turretGlass', box(0.20, 0.12, 0.02), -0.35, roof + 0.25, -0.548);
-  m2hb(P, -0.24, roof + 0.35, -0.68, 0.42);
-  // Bustle roof stowage kept level with the rack plateau.
-  P.add('turretCloth', box(1.15, 0.20, 0.8), -0.15, roof - 0.13, -1.75);
-  P.add('turretDark', box(1.17, 0.18, 0.024), -0.15, roof - 0.13, -1.36);
-  P.add('turretCloth', box(0.7, 0.16, 0.55), 0.62, roof - 0.16, -1.9);
-  antennaPot(P, -1.15, roof - 0.22, -2.25);
-  antennaPot(P, 1.15, roof - 0.22, -2.25);
+  const plat = roof + 0.02;                   // 2.46 — the p95 plateau cap
+  // GPS doghouse on the right cheek (ref 2.53 at z 1.9..2.2 — clamped to
+  // the published plateau).
+  P.add('turret', box(0.55, 0.24, 0.60), 0.85, plat - 0.16, 2.05);
+  P.add('turret', box(0.59, 0.05, 0.64), 0.85, plat - 0.03, 2.05);
+  P.add('turretDark', box(0.42, 0.13, 0.04), 0.85, plat - 0.12, 2.37);
+  P.add('turretGlass', box(0.34, 0.08, 0.02), 0.85, plat - 0.12, 2.395);
+  // CITV left-forward at the oracle's z 1.34..1.56 station — head clamped
+  // to the plateau (the p95 budget is spent on the twin whips).
+  P.add('turret', cylY(0.13, 0.16, 0.10, 14), -0.95, roof - 0.03, 1.50);
+  P.add('turret', box(0.30, 0.24, 0.16), -0.95, plat - 0.12, 1.66);
+  P.add('turretDark', box(0.24, 0.15, 0.03), -0.95, plat - 0.12, 1.75);
+  P.add('turretGlass', box(0.18, 0.10, 0.02), -0.95, plat - 0.12, 1.77);
+  turretHatch(P, 0.7, roof - 0.12, -0.15, 0.2, 4);
+  turretHatch(P, -0.75, roof - 0.12, -0.35, 0.24, 6);
+  // CROWS-LP at the oracle's 2.9 cluster (z -0.44..-0.89): head CLAMPED to
+  // the plateau — the two whips own the entire above-height column budget.
+  P.add('turretDetail', cylY(0.14, 0.17, 0.05, 12), -0.38, roof - 0.015, -0.55);
+  P.add('turret', box(0.30, 0.22, 0.09), -0.38, plat - 0.13, -0.56);
+  P.add('turret', box(0.26, 0.42, 0.08), -0.38, plat + 0.24, -0.56);
+  P.add('turretDark', box(0.20, 0.20, 0.03), -0.38, plat + 0.30, -0.515);
+  P.add('turretGlass', box(0.16, 0.12, 0.02), -0.38, plat + 0.30, -0.502);
+  // Bustle SEP electronics boxes (oracle 2.885 over z -1.85..-2.1, x ±1.3 —
+  // height-capped to the plateau) + roof stowage.
+  P.add('turret', box(2.60, 0.36, 0.50), 0, roof - 0.16, -1.72);
+  P.add('turretDark', box(2.62, 0.30, 0.03), 0, roof - 0.16, -1.985);
+  P.add('turretCloth', box(1.15, 0.18, 0.55), -0.15, roof - 0.10, -1.15);
+  P.add('turretCloth', box(0.7, 0.14, 0.5), 0.62, roof - 0.12, -1.2);
+  // ONE whip antenna at the left bustle corner (oracle 4.0 peak; the other
+  // above-plateau columns are spent on the CROWS head at the oracle's 2.9
+  // cluster). Sits in hull-fraction slice 3 like the oracle's own whips.
+  P.add('turretDetail', box(0.09, 0.05, 0.09), -1.02, roof + 0.005, -1.485);
+  P.add('turretDark', box(0.024, 1.48, 0.024), -1.02, roof + 0.82, -1.485);
   for (const side of [-1, 1]) {
-    smokeBank(P, side * 1.26, 0.22, 1.65, side);
-    P.add('turretDetail', box(0.05, 0.18, 0.4), side * 1.24, 0.18, 1.4);
+    smokeBank(P, side * 1.38, 0.28, 1.45, side);
+    P.add('turretDetail', box(0.05, 0.18, 0.4), side * 1.30, 0.22, 1.25);
   }
-  shellSponsons(P, { ...t, zRear: t.zRear + 0.45 }, 1, 1.70, -0.05, 0.5);
-  liftEye(P, 'turretDetail', -1.05, t.roofWide - 0.14, 1.35);
-  liftEye(P, 'turretDetail', 1.05, t.roofWide - 0.14, 1.35);
+  shellSponsons(P, { ...t, zRear: t.zRear + 0.25 }, 1, 1.70, -0.05, 0.35);
+  liftEye(P, 'turretDetail', -1.05, t.roofWide - 0.02, 1.35);
+  liftEye(P, 'turretDetail', 1.05, t.roofWide - 0.02, 1.35);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.34, [1.722, 0.15, -1.0], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.34, [-1.722, 0.15, -1.0], -Math.PI / 2);
   abramsMantlet(P, 1, 0.6, 0.42, 0.4);
-  buildGun(P, { len: t.gunLen, r: t.gunR, sleeve: true, evac: 0.5, collar: true, baseR: 0.15 });
+  // Long dust-cover run from the mantlet toward the bore evacuator (the
+  // oracle's plan turret reads ±0.33 wide out to z 3.1).
+  P.addGunExtra(box(0.56, 0.34, 0.9), 0, 0.02, 0.85);
+  P.addGunExtra(box(0.44, 0.26, 0.85), 0, 0.0, 1.6);
+  buildGun(P, { len: t.gunLen, r: t.gunR, sleeve: true, evac: 0.5, evacR: 1.45, collar: false, baseR: 0.15 });
+  P.add('gun', cylZ(t.gunR * 1.1, 0.14, 12), 0, 0, t.gunLen - 0.42);
   P.topY = roof + 1.2;
 }
 

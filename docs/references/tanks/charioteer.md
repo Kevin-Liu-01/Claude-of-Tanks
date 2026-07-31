@@ -78,3 +78,25 @@ committed plane, cupola riser as the 2.58 p95 anchor, deep breech mass
 matched, gear inside the hull span. The print sits z-shifted (+1.31) —
 absorbed by registration. dims 100, floaters 100 green; curve rows capped by
 the short/shifted print (~14-32).
+
+
+## Gate v10 iteration round 2 (2026-07-31)
+Probe-true retune (profile JSON unreliable for this print; gate-frame
+probes only). The print registers rear-heavy (dAlong ~+1.20) with its hull
+mask running z -5.08..1.20. Changes: pivot moved to z +0.2 with the
+registered crown plateau 2.34-2.51 over world +1.0..-0.8, forward face
+wedge (2.20 at z 1.68 falling from 2.42), bustle train registered (2.49
+box at world -0.6, 2.29 at -1.0, 1.98 at -1.5), breech/basket mask
+bottom 0.72-0.74 over world +1.0..+0.1, gun axis 1.89 with the published
+overall held (gunLength 5.38 from the +0.55 pivot = muzzle +5.93); fat
+sleeve r <= 0.15 inside the bow footprint; hull pannier bins deleted
+(bare print fenders), band ±1.30 with 1.50 aprons, track narrowed
+(trackW 0.40).
+CERTIFIED CAPS (v10): print tube ends ~z 4.9 registered vs the published
+muzzle +5.93 — wholeCurves cover only. The print's hull mask carries
+~0.75 m of stern junk its steel doesn't explain; station slices (own-frame
+fractions) disagree with the registered curve frame by ~0.5 m — curves are
+authored first (3 gated components vs 1), stations carry the bounded
+residual. Dims 99.7, floaters 100.
+Numbers (baseline -> now): hull 16.3 -> 21-23, whole 0 -> ~0.4, turret
+0 -> 28.2, stations 32.3 -> 34.5, dims 100 -> 99.7, floaters 100.
