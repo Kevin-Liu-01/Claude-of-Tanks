@@ -7,7 +7,8 @@
  * from disk twice (r9.1: preload() errored forever and every rotation stuck
  * on frame 1). Names must match public/media/featured/ EXACTLY.
  *
- * f6 is the first OWNER-AUTHORED studio capture (scene studio, 2026-08-01).
+ * f6/f7 are OWNER-AUTHORED studio captures (scene studio, 2026-08-01 —
+ * these replaced the first road-ambush capture at the owner's request).
  */
 export const FEATURED_SHOTS = [
   { img: '/media/featured/f1_09_winter_lake_duel.webp', cap: 'Frosthollow — ammo-rack kill' },
@@ -15,7 +16,8 @@ export const FEATURED_SHOTS = [
   { img: '/media/featured/f3_19_urban_overwatch_church.webp', cap: 'Steinburg — church overwatch' },
   { img: '/media/featured/f4_20_urban_ruin_brawl.webp', cap: 'Steinburg — ruin brawl' },
   { img: '/media/featured/f5_01_desert_duel_leclerc_kill.webp', cap: 'Sirocco Wadi — Leclerc duel' },
-  { img: '/media/featured/f6_studio_t90_road_ambush.webp', cap: 'Verdant Fields — T-90 road ambush' },
+  { img: '/media/featured/f6_studio_strv_steinburg_duel.webp', cap: 'Steinburg — Strv 103 street duel' },
+  { img: '/media/featured/f7_studio_t90_column_fire.webp', cap: 'Verdant Fields — T-90 column under fire' },
 ];
 
 /** Just the image URLs (boot hero + transition backdrops). */
