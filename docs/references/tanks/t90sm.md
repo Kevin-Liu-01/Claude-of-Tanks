@@ -203,3 +203,17 @@ trimmed. Gate: hull 25.1 -> 51.3 / whole 0 -> 36.5 / turret 39.6 / stations
 +1.65% column owner; likely the pano/RWS ensemble width at 96-col pitch).
 Board reviewed: orientation correct; glacis face and Relikt flank read slab-
 flat (fitting language next once curves converge).
+
+## VERTEX ROUND r2c (2026-08-01): heightM p95 RESOLVED — the pano stack
+(box top 2.22 + dark cyl 2.29) plus the RWS/rear towers together held the
+p95 at 2.27; all four shaved 0.02-0.04 -> dims 94.8 -> 98.4 (heightM
++0.8%). Flank flare panels to the ref 1.79 line; trackW 0.50 (pad line
+1.67). Gate: min 36.5 -> 37.9 (hull 49.9 / whole 37.9 / turret 39.6 /
+stations 50.5 / dims 98.4 / floaters 100). Board reviewed: clean. NEXT
+(decoded but NOT yet authored): ref front at |x| 1.72 spans 0.94..1.79 —
+the 1.75-1.79 top there is TURRET cheek-cassette content (reaches x 1.85)
+NOT hull skirt (side view vetoes tall hull courses, r2b lesson): widen the
+turret Relikt cassette reach toward 1.85 and raise skirt yBot toward 0.90;
+front |x| 1.85 wants the hull Relikt course y-span 0.575..1.725 — VERIFY
+against side first (it vetoed once already); stations 50.5 top rows at the
+tower slices; plan_hull 53.5 p95 12.55 (worst plan row — undecoded).

@@ -193,3 +193,25 @@ z -1.99, 2.60), drums sit ON the tail plate (1.655-1.671). Two passes:
 dims 97.8). Board: orientation correct, no interpen (the 487-vert fender
 strip quirk stays quarantined per the packet). NEXT: front_whole (K-5 wedge
 columns), side nose-gear fade columns (family cap class), turret plan.
+
+## VERTEX ROUND r3 — dome plan-chord re-anchor (2026-08-01)
+
+Gate plan-turret flank chords overturned the r2 dome seat: ref chords at
+x +-1.23..1.45 center on z -0.52 (NOT -0.99 — the r2 "dome mass -2.29"
+included the bustle bins) with A 1.50 / sz 0.73; the r2 "raised mid band
+FULL WIDTH" claim was another flipped-digest artifact — ref front reads
+1.25 at |x| 1.77, so the band is x<=1.58 and ends SHARPLY at -0.92 (lerp
+smeared 1.78 at -0.80). Ref front dome falloff is steep (1.94 at |x| 0.3,
+1.78 at 1.05): dome apex is now 2.06 with a NARROW center hump box owning
+the 2.19-2.23 side band (front columns +-0.12 only), cupola dropped to the
+1.94 line, K-5 tips shortened off the glacis zone (ref reads bare 1.48-1.49
+over z +0.5..+1.45), pano authored as a THIN plate (0.06 x-width:
+sub-column in front view where ref reads 1.94, full-height 2.16 in side
+view at z -1.87; spike mast to 2.56 stays 1-col). Recoil housing slimmed
+out of the |x| 0.27 plan column (t72b3m lesson); basket rails to 1.74.
+
+Gate: 32.3 -> min 42.2 (hull 52.5 / whole 42.2 / turret 54.0 / stations
+81.7 / dims 97.8 / floaters 100). Board reviewed: articulation clean.
+NEXT: side_whole z -2.1 rear-stack band, hull rear/front gear-fade columns
+(certified family class), front_whole K-5 flank residual (+0.1), dims
+hullLengthM 1.28% (front body band straddles a column).

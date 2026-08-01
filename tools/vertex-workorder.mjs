@@ -93,14 +93,24 @@ try {
       yOff[view] = Number.isFinite(mn) ? -mn : 0;
     }
     // plan calibration: the plan 'vertical' is world-z on screen; anchor the
-    // REF whole-mask REAR edge to the extract's known hullMask.z0 (ground
-    // truth, same spirit as the side/front ground anchor). p[1] is the
-    // screen-top (front-most) value, p[2] the screen-bottom (rear-most).
+    // REF hull-mask REAR edge to the extract's known hullMask.z0 (ground
+    // truth, same spirit as the side/front ground anchor).
+    // r3 FIX (t72bu phantom basket): the old orientation pick compared span
+    // ENDPOINTS against the muzzle target — DEGENERATE, since a contiguous
+    // mask maps its extremes to the same two values under both modes; ±1px
+    // jitter decided the branch and a flipped run printed the ref turret
+    // rear at z −3.2 (direct mask dump: it ends at −1.55). Orientation now
+    // comes from the THIN-END test on the whole mask (the end held by the
+    // gun tube alone — few columns — is the FRONT), and the offset from the
+    // HULL trace (whole-mask rear can overhang the hull rear).
     {
       const cam0 = cameraFor(AXES.plan);
       const t0 = trace(renderMask(reference, procedural, cam0, 'whole'), cam0);
+      const t0h = trace(renderMask(reference, procedural, cam0, 'hull'), cam0);
       let mn = Infinity, mx = -Infinity;
       for (const c of t0) if (c) { if (c[2] < mn) mn = c[2]; if (c[1] > mx) mx = c[1]; }
+      let mnH = Infinity, mxH = -Infinity;
+      for (const c of t0h) if (c) { if (c[2] < mnH) mnH = c[2]; if (c[1] > mxH) mxH = c[1]; }
       let z0 = null, z1 = null;
       try {
         const vx = JSON.parse(window.__VERTEX_JSON || 'null');
@@ -108,15 +118,24 @@ try {
         const gb = vx?.landmarks?.gunBox;
         z1 = gb ? gb.hi[2] : (vx?.measured?.hullMask?.z1 ?? null);
       } catch {}
-      if (z0 !== null && Number.isFinite(mn) && Number.isFinite(mx)) {
-        // two orientation candidates; pick by which puts the far extreme
-        // nearer the known front (muzzle or mask z1)
-        const offA = z0 - mn;   // z = offA + v
-        const offB = z0 + mx;   // z = offB - v
-        const frontA = offA + mx, frontB = offB - mn;
-        const target = z1 !== null ? z1 : (z0 + (mx - mn));
-        planZOff.mode = Math.abs(frontA - target) <= Math.abs(frontB - target) ? 'A' : 'B';
-        planZOff.off = planZOff.mode === 'A' ? offA : offB;
+      if (z0 !== null && Number.isFinite(mn) && Number.isFinite(mx) && Number.isFinite(mnH)) {
+        const near = 0.40;
+        let nMn = 0, nMx = 0;
+        for (const c of t0) {
+          if (!c) continue;
+          if (c[2] <= mn + near) nMn++;
+          if (c[1] >= mx - near) nMx++;
+        }
+        if (nMn !== nMx) {
+          // thin end = muzzle = front (max z). mode B maps v=mn -> z max.
+          planZOff.mode = nMn < nMx ? 'B' : 'A';
+        } else {
+          // symmetric fallback (gunless mask): old endpoint-vs-target pick
+          const frontA = (z0 - mnH) + mx, frontB = (z0 + mxH) - mn;
+          const target = z1 !== null ? z1 : (z0 + (mx - mn));
+          planZOff.mode = Math.abs(frontA - target) <= Math.abs(frontB - target) ? 'A' : 'B';
+        }
+        planZOff.off = planZOff.mode === 'A' ? (z0 - mnH) : (z0 + mxH);
       } else { planZOff.mode = 'legacy'; planZOff.off = C.z; }
     }
     const toWorld = {

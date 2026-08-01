@@ -159,3 +159,13 @@ center 1.96-2.13 band), side rear-gear ramp (print fade quirk, family class),
 turret plan columns. Ref front tells banked in this section's derivation:
 track outer face ends 1.675 (ground content at 1.67, skirt-only 0.78..1.40
 at 1.68-1.72).
+
+## VERTEX ROUND r3 (2026-08-01): the met-mast CROSSBAR owned three front
+columns at 2.50 where ref reads 1.94 (deleted); sight cluster dropped to
+the 1.94 line; trackW 0.54 -> 0.50 per the banked 1.67 ground-line tell.
+Gate: 34.3 -> min 39.7 (hull 59.4 / whole 39.7 / turret 49.7 / stations
+63.4 / dims 100 / floaters 100). Board reviewed: clean. NEXT: front |x|
+1.64-1.68 pad/skirt slivers are SUB-PIXEL against the 1024 gate (my pads
+1.62-1.66 vs col edge 1.626 — decode before moving anything), center-left
+1.76-1.94 band residual, side rear-gear fade (certified family class),
+turret plan columns.

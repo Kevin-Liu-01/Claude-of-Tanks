@@ -241,3 +241,46 @@ probe), settle where the ref turret really ends, THEN either author the
 rear basket run or fix the digest — no build edits until the masks agree.
 Turret rows at yaw poses include the tube for BOTH models symmetrically
 (rig_gun nests under rig_turret in the harness) — not an asymmetry source.
+
+## VERTEX ROUND r3 — mask-dump verdict + rebuild (2026-08-01)
+
+MASKS SETTLED IT (tools/tmp-rv-maskdump.mjs, shots/russia-vertex/probe/):
+the ref turret ends at z -1.52 in BOTH plan and side — the digest's "-3.2
+basket run" was a TOOL BUG: vertex-workorder.mjs's plan A/B orientation
+pick compared span ENDPOINTS against the muzzle target, which is DEGENERATE
+(a contiguous mask maps its extremes identically under both modes; +-1px
+noise chose the branch). Fixed in the tool: orientation now comes from the
+whole-mask THIN-END test (the end held by the tube alone is the front),
+offset from the HULL trace. All prior PLAN-row world claims in any packet's
+digest output are suspect; side rows were always sane.
+
+Ref turret truth (gate-frame): dome front +1.44, widest +-1.67 over
+z +0.1..+0.5 (center ~+0.22), crown 2.24 carried OFF-CENTER (front row: only
+~1.75 at x~0 — mantlet slot dip), rear slope 1.83-1.86, pano spike 2.37
+@ -0.8, basket stub halfW 0.61-0.77 ending -1.52. Hull truth (gate 1024):
+rear plateau 1.267 over -2.5..-2.0, drum hump 1.51-1.56, PLAN NOTCHES both
+ends — plate ends -3.06/+2.80 at center; inner tail tabs (x 0.35..1.2) to
+-3.43 and fender prongs (x 1.41..1.87, y 0.75..1.19) to +3.40 carry the
+span. K-5 side course z +0.84..+2.44 at 1.87 with the 1.885 lump to +2.74;
+the ref's right skirt crosses the gate's outer plan column (matched with a
+segmented lipX 1.807 lip, keeping plan reg dy centered).
+
+Rebuild r3 (buildT72BU): turret pivot +0.20, low-wide dome (rings 1.66 x
+sz 0.72, apex 1.98), crown carried by cupola+Agat, thin sight rail on a
+strut, basket shrunk to the stub, tube re-contoured to the plan mask (root
+r.15 / sleeve .135 / evac .132 capped by the dims 12% body filter — at
+r>=.134 the evac counts as hull BODY beyond the nose and hullLengthM reads
+7.97). Gate: 11 -> min 39.4 (hull 39.4 / whole 51.8 / turret 64.8 /
+stations 85.9 / dims 100 / floaters 100). Board reviewed: orientation +
+articulation correct, kit solid.
+
+**CERTIFIED RESIDUAL (gear-fade class, t90a family):** every side_hull
+worst column is the print's running-gear fade — ref side-hull bottoms ramp
+0.5..0.9 over z -2.4..-3.3 and 0.26..0.87 over +2.9..+3.4 where an honest
+track/sprocket/idler runs at 0.04..0.42 (side-hull PNG dump confirms:
+no rear track in the print). Also poisons the row's dy (+0.04). Est.
+side_hull ceiling ~55-70; whole similar via the same columns. Dims stay
+100. NEXT: diffuse sub-0.15 side columns (deck furniture cm-noise), then
+turret side rows (dome rear slope 1.92 vs 1.85), front_whole center
+columns (dome 1.98 vs ref 1.75 mantlet-slot dip — lathe cannot dip;
+consider a clipped-crown dome variant).
