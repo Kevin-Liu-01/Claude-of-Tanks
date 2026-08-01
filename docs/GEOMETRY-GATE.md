@@ -169,10 +169,23 @@ ledger.
   means exceeding the committed max width silently rescales the whole tank
   (WIDTH GUARD comments in the profile files).
 - The ledger is tool-written; hand edits are a program violation.
-- Reference GLBs remain **measurement oracles**: dimensions may be read,
-  vertices may never be extracted, traced, or embedded (HANDOFF-FABLE §
-  licensing; measured polylines in `docs/references/profiles/` are
-  dimension data, like reading a blueprint).
+- Reference-model usage (OWNER RULING 2026-08-01, supersedes the earlier
+  measurement-only rule): the actual geometry of the community reference
+  models may be analyzed directly — vertices, corners, cross-sections —
+  and used as the basis for alignment and for the procedural builds
+  themselves, scaled 100% to published real-vehicle sizes. This unlocks
+  two techniques: (1) **vertex-space oracle normalization** — repair
+  recipes may rescale/warp a stylized print axis-wise to published dims
+  (per-axis factors documented in the packet, append-only recipes,
+  pristine .bak, byte-idempotent) so its curve rows measure the real
+  vehicle; (2) **vertex-informed building** — builders may derive
+  profile curves, station targets, and corner positions from the
+  (normalized) reference vertices instead of only from rendered masks.
+  Published dims stay sovereign and the gate's measurement pipeline is
+  unchanged — a vertex-informed build still passes only by matching the
+  measured reference through the same mask pipeline. Provenance stays in
+  the packet + docs/ATTRIBUTION.md. The ONE absolute rule is untouched:
+  assets extracted from commercial games are forbidden, always.
 
 ## Current baseline
 
