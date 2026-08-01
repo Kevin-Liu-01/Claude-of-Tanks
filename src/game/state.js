@@ -303,6 +303,12 @@ const SPEC_TIER = {
   centurion3: 7, centurion5: 8, comet: 7, challenger_cruiser: 6, charioteer: 8,
   leopard2_proto: 8, m1a1_aim: 9, m46_patton: 7, m47_patton: 7,
   m26_pershing: 8, m45_patton: 8, m60a3: 8,
+  // USER DROPS wave 8 (scout-gen2, userdrops7.js): cold-war MBT generations.
+  // t44 is the lone ww2-era row (pools with tiger1/is2); the rest are modern.
+  // t80bv plays as the roster's T-80BVM proxy — modernization-refit tier
+  // (t72b3m/t90sm peer), not flagship.
+  t44: 7, t54: 7, type59: 7, t80: 8, t80b: 9, t80bv: 9,
+  amx30: 7, amx30b2: 8, m48: 7, m60a2: 8, vickers_mk1: 7, t84: 9,
 };
 const specTier = (specId) => SPEC_TIER[specId] != null ? SPEC_TIER[specId] : 6;
 

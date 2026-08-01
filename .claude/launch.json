@@ -12,6 +12,12 @@
       "runtimeExecutable": "/Users/kevinliu/claude-of-tanks/node_modules/.bin/vite",
       "runtimeArgs": ["/Users/kevinliu/claude-of-tanks", "--port", "7137", "--strictPort"],
       "port": 7137
+    },
+    {
+      "name": "gen2-integration",
+      "runtimeExecutable": "/Users/kevinliu/claude-of-tanks/node_modules/.bin/vite",
+      "runtimeArgs": ["/Users/kevinliu/claude-of-tanks", "--port", "7311", "--strictPort"],
+      "port": 7311
     }
   ]
 }

@@ -18,6 +18,7 @@ import { MODEL_SOURCE } from '../vehicles/specs.js';
 import { USERDROP4_TANK_IDS } from '../vehicles/userdrops4.js';
 import { USERDROP5_SOURCED_IDS } from '../vehicles/userdrops5.js';
 import { USERDROP6_TANK_IDS } from '../vehicles/userdrops6.js';
+import { USERDROP7_SOURCED_IDS } from '../vehicles/userdrops7.js';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.js), the
 // white-silhouette icon set (equipIcons.js), and the spotting-side math the
 // stat card folds into its view/camo rows so the garage can never disagree
@@ -1203,6 +1204,7 @@ export function createGarage(opts) {
   // group cross-links all key off it.
   const SOURCED_INTENT = new Set([
     ...USERDROP4_TANK_IDS, ...USERDROP5_SOURCED_IDS, ...USERDROP6_TANK_IDS,
+    ...USERDROP7_SOURCED_IDS,
   ]);
   const isSourced = (s) =>
     (MODEL_SOURCE[s.id] && MODEL_SOURCE[s.id].source) === 'glb' ||

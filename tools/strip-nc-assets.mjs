@@ -27,6 +27,10 @@ const STRIP_DIRS = [
   path.join(DIST, 'models', 'community-candidates'),
   path.join(DIST, 'models', 'tanks', 'community', 'quarantine'),
   path.join(DIST, 'models', 'tanks', 'community', 'recovered'),
+  // USER DROPS wave 8 (scout-gen2): raw candidate STL trees + source zips —
+  // the bergman/ThudOne folders are CC BY-NC-SA and must never ship; the
+  // CC-BY candidates ship only as their BAKED community/*.glb outputs.
+  path.join(DIST, 'models', 'tanks', 'candidates-gen2'),
 ];
 const STRIP_FILES = [
   path.join(DIST, 'models', 'tanks', 'm1a2_tejas.glb'),
@@ -41,9 +45,14 @@ const RECOVERED_ICON_IDS = [
   'is3_bergman', 'isu152', 'isu122s', 'centurion3', 'centurion5', 'comet',
   'challenger_cruiser', 'charioteer', 'leopard2_proto', 'm1a1_aim', 'm46_patton',
   'm47_patton', 'm26_pershing', 'm45_patton', 'm60a3',
+  // USER DROPS wave 8 (scout-gen2) NC quarantine: bergman T-54/T-80 family +
+  // the LastTriarius T-84 remix (effective CC BY-NC-SA via its NC-SA parents).
+  // Their icons are derivative renders of NC meshes. The wave's CC-BY(-SA)
+  // ids (t44, type59, amx30, amx30b2, m48, m60a2, vickers_mk1) SHIP.
+  't54', 't80', 't80b', 't80bv', 't84',
 ];
 const ICON_SUFFIXES = ['angle', 'side', 'side_silhouette', 'top', 'top_silhouette'];
-const NC_PATH_RE = /(quarantine\/|community-candidates\/|community\/recovered\/|m1a2_tejas\.glb|abramsx-mortavex\.glb)/;
+const NC_PATH_RE = /(quarantine\/|community-candidates\/|candidates-gen2\/|community\/recovered\/|m1a2_tejas\.glb|abramsx-mortavex\.glb)/;
 
 async function main() {
   if (!existsSync(DIST)) {
@@ -82,7 +91,7 @@ async function main() {
         // app's import graph (order matters only for completeness, not data)
         for (const mod of ['modern1.js', 'modern2.js', 'modern3.js',
           'variants.js', 'userdrops.js', 'userdrops2.js', 'userdrops3.js',
-          'userdrops4.js', 'userdrops5.js', 'userdrops6.js']) {
+          'userdrops4.js', 'userdrops5.js', 'userdrops6.js', 'userdrops7.js']) {
           const p = path.join(ROOT, 'src', 'vehicles', mod);
           if (existsSync(p)) {
             try { await import(p); } catch (e) {

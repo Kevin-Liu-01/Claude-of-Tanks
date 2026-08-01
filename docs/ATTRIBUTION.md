@@ -567,6 +567,49 @@ machine-gun receiver, not an M60A3 tank. Its mistakenly generated GLB was
 deleted; the original source archive remains untouched. The playable M60A3
 therefore uses the recovered M60A1 visual as the nearest honest family model.
 
+### User drops wave 8 (scout-gen2 MBT generations, integrated 2026-08-01)
+
+Twelve cold-war/gen-2 MBT-generation vehicles from the scout-gen2 candidate
+round. Reference packets: `docs/references/tanks/scout-gen2-*.md`; per-folder
+provenance records: `public/models/tanks/candidates-gen2/*/PROVENANCE.md`
+(anonymous downloads, no accounts; per-candidate game-rip checks recorded
+there). STLs are baked to playable GLBs by `tools/build_gen2_tanks.sh` /
+`build_gen2_tanks.py`; gameplay specs are redistribution-safe code
+(`src/vehicles/userdrops7.js`, nearest-researched-donor pattern). Two license
+classes:
+
+**Shippable class (CC BY / CC BY-SA)** — the GLB and its on-card credit
+register in EVERY build (garage card + tech-tree node render the credit; these
+rows satisfy attribution together with this table):
+
+| Vehicle / spec id | Author | Source | License | Files |
+|---|---|---|---|---|
+| T-44 (`t44`) | Foxygamer142 | https://www.thingiverse.com/thing:6799441 | CC BY-SA 4.0 | `public/models/tanks/community/t44_foxygamer.glb`, `public/icons/t44_*.png` |
+| Type 59 (`type59` — stats are the Type 59's; the mesh is the author's Type 69, same WZ-120 family silhouette) | LastTriarius | https://www.thingiverse.com/thing:6192142 | CC BY 4.0 | `public/models/tanks/community/type69_lasttriarius.glb`, `public/icons/type59_*.png` |
+| AMX-30B (`amx30`) and AMX-30B2 (`amx30b2` — same source model, B2 fittings) | Captain_Ahab_62 (Richard Honeycutt) | https://www.thingiverse.com/thing:3602722 | CC BY 4.0 | `public/models/tanks/community/{amx30b_ahab,amx30b2_ahab}.glb`, `public/icons/{amx30,amx30b2}_*.png` |
+| M48 Patton (M48A5) (`m48`) | ATModeler | https://www.thingiverse.com/thing:5964554 | CC BY 4.0 | `public/models/tanks/community/m48a5_atmodeler.glb`, `public/icons/m48_*.png` |
+| M60A2 Starship (`m60a2`) | Captain_Ahab_62 (Richard Honeycutt) | https://www.thingiverse.com/thing:3063170 | CC BY 4.0 | `public/models/tanks/community/m60a2_ahab.glb`, `public/icons/m60a2_*.png` |
+| Vickers MBT Mk.1 (Vijayanta) (`vickers_mk1`) | JackTheTinkerer | https://www.thingiverse.com/thing:5523615 | CC BY 4.0 | `public/models/tanks/community/vickers_mk1_jack.glb`, `public/icons/vickers_mk1_*.png` |
+
+**Quarantine class (NC-SA — LOCAL-ONLY, see the PERSONAL-USE / NC QUARANTINE
+section below)** — model sources register only behind
+`ALLOW_LOCAL_RECOVERED_MODELS`; `VITE_PUBLIC_BUILD=1` keeps the gameplay rows
+playable on procedural family fallbacks and `tools/strip-nc-assets.mjs`
+deletes the GLBs, the derivative icons, and the whole `candidates-gen2/`
+source tree from public artifacts:
+
+| Vehicle / spec id | Author | Source | License | Files |
+|---|---|---|---|---|
+| T-54 (`t54`), T-80 (`t80`), T-80B (`t80b`), T-80BV (`t80bv` — full-ERA mesh, the roster's closest silhouette proxy for the T-80BVM) | m_bergman (Marco Bergman) | https://www.thingiverse.com/thing:4718232 | CC BY-NC-SA 4.0 (Thingiverse license marker; the author's custom note only narrows "commercial" to selling prints) | `public/models/tanks/community/recovered/{t54,t80,t80b,t80bv}.glb`, `public/icons/{t54,t80,t80b,t80bv}_*.png` |
+| T-84 Oplot (`t84`) | LastTriarius (remix of ThudOne thing:4885197 + m_bergman T-80 parts) | https://www.thingiverse.com/thing:6178654 | Labeled CC BY 4.0 — **effective CC BY-NC-SA 4.0** (license chain, note below) | `public/models/tanks/community/recovered/t84.glb`, `public/icons/t84_*.png` |
+
+License-chain note (t84): LastTriarius labels the T-84 remix CC BY 4.0, but
+both remix parents — ThudOne thing:4885197 and the m_bergman thing:4718232
+T-80 parts — are CC BY-NC-SA, and ShareAlike terms carry through to the
+combined work regardless of the remix's own label. The t84 is therefore
+treated as CC BY-NC-SA (local-only NC quarantine), exactly like its
+bergman-derived siblings above.
+
 - `public/icons/*.png` — 5 PNGs per roster tank (top/angle/side + 2 silhouettes)
   rendered from the shipped models by `node tools/genIcons.mjs`
   (tools/icons-page.html studio scene). The five `m1a2_*` icons are
@@ -582,7 +625,11 @@ therefore uses the recovered M60A1 visual as the nearest honest family model.
   `bmp2_*`, `bmp1_*`, `m1128_*`, `m1296_*` (m_bergman — QUARANTINE), plus user
   drops wave 4: `merkava4_*` (CC-BY arlassar), `t80u_*` (CC-BY javanilga),
   `kf51_*` (CC-BY GRIP420/David Falke), plus the 42 local-only wave 5–7 icon
-  sets listed immediately above) are
+  sets listed immediately above, plus user drops wave 8: `t44_*` (CC-BY-SA
+  Foxygamer142), `type59_*` (CC-BY LastTriarius), `amx30_*`/`amx30b2_*`/
+  `m60a2_*` (CC-BY Captain_Ahab_62), `m48_*` (CC-BY ATModeler),
+  `vickers_mk1_*` (CC-BY JackTheTinkerer), and `t54_*`/`t80_*`/`t80b_*`/
+  `t80bv_*`/`t84_*` (m_bergman / LastTriarius remix — QUARANTINE)) are
   derivative renders of the community assets tabled above —
   those rows' attribution covers the derived images. All other icons render
   100% procedural geometry (no third-party content).
@@ -631,3 +678,4 @@ fails the build if any registered playable still references a stripped path.
 | 1:100 Modern Tanks and Vehicles pack — 5 vehicles (user drops wave 2, integrated 2026-07-28 as specs `leo2a4`, `bmp2`, `bmp1`, `m1128`, `m1296`) | m_bergman (Thingiverse) | https://www.thingiverse.com/thing:4718232 (user-supplied download; original Solidworks-drawn wargame print masters — author's own custom license note ONLY narrows "commercial" to selling the prints, the CC-BY-NC-SA grant itself stands) | CC-BY-NC-SA | `public/models/tanks/community/quarantine/{leo2a4_bergman,bmp2_bergman,bmp1_bergman,m1128_mgs_bergman,m1296_dragoon_bergman}.glb`, `public/icons/{leo2a4,bmp2,bmp1,m1128,m1296}_*.png` (derivative renders) | SHIPPED in this private build: 2 model swaps (leo2a4/bmp2 — revert their `MODEL_SOURCE` rows) + 3 new playables (bmp1/m1128/m1296 — remove the specs, tech-tree nodes, and tier-table rows in src/vehicles/userdrops2.js, src/ui/techtree.js, src/game/state.js, src/ui/{garage,hud}.js). Remove GLBs + icons before any public distribution or commercialization; NC-SA also bars selling the game while these ship. |
 | 1:100 Modern Tanks and Vehicles pack, part 1 (user drop, batch bergman 2026-07-28) | m_bergman (Thingiverse) | https://www.thingiverse.com/thing:4718232 (user-supplied download; LICENSE.txt + README.txt in archive) | CC BY-NC-SA (Thingiverse license marker in archive) | 12 converted candidate GLBs + renders in `public/models/community-candidates/user-drops-recovered/bergman-p1/{glb,renders}/` (leo2a4, leo2a5, leo2a6, m1a1_aim, bmp1, bmp2, m1128_mgs, m1296_dragoon, lav25, cougar_6x6, btr70, brdm2 — `*_bergman.glb`) | Original Solidworks-drawn wargame print minis (author ships Parasolid `.x_t` sources alongside every STL — not a game rip). Untextured single-material CAD; hull + yaw-articulated `Turret` pivot authored at ring center, gun fused (virtual pitch). NC-SA: candidates for this private build only — delete all GLBs/renders (and any icons if integrated) before public distribution or commercialization. |
 | Recovered fleet waves 5–7 (42 local-only model sets) | Tejas V.; Mortavex; m_bergman; authors not preserved in the remaining direct archives | See “User drops waves 5–7” above | CC BY-NC-ND / CC BY-NC-SA / unverified; all treated as local-only | `public/models/tanks/m1a2_tejas.glb`, `public/models/tanks/community/abramsx-mortavex.glb`, `public/models/tanks/community/recovered/**`, and the 42 matching five-view icon sets | Model trees and derivative icons are removed by `tools/strip-nc-assets.mjs`; public gameplay rows use distributable procedural family visuals/icons. |
+| Scout-gen2 wave 8 NC set (user drops wave 8, integrated 2026-08-01 as specs `t54`, `t80`, `t80b`, `t80bv`, `t84`) | m_bergman (Marco Bergman); LastTriarius (t84 remix of ThudOne thing:4885197 + m_bergman parts) | https://www.thingiverse.com/thing:4718232; https://www.thingiverse.com/thing:6178654 | CC BY-NC-SA 4.0; the t84's CC BY label is governed by its NC-SA remix parents (effective CC BY-NC-SA — see the wave-8 license-chain note) | `public/models/tanks/community/recovered/{t54,t80,t80b,t80bv,t84}.glb`, `public/icons/{t54,t80,t80b,t80bv,t84}_*.png` (derivative renders), raw candidate STLs + source zips in `public/models/tanks/candidates-gen2/` | SHIPPED PLAYABLES in this private build (USSR·Russia cold-war tech-tree lane + Ukraine tab). `tools/strip-nc-assets.mjs` deletes the recovered GLBs, these five icon sets, and the whole `candidates-gen2/` tree from public artifacts; the specs stay playable on procedural family fallbacks (`publicVisualFallback`, src/vehicles/userdrops7.js). NC-SA also bars selling the game while these ship locally. The wave's CC BY / CC BY-SA ids (`t44`, `type59`, `amx30`, `amx30b2`, `m48`, `m60a2`, `vickers_mk1`) are NOT quarantined — they ship publicly with on-card credits (see the wave-8 shippable table). |

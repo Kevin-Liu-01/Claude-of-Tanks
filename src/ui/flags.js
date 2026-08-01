@@ -128,6 +128,13 @@ const FACES = {
     return '<rect x="0" y="0" width="30" height="10" fill="#eef2f5"/>' +
       '<rect x="0" y="10" width="30" height="10" fill="#cf2e3e"/>';
   },
+  ukraine() {
+    // blue-over-gold bicolor, palette-matched to the UI's muted tones (same
+    // rule as sweden above: raw #FFD700 vibrates against the dark chrome) —
+    // added for the scout-gen2 T-84 Oplot (userdrops7.js, nation 'Ukraine')
+    return '<rect x="0" y="0" width="30" height="10" fill="#2d55a5"/>' +
+      '<rect x="0" y="10" width="30" height="10" fill="#e7b31c"/>';
+  },
   community() {
     // deliberate COMMUNITY WORKSHOP insignia (gear ring + gold star) — the
     // sourced roster wears a maker's mark, not a missing-flag grey box
@@ -168,6 +175,7 @@ export function flagSVG(nation, era, w = 24, h = 0) {
   else if (nation === 'Japan') face = FACES.japan();
   else if (nation === 'Italy') face = FACES.italy();
   else if (nation === 'Poland') face = FACES.poland();
+  else if (nation === 'Ukraine') face = FACES.ukraine();
   else if (nation === 'Community') face = FACES.community();
   else face = '<rect x="0" y="0" width="30" height="20" fill="#54606b"/>';
   const id = `cotfg${uid++}`;

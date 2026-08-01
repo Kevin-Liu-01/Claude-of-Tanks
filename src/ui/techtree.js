@@ -17,9 +17,12 @@ const CLASS_LABEL = {
 };
 
 // WoT-style class lanes (top to bottom). MBTs continue the medium line;
-// IFVs ride the scout (light) lane.
+// IFVs ride the scout (light) lane. Row 4 is the USER DROPS wave-8 overflow
+// lane (scout-gen2 integration): the USA/USSR 7–10 bands were fully occupied,
+// so the cold-war MBT ladders (Patton line, T-54→T-80 turbine line) ride a
+// fifth band via the same `row:` override the M1A1/TUSK ladder already uses.
 const LANE = { light: 0, medium: 1, mbt: 1, heavy: 2, td: 3, ifv: 0 };
-const LANE_LABEL = ['LIGHT', 'MEDIUM · MBT', 'HEAVY', 'TANK DESTROYER'];
+const LANE_LABEL = ['LIGHT', 'MEDIUM · MBT', 'HEAVY', 'TANK DESTROYER', 'COLD WAR · MBT'];
 
 // ---------------------------------------------------------------------------
 // META-GAME ECONOMY — persistent XP/credit wallet + researched ghost nodes.
@@ -168,6 +171,12 @@ const TABS = [
       n('m36', 'M36 Jackson', 7, 'td', 'ww2', { spec: 'm36', from: ['hellcat'] }),
       n('t28us', 'T28', 8, 'td', 'ww2', { from: ['m36'] }),
       n('t30', 'T30', 9, 'td', 'ww2', { spec: 't30', from: ['t28us'] }),
+      // USER DROPS wave 8 (scout-gen2): the Patton pair rides the cold-war
+      // overflow lane — rows 1/2 are fully occupied at tiers VII–X. Sourced
+      // CC-BY GLBs (ATModeler / Captain_Ahab_62), credit renders on-card via
+      // spec.community; specs in src/vehicles/userdrops7.js.
+      n('m48', 'M48A5 Patton', 7, 'mbt', 'modern', { spec: 'm48', from: ['e8'], row: 4 }),
+      n('m60a2', 'M60A2 Starship', 8, 'mbt', 'modern', { spec: 'm60a2', from: ['m48'], row: 4 }),
     ],
   },
   {
@@ -233,6 +242,9 @@ const TABS = [
       n('t28', 'T-28', 4, 'medium', 'ww2', { from: ['bt7'] }),
       n('t34', 'T-34', 5, 'medium', 'ww2', { from: ['t28'] }),
       n('t3485', 'T-34-85', 6, 'medium', 'ww2', { spec: 't34_85', from: ['t34'] }),
+      // USER DROPS wave 8 (scout-gen2): T-44 continues the T-34-85 medium
+      // line (Foxygamer142 CC BY-SA GLB, spec in userdrops7.js)
+      n('t44', 'T-44', 7, 'medium', 'ww2', { spec: 't44', from: ['t3485'] }),
       // MODERN EXPANSION: T-72B3 (procedural) -> T-90A (variant GLB) -> T-90M
       n('t72b3', 'T-72B3', 8, 'mbt', 'modern', { spec: 't72b3', from: ['t3485'] }),
       n('t90a', 'T-90A', 9, 'mbt', 'modern', { spec: 't90a', from: ['t72b3'] }),
@@ -253,6 +265,17 @@ const TABS = [
       n('su152', 'SU-152', 7, 'td', 'ww2', { from: ['su100'] }),
       n('isu152', 'ISU-152', 8, 'td', 'ww2', { from: ['su152'] }),
       n('obj704', 'Object 704', 9, 'td', 'ww2', { from: ['isu152'] }),
+      // USER DROPS wave 8 (scout-gen2): T-54 + the T-80 turbine family ride
+      // the cold-war overflow lane (rows 0/1 are full at tiers VII–X). All
+      // four are m_bergman CC BY-NC-SA meshes — LOCAL-ONLY quarantine GLBs;
+      // public builds render their procedural family fallbacks (the specs
+      // themselves ship everywhere, same rule as the type74 precedent).
+      // T-80BV carries full ERA — the roster's closest T-80BVM silhouette
+      // proxy (see userdrops7.js / PROVENANCE).
+      n('t54', 'T-54', 7, 'mbt', 'modern', { spec: 't54', from: ['t3485'], row: 4 }),
+      n('t80', 'T-80', 8, 'mbt', 'modern', { spec: 't80', from: ['t54'], row: 4 }),
+      n('t80b', 'T-80B', 9, 'mbt', 'modern', { spec: 't80b', from: ['t80'], row: 4 }),
+      n('t80bv', 'T-80BV', 10, 'mbt', 'modern', { spec: 't80bv', from: ['t80b'], row: 4 }),
     ],
   },
   // -------------------------------------------------------------------------
@@ -269,14 +292,23 @@ const TABS = [
       n('chieftain', 'Chieftain Mk 10', 7, 'mbt', 'modern', { spec: 'chieftain_mk10', from: ['centurion'] }),
       n('challenger1', 'Challenger 1', 8, 'mbt', 'modern', { from: ['chieftain'] }),
       n('challenger2', 'Challenger 2', 9, 'mbt', 'modern', { spec: 'challenger2', from: ['challenger1'] }),
+      // USER DROPS wave 8 (scout-gen2): the Centurion-derived export MBT
+      // rides the free scout lane next to the Chieftain line (leo1a5 rule).
+      // JackTheTinkerer CC BY GLB; spec in userdrops7.js.
+      n('vickers1', 'Vickers MBT Mk.1', 7, 'mbt', 'modern', { spec: 'vickers_mk1', from: ['centurion'], row: 0 }),
     ],
   },
   {
     id: 'france', label: 'France', flags: [['France', 'modern']],
     nodes: [
       n('amx13', 'AMX-13', 6, 'light', 'modern'),
-      n('amx30', 'AMX-30B', 8, 'mbt', 'modern', { from: ['amx13'] }),
-      n('leclerc', 'Leclerc S2', 9, 'mbt', 'modern', { spec: 'leclerc', from: ['amx30'] }),
+      // USER DROPS wave 8 (scout-gen2): the AMX-30B ghost lit up — the
+      // Captain_Ahab_62 CC BY GLB registered the spec (userdrops7.js) — and
+      // the AMX-30B2 refit slots in before the Leclerc flagship, which moves
+      // to tier X beside its m1a2_tusk/leo2a7/t90m peers.
+      n('amx30', 'AMX-30B', 8, 'mbt', 'modern', { spec: 'amx30', from: ['amx13'] }),
+      n('amx30b2', 'AMX-30B2', 9, 'mbt', 'modern', { spec: 'amx30b2', from: ['amx30'] }),
+      n('leclerc', 'Leclerc S2', 10, 'mbt', 'modern', { spec: 'leclerc', from: ['amx30b2'] }),
     ],
   },
   {
@@ -291,7 +323,10 @@ const TABS = [
   {
     id: 'china', label: 'China', flags: [['China', 'modern']],
     nodes: [
-      n('type59', 'Type 59', 7, 'mbt', 'modern'),
+      // USER DROPS wave 8 (scout-gen2): the Type 59 ghost lit up — stats are
+      // the Type 59's, the mesh is the LastTriarius Type 69 (CC BY, same
+      // WZ-120 family silhouette; see userdrops7.js).
+      n('type59', 'Type 59', 7, 'mbt', 'modern', { spec: 'type59' }),
       n('type88', 'Type 88 (ZTZ-88)', 8, 'mbt', 'modern', { from: ['type59'] }),
       n('type99a', 'Type 99A (ZTZ-99A)', 9, 'mbt', 'modern', { spec: 'type99a', from: ['type88'] }),
     ],
@@ -322,6 +357,19 @@ const TABS = [
       n('m47i', 'M47 Patton (EI)', 6, 'mbt', 'modern'),
       n('of40', 'OF-40', 7, 'mbt', 'modern', { from: ['m47i'] }),
       n('ariete', 'C1 Ariete', 8, 'mbt', 'modern', { spec: 'ariete', from: ['of40'] }),
+    ],
+  },
+  // USER DROPS wave 8 (scout-gen2): Ukraine joins for the T-84 Oplot —
+  // era-bridging ghost ancestors per the modern-expansion tab rule above.
+  // The T-84 mesh is the LastTriarius remix whose CC BY label is governed by
+  // its NC-SA parents (effective CC BY-NC-SA — LOCAL-ONLY quarantine GLB;
+  // public builds render the procedural family fallback, spec ships always).
+  {
+    id: 'ukraine', label: 'Ukraine', flags: [['Ukraine', 'modern']],
+    nodes: [
+      n('t64bv', 'T-64BV', 7, 'mbt', 'modern'),
+      n('t80ud', 'T-80UD Bereza', 8, 'mbt', 'modern', { from: ['t64bv'] }),
+      n('t84', 'T-84 Oplot', 9, 'mbt', 'modern', { spec: 't84', from: ['t80ud'] }),
     ],
   },
 ];
@@ -721,6 +769,11 @@ const GHOSTS = {
   // --- Italy ---
   m47i: { L: 8.6, HL: 6.4, H: 3.0, hullH: 1.75, wheels: 6, wheelR: 0.33, glacis: 1.0, tPos: 0.55, tLen: 3.0, tH: 1.15, dome: true, gunTh: 0.21 },
   of40: { L: 9.2, HL: 6.9, H: 2.7, hullH: 1.6, wheels: 7, wheelR: 0.33, glacis: 1.3, tPos: 0.55, tLen: 2.9, tH: 1.0, taper: 0.45, gunTh: 0.21 },
+  // --- Ukraine (wave 8) --- low Kharkiv silhouettes: six small road wheels,
+  // squat rounded turret, long 125mm — the T-80UD reads slightly longer with
+  // side skirts (diesel Bereza hull)
+  t64bv: { L: 9.2, HL: 6.5, H: 2.2, hullH: 1.4, wheels: 6, wheelR: 0.30, glacis: 1.4, tPos: 0.52, tLen: 2.5, tH: 0.78, dome: true, gunTh: 0.24 },
+  t80ud: { L: 9.7, HL: 7.0, H: 2.2, hullH: 1.45, skirt: true, glacis: 1.5, tPos: 0.52, tLen: 2.6, tH: 0.78, dome: true, gunTh: 0.24 },
 };
 
 // class fallbacks for any ghost without a table entry
@@ -1207,7 +1260,8 @@ export function createTechTree(opts) {
       const TAB_NATION = {
         usa: 'USA', germany: 'Germany', uk: 'UK', france: 'France',
         israel: 'Israel', china: 'China', korea: 'South Korea',
-        japan: 'Japan', italy: 'Italy', community: 'Community',
+        japan: 'Japan', italy: 'Italy', ukraine: 'Ukraine',
+        community: 'Community',
       };
       const nation = spec0 ? spec0.nation
         : (TAB_NATION[tab.id] || (node.era === 'ww2' ? 'USSR' : 'Russia'));
