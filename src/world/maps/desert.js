@@ -31,9 +31,15 @@ export default {
     // into the mesa). (68,-82) scans flat (min normal.y 0.98 over the whole
     // ±55 m ally arc, max Δh 2.4 m — tools: scan over createHeightField).
     player: { x: 68, z: -82 },
+    // BATTLE-AI r7 TEAM SPAWNS: one enemy spawn arc on the base side (was a
+    // mid-map scatter with points abreast of the village at ±325 x). Cells
+    // flat-scanned via tools/tmp-ai-r7-spawnscan.mjs (raw terrain minNy>=0.86,
+    // relief<=5 m over the pad radius, mesa faces rejected, >=38 m apart,
+    // >=380 m from the player pad; the r9 spawnClear fade keeps macro dunes
+    // out of every pad).
     enemies: [
-      { x: -40, z: 315 }, { x: 130, z: 350 }, { x: 262, z: 230 }, { x: -210, z: 268 },
-      { x: -325, z: 135 }, { x: 328, z: 128 }, { x: 20, z: 428 },
+      { x: -10, z: 378 }, { x: -114, z: 389 }, { x: 59, z: 410 }, { x: -179, z: 365 },
+      { x: 96, z: 313 }, { x: -218, z: 364 }, { x: 146, z: 419 },
     ],
   },
 

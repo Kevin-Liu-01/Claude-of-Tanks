@@ -30,9 +30,14 @@ export default {
 
   spawns: {
     player: { x: 14, z: -78 },
+    // BATTLE-AI r7 TEAM SPAWNS: one enemy spawn arc on the base side (was a
+    // mid-map scatter reaching ±330 x abreast of the village). Flat-scanned
+    // via tools/tmp-ai-r7-spawnscan.mjs — minNy>=0.86, relief<=5 m over the
+    // pad radius, frozen-lake sheets avoided, >=38 m apart, >=380 m from the
+    // player pad.
     enemies: [
-      { x: -30, z: 320 }, { x: 140, z: 350 }, { x: 280, z: 210 }, { x: -215, z: 270 },
-      { x: -330, z: 140 }, { x: 330, z: 130 }, { x: 15, z: 430 },
+      { x: 38, z: 332 }, { x: -33, z: 336 }, { x: 69, z: 308 }, { x: -63, z: 370 },
+      { x: 140, z: 418 }, { x: -132, z: 392 }, { x: 186, z: 380 },
     ],
   },
 

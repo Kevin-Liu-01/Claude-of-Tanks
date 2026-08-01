@@ -25,9 +25,14 @@ export default {
     // flat-scanned pad (Δh 2.9 over the ally arc — the folds stay OUT of the
     // spawn apron; they start where the drive does)
     player: { x: 250, z: -330 },
+    // BATTLE-AI r7 TEAM SPAWNS: one enemy spawn arc on the far northwest
+    // rise (the old list scattered to ±330 x abreast of the village).
+    // Flat-scanned via tools/tmp-ai-r7-spawnscan.mjs — minNy>=0.86,
+    // relief<=5 m over the pad radius, >=38 m apart, >=380 m from the
+    // player pad.
     enemies: [
-      { x: -40, z: 330 }, { x: 150, z: 345 }, { x: 275, z: 220 }, { x: -220, z: 275 },
-      { x: -335, z: 135 }, { x: 330, z: 125 }, { x: 20, z: 430 },
+      { x: -125, z: 378 }, { x: -188, z: 352 }, { x: -61, z: 399 }, { x: -229, z: 363 },
+      { x: -32, z: 426 }, { x: -270, z: 325 }, { x: 27, z: 429 },
     ],
   },
 

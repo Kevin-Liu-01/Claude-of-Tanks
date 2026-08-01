@@ -18,9 +18,15 @@ export default {
     // cluster (lateral ±22/44 m) now sits center-frame at ~70 m instead of
     // reading as two dark specks at the frame edge
     player: { x: 2, z: -95 },
+    // BATTLE-AI r7 TEAM SPAWNS: the seven enemy points form ONE spawn arc on
+    // the enemy base side (two staggered rows around the base bearing) instead
+    // of the old mid-map east/west scatter (±330,~135 sat abreast of the
+    // village). Cells flat-scanned via tools/tmp-ai-r7-spawnscan.mjs — raw
+    // terrain (pads stripped) minNy>=0.86, relief<=5 m over the 22 m pad
+    // radius, no soft ground/lakes, >=38 m apart, >=380 m from the player pad.
     enemies: [
-      { x: -30, z: 320 }, { x: 140, z: 350 }, { x: 265, z: 235 }, { x: -215, z: 270 },
-      { x: -330, z: 140 }, { x: 330, z: 130 }, { x: 15, z: 430 },
+      { x: 37, z: 331 }, { x: -25, z: 337 }, { x: 101, z: 322 }, { x: -63, z: 364 },
+      { x: 188, z: 382 }, { x: -123, z: 395 }, { x: 235, z: 384 },
     ],
   },
 

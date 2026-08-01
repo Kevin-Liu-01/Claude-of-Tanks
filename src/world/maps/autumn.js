@@ -47,9 +47,14 @@ export default {
     // player south of the river (flat-scanned pad: minNy 0.909, Δh 1.6 over
     // the ±55 m ally arc): the opening drive fords or bridges the channel
     player: { x: 210, z: -350 },
+    // BATTLE-AI r7 TEAM SPAWNS: one enemy spawn arc north of the river (the
+    // old verdant-copied list scattered to ±330 x abreast of the village).
+    // Flat-scanned via tools/tmp-ai-r7-spawnscan.mjs — minNy>=0.86,
+    // relief<=5 m, river marsh chain rejected as soft, >=38 m apart,
+    // >=380 m from the player pad.
     enemies: [
-      { x: -30, z: 320 }, { x: 140, z: 350 }, { x: 265, z: 235 }, { x: -215, z: 270 },
-      { x: -330, z: 140 }, { x: 330, z: 130 }, { x: 15, z: 430 },
+      { x: -108, z: 362 }, { x: -187, z: 347 }, { x: -34, z: 388 }, { x: -213, z: 378 },
+      { x: 22, z: 419 }, { x: -222, z: 328 }, { x: 67, z: 420 },
     ],
   },
 

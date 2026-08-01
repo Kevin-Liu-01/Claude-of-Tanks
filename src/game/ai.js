@@ -20,7 +20,7 @@ import { computeDispersionRadM } from '../sim/movement.js';
 // controls_gunnery r6: aimElevationRad import removed — tryFire (state.js)
 // owns the ballistic solution; see the aim-point comment in aimAndFire().
 import { tankPoseFromState, queryAimArmor } from '../sim/armor.js';
-import { estimatePenRatio } from '../sim/damage.js';
+import { estimatePenRatio, isHeClass } from '../sim/damage.js';
 
 /**
  * Canonical deterministic PRNG (ARCHITECTURE.md §1.4, copied verbatim).
@@ -65,6 +65,56 @@ const PROBE_SETS = [
   [[0.48, 0], [0.28, 0]],
   [[0.48, 0], [0.28, 0], [0.72, 0], [0.5, 0.28], [0.5, -0.28], [0.32, 0.28], [0.32, -0.28]],
 ];
+
+/**
+ * BATTLE-AI r7 — per-class doctrine ("good ideas of their tank"). Role is
+ * derived from the bot's OWN spec, never assigned externally:
+ *  - scout   (light/IFV): spotting runs, keeps range, never brawls;
+ *  - sniper  (TD/SPG):    sightline posts, hold-until-fired, shoot-and-scoot;
+ *  - brawler (heavy + slow/armored MBTs): leads pushes, angles the hull,
+ *            trades when the enemy gun is cycling;
+ *  - flanker (medium + fast MBTs): wide lanes, keeps moving between cover,
+ *            support fire on spotted targets.
+ * Modern MBTs split by their own mobility numbers: a 66+ km/h hull with
+ * 21+ hp/t fights like a medium, the rest anchor like heavies.
+ * @param {object} spec TankSpec-like ({ class, topSpeedKmh, enginePowerHp, weightTons })
+ * @returns {'scout'|'sniper'|'brawler'|'flanker'}
+ */
+export function roleOf(spec) {
+  const c = spec && spec.class;
+  if (c === 'light' || c === 'ifv') return 'scout';
+  if (c === 'td' || c === 'spg') return 'sniper';
+  if (c === 'heavy') return 'brawler';
+  if (c === 'mbt') {
+    const pw = (spec.enginePowerHp || 0) / Math.max(1, spec.weightTons || 1);
+    return (spec.topSpeedKmh >= 66 && pw >= 21) ? 'flanker' : 'brawler';
+  }
+  return 'flanker'; // medium + unknown classes
+}
+
+/**
+ * Role tuning applied over the difficulty tier:
+ *  - hold:   holdRangeM multiplier (class engagement band — TDs long,
+ *            heavies close), capped under the engage envelope;
+ *  - engage: engageRangeM multiplier (snipers commit from further out);
+ *  - cover:  coverIQ multiplier (reload discipline — snipers/mediums duck
+ *            between shots more, heavies hold the line);
+ *  - angle:  hull-angling radians while holding (turreted hulls only —
+ *            casemates must keep the bow on the target);
+ *  - scootAfter: shots from one position before a TD relocates (0 = never).
+ */
+const ROLE_TUNE = {
+  brawler: { hold: 0.72, engage: 1.0, cover: 0.75, angle: 0.5, scootAfter: 0 },
+  flanker: { hold: 1.0, engage: 1.0, cover: 1.15, angle: 0.18, scootAfter: 0 },
+  sniper:  { hold: 1.5, engage: 1.15, cover: 1.3, angle: 0, scootAfter: 2 },
+  scout:   { hold: 1.15, engage: 1.0, cover: 0.9, angle: 0, scootAfter: 0 },
+};
+// scout kiting: closer than this to any live opponent → break off and orbit
+const SCOUT_KITE_M = 130;
+// retreat-toward-support (universal): hp fraction / window / cooldown
+const FALLBACK_HP_FRAC = 0.3;
+const FALLBACK_S = 6;
+const FALLBACK_CD_S = 22;
 
 const LOS_INTERVAL_S    = 0.14;   // target-acquisition / LOS cadence
 const PROBE_INTERVAL_S  = 0.55;   // weak-spot + shell-slot probe cadence
@@ -244,6 +294,24 @@ export function createAI(entity, opts = {}) {
   }
 
   const spec = entity.spec;
+  // BATTLE-AI r7 doctrine wiring (see roleOf/ROLE_TUNE above).
+  const role = roleOf(spec);
+  const tune = ROLE_TUNE[role];
+  // Casemate: the gun aims with the HULL (movement.js §7 auto hull-traverse)
+  // — angling would swing the gun off target, so casemates always face in.
+  const casemate = spec.gunArcDeg != null && spec.gunArcDeg <= 30;
+  // r7: the spec's REAL HE-class slot (not a blind index 2 — the sturmtiger
+  // carries [HE, HEAT] and `shells[2]` crashed tryFire; probed by class so
+  // splash fallbacks and the no-pen fire gate work on every magazine).
+  let heSlot = spec.gun.shells.length - 1;
+  for (let i = 0; i < spec.gun.shells.length; i++) {
+    if (spec.gun.shells[i] && isHeClass(spec.gun.shells[i].type)) { heSlot = i; break; }
+  }
+  const angleRad = casemate ? 0 : tune.angle;
+  const roleEngageR = () => tier.engageRangeM * tune.engage;
+  const roleHoldR = () =>
+    Math.min(tier.holdRangeM * tune.hold, roleEngageR() - 60);
+  const getAllies = typeof deps.getAllies === 'function' ? deps.getAllies : null;
   const selfEyeM = spec.dims.heightM * EYE_FRAC;
   // Gun trunnion height above ground contact — the movement sim aims the
   // barrel from here (movement.js gunPivotHeight), so the alignment gate must
@@ -273,6 +341,29 @@ export function createAI(entity, opts = {}) {
   const vantage = { x: 0, z: 0 };
   let hasVantage = false;
   let losBlockedT = 0;
+  // r7 UNREACHABLE-VANTAGE VETO: a vantage the nav layer failed to reach
+  // (wedge strikes) is blacklisted for 20 s — the deterministic ring search
+  // otherwise re-picks the exact same cell and the bot loops {pick, wedge,
+  // drop, re-pick} for half a minute (winter is1 trace: 29 s at one wall).
+  const vantageVeto = [
+    { x: 0, z: 0, untilS: -1 }, { x: 0, z: 0, untilS: -1 },
+    { x: 0, z: 0, untilS: -1 }, { x: 0, z: 0, untilS: -1 },
+  ];
+  let vantageVetoIdx = 0;
+  function vetoVantage() {
+    const v = vantageVeto[vantageVetoIdx];
+    v.x = vantage.x;
+    v.z = vantage.z;
+    v.untilS = nowS + 20;
+    vantageVetoIdx = (vantageVetoIdx + 1) % vantageVeto.length;
+  }
+  function vantageVetoed(cx, cz) {
+    for (let i = 0; i < vantageVeto.length; i++) {
+      const v = vantageVeto[i];
+      if (nowS < v.untilS && Math.hypot(v.x - cx, v.z - cz) < 15) return true;
+    }
+    return false;
+  }
   // controls_gunnery r3 (§7 return-fire watchdog): battles with 5-6 landed
   // player shots drew ZERO enemy shells aimed back — idle bots without
   // personal LOS never rotate into engagement. If this long passes with a
@@ -293,6 +384,39 @@ export function createAI(entity, opts = {}) {
   let flankIndex = 0;
   let flankUntilS = 0;
   let nonPenCount = 0;
+  // ---- BATTLE-AI r7 doctrine state ----
+  const angleSide = rng() < 0.5 ? 1 : -1; // stable hull-angling side per bot
+  // sniper shoot-and-scoot: shots fired from the current position; after
+  // ROLE_TUNE.scootAfter the TD relocates to a fresh sightline 40-85 m away.
+  const spotPos = { x: entity.state.pos.x, z: entity.state.pos.z };
+  let shotsFromSpot = 0;
+  const scootPoint = { x: 0, z: 0 };
+  let scootUntilS = -1;
+  let relocations = 0;   // probe-visible shoot-and-scoot counter
+  let prevReloadT = 0;   // reload-edge watch (a jump up = a shot left the gun)
+  // universal retreat-toward-support (tracked/low): time-boxed reverse window
+  const fallbackPoint = { x: 0, z: 0 };
+  let fallbackUntilS = -1;
+  let fallbackCdS = -1;
+  let fallbackReverse = true;
+  // scout kite/orbit: keep moving between cover, never brawl
+  const kitePoint = { x: 0, z: 0 };
+  let kiteUntilS = -1;
+  let orbitSide = rng() < 0.5 ? 1 : -1;
+  let orbitFlipS = 0;
+  // no-suicide guard bookkeeping (see outnumberedSolo)
+  let guardT = 0;
+  let guardLastS = -1;
+  let guardReleaseUntilS = -1;
+  // hull-down stare-down breaker (see runProbes miss branch)
+  let probeMiss = false;
+  let probeMissT = 0;
+  // geometry-hard blocked commit → follow the authored lane a while
+  let laneFallbackUntilS = -1;
+  // starved trigger + clear ray → forced clean halt (settled-shot window)
+  let settleUntilS = -1;
+  let settleStreak = 0;
+  let settleCdUntilS = -1;
   let underFire = null;            // shooter entity revealed by hitting us/a teammate
   let underFireUntilS = -Infinity; // reaction window end (sim seconds)
   let playerAggro = null;          // sticky PLAYER attacker-of-record (r4)
@@ -344,6 +468,7 @@ export function createAI(entity, opts = {}) {
   let progZ = entity.state.pos.z;
   let progressRate = 2; // m/s EMA of real displacement
   let stuckStrikes = 0; // consecutive unstick cycles without real progress
+  let freeMoveT = 0;    // r7: sustained-free-movement clock (strike clearing)
   // Blocked-route detour: after repeated strikes the straight line is a
   // wall/rock face — drive at a sideways-offset ghost target for a few
   // seconds (side flips on the next strike) so the route bends around the
@@ -363,8 +488,11 @@ export function createAI(entity, opts = {}) {
   let dispGateT = 0; // time spent otherwise-ready but dispersion-gated (r5)
   // coverIQ hesitation decays over the battle so late-game bots commit
   // instead of endlessly rolling hull-down/cover searches between shots.
-  const effCoverIQ = () =>
-    nowS < pressUntilS ? 0 : tier.coverIQ * clamp(1.15 - nowS / 240, 0.35, 1);
+  // BATTLE-AI r7: role-scaled — snipers/flankers duck between shots more
+  // (reload discipline), brawlers hold the line they pushed.
+  const effCoverIQ = () => (nowS < pressUntilS
+    ? 0
+    : clamp(tier.coverIQ * tune.cover, 0, 1) * clamp(1.15 - nowS / 240, 0.35, 1));
 
   const scanPhase = rng() * TAU;             // idle turret sweep phase
   // r4: per-controller vantage fan bias — clustered bots hunting the same
@@ -578,6 +706,35 @@ export function createAI(entity, opts = {}) {
         }
         if (target.isPlayer) return;
       }
+      // BATTLE-AI r7 (focus low-HP): on the LOS cadence a healthy current
+      // target is dropped for a nearly-dead visible enemy at comparable
+      // range — securing the kill beats farming a fresh hull. Player targets
+      // are never abandoned this way (the r4-r6 pressure plumbing owns that
+      // slot), and the 0.4/0.25 hysteresis keeps the switch from flapping.
+      if (!target.isPlayer && losClear && target.combat && target.combat.maxHp &&
+          target.state && target.combat.hp / target.combat.maxHp > 0.4) {
+        const cdx = target.state.pos.x - ex, cdz = target.state.pos.z - ez;
+        const curD2 = cdx * cdx + cdz * cdz;
+        for (let i = 0; i < list.length; i++) {
+          const e = list[i];
+          if (!e || e === target || !enemyAlive(e) || e.isPlayer) continue;
+          if (!e.combat || !e.combat.maxHp ||
+              e.combat.hp / e.combat.maxHp >= 0.25) continue;
+          if (!isVisibleToTeam(e)) continue;
+          const kp = e.state.pos;
+          const kdx = kp.x - ex, kdz = kp.z - ez;
+          if (kdx * kdx + kdz * kdz > curD2 * 1.3) continue;
+          if (!hasLos(ex, ey, ez, kp.x, eyeY(e), kp.z)) continue;
+          target = e;
+          losClear = true;
+          acquiredAtS = timeS;
+          lastSeenAtS = timeS;
+          lastSeen.x = kp.x; lastSeen.z = kp.z;
+          nonPenCount = 0;
+          probeTimer = 0;
+          return;
+        }
+      }
       // r4: a PLAYER attacker-of-record survives the 5 s spot-memory for the
       // whole aggro window — the commitment has POSITION intel (the muzzle
       // flash), and dropping it mid-reposition is why three rounds of aggro
@@ -606,9 +763,14 @@ export function createAI(entity, opts = {}) {
       // r6 PRIORITY BUMP: inside 300 m the player counts DOUBLE threat
       // (weighted d² halved) — a broadside human at 200 m now outranks a
       // 100 m allied bot for every controller, not just the hunters.
-      const eff = e.isPlayer
+      // BATTLE-AI r7 (focus low-HP): a nearly-dead target ranks as if ~26%
+      // closer (weighted d² down to 0.55x at 0 hp) — WoT bots finish kills.
+      const hpW = e.combat && e.combat.maxHp
+        ? 0.55 + 0.45 * Math.max(0, e.combat.hp / e.combat.maxHp)
+        : 1;
+      const eff = (e.isPlayer
         ? d2 * playerDistMult * (d2 < PLAYER_NEAR_BONUS_D2 ? 0.5 : 1)
-        : d2;
+        : d2) * hpW;
       if (eff >= bestD2) continue;
       if (!hasLos(ex, ey, ez, tp.x, eyeY(e), tp.z)) continue;
       best = e; bestD2 = eff;
@@ -638,7 +800,7 @@ export function createAI(entity, opts = {}) {
           const d2 = ndx * ndx + ndz * ndz;
           if (d2 < nearD2) { near = e; nearD2 = d2; }
         }
-        const wr = tier.engageRangeM;
+        const wr = roleEngageR(); // r7: role-scaled commit envelope
         if (near && nearD2 < wr * wr) {
           target = near;
           acquiredAtS = timeS;
@@ -709,12 +871,22 @@ export function createAI(entity, opts = {}) {
       cachedPenRatio = bestRatio; penGateOk = true;
     } else if (bestScore > -Infinity) {
       // Nothing penetrates reliably: lob HE at center mass (splash needs no pen gate).
-      aimHFrac = 0.5; aimLatFrac = 0; chosenSlot = 2;
+      aimHFrac = 0.5; aimLatFrac = 0; chosenSlot = heSlot;
       cachedPenRatio = bestRatio; penGateOk = false;
     } else {
-      // All probes missed the hull (extreme angles) — hold fire, keep center aim.
-      aimHFrac = 0.48; aimLatFrac = 0; cachedPenRatio = 0; penGateOk = false;
+      // All probes missed the hull — the target is HULL-DOWN (only the
+      // turret crests the fold; the eye-line LOS passes while every hull
+      // zone probe hits terrain). BATTLE-AI r7: shoot at what IS visible —
+      // lob HE at the turret line (no pen gate) instead of holding fire in
+      // a mutual 380 m stare-down (steppe probe: ready+aligned bots parked
+      // silent for 60+ s exactly here). driveEngage escalates to a better
+      // firing angle when the probes stay blind (probeMissT).
+      aimHFrac = 0.82; aimLatFrac = 0; chosenSlot = heSlot;
+      cachedPenRatio = 0; penGateOk = false;
+      probeMiss = true;
+      return;
     }
+    probeMiss = false;
   }
 
   /**
@@ -766,11 +938,14 @@ export function createAI(entity, opts = {}) {
     // finished: the r4 unstaged probe showed committed bots pivoting at
     // spd=0 for 60+ s, blkT ever-growing, zero conversions.
     const bearing = Math.atan2(lastSeen.x - st.pos.x, lastSeen.z - st.pos.z) + vantageBias;
-    for (const r of [35, 65, 100]) {
+    // r7: a long-blocked commit widens the fan — inside towns / steppe folds
+    // every 35-100 m candidate can be wall-shadowed while a 150 m one clears.
+    for (const r of (losBlockedT > 10 ? [35, 65, 100, 150] : [35, 65, 100])) {
       for (let k = -3; k <= 3; k++) {
         const a = bearing + k * 0.35;
         const cx = st.pos.x + Math.sin(a) * r;
         const cz = st.pos.z + Math.cos(a) * r;
+        if (vantageVetoed(cx, cz)) continue; // r7: nav-proven unreachable
         const cy = hf.getHeightAt(cx, cz) + selfEyeM;
         if (!hasLos(cx, cy, cz, lastSeen.x, ty, lastSeen.z)) continue;
         const dx = cx - st.pos.x, dz = cz - st.pos.z;
@@ -785,6 +960,7 @@ export function createAI(entity, opts = {}) {
         const a = a0 + (k / 8) * TAU;
         const cx = lastSeen.x + Math.sin(a) * r;
         const cz = lastSeen.z + Math.cos(a) * r;
+        if (vantageVetoed(cx, cz)) continue; // r7: nav-proven unreachable
         const cy = hf.getHeightAt(cx, cz) + selfEyeM;
         if (!hasLos(cx, cy, cz, lastSeen.x, ty, lastSeen.z)) continue;
         const dx = cx - st.pos.x, dz = cz - st.pos.z;
@@ -839,6 +1015,15 @@ export function createAI(entity, opts = {}) {
       if (o.crushed) continue; // gameplay_feel r6: felled crushables don't block
       if (px < o.min[0] - margin || px > o.max[0] + margin) continue;
       if (pz < o.min[2] - margin || pz > o.max[2] + margin) continue;
+      // BATTLE-AI r7: a CRUSHABLE in the lane is driven THROUGH, not around —
+      // and with authority. The old ×0.6 damping (and the ease-in) parked
+      // bots at 0.4 throttle against saplings forever, just under the
+      // held-press crush threshold (coastal trace: spawn-exit wedge, 30 s at
+      // spd 0). WoT hulls flatten small trees on the move.
+      if (o.crushable) {
+        if (input.throttle > 0.05) input.throttle = Math.max(input.throttle, 0.7);
+        continue;
+      }
       const cx = (o.min[0] + o.max[0]) * 0.5 - st.pos.x;
       const cz = (o.min[2] + o.max[2]) * 0.5 - st.pos.z;
       const crossY = fz * cx - fx * cz;          // >0 → obstacle to the right
@@ -846,6 +1031,188 @@ export function createAI(entity, opts = {}) {
       input.throttle *= 0.6;
       return;
     }
+  }
+
+  // BATTLE-AI r7 CORNER-HOP ROUTER: reactive avoidance + unstick could not
+  // navigate the urban block grid — the r7 flow probe measured BOTH teams
+  // wedged against building faces for 30-90 s (losBlockedT 45 s, strikes
+  // cycling, ~1 m/10 s displacement) because every drive helper steered at a
+  // goal BEHIND a 60 m rect it could only graze along. When the straight
+  // segment to the goal crosses a solid obstacle AABB within ROUTE_LOOK_M,
+  // steer for the cheapest expanded-box corner first (one hop; the recheck
+  // cadence chains hops around consecutive blocks). Crushables are ignored —
+  // hulls drive through those. Plans are cached ROUTE_RECHECK_S so the cost
+  // is a few hundred slab tests per bot every ~0.6 s, not per tick.
+  const ROUTE_RECHECK_S = 0.6;
+  const ROUTE_LOOK_M = 85;
+  const routeCorner = { x: 0, z: 0 };
+  let routeActive = false;
+  let routeTimer = 0;
+  let routeGoalX = 1e9;
+  let routeGoalZ = 1e9;
+  // a corner just reached is vetoed briefly so the replan hops to the NEXT
+  // corner along the box instead of re-offering the same cell (the crawl
+  // loop the autumn rock-cluster trace measured)
+  const lastCorner = { x: 1e9, z: 1e9, untilS: -1 };
+  function planRoute(gx, gz) {
+    routeActive = false;
+    const st = entity.state;
+    const sx = st.pos.x, sz = st.pos.z;
+    let dx = gx - sx, dz = gz - sz;
+    const dist = Math.hypot(dx, dz);
+    if (dist < 12) return;
+    const lim = Math.min(dist, ROUTE_LOOK_M);
+    dx /= dist; dz /= dist;
+    const margin = spec.dims.widthM * 0.5 + 1.4;
+    let bestT = Infinity;
+    let box = null;
+    for (let i = 0; i < obstacles.length; i++) {
+      const o = obstacles[i];
+      if (o.crushed || o.crushable) continue;
+      const minX = o.min[0] - margin, maxX = o.max[0] + margin;
+      const minZ = o.min[2] - margin, maxZ = o.max[2] + margin;
+      let t0 = 0, t1 = lim;
+      if (Math.abs(dx) < 1e-9) {
+        if (sx < minX || sx > maxX) continue;
+      } else {
+        let a = (minX - sx) / dx, b = (maxX - sx) / dx;
+        if (a > b) { const tt = a; a = b; b = tt; }
+        if (a > t0) t0 = a;
+        if (b < t1) t1 = b;
+      }
+      if (Math.abs(dz) < 1e-9) {
+        if (sz < minZ || sz > maxZ) continue;
+      } else {
+        let a = (minZ - sz) / dz, b = (maxZ - sz) / dz;
+        if (a > b) { const tt = a; a = b; b = tt; }
+        if (a > t0) t0 = a;
+        if (b < t1) t1 = b;
+      }
+      if (t0 > t1 || t1 < 0 || t0 > lim) continue;
+      if (t0 < bestT) { bestT = t0; box = o; }
+    }
+    if (!box) return;
+    const m2 = margin + 2.8; // corner clearance: a TURNING hull's diagonal
+                             // swings ~halfL past its track line
+    const cs = [
+      [box.min[0] - m2, box.min[2] - m2], [box.max[0] + m2, box.min[2] - m2],
+      [box.min[0] - m2, box.max[2] + m2], [box.max[0] + m2, box.max[2] + m2],
+    ];
+    // reject corners whose straight approach re-crosses THIS box (a start
+    // point near corner A scores the DIAGONAL corner best on d1+d2 — and the
+    // segment to it runs through the box face; the coastal spawn-exit trace
+    // wedged exactly like that, throttle 0.4 into a rock face for 30 s)
+    const inMinX = box.min[0] - margin * 0.85, inMaxX = box.max[0] + margin * 0.85;
+    const inMinZ = box.min[2] - margin * 0.85, inMaxZ = box.max[2] + margin * 0.85;
+    const segHitsBox = (ex, ez) => {
+      let ddx = ex - sx, ddz = ez - sz;
+      const len = Math.hypot(ddx, ddz) || 1e-9;
+      ddx /= len; ddz /= len;
+      let t0 = 0, t1 = len;
+      if (Math.abs(ddx) < 1e-9) {
+        if (sx < inMinX || sx > inMaxX) return false;
+      } else {
+        let a = (inMinX - sx) / ddx, b = (inMaxX - sx) / ddx;
+        if (a > b) { const tt = a; a = b; b = tt; }
+        if (a > t0) t0 = a;
+        if (b < t1) t1 = b;
+      }
+      if (Math.abs(ddz) < 1e-9) {
+        if (sz < inMinZ || sz > inMaxZ) return false;
+      } else {
+        let a = (inMinZ - sz) / ddz, b = (inMaxZ - sz) / ddz;
+        if (a > b) { const tt = a; a = b; b = tt; }
+        if (a > t0) t0 = a;
+        if (b < t1) t1 = b;
+      }
+      return t0 <= t1 && t1 > 0 && t0 < len;
+    };
+    let best = Infinity, bx = 0, bz = 0;
+    for (let i = 0; i < cs.length; i++) {
+      const cx = cs[i][0], cz = cs[i][1];
+      if (Math.max(Math.abs(cx), Math.abs(cz)) > 500) continue;
+      const d1 = Math.hypot(cx - sx, cz - sz);
+      if (d1 < 2) continue; // standing on this corner already
+      if (nowS < lastCorner.untilS &&
+          Math.hypot(cx - lastCorner.x, cz - lastCorner.z) < 3) continue;
+      if (segHitsBox(cx, cz)) continue; // diagonal-through-the-box corner
+      const score = d1 + Math.hypot(gx - cx, gz - cz) +
+        cornerBias(sx, sz, dx, dz, cx, cz);
+      if (score < best) { best = score; bx = cx; bz = cz; }
+    }
+    if (best === Infinity) return;
+    routeCorner.x = bx;
+    routeCorner.z = bz;
+    routeActive = true;
+  }
+  // r7: corner preference bias — repeated strikes flip detourSide, and the
+  // replan then prefers corners on the OTHER flank of the advance line, so
+  // consecutive plans try genuinely different ways around a stubborn block.
+  function cornerBias(sx, sz, dirx, dirz, cx, cz) {
+    const side = Math.sign(dirz * (cx - sx) - dirx * (cz - sz)) || 1;
+    return side === detourSide ? 0 : 25;
+  }
+
+  /**
+   * BATTLE-AI r7 POCKET ESCAPE (last-resort nav): five wedge cycles on one
+   * leg means the hull sits in a multi-box pocket (rock-outcrop clusters,
+   * town courtyards) that per-box corner hops cannot solve. Sample 8
+   * bearings for the clearest 30 m escape lane — no solid box on the
+   * segment, no sharp terrain rise — and commit to it via the scoot drive
+   * for a few seconds before resuming the mission.
+   * @returns {boolean} true when an escape leg was committed
+   */
+  function escapePocket() {
+    const st = entity.state;
+    const sx = st.pos.x, sz = st.pos.z;
+    const margin = spec.dims.widthM * 0.5 + 1.0;
+    let bestScore = -Infinity, bx = 0, bz = 0;
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * TAU + scanPhase;
+      const ux = Math.sin(a), uz = Math.cos(a);
+      // clear length against solid boxes (crushables are drive-through)
+      let clear = 34;
+      for (let i = 0; i < obstacles.length; i++) {
+        const o = obstacles[i];
+        if (o.crushed || o.crushable) continue;
+        const minX = o.min[0] - margin, maxX = o.max[0] + margin;
+        const minZ = o.min[2] - margin, maxZ = o.max[2] + margin;
+        let t0 = 0, t1 = clear;
+        if (Math.abs(ux) < 1e-9) {
+          if (sx < minX || sx > maxX) continue;
+        } else {
+          let lo = (minX - sx) / ux, hi = (maxX - sx) / ux;
+          if (lo > hi) { const tt = lo; lo = hi; hi = tt; }
+          if (lo > t0) t0 = lo;
+          if (hi < t1) t1 = hi;
+        }
+        if (Math.abs(uz) < 1e-9) {
+          if (sz < minZ || sz > maxZ) continue;
+        } else {
+          let lo = (minZ - sz) / uz, hi = (maxZ - sz) / uz;
+          if (lo > hi) { const tt = lo; lo = hi; hi = tt; }
+          if (lo > t0) t0 = lo;
+          if (hi < t1) t1 = hi;
+        }
+        if (t0 <= t1 && t1 > 0 && t0 < clear) clear = Math.max(0, t0);
+      }
+      if (clear < 12) continue;
+      const ex = sx + ux * clear, ez = sz + uz * clear;
+      if (Math.max(Math.abs(ex), Math.abs(ez)) > 470) continue;
+      const h0 = hf.getHeightAt(sx, sz);
+      const rise = Math.max(
+        hf.getHeightAt(sx + ux * 12, sz + uz * 12) - h0,
+        hf.getHeightAt(sx + ux * 24, sz + uz * 24) - h0);
+      if (rise > 4) continue; // don't escape INTO a wall of terrain
+      const score = clear - rise * 4 + rng() * 3;
+      if (score > bestScore) { bestScore = score; bx = ex; bz = ez; }
+    }
+    if (bestScore === -Infinity) return false;
+    scootPoint.x = bx;
+    scootPoint.z = bz;
+    scootUntilS = nowS + 6;
+    routeTimer = 0;
+    return true;
   }
 
   // r6 NAV-PROGRESS WATCHDOG (engagement-starvation root cause): the r7
@@ -885,20 +1252,50 @@ export function createAI(entity, opts = {}) {
     let dx = x - st.pos.x, dz = z - st.pos.z;
     let dist = Math.hypot(dx, dz);
     trackNavProgress(x, z, dist); // r6 wedge watchdog (see update())
-    // Blocked-route detour (see detourUntilS): steer for a point offset
-    // sideways from the real target so the hull clears the blocking face.
-    if (nowS < detourUntilS && dist > 25) {
-      const px = dz / dist, pz = -dx / dist; // perp of the bearing
-      x += px * 55 * detourSide;
-      z += pz * 55 * detourSide;
-      dx = x - st.pos.x; dz = z - st.pos.z;
-      dist = Math.hypot(dx, dz);
-    }
     if (dist < ARRIVE_DIST_M) {
       input.throttle = 0;
       input.steer = 0;
       input.brake = Math.abs(st.speed) > 0.5;
       return true;
+    }
+    // r7 CORNER-HOP ROUTER (see planRoute): re-plan when the goal moved or
+    // the recheck timer lapsed; while a solid blocker sits on the straight
+    // line, the steering goal becomes the corner around it.
+    if (routeTimer <= 0 ||
+        Math.abs(x - routeGoalX) > 12 || Math.abs(z - routeGoalZ) > 12) {
+      routeGoalX = x;
+      routeGoalZ = z;
+      routeTimer = ROUTE_RECHECK_S;
+      planRoute(x, z);
+    }
+    let viaCorner = false;
+    if (routeActive) {
+      const cdx = routeCorner.x - st.pos.x;
+      const cdz = routeCorner.z - st.pos.z;
+      if (Math.hypot(cdx, cdz) < 4.5) {
+        // corner reached — veto it briefly and replan (next hop or straight)
+        lastCorner.x = routeCorner.x;
+        lastCorner.z = routeCorner.z;
+        lastCorner.untilS = nowS + 4;
+        routeActive = false;
+        routeTimer = 0;
+      } else {
+        viaCorner = true;
+        x = routeCorner.x;
+        z = routeCorner.z;
+        dx = cdx;
+        dz = cdz;
+        dist = Math.hypot(dx, dz);
+      }
+    } else if (nowS < detourUntilS && dist > 25) {
+      // Blocked-route detour (see detourUntilS): steer for a point offset
+      // sideways from the real target so the hull clears the blocking face.
+      // (Fallback for wedges the router cannot see — tank pile-ups.)
+      const px = dz / dist, pz = -dx / dist; // perp of the bearing
+      x += px * 55 * detourSide;
+      z += pz * 55 * detourSide;
+      dx = x - st.pos.x; dz = z - st.pos.z;
+      dist = Math.hypot(dx, dz);
     }
     const bearing = Math.atan2(dx, dz);
     const err = wrapAngle(bearing - st.yaw);
@@ -916,7 +1313,10 @@ export function createAI(entity, opts = {}) {
       return false;
     }
     input.throttle = clamp(1 - Math.abs(err) * 0.55, 0.25, 1) * speedScale;
-    input.throttle *= clamp(dist / 10, 0.35, 1); // ease into arrivals
+    // ease into ARRIVALS only — an intermediate route corner is a waypoint,
+    // not a destination (the ease floor made bots crawl corner chains at
+    // 0.2 throttle and wedge; r7 autumn trace)
+    if (!viaCorner) input.throttle *= clamp(dist / 10, 0.35, 1);
     avoidObstacles(input);
     return false;
   }
@@ -945,6 +1345,23 @@ export function createAI(entity, opts = {}) {
     input.steer = Math.abs(err) > 0.06 ? clamp(err * 2.5, -1, 1) : 0;
     input.throttle = 0;
     input.brake = Math.abs(st.speed) > 0.5;
+  }
+
+  /**
+   * BATTLE-AI r7: back up while keeping the BOW on a bearing. movement.js
+   * flips the steering sign while reversing (reversing-car semantics, §
+   * "Reverse-steer flip") — plain faceYaw+negative throttle therefore spun
+   * hulls AWAY from the target (probe: 800-2700 mrad yaw errors mid-pullback,
+   * bots reversing in circles). Compensate the flip once the hull actually
+   * rolls backwards.
+   */
+  function reverseFacing(input, wantYaw, throttle) {
+    const st = entity.state;
+    const err = wrapAngle(wantYaw - st.yaw);
+    const sign = st.speed < -0.15 ? -1 : 1; // movement.js reverse-steer flip
+    input.steer = Math.abs(err) > 0.06 ? clamp(err * 2.5, -1, 1) * sign : 0;
+    input.throttle = throttle;
+    input.brake = false;
   }
 
   function buildAutoPatrol() {
@@ -1005,7 +1422,41 @@ export function createAI(entity, opts = {}) {
       return;
     }
 
+    // BATTLE-AI r7 RETREAT-TOWARD-SUPPORT: a tracked/low hull disengages for
+    // a few seconds toward the nearest living teammate (trigger lives in
+    // update()). Reverse when the support is behind — bow armor stays on the
+    // threat and the turret keeps firing the whole way.
+    if (timeS < fallbackUntilS) {
+      if (fallbackReverse) {
+        reverseFacing(input, Math.atan2(navX - st.pos.x, navZ - st.pos.z), -0.75);
+      } else {
+        driveToXZ(input, fallbackPoint.x, fallbackPoint.z, 1.0);
+      }
+      return;
+    }
+
     if (!losClear) {
+      // BATTLE-AI r7 LANE FALLBACK: 20+ s of blocked ray WITH nav strikes
+      // means the direct commit is geometry-hard (urban trace: a bot pressed
+      // the town's north wall for 30 s re-picking vantage cells behind the
+      // same face). Give up the direct line for a while and follow the
+      // AUTHORED opening lane instead — lanes are nav-proven (town-skirted,
+      // open ground), so the bot swings around the block and re-engages
+      // from a fresh sector with the turret still tracking.
+      if (timeS < laneFallbackUntilS) {
+        drivePatrol(input);
+        return;
+      }
+      // trigger: wedged AND blocked, or simply blocked for a long time
+      // (urban probe: 90 s blocked with ZERO strikes — the vantage cycle
+      // spun in place without ever wedging hard enough to strike)
+      if ((losBlockedT > 14 && stuckStrikes >= 2) || losBlockedT > 18) {
+        laneFallbackUntilS = timeS + 12;
+        losBlockedT = 0; // fresh grace after the lane leg
+        hasVantage = false;
+        drivePatrol(input);
+        return;
+      }
       // Known contact, blocked ray: chase lastSeen briefly, then circle to
       // a sightline position instead of parking against the cover.
       if (hasVantage) {
@@ -1023,18 +1474,70 @@ export function createAI(entity, opts = {}) {
         driveToXZ(input, vantage.x, vantage.z, 1.0);
         return;
       }
-      chaseToXZ(input, lastSeen.x, lastSeen.z, target.isPlayer ? 1.0 : 0.9);
+      if (chaseToXZ(input, lastSeen.x, lastSeen.z, target.isPlayer ? 1.0 : 0.9)) {
+        // BATTLE-AI r7 BLOCKED-ARRIVAL ESCALATION: parked ON the last-seen
+        // point with still no ray — the contact moved behind the next fold/
+        // block. The r7 flow probe measured bots oscillating here for 60+ s
+        // (press cycles re-driving them onto the same parked spot, 0 shells).
+        // Push a fresh probe leg toward the OPPONENTS' 50 m-quantized sector
+        // centroid (route intel, same softness rule as the stalemate
+        // breaker — never precise live coordinates) via the vantage drive.
+        const list = deps.getEnemies();
+        let cx = 0, cz = 0, n = 0;
+        for (let i = 0; i < list.length; i++) {
+          const e = list[i];
+          if (!enemyAlive(e)) continue;
+          cx += e.state.pos.x;
+          cz += e.state.pos.z;
+          n++;
+        }
+        if (n > 0) {
+          const qx = Math.round(cx / n / 50) * 50;
+          const qz = Math.round(cz / n / 50) * 50;
+          const b = Math.atan2(qx - st.pos.x, qz - st.pos.z) + (rng() - 0.5) * 0.6;
+          vantage.x = st.pos.x + Math.sin(b) * 90;
+          vantage.z = st.pos.z + Math.cos(b) * 90;
+          hasVantage = true;
+        }
+      }
       return;
     }
     hasVantage = false; // ray is clear — fight from here
+    // r7 direct settle trigger: ray clear but the trigger has starved 8+ s —
+    // commit to a clean halt NOW (the stalemate press variant waits 12 s and
+    // its cooldown misses half the flicker duels the urban probe measured).
+    // Three back-to-back fruitless settles yield to the normal maneuver
+    // logic for a while (the shot may simply not exist from this cell).
+    if (timeS - lastFiredAtS > 8 && timeS >= settleUntilS &&
+        timeS >= settleCdUntilS &&
+        entity.combat && entity.combat.reload && entity.combat.reload.t <= 0.5) {
+      settleStreak = timeS - settleUntilS < 1.5 ? settleStreak + 1 : 0;
+      if (settleStreak >= 3) {
+        settleStreak = 0;
+        settleCdUntilS = timeS + 8;
+      } else {
+        settleUntilS = timeS + 3.5;
+      }
+    }
     // r5: the engage envelope extends unconditionally toward a PLAYER
     // attacker-of-record and during a stalemate push — not only while the
-    // 15 s underFire window happens to be live.
-    const engageR = tier.engageRangeM +
+    // 15 s underFire window happens to be live. BATTLE-AI r7: the base
+    // envelope is role-scaled (snipers commit from further out).
+    const engageR = roleEngageR() +
       ((timeS < underFireUntilS ||
         (target.isPlayer && timeS < playerAggroUntilS) ||
         timeS < pressUntilS) ? UNDER_FIRE_RANGE_BONUS_M : 0);
     if (distToTarget > engageR) {
+      // BATTLE-AI r7 NO-SUICIDE GUARD: a lone hull does not free-run into a
+      // covered group — it halts at the envelope edge and snipes until a
+      // teammate is on station (the stalemate breaker still overrides, so a
+      // pressing push never deadlocks; scouts are exempt — speed is their
+      // armor and spotting the group is their job).
+      if (role !== 'scout' && timeS >= pressUntilS &&
+          distToTarget < engageR + 90 && outnumberedSolo()) {
+        faceYaw(input, Math.atan2(navX - st.pos.x, navZ - st.pos.z));
+        return;
+      }
       chaseToXZ(input, navX, navZ, 1.0); // committed leg (r3) — leadable mover
       return;
     }
@@ -1042,7 +1545,14 @@ export function createAI(entity, opts = {}) {
       if (driveToXZ(input, moveTarget.x, moveTarget.z, 0.6)) hasMoveTarget = false;
       return;
     }
-    if (distToTarget > tier.holdRangeM) {
+    // BATTLE-AI r7 scout doctrine: never brawl, never park — kite out of
+    // knife range and orbit the band with flipping sides (active spotting).
+    if (role === 'scout') {
+      scoutMove(input, timeS, distToTarget, navX, navZ);
+      return;
+    }
+    const holdR = roleHoldR();
+    if (distToTarget > holdR) {
       // HALT-AND-VOLLEY (controls_gunnery r5): the old branch crept at 0.45
       // throttle the whole way from engageR down to holdRange — movement
       // bloom kept computeDispersionRadM above the fire gate for the entire
@@ -1051,15 +1561,224 @@ export function createAI(entity, opts = {}) {
       // sub-holdRange bots ever fired). WoT bots stop-shoot-move: advance
       // while the gun is loading, HALT and settle the moment it is ready.
       const rl = entity.combat && entity.combat.reload;
+      // BATTLE-AI r7 TRADE WINDOW (brawlers): the target's gun is visibly
+      // cycling (it just fired — its reload state is the observable muzzle
+      // flash) and ours is seated — heavies push the reload window hard.
+      const tgtCycling = target.combat && target.combat.reload &&
+        target.combat.reload.t > 1.5;
+      if (role === 'brawler' && tgtCycling && (!rl || rl.t <= 0.3)) {
+        chaseToXZ(input, navX, navZ, 0.85);
+        return;
+      }
       if (rl && rl.t > 1.2) {
+        // r7 reload windows by role: snipers HOLD their sightline (never
+        // creep into it), flankers advance on an angled slip toward the next
+        // cover line, brawlers close straight in; nobody dives a covered
+        // group alone (outnumberedSolo pins the advance to the band edge).
+        if (role === 'sniper') {
+          faceYaw(input, Math.atan2(navX - st.pos.x, navZ - st.pos.z));
+          return;
+        }
+        if (timeS >= pressUntilS && outnumberedSolo()) {
+          faceYaw(input, Math.atan2(navX - st.pos.x, navZ - st.pos.z));
+          return;
+        }
+        if (role === 'flanker') {
+          const lx2 = navZ - st.pos.z, lz2 = -(navX - st.pos.x);
+          const ll = Math.hypot(lx2, lz2) || 1;
+          chaseToXZ(input, navX + (lx2 / ll) * 48 * angleSide,
+            navZ + (lz2 / ll) * 48 * angleSide, 0.7);
+          return;
+        }
         chaseToXZ(input, navX, navZ, 0.6); // close distance during the reload
         return;
       }
       faceYaw(input, Math.atan2(navX - st.pos.x, navZ - st.pos.z));
       return;
     }
-    // Hold: face the target hull-on and shoot.
-    faceYaw(input, Math.atan2(navX - st.pos.x, navZ - st.pos.z));
+    // Hold band. BATTLE-AI r7 reload discipline: peek only when loaded —
+    // non-brawlers pull straight back while the gun cycles (bow on the
+    // threat, turret still tracking); brawlers stand their ground and ANGLE
+    // the hull off the contact bearing instead (casemates keep the bow on —
+    // movement.js aims their gun with the hull).
+    const bearing = Math.atan2(navX - st.pos.x, navZ - st.pos.z);
+    const rl2 = entity.combat && entity.combat.reload;
+    const mods = entity.combat && entity.combat.modules;
+    const gunOut = mods && mods.gun && mods.gun.state === 'red';
+    // casemates NEVER pull back mid-duel — their fire solution IS the hull
+    // facing, and the reverse dance left them 300-800 mrad off-axis when the
+    // reload seated (steppe probe); they hold the lay and trust the armor.
+    if (((rl2 && rl2.t > 1.2 && role !== 'brawler' && !casemate) || gunOut) &&
+        distToTarget > 55) {
+      reverseFacing(input, bearing, -0.45); // bow on the threat, backing out
+      return;
+    }
+    // r7: a damaged turret ring traverses slowly or not at all — swing the
+    // HULL square onto the target so the gun still comes to bear (probe:
+    // ring-jammed heavies parked 100-900 mrad off-axis, never firing).
+    const ringOut = mods && mods.turretRing && mods.turretRing.state !== 'ok';
+    faceYaw(input, bearing + (ringOut ? 0 : angleRad * angleSide));
+  }
+
+  /**
+   * BATTLE-AI r7: true when diving the current target alone is suicide —
+   * 2+ live opponents inside 200 m of the target and this hull is a genuine
+   * LONE SPEARHEAD: no living teammate within 170 m AND nobody at least as
+   * far forward (within 40 m of my target distance). The "as far forward"
+   * arm is the deadlock breaker — the first cut froze whole battle lines
+   * because every bot in a spread formation read its >130 m neighbors as
+   * absent support and mutually held (r7 flow probe: 12-bot idle stalls).
+   * A line advancing abreast is support; only the man way out front waits.
+   * A continuous 10 s hold also self-releases for 15 s — WoT bots commit.
+   * Headless fixtures without getAllies never trigger the guard.
+   * @returns {boolean}
+   */
+  function outnumberedSolo() {
+    if (!target || !target.state || !getAllies) return false;
+    if (nowS < guardReleaseUntilS) return false;
+    const list = deps.getEnemies();
+    let near = 0;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!enemyAlive(e)) continue;
+      const dx = e.state.pos.x - target.state.pos.x;
+      const dz = e.state.pos.z - target.state.pos.z;
+      if (dx * dx + dz * dz < 200 * 200) near++;
+      if (near >= 2) break;
+    }
+    if (near < 2) { guardT = 0; return false; }
+    const st = entity.state;
+    const tp = target.state.pos;
+    const myD = Math.hypot(tp.x - st.pos.x, tp.z - st.pos.z);
+    const friends = getAllies();
+    for (let i = 0; i < friends.length; i++) {
+      const f = friends[i];
+      if (!f || !f.state) continue;
+      const dx = f.state.pos.x - st.pos.x;
+      const dz = f.state.pos.z - st.pos.z;
+      if (dx * dx + dz * dz < 170 * 170) { guardT = 0; return false; }
+      const fd = Math.hypot(tp.x - f.state.pos.x, tp.z - f.state.pos.z);
+      if (fd < myD + 40) { guardT = 0; return false; } // line abreast = support
+    }
+    const step = nowS - guardLastS;
+    guardT = step < 0.12 ? guardT + Math.max(0, step) : 0; // consecutive ticks only
+    guardLastS = nowS;
+    if (guardT > 10) {
+      guardT = 0;
+      guardReleaseUntilS = nowS + 15;
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * BATTLE-AI r7 scout movement: kite out of knife range through a lateral
+   * escape point (never a straight reverse — speed is the scout's armor),
+   * otherwise orbit the engagement band tangentially, flipping sides every
+   * 9-15 s and spiraling out when too close / in when too far. The scout
+   * stays lit-up-proof and keeps feeding the team's spotting net.
+   */
+  function scoutMove(input, timeS, dist, navX, navZ) {
+    const st = entity.state;
+    if (timeS >= kiteUntilS) {
+      let nd2 = Infinity;
+      let nearest = null;
+      const list = deps.getEnemies();
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (!enemyAlive(e)) continue;
+        const dx = e.state.pos.x - st.pos.x, dz = e.state.pos.z - st.pos.z;
+        const d2 = dx * dx + dz * dz;
+        if (d2 < nd2) { nd2 = d2; nearest = e; }
+      }
+      if (nearest && nd2 < SCOUT_KITE_M * SCOUT_KITE_M) {
+        const away = Math.atan2(st.pos.x - nearest.state.pos.x,
+          st.pos.z - nearest.state.pos.z);
+        const esc = away + orbitSide * 0.7;
+        kitePoint.x = st.pos.x + Math.sin(esc) * 150;
+        kitePoint.z = st.pos.z + Math.cos(esc) * 150;
+        kiteUntilS = timeS + 5;
+      }
+    }
+    if (timeS < kiteUntilS) {
+      if (driveToXZ(input, kitePoint.x, kitePoint.z, 1.0)) kiteUntilS = -1;
+      return;
+    }
+    if (timeS >= orbitFlipS) {
+      orbitSide = -orbitSide;
+      orbitFlipS = timeS + 9 + rng() * 6;
+    }
+    const holdR = roleHoldR();
+    const bearing = Math.atan2(navX - st.pos.x, navZ - st.pos.z);
+    // tangential orbit with a spiral bias: >90° off the bearing when inside
+    // the band (opens distance), <90° when outside (closes it)
+    const orb = bearing + orbitSide * (Math.PI / 2) * (dist < holdR ? 1.2 : 0.8);
+    driveToXZ(input, st.pos.x + Math.sin(orb) * 60, st.pos.z + Math.cos(orb) * 60, 0.95);
+  }
+
+  /**
+   * BATTLE-AI r7 ARC-PIN REPOSITION: the gun has been pitch-pinned for
+   * seconds (hull nose-up/down on a fold face — steppe diag measured
+   * visualPitch +17-21° vs 5-7° of gun depression, 260+ mrad of pitch error
+   * held for 60+ s while the 1.2 s reverse nudge cycled uselessly on the
+   * same slope). Sample a ring of nearby FLAT cells (normal.y >= 0.94),
+   * prefer one that keeps a sightline to the target, and drive there via
+   * the scoot slot. A tank that knows its gun arcs finds ground that lets
+   * the gun work — core "good ideas of their tank".
+   * @returns {boolean} true when scootPoint was filled
+   */
+  function pickFlatCell() {
+    if (!target || !target.state) return false;
+    const st = entity.state;
+    const tp = target.state.pos;
+    const ty = eyeY(target);
+    let bx = 0, bz = 0, found = false, bestScore = -Infinity;
+    for (const r of [18, 30, 45]) {
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * TAU;
+        const cx = st.pos.x + Math.sin(a) * r;
+        const cz = st.pos.z + Math.cos(a) * r;
+        if (Math.max(Math.abs(cx), Math.abs(cz)) > 470) continue;
+        const ny = hf.getNormalAt(cx, cz).y; // shared scratch — read .y now
+        if (ny < 0.94) continue;
+        const cy = hf.getHeightAt(cx, cz) + selfEyeM;
+        const sight = hasLos(cx, cy, cz, tp.x, ty, tp.z) ? 1 : 0;
+        const score = sight * 100 + ny * 10 - r * 0.1;
+        if (score > bestScore) { bestScore = score; bx = cx; bz = cz; found = true; }
+      }
+      if (found && bestScore >= 100) break; // flat AND sighted — take it
+    }
+    if (found) { scootPoint.x = bx; scootPoint.z = bz; }
+    return found;
+  }
+
+  /**
+   * BATTLE-AI r7: sample a relocation cell 45-85 m out, biased to the rear
+   * quarters of the target bearing; prefer one that keeps a sightline to the
+   * last known contact so the next shot is already set up.
+   * @returns {boolean} true when scootPoint was filled
+   */
+  function pickScoot() {
+    const st = entity.state;
+    const tb = target && target.state
+      ? Math.atan2(target.state.pos.x - st.pos.x, target.state.pos.z - st.pos.z)
+      : st.yaw;
+    const ty = hf.getHeightAt(lastSeen.x, lastSeen.z) + 1.5;
+    let fx = 0, fz = 0, found = false;
+    for (let k = 0; k < 6; k++) {
+      // ±(94°..152°) off the contact bearing — sideways-to-rear arcs
+      const a = tb + (k % 2 ? -1 : 1) * (1.65 + 0.5 * ((k / 2) | 0));
+      const r = 45 + rng() * 40;
+      const cx = st.pos.x + Math.sin(a) * r;
+      const cz = st.pos.z + Math.cos(a) * r;
+      if (Math.max(Math.abs(cx), Math.abs(cz)) > 470) continue;
+      const cy = hf.getHeightAt(cx, cz) + selfEyeM;
+      const sight = hasLos(cx, cy, cz, lastSeen.x, ty, lastSeen.z);
+      if (!found || sight) { fx = cx; fz = cz; found = true; }
+      if (sight) break;
+    }
+    if (found) { scootPoint.x = fx; scootPoint.z = fz; }
+    return found;
   }
 
   // ---- aiming & firing -----------------------------------------------------
@@ -1163,11 +1882,15 @@ export function createAI(entity, opts = {}) {
     }
 
     input.aimPoint.copy(_vD);
-    input.shellSlot = /** @type {0|1|2} */ (clamp(chosenSlot, 0, 2));
+    input.shellSlot = /** @type {0|1|2} */ (
+      clamp(chosenSlot, 0, Math.min(2, spec.gun.shells.length - 1)));
 
     // ---- fire gates ----
     const reactionOk = timeS - acquiredAtS >= tier.reactionS;
-    const reloadReady = !cb || (cb.reload && cb.reload.t <= 1e-3 && !cb.destroyed);
+    // r7: a RED gun cannot fire (tryFire hard-blocks it) — the AI must know,
+    // or it stands "ready" in the open for the whole 10 s repair.
+    const gunRed = cb && cb.modules && cb.modules.gun && cb.modules.gun.state === 'red';
+    const reloadReady = !cb || (cb.reload && cb.reload.t <= 1e-3 && !cb.destroyed && !gunRed);
     const rangeOk = dist <= MAX_FIRE_RANGE_M;
 
     // Dispersion gate: reticle smaller than half the target width × difficulty factor.
@@ -1208,17 +1931,43 @@ export function createAI(entity, opts = {}) {
     // but after a few seconds the AI takes the best shot its gun arc allows
     // instead of holding fire forever (bounded: within ~4x tolerance).
     const gunReady = losClear && reactionOk && reloadReady && rangeOk;
-    if (st.atGunLimit && gunReady && pitchErr >= tol * 1.5) arcLimitedT += dt;
-    else if (!st.atGunLimit || pitchErr < tol * 1.5) arcLimitedT = 0;
+    // r7: the clamp flag is NOT required — a slope's attitude composite can
+    // hold the solution outside the barrel's reach without atGunLimit ever
+    // latching (probe: 227 mrad pitch error, lim=false, parked 45 s).
+    if ((st.atGunLimit || pitchErr > 0.1) && gunReady && pitchErr >= tol * 1.5) {
+      arcLimitedT += dt;
+    } else if ((!st.atGunLimit && pitchErr <= 0.1) || pitchErr < tol * 1.5) {
+      arcLimitedT = 0;
+    }
     const pitchTol = arcLimitedT > 2.5 ? Math.min(0.06, tol * 4) : tol * 1.5;
+    // r7 ARC-PIN REPOSITION (see pickFlatCell): a pitch error the widened
+    // tolerance can never absorb (hull on a fold face) converts into a
+    // relocation to flat ground instead of an eternal nudge cycle. The
+    // threshold is the LIVE tolerance itself — the first cut used a fixed
+    // 70 mrad and left a 40-70 mrad dead zone where the bot neither fired
+    // nor moved (steppe probe: jpz_e100 parked at 45 mrad for 50 s).
+    if (arcLimitedT > 3 && pitchErr > pitchTol && timeS >= scootUntilS) {
+      if (pickFlatCell()) {
+        scootUntilS = timeS + 10;
+        hasMoveTarget = false;
+        hasCoverPoint = false;
+        if (mode === 'seekCover') mode = 'engage';
+      }
+      arcLimitedT = 0;
+    }
     const alignOk = yawErr < tol && pitchErr < pitchTol;
 
     // (r5 settled-shot timeout — see the dispersion-gate note above)
+    // r7: the timer DECAYS through brief gate flickers instead of hard
+    // resetting — an urban duel's LOS blinks on/off every second or two and
+    // the old reset meant the 2.5 s settle could never complete (probe:
+    // eight town bots at rdy=true/disp=false for 30-60 s without a shell).
     if (gunReady && alignOk && !dispersionOk) dispGateT += dt;
-    else dispGateT = 0;
+    else dispGateT = Math.max(0, dispGateT - dt * 2);
     const dispersionPass = dispersionOk || dispGateT > 2.5;
 
-    input.fire = (gunReady && dispersionPass && alignOk && (penGateOk || chosenSlot === 2)) ||
+    input.fire = (gunReady && dispersionPass && alignOk &&
+        (penGateOk || chosenSlot === heSlot)) ||
       // blind bush-fire skips LOS/pen/dispersion gates — the lay itself is
       // the message — but still demands reaction time, a seated shell and
       // the gun actually pointed at the intel position.
@@ -1340,6 +2089,7 @@ export function createAI(entity, opts = {}) {
     }
 
     losTimer -= dt; probeTimer -= dt; coverTimer -= dt; errTimer -= dt; obstacleTimer -= dt;
+    routeTimer -= dt; // r7 corner-hop replan cadence
 
     if (obstacleTimer <= 0) {
       obstacles = deps.getObstacles();
@@ -1379,6 +2129,13 @@ export function createAI(entity, opts = {}) {
         hasCoverPoint = false;
         if (mode === 'seekCover' || mode === 'patrol') mode = 'engage';
         if (target && !losClear && findVantage()) hasVantage = true;
+        // r7 SHOT STARVATION SETTLE: contact held, ray clear, still no shot
+        // for 12+ s — the dispersion/alignment churn from constant micro-
+        // movement is starving the trigger (probe: standoff pairs posturing
+        // at 170-320 m for 30-60 s without a shell; a relocation variant
+        // made it WORSE — more churn). Force a clean 3.5 s halt: the
+        // settled-shot timeout (dispGateT) then takes the wide shot.
+        if (target && losClear) settleUntilS = timeS + 3.5;
       } else if (!hasContact && timeS - lastFiredAtS > 25 &&
                  timeS >= pressUntilS) {
         // NO contact and a long quiet stretch: re-route the patrol toward
@@ -1424,19 +2181,113 @@ export function createAI(entity, opts = {}) {
 
     stepStateMachine(dt, timeS, distToTarget);
 
+    // ---- BATTLE-AI r7 doctrine triggers ----
+    {
+      // Reload-edge shot watch: reload.t jumping UP means a shell just left
+      // THIS gun — the per-position shot budget snipers scoot on.
+      const rt = cb && cb.reload ? cb.reload.t : 0;
+      if (rt > prevReloadT + 1) {
+        if (Math.hypot(st.pos.x - spotPos.x, st.pos.z - spotPos.z) > 22) {
+          spotPos.x = st.pos.x;
+          spotPos.z = st.pos.z;
+          shotsFromSpot = 0;
+        }
+        shotsFromSpot++;
+        if (tune.scootAfter > 0 && shotsFromSpot >= tune.scootAfter &&
+            timeS >= scootUntilS && pickScoot()) {
+          scootUntilS = timeS + 14; // window bounds the drive, arrival ends it
+          // the relocation IS the survival play — drop any competing
+          // cover/hull-down intention so the leg actually happens
+          hasMoveTarget = false;
+          hasCoverPoint = false;
+          if (mode === 'seekCover') mode = 'engage';
+        }
+      }
+      prevReloadT = rt;
+      // Hull-down target the armor probes cannot solve from here (probeMiss,
+      // runProbes): HE keeps lobbing at the turret line meanwhile, and after
+      // 6 s the bot CHANGES ITS FIRING ANGLE via the scoot slot — WoT play
+      // is reposition-for-the-hull, not an eternal stare-down.
+      if (probeMiss && target && losClear) probeMissT += dt;
+      else probeMissT = 0;
+      if (probeMissT > 6 && timeS >= scootUntilS) {
+        if (pickScoot()) {
+          scootUntilS = timeS + 10;
+          hasMoveTarget = false;
+          hasCoverPoint = false;
+          if (mode === 'seekCover') mode = 'engage';
+        }
+        probeMissT = 0;
+      }
+      // Retreat-toward-support: tracked or low while a live threat sits
+      // inside the hold band — unless the target is nearly dead (finish it).
+      if (timeS >= fallbackUntilS && timeS >= fallbackCdS &&
+          mode === 'engage' && target && getAllies) {
+        const hpFrac = cb && cb.maxHp ? cb.hp / cb.maxHp : 1;
+        const trackRed = cb && cb.modules &&
+          ((cb.modules.trackL && cb.modules.trackL.state === 'red') ||
+           (cb.modules.trackR && cb.modules.trackR.state === 'red'));
+        const tgtNearDead = target.combat && target.combat.maxHp &&
+          target.combat.hp / target.combat.maxHp < 0.18;
+        if ((hpFrac < FALLBACK_HP_FRAC || trackRed) && !tgtNearDead &&
+            distToTarget < roleHoldR() * 1.15) {
+          let f = null, fd2 = Infinity;
+          const friends = getAllies();
+          for (let i = 0; i < friends.length; i++) {
+            const a = friends[i];
+            if (!a || !a.state) continue;
+            const fdx = a.state.pos.x - st.pos.x;
+            const fdz = a.state.pos.z - st.pos.z;
+            const d2 = fdx * fdx + fdz * fdz;
+            if (d2 > 25 * 25 && d2 < fd2) { fd2 = d2; f = a; }
+          }
+          if (f && fd2 < 400 * 400) {
+            fallbackPoint.x = f.state.pos.x;
+            fallbackPoint.z = f.state.pos.z;
+            // reverse when the support is behind (rear ~160° cone): the bow
+            // armor stays on the threat while the hull backs out
+            const toF = Math.atan2(fallbackPoint.x - st.pos.x,
+              fallbackPoint.z - st.pos.z);
+            fallbackReverse = Math.abs(wrapAngle(toF - st.yaw)) > Math.PI * 0.55;
+            fallbackUntilS = timeS + FALLBACK_S;
+            fallbackCdS = timeS + FALLBACK_CD_S;
+          }
+        }
+      }
+    }
+
     // ---- movement by mode ----
     input.brake = false;
     driveIntent = false; // r6: set by trackNavProgress inside the drive helpers
-    switch (mode) {
-      case 'patrol':    drivePatrol(input); break;
-      case 'engage':    driveEngage(input, timeS, distToTarget); break;
-      case 'seekCover':
-        if (driveToXZ(input, coverPoint.x, coverPoint.z, 0.9)) { /* wait out the reload */ }
-        break;
-      case 'flank': {
-        const fp = flankPoints[Math.min(flankIndex, 2)];
-        if (driveToXZ(input, fp.x, fp.z, 1.0)) flankIndex++;
-        break;
+    if (timeS < settleUntilS && target && losClear) {
+      // r7 SHOT-STARVATION SETTLE (see the stalemate breaker): a clean halt
+      // facing the contact so the settled-shot timeout can take the shot.
+      faceYaw(input, Math.atan2(
+        target.state.pos.x - st.pos.x, target.state.pos.z - st.pos.z));
+    } else if (timeS < scootUntilS) {
+      // BATTLE-AI r7 SHOOT-AND-SCOOT: an active relocation leg overrides mode
+      // movement in every mode (the turret keeps aiming/firing via
+      // aimAndFire below) — the r7 flow probe measured scoots dying inside
+      // seekCover/patrol before this override existed.
+      if (driveToXZ(input, scootPoint.x, scootPoint.z, 0.95)) {
+        scootUntilS = -1;
+        spotPos.x = st.pos.x;
+        spotPos.z = st.pos.z;
+        shotsFromSpot = 0;
+        relocations++;
+      }
+    } else {
+      switch (mode) {
+        case 'patrol':    drivePatrol(input); break;
+        case 'engage':    driveEngage(input, timeS, distToTarget); break;
+        case 'seekCover':
+          if (driveToXZ(input, coverPoint.x, coverPoint.z, 0.9)) { /* wait out the reload */ }
+          break;
+        case 'flank': {
+          const fp = flankPoints[Math.min(flankIndex, 2)];
+          if (driveToXZ(input, fp.x, fp.z, 1.0)) flankIndex++;
+          break;
+        }
       }
     }
 
@@ -1479,18 +2330,45 @@ export function createAI(entity, opts = {}) {
         if (stuckStrikes >= 2) {
           detourSide = -detourSide;
           detourUntilS = timeS + UNSTICK_TIME_S + 6;
+          // r7 router interplay: a wedge WITH a live corner plan means the
+          // plan itself is bad — replan NOW (cornerBias flips to the other
+          // flank with detourSide). A wedge with NO plan is a terrain grind
+          // the router cannot see — suppress planning for the detour window
+          // so the wide ghost detour owns the steering.
+          if (routeActive) {
+            routeActive = false;
+            routeTimer = 0;
+          } else {
+            routeTimer = UNSTICK_TIME_S + 6;
+          }
           if (mode === 'patrol' && waypoints.length > 1) {
             wpIndex = (wpIndex + 1) % waypoints.length;
           } else if (hasMoveTarget) {
             hasMoveTarget = false;
           }
+          if (hasVantage) vetoVantage(); // this vantage was unreachable
           hasVantage = false; // blocked vantage — re-sample a fresh one
-          if (stuckStrikes >= 4) stuckStrikes = 2; // keep flipping sides
+          if (stuckStrikes >= 4) {
+            // r7 POCKET ESCAPE: four wedge cycles on one leg — commit to the
+            // clearest 30 m lane out of the pocket instead of flipping sides
+            // against the same cluster forever.
+            if (timeS >= scootUntilS && escapePocket()) stuckStrikes = 0;
+            else stuckStrikes = 2; // keep flipping sides
+          }
         }
       }
     } else {
       lowSpeedT = 0;
-      if (progressRate > 2.5) stuckStrikes = 0; // moving freely again
+      // r7: strikes clear only after SUSTAINED free movement — the unstick's
+      // own 1.4 s reverse burst used to push progressRate over the bar and
+      // launder the counter every cycle, so detour/veto/pocket escalations
+      // never armed (desert trace: full throttle, zero speed, k pinned 0-1).
+      if (progressRate > 2.5) {
+        freeMoveT += dt;
+        if (freeMoveT > 2.2) stuckStrikes = 0;
+      } else {
+        freeMoveT = 0;
+      }
     }
 
     // r6 ORBIT WATCHDOG (see trackNavProgress): continuous displacement with
@@ -1510,13 +2388,24 @@ export function createAI(entity, opts = {}) {
         stuckStrikes++;
         detourSide = -detourSide;
         detourUntilS = timeS + UNSTICK_TIME_S + 6;
+        // r7 router interplay — same rule as the low-speed strike above
+        if (routeActive) {
+          routeActive = false;
+          routeTimer = 0;
+        } else {
+          routeTimer = UNSTICK_TIME_S + 6;
+        }
         if (mode === 'patrol' && waypoints.length > 1) {
           wpIndex = (wpIndex + 1) % waypoints.length;
         } else if (hasMoveTarget) {
           hasMoveTarget = false;
         }
+        if (hasVantage) vetoVantage(); // this vantage was unreachable
         hasVantage = false; // blocked vantage — re-sample a fresh one
-        if (stuckStrikes >= 4) stuckStrikes = 2; // keep flipping sides
+        if (stuckStrikes >= 4) {
+          if (timeS >= scootUntilS && escapePocket()) stuckStrikes = 0; // r7
+          else stuckStrikes = 2; // keep flipping sides
+        }
       }
     } else if (!driveIntent) {
       navNoProgressT = 0;
@@ -1715,6 +2604,12 @@ export function createAI(entity, opts = {}) {
     debugInfo: () => ({
       mode, targetId: target ? target.id : null,
       targetIsPlayer: !!(target && target.isPlayer),
+      // BATTLE-AI r7 doctrine surface: class role + measurable signals
+      // (sniper relocations, live scoot/kite/fallback windows) for probes.
+      role, relocations, shotsFromSpot,
+      scooting: nowS < scootUntilS,
+      kiting: nowS < kiteUntilS,
+      fallingBack: nowS < fallbackUntilS,
       losBlockedT: +losBlockedT.toFixed(1), hasVantage,
       navT: +navNoProgressT.toFixed(1), strikes: stuckStrikes, // r6 watchdog
       playerBudgetT: +(nowS - lastPlayerEngageS).toFixed(1),   // r6 budget arm

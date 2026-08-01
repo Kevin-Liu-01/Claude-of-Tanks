@@ -17,7 +17,7 @@ import {
   createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,
   startReload, isHeClass,
 } from '../sim/damage.js';
-import { createAI } from './ai.js';
+import { createAI, roleOf } from './ai.js';
 import { getStoredDifficulty } from './input.js';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.js';
@@ -313,15 +313,19 @@ const SPEC_TIER = {
 const specTier = (specId) => SPEC_TIER[specId] != null ? SPEC_TIER[specId] : 6;
 
 /**
- * COMMUNITY TANKS: pick this battle's participants — the player plus 7
- * enemies. Deterministic default (the core 8, adjusted when the player drives
- * a community tank); `randomize` shuffles the whole pool (seeded per battle)
- * so random enemy rosters include community vehicles.
+ * COMMUNITY TANKS: pick this battle's participants — the player plus the
+ * non-player slots. BATTLE-AI r7 (7v7): every RANDOM battle (all garage
+ * entries go through startBattle's random:true) fields 13 non-players so the
+ * teams split player+6 vs 7. The deterministic staged battle (boot /
+ * screenshot contract) keeps the core 8 — killcam_xray and the establishing
+ * shots are framed against that roster and no player ever sees it as a
+ * battle. `randomize` shuffles the whole pool (seeded per battle) so random
+ * rosters include community vehicles.
  * @returns {object[]} TankEntity[] (player's entity included)
  */
 function pickParticipants(game, playerSpecId, randomize, mixedEra = false) {
   const player = game.tankById.get(playerSpecId);
-  const enemySlots = 7;
+  const enemySlots = randomize ? 13 : 7;
   // PERF (performance_budget r3, certification determinism): an explicit
   // debug roster bypasses the seeded shuffle/era matchmaking so the perf
   // gate measures a PINNED worst-case lineup (all multi-mesh GLB heavies)
@@ -334,6 +338,27 @@ function pickParticipants(game, playerSpecId, randomize, mixedEra = false) {
     const list = forced
       .map((id) => game.tankById.get(id))
       .filter((e) => e && e !== player);
+    // BATTLE-AI r7: random battles are 7v7 now — a pinned lineup shorter than
+    // the slot count (perfprobe's 7-id worst case predates 7v7) TOPS UP from
+    // the seeded shuffle so the perf gate measures a real 14-tank battle, not
+    // a legacy 8-tank one. battleCount is deterministic per probe run, so the
+    // fill is reproducible. Explicit 13-id rosters pin everything as before,
+    // and flags.rosterExact suppresses the top-up entirely (perf A/B tooling
+    // — an 8-tank control battle is not otherwise reachable post-7v7).
+    const exact = typeof window !== 'undefined' && window.__DEBUG &&
+      window.__DEBUG.flags && window.__DEBUG.flags.rosterExact;
+    if (randomize && !exact && list.length < enemySlots) {
+      const rng = mulberry32(0x51e57 ^ (game.battleCount * 2654435761));
+      const pool = game.allTanks.filter((e) => e !== player && !list.includes(e));
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = (rng() * (i + 1)) | 0;
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      for (const e of pool) {
+        if (list.length >= enemySlots) break;
+        list.push(e);
+      }
+    }
     return [player, ...list.slice(0, enemySlots)];
   }
   let others;
@@ -487,17 +512,51 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     heightField: world.heightField,
     raycast: world.raycast,
     getObstacles: () => world.getObstacles(),
+    // BATTLE-AI r7: vegetation concealment discs — scouts pick spotting legs
+    // through real bushes (state.js nudges their waypoints; ai.js may sample
+    // them for repositioning). Absent in headless fixtures.
+    getConcealment: () => (world.getConcealment ? world.getConcealment() : []),
   };
 
-  // SYMMETRIC TEAMS (hud_ui r1): 3 of the 7 non-player participants fight as
-  // ALLIES on the player's team — WoT identity requires mirrored team panels
-  // (the old 1v7 split rendered an impossible 1/1 vs 7/7 roster). Deterministic
-  // default keeps tiger1 an ENEMY (killcam_xray stages a player shot into it)
-  // and mirrors the tier spread; random rosters take the first 3 shuffled.
+  // SYMMETRIC TEAMS (hud_ui r1) → BATTLE-AI r7 (7v7): random battles field 13
+  // non-players and split them 6 ALLIES + 7 ENEMIES with a tier-balanced
+  // greedy pass — highest tier places first onto the side with the lower
+  // running tier sum (the ally side starts pre-loaded with the PLAYER's own
+  // tier), capacity-capped at 6/7. The seeded shuffle order stays the
+  // tie-break, so rosters remain reproducible per battleCount. The
+  // deterministic staged battle keeps the legacy 3-ally pick — tiger1 stays
+  // an ENEMY (killcam_xray stages a player shot into it) and the
+  // establishing-shot framing is unchanged.
   const nonPlayers = game.tanks.filter((e) => e.specId !== playerSpecId);
   let allyPick;
   if (opts.random) {
-    allyPick = nonPlayers.slice(0, 3);
+    // flags.rosterExact (perf A/B tooling): a pinned short roster splits at
+    // the LEGACY ally count (3) so an 8-tank control battle mirrors the old
+    // 4v4 shape instead of 7v1.
+    const exactCap = typeof window !== 'undefined' && window.__DEBUG &&
+      window.__DEBUG.flags && window.__DEBUG.flags.rosterExact &&
+      nonPlayers.length < 13 ? 3 : 6;
+    const allyCap = Math.min(exactCap, Math.max(1, nonPlayers.length - 1));
+    const enemyCap = nonPlayers.length - allyCap;
+    const byTier = nonPlayers.slice()
+      .sort((a, b) => specTier(b.specId) - specTier(a.specId)); // stable sort
+    let allySum = specTier(playerSpecId);
+    let enemySum = 0;
+    let enemyN = 0;
+    allyPick = [];
+    for (const e of byTier) {
+      const t = specTier(e.specId);
+      const allyRoom = allyPick.length < allyCap;
+      const enemyRoom = enemyN < enemyCap;
+      // ties go to the enemy side: it fields one more hull, so it fills first
+      if (allyRoom && (!enemyRoom || allySum < enemySum)) {
+        allyPick.push(e);
+        allySum += t;
+      } else {
+        enemyN++;
+        enemySum += t;
+      }
+    }
   } else {
     const preferred = ['m4a3e8', 't34_85', 'panther_g'];
     allyPick = nonPlayers.filter((e) => preferred.includes(e.specId));
@@ -509,17 +568,89 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     allyPick = allyPick.slice(0, 3);
   }
   const allySet = new Set(allyPick);
-  // Allies spawn AROUND the player spawn: lateral offsets perpendicular to
-  // the player spawn yaw, settled onto the heightfield.
-  const ALLY_OFFSETS_M = [22, -22, 44];
+  // Allies spawn AROUND the player spawn: a 6-slot wedge (two lateral pairs +
+  // a rear rank) perpendicular to the player spawn yaw, settled onto the
+  // heightfield. BATTLE-AI r7: was a 3-slot lateral line; the wedge keeps the
+  // 7-tank team inside a ~110 m x 40 m block — one spawn zone, no scatter.
+  const ALLY_SLOTS = [
+    { lat: 26, back: 0 }, { lat: -26, back: 0 }, { lat: 52, back: 8 },
+    { lat: -52, back: 8 }, { lat: 20, back: 30 }, { lat: -20, back: 30 },
+  ];
   const _ppYaw = sp.player.yaw;
   const _perpX = Math.cos(_ppYaw);
   const _perpZ = -Math.sin(_ppYaw);
+  const _fwdX = Math.sin(_ppYaw);
+  const _fwdZ = Math.cos(_ppYaw);
+  const _allyTaken = []; // settled ally cells — no two allies share a cell
   // Enemy spawn centroid: the allies' opening push target.
   let _ecx = 0, _ecz = 0;
   for (const es of sp.enemies) { _ecx += es.pos[0]; _ecz += es.pos[2]; }
   _ecx /= sp.enemies.length || 1;
   _ecz /= sp.enemies.length || 1;
+
+  // BATTLE-AI r7 OPENING PLANS: per-team role counters (ai.js roleOf) so each
+  // class opens on its own doctrine lane — see the waypoint block below.
+  const _roleCounts = { player: {}, enemy: {} };
+  const _teamHasBrawler = { player: false, enemy: false };
+  const _teamHasScout = { player: false, enemy: false };
+  for (const e of game.tanks) {
+    if (e.specId === playerSpecId) continue;
+    const team = allySet.has(e) ? 'player' : 'enemy';
+    const r = roleOf(e.spec);
+    if (r === 'brawler') _teamHasBrawler[team] = true;
+    if (r === 'scout') _teamHasScout[team] = true;
+  }
+  // BATTLE-AI r7: spawn cells must not seed inside prop/tree footprints —
+  // a hull materializing in a trunk reads as broken even though the crush
+  // system would resolve it on the first meter of drive. 2.6 m margin ~=
+  // hull half-width + clearance.
+  const _obstacles = world.getObstacles ? world.getObstacles() : [];
+  const _cellBlocked = (x, z, margin = 2.6) => {
+    for (const o of _obstacles) {
+      if (o.crushed) continue;
+      if (x > o.min[0] - margin && x < o.max[0] + margin &&
+          z > o.min[2] - margin && z < o.max[2] + margin) return true;
+    }
+    return false;
+  };
+  const _conceal = world.getConcealment ? world.getConcealment() : [];
+  // Snap a scout leg onto the nearest REAL bush (add >= 0.3 — canopy discs
+  // soft-conceal at 0.08 and are not hides) within 45 m, else keep the leg.
+  const _bushNudge = (x, z) => {
+    let bx = x, bz = z, best = 45;
+    for (const c of _conceal) {
+      if (!c || c.add < 0.3) continue;
+      const cd = Math.hypot(c.x - x, c.z - z);
+      if (cd < best) { best = cd; bx = c.x; bz = c.z; }
+    }
+    return [bx, bz];
+  };
+  const _clampW = (v) => Math.max(-460, Math.min(460, v));
+  // BATTLE-AI r7 TOWN SKIRT: on block-grid maps (urban/railyard — town rect
+  // >= 200 m wide) opening-lane waypoints that land INSIDE the town are
+  // pushed out past the nearest rect edge, so the two fronts meet on the
+  // outskirts/streets instead of 14 hulls wedging into the block maze on
+  // minute one (r7 flow probe: whole-team 0-shell stalls, 81 s first spot).
+  // Engagement-time navigation (vantage + ai.js corner-hop router) owns the
+  // street fighting AFTER contact.
+  const _village = world.heightField && world.heightField._layout
+    ? world.heightField._layout.village : null;
+  const _skirtTown = !!(_village && (_village.x1 - _village.x0) >= 200);
+  const _skirtWp = (wx, wz) => {
+    if (!_skirtTown) return [wx, wz];
+    const v = _village;
+    const pad = 24, out = 45;
+    if (wx < v.x0 - pad || wx > v.x1 + pad ||
+        wz < v.z0 - pad || wz > v.z1 + pad) return [wx, wz];
+    // exit past the nearest edge — a lane already leaning left skirts left
+    const exL = wx - v.x0, exR = v.x1 - wx;
+    const ezL = wz - v.z0, ezR = v.z1 - wz;
+    const m = Math.min(exL, exR, ezL, ezR);
+    if (m === exL) return [v.x0 - out, wz];
+    if (m === exR) return [v.x1 + out, wz];
+    if (m === ezL) return [wx, v.z0 - out];
+    return [wx, v.z1 + out];
+  };
 
   let enemyIdx = 0;
   let allyIdx = 0;
@@ -530,25 +661,56 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     if (isPlayer) {
       spawn = sp.player;
     } else if (isAlly) {
-      // content_breadth r1: slope-reject ally cells. A lateral offset can
-      // land on a mesa/cliff wall (terrain normal.y < 0.85) and the tank
-      // renders fused into the rock; walk outward along the perp axis in
-      // 9 m steps until a drivable cell is found (worst case: keep the
-      // original offset rather than stack on the player).
-      const base = ALLY_OFFSETS_M[allyIdx++ % ALLY_OFFSETS_M.length];
-      let ax = sp.player.pos[0] + _perpX * base;
-      let az = sp.player.pos[2] + _perpZ * base;
+      // content_breadth r1 → BATTLE-AI r7: slope/water-reject ally cells. A
+      // wedge slot can land on a mesa/cliff wall (terrain normal.y < 0.85) or
+      // a marsh/strand cell ('soft' ground) and the tank renders fused into
+      // rock or bogged at 0 m/s; walk outward along the slot's lateral axis
+      // in 9 m steps until a drivable cell is found that no other ally took
+      // (worst case: keep the original slot rather than stack on the player).
+      const slot = ALLY_SLOTS[allyIdx++ % ALLY_SLOTS.length];
+      let ax = sp.player.pos[0] + _perpX * slot.lat - _fwdX * slot.back;
+      let az = sp.player.pos[2] + _perpZ * slot.lat - _fwdZ * slot.back;
       if (world.heightField.getNormalAt) {
         for (let k = 0; k < 8; k++) {
-          const off = base + Math.sign(base || 1) * k * 9;
-          const cx = sp.player.pos[0] + _perpX * off;
-          const cz = sp.player.pos[2] + _perpZ * off;
-          if (world.heightField.getNormalAt(cx, cz).y >= 0.85) { ax = cx; az = cz; break; }
+          const off = slot.lat + Math.sign(slot.lat || 1) * k * 9;
+          const cx = sp.player.pos[0] + _perpX * off - _fwdX * slot.back;
+          const cz = sp.player.pos[2] + _perpZ * off - _fwdZ * slot.back;
+          if (world.heightField.getNormalAt(cx, cz).y < 0.85) continue;
+          if (world.heightField.getGroundType &&
+              world.heightField.getGroundType(cx, cz) === 'soft') continue;
+          if (_cellBlocked(cx, cz)) continue; // r7: never seed inside a prop
+          let taken = false;
+          for (const q of _allyTaken) {
+            if (Math.hypot(q[0] - cx, q[1] - cz) < 14) { taken = true; break; }
+          }
+          if (taken) continue;
+          ax = cx; az = cz;
+          break;
         }
       }
+      _allyTaken.push([ax, az]);
       spawn = { pos: [ax, world.heightField.getHeightAt(ax, az), az], yaw: sp.player.yaw };
     } else {
       spawn = sp.enemies[enemyIdx++];
+      // BATTLE-AI r7: the arc pads are authored prop-clear, but seeded props
+      // can drift onto one as maps evolve — nudge around the pad's 9 m flat
+      // core rather than seed a hull inside a trunk.
+      if (_cellBlocked(spawn.pos[0], spawn.pos[2])) {
+        outer:
+        for (const r of [4, 7]) {
+          for (let k = 0; k < 8; k++) {
+            const a = (k / 8) * Math.PI * 2;
+            const nx = spawn.pos[0] + Math.sin(a) * r;
+            const nz = spawn.pos[2] + Math.cos(a) * r;
+            if (_cellBlocked(nx, nz)) continue;
+            spawn = {
+              pos: [nx, world.heightField.getHeightAt(nx, nz), nz],
+              yaw: spawn.yaw,
+            };
+            break outer;
+          }
+        }
+      }
     }
     _spawnPos.set(spawn.pos[0], spawn.pos[1], spawn.pos[2]);
     ent.team = isPlayer || isAlly ? 'player' : 'enemy';
@@ -591,6 +753,10 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
           // hunt enemies; enemy bots engage the player AND the allies).
           getEnemies: () => game.tanks.filter(
             (t) => t.team !== ent.team && t.combat && !t.combat.destroyed),
+          // BATTLE-AI r7: living teammates — low-HP/tracked bots retreat
+          // toward support instead of dying in the open (ai.js doctrine).
+          getAllies: () => game.tanks.filter(
+            (t) => t !== ent && t.team === ent.team && t.combat && !t.combat.destroyed),
           // AI target acquisition goes THROUGH the spotting sim (§camo
           // charter) from the bot's OWN team's intel, with the bot as the
           // radio-debuff receiver (simulation_correctness r1).
@@ -600,30 +766,85 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
           },
         },
       });
-      // Open aggressively: advance via a mid-map staging point to a standoff
-      // ring around the opposing spawn, so contact happens inside the first
-      // 45 s instead of bots idling on local patrol loops at their spawn.
-      // The first enemy of every battle is the FLANKER: it pushes to a much
-      // tighter ring so someone always forces early contact; the rest stage
-      // at 140-190 m. (Bots stuck on obstacles now skip waypoints — ai.js
-      // progress-based unstick — so the push survives walls and rocks.)
+      // BATTLE-AI r7 OPENING PLANS: each bot opens on its CLASS doctrine lane
+      // (ai.js roleOf — driven by the bot's own spec) instead of the old
+      // one-size standoff push. Both teams advance from their own spawn zones
+      // toward the opposing spawn, so the battle opens with two fronts:
+      //  - brawlers (heavies + slow MBTs) take the vanguard lanes straight up
+      //    the middle to a tight standoff ring — they lead the push;
+      //  - flankers (mediums + fast MBTs) swing 95-170 m wide before turning
+      //    onto the opposing spawn — support fire from the sides;
+      //  - snipers (TDs) drive to a sightline post on their OWN half and hold
+      //    it (ai.js shoot-and-scoot relocates them after 1-2 shots);
+      //  - scouts (lights/IFVs) run wide spotting legs along real bushes
+      //    (_bushNudge) — they light targets up for the team intel net.
+      // Every mobile plan still ends ON the opposing spawn: a push that meets
+      // nobody keeps hunting toward where the opposition was guaranteed to
+      // be, so proximity spotting (50 m floor) eventually forces contact.
+      // (Bots stuck on obstacles skip waypoints — ai.js progress unstick —
+      // so lanes survive walls and rocks; the lane-starvation fixes stand.)
       const pp = ent.team === 'enemy' ? sp.player.pos : [_ecx, 0, _ecz];
       const dx = pp[0] - spawn.pos[0];
       const dz = pp[2] - spawn.pos[2];
       const d = Math.hypot(dx, dz) || 1;
-      const standoff = Math.min(d, ent.team === 'enemy' && enemyIdx === 1
-        ? 100
-        : 140 + ((ent.team === 'enemy' ? enemyIdx : allyIdx) % 3) * 25);
-      // Final leg sweeps THROUGH the opposing spawn: a patrol that reaches
-      // its standoff ring without contact keeps hunting toward the last
-      // place the opposition was guaranteed to be, so proximity spotting
-      // (50 m floor) eventually forces contact instead of a stare-down
-      // behind cover.
-      ent.aiCtl.setWaypoints([
-        [spawn.pos[0] + dx * 0.5, spawn.pos[2] + dz * 0.5],
-        [pp[0] - (dx / d) * standoff, pp[2] - (dz / d) * standoff],
-        [pp[0], pp[2]],
-      ]);
+      const ux = dx / d, uz = dz / d;
+      const lx = uz, lz = -ux; // lateral basis (perp of the advance axis)
+      const rc = _roleCounts[ent.team];
+      let role = roleOf(ent.spec);
+      // vanguard guarantee: a team with no brawler promotes its FIRST flanker
+      // so somebody always leads the push (early-contact requirement).
+      if (role === 'flanker' && !_teamHasBrawler[ent.team] && !rc._vanguard) {
+        rc._vanguard = true;
+        role = 'brawler';
+      } else if (role === 'flanker' && !_teamHasScout[ent.team] && !rc._scoutLane) {
+        // spotting-lane guarantee: a scout-less team sends one flanker up a
+        // wide scout lane (waypoints only — it still FIGHTS as a flanker) so
+        // first contact never waits on a slow heavy grind (autumn probe:
+        // 46.7 s first spot on a scout-less draw vs the 45 s gate).
+        rc._scoutLane = true;
+        role = 'scout';
+      }
+      const n = rc[role] || 0; // 0-based index within role+team
+      rc[role] = n + 1;
+      // opposite teams fan to opposite sides first so lanes interleave
+      const side = (n % 2 === 0 ? 1 : -1) * (ent.team === 'enemy' ? 1 : -1);
+      const W = [];
+      if (role === 'sniper') {
+        // sightline post on the own half, fanned off the advance axis
+        const f = 0.30 + (n % 3) * 0.06;
+        const lat = (34 + n * 27) * side;
+        W.push([spawn.pos[0] + dx * f + lx * lat, spawn.pos[2] + dz * f + lz * lat]);
+      } else if (role === 'scout') {
+        const lat = (190 + n * 42) * side;
+        W.push(
+          _bushNudge(spawn.pos[0] + dx * 0.42 + lx * lat, spawn.pos[2] + dz * 0.42 + lz * lat),
+          _bushNudge(spawn.pos[0] + dx * 0.68 + lx * lat * 0.7, spawn.pos[2] + dz * 0.68 + lz * lat * 0.7),
+          [pp[0], pp[2]],
+        );
+      } else if (role === 'flanker') {
+        const lat = (95 + (n % 3) * 38) * side;
+        const standoff = Math.min(d, 165 + (n % 3) * 22);
+        W.push(
+          [spawn.pos[0] + dx * 0.45 + lx * lat, spawn.pos[2] + dz * 0.45 + lz * lat],
+          [pp[0] - ux * standoff + lx * lat * 0.55, pp[2] - uz * standoff + lz * lat * 0.55],
+          [pp[0], pp[2]],
+        );
+      } else {
+        // brawler vanguard: near-center lanes, tightest ring; the first
+        // brawler is the spearhead at 105 m so contact always happens early
+        const lat = ((n % 3) - 1) * 44 * (ent.team === 'enemy' ? 1 : -1);
+        const standoff = Math.min(d, n === 0 ? 105 : 135 + (n % 3) * 22);
+        W.push(
+          [spawn.pos[0] + dx * 0.5 + lx * lat, spawn.pos[2] + dz * 0.5 + lz * lat],
+          [pp[0] - ux * standoff + lx * lat, pp[2] - uz * standoff + lz * lat],
+          [pp[0], pp[2]],
+        );
+      }
+      // town skirt applies to staging legs only — the FINAL sweep leg keeps
+      // hunting through the opposing spawn (proximity-spot guarantee).
+      ent.aiCtl.setWaypoints(W
+        .map((pt, wi) => (wi < W.length - 1 ? _skirtWp(pt[0], pt[1]) : pt))
+        .map(([wx, wz]) => [_clampW(wx), _clampW(wz)]));
     }
     // Spawn warm-start (r5 terrain-contact gate): run the movement sim for a
     // few ticks so the attitude spring settles and the terrain support solve
@@ -989,8 +1210,13 @@ function makeCollide(game, world) {
       if (separated) continue;
       if (ob.crushable && self) {
         let crushNow = selfSpeed > CRUSH_MIN_MPS;
+        // BATTLE-AI r7: held-press threshold 0.5 -> 0.35. AI throttle shaping
+        // (arrival ease-in, obstacle damping) legitimately drives at 0.35-0.5
+        // against a sapling and used to dead-stop under the old bar forever
+        // (coastal spawn-exit trace: 30 s at spd 0, thr 0.4). 0.35+ is still
+        // a deliberate push — a parked nudge (zero throttle) never fells.
         if (!crushNow && self.input &&
-            Math.abs(self.input.throttle || 0) > 0.5) {
+            Math.abs(self.input.throttle || 0) > 0.35) {
           // slow-speed press: the trunk resists, but held drive saws it down
           // after CRUSH_PRESS_S of continuous contact (wedge-deadlock fix).
           if (game.timeS - (ob._pressT || -1e9) > CRUSH_PRESS_GAP_S) {
@@ -1089,7 +1315,11 @@ function tryFire(game, ent, bus, rig) {
   const c = ent.combat;
   if (!ent.input.fire || c.destroyed || c.reload.t > 0) return;
   if (c.modules.gun && c.modules.gun.state === 'red') return;
-  const slot = Math.max(0, Math.min(2, ent.input.shellSlot | 0));
+  // BATTLE-AI r7 hardening: clamp to the spec's REAL magazine — a slot index
+  // past shells.length (2-shell loadouts like the sturmtiger) fed an
+  // undefined spec into acquireShell and crashed the sim step.
+  const maxSlot = ent.spec.gun.shells.length - 1;
+  const slot = Math.max(0, Math.min(Math.min(2, maxSlot), ent.input.shellSlot | 0));
   if (slot !== c.shellSlot) c.shellSlot = slot;
   const shellSpec = ent.spec.gun.shells[c.shellSlot];
 

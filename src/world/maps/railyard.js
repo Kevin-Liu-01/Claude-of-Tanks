@@ -41,9 +41,14 @@ export default {
 
   spawns: {
     player: { x: 0, z: -330 },
+    // BATTLE-AI r7 TEAM SPAWNS: one enemy spawn arc north of the yard (the
+    // old list scattered to ±330 x with two points at z<=30 — beside the
+    // player's own half). Flat-scanned via tools/tmp-ai-r7-spawnscan.mjs —
+    // minNy>=0.86, relief<=5 m, outside the yard rect by 40 m, >=38 m apart,
+    // >=380 m from the player pad.
     enemies: [
-      { x: -145, z: 330 }, { x: 0, z: 365 }, { x: 150, z: 330 }, { x: -285, z: 205 },
-      { x: 285, z: 195 }, { x: -330, z: -60 }, { x: 335, z: 30 },
+      { x: -9, z: 350 }, { x: -64, z: 360 }, { x: 46, z: 360 }, { x: -119, z: 376 },
+      { x: 85, z: 392 }, { x: -164, z: 397 }, { x: 146, z: 396 },
     ],
   },
 

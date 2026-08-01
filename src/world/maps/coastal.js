@@ -48,9 +48,14 @@ export default {
     // r4: shifted +22 m east — the first pad's exit lane wedged on a rock
     // cluster ~13 m out, probed live via tools/tmp-coastal-spawn-test)
     player: { x: 232, z: -352 },
+    // BATTLE-AI r7 TEAM SPAWNS: one enemy spawn arc on the north headland
+    // (the old list scattered to (-350,130)/(180,215) — half the "enemy team"
+    // started mid-map). Flat-scanned via tools/tmp-ai-r7-spawnscan.mjs —
+    // minNy>=0.86, relief<=5 m, bay sheets cleared by 24 m + soft strand
+    // rejected, >=38 m apart, >=380 m from the player pad.
     enemies: [
-      { x: -60, z: 330 }, { x: 90, z: 355 }, { x: 240, z: 300 }, { x: -240, z: 270 },
-      { x: -350, z: 130 }, { x: 180, z: 215 }, { x: -20, z: 430 },
+      { x: 43, z: 344 }, { x: -52, z: 341 }, { x: 66, z: 390 }, { x: -125, z: 344 },
+      { x: 120, z: 433 }, { x: -174, z: 354 }, { x: 162, z: 412 },
     ],
   },
 
