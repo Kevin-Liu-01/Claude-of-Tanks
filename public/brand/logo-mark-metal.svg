@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Claude of Tanks — embossed metal crest: Claude Code commander in a tank">
-  <!-- v4.1 (owner-directed): speed lines removed — the tank is the primary feature; tank scaled +6% and re-centered in the bowl; ground bar trimmed to the bowl curve; metal variant promoted to favicon. v4.2: keel accent line removed, gun lowered to -3 degrees. -->
+  <!-- v4.1 (owner-directed): speed lines removed — the tank is the primary feature; tank scaled +6% and re-centered in the bowl; ground bar trimmed to the bowl curve; metal variant promoted to favicon. v4.3: ground bar removed entirely; cannon back at -10 degrees but translated down 4 units on the turret face. -->
   <!-- Claude of Tanks v4 crest mark — METAL treatment (embossed badge for
        premium/medal surfaces). Same shield geometry + tank composition as
        logo-mark-bw.svg / logo-mark.svg (keep in sync). v4 (owner-directed
@@ -72,8 +72,6 @@
         fill="none" stroke="url(#cotGrooveM)" stroke-width="2.5"/>
 
   <g transform="translate(-0.8 24) scale(1.06)">
-    <!-- ground bar (seats the tank) -->
-    <rect x="50" y="136" width="130" height="10" rx="5" fill="#232a33"/>
 
     <!-- whip antenna: one clean 45-degree diagonal off the rear deck -->
     <path d="M52 96 32 76" stroke="#2b333c" stroke-width="1.8" stroke-linecap="round" fill="none"/>
@@ -137,7 +135,7 @@
     <!-- main gun, elevated 10 degrees: gunmetal barrel, specular keylines,
          bright muzzle step — trimmed so it stays inside the shield's inner
          border -->
-    <g transform="rotate(-3 140 82)">
+    <g transform="translate(0 4) rotate(-10 140 82)">
       <rect x="136" y="76" width="18" height="12" rx="1.5" fill="#2b333c"/>
       <rect x="154" y="78.3" width="48" height="7.4" fill="#333c46"/>
       <rect x="154" y="78.3" width="48" height="1.9" fill="#dde5ec"/>
