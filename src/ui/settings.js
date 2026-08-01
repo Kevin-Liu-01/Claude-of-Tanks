@@ -20,68 +20,146 @@
 // replay's ANY-KEY skip always wins (player death hands off to the death cam
 // with a free cursor, like WoT).
 // Design language mirrors src/ui/hud.js / garage.js (palette, chamfers, type).
+// settings_ui r2 (owner: "make our settings screen look much better too"):
+// premium reskin in the garage r9 kit — blurred pause veil + panel enter
+// transition (reduced-motion aware), amber-underline segmented tabs, amber
+// tick-and-rule section headers, zebra'd rows, keycap binding chips with
+// bound/unbound/listening/conflict states, custom amber-fill sliders, ON/OFF
+// segmented toggles, plate group-cards, flat-orange chamfered RESUME (r7
+// BATTLE plate) + red-outline LEAVE BATTLE, overflow-gated scroll fades.
+// Behavior is UNCHANGED: same classes, same rebind/persistence/pause flow.
 
 import { FONT_STACK, ensureFonts } from './fonts.js';
 import { getStoredChoice, setPresetName, PRESET_ORDER, PRESETS } from '../engine/quality.js';
 
 const SETTINGS_CSS = `
+/* settings_ui r2 (owner: "make our settings screen look much better"):
+   premium pass in the garage r9 kit — blurred pause veil, amber top strip,
+   segmented tabs with amber underline, amber-tick section rules, keycap
+   binding chips with bound/unbound/listening/conflict states, custom steel
+   sliders with amber fill, ON/OFF segmented toggles, plate group-cards on
+   the slider tabs, flat-orange chamfered RESUME (BATTLE-button plate), red
+   LEAVE BATTLE, overflow-gated scroll fades. Reskin only — every class the
+   probes and main.js touch keeps its name and open/close semantics. */
 .cot-settings{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
-  background:rgba(4,7,10,.62);font-family:${FONT_STACK};color:#e6edf3;
-  -webkit-user-select:none;user-select:none;}
-.cot-settings.open{display:flex;}
+  background:radial-gradient(130% 100% at 50% 42%,rgba(4,7,10,.50) 0%,rgba(2,4,6,.76) 100%);
+  -webkit-backdrop-filter:blur(8px) saturate(.9);backdrop-filter:blur(8px) saturate(.9);
+  font-family:${FONT_STACK};color:#e6edf3;-webkit-user-select:none;user-select:none;}
+.cot-settings.open{display:flex;animation:cotSetVeil .20s ease-out;}
 .cot-settings *{box-sizing:border-box;margin:0;padding:0;}
-.cot-set-panel{width:740px;max-width:96vw;max-height:88vh;display:flex;flex-direction:column;
-  background:linear-gradient(180deg,rgba(13,18,24,.97),rgba(7,10,13,.98));
-  border:1px solid rgba(146,164,180,.32);border-top:2px solid #f0a030;
-  box-shadow:0 16px 60px rgba(0,0,0,.75);}
-.cot-set-hdr{display:flex;align-items:baseline;justify-content:space-between;padding:15px 22px 10px;}
-.cot-set-hdr h2{font-size:15px;font-weight:700;letter-spacing:.32em;color:#9fb0bf;text-transform:uppercase;}
+.cot-set-panel{position:relative;width:744px;max-width:96vw;max-height:88vh;
+  display:flex;flex-direction:column;
+  background:linear-gradient(180deg,rgba(12,17,22,.96),rgba(6,9,12,.985));
+  border:1px solid rgba(146,164,180,.30);
+  box-shadow:0 24px 90px rgba(0,0,0,.8),inset 0 1px 0 rgba(235,243,250,.05);}
+.cot-settings.open .cot-set-panel{animation:cotSetIn .26s cubic-bezier(.21,.9,.24,1) backwards;}
+@keyframes cotSetVeil{from{opacity:0;}}
+@keyframes cotSetIn{from{opacity:0;transform:translateY(14px) scale(.985);}}
+/* top amber strip — full-bleed hairline accent with soft ends + faint glow */
+.cot-set-panel::before{content:'';position:absolute;left:0;right:0;top:0;height:2px;
+  background:linear-gradient(90deg,rgba(240,160,48,.25),#f0a030 16%,#f0a030 84%,rgba(240,160,48,.25));
+  box-shadow:0 0 12px rgba(240,160,48,.35);}
+.cot-set-hdr{display:flex;align-items:center;gap:12px;padding:15px 22px 11px;}
+.cot-set-hdr h2{font-size:15px;font-weight:800;letter-spacing:.32em;color:#9fb0bf;
+  text-transform:uppercase;margin-right:auto;}
+.cot-set-hdr h2::before{content:'';display:inline-block;width:18px;height:3px;
+  background:#f0a030;margin-right:12px;vertical-align:3px;}
 .cot-set-hdr h2 b{color:#f0a030;}
 /* PAUSE: battle-pause tag in the header — shown only while the open panel is
    actually freezing a live battle (root gets .paused; garage Esc never shows
-   it). Amber chip in the panel's own design language, slow readable pulse. */
-.cot-set-paused{display:none;font-size:11px;font-weight:800;letter-spacing:.34em;
-  color:#f0b04a;text-transform:uppercase;padding:4px 10px 4px 14px;
-  border:1px solid rgba(240,176,74,.55);background:rgba(90,54,10,.35);
-  text-shadow:0 1px 8px rgba(240,160,48,.35);
-  animation:cotPausedPulse 1.7s ease-in-out infinite;}
-.cot-settings.paused .cot-set-paused{display:inline-block;}
-@keyframes cotPausedPulse{0%,100%{opacity:1;}50%{opacity:.55;}}
-.cot-set-close{cursor:pointer;border:1px solid rgba(146,164,180,.35);background:rgba(11,15,20,.8);
-  color:#9fb0bf;font-family:${FONT_STACK};font-size:14px;line-height:1;padding:5px 10px;
-  transition:color .12s,border-color .12s;}
+   it). Era-chip plate + slow-pulsing amber lamp instead of the old blinking
+   outline chip (settings_ui r2). */
+.cot-set-paused{display:none;align-items:center;gap:8px;font-size:9.5px;font-weight:800;
+  letter-spacing:.30em;color:#ffd27a;text-transform:uppercase;padding:6px 12px 5px 11px;
+  border:1px solid rgba(240,176,74,.6);border-bottom:2px solid #f0a030;
+  background:linear-gradient(180deg,rgba(58,40,14,.92),rgba(30,20,8,.95));}
+.cot-set-paused::before{content:'';width:6px;height:6px;flex:0 0 auto;background:#f0a030;
+  box-shadow:0 0 8px rgba(240,160,48,.8);animation:cotPausedPulse 1.7s ease-in-out infinite;}
+.cot-settings.paused .cot-set-paused{display:inline-flex;}
+@keyframes cotPausedPulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.cot-set-close{cursor:pointer;width:30px;height:30px;flex:0 0 auto;display:flex;
+  align-items:center;justify-content:center;
+  border:1px solid rgba(146,164,180,.35);border-bottom:2px solid rgba(146,164,180,.45);
+  background:rgba(11,15,20,.7);color:#9fb0bf;font-family:${FONT_STACK};font-size:13px;
+  line-height:1;transition:color .12s,border-color .12s;}
 .cot-set-close:hover{color:#f0b04a;border-color:rgba(240,176,74,.6);}
-.cot-set-tabs{display:flex;gap:2px;padding:0 22px;border-bottom:1px solid rgba(146,164,180,.22);}
-.cot-set-tab{cursor:pointer;background:none;border:none;border-bottom:2px solid transparent;
+/* segmented tabs: hover plate + amber active underline (garage era-chip kit) */
+.cot-set-tabs{display:flex;gap:2px;padding:0 22px;border-bottom:1px solid rgba(146,164,180,.22);
+  background:linear-gradient(180deg,rgba(146,164,180,.05),rgba(146,164,180,0));}
+.cot-set-tab{position:relative;cursor:pointer;background:none;border:none;
   font-family:${FONT_STACK};font-size:11px;font-weight:700;letter-spacing:.22em;color:#8a97a3;
-  text-transform:uppercase;padding:9px 18px 8px;transition:color .12s;}
-.cot-set-tab:hover{color:#c6d2dc;}
-.cot-set-tab.sel{color:#f0b04a;border-bottom-color:#f0a030;}
-.cot-set-body{flex:1;overflow-y:auto;padding:10px 22px 14px;min-height:280px;
-  scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.4) transparent;}
-.cot-set-group{font-size:9.5px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
-  text-transform:uppercase;margin:14px 0 4px;}
-.cot-set-group:first-child{margin-top:6px;}
+  text-transform:uppercase;padding:11px 16px 10px;transition:color .12s,background .12s;}
+.cot-set-tab:hover{color:#c6d2dc;background:rgba(146,164,180,.07);}
+.cot-set-tab.sel{color:#ffd27a;background:linear-gradient(180deg,rgba(240,160,48,.10),rgba(240,160,48,0));}
+.cot-set-tab.sel::after{content:'';position:absolute;left:6px;right:6px;bottom:-1px;height:2px;
+  background:#f0a030;box-shadow:0 -1px 8px rgba(240,160,48,.45);}
+.cot-set-tab .ct{margin-left:7px;font-style:normal;font-weight:600;font-size:9.5px;
+  color:#6d7a86;letter-spacing:.05em;font-variant-numeric:tabular-nums;}
+.cot-set-tab.sel .ct{color:#d8a04c;}
+/* scrolling rows area — thin steel scrollbar + overflow-gated fade masks
+   (.fade-top/.fade-bot toggled by JS from live scroll position; the garage
+   r9 .can-scroll pattern, split per edge) */
+.cot-set-body{flex:1;overflow-y:auto;padding:2px 22px 16px;min-height:280px;
+  scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.45) rgba(8,11,14,.6);}
+.cot-set-body::-webkit-scrollbar{width:6px;}
+.cot-set-body::-webkit-scrollbar-track{background:rgba(8,11,14,.6);}
+.cot-set-body::-webkit-scrollbar-thumb{background:rgba(146,164,180,.45);}
+.cot-set-body::-webkit-scrollbar-thumb:hover{background:rgba(146,164,180,.65);}
+.cot-set-body.fade-bot{-webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 28px),transparent 100%);
+  mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 28px),transparent 100%);}
+.cot-set-body.fade-top{-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 28px,#000 100%);
+  mask-image:linear-gradient(180deg,transparent 0,#000 28px,#000 100%);}
+.cot-set-body.fade-top.fade-bot{
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 28px,#000 calc(100% - 28px),transparent 100%);
+  mask-image:linear-gradient(180deg,transparent 0,#000 28px,#000 calc(100% - 28px),transparent 100%);}
+/* section header: amber tick + hairline rule running to the right edge
+   (the garage r9 .mtitle pattern) */
+.cot-set-group{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:700;
+  letter-spacing:.24em;color:#8a97a3;text-transform:uppercase;margin:18px 0 6px;}
+.cot-set-group::before{content:'';width:8px;height:2px;flex:0 0 auto;background:#f0a030;}
+.cot-set-group::after{content:'';flex:1;height:1px;background:rgba(146,164,180,.14);}
+.cot-set-group:first-child{margin-top:12px;}
+/* plate group-card (garage r9 battlefield/camo plate) — clusters on the
+   GAMEPLAY / SOUND / GRAPHICS tabs sit on one industrial plate each */
+.cot-set-card{margin:12px 0 0;padding:10px 12px 9px;
+  background:linear-gradient(180deg,rgba(9,13,17,.66),rgba(6,9,12,.5));
+  border:1px solid rgba(146,164,180,.16);}
+.cot-set-card .cot-set-group{margin:0 0 4px;}
 .cot-set-row{display:flex;align-items:center;justify-content:space-between;gap:14px;
-  padding:6px 8px;border-bottom:1px solid rgba(146,164,180,.1);}
+  padding:7px 10px;border-bottom:1px solid rgba(146,164,180,.08);transition:background .12s;}
+.cot-set-row:hover{background:rgba(146,164,180,.06);}
+.cot-set-row.alt{background:rgba(146,164,180,.03);}
+.cot-set-row.alt:hover{background:rgba(146,164,180,.06);}
 .cot-set-row .lb{font-size:12.5px;color:#c6d2dc;letter-spacing:.04em;}
-.cot-set-row.conflict{background:rgba(240,90,90,.14);box-shadow:inset 0 0 0 1px rgba(240,90,90,.55);}
+.cot-set-row.conflict,.cot-set-row.conflict.alt{background:rgba(190,60,50,.12);
+  box-shadow:inset 2px 0 0 #c8503c,inset 0 0 0 1px rgba(240,90,90,.35);}
+.cot-set-row.conflict .cot-chip{border-color:rgba(240,110,95,.6);
+  border-bottom-color:rgba(200,80,60,.85);}
 .cot-set-row .chips{display:flex;gap:6px;align-items:center;}
-.cot-set-colhdr{display:flex;justify-content:flex-end;gap:6px;padding:2px 8px 4px;
+.cot-set-colhdr{display:flex;align-items:center;gap:6px;padding:12px 10px 5px;
   border-bottom:1px solid rgba(146,164,180,.22);}
 .cot-set-colhdr span{width:92px;text-align:center;font-size:8.5px;font-weight:700;
   letter-spacing:.2em;color:#68747f;text-transform:uppercase;}
+.cot-set-colhdr span.act{width:auto;flex:1;text-align:left;}
 .cot-set-colhdr span.pad{width:72px;}
-.cot-chip{width:92px;text-align:center;cursor:pointer;font-family:${FONT_STACK};
-  font-size:11px;font-weight:700;letter-spacing:.08em;color:#e6edf3;padding:5px 4px;
-  background:linear-gradient(180deg,rgba(30,38,46,.9),rgba(16,21,26,.95));
-  border:1px solid rgba(146,164,180,.42);border-bottom:2px solid rgba(146,164,180,.55);
-  transition:color .12s,border-color .12s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* binding chips: keycap read — top-light gradient, 1px inner highlight, 2px
+   bottom edge. States: bound steel / unbound dashed dim / listening amber
+   pulse / conflict red tint (row-scoped above). */
+.cot-chip{width:92px;height:26px;text-align:center;cursor:pointer;font-family:${FONT_STACK};
+  font-size:11px;font-weight:700;letter-spacing:.08em;color:#e6edf3;padding:5px 5px 4px;
+  background:linear-gradient(180deg,rgba(40,49,58,.95) 0%,rgba(24,30,37,.95) 55%,rgba(15,20,25,.97) 100%);
+  border:1px solid rgba(146,164,180,.5);border-bottom:2px solid rgba(88,102,115,.95);
+  box-shadow:inset 0 1px 0 rgba(235,243,250,.12);
+  transition:color .12s,border-color .12s,filter .12s;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cot-chip.padcol{width:72px;}
-.cot-chip:hover{color:#ffd27a;border-color:rgba(240,176,74,.65);}
-.cot-chip.empty{color:#5c6771;}
-.cot-chip.listening{color:#f0b04a;border-color:#f0a030;animation:cotChipPulse 1.1s ease-in-out infinite;
-  font-size:9px;letter-spacing:.05em;}
+.cot-chip:hover{color:#ffd27a;border-color:rgba(240,176,74,.7);filter:brightness(1.08);}
+.cot-chip:active{transform:translateY(1px);}
+.cot-chip.empty{color:#55606a;background:rgba(11,15,20,.5);box-shadow:none;
+  border:1px dashed rgba(146,164,180,.26);padding:5px;}
+.cot-chip.listening{color:#ffd27a;border:1px solid #f0a030;border-bottom:2px solid #c97f18;
+  background:linear-gradient(180deg,rgba(66,42,12,.96),rgba(34,22,8,.97));
+  animation:cotChipPulse 1.1s ease-in-out infinite;font-size:9px;letter-spacing:.05em;padding:5px 3px 4px;}
 /* controls_gunnery r4 minor: Chromium's default blue focus ring survived on
    chips after a rebind click (visible in the conflict screenshot) and read as
    web-page chrome inside the custom panel. All panel controls drop the UA
@@ -95,51 +173,102 @@ const SETTINGS_CSS = `
   outline:1px solid #f0a030;outline-offset:1px;}
 .cot-set-slider input[type=range]:focus{outline:none;}
 .cot-set-slider input[type=range]:focus-visible{outline:1px solid #f0a030;outline-offset:2px;}
-@keyframes cotChipPulse{0%,100%{box-shadow:0 0 0 rgba(240,160,48,0);}50%{box-shadow:0 0 12px rgba(240,160,48,.55);}}
+@keyframes cotChipPulse{
+  0%,100%{box-shadow:inset 0 1px 0 rgba(255,210,122,.2),0 0 3px rgba(240,160,48,.25);}
+  50%{box-shadow:inset 0 1px 0 rgba(255,210,122,.2),0 0 14px rgba(240,160,48,.6);}}
 .cot-set-conflict{display:none;margin:10px 22px 0;padding:9px 14px;align-items:center;gap:12px;
-  background:rgba(58,17,15,.9);border:1px solid rgba(240,90,90,.55);font-size:11.5px;
+  background:linear-gradient(180deg,rgba(52,16,13,.95),rgba(34,11,9,.95));
+  border:1px solid rgba(216,92,68,.5);border-left:3px solid #c8503c;font-size:11.5px;
   letter-spacing:.04em;color:#f2b1a8;}
 .cot-set-conflict.show{display:flex;}
 .cot-set-conflict b{color:#ffd27a;font-weight:700;}
-.cot-set-ftr{display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:12px 22px 16px;border-top:1px solid rgba(146,164,180,.22);}
+.cot-set-conflict .msg{flex:1;}
+/* footer: quiet ghost reset (left) / red-outline LEAVE BATTLE + flat-orange
+   chamfered RESUME (right) — the r7 BATTLE plate, no gloss, no bevel */
+.cot-set-ftr{display:flex;align-items:center;gap:10px;padding:13px 22px 16px;
+  border-top:1px solid rgba(146,164,180,.22);
+  background:linear-gradient(180deg,rgba(146,164,180,.04),rgba(146,164,180,0));}
 .cot-set-btn{cursor:pointer;font-family:${FONT_STACK};font-size:11px;font-weight:800;
-  letter-spacing:.2em;color:#fff7ea;text-transform:uppercase;padding:9px 24px;
-  background:linear-gradient(180deg,#ffa02e 0%,#f07800 52%,#d95f00 100%);
-  border:1px solid #ffc169;border-bottom:2px solid #a34700;
-  text-shadow:0 1px 2px rgba(90,40,0,.6);transition:filter .12s;}
-.cot-set-btn:hover{filter:brightness(1.12);}
-.cot-set-btn.ghost{background:rgba(11,15,20,.8);color:#9fb0bf;text-shadow:none;
-  border:1px solid rgba(146,164,180,.35);border-bottom:2px solid rgba(146,164,180,.45);}
+  letter-spacing:.2em;color:#fff8ee;text-transform:uppercase;padding:10px 22px 9px;
+  text-shadow:none;background:#ee8912;border:1px solid #8a4a06;border-bottom:2px solid #a85a05;
+  transition:filter .12s;}
+.cot-set-btn:hover{filter:brightness(1.08);}
+.cot-set-btn:active{transform:translateY(1px);}
+.cot-set-btn.ghost{background:rgba(11,15,20,.55);color:#9fb0bf;
+  border:1px solid rgba(146,164,180,.3);border-bottom:2px solid rgba(146,164,180,.38);}
 .cot-set-btn.ghost:hover{color:#f0b04a;border-color:rgba(240,176,74,.6);filter:none;}
-.cot-set-btn.leave{margin-left:auto;color:#e9b4a8;border-color:rgba(216,92,68,.5);}
-.cot-set-btn.leave:hover{color:#ffd0c5;border-color:rgba(239,110,82,.85);}
+/* reset anchors LEFT and pushes the action pair right — margin on RESET (not
+   the old margin-left:auto on LEAVE) so the primary stays flush right even
+   when LEAVE BATTLE is display:none in the garage context */
+.cot-set-btn.reset{margin-right:auto;}
+.cot-set-btn.leave{color:#f0a9a0;background:rgba(46,13,10,.55);
+  border:1px solid rgba(216,92,68,.55);border-bottom:2px solid rgba(170,56,40,.85);}
+.cot-set-btn.leave:hover{color:#ffd0c5;border-color:rgba(239,110,82,.9);
+  background:rgba(66,18,14,.7);filter:none;}
+.cot-set-btn.resume{width:150px;height:38px;padding:0 0 1px;border:none;text-indent:.24em;
+  letter-spacing:.24em;font-size:11.5px;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 38'%3E%3Cpath d='M8.4 .5H141.6L149.5 19 141.6 37.5H8.4L.5 19Z' fill='%23ee8912' stroke='%238a4a06' stroke-width='1'/%3E%3Cpath d='M1.3 20.5 8.9 37.1h132.2l7.6-16.6' fill='none' stroke='%23a85a05' stroke-width='2' opacity='.9'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat;}
+.cot-set-btn.resume:hover{filter:brightness(1.07);}
+/* sliders: steel track, amber fill (--f set from JS), keycap thumb */
 .cot-set-slider{display:flex;align-items:center;gap:10px;}
-.cot-set-slider input[type=range]{width:190px;accent-color:#f0a030;cursor:pointer;}
+.cot-set-slider input[type=range]{-webkit-appearance:none;appearance:none;--f:50%;
+  width:190px;height:16px;cursor:pointer;background:transparent;}
+.cot-set-slider input[type=range]::-webkit-slider-runnable-track{height:4px;
+  background:linear-gradient(90deg,#c9812a 0,#f0a030 var(--f),rgba(146,164,180,.22) var(--f));
+  box-shadow:inset 0 1px 1px rgba(0,0,0,.5);}
+.cot-set-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;
+  width:11px;height:16px;margin-top:-6px;
+  background:linear-gradient(180deg,#4a5866,#232c34);
+  border:1px solid rgba(210,225,240,.6);border-bottom:2px solid rgba(70,84,96,.95);
+  box-shadow:inset 0 1px 0 rgba(235,243,250,.18),0 1px 3px rgba(0,0,0,.5);
+  transition:border-color .12s;}
+.cot-set-slider input[type=range]:hover::-webkit-slider-thumb{border-color:rgba(240,176,74,.75);}
+.cot-set-slider input[type=range]::-moz-range-track{height:4px;background:rgba(146,164,180,.22);}
+.cot-set-slider input[type=range]::-moz-range-progress{height:4px;background:#f0a030;}
+.cot-set-slider input[type=range]::-moz-range-thumb{width:11px;height:16px;border-radius:0;
+  background:linear-gradient(180deg,#4a5866,#232c34);border:1px solid rgba(210,225,240,.6);}
 .cot-set-slider input[type=number]{width:62px;text-align:right;font-size:12px;font-weight:700;
-  color:#ffd27a;font-variant-numeric:tabular-nums;letter-spacing:.03em;padding:3px 6px;
-  font-family:${FONT_STACK};background:rgba(11,15,20,.9);
+  color:#ffd27a;font-variant-numeric:tabular-nums;letter-spacing:.03em;padding:4px 6px 3px;
+  font-family:${FONT_STACK};background:rgba(8,11,15,.85);
   border:1px solid rgba(146,164,180,.4);border-bottom:2px solid rgba(146,164,180,.5);
   -moz-appearance:textfield;appearance:textfield;}
 .cot-set-slider input[type=number]:focus{outline:none;border-color:rgba(240,176,74,.65);}
 .cot-set-slider input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
 .cot-set-slider .unit{width:16px;font-size:11px;font-weight:700;color:#8a97a3;}
+/* segmented pickers (difficulty / RMB mode / quality) + ON/OFF toggles —
+   keycap plates, amber selected (era-chip sel treatment) */
 .cot-set-seg{display:flex;gap:4px;}
 .cot-set-seg button{cursor:pointer;font-family:${FONT_STACK};font-size:10px;font-weight:700;
-  letter-spacing:.16em;text-transform:uppercase;color:#8a97a3;padding:6px 16px;
+  letter-spacing:.16em;text-transform:uppercase;color:#8a97a3;padding:6px 14px 5px;
   background:linear-gradient(180deg,rgba(30,38,46,.9),rgba(16,21,26,.95));
-  border:1px solid rgba(146,164,180,.42);border-bottom:2px solid rgba(146,164,180,.55);
-  transition:color .12s,border-color .12s;}
-.cot-set-seg button:hover{color:#c6d2dc;}
-.cot-set-seg button.sel{color:#ffd27a;border-color:rgba(240,176,74,.75);
-  background:linear-gradient(180deg,rgba(90,54,10,.9),rgba(46,28,8,.95));}
-.cot-set-toggle{position:relative;width:44px;height:20px;cursor:pointer;
-  background:rgba(11,15,20,.9);border:1px solid rgba(146,164,180,.4);transition:background .15s;}
-.cot-set-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;
-  background:#8a97a3;transition:left .15s,background .15s;}
-.cot-set-toggle.on{background:rgba(90,54,10,.9);border-color:rgba(240,176,74,.6);}
-.cot-set-toggle.on i{left:26px;background:#f0a030;}
-.cot-set-note{font-size:10px;letter-spacing:.06em;color:#68747f;margin-top:12px;line-height:1.5;}
+  border:1px solid rgba(146,164,180,.42);border-bottom:2px solid rgba(88,102,115,.8);
+  box-shadow:inset 0 1px 0 rgba(235,243,250,.07);
+  transition:color .12s,border-color .12s,background .12s;}
+.cot-set-seg button:hover{color:#c6d2dc;border-color:rgba(210,225,240,.55);}
+.cot-set-seg button.sel{color:#ffd27a;border-color:rgba(240,176,74,.75);border-bottom-color:#f0a030;
+  background:linear-gradient(180deg,rgba(58,40,14,.92),rgba(30,20,8,.95));
+  box-shadow:inset 0 1px 0 rgba(255,210,122,.12);}
+.cot-set-seg.onoff button{padding:5px 13px 4px;min-width:48px;}
+.cot-set-note{font-size:10px;letter-spacing:.05em;color:#68747f;margin:10px 10px 2px;line-height:1.55;}
+.cot-set-note b{color:#9fb0bf;font-weight:700;}
+/* settings_ui r2: the panel respects reduced motion — enter transition,
+   paused lamp and listening pulse all freeze; hover transitions collapse */
+@media (prefers-reduced-motion:reduce){
+  .cot-settings.open,.cot-settings.open .cot-set-panel{animation:none;}
+  .cot-set-paused::before{animation:none;}
+  .cot-chip.listening{animation:none;
+    box-shadow:inset 0 1px 0 rgba(255,210,122,.2),0 0 10px rgba(240,160,48,.5);}
+  .cot-settings *{transition-duration:0s !important;}
+}
+@media (max-width:900px){
+  .cot-set-panel{max-height:94vh;}
+  .cot-set-hdr{padding:12px 14px 8px;}
+  .cot-set-tabs{padding:0 14px;}
+  .cot-set-tab{padding:9px 10px 8px;font-size:9.5px;letter-spacing:.14em;}
+  .cot-set-body{padding:0 14px 12px;}
+  .cot-set-conflict{margin:8px 14px 0;}
+  .cot-set-ftr{padding:10px 14px 12px;}
+}
 /* Gear placement: flush against the right edge, below the garage top bar
    (y 20..~47) and above the stats card (y 110+). The gear (z 62) floats OVER
    the garage layer (z 60), so it must never drift onto the centered BATTLE
@@ -246,7 +375,9 @@ export function createSettings(opts) {
     `<span class="cot-set-paused">Paused</span>` +
     `<button class="cot-set-close" type="button" title="Close">&#10005;</button></div>` +
     `<div class="cot-set-tabs">` +
-    `<button class="cot-set-tab sel" data-tab="controls" type="button">Controls</button>` +
+    // settings_ui r2: CONTROLS carries its action count (era-chip .ct read);
+    // the other tabs stay clean — a count of sliders is noise, not signal.
+    `<button class="cot-set-tab sel" data-tab="controls" type="button">Controls<i class="ct">${input.actionDefs.length}</i></button>` +
     `<button class="cot-set-tab" data-tab="gameplay" type="button">Gameplay</button>` +
     `<button class="cot-set-tab" data-tab="sound" type="button">Sound</button>` +
     `<button class="cot-set-tab" data-tab="graphics" type="button">Graphics</button>` +
@@ -267,6 +398,29 @@ export function createSettings(opts) {
   const conflictMsg = conflictBar.querySelector('.msg');
   const resetBtn = root.querySelector('.reset');
   const leaveBtn = root.querySelector('.leave');
+  const resumeBtn = root.querySelector('.resume');
+
+  // settings_ui r2: overflow-gated scroll fades on the rows area (garage r9
+  // .can-scroll pattern, split per edge so the top fade only appears once the
+  // list is actually scrolled and the bottom one drops at the end).
+  function updateScrollFades() {
+    const canTop = body.scrollTop > 4;
+    const canBot = body.scrollTop < body.scrollHeight - body.clientHeight - 4;
+    body.classList.toggle('fade-top', canTop);
+    body.classList.toggle('fade-bot', canBot);
+  }
+  body.addEventListener('scroll', updateScrollFades, { passive: true });
+  window.addEventListener('resize', () => { if (open) updateScrollFades(); });
+
+  // settings_ui r2: subtle zebra on the rows, restarting at each section
+  // header so the alternation never carries a stripe across group breaks.
+  function applyZebra() {
+    let i = 0;
+    for (const n of body.querySelectorAll('.cot-set-group,.cot-set-row')) {
+      if (n.classList.contains('cot-set-group')) { i = 0; continue; }
+      n.classList.toggle('alt', (i++ % 2) === 1);
+    }
+  }
 
   const gear = el('div', 'cot-gear');
   gear.innerHTML = GEAR_SVG;
@@ -390,7 +544,8 @@ export function createSettings(opts) {
     body.textContent = '';
     rowByAction.clear();
     const colhdr = el('div', 'cot-set-colhdr', body);
-    colhdr.innerHTML = '<span>Primary</span><span>Secondary</span><span class="pad">Pad</span>';
+    colhdr.innerHTML =
+      '<span class="act">Action</span><span>Primary</span><span>Secondary</span><span class="pad">Pad</span>';
     let lastGroup = null;
     for (const def of input.actionDefs) {
       if (def.group !== lastGroup) {
@@ -454,6 +609,10 @@ export function createSettings(opts) {
     const sync = () => {
       const v = input.getSettings()[key];
       range.value = String(v);
+      // settings_ui r2: amber fill runs to the live position (CSS --f percent
+      // consumed by the track gradient — accent-color can't do a filled track)
+      const pct = ((v - min) / (max - min)) * 100;
+      range.style.setProperty('--f', `${Math.max(0, Math.min(100, pct)).toFixed(1)}%`);
       num.value = String(parseFloat(toD(v).toFixed(digits)));
     };
     sync();
@@ -476,25 +635,54 @@ export function createSettings(opts) {
     }
   }
 
+  /** settings_ui r2: plate group-card — a cluster (title + rows + notes) on
+   *  one industrial plate (garage r9 battlefield/camo treatment). */
+  function groupCard(parent, title) {
+    const card = el('div', 'cot-set-card', parent);
+    el('div', 'cot-set-group', card).textContent = title;
+    return card;
+  }
+
+  /** settings_ui r2: WoT-style ON/OFF segmented chip pair (replaces the old
+   *  knob switch). Same persistence path: input.setSetting(key, bool). */
+  function onOffRow(parent, label, key, onChange) {
+    const row = el('div', 'cot-set-row', parent);
+    el('span', 'lb', row).textContent = label;
+    const seg = el('div', 'cot-set-seg onoff', row);
+    const btns = [];
+    const sync = () => {
+      const on = !!input.getSettings()[key];
+      btns[0].classList.toggle('sel', !on);
+      btns[1].classList.toggle('sel', on);
+    };
+    for (const [val, txt] of [[false, 'Off'], [true, 'On']]) {
+      const b = el('button', '', seg);
+      b.type = 'button';
+      b.textContent = txt;
+      b.addEventListener('click', () => {
+        if (!!input.getSettings()[key] === val) return; // no-op re-click
+        input.setSetting(key, val);
+        sync();
+        if (onChange) onChange();
+        emit('ui:click', {});
+      });
+      btns.push(b);
+    }
+    sync();
+    return row;
+  }
+
   function renderGameplay() {
     body.textContent = '';
-    el('div', 'cot-set-group', body).textContent = 'Mouse';
-    sliderRow(body, 'Mouse sensitivity', 'sensitivity', 0.2, 3);
-    sliderRow(body, 'Sniper sensitivity scale', 'sniperSensScale', 0.2, 3);
-    sliderRow(body, 'Aim smoothing (0% = raw input)', 'aimSmoothing', 0, 1, {
+    // settings_ui r2: each cluster sits on its own plate card
+    const mouse = groupCard(body, 'Mouse');
+    sliderRow(mouse, 'Mouse sensitivity', 'sensitivity', 0.2, 3);
+    sliderRow(mouse, 'Sniper sensitivity scale', 'sniperSensScale', 0.2, 3);
+    sliderRow(mouse, 'Aim smoothing (0% = raw input)', 'aimSmoothing', 0, 1, {
       step: '0.01', dispStep: '1', unit: '%', digits: 0,
       toDisp: (v) => v * 100, fromDisp: (v) => v / 100,
     });
-
-    const row = el('div', 'cot-set-row', body);
-    el('span', 'lb', row).textContent = 'Invert vertical aim (Y axis)';
-    const tog = el('div', `cot-set-toggle${input.getSettings().invertY ? ' on' : ''}`, row);
-    el('i', '', tog);
-    tog.addEventListener('click', () => {
-      input.setSetting('invertY', !input.getSettings().invertY);
-      tog.classList.toggle('on', input.getSettings().invertY);
-      emit('ui:click', {});
-    });
+    onOffRow(mouse, 'Invert vertical aim (Y axis)', 'invertY');
 
     // gunnery r1 (owner): what right-click does — hold-to-aim (default),
     // toggle-aim, or the classic gun-lock free look. Persisted as
@@ -504,7 +692,7 @@ export function createSettings(opts) {
       ['toggle', 'toggle-aim'],
       ['freelook', 'free look'],
     ];
-    const rmbRow = el('div', 'cot-set-row', body);
+    const rmbRow = el('div', 'cot-set-row', mouse);
     el('span', 'lb', rmbRow).textContent = 'Right click (RMB)';
     const rmbSeg = el('div', 'cot-set-seg', rmbRow);
     const rmbBtns = [];
@@ -521,14 +709,14 @@ export function createSettings(opts) {
       rmbBtns.push(b);
     }
     for (const x of rmbBtns) x.classList.toggle('sel', x.dataset.mode === input.getSettings().rmbMode);
-    const rmbNote = el('div', 'cot-set-note', body);
+    const rmbNote = el('div', 'cot-set-note', mouse);
     rmbNote.textContent =
       'Hold-to-aim: hold RMB to zoom into sniper, release to return to your previous view ' +
       '(aim pitch is preserved both ways). Toggle-aim: tap RMB like Shift. Free look: hold RMB ' +
       'to look around while the gun stays put (classic). Shift always toggles sniper.';
 
-    el('div', 'cot-set-group', body).textContent = 'Battle';
-    const diffRow = el('div', 'cot-set-row', body);
+    const battle = groupCard(body, 'Battle');
+    const diffRow = el('div', 'cot-set-row', battle);
     el('span', 'lb', diffRow).textContent = 'AI difficulty (next battle)';
     const seg = el('div', 'cot-set-seg', diffRow);
     const diffBtns = [];
@@ -545,26 +733,18 @@ export function createSettings(opts) {
       diffBtns.push(b);
     }
     for (const x of diffBtns) x.classList.toggle('sel', x.textContent === input.getSettings().aiDifficulty);
-    const diffNote = el('div', 'cot-set-note', body);
+    const diffNote = el('div', 'cot-set-note', battle);
     diffNote.textContent =
       'Easy bots aim slower, react later and engage closer; Hard bots hunt weak spots. ' +
       'Takes effect when the next battle starts.';
 
-    el('div', 'cot-set-group', body).textContent = 'Interface';
-    const netRow = el('div', 'cot-set-row', body);
-    el('span', 'lb', netRow).textContent = 'FPS / ping readout (top corner)';
-    const netTog = el('div', `cot-set-toggle${input.getSettings().showPerfMeter ? ' on' : ''}`, netRow);
-    el('i', '', netTog);
-    netTog.addEventListener('click', () => {
-      input.setSetting('showPerfMeter', !input.getSettings().showPerfMeter);
-      netTog.classList.toggle('on', input.getSettings().showPerfMeter);
-      emitPerfMeter(); // hud.js follows live (default off — no dev chrome)
-      emit('ui:click', {});
-    });
+    const iface = groupCard(body, 'Interface');
+    onOffRow(iface, 'FPS / ping readout (top corner)', 'showPerfMeter',
+      emitPerfMeter); // hud.js follows live (default off — no dev chrome)
 
-    el('div', 'cot-set-group', body).textContent = 'Controller';
-    sliderRow(body, 'Controller aim sensitivity', 'padSensitivity', 0.2, 3);
-    const padNote = el('div', 'cot-set-note', body);
+    const pad = groupCard(body, 'Controller');
+    sliderRow(pad, 'Controller aim sensitivity', 'padSensitivity', 0.2, 3);
+    const padNote = el('div', 'cot-set-note', pad);
     padNote.textContent = input.isPadConnected()
       ? 'Controller detected — left stick drives, right stick aims (squared response for fine aim).'
       : 'No controller detected. Plug in any standard gamepad and press a button.';
@@ -609,25 +789,16 @@ export function createSettings(opts) {
 
   function renderSound() {
     body.textContent = '';
-    el('div', 'cot-set-group', body).textContent = 'Volume';
+    const vol = groupCard(body, 'Volume');
     for (const [key, label] of VOLUME_DEFS) {
-      sliderRow(body, label, key, 0, 1, {
+      sliderRow(vol, label, key, 0, 1, {
         step: '0.01', dispStep: '1', unit: '%', digits: 0,
         toDisp: (v) => v * 100, fromDisp: (v) => v / 100,
         onChange: emitVolumes, blipOnCommit: true,
       });
     }
-    el('div', 'cot-set-group', body).textContent = 'Alarms';
-    const hbRow = el('div', 'cot-set-row', body);
-    el('span', 'lb', hbRow).textContent = 'Critical-damage heartbeat pulse';
-    const hbTog = el('div', `cot-set-toggle${input.getSettings().alarmHeartbeat ? ' on' : ''}`, hbRow);
-    el('i', '', hbTog);
-    hbTog.addEventListener('click', () => {
-      input.setSetting('alarmHeartbeat', !input.getSettings().alarmHeartbeat);
-      hbTog.classList.toggle('on', input.getSettings().alarmHeartbeat);
-      emitVolumes();
-      emit('ui:click', {});
-    });
+    const alarms = groupCard(body, 'Alarms');
+    onOffRow(alarms, 'Critical-damage heartbeat pulse', 'alarmHeartbeat', emitVolumes);
 
     const note = el('div', 'cot-set-note', body);
     note.textContent =
@@ -641,8 +812,8 @@ export function createSettings(opts) {
   // --- GRAPHICS tab -----------------------------------------------------------
   function renderGraphics() {
     body.textContent = '';
-    el('div', 'cot-set-group', body).textContent = 'Quality';
-    const row = el('div', 'cot-set-row', body);
+    const card = groupCard(body, 'Quality');
+    const row = el('div', 'cot-set-row', card);
     el('span', 'lb', row).textContent = 'Graphics quality';
     const seg = el('div', 'cot-set-seg', row);
     const btns = [];
@@ -659,7 +830,7 @@ export function createSettings(opts) {
       btns.push(b);
     }
     for (const x of btns) x.classList.toggle('sel', x.dataset.name === getStoredChoice());
-    const note = el('div', 'cot-set-note', body);
+    const note = el('div', 'cot-set-note', card);
     note.textContent =
       'Auto uses adaptive High quality with scene MSAA plus final-frame SMAA: real geometry, foliage, ' +
       'and shader edges stay smooth. It raises 3D resolution when there is GPU headroom and scales only ' +
@@ -680,6 +851,8 @@ export function createSettings(opts) {
     else if (activeTab === 'graphics') renderGraphics();
     else if (activeTab === 'sound') renderSound();
     else renderGameplay();
+    applyZebra();
+    updateScrollFades(); // fades follow the fresh content's real overflow
   }
 
   // --- rebind capture ------------------------------------------------------------
@@ -898,8 +1071,13 @@ export function createSettings(opts) {
     // the panel mid-iteration on sensitivity or volume no longer bounces the
     // player back to CONTROLS every time.
     renderTab();
-    leaveBtn.style.display = canLeaveBattle() && onLeaveBattle ? 'block' : 'none';
+    const canLeave = !!(canLeaveBattle() && onLeaveBattle);
+    leaveBtn.style.display = canLeave ? 'block' : 'none';
+    // settings_ui r2: the footer primary reads RESUME only where there is a
+    // battle to resume — the garage gear context labels the same button CLOSE.
+    resumeBtn.textContent = canLeave ? 'Resume' : 'Close';
     root.classList.add('open');
+    updateScrollFades(); // measured after display flips — 0x0 while hidden
     window.addEventListener('keydown', onPanelKey, true);
     window.addEventListener('keyup', onPanelKeyUp, true);
     panelPadSnapshot();
@@ -934,7 +1112,7 @@ export function createSettings(opts) {
 
   root.addEventListener('mousedown', (e) => e.stopPropagation()); // keep clicks off the game layer
   root.querySelector('.cot-set-close').addEventListener('click', () => api.close());
-  root.querySelector('.resume').addEventListener('click', () => api.close());
+  resumeBtn.addEventListener('click', () => api.close());
   leaveBtn.addEventListener('click', () => {
     if (!onLeaveBattle || !canLeaveBattle()) return;
     relockOnClose = false;
