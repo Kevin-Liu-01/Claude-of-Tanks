@@ -87,3 +87,22 @@ Dims vs published (all inside the 1% grace -> dims 100): heightM 2.25/2.23 (1%) 
 Oracle re-derivation (TRUE_AXES profile trace, width-normalized, 12% body filter): bodyH 2.884 vs pub 2.23 (+29.3%); side-hull body span reads 9.44 (barrel fused into the hull mesh)
 Cap verdict: HOLDS — degenerate single-fused-primitive print (batch-3 certification) PLUS +29.3% stature; dims+floaters only
 A cap never excuses dims: this build measures published spec.dims at 100 with zero floaters across all five articulation poses.
+
+
+## r6 ORACLE-TRUST AUDIT (2026-08-01, russia-family dual-gate round)
+
+Width-normalized reference vs published dims: hull len +16.1%, height +29.3%, overall +14.5% — and the hull MESH ITSELF is polluted.
+
+**Structural findings:** Upper hull, BARREL and a full-footprint horizontal shadow PLATE are ONE baked primitive (mesh_324, spans the entire z range incl muzzle +5.45 and plate tail -5.45). Muzzle collar band >0.35 makes the barrel count as hull BODY: ref side-hull body span -3.98..+5.46 (mid +0.74) vs any true tank (~-0.73) => hull-anchored registration is displaced ~1.47 m for EVERY curve row; stations sample air (slices spread over the 10.9 m polluted span). No build can satisfy the curves without hull-parenting phantom geometry at the muzzle.
+
+**Certified caps (gate doctrine):** ALL curve rows + stations structurally capped at ~0 until oracle repair (mesh surgery: split barrel to a gun node, delete plate triangles — beyond the rigid-transform queue). dims 100 / floaters 100 hold.
+
+**Gate state after r6:** hullCurves 0 / wholeCurves 0 / turretCurves 0 / stations 0 / dims 100 / floaters 100. (r5 build retained; NOT worth iterating against this oracle.)
+
+Probes: tools/tmp-ru-worldtrace.mjs (absolute-world curve dumps),
+tools/tmp-ru-overlay.mjs (registered ref/proc mask diffs),
+tools/tmp-ru-ceilings.py (dims-clamped achievability ceilings),
+tools/tmp-ru-glbnodes.py (scene-graph/bounds audit — no vertex reads).
+Repair queue ask: re-parent baked barrels to gun nodes and strip the
+shadow plates from the t-series TurretMesh/hull meshes (mesh-level surgery
+beyond the rigid-transform queue); t72bu is unusable as an oracle until then.

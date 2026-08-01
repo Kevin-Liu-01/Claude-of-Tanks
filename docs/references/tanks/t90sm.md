@@ -86,3 +86,22 @@ FALLEN v6 record: round-1 dims 86.2 was the v6-era width quantization, not a def
 Kit track round lifted heightM to 2.26 vs published 2.23 (1.28% -> dims 97.8). Turret group
 seated 25mm lower (1.55 -> 1.525): dims back to 100. Turret row 25.7->20.1 — far under the
 +39.5% stature-cap ceiling either way; the published-dims anchor is the hard requirement.
+
+
+## r6 ORACLE-TRUST AUDIT (2026-08-01, russia-family dual-gate round)
+
+Width-normalized reference vs published dims: hull len +8.3% (ref body -3.84..+4.0), height +39.5% (sight towers 3.06-3.15 at z -0.5..-1.6 vs pub ceiling 2.28), overall +9.5% (muzzle +6.72).
+
+**Structural findings:** chasis mesh includes plate-like footprint (plan rectangle); towers/stylization dominate. Ref gun axis 1.91, r~0.12.
+
+**Certified caps (gate doctrine):** Tower cap 0.85 m: stations capped ~10-36 (3-5 slices at 25-29% topPct), front_whole ~49, side_turret ~57, side_whole ~69. overallLengthM: ref span 10.54 vs pub 9.63 — muzzle authored 6.04 (cover cap ~5 cols) + rear span lip -3.66. hullLength window -3.32..+3.62 of the ref's 7.7 m.
+
+**Gate state after r6:** hullCurves 31.5 / wholeCurves 0 / turretCurves 31.5 / stations 0 / dims 91.9 / floaters 100. (r6: hull window recentered, towers/bustle/gun reseated to measured absolutes, span lip added.)
+
+Probes: tools/tmp-ru-worldtrace.mjs (absolute-world curve dumps),
+tools/tmp-ru-overlay.mjs (registered ref/proc mask diffs),
+tools/tmp-ru-ceilings.py (dims-clamped achievability ceilings),
+tools/tmp-ru-glbnodes.py (scene-graph/bounds audit — no vertex reads).
+Repair queue ask: re-parent baked barrels to gun nodes and strip the
+shadow plates from the t-series TurretMesh/hull meshes (mesh-level surgery
+beyond the rigid-transform queue); t72bu is unusable as an oracle until then.

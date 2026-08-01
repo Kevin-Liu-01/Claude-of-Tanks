@@ -87,3 +87,22 @@ Dims vs published (all inside the 1% grace -> dims 100): heightM 2.22/2.23 (0.5%
 Oracle re-derivation (TRUE_AXES profile trace, width-normalized, 12% body filter): bodyH 2.860 vs pub 2.23 (+28.3%), bodyLen 7.689 vs 6.86 (+12.1%)
 Cap verdict: HOLDS, revised — round-1 claimed +34%; TRUE_AXES re-derivation is +28.3% (v6 tilted cameras inflated it)
 A cap never excuses dims: this build measures published spec.dims at 100 with zero floaters across all five articulation poses.
+
+
+## r6 ORACLE-TRUST AUDIT (2026-08-01, russia-family dual-gate round)
+
+Width-normalized reference vs published dims: hull len +12.1%, height +28.3% (roof band 2.74-2.88 vs pub 2.23), overall +9.2%.
+
+**Structural findings:** desirefx print: FOUR near-identical hull meshes at slightly different scales all visible (union fattens every silhouette); turret mesh includes plate-like geometry; heavy stylization.
+
+**Certified caps (gate doctrine):** Ceilings: side_whole 73.8 / side_turret 55.2 / front_whole 61.7 / stations ~60. Roof cap 2.88-2.29 = 0.59 m. NOT passable against the current print.
+
+**Gate state after r6:** hullCurves 33.3 / wholeCurves 11.1 / turretCurves 9.3 / stations 0 / dims 100 / floaters 100. (r5 dims-first + r6 probe pass (turret reseat reverted — net negative).)
+
+Probes: tools/tmp-ru-worldtrace.mjs (absolute-world curve dumps),
+tools/tmp-ru-overlay.mjs (registered ref/proc mask diffs),
+tools/tmp-ru-ceilings.py (dims-clamped achievability ceilings),
+tools/tmp-ru-glbnodes.py (scene-graph/bounds audit — no vertex reads).
+Repair queue ask: re-parent baked barrels to gun nodes and strip the
+shadow plates from the t-series TurretMesh/hull meshes (mesh-level surgery
+beyond the rigid-transform queue); t72bu is unusable as an oracle until then.
