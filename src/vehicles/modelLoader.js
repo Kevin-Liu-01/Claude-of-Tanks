@@ -2057,6 +2057,10 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
   const proceduralRenderNodes = new Set();
   const proceduralRoot = hullG.parent || hullG;
   proceduralRoot.traverse((o) => {
+    // battle-damage decal batches (src/fx/impactDecals.js) ride the tank
+    // nodes but are not stand-in geometry — sweeping them made every armor
+    // scar landed BEFORE a lazy GLB swap vanish when the swap pumped in.
+    if (o.name === 'fx_impactDecals') return;
     if (o.isMesh || o.isLOD || o.isInstancedMesh) proceduralRenderNodes.add(o);
   });
 

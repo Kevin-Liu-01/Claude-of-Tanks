@@ -6,6 +6,12 @@
       "runtimeExecutable": "/Users/kevinliu/claude-of-tanks/node_modules/.bin/vite",
       "runtimeArgs": ["/Users/kevinliu/claude-of-tanks", "--port", "5001", "--strictPort"],
       "port": 5001
+    },
+    {
+      "name": "impact-decals",
+      "runtimeExecutable": "/Users/kevinliu/claude-of-tanks/node_modules/.bin/vite",
+      "runtimeArgs": ["/Users/kevinliu/claude-of-tanks", "--port", "7137", "--strictPort"],
+      "port": 7137
     }
   ]
 }

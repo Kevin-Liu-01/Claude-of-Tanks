@@ -13,6 +13,7 @@
 import * as THREE from 'three';
 import { createParticleSystem, mulberry32, makeFbm } from './particles.js';
 import { registerFxClock, noteFxClockShift, registerPopTrail } from './clock.js';
+import { createImpactDecals } from './impactDecals.js';
 
 // ---------------------------------------------------------------------------
 // Tracer presets (shells-ballistics §10 — colors/widths verbatim)
@@ -729,31 +730,36 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     applyMuzzleRing(r);
   }
 
-  // --- armor scar decals (pooled quads re-parented onto struck hulls) --------
-  const MAX_SCARS = 14;
-  const scarTex = makeScorchTexture(mulberry32((seed ^ 0x51f7a3) >>> 0));
-  const scarMat = new THREE.MeshBasicMaterial({
-    map: scarTex,
-    color: 0x141110,
-    transparent: true,
-    opacity: 0.92,
-    depthWrite: false,
-    polygonOffset: true,
-    polygonOffsetFactor: -4,
-    polygonOffsetUnits: -4,
+  // --- armor impact decals (src/fx/impactDecals.js) --------------------------
+  // Ballistic scarring stamped into the struck NODE's local space (hull root
+  // or rig_turret): pen holes with molten rims + spall, ricochet gouges
+  // aligned to the impact tangent, HE scorch blots, non-pen scuffs. Replaces
+  // the old 14-quad near-black scar pool (the "plain black rhombus" marks —
+  // which additionally turned into OPAQUE burnt quads on every wreck when
+  // tankFactory's burn sweep hit their un-hookable Basic material). Decals
+  // are per-vehicle (cap 24, oldest evicted), persist for the battle and are
+  // cleared when the vehicle wrecks — see the tank:destroyed handler and
+  // spawnDestruction, which clear BEFORE setDestroyed's material traverse
+  // can ever see a decal mesh.
+  const impactDecals = createImpactDecals({
+    anisotropy: engineCtx && engineCtx.anisotropy,
+    seed: (seed ^ 0x51f7a3) >>> 0,
   });
-  const scarGeo = new THREE.PlaneGeometry(1, 1);
-  const scarMeshes = [];
-  let scarCursor = 0;
-  for (let i = 0; i < MAX_SCARS; i++) {
-    const m = new THREE.Mesh(scarGeo, scarMat);
-    m.visible = false;
-    m.renderOrder = 3;
-    m.castShadow = m.receiveShadow = false;
-    scarMeshes.push(m); // parented lazily onto whichever tank is struck
+  /** The shell:hit event currently being dispatched (dedupe for armorScar). */
+  let liveHitEv = null;
+  /** targetId -> game entity, resolved through the debug surface (the fx
+   *  module owns no game-state reference; window.__DEBUG.game is assigned at
+   *  boot before any battle can start — same window-global pattern as
+   *  __FX_SKIP_DESTRUCTION). */
+  function decalEntityFor(targetId) {
+    if (!targetId || typeof window === 'undefined') return null;
+    const dbg = window.__DEBUG;
+    const g = dbg && dbg.game;
+    const ent = g && g.tankById ? g.tankById.get(targetId) : null;
+    return ent && ent.visual && ent.state ? ent : null;
   }
-  const _scarQ = new THREE.Quaternion();
-  const _scarQ2 = new THREE.Quaternion();
+  /** decal sweep accumulator (see update()) */
+  let decalSweepAcc = 0;
 
   // --- track-print decals (r1: "no track-print decals behind the sprockets") -
   // A ring of terrain-conformed dark quads stamped under each moving track,
@@ -2318,6 +2324,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     columns.push({ key: null, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0, ttl: SMOKE_COLUMN_S, scale: burn ? 1.45 : 1.3 });
     capColumns();
     if (visual) {
+      // scarring dies with the vehicle — and must be OFF the hierarchy
+      // before setDestroyed's burn-material traverse walks it
+      impactDecals.clearVehicle(visual);
       const delay = 0.15 + birthOffset; // birthOffset ≤ 0 when backdated
       if (delay <= 0) visual.setDestroyed({ pop: rack, ageS: -delay });
       else timers.push({ t: delay, fn: () => visual.setDestroyed({ pop: rack }) });
@@ -2539,6 +2548,14 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       for (const st of lightStates) applyLight(st);
       for (const r of shockRings) applyShockRing(r);
       for (const r of muzzleRings) applyMuzzleRing(r);
+      // defensive decal sweep (~1.4 s cadence): drop scarring whose vehicle
+      // wrecked or left the scene through any path that skipped the
+      // tank:destroyed / spawnDestruction clears
+      decalSweepAcc += dt;
+      if (decalSweepAcc > 1.4) {
+        decalSweepAcc = 0;
+        impactDecals.sweep();
+      }
       // burning-wreck flicker: while the explosion light is idle, park it
       // over the newest smoke column so fires read as living light sources.
       // r1 terracotta-deck fix: localized (8 m range, ~1/3 the r6 intensity)
@@ -2704,6 +2721,16 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         _v4.set(e.normal[0], e.normal[1], e.normal[2]);
         if (e.targetId) lastKnownPos.set(e.targetId, [e.pos[0], e.pos[1], e.pos[2]]);
         fx.impact(e.kind, _v3, _v4, e.caliberMm);
+        // Ballistic scarring: stamp the mark for this hit into the struck
+        // node's local space. This runs BEFORE main.js's shell:hit listener
+        // (fx.bindBus registers first), so the armorScar call that follows
+        // for pens sees __cotDecalStamped and never double-marks.
+        liveHitEv = e;
+        const ent = decalEntityFor(e.targetId);
+        if (ent && impactDecals.stampFromEvent(e, ent)) e.__cotDecalStamped = true;
+        // the marker only means something to listeners of THIS event's
+        // synchronous dispatch — never let it leak into later direct calls
+        queueMicrotask(() => { if (liveHitEv === e) liveHitEv = null; });
       });
       bus.on('shell:expired', (e) => {
         if (!e.hitTerrain) return;
@@ -2712,6 +2739,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       });
       bus.on('tank:destroyed', (e) => {
         lastKnownPos.set(e.id, [e.pos[0], e.pos[1], e.pos[2]]);
+        // wreck burnt-swap clears the battle scarring (same beat that hides
+        // the profile decalMeshes in setDestroyed) — and guarantees the burn
+        // material traverse never converts a decal mesh into an opaque quad
+        impactDecals.clearVehicle(e.id);
+        const ent = decalEntityFor(e.id);
+        if (ent) impactDecals.clearVehicle(ent.visual);
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
         fx.destruction(_v3, null, e.cause || 'shot');
       });
@@ -2964,8 +2997,15 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
 
     /**
      * Stamp a persistent armor-scar decal onto a struck vehicle at a
-     * penetration (or heavy non-pen) point. The pooled quad is re-parented
-     * into the tank's root so it rides the hull afterwards.
+     * penetration point (legacy entry point — main.js calls this for pens).
+     *
+     * The full ballistic-scarring stamp (pen/ricochet/HE routed by
+     * HitEvent.kind, turret-local placement, tangent-aligned gouges) runs in
+     * bindBus's shell:hit handler, which sees the event FIRST (fx.bindBus
+     * registers before main.js's own shell:hit listener). When that handler
+     * already stamped the in-flight event this call is a no-op; otherwise
+     * (direct callers, no resolvable entity) it stamps a hull-frame pen mark
+     * from the world-space args.
      * @param {object} visual TankVisual (needs .root)
      * @param {THREE.Vector3} pos world impact point
      * @param {THREE.Vector3} normal outward surface normal (world)
@@ -2973,23 +3013,13 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      */
     armorScar(visual, pos, normal, caliberMm) {
       if (!visual || !visual.root) return;
-      const m = scarMeshes[scarCursor];
-      scarCursor = (scarCursor + 1) % MAX_SCARS;
-      const root = visual.root;
-      root.updateMatrixWorld(true);
-      if (m.parent !== root) { if (m.parent) m.parent.remove(m); root.add(m); }
-      // world -> hull-local position, lifted slightly off the plate
-      _v1.copy(pos).addScaledVector(normal, 0.04);
-      root.worldToLocal(m.position.copy(_v1));
-      // world normal -> hull-local orientation (plane faces +Z)
-      _scarQ.copy(root.quaternion).invert();
-      _v2.copy(normal).applyQuaternion(_scarQ).normalize();
-      m.quaternion.setFromUnitVectors(_Z, _v2);
-      _scarQ2.setFromAxisAngle(_v2, rng() * Math.PI * 2);
-      m.quaternion.premultiply(_scarQ2);
-      m.scale.setScalar(0.30 * calScale(caliberMm) * (0.8 + rng() * 0.5));
-      m.visible = true;
+      if (liveHitEv && liveHitEv.__cotDecalStamped) return; // already marked
+      impactDecals.stampDirect(visual, pos, normal, caliberMm,
+        liveHitEv ? liveHitEv.kind : 'pen');
     },
+
+    /** @returns {object} live impact-decal counters (probes/perf gates) */
+    impactDecalStats() { return impactDecals.stats(); },
 
     /**
      * Vehicle destruction: fireball, debris, persistent smoke column; calls
@@ -3348,8 +3378,8 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       shockCursor = 0;
       for (const r of muzzleRings) { r.bornAt = -1e9; r.mesh.visible = false; r.mat.opacity = 0; }
       muzzleRingCursor = 0;
-      for (const m of scarMeshes) { m.visible = false; if (m.parent) m.parent.remove(m); }
-      scarCursor = 0;
+      impactDecals.clearAll();
+      liveHitEv = null;
       for (const st of lightStates) { st.bornAt = -1e9; st.light.intensity = 0; }
     },
 
