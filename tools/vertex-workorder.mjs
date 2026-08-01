@@ -36,8 +36,23 @@ try {
   const res = await page.evaluate(async () => {
     const THREE = await import('/node_modules/three/build/three.module.js');
     const { reference, procedural, renderMask, cameraFor } = window.__FIDELITY_DEBUG;
-    // shared-box center: same recipe as the harness (visibleBox union)
-    const vb = (root) => new THREE.Box3().setFromObject(root);
+    // shared-box center: same recipe as the harness (visibleBox union —
+    // shadow proxies EXCLUDED like the harness's isShadowHelper filter;
+    // procShadow_gun once shifted every printed z by +0.68)
+    const vb = (root) => {
+      const b = new THREE.Box3();
+      const g = new THREE.Box3();
+      root.updateMatrixWorld(true);
+      root.traverse((o) => {
+        if (!o.isMesh || !o.geometry || /shadow/i.test(o.name || '')) return;
+        let vis = true;
+        for (let p2 = o; p2; p2 = p2.parent) if (!p2.visible) { vis = false; break; }
+        if (!vis) return;
+        g.setFromObject(o);
+        if (!g.isEmpty()) b.union(g);
+      });
+      return b;
+    };
     const shared = vb(reference.root).union(vb(procedural.root));
     const C = shared.getCenter(new THREE.Vector3());
     const AXES = { side: new THREE.Vector3(1, 0, 0), plan: new THREE.Vector3(0, 1, 0), front: new THREE.Vector3(0, 0, 1) };
