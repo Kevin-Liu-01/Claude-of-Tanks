@@ -114,7 +114,7 @@ const GARAGE_CSS = `
    solely on the stats card. */
 /* r9.1 (owner): the quiet "GARAGE" mode tag becomes a real screen nav —
    Garage (current) / Studio (scene studio, F8 path) / Home (landing page) */
-.cot-nav{position:absolute;top:58px;left:34px;display:flex;gap:5px;pointer-events:auto;}
+.cot-nav{position:absolute;top:68px;left:34px;display:flex;gap:5px;pointer-events:auto;}
 .cot-nav .nv{font-family:${FONT_STACK};font-size:8.5px;font-weight:800;
   letter-spacing:.18em;text-transform:uppercase;color:#8a97a3;cursor:pointer;
   padding:5px 10px 4px;background:rgba(11,15,20,.72);
@@ -123,7 +123,7 @@ const GARAGE_CSS = `
 .cot-nav .nv:hover{color:#ffd27a;border-color:rgba(240,176,74,.6);}
 .cot-nav .nv.on{color:#f0b04a;border-color:rgba(240,176,74,.55);
   background:rgba(24,19,11,.82);cursor:default;}
-.cot-tech{position:absolute;top:92px;left:34px;pointer-events:auto;cursor:pointer;
+.cot-tech{position:absolute;top:108px;left:34px;pointer-events:auto;cursor:pointer;
   display:flex;align-items:center;gap:8px;
   font-family:${FONT_STACK};font-size:10.5px;font-weight:800;letter-spacing:.20em;
   color:#c6d2dc;text-transform:uppercase;padding:8px 16px 7px;
@@ -261,7 +261,7 @@ const GARAGE_CSS = `
 /* r9.1 (owner): the column runs down to just above the era chips
    (chips bottom:172px + ~26px tall) instead of reserving 36% — the freed
    space all goes to the BATTLEFIELD list (maps is the flexible section). */
-.cot-leftcol{position:absolute;left:34px;top:110px;bottom:210px;
+.cot-leftcol{position:absolute;left:34px;top:156px;bottom:210px;
   width:224px;display:flex;flex-direction:column;gap:12px;overflow:hidden;pointer-events:auto;}
   /* MAPS r1: top 122 -> 110, gap 14 -> 12 — the doubled battlefield roster
      needs the slack; the TECH TREE button ends ~98px so nothing collides */
@@ -527,13 +527,13 @@ const GARAGE_CSS = `
   .cot-garage .band-r{display:none;}
   .cot-garage .title{top:12px;left:14px;font-size:13px;letter-spacing:.22em;gap:7px;}
   .cot-garage .title .mark{width:22px;height:22px;}
-  .cot-nav{top:36px;left:14px;gap:3px;}
+  .cot-nav{top:38px;left:14px;gap:3px;}
   .cot-nav .nv{font-size:7px;padding:4px 7px 3px;letter-spacing:.12em;}
-  .cot-tech{top:62px;left:14px;padding:6px 10px 5px;font-size:8px;}
+  .cot-tech{top:68px;left:14px;padding:6px 10px 5px;font-size:8px;}
   .cot-battle{top:12px;width:214px;height:40px;font-size:15px;}
   .cot-garage .stats{display:none;}
   .cot-topbar{top:8px;right:8px;gap:3px;transform:scale(.72);transform-origin:right top;}
-  .cot-leftcol{left:14px;top:98px;bottom:112px;width:180px;gap:7px;overflow:visible;}
+  .cot-leftcol{left:14px;top:106px;bottom:112px;width:180px;gap:7px;overflow:visible;}
   .cot-maps{display:none;}
   .cot-featured{display:none;}
   .cot-camos{width:180px;margin-top:0;padding:7px;
