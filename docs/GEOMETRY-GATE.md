@@ -74,6 +74,20 @@ Trimmed mean (2 worst slices dropped — a bustle overhang must not mask
 everything else, but systematic width error still fails):
 `100 − 10·trimW − 10·trimTop`.
 
+**Station-slice visibility (edge-on prism law, russia r7c):** the
+station cameras render a ~0.52 m near/far-clipped z-slab, so an
+axis-aligned long thin box presents ONLY its end caps to the front
+camera — its side/top faces project to zero width and the part is
+invisible at every mid-span slice. Any gate-facing thin/long kit
+(sidewall strips, full-length fender prisms, rails) authored as a
+single axis-aligned prism will silently depress `stations` width rows
+even though the silhouette views see it fine. Author such kit
+segmented (per-bin boxes with real end faces, like actual stowage) or
+give it front-facing geometry. This is a build defect pattern, not a
+measurement artifact — the pipeline measures correctly (probe:
+`tools/tmp-r7ru-stations.mjs` precedent, t62mv1 stations 54.2 → 76.1
+from segmentation alone).
+
 ### Dims — the published-spec anchor
 
 Measured **from the procedural build's curves** against `spec.dims`
