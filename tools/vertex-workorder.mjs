@@ -74,10 +74,22 @@ try {
     };
     // camera-frame -> world per view (cameraFor conventions):
     //   side: at=-(z-Cz) v=y-Cy | plan: at=x-Cx v=-(z-Cz) | front: at=x-Cx v=y-Cy
+    // SELF-CALIBRATED vertical: both models touch ground (y=0), so per view
+    // the minimum whole-mask bottom defines the v->world offset exactly —
+    // no camera-center guessing (two prior conventions each fit only one
+    // view; this closes the question for good).
+    const yOff = { side: 0, front: 0, plan: 0 };
+    for (const view of ['side', 'front']) {
+      const cam0 = cameraFor(AXES[view]);
+      const t0 = trace(renderMask(reference, procedural, cam0, 'whole'), cam0);
+      let mn = Infinity;
+      for (const c of t0) if (c && c[2] < mn) mn = c[2];
+      yOff[view] = Number.isFinite(mn) ? -mn : 0;
+    }
     const toWorld = {
-      side: (p) => [C.z - p[0], p[1] + C.y, p[2] + C.y],
+      side: (p) => [C.z - p[0], p[1] + yOff.side, p[2] + yOff.side],
       plan: (p) => [p[0] + C.x, C.z - p[2], C.z - p[1]], // [x, zFront(max), zRear(min)]
-      front: (p) => [p[0] + C.x, p[1] + C.y, p[2] + C.y],
+      front: (p) => [p[0] + C.x, p[1] + yOff.front, p[2] + yOff.front],
     };
     const out = { center: [C.x, C.y, C.z].map((v) => +v.toFixed(3)), rows: {} };
     const big = { side: 512, plan: 512, front: 512 };

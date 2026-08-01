@@ -189,3 +189,17 @@ ref belly band to |x|~1.0 at bot 0.43). NEXT: front-view band decode (one
 workorder --rows=front_whole pass), then side rear-gear ramp (same print-fade
 class as t90a), tower plan columns. Board refreshed (orientation asserts
 agree; no interpen).
+
+## VERTEX ROUND r2b — passes 4-6 (2026-08-01)
+
+front_whole escaped zero via the corrected digest (the vertical conversion is
+now SELF-CALIBRATED against the ground plane — two prior camera-center
+conventions each fit only one view; vertex-workorder.mjs closes it for good).
+Fixes: tall Relikt course reverted to 0.72 h (side rows vetoed the front
+read), track pads behind the skirts (xc 1.38, the pad line extends ~0.04 past
+trackW/2), turret flare panels 1.89, prism roof inset 0.78, tower cluster
+trimmed. Gate: hull 25.1 -> 51.3 / whole 0 -> 36.5 / turret 39.6 / stations
+49.5 / dims 94.8 (heightM 2.27 p95 driver still unresolved — NEXT: find the
++1.65% column owner; likely the pano/RWS ensemble width at 96-col pitch).
+Board reviewed: orientation correct; glacis face and Relikt flank read slab-
+flat (fitting language next once curves converge).

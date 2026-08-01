@@ -143,3 +143,19 @@ glacis +z / gun +z / agree True
 
 **Gate row after this round:** hull 0 / whole 0 / turret 0 / stations 11.6 / dims 89.9 / floaters 100.
 BUILD NOT YET RE-ANCHORED. dims 89.9 = old-frame heightM 2.26 vs the (unchanged) published 2.19 + met-mast p95 interplay — resolves with the rebuild.
+
+## VERTEX ROUND r2 — build re-anchored to the normalized oracle (2026-08-01)
+
+Four passes: rear span lip DELETED (mask spans published 6.856), hull/turret/
+gun re-anchored (deck plate 1.40-1.48 with the TWIN-HUMP powerpack stack —
+the ref's front view proves a center trough at 1.555; ERAWA glacis/skirt
+courses re-seated; V-hull center bottoms 0.30; dome widened to the ref's 3.23
+plan (halfW 1.60) roof band 2.14-2.19; mast slimmed sub-column at the ref's
+z -0.73 spike; gun axis 1.62, muzzle +6.10). Gate: 0 -> min 34.3 (hull 58.8 /
+whole 34.3 / turret 49.7 / stations 63.8 / dims 100 / floaters 100). Board
+reviewed: orientation correct, twin humps + ERAWA read, no floaters/interpen.
+NEXT: front_whole gates (mast/turret-edge columns at |x| 1.59-1.72 and the
+center 1.96-2.13 band), side rear-gear ramp (print fade quirk, family class),
+turret plan columns. Ref front tells banked in this section's derivation:
+track outer face ends 1.675 (ground content at 1.67, skirt-only 0.78..1.40
+at 1.68-1.72).
