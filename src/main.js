@@ -1378,6 +1378,11 @@ const settings = createSettings({
   canLeaveBattle: () => game.phase === 'battle',
   onLeaveBattle: () => enterGarage(),
   gearVisible: () => game.phase === 'garage',
+  // PAUSE: the overlay shows its PAUSED treatment exactly when opening it
+  // freezes a live battle — same predicate the tick() pause gate derives its
+  // livePaused from (kill-cam replays close the panel themselves; the end
+  // overlay keeps the old non-paused Esc behavior).
+  isGamePaused: () => game.phase === 'battle' && !game.result && !killcam.isActive(),
 });
 const touchControls = createTouchControls({
   input, bus,
@@ -1663,6 +1668,11 @@ function startBattle(specId, mapId = null, opts = {}) {
   // button) must resume it or the battle is permanently frozen.
   shotMode = false;
   fx.setFrozen(false);
+  // PAUSE: battle entry always clears a paused overlay (probe-driven
+  // startBattle can run with the panel up; the tick edge below then restores
+  // the audio buses). noRelock — this close must never fire a gesture-less
+  // pointer-lock request that could bump the denial streak.
+  if (settings.isOpen()) settings.close({ noRelock: true });
   selectedSpecId = specId;
   debugAimTargetId = null; // sticky drive-test aim never carries across battles
   // MAP-CONFIG WIRING: battle on the picked map ('random' rolls here)
@@ -1731,6 +1741,11 @@ function enterGarage() {
   shotMode = false;
   fx.setFrozen(false);
   game.phase = 'garage';
+  // PAUSE: leaving battle clears any paused overlay (Leave Battle closes the
+  // panel itself before calling here — this covers every other exit path).
+  // After the phase flip above, isBattleActive() is already false, but pass
+  // noRelock anyway so no exit path can ever fire a gesture-less lock request.
+  if (settings.isOpen()) settings.close({ noRelock: true });
   setWorldDormant(true); // GARAGE PERF: the battlefield stops costing anything
   // camo_spotting r5: bot biome-camo overrides are battle-scoped — drop
   // them so the pedestal/picker show the player's own persisted selection.
@@ -1943,6 +1958,11 @@ const _cursorNdc = { x: 0, y: 0 };
 const _listenerPose = { pos: null, forward: _fwd }; // reused — no per-frame literal
 let simAcc = 0;
 let lastMs = -1;
+// PAUSE (owner: "pause mid game if u press escape"): live-battle pause
+// bookkeeping — see the PAUSE block in tick(). `lastResumeDtR` is the dt the
+// first frame after a resume actually integrated; tools/pause-probe.mjs
+// asserts it never exceeds SIM_DT (no pause-duration catch-up hop).
+const pauseInfo = { paused: false, resumes: 0, lastDtR: 0, lastResumeDtR: -1 };
 let lastFov = camera.fov;
 let endShown = false;
 let deathCamShown = false; // killcam_shotinfo r1: death replay played at death
@@ -2087,7 +2107,9 @@ function tick(nowMs) {
   scheduleRaf();
   lastTickWallMs = performance.now();
   if (lastMs < 0) lastMs = nowMs;
-  const dtR = Math.min(0.1, Math.max(0, (nowMs - lastMs) / 1000));
+  // Frame dt clamp (0.1 s): a stalled/backgrounded loop never integrates its
+  // whole gap. The PAUSE block below extends this on the resume edge.
+  let dtR = Math.min(0.1, Math.max(0, (nowMs - lastMs) / 1000));
   lastMs = nowMs;
 
   // Sniper-zoom de-fog: at high zoom the exp2 fog + ACES crush distant
@@ -2127,6 +2149,33 @@ function tick(nowMs) {
   // KILL-CAM: while the replay runs, the sim/rig/visual-sync are all frozen —
   // resuming just continues the fixed-step loop (no drifted timers).
   const kcActive = killcam.isActive();
+
+  // PAUSE (owner: Esc mid-game). `paused` has always gated the fixed-step sim
+  // (step 2) plus input/rig, but fx kept aging, dust kept pumping off frozen
+  // hulls and the engine mix kept roaring — an open menu over a live battle,
+  // not a pause. `livePaused` is the real pause gate: the Esc overlay over a
+  // LIVE battle only. Kill-cam replays and the end overlay keep their
+  // existing Esc behavior (the replay owns the frame; the post-result sim
+  // plays out behind the report), garage/shot/studio never reach here with
+  // inBattle set. The camera simply HOLDS while paused (rig already gated on
+  // !paused) — no sim advancement of any kind behind the overlay.
+  const livePaused = paused && inBattle && !kcActive && !game.result;
+  if (livePaused !== pauseInfo.paused) {
+    pauseInfo.paused = livePaused;
+    if (!livePaused) {
+      // RESUME dt clamp — extension of the 0.1 s frame clamp above: the
+      // first un-paused frame integrates at most ONE sim step, so a pause of
+      // any length can never land a 4-step catch-up hop (starved-rAF panes
+      // tick sparsely during the pause, leaving a full 0.1 s gap otherwise).
+      dtR = Math.min(dtR, SIM_DT);
+      pauseInfo.resumes += 1;
+      pauseInfo.lastResumeDtR = dtR;
+    }
+    // audio.js: engine/battle buses duck to near-silence while paused,
+    // restore on resume (UI clicks and crew voices stay up).
+    bus.emit('ui:pause', { on: livePaused });
+  }
+  pauseInfo.lastDtR = dtR;
 
   // 1. poll input (action layer: rebindable, Set-based state — no ghosting)
   if (inBattle && !paused && !kcActive && game.player && !game.player.combat.destroyed) {
@@ -2289,11 +2338,16 @@ function tick(nowMs) {
   if (world && !worldDormant) world.update(dtR, camera.position, _fwd, occlFocus);
 
   // 5. visuals + dust (frozen during the kill-cam replay — tanks hold the
-  // pose they died in; the x-ray reads the snapshot, not live state)
-  if (!kcActive) updateDustAndSync(dtR);
+  // pose they died in; the x-ray reads the snapshot, not live state).
+  // PAUSE: skipped entirely while live-paused — poses hold, self-timed visual
+  // timelines (recoil, embers) don't age, no dust/exhaust pumps off hulls
+  // whose frozen state still carries speed, spot-fades hold.
+  if (!kcActive && !livePaused) updateDustAndSync(dtR);
 
-  // 6. fx
-  fx.update(dtR, game.shells, camera);
+  // 6. fx — dt 0 while live-paused pins the shared particle clock, which is
+  // the one timeline every particle/timer/light/decal ages against (the same
+  // mechanism deterministic shot captures rely on), so effects hold mid-air.
+  fx.update(livePaused ? 0 : dtR, game.shells, camera);
 
   // 7. HUD (hidden + frozen while the kill-cam letterbox owns the screen).
   // NOTE: live isActive() check — the replay may have STARTED in step 2 of
@@ -3525,6 +3579,8 @@ function debugSlayEnemies() {
 window.__DEBUG = {
   scene, camera, renderer, post, lighting, game, fx, rig, bus,
   input, // controls probe: isLocked/isCursorAim/binding introspection
+  settings, // PAUSE probe: isOpen/open/close introspection
+  pauseInfo, // PAUSE probe: { paused, resumes, lastDtR, lastResumeDtR }
   garage,
   get pedestalVisual() { return pedestalVisual; },
   // switch-desync r1: the id the garage UI (stats card / card highlight)

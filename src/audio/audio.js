@@ -99,6 +99,12 @@ export function createAudio() {
   // KILL-CAM DUCK: replay slow-mo pulls the battle mix down (combat/engine/
   // ambience only — the radio and result stings stay up front).
   let duckK = 1;
+  // PAUSE DUCK ('ui:pause' from main.js tick): while the Esc overlay freezes
+  // a live battle, the engine + combat buses drop to near-silence — the
+  // frozen sim still has engine loops holding their last RPM and gun tails
+  // ringing out. Near-zero (not zero) so resume never clicks. UI/music stays
+  // up (menu clicks, slider reference blips) and so do crew voices.
+  let pauseK = 1;
   function applyChannelVolumes(smooth) {
     if (!ctx) return;
     const t = ctx.currentTime;
@@ -119,8 +125,8 @@ export function createAudio() {
         g.value = v;
       }
     };
-    set(sfxBus, 1.0 * chanVol.combat * duckK);
-    set(engineBus, 0.75 * chanVol.engine * duckK);
+    set(sfxBus, 1.0 * chanVol.combat * duckK * pauseK);
+    set(engineBus, 0.75 * chanVol.engine * duckK * pauseK);
     set(ambientBus, 0.55 * chanVol.ambience * duckK);
     set(musicBus, 0.9 * chanVol.ui);
     set(voiceBus, 1.0 * chanVol.voice);
@@ -1610,6 +1616,14 @@ export function createAudio() {
       duckK = 1;
       applyChannelVolumes(true);
     });
+    // PAUSE (Esc overlay over a live battle — main.js tick edge): duck the
+    // battle beds to near-silence, restore on resume. pauseK is tracked even
+    // before the context exists so a later resume() builds the graph with
+    // the correct level (buildGraph -> applyChannelVolumes reads it).
+    bus.on('ui:pause', (e) => {
+      pauseK = e && e.on ? 0.04 : 1;
+      if (ctx) applyChannelVolumes(true);
+    });
     // SOUND SETTINGS: live channel-mix updates from the settings panel sliders.
     bus.on('ui:volumes', (v) => {
       if (!v) return;
@@ -1840,6 +1854,7 @@ export function createAudio() {
           music: musicBus.gain.value,
           voice: voiceBus.gain.value,
           chanVol: { ...chanVol },
+          pauseK, // PAUSE duck factor (tools/pause-probe.mjs)
           uiVolEvents: _uiVolEvents,
         };
       },

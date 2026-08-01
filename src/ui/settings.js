@@ -37,6 +37,16 @@ const SETTINGS_CSS = `
 .cot-set-hdr{display:flex;align-items:baseline;justify-content:space-between;padding:15px 22px 10px;}
 .cot-set-hdr h2{font-size:15px;font-weight:700;letter-spacing:.32em;color:#9fb0bf;text-transform:uppercase;}
 .cot-set-hdr h2 b{color:#f0a030;}
+/* PAUSE: battle-pause tag in the header — shown only while the open panel is
+   actually freezing a live battle (root gets .paused; garage Esc never shows
+   it). Amber chip in the panel's own design language, slow readable pulse. */
+.cot-set-paused{display:none;font-size:11px;font-weight:800;letter-spacing:.34em;
+  color:#f0b04a;text-transform:uppercase;padding:4px 10px 4px 14px;
+  border:1px solid rgba(240,176,74,.55);background:rgba(90,54,10,.35);
+  text-shadow:0 1px 8px rgba(240,160,48,.35);
+  animation:cotPausedPulse 1.7s ease-in-out infinite;}
+.cot-settings.paused .cot-set-paused{display:inline-block;}
+@keyframes cotPausedPulse{0%,100%{opacity:1;}50%{opacity:.55;}}
 .cot-set-close{cursor:pointer;border:1px solid rgba(146,164,180,.35);background:rgba(11,15,20,.8);
   color:#9fb0bf;font-family:${FONT_STACK};font-size:14px;line-height:1;padding:5px 10px;
   transition:color .12s,border-color .12s;}
@@ -208,9 +218,10 @@ function el(tag, cls, parent) {
  *   canLeaveBattle?: () => boolean,   // any battle/spectator state
  *   onLeaveBattle?: () => void,
  *   gearVisible?: () => boolean,      // gear button should currently show
+ *   isGamePaused?: () => boolean,     // opening the panel freezes a live battle
  * }} opts
- * @returns {{open:Function,close:Function,toggle:Function,isOpen:()=>boolean,
- *   showHints:Function,root:HTMLElement}}
+ * @returns {{open:Function,close:(opts?:{noRelock?:boolean})=>void,
+ *   toggle:Function,isOpen:()=>boolean,showHints:Function,root:HTMLElement}}
  */
 export function createSettings(opts) {
   ensureFonts();
@@ -219,6 +230,10 @@ export function createSettings(opts) {
   const canLeaveBattle = opts.canLeaveBattle || isBattleActive;
   const onLeaveBattle = opts.onLeaveBattle || null;
   const gearVisible = opts.gearVisible || (() => false);
+  // PAUSE: main.js supplies the live-battle predicate; the PAUSED header tag
+  // shows exactly when the open panel is what froze the sim (garage Esc and
+  // the end-overlay Esc keep the plain settings header).
+  const isGamePaused = opts.isGamePaused || (() => false);
   const emit = (ev, payload) => { if (bus && bus.emit) bus.emit(ev, payload); };
 
   ensureStyle('cot-settings-style', SETTINGS_CSS);
@@ -228,6 +243,7 @@ export function createSettings(opts) {
   root.innerHTML =
     `<div class="cot-set-panel">` +
     `<div class="cot-set-hdr"><h2>SET<b>TINGS</b></h2>` +
+    `<span class="cot-set-paused">Paused</span>` +
     `<button class="cot-set-close" type="button" title="Close">&#10005;</button></div>` +
     `<div class="cot-set-tabs">` +
     `<button class="cot-set-tab sel" data-tab="controls" type="button">Controls</button>` +
@@ -862,6 +878,13 @@ export function createSettings(opts) {
   }
 
   // --- open/close -----------------------------------------------------------------
+  /** PAUSE: sync the header tag + root class to "open panel froze a live
+   *  battle". Cheap; re-run by updateGear's event/interval sweep so the tag
+   *  follows leave-battle / result transitions while the panel is up. */
+  function refreshPausedTag() {
+    root.classList.toggle('paused', open && isGamePaused());
+  }
+
   function openPanel() {
     if (open) return;
     open = true;
@@ -869,6 +892,7 @@ export function createSettings(opts) {
     relockOnClose = isBattleActive(); // resume grabs the pointer again
     input.setEnabled(false); // menu owns the keyboard; also clears held keys
     input.releaseLock();
+    refreshPausedTag(); // PAUSE: battle Esc reads as a pause, garage Esc not
     hideHints();
     // Reopen on the tab the player was last tuning (session-sticky): closing
     // the panel mid-iteration on sensitivity or volume no longer bounces the
@@ -884,12 +908,21 @@ export function createSettings(opts) {
     emit('ui:click', {});
   }
 
-  function closePanel() {
+  /**
+   * Close the panel. Resuming into a live battle re-requests pointer lock
+   * (relockOnClose); a denied request is retried by the next canvas click.
+   * @param {{noRelock?: boolean}} [o] noRelock: battle entry/exit paths close
+   *   the panel programmatically — they must never fire a gesture-less lock
+   *   request (a denial there would feed the cursor-aim denial streak).
+   */
+  function closePanel(o) {
     if (!open) return;
+    if (o && o.noRelock) relockOnClose = false;
     cancelCapture();
     clearConflict();
     open = false;
     root.classList.remove('open');
+    root.classList.remove('paused'); // PAUSE: tag never outlives the panel
     window.removeEventListener('keydown', onPanelKey, true);
     window.removeEventListener('keyup', onPanelKeyUp, true);
     if (panelRaf) { cancelAnimationFrame(panelRaf); panelRaf = 0; }
@@ -983,6 +1016,7 @@ export function createSettings(opts) {
     // Safety net (r2): the resume veil must never outlive the battle — a
     // result can land without a phase:change (end overlay is z 70, veil 79).
     if (!isBattleActive()) hideResumeVeil();
+    refreshPausedTag(); // PAUSE: tag follows phase/result while the panel is up
   }
   gear.addEventListener('click', () => { if (!open) openPanel(); });
   if (bus && bus.on) {
