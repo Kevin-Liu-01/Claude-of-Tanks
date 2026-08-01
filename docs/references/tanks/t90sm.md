@@ -173,3 +173,19 @@ glacis +z / gun +z / agree True
 
 **Gate row after this round:** hull 0 / whole 0 / turret 15.8 / stations 0 / dims 90.4 / floaters 100.
 BUILD NOT YET RE-ANCHORED. Tower band landed 2.22-2.26 (p95-legal); the build must author its pano/Sosna inside 2.26.
+
+## VERTEX ROUND r2 — build re-anchor in progress (2026-08-01)
+
+Three passes vs the normalized oracle: span-matching lips DELETED (the mask
+now spans published 6.857 itself), hull/turret/gun re-anchored (deck plateau
+1.40-1.46, welded roof 2.19-2.26 with the tower zone extended to z -1.96,
+bustle 1.92-1.96, gun axis 1.70 / muzzle +6.20), tub narrowed to 1.60 +
+segmented fender lips, track pulled behind the skirts (xc 1.42 trackW 0.50),
+Relikt wide course moved MID-REAR per the station widths (3.70-3.77 over
+z -2.7..-0.7). Gate: 0 -> hull 25.1 / whole 0 / turret 39.2 / stations 48.9 /
+dims 98.4 / floaters 100. GATING ROW: front_whole (mean was 8.0% -> improving;
+track/skirt/tub bands still proc-deep vs ref 0.87-1.36 at |x| 1.68-1.76 and
+ref belly band to |x|~1.0 at bot 0.43). NEXT: front-view band decode (one
+workorder --rows=front_whole pass), then side rear-gear ramp (same print-fade
+class as t90a), tower plan columns. Board refreshed (orientation asserts
+agree; no interpen).

@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-01T19:18:20.455Z",
+ "generatedAt": "2026-08-01T19:26:27.100Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 4,
  "total": 85,
@@ -139,11 +139,11 @@
    "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 0,
+    "hullCurves": 25.1,
     "wholeCurves": 0,
-    "turretCurves": 15.8,
-    "stations": 0,
-    "dims": 90.4,
+    "turretCurves": 39.2,
+    "stations": 48.9,
+    "dims": 98.4,
     "floaters": 100
    }
   },
@@ -799,14 +799,14 @@
   },
   {
    "id": "t90a",
-   "geoMin": 46.9,
+   "geoMin": 46.5,
    "gatePassed": false,
    "components": {
     "hullCurves": 52.5,
-    "wholeCurves": 46.9,
-    "turretCurves": 56,
-    "stations": 60.5,
-    "dims": 96.5,
+    "wholeCurves": 46.5,
+    "turretCurves": 54.8,
+    "stations": 57.9,
+    "dims": 100,
     "floaters": 100
    }
   },

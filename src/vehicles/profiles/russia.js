@@ -270,6 +270,10 @@ function buildT90A(P) {
     P.add('hullDark', cylZ(0.116, 0.03, 12), s * 0.72, 1.36, -2.94);
     P.add('hullDark', box(0.05, 0.11, 0.05), s * 0.72, 1.36, -3.17);
   }
+  for (const s of [-1, 1]) {
+    P.add('hullRubber', box(0.42, 0.45, 0.05), s * 1.55, 0.58, -3.40); // rear mud flaps
+    P.add('hullRubber', box(0.40, 0.38, 0.05), s * 1.55, 0.62, 3.40);  // front mud flaps
+  }
   P.add('hullDark', cylX(0.115, 2.55, 10), 0, 1.49, -1.43);
   for (const s of [-0.5, 0.5]) P.add('hullDetail', box(0.06, 0.16, 0.09), s * 2, 1.40, -1.43);
   P.add('hullWood', cylX(0.095, 2.1, 10), 0, 1.36, -3.23);
@@ -290,9 +294,9 @@ function buildT90A(P) {
 
   // ---- turret: normalized roof plateau 2.16-2.22, dome plan -1.49..+1.81 ----
   P.turretG.position.set(0, 1.335, 0.459);
-  const rings = [[1.30, -0.049], [1.36, 0.097], [1.30, 0.35], [1.16, 0.55], [0.95, 0.70], [0.55, 0.82], [0.02, 0.875]];
+  const rings = [[1.30, -0.049], [1.36, 0.097], [1.30, 0.35], [1.16, 0.55], [0.95, 0.705], [0.55, 0.83], [0.02, 0.888]];
   meshDome(P, rings, 1.21, 0, -0.18);
-  const p5 = { rings, sz: 1.21 };
+  const p5 = { rings, sz: 1.21, k5Len: 1.12, k5H: 0.30 };
   eraRuCheeks(P, p5, 'k5');
   ruShtora(P, p5, 0.52);
   // left sight cluster (ref spikes 2.25-2.30) + right TKN block
@@ -1054,46 +1058,51 @@ function buildT72BU(P) {
 // Tube axis 1.912, MRS bulge r.118 at world 5.17..5.29, muzzle 6.732.
 function buildT90SM(P) {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret, slab } = KIT;
-  // r5 dims-first: published 6.86 hull / 9.63 overall / 2.23 roof. Print is
-  // +8% long / +9% inflated (safeScale 1.11) — hull cut to ±3.43, muzzle
-  // 6.20, welded roof at 2.25 with pano/RWS folded.
+  // VERTEX ROUND r2 (batch-12 normalized oracle): re-anchored to
+  // docs/references/vertex/t90sm.json — hull mask +-3.43 (6.857 = published,
+  // the r5 span-matching lips are DELETED), deck plateau 1.40-1.46, welded
+  // roof band 2.19-2.26 (towers squashed inside the dims grace), bustle tops
+  // 1.92-1.96, cheek flare halfW 1.85 @ z 0.84-0.94, gun axis 1.70, muzzle
+  // +6.20. Orientation asserts: glacis +z / gun +z / agree.
   loftHull(P, {
-    deck: [[-3.32, 1.53], [-1.94, 1.61], [-0.5, 1.58], [1.26, 1.55], [2.21, 1.52], [2.69, 1.40], [3.16, 1.34], [3.62, 1.25]],
-    belly: [[-3.32, 0.72], [-2.30, 0.19], [2.85, 0.25], [3.35, 0.48], [3.62, 0.66]],
-    wUp: [[-3.32, 1.10], [-3.10, 1.78], [3.20, 1.78], [3.62, 1.45]],
-    wLo: [[-3.32, 0.90], [3.62, 0.88]],
-    sponsonY: 0.88,
+    deck: [[-3.43, 1.20], [-3.35, 1.39], [-2.99, 1.40], [-1.75, 1.45], [-0.45, 1.44], [1.13, 1.40], [1.99, 1.40], [2.42, 1.29], [2.85, 1.23], [3.43, 1.08]],
+    belly: [[-3.43, 0.85], [-2.99, 0.66], [-2.07, 0.175], [2.57, 0.23], [3.02, 0.44], [3.43, 0.66]],
+    wUp: [[-3.43, 1.05], [-3.10, 1.10], [-2.79, 1.60], [2.88, 1.60], [3.43, 1.30]],
+    wLo: [[-3.43, 1.00], [3.43, 1.00]],
+    sponsonY: 0.81,
   });
-  widthAnchor(P, 1.89, 0.95, 0.3);
-  // span-matching lips: thin sub-body plates carry the hull MASK SPAN to
-  // the ref's -3.84..+3.76 so the 14 station slices align, while the BODY
-  // (12% filter) stays inside the published-dims window.
-  P.add('hull', box(2.4, 0.05, 0.45), 0, 1.50, -3.44);
-  P.add('hullDark', box(1.9, 0.03, 0.04), 0, 1.53, -3.64);
-  ruDeck(P, { deckY: 1.57, hatchZ: 2.35, gz: -1.85, grilles: 5, gw: 1.5 });
-  ruGlacisKit(P, { w: 3.5, y: 1.28, z: 2.90, eyeZ: 3.20, hookY: 0.75, hookZ: 3.32 });
-  for (let row = 0; row < 2; row++) for (const s of [-1, 1]) {
-    P.add('hullTrack', box(0.72, 0.075, 0.30), s * 0.42, 1.40 - row * 0.075, 2.55 + row * 0.32, -0.42, s * 0.35, 0);
+  widthAnchor(P, 1.89, 0.90, 0.27);
+  // fender lips: thin segmented shelves (prism law) at the tub edge
+  for (const s of [-1, 1]) for (let i = 0; i < 11; i++) {
+    P.add('hull', box(0.20, 0.05, 0.50), s * 1.70, 1.40, -2.70 + i * 0.545);
   }
-  KIT.towCable(P, [[-1.25, 1.48, 2.3], [0, 1.55, 1.8], [1.25, 1.48, 2.3]]);
-  stowage(P, 'hull', P.rng, [[0.2, 1.64, -3.10, 1.7, 0.18, 0.45]]);
-  ruFlaps(P, { x: 1.46, w: 0.60, front: [0.70, 0.50], frontZ: 3.46 });
+  ruDeck(P, { deckY: 1.44, hatchZ: 2.12, gz: -1.67, grilles: 5, gw: 1.5 });
+  ruGlacisKit(P, { w: 3.5, y: 1.18, z: 2.61, eyeZ: 2.88, hookY: 0.69, hookZ: 2.99 });
+  for (let row = 0; row < 2; row++) for (const s of [-1, 1]) {
+    P.add('hullTrack', box(0.72, 0.075, 0.30), s * 0.42, 1.30 - row * 0.07, 2.30 + row * 0.29, -0.42, s * 0.35, 0);
+  }
+  KIT.towCable(P, [[-1.25, 1.36, 2.07], [0, 1.43, 1.62], [1.25, 1.36, 2.07]]);
+  stowage(P, 'hull', P.rng, [[0.2, 1.46, -2.79, 1.53, 0.13, 0.41]]);
+  ruFlaps(P, { x: 1.46, w: 0.60, front: [0.65, 0.46], frontZ: 3.12 });
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.385, wheelW: 0.21, wheelY: 0.46, xc: 1.46, dishR: 0.84,
-    wheelZs: evenStations(6, 4.5, 0.15),
-    sprocket: { z: -2.73, y: 0.80, r: 0.31 }, idler: { z: 3.22, y: 0.68, r: 0.30 },
-    rollers: [-1.55, 0, 1.6].map((z) => ({ z, y: 0.84, r: 0.086 })),
-    trackW: 0.58, topY: 0.88, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
+    style: 'rubber', wheelR: 0.385, wheelW: 0.21, wheelY: 0.46, xc: 1.42, dishR: 0.84,
+    wheelZs: evenStations(6, 4.05, 0.135),
+    sprocket: { z: -2.46, y: 0.75, r: 0.29 }, idler: { z: 2.90, y: 0.65, r: 0.28 },
+    rollers: [-1.40, 0, 1.44].map((z) => ({ z, y: 0.80, r: 0.086 })),
+    trackW: 0.50, topY: 0.83, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
   });
-  ruSkirtBand(P, { x: 1.845, z0: -3.25, z1: 3.45, yTop: 1.32, yBot: 0.55, panels: 7, th: 0.08 });
-  for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
-    P.add('hull', box(0.05, 0.46, 0.56), s * 1.863, 1.04, 2.60 - i * 0.60);
-    P.add('hullDark', box(0.04, 0.40, 0.03), s * 1.859, 1.04, 2.32 - i * 0.60);
+  ruSkirtBand(P, { x: 1.78, z0: -2.93, z1: 3.10, yTop: 1.22, yBot: 0.62, panels: 7, th: 0.08 });
+  for (const s of [-1, 1]) {
+    for (let i = 0; i < 4; i++) {
+      P.add('hull', box(0.05, 0.46, 0.50), s * 1.863, 0.97, -2.55 + i * 0.52);
+      P.add('hullDark', box(0.04, 0.40, 0.03), s * 1.859, 0.97, -2.30 + i * 0.52);
+    }
+    for (let i = 0; i < 2; i++) P.add('hull', box(0.05, 0.44, 0.44), s * 1.863, 0.97, 0.82 + i * 0.50);
   }
 
   // ---- WELDED turret: faceted prism + squared removable bustle ----
-  P.turretG.position.set(0, 1.525, 0.10);  // r3: −0.025 — heightM 2.26 vs pub 2.23 (1.28%) after the kit track round
-  const tw = 1.55, f = 1.55, b = -1.45, h = 0.70;
+  P.turretG.position.set(0, 1.40, 0.09);
+  const tw = 1.55, f = 1.40, b = -1.31, h = 0.78;
   P.add('turret', polyTurret([
     [-tw * 0.15, f], [tw * 0.15, f], [tw * 0.60, f * 0.62], [tw, f * 0.14],
     [tw * 0.95, b * 0.60], [tw * 0.70, b], [-tw * 0.70, b], [-tw * 0.95, b * 0.60],
@@ -1104,38 +1113,38 @@ function buildT90SM(P) {
     P.add('turret', slab(
       [inner, 0.03, f], [outer, 0.03, f * 0.18], [outer, 0.03, -0.2], [inner, 0.03, f * 0.60],
       [inner, h * 0.8, f * 0.58], [outer * 0.9, h * 0.66, f * 0.05], [outer * 0.9, h * 0.72, -0.3], [inner, h * 0.9, f * 0.38]));
-    // side stowage panels flaring toward the cheeks
-    P.add('turret', box(0.24, 0.55, 1.2), s * (tw - 0.05), 0.36, 0.45, 0, s * 0.08, 0);
-    P.add('turret', box(0.22, 0.48, 0.9), s * (tw - 0.10), 0.34, -0.60);
+    // side stowage panels flaring toward the cheeks (ref halfW 1.85 @ +0.85)
+    P.add('turret', box(0.29, 0.55, 1.10), s * (tw - 0.02), 0.34, 0.42, 0, s * 0.08, 0);
+    P.add('turret', box(0.22, 0.48, 0.82), s * (tw - 0.10), 0.32, -0.56);
   }
-  // squared removable bustle: slat rear face + top boxes
-  P.add('turret', box(2.05, 0.58, 1.55), 0, 0.41, -2.18);
-  P.add('turretDark', box(2.07, 0.46, 0.05), 0, 0.41, -2.93);
-  for (const s of [-1, 1]) P.add('turretDetail', box(0.72, 0.12, 0.95), s * 0.55, 0.64, -2.05);
-  P.add('turret', box(1.6, 0.05, 0.95), 0, 0.71, 0.0);   // roof plateau slab at the 2.26 ceiling
+  // squared removable bustle (ref tops 1.92-1.96, tail -2.41)
+  P.add('turret', box(2.05, 0.55, 1.40), 0, 0.25, -1.96);
+  P.add('turretDark', box(2.07, 0.44, 0.05), 0, 0.25, -2.64);
+  for (const s of [-1, 1]) P.add('turretDetail', box(0.72, 0.10, 0.88), s * 0.55, 0.50, -1.85);
+  P.add('turret', box(1.6, 0.05, 0.90), 0, 0.80, 0.0);   // roof plateau slab (2.225)
   const pW = { rings: [[tw, 0], [tw * 0.96, h * 0.6], [tw * 0.9, h]], sz: 0.95 };
   eraRuCheeks(P, { ...pW, weldFlat: true }, 'relikt');
-  // pano tower left + UDP RWS right, folded to the published roof (the
-  // print's 3.15 towers are a packet cap); pano head is the spike column
-  P.add('turretDetail', box(0.20, 0.46, 0.20), -0.62, 0.48, -0.85);
-  P.add('turretDark', cylY(0.055, 0.055, 0.16, 10), -0.62, 0.76, -0.85);
-  P.add('turret', box(0.44, 0.38, 0.50), 0.32, 0.50, -1.35);
-  P.add('turretDark', box(0.12, 0.14, 0.20), 0.32, 0.64, -1.35);
-  P.add('turretDark', cylZ(0.024, 0.62, 8), 0.32, 0.70, -1.00, -0.04, 0, 0);
-  P.add('turretGlass', box(0.12, 0.09, 0.02), 0.24, 0.56, -1.11);
-  P.add('turret', box(0.30, 0.36, 0.30), -0.85, 0.50, -0.30);
-  // ---- 2A46M-5 + MRS bulge ----
-  P.gunG.position.set(0, 0.375, 1.30);
-  ruSaddle(P, { rollR: 0.22, rollW: 0.64, tubeR: 0.115, rootL: 0.75 });
-  P.addGunExtra(box(0.66, 0.44, 0.30), 0, 0.14, 0.16);
+  // tower zone (ref band 2.24-2.26 over z -0.46..-1.26): pano left + RWS right
+  P.add('turretDetail', box(0.20, 0.44, 0.20), -0.62, 0.62, -0.77);
+  P.add('turretDark', cylY(0.055, 0.055, 0.14, 10), -0.62, 0.86, -0.77);
+  P.add('turret', box(0.44, 0.38, 0.50), 0.32, 0.64, -1.55);
+  P.add('turret', box(0.30, 0.40, 0.30), -0.30, 0.62, -1.98);
+  P.add('turretDark', box(0.12, 0.12, 0.20), 0.32, 0.80, -1.22);
+  P.add('turretDark', cylZ(0.024, 0.62, 8), 0.32, 0.84, -0.90, -0.04, 0, 0);
+  P.add('turretGlass', box(0.12, 0.09, 0.02), 0.24, 0.68, -1.00);
+  P.add('turret', box(0.30, 0.36, 0.30), -0.85, 0.60, -0.27);
+  // ---- 2A46M-5 + MRS bulge (axis 1.70, muzzle +6.20) ----
+  P.gunG.position.set(0, 0.30, 1.17);
+  ruSaddle(P, { rollR: 0.21, rollW: 0.60, tubeR: 0.111, rootL: 0.70 });
+  P.addGunExtra(box(0.66, 0.42, 0.28), 0, 0.12, 0.15);
   tubeGun(P, [
-    [0.80, 3.56, 0.115], [3.56, 4.59, 0.105],
-  ], { rings: [[0.84, 0.117], [3.56, 0.107], [4.45, 0.107]], muzzle: 4.59 });
-  P.add('gun', cylZ(0.128, 0.26, 14), 0, 0, 3.72);          // MRS/evac bulge
-  P.add('gunDark', cylZ(0.13, 0.035, 14), 0, 0, 3.86);
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [tw * 0.99, 0.32, -0.35], Math.PI / 2);
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [-tw * 0.99, 0.32, -0.35], -Math.PI / 2);
-  P.topY = 1.7;
+    [0.72, 3.20, 0.111], [3.20, 4.94, 0.097],
+  ], { rings: [[1.20, 0.113], [1.90, 0.113], [2.60, 0.113], [3.20, 0.099], [3.80, 0.099], [4.45, 0.099]], muzzle: 4.94 });
+  P.add('gun', cylZ(0.122, 0.26, 14), 0, 0, 4.22);          // MRS/evac bulge (ref 5.45)
+  P.add('gunDark', cylZ(0.124, 0.035, 14), 0, 0, 4.36);
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [tw * 0.99, 0.30, -0.32], Math.PI / 2);
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [-tw * 0.99, 0.30, -0.32], -Math.PI / 2);
+  P.topY = 1.55;
 }
 
 // Dome grab rail pair seated just off the measured skin.
@@ -1173,10 +1182,11 @@ function eraRuCheeks(P, p, kind) {
       const x = Math.cos(t) * D, z = Math.sin(t) * D;
       const ry = Math.PI / 2 - t;
       const L = p.k5Len ?? 1.30;
-      P.add('turretTrack', box(L, 0.40, 0.40), x, yc, z, -0.40, ry, 0);
-      P.add('turretDark', box(L + 0.01, 0.035, 0.36), x, yc + 0.20, z, -0.40, ry, 0);
+      const H = p.k5H ?? 0.40;
+      P.add('turretTrack', box(L, H, H), x, yc, z, -0.40, ry, 0);
+      P.add('turretDark', box(L + 0.01, 0.035, H - 0.04), x, yc + H / 2, z, -0.40, ry, 0);
       for (const e of [-1, 1]) {
-        P.add('turretTrack', box(0.06, 0.38, 0.38),
+        P.add('turretTrack', box(0.06, H - 0.02, H - 0.02),
           x + e * -Math.sin(t) * (L / 2 + 0.02), yc, z + e * Math.cos(t) * (L / 2 + 0.02), -0.40, ry, 0);
       }
       for (let i = 0; i < 3; i++) {
