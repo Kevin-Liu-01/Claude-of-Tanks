@@ -324,3 +324,28 @@ New hard-won margins (r5):
 - The probe's strict-track component mask keys on envMapIntensity <= 0.101
   (trackL/R 0.10, spareTrack 0.06, pads 0.08) — keep new track-family
   materials at env <= 0.10 or the band metric loses them.
+
+## Plate-fill r1 (2026-08-01, owner directive — GEOMETRY-GATE.md "Plate fill rule")
+Owner screenshot: the stepped stern parity plates read as an OPEN SHELL at
+close-up. Turntable review (tools/tmp-platefill.{html,mjs}, shots/plate-fill-r1/
+kv2-{before,after}/) found three voids; all filled with solids strictly inside
+the certified bands (soviet-heavy.js):
+- BOW: the 3.23-wide nose-deck plate floated — open side mouths x 1.30..1.615
+  (z 2.07..2.98, sponson wall stops at 2.07) + the lip slit vented a 0.9 m
+  empty shell over the nose shelf. Fill: one pannier/nose block x ±1.61,
+  y 1.13..1.35, z 2.07..2.98 (shelf top to deck underside, sponson face to
+  8 cm behind the lip).
+- STERN corners: chamfer/deck-slope corners hung over open caves aft of the
+  sponson end (x ±0.86..1.44, tail plate is only ±0.86). Fill: slab per side,
+  y 1.02 up to 1.535/1.40 under the plates, z −3.395..−3.495.
+- STERN recess: the door-recess slot above the tail plate top (1.30) vented
+  into the hull. Fill: back wall x ±0.86, y 1.28..1.44, face −3.46 (4 cm
+  behind the −3.50 face — the ref recess READ stays).
+Contracts held by construction: max |x| 1.61 (width guard 1.66; the 1.62..1.70
+front-column window untouched), no new tops (every fill under the plate that
+owns its side/plan column), extreme-z columns untouched (hooks 3.26/−3.615,
+chamfer −3.52). Gate re-run with the candidateGlb temporarily re-registered:
+**90.2 PASS, byte-identical row** (hull 92.1 whole 90.2 turret 90.3 stations
+96 dims 100 floaters 100); specs.js reverted byte-identically after the run.
+Geometry hash re-frozen (tmp-hashgeo.html pipeline): 3e08fe88 -> **f01e1e00**
+(36 meshes, 109688 -> 110408 verts). Board refreshed.

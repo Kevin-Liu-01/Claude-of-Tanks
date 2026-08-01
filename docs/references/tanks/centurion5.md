@@ -94,3 +94,9 @@ unmatched, a bounded 2-4 column cover/err cost on side/plan whole rows.
 Numbers (baseline -> now): centurion5 hull 45.7 -> 47.2, whole 18 -> 27.5,
 turret 0.2 -> 26, stations 51.2 -> 74.2, dims 100, floaters 100 (centurion3
 tracks the same build: turret 0 -> 24.1, stations 50.7 -> 60.5).
+
+## Plate-fill r1 (2026-08-01, owner directive)
+Same shared ukHull fender-wedge fill as centurion3 (see that packet): the
+fender-over-glacis sky wedge is closed with lofted mudguard solids. Gate v11
+before/after byte-identical (hull 46.4 whole 27.2 turret 24.3 stations 74
+dims 100 floaters 100). Evidence: shots/plate-fill-r1/centurion5-{before,after}/.

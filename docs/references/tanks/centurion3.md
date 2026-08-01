@@ -111,3 +111,15 @@ unmatched, a bounded 2-4 column cover/err cost on side/plan whole rows.
 Numbers (baseline -> now): centurion5 hull 45.7 -> 47.2, whole 18 -> 27.5,
 turret 0.2 -> 26, stations 51.2 -> 74.2, dims 100, floaters 100 (centurion3
 tracks the same build: turret 0 -> 24.1, stations 50.7 -> 60.5).
+
+## Plate-fill r1 (2026-08-01, owner directive)
+The flat fender plane rode ABOVE the falling glacis (deck drops below the
+1.60 fender line forward of z~2.36): an open 0.3 m sky wedge showed THROUGH
+the vehicle from any low angle. Closed by the shared ukHull fender-wedge fill
+(lofted mudguard solids deck-line -> fender plane inside the plate footprint;
+also fills the small -3.67..-3.70 tail sliver). Evidence: shots/plate-fill-r1/
+centurion3-{before,after}/ (closeup-front-quarter crop pair). Gate v11
+before/after: byte-identical rows (hull 46.7 whole 32.8 turret 22.9 stations
+59.9 dims 100 floaters 100; ledger's older 47.5/33/24.1/60.5 row was a stale
+pre-v11 scoring). centurion5 identical treatment (46.4/27.2/24.3/74/100/100
+held byte-identical).

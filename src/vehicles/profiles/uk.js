@@ -73,6 +73,29 @@ function ukHull(P, g) {
       const inner = g.trackXc - g.trackW * 0.55;
       P.add('hullDetail', box(outer - inner, 0.035, g.fenderZ1 - g.fenderZ0),
         side * (inner + outer) / 2, g.fenderY, (g.fenderZ0 + g.fenderZ1) / 2);
+      // plate-fill r1 (owner directive 2026-08-01, GEOMETRY-GATE.md "Plate
+      // fill rule"): the flat fender plane rides ABOVE the deck line where
+      // the glacis/tail falls away — the open wedge between the plate
+      // underside and the hull top read as a see-through shell from every
+      // low angle (centurion bow: a 0.3 m sky wedge THROUGH the vehicle).
+      // Close it with lofted mudguard solids from the deck line up to the
+      // plate wherever the deck drops below it. Silhouette-inert by
+      // construction: the fill lives inside the plate's own plan footprint,
+      // under its 1.6-line side columns, and inside front columns already
+      // banded by the plate edge + skirts/tracks.
+      const fy = g.fenderY - 0.004;
+      const zKnots = [...new Set([g.fenderZ0, g.fenderZ1,
+        ...g.deck.map((p) => p[0]).filter((z) => z > g.fenderZ0 && z < g.fenderZ1)]
+        .map((z) => Number(z.toFixed(4))))].sort((a, b) => b - a);
+      for (let i = 0; i < zKnots.length - 1; i++) {
+        const zf = zKnots[i], zr = zKnots[i + 1];
+        const df = Math.min(lineAt(g.deck, zf), fy), dr = Math.min(lineAt(g.deck, zr), fy);
+        if (fy - df < 0.02 && fy - dr < 0.02) continue;
+        const xi = Math.min(side * inner, side * outer), xo = Math.max(side * inner, side * outer);
+        P.add('hull', slab(
+          [xi, df, zf], [xo, df, zf], [xo, dr, zr], [xi, dr, zr],
+          [xi, fy, zf], [xo, fy, zf], [xo, fy, zr], [xi, fy, zr]));
+      }
     }
   }
   // Optional armored skirts (measured plane).
@@ -163,6 +186,12 @@ function chieftain5Build(P) {
     // over the engine bay only — the mid-run fenders sit under the deck line.
     P.add('hullDetail', box(0.42, 0.03, 0.55), side * 1.35, 1.675, 1.72);
     P.add('hullDetail', box(0.42, 0.03, 1.3), side * 1.35, 1.695, -2.02);
+    // plate-fill r1 (owner directive 2026-08-01): both crest plates floated
+    // 9 cm ABOVE the fender plane with a see-through slot beneath — they
+    // are raised stowage bins on the real vehicle. Close plate-to-fender
+    // (tops tuck under the plates; interior to their side/plan columns).
+    P.add('hullDetail', box(0.42, 0.085, 0.55), side * 1.35, 1.6325, 1.72);
+    P.add('hullDetail', box(0.42, 0.085, 1.3), side * 1.35, 1.6375, -2.02);
   }
   // Engine deck: louvre field + fuel caps + rear grille face.
   P.add('hull', box(2.2, 0.04, 1.15), 0, 1.68, -2.65);
@@ -179,6 +208,16 @@ function chieftain5Build(P) {
   // a LOW left bin (left tall stowage is rack gear that yaws now).
   P.add('hull', box(0.34, 0.42, 1.16), 1.57, 2.0, -0.83);
   P.add('hullDark', box(0.35, 0.02, 1.10), 1.57, 2.21, -0.83);
+  // plate-fill r1 (owner directive 2026-08-01): the tall bin FLOATED 0.2 m
+  // above the fender plane — a clean see-through slot ran under the whole
+  // width-committing face (ray-probed: sight lines crossed the vehicle
+  // untouched between bin bottom 1.79 and fender 1.59). The REF's own bin
+  // floats too (a full-width fill moved front_whole 47.3 -> 45.6: the
+  // certified silhouette owns that air), so the corridor closes INBOARD:
+  // a web at the right fender's own 1.50 plane, bin bottom to fender top.
+  // Sight lines under the bin now end on shadowed structure instead of
+  // crossing the vehicle; the authentic bin-overhang read stays.
+  P.add('hull', box(0.10, 0.21, 1.16), 1.45, 1.685, -0.83);
   P.add('hull', box(0.30, 0.14, 1.5), -1.55, 1.63, 1.6);
   tarpRoll(P, 'hullCloth', 1.42, 1.63, -2.2, 1.0, 0.07, false);
   // LEFT track-guard planes (ref front: outer lip band 0.6..1.6 at x -1.74,
@@ -367,6 +406,16 @@ function challenger1Build(P) {
   }
   // Narrow tail overhang (ref plan: full width ends -3.6, ±1.1 to -4.1).
   P.add('hull', box(2.2, 0.59, 0.46), 0, 1.435, -3.93);
+  // plate-fill r1 (owner directive 2026-08-01): the overhang bin + tail
+  // shelf hung over a clean SEE-THROUGH tunnel — the tail rake band ends
+  // at -3.42/y0.84 and nothing closed the volume up to the 1.14 shelf
+  // underside, so low rear-quarter views looked straight through the
+  // vehicle. Two solids extend the hull to bin contact: an under-shelf
+  // block meeting the rake end, and a recessed lower rear plate under the
+  // bin (8 cm behind the bin tail so the overhang read stays). Both stay
+  // inside the shelf/bin plan footprints and below their side lines.
+  P.add('hull', box(2.96, 0.32, 0.28), 0, 1.00, -3.56);
+  P.add('hull', box(2.10, 0.34, 0.38), 0, 0.99, -3.89);
   // Rear-deck bin (the ref's one-column 1.83 bump at z -3.05).
   P.add('hull', box(0.9, 0.16, 0.35), -0.5, 1.75, -3.05);
   P.add('hull', box(1.05, 0.32, 0.2), -0.62, 1.36, -3.62);

@@ -675,6 +675,25 @@ function buildKV2(P) {
   P.add('hull', box(2.88, 0.045, 0.60), 0, 1.60, -3.125, -0.1475, 0, 0);
   P.add('hull', box(2.88, 0.04, 0.16), 0, 1.472, -3.4445, -1.119, 0, 0);
   P.add('hull', box(1.72, 0.76, 0.10), 0, 0.92, -3.45);                        // tail plate (face −3.50, top 1.30 = ref recess)
+  // plate-fill r1 (owner screenshot instance): the stepped stern plates
+  // read as an OPEN SHELL — the chamfer/deck-slope corners hung over empty
+  // caves aft of the sponson end (x 0.86..1.44, the tail plate is only
+  // ±0.86), and the door-recess slot above the tail plate top (1.30)
+  // vented into the hull interior. Corner blocks extend the pannier to
+  // tail contact under the chamfer, and a recessed back wall closes the
+  // slot 4 cm behind the −3.50 face (the ref recess READ stays). All
+  // interior to certified bands: z stops at −3.495 (chamfer −3.52 and
+  // hooks −3.615 own the extremes), tops tuck under the plates that own
+  // their side/plan columns, |x| <= 1.44 = the chamfer's own edge.
+  for (const s of [-1, 1]) {
+    const xi = s * 0.86, xo = s * 1.44;
+    P.add('hull', slab(
+      [Math.min(xi, xo), 1.02, -3.395], [Math.max(xi, xo), 1.02, -3.395],
+      [Math.max(xi, xo), 1.02, -3.495], [Math.min(xi, xo), 1.02, -3.495],
+      [Math.min(xi, xo), 1.535, -3.395], [Math.max(xi, xo), 1.535, -3.395],
+      [Math.max(xi, xo), 1.40, -3.495], [Math.min(xi, xo), 1.40, -3.495]));
+  }
+  P.add('hull', box(1.72, 0.16, 0.10), 0, 1.36, -3.41);                        // recess back wall (face −3.46, under the chamfer)
   // bow: driver slope (2.09,1.60)->(2.42,1.41), nose deck 1.40, nose lip
   // 1.315, shelf slab top 1.13 face 3.07 with the rising underside
   P.add('hull', box(1.88, 0.05, 0.40), 0, 1.505, 2.255, 0.522, 0, 0);          // driver plate slope
@@ -683,6 +702,16 @@ function buildKV2(P) {
   P.add('hull', slab(                                                          // nose shelf: top 1.13, face 3.07,
     [-1.30, 0.55, 3.07], [1.30, 0.55, 3.07], [1.30, 0.42, 2.42], [-1.30, 0.42, 2.42], // underside rises 0.42->0.55
     [-1.30, 1.13, 3.07], [1.30, 1.13, 3.07], [1.30, 1.13, 2.42], [-1.30, 1.13, 2.42]));
+  // plate-fill r1 (owner directive 2026-08-01, GEOMETRY-GATE.md "Plate fill
+  // rule"): the 3.23-wide nose-deck plate FLOATED — open side mouths at
+  // x 1.30..1.615 (z 2.07..2.98, the sponson wall stops at 2.07) and the
+  // lip slit vented a 0.9 m empty shell over the nose shelf. One solid
+  // pannier/nose block closes shelf top (1.13) to deck underside (1.35),
+  // sponson face (2.07) to 8 cm behind the lip (2.98). Certified bands
+  // held: max |x| 1.61 (width guard 1.66, front-column window 1.62..1.70
+  // untouched), top 1.35 under every column's existing owner (deck 1.40,
+  // driver slope 1.40+), extreme-z hook columns untouched.
+  P.add('hull', box(3.22, 0.22, 0.91), 0, 1.24, 2.525);
   // r4 tell 5 ("nose shelf reads as a bolted-on bumper bar" + missing dashed
   // nose weld): plate seams + stud row integrate the face into the bow —
   // paint-class relief (<=8 mm proud, far inside the 3.26 hook anchors) —

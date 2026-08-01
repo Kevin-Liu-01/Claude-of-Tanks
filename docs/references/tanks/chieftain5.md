@@ -130,3 +130,25 @@ length only to |x| 1.53 with the right bin at 1.65-1.74), so the committed
 dims 100, floaters 100.
 Numbers (baseline -> now): hull 0 -> 63, whole 0 -> 47, turret 24.8 -> 44.9,
 stations 58.5 -> 62.7, dims 100 -> 100, floaters 100.
+
+## Plate-fill r1 (2026-08-01, owner directive)
+Two voids closed:
+- Both fender crest plates (z 1.72 and the 1.3 m engine-bay run at -2.02)
+  floated 9 cm above the fender plane with a see-through slot beneath. Closed
+  plate-to-fender with matching hullDetail solids (raised stowage bins on the
+  real vehicle); tops tuck under the plates, interior to their side/plan
+  columns.
+- The RIGHT tall bin (width-committing 1.74 face) floated 0.2 m above the
+  fender with a clean see-through corridor beneath (ray-probed: sight lines
+  crossed the vehicle untouched between bin bottom 1.79 and fender 1.59).
+  HARD-WON RULE: the REF's own bin floats — a full bin-to-fender fill moved
+  front_whole 47.3 -> 45.6 (the certified silhouette owns that air; "fills
+  must not move the gate" binds even when the fill looks more believable).
+  Fix that satisfies both: a web at the right fender's own 1.50 plane
+  (x 1.40..1.50, bin bottom to fender top) — under-bin sight lines now end
+  on shadowed structure, the authentic overhang read stays, and the gate row
+  returned byte-identical.
+The shared ukHull fender-wedge fill is a no-op here by construction (fender
+span ends before the glacis dip). Gate v11 before/after byte-identical (hull
+63 whole 47.3 turret 44.9 stations 63.7 dims 100 floaters 100). Evidence:
+shots/plate-fill-r1/chieftain5-{before,after}/ + crop-chieftain5-binslot-*.

@@ -93,3 +93,22 @@ the published-overall muzzle +7.34 — wholeCurves cover only. Dims sovereign:
 98.6, floaters 100.
 Numbers (baseline -> now): hull 63.6 -> 66, whole 24.4 -> 32-33, turret
 3.1 -> 32.7, stations 16.7 -> 65.5, dims 98.6, floaters 100.
+
+## Plate-fill r1 (2026-08-01, owner directive — GEOMETRY-GATE.md "Plate fill rule")
+Turntable review (tools/tmp-platefill probe, shots/plate-fill-r1/challenger1-
+{before,after}/): the tail overhang bin + shelf hung over a clean SEE-THROUGH
+tunnel (rake band ends -3.42/y0.84; nothing closed up to the 1.14 shelf
+underside — rear-quarter leak 10048 px, rear-deck 11974 px). Fills (uk.js):
+under-shelf block x±1.48 y0.84..1.16 z-3.42..-3.70 + recessed lower rear
+plate x±1.05 y0.82..1.16 z-3.70..-4.08 (8 cm behind the bin tail, overhang
+read kept), plus the shared ukHull fender-wedge fill at the bow (see below).
+Leak after: 822/976 px (residual = grazing across-deck sight lines, real
+daylight). Gate before/after at v11: BYTE-IDENTICAL rows (hull 65.8 whole
+32.2 turret 32.7 stations 66.1 dims 98.6 floaters 100) — fills measurement-
+invisible.
+
+Shared-helper note: ukHull now closes the wedge between the flat fender plane
+and the falling glacis/tail deck line wherever the deck drops below fenderY
+(lofted mudguard solids inside the plate's own footprint). Blast radius:
+chieftain5 / challenger1 / centurion3 / centurion5 / fv510 — all five re-run
+at gate v11 with byte-identical component rows vs pre-fill HEAD.
