@@ -1207,6 +1207,8 @@ export function createStudio(ctx) {
       sub: 'Staging rig · Free camera',
       minShowMs: 900,
     });
+    syncRoute(true);
+    docBrand('studio');
   }
 
   /**
@@ -1244,6 +1246,8 @@ export function createStudio(ctx) {
     cam.roll = 0;
     unsweepPool();
     enterGarage(); // restores camo overrides, sun trim, spots, showroom
+    syncRoute(false);
+    docBrand('garage');
   }
 
   // --- per-frame (owns the whole frame while active; called from main tick) ---
@@ -1268,6 +1272,66 @@ export function createStudio(ctx) {
   function urlParam(name) {
     try { return new URLSearchParams(window.location.search).get(name); } catch (_) { return null; }
   }
+
+  /** Is the page on the /studio pretty route (vite.config.js rewrite)? */
+  function onStudioRoute() {
+    try { return /^\/studio\/?$/.test(window.location.pathname); } catch (_) { return false; }
+  }
+
+  /**
+   * Keep the address bar honest: /studio while the studio owns the frame,
+   * / back in the garage — so a refresh lands where the player left off.
+   * replaceState only (no history spam); the ?studio=1 legacy entry param is
+   * stripped so an exit never re-triggers auto-entry on reload.
+   */
+  function syncRoute(inStudio) {
+    try {
+      if (!window.history || !window.history.replaceState) return;
+      const want = inStudio ? '/studio' : '/';
+      if (window.location.pathname === want) return;
+      const sp = new URLSearchParams(window.location.search);
+      sp.delete('studio');
+      const qs = sp.toString();
+      window.history.replaceState(null, '', want + (qs ? `?${qs}` : ''));
+    } catch (_) { /* sandboxed frames — cosmetic only */ }
+  }
+
+  /**
+   * Tab identity follows the mode (owner: "use relevant logos"): the studio
+   * mark + title while active, the crest favicon + original title back in
+   * the garage. Saved/restored as a pair so nothing leaks across modes.
+   */
+  const docBrand = (() => {
+    let saved = null;
+    return (mode) => {
+      try {
+        const links = [...document.querySelectorAll('link[rel="icon"]')];
+        if (mode === 'studio') {
+          if (!saved) {
+            saved = {
+              title: document.title,
+              links: links.map((l) => ({
+                l, href: l.getAttribute('href'), type: l.getAttribute('type'),
+              })),
+            };
+          }
+          for (const l of links) {
+            l.setAttribute('href', '/brand/nav/studio.png');
+            l.setAttribute('type', 'image/png');
+          }
+          document.title = 'Claude of Tanks — Studio';
+        } else if (saved) {
+          for (const { l, href, type } of saved.links) {
+            l.setAttribute('href', href);
+            if (type) l.setAttribute('type', type);
+            else l.removeAttribute('type');
+          }
+          document.title = saved.title;
+          saved = null;
+        }
+      } catch (_) { /* headless DOM without icon links */ }
+    };
+  })();
 
   // --- public API ----------------------------------------------------------------
   const api = {
@@ -1336,8 +1400,9 @@ export function createStudio(ctx) {
 
   window.__STUDIO = api;
 
-  // ?studio=1 auto-entry (waits for readiness; map via ?map=…)
-  if (urlParam('studio')) {
+  // Auto-entry: the /studio pretty route or the legacy ?studio=1 param
+  // (waits for readiness; map via ?map=…)
+  if (urlParam('studio') || onStudioRoute()) {
     const t = setInterval(() => {
       if (!window.__GAME_READY) return;
       clearInterval(t);

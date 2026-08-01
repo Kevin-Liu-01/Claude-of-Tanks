@@ -52,8 +52,34 @@ function reachableSrcModules(root) {
   return [...seen].map((f) => '/' + relative(root, f).replace(/\\/g, '/'));
 }
 
+/**
+ * Pretty routes (owner: "/studio" and "/home"). Pure URL rewrites — the
+ * browser's address bar keeps the pretty path while the server serves the
+ * real file. /studio boots the game (index.html; src/game/studio.js sees the
+ * pathname and auto-enters), /home serves the brand page. Queries pass
+ * through (/studio?map=desert works).
+ */
+function rewriteRoutes(req, res, next) {
+  const url = req.url || '';
+  const qi = url.indexOf('?');
+  const path = qi === -1 ? url : url.slice(0, qi);
+  const query = qi === -1 ? '' : url.slice(qi);
+  if (path === '/studio' || path === '/studio/') req.url = '/index.html' + query;
+  else if (path === '/home' || path === '/home/') req.url = '/tools/brand.html' + query;
+  next();
+}
+
 export default {
   plugins: [
+    {
+      name: 'cot-routes',
+      configureServer(server) {
+        server.middlewares.use(rewriteRoutes);
+      },
+      configurePreviewServer(server) {
+        server.middlewares.use(rewriteRoutes);
+      },
+    },
     {
       name: 'cot-dev-modulepreload',
       apply: 'serve',

@@ -20,6 +20,7 @@ const CSS = `
 .cot-studio .badge{position:absolute;top:16px;left:20px;pointer-events:auto;display:flex;
   align-items:center;gap:10px;padding:8px 12px;background:rgba(6,9,12,.85);
   border:1px solid rgba(190,204,216,.28);border-left:3px solid #e69a2d;backdrop-filter:blur(4px);}
+.cot-studio .badge .bm{width:18px;height:18px;object-fit:contain;display:block;}
 .cot-studio .badge .t{font-size:12px;font-weight:800;letter-spacing:.26em;color:#ffd27a;}
 .cot-studio .badge .m{font-size:10px;font-weight:700;letter-spacing:.14em;color:#8a97a3;}
 .cot-studio .busy{position:absolute;top:16px;left:50%;transform:translateX(-50%);
@@ -94,11 +95,16 @@ export function createStudioPanel(S) {
 
   // --- top badge -------------------------------------------------------------
   const badge = el('div', 'badge');
+  const badgeMark = document.createElement('img');
+  badgeMark.className = 'bm';
+  badgeMark.src = '/brand/nav/studio.png'; // the owner's gate-diff studio mark
+  badgeMark.alt = '';
+  badgeMark.draggable = false;
   const badgeTitle = el('div', 't', 'SCENE STUDIO');
   const badgeMap = el('div', 'm', '');
   const exitBtn = el('button', null, 'EXIT (F8)');
   exitBtn.addEventListener('click', () => S.exit());
-  badge.append(badgeTitle, badgeMap, exitBtn);
+  badge.append(badgeMark, badgeTitle, badgeMap, exitBtn);
   root.appendChild(badge);
 
   const busy = el('div', 'busy');

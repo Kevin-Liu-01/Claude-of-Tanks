@@ -1833,7 +1833,7 @@ export function createGarage(opts) {
   });
   root.querySelector('[data-nav="home"]').addEventListener('click', () => {
     emit('ui:click', {});
-    window.location.href = '/tools/brand.html';
+    window.location.href = '/home'; // pretty route (vite.config.js rewrite)
   });
   root.querySelector('.cot-tech').addEventListener('click', () => {
     emit('ui:click', {});
