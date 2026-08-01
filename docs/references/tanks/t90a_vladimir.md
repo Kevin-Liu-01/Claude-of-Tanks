@@ -129,3 +129,21 @@ front 61.7 / stations ~60). The de-dup ends the stacked z-fighting layers
 and the sub-belly/over-skirt LOD junk; the +28.3% stature and the me_001
 plate-like turret geometry (NOT in the batch-9 queue) remain the
 documented caps — authored proportions stay an owner decision.
+
+## r7 post-batch-9 certification (2026-08-01, LOD layers detached)
+
+Batch-9 detached the desirefx LOD stack (me_004/me_007/me_008); rows below
+are vs the de-duplicated oracle. Final r7 row: hull 33.3 / whole 11.1 /
+turret 9.3 / stations 0 / dims 100 / floaters 100. Dims all <=0.8%
+(heightM 2.22, hullLen 6.91, overall 9.52, width 3.76) — published sovereign.
+
+CERTIFIED STATURE CAPS (per-column, r7 worldtrace, side_whole):
+- roof cluster/stack: 23 ref columns top > 2.38 over z -2.06..+0.63, tops
+  2.39..3.68 vs published 2.23 (+7..+65%); the build's legal ceiling is
+  ~2.26 (p95 law: 3 spike columns only). This band alone caps side whole/
+  turret rows ~35-55 and owns the station topPct 15-23 at slices 3..7.
+- length: ref body spans -5.23..+5.20 vs the published-legal build's
+  -4.88..+4.61 (print +14% long): 8 ref-only columns (3 tail + 5 muzzle)
+  plus a +0.24 registration bias (side dAlong) — station 0 wPct 27.7 is the
+  unmatchable tail slice.
+A cap never excuses dims: dims 100, floaters 100 across all five poses.

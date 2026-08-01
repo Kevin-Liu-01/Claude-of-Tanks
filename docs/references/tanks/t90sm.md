@@ -122,3 +122,21 @@ stations 0 / dims 91.9 / floaters 100). The strip is structural hygiene
 per the batch-9 queue; the +39.5% tower/stature cap (authored proportions,
 out of batch-9 scope) remains the binding ceiling: side_whole 68.7 /
 side_turret 57.1 / front 49.2 / stations ~36 (re-derived, unchanged).
+
+## r7 post-batch-9 certification (2026-08-01, deck shadow plate stripped)
+
+Batch-9 stripped the 111-vert deck shadow plate from the chasis mesh; rows
+below are vs the repaired oracle. Final r7 row: hull 31.5 / whole 0 /
+turret 31.5 / stations 0 / dims 91.9 / floaters 100. Dims: heightM 2.25
+(+0.8), hullLen 7.00 (+2.0 — the print's fat tail vs the span-matching
+lips, the r5 documented trade), overall 9.65 (+0.2), width 3.78 (+0.1).
+
+CERTIFIED STATURE CAPS (per-column, r7 worldtrace, side_whole):
+- welded-roof towers: 21 ref columns top > 2.38 over z -2.18..+0.67, tops
+  2.44..3.15 vs published 2.23; legal build ceiling ~2.26 with 3 p95 spike
+  columns (the pano head). Owns station topPct 16-45 at slices 1..6 and
+  caps side whole/turret ~35-55.
+- muzzle: ref tube runs to +6.72 vs the published-overall build's +6.01
+  (print +8% long): 6 ref-only muzzle columns cap wholeCurves coverage
+  (long-print class; overallLengthM 9.63 sovereign, measured 9.65).
+A cap never excuses dims: dims 91.9 >= 90 with floaters 100.

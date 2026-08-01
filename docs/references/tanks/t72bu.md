@@ -141,3 +141,36 @@ side_turret 52.3 / front_whole 58.4 / stations ~54.7 — THE ORACLE IS
 RESURRECTED: was ~0 across every curve row (structurally dead), now
 stature-limited only (+29% authored roof — proportions untouched per the
 batch-9 scope; the tall print remains an owner-level ceiling decision).
+
+## r7 vs the batch-9-RESURRECTED oracle (2026-08-01)
+
+Batch-9 split the fused 2A46M out of hull mesh_324 into GunMesh under a Gun
+node on the print's Turret pivot and stripped the doubled deck shadow layer;
+the default gun-token regex resolves the new node, so the loader now keys
+hullLengthM correctly. r7 re-seats the proc to the resurrected frame: dome
+-0.25 -> -0.72 (ref plan turret front +0.1..+0.3), gun pivot compensated
+(world unchanged), bow pulled to the ref's 2.47-2.62 plan front.
+
+**Gate rows (dead-oracle r6 -> post-repair r7):**
+hull 51.4 -> 51.4, whole 4.8 -> 0, turret 0 -> 0, stations 12.4 -> 8.6,
+dims 100 -> 100, floaters 100 -> 100. Registration is now sane (side
+dAlong +0.49 = the print's +16% tail absorbed); the remaining rows are
+STATURE-CAPPED, not structural.
+
+**CERTIFIED STATURE CAPS (per-column, worldtrace):**
+1. Crown: ref roof 2.84-2.90 over z -0.57..+0.78 (12+ side columns) vs
+   published 2.23 (+27%); the build's legal ceiling is 2.25 -> e 0.30-0.41
+   per column on side_whole/side_turret. With the p95 term this alone holds
+   side_whole/turret under ~40; measured mean 7-8% -> rows 0.
+2. Tail: ref hull runs to z -5.47 (published-legal build tail -4.16;
+   print +16% long): 5 ref-only columns [1.43..0.29]..[1.52..0.79] plus a
+   0.49 m registration bias — hull ceiling ~55-65 (achieved 51.4).
+3. Muzzle: ref +5.44 vs the published-overall build's +4.62: 6-7 ref-only
+   whole columns (long-print class; overallLengthM 9.53 is sovereign).
+Stations: slice 0 sits on the unmatchable tail (wPct 43) — one survives the
+trimmed mean; slices 2/5 sit under the proud crown. Ceiling ~55-70.
+A cap never excuses dims: dims 100, floaters 100, all four dims <=1.0%.
+
+VERDICT unchanged from r6: this print corroborates STRUCTURE (post-repair)
+but its +16%/+27% stature makes every curve row a certified-cap row; do not
+chase curves into the build (published dims sovereign).

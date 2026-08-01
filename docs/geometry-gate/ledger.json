@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-01T09:50:02.895Z",
+ "generatedAt": "2026-08-01T11:59:30.858Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 4,
  "total": 85,
@@ -127,9 +127,9 @@
    "gatePassed": false,
    "components": {
     "hullCurves": 51.4,
-    "wholeCurves": 4.8,
+    "wholeCurves": 0,
     "turretCurves": 0,
-    "stations": 12.4,
+    "stations": 8.6,
     "dims": 100,
     "floaters": 100
    }
@@ -404,19 +404,6 @@
     "turretCurves": 0,
     "stations": 32.1,
     "dims": 81.6,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "t64bv1",
-   "geoMin": 0,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 54.2,
-    "wholeCurves": 40.9,
-    "turretCurves": 0,
-    "stations": 47.3,
-    "dims": 95.6,
     "floaters": 100
    }
   },
@@ -759,6 +746,19 @@
    }
   },
   {
+   "id": "t62mv1",
+   "geoMin": 39,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 69.6,
+    "wholeCurves": 63.1,
+    "turretCurves": 39,
+    "stations": 43.6,
+    "dims": 99,
+    "floaters": 100
+   }
+  },
+  {
    "id": "merkava2b",
    "geoMin": 39.9,
    "gatePassed": false,
@@ -768,6 +768,19 @@
     "turretCurves": 39.9,
     "stations": 80,
     "dims": 95.3,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "t64bv1",
+   "geoMin": 41.4,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 56.9,
+    "wholeCurves": 41.4,
+    "turretCurves": 50,
+    "stations": 56.9,
+    "dims": 96.2,
     "floaters": 100
    }
   },
@@ -832,19 +845,6 @@
     "wholeCurves": 47.7,
     "turretCurves": 100,
     "stations": 74.4,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "t62mv1",
-   "geoMin": 47.9,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 61.6,
-    "wholeCurves": 62.4,
-    "turretCurves": 47.9,
-    "stations": 57.9,
     "dims": 100,
     "floaters": 100
    }

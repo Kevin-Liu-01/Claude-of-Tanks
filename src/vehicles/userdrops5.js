@@ -198,8 +198,15 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // the long fused tube as the turret footprint and re-seat the upper vehicle
   // (same defect class as the m1a1_aim ruling in userdrops6.js).
   // The old t62mv1.glb print stays on disk for provenance only.
+  // batch-10 (tools/repair_oracles.py 't62_bergman'): the authored-long fused
+  // 2A20 is plane-split out of TurretMesh into GunMesh under a new Gun node
+  // and muzzle-trimmed to published overall length; gunNode resolves it so
+  // the loader keys normalization on hullLengthM over the gun-excluded box
+  // (gun=null previously keyed overallLengthM on the +14% tube: the tank
+  // shipped ~12% undersized and 1.5 m displaced — the gate's hull-8 row).
   source('t62mv1', {
-    path: `${ROOT}t62_bergman.glb`, turretNode: '^Turret$', autoPivot: false,
+    path: `${ROOT}t62_bergman.glb`, turretNode: '^Turret$', gunNode: '^Gun$',
+    autoPivot: false,
   });
   source('t72b3m', {
     turretNode: '^misc_a$', gunNode: '^misc_b$', autoPivot: true,

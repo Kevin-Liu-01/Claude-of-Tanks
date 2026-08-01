@@ -1600,6 +1600,196 @@ REPAIRS['t90a_vladimir'] = [
 ]
 
 
+# =============================================================== batch 10 ===
+# t62_bergman.glb — the ADOPTED t62mv1 model+oracle (gen2 bake, commit
+# c44033c; batch-9 candidate verdict in docs/references/tanks/t62mv1.md).
+# One defect class: the 2A20/U-5TS is FUSED into TurretMesh and authored
+# LONG — muzzle face z 71.72 glb-world on a hull spanning z ±36.41, i.e.
+# overall 10.65 m at the width-normalized scale (3.30 m / 33.50 u =
+# 0.0985 m/u) vs published 9.34 (+14%; the batch-9 packet's mask-measured
+# "+11.8%"). Because the gen2 node tree carries NO gun node, the game
+# loader resolves gun=null, keys its conservative normalization on
+# spec.overallLengthM over the FULL box (tube included) and centers z on
+# that box: the vehicle ships ~12% undersized and displaced ~1.5 m aft —
+# the fresh gate row read hull 8.3 / whole 0 / turret 0 / stations 0 (the
+# pre-repair-t72bu displaced-registration signature).
+#
+# Measured truth (batch-10 census of the pristine .bak, world units):
+#   * TurretMesh is ONE fused CAD solid (11 696 of 11 784 verts) plus four
+#     loose fittings (2×38-vert root brackets x ±2.26..2.40 z 23.70..25.11,
+#     2×6-vert roof bits z 8.81..8.92) — the t72bu "loose barrel component"
+#     precedent does NOT apply; the tube has no loose-component collar
+#     boundary. The natural boundary is the PLANE z = 24.0: casting cheek
+#     skin ends at z 23.99 (r up to 15.55), the mantlet collar / KTD-2
+#     block sits at z 24..25.1 (r ≤ 4.81), the bare tube (r 1.70..1.80)
+#     runs from z 26.9 to the muzzle.
+#   * authored tube vertex rings: 26.92 / 28.72 / 29.12 (collar taper),
+#     50.72 / 50.92 (evacuator rear), 59.32 / 59.92 (evacuator front),
+#     69.72 / 70.52 / 71.72 (muzzle step, bore recess, muzzle face).
+#
+# Repair (index surgery, zero authored vertex bytes changed):
+#  1. SPLIT at the collar plane: main-component triangles with ALL verts
+#     z ≥ 24.0 leave TurretMesh for a new GunMesh under a new 'Gun' node
+#     hung on the print's own 'Turret' pivot (batch-9 t72bu convention;
+#     attribute rows for the moved verts are COPIED into dedicated
+#     accessors). Crossing triangles (234) stay turret-side — the collar
+#     junction skin to z 26.92, physically the stationary mantlet collar
+#     the tube elevates inside. The loose root brackets stay turret-side
+#     (whole components; never shredded by the plane rule).
+#  2. TRIM the split tube at the muzzle: gun triangles with ANY vert
+#     z > 59.35 are deleted, ending the tube at the authored evacuator-
+#     front ring z 59.32 → overall span −36.41..59.32 = 95.73 u =
+#     9.431 m = published 9.34 +0.97%, inside the gate's 1% dims grace
+#     (the alternative authored rings land at 8.60 m / 9.49 m / 10.65 m).
+#     Trimming a fused-long tube to published length is ORACLE REPAIR
+#     under the GEOMETRY-GATE long-fused-tube doctrine, not fabrication:
+#     hull, stations, dims stay untouched; the tube keeps its authored
+#     contour (collar, sleeve, evacuator) and loses only the excess
+#     forward wall + muzzle step.
+#  3. The kept TurretMesh prim gets a trimmed index accessor (appended to
+#     the bin; original index bytes stay, unreferenced) and its POSITION
+#     accessor min/max REBUILT to the kept verts (x ±13.80, y 7.35..28.95,
+#     z −2.58..26.92): stale bounds would leave a phantom z-71.72 box that
+#     re-poisons the loader's hull-length key and the gate's shared
+#     camera frame. min/max are exact float32 round-trips of authored
+#     values — no vertex byte changes.
+# With the split in place userdrops5.js registers gunNode '^Gun$', the
+# loader resolves the gun, keys on hullLengthM over the gun-excluded box
+# and centers z on the HULL — frame sane in game and gate alike.
+def _plane_split_trim(tank_id, node_name, *, split_z, trim_z, gun_parent,
+                      expect_gun, expect_trim, expect_keep, muzzle_ring):
+    """Batch-10 'py2' builder: plane-split a fused tube out of a single-solid
+    mesh + muzzle-trim the split tube. expect_gun/expect_keep are exact
+    (verts, tris) censuses, expect_trim an exact tri count, muzzle_ring the
+    expected kept-gun max-z (authored ring station) — any drift refuses to
+    write (wrong input file?)."""
+    def op(gltf, chunks, _id=tank_id, node=node_name, sz=split_z, tz=trim_z,
+           parent_name=gun_parent, expg=expect_gun, expt=expect_trim,
+           expk=expect_keep, ring=muzzle_ring):
+        ni = find_node(gltf, node)
+        mesh_index = gltf['nodes'][ni]['mesh']
+        prim = gltf['meshes'][mesh_index]['primitives'][0]
+        if len(gltf['meshes'][mesh_index]['primitives']) != 1:
+            raise SystemExit(f'{_id}: expected 1 primitive')
+        bi = _bin_chunk_index(chunks)
+        data = bytearray(chunks[bi][1])
+        idx_acc = gltf['accessors'][prim['indices']]
+        if idx_acc['componentType'] != 5123:
+            raise SystemExit(f'{_id}: expected uint16 indices')
+        idx = [v[0] for v in _read_rows(gltf, data, prim['indices'])]
+        pos = _read_rows(gltf, data, prim['attributes']['POSITION'])
+        world = node_world_matrix(gltf, ni)
+        W = [transform_point(world, p) for p in pos]
+
+        # union-find over triangle connectivity; the tube is fused into the
+        # DOMINANT component — only its triangles obey the plane rule, so
+        # loose fittings straddling the plane can never be shredded.
+        parent = list(range(len(pos)))
+
+        def find(a):
+            while parent[a] != a:
+                parent[a] = parent[parent[a]]
+                a = parent[a]
+            return a
+
+        for k in range(0, len(idx) - 2, 3):
+            a, b = find(idx[k]), find(idx[k + 1])
+            if a != b:
+                parent[a] = b
+            if find(idx[k]) != find(idx[k + 2]):
+                parent[find(idx[k])] = find(idx[k + 2])
+        sizes = {}
+        for i in range(len(pos)):
+            r = find(i)
+            sizes[r] = sizes.get(r, 0) + 1
+        main = max(sizes, key=sizes.get)
+
+        gun_tris, kept, trimmed = [], [], 0
+        for k in range(0, len(idx) - 2, 3):
+            tri = (idx[k], idx[k + 1], idx[k + 2])
+            zs = (W[tri[0]][2], W[tri[1]][2], W[tri[2]][2])
+            if find(tri[0]) == main and min(zs) >= sz:
+                if max(zs) > tz:
+                    trimmed += 1
+                else:
+                    gun_tris.append(tri)
+            else:
+                kept.append(tri)
+        gun_vids = sorted({v for t in gun_tris for v in t})
+        keep_vids = sorted({v for t in kept for v in t})
+        got_g = (len(gun_vids), len(gun_tris))
+        got_k = (len(keep_vids), len(kept))
+        if got_g != tuple(expg) or trimmed != expt or got_k != tuple(expk):
+            raise SystemExit(f'{_id}: census mismatch — gun {got_g} vs {expg}, '
+                             f'trim {trimmed} vs {expt}, keep {got_k} vs {expk}; '
+                             f'refusing to write (wrong input file?)')
+        muzzle = max(W[v][2] for v in gun_vids)
+        if abs(muzzle - ring) > 0.05:
+            raise SystemExit(f'{_id}: trimmed muzzle at z {muzzle:.3f}, expected '
+                             f'ring {ring}; refusing to write')
+
+        # kept turret prim: trimmed index accessor + rebuilt POSITION bounds
+        flat = [v for t in kept for v in t]
+        nbv = _bin_append(gltf, data, struct.pack(f'<{len(flat)}H', *flat), 34963)
+        gltf['accessors'].append({'bufferView': nbv, 'componentType': 5123,
+                                  'count': len(flat), 'type': 'SCALAR'})
+        prim['indices'] = len(gltf['accessors']) - 1
+        pos_acc = gltf['accessors'][prim['attributes']['POSITION']]
+        pos_acc['min'] = [min(pos[v][k] for v in keep_vids) for k in range(3)]
+        pos_acc['max'] = [max(pos[v][k] for v in keep_vids) for k in range(3)]
+
+        # GunMesh: copied attribute rows + remapped index, on the pivot node
+        remap = {v: i for i, v in enumerate(gun_vids)}
+        attrs = {}
+        for name, ai in prim['attributes'].items():
+            acc, ncomp, fmt, offset, stride = _acc_reader(gltf, data, ai)
+            rows = [struct.unpack_from('<' + fmt * ncomp, data,
+                                       offset + i * stride) for i in gun_vids]
+            payload = b''.join(struct.pack('<' + fmt * ncomp, *r) for r in rows)
+            abv = _bin_append(gltf, data, payload, 34962)
+            new_acc = {'bufferView': abv, 'componentType': acc['componentType'],
+                       'count': len(gun_vids), 'type': acc['type']}
+            if name == 'POSITION':
+                new_acc['min'] = [min(r[k] for r in rows) for k in range(ncomp)]
+                new_acc['max'] = [max(r[k] for r in rows) for k in range(ncomp)]
+            gltf['accessors'].append(new_acc)
+            attrs[name] = len(gltf['accessors']) - 1
+        gidx = [remap[v] for t in gun_tris for v in t]
+        gbv = _bin_append(gltf, data, struct.pack(f'<{len(gidx)}H', *gidx), 34963)
+        gltf['accessors'].append({'bufferView': gbv, 'componentType': 5123,
+                                  'count': len(gidx), 'type': 'SCALAR'})
+        gprim = {'attributes': attrs, 'indices': len(gltf['accessors']) - 1}
+        if 'material' in prim:
+            gprim['material'] = prim['material']
+        gltf['meshes'].append({'name': 'GunMesh', 'primitives': [gprim]})
+        src_node = gltf['nodes'][ni]
+        pivot = gltf['nodes'][find_node(gltf, parent_name)]
+        pt = pivot.get('translation', [0.0, 0.0, 0.0])
+        gun_node = {'name': 'Gun', 'mesh': len(gltf['meshes']) - 1,
+                    'translation': [-pt[0], -pt[1], -pt[2]]}
+        if 'rotation' in src_node:
+            gun_node['rotation'] = list(src_node['rotation'])
+        if 'scale' in src_node:
+            gun_node['scale'] = list(src_node['scale'])
+        gltf['nodes'].append(gun_node)
+        pivot.setdefault('children', []).append(len(gltf['nodes']) - 1)
+
+        gltf['buffers'][0]['byteLength'] = len(data)
+        chunks[bi] = (BIN_CHUNK, bytes(data))
+        print(f'[repair] {_id}: {node} plane-split at z {sz} — '
+              f'{len(gun_tris)} tris -> GunMesh under {parent_name}, '
+              f'{trimmed} muzzle tris trimmed (tube ends z {muzzle:.2f})')
+    return op
+
+
+REPAIRS['t62_bergman'] = [
+    ('py2', _plane_split_trim('t62_bergman', 'TurretMesh',
+                              split_z=24.0, trim_z=59.35, gun_parent='Turret',
+                              expect_gun=(1012, 1879), expect_trim=521,
+                              expect_keep=(10631, 21112), muzzle_ring=59.32)),
+]
+
+
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)
     if ops is None:
