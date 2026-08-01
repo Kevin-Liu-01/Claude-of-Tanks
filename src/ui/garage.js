@@ -262,7 +262,7 @@ const GARAGE_CSS = `
    (chips bottom:172px + ~26px tall) instead of reserving 36% — the freed
    space all goes to the BATTLEFIELD list (maps is the flexible section). */
 .cot-leftcol{position:absolute;left:34px;top:156px;bottom:210px;
-  width:224px;display:flex;flex-direction:column;gap:12px;overflow:hidden;pointer-events:auto;}
+  width:224px;display:flex;flex-direction:column;gap:8px;overflow:hidden;pointer-events:auto;}
   /* MAPS r1: top 122 -> 110, gap 14 -> 12 — the doubled battlefield roster
      needs the slack; the TECH TREE button ends ~98px so nothing collides */
 /* garage_polish r9: the battlefield + camo sections share ONE industrial
@@ -317,7 +317,7 @@ const GARAGE_CSS = `
   text-transform:uppercase;margin-top:1px;}
 .cot-map-card.sel .msub{color:#d8a04c;}
 /* CAMO PICKER SECTION: per-tank paint pattern (persisted, +concealment) */
-.cot-camos{position:static;flex:0 0 auto;margin-top:auto;pointer-events:auto;}
+.cot-camos{position:static;flex:0 0 auto;pointer-events:auto;}
 .cot-camos .ctitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
   text-transform:uppercase;margin-bottom:7px;}
 /* garage_polish r9: minmax(0,1fr) + min-width:0 — grid items default to
@@ -478,7 +478,7 @@ const GARAGE_CSS = `
    tools/marketing-shots). Bottom-anchored under the camo grid in the left
    column; purely decorative, so on short viewports it is the element that
    clips first (leftcol overflow:hidden), never the functional pickers. */
-.cot-featured{width:224px;flex:0 0 auto;margin-top:12px;pointer-events:auto;}
+.cot-featured{width:224px;flex:0 0 auto;pointer-events:auto;}
 /* r9.1: browse arrows — visible on hover, click = prev/next still */
 .cot-featured .fnav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;
   width:20px;height:32px;display:flex;align-items:center;justify-content:center;
