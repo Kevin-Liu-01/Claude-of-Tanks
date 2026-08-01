@@ -112,3 +112,34 @@ shadow plates from the t-series TurretMesh/hull meshes (mesh-level surgery
 beyond the rigid-transform queue); t72bu is unusable as an oracle until then.
 
 **r7 update (edge-on prism law, docs/GEOMETRY-GATE.md):** loftHull now subdivides at <=0.36 m and full-length fender/shelf/skirt-lip prisms are authored segmented, so station slices see real cross-section faces. State: hullCurves 44.3 / wholeCurves 23.8 / turretCurves 24.6 / stations 15.7 / dims 95.5 / floaters 100.
+
+
+## BATCH-12 VERTEX NORMALIZATION + VERTEX ROUND (2026-08-01, owner ruling b522c34)
+
+Direct vertex analysis is now sanctioned (docs/GEOMETRY-GATE.md "Reference-model
+usage"). Toolchain: tools/vertex-extract.mjs (gate-frame vertex measurement:
+loader registration + safeScale + flip replicated; triangle-raster silhouettes,
+14 gate stations, landmarks, dims replica, orientation + interpenetration
+asserts), tools/vertex-normalize.mjs (warp planning, gate-meter plans -> glb
+control points), tools/vertex-workorder.mjs (both-model 96-col curves in world
+coords), tools/tmp-rv-board.mjs (mandatory turntable evidence ->
+shots/russia-vertex/).
+
+**Batch-12 recipe (tools/repair_oracles.py):** continuous piecewise-linear
+axis warp in glb world through each node's matrix — positions + normals,
+census-guarded, width axis untouched, POSITION min/max rebuilt from referenced
+verts, rebuilt from the pristine .bak, byte-idempotent (double-run shasum
+124f9584959a28ca12b153fd1a85d7e47391c4f2).
+
+Stylization before -> after: height +23.5%, hull mask +11.6%, overall +9.1% -> height -0.4%,
+hull mask -0.1%, overall -0.1%, width 0%
+(gate-meter plans in tools/vertex-normalize.mjs PLANS['pt91m']).
+The stylization-cap certifications of r5-r7 are RETIRED for this print.
+
+**Standing asserts (docs/references/vertex/pt91m.json):** orientation
+glacis +z / gun +z / agree True
+(descent runs {"runFront": 1.52, "runRear": 0}); interpenetration
+0 verts (worst dip 0 m outside the r>1.05 ring annulus).
+
+**Gate row after this round:** hull 0 / whole 0 / turret 0 / stations 11.6 / dims 89.9 / floaters 100.
+BUILD NOT YET RE-ANCHORED. dims 89.9 = old-frame heightM 2.26 vs the (unchanged) published 2.19 + met-mast p95 interplay — resolves with the rebuild.

@@ -149,3 +149,34 @@ CERTIFIED STATURE CAPS (per-column, r7 worldtrace, side_whole):
 A cap never excuses dims: dims 100, floaters 100 across all five poses.
 
 **r7 update (edge-on prism law, docs/GEOMETRY-GATE.md):** loftHull now subdivides at <=0.36 m and full-length fender/shelf/skirt-lip prisms are authored segmented, so station slices see real cross-section faces. State: hullCurves 33.3 / wholeCurves 11.1 / turretCurves 9.3 / stations 0 / dims 100 / floaters 100.
+
+
+## BATCH-12 VERTEX NORMALIZATION + VERTEX ROUND (2026-08-01, owner ruling b522c34)
+
+Direct vertex analysis is now sanctioned (docs/GEOMETRY-GATE.md "Reference-model
+usage"). Toolchain: tools/vertex-extract.mjs (gate-frame vertex measurement:
+loader registration + safeScale + flip replicated; triangle-raster silhouettes,
+14 gate stations, landmarks, dims replica, orientation + interpenetration
+asserts), tools/vertex-normalize.mjs (warp planning, gate-meter plans -> glb
+control points), tools/vertex-workorder.mjs (both-model 96-col curves in world
+coords), tools/tmp-rv-board.mjs (mandatory turntable evidence ->
+shots/russia-vertex/).
+
+**Batch-12 recipe (tools/repair_oracles.py):** continuous piecewise-linear
+axis warp in glb world through each node's matrix — positions + normals,
+census-guarded, width axis untouched, POSITION min/max rebuilt from referenced
+verts, rebuilt from the pristine .bak, byte-idempotent (double-run shasum
+96aead422c006e82c93d993b44743e3078f030cb).
+
+Stylization before -> after: height +28.6%, hull mask +14.0%, overall +9.1% -> height -0.5%,
+hull mask -0.1%, overall -0.2%, width 0%
+(gate-meter plans in tools/vertex-normalize.mjs PLANS['t90a_vladimir']).
+The stylization-cap certifications of r5-r7 are RETIRED for this print.
+
+**Standing asserts (docs/references/vertex/t90a_vladimir.json):** orientation
+glacis +z / gun +z / agree True
+(descent runs {"runFront": 3, "runRear": 0.29}); interpenetration
+487 verts (worst dip 0.533 m outside the r>1.05 ring annulus).
+
+**Gate row after this round:** hull 0 / whole 0 / turret 7 / stations 25 / dims 100 / floaters 100.
+BUILD NOT YET RE-ANCHORED. Print turret still carries the fender-line strip (interpen 487 verts to -0.53 m — the documented LOD-copy quirk); its plan_turret columns remain oracle-parity, not real turret.

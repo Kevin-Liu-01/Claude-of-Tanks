@@ -1,0 +1,993 @@
+#!/usr/bin/env node
+// tools/vertex-extract.mjs — VERTEX-ROUND toolchain (owner ruling 2026-08-01,
+// docs/GEOMETRY-GATE.md "Reference-model usage"): parse a reference GLB's
+// vertex/index data DIRECTLY (no browser), replicate the game loader's
+// registration + normalization conventions (turretNode/gunNode/yawOffset/
+// autoPivot from MODEL_SOURCE + the fidelity harness width safeScale and
+// -Z-forward flip), and emit per-tank authoring JSON:
+//
+//   * exact silhouette polylines per ortho view (side/plan/front), per part
+//     (whole/hull/turret/gun), traced from a software rasterization of the
+//     actual triangles — the same mask->column semantics as the gate, at
+//     ~4.5 mm/px instead of the gate's ~11 cm columns;
+//   * station cross-sections at the gate's 14 slice planes (side-hull-mask
+//     z-range, front-view z-slab clip — the exact gate recipe);
+//   * vertex-space z-profiles + landmark corners (deck/belly polyline
+//     breakpoints, turret ring/crown numbers) for procedural authoring;
+//   * the gate's dims-measurement replica (12% body filter, p95 roof,
+//     0.35 m plan band) -> the print's TRUE stylization factors vs
+//     published dims;
+//   * the glb-world <-> gate-world affine map (axis permutation, meters
+//     per glb unit, offsets, harness flip) so vertex-space repair recipes
+//     (tools/repair_oracles.py batch-12+) can be planned in real meters
+//     and written in glb units.
+//
+// Usage:
+//   node tools/vertex-extract.mjs --ids=t62mv1,t64bv1[,...]
+//   node tools/vertex-extract.mjs --ids=all           (the nine russia ids)
+//   [--out=docs/references/vertex] [--res=2560]
+//
+// The registration table below MIRRORS src/vehicles/userdrops5.js +
+// src/vehicles/variants.js (those modules are vite-env-gated and cannot be
+// imported under plain node). Keep in sync when registrations change.
+
+import fs from 'node:fs';
+import path from 'node:path';
+
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+
+// ---------------------------------------------------------------- registry --
+// pubDims from userdrops5.js make() rows (t72b_1987/t72b3m inherit t72b3 in
+// modern1.js; t72bu/t90a_vladimir inherit t90a in variants.js).
+const REG = {
+  t62mv1: {
+    path: 'public/models/tanks/community/recovered/t62_bergman.glb',
+    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: false,
+    // autoPivot:false -> turretG keeps the procedural pivot; the harness flip
+    // check needs rig_turret's z. buildT62MV1 seats the turret near z -0.2;
+    // the bergman gun box center sits far +z -> no flip (packet-verified).
+    assumeFlip: false,
+    pubDims: { hullLengthM: 6.63, overallLengthM: 9.34, widthM: 3.30, heightM: 2.40 },
+  },
+  t64bv1: {
+    path: 'public/models/tanks/community/recovered/t64bv1.glb',
+    turretNode: '^Turret$', autoPivot: true, yawOffset: -Math.PI / 2,
+    pubDims: { hullLengthM: 6.54, overallLengthM: 9.23, widthM: 3.42, heightM: 2.17 },
+  },
+  t72b_1987: {
+    path: 'public/models/tanks/community/recovered/t72b_1987.glb',
+    turretNode: '^Turret$', autoPivot: true, yawOffset: -Math.PI / 2,
+    pubDims: { hullLengthM: 6.67, overallLengthM: 9.53, widthM: 3.59, heightM: 2.23 },
+  },
+  t72bu: {
+    path: 'public/models/tanks/community/recovered/t72bu.glb',
+    turretNode: '^Turret$', autoPivot: true, yawOffset: -Math.PI / 2,
+    pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.23 },
+  },
+  t72b3m: {
+    path: 'public/models/tanks/community/recovered/t72b3m.glb',
+    turretNode: '^misc_a$', gunNode: '^misc_b$', autoPivot: true, yawOffset: Math.PI,
+    pubDims: { hullLengthM: 6.67, overallLengthM: 9.53, widthM: 3.59, heightM: 2.23 },
+  },
+  t90sm: {
+    path: 'public/models/tanks/community/recovered/t90sm.glb',
+    turretNode: '^misc_a$', gunNode: '^misc_b$', autoPivot: true, yawOffset: Math.PI,
+    pubDims: { hullLengthM: 6.86, overallLengthM: 9.63, widthM: 3.78, heightM: 2.23 },
+  },
+  pt91m: {
+    path: 'public/models/tanks/community/recovered/pt91m.glb',
+    turretNode: '^misc_a$', gunNode: '^misc_b$', autoPivot: true,
+    pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.59, heightM: 2.19 },
+  },
+  t90a_vladimir: {
+    path: 'public/models/tanks/community/recovered/t90a_vladimir.glb',
+    turretNode: '^desirefx[._]?me_001$', autoPivot: true,
+    pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.23 },
+  },
+  t90a: {
+    path: 'public/models/tanks/community/variants/t90a_xarchenko_variant.glb',
+    turretNode: 'TurretPivot', gunNode: 'GunPivot', autoPivot: true,
+    // modelLoader applyCommunityFixes adds two K-5 clamshell wedge boxes on
+    // the turret cheeks at runtime — part of the gate's reference mask.
+    runtimeKit: 't90a_k5_wedges',
+    pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.23 },
+  },
+};
+const RUSSIA_IDS = Object.keys(REG);
+
+// ------------------------------------------------------------------- args --
+const args = process.argv.slice(2);
+const getArg = (k, d) => {
+  const a = args.find((s) => s.startsWith(`--${k}=`));
+  return a ? a.slice(k.length + 3) : d;
+};
+const idsArg = getArg('ids', 'all');
+const OUTDIR = path.join(ROOT, getArg('out', 'docs/references/vertex'));
+const RES = Number(getArg('res', 2560));
+const ids = idsArg === 'all' ? RUSSIA_IDS : idsArg.split(',').map((s) => s.trim()).filter(Boolean);
+
+// ------------------------------------------------------------- glb parsing --
+function readGLB(file) {
+  const data = fs.readFileSync(file);
+  if (data.readUInt32LE(0) !== 0x46546c67) throw new Error(`${file}: not a GLB`);
+  const length = data.readUInt32LE(8);
+  let off = 12;
+  let json = null;
+  let bin = null;
+  while (off < length) {
+    const clen = data.readUInt32LE(off);
+    const ctype = data.readUInt32LE(off + 4);
+    const payload = data.subarray(off + 8, off + 8 + clen);
+    if (ctype === 0x4e4f534a) json = JSON.parse(payload.toString('utf8'));
+    else if (ctype === 0x004e4942) bin = payload;
+    off += 8 + clen;
+  }
+  return { json, bin };
+}
+
+const COMP = { 5120: 1, 5121: 1, 5122: 2, 5123: 2, 5125: 4, 5126: 4 };
+const NCOMP = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT4: 16 };
+
+function accArray(gltf, bin, ai) {
+  const acc = gltf.accessors[ai];
+  if (acc.sparse) throw new Error('sparse accessor unsupported');
+  const bv = gltf.bufferViews[acc.bufferView];
+  const n = NCOMP[acc.type];
+  const csz = COMP[acc.componentType];
+  const stride = bv.byteStride || n * csz;
+  const base = (bv.byteOffset || 0) + (acc.byteOffset || 0);
+  const out = new Float64Array(acc.count * n);
+  for (let i = 0; i < acc.count; i++) {
+    for (let c = 0; c < n; c++) {
+      const o = base + i * stride + c * csz;
+      let v;
+      if (acc.componentType === 5126) v = bin.readFloatLE(o);
+      else if (acc.componentType === 5125) v = bin.readUInt32LE(o);
+      else if (acc.componentType === 5123) v = bin.readUInt16LE(o);
+      else if (acc.componentType === 5121) v = bin.readUInt8(o);
+      else if (acc.componentType === 5122) v = bin.readInt16LE(o);
+      else v = bin.readInt8(o);
+      out[i * n + c] = v;
+    }
+  }
+  return { arr: out, count: acc.count, n };
+}
+
+// --------------------------------------------------------------- mat math --
+// column-major 4x4 (glTF/three layout)
+const IDENT = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+function matMul(a, b) {
+  const r = new Array(16).fill(0);
+  for (let c = 0; c < 4; c++) {
+    for (let row = 0; row < 4; row++) {
+      let s = 0;
+      for (let k = 0; k < 4; k++) s += a[k * 4 + row] * b[c * 4 + k];
+      r[c * 4 + row] = s;
+    }
+  }
+  return r;
+}
+function nodeLocal(node) {
+  if (node.matrix) return [...node.matrix];
+  const t = node.translation || [0, 0, 0];
+  const q = node.rotation || [0, 0, 0, 1];
+  const s = node.scale || [1, 1, 1];
+  const [x, y, z, w] = q;
+  const m = [
+    1 - 2 * (y * y + z * z), 2 * (x * y + z * w), 2 * (x * z - y * w), 0,
+    2 * (x * y - z * w), 1 - 2 * (x * x + z * z), 2 * (y * z + x * w), 0,
+    2 * (x * z + y * w), 2 * (y * z - x * w), 1 - 2 * (x * x + y * y), 0,
+    0, 0, 0, 1,
+  ];
+  for (let c = 0; c < 3; c++) for (let r = 0; r < 3; r++) m[c * 4 + r] *= s[c];
+  m[12] = t[0]; m[13] = t[1]; m[14] = t[2];
+  return m;
+}
+const xfp = (m, x, y, z) => [
+  m[0] * x + m[4] * y + m[8] * z + m[12],
+  m[1] * x + m[5] * y + m[9] * z + m[13],
+  m[2] * x + m[6] * y + m[10] * z + m[14],
+];
+// three.js Euler XYZ rotation matrix (Matrix4.makeRotationFromEuler order XYZ)
+function eulerXYZ(x, y, z) {
+  const a = Math.cos(x); const b = Math.sin(x);
+  const c = Math.cos(y); const d = Math.sin(y);
+  const e = Math.cos(z); const f = Math.sin(z);
+  const ae = a * e; const af = a * f; const be = b * e; const bf = b * f;
+  return [
+    c * e, af + be * d, bf - ae * d, 0,
+    -c * f, ae - bf * d, be + af * d, 0,
+    d, -b * c, a * c, 0,
+    0, 0, 0, 1,
+  ];
+}
+
+// ------------------------------------------------------------- scene model --
+// Flattened list of prim INSTANCES: { nodeIdx, name, meshName, world, pos:
+// Float64Array xyz triplets (glb world), tris: Uint32Array }
+function buildScene(gltf, bin) {
+  const sceneDef = gltf.scenes[gltf.scene ?? 0];
+  const nodes = gltf.nodes;
+  const inst = [];
+  const nodeWorld = new Array(nodes.length).fill(null);
+  const nodeParent = new Array(nodes.length).fill(-1);
+  const order = []; // three traversal order (depth-first, children in order)
+  const visit = (ni, parentM, parentI) => {
+    const node = nodes[ni];
+    const world = matMul(parentM, nodeLocal(node));
+    nodeWorld[ni] = world;
+    nodeParent[ni] = parentI;
+    order.push(ni);
+    if (node.mesh !== undefined) {
+      const mesh = gltf.meshes[node.mesh];
+      for (const prim of mesh.primitives) {
+        if ((prim.mode ?? 4) !== 4) continue; // triangles only
+        if (prim.attributes.POSITION === undefined) continue;
+        if (prim.extensions?.KHR_draco_mesh_compression) throw new Error('draco unsupported');
+        const P = accArray(gltf, bin, prim.attributes.POSITION);
+        const world3 = world;
+        const pos = new Float64Array(P.count * 3);
+        for (let i = 0; i < P.count; i++) {
+          const p = xfp(world3, P.arr[i * 3], P.arr[i * 3 + 1], P.arr[i * 3 + 2]);
+          pos[i * 3] = p[0]; pos[i * 3 + 1] = p[1]; pos[i * 3 + 2] = p[2];
+        }
+        let tris;
+        if (prim.indices !== undefined) {
+          const I = accArray(gltf, bin, prim.indices);
+          tris = Uint32Array.from(I.arr);
+        } else {
+          tris = new Uint32Array(P.count);
+          for (let i = 0; i < P.count; i++) tris[i] = i;
+        }
+        // referenced-verts mask: index surgery (repair_oracles batches) leaves
+        // stale unreferenced verts in the buffer — they never render and must
+        // never count in measurements.
+        const refd = new Uint8Array(P.count);
+        for (const vi of tris) refd[vi] = 1;
+        // GLTFLoader parity: geometry.boundingBox comes from the accessor's
+        // authored min/max (NOT the raw array) — repairs rebuild these.
+        const accPos = gltf.accessors[prim.attributes.POSITION];
+        const localBox = (accPos.min && accPos.max)
+          ? { lo: accPos.min.slice(0, 3), hi: accPos.max.slice(0, 3) }
+          : null;
+        inst.push({
+          nodeIdx: ni, name: node.name || '', meshName: mesh.name || '',
+          world, pos, tris, vcount: P.count, refd, localBox,
+        });
+      }
+    }
+    for (const ci of node.children || []) visit(ci, world, ni);
+  };
+  for (const ri of sceneDef.nodes) visit(ri, IDENT, -1);
+  return { inst, nodeWorld, nodeParent, order, nodes };
+}
+
+function findNodeIdx(scene, reStr) {
+  const re = new RegExp(reStr, 'i');
+  for (const ni of scene.order) {
+    if (re.test(scene.nodes[ni].name || '')) return ni;
+  }
+  return -1;
+}
+function subtreeSet(scene, rootIdx) {
+  const set = new Set();
+  if (rootIdx < 0) return set;
+  const kids = new Map();
+  scene.order.forEach((ni) => {
+    const p = scene.nodeParent[ni];
+    if (!kids.has(p)) kids.set(p, []);
+    kids.get(p).push(ni);
+  });
+  const stack = [rootIdx];
+  while (stack.length) {
+    const ni = stack.pop();
+    set.add(ni);
+    for (const ci of kids.get(ni) || []) stack.push(ci);
+  }
+  return set;
+}
+// findBestGunNode parity: all regex hits, pick largest corner-box span
+function findBestGunIdx(scene, instances, reStr, withinSet = null) {
+  const re = new RegExp(reStr, 'i');
+  const hits = [];
+  for (const ni of scene.order) {
+    if (withinSet && !withinSet.has(ni)) continue;
+    if (re.test(scene.nodes[ni].name || '')) hits.push(ni);
+  }
+  if (hits.length < 2) return hits[0] ?? -1;
+  let best = hits[0]; let bestSpan = -Infinity;
+  for (const ni of hits) {
+    const sub = subtreeSet(scene, ni);
+    let lo = [Infinity, Infinity, Infinity]; let hi = [-Infinity, -Infinity, -Infinity];
+    for (const it of instances) {
+      if (!sub.has(it.nodeIdx)) continue;
+      for (let i = 0; i < it.pos.length; i += 3) {
+        if (it.refd && !it.refd[i / 3]) continue;
+        for (let k = 0; k < 3; k++) {
+          if (it.pos[i + k] < lo[k]) lo[k] = it.pos[i + k];
+          if (it.pos[i + k] > hi[k]) hi[k] = it.pos[i + k];
+        }
+      }
+    }
+    const span = lo[0] === Infinity ? 0 : Math.max(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]);
+    if (span > bestSpan) { best = ni; bestSpan = span; }
+  }
+  return best;
+}
+
+// corner-box (three Box3/GLTFLoader parity: the prim's ACCESSOR min/max box
+// — geometry.boundingBox in the runtime — through nodeWorld then extraM)
+function cornerBox(instances, filter, extraM = IDENT) {
+  const lo = [Infinity, Infinity, Infinity]; const hi = [-Infinity, -Infinity, -Infinity];
+  for (const it of instances) {
+    if (filter && !filter(it)) continue;
+    let l; let h; let M;
+    if (it.localBox) { l = it.localBox.lo; h = it.localBox.hi; M = matMul(extraM, it.world); }
+    else {
+      // runtime kit boxes: pos is glb-world already
+      l = [Infinity, Infinity, Infinity]; h = [-Infinity, -Infinity, -Infinity];
+      for (let i = 0; i < it.pos.length; i += 3) {
+        for (let k = 0; k < 3; k++) {
+          if (it.pos[i + k] < l[k]) l[k] = it.pos[i + k];
+          if (it.pos[i + k] > h[k]) h[k] = it.pos[i + k];
+        }
+      }
+      if (l[0] === Infinity) continue;
+      M = extraM;
+    }
+    for (const cx of [l[0], h[0]]) {
+      for (const cy of [l[1], h[1]]) {
+        for (const cz of [l[2], h[2]]) {
+          const p = xfp(M, cx, cy, cz);
+          for (let k = 0; k < 3; k++) {
+            if (p[k] < lo[k]) lo[k] = p[k];
+            if (p[k] > hi[k]) hi[k] = p[k];
+          }
+        }
+      }
+    }
+  }
+  return lo[0] === Infinity ? null : { lo, hi };
+}
+
+const isShadowName = (it) => /shadow/i.test(it.name) || /shadow/i.test(it.meshName);
+
+// ------------------------------------------------------------ rasterizer ---
+// Software mask raster with pixel-center sampling (GPU parity: degenerate
+// projected triangles cover no pixel centers — the edge-on prism law).
+function rasterize(tris2d, width, height, u0, v0, du) {
+  const mask = new Uint8Array(width * height);
+  const n = tris2d.length;
+  for (let t = 0; t < n; t += 6) {
+    const ax = tris2d[t]; const ay = tris2d[t + 1];
+    const bx = tris2d[t + 2]; const by = tris2d[t + 3];
+    const cx = tris2d[t + 4]; const cy = tris2d[t + 5];
+    const area = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+    if (area === 0) continue;
+    let minX = Math.min(ax, bx, cx); let maxX = Math.max(ax, bx, cx);
+    let minY = Math.min(ay, by, cy); let maxY = Math.max(ay, by, cy);
+    let px0 = Math.max(0, Math.floor((minX - u0) / du - 0.5));
+    let px1 = Math.min(width - 1, Math.ceil((maxX - u0) / du - 0.5));
+    let py0 = Math.max(0, Math.floor((minY - v0) / du - 0.5));
+    let py1 = Math.min(height - 1, Math.ceil((maxY - v0) / du - 0.5));
+    const inv = 1 / area;
+    for (let py = py0; py <= py1; py++) {
+      const sy = v0 + (py + 0.5) * du;
+      for (let px = px0; px <= px1; px++) {
+        const sx = u0 + (px + 0.5) * du;
+        const w0 = (bx - ax) * (sy - ay) - (by - ay) * (sx - ax);
+        const w1 = (cx - bx) * (sy - by) - (cy - by) * (sx - bx);
+        const w2 = (ax - cx) * (sy - cy) - (ay - cy) * (sx - cx);
+        if ((w0 * inv >= 0) && (w1 * inv >= 0) && (w2 * inv >= 0)) mask[py * width + px] = 1;
+      }
+    }
+  }
+  return mask;
+}
+
+// column trace: [u, topV, botV] per lit pixel column (band incl. gaps)
+function traceMask(mask, width, height, u0, v0, du) {
+  const out = [];
+  for (let x = 0; x < width; x++) {
+    let top = -1; let bot = -1;
+    for (let y = height - 1; y >= 0; y--) if (mask[y * width + x]) { top = y; break; }
+    if (top < 0) { out.push(null); continue; }
+    for (let y = 0; y < height; y++) if (mask[y * width + x]) { bot = y; break; }
+    out.push([u0 + (x + 0.5) * du, v0 + (top + 0.5) * du, v0 + (bot + 0.5) * du]);
+  }
+  return out;
+}
+
+// downsample a pixel trace to N-bin gate-style columns over its own span
+function binTrace(px, N) {
+  const lit = px.filter(Boolean);
+  if (!lit.length) return [];
+  const a = lit[0][0]; const b = lit[lit.length - 1][0];
+  const step = (b - a) / N;
+  const out = [];
+  for (let c = 0; c < N; c++) {
+    const lo = a + c * step; const hi = a + (c + 1) * step;
+    let top = -Infinity; let bot = Infinity; let any = false;
+    for (const p of lit) {
+      if (p[0] < lo || p[0] >= hi) continue;
+      any = true;
+      if (p[1] > top) top = p[1];
+      if (p[2] < bot) bot = p[2];
+    }
+    out.push(any ? [+(lo + step / 2).toFixed(4), +top.toFixed(4), +bot.toFixed(4)] : null);
+  }
+  return out;
+}
+
+// Douglas-Peucker on [ [u,v], ... ]
+function simplify(pts, eps) {
+  if (pts.length < 3) return pts;
+  const keep = new Uint8Array(pts.length);
+  keep[0] = keep[pts.length - 1] = 1;
+  const stack = [[0, pts.length - 1]];
+  while (stack.length) {
+    const [i0, i1] = stack.pop();
+    const [x0, y0] = pts[i0]; const [x1, y1] = pts[i1];
+    const dx = x1 - x0; const dy = y1 - y0;
+    const len = Math.hypot(dx, dy) || 1;
+    let worst = -1; let wd = eps;
+    for (let i = i0 + 1; i < i1; i++) {
+      const d = Math.abs(dy * (pts[i][0] - x0) - dx * (pts[i][1] - y0)) / len;
+      if (d > wd) { wd = d; worst = i; }
+    }
+    if (worst > 0) { keep[worst] = 1; stack.push([i0, worst], [worst, i1]); }
+  }
+  return pts.filter((_, i) => keep[i]);
+}
+
+// Sutherland–Hodgman clip of a triangle against z0 <= z <= z1 (world z)
+function clipTriZ(pts, z0, z1) {
+  let poly = pts;
+  for (const [za, sign] of [[z0, 1], [z1, -1]]) {
+    const next = [];
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i]; const b = poly[(i + 1) % poly.length];
+      const da = sign * (a[2] - za); const db = sign * (b[2] - za);
+      if (da >= 0) next.push(a);
+      if ((da >= 0) !== (db >= 0)) {
+        const t = da / (da - db);
+        next.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]);
+      }
+    }
+    poly = next;
+    if (!poly.length) return [];
+  }
+  return poly;
+}
+
+// ------------------------------------------------------------ gate dims ----
+function bodyExtent96(curve) {
+  const cols = curve.filter(Boolean);
+  if (!cols.length) return null;
+  const rough = Math.max(...cols.map((c) => c[1])) - Math.min(...cols.map((c) => c[2]));
+  const body = cols.filter((c) => c[1] - c[2] > rough * 0.12);
+  if (!body.length) return null;
+  const tops = body.map((c) => c[1]).sort((a, b) => a - b);
+  const top = tops[Math.min(tops.length - 1, Math.floor(tops.length * 0.95))];
+  const bot = Math.min(...body.map((c) => c[2]));
+  return {
+    h: top - bot, len: Math.abs(body[body.length - 1][0] - body[0][0]),
+    top, bot, z0: body[0][0], z1: body[body.length - 1][0],
+  };
+}
+
+// ------------------------------------------------------------------ main ---
+fs.mkdirSync(OUTDIR, { recursive: true });
+
+for (const id of ids) {
+  const cfg = REG[id];
+  if (!cfg) { console.error(`[skip] ${id}: not in registry`); continue; }
+  const file = path.join(ROOT, cfg.path);
+  const t0 = Date.now();
+  const { json: gltf, bin } = readGLB(file);
+  const scene = buildScene(gltf, bin);
+  let instances = scene.inst.filter((it) => !isShadowName(it));
+
+  // ---- runtime kit parity (modelLoader per-spec additions) ----
+  if (cfg.runtimeKit === 't90a_k5_wedges') {
+    const tp = findNodeIdx(scene, cfg.turretNode);
+    const tpW = scene.nodeWorld[tp];
+    for (const sgn of [-1, 1]) {
+      const rot = eulerXYZ(-0.14, sgn * 0.95, sgn * 0.10);
+      const T = [...IDENT]; T[12] = sgn * 0.52; T[13] = 0.42; T[14] = 1.42;
+      const local = matMul(T, rot);
+      const world = matMul(tpW, local);
+      const hw = [0.15, 0.20, 0.43];
+      const corners = [];
+      for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+        corners.push(xfp(world, sx * hw[0], sy * hw[1], sz * hw[2]));
+      }
+      const pos = new Float64Array(corners.flat());
+      // 12 tris of a box over corner order (-,-,-),(-,-,+),(-,+,-),(-,+,+),(+,-,-)...
+      const q = [[0, 1, 3, 2], [4, 6, 7, 5], [0, 4, 5, 1], [2, 3, 7, 6], [0, 2, 6, 4], [1, 5, 7, 3]];
+      const tris = [];
+      for (const [a, b, c, d] of q) tris.push(a, b, c, a, c, d);
+      instances.push({
+        nodeIdx: tp, name: 'runtime_k5_wedge', meshName: 'runtime_k5_wedge',
+        world, pos, tris: Uint32Array.from(tris), vcount: 8,
+      });
+    }
+  }
+
+  // ---- registration resolution (loader parity) ----
+  const turretIdx = findNodeIdx(scene, cfg.turretNode || 'turret');
+  if (turretIdx < 0) throw new Error(`${id}: no turret node`);
+  const turretSet = subtreeSet(scene, turretIdx);
+  const gunRe = cfg.gunNode || '(^|[_\\s.-])(gun|barrel|cannon)(?=$|[_\\s.-])';
+  let gunIdx = findBestGunIdx(scene, instances, gunRe, turretSet);
+  if (gunIdx < 0 && cfg.gunNode) gunIdx = findBestGunIdx(scene, instances, gunRe, null);
+  const gunSet = gunIdx >= 0 ? subtreeSet(scene, gunIdx) : new Set();
+  const partOf = (it) => {
+    if (it.name.startsWith('runtime_')) return 'turret';
+    if (gunSet.has(it.nodeIdx)) return 'gun';
+    if (turretSet.has(it.nodeIdx)) return 'turret';
+    return 'hull';
+  };
+
+  // ---- loader normalization chain ----
+  // 1. orientation
+  const R = eulerXYZ(cfg.pitchOffset || 0, cfg.yawOffset || 0, cfg.rollOffset || 0);
+  // 2. hull box (corner boxes through R), gun excluded when resolved
+  const useHullLen = gunIdx >= 0 && !cfg.scaleToOverall;
+  const hullBB = cornerBox(instances, (it) => !(useHullLen && gunSet.has(it.nodeIdx)), R);
+  const size = [hullBB.hi[0] - hullBB.lo[0], hullBB.hi[1] - hullBB.lo[1], hullBB.hi[2] - hullBB.lo[2]];
+  const targetLen = useHullLen ? cfg.pubDims.hullLengthM : cfg.pubDims.overallLengthM;
+  const s = Math.min(
+    targetLen / Math.max(size[2], 1e-3),
+    (cfg.pubDims.widthM * 1.08) / Math.max(size[0], 1e-3),
+    (cfg.pubDims.heightM * 1.30) / Math.max(size[1], 1e-3),
+  );
+  const T = [
+    -(hullBB.lo[0] + hullBB.hi[0]) / 2 * s,
+    -hullBB.lo[1] * s,
+    -(hullBB.lo[2] + hullBB.hi[2]) / 2 * s,
+  ];
+  // chain so far: v' = T + s*(R v)
+  const chain = (v) => {
+    const r = xfp(R, v[0], v[1], v[2]);
+    return [r[0] * s + T[0], r[1] * s + T[1], r[2] * s + T[2]];
+  };
+  // 3. harness width safeScale (visible box = shadow-filtered corner boxes)
+  const chainM = matMul([s, 0, 0, 0, 0, s, 0, 0, 0, 0, s, 0, T[0], T[1], T[2], 1], R);
+  const visBB = cornerBox(instances, null, chainM);
+  const visW = visBB.hi[0] - visBB.lo[0];
+  const k = Math.min(1.65, Math.max(0.68, cfg.pubDims.widthM / Math.max(visW, 1e-3)));
+  // 4. autoPivot (for the flip check) — three parity
+  let turretPivot = null;
+  if (cfg.autoPivot) {
+    const tb = cornerBox(instances, (it) => turretSet.has(it.nodeIdx), chainM);
+    const toRaw = xfp(chainM, ...xfp(IDENT, scene.nodeWorld[turretIdx][12], scene.nodeWorld[turretIdx][13], scene.nodeWorld[turretIdx][14]));
+    const inLoose = tb && toRaw[0] > tb.lo[0] - 0.6 && toRaw[0] < tb.hi[0] + 0.6 &&
+      toRaw[1] > tb.lo[1] - 0.6 && toRaw[1] < tb.hi[1] + 0.6 &&
+      toRaw[2] > tb.lo[2] - 0.6 && toRaw[2] < tb.hi[2] + 0.6;
+    if (!tb || (toRaw[1] > 0.25 && inLoose)) turretPivot = toRaw;
+    else turretPivot = [(tb.lo[0] + tb.hi[0]) / 2, Math.max(tb.lo[1], 0.4), (tb.lo[2] + tb.hi[2]) / 2];
+  }
+  let flip = cfg.assumeFlip ?? null;
+  if (flip === null) {
+    if (gunIdx >= 0 && turretPivot) {
+      const gb = cornerBox(instances, (it) => gunSet.has(it.nodeIdx), chainM);
+      flip = gb ? ((gb.lo[2] + gb.hi[2]) / 2 < turretPivot[2] - 0.08) : false;
+    } else flip = false;
+  }
+  // final map glb-world -> gate-world
+  const mapPt = (x, y, z) => {
+    const c = chain([x, y, z]);
+    let X = c[0] * k; const Y = c[1] * k; let Z = c[2] * k;
+    if (flip) { X = -X; Z = -Z; }
+    return [X, Y, Z];
+  };
+
+  // ---- transform all verts, build per-part triangle soups ----
+  const parts = { whole: [], hull: [], turret: [], gun: [] };
+  let totVerts = 0; let totTris = 0;
+  for (const it of instances) {
+    const part = partOf(it);
+    const w = new Float64Array(it.pos.length);
+    for (let i = 0; i < it.pos.length; i += 3) {
+      const p = mapPt(it.pos[i], it.pos[i + 1], it.pos[i + 2]);
+      w[i] = p[0]; w[i + 1] = p[1]; w[i + 2] = p[2];
+    }
+    totVerts += it.vcount;
+    totTris += it.tris.length / 3;
+    const entry = { pos: w, tris: it.tris, name: it.name, refd: it.refd };
+    parts.whole.push(entry);
+    if (part === 'hull') parts.hull.push(entry);
+    else if (part === 'gun') { parts.gun.push(entry); parts.turret.push(entry); }
+    else parts.turret.push(entry);
+  }
+
+  // gate-world box
+  const box = { lo: [Infinity, Infinity, Infinity], hi: [-Infinity, -Infinity, -Infinity] };
+  for (const e of parts.whole) {
+    for (let i = 0; i < e.pos.length; i += 3) {
+      if (e.refd && !e.refd[i / 3]) continue;
+      for (let d = 0; d < 3; d++) {
+        if (e.pos[i + d] < box.lo[d]) box.lo[d] = e.pos[i + d];
+        if (e.pos[i + d] > box.hi[d]) box.hi[d] = e.pos[i + d];
+      }
+    }
+  }
+
+  // ---- rasterize views ----
+  // views: side (u=z, v=y), plan (u=x, v=z), front (u=x, v=y)
+  const pad = 0.15;
+  const windows = {
+    side: { u0: box.lo[2] - pad, u1: box.hi[2] + pad, v0: box.lo[1] - pad, v1: box.hi[1] + pad },
+    plan: { u0: box.lo[0] - pad, u1: box.hi[0] + pad, v0: box.lo[2] - pad, v1: box.hi[2] + pad },
+    front: { u0: box.lo[0] - pad, u1: box.hi[0] + pad, v0: box.lo[1] - pad, v1: box.hi[1] + pad },
+  };
+  const proj = {
+    side: (p, i) => [p[i + 2], p[i + 1]],
+    plan: (p, i) => [p[i], p[i + 2]],
+    front: (p, i) => [p[i], p[i + 1]],
+  };
+  const curves = {};
+  const masks = {};
+  for (const view of ['side', 'plan', 'front']) {
+    const w = windows[view];
+    const du = (w.u1 - w.u0) / RES;
+    const H = Math.ceil((w.v1 - w.v0) / du);
+    for (const part of ['whole', 'hull', 'turret', 'gun']) {
+      if (part === 'gun' && !parts.gun.length) continue;
+      const tri2 = [];
+      for (const e of parts[part]) {
+        const P = e.pos; const I = e.tris;
+        for (let t = 0; t < I.length; t += 3) {
+          const [ax, ay] = proj[view](P, I[t] * 3);
+          const [bx, by] = proj[view](P, I[t + 1] * 3);
+          const [cx, cy] = proj[view](P, I[t + 2] * 3);
+          tri2.push(ax, ay, bx, by, cx, cy);
+        }
+      }
+      const mask = rasterize(tri2, RES, H, w.u0, w.v0, du);
+      masks[`${view}_${part}`] = { mask, W: RES, H, u0: w.u0, v0: w.v0, du };
+      const px = traceMask(mask, RES, H, w.u0, w.v0, du);
+      // emit at 1 cm bins to keep JSON readable but dense
+      const lit = px.filter(Boolean);
+      const spanU = lit.length ? lit[lit.length - 1][0] - lit[0][0] : 0;
+      curves[`${view}_${part}`] = binTrace(px, Math.max(32, Math.round(spanU / 0.01)));
+      curves[`${view}_${part}_96`] = binTrace(px, 96);
+    }
+  }
+
+  // ---- gate dims replica (from the whole side/plan traces) ----
+  const ext = bodyExtent96(curves.side_whole_96);
+  const sideLit = curves.side_whole.filter(Boolean);
+  const overall = sideLit.length ? sideLit[sideLit.length - 1][0] - sideLit[0][0] : 0;
+  // plan pixel width, 0.35 m band rule (plan bands run along z = v axis)
+  let wMin = null; let wMax = null;
+  {
+    const m = masks.plan_whole;
+    for (let x = 0; x < m.W; x++) {
+      let top = -1; let bot = -1;
+      for (let y = 0; y < m.H; y++) if (m.mask[y * m.W + x]) { if (bot < 0) bot = y; top = y; }
+      if (top < 0 || (top - bot + 1) * m.du < 0.35) continue;
+      const u = m.u0 + (x + 0.5) * m.du;
+      if (wMin === null) wMin = u;
+      wMax = u;
+    }
+  }
+  // hull-mask span: the honest length anchor when a fused/authored-long tube
+  // crosses the 12% body rule in the whole view (side_hull has no gun for
+  // gun-node prints; fused-gun prints keep the tube here — flagged below)
+  const hullLitPre = curves.side_hull.filter(Boolean);
+  const hullMask = hullLitPre.length ? {
+    z0: +hullLitPre[0][0].toFixed(3), z1: +hullLitPre[hullLitPre.length - 1][0].toFixed(3),
+    span: +(hullLitPre[hullLitPre.length - 1][0] - hullLitPre[0][0]).toFixed(3),
+  } : null;
+  const measured = {
+    bodyHeightM: ext ? +ext.h.toFixed(3) : null,
+    bodyLenM: ext ? +ext.len.toFixed(3) : null,
+    bodyTopM: ext ? +ext.top.toFixed(3) : null,
+    bodyZ: ext ? [+ext.z0.toFixed(3), +ext.z1.toFixed(3)] : null,
+    overallLenM: +overall.toFixed(3),
+    hullMask,
+    widthM: wMin !== null ? +(wMax - wMin + masks.plan_whole.du).toFixed(3) : null,
+    box: { lo: box.lo.map((v) => +v.toFixed(3)), hi: box.hi.map((v) => +v.toFixed(3)) },
+  };
+  const pub = cfg.pubDims;
+  const stylization = {
+    heightPct: measured.bodyHeightM ? +((measured.bodyHeightM / pub.heightM - 1) * 100).toFixed(1) : null,
+    hullLenPct: measured.bodyLenM ? +((measured.bodyLenM / pub.hullLengthM - 1) * 100).toFixed(1) : null,
+    hullMaskPct: hullMask ? +((hullMask.span / pub.hullLengthM - 1) * 100).toFixed(1) : null,
+    overallPct: +((measured.overallLenM / pub.overallLengthM - 1) * 100).toFixed(1),
+    widthPct: measured.widthM ? +((measured.widthM / pub.widthM - 1) * 100).toFixed(1) : null,
+  };
+
+  // ---- stations (gate replica: side hull mask z-range, 14 z-slabs) ----
+  const hullLit = curves.side_hull.filter(Boolean);
+  const zr = hullLit.length ? [hullLit[0][0], hullLit[hullLit.length - 1][0]] : [box.lo[2], box.hi[2]];
+  const stations = [];
+  for (let i = 0; i < 14; i++) {
+    const z0 = zr[0] + (i / 14) * (zr[1] - zr[0]);
+    const z1 = zr[0] + ((i + 1) / 14) * (zr[1] - zr[0]);
+    const tri2 = [];
+    for (const e of parts.whole) {
+      const P = e.pos; const I = e.tris;
+      for (let t = 0; t < I.length; t += 3) {
+        const a = [P[I[t] * 3], P[I[t] * 3 + 1], P[I[t] * 3 + 2]];
+        const b = [P[I[t + 1] * 3], P[I[t + 1] * 3 + 1], P[I[t + 1] * 3 + 2]];
+        const c = [P[I[t + 2] * 3], P[I[t + 2] * 3 + 1], P[I[t + 2] * 3 + 2]];
+        if (Math.max(a[2], b[2], c[2]) < z0 || Math.min(a[2], b[2], c[2]) > z1) continue;
+        const poly = clipTriZ([a, b, c], z0, z1);
+        for (let v = 1; v + 1 < poly.length; v++) {
+          tri2.push(poly[0][0], poly[0][1], poly[v][0], poly[v][1], poly[v + 1][0], poly[v + 1][1]);
+        }
+      }
+    }
+    const w = windows.front;
+    const du = (w.u1 - w.u0) / 1024;
+    const H = Math.ceil((w.v1 - w.v0) / du);
+    const m = rasterize(tri2, 1024, H, w.u0, w.v0, du);
+    let minX = Infinity; let maxX = -Infinity; let maxY = -Infinity; let minY = Infinity; let area = 0;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < 1024; x++) {
+        if (!m[y * 1024 + x]) continue;
+        area++;
+        const wx = w.u0 + (x + 0.5) * du; const wy = w.v0 + (y + 0.5) * du;
+        if (wx < minX) minX = wx; if (wx > maxX) maxX = wx;
+        if (wy > maxY) maxY = wy; if (wy < minY) minY = wy;
+      }
+    }
+    stations.push(area ? {
+      i, z: +((z0 + z1) / 2).toFixed(3), w: +(maxX - minX).toFixed(3),
+      top: +maxY.toFixed(3), bot: +minY.toFixed(3),
+      x: [+minX.toFixed(3), +maxX.toFixed(3)],
+    } : { i, z: +((z0 + z1) / 2).toFixed(3), empty: true });
+  }
+
+  // ---- vertex-space z-profiles per part (0.05 m bins) + landmarks ----
+  const zProfile = (entries) => {
+    const bin = 0.05;
+    const n = Math.ceil((box.hi[2] - box.lo[2]) / bin) + 1;
+    const rows = Array.from({ length: n }, () => null);
+    for (const e of entries) {
+      for (let i = 0; i < e.pos.length; i += 3) {
+        if (e.refd && !e.refd[i / 3]) continue;
+        const zi = Math.floor((e.pos[i + 2] - box.lo[2]) / bin);
+        if (zi < 0 || zi >= n) continue;
+        const r = rows[zi] || (rows[zi] = { halfW: 0, yMin: Infinity, yMax: -Infinity });
+        const ax = Math.abs(e.pos[i]);
+        if (ax > r.halfW) r.halfW = ax;
+        if (e.pos[i + 1] < r.yMin) r.yMin = e.pos[i + 1];
+        if (e.pos[i + 1] > r.yMax) r.yMax = e.pos[i + 1];
+      }
+    }
+    return rows.map((r, i) => (r ? {
+      z: +(box.lo[2] + (i + 0.5) * bin).toFixed(3),
+      halfW: +r.halfW.toFixed(3), yMin: +r.yMin.toFixed(3), yMax: +r.yMax.toFixed(3),
+    } : null)).filter(Boolean);
+  };
+  const deckPts = curves.side_hull.filter(Boolean).map((p) => [p[0], p[1]]);
+  const bellyPts = curves.side_hull.filter(Boolean).map((p) => [p[0], p[2]]);
+  const landmarks = {
+    deckCorners: simplify(deckPts, 0.02).map((p) => [+p[0].toFixed(3), +p[1].toFixed(3)]),
+    bellyCorners: simplify(bellyPts, 0.02).map((p) => [+p[0].toFixed(3), +p[1].toFixed(3)]),
+    turretZProfile: zProfile(parts.turret.filter((e) => !parts.gun.includes(e))),
+    hullZProfile: zProfile(parts.hull),
+  };
+  if (parts.gun.length) {
+    // bore line: per z-bin centroid + max radius of gun verts
+    const gb = { lo: [Infinity, Infinity, Infinity], hi: [-Infinity, -Infinity, -Infinity] };
+    const rows = [];
+    for (const e of parts.gun) {
+      for (let i = 0; i < e.pos.length; i += 3) {
+        if (e.refd && !e.refd[i / 3]) continue;
+        rows.push([e.pos[i], e.pos[i + 1], e.pos[i + 2]]);
+        for (let d = 0; d < 3; d++) {
+          if (e.pos[i + d] < gb.lo[d]) gb.lo[d] = e.pos[i + d];
+          if (e.pos[i + d] > gb.hi[d]) gb.hi[d] = e.pos[i + d];
+        }
+      }
+    }
+    rows.sort((a, b) => a[2] - b[2]);
+    const seg = [];
+    for (let z = Math.floor(gb.lo[2] * 10) / 10; z < gb.hi[2]; z += 0.1) {
+      const sl = rows.filter((r) => r[2] >= z && r[2] < z + 0.1);
+      if (!sl.length) continue;
+      const cy = sl.reduce((sum, r) => sum + r[1], 0) / sl.length;
+      const rr = Math.max(...sl.map((r) => Math.hypot(r[0], r[1] - cy)));
+      seg.push({ z: +(z + 0.05).toFixed(2), axisY: +cy.toFixed(3), r: +rr.toFixed(3) });
+    }
+    landmarks.gunContour = seg;
+    landmarks.gunBox = { lo: gb.lo.map((v) => +v.toFixed(3)), hi: gb.hi.map((v) => +v.toFixed(3)) };
+  }
+
+  // ---- ORIENTATION ASSERT (owner directive 2026-08-01, three-layer
+  // doctrine): bow must be +z by the gun-forward convention, cross-checked
+  // against the GLACIS — the dominant sloped upper plate: outward normals of
+  // up-sloping hull tris vote sign(n_z) weighted by area, but only where the
+  // tri SITS in the matching outer third (a glacis slopes up toward the bow
+  // it lives at; engine-deck slopes vote the other way and live aft).
+  // A sign mismatch = the print's hull faces away from its gun (the
+  // t62_bergman bake bug) — flagged loudly, never silently scored past.
+  const orientation = (() => {
+    let vote = 0;
+    const dbg = [];
+    // per-end slope-band accumulators: the GLACIS is a LONG, TALL band of
+    // 30-70 deg plates; tail rakes are short — net tri area alone inverted
+    // the vote on every print (rear-rake tris are individually larger)
+    const band = {
+      1: { area: 0, z0: Infinity, z1: -Infinity, y0: Infinity, y1: -Infinity },
+      '-1': { area: 0, z0: Infinity, z1: -Infinity, y0: Infinity, y1: -Infinity },
+    };
+    const span = box.hi[2] - box.lo[2];
+    const zmid = (box.hi[2] + box.lo[2]) / 2;
+    for (const e of parts.hull) {
+      const Pp = e.pos; const I = e.tris;
+      for (let t = 0; t < I.length; t += 3) {
+        const a = I[t] * 3; const b = I[t + 1] * 3; const c = I[t + 2] * 3;
+        const ux = Pp[b] - Pp[a]; const uy = Pp[b + 1] - Pp[a + 1]; const uz = Pp[b + 2] - Pp[a + 2];
+        const vx = Pp[c] - Pp[a]; const vy = Pp[c + 1] - Pp[a + 1]; const vz = Pp[c + 2] - Pp[a + 2];
+        let nx = uy * vz - uz * vy; let ny = uz * vx - ux * vz; let nz = ux * vy - uy * vx;
+        const area2 = Math.hypot(nx, ny, nz);
+        if (area2 < 1e-8) continue;
+        const cy = (Pp[a + 1] + Pp[b + 1] + Pp[c + 1]) / 3;
+        const cz = (Pp[a + 2] + Pp[b + 2] + Pp[c + 2]) / 3;
+        if (cy < box.hi[1] * 0.30) continue;              // upper works only
+        // outward orientation: winding is unreliable in these prints — point
+        // the normal up (glacis/deck plates face up; belly excluded above)
+        if (ny < 0) { nx = -nx; ny = -ny; nz = -nz; }
+        const n = 1 / area2;
+        // SOVIET GLACIS BAND: the upper glacis runs ~20-30 deg from
+        // horizontal (ny 0.85-0.97, |nz| 0.22-0.55). The first two cuts
+        // (30-70 deg) selected TAIL RAKES instead on every print — the
+        // Soviet glacis is shallower than a western one.
+        if (ny * n < 0.85 || ny * n > 0.975) continue;
+        if (Math.abs(nz * n) < 0.22 || Math.abs(nz * n) > 0.55) continue;
+        if (Math.abs(cz - zmid) < span * 0.18) continue;  // outer thirds only
+        if (Math.sign(nz) !== Math.sign(cz - zmid)) continue; // slope faces its own end
+        const sgn = Math.sign(nz);
+        const bk = band[sgn];
+        bk.area += area2;
+        if (cz < bk.z0) bk.z0 = cz; if (cz > bk.z1) bk.z1 = cz;
+        if (cy < bk.y0) bk.y0 = cy; if (cy > bk.y1) bk.y1 = cy;
+        if (process.env.ORIENT_DEBUG) {
+          dbg.push([sgn * area2, +cz.toFixed(2), +cy.toFixed(2),
+            +(ny * n).toFixed(2), +(nz * n).toFixed(2), e.name]);
+        }
+      }
+    }
+    if (process.env.ORIENT_DEBUG) {
+      dbg.sort((a, b) => Math.abs(b[0]) - Math.abs(a[0]));
+      console.log(`[orient-debug ${id}] top contributors [signedArea, cz, cy, ny, nz, node]:`);
+      for (const d of dbg.slice(0, 15)) console.log('   ', JSON.stringify(d));
+    }
+    const score = (bk) => (bk.area <= 0 ? 0
+      : (bk.z1 - bk.z0) * (bk.y1 - bk.y0) * Math.sqrt(bk.area));
+    const sPlus = score(band[1]);
+    const sMinus = score(band['-1']);
+    vote = sPlus - sMinus;
+    // PRIMARY glacis signal — mask deck-descent run (normals-free): the bow
+    // climbs from a low nose to the deck plateau over a LONG run (Soviet
+    // glacis 1.0-1.4 m); the tail tops out within a short drop (tail plate,
+    // drums/log sit high immediately). Longer terminal descent = bow.
+    const hullTops = curves.side_hull.filter(Boolean);
+    let descentBow = 0;
+    if (hullTops.length > 10) {
+      const tops = hullTops.map((c) => c[1]).sort((a, b) => a - b);
+      const plateau = tops[Math.floor(tops.length * 0.9)];
+      const runFrom = (arr) => {
+        const z0 = arr[0][0];
+        for (const c of arr) if (c[1] >= plateau * 0.94) return Math.abs(c[0] - z0);
+        return Math.abs(arr[arr.length - 1][0] - z0);
+      };
+      const runFront = runFrom([...hullTops].reverse());
+      const runRear = runFrom(hullTops);
+      descentBow = runFront > runRear * 1.15 ? 1 : (runRear > runFront * 1.15 ? -1 : 0);
+      band.runs = { runFront: +runFront.toFixed(2), runRear: +runRear.toFixed(2) };
+    }
+    const glacisSign = descentBow !== 0 ? descentBow : (Math.sign(vote) || 0);
+    // gun-forward sign: the barrel overhang end (thin span beyond the hull
+    // mask); works for split-gun AND fused-tube prints
+    const wl = curves.side_whole.filter(Boolean);
+    const wz = wl.length ? [wl[0][0], wl[wl.length - 1][0]] : [0, 0];
+    const overF = hullMask ? wz[1] - hullMask.z1 : 0;
+    const overR = hullMask ? hullMask.z0 - wz[0] : 0;
+    const gunSign = Math.abs(overF - overR) < 0.3 ? 0 : (overF > overR ? 1 : -1);
+    const tl = curves.side_turret ? curves.side_turret.filter(Boolean) : [];
+    const tmid = tl.length ? (tl[0][0] + tl[tl.length - 1][0]) / 2 : null;
+    const hmid = hullMask ? (hullMask.z0 + hullMask.z1) / 2 : 0;
+    const turretSeatSign = tmid === null ? null : (Math.sign(tmid - hmid) || 0);
+    const ok = glacisSign !== 0 && gunSign !== 0 ? glacisSign === gunSign : null;
+    return { glacisSign, descentRuns: band.runs || null, normalVote: +vote.toFixed(2),
+      gunSign, turretSeatSign, agree: ok };
+  })();
+  if (orientation.agree === false) {
+    console.error(`[vertex ${id}] ORIENTATION MISMATCH: glacis faces ${orientation.glacisSign > 0 ? '+z' : '-z'} ` +
+      `but the gun faces ${orientation.gunSign > 0 ? '+z' : '-z'} — the hull is BACKWARDS vs its gun ` +
+      `(t62_bergman class). DO NOT score this print; repair orientation first.`);
+  }
+
+  // ---- INTERPENETRATION ASSERT: turret underside vs hull deck (outside the
+  // ring/race annulus the dome must not dip below the local deck line) ----
+  const interpen = (() => {
+    if (!parts.turret.length) return null;
+    const cell = 0.12;
+    const deckMap = new Map();
+    for (const e of parts.hull) {
+      for (let i = 0; i < e.pos.length; i += 3) {
+        if (e.refd && !e.refd[i / 3]) continue;
+        const y = e.pos[i + 1];
+        if (y < box.hi[1] * 0.35) continue; // upper hull only
+        const key = `${Math.round(e.pos[i] / cell)},${Math.round(e.pos[i + 2] / cell)}`;
+        if (!deckMap.has(key) || deckMap.get(key) < y) deckMap.set(key, y);
+      }
+    }
+    // turret plan center from its own extent
+    let cx = 0; let cz = 0; let n = 0;
+    for (const e of parts.turret) {
+      if (parts.gun.includes(e)) continue;
+      for (let i = 0; i < e.pos.length; i += 3) {
+        if (e.refd && !e.refd[i / 3]) continue;
+        cx += e.pos[i]; cz += e.pos[i + 2]; n++;
+      }
+    }
+    if (!n) return null;
+    cx /= n; cz /= n;
+    let worst = 0; let count = 0;
+    for (const e of parts.turret) {
+      if (parts.gun.includes(e)) continue;
+      for (let i = 0; i < e.pos.length; i += 3) {
+        if (e.refd && !e.refd[i / 3]) continue;
+        const r = Math.hypot(e.pos[i] - cx, e.pos[i + 2] - cz);
+        if (r < 1.05) continue; // ring/race annulus exempt
+        const key = `${Math.round(e.pos[i] / cell)},${Math.round(e.pos[i + 2] / cell)}`;
+        const deck = deckMap.get(key);
+        if (deck === undefined) continue;
+        const dip = deck - e.pos[i + 1];
+        if (dip > 0.06) { count++; if (dip > worst) worst = dip; }
+      }
+    }
+    return { violations: count, worstDipM: +worst.toFixed(3), ringExemptR: 1.05 };
+  })();
+  if (interpen && interpen.violations > 50) {
+    console.error(`[vertex ${id}] INTERPENETRATION: ${interpen.violations} turret verts dip up to ` +
+      `${interpen.worstDipM} m below the hull deck outside the ring annulus.`);
+  }
+
+  // ---- glb-world <-> gate-world affine map (for repair recipes) ----
+  // gate = k*(T + s*R*glb), plus optional flip (x,z -> -x,-z).
+  // With yaw in {0, ±90, 180}, R is an axis permutation: derive per-axis map.
+  const axisMap = [];
+  for (let d = 0; d < 3; d++) {
+    // image of glb axis d under R (unit vector)
+    const img = [R[d * 4], R[d * 4 + 1], R[d * 4 + 2]];
+    const gd = img.findIndex((v) => Math.abs(v) > 0.9);
+    let sign = Math.sign(img[gd]) * (flip && (gd === 0 || gd === 2) ? -1 : 1);
+    axisMap.push({ glbAxis: 'xyz'[d], gateAxis: 'xyz'[gd], scale: +(k * s).toFixed(6), sign });
+  }
+  const offset = [k * T[0] * (flip ? -1 : 1), k * T[1], k * T[2] * (flip ? -1 : 1)];
+
+  const report = {
+    id, file: cfg.path, generated: new Date().toISOString(),
+    generator: 'vertex-extract.mjs (triangle raster, gate-parity pipeline)',
+    counts: { instances: instances.length, verts: totVerts, tris: totTris },
+    registration: {
+      turretNode: cfg.turretNode, gunNode: cfg.gunNode || null,
+      gunResolved: gunIdx >= 0 ? scene.nodes[gunIdx].name : null,
+      yawOffset: cfg.yawOffset || 0, autoPivot: !!cfg.autoPivot,
+      useHullLen, loaderScale: +s.toFixed(6), safeScaleK: +k.toFixed(6),
+      flip, turretPivot: turretPivot ? turretPivot.map((v) => +v.toFixed(3)) : null,
+    },
+    glbToGate: { axisMap, offsetGate: offset.map((v) => +v.toFixed(4)) },
+    pubDims: pub, measured, stylization,
+    orientation, interpen,
+    stations, landmarks, curves,
+  };
+  fs.writeFileSync(path.join(OUTDIR, `${id}.json`), JSON.stringify(report));
+  console.log(`[vertex ${id}] verts ${totVerts} tris ${totTris} | ` +
+    `bodyH ${measured.bodyHeightM} (${stylization.heightPct}%) ` +
+    `bodyLen ${measured.bodyLenM} (${stylization.hullLenPct}%) ` +
+    `hullMask ${hullMask?.span} (${stylization.hullMaskPct}%) ` +
+    `overall ${measured.overallLenM} (${stylization.overallPct}%) ` +
+    `width ${measured.widthM} (${stylization.widthPct}%) | ` +
+    `flip ${flip} k ${k.toFixed(3)} s ${s.toFixed(4)} | ${Date.now() - t0}ms`);
+}
+console.log(`[vertex-extract] wrote ${ids.length} report(s) -> ${OUTDIR}`);

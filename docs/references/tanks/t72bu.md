@@ -176,3 +176,34 @@ but its +16%/+27% stature makes every curve row a certified-cap row; do not
 chase curves into the build (published dims sovereign).
 
 **r7 update (edge-on prism law, docs/GEOMETRY-GATE.md):** loftHull now subdivides at <=0.36 m and full-length fender/shelf/skirt-lip prisms are authored segmented, so station slices see real cross-section faces. State: hullCurves 51.4 / wholeCurves 0 / turretCurves 0 / stations 8.6 / dims 100 / floaters 100. (hullCurves recovered to 51.4, stations 8.6 — the barrel/plate cover cap (side cover ~18%) still bounds hull ~70 and whole/turret ~0-30; mesh surgery ask stands.)
+
+
+## BATCH-12 VERTEX NORMALIZATION + VERTEX ROUND (2026-08-01, owner ruling b522c34)
+
+Direct vertex analysis is now sanctioned (docs/GEOMETRY-GATE.md "Reference-model
+usage"). Toolchain: tools/vertex-extract.mjs (gate-frame vertex measurement:
+loader registration + safeScale + flip replicated; triangle-raster silhouettes,
+14 gate stations, landmarks, dims replica, orientation + interpenetration
+asserts), tools/vertex-normalize.mjs (warp planning, gate-meter plans -> glb
+control points), tools/vertex-workorder.mjs (both-model 96-col curves in world
+coords), tools/tmp-rv-board.mjs (mandatory turntable evidence ->
+shots/russia-vertex/).
+
+**Batch-12 recipe (tools/repair_oracles.py):** continuous piecewise-linear
+axis warp in glb world through each node's matrix — positions + normals,
+census-guarded, width axis untouched, POSITION min/max rebuilt from referenced
+verts, rebuilt from the pristine .bak, byte-idempotent (double-run shasum
+516a09fc9e85cfa01a77d27505ca0ca294e64194).
+
+Stylization before -> after: height +30.0%, hull mask +17.7%, overall +14.2% -> height -0.4%,
+hull mask 0%, overall -0.1%, width 0%
+(gate-meter plans in tools/vertex-normalize.mjs PLANS['t72bu']).
+The stylization-cap certifications of r5-r7 are RETIRED for this print.
+
+**Standing asserts (docs/references/vertex/t72bu.json):** orientation
+glacis +z / gun +z / agree True
+(descent runs {"runFront": 1.97, "runRear": 0.01}); interpenetration
+24 verts (worst dip 0.214 m outside the r>1.05 ring annulus).
+
+**Gate row after this round:** hull 0 / whole 0 / turret 0 / stations 17.8 / dims 98.2 / floaters 100.
+BUILD NOT YET RE-ANCHORED (old-frame build vs normalized oracle). The batch-12 warp also rebuilt the stale batch-9 POSITION min/max (loader/camera frames now sane).

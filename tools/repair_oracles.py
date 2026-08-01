@@ -1909,6 +1909,399 @@ REPAIRS['t62_bergman'] = [
 ]
 
 
+# =============================================================== batch 12 ===
+# VERTEX-SPACE ORACLE NORMALIZATION (owner ruling 2026-08-01, commit b522c34;
+# docs/GEOMETRY-GATE.md "Reference-model usage"): stylized prints may be
+# rescaled/warped AXIS-WISE to published real-vehicle dims so their curve rows
+# measure the real vehicle ("align them correctly"). The russia-family prints
+# were all certified stylization-capped (+5..+47% stature, -9..+18% length);
+# every previous round could only document the ceilings. This batch RETIRES
+# those ceilings at the source.
+#
+# Mechanism (`_axis_warp`, planned by tools/vertex-normalize.mjs from the
+# tools/vertex-extract.mjs measurements — the derivation record):
+#   * continuous piecewise-linear maps, one for glb-world UP (y) and one for
+#     the glb-world LONG axis (x or z per print orientation). Zone slopes all
+#     > 0: monotone, no fold-over, no tearing. Zones anchor the hull (near-1
+#     slopes where the print's hull is true), land the WIDE roof plateau at
+#     published height (gate p95 law: only thin masts may stay proud), bring
+#     the side hull-mask span to published hullLengthM and the muzzle to
+#     published overallLengthM (barrel zone slope, continuous at the nose).
+#   * the WIDTH axis is never touched — it is the loader/harness safeScale
+#     anchor; x float bits round-trip untouched modulo the node-matrix
+#     inverse round trip (< 1e-6 guard).
+#   * positions AND normals are rewritten (normals by the zone Jacobian's
+#     inverse-transpose, renormalized); vertex/tri/prim counts are UNCHANGED
+#     by construction and census-guarded exactly; POSITION accessor min/max
+#     are rebuilt from the verts the prim's CURRENT index accessor references
+#     (batch-11 lesson — stale trimmed verts must not re-poison bounds; for
+#     t72bu this batch also retires the stale batch-9 min/max as a side
+#     effect).
+#   * recipes rebuild from the pristine .bak every run (byte-idempotent,
+#     shasum-verified) and chain AFTER the earlier batches for files that
+#     have them (t62_bergman 10+11, t72bu/t64bv1/t90sm 9, t90a_vladimir 9).
+#
+# Per-axis factors and the full derivations are documented in each tank's
+# packet (docs/references/tanks/<id>.md, batch-12 section) and reproducible:
+#   node tools/vertex-extract.mjs --ids=<id>   (measure, gate-frame parity)
+#   node tools/vertex-normalize.mjs --ids=<id> (plan -> these control points)
+#   node tools/vertex-normalize.mjs --verify --ids=<id>  (post-repair check)
+
+
+def _mat3_inverse_t(m):
+    """Inverse-transpose of the upper-left 3x3 of a column-major 4x4 (for
+    normal transforms; nodes may carry non-rigid uniform/negative scales)."""
+    a, b, c = m[0], m[1], m[2]
+    d, e, f = m[4], m[5], m[6]
+    g, h, i = m[8], m[9], m[10]
+    det = a * (e * i - f * h) - d * (b * i - c * h) + g * (b * f - c * e)
+    if abs(det) < 1e-30:
+        raise SystemExit('degenerate node matrix')
+    s = 1.0 / det
+    # inverse (row-major of the math inverse), then transpose = columns
+    inv = [
+        (e * i - f * h) * s, (c * h - b * i) * s, (b * f - c * e) * s,
+        (f * g - d * i) * s, (a * i - c * g) * s, (c * d - a * f) * s,
+        (d * h - e * g) * s, (b * g - a * h) * s, (a * e - b * d) * s,
+    ]
+    # inv is such that p_inv = inv . p with rows [0:3],[3:6],[6:9]
+    return inv
+
+
+def _mat4_affine_inverse(m):
+    """Full affine inverse of a column-major 4x4 (rotation+scale+translation)."""
+    it = _mat3_inverse_t(m)  # rows of A^-1 transposed -> it holds A^-1^T rows
+    # A^-1 (row-major rows): from it, A^-1[r][c] = it[c*3+r]? Rebuild directly:
+    a, b, c = m[0], m[1], m[2]
+    d, e, f = m[4], m[5], m[6]
+    g, h, i = m[8], m[9], m[10]
+    det = a * (e * i - f * h) - d * (b * i - c * h) + g * (b * f - c * e)
+    s = 1.0 / det
+    inv = [  # row-major A^-1
+        [(e * i - f * h) * s, (g * f - d * i) * s, (d * h - g * e) * s],
+        [(h * c - b * i) * s, (a * i - g * c) * s, (g * b - a * h) * s],
+        [(b * f - e * c) * s, (d * c - a * f) * s, (a * e - d * b) * s],
+    ]
+    t = (m[12], m[13], m[14])
+    ti = [-(inv[r][0] * t[0] + inv[r][1] * t[1] + inv[r][2] * t[2]) for r in range(3)]
+    # column-major 4x4
+    out = [inv[0][0], inv[1][0], inv[2][0], 0.0,
+           inv[0][1], inv[1][1], inv[2][1], 0.0,
+           inv[0][2], inv[1][2], inv[2][2], 0.0,
+           ti[0], ti[1], ti[2], 1.0]
+    return out
+
+
+def _pw_eval(pts, v):
+    if v <= pts[0][0]:
+        s = (pts[1][1] - pts[0][1]) / (pts[1][0] - pts[0][0])
+        return pts[0][1] + (v - pts[0][0]) * s
+    for (a0, b0), (a1, b1) in zip(pts, pts[1:]):
+        if v <= a1:
+            return b0 + (b1 - b0) * (v - a0) / (a1 - a0)
+    s = (pts[-1][1] - pts[-2][1]) / (pts[-1][0] - pts[-2][0])
+    return pts[-1][1] + (v - pts[-1][0]) * s
+
+
+def _pw_slope(pts, v):
+    if v <= pts[0][0]:
+        return (pts[1][1] - pts[0][1]) / (pts[1][0] - pts[0][0])
+    for (a0, b0), (a1, b1) in zip(pts, pts[1:]):
+        if v <= a1:
+            return (b1 - b0) / (a1 - a0)
+    return (pts[-1][1] - pts[-2][1]) / (pts[-1][0] - pts[-2][0])
+
+
+def _axis_warp(tank_id, *, long_axis, y_map, long_map, y_top_max, expect):
+    """Batch-12 'py2' builder: axis-wise piecewise-linear vertex warp of every
+    scene-reachable prim, in GLB-WORLD space (through each node's world
+    matrix and its affine inverse). expect=(prims, verts, tris) is the exact
+    reachable census — mismatch refuses to write (wrong input file?)."""
+    for pts in (y_map, long_map):
+        for p0, p1 in zip(pts, pts[1:]):
+            if not (p1[0] > p0[0] and p1[1] > p0[1]):
+                raise SystemExit(f'{tank_id}: non-monotone warp map')
+
+    def op(gltf, chunks, _id=tank_id, ax=long_axis, ym=tuple(y_map),
+           lm=tuple(long_map), ytop=y_top_max, exp=tuple(expect)):
+        li = {'x': 0, 'y': 1, 'z': 2}[ax]
+        bi = _bin_chunk_index(chunks)
+        data = bytearray(chunks[bi][1])
+
+        # reachable scene nodes (t90a_vladimir batch-9 detached LOD layers
+        # must stay untouched)
+        reach = []
+        seen_prims = set()
+
+        def visit(ni, parent):
+            node = gltf['nodes'][ni]
+            world = mat_mul(parent, local_matrix(node))
+            if 'mesh' in node:
+                reach.append((ni, node['mesh'], world))
+            for ci in node.get('children', []):
+                visit(ci, world)
+        for ri in gltf['scenes'][gltf.get('scene', 0)]['nodes']:
+            visit(ri, IDENT)
+
+        nprims = nverts = ntris = 0
+        acc_seen = set()
+        for _ni, mi, _w in reach:
+            for prim in gltf['meshes'][mi]['primitives']:
+                nprims += 1
+                pa = prim['attributes']['POSITION']
+                if pa in acc_seen:
+                    raise SystemExit(f'{_id}: shared POSITION accessor — refusing')
+                acc_seen.add(pa)
+                nverts += gltf['accessors'][pa]['count']
+                if 'indices' in prim:
+                    ntris += gltf['accessors'][prim['indices']]['count'] // 3
+                else:
+                    ntris += gltf['accessors'][pa]['count'] // 3
+        if (nprims, nverts, ntris) != exp:
+            raise SystemExit(f'{_id}: census mismatch — expected {exp} '
+                             f'(prims,verts,tris), got {(nprims, nverts, ntris)}; '
+                             f'refusing to write (wrong input file?)')
+
+        top_after = -1e30
+        long_lo = 1e30
+        long_hi = -1e30
+        width_drift = 0.0
+        for _ni, mi, world in reach:
+            winv = _mat4_affine_inverse(world)
+            w3it = _mat3_inverse_t(world)  # rows of (W3^-1)^T
+            for prim in gltf['meshes'][mi]['primitives']:
+                pacc, pn, pfmt, poff, pstride = _acc_reader(gltf, data, prim['attributes']['POSITION'])
+                if pfmt != 'f' or pn != 3:
+                    raise SystemExit(f'{_id}: POSITION not vec3 float')
+                has_n = 'NORMAL' in prim['attributes']
+                if has_n:
+                    nacc, nn, nfmt, noff, nstride = _acc_reader(gltf, data, prim['attributes']['NORMAL'])
+                for i in range(pacc['count']):
+                    p = struct.unpack_from('<fff', data, poff + i * pstride)
+                    w = transform_point(world, p)
+                    wl = list(w)
+                    sy = _pw_slope(ym, w[1])
+                    sl = _pw_slope(lm, w[li])
+                    wl[1] = _pw_eval(ym, w[1])
+                    wl[li] = _pw_eval(lm, w[li])
+                    q = transform_point(winv, wl)
+                    struct.pack_into('<fff', data, poff + i * pstride, *q)
+                    # width-axis invariance through the W^-1 . W round trip
+                    wi = 2 - li  # long x -> width z, long z -> width x
+                    w2 = transform_point(world, q)
+                    width_drift = max(width_drift, abs(w2[wi] - w[wi]))
+                    if has_n:
+                        n = struct.unpack_from('<fff', data, noff + i * nstride)
+                        # local -> world normal: (W3^-1)^T . n
+                        nw = (w3it[0] * n[0] + w3it[1] * n[1] + w3it[2] * n[2],
+                              w3it[3] * n[0] + w3it[4] * n[1] + w3it[5] * n[2],
+                              w3it[6] * n[0] + w3it[7] * n[1] + w3it[8] * n[2])
+                        # warp Jacobian J = diag with sy at y, sl at long axis
+                        j = [1.0, 1.0, 1.0]
+                        j[1] = sy
+                        j[li] = sl
+                        nw = (nw[0] / j[0], nw[1] / j[1], nw[2] / j[2])
+                        # world -> local: (W3)^T . n
+                        nl = (world[0] * nw[0] + world[1] * nw[1] + world[2] * nw[2],
+                              world[4] * nw[0] + world[5] * nw[1] + world[6] * nw[2],
+                              world[8] * nw[0] + world[9] * nw[1] + world[10] * nw[2])
+                        ln = (nl[0] ** 2 + nl[1] ** 2 + nl[2] ** 2) ** 0.5
+                        if ln > 1e-20:
+                            nl = (nl[0] / ln, nl[1] / ln, nl[2] / ln)
+                        struct.pack_into('<fff', data, noff + i * nstride, *nl)
+                # rebuild POSITION min/max from the verts the prim's CURRENT
+                # indices reference (or all rows when non-indexed)
+                if 'indices' in prim:
+                    used = sorted({v[0] for v in _read_rows(gltf, data, prim['indices'])})
+                else:
+                    used = range(pacc['count'])
+                rows = [struct.unpack_from('<fff', data, poff + i * pstride) for i in used]
+                pacc['min'] = [min(r[k] for r in rows) for k in range(3)]
+                pacc['max'] = [max(r[k] for r in rows) for k in range(3)]
+                for i in used:
+                    w = transform_point(world, struct.unpack_from('<fff', data, poff + i * pstride))
+                    if w[1] > top_after:
+                        top_after = w[1]
+                    if w[li] < long_lo:
+                        long_lo = w[li]
+                    if w[li] > long_hi:
+                        long_hi = w[li]
+        if width_drift > 1e-6:
+            raise SystemExit(f'{_id}: width axis drifted {width_drift} — refusing')
+        if top_after > ytop:
+            raise SystemExit(f'{_id}: warped top {top_after:.4f} > {ytop} — refusing')
+        chunks[bi] = (BIN_CHUNK, bytes(data))
+        print(f'[repair] {_id}: axis warp ({nverts} verts, {nprims} prims) — '
+              f'top {top_after:.3f}u, long {long_lo:.3f}..{long_hi:.3f}u')
+    return op
+
+
+def _rotate_mesh_180y(tank_id, node_name, *, expect_verts, center_from_indices=True):
+    """Batch-12 orientation repair (owner bug 2026-08-01: 't62mv1 hull is
+    backwards'): rotate ONE mesh's vertices 180 deg about the vertical axis
+    through its own referenced-vertex bbox center (glb world). A proper
+    rotation — (x,z) -> (2cx-x, 2cz-z) — so chirality is preserved (this is
+    NOT a mirror). Positions + normals rewritten; census-guarded; POSITION
+    min/max rebuilt from referenced verts. The turret/gun nodes are NOT
+    touched: the bake seated them 35% from the WRONG end of its t54-frame
+    hull (gen2 frontFrac against a bow-at--z STL), so rotating the hull
+    alone puts the glacis under the gun and the drums/log at the tail —
+    the real T-62 layout (ring 34% from the bow)."""
+    def op(gltf, chunks, _id=tank_id, node=node_name, expv=expect_verts):
+        ni = find_node(gltf, node)
+        prim = gltf['meshes'][gltf['nodes'][ni]['mesh']]['primitives'][0]
+        bi = _bin_chunk_index(chunks)
+        data = bytearray(chunks[bi][1])
+        world = node_world_matrix(gltf, ni)
+        winv = _mat4_affine_inverse(world)
+        w3it = _mat3_inverse_t(world)
+        pacc, pn, pfmt, poff, pstride = _acc_reader(gltf, data, prim['attributes']['POSITION'])
+        if pacc['count'] != expv:
+            raise SystemExit(f'{_id}: rotate census mismatch — expected {expv} '
+                             f'verts, accessor has {pacc["count"]}; refusing')
+        has_n = 'NORMAL' in prim['attributes']
+        if has_n:
+            nacc, nn, nfmt, noff, nstride = _acc_reader(gltf, data, prim['attributes']['NORMAL'])
+        used = sorted({v[0] for v in _read_rows(gltf, data, prim['indices'])}) \
+            if 'indices' in prim else list(range(pacc['count']))
+        # rotation center: referenced-verts bbox center in glb world
+        lo = [1e30] * 3
+        hi = [-1e30] * 3
+        for i in used:
+            w = transform_point(world, struct.unpack_from('<fff', data, poff + i * pstride))
+            for k in range(3):
+                lo[k] = min(lo[k], w[k]); hi[k] = max(hi[k], w[k])
+        cx = (lo[0] + hi[0]) / 2
+        cz = (lo[2] + hi[2]) / 2
+        for i in range(pacc['count']):
+            p = struct.unpack_from('<fff', data, poff + i * pstride)
+            w = transform_point(world, p)
+            w2 = (2 * cx - w[0], w[1], 2 * cz - w[2])
+            q = transform_point(winv, w2)
+            struct.pack_into('<fff', data, poff + i * pstride, *q)
+            if has_n:
+                n = struct.unpack_from('<fff', data, noff + i * nstride)
+                nw = (w3it[0] * n[0] + w3it[1] * n[1] + w3it[2] * n[2],
+                      w3it[3] * n[0] + w3it[4] * n[1] + w3it[5] * n[2],
+                      w3it[6] * n[0] + w3it[7] * n[1] + w3it[8] * n[2])
+                nw = (-nw[0], nw[1], -nw[2])
+                nl = (world[0] * nw[0] + world[1] * nw[1] + world[2] * nw[2],
+                      world[4] * nw[0] + world[5] * nw[1] + world[6] * nw[2],
+                      world[8] * nw[0] + world[9] * nw[1] + world[10] * nw[2])
+                ln = (nl[0] ** 2 + nl[1] ** 2 + nl[2] ** 2) ** 0.5
+                if ln > 1e-20:
+                    nl = (nl[0] / ln, nl[1] / ln, nl[2] / ln)
+                struct.pack_into('<fff', data, noff + i * nstride, *nl)
+        rows = [struct.unpack_from('<fff', data, poff + i * pstride) for i in used]
+        pacc['min'] = [min(r[k] for r in rows) for k in range(3)]
+        pacc['max'] = [max(r[k] for r in rows) for k in range(3)]
+        chunks[bi] = (BIN_CHUNK, bytes(data))
+        print(f'[repair] {_id}: {node} rotated 180deg about y through '
+              f'({cx:.2f}, {cz:.2f}) glb-world — bow/stern swapped, chirality kept')
+    return op
+
+
+# Control points from tools/vertex-normalize.mjs (glb-world units; the
+# gate-meter plans + derivations live in the per-tank packets). expect =
+# exact reachable (prims, verts, tris) census of the input state (post
+# earlier batches where they exist).
+REPAIRS['t62_bergman'] = [
+    *REPAIRS['t62_bergman'],
+    # crown 2.48->2.38, cupola 2.77->2.43 (pub 2.40 roof; receiver spikes keep
+    # p95-legal); hull mask 7.16->6.63 about center; batch-10-trimmed tube
+    # re-stretched to published overall 9.34 (real 2A20 overhang restored)
+    ('py2', _axis_warp('t62_bergman', long_axis='z',
+                       y_map=[(0, 0), (15.2273, 14.6182), (25.3788, 24.3636), (28.9318, 24.6682)],
+                       long_map=[(-36.3424, -33.6522), (36.3424, 33.6522), (59.2848, 61.1628)],
+                       y_top_max=25.5818, expect=(3, 60978, 119478))),
+    # OWNER BUG (2026-08-01, "the t62mv1's hull is backwards"): the gen2 bake
+    # used a t54-frame hull STL whose bow faces glb -z, and seated the ring
+    # at frontFrac 0.35 from the WRONG (+z) end — at yaw 0 the 2A20 pointed
+    # over the rear drums/log (turntable-confirmed; the near-symmetric mask
+    # could not see it — gate v11's mirror guard + the three-layer doctrine
+    # are the systemic answer). Rotate the HULL 180 deg about its own center:
+    # glacis under the gun, drums/log to the tail, ring lands 34% from the
+    # bow = the real T-62 layout. Turret/gun/DShK stay untouched.
+    ('py2', _rotate_mesh_180y('t62_bergman', 'HullMesh', expect_verts=48182)),
+]
+REPAIRS['t64bv1'] = [
+    *REPAIRS['t64bv1'],
+    # SHORT print: hull mask 6.00->6.54 (+9%), fused tube to overall 9.225,
+    # uniform stature 2.283->2.17
+    ('py2', _axis_warp('t64bv1', long_axis='x',
+                       y_map=[(-0.0819, -0.0819), (27.0107, 25.6697)],
+                       long_map=[(-35.4245, -38.6286), (35.7781, 38.9822), (66.7512, 70.8454)],
+                       y_top_max=26.8564, expect=(3, 9597, 6510))),
+]
+REPAIRS['t72b_1987'] = [
+    # Super-Dolly crown band 2.46-2.73 -> 2.17-2.27 (pub 2.23), hull mask
+    # 7.29->6.67, fused tube to overall 9.53. r2 map: the crown MASS rides
+    # 2.46-2.60 (not the 2.73 peak) — mid anchor (2.50 -> 2.21) so the p95
+    # roof lands at published, peak 2.73 -> 2.265.
+    ('py2', _axis_warp('t72b_1987', long_axis='x',
+                       y_map=[(-0.0827, -0.0827), (16.3402, 15.5474), (28.2327, 24.9481), (32.5366, 26.0807)],
+                       long_map=[(-45.7179, -42.2068), (36.8496, 33.3385), (64.2588, 65.7312)],
+                       y_top_max=26.9867, expect=(3, 13453, 8665))),
+]
+REPAIRS['t72bu'] = [
+    *REPAIRS['t72bu'],
+    # +30% stature -> roof plateau 2.84-2.90 lands 2.19-2.21 (pub 2.23);
+    # hull mask 8.07->6.86; batch-9-split tube to overall 9.53. Also retires
+    # the stale batch-9 POSITION min/max on mesh_324 (bounds rebuilt).
+    ('py2', _axis_warp('t72bu', long_axis='x',
+                       y_map=[(-0.0105, -0.0105), (33.6705, 30.1141), (60.0295, 46.2224), (74.8826, 52.2892)],
+                       long_map=[(-84.4263, -71.7698), (84.397, 71.7405), (143.391, 127.5965)],
+                       y_top_max=53.9628, expect=(4, 8953, 6220))),
+]
+REPAIRS['t72b3m'] = [
+    # Sosna-U tower 3.36-3.42 -> 2.24-2.25 (pub 2.23; r2 pinned inside the
+    # dims grace — the ~5-column tower owns p95), dome crown 2.66-2.85 ->
+    # 2.16-2.24; hull near-true (0.979); short tube stretched to overall 9.53
+    ('py2', _axis_warp('t72b3m', long_axis='z',
+                       y_map=[(-0.8157, -0.8157), (0.7361, 0.7361), (2.2108, 1.6055), (2.9482, 1.6605)],
+                       long_map=[(-5.6312, -5.9394), (-2.8688, -2.7918), (4.626, 4.549)],
+                       y_top_max=1.7485, expect=(19, 152693, 119993))),
+]
+REPAIRS['t90sm'] = [
+    *REPAIRS['t90sm'],
+    # welded-roof towers +39.5% -> tower band lands 2.22-2.26 (inside the
+    # dims grace); hull mask 7.62->6.86; muzzle 6.73->6.20 (overall 9.63)
+    ('py2', _axis_warp('t90sm', long_axis='z',
+                       y_map=[(-0.9408, -0.9408), (1.0356, 0.8775), (2.3928, 1.9316), (2.7485, 1.9843), (3.2097, 2.037)],
+                       long_map=[(-8.3354, -7.637), (-4.4879, -3.9872), (5.5523, 5.0516)],
+                       y_top_max=2.1424, expect=(34, 99174, 78574))),
+]
+REPAIRS['pt91m'] = [
+    # +23.5% stature -> crown 2.64-2.75 lands 2.15-2.20 (pub 2.19; r2 raised
+    # the crown anchor — p95 read -1.7% on the first map); met mast keeps a
+    # proud head (thin, p95-exempt); hull mask 7.66->6.86
+    ('py2', _axis_warp('pt91m', long_axis='z',
+                       y_map=[(-1.0633, -1.0633), (0.4368, 0.2916), (1.5497, 1.0464), (2.6336, 1.4723)],
+                       long_map=[(-6.1402, -5.6757), (-3.4788, -3.0917), (3.9345, 3.5473)],
+                       y_top_max=1.5497, expect=(20, 16169, 13276))),
+]
+REPAIRS['t90a_vladimir'] = [
+    *REPAIRS['t90a_vladimir'],
+    # +28.6% stature / +14% length (worst print): roof band 2.74-2.88 ->
+    # 2.15-2.21; hull mask 7.82->6.86; fused tube to overall 9.53
+    ('py2', _axis_warp('t90a_vladimir', long_axis='z',
+                       y_map=[(-0.0802, -0.0802), (0.0215, 0.0215), (0.127, 0.0804), (0.1967, 0.1088)],
+                       long_map=[(-0.3239, -0.289), (0.2446, 0.2097), (0.4336, 0.4038)],
+                       y_top_max=0.1146, expect=(9, 166764, 115220))),
+]
+REPAIRS['t90a'] = {
+    'path': 'public/models/tanks/community/variants/t90a_xarchenko_variant.glb',
+    'ops': [
+        # xarchenko: roof band 2.54-2.66 -> 2.18-2.24 (pub 2.23), pano stays
+        # proud-thin; hull mask 7.48->6.86; muzzle to overall 9.53
+        ('py2', _axis_warp('t90a', long_axis='z',
+                           y_map=[(0, 0), (1.3023, 1.3023), (2.5082, 2.1223), (2.8072, 2.2188)],
+                           long_map=[(-4.7563, -4.4573), (2.4594, 2.1604), (4.765, 4.7361)],
+                           y_top_max=2.2959, expect=(4, 275104, 147865))),
+    ],
+}
+
+
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)
     if ops is None:
