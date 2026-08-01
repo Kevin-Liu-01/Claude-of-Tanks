@@ -809,6 +809,33 @@ if (params.get('geo')) {
     if (!sp) return c;
     return c.map((p) => (p && (p[0] < sp[0] - m || p[0] > sp[1] + m)) ? null : p);
   };
+  // v11 (ORIENTATION GUARD, owner bug 2026-08-01): translation-only
+  // registration is blind to a fore-aft MIRRORED build — t62mv1 shipped
+  // with its glacis at the stern and still bulk-overlapped to ~70. Score
+  // the hull curve again with the proc curve mirrored about its own span
+  // midpoint; if the mirror fits distinctly better, the build faces
+  // backwards — hard-zero the row and flag it as a work order.
+  {
+    const mirror = (c) => {
+      const sp = spanAll(c);
+      if (!sp) return c;
+      const mid = (sp[0] + sp[1]) / 2;
+      const out = c.filter(Boolean).map((p) => [2 * mid - p[0], p[1], p[2]]);
+      out.sort((a, b) => a[0] - b[0]);
+      return out;
+    };
+    for (const view of ['side', 'plan']) {
+      const row = curveRows[`${view}_hull`];
+      if (!row || row.score <= 0) continue;
+      const mirrored = curveScore(
+        curves[`${view}_hull_ref`], mirror(curves[`${view}_hull_proc`]), norm[view]);
+      if (mirrored.score > row.score + 8) {
+        row.orientationFlip = true;
+        row.mirrorScore = +mirrored.score.toFixed(1);
+        row.score = 0;
+      }
+    }
+  }
   for (const view of ['side', 'plan']) {
     curves[`${view}_turret_ref`] = trimToHull(curves[`${view}_turret_ref`], curves[`${view}_hull_ref`]);
     curves[`${view}_turret_proc`] = trimToHull(curves[`${view}_turret_proc`], curves[`${view}_hull_proc`]);

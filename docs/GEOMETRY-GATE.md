@@ -160,6 +160,25 @@ procedural build (`tools/tmp-hashgeo.mjs`) — a gate run against a
 missing reference writes a false 0 row and must not be recorded in the
 ledger.
 
+### Orientation truth (v11, owner bug 2026-08-01)
+
+Translation-only registration is blind to a fore-aft mirrored build:
+t62mv1 shipped with its hull backwards and turret seated at the stern
+while scoring ~70 — the bulk silhouette still overlapped. v11 adds a
+mirror check (side+plan hull curves re-scored with the proc curve
+mirrored about its span midpoint; a decisively better mirror fit
+hard-zeros the row with `orientationFlip: true`). LIMITATION, learned
+from the same tank: near-symmetric silhouettes (T-62 class low wedges)
+evade the mirror check — the backwardness lives in shaded features the
+masks cannot see. Orientation truth therefore has three layers, all
+required: (1) builder-side vertex asserts — bow direction and turret
+seat derived from the reference vertices (gun-forward at yaw 0 = +z)
+must match the build, and the turret's underside must not penetrate
+the hull deck beyond the ring recess; (2) the v11 mirror check for
+asymmetric hulls; (3) a MANDATORY human/critic turntable review before
+any sheet ships or any landing is reported — curve scores alone never
+certify a tank again.
+
 ### Anti-gaming rules
 
 - Both models are measured by the same pipeline; builders never hand the
