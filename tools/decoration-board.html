@@ -1,0 +1,361 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Claude of Tanks — decoration board</title>
+<style>
+  :root { color-scheme: dark; font: 13px/1.45 Inter, system-ui, sans-serif; background: #0b0f12; color: #e7edf0 }
+  body { margin: 0; padding: 18px }
+  h1 { margin: 0 0 4px; font-size: 20px }
+  #status { color: #9eabb2; margin-bottom: 14px }
+  figure { margin: 0 0 16px; border: 1px solid #263038; background: #050708; padding: 8px; display: inline-block; vertical-align: top }
+  figcaption { padding-top: 6px; text-transform: uppercase; letter-spacing: .08em; color: #9eabb2 }
+  canvas { display: block }
+  pre { background: #11171b; border: 1px solid #263038; padding: 10px; white-space: pre-wrap }
+</style>
+<h1 id="title">Decoration board</h1>
+<div id="status">booting…</div>
+<div id="sheets"></div>
+<pre id="report"></pre>
+
+<script type="module">
+// tools/decoration-board.html — the decoration system's quality bench.
+//
+//   ?mode=catalog            every kit builder x variant on a neutral pedestal
+//                            at 3 angles (one sheet canvas per kit)
+//   ?mode=tank&id=<spec>     composition sheets for one dressed tank: hero,
+//                            rear, closeups, articulation strip (gun at FULL
+//                            depression across turret yaws), dressed/bare
+//                            pair, wreck burn check — plus hard assertions
+//                            (width guard, bore-sweep raycast, proceduralOnly
+//                            exclusion, burn-hook coverage) in __BOARD_REPORT.
+//
+// Driven headlessly by tools/decoration-eval.mjs; waits on __BOARD_READY.
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+import { TANK_SPECS, MODEL_SOURCE } from '/src/vehicles/specs.js';
+import {
+  DECOR_KITS, DECOR_KIT_INFO, buildDecorMaterials, decorManifestFor, decorEra,
+} from '/src/vehicles/decorations.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+
+const params = new URLSearchParams(location.search);
+const mode = params.get('mode') || 'catalog';
+const status = (t) => { document.querySelector('#status').textContent = t; };
+
+const PX = 340;                 // catalog cell
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setClearColor(0x11161a, 1);
+renderer.shadowMap.enabled = false;
+
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xcfd8e0, 0x2a2f26, 1.05));
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+sun.position.set(30, 42, 24);
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0xbfd0e0, 0.35);
+fill.position.set(-26, 18, -30);
+scene.add(fill);
+
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 4, renderer };
+
+function sheet(idName, w, h, caption) {
+  const fig = document.createElement('figure');
+  const cv = document.createElement('canvas');
+  cv.id = idName;
+  cv.width = w; cv.height = h;
+  cv.style.width = `${Math.min(w, 1500)}px`;
+  const cap = document.createElement('figcaption');
+  cap.textContent = caption;
+  fig.append(cv, cap);
+  document.querySelector('#sheets').append(fig);
+  return cv.getContext('2d');
+}
+
+function renderInto(ctx2d, subject, dir, dx, dy, px, { fovDeg = 28, fit = 1.06, lookYFrac = 0.5, ortho = false } = {}) {
+  const bb = new THREE.Box3().setFromObject(subject);
+  if (bb.isEmpty()) return;
+  const c = bb.getCenter(new THREE.Vector3());
+  const size = bb.getSize(new THREE.Vector3());
+  c.y = bb.min.y + size.y * lookYFrac;
+  const radius = size.length() * 0.5 * fit;
+  let cam;
+  if (ortho) {
+    cam = new THREE.OrthographicCamera(-radius, radius, radius, -radius, 0.05, 400);
+    cam.position.copy(c).addScaledVector(dir.clone().normalize(), 60);
+  } else {
+    cam = new THREE.PerspectiveCamera(fovDeg, 1, 0.05, 400);
+    const dist = radius / Math.tan((fovDeg / 2) * Math.PI / 180);
+    cam.position.copy(c).addScaledVector(dir.clone().normalize(), dist);
+  }
+  cam.lookAt(c);
+  cam.updateProjectionMatrix();
+  cam.updateMatrixWorld(true);
+  renderer.setSize(px, px, false);
+  renderer.render(scene, cam);
+  ctx2d.drawImage(renderer.domElement, dx, dy, px, px);
+}
+
+function label(ctx2d, text, x, y, size = 15) {
+  ctx2d.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx2d.fillRect(x, y - size - 4, ctx2d.measureText(text).width + 14, size + 8);
+  ctx2d.fillStyle = '#f5b64b';
+  ctx2d.font = `600 ${size}px Inter, sans-serif`;
+  ctx2d.fillText(text, x + 6, y - 4);
+}
+
+const report = { mode, rows: [] };
+
+// ---------------------------------------------------------------------------
+if (mode === 'catalog') {
+  document.querySelector('#title').textContent = 'Decoration board — kit catalog';
+  const spec = TANK_SPECS[params.get('spec') || 'm60a1'] || TANK_SPECS.leo2a7 || Object.values(TANK_SPECS)[0];
+  const mats = buildDecorMaterials(spec, engineCtx);
+  const mulberry = (a) => { a |= 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; };
+
+  // pedestal + 1 m scale bar
+  const pedestal = new THREE.Group();
+  {
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.0, 0.08, 40), new THREE.MeshStandardMaterial({ color: 0x2c3237, roughness: 0.9 }));
+    disc.position.y = -0.04;
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(1, 0.012, 0.03), new THREE.MeshStandardMaterial({ color: 0xf5b64b, roughness: 0.6 }));
+    bar.position.set(0, 0.006, 0.75);
+    pedestal.add(disc, bar);
+  }
+
+  const dirs = [new THREE.Vector3(0.85, 0.4, 1), new THREE.Vector3(1, 0.12, 0.02), new THREE.Vector3(-0.75, 0.55, -1)];
+  const only = params.get('kit');
+  const kits = Object.keys(DECOR_KITS).filter((k) => !only || k === only);
+  for (const kit of kits) {
+    const info = DECOR_KIT_INFO[kit] || { label: kit, variants: [{}] };
+    const rows = info.variants.length;
+    const ctx2d = sheet(`kit_${kit}`, PX * 3, PX * rows, `${kit} — ${info.label} [${(info.eras || []).join(' ')}]`);
+    info.variants.forEach((variant, vi) => {
+      const rng = mulberry(0xC0FFEE + vi * 977);
+      const parts = DECOR_KITS[kit]({ rng, ...(kit === 'wheel' ? { r: 0.33 } : {}), ...variant });
+      const grp = new THREE.Group();
+      const byMat = new Map();
+      let tris = 0;
+      for (const p of parts) {
+        tris += (p.geo.index ? p.geo.index.count : p.geo.attributes.position.count) / 3;
+        if (!byMat.has(p.mat)) byMat.set(p.mat, []);
+        byMat.get(p.mat).push(p.geo.index ? p.geo.toNonIndexed() : p.geo);
+      }
+      for (const [m, geos] of byMat) grp.add(new THREE.Mesh(mergeGeometries(geos, false), mats.get(m)));
+      scene.add(pedestal, grp);
+      dirs.forEach((d, di) => renderInto(ctx2d, grp, d, di * PX, vi * PX, PX, { fovDeg: 26, fit: 1.25, lookYFrac: 0.45 }));
+      scene.remove(grp, pedestal);
+      label(ctx2d, `${kit} v${vi} — ${JSON.stringify(variant).slice(0, 46)} — ${tris | 0} tris`, 8, vi * PX + PX - 8, 14);
+      report.rows.push({ kit, variant: vi, params: variant, tris: tris | 0, families: [...byMat.keys()] });
+    });
+  }
+  status(`catalog: ${kits.length} kits`);
+}
+
+// ---------------------------------------------------------------------------
+if (mode === 'tank') {
+  const id = params.get('id') || 'tiger1';
+  document.querySelector('#title').textContent = `Decoration board — ${id}`;
+  const spec = TANK_SPECS[id];
+  if (!spec) throw new Error(`unknown tank id ${id}`);
+
+  status('building dressed visual…');
+  const dressed = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', decor: true });
+  const bare = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', decor: false });
+  // proceduralOnly MUST beat decor:true — the metrology contract
+  const metrology = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true, decor: true });
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const isGlb = MODEL_SOURCE[id] && MODEL_SOURCE[id].source === 'glb';
+  for (let i = 0; i < 1200 && !dressed.root.userData.__decorApplied; i++) await sleep(50);
+  if (!dressed.root.userData.__decorApplied) throw new Error('decor never attached (timeout)');
+  if (isGlb) for (let i = 0; i < 200 && !bare.root.userData.__glbSwapped; i++) await sleep(25);
+  await sleep(200); // let any camo/kit canvases settle
+
+  // pin LODs to level 0 (same rule the fidelity lab uses)
+  for (const v of [dressed, bare, metrology]) {
+    v.root.traverse((o) => {
+      if (!o.isLOD) return;
+      o.autoUpdate = false;
+      o.levels.forEach((lv, i) => { if (lv.object) lv.object.visible = i === 0; });
+    });
+  }
+
+  const decorMeshes = [];
+  dressed.root.traverse((o) => { if (o.isMesh && o.userData.__decor) decorMeshes.push(o); });
+  const decorNodesIn = (v) => { let n = 0; v.root.traverse((o) => { if (o.isMesh && o.userData.__decor) n++; }); return n; };
+
+  // ---- assertions ---------------------------------------------------------
+  const W = spec.dims.widthM;
+  const asserts = {};
+  asserts.summary = dressed.root.userData.__decorSummary || null;
+  asserts.decorMeshCount = decorMeshes.length;
+  asserts.metrologyDecorNodes = decorNodesIn(metrology); // must be 0
+  asserts.bareDecorNodes = decorNodesIn(bare);           // must be 0
+  asserts.groups = {
+    hull: !!dressed.root.getObjectByName('rig_decor_hull'),
+    turret: !!dressed.root.getObjectByName('rig_decor_turret'),
+    turretParentOk: (() => {
+      const g = dressed.root.getObjectByName('rig_decor_turret');
+      for (let p = g; p; p = p.parent) if (p.name === 'rig_turret') return true;
+      return !g; // absent turret decor is legal
+    })(),
+  };
+
+  // width guard: hull decor max |x|; turret decor worst-yaw radial reach
+  {
+    dressed.root.updateMatrixWorld(true);
+    let maxAbsX = 0, maxRadial = 0;
+    const bb = new THREE.Box3();
+    const v = new THREE.Vector3();
+    const tInv = new THREE.Matrix4().copy(dressed.root.getObjectByName('rig_turret').matrixWorld).invert();
+    for (const m of decorMeshes) {
+      bb.setFromObject(m);
+      const inTurret = (() => { for (let p = m; p; p = p.parent) if (p.name === 'rig_decor_turret') return true; return false; })();
+      for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) {
+        v.set(x, y, z);
+        if (inTurret) { v.applyMatrix4(tInv); maxRadial = Math.max(maxRadial, Math.hypot(v.x, v.z)); }
+        else maxAbsX = Math.max(maxAbsX, Math.abs(v.x));
+      }
+    }
+    asserts.widthGuard = {
+      limit: +(W / 2 + 0.05).toFixed(3),
+      hullMaxAbsX: +maxAbsX.toFixed(3),
+      turretMaxRadial: +maxRadial.toFixed(3),
+      pass: maxAbsX <= W / 2 + 0.05 + 1e-6,
+    };
+  }
+
+  // gun full-depression sweep: raycast the bore corridor (center + 4 offset
+  // rays at the sleeve radius) across 36 yaws against the WHOLE tank —
+  // a violation is a ray whose FIRST hit is decor (the game-visible case:
+  // decor-through-barrel). Rays the hull's own plates eat first are the
+  // pre-existing deck/bore relationship decor cannot worsen.
+  {
+    const turret = dressed.root.getObjectByName('rig_turret');
+    const gun = dressed.root.getObjectByName('rig_gun');
+    const muzzleNode = dressed.root.getObjectByName('rig_muzzle');
+    const dep = (spec.gunDepressionDeg ?? 8) * Math.PI / 180;
+    const boreR = ((spec.armor.gunBarrel && spec.armor.gunBarrel.radiusM) || 0.08) * 1.3;
+    const ray = new THREE.Raycaster();
+    const targets = [];
+    dressed.root.traverse((obj) => {
+      if (!obj.isMesh || obj.isInstancedMesh || !obj.geometry || !obj.visible) return;
+      const m = Array.isArray(obj.material) ? obj.material[0] : obj.material;
+      if (!m || m.colorWrite === false) return;
+      // gun/recoil meshes ride the bore itself — exclude the tube
+      for (let p = obj; p; p = p.parent) if (p.name === 'rig_gun') return;
+      targets.push(obj);
+    });
+    const hits = [];
+    const o = new THREE.Vector3(), mz = new THREE.Vector3(), d = new THREE.Vector3();
+    const up = new THREE.Vector3(), side = new THREE.Vector3();
+    const y0 = turret.rotation.y, g0 = gun.rotation.x;
+    for (let k = 0; k < 36; k++) {
+      turret.rotation.y = (k / 36) * Math.PI * 2;
+      gun.rotation.x = dep; // rotation.x = -gunPitch; depression = +
+      dressed.root.updateMatrixWorld(true);
+      gun.getWorldPosition(o);
+      muzzleNode.getWorldPosition(mz);
+      d.copy(mz).sub(o);
+      const len = d.length();
+      d.normalize();
+      side.set(d.z, 0, -d.x).normalize();
+      up.crossVectors(d, side).normalize();
+      for (const [ou, ov] of [[0, 0], [boreR, 0], [-boreR, 0], [0, boreR], [0, -boreR]]) {
+        const org = o.clone().addScaledVector(side, ou).addScaledVector(up, ov).addScaledVector(d, 0.35);
+        ray.set(org, d);
+        ray.far = len - 0.3;
+        const hit = ray.intersectObjects(targets, false);
+        if (hit.length && hit[0].object.userData.__decor) {
+          const lp = dressed.root.worldToLocal(hit[0].point.clone());
+          hits.push({ yawDeg: k * 10, dist: +hit[0].distance.toFixed(2), mesh: hit[0].object.name,
+            at: [+lp.x.toFixed(2), +lp.y.toFixed(2), +lp.z.toFixed(2)] });
+        }
+      }
+    }
+    turret.rotation.y = y0; gun.rotation.x = g0;
+    dressed.root.updateMatrixWorld(true);
+    asserts.gunSweep = { yawsTested: 36, raysPerYaw: 5, firstHitRule: true, violations: hits.slice(0, 8), pass: hits.length === 0 };
+  }
+
+  // burn integration: setDestroyed must hook every decor material
+  {
+    const wreck = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', decor: true });
+    for (let i = 0; i < 1200 && !wreck.root.userData.__decorApplied; i++) await sleep(50);
+    wreck.syncFromState({ pos: new THREE.Vector3(0, 0, 0), yaw: 0, turretYaw: 0, gunPitch: 0, speed: 0, yawRate: 0, visualPitch: 0, visualRoll: 0, trackScroll: { l: 0, r: 0 } });
+    wreck.setDestroyed({ ageS: 4 });
+    let hooked = 0, total = 0;
+    wreck.root.traverse((o) => {
+      if (!o.isMesh || !o.userData.__decor) return;
+      total++;
+      const m = Array.isArray(o.material) ? o.material[0] : o.material;
+      if (m && m.userData && m.userData.__burnU) hooked++;
+    });
+    asserts.burn = { decorMeshes: total, burnHooked: hooked, pass: total > 0 && hooked === total };
+    // wreck beauty cell (charred decor evidence)
+    scene.add(wreck.root);
+    const ctxW = sheet('sheet_wreck', 700, 700, `${id} — wreck (decor chars with hull)`);
+    renderInto(ctxW, wreck.root, new THREE.Vector3(0.8, 0.42, 1), 0, 0, 700, { fovDeg: 30 });
+    label(ctxW, `wreck +4 s — ${hooked}/${total} decor materials burn-hooked`, 10, 690);
+    scene.remove(wreck.root);
+    wreck.dispose();
+  }
+
+  // ---- sheets --------------------------------------------------------------
+  scene.add(dressed.root);
+  dressed.root.updateMatrixWorld(true);
+
+  { // hero + rear
+    const ctx2d = sheet('sheet_hero', 1800, 900, `${id} — dressed hero (front-3/4 + rear-3/4)`);
+    renderInto(ctx2d, dressed.root, new THREE.Vector3(0.8, 0.35, 1), 0, 0, 900, { fovDeg: 28 });
+    renderInto(ctx2d, dressed.root, new THREE.Vector3(-0.85, 0.4, -1), 900, 0, 900, { fovDeg: 28 });
+    label(ctx2d, `${id} — ${decorMeshes.length} decor draws, ${asserts.summary ? asserts.summary.tris : '?'} tris`, 10, 890);
+  }
+  { // closeups: turret ring area + rear deck + top
+    const ctx2d = sheet('sheet_closeups', 1800, 600, `${id} — closeups (turret kit / rear deck / plan)`);
+    const t = dressed.root.getObjectByName('rig_turret');
+    renderInto(ctx2d, t, new THREE.Vector3(1, 0.55, 0.7), 0, 0, 600, { fovDeg: 26, fit: 1.25 });
+    const hullDecor = dressed.root.getObjectByName('rig_decor_hull') || dressed.root;
+    renderInto(ctx2d, hullDecor, new THREE.Vector3(-0.6, 0.65, -1), 600, 0, 600, { fovDeg: 26, fit: 1.3 });
+    renderInto(ctx2d, dressed.root, new THREE.Vector3(0.03, 1, 0.06), 1200, 0, 600, { ortho: true, fit: 1.02 });
+  }
+  { // articulation: FULL depression across yaws — decor clearance evidence
+    const turret = dressed.root.getObjectByName('rig_turret');
+    const gun = dressed.root.getObjectByName('rig_gun');
+    const dep = (spec.gunDepressionDeg ?? 8) * Math.PI / 180;
+    const ctx2d = sheet('sheet_articulation', 1800, 450, `${id} — gun FULL depression (-${spec.gunDepressionDeg ?? 8}°) over decor, turret 0/90/180/270`);
+    [0, 90, 180, 270].forEach((yaw, i) => {
+      turret.rotation.y = yaw * Math.PI / 180;
+      gun.rotation.x = dep;
+      dressed.root.updateMatrixWorld(true);
+      renderInto(ctx2d, dressed.root, new THREE.Vector3(i % 2 ? -0.9 : 0.9, 0.24, i < 2 ? 1 : -1), i * 450, 0, 450, { fovDeg: 26 });
+      label(ctx2d, `yaw ${yaw}°`, i * 450 + 8, 440, 13);
+    });
+    turret.rotation.y = 0; gun.rotation.x = 0;
+    dressed.root.updateMatrixWorld(true);
+  }
+  { // dressed vs bare pair
+    const ctx2d = sheet('sheet_pair', 1400, 700, `${id} — dressed | bare`);
+    renderInto(ctx2d, dressed.root, new THREE.Vector3(0.8, 0.35, 1), 0, 0, 700, { fovDeg: 28 });
+    scene.remove(dressed.root);
+    scene.add(bare.root);
+    bare.root.updateMatrixWorld(true);
+    renderInto(ctx2d, bare.root, new THREE.Vector3(0.8, 0.35, 1), 700, 0, 700, { fovDeg: 28 });
+    scene.remove(bare.root);
+    scene.add(dressed.root);
+    label(ctx2d, 'dressed', 10, 690); label(ctx2d, 'bare', 710, 690);
+  }
+
+  report.rows.push({
+    id, era: decorEra(spec), source: isGlb ? 'glb' : 'procedural',
+    manifest: decorManifestFor(spec, (() => { let s = 1; return () => ((s = s * 16807 % 2147483647) / 2147483647); })()).map((r) => r.kit),
+    asserts,
+  });
+  status(`tank ${id}: ${decorMeshes.length} decor meshes — width ${asserts.widthGuard.pass ? 'PASS' : 'FAIL'}, sweep ${asserts.gunSweep.pass ? 'PASS' : 'FAIL'}, metrology-clean ${asserts.metrologyDecorNodes === 0 ? 'PASS' : 'FAIL'}, burn ${asserts.burn.pass ? 'PASS' : 'FAIL'}`);
+}
+
+document.querySelector('#report').textContent = JSON.stringify(report, null, 1);
+window.__BOARD_REPORT = report;
+window.__BOARD_READY = true;
+</script>

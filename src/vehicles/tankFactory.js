@@ -12,6 +12,12 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { getSpec, MODEL_SOURCE, TANK_SPECS } from './specs.js';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook } from './materials.js';
+// DECORATION SYSTEM (2026-07): cosmetic stowage/fittings layer — attaches
+// under dedicated rig_decor_hull / rig_decor_turret groups at the end of
+// createTank (see the seam near the GLB-swap block). Skipped for
+// proceduralOnly builds and metrology stub contexts so the geometry gate and
+// parity boards keep measuring bare silhouettes.
+import { attachTankDecorations } from './decorations.js';
 // effects_combat r5 ANIMATION CLOCK: the self-timed visual timelines (gun
 // recuperator, turret-pop arc, wreck char/ember cooldown) now age against
 // the shared fx clock — see src/fx/clock.js. Live play is identical (the
@@ -4276,6 +4282,21 @@ export function createTank(specId, engineCtx, opts = {}) {
   gunG.rotation.x = 0;
   if (P.gear) P.gear.update(0, 0);
 
+  // ---- DECORATION SYSTEM seam (src/vehicles/decorations.js) ---------------
+  // Cosmetic stowage/fittings under rig_decor_hull / rig_decor_turret.
+  // HARD-SKIPPED inside attachTankDecorations for proceduralOnly builds and
+  // for metrology stub ctxs (geometry gate / shaded-parity boards keep
+  // measuring bare silhouettes); in-game builds dress by default. Runs AFTER
+  // the movement contact scan above so the solve metadata never sees decor.
+  // GLB-sourced tanks dress after the swap lands (below): applySwap hides
+  // every pre-swap render node — decor included — and anchors must probe the
+  // REAL rendered geometry anyway.
+  const dressTank = () => attachTankDecorations({
+    root, hullG, turretG, spec, engineCtx, disposables,
+    opts: { proceduralOnly, decor: opts.decor },
+    isDestroyed: () => destroyed,
+  });
+
   // ---- sourced-GLB swap (per-tank source of truth in specs.MODEL_SOURCE) ----
   // Dynamic import keeps GLTFLoader out of the bundle-critical path; on any
   // failure (missing file, no articulable turret node) the procedural model
@@ -4292,6 +4313,7 @@ export function createTank(specId, engineCtx, opts = {}) {
       // same frame so the first render never shows the procedural model.
       try { _modelLoaderMod.applyGlbModelSync(ctx); }
       catch (e) { console.warn(`[tankFactory] ${specId}: glb swap failed, procedural retained —`, e.message); }
+      dressTank(); // decor probes the just-swapped (or retained) geometry
     } else {
       import('./modelLoader.js')
         .then((m) => { _modelLoaderMod = m; return m.applyGlbModel(ctx); })
@@ -4323,8 +4345,13 @@ export function createTank(specId, engineCtx, opts = {}) {
             try { R.compile(root, engineCtx.camera, engineCtx.scene); } catch (_) { /* fine */ }
           }
         })
-        .catch((e) => console.warn(`[tankFactory] ${specId}: glb swap failed, procedural retained —`, e.message));
+        .catch((e) => console.warn(`[tankFactory] ${specId}: glb swap failed, procedural retained —`, e.message))
+        // decoration seam: dress once the swap settled either way (swapped
+        // GLB or retained procedural) — the attach probes live geometry
+        .then(dressTank);
     }
+  } else {
+    dressTank(); // procedural-of-record tanks dress at build
   }
 
   return visual;
