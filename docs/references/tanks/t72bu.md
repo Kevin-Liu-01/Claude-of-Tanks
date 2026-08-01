@@ -106,3 +106,38 @@ tools/tmp-ru-glbnodes.py (scene-graph/bounds audit — no vertex reads).
 Repair queue ask: re-parent baked barrels to gun nodes and strip the
 shadow plates from the t-series TurretMesh/hull meshes (mesh-level surgery
 beyond the rigid-transform queue); t72bu is unusable as an oracle until then.
+
+## batch-9 ORACLE REPAIR (2026-08-01, tools/repair_oracles.py REPAIRS['t72bu'])
+
+INDEX SURGERY on mesh_324 (no authored vertex/attribute byte changes; the
+prim is re-pointed at trimmed index accessors appended to the bin — loader
+normalization frames cannot re-phase). Recipe re-runnable from the pristine
+.bak (snapshotted 2026-08-01) and byte-idempotent (re-run + shasum verified).
+
+1. BARREL SPLIT: the fused 2A46M resolved to 29 clean loose components
+   (mantlet collar block world x 34.00..40.46 + tube rings + muzzle x
+   143.34); no triangle crosses the audited collar station (~x 34), so the
+   bisect degenerated to an exact component split — 294 tris moved into a
+   new 'GunMesh' under a new 'Gun' node on the print's own Turret pivot
+   (attribute rows copied into dedicated accessors). turretNode ^Turret$
+   carries the tube on rig_turret (board: barrel yaws with the dome), the
+   t62mv1/t64bv1/t72b_1987 barrel-in-turret pattern.
+2. PLATE STRIP: 86 shadow components / 200 tris — the full-footprint deck
+   AO layer (doubled quads 0.1..0.7 units over the real deck skin, which
+   spans below the band and is kept; hull plan footprint verified unchanged
+   without them).
+
+DEFECT SIGNATURE ELIMINATED: ref side-hull now spans z −5.47..+2.62 with
+body span −5.47..+2.50 (was −5.47..+5.44 / body to +3.85 — the muzzle
+counting as hull body); the ref turret mask now carries the tube to +5.44.
+Gate before -> after (both 2026-08-01): hull 0 -> 51.4, whole 0 -> 4.8,
+stations 0 -> 12.4, turret 0 -> 0 (rows now EXIST — the r5 proc was built
+against the dead oracle and its hull-parented gun parity now reads as a
+proc defect; next builder pass re-anchors, src-side), dims 100, floaters
+100 (unchanged).
+
+UPDATED CEILINGS (tmp-ru-ceilings vs the repaired trace): side_whole 69.7 /
+side_turret 52.3 / front_whole 58.4 / stations ~54.7 — THE ORACLE IS
+RESURRECTED: was ~0 across every curve row (structurally dead), now
+stature-limited only (+29% authored roof — proportions untouched per the
+batch-9 scope; the tall print remains an owner-level ceiling decision).

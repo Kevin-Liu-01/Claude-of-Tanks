@@ -64,6 +64,19 @@ MANIFEST = {
         "seat": {"frontFrac": 0.40, "sink": 8.5},
         "guessGun": True, "budget": 120000,
     },
+    # bergman T-62 (batch-9 oracle-candidate eval for t62mv1; same zip as the
+    # t54 refit -> same authoring frames: hull X=width/Y=up/Z=length with the
+    # sprocket at +Z, turret upright gun +Z ring plug -Y). QUARANTINE BAKE:
+    # evaluation output only, not registered anywhere (candidates-gen2/t62).
+    "t62": {
+        "hull": [("t62/t62_hull.stl", RZ(180) @ RX(90))],
+        "turret": [("t62/t62_turret.stl", RX(90))],
+        # frontFrac 0.35 = the published seat (turret centre +1.07 m ahead of
+        # hull centre on the 6.63 m hull -> +10.9 mm at 1:100 from the bow of
+        # the 72.8 mm print hull).
+        "seat": {"frontFrac": 0.35, "sink": 8.5},
+        "guessGun": True, "budget": 120000,
+    },
     # bergman T80 family: turrets share the T54 conventions but the HULLS are
     # authored with the front at +Z (the t54's is at -Z — first-bake render
     # showed rear drums + exhaust louvres on the nose): plain RX(90).

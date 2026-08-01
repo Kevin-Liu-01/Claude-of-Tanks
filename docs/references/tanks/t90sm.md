@@ -105,3 +105,20 @@ tools/tmp-ru-glbnodes.py (scene-graph/bounds audit — no vertex reads).
 Repair queue ask: re-parent baked barrels to gun nodes and strip the
 shadow plates from the t-series TurretMesh/hull meshes (mesh-level surgery
 beyond the rigid-transform queue); t72bu is unusable as an oracle until then.
+
+## batch-9 ORACLE REPAIR (2026-08-01, tools/repair_oracles.py REPAIRS['t90sm'])
+
+PLATE STRIP by index surgery on 'chasis' prim0 (authored vertex bytes
+untouched): 1 discrete component / 111 verts / 117 tris — the audited
+plan-rectangle shadow plate (x −1.64..1.61, z −2.30..4.37, 0.15 thin,
+riding ABOVE the real deck contour at y 0.89..1.04 world). A 2.5 x 5.0
+size floor on the selection keeps the genuine deck greebles in the same
+band. Re-runnable from the pristine .bak (2026-08-01); byte-idempotent.
+
+MEASURED EFFECT: mask-neutral — the chasis top profile is unchanged at
+every z column (other deck skin tops the same heights), and the batch-9
+gate re-run reads identical rows (hull 31.5 / whole 0 / turret 31.5 /
+stations 0 / dims 91.9 / floaters 100). The strip is structural hygiene
+per the batch-9 queue; the +39.5% tower/stature cap (authored proportions,
+out of batch-9 scope) remains the binding ceiling: side_whole 68.7 /
+side_turret 57.1 / front 49.2 / stations ~36 (re-derived, unchanged).

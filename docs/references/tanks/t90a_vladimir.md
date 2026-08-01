@@ -106,3 +106,26 @@ tools/tmp-ru-glbnodes.py (scene-graph/bounds audit — no vertex reads).
 Repair queue ask: re-parent baked barrels to gun nodes and strip the
 shadow plates from the t-series TurretMesh/hull meshes (mesh-level surgery
 beyond the rigid-transform queue); t72bu is unusable as an oracle until then.
+
+## batch-9 ORACLE REPAIR (2026-08-01, tools/repair_oracles.py REPAIRS['t90a_vladimir'])
+
+HULL DE-DUP by node surgery only: the print's FOUR stacked near-identical
+hull meshes resolved per-layer (batch-9 solo renders, scratch ru9): me_003
+(34k verts, full hull + running gear — wheels seat exactly in the
+me_011/me_012 track runs, deck meets the me_001 turret) is the
+AUTHORITATIVE copy and is kept; me_004 (3.7k, decimated LOD dropping an
+oversized wheel BELOW the track bed), me_007 (4.4k, decimation slivers +
+triangle flags above the skirt line) and me_008 (3.3k, same class) are
+DETACHED from the scene (nodes/meshes stay in the file, unreferenced —
+restorable from the .bak, snapshotted 2026-08-01; recipe byte-idempotent).
+me_002 (fender/tub skin) and me_009 (skirt/ERA kit + drums + turret K-5
+cheeks) are NOT hull duplicates and stay.
+
+MEASURED EFFECT: mask-neutral at gate resolution — the three LOD layers
+sat inside the union of the kept meshes (batch-9 gate re-run identical:
+hull 33.3 / whole 11.1 / turret 9.3 / stations 0 / dims 100 / floaters
+100; ceilings re-derived unchanged: side_whole 73.8 / side_turret 55.2 /
+front 61.7 / stations ~60). The de-dup ends the stacked z-fighting layers
+and the sub-belly/over-skirt LOD junk; the +28.3% stature and the me_001
+plate-like turret geometry (NOT in the batch-9 queue) remain the
+documented caps — authored proportions stay an owner decision.

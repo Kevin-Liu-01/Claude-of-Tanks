@@ -1303,6 +1303,303 @@ REPAIRS['m46_patton'] = seat_turret([7.096, 8.600, 18.828], [18.000, 16.600, 39.
 REPAIRS['m47_patton'] = seat_turret([6.312, 8.600, 14.175], [18.000, 16.600, 39.000])
 
 
+# ================================================================ batch 9 ===
+# Russia-family scene-graph round (r6 ORACLE-TRUST AUDIT, docs/references/
+# tanks/{t62mv1,t64bv1,t72bu,t72b_1987,t90sm,t90a_vladimir}.md). Two defect
+# classes, both repaired WITHOUT touching any authored vertex value:
+#
+#  1. SHADOW PLATES / RING PLUGS — the prints bake horizontal shadow slabs at
+#     deck height (WoT-kit AO plates and turret ring-plug flanges). On
+#     t62mv1 / t64bv1 they ride the TURRET mesh (the turret plan mask reads a
+#     deck rectangle: t62mv1 plan cols |x|<=1.0 span z -4.74..+1.06); on
+#     t72bu / t90sm they ride hull meshes as a doubled deck layer.
+#     Repair = INDEX SURGERY: the mesh's triangle list is re-pointed at a new
+#     index accessor that simply omits the plate triangles (appended to the
+#     bin chunk; every authored vertex/attribute byte passes through
+#     untouched, so loader normalization frames cannot re-phase). Plate parts
+#     are selected as whole index-connected components whose world bbox sits
+#     FULLY inside the audited slab band; a census guard (parts/verts/tris)
+#     refuses to write on any drift. Verified per-file before authoring:
+#     every deleted band component is a thin slab/flange fragment and the
+#     real deck skin (hull meshes) / dome shell (turret meshes) spans beyond
+#     the band and is kept — the "discrete rectangular part" case of the
+#     sanctioned bisect/delete doctrine (no shared-primitive bisect needed).
+#
+#  2. t72bu FUSED BARREL (the r6 "structurally dead oracle"): upper hull mesh
+#     mesh_324 bakes the ENTIRE 2A46M — mantlet collar block (world x
+#     34.00..40.46) + tube + muzzle (x 143.34, = the packet's +5.45 muzzle) —
+#     into the HULL primitive, so the gate's hull-anchored registration reads
+#     a body span of -3.98..+5.46 and lands ~1.47 m off for every curve row.
+#     The barrel resolves to 29 clean loose components with a natural
+#     boundary at the collar station (x ~34, the audited collar plane — no
+#     triangle crosses it, so the "bisect at the collar plane" degenerates to
+#     an exact component split). Repair: move those triangles into a new
+#     'GunMesh' primitive under a new 'Gun' node hung on the print's own
+#     'Turret' pivot node (attribute rows for the moved verts are COPIED into
+#     dedicated accessors so the new geometry is self-contained; the hull
+#     keeps its original attributes). The loader's turretNode ^Turret$ sweep
+#     then carries the tube on rig_turret exactly like the family's other
+#     prints (t62mv1/t64bv1/t72b_1987 carry their barrels in TurretMesh —
+#     certified fine); a future gunNode '^Gun$' config resolves it directly.
+#
+#  3. t90a_vladimir HULL DE-DUP: the desirefx print stacks FOUR near-
+#     identical hull meshes (me_003 34k verts + decimated LOD layers me_004 /
+#     me_007 / me_008 at slightly different scales), all visible at once.
+#     Solo-layer renders (batch-9 scratch): me_003 is the authoritative copy
+#     — its wheels seat exactly in the me_011/me_012 track runs and its deck
+#     meets the me_001 turret; me_004 drops an oversized wheel BELOW the
+#     track bed, me_007/me_008 scatter decimation slivers and triangle
+#     "flags" above the skirt line. Repair = node surgery only: detach the
+#     three LOD nodes from the scene (nodes/meshes stay in the file,
+#     unreferenced). me_002 (fender/tub skin) and me_009 (skirt/ERA kit) are
+#     NOT duplicates and stay. Union bbox is unchanged (me_003 covers the
+#     detached three), so the width-normalization frame cannot move.
+#
+# t72b_1987 carries NO discrete plate (batch-9 verification): band scans of
+# TurretMesh and mesh_315 at the deck plane (hull top y 19.80) find no slab
+# components; the loaded plan_turret trace shows dome+drums+gun only. The r6
+# packet's "Plate + barrel in TurretMesh (t62mv1 pattern)" resolves to the
+# SUNKEN DOME SKIRT (dome shell y 15.94..22.26 dips below the deck line) —
+# not a separable part, not bisectable on a plate plane (there is none), and
+# already hull-covered in every mask view. Documented no-op (newc_pziii
+# precedent).
+
+
+def _bin_chunk_index(chunks):
+    return next(i for i, (t, _) in enumerate(chunks) if t == BIN_CHUNK)
+
+
+def _acc_reader(gltf, data, acc_index):
+    """Return (count, ncomp, fmt, offset, stride) for a tightly-usable accessor."""
+    acc = gltf['accessors'][acc_index]
+    bv = gltf['bufferViews'][acc['bufferView']]
+    ncomp = {'SCALAR': 1, 'VEC2': 2, 'VEC3': 3, 'VEC4': 4}[acc['type']]
+    fmt = {5121: 'B', 5123: 'H', 5125: 'I', 5126: 'f'}[acc['componentType']]
+    size = struct.calcsize(fmt)
+    offset = bv.get('byteOffset', 0) + acc.get('byteOffset', 0)
+    stride = bv.get('byteStride') or ncomp * size
+    return acc, ncomp, fmt, offset, stride
+
+
+def _read_rows(gltf, data, acc_index):
+    acc, ncomp, fmt, offset, stride = _acc_reader(gltf, data, acc_index)
+    return [struct.unpack_from('<' + fmt * ncomp, data, offset + i * stride)
+            for i in range(acc['count'])]
+
+
+def _bin_append(gltf, binlist, payload, target=None):
+    """Append payload to the (mutable) bin bytearray 4-aligned; new bufferView index."""
+    while len(binlist) % 4:
+        binlist.append(0)
+    bv = {'buffer': 0, 'byteOffset': len(binlist), 'byteLength': len(payload)}
+    if target:
+        bv['target'] = target
+    binlist.extend(payload)
+    gltf['bufferViews'].append(bv)
+    return len(gltf['bufferViews']) - 1
+
+
+def _index_surgery(tank_id, node_name, *, prim_index=0, delete_rules=(),
+                   gun_rules=(), expect_delete=None, expect_gun=None,
+                   gun_parent='Turret'):
+    """Builder for the batch-9 'py2' op (docstring at the batch-9 header).
+
+    Rules are ((x0,x1,y0,y1,z0,z1), min_dx, min_dz) in glb-WORLD units: an
+    index-connected component matches when its world bbox sits fully inside
+    the box AND its x/z spans meet the minimums (the t90sm plate needs the
+    size floor so genuine deck greebles inside the band stay). expect_* are
+    exact (parts, verts, tris) censuses — any mismatch refuses to write.
+    """
+    def op(gltf, chunks, _id=tank_id, node=node_name, pi=prim_index,
+           drules=tuple(delete_rules), grules=tuple(gun_rules),
+           expd=expect_delete, expg=expect_gun, parent_name=gun_parent):
+        ni = find_node(gltf, node)
+        mesh_index = gltf['nodes'][ni]['mesh']
+        prim = gltf['meshes'][mesh_index]['primitives'][pi]
+        bi = _bin_chunk_index(chunks)
+        data = bytearray(chunks[bi][1])
+
+        idx_acc = gltf['accessors'][prim['indices']]
+        if idx_acc['componentType'] != 5123:
+            raise SystemExit(f'{_id}: expected uint16 indices')
+        idx = [v[0] for v in _read_rows(gltf, data, prim['indices'])]
+        pos = _read_rows(gltf, data, prim['attributes']['POSITION'])
+        world = node_world_matrix(gltf, ni)
+        W = [transform_point(world, p) for p in pos]
+
+        # union-find over triangle connectivity
+        parent = list(range(len(pos)))
+
+        def find(a):
+            while parent[a] != a:
+                parent[a] = parent[parent[a]]
+                a = parent[a]
+            return a
+
+        for k in range(0, len(idx) - 2, 3):
+            a, b, c = find(idx[k]), find(idx[k + 1]), find(idx[k + 2])
+            if a != b:
+                parent[a] = b
+            if find(idx[k]) != find(idx[k + 2]):
+                parent[find(idx[k])] = find(idx[k + 2])
+        comp_verts = {}
+        for i in range(len(pos)):
+            comp_verts.setdefault(find(i), []).append(i)
+
+        def classify(rules):
+            hit_roots = set()
+            nv = 0
+            for root, vids in comp_verts.items():
+                lo = [min(W[i][k] for i in vids) for k in range(3)]
+                hi = [max(W[i][k] for i in vids) for k in range(3)]
+                for (box, mdx, mdz) in rules:
+                    if (lo[0] >= box[0] and hi[0] <= box[1]
+                            and lo[1] >= box[2] and hi[1] <= box[3]
+                            and lo[2] >= box[4] and hi[2] <= box[5]
+                            and (hi[0] - lo[0]) >= mdx
+                            and (hi[2] - lo[2]) >= mdz):
+                        hit_roots.add(root)
+                        nv += len(vids)
+                        break
+            return hit_roots, nv
+
+        del_roots, del_nv = classify(drules)
+        gun_roots, gun_nv = classify(grules)
+        if del_roots & gun_roots:
+            raise SystemExit(f'{_id}: delete/gun rule overlap')
+
+        kept, gone, moved = [], 0, []
+        for k in range(0, len(idx) - 2, 3):
+            r = find(idx[k])
+            if r in del_roots:
+                gone += 1
+            elif r in gun_roots:
+                moved.append((idx[k], idx[k + 1], idx[k + 2]))
+            else:
+                kept.extend((idx[k], idx[k + 1], idx[k + 2]))
+        for label, exp, got in (('delete', expd, (len(del_roots), del_nv, gone)),
+                                ('gun', expg, (len(gun_roots), gun_nv, len(moved)))):
+            if exp is not None and tuple(exp) != got:
+                raise SystemExit(f'{_id}: {label} census mismatch — expected '
+                                 f'{tuple(exp)} (parts,verts,tris), got {got}; '
+                                 f'refusing to write (wrong input file?)')
+
+        # re-point the prim at a trimmed index accessor (appended; original
+        # index bytes stay in the bin, unreferenced)
+        nbv = _bin_append(gltf, data, struct.pack(f'<{len(kept)}H', *kept), 34963)
+        gltf['accessors'].append({'bufferView': nbv, 'componentType': 5123,
+                                  'count': len(kept), 'type': 'SCALAR'})
+        prim['indices'] = len(gltf['accessors']) - 1
+
+        if gun_roots:
+            order = sorted({v for tri in moved for v in tri})
+            remap = {v: i for i, v in enumerate(order)}
+            attrs = {}
+            for name, ai in prim['attributes'].items():
+                acc, ncomp, fmt, offset, stride = _acc_reader(gltf, data, ai)
+                rows = [struct.unpack_from('<' + fmt * ncomp, data,
+                                           offset + i * stride) for i in order]
+                payload = b''.join(struct.pack('<' + fmt * ncomp, *r) for r in rows)
+                abv = _bin_append(gltf, data, payload, 34962)
+                new_acc = {'bufferView': abv, 'componentType': acc['componentType'],
+                           'count': len(order), 'type': acc['type']}
+                if name == 'POSITION':
+                    new_acc['min'] = [min(r[k] for r in rows) for k in range(ncomp)]
+                    new_acc['max'] = [max(r[k] for r in rows) for k in range(ncomp)]
+                gltf['accessors'].append(new_acc)
+                attrs[name] = len(gltf['accessors']) - 1
+            gidx = [remap[v] for tri in moved for v in tri]
+            gbv = _bin_append(gltf, data, struct.pack(f'<{len(gidx)}H', *gidx), 34963)
+            gltf['accessors'].append({'bufferView': gbv, 'componentType': 5123,
+                                      'count': len(gidx), 'type': 'SCALAR'})
+            gprim = {'attributes': attrs, 'indices': len(gltf['accessors']) - 1}
+            if 'material' in prim:
+                gprim['material'] = prim['material']
+            gltf['meshes'].append({'name': 'GunMesh', 'primitives': [gprim]})
+            src_node = gltf['nodes'][ni]
+            pivot = gltf['nodes'][find_node(gltf, parent_name)]
+            pt = pivot.get('translation', [0.0, 0.0, 0.0])
+            gun_node = {'name': 'Gun', 'mesh': len(gltf['meshes']) - 1,
+                        'translation': [-pt[0], -pt[1], -pt[2]]}
+            if 'rotation' in src_node:
+                gun_node['rotation'] = list(src_node['rotation'])
+            if 'scale' in src_node:
+                gun_node['scale'] = list(src_node['scale'])
+            gltf['nodes'].append(gun_node)
+            pivot.setdefault('children', []).append(len(gltf['nodes']) - 1)
+
+        gltf['buffers'][0]['byteLength'] = len(data)
+        chunks[bi] = (BIN_CHUNK, bytes(data))
+        msg = f'[repair] {_id}: {node} prim{pi} -{gone} plate tris'
+        if gun_roots:
+            msg += f', {len(moved)} tris -> GunMesh under {parent_name}'
+        print(msg)
+    return op
+
+
+def _detach_nodes(tank_id, names):
+    """Builder for the batch-9 vladimir de-dup: drop nodes from the scene."""
+    def op(gltf, _id=tank_id, names=tuple(names)):
+        for scene in gltf.get('scenes', []):
+            roots = scene.get('nodes', [])
+            for name in names:
+                ni = find_node(gltf, name)
+                if ni not in roots:
+                    raise SystemExit(f'{_id}: {name} is not a scene root — '
+                                     f'refusing (wrong input file?)')
+                roots.remove(ni)
+                print(f'[repair] {_id}: detached {name} (node {ni}) from scene')
+    return op
+
+
+# Boxes are glb-world (this family's frame: +x = forward/long axis, +y up),
+# measured by the batch-9 component censuses (scratch: ru9_analyze/ru9_plates).
+REPAIRS['t62mv1'] = [
+    # plate flange fragments at the deck plane (hull mesh_326 top y 18.92):
+    # 55 slab parts across x -35.23..29.17, all fully inside y 17.0..19.6 —
+    # the audited plan z -4.74..+1.06 turret-mask rectangle. Dome shell
+    # (y ..23.27+), drums (y ..23.62) and the 2A46 span beyond the band: kept.
+    ('py2', _index_surgery('t62mv1', 'TurretMesh',
+                           delete_rules=[((-46.5, 30.0, 17.0, 19.6, -18.0, 18.0), 0, 0)],
+                           expect_delete=(55, 298, 191))),
+]
+REPAIRS['t64bv1'] = [
+    # two-part plate = thin flange slabs at y 14.37..16.51 PLUS the ring-plug
+    # box (one discrete component, y 8.71..14.91, x -33.12..31.51 z +-11.67 —
+    # the audit's "wide rear slab .. + narrow front tongue" footprint).
+    ('py2', _index_surgery('t64bv1', 'TurretMesh',
+                           delete_rules=[((-34.0, 32.5, 13.9, 16.6, -15.0, 15.0), 0, 0),
+                                         ((-33.8, 32.2, 8.4, 15.2, -12.0, 12.0), 0, 0)],
+                           expect_delete=(126, 743, 505))),
+]
+REPAIRS['t72bu'] = [
+    # (a) strip the full-footprint deck shadow layer (doubled quads floating
+    #     0.1-0.7 over the real deck skin, which spans below the band and is
+    #     kept — verified: the hull plan footprint is unchanged without them);
+    # (b) split the fused 2A46M (collar block x 34.00..40.46 + tube + muzzle
+    #     x 143.34) out of the hull primitive into GunMesh under a new Gun
+    #     node on the print's Turret pivot. Nothing else in the box: glacis
+    #     tops out ~30.8 there, the band floor is 31.6.
+    ('py2', _index_surgery('t72bu', 'mesh_324',
+                           delete_rules=[((-71.0, 86.0, 28.8, 31.8, -35.0, 35.0), 0, 0)],
+                           gun_rules=[((33.9, 143.5, 31.6, 39.9, -4.3, 3.9), 0, 0)],
+                           expect_delete=(86, 372, 200),
+                           expect_gun=(29, 352, 294))),
+]
+REPAIRS['t90sm'] = [
+    # one discrete 111-vert plate rectangle (x -1.64..1.61, z -2.30..4.37,
+    # 0.15 thin) riding ABOVE the real deck contour in the chasis mesh; the
+    # size floor (2.5 x 5.0) keeps the genuine deck greebles in the band.
+    ('py2', _index_surgery('t90sm', 'chasis', prim_index=0,
+                           delete_rules=[((-1.70, 1.70, 0.85, 1.10, -2.35, 4.45), 2.5, 5.0)],
+                           expect_delete=(1, 111, 117))),
+]
+REPAIRS['t90a_vladimir'] = [
+    ('py', _detach_nodes('t90a_vladimir',
+                         ['desirefx.me_004', 'desirefx.me_007', 'desirefx.me_008'])),
+]
+
+
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)
     if ops is None:
