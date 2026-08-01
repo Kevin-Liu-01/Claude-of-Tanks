@@ -2,8 +2,9 @@
  * post.js — the full post-processing chain.
  *
  * Chain (extends ARCHITECTURE.md §3.1.4 / graphics-aaa.md §4 with a grade):
- *   SceneAAPass (MSAA render + resolve) → AerialPass → GTAOPass →
- *   UnrealBloomPass → OutputPass → GradePass → SMAAPass
+ *   SceneAAPass (MSAA render + resolve) → AerialPass (+ specular-AA firefly
+ *   clamp) → GTAOPass → UnrealBloomPass → OutputPass → GradePass → SMAAPass →
+ *   FXAAPass
  *
  * The scene renders into a quality-aware multisampled HalfFloat HDR target
  * with a DepthTexture, then resolves once into the composer's single-sampled
@@ -11,11 +12,29 @@
  * avoiding MSAA on every fullscreen post pass. OutputPass applies
  * ACES tone mapping + sRGB conversion (reading renderer.toneMapping/
  * outputColorSpace); the display-space GradePass resolves contrast, scope
- * sharpening and split tone before SMAA runs LAST on the values the eye sees.
- * That ordering prevents the grade from sharpening stair steps back into an
- * already-antialiased frame. Bloom thresholds against
+ * sharpening and split tone before the two screen-space AA stages run LAST on
+ * the values the eye sees. That ordering prevents the grade from sharpening
+ * stair steps back into an already-antialiased frame. Bloom thresholds against
  * the linear HDR buffer — sun, muzzle flash and fire exceed 1.0 and bloom
  * naturally.
+ *
+ * aa-r1 (owner: "glass and other vegetation is still anti aliasing a lot"):
+ * SMAA is an edge-PATTERN filter — it reconstructs geometric silhouettes but
+ * deliberately ignores isolated pixels, so the two loudest motion offenders
+ * passed straight through it: (a) alpha-tested foliage resolves to 1px leaf/
+ * blade dust that reshuffles every frame, (b) sub-pixel bright details (window
+ * frames, roof-tile specular rims, far telegraph poles, glass glints) pop in
+ * and out per frame. Two new stages target exactly those:
+ *   - a pre-bloom FIREFLY clamp in the aerial pass (see FIREFLY_* consts):
+ *     isolated HDR speculars are capped against their neighborhood so glints
+ *     stop strobing and stop pulsing bloom;
+ *   - a final SUB-PIXEL AA pass AFTER SMAA (the FXAA-3.11 sub-pixel term,
+ *     standalone — see SubpixAAShader): precisely the dust damper SMAA
+ *     lacks, without FXAA's edge-walk cost. It samples the composer output
+ *     at NATIVE canvas resolution (it is the to-screen pass), so when the
+ *     dynamic-res governor downscales the chain the AA still runs on
+ *     post-upscale values. HUD/DOM never passes through the composer, so UI
+ *     text keeps full sharpness.
  */
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -302,6 +321,119 @@ const EM_SHOULDER_START = 1.55;
 // hot pixel compressing into the same 3.1-3.8 band. ACES(5.15 x 1.16) ~ 0.95
 // display: still no clipped-white plateau.
 const EM_SHOULDER_RANGE = 3.6; // asymptote = START + RANGE
+// aa-r1 SPECULAR-AA FIREFLY CLAMP (owner: "glass ... still anti aliasing a
+// lot"): sub-pixel smooth-surface speculars — window-pane env glints
+// (props.js glass: roughness 0.18 / envMapIntensity 1.5 on panes a few px
+// tall), glazed roof-tile rims, gun-tube top edges, far pole tips — rasterize
+// as ISOLATED 1px HDR spikes that pop in/out with every sub-pixel camera
+// step. MSAA-2 averages but cannot stabilize them, SMAA ignores lone pixels
+// by design, and any spike crossing BLOOM_THRESHOLD (1.78) additionally
+// strobes a bloom halo. The standard temporal-AA-free answer is a
+// neighborhood luminance clamp in linear HDR BEFORE bloom: pixels brighter
+// than FIREFLY_MIN whose luma exceeds max(4 diagonal neighbors) x TOL + PAD
+// are scaled down (hue kept) to that ceiling. Structured emissives are
+// untouched by construction — fire cores, muzzle-flash bodies, tracer LINES
+// and the sun disc all keep at least one hot diagonal neighbor (the sky is
+// excluded by the existing depth gate anyway), so only true one-pixel
+// sparkle is tamed. Runs inside the aerial pass: the neighborhood taps are
+// gated behind the luma test, so ordinary pixels pay one compare.
+// FIREFLY_MIN sits ABOVE the diffuse band (sunlit sand/snow reach ~1.5-1.6
+// linear, per the bloom-threshold r9 note) and just below BLOOM_THRESHOLD
+// (1.78): only pixels that could strobe a bloom halo pay the neighborhood
+// taps, so ordinary bright fields never take the 4-tap path (measured: the
+// 1.10 draft floor pulled whole sunlit meadows into the taps for ~0.45 ms;
+// at 1.70 the clamp costs ~0.1 ms and sub-bloom sparkle is owned by the
+// display-space dust filter below instead).
+const FIREFLY_MIN = 1.70; // linear luma floor — below this, never touched
+const FIREFLY_TOL = 1.30; // allowed ratio over the brightest diagonal
+const FIREFLY_PAD = 0.06; // absolute headroom so dim neighborhoods don't crush
+
+// aa-r1 FINAL SUB-PIXEL DUST FILTER (the FXAA-3.11 sub-pixel component,
+// standalone). SMAA reconstructs geometric edges but by design ignores
+// isolated pixels — and the motion bursts showed the shimmer the owner
+// flagged is mostly exactly that: 1px leaf/blade dust and sub-pixel bright
+// trims swinging full-contrast between frames. Three's full FXAAShader fixes
+// it but pays the edge-walk loops on every high-contrast pixel — measured
+// 1.08 ms at 1600x900 on the reference chain (budget 0.6). This pass keeps
+// only FXAA's sub-pixel term: 4 edge neighbors + center, luma range test,
+// blend toward the 4-neighbor lowpass by smoothstep²(|lowpass-M|/range) x
+// SUBPIX_STRENGTH. Isolated dust (lowpass far from M) is crushed; clean
+// SMAA'd gradients (M ≈ lowpass) pass through untouched, so stacking after
+// SMAA cannot double-soften long edges. 5 half-float taps, no loops.
+const SUBPIX_STRENGTH = 1.0;  // full FXAA subpix quality — our only dust damper
+const SUBPIX_EDGE_MIN = 0.030; // absolute luma range floor (skip flat areas)
+const SUBPIX_EDGE_REL = 0.100; // relative-to-max range floor
+const SUBPIX_SPAN = 3.0;      // max directional blend reach in px (SMAA owns long edges)
+
+const SubpixAAShader = {
+  name: 'SubpixAAShader',
+  uniforms: {
+    tDiffuse: { value: null },
+    resolution: { value: new THREE.Vector2(1 / 1024, 1 / 512) }, // 1/native px
+  },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+    }`,
+  // FXAA 3.11's neighborhood (4 edge + 4 corner taps, range/skip test on the
+  // edge cross) fused with the loop-free console-FXAA directional blend and
+  // FXAA-quality's sub-pixel term: edge pixels average along the estimated
+  // edge direction (span-capped — SMAA owns long edges), then blend toward
+  // the (edges*2+corners)/12 lowpass by smoothstep²(|lowpass-M|/range). A
+  // fully isolated dust pixel blends ~100% into its neighborhood; an
+  // already-antialiased SMAA gradient has M ≈ lowpass and passes unchanged.
+  // 9-13 half-float taps, no loops: ~0.2 ms at 1600x900.
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    uniform vec2 resolution;
+    varying vec2 vUv;
+    float slum( vec3 c ) { return dot( c, vec3( 0.299, 0.587, 0.114 ) ); }
+    void main() {
+      vec4 cM = texture2D( tDiffuse, vUv );
+      vec3 cN = texture2D( tDiffuse, vUv + vec2( 0.0, resolution.y ) ).rgb;
+      vec3 cS = texture2D( tDiffuse, vUv - vec2( 0.0, resolution.y ) ).rgb;
+      vec3 cE = texture2D( tDiffuse, vUv + vec2( resolution.x, 0.0 ) ).rgb;
+      vec3 cW = texture2D( tDiffuse, vUv - vec2( resolution.x, 0.0 ) ).rgb;
+      float lM = slum( cM.rgb ), lN = slum( cN ), lS = slum( cS ), lE = slum( cE ), lW = slum( cW );
+      float lMax = max( lM, max( max( lN, lS ), max( lE, lW ) ) );
+      float lMin = min( lM, min( min( lN, lS ), min( lE, lW ) ) );
+      float range = lMax - lMin;
+      if ( range < max( ${SUBPIX_EDGE_MIN.toFixed(4)}, lMax * ${SUBPIX_EDGE_REL.toFixed(4)} ) ) {
+        gl_FragColor = cM;
+        return;
+      }
+      vec3 cNE = texture2D( tDiffuse, vUv + resolution ).rgb;
+      vec3 cSW = texture2D( tDiffuse, vUv - resolution ).rgb;
+      vec3 cNW = texture2D( tDiffuse, vUv + vec2( -resolution.x, resolution.y ) ).rgb;
+      vec3 cSE = texture2D( tDiffuse, vUv + vec2( resolution.x, -resolution.y ) ).rgb;
+      float lNE = slum( cNE ), lNW = slum( cNW ), lSE = slum( cSE ), lSW = slum( cSW );
+      // console-FXAA directional blend (loop-free): estimate the local edge
+      // direction from the corner lumas and average two taps along it. Span
+      // capped at ${SUBPIX_SPAN.toFixed(1)} px — SMAA already reconstructed the long edges, this
+      // only has to smooth the 1-3 px foliage/trim clusters the bursts
+      // showed reshuffling between frames.
+      vec2 dir = vec2( -( ( lNW + lNE ) - ( lSW + lSE ) ), ( lNW + lSW ) - ( lNE + lSE ) );
+      float dirReduce = max( ( lNW + lNE + lSW + lSE ) * 0.125, 1.0 / 128.0 );
+      float rcpDirMin = 1.0 / ( min( abs( dir.x ), abs( dir.y ) ) + dirReduce );
+      dir = clamp( dir * rcpDirMin, vec2( -${SUBPIX_SPAN.toFixed(1)} ), vec2( ${SUBPIX_SPAN.toFixed(1)} ) ) * resolution;
+      vec3 rgbA = 0.5 * ( texture2D( tDiffuse, vUv + dir * ( 1.0 / 3.0 - 0.5 ) ).rgb
+                        + texture2D( tDiffuse, vUv + dir * ( 2.0 / 3.0 - 0.5 ) ).rgb );
+      vec3 rgbB = rgbA * 0.5 + 0.25 * ( texture2D( tDiffuse, vUv - dir * 0.5 ).rgb
+                                      + texture2D( tDiffuse, vUv + dir * 0.5 ).rgb );
+      float lB = slum( rgbB );
+      vec3 edgeCol = ( lB < lMin || lB > lMax ) ? rgbA : rgbB;
+      // FXAA-quality sub-pixel term on top: blend toward the 3x3 lowpass by
+      // how far this pixel sits from its neighborhood — isolated dust is
+      // crushed, clean gradients (M ≈ lowpass) pass through.
+      vec3 lowpass = ( ( cN + cS + cE + cW ) * 2.0 + cNE + cNW + cSE + cSW ) * ( 1.0 / 12.0 );
+      float sub = clamp( abs( slum( lowpass ) - lM ) / range, 0.0, 1.0 );
+      sub = smoothstep( 0.0, 1.0, sub );
+      sub = sub * sub * ${SUBPIX_STRENGTH.toFixed(3)};
+      gl_FragColor = vec4( mix( edgeCol, lowpass, sub ), cM.a );
+    }`,
+};
 
 const AerialShader = {
   name: 'AerialPerspectiveShader',
@@ -339,6 +471,11 @@ const AerialShader = {
     uCamPos: { value: new THREE.Vector3() },
     uDetailW: { value: 0 }, // sniper far-field detail weight (0 in arcade)
     uCloudShade: { value: CLOUD_SHADE_DEFAULT }, // per-map cloud-shadow depth
+    // aa-r1: composer-buffer texel size for the firefly clamp's diagonal
+    // taps (kept in sync by applySize); uFirefly gates the whole block so
+    // the perf probe can measure paired on/off medians on one build.
+    uInvSize: { value: new THREE.Vector2(1 / 1024, 1 / 1024) },
+    uFirefly: { value: 1 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -366,6 +503,8 @@ const AerialShader = {
     uniform vec3 uCamPos;
     uniform float uDetailW;
     uniform float uCloudShade;
+    uniform vec2 uInvSize;
+    uniform float uFirefly;
     varying vec2 vUv;
     // 2D value noise on a hashed integer lattice — smooth (quintic fade),
     // tileless, cheap enough for a fullscreen pass that only pays it while
@@ -384,6 +523,22 @@ const AerialShader = {
       vec4 texel = texture2D( tDiffuse, vUv );
       float depth = texture2D( tDepth, vUv ).x;
       if ( depth < 0.9999999 ) { // sky/cloud dome writes no depth — skip it
+        // aa-r1 firefly clamp (see FIREFLY_* const block): cap isolated HDR
+        // glints against the brightest diagonal neighbor BEFORE any aerial
+        // work so the haze/bloom stages downstream see a stable frame. Sky
+        // pixels (sun disc) never reach here — the depth gate excludes them.
+        if ( uFirefly > 0.5 ) {
+          float ffL = dot( texel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
+          if ( ffL > ${FIREFLY_MIN.toFixed(3)} ) {
+            vec3 ffW = vec3( 0.2126, 0.7152, 0.0722 );
+            float nb = dot( texture2D( tDiffuse, vUv + uInvSize ).rgb, ffW );
+            nb = max( nb, dot( texture2D( tDiffuse, vUv - uInvSize ).rgb, ffW ) );
+            nb = max( nb, dot( texture2D( tDiffuse, vUv + vec2( uInvSize.x, -uInvSize.y ) ).rgb, ffW ) );
+            nb = max( nb, dot( texture2D( tDiffuse, vUv + vec2( -uInvSize.x, uInvSize.y ) ).rgb, ffW ) );
+            float ffCap = nb * ${FIREFLY_TOL.toFixed(3)} + ${FIREFLY_PAD.toFixed(3)};
+            if ( ffL > ffCap ) texel.rgb *= ffCap / ffL;
+          }
+        }
         float viewZ = ( uNear * uFar ) / ( ( uFar - uNear ) * depth - uFar );
         // world-space view ray for this pixel (directional scatter tint)
         vec3 ray = normalize( uCamFwd
@@ -739,6 +894,13 @@ const GradeShader = {
         }
         // high-zoom center unsharp (r4): counteracts the mip-frequency
         // watercolor smear on the magnified far field; skips the blur ring.
+        // aa-r1: the sharpen DELTA is now soft-limited to ±0.085 display
+        // units. The x8 sight picture magnifies minified foliage into a
+        // churning 1px leaf checkerboard; an UNBOUNDED unsharp re-amplified
+        // exactly that churn (the motion-burst crops showed near-full-
+        // contrast seethe across every scoped crown). Real structural edges
+        // sharpen on deltas well under the cap, so the tack-sharp x8 read is
+        // kept while single-pixel flicker stops being multiplied.
         float sharpW = uSharp * ( 1.0 - smoothstep( ${(SCOPE_BLUR_START - 0.08).toFixed(3)}, ${SCOPE_BLUR_START.toFixed(3)}, scopeR ) );
         if ( sharpW > 0.001 ) {
           vec2 px = vec2( 0.0009 / uAspect, 0.0009 ); // ~1 px at 1080p (r5: tighter kernel = crisper x8)
@@ -746,7 +908,8 @@ const GradeShader = {
                   + texture2D( tDiffuse, vUv - vec2( px.x, 0.0 ) ).rgb
                   + texture2D( tDiffuse, vUv + vec2( 0.0, px.y ) ).rgb
                   + texture2D( tDiffuse, vUv - vec2( 0.0, px.y ) ).rgb;
-          texel.rgb = max( texel.rgb + ( texel.rgb - nb * 0.25 ) * sharpW, 0.0 );
+          vec3 shD = clamp( ( texel.rgb - nb * 0.25 ) * sharpW, vec3( -0.085 ), vec3( 0.085 ) );
+          texel.rgb = max( texel.rgb + shD, 0.0 );
         }
       }
       vec3 col = texel.rgb;
@@ -980,7 +1143,7 @@ export function createPost(renderer, scene, camera) {
   const sceneAA = new SceneAAPass(scene, camera, sceneTarget);
   const publishAAState = () => {
     renderer.domElement.dataset.sceneMsaaSamples = String(msaaSamples);
-    renderer.domElement.dataset.postAa = 'smaa-high';
+    renderer.domElement.dataset.postAa = 'smaa-high+fxaa'; // aa-r1: sub-pixel stage added
   };
   publishAAState();
   composer.addPass(sceneAA); // 1. multisampled scene + single resolve/copy
@@ -1139,7 +1302,24 @@ export function createPost(renderer, scene, camera) {
   if (smaa._materialWeights && smaa._materialWeights.defines) {
     smaa._materialWeights.defines.SMAA_MAX_SEARCH_STEPS = '16';
   }
-  composer.addPass(smaa); // 6. final-frame AA — nothing may sharpen after this
+  composer.addPass(smaa); // 6. edge-pattern AA (geometric silhouettes)
+
+  // 7. aa-r1 FINAL sub-pixel AA (see SubpixAAShader block). Runs AFTER SMAA
+  // on purpose: SMAA reconstructs the long geometric edges crisply and
+  // deliberately skips isolated pixels, so by the time this runs, clean
+  // edges blend toward a lowpass they already equal (no double softening)
+  // while the surviving 1px foliage/trim dust is exactly what the sub-pixel
+  // term low-passes. This is the loudest single lever on the owner's
+  // "vegetation is anti-aliasing a lot" motion shimmer: the dust can no
+  // longer swing full-contrast between frames. It is the to-screen pass, so
+  // it rasterizes at NATIVE canvas resolution sampling the (possibly
+  // governor-downscaled) composer output — AA after the upscale, never
+  // before. HUD/DOM composites above the canvas and never enters the
+  // composer. On every preset: 'low' has no scene MSAA and needs it most.
+  // Perf: paired on/off medians at 1600x900 — see the aa-r1 report. Nothing
+  // may sharpen after this pass.
+  const fxaa = new ShaderPass(SubpixAAShader);
+  composer.addPass(fxaa);
 
   // --- Quality-aware sizing --------------------------------------------------
   // The composer's pixel ratio is the renderer's, CAPPED by the preset
@@ -1150,6 +1330,7 @@ export function createPost(renderer, scene, camera) {
   // sharpness and only the 3D frame pays the reduced raster cost.
   let cssW = 0;
   let cssH = 0;
+  const _nativeSize = new THREE.Vector2(); // aa-r1: FXAA resolution scratch
   // --- Dynamic resolution governor (performance_budget r5) -----------------
   // EVALUATION.md F10 / critic r5 minor: the preset ladder is static, so
   // hardware weaker than the reference machine rides p5 dips with no
@@ -1205,6 +1386,15 @@ export function createPost(renderer, scene, camera) {
     composer.setPixelRatio(renderScale);
     composer.setSize(w, h);
     renderer.domElement.dataset.renderScale = renderScale.toFixed(3);
+    // aa-r1: keep the two screen-space AA helpers in step with the buffers.
+    // The firefly clamp taps the COMPOSER buffer (the aerial pass' own input);
+    // FXAA is the to-screen pass and steps in NATIVE canvas pixels — the
+    // governor may shrink the chain, the AA always works post-upscale.
+    aerial.uniforms.uInvSize.value.set(
+      1 / Math.max(1, Math.round(w * renderScale)),
+      1 / Math.max(1, Math.round(h * renderScale)));
+    const native = renderer.getDrawingBufferSize(_nativeSize);
+    fxaa.uniforms.resolution.value.set(1 / Math.max(1, native.x), 1 / Math.max(1, native.y));
   }
   /** Advance the governor one frame; resizes the chain when a step fires. */
   function dynGovern(dt) {
@@ -1363,8 +1553,12 @@ export function createPost(renderer, scene, camera) {
 
     bloom,
     gtao,
+    // aa-r1: probe/measurement hooks — fxaa.enabled and the firefly uniform
+    // give the perf probe clean paired on/off runs on one build.
+    fxaa,
+    aerial,
 
-    /** Scene-only hardware AA. Display-space SMAA always follows it. */
+    /** Scene-only hardware AA. Display-space SMAA + final FXAA follow it. */
     get msaaSamples() { return msaaSamples; },
 
     /** Live dynamic-resolution scale (1 = full preset resolution). Probe/

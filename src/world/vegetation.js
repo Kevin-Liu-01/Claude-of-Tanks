@@ -39,6 +39,35 @@ function _mustReplace(src, anchor, replacement) {
   return out;
 }
 
+// aa-r1 ANTI-SHIMMER (owner: "vegetation is still anti aliasing a lot"):
+// mip-aware alpha-coverage rescale on every alpha-tested foliage/grass card.
+// Mechanism (motion-burst evidence, shots/aa-r1/): mipmapping AVERAGES the
+// card alpha toward its mean, so with a fixed alphaTest the surviving
+// coverage shrinks with distance until leaves/blades are 1px islands sitting
+// right AT the threshold — each sub-pixel camera step flips them on/off and
+// whole canopies seethe. The standard fix (Golus, "Anti-aliased Alpha Test")
+// scales alpha back up with the sampled mip level so coverage stays roughly
+// distance-invariant; alpha-to-coverage (already on these materials) then
+// dithers the restored partial alpha across the MSAA samples instead of
+// hard-cutting it. Zero effect at magnification (mip <= 0), and the
+// radial-falloff border erosion baked into the atlases keeps its job — texels
+// the author pulled to 0 stay 0, so minified cards still never resolve as
+// solid rectangles.
+const MIP_ALPHA_BOOST = 0.25; // coverage give-back per mip level
+const MIP_ALPHA_MAX = 3.5;    // deep-mip cap: never boost more than ~1.9x
+function mipAlphaGuard(shader) {
+  shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <alphatest_fragment>', /* glsl */`
+    #if defined( USE_MAP ) && defined( USE_ALPHATEST )
+    {
+      vec2 aaTs = vec2( textureSize( map, 0 ) );
+      vec2 aaDx = dFdx( vMapUv * aaTs ), aaDy = dFdy( vMapUv * aaTs );
+      float aaMip = 0.5 * log2( max( max( dot( aaDx, aaDx ), dot( aaDy, aaDy ) ), 1.0 ) );
+      diffuseColor.a *= 1.0 + min( aaMip, ${MIP_ALPHA_MAX.toFixed(2)} ) * ${MIP_ALPHA_BOOST.toFixed(3)};
+    }
+    #endif
+    #include <alphatest_fragment>`);
+}
+
 // Cards carry hand-authored normals (up for grass, canopy-outward for tree
 // foliage); undo the DOUBLE_SIDED faceDirection flip so backfaces don't light
 // from below.
@@ -1494,6 +1523,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
         transformed.z += sway * 0.08 * cos(uWindTime * 1.3 + phase);
       }`);
     useAttributeNormal(shader);
+    mipAlphaGuard(shader); // aa-r1: distance-stable blade coverage
   };
 
   // Two single-segment crossed cards are sufficient for grass-scale parallax.
@@ -1552,8 +1582,8 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     grassVariants.push({
       geo: makeTuftGeometry(w, h),
       geoFar: makeTuftFarGeometry(w, h), // performance_budget r5 (see builder)
-      matMid: makeGrassMaterial(grassTex[gv], GRASS_FADE_END, 'world-grass-wind-v5'),
-      matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v5'),
+      matMid: makeGrassMaterial(grassTex[gv], GRASS_FADE_END, 'world-grass-wind-v6'),
+      matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v6'),
     });
   }
 
@@ -1849,7 +1879,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     shader.uniforms.uScopeDist = uScopeDist; // r5: corridor length = aim dist
     shader.uniforms.uFocusPos = uFocusPos;   // r2: occlusion-fade sight capsule
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\nuniform float uWindTime;\nuniform vec3 uCamPos;\nuniform vec3 uCamFwd;\nuniform float uSniperFade;\nuniform float uScopeDist;\nuniform vec3 uFocusPos;\nattribute float aFlex;\nattribute float aFadeI;\nvarying float vFadeI;\nvarying float vScopeKeep;\nvarying float vTDRay;\nvarying float vTAlong;\nvarying float vDSeg;');
+      '#include <common>\nuniform float uWindTime;\nuniform vec3 uCamPos;\nuniform vec3 uCamFwd;\nuniform float uSniperFade;\nuniform float uScopeDist;\nuniform vec3 uFocusPos;\nattribute float aFlex;\nattribute float aFadeI;\nattribute float aLodF;\nvarying float vLodF;\nvarying float vFadeI;\nvarying float vScopeKeep;\nvarying float vTDRay;\nvarying float vTAlong;\nvarying float vDSeg;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`
       #include <begin_vertex>
       {
@@ -1881,6 +1911,11 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
           vFadeI = aFadeI * (1.0 - smoothstep(coneR, coneR + 2.0, dSeg));
           vDSeg = dSeg; // gameplay_feel r5: fragment keep-floor near the sight capsule
         }
+        // aa-r1 LOD cross-fade: unlike aFadeI (sight-capsule gated above),
+        // the per-instance LOD fade applies unconditionally — repartition
+        // dissolves the near representation in/out through the same stable
+        // IGN dither instead of popping it at the 260/290 m band.
+        vLodF = aLodF;
         // sniper scope-ray corridor keep (per vertex — tall trunks fade only
         // where they actually cross the sight line)
         vec3 tRel = tvw.xyz - uCamPos;
@@ -1911,7 +1946,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
         // <<< gameplay_feel r4 / controls_gunnery r5
       }`);
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\nuniform float uScopeHard;\nuniform float uSniperFade;\nuniform float uScopeDist;\nvarying float vFadeI;\nvarying float vScopeKeep;\nvarying float vTDRay;\nvarying float vTAlong;\nvarying float vDSeg;');
+      '#include <common>\nuniform float uScopeHard;\nuniform float uSniperFade;\nuniform float uScopeDist;\nvarying float vLodF;\nvarying float vFadeI;\nvarying float vScopeKeep;\nvarying float vTDRay;\nvarying float vTAlong;\nvarying float vDSeg;');
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <alphatest_fragment>', /* glsl */`
       #include <alphatest_fragment>
       {
@@ -1924,6 +1959,10 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
         // trunks keep the 12% ghost so the forest still reads.
         float fadeKeep = 1.0 - ${fullFade ? '1.0' : '0.88'} * vFadeI;
         fadeKeep *= smoothstep(${nearD0.toFixed(2)}, ${nearD1.toFixed(2)}, length(vViewPosition));
+        // aa-r1 LOD cross-fade share (repartition transition, see update()):
+        // rides the same IGN dissolve below — stable per-pixel pattern, no
+        // per-frame reseeding, exactly the killcam/scope-corridor grammar.
+        fadeKeep = min(fadeKeep, 1.0 - vLodF);
         // gameplay_feel r5 (round critique minor): re-evaluate the corridor
         // smoothsteps PER FRAGMENT from the interpolated ray metrics — the
         // vertex-quantized vScopeKeep made whole cards share one keep value,
@@ -1983,6 +2022,10 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   const foliageWindHook = (shader) => {
     canopyWindHook(shader);
     useAttributeNormal(shader);
+    // aa-r1: mip-aware alpha BEFORE the built-in alpha test / A2C smoothstep
+    // (the canopyWindHook dissolve above keeps the <alphatest_fragment>
+    // anchor, so this composes as: mip boost -> alpha test -> dissolve).
+    mipAlphaGuard(shader);
     // SNIPER FOLIAGE FADE (controls_gunnery r2): WoT fades the bush the
     // player is scoped inside — screen-door-dither leaf fragments within
     // ~10 m of the camera while uSniperFade > 0 (same eased uniforms as the
@@ -2051,7 +2094,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   barkMat.normalScale.set(0.85, 0.85);
   barkMat.envMapIntensity = 0.85;
   engineCtx.setupShadowMaterial(barkMat, treeWindHook);
-  barkMat.customProgramCacheKey = () => 'world-tree-bark-v6';
+  barkMat.customProgramCacheKey = () => 'world-tree-bark-v7';
 
   // far canopy: own material — strong sky/env fill acts as the fake-SSS
   // backlight term so shaded crown sides stay green, never crushed black
@@ -2114,12 +2157,20 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
         float leaf = lA * 0.6 + lB * 0.4;
         diffuseColor.rgb *= 0.74 + leaf * 0.56; // leaf-clump value breakup
         float ndv = abs(dot(normalize(vNormal), normalize(vViewPosition)));
-        // silhouette erosion: ragged leafy crown edges (interior untouched)
-        if (leaf < 0.74 - ndv * 1.45) discard;
+        // silhouette erosion: ragged leafy crown edges (interior untouched).
+        // aa-r1: erosion now FADES OUT with view distance (full to 380 m,
+        // gone by 540 m). The discard raggedness is leaf-scale — beyond
+        // ~400 m it is sub-pixel, and the motion bursts showed the far
+        // treeline crawling with per-frame discard sparkle (dark dot churn
+        // on every lit lobe). Near the 260 m LOD-in edge the ragged
+        // silhouette is untouched; at range crowns return to solid lobes,
+        // which MSAA + the post AA stages hold perfectly stable.
+        float eroW = 1.0 - smoothstep(380.0, 540.0, length(vViewPosition));
+        if (leaf < (0.74 - ndv * 1.45) * eroW) discard;
       }`);
   };
   engineCtx.setupShadowMaterial(canopyFarMat, farCanopyHook);
-  canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v9';
+  canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v10';
 
   // r3 terrain_environment: SILHOUETTE variant tables. Every near/far
   // variant used to run the same builder with a different seed — same
@@ -2193,7 +2244,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     });
     fm.envMapIntensity = 0.85; // keep ambient on shaded leaves — no black cards
     engineCtx.setupShadowMaterial(fm, foliageWindHook);
-    fm.customProgramCacheKey = () => 'world-tree-foliage-v9-' + sp; // r6: mottle+rim hook
+    fm.customProgramCacheKey = () => 'world-tree-foliage-v10-' + sp; // aa-r1: + mip-alpha guard
     foliageMats[sp] = fm;
     // alpha-tested shadow casting: without this every card shadows as a quad.
     // r6: palm gets a HIGHER shadow alphaTest — its frond texture covers most
@@ -2496,6 +2547,11 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       fadeAttr.setUsage(THREE.DynamicDrawUsage);
       geo.setAttribute('aFadeI', fadeAttr);
     }
+    if (!geo.getAttribute('aLodF')) { // aa-r1: LOD cross-fade dissolve share
+      const lodAttr = new THREE.InstancedBufferAttribute(new Float32Array(trees.length), 1);
+      lodAttr.setUsage(THREE.DynamicDrawUsage);
+      geo.setAttribute('aLodF', lodAttr);
+    }
     const m = new THREE.InstancedMesh(geo, mat, trees.length);
     // PERF (performance_budget r5): near/far partitions are rewritten while
     // the camera drives (repartitionTrees) — StaticDrawUsage instance buffers
@@ -2703,6 +2759,10 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       // cover parked on the tank left it majority-hidden in chase frames).
       bushGeos[bv].setAttribute('aFadeI',
         new THREE.InstancedBufferAttribute(new Float32Array(bushPlacements[bv].length), 1));
+      // aa-r1: bushes never LOD-swap but share the hooked foliage material —
+      // the shader needs the attribute present (stays all-zero).
+      bushGeos[bv].setAttribute('aLodF',
+        new THREE.InstancedBufferAttribute(new Float32Array(bushPlacements[bv].length), 1));
       const bAttr = bushGeos[bv].getAttribute('aFadeI');
       for (let i = 0; i < bushPlacements[bv].length; i++) {
         const e = bushPlacements[bv][i].elements;
@@ -2869,15 +2929,21 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     }
     const fa = m.geometry.attributes.aFadeI;
     if (fa) { fa.addUpdateRange(slot, 1); fa.needsUpdate = true; }
+    const lf = m.geometry.attributes.aLodF;
+    if (lf) { lf.addUpdateRange(slot, 1); lf.needsUpdate = true; }
   }
   /** Write tree t into `slot` of every mesh in the group. Far groups render
-   * fade 0 (opaque): occlusion fade only ever applies inside camera range. */
-  function writeTreeSlot(meshes, slot, t, fade) {
+   * fade 0 (opaque): occlusion fade only ever applies inside camera range.
+   * aa-r1: the LOD cross-fade share (t.lodF) rides along on the NEAR side —
+   * far representations stay solid underneath the dissolve (see update()). */
+  function writeTreeSlot(meshes, slot, t, fade, lodF = 0) {
     for (const m of meshes) {
       m.setMatrixAt(slot, t.mat);
       m.setColorAt(slot, t.tint);
       const fa = m.geometry.attributes.aFadeI;
       if (fa) fa.array[slot] = fade;
+      const lf = m.geometry.attributes.aLodF;
+      if (lf) lf.array[slot] = lodF;
       markSlotDirty(m, slot);
     }
   }
@@ -2887,7 +2953,11 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     if (last !== t) {
       slots[i] = last;
       last[key] = i;
-      writeTreeSlot(meshes, i, last, fade ? last.fade : 0);
+      // lodF travels with NEAR slots only (fade == true). A far-group swap
+      // must write 0: a mid-fade tree's lodF describes its near-side
+      // dissolve, and the ticker never rewrites far slots — carrying it
+      // here left far instances stuck half-dithered (probe-caught).
+      writeTreeSlot(meshes, i, last, fade ? last.fade : 0, fade ? (last.lodF || 0) : 0);
     }
     t[key] = -1;
     for (const m of meshes) { m.count = slots.length; m.visible = slots.length > 0; }
@@ -2896,24 +2966,78 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     const i = slots.length;
     slots.push(t);
     t[key] = i;
-    writeTreeSlot(meshes, i, t, fade ? t.fade : 0);
+    writeTreeSlot(meshes, i, t, fade ? t.fade : 0, fade ? (t.lodF || 0) : 0);
     for (const m of meshes) { m.count = slots.length; m.visible = true; }
+  }
+  // aa-r1 LOD CROSS-FADE (task: "LOD cross-fades instead of pops where
+  // cheap"): a tree crossing the 260/290 m hysteresis band used to swap
+  // card-canopy <-> lobe-canopy in one frame. Now the crossing tree holds
+  // BOTH representations for ~0.35 s while its NEAR side dissolves through
+  // the stable two-octave IGN dither (aLodF -> vLodF -> the existing
+  // fadeKeep discard — the exact killcam/scope-corridor pattern, no
+  // per-frame reseeding): out-cross = far appears solid immediately, near
+  // dithers OUT over it; in-cross = near dithers IN over the still-solid
+  // far, which is only dropped when the fade lands. No silhouette holes at
+  // any point (one representation is always full), and the per-frame GPU
+  // traffic is one float per transitioning tree via the ranged-upload path.
+  // dt == 0 (shot mode) snaps transitions complete — captures stay
+  // deterministic. Transitioning trees are skipped by repartition until
+  // their fade settles (the 30 m hysteresis band makes a genuine re-cross
+  // inside 0.35 s unreachable at any vehicle speed).
+  const LOD_FADE_S = 0.35;
+  const lodTransitions = []; // { t, dir: +1 near-fades-out | -1 near-fades-in }
+  function writeLodFade(t) {
+    if (t.slot < 0) return;
+    for (const m of nearMeshes[t.species][t.variant]) {
+      const lf = m.geometry.attributes.aLodF;
+      lf.array[t.slot] = t.lodF;
+      lf.addUpdateRange(t.slot, 1);
+      lf.needsUpdate = true;
+    }
+  }
+  function tickLodTransitions(dt) {
+    if (lodTransitions.length === 0) return;
+    const step = dt > 0 ? dt / LOD_FADE_S : 1; // dt 0 = deterministic snap
+    for (let i = lodTransitions.length - 1; i >= 0; i--) {
+      const tr = lodTransitions[i];
+      const t = tr.t;
+      t.lodF = clamp(t.lodF + step * tr.dir, 0, 1);
+      const done = tr.dir > 0 ? t.lodF >= 1 : t.lodF <= 0;
+      if (!done) {
+        writeLodFade(t);
+        continue;
+      }
+      if (tr.dir > 0) { // near faded out — retire the near representation
+        t.lodF = 0;
+        removeFromGroup(nearMeshes[t.species][t.variant], nearSlots[t.species][t.variant], t, 'slot', true);
+      } else {          // near fully in — drop the far stand-in beneath it
+        writeLodFade(t);
+        removeFromGroup(farMeshes[t.species][t.fv], farSlots[t.species][t.fv], t, 'fslot', false);
+      }
+      t.lodT = false;
+      lodTransitions.splice(i, 1);
+    }
   }
   function repartitionTrees(camPos) {
     if (!_partitionBuilt) { rebuildPartitionFull(camPos); return; }
     for (const t of trees) {
+      if (t.lodT) continue; // mid cross-fade — settle before re-deciding
       const d = Math.hypot(t.x - camPos.x, t.z - camPos.z);
       const promo = scopePromoted(t, camPos); // scope corridor mesh promotion
       if (t.near) {
         if (d > TREE_NEAR_OUT && !promo) {
           t.near = false;
-          removeFromGroup(nearMeshes[t.species][t.variant], nearSlots[t.species][t.variant], t, 'slot', true);
+          t.lodT = true;
+          t.lodF = 0; // near side starts solid, dissolves out
           addToGroup(farMeshes[t.species][t.fv], farSlots[t.species][t.fv], t, 'fslot', false);
+          lodTransitions.push({ t, dir: 1 });
         }
       } else if (d < TREE_NEAR_IN || promo) {
         t.near = true;
-        removeFromGroup(farMeshes[t.species][t.fv], farSlots[t.species][t.fv], t, 'fslot', false);
+        t.lodT = true;
+        t.lodF = 1; // near side arrives fully dissolved, fades in
         addToGroup(nearMeshes[t.species][t.variant], nearSlots[t.species][t.variant], t, 'slot', true);
+        lodTransitions.push({ t, dir: -1 });
       }
     }
   }
@@ -3086,6 +3210,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
       _lastCam.copy(camPos);
       repartitionTrees(camPos);
     }
+    tickLodTransitions(dt); // aa-r1: advance LOD cross-fades (dt 0 snaps)
     updateOcclusionFade(dt, camPos, focusPos);
   }
 
