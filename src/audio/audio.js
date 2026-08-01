@@ -1,20 +1,44 @@
 /**
- * src/audio/audio.js — the Claude of Tanks sound system (SOUND overhaul).
+ * src/audio/audio.js — the Claude of Tanks sound system (COMBAT-SFX r2).
  *
- * Almost everything is generated at runtime: oscillators, seeded noise
- * buffers, filter sweeps, pre-rendered PCM gun beds. The ONE sampled category
- * is the crew radio (src/audio/voices.js): original macOS-TTS lines processed
- * offline into tiny Opus files (tools/make-voices.mjs, logged in
- * docs/ATTRIBUTION.md). The AudioContext is created lazily inside `resume()`
- * (user gesture); before that every method is a silent no-op so the headless
- * screenshot harness never touches audio hardware.
+ * COMBAT one-shots (cannon fire, penetrations, deflections, HE bursts, tank
+ * explosions) play BAKED layered samples: dense seeded PCM synthesized
+ * offline by tools/make-sfx.mjs (100% procedural — CC0 by construction, no
+ * recordings), mastered through ffmpeg (saturation/EQ/limiting for weight)
+ * into ~30 small Opus files under public/audio/sfx/. They load lazily at
+ * resume() exactly like the crew radio (src/audio/voices.js — the other
+ * sampled category, tools/make-voices.mjs); until/unless the whole set
+ * decodes, the pre-r2 live-synthesis paths below remain active as a complete
+ * fallback (all-or-nothing — never a mixed old/new combat mix). Everything
+ * else (engines, traverse, ambience, UI, alarms, fanfares) is still generated
+ * live: oscillators, seeded noise buffers, filter sweeps. The AudioContext is
+ * created lazily inside `resume()` (user gesture); before that every method
+ * is a silent no-op so the headless screenshot harness never touches audio
+ * hardware.
  *
  * Contract: ARCHITECTURE.md §3.9.
- *   - distance gain  = clamp(10/dist, 0, 1)^2
+ *   - distance gain  = clamp(10/dist, 0, 1)^2 (tank-death explosions — the
+ *     biggest sound in the game — carry further: clamp(26/dist,0,1)^1.6)
  *   - equal-power stereo pan from listener-relative azimuth (StereoPannerNode)
  *   - max ~24 simultaneous one-shot voices, steal oldest
- *   - bus graph: {combat, engine, ambience, ui, voice} → compressor → master
- *     (per-channel gains driven by the settings sliders via 'ui:volumes')
+ *   - bus graph: {combat, engine, ambience, ui, voice} → compressor →
+ *     soft-clip stage → master (the tanh waveshaper is the COMBAT-SFX r2
+ *     volley guard: a 7v7 simultaneous barrage saturates musically instead
+ *     of folding into digital clip crackle)
+ *
+ * Baked combat layering (COMBAT-SFX r2):
+ *   - cannon fire = sub punch + crack/report + rumble tail per caliber class
+ *     (small ≤76 mm | medium ≤105 | large ≤130 | huge >130). Near shots get
+ *     all layers; far shots collapse to the tail (+ the distance lowpass), so
+ *     distant guns read as rolling thunder. The player's own gun runs a
+ *     hotter sub layer. ±4% playbackRate jitter + per-layer start-offset
+ *     randomization keep repeats from ever sounding identical.
+ *   - pen = clang+thud+debris sample; taking a damaging hit adds a low
+ *     interior whump layer. Ricochet = 3 whining piiing variants, no low end
+ *     BY DESIGN (a bounce must never thud like a pen). Non-pen = dull thunk.
+ *   - tank destruction by cause: 'ammorack' = core blast + debris rain +
+ *     turret-pop deep accent; 'shot' = core + debris, slightly smaller;
+ *     'fire' burn-out = muffled cook-off whump.
  *
  * What lives where:
  *   - combat one-shots (gunfire by caliber class, penetration clang, ricochet
@@ -28,6 +52,26 @@
  */
 
 import { createVoiceRadio } from './voices.js';
+
+/**
+ * Baked combat sample map: log/debug name → file under public/audio/sfx/.
+ * tools/make-sfx.mjs imports this in --verify to guarantee the baked payload
+ * and the runtime mapping never drift (same pattern as VOICE_LINES).
+ */
+export const SFX_FILES = {};
+for (const cls of ['small', 'medium', 'large', 'huge']) {
+  for (const layer of ['sub', 'crack', 'tail']) {
+    SFX_FILES[`fire_${cls}_${layer}`] = `fire_${cls}_${layer}.ogg`;
+  }
+}
+for (const n of [
+  'impact_pen_a', 'impact_pen_b', 'hit_whump',
+  'ricochet_a', 'ricochet_b', 'ricochet_c',
+  'impact_absorb_a', 'impact_absorb_b',
+  'expl_tank_core_a', 'expl_tank_core_b', 'expl_tank_debris',
+  'expl_turret_pop', 'expl_burnout',
+  'expl_he_a', 'expl_he_b', 'impact_dirt', 'era_pop',
+]) SFX_FILES[n] = `${n}.ogg`;
 
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -69,11 +113,20 @@ export function createAudio() {
   let ctx = null;
   let master = null;      // final volume gain
   let comp = null;        // safety compressor (24 voices never clip)
+  let limiter = null;     // tanh soft-clip stage (COMBAT-SFX r2 volley guard)
   let sfxBus = null, engineBus = null, ambientBus = null, musicBus = null, voiceBus = null;
   let whiteBuf = null;    // 2 s seeded white noise, looped everywhere
   let crackleBuf = null;  // sparse impulse train for fire crackle / debris
   let windBuf = null;     // pink-ish noise for wind bed
-  let gunBufs = null;     // pre-synthesized caliber beds (one source per shot)
+  let gunBufs = null;     // pre-synthesized caliber beds (synth-fallback only)
+
+  // BAKED COMBAT SAMPLES (COMBAT-SFX r2): decoded lazily after resume().
+  /** @type {Map<string, AudioBuffer>} name → decoded sample */
+  const sfxBufs = new Map();
+  let sfxReady = false;    // ALL samples decoded — baked paths take over
+  let sfxLoading = false;
+  /** Probe trail (tools/sfx-smoke.mjs): {n,t,g,r} per baked sample played. */
+  const sfxLog = [];
 
   let masterVolume = 0.8;
   let muted = false;
@@ -182,9 +235,28 @@ export function createAudio() {
     comp.attack.value = 0.003;
     comp.release.value = 0.25;
 
+    // COMBAT-SFX r2 volley guard: transparent below |x| = 0.55, tanh knee
+    // above, asymptote < 1.0 — a 14-tank barrage saturates smoothly instead
+    // of hard-clipping into crackle. Sits before the master volume so the
+    // slider never changes the saturation character.
+    limiter = ctx.createWaveShaper();
+    {
+      const N = 4097;
+      const curve = new Float32Array(N);
+      const knee = 0.55;
+      for (let i = 0; i < N; i++) {
+        const x = (i / (N - 1)) * 2 - 1;
+        const a = Math.abs(x);
+        curve[i] = Math.sign(x) * (a <= knee ? a : knee + (1 - knee) * Math.tanh((a - knee) / (1 - knee)));
+      }
+      limiter.curve = curve;
+      limiter.oversample = '2x';
+    }
+
     master = ctx.createGain();
     master.gain.value = muted ? 0 : masterVolume;
-    comp.connect(master);
+    comp.connect(limiter);
+    limiter.connect(master);
     master.connect(ctx.destination);
 
     sfxBus = ctx.createGain();     sfxBus.gain.value = 1.0;   sfxBus.connect(comp);
@@ -348,7 +420,7 @@ export function createAudio() {
     p.pan.value = panVal;
     g.connect(p);
     p.connect(dest || sfxBus);
-    const v = { start: when, end: when + durS, in: g, pan: p, sources: [], dead: false };
+    const v = { start: when, end: when + durS, in: g, pan: p, sources: [], dead: false, baseGain: gainVal };
     voices.push(v);
     return v;
   }
@@ -412,17 +484,233 @@ export function createAudio() {
     return dist > 40 ? Math.min(1.6, dist / SPEED_OF_SOUND_MPS) : 0;
   }
 
-  // ------------------------------------------------------------- gunfire ---
+  // ------------------------------------------------- baked combat samples ---
 
   /**
-   * Layered gunshot by caliber class (SOUND overhaul):
+   * Fetch + decode the baked combat set (public/audio/sfx/, built by
+   * tools/make-sfx.mjs). Lazy like the crew radio — called from resume(), so
+   * boot stays untouched. The baked paths only ever take over as a COMPLETE
+   * set (sfxReady): a partial decode keeps the live-synthesis fallback for
+   * everything rather than mixing old and new combat sounds.
+   */
+  function loadSfx() {
+    if (sfxLoading || !ctx) return;
+    sfxLoading = true;
+    const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) || '/';
+    const names = Object.keys(SFX_FILES);
+    let failures = 0;
+    Promise.all(names.map((name) =>
+      fetch(`${base}audio/sfx/${SFX_FILES[name]}`)
+        .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.arrayBuffer(); })
+        .then((ab) => ctx.decodeAudioData(ab))
+        .then((buf) => { sfxBufs.set(name, buf); })
+        .catch(() => { failures++; }),
+    )).then(() => {
+      sfxReady = failures === 0 && sfxBufs.size === names.length;
+      if (!sfxReady) {
+        console.warn(`[audio] ${failures} baked combat sample(s) failed to load — live-synthesis fallback stays active`);
+      }
+    });
+  }
+
+  /** ±4% playback-rate jitter — repeats never sound identical. */
+  function jitterRate() { return 0.96 + rng() * 0.08; }
+
+  /**
+   * Start one baked sample on an existing voice, through `through` (usually
+   * the shot's shared distance lowpass) with its own layer gain.
+   * @returns {number} the layer's end time (ctx clock)
+   */
+  function sampleLayer(v, name, when, layerGain, rate, through) {
+    const buf = sfxBufs.get(name);
+    if (!buf) return when;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = rate;
+    const g = ctx.createGain();
+    g.gain.value = layerGain;
+    src.connect(g);
+    g.connect(through || v.in);
+    const dur = buf.duration / rate;
+    src.start(when);
+    src.stop(when + dur + 0.05);
+    v.sources.push(src);
+    sfxLog.push({ n: name, t: when, g: v.baseGain * layerGain, r: rate });
+    if (sfxLog.length > 200) sfxLog.shift();
+    return when + dur;
+  }
+
+  /**
+   * Layered baked cannon shot (COMBAT-SFX r2). Near = sub punch + crack +
+   * tail; far = tail-dominant (crack fades over ~45-180 m on top of the
+   * distance lowpass). Player's own gun: hotter overall, more sub, plus the
+   * mechanical action foley (breech clank at end of recoil, brass tinkle).
+   */
+  function bakedGunshot(x, y, z, caliberMm, isPlayer) {
+    const s = spat(x, y, z);
+    if (s.gain < 0.0015) return;
+    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const cls = caliberMm > 130 ? 'huge' : caliberMm > 105 ? 'large' : caliberMm > 76 ? 'medium' : 'small';
+    const shotGain = s.gain * (isPlayer ? 1.15 : 1);
+    // Layer model: crack dies toward 180 m, sub keeps a floor (distant guns
+    // still thump), tail always rides — thunder is what distance leaves.
+    const crackK = Math.max(0, Math.min(1, 1 - (s.dist - 45) / 135));
+    const subK = isPlayer ? 1.3 : 0.72 + 0.28 * crackK;
+    const tailBuf = sfxBufs.get(`fire_${cls}_tail`);
+    const life = (tailBuf ? tailBuf.duration / 0.95 : 2.6) + 0.25 + (isPlayer ? 1.0 : 0);
+    const v = spawnVoice(when, life, shotGain, s.pan, sfxBus);
+    const lp = distLowpass(s.dist);
+    lp.connect(v.in);
+    sampleLayer(v, `fire_${cls}_sub`, when, subK, jitterRate(), lp);
+    if (crackK > 0.02) {
+      sampleLayer(v, `fire_${cls}_crack`, when + rng() * 0.006, crackK, jitterRate(), lp);
+    }
+    sampleLayer(v, `fire_${cls}_tail`, when + 0.012 + rng() * 0.018, 1.0, jitterRate(), lp);
+    if (isPlayer) {
+      // Muzzle-blast wind over the hull.
+      wire(v, nsrc(v, when, 0.3), flt('lowpass', 850, 0.6), env(when, 0.01, 0.26, 0.26), lp);
+      // Breech clank at the end of recoil (~0.22 s): metal-on-metal latch.
+      const tCl = when + 0.20 + rng() * 0.05;
+      wire(v, osrc(v, 'triangle', 290 * (0.95 + rng() * 0.1), tCl, 0.16),
+        env(tCl, 0.002, 0.26, 0.12), lp);
+      wire(v, nsrc(v, tCl, 0.05), flt('bandpass', 1150, 1.6), env(tCl, 0.001, 0.28, 0.04), lp);
+      // Brass casing tinkle on the turret floor (autoloaders forgive us).
+      if (caliberMm <= 105) {
+        const tBr = when + 0.65 + rng() * 0.2;
+        for (let i = 0; i < 3; i++) {
+          const at = tBr + i * (0.05 + rng() * 0.05);
+          wire(v, osrc(v, 'triangle', 3400 + rng() * 1600, at, 0.09),
+            env(at, 0.001, 0.05 - i * 0.011, 0.07));
+        }
+      }
+    }
+  }
+
+  /** Baked pen clang (+ interior whump when WE took the damage). */
+  function bakedPen(x, y, z, playerWhumpK) {
+    const s = spat(x, y, z);
+    if (s.gain < 0.0015) return;
+    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const v = spawnVoice(when, 1.0, s.gain * 0.95, s.pan, sfxBus);
+    const lp = distLowpass(s.dist);
+    lp.connect(v.in);
+    sampleLayer(v, rng() < 0.5 ? 'impact_pen_a' : 'impact_pen_b', when, 1.0, jitterRate(), lp);
+    if (playerWhumpK > 0) hitWhump(playerWhumpK);
+  }
+
+  /**
+   * Interior whump — the receiving end of a hit. Non-spatial (it is OUR hull
+   * flexing around us), rides under whatever played at the impact point.
+   */
+  function hitWhump(k) {
+    const when = ctx.currentTime + 0.012;
+    const v = spawnVoice(when, 1.0, 0.85 * k, 0, sfxBus);
+    sampleLayer(v, 'hit_whump', when, 1.0, jitterRate(), null);
+  }
+
+  /** Baked deflection zing / non-pen thunk. */
+  function bakedPing(x, y, z, deflected, playerWhumpK) {
+    const s = spat(x, y, z);
+    if (s.gain < 0.0015) return;
+    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const lp = distLowpass(s.dist);
+    if (deflected) {
+      const v = spawnVoice(when, 1.0, s.gain * 0.9, s.pan, sfxBus);
+      lp.connect(v.in);
+      const variant = ['ricochet_a', 'ricochet_b', 'ricochet_c'][(rng() * 3) | 0];
+      sampleLayer(v, variant, when, 1.0, 0.94 + rng() * 0.12, lp);
+    } else {
+      const v = spawnVoice(when, 0.7, s.gain * 0.95, s.pan, sfxBus);
+      lp.connect(v.in);
+      sampleLayer(v, rng() < 0.5 ? 'impact_absorb_a' : 'impact_absorb_b', when, 1.0, jitterRate(), lp);
+      if (playerWhumpK > 0) hitWhump(playerWhumpK);
+    }
+  }
+
+  /** Baked HE burst (shell explosion). Caliber re-pitches the one sample. */
+  function bakedShellExplosion(x, y, z, caliberMm, dirt) {
+    const s = spat(x, y, z);
+    if (s.gain < 0.0015) return;
+    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const rate = Math.max(0.82, Math.min(1.18, 0.9 + (122 - (caliberMm || 122)) / 300)) * (0.97 + rng() * 0.06);
+    const v = spawnVoice(when, 2.0 / rate + 0.3, s.gain * (dirt ? 0.85 : 1.0), s.pan, sfxBus);
+    const lp = distLowpass(dirt ? s.dist + 120 : s.dist);
+    lp.connect(v.in);
+    sampleLayer(v, rng() < 0.5 ? 'expl_he_a' : 'expl_he_b', when, 1.0, rate, lp);
+    if (dirt) sampleLayer(v, 'impact_dirt', when + 0.01, 0.9, jitterRate(), lp);
+  }
+
+  /**
+   * Tank-death blast — the biggest sound in the game, so it carries further
+   * than the standard (10/d)^2 pool: clamp(26/d,0,1)^1.6 keeps a kill across
+   * the map audible as deep thunder.
+   * @param {'ammorack'|'shot'|'fire'} cause ammo-rack detonation (turret pop
+   *   accent) | regular HP kill | burn-out cook-off
+   */
+  function bakedTankExplosion(x, y, z, cause) {
+    const s = spat(x, y, z);
+    const g = Math.pow(Math.min(1, 26 / s.dist), 1.6);
+    if (g < 0.002) return;
+    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const lp = distLowpass(s.dist);
+    if (cause === 'fire') {
+      const v = spawnVoice(when, 3.6, g * 0.95, s.pan, sfxBus);
+      lp.connect(v.in);
+      sampleLayer(v, 'expl_burnout', when, 1.0, jitterRate(), lp);
+      sampleLayer(v, 'expl_tank_debris', when + 0.12 + rng() * 0.08, 0.45, jitterRate(), lp);
+      return;
+    }
+    const rack = cause === 'ammorack';
+    const rate = (rack ? 0.98 : 1.06) * (0.97 + rng() * 0.06);
+    const v = spawnVoice(when, 3.4 / rate + 1.4, g * (rack ? 1.0 : 0.85), s.pan, sfxBus);
+    lp.connect(v.in);
+    sampleLayer(v, rng() < 0.5 ? 'expl_tank_core_a' : 'expl_tank_core_b', when, 1.0, rate, lp);
+    sampleLayer(v, 'expl_tank_debris', when + 0.06 + rng() * 0.09, rack ? 0.9 : 0.7, jitterRate(), lp);
+    if (rack) {
+      // Turret-pop deep accent under the launch.
+      sampleLayer(v, 'expl_turret_pop', when + 0.10 + rng() * 0.08, 0.95, jitterRate(), lp);
+    }
+  }
+
+  /** Baked ERA tile detonation. */
+  function bakedEraPop(x, y, z) {
+    const s = spat(x, y, z);
+    if (s.gain < 0.0015) return;
+    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const v = spawnVoice(when, 0.9, s.gain * 0.9, s.pan, sfxBus);
+    const lp = distLowpass(s.dist);
+    lp.connect(v.in);
+    sampleLayer(v, 'era_pop', when, 1.0, jitterRate(), lp);
+  }
+
+  /** Baked shell-into-dirt thud (shell:expired hitTerrain). */
+  function bakedDirtImpact(x, y, z) {
+    const s = spat(x, y, z);
+    if (s.gain < 0.003) return;
+    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const v = spawnVoice(when, 1.2, s.gain * 0.75, s.pan, sfxBus);
+    const lp = distLowpass(s.dist + 60);
+    lp.connect(v.in);
+    sampleLayer(v, 'impact_dirt', when, 1.0, jitterRate(), lp);
+  }
+
+  // ------------------------------------------------------------- gunfire ---
+
+  /** Cannon shot: baked layered sample set, or the pre-r2 synth fallback. */
+  function gunshot(x, y, z, caliberMm, isPlayer) {
+    if (sfxReady) bakedGunshot(x, y, z, caliberMm, isPlayer);
+    else synthGunshot(x, y, z, caliberMm, isPlayer);
+  }
+
+  /**
+   * (Pre-COMBAT-SFX-r2 fallback.) Layered gunshot by caliber class:
    *   ≤76 mm sharp crack | ≤105 mm boom | ≤130 mm heavy boom | >130 mm siege
    * Pre-rendered bed (crack/body/bark/sub/rumble) + per-shot pitch jitter so
    * repeats never machine-gun, + a live crack overlay for nearby shots.
    * The PLAYER's own gun gets a mechanical action tail: breech clank at the
    * end of recoil and a brass-casing tinkle.
    */
-  function gunshot(x, y, z, caliberMm, isPlayer) {
+  function synthGunshot(x, y, z, caliberMm, isPlayer) {
     const s = spat(x, y, z);
     if (s.gain < 0.0015) return;
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
@@ -508,11 +796,21 @@ export function createAudio() {
   }
 
   /**
-   * Armor penetration clang: inharmonic metal partials + transient, plus
-   * (SOUND overhaul) two short interior echo taps and a spall hiss — a shell
-   * entering a steel box, not a dinner bell.
+   * Armor penetration: baked clang+thud+debris sample (with an interior
+   * whump layer when WE are the one holed), or the pre-r2 synth fallback.
+   * @param {number} [playerWhumpK] 0..1 — receiving-end whump strength
    */
-  function clang(x, y, z) {
+  function clang(x, y, z, playerWhumpK = 0) {
+    if (sfxReady) { bakedPen(x, y, z, playerWhumpK); return; }
+    synthClang(x, y, z);
+  }
+
+  /**
+   * (Pre-COMBAT-SFX-r2 fallback.) Armor penetration clang: inharmonic metal
+   * partials + transient, two short interior echo taps and a spall hiss — a
+   * shell entering a steel box, not a dinner bell.
+   */
+  function synthClang(x, y, z) {
     const s = spat(x, y, z);
     if (s.gain < 0.0015) return;
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
@@ -547,14 +845,26 @@ export function createAudio() {
   }
 
   /**
-   * Ricochet / non-pen (SOUND overhaul). Deflections play one of THREE
-   * distinct bright metallic zings — classic long whine, double-skip, or
-   * short shriek — each with randomized sweep + shard ticks, so back-to-back
+   * Ricochet / non-pen: baked variants (three whining piiing deflections
+   * with NO low end, or a dull heavy absorb thunk + optional receiving-end
+   * whump), or the pre-r2 synth fallback.
+   * @param {boolean} deflected true = ricochet, false = nonpen/absorb
+   * @param {number} [playerWhumpK] 0..1 — receiving-end whump strength
+   */
+  function ping(x, y, z, deflected, playerWhumpK = 0) {
+    if (sfxReady) { bakedPing(x, y, z, deflected, playerWhumpK); return; }
+    synthPing(x, y, z, deflected);
+  }
+
+  /**
+   * (Pre-COMBAT-SFX-r2 fallback.) Deflections play one of THREE distinct
+   * bright metallic zings — classic long whine, double-skip, or short
+   * shriek — each with randomized sweep + shard ticks, so back-to-back
    * bounces never sound like the same sample. Non-pens are a blunt shell
    * shatter: hard transient, dull knock, one dry ring.
    * @param {boolean} deflected true = ricochet, false = nonpen/absorb
    */
-  function ping(x, y, z, deflected) {
+  function synthPing(x, y, z, deflected) {
     const s = spat(x, y, z);
     if (s.gain < 0.0015) return;
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
@@ -616,10 +926,11 @@ export function createAudio() {
   }
 
   /**
-   * Explosion (HE burst / destruction). scale ~1 = 122 mm HE; bigger = longer,
-   * deeper. dirt=true muffles it (ground burst).
+   * (Pre-COMBAT-SFX-r2 fallback for HE bursts and tank destruction.)
+   * Explosion. scale ~1 = 122 mm HE; bigger = longer, deeper. dirt=true
+   * muffles it (ground burst).
    */
-  function explosion(x, y, z, scale, dirt, debris) {
+  function synthExplosion(x, y, z, scale, dirt, debris) {
     const s = spat(x, y, z);
     if (s.gain < 0.0015) return;
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
@@ -661,8 +972,14 @@ export function createAudio() {
     }
   }
 
-  /** ERA tile detonation: sharp pop + clang overtone. */
+  /** ERA tile detonation (baked, or pre-r2 synth fallback). */
   function eraPop(x, y, z) {
+    if (sfxReady) { bakedEraPop(x, y, z); return; }
+    synthEraPop(x, y, z);
+  }
+
+  /** (Pre-COMBAT-SFX-r2 fallback.) ERA tile: sharp pop + clang overtone. */
+  function synthEraPop(x, y, z) {
     const s = spat(x, y, z);
     if (s.gain < 0.0015) return;
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
@@ -698,6 +1015,12 @@ export function createAudio() {
 
   /** Shell landing in dirt with no target (shell:expired hitTerrain). */
   function dirtImpact(x, y, z) {
+    if (sfxReady) { bakedDirtImpact(x, y, z); return; }
+    synthDirtImpact(x, y, z);
+  }
+
+  /** (Pre-COMBAT-SFX-r2 fallback.) Shell landing in dirt with no target. */
+  function synthDirtImpact(x, y, z) {
     const s = spat(x, y, z);
     if (s.gain < 0.003) return;
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
@@ -1423,26 +1746,37 @@ export function createAudio() {
 
   function onShellHit(e) {
     const p = e.pos;
+    // Receiving-end feel (COMBAT-SFX r2): a damaging hit on the PLAYER adds
+    // an interior low whump + rumble under the impact sound. Deflections
+    // deliberately get NONE — a bounce must feel like relief, not damage.
+    const playerHit = playerId != null && e.targetId === playerId;
     switch (e.kind) {
       case 'pen':
-        clang(p[0], p[1], p[2]);
+        clang(p[0], p[1], p[2], playerHit && (e.damage || 0) > 0 ? 1 : 0);
         break;
       case 'ricochet':
         ping(p[0], p[1], p[2], true);
         break;
       case 'nonpen':
       case 'spaced_absorb':
-        ping(p[0], p[1], p[2], false);
+        // Non-pen still slams the plate — a smaller whump than a pen.
+        ping(p[0], p[1], p[2], false, playerHit ? 0.45 : 0);
         break;
       case 'era':
         eraPop(p[0], p[1], p[2]);
         break;
       case 'he_pen':
       case 'he_splash':
-        explosion(p[0], p[1], p[2], 0.55 + (e.caliberMm || 122) / 160, false, false);
+        if (sfxReady) {
+          bakedShellExplosion(p[0], p[1], p[2], e.caliberMm || 122, false);
+          if (playerHit && (e.damage || 0) > 0) hitWhump(0.9);
+        } else {
+          synthExplosion(p[0], p[1], p[2], 0.55 + (e.caliberMm || 122) / 160, false, false);
+        }
         break;
       case 'terrain':
-        explosion(p[0], p[1], p[2], 0.4 + (e.caliberMm || 100) / 220, true, false);
+        if (sfxReady) bakedShellExplosion(p[0], p[1], p[2], e.caliberMm || 100, true);
+        else synthExplosion(p[0], p[1], p[2], 0.4 + (e.caliberMm || 100) / 220, true, false);
         break;
       default:
         break;
@@ -1462,7 +1796,14 @@ export function createAudio() {
 
   function onTankDestroyed(e) {
     const p = e.pos;
-    explosion(p[0], p[1], p[2], 1.8, false, true);
+    // COMBAT-SFX r2: the kill blast keys off the destruction CAUSE —
+    // 'ammorack' detonation (turret-pop accent) > 'shot' > 'fire' burn-out.
+    if (sfxReady) {
+      bakedTankExplosion(p[0], p[1], p[2],
+        e.cause === 'ammorack' || e.cause === 'fire' ? e.cause : 'shot');
+    } else {
+      synthExplosion(p[0], p[1], p[2], 1.8, false, true);
+    }
     const eng = engines.get(e.id);
     if (eng) { eng.kill(); engines.delete(e.id); }
     landing.delete(e.id);
@@ -1523,6 +1864,7 @@ export function createAudio() {
     applyMaster();
     if (ctx.state === 'suspended') ctx.resume();
     radio.load(ctx, voiceBus);
+    loadSfx();
     installHoverTicks();
     if (phase === 'garage') garageToneStart();
     installDebugSurface();
@@ -1791,6 +2133,11 @@ export function createAudio() {
       get ctx() { return ctx; },
       get voiceLog() { return radio.log; },
       get voicesLoaded() { return radio.loaded; },
+      // COMBAT-SFX r2 introspection (tools/sfx-smoke.mjs): baked-sample play
+      // trail {n,t,g,r} + load state of the baked combat set.
+      get sfxLog() { return sfxLog; },
+      get sfxLoaded() { return sfxReady; },
+      get sfxCount() { return sfxBufs.size; },
       // force: the probe tests the BUS level, not the radio discipline —
       // cooldowns must never turn a slider check into a false silence.
       sayVoice(id) { return radio.say(id, { force: true }); },
@@ -1859,7 +2206,7 @@ export function createAudio() {
         };
       },
       // Raw node handles — probe-only introspection, never used by the game.
-      get _nodes() { return { master, comp, sfxBus, engineBus, ambientBus, musicBus, voiceBus }; },
+      get _nodes() { return { master, comp, limiter, sfxBus, engineBus, ambientBus, musicBus, voiceBus }; },
     };
   }
 
