@@ -186,11 +186,21 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
       gunFollowers: MERKAVA_GUN_FOLLOWERS,
     });
   }
-  for (const id of ['t62mv1', 't64bv1', 't72b_1987', 't72bu', 'type90']) {
+  for (const id of ['t64bv1', 't72b_1987', 't72bu', 'type90']) {
     source(id, {
       turretNode: '^Turret$', autoPivot: true, yawOffset: -Math.PI / 2,
     });
   }
+  // t62mv1: oracle ADOPTED from the gen2 bergman bake (batch-9 verdict —
+  // true-to-published stature vs the print pack's +6.1% roof; clean two-shell
+  // CAD, real Turret split). Gen2 node contract needs no yaw correction, and
+  // the bake carries a correct authored Turret pivot — autoPivot would read
+  // the long fused tube as the turret footprint and re-seat the upper vehicle
+  // (same defect class as the m1a1_aim ruling in userdrops6.js).
+  // The old t62mv1.glb print stays on disk for provenance only.
+  source('t62mv1', {
+    path: `${ROOT}t62_bergman.glb`, turretNode: '^Turret$', autoPivot: false,
+  });
   source('t72b3m', {
     turretNode: '^misc_a$', gunNode: '^misc_b$', autoPivot: true,
     yawOffset: Math.PI,
