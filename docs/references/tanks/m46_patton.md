@@ -145,3 +145,27 @@ stations 59.9 → 0, dims 100 → 100, floaters 100 → 100; reg dAlong 0.045 �
 0.008 → 0.011 (stable).
 Evidence: shots/procedural-fidelity/boards/m46_patton-{before,after}-seatfix.png,
 shots/procedural-fidelity/garage-m46_patton-seatfix.png (in-game, real loader).
+
+## Batch-8 procedural re-trace (2026-07-31, patton-family builder)
+Re-seat vs the seated oracle: ring (0, 1.607, ~+0.27); bore axis 2.048;
+crest 2.78-2.80; the M2 station rides the FRONT roof (band 3.07-3.16 over
++0.2..+1.8, barrel into station slice i12 ~+1.8); basket (bot 0.84) spans
++0.82..-0.60; stow bump ~2.66 at -1.3; mufflers 1.75-1.78 over -1.7..-2.6;
+fender-led bow (toe 2.42, knee ~1.2, platforms to 2.66-2.70 at y 1.14);
+fenders full width to -3.36; rear plate -3.36 with undercut to (-3.36, 1.0).
+The published 3.18 heightM (over MG) is carried by the narrow pedestal mast
+(dims p95) exactly as the pre-seat build did — dims passes (91-100).
+
+CERTIFICATION (extends the batch-8 gun finding): the print reuses the LONG
+m26 90 mm tube — authored overall reads ~9.0 m vs published 8.48 (+6.6%).
+dims stays sovereign (proc muzzle at the published +4.93 station), so the
+authored extra tube length lands as measurement error the build cannot
+close: (a) wholeCurves — ~3.4 ref-only side columns + plan-whole front-edge
+error on the centre columns; (b) turretCurves PLAN — the gate's turret trim
+removes barrel columns by the ALONG axis, which for the plan view is
+LATERAL x, so the centre plan columns keep the fused tube's front extent
+(~0.4 m error on ~6 columns, ~-6 pts). Both are the same documented
+authored print trait; certifying wholeCurves alone cannot make turret_plan
+satisfiable against this oracle.
+State at handoff: hull 74.9 / whole 66.1 / turret 63.2 / stations 69.3 /
+dims 91 / floaters 100.

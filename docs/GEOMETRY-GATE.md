@@ -129,6 +129,23 @@ registration is hull-anchored, a short-barrelled oracle caps ONLY
 longer gun) — hull, turret, stations and dims all remain fully satisfiable,
 and a cap claiming more than wholeCurves on such an oracle is invalid.
 
+The dual defect — a fused tube authored provably LONG (beyond the
+published overall length, e.g. m46's reused m26 tube at +6.6%) — caps
+`wholeCurves` AND exactly those `turretCurves` plan columns the tube
+itself occupies (the plan trim is lateral, so a fused tube's forward
+extent stays inside the trimmed centre columns; the capped columns must
+be listed per-column in the tank's packet). Hull, stations and dims
+remain fully satisfiable, and side-view turret rows are NOT covered by
+this cap.
+
+Graduated tanks (dual-gate passes whose in-game GLB registration has
+been retired) remain measurement-bound: their reference files stay on
+disk as oracles, and until the harness grows a graduate-reference
+override, freeze verification is by geometry-hash invariance of the
+procedural build (`tools/tmp-hashgeo.mjs`) — a gate run against a
+missing reference writes a false 0 row and must not be recorded in the
+ledger.
+
 ### Anti-gaming rules
 
 - Both models are measured by the same pipeline; builders never hand the

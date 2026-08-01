@@ -148,3 +148,17 @@ stations 32.9 → 0, dims 98.7 → 100, floaters 100 → 100; reg dAlong −0.05
 Evidence: shots/procedural-fidelity/boards/m47_patton-{before,after}-seatfix.png,
 shots/procedural-fidelity/garage-m47_patton-seatfix.png and
 garage-m47_patton-yaw150-seatfix.png (in-game, real loader).
+
+## Batch-8 procedural re-trace (2026-07-31, patton-family builder)
+Re-seat vs the seated oracle: ring (0, 1.608, +0.365); needle nose to ~+2.0;
+plateau 2.90-2.94; long bustle to -2.05 (roof ~2.56-2.60, stowage to 2.77);
+basket (bot 0.83) +0.91..-0.34; M2 + pedestal band 3.30-3.38 — the published
+3.35 over-MG height reads directly (dims 100). M36 gun axis 2.037 with the
+0.68-0.70 m wide flat deflector at the oracle muzzle ~4.84 (proc at the
+published 4.98 station). Hull: fender-led bow (toe 2.85, platforms to 2.88);
+knee (1.68, 1.625); grille bumps 1.69 over -0.65..-1.42; muffler band 1.78
+over -1.6..-2.85; fenders full width to -3.32; tail plate -3.36 undercut to
+1.0. m47Cast's furniture (bustle tarp, vent, lift eyes, rear frame, decals)
+re-seated +1.37 z / +0.42 y to the ring frame.
+State at handoff: hull 77.5 / whole 66.1 / turret 74.0 / stations 79.7 /
+dims 100 / floaters 100.

@@ -403,6 +403,12 @@ function t26Cast(P, T) {
     const B = T.basket;
     P.add('turretDark', box(B.w, B.y1 - B.y0, B.z0 - B.z1), 0, yl((B.y0 + B.y1) / 2), zl((B.z0 + B.z1) / 2));
   }
+  if (T.cheekPod) { // asymmetric cheek stowage/station bulge (the recovered
+    // castings read wider on one flank than the symmetric loft carries)
+    const C = T.cheekPod;
+    P.add('turret', box(C.x1 - C.x0, C.y1 - C.y0, C.z0 - C.z1),
+      (C.x0 + C.x1) / 2, yl((C.y0 + C.y1) / 2), zl((C.z0 + C.z1) / 2));
+  }
   bustleRack(P, T.rack, yl, zl, P.rng);
   if (T.stowBump) {
     tarpRoll(P, 'turretDark', T.stowBump.x, yl(T.stowBump.y), zl(T.stowBump.z), T.stowBump.len, T.stowBump.r, true, P.q ? 12 : 8);
@@ -448,9 +454,10 @@ function m47Cast(P, T) {
   P.add('turret', slab(
     [-B.w0, yl(B.floor0), zl(B.z0)], [B.w0, yl(B.floor0), zl(B.z0)], [B.w1, yl(B.floor1), zl(B.z1)], [-B.w1, yl(B.floor1), zl(B.z1)],
     [-B.w0 * 0.94, yl(B.top0), zl(B.z0)], [B.w0 * 0.94, yl(B.top0), zl(B.z0)], [B.w1 * 0.92, yl(B.top1), zl(B.z1)], [-B.w1 * 0.92, yl(B.top1), zl(B.z1)]));
-  P.add('turretDark', box(0.9, 0.22, 0.30), 0, yl(B.floor0 - 0.11), zl(B.z0 - 0.18));
-  // stowage riding the bustle roof (measured bump 2.35 over -2.45..-2.85)
-  tarpRoll(P, 'turretDark', -0.05, yl(2.29), zl(-2.65), 1.05, 0.055, true, P.q ? 12 : 8);
+  P.add('turretDark', box(0.9, 0.20, 0.30), 0, yl(B.floor0 - 0.10), zl(B.z0 - 0.18));
+  // stowage riding the bustle roof (batch-8 re-seat: measured bump over
+  // -1.1..-1.5 at ~2.71-2.77)
+  tarpRoll(P, 'turretDark', -0.05, yl(2.71), zl(-1.28), 1.05, 0.055, true, P.q ? 12 : 8);
   // rear rack frame on the bustle tail
   P.add('turretDetail', box(B.w1 * 2, 0.03, 0.03), 0, yl(B.top1 - 0.02), zl(B.z1 - 0.01));
   P.add('turretDetail', box(B.w1 * 2, 0.03, 0.03), 0, yl(B.floor1 + 0.14), zl(B.z1 - 0.01));
@@ -466,15 +473,15 @@ function m47Cast(P, T) {
   cupola(P, 'turret', T.cupola.x, yl(T.cupola.base), zl(T.cupola.z), T.cupola.r, T.cupola.h, 6);
   P.add('turret', cylY(0.17, 0.175, 0.05, 14), T.loader.x, yl(T.loader.y), zl(T.loader.z), 0, 0, 0, [1, 1, 1.25]);
   P.add('turretDark', box(0.05, 0.02, 0.16), T.loader.x + 0.14, yl(T.loader.y) + 0.028, zl(T.loader.z));
-  P.add('turret', sph(0.085, 12, Math.PI / 2), 0.05, yl(2.50), zl(-0.72));
+  P.add('turret', sph(0.085, 12, Math.PI / 2), 0.05, yl(2.92), zl(0.65));
   for (const side of [-1, 1]) {
-    liftEye(P, 'turretDetail', side * 0.9, yl(2.42), zl(-0.86));
-    P.add('turretDetail', box(0.02, 0.02, 0.55), side * (B.w1 - 0.02), yl(B.top0 - 0.24), zl(-2.55));
+    liftEye(P, 'turretDetail', side * 0.9, yl(2.84), zl(0.51));
+    P.add('turretDetail', box(0.02, 0.02, 0.55), side * (B.w1 - 0.02), yl(B.top0 - 0.24), zl(-1.18));
   }
   m2Station(P, T.mg, yl, zl);
   if (T.pedestal) aaPedestal(P, T.pedestal, yl, zl);
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [B.w0 + 0.01, yl((B.top0 + B.floor0) / 2), zl(-2.6)], Math.PI / 2);
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-B.w0 - 0.01, yl((B.top0 + B.floor0) / 2), zl(-2.6)], -Math.PI / 2);
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [B.w0 + 0.01, yl((B.top0 + B.floor0) / 2), zl(-1.23)], Math.PI / 2);
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-B.w0 - 0.01, yl((B.top0 + B.floor0) / 2), zl(-1.23)], -Math.PI / 2);
 }
 
 // ---------------------------------------------------------------------------
@@ -497,7 +504,7 @@ function pattonGun(P, G) {
   P.addGunExtra(slab(
     [-S.w / 2, S.dy - S.h / 2, zR], [S.w / 2, S.dy - S.h / 2, zR], [S.w / 2, S.dy - S.h / 2 + chin, zF], [-S.w / 2, S.dy - S.h / 2 + chin, zF],
     [-S.w / 2 * 0.92, S.dy + S.h / 2, zR], [S.w / 2 * 0.92, S.dy + S.h / 2, zR], [S.w / 2 * 0.9, S.dy + S.h * 0.1, zF], [-S.w / 2 * 0.9, S.dy + S.h * 0.1, zF]));
-  P.addGunExtra(xform(cylX(Math.min(0.20, S.h * 0.3), S.w * 0.7, P.q ? 16 : 10), 0, 0, 0), 0, S.dy * 0.4, zF - 0.05);
+  P.addGunExtra(xform(cylX(S.rotorR ?? Math.min(0.20, S.h * 0.3), S.w * 0.7, P.q ? 16 : 10), 0, 0, 0), 0, S.dy * 0.4, zF - 0.05);
   const sq = (r, l, at, sy = 1, sx = 1) => P.add('gun', xform(cylZ(r, l, seg), 0, 0, 0, 0, 0, 0, [sx, sy, 1]), 0, 0, at);
   if (G.device === 'm3') {
     // 90 mm M3: bare tube then the double-baffle brake — an oblong solid body
@@ -525,24 +532,82 @@ function pattonGun(P, G) {
     const t0 = G.tubeZ0 != null ? w2l(G.tubeZ0) : 0.02;
     P.add('gun', cylZ(G.r, len - 0.28 - t0, seg), 0, 0, (len - 0.28 + t0) / 2);
     P.add('gun', cylZ(0.15, G.evacL, seg), 0, 0, w2l(G.evacZ0) + G.evacL / 2);
-    sq(0.30, 0.14, len - 0.24, 0.40);                       // rear drum
-    P.add('gunDark', xform(cylZ(0.27, 0.05, seg), 0, 0, 0, 0, 0, 0, [1, 0.36, 1]), 0, 0, len - 0.15);
-    sq(0.30, 0.12, len - 0.075, 0.40);                      // front drum
+    sq(0.35, 0.14, len - 0.24, 0.34);                       // rear drum
+    P.add('gunDark', xform(cylZ(0.32, 0.05, seg), 0, 0, 0, 0, 0, 0, [1, 0.30, 1]), 0, 0, len - 0.15);
+    sq(0.35, 0.12, len - 0.075, 0.34);                      // front drum
     sq(0.18, 0.04, len - 0.01, 0.6);                        // rounded exit
   } else {
     // m45: 105 mm M4 howitzer stub with a plain muzzle collar
     P.add('gun', cylZ(G.r, len - 0.05, seg), 0, 0, (len - 0.05) / 2 + 0.02);
-    P.add('gun', cylZ(G.r * 1.12, 0.08, 12), 0, 0, len - 0.05);
+    P.add('gun', cylZ(G.r * 1.05, 0.08, 12), 0, 0, len - 0.05);
   }
   P.muzzleZ = len;
 }
 
 // ---------------------------------------------------------------------------
 // Family builder: hull + fittings + turret + gun for the four T26/T42 tanks.
+// (Kept OUT of curveHull/usKit: those are frozen m60a1 code paths — every
+// T26-family extra lives here.)
 // ---------------------------------------------------------------------------
 function buildPershing(P, cfg) {
+  const { box, cylX } = KIT;
   const hull = curveHull(P, cfg.hull);
   usKit(P, hull, cfg.fit);
+  if (cfg.tailStack) {
+    // Rear plate + pintle/deflector stack on the hull centreline. The
+    // recovered hulls are authored 3-4% SHORT of the published hull length
+    // (batch-8 packets); dims stays sovereign, so a narrow (|x| <= hw)
+    // body-band mass carries hullLengthM to the published tail station at
+    // the cost of 1-2 certified proc-only columns.
+    for (const T of cfg.tailStack) {
+      P.add('hull', box(T.hw * 2, T.y1 - T.y0, T.z0 - T.z1), 0, (T.y0 + T.y1) / 2, (T.z0 + T.z1) / 2);
+    }
+    const T = cfg.tailStack[cfg.tailStack.length - 1];
+    P.add('hullDark', cylX(0.055, T.hw * 1.2, 8), 0, (T.y0 + T.y1) / 2, T.z1 + 0.04);
+  }
+  if (cfg.bowFenders) {
+    // front fender platforms: the recovered hulls end their glacis toe ~2.39
+    // but the fenders project to ~2.667 carrying the bow silhouette (plan
+    // front at |x| 1.05-1.64, side band 1.05-1.09)
+    const B = cfg.bowFenders;
+    for (const side of [-1, 1]) {
+      P.add('hull', box(B.x1 - B.x0, 0.037, B.z0 - B.z1), side * (B.x0 + B.x1) / 2, B.y, (B.z0 + B.z1) / 2);
+    }
+  }
+  if (cfg.bowGuards) {
+    // headlight brush-guard masses on the glacis (the ref bow band reads
+    // 1.51-1.53 over z ~1.95..2.3 — pods alone leave the band low)
+    for (const [gx, gy2, gz] of cfg.bowGuards) {
+      for (const side of [-1, 1]) {
+        P.add('hullDetail', box(0.16, 0.105, 0.18), side * gx, gy2, gz);
+      }
+    }
+  }
+  if (cfg.hull.fenderY) {
+    // fender-lip doubler + solid edge rim: the kit's 0.035 plate aliases out
+    // of individual station slices at 1024px (width reads track-only on 3-4
+    // slices, on BOTH models) — a second plate + a 0.075-tall rim rail at the
+    // extreme edge keep the published width resolvable in every slice
+    const [fy, fz0, fz1] = cfg.hull.fenderY;
+    for (const side of [-1, 1]) {
+      P.add('hull', box(hull.hw - hull.bhw + 0.01, 0.035, fz0 - fz1),
+        side * (hull.bhw + hull.hw) / 2, fy - 0.033, (fz0 + fz1) / 2);
+      P.add('hull', box(0.022, 0.075, fz0 - fz1),
+        side * (hull.hw - 0.011), fy + 0.02, (fz0 + fz1) / 2);
+    }
+  }
+  // outer mud-flap wings: the kit flaps stop at the track edge (x ~1.65) but
+  // the reference flap panels run to the fender lip (front-view band 0.80..
+  // 1.40 out to +-1.75) — thin closers from the track flap to the hull edge
+  if (cfg.flapWings) {
+    const wx0 = hull.xc + cfg.hull.trackW * 0.46 - 0.03;
+    for (const [fz, fy0, fy1] of cfg.flapWings) {
+      for (const side of [-1, 1]) {
+        P.add('hullRubber', box(hull.hw - wx0, fy1 - fy0, 0.028),
+          side * (wx0 + hull.hw) / 2, (fy0 + fy1) / 2, fz);
+      }
+    }
+  }
   P.turretG.position.set(0, cfg.ring[0], cfg.ring[1]);
   P.gunG.position.set(0, cfg.gun.axisY - cfg.ring[0], cfg.gun.rootZ - cfg.ring[1]);
   if (cfg.turret.m47) m47Cast(P, cfg.turret); else t26Cast(P, cfg.turret);
@@ -1090,94 +1155,131 @@ function buildM60(P, cfg) {
 // ---------------------------------------------------------------------------
 // Measured per-tank data (v6 true-camera work orders, world coords).
 // ---------------------------------------------------------------------------
+// M26 — batch-8 re-trace (2026-07-31, seated oracle; tools/tmp-patton-retrace):
+//   hull side: toe (+2.66, 1.10) knee (+1.71, 1.549) deck 1.51-1.58 falling
+//   from -1.9 to the -3.28 tail lip (1.30); rear undercut to (-3.34, 0.80);
+//   plan: full width 1.752 to -3.12, then ONLY the -0.39..+0.47 centre blob
+//   at -3.28 (duckbills); front: deck plates end +-1.50, fender lip band
+//   0.80..1.40 outboard (m60-style bandHW/fender split); oracle hull span
+//   6.11 vs published 6.33 — the centre tailStack carries the dims length.
 const M26_HULL = {
-  W: 3.51, trackW: 0.58, trackInset: 0.08, sponsonY: 1.05, bellyY: 0.46, noseW: 1.30,
-  deck: [[2.68, 1.05], [1.78, 1.545], [1.30, 1.545], [0.00, 1.535], [-1.00, 1.55],
-    [-1.90, 1.55], [-2.32, 1.505], [-2.56, 1.475], [-2.80, 1.405], [-3.02, 1.395],
-    [-3.25, 1.335], [-3.55, 1.26]],
-  toeBot: 0.94, bellyFrontZ: 1.65, bellyRearZ: -2.55, tailBotY: 0.90,
-  tailTaper: { z0: -2.78, hw1: 0.55 },
-  duckbills: { z: -3.28 },
-  flapF: [2.72, 0.95, 1.31], flapR: [-3.36, 0.78, 1.06],
+  // tracks: ref inner edge ~1.035 / outer ~1.69 (front-view work order);
+  // deck baseline 1.51 with the grille-bay furniture reading 1.55-1.58 over
+  // -0.8..-1.9; rear corner stepped: tracks/fenders -3.15, plate -3.07,
+  // duckbills -3.31, centre pintle mass to -3.60 (dims carrier)
+  W: 3.51, bandHW: 1.60, trackW: 0.62, trackInset: 0.095, sponsonY: 1.05, bellyY: 0.46, noseW: 1.30,
+  deck: [[2.39, 1.10], [1.71, 1.549], [1.30, 1.52], [0.00, 1.512], [-0.80, 1.512],
+    [-1.92, 1.538], [-2.08, 1.509], [-2.24, 1.48], [-2.55, 1.475], [-2.74, 1.44],
+    [-2.92, 1.38], [-3.07, 1.34]],
+  fenderY: [1.375, 2.21, -3.18],
+  toeBot: 1.00, bellyFrontZ: 1.65, bellyRearZ: -2.55, tailBotY: 0.78,
+  tailTaper: { z0: -3.00, hw1: 0.95 },
+  duckbills: { z: -3.08 },
+  flapF: [2.34, 0.50, 1.04], flapR: [-3.13, 0.80, 1.26],
   gear: {
-    wheelR: 0.33, span: [1.58, -2.30], rollerN: 5, rollerY: 0.98,
-    idler: { z: 2.16, y: 0.72, r: 0.28 }, sprocket: { z: -2.90, y: 0.85, r: 0.27 },
-    tension: { z: -2.60, y: 0.28, r: 0.14 },
+    wheelR: 0.33, span: [1.54, -2.185], rollerN: 5, rollerY: 0.98,
+    idler: { z: 2.08, y: 0.73, r: 0.26 }, sprocket: { z: -2.85, y: 0.64, r: 0.21 },
+    tension: { z: -2.55, y: 0.30, r: 0.15 },
   },
 };
 const M26_FIT = {
-  hatchZ: 1.50, bowMG: [0.55, 1.32, 2.04, -0.55],
-  lights: { x: 0.68, y: 1.44, z: 1.98, rx: -0.50 }, siren: [-0.3, 1.40, 2.00],
+  hatchZ: 1.50, bowMG: [0.55, 1.26, 2.04, -0.55],
+  lights: { x: 0.68, y: 1.43, z: 2.02, rx: -0.50 }, siren: [-0.3, 1.44, 1.87],
   shackleY: 1.00, shackleZ: 2.50,
-  grille: { z0: -1.60, z1: -2.52, y: 1.525, rx: 0.076 }, caps: [0.85, -1.25],
-  rearGrilleY: 1.08, rearGrilleW: 0.95, rearGrilleZ: -3.49,
+  // rx 0: the usKit frame boxes rotate rx with an inverted sign (rear end
+  // rises) — flat bay at the ref's own -0.8..-1.9 grille station instead
+  grille: { z0: -0.82, z1: -1.88, y: 1.53, rx: 0 }, caps: [0.85, -0.60], noRearEyes: true,
+  rearGrilleY: 1.08, rearGrilleW: 0.56, rearGrilleZ: -3.36,
 };
 
+// M45 — batch-8 re-trace (seated oracle): toe (2.80, 1.18) knee (2.00,
+// 1.55) with fender platforms to 3.16 (y ~1.05); deck 1.512 with grille
+// bumps 1.55-1.57 over -0.3..-1.1; full width ends -2.50 into the narrow
+// tail (0.82 -> 0.67 hw) ending -3.0; ring (1.516, +0.82); M2 front-left
+// band 2.98-3.06 over +0.75..+2.25; howitzer axis 1.947 (oracle muzzle
+// +3.35; built to the published 6.40 overall => muzzle 3.18).
 const M45_HULL = {
-  W: 3.51, trackW: 0.58, trackInset: 0.08, sponsonY: 1.05, bellyY: 0.46, noseW: 1.30,
-  deck: [[3.10, 1.03], [2.55, 1.50], [2.18, 1.53], [0.20, 1.53], [-0.40, 1.555],
-    [-1.20, 1.575], [-1.60, 1.545], [-1.80, 1.49], [-2.00, 1.485], [-2.20, 1.425],
-    [-2.50, 1.385]],
-  toeBot: 0.94, bellyFrontZ: 2.10, bellyRearZ: -2.10,
-  narrowTail: { hw: 0.70, z0: -2.50, z1: -3.20, top1: 1.16, botY: 0.82 },
-  flapF: [3.135, 0.70, 1.06], flapR: [-2.72, 0.56, 0.94],
+  W: 3.51, bandHW: 1.60, trackW: 0.62, trackInset: 0.095, sponsonY: 1.05, bellyY: 0.46, noseW: 1.30,
+  deck: [[2.80, 1.18], [2.00, 1.553], [1.62, 1.512], [0.10, 1.512], [-0.29, 1.545],
+    [-1.10, 1.552], [-1.45, 1.535], [-1.63, 1.505], [-1.82, 1.471], [-2.01, 1.468],
+    [-2.21, 1.403], [-2.50, 1.37]],
+  fenderY: [1.37, 2.66, -2.50],
+  toeBot: 1.08, bellyFrontZ: 2.10, bellyRearZ: -2.10,
+  narrowTail: { hw: 0.75, z0: -2.55, z1: -2.98, top1: 1.14, botY: 0.55 },
+  flapF: [2.94, 0.50, 1.04], flapR: [-2.44, 0.56, 0.94],
   gear: {
-    wheelR: 0.33, span: [1.90, -1.72], rollerN: 5, rollerY: 0.98,
-    idler: { z: 2.58, y: 0.66, r: 0.28 }, sprocket: { z: -2.42, y: 0.85, r: 0.27 },
-    tension: { z: -2.10, y: 0.30, r: 0.14, support: true },
+    wheelR: 0.33, span: [1.95, -1.65], rollerN: 5, rollerY: 0.98,
+    idler: { z: 2.52, y: 0.71, r: 0.26 }, sprocket: { z: -2.62, y: 0.72, r: 0.24 },
+    tension: { z: -2.05, y: 0.30, r: 0.15, support: true },
   },
 };
 const M45_FIT = {
-  hatchZ: 2.12, bowMG: [0.55, 1.31, 2.56, -0.80],
-  lights: { x: 0.68, y: 1.42, z: 2.68, rx: -0.62 },
-  shackleY: 0.98, shackleZ: 3.00,
-  grille: { z0: -1.62, z1: -2.44, y: 1.44, rx: 0.13 }, caps: [0.85, -1.40],
-  rearGrilleY: 1.05,
+  hatchZ: 1.90, bowMG: [0.55, 1.31, 2.42, -0.80],
+  lights: { x: 0.68, y: 1.40, z: 2.52, rx: -0.62 },
+  shackleY: 0.98, shackleZ: 2.86,
+  grille: { z0: -0.28, z1: -1.15, y: 1.525, rx: 0 }, caps: [0.85, -1.05],
+  rearGrilleY: 0.95, rearGrilleW: 0.56, rearGrilleZ: -2.99, noRearEyes: true,
 };
 
+// M46 — batch-8 re-trace (seated oracle): toe (2.42, 1.19) with fender
+// platforms to 2.70 (y ~1.14); deck 1.60-1.65 with muffler band 1.75 over
+// -1.6..-2.9; rear ramp from -2.15 to a small low sprocket (-2.75, 0.75);
+// tail plate at -3.42 (1.02..1.51); bore axis 2.048, M2 station forward
+// (tops 3.07-3.16 over +0.2..+1.8), crest 2.78-2.80.
 const M46_HULL = {
-  W: 3.51, trackW: 0.58, trackInset: 0.08, sponsonY: 1.12, bellyY: 0.46, noseW: 1.30,
-  deck: [[2.78, 1.07], [2.28, 1.60], [1.60, 1.664], [-0.70, 1.664], [-2.90, 1.674],
-    [-3.10, 1.63], [-3.30, 1.59], [-3.48, 1.52]],
-  toeBot: 1.00, bellyFrontZ: 1.75, bellyRearZ: -2.60, tailBotY: 0.92,
-  duckbills: { z: -3.30 },
-  mufflers: { z0: -0.95, z1: -2.95, top: 1.73 },
-  flapF: [2.73, 0.62, 1.06], flapR: [-3.575, 0.56, 1.00],
+  W: 3.51, bandHW: 1.60, trackW: 0.62, trackInset: 0.095, sponsonY: 1.12, bellyY: 0.46, noseW: 1.30,
+  deck: [[2.42, 1.19], [1.20, 1.598], [0.55, 1.64], [-0.60, 1.647],
+    [-1.50, 1.66], [-2.10, 1.68], [-2.85, 1.68], [-3.02, 1.628], [-3.22, 1.598],
+    [-3.36, 1.52]],
+  fenderY: [1.45, 2.44, -3.34],
+  toeBot: 1.09, bellyFrontZ: 1.75, bellyRearZ: -2.60, tailBotY: 0.62,
+  tailTaper: { z0: -3.10, hw1: 0.90 },
+  duckbills: { z: -3.00 },
+  mufflers: { z0: -1.70, z1: -2.62, top: 1.77 },
+  flapF: [2.30, 0.60, 1.10], flapR: [-3.34, 0.85, 1.30],
   gear: {
-    wheelR: 0.33, span: [1.62, -2.50], rollerN: 5, rollerY: 1.02,
-    idler: { z: 2.14, y: 0.68, r: 0.28 }, sprocket: { z: -2.68, y: 0.82, r: 0.27 },
-    tension: { z: -2.45, y: 0.28, r: 0.14 },
+    wheelR: 0.33, span: [1.50, -1.99], rollerN: 5, rollerY: 1.02,
+    idler: { z: 2.02, y: 0.73, r: 0.26 }, sprocket: { z: -2.75, y: 0.75, r: 0.25 },
+    tension: { z: -2.45, y: 0.30, r: 0.15 },
   },
 };
 const M46_FIT = {
-  hatchZ: 1.90, bowMG: [0.55, 1.42, 2.38, -0.66],
-  lights: { x: 0.68, y: 1.52, z: 2.36, rx: -0.60 },
-  shackleY: 1.10, shackleZ: 2.60,
-  grille: { z0: -1.65, z1: -2.70, y: 1.70, rx: 0, x: 0.52, w: 0.88 }, caps: [0.48, -1.35],
-  rearGrilleY: 1.20,
+  hatchZ: 1.45, bowMG: [0.55, 1.42, 2.10, -0.66],
+  lights: { x: 0.68, y: 1.545, z: 2.06, rx: -0.55 },
+  shackleY: 1.10, shackleZ: 2.55,
+  grille: { z0: -0.85, z1: -1.45, y: 1.663, rx: 0, x: 0.52, w: 0.88 }, caps: [0.48, -0.60],
+  rearGrilleY: 1.20, rearGrilleW: 0.56, rearGrilleZ: -3.42, noRearEyes: true,
 };
 
+// M47 — batch-8 re-trace (seated oracle): toe (2.85, 1.15) knee (1.68,
+// 1.625) with fender platforms to 2.90; deck 1.61-1.65 with grille bumps
+// 1.69 over -0.65..-1.42 and muffler band 1.77 over -1.6..-2.8; fenders full
+// width to -3.32; tail plate -3.36 with undercut to (-3.36, 1.00); ring
+// (1.608, +0.365); plateau 2.90-2.94; M2/pedestal band 3.30-3.38 (published
+// 3.35 over MG); M36 gun axis 2.037, deflector at oracle muzzle 4.84.
 const M47_HULL = {
-  W: 3.51, trackW: 0.58, trackInset: 0.08, sponsonY: 1.12, bellyY: 0.46, noseW: 1.30,
-  deck: [[2.82, 1.19], [2.22, 1.49], [1.70, 1.655], [-0.50, 1.666], [-2.90, 1.674],
-    [-3.05, 1.64], [-3.25, 1.60], [-3.40, 1.545]],
-  toeBot: 1.08, bellyFrontZ: 1.90, bellyRearZ: -2.60, tailBotY: 1.00,
-  duckbills: { z: -3.19 },
-  tongues: [[-0.55, 0.50, -3.28], [0.55, 0.50, -3.28]],
-  mufflers: { z0: -0.85, z1: -2.90, top: 1.73 },
-  flapF: [2.68, 0.62, 1.00], flapR: [-3.30, 0.60, 1.00],
+  W: 3.51, bandHW: 1.60, trackW: 0.62, trackInset: 0.095, sponsonY: 1.12, bellyY: 0.46, noseW: 1.30,
+  deck: [[2.85, 1.15], [1.68, 1.625], [1.10, 1.606], [0.32, 1.654], [-0.55, 1.66],
+    [-1.50, 1.68], [-2.42, 1.69], [-2.78, 1.70], [-2.98, 1.635], [-3.17, 1.606],
+    [-3.36, 1.52]],
+  fenderY: [1.44, 2.70, -3.32],
+  toeBot: 1.06, bellyFrontZ: 1.90, bellyRearZ: -2.15, tailBotY: 0.62,
+  tailTaper: { z0: -3.30, hw1: 0.95 },
+  duckbills: { z: -3.00 },
+  mufflers: { z0: -1.58, z1: -2.85, top: 1.78 },
+  flapF: [2.44, 0.54, 1.06], flapR: [-3.30, 0.85, 1.30],
   gear: {
-    wheelR: 0.33, span: [1.85, -2.15], rollerN: 5, rollerY: 1.00,
-    idler: { z: 2.20, y: 0.68, r: 0.27 }, sprocket: { z: -2.55, y: 0.80, r: 0.26 },
-    tension: { z: -2.35, y: 0.28, r: 0.14 },
+    wheelR: 0.33, span: [1.68, -2.05], rollerN: 5, rollerY: 1.00,
+    idler: { z: 2.25, y: 0.72, r: 0.26 }, sprocket: { z: -2.78, y: 0.75, r: 0.25 },
+    tension: { z: -2.42, y: 0.30, r: 0.15 },
   },
 };
 const M47_FIT = {
-  hatchZ: 1.88, bowMG: [0.55, 1.32, 2.46, -0.60],
-  lights: { x: 0.68, y: 1.40, z: 2.42, rx: -0.58 },
-  shackleY: 1.04, shackleZ: 2.68,
-  grille: { z0: -1.65, z1: -2.70, y: 1.70, rx: 0, x: 0.52, w: 0.88 }, caps: [0.48, -1.35],
-  rearGrilleY: 1.20,
+  hatchZ: 1.10, bowMG: [0.55, 1.35, 2.20, -0.60],
+  lights: { x: 0.68, y: 1.42, z: 2.30, rx: -0.58 },
+  shackleY: 1.06, shackleZ: 2.72,
+  grille: { z0: -0.60, z1: -1.45, y: 1.665, rx: 0, x: 0.52, w: 0.88 }, caps: [0.48, -0.50],
+  rearGrilleY: 1.10, rearGrilleW: 0.56, rearGrilleZ: -3.42, noRearEyes: true,
 };
 
 const M60_HULL = {
@@ -1273,142 +1375,219 @@ const M60_BUSTLE = [
 
 export const PATTON_PROFILES = {
   m26_pershing: {
+    // Batch-8 SEATED oracle (ring pit at proc-frame (0, 1.517, +0.334) —
+    // tools/tmp-patton-retrace): casting front face ~+1.30, crest 2.66-2.69
+    // hidden under the M2 band in side view, bustle tail -1.40, rack to
+    // -1.66; basket to y 0.74 over +0.88..-0.38; M2 station band 3.01-3.09
+    // (side) / 3.13 (front) — the oracle's mounted .50cal is REAL geometry,
+    // so mg.topY matches it; spec.dims.heightM 2.78 is the no-MG convention
+    // and needs the over-MG published row (see packet batch-8 appendix).
     build: (P) => buildPershing(P, {
       hull: M26_HULL, fit: M26_FIT,
-      ring: [1.545, -1.55], topWorld: 2.76,
+      ring: [1.517, 0.187], topWorld: 3.06,
+      tailStack: [
+        { hw: 0.75, y0: 1.00, y1: 1.24, z0: -3.06, z1: -3.18 },
+        { hw: 0.30, y0: 0.54, y1: 1.28, z0: -3.28, z1: -3.44 },
+        { hw: 0.24, y0: 0.72, y1: 1.27, z0: -3.44, z1: -3.54 },
+        { hw: 0.17, y0: 0.87, y1: 1.25, z0: -3.50, z1: -3.61 },
+      ],
+      bowFenders: { x0: 1.02, x1: 1.66, y: 1.066, z0: 2.667, z1: 2.30 },
+      flapWings: [[2.19, 0.77, 1.33], [-3.10, 0.80, 1.26]],
+      bowGuards: [[0.68, 1.478, 2.03]],
       turret: {
-        ringY: 1.545, ringZ: -1.55,
+        ringY: 1.517, ringZ: 0.187,
+        loft: { wall: 0.46, mid: 0.62, midW: 0.88, crownW: 0.55, crownX: -0.10 },
         sections: [
-          { z: -0.10, hw: 0.55, top: 1.76, bot: 1.44 },
-          { z: -0.40, hw: 0.64, top: 1.95, bot: 1.34 },
-          { z: -0.70, hw: 0.76, top: 2.06, bot: 1.28 },
-          { z: -0.95, hw: 0.92, top: 2.13, bot: 1.27 },
-          { z: -1.20, hw: 1.13, top: 2.20, bot: 1.26 },
-          { z: -1.40, hw: 1.225, top: 2.24, bot: 1.25 },
-          { z: -1.70, hw: 1.21, top: 2.29, bot: 1.24 },
-          { z: -1.95, hw: 1.14, top: 2.31, bot: 1.23 },
-          { z: -2.20, hw: 0.95, top: 2.30, bot: 1.17 },
-          { z: -2.55, hw: 0.80, top: 2.21, bot: 1.18 },
-          { z: -2.75, hw: 0.72, top: 2.16, bot: 1.40 },
-          { z: -3.00, hw: 0.64, top: 2.10, bot: 1.43 },
+          { z: 1.202, hw: 0.66, top: 2.28, bot: 1.62 },
+          { z: 1.022, hw: 0.83, top: 2.38, bot: 1.51 },
+          { z: 0.872, hw: 0.95, top: 2.42, bot: 1.50 },
+          { z: 0.752, hw: 1.12, top: 2.45, bot: 1.49 },
+          { z: 0.572, hw: 1.20, top: 2.50, bot: 1.48 },
+          { z: 0.352, hw: 1.225, top: 2.60, bot: 1.47 },
+          { z: 0.152, hw: 1.22, top: 2.66, bot: 1.46 },
+          { z: 0.112, hw: 1.11, top: 2.67, bot: 1.46 },
+          { z: -0.048, hw: 1.03, top: 2.685, bot: 1.46 },
+          { z: -0.268, hw: 0.92, top: 2.68, bot: 1.46 },
+          { z: -0.498, hw: 0.83, top: 2.66, bot: 1.47 },
+          { z: -0.698, hw: 0.80, top: 2.63, bot: 1.48 },
+          { z: -0.878, hw: 0.79, top: 2.61, bot: 1.50 },
+          { z: -1.058, hw: 0.68, top: 2.60, bot: 1.72 },
+          { z: -1.198, hw: 0.63, top: 2.585, bot: 1.76 },
+          { z: -1.318, hw: 0.58, top: 2.55, bot: 1.78 },
+          { z: -1.478, hw: 0.53, top: 2.34, bot: 1.80 },
+          { z: -1.568, hw: 0.50, top: 2.24, bot: 1.86 },
         ],
-        basket: { w: 2.0, y0: 0.375, y1: 1.30, z0: -0.84, z1: -2.16 },
-        rack: { z0: -3.02, z1: -3.44, zC: -3.26, halfW: 0.50, floorY: 1.50, railY: 1.85, loadTop: 2.08 },
-        cupola: { x: -0.46, z: -1.90, r: 0.30, base: 2.26, h: 0.06 },
-        loader: { x: 0.48, z: -1.80, y: 2.28 },
-        vent: { x: 0.04, z: -1.52, y: 2.28 },
-        antenna: { x: 0.70, z: -2.60, y: 2.12 },
-        mg: { x: 0.12, z: -2.72, baseY: 2.12, topY: 2.78, tipZ: -1.28, rl: 0.62, cans: [0.26] },
+        basket: { w: 1.55, y0: 0.74, y1: 1.46, z0: 0.81, z1: -0.55 },
+        cheekPod: { x0: -1.25, x1: -1.00, y0: 1.90, y1: 2.09, z0: 0.85, z1: -0.20 },
+        rack: { z0: -1.52, z1: -1.78, zC: -1.39, halfW: 0.47, floorY: 1.88, railY: 2.23, loadTop: 2.23 },
+        cupola: { x: -0.46, z: -0.17, r: 0.30, base: 2.60, h: 0.10 },
+        loader: { x: 0.48, z: -0.07, y: 2.665 },
+        vent: { x: 0.04, z: 0.21, y: 2.655 },
+        antenna: { x: 0.70, z: -0.85, y: 2.50 },
+        mg: { x: 0.12, z: -1.16, baseY: 2.55, topY: 3.03, tipZ: 0.66, rl: 0.86, w: 1.5, canY: 2.94, cans: [0.28, 0.46] },
       },
-      // published overall 8.65 m: muzzle at 8.65 minus the rear flap (-3.575)
-      gun: { rootZ: -0.10, axisY: 1.60, muzzle: 4.96, r: 0.115, device: 'm3', shield: { w: 1.24, h: 0.86, dy: 0.0, zF: -0.18, d: 0.44, chinRise: 0.26 } },
+      // published overall 8.65 m: muzzle 5.00 with the pintle at -3.72
+      // (oracle muzzle +5.21/tail -3.43 reads 8.74 — the muzzle shortfall
+      // is the dims-sovereign compromise, ~2 cover columns)
+      gun: { rootZ: 1.50, axisY: 1.949, muzzle: 5.00, r: 0.113, device: 'm3', shield: { w: 1.36, h: 0.82, dy: 0.0, zF: 1.55, d: 0.44, chinRise: 0.31, rotorR: 0.11 } },
     }),
   },
   m45_patton: {
+    // Batch-8 SEATED oracle: ring (0, 1.516, +0.82); crest 2.64-2.71 over
+    // +0.2..+0.6; the M2 cluster overhangs the bow (band 2.98-3.06 over
+    // +0.75..+2.25 — spec heightM 2.78 is the no-MG convention, same blocker
+    // as m26); stub howitzer pokes ~0.2 past the glacis (oracle muzzle
+    // +3.35 vs published 6.40 overall => proc muzzle 3.18, ~1.5 cover cols
+    // + packet-flagged spec re-check toward ~6.6).
     build: (P) => buildPershing(P, {
       hull: M45_HULL, fit: M45_FIT,
-      ring: [1.54, -1.16], topWorld: 2.68,
+      ring: [1.516, 0.82], topWorld: 3.03,
+      tailStack: [
+        { hw: 0.17, y0: 0.66, y1: 1.06, z0: -2.95, z1: -3.20 },
+      ],
+      bowFenders: { x0: 1.05, x1: 1.665, y: 1.045, z0: 3.16, z1: 2.80 },
+      flapWings: [[2.90, 0.77, 1.33], [-2.44, 0.77, 1.30]],
+      bowGuards: [[0.68, 1.47, 2.40]],
       turret: {
-        ringY: 1.54, ringZ: -1.16,
+        ringY: 1.516, ringZ: 0.82, loft: { wall: 0.46, mid: 0.62, midW: 0.88, crownW: 0.55, crownX: -0.08 },
         sections: [
-          { z: 0.35, hw: 0.60, top: 2.00, bot: 1.32 },
-          { z: 0.10, hw: 0.66, top: 2.12, bot: 1.30 },
-          { z: -0.15, hw: 0.70, top: 2.20, bot: 1.28 },
-          { z: -0.42, hw: 0.82, top: 2.26, bot: 1.26 },
-          { z: -0.65, hw: 0.98, top: 2.30, bot: 1.25 },
-          { z: -0.90, hw: 1.09, top: 2.32, bot: 1.24 },
-          { z: -1.10, hw: 1.18, top: 2.33, bot: 1.235 },
-          { z: -1.25, hw: 1.21, top: 2.33, bot: 1.23 },
-          { z: -1.45, hw: 1.17, top: 2.33, bot: 1.22 },
-          { z: -1.65, hw: 1.08, top: 2.32, bot: 1.215 },
-          { z: -1.85, hw: 0.95, top: 2.30, bot: 1.21 },
-          { z: -2.02, hw: 0.83, top: 2.24, bot: 1.20 },
-          { z: -2.25, hw: 0.79, top: 2.12, bot: 1.32 },
-          { z: -2.55, hw: 0.72, top: 2.07, bot: 1.38 },
-          { z: -2.85, hw: 0.62, top: 2.02, bot: 1.40 },
+          { z: 2.05, hw: 0.66, top: 2.31, bot: 1.66 },
+          { z: 1.85, hw: 0.74, top: 2.38, bot: 1.55 },
+          { z: 1.70, hw: 0.84, top: 2.44, bot: 1.53 },
+          { z: 1.45, hw: 0.95, top: 2.51, bot: 1.52 },
+          { z: 1.32, hw: 1.06, top: 2.56, bot: 1.52 },
+          { z: 1.15, hw: 1.14, top: 2.61, bot: 1.52 },
+          { z: 0.98, hw: 1.19, top: 2.66, bot: 1.52 },
+          { z: 0.80, hw: 1.21, top: 2.69, bot: 1.52 },
+          { z: 0.56, hw: 1.20, top: 2.68, bot: 1.52 },
+          { z: 0.35, hw: 1.16, top: 2.65, bot: 1.52 },
+          { z: 0.16, hw: 1.10, top: 2.66, bot: 1.52 },
+          { z: 0.10, hw: 0.99, top: 2.63, bot: 1.53 },
+          { z: -0.20, hw: 0.90, top: 2.55, bot: 1.55 },
+          { z: -0.42, hw: 0.82, top: 2.49, bot: 1.74 },
+          { z: -0.55, hw: 0.78, top: 2.45, bot: 1.76 },
+          { z: -0.70, hw: 0.72, top: 2.42, bot: 1.78 },
+          { z: -0.85, hw: 0.66, top: 2.40, bot: 1.80 },
+          { z: -1.00, hw: 0.60, top: 2.25, bot: 1.86 },
+          { z: -1.15, hw: 0.55, top: 2.20, bot: 2.00 },
         ],
-        basket: { w: 1.9, y0: 0.36, y1: 1.25, z0: -0.38, z1: -1.92 },
-        rack: { z0: -2.88, z1: -3.16, halfW: 0.46, floorY: 1.48, railY: 1.82 },
-        cupola: { x: -0.62, z: -1.48, r: 0.28, base: 2.34, h: 0.26 },
-        loader: { x: 0.52, z: -1.42, y: 2.28 },
-        vent: { x: 0.05, z: -0.66, y: 2.29 },
-        stowBump: { x: -0.35, y: 2.11, z: -2.60, r: 0.085, len: 0.5 },
-        mg: { x: -0.32, z: -0.90, baseY: 2.26, topY: 2.79, tipZ: 0.38, rl: 0.52, cans: [0.26, -0.22] },
+        basket: { w: 1.55, y0: 0.74, y1: 1.58, z0: 1.42, z1: 0.55 },
+        rack: { z0: -0.90, z1: -1.30, zC: -0.96, halfW: 0.46, floorY: 1.97, railY: 2.18, loadTop: 2.18 },
+        cupola: { x: -0.62, z: 0.0, r: 0.28, base: 2.50, h: 0.10 },
+        loader: { x: 0.52, z: 0.06, y: 2.56 },
+        vent: { x: 0.05, z: 0.75, y: 2.62 },
+        stowBump: { x: -0.35, y: 2.50, z: -0.69, r: 0.085, len: 0.5 },
+        antenna: { x: 0.70, z: -0.75, y: 2.10 },
+        mg: { x: -0.32, z: 0.72, baseY: 2.45, topY: 3.04, tipZ: 2.26, rl: 0.86, w: 1.5, canY: 2.92, cans: [0.26, -0.22] },
       },
-      // bow-flush stub: overall = hull span 6.40 (muzzle stays inside)
-      gun: { rootZ: 0.35, axisY: 1.56, muzzle: 1.44, r: 0.125, device: 'stub', shield: { w: 0.84, h: 0.46, dy: -0.08, zF: 0.45, d: 0.42 } },
+      // published overall 6.40: stub muzzle at +3.18 (oracle reads +3.35)
+      gun: { rootZ: 1.70, axisY: 1.947, muzzle: 3.18, r: 0.135, device: 'stub', shield: { w: 0.84, h: 0.66, dy: -0.04, zF: 2.10, d: 0.55, chinRise: 0.17 } },
     }),
   },
   m46_patton: {
+    // Batch-8 SEATED oracle: ring at proc-frame ~(0, 1.607, +0.27); crest
+    // 2.78-2.80; the M2 station rides the FRONT roof (band 3.07-3.16 over
+    // +0.2..+1.8); bore 2.048; the print reuses the long m26 tube (authored
+    // +6.6% — muzzle stays at the published 8.48 station, certified
+    // wholeCurves-only cap per the packet).
     build: (P) => buildPershing(P, {
       hull: M46_HULL, fit: M46_FIT,
-      ring: [1.66, -1.53], topWorld: 2.77,
+      ring: [1.607, 0.27], topWorld: 3.18,
+      tailStack: [
+        { hw: 0.30, y0: 0.60, y1: 1.50, z0: -3.30, z1: -3.46 },
+        { hw: 0.17, y0: 1.01, y1: 1.44, z0: -3.42, z1: -3.70 },
+      ],
+      bowFenders: { x0: 1.10, x1: 1.66, y: 1.14, z0: 2.66, z1: 2.34 },
+      flapWings: [[2.22, 0.80, 1.40], [-3.30, 0.85, 1.35]],
+      bowGuards: [[0.68, 1.62, 2.06]],
       turret: {
-        ringY: 1.66, ringZ: -1.53, loft: { midW: 0.83, crownW: 0.42 },
+        ringY: 1.607, ringZ: 0.27, loft: { wall: 0.46, mid: 0.62, midW: 0.88, crownW: 0.55, crownX: -0.08 },
         sections: [
-          { z: -0.02, hw: 0.60, top: 1.92, bot: 1.50 },
-          { z: -0.30, hw: 0.68, top: 2.05, bot: 1.49 },
-          { z: -0.60, hw: 0.71, top: 2.14, bot: 1.48 },
-          { z: -0.85, hw: 0.90, top: 2.20, bot: 1.47 },
-          { z: -1.10, hw: 1.07, top: 2.26, bot: 1.46 },
-          { z: -1.45, hw: 1.20, top: 2.31, bot: 1.45 },
-          { z: -1.75, hw: 1.19, top: 2.31, bot: 1.44 },
-          { z: -2.00, hw: 0.99, top: 2.30, bot: 1.43 },
-          { z: -2.25, hw: 0.87, top: 2.28, bot: 1.20 },
-          { z: -2.55, hw: 0.79, top: 2.16, bot: 1.19 },
-          { z: -2.90, hw: 0.71, top: 2.18, bot: 1.42 },
-          { z: -3.10, hw: 0.62, top: 2.05, bot: 1.44 },
+          { z: 1.55, hw: 0.64, top: 2.42, bot: 1.70 },
+          { z: 1.30, hw: 0.72, top: 2.52, bot: 1.62 },
+          { z: 1.15, hw: 0.82, top: 2.58, bot: 1.60 },
+          { z: 1.00, hw: 0.93, top: 2.65, bot: 1.59 },
+          { z: 0.85, hw: 1.02, top: 2.71, bot: 1.58 },
+          { z: 0.65, hw: 1.09, top: 2.75, bot: 1.57 },
+          { z: 0.45, hw: 1.14, top: 2.78, bot: 1.57 },
+          { z: 0.25, hw: 1.135, top: 2.79, bot: 1.56 },
+          { z: 0.05, hw: 1.08, top: 2.80, bot: 1.56 },
+          { z: -0.15, hw: 1.02, top: 2.79, bot: 1.56 },
+          { z: -0.35, hw: 0.93, top: 2.75, bot: 1.57 },
+          { z: -0.55, hw: 0.86, top: 2.71, bot: 1.58 },
+          { z: -0.75, hw: 0.815, top: 2.62, bot: 1.60 },
+          { z: -0.95, hw: 0.79, top: 2.56, bot: 1.62 },
+          { z: -1.10, hw: 0.67, top: 2.52, bot: 1.86 },
+          { z: -1.28, hw: 0.60, top: 2.51, bot: 1.87 },
+          { z: -1.42, hw: 0.56, top: 2.50, bot: 1.89 },
+          { z: -1.56, hw: 0.52, top: 2.42, bot: 2.09 },
         ],
-        basket: { w: 2.0, y0: 0.39, y1: 1.42, z0: -0.75, z1: -2.28 },
-        rack: { z0: -3.10, z1: -3.46, halfW: 0.52, floorY: 1.52, railY: 1.84, loadTop: 2.02 },
-        cupola: { x: -0.58, z: -1.85, r: 0.29, base: 2.32, h: 0.06 },
-        loader: { x: 0.48, z: -1.72, y: 2.30 },
-        vent: { x: 0.04, z: -1.40, y: 2.28 },
-        antenna: { x: 0.70, z: -2.58, y: 2.10 },
-        stowBump: { x: -0.05, y: 2.20, z: -2.85, r: 0.075, len: 0.9 },
-        // the reference's own (short-modelled) M2 line is matched exactly;
-        // the real tall AA pedestal carries the published 3.18 m height —
-        // certified in the packet (narrow: 0.15 x, 0.48 z).
-        mg: { x: -0.42, z: -1.42, baseY: 2.24, topY: 2.72, tipZ: 0.02, rl: 0.52, cans: [0.24, -0.18] },
-        pedestal: { x: -0.20, z: -1.52, baseY: 2.24, top: 3.21, zw: 0.46 },
+        basket: { w: 1.55, y0: 0.84, y1: 1.55, z0: 0.82, z1: -0.60 },
+        rack: { z0: -1.56, z1: -1.80, zC: -1.34, halfW: 0.50, floorY: 2.10, railY: 2.31, loadTop: 2.31 },
+        cupola: { x: -0.58, z: 0.05, r: 0.29, base: 2.72, h: 0.10 },
+        loader: { x: 0.48, z: 0.16, y: 2.78 },
+        vent: { x: 0.04, z: 0.48, y: 2.76 },
+        antenna: { x: 0.70, z: -0.68, y: 2.60 },
+        stowBump: { x: -0.05, y: 2.60, z: -1.30, r: 0.085, len: 0.8 },
+        // the seated oracle's M2 rides the front roof; the published 3.18 m
+        // height row is carried by the narrow pedestal mast (dims p95).
+        mg: { x: -0.42, z: 0.35, baseY: 2.72, topY: 3.10, tipZ: 1.82, rl: 0.86, w: 1.5, canY: 3.0, cans: [0.28] },
+        pedestal: { x: -0.20, z: 0.28, baseY: 2.75, top: 3.19, zw: 0.46 },
       },
-      // published overall 8.48 m: muzzle at 8.48 minus the duckbill tail (-3.545)
-      gun: { rootZ: -0.12, axisY: 1.618, muzzle: 4.92, r: 0.115, device: 'm3a1', evacZ0: 2.10, evacZ1: 3.30, shield: { w: 1.24, h: 0.82, dy: -0.06, zF: -0.06, d: 0.52, chinRise: 0.24 } },
+      // published overall 8.48 m: muzzle 4.93 with the tail at -3.55 (the
+      // oracle's reused long m26 tube reads to +5.33 — authored print trait,
+      // certified wholeCurves-only cap)
+      gun: { rootZ: 1.85, axisY: 2.048, muzzle: 4.93, r: 0.115, device: 'm3a1', evacZ0: 3.90, evacZ1: 4.55, shield: { w: 1.36, h: 0.50, dy: 0.0, zF: 1.90, d: 0.52, chinRise: 0.13, rotorR: 0.12 } },
     }),
   },
   m47_patton: {
+    // Batch-8 SEATED oracle: ring (0, 1.608, +0.365); needle nose to ~+2.0,
+    // plateau 2.90-2.94, long bustle to -2.05; M2 + pedestal band 3.30-3.38
+    // (the published 3.35 over-MG height reads directly); M36 gun axis
+    // 2.037 with the wide flat deflector at the oracle muzzle ~4.84.
     build: (P) => buildPershing(P, {
       hull: M47_HULL, fit: M47_FIT,
-      ring: [1.64, -1.00], topWorld: 2.94,
+      ring: [1.608, 0.365], topWorld: 3.37,
+      tailStack: [
+        { hw: 0.30, y0: 0.60, y1: 1.48, z0: -3.36, z1: -3.46 },
+        { hw: 0.17, y0: 1.00, y1: 1.42, z0: -3.40, z1: -3.50 },
+      ],
+      bowFenders: { x0: 1.05, x1: 1.665, y: 1.135, z0: 2.88, z1: 2.50 },
+      flapWings: [[2.40, 0.80, 1.40], [-3.28, 0.85, 1.35]],
+      bowGuards: [[0.68, 1.47, 2.36]],
       turret: {
-        m47: true, ringY: 1.64, ringZ: -1.00,
+        m47: true, ringY: 1.608, ringZ: 0.365,
         sections: [
-          { z: 0.45, hw: 0.26, top: 1.80, bot: 1.46 },
-          { z: 0.30, hw: 0.36, top: 1.86, bot: 1.44 },
-          { z: 0.20, hw: 0.42, top: 1.92, bot: 1.43 },
-          { z: 0.00, hw: 0.52, top: 2.28, bot: 1.42 },
-          { z: -0.20, hw: 0.75, top: 2.42, bot: 1.41 },
-          { z: -0.45, hw: 1.00, top: 2.50, bot: 1.40 },
-          { z: -0.75, hw: 1.13, top: 2.51, bot: 1.39 },
-          { z: -1.10, hw: 1.14, top: 2.52, bot: 1.38 },
-          { z: -1.45, hw: 1.10, top: 2.51, bot: 1.37 },
-          { z: -1.75, hw: 1.015, top: 2.49, bot: 1.365 },
-          { z: -1.95, hw: 0.95, top: 2.48, bot: 1.36 },
+          { z: 1.95, hw: 0.26, top: 2.22, bot: 1.86 },
+          { z: 1.80, hw: 0.36, top: 2.26, bot: 1.84 },
+          { z: 1.70, hw: 0.42, top: 2.32, bot: 1.83 },
+          { z: 1.50, hw: 0.52, top: 2.68, bot: 1.82 },
+          { z: 1.30, hw: 0.75, top: 2.85, bot: 1.81 },
+          { z: 1.05, hw: 1.00, top: 2.92, bot: 1.80 },
+          { z: 0.75, hw: 1.13, top: 2.93, bot: 1.79 },
+          { z: 0.40, hw: 1.14, top: 2.94, bot: 1.78 },
+          { z: 0.05, hw: 1.10, top: 2.94, bot: 1.77 },
+          { z: -0.30, hw: 1.015, top: 2.93, bot: 1.765 },
+          { z: -0.50, hw: 0.95, top: 2.90, bot: 1.76 },
         ],
-        bustle: { z0: -1.95, z1: -3.42, w0: 0.94, w1: 0.69, top0: 2.17, top1: 2.13, floor0: 1.50, floor1: 1.51 },
-        basket: { w: 2.0, y0: 0.39, y1: 1.38, z0: -0.32, z1: -1.70 },
-        blisterX: 0.90, blisterY: 2.12, blisterZ: -0.42,
-        cupola: { x: -0.52, z: -1.28, r: 0.30, base: 2.445, h: 0.06 },
-        loader: { x: 0.50, z: -1.12, y: 2.47 },
-        // reference M2 line matched (band to 2.94, barrel to +0.12); the
-        // published 3.35 m rides the real AA pedestal — certified in packet.
-        mg: { x: 0.04, z: -1.45, baseY: 2.44, topY: 2.94, tipZ: 0.13, rl: 0.50, cans: [0.22, -0.24] },
-        pedestal: { x: -0.22, z: -1.38, baseY: 2.44, top: 3.36, zw: 0.52 },
+        bustle: { z0: -0.50, z1: -2.02, w0: 0.94, w1: 0.69, top0: 2.60, top1: 2.56, floor0: 1.80, floor1: 1.94 },
+        basket: { w: 1.55, y0: 0.83, y1: 1.55, z0: 0.91, z1: -0.34 },
+        blisterX: 0.90, blisterY: 2.54, blisterZ: 0.95,
+        cupola: { x: -0.52, z: 0.09, r: 0.30, base: 2.86, h: 0.10 },
+        loader: { x: 0.50, z: 0.25, y: 2.89 },
+        // the seated oracle's M2 + pedestal read 3.30-3.38 — the published
+        // 3.35 over-MG height is carried directly by the station.
+        mg: { x: 0.04, z: 0.05, baseY: 2.86, topY: 3.32, tipZ: 1.37, rl: 0.86, w: 1.5, canY: 3.22, cans: [0.22, -0.24] },
+        pedestal: { x: -0.22, z: 0.0, baseY: 2.86, top: 3.37, zw: 0.52 },
       },
-      // published overall 8.51 m: muzzle at 8.51 minus the tail (-3.47)
-      gun: { rootZ: 0.40, axisY: 1.60, muzzle: 5.06, r: 0.115, device: 'm36', tubeZ0: 0.92, evacZ0: 2.38, evacL: 0.66, shield: { w: 0.82, h: 0.48, dy: 0.0, zF: 0.62, d: 0.40 } },
+      // published overall 8.51 m: muzzle 4.94 with the tail at -3.57 (the
+      // oracle deflector face reads ~4.84)
+      gun: { rootZ: 1.90, axisY: 2.037, muzzle: 4.98, r: 0.112, device: 'm36', tubeZ0: 2.30, evacZ0: 3.72, evacL: 0.62, shield: { w: 0.82, h: 0.48, dy: 0.0, zF: 2.00, d: 0.40 } },
     }),
   },
   m60a1: { build: (P) => buildM60(P, { hull: M60_HULL, fit: M60_FIT, sections: M60_SECTIONS, bustle: M60_BUSTLE, searchlight: true, sleeve: false, gunLen: 4.435 }) },
-  m60a3: { build: (P) => buildM60(P, { hull: M60_HULL, fit: M60_FIT, sections: M60_SECTIONS, bustle: M60_BUSTLE, searchlight: false, sleeve: true, a3: true, gunLen: 4.435 }) },
+  // A3: searchlight ON (the real M60A3 kept the AN/VSS searchlight over the
+  // mantlet, and the shared A1 oracle models it — the old searchlight:false
+  // read cost turretCurves ~13 pts of pure missing-volume vs the reference)
+  m60a3: { build: (P) => buildM60(P, { hull: M60_HULL, fit: M60_FIT, sections: M60_SECTIONS, bustle: M60_BUSTLE, searchlight: true, sleeve: true, a3: true, gunLen: 4.435 }) },
 };

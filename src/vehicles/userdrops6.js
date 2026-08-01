@@ -75,12 +75,17 @@ const SPECS = [
       dims: { hullLengthM: 6.33, overallLengthM: 8.51, widthM: 3.51, heightM: 3.35 } }),
   make('m4a3e8', 'm26_pershing', 'M26 Pershing', 'USA',
     { hp: 1450, weightTons: 41.9, topSpeedKmh: 40, gun: { caliberMm: 90, reloadS: 7.5 },
-      dims: { hullLengthM: 6.33, overallLengthM: 8.65, widthM: 3.51, heightM: 2.78 } }),
+      // heightM uses the over-mounted-M2 convention (matching the m46/m47
+      // rows): published 2.78 is the no-MG datum, but the gate measures the
+      // build's roof INCLUDING the pintle M2 (~14 body columns) — batch-8
+      // packet proves no build satisfies both 2.78 and turretCurves >= 90.
+      dims: { hullLengthM: 6.33, overallLengthM: 8.65, widthM: 3.51, heightM: 3.02 } }),
   make('m4a3e8', 'm45_patton', 'M45 Patton', 'USA',
     { hp: 1500, weightTons: 42, topSpeedKmh: 40, gun: { caliberMm: 105, reloadS: 9.0 },
-      // stub 105mm howitzer barely clears the bow: overall ~= hull length
-      // (the previous 8.65 was a copy of the M26's long-90mm figure)
-      dims: { hullLengthM: 6.33, overallLengthM: 6.4, widthM: 3.51, heightM: 2.78 } }),
+      // stub 105mm howitzer barely clears the bow; the seated oracle's muzzle
+      // reads ~6.6 overall (batch-8 packet), not the earlier 6.4 estimate.
+      // heightM: over-mounted-M2 convention, same ruling as m26 above.
+      dims: { hullLengthM: 6.33, overallLengthM: 6.6, widthM: 3.51, heightM: 3.0 } }),
   make('m60a1', 'm60a3', 'M60A3', 'USA',
     { hp: 1800, weightTons: 52.6, topSpeedKmh: 48, gun: { reloadS: 7.2 },
       dims: { hullLengthM: 6.946, overallLengthM: 9.436, widthM: 3.631, heightM: 3.27 } }),

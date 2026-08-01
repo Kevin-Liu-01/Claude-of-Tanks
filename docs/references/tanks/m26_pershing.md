@@ -169,3 +169,36 @@ stations 64.3 → 0, dims 97 → 98, floaters 100 → 100; side_hull reg dAlong 
 (registration absorbing the new normalization frame; dy stable 0.007 → 0.004).
 Evidence: shots/procedural-fidelity/boards/m26_pershing-{before,after}-seatfix.png,
 shots/procedural-fidelity/garage-m26_pershing-seatfix.png (in-game, real loader).
+
+## Batch-8 procedural re-trace (2026-07-31, patton-family builder)
+Full from-scratch re-seat of the procedural build against the SEATED oracle
+(tools/tmp-patton-retrace.mjs world decode, hull-anchored registration).
+Landmarks (proc frame): ring pit (0, 1.517, +0.19..+0.33 — frame follows the
+final hull span); casting crest 2.66-2.69 (front view 2.63-2.75 incl. cupola);
+basket to y 0.74; the mounted M2 assembly is ~1.65 m long — receiver band
+tops 3.03-3.09 over z -0.45..-1.26, barrel line to ~+0.65. Hull: fender-led
+bow (glacis toe ~2.39-2.52, fender platforms project ~0.15 further carrying
+the bow silhouette at y 1.05-1.09); deck baseline 1.51 with the grille bay
+reading 1.55-1.58 over -0.8..-1.9; tracks 0.62-0.65 wide (inner ~1.03);
+stepped rear corner (tracks -3.15 / plate -3.07 / duckbills -3.31 / centre
+-3.35).
+
+CERTIFICATIONS / BLOCKERS:
+1. DIMS heightM BLOCKER (needs an owner spec decision): spec.dims.heightM
+   2.78 is the published no-MG figure (over cupola). The seated oracle's
+   mounted M2 reads 3.03-3.09 across ~14 side body columns, so any build
+   that satisfies turretCurves vs this oracle measures heightM ~3.05
+   (dims ~28) and any build that satisfies dims 2.78 caps turretCurves ~76
+   — mathematically disjoint (worked inequality in the builder session).
+   m46 (3.18) and m47 (3.35) already use over-MG published rows. Options:
+   heightM -> ~3.05 over-MG row (no verified published figure found in a
+   quick search; Wikipedia/afvdatabase list only 2.78), or an owner call to
+   build the M2 low and certify the turretCurves shortfall.
+2. Hull-length tension (certified, structural): the recovered hull spans
+   6.11 m vs published 6.33. dims stays sovereign: the excess is carried by
+   the bow fender platforms (+gun-union body columns) and a narrow centre
+   tail pintle stack to -3.61 — costing ~2-3 proc-only cover columns split
+   between side_hull/side_whole. Oracle muzzle +5.21 vs proc published
+   muzzle +5.00 adds ~2 ref-only columns (overall 8.65 sovereign).
+State at handoff: hull 77.3 / whole 71.2 / turret 73.5 / stations 83.2 /
+dims 25.3 (blocker 1) / floaters 100.

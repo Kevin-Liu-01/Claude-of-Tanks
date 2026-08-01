@@ -143,3 +143,24 @@ stations 63.3 → 0, dims 100 → 100, floaters 100 → 100; reg dAlong 0.035 �
 0.003 → 0.005 (stable).
 Evidence: shots/procedural-fidelity/boards/m45_patton-{before,after}-seatfix.png,
 shots/procedural-fidelity/garage-m45_patton-seatfix.png (in-game, real loader).
+
+## Batch-8 procedural re-trace (2026-07-31, patton-family builder)
+Re-seat vs the seated oracle: ring (0, 1.516, +0.74..0.82); crest 2.64-2.71
+over +0.2..+0.8; basket (bot 0.745) spans +1.42..+0.55; the front-left M2
+cluster overhangs the bow — receiver band 3.01-3.07 over +0.55..+1.45,
+barrel to ~+2.3. Stub howitzer axis 1.947, oracle muzzle +3.35. Hull:
+fender-led bow (toe 2.80, platforms to 3.16 at y ~1.05); deck 1.512 with
+grille bumps 1.55-1.57 over -0.3..-1.1; full width ends -2.50 into the
+narrow tail block (hw 0.82 -> 0.67) ending ~-3.0.
+
+CERTIFICATIONS / BLOCKERS:
+1. DIMS heightM BLOCKER — same no-MG convention issue as m26: published
+   2.78 vs the oracle's mounted M2 band ~3.0 (dims ~23 when turret-matched).
+2. DIMS overallLengthM re-check (packet batch-8 already flagged): the
+   seated stub muzzle reads +3.35 -> overall ~6.55-6.6 vs the spec row 6.40.
+   Built to the published 6.40 (muzzle +3.18, ~1.5 ref-only columns).
+   userdrops6.js row may deserve the ~6.6 figure.
+3. Hull length: recovered span ~6.16 vs published 6.33 — centre tail pintle
+   to -3.20 carries the dims row (1-2 certified proc-only columns).
+State at handoff: hull 70.4 / whole 69.4 / turret 56.7 / stations 73.9 /
+dims 22.6 (blocker 1) / floaters 100.
