@@ -115,8 +115,9 @@ export default {
   },
 
   props: {
-    plan: ['cottage', 'boatshed', 'cottage', 'netyard', 'market', 'cottage',
-      'lighthouse', 'cottage', 'ruin', 'barn', 'cottage', 'boatshed',
+    // world-dressing r1: + chapel and granary in the fishing village
+    plan: ['cottage', 'boatshed', 'chapel', 'netyard', 'market', 'cottage',
+      'lighthouse', 'cottage', 'ruin', 'barn', 'granary', 'boatshed',
       'netyard', 'cottage', 'tower', 'cottage'],
     sideSkip: 0.12, spacingPad: 7,
     buildingLat: [11, 4.5], maxSpread: 2.2,
@@ -142,6 +143,16 @@ export default {
     well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
     haystacks: 8, rocks: 200, outcrops: 22, craters: 30, rubblePiles: 0,
     wrecks: 4,
+    // world-dressing r1: harbor-village inhabitants — fish-crate/barrel
+    // clutter through the lanes, a quayside stall pair, laundry between the
+    // crofts; stone-post rail fences on the field boundaries
+    wallStyle: 'fieldstone',
+    inhabit: {
+      stalls: 2, benches: 2, coreClutter: 9,
+      bales: 4,
+      troughs: 1, laundry: 1, handcarts: 1, carts: 2,
+      roadFence: 'fencerail', yardFence: 'fencepicket',
+    },
     cropFields: 3,
   },
 

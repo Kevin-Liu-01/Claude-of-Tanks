@@ -15,6 +15,9 @@ for (let i = 0; i < 108; i++) {
   if (i === 4) PLAN.push('church');
   else if (i === 11) PLAN.push('factory');
   else if (i === 9 || i === 41) PLAN.push('tower');
+  // world-dressing r1: corner shops (chamfered corner entrance, display
+  // glass both faces) salt the block interiors — a third street archetype
+  else if (i === 7 || i === 19 || i === 33 || i === 52) PLAN.push('cornershop');
   // r1 (content_breadth): second ruin cadence — the town read too intact for
   // a battle-ready map ("rubble/destruction dressing too sparse"); ~1 in 3.5
   // interior slots is now a shelled ruin, clustering into visibly collapsed
@@ -159,6 +162,17 @@ export default {
     // and two more road wrecks ("urban streets missing furniture, wrecks and
     // debris variety" critique)
     lampposts: true, hedgehogs: 16, wrecks: 6,
+    // world-dressing r1: brick boundary walls w/ coping; street inhabitants —
+    // a market ring on the central square, oil drums + pallet/crate work
+    // clutter down the alleys, benches on the pavements (all destructible;
+    // the lamppost systems above now ride the topple layer too)
+    wallStyle: 'brick',
+    inhabit: {
+      stalls: 3, benches: 5, coreClutter: 12,
+      drums: 12,
+      handcarts: 1, carts: 2,
+      roadFence: 'fenceplank',
+    },
   },
 
   horizon: {

@@ -56,8 +56,10 @@ export default {
   },
 
   props: {
-    plan: ['cottage', 'barn', 'cottage', 'tower', 'cottage', 'ruin',
-      'cottage', 'barn', 'cottage', 'cottage'],
+    // world-dressing r1: farm-theme catalog — farmhouse (L-wing + porch),
+    // raised granary, chapel and a tower windmill join the cottage/barn set
+    plan: ['farmhouse', 'barn', 'cottage', 'chapel', 'cottage', 'ruin',
+      'granary', 'barn', 'mill', 'cottage', 'farmhouse', 'cottage'],
     wallRuns: [
       // village walls (relative to the classic village rect)
       [-56, 8, -56, 64, 2], [-56, 8, -20, 8, 3], [74, 30, 74, 96, 4],
@@ -78,6 +80,16 @@ export default {
     // "summer fields have no crops" was a major dressing gap; pairs with the
     // fieldPatch splat tint so plots sit inside visibly worked fields
     cropFields: 7,
+    // world-dressing r1: destructible inhabiting objects — village market by
+    // the well, working farm clutter through the yards, round bales + stooks
+    // on the open fields; wooden fences are the breakable plank/picket kit
+    wallStyle: 'fieldstone',
+    inhabit: {
+      stalls: 3, benches: 2, coreClutter: 10,
+      bales: 10, stooks: 8,
+      troughs: 1, churns: 1, laundry: 1, handcarts: 1, carts: 3,
+      roadFence: 'fenceplank', yardFence: 'fencepicket',
+    },
   },
 
   horizon: {

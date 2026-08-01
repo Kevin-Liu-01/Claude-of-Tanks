@@ -116,8 +116,9 @@ export default {
   },
 
   props: {
-    plan: ['cottage', 'barn', 'cottage', 'tower', 'barn', 'cottage', 'ruin',
-      'cottage', 'barn', 'cottage', 'cottage', 'barn'],
+    // world-dressing r1: harvest-farm catalog — farmhouse, granary, chapel
+    plan: ['farmhouse', 'barn', 'cottage', 'chapel', 'barn', 'granary', 'ruin',
+      'cottage', 'barn', 'farmhouse', 'cottage', 'barn', 'granary', 'cottage'],
     tones: {
       plaster: (h, s, l) => [0.085, clamp01(s * 0.75 + 0.05), clamp01(l * 1.02 + 0.02)],
       roof: (h, s, l) => [0.045, clamp01(s * 0.85), clamp01(l * 0.92)], // weathered red-brown tile
@@ -140,6 +141,15 @@ export default {
     haystacks: 30, rocks: 180, outcrops: 18, craters: 44, rubblePiles: 0,
     wrecks: 5,
     cropFields: 7, // the harvest is in — stubble plots + standing rows
+    // world-dressing r1: harvest dressing — stook-heavy fields, wattle yard
+    // hurdles, churns + laundry in the farmyards, carts on the lanes
+    wallStyle: 'fieldstone',
+    inhabit: {
+      stalls: 2, benches: 1, coreClutter: 8,
+      bales: 12, stooks: 14,
+      troughs: 1, churns: 1, laundry: 1, handcarts: 1, carts: 3,
+      roadFence: 'fenceplank', yardFence: 'fencewattle',
+    },
   },
 
   horizon: {

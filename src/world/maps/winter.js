@@ -145,9 +145,12 @@ export default {
   },
 
   props: {
-    plan: ['cottage', 'barn', 'cottage', 'tower', 'cottage', 'ruin',
-      'cottage', 'barn', 'cottage', 'cottage', 'barn', 'cottage',
-      'cottage', 'ruin', 'cottage', 'barn'],
+    // world-dressing r1: winter catalog — log cabins, steep-roof alpine
+    // houses, an onion-dome church and open woodsheds replace the all-cottage
+    // village (every up-facing surface takes the snow-cap shader load)
+    plan: ['logcabin', 'alpine', 'cottage', 'onionchurch', 'logcabin', 'ruin',
+      'woodshed', 'alpine', 'cottage', 'logcabin', 'barn', 'woodshed',
+      'alpine', 'ruin', 'logcabin', 'barn'],
     tones: {
       plaster: (h, s, l) => [0.085, clamp01(s * 0.7), clamp01(l * 1.02 + 0.03)],
       roof: (h, s, l) => [0.58, clamp01(s * 0.25), clamp01(l * 1.35 + 0.18)], // snow-capped
@@ -205,6 +208,16 @@ export default {
     // LOUDEST on snow (dark pits on white); the map carried almost none
     haystacks: 12, rocks: 190, outcrops: 19, craters: 36, rubblePiles: 0,
     wrecks: 5,
+    // world-dressing r1: winter inhabitants — sleds on the snowfield (the
+    // snow-cap shader dresses them drifted), firewood in every yard, rail
+    // fences along the lanes
+    wallStyle: 'fieldstone',
+    inhabit: {
+      stalls: 1, benches: 1, coreClutter: 6,
+      sleds: 6,
+      troughs: 1, handcarts: 1, carts: 2,
+      roadFence: 'fencerail', yardFence: 'fenceplank',
+    },
   },
 
   horizon: {

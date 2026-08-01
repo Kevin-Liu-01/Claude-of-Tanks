@@ -11,9 +11,11 @@ const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
 // 'gantry'/'watertower'/'stack'/'shed' come from maps/railKit.js; 'factory'
 // from maps/urbanKit.js.
 const PLAN = [
-  'warehouse', 'containerRow', 'factory', 'shed', 'warehouse', 'watertower',
+  // world-dressing r1: 'depot' (canopied platform hall, maps/villageKit.js)
+  // anchors the passenger side of the yard
+  'warehouse', 'containerRow', 'factory', 'depot', 'warehouse', 'watertower',
   'containerRow', 'ruin', 'warehouse', 'gantry', 'stack', 'shed',
-  'containerRow', 'warehouse', 'ruin', 'rowhouse', 'shed', 'containerRow',
+  'containerRow', 'depot', 'ruin', 'rowhouse', 'shed', 'containerRow',
   'warehouse', 'stack', 'rowhouse', 'containerRow',
   // r3 tail — consumed by blockFill for the BLOCK INTERIORS (the road
   // frontage takes ~20 slots; everything after lands between the sidings)
@@ -116,6 +118,15 @@ export default {
     well: false, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     haystacks: 0, rocks: 60, outcrops: 4, craters: 62, rubblePiles: 90,
     lampposts: true, hedgehogs: 10, wrecks: 7,
+    // world-dressing r1: brick yard walls; industrial inhabitants — oil-drum
+    // ranks + pallet/crate stacks along the aprons, benches by the depot
+    wallStyle: 'brick',
+    inhabit: {
+      benches: 3, coreClutter: 10,
+      drums: 16,
+      handcarts: 1, carts: 1,
+      roadFence: 'fencerail',
+    },
     townCraters: true, // shell pocks on the hardstand
   },
 

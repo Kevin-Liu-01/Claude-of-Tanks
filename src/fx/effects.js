@@ -14,6 +14,11 @@ import * as THREE from 'three';
 import { createParticleSystem, mulberry32, makeFbm } from './particles.js';
 import { registerFxClock, noteFxClockShift, registerPopTrail } from './clock.js';
 import { createImpactDecals } from './impactDecals.js';
+// world-dressing r1: destructible small-prop seam — fx registers the
+// kind-flavored break bursts and forwards shell flight/impact data so light
+// props (fences, carts, barrels, bales...) break under fire without the sim
+// layer knowing about them (see src/world/destructibles.js).
+import { setBreakFxProvider, notifyShellSweep, notifyShellImpact } from '../world/destructibles.js';
 
 // ---------------------------------------------------------------------------
 // Tracer presets (shells-ballistics §10 — colors/widths verbatim)
@@ -911,6 +916,16 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   let columns = [];
   /** last known world position per tank id (fed by bus events that carry pos) */
   const lastKnownPos = new Map();
+  // world-dressing r1: shellId -> shell type, so a world impact knows whether
+  // it was HE (radius-breaks destructible props) — fed by shell:fired,
+  // cleared on shell:expired (+ a hard size guard against leaks).
+  const shellKinds = new Map();
+  // world-dressing r1: shellId -> last swept point. The sim can step a shell
+  // several fixed ticks per render frame (an APFSDS covers ~28 m/tick), so
+  // sweeping only prevPos->pos would leave gaps a whole haystack fits into —
+  // chaining from the last swept point makes flight coverage continuous.
+  const sweepTails = new Map();
+  const _sweepSeen = new Set();
   /** r4: clock cursor for delta-driven emitters (see update()) */
   let lastTickS = 0;
   /** r4: seconds since battle start (resetAll) — drives the exhaust
@@ -2614,6 +2629,36 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
           if (compact) columns = columns.filter((c) => c.ttl > 0 || c.smolder > 0);
         }
       }
+      // world-dressing r1: sweep live shell flight segments against the
+      // destructible small-prop layer (fence rails, carts, bales...) — the
+      // props break cosmetically, the shell is never consumed (they carry no
+      // colliders). Each shell sweeps from its LAST swept point (sweepTails)
+      // so multi-tick sim advances leave no coverage gaps. Forwarded through
+      // the destructibles seam; a no-op unless an active world registered.
+      if (shells && !frozen) {
+        _sweepSeen.clear();
+        for (let i = 0; i < shells.length; i++) {
+          const sh = shells[i];
+          if (!sh.pos || sh.id == null) continue;
+          _sweepSeen.add(sh.id);
+          if (sh.dead) continue;
+          let tail = sweepTails.get(sh.id);
+          if (!tail) {
+            tail = sh.prevPos
+              ? [sh.prevPos.x, sh.prevPos.y, sh.prevPos.z]
+              : [sh.pos.x, sh.pos.y, sh.pos.z];
+            sweepTails.set(sh.id, tail);
+          }
+          const dx = sh.pos.x - tail[0], dy = sh.pos.y - tail[1], dz = sh.pos.z - tail[2];
+          if (dx * dx + dy * dy + dz * dz > 1e-6) {
+            notifyShellSweep(tail[0], tail[1], tail[2], sh.pos.x, sh.pos.y, sh.pos.z);
+          }
+          tail[0] = sh.pos.x; tail[1] = sh.pos.y; tail[2] = sh.pos.z;
+        }
+        if (sweepTails.size) {
+          for (const id of sweepTails.keys()) if (!_sweepSeen.has(id)) sweepTails.delete(id);
+        }
+      }
       // tracer ribbons — live shells first, then fading afterglow trails
       // (an APFSDS crosses the whole engagement in ~0.2 s; without the
       // lingering trail almost no 60 fps frame ever caught a streak),
@@ -2715,11 +2760,30 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         _v4.set(e.dir[0], e.dir[1], e.dir[2]);
         fx.muzzleFlash(_v3, _v4, e.caliberMm);
         if (e.shellType === 'APFSDS') spawnSabotPetals(_v3, _v4);
+        // world-dressing r1: remember the shell's type so its world impact
+        // can size the destructible-prop blast (HE clears a radius), and
+        // seed its sweep tail at the muzzle — a fast shell can be born and
+        // dead between two render frames, so the expiry-time sweep below is
+        // what guarantees flight coverage against destructible props.
+        if (shellKinds.size > 96) { shellKinds.clear(); sweepTails.clear(); } // leak guard
+        shellKinds.set(e.shellId, e.shellType);
+        sweepTails.set(e.shellId, [e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]]);
       });
       bus.on('shell:hit', (e) => {
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
         _v4.set(e.normal[0], e.normal[1], e.normal[2]);
         if (e.targetId) lastKnownPos.set(e.targetId, [e.pos[0], e.pos[1], e.pos[2]]);
+        // world-dressing r1: a tank hit still ends the shell — sweep the
+        // unswept flight remainder against destructible props and drop the
+        // bookkeeping (fences between shooter and target break too)
+        if (e.shellId != null) {
+          const tail = sweepTails.get(e.shellId);
+          if (tail) {
+            sweepTails.delete(e.shellId);
+            notifyShellSweep(tail[0], tail[1], tail[2], e.pos[0], e.pos[1], e.pos[2]);
+          }
+          shellKinds.delete(e.shellId);
+        }
         fx.impact(e.kind, _v3, _v4, e.caliberMm);
         // Ballistic scarring: stamp the mark for this hit into the struck
         // node's local space. This runs BEFORE main.js's shell:hit listener
@@ -2733,6 +2797,24 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         queueMicrotask(() => { if (liveHitEv === e) liveHitEv = null; });
       });
       bus.on('shell:expired', (e) => {
+        // world-dressing r1: close out the shell's destructible-prop story —
+        // (1) sweep the UNSWEPT remainder of its flight (tail -> expiry
+        // point; a fast shell can live for fewer sim ticks than one render
+        // frame, so this event is the coverage guarantee), then (2) break
+        // props around the burst point (HE gets a real radius, AP a token
+        // one). Runs BEFORE the terrain gate below — prop-collider hits
+        // report hitTerrain=false but still carry pos.
+        {
+          const st = shellKinds.get(e.shellId);
+          shellKinds.delete(e.shellId);
+          const tail = sweepTails.get(e.shellId);
+          if (tail) {
+            sweepTails.delete(e.shellId);
+            notifyShellSweep(tail[0], tail[1], tail[2], e.pos[0], e.pos[1], e.pos[2]);
+          }
+          const he = st === 'HE' || st === 'HESH';
+          notifyShellImpact(e.pos[0], e.pos[1], e.pos[2], { he, r: he ? 4.6 : 1.0 });
+        }
         if (!e.hitTerrain) return;
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
         dirtPlume(_v3, 76, false);
@@ -3312,6 +3394,108 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     },
 
     /**
+     * Destructible-prop break burst (world-dressing r1) — the KIND-flavored
+     * beat layered on the break/topple moment: wood splinters for fences,
+     * carts, crates and stalls; sprung staves for barrels; a slow straw puff
+     * for hay; terracotta shards for pottery; a spark clang for metal. Rides
+     * the same debris/dust particle language as propCrush/module hits.
+     * Called through the src/world/destructibles.js seam (props.js caps the
+     * rate — max ~6 flavored bursts per frame).
+     * @param {string} kind destructible kind ('barrel', 'fenceplank', ...)
+     * @param {THREE.Vector3} pos break point (world)
+     * @param {THREE.Vector3} dir break direction (unit-ish, XZ)
+     * @param {number} [heightM=1.2] prop height (scales throws)
+     */
+    propBreak(kind, pos, dir, heightM = 1.2) {
+      const gy = groundY(pos.x, pos.z);
+      const fam = /^fence|^gate|crate|pallet|cart|stall|bench|trough|firewood|sled|rugframe/.test(kind) ? 'wood'
+        : /bale|stook|hay/.test(kind) ? 'hay'
+          : kind === 'barrel' ? 'barrel'
+            : kind === 'pot' ? 'pot'
+              : /lamp|drum|churn/.test(kind) ? 'metal' : 'wood';
+      if (fam === 'hay') {
+        // hay puff: slow pale chaff cloud + a few light straws, no hard chips
+        for (let i = 0; i < 12; i++) {
+          const a = rng() * Math.PI * 2;
+          _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.8;
+          _puffO.pos[1] = gy + 0.3 + rng() * Math.min(1.6, heightM * 0.7);
+          _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.8;
+          _puffO.vel[0] = Math.cos(a) * (1.2 + rng() * 1.8) + dir.x * 2.0;
+          _puffO.vel[1] = 0.8 + rng() * 1.4;
+          _puffO.vel[2] = Math.sin(a) * (1.2 + rng() * 1.8) + dir.z * 2.0;
+          _puffO.life = 1.6 + rng() * 1.2;
+          _puffO.size0 = 0.5 + rng() * 0.4; _puffO.size1 = 2.0 + rng() * 1.4;
+          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.6;
+          col3(0xb59f5e, _puffO.col0); col3(0x93804a, _puffO.col1);
+          _puffO.alpha = 0.42 + rng() * 0.14; _puffO.grav = -0.25; _puffO.birthOffset = 0;
+          particles.emit('dust', _puffO);
+        }
+        for (let i = 0; i < 5; i++) { // light straw wisps
+          _debO.pos[0] = pos.x; _debO.pos[1] = gy + 0.5 + rng() * 0.6; _debO.pos[2] = pos.z;
+          _debO.vel[0] = dir.x * (1.5 + rng() * 2) + (rng() - 0.5) * 3;
+          _debO.vel[1] = 1.8 + rng() * 2.2;
+          _debO.vel[2] = dir.z * (1.5 + rng() * 2) + (rng() - 0.5) * 3;
+          _debO.life = 1.2; _debO.scale = 0.035 + rng() * 0.04; _debO.spin = 8 + rng() * 10;
+          _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+          _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
+          particles.emit('debris', _debO);
+        }
+        return;
+      }
+      if (fam === 'metal') {
+        // metal clang: short spark fan + dark dust kick, no wood chips
+        _v3.set(pos.x, gy + Math.min(1.0, heightM * 0.4), pos.z);
+        sparkFan(_v3, _UP, 10, 9, 1.1, 0xffce8a, 0.45, 0.035, 0.035, 0, 0.1);
+        for (let i = 0; i < 6; i++) {
+          const a = rng() * Math.PI * 2;
+          _puffO.pos[0] = pos.x; _puffO.pos[1] = gy + 0.3; _puffO.pos[2] = pos.z;
+          _puffO.vel[0] = Math.cos(a) * (1.4 + rng() * 1.6) + dir.x * 2.2;
+          _puffO.vel[1] = 0.8 + rng() * 1.0;
+          _puffO.vel[2] = Math.sin(a) * (1.4 + rng() * 1.6) + dir.z * 2.2;
+          _puffO.life = 1.1 + rng() * 0.7;
+          _puffO.size0 = 0.4 + rng() * 0.3; _puffO.size1 = 1.6 + rng() * 0.9;
+          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+          col3(0x6f6a60, _puffO.col0); col3(0x57534b, _puffO.col1);
+          _puffO.alpha = 0.36 + rng() * 0.14; _puffO.grav = -0.35; _puffO.birthOffset = 0;
+          particles.emit('dust', _puffO);
+        }
+        return;
+      }
+      // wood / barrel-stave / pottery-shard families: chip debris + dust,
+      // barrel throws bigger arcs, pottery throws small sharp bits
+      const nChip = fam === 'barrel' ? 10 : fam === 'pot' ? 9 : 12;
+      const chipS = fam === 'barrel' ? [0.08, 0.09] : fam === 'pot' ? [0.04, 0.05] : [0.05, 0.07];
+      for (let i = 0; i < nChip; i++) {
+        _debO.pos[0] = pos.x + (rng() - 0.5) * 0.5;
+        _debO.pos[1] = gy + 0.3 + rng() * Math.min(1.1, heightM * 0.5);
+        _debO.pos[2] = pos.z + (rng() - 0.5) * 0.5;
+        _debO.vel[0] = dir.x * (2.5 + rng() * 3.5) + (rng() - 0.5) * 4.5;
+        _debO.vel[1] = 2.2 + rng() * 3.6;
+        _debO.vel[2] = dir.z * (2.5 + rng() * 3.5) + (rng() - 0.5) * 4.5;
+        _debO.life = 1.4; _debO.scale = chipS[0] + rng() * chipS[1]; _debO.spin = 12 + rng() * 18;
+        _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+        _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
+        particles.emit('debris', _debO);
+      }
+      for (let i = 0; i < 7; i++) {
+        const a = rng() * Math.PI * 2;
+        _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.5;
+        _puffO.pos[1] = gy + 0.25 + rng() * 0.4;
+        _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.5;
+        _puffO.vel[0] = Math.cos(a) * (1.5 + rng() * 2.0) + dir.x * 2.4;
+        _puffO.vel[1] = 0.9 + rng() * 1.2;
+        _puffO.vel[2] = Math.sin(a) * (1.5 + rng() * 2.0) + dir.z * 2.4;
+        _puffO.life = 1.3 + rng() * 0.9;
+        _puffO.size0 = 0.45 + rng() * 0.3; _puffO.size1 = 1.9 + rng() * 1.1;
+        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+        if (fam === 'pot') { col3(0x9a6a4a, _puffO.col0); col3(0x7c5238, _puffO.col1); }
+        else { col3(0x8a8271, _puffO.col0); col3(0x776f60, _puffO.col1); }
+        _puffO.alpha = 0.4 + rng() * 0.15; _puffO.grav = -0.4; _puffO.birthOffset = 0;
+        particles.emit('dust', _puffO);
+      }
+    },
+
+    /**
      * Freeze/unfreeze all fx (particle clock, timers, emitters, lights).
      *
      * r4 AGE-PRESERVING REBASE: when the pin moves the shared clock by more
@@ -3368,6 +3552,8 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       timers = [];
       columns = [];
       lastKnownPos.clear();
+      shellKinds.clear();
+      sweepTails.clear();
       for (const m of scorchMeshes) m.visible = false;
       scorchCursor = 0;
       printBirth.array.fill(-1e9);
@@ -3458,6 +3644,20 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       flashLight(lightStates[1], _sv.set(pos.x, pos.y + 3.8, pos.z), EXPLOSION_LIGHT_PEAK, ageS);
     },
   };
+
+  // world-dressing r1: hand the destructible-prop seam its particle provider —
+  // props.js emits (kind, pos, dir, h) whenever a small prop breaks/topples
+  // and the kind-flavored burst renders through fx.propBreak above.
+  {
+    const _bkPos = new THREE.Vector3();
+    const _bkDir = new THREE.Vector3();
+    setBreakFxProvider((kind, x, y, z, dx, dz, h) => {
+      if (frozen) return; // screenshot pins stay deterministic
+      _bkPos.set(x, y, z);
+      _bkDir.set(dx, 0, dz);
+      fx.propBreak(kind, _bkPos, _bkDir, h);
+    });
+  }
 
   return fx;
 }

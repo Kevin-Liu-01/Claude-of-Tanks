@@ -182,16 +182,26 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
      * @returns {Array<{x:number,z:number,r:number,add:number}>}
      */
     getConcealment: () => vegetation.concealers || [],
-    // effects_combat r1: crushable props (telegraph poles) — hull overlap in
-    // main.js triggers crushProp (hinge-topple) + fx.propCrush splinters.
+    // effects_combat r1: crushable props (telegraph poles + world-dressing r1
+    // 'loop'-class small clutter) — hull overlap in main.js triggers
+    // crushProp (hinge-topple / debris swap) + fx.propCrush splinters.
     crushables: props.crushables || [],
     crushProp: (i, dx, dz) => props.crushProp && props.crushProp(i, dx, dz),
-    // gameplay_feel r6: crushable OBSTACLE records (tree trunks tagged by
-    // vegetation.js). state.js's collider queues the hull overrun, marks the
-    // record `crushed`, then calls this for the world-side hinge-topple.
-    crushObstacle: (ob, dx, dz) =>
-      (ob && ob.treeIdx != null && vegetation.crushTree
-        ? vegetation.crushTree(ob, dx, dz) : false),
+    // world-dressing r1: destructible small-prop records (probes/debug —
+    // gameplay paths run through crushObstacle/crushProp/the fx seam)
+    destructibles: props.destructibles || [],
+    // gameplay_feel r6: crushable OBSTACLE records. state.js's collider
+    // queues the hull overrun, marks the record `crushed`, then calls this
+    // for the world-side fall/break. Tree trunks (treeIdx, vegetation.js)
+    // hinge-topple; world-dressing r1 destructible props (propIdx, props.js
+    // — fences, carts, stalls, bales, lamps...) topple or swap to debris via
+    // the same seam.
+    crushObstacle: (ob, dx, dz) => {
+      if (!ob) return false;
+      if (ob.treeIdx != null && vegetation.crushTree) return vegetation.crushTree(ob, dx, dz);
+      if (ob.propIdx != null && props.crushDestructible) return props.crushDestructible(ob.propIdx, dx, dz);
+      return false;
+    },
     spawnPoints,
     /** @returns {{roads:Array, buildings:Array, treeClusters:Array, waterOrSoft:Array}} minimap features */
     getMinimapFeatures: () => ({

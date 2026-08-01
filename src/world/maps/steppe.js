@@ -95,8 +95,9 @@ export default {
   },
 
   props: {
-    plan: ['cottage', 'barn', 'cottage', 'tower', 'cottage', 'barn', 'ruin',
-      'cottage', 'barn', 'cottage'],
+    // world-dressing r1: steppe farmstead catalog — farmhouse, granary, mill
+    plan: ['farmhouse', 'barn', 'cottage', 'mill', 'cottage', 'barn', 'ruin',
+      'granary', 'barn', 'farmhouse', 'cottage'],
     tones: {
       plaster: (h, s, l) => [0.10, clamp01(s * 0.4), clamp01(l * 1.08 + 0.06)], // sun-baked lime wash
       roof: (h, s, l) => [0.075, clamp01(s * 0.7), clamp01(l * 0.95)],
@@ -119,6 +120,15 @@ export default {
     haystacks: 34, rocks: 230, outcrops: 34, craters: 42, rubblePiles: 0,
     wrecks: 6,
     cropFields: 5,
+    // world-dressing r1: open-plain hay economy — heavy bale/stook scatter,
+    // stone-post rail fences, troughs at the farmsteads
+    wallStyle: 'fieldstone',
+    inhabit: {
+      stalls: 1, benches: 1, coreClutter: 6,
+      bales: 16, stooks: 10,
+      troughs: 1, churns: 1, handcarts: 1, carts: 2,
+      roadFence: 'fencerail', yardFence: 'fencewattle',
+    },
   },
 
   horizon: {

@@ -203,7 +203,9 @@ export default {
     // walls/courtyards" — four 'compound'/'compoundSouk' slots (mapKits.js:
     // mud-brick perimeter + gate, 2-story house, annex, well/souk anchor,
     // courtyard clutter) cluster the loose adobes into real family blocks.
-    plan: ['compound', 'adobe', 'market', 'adobe', 'compoundSouk', 'tower',
+    // world-dressing r1: + a minaret over the bazaar skyline (the settlement
+    // read as all one-story flat roofs from the establishing camera)
+    plan: ['compound', 'adobe', 'market', 'minaret', 'compoundSouk', 'tower',
       'adobe', 'ruin', 'compound', 'adobe', 'marketRow', 'adobe', 'adobe',
       'compoundSouk', 'adobe', 'market', 'ruin', 'adobe'],
     // denser packing: fill both road sides more often and let neighbouring
@@ -247,6 +249,16 @@ export default {
     // mud-brick piles knit the compounds into a lived-in, fought-over block
     rubblePiles: 14,
     wrecks: 7,
+    // world-dressing r1: adobe boundary walls + souk inhabitants — stall
+    // ring on the bazaar crossroads, terracotta jar clusters and hung-rug
+    // display frames along the compound walls (all destructible)
+    wallStyle: 'adobe',
+    inhabit: {
+      stalls: 4, benches: 1, coreClutter: 8,
+      pots: 10,
+      troughs: 1, laundry: 1, handcarts: 1, carts: 2,
+      yardFence: 'fencewattle',
+    },
   },
 
   horizon: {
