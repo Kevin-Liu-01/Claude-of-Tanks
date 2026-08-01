@@ -121,3 +121,27 @@ x ±1.0..1.2), side_hull 61 (bow ramp columns; rear undercut -2.6..-3.0),
 stations 69.3 (pedestal slice pair trims; slice 9/10 tube-visibility skew).
 Final components: hull 61.0 / whole 42.8 / turret 34.2 / stations 69.3 /
 dims 96.6 / floaters 100.
+
+## Batch-8 oracle re-seat (2026-07-31, repair_oracles.py batch 8) — turret parked AFT of its ring pit
+Owner report: "turret glitched into hull". Same print-bed packing defect as m26 (see that
+packet): the fused turret part (T26 casting plug: basket r 7.000, race r 10.40, race
+bottom y 8.000, bore race+4.4) was authored parked at basket axis (10.904, 20.372) —
+inside the raised ENGINE deck — while the hull's ring pit (authored perfect 36-vert rim
+circle r 7.200) sits at **(18.000, 39.200)**, rim plane y **16.600** (fighting-roof
+plate), ~1.89 m forward.
+Repair (recipe `REPAIRS['m46_patton']`, from the pristine .bak): rigid translate by
+world (+7.096, +8.600, +18.828); origin parked at (18.000, 16.600, 39.200) for the
+autoPivot origin branch. Post-seat: bore axis y 21.0 (≈2.10 m; real M46 ≈2.0), casting
+rim on the roof plate with the bustle sweeping the raised engine-deck edge exactly as on
+the real vehicle; muzzle z 90.24 → overall reads ≈9.04 m vs published 8.48 (+6.6%: the
+print reuses the long m26 90 mm tube — authored print trait, now measured from the
+correct station; the old SHORT-BARREL CAP premise "oracle overhang 0.82 vs real 2.15" is
+dissolved, overhang now reads ≈2.7 m). Ring station z 39.2 ≈ 0.75 m forward of hull mid
+(prior packets measured the PARKED −0.85..−1.53 aft figures) — procedural profiles must
+be re-traced in the patton round; whole/turret/stations read ~0 against the un-rebuilt
+proc meanwhile.
+Gate before → after (proc unchanged): hull 61 → 67, whole 43.5 → 0, turret 34.2 → 0,
+stations 59.9 → 0, dims 100 → 100, floaters 100 → 100; reg dAlong 0.045 → 0.946, dy
+0.008 → 0.011 (stable).
+Evidence: shots/procedural-fidelity/boards/m46_patton-{before,after}-seatfix.png,
+shots/procedural-fidelity/garage-m46_patton-seatfix.png (in-game, real loader).

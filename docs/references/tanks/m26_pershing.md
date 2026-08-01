@@ -139,3 +139,33 @@ stations 60.2 (width column at the fender lip aliasing 3.35/3.51; slice tops
 within 3%), whole/turret residuals beyond the certified columns ≈ mean 1.5%.
 Final components this round: hull 56.1 / whole 37.7 / turret 43.1 / stations
 60.2 / dims 96.3 / floaters 100.
+
+## Batch-8 oracle re-seat (2026-07-31, repair_oracles.py batch 8) — turret parked AFT of its ring pit
+Owner report: "turret glitched into hull". Vertex census re-diagnosis of the pristine
+print (.bak): the fused turret part was authored PARKED, not assembled — laid flat for
+printing (basket disc on y=0) and stationed ~1.77 m aft and 0.53 m left of the hull's
+ring pit. Every prior "sunken turret" measure, the open-ring hero render, and the
+CERTIFIED SHORT-BARREL CAP measured that parked pose. Kit truth (model units, y-up,
+hull x 0..36 / z 0..62.47):
+- turret plug: basket disc+wall r 7.000 (perfect authored circle = ring axis), ring-race
+  cylinder r 10.40, race BOTTOM authored at y 8.000; bore axis race+4.4.
+- hull ring pit: authored perfect 36-vert rim circle r 7.200 at **(18.000, 38.468)**,
+  rim plane y **15.600** (fighting-roof plate), open interior below — the basket drops
+  through with 0.2 u designed clearance, the race rests on the roof plate.
+- batch-2 recipe had recentred x only (+5.4) and lifted +4.0 to a score optimum: casting
+  left 1.84 m aft of the pit and race bottom 0.36 m below the roof plate.
+Repair (recipe `REPAIRS['m26_pershing']`, re-runnable from the pristine .bak): rigid
+translate of the fused Turret subtree by world (+5.400, +7.600, +18.096) — basket/race
+axis ON the pit axis, race bottom ON the rim plane; node origin parked at
+(18.000, 15.600, 38.468) so autoPivot's origin branch yaws about the true ring.
+Post-seat: bore axis y 20.0 (≈1.98 m; real M26 trunnion ≈1.93), muzzle z 89.51 →
+**overall reads ≈8.68 m vs published 8.65 (+0.4%)** — the SHORT-BARREL CAP's premise is
+dissolved (the M3 was never short; the whole turret+gun sat 1.8 m aft of station). Ring
+station is now z 38.47 ≈ 0.6 m FORWARD of hull mid (was measured at −1.55 m aft on the
+parked print) — the procedural profiles/turret placement must be re-traced in the patton
+round; wholeCurves/turretCurves/stations read ~0 against the un-rebuilt proc meanwhile.
+Gate before → after (proc unchanged): hull 56.1 → 64.7, whole 37.7 → 0, turret 43.1 → 0,
+stations 64.3 → 0, dims 97 → 98, floaters 100 → 100; side_hull reg dAlong 0.047 → 0.947
+(registration absorbing the new normalization frame; dy stable 0.007 → 0.004).
+Evidence: shots/procedural-fidelity/boards/m26_pershing-{before,after}-seatfix.png,
+shots/procedural-fidelity/garage-m26_pershing-seatfix.png (in-game, real loader).

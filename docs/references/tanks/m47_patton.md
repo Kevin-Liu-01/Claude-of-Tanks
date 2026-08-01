@@ -124,3 +124,27 @@ corridor edges). Needs a settle round pinning proc hull span to the ref's
 side_hull 64.9 (bow ramp + rear undercut columns).
 Final components: hull 64.9 / whole 41.5 / turret 22.4 / stations 33.8 /
 dims 95.5 / floaters 100.
+
+## Batch-8 oracle re-seat (2026-07-31, repair_oracles.py batch 8) — turret parked AFT of its ring pit
+Owner report: "turret glitched into hull". Same print-bed packing defect as m26 (see that
+packet): the fused T42-style turret part (same plug design: basket r 7.000, race r 10.40,
+race bottom y 8.000, bore race+4.4) was authored parked at basket axis (11.688, 24.825)
+while the hull's ring pit (authored perfect 36-vert rim circle r 7.200) sits at
+**(18.000, 39.000)**, rim plane y **16.600**, ~1.39 m forward.
+Repair (recipe `REPAIRS['m47_patton']`, from the pristine .bak): rigid translate by
+world (+6.312, +8.600, +14.175); origin parked at (18.000, 16.600, 39.000) for the
+autoPivot origin branch. Post-seat: bore axis y 21.0 (≈2.05 m; real M47 ≈2.03), needle
+nose over the driver compartment, the signature long bustle/rack overhang sweeping the
+engine deck; muzzle z 84.30 → overall reads ≈8.29 m vs published 8.51 (−2.6%) and M36
+overhang ≈1.94 m vs real ≈1.9 — the SHORT-BARREL CAP premise ("oracle overhang 0.58 vs
+real 1.9") is dissolved. Ring station z 39.0 ≈ 0.65 m forward of hull mid (the prior
+round-3 "ring (0, 1.64, −1.00)" measured the PARKED pose) — procedural profiles must be
+re-traced in the patton round; whole/turret/stations read ~0 against the un-rebuilt proc
+meanwhile. In-game yaw sweep verified (turretDeg 150: casting+bustle+M2 rotate as one
+about the pit axis, no hull intersection, no pedestal walk).
+Gate before → after (proc unchanged): hull 70.9 → 76.6, whole 45.6 → 0, turret 22.4 → 0,
+stations 32.9 → 0, dims 98.7 → 100, floaters 100 → 100; reg dAlong −0.05 → 0.672, dy
+0.014 → 0.01 (stable).
+Evidence: shots/procedural-fidelity/boards/m47_patton-{before,after}-seatfix.png,
+shots/procedural-fidelity/garage-m47_patton-seatfix.png and
+garage-m47_patton-yaw150-seatfix.png (in-game, real loader).

@@ -1245,6 +1245,64 @@ REPAIRS['isu152'] = [
 ]
 
 
+# ================================================================ batch 8 ===
+# Patton-family FULL RING SEAT (owner report: the m26/m45/m46/m47 oracles
+# render with "turrets glitched into hulls"). Diagnosis: AUTHORED misplacement
+# of the whole fused turret part, not an autoPivot artifact — the loader
+# re-parents with world transforms preserved, so the in-game rest pose is
+# exactly the file's authored pose, and these four resolve NO gun node (fused
+# tubes), so nothing else re-seats them.
+#
+# Measured truth (vertex census, world frame y-up / z-fwd, hull x 0..36):
+#  * all four turret parts share one plug design: crew-basket disc+wall
+#    r 7.000 (perfect authored circles — their centres ARE the ring axes),
+#    ring-race cylinder r 10.40 whose BOTTOM is authored at y 8.000 in every
+#    pristine part (kit laid out flat for printing, basket disc on y=0);
+#  * every hull carries a REAL ring pit: an authored perfect 36-vert rim
+#    circle (Kasa spread 0.0000) of r 7.200 cut through the fighting-
+#    compartment roof plate, with open hull interior below — the basket
+#    (r 7.0) drops through it with 0.2 u designed clearance and the race
+#    (r 10.4) rests on the roof plate around it;
+#  * the turret parts are authored PARKED AFT (and left) of their pits —
+#    print-bed packing, never assembled: the batch-2 recipes above measured
+#    the parked pose, recentred x only, and lifted to a score optimum, so
+#    the castings still sat 0.31-0.46 m deep in the ENGINE deck a full
+#    1.4-2.0 m behind the open pit (every "open turret ring" hero-render
+#    note and each certified SHORT-BARREL cap — m26 "muzzle +3.48 vs
+#    published 8.65 overall" etc. — was this one defect: the gun was never
+#    short, the whole turret+gun assembly was ~1.5-2.0 m aft of station).
+#
+#   id            bak ring axis     pit rim centre     rim y   rim r
+#   m26_pershing  (12.600, 20.372)  (18.000, 38.468)   15.600  7.200
+#   m45_patton    (12.600, 20.372)  (18.000, 40.493)   15.600  7.200
+#   m46_patton    (10.904, 20.372)  (18.000, 39.200)   16.600  7.200
+#   m47_patton    (11.688, 24.825)  (18.000, 39.000)   16.600  7.200
+#
+# Repair (rigid, node-level only): translate each fused Turret so its basket/
+# race axis lands ON the pit axis and the race bottom (bak y 8.000) sits ON
+# the pit rim plane; the basket sinks through the hole into the hull volume
+# (designed), the rim flare rides just proud of the roof, and the node ORIGIN
+# parks at the pit centre so autoPivot's origin branch yaws about the true
+# ring. Post-seat cross-checks against published data (hull-anchored scale
+# ~0.098-0.101 m/u): bore axes land at real trunnion heights (m26 1.98 m,
+# m46 2.10, m47 2.02 vs real ~1.93-2.05); overall lengths read m26 8.68 m vs
+# published 8.65 (+0.4% — retiring the short-barrel caps), m45 6.63 (stub
+# still bow-flush class), m46 9.04 (+6.6%: the print reuses the long m26
+# tube; authored, documented), m47 8.29 vs 8.51 (-2.6%). The fidelity-score
+# regression this causes is EXPECTED: the measured-curve profiles were traced
+# against the parked/sunken oracles and get rebuilt in the follow-up patton
+# round.
+#
+# These dict re-binds SUPERSEDE the batch-2 'm26_pershing'/'m45_patton'/
+# 'm46_patton'/'m47_patton' entries above (kept for history): repair()
+# always rebuilds from the pristine .bak, so each id must carry ONE recipe
+# producing the final state.
+REPAIRS['m26_pershing'] = seat_turret([5.400, 7.600, 18.096], [18.000, 15.600, 38.468])
+REPAIRS['m45_patton'] = seat_turret([5.400, 7.600, 20.121], [18.000, 15.600, 40.493])
+REPAIRS['m46_patton'] = seat_turret([7.096, 8.600, 18.828], [18.000, 16.600, 39.200])
+REPAIRS['m47_patton'] = seat_turret([6.312, 8.600, 14.175], [18.000, 16.600, 39.000])
+
+
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)
     if ops is None:

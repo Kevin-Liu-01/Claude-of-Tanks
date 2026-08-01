@@ -122,3 +122,24 @@ component is satisfiable. Remaining work orders: side_whole mean 3.65
 (slice 3/9 tops — howitzer-tube slice visibility differs between models).
 Final components: hull 63.5 / whole 48.4 / turret 49.5 / stations 57.2 /
 dims 100 / floaters 100.
+
+## Batch-8 oracle re-seat (2026-07-31, repair_oracles.py batch 8) — turret parked AFT of its ring pit
+Owner report: "turret glitched into hull". Same print-bed packing defect as m26 (see that
+packet): the fused turret part (identical T26 casting plug: basket r 7.000, race r 10.40,
+race bottom y 8.000, bore race+4.4) was authored parked at basket axis (12.600, 20.372)
+while THIS hull's ring pit — authored perfect 36-vert rim circle r 7.200 — sits at
+**(18.000, 40.493)**, rim plane y **15.600**, i.e. ~1.93 m forward of the parked spot.
+Repair (recipe `REPAIRS['m45_patton']`, from the pristine .bak): rigid translate by
+world (+5.400, +7.600, +20.121); origin parked at (18.000, 15.600, 40.493) for the
+autoPivot origin branch. Post-seat: bore axis y 20.0; the stub howitzer muzzle lands at
+z 66.49 vs nose 64.49 — pokes ≈0.19 m past the glacis edge ("barely clears", matching
+the real M45), overall reads ≈6.63 m. NOTE for the patton round: the procedural keeps
+its muzzle at +1.44 (inside the hull span), so the gun overhang masks are no longer
+empty-vs-empty and the fidelity gun view reads 0 until the proc muzzle is re-traced to
+the seated oracle (~+3.2, still bow-flush class); spec.dims.overallLengthM 6.4 row may
+deserve a ~6.6 re-check against the seated print.
+Gate before → after (proc unchanged): hull 67.2 → 67.4, whole 47.7 → 0, turret 55.6 → 0,
+stations 63.3 → 0, dims 100 → 100, floaters 100 → 100; reg dAlong 0.035 → 0.109, dy
+0.003 → 0.005 (stable).
+Evidence: shots/procedural-fidelity/boards/m45_patton-{before,after}-seatfix.png,
+shots/procedural-fidelity/garage-m45_patton-seatfix.png (in-game, real loader).
