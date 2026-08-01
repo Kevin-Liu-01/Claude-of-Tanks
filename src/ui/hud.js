@@ -122,6 +122,10 @@ const TIER_BY_ID = {
   centurion3: 'VII', centurion5: 'VIII', comet: 'VII', challenger_cruiser: 'VI', charioteer: 'VIII',
   leopard2_proto: 'VIII', m1a1_aim: 'IX', m46_patton: 'VII', m47_patton: 'VII',
   m26_pershing: 'VIII', m45_patton: 'VIII', m60a3: 'VIII',
+  // GEN2 WAVE 8 (userdrops7): tree tiers, mirrors state.js SPEC_TIER pools
+  t44: 'VII', t54: 'VII', type59: 'VII', t80: 'VIII', t80b: 'IX',
+  t80bv: 'X', amx30: 'VII', amx30b2: 'VIII', m48: 'VII', m60a2: 'VIII',
+  vickers_mk1: 'VII', t84: 'IX',
 };
 function hashStr(s) {
   let h = 2166136261;
@@ -409,6 +413,45 @@ const HUD_CSS = `
 .cot-dl b{color:#ff8f80;font-weight:700;font-variant-numeric:tabular-nums;}
 .cot-dl.out{opacity:0;}
 .cot-dmglayer{position:absolute;inset:0;}
+/* ===== SPECTATE BAR (killcam_endscreen r1) =================================
+   Slim ink strip shown while the ally chase-cam runs (killcam.js emits
+   spectate:begin/change/end): SPECTATING <nick> · <vehicle>, cycle hints and
+   a RETURN TO GARAGE action that clicks the integration end button's
+   existing handler. Slides/fades in staggered after the killcam exit fade —
+   never pops in a single frame. */
+.cot-spec{position:absolute;left:50%;bottom:56px;transform:translate(-50%,16px);
+  opacity:0;display:none;pointer-events:auto;align-items:center;gap:16px;
+  background:linear-gradient(180deg,rgba(12,16,20,.92),rgba(7,10,13,.95));
+  border:1px solid rgba(146,164,180,.3);border-left:3px solid #f0a030;
+  box-shadow:0 8px 28px rgba(0,0,0,.55);padding:9px 16px 10px;
+  transition:opacity .45s ease .15s,transform .5s cubic-bezier(.2,.7,.3,1) .15s;}
+.cot-spec.show{display:flex;}
+.cot-spec.in{opacity:1;transform:translate(-50%,0);}
+.cot-spec .kk{font-family:${FONT_COND};font-weight:800;font-size:9px;
+  letter-spacing:.3em;color:#f0a030;text-transform:uppercase;flex:0 0 auto;}
+.cot-spec .who{display:flex;flex-direction:column;min-width:150px;}
+.cot-spec .who b{font-size:13.5px;font-weight:800;color:#f2f7fb;letter-spacing:.02em;
+  white-space:nowrap;}
+.cot-spec .who span{font-family:${FONT_COND};font-weight:700;font-size:9.5px;
+  letter-spacing:.14em;color:#9fb0bf;text-transform:uppercase;white-space:nowrap;
+  font-variant-numeric:tabular-nums;}
+@keyframes cotSpecSw{0%{opacity:.15;transform:translateY(5px);}100%{opacity:1;transform:none;}}
+.cot-spec .who.sw{animation:cotSpecSw .35s ease;}
+.cot-spec .hint{font-family:${FONT_COND};font-weight:700;font-size:9.5px;
+  letter-spacing:.18em;color:#8a97a3;text-transform:uppercase;flex:0 0 auto;}
+.cot-spec .hint i{font-style:normal;color:#cfd9e2;border:1px solid rgba(146,164,180,.4);
+  padding:1px 5px 2px;margin:0 2px;}
+.cot-spec .gar{font-family:${FONT_COND};font-weight:800;font-size:10px;
+  letter-spacing:.2em;text-transform:uppercase;color:#f4e9d8;cursor:pointer;
+  border:1px solid rgba(240,193,105,.55);background:rgba(240,160,48,.1);
+  padding:6px 14px 7px;flex:0 0 auto;transition:background .12s ease;}
+.cot-spec .gar:hover{background:rgba(240,160,48,.22);}
+/* while spectating, the DEAD player's own-tank furniture is meaningless and
+   collides with the bar — shell tray, damage panel (+ its camo lamp) and the
+   reticle canvas hide; team panels / minimap / killfeed stay (that is the
+   information a spectator wants). Removed with the bar (spectate:end). */
+body.cot-spectating .cot-shells,body.cot-spectating .cot-dp,
+body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !important;}
 .cot-dmgnum{position:absolute;font-weight:700;font-size:18px;color:#ffd166;white-space:nowrap;
   text-shadow:0 1px 1px rgba(0,0,0,.95),0 0 12px rgba(0,0,0,.5);
   animation:cotFloat 1.7s cubic-bezier(.2,.6,.3,1) forwards;will-change:transform,opacity;}
@@ -744,6 +787,54 @@ export function initHud(bus) {
   const killfeed = el('div', 'cot-killfeed', root);
   const dlog = el('div', 'cot-dlog', root);
 
+  // ===================== SPECTATE BAR (killcam_endscreen r1) ================
+  // Driven by killcam.js's ally-spectate controller over the bus (additive
+  // spectate:begin/change/end events). The GARAGE action adopts the
+  // integration end button's existing click handler — either where main.js
+  // built it (.cot-end) or where the end screen reparented it (.cot-es-btn).
+  const specBar = el('div', 'cot-spec', root);
+  specBar.innerHTML =
+    '<span class="kk">Spectating</span>' +
+    '<span class="who"><b class="nick"></b><span class="veh"></span></span>' +
+    '<span class="hint"><i>◀ A</i><i>D ▶</i> switch vehicle</span>' +
+    '<button type="button" class="gar">Return to garage</button>';
+  const specWho = specBar.querySelector('.who');
+  const specNick = specBar.querySelector('.nick');
+  const specVeh = specBar.querySelector('.veh');
+  specBar.querySelector('.gar').addEventListener('click', () => {
+    const btn = document.querySelector('.cot-end button')
+      || document.querySelector('.cot-es-btn.ghost');
+    if (btn) btn.click(); // existing enterGarage handler (main.js endBtn)
+  });
+  function specPopulate(p, first) {
+    const ent = (lastTanksRef || []).find((t) => t && t.id === p.id) || null;
+    // same nickname the team panels show for this entity (nickById-backed)
+    specNick.textContent = ent ? nickFor(ent) : (p.vehicle || String(p.id));
+    const tier = p.specId && TIER_BY_ID[p.specId] ? `${TIER_BY_ID[p.specId]} · ` : '';
+    specVeh.textContent = `${tier}${p.vehicle || ''}${p.count > 1 ? ` · ${p.count} allies alive` : ''}`;
+    specBar.classList.add('show');
+    document.body.classList.add('cot-spectating'); // own-tank furniture off
+    if (first) {
+      void specBar.offsetWidth; // arm the slide-in transition from the parked pose
+      specBar.classList.add('in');
+    } else {
+      specWho.classList.remove('sw');
+      void specWho.offsetWidth;
+      specWho.classList.add('sw'); // retarget pulse
+    }
+  }
+  function specHide() {
+    specBar.classList.remove('in');
+    document.body.classList.remove('cot-spectating');
+    setTimeout(() => {
+      if (!specBar.classList.contains('in')) specBar.classList.remove('show');
+    }, 350);
+  }
+  bus.on('spectate:begin', (p) => specPopulate(p, true));
+  bus.on('spectate:change', (p) => specPopulate(p, false));
+  bus.on('spectate:end', () => specHide());
+  // =================== END SPECTATE BAR =====================================
+
   // ========================= SHOT-INFO SECTION ==============================
   // Combat intelligence (WoT damage-log mod class): shot cards with armor
   // diagrams for the player's connecting shots, incoming-hit toasts, a
@@ -947,7 +1038,10 @@ export function initHud(bus) {
   let heightFieldRef = null; // for spotting line-of-sight tests
   const nameById = new Map();
   const specIdById = new Map(); // entity id -> tank spec id (icon lookups)
-  const hitDirs = []; // { ang, t0 } — screen-relative hit indicators
+  // incoming-hit direction arcs (killcam_endscreen r1): SHOOTER world pos +
+  // tier — screen angle re-projected per frame from the camera basis so the
+  // arcs counter-rotate with the camera (see pushHitDirection root-cause note)
+  const hitDirs = []; // { wx, wz, kind:'pen'|'bounce'|'he', crit, dmg, t0, _screenAng }
   const liveNums = []; // { x, y, until } — active damage-number rects (stacking)
   let hitMark = null; // { t0, bounced } — reticle hit-confirm marker (own shots)
   let bounceTimer = null;
@@ -1306,23 +1400,132 @@ export function initHud(bus) {
     ctx.globalAlpha = 1;
   }
 
+  // hit-arc timing: fast ease-in, ~1.2 s hold, fade (owner spec)
+  const ARC_IN_S = 0.12;
+  const ARC_HOLD_S = 1.2;
+  const ARC_FADE_S = 0.6;
   function drawHitIndicators(timeS) {
-    const R = Math.min(w, h) * 0.17;
+    if (!hitDirs.length) return;
+    const cam = lastCamera;
+    const pl = playerRef && playerRef.state ? playerRef.state.pos : null;
+    if (!cam || !pl) return;
+    // camera basis, y-flattened: screen-right = +X column of matrixWorld,
+    // forward = -Z column (the exact convention the damage panel's camYaw
+    // read uses) — no yaw-sign folklore, works at any camera orientation
+    const m = cam.matrixWorld.elements;
+    let rx = m[0];
+    let rz = m[2];
+    let fx = -m[8];
+    let fz = -m[10];
+    const rl = Math.hypot(rx, rz);
+    const fl = Math.hypot(fx, fz);
+    if (rl < 1e-4 || fl < 1e-4) return; // camera looking straight down
+    rx /= rl; rz /= rl; fx /= fl; fz /= fl;
+    const cx = w / 2;
+    const cy = h / 2;
+    // never overlap the reticle: ride outside the live dispersion circle
+    const R0 = Math.max(Math.min(w, h) * 0.17, (aimView.radPx || 0) + 36);
+    const drawn = []; // angular slots -> radius stagger for stacked hits
+    ctx.lineCap = 'round';
     for (let i = hitDirs.length - 1; i >= 0; i--) {
       const e = hitDirs[i];
       const age = timeS - e.t0;
-      if (age > 3 || age < 0) { hitDirs.splice(i, 1); continue; }
-      const a = age < 0.3 ? 1 : 1 - (age - 0.3) / 2.7;
-      ctx.strokeStyle = `rgba(240,70,60,${(0.85 * a).toFixed(3)})`;
-      ctx.lineWidth = 7;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      // e.ang: 0 = camera-forward (screen up), positive clockwise
-      const c = e.ang - Math.PI / 2;
-      ctx.arc(w / 2, h / 2, R, c - 0.26, c + 0.26);
-      ctx.stroke();
+      if (age > ARC_IN_S + ARC_HOLD_S + ARC_FADE_S || age < 0) { hitDirs.splice(i, 1); continue; }
+      const dx = e.wx - pl.x;
+      const dz = e.wz - pl.z;
+      const dl = Math.hypot(dx, dz);
+      if (dl < 1e-3) continue;
+      const nx = dx / dl;
+      const nz = dz / dl;
+      // + = screen right, 0 = camera forward — recomputed EVERY frame so the
+      // arc counter-rotates as the camera turns (probe-asserted)
+      const rel = Math.atan2(nx * rx + nz * rz, nx * fx + nz * fz);
+      e._screenAng = rel;
+      const c = rel - Math.PI / 2; // canvas frame: -PI/2 = screen top
+      // stacked simultaneous hits: separate radius rings per angular slot
+      let R = R0;
+      for (const dc of drawn) {
+        let dd = Math.abs(c - dc.c) % (Math.PI * 2);
+        if (dd > Math.PI) dd = Math.PI * 2 - dd;
+        if (dd < 0.55 && R <= dc.R) R = dc.R + 26; // full ring per stacked hit — labels stay separate
+      }
+      drawn.push({ c, R });
+      const a = age < ARC_IN_S ? age / ARC_IN_S
+        : age < ARC_IN_S + ARC_HOLD_S ? 1
+          : 1 - (age - ARC_IN_S - ARC_HOLD_S) / ARC_FADE_S;
+      const grow = age < ARC_IN_S ? 0.45 + 0.55 * (age / ARC_IN_S) : 1;
+      const he = e.kind === 'he';
+      const bounce = e.kind === 'bounce';
+      // arc span/weight by tier: pen thickness scales with damage
+      const half = (he ? 0.55 : bounce ? 0.24 : 0.3) * grow;
+      const lw = bounce ? 5
+        : he ? 6.5
+          : 6 + 7 * Math.min(1, e.dmg / 520);
+      const col = bounce
+        ? `rgba(206,220,232,${(0.9 * a).toFixed(3)})`
+        : he ? `rgba(255,176,46,${(0.8 * a).toFixed(3)})`
+          : `rgba(242,64,52,${(0.92 * a).toFixed(3)})`;
+      // dark under-stroke so sunlit terrain can never erase the arc
+      for (const pass of [
+        { c: `rgba(8,11,14,${(0.7 * a).toFixed(3)})`, lw: lw + 4 },
+        { c: col, lw },
+      ]) {
+        ctx.strokeStyle = pass.c;
+        ctx.lineWidth = pass.lw;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, c - half, c + half);
+        ctx.stroke();
+      }
+      const ox = Math.cos(c);
+      const oy = Math.sin(c);
+      if (bounce) {
+        // deflect chevron: a ricochet glances OFF — two strokes kicking
+        // outward-sideways off the arc, unmistakably not-damage
+        const bx = cx + ox * (R + 11);
+        const by = cy + oy * (R + 11);
+        const tx = -oy;
+        const ty = ox;
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 2.5;
+        for (const s2 of [0, 7]) {
+          ctx.beginPath();
+          ctx.moveTo(bx + tx * (s2 - 6) - ox * 4, by + ty * (s2 - 6) - oy * 4);
+          ctx.lineTo(bx + tx * s2, by + ty * s2);
+          ctx.lineTo(bx + tx * (s2 - 6) + ox * 4, by + ty * (s2 - 6) + oy * 4);
+          ctx.stroke();
+        }
+      } else if (e.dmg > 0) {
+        // damage number riding the arc's outer edge
+        const tx2 = cx + ox * (R + 24);
+        const ty2 = cy + oy * (R + 24);
+        ctx.font = `800 ${he ? 14 : 16}px ${FONT_COND}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const label = `−${Math.round(e.dmg)}`;
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = `rgba(8,11,14,${(0.85 * a).toFixed(3)})`;
+        ctx.strokeText(label, tx2, ty2);
+        ctx.fillStyle = e.kind === 'he'
+          ? `rgba(255,196,90,${a.toFixed(3)})`
+          : `rgba(255,209,102,${a.toFixed(3)})`;
+        ctx.fillText(label, tx2, ty2);
+        if (e.crit) {
+          // module-crit pulse: diamond beside the number, blinking on the
+          // same beat as the damage panel's module flash (~2 Hz)
+          const pulse = 0.55 + 0.45 * Math.sin(age * Math.PI * 4);
+          const px2 = tx2 + (ox >= 0 ? 1 : -1) * (ctx.measureText(label).width / 2 + 12);
+          ctx.save();
+          ctx.translate(px2, ty2);
+          ctx.rotate(Math.PI / 4);
+          ctx.fillStyle = `rgba(255,138,92,${(a * pulse).toFixed(3)})`;
+          ctx.fillRect(-4.5, -4.5, 9, 9);
+          ctx.restore();
+        }
+      }
     }
     ctx.lineCap = 'butt';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
   }
 
   // Hit-confirm marker: four diagonal ticks flaring out of the reticle center
@@ -2710,15 +2913,60 @@ export function initHud(bus) {
     setTimeout(() => { if (d.parentNode) d.remove(); }, 1800);
   }
 
+  /**
+   * INCOMING-HIT DIRECTION (killcam_endscreen r1 rebuild — owner: indicators
+   * "in actually correct direction"). Root cause of the old wrong arcs:
+   *   1. WRONG SOURCE — the bearing was computed from the IMPACT POINT on
+   *      the player's own hull relative to hull center: the struck FACE's
+   *      bearing, not the shooter's. A shot from front-right that resolved
+   *      on the front-left cheek plate pointed the arc LEFT, and an HE
+   *      splash (pos = terrain burst) pointed anywhere.
+   *   2. MIRRORED MAPPING — canvas arcs run clockwise in a y-down frame;
+   *      `ang - PI/2` painted a screen-LEFT shooter on the RIGHT edge.
+   * Now the SHOOTER's world position is stored (attacker entity when live in
+   * the roster; else the event's hull-local shell direction inverted into
+   * world space — sim data, nothing guessed) and every draw frame projects
+   * it into the CAMERA basis: screenAngle = atan2(dot(toShooter, camRight),
+   * dot(toShooter, camFwd)) — players orient by camera, and the arc
+   * counter-rotates as the camera turns, like the minimap wedge.
+   * When neither source exists the arc is OMITTED rather than lied about.
+   */
   function pushHitDirection(hit, playerEnt) {
-    if (!playerEnt || !playerEnt.state || !lastCamera) return;
-    const dx = hit.pos[0] - playerEnt.state.pos.x;
-    const dz = hit.pos[2] - playerEnt.state.pos.z;
-    _fwd.set(0, 0, -1).transformDirection(lastCamera.matrixWorld);
-    const camYaw = Math.atan2(_fwd.x, _fwd.z);
-    const hitYaw = Math.atan2(dx, dz);
-    hitDirs.push({ ang: hitYaw - camYaw, t0: lastTimeS });
-    if (hitDirs.length > 6) hitDirs.shift();
+    if (!playerEnt || !playerEnt.state) return;
+    const pp = playerEnt.state.pos;
+    let wx = null;
+    let wz = null;
+    const att = hit.attackerId != null && lastTanksRef
+      ? lastTanksRef.find((t) => t && t.id === hit.attackerId && t.state) : null;
+    if (att) {
+      wx = att.state.pos.x;
+      wz = att.state.pos.z;
+    } else if (hit.localDir) {
+      // hull-local shell travel direction -> world (yaw only), reversed:
+      // world = Ry(yaw)·local, shooter sits opposite the travel direction
+      const yaw = playerEnt.state.yaw || 0;
+      const cy = Math.cos(yaw);
+      const sy = Math.sin(yaw);
+      const tx = hit.localDir[0] * cy + hit.localDir[2] * sy;
+      const tz = -hit.localDir[0] * sy + hit.localDir[2] * cy;
+      const L = Math.hypot(tx, tz);
+      if (L > 1e-4) {
+        wx = pp.x - (tx / L) * 180;
+        wz = pp.z - (tz / L) * 180;
+      }
+    }
+    if (wx === null) return; // no honest bearing — draw nothing
+    // visual language tiers (drawHitIndicators): red damage arc / pale steel
+    // deflect / wide amber splash; crits ride the pen arc with a glyph pulse
+    const dmg = hit.damage || 0;
+    const crit = (hit.modulesHit || []).some((m) => m.newState === 'red' || m.newState === 'yellow')
+      || (hit.crewHit || []).length > 0;
+    // a 0-damage PENETRATION that cost a module/crewman is still damage-in —
+    // it keeps the red arc (+ crit pulse), never the deflect chevron
+    const pen = hit.kind === 'pen' || hit.kind === 'he_pen';
+    const kind = hit.kind === 'he_splash' ? 'he' : (pen || dmg > 0) ? 'pen' : 'bounce';
+    hitDirs.push({ wx, wz, kind, crit, dmg, t0: lastTimeS, _screenAng: null });
+    if (hitDirs.length > 8) hitDirs.shift();
   }
 
   function showAlert(text, red) {
@@ -2902,6 +3150,32 @@ export function initHud(bus) {
     },
 
     /**
+     * killcam_endscreen r1 probe hook: live incoming-hit direction arcs.
+     * screenAngRad is the camera-relative bearing the LAST rendered frame
+     * used (0 = camera forward, + = screen right) — the known-bearing probe
+     * asserts it against an independently computed expectation.
+     * @returns {Array<{kind:string,crit:boolean,dmg:number,screenAngRad:?number,ageS:number}>}
+     */
+    getHitArcs() {
+      return hitDirs.map((d) => ({
+        kind: d.kind,
+        crit: !!d.crit,
+        dmg: d.dmg || 0,
+        screenAngRad: d._screenAng,
+        ageS: Math.round((lastTimeS - d.t0) * 1000) / 1000,
+      }));
+    },
+
+    /** Spectate-bar introspection for probes (visible + labels). */
+    getSpectateBar() {
+      return {
+        shown: specBar.classList.contains('show') && specBar.classList.contains('in'),
+        nick: specNick.textContent,
+        vehicle: specVeh.textContent,
+      };
+    },
+
+    /**
      * Switch overall HUD mode.
      * @param {'battle'|'sniper'|'hidden'} m
      */
@@ -2919,6 +3193,10 @@ export function initHud(bus) {
         ctx.clearRect(0, 0, w, h);
         aimTargetId = null;
         if (tgtShown) { tgtEl.style.display = 'none'; tgtShown = false; }
+        // spectate bar never survives leaving the battlefield
+        specBar.classList.remove('in', 'show');
+        document.body.classList.remove('cot-spectating');
+        hitDirs.length = 0;
       }
       // SHOT-INFO SECTION: lifecycle forwarding (reset per battle, hide the
       // end-of-battle stats card when the HUD leaves the battlefield).
@@ -3083,6 +3361,16 @@ export function initHud(bus) {
       renderCanvas(1);     // after the plate: hairlines gap around its rect
     },
   };
+
+  // killcam_endscreen r1: probe seam — main.js exposes no hud handle on
+  // __DEBUG, so the direction-arc / spectate-bar assertions read this
+  // hud-owned hook (introspection only, no control surface).
+  if (typeof window !== 'undefined') {
+    window.__HUD_DEBUG = {
+      getHitArcs: () => hud.getHitArcs(),
+      getSpectateBar: () => hud.getSpectateBar(),
+    };
+  }
 
   return hud;
 }

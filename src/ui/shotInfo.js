@@ -19,6 +19,10 @@ import { MODULE_LABEL, CREW_LABEL, STATE_COLOR } from './moduleRegistry.js';
 import { getSpec, ALL_TANK_IDS } from '../vehicles/specs.js';
 import { penAtDistanceMm } from '../sim/ballistics.js';
 import { getMapConfig } from '../world/maps/index.js';
+// END SCREEN (killcam_endscreen r1): the full-screen battle report is now the
+// cinematic end screen in src/ui/endScreen.js — this module keeps ALL the
+// bookkeeping (resolved-event sums, REPORT GATE) and hands a summary over.
+import { createEndScreen } from './endScreen.js';
 
 const ICON_MARGIN = 1.07; // tools/icons-page.html bounding-box framing margin
 
@@ -572,6 +576,10 @@ export function createShotInfo(bus) {
   const toastHost = el('div', 'cot-si-toasthost', root);
   const statsRoot = el('div', 'cot-si-stats');
   document.body.appendChild(statsRoot);
+  // END SCREEN renders into statsRoot so the integration seams keep holding:
+  // main.js veilHud() toggles this exact element around the kill-cam, and
+  // the kill-cam parity veil CSS addresses `.cot-si-stats`.
+  const endScreen = createEndScreen(bus, statsRoot);
 
   let playerId = null;
   let logOpen = false;
@@ -1053,296 +1061,34 @@ export function createShotInfo(bus) {
     setTimeout(() => { if (t.parentNode) t.remove(); }, 5500);
   }
 
-  // ---------- 4. session stats (full-screen battle report) ----------
-  function renderStats(result) {
-    statsRoot.textContent = '';
-    // result banner (AAA results flow: verdict first, data below)
-    const res = result || '';
-    // Banner honesty (r6 major): the sim currently hard-resolves 'defeat' the
-    // moment the PLAYER dies, even with allies still fighting — a 'DEFEAT'
-    // banner directly above 'YOUR TEAM 3/4 ALIVE' is internally contradictory.
-    // When the roster shows living non-player allies the headline states the
-    // player's actual fate ('YOU WERE DESTROYED'), which is true under either
-    // sim behavior; a team-wipe defeat keeps the team verdict. Alive counts
-    // come from the authoritative battle:ended roster when present, else the
-    // same event-evidence bookkeeping the roster panels render — never invented.
-    let alliesAlive = 0;
-    if (endRoster) {
-      for (const r of endRoster) {
-        if (!r.isPlayer && r.team && r.team !== 'enemy' && r.alive !== false) alliesAlive++;
-      }
-    } else {
-      for (const [id, c] of combatants) {
-        if (id !== playerId && !c.dead && sideOf(id) === 'ally') alliesAlive++;
-      }
-    }
-    const youDestroyed = res === 'defeat' && alliesAlive > 0;
-    const ban = el('div',
-      `cot-si-ban ${res === 'victory' ? 'v' : res === 'defeat' ? 'd' : 'n'}`, statsRoot);
-    ban.textContent = res === 'victory' ? 'VICTORY'
-      : youDestroyed ? 'YOU WERE DESTROYED'
-        : res === 'defeat' ? 'DEFEAT' : 'DRAW';
-    statsRoot.dataset.banner = ban.textContent;
-    const bansub = el('div', 'cot-si-bansub', statsRoot);
-    bansub.textContent = 'Battle report';
-
-    // battle header (r3, stock-WoT staple): map · duration · local date.
-    // Duration comes off the battle:ended payload clock, map from the same
-    // payload when the sim enriches it — segments simply drop out when the
-    // data is absent, never guessed. The wall-clock date stamps the report.
-    {
-      const bits = [];
-      if (endInfo && endInfo.map) {
-        let mapName = endInfo.map;
-        try { mapName = getMapConfig(endInfo.map).name || endInfo.map; } catch (_) { /* raw id */ }
-        bits.push(`<b>${mapName}</b>`);
-        statsRoot.dataset.map = mapName;
-      }
-      const durS2 = endInfo && Number.isFinite(endInfo.timeS)
-        ? endInfo.timeS
-        : Math.max(0, ...stats.timeline.map((e) => e.t), ...receivedLog.map((e) => e.t));
-      if (durS2 > 0) {
-        bits.push(`battle time <b>${fmtTime(durS2)}</b>`);
-        statsRoot.dataset.durationS = String(Math.floor(durS2));
-      }
-      bits.push(new Date().toLocaleString('en-US', {
-        month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
-      }));
-      const hdr = el('div', 'cot-si-hdr', statsRoot);
-      hdr.innerHTML = bits.join(' &nbsp;·&nbsp; ');
-      bansub.style.margin = '7px 0 8px';
-    }
-
-    const kills = [...stats.perTarget.values()].filter((t) => t.killed).length;
-
-    // --- economy strip (WoT post-battle lead): credits + XP. These are the
-    // ONLY derived numbers on the report — each computed 1:1 from the session
-    // counters shown in the tiles below (formula in the breakdown caption),
-    // never from re-simulated combat.
-    // Inputs are the ROUNDED counters the tiles display — a reader
-    // recomputing the strip from the visible report must reconcile exactly.
-    const win = res === 'victory';
-    const dealtR = Math.round(stats.dealt);
-    const blockedR = Math.round(stats.blocked);
-    const baseXp = Math.round(dealtR * 0.85 + kills * 140 + blockedR * 0.12 + stats.hits * 6);
-    const xp = Math.round(baseXp * (win ? 1.5 : 1));
-    const credits = Math.round(dealtR * 4.2 + kills * 850 + blockedR * 0.55) + (win ? 2500 : 0);
-    statsRoot.dataset.xp = String(xp);
-    statsRoot.dataset.credits = String(credits);
-    statsRoot.dataset.xpBase = String(baseXp);
-    // itemized receipt (r4, WoT detailed-results depth): every line item is a
-    // session counter × its published rate, printed with its exact inputs —
-    // the big total is the rounded sum of the visible rows and NOTHING else.
-    // Zero-value sources are omitted; rounding happens only where a row says
-    // so ('base', 'total'), so a reader can reconcile the receipt by hand.
-    const fmtN = (n) => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
-    const econ = el('div', 'cot-si-econ', statsRoot);
-    const eco = (cls, k, v, rows2) => {
-      const it = el('div', `cot-si-ecoitem ${cls}`, econ);
-      it.innerHTML = `<div class="et"><span class="ek">${k}</span>` +
-        `<span class="ev">${v}</span></div>`;
-      const host = el('div', 'cot-si-erows', it);
-      for (const [label, val, tot] of rows2) {
-        const r = el('div', tot ? 'tot' : '', host);
-        r.innerHTML = `<span>${label}</span><b>${val}</b>`;
-      }
-    };
-    const crRows = [];
-    if (dealtR > 0) crRows.push([`Damage dealt ${fmtN(dealtR)} × 4.2`, fmtN(dealtR * 4.2)]);
-    if (kills > 0) crRows.push([`Kills ${kills} × 850`, fmtN(kills * 850)]);
-    if (blockedR > 0) crRows.push([`Damage blocked ${fmtN(blockedR)} × 0.55`, fmtN(blockedR * 0.55)]);
-    if (win) crRows.push(['Victory bonus', `+${fmtN(2500)}`]);
-    crRows.push(['Total (rounded)', `+${credits.toLocaleString('en-US')}`, true]);
-    const xpRows = [];
-    if (dealtR > 0) xpRows.push([`Damage dealt ${fmtN(dealtR)} × 0.85`, fmtN(dealtR * 0.85)]);
-    if (kills > 0) xpRows.push([`Kills ${kills} × 140`, fmtN(kills * 140)]);
-    if (blockedR > 0) xpRows.push([`Damage blocked ${fmtN(blockedR)} × 0.12`, fmtN(blockedR * 0.12)]);
-    if (stats.hits > 0) xpRows.push([`Shots hit ${stats.hits} × 6`, fmtN(stats.hits * 6)]);
-    if (win) {
-      xpRows.push(['Base (rounded)', fmtN(baseXp)]);
-      xpRows.push(['Victory ×1.5 bonus', `+${fmtN(xp - baseXp)}`]);
-    }
-    xpRows.push(['Total (rounded)', `+${xp.toLocaleString('en-US')}`, true]);
-    eco('cr', 'Credits', `+${credits.toLocaleString('en-US')}`, crRows);
-    eco('xp', 'Experience', `+${xp.toLocaleString('en-US')}`, xpRows);
-
-    const cols = el('div', 'cot-si-cols', statsRoot);
-    const left = el('div', 'cot-si-panel cot-si-pl', cols);
-    const right = el('div', 'cot-si-panel cot-si-pr', cols);
-
-    // --- left: your sortie summary + full team rosters ---
-    const lh = el('div', 'ph', left);
-    lh.innerHTML = '<span>Your sortie</span>';
-    const you = el('div', 'cot-si-you', left);
-    // player vehicle thumb + name (r7: the sortie row was a bare YOU label
-    // over an empty composition) — specId straight from the event roster
-    let youSpec = (combatants.get(playerId) || {}).specId || null;
-    let youName = (combatants.get(playerId) || {}).name || '';
-    if (endRoster) {
-      const me = endRoster.find((r) => r.isPlayer);
-      if (me) {
-        if (!youSpec && me.specId) youSpec = me.specId;
-        if (!youName && (me.vehicle || me.name)) youName = me.vehicle || me.name;
-      }
-    }
-    you.innerHTML =
-      (youSpec ? '<span class="si"></span>' : '') +
-      `<span class="n">YOU${youName ? ` — ${youName}` : ''}</span>` +
-      `<span class="s">${kills} kill${kills === 1 ? '' : 's'} · ${stats.hits}/${stats.fired} shots · ` +
-      `received −${Math.round(stats.received)}</span>` +
-      `<span class="dm">−${Math.round(stats.dealt)}</span>`;
-    if (youSpec) {
-      maskIcon(you.querySelector('.si'), youSpec, 'side_silhouette', 'rgba(255,209,102,0.9)');
-    }
-
-    // --- right: performance tiles + per-shell + commendations ---
-    const rh = el('div', 'ph', right);
-    rh.innerHTML = '<span>Performance</span>';
-    const grid = el('div', 'cot-si-grid', right);
-    const stat = (v, k) => {
-      const s = el('div', 'cot-si-stat', grid);
-      s.innerHTML = `<div class="v">${v}</div><div class="k">${k}</div>`;
-    };
-    const penRate = stats.hits > 0 ? Math.round((stats.pens / stats.hits) * 100) : 0;
-    stat(Math.round(stats.dealt), 'Damage dealt');
-    stat(Math.round(stats.received), 'Damage received');
-    stat(Math.round(stats.blocked), 'Damage blocked');
-    stat(kills, 'Kills');
-    stat(stats.fired, 'Shots fired');
-    stat(stats.hits, 'Shots hit');
-    stat(`${penRate}%`, 'Pen rate');
-    stat(stats.modulesDestroyed, 'Modules destroyed');
-    // spotting row (r3) — rendered only when this battle's tank:spotted
-    // events carried spotter attribution (enriched sim); a zero born from
-    // missing data must never pose as a real zero
-    if (spotAttributed) {
-      stat(spottedSet.size, 'Enemies spotted');
-      stat(Math.round(stats.assist), 'Assist damage');
-      grid.classList.add('c5');
-    }
-    statsRoot.dataset.dealt = String(Math.round(stats.dealt));
-    statsRoot.dataset.received = String(Math.round(stats.received));
-    statsRoot.dataset.blocked = String(Math.round(stats.blocked));
-    statsRoot.dataset.fired = String(stats.fired);
-    statsRoot.dataset.hits = String(stats.hits);
-    statsRoot.dataset.pens = String(stats.pens);
-    statsRoot.dataset.assist = String(Math.round(stats.assist));
-    statsRoot.dataset.spotted = String(spottedSet.size);
-
-    // per-shell-type accuracy breakdown (fired / hit / pen / damage)
-    const shellTypes = [...stats.perShell.entries()].filter(([, s]) => s.fired > 0 || s.hits > 0);
-    if (shellTypes.length) {
-      const row = el('div', 'cot-si-shell', right);
-      for (const [type, s] of shellTypes) {
-        const item = el('span', '', row);
-        item.innerHTML =
-          `<span class="ty" style="color:${SHELL_TYPE_COLOR[type] || '#9fb0bf'}">${type}</span> ` +
-          `<b>${s.fired}</b> fired · <b>${s.hits}</b> hit · <b>${s.pens}</b> pen` +
-          `${s.dmg > 0 ? ` · <b>${Math.round(s.dmg)}</b> dmg` : ''}`;
-      }
-    }
-
-    // commendation ribbons — every one derives 1:1 from the session counters.
-    // Kill ribbons key off the KILLS counter alone (r8: the r6 damage gate
-    // made a 4-kill VICTORY render zero ribbons, which read as a broken
-    // reward system — the KILLS tile beside the ribbon backs the claim, so
-    // a kill ribbon never outruns the visible tiles even at zero damage).
-    const ribbons = [];
-    if (kills >= 3) ribbons.push({ g: GLYPH.star, t: `ACE — ${kills} kills` });
-    else if (kills >= 1) ribbons.push({ g: GLYPH.skull, t: `DESTROYER — ${kills} kill${kills === 1 ? '' : 's'}` });
-    if (stats.hits >= 4 && penRate >= 70) ribbons.push({ g: GLYPH.optics, t: `SHARPSHOOTER — ${penRate}% pen` });
-    if (stats.blocked >= 400) ribbons.push({ g: GLYPH.shield, t: `STEEL WALL — ${Math.round(stats.blocked)} blocked` });
-    if (stats.fired >= 4 && stats.hits === stats.fired) ribbons.push({ g: GLYPH.ammoRack, t: 'EVERY SHOT CONNECTED' });
-    if (ribbons.length) {
-      const rr = el('div', 'cot-si-ribbons', right);
-      for (const r of ribbons) {
-        el('span', 'cot-si-rib', rr).innerHTML = `${r.g}<span>${r.t}</span>`;
-      }
-    }
-
-    // per-shot detail (WoT detailed-results depth — fills the dead space
-    // under the ribbons, r5 critique): the in-battle shot log surfaced on
-    // the report, chronological, straight from the same resolved shell:hit
-    // events the floating cards showed. Nothing recomputed.
-    if (shotLog.length) {
-      const sh2 = el('div', 'ph', right);
-      sh2.style.marginTop = '10px';
-      sh2.innerHTML = `<span>Your shots</span><span>last ${shotLog.length}</span>`;
-      for (let i = shotLog.length - 1; i >= 0; i--) {
-        const it = shotLog[i];
-        const r = el('div', 'cot-si-lrow', right);
-        r.innerHTML =
-          `<span class="b" style="color:${it.cls.col}">${it.cls.badge.split(' ')[0].split('·')[0]}</span>` +
-          `<span class="d">${(it.ev.damage || 0) > 0 ? `−${Math.round(it.ev.damage)}` : '·'}</span>` +
-          `<span class="n">${it.ev.targetName || it.ev.targetId || ''}</span>` +
-          `<span class="z">${zoneLabel(it.ev.zone)} · ${Math.round(it.ev.flightDistM || 0)}m</span>`;
-      }
-      statsRoot.dataset.reportShots = String(shotLog.length);
-    }
-
-    // damage-over-time strip: dealt (gold, up) mirrored vs received (red, down).
-    // Collapsed entirely for very short battles — a single lonely bar in a
-    // full-width panel read as wasted space (r6 critique); the shot log above
-    // already carries the per-event story at that scale.
-    const recvEvents = receivedLog.filter((e) => e.dmg > 0);
-    let tlHost = null;
-    if (stats.timeline.length + recvEvents.length >= 3) {
-      tlHost = el('div', 'cot-si-panel cot-si-tlwrap', statsRoot);
-      const th = el('div', 'ph', tlHost);
-      th.innerHTML = '<span>Damage over battle</span>';
-      const tl = el('div', 'cot-si-tl', tlHost);
-      const BINS = 48;
-      const dur = Math.max(
-        30,
-        ...stats.timeline.map((e) => e.t),
-        ...recvEvents.map((e) => e.t),
-      );
-      const up = new Float32Array(BINS);
-      const dn = new Float32Array(BINS);
-      for (const e of stats.timeline) up[Math.min(BINS - 1, Math.floor((e.t / dur) * BINS))] += e.d;
-      for (const e of recvEvents) dn[Math.min(BINS - 1, Math.floor((e.t / dur) * BINS))] += e.dmg;
-      let peak = 1;
-      for (let i = 0; i < BINS; i++) peak = Math.max(peak, up[i], dn[i]);
-      const W = 480;
-      const H = 34;
-      const mid = H / 2;
-      const bw = W / BINS;
-      let bars = '';
-      for (let i = 0; i < BINS; i++) {
-        const x = (i * bw + 0.5).toFixed(1);
-        if (up[i] > 0) {
-          const bh = Math.max(1.5, (up[i] / peak) * (mid - 2));
-          bars += `<rect x="${x}" y="${(mid - bh).toFixed(1)}" width="${(bw - 1).toFixed(1)}" height="${bh.toFixed(1)}" fill="#ffd166"/>`;
-        }
-        if (dn[i] > 0) {
-          const bh = Math.max(1.5, (dn[i] / peak) * (mid - 2));
-          bars += `<rect x="${x}" y="${mid + 1}" width="${(bw - 1).toFixed(1)}" height="${bh.toFixed(1)}" fill="#f05a5a"/>`;
-        }
-      }
-      tl.innerHTML =
-        `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">` +
-        `<line x1="0" y1="${mid}" x2="${W}" y2="${mid}" stroke="rgba(146,164,180,.35)" stroke-width="1"/>` +
-        `${bars}</svg>` +
-        `<div class="cap">dealt ▲ / received ▼ · ${fmtTime(dur)}</div>`;
-    }
-
-    // --- team rosters: every combatant the battle produced evidence for.
-    // dmg/kills/dead are raw event sums (shell:hit / tank:destroyed); side
-    // comes from the parity graph, overridden by the battle:ended payload
-    // roster when the sim provides one. Nothing here is fabricated — a tank
-    // that appears in no event and no payload simply is not listed.
+  // ---------- 4. session stats -> END SCREEN (killcam_endscreen r1) ----------
+  // The full-screen report rendering moved to src/ui/endScreen.js. This
+  // module stays the single bookkeeper: buildSummary() bundles the same
+  // resolved-event sums the old report printed — rosters from the
+  // authoritative battle:ended payload (parity-graph evidence as fallback),
+  // per-kill rows from the tank:destroyed credit, the best shot from the
+  // full-battle allShots ledger. Nothing recomputed, nothing invented:
+  // side-unconfirmed contacts are OMITTED rather than guessed onto a team,
+  // and there is no base-capture stat because the sim has no capture.
+  function buildSummary(result) {
     const rows = new Map();
     for (const [id, c] of combatants) {
       rows.set(id, {
-        id, name: c.name, specId: c.specId, dmg: c.dmg, kills: c.kills,
-        dead: c.dead, side: sideOf(id), isPlayer: id === playerId,
+        id,
+        name: c.name,
+        specId: c.specId,
+        dmg: Math.round(c.dmg),
+        kills: c.kills,
+        dead: c.dead,
+        side: sideOf(id),
+        isPlayer: id === playerId,
       });
     }
     if (endRoster) {
       for (const r of endRoster) {
         let row = rows.get(r.id);
         if (!row) {
-          row = { id: r.id, name: null, specId: null, dmg: 0, kills: 0, dead: false, side: null };
+          row = { id: r.id, name: null, specId: null, dmg: 0, kills: 0, dead: false, side: null, isPlayer: false };
           rows.set(r.id, row);
         }
         if (!row.name && (r.vehicle || r.name)) row.name = r.vehicle || r.name;
@@ -1354,178 +1100,67 @@ export function createShotInfo(bus) {
     }
     const allies = [];
     const enemies = [];
-    const unknown = [];
     for (const r of rows.values()) {
-      (r.side === 'ally' ? allies : r.side === 'enemy' ? enemies : unknown).push(r);
+      if (r.side === 'ally') allies.push(r);
+      else if (r.side === 'enemy') enemies.push(r);
     }
     const bySort = (a, b) => (b.isPlayer ? 1 : 0) - (a.isPlayer ? 1 : 0) || b.dmg - a.dmg;
     allies.sort(bySort);
     enemies.sort(bySort);
-    unknown.sort(bySort);
-    statsRoot.dataset.rosterAllies = String(allies.length);
-    statsRoot.dataset.rosterEnemies = String(enemies.length);
-
-    // per-enemy interaction ledger: damage each combatant dealt TO THE PLAYER
-    // (r7: enemy rows carried no two-way story) — summed from the same
-    // receivedLog entries the toasts rendered, never re-simulated
-    const recvBy = new Map();
-    for (const e of receivedLog) {
-      if (e.aid != null && e.dmg > 0) recvBy.set(e.aid, (recvBy.get(e.aid) || 0) + e.dmg);
+    const kills = [];
+    for (const [id, t] of stats.perTarget) {
+      if (t.killed) kills.push({ id, name: t.name || id, specId: t.specId || id, dmg: Math.round(t.dmg) });
     }
-    const teamBlock = (title, list, hostile) => {
-      if (!list.length) return;
-      const hd = el('div', 'ph', left);
-      const alive = list.filter((r) => !r.dead).length;
-      hd.innerHTML = `<span>${title}</span><span>${alive}/${list.length} alive</span>`;
-      const host = el('div', 'cot-si-kills', left);
-      // column captions (r6 minor): the damage figure is the combatant's
-      // whole-battle output (same shell:hit sums as everything else) — a
-      // bare '−45' beside 'no engagement with you' read as damage done to
-      // you. KILLS / DMG OUT pin both right-hand columns' meaning.
-      const cap = el('div', 'cot-si-kill cap', host);
-      cap.innerHTML = '<span class="si"></span><span class="n"></span>' +
-        '<span class="s"></span><span class="k">Kills</span>' +
-        '<span class="dm">Dmg out</span><span class="al"></span>';
-      for (const r of list) {
-        const row = el('div', 'cot-si-kill', host);
-        // engagement detail is an ENEMY story (your hits on them, their
-        // damage on you) — ally rows stay clean (r7: every ally reading
-        // 'no direct hits recorded' was noise, the player never shoots them)
-        const t = hostile ? stats.perTarget.get(r.id) : null;
-        const took = hostile ? Math.round(recvBy.get(r.id) || 0) : 0;
-        const parts = [];
-        if (t && t.hits > 0) {
-          parts.push(`you: ${t.hits} hit${t.hits === 1 ? '' : 's'} · ${t.pens} pen${t.pens === 1 ? '' : 's'}` +
-            `${t.lastZone ? ' · ' + zoneLabel(t.lastZone) : ''}`);
-          if (!t.killed && t.hpLeft != null) parts.push(`${t.hpLeft} hp left`);
-        }
-        if (took > 0) parts.push(`hit you −${took}`);
-        const detail = parts.length ? parts.join(' · ')
-          : hostile ? 'no engagement with you' : '';
-        row.innerHTML =
-          `<span class="si"></span>` +
-          `<span class="n">${r.isPlayer ? '<b class="you">YOU</b> ' : ''}${r.name || r.id}</span>` +
-          `<span class="s">${detail}</span>` +
-          `<span class="k">${r.kills > 0 ? `${r.kills} ✕` : ''}</span>` +
-          `<span class="dm">${r.dmg > 0 ? `−${Math.round(r.dmg)}` : '—'}</span>` +
-          (r.dead ? '<span class="kd">DEAD</span>' : '<span class="al">ALIVE</span>');
-        maskIcon(row.querySelector('.si'), r.specId || r.id, 'side_silhouette',
-          r.dead ? '#f28f8f' : 'rgba(206,220,232,0.75)');
-        // expandable exchange ledger (r4, WoT detailed-results depth): rows
-        // with recorded traffic open a chronological per-shot list — YOUR
-        // hits on them (full-battle allShots ledger) merged with THEIR
-        // damaging/blocked hits on you (receivedLog). Same resolved events
-        // the floating cards and toasts already rendered; nothing recomputed.
-        const xs = hostile ? allShots.filter((s) => s.ev.targetId === r.id) : [];
-        const xrec = hostile ? receivedLog.filter((e) => e.aid === r.id) : [];
-        if (xs.length || xrec.length) {
-          row.classList.add('x');
-          row.insertAdjacentHTML('afterbegin', '<span class="ex">▸</span>');
-          let xd = null;
-          row.addEventListener('click', () => {
-            if (!xd) {
-              xd = document.createElement('div');
-              xd.className = 'cot-si-xd';
-              const lines = [];
-              for (const s of xs) {
-                lines.push({
-                  t: s.ev.timeS || 0,
-                  html: `<span class="t">${fmtTime(s.ev.timeS)}</span>` +
-                    `<span class="w" style="color:${s.cls.col}">` +
-                    `${s.cls.badge.split(' ')[0].split('·')[0]}</span>` +
-                    `<span class="d">${(s.ev.damage || 0) > 0 ? `−${Math.round(s.ev.damage)}` : '·'}</span>` +
-                    `<span class="z">${zoneLabel(s.ev.zone)} · ${Math.round(s.ev.flightDistM || 0)} m</span>`,
-                });
-              }
-              for (const e of xrec) {
-                lines.push({
-                  t: e.t,
-                  html: `<span class="t">${fmtTime(e.t)}</span>` +
-                    `<span class="w" style="color:${e.dmg > 0 ? '#ff8f80' : COL.green}">` +
-                    `${e.dmg > 0 ? 'HIT YOU' : 'BLOCKED'}</span>` +
-                    `<span class="d">${e.dmg > 0 ? `−${Math.round(e.dmg)}` : '·'}</span>` +
-                    `<span class="z">${e.shellType}${e.zone ? ' · ' + zoneLabel(e.zone) : ''}` +
-                    `${e.mods ? ' · ' + e.mods : ''}</span>`,
-                });
-              }
-              lines.sort((a, b) => a.t - b.t);
-              for (const ln of lines) {
-                const lr = document.createElement('div');
-                lr.className = 'xr';
-                lr.innerHTML = ln.html;
-                xd.appendChild(lr);
-              }
-              row.after(xd);
-            }
-            const open = !xd.classList.contains('open');
-            xd.classList.toggle('open', open);
-            row.classList.toggle('open', open);
-            pinFooter(); // report height changed — re-pin the RETURN button
-          });
-        }
-      }
+    kills.sort((a, b) => b.dmg - a.dmg);
+    let best = null;
+    for (const sh of allShots) {
+      if ((sh.ev.damage || 0) > 0 && (!best || sh.ev.damage > best.ev.damage)) best = sh;
+    }
+    const me = rows.get(playerId) || {};
+    let mapName = endInfo && endInfo.map ? endInfo.map : null;
+    if (mapName) {
+      try { mapName = getMapConfig(mapName).name || mapName; } catch (_) { /* raw id */ }
+    }
+    const timeS = endInfo && Number.isFinite(endInfo.timeS)
+      ? endInfo.timeS
+      : Math.max(0, ...stats.timeline.map((e) => e.t), ...receivedLog.map((e) => e.t));
+    return {
+      result,
+      playerVehicle: me.name || '',
+      playerSpecId: me.specId || null,
+      playerDead: !!me.dead,
+      map: mapName,
+      timeS,
+      stats: {
+        dealt: stats.dealt,
+        received: stats.received,
+        blocked: stats.blocked,
+        fired: stats.fired,
+        hits: stats.hits,
+        pens: stats.pens,
+        assist: stats.assist,
+        modulesDestroyed: stats.modulesDestroyed,
+        spotted: spottedSet.size,
+        spotAttributed,
+      },
+      kills,
+      bestShot: best ? {
+        damage: best.ev.damage,
+        shellType: best.ev.shellType || '',
+        shellName: shellDisplayName(best.ev),
+        targetName: best.ev.targetName || '',
+        zone: zoneLabel(best.ev.zone),
+        distM: best.ev.flightDistM || 0,
+        destroyed: !!best.ev.destroyed,
+      } : null,
+      allies,
+      enemies,
     };
-    teamBlock('Your team', allies, false);
-    teamBlock('Enemy team', enemies, true);
-    teamBlock('Contacts — side unconfirmed', unknown, true);
-    if (!rows.size) {
-      const none = el('div', 'cot-si-empty', left);
-      none.textContent = 'No engagements recorded.';
-    }
-    // meta footer: battle length from the latest event timestamp seen (a
-    // lower bound straight off the payload clocks — nothing invented)
-    const durS = Math.max(0,
-      ...stats.timeline.map((e) => e.t), ...receivedLog.map((e) => e.t));
-    if (rows.size || durS > 0) {
-      const meta = el('div', 'cot-si-meta', statsRoot);
-      meta.textContent = `${rows.size} combatant${rows.size === 1 ? '' : 's'}` +
-        (durS >= 30 ? ` · last engagement ${fmtTime(durS)}` : '') +
-        ` · ${stats.fired} shell${stats.fired === 1 ? '' : 's'} fired`;
-    }
-    statsRoot.classList.add('show');
-    // suppress the integration end-overlay's duplicate verdict banner, hide
-    // the battle-HUD chrome, and pin its RETURN TO GARAGE button directly
-    // under the last report panel (CSS above + measured pad below)
-    document.body.classList.add('cot-si-report');
-    pinFooter();
   }
 
-  // Measure the report's real content bottom and set --cot-si-endpad so the
-  // end-overlay's RETURN TO GARAGE button sits directly under the last panel
-  // instead of floating at the screen bottom across an empty black band
-  // (r6: the report wasted the bottom ~45% of a 1080p frame). Retried on an
-  // interval because the .cot-end overlay only appears once the kill-cam
-  // replay releases the screen (veilHud) — up to ~15 s later.
-  let pinTimer = null;
-  function pinFooter() {
-    if (pinTimer) clearInterval(pinTimer);
-    let tries = 0;
-    const tick = () => {
-      tries += 1;
-      if (!document.body.classList.contains('cot-si-report') || tries > 140) {
-        clearInterval(pinTimer);
-        pinTimer = null;
-        return;
-      }
-      const last = statsRoot.lastElementChild;
-      const btn = document.querySelector('.cot-end button');
-      if (!last || !btn || !btn.offsetHeight) return; // overlay not up yet
-      const bottom = last.getBoundingClientRect().bottom;
-      const pad = Math.max(18, window.innerHeight - bottom - 26 - btn.offsetHeight);
-      document.body.style.setProperty('--cot-si-endpad', `${pad.toFixed(0)}px`);
-      clearInterval(pinTimer);
-      pinTimer = null;
-    };
-    pinTimer = setInterval(tick, 120);
-    tick();
-  }
-
-  function unpinFooter() {
-    if (pinTimer) {
-      clearInterval(pinTimer);
-      pinTimer = null;
-    }
-    document.body.style.removeProperty('--cot-si-endpad');
+  function renderStats(result) {
+    endScreen.show(result, buildSummary(result));
+    statsRoot.classList.add('show'); // endScreen owns this too — kept for parity
   }
 
   // ---------- bookkeeping ----------
@@ -1744,9 +1379,9 @@ export function createShotInfo(bus) {
     /** Hide the end-of-battle stats card (garage/hidden HUD). */
     hideStats() {
       clearReportBuffer();
+      endScreen.hide();
       statsRoot.classList.remove('show');
       document.body.classList.remove('cot-si-report');
-      unpinFooter();
     },
 
     /** Fresh battle: clear cards, toasts, logs and session stats. */
@@ -1768,9 +1403,9 @@ export function createShotInfo(bus) {
       stats.perTarget = new Map();
       logOpen = false;
       logPanel.classList.remove('open');
+      endScreen.hide();
       statsRoot.classList.remove('show');
       document.body.classList.remove('cot-si-report');
-      unpinFooter();
     },
   };
   return api;

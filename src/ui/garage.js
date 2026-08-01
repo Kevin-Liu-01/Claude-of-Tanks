@@ -74,6 +74,10 @@ const TIER_BY_ID = {
   centurion3: 'VII', centurion5: 'VIII', comet: 'VII', challenger_cruiser: 'VI', charioteer: 'VIII',
   leopard2_proto: 'VIII', m1a1_aim: 'IX', m46_patton: 'VII', m47_patton: 'VII',
   m26_pershing: 'VIII', m45_patton: 'VIII', m60a3: 'VIII',
+  // GEN2 WAVE 8 (userdrops7): tree tiers, mirrors state.js SPEC_TIER pools
+  t44: 'VII', t54: 'VII', type59: 'VII', t80: 'VIII', t80b: 'IX',
+  t80bv: 'X', amx30: 'VII', amx30b2: 'VIII', m48: 'VII', m60a2: 'VIII',
+  vickers_mk1: 'VII', t84: 'IX',
 };
 
 const SHELL_TYPE_COLOR = {
@@ -757,20 +761,25 @@ function paintCamoSwatch(canvas, spec, pid) {
       c.stroke();
     }
   } else if (scheme === 'splinter' && patches.length) {
+    // camo r2: 'm90' rides this painter with rainK 0 (no Regenstreifen) and
+    // larger wedges — mirror both knobs at tile scale.
+    const pk = vis.patchK || 1;
     for (let i = 0; i < 6; i++) {
       const col = patches[i % patches.length];
-      swPoly(c, rng, rng() * W, rng() * H, S * (0.035 + rng() * 0.04), 5);
+      swPoly(c, rng, rng() * W, rng() * H, S * pk * (0.035 + rng() * 0.04), 5);
       c.fillStyle = swRgb(col, 0.95);
       c.fill();
     }
-    c.strokeStyle = swRgb(swMix(patches[0], [40, 44, 38], 0.55), 0.7);
-    c.lineWidth = 1;
-    for (let i = 0; i < 26; i++) { // rain strokes
-      const x0 = rng() * W, y0 = rng() * H, len = 4 + rng() * 6;
-      c.beginPath();
-      c.moveTo(x0, y0);
-      c.lineTo(x0 + len * 0.45, y0 + len);
-      c.stroke();
+    if (vis.rainK !== 0) {
+      c.strokeStyle = swRgb(swMix(patches[0], [40, 44, 38], 0.55), 0.7);
+      c.lineWidth = 1;
+      for (let i = 0; i < 26; i++) { // rain strokes
+        const x0 = rng() * W, y0 = rng() * H, len = 4 + rng() * 6;
+        c.beginPath();
+        c.moveTo(x0, y0);
+        c.lineTo(x0 + len * 0.45, y0 + len);
+        c.stroke();
+      }
     }
   } else if (scheme === 'dazzle' && patches.length) {
     for (let i = 0; i < 7; i++) {
@@ -785,6 +794,109 @@ function paintCamoSwatch(canvas, spec, pid) {
       c.moveTo(x0 - Math.cos(ang) * S * 0.35, y0 - Math.sin(ang) * S * 0.35);
       c.lineTo(x0 + Math.cos(ang) * S * 0.35, y0 + Math.sin(ang) * S * 0.35);
       c.stroke();
+    }
+  } else if (scheme === 'tigerstripe' && patches.length) {
+    // camo r2: jagged near-horizontal claw strokes — dark dominant, thin
+    // pale interstripes (mirrors the tigerstripe painter at tile scale)
+    const dark = patches[0];
+    const pale = patches[1] || swMix(base, [214, 208, 168], 0.4);
+    const drawStripe = (col, w2, alpha) => {
+      const x0 = rng() * W, y0 = rng() * H, len = S * (0.28 + rng() * 0.2);
+      const ang = 0.12 + (rng() - 0.5) * 0.3;
+      c.strokeStyle = swRgb(col, alpha);
+      c.lineWidth = w2;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(x0 - Math.cos(ang) * len / 2, y0 - Math.sin(ang) * len / 2);
+      c.quadraticCurveTo(x0 + (rng() - 0.5) * 8, y0 + (rng() - 0.5) * 10,
+        x0 + Math.cos(ang) * len / 2, y0 + Math.sin(ang) * len / 2);
+      c.stroke();
+    };
+    for (let i = 0; i < 4; i++) drawStripe(pale, 1 + rng() * 1.4, 0.85);
+    for (let i = 0; i < 6; i++) drawStripe(dark, 2.5 + rng() * 3, 0.94);
+  } else if (scheme === 'chip6' && patches.length) {
+    // camo r2: choc-chip — wavy bands + pale cookies rimmed with black chips
+    const bDark = patches[0], bPale = patches[1] || base;
+    const cookie = patches[2] || swMix(base, [228, 232, 230], 0.55);
+    const chip = patches[3] || [51, 52, 47];
+    for (let i = 0; i < 3; i++) {
+      const y0 = rng() * H;
+      c.strokeStyle = swRgb(swMix(i % 2 ? bDark : bPale, base, 0.12), 0.85);
+      c.lineWidth = S * (0.05 + rng() * 0.04);
+      c.beginPath();
+      c.moveTo(-4, y0);
+      c.quadraticCurveTo(W / 2, y0 + (rng() - 0.5) * H * 0.9, W + 4, y0 + (rng() - 0.5) * H * 0.7);
+      c.stroke();
+    }
+    for (let i = 0; i < 4; i++) {
+      const x = rng() * W, y = rng() * H, r = 3.4 + rng() * 2.6;
+      swBlob(c, rng, x, y, r);
+      c.fillStyle = swRgb(cookie, 0.94);
+      c.fill();
+      c.fillStyle = swRgb(chip, 0.92);
+      const nk = 2 + ((rng() * 2) | 0);
+      for (let j = 0; j < nk; j++) {
+        const a2 = rng() * Math.PI * 2;
+        c.beginPath();
+        c.arc(x + Math.cos(a2) * r * 0.7, y + Math.sin(a2) * r * 0.55, 0.9 + rng() * 0.7, 0, Math.PI * 2);
+        c.fill();
+      }
+    }
+  } else if (scheme === 'brush' && patches.length) {
+    // camo r2: DPM — directional brush strokes, green/brown then black on top
+    const flow = 0.6 + rng() * 0.5;
+    const strokeOne = (col, w2, alpha) => {
+      const x0 = rng() * W, y0 = rng() * H, len = S * (0.16 + rng() * 0.14);
+      const a = flow + (rng() - 0.5) * 0.6 + (rng() < 0.18 ? Math.PI / 2 : 0);
+      c.strokeStyle = swRgb(col, alpha);
+      c.lineWidth = w2;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(x0, y0);
+      c.quadraticCurveTo(x0 + Math.cos(a) * len * 0.5 + (rng() - 0.5) * 6,
+        y0 + Math.sin(a) * len * 0.5 + (rng() - 0.5) * 6,
+        x0 + Math.cos(a) * len, y0 + Math.sin(a) * len);
+      c.stroke();
+    };
+    const green = patches[0], brown = patches[1] || patches[0], black = patches[2] || null;
+    for (let i = 0; i < 5; i++) strokeOne(green, 2.6 + rng() * 2.4, 0.92);
+    for (let i = 0; i < 4; i++) strokeOne(brown, 2.4 + rng() * 2.2, 0.92);
+    if (black) for (let i = 0; i < 3; i++) strokeOne(black, 1.4 + rng() * 1.4, 0.9);
+  } else if (scheme === 'amoeba' && patches.length) {
+    // camo r2: few LARGE rounded masses + sparse ochre accents
+    const dark = patches[0], ochre = patches[1] || null;
+    for (let i = 0; i < 3; i++) {
+      const x = rng() * W, y = rng() * H, r = S * (0.055 + rng() * 0.035);
+      swBlob(c, rng, x, y, r);
+      c.fillStyle = swRgb(dark, 0.92);
+      c.fill();
+      swBlob(c, rng, x + (rng() - 0.5) * r * 1.6, y + (rng() - 0.5) * r * 1.2, r * 0.65);
+      c.fill();
+    }
+    if (ochre) for (let i = 0; i < 2; i++) {
+      swBlob(c, rng, rng() * W, rng() * H, S * (0.018 + rng() * 0.014));
+      c.fillStyle = swRgb(ochre, 0.85);
+      c.fill();
+    }
+  } else if (scheme === 'hexfield' && patches.length) {
+    // camo r2: honeycomb cell field, ~55% filled from two tones
+    const tones = [patches[0], patches[1] || patches[0]];
+    const hexR = 4.6, cw = hexR * 1.5, rh = hexR * Math.sqrt(3);
+    for (let gy = 0; gy < Math.ceil(H / rh) + 1; gy++) {
+      for (let gx = 0; gx < Math.ceil(W / cw) + 1; gx++) {
+        const v = rng();
+        if (v < 0.45) continue;
+        const x = gx * cw, y = gy * rh + (gx % 2 ? rh / 2 : 0);
+        c.fillStyle = swRgb(v < 0.75 ? tones[0] : tones[1], 0.9);
+        c.beginPath();
+        for (let k2 = 0; k2 < 6; k2++) {
+          const a2 = (k2 / 6) * Math.PI * 2;
+          const px2 = x + Math.cos(a2) * hexR * 0.92, py2 = y + Math.sin(a2) * hexR * 0.8;
+          if (k2 === 0) c.moveTo(px2, py2); else c.lineTo(px2, py2);
+        }
+        c.closePath();
+        c.fill();
+      }
     }
   }
   // faint top-light so the tile reads as painted steel, not a flat chip

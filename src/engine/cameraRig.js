@@ -195,6 +195,21 @@ export function createCameraRig(camera, deps) {
   let cine = null;   // { t, dur, endYaw }
   // death-cam slow orbit state (null when inactive)
   let death = null;  // { az }
+  // >>> SPECTATE (killcam_endscreen r1): ally chase-cam state after the
+  // player's death replay — null when inactive. The spectate camera is the
+  // arcade chase grammar re-aimed at a LIVING ALLY: damped pivot follow,
+  // free orbit yaw/pitch, the same collision pull-in + terrain floor as
+  // solveArcade, plus an eased pose BLEND whenever the target changes so
+  // cycling allies never teleports the camera (owner ask). Driven entirely
+  // through rig.startSpectate / setSpectateTarget / spectateLook /
+  // stopSpectate — no main.js wiring needed (killcam.js owns the flow).
+  let spec = null;   // { ent, yaw, pitch, pivot, blendT, blendDur, fromPos, fromLook }
+  const _specFrom = new THREE.Vector3();
+  const _specFromLook = new THREE.Vector3();
+  const _specLook = new THREE.Vector3();
+  const SPEC_DIST_M = 14;
+  const SPEC_PITCH = THREE.MathUtils.degToRad(-13);
+  const SPEC_BLEND_S = 1.05;
 
   /** Resolve the arcade orbit pivot for the current player into `out`. */
   function pivotTargetFor(player, out) {
@@ -464,6 +479,65 @@ export function createCameraRig(camera, deps) {
   }
   const _UPV = new THREE.Vector3(0, 1, 0);
 
+  /**
+   * SPECTATE solve: damped chase orbit around the spectated ally with the
+   * same collision pull-in / terrain floor as solveArcade, wrapped in an
+   * eased position+look blend while a target handover is in flight. The
+   * blend's FROM pose is wherever the camera actually was when the handover
+   * started (previous ally, death cam, killcam exit) so the cut is always a
+   * continuous camera move, never a teleport.
+   * @param {number} dt render delta seconds
+   */
+  function solveSpectate(dt) {
+    const ent = spec.ent;
+    if (!ent || !ent.state) return;
+    camera.userData.scoped = false;
+    // pivot: damped follow of the ally's turret line (arcade grammar)
+    pivotTargetFor(ent, _pivotTarget);
+    if (spec.pivot === null) {
+      spec.pivot = new THREE.Vector3().copy(_pivotTarget);
+    } else {
+      spec.pivot.lerp(_pivotTarget, 1 - Math.exp(-dt / PIVOT_FOLLOW_TAU_S));
+    }
+    const viewPitch = THREE.MathUtils.clamp(spec.pitch, PITCH_MIN, PITCH_MAX);
+    dirFromAngles(spec.yaw, viewPitch, _viewDir);
+    _desired.copy(spec.pivot).addScaledVector(_viewDir, -SPEC_DIST_M);
+    // collision pull-in: pivot -> desired camera position (solveArcade pattern)
+    _rayDir.copy(_desired).sub(spec.pivot);
+    const segLen = _rayDir.length();
+    if (segLen > 1e-4) {
+      _rayDir.multiplyScalar(1 / segLen);
+      const hit = raycast(spec.pivot, _rayDir, segLen);
+      if (hit !== null) _desired.copy(hit.point).addScaledVector(hit.normal, COLLISION_PAD_M);
+    }
+    const minY = heightField.getHeightAt(_desired.x, _desired.z) + CAMERA_MIN_CLEARANCE_M;
+    if (_desired.y < minY) _desired.y = minY;
+    _specLook.copy(spec.pivot);
+    // eased handover blend (target switch / spectate entry)
+    if (spec.blendT < spec.blendDur) {
+      spec.blendT = Math.min(spec.blendDur, spec.blendT + Math.max(0, dt));
+      const u = spec.blendT / spec.blendDur;
+      const k = u * u * u * (u * (u * 6 - 15) + 10); // smootherstep
+      _desired.lerpVectors(spec.fromPos, _desired, k);
+      _specLook.lerpVectors(spec.fromLook, _specLook, k);
+      // the interpolated path must respect the terrain floor too — a blend
+      // across a ridge otherwise dips the camera through the crest
+      const bMinY = heightField.getHeightAt(_desired.x, _desired.z) + CAMERA_MIN_CLEARANCE_M;
+      if (_desired.y < bMinY) _desired.y = bMinY;
+    }
+    camera.position.copy(_desired);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(_specLook);
+    setFov(55);
+  }
+
+  /** Capture the live camera pose as the FROM side of a spectate blend. */
+  function specCaptureFrom() {
+    _specFrom.copy(camera.position);
+    camera.getWorldDirection(_viewDir);
+    _specFromLook.copy(camera.position).addScaledVector(_viewDir, SPEC_DIST_M);
+  }
+
   /** Hand control back to the arcade rig exactly where the flyby lands. */
   function endCinematic(player) {
     aimYaw = cine.endYaw;
@@ -532,6 +606,13 @@ export function createCameraRig(camera, deps) {
       if (cursorAimOn) {
         cursorNdcX = camInput.cursorX || 0;
         cursorNdcY = camInput.cursorY || 0;
+      }
+
+      // SPECTATE: ally chase-cam owns the frame (mouse/wheel/keys ignored —
+      // orbit input arrives via rig.spectateLook from the spectate controller).
+      if (spec) {
+        solveSpectate(dt);
+        return;
       }
 
       // Death-cam: slow orbit of the wreck (input ignored until released).
@@ -718,6 +799,7 @@ export function createCameraRig(camera, deps) {
      * @returns {void}
      */
     startCinematic(durS = 3) {
+      spec = null; // SPECTATE never survives into a fresh battle flyby
       // r6 (critic: "battle-start flyby is ~2 s ... over with HUD up by
       // 2.2 s"): 4 s floor regardless of the caller's legacy constant — the
       // authored sweep + mid-arc hold beat needs the screen time, and every
@@ -777,6 +859,7 @@ export function createCameraRig(camera, deps) {
      */
     startDeathCam() {
       cine = null;
+      spec = null; // SPECTATE: a fresh death cam always retires the ally chase
       setLetterbox(false);
       trauma = 0;
       const player = getPlayer();
@@ -784,6 +867,72 @@ export function createCameraRig(camera, deps) {
       rig.mode = 'ARCADE';
       applyPlayerVisibility(player, true);
     },
+
+    // --- SPECTATE (killcam_endscreen r1) ------------------------------------
+
+    /** True while the ally spectate chase-cam owns the camera. */
+    get spectateActive() { return spec !== null; },
+
+    /** Entity currently spectated (null when inactive). */
+    get spectateTargetEnt() { return spec ? spec.ent : null; },
+
+    /**
+     * Enter spectate on a living ally. The camera BLENDS from wherever it is
+     * right now (killcam exit pose, death-cam orbit) onto a chase pose behind
+     * the ally — no cut. Overrides an active death cam.
+     * @param {object} ent ally TankEntity (state + visual)
+     */
+    startSpectate(ent) {
+      if (!ent || !ent.state) return;
+      death = null;
+      cine = null;
+      setLetterbox(false);
+      trauma = 0;
+      specCaptureFrom();
+      spec = {
+        ent,
+        yaw: ent.state.yaw,          // open behind the ally's hull
+        pitch: SPEC_PITCH,
+        pivot: null,
+        blendT: 0,
+        blendDur: SPEC_BLEND_S,
+        fromPos: _specFrom,
+        fromLook: _specFromLook,
+      };
+      rig.mode = 'ARCADE';
+      applyPlayerVisibility(getPlayer(), true);
+    },
+
+    /**
+     * Retarget the spectate camera onto another ally with an eased blend
+     * (cycling, auto-advance on target death). No-op when not spectating.
+     * @param {object} ent ally TankEntity
+     */
+    setSpectateTarget(ent) {
+      if (!spec || !ent || !ent.state || ent === spec.ent) return;
+      specCaptureFrom();
+      spec.ent = ent;
+      spec.yaw = ent.state.yaw;
+      spec.pitch = SPEC_PITCH;
+      spec.pivot = null;
+      spec.blendT = 0;
+      spec.blendDur = SPEC_BLEND_S;
+    },
+
+    /**
+     * Free-look orbit input while spectating (controller-forwarded drag).
+     * @param {number} dxPx horizontal drag pixels
+     * @param {number} dyPx vertical drag pixels
+     */
+    spectateLook(dxPx, dyPx) {
+      if (!spec) return;
+      spec.yaw += dxPx * BASE_SENS * 1.4;
+      spec.pitch = THREE.MathUtils.clamp(
+        spec.pitch - dyPx * BASE_SENS * 1.4, PITCH_MIN, PITCH_MAX);
+    },
+
+    /** Leave spectate (battle end / garage). The next owner sets the pose. */
+    stopSpectate() { spec = null; },
 
     /**
      * Enter sniper mode. Keeps the shared aim angles (no view snap); the own
@@ -920,6 +1069,7 @@ export function createCameraRig(camera, deps) {
       external = true;
       rig.externalActive = true;
       cine = null;
+      spec = null; // SPECTATE never survives an external pose
       setLetterbox(false);
       death = null;
       trauma = 0;
@@ -944,6 +1094,7 @@ export function createCameraRig(camera, deps) {
       external = false;
       rig.externalActive = false;
       cine = null;
+      spec = null; // SPECTATE: deterministic pose retires the ally chase
       setLetterbox(false);
       death = null;
       cursorAimOn = false; // deterministic pose: aim through screen center
@@ -978,6 +1129,7 @@ export function createCameraRig(camera, deps) {
       external = false;
       rig.externalActive = false;
       cine = null;
+      spec = null; // SPECTATE: deterministic pose retires the ally chase
       setLetterbox(false);
       death = null;
       cursorAimOn = false; // deterministic pose: aim through screen center

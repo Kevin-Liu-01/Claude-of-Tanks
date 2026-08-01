@@ -10,8 +10,16 @@
  * reads live AI state during playback.
  *
  * PLAYBACK (main.js drives it at battle end):
- *   1. FLIGHT — slow-mo tracer chase along the captured trajectory from the
- *      killer's muzzle to the victim.
+ *   0. APPROACH (death view only, killcam_endscreen r1) — eased push-in
+ *      orbit from the player's live death view to the killer's position,
+ *      landing exactly on the flight chase-cam's first pose (no cuts). A
+ *      shock flash + sliding letterbox + staggered chrome open the replay;
+ *      a screen-space grade (desaturate + vignette) ramps over the death
+ *      view. Exit is a letterbox close + fade-through-black into whatever
+ *      follows (ally spectate / end screen), with scene teardown at black.
+ *   1. FLIGHT — tracer chase along the captured trajectory from the
+ *      killer's muzzle to the victim, at normal replay speed ramping to
+ *      ~0.25x slow-mo through the final meters into the penetration.
  *   2. X-RAY  — the victim rendered ghost-translucent (view-dependent fresnel
  *      skin, alpha-over blending that saturates instead of stacking to white,
  *      no depth writes so GTAO never shades a phantom hull), recognizable
@@ -34,10 +42,25 @@ import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.js';
 import { MODULE_LABEL, CREW_LABEL } from '../ui/moduleRegistry.js';
 import { getSpec, ALL_TANK_IDS } from '../vehicles/specs.js';
 import { penAtDistanceMm } from '../sim/ballistics.js';
+import { iconUrl } from '../ui/icons.js';
+import { tierNumeral } from '../ui/battleLoad.js';
 
 const XRAY_HOLD_S = 7.0;
 const FLIGHT_MIN_S = 1.9;
 const FLIGHT_MAX_S = 3.4;
+// killcam_endscreen r1 — death-sequence cinematography constants:
+// APPROACH: eased push-in orbit from the player's live death view toward the
+// killer before the shot replays (no cuts — the camera lands EXACTLY on the
+// flight chase cam's first pose). SLOWMO: the flight runs at normal replay
+// speed and ramps to ~0.25x through the final meters into the penetration
+// (WT death-cam retime). EXIT: letterbox close + fade-through-black into
+// whatever follows (spectate / end screen).
+const APPROACH_S = 1.6;        // push-in orbit duration
+const SLOWMO_RATE = 0.25;      // terminal speed factor at the plate
+const SLOWMO_START_M = 44;     // ramp begins this far from impact
+const SLOWMO_FULL_M = 13;      // fully slow by here
+const EXIT_HOLD_MS = 430;      // letterbox close + fade-to-black duration
+const KILLER_CARD_AT_S = 0.85; // killer card reveal into the x-ray hold
 const TRAJ_KEEP = 32;          // shell traces retained (oldest evicted)
 const TRAJ_MAX_PTS = 400 * 3;  // ≥ SHELL_MAX_LIFETIME_S at 60 Hz
 const ORBIT_RAD_S = 0.05;      // x-ray camera drift
@@ -808,6 +831,86 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-bart,.cot-kc-barb{position:absolute;left:0;right:0;height:9vh;}
 .cot-kc-bart{top:0;background:linear-gradient(180deg,rgba(0,0,0,.94),rgba(0,0,0,.6) 70%,transparent);}
 .cot-kc-barb{bottom:0;background:linear-gradient(0deg,#000 38%,rgba(0,0,0,.72) 68%,transparent);}
+/* ENTRY / EXIT TRANSITIONS (killcam_endscreen r1): the replay never pops in a
+   single frame. Entry: the letterbox bars SLIDE shut while title/annot/skip
+   fade-slide in staggered behind them (.in); a shock flash (.cot-kc-flash)
+   synced to the killing hit whites the frame for ~120 ms and decays. Exit:
+   the bars grow to swallow the frame (.out) under a body-level
+   fade-through-black (.cot-kc-fadeblk — appended to <body> so it outlives
+   the root teardown happening BEHIND it, and z-80 so nothing pops over it).
+   Staged harness frames (.now) hard-disable every timeline so captures stay
+   deterministic. cancel() strips all of these classes — tested explicitly. */
+.cot-kc .cot-kc-bart,.cot-kc .cot-kc-barb{
+  transition:transform .5s cubic-bezier(.2,.8,.25,1),height .42s cubic-bezier(.55,.06,.75,.4);}
+.cot-kc .cot-kc-bart{transform:translateY(-102%);}
+.cot-kc .cot-kc-barb{transform:translateY(102%);}
+.cot-kc.in .cot-kc-bart,.cot-kc.in .cot-kc-barb{transform:none;}
+.cot-kc.out .cot-kc-bart,.cot-kc.out .cot-kc-barb{height:51vh;
+  background:#000;transform:none;}
+.cot-kc .cot-kc-title{opacity:0;transform:translate(-50%,-8px);
+  transition:opacity .45s ease .28s,transform .45s ease .28s;}
+.cot-kc.in .cot-kc-title{opacity:1;transform:translate(-50%,0);}
+.cot-kc .cot-kc-skip{opacity:0;transition:opacity .5s ease .85s;}
+.cot-kc.in .cot-kc-skip{opacity:1;}
+.cot-kc .cot-kc-annot{transition:opacity .5s ease .5s,transform .5s ease .5s;
+  opacity:0;transform:translateY(10px);}
+.cot-kc.in .cot-kc-annot{opacity:1;transform:none;}
+.cot-kc.out .cot-kc-title,.cot-kc.out .cot-kc-annot,.cot-kc.out .cot-kc-skip,
+.cot-kc.out .cot-kc-killer,.cot-kc.out .cot-kc-label,.cot-kc.out .cot-kc-micro,
+.cot-kc.out .cot-kc-dot,.cot-kc.out .cot-kc-dmg,.cot-kc.out .cot-kc-leader{
+  opacity:0 !important;transition:opacity .24s ease !important;}
+.cot-kc.now *{transition:none !important;animation:none !important;}
+.cot-kc.now .cot-kc-title{opacity:1;transform:translate(-50%,0);}
+.cot-kc.now .cot-kc-skip{opacity:1;}
+.cot-kc.now .cot-kc-annot{opacity:1;transform:none;}
+.cot-kc-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;}
+.cot-kc-flash.go{animation:cotKcFlash .36s cubic-bezier(.2,.6,.5,1) forwards;}
+@keyframes cotKcFlash{0%{opacity:.94;}33%{opacity:.5;}100%{opacity:0;}}
+/* DEATH-VIEW GRADE (killcam_endscreen r1): subtle desaturation + vignette
+   ramp over the whole death replay — screen-space only (the post chain is
+   not this module's), ramped by CSS opacity so cancel() cleanly restores. */
+.cot-kc-grade{position:absolute;inset:0;pointer-events:none;opacity:0;
+  transition:opacity 1.2s ease;
+  -webkit-backdrop-filter:saturate(.62) contrast(1.05);
+  backdrop-filter:saturate(.62) contrast(1.05);
+  background:radial-gradient(ellipse 80% 70% at 50% 50%,rgba(0,0,0,0) 50%,
+    rgba(6,8,11,.34) 84%,rgba(4,6,9,.5) 100%);}
+.cot-kc.grade .cot-kc-grade{opacity:1;}
+.cot-kc-fadeblk{position:fixed;inset:0;z-index:80;background:#000;opacity:0;
+  pointer-events:none;transition:opacity .42s ease;}
+.cot-kc-fadeblk.in{opacity:1;}
+.cot-kc-fadeblk.lift{transition:opacity .34s ease;}
+/* KILLER CARD (killcam_endscreen r1): who killed you — name, vehicle, shell,
+   damage, distance — revealed during the x-ray hold in the Inter/amber HUD
+   language. Right side; the armor annotation block owns the left. */
+.cot-kc-killer{position:absolute;right:30px;bottom:11.5vh;width:266px;
+  background:linear-gradient(180deg,rgba(12,16,20,.94),rgba(7,10,13,.95));
+  border:1px solid rgba(146,164,180,.32);border-right:2px solid #ff5a4a;
+  box-shadow:0 8px 28px rgba(0,0,0,.6);padding:9px 12px 10px;opacity:0;
+  transform:translateY(12px);transition:opacity .55s ease,transform .55s ease;
+  display:none;}
+.cot-kc-killer.on{display:block;}
+.cot-kc-killer.rv{opacity:1;transform:none;}
+.cot-kc-killer .kk{font-family:${FONT_COND};font-weight:800;font-size:9px;
+  letter-spacing:.3em;color:#ff8a7a;text-transform:uppercase;}
+.cot-kc-killer .nm{margin-top:4px;font-weight:800;font-size:14.5px;
+  letter-spacing:.01em;color:#f4f8fc;display:flex;align-items:center;gap:8px;}
+.cot-kc-killer .nm .sil{width:46px;height:20px;flex:0 0 auto;
+  background-repeat:no-repeat;background-position:center;background-size:contain;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.7));}
+.cot-kc-killer .nm .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;}
+.cot-kc-killer .nm .t i{display:block;font-style:normal;font-family:${FONT_COND};
+  font-weight:700;font-size:9px;letter-spacing:.16em;color:#9fb0bf;
+  text-transform:uppercase;margin-top:1px;}
+.cot-kc-killer .rows{margin-top:7px;display:grid;grid-template-columns:1fr 1fr;
+  gap:2px 12px;border-top:1px solid rgba(146,164,180,.18);padding-top:6px;}
+.cot-kc-killer .kv{display:flex;justify-content:space-between;font-size:10.5px;
+  color:#8a97a3;font-variant-numeric:tabular-nums;letter-spacing:.03em;}
+.cot-kc-killer .kv b{color:#ffd9a0;font-weight:700;font-family:${FONT_COND};
+  letter-spacing:-.01em;}
+.cot-kc-killer .kv.dmg b{color:#ffd166;font-size:12px;}
+.cot-kc-killer .kv.w{grid-column:1/-1;}
 .cot-kc-title{position:absolute;top:2.4vh;left:50%;transform:translateX(-50%);text-align:center;}
 .cot-kc-title .t{font-family:${FONT_COND};font-weight:800;
   font-size:17px;letter-spacing:.46em;color:#ffd9a0;text-shadow:0 1px 10px rgba(0,0,0,.9);}
@@ -996,6 +1099,7 @@ export function createKillCam(deps) {
     ensureStyle();
     const root = el('div', 'cot-kc');
     document.body.appendChild(root);
+    el('div', 'cot-kc-grade', root); // death-view desat + vignette (class 'grade')
     el('div', 'cot-kc-veil', root); // x-ray backdrop dim (class 'xr' on root)
     el('div', 'cot-kc-bart', root);
     el('div', 'cot-kc-barb', root);
@@ -1011,13 +1115,45 @@ export function createKillCam(deps) {
     const rows = el('div', 'cot-kc-rows', annot);
     const banner = el('div', 'cot-kc-banner', annot);
     banner.textContent = 'AMMO RACK DETONATION';
+    // killer card (death view only — populated per replay in beginXray)
+    const killer = el('div', 'cot-kc-killer', root);
+    killer.innerHTML = '<div class="kk">Destroyed by</div>' +
+      '<div class="nm"><span class="sil"></span><span class="t"><span class="n"></span><i class="v"></i></span></div>' +
+      '<div class="rows"></div>';
+    const killerRefs = {
+      root: killer,
+      sil: killer.querySelector('.sil'),
+      name: killer.querySelector('.n'),
+      veh: killer.querySelector('.v'),
+      rows: killer.querySelector('.rows'),
+    };
+    // shock flash last — it must paint over every overlay child
+    const flash = el('div', 'cot-kc-flash', root);
     // leader-line layer sits under the label chips
     const leader = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     leader.setAttribute('class', 'cot-kc-leader');
     root.appendChild(leader);
     const labelHost = el('div', '', root);
-    dom = { root, titleT, titleS, hdK, hdW, rows, banner, labelHost, leader };
+    dom = { root, titleT, titleS, hdK, hdW, rows, banner, labelHost, leader, flash, killer: killerRefs };
     return dom;
+  }
+
+  // body-level fade-through-black for the exit transition — appended lazily,
+  // torn down by clearExit()/cancel() so a mid-transition cancel can never
+  // strand a black frame over the game.
+  let fadeEl = null;
+  let exitTimers = [];
+  function ensureFade() {
+    if (!fadeEl) {
+      fadeEl = el('div', 'cot-kc-fadeblk');
+      document.body.appendChild(fadeEl);
+    }
+    return fadeEl;
+  }
+  function clearExit() {
+    for (const t of exitTimers) clearTimeout(t);
+    exitTimers.length = 0;
+    if (fadeEl) { fadeEl.remove(); fadeEl = null; }
   }
 
   // -------------------------------------------------------------------------
@@ -1091,6 +1227,13 @@ export function createKillCam(deps) {
         traj.clear();
         pendingDeath = pendingVictory = lastHitOnPlayer = null;
         api.cancel();
+        spectate.stop(false); // fresh battle never inherits an ally chase
+      });
+      // SPECTATE lifecycle: the chase ends the moment the battle is decided
+      // (the end flow takes the camera) or the phase leaves battle (garage).
+      bus.on('battle:ended', () => spectate.stop(true));
+      bus.on('phase:change', (p) => {
+        if (!p || p.phase !== 'battle') spectate.stop(true);
       });
     },
 
@@ -1153,7 +1296,17 @@ export function createKillCam(deps) {
           snap = pendingVictory;
         }
       }
-      if (!snap || !snap.targetEnt || !snap.targetEnt.visual) return false;
+      if (!snap || !snap.targetEnt || !snap.targetEnt.visual) {
+        // NO-REPLAY DEATH (killcam_endscreen r1): the player died without a
+        // captured lethal chain (no hit ever recorded — pure ram/edge cases).
+        // The caller falls back to its death cam immediately; the spectate
+        // handover still applies when the battle continues. Deferred a tick
+        // so the caller's fallback (rig.startDeathCam) runs first — the
+        // controller's rig.startSpectate then supersedes it exactly like the
+        // replay exit path. maybeStart() self-gates on result/phase/allies.
+        if (result === 'defeat') setTimeout(() => spectate.maybeStart(), 80);
+        return false;
+      }
       begin(snap, kind, onDone, xrayOnly);
       return true;
     },
@@ -1167,6 +1320,15 @@ export function createKillCam(deps) {
       api.cancel();
       begin(snap, 'death', null, true);
       staged = true; // update() never auto-finishes a staged frame
+      // Deterministic capture: hard-disable the entry transition timelines
+      // (.now kills every transition/animation and pins final states) — the
+      // shot harness grabs the frame ~1.2 s after set(), and a bar mid-slide
+      // or a half-faded title would smear across captures.
+      if (dom) {
+        dom.root.classList.add('now');
+        dom.flash.classList.remove('go');
+        if (pb && pb.isDeathView) dom.killer.root.classList.add('rv');
+      }
       // Deterministic capture: strip the label reveal animation — the shot
       // harness grabs the frame ~1.2 s after set(), and heavy first-frame
       // work (shader compiles) can delay CSS timelines past the capture.
@@ -1184,8 +1346,19 @@ export function createKillCam(deps) {
     /** @returns {boolean} a replay (or staged frame) is on screen */
     isActive() { return active; },
 
-    /** Hard cleanup — used by __SHOTS.set and battle restarts. */
-    cancel() { if (active) finish(false); },
+    /**
+     * Hard cleanup — used by __SHOTS.set and battle restarts. Immediate: no
+     * exit choreography, and any in-flight exit fade/timers are revoked so a
+     * mid-transition cancel can never strand the black frame, the veil or
+     * the letterbox (clearExit + the class strip in teardown).
+     */
+    cancel() {
+      clearExit();
+      if (active) finish(false);
+    },
+
+    /** SPECTATE introspection/driving for probes (active, targetId, cycle). */
+    get spectate() { return spectate; },
 
     /**
      * Advance the replay one render frame (drives camera + labels).
@@ -1193,8 +1366,11 @@ export function createKillCam(deps) {
      */
     update(dt) {
       if (!active || !pb || staged) return;
-      if (pb.phase === 'flight') updateFlight(dt);
-      else updateXray(dt);
+      if (pb.phase === 'approach') updateApproach(dt);
+      else if (pb.phase === 'flight') updateFlight(dt);
+      else if (pb.phase === 'xray') updateXray(dt);
+      // 'exit': the closing letterbox + fade own the screen — camera holds
+      // its last x-ray pose; wall-clock timers drive the handover (beginExit)
     },
 
     /** Debug/testing introspection. */
@@ -1215,8 +1391,12 @@ export function createKillCam(deps) {
 
   function onSkipKey() {
     if (!active || !pb || staged) return;
-    if (pb.phase === 'flight') beginXray();
-    else finish(true);
+    // click-to-skip stays at every stage: approach/flight jump to the x-ray
+    // payoff, x-ray starts the exit. A second skip DURING the exit is
+    // ignored — the 0.4 s close is already the fastest path out, and
+    // re-entering beginExit would double-arm the handover timers.
+    if (pb.phase === 'approach' || pb.phase === 'flight') beginXray();
+    else if (pb.phase === 'xray') beginExit();
   }
 
   function begin(snap, kind, onDone, xrayOnly) {
@@ -1243,6 +1423,10 @@ export function createKillCam(deps) {
       obstacles: null, // module/crew box screen rects (label repulsion, r3)
       pts: null, cum: null, total: 0, dur: 0, segIdx: 0,
       flightLift: null, // per-sample camera lift (flight LOS solve, r6)
+      flightDist: 0, flightSpeed: 0, // distance-driven retime (slow-mo ramp)
+      app: null, // death-sequence push-in approach state
+      isDeathView: false, // player is the victim (grade + killer card + approach)
+      killerShown: false,
       core: null, streak: null, trailGeo: null,
       halo: null, tail: null, shellLight: null, muzzleLight: null,
       xcam: null,
@@ -1322,6 +1506,7 @@ export function createKillCam(deps) {
       && ((ev.targetId != null && ev.targetId === pEnt.id) || snap.targetEnt === pEnt));
     const playerKill = kind === 'victory'
       || (!playerIsVictim && !!(pEnt && ev.attackerId != null && ev.attackerId === pEnt.id));
+    pb.isDeathView = playerIsVictim;
     d.titleT.textContent = playerKill ? 'FINAL BLOW' : 'KILL CAM';
     d.titleS.textContent = playerKill
       ? `${ev.targetName || 'enemy'} destroyed`
@@ -1392,7 +1577,23 @@ export function createKillCam(deps) {
     d.banner.classList.toggle('on', !!ev.ammoRacked);
     d.labelHost.textContent = '';
     d.leader.textContent = '';
+    d.killer.root.classList.remove('on', 'rv');
+    // ENTRY TRANSITION (killcam_endscreen r1): the overlay mounts with bars
+    // parked off-screen, then a forced reflow arms the .in transitions —
+    // bars slide shut, title/annot/skip stagger in behind them. The shock
+    // flash fires only on the DEATH view (it is synced to the killing hit;
+    // a white-out over your own FINAL BLOW read as taking damage).
+    d.root.classList.remove('in', 'out', 'now', 'grade');
     d.root.classList.add('on');
+    clearExit(); // never inherit a half-finished exit fade
+    void d.root.offsetWidth; // commit the parked bar transforms
+    d.root.classList.add('in');
+    if (pb.isDeathView) {
+      d.root.classList.add('grade'); // desat + vignette ramp (death view)
+      d.flash.classList.remove('go');
+      void d.flash.offsetWidth;
+      d.flash.classList.add('go');
+    }
     // REPLAY OWNS THE SCREEN: css-level HUD veil that no later veilHud(false)
     // caller can undo (see KC_CSS note) — removed in finish()
     document.body.classList.add('cot-kc-live');
@@ -1512,12 +1713,137 @@ export function createKillCam(deps) {
         pb.muzzleLight.intensity = 70;
         pb.muzzleLight.distance = 55;
         pb.muzzleLight.position.set(pts[0].x, pts[0].y + 2.5, pts[0].z);
+        // distance-driven retime (killcam_endscreen r1): the flight advances
+        // by arc length per frame — pb.dur keeps the legacy pacing as the
+        // NORMAL-speed baseline, and updateFlight ramps the rate down to
+        // SLOWMO_RATE through the final meters into the plate.
+        pb.flightSpeed = pb.total / Math.max(0.3, pb.dur);
+        pb.flightDist = 0;
+        // DEATH SEQUENCE (killcam_endscreen r1): when the PLAYER is the
+        // victim, the replay no longer hard-cuts to the killer's muzzle —
+        // an eased push-in orbit carries the camera from the player's live
+        // death view to the exact first chase-cam pose, then the shot flies.
+        if (pb.isDeathView && beginApproach()) return;
         pb.phase = 'flight';
         updateFlight(0); // solve the first camera frame immediately
         return;
       }
     }
     beginXray();
+  }
+
+  /**
+   * DEATH-SEQUENCE APPROACH (killcam_endscreen r1): eased push-in orbit from
+   * the live camera pose (wherever the player died looking) toward the
+   * killer's position, landing EXACTLY on the flight chase-cam's first pose
+   * so the whole death sequence is one continuous camera move — no cuts, no
+   * teleports. Terrain-aware: the blended path is height-clamped every frame
+   * and pre-lifted clear of foliage volumes / props with the same clearance
+   * solve the flight LOS pass uses (cameraRig collision grammar, read-only).
+   * @returns {boolean} false when no meaningful move exists (skip to flight)
+   */
+  function beginApproach() {
+    const toPos = new THREE.Vector3();
+    const toLook = new THREE.Vector3();
+    flightStartPose(toPos, toLook);
+    const fromPos = camera.position.clone();
+    // a dead-on-top-of-the-muzzle camera has nothing to push through
+    if (fromPos.distanceTo(toPos) < 3) return false;
+    camera.getWorldDirection(_d);
+    const fromLook = fromPos.clone().addScaledVector(_d, 26);
+    // lateral sweep axis: the push curves around rather than dollying straight
+    _s.copy(toPos).sub(fromPos);
+    _s.y = 0;
+    const flat = _s.length();
+    const side = new THREE.Vector3();
+    if (flat > 1e-3) side.crossVectors(_s.multiplyScalar(1 / flat), UP);
+    pb.app = {
+      t: 0,
+      dur: APPROACH_S,
+      fromPos,
+      fromLook,
+      fromFov: camera.fov,
+      toPos,
+      toLook,
+      side,
+      sideAmt: THREE.MathUtils.clamp(flat * 0.12, 2.5, 13),
+      lift: THREE.MathUtils.clamp(fromPos.distanceTo(toPos) * 0.09, 3.5, 15),
+      losLift: 0,
+    };
+    // clearance pre-solve: the mid-arc must not dip through a canopy or lose
+    // its view line — find the smallest extra lift that clears every sample
+    const clr = worldClearance();
+    if (clr) {
+      const N = 9;
+      const LIFTS = [0, 2.5, 5, 9, 14];
+      let need = 0;
+      const cp = new THREE.Vector3();
+      const lk = new THREE.Vector3();
+      for (let i = 1; i < N; i++) {
+        const u = i / (N - 1);
+        const k = u * u * u * (u * (u * 6 - 15) + 10);
+        cp.lerpVectors(pb.app.fromPos, pb.app.toPos, k)
+          .addScaledVector(pb.app.side, Math.sin(Math.PI * k) * pb.app.sideAmt);
+        cp.y += Math.sin(Math.PI * k) * pb.app.lift;
+        lk.lerpVectors(pb.app.fromLook, pb.app.toLook,
+          THREE.MathUtils.smoothstep(u, 0.12, 0.85));
+        const baseY = cp.y;
+        let liftHere = LIFTS[LIFTS.length - 1]; // best effort if nothing clears
+        for (const cand of LIFTS) {
+          cp.y = baseY + cand;
+          if (clr.clearAt(cp, lk)) { liftHere = cand; break; }
+        }
+        need = Math.max(need, liftHere);
+      }
+      pb.app.losLift = need;
+    }
+    // the tracer has not been fired yet — dress hidden until handover
+    for (const o of [pb.core, pb.streak, pb.halo, pb.tail]) if (o) o.visible = false;
+    if (pb.shellLight) pb.shellLight.intensity = 0;
+    if (pb.muzzleLight) pb.muzzleLight.intensity = 0;
+    pb.phase = 'approach';
+    updateApproach(0);
+    return true;
+  }
+
+  function updateApproach(dt) {
+    const a = pb.app;
+    a.t += dt;
+    const u = Math.min(1, a.t / a.dur);
+    const k = u * u * u * (u * (u * 6 - 15) + 10); // smootherstep push-in
+    _a.lerpVectors(a.fromPos, a.toPos, k)
+      .addScaledVector(a.side, Math.sin(Math.PI * k) * a.sideAmt);
+    _a.y += Math.sin(Math.PI * k) * a.lift + Math.sin(Math.PI * k) * a.losLift;
+    _b.lerpVectors(a.fromLook, a.toLook, THREE.MathUtils.smoothstep(u, 0.12, 0.85));
+    if (heightField) {
+      const minY = heightField.getHeightAt(_a.x, _a.z) + 0.9;
+      if (_a.y < minY) _a.y = minY;
+    }
+    // muzzle glow swells as the camera arrives — the shot is about to re-fire
+    if (pb.muzzleLight) pb.muzzleLight.intensity = 70 * THREE.MathUtils.smoothstep(u, 0.78, 1);
+    rig.setExternalPose(_a, _b, a.fromFov + (50 - a.fromFov) * k);
+    if (u >= 1) {
+      for (const o of [pb.core, pb.streak, pb.halo, pb.tail]) if (o) o.visible = true;
+      pb.phase = 'flight';
+      updateFlight(0);
+    }
+  }
+
+  /** Flight chase-cam pose at launch (u = 0) — the approach lands on it. */
+  function flightStartPose(outPos, outLook) {
+    pb.segIdx = 0;
+    sampleTraj(0, _p, _d);
+    _s.crossVectors(_d, UP);
+    if (_s.lengthSq() < 1e-6) _s.set(1, 0, 0); else _s.normalize();
+    outPos.copy(_p).addScaledVector(_d, -9.0).addScaledVector(_s, 2.7);
+    outPos.y += 1.35;
+    if (pb.flightLift) outPos.y += pb.flightLift[0];
+    if (heightField) {
+      const minY = heightField.getHeightAt(outPos.x, outPos.z) + 0.8;
+      if (outPos.y < minY) outPos.y = minY;
+    }
+    outLook.copy(_p).addScaledVector(_d, 10).lerp(pb.xcam.center, 0.4);
+    pb.segIdx = 0;
   }
 
   /**
@@ -1537,20 +1863,20 @@ export function createKillCam(deps) {
    * system's vegetation concealment discs — nothing here is invented.
    * @returns {?Float32Array} lift meters per sample, or null when clear
    */
-  function solveFlightOcclusion() {
+  /**
+   * Shared camera-clearance oracle (killcam_endscreen r1: factored out of
+   * solveFlightOcclusion so the death-approach pre-solve reuses it): a pose
+   * is CLEAR when it sits outside every vegetation concealment volume and
+   * its view line to the look target is not blocked by terrain/props. The
+   * occluder data is the world the sim itself uses — nothing invented.
+   * @returns {?{clearAt:(cp:THREE.Vector3, lk:THREE.Vector3)=>boolean}}
+   */
+  function worldClearance() {
     let world = null;
     try { world = getWorld ? getWorld() : null; } catch (_) { world = null; }
     const conceal = (world && world.getConcealment && world.getConcealment()) || [];
     const canRay = !!(world && world.raycast);
-    if ((!conceal.length && !canRay) || !pb.pts || pb.total <= 0) return null;
-    const N = 13;
-    const LIFTS = [0, 2.5, 5, 8, 12, 16, 20];
-    const lifts = new Float32Array(N);
-    const pos = new THREE.Vector3();
-    const dir = new THREE.Vector3();
-    const camP = new THREE.Vector3();
-    const look = new THREE.Vector3();
-    const sideV = new THREE.Vector3();
+    if (!conceal.length && !canRay) return null;
     const ray = new THREE.Vector3();
     /** Camera pose acceptable: outside foliage volumes, view line open. */
     const clearAt = (cp, lk) => {
@@ -1577,9 +1903,27 @@ export function createKillCam(deps) {
       }
       return true;
     };
+    return { clearAt };
+  }
+
+  function solveFlightOcclusion() {
+    const clr = worldClearance();
+    if (!clr || !pb.pts || pb.total <= 0) return null;
+    const clearAt = clr.clearAt;
+    const N = 13;
+    const LIFTS = [0, 2.5, 5, 8, 12, 16, 20];
+    const lifts = new Float32Array(N);
+    const pos = new THREE.Vector3();
+    const dir = new THREE.Vector3();
+    const camP = new THREE.Vector3();
+    const look = new THREE.Vector3();
+    const sideV = new THREE.Vector3();
     for (let i = 0; i < N; i++) {
       const u = i / (N - 1);
-      const s = 1 - Math.pow(1 - u, 2.15); // same ease as updateFlight
+      // uniform in ARC LENGTH (killcam_endscreen r1): playback is now
+      // distance-driven (slow-mo retime), so the lift table is indexed by
+      // distance fraction — the old launch-ease mapping would misplace lifts
+      const s = u;
       sampleTraj(s * pb.total, pos, dir);
       sideV.crossVectors(dir, UP);
       if (sideV.lengthSq() < 1e-6) sideV.set(1, 0, 0); else sideV.normalize();
@@ -1626,9 +1970,20 @@ export function createKillCam(deps) {
 
   function updateFlight(dt) {
     pb.t += dt;
-    const u = Math.min(1, pb.t / pb.dur);
-    const s = 1 - Math.pow(1 - u, 2.15); // fast launch, slow-mo into impact
-    const dist = s * pb.total;
+    // SLOW-MO SPEED RAMP (killcam_endscreen r1): the flight advances by arc
+    // length — normal replay speed over the approach, easing down to
+    // SLOWMO_RATE (~0.25x) through the final meters into the penetration.
+    // The x-ray blend (k below) rides the same distance parameter, so the
+    // camera glides into the frozen x-ray moment while time dilates.
+    const remaining = pb.total - pb.flightDist;
+    const ramp = THREE.MathUtils.smoothstep(remaining, SLOWMO_FULL_M, SLOWMO_START_M);
+    const rate = SLOWMO_RATE + (1 - SLOWMO_RATE) * ramp;
+    pb.flightDist = Math.min(pb.total, pb.flightDist + dt * pb.flightSpeed * rate);
+    // stall guard: whatever the numbers, the flight can never outlive its
+    // budget + the slow-mo tail (rAF gaps, zero-length arcs)
+    if (pb.t > pb.dur + 3.0) pb.flightDist = pb.total;
+    const u = pb.total > 0 ? pb.flightDist / pb.total : 1;
+    const dist = pb.flightDist;
     const idx = sampleTraj(dist, _p, _d);
     pb.trailGeo.setDrawRange(0, Math.max(2, idx + 2));
     pb.core.position.copy(_p);
@@ -2401,6 +2756,39 @@ export function createKillCam(deps) {
     d.root.classList.add('xr'); // fade in the x-ray backdrop dim
     d.labelHost.textContent = '';
     d.leader.textContent = '';
+    // KILLER CARD (death view): name, vehicle, shell, damage, distance —
+    // every field straight off the snapshot event (nothing recomputed).
+    // Revealed by updateXray at KILLER_CARD_AT_S; hidden for FINAL BLOW
+    // frames (the annotation block already tells the player-kill story).
+    if (pb.isDeathView) {
+      let vSpec = null;
+      try { vSpec = ev.attackerSpecId ? getSpec(ev.attackerSpecId) : null; } catch (_) { vSpec = null; }
+      const kName = ev.attackerName || (vSpec && vSpec.name) || 'Enemy';
+      d.killer.name.textContent = kName;
+      const tier = ev.attackerSpecId ? tierNumeral(ev.attackerSpecId) : '';
+      // vehicle line never repeats the headline: attackerName usually IS the
+      // vehicle (state.js enrichment) — then the line carries the tier alone
+      const vehBits = [];
+      if (tier) vehBits.push(`Tier ${tier}`);
+      if (vSpec && !kName.toLowerCase().includes(vSpec.name.toLowerCase())) vehBits.push(vSpec.name);
+      d.killer.veh.textContent = vehBits.join(' · ');
+      d.killer.sil.style.backgroundImage = ev.attackerSpecId
+        ? `url(${iconUrl(ev.attackerSpecId, 'side_silhouette')})` : 'none';
+      d.killer.rows.textContent = '';
+      const kkv = (k2, v2, cls2) => {
+        const r2 = el('div', `kv${cls2 ? ` ${cls2}` : ''}`, d.killer.rows);
+        const ks2 = el('span', '', r2); ks2.textContent = k2;
+        const vs2 = el('b', '', r2); vs2.textContent = v2;
+      };
+      const cleanShell = shellDisplayName(ev);
+      kkv('Shell', `${ev.shellType || ''}${cleanShell ? ` ${cleanShell}` : ''}`.trim() || '—', 'w');
+      kkv('Damage', (ev.damage || 0) > 0 ? `−${Math.round(ev.damage)}` : '0', 'dmg');
+      kkv('Distance', `${Math.round(ev.flightDistM || 0)} m`);
+      d.killer.root.classList.add('on');
+      if (staged) d.killer.root.classList.add('rv'); // deterministic frames skip the reveal timer
+    } else {
+      d.killer.root.classList.remove('on', 'rv');
+    }
     pb.labels.length = 0;
     const addLabel = (world, color, main, sub, big, ok, key) => {
       // ok = the hit left the module functional: the chip is demoted to the
@@ -2712,10 +3100,54 @@ export function createKillCam(deps) {
     }
     rig.setExternalPose(_a, pb.xcam.look, 42);
     projectLabels();
-    if (pb.xt >= XRAY_HOLD_S) finish(true);
+    // killer card reveal: a beat into the hold, after the shot has landed
+    // and the label cascade started — death view only (populated in beginXray)
+    if (!pb.killerShown && pb.isDeathView && pb.xt >= KILLER_CARD_AT_S && dom) {
+      pb.killerShown = true;
+      dom.killer.root.classList.add('rv');
+    }
+    if (pb.xt >= XRAY_HOLD_S) beginExit();
+  }
+
+  /**
+   * EXIT TRANSITION (killcam_endscreen r1): letterbox close + fade-through-
+   * black (~EXIT_HOLD_MS) into whatever follows. The scene teardown, the
+   * integration onDone (spectate / end overlay setup) and killcam:done all
+   * run AT the black frame, so the next state is fully staged before the
+   * fade lifts — nothing ever pops mid-frame. Wall-clock timers (not rAF)
+   * drive the handover so starved panes still finish the battle flow;
+   * clearExit() (cancel path) can revoke every step.
+   */
+  function beginExit() {
+    if (!pb || pb.phase === 'exit') return;
+    pb.phase = 'exit';
+    const d = ensureDom();
+    d.root.classList.add('out');
+    const f = ensureFade();
+    f.classList.remove('lift');
+    void f.offsetWidth;
+    f.classList.add('in');
+    exitTimers.push(setTimeout(() => {
+      teardown(true); // scene restored + onDone + killcam:done, behind black
+      const f2 = fadeEl;
+      if (!f2) return;
+      exitTimers.push(setTimeout(() => {
+        f2.classList.add('lift');
+        f2.classList.remove('in');
+        exitTimers.push(setTimeout(() => {
+          if (fadeEl === f2) fadeEl = null;
+          f2.remove();
+        }, 420));
+      }, 50));
+    }, EXIT_HOLD_MS));
   }
 
   function finish(runCallback) {
+    // legacy seam kept for cancel(): immediate teardown, no exit choreography
+    teardown(runCallback);
+  }
+
+  function teardown(runCallback) {
     if (!active) return;
     window.removeEventListener('keydown', onSkipKey, true);
     window.removeEventListener('mousedown', onSkipKey, true);
@@ -2748,24 +3180,170 @@ export function createKillCam(deps) {
       pb.group.clear();
     }
     if (dom) {
-      dom.root.classList.remove('on');
-      dom.root.classList.remove('xr');
+      // every transition class stripped — a cancel mid-entry, mid-hold or
+      // mid-exit must leave the DOM exactly as a fresh begin() expects it
+      // (bars parked, grade off, flash spent, killer card hidden)
+      dom.root.classList.remove('on', 'xr', 'in', 'out', 'grade', 'now');
+      dom.flash.classList.remove('go');
+      dom.killer.root.classList.remove('on', 'rv');
       dom.labelHost.textContent = '';
       dom.leader.textContent = '';
     }
     // release the css-level HUD veil (counterpart of begin()'s stamp)
     document.body.classList.remove('cot-kc-live');
     const done = pb ? pb.onDone : null;
+    const wasDeathView = pb ? pb.isDeathView : false;
     pb = null;
     active = false;
     staged = false;
     if (runCallback && done) done();
+    // ALLY SPECTATE (killcam_endscreen r1): after the DEATH replay hands the
+    // screen back — battle still live, allies still standing — land in the
+    // spectate chase instead of the static wreck orbit the integration
+    // onDone just started (rig.startSpectate overrides rig.startDeathCam).
+    // No-op when the battle is decided, the player lives, or no ally does.
+    if (runCallback && wasDeathView) spectate.maybeStart();
     // REPORT GATE: release — emitted on natural finish, skip AND cancel alike
     // so a buffered battle report can never be lost with the replay. Emitted
     // AFTER onDone so the integration end-overlay (.cot-end) already exists
     // when shotInfo's report renders and pins its footer to it.
     if (busRef) busRef.emit('killcam:done', {});
   }
+
+  // ===========================================================================
+  // ALLY SPECTATOR MODE (killcam_endscreen r1)
+  // ===========================================================================
+  // Entered ONLY from the death-replay exit path above: the player is dead,
+  // the battle continues, and living allies remain. The camera work lives in
+  // the rig (rig.startSpectate / setSpectateTarget — eased blends, collision
+  // pull-in); this controller owns target selection, cycling input
+  // (←/→ or A/D), drag-to-orbit, auto-advance when the spectated ally dies,
+  // and the bus announcements hud.js renders the spectate bar from
+  // ('spectate:begin/change/end' — additive events, no main.js wiring).
+  // Battle state is read through window.__DEBUG.game (READ-ONLY — the
+  // integration seam sanctioned for this round; no game module is imported).
+  const spectate = (() => {
+    let on = false;
+    let curId = null;
+    let pollId = 0;
+    let advanceTimer = 0;
+    let dragging = false;
+    let dragX = 0;
+    let dragY = 0;
+    const gameRef = () => {
+      try {
+        return (typeof window !== 'undefined' && window.__DEBUG) ? window.__DEBUG.game : null;
+      } catch (_) { return null; }
+    };
+    const livingAllies = () => {
+      const g = gameRef();
+      if (!g || !Array.isArray(g.tanks)) return [];
+      return g.tanks.filter((t) => t && !t.isPlayer && t.team !== 'enemy'
+        && t.combat && !t.combat.destroyed && t.state && t.visual);
+    };
+    const entById = (id) => {
+      const g = gameRef();
+      return g && g.tankById ? g.tankById.get(id) : null;
+    };
+    function announce(kind, ent, count) {
+      if (!busRef || !ent) return;
+      busRef.emit(`spectate:${kind}`, {
+        id: ent.id,
+        vehicle: ent.spec ? ent.spec.name : String(ent.id),
+        specId: ent.specId || null,
+        count,
+      });
+    }
+    function retarget(ent, list, first) {
+      curId = ent.id;
+      if (first) rig.startSpectate(ent);
+      else rig.setSpectateTarget(ent);
+      announce(first ? 'begin' : 'change', ent, list.length);
+    }
+    function cycle(dir) {
+      if (!on) return;
+      const list = livingAllies();
+      if (!list.length) { stop(true); return; }
+      let i = list.findIndex((t) => t.id === curId);
+      if (i < 0) i = 0; // current target died — dir picks the neighbour
+      else i = ((i + dir) % list.length + list.length) % list.length;
+      retarget(list[i], list, false);
+    }
+    function onKey(e) {
+      if (!on || e.repeat) return;
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') cycle(1);
+      else if (e.code === 'ArrowLeft' || e.code === 'KeyA') cycle(-1);
+    }
+    // drag-to-orbit: pointer lock is gone after death, so free-look arrives
+    // as plain document drags forwarded to the rig (buttons excluded)
+    function onDown(e) {
+      if (!on || e.button !== 0) return;
+      if (e.target && e.target.closest && e.target.closest('button,.cot-spec-btn')) return;
+      dragging = true;
+      dragX = e.clientX;
+      dragY = e.clientY;
+    }
+    function onMove(e) {
+      if (!on || !dragging) return;
+      rig.spectateLook(e.clientX - dragX, e.clientY - dragY);
+      dragX = e.clientX;
+      dragY = e.clientY;
+    }
+    function onUp() { dragging = false; }
+    function watchTarget() {
+      if (!on) return;
+      const cur = curId != null ? entById(curId) : null;
+      const dead = !cur || !cur.combat || cur.combat.destroyed;
+      if (dead && !advanceTimer) {
+        // let the ally's death read for a beat, then glide to the next
+        advanceTimer = setTimeout(() => {
+          advanceTimer = 0;
+          if (on) cycle(1); // cycle() re-resolves the living list / stops
+        }, 900);
+      }
+    }
+    function start() {
+      const list = livingAllies();
+      if (!list.length) return false;
+      on = true;
+      dragging = false;
+      retarget(list[0], list, true);
+      window.addEventListener('keydown', onKey, true);
+      window.addEventListener('mousedown', onDown, true);
+      window.addEventListener('mousemove', onMove, true);
+      window.addEventListener('mouseup', onUp, true);
+      pollId = setInterval(watchTarget, 400);
+      return true;
+    }
+    function stop(emitEnd) {
+      if (!on) return;
+      on = false;
+      curId = null;
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('mousedown', onDown, true);
+      window.removeEventListener('mousemove', onMove, true);
+      window.removeEventListener('mouseup', onUp, true);
+      if (pollId) { clearInterval(pollId); pollId = 0; }
+      if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = 0; }
+      if (rig.stopSpectate) rig.stopSpectate();
+      if (emitEnd && busRef) busRef.emit('spectate:end', {});
+    }
+    return {
+      /** Enter spectate iff dead player + live battle + living allies. */
+      maybeStart() {
+        if (on) return false;
+        const g = gameRef();
+        const p = getPlayer();
+        if (!g || g.result || g.phase !== 'battle') return false;
+        if (!p || !p.combat || !p.combat.destroyed) return false;
+        return start();
+      },
+      stop,
+      cycle,
+      get active() { return on; },
+      get targetId() { return on ? curId : null; },
+    };
+  })();
 
   return api;
 }
