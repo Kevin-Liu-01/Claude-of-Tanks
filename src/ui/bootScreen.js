@@ -24,6 +24,8 @@
  * still be captured.
  */
 
+import { FEATURED_IMAGES } from './featuredShots.js';
+
 const TIPS = [
   ['Angling', 'Turn your hull 20-30° away from the shooter. Side plates presented at an angle gain effective thickness — flat-on armour is the easiest armour to punch through.'],
   ['Weak spots', 'Aim for the lower front plate, the turret ring and the cupola. A tier-X glacis will bounce almost anything; the hatches next to it will not.'],
@@ -58,19 +60,12 @@ const STAGES = [
 const $ = (id) => document.getElementById(id);
 
 // Marketing backdrop set (in-engine action stills — tools/marketing-shots).
-// The first entry is the boot hero; the rest crossfade in while the entry
-// gate idles. All are lazy-loaded AFTER the splash has painted, so the boot
-// critical path never waits on them (bootgate-probe guards the timing).
-// r9.1: names must match public/media/featured/ EXACTLY — three stale
-// entries made preload() error forever, so the crossfade stuck on the
-// winter shot every boot (the "same picture every load" the owner saw).
-const HERO_SHOTS = [
-  '/media/featured/f1_09_winter_lake_duel.webp',
-  '/media/featured/f2_06_desert_hero_kf51.webp',
-  '/media/featured/f3_19_urban_overwatch_church.webp',
-  '/media/featured/f4_20_urban_ruin_brawl.webp',
-  '/media/featured/f5_01_desert_duel_leclerc_kill.webp',
-];
+// All are lazy-loaded AFTER the splash has painted, so the boot critical
+// path never waits on them (bootgate-probe guards the timing).
+// r9.5: the list lives in featuredShots.js — ONE copy shared with the
+// garage gallery and the state-transition screens, because hand-synced
+// copies drifted from disk twice (the r9.1 "same picture every load" bug).
+const HERO_SHOTS = FEATURED_IMAGES;
 const HERO_ROTATE_MS = 9000;
 
 /**

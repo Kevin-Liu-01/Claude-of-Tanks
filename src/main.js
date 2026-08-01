@@ -70,6 +70,7 @@ import {
 // paint never waits on this module graph) and the pre-battle roster screen.
 import { createBootScreen } from './ui/bootScreen.js';
 import { createBattleLoadScreen, tierNumeral } from './ui/battleLoad.js';
+import { createTransition } from './ui/transition.js';
 // SCENE STUDIO (src/game/studio.js): staging rig + scripted-shot API.
 import { createStudio } from './game/studio.js';
 
@@ -982,6 +983,12 @@ const garage = await bootStage('ui', () => createGarage({
 // before the first BATTLE press.
 const battleLoad = createBattleLoadScreen();
 
+// STATE TRANSITIONS (src/ui/transition.js): the shared branded veil/loading
+// screen every non-battle state swap passes through — garage↔studio (wired
+// through the studio ctx below) and battle→garage. Headless probes never see
+// it (navigator.webdriver ⇒ synchronous no-op, per the screenshot contract).
+const transition = createTransition();
+
 // --- audio --------------------------------------------------------------------
 const audio = await bootStage('audio', () => {
   const a = createAudio();
@@ -1345,7 +1352,7 @@ endBtn.style.cssText =
   "font-family:'Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
 endOverlay.append(endTitle, endEarn, endBtn);
 document.body.appendChild(endOverlay);
-endBtn.addEventListener('click', () => { bus.emit('ui:click', {}); enterGarage(); });
+endBtn.addEventListener('click', () => { bus.emit('ui:click', {}); leaveBattleToGarage(); });
 
 // battle_hud r1 (owner): the always-visible LEAVE BATTLE button is GONE — a
 // persistent exit control is not WoT battle chrome and it shadowed the
@@ -1393,7 +1400,7 @@ const settings = createSettings({
   isBattleActive: () => game.phase === 'battle' && !game.result &&
     !!(game.player && game.player.combat && !game.player.combat.destroyed),
   canLeaveBattle: () => game.phase === 'battle',
-  onLeaveBattle: () => enterGarage(),
+  onLeaveBattle: () => leaveBattleToGarage(),
   gearVisible: () => game.phase === 'garage',
   // PAUSE: the overlay shows its PAUSED treatment exactly when opening it
   // freezes a live battle — same predicate the tick() pause gate derives its
@@ -1404,7 +1411,7 @@ const settings = createSettings({
 const touchControls = createTouchControls({
   input, bus,
   isBattleActive: () => game.phase === 'battle',
-  onLeaveBattle: () => enterGarage(),
+  onLeaveBattle: () => leaveBattleToGarage(),
 });
 
 // CURSOR-AIM FALLBACK: pointer lock durably unavailable (sandboxed iframes,
@@ -1783,6 +1790,21 @@ function enterGarage() {
   showroom.start(); // SHOWROOM CAMERA: hero framing + drag-orbit takes over
   audio.ambientOn(false);
   audio.playGarageSting();
+}
+
+// STATE TRANSITIONS: every player-facing exit from a battle passes through
+// the branded veil instead of hard-popping the garage mid-frame. Error paths
+// (battle-entry failure) and probe-driven exits keep calling enterGarage()
+// directly. The battle keeps rendering under the fade-in, so the swap itself
+// happens fully covered.
+let leavingBattle = false;
+function leaveBattleToGarage() {
+  if (leavingBattle) return;
+  leavingBattle = true;
+  transition.run(() => { enterGarage(); }, {
+    kicker: 'Leaving battle', title: 'Garage',
+    progress: false, minShowMs: 760,
+  }).finally(() => { leavingBattle = false; });
 }
 
 // ---------------------------------------------------------------------------
@@ -3229,6 +3251,7 @@ const studio = createStudio({
   renderer, scene, camera, post, lighting, fx, game, hud, garage, showroom,
   hfProxy, getWorld: () => world, ensureWorld, setWorldDormant,
   setGarageSpots, setGarageSunTrim, enterGarage, warmCombatPipeline,
+  transition, // branded loading screen on studio enter/exit
 });
 
 bootComplete = true;

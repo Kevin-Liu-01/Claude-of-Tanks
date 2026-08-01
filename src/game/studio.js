@@ -76,7 +76,7 @@ const _ndc = new THREE.Vector2();
  *   renderer, scene, camera, post, lighting, fx, game, hud, garage, showroom,
  *   hfProxy, getWorld(), ensureWorld(mapId,onProgress), setWorldDormant(on),
  *   setGarageSpots(on), setGarageSunTrim(on), enterGarage(),
- *   warmCombatPipeline()
+ *   warmCombatPipeline(), transition (branded loading screen, optional)
  * @returns {{active: boolean, tick(dt: number): void, enter(opts?: object):
  *   Promise<void>, exit(): void, api: object}}
  */
@@ -86,6 +86,10 @@ export function createStudio(ctx) {
     hfProxy, getWorld, ensureWorld, setWorldDormant, setGarageSpots,
     setGarageSunTrim, enterGarage, warmCombatPipeline,
   } = ctx;
+  // Optional so a ctx without it (tests, stripped builds) still gets a
+  // working studio — the run() fallback just executes the work directly.
+  const transition = ctx.transition ||
+    { run: (work) => Promise.resolve(work(() => {})), progress: () => {} };
 
   // --- studio state ----------------------------------------------------------
   let active = false;
@@ -1157,44 +1161,71 @@ export function createStudio(ctx) {
         }, 60);
       });
     }
-    game.phase = 'studio';
-    garage.hide();
-    showroom.stop();
-    hud.setMode('hidden');
-    setGarageSpots(false);
-    setGarageSunTrim(false); // authored map sun, not the neutral pedestal key
-    ensureFxBus();
-    warmCombatPipeline(); // finish pool bakes now — no mid-session hitches
-    active = true;        // tick branch takes the frame from here on
-    panel.show();
-    panel.setBusy('Building battlefield…');
     const mapId = resolveMapId(opts.map || urlParam('map') || 'verdant', () => 0.01);
-    await ensureWorld(mapId, (f, label) => panel.setBusy(`${label} ${Math.round(f * 100)}%`));
-    setWorldDormant(false);
-    setCamoBiome(mapId);
-    applyCamoPatterns();
-    sweepPool();
-    resetFx();
-    timeScale = 1;
-    // default vantage: over the player spawn, looking across the field
-    const w = getWorld();
-    const sp = w.spawnPoints.player;
-    _v2.set(sp.pos[0], sp.pos[1], sp.pos[2]);
-    camera.position.set(
-      _v2.x - Math.sin(sp.yaw) * 22, _v2.y + 9, _v2.z - Math.cos(sp.yaw) * 22,
-    );
-    cam.fov = 50;
-    cam.roll = 0;
-    lookAt(_v1.copy(_v2).setY(_v2.y + 2));
-    cam.orbit.target.copy(_v2);
-    cam.orbit.dist = 24;
-    lighting.updateFrustums();
-    panel.setBusy(null);
-    panel.refreshAll();
+    // The whole swap runs behind the branded loading screen: the garage keeps
+    // rendering under the fade-in, and the world build drives the real bar.
+    // Probes never see it (transition.run is a synchronous no-op under
+    // automation — screenshot contract).
+    await transition.run(async (p) => {
+      p(0.02, 'Preparing studio');
+      game.phase = 'studio';
+      garage.hide();
+      showroom.stop();
+      hud.setMode('hidden');
+      setGarageSpots(false);
+      setGarageSunTrim(false); // authored map sun, not the neutral pedestal key
+      ensureFxBus();
+      warmCombatPipeline(); // finish pool bakes now — no mid-session hitches
+      active = true;        // tick branch takes the frame from here on
+      panel.show();
+      await ensureWorld(mapId, (f, label) => p(0.04 + f * 0.9, label));
+      setWorldDormant(false);
+      setCamoBiome(mapId);
+      applyCamoPatterns();
+      sweepPool();
+      resetFx();
+      timeScale = 1;
+      p(0.96, 'Positioning camera');
+      // default vantage: over the player spawn, looking across the field
+      const w = getWorld();
+      const sp = w.spawnPoints.player;
+      _v2.set(sp.pos[0], sp.pos[1], sp.pos[2]);
+      camera.position.set(
+        _v2.x - Math.sin(sp.yaw) * 22, _v2.y + 9, _v2.z - Math.cos(sp.yaw) * 22,
+      );
+      cam.fov = 50;
+      cam.roll = 0;
+      lookAt(_v1.copy(_v2).setY(_v2.y + 2));
+      cam.orbit.target.copy(_v2);
+      cam.orbit.dist = 24;
+      lighting.updateFrustums();
+      panel.setBusy(null);
+      panel.refreshAll();
+    }, {
+      kicker: 'Scene Studio',
+      title: getMapConfig(mapId).name || mapId,
+      sub: 'Staging rig · Free camera',
+      minShowMs: 900,
+    });
   }
 
-  /** Leave the studio and hand the game back to the garage. */
+  /**
+   * Leave the studio and hand the game back to the garage, behind the same
+   * branded veil (owner: "going to studio should show a loading screen…
+   * and back"). The studio keeps ticking while the veil fades in, so no
+   * half-torn frame is ever visible; the actual teardown runs covered.
+   */
+  let exiting = false;
   function exit() {
+    if (!active || exiting) return;
+    exiting = true;
+    transition.run(() => { doExit(); }, {
+      kicker: 'Scene Studio', title: 'Garage',
+      progress: false, minShowMs: 720,
+    }).finally(() => { exiting = false; });
+  }
+
+  function doExit() {
     if (!active) return;
     active = false;
     panel.hide();

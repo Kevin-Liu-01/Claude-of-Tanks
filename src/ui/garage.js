@@ -4,6 +4,7 @@
 // Contract: docs/ARCHITECTURE.md §3.7.3.
 
 import { FONT_STACK, ensureFonts } from './fonts.js';
+import { FEATURED_SHOTS } from './featuredShots.js';
 import { flagSVG } from './flags.js';
 import { createTechTree } from './techtree.js';
 import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } from './tankThumbs.js';
@@ -1054,16 +1055,9 @@ export function createGarage(opts) {
   // created programmatically so the main markup block stays untouched; it
   // crossfades every 8 s, click advances, hover pauses. Images lazy-load —
   // a missing set simply never shows the panel's layers (gradient card).
-  // r9.1: names must match public/media/featured/ EXACTLY — three stale
-  // entries meant preload() errored forever and the rotation silently stuck
-  // on frame 1 (the "always the same picture" the owner reported).
-  const FEATURED_SHOTS = [
-    { img: '/media/featured/f1_09_winter_lake_duel.webp', cap: 'Frosthollow — ammo-rack kill' },
-    { img: '/media/featured/f2_06_desert_hero_kf51.webp', cap: 'Sirocco Wadi — KF51 firing' },
-    { img: '/media/featured/f3_19_urban_overwatch_church.webp', cap: 'Steinburg — church overwatch' },
-    { img: '/media/featured/f4_20_urban_ruin_brawl.webp', cap: 'Steinburg — ruin brawl' },
-    { img: '/media/featured/f5_01_desert_duel_leclerc_kill.webp', cap: 'Sirocco Wadi — Leclerc duel' },
-  ];
+  // r9.5: the list moved to featuredShots.js — ONE copy shared with the boot
+  // splash and the transition screens (hand-synced copies drifted from disk
+  // twice; r9.1 was the "always the same picture" bug that caused).
   (() => {
     const col = root.querySelector('.cot-leftcol');
     if (!col || !FEATURED_SHOTS.length) return;
