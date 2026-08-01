@@ -1,17 +1,22 @@
 // src/ui/damagePanel.js — bottom-left player damage panel, WoT panel
-// language. TOP-DOWN hull schematic — the vehicle's own top_silhouette.png
-// (nose up) drawn as a solid light-steel plan view with its two TRACK RAILS
-// ticked in. r4: the HEALTHY panel is clean (WoT behavior) — module chips
+// language. r9 REBUILD (owner: "reflect the actual top down view of the tank,
+// and make the hull move correctly"): the plan view is now the REAL vehicle —
+// two orthographic top-down masks of the actual built model (tankThumbs.js
+// getTopDownMasks: hull layer, turret+gun layer) — and the panel is
+// CAMERA-UP: the hull layer rotates with the true hull heading relative to
+// the camera yaw, the turret+gun layer with hull+turret, so the panel gun
+// points where the real gun points on screen. Module hit-markers are stamped
+// in HULL space (turret modules in TURRET space) so they ride their layer.
+// Kept from r4-r8: the HEALTHY panel is clean (WoT behavior) — module chips
 // (gun/engine/ammo/fuel/optics/radio) and crew chips exist only in their
-// damaged states: crisp orange/red icon chips, per-side rail floods for
-// de-tracks, hit-zone floods from the real armor model, red crew chips on
-// knock-outs. (The r6-r8 persistent ~25%-alpha pips measured ~1.2:1
-// contrast and read as illegible smudges.) No letterforms inside the
-// silhouette, ever (hud_ui r2). HP bar and fire indicator.
-// Contract: docs/ARCHITECTURE.md §3.7.2.
+// damaged states, hit-zone floods come from the real armor model, crew chips
+// pop red on knock-outs, and the shared module color language + damage-flash
+// pulses are unchanged. No letterforms inside the silhouette, ever (hud_ui
+// r2). HP bar and fire indicator.
+// Contract: docs/ARCHITECTURE.md §3.7.2 (API preserved; setPose added).
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
-import { iconUrl } from './icons.js';
+import { getTopDownMasks } from './tankThumbs.js';
 // EQUIPMENT SYSTEM: quiet mounted-loadout readout at the panel foot — the
 // same white-silhouette glyphs as the garage slots, at healthy-pip alpha.
 import { equipIconSVG } from './equipIcons.js';
@@ -52,11 +57,12 @@ const DP_CSS = `
   border:1px solid rgba(146,164,180,.25);box-shadow:0 6px 22px rgba(0,0,0,.5);
   padding:7px 8px 8px;-webkit-user-select:none;user-select:none;}
 .cot-dp *{box-sizing:border-box;margin:0;padding:0;}
-.cot-dp .hprow{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;}
+.cot-dp .hprow{display:flex;justify-content:space-between;align-items:baseline;
+  gap:6px;margin-bottom:3px;}
 .cot-dp .hplabel{font-size:9px;font-weight:700;letter-spacing:.12em;color:#8a97a3;
-  font-family:${FONT_COND};}
-.cot-dp .hpnum{font-size:11.5px;font-weight:700;color:#d6e2ec;font-variant-numeric:tabular-nums;
-  font-family:${FONT_COND};letter-spacing:-.01em;}
+  font-family:${FONT_COND};white-space:nowrap;}
+.cot-dp .hpnum{font-size:11px;font-weight:700;color:#d6e2ec;font-variant-numeric:tabular-nums;
+  font-family:${FONT_COND};letter-spacing:-.01em;white-space:nowrap;}
 .cot-dp .hptrack{height:5px;background:rgba(4,6,8,.75);border:1px solid rgba(0,0,0,.6);margin-bottom:5px;}
 .cot-dp .hpfill{height:100%;width:100%;transition:width .15s linear;}
 .cot-dp canvas{display:block;margin:0 auto;}
@@ -99,69 +105,24 @@ function hpColor(frac) {
   return frac > 0.5 ? '#7ee87e' : frac > 0.25 ? '#f0b04a' : '#f05a5a';
 }
 
-// ---------------------------------------------------------------------------
-// Vehicle-specific TOP-DOWN silhouette: the generated
-// <id>_top_silhouette.png (flat white alpha plan of the ACTUAL model, nose
-// up, gun overhang included) is loaded once per spec, its opaque bounding
-// box measured, and two tinted copies cached — a dark rim pass (drawn with
-// 1px offsets as a contour) and a light-steel body pass. NOTE: no
-// thin-feature opening here — the nose-up gun barrel is itself a thin
-// vertical and would be eaten by the side-view antenna filter.
-// ---------------------------------------------------------------------------
-const silCache = new Map(); // specId -> { img, bbox:[x,y,w,h], body, rim } | 'pending'
-function tintCanvas(img, color) {
+/** White mask canvas -> solid-tint copy (r9: layers are tinted per state). */
+function tintCanvas(src, color) {
   const c = document.createElement('canvas');
-  c.width = img.naturalWidth || img.width;
-  c.height = img.naturalHeight || img.height;
+  c.width = src.width;
+  c.height = src.height;
   const x = c.getContext('2d');
-  x.drawImage(img, 0, 0);
+  x.drawImage(src, 0, 0);
   x.globalCompositeOperation = 'source-in';
   x.fillStyle = color;
   x.fillRect(0, 0, c.width, c.height);
   return c;
 }
-function topSilhouette(specId, onReady) {
-  const e = silCache.get(specId);
-  if (e === 'pending' || e === 'failed') return null;
-  if (e) return e;
-  silCache.set(specId, 'pending');
-  const img = new Image();
-  img.onload = () => {
-    // measure the opaque content box on a 128px probe (cheap, alpha only)
-    const P = 128;
-    const probe = document.createElement('canvas');
-    probe.width = P; probe.height = P;
-    const px2 = probe.getContext('2d');
-    px2.drawImage(img, 0, 0, P, P);
-    const d = px2.getImageData(0, 0, P, P).data;
-    let x0 = P, y0 = P, x1 = 0, y1 = 0;
-    for (let y = 0; y < P; y++) {
-      for (let x = 0; x < P; x++) {
-        if (d[(y * P + x) * 4 + 3] > 24) {
-          if (x < x0) x0 = x; if (x > x1) x1 = x;
-          if (y < y0) y0 = y; if (y > y1) y1 = y;
-        }
-      }
-    }
-    if (x1 <= x0 || y1 <= y0) { x0 = 0; y0 = 0; x1 = P - 1; y1 = P - 1; }
-    const sx2 = (img.naturalWidth || img.width) / P;
-    const sy2 = (img.naturalHeight || img.height) / P;
-    const entry = {
-      img,
-      bbox: [x0 * sx2, y0 * sy2, (x1 - x0 + 1) * sx2, (y1 - y0 + 1) * sy2],
-      // solid light-steel plan view (WoT's filled tinted schematic) over a
-      // crisp near-black contour (r6-2: full-strength ink — the 0.9-alpha
-      // rim at 0.6 draw alpha read as a soft grey halo, not an outline)
-      rim: tintCanvas(img, 'rgba(6,10,14,0.98)'),
-      body: tintCanvas(img, '#a4afb7'),
-    };
-    silCache.set(specId, entry);
-    if (onReady) onReady();
-  };
-  img.onerror = () => { silCache.set(specId, 'failed'); };
-  img.src = iconUrl(specId, 'top_silhouette');
-  return null;
-}
+
+// layer color language (r6-2 three-tone read, kept): mid-steel hull under a
+// clearly LIGHTER turret; near-black contour ink.
+const HULL_BODY = '#a2adb6';
+const TURRET_BODY = '#ccd6de';
+const RIM_INK = 'rgba(6,10,14,0.98)';
 
 // ---------------------------------------------------------------------------
 // Vector module icons — each drawn centered at (0,0) in a ~12px box, using
@@ -251,9 +212,9 @@ const MODULE_ICON = {
 // once damaged (WoT panel behavior; see drawPip).
 
 /**
- * Create the player damage panel (top-down schematic + modules + crew + HP + fire).
+ * Create the player damage panel (top-down plan layers + modules + crew + HP + fire).
  * The root is not attached to the document — hud.setDamagePanel mounts it.
- * @returns {{root:HTMLElement,setTank:Function,update:Function,setState:Function}} Panel
+ * @returns {{root:HTMLElement,setTank:Function,update:Function,setPose:Function,setTurretYaw:Function,setEquipment:Function,setState:Function}} Panel
  */
 export function createDamagePanel() {
   ensureFonts();
@@ -269,34 +230,20 @@ export function createDamagePanel() {
   const hpFill = root.querySelector('.hpfill');
   const fireEl = root.querySelector('.fire');
 
-  // single compact TOP-DOWN plan view (WoT panel scale). CW/CH are the
-  // CURRENT canvas size — BOTH tighten to the artwork once the silhouette's
-  // aspect is known (r6-2, round critique: "~40% of the panel box is empty
-  // dark space beside the silhouette" — the box now hugs schematic + chip
-  // gutters and the panel width follows).
-  const CW_MAX = 128, CH_MAX = 108, CW_MIN = 118;
-  let CW = CW_MAX, CH = CH_MAX;
+  // r9: FIXED SQUARE stage — the whole plan rotates (camera-up panel), so the
+  // canvas is sized for the vehicle's rotation circle instead of the old
+  // tight nose-up box. 130px also keeps '1750 / 1750'-class HP lines on one
+  // row of the header above.
+  const CW = 130, CH = 124;
   const dprC = 2; // fixed 2x internal resolution — crisp at devicePixelRatio 1
   const canvas = document.createElement('canvas');
   canvas.width = CW * dprC; canvas.height = CH * dprC;
   canvas.style.width = `${CW}px`; canvas.style.height = `${CH}px`;
   root.appendChild(canvas);
-  root.style.width = `${CW + 18}px`; // keep panel hugging the canvas from boot
+  root.style.width = `${CW + 18}px`; // padding 8+8 + 1px borders
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dprC, 0, 0, dprC, 0, 0);
-  function fitCanvas(wdt, hgt) {
-    const wantW = Math.round(Math.max(CW_MIN, Math.min(CW_MAX, wdt)));
-    const wantH = Math.round(Math.max(48, Math.min(CH_MAX, hgt)));
-    if (wantW === CW && wantH === CH) return;
-    CW = wantW; CH = wantH;
-    canvas.width = CW * dprC; // resize clears — callers redraw right after
-    canvas.height = CH * dprC;
-    canvas.style.width = `${CW}px`;
-    canvas.style.height = `${CH}px`;
-    root.style.width = `${CW + 18}px`; // padding 8+8 + 1px borders
-    ctx.setTransform(dprC, 0, 0, dprC, 0, 0);
-    anchors = null;
-  }
+  const cx = CW / 2, cy = CH / 2;
 
   const crewRow = document.createElement('div');
   crewRow.className = 'crew';
@@ -312,20 +259,94 @@ export function createDamagePanel() {
   let combat = null;
   let lastHpText = '';
   let lastFireOn = null;
-  let anchors = null; // module name -> [x, y] canvas anchor (non-overlapping)
-  // plan-view destination box of the silhouette on the canvas (set per draw)
-  let destX = 46, destY = 4, destW = 40, destH = CH - 8;
-  // live turret bearing (rad, hull-relative) — the schematic's turret +
-  // barrel rotate with it (WoT's signature damage-panel behavior). Fed every
-  // frame by hud.update via setTurretYaw.
-  let turretYawDisp = 0;
-  // Canvas dirty signature (module_hitbox r1): the schematic only depends on
-  // the non-ok module states and the (quantized, ~0.5°) turret bearing — the
-  // per-frame update() used to run the full 12+-pass canvas repaint at 60 Hz
-  // for a picture that almost never changes. null forces the next draw.
+
+  // --- r9 pose: the panel is CAMERA-UP ---------------------------------------
+  // hud.update feeds hull yaw, hull-relative turret yaw and camera yaw every
+  // frame (setPose). Layer rotations use the project yaw convention
+  // forwardAxis(yaw)=[sin,0,cos] with screen-right = -world-x: a nose-up
+  // sprite must be canvas-rotated by (camYaw - worldYaw).
+  let hullYawW = 0;    // hull world yaw
+  let turretYawH = 0;  // turret yaw, hull-relative
+  let camYawW = 0;     // camera world yaw
+  const hullPhi = () => camYawW - hullYawW;
+  const gunPhi = () => camYawW - hullYawW - turretYawH;
+
+  // --- r9 mask layers ---------------------------------------------------------
+  let masks = null;       // tankThumbs.getTopDownMasks entry
+  let tints = null;       // per-entry tinted copies {hullBody,hullRim,turretRim,turretBody:{state:canvas}}
+  let scaleS = 8;         // panel px per meter (fit at mask arrival)
+  let anchors = null;     // [{name, x, z, turretLocal}] hull/turret meters, relaxed
+
+  function adoptMasks(entry) {
+    masks = entry;
+    tints = {
+      hullBody: tintCanvas(entry.hull.canvas, HULL_BODY),
+      hullRim: tintCanvas(entry.hull.canvas, RIM_INK),
+      turretRim: tintCanvas(entry.turret.canvas, RIM_INK),
+      turretBody: { ok: tintCanvas(entry.turret.canvas, TURRET_BODY) },
+    };
+    // fit: hull swept circle AND pivot-offset + turret swept circle
+    const po = pivotOffM();
+    const reach = Math.max(
+      entry.hull.radiusM,
+      Math.hypot(po[0], po[1]) + entry.turret.radiusM);
+    scaleS = (Math.min(CW, CH) / 2 - 4) / Math.max(1.5, reach);
+    anchors = null;
+  }
+  function turretBodyTint(st) {
+    if (!tints) return null;
+    if (!tints.turretBody[st]) {
+      tints.turretBody[st] = tintCanvas(masks.turret.canvas, STATE_COLOR[st]);
+    }
+    return tints.turretBody[st];
+  }
+  function requestMasks() {
+    if (!spec) return;
+    const entry = getTopDownMasks(spec, () => {
+      // ready (or re-rendered after a late GLB swap) — re-adopt if still us
+      const e2 = getTopDownMasks(spec, null);
+      if (e2 && spec) { adoptMasks(e2); lastDrawSig = null; draw(); }
+    });
+    if (entry) adoptMasks(entry);
+  }
+
+  // hull-space pivot offset from the HULL LAYER's content center (meters)
+  function pivotOffM() {
+    if (!masks) return [0, 0];
+    return [masks.pivot[0] - masks.hull.cx, masks.pivot[1] - masks.hull.cz];
+  }
+
+  // meters -> panel px. Hull space: offset from hull content center rotated
+  // by hullPhi about the panel center. Turret space: offset from the pivot
+  // rotated by gunPhi about the pivot's panel point.
+  function panelPtHull(mx, mz, out = [0, 0]) {
+    const hc = masks ? masks.hull : { cx: 0, cz: 0 };
+    const lx = -(mx - hc.cx) * scaleS;
+    const ly = -(mz - hc.cz) * scaleS;
+    const p = hullPhi();
+    const c = Math.cos(p), s = Math.sin(p);
+    out[0] = cx + lx * c - ly * s;
+    out[1] = cy + lx * s + ly * c;
+    return out;
+  }
+  function panelPtTurret(mx, mz, out = [0, 0]) {
+    const piv = masks ? masks.pivot : [0, 0];
+    const pp = panelPtHull(piv[0], piv[1]);
+    const lx = -mx * scaleS;
+    const ly = -mz * scaleS;
+    const p = gunPhi();
+    const c = Math.cos(p), s = Math.sin(p);
+    out[0] = pp[0] + lx * c - ly * s;
+    out[1] = pp[1] + lx * s + ly * c;
+    return out;
+  }
+
+  // Canvas dirty signature (module_hitbox r1, extended r9): the plan depends
+  // on the non-ok module states and the (quantized ~0.5°) LAYER rotations —
+  // repaint only when one of them actually changes. null forces a draw.
   let lastDrawSig = null;
   function drawSignature() {
-    let s = `${Math.round(turretYawDisp / 0.008)}|`;
+    let s = `${Math.round(hullPhi() / 0.008)}|${Math.round(gunPhi() / 0.008)}|${masks ? 'm' : 'v'}|`;
     if (combat && combat.modules) {
       for (const k in combat.modules) {
         const st = combat.modules[k].state;
@@ -335,21 +356,9 @@ export function createDamagePanel() {
     return s;
   }
 
-  // --- top mapping: world +X (lateral) -> canvas right, +Z (forward) -> up.
-  // Horizontal span destX..destX+destW covers x in [-W/2, W/2]; vertical
-  // span covers z in [-hullL/2, overall - hullL/2] (rear at bottom, muzzle
-  // at top — matching the nose-up artwork).
-  function vehWidthM() {
-    const d = spec.dims;
-    return d.widthM || Math.max(2.2, d.hullLengthM * 0.45);
-  }
-  function sxT(x) {
-    return destX + destW * (0.5 + x / vehWidthM());
-  }
-  function syT(z) {
-    const d = spec.dims;
-    const overall = Math.max(d.overallLengthM, d.hullLengthM);
-    return destY + destH * (1 - (z + d.hullLengthM / 2) / overall);
+  function moduleState(name) {
+    if (!combat || !combat.modules || !combat.modules[name]) return 'ok';
+    return combat.modules[name].state || 'ok';
   }
 
   function roundRect(c, x, y, wdt, hgt, r) {
@@ -362,322 +371,229 @@ export function createDamagePanel() {
     c.closePath();
   }
 
-  function moduleState(name) {
-    if (!combat || !combat.modules || !combat.modules[name]) return 'ok';
-    return combat.modules[name].state || 'ok';
-  }
-
-  // --- track rails: the plan view's running-gear bands ----------------------
-  // canvas y-range of the hull (track run) — excludes the gun overhang
-  function hullBandY() {
-    const d = spec.dims;
-    return [syT(d.hullLengthM / 2), syT(-d.hullLengthM / 2)];
-  }
-  // which rail carries trackL/trackR — from the armor box's lateral center
-  function railSideFor(name) {
-    const mods = (spec.armor && spec.armor.modules) || [];
-    for (const m of mods) {
-      if (m.module === name && m.min && m.max) {
-        return (m.min[0] + m.max[0]) / 2 < 0 ? -1 : 1;
-      }
-    }
-    return name === 'trackL' ? -1 : 1;
-  }
-  function railRect(side) {
-    const [y0, y1] = hullBandY();
-    const rw = Math.max(7, destW * 0.22);
-    const x0 = side < 0 ? destX - 0.5 : destX + destW + 0.5 - rw;
-    return [x0, y0, rw, y1 - y0];
-  }
-  // persistent WoT read: hull plan flanked by its two ticked track rails —
-  // clipped to the silhouette so the treads follow the artwork's edge.
-  // r6-2 (round critique "no distinct track runs"): the rails are now a
-  // genuinely DARK band (near-track-rubber tone) with LIGHT tread rungs and
-  // a bright inner edge line, so the plan reads three-tone at a glance:
-  // dark tracks / mid hull / light turret.
-  function drawTrackRails() {
-    ctx.save();
-    ctx.globalCompositeOperation = 'source-atop';
-    for (const side of [-1, 1]) {
-      const [x0, y0, rw, rh] = railRect(side);
-      ctx.fillStyle = 'rgba(16,22,29,0.82)';
-      ctx.fillRect(x0, y0, rw, rh);
-      // light tread rungs over the dark band
-      ctx.strokeStyle = 'rgba(172,186,198,0.30)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      for (let y = y0 + 3; y < y0 + rh - 2; y += 4.5) {
-        ctx.moveTo(x0 + 1.5, y); ctx.lineTo(x0 + rw - 1.5, y);
-      }
-      ctx.stroke();
-      // bright inner edge seam between rail and hull plate
-      const xIn = side < 0 ? x0 + rw - 0.5 : x0 + 0.5;
-      ctx.strokeStyle = 'rgba(225,236,246,0.4)';
-      ctx.beginPath();
-      ctx.moveTo(xIn, y0 + 1); ctx.lineTo(xIn, y0 + rh - 1);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  // Compute module icon anchors from the armor model projected into the plan
-  // view (module box center: x -> screen x, z -> screen y), then relax
-  // overlaps so every pip stays legible.
+  // Module anchor points in VEHICLE space (meters, relaxed apart so chips
+  // stay legible when two modules share a bay). turretLocal boxes keep their
+  // turret-relative coordinates and ride the turret layer.
   function computeAnchors() {
-    anchors = new Map();
+    anchors = [];
     if (!spec) return;
-    const armor = spec.armor || {};
-    const tPivot = armor.turretPivot || [0, 1.2, 0];
-    const mods = armor.modules || [];
+    const mods = (spec.armor && spec.armor.modules) || [];
     const pts = [];
     for (const m of mods) {
-      if (m.module === 'trackL' || m.module === 'trackR') continue; // rails
-      if (!m.min || !m.max) continue;
-      let mx = (m.min[0] + m.max[0]) / 2;
-      let mz = (m.min[2] + m.max[2]) / 2;
-      if (m.turretLocal) { mx += tPivot[0] || 0; mz += tPivot[2] || 0; }
-      pts.push({ name: m.module, x: sxT(mx), y: syT(mz) });
+      if (m.module === 'trackL' || m.module === 'trackR') continue; // floods
+      if (!m.min || !m.max || !MODULE_ICON[m.module]) continue;
+      pts.push({
+        name: m.module,
+        x: (m.min[0] + m.max[0]) / 2,
+        z: (m.min[2] + m.max[2]) / 2,
+        turretLocal: !!m.turretLocal,
+      });
     }
-    // relaxation: push apart pairs closer than MIN_D, clamp to canvas
-    const MIN_D = 17;
+    // relax overlaps in meters (chip ~15 px -> MIN_D px/scale meters); only
+    // pairs within the SAME space relax against each other — cross-space
+    // pairs move relative to each other with the turret anyway.
+    const MIN_D = 15 / Math.max(2, scaleS);
     for (let it = 0; it < 6; it++) {
       for (let i = 0; i < pts.length; i++) {
         for (let j = i + 1; j < pts.length; j++) {
           const a = pts[i], b = pts[j];
-          let dx = b.x - a.x, dy = b.y - a.y;
-          let d = Math.hypot(dx, dy);
+          if (a.turretLocal !== b.turretLocal) continue;
+          let dx = b.x - a.x, dz = b.z - a.z;
+          let d = Math.hypot(dx, dz);
           if (d >= MIN_D) continue;
-          if (d < 0.01) { dx = 1; dy = 0; d = 1; }
+          if (d < 0.01) { dx = 1; dz = 0; d = 1; }
           const push = (MIN_D - d) / 2 / d;
-          a.x -= dx * push; a.y -= dy * push;
-          b.x += dx * push; b.y += dy * push;
+          a.x -= dx * push; a.z -= dz * push;
+          b.x += dx * push; b.z += dz * push;
         }
       }
-      for (const p of pts) {
-        p.x = Math.max(11, Math.min(CW - 11, p.x));
-        p.y = Math.max(9, Math.min(CH - 9, p.y));
-      }
     }
-    for (const p of pts) anchors.set(p.name, [p.x, p.y]);
+    anchors = pts;
   }
 
-  // One module pip. r6-2 (round critique: "no ghosted module affordances"):
-  // healthy modules render a GHOST SLOT — a small dark socket chip with a
-  // dim icon — so the schematic shows its module geography at all times and
-  // a damaged module visibly LIGHTS UP its slot amber/red. Unlike the old
-  // failed 25%-alpha bare icons (~1.2:1 on the light hull), the dark socket
-  // keeps ~3:1 contrast on hull and gutter alike.
-  function drawPip(name, pt, st) {
+  // One damaged-module chip (r4: healthy modules draw NOTHING — the clean
+  // WoT panel; the socket look returns only in the damaged state).
+  function drawPip(name, px, py, st) {
     const icon = MODULE_ICON[name];
-    if (!icon) return;
+    if (!icon || st === 'ok') return;
+    const col = STATE_COLOR[st];
     ctx.save();
-    ctx.translate(pt[0], pt[1]);
-    if (st === 'ok') {
-      ctx.globalAlpha = 0.85;
-      roundRect(ctx, -6.5, -6.5, 13, 13, 2.5);
-      ctx.fillStyle = 'rgba(10,15,20,0.6)';
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(205,220,232,0.38)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.scale(0.72, 0.72);
-      icon(ctx, 'rgba(214,226,238,0.58)');
-    } else {
-      const col = STATE_COLOR[st];
-      roundRect(ctx, -8.5, -8.5, 17, 17, 3);
-      ctx.fillStyle = 'rgba(30,14,10,0.92)';
-      ctx.fill();
-      ctx.strokeStyle = col;
-      ctx.lineWidth = 1.2;
-      ctx.stroke();
-      icon(ctx, col);
-    }
+    ctx.translate(px, py);
+    roundRect(ctx, -8, -8, 16, 16, 3);
+    ctx.fillStyle = 'rgba(24,12,8,0.9)';
+    ctx.fill();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.scale(0.92, 0.92);
+    icon(ctx, col);
     ctx.restore();
   }
 
-  // Tint a module's armor-model box footprint (engine bay, ammo rack, fuel
-  // tank) projected into the plan view, so damage states light up real
-  // hit-zones on the schematic. Zones are invisible while healthy — the
-  // persistent pips carry the healthy geography.
-  const REGION_MODULES = ['engine', 'ammoRack', 'fuelTank'];
-  function drawModuleRegions(tPivot) {
-    const mods = (spec.armor && spec.armor.modules) || [];
-    for (const m of mods) {
-      if (REGION_MODULES.indexOf(m.module) < 0 || !m.min || !m.max) continue;
-      const st = moduleState(m.module);
-      if (st === 'ok') continue;
-      let x0 = m.min[0], x1 = m.max[0], z0 = m.min[2], z1 = m.max[2];
-      if (m.turretLocal) {
-        x0 += tPivot[0] || 0; x1 += tPivot[0] || 0;
-        z0 += tPivot[2] || 0; z1 += tPivot[2] || 0;
-      }
-      const rx = sxT(x0), ry = syT(z1);
-      ctx.fillStyle = STATE_COLOR[st] + '5c';
-      ctx.strokeStyle = STATE_COLOR[st];
-      ctx.lineWidth = 1;
-      ctx.fillRect(rx, ry, sxT(x1) - rx, syT(z0) - ry);
-      ctx.strokeRect(rx, ry, sxT(x1) - rx, syT(z0) - ry);
-    }
-  }
-
-  // Vector stand-in for the first few frames while the silhouette PNG
-  // decodes: minimal clean plan view (hull + rails) in the same schematic
-  // language — drawTurretAndGun adds the rotating turret + barrel on top.
-  function drawVectorFallback() {
-    const [yT, yB] = hullBandY();
-    const rw = Math.max(7, destW * 0.22);
-    ctx.fillStyle = 'rgba(154,165,173,0.82)';
-    ctx.strokeStyle = 'rgba(9,14,19,0.6)';
+  // Rotated hull-space rect flood (de-tracks + engine/ammo/fuel hit-zones):
+  // drawn INSIDE the hull layer's rotation frame so it rides the hull.
+  function floodHullRect(x0, z0, x1, z1, st, r = 2.5) {
+    const hc = masks ? masks.hull : { cx: 0, cz: 0 };
+    const ax = -(Math.max(x0, x1) - hc.cx) * scaleS; // x flips: use max first
+    const bx = -(Math.min(x0, x1) - hc.cx) * scaleS;
+    const az = -(Math.max(z0, z1) - hc.cz) * scaleS;
+    const bz = -(Math.min(z0, z1) - hc.cz) * scaleS;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(hullPhi());
+    ctx.fillStyle = STATE_COLOR[st] + '55';
+    ctx.strokeStyle = STATE_COLOR[st];
     ctx.lineWidth = 1.2;
-    roundRect(ctx, destX + rw * 0.5, yT, destW - rw, yB - yT, 4);
+    roundRect(ctx, ax, az, bx - ax, bz - az, r);
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = 'rgba(126,136,144,0.92)';
-    for (const side of [-1, 1]) {
-      const x0 = side < 0 ? destX : destX + destW - rw;
-      roundRect(ctx, x0, yT + 1, rw, yB - yT - 2, 2.5);
-      ctx.fill();
+    ctx.restore();
+  }
+
+  // --- layer painters ---------------------------------------------------------
+  // Contour ink first (offset passes in SCREEN space for an even rim), then
+  // the tinted body. `about` = panel point the layer rotates around; the
+  // draw origin inside the rotated frame is the mask-space anchor.
+  function drawLayer(body, rim, aboutX, aboutY, phi, originPx, originPy, pxPerM) {
+    const k = scaleS / pxPerM;
+    const w = body.width * k, h = body.height * k;
+    const dx = -originPx * k, dy = -originPy * k;
+    const paint = (img, ox, oy, alpha) => {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(aboutX + ox, aboutY + oy);
+      ctx.rotate(phi);
+      ctx.drawImage(img, dx, dy, w, h);
+      ctx.restore();
+    };
+    ctx.save();
+    // soft spread then crisp ink (r6-2 full-strength contour)
+    for (const [ox, oy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) paint(rim, ox, oy, 0.35);
+    for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1],
+      [-1, -1], [1, -1], [-1, 1], [1, 1]]) paint(rim, ox, oy, 0.9);
+    paint(body, 0, 0, 1);
+    ctx.restore();
+  }
+
+  function drawHullLayer() {
+    const H = masks.hull;
+    const pxPerM = H.canvas.width / (H.halfM * 2);
+    // hull content center in mask px (camera sat at world 0,0)
+    const ox = H.canvas.width / 2 - H.cx * pxPerM;
+    const oy = H.canvas.height / 2 - H.cz * pxPerM;
+    drawLayer(tints.hullBody, tints.hullRim, cx, cy, hullPhi(), ox, oy, pxPerM);
+  }
+
+  function drawTurretLayer() {
+    const T = masks.turret;
+    const pxPerM = T.canvas.width / (T.halfM * 2);
+    const pp = panelPtHull(masks.pivot[0], masks.pivot[1]);
+    const ringSt = moduleState('turretRing');
+    const body = ringSt === 'ok' ? tints.turretBody.ok : turretBodyTint(ringSt);
+    drawLayer(body, tints.turretRim, pp[0], pp[1], gunPhi(),
+      T.canvas.width / 2, T.canvas.height / 2, pxPerM);
+    // damaged gun: state-colored run along the REAL barrel on the mask
+    const gunSt = moduleState('gun');
+    if (gunSt !== 'ok') {
+      const reach = Math.max(2, masks.turret.radiusM * scaleS - 2);
+      ctx.save();
+      ctx.translate(pp[0], pp[1]);
+      ctx.rotate(gunPhi());
+      ctx.strokeStyle = STATE_COLOR[gunSt];
+      ctx.lineWidth = 2.6;
+      ctx.lineCap = 'butt';
+      ctx.beginPath();
+      ctx.moveTo(0, -Math.min(6, reach * 0.2));
+      ctx.lineTo(0, -reach);
+      ctx.stroke();
+      ctx.restore();
     }
   }
 
-  // --- rotating turret + gun barrel (WoT's signature panel element) --------
-  // The turret is a distinct plan-view shape (elongated dome + rear bustle)
-  // in a LIGHTER steel than the hull so it reads as a separate part; the
-  // barrel runs from the ring to the artwork's muzzle line. Both rotate
-  // about the armor model's turret pivot with the live turret bearing, and
-  // both flood their module state color when damaged (gun / turretRing).
-  function drawTurretAndGun(tPivot) {
-    const px = sxT(tPivot[0] || 0);
-    const py = syT(tPivot[2] || 0);
-    // barrel length: pivot to the plan's muzzle line (artwork top), with a
-    // floor so rear-turret designs still show a credible overhang
-    const barrelL = Math.max(py - destY + 1, destH * 0.30);
-    const gunSt = moduleState('gun');
-    const ringSt = moduleState('turretRing');
-    // r6-2: turret/gun run a clearly LIGHTER steel than the hull plate so
-    // the plan reads three-tone (dark tracks / mid hull / light turret)
-    const barrelCol = gunSt === 'ok' ? '#d2dce4' : STATE_COLOR[gunSt];
-    const turretFill = ringSt === 'ok' ? '#c8d2da' : STATE_COLOR[ringSt] + 'd8';
-    const rx = destW * 0.31; // turret half-width (across the gun axis)
+  // Vector stand-in while the masks build (first frames / harness contexts):
+  // same schematic language — rounded hull plate + rails + turret dome +
+  // barrel — under the SAME camera-up rotation as the real layers.
+  function drawVectorFallback() {
+    const d = (spec && spec.dims) || {};
+    const hullL = d.hullLengthM || 6.5;
+    const hullW = d.widthM || 3.2;
+    const overall = Math.max(d.overallLengthM || hullL, hullL);
+    scaleS = (Math.min(CW, CH) / 2 - 6) / (overall * 0.62);
+    const hw = hullW * scaleS / 2, hl = hullL * scaleS / 2;
+    const rw = Math.max(5, hw * 0.42);
     ctx.save();
-    ctx.translate(px, py);
-    ctx.rotate(turretYawDisp); // nose-up plan: +yaw swings the gun right
-    // barrel: dark contour under a light steel run + muzzle tip
-    ctx.lineCap = 'butt';
+    ctx.translate(cx, cy);
+    ctx.rotate(hullPhi());
+    ctx.fillStyle = 'rgba(154,165,173,0.85)';
+    ctx.strokeStyle = 'rgba(9,14,19,0.7)';
+    ctx.lineWidth = 1.4;
+    roundRect(ctx, -hw + rw * 0.5, -hl, (hw - rw * 0.5) * 2, hl * 2, 4);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(120,130,138,0.95)';
+    for (const side of [-1, 1]) {
+      roundRect(ctx, side < 0 ? -hw : hw - rw, -hl + 1, rw, hl * 2 - 2, 2.5);
+      ctx.fill();
+    }
+    // turret + barrel about the armor pivot, rotated by the gun bearing
+    const tp = (spec && spec.armor && spec.armor.turretPivot) || [0, 0, 0];
+    ctx.translate(-tp[0] * scaleS, -tp[2] * scaleS);
+    ctx.rotate(-turretYawH);
+    const tr = hw * 0.62;
+    const barrel = (overall / 2 - tp[2]) * scaleS;
     ctx.strokeStyle = 'rgba(9,14,19,0.85)';
-    ctx.lineWidth = 4.6;
+    ctx.lineWidth = 4.4;
+    ctx.beginPath(); ctx.moveTo(0, -tr * 0.4); ctx.lineTo(0, -barrel); ctx.stroke();
+    ctx.strokeStyle = '#d2dce4';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.moveTo(0, -tr * 0.4); ctx.lineTo(0, -barrel + 1); ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(0.5, -rx * 0.4);
-    ctx.lineTo(0.5, -barrelL);
-    ctx.stroke();
-    ctx.strokeStyle = barrelCol;
-    ctx.lineWidth = 2.6;
-    ctx.beginPath();
-    ctx.moveTo(0.5, -rx * 0.4);
-    ctx.lineTo(0.5, -barrelL + 1);
-    ctx.stroke();
-    // muzzle reference tick
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(0.5, -barrelL + 1);
-    ctx.lineTo(0.5, -barrelL + 3.4);
-    ctx.stroke();
-    // turret: squat plan-form (tapered face, wide cheeks, flat-ish bustle) —
-    // deliberately WIDER than tall so it reads "turret", not "egg"
-    ctx.beginPath();
-    ctx.moveTo(-rx * 0.58, -rx * 0.74);
-    ctx.quadraticCurveTo(0, -rx * 1.0, rx * 0.58, -rx * 0.74); // tapered face
-    ctx.quadraticCurveTo(rx * 1.06, -rx * 0.22, rx * 0.88, rx * 0.42);
-    ctx.quadraticCurveTo(rx * 0.5, rx * 0.88, 0, rx * 0.88); // rear bustle
-    ctx.quadraticCurveTo(-rx * 0.5, rx * 0.88, -rx * 0.88, rx * 0.42);
-    ctx.quadraticCurveTo(-rx * 1.06, -rx * 0.22, -rx * 0.58, -rx * 0.74);
-    ctx.closePath();
-    ctx.fillStyle = turretFill;
+    ctx.ellipse(0, 0, tr, tr * 1.18, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#c8d2da';
     ctx.strokeStyle = 'rgba(9,14,19,0.8)';
     ctx.lineWidth = 1.2;
     ctx.fill();
     ctx.stroke();
-    // mantlet block where the barrel meets the turret face
-    ctx.fillStyle = barrelCol;
-    ctx.fillRect(-2.6, -rx * 0.98, 5.2, 4);
     ctx.restore();
   }
+
+  const REGION_MODULES = ['engine', 'ammoRack', 'fuelTank'];
 
   function draw() {
     ctx.clearRect(0, 0, CW, CH);
     if (!spec) return;
-    const armor = spec.armor || {};
-    const tPivot = armor.turretPivot || [0, 1.2, 0];
 
-    // --- base: the vehicle's REAL top-down silhouette (own model) ----------
-    const sil = topSilhouette(spec.id, () => { anchors = null; draw(); });
-    if (sil) {
-      const [bx, by, bw, bh] = sil.bbox;
-      // top-down artwork is TALL: height-fit first, clamp the width so the
-      // pips relaxed off the hull sides keep breathing room; then the CANVAS
-      // tightens around artwork + ~26px chip gutters (r6-2 tight box)
-      destH = CH_MAX - 6;
-      destW = destH * (bw / bh);
-      if (destW > 74) { destW = 74; destH = destW * (bh / bw); }
-      fitCanvas(destW + 54, destH + 6);
-      ctx.clearRect(0, 0, CW, CH);
-      destX = (CW - destW) / 2;
-      destY = (CH - destH) / 2;
-      // the artwork's HULL region only — its baked nose-up gun overhang is
-      // clipped off (the vector barrel below rotates with the live turret
-      // bearing; keeping the baked one would show two guns off-center)
-      const yHullTop = syT(spec.dims.hullLengthM / 2);
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(0, yHullTop - 0.5, CW, CH - yHullTop + 0.5);
-      ctx.clip();
-      // crisp ~2px contour (r6-2: 8 offset passes at full ink + 4 spread
-      // passes — the old 60%-alpha 1px halo read as a soft grey blob edge)
-      ctx.globalAlpha = 0.42;
-      for (const [ox, oy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) {
-        ctx.drawImage(sil.rim, bx, by, bw, bh, destX + ox, destY + oy, destW, destH);
+    if (masks && tints) drawHullLayer();
+    else drawVectorFallback();
+
+    // de-tracked running gear + module hit-zones flood their REAL armor-model
+    // boxes, stamped in hull space so they ride the hull layer (r9). Zones
+    // are invisible while healthy — the clean panel carries no letterforms.
+    if (masks) {
+      const mods = (spec.armor && spec.armor.modules) || [];
+      for (const m of mods) {
+        if (!m.min || !m.max || m.turretLocal) continue;
+        const isTrack = m.module === 'trackL' || m.module === 'trackR';
+        if (!isTrack && REGION_MODULES.indexOf(m.module) < 0) continue;
+        const st = moduleState(m.module);
+        if (st === 'ok') continue;
+        floodHullRect(m.min[0], m.min[2], m.max[0], m.max[2], st, isTrack ? 3 : 2);
       }
-      ctx.globalAlpha = 0.92;
-      for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1],
-        [-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-        ctx.drawImage(sil.rim, bx, by, bw, bh, destX + ox, destY + oy, destW, destH);
-      }
-      // solid light-steel plan at FULL alpha — WoT's filled tinted schematic
-      ctx.globalAlpha = 1;
-      ctx.drawImage(sil.body, bx, by, bw, bh, destX, destY, destW, destH);
-      drawTrackRails();
-      ctx.restore();
-    } else {
-      destW = 44; destH = CH - 8;
-      destX = (CW - destW) / 2; destY = 4;
-      drawVectorFallback();
+      drawTurretLayer();
     }
 
-    // --- de-tracked running gear: the SIDE's rail floods yellow/red --------
-    for (const name of ['trackL', 'trackR']) {
-      const st = moduleState(name);
-      if (st === 'ok') continue;
-      const [x0, y0, rw, rh] = railRect(railSideFor(name));
-      ctx.fillStyle = STATE_COLOR[st] + '52';
-      ctx.strokeStyle = STATE_COLOR[st];
-      ctx.lineWidth = 1.2;
-      roundRect(ctx, x0, y0, rw, rh, 3);
-      ctx.fill();
-      ctx.stroke();
-    }
-    // rotating turret + gun barrel over the hull plan (state-colored when
-    // the gun / turret ring is damaged)
-    drawTurretAndGun(tPivot);
-
-    // module hit-zones from the real armor model — invisible until damaged
-    drawModuleRegions(tPivot);
-
-    // module state chips at relaxed anchors — damaged modules only (r4,
-    // WoT behavior; drawPip no-ops on 'ok')
+    // damaged-module chips at their vehicle-space anchors (hull chips ride
+    // the hull layer, turret chips the turret layer)
     if (!anchors) computeAnchors();
-    for (const [name, pt] of anchors) {
-      if (!MODULE_ICON[name]) continue;
-      drawPip(name, pt, moduleState(name));
+    const pt = [0, 0];
+    for (const a of anchors) {
+      const st = moduleState(a.name);
+      if (st === 'ok') continue;
+      if (a.turretLocal) panelPtTurret(a.x, a.z, pt);
+      else panelPtHull(a.x, a.z, pt);
+      pt[0] = Math.max(9, Math.min(CW - 9, pt[0]));
+      pt[1] = Math.max(9, Math.min(CH - 9, pt[1]));
+      drawPip(a.name, pt[0], pt[1], st);
     }
   }
 
@@ -737,7 +653,9 @@ export function createDamagePanel() {
     root,
 
     /**
-     * Set the tank whose schematic/modules the panel shows.
+     * Set the tank whose plan/modules the panel shows. Kicks the offscreen
+     * top-down mask build for the ACTUAL vehicle (tankThumbs rig); the
+     * vector stand-in covers the first frames.
      * @param {TankSpec} s
      */
     setTank(s) {
@@ -745,17 +663,21 @@ export function createDamagePanel() {
       combat = healthyCombat();
       lastHpText = '';
       lastFireOn = null;
+      masks = null;
+      tints = null;
       anchors = null;
+      lastDrawSig = null;
       rebuildCrewRow();
       refreshDom();
+      requestMasks();
       draw();
     },
 
     /**
      * Refresh the panel from the live combat state (call every frame).
      * DOM (HP bar, fire, crew chips) refreshes cheaply every call; the canvas
-     * schematic repaints only when its dirty signature (module states +
-     * quantized turret bearing) actually changes.
+     * plan repaints only when its dirty signature (module states + quantized
+     * layer rotations) actually changes.
      * @param {CombatState} c
      */
     update(c) {
@@ -769,14 +691,29 @@ export function createDamagePanel() {
     },
 
     /**
-     * Feed the live hull-relative turret bearing (rad) — the schematic's
-     * turret + barrel rotate with it. Stored only; the per-frame update()
-     * draw picks it up (hud.update calls this right before main's
+     * Feed the live pose (rad). The panel is CAMERA-UP: the hull layer
+     * rotates with the hull heading relative to the camera bearing and the
+     * turret+gun layer with hull+turret, so the panel gun points where the
+     * real gun points on screen. Stored only; the per-frame update() draw
+     * picks it up (hud.update calls this right before main's
      * damagePanel.update in the same frame).
+     * @param {number} hullYaw world hull yaw
+     * @param {number} turretYaw hull-relative turret yaw
+     * @param {number} camYaw world camera yaw
+     */
+    setPose(hullYaw, turretYaw, camYaw) {
+      if (hullYaw != null && isFinite(hullYaw)) hullYawW = hullYaw;
+      if (turretYaw != null && isFinite(turretYaw)) turretYawH = turretYaw;
+      if (camYaw != null && isFinite(camYaw)) camYawW = camYaw;
+    },
+
+    /**
+     * Back-compat shim (pre-r9 callers): live hull-relative turret bearing
+     * only — hull/camera stay wherever the last setPose put them.
      * @param {number} yaw
      */
     setTurretYaw(yaw) {
-      if (yaw != null && isFinite(yaw)) turretYawDisp = yaw;
+      if (yaw != null && isFinite(yaw)) turretYawH = yaw;
     },
 
     /**
@@ -794,14 +731,29 @@ export function createDamagePanel() {
       equipRow.innerHTML = html;
     },
 
+    /** Probe/tooling introspection (E2E gates): mask readiness + live pose.
+     *  @returns {{masksReady:boolean,hullPhi:number,gunPhi:number,specId:?string}} */
+    debugState() {
+      return {
+        masksReady: !!(masks && tints),
+        hullPhi: hullPhi(),
+        gunPhi: gunPhi(),
+        specId: spec ? spec.id : null,
+      };
+    },
+
     /**
      * Deterministic screenshot hook: display a sample state. Accepts either a
      * full CombatState or a compact sample:
-     * { hpFrac?, modules?: {name:'ok'|'yellow'|'red'}, crew?: {name:boolean}, burning?: boolean }.
+     * { hpFrac?, modules?: {name:'ok'|'yellow'|'red'}, crew?: {name:boolean},
+     *   burning?: boolean, pose?: {hull,turret,cam} }.
      * @param {object} sample
      */
     setState(sample) {
       if (!sample) return;
+      if (sample.pose) {
+        this.setPose(sample.pose.hull, sample.pose.turret, sample.pose.cam);
+      }
       if (sample.maxHp != null && sample.modules && typeof Object.values(sample.modules)[0] === 'object') {
         combat = sample; // full CombatState
       } else {
@@ -822,6 +774,7 @@ export function createDamagePanel() {
       }
       lastHpText = '';
       lastFireOn = null;
+      lastDrawSig = null;
       refreshDom();
       draw();
     },

@@ -49,6 +49,9 @@ import { createKillCam } from './game/killcam.js';
 import { createFx } from './fx/effects.js';
 import { initHud } from './ui/hud.js';
 import { createDamagePanel } from './ui/damagePanel.js';
+// damage panel r9: the panel's top-down plan layers are offscreen renders of
+// the ACTUAL built vehicle — the rig needs the shared engine context once.
+import { initTopMaskRig } from './ui/tankThumbs.js';
 import { createGarage } from './ui/garage.js';
 import { getLastBattleEarnings } from './ui/techtree.js';
 import { createGarageStage } from './ui/garageStage.js';
@@ -221,6 +224,8 @@ const engineCtx = {
   anisotropy: Math.min(8, renderer.capabilities.getMaxAnisotropy()),
   quality: 'high',
 };
+// damage panel r9: real top-down plan masks render through the game renderer
+initTopMaskRig(engineCtx);
 
 // --- MAP-CONFIG WIRING + DEFERRED WORLD BUILD ------------------------------
 // Worlds are lazy-built per map config and cached; `world` always points at
@@ -1325,26 +1330,12 @@ endOverlay.append(endTitle, endEarn, endBtn);
 document.body.appendChild(endOverlay);
 endBtn.addEventListener('click', () => { bus.emit('ui:click', {}); enterGarage(); });
 
-// Always-visible battle escape hatch. The settings menu remains available on
-// Esc, but this explicit control makes leaving discoverable in pointer-lock,
-// cursor-aim, spectator, and end-of-battle states alike.
-const leaveBattleBtn = document.createElement('button');
-leaveBattleBtn.type = 'button';
-leaveBattleBtn.textContent = 'LEAVE BATTLE';
-leaveBattleBtn.title = 'Return to garage';
-leaveBattleBtn.setAttribute('aria-label', 'Leave battle and return to garage');
-leaveBattleBtn.style.cssText =
-  'position:fixed;top:18px;right:20px;z-index:69;display:none;cursor:pointer;' +
-  'padding:8px 13px;color:#d8e0e7;background:rgba(7,11,15,.72);' +
-  'border:1px solid rgba(190,204,216,.35);border-left:2px solid #e69a2d;' +
-  "font-family:'Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;" +
-  'font-size:10px;font-weight:800;letter-spacing:.16em;backdrop-filter:blur(4px);';
-document.body.appendChild(leaveBattleBtn);
-leaveBattleBtn.addEventListener('mousedown', (ev) => ev.stopPropagation());
-leaveBattleBtn.addEventListener('click', () => {
-  bus.emit('ui:click', {});
-  enterGarage();
-});
+// battle_hud r1 (owner): the always-visible LEAVE BATTLE button is GONE — a
+// persistent exit control is not WoT battle chrome and it shadowed the
+// minimap corner. Leaving stays one Esc away: the settings overlay (Esc, or
+// the touch HUD's menu button) carries its red 'Leave Battle' row in every
+// battle/spectator/end state (settings.js canLeaveBattle/onLeaveBattle,
+// wired below), and the end-of-battle overlay keeps RETURN TO GARAGE.
 
 function showEndOverlay(result) {
   endTitle.textContent = result === 'victory' ? 'VICTORY' : result === 'draw' ? 'DRAW' : 'DEFEAT';
@@ -1394,11 +1385,18 @@ const touchControls = createTouchControls({
   onLeaveBattle: () => enterGarage(),
 });
 
-// CURSOR-AIM FALLBACK: pointer lock denied/unavailable (sandboxed iframes,
+// CURSOR-AIM FALLBACK: pointer lock durably unavailable (sandboxed iframes,
 // embedded panes) — the input layer flips to cursor aim; tell the player ONCE
 // so the control change isn't mysterious. Battle input itself never depends
 // on the lock: turret = terrain point under the cursor, LMB fires as normal.
-let lockToastShown = false;
+// lock_retry r1: onLockDenied now fires only on the DURABLE latch (3
+// consecutive denials, or a synchronous SecurityError — input.js), so
+// Chrome's ~1.3 s post-Esc re-lock cooldown no longer flips the session into
+// cursor aim off a single transient denial; interim primary-button gestures
+// keep retrying the lock (canvas mousedown below). A lock that later
+// SUCCEEDS unlatches the fallback — drop the toast and re-arm it.
+let lockToastShown = false; // re-armed by onLockRestored
+let lockToastEl = null;     // live toast node, removed on restore
 input.onLockDenied(() => {
   if (lockToastShown) return;
   lockToastShown = true;
@@ -1412,7 +1410,13 @@ input.onLockDenied(() => {
       setTimeout(() => waitForStage(fn), 400);
     } else fn();
   };
-  waitForStage(() => showLockToast());
+  // lockToastShown re-check: a lock restored while the toast was still
+  // queued behind the load screen must cancel the (now false) message.
+  waitForStage(() => { if (lockToastShown) showLockToast(); });
+});
+input.onLockRestored(() => {
+  lockToastShown = false;
+  if (lockToastEl) { lockToastEl.remove(); lockToastEl = null; }
 });
 function showLockToast() {
   const t = document.createElement('div');
@@ -1426,13 +1430,14 @@ function showLockToast() {
     'font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;' +
     'box-shadow:0 4px 18px rgba(0,0,0,.5);opacity:1;transition:opacity 1.2s ease;';
   document.body.appendChild(t);
+  lockToastEl = t;
   // Fade timers start from the first frame that could PAINT the toast, not
   // from append: battle entry can block the main thread for seconds building
   // the world, and wall-clock timers would expire the toast the moment the
   // screen unfroze (nextFrame's timer fallback covers rAF-starved panes).
   nextFrame().then(() => {
     setTimeout(() => { t.style.opacity = '0'; }, 4500);
-    setTimeout(() => { t.remove(); }, 5900);
+    setTimeout(() => { t.remove(); if (lockToastEl === t) lockToastEl = null; }, 5900);
   });
 }
 
@@ -1694,7 +1699,6 @@ function startBattle(specId, mapId = null, opts = {}) {
   killcam.cancel(); // KILL-CAM: never carry a replay across battles
   hud.setMode('battle');
   game.phase = 'battle';
-  leaveBattleBtn.style.display = 'block';
   setGarageSpots(false); // PERF: no spot-light cost on battle draws
   setGarageSunTrim(false); // restore the map's authored warm sun
   bus.emit('phase:change', { phase: 'battle' });
@@ -1727,7 +1731,6 @@ function enterGarage() {
   shotMode = false;
   fx.setFrozen(false);
   game.phase = 'garage';
-  leaveBattleBtn.style.display = 'none';
   setWorldDormant(true); // GARAGE PERF: the battlefield stops costing anything
   // camo_spotting r5: bot biome-camo overrides are battle-scoped — drop
   // them so the pedestal/picker show the player's own persisted selection.
@@ -3555,6 +3558,8 @@ window.__DEBUG = {
   // controls_gunnery r3: stage the reticle hit-confirm marker on demand so
   // captures can verify its weight without landing a live 400 m shot.
   forceHitMark: (bounced) => hud.forceHitMark(!!bounced),
+  // damage panel r9: pose/state hooks for probes + deterministic captures
+  get damagePanel() { return damagePanel; },
 };
 await bootStage('ready', null);
 // ready() arms the "press any key" entry gate (auto-dismissed under

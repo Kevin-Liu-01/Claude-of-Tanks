@@ -390,10 +390,37 @@ export function createInput(opts = {}) {
   // through the real cursor position) and the fire gate below accepts clicks
   // landing on the game canvas. The latch clears the moment a lock actually
   // engages, so lock-capable browsers are never degraded.
-  let lockDenied = false;
+  //
+  // lock_retry r1 (owner: "one denial latched cursor-aim for the session"):
+  // Chrome denies re-locks for ~1.3 s after an Esc exit, so the settings
+  // RESUME click's in-gesture re-lock was routinely denied ONCE and the whole
+  // session fell back to cursor aim. The latch is now DURABLE-only:
+  //   - a denial that arrives asynchronously (promise rejection or the
+  //     'pointerlockerror' event — Chrome's cooldown path) only bumps a
+  //     consecutive-denial streak; the primary-button gesture retry in
+  //     main.js keeps re-attempting the lock in the meantime;
+  //   - the cursor-aim latch engages only after LOCK_DENY_LATCH_STREAK
+  //     consecutive denials, or IMMEDIATELY on a synchronous SecurityError
+  //     throw (structurally lock-free environments: sandboxed iframes and
+  //     embedded panes throw in-call — retrying those is pure churn, so
+  //     requestLock also stops re-attempting after a hard denial);
+  //   - any successful lock resets the streak, clears the latch and fires
+  //     the onLockRestored handlers (main.js drops/rearms the toast).
+  // One physical attempt can report twice (Chrome rejects the promise AND
+  // fires pointerlockerror), and the two signals can land SECONDS apart when
+  // a battle-entry world build blocks the main thread between them — so the
+  // streak counts at most one denial PER requestLock ATTEMPT (attempt-scoped,
+  // not time-windowed).
+  const LOCK_DENY_LATCH_STREAK = 3;
+  let lockDenied = false;    // durable cursor-aim latch (see above)
+  let lockDenyStreak = 0;    // consecutive denied ATTEMPTS since the last lock
+  let lockHardDenied = false; // sync SecurityError seen — stop re-attempting
+  let lockAttemptSeq = 0;     // bumped by every requestLock() call
+  let lockDeniedAttempt = 0;  // attempt id already counted into the streak
   let cursorClientX = null; // last real cursor position (null = never moved)
   let cursorClientY = null;
   const lockDeniedHandlers = new Set();
+  const lockRestoredHandlers = new Set();
   // content_breadth r6 (minor: first aggressive click swallowed in no-lock
   // environments): the FIRST canvas click is what TRIGGERS the
   // pointerlockerror -> cursor-aim latch, so at press time lockDenied is
@@ -402,15 +429,31 @@ export function createInput(opts = {}) {
   // when the denial lands (well inside FIRE_PRESS_BUFFER_MS), re-arm that
   // edge retroactively. Lock-CAPABLE browsers are untouched: their
   // lock-acquiring click still never latches (no denial event follows), so
-  // re-locking after a pause still can't pop a shot.
+  // re-locking after a pause still can't pop a shot. lock_retry r1: the
+  // re-arm runs on EVERY denial (soft ones included) — a battle click whose
+  // lock attempt got cooldown-denied still fires.
   let lastCanvasFirePressMs = -Infinity;
-  function noteLockDenied() {
-    const first = !lockDenied;
-    lockDenied = true;
-    if (nowMillis() - lastCanvasFirePressMs < FIRE_PRESS_BUFFER_MS) {
-      firePressMs = lastCanvasFirePressMs; // re-arm the swallowed first click
+  function noteLockDenied(hard) {
+    if (hard) lockHardDenied = true;
+    if (lockDeniedAttempt !== lockAttemptSeq) {
+      lockDeniedAttempt = lockAttemptSeq; // count each attempt exactly once
+      lockDenyStreak += 1;
     }
-    if (first) for (const cb of [...lockDeniedHandlers]) cb();
+    if (nowMillis() - lastCanvasFirePressMs < FIRE_PRESS_BUFFER_MS) {
+      firePressMs = lastCanvasFirePressMs; // re-arm the swallowed click
+    }
+    if ((hard || lockDenyStreak >= LOCK_DENY_LATCH_STREAK) && !lockDenied) {
+      lockDenied = true;
+      for (const cb of [...lockDeniedHandlers]) cb();
+    }
+  }
+  function noteLockEngaged() {
+    lockDenyStreak = 0;
+    lockHardDenied = false;
+    if (lockDenied) {
+      lockDenied = false;
+      for (const cb of [...lockRestoredHandlers]) cb();
+    }
   }
 
   const nowMillis = () =>
@@ -585,10 +628,11 @@ export function createInput(opts = {}) {
   document.addEventListener('visibilitychange', () => { if (document.hidden) onBlurClear(); });
   window.addEventListener('contextmenu', onContextMenu);
   // CURSOR-AIM FALLBACK: browsers that deny the lock asynchronously report it
-  // here (no promise, no throw); a successful lock clears the denial latch.
-  document.addEventListener('pointerlockerror', () => noteLockDenied());
+  // here (no promise, no throw) — a SOFT denial (streak); a successful lock
+  // resets the streak and clears/announces the latch (noteLockEngaged).
+  document.addEventListener('pointerlockerror', () => noteLockDenied(false));
   document.addEventListener('pointerlockchange', () => {
-    if (lockElement && document.pointerLockElement === lockElement) lockDenied = false;
+    if (lockElement && document.pointerLockElement === lockElement) noteLockEngaged();
   });
 
   const isHeld = (actionId) =>
@@ -932,18 +976,29 @@ export function createInput(opts = {}) {
     },
 
     /** Acquire pointer lock on the game canvas (must run inside a user gesture).
-     *  Denials — synchronous SecurityError throw, rejected promise, or the
-     *  'pointerlockerror' event — latch cursor-aim mode (see isCursorAim). */
+     *  Denial classification (lock_retry r1):
+     *   - synchronous throw (sandboxed iframes / embedded panes raise
+     *     SecurityError in-call) = HARD: latch cursor-aim immediately and
+     *     stop re-attempting — the environment structurally cannot lock;
+     *   - async rejection / 'pointerlockerror' (Chrome's ~1.3 s post-Esc
+     *     cooldown reports this way) = SOFT: bump the consecutive-denial
+     *     streak; the latch engages only at LOCK_DENY_LATCH_STREAK. Callers
+     *     (canvas mousedown, battle start, settings close) keep retrying
+     *     soft-denied locks, and any success self-heals the fallback. */
     requestLock() {
       if (!lockElement || api.isLocked()) return;
+      if (lockHardDenied) return; // structurally unavailable — never re-churn
+      lockAttemptSeq += 1; // denial reports below count once per attempt
       try {
         const p = lockElement.requestPointerLock();
-        if (p && typeof p.catch === 'function') p.catch(() => noteLockDenied());
-      } catch (_) { noteLockDenied(); /* denied — cursor-aim mode takes over */ }
+        if (p && typeof p.catch === 'function') p.catch(() => noteLockDenied(false));
+      } catch (_) { noteLockDenied(true); /* hard — cursor-aim takes over */ }
     },
 
-    /** @returns {boolean} pointer lock is unavailable here (every acquisition
-     *  attempt was denied) and not currently held — aim with the real cursor.
+    /** @returns {boolean} pointer lock is DURABLY unavailable here (3
+     *  consecutive denials, or a synchronous SecurityError) and not currently
+     *  held — aim with the real cursor. Transient denials (Chrome's post-Esc
+     *  cooldown) never flip this; gestures keep retrying the lock instead.
      *  Self-healing: any successful lock clears the latch. */
     isCursorAim() {
       return !!lockElement && lockDenied &&
@@ -951,15 +1006,28 @@ export function createInput(opts = {}) {
     },
 
     /**
-     * Subscribe to the pointer-lock-denied transition (fires once per denial
-     * streak — i.e. on the FIRST failed acquisition; re-arms only after a
-     * successful lock). Used for the one-time "cursor aim enabled" toast.
+     * Subscribe to the DURABLE lock-denied transition (fires once when the
+     * cursor-aim latch engages: 3 consecutive denials or a synchronous
+     * SecurityError; re-arms only after a successful lock). Used for the
+     * "cursor aim enabled" toast.
      * @param {() => void} cb
      * @returns {() => void} unsubscribe
      */
     onLockDenied(cb) {
       lockDeniedHandlers.add(cb);
       return () => lockDeniedHandlers.delete(cb);
+    },
+
+    /**
+     * Subscribe to the latch-released transition: a pointer lock SUCCEEDED
+     * after the cursor-aim latch had engaged (fires once per restore; main.js
+     * uses it to drop and re-arm the fallback toast).
+     * @param {() => void} cb
+     * @returns {() => void} unsubscribe
+     */
+    onLockRestored(cb) {
+      lockRestoredHandlers.add(cb);
+      return () => lockRestoredHandlers.delete(cb);
     },
 
     /**

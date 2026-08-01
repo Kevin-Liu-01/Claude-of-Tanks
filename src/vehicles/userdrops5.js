@@ -60,8 +60,13 @@ const SPECS = [
     { hp: 2350, weightTons: 62, gun: { reloadS: 6.3 } }),
   make('m1a2', 'm1a2_sepv2', 'M1A2 Abrams SEPv2', 'USA',
     { hp: 2600, weightTons: 66.8, gun: { reloadS: 6.0 } }),
+  // DUAL-GATE GRADUATE (2026-07-31, commit 0f5cd55): m60a1's procedural build
+  // passed geometry min 90.7 + shaded parity min 9/10 — the recovered GLB is
+  // retired and the procedural model ships EVERYWHERE (local + public), so no
+  // publicVisualFallback: its own regenerated icons are legal to distribute.
   make('leo1a5', 'm60a1', 'M60A1 Patton', 'USA',
     { hp: 1750, weightTons: 49.7, topSpeedKmh: 48, reverseSpeedKmh: 16, gun: { reloadS: 7.6 },
+      publicVisualFallback: null, community: null,
       dims: { hullLengthM: 6.946, overallLengthM: 9.436, widthM: 3.631, heightM: 3.27 } }),
   make('t72b3', 'pt91m', 'PT-91M Pendekar', 'Poland',
     { hp: 2050, weightTons: 48.5, topSpeedKmh: 70, reverseSpeedKmh: 20,
@@ -169,10 +174,9 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
     yawOffset: Math.PI,
     turretFollowers: '^(?:ammo_(?:5|box)|armor_turret|ex_armoc|ex_armor(?!_body)|ex_era_turret|ex_decor_04|glsaa_[6-8]|hatch_0[34]|mg_aamount_h|misc_a|optic_commander)$',
   });
-  source('m60a1', {
-    turretNode: '^Turret$', gunNode: '^weapon$', autoPivot: true,
-    yawOffset: -Math.PI / 2,
-  });
+  // m60a1: NO source() call — dual-gate graduate, procedural build ships in
+  // every flavor. The recovered m60a1.glb FILE stays on disk: userdrops6's
+  // m60a3 still aliases it directly (and has NOT passed the gate).
   source('pt91m', {
     turretNode: '^misc_a$', gunNode: '^misc_b$', autoPivot: true,
   });
@@ -203,3 +207,11 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
 }
 
 export const USERDROP5_TANK_IDS = SPECS.map((s) => s.id);
+
+// PROVENANCE-INTENT (era bucketing): the wave-5 rows whose visual is sourced
+// from an online/recovered model in the full local build. Public builds skip
+// the quarantined registrations above, so MODEL_SOURCE is NOT a public-safe
+// signal — the garage catalog keys era buckets off this list instead, keeping
+// local and public grouping identical. m60a1 is excluded: it graduated the
+// dual gate and its procedural build ships everywhere (a true original now).
+export const USERDROP5_SOURCED_IDS = USERDROP5_TANK_IDS.filter((id) => id !== 'm60a1');

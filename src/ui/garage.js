@@ -11,6 +11,13 @@ import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } fr
 // palette from materials.js) instead of hand-approximated CSS gradients.
 import { resolveCamoVisual } from '../vehicles/materials.js';
 import { MODEL_SOURCE } from '../vehicles/specs.js';
+// PROVENANCE-INTENT era bucketing (see groupOf below): public builds strip
+// the quarantined GLB registrations AND delete spec.community, so neither is
+// a public-safe "sourced" signal. The recovered waves export their sourced-id
+// rosters explicitly; the union keeps catalog chips identical local vs public.
+import { USERDROP4_TANK_IDS } from '../vehicles/userdrops4.js';
+import { USERDROP5_SOURCED_IDS } from '../vehicles/userdrops5.js';
+import { USERDROP6_TANK_IDS } from '../vehicles/userdrops6.js';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.js), the
 // white-silhouette icon set (equipIcons.js), and the spotting-side math the
 // stat card folds into its view/camo rows so the garage can never disagree
@@ -316,8 +323,12 @@ const GARAGE_CSS = `
 
 /* EQUIPMENT SYSTEM: 3 loadout slots at the foot of the stats card. Same
    plate/border language as the camo cards; equipped slots carry the item's
-   white-silhouette glyph (equipIcons.js), empty ones a quiet dashed +. */
-.cot-garage .stats{max-height:calc(100vh - 148px);overflow-y:auto;overflow-x:hidden;
+   white-silhouette glyph (equipIcons.js), empty ones a quiet dashed +.
+   garage polish (spacing): the card now also stops ABOVE the carousel band —
+   the old 100vh-148px cap let its equipment tail run underneath the last
+   carousel cards at ≤850px-tall viewports (peeking through the card gaps);
+   content past the cap scrolls inside the card as designed. */
+.cot-garage .stats{max-height:max(320px,calc(100vh - 316px));overflow-y:auto;overflow-x:hidden;
   scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.45) rgba(8,11,14,.6);}
 .cot-garage .stats::-webkit-scrollbar{width:5px;}
 .cot-garage .stats::-webkit-scrollbar-track{background:rgba(8,11,14,.6);}
@@ -399,6 +410,15 @@ const GARAGE_CSS = `
 .cot-eqtile.locked:hover{border-color:rgba(146,164,180,.24);}
 .cot-eqtile.remove .n{color:#9fb0bf;}
 .cot-eqtile.remove svg{opacity:.55;}
+
+/* garage polish (spacing/focus only): keyboard-visible focus affordance on
+   the interactive chrome — one quiet amber ring, outline-based so nothing
+   shifts layout. Mouse clicks stay ring-free via :focus-visible. */
+.cot-battle:focus-visible,.cot-tech:focus-visible,
+.cot-era-chip:focus-visible,.cot-car-arrow:focus-visible{
+  outline:2px solid rgba(240,176,74,.8);outline-offset:2px;}
+.cot-eqpick .chip:focus-visible,.cot-eqpick .ph .x:focus-visible{
+  outline:1px solid rgba(240,176,74,.8);outline-offset:1px;}
 
 /* garage_ui: entrance transition — the garage used to hard-cut in (boot and
    battle-exit both flipped display:none→block in one frame). show() re-arms
@@ -1162,17 +1182,31 @@ export function createGarage(opts) {
   }
   // --- END CAMO PICKER SECTION ---------------------------------------------
 
-  // CATALOG GROUPS (garage_ui): the roster is catalogued by PROVENANCE first,
-  // then era — exactly three buckets, every vehicle in exactly one:
-  //   (1) 'custom'  tanks WE built: pure procedural geometry, no sourced GLB
-  //                 registered in MODEL_SOURCE (mixed WWII/modern eras);
-  //   (2) 'ww2'     sourced (GLB-backed) vehicles with WWII-era styling;
+  // CATALOG GROUPS (garage_ui): the roster is catalogued by PROVENANCE-INTENT
+  // first, then era — exactly three buckets, every vehicle in exactly one:
+  //   (1) 'custom'  true originals: tanks WE built (pure procedural geometry,
+  //                 never sourced) PLUS dual-gate graduates (m60a1, kv2 —
+  //                 procedural builds that beat their retired reference GLBs);
+  //   (2) 'ww2'     sourced-from-online vehicles with WWII-era styling;
   //   (3) 'modern'  sourced vehicles that are not WWII — community fictional
   //                 designs bucket by their era styling, and anything
   //                 ambiguous lands here (era defaults to modern).
+  // era_bucket r1: bucketing keys off provenance-INTENT, not the registered
+  // render — public builds omit the quarantined GLB registrations, and the
+  // old MODEL_SOURCE-only test dumped every such row into CUSTOM (live deploy
+  // read Custom 63 / WWII 15 / Modern 12). A sourced spec stays in its era
+  // bucket whether or not its GLB is registered in THIS build (it renders the
+  // procedural family fallback there); the explicit id rosters exported by
+  // the recovered waves carry the intent because public builds also delete
+  // spec.community. Local and public chips now count identically.
   // Classifier hoisted (r5-2): the carousel filter chips, arrow stepping and
   // group cross-links all key off it.
-  const isSourced = (s) => (MODEL_SOURCE[s.id] && MODEL_SOURCE[s.id].source) === 'glb';
+  const SOURCED_INTENT = new Set([
+    ...USERDROP4_TANK_IDS, ...USERDROP5_SOURCED_IDS, ...USERDROP6_TANK_IDS,
+  ]);
+  const isSourced = (s) =>
+    (MODEL_SOURCE[s.id] && MODEL_SOURCE[s.id].source) === 'glb' ||
+    SOURCED_INTENT.has(s.id);
   const groupOf = (s) =>
     !isSourced(s) ? 'custom' : (s.era === 'ww2' ? 'ww2' : 'modern');
 

@@ -1824,14 +1824,18 @@ Object.assign(MODEL_SOURCE, {
   // print models ship as fixed-gun TD-class vehicles per the integration rule.
   // -------------------------------------------------------------------------
   kv2: {
-    source: 'glb',
+    // DUAL-GATE GRADUATE (2026-07-31): the procedural KV-2 passed the full
+    // geometric gate (min 90.1) + shaded parity — it ships EVERYWHERE now
+    // (local + public). The sourced print is retired to candidateGlb for the
+    // repeatable A/B audit (t30 pattern); config notes preserved below.
+    source: 'procedural',
     // named hull/turret/tracks/wheels groups; gun fused into the turret mesh
     // (yaw articulates, pitch stays virtual). Authored ring-center origin.
     // tank_models r1: paintUntextured + stripBakedTextures — the baked
     // rust-orange/carnival albedo and silver grille moiré read as a different
     // game next to the repainted fleet ("two material worlds" critique).
     // Baked normal maps are kept; tracks/wheels nodes take the gear split.
-    glb: {
+    candidateGlb: {
       path: '/models/tanks/community/kv2-full-comrade1280.glb',
       turretNode: '^turret$', autoPivot: true,
       paintUntextured: true, stripBakedTextures: true,

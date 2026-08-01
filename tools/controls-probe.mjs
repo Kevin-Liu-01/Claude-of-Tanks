@@ -17,6 +17,18 @@
 //   and combat assertions through the classic pointer-lock path, plus lock
 //   actually engaging and the toast NOT appearing (no fallback regression).
 //
+//   DENY-RETRY mode (lock_retry r1) — requestPointerLock is stubbed to DENY
+//   ASYNCHRONOUSLY (rejected promise + 'pointerlockerror', Chrome's ~1.3 s
+//   post-Esc cooldown shape) for the first 3 attempts and then delegate to
+//   the native grant. Asserts the durable-latch contract: soft denials do
+//   NOT flip cursor-aim or show the toast, primary-button gestures keep
+//   retrying, the 3rd consecutive denial latches cursor-aim + toast, a click
+//   whose lock attempt was soft-denied still fires (fire-edge re-arm), and
+//   the next successful lock unlatches + removes the toast. Runs at 1280x800
+//   and doubles as the battle-HUD layout gate at that width: no LEAVE BATTLE
+//   button, team panels inside the viewport with uniform row metrics and
+//   column-aligned tier numerals.
+//
 // BATTLE-ENTRY GATE DECISION (boot r9 loading flow): entering battle
 // deliberately takes SECONDS — spawnTanks defers every staged visual to the
 // post-ready idle pump (state.js perf r3/r4), and the entry path builds the
@@ -102,7 +114,7 @@ const browser = await puppeteer.launch({
 });
 
 /** Boot one game page; returns { page, pageErrors }. */
-async function boot(mode, { stubNoLock, width, height }) {
+async function boot(mode, { stubNoLock, denyFirst = 0, width, height }) {
   const page = await browser.newPage();
   await page.setViewport({ width, height, deviceScaleFactor: 1 });
   const pageErrors = [];
@@ -110,7 +122,7 @@ async function boot(mode, { stubNoLock, width, height }) {
   page.on('console', (m) => {
     if (m.type() === 'error' && !m.text().includes('favicon')) pageErrors.push(m.text());
   });
-  await page.evaluateOnNewDocument((stub) => {
+  await page.evaluateOnNewDocument((stub, denyN) => {
     // easy bots: the probe must never be decided by how hard the AI shoots back
     try { localStorage.setItem('cot.settings.v1', JSON.stringify({ aiDifficulty: 'easy' })); } catch (_) {}
     if (stub) {
@@ -121,8 +133,26 @@ async function boot(mode, { stubNoLock, width, height }) {
         );
       };
       document.exitPointerLock = () => {};
+    } else if (denyN > 0) {
+      // DENY-RETRY mode: Chrome post-Esc cooldown shape — the request is
+      // denied ASYNCHRONOUSLY (both a rejected promise and a
+      // 'pointerlockerror' event fire, like real Chrome) for the first
+      // denyN attempts, then the native implementation takes over.
+      const native = Element.prototype.requestPointerLock;
+      let attempts = 0;
+      window.__LOCK_ATTEMPTS = () => attempts;
+      Element.prototype.requestPointerLock = function (...a) {
+        attempts += 1;
+        if (attempts <= denyN) {
+          setTimeout(() => document.dispatchEvent(new Event('pointerlockerror')), 0);
+          return Promise.reject(new DOMException(
+            'The user has exited the lock recently — cooldown active.',
+            'NotAllowedError'));
+        }
+        return native.apply(this, a);
+      };
     }
-  }, stubNoLock);
+  }, stubNoLock, denyFirst);
   for (let attempt = 0; ; attempt++) {
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
@@ -410,11 +440,156 @@ async function runMode(mode, { stubNoLock, width, height }) {
   await page.close();
 }
 
+/**
+ * DENY-RETRY mode (lock_retry r1): Chrome-cooldown-shaped ASYNC denials for
+ * the first 3 attempts, native grant afterwards. Asserts the durable-latch
+ * contract + the 1280px battle-HUD layout (no LEAVE BATTLE button, team
+ * panels sane). See the header block.
+ */
+async function runDenyRetryMode() {
+  const mode = 'deny-retry';
+  const width = 1280, height = 800;
+  console.log(`\n[controls-probe] === ${mode} mode (${width}x${height}) ===`);
+  const { page, pageErrors } = await boot(mode, {
+    stubNoLock: false, denyFirst: 3, width, height,
+  });
+
+  // player-shell counter (the soft-denied canvas clicks must still fire)
+  await page.evaluate(() => {
+    window.__PROBE = { fired: 0 };
+    window.__DEBUG.bus.on('shell:fired', (p) => { if (p.isPlayer) window.__PROBE.fired++; });
+  });
+
+  // enter battle via a real BATTLE click (attempt #1: ui:battleStart relock)
+  const btn = await page.evaluate(() => {
+    const r = document.querySelector('.cot-battle').getBoundingClientRect();
+    return { cx: r.x + r.width / 2, cy: r.y + r.height / 2 };
+  });
+  await page.mouse.click(btn.cx, btn.cy);
+  let phase = 'garage';
+  try {
+    await page.waitForFunction('window.__DEBUG.game.phase === "battle"', { timeout: 20000 });
+    await page.waitForFunction('!document.querySelector(".cot-bl.on")', { timeout: 20000 });
+    phase = 'battle';
+  } catch (_) {
+    phase = await page.evaluate(() => window.__DEBUG.game.phase);
+  }
+  check(mode, 'BATTLE click enters battle', phase === 'battle', `phase=${phase}`);
+  if (phase !== 'battle') { await page.close(); return; }
+  await sleep(3800); // battle-open cinematic — the first live click is post-flyby
+
+  const lockState = () => page.evaluate(() => ({
+    attempts: window.__LOCK_ATTEMPTS ? window.__LOCK_ATTEMPTS() : -1,
+    locked: window.__DEBUG.input.isLocked(),
+    cursorAim: window.__DEBUG.input.isCursorAim(),
+    toast: !!document.querySelector('.cot-lock-toast'),
+    fired: window.__PROBE.fired,
+  }));
+
+  // --- denial #1 (battle-entry relock) must NOT latch or toast --------------
+  let st = await lockState();
+  check(mode, 'first denial does not latch cursor-aim', !st.cursorAim && !st.locked,
+    `attempts=${st.attempts} cursorAim=${st.cursorAim}`);
+  check(mode, 'no toast on a transient denial', !st.toast);
+
+  // --- battle-HUD layout gate at 1280px (owner round: leave button removed,
+  // team panels consistent) --------------------------------------------------
+  const hudLayout = await page.evaluate(() => {
+    const out = {
+      // the settings overlay's own 'Leave Battle' row is the DESIGNED exit —
+      // only a leave control in the raw battle HUD (outside .cot-settings)
+      // is a regression
+      leaveBtn: [...document.querySelectorAll('button')].some((b) =>
+        /leave battle/i.test(b.textContent || '') && b.offsetParent !== null &&
+        !b.closest('.cot-settings')),
+      pageOverflow: document.documentElement.scrollWidth > innerWidth + 1,
+      ears: {},
+    };
+    for (const side of ['l', 'r']) {
+      const ear = document.querySelector(`.cot-ear.${side}`);
+      if (!ear) { out.ears[side] = null; continue; }
+      const er = ear.getBoundingClientRect();
+      const rows = [...ear.querySelectorAll('.cot-er')];
+      const hts = rows.map((r) => Math.round(r.getBoundingClientRect().height * 2) / 2);
+      const tiers = rows.map((r) => r.querySelector('.tier')).filter(Boolean)
+        .map((t) => t.getBoundingClientRect());
+      const vns = rows.map((r) => r.querySelector('.vn')).filter(Boolean)
+        .map((t) => t.getBoundingClientRect());
+      const spread = (xs) => (xs.length > 1 ? Math.max(...xs) - Math.min(...xs) : 0);
+      out.ears[side] = {
+        left: er.left, right: er.right, rows: rows.length,
+        heightSpread: hts.length ? Math.max(...hts) - Math.min(...hts) : 0,
+        // aligned tier column: fixed numeral box -> name starts (left ear) /
+        // numeral starts (right ear) line up down the panel
+        tierColSpread: side === 'l' ? spread(vns.map((v) => v.left)) : spread(tiers.map((t) => t.left)),
+      };
+    }
+    return out;
+  });
+  check(mode, 'no LEAVE BATTLE button in the battle HUD', !hudLayout.leaveBtn);
+  check(mode, 'no horizontal page overflow at 1280px', !hudLayout.pageOverflow);
+  const eL = hudLayout.ears.l, eR = hudLayout.ears.r;
+  check(mode, 'both team panels present with rows',
+    !!eL && !!eR && eL.rows > 0 && eR.rows > 0,
+    `L=${eL && eL.rows} R=${eR && eR.rows} rows`);
+  if (eL && eR) {
+    check(mode, 'team panels inside the viewport',
+      eL.left >= -0.5 && eR.right <= width + 0.5,
+      `L.left=${eL.left.toFixed(1)} R.right=${eR.right.toFixed(1)}`);
+    check(mode, 'team rows uniform height both sides',
+      eL.heightSpread <= 1 && eR.heightSpread <= 1,
+      `spread L=${eL.heightSpread} R=${eR.heightSpread}`);
+    check(mode, 'tier numeral columns aligned both sides',
+      eL.tierColSpread <= 0.6 && eR.tierColSpread <= 0.6,
+      `spread L=${eL.tierColSpread.toFixed(2)}px R=${eR.tierColSpread.toFixed(2)}px`);
+  }
+
+  // --- denial #2: a primary-button gesture RETRIES the lock -----------------
+  const gx = Math.round(width / 2), gy = Math.round(height * 0.55);
+  await page.mouse.click(gx, gy);
+  await sleep(450);
+  st = await lockState();
+  check(mode, 'gesture retried the lock (attempt 2)', st.attempts === 2, `attempts=${st.attempts}`);
+  check(mode, 'second denial still un-latched', !st.cursorAim && !st.toast,
+    `cursorAim=${st.cursorAim} toast=${st.toast}`);
+
+  // --- denial #3: durable latch -> cursor-aim + toast ------------------------
+  await page.mouse.click(gx, gy);
+  let latched = null;
+  for (let i = 0; i < 10 && (!latched || !latched.toast); i++) {
+    await sleep(300);
+    latched = await lockState();
+  }
+  check(mode, '3rd consecutive denial latches cursor-aim', latched.cursorAim && !latched.locked,
+    `attempts=${latched.attempts} cursorAim=${latched.cursorAim}`);
+  check(mode, 'toast shows on the durable latch', latched.toast);
+  check(mode, 'soft-denied canvas clicks still fired (edge re-arm)', latched.fired >= 1,
+    `player shells=${latched.fired}`);
+
+  // --- attempt #4 grants: unlatch + toast removed ----------------------------
+  await page.mouse.click(gx, gy);
+  let healed = null;
+  for (let i = 0; i < 10; i++) {
+    await sleep(250);
+    healed = await lockState();
+    if (healed.locked) break;
+  }
+  check(mode, 'later successful lock engages (retry after latch)', healed.locked,
+    `attempts=${healed.attempts} locked=${healed.locked}`);
+  check(mode, 'lock success unlatches cursor-aim', !healed.cursorAim);
+  check(mode, 'lock success removes the toast', !healed.toast);
+
+  check(mode, 'no page errors', pageErrors.length === 0,
+    pageErrors.slice(0, 3).join(' | ') || 'clean');
+  await page.close();
+}
+
 let crashed = false;
 try {
   // NO-LOCK first at the embedded-pane width that used to break battle entry.
   await runMode('no-lock', { stubNoLock: true, width: 768, height: 800 });
   await runMode('lock', { stubNoLock: false, width: 1600, height: 900 });
+  await runDenyRetryMode();
 } catch (err) {
   crashed = true;
   console.error(`[controls-probe] CRASHED: ${err.stack || err.message}`);

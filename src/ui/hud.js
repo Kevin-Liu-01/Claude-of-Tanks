@@ -335,7 +335,11 @@ const HUD_CSS = `
 .cot-ear.l .cot-er{background:rgba(7,10,14,.62);
   border-left:2px solid rgba(126,232,126,.75);
   box-shadow:0 1px 0 rgba(0,0,0,.45);}
-.cot-ear.r .cot-er{background:rgba(7,10,14,.62);
+/* battle_hud r1: the right ear is a TRUE mirror of the left — row-reverse
+   flips the flex order but not the padding, so the enemy class glyph sat
+   10px off its edge vs the ally's 8px. Mirrored padding keeps both panels'
+   row metrics identical. */
+.cot-ear.r .cot-er{background:rgba(7,10,14,.62);padding:3px 8px 4px 10px;
   border-right:2px solid rgba(240,90,90,.75);flex-direction:row-reverse;
   box-shadow:0 1px 0 rgba(0,0,0,.45);}
 .cot-er .ic{width:14px;height:12px;flex:0 0 auto;display:flex;
@@ -352,9 +356,14 @@ const HUD_CSS = `
   max-width:100%;display:flex;gap:4px;align-items:baseline;}
 .cot-ear.r .cot-er .n .veh{justify-content:flex-end;}
 /* r7: BARE roman tier numeral next to the vehicle name (WoT) — the boxed
-   badge chips read as foreign UI furniture in the blind side-by-side */
+   badge chips read as foreign UI furniture in the blind side-by-side.
+   battle_hud r1: the numeral gets a fixed column (min-width covers 'VIII')
+   so tiers ALIGN down the panel instead of ragged-leading each name; on the
+   right ear it mirrors to the outer edge (order swap) so both panels carry
+   an aligned tier column on their outboard side. */
 .cot-er .n .veh .tier{flex:0 0 auto;font-weight:800;color:#9fb0bf;
-  font-style:normal;letter-spacing:.04em;}
+  font-style:normal;letter-spacing:.04em;min-width:23px;}
+.cot-ear.r .cot-er .n .veh .tier{order:2;text-align:right;}
 .cot-er .n .veh .vn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-er.me .n .nick{color:#ffd27a;}
 /* r5-2: per-row HP moved OFF the full-width underline (round critique:
@@ -370,8 +379,15 @@ const HUD_CSS = `
 .cot-ear.l .cot-er .hpm i{background:rgba(126,232,126,.75);}
 .cot-ear.r .cot-er .hpm i{background:rgba(240,120,110,.75);}
 .cot-er.unlit{opacity:.45;filter:saturate(.5);}
-.cot-er.dead{opacity:.38;}
-.cot-er.dead .n .nick{text-decoration:line-through;text-decoration-color:rgba(240,90,90,.8);}
+/* battle_hud r1: clearer dead-row read — the strike runs through BOTH name
+   lines (nick + vehicle) and the row keeps enough alpha (.38 -> .45) for the
+   red strike itself to stay legible; the side accent bar desaturates so
+   living rows pop against the dead ones. */
+.cot-er.dead{opacity:.45;}
+.cot-er.dead .n .nick,.cot-er.dead .n .veh .vn{
+  text-decoration:line-through;text-decoration-color:rgba(240,90,90,.85);}
+.cot-ear.l .cot-er.dead{border-left-color:rgba(126,232,126,.3);}
+.cot-ear.r .cot-er.dead{border-right-color:rgba(240,90,90,.3);}
 .cot-er.dead .hpm{display:none;}
 .cot-killfeed{position:absolute;top:52px;left:210px;display:flex;flex-direction:column;
   gap:5px;align-items:flex-start;max-width:420px;}
@@ -2952,10 +2968,18 @@ export function initHud(bus) {
       if (frame.mode && frame.mode !== mode) { mode = frame.mode; applyMode(); mmDirty = true; }
       playerRef = frame.player || playerRef;
       if (frame.player) playerId = frame.player.id;
-      // damage panel: live turret bearing for its rotating turret/barrel
-      // (main.js calls damagePanel.update right after hud.update each frame)
+      // damage panel: live pose for its rotating plan view (main.js calls
+      // damagePanel.update right after hud.update each frame). The panel is
+      // CAMERA-UP — its top is the camera's forward bearing — so it needs
+      // hull yaw, hull-relative turret yaw AND the camera yaw. Camera yaw
+      // comes from the world matrix -Z column (camera looks down -Z) in the
+      // project convention forwardAxis(yaw) = [sin yaw, 0, cos yaw].
       if (dmgPanelRef && playerRef && playerRef.state) {
-        dmgPanelRef.setTurretYaw(playerRef.state.turretYaw || 0);
+        const cm = camera || lastCamera;
+        const e = cm && cm.matrixWorld ? cm.matrixWorld.elements : null;
+        const camYaw = e ? Math.atan2(-e[8], -e[10]) : 0;
+        dmgPanelRef.setPose(
+          playerRef.state.yaw || 0, playerRef.state.turretYaw || 0, camYaw);
       }
       shotInfo.setPlayer(playerId); // SHOT-INFO SECTION: identity forwarding
       const tanks = frame.tanks || [];
