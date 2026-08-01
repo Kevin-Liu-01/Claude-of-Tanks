@@ -112,9 +112,18 @@ const GARAGE_CSS = `
    top-left header and right stats panel): the top-left corner now carries
    only the game logo + a quiet screen-mode tag; the vehicle identity lives
    solely on the stats card. */
-.cot-garage .modetag{position:absolute;top:60px;left:80px;font-size:10px;
-  font-weight:700;letter-spacing:.30em;color:#68747f;text-transform:uppercase;}
-.cot-tech{position:absolute;top:70px;left:34px;pointer-events:auto;cursor:pointer;
+/* r9.1 (owner): the quiet "GARAGE" mode tag becomes a real screen nav —
+   Garage (current) / Studio (scene studio, F8 path) / Home (landing page) */
+.cot-nav{position:absolute;top:58px;left:34px;display:flex;gap:5px;pointer-events:auto;}
+.cot-nav .nv{font-family:${FONT_STACK};font-size:8.5px;font-weight:800;
+  letter-spacing:.18em;text-transform:uppercase;color:#8a97a3;cursor:pointer;
+  padding:5px 10px 4px;background:rgba(11,15,20,.72);
+  border:1px solid rgba(146,164,180,.28);border-bottom-width:2px;
+  transition:color .15s,border-color .15s,background .15s;}
+.cot-nav .nv:hover{color:#ffd27a;border-color:rgba(240,176,74,.6);}
+.cot-nav .nv.on{color:#f0b04a;border-color:rgba(240,176,74,.55);
+  background:rgba(24,19,11,.82);cursor:default;}
+.cot-tech{position:absolute;top:92px;left:34px;pointer-events:auto;cursor:pointer;
   display:flex;align-items:center;gap:8px;
   font-family:${FONT_STACK};font-size:10.5px;font-weight:800;letter-spacing:.20em;
   color:#c6d2dc;text-transform:uppercase;padding:8px 16px 7px;
@@ -249,14 +258,19 @@ const GARAGE_CSS = `
    never overlap at short viewports (the old absolute anchors collided at
    1600x900 — the RANDOM card's conic-gradient thumb showed through the camo
    grid's 5px gaps as a phantom "white national cross"). */
-.cot-leftcol{position:absolute;left:34px;top:110px;bottom:calc(36% + 10px);
+/* r9.1 (owner): the column runs down to just above the era chips
+   (chips bottom:172px + ~26px tall) instead of reserving 36% — the freed
+   space all goes to the BATTLEFIELD list (maps is the flexible section). */
+.cot-leftcol{position:absolute;left:34px;top:110px;bottom:210px;
   width:224px;display:flex;flex-direction:column;gap:12px;overflow:hidden;pointer-events:auto;}
   /* MAPS r1: top 122 -> 110, gap 14 -> 12 — the doubled battlefield roster
      needs the slack; the TECH TREE button ends ~98px so nothing collides */
-/* garage_polish r9: the three left-column sections share ONE industrial
+/* garage_polish r9: the battlefield + camo sections share ONE industrial
    plate treatment (translucent backdrop + hairline + amber title tick) so
-   they read as a composed panel instead of loose elements on the floor. */
-.cot-maps,.cot-camos,.cot-featured{box-sizing:border-box;width:224px;
+   they read as a composed panel instead of loose elements on the floor.
+   (r9.1: the gallery is deliberately PLATELESS — owner call — but keeps
+   the amber title tick so the column rhythm holds.) */
+.cot-maps,.cot-camos{box-sizing:border-box;width:224px;
   background:linear-gradient(180deg,rgba(9,13,17,.66),rgba(6,9,12,.58));
   border:1px solid rgba(146,164,180,.16);padding:9px 9px 8px;}
 .cot-maps .mtitle::before,.cot-camos .ctitle::before,
@@ -453,7 +467,7 @@ const GARAGE_CSS = `
 .cot-garage.enter .band-top,.cot-garage.enter .band-bot,
 .cot-garage.enter .band-l,.cot-garage.enter .band-r{
   animation:cot-g-fade .30s ease-out backwards;}
-.cot-garage.enter .title,.cot-garage.enter .modetag,.cot-garage.enter .cot-tech,
+.cot-garage.enter .title,.cot-garage.enter .cot-nav,.cot-garage.enter .cot-tech,
 .cot-garage.enter .cot-leftcol,.cot-garage.enter .cot-topbar,
 .cot-garage.enter .hint{animation:cot-g-fade .34s ease-out .05s backwards;}
 .cot-garage.enter .stats{animation:cot-g-rise .36s ease-out .08s backwards;}
@@ -464,13 +478,24 @@ const GARAGE_CSS = `
    tools/marketing-shots). Bottom-anchored under the camo grid in the left
    column; purely decorative, so on short viewports it is the element that
    clips first (leftcol overflow:hidden), never the functional pickers. */
-.cot-featured{flex:0 0 auto;margin-top:12px;pointer-events:auto;}
+.cot-featured{width:224px;flex:0 0 auto;margin-top:12px;pointer-events:auto;}
+/* r9.1: browse arrows — visible on hover, click = prev/next still */
+.cot-featured .fnav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;
+  width:20px;height:32px;display:flex;align-items:center;justify-content:center;
+  background:rgba(5,8,11,.6);border:1px solid rgba(146,164,180,.35);color:#d9e3ec;
+  font-size:14px;line-height:1;cursor:pointer;opacity:0;padding:0 0 2px;
+  transition:opacity .15s,border-color .15s,color .15s;}
+.cot-featured .fshot:hover .fnav{opacity:.92;}
+.cot-featured .fnav:hover{border-color:rgba(240,176,74,.7);color:#ffd27a;}
+.cot-featured .fnav.prev{left:0;}
+.cot-featured .fnav.next{right:0;}
 .cot-featured .ftitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
   text-transform:uppercase;margin-bottom:7px;display:flex;justify-content:space-between;
   align-items:baseline;}
-.cot-featured .fdots{display:flex;gap:4px;}
-.cot-featured .fdots span{width:5px;height:5px;background:rgba(146,164,180,.35);
-  transition:background .2s;}
+.cot-featured .fdots{display:flex;gap:5px;}
+.cot-featured .fdots span{width:6px;height:6px;background:rgba(146,164,180,.35);
+  transition:background .2s;cursor:pointer;}
+.cot-featured .fdots span:hover{background:rgba(210,225,240,.7);}
 .cot-featured .fdots span.on{background:#f0a030;}
 .cot-featured .fshot{position:relative;width:100%;height:104px;overflow:hidden;
   border:1px solid rgba(146,164,180,.28);cursor:pointer;background:#0a0e12;
@@ -502,8 +527,9 @@ const GARAGE_CSS = `
   .cot-garage .band-r{display:none;}
   .cot-garage .title{top:12px;left:14px;font-size:13px;letter-spacing:.22em;gap:7px;}
   .cot-garage .title .mark{width:22px;height:22px;}
-  .cot-garage .modetag{top:34px;left:41px;font-size:7.5px;letter-spacing:.24em;}
-  .cot-tech{top:56px;left:14px;padding:6px 10px 5px;font-size:8px;}
+  .cot-nav{top:36px;left:14px;gap:3px;}
+  .cot-nav .nv{font-size:7px;padding:4px 7px 3px;letter-spacing:.12em;}
+  .cot-tech{top:62px;left:14px;padding:6px 10px 5px;font-size:8px;}
   .cot-battle{top:12px;width:214px;height:40px;font-size:15px;}
   .cot-garage .stats{display:none;}
   .cot-topbar{top:8px;right:8px;gap:3px;transform:scale(.72);transform-origin:right top;}
@@ -972,7 +998,11 @@ export function createGarage(opts) {
     // the entry screen; master copy public/brand/logo-mark.svg
     `<img class="mark" src="/brand/logo-mark.svg" alt="" draggable="false">` +
     `<span>CLAUDE <b>OF TANKS</b></span></div>` +
-    `<div class="modetag">Garage</div>` +
+    `<div class="cot-nav">` +
+    `<button class="nv on" data-nav="garage" type="button">Garage</button>` +
+    `<button class="nv" data-nav="studio" type="button">Studio</button>` +
+    `<button class="nv" data-nav="home" type="button">Home</button>` +
+    `</div>` +
     `<div class="cot-topbar">` +
     `<div class="res"><svg viewBox="0 0 14 14" width="13" height="13">` +
     `<circle cx="7" cy="7" r="6" fill="#c8d2dc"/><circle cx="7" cy="7" r="4.4" fill="none" stroke="#8f9aa4" stroke-width="1"/>` +
@@ -1016,11 +1046,14 @@ export function createGarage(opts) {
   // created programmatically so the main markup block stays untouched; it
   // crossfades every 8 s, click advances, hover pauses. Images lazy-load —
   // a missing set simply never shows the panel's layers (gradient card).
+  // r9.1: names must match public/media/featured/ EXACTLY — three stale
+  // entries meant preload() errored forever and the rotation silently stuck
+  // on frame 1 (the "always the same picture" the owner reported).
   const FEATURED_SHOTS = [
     { img: '/media/featured/f1_09_winter_lake_duel.webp', cap: 'Frosthollow — ammo-rack kill' },
-    { img: '/media/featured/f2_17_urban_street_duel.webp', cap: 'Steinburg — street duel' },
-    { img: '/media/featured/f3_06_desert_hero_kf51.webp', cap: 'Sirocco Wadi — KF51 firing' },
-    { img: '/media/featured/f4_27_verdant_village_brawl.webp', cap: 'Verdant Fields — village push' },
+    { img: '/media/featured/f2_06_desert_hero_kf51.webp', cap: 'Sirocco Wadi — KF51 firing' },
+    { img: '/media/featured/f3_19_urban_overwatch_church.webp', cap: 'Steinburg — church overwatch' },
+    { img: '/media/featured/f4_20_urban_ruin_brawl.webp', cap: 'Steinburg — ruin brawl' },
     { img: '/media/featured/f5_01_desert_duel_leclerc_kill.webp', cap: 'Sirocco Wadi — Leclerc duel' },
   ];
   (() => {
@@ -1032,7 +1065,10 @@ export function createGarage(opts) {
       `<div class="ftitle"><span>Battle gallery</span><span class="fdots">` +
       FEATURED_SHOTS.map(() => '<span></span>').join('') +
       `</span></div>` +
-      `<div class="fshot"><div class="fly"></div><div class="fly"></div><div class="fcap"></div></div>`;
+      `<div class="fshot"><div class="fly"></div><div class="fly"></div>` +
+      `<button class="fnav prev" type="button" aria-label="Previous shot">&#8249;</button>` +
+      `<button class="fnav next" type="button" aria-label="Next shot">&#8250;</button>` +
+      `<div class="fcap"></div></div>`;
     col.appendChild(panel);
     const layers = panel.querySelectorAll('.fly');
     const capEl = panel.querySelector('.fcap');
@@ -1056,13 +1092,25 @@ export function createGarage(opts) {
       im.onerror = () => { /* missing still — stay on the current frame */ };
       im.src = FEATURED_SHOTS[i].img;
     };
-    const advance = () => {
-      const next = (idx + 1) % FEATURED_SHOTS.length;
-      preload(next, () => show(next));
-    };
+    const jump = (i) => preload(i, () => show(i));
+    const advance = () => jump((idx + 1) % FEATURED_SHOTS.length);
     const arm = () => { if (!timer) timer = setInterval(advance, 8000); };
-    preload(0, () => { show(0); arm(); });
-    shotEl.addEventListener('click', advance);
+    // r9.1: manual browse resets the auto-rotate clock so it never snatches
+    // the frame away right after the user picked one
+    const rearm = () => { if (timer) { clearInterval(timer); timer = 0; } arm(); };
+    // r9.1 (owner): lead with a DIFFERENT shot each load
+    const first = Math.floor(Math.random() * FEATURED_SHOTS.length);
+    preload(first, () => { show(first); arm(); });
+    shotEl.addEventListener('click', () => { advance(); rearm(); });
+    panel.querySelector('.fnav.prev').addEventListener('click', (e) => {
+      e.stopPropagation();
+      jump((idx - 1 + FEATURED_SHOTS.length) % FEATURED_SHOTS.length);
+      rearm();
+    });
+    panel.querySelector('.fnav.next').addEventListener('click', (e) => {
+      e.stopPropagation(); advance(); rearm();
+    });
+    dots.forEach((d, k) => d.addEventListener('click', () => { jump(k); rearm(); }));
     shotEl.addEventListener('mouseenter', () => { if (timer) { clearInterval(timer); timer = 0; } });
     shotEl.addEventListener('mouseleave', arm);
   })();
@@ -1774,6 +1822,17 @@ export function createGarage(opts) {
     'USSR/Russia': 'ussr', UK: 'uk', France: 'france', Israel: 'israel',
     China: 'china', 'South Korea': 'korea', Japan: 'japan', Italy: 'italy',
   };
+  // r9.1 header nav — Studio rides the exact F8 production path (studio.js
+  // listens on window keydown and gates on game.phase === 'garage'); Home
+  // goes to the landing page. Garage is the current screen (active chip).
+  root.querySelector('[data-nav="studio"]').addEventListener('click', () => {
+    emit('ui:click', {});
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'F8' }));
+  });
+  root.querySelector('[data-nav="home"]').addEventListener('click', () => {
+    emit('ui:click', {});
+    window.location.href = '/tools/brand.html';
+  });
   root.querySelector('.cot-tech').addEventListener('click', () => {
     emit('ui:click', {});
     const sel = specById.get(selectedId);

@@ -229,74 +229,87 @@
          the images after first paint — see #cot-boot-hero styles above) -->
     <div id="cot-boot-hero" aria-hidden="true"><div class="hly"></div><div class="hly"></div></div>
     <div class="cot-boot-inner">
-      <!-- Brand badge: v3 colored crest, side-profile MBT with the Claude Code
-           commander in the hatch (master copy: public/brand/logo-mark.svg —
-           keep in sync). Inline SVG so it needs no network round-trip at all. -->
+      <!-- Brand badge: v4.3 colored crest (master copy public/brand/logo-mark.svg
+           - keep in sync). Inline SVG so it needs no network round-trip at all. -->
       <svg class="cot-boot-mark" viewBox="0 0 256 256" aria-label="Claude of Tanks">
-        <defs>
-          <clipPath id="cotHatchClip"><rect x="70" y="26" width="68" height="44"/></clipPath>
-        </defs>
-        <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"
-              fill="#151f29" stroke="#0b0f12" stroke-width="16" stroke-linejoin="miter"/>
-        <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"
-              fill="none" stroke="#f5b64b" stroke-width="3"/>
-        <g transform="translate(10 28) scale(1.12)">
-          <rect x="36" y="135" width="134" height="10" rx="5" fill="#0b0f12"/>
-          <path d="M60 140h104" stroke="#f5b64b" stroke-width="3" stroke-dasharray="7 6" fill="none"/>
-          <rect x="64" y="152" width="76" height="8" rx="4" fill="#0b0f12"/>
-          <rect x="86" y="165" width="40" height="7" rx="3.5" fill="#0b0f12"/>
-          <g fill="#1f2b37">
-            <rect x="26" y="112" width="12" height="4.5" rx="2.25"/>
-            <rect x="24" y="121" width="14" height="4.5" rx="2.25"/>
-            <rect x="34" y="130" width="10" height="4.5" rx="2.25"/>
-            <circle cx="48" cy="131" r="6"/><circle cx="57" cy="133.5" r="4"/>
-          </g>
-          <path d="M64 79 50 30" stroke="#55697e" stroke-width="2.5" fill="none"/>
-          <path d="M50 26.5 32 31l18 4.5Z" fill="#f5b64b"/>
-          <path d="M52 107h122a15 15 0 0 1 0 30H52a15 15 0 0 1 0-30Z" fill="#0c1218"/>
-          <g fill="#33424f">
-            <circle cx="52" cy="122" r="10"/><circle cx="76.4" cy="122" r="10"/><circle cx="100.8" cy="122" r="10"/>
-            <circle cx="125.2" cy="122" r="10"/><circle cx="149.6" cy="122" r="10"/><circle cx="174" cy="122" r="10"/>
-          </g>
-          <g fill="#0c1218">
-            <circle cx="52" cy="122" r="3.2"/><circle cx="76.4" cy="122" r="3.2"/><circle cx="100.8" cy="122" r="3.2"/>
-            <circle cx="125.2" cy="122" r="3.2"/><circle cx="149.6" cy="122" r="3.2"/><circle cx="174" cy="122" r="3.2"/>
-          </g>
-          <path d="M34 116 40 94h108l52 18-3 6Z" fill="#2a3947"/>
-          <path d="M148 94l52 18-1.9 3.8-51.6-17.6Z" fill="#4d637a"/>
-          <rect x="40" y="94" width="108" height="2.4" fill="#4d637a"/>
-          <path d="M46 106h136v8l-9 12H46Z" fill="#3d5062" stroke="#0c1218" stroke-width="2.5" stroke-linejoin="round"/>
-          <rect x="41" y="106" width="5" height="18" fill="#1c2833"/>
-          <g stroke="#1a232d" stroke-width="2.2">
-            <path d="M72 107.5V124M98 107.5V124M124 107.5V124M150 107.5V124"/>
-          </g>
-          <rect x="60" y="79" width="16" height="14" rx="1.5" fill="#1c2833"/>
-          <path d="M61 83.7h14M61 88.3h14" stroke="#0c1218" stroke-width="1.6"/>
-          <path d="M72 96 82 74l58 3.5L154 96Z" fill="#3a4c5f"/>
-          <path d="M82 74 140 77.5 138.8 80.8 81 77.2Z" fill="#4d637a"/>
-          <path d="M124 80l7 .5 6 15.5h-7Z" fill="#f5b64b"/>
-          <rect x="91" y="57" width="30" height="12" fill="#0c1218"/>
-          <g clip-path="url(#cotHatchClip)">
-            <path clip-rule="evenodd" fill-rule="evenodd" fill="#D97757" stroke="#0b0f12"
-              stroke-width="1.5" paint-order="stroke" transform="translate(82.65 42.75) scale(1.95)"
-              d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z"/>
-          </g>
-          <rect x="81" y="68" width="50" height="6.5" rx="1.2" fill="#3a4c5f" stroke="#0c1218" stroke-width="2.5"/>
-          <path d="M87.5 52.5a18.5 12 0 0 1 37 0Z" fill="#7d90a3" stroke="#0c1218" stroke-width="2.5" stroke-linejoin="round"/>
-          <rect x="85.5" y="52.3" width="41" height="4.2" rx="2.1" fill="#0e151d"/>
-          <rect x="94" y="45.2" width="24.5" height="5.2" rx="1.3" fill="#0e151d"/>
-          <circle cx="102.5" cy="47.8" r="3.8" fill="#0e151d" stroke="#9fb2c4" stroke-width="1.8"/>
-          <circle cx="111" cy="47.8" r="3.8" fill="#0e151d" stroke="#9fb2c4" stroke-width="1.8"/>
-          <g transform="rotate(-10 140 82)">
-            <rect x="136" y="76" width="18" height="12" rx="1.5" fill="#24313f"/>
-            <rect x="154" y="78.3" width="54" height="7.4" fill="#2b3947"/>
-            <rect x="154" y="78.5" width="54" height="1.9" fill="#4d637a"/>
-            <rect x="154" y="83.9" width="54" height="1.2" fill="#1a232d"/>
-            <rect x="168" y="76.4" width="16" height="11.2" rx="4.4" fill="#24313f" stroke="#7d90a3" stroke-width="1.8"/>
-            <rect x="205.5" y="76.2" width="11" height="11.6" rx="1.4" fill="#7d90a3" stroke="#0b0f12" stroke-width="2.5"/>
-          </g>
-        </g>
-      </svg>
+  
+  
+  <defs>
+    <clipPath id="cotHatchClipC"><rect x="70" y="26" width="68" height="44"/></clipPath>
+  </defs>
+
+  
+  <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"
+        fill="#151f29" stroke="#0b0f12" stroke-width="16" stroke-linejoin="miter"/>
+  <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"
+        fill="none" stroke="#f5b64b" stroke-width="3"/>
+
+  <g transform="translate(-0.8 24) scale(1.06)">
+
+    
+    <path d="M52 96 32 76" stroke="#55697e" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+    
+    <path d="M68 84V34" stroke="#55697e" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+    <path d="M68 34 46 39.5 68 45Z" fill="#f5b64b"/>
+
+    
+    <path d="M52 107h122a15 15 0 0 1 0 30H52a15 15 0 0 1 0-30Z" fill="#0c1218"/>
+    <g fill="#33424f">
+      <circle cx="52" cy="122" r="10"/><circle cx="76.4" cy="122" r="10"/><circle cx="100.8" cy="122" r="10"/>
+      <circle cx="125.2" cy="122" r="10"/><circle cx="149.6" cy="122" r="10"/><circle cx="174" cy="122" r="10"/>
+    </g>
+    <g fill="#0c1218">
+      <circle cx="52" cy="122" r="3.2"/><circle cx="76.4" cy="122" r="3.2"/><circle cx="100.8" cy="122" r="3.2"/>
+      <circle cx="125.2" cy="122" r="3.2"/><circle cx="149.6" cy="122" r="3.2"/><circle cx="174" cy="122" r="3.2"/>
+    </g>
+
+    
+    <path d="M34 116 40 94h108l52 18-3 6Z" fill="#2a3947"/>
+    <path d="M148 94l52 18-1.9 3.8-51.6-17.6Z" fill="#4d637a"/>
+    <rect x="40" y="94" width="108" height="2.4" fill="#4d637a"/>
+
+    
+    <path d="M46 106h136v8l-9 12H46Z" fill="#3d5062" stroke="#0c1218" stroke-width="2.5" stroke-linejoin="round"/>
+    <rect x="41" y="106" width="5" height="20" fill="#1c2833"/>
+    <g stroke="#1a232d" stroke-width="1.8">
+      <path d="M64.2 107.5V124M88.6 107.5V124M113 107.5V124M137.4 107.5V124M161.8 107.5V124"/>
+    </g>
+
+    
+    <rect x="60" y="79" width="16" height="14" rx="1.5" fill="#1c2833"/>
+    <path d="M61 83.7h14M61 88.3h14" stroke="#0c1218" stroke-width="1.8"/>
+    <path d="M72 96 82 74l58 3.5L154 96Z" fill="#3a4c5f"/>
+    <path d="M82 74 140 77.5 138.8 80.8 81 77.2Z" fill="#4d637a"/>
+    <path d="M124 80l7 .5 6 15.5h-7Z" fill="#f5b64b"/>
+
+    
+    <rect x="91" y="57" width="30" height="12" fill="#0c1218"/>
+    <g clip-path="url(#cotHatchClipC)">
+      <path clip-rule="evenodd" fill-rule="evenodd" fill="#D97757" stroke="#0b0f12"
+        stroke-width="1.5" paint-order="stroke" transform="translate(82.6 42.75) scale(1.95)"
+        d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z"/>
+    </g>
+    
+    <rect x="81" y="68" width="50" height="6.5" rx="1.5" fill="#3a4c5f" stroke="#0c1218" stroke-width="2.5"/>
+
+    
+    <path d="M87.5 52.5a18.5 12 0 0 1 37 0Z" fill="#7d90a3" stroke="#0c1218" stroke-width="2.5" stroke-linejoin="round"/>
+    <rect x="85.5" y="52.3" width="41" height="4.2" rx="2" fill="#0e151d"/>
+    <rect x="93.75" y="45.2" width="24.5" height="5.2" rx="1.5" fill="#0e151d"/>
+    <circle cx="101.75" cy="47.8" r="3.8" fill="#0e151d" stroke="#9fb2c4" stroke-width="1.8"/>
+    <circle cx="110.25" cy="47.8" r="3.8" fill="#0e151d" stroke="#9fb2c4" stroke-width="1.8"/>
+
+    
+    <g transform="translate(0 4) rotate(-10 140 82)">
+      <rect x="136" y="76" width="18" height="12" rx="1.5" fill="#24313f"/>
+      <rect x="154" y="78.3" width="48" height="7.4" fill="#2b3947"/>
+      <rect x="154" y="78.3" width="48" height="1.9" fill="#4d637a"/>
+      <rect x="154" y="84.5" width="48" height="1.2" fill="#1a232d"/>
+      <rect x="166" y="76.4" width="16" height="11.2" rx="4.4" fill="#24313f" stroke="#7d90a3" stroke-width="1.8"/>
+      <rect x="199.5" y="76.2" width="11" height="11.6" rx="1.5" fill="#7d90a3" stroke="#0b0f12" stroke-width="2.5"/>
+    </g>
+  </g>
+</svg>
 
       <div class="cot-boot-word">
         <span class="l1">CLAUDE</span>

@@ -61,11 +61,14 @@ const $ = (id) => document.getElementById(id);
 // The first entry is the boot hero; the rest crossfade in while the entry
 // gate idles. All are lazy-loaded AFTER the splash has painted, so the boot
 // critical path never waits on them (bootgate-probe guards the timing).
+// r9.1: names must match public/media/featured/ EXACTLY — three stale
+// entries made preload() error forever, so the crossfade stuck on the
+// winter shot every boot (the "same picture every load" the owner saw).
 const HERO_SHOTS = [
   '/media/featured/f1_09_winter_lake_duel.webp',
-  '/media/featured/f2_17_urban_street_duel.webp',
-  '/media/featured/f3_06_desert_hero_kf51.webp',
-  '/media/featured/f4_27_verdant_village_brawl.webp',
+  '/media/featured/f2_06_desert_hero_kf51.webp',
+  '/media/featured/f3_19_urban_overwatch_church.webp',
+  '/media/featured/f4_20_urban_ruin_brawl.webp',
   '/media/featured/f5_01_desert_duel_leclerc_kill.webp',
 ];
 const HERO_ROTATE_MS = 9000;
@@ -105,9 +108,11 @@ function startBootHero() {
     const next = (idx + 1) % HERO_SHOTS.length;
     preload(next, () => { if (!stopped) show(next); });
   };
-  // first still: decode fully off the critical path, then fade in
-  preload(0, () => {
-    show(0);
+  // first still: decode fully off the critical path, then fade in.
+  // Start at a RANDOM still (owner: different picture every load).
+  const first = Math.floor(Math.random() * HERO_SHOTS.length);
+  preload(first, () => {
+    show(first);
     if (HERO_SHOTS.length > 1) timer = setInterval(advance, HERO_ROTATE_MS);
   });
   return () => {
