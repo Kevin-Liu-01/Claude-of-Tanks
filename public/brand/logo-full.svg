@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 210" role="img" aria-label="Claude of Tanks">
+  <!-- v4.1 (owner-directed): speed lines removed — the tank is the primary feature; tank scaled +6% and re-centered in the bowl; ground bar trimmed to the bowl curve; metal variant promoted to favicon. -->
   <!-- Claude of Tanks v4 full lockup: colored crest badge (master:
        public/brand/logo-mark.svg — keep in sync; v3 archived in
        public/brand/v3-shield/) + Inter wordmark, white, for dark contexts. Wordmark fonts: subset of Inter wght 800/700 opsz 32
@@ -21,17 +22,10 @@
   <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"
         fill="none" stroke="#f5b64b" stroke-width="3"/>
 
-  <g transform="translate(7 22)">
+  <g transform="translate(-0.8 24) scale(1.06)">
     <!-- ground bar + amber keel line (seats the tank; clean solid accent) -->
-    <rect x="44" y="136" width="136" height="10" rx="5" fill="#0b0f12"/>
+    <rect x="50" y="136" width="130" height="10" rx="5" fill="#0b0f12"/>
     <path d="M58 141h108" stroke="#f5b64b" stroke-width="3" stroke-linecap="round" fill="none"/>
-    <!-- speed lines: three rounded strokes, even 12px rhythm, left-aligned,
-         graduated long to short, all inside the shield bowl -->
-    <g stroke="#0b0f12" stroke-width="7" stroke-linecap="round" fill="none">
-      <path d="M73 153h88"/>
-      <path d="M73 165h56"/>
-      <path d="M73 177h24"/>
-    </g>
 
     <!-- whip antenna: one clean 45-degree diagonal off the rear deck -->
     <path d="M52 96 32 76" stroke="#55697e" stroke-width="1.8" stroke-linecap="round" fill="none"/>
