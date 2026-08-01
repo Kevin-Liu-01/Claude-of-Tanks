@@ -207,3 +207,19 @@ glacis +z / gun +z / agree True
 
 **Gate row after this round:** hull 0 / whole 0 / turret 0 / stations 17.8 / dims 98.2 / floaters 100.
 BUILD NOT YET RE-ANCHORED (old-frame build vs normalized oracle). The batch-12 warp also rebuilt the stale batch-9 POSITION min/max (loader/camera frames now sane).
+
+## VERTEX ROUND r2 — corner-driven re-anchor (2026-08-01)
+
+The batch-12 warp RE-CENTERED this print: mask +-3.43 (6.863 = pub), muzzle
++6.097 (overall 9.53 exact), axis ~1.49 — t90a-family frame now (the old
+aft-frame notes are obsolete). One pass + cluster A/B: 0 -> min 11 (hull 31
+/ whole 38.1 / turret 11 / stations 53.7 / dims 100). GEOMETRY RULING: the
+2.20 sight pillars really sit FORWARD at +1.29..+1.89 (pulling them back
+onto the dome cost turret 11 -> 5.4; reverted) — but visually the forward
+cluster floats over the glacis: it needs a proper bridge/pedestal fitting
+next pass. TURRET 11 SUSPECT: the print parents the BARREL in the HULL node
+(old packet note) — if the turret mask excludes the tube while mine carries
+gun+turret at yaw poses, that is the same fused-tube class as t72b_1987;
+verify with --rows=side_turret and consider an owner batch-13 split.
+NEXT: hull 31 (deck plateau noise columns, rear dip 1.18 @ -2.85), turret
+row decode, then front family fixes.

@@ -180,3 +180,16 @@ glacis +z / gun +z / agree True
 
 **Gate row after this round:** hull 0 / whole 0 / turret 7 / stations 25 / dims 100 / floaters 100.
 BUILD NOT YET RE-ANCHORED. Print turret still carries the fender-line strip (interpen 487 verts to -0.53 m — the documented LOD-copy quirk); its plan_turret columns remain oracle-parity, not real turret.
+
+## VERTEX ROUND r2 — corner-driven re-anchor (2026-08-01)
+
+Re-anchored to docs/references/vertex/t90a_vladimir.json (AFT frame, mask
+-4.755..+2.10 = 6.855). FUSED-GUN PRINT: axis ~1.55, my muzzle +4.775 for
+published overall. Key finds: the raised mid deck band 1.79-1.82 over
+-2.72..-0.92 is FULL WIDTH (wUp segment 1.79 — the front-view outer columns
+prove it), the pano/mast spike is a single LEFT-rear cluster (apex x ~-0.3,
+z -1.99, 2.60), drums sit ON the tail plate (1.655-1.671). Two passes:
+0 -> min 32.3 (hull 56.0 / whole 32.3 / turret 42.6 / stations 77.9 /
+dims 97.8). Board: orientation correct, no interpen (the 487-vert fender
+strip quirk stays quarantined per the packet). NEXT: front_whole (K-5 wedge
+columns), side nose-gear fade columns (family cap class), turret plan.
