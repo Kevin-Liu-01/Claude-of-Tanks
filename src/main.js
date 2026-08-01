@@ -1157,6 +1157,11 @@ function updateSniperFill() {
 const killcam = createKillCam({
   scene, camera, rig, heightField: hfProxy, getPlayer: () => game.player,
   getWorld: () => world, // r6: flight-cam LOS solve (foliage/terrain/props)
+  // killcam r2 (owner: "show the actual animations of popping turrets and
+  // exploding, especially during kill cam"): the replay's live-action IMPACT
+  // beat re-fires the real destruction FX (fireball/debris/smoke) on the
+  // restaged victim between the flight and the x-ray hold.
+  getFx: () => fx,
 });
 killcam.bindBus(bus);
 game.killcam = killcam;
@@ -1730,6 +1735,7 @@ function startBattle(specId, mapId = null, opts = {}) {
   endOverlay.style.display = 'none';
   endShown = false; // KILL-CAM: fresh battle — re-arm the end-of-battle gate
   deathCamShown = false; // killcam_shotinfo r1: re-arm the at-death replay
+  kcPending = null; // killcam r2: a scheduled death replay dies with the battle
   killcam.cancel(); // KILL-CAM: never carry a replay across battles
   hud.setMode('battle');
   game.phase = 'battle';
@@ -2009,6 +2015,17 @@ const pauseInfo = { paused: false, resumes: 0, lastDtR: 0, lastResumeDtR: -1 };
 let lastFov = camera.fov;
 let endShown = false;
 let deathCamShown = false; // killcam_shotinfo r1: death replay played at death
+// killcam r2 DEATH BEAT (owner: "your own death cam should show your tank
+// exploding the same way before the killcam"): the replay no longer starts on
+// the death frame — the live death cam holds ~2.6 s first, so the REAL
+// destruction (state.js setDestroyed turret pop + fx fireball + the new
+// tank_explosion/turret-pop-accent samples, all fired on 'tank:destroyed' at
+// this exact moment) plays out on screen at full sim rate before the cinematic
+// takes over. Wall-clock deadline pumped in tick(); the battle-result branch
+// REWIRES fire() when the result lands mid-beat so the replay continues into
+// finishBattle instead of the spectate path. Cleared by resetBattle.
+let kcPending = null; // { deadline: ms, fire: () => void }
+const DEATH_BEAT_MS = 2600;
 let shotMode = false;
 // controls_gunnery r5: true while the current __SHOTS view staged a live HUD
 // frame (player_view / sniper_view) — those views re-run hud.update each
@@ -2311,30 +2328,69 @@ function tick(nowMs) {
       // killcam_shotinfo r1: never replay an already-shown death — when the
       // player died earlier (battle continued), a later team 'defeat' would
       // re-run the stale death replay without this guard.
-      const played = !deathCamShown && killcam.playForResult(game.result, game.timeS, finishBattle);
-      debugFlags.lastEndFlow = { played, result: game.result, timeS: game.timeS,
-        resultWallMs: performance.now(), kcBeginWallMs: killcam.lastBeginWallMs }; // KILL-CAM debug
-      if (played) {
-        veilHud(true); // cinematic letterbox owns the screen
+      if (kcPending) {
+        // killcam r2: the mid-battle death beat is already holding (player
+        // died a beat before the team result resolved) — keep its deadline,
+        // but the replay must now hand over to the END flow, not the
+        // spectate path. The !deathCamShown guard is deliberately dropped:
+        // arming the beat set deathCamShown, yet THIS death was never
+        // presented — the beat owns it (defeat: death replay; victory: a
+        // fresh final blow or a straight fall-through to the overlay).
+        kcPending.fire = () => {
+          const played = killcam.playForResult(game.result, game.timeS, finishBattle);
+          debugFlags.lastEndFlow = { played, result: game.result, timeS: game.timeS,
+            resultWallMs: performance.now(), kcBeginWallMs: killcam.lastBeginWallMs };
+          if (played) veilHud(true);
+          else finishBattle();
+        };
       } else {
-        finishBattle();
+        // Battle-deciding death: the replay must begin THIS frame (shotInfo's
+        // report gate latches on killcam:begin one frame after battle:ended)
+        // — the live destruction beat plays INSIDE the killcam as its 'wreck'
+        // opening phase, flagged fresh here (killcam r2).
+        const freshKill = !deathCamShown && !!(game.player &&
+          game.player.combat && game.player.combat.destroyed);
+        const played = !deathCamShown &&
+          killcam.playForResult(game.result, game.timeS, finishBattle, { freshKill });
+        debugFlags.lastEndFlow = { played, result: game.result, timeS: game.timeS,
+          resultWallMs: performance.now(), kcBeginWallMs: killcam.lastBeginWallMs }; // KILL-CAM debug
+        if (played) {
+          veilHud(true); // cinematic letterbox owns the screen
+        } else {
+          finishBattle();
+        }
       }
     } else if (!game.result) {
       endShown = false;
     }
     // killcam_shotinfo r1: the player died but the battle continues (allies
-    // still fighting) — play the death replay NOW, then spectate the wreck
-    // with the death cam until the team result resolves.
+    // still fighting) — play the death replay, then spectate the wreck with
+    // the death cam until the team result resolves. killcam r2: the replay
+    // starts after the DEATH BEAT (see kcPending) — the live death cam holds
+    // on the wreck while the real turret pop / fireball / explosion sample
+    // play at full sim rate, THEN the cinematic re-tells the shot.
     if (!game.result && game.player && game.player.combat.destroyed && !deathCamShown) {
       deathCamShown = true;
       if (document.exitPointerLock) document.exitPointerLock();
+      if (rig.startDeathCam) rig.startDeathCam(); // beat framing: wreck orbit
       const afterDeath = () => {
         veilHud(false);
         rig.release();
         if (rig.startDeathCam) rig.startDeathCam();
       };
-      if (killcam.playForResult('defeat', game.timeS, afterDeath)) veilHud(true);
-      else afterDeath();
+      kcPending = {
+        deadline: performance.now() + DEATH_BEAT_MS,
+        fire: () => {
+          if (killcam.playForResult('defeat', game.timeS, afterDeath)) veilHud(true);
+          else afterDeath();
+        },
+      };
+    }
+    // killcam r2: pump the armed death beat (wall clock — presentation only)
+    if (kcPending && performance.now() >= kcPending.deadline) {
+      const fire = kcPending.fire;
+      kcPending = null;
+      fire();
     }
   }
 
@@ -2390,7 +2446,11 @@ function tick(nowMs) {
   // 6. fx — dt 0 while live-paused pins the shared particle clock, which is
   // the one timeline every particle/timer/light/decal ages against (the same
   // mechanism deterministic shot captures rely on), so effects hold mid-air.
-  fx.update(livePaused ? 0 : dtR, game.shells, camera);
+  // killcam r2: the replay's IMPACT beat briefly dilates the fx clock (~0.55x
+  // through the turret launch) — the same clock drives the pop arc, so the
+  // whole destruction slows coherently. 1 everywhere else.
+  fx.update(livePaused ? 0 : dtR * (kcActive ? killcam.fxTimeScale : 1),
+    game.shells, camera);
 
   // 7. HUD (hidden + frozen while the kill-cam letterbox owns the screen).
   // NOTE: live isActive() check — the replay may have STARTED in step 2 of
@@ -3573,7 +3633,10 @@ function debugFastForward(seconds) {
  * kill-cam captures a real resolved chain. Call, then fastForward ~1 s.
  * @returns {boolean} true if a shell was spawned
  */
-function debugSpawnKillShell() {
+function debugSpawnKillShell(aimYFrac = 0.45) {
+  // killcam r2: optional aim height (fraction of hull height) — probes force
+  // deterministic module stories (e.g. ~0.3 crosses hull ammo carousels for
+  // rack-detonation replays). Default keeps every legacy caller identical.
   const p = game.player;
   if (!p || !p.state || p.combat.destroyed) return false;
   const shooter = game.tankById.get('t90m') && game.tankById.get('t90m').team === 'enemy'
@@ -3583,7 +3646,7 @@ function debugSpawnKillShell() {
   if (!shooter) return false;
   p.combat.hp = Math.min(p.combat.hp, 1);
   _v2.copy(p.state.pos);
-  _v2.y += p.spec.dims.heightM * 0.45;
+  _v2.y += p.spec.dims.heightM * aimYFrac;
   // probe bearings (flat side shots first — guaranteed pen) for clear LOS
   const RELS = [90, -90, 70, -70, 110, -110, 45, 135];
   for (let i = 0; i < RELS.length; i++) {

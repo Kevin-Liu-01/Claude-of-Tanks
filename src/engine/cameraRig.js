@@ -203,13 +203,26 @@ export function createCameraRig(camera, deps) {
   // cycling allies never teleports the camera (owner ask). Driven entirely
   // through rig.startSpectate / setSpectateTarget / spectateLook /
   // stopSpectate — no main.js wiring needed (killcam.js owns the flow).
-  let spec = null;   // { ent, yaw, pitch, pivot, blendT, blendDur, fromPos, fromLook }
+  // killcam r2 FREE CURSOR ORBIT: yaw/pitch/dist carry eased TARGETS
+  // (yawT/pitchT/distT) fed by spectateLook/spectateZoom — cursor motion
+  // orbits the camera with chase-free-look damping instead of raw per-event
+  // steps, full 360° yaw, pitch clamped, wheel zoom clamped + eased.
+  let spec = null;   // { ent, yaw, yawT, pitch, pitchT, dist, distT, pivot,
+                     //   blendT, blendDur, fromPos, fromLook }
   const _specFrom = new THREE.Vector3();
   const _specFromLook = new THREE.Vector3();
   const _specLook = new THREE.Vector3();
   const SPEC_DIST_M = 14;
+  const SPEC_DIST_MIN = 7;   // wheel-in floor (never inside the hull)
+  const SPEC_DIST_MAX = 26;  // wheel-out ceiling (ally stays readable)
   const SPEC_PITCH = THREE.MathUtils.degToRad(-13);
   const SPEC_BLEND_S = 1.05;
+  const SPEC_LOOK_TAU_S = 0.085; // orbit ease toward the cursor target
+  // rad per px: one full screen-width of cursor travel ≈ a full 360° walk
+  // around the tank (pointer lock is not guaranteed while spectating, so an
+  // unlocked cursor must reach all the way around before it hits the screen
+  // edge). Damped by SPEC_LOOK_TAU_S above, so the higher gain stays smooth.
+  const SPEC_SENS = BASE_SENS * 1.8;
 
   /** Resolve the arcade orbit pivot for the current player into `out`. */
   function pivotTargetFor(player, out) {
@@ -499,9 +512,18 @@ export function createCameraRig(camera, deps) {
     } else {
       spec.pivot.lerp(_pivotTarget, 1 - Math.exp(-dt / PIVOT_FOLLOW_TAU_S));
     }
+    // killcam r2: ease the live orbit toward the cursor-fed targets — the
+    // free orbit damps like the chase cam's smoothed free look instead of
+    // stepping per mousemove event, and the wheel dist glides between stops
+    if (dt > 0) {
+      const kLook = 1 - Math.exp(-dt / SPEC_LOOK_TAU_S);
+      spec.yaw += (spec.yawT - spec.yaw) * kLook;
+      spec.pitch += (spec.pitchT - spec.pitch) * kLook;
+      spec.dist += (spec.distT - spec.dist) * (1 - Math.exp(-dt / DIST_LERP_TAU_S));
+    }
     const viewPitch = THREE.MathUtils.clamp(spec.pitch, PITCH_MIN, PITCH_MAX);
     dirFromAngles(spec.yaw, viewPitch, _viewDir);
-    _desired.copy(spec.pivot).addScaledVector(_viewDir, -SPEC_DIST_M);
+    _desired.copy(spec.pivot).addScaledVector(_viewDir, -spec.dist);
     // collision pull-in: pivot -> desired camera position (solveArcade pattern)
     _rayDir.copy(_desired).sub(spec.pivot);
     const segLen = _rayDir.length();
@@ -892,7 +914,11 @@ export function createCameraRig(camera, deps) {
       spec = {
         ent,
         yaw: ent.state.yaw,          // open behind the ally's hull
+        yawT: ent.state.yaw,
         pitch: SPEC_PITCH,
+        pitchT: SPEC_PITCH,
+        dist: SPEC_DIST_M,
+        distT: SPEC_DIST_M,
         pivot: null,
         blendT: 0,
         blendDur: SPEC_BLEND_S,
@@ -906,6 +932,8 @@ export function createCameraRig(camera, deps) {
     /**
      * Retarget the spectate camera onto another ally with an eased blend
      * (cycling, auto-advance on target death). No-op when not spectating.
+     * The orbit re-centers behind the NEW tank (yaw target reset); the
+     * player's chosen zoom distance survives the switch.
      * @param {object} ent ally TankEntity
      */
     setSpectateTarget(ent) {
@@ -913,22 +941,38 @@ export function createCameraRig(camera, deps) {
       specCaptureFrom();
       spec.ent = ent;
       spec.yaw = ent.state.yaw;
+      spec.yawT = ent.state.yaw;
       spec.pitch = SPEC_PITCH;
+      spec.pitchT = SPEC_PITCH;
       spec.pivot = null;
       spec.blendT = 0;
       spec.blendDur = SPEC_BLEND_S;
     },
 
     /**
-     * Free-look orbit input while spectating (controller-forwarded drag).
-     * @param {number} dxPx horizontal drag pixels
-     * @param {number} dyPx vertical drag pixels
+     * Free-look orbit input while spectating — cursor motion forwarded by
+     * the spectate controller (killcam r2: no button hold; solveSpectate
+     * eases the live angles toward these targets). Full 360° yaw, pitch
+     * clamped to the arcade envelope.
+     * @param {number} dxPx horizontal cursor pixels
+     * @param {number} dyPx vertical cursor pixels
      */
     spectateLook(dxPx, dyPx) {
       if (!spec) return;
-      spec.yaw += dxPx * BASE_SENS * 1.4;
-      spec.pitch = THREE.MathUtils.clamp(
-        spec.pitch - dyPx * BASE_SENS * 1.4, PITCH_MIN, PITCH_MAX);
+      spec.yawT += dxPx * SPEC_SENS;
+      spec.pitchT = THREE.MathUtils.clamp(
+        spec.pitchT - dyPx * SPEC_SENS, PITCH_MIN, PITCH_MAX);
+    },
+
+    /**
+     * Wheel zoom while spectating (killcam r2): steps the eased orbit
+     * distance target — in toward SPEC_DIST_MIN, out to SPEC_DIST_MAX.
+     * @param {number} notches wheel steps (+1 out / -1 in per notch)
+     */
+    spectateZoom(notches) {
+      if (!spec || !notches) return;
+      spec.distT = THREE.MathUtils.clamp(
+        spec.distT * Math.pow(1.22, notches), SPEC_DIST_MIN, SPEC_DIST_MAX);
     },
 
     /** Leave spectate (battle end / garage). The next owner sets the pose. */
