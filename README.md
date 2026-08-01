@@ -1,5 +1,7 @@
 # Claude of Tanks
 
+![A T-90 column on the Verdant Fields road under fire — captured in the in-game scene studio](public/media/featured/f7_studio_t90_column_fire.webp)
+
 A World of Tanks-style armored combat game built in pure Three.js, developed by a
 long-running multi-agent pipeline: parallel research → subsystem builders →
 harsh visual-critic loops with per-dimension fix agents.

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Claude of Tanks — a three.js armored warfare demo</title>
-<link rel="icon" href="/brand/favicon.svg">
+<title>Claude of Tanks — Home</title>
+<link rel="icon" href="/brand/nav/home.svg">
 <style>
   @font-face {
     font-family: 'Inter';
@@ -308,7 +308,13 @@
   <div class="wrap">
     <div class="shead">
       <h2><span class="no">04</span>Gallery</h2>
-      <span class="ann">ten finals from a thirty-shot production · every frame staged in-engine</span>
+      <span class="ann">the in-game battle gallery · every frame staged in the scene studio</span>
+    </div>
+    <div class="shots" id="featgrid"></div>
+    <div style="height:34px"></div>
+    <div class="shead">
+      <h2 style="font-size:18px"><span class="no">04b</span>The thirty-shot production</h2>
+      <span class="ann">ten graded finals · every frame staged in-engine</span>
     </div>
     <div class="shots" id="shotgrid"></div>
   </div>
@@ -393,6 +399,31 @@ FINALS.forEach(([f, sc, t, wide], i) => {
       <img loading="lazy" src="/shots/marketing/final/${f}.png" alt="${t}"></a>
     <div class="bar"><span class="t">${String(i+1).padStart(2,'0')} · ${t}</span><span class="sc">${sc.toFixed(1)}</span></div>`;
   grid.appendChild(d);
+});
+</script>
+<script type="module">
+// BATTLE GALLERY (owner): every featured still from the ONE canonical list
+// the game itself uses (boot splash / garage gallery / transitions) — the
+// two owner-authored studio captures lead, with the winter lake duel.
+import { FEATURED_SHOTS } from '/src/ui/featuredShots.js';
+const LEAD = [
+  '/media/featured/f6_studio_strv_steinburg_duel.webp',
+  '/media/featured/f7_studio_t90_column_fire.webp',
+  '/media/featured/f1_09_winter_lake_duel.webp',
+];
+const ordered = [
+  ...LEAD.map((img) => FEATURED_SHOTS.find((s) => s.img === img)).filter(Boolean),
+  ...FEATURED_SHOTS.filter((s) => !LEAD.includes(s.img)),
+];
+const fg = document.getElementById('featgrid');
+ordered.forEach((s, i) => {
+  const d = document.createElement('div');
+  d.className = 'shot';
+  d.innerHTML = `<a href="${s.img}" target="_blank">
+      <img loading="lazy" src="${s.img}" alt="${s.cap}"></a>
+    <div class="bar"><span class="t">${s.cap}</span>` +
+    `<span class="sc">${i < 2 ? 'studio' : ''}</span></div>`;
+  fg.appendChild(d);
 });
 </script>
 </body>
