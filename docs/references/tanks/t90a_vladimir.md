@@ -147,3 +147,5 @@ CERTIFIED STATURE CAPS (per-column, r7 worldtrace, side_whole):
   plus a +0.24 registration bias (side dAlong) — station 0 wPct 27.7 is the
   unmatchable tail slice.
 A cap never excuses dims: dims 100, floaters 100 across all five poses.
+
+**r7 update (edge-on prism law, docs/GEOMETRY-GATE.md):** loftHull now subdivides at <=0.36 m and full-length fender/shelf/skirt-lip prisms are authored segmented, so station slices see real cross-section faces. State: hullCurves 33.3 / wholeCurves 11.1 / turretCurves 9.3 / stations 0 / dims 100 / floaters 100.

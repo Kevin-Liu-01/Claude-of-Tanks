@@ -12,8 +12,8 @@
  },
  "curveRows": {
   "side_hull": {
-   "score": 53.6973569446796,
-   "meanPct": 3.04,
+   "score": 53.55135561131244,
+   "meanPct": 3.06,
    "p95Pct": 8.67,
    "coverPct": 3.05,
    "reg": {
@@ -27,7 +27,7 @@
      "refBot": -1.26,
      "procTop": -1.01,
      "procBot": -1.45,
-     "errM": 0.389
+     "errM": 0.388
     },
     {
      "at": 4.96,
@@ -43,7 +43,7 @@
      "refBot": -0.94,
      "procTop": -0.09,
      "procBot": -0.37,
-     "errM": 0.359
+     "errM": 0.36
     },
     {
      "at": 4.84,
@@ -54,11 +54,19 @@
      "errM": 0.31
     },
     {
+     "at": 4.6,
+     "refTop": -0.27,
+     "refBot": -1.01,
+     "procTop": -0.1,
+     "procBot": -1.3,
+     "errM": 0.234
+    },
+    {
      "at": 5.33,
      "refTop": 0.04,
      "refBot": -0.61,
      "procTop": -0.14,
-     "procBot": -0.33,
+     "procBot": -0.32,
      "errM": 0.234
     },
     {
@@ -78,18 +86,10 @@
      "errM": 0.218
     },
     {
-     "at": 4.6,
-     "refTop": -0.27,
-     "refBot": -1.01,
-     "procTop": -0.1,
-     "procBot": -1.22,
-     "errM": 0.194
-    },
-    {
      "at": 3.62,
      "refTop": -0.34,
      "refBot": -1.65,
-     "procTop": -0.17,
+     "procTop": -0.16,
      "procBot": -1.81,
      "errM": 0.166
     },
@@ -121,7 +121,7 @@
   },
   "side_whole": {
    "score": 0,
-   "meanPct": 6.98,
+   "meanPct": 6.99,
    "p95Pct": 13.72,
    "coverPct": 7.1,
    "reg": {

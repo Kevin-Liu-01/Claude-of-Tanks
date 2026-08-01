@@ -59,8 +59,24 @@ function lerpPts(pts, z) {
 //   lower band belly->sponsonY, both pinch out where the curves cross.
 function loftHull(P, o) {
   const { slab } = KIT;
-  const zs = [...new Set([o.deck, o.belly, o.wUp, o.wLo].flat().map((p) => p[0]))]
+  const raw = [...new Set([o.deck, o.belly, o.wUp, o.wLo].flat().map((p) => p[0]))]
     .sort((a, b) => a - b);
+  // EDGE-ON PRISM LAW (docs/GEOMETRY-GATE.md, r7c): the station cameras clip
+  // a ~0.52 m z-slab; an axis-aligned long box shows the front camera only
+  // its end caps, so a multi-metre loft slab is INVISIBLE at every mid-span
+  // station slice. Subdivide the loft at <=0.36 m pitch so every station
+  // slab contains real cross-section faces. Outer silhouette is unchanged
+  // (the cuts interpolate the same curves).
+  const zs = [];
+  for (let i = 0; i < raw.length; i++) {
+    zs.push(raw[i]);
+    if (i < raw.length - 1) {
+      const span = raw[i + 1] - raw[i];
+      const cuts = Math.floor(span / 0.36);
+      for (let c = 1; c <= cuts; c++) zs.push(raw[i] + (span * c) / (cuts + 1));
+    }
+  }
+  zs.sort((a, b) => a - b);
   for (let i = 0; i < zs.length - 1; i++) {
     const z0 = zs[i], z1 = zs[i + 1];
     if (z1 - z0 < 0.015) continue;
@@ -192,8 +208,10 @@ function ruSkirtBand(P, o) {
       P.add('hull', box(o.th ?? 0.04, h, panelD * 0.94), s * o.x, yMid, z);
       P.add('hullDark', box(0.048, h * 0.9, 0.02), s * (o.x + 0.003), yMid, z + panelD / 2);
       P.add('hullDark', KIT.cylZ(0.014, 0.014, 8), s * (o.x + 0.015), o.yTop - 0.07, z, 0, s * Math.PI / 2, 0);
+      // bottom lip segmented per panel (edge-on prism law: a full-length
+      // strip has no station-visible faces mid-span)
+      P.add('hullDark', box(0.042, 0.09, panelD * 0.92), s * (o.x - 0.002), o.yBot - 0.03, z);
     }
-    P.add('hullDark', box(0.042, 0.09, (o.z1 - o.z0) * 0.98), s * (o.x - 0.002), o.yBot - 0.03, (o.z0 + o.z1) / 2);
   }
 }
 

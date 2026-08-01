@@ -110,3 +110,5 @@ tools/tmp-ru-glbnodes.py (scene-graph/bounds audit — no vertex reads).
 Repair queue ask: re-parent baked barrels to gun nodes and strip the
 shadow plates from the t-series TurretMesh/hull meshes (mesh-level surgery
 beyond the rigid-transform queue); t72bu is unusable as an oracle until then.
+
+**r7 update (edge-on prism law, docs/GEOMETRY-GATE.md):** loftHull now subdivides at <=0.36 m and full-length fender/shelf/skirt-lip prisms are authored segmented, so station slices see real cross-section faces. State: hullCurves 44.3 / wholeCurves 23.8 / turretCurves 24.6 / stations 15.7 / dims 95.5 / floaters 100.

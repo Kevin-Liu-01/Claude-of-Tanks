@@ -140,3 +140,5 @@ CERTIFIED STATURE CAPS (per-column, r7 worldtrace, side_whole):
   (print +8% long): 6 ref-only muzzle columns cap wholeCurves coverage
   (long-print class; overallLengthM 9.63 sovereign, measured 9.65).
 A cap never excuses dims: dims 91.9 >= 90 with floaters 100.
+
+**r7 update (edge-on prism law, docs/GEOMETRY-GATE.md):** loftHull now subdivides at <=0.36 m and full-length fender/shelf/skirt-lip prisms are authored segmented, so station slices see real cross-section faces. State: hullCurves 31.5 / wholeCurves 0 / turretCurves 31.5 / stations 0 / dims 91.9 / floaters 100.

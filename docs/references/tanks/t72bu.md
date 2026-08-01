@@ -174,3 +174,5 @@ A cap never excuses dims: dims 100, floaters 100, all four dims <=1.0%.
 VERDICT unchanged from r6: this print corroborates STRUCTURE (post-repair)
 but its +16%/+27% stature makes every curve row a certified-cap row; do not
 chase curves into the build (published dims sovereign).
+
+**r7 update (edge-on prism law, docs/GEOMETRY-GATE.md):** loftHull now subdivides at <=0.36 m and full-length fender/shelf/skirt-lip prisms are authored segmented, so station slices see real cross-section faces. State: hullCurves 51.4 / wholeCurves 0 / turretCurves 0 / stations 8.6 / dims 100 / floaters 100. (hullCurves recovered to 51.4, stations 8.6 — the barrel/plate cover cap (side cover ~18%) still bounds hull ~70 and whole/turret ~0-30; mesh surgery ask stands.)

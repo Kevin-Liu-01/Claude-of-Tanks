@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-01T12:44:58.994Z",
+ "generatedAt": "2026-08-01T12:53:53.466Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 4,
  "total": 85,
@@ -116,7 +116,7 @@
     "hullCurves": 0,
     "wholeCurves": 0,
     "turretCurves": 0,
-    "stations": 15.1,
+    "stations": 15.3,
     "dims": 98,
     "floaters": 100
    }
@@ -687,8 +687,8 @@
    "components": {
     "hullCurves": 56.2,
     "wholeCurves": 32.3,
-    "turretCurves": 50.1,
-    "stations": 41.1,
+    "turretCurves": 48.8,
+    "stations": 41.3,
     "dims": 100,
     "floaters": 100
    }
@@ -895,8 +895,8 @@
    "components": {
     "hullCurves": 62,
     "wholeCurves": 53.6,
-    "turretCurves": 56.1,
-    "stations": 65.9,
+    "turretCurves": 56.3,
+    "stations": 68,
     "dims": 100,
     "floaters": 100
    }
