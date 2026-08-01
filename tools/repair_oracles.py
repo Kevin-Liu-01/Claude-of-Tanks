@@ -1790,6 +1790,125 @@ REPAIRS['t62_bergman'] = [
 ]
 
 
+# =============================================================== batch 11 ===
+# t62_bergman DShK-BARREL STOW (orchestrator-sanctioned, leo2a6 precedent).
+# The bake poses the roof DShK with its BARREL FORWARD over the dome: the r7
+# certification measured 13-14 side columns at 2.75-2.85 m over z 0.82..2.31
+# vs the published 2.40 roof — under the gate's p95 height law (3 spike
+# columns) those columns were provably unmatchable and capped side_whole
+# ~81 / side_turret ~78 / stations ~80-85.
+#
+# Measured truth (.bak census): the MG group is FUSED into the TurretMesh
+# solid (no loose component). Group = 449 verts at y > 25.4 u, x < -2.0 u
+# (the loader hump at x +5.2..+7.8 is the only other content that high —
+# the -2..+4.5 isolation strip is EMPTY). The barrel + front-sight + feed
+# group forward of the receiver is the z > 11.55 subset: exactly 239 verts,
+# bore axis fitted (-7.53,14.60)->(-11.51,22.54) = azimuth -26.6 deg
+# (authored pointing forward-left), root at (x -6.33, z 12.2).
+#
+# Repair = RIGID RE-POSE of those 239 verts (positions + normals; the
+# batch-10 exception class — no vertex is created, deleted or scaled):
+#   yaw +116.6 deg about the vertical line through the root (barrel goes
+#   transverse-inboard, the real rail/parade stow), then seat into the roof
+#   clamp: dy -4.0 u (-0.39 m), dz -1.0 u (root tucks under the receiver
+#   front so the joint shear hides inside the receiver silhouette).
+# Stowed: x -0.67..+0.60 m, top 2.399 m (below the 2.45 dims ceiling),
+# z 0.86..1.30 m. Post-stow tall columns: 3 receiver columns at 2.84-2.85
+# (exactly the p95 spike allowance) + one 2.71 receiver-front sliver — the
+# 13-column cap collapses to ~1 point. Crossing triangles at the z 11.55
+# boundary twist inside the receiver joint (leo2a6-class local stretch).
+# The kept-prim POSITION min/max are re-derived from the CURRENT index
+# accessor's used verts (never the raw buffer — the batch-10-trimmed muzzle
+# verts still hold z 59..71.7 bytes and would re-poison the bounds).
+def _stow_mg_barrel(tank_id, node_name, *, y_min, x_max, z_min, theta_deg,
+                    pivot_xz, delta_yz, expect_verts, top_max, strip):
+    """Batch-11 'py2' builder: rigid yaw+seat of a fused MG barrel group.
+    Census guards: exact selected-vert count; the isolation strip (x range at
+    the same height) must be empty; post-transform group top <= top_max."""
+    def op(gltf, chunks, _id=tank_id, node=node_name, ymin=y_min, xmax=x_max,
+           zmin=z_min, th_deg=theta_deg, pv=pivot_xz, dlt=delta_yz,
+           expect=expect_verts, tmax=top_max, strip_x=strip):
+        import math as _m
+        ni = find_node(gltf, node)
+        prim = gltf['meshes'][gltf['nodes'][ni]['mesh']]['primitives'][0]
+        bi = _bin_chunk_index(chunks)
+        data = bytearray(chunks[bi][1])
+        world = node_world_matrix(gltf, ni)
+        minv = mat_rigid_inverse(world)
+
+        def layout(attr):
+            acc = gltf['accessors'][prim['attributes'][attr]]
+            bv = gltf['bufferViews'][acc['bufferView']]
+            off = bv.get('byteOffset', 0) + acc.get('byteOffset', 0)
+            return acc, off, (bv.get('byteStride') or 12)
+
+        pacc, poff, pstride = layout('POSITION')
+        has_n = 'NORMAL' in prim['attributes']
+        if has_n:
+            nacc, noff, nstride = layout('NORMAL')
+        # census + isolation first — nothing is written unless both hold
+        sel, stray = [], 0
+        for i in range(pacc['count']):
+            w = transform_point(world, struct.unpack_from('<fff', data, poff + i * pstride))
+            if w[1] > ymin:
+                if w[0] < xmax and w[2] > zmin:
+                    sel.append(i)
+                elif strip_x[0] <= w[0] <= strip_x[1]:
+                    stray += 1
+        if stray:
+            raise SystemExit(f'{_id}: isolation strip x {strip_x} above y '
+                             f'{ymin} not empty ({stray} verts) — refusing')
+        if len(sel) != expect:
+            raise SystemExit(f'{_id}: stow census mismatch — expected {expect} '
+                             f'verts, selected {len(sel)}; refusing to write')
+        th = _m.radians(th_deg)
+        c, s = _m.cos(th), _m.sin(th)
+        xp, zp = pv
+        dy, dz = dlt
+        top = -1e9
+        selset = set(sel)
+        for i in sel:
+            w = transform_point(world, struct.unpack_from('<fff', data, poff + i * pstride))
+            ddx, ddz = w[0] - xp, w[2] - zp
+            w2 = (xp + ddx * c + ddz * s, w[1] + dy, zp - ddx * s + ddz * c + dz)
+            top = max(top, w2[1])
+            p = transform_point(minv, w2)
+            struct.pack_into('<fff', data, poff + i * pstride, *p)
+            if has_n:
+                n = struct.unpack_from('<fff', data, noff + i * nstride)
+                nw = (n[0] * world[0] + n[1] * world[4] + n[2] * world[8],
+                      n[0] * world[1] + n[1] * world[5] + n[2] * world[9],
+                      n[0] * world[2] + n[1] * world[6] + n[2] * world[10])
+                nr = (nw[0] * c + nw[2] * s, nw[1], -nw[0] * s + nw[2] * c)
+                nl = (nr[0] * world[0] + nr[1] * world[1] + nr[2] * world[2],
+                      nr[0] * world[4] + nr[1] * world[5] + nr[2] * world[6],
+                      nr[0] * world[8] + nr[1] * world[9] + nr[2] * world[10])
+                struct.pack_into('<fff', data, noff + i * nstride, *nl)
+        if top > tmax:
+            raise SystemExit(f'{_id}: stowed group tops {top:.2f} > {tmax} — refusing')
+        # rebuild POSITION min/max over the verts the CURRENT index accessor
+        # actually references (post-batch-10 kept set)
+        used = sorted({v[0] for v in _read_rows(gltf, data, prim['indices'])})
+        rows = [struct.unpack_from('<fff', data, poff + i * pstride) for i in used]
+        pacc['min'] = [min(r[k] for r in rows) for k in range(3)]
+        pacc['max'] = [max(r[k] for r in rows) for k in range(3)]
+        chunks[bi] = (BIN_CHUNK, bytes(data))
+        print(f'[repair] {_id}: stowed {len(sel)} MG-barrel verts — yaw '
+              f'{th_deg} deg about ({xp},{zp}) + seat ({dy},{dz}); group top '
+              f'{top:.2f} u ({top * 3.30 / 33.50:.3f} m)')
+    return op
+
+
+REPAIRS['t62_bergman'] = [
+    *REPAIRS['t62_bergman'],
+    ('py2', _stow_mg_barrel('t62_bergman', 'TurretMesh',
+                            y_min=25.4, x_max=-2.0, z_min=11.55,
+                            theta_deg=116.6, pivot_xz=(-6.33, 12.2),
+                            delta_yz=(-4.0, -1.0), expect_verts=239,
+                            top_max=24.5, strip=(-2.0, 4.5))),
+]
+
+
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)
     if ops is None:

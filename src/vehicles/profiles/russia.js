@@ -371,8 +371,8 @@ function buildT62MV1(P) {
   // band-thin log/flap only. The ref's 2 columns beyond that line are a
   // certified packet cap.
   for (const s of [-1, 1]) {
-    P.add('hull', box(1.02, 0.28, 0.36), s * 0.56, 1.81, 3.14);      // strapped log bundle (painted like the print)
-    P.add('hull', cylX(0.14, 1.0, 10), s * 0.56, 1.82, 3.30);
+    P.add('hull', box(0.90, 0.28, 0.36), s * 0.57, 1.81, 3.14);      // strapped log bundle (painted like the print)
+    P.add('hull', cylX(0.14, 0.9, 10), s * 0.57, 1.82, 3.30);
   }
   for (const s of [-0.5, 0.5]) P.add('hullDark', box(0.05, 0.30, 0.37), s * 1.90, 1.81, 3.14);
   // spare-track-links rows on the upper glacis behind the log (ref tops
@@ -381,19 +381,14 @@ function buildT62MV1(P) {
     P.add('hullTrack', box(0.86, 0.09, 0.22), s * 0.53, 1.67, 2.90, -0.30, 0, 0);
     P.add('hullTrack', box(0.78, 0.08, 0.18), s * 0.49, 1.77, 3.02, -0.20, 0, 0);
   }
-  // headlight pods over the log's left shoulder (ref front 1.98 @ x -1.24..-1.35)
-  KIT.headlight(P, -1.26, 1.84, 2.98, -0.1, 0.05);
-  KIT.headlight(P, 1.26, 1.84, 2.98, -0.1, 0.05);
   // glacis eye hooks on the lower bow
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.10, 0.12, 0.14), s * 0.94, 0.85, 2.72, -0.3, 0, 0);
     P.add('hullDetail', KIT.torus(0.085, 0.016, 10), s * 1.18, 0.62, 2.90, Math.PI / 2, 0, 0);
   }
-  // mud flap bracket hanging from the log end (starts z 3.51 so the 3.45
-  // trace column stays log-only band-thin; carries the ref's 3.56 column)
-  P.add('hullRubber', box(2.2, 0.16, 0.045), 0, 1.71, 3.56);
+  P.add('hullRubber', box(0.40, 0.12, 0.05), 0, 1.72, 3.555);   // narrow flap tab (station-slice phase pin)
   buildRunningGear(P, {
-    style: 'holes', wheelR: 0.41, wheelW: 0.28, wheelY: 0.455, xc: 1.25, dishR: 0.88,
+    style: 'holes', wheelR: 0.41, wheelW: 0.28, wheelY: 0.455, xc: 1.27, dishR: 0.88,
     wheelZs: [1.38, 0.50, -0.36, -1.19, -1.96],
     sprocket: { z: -2.92, y: 0.70, r: 0.24 }, idler: { z: 2.40, y: 0.62, r: 0.25 },
     rollers: [], trackW: 0.52, topY: 0.88, botY: 0.0, paintedEnds: true, coveredTop: false, arms: true,
@@ -418,10 +413,10 @@ function buildT62MV1(P) {
   // turret mask like the print). Crown CLAMPED to 2.424 (pub 2.40 +1%,
   // inside the dims grace; ref crown 2.48 — the 0.056 remainder joins the
   // packet's stature note).
-  P.turretG.position.set(0, 1.49, 1.13);
-  const rings = [[1.30, -0.02], [1.355, 0.14], [1.345, 0.42], [1.27, 0.62], [1.05, 0.78], [0.58, 0.88], [0.02, 0.90]];
+  P.turretG.position.set(0, 1.49, 1.05); // -0.08: splits the bow-log registration bias (side samples proc at z_ref-0.107; plan at -0.058)
+  const rings = [[1.30, -0.02], [1.355, 0.14], [1.34, 0.38], [1.25, 0.52], [0.96, 0.66], [0.62, 0.78], [0.30, 0.86], [0.02, 0.90]];
   meshDome(P, rings, 0.975, 0, -0.05);
-  P.add('turret', cylY(0.66, 0.74, 0.77, 20), 0, -0.375, -0.075); // sunken race drum (ref z 0.34..1.77, bot 0.72)
+  P.add('turret', cylY(0.68, 0.74, 0.77, 20), 0, -0.375, -0.075); // sunken race drum (ref z 0.34..1.77 reads via the -0.107 bias)
   const pD = { rings, sz: 0.975, k1Y: 0.06, k1Pitch: 0.20, k1Out: -0.06, k1T0: 0.30, k1Step: 0.22, k1H: 0.20 };
   eraRuCheeks(P, pD, 'k1');
   // LEFT cheek raft: the print's left-front shoulder (Luna seat) bulges
@@ -430,18 +425,22 @@ function buildT62MV1(P) {
   P.add('turretTrack', box(0.26, 0.34, 0.09), -1.04, 0.26, 1.00, -0.15, -0.55, 0);
   // egg fat-end REAR: the casting rear skin reaches z -0.26 world at y 2.09
   // (the symmetric lathe cannot) — aft slope wedge carries it
-  P.add('turret', box(1.10, 0.24, 0.60), 0, 0.46, -1.05, -0.35, 0, 0);
-  P.add('turret', box(1.25, 0.28, 0.40), 0, 0.22, -1.14, -0.18, 0, 0);
+  P.add('turret', box(1.10, 0.26, 0.70), 0, 0.55, -0.92, -0.30, 0, 0);
+  P.add('turret', box(1.25, 0.30, 0.44), 0, 0.26, -1.04, -0.18, 0, 0);
   // DShK receiver + cradle over the left shoulder (ref front band 2.74-2.85
   // over x -0.68..-1.20; ref side receiver 2.84 @ z 0.82..0.94 — the stack
   // is kept 2 side-columns deep so heightM's p95 ignores it; the ref's
   // FORWARD barrel band 2.75-2.78 over z 1.06..2.25 is a certified cap and
   // is deliberately NOT matched)
-  P.add('turretDark', box(0.20, 0.32, 0.20), -0.775, 1.19, -0.22);    // receiver (peak 2.84)
-  P.add('turretDark', box(0.36, 0.05, 0.16), -1.03, 1.235, -0.22);    // mount arm (2.75 to x -1.21)
+  P.add('turretDark', box(0.20, 0.32, 0.22), -0.775, 1.19, -0.245);   // receiver (peak 2.84, 3 columns exactly)
+  P.add('turretDark', box(0.20, 0.05, 0.16), -0.79, 1.235, -0.25);    // cradle cap
   P.add('turretDark', cylY(0.032, 0.040, 0.26, 8), -0.86, 0.92, -0.22); // pintle post
   P.add('turretDetail', box(0.11, 0.13, 0.14), -0.60, 1.06, -0.28);   // ammo box
   P.add('turret', cylY(0.22, 0.24, 0.09, 14), -0.85, 0.83, -0.30);    // loader hatch ring
+  // batch-11 parity: the oracle's DShK barrel is STOWED transverse across
+  // the roof clamp (top 2.40) — matched with the same stowed tube
+  P.add('turretDark', cylX(0.088, 1.25, 10), -0.04, 0.79, -0.09);
+  P.add('turretDark', box(0.10, 0.10, 0.10), 0.52, 0.76, -0.09);      // clamp block
   // commander cupola LEFT-center (ref front 2.77 @ x -0.39..-0.65 — CLAMPED
   // to the 2.42 roof ceiling; both free p95 spikes are spent on the DShK)
   P.add('turret', cylY(0.25, 0.27, 0.15, 14), -0.52, 0.79, -0.62);
@@ -458,10 +457,10 @@ function buildT62MV1(P) {
   // tops 1.94-2.00 @ z 2.49..2.97), tube r .148, evacuator swell r .175 @
   // world 4.98..5.81, muzzle +5.81 (overall -3.62..5.81 = 9.43 = pub +1.0%,
   // within one column of the ref's trimmed 5.84) ----
-  P.gunG.position.set(0, 0.29, 1.10);
+  P.gunG.position.set(0, 0.29, 1.18); // world pivot unchanged
   ruSaddle(P, { rollR: 0.20, rollW: 0.44, tubeR: 0.15, rootL: 0.60 });
   P.addGunExtra(box(0.38, 0.34, 0.44), 0, -0.02, 0.26);     // mantlet collar block
-  P.addGunExtra(box(0.30, 0.15, 0.44), 0, 0.16, 0.44);      // KTD-2 hood over the root
+  P.addGunExtra(box(0.30, 0.32, 0.32), 0, 0.45, -0.055);    // KTD-2 hood high over the root (ref 2.42-2.48, clamped 2.39)
   P.addGunExtra(box(0.26, 0.26, 0.30), -0.55, -0.05, 0.02); // Luna bracket left of the root
   tubeGun(P, [
     [0.55, 1.10, 0.155], [1.10, 2.74, 0.148], [2.74, 3.58, 0.163],
@@ -617,11 +616,11 @@ function buildT64BV1(P) {
     P.add('hullRubber', box(0.26, 0.22, 0.05), s * 1.50, 1.00, -4.22);
   }
   P.add('hullDark', box(1.5, 0.05, 0.05), 0, 0.78, -4.32);
-  ruFlaps(P, { x: 1.26, w: 0.46, front: [0.62, 0.17], frontZ: 2.00 });
+  ruFlaps(P, { x: 0.30, w: 0.20, front: [0.62, 0.17], frontZ: 2.00 });
   buildRunningGear(P, {
-    style: 'steel', wheelR: 0.285, wheelW: 0.20, wheelY: 0.38, xc: 1.28, dishR: 0.88,
-    wheelZs: evenStations(6, 4.2, -1.25),
-    sprocket: { z: -3.85, y: 0.68, r: 0.30 }, idler: { z: 1.38, y: 0.58, r: 0.26 },
+    style: 'steel', wheelR: 0.285, wheelW: 0.20, wheelY: 0.38, xc: 1.25, dishR: 0.88,
+    wheelZs: evenStations(6, 4.15, -1.32),
+    sprocket: { z: -3.85, y: 0.68, r: 0.30 }, idler: { z: 1.44, y: 0.68, r: 0.26 },
     rollers: [-2.9, -1.75, -0.6, 0.55].map((z) => ({ z, y: 0.78, r: 0.07 })),
     trackW: 0.58, topY: 0.82, botY: 0.08, paintedEnds: true, coveredTop: true, arms: true,
   });
@@ -635,7 +634,7 @@ function buildT64BV1(P) {
   // bustle bin to 2.0, rear rack with TWO transverse drum pairs lying at
   // 1.07..1.41 out to -4.2, wide left cupola (ref 2.29) ----
   P.turretG.position.set(0, 1.10, -1.27); // repaired-ref dome front -0.2
-  const rings = [[1.24, -0.03], [1.32, 0.12], [1.30, 0.58], [1.24, 0.86], [1.08, 1.01], [0.60, 1.06], [0.02, 1.07]];
+  const rings = [[1.24, -0.03], [1.32, 0.12], [1.30, 0.55], [1.22, 0.72], [1.02, 0.82], [0.55, 0.87], [0.02, 0.88]];
   meshDome(P, rings, 0.85);
   // BV cheek WING PLATES seated ON the face (ref plan front -0.3 @ ±0.9 ->
   // -1.0 @ ±1.35; front-view tops 1.65-1.89 at |x| 1.0..1.4)
@@ -643,17 +642,19 @@ function buildT64BV1(P) {
     P.add('turretTrack', box(0.10, 0.52, 0.76), s * 1.26, 0.28, 0.62, -0.15, s * -0.42, 0);
     P.add('turretTrack', box(0.09, 0.46, 0.62), s * 0.96, 0.30, 0.90, -0.18, s * -0.22, 0);
   }
-  // roof plateau at the clamped ceiling (ref 2.23-2.28 z -0.1..-1.7)
-  P.add('turret', box(1.15, 0.06, 1.58), 0, 1.04, 0.35);
-  P.add('turretDark', box(0.92, 0.02, 1.30), 0, 1.072, 0.35);
+  // LEFT roof gallery strip (ref side plateau 2.23-2.28 over z -0.1..-1.7 is
+  // the raised commander's-side roof; right half of the casting reads
+  // 1.87-1.93 in front view). Clamped 2.19 (pub 2.17 stature cap).
+  P.add('turret', box(0.52, 0.09, 1.60), -0.60, 1.045, 0.42);
+  P.add('turretDark', box(0.44, 0.02, 1.40), -0.60, 1.095, 0.42);
   // narrow center face bulge around the gun port (ref side 2.22 @ -0.1..0.05
   // over |x|<=0.14 only — the wide face sits at -0.2..-0.33 in plan)
   P.add('turret', box(0.30, 0.85, 0.25), -0.05, 0.62, 1.20);
   // sloped two-part bustle (ref tops 2.09 @ -2.4 .. 1.73 @ -2.9, bots ~1.05)
   P.add('turret', box(1.70, 0.85, 0.50), 0, 0.50, -1.22);
-  P.add('turret', box(1.70, 0.60, 0.55), 0, 0.30, -1.75);
+  P.add('turret', box(1.70, 0.60, 0.55), 0, 0.30, -1.68);
   P.add('turretDark', box(1.7, 0.50, 0.04), 0, 0.30, -2.04);
-  P.add('turretCloth', box(1.5, 0.16, 0.50), 0, 0.98, -1.10, 0.20, 0, 0);
+  P.add('turretCloth', box(1.5, 0.16, 0.50), 0, 0.90, -0.95, 0.20, 0, 0);
   // rear rack: short rails + LONGITUDINAL corner drums (ref band 1.07..1.41
   // over z -3.45..-4.2 at |x| 0.65..1.0) + thin center rods (ref -4.1 @ ±0.15)
   for (const s of [-1, 1]) P.add('turretDetail', box(0.05, 0.05, 1.0), s * 0.60, -0.02, -1.75);
@@ -670,7 +671,7 @@ function buildT64BV1(P) {
   P.add('turret', box(0.34, 0.24, 0.36), 0.10, 0.94, -0.30);
   P.add('turretDark', box(0.22, 0.16, 0.05), 0.10, 0.96, -0.10);
   nsvt(P, -0.45, 0.60, -0.85);
-  P.add('turret', KIT.sph(0.12, 12, Math.PI / 2), 0.45, 0.90, -0.15);
+  P.add('turret', KIT.sph(0.12, 12, Math.PI / 2), 0.45, 0.75, -0.15);
   domeRailRu(P, rings, 0.85, 0.40, 0.9);
   // ---- 125 mm 2A46-2: sealed saddle + measured contour (ref collar block
   // z +0.1..+1.0 at 1.12..1.60, bare tube band 1.41..1.62 to the muzzle) ----
