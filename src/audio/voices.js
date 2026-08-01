@@ -1,10 +1,15 @@
 /**
- * src/audio/voices.js — crew radio voice lines (SOUND overhaul).
+ * src/audio/voices.js — crew radio voice lines (VOICE r1: neural crew).
  *
- * Plays the pre-synthesized intercom calls under public/audio/voice/ (original
- * macOS-TTS + ffmpeg radio chain, built by tools/make-voices.mjs — see
- * docs/ATTRIBUTION.md "Crew radio voice lines"). Nothing here touches the DOM
- * or the AudioContext until load() is called by audio.js after resume().
+ * Plays the pre-synthesized intercom calls under public/audio/voice/ —
+ * local Piper neural TTS through an ffmpeg radio chain, built by
+ * tools/make-voices.mjs (see docs/ATTRIBUTION.md "Crew radio voice lines").
+ * Four voices = four crew roles on one net: commander (UK male) calls
+ * contacts and confirms kills, gunner (deep US male) owns firing/ricochet/
+ * gun, driver (US male) owns mobility/hull/fires, loader (US female) owns
+ * ammo/reload. Variant files (_b/_c) are alternate reads/speakers so repeats
+ * don't sound sampled. Nothing here touches the DOM or the AudioContext
+ * until load() is called by audio.js after resume().
  *
  * Radio discipline (what keeps it from turning into chatter):
  *   - ONE line at a time — it is a single crew intercom, not a mixer.
@@ -20,21 +25,21 @@
 
 /** Line table: id → { files (variants), pri 0..3, cdS per-line cooldown }. */
 export const VOICE_LINES = {
-  enemy_spotted:    { files: ['enemy_spotted.ogg'],                            pri: 1, cdS: 9 },
-  target_destroyed: { files: ['target_destroyed.ogg', 'target_destroyed_b.ogg'], pri: 2, cdS: 3.5 },
-  were_hit:         { files: ['were_hit.ogg'],                                 pri: 2, cdS: 6 },
-  ricochet:         { files: ['ricochet.ogg'],                                 pri: 1, cdS: 5 },
-  bounced_us:       { files: ['bounced_us.ogg'],                               pri: 2, cdS: 6 },
+  enemy_spotted:    { files: ['enemy_spotted.ogg', 'enemy_spotted_b.ogg', 'enemy_spotted_c.ogg'], pri: 1, cdS: 9 },
+  target_destroyed: { files: ['target_destroyed.ogg', 'target_destroyed_b.ogg', 'target_destroyed_c.ogg'], pri: 2, cdS: 3.5 },
+  were_hit:         { files: ['were_hit.ogg', 'were_hit_b.ogg'],               pri: 2, cdS: 6 },
+  ricochet:         { files: ['ricochet.ogg', 'ricochet_b.ogg'],               pri: 1, cdS: 5 },
+  bounced_us:       { files: ['bounced_us.ogg', 'bounced_us_b.ogg'],           pri: 2, cdS: 6 },
   ammo_rack:        { files: ['ammo_rack.ogg'],                                pri: 3, cdS: 8 },
-  fire:             { files: ['fire.ogg'],                                     pri: 3, cdS: 10 },
+  fire:             { files: ['fire.ogg', 'fire_b.ogg'],                       pri: 3, cdS: 10 },
   fire_out:         { files: ['fire_out.ogg'],                                 pri: 1, cdS: 10 },
-  engine_damaged:   { files: ['engine_damaged.ogg'],                           pri: 2, cdS: 8 },
-  track_gone:       { files: ['track_gone.ogg'],                               pri: 2, cdS: 6 },
+  engine_damaged:   { files: ['engine_damaged.ogg', 'engine_damaged_b.ogg'],   pri: 2, cdS: 8 },
+  track_gone:       { files: ['track_gone.ogg', 'track_gone_b.ogg'],           pri: 2, cdS: 6 },
   gun_damaged:      { files: ['gun_damaged.ogg'],                              pri: 2, cdS: 8 },
-  reloaded:         { files: ['reloaded.ogg', 'reloaded_b.ogg'],               pri: 0, cdS: 3 },
-  on_the_move:      { files: ['on_the_move.ogg'],                              pri: 1, cdS: 15 },
-  firing:           { files: ['firing.ogg'],                                   pri: 0, cdS: 12 },
-  repairs:          { files: ['repairs.ogg'],                                  pri: 0, cdS: 10 },
+  reloaded:         { files: ['reloaded.ogg', 'reloaded_b.ogg', 'reloaded_c.ogg'], pri: 0, cdS: 3 },
+  on_the_move:      { files: ['on_the_move.ogg', 'on_the_move_b.ogg'],         pri: 1, cdS: 15 },
+  firing:           { files: ['firing.ogg', 'firing_b.ogg'],                   pri: 0, cdS: 12 },
+  repairs:          { files: ['repairs.ogg', 'repairs_b.ogg'],                 pri: 0, cdS: 10 },
 };
 
 const GLOBAL_GAP_S = 0.30;   // dead air between any two lines
