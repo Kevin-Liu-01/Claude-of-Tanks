@@ -74,6 +74,17 @@ Trimmed mean (2 worst slices dropped — a bustle overhang must not mask
 everything else, but systematic width error still fails):
 `100 − 10·trimW − 10·trimTop`.
 
+**Plate fill rule (owner directive 2026-08-01, KV-2 example):** any
+plate, shelf, lip, or strip added for silhouette/shading parity must
+read as SOLID FABRICATION at close-up — no hollow backs, no floating
+single-sided panels, no visible void between the plate and the parent
+surface. Close the volume (back face + end caps) or extend it to hull
+contact; webs/gussets are encouraged where a real vehicle would have
+them. Fills must stay WITHIN the certified silhouette (gate scores
+must not move); graduates re-run the gate and re-freeze their geometry
+hash after any fill. The turntable close-up review checks for this
+explicitly.
+
 **Station-slice visibility (edge-on prism law, russia r7c):** the
 station cameras render a ~0.52 m near/far-clipped z-slab, so an
 axis-aligned long thin box presents ONLY its end caps to the front
