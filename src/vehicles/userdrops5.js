@@ -186,11 +186,28 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
       gunFollowers: MERKAVA_GUN_FOLLOWERS,
     });
   }
-  for (const id of ['t64bv1', 't72b_1987', 't72bu', 'type90']) {
+  for (const id of ['t64bv1', 'type90']) {
     source(id, {
       turretNode: '^Turret$', autoPivot: true, yawOffset: -Math.PI / 2,
     });
   }
+  // batch-13b RULING (no surgery): t72bu's batch-9 split already created a
+  // Gun node under Turret, but this registration never DECLARED it — the
+  // turret mask swallowed the whole tube subtree (plan_turret read the ref
+  // turret to z 5.89) and turret rows capped at 11. gunNode resolves it.
+  source('t72bu', {
+    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+    yawOffset: -Math.PI / 2,
+  });
+  // batch-13 (tools/repair_oracles.py 't72b_1987'): the fused 2A46M — 7
+  // loose tube components inside TurretMesh — is component-split into
+  // GunMesh under a new Gun node (no trim; the warped tube already ends at
+  // published overall -0.3%). gunNode resolves it so turret masks compare
+  // tube-less turret to tube-less turret at every yaw pose.
+  source('t72b_1987', {
+    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+    yawOffset: -Math.PI / 2,
+  });
   // t62mv1: oracle ADOPTED from the gen2 bergman bake (batch-9 verdict —
   // true-to-published stature vs the print pack's +6.1% roof; clean two-shell
   // CAD, real Turret split). Gen2 node contract needs no yaw correction, and

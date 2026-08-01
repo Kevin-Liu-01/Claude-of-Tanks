@@ -2302,6 +2302,154 @@ REPAIRS['t90a'] = {
 }
 
 
+
+# =============================================================== batch 13 ===
+# t72b_1987 FUSED-TUBE COMPONENT SPLIT (orchestrator-sanctioned under the
+# batch-10 precedent + the vertex-freedom ruling; packet §r2 request).
+# The batch-12 vertex extract found NO gun node (gunBox undefined): the
+# 2A46M lives inside TurretMesh, so the turret-mask rows carry the tube at
+# every yaw pose while the procedural gun rides its own rig — a structural
+# turret-row ceiling (the r2 gate row read turret 43.7 with the tube
+# ONLY-REF along +0.76..+4.66 game-z).
+#
+# Census of the POST-WARP TurretMesh (the batch-12 axis_warp runs first in
+# this chain; world = glb scene frame, long axis +x, game_z = 0.0881*x-1.022):
+#   * 4 075 verts / 2 980 tris in ONE prim, but 644 LOOSE components (main
+#     component only 100 verts) — the batch-10 single-solid plane rule does
+#     NOT apply; the batch-9 t72bu "loose barrel component" class does.
+#   * The tube = 7 whole components, 219 verts / 208 tris, x 20.4..65.5
+#     (game z 0.77..4.75 — matching the extract's tube rows from +0.76),
+#     radial band y 16.0..18.2, lateral z -1.6..+1.4.
+#   * Muzzle x 65.48 = game +4.747 -> overall -4.753..+4.747 = 9.50 m vs
+#     published 9.53 (-0.3%): NO TRIM NEEDED (unlike t62 batch-10).
+# Repair: move those 7 whole components (never shredding any component) to
+# a new GunMesh under the print's own 'Turret' pivot; kept TurretMesh gets
+# a trimmed index accessor + rebuilt POSITION min/max. Registration gains
+# gunNode '^Gun$' (userdrops5.js — t72b_1987 leaves the shared no-gun loop).
+def _component_split(tank_id, node_name, *, min_long, axis, gun_parent,
+                     expect_comps, expect_gun, expect_keep, muzzle_at):
+    """Batch-13 'py2' builder: move WHOLE loose components lying entirely
+    beyond min_long (world units, along `axis` 0=x/2=z) out of a multi-
+    component mesh into a new GunMesh under gun_parent. No triangle is ever
+    shredded (whole components only). Censuses are exact; drift refuses."""
+    def op(gltf, chunks, _id=tank_id, node=node_name, ml=min_long, ax=axis,
+           parent_name=gun_parent, expc=expect_comps, expg=expect_gun,
+           expk=expect_keep, mz=muzzle_at):
+        ni = find_node(gltf, node)
+        mesh_index = gltf['nodes'][ni]['mesh']
+        prims = gltf['meshes'][mesh_index]['primitives']
+        if len(prims) != 1:
+            raise SystemExit(f'{_id}: expected 1 primitive')
+        prim = prims[0]
+        bi = _bin_chunk_index(chunks)
+        data = bytearray(chunks[bi][1])
+        if gltf['accessors'][prim['indices']]['componentType'] != 5123:
+            raise SystemExit(f'{_id}: expected uint16 indices')
+        idx = [v[0] for v in _read_rows(gltf, data, prim['indices'])]
+        pos = _read_rows(gltf, data, prim['attributes']['POSITION'])
+        world = node_world_matrix(gltf, ni)
+        W = [transform_point(world, p) for p in pos]
+
+        parent = list(range(len(pos)))
+
+        def find(a):
+            while parent[a] != a:
+                parent[a] = parent[parent[a]]
+                a = parent[a]
+            return a
+
+        for k in range(0, len(idx) - 2, 3):
+            a, b = find(idx[k]), find(idx[k + 1])
+            if a != b:
+                parent[a] = b
+            if find(idx[k]) != find(idx[k + 2]):
+                parent[find(idx[k])] = find(idx[k + 2])
+        comp_min = {}
+        for i in range(len(pos)):
+            r = find(i)
+            v = W[i][ax]
+            comp_min[r] = min(comp_min.get(r, v), v)
+        gun_roots = {r for r, m in comp_min.items() if m >= ml}
+
+        gun_tris, kept = [], []
+        for k in range(0, len(idx) - 2, 3):
+            tri = (idx[k], idx[k + 1], idx[k + 2])
+            (gun_tris if find(tri[0]) in gun_roots else kept).append(tri)
+        gun_vids = sorted({v for t in gun_tris for v in t})
+        keep_vids = sorted({v for t in kept for v in t})
+        got_g = (len(gun_vids), len(gun_tris))
+        got_k = (len(keep_vids), len(kept))
+        used_roots = {find(v) for v in gun_vids}
+        if len(used_roots) != expc or got_g != tuple(expg) or got_k != tuple(expk):
+            raise SystemExit(f'{_id}: census mismatch — comps {len(used_roots)} vs '
+                             f'{expc}, gun {got_g} vs {expg}, keep {got_k} vs '
+                             f'{expk}; refusing to write (wrong input file?)')
+        muzzle = max(W[v][ax] for v in gun_vids)
+        if abs(muzzle - mz) > 0.05:
+            raise SystemExit(f'{_id}: gun max-long {muzzle:.3f}, expected {mz}; '
+                             f'refusing to write')
+
+        flat = [v for t in kept for v in t]
+        nbv = _bin_append(gltf, data, struct.pack(f'<{len(flat)}H', *flat), 34963)
+        gltf['accessors'].append({'bufferView': nbv, 'componentType': 5123,
+                                  'count': len(flat), 'type': 'SCALAR'})
+        prim['indices'] = len(gltf['accessors']) - 1
+        pos_acc = gltf['accessors'][prim['attributes']['POSITION']]
+        pos_acc['min'] = [min(pos[v][k] for v in keep_vids) for k in range(3)]
+        pos_acc['max'] = [max(pos[v][k] for v in keep_vids) for k in range(3)]
+
+        remap = {v: i for i, v in enumerate(gun_vids)}
+        attrs = {}
+        for name, ai in prim['attributes'].items():
+            acc, ncomp, fmt, offset, stride = _acc_reader(gltf, data, ai)
+            rows = [struct.unpack_from('<' + fmt * ncomp, data,
+                                       offset + i * stride) for i in gun_vids]
+            payload = b''.join(struct.pack('<' + fmt * ncomp, *r) for r in rows)
+            abv = _bin_append(gltf, data, payload, 34962)
+            new_acc = {'bufferView': abv, 'componentType': acc['componentType'],
+                       'count': len(gun_vids), 'type': acc['type']}
+            if name == 'POSITION':
+                new_acc['min'] = [min(r[k] for r in rows) for k in range(ncomp)]
+                new_acc['max'] = [max(r[k] for r in rows) for k in range(ncomp)]
+            gltf['accessors'].append(new_acc)
+            attrs[name] = len(gltf['accessors']) - 1
+        gidx = [remap[v] for t in gun_tris for v in t]
+        gbv = _bin_append(gltf, data, struct.pack(f'<{len(gidx)}H', *gidx), 34963)
+        gltf['accessors'].append({'bufferView': gbv, 'componentType': 5123,
+                                  'count': len(gidx), 'type': 'SCALAR'})
+        gprim = {'attributes': attrs, 'indices': len(gltf['accessors']) - 1}
+        if 'material' in prim:
+            gprim['material'] = prim['material']
+        gltf['meshes'].append({'name': 'GunMesh', 'primitives': [gprim]})
+        src_node = gltf['nodes'][ni]
+        pivot = gltf['nodes'][find_node(gltf, parent_name)]
+        pt = pivot.get('translation', [0.0, 0.0, 0.0])
+        gun_node = {'name': 'Gun', 'mesh': len(gltf['meshes']) - 1,
+                    'translation': [-pt[0], -pt[1], -pt[2]]}
+        if 'rotation' in src_node:
+            gun_node['rotation'] = list(src_node['rotation'])
+        if 'scale' in src_node:
+            gun_node['scale'] = list(src_node['scale'])
+        gltf['nodes'].append(gun_node)
+        pivot.setdefault('children', []).append(len(gltf['nodes']) - 1)
+
+        gltf['buffers'][0]['byteLength'] = len(data)
+        chunks[bi] = (BIN_CHUNK, bytes(data))
+        print(f'[repair] {_id}: {node} component-split at long>={ml} — '
+              f'{len(gun_tris)} tris ({len(used_roots)} whole components) -> '
+              f'GunMesh under {parent_name} (muzzle {muzzle:.2f})')
+    return op
+
+
+REPAIRS['t72b_1987'] = [
+    *REPAIRS['t72b_1987'],
+    ('py2', _component_split('t72b_1987', 'TurretMesh',
+                             min_long=16.0, axis=0, gun_parent='Turret',
+                             expect_comps=7, expect_gun=(219, 208),
+                             expect_keep=(3856, 2772), muzzle_at=65.48)),
+]
+
+
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)
     if ops is None:

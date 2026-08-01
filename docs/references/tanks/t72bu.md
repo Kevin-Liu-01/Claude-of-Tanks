@@ -223,3 +223,21 @@ gun+turret at yaw poses, that is the same fused-tube class as t72b_1987;
 verify with --rows=side_turret and consider an owner batch-13 split.
 NEXT: hull 31 (deck plateau noise columns, rear dip 1.18 @ -2.85), turret
 row decode, then front family fixes.
+
+## BATCH-13b RULING — registration fix, surgery NOT needed (2026-08-01)
+
+Census: the batch-9 split already created Gun under Turret (x 28.9..127.6
+glb); the registration simply never DECLARED it — t72bu now has gunNode
+'^Gun$' (userdrops5.js, out of the shared loop). Extract re-run clean.
+HOWEVER the turret-11 root is NOT yet proven: a direct mask probe shows
+proc/ref plan turret masks nearly IDENTICAL at pose 0 (14..309 vs 14..298
+px), while the calibrated digest reads ref turret rear at z -3.2 (the old
+packet's "basket run -1.5..-3.2") and side_turret reads ref NONE at
+-1.66..-1.87 — mutually contradictory. The workorder tool's PLAN axis is
+now ground-anchored (hullMask z0 + muzzle-oriented, vertex JSON injected
+into the page) but per-model offsets remain suspect (gate reg dy -0.437).
+NEXT WINDOW: dump the two plan turret masks as PNGs side by side (one-off
+probe), settle where the ref turret really ends, THEN either author the
+rear basket run or fix the digest — no build edits until the masks agree.
+Turret rows at yaw poses include the tube for BOTH models symmetrically
+(rig_gun nests under rig_turret in the harness) — not an asymmetry source.

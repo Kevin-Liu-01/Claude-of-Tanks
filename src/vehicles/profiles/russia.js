@@ -804,7 +804,9 @@ function widthAnchor(P, halfW, y, z) {
 // 1.75, evac swell r.119 z 2.65..3.53, muzzle 4.852.
 function buildT72B87(P) {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage } = KIT;
-  // VERTEX ROUND r2 (batch-12 normalized oracle): re-anchored DIRECTLY to
+  // VERTEX ROUND r3 (batch-13 tube split): the gunNode registration re-keys
+  // the loader on the HULL box, re-centering the frame +1.417 (mask now
+  // +-3.336) — every hull z below carries that shift. Derived from:
   // docs/references/vertex/t72b_1987.json corners (the PLANS z-map and the
   // bake disagree for this id — corners are the baked truth). AFT frame:
   // mask -4.75..+1.92 (6.671 = published), drum rack ON the tail plate
@@ -813,46 +815,46 @@ function buildT72B87(P) {
   // halfW 1.63; FUSED-GUN PRINT (no gun node): axis ~1.48, tube-end ~4.6,
   // my muzzle +4.78 for published overall. Orientation asserts: glacis +z.
   loftHull(P, {
-    deck: [[-4.75, 1.40], [-4.63, 1.585], [-4.35, 1.585], [-4.22, 1.21], [-4.00, 1.35], [-3.42, 1.38], [-2.35, 1.36], [-0.89, 1.47], [0.02, 1.40], [0.57, 1.36], [1.14, 1.20], [1.70, 1.11], [1.85, 1.03], [1.92, 1.02]],
-    belly: [[-4.75, 1.36], [-4.64, 1.12], [-4.35, 1.12], [-4.27, 0.75], [-4.08, 0.90], [-3.77, 0.48], [-3.03, 0.32], [0.88, 0.30], [1.63, 0.45], [1.92, 0.74]],
-    wUp: [[-4.75, 0.95], [-4.40, 1.30], [-4.10, 1.60], [1.40, 1.60], [1.92, 1.30]],
-    wLo: [[-4.75, 1.03], [1.92, 1.00]],
+    deck: [[-3.33, 1.40], [-3.21, 1.585], [-2.93, 1.585], [-2.80, 1.21], [-2.58, 1.35], [-2.00, 1.38], [-0.93, 1.36], [0.53, 1.47], [1.44, 1.40], [1.99, 1.36], [2.56, 1.20], [3.12, 1.11], [3.27, 1.03], [3.34, 1.02]],
+    belly: [[-3.33, 1.36], [-3.22, 1.12], [-2.93, 1.12], [-2.85, 0.75], [-2.66, 0.90], [-2.35, 0.48], [-1.61, 0.32], [2.30, 0.30], [3.05, 0.45], [3.34, 0.74]],
+    wUp: [[-3.33, 0.95], [-2.98, 1.30], [-2.68, 1.60], [2.82, 1.60], [3.34, 1.30]],
+    wLo: [[-3.33, 1.03], [3.34, 1.00]],
     sponsonY: 0.86,
   });
-  widthAnchor(P, 1.785, 0.95, -1.0);
+  widthAnchor(P, 1.785, 0.95, 0.42);
   // fender lips: segmented shelves at the tub edge (family constant)
   for (const s of [-1, 1]) for (let i = 0; i < 10; i++) {
-    P.add('hull', box(0.16, 0.05, 0.48), s * 1.70, 1.30, -3.95 + i * 0.545);
+    P.add('hull', box(0.16, 0.05, 0.48), s * 1.70, 1.30, -2.53 + i * 0.545);
   }
-  ruDeck(P, { deckY: 1.40, hatchZ: 0.30, gz: -2.75, grilles: 5, gw: 1.5 });
-  ruGlacisKit(P, { w: 3.3, y: 1.02, z: 1.30, eyeZ: 1.60, hookY: 0.62, hookZ: 1.70 });
-  KIT.towCable(P, [[-1.2, 1.30, 0.75], [0, 1.38, 0.30], [1.2, 1.30, 0.75]]);
+  ruDeck(P, { deckY: 1.40, hatchZ: 1.72, gz: -1.33, grilles: 5, gw: 1.5 });
+  ruGlacisKit(P, { w: 3.3, y: 1.02, z: 2.72, eyeZ: 3.02, hookY: 0.62, hookZ: 3.12 });
+  KIT.towCable(P, [[-1.2, 1.30, 2.17], [0, 1.38, 1.72], [1.2, 1.30, 2.17]]);
   // OPVT snorkel + drum rack ON the tail plate (ref deck bumps 1.585)
-  P.add('hullDark', cylX(0.115, 2.4, 10), 0, 1.355, 0.10);
-  for (const s of [-0.45, 0.45]) P.add('hullDetail', box(0.06, 0.14, 0.09), s * 1.9, 1.30, 0.10);
+  P.add('hullDark', cylX(0.115, 2.4, 10), 0, 1.355, 1.52);
+  for (const s of [-0.45, 0.45]) P.add('hullDetail', box(0.06, 0.14, 0.09), s * 1.9, 1.30, 1.52);
   for (const s of [-1, 1]) {
-    P.add('hull', cylZ(0.14, 0.52, 12), s * 0.66, 1.44, -4.48);
-    P.add('hullDark', cylZ(0.144, 0.03, 12), s * 0.66, 1.44, -4.24);
-    P.add('hullDark', box(0.05, 0.13, 0.05), s * 0.66, 1.44, -4.71);
+    P.add('hull', cylZ(0.14, 0.52, 12), s * 0.66, 1.44, -3.06);
+    P.add('hullDark', cylZ(0.144, 0.03, 12), s * 0.66, 1.44, -2.82);
+    P.add('hullDark', box(0.05, 0.13, 0.05), s * 0.66, 1.44, -3.29);
   }
-  P.add('hullWood', cylX(0.095, 2.0, 10), 0, 1.44, -4.70);
-  for (const s of [-0.5, 0.5]) P.add('hullDark', cylX(0.102, 0.045, 10), s * 1.0, 1.44, -4.70);
-  stowage(P, 'hull', P.rng, [[-1.2, 1.44, -1.6, 0.32, 0.16, 1.3], [1.2, 1.44, -0.7, 0.32, 0.16, 1.5]]);
-  ruFlaps(P, { x: 1.46, w: 0.60, front: [0.62, 0.50], frontZ: 1.84 });
+  P.add('hullWood', cylX(0.095, 2.0, 10), 0, 1.44, -3.28);
+  for (const s of [-0.5, 0.5]) P.add('hullDark', cylX(0.102, 0.045, 10), s * 1.0, 1.44, -3.28);
+  stowage(P, 'hull', P.rng, [[-1.2, 1.44, -0.18, 0.32, 0.16, 1.3], [1.2, 1.44, 0.72, 0.32, 0.16, 1.5]]);
+  ruFlaps(P, { x: 1.46, w: 0.60, front: [0.62, 0.50], frontZ: 3.26 });
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.375, wheelW: 0.21, wheelY: 0.46, xc: 1.35, dishR: 0.84,
-    wheelZs: evenStations(6, 3.88, -1.06),
-    sprocket: { z: -3.42, y: 0.72, r: 0.30 }, idler: { z: 1.35, y: 0.60, r: 0.28 },
-    rollers: [-2.4, -1.06, 0.35].map((z) => ({ z, y: 0.84, r: 0.086 })),
+    wheelZs: evenStations(6, 3.88, 0.36),
+    sprocket: { z: -2.00, y: 0.72, r: 0.30 }, idler: { z: 2.77, y: 0.60, r: 0.28 },
+    rollers: [-0.98, 0.36, 1.77].map((z) => ({ z, y: 0.84, r: 0.086 })),
     trackW: 0.54, topY: 0.88, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
   });
-  ruSkirtBand(P, { x: 1.72, z0: -3.35, z1: 1.30, yTop: 1.26, yBot: 0.60, panels: 6, th: 0.08 });
+  ruSkirtBand(P, { x: 1.72, z0: -1.93, z1: 2.72, yTop: 1.26, yBot: 0.60, panels: 6, th: 0.08 });
   for (const s of [-1, 1]) for (let i = 0; i < 9; i++) {
-    P.add('hull', box(0.05, 0.045, 0.44), s * 1.775, 1.29, -3.75 + i * 0.545);
+    P.add('hull', box(0.05, 0.045, 0.44), s * 1.775, 1.29, -2.33 + i * 0.545);
   }
 
   // ---- turret: Super-Dolly dome + K-1 + 902B left bank (roof 2.04-2.22) ----
-  P.turretG.position.set(0, 1.42, -1.05);
+  P.turretG.position.set(0, 1.42, 0.37);
   const rings = [[1.42, -0.03], [1.55, 0.10], [1.49, 0.36], [1.32, 0.56], [0.98, 0.71], [0.48, 0.78], [0.02, 0.80]];
   meshDome(P, rings, 0.84, 0, 0.02);
   const pD = { rings, sz: 0.84, k1Y: 0.10, k1Pitch: 0.24, k1Out: 0.09 };
@@ -881,8 +883,8 @@ function buildT72B87(P) {
   P.addGunExtra(box(0.50, 0.26, 0.42), 0, -0.13, 0.18);
   P.addGunExtra(box(0.42, 0.30, 0.55), 0, 0.0, -0.28);     // root bridge onto the dome (floater guard)
   tubeGun(P, [
-    [0.55, 2.10, 0.098], [2.10, 2.90, 0.118], [2.90, 4.88, 0.096],
-  ], { rings: [[2.10, 0.120], [2.90, 0.120], [3.55, 0.098], [4.20, 0.098], [4.70, 0.098]], muzzle: 4.88 });
+    [0.55, 2.10, 0.098], [2.10, 2.90, 0.118], [2.90, 4.86, 0.096],
+  ], { rings: [[2.10, 0.120], [2.90, 0.120], [3.55, 0.098], [4.20, 0.098], [4.70, 0.098]], muzzle: 4.86 });
   const dxB = ringSkin(rings, 0.42) + 0.02;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [dxB * 0.99, 0.40, -0.5], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [-dxB * 0.99, 0.40, -0.5], -Math.PI / 2);

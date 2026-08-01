@@ -33,6 +33,11 @@ try {
   await page.goto(`http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=${id}&geo=1`,
     { waitUntil: 'domcontentloaded' });
   await page.waitForFunction('window.__FIDELITY_READY === true', { polling: 60 });
+  try {
+    const { readFileSync } = await import('node:fs');
+    const vx = readFileSync(`docs/references/vertex/${id}.json`, 'utf8');
+    await page.evaluate((s) => { window.__VERTEX_JSON = s; }, vx);
+  } catch { /* no extract for this id — plan rows use the legacy center */ }
   const res = await page.evaluate(async () => {
     const THREE = await import('/node_modules/three/build/three.module.js');
     const { reference, procedural, renderMask, cameraFor } = window.__FIDELITY_DEBUG;
@@ -56,6 +61,7 @@ try {
     const shared = vb(reference.root).union(vb(procedural.root));
     const C = shared.getCenter(new THREE.Vector3());
     const AXES = { side: new THREE.Vector3(1, 0, 0), plan: new THREE.Vector3(0, 1, 0), front: new THREE.Vector3(0, 0, 1) };
+    const planZOff = { mode: 'legacy', off: 0 };
     const GS = 1024;
     const trace = (mask, cam, N = 96) => {
       const S = Math.round(Math.sqrt(mask.length));
@@ -86,9 +92,38 @@ try {
       for (const c of t0) if (c && c[2] < mn) mn = c[2];
       yOff[view] = Number.isFinite(mn) ? -mn : 0;
     }
+    // plan calibration: the plan 'vertical' is world-z on screen; anchor the
+    // REF whole-mask REAR edge to the extract's known hullMask.z0 (ground
+    // truth, same spirit as the side/front ground anchor). p[1] is the
+    // screen-top (front-most) value, p[2] the screen-bottom (rear-most).
+    {
+      const cam0 = cameraFor(AXES.plan);
+      const t0 = trace(renderMask(reference, procedural, cam0, 'whole'), cam0);
+      let mn = Infinity, mx = -Infinity;
+      for (const c of t0) if (c) { if (c[2] < mn) mn = c[2]; if (c[1] > mx) mx = c[1]; }
+      let z0 = null, z1 = null;
+      try {
+        const vx = JSON.parse(window.__VERTEX_JSON || 'null');
+        z0 = vx?.measured?.hullMask?.z0 ?? null;
+        const gb = vx?.landmarks?.gunBox;
+        z1 = gb ? gb.hi[2] : (vx?.measured?.hullMask?.z1 ?? null);
+      } catch {}
+      if (z0 !== null && Number.isFinite(mn) && Number.isFinite(mx)) {
+        // two orientation candidates; pick by which puts the far extreme
+        // nearer the known front (muzzle or mask z1)
+        const offA = z0 - mn;   // z = offA + v
+        const offB = z0 + mx;   // z = offB - v
+        const frontA = offA + mx, frontB = offB - mn;
+        const target = z1 !== null ? z1 : (z0 + (mx - mn));
+        planZOff.mode = Math.abs(frontA - target) <= Math.abs(frontB - target) ? 'A' : 'B';
+        planZOff.off = planZOff.mode === 'A' ? offA : offB;
+      } else { planZOff.mode = 'legacy'; planZOff.off = C.z; }
+    }
     const toWorld = {
       side: (p) => [C.z - p[0], p[1] + yOff.side, p[2] + yOff.side],
-      plan: (p) => [p[0] + C.x, C.z - p[2], C.z - p[1]], // [x, zFront(max), zRear(min)]
+      plan: (p) => planZOff.mode === 'A'
+        ? [p[0] + C.x, planZOff.off + p[1], planZOff.off + p[2]]  // [x, zFront, zRear]
+        : [p[0] + C.x, planZOff.off - p[2], planZOff.off - p[1]],
       front: (p) => [p[0] + C.x, p[1] + yOff.front, p[2] + yOff.front],
     };
     const out = { center: [C.x, C.y, C.z].map((v) => +v.toFixed(3)), rows: {} };
