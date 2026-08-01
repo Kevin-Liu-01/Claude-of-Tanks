@@ -1,22 +1,29 @@
 #!/usr/bin/env node
-// make-voices.mjs — generate the crew radio voice lines (VOICE round r1:
-// human-like neural TTS, replacing the original robotic macOS `say` chain).
+// make-voices.mjs — generate the battle announcer voice lines (VOICE round r2).
+//
+// r2 DESIGN CHANGE (owner redirect): ONE American male voice for everything,
+// in the classic tank-game announcer style — the r1 four-persona crew is
+// retired (preserved at shots/voices-r2/r1-full/, A/B pairs in
+// shots/voices-r2/ab/). Same engine and pipeline as r1.
 //
 // Engine: Piper TTS (https://github.com/OHF-voice/piper1-gpl, the maintained
 // line of rhasspy/piper) running 100% LOCALLY — pip-installed into a private
 // venv under ~/.cache/cot-piper, voice models pulled anonymously from
 // huggingface.co/rhasspy/piper-voices. No accounts, no API keys, no cloud.
 //
-// Four neural voices = four crew roles, so exchanges feel like a real crew
-// on one intercom net (licenses verified per MODEL_CARD — see
-// docs/ATTRIBUTION.md "Crew radio voice lines"; all four are public-domain /
-// CC0 / CC BY-SA datasets — deliberately NO NonCommercial voices, so the
-// voice payload never joins the NC quarantine):
-//
-//   COMMANDER  en_GB-northern_english_male-medium  (OpenSLR 83, CC BY-SA 4.0)
-//   GUNNER     en_US-joe-medium                    (OHF voice-datasets, CC0)
-//   DRIVER     en_US-john-medium                   (LibriVox, public domain)
-//   LOADER     en_US-kristin-medium                (LibriVox, public domain)
+// THE VOICE: en_US-joe-medium (OHF voice-datasets "Joe", CC0). Chosen over
+// en_US-john-medium (LibriVox, public domain) by a measured bake-off on the
+// battle-start line (`node tools/make-voices.mjs --bakeoff` re-runs it):
+//   - gravitas: mean spectral centroid 1952 Hz vs john 2909 Hz raw,
+//     1784 vs 1983 Hz after the radio chain — joe reads much darker/deeper.
+//   - spectral fullness through the 300–3400 Hz intercom band: body band
+//     (300–800 Hz) −25.3 dB RMS vs john −27.0 dB at ~equal full-band level —
+//     joe keeps ~+1.7 dB more chest in the band that survives the radio.
+//   - pace: joe says "The battle has begun!" in 1.25 s at length_scale 0.92
+//     where john needs 2.01 s — joe is naturally clipped/urgent, no extreme
+//     length-scale forcing needed.
+// The r1 crew models (northern_english_male, john, kristin) stay cached in
+// ~/.cache/cot-piper/voices for future use; only joe is required to build.
 //
 // Pipeline per line:  piper (22 kHz mono wav, per-line pace/energy params)
 //   → ffmpeg "tank intercom" chain: silence trim, speechnorm, 300–3400 Hz
@@ -29,17 +36,20 @@
 // Re-runnable end-to-end: missing venv / piper / models are bootstrapped
 // automatically (anonymous downloads only). Output differs slightly run-to-run
 // (VITS sampling noise) — loudness is re-normalized every run, so that's fine.
+// Full runs also DELETE orphan .ogg files in the output dir that no longer
+// appear in the line table, so retired sets never ride along as dead payload.
 //
 // Usage:
 //   node tools/make-voices.mjs              # generate everything + verify
 //   node tools/make-voices.mjs --only fire  # regenerate one line id (+verify)
 //   node tools/make-voices.mjs --verify     # checks only, no synthesis
+//   node tools/make-voices.mjs --bakeoff    # re-run the joe-vs-john metrics
 //
 // (Node is via nvm on this machine: export NVM_DIR="$HOME/.nvm" &&
 //  . "$NVM_DIR/nvm.sh" first. Requires ffmpeg with libopus + python3 ≥3.9.)
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, unlinkSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -59,57 +69,74 @@ const LUFS_TOL = 1.5;        // verify gate: ± this many LU
 const PEAK_CEIL_DB = -1.0;   // verify gate: no sample above this (limiter at -2)
 const DUR_MIN_S = 0.4;
 const DUR_MAX_S = 2.5;
+const PAYLOAD_BUDGET_B = 600 * 1024;   // verify gate: whole voice payload
+
+// The announcer (see bake-off notes in the header).
+const ANNOUNCER = 'en_US-joe-medium';
+// Runner-up kept for the re-runnable --bakeoff comparison.
+const BAKEOFF_RIVAL = 'en_US-john-medium';
 
 // ---------------------------------------------------------------------------
-// Crew personas. length/noise scales lean "clipped radio discipline" — a bit
-// faster than audiobook pace, moderate energy so the compressor does the rest.
-const CREW = {
-  commander: { model: 'en_GB-northern_english_male-medium', tag: 'CMD' },
-  gunner:    { model: 'en_US-joe-medium',                   tag: 'GNR' },
-  driver:    { model: 'en_US-john-medium',                  tag: 'DRV' },
-  loader:    { model: 'en_US-kristin-medium',               tag: 'LDR' },
-};
-
-// Line table: file id → { role, text, ls (length_scale: lower = faster/more
+// Line table: file id → text + { ls (length_scale: lower = faster/more
 // urgent), ns (noise_scale: expressiveness), pad (extra tail pad seconds) }.
+// ONE voice, classic announcer register. Scripts are ORIGINAL — short stock
+// military phrases ("Enemy spotted!", "On the way!") are generic crew
+// vernacular; nothing is copied wholesale from another game's script.
 // File ids MUST stay in sync with src/audio/voices.js VOICE_LINES (verified
 // below by importing it). Variants (_b/_c) give repeat plays a fresh read.
 const LINES = [
-  // spotting / kills — commander calls contacts, gunner confirms kills
-  ['enemy_spotted',      'commander', 'Enemy spotted.',        { ls: 0.92 }],
-  ['enemy_spotted_b',    'commander', 'Contact! Enemy armor.', { ls: 0.90 }],
-  ['enemy_spotted_c',    'gunner',    'Enemy in sight.',       { ls: 0.92 }],
-  ['target_destroyed',   'gunner',    'Target destroyed.',     { ls: 0.95 }],
-  ['target_destroyed_b', 'commander', 'Enemy down. Good kill.',{ ls: 0.95 }],
-  ['target_destroyed_c', 'gunner',    "Got him! Target's down.", { ls: 0.90 }],
-  // taking hits
-  ['were_hit',           'driver',    "We're hit!",            { ls: 0.85, ns: 0.75 }],
-  ['were_hit_b',         'loader',    'We took a hit!',        { ls: 0.85, ns: 0.75 }],
-  ['bounced_us',         'driver',    'They bounced us!',      { ls: 0.87 }],
-  ['bounced_us_b',       'commander', 'Armor held!',           { ls: 0.90 }],
-  // our shell bounced off the enemy (gunner's report)
-  ['ricochet',           'gunner',    'Ricochet!',             { ls: 0.88, ns: 0.75 }],
-  ['ricochet_b',         'gunner',    'No penetration!',       { ls: 0.88 }],
-  // module damage / survival
-  ['ammo_rack',          'loader',    "Ammo rack's hit!",      { ls: 0.84, ns: 0.75 }],
-  ['fire',               'driver',    'Fire! Put it out!',     { ls: 0.84, ns: 0.75 }],
-  ['fire_b',             'loader',    "We're burning!",        { ls: 0.84, ns: 0.75 }],
-  ['fire_out',           'loader',    "Fire's out.",           { ls: 0.97 }],
-  ['engine_damaged',     'driver',    "Engine's hit.",         { ls: 0.92 }],
-  ['engine_damaged_b',   'driver',    'Losing power!',         { ls: 0.88 }],
-  ['track_gone',         'driver',    "Track's gone!",         { ls: 0.87 }],
-  ['track_gone_b',       'driver',    'We lost a track!',      { ls: 0.88 }],
-  ['gun_damaged',        'gunner',    "Gun's damaged!",        { ls: 0.88 }],
-  // loading / movement / flavor
-  ['reloaded',           'loader',    'Loaded!',               { ls: 0.90, pad: 0.06 }],
-  ['reloaded_b',         'loader',    'Up!',                   { ls: 0.92, pad: 0.14 }],
-  ['reloaded_c',         'loader',    'Round loaded.',         { ls: 0.95 }],
-  ['on_the_move',        'driver',    'On the move.',          { ls: 0.95 }],
-  ['on_the_move_b',      'driver',    'Rolling out.',          { ls: 0.93 }],
-  ['firing',             'gunner',    'Firing!',               { ls: 0.88, pad: 0.06 }],
-  ['firing_b',           'gunner',    'On the way!',           { ls: 0.90 }],
-  ['repairs',            'driver',    'Repairs done.',         { ls: 0.96 }],
-  ['repairs_b',          'loader',    "We're patched up.",     { ls: 0.95 }],
+  // ---- battle flow -----------------------------------------------------------
+  ['battle_start',       'The battle has begun!',              { ls: 0.92 }],
+  ['battle_start_b',     'Battle! Give them hell!',            { ls: 0.88, ns: 0.75 }],
+  ['on_the_move',        'Move out!',                          { ls: 0.88, pad: 0.06 }],
+  ['on_the_move_b',      'Forward! Roll out!',                 { ls: 0.88 }],
+  ['victory',            'Victory!',                           { ls: 0.95, ns: 0.8, pad: 0.08 }],
+  ['victory_b',          'Victory is ours! Well fought!',      { ls: 0.95, ns: 0.75 }],
+  ['defeat',             "We've been defeated...",             { ls: 1.08, ns: 0.55 }],
+  ['defeat_b',           "We've lost this one...",             { ls: 1.08, ns: 0.55 }],
+  ['draw',               "Cease fire... it's a draw.",         { ls: 1.02, ns: 0.55 }],
+  // ---- gunnery ---------------------------------------------------------------
+  ['firing',             'On the way!',                        { ls: 0.88 }],
+  ['firing_b',           'Firing!',                            { ls: 0.86, pad: 0.06 }],
+  ['firing_c',           "Shot's away!",                       { ls: 0.88 }],
+  ['penetration',        'Penetration!',                       { ls: 0.88, ns: 0.75 }],
+  ['penetration_b',      'Right through their armor!',         { ls: 0.87 }],
+  ['ricochet',           "Didn't go through!",                 { ls: 0.88 }],
+  ['ricochet_b',         'Bounced off!',                       { ls: 0.88, pad: 0.06 }],
+  ['enemy_crit',         'That one hurt them!',                { ls: 0.9 }],
+  ['enemy_crit_b',       'Critical hit!',                      { ls: 0.9, pad: 0.06 }],
+  ['enemy_ammo_rack',    'We hit their ammo rack!',            { ls: 0.89, ns: 0.75 }],
+  ['target_destroyed',   'Enemy vehicle destroyed!',           { ls: 0.92 }],
+  ['target_destroyed_b', 'Target eliminated!',                 { ls: 0.92 }],
+  ['target_destroyed_c', "That's a kill! Well done!",          { ls: 0.9, ns: 0.75 }],
+  // ---- survival --------------------------------------------------------------
+  ['were_hit',           "We're hit!",                         { ls: 0.84, ns: 0.75 }],
+  ['were_hit_b',         'They got through!',                  { ls: 0.85, ns: 0.75 }],
+  ['bounced_us',         'Ricochet!',                          { ls: 0.87, ns: 0.75, pad: 0.06 }],
+  ['bounced_us_b',       'Glanced right off!',                 { ls: 0.88 }],
+  ['ammo_rack',          "Ammo rack's hit!",                   { ls: 0.84, ns: 0.75 }],
+  ['fuel_tank',          "Fuel tank's hit!",                   { ls: 0.85, ns: 0.75 }],
+  ['fire',               "We're on fire! Put it out!",         { ls: 0.84, ns: 0.75 }],
+  ['fire_b',             'Fire! Fire!',                        { ls: 0.84, ns: 0.8, pad: 0.06 }],
+  ['fire_out',           "Fire's out.",                        { ls: 0.97 }],
+  ['engine_damaged',     "Engine's damaged!",                  { ls: 0.9 }],
+  ['engine_damaged_b',   "Engine's hit! We're losing power!",  { ls: 0.87 }],
+  ['track_gone',         "Track's gone!",                      { ls: 0.87 }],
+  ['track_gone_b',       "We've lost a track!",                { ls: 0.88 }],
+  ['gun_damaged',        "Gun's damaged!",                     { ls: 0.88 }],
+  ['low_hp',             'Critical damage! Hold together!',    { ls: 0.86, ns: 0.75 }],
+  ['repairs',            'Repairs complete.',                  { ls: 0.96 }],
+  ['repairs_b',          "We're back in action!",              { ls: 0.92 }],
+  // ---- awareness -------------------------------------------------------------
+  ['enemy_spotted',      'Enemy spotted!',                     { ls: 0.9 }],
+  ['enemy_spotted_b',    'Enemy vehicle spotted!',             { ls: 0.9 }],
+  ['enemy_spotted_c',    'Contact! Enemy armor!',              { ls: 0.88, ns: 0.75 }],
+  ['sixth_sense',        'They see us!',                       { ls: 0.86, ns: 0.75 }],
+  ['sixth_sense_b',      "We've been spotted!",                { ls: 0.86 }],
+  ['reloading',          'Reloading!',                         { ls: 0.9, pad: 0.06 }],
+  ['reloaded',           'Loaded!',                            { ls: 0.9, pad: 0.06 }],
+  ['reloaded_b',         'Up!',                                { ls: 0.92, pad: 0.14 }],
+  ['reloaded_c',         'Round loaded! Ready!',               { ls: 0.92 }],
 ];
 
 // The intercom chain (pre-gain). Kept from the original SOUND overhaul and
@@ -166,6 +193,28 @@ function measurePeakDb(file) {
   return m[1] === '-inf' ? -Infinity : parseFloat(m[1]);
 }
 
+/** Band-limited RMS level in dBFS (bake-off fullness metric). */
+function measureBandRmsDb(file, lowHz, highHz) {
+  const band = (lowHz ? `highpass=f=${lowHz},` : '') + (highHz ? `lowpass=f=${highHz},` : '');
+  const out = spawnSync(FFMPEG, ['-hide_banner', '-i', file,
+    '-af', `${band}astats=metadata=0:measure_overall=RMS_level:measure_perchannel=none`,
+    '-f', 'null', '-'], { encoding: 'utf8' });
+  const m = /RMS level dB:\s*(-?[\d.]+|-inf)/.exec(out.stderr);
+  if (!m) throw new Error(`astats failed for ${file}`);
+  return m[1] === '-inf' ? -Infinity : parseFloat(m[1]);
+}
+
+/** Mean spectral centroid in Hz (bake-off gravitas metric — lower = darker). */
+function measureCentroidHz(file) {
+  const out = spawnSync(FFMPEG, ['-hide_banner', '-i', file,
+    '-af', 'aspectralstats=measure=centroid,ametadata=mode=print:file=-', '-f', 'null', '-'],
+  { encoding: 'utf8' });
+  let sum = 0, n = 0;
+  for (const m of out.stdout.matchAll(/centroid=([\d.]+)/g)) { sum += parseFloat(m[1]); n++; }
+  if (!n) throw new Error(`aspectralstats failed for ${file}`);
+  return sum / n;
+}
+
 function probeMeta(file) {
   const dur = parseFloat(run(FFPROBE, ['-v', 'error', '-show_entries', 'format=duration',
     '-of', 'csv=p=0', file]).trim());
@@ -183,7 +232,7 @@ function decodeCheck(file) {
 }
 
 // --- bootstrap: venv + piper + models (all anonymous downloads) ---------------
-function ensurePiper() {
+function ensurePiper(models) {
   if (!existsSync(PIPER)) {
     console.log('[voices] bootstrapping piper venv at', VENV);
     mkdirSync(CACHE, { recursive: true });
@@ -191,7 +240,6 @@ function ensurePiper() {
     run(path.join(VENV, 'bin', 'pip'), ['install', '-q', 'piper-tts']);
   }
   mkdirSync(VOICE_DIR, { recursive: true });
-  const models = [...new Set(Object.values(CREW).map((c) => c.model))];
   for (const m of models) {
     if (!existsSync(path.join(VOICE_DIR, `${m}.onnx`))) {
       console.log('[voices] downloading voice model', m);
@@ -200,27 +248,32 @@ function ensurePiper() {
   }
 }
 
+/** One piper synthesis (text → wav at `out`). */
+function piperSynth(model, text, out, o = {}) {
+  const args = ['-m', path.join(VOICE_DIR, `${model}.onnx`), '-f', out,
+    '--length-scale', String(o.ls ?? 1.0),
+    '--noise-scale', String(o.ns ?? 0.667),
+    '--sentence-silence', '0'];
+  const p = spawnSync(PIPER, args, { input: text, encoding: 'utf8' });
+  if (p.status !== 0) throw new Error(`piper failed (${model}): ${p.stderr}`);
+}
+
 // --- generation ----------------------------------------------------------------
 function synthesize(only) {
-  ensurePiper();
+  ensurePiper([ANNOUNCER]);
   mkdirSync(OUT_DIR, { recursive: true });
   const tmp = mkdtempSync(path.join(tmpdir(), 'cot-voices-'));
   let total = 0;
   let made = 0;
-  console.log(`\nid                   role  pace  LUFS(pre→post)  bytes  text`);
-  for (const [id, role, text, o] of LINES) {
+  console.log(`\nannouncer: ${ANNOUNCER}\n`);
+  console.log(`id                   pace  LUFS(pre→post)  bytes  text`);
+  for (const [id, text, o] of LINES) {
     if (only && id !== only && !id.startsWith(only + '_')) continue;
-    const crew = CREW[role];
     const raw = path.join(tmp, `${id}.raw.wav`);
     const proc = path.join(tmp, `${id}.proc.wav`);
     const out = path.join(OUT_DIR, `${id}.ogg`);
     // 1) neural synthesis (stdin text → wav)
-    const args = ['-m', path.join(VOICE_DIR, `${crew.model}.onnx`), '-f', raw,
-      '--length-scale', String(o.ls ?? 1.0),
-      '--noise-scale', String(o.ns ?? 0.667),
-      '--sentence-silence', '0'];
-    const p = spawnSync(PIPER, args, { input: text, encoding: 'utf8' });
-    if (p.status !== 0) throw new Error(`piper failed for ${id}: ${p.stderr}`);
+    piperSynth(ANNOUNCER, text, raw, o);
     // 2) radio chain (pre-gain)
     ffmpeg(['-i', raw, '-filter_complex', chain(o.pad), '-map', '[out]', '-ac', '1', proc]);
     // 3) 2-pass loudness: measure looped, apply gain, limit, encode opus
@@ -232,10 +285,45 @@ function synthesize(only) {
     const size = statSync(out).size;
     total += size;
     made++;
-    console.log(`${id.padEnd(20)} ${crew.tag}   ${String(o.ls ?? 1).padEnd(5)} ${pre.toFixed(1)}→${post.toFixed(1)}  ${String(size).padStart(6)}  "${text}"`);
+    console.log(`${id.padEnd(20)} ${String(o.ls ?? 1).padEnd(5)} ${pre.toFixed(1)}→${post.toFixed(1)}  ${String(size).padStart(6)}  "${text}"`);
   }
   rmSync(tmp, { recursive: true, force: true });
+  // Full runs sweep orphans: any .ogg in OUT_DIR that the table no longer
+  // names is retired payload (e.g. the r1 crew set) and must not ship.
+  if (!only) {
+    const keep = new Set(LINES.map(([id]) => `${id}.ogg`));
+    for (const f of readdirSync(OUT_DIR)) {
+      if (f.endsWith('.ogg') && !keep.has(f)) {
+        unlinkSync(path.join(OUT_DIR, f));
+        console.log(`[voices] removed orphan ${f}`);
+      }
+    }
+  }
   console.log(`\n[voices] ${made} line(s) written, batch total ${(total / 1024).toFixed(1)} KiB → ${OUT_DIR}`);
+}
+
+// --- bake-off ------------------------------------------------------------------
+// Re-runnable evidence for the r2 voice choice: synthesizes the battle-start
+// line in the announcer and the runner-up, then prints gravitas (spectral
+// centroid — lower is darker) and fullness (band RMS) raw AND through the
+// radio chain. Writes nothing under public/.
+function bakeoff() {
+  ensurePiper([ANNOUNCER, BAKEOFF_RIVAL]);
+  const tmp = mkdtempSync(path.join(tmpdir(), 'cot-bakeoff-'));
+  const text = 'The battle has begun!';
+  console.log(`\nbake-off line: "${text}" (length_scale 0.92)\n`);
+  for (const model of [ANNOUNCER, BAKEOFF_RIVAL]) {
+    const raw = path.join(tmp, `${model}.wav`);
+    const proc = path.join(tmp, `${model}.chained.wav`);
+    piperSynth(model, text, raw, { ls: 0.92 });
+    ffmpeg(['-i', raw, '-filter_complex', chain(0), '-map', '[out]', '-ac', '1', proc]);
+    const { dur } = probeMeta(raw);
+    console.log(`${model}`);
+    console.log(`  raw:     centroid ${measureCentroidHz(raw).toFixed(0)} Hz · low band 80-300 Hz ${measureBandRmsDb(raw, 80, 300).toFixed(1)} dB (full ${measureBandRmsDb(raw, 0, 0).toFixed(1)} dB) · ${dur.toFixed(2)} s`);
+    console.log(`  chained: centroid ${measureCentroidHz(proc).toFixed(0)} Hz · body band 300-800 Hz ${measureBandRmsDb(proc, 300, 800).toFixed(1)} dB (full ${measureBandRmsDb(proc, 0, 0).toFixed(1)} dB)`);
+  }
+  rmSync(tmp, { recursive: true, force: true });
+  console.log(`\npick: ${ANNOUNCER} — lower centroid (gravitas) + more body through the radio band + clipped pace.`);
 }
 
 // --- verification ----------------------------------------------------------------
@@ -250,6 +338,10 @@ async function verify() {
   // every mapped file must be generated by this script, and vice versa
   for (const f of mapped) if (!tableIds.has(f)) problems.push(`voices.js maps ${f} but generator table lacks it`);
   for (const f of tableIds) if (!mapped.has(f)) problems.push(`generator produces ${f} but voices.js never plays it`);
+  // orphan sweep gate: nothing unmapped may sit in the shipped folder
+  for (const f of readdirSync(OUT_DIR)) {
+    if (f.endsWith('.ogg') && !mapped.has(f)) problems.push(`${f}: orphan in ${OUT_DIR} (not in voices.js mapping)`);
+  }
   let total = 0;
   console.log(`\nverify: ${mapped.size} mapped files  (target ${TARGET_LUFS} LUFS ±${LUFS_TOL}, peak ≤ ${PEAK_CEIL_DB} dBFS, ${DUR_MIN_S}–${DUR_MAX_S}s)`);
   for (const f of [...mapped].sort()) {
@@ -268,7 +360,8 @@ async function verify() {
     if (flags.length) problems.push(`${f}: ${flags.join(' ')}`);
     console.log(`  ${flags.length ? 'FAIL' : ' ok '} ${f.padEnd(24)} ${dur.toFixed(2)}s  I=${lufs.toFixed(1)}  peak=${peak.toFixed(1)}dB`);
   }
-  console.log(`[voices] payload: ${mapped.size} files, ${(total / 1024).toFixed(1)} KiB total`);
+  console.log(`[voices] payload: ${mapped.size} files, ${(total / 1024).toFixed(1)} KiB total (budget ${(PAYLOAD_BUDGET_B / 1024).toFixed(0)} KiB)`);
+  if (total > PAYLOAD_BUDGET_B) problems.push(`payload ${(total / 1024).toFixed(1)} KiB exceeds ${(PAYLOAD_BUDGET_B / 1024).toFixed(0)} KiB budget`);
   if (problems.length) {
     console.error(`\n[voices] VERIFY FAILED:`);
     for (const p of problems) console.error('  - ' + p);
@@ -279,7 +372,11 @@ async function verify() {
 
 // --- main ----------------------------------------------------------------------
 const argv = process.argv.slice(2);
-const onlyI = argv.indexOf('--only');
-const only = onlyI >= 0 ? argv[onlyI + 1] : null;
-if (!argv.includes('--verify')) synthesize(only);
-await verify();
+if (argv.includes('--bakeoff')) {
+  bakeoff();
+} else {
+  const onlyI = argv.indexOf('--only');
+  const only = onlyI >= 0 ? argv[onlyI + 1] : null;
+  if (!argv.includes('--verify')) synthesize(only);
+  await verify();
+}

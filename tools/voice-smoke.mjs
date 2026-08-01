@@ -1,14 +1,20 @@
 #!/usr/bin/env node
-// voice-smoke.mjs — play-path smoke for the crew radio voice set (VOICE r1).
+// voice-smoke.mjs — play-path smoke for the announcer voice set (VOICE r2).
 //
 // Boots the game headless on its OWN vite (7xxx port — never 5001/5002),
 // resumes audio, and verifies the shipped voice payload end-to-end in the
 // real engine path:
 //   1. every file in src/audio/voices.js decodes in WebAudio (radio.load
 //      warns + mutes on any failure — that warning fails this probe),
-//   2. three voice events driven through the game BUS actually reach the
-//      radio and play (voiceLog), with the AudioContext clock advancing,
-//   3. zero page console errors (known-unrelated tankFactory wheel-sync
+//   2. the battle ENVELOPE plays through the game BUS: a re-driven
+//      garage→battle phase edge must announce battle_start (the r2
+//      listen-only wiring in voices.js), and 'battle:ended' {victory} must
+//      announce victory over the fanfare,
+//   3. five combat event lines driven through the BUS actually reach the
+//      radio and play (voiceLog) — spotting, track damage, reload-done,
+//      sixth sense (player:spotted) and a player penetration (shell:hit) —
+//      with the AudioContext clock advancing,
+//   4. zero page console errors (known-unrelated tankFactory wheel-sync
 //      errors quarantined, same as tools/audio-probe.mjs).
 //
 // Shares the FIFO capture lock with tools/screenshot.mjs so parallel
@@ -171,21 +177,58 @@ try {
   if (muteWarn) { failed = true; errors.push(`WebAudio decode failure: "${muteWarn}"`); }
   console.log('[voice-smoke] voices loaded, decode warnings:', muteWarn ? muteWarn : 'none');
 
-  // 2) three voice events through the real game bus
+  // 2) battle START through the real game bus. The live boot entered battle
+  //    via __DEBUG.startBattle before the voice payload finished decoding, so
+  //    re-drive the garage→battle phase edge (all real bus events — audio.js
+  //    replays the horn, the r2 voices.js wiring announces battle_start).
   await page.evaluate(() => {
     const D = window.__DEBUG;
     const playerId = D.game.player ? D.game.player.id : null;
     const enemy = D.game.tanks.find((t) => t.team === 'enemy' && t.state) || {};
-    window.__P = { playerId, enemyId: enemy.id || null, emit: (ev, p) => D.bus.emit(ev, p) };
+    window.__P = {
+      playerId,
+      enemyId: enemy.id || null,
+      enemyPos: enemy.state && enemy.state.pos
+        ? [enemy.state.pos.x, enemy.state.pos.y + 1.2, enemy.state.pos.z] : [0, 1.2, 0],
+      timeS: () => D.game.timeS,
+      emit: (ev, p) => D.bus.emit(ev, p),
+    };
+    window.__P.emit('phase:change', { phase: 'garage' });
+    window.__P.emit('ui:battleStart', { specId: 'm1a2', mapId: null });
+    window.__P.emit('phase:change', { phase: 'battle' });
   });
+  await sleep(4200); // battle_start + audio.js's own on_the_move follow-up drain
+
+  // 3) five combat event lines through the bus (2 s gaps: every asserted line
+  //    is ≤1.6 s + the 0.3 s radio gap). Organic battle chatter can front-run
+  //    an id inside its cooldown — that still proves the line plays, so the
+  //    assertion below checks the whole voiceLog, not per-emit responses.
   await page.evaluate(() => window.__P.emit('tank:spotted',
     { id: window.__P.enemyId, team: 'player', timeS: 1, spotterId: window.__P.playerId }));
-  await sleep(1600);
+  await sleep(2000);
   await page.evaluate(() => window.__P.emit('module:state',
     { id: window.__P.playerId, module: 'trackL', state: 'red' }));
-  await sleep(1600);
+  await sleep(2000);
   await page.evaluate(() => window.__P.emit('player:reload', { t: 0, total: 7, done: true }));
-  await sleep(1600);
+  await sleep(2000);
+  await page.evaluate(() => window.__P.emit('player:spotted', { timeS: window.__P.timeS() }));
+  await sleep(2000);
+  // player pen on the enemy — full payload so every shell:hit listener
+  // (fx impact/decals need pos+normal, shot-info stats, hud damage number)
+  // takes its real path.
+  await page.evaluate(() => window.__P.emit('shell:hit', {
+    kind: 'pen', pos: window.__P.enemyPos, normal: [0, 1, 0],
+    attackerId: window.__P.playerId, targetId: window.__P.enemyId,
+    damage: 250, targetHpAfter: 700, targetMaxHp: 1400,
+    caliberMm: 120, shellType: 'AP', timeS: window.__P.timeS(), modulesHit: [],
+    destroyed: false,
+  }));
+  await sleep(2000);
+
+  // 4) battle END: victory result over the fanfare.
+  await page.evaluate(() => window.__P.emit('battle:ended',
+    { result: 'victory', timeS: window.__P.timeS(), map: 'debug' }));
+  await sleep(2600);
 
   const state = await page.evaluate(() => ({
     played: window.__COT_AUDIO.voiceLog.map((v) => v.id),
@@ -193,12 +236,13 @@ try {
     ctxTime: window.__COT_AUDIO.ctx.currentTime,
   }));
   console.log(`[voice-smoke] ctx=${state.ctxState} t=${state.ctxTime.toFixed(1)}s played: ${state.played.join(', ') || '(none)'}`);
-  for (const id of ['enemy_spotted', 'track_gone', 'reloaded']) {
+  for (const id of ['battle_start', 'enemy_spotted', 'track_gone', 'reloaded',
+    'sixth_sense', 'penetration', 'victory']) {
     if (!state.played.includes(id)) { failed = true; errors.push(`bus event never played voice line: ${id}`); }
   }
   if (state.ctxState !== 'running') { failed = true; errors.push(`AudioContext not running: ${state.ctxState}`); }
 
-  // 3) console gate (quarantine the known-unrelated tankFactory wheel-sync)
+  // 5) console gate (quarantine the known-unrelated tankFactory wheel-sync)
   const KNOWN_UNRELATED = /syncFromState|multiplyQuaternions|tankFactory\.js/;
   const audioErrors = consoleErrors.filter((e) => !KNOWN_UNRELATED.test(e));
   const quarantined = consoleErrors.filter((e) => KNOWN_UNRELATED.test(e));
