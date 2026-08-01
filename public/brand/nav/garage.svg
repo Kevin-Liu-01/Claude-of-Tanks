@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 64" role="img" aria-label="Garage — tank on jack stands">
+  <!-- Nav mark set: same diff-fringe language as studio.svg, but the tank is
+       UP ON JACK STANDS over a workshop ground line — the repair bay read. -->
+  <defs>
+    <path id="cotDiffTankG" d="
+      M10 16 L2 16 L2 13 L10 13 L14 12
+      L30 8 L33 2 L36 1 L38 -2 L41 -2 L41 1 L52 1 L57 8 L66 9
+      L84 12 L88 16 L88 20 L14 20 Z
+      M12 21 L86 21 L88 25 L86 33 L82 37 L18 37 L12 32 L10 25 Z"/>
+    <g id="cotDiffScallopsG">
+      <circle cx="22" cy="37" r="5"/><circle cx="34" cy="37" r="5"/>
+      <circle cx="46" cy="37" r="5"/><circle cx="58" cy="37" r="5"/>
+      <circle cx="70" cy="37" r="5"/>
+    </g>
+    <path id="cotStands" d="M20 44 L32 44 L29 54 L23 54 Z M62 44 L74 44 L71 54 L65 54 Z"/>
+  </defs>
+  <g>
+    <use href="#cotDiffTankG" fill="#d21f1f" transform="translate(-2.4 -1.4)"/>
+    <use href="#cotDiffTankG" fill="#1fae1f" transform="translate(2.4 1.4)"/>
+    <use href="#cotDiffTankG" fill="#ffffff"/>
+    <use href="#cotDiffScallopsG" fill="#000000"/>
+    <use href="#cotStands" fill="#d21f1f" transform="translate(-1.6 -1)"/>
+    <use href="#cotStands" fill="#1fae1f" transform="translate(1.6 1)"/>
+    <use href="#cotStands" fill="#ffffff"/>
+    <rect x="6" y="56" width="84" height="3" fill="#ffffff"/>
+    <rect x="6" y="56" width="84" height="3" fill="#1fae1f" transform="translate(2 1)"/>
+    <rect x="6" y="56" width="84" height="3" fill="#ffffff" transform="translate(-1 0)"/>
+  </g>
+</svg>

@@ -117,12 +117,17 @@ const GARAGE_CSS = `
 .cot-nav{position:absolute;top:68px;left:34px;display:flex;gap:5px;pointer-events:auto;}
 .cot-nav .nv{font-family:${FONT_STACK};font-size:8.5px;font-weight:800;
   letter-spacing:.18em;text-transform:uppercase;color:#8a97a3;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;
   padding:5px 10px 4px;background:rgba(11,15,20,.72);
   border:1px solid rgba(146,164,180,.28);border-bottom-width:2px;
   transition:color .15s,border-color .15s,background .15s;}
 .cot-nav .nv:hover{color:#ffd27a;border-color:rgba(240,176,74,.6);}
 .cot-nav .nv.on{color:#f0b04a;border-color:rgba(240,176,74,.55);
   background:rgba(24,19,11,.82);cursor:default;}
+/* r9.4 (owner): diff-language nav marks — studio is the owner's gate-diff
+   artwork (regenerated from the live LEFT-view diff, recolored red/green);
+   garage = tank on jack stands; home = the crest shield. */
+.cot-nav .nv .nvi{width:15px;height:15px;display:block;object-fit:contain;}
 .cot-tech{position:absolute;top:108px;left:34px;pointer-events:auto;cursor:pointer;
   display:flex;align-items:center;gap:8px;
   font-family:${FONT_STACK};font-size:10.5px;font-weight:800;letter-spacing:.20em;
@@ -999,9 +1004,12 @@ export function createGarage(opts) {
     `<img class="mark" src="/brand/logo-mark.svg" alt="" draggable="false">` +
     `<span>CLAUDE <b>OF TANKS</b></span></div>` +
     `<div class="cot-nav">` +
-    `<button class="nv on" data-nav="garage" type="button">Garage</button>` +
-    `<button class="nv" data-nav="studio" type="button">Studio</button>` +
-    `<button class="nv" data-nav="home" type="button">Home</button>` +
+    `<button class="nv on" data-nav="garage" type="button">` +
+    `<img class="nvi" src="/brand/nav/garage.svg" alt="" draggable="false">Garage</button>` +
+    `<button class="nv" data-nav="studio" type="button">` +
+    `<img class="nvi" src="/brand/nav/studio.png" alt="" draggable="false">Studio</button>` +
+    `<button class="nv" data-nav="home" type="button">` +
+    `<img class="nvi" src="/brand/nav/home.svg" alt="" draggable="false">Home</button>` +
     `</div>` +
     `<div class="cot-topbar">` +
     `<div class="res"><svg viewBox="0 0 14 14" width="13" height="13">` +
