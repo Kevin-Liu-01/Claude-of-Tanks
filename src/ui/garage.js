@@ -253,8 +253,22 @@ const GARAGE_CSS = `
   width:224px;display:flex;flex-direction:column;gap:12px;overflow:hidden;pointer-events:auto;}
   /* MAPS r1: top 122 -> 110, gap 14 -> 12 — the doubled battlefield roster
      needs the slack; the TECH TREE button ends ~98px so nothing collides */
-.cot-maps{position:static;width:224px;min-height:0;overflow-y:auto;
+/* garage_polish r9: the three left-column sections share ONE industrial
+   plate treatment (translucent backdrop + hairline + amber title tick) so
+   they read as a composed panel instead of loose elements on the floor. */
+.cot-maps,.cot-camos,.cot-featured{box-sizing:border-box;width:224px;
+  background:linear-gradient(180deg,rgba(9,13,17,.66),rgba(6,9,12,.58));
+  border:1px solid rgba(146,164,180,.16);padding:9px 9px 8px;}
+.cot-maps .mtitle::before,.cot-camos .ctitle::before,
+.cot-featured .ftitle > span:first-child::before{content:'';display:inline-block;
+  width:8px;height:2px;background:#f0a030;margin-right:6px;vertical-align:2px;}
+.cot-maps{position:static;min-height:0;overflow-y:auto;
   scrollbar-width:none;flex:0 1 auto;pointer-events:auto;}
+/* half-cut last row + fade = "more below" affordance instead of a broken
+   clip; .can-scroll is toggled by JS only when the list truly overflows */
+.cot-maps.can-scroll{
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 22px),transparent 100%);
+  mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 22px),transparent 100%);}
 .cot-maps .mtitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
   text-transform:uppercase;margin-bottom:7px;}
 /* MAPS r1: the battlefield roster DOUBLED (8 + Random) — cards run COMPACT
@@ -289,25 +303,32 @@ const GARAGE_CSS = `
   text-transform:uppercase;margin-top:1px;}
 .cot-map-card.sel .msub{color:#d8a04c;}
 /* CAMO PICKER SECTION: per-tank paint pattern (persisted, +concealment) */
-.cot-camos{position:static;width:196px;flex:0 0 auto;margin-top:auto;pointer-events:auto;}
+.cot-camos{position:static;flex:0 0 auto;margin-top:auto;pointer-events:auto;}
 .cot-camos .ctitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
   text-transform:uppercase;margin-bottom:7px;}
-.cot-camos .cgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
+/* garage_polish r9: minmax(0,1fr) + min-width:0 — grid items default to
+   min-width:auto, so the widest nowrap label (DESERT PINK ~80px) silently
+   inflated every track past the panel and CLIPPED the third column. */
+.cot-camos .cgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;}
 /* camo r8: the paint roster grew 6 -> 16 — the CAMO grid scrolls (equipment
    grid below stays static). Thin styled scrollbar so the affordance reads
    without stealing column width from the swatches. */
 .cot-camos .cgrid.camo{max-height:157px;overflow-y:auto;overscroll-behavior:contain;
   padding-right:3px;scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.45) rgba(8,11,14,.6);}
+.cot-camos .cgrid.camo.can-scroll{
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 16px),transparent 100%);
+  mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 16px),transparent 100%);}
 .cot-camos .cgrid.camo::-webkit-scrollbar{width:5px;}
 .cot-camos .cgrid.camo::-webkit-scrollbar-track{background:rgba(8,11,14,.6);}
 .cot-camos .cgrid.camo::-webkit-scrollbar-thumb{background:rgba(146,164,180,.45);}
-.cot-camo-card{cursor:pointer;text-align:center;padding:4px 3px 3px;
+.cot-camo-card{cursor:pointer;text-align:center;padding:4px 3px 3px;min-width:0;
   background:linear-gradient(180deg,rgba(13,18,23,.82),rgba(8,11,14,.9));
   border:1px solid rgba(146,164,180,.24);border-bottom:2px solid rgba(146,164,180,.24);
-  transition:border-color .12s,background .12s;}
+  transition:border-color .12s,background .12s,box-shadow .12s;}
 .cot-camo-card:hover{border-color:rgba(210,225,240,.5);}
 .cot-camo-card.sel{border-color:#f0a030;border-bottom-color:#f0a030;
-  background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
+  background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));
+  box-shadow:0 0 10px rgba(240,160,48,.18);}
 .cot-camo-card .sw{height:30px;margin:0 auto 3px;border:1px solid rgba(0,0,0,.55);
   position:relative;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(235,243,250,.10);}
 .cot-camo-card .sw canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
@@ -443,7 +464,7 @@ const GARAGE_CSS = `
    tools/marketing-shots). Bottom-anchored under the camo grid in the left
    column; purely decorative, so on short viewports it is the element that
    clips first (leftcol overflow:hidden), never the functional pickers. */
-.cot-featured{width:224px;flex:0 0 auto;margin-top:12px;pointer-events:auto;}
+.cot-featured{flex:0 0 auto;margin-top:12px;pointer-events:auto;}
 .cot-featured .ftitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
   text-transform:uppercase;margin-bottom:7px;display:flex;justify-content:space-between;
   align-items:baseline;}
@@ -451,7 +472,7 @@ const GARAGE_CSS = `
 .cot-featured .fdots span{width:5px;height:5px;background:rgba(146,164,180,.35);
   transition:background .2s;}
 .cot-featured .fdots span.on{background:#f0a030;}
-.cot-featured .fshot{position:relative;width:224px;height:104px;overflow:hidden;
+.cot-featured .fshot{position:relative;width:100%;height:104px;overflow:hidden;
   border:1px solid rgba(146,164,180,.28);cursor:pointer;background:#0a0e12;
   box-shadow:0 6px 20px rgba(0,0,0,.45);transition:border-color .15s;}
 .cot-featured .fshot:hover{border-color:rgba(240,176,74,.6);}
@@ -459,8 +480,8 @@ const GARAGE_CSS = `
   opacity:0;transform:scale(1.05);transition:opacity .8s ease;}
 .cot-featured .fly.on{opacity:1;transform:scale(1);
   transition:opacity .8s ease,transform 8.5s linear;}
-.cot-featured .fcap{position:absolute;left:0;right:0;bottom:0;padding:14px 9px 5px;
-  font-size:8.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#d9e3ec;
+.cot-featured .fcap{position:absolute;left:0;right:0;bottom:0;padding:14px 8px 5px;
+  font-size:8px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#d9e3ec;
   background:linear-gradient(0deg,rgba(5,8,11,.9),rgba(5,8,11,0));white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;}
 @keyframes cot-g-fade{from{opacity:0;}}
@@ -1093,6 +1114,16 @@ export function createGarage(opts) {
       mapCardById.set(m.id, card);
     }
   }
+  // garage_polish r9: the scroll fade masks only make sense when the list
+  // actually overflows — on tall viewports the whole roster fits and the
+  // fade would dim the last row for no reason. Toggle per resize.
+  const syncScrollFades = () => {
+    mapsEl.classList.toggle('can-scroll', mapsEl.scrollHeight > mapsEl.clientHeight + 1);
+    const cg = root.querySelector('.cot-camos .cgrid.camo');
+    if (cg) cg.classList.toggle('can-scroll', cg.scrollHeight > cg.clientHeight + 1);
+  };
+  window.addEventListener('resize', syncScrollFades);
+  requestAnimationFrame(syncScrollFades);
 
   // --- CAMO PICKER SECTION: per-tank paint pattern -------------------------
   // opts.camo = { patterns: string[], label: {id:label}, get(specId),
