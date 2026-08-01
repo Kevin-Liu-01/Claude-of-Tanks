@@ -17,7 +17,7 @@ import { MODEL_SOURCE } from '../vehicles/specs.js';
 // rosters explicitly; the union keeps catalog chips identical local vs public.
 import { USERDROP4_TANK_IDS } from '../vehicles/userdrops4.js';
 import { USERDROP5_SOURCED_IDS } from '../vehicles/userdrops5.js';
-import { USERDROP6_TANK_IDS } from '../vehicles/userdrops6.js';
+import { USERDROP6_SOURCED_IDS } from '../vehicles/userdrops6.js';
 import { USERDROP7_SOURCED_IDS } from '../vehicles/userdrops7.js';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.js), the
 // white-silhouette icon set (equipIcons.js), and the spotting-side math the
@@ -1315,7 +1315,7 @@ export function createGarage(opts) {
   // Classifier hoisted (r5-2): the carousel filter chips, arrow stepping and
   // group cross-links all key off it.
   const SOURCED_INTENT = new Set([
-    ...USERDROP4_TANK_IDS, ...USERDROP5_SOURCED_IDS, ...USERDROP6_TANK_IDS,
+    ...USERDROP4_TANK_IDS, ...USERDROP5_SOURCED_IDS, ...USERDROP6_SOURCED_IDS,
     ...USERDROP7_SOURCED_IDS,
   ]);
   const isSourced = (s) =>

@@ -121,14 +121,17 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // vehicle off the pedestal. Keep the neutral placement and rotate it around
   // the spec's real turret-ring pivot instead.
   articulated('m1a1_aim', 'm1a1_aim', { autoPivot: false });
-  // The pack's `M60A3 complex` STL is the M60 machine-gun receiver, not the
-  // Patton tank (the icon pass caught the false-positive). Use the recovered
-  // M60A1 hull/turret for this close family variant instead of shipping a gun
-  // floating on the pedestal.
-  articulated('m60a3', 'm60a1', { gunNode: '^weapon$', yawOffset: -Math.PI / 2 });
+  // m60a3: GRADUATED (third complete dual-gate pass — geometry min 90.0,
+  // visual min 9/10, commit 967be0e). The certified procedural build is the
+  // model of record everywhere; the old m60a1-GLB alias is retired. The
+  // reference file remains a measurement oracle for regression sweeps.
 }
 
 export const USERDROP6_TANK_IDS = SPECS.map((s) => s.id);
+// Sourced-intent roster for garage bucketing: dual-gate GRADUATES leave this
+// list (they render our builds and chip under CUSTOM), everything else stays
+// in its era bucket even when public builds render procedural fallbacks.
+export const USERDROP6_SOURCED_IDS = USERDROP6_TANK_IDS.filter((id) => id !== 'm60a3');
 
 // USER DROPS wave 8 (scout-gen2 integration): chain-loaded here because
 // tankFactory.js (the usual registration hook) is frozen during the fleet
