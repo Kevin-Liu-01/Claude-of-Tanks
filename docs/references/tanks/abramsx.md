@@ -89,3 +89,41 @@ heightM 2.44 those clamp to the 2.44 bridge deck + single 3-column mast
 head (hull/whole capped at 0 by the bridge band, turret ~26-31). The
 XM360 runs to the published 9.77 overall against the oracle's long tube
 (cover-capped). Dims green 98.9; floaters 100.
+
+## 2026-08-01 rebuild — oracle re-derived from CURRENT files
+The mortavex bake CHANGED since the v10 cert was written — re-measured with
+tools/tmp-abrams-refcurves.mjs (full-curve probe, world coordinates):
+- THE SHELL + XM360 NOW RIDE THE TURRET PIVOT AND YAW (the old "empty
+  Turret pivot / static shell in the hull mask" cert clause is retired).
+  turretCurves is scored against the live shell: hexagonal plan (face 2.34
+  wide ±0.6 chamfering to ±1.70 flanks at z 1.9, flank run to -1.29, rear
+  chamfer to a flat ±0.78 stern at world -2.45), roof 2.45-2.48 plateau
+  (z 0.65..-0.55) easing to a 2.39 shelf and a 2.13 tail, bottom 1.57
+  forward rising to 2.04 at the stern, tube band 1.80..2.04 to muzzle 6.22.
+- The RWS bridge cert STANDS with confirmed numbers: the HULL mask carries
+  a 3.22-3.46 band over z 1.61..-0.75 (~21 columns, plan peak at x ~0.5,
+  z -0.3..-0.5) plus twin 4.10-4.13 whips at (x ±1.15, z -1.9..-2.05).
+- Rear deck REBAKED LOW: 1.54-1.62 at z -2.3..-2.8 (the old 1.84 -> 1.29
+  step table is obsolete); hull-mask sensor stubs 2.33-2.48 at z -1.3..-1.7
+  and a 2.75 spike at -1.81; plan bow chamfered (center 3.87, corners 3.65),
+  tail plate -3.86 at |x|<=1.55 with a -4.04 pintle bump.
+CERTIFIED CAPS (quantified from this rebuild's runs):
+- Bridge band + whips under published heightM 2.44: the p95 skip budget on
+  this ~7.6 m body is THREE columns; the whips own two (matched at the
+  oracle's own stations, tops 4.12 — they also zero the whip station
+  slice). The mast head is CLAMPED to the plateau: a 3.46 head kept
+  straddling a third column and blew measured heightM to 2.9-3.45 (dims 0).
+  The ~21 bridge columns therefore stay unmatched: side/front hull rows are
+  structurally capped (~0-15).
+- REGISTRATION POLLUTION COROLLARY (new): the bridge band shifts the
+  side/front hull mean-dy registration by +0.16-0.20, and that frame is
+  REUSED for the whole and turret rows — every turret/whole column carries
+  a ~0.17 systematic offset (~-25 pts). turret_side ceiling ≈ 70-75 with a
+  physically-true build; matching the polluted frame would need the tube at
+  axis ~1.76 and the roof at 2.30 (a dims-breaking, score-chasing distortion
+  — rejected per the m1a1_aim gunLength-6.15 precedent).
+- Long oracle tube (6.22 vs published 5.71 muzzle): bounded whole-row cover.
+Numbers (session start -> now): turret 31.2 -> 46.6 (plan 87.2 side 46.6 —
+side is the polluted row), stations 29.1 -> 41.2, dims 98.9 -> 100 (mast
+clamp + pintle/prow/rear-face fixes recovered hullLengthM/heightM),
+hull/whole 0-9 (capped, registration-polluted), floaters 100.

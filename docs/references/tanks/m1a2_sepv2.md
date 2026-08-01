@@ -80,3 +80,11 @@ the published 7.93 hull (17% short) with its forward roof at 2.9 — curve
 and station rows are structurally capped (hull/whole/turret 0, stations
 ~19). Dims sovereign and green: 100; floaters 100. No compensation is
 carried in the build (published dims 7.93/9.77/3.66/2.44 all hold).
+
+## 2026-08-01 re-verification
+Short-print cert STANDS against the current GLB (~6.6 m vs published 7.93
+with the forward roof at 2.9): fresh run hull/whole/turret 0, stations 15.1,
+dims 98, floaters 100 — the achievable components stay green (dims moved
+100 -> 98 from this session's shared rear-face/lift-eye seating in
+abrams.js; heightM/hullLengthM remain within grace, >= 90 with margin).
+No compensation is carried in the build. Board regenerated.

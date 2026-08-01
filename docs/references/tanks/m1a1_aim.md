@@ -96,3 +96,42 @@ remaining hull/turret/station gaps are honest build distance to the fused
 print (crown 2.79 vs the published-2.44 height clamp keeps turret rows
 bounded; the 2.46 crown plateau is the p95 anchor). Dims green 99.1;
 floaters 100.
+
+## 2026-08-01 rebuild — retable against the CURRENT print + probe tooling
+Full-curve probe (tools/tmp-abrams-refcurves.mjs / analyze) replaced the
+worst-column guesswork; the whole hull/turret were retabled:
+- Print facts re-derived from the CURRENT GLB: hull body span 8.11 m
+  (published 7.92 sovereign — registration splits the ~0.2 both-direction
+  cover), deck is CROWNED: outboard band 1.72-1.77, center spine undulating
+  1.54/1.62/1.67/1.83/1.74/1.84, narrow center exhaust gear (1.96-2.03,
+  x ±0.16) + stack top 2.46 at z -3.4..-3.6; stepped side plane (skirt 1.38,
+  fender lip 1.55 at x 1.70..1.80, wall band 1.75 aft); tall-top skirt ends
+  z ~1.95 with a LOW forward band to 3.30; ground-reaching bow/tail side
+  lines are the idler/sprocket descents (body rakes stay at belly 0.38-0.46
+  — a 0.10 body toe put the whole front-view floor 0.3 low).
+- Casting recentered (plan center z -0.70, x ±1.33, z -2.45..1.05 — the v10
+  lathe sat 0.55 rearward and 0.23 wide) with a FLAT stern (plan rear edge
+  -2.40..-2.48 across ±1.36); face cliff at z ~0.0-0.26 with the 2.33 crown
+  step; crew basket z -0.28..-1.75 to y 0.78; collar 1.71..2.36 at z
+  0.48..0.84 stepping to 2.12; tube axis 2.04, evac drum top 2.27 at
+  z 2.1..2.6 (evacR 2.0).
+- p95 HEIGHT BUDGET (hard lesson, applies fleet-wide): the skip count is
+  N-1-floor(0.95N) ≈ 3 columns for these ~8 m hulls, and a feature's
+  z-footprint can straddle an extra trace column. Budget spent: crown peak
+  block 2.65 (0.12 m z — the print's own 2.54-2.65 crest), stack rides the
+  2.44+1% grace line. A 0.33 m peak block measured heightM 2.65 (dims 40.5)
+  before shrinking.
+CERTIFIED CAPS (current numbers):
+- Short tube: print muzzle ~4.57 vs published 9.77 overall (build muzzle
+  5.27): bounded cover on side/plan WHOLE rows (~7 columns) AND — scope
+  amendment vs the v10 note — the plan-turret CENTER columns (x ±0.2, the
+  turret plan trim is lateral so the tube stays in-row; ~4 columns carry
+  |refFront−procFront| up to 0.8-1.3 m). turret_plan ceiling ≈ 72-75.
+- Crown clamp: print crown 2.54-2.65 over ~2.3 m vs published 2.44 (+1%
+  grace): plateau at 2.46 + the 2-column 2.65 peak leaves ~16-18 columns
+  carrying 0.04-0.10 halved error on side turret/whole rows.
+Numbers (session start -> now): min 17.3 -> 53.6; hull 32.6 -> 62 (side
+75.3 / plan 94.7 / front 62), whole 31.1 -> 53.6, turret 17.3 -> 56.1,
+stations 69.4 -> 65.9 (crown-clamp slices), dims 99.1 -> 100, floaters 100.
+Remaining honest gaps: side_hull tail/stack columns, front_hull stack x
+alignment, turret side casting-front columns.

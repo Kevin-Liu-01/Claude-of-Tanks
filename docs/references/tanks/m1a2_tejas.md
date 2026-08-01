@@ -120,3 +120,17 @@ floaters 100.
 ## Gate v10 note (2026-07-31)
 Tejas-family CROWS-cluster height cap STANDS (see m1a1). hull 90.1 passes
 v10; dims 98.1, floaters 100.
+
+## 2026-08-01 re-verification (fleet dual-gate program)
+Cap re-derived from the CURRENT tejas GLB via a fresh gate run + full-curve
+probe: the oracle still carries the CROWS/M240/doghouse cluster as a
+1.65 m-long solid at 3.20-3.28 world (z -0.7..0.95) plus whips to ~4.08 —
+the v6/v10 height-cluster cert STANDS unchanged (matching more than the
+~3-column p95 budget breaks published heightM 2.44 by construction).
+Shared-machinery fixes from this session's abrams.js work (rear-face
+fittings tucked inside the tail plane, soot decals on the rear plate, lift
+eyes seated on the deck) lifted the family without touching its certified
+posture: stations 60.7 -> 68.9, dims 98.1 -> 98.8, turret 48.1 -> 49.2,
+whole 52 -> 52.1; hullCurves HELD at 90.1 (passing). Boards regenerated
+(&board=1) for the independent critic; IoU floor 87.6 (committed 86.6 — no
+regression).
