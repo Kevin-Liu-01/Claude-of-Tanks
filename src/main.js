@@ -55,6 +55,9 @@ import { initTopMaskRig } from './ui/tankThumbs.js';
 import { createGarage } from './ui/garage.js';
 import { getLastBattleEarnings } from './ui/techtree.js';
 import { createGarageStage } from './ui/garageStage.js';
+// garage-scene r1: workshop set dressing (side repair bays, benches, racks) —
+// built lazily from post-ready idle slices, never on the boot-critical path.
+import { createGarageDressing } from './game/garageDressing.js';
 import { createAudio } from './audio/audio.js';
 import { createInput } from './game/input.js';
 import { createSettings } from './ui/settings.js';
@@ -307,6 +310,13 @@ const garageStage = await bootStage('garage', () => {
   scene.add(gs.group);
   return gs;
 });
+// garage-scene r1: WORKSHOP DRESSING rig — constructor is trivial (empty
+// group + build plan); the actual clutter/repair-bay-tank chunks build one
+// per post-ready idle slice (see pumpGarageDressing), so boot and
+// tank-switch latency never pay for them. __SHOTS.garage force-finishes it
+// for deterministic marketing captures.
+const garageDressing = createGarageDressing(engineCtx, GARAGE_POS);
+scene.add(garageDressing.group);
 // hud_ui r2: key 160 → 112, penumbra 0.45 → 0.6 — the warm key stacked with
 // the stage floods and clipped the turntable floor right of the tank to 255.
 // hud_ui r5 (+ tank_models r5 garage-key rolloff): 112 → 78 / 80 → 58 with
@@ -334,6 +344,12 @@ function setGarageSpots(on) {
   if (spotA.visible === on) return;
   spotA.visible = on;
   spotB.visible = on;
+  // garage-scene r1: the workshop dressing (and its one whisper fill light)
+  // rides the same toggle — hidden subtrees drop out of the render list, so
+  // battle frames never draw, cull or light any of it. The light-count change
+  // shares the spots' pre-compiled shader-variant story (warmCombatPipeline
+  // compiles the battle set with this toggle OFF).
+  garageDressing.group.visible = on;
 }
 
 // camo_spotting r2: the pedestal is keyed by the ACTIVE MAP's warm sun
@@ -787,6 +803,7 @@ function garageCameraPose() {
 function placeGarage() {
   GARAGE_POS.y = hfProxy.getHeightAt(GARAGE_POS.x, GARAGE_POS.z);
   garageStage.group.position.copy(GARAGE_POS);
+  garageDressing.group.position.copy(GARAGE_POS); // dressing re-seats with the stage
   spotA.position.set(GARAGE_POS.x + 9, GARAGE_POS.y + 11, GARAGE_POS.z + 7);
   spotB.position.set(GARAGE_POS.x - 10, GARAGE_POS.y + 8, GARAGE_POS.z - 6);
   spotTarget.position.set(GARAGE_POS.x, GARAGE_POS.y + 1.2, GARAGE_POS.z);
@@ -1752,6 +1769,10 @@ function enterGarage() {
   clearCamoOverrides();
   applyCamoPatterns();
   setGarageSpots(true);
+  // garage-scene r1: a battle entered before the idle pump finished must not
+  // return to a half-dressed workshop — finish the remaining chunks now
+  // (idempotent; a one-time ≤~200 ms cost only on that rare fast path).
+  garageDressing.ensureBuilt();
   setGarageSunTrim(true);
   bus.emit('phase:change', { phase: 'garage' });
   endOverlay.style.display = 'none';
@@ -2900,6 +2921,7 @@ const SHOT_VIEWS = {
     setPedestalTank('m1a2');
     garage.show('m1a2');
     if (garage.drainThumbs) garage.drainThumbs(); // portraits finished for the capture
+    garageDressing.ensureBuilt(); // deterministic capture: workshop fully dressed
     showroom.reset();
   },
   techtree() {
@@ -3169,9 +3191,20 @@ function pumpStagedVisuals() {
 // warmCombatPipeline / world activation if a battle outruns the idle pump),
 // then the carousel-neighbor prefetch (switching r1), then the staged battle
 // roster + combat warm exactly as before.
+// garage-scene r1: drain the workshop-dressing chunks (static clutter, then
+// each repair-bay tank bake ~50-170 ms) one idle slice at a time. Yields to
+// in-flight GLB parse/swap jobs exactly like pumpStagedVisuals — the clicked
+// pedestal hero's swap always wins the idle budget.
+function pumpGarageDressing() {
+  if (garageDressing.isBuilt()) return;
+  const glb = (typeof window !== 'undefined' && window.__GLB_STATS) || null;
+  if (glb && glb.started > glb.settled) { _idle(pumpGarageDressing, 2500); return; }
+  if (garageDressing.pump()) _idle(pumpGarageDressing, 1800);
+}
 const postReadyIdleTasks = [
   () => { if (fx.warmTextures) fx.warmTextures(); },
   () => sky.ensureCloudTextures(),
+  () => pumpGarageDressing(),
   () => schedulePedestalPrefetch(),
 ];
 function pumpPostReadyIdle() {
@@ -3607,6 +3640,7 @@ window.__DEBUG = {
   get spotting() { return game.spotting; },
   killcam,                             // KILL-CAM introspection (phase, cancel)
   showroom,                            // garage orbit introspection (debugState)
+  garageDressing,                      // garage-scene r1: workshop dressing rig
   spawnKillShell: debugSpawnKillShell, // KILL-CAM: die on purpose
   // effects_combat r2: shot-mode latch exposed for headless drive tests
   get shotMode() { return shotMode; },

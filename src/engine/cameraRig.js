@@ -1183,11 +1183,12 @@ export function createCameraRig(camera, deps) {
 //    same 3/4 angle regardless of hull length.
 //
 //  - DRAG ORBIT: pointer drag steers a damped turntable around the hero pose
-//    inside a yaw/pitch clamp, with release momentum and a gentle spring back
-//    to the hero angle after a couple of seconds idle. The camera distance
-//    grows (never shrinks below the hero distance) if the widening silhouette
-//    would otherwise leave the stage rect, so a broadside orbit of a long
-//    vehicle can never crop the gun.
+//    with release momentum and a gentle spring back to the hero angle after a
+//    couple of seconds idle. Yaw is FREE — a continuous 360° walk-around
+//    (garage-scene r1: the player can inspect the rear); only pitch keeps its
+//    turntable clamp. The camera distance grows (never shrinks below the hero
+//    distance) if the widening silhouette would otherwise leave the stage
+//    rect, so a broadside orbit of a long vehicle can never crop the gun.
 //
 // Determinism: the pose is a pure function of (box, yaw, pitch, zoom, rect).
 // `reset()` snaps the orbit state back to the hero pose and re-solves, which
@@ -1197,7 +1198,9 @@ export function createCameraRig(camera, deps) {
 const SHOW_FOV_DEG = 42;               // stage lens (matches the authored bay)
 const SHOW_HERO_FILL = 0.86;           // hero framing: fraction of the stage rect
 const SHOW_KEEP_FILL = 0.99;           // orbiting: pull back rather than crop
-const SHOW_YAW_CLAMP = THREE.MathUtils.degToRad(72);  // ±from the hero heading
+// garage-scene r1: the ±72° yaw clamp is GONE — free continuous 360° orbit
+// (the hangar dressing gives every azimuth something to look at). Pitch keeps
+// its clamps: the turntable read must never go under the pedestal or top-down.
 const SHOW_PITCH_MIN = THREE.MathUtils.degToRad(5);   // never below the pedestal
 const SHOW_PITCH_MAX = THREE.MathUtils.degToRad(35);
 const SHOW_DRAG_YAW_PER_PX = THREE.MathUtils.degToRad(0.22);
@@ -1215,6 +1218,12 @@ const SHOW_DIST_MAX_M = 19;            // stays inside the 46 m bay (HW 23)
 const SHOW_NEAR_PAD_M = 1.2;           // camera never inside the silhouette
 const SHOW_FLOOR_PAD_M = 0.7;          // camera never under the pedestal plane
 const SHOW_SOLVE_ITERS = 9;
+
+/** Wrap an angle delta into [-π, π) — yaw springs take the short way home. */
+function wrapPi(a) {
+  const TAU = Math.PI * 2;
+  return ((a + Math.PI) % TAU + TAU) % TAU - Math.PI;
+}
 
 const _sbMin = new THREE.Vector3();
 const _sbMax = new THREE.Vector3();
@@ -1409,7 +1418,32 @@ export function createShowroomOrbit(camera, rig, deps) {
         nx0 /= k; nx1 /= k; ny0 /= k; ny1 /= k;   // first-order ndc rescale
         d = dNew;
       }
-      sx += ((nx0 + nx1) * 0.5 - w.cx) * d * tanH;
+      // UI-AWARE CENTERING (garage-scene r1): pin the projected OBB CENTER on
+      // the stage-rect center X instead of the silhouette-extremes midpoint.
+      // The 8 projected corners over-hang the true pixels asymmetrically on
+      // the gun side (empty box volume above/beside the barrel), so extremes-
+      // centering parked every hull ~50 px right of the panel-aware center at
+      // 1920x1080 — the vehicle MASS read as centered on the raw viewport,
+      // off-center against the left column / stats panel. The box center
+      // tracks the hull mass, so the tank now reads centered in the UI-free
+      // area. Camera ANGLES are untouched — this only slides the eye/look-at
+      // pair along the camera's right axis, exactly like the old offset.
+      sx = -w.cx * d * tanH;                    // closed form: center → w.cx
+      let fx0 = Infinity, fx1 = -Infinity;      // extremes at the pinned sx
+      for (let i = 0; i < 8; i++) {
+        const nx = (_sbPr[i] - sx) / ((d - _sbPc[i]) * tanH);
+        if (nx < fx0) fx0 = nx; if (nx > fx1) fx1 = nx;
+      }
+      // fit wins over mass-centering: shove back inside the rect so a long
+      // gun can never crop against a panel (narrow viewports, broadside orbit)
+      const loN = w.cx - w.hx * 0.995, hiN = w.cx + w.hx * 0.995;
+      if (fx1 - fx0 > hiN - loN) {
+        // silhouette wider than the window (distance already capped —
+        // crowded portrait viewports): symmetric overflow, old behavior
+        sx += ((fx0 + fx1) * 0.5 - w.cx) * d * tanH;
+      } else if (fx0 < loN) sx += (fx0 - loN) * d * tanH;
+      else if (fx1 > hiN) sx += (fx1 - hiN) * d * tanH;
+      // vertical framing keeps the original extremes-midpoint behavior
       sy += ((ny0 + ny1) * 0.5 - w.cy) * d * tanV;
     }
     return { dist: d, sx, sy };
@@ -1491,7 +1525,10 @@ export function createShowroomOrbit(camera, rig, deps) {
         if (measure() && haveBox) {
           heroDist = solve(heroYaw, heroPitch, SHOW_HERO_FILL, 0).dist;
           if (prev !== subject) { // new hero on the pedestal — settle it back
-            tYaw = heroYaw; tPitch = heroPitch; tZoom = 1;
+            // nearest yaw equivalent of the hero heading: a tank switch after
+            // a free 360° orbit swings ≤180° home, never rewinds whole turns
+            tYaw = yaw + wrapPi(heroYaw - yaw);
+            tPitch = heroPitch; tZoom = 1;
             yawVel = pitchVel = 0;
           }
         }
@@ -1502,13 +1539,13 @@ export function createShowroomOrbit(camera, rig, deps) {
       } else {
         sinceInputS += d;
         if (Math.hypot(yawVel, pitchVel) > SHOW_INERTIA_MIN) {
+          // garage-scene r1: yaw coasts FREE (360° walk-around) — only the
+          // pitch clamp survives, killing its coast at the stops as before.
           tYaw += yawVel * d;
           tPitch += pitchVel * d;
           const before = tPitch;
-          tYaw = THREE.MathUtils.clamp(tYaw, heroYaw - SHOW_YAW_CLAMP, heroYaw + SHOW_YAW_CLAMP);
           tPitch = THREE.MathUtils.clamp(tPitch, SHOW_PITCH_MIN, SHOW_PITCH_MAX);
           if (tPitch !== before) pitchVel = 0;   // kill the coast at the clamp
-          if (tYaw <= heroYaw - SHOW_YAW_CLAMP || tYaw >= heroYaw + SHOW_YAW_CLAMP) yawVel = 0;
           const k = Math.exp(-d / SHOW_INERTIA_TAU_S);
           yawVel *= k; pitchVel *= k;
         } else {
@@ -1516,7 +1553,9 @@ export function createShowroomOrbit(camera, rig, deps) {
         }
         if (sinceInputS > SHOW_IDLE_RETURN_S) {
           const a = 1 - Math.exp(-d / SHOW_RETURN_TAU_S);
-          tYaw += (heroYaw - tYaw) * a;
+          // spring home the SHORT way around: after a free orbit the hero
+          // pose is any yaw ≡ heroYaw (mod 2π) — never a multi-turn rewind
+          tYaw += wrapPi(heroYaw - tYaw) * a;
           tPitch += (heroPitch - tPitch) * a;
           tZoom += (1 - tZoom) * a;
         }
@@ -1548,9 +1587,9 @@ export function createShowroomOrbit(camera, rig, deps) {
       if (!dragging) return;
       sinceInputS = 0;
       const y0 = tYaw, p0 = tPitch;
-      // drag right → the near face sweeps right (camera orbits left)
-      tYaw = THREE.MathUtils.clamp(tYaw - dxPx * SHOW_DRAG_YAW_PER_PX,
-        heroYaw - SHOW_YAW_CLAMP, heroYaw + SHOW_YAW_CLAMP);
+      // drag right → the near face sweeps right (camera orbits left).
+      // garage-scene r1: yaw unclamped — drag all the way around to the rear.
+      tYaw -= dxPx * SHOW_DRAG_YAW_PER_PX;
       // drag down → look further down onto the roof (turntable tilt)
       tPitch = THREE.MathUtils.clamp(tPitch + dyPx * SHOW_DRAG_PITCH_PER_PX,
         SHOW_PITCH_MIN, SHOW_PITCH_MAX);
@@ -1597,7 +1636,10 @@ export function createShowroomOrbit(camera, rig, deps) {
         pitchDeg: THREE.MathUtils.radToDeg(pitch),
         heroYawDeg: THREE.MathUtils.radToDeg(heroYaw),
         heroPitchDeg: THREE.MathUtils.radToDeg(heroPitch),
-        yawClampDeg: THREE.MathUtils.radToDeg(SHOW_YAW_CLAMP),
+        // garage-scene r1: yaw is unclamped (full 360°). Report a full turn so
+        // probe assertions of the form |yaw-hero| <= clamp keep holding for
+        // any single-drag gesture without a schema change.
+        yawClampDeg: 360,
         pitchMinDeg: THREE.MathUtils.radToDeg(SHOW_PITCH_MIN),
         pitchMaxDeg: THREE.MathUtils.radToDeg(SHOW_PITCH_MAX),
         zoom, zoomMin: SHOW_ZOOM_MIN, zoomMax: SHOW_ZOOM_MAX,

@@ -12,7 +12,8 @@
 import * as THREE from 'three';
 
 // deterministic PRNG (mulberry32) so the hangar is identical every boot
-function mulberry32(a) {
+// (exported: garageDressing.js shares the stage's texture/prop language)
+export function mulberry32(a) {
   return function () {
     a |= 0; a = (a + 0x6D2B79F5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
@@ -21,7 +22,7 @@ function mulberry32(a) {
   };
 }
 
-function canvasTexture(c, { srgb = true, aniso = 4, repeat = null } = {}) {
+export function canvasTexture(c, { srgb = true, aniso = 4, repeat = null } = {}) {
   const t = new THREE.CanvasTexture(c);
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = aniso;
@@ -34,7 +35,7 @@ function canvasTexture(c, { srgb = true, aniso = 4, repeat = null } = {}) {
 }
 
 // fine noise dither pass — kills flat-fill banding under light falloff
-function dither(c2d, w, h, rng, alpha = 0.05) {
+export function dither(c2d, w, h, rng, alpha = 0.05) {
   const img = c2d.getImageData(0, 0, w, h);
   const d = img.data;
   for (let i = 0; i < d.length; i += 4) {
@@ -208,8 +209,8 @@ function makeWallTexture(rng) {
 // stenciled bay signage plate (dark steel board, worn yellow stencil)
 // Inter has no condensed cut: bake at 44px but shrink-to-fit against the
 // plate's inner width (the old 79%-width face fit 'NO SMOKING' at 44px flat).
-const SIGN_FONT = "700 44px 'Inter', 'Arial Narrow', Arial, sans-serif";
-function makeSignTexture(rng, text) {
+export const SIGN_FONT = "700 44px 'Inter', 'Arial Narrow', Arial, sans-serif";
+export function makeSignTexture(rng, text) {
   const W = 256, H = 128;
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
@@ -263,7 +264,7 @@ function makeSignTexture(rng, text) {
 }
 
 // hazard-stripe band for the podium rim
-function makeHazardTexture() {
+export function makeHazardTexture() {
   const W = 512, H = 64;
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
