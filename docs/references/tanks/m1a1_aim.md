@@ -135,3 +135,10 @@ Numbers (session start -> now): min 17.3 -> 53.6; hull 32.6 -> 62 (side
 stations 69.4 -> 65.9 (crown-clamp slices), dims 99.1 -> 100, floaters 100.
 Remaining honest gaps: side_hull tail/stack columns, front_hull stack x
 alignment, turret side casting-front columns.
+
+## 2026-08-01 addendum — edge-on prism law applied (orchestrator broadcast)
+Per the fleet mechanism in docs/GEOMETRY-GATE.md (russia r7c): long thin
+axis-aligned prisms present only end caps to the clipped station cameras.
+Applied here: skirt panels carry two interior flush ribs per panel (shared
+abramsHull, whole family), and every longitudinal strip is segmented into
+sub-slab bins with real end faces (forward low band 3 bins, fender lip 12, wall band 8 — stations 65.9 -> 68).

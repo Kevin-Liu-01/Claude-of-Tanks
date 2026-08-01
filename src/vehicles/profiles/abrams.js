@@ -261,6 +261,13 @@ function abramsHull(P, g) {
         for (const f of [-0.28, 0.28]) {
           P.add('hullDetail', cylX(0.016, 0.05, 8), side * (sk.x - 0.028), sk.top - 0.05 * s, z + f * panelD);
         }
+        // EDGE-ON PRISM LAW (docs/GEOMETRY-GATE.md): long thin axis-aligned
+        // panels show only end caps to the clipped station cameras — two
+        // interior ribs per panel keep the width plane visible in EVERY
+        // ~0.5 m station slab. Outer faces flush at sk.x (WIDTH GUARD).
+        for (const f of [-0.22, 0.22]) {
+          P.add('hull', box(0.018, (sk.top - sk.bot) * 0.78, 0.02), side * (sk.x - 0.009), (sk.top + sk.bot) / 2, z + f * panelD);
+        }
       }
     }
     P.add('hullRubber', box(0.022, 0.07, sk.z1 - sk.z0 - 0.05),
@@ -683,14 +690,19 @@ function buildSepv3(P) {
   // |x| 1.1..1.6 over z -2.45..2.62 while the outer armour plane hems at
   // 0.75 — both planes are built (WIDTH GUARD: inner band well inside).
   for (const side of [-1, 1]) {
-    P.add('hull', box(0.24, 0.72, 5.07), side * 1.44, 0.41, 0.085);
+    for (let k = 0; k < 7; k++) {
+      P.add('hull', box(0.24, 0.72, 0.70), side * 1.44, 0.41, -2.10 + k * 0.7317);
+    }
   }
   // Fender strips at the plan's ±1.72-1.83 run (z -2.91..3.46), topping at
-  // the print's 1.64-1.67 front-view fender line. The old hull-bucket mirror
-  // stubs are gone — the print carries them on the TURRET flanks (front-view
-  // 2.13 at ±1.78 with no matching hull-mask side column).
+  // the print's 1.64-1.67 front-view fender line — SEGMENTED per the
+  // edge-on prism law so every station slab sees an end face. The old
+  // hull-bucket mirror stubs are gone — the print carries them on the
+  // TURRET flanks (front-view 2.13 at ±1.78, no hull-mask side column).
   for (const side of [-1, 1]) {
-    P.add('hullDetail', box(0.15, 0.035, 6.34), side * 1.745, 1.63, 0.27);
+    for (let k = 0; k < 12; k++) {
+      P.add('hullDetail', box(0.15, 0.035, 0.51), side * 1.745, 1.63, -2.65 + k * 0.5555);
+    }
   }
   // Keel fins carry the published 7.93 side span: the print's plan plates
   // end at 3.67/-3.77, so a ±0.12 bow fin (2 columns, dropped to y 0.60 for
@@ -947,13 +959,21 @@ function buildAim(P) {
   // while topping below the 1.40 deck line (the print's side silhouette
   // shows deck, not skirt, forward of z 2.0).
   for (const side of [-1, 1]) {
-    P.add('hull', box(0.05, 0.60, 1.35), side * 1.80, 1.02, 2.62);
+    // (all longitudinal strips are SEGMENTED — edge-on prism law: one long
+    // thin box shows the station cameras nothing between its end caps)
+    for (let k = 0; k < 3; k++) {
+      P.add('hull', box(0.05, 0.60, 0.42), side * 1.80, 1.02, 2.17 + k * 0.45);
+    }
     P.add('hullDark', box(0.02, 0.03, 1.30), side * 1.815, 1.30, 2.62);
     // Fender lip (front-view 1.51-1.58 step at x 1.70..1.80).
-    P.add('hull', box(0.10, 0.16, 6.15), side * 1.75, 1.47, -1.10);
+    for (let k = 0; k < 12; k++) {
+      P.add('hull', box(0.10, 0.16, 0.49), side * 1.75, 1.47, -4.125 + k * 0.55);
+    }
     // Outboard wall band 1.75 aft of the fighting compartment (front-view
     // 1.75-1.79 at x 1.50..1.72; the side line there is the taller spine).
-    P.add('hull', box(0.22, 0.06, 3.9), side * 1.61, 1.72, -2.25);
+    for (let k = 0; k < 8; k++) {
+      P.add('hull', box(0.22, 0.06, 0.465), side * 1.61, 1.72, -4.175 + k * 0.492);
+    }
   }
   // CENTER SPINE (x ±0.82): the print's crowned deck plates — this carries
   // the side silhouette's 1.54 -> 1.67 -> 1.83 -> 1.74 -> 1.84 undulation

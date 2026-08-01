@@ -6,7 +6,7 @@
   "hullCurves": 0,
   "wholeCurves": 0,
   "turretCurves": 0,
-  "stations": 15.1,
+  "stations": 15.3,
   "dims": 98,
   "floaters": 100
  },
@@ -891,7 +891,7 @@
   },
   {
    "i": 2,
-   "wPct": 0.64,
+   "wPct": 0.85,
    "topPct": 30.15
   },
   {
@@ -906,7 +906,7 @@
   },
   {
    "i": 5,
-   "wPct": 0.21,
+   "wPct": 0,
    "topPct": 8.84
   },
   {
@@ -921,7 +921,7 @@
   },
   {
    "i": 8,
-   "wPct": 0.21,
+   "wPct": 0,
    "topPct": 13.64
   },
   {

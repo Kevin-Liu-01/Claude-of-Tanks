@@ -127,3 +127,10 @@ Numbers (session start -> now): turret 31.2 -> 46.6 (plan 87.2 side 46.6 —
 side is the polluted row), stations 29.1 -> 41.2, dims 98.9 -> 100 (mast
 clamp + pintle/prow/rear-face fixes recovered hullLengthM/heightM),
 hull/whole 0-9 (capped, registration-polluted), floaters 100.
+
+## 2026-08-01 addendum — edge-on prism law applied (orchestrator broadcast)
+Per the fleet mechanism in docs/GEOMETRY-GATE.md (russia r7c): long thin
+axis-aligned prisms present only end caps to the clipped station cameras.
+Applied here: skirt panels carry two interior flush ribs per panel (shared
+abramsHull, whole family), and every longitudinal strip is segmented into
+sub-slab bins with real end faces (skirt ribs only; its remaining station rows are bridge/cluster top errors, not width).
