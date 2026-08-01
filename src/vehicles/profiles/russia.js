@@ -399,7 +399,17 @@ function buildT62MV1(P) {
   for (const s of [-1, 1]) {
     P.add('hull', box(0.26, 0.03, 4.94), s * 1.50, 1.575, 0.035);
     P.add('hullDark', box(0.22, 0.012, 0.02), s * 1.50, 1.595, 0.035);
-    P.add('hull', box(0.025, 0.34, 4.85), s * 1.632, 1.40, 0.02);    // sidewall strip (ref outer col 1.23..1.57)
+    // outer fender-bin row: SEGMENTED so every 0.52-deep station slice sees
+    // front-facing end caps (a single long axis-aligned prism is edge-on to
+    // the sliced front camera and registers nothing mid-span — the r7c
+    // stations finding); the print keeps ±1.62-1.65 content at every slice.
+    for (let i = 0; i < 9; i++) {
+      P.add('hull', box(0.055, 0.30, 0.48), s * 1.612, 1.425, -2.06 + i * 0.52);
+      P.add('hullDark', box(0.05, 0.26, 0.02), s * 1.614, 1.42, -2.06 + i * 0.52 + 0.25);
+    }
+    P.add('hull', box(0.055, 0.26, 0.42), s * 1.612, 1.31, -3.14, 0.12, 0, 0); // rake bin
+    P.add('hull', box(0.055, 0.26, 0.40), s * 1.612, 1.315, -2.66, 0.06, 0, 0);
+    P.add('hull', box(0.055, 0.25, 0.34), s * 1.612, 1.38, 2.72, -0.05, 0, 0); // glacis bin
     // front corner track guards (ref plan outer runs to +3.39 at y ~1.0-1.25;
     // they END by z 3.20 so the log columns stay band-thin)
     P.add('hull', box(0.44, 0.055, 0.58), s * 1.38, 1.19, 2.91, -0.20, 0, 0);
@@ -432,10 +442,10 @@ function buildT62MV1(P) {
   // is kept 2 side-columns deep so heightM's p95 ignores it; the ref's
   // FORWARD barrel band 2.75-2.78 over z 1.06..2.25 is a certified cap and
   // is deliberately NOT matched)
-  P.add('turretDark', box(0.20, 0.32, 0.22), -0.775, 1.19, -0.245);   // receiver (peak 2.84, 3 columns exactly)
-  P.add('turretDark', box(0.20, 0.05, 0.16), -0.79, 1.235, -0.25);    // cradle cap
-  P.add('turretDark', cylY(0.032, 0.040, 0.26, 8), -0.86, 0.92, -0.22); // pintle post
-  P.add('turretDetail', box(0.11, 0.13, 0.14), -0.60, 1.06, -0.28);   // ammo box
+  P.add('turretDark', box(0.20, 0.32, 0.26), -0.775, 1.19, -0.10);    // receiver (peak 2.84; physical z 0.82..1.08 enters station slice 9 like the print's)
+  P.add('turretDark', box(0.20, 0.05, 0.16), -0.79, 1.235, -0.10);    // cradle cap
+  P.add('turretDark', cylY(0.032, 0.040, 0.26, 8), -0.86, 0.92, -0.10); // pintle post
+  P.add('turretDetail', box(0.11, 0.13, 0.14), -0.60, 0.98, -0.13);   // ammo box (inside the receiver's tall columns)
   P.add('turret', cylY(0.22, 0.24, 0.09, 14), -0.85, 0.83, -0.30);    // loader hatch ring
   // batch-11 parity: the oracle's DShK barrel is STOWED transverse across
   // the roof clamp (top 2.40) — matched with the same stowed tube
@@ -600,8 +610,15 @@ function buildT64BV1(P) {
   }
   KIT.towCable(P, [[-1.05, 1.18, 0.4], [0, 1.24, -0.1], [1.05, 1.18, 0.4]]);
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.20, 0.03, 4.20), s * 1.55, 1.27, -1.20);    // thin fender run
-    P.add('hullDark', box(0.16, 0.012, 0.02), s * 1.55, 1.29, -1.20);
+    // fender as a segmented bin row (r7c stations finding: a long axis-
+    // aligned prism is edge-on to the sliced station camera; segment end
+    // caps register in every slice like the print's real fender kit)
+    for (let i = 0; i < 8; i++) {
+      P.add('hull', box(0.20, 0.09, 0.46), s * 1.55, 1.235, -3.10 + i * 0.51);
+      P.add('hullDark', box(0.17, 0.07, 0.02), s * 1.552, 1.23, -3.10 + i * 0.51 + 0.24);
+    }
+    P.add('hull', box(0.20, 0.05, 0.55), s * 1.55, 1.20, 1.06, -0.06, 0, 0);
+    P.add('hull', box(0.20, 0.05, 0.50), s * 1.55, 1.14, 1.58, -0.10, 0, 0);
   }
   P.add('hullDark', box(0.16, 0.10, 0.85), -1.35, 1.30, -2.5);          // left exhaust duct
   stowage(P, 'hull', P.rng, [[1.05, 1.27, -0.9, 0.30, 0.12, 1.3], [-1.05, 1.27, -1.7, 0.30, 0.11, 1.1]]);
