@@ -3,9 +3,12 @@
  *
  * The perf budget (>=60 fps median / >=45 fps p5 at 1080p) must hold at the
  * DEFAULT settings on a retina display (devicePixelRatio 2), where the
- * renderer's 1.5 pixel-ratio cap still rasterizes 2.25x the pixels of a
+ * composer's 1.5 maxPixelRatio cap still rasterizes 2.25x the pixels of a
  * 1080p@dpr1 frame through the full HDR post chain. Measured on this class of
  * GPU that lands ~53 fps median / ~30 fps p5 — a hard budget fail.
+ * (engine-aa r1: the renderer CANVAS may now back at up to dpr 2 — see
+ * renderer.js PIXEL_RATIO_CAP — but only the final to-screen AA pass
+ * rasterizes there; every cap below still governs the composer chain.)
  *
  * Fix = an explicit quality ladder, auto-selected by devicePixelRatio and
  * user-overridable (persisted in localStorage; the settings UI writes through
@@ -36,11 +39,12 @@
  *           cascade 2. Explicit
  *           opt-in via settings (r7: auto no longer selects it — see
  *           resolvePresetName).
- * - high  : THE DEFAULT on every display ('auto'). Uses 2x scene MSAA and
- *           starts at 1.25 ratio on
- *           Retina and can climb to the native 1.5 renderer cap, with half-res
+ * - high  : THE DEFAULT on every display ('auto'). Uses 4x scene MSAA
+ *           (engine-aa r1) and starts at 1.25 ratio on
+ *           Retina and can climb to the full 1.5 composer cap, with half-res
  *           AO and a 0.6x bloom chain. The frame governor can fall back to
- *           ~1.0 under sustained load, preserving the >=45 fps floor.
+ *           ~1.125 under sustained load, preserving the >=45 fps floor, and
+ *           recovers when the load lifts.
  * - medium: 2x scene MSAA, 1.0 ratio, half-res AO/bloom, 2048/1024 cascades.
  * - low   : SMAA only, 0.75 ratio, AO off, half-res bloom, 2048/1024
  *           cascades, shorter shadow range.
@@ -84,10 +88,20 @@ export const PRESETS = {
   // High starts above CSS-pixel resolution on Retina panels and can earn the
   // full 1.5 native renderer ratio. Fine geometry reaches SMAA before any
   // upscale instead of being rasterized at 1.0 then stretched across a 1.5x
-  // backing store. The governor may return to ~1.0 under sustained load.
+  // backing store. The governor may return to ~1.125 under sustained load
+  // (post.js DYN_MIN 0.75) and recovers when the load lifts.
+  // engine-aa r1: msaaSamples 2 → 4 on THE DEFAULT tier. 2x MSAA leaves one
+  // intermediate coverage level per geometric edge — after ACES + the grade's
+  // contrast S-curve the survivors read as visible stair-steps on hull/skirt/
+  // barrel silhouettes (owner garage screenshot), and SMAA cannot always
+  // reconstruct them once the governor has the chain below native. 4x is the
+  // WebGL2 baseline every target GPU supports (maxSamples >= 4; Apple/ANGLE
+  // reports 8) and the scene-only MSAA target keeps the cost off the post
+  // chain. Perf: certified against the dsf-1 and dsf-2 budgets with
+  // tools/perfprobe.mjs — see shots/engine-aa-r1/ before/after reports.
   high: {
     label: 'High',
-    msaaSamples: 2,
+    msaaSamples: 4,
     maxPixelRatio: 1.5,
     adaptiveBasePixelRatio: 1.25,
     aoScale: 0.5,

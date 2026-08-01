@@ -6,10 +6,27 @@
  * a quality-aware MSAA target, resolves it once, then runs the single-sampled
  * post chain and final display-space SMAA. Tone mapping and sRGB output are
  * configured here but actually applied by OutputPass (r185 behavior).
+ *
+ * The renderer pixel ratio here sizes only the canvas/default framebuffer;
+ * the composer's INTERNAL resolution is capped separately by the quality
+ * preset (quality.js maxPixelRatio) and scaled live by the post.js dynamic
+ * resolution governor.
  */
 import * as THREE from 'three';
 
-const PIXEL_RATIO_CAP = 1.5;
+// engine-aa r1: 1.5 → 2. This caps the CANVAS BACKING STORE, not the render
+// cost: the composer renders the scene + post chain at the preset's
+// maxPixelRatio (still 1.5 — quality.js owns that budget lever) and only the
+// final to-screen AA pass rasterizes at the canvas resolution. At the old 1.5
+// cap a dpr-2 display took TWO stacked upscales (composer → 1.5x canvas,
+// then the browser stretching the canvas 1.33x onto physical pixels), which
+// softened every frame and re-magnified whatever stair-steps survived; the
+// final subpix-AA pass also ran below physical resolution. Now the canvas is
+// 1:1 with physical pixels on dpr <= 2 displays, the single linear upscale
+// happens inside the AA pass, and dpr-1 machines are bit-identical (ratio
+// 1.0 either way). Cost: one fullscreen pass + compositor at 2x instead of
+// 1.5x — certified against the dsf-2 budget (see shots/engine-aa-r1/).
+const PIXEL_RATIO_CAP = 2;
 
 /**
  * Create the game's WebGLRenderer and append its canvas to `container`.

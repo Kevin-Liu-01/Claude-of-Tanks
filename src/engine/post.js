@@ -1331,41 +1331,80 @@ export function createPost(renderer, scene, camera) {
   let cssW = 0;
   let cssH = 0;
   const _nativeSize = new THREE.Vector2(); // aa-r1: FXAA resolution scratch
-  // --- Dynamic resolution governor (performance_budget r5) -----------------
+  // --- Dynamic resolution governor (performance_budget r5, REBUILT
+  // engine-aa r1) ------------------------------------------------------------
   // EVALUATION.md F10 / critic r5 minor: the preset ladder is static, so
   // hardware weaker than the reference machine rides p5 dips with no
   // recovery. Standard AAA answer: scale the internal render resolution to
   // hold frame time. The governor tracks a ~1 s EMA of the render delta and
   // steps `dynScale` (multiplied into the composer pixel ratio below) between
   // 1.0 and DYN_MIN while the frame budget is blown, stepping back up once
-  // there is clear headroom. Constraints that shape the design:
-  //  - RETINA-CLASS FENCE: engages only when the renderer pixel ratio is
-  //    >= 1.25 (dpr >= 2 displays cap at 1.5, laptops at 1.25+). At dsf 1 the
-  //    renderer ratio is 1.0, so the screenshot harness and every dsf-1
-  //    certification render bit-identical frames — the governor cannot mask
-  //    a workload regression on the gate path. (At dsf 2 it is part of the
-  //    shipped behavior the probe certifies, exactly like the preset ladder.)
+  // there is clear headroom.
+  //
+  // engine-aa r1 ROOT CAUSE (owner: "the ui in garage and in battle is still
+  // this weird pixelly thing"): the r5 governor compared the EMA of the rAF
+  // DELTA against two ABSOLUTE thresholds — down past 18.5 ms, up below
+  // 13.5 ms. Under vsync the up threshold is UNREACHABLE on a 60 Hz display:
+  // rAF deltas are quantized to >= 16.7 ms no matter how much GPU headroom
+  // exists, so the "hysteresis dead band" was a ONE-WAY RATCHET. Any ~3 s of
+  // sustained load (boot shader compiles outliving the warmup, an agent
+  // build, a background app) stepped the scale down, and nothing could ever
+  // step it back up. Reproduced with tools/tmp-engine-aa-probe.mjs (dpr 2,
+  // vsync-locked): a 12 s load spike drove dynScale to the 0.67 floor —
+  // composer at ~1.0x CSS on a dpr-2 display, i.e. HALF the physical pixels
+  // per axis, double-upscaled — and 30+ s of idle at EMA 16.7 ms never
+  // recovered one step. That floor state is exactly the soft/chunky garage
+  // and battle in the owner's screen recording (DOM HUD crisp, 3D mush).
+  // The rebuild keeps the stepped/rate-limited/retina-fenced shape and fixes
+  // the decision logic:
+  //  - BUDGET-RELATIVE thresholds: the frame budget is
+  //    max(16.9 ms, display cadence p10, capped at 34 ms) — "healthy" is
+  //    judged against what vsync can actually deliver, so the up path is
+  //    reachable on every refresh rate (60 Hz idle: EMA 16.7 < 16.9 x 1.06
+  //    → recovers; 120 Hz judges against the 60 fps target, not 8.3 ms).
+  //  - MISS-RATIO evidence: a step needs the EMA level AND the share of
+  //    frames blowing budget x 1.35 to agree (down needs > 15% missed, up
+  //    needs < 4%), so scheduler jitter alone cannot thrash the scale.
+  //  - FLOOR 0.75 (was 0.67): the worst legal frame keeps >= 75% of the
+  //    preset resolution per axis (effective ratio ~1.125 on the 1.5 cap).
+  //  - ANTI-FLAP BACKOFF instead of a dead band: an up-step punished by a
+  //    down-step within 8 s doubles the wait before the next up try
+  //    (2.5 → 5 → 10 → 20 s cap; a flap-free minute resets it). Recovery
+  //    from a genuine load drop stays 1 step per 2.5 s — floor to 1.0 in
+  //    ~7.5 s.
+  //  - hidden-document frames never govern: main.js's rAF-starvation
+  //    fallback ticks at ~10 Hz by design — that cadence says nothing about
+  //    GPU cost and used to read as a permanent budget blowout.
+  //  - RETINA-CLASS FENCE unchanged: engages only when the renderer pixel
+  //    ratio is >= 1.25. At dsf 1 the renderer ratio is 1.0, so the
+  //    screenshot harness and every dsf-1 certification render bit-identical
+  //    frames — the governor cannot mask a workload regression on the gate
+  //    path.
   //  - STEPPED + RATE-LIMITED, not a per-frame lerp: every ratio change
   //    reallocates the whole composer chain (scene HDR target, GTAO, bloom,
-  //    SMAA). A continuous lerp would thrash multi-MB GPU allocations; steps
-  //    of ~0.09 at most once per 2.5 s cost one bounded resize each and only
-  //    fire when frames are already long.
-  //  - HYSTERESIS: down past 18.5 ms sustained, up below 13.5 ms — a 5 ms
-  //    dead band so the governor cannot oscillate around one threshold. EMA
-  //    is re-seeded to the band midpoint after each step so the next decision
-  //    needs ~1 s of fresh evidence at the new resolution.
+  //    SMAA); steps of ~0.09 at most once per 2.5 s.
   //  - HUD/DOM stays native-crisp: only the composer's internal buffers
-  //    scale; the final pass upscales to the untouched canvas, same as the
-  //    preset render-scale path this reuses.
-  // With High capped at 1.5, 0.67 is an effective ratio of ~1.0: the old
-  // certified fallback rather than a sub-native blur. Normal operation starts
-  // at 1.25 and may climb to the full 1.5 canvas ratio.
-  const DYN_MIN = 0.67;
+  //    scale; the final pass upscales (linear-filtered buffers) to the
+  //    untouched canvas.
+  // Telemetry: dataset.dynScale / dataset.dynBudgetMs / dataset.frameEmaMs
+  // on the canvas (1 Hz), plus the read-only post.dynScale getter below —
+  // reachable for probes via window.__DEBUG.post.dynScale. Nothing about the
+  // scale is persisted: every boot re-earns resolution from the preset base.
+  const DYN_MIN = 0.75;
   const DYN_STEP = 0.09;
-  const DYN_DOWN_MS = 18.5;
-  const DYN_UP_MS = 13.5;
   const DYN_INTERVAL_S = 2.5;
   const DYN_WARMUP_S = 6; // ignore boot/shader-compile turbulence
+  const DYN_TARGET_MS = 16.9; // 60 fps budget (+~1% vsync slack)
+  const DYN_BUDGET_MAX_MS = 34; // starved cadences never fake a lax budget
+  const DYN_DOWN_LEVEL = 1.12; // EMA > budget x this (plus misses) => down
+  const DYN_UP_LEVEL = 1.06; // EMA < budget x this (plus clean) => up
+  const DYN_MISS_AT = 1.35; // a frame > budget x this counts as missed
+  const DYN_DOWN_MISS_MIN = 0.15; // missed-frame share required to step down
+  const DYN_UP_MISS_MAX = 0.04; // missed-frame share tolerated for an up-step
+  const DYN_MIN_WINDOW_FRAMES = 30; // no decision on a thin evidence window
+  const DYN_FLAP_S = 8; // a down this soon after an up = the up flapped
+  const DYN_BACKOFF_MAX_S = 20;
+  const DYN_BACKOFF_RESET_S = 60; // a flap-free minute forgives the backoff
   // High exposes the native 1.5x renderer ratio as an opportunistic ceiling
   // and starts at 1.25x. This remains relative to the live capped ratio, so
   // dpr-1 displays stay exactly 1.0 and never allocate a pointless upscale.
@@ -1375,10 +1414,24 @@ export function createPost(renderer, scene, camera) {
     return capped > 0 ? base / capped : 1;
   }
   let dynScale = baseDynScale();
-  let dynEma = 0;
+  let dynEma = 0; // ms (r5 kept seconds; ms reads directly against budgets)
   let dynClock = 0;
   let dynLastStep = 0;
   let telemetryClock = 0;
+  // cadence ring: ~3 s of frame deltas; p10 estimates the true vsync period
+  // robustly (min alone anchors on double-fire jitter outliers).
+  const dynRing = new Float32Array(180);
+  const dynRingScratch = new Float32Array(180);
+  let dynRingN = 0;
+  let dynRingI = 0;
+  let dynWinFrames = 0; // evidence window since the last decision
+  let dynWinMisses = 0;
+  let dynBudgetMs = DYN_TARGET_MS;
+  let dynLastDecision = 0;
+  let dynUpBackoffS = DYN_INTERVAL_S;
+  let dynLastUpAt = -Infinity;
+  let dynLastDownAt = -Infinity;
+  let dynPin = null; // QA capture pin (see pinDynScale below); null = live
   function applySize(w, h) {
     cssW = w;
     cssH = h;
@@ -1386,6 +1439,7 @@ export function createPost(renderer, scene, camera) {
     composer.setPixelRatio(renderScale);
     composer.setSize(w, h);
     renderer.domElement.dataset.renderScale = renderScale.toFixed(3);
+    renderer.domElement.dataset.dynScale = dynScale.toFixed(3);
     // aa-r1: keep the two screen-space AA helpers in step with the buffers.
     // The firefly clamp taps the COMPOSER buffer (the aerial pass' own input);
     // FXAA is the to-screen pass and steps in NATIVE canvas pixels — the
@@ -1399,27 +1453,64 @@ export function createPost(renderer, scene, camera) {
   /** Advance the governor one frame; resizes the chain when a step fires. */
   function dynGovern(dt) {
     if (!(dt > 0) || dt > 0.25) return; // hitches/tab-switch: not a trend
+    // rAF-starvation fallback frames (main.js ticks hidden documents at
+    // ~10 Hz) carry loop cadence, not GPU cost — they must never govern.
+    if (document.hidden) return;
     dynClock += dt;
-    dynEma = dynEma === 0 ? dt : dynEma + (dt - dynEma) * 0.06;
+    if (dynClock < DYN_WARMUP_S) return; // boot turbulence: no accounting
+    const ms = dt * 1000;
+    dynEma = dynEma === 0 ? ms : dynEma + (ms - dynEma) * 0.06;
+    dynRing[dynRingI] = ms;
+    dynRingI = (dynRingI + 1) % dynRing.length;
+    if (dynRingN < dynRing.length) dynRingN++;
+    dynWinFrames++;
+    if (ms > dynBudgetMs * DYN_MISS_AT) dynWinMisses++;
     if (dynClock - telemetryClock >= 1) {
       telemetryClock = dynClock;
       // Read-only QA telemetry on the renderer canvas; one DOM write per
       // second is negligible and lets browser checks verify the frame budget
-      // without injecting scripts into the game's execution realm.
-      renderer.domElement.dataset.frameEmaMs = (dynEma * 1000).toFixed(2);
+      // and the live governor state without injecting scripts into the
+      // game's execution realm.
+      renderer.domElement.dataset.frameEmaMs = dynEma.toFixed(2);
+      renderer.domElement.dataset.dynScale = dynScale.toFixed(3);
+      renderer.domElement.dataset.dynBudgetMs = dynBudgetMs.toFixed(2);
     }
+    if (dynPin !== null) return; // QA pin owns the scale; telemetry stays live
     if (renderer.getPixelRatio() < 1.25) return; // retina-class only (see above)
-    if (dynClock < DYN_WARMUP_S || dynClock - dynLastStep < DYN_INTERVAL_S) return;
-    const ms = dynEma * 1000;
-    if (ms > DYN_DOWN_MS && dynScale > DYN_MIN) {
+    if (dynClock - dynLastDecision < DYN_INTERVAL_S) return;
+    if (dynWinFrames < DYN_MIN_WINDOW_FRAMES) return; // thin window: wait
+    // Decision point (every >= 2.5 s of visible frames).
+    // Display cadence estimate: p10 of the recent deltas is the shortest
+    // period vsync consistently delivers; the budget is the 60 fps target or
+    // the cadence, whichever is slower (capped — see DYN_BUDGET_MAX_MS).
+    dynRingScratch.set(dynRing.subarray(0, dynRingN));
+    const sorted = dynRingScratch.subarray(0, dynRingN).sort();
+    const p10 = sorted[Math.floor(dynRingN * 0.10)];
+    dynBudgetMs = Math.min(DYN_BUDGET_MAX_MS, Math.max(DYN_TARGET_MS, p10));
+    const missRatio = dynWinMisses / dynWinFrames;
+    dynWinFrames = 0;
+    dynWinMisses = 0;
+    dynLastDecision = dynClock;
+    if (dynUpBackoffS > DYN_INTERVAL_S && dynClock - dynLastDownAt > DYN_BACKOFF_RESET_S) {
+      dynUpBackoffS = DYN_INTERVAL_S; // flap-free minute: forgiven
+    }
+    if (dynEma > dynBudgetMs * DYN_DOWN_LEVEL && missRatio > DYN_DOWN_MISS_MIN
+        && dynScale > DYN_MIN) {
       dynScale = Math.max(DYN_MIN, dynScale - DYN_STEP);
-    } else if (ms < DYN_UP_MS && dynScale < 1) {
+      if (dynClock - dynLastUpAt < DYN_FLAP_S) {
+        // the last up-step flapped — back the next try off exponentially
+        dynUpBackoffS = Math.min(dynUpBackoffS * 2, DYN_BACKOFF_MAX_S);
+      }
+      dynLastDownAt = dynClock;
+    } else if (dynEma < dynBudgetMs * DYN_UP_LEVEL && missRatio < DYN_UP_MISS_MAX
+        && dynScale < 1 && dynClock - dynLastStep >= dynUpBackoffS) {
       dynScale = Math.min(1, dynScale + DYN_STEP);
+      dynLastUpAt = dynClock;
     } else {
       return;
     }
     dynLastStep = dynClock;
-    dynEma = (DYN_DOWN_MS + DYN_UP_MS) / 2000; // re-seed to the band midpoint
+    dynEma = dynBudgetMs; // re-seed: the next step needs fresh evidence
     if (cssW > 0 && cssH > 0) applySize(cssW, cssH);
   }
   {
@@ -1434,9 +1525,16 @@ export function createPost(renderer, scene, camera) {
     sceneAA.setSamples(msaaSamples);
     publishAAState();
     gtao.enabled = preset.aoScale > 0;
+    dynPin = null; // preset change releases any QA capture pin
     dynScale = baseDynScale(); // new preset = new budget baseline; governor re-earns supersampling
     dynEma = 0;
+    dynRingN = 0;
+    dynRingI = 0;
+    dynWinFrames = 0;
+    dynWinMisses = 0;
+    dynUpBackoffS = DYN_INTERVAL_S;
     dynLastStep = dynClock;
+    dynLastDecision = dynClock;
     if (cssW > 0 && cssH > 0) applySize(cssW, cssH);
   });
 
@@ -1564,6 +1662,23 @@ export function createPost(renderer, scene, camera) {
     /** Live dynamic-resolution scale (1 = full preset resolution). Probe/
      * settings-UI observability for the governor above; read-only. */
     get dynScale() { return dynScale; },
+
+    /**
+     * QA hook (engine-aa r1): pin the governor at a fixed scale so dpr-2
+     * captures are deterministic on hosts whose sibling workloads keep the
+     * GPU loaded (tools/tmp-engine-aa-probe.mjs --pin-captures). Gameplay
+     * never calls this; the settings UI has no path to it.
+     * @param {number|null} v - clamped to [DYN_MIN, 1]; null releases the
+     *   pin back to the live governor (which re-earns from the pinned value)
+     * @returns {void}
+     */
+    pinDynScale(v) {
+      dynPin = v == null ? null : Math.min(1, Math.max(DYN_MIN, v));
+      if (dynPin !== null && dynPin !== dynScale) {
+        dynScale = dynPin;
+        if (cssW > 0 && cssH > 0) applySize(cssW, cssH);
+      }
+    },
 
     /**
      * Quality toggle. GTAO is the most expensive pass (~2–3 ms @1080p) and is
