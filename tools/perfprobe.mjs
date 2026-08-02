@@ -453,12 +453,25 @@ try {
       const keys = ['KeyA', 'KeyD'];
       for (let i = 0; i < Math.floor(seconds / 2); i++) {
         const k = keys[i % 2];
-        await page.keyboard.down(k);
-        await new Promise((r) => setTimeout(r, 800));
-        await page.keyboard.up(k);
+        // A page that dies mid-window (Chromium killed under host load,
+        // "Session closed" from the CDP keyboard) rejects these calls. This
+        // promise is only awaited AFTER the sampler wait below — and when the
+        // page dies, the sampler wait throws FIRST, so an escaped rejection
+        // here was an unhandled rejection that crashed node before the
+        // finally could close the browser/server and release the shots lock
+        // (observed 2026-08-01 under load ~300). A dead page just ends the
+        // drive script; the sampler wait is what fails the run through the
+        // normal [perf] FAILED path.
+        try {
+          await page.keyboard.down(k);
+          await new Promise((r) => setTimeout(r, 800));
+          await page.keyboard.up(k);
+        } catch (_) {
+          return;
+        }
         await new Promise((r) => setTimeout(r, 1200));
       }
-    })();
+    })().catch(() => { /* belt-and-braces: never let a steer rejection escape */ });
   }
 
   // In-page sampler: rAF deltas + per-frame renderer.info + heap once/second.
