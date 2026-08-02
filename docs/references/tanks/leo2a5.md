@@ -229,3 +229,79 @@ on some grids; geometry cannot fix a bin flip); side_hull tail
 −3.4..−3.6 wrap/frame bottoms ~0.05-0.10 x 4; front ±1.42 crest-end
 cols 0.08 x 2. dims 85 is the new sovereign line — do NOT raise the
 cluster further without re-running the trade.
+
+## GATE-V10 round-5 (2026-08-02): min 80.2 -> **80.5**; DIMS-85 TRADE PROVEN MIN-OPTIMAL (stable x3)
+
+| component | before | after |
+|---|---|---|
+| hull | 86.1 | 88.1 |
+| whole | 81.3 | 86.3 |
+| turret | 80.2 | **80.5** (binder) |
+| stations | 86.0 | 86.1 |
+| dims | 85.0 | 85.0 (deliberate — resolution below) |
+| floaters | 100 | 100 |
+
+Board 92.3: nine views 94.4-97.5, TOP 97.5 solid.
+
+### DIMS-85 RECOVERY ASSESSMENT — RESOLVED: the trade is INFEASIBLE-
+### UNDER-FLOOR and dims 85 is MIN-OPTIMAL. Do not thrash it again.
+Measured chain (gate-frame 1024 probe, tools/tmp-gateframe-probe.mjs):
+- heightM = p95 of side_whole PROC body-column tops (n=70 -> exactly
+  THREE columns ride above the anchor). The three slots are consumed:
+  ref whips hold TWO separate side columns (4.105@z−1.94, 4.095@−2.05
+  — co-parking our whips into one column abandons a 4.1 ref column for
+  −0.82 errM, strictly worse) + the PERI crown blade (3.011@−0.364,
+  which also carries SEVEN 3.019 front columns — dropping it costs
+  front_whole −2.5). The anchor is therefore the flat cluster carry:
+  read 2.716, pct 2.87, dims 85.
+- dims ≥95 requires the carry read ≤2.683 (authored ≤2.6934). Thinning
+  costs the 12 uncovered ref-cluster columns (side reads 2.863-3.011)
+  +0.036/2 each -> turret_side −1.0 NET of every discovered claw-back
+  (whip tips +0.07, crest-dip +0.10 unbuildable in the shared crest
+  tables, rear trim +0.02): turret_side lands 79.2-79.8 — BELOW the
+  80 floor. Conversion rates: ±0.01 of carry = ∓0.8 dims = ±0.17
+  turret_side.
+- AND the min-order makes recovery pointless even without the floor:
+  dims 85 > turret_side 80.5, so thinning strictly LOWERS min(a5);
+  carrying MORE (2.79+ towers) was already measured in r3 at dims −30.
+  The 2.7265 carry maximizes the tank's min. CERTIFIED SOVEREIGN PAIR:
+  turret_side ~80.5 / dims 85. A cluster-slim re-source of the print
+  remains the only true exit (r3 note stands).
+- The kink column (ref 3.337@z−1.82, errM 0.488, the #1 turret_side
+  residual) is the same budget's 4th victim: restoring the r4-deleted
+  kink stub would make IT the heightM anchor (pct 26, dims 0).
+
+What moved this round (min-maximizing set, zero shared-path edits):
+- BELLY-CHIN LAW (front axis): the ref front belly is TIERED — centre
+  0.527..0.562 (|x|<0.70; the 0.562 tub line already matched) with
+  side CHINS 0.427..0.444 over |x| 0.72..1.00 where the flat tub read
+  +0.12 on nine columns (the source of the fitted front dy −0.038).
+  Chin strips (x ±0.72..1.00, bottom 0.437, z parked mid-hull) print
+  the 0.444 read; tracks own every side-view bottom so side/plan/
+  stations never see them. front_hull 86.1->88.1, front_whole part 1.
+- BLADE-STACKING LAW (the crown's design, generalized — fleet-visible):
+  a z-THIN (0.045) relief blade prints its full x-run to the FRONT
+  camera while its side footprint stays inside ONE side column — so
+  co-parking every blade in the crown's already-spent −0.376w spike
+  column buys front columns at ZERO p95 budget. Bought: cupola rim
+  2.90w over +0.86..+1.00 (ref 2.875-2.927), ring aft step 2.866w over
+  +1.09..+1.24 (ref 2.866 x4), whip-base post 2.79w at −1.00 (ref
+  2.796) — eight front columns that previously read the flat 2.727
+  carry. front_whole 81.3 -> 88.8 with the chins (p95 3.23 -> 1.74).
+- Left cluster block widened to x −0.82 (ref front 2.731 runs to
+  −0.81) and z-rear trimmed to −0.73w (ref side −0.81w col falls to
+  2.600); whip overlays +0.03 to 4.11 authored (ref cols read
+  4.105/4.095 vs our 4.074; ref's own geometry tops ≥4.116 so the
+  union box stays ref-owned — frozen-box law).
+- kf51's round-5 laws apply here wholesale and are banked in kf51.md:
+  width-scale knob (a5 authored width is EXACTLY 3.75 -> s=1.000 —
+  protect it), registration body-mid law, frozen-box lid, 384-vs-1024
+  workorder/gate frame split.
+
+Residual (certified, measured): turret_side = the sovereign pair above
+(kink 0.488 + cluster carry 12 cols x 0.07-0.16) + the crest-dip pair
+(+0.98/+1.09w read 2.568/2.579 vs ref 2.463/2.484 — the EMES-well
+corner cuts the ref's crest where the shared wedge crest tables cannot
+be split per-z; 2 cols x 0.05); front ±1.42 crest-end cols (proc 2.304
+vs ref 2.174 — shrinking the body wall trades an equal-magnitude miss
+the other way, wash); side_hull tail −3.4..−3.6 bottoms ~0.05 x 4.
