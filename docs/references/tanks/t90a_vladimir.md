@@ -215,3 +215,51 @@ Gate: 32.3 -> min 42.2 (hull 52.5 / whole 42.2 / turret 54.0 / stations
 NEXT: side_whole z -2.1 rear-stack band, hull rear/front gear-fade columns
 (certified family class), front_whole K-5 flank residual (+0.1), dims
 hullLengthM 1.28% (front body band straddles a column).
+
+## r12 LANDING (2026-08-02): 42.2 -> 53.6 — r11 law set + bow notch + roof decode
+
+Final row: hull 58.4 / whole 53.6 / turret 63.3 / stations 87.3 / dims
+97.8 / floaters 100 (min 53.6). Board r12 reviewed
+(shots/russia-vertex/r12/): orientation correct, articulation clean, no
+floaters, masks 86.7-97.8. Two rounds:
+- GEAR-FADE STRIPS both ramps (front 0.14@1.34 -> 0.92@1.985, rear
+  0.14@-3.175 -> 0.79@-3.927 at x ±1.40) — this print fades BOTH its
+  idler and sprocket runs; whole 42.2 -> 51.2 came mostly from here plus:
+- REAR PLAN NOTCH: ref tail is full-depth (-4.70..-4.76) only at
+  |x|<0.9; |x| 0.95..1.35 is notched to -4.26 (wUp/wLo staircase pts).
+- BOW NOTCH (t64bv1 class, overturns the r2 "nose 1.27@1.85 -> 1.05@2.10"
+  read): the ref center plate ends 1.68 (plan 1.641-1.695 at |x|<0.7!);
+  corner prongs rake 1.90@0.83 -> 2.045@1.05 -> 2.10@1.24 with a 0.40
+  side band (0.86..1.26) — the 0.30 band sat exactly ON the 12% body
+  filter and hullLengthM coin-flipped. glacisKit re-seated (z 1.42,
+  eyeZ 1.58, hookZ 1.86) onto the shortened plate; flaps 0.965..1.075
+  (the ref 2.09-col sliver).
+- ROOF DECODE (fresh digest): the 2.12-2.21 band is the LEFT SIGHT BLOCK
+  (front 2.196-2.211 at x -0.7..-1.2; center cols read 1.90-1.94): sight
+  block rebuilt as a 2.225 rear run (z_w -1.08..-0.46, heightM p95
+  anchor — heightM 2.21 -> 2.23 exact) + 2.15 front run ending z_w 0.41,
+  segmented; the r3 center hump DELETED; dome apex squashed to 1.975;
+  mast to x -0.245 top 2.50 (ref front 2.583@-0.23, side 2.419@-1.99)
+  with the 2.25 plate (z-slimmed off the -2.09 col) and 2.07 step.
+- Bustle staircase: bins narrowed (x to ±0.90/0.97 outer steps, rear
+  -2.04) under the ref's -1.86..-2.18 plan staircase; basket rails
+  x ±0.40 rear -2.275 (ref center rear -2.24); rails z-deepened to touch
+  the posts (float guard); LEFT tall bin wall x -1.10..-1.32 top 2.19
+  (front 2.196 cols) hidden inside the 2.20 side band z-window.
+- L skirt-front cassette x -1.61..-1.80 top 1.80 z 0.0..0.6 (front
+  -1.61..-1.76 cols read 1.79-1.80, RIGHT stays at the 1.41 lip line —
+  print asym); both-side ground skids at ±1.752 (ref grounds ±1.72-1.76).
+- trackW 0.58 -> 0.52 (ref floors 0.372 at the ±1.13 front cols); glacis
+  chevrons hugged; tube col split [2.30,2.87,0.106] (the ±0.15 plan col
+  reads the ref sleeve end 3.17, not the muzzle — sub-6mm flat reach
+  dropped the col entirely at r 0.104: PLAN-COLUMN RASTER LAW).
+
+KNOWN RESIDUAL: dims 97.8 = hullLengthM 6.77 vs 6.86 (-1.28%) — the
+front body read still ends ~2.015 despite the 0.40-band prongs to 2.10;
+the 12%-filter interaction here is NOT the prong band (deepening it
+changed nothing). Decode the body-span trace directly next round (dump
+the dims replica from the fidelity page) before touching geometry.
+NEXT: side_whole -1.9..-2.1 cols (mast plate zone rework printed 1 col
+wide?); front_whole ±1.08 floors (0.686 vs ref 0.356 — unidentified
+content, whatsat it); turret_plan center rear -2.48 vs ref -2.24 (rails);
+the -0.19 front col (mast x-margin 14mm — verify it held).

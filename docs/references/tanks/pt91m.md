@@ -320,3 +320,88 @@ right-flank chords (dome round vs ref's pinched rear-sides at x 1.0-1.46:
 ref front 0.809@1.46 vs dome-chord — needs cheek boxes or a flank-wall
 decode); stations 80.1 (slice tops at the new housing); erawa row-2 lean
 cols +-0.31..0.51 (~0.05 x 6).
+
+## r12 LANDING (2026-08-02): 70.8 -> 83.4 — r11 law set applied + flank/station decode
+
+Final row: hull 84.6 / whole 83.4 / turret 87.6 / stations 84.3 / dims 100
+/ floaters 100 (min 83.4). Board r12 reviewed (shots/russia-vertex/r12/):
+orientation correct, articulation clean, no floaters, masks 90.9-98.8.
+What moved it, in landing order:
+- GROUND-PLANE LAW (t72b3m r11, fleet class): botY 0.03 -> 0.0475 (band
+  bottom -0.015 -> +0.0025 — prints the ref's 0-row).
+- GEAR-FADE STRIPS: per-column horizontal-bottom strips at x ±1.36
+  (rear 0.11@-2.045 -> 0.72@-2.815; front 0.04@2.345 -> 0.40@2.895 +
+  the 0.44 idler-window col at 3.092). STRIP-GRID LAW (banked): author
+  strips on the GATE's own column grid (z = 1.335 - at) — the workorder
+  grid sat half a column off and the band pads printed under them.
+- TRACK X-WINDOW: xc 1.37 / trackW 0.50 (band face 1.62, pin caps
+  xc+0.49·tW+0.029 = 1.644 clear of the 1.661 col edge): the ref's RIGHT
+  +1.681 col is skirt-only, LEFT grounds -1.671 via an authored outer
+  skid at x -1.684..-1.660; a RIGHT inner skid grounds +1.07 (the ref's
+  inner-face ground is RIGHT-side; left floors at 0.32 — diagonal print
+  asym). High side rails x 1.625..1.70 (y 0.85..1.00) carry the plan
+  ±1.676 col the old 1.70 band face owned.
+- SKIRT RE-WINDOW (station probe): face 1.713..1.745 prints the ref's
+  ±1.742 station edge (was 1.775); lip sliver to 1.755 keeps the plan
+  ±1.783 col; skirt z0 -2.86 reaches the plan's -2.838 rear; the ±1.79
+  course is z-WINDOWED: plates 0.50..2.54 + a RIGHT-only rear cassette
+  x 1.745..1.795 z -1.90..-1.02 (stations i3/i4 read +1.792/-1.742).
+- WIDTH-ANCHOR LAW (banked): the ±1.795 anchor studs printed ALONE in
+  station slab i7 (dW 0.111) — seat anchor studs inside a z-zone where
+  real ±width content lives (moved z 0.45 -> 1.26, the plates zone).
+- PRISM LAW at stations: the 0.82-deep housing box was edge-on-INVISIBLE
+  in slab i7 (dTop 0.197!) — housing segmented (3+3 boxes) and SPLIT:
+  2.19 run only over z -0.165..0.49 (heightM p95 anchor, 5-6 cols; ends
+  inside i7 so slab i8 reads the ref's 2.075 line), 2.075 front run to
+  1.395, left step 2.1025 (ref front 2.11 @ x -0.75).
+- TURRET PLAN DECODE: dome shrunk to the wedge chords (r 1.40/sz 0.885/
+  cz -0.10; rear -1.179) — LEFT-rear filler steps carry the deeper left
+  chords (-1.10/-1.00/-0.81/-0.67), fender-line RAILS (t64bv1 class,
+  y 1.43..1.475) at L -1.60..-1.16 (stepped -0.40/-0.65/-0.79) and R
+  1.30..1.60 (stepped -0.27/-0.085/+0.08), RIGHT tall wall x 1.5375..
+  1.6075 top 1.825 (+1.56/+1.60 front cols 1.828-1.838), 1.775-walls
+  BOTH sides (R inboard step x 1.44..1.515; L x -1.545..-1.615 over the
+  OBRA shelf, widened to the -1.44..-1.51 cols), ERAWA wall support
+  wedges bridge the squashed dome face (board hygiene).
+- GLACIS RE-LINE: deck pts 1.335@2.23 -> 1.281@2.45 -> 1.247 nose
+  plateau; splash ridge strip 1.368 @ 2.53..2.69; tiles hugged (rows
+  1.35/1.27/1.215, tilt -0.28); hlY 1.26; bow fenders re-raked (fronts
+  3.175/3.29/3.42/3.435/3.39) and y-split (mains 0.94..1.16, noses
+  0.94..1.10 for the 3.41 col's 1.10 top); outer bow tabs asym (L 1.745
+  R 1.733 per stations i13).
+- MANTLET-BAND TRUTH (t72b3m law): sleeve box narrowed to |x|<0.095
+  (its 0.45 width painted the ±0.255 plan cols at 2.016 vs ref 1.453 —
+  the ERAWA wall owns those cols); tube root slimmed 0.118 -> 0.105;
+  evac re-read as r 0.10 cy -0.032 (ref band 1.47..1.61; the +0.174
+  plan col is owned by the 4.30..4.54 collar, NOT the evac reach).
+- Rear powerpack ramp re-seated one column (fresh grid): humps forward
+  face to -2.90 carrying 1.743 at the -2.925 col; 1.63 step at -2.809;
+  the r10 1.69 side tabs DELETED; center rake 1.505/1.525 lines; the
+  1.66 center line is a NARROW ridge x 0.163..0.203 (front +0.18 col
+  only); tail lip 1.42..1.56; towers 1.19..1.47.
+- BODY-EDGE PIN (hullLengthM law): the hump rear face landed ON the
+  -3.3799 col boundary and the body read COIN-FLIPPED 6.87/6.76 between
+  runs — every body-defining face now sits >=10 mm from its column
+  boundary (humps rear -3.37).
+- NSVT dropped to the ref's 1.931 line; commander post/head to the 1.94
+  crown line; right roof box 1.98 @ x 0.87; mast re-buried (base 0.28);
+  rear rail band 1.6655..1.7385 w 0.36 (frees the ±0.255 plan cols);
+  hanging bin lip 1.5825..1.7325 clear of the -1.405 col; asym flaps
+  (tops 1.15 at the 3.16 face; the 1.40/1.25 front tops at ±1.68 are
+  the inner skirt-lip course, z-hidden under the deck).
+
+CERTIFIED RESIDUALS (r12): belt flat-end corner pads dip to -0.016 at
+the -2.045/-2.155 cols (t72b3m -3.252 class, ~0.10 x 2); tube side band
+0.05-0.07 x ~6 mid/tip cols (warp-squash, circle law — root/evac now
+authored); housing 2.19 vs ref 2.13 band = the heightM dims trade
+(~0.05 x 5 side cols + ~2% on station i7; DO NOT drop below 2.19 —
+heightM already reads 2.18/2.19 with the fixed ground plane).
+
+NEXT (whole 83.4): front dome falloff x ±0.83..0.95 (ref 1.93-1.98 vs
+lathe 1.84-1.89, ~0.06 x 4 — needs a right-cheek shelf decode); front
+±1.76..1.80 plate-top rake (L 1.17 vs 1.24, ~0.06 x 2); plan_turret
+right-rear chords x 0.6..1.25 (dome vs staircase, 0.09-0.12 x 4 after
+the shrink; the ref's right-rear pinch is beyond a lathe — cheek-void
+class); plan 'at -1.66' cell (0.317) reads a ref bracket sliver 0.81..
+0.94 vs my full-length rail — decode which x-window the rail may keep;
+stations i9/i11-13 tube tops (certified band).
