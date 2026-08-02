@@ -145,8 +145,8 @@ function abramsMantlet(P, s = 1, w = 0.68, h = 0.5, zOff = 0, w2 = 0.84) {
   P.addGunExtra(cylZ(0.15 * s, 0.28 * s, 14), 0, 0, zOff + 0.56 * s);
 }
 
-// Stowed antenna base pot (the gate's p95 height budget is spent on the
-// station head, never on whips — a whip costs 2 mask columns).
+// Stowed antenna base pot (kept under the plateau — pots must never join
+// the p95 spend; post-W1b the tejas budget belongs to the whip pair).
 function antennaPot(P, x, y, z) {
   P.add('turretDetail', box(0.07, 0.10, 0.07), x, y + 0.04, z);
   P.add('turretDark', cylY(0.022, 0.03, 0.06, 8), x, y + 0.11, z);
@@ -289,11 +289,14 @@ function abramsHull(P, g) {
       }
     }
     // rubberLipZ0 trims the wear lip's rear reach when the ref's hem line
+    // ends early; lipYRaise (opt-in) lifts the hem when the ref skirt
+    // carries NO rubber below its bottom edge (tejas W1b: the 0.625 hem
+    // owned the ±1.79 front bottoms 0.07 under the ref's 0.682 line).
     // ends before the skirt does (tejas: the 0.625 hem painted the -3.55
     // tail-rake bins the ref keeps at 0.69).
     const lipZ0 = g.rubberLipZ0 ?? sk.z0;
     P.add('hullRubber', box(0.022, 0.07, sk.z1 - lipZ0 - 0.05),
-      side * (sk.x - 0.02), sk.bot - 0.03, (lipZ0 + sk.z1) / 2);
+      side * (sk.x - 0.02), sk.bot - 0.03 + (g.lipYRaise ?? 0), (lipZ0 + sk.z1) / 2);
     // Top trim strip: with clamped bow panels it stops short of the glacis
     // band (a full-run strip at sk.top+0.02 owned nine 1.45-flat columns
     // over the ref's 1.35 glacis — vertex r2 finding).
@@ -588,7 +591,7 @@ const TEJAS_HULL = {
   // The committed ±1.828 width plane lives on two SMALL carriers (the left
   // horn plate + a right fender tab in slab i2) so safeScale stays 1.001.
   skirt: { x: 1.812, top: 1.41, bot: 0.69, z0: -3.65, z1: 3.55 },
-  rubberLipZ0: -3.40,
+  rubberLipZ0: -3.40, lipYRaise: 0.062,
   skirtClampToDeck: true, rearFlapZ: -3.755, rearFlapInset: 0.21, tipYOff: 0.30,
   // Plan (vertex r1): tail -3.94 at |x|<=0.95, -3.83 step to ±1.06 (mid-step
   // box in buildTejasFamily), full width ends -3.635 (the rear flaps at the
@@ -667,8 +670,13 @@ const TEJAS_TURRET = {
   yBotKnees: [[-1.36, -0.195], [-1.43, -0.03], [-1.66, 0.10], [-2.42, 0.16]],
   // Rack rear drop: ref rack tops fall to 2.22/2.19 at z -3.11/-3.22 world
   // (the 2.44 plateau ends ~-2.95).
-  inset: 0.18, rackTop: 0.87, rackBot: 0.29, rackDepth: 0.34, rackHalfW: 1.07,
-  rackRearDrop: 0.24, rackDropDz: 0.16, railTopFlush: true, railGapW: 0.36, roofCapW: 1.78,
+  // inset 0.30 (W1b): the ref's front roofline leaves its ~2.36 top face by
+  // |x| ~1.25 — the 0.18 inset ran the loft top edge to ±1.39 and owned the
+  // ±1.29-1.38 front columns at 2.368 over the ref's 2.29 shelf (the shelf
+  // itself is the roofKit ledges). roofCapW rescaled 1.78 -> 1.95 so the cap
+  // keeps its exact ±1.238 / 2.338 geometry against the new inset.
+  inset: 0.30, rackTop: 0.87, rackBot: 0.29, rackDepth: 0.34, rackHalfW: 1.07,
+  rackRearDrop: 0.24, rackDropDz: 0.16, railTopFlush: true, railGapW: 0.36, roofCapW: 1.95,
   duf2X: 0.40, clothZOff: 0.11,
   // gun x -0.05: the print's whole turret assembly is authored ~5.5 cm left
   // (registration turretPivot x -0.055) and its tube spans x -0.15..0.05 —
@@ -679,13 +687,18 @@ const TEJAS_TURRET = {
 
 // Roof kit shared by the tejas-oracle family. station: 'crows' or 'cws'
 // (same oracle massing, different dressing).
-// DIMS CLAMP, post-warp (batch-15 W1): the ref's furniture band is now the
-// published knee — 2.46 plateau, CROWS head 2.561, whips 2.656. The station
-// base/shields/doghouse match the knee at 2.46 world (published 2.44 +
-// in-grace, the AIM precedent); the p95 spike budget (3 columns) is spent
-// EXACTLY: compact head+M2 at 2.55-2.56 (2 cols, z 0.49..0.64 world) + the
-// twin whips at 2.656 (1 shared side col at z -2.155). The 3.27 mast head
-// and the height-cluster cert are RETIRED with the warp.
+// DIMS CLAMP, post-W1b (batch-16 tail flatten y' = 2.46 + 0.03*(y_orig -
+// 2.46)): the ref's furniture band sits at ~2.46 with the CROWS head at
+// true 2.4843 and the whips at true 2.509. M240 shield/M2/ammo are CLAMPED
+// FLUSH to the 2.453 knee. The p95 spike budget is measured on the geo
+// gate's OWN 1024 no-MSAA raster (see tmp-abrams-heightm.mjs): N-body ~73
+// columns, heightM = tops[floor(N*.95)] - minBot = the 4TH-tallest column.
+// Spend: whip pair 2 columns (-2.09/-2.197 — the rod's rear-edge AA sliver
+// paints the second, matching the ref whip's straddle) + head 1 column
+// (0.537) = exactly 3; the p95 reads the 2.4524 knee and dims holds 100.
+// A box EDGE within ~6 mm of a column boundary AA-bleeds a spike into the
+// neighbor column at the mask's 40-threshold — that bleed cost dims 97.2
+// twice in this round (head front edge at 0.477; keep 7 mm+ margins).
 function tejasRoofKit(P, t, station = 'crows') {
   const roof = t.roofMain;                    // 0.79 local = 2.36 world
   const plat = 0.87;                          // 2.44 world — rack/hatch plateau
@@ -714,45 +727,61 @@ function tejasRoofKit(P, t, station = 'crows') {
     // CROWS slew ring on the base.
     P.add('turretDetail', cylY(0.17, 0.20, 0.05, 14), -0.70, plat2 - 0.03, 0.52);
   }
-  // Compact EO head + transverse M2 at the WARPED cluster peak: head top
-  // local 0.9905 = 2.561 world (was 3.27), z-span 0.095 < one 0.1096 trace
-  // bin so the head can NEVER own more than 2 side columns (bins 0.507/
-  // 0.617), still straddling the station-slice boundary at ~0.22. The p95
-  // spike budget is spent EXACTLY 3: head 2 cols + the M240 shield below.
-  // x widened to the ref CROWS body span -1.13..-0.59 (front rows -1.00..
-  // -1.13 read 2.50-2.55) — front columns cost no p95.
-  P.add('turret', box(0.515, 0.17, 0.095), -0.8475, 0.9055, 0.215);
-  P.add('turretDark', box(0.42, 0.12, 0.028), -0.8475, 0.90, 0.244);
-  P.add('turretGlass', box(0.34, 0.08, 0.018), -0.8475, 0.90, 0.252);
-  m2hb(P, -0.60, 0.955, 0.215, 0.42);
+  // EO head at the W1b ref peak 2.4843 world (0.03 tail of the original
+  // 3.30 CROWS — the ref front holds 2.472 across the -0.8..-1.09 body span
+  // and a knee-flush head left all eight columns -0.03). THE p95 shape
+  // (tmp-abrams-heightm.mjs, the gate's own 1024/no-MSAA raster): the head
+  // z-span is 0.06 at world 0.49..0.55, clean INSIDE the 0.537 gate column
+  // [0.483..0.590] — at 0.477 its front edge AA-bled a 6 mm sliver into the
+  // 0.429 column, a FOURTH spike, and the dims p95 read that bleed column
+  // at 2.4729 (1.35%). One head column + the whip pair (the 0.045 rod's
+  // rear edge legitimately slivers both whip columns like the ref) = 3
+  // spikes exactly; the p95 reads the 2.4524 knee. Face plates ride below
+  // the knee in the same column (top 2.4538, no spike).
+  P.add('turret', box(0.515, 0.17, 0.06), -0.8475, 0.8288, 0.17);
+  P.add('turretDark', box(0.42, 0.12, 0.028), -0.8475, 0.8233, 0.214);
+  P.add('turretGlass', box(0.34, 0.08, 0.018), -0.8475, 0.8233, 0.224);
+  m2hb(P, -0.60, 0.8475, 0.215, 0.42);
   // Forward M2 barrel run ends at the ref's world-1.19 band edge (an 0.85
   // barrel to 1.595 held 2.44 over the ref's 2.22 shelf; its muzzle ring
   // at 1.675 bled into station slab i10 — the 11% i10 row).
   P.add('turretDark', cylZ(0.024, 0.44, 8), -0.72, 0.85, 0.615);
-  // Whip antenna bases at the ref's own stations (world x -1.168/+1.096,
-  // z -2.125 — both x and z centered IN their trace bins: a 0.045-wide rod
-  // at x -1.17 bled the neighboring front bin, and the pair straddled two
-  // side bins at z -2.155). Rod tops CLAMPED to the 2.46 knee: the ref's
-  // 2.656 whip column is ceded to protect dims (heightM sovereign) — the
-  // head owns the whole 3-column p95 budget.
+  // Whip antennas at the ref's own x stations (world x -1.168/+1.096, still
+  // centered in their front bins). W1b dropped the ref whips from 2.656 to
+  // TRUE 2.466 (2.49 workorder / ~2.509 gate-m) — now affordable: rod tops
+  // at local 0.9355 = world 2.466 EXACTLY (same true height => same
+  // quantized read as the ref in every raster), z re-centered to world
+  // -2.17 (local -2.52) so the rod straddles side bins -2.102/-2.211 the
+  // way the ref whip does. These two columns are the ENTIRE p95 spend;
+  // heightM (4th-tallest) stays the 2.463 knee and dims 100 holds.
+  // Rod z kept INSIDE the single -2.102 bin (world -2.1025..-2.1475). A
+  // 0.10-deep rod straddling to the -2.211 bin matched the ref's whip pair
+  // exactly BUT spent a 3rd p95 spike — with the head's one, the dims p95
+  // index then landed on the tallest KNEE column, whose AA px reads 2.4729
+  // (heightM 1.35%, dims 97.2). Two spikes (this rod + the head) put the
+  // read on the 2.4626 knee class: dims 100. The -2.211 bin cedes 0.05 to
+  // the 2.44 rack rail — the cheapest column on the board.
   for (const wx of [-1.168, 1.096]) {
     P.add('turretDetail', box(0.09, 0.10, 0.09), wx, 0.833, -2.475);
-    P.add('turretDark', box(0.028, 0.24, 0.045), wx, 0.763, -2.475);
+    P.add('turretDark', box(0.028, 0.29, 0.045), wx, 0.7905, -2.475);
   }
   // ---- loader's hatch + M240, inlined (the shared skate seated everything
-  // relative to one anchor — raising the shield to the ref's 2.51 M240 band
-  // dragged the mount boxes over the knee). Shield = the THIRD p95 spike:
-  // top 2.51 world, z entirely inside the 0.288 side bin (world 0.27..0.31);
-  // ref side reads 2.55 at that bin and station i6 tops 2.513 at x 0.96. ----
+  // relative to one anchor). Shield CLAMPED FLUSH to the knee: W1b took the
+  // ref's 2.51-2.55 M240 band to ~2.435-2.463 at the -0.351 side bin (the
+  // 2.52 shield stranded +0.082 over it) — no longer a p95 spike. ----
   turretHatch(P, 0.70, plat - 0.12, -0.35, 0.20, 0);
   P.add('turretDark', torus(0.243, 0.016, 18), 0.86, plat2 - 0.085, -0.30);
   P.add('turretDark', box(0.045, 0.054, 0.072), 0.95, plat2 - 0.06, -0.10);
   // Shield in the i6 station slab / -0.351 side bin (world z -0.33..-0.37;
-  // the first placement at world +0.29 spiked slab i7 instead) and widened
-  // to the ref's full x 0.69..1.31 M240 band (front rows 1.22..1.30 read
-  // 2.50). Ammo stack keeps the same single side column at x 0.52..0.68.
-  P.add('turret', box(0.62, 0.126, 0.04), 1.00, 0.887, -0.66);
-  P.add('turret', box(0.16, 0.06, 0.04), 0.60, 0.91, -0.70);
+  // the first placement at world +0.29 spiked slab i7 instead). W1b: the
+  // ref's 2.46 shield band ends by x ~1.15 and its 2.337 roofline owns the
+  // 1.178+ columns — the full-width 0.69..1.31 shield owned four gate
+  // columns at +0.06..0.12 (a 1.20..1.31 rebuild block re-lit them: the
+  // gate's front ref reads 2.29-2.34 outboard of 1.16, whatever the coldiff
+  // raster says about a second 2.46 block there — gate arbitrates).
+  // Ammo stack keeps the same single side column at x 0.52..0.68.
+  P.add('turret', box(0.41, 0.126, 0.04), 0.895, 0.820, -0.66);
+  P.add('turret', box(0.16, 0.06, 0.04), 0.60, 0.853, -0.70);
   P.add('turretDark', box(0.36, 0.063, 0.068), 0.986, plat2 - 0.055, -0.255);
   P.add('turretDark', cylX(0.0126, 0.36, 8), 1.238, plat2 - 0.158, -0.255);
   P.add('turretDetail', box(0.063, 0.09, 0.126), 0.842, plat2 - 0.10, -0.32);
@@ -765,10 +794,12 @@ function tejasRoofKit(P, t, station = 'crows') {
   P.add('turretGlass', box(0.32, 0.055, 0.02), 0.78, 0.595, 1.285);
   // ---- commander's hatch with periscope fence (part of the plateau) ------
   turretHatch(P, -0.75, plat - 0.115, -0.70, 0.24, 5);
-  // ---- rear-roof raised block, SPLIT off the centerline (ref front cols
-  // x ±0.06 top only 2.35 — a full-width 2.43 block painted them) ---------
-  P.add('turret', box(0.15, plat - roof + 0.02, 0.36), -0.155, (plat + roof) / 2 - 0.02, -0.88);
-  P.add('turret', box(0.35, plat - roof + 0.02, 0.36), 0.345, (plat + roof) / 2 - 0.02, -0.88);
+  // ---- rear-roof raised block, SPLIT off the centerline. W1b re-read: the
+  // ref's center dip is ASYMMETRIC — 2.35 at the -0.06 column but back to
+  // 2.40 by +0.07 (the old -0.08..0.17 gap left +0.066 short 0.04, while
+  // the -0.08 edge AA-bled -0.058 to 2.41). Gap now -0.09..0.045. ---------
+  P.add('turret', box(0.14, plat - roof + 0.02, 0.36), -0.16, (plat + roof) / 2 - 0.02, -0.88);
+  P.add('turret', box(0.475, plat - roof + 0.02, 0.36), 0.2825, (plat + roof) / 2 - 0.02, -0.88);
   P.add('turretDark', box(0.13, 0.04, 0.28), -0.15, plat - 0.03, -0.88);
   P.add('turretDark', box(0.30, 0.04, 0.28), 0.34, plat - 0.03, -0.88);
   // Knee-height stowage at the ref's 2.47 bustle-box run (station i5 top
@@ -832,9 +863,22 @@ function tejasRoofKit(P, t, station = 'crows') {
   P.add('turret', box(0.10, 0.30, 0.11), -1.645, 0.36, -3.11);
   // Right rack-side stowage bar: ref turret plan reaches z -3.09 world at
   // x 1.16 (the ±1.07 rack leaves that bin's rear at the shell -2.78).
-  P.add('turretDetail', box(0.10, 0.05, 0.15), 1.15, 0.705, -3.365);
+  // Bar top at the ref's 2.19 side read (a 2.30 bar owned the -3.094 side
+  // column +0.10 over the ref's 2.192 rack-drop line).
+  P.add('turretDetail', box(0.10, 0.05, 0.15), 1.15, 0.596, -3.365);
   P.add('turretDark', box(0.02, 0.02, 3.99), -1.688, 0.55, -1.005);   // strap rail seam
-  P.add('turretCloth', cylZ(0.075, 0.6, 10), -1.52, t.roofMain - 0.09, -0.55);
+  // Tarp roll shifted outboard/up to the ref's 2.38 shoulder at x -1.5..-1.63
+  // (at -1.52/2.35 it painted the -1.458 column the ref keeps at 2.286 and
+  // ran a pixel short of the -1.499/-1.54 columns' 2.379-2.389).
+  P.add('turretCloth', cylZ(0.075, 0.6, 10), -1.56, t.roofMain - 0.055, -0.55);
+  // W1b roof-edge shelf law (front coldiff): outboard of the narrowed loft
+  // top (±1.27 with inset 0.30) the ref carries a flat ~2.29 stowage shelf
+  // to |x| 1.46-1.49 on BOTH flanks (left 2.286-2.317 over -1.29..-1.46,
+  // right 2.296 over 1.34..1.47 — the bare 2.15 wall lip read -0.144 at
+  // 1.466). Thin ledges seated on the tumblehome slope, under every side
+  // and plan silhouette line.
+  P.add('turret', box(0.185, 0.05, 2.0), -1.3825, 0.70, -1.85);
+  P.add('turret', box(0.20, 0.05, 2.0), 1.39, 0.70, -1.85);
   // RIGHT wall lips: the oracle's right flank is NARROWER (wall face ~1.56)
   // with a short stowage lip at 1.578/1.612 spanning z -0.87..0.85/0.63.
   P.add('turret', box(0.033, 0.59, 1.61), 1.5615, 0.325, -0.065);
@@ -846,7 +890,9 @@ function tejasRoofKit(P, t, station = 'crows') {
   // 2.19 at the committed -1.828 width plane, with the -1.79 bin dropping to
   // the fender line (post-warp front rows -1.745/-1.786/-1.827). A low tie
   // arm seats the outer plate against the wall band (no floater).
-  P.add('turret', box(0.034, 0.60, 0.215), -1.745, 0.364, 0.1575);
+  // (inner plate widened to x -1.710: the ref's horn band already tops
+  // 2.222 at the -1.71 front column — the -1.728 edge read 2.16 there)
+  P.add('turret', box(0.052, 0.60, 0.215), -1.736, 0.364, 0.1575);
   P.add('turret', box(0.021, 0.58, 0.215), -1.8175, 0.322, 0.1575);
   P.add('turretDark', box(0.26, 0.05, 0.05), -1.70, 0.055, 0.13);
   P.add('turret', box(0.052, 0.60, 0.16), 1.641, 0.33, 0.13);
@@ -855,7 +901,7 @@ function tejasRoofKit(P, t, station = 'crows') {
   // sides) — above the 2.19 wall-band line, hidden in SIDE view under the
   // station base's 2.46 span (z world 0.40..0.56).
   P.add('turret', box(0.06, 0.20, 0.16), -1.63, 0.72, 0.13);
-  P.add('turret', box(0.13, 0.20, 0.16), 1.565, 0.71, 0.13);
+  P.add('turret', box(0.13, 0.20, 0.16), 1.595, 0.71, 0.13);
   P.add('turret', box(0.06, 0.60, 0.16), 1.645, 0.33, 0.13);
   // LEFT cheek stair (the oracle's left cheek reaches further forward than
   // the swept plane: plan front 2.05/1.99/1.90 world at x -1.0..-1.6) plus
@@ -904,7 +950,9 @@ function buildTejasFamily(P, p) {
     // 0.10 tab read as an ONLY-PROC front column, and without a LEFT hull
     // tab the -1.83 front bin lost the skirt band entirely when the skirt
     // pulled to 1.816).
-    P.add('hullDetail', box(0.024, 0.70, 0.10), side * 1.816, 1.05, -2.55);
+    // (tab top at the ref's 1.46 horn/fender line — 1.40 read -0.06 on the
+    // ±1.79 front columns)
+    P.add('hullDetail', box(0.024, 0.70, 0.10), side * 1.816, 1.11, -2.55);
     // Rear fender wall band: ref front view tops 1.709 at |x| 1.72..1.76
     // ONLY (r2: a 1.72..1.78 wall bled the ±1.79 bins where the ref drops to
     // 1.38-1.47) — segmented under the 1.713 deck line.
@@ -948,12 +996,16 @@ function buildTejasFamily(P, p) {
   // line; block1 deepened to the ref's 1.54-1.56 cover bottom, collar
   // slimmed to the same 2.00 top). Gun group sits at world (x -0.05, y 1.88).
   P.addGunExtra(box(0.64, 0.58, 0.42), 0, -0.03, 0.22);
-  P.addGunExtra(box(0.384, 0.30, 0.24), 0, -0.03, 0.50);
-  P.addGunExtraDark(box(0.336, 0.028, 0.028), 0, 0.09, 0.60);
-  P.addGunExtraDark(box(0.336, 0.028, 0.028), 0, -0.14, 0.60);
-  P.addGunExtraDark(box(0.028, 0.20, 0.028), 0.145, -0.02, 0.61);
-  P.addGunExtraDark(box(0.028, 0.20, 0.028), -0.145, -0.02, 0.61);
-  P.addGunExtraDark(cylZ(0.042, 0.18, 10), 0.16, 0.02, 0.60);
+  // block2 top raised to the ref's 2.13 cover line, depth trimmed to end at
+  // z 2.42 world (W1b side rows: ref holds 2.134-2.142 out to ~2.41 but the
+  // 2.496 column is bare 1.992 tube — the first 0.24-deep raise owned it at
+  // +0.12). Bottom stays ~1.68; seams/coax ride the new rear face.
+  P.addGunExtra(box(0.384, 0.40, 0.13), 0, 0.05, 0.415);
+  P.addGunExtraDark(box(0.336, 0.028, 0.028), 0, 0.09, 0.47);
+  P.addGunExtraDark(box(0.336, 0.028, 0.028), 0, -0.14, 0.47);
+  P.addGunExtraDark(box(0.028, 0.20, 0.028), 0.145, -0.02, 0.48);
+  P.addGunExtraDark(box(0.028, 0.20, 0.028), -0.145, -0.02, 0.48);
+  P.addGunExtraDark(cylZ(0.042, 0.18, 10), 0.16, 0.02, 0.47);
   P.addGunExtra(cylZ(0.125, 0.28, 14), 0, 0, 0.66);
   // Slim tube: stock sleeve OFF — its f1 clamp ring (r 1.31x at gun-local
   // 3.19 = world 5.10) lit the x ±0.18 plan column all the way to the
@@ -961,7 +1013,13 @@ function buildTejasFamily(P, p) {
   // ±0.20-wide WORLD corridor (the old ±0.116 cylinders about the -0.05 gun
   // axis left the +0.178 plan column dark to 3.85); evacR 1.8 closes the
   // run at the ref's own 3.88 station.
-  buildGun(P, { len: t.gunLen, r: t.gunR, sleeve: false, evac: 0.42, evacR: 2.1, collar: false, baseR: 0.14 });
+  // evacR 1.75 (W1b): the r-2.1 evac bore (r 0.1995 about the -0.05 gun
+  // axis) reached x -0.2495 and owned the -0.261 plan_turret column to
+  // z 3.75 where the ref plan ends at 2.767 (err 0.492); its 1.68 bottom
+  // also ran -0.08 under the ref's 1.752 tube band on four side columns.
+  // r 0.166 keeps the -0.22 plan column painted (x -0.216) and clears
+  // -0.261; the ±0.20 cover corridor lives on the cover BOXES, not the evac.
+  buildGun(P, { len: t.gunLen, r: t.gunR, sleeve: false, evac: 0.42, evacR: 1.75, collar: false, baseR: 0.14 });
   P.add('gun', box(0.40, 0.25, 1.02), 0.05, 0.007, 1.05);
   P.add('gunDark', box(0.42, 0.27, 0.06), 0.05, 0.012, 1.60);
   P.add('gun', box(0.40, 0.25, 0.27), 0.05, 0.007, 1.775);
