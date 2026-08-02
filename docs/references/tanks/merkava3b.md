@@ -739,3 +739,8 @@ frontleft 8.5 · left 8.5 · rearleft 8.5 · rear 8.5 · rearright 8.5 ·
 right 8.5 · frontright 8.5 · top 8.5 — the rear-corner value flip (the
 loudest r4 defect) is gone and the gear band now samples inside the
 ref's own tone family.
+
+## Shaded-parity r5 (2026-08-02) — FAIL 8.0 (floor rising; run tone verified on-render)
+Work order: shaded-parity-merkava3bc-r5.md — 3 gating items: sculpted
+canvas volume (not linework), full-height corner flaps, MG lines that
+READ in elevations (3rd miss — verify by reading the render).

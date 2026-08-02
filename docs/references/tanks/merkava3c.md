@@ -338,3 +338,6 @@ Predicted per-view (r4 critic: 7.5 min): front 8.5 · frontleft 8.5 ·
 left 8.5 · rearleft 8.5 · rear 8.5 · rearright 8.5 · right 8.5 ·
 frontright 8.5 · top 8.5 — the dead-rear now carries sagged-curtain
 language + saucer mass + matched gear tone.
+
+## Shaded-parity r5 (2026-08-02) — FAIL 8.0 (pot saucer FIXED; same 3 gating items)
+Shared work order r5 doc.
