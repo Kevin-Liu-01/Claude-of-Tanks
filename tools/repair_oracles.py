@@ -2482,6 +2482,31 @@ REPAIRS['merkava3c'] = [
 ]
 
 
+# =============================================================== batch 15 ===
+# TEJAS PRINT W1 (m1a1 / m1a1ha / m1a2_tejas shared oracle at
+# public/models/tanks/m1a2_tejas.glb — NOT recovered/). Vertex round
+# 2026-08-02 (m1a1.md work order): length/width TRUE (±0.6%), the +34.8%
+# height excess is ENTIRELY the oversized CROWS/M240/whip cluster riding a
+# true-scale body (deck 1.35-1.76, turret roof 2.15-2.36). W1
+# ceiling-compress: y' = 2.46 + 0.12*(y-2.46) above 2.46 (whips 4.09 ->
+# 2.656, CROWS 3.30 -> 2.561, M240 2.93 -> 2.52, bustle boxes 2.59 ->
+# 2.48). Nothing but furniture lives above 2.46, so the global knee map IS
+# the node-scoped intent. z identity. Local visual carries flattened roof
+# furniture; public builds use the dannzjs variant bake and are unaffected.
+# Plan derived by tools/vertex-normalize.mjs from docs/references/vertex/
+# m1a1.json; retires the v6/v10 height-cluster cert (side_turret ~59
+# ceiling) — the standing build's plateau becomes fully matchable.
+REPAIRS['m1a2_tejas'] = {
+    'path': 'public/models/tanks/m1a2_tejas.glb',
+    'ops': [
+        ('py2', _axis_warp('m1a2_tejas', long_axis='x',
+                           y_map=[(0.0306, 0.0306), (2.5212, 2.5212), (4.1715, 2.7192)],
+                           long_map=[(-4.8226, -4.8226), (4.9982, 4.9982)],
+                           y_top_max=2.8047, expect=(25, 392797, 285183))),
+    ],
+}
+
+
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)
     if ops is None:

@@ -105,6 +105,18 @@ export const PLANS = {
     z: [[-4.092, -4.1875], [3.317, 3.4125], [4.13, 4.8525]],
     yTopMax: 3.95,
   },
+  // ---- batch-15: tejas print W1 (m1a1/m1a1ha/m1a2_tejas shared oracle).
+  // Length/width TRUE (±0.6%); the +34.8% height is ENTIRELY the oversized
+  // CROWS/M240/whip cluster above the true 2.36 roof. W1 ceiling-compress
+  // per the m1a1.md work order: everything above 2.46 -> 2.46 + 0.12*(y-2.46)
+  // (whips 4.09 -> 2.656, CROWS 3.30 -> 2.561). Hull/deck/roof untouched
+  // (nothing but furniture lives above 2.46). z identity (length true).
+  m1a1: { // file m1a2_tejas.glb (public/models/tanks/, not recovered/)
+    file: 'm1a2_tejas',
+    y: [[0, 0], [2.46, 2.46], [4.09, 2.6556]],
+    z: [[-4.8, -4.8], [4.9, 4.9]],
+    yTopMax: 2.72,
+  },
 };
 
 const args = process.argv.slice(2);
