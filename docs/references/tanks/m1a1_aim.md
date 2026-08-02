@@ -142,3 +142,24 @@ axis-aligned prisms present only end caps to the clipped station cameras.
 Applied here: skirt panels carry two interior flush ribs per panel (shared
 abramsHull, whole family), and every longitudinal strip is segmented into
 sub-slab bins with real end faces (forward low band 3 bins, fender lip 12, wall band 8 — stations 65.9 -> 68).
+
+## 2026-08-02 vertex round — stylization verdict (no build change)
+REG appended (autoPivot:false mirror of userdrops6; assumeFlip false).
+TRUE stylization (docs/references/vertex/m1a1_aim.json): hullMask +1.6%
+(IN tolerance — the hull fight here is honest), width 0%, overall -7.2%
+(the short fused tube: certified wholeCurves-only cap, unchanged),
+bodyHeight +6.5% (the 2.59-2.65 crown band: certified crown clamp).
+bodyLen +13.5% is the 12%-band artifact of the fat tube root crossing the
+body filter, not a real hull stretch (hullMask is the honest anchor).
+WARP CANDIDATES (orchestrator lane, lower priority than tejas W1):
+(a) tube z-stretch/extension of the fused muzzle +0.7 m to published
+overall — removes the wholeCurves cover cap; (b) crown compression
+y' = 2.46 + (y-2.46)*0.4 over the 2.46..2.65 casting band (~20 columns) —
+removes the crown-clamp residual. Vertex interpen note: 63 turret verts
+dip to 0.84 below deck outside the ring annulus (the print's deep crew
+basket — already matched by the dark basket build; not a build defect).
+Gate row unchanged this round: hull 62 / whole 53.6 / turret 56.3 /
+stations 68 / dims 100 / floaters 100 (shared abramsHull edits verified
+no-regression). NEXT (build, honest): side_hull tail/stack columns and
+front_hull stack x-alignment per the 2026-08-01 list; the p95 crown-peak
+block placement can absorb one more column of the print's 2.65 crest.

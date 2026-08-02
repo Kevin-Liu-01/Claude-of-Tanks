@@ -114,3 +114,18 @@ loader/userdrops-side ask, out of profile scope). Fresh run:
 hull/whole/turret/stations 0 (structurally capped), dims 97, floaters 100 —
 achievable components green, dims sovereign and >= 90. Board regenerated;
 IoU 55.2 vs the small-body oracle (expected under the full-scale build).
+
+## 2026-08-02 vertex round — triage classification: ORACLE DEFECT (chimera)
+Zero-row triage per the fleet directive. Fresh gate run this round:
+hull/whole/turret/stations 0, dims 97 -> 100 (family height fixes),
+floaters 100 — the CHIMERA CERT STANDS and fully explains the zeros: the
+lab id still resolves to the height-clamped tejas GLB + real-meter runtime
+ARAT kit (two inconsistent scales in one oracle; not rigid-repairable).
+NOT unstarted, NOT a registration bug in the page, NOT a missing file.
+vertex-extract REG measures the BARE tejas print for this id (the runtime
+kit is not modeled there): length/width true, height +34.8% — same W1/W2
+warp options as m1a1.md IF the loader-side chimera is first resolved
+(scale the kit with the GLB, exclude it from the swap, or point the lab id
+at the m1a2_tusk_dannzjs_variant bake — loader/userdrops-side, out of
+profile scope). Build meanwhile stays published-true full scale and moved
+with the family (plan/hull/flank fixes shared via buildTejasFamily).

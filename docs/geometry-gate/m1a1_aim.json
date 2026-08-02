@@ -12,13 +12,13 @@
  },
  "curveRows": {
   "side_hull": {
-   "score": 75.16771215122534,
-   "meanPct": 1.72,
+   "score": 75.09301418222594,
+   "meanPct": 1.73,
    "p95Pct": 3.6,
    "coverPct": 1.36,
    "reg": {
     "dAlong": -0.057,
-    "dy": -0.034
+    "dy": -0.033
    },
    "worst": [
     {
@@ -43,7 +43,7 @@
      "refBot": -0.9,
      "procTop": 0.87,
      "procBot": -0.84,
-     "errM": 0.137
+     "errM": 0.138
     },
     {
      "at": -1.93,
@@ -52,6 +52,14 @@
      "procTop": 0.17,
      "procBot": -1.25,
      "errM": 0.094
+    },
+    {
+     "at": -2.26,
+     "refTop": 0.14,
+     "refBot": -0.96,
+     "procTop": 0.1,
+     "procBot": -1.1,
+     "errM": 0.093
     },
     {
      "at": 4.46,
@@ -94,39 +102,31 @@
      "errM": 0.085
     },
     {
-     "at": -2.26,
+     "at": -2.37,
      "refTop": 0.14,
-     "refBot": -0.96,
+     "refBot": -0.92,
      "procTop": 0.12,
-     "procBot": -1.1,
-     "errM": 0.084
+     "procBot": -1.05,
+     "errM": 0.075
     },
     {
      "at": -2.48,
      "refTop": 0.1,
      "refBot": -0.86,
-     "procTop": 0.13,
+     "procTop": 0.12,
      "procBot": -0.99,
-     "errM": 0.077
-    },
-    {
-     "at": 0.17,
-     "refTop": 0.28,
-     "refBot": -1.32,
-     "procTop": 0.41,
-     "procBot": -1.34,
      "errM": 0.072
     }
    ]
   },
   "side_whole": {
-   "score": 59.11781476627591,
-   "meanPct": 2.51,
+   "score": 59.33659700302351,
+   "meanPct": 2.49,
    "p95Pct": 6.46,
    "coverPct": 4.62,
    "reg": {
     "dAlong": -0.057,
-    "dy": -0.034
+    "dy": -0.033
    },
    "worst": [
     {
@@ -158,7 +158,7 @@
      "refTop": 0.45,
      "refBot": -0.6,
      "procTop": 0.43,
-     "procBot": -0.28,
+     "procBot": -0.27,
      "errM": 0.174
     },
     {
@@ -181,9 +181,9 @@
      "at": 4.02,
      "refTop": 0.66,
      "refBot": -0.9,
-     "procTop": 0.86,
+     "procTop": 0.87,
      "procBot": -0.84,
-     "errM": 0.137
+     "errM": 0.138
     },
     {
      "at": 0.83,
@@ -191,7 +191,7 @@
      "refBot": -1.32,
      "procTop": 1.1,
      "procBot": -1.34,
-     "errM": 0.101
+     "errM": 0.1
     },
     {
      "at": 0.94,
@@ -199,7 +199,7 @@
      "refBot": -1.32,
      "procTop": 1.1,
      "procBot": -1.34,
-     "errM": 0.101
+     "errM": 0.1
     },
     {
      "at": 1.82,
@@ -207,7 +207,7 @@
      "refBot": -1.32,
      "procTop": 1.1,
      "procBot": -1.34,
-     "errM": 0.101
+     "errM": 0.1
     },
     {
      "at": 1.93,
@@ -215,7 +215,7 @@
      "refBot": -1.32,
      "procTop": 1.1,
      "procBot": -1.34,
-     "errM": 0.101
+     "errM": 0.1
     },
     {
      "at": 2.59,
@@ -223,7 +223,7 @@
      "refBot": -1.32,
      "procTop": 1.1,
      "procBot": -1.34,
-     "errM": 0.096
+     "errM": 0.095
     }
    ]
   },
@@ -662,13 +662,13 @@
  },
  "turretRows": {
   "side": {
-   "score": 61.33536765559032,
+   "score": 61.41353614988135,
    "meanPct": 2.55,
    "p95Pct": 11.27,
    "coverPct": 0.83,
    "reg": {
     "dAlong": -0.057,
-    "dy": -0.034
+    "dy": -0.033
    },
    "worst": [
     {
@@ -677,7 +677,7 @@
      "refBot": 0.28,
      "procTop": 1.09,
      "procBot": 0.29,
-     "errM": 0.395
+     "errM": 0.396
     },
     {
      "at": 0.28,
@@ -685,7 +685,7 @@
      "refBot": 0.28,
      "procTop": 1.06,
      "procBot": 0.29,
-     "errM": 0.367
+     "errM": 0.368
     },
     {
      "at": 2.04,
@@ -732,32 +732,32 @@
      "refTop": 1.28,
      "refBot": -0.55,
      "procTop": 1.1,
-     "procBot": -0.57,
-     "errM": 0.096
+     "procBot": -0.56,
+     "errM": 0.095
     },
     {
      "at": 0.94,
      "refTop": 1.28,
      "refBot": -0.55,
      "procTop": 1.1,
-     "procBot": -0.57,
-     "errM": 0.096
+     "procBot": -0.56,
+     "errM": 0.095
     },
     {
      "at": 1.82,
      "refTop": 1.28,
      "refBot": -0.55,
      "procTop": 1.1,
-     "procBot": -0.57,
-     "errM": 0.096
+     "procBot": -0.56,
+     "errM": 0.095
     },
     {
      "at": 1.93,
      "refTop": 1.28,
      "refBot": -0.55,
      "procTop": 1.1,
-     "procBot": -0.57,
-     "errM": 0.096
+     "procBot": -0.56,
+     "errM": 0.095
     },
     {
      "at": 2.15,

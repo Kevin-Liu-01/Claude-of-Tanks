@@ -134,3 +134,19 @@ axis-aligned prisms present only end caps to the clipped station cameras.
 Applied here: skirt panels carry two interior flush ribs per panel (shared
 abramsHull, whole family), and every longitudinal strip is segmented into
 sub-slab bins with real end faces (skirt ribs only; its remaining station rows are bridge/cluster top errors, not width).
+
+## 2026-08-02 vertex round — stylization verdict (build untouched)
+REG appended; extract only (docs/references/vertex/abramsx.json). TRUE
+stylization: length/width TRUE (hullMask -0.4%, width 0%), overall +3.5%
+(the long XM360 tube — bounded whole-row cover, certified), bodyHeight
++41% (3.441 p95 = the RWS bridge band IN THE HULL MASK, 3.22-3.46 over
+~21 columns + 4.1 whips — exactly the certified registration-pollution
+cap). Orientation clean. 342 turret verts dip to 1.69 below deck = the
+yawing shell's deep skirt over the low rear deck (asset geometry, noted).
+WARP CANDIDATE (orchestrator lane): W1-style ceiling compression of the
+HULL-mask bridge band (y' = 2.46 + (y-2.46)*0.12, whips kept as the p95
+budget) — this both uncaps side/front hull rows AND removes the +0.16-0.20
+registration dy pollution that costs every turret/whole column ~25 pts.
+The masked-registration gate option in the 2026-08-01 caps section is
+NOT exercised this round (owner order: abramsx last; no build or gate-run
+changes made — ledger row left as the 2026-08-01 state).

@@ -70,3 +70,11 @@ posture: stations 60.7 -> 68.9, dims 98.1 -> 98.8, turret 48.1 -> 49.2,
 whole 52 -> 52.1; hullCurves HELD at 90.1 (passing). Boards regenerated
 (&board=1) for the independent critic; IoU floor 87.6 (committed 86.6 — no
 regression).
+
+## 2026-08-02 vertex round
+Shares buildTejasFamily ('cws' station) — full round notes, the TRUE
+stylization verdict (+34.8% height, length/width true) and the oracle WARP
+WORK ORDER live in m1a1.md. Row moved with the family:
+hull 90.1 -> 92.9, whole 52.1 -> 55.0, turret 49.2 -> 49.5 (certified
+cluster cap binding; plan_turret 63 -> 90.7), stations 68.9 -> 68.8,
+dims 98.8 -> 100, floaters 100.

@@ -88,3 +88,20 @@ dims 98, floaters 100 — the achievable components stay green (dims moved
 100 -> 98 from this session's shared rear-face/lift-eye seating in
 abrams.js; heightM/hullLengthM remain within grace, >= 90 with margin).
 No compensation is carried in the build. Board regenerated.
+
+## 2026-08-02 vertex round — triage classification: ORACLE DEFECT (short print)
+Zero-row triage per the fleet directive. Fresh gate run this round:
+hull/whole/turret 0, stations 15.3, dims 98, floaters 100 — the SHORT-PRINT
+CERT STANDS. TRUE stylization from the vertex toolchain (REG appended;
+docs/references/vertex/m1a2_sepv2.json): hullMask -16.5%, bodyLen -16.4%,
+overall -16.6%, width 0% (harness-normalized), bodyHeight +30.2% (3.178 —
+the CROWS II mast/pedestal band). Orientation clean; 131 turret verts dip
+to 0.81 below deck outside the ring (recovered-asset split quirk, matches
+the packet's follower notes). NORMALIZATION WARP CANDIDATE (orchestrator
+lane): uniform z-stretch x1.197 about the print's z-mid squares hull,
+overall AND bodyLen with published in one move (all three axes are short
+by the same ~16.5% — the print is proportionally too WIDE, and the width
+axis is what the harness normalizes on); the roof band above 2.46 then
+needs the same W1-style compression as the family (CROWS II mast 3.6-3.9,
+pedestal 2.79). Until warped: not buildable past the cert; build stays
+published-true.
