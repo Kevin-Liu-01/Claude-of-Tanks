@@ -2693,27 +2693,34 @@ function buildKF51(P) {
   // any gate column band; the exhaust slits sit inside the existing louver
   // band's −3.5875..−3.6225 shell.
   for (const s of [-1, 1]) {
-    // chevron brace: pale fill diagonal UNDER a bold dark edge bar (r2: the
-    // camo-on-camo diagonal vanished and the 3 mm edge read as a wire) —
-    // top-outer to lower-centre like the ref's trapezoid brace.
-    P.add('hullDetail', box(0.16, 0.90, 0.0022), s * 0.60, 1.06, -3.6008, 0, 0, s * -0.95);
-    P.add('hullDark', box(0.055, 0.95, 0.0028), s * 0.60, 1.06, -3.6019, 0, 0, s * -0.95);
-    P.add('hullDetail', cylZ(0.122, 0.0015, 6), s * 1.05, 0.80, -3.6012);             // hex rim ring (pale race, outer corner like the ref)
-    P.add('hullShadow', cylZ(0.112, 0.0022, 6), s * 1.05, 0.80, -3.6028);             // hex taillight recess (near-black)
-    P.add('hullDetail', cylZ(0.035, 0.0014, 6), s * 1.05, 0.80, -3.6042);             // hex lens dot
+    // r3 #5: chevron member width x3 (the r2 55 mm edge bar read as a WIRE
+    // at view distance; ref is a bold brace) — RAISED to the ref's line so
+    // the diagonals end above the hex bores instead of crossing them.
+    P.add('hullDetail', box(0.30, 0.84, 0.0022), s * 0.60, 1.19, -3.6008, 0, 0, s * -1.05);
+    P.add('hullDark', box(0.165, 0.78, 0.0028), s * 0.60, 1.19, -3.6019, 0, 0, s * -1.05);
+    // r3 #5: hex taillight recesses grown to the ref's ~0.4 m bore (r2's
+    // Ø0.24 was unfindable) at the ref's TRUE spots — rear-zoom measured
+    // the ref bores at x ±0.74, INBOARD of the corner flaps (the first
+    // r3 placement at ±1.14 hid them behind the moved flaps).
+    P.add('hullDetail', cylZ(0.205, 0.0015, 6), s * 0.74, 0.78, -3.6012);             // hex rim ring (pale race)
+    P.add('hullShadow', cylZ(0.190, 0.0022, 6), s * 0.74, 0.78, -3.6028);             // hex bore (near-black)
+    P.add('hullDetail', cylZ(0.058, 0.0014, 6), s * 0.74, 0.78, -3.6042);             // hex lens dot
     P.add('hull', box(0.44, 0.26, 0.003), s * 1.19, 1.42, -3.6015);                   // corner exhaust box
     for (let k = 0; k < 3; k++) P.add('hullDark', box(0.38, 0.05, 0.0022), s * 1.19, 1.34 + k * 0.08, -3.6042);
   }
-  P.add('hullDark', box(0.55, 0.055, 0.0028), 0, 0.78, -3.6015);               // chevron tie bar at the coupling
+  P.add('hullDark', box(0.60, 0.15, 0.0028), 0, 0.78, -3.6015);                // chevron tie bar at the coupling (r3: x3 width)
   P.add('hull', box(0.30, 0.26, 0.0035), 0, 1.02, -3.6015);                    // centre coupling plate
   P.add('hullDark', torus(0.075, 0.005, 14), 0, 1.02, -3.6005, Math.PI / 2, 0, 0); // coupling ring (z −3.5955..−3.6055 — ≤1 mm past the plate's own column)
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.15, 0.09, 0.04), s * 1.28, 1.70, -3.615);
-    P.add('hullDetail', box(0.05, 0.16, 0.08), s * 0.85, 1.00, -3.62);         // shackles (tucked to the plate)
+    P.add('hullDetail', box(0.05, 0.16, 0.08), s * 0.85, 1.10, -3.62);         // shackles (tucked to the plate; r3: +0.10 clear of the grown hex rims)
     // rear mud flaps behind the sprockets: the ref −3.72 column reads a
-    // 0.39-bottom band the wrap alone cannot make (fresh side_hull)
-    P.add('hullRubber', box(0.36, 0.54, 0.03), s * 1.235, 0.66, -3.70);
-    P.add('hullDetail', box(0.07, 0.06, 0.14), s * 1.235, 0.96, -3.64);        // flap bracket to the plate
+    // 0.39-bottom band the wrap alone cannot make (fresh side_hull).
+    // r3 #5: moved to the ref's corner-square position x ±1.36 (same y/z
+    // band — side rows identical; plan rear at x 1.42..1.54 is deck-taper
+    // owned to −3.79, flap −3.715 stays inside).
+    P.add('hullRubber', box(0.38, 0.54, 0.03), s * 1.36, 0.66, -3.70);
+    P.add('hullDetail', box(0.07, 0.06, 0.14), s * 1.36, 0.96, -3.64);         // flap bracket to the plate
   }
   // tail bin course raised to the ref 1.835 top line; slats keep a 0.44 band
   // (>=12% body filter) so the −3.84 column stays the hullLengthM carrier
@@ -2736,6 +2743,13 @@ function buildKF51(P) {
       P.add('hullDark', box(0.05, 0.016, 0.42), s * 1.745, 1.365, zc + 0.1);
     }
     P.add('hull', box(0.065, 0.04, 0.60), s * 1.7325, 1.24, 3.42, -0.10, 0, 0); // drooping tips to z 3.72 (top ≤1.30)
+    // r3 #9: BOLD dark tick rows flanking the deck (ref top-down shows ~10
+    // heavy ticks per side at ~0.65 m pitch; ours was one hairline strip).
+    // On the fender tops (1.361..1.381) — buried under the 1.60+ deck line
+    // in side rows, inside ±1.745 in front/plan.
+    for (let k = 0; k < 10; k++) {
+      P.add('hullShadow', box(0.16, 0.02, 0.44), s * 1.672, 1.371, -3.15 + k * 0.655); // near-black (hullDark read faint from top); 0.44 long ~ ref tick weight
+    }
   }
   // flank RE-LAY r4 (fresh gate columns): the ref side-hull TOP through the
   // whole mid-hull is the DECK staircase (1.595 fore / 1.65-1.81 aft), NOT a
@@ -2852,7 +2866,22 @@ function buildKF51(P) {
     P.add('hullDark', box(0.26, 0.018, 0.16), s * 1.05, 1.428, 3.04, -0.16, 0, 0);
     // front mud flaps behind the idler (band filler 0.24..0.72)
     P.add('hullRubber', box(0.34, 0.48, 0.03), s * 1.30, 0.48, 3.25);
+    // r3 #2 side-effect repair: the pad de-tooth pulled the idler wrap's
+    // low fringe — the ref z 3.71 side column reads a 0.40 bottom the bare
+    // band cannot make (same class as the certified rear-flap carrier).
+    // Small idler flap: side col 3.65..3.77 gets its 0.40 back; front-axis
+    // bots at x 1.11..1.41 stay band-owned (0.013 < 0.40); plan front there
+    // stays wrap-owned to 3.72+.
+    P.add('hullRubber', box(0.30, 0.30, 0.025), s * 1.26, 0.55, 3.71);
   }
+  // r3 #2 GROUND ANCHOR: the de-toothed pads raised the proc's global
+  // min-y from the grouser tips (0.005) to the band bottom (0.013) and the
+  // harness re-grounded the WHOLE model 8 mm down — every side/front top
+  // row dropped one raster pixel and side dy slid −0.003 → −0.013 (the
+  // frozen-box law's vertical twin). Two buried contact shims restore the
+  // exact 0.005 floor under the band bottom run (sub-pixel sliver, dark,
+  // under-track — invisible at render scale).
+  for (const s of [-1, 1]) P.add('hullDark', box(0.02, 0.010, 0.02), s * 1.262, 0.010, -1.585);
   // engine deck furniture: flush fan discs + louvre field + torsion caps
   for (const s of [-1, 1]) {
     P.add('hullDark', cylY(0.36, 0.36, 0.016, P.q ? 24 : 14), s * 0.74, 1.822, -2.75);
@@ -2876,15 +2905,32 @@ function buildKF51(P) {
   // SLOPED deck line / falling crease on ~26 side_hull columns and re-fitted
   // dy −0.003 → −0.006, re-registering every side row (min 90.6 → 89.8).
   // The strips now FOLLOW the deck polyline at +3 mm and stop at the crease.
+  // r3 #4c: the strips become a CLOSED channel around the whole turret
+  // footprint — the r2 side-only strips left the camo bleeding hull→turret
+  // across the front and rear arcs in top/toptilt. Every new piece follows
+  // its deck/glacis rows at +6..10 mm (sloped-deck strip law).
   for (const s of [-1, 1]) {
     const bx0 = s * 1.435, bx1 = s * 1.525;
-    P.add('hullShadow', slab(                                                  // z −0.35..0.30 (deck 1.6159 → 1.62)
-      [bx0, 1.613, 0.30], [bx1, 1.613, 0.30], [bx1, 1.609, -0.35], [bx0, 1.609, -0.35],
-      [bx0, 1.623, 0.30], [bx1, 1.623, 0.30], [bx1, 1.619, -0.35], [bx0, 1.619, -0.35]));
+    P.add('hullShadow', slab(                                                  // z −0.49..0.30 (deck 1.615 → 1.62)
+      [bx0, 1.613, 0.30], [bx1, 1.613, 0.30], [bx1, 1.608, -0.49], [bx0, 1.608, -0.49],
+      [bx0, 1.623, 0.30], [bx1, 1.623, 0.30], [bx1, 1.618, -0.49], [bx0, 1.618, -0.49]));
     P.add('hullShadow', slab(                                                  // z 0.30..2.18 (deck 1.62 → 1.6004)
       [bx0, 1.5934, 2.18], [bx1, 1.5934, 2.18], [bx1, 1.613, 0.30], [bx0, 1.613, 0.30],
       [bx0, 1.6034, 2.18], [bx1, 1.6034, 2.18], [bx1, 1.623, 0.30], [bx0, 1.623, 0.30]));
+    P.add('hullShadow', slab(                                                  // z −0.49..−0.80 (deck step 1.615 → 1.73)
+      [bx0, 1.608, -0.49], [bx1, 1.608, -0.49], [bx1, 1.723, -0.80], [bx0, 1.723, -0.80],
+      [bx0, 1.618, -0.49], [bx1, 1.618, -0.49], [bx1, 1.733, -0.80], [bx0, 1.733, -0.80]));
+    P.add('hullShadow', slab(                                                  // z −0.80..−1.94 (deck 1.73 → 1.79)
+      [bx0, 1.723, -0.80], [bx1, 1.723, -0.80], [bx1, 1.783, -1.94], [bx0, 1.783, -1.94],
+      [bx0, 1.733, -0.80], [bx1, 1.733, -0.80], [bx1, 1.793, -1.94], [bx0, 1.793, -1.94]));
+    P.add('hullShadow', slab(                                                  // z −1.94..−2.30 (deck 1.79 → 1.805)
+      [bx0, 1.783, -1.94], [bx1, 1.783, -1.94], [bx1, 1.798, -2.30], [bx0, 1.798, -2.30],
+      [bx0, 1.793, -1.94], [bx1, 1.793, -1.94], [bx1, 1.808, -2.30], [bx0, 1.808, -2.30]));
   }
+  P.add('hullShadow', box(3.06, 0.006, 0.085), 0, 1.811, -2.3425);             // rear cross strip (fan discs start −2.39: 5 mm clear; +9 mm over the 1.805 deck row)
+  P.add('hullShadow', slab(                                                    // front cross strip ON the glacis slope (crease 2.22 → knee: y 1.5897@2.24 → 1.5382@2.34)
+    [-1.53, 1.5462, 2.34], [1.53, 1.5462, 2.34], [1.53, 1.5977, 2.24], [-1.53, 1.5977, 2.24],
+    [-1.53, 1.5542, 2.34], [1.53, 1.5542, 2.34], [1.53, 1.6057, 2.24], [-1.53, 1.6057, 2.24]));
   P.decal('hull', 'number', 'Y-051', 0.26, [0.6, 1.12, -3.66], Math.PI, 0);
   // gear: KIT TRACK FIX — the loop's contact span ends at the road-wheel
   // patch with tangent ramps up to the REAL raised end wheels. r4 refit:
@@ -2917,11 +2963,16 @@ function buildKF51(P) {
     // sprocket/idler drum-face packages — the bare drum faces sampled as
     // blank grey placeholder discs (critic #8 "grey hub disc"): rim ring +
     // dark hub + bolt collar, inside the pad-wrapped silhouette.
+    // r3 #3: WIDE dark outer ring band on each drum face — the pale disc
+    // visually shrinks to the hub zone (the mask cannot move the certified
+    // wrap: torus outer 0.315/0.288 stays inside the r 0.36/0.34 drums).
+    P.add('hullDark', torus(0.285, 0.030, 20), s * 1.492, 1.03, -3.18, 0, 0, Math.PI / 2);
     P.add('hullDetail', torus(0.20, 0.016, 18), s * 1.497, 1.03, -3.18, 0, 0, Math.PI / 2);
     P.add('hullDetail', torus(0.115, 0.013, 14), s * 1.500, 1.03, -3.18, 0, 0, Math.PI / 2);
-    P.add('hullDark', KIT.cylX(0.075, 0.032, 12), s * 1.503, 1.03, -3.18);
+    P.add('hullDark', KIT.cylX(0.095, 0.034, 12), s * 1.503, 1.03, -3.18);
+    P.add('hullDark', torus(0.262, 0.028, 20), s * 1.472, 0.90, 3.28, 0, 0, Math.PI / 2);
     P.add('hullDetail', torus(0.185, 0.016, 18), s * 1.479, 0.90, 3.28, 0, 0, Math.PI / 2);
-    P.add('hullDark', KIT.cylX(0.062, 0.030, 12), s * 1.483, 0.90, 3.28);
+    P.add('hullDark', KIT.cylX(0.080, 0.032, 12), s * 1.483, 0.90, 3.28);
     // skirt panel seams ON the visible mid-course face at the segment
     // joints (the old x 1.62 seam strips were buried 12 mm inside the deep
     // face) + a dark rubber hem lip along the new 0.71 hem line. Both stay
@@ -3006,10 +3057,17 @@ function buildKF51(P) {
   // interior (x inside the ±1.44/±1.50 walls, tops ≥0.03 under the crest at
   // their columns, z-proud only — front/plan silhouettes untouched).
   P.add('turretDark', box(2.60, 0.035, 0.02), 0, 0.457, 1.556, -1.004, 0, 0);  // cheek crease seam (on-surface, 8 mm proud)
-  P.add('turret', slab(                                                        // upper facet: crease → step edge, 7 mm proud at the base
-    [-1.39, 0.462, 1.560], [1.39, 0.462, 1.560], [1.30, 0.716, 1.128], [-1.30, 0.716, 1.128],
-    [-1.39, 0.469, 1.566], [1.39, 0.469, 1.566], [1.30, 0.722, 1.133], [-1.30, 0.722, 1.133]));
+  // r3 #4a: upper facet TILTED FLATTER (30.4° → 24.1°, the r2 3° break read
+  // flat 59-63 in the front luminance rows) — same x/z extents, top edge
+  // held at the step line; the raised crease-end edge (y 0.514 vs surface
+  // 0.434) catches the sky term for a real upper/lower value break, and its
+  // underside slot reads as the crease shadow. Side/plan silhouettes: top
+  // 2.43w < roof-step 2.50w at every column, x inside ±1.44 walls.
+  P.add('turret', slab(
+    [-1.39, 0.514, 1.560], [1.39, 0.514, 1.560], [1.30, 0.716, 1.128], [-1.30, 0.716, 1.128],
+    [-1.39, 0.521, 1.566], [1.39, 0.521, 1.566], [1.30, 0.722, 1.133], [-1.30, 0.722, 1.133]));
   P.add('turretDark', box(0.86, 0.58, 0.015), 0, 0.42, 1.6135);                // mantlet recess shadow panel (1 mm proud of the back wall face; deeper z broke the 2.08w col)
+  P.add('turret', box(0.70, 0.44, 0.004), 0, 0.42, 1.6225);                    // r3 #4b: scheme inner panel over the dark frame — the recess read as a grey sticker; face 2.0745w stays under the 2.08w col (the broken 15 mm attempt hit it)
   // crown block + drone-bay seams. r5: width 1.70 → 1.40 — the crown is
   // FRONT-INVISIBLE in the ref (plateau 2.95 shadows |x|<0.72; the old
   // ±0.85 edges printed 2.608 over the ref's bare 2.548 left-band cols);
@@ -3023,18 +3081,29 @@ function buildKF51(P) {
   // −0.30..+0.13w; r5 top 3.044 — reads 3.021, pct 0.71, INSIDE the 1%
   // heightM grace (was 3.03/read 3.007; the ref line is 3.068 but matching
   // it reads pct 2.1 = −9 dims: certified carry, now at max grace)
-  P.add('turretDetail', cylY(0.09, 0.11, 0.20, 12), -0.51, 0.92, -0.56);
+  P.add('turret', cylY(0.145, 0.165, 0.30, 16), -0.51, 0.955, -0.56);          // r3 #7: FAT round column (was r 0.09 stalk — the ref pano column is a thick drum); meets the head underside, inside the head's front/side shadow
   P.add('turret', box(0.36, 0.16, 0.12), -0.51, 1.16, -0.79);
-  // VISUAL r1 #5 — SEOSS re-dress ("grey box on a stalk" → the ref's camo
-  // sensor tower): the certified 0.51 x 0.27 x 0.43 head envelope (top =
-  // 3.044w heightM anchor) split into camo crown/base bands with a recessed
-  // dark optics band, flush window glass and a pale top locator ring
-  // (ring-contrast law). Union of the three bands == the old single box.
-  P.add('turret', box(0.51, 0.0885, 0.43), -0.51, 1.28975, -0.535);            // camo crown band (top 1.334 = 3.044w)
-  P.add('turret', box(0.51, 0.1115, 0.43), -0.51, 1.11975, -0.535);            // camo base band
+  // VISUAL r3 #7 — SEOSS "box ziggurat" → domed column in a recessed well.
+  // The certified head envelope (0.51 x 0.43, top 1.334 = 3.044w anchor) is
+  // kept EXACTLY by four parapet WALLS whose outer faces byte-match the old
+  // crown band box — front/side/plan silhouettes and every gate column are
+  // untouched (interior voids are invisible to the top/bot trace). Inside:
+  // a dark well floor, a pale FULL-CIRCLE well ring (the r2 horseshoe read,
+  // Ø0.35 vs the old Ø0.32 torus), and a round camo column with a domed
+  // 2-step cap whose tip (1.3325) stays 1.5 mm under the parapet rim so
+  // the anchor and the 12 front cols still read the wall line.
+  P.add('turret', box(0.51, 0.0885, 0.032), -0.51, 1.28975, -0.336);           // parapet front wall (face −0.32 held)
+  P.add('turret', box(0.51, 0.0885, 0.032), -0.51, 1.28975, -0.734);           // parapet rear wall (face −0.75 held)
+  P.add('turret', box(0.032, 0.0885, 0.366), -0.271, 1.28975, -0.535);         // parapet right wall (face −0.255 held)
+  P.add('turret', box(0.032, 0.0885, 0.366), -0.749, 1.28975, -0.535);         // parapet left wall (face −0.765 held)
+  P.add('turretDark', box(0.446, 0.010, 0.366), -0.51, 1.2505, -0.535);        // recessed well floor
+  P.add('turretDetail', torus(0.175, 0.008, 20), -0.51, 1.2605, -0.535);       // pale well ring — FULL circle on the floor
+  P.add('turret', cylY(0.130, 0.142, 0.056, 16), -0.51, 1.2835, -0.535);       // pano column body (round, camo)
+  P.add('turret', cylY(0.078, 0.128, 0.015, 16), -0.51, 1.319, -0.535);        // dome step 1
+  P.add('turret', cylY(0.024, 0.072, 0.006, 12), -0.51, 1.3295, -0.535);       // dome step 2 — tip 1.3325, 1.5 mm UNDER the 1.334 rim (anchor untouched)
+  P.add('turret', box(0.51, 0.1115, 0.43), -0.51, 1.11975, -0.535);            // camo base band (housing body, unchanged)
   P.add('turretDark', box(0.51, 0.07, 0.415), -0.51, 1.2105, -0.5425);         // optics band — front face recessed 15 mm into the slot
   P.add('turretGlass', box(0.20, 0.058, 0.016), -0.51, 1.2105, -0.328);        // window glass fills the slot at the head face
-  P.add('turretDetail', torus(0.16, 0.010, 16), -0.51, 1.324, -0.535);         // pale top ring, top 1.334 EXACT (anchor held)
   // hatches + periscopes
   P.add('turret', cylY(0.24, 0.24, 0.04, 14), 0.62, h + 0.018, -0.75);
   P.add('turret', cylY(0.21, 0.21, 0.036, 14), -0.64, h + 0.016, -0.65);
@@ -3043,15 +3112,15 @@ function buildKF51(P) {
   // they depth-sort; max top +7 mm over the drum line (a6 flat-ring recipe:
   // pale race + dark groove + camo lid + lug dots).
   P.add('turretDetail', cylY(0.238, 0.238, 0.005, 22), 0.62, h + 0.0405, -0.75);
-  P.add('turretDark', cylY(0.19, 0.19, 0.005, 20), 0.62, h + 0.0415, -0.75);
-  P.add('turret', cylY(0.138, 0.138, 0.005, 18), 0.62, h + 0.0425, -0.75);
+  P.add('turretDark', cylY(0.172, 0.172, 0.005, 20), 0.62, h + 0.0415, -0.75); // r3 #7a: groove 52 → 22 mm — the wide dark annulus mip-averaged into an "open hole"
+  P.add('turret', cylY(0.150, 0.150, 0.005, 18), 0.62, h + 0.0425, -0.75);
   for (let k = 0; k < 4; k++) {
     const a = Math.PI / 4 + k * Math.PI / 2;
     P.add('turretDark', cylY(0.011, 0.011, 0.004, 8), 0.62 + Math.cos(a) * 0.214, h + 0.0445, -0.75 + Math.sin(a) * 0.214);
   }
   P.add('turretDetail', cylY(0.208, 0.208, 0.005, 22), -0.64, h + 0.0365, -0.65);
-  P.add('turretDark', cylY(0.165, 0.165, 0.005, 20), -0.64, h + 0.0375, -0.65);
-  P.add('turret', cylY(0.118, 0.118, 0.005, 18), -0.64, h + 0.0385, -0.65);
+  P.add('turretDark', cylY(0.150, 0.150, 0.005, 20), -0.64, h + 0.0375, -0.65); // r3 #7a: groove narrowed
+  P.add('turret', cylY(0.130, 0.130, 0.005, 18), -0.64, h + 0.0385, -0.65);
   periscope(P, 'turretDetail', 0.62, h + 0.04, -0.45);
   periscope(P, 'turretDetail', -0.40, h + 0.04, -0.40, 0.3);
   // bustle (u = +x + c decoded): plateau 2.94w spans WORLD −0.80..+0.92
@@ -3061,7 +3130,23 @@ function buildKF51(P) {
   // 2.86 pot at +1.00 with the R whip (+0.96) and a 2.57 shelf +1.04..
   // +1.30; stepped back — slat bay to −3.045w bottoming 2.17, left tongue
   // to −3.125w floating at 2.69 (the ref −3.12 col reads 2.95..2.709)
-  zseg(-2.47, -3.345, 2, (a, b) => P.add('turret', pbox(1.675, 0.755, a - b), 0.1175, 0.8675, (a + b) / 2)); // plateau 2.20..2.955w, x −0.72..+0.955 (r5: ref +0.95 col reads the 2.9 shoulder; edge pinned 14mm off the +0.973 boundary; pbox: the zseg joint grew a mint bevel ribbon)
+  // VISUAL r3 #1 — REAR TOWER CUT. The r2 plateau was a full-width block
+  // 2.20..2.955w whose top rode 0.43 over the roof: from every rear/hero
+  // view it read as a two-storey wall (critic r2 floor-holder). The gate
+  // frame says the ref's own above-roof mass is NOT full width: front rows
+  // read 2.94-2.97 ONLY over x −0.22..+0.95 (left of that the 3.06 line is
+  // the SEOSS's own footprint, then bare roof 2.54 at x −0.95..−0.79), and
+  // side rows read 2.94-2.96 over z −2.51..−3.11 (the z −2.04..−2.40 talls
+  // are the whip columns). So: full-width bustle BODY stops AT the roof
+  // line (2.525w), and only a right-of-centre sensor TOWER x −0.26..+0.95
+  // keeps the 2.955w top over z −2.45..−2.895 (slat bay/tongue carry
+  // 2.94 back to −3.125w exactly as before). Front cols x −0.72..−0.26
+  // stay covered by the SEOSS (x −0.765..−0.255, 3.029); every ref row
+  // re-checked filled — mass removal only where the ref itself is roof.
+  zseg(-2.47, -3.345, 2, (a, b) => P.add('turret', pbox(1.675, 0.325, a - b), 0.1175, 0.6525, (a + b) / 2)); // bustle body 2.20..2.525w, x −0.72..+0.955 (footprint/plan unchanged)
+  P.add('turret', pbox(1.21, 0.43, 0.445), 0.345, 1.03, -3.1225);              // sensor tower 2.525..2.955w, x −0.26..+0.95, z −2.45..−2.895w
+  P.add('turret', box(0.08, 0.44, 0.08), 0.59, 1.025, -2.51);                  // slim mast post z −2.02..−2.10w, top 1.245 = 2.955w: keeps the side −2.04w col at its certified 2.94 cap (ref 3.22 pot col)
+  P.add('turretDark', box(0.18, 0.028, 0.06), 0.59, 1.216, -2.51);             // mast crossarm
   zseg(-2.47, -3.345, 2, (a, b) => P.add('turret', pbox(0.59, 0.34, a - b), -1.015, 0.66, (a + b) / 2));  // left low band −1.31..−0.72, 2.20..2.54w
   zseg(-2.47, -3.345, 2, (a, b) => P.add('turret', pbox(0.26, 0.34, a - b), 1.17, 0.66, (a + b) / 2));    // right shelf 2.20..2.54w (r5: ref +1.15..1.24 cols read 2.532, the 2.57 top was +0.03 proc-only)
   zseg(-2.41, -3.11, 2, (a, b) => P.add('turret', pbox(2.30, 0.34, a - b), -0.03, 0.325, (a + b) / 2));   // under-bustle body (ref bottoms 1.87 to −2.64w)
@@ -3080,8 +3165,8 @@ function buildKF51(P) {
   P.add('turret', box(0.66, 0.035, 0.035), 0.24, 1.21, -3.482);
   P.add('turretDark', box(0.20, 0.21, 0.02), -0.22, 1.105, -3.564);            // tongue end face
   P.add('turretDark', box(2.20, 0.10, 0.03), -0.03, 0.55, -3.33);              // bustle base shadow seam
-  P.add('turretDark', box(0.46, 0.026, 0.48), 0.30, 1.217, -2.90);             // Natter RWS folded flush on the roof
-  P.add('turretDark', cylZ(0.016, 0.40, 8), 0.42, 1.20, -2.67, 0, 0, 0);       // rod kept AFT of the −2.02w bustle face (it read 2.9 over the bare roof)
+  P.add('turretDark', box(0.46, 0.026, 0.44), 0.30, 1.232, -3.13);             // Natter RWS folded flush INTO the tower top (r3: old z −2.90 straddled the cut body — floater)
+  P.add('turretDark', cylZ(0.016, 0.40, 8), 0.42, 1.229, -3.12, 0, 0, 0);      // stowed antenna rod lying on the tower top (flush, ≤1.245)
   // antenna/mast FARM r5 (gate-frame 1024 columns, dAlong now 0 so rods
   // compare RAW): ref SIDE staircase reads 3.221@z−2.06 (pot col, stays
   // capped — a 4th spike would become the heightM anchor at pct 7 = dims
@@ -3183,10 +3268,13 @@ function buildKF51(P) {
     P.mats.glass.roughness = 0.55;
     P.mats.glass.metalness = 0.32;
     P.mats.glass.envMapIntensity = 0.45;
-    P.mats.rubber.color.setHex(0x27251f);                // flaps/hem lips: weathered near-black olive
-    P.mats.dark.color.setHex(0x33352b);                  // fittings: hue into the scheme family (G >= R)
+    P.mats.rubber.color.setHex(0x0a0908);                // r3 #5: flaps/hem lips toward the ref's near-black V6 (r2 0x27251f rendered V21; 0x141310 still sampled V21 — the rig's ambient lifts darks, so the albedo goes near-zero)
+    P.mats.rubber.envMapIntensity = 0.02;
+    P.mats.rubber.roughness = 1.0;
+    P.mats.rubber.metalness = 0.0;
+    P.mats.dark.color.setHex(0x353226);                  // fittings: warm neutral (hue ~48 — the r2 0x33352b sat greenish 67)
     P.mats.dark.envMapIntensity = 0.15;
-    P.mats.spareTrack.color.setHex(0x443f33);            // sprocket teeth/recess rings
+    P.mats.spareTrack.color.setHex(0x221f17);            // r3 #3: sprocket teeth/recess rings DARK (r2 0x443f33 was lighter than the drum body — the teeth ring read pale)
     for (const tm of [P.mats.trackL, P.mats.trackR]) {
       tm.color.setRGB(1.52, 1.60, 1.30);                 // band base up into the ref's 40s brown-grey
       tm.envMapIntensity = 0.06;
@@ -3199,18 +3287,33 @@ function buildKF51(P) {
       m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       return m;
     };
-    const wornDish = rehook(P.mats.wheels.clone());      // road-wheel dishes: ref wheel row samples hue 60 sat 28 olive-grey
-    wornDish.color.setHex(0x44462f);                     // r2 sample: dishes rendered pale rings at 78-85 lum vs ref 52 — pulled down/greened
-    wornDish.envMapIntensity = 0.18;
-    const wornDrum = rehook(P.mats.wheels.clone());      // sprocket/idler drums (the blank grey disc)
-    wornDrum.color.setHex(0x393b2c);
-    wornDrum.envMapIntensity = 0.18;
-    P.disposables.push(wornDish, wornDrum);
+    const wornDish = rehook(P.mats.wheels.clone());      // road-wheel dishes — r3 #6: faces must sit BELOW the skirt value (ref wheel V21 vs skirt 30; r2's 0x44462f rendered V26-28, INVERTED)
+    wornDish.color.setHex(0x36342a);
+    wornDish.envMapIntensity = 0.12;
+    const wornDrum = rehook(P.mats.wheels.clone());      // sprocket/idler drums (the blank tan disc — r3 #3 darkened under the skirt line)
+    wornDrum.color.setHex(0x302e24);
+    wornDrum.envMapIntensity = 0.10;
+    const tireMat = rehook(P.mats.rubber.clone());       // r3 #6: tires split from the flap material — dark rubber rim ring per wheel without dragging the tires to flap-black
+    tireMat.color.setHex(0x232119);
+    tireMat.envMapIntensity = 0.05;
+    P.disposables.push(wornDish, wornDrum, tireMat);
     P.hullG.traverse((ob) => {
       if (!ob.isMesh && !ob.isInstancedMesh) return;
       const m = ob.material;
       if (!m || !m.color || !m.color.getHex) return;
-      if (ob.isInstancedMesh && m.color.getHex() === 0x171614) {
+      if (ob.isInstancedMesh && m === P.mats.rubber) {
+        ob.material = tireMat;                           // instanced tire rings (identity test: the color-value tests below can't tell them from the inner chain)
+      } else if (ob.isInstancedMesh && m.color.getHex() === 0x171614) {
+        // r3 #2 — SAW-TOOTH CUT (geometry, kf51-private: shoe.pad is built
+        // per rig). The pad/grouser stack stood 85 mm proud of the band and
+        // fringed the whole loop as a sawblade; pitch is mask-locked but
+        // HEIGHT is not. Scaling the pad geometry's proud axis 0.45 keeps
+        // pitch/phase byte-identical (instance matrices untouched); grouser
+        // tips land INSIDE the band bottom on the ground run (0.045 vs
+        // 0.013 — smooth ground line) and the wrap fringe pulls from +34 mm
+        // PROUD of the ref wrap rows to ~on them (gf-base: plan front 3.760
+        // vs ref 3.726 at x 1.38..1.50; side top 1.278 vs ref 1.245).
+        ob.geometry.scale(1, 0.45, 1);
         rehook(m).color.setHex(0x3f4433);                // link pads → dusty olive-iron
         m.envMapIntensity = 0.05;
         m.roughness = 1.0;

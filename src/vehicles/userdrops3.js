@@ -193,11 +193,15 @@ const USERDROP3_SPECS = {
       // overlay composite + the procedural stand-in while the GLB streams)
       scheme: 'nato', base: '#49543c', weather: '#515e44',
       patches: ['#23261f', '#4a3a2c'],
-      // camoScale 0.5 → 0.34 (visual r1 #8 "blotch edge-hardness": the finer
-      // 0.5 mapping shrank the blotches ~1.5x vs the ref's sweeping woodland
-      // bands and rendered their edges texel-crisp; the fleet-default 0.34
-      // magnifies the same texture — larger patches, softer sampled edges).
-      marking: 'cross', number: '51', trackWidthM: 0.65, camoScale: 0.34,
+      // visual r3 #8 — blotch growth ~1.6x. MEASURED DEAD END on camoScale:
+      // materials.js world-normalizes patch geometry (wk = min(1, cs/0.5)),
+      // so any camoScale ≤ 0.5 paints IDENTICAL world-size patches and
+      // 0.55 actually SHRANK them 9% (probe: 0.55 read 19.5 px mean blob vs
+      // the critic's 19.6 at 0.34 — that knob cannot grow blotches). The
+      // real knob is patchK (radius x pk, counts /pk, default 1):
+      // measured 1.55 -> flank mean 25.0 px/22 blobs (from 19.5/26);
+      // 1.75 closes on the ref's 26-31 px sweeping bands.
+      marking: 'cross', number: '51', trackWidthM: 0.65, camoScale: 0.34, patchK: 1.75,
     },
   },
 };
