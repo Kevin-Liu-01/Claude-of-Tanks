@@ -341,3 +341,37 @@ language + saucer mass + matched gear tone.
 
 ## Shaded-parity r5 (2026-08-02) — FAIL 8.0 (pot saucer FIXED; same 3 gating items)
 Shared work order r5 doc.
+
+## VISUAL round r6 (2026-08-02, merkava agent) — the three 9.0-gating items
+Gate after the round, TWO consecutive runs bit-identical: **hull 91.2 /
+whole 90.7 / turret 90.9 / stations 92.5 / dims 100 / floaters 100 (min
+90.7, PASS x2; turret 90.8 -> 90.9)**. Siblings bit-identical; npm test
+166/166. hull 91.4 -> 91.2 is the same diffuse-AA cost class as 3B's
+(no r6 mesh in any worst list).
+Shared fix list + ALL r6 calibration laws (floor-clamped rear normals,
++-10 camo patch noise, the canvasCloth shade channel at 0x464a3e ->
+renders 84, ortho-occlusion/link-pad-crest law, -4.479 wing column
+budget): see merkava3b.md "VISUAL round r6". All changes ride the shared
+3B/3C branches (chainFringe vane rework, wing-tarp fold grammar,
+cornerCurtain, plinth slot + merkavaPlinthMG, proud pods, hull-bucket
+wave band) — sibling paths byte-identical per the gate.
+Per-item status (verified on the fresh 3C renders):
+1. CANVAS — same rebuilt drape read as 3B (billow crowns + kinked
+   diagonal shade folds + sag hems + sparse ball row on the vane; wing
+   plates re-dressed; pack slot de-lined). Kasag stack untouched (its
+   certified two-tier mass + canister still crown the field).
+2. CORNER — sampled med 62.2 / mean 58.7 vs ref ~63.5 (was the 36-44
+   ribbed stack). Same three-tier hullWood curtain, same residuals.
+3. MG LINES — READ in BOTH 3C elevations (own reading of the crops):
+   plinth slot z -0.95..-1.70 at ITS 2.65 band (rod z -0.80..-1.79 at
+   the certified 2.6625 top; receiver 2.648 over z -1.30..-1.49 spanning
+   x -0.62..-0.88 = its wider 2.62-2.65 front band; the -1.838..-1.912
+   band-end step box unchanged behind the slot), plus the re-posed
+   cupola rod as the second line. Side tops unchanged (ref 2.65 at
+   -0.72..-1.51 = rod; flicker 2.62-2.67 to -1.88 = receiver/posts).
+Honest residuals: as 3B (band p75 95 vs ref ~107, crisp fold-band edges
+at 2x, inner-corner run-end strip, whip-tip aliasing pair, s4 window
+quantization).
+Predicted per-view (r5 critic: 8.0 min): front 8.5 · frontleft 8.5 ·
+left 8.5-9.0 · rearleft 8.5 · rear 8.5-9.0 · rearright 8.5 · right
+8.5-9.0 · frontright 8.5 · top 8.5.
