@@ -473,3 +473,23 @@ Predicted per-view (my own brutal read): front 6, frontleft 7, left 7,
 rearleft 7, rear 7-8, rearright 7-8, right 7, frontright 7, top 8,
 toptilt 8, close-front 6-7, close-roof 7. Min ~6 — the mantlet ceiling
 is the binding item and it is now a MEASURED ceiling, not a build gap.
+
+## ORACLE MANTLET SPEC (2026-08-02, orchestrator vertex inspection) — CEILING RETIRED
+Batch-7 did NOT clip the ball (slim started at ly 63.0, forward of it;
+bak==ship at ly<63 verified). The ref's mantlet, measured from the
+pristine HullMesh about the bore axis (local 13.22,-17.20; scale
+0.0967 m/u; gate z = ly*0.0967 - 3.30):
+  z +2.21  r95 0.597  (disc rear shoulder)
+  z +2.31  r95 0.620
+  z +2.40  r95 0.662  (DISC PEAK — the critic's "dominant circular
+                       cast plate", r~0.66)
+  z +2.50  r95 0.606  (disc front face)
+  z +2.60  r95 0.238  (ball throat)
+  z +2.69  thin OUTER FLANGE RING r 0.63-0.64 over an r 0.155 core
+  z +2.98  tube root r 0.139
+The r3 "measured ceiling" came from authoring the ball at r 0.343 and
+z 2.42+ — HALF the ref's radius in the WRONG band. A mantlet built to
+this exact table (centered on the bore, x -0.25) sits inside the ref's
+own silhouette by construction: the certified 2.48-2.92 side columns
+ARE this casting's profile. r4 = author to the table + recover
+wholeCurves from 89.9x (fractional; gate JSON worst list).
