@@ -891,3 +891,96 @@ short round). Prior classes stand.
 ## Shaded-parity r7 (2026-08-02) — FAIL 8.5; EIGHT at 9.0; view-rear = 3 elements
 Work order: shaded-parity-leo2a6-r7.md — delete center grid (invented),
 lower plate bevel+brighten+fittings, center fan + taillight ovals.
+
+## Shaded-parity r8 — MICRO-ROUND: the three view-rear elements (2026-08-02)
+
+All three r7 work-order items in `src/vehicles/profiles/leopard.js`
+(buildLeo2A6 + ONE new leoHullV3 opt-in `jackX`, default 0 — siblings do
+not pass it). Gate after round: **min 91.0 PASS** (hull 91.2 / whole
+91.0 / turret 91.2 / stations 93.4 / dims 91.0 / floaters 100 —
+byte-identical to r7). Siblings score-identical: leo2a5 69.2 / kf51
+63.6 / leo2_revolution 45.0. `npm test` 166 checks pass.
+
+1. CENTER GRID DELETED -> SOLID WALL + ROD — the "light-framed 2x2 grid
+   panel" was the r4 knob cinch straps (2 verticals + 1 horizontal
+   turretDark) over the r6 bin-green cloth: the straps divided the knob
+   face into pale cells. Straps deleted outright — the bare bin-green
+   knob face IS the ref wall family (the r4 tan-rectangle problem the
+   straps fixed died with the r6 canvasCloth retone). The ref's ONE thin
+   horizontal rod runs world x -0.417..+0.457 at mid-band y 0.26 (rod
+   ends and both clamp posts at x -0.14/-0.37 sampled off the ref pair
+   and placed in WORLD coords per the r7 MIRROR LAW — both posts sit on
+   the -x side, print asymmetry). Rod is z-SEGMENTED so no mask row or
+   column moves and ortho rear hides the step: knob span proud at
+   -3.0955 (the r7-blessed 5.5 mm past the certified -3.09 carrier,
+   back embedded in the knob), outboard spans at -2.9965 (1.5 mm past
+   the gate-carrying rack-floor plan edge -2.995, backs embedded in the
+   r7 panels), posts tangent at -2.995 with backs 2 mm into the backing
+   — every piece solid-connected, floaters 100 held.
+2. LOWER HULL PLATE — the featureless dark rectangle was the tub-wedge
+   rear face + belly slope in camo 'hull' (bakeDirt darkens low hull
+   ~0.7x). Now a platePale-skinned BEVELED TRAPEZOID: frustum face skin
+   (top +-0.93 @ y 1.128, bottom +-0.62 @ y 0.812, faces
+   -3.5808/-3.5832) + a 2.6 mm parallel-offset slab down the certified
+   belly-slope plane (taper 0.60 -> 0.46 keeps the bevel lines
+   converging), dark chamfer crease lines on the upper slants, and the
+   fittings: center tow coupling (dark base, pale ring, near-black
+   bore, jaw, pivot), twin round covers at +-0.63 (ref-measured), tow
+   clevis brackets + pins at +-0.38. PLATE SAMPLE (track-calibrated on
+   the critic pair, proc 135.4 px/u ground row 543.1): face med L 95,
+   down-slope med 114, WHOLE-TRAPEZOID med 95 vs ref patch meds 89-108
+   (target 85-100 hit). Taillight swap rides the same material: the
+   r3-era 3-dot glass discs + pale torus deleted, one pale LOZENGE oval
+   (disc-bar-disc) on a dark backing per side at +-1.28 (rear-most face
+   -3.6254 keeps the -3.6255 law; the r7 dark housing disc stays as the
+   certified y-span carrier).
+   - LEGALITY (no mask moves): plate rear face -3.5832 provably shares
+     the wedge's -3.58 trace column for ANY grid phase — the
+     -3.627/-3.6255 law pins column boundaries to (-3.585, -3.5835],
+     and rows 0.812..1.128 are inside the wedge edge's existing
+     0.80..1.30 span. Every prouder fitting keeps its y-span above the
+     sprocket-wrap side-silhouette floor of the column its z lands in
+     (wrap r 0.415 @ (-3.205, 1.02): floor 0.876 to z -3.594, 0.908 to
+     -3.6045; deepest fitting -3.6015). Slope skin offset 2.6 mm =
+     sub-row on every column. Gate re-ran byte-identical.
+3. CENTER FAN + JACK MOVE — the twins' r7 loop becomes s2 in [-1,0,1]:
+   the ref's central 4-blade fan is the byte-same recipe at x 0, same
+   row (housing 1.272, ring 1.268). The center slot had to be OPENED
+   per the layer-order law: below-band center slat run split 0.605 ->
+   two 0.1325 flanks (|x| < 0.17 clear), center bottom strips
+   (hullDark/hullShadow 1.45) split into 0.555 pairs at +-0.4475
+   mirroring the twins' 0.725..1.015 gap, and the JACK BLOCK (z
+   -3.68..-3.60 renders in front of the whole fan slot) slid to
+   jackX -0.47 — between the -0.32 bar (0.3375) and the -0.87 housing
+   (0.70), left side because the Y-241 decal owns (0.49..0.75, 1.45).
+   Same jack y/z: the -3.688 side column keeps its certified 1.37
+   bottom (side masks ignore x).
+
+Round lessons (fleet-visible):
+- POST-MERGE SWAP LAW: bucket meshes DO NOT EXIST while a builder runs
+  (createTank merges buckets after it returns) — a build-time
+  hullG.traverse can only re-material GEAR meshes. To give a bucket a
+  per-build material (here: hullCloth -> platePale, since no shared
+  pale bucket renders above L 68 on a vertical rear face), ride the
+  factory's guaranteed post-merge call with a one-shot self-restoring
+  wrapper on P.gear.update(0,0). turretCloth (turretG) is untouched by
+  the hullG traverse.
+- TONE-CURVE SHOULDER: near L ~95 output, albedo moves compress hard —
+  0x626c4e and 0x5b6449 render the SAME face med 95 (a 0x202020 probe
+  drops to the 52 deep-shade floor, so the response is live). Sample
+  after every retone; do not extrapolate linearly near the shoulder.
+- COLUMN-PHASE PINNING: the -3.627/-3.6255 side-column law does more
+  than forbid depth — it PINS the trace-grid phase (boundaries at
+  -3.6255-eps + k*0.0105), so "same column as the wedge face" can be
+  PROVEN for a new skin (rear face -3.5832 vs the (-3.585, -3.5835]
+  boundary window) instead of hoped.
+- DOWN-SLOPE FACES CAN OUT-BRIGHTEN VERTICAL ONES under the board key
+  (slope med 114 vs face 95 at the same albedo) — the ref's own lower
+  rows fade the OTHER way, so sample both bands before splitting tones.
+
+Residuals: slope skin reads ~19 lum over the face (ref grades darker
+toward the bottom — single shared material, accepted mid-band whole-med
+95); 12 mm camo seam strip between plate bottom 0.812 and the skin's
+0.80 edge (reads as the panel groove); trivia standing from r7 (pale
+wheel faces, turret-rear level 64 vs 86, skirt 0.83x certified). Prior
+classes stand.

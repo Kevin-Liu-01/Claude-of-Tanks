@@ -592,7 +592,11 @@ function leoHullV3(P, H) {
   // a6 r6 opt-in jackDark: the a6 repurposes the per-build wood material as
   // its pale grille-slat tone, so its jack block moves to the gunmetal
   // bucket (same dark fitting family as its r3 grey-brown read).
-  P.add(H.jackDark ? 'hullDark' : 'hullWood', box(0.24, 0.10, 0.08), 0, H.jackY ?? (R.yBot + 0.08), R.wallZ - 0.02);
+  // a6 r8 opt-in jackX (default 0 — siblings byte-identical): the a6 slides
+  // the jack off center so the new central fan grille owns x 0; the block
+  // keeps its exact y/z (it is the certified 1.37 bottom of the -3.688
+  // side column — side masks ignore x).
+  P.add(H.jackDark ? 'hullDark' : 'hullWood', box(0.24, 0.10, 0.08), H.jackX ?? 0, H.jackY ?? (R.yBot + 0.08), R.wallZ - 0.02);
   // rear corner mud flaps hanging off the fender ends (real A5/A6 fit; they
   // also carry the tail body-span columns the published hullLengthM needs)
   if (H.rearFlaps) {
@@ -956,7 +960,7 @@ function wedgeTurretV3(P, T) {
 // mantlet block top 2.14 over z 3.35..3.90, L/55 axis 1.94 muzzle 7.08.
 // ---------------------------------------------------------------------------
 function buildLeo2A6(P) {
-  const { box, slab, cylX, cylZ, torus, xform } = KIT;
+  const { box, slab, cylX, cylZ, torus, xform, frustum } = KIT;
   leoHullV3(P, {
     // tracks re-laid to the measured front-view ground band (ref reaches
     // ground over x 0.99..1.63 per side; the shoe PIN CAPS add trackW*0.49
@@ -1036,7 +1040,12 @@ function buildLeo2A6(P) {
     // jack block hoisted into the strap band: at the default yBot+0.08 it
     // was the 1.16 bottom of the -3.688 column (ref bottoms 1.373 there)
     // r6: jackDark — wood becomes the a6's pale grille-slat material below
-    jackY: 1.42, jackDark: true,
+    // r8: jackX -0.47 — the block sat exactly where the ref's CENTRAL fan
+    // grille lives (its z -3.68..-3.60 renders in front of the whole fan
+    // slot); parked between the -0.32 bar (0.3375) and the -0.87 housing
+    // (0.70), left side because the Y-241 decal owns (0.49..0.75, 1.45).
+    // Same y/z: the -3.688 side column keeps its certified 1.37 bottom.
+    jackY: 1.42, jackDark: true, jackX: -0.47,
     // kit rope OFF: its 0.024-r sag read one trace row above the bare
     // 1.825 deck on ~15 front columns and the z -3.05..-3.46 side columns
     rope: false,
@@ -1246,9 +1255,12 @@ function buildLeo2A6(P) {
   //   z-fights — everything below band shares the 5.5 mm slot).
   P.add('hullDark', box(2.86, 0.350, 0.018), 0, 1.585, -3.630);
   P.add('hullShadow', box(2.80, 0.350, 0.006), 0, 1.585, -3.6365);
-  P.add('hullDark', box(1.45, 0.035, 0.018), 0, 1.3925, -3.630);
-  P.add('hullShadow', box(1.45, 0.035, 0.006), 0, 1.3925, -3.6365);
+  // (r8 #3: the center bottom strip splits around |x| 0.17 exactly like the
+  // twins' 0.725..1.015 gap — the deep strip would flat-clip the NEW center
+  // fan's top at the band line otherwise.)
   for (const s2 of [-1, 1]) {
+    P.add('hullDark', box(0.555, 0.035, 0.018), s2 * 0.4475, 1.3925, -3.630);
+    P.add('hullShadow', box(0.555, 0.035, 0.006), s2 * 0.4475, 1.3925, -3.6365);
     P.add('hullDark', box(0.415, 0.035, 0.018), s2 * 1.2225, 1.3925, -3.630);
     P.add('hullShadow', box(0.385, 0.035, 0.006), s2 * 1.2075, 1.3925, -3.6365);
   }
@@ -1265,8 +1277,10 @@ function buildLeo2A6(P) {
   }
   for (let k = 0; k < 5; k++) {
     const ry = 1.153 + k * 0.048;
-    P.add('hullWood', box(0.605, 0.028, 0.002), 0, ry, -3.6231, 0.10, 0, 0);
+    // r8 #3: center run 0.605 -> two 0.1325 flanks — |x| < 0.17 is the new
+    // central fan's slot (rows stay segmented around every housing).
     for (const s2 of [-1, 1]) {
+      P.add('hullWood', box(0.1325, 0.028, 0.002), s2 * 0.23625, ry, -3.6231, 0.10, 0, 0);
       P.add('hullWood', box(0.3425, 0.028, 0.002), s2 * 0.50875, ry, -3.6231, 0.10, 0, 0);
       if (k < 4) P.add('hullWood', box(0.11, 0.028, 0.002), s2 * 1.115, ry, -3.6231, 0.10, 0, 0);
       else P.add('hullWood', box(0.33, 0.028, 0.002), s2 * 1.225, ry, -3.6231, 0.10, 0, 0);
@@ -1278,7 +1292,10 @@ function buildLeo2A6(P) {
   // in the below-band slot: dark housing plate, pale annulus (r 0.138 ->
   // ~37 px), near-black recess core, 4 crossing pale blades. Everything
   // z in [-3.6255, -3.620]; y 1.130..1.406 rides the field/shadow notch.
-  for (const s2 of [-1, 1]) {
+  // r8 #3: s2 = 0 joins the loop — the ref's CENTRAL 4-blade fan, byte-same
+  // recipe on the same row (jack moved to -0.47, center rows/strips split
+  // around |x| 0.17 above, so the slot is open per the layer-order law).
+  for (const s2 of [-1, 0, 1]) {
     P.add('hullDark', box(0.34, 0.268, 0.003), s2 * 0.87, 1.272, -3.6215);
     P.add('hullDetail', KIT.cylZ(0.138, 0.0015, P.q ? 26 : 20), s2 * 0.87, 1.268, -3.6240);
     P.add('hullShadow', KIT.cylZ(0.125, 0.0015, P.q ? 24 : 18), s2 * 0.87, 1.268, -3.62445);
@@ -1307,12 +1324,65 @@ function buildLeo2A6(P) {
   // fans are, and the invented center coupling + X-cross braces are
   // deleted with it. Taillight torus 14 -> 22 segments, tube 0.006 ->
   // 0.008 (kills its own dotted-ring read; z -3.609..-3.625 in family).
+  // r8 #3b: the 3-dot glass discs + pale torus ring swapped for the ref's
+  // PALE OVAL taillight read — dark oval backing plate + a bright lozenge
+  // (disc-bar-disc, platePale = the new bright plate material below). The
+  // r7 dark housing disc stays (it is the certified -3.62-family y-span
+  // carrier and now the lamp's dark surround). Rear-most face -3.6254
+  // keeps the -3.6255 side-column law.
   for (const s2 of [-1, 1]) {
     P.add('hullDark', cylZ(0.078, 0.005, 14), s2 * 1.28, 1.215, -3.6225);
-    P.add('hullDetail', xform(torus(0.076, 0.008, 22), 0, 0, 0, Math.PI / 2, 0, 0), s2 * 1.28, 1.215, -3.617);
-    P.add('hullGlass', cylZ(0.024, 0.004, 10), s2 * 1.312, 1.246, -3.623);
-    P.add('hullGlass', cylZ(0.024, 0.004, 10), s2 * 1.248, 1.246, -3.623);
-    P.add('hullGlass', cylZ(0.024, 0.004, 10), s2 * 1.28, 1.182, -3.623);
+    P.add('hullDark', box(0.21, 0.105, 0.004), s2 * 1.28, 1.215, -3.6210);
+    P.add('hullCloth', box(0.104, 0.078, 0.004), s2 * 1.28, 1.215, -3.6234);
+    P.add('hullCloth', cylZ(0.039, 0.004, 12), s2 * 1.28 - 0.052, 1.215, -3.6234);
+    P.add('hullCloth', cylZ(0.039, 0.004, 12), s2 * 1.28 + 0.052, 1.215, -3.6234);
+  }
+  // r8 #2 LOWER HULL PLATE: the tub-wedge rear face (x +-0.9525, y
+  // 0.80..1.13 at z -3.58) rendered as a featureless CAMO rectangle at
+  // L~60-68 (hull bucket + bakeDirt's low-hull darkening) vs the ref's
+  // BEVELED TRAPEZOID at L 89-108 carrying the tow gear. Dressing, not
+  // silhouette: a 2.4 mm face skin in the a6-unused hullCloth bucket
+  // (swapped to the per-build platePale material in the tone family — no
+  // shared bucket renders above L 68 on a vertical rear face) + fittings.
+  // LEGALITY: plate rear face -3.5832 stays in the wedge's own -3.58 trace
+  // column for ANY grid phase (the -3.627/-3.6255 law pins column edges to
+  // -3.585+delta..-3.5835); every prouder fitting keeps its y-span above
+  // the sprocket-wrap side-silhouette floor of the column its z lands in
+  // (wrap outer r 0.415 @ (-3.205, 1.02): floor 0.876 to z -3.594, 0.908
+  // to -3.6045), so no side column gains rows. Rear view interior, plan
+  // hidden under the tail lip, front hidden: mask-free by construction.
+  P.add('hullCloth', frustum(0.62, -3.5808, -3.5832, 0.93, -3.5808, -3.5832, 0.812, 1.128));
+  // chamfer shading: dark crease lines down the upper slant edges (the
+  // bevel read; they stop at y 0.889 — column-A floor 0.876)
+  for (const s2 of [-1, 1]) {
+    P.add('hullDark', box(0.016, 0.34, 0.003), s2 * 0.806, 1.011, -3.5855, 0, 0, -s2 * 0.8137);
+  }
+  // the trapezoid continues down the tub-wedge BELLY SLOPE (the ref plate
+  // is bright to its bottom edge; ours showed the camo slope's red
+  // blotches): a 2.6 mm parallel-offset skin on the certified slope plane
+  // ((0.47,-3.0) -> (0.80,-3.58), outward normal (0,-0.87,-0.494)),
+  // tapering 0.60 -> 0.46 so the bevel lines keep converging. Sub-row
+  // offset on every side column; down-facing, so the slope's own dimmer
+  // light grades it like the ref's lower rows.
+  P.add('hullCloth', slab(
+    [-0.46, 0.4677, -3.0013], [0.46, 0.4677, -3.0013], [0.60, 0.7977, -3.5813], [-0.60, 0.7977, -3.5813],
+    [-0.46, 0.4700, -3.0000], [0.46, 0.4700, -3.0000], [0.60, 0.8000, -3.5800], [-0.60, 0.8000, -3.5800]));
+  // center tow coupling: dark base + pale ring with near-black bore + jaw
+  // tongue + pivot block (ref's central cross/jaw mechanism)
+  P.add('hullDark', box(0.20, 0.19, 0.005), 0, 1.00, -3.586);
+  P.add('hullDetail', cylZ(0.050, 0.004, 16), 0, 0.99, -3.590);
+  P.add('hullShadow', cylZ(0.034, 0.003, 12), 0, 0.99, -3.5935);
+  P.add('hullDetail', box(0.05, 0.115, 0.003), 0, 0.9675, -3.5915);
+  P.add('hullDark', box(0.11, 0.05, 0.006), 0, 1.082, -3.5875);
+  // twin round covers at +-0.63 (ref-measured): dark rim ring + medium
+  // face disc + handle nub
+  for (const s2 of [-1, 1]) {
+    P.add('hullDark', cylZ(0.085, 0.004, 18), s2 * 0.63, 0.975, -3.5865);
+    P.add('hullDetail', cylZ(0.062, 0.003, 16), s2 * 0.63, 0.975, -3.589);
+    P.add('hullDark', box(0.05, 0.013, 0.003), s2 * 0.63, 0.975, -3.5915);
+    // tow-clevis fittings at +-0.38: bracket + pale pin head
+    P.add('hullDark', box(0.05, 0.075, 0.005), s2 * 0.38, 0.9675, -3.5855);
+    P.add('hullDetail', cylZ(0.024, 0.003, 10), s2 * 0.38, 0.99, -3.5885);
   }
   // (r6 #1 note: a physical mudflap cover over the naked front wrap was
   // TRIED — chord plates inside the certified 0.333 wrap print circle —
@@ -1720,15 +1790,27 @@ function buildLeo2A6(P) {
   // center rear knob (the ref's turret-side mask reaches -2.85w at
   // 1.86-2.30 world)
   P.add('turretCloth', box(0.62, 0.40, 0.10), 0, 0.30, -3.04);
-  // r4 #3: the knob's rear face read as a blank bright TAN rectangle from
-  // dead rear (it pokes 8 cm past the rack fence). Dark cinch straps
-  // near-flush on the face (rear faces -3.0915, 1.5 mm past the certified
-  // -3.09 carrier — sub-pixel at the 10.5 mm trace pitch) + the a6 cloth
-  // retone below break it into a strapped bedroll read.
-  for (const sx of [-0.16, 0.16]) {
-    P.add('turretDark', box(0.032, 0.40, 0.012), sx, 0.30, -3.0855);
+  // r4 #3 -> r8 #1: the dark cinch straps (2 verticals + 1 horizontal on
+  // the knob face) DELETED — over the r6 bin-green retone they divided the
+  // face into the critic's "light-framed 2x2 grid panel"; the ref center
+  // is panel | WIDE SOLID WALL + one thin rod | panel, and the bare
+  // bin-green knob face IS the wall family (the r4 tan-rectangle problem
+  // the straps solved died with the r6 canvasCloth retone). In their
+  // place: the ref's single thin horizontal ROD across the wall, world
+  // x -0.417..+0.457 (MIRROR LAW: placed from world coords — both clamp
+  // posts sit on the -x side like the print), mid-band y 0.26. The rod is
+  // z-SEGMENTED so no mask row/column moves (ortho rear hides the step):
+  // the knob span rides the knob face (front -3.0955, the r7-blessed
+  // 5.5 mm past the certified -3.09 carrier; back embedded in the knob),
+  // the outboard spans hug the panel plane (front -2.9965, 1.5 mm past
+  // the gate-carrying rack-floor edge -2.995, backs embedded in the r7
+  // panels). Posts front -2.995 (tangent), backs 2 mm into the backing.
+  P.add('turretDetail', box(0.62, 0.034, 0.010), 0, 0.26, -3.0905);
+  P.add('turretDetail', box(0.147, 0.034, 0.010), 0.3835, 0.26, -2.9915);
+  P.add('turretDetail', box(0.107, 0.034, 0.010), -0.3635, 0.26, -2.9915);
+  for (const px2 of [-0.14, -0.37]) {
+    P.add('turretDetail', box(0.05, 0.15, 0.034), px2, 0.26, -2.978);
   }
-  P.add('turretDark', box(0.62, 0.034, 0.012), 0, 0.30, -3.0855);
   P.add('turretCloth', box(0.85, 0.16, 0.20), 0, 0.57, -2.52);
   P.decal('turret', 'crossgrey', null, 0.36, [1.15, 0.36, -0.9], Math.PI / 2);
   P.decal('turret', 'crossgrey', null, 0.36, [-1.15, 0.36, -0.9], -Math.PI / 2);
@@ -1897,6 +1979,19 @@ function buildLeo2A6(P) {
     };
     rehook(wornDish);
     rehook(wornDrum);
+    // r8 #2 platePale: the lower-plate skin + taillight-oval material (the
+    // hullCloth bucket — a6-unused before this round, so the swap scopes to
+    // exactly those pieces). The ref plate samples med L 89-108 where every
+    // shared pale bucket renders <= 68 on a vertical rear face (hemi-floor
+    // law: canvasCloth 78, detail 68, wood 80 tilted) — the skin needs its
+    // own albedo. Bin-green hue family (G >= R), env pinned low per the
+    // rear-face sky-wash law; clone loses onBeforeCompile -> rehook.
+    const platePale = P.mats.canvasCloth.clone();
+    platePale.color.setHex(0x5b6449);                    // r8 sampled: un-swapped canvasCloth read 75; 0x626c4e and 0x5b6449 both render face 95 / down-slope 114 (tone-curve shoulder) -> whole-trapezoid med 95, mid of the ref's 89-108 band
+    platePale.roughness = 0.92;
+    platePale.envMapIntensity = 0.25;
+    P.disposables.push(platePale);
+    rehook(platePale);
     // r6 #1 TOP-GRIME HOOK (track-shoe clones only; the measured mechanism
     // behind the critic's 1.19-1.23x front wrap): the wrap corners read hot
     // because up-facing shoe surfaces take ~1.9x the key + full sky of a
@@ -1951,6 +2046,23 @@ function buildLeo2A6(P) {
         ob.material = ob.isInstancedMesh ? wornDish : wornDrum;
       }
     });
+    // r8 #2 POST-MERGE SWAP LAW: bucket meshes do not exist while the
+    // builder runs (createTank merges buckets AFTER it returns), so a
+    // build-time traverse can never re-material a bucket mesh — only gear
+    // meshes (this block above). The platePale assignment rides the
+    // factory's own guaranteed post-merge call, P.gear.update(0, 0) (rest
+    // pose seat, tankFactory contact metadata): a one-shot self-restoring
+    // wrapper swaps the single hullG canvasCloth mesh — the hullCloth
+    // bucket = plate skin + taillight ovals — then delegates. turretCloth
+    // lives under turretG and keeps the certified bin-green.
+    const gearUpdate0 = P.gear.update;
+    P.gear.update = (trackL, trackR) => {
+      P.gear.update = gearUpdate0;
+      P.hullG.traverse((ob) => {
+        if ((ob.isMesh || ob.isInstancedMesh) && ob.material === P.mats.canvasCloth) ob.material = platePale;
+      });
+      return gearUpdate0(trackL, trackR);
+    };
   }
   P.topY = 1.24;
 }
