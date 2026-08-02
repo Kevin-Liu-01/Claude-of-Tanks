@@ -164,6 +164,20 @@ export const PLANS = {
     z: [[-4.171, -4.3555], [2.23, 2.4145], [4.18, 4.6945]],
     yTopMax: 2.51,
   },
+  // ---- batch-20: abramsx (abramsx-mortavex.glb). Body/width TRUE (-0.3%/
+  // 0%); +41% height is the RWS bridge band (3.0-3.47 across z -0.83..
+  // +0.42, ~15% of cols) + rear sensor rows 3.24-3.25 + antenna 4.13.
+  // Tejas-W1 knee 2.30 (crown/roof <=2.3 untouched), RWS band -> 2.44-
+  // 2.451, antenna -> 2.468; simulated p93/p95/p97/max = 2.448/2.449/
+  // 2.451/2.468 (+0.3..+1.1%). Overall +3.5% (tube long): body identity,
+  // tube segment x0.85 pins muzzle at rear+9.77. The 342-vert turret
+  // interpenetration is INTERIOR (below-deck bustle content, silhouette
+  // unaffected) — packet cert already documents the fused shell class.
+  abramsx: {
+    y: [[0, 0], [2.30, 2.30], [3.0, 2.44], [4.2, 2.47]],
+    z: [[-3.932, -3.932], [3.968, 3.968], [6.168, 5.838]],
+    yTopMax: 2.48,
+  },
 };
 
 const args = process.argv.slice(2);
