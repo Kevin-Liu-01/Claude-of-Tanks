@@ -185,3 +185,31 @@ fills), left-band notch step { -0.535..-0.455, top 2.59 } (ref: 2.51 at
 ## Shaded-parity r1 (2026-08-02) — FAIL min 7.0 (geometric 90.5 stands)
 Shared work order: docs/critique/shaded-parity-merkava3bc-r1.md. 3C extras:
 Kasag/pot gesture present but toy-scaled — bring to the ref's mass.
+
+## VISUAL round r2 (2026-08-02, merkava agent) — all 5 defect classes fixed
+Gate after the round: **hull 91.5 / whole 90.8 / turret 90.5 / stations
+93.9 / dims 100 / floaters 100 (min 90.5, PASS)** — certified silhouette
+survived (stations +0.6); siblings bit-identical; npm test 166/166.
+Shared fix list + gate incidents: see merkava3b.md "VISUAL round r2"
+(wedge front, boxy mantlet, pale re-bucketing, hatch rings, chain-fringe
+comb, wavy hem, fender kit, muted brown bow flaps — all via the same
+optional params).
+3C-SPECIFIC this round:
+- KASAG at the ref's prominence: the toy 0.38-wide box became a two-tier
+  strapped stack — broad lower tier (0.50 x 0.095 x 0.24 at -0.79/-2.565,
+  top 2.505) + strapped hump bundle (0.44 wide at -0.78/-2.58, top 2.65 =
+  the certified hump line) + a dark canister at -0.42/-2.62. r2 GATE
+  LESSON: the r1 0.30-deep tier + 0.16-deep hump aliased into the
+  z -2.71 turret side column at +0.18 (turret 90.5 -> 90.1) — the ref
+  hump band is ONLY -2.56..-2.61; keep hump z-depth <= 0.13 + strap.
+- Cupola ring pulled outboard vs 3B (x 1.115, r 0.185): its ring edge at
+  0.93 clears the x 0.87 front column the 3B ref fills (gate-pass law).
+- Pano dome (near-centerline x 0.03) re-seated: drum 2.41 -> 2.573, dome
+  to the certified 2.648 top — was the family's worst half-sunk read.
+Honest residuals: as 3B (subtle wave, grey tail-corner flaps, faceted
+cheek planes, slim MGs) plus: the Kasag stack still reads tidier than
+the ref's tarp chaos (its mass/tiering now match, surface chaos does
+not).
+Predicted per-view (was 7.0-8.0 everywhere): front 8.5 · frontleft 8.5 ·
+left 8.0 · rearleft 8.0 · rear 8.0 · rearright 8.0 · right 8.5 ·
+frontright 8.5 · top 8.5 — worst views the rear arc ~8.0.

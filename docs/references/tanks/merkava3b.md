@@ -380,3 +380,63 @@ Headline: slab turret front (needs wedge cheeks + boxy mantlet depth
 volumes), container-wall rear (needs low baskets + chain curtain),
 missing cupola rings/pintle MGs (circularity law), olive/blue palette off
 the ref's pale sand, scalloped skirts.
+
+## VISUAL round r2 (2026-08-02, merkava agent) — all 5 defect classes fixed
+Gate after the round: **hull 91.2 / whole 90.8 / turret 90.4 / stations
+93.3 / dims 100 / floaters 100 (min 90.4, PASS)** — the certified 90.5
+silhouette survived (stations actually +0.6); siblings bit-identical
+(1b 62.5 / 2b 39.9 / 2d 34.9 / 3d 67.8 / 4b 34.6); npm test 166/166;
+board IoU 92.9 / total 87.6 (pre-round 92.7/87.7 — silhouette pinned).
+All changes are 3B/3C-scoped optional params in merkava.js
+(wedgeFront/cheekRake, mantlet.boxy, cupolaRing/loaderRing, pano.seat,
+paleKit/paleVents, chainFringe, skirt.wavy/flapMat, fenderKit,
+glassTiles:false, rearFlaps mat/wood) — sibling paths untouched.
+Per-defect status:
+1. TURRET FRONT — FIXED: cheek faces raked 0.34 (top edges pulled back;
+   plan bottom-edge line + front x/y extents unchanged), converging
+   trapezoid fillet planes flanking the crest (bottom edges ON the zW
+   step line), round mantlet drum -> compact BOXY housing 0.34 wide on
+   the ref's exact 1.83..2.15 band (plan stays inside the drum's ±0.175).
+2. REAR STOWAGE — FIXED: every hullCloth/turretCloth wall re-bucketed to
+   the sand camo ('hull'/'turret') with open-frame posts + slat rails,
+   strap seams, crown tarp rolls; vane re-textured as the chain mat:
+   14-rod comb + half-embedded ball fringe row + hanger rail ON the
+   certified band (nothing hangs below tv.bot).
+3. ROOF — FIXED: raised circular commander ring (r .205 at x 1.10, band
+   2.525..2.60 — the old right-box 2.60 tops now ride the ring; pad
+   2.535) + loader ring (r .175 at -0.79/-2.05, top 2.53 = the ref's own
+   2.52 rear-roof band); pano dome re-seated ON the deck (drum 2.41->
+   2.525, dome to the same 2.60 top — the half-sunk crescent is gone);
+   both pintle MGs re-seated ON the rings with crowns at the cap line.
+4. MATERIAL/TONE — FIXED: monochrome pale sand everywhere (glacis
+   louvres + deck grille pale with dark slats, smoke-cluster plate pale,
+   dark-lens headlights, periscope/sight glass -> dark bucket); front
+   mud flaps layered hullTrack + hullWood mud strip (straight hullWood
+   read CARAMEL under the warm key — r2 lesson).
+5. SKIRTS/FENDERS — FIXED: wavy hem V-teeth (detail tone) at every wheel
+   bay + front/rear leads with a dark rubbing strip riding the dip line
+   (same 0.755 depth as the certified tabs; straight hem strip deleted
+   when wavy); fender-shelf stowage boxes/can added inside the deck-peak
+   envelope.
+GATE INCIDENTS (lessons, both tanks):
+- r1 fillet diagonal: bridging crest face -> cheek inner edge on a plan
+  DIAGONAL read plausible from the pre-warp "widening 0.41 by 1.21"
+  note, but the WARPED ref plan is FLAT ~0.92-0.93 across x 0.18..0.41 —
+  cost 4 t_plan cols (turret 89.8/89.6 FAIL). Fillet bottom edges now sit
+  ON the zW line (yaw only 0.06).
+- Kasag depth: a 0.30-deep lower tier + 0.16 hump aliased into the
+  z -2.71 side column at +0.18 (3C turret 90.1) — ref hump band is ONLY
+  -2.56..-2.61; prominence must come from width/tiering, never z-depth.
+- Rear-flap wood strip at z -4.187 AA-bled into the z -4.25 side_whole
+  column (0.5 pts both tanks, stable across runs — 3 mm outside the
+  column edge still rasterizes at 1024). Tail corner flaps reverted to
+  certified form; the brown accent lives on the BOW flaps only.
+Honest residuals: skirt wave is present but subtler than the ref's
+(tonal band + dark line, plate bottom edge itself stays straight — a
+true cut hem risks station bottoms); rear corner flaps grey not brown
+(gate trade above); cheek planes read as 2-3 facets where the ref is one
+clean plane per side; MGs slimmer than the print's (p95 cap); ref's
+bolt/seam texture density still higher overall.
+Predicted per-view (was 7.0-8.0 everywhere): front 8.5 · frontleft 8.5 ·
+left 8.5 · rearleft 8.0 · rear 8.0 · rearright 8.0 · right 8.5 ·
+frontright 8.5 · top 8.5 — worst view rear ~8.0 (clutter granularity).
