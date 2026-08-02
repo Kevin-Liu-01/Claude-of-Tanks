@@ -141,6 +141,27 @@ node tools/geometry-gate.mjs --ids=<family ids>
    BOTH (any geometry edit invalidates the previous critic verdict).
 4. Family commit only when both gates pass (or a defect cap is certified).
 
+### Top-down fill & circularity review (owner directive 2026-08-02)
+
+Every turntable/board review — agent self-review and orchestrator landing
+review alike — now includes a SHADED top-down pass plus a tilted top-down
+perspective view (not just the orthographic top mask):
+
+- **Fill check**: the tank must not read "empty" from above. Decks, roofs,
+  sponsons, bins and racks must be closed volumes — no interior voids, no
+  see-through shells, no unclosed geometry visible from overhead. This is
+  the overhead companion to the plate-fill law: orthographic silhouettes
+  cannot see hollowness; a top-down shaded view can.
+- **Circularity check**: the top view is where circular geometry is
+  judged — turret ring, hatch rings, cupolas, wheel/drum cross-sections,
+  and gun-tube sections must read as true circles/cylinders at the
+  print's own tier (no coarse faceting, no broken arcs, no polygon reads
+  where the reference is round).
+- **Depth & perspective**: reviews must include perspective views and
+  reason about depth cues, not only orthographic silhouettes — hollow
+  backs, floating panels and open shells hide in orthos and reveal under
+  perspective.
+
 ### Certified oracle-defect caps
 
 Some references are physically defective (fused rigs, yawed bodies,
