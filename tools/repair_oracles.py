@@ -2523,6 +2523,28 @@ REPAIRS['m1a2_tejas'] = {
 }
 
 
+
+# =============================================================== batch 18 ===
+# MERKAVA 3D/1B NORMALIZATION (audit round 2026-08-02, packets; batch-14
+# class: fused-short guns [3D MG251 +4.134 -> pub 9.04; 1B M64 +4.053 ->
+# pub 8.63] + proud roof bands [+5.3%/+6.5% p95] + short bodies). Plans by
+# vertex-normalize from fresh extracts; chained after batch-4 node repairs.
+REPAIRS['merkava3d'] = [
+    *REPAIRS['merkava3d'],
+    ('py2', _axis_warp('merkava3d', long_axis='z',
+                       y_map=[(-0.0203, -0.0203), (2.6501, 2.6501), (3.0261, 2.8211)],
+                       long_map=[(-4.2064, -4.2822), (3.7601, 3.8359), (4.6274, 5.3741)],
+                       y_top_max=3.8465, expect=(158, 154909, 110194))),
+]
+REPAIRS['merkava1b'] = [
+    *REPAIRS['merkava1b'],
+    ('py2', _axis_warp('merkava1b', long_axis='z',
+                       y_map=[(-0.0391, -0.0391), (2.6558, 2.6558), (3.0568, 2.8175)],
+                       long_map=[(-4.0351, -4.1477), (3.7706, 3.8832), (4.7138, 5.1552)],
+                       y_top_max=3.7554, expect=(156, 150418, 110096))),
+]
+
+
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)
     if ops is None:

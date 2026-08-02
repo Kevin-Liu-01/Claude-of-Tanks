@@ -161,6 +161,16 @@ const REG = {
     turretNode: '^Turret$', gunNode: '^[Ss]tvol$', autoPivot: true,
     pubDims: { hullLengthM: 7.93, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 },
   },
+  merkava3d: {
+    path: 'public/models/tanks/community/recovered/merkava3d.glb',
+    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+    pubDims: { hullLengthM: 7.60, overallLengthM: 9.04, widthM: 3.72, heightM: 2.66 },
+  },
+  merkava1b: {
+    path: 'public/models/tanks/community/recovered/merkava1b.glb',
+    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+    pubDims: { hullLengthM: 7.45, overallLengthM: 8.63, widthM: 3.70, heightM: 2.65 },
+  },
 };
 const RUSSIA_IDS = Object.keys(REG);
 
