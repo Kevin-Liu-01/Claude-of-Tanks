@@ -143,3 +143,9 @@ m1a1.md. Row moved with the family: hull 90.1 -> 92.9, whole 52.1 -> 55.0,
 turret 49.1 -> 49.5 (certified cluster cap binding; plan_turret -> 90.7),
 stations 68.9 -> 68.8, dims 98.8 -> 100, floaters 100. IoU floor 88.0
 (committed 86.6).
+
+## 2026-08-02 post-warp re-tune (shared tejas build)
+Shared-build round banked in m1a1.md ("POST-WARP RE-TUNE ROUND"): trio now
+hull 92.4 / whole 88.9 / turret 85.9 / stations 90.3 / dims 100 / floaters
+100. The knee-band + whip residual law (heightM sovereign vs the warped
+ref's 2.556 band) and the W1b orchestrator flag live there.

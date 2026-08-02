@@ -129,3 +129,11 @@ warp options as m1a1.md IF the loader-side chimera is first resolved
 at the m1a2_tusk_dannzjs_variant bake — loader/userdrops-side, out of
 profile scope). Build meanwhile stays published-true full scale and moved
 with the family (plan/hull/flank fixes shared via buildTejasFamily).
+
+## 2026-08-02 shared-build side effect (abrams post-warp round)
+The tejas-trio re-tune (see m1a1.md) moved this shared build: tusk min
+0 -> 14.2 (hull 29 / whole 14.2 / turret 40.7 / stations 45.1), but dims
+read 97 -> 83: on TUSK's slat-stretched frame phase the heightM p95 lands
+on the 2.52 M240-shield column (4th tallest there). Chimera cert unchanged;
+a tusk-owned round should revisit the 3-column spike allocation under its
+own frame.
