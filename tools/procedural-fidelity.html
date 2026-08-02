@@ -61,6 +61,43 @@ const LOCAL_REFERENCE_OVERRIDES = {
       scaleToOverall:true,
     },
   },
+  // ---- GRADUATE-REFERENCE OVERRIDES (2026-08-02): graduates retire their
+  // MODEL_SOURCE at graduation, but their GLBs stay on disk as measurement
+  // oracles. These entries keep the gate/board loadable for graduates —
+  // without them a gate run writes a FALSE 0 row (leo2a6 incident,
+  // repaired). Configs are the retired registrations verbatim.
+  leo2a6: {
+    source:'glb',
+    glb:{ path:'/models/tanks/leo2a6_buh.glb',
+      turretNode:'^turret$', gunNode:'^gun$', autoPivot:true,
+      yawOffset:Math.PI },
+  },
+  m1a2_tejas: {
+    source:'glb',
+    glb:{ path:'/models/tanks/m1a2_tejas.glb',
+      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
+      yawOffset:-Math.PI/2, paintUntextured:true, heroTex:true },
+  },
+  m1a1: {
+    source:'glb',
+    glb:{ path:'/models/tanks/m1a2_tejas.glb',
+      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
+      yawOffset:-Math.PI/2, paintUntextured:true, heroTex:true },
+  },
+  m1a1ha: {
+    source:'glb',
+    glb:{ path:'/models/tanks/m1a2_tejas.glb',
+      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
+      yawOffset:-Math.PI/2, paintUntextured:true, heroTex:true },
+  },
+  isu122s: {
+    source:'glb',
+    glb:{ path:'/models/tanks/community/recovered/isu122s.glb',
+      fixedMount:true, paintUntextured:true },
+  },
+  // m60a1 / m60a3 / kv2 (pre-handoff graduates): retired configs not yet
+  // recovered from history — do NOT gate them until entries land here
+  // (hash-freeze discipline covers them; tmp-hashgeo only).
 };
 const source = LOCAL_REFERENCE_OVERRIDES[id] || MODEL_SOURCE[id];
 const sourceIds = ALL_TANK_IDS.filter((tankId) => MODEL_SOURCE[tankId]?.source === 'glb');
