@@ -780,3 +780,8 @@ ratio +0.05-0.07 glacis-sliver class; strip hue medpx +6.7 warm (was
 +3.8 — same quantization family, sat/lum at parity); under-gear daylight
 183 px at one extreme low-oblique cam; prior classes (louver softness
 bound, loader-blotch ring, -3.81 tail, PERI 4th column) stand.
+
+## Shaded-parity r6 (2026-08-02) — FAIL 8.5; EIGHT views at 9.0, rear structural only
+Work order: shaded-parity-leo2a6-r6.md — grille bank to full extent
+(~13 rows; sample the BANK), turret rear solid wall + 2 panels,
+behind-wheel sponson extension. All geometry: re-gate each.
