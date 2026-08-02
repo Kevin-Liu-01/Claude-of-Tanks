@@ -254,3 +254,46 @@ line, t90a treatment); turret_side 60.9 residuals are the drooped-tube
 class cols at +2.8..+3.7 (same certified-candidate as t64bv1 — ask the
 owner); plan_hull x +-1.2..1.36 rear -2.86 vs my -3.35 (skirt tail; pull
 skirt z0 or taper); front x +-1.7 skirt-vs-cassette split still open.
+
+## VERTEX ROUND r8 (2026-08-02, r9 family round): 41.7 -> 41.8 min; turret 48 -> 63.2, stations 63.5 -> 76.9
+
+Gate: hull 51.2 -> 52.1 / whole 41.7 -> 41.8 / turret 48.0 -> 63.2 /
+stations 63.5 -> 76.9 / dims 100 / floaters 100. Sub-rows: side 69-70,
+plan 76-78 (was ~54!), FRONT 41.8/52.1 is now the sole binder.
+What landed:
+- WIDE-COURSE COLUMN FIX (plan monsters 2.1/1.2): the course moved OUT to
+  x 1.885/1.855 (split y: lower 0.59..0.94, upper 0.94..1.31, 4 panels
+  z c -2.55/-2.08/-1.61/-1.14) — the 1.822 seat missed the +-1.86-1.91
+  plan columns entirely; the old -0.30 anchor panel and the z +0.27 width
+  stud were the only content there (both read z-forward where the ref is
+  rear-only). Width stud now hides INSIDE the course band (z -1.60).
+- WEDGE FRONT: polyTurret outline widened — ref welded front is 1.80@|x|
+  1.02 / 1.72@1.13 / 1.37@1.48 / 1.15@1.69 (old 0.62/0.14 taper cut the
+  cheeks 0.6-0.9 short). Cheek stow panels shrunk to the ref's 0.33-deep
+  blobs at z world 0.70..1.12 (their 1.10-deep x-1.898 reach owned the
+  plan +-1.9 cols).
+- BUSTLE UNDERSIDE rises rearward (ref 1.654@-2.16 -> 1.762@-2.49):
+  3-step boxes 1.375/1.60/1.72 bottoms; roof band re-seated: the ref
+  carries 2.17-2.25 at z world -0.43..+0.44 (NOT -0.6..-1.5): 2.25 LEFT /
+  2.17 RIGHT flank boxes; rear 2.24 z-spike moved to x -0.43..-0.52 and
+  the -1.39 spike col re-seated.
+- REAR TAIL re-decode (r6 inverted): the -3.43 run is CENTER-carried
+  (ref -3.428 at +-0.37..0.83) stepping -3.265@1.04 / -3.02@1.34-1.45 /
+  -2.78@1.8; raked rack A/B (bottoms 0.76@-3.03 -> 1.00@-3.25) + the
+  1.11..1.19 center sliver bar at -3.43 (rack B = hullLengthM body anchor;
+  deleting the old bars had cost overall 9.63 -> 9.48).
+- Tube cx +0.024 on the outer segs (muzzle-window columns), r 0.115/0.112.
+- Flaps raised to the ref's 0.94..1.36 band; idler 2.90/y.72/r.24 (wrap
+  bottom 0.60@3.15 = ref 0.596); stowage trimmed z -2.91..-2.53 top 1.49.
+REVERTED THIS ROUND (do not re-try without a mask dump): (a) full-height
+0.44..1.76 flank WALL at +-1.85 — ref side_hull tops at those z are the
+1.44 deck line; the front_hull 1.73-1.83@+-1.8 reading it targeted remains
+UNEXPLAINED (hull 52.1 -> 36.5, reverted to the split course); (b) trackW
+0.46 (0.50 restored — front bottoms worsened).
+NEXT (front rows 41.8/52.1 bind everything): dump the ref FRONT-view hull
+mask as PNG and settle where its 1.73-1.83 band at |x| 1.67..1.86 lives
+in z (suspect turret-parity content in the hull node, like the b3m plate
+class); front +-1.03-1.13 bottoms (ref 0.33-0.478 vs my track face);
+side_whole -1.3 col 2.25-vs-2.06 whole/turret row contradiction (tool
+frame question — decode before authoring); muzzle-tip col reads NONE in
+the digest despite verts at 6.20 (raster question, coverPct 1.12).

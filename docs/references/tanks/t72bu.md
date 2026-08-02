@@ -284,3 +284,44 @@ side_hull ceiling ~55-70; whole similar via the same columns. Dims stay
 turret side rows (dome rear slope 1.92 vs 1.85), front_whole center
 columns (dome 1.98 vs ref 1.75 mantlet-slot dip — lathe cannot dip;
 consider a clipped-crown dome variant).
+
+## VERTEX ROUND r4 (2026-08-02, r9 family round): 39.4 -> 52.8
+
+Gate: hull 39.4 -> 52.8 / whole 51.8 -> 59.2 / turret 64.8 -> 68.4 /
+stations 85.9 -> 81.8 / dims 100 / floaters 100 (min +13.4). Fresh
+workorder decode; what moved it:
+- LIP ASYMMETRY (the plan -1.87 monster, err 2.03): only the ref's RIGHT
+  skirt crosses the outer plan column — ruSkirtBand gained lipXL; left lip
+  1.778, right 1.807, panels x 1.786. The left column now reads the K-5
+  course + prong union (0.83..3.40 vs ref 0.82..3.29).
+- BOW: the K-5 center glacis TONGUE deleted (ref plan center front is
+  2.807 with NOTHING beyond — the old "2.8..3.3 center kit" was a flipped-
+  digest artifact); hooks pushed to z 3.09-3.17 (ref 3.156@0.9); inner
+  prong step (x 1.11..1.41, front 3.29).
+- TAIL: inner tabs re-seated x 0.13..1.10 (ref -3.43 run at 0.15..0.5 +
+  center notch -3.055 at |x|<0.1; the +-1.22 cols read the -3.05 plate).
+- CROWN RE-SEAT (front decode): ref front is 1.85-1.88 across +-0.2..0.55;
+  the tall cluster (2.222) lives LEFT x -1.04..-1.25 over z +0.23..+1.16.
+  Cupola moved there on a pedestal + 2.23 hatch-mass box; Agat lowered to
+  1.87; center crown stays the 1.98 low dome. The r9a trim of the forward
+  sight rail to z<=1.22 was WRONG — ref 2.2 side band runs +0.78..+1.91
+  (restored full length; cost 5 cols x 0.28 for one gate round).
+- K-5 wedges: k5Y 0.26 k5H 0.30 k5Len 0.95 (corners hung 1.21 vs ref
+  mantlet floor 1.452; tips poked plan z 1.68 vs ref 1.38).
+- Shtora eyes on the MANTLET PLANE: ruShtora gained p.eyeZ (local 1.62 ->
+  world 1.82, plan front 1.93 = ref 1.89-1.92) on skin brackets.
+- Basket ASYMMETRIC: right stub to x 0.87 (rear -1.495 at +0.82 col),
+  left ends 0.74; rear-flank deck bins at +-1.0..1.24 carry the ref's
+  -0.9 flank rear; pano spike z-trimmed to 1 col (-0.886 col reads 2.151).
+- Tube cx (b3m law): evac c +0.006, tip segs r 0.115/0.112 c +0.024 (ref
+  RIGHT edge runs to z 5.93, LEFT dies at 4.55).
+- Gear-fade softening: sprocket -2.62/y.84/r.24, idler 2.92/y.70/r.24.
+CERTIFIED RESIDUAL unchanged: side_hull 52.8 is still the print's
+missing rear/front track (ref bottoms 0.32..1.05 over -2.4..-3.3 where
+honest wheels run 0.06-0.4; wheel0/5 arcs themselves poke below the ref's
+faded line — full match impossible without deleting end wheels). Est
+ceiling ~55-70 stands. Board r9 reviewed: orientation correct, top mask
+97.8, cupola cluster + mantlet Shtora read, articulation clean, no
+floaters. NEXT: front_whole 59.2 (crown-zone leftovers at +-0.2..0.6 —
+re-digest; Agat/NSVT band), stations 81.8 (slice 0 tail class), plan 92 ✓
+nearly done.

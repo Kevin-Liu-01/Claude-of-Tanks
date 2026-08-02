@@ -191,3 +191,92 @@ Fresh digest banked from tools/vertex-workorder.mjs (world coords, dAlong
   at 4.01 where the ref's reads to 6.11 (muzzle): tube/evac radii vs the
   0.107/0.16 column boundaries (t72b3m gun law; check which cols its
   fatter sleeve owns before touching r).
+
+## VERTEX ROUND r4-r5 (2026-08-02, r9 family round, in progress): 39.7 -> 41.5
+
+Stashed r3 workorder APPLIED + two fresh digests. Gate: hull 59.4 -> 62.4 /
+whole 39.7 -> 41.5 / turret 49.7 -> 66.6(!!) / stations 63.4 -> 81.5(!!) /
+dims 100 / floaters 100. What moved it:
+- REAR NOTCH decode: loft rear pulled -3.43 -> -2.88 full width (ref plate
+  -2.86 at center |x|<0.15 AND outboard |x|>1.2); the -3.40..-3.43 zone is
+  stack/rack-carried at |x| 0.2..1.1 ONLY. Rear kit: humps x 0.20..1.10
+  top 1.735 z -2.94..-3.34 + roof bridge 1.70 plates (center kept clear),
+  tail step 1.50..1.64 to -3.43, SPLIT tail lip 1.425..1.555 x +-0.17..0.65
+  (center notch!), rack towers x +-0.16..0.42 band 1.17..1.47 to -3.42
+  (BODY -> hullLengthM keeps -3.43..+3.43; costs dAlong +0.053 because the
+  REF's own -3.4 tail cols are sub-body — accepted, dims sovereign).
+- REF REAR PROFILE (banked): side tops 1.451@-2.61 -> 1.558@-2.72 ->
+  1.639@-2.83 -> 1.746@-2.93 plateau, falling 1.743@-3.13 -> 1.609@-3.45;
+  bottoms 0.886@-2.93 then 1.18..1.29 to the tail (overhang floor — NOT
+  deep towers); front-hull is FLAT 1.716 across |x|<1.15 (NO center trough
+  in silhouette; the r2 "trough 1.555" was a flipped-digest artifact).
+- BOW NOTCH: loft front -> 3.10; ref plan front RAKES 3.16@0.68 ->
+  3.33@0.9 -> 3.44@1.2..1.46 -> 3.40@1.78: 3-step corner boxes + outer
+  fender box, band 0.98..1.22 (body -> front dims column). Fender bins
+  x +-1.53..1.67 top 1.45 (ref front 1.454-1.464; hides under deck line in
+  side). Stowage boxes DELETED (ref deck is the clean 1.477 line).
+- ERAWA WALL rework (turret): tiles now a near-vertical 3-row wall, plan
+  front 1.46@center staircase to 1.05@1.14 (per-arc dist table in
+  eraRuCheeks 'erawa'), rows y .08/.24/.40, upper rows lean back (side stays
+  inside the ref 1.42 line above y 1.72), flanks 2-row (ref 1.817@1.075).
+  SAVAN housing x -0.36..-0.26 z_world 0.94..1.37 top 2.1825 (heightM p95
+  anchor; ref side band 2.122, front 2.13) + met mast moved to the ref's
+  single spike col (x -0.26, z -0.88, top 2.495 = ref 2.498). Basket
+  rebuilt as thin top-rail staircase 1.725..1.785 (ref band 1.746..1.8)
+  with plan rear -1.36 center -> -0.23@1.36, LEFT deeper than RIGHT (print
+  asymmetry); OBRA corner sensors on dome brackets at +-1.60..1.71 top
+  1.745 (ref front 1.747 at the -1.63..-1.67 cols; killed the -1.652
+  ONLY-REF). Old full-width basket slab + crossbar mast DELETED.
+- GUN: 2A46MS re-contoured: root r .118 cx +.012 (ref tube RIGHT edge
+  owns +0.175 col to 4.47-4.50 via evac .126 + collar .120 there), slim
+  mid/tip .100/.098 cx -.006 keep the -0.148 col to the 6.108 muzzle like
+  the ref's LEFT edge; axis 1.598 (gunG y .138); saddle roll .16, cradle
+  chin DELETED (hung 1.02 where ref mantlet floor is 1.477).
+- Gear: trackW 0.58 (ref ground tell: LEFT face 1.67 reads the -1.671 col;
+  RIGHT col +1.681 is skirt-only 0.818..1.403 — print asymmetry), sprocket
+  -2.36/y.84/r.245, idler 2.70/y.68/r.23, skirts 0.82..1.23 z0 -2.62,
+  ERAWA skirt plates 0.79..1.23; hatch to z 1.72 (was poking 1.51 over the
+  2.3 glacis cols), periscopes periY 1.42; glacis kit hugged (y 1.20).
+NEXT (whole 41.5 is the min): fresh side/plan/front_whole digest queued —
+expect muzzle-window and turret-band columns; then board + top-down review.
+
+## r9 LANDING (2026-08-02): 39.7 -> 56.5 — dims 100 / floaters 100
+
+Final row: hull 62.6 / whole 56.5 / turret 70.0 / stations 76.7 / dims 100
+/ floaters 100 (min 41.5 -> 56.5 after the mast-float + heightM fixes).
+Round-3 closers on top of the r4-r5 section above:
+- DOME SQUASH: ref crown is FLAT ~1.949 at front-center with the shoulder
+  falling to 1.807@|x|1.065 — rings now end [0.66,0.462],[0.02,0.478]
+  (apex 1.938; the old 2.18 apex was 0.18-0.22 proud across six center
+  cols, and ring [1.18,0.50] pushed a 1.96 flank out to x 1.18 — REMEMBER:
+  a lathe ring [r,y] spans x +-r, the whatsat verts only show azimuth
+  samples).
+- heightM p95 law (banked): heightM = p95 of side_whole BODY-column tops
+  (4th-tallest col of ~64). After the squash the SAVAN housing must carry
+  it: top pinned at published 2.19, z world 0.90..1.40 (5 side cols); the
+  slimmed 1-col mast (2.495) is excluded by p95 as designed. dims 86.9 ->
+  100.
+- MAST FLOAT (law): mast base y 0.50 sat 0.08 above the squashed dome skin
+  — frontRight island (dilated ~500 px > 400) -> floaters 0. Seat bases
+  INTO the skin after any dome re-ring (base 0.40 now).
+- Rear kit round-3: humps deepened to z -3.39 (plan ref -3.401 at
+  |x| 1.0-1.14), center raked plate stack 1.50@-2.60 / 1.56@-2.74 /
+  1.69@-2.845 ends at the -2.892 plan notch (side ramp AND notch agree);
+  rack towers band 1.17..1.47 (ref overhang floor 1.18..1.29 — NOT deep
+  towers; overlap the hump bottoms or they float).
+- wheel0 -> -1.90 (explicit wheelZs array; ref arc bottom 0.21@-2.165, its
+  belt flat dies at -2.28) + sprocket -2.46/y.80/r.25 (wrap bottoms 0.54-
+  0.64 = ref 0.51-0.62); front flaps to z 3.16 (ref 0.805 bottom @3.19).
+- OBRA sensors narrowed to the single 1.641 front col (1.745 = ref 1.747);
+  bracket extended under them; mast slimmed to 1 col at -0.257 (2.495 =
+  ref 2.504; at r 0.020 it spilled into 3 cols x 0.25).
+- Tube: mid/tip r 0.105 flat c -0.008 (the 0.100 12-gon flat was SUB-PIXEL
+  in the -0.148 plan col: it read only to the 4.11 evac end, err 0.98 ->
+  ~0.01; muzzle rings 0.108). PLAN-COLUMN RASTER LAW: coverage needs >=1px
+  past the col edge at the polygon FLAT radius (r*cos(pi/seg)), not the
+  circumradius.
+NEXT (whole 56.5 min): side_whole rear-ramp residuals -2.2..-2.6 (belt
+flat-end class, certified; partial), stations 76.7 (i-slice tops at the
+new stack — re-check), turret_plan front staircase cols (tile arc vs ref
+1.3@0.93), housing 2.19 vs ref band 2.122 (5 side cols x 0.07 — the dims
+trade, documented). Board review pending this round.
