@@ -16,7 +16,7 @@ import { MODEL_SOURCE } from '../vehicles/specs.js';
 // the quarantined GLB registrations AND delete spec.community, so neither is
 // a public-safe "sourced" signal. The recovered waves export their sourced-id
 // rosters explicitly; the union keeps catalog chips identical local vs public.
-import { USERDROP4_TANK_IDS } from '../vehicles/userdrops4.js';
+import { USERDROP4_SOURCED_IDS } from '../vehicles/userdrops4.js';
 import { USERDROP5_SOURCED_IDS } from '../vehicles/userdrops5.js';
 import { USERDROP6_SOURCED_IDS } from '../vehicles/userdrops6.js';
 import { USERDROP7_SOURCED_IDS } from '../vehicles/userdrops7.js';
@@ -1396,7 +1396,7 @@ export function createGarage(opts) {
   // Classifier hoisted (r5-2): the carousel filter chips, arrow stepping and
   // group cross-links all key off it.
   const SOURCED_INTENT = new Set([
-    ...USERDROP4_TANK_IDS, ...USERDROP5_SOURCED_IDS, ...USERDROP6_SOURCED_IDS,
+    ...USERDROP4_SOURCED_IDS, ...USERDROP5_SOURCED_IDS, ...USERDROP6_SOURCED_IDS,
     ...USERDROP7_SOURCED_IDS,
   ]);
   const isSourced = (s) =>

@@ -61,14 +61,9 @@ for (const spec of [tejas, abramsx]) {
 }
 
 if (ALLOW_LOCAL_RECOVERED_MODELS) {
-  MODEL_SOURCE.m1a2_tejas = {
-    source: 'glb',
-    glb: {
-      path: '/models/tanks/m1a2_tejas.glb',
-      turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
-      yawOffset: -Math.PI / 2, paintUntextured: true, heroTex: true,
-    },
-  };
+  // m1a2_tejas: DUAL-GATE GRADUATE (2026-08-02) — procedural ships
+  // everywhere (geo 90.5 gatePassed, critic 9.0 all nine views, r5).
+  // Freeze hash b432d89d. The GLB stays as the trio's measurement oracle.
 
   MODEL_SOURCE.abramsx = {
     source: 'glb',
@@ -83,16 +78,19 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // Abrams base the recovered roster was missing. Use it for the local M1A1
   // and TUSK variants as well; public builds retain their redistributable
   // CC-BY visuals because this override is inside the quarantine gate.
-  for (const id of ['m1a1', 'm1a2_tusk']) {
-    MODEL_SOURCE[id] = {
-      source: 'glb',
-      glb: {
-        path: '/models/tanks/m1a2_tejas.glb',
-        turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
-        yawOffset: -Math.PI / 2, paintUntextured: true, heroTex: true,
-      },
-    };
-  }
+  // m1a1: DUAL-GATE GRADUATE (2026-08-02, freeze hash 88a4a978) — no
+  // MODEL_SOURCE; the procedural build ships everywhere. m1a2_tusk keeps
+  // the tejas alias (chimera oracle-defect triage class, not graduated).
+  MODEL_SOURCE.m1a2_tusk = {
+    source: 'glb',
+    glb: {
+      path: '/models/tanks/m1a2_tejas.glb',
+      turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+      yawOffset: -Math.PI / 2, paintUntextured: true, heroTex: true,
+    },
+  };
 }
 
 export const USERDROP4_TANK_IDS = ['m1a2_tejas', 'abramsx'];
+// Dual-gate graduates leave the sourced-intent roster (CUSTOM chip).
+export const USERDROP4_SOURCED_IDS = USERDROP4_TANK_IDS.filter((id) => id !== 'm1a2_tejas');
