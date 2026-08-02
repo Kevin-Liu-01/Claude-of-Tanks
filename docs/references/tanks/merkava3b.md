@@ -630,3 +630,112 @@ holder) is gone; weakest remaining read is dead-rear canvas amplitude.
 Work order: shaded-parity-merkava3bc-r4.md — brown-flap rear corners,
 return-run lift to ~50 (r4 mute hit only teeth), sagged vane, roofline
 clutter breaks, MG yaw, tower span read.
+
+## VISUAL round r5 (2026-08-02, merkava agent) — all 8 r4 items, SAMPLED
+Gate after the round, TWO consecutive runs bit-identical: **hull 90.6 /
+whole 90.3 / turret 90.5 / stations 93.3 / dims 100 / floaters 100 (min
+90.3, PASS x2)**. Siblings bit-identical (1b 62.5 / 2b 39.9 / 2d 34.9 /
+3d 67.8 / 4b 34.6); npm test 166/166. Turret +0.1, stations +0.4 vs r4;
+whole -0.3 (one parked column, below). Probe-driven round: full 384
+world-curve diff (tools/tmp-merkava-probe.mjs) turned four work-order
+items into gate-POSITIVE fixes.
+Per-item status (RENDERED samples, tools/tmp-merkava-tonesample.py):
+1. REAR CORNERS — FIXED + SAMPLED: three tail flaps widened to broad
+   brown curtains (w 0.58-0.62, span x 1.13..1.75 — plan-shadowed by the
+   rack fill/wall which carries those columns to -4.39) + NEW 4th flap at
+   z -3.90 bot 0.41 (= the ref's own 0.403 side-bot line). Flap block
+   renders (71,61,48) lum 62-67 vs ref (69,63,52) lum 60-66. The black
+   track stacks (26-35) are GONE; residual: the sub-flap wrap strip reads
+   36 vs ref 63 (shaded rear track faces, ~25 px).
+2. TRACK RETURN RUN — FIXED + SAMPLED on the view-left run rect: proc
+   med 56.1 / mean 51.1 vs ref med 54.5 / mean 54.8. MECHANICS (the r4
+   miss explained): the "run" rect is FOUR materials — trackL/R band
+   (emissive-floored, map dimmed to 0x232323 so lit/shaded faces stop
+   splitting +20 srgb), the LINK-PAD INSTANCE CLONES (buildRunningGear
+   clones padMat 0x171614 / innerMat 0x27251f at build time — retoning
+   mats.trackLink NEVER reaches them; refTone now lifts the clones by
+   color-match traverse), the see-through slot between the lower-run top
+   (0.145) and the wheel line onto shaded far hull ((7,7,5) — filled by a
+   hullDark wall at gearOut-0.008, y 0.145..0.445, z 1.86..-3.48,
+   silhouette-free), and the rubber tire floor. sRGB LAW: emissive hex is
+   NOT the rendered value (0x342c1e rendered 75); iterate BY SAMPLE.
+3. VANE REAL SAG — FIXED: catenary helper (4-segment arcs, mid segments
+   lower) carries two cloth hems + a pale fold hem; the hanger bar sags
+   between four hang lugs; the 16 chain rods sway (alternating tilt
+   0.045+0.018 jitter, length jitter) and the ball hem SCALLOPS (deepest
+   ball bottoms tv.bot+0.005, crests +0.09 — never below the band floor).
+   The flat full-length rail is REPLACED by two sloped slabs hugging the
+   falling top line — gate-POSITIVE ~20 side cols that read +0.03..+0.08
+   (the rail held 2.33 flat vs ref 2.30->2.25) now match; rear top corner
+   dropped to top-0.085 (ref tail rows 2.249). 3D keeps the straight rail
+   byte-identical via the chainFringe guard.
+4. ROOFLINE/WALL BREAKS — FIXED, all inside measured ref columns: saddle
+   given its real mid dip (2.405/2.385/2.41 — was flat 2.41 over eight
+   2.38-2.40 ref cols); plinth re-split: LID 2.649 (= ref s6 top) with
+   the STOWED MG ROD at 2.6625 riding it (= ref s5 top 2.663 — the ref's
+   2.66 band read IS lid+rod); plinth z1 to the ref's -1.885 band end,
+   ending in the ref's own near-vertical step (plateau apron deleted);
+   left step z0 -0.585 (ref band starts -0.59; its -0.594/-0.62 cols
+   were 0.10-0.13 under); crest periscope hood at the ref's 2.557 cols
+   (z 0.48..0.60); crest z1 -0.065 (the -0.082 col is ref saddle 2.403);
+   whip2 spring can at the ref's -3.312/2.583 col; can2 re-seated on the
+   ref's -3.594/2.531 col (old -3.64/2.58 lit three 2.35-2.38-band
+   cols); mid-sleeve junction clamp at the ref's 2.12 bump (z 2.23-2.27,
+   r 0.163 inside the mantlet's plan half-width) + sleeveTo 4.30 (the
+   4.20-4.40 side_whole cols now ZERO); wall clutter: flank junction
+   boxes + sagging cable runs (<=1.281, inside the 1.3225 law), bustle
+   side straps/pouch/cable (plan-backed z's only); loader-MG receiver
+   DROPPED (loaderDrop 0.24 — its 2.565 crown owned eleven +0.05 cols
+   over the ref's 2.506-2.53 band) and the ringAsm hatch plate pulled
+   from +0.018 to +0.008 (same 11-col band, both rings, both tanks).
+5. MG LINES — FIXED: cupola MG rod raised to 2.629 (rod {dy,dz,len}
+   opts) — silhouettes 3 cm proud of the ring-top clutter in the RIGHT
+   elevation for 0.54 m, still under the 2.66 plinth in the gate's
+   max-over-x side mask (z span tucked behind the plinth's own run);
+   LEFT elevation carried by the stowed plinth rod (dark 0.42 m line at
+   the band's top edge + receiver/bipod/muzzle hardware). s5/s7 window
+   laws held: rod top 2.6625 = s5 target; receiver INSIDE the plinth
+   z-span (first cut at -1.86 hung past -1.885 and lit two 2.53-band
+   cols at 2.685 — moved to -1.80).
+6. TOWER SPAN — FIXED + MEASURED (pale-column profile at the band rows):
+   dark sleeves swallow the outer thirds of both towers (right box to
+   1.315 <= the 1.3225 band-wall law, front 4 mm proud at -0.626 —
+   plan-interior since the cheek owns those forward extremes; left to
+   the proven -0.944 bound + dark plinth-wall band at -0.877). Bright
+   tower outer-edge metric: 69-71% of half-width -> 56-58% (ref 52-56%).
+7. (3C item — see its packet.)
+8. TOP BUSTLE — FIXED: six fold-seam bars lying in the lump VALLEYS at
+   yawed angles (tops under every local crown — zero silhouette);
+   knuckle-dot rows on the vane root (7 dots, half-embedded — ALSO
+   closes the ref's own 2.35-2.38 stubble cols at z -3.62..-3.67 that
+   our bare 2.33 slab under-read) and along the basket rear rail (11
+   dots at topRear+0.010); outer basket combs got length/tilt jitter.
+   Tarp rows re-laid to the probe bands: the ref DIPS to 2.455 over
+   -2.67..-2.80 then RISES to 2.48 over -2.88..-3.03 (r4 had it
+   backwards); bustle deck dips 2.448/2.443 under the raised rows;
+   rear-slope lumps up to 2.508/2.505 (ref 2.506); kit bundle trimmed to
+   the certified -2.45..-2.53 hump band (its 0.14 depth lit -2.543/
+   -2.569 at +0.10).
+GATE INCIDENTS + LAWS (r5):
+- CLONE-MATERIAL LAW: buildRunningGear's link pads/inner chain are
+  per-build material CLONES — mats.trackLink retones never reach them;
+  lift by color-match traverse (0x171614/0x27251f).
+- 384-PROBE QUANT LAW: ±0.026 probe rows are pixel-row straddle, not
+  surface error (the "plinth 2.659 vs 2.634 x20 cols" read was a 5 mm
+  row-boundary effect); only chase >=0.05 deltas, author surfaces to
+  ref SURFACE values.
+- Ring furniture: ringAsm's +0.018 hatch plate = eleven +0.05 side cols
+  on BOTH tanks (ref rear-roof band 2.50-2.52).
+- PARKED: one 3B side_whole col (at 0.57, world z -0.56, procTop 2.60,
+  errM 0.091, ~-0.15 pts) — stable across two runs but CLEAN in the 384
+  probe at the same z; no authored surface sits within 13 mm of that
+  column; unidentified 1024-only alias, left for the next probe round.
+Honest residuals: sub-flap wrap strip 36 vs ref 63 (rear view only);
+band lit bottom-edge strip ~67-70 vs ref 55 (5 px; arch-band 60 vs the r4 ref 59 target holds); vane dressing
+still denser-dotted than the ref's canvas mass at 2x; the -3.34/-3.55
+whip-tip aliasing pair and the ringTub -2.26 interp seam stand.
+Predicted per-view (r4 critic: 7.5 min, rears the floor): front 8.5 ·
+frontleft 8.5 · left 8.5 · rearleft 8.5 · rear 8.5 · rearright 8.5 ·
+right 8.5 · frontright 8.5 · top 8.5 — the rear-corner value flip (the
+loudest r4 defect) is gone and the gear band now samples inside the
+ref's own tone family.

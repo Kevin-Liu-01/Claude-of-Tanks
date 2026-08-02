@@ -290,3 +290,51 @@ tarp miss): front 8.5 · frontleft 8.5 · left 8.0-8.5 · rearleft 8.0-8.5
 ## Shaded-parity r4 (2026-08-02) — FAIL 7.5 (up from 7.0; "different vehicle" gone)
 Shared work order r4 doc. 3C extras: pot crown to ~1.5x width (certified
 column check), dead-rear fold shading language.
+
+## VISUAL round r5 (2026-08-02, merkava agent) — all 8 r4 items, SAMPLED
+Gate after the round, TWO consecutive runs bit-identical: **hull 91.4 /
+whole 90.7 / turret 90.8 / stations 92.6 / dims 100 / floaters 100 (min
+90.7, PASS x2 — best 3C min yet; turret 90.2 -> 90.8)**. Siblings
+bit-identical; npm test 166/166. Shared fix list + ALL r5 laws (clone
+materials, sRGB emissive, 384-quant, ring furniture, receiver/station):
+see merkava3b.md "VISUAL round r5". SAMPLED numbers (3C pairs):
+- Run rect (view-left): proc med 56.1 / mean 53.2 vs ref 54.6 / 55.7.
+- Rear corner flap block: proc (71,61,48) lum 59-62 vs ref (68,62,52)
+  lum 63-67; black stacks gone (residual sub-flap strip 36 vs 63).
+3C-SPECIFIC this round:
+- POT SAUCER (work-order item 7): box-stack crown — saucer plate 0.31
+  wide x 0.020 (top 2.512) + mid tier 0.22 (2.564) + crown knob 0.13
+  (2.5895 = the certified 2.59 @ -2.35) + dark rim lines; the REAR read
+  widens 0.21 -> 0.31 (~1.5x). The round r 0.115 dome was DELETED: its
+  surface lit the -2.415 column at 2.56 vs ref 2.538, and any round
+  saucer of the needed width crosses the -2.402 column edge — the box
+  stack keeps the z-span certified (-2.28..-2.40); the pot roofBox z1
+  trimmed to -2.398 for the same column.
+- Kasag z-trims off the probe: lower tier -2.458..-2.628 (d 0.17), hump
+  bundle -2.532..-2.632 (d 0.10, h 0.118 so the crown lip 2.6487 stays
+  under the 2.649 s3 target), canister ends -2.645 — the old tier/hump
+  faces lit -2.517/-2.646/-2.671 at +0.08..+0.15.
+- Band-end STEP: plinth z1 -1.835 + step roofBox { -0.90..-0.60,
+  z -1.838..-1.912, top 2.585 } = the ref's own 2.589 shoulder columns,
+  then the vertical fall to its 2.538 plateau (apron deleted; probe cols
+  -1.851..-2.235 now EQUAL ref).
+- Left band box z0 -0.61 (ref band starts -0.62; its -0.594 col is
+  saddle 2.41 — the 3B-style -0.585 start would overshoot 3C).
+- Stowed rod at x -0.88 on ITS plinth (top 2.6625 vs its 2.65 lid, ref
+  flicker 2.64-2.666 at -1.36..-1.78); receiver seated -1.755 (inside
+  z1 -1.835); crest hood 2.585-top at z 0.52..0.60 + rear crest bumplet
+  2.576 at 0.055..0.115 (s8 target 2.581 — the first 2.585 cut read
+  +0.46% on s8).
+- Whip2 spring can { 1.02, -3.319, top 2.607 } (ref 2.615 col); can2 to
+  -3.601 top 2.531 (ref -3.594 col 2.538).
+- Tarp rows: fwd -2.72/-2.78 down to 2.462/2.458 (ref 2.435-2.461), the
+  -3.00 lump up to 2.481 (ref 2.486 @ -3.03), ONE rear-slope lump at
+  -2.60 (2.496) — the old -2.67 lump topped the ref's 2.435 col.
+Honest residuals: as 3B (sub-flap strip, band bottom edge, vane dot
+density) plus the s4 station 1.35% top read (receiver/window boundary
+quantization at 1024 — 384 raw reads +0.011) and the pre-existing
+whip-tip aliasing pair.
+Predicted per-view (r4 critic: 7.5 min): front 8.5 · frontleft 8.5 ·
+left 8.5 · rearleft 8.5 · rear 8.5 · rearright 8.5 · right 8.5 ·
+frontright 8.5 · top 8.5 — the dead-rear now carries sagged-curtain
+language + saucer mass + matched gear tone.
