@@ -807,6 +807,12 @@ function wedgeTurretV3(P, T) {
   P.add('turretDetail', box(2 * RK.x, 0.045, 0.045), 0, RK.top, RK.z1 + 0.03);
   P.add('turretDetail', box(2 * RK.x, 0.045, 0.045), 0, RK.bot, RK.z1);
   for (let k = 0; k <= 10; k++) {
+    // a6 r7 OPT-IN RK.wall (siblings byte-identical): the ref bustle rear
+    // reads a mostly-SOLID wall — the 9 inner fence verticals were the
+    // "full-width cell lattice" read over the a6's solid backing panel.
+    // Only the two corner posts remain (frame read; they also keep the
+    // rear-corner x +-1.0..1.03 sliver filled between the rails).
+    if (RK.wall && k > 0 && k < 10) continue;
     P.add('turretDetail', box(0.03, RK.top - RK.bot, 0.03), -RK.x + 0.015 + k * ((2 * RK.x - 0.03) / 10), (RK.top + RK.bot) / 2, RK.z1 + 0.015);
   }
   for (const s of [-1, 1]) {
@@ -1218,12 +1224,68 @@ function buildLeo2A6(P) {
   // tone; wood on this build dresses ONLY the jack block (re-bucketed dark
   // via jackDark), so the per-build wood material becomes the a6's pale
   // grille-slat tone (retoned in the tone family below).
-  P.add('hullDark', box(2.86, 0.34, 0.018), 0, 1.545, -3.630);
-  P.add('hullShadow', box(2.80, 0.34, 0.006), 0, 1.545, -3.6365);
-  for (let k = 0; k < 7; k++) {
+  // r7 #1 BANK EXTENT (critic r6: sample the BANK, not the slat — the ref
+  // grille is ~2x our band; ~13 rows at the landed 0.048 pitch fill the
+  // whole rear face, no blank apron). Two structural classes:
+  // - IN-BAND rows (y >= 1.375): the certified deep-relief planes exactly
+  //   as r6 landed them (field -3.630 / shadow -3.6365 / slats -3.639,
+  //   tilt 0.35) — 7 rows -> 8, field/shadow tops 1.715 -> 1.760 (< 1.771
+  //   band ceiling; top slat edge 1.7439). Field/shadow BOTTOM strip
+  //   (1.375..1.410) is split around the new fan housings so the bold fan
+  //   tops are not flat-clipped at the band line by the deeper field.
+  // - BELOW-BAND rows (1.13..1.375): the -3.627 side-column law caps depth
+  //   at z >= -3.6255 (<= 5.5 mm of relief), which cannot carry the 0.35
+  //   tilt (a 0.028 plank eats 9.6 mm at 0.35). Shallow class instead:
+  //   near-black shadow plane at -3.622, slats tilt 0.10 with crowns at
+  //   -3.6255 exactly (full 28 mm face visible: crown-to-shadow-face gap
+  //   3.0 mm >= h*sin(0.10) = 2.8 mm). The lower rows render a few lum
+  //   dimmer than the 0.35 rows (tilt IS the rear-face light mechanism) —
+  //   the ref's own bottom rows read dimmer the same way (col-260 probe:
+  //   ref lower maxima 90-100 vs upper 100-108). Rows are SEGMENTED around
+  //   the fan housings, taillight clusters and the +-0.32 bars (no
+  //   z-fights — everything below band shares the 5.5 mm slot).
+  P.add('hullDark', box(2.86, 0.350, 0.018), 0, 1.585, -3.630);
+  P.add('hullShadow', box(2.80, 0.350, 0.006), 0, 1.585, -3.6365);
+  P.add('hullDark', box(1.45, 0.035, 0.018), 0, 1.3925, -3.630);
+  P.add('hullShadow', box(1.45, 0.035, 0.006), 0, 1.3925, -3.6365);
+  for (const s2 of [-1, 1]) {
+    P.add('hullDark', box(0.415, 0.035, 0.018), s2 * 1.2225, 1.3925, -3.630);
+    P.add('hullShadow', box(0.385, 0.035, 0.006), s2 * 1.2075, 1.3925, -3.6365);
+  }
+  for (let k = 0; k < 8; k++) {
     P.add('hullWood', box(2.78, 0.028, 0.010), 0, 1.393 + k * 0.048, -3.639, 0.35, 0, 0);
   }
-  for (const vx of [-0.95, -0.32, 0.32, 0.95]) P.add('hullDetail', box(0.035, 0.34, 0.036), vx, 1.545, -3.633);
+  for (const vx of [-0.32, 0.32]) P.add('hullDetail', box(0.035, 0.385, 0.036), vx, 1.5675, -3.633);
+  for (const vx of [-0.95, 0.95]) P.add('hullDetail', box(0.035, 0.350, 0.036), vx, 1.585, -3.633);
+  // below-band bank: shadow plane + edge frames + 5 segmented slat rows
+  P.add('hullShadow', box(2.80, 0.243, 0.001), 0, 1.2525, -3.622);
+  for (const s2 of [-1, 1]) {
+    P.add('hullDark', box(0.03, 0.245, 0.002), s2 * 1.415, 1.2525, -3.6235);
+    P.add('hullDetail', box(0.035, 0.245, 0.003), s2 * 0.32, 1.2525, -3.6238);
+  }
+  for (let k = 0; k < 5; k++) {
+    const ry = 1.153 + k * 0.048;
+    P.add('hullWood', box(0.605, 0.028, 0.002), 0, ry, -3.6231, 0.10, 0, 0);
+    for (const s2 of [-1, 1]) {
+      P.add('hullWood', box(0.3425, 0.028, 0.002), s2 * 0.50875, ry, -3.6231, 0.10, 0, 0);
+      if (k < 4) P.add('hullWood', box(0.11, 0.028, 0.002), s2 * 1.115, ry, -3.6231, 0.10, 0, 0);
+      else P.add('hullWood', box(0.33, 0.028, 0.002), s2 * 1.225, ry, -3.6231, 0.10, 0, 0);
+    }
+  }
+  // r7 #1 BOLD TWIN FAN GRILLES at +-0.87 (the ref's dominant rear-face
+  // circles; they replace the +-0.85 plate cluster + +-0.72 D-ring
+  // shackles that read as faint dotted rings). Deck-fan recipe laid flat
+  // in the below-band slot: dark housing plate, pale annulus (r 0.138 ->
+  // ~37 px), near-black recess core, 4 crossing pale blades. Everything
+  // z in [-3.6255, -3.620]; y 1.130..1.406 rides the field/shadow notch.
+  for (const s2 of [-1, 1]) {
+    P.add('hullDark', box(0.34, 0.268, 0.003), s2 * 0.87, 1.272, -3.6215);
+    P.add('hullDetail', KIT.cylZ(0.138, 0.0015, P.q ? 26 : 20), s2 * 0.87, 1.268, -3.6240);
+    P.add('hullShadow', KIT.cylZ(0.125, 0.0015, P.q ? 24 : 18), s2 * 0.87, 1.268, -3.62445);
+    for (let k = 0; k < 4; k++) {
+      P.add('hullDetail', box(0.225, 0.016, 0.0012), s2 * 0.87, 1.268, -3.6248, 0, 0, k * Math.PI / 4);
+    }
+  }
   for (const s2 of [-1, 1]) {
     P.add('hullDark', box(0.40, 0.17, 0.030), s2 * 1.16, 1.50, -3.630);
     P.add('hullShadow', box(0.36, 0.15, 0.005), s2 * 1.16, 1.50, -3.6435);
@@ -1232,30 +1294,26 @@ function buildLeo2A6(P) {
     P.add('hullGlass', box(0.035, 0.055, 0.012), s2 * 1.345, 1.663, -3.632);
     P.add('hullGlass', box(0.035, 0.055, 0.012), s2 * 1.285, 1.663, -3.632);
     P.add('hullDetail', box(0.17, 0.012, 0.030), s2 * 1.315, 1.722, -3.626);
-    P.add('hullDark', xform(torus(0.036, 0.012, 10), 0, 0, 0, Math.PI / 2, 0, 0), s2 * 0.72, 1.30, -3.622);
-    P.add('hullDetail', box(0.06, 0.045, 0.020), s2 * 0.72, 1.30, -3.624);
+    // (r7 #1: the +-0.72 D-ring shackles + plates deleted — they were the
+    // "faint dotted fan rings"; the bold fan grilles above own +-0.87.)
   }
-  // r3 #3: rear plate BELOW the vent band — round taillight clusters, tow
-  // hooks, coupling + cross braces. LEGALITY: everything below y 1.373
-  // keeps z >= -3.6255 (the -3.627 side-column law: only in-band content
-  // may go deeper) and <=6 mm proud of the -3.62 wall face; nothing hangs
-  // below the wall's certified 1.13 bottom. Flush/tonal reads only.
+  // r3 #3 -> r7 #1: rear plate BELOW the vent band. LEGALITY: everything
+  // below y 1.373 keeps z >= -3.6255 (the -3.627 side-column law: only
+  // in-band content may go deeper) and <=6 mm proud of the -3.62 wall
+  // face; nothing hangs below the wall's certified 1.13 bottom. r7: the
+  // apron is now the lower louver bank + bold twin fans (above); of the
+  // r3 furniture only the corner taillight clusters remain (the ref's
+  // corner lights) — the +-0.85 plate cluster sat exactly where the ref's
+  // fans are, and the invented center coupling + X-cross braces are
+  // deleted with it. Taillight torus 14 -> 22 segments, tube 0.006 ->
+  // 0.008 (kills its own dotted-ring read; z -3.609..-3.625 in family).
   for (const s2 of [-1, 1]) {
     P.add('hullDark', cylZ(0.078, 0.005, 14), s2 * 1.28, 1.215, -3.6225);
-    P.add('hullDetail', xform(torus(0.076, 0.006, 14), 0, 0, 0, Math.PI / 2, 0, 0), s2 * 1.28, 1.215, -3.617);
+    P.add('hullDetail', xform(torus(0.076, 0.008, 22), 0, 0, 0, Math.PI / 2, 0, 0), s2 * 1.28, 1.215, -3.617);
     P.add('hullGlass', cylZ(0.024, 0.004, 10), s2 * 1.312, 1.246, -3.623);
     P.add('hullGlass', cylZ(0.024, 0.004, 10), s2 * 1.248, 1.246, -3.623);
     P.add('hullGlass', cylZ(0.024, 0.004, 10), s2 * 1.28, 1.182, -3.623);
-    P.add('hullDetail', box(0.11, 0.11, 0.005), s2 * 0.85, 1.205, -3.6225);
-    P.add('hullDark', box(0.075, 0.022, 0.006), s2 * 0.85, 1.246, -3.623);
-    P.add('hullDark', box(0.022, 0.062, 0.006), s2 * 0.874, 1.215, -3.623);
-    P.add('hullDark', box(0.022, 0.062, 0.006), s2 * 0.826, 1.215, -3.623);
-    P.add('hullDark', box(0.052, 0.020, 0.006), s2 * 0.85, 1.172, -3.623);
   }
-  P.add('hullDark', cylZ(0.055, 0.005, 12), 0, 1.20, -3.6225);                // coupling ring
-  P.add('hullDetail', box(0.15, 0.048, 0.005), 0, 1.158, -3.6225);            // coupling jaw
-  P.add('hullDetail', box(0.42, 0.024, 0.004), 0, 1.245, -3.6225, 0, 0, 0.50);
-  P.add('hullDetail', box(0.42, 0.024, 0.004), 0, 1.245, -3.6225, 0, 0, -0.50);
   // (r6 #1 note: a physical mudflap cover over the naked front wrap was
   // TRIED — chord plates inside the certified 0.333 wrap print circle —
   // and REMOVED: the moving link pads clip through any static cover that
@@ -1342,6 +1400,34 @@ function buildLeo2A6(P) {
       P.add('hullShadow', box(0.049, 0.44, 0.050), s2 * 1.6975, 1.13, -3.42 + k * 0.4418);
     }
   }
+  // r7 #3 HERO PATCH (critic r6: behind-wheel bg wedges, close-roof 324 px /
+  // hero-rearright 51 px — "sponson plane too short behind wheels 2-4").
+  // Corridor (computed on the close-roof ray family, elev ~27deg): rays
+  // enter between skirt bottom (0.87) and the wheel-top arcs, dive ~0.52/m
+  // inboard and pass UNDER the tub side's 0.47 bottom edge at x 0.9525,
+  // then out below the far belly to sky. Fix: a hull-side curtain BEHIND
+  // the wheel run dropping the side plane to 0.26. PLACEMENT LAW (gate-
+  // measured, first cut REVERTED): at the tub plane (x 0.9445..0.9515)
+  // the curtain bottom PRINTS in the front/rear ortho curves — front_whole
+  // 91.0 -> 90.44, worst cols +-0.95 procBot 0.29 vs refBot 0.50, because
+  // the ref's own curve bottom at |x| 0.78..0.95 is the 0.50 belly line.
+  // At |x| >= 0.99 both curves bottom at TRACK-GROUND level, so the
+  // curtain lives just inside the pad inner face instead (x 1.005..1.02,
+  // clear of wheels — inner faces 1.09 — and of the top/bottom track runs
+  // at y 0.26..0.52, z -2.00..2.32): invisible to every ortho curve.
+  // y to 0.52 so rays grazing the curtain top at x 1.0125 land on the tub
+  // face above its 0.47 bottom edge (0.52 - 0.033/m drop = 0.487 > 0.47);
+  // z ends short of the certified OPEN sprocket bay. SIDE view at those
+  // rows is already filled by the far track's inner-chain web (row-scanned
+  // on the r6 pair: no bg y >= 0.24 between wheels). Rays arriving below
+  // 0.26 dive under the far track entirely (open under-belly daylight,
+  // the accepted r6 residual class, not an enclosed wedge).
+  // z0 -2.62 (not -2.00): the r6 hero-rearright 25 px residual is the
+  // wheel-7/sprocket-corner corridor — the curtain's rear reach clips it;
+  // the sprocket bay proper (z < -2.75) stays open per the front-mask law.
+  for (const s2 of [-1, 1]) {
+    P.add('hull', box(0.015, 0.26, 4.94), s2 * 1.0125, 0.39, -0.15);
+  }
 
   // turret: pivot (0,1.77,0.35); measured wedge tables from the fresh
   // post-repair probe: roofline saddle 2.48 fore / 2.52 mid / 2.59 aft of
@@ -1372,7 +1458,11 @@ function buildLeo2A6(P) {
     // the -2.1..-2.7w rack run); rear z1 -3.02 (ref plan rack columns end
     // -2.68w; -3.05 read one row long). r2: slatted floor + custom CENTER
     // cargo (|x| <= 0.37) so the deck fan arcs read complete from top.
-    rack: { x: 1.03, z0: -2.43, z1: -3.02, top: 0.535, bot: 0.105, slats: true, cargo: false },
+    // r7 #2: wall:true drops the rack's 9 inner fence verticals (opt-in in
+    // wedgeTurretV3) — with the r2 half-pitch densification layer deleted
+    // below, the bustle rear reads solid backing + 2 dark panels, not a
+    // cell lattice.
+    rack: { x: 1.03, z0: -2.43, z1: -3.02, top: 0.535, bot: 0.105, slats: true, cargo: false, wall: true },
     // plan nose: ref fore reads 3.08w to |x| 0.26 (point0 widened: the
     // 0.32 plan col wants 3.084), 2.31 @1.26, holds 2.28 to 1.33, then
     // RAKES hard: 2.02w at the 1.42 col (the old [1.44,1.56] tip put the
@@ -1531,8 +1621,11 @@ function buildLeo2A6(P) {
   P.add('turretDetail', box(0.21, 0.014, 0.014), -0.285, 0.917, -0.7285);
   // r2 #5/#8: bustle basket mass CENTERED (|x| <= 0.37 incl. tarp lids) so
   // both rear-deck fan rims read complete from straight top; the side
-  // stowed-load band (1.83..2.41 over -2.1..-2.7w) keeps its fill. Mid rail
-  // + half-pitch inner slats densify the fence into a basket read.
+  // stowed-load band (1.83..2.41 over -2.1..-2.7w) keeps its fill.
+  // (r7 #2: the r2 mid rail + 10 fence verticals DELETED — over the r5
+  // solid backing they read as a full-width cell lattice where the ref
+  // shows a mostly-solid wall; rear mask held by the 2.00-wide backing,
+  // side by the rails/boards, plan by the rack floor — re-gated.)
   KIT.stowage(P, 'turretCloth', P.rng, [
     [0.0, 0.35, -2.62, 0.64, 0.365, 0.34],
     [0.03, 0.33, -2.90, 0.56, 0.33, 0.30],
@@ -1540,9 +1633,22 @@ function buildLeo2A6(P) {
   KIT.jerryCan(P, 'turretCloth', -0.235, 0.302, -2.49, 0.12);
   KIT.ammoCan(P, 'turretDark', 0.26, 0.295, -2.485, -0.1);
   KIT.tarpRoll(P, 'turretCloth', 0, 0.44, -2.78, 0.62, 0.082, true, P.q ? 12 : 8);
-  P.add('turretDetail', box(2.06, 0.032, 0.032), 0, 0.32, -3.005);
-  for (let k = 0; k < 10; k++) {
-    P.add('turretDetail', box(0.024, 0.42, 0.024), -0.9265 + k * 0.206, 0.32, -3.007);
+  // r7 #2 TURRET REAR WALL: the certified turretCloth backing below IS the
+  // solid wall (its bin-green read was r6-sampled at the ref wall family);
+  // it carries TWO dark recessed stowage panels at the ref's px-measured
+  // positions (track-width-calibrated on the pair, MIRROR LAW: the rear
+  // view renders world -x at screen right, so the asymmetric panels must
+  // be placed in WORLD coords, not screen coords — first cut was swapped):
+  // ref world +0.23..+0.65 and -0.41..-1.14 (clamped to the 1.00 backing
+  // edge); band y 0.13..0.49; thin pale top lips for the recess read.
+  // Panels sit at z -2.985 (face -2.991) — inside the old fence-slat
+  // envelope (-2.995..-3.019), |x| <= 1.00 backing width, under the 0.535
+  // rails: interior to every certified extent. The center knob (x +-0.31,
+  // aft face -3.09) draws in front of any panel-edge overlap — clean
+  // layering, no coplanar faces.
+  for (const [pc, pw] of [[0.44, 0.42], [-0.705, 0.59]]) {
+    P.add('turretDark', box(pw, 0.36, 0.012), pc, 0.31, -2.985);
+    P.add('turretDetail', box(pw - 0.03, 0.012, 0.008), pc, 0.492, -2.988);
   }
   // r5 #3: solid dark panel BEHIND the fence slats — kills the see-through
   // cage (the ref's bustle reads as solid bins; ours showed sky between

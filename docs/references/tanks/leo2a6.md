@@ -785,3 +785,105 @@ bound, loader-blotch ring, -3.81 tail, PERI 4th column) stand.
 Work order: shaded-parity-leo2a6-r6.md — grille bank to full extent
 (~13 rows; sample the BANK), turret rear solid wall + 2 panels,
 behind-wheel sponson extension. All geometry: re-gate each.
+
+## Shaded-parity r7 — REAR STRUCTURE: FULL BANK + BOLD FANS + SOLID WALL + WHEEL CURTAIN (2026-08-02)
+
+All three r6 work-order items in `src/vehicles/profiles/leopard.js`
+(buildLeo2A6 + ONE opt-in wedgeTurretV3 rack param `wall` — siblings do
+not pass it). Gate after round: **min 91.0 PASS, gatePassed:true, run
+twice** (hull 91.2 / whole 91.0 / turret 91.2 / stations 93.4 / dims
+91.0 / floaters 100 — byte-identical to r6; every geometry batch was
+re-gated, 5 runs total). Siblings score-identical: leo2a5 69.2 / kf51
+63.6 / leo2_revolution 45.0. `npm test` 166 checks pass.
+
+1. GRILLE BANK EXTENT — DONE, sampled ON THE BANK (col x=940 of the
+   critic pair, track-calibrated scales ref 145.4 / proc 135.3 px/u):
+   13 rows at the landed 0.048 pitch (~6.5 px) spanning px 310..390
+   (~82 px + frame) vs ref 311..405 (~94 px); world 0.61 vs ref 0.65 —
+   the residual 0.04 is the certified 1.771 band ceiling + 1.13 wall
+   bottom, both silhouette lines. Blank apron DEAD (alternation to the
+   wall bottom edge; below it only the certified lip shading remains).
+   - IN-BAND rows (8, was 7): the r6 deep planes untouched (field
+     -3.630 / shadow -3.6365 / slats -3.639 tilt 0.35); field/shadow
+     tops 1.715 -> 1.760, new top row 1.729 (edge 1.7439 < 1.771).
+   - BELOW-BAND rows (5, y 1.153..1.345): the -3.627 side-column law
+     leaves a 5.5 mm relief slot — TILT ARITHMETIC: a plank eats
+     h*sin(tilt) of z, and full-face visibility needs crown-to-shadow-
+     face >= h*sin(tilt), so the slot caps tilt at ~0.179; landed at
+     0.10 (crowns -3.6255 exactly, shadow plane face -3.6225, 3.0 mm >=
+     2.8 mm). The feared tilt-brightness loss is ~2 lum only (hemi
+     floor dominates): lower slat med 80.1 / gap 52.2 / delta 27.9 vs
+     upper 82.1 / 52.2 / 29.9 (the EXACT r6-landed delta, untouched) —
+     and the ref's own bottom rows dim the same way (col-260 probe:
+     lower maxima 90-100 vs upper 100-108). Rows segmented around the
+     fan housings, taillight clusters and the +-0.32 bars; +-0.95 bars
+     stop at the housing tops.
+   - BOLD TWIN FANS at +-0.87 (ref +-0.84..0.83 measured), diameter
+     0.276 -> ~37 px: dark housing plate, pale annulus, near-black
+     recess core, 4 crossing pale blades — all inside the 5.5 mm slot
+     ([-3.6255, -3.620]); field/shadow BOTTOM STRIP (1.375..1.410) is
+     split around the housings so the deeper in-band field cannot
+     flat-clip the fan tops at the band line. They REPLACE the +-0.85
+     plate cluster (it sat exactly where the ref's fans are) and the
+     +-0.72 D-ring shackles (the r6 critic's "faint dotted fan rings");
+     the invented center coupling ring/jaw + X-cross braces are
+     deleted. Taillight torus 14 -> 22 segs, tube 0.008 (its own dotted
+     read killed; corner lights = ref's corner lights).
+2. TURRET REAR WALL — DONE. The lattice was TWO layers: the r2
+   densification (mid rail + 10 half-pitch verticals, deleted outright)
+   AND wedgeTurretV3's own 11 rack fence verticals — dropped via opt-in
+   `rack.wall` (corner posts k=0,10 kept: frame read + they keep the
+   rear-corner x 1.0..1.03 sliver filled between the rails). The
+   certified turretCloth backing IS the solid wall (bin-green = ref
+   wall family, r6-sampled); it carries TWO turretDark panels + thin
+   pale top lips at z -2.985 (inside the old slat envelope). REAR-VIEW
+   MIRROR LAW (new, fleet-visible): the rear camera renders world -x at
+   screen RIGHT — asymmetric features must be placed from WORLD
+   coordinates, not screen reads; the first cut was mirror-swapped and
+   caught by track-calibrated sampling. Landed at ref positions: world
+   +0.23..+0.65 and -0.41..-1.00 (ref -1.14 clamped to the backing
+   edge). Sampled dark runs land on the ref's within 0.03-0.05.
+3. HERO PATCH (wheel curtain) — DONE. Behind-wheel bg wedges:
+   close-roof 344 -> 7 px (one sprocket-bay pinhole), hero-rearright
+   51 -> 0, view-rearright/rearleft 0, hero-toptilt 1 px. CURTAIN
+   PLACEMENT LAW (gate-measured; first cut REVERTED): the corridor
+   passes UNDER the tub side's 0.47 bottom edge, but a curtain on the
+   tub plane (x 0.9445..0.9515, y down to 0.26) PRINTS in the front
+   AND rear ortho bottom curves — front_whole 91.0 -> 90.44, worst
+   cols +-0.95 procBot 0.29 vs refBot 0.50 (the ref's own curve bottom
+   at |x| 0.78..0.95 is its 0.50 belly line). At |x| >= 0.99 both
+   models' curve bottoms are TRACK-GROUND level, so the curtain lives
+   just inside the pad inner face instead: x 1.005..1.02, y 0.26..0.52
+   (top such that rays grazing it land on the tub face above 0.47),
+   z -2.62..2.32 (rear reach clips the r6 25 px sprocket-corner
+   residual; the bay proper z < -2.75 stays open per the front-mask
+   law). Clear of wheels (inner faces ~1.09) and both track runs;
+   SIDE view at those rows is far-track-web filled (row-scanned).
+   Gate restored byte-identical the same run.
+
+Round lessons (fleet-visible):
+- REAR-VIEW MIRROR LAW: screen right = world -x from the rear camera.
+  Any asymmetric placement copied off a rear render must be sign-
+  flipped into world space (symmetric pairs hide the bug).
+- UNDER-BELLY ADDITIONS PRINT IN ORTHO CURVES: before hanging anything
+  below the tub line, check which columns' ref/proc curve bottoms are
+  already at track-ground — only those columns can carry it free.
+- BELOW-BAND RELIEF BUDGET: tilt eats h*sin(t) of the z slot; full-face
+  visibility needs crown-to-shadow-face >= h*sin(t). At the a6's
+  5.5 mm slot that caps tilt at 0.179 — and the brightness cost of
+  low tilt is small (~2 lum at 0.10 vs 0.35: the hemi floor dominates
+  rear faces), so structure survives shallow slots.
+- LATTICES CAN BE LAYERED: the bustle fence was built twice (kit rail
+  set + a round-2 densification pass) — deleting one layer changes
+  nothing visible. grep for BOTH before declaring a read fixed.
+
+Residuals: close-roof 7 px sprocket-bay pinhole (open-bay law; ref
+half itself scans 829 px enclosed on this view); view-rear 10 px of
+ambient pinholes ((+-1.85, ~1.3) symmetric pair + (-1.42, ~2.02) side-
+module seam — none in geometry touched this round; the r6 "0-3 px" law
+was the critic's own accounting); fans sit y ~0.23 higher than the
+ref's (ref fan center 1.04 is BELOW our certified 1.13 wall bottom —
+its plate runs to ~0.90); ref's central X-propeller intentionally not
+rebuilt (work order: delete the invented X-cross, add twin fans only);
+trivia items skipped (under-fender 0.92x, wrap-joint tan X-marks —
+short round). Prior classes stand.
