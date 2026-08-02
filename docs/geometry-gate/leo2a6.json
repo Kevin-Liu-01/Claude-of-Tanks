@@ -3,7 +3,7 @@
  "geoMin": 91,
  "gatePassed": true,
  "components": {
-  "hullCurves": 91.1,
+  "hullCurves": 91.2,
   "wholeCurves": 91,
   "turretCurves": 91.2,
   "stations": 93.4,
@@ -12,8 +12,8 @@
  },
  "curveRows": {
   "side_hull": {
-   "score": 91.07685328894038,
-   "meanPct": 0.58,
+   "score": 91.17951382919829,
+   "meanPct": 0.57,
    "p95Pct": 1.37,
    "coverPct": 0.79,
    "reg": {
@@ -54,14 +54,6 @@
      "errM": 0.039
     },
     {
-     "at": -1.04,
-     "refTop": 0.12,
-     "refBot": -1.42,
-     "procTop": 0.19,
-     "procBot": -1.43,
-     "errM": 0.034
-    },
-    {
      "at": -1.77,
      "refTop": -0.12,
      "refBot": -1.02,
@@ -76,6 +68,14 @@
      "procTop": 0.1,
      "procBot": -1.43,
      "errM": 0.03
+    },
+    {
+     "at": -1.04,
+     "refTop": 0.12,
+     "refBot": -1.42,
+     "procTop": 0.18,
+     "procBot": -1.43,
+     "errM": 0.029
     },
     {
      "at": 3.97,

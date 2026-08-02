@@ -500,3 +500,94 @@ Work order: docs/critique/shaded-parity-leo2a6-r3.md. Wheels in law;
 TRACK BAND is the miss (builder sampled camo-painted upper gear — true
 ref band 31.8-40.0 deg brown-grey). Fleet law refined: sample ON the
 exact element. Grey slabs still placeholder. r4 = 5 mechanical items.
+
+## Shaded-parity r4 — VISUAL FIX ROUND (2026-08-02, closing round)
+
+All 5 mechanical r3 work-order items addressed in
+`src/vehicles/profiles/leopard.js` (buildLeo2A6 only — zero shared-path
+edits this round). Gate after round: **min 91.0 PASS, gatePassed:true
+verified in docs/geometry-gate/leo2a6.json across 2 consecutive runs**
+(hull 91.2 / whole 91.0 / turret 91.2 / stations 93.4 / dims 91.0 /
+floaters 100 — hull +0.1 over the r3 entry). Siblings score-identical:
+leo2a5 69.2 / kf51 63.6 / leo2_revolution 45.0. Full `npm test` passes
+(166 checks). Sampler: tools/tmp-leo-bandsample.py (rect medians + HSV
+hue + relative luminance, background/shadow filtered).
+
+Per-item status (r4 work order), with sample evidence:
+1. TRACK BAND/WRAPS/PADS — DONE, sampled ON the element (refined fleet
+   law). Ref exposed-band strip (view-left, y 385-393 under the wheels):
+   medRGB (70,63,55), hue 33.3/32.0 deg, lum 63.9-67.4 — confirms the
+   critic's 31.8-40.0 brown-grey. Retone: trackL/R lift (1.42,1.68,1.38)
+   -> (1.60,1.40,1.20), pads 0x3f4533 -> 0x41392f, inner chain
+   0x33392c -> 0x362e26 (all R>G>B). FIRST CUT
+   OVERSHOT BRIGHT at the wrap crowns (0x4a3f34 pads: strip ratio 0.999
+   in law but close-front wrap-crown ratio 0.868/0.833 — the pad tops
+   fire under the hero key), darkened ~10%. FINAL SAMPLES: proc band
+   strip hue 32.7/30.0 deg medRGB (66,57,48), ratio ref/proc 1.060 mean
+   / 1.097 med (law 0.92-1.16); close-front strip hue 33.0, ratio 1.006
+   / 1.041; wrap crowns 0.936 / 0.909. WHEELS UNTOUCHED: proc 83.3 deg
+   (law 78-86), ratio 1.110 — byte-identical tones to r3.
+2. GREY GLACIS SLABS — DONE (root cause found: tiny 'hull'-bucket boxes
+   MIP-AVERAGE the camo texture to its flat grey mean at board scale —
+   a camo mat can never texture a 0.05 m strip; the r3 "camo boards"
+   were doomed). Replaced with ref-style SPARE-TRACK LINK RACKS on the
+   exact footprint/rotation: hullDark tray 0.86x0.020x0.055 + 4
+   'hullTrack' link pads (spareTrack brown, xform-offset along the
+   tray's LOCAL axes) + pale end brackets. Envelope inside the
+   r3-certified board (crown 1.584 < 1.586, |local x| 0.3875 < 0.43).
+3. REAR LOUVER + TAN PANEL — DONE. Field/shadow extended down to the
+   band floor (1.375 >= the 1.373 legality line), 6 thin rows -> 7
+   TILTED rows (rx 0.25: a flat rear face sees neither the +z sun nor
+   hemi sky — the tilt turns the face normal up-back like the pale
+   X-braces, the actual brightness mechanism; z half-extent 0.0107
+   keeps the deepest point -3.6497 inside the certified -3.650 plane),
+   4 frame verticals (ref grille is 4-sectioned). Shackle D-rings
+   dropped to y 1.30 so the extended field cannot occlude them.
+   Grille ratio ref/proc 1.255 -> 1.185. Tan bustle panel: cloth
+   0x42452f -> 0x3e4532 + near-flush dark cinch straps (faces -3.0915,
+   1.5 mm past the certified -3.09 side-mask carrier) — panel hue 67.8
+   -> 81.0 deg (ref bustle 84.8), reads as a strapped olive bedroll.
+4. SKIRT SEGMENTATION — DONE at native scale. The segRun hairline seam
+   plates (0.014 z = 0.8 px) were sub-pixel — wide near-black
+   hullShadow seam bars at the SAME physical boundaries (front 4/side
+   at z 1.947/2.374/2.801/3.228, faces 1.837 = certified plate plane
+   +1 mm; rear 10/side at -3.42+0.4418k, faces 1.722), y-spans inside
+   the existing plate envelopes. Front-third armor blocks flipped
+   'hull' -> 'hullDark' (same certified geometry — the camo blocks
+   mip-averaged into the camo skirt) with the bolts flipped PALE
+   (two-tone law).
+5. TOW CABLES — DONE (thickened to read, crowns certified). Glacis run
+   r 0.012 -> 0.022 with centers sunk 10 mm (crown holds +0.009
+   exactly); clamp blocks/end fittings widened in plan only. Deck rope
+   r 0.008 -> 0.016, centers dropped 8 mm (crowns 1.835/1.837, the
+   certified pixel-fine line). Both read as dark cable runs at board
+   scale now.
+6. FAN-WELL SIZE/ORDER — NOT ATTEMPTED, documented residual: gate
+   margin is exactly 1.0, the fan columns are a certified +1-row
+   residual class, and resizing the wells is plan-geometry inside
+   columns the trace already flags — risk with no gate headroom.
+
+Round lessons (mechanics worth keeping, fleet-visible):
+- MIP-AVERAGE LAW: any KIT box under ~0.1 m face maps the whole camo
+  texture onto the face and renders its flat MEAN (grey-green) — small
+  furniture must use solid-color buckets (hullTrack/hullDark/detail);
+  'hull' camo is only for shell-scale surfaces.
+- REAR-FACE LIGHT LAW: with the board sun at (30,42,24), straight
+  rear-facing (-z) furniture receives no key and half hemi — it always
+  reads flat dark. Tilt detail faces (rx ~0.25) toward the sky INSIDE
+  the certified z-envelope to buy ~25% luminance (this is why the
+  X-braces read pale while the r3 louvers read dead).
+- BUCKET-MERGE CONSTRAINT: every bucket collapses to ONE mesh+material
+  (tankFactory mergeAll) — per-piece custom tones are impossible after
+  the fact; pick the bucket at add-time (block darkening = re-bucket,
+  not re-material).
+- Wrap-crown check: a band retone that passes the side-strip ratio can
+  still fire 15-20% hot on the wrap-top pads under the perspective key
+  — sample close-front crowns too before calling luminance done.
+
+Residuals (documented, not caps): louver slats read a touch softer
+than the ref's baked-highlight grille (bounded by the 1.373..1.771
+band + -3.650 plane budget); ring lids still dark-on-dark where the
+loader blotch crosses (pale race carries the circle); fan-well
+size/order (above); the -3.81 tail col ~0.16 and PERI 4th-column
+p95 classes stand unchanged.

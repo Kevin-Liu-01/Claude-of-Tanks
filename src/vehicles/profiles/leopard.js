@@ -993,8 +993,9 @@ function buildLeo2A6(P) {
   });
   // flat-laid deck rope replacement, half-sunk in its clamps (front rows
   // are pixel-fine: at 1.844 the cable still printed +0.01 over the ref's
-  // 1.835 deck-stack line on ~10 columns)
-  KIT.towCable(P, [[-1.10, 1.827, -3.05], [-0.5, 1.829, -3.44], [0.5, 1.829, -3.44], [1.10, 1.827, -3.05]], 0.008);
+  // 1.835 deck-stack line on ~10 columns). r4 #5: r 0.008 -> 0.016 with the
+  // centers dropped 8 mm — crowns stay 1.835/1.837, the certified line.
+  KIT.towCable(P, [[-1.10, 1.819, -3.05], [-0.5, 1.821, -3.44], [0.5, 1.821, -3.44], [1.10, 1.819, -3.05]], 0.016);
   P.decal('hull', 'number', 'Y-241', 0.26, [0.62, 1.45, -3.60], Math.PI, 0);
   // beak-notch tow clevises: the ref's plan nose is WAVY between the wings
   // (3.700 center / 3.639 at +-0.30 / 3.72 at +-0.63 vs the 3.60 glacis
@@ -1088,13 +1089,26 @@ function buildLeo2A6(P) {
     P.add('hullDetail', box(0.055, 0.016, 0.30), s2 * 0.58, gY(2.50) + 0.008, 2.50, 0, s2 * 0.42, 0);
   }
   P.add('hullDark', box(0.50, 0.008, 0.020), 0, gY(2.40) + 0.006, 2.40);
-  // r3 #10: textured replacement for the deleted leoHullV3 splash-arm slabs
-  // (splashArms: false above) — scheme-camo deflector boards with a dark cap
-  // strip, same footprint/rotation as the certified originals (top +0.006 =
-  // sub-row; the first cut's +0.013 boards cost side_hull columns).
+  // r4 #2 (3rd round on this footprint): the r3 "camo deflector boards" still
+  // rendered as the two blank GREY slabs — tiny 'hull'-bucket boxes mip-average
+  // the camo texture to its flat mean at board scale, so a camo mat can never
+  // texture a 0.05 m strip. Replaced by ref-style SPARE-TRACK LINK RACKS on the
+  // exact same footprint/rotation: dark tray + 4 brown-grey link pads
+  // ('hullTrack' -> spareTrack, retoned into the ref band family below) + pale
+  // end brackets. Envelope audit: tray 0.86x0.055 = the old cap strip; pads are
+  // xform-offset along the tray's LOCAL axes (max |x| 0.3875 < 0.43, crown
+  // local +0.016 over 1.568 = 1.584 < the old 1.586 cap top) — everything
+  // inside the r3-certified board envelope, no new planes.
   for (const s2 of [-1, 1]) {
-    P.add('hull', box(0.85, 0.024, 0.052), s2 * 0.44, 1.570, 2.45, -0.229, s2 * 0.42, 0);
-    P.add('hullDark', box(0.86, 0.006, 0.055), s2 * 0.44, 1.583, 2.45, -0.229, s2 * 0.42, 0);
+    P.add('hullDark', box(0.86, 0.020, 0.055), s2 * 0.44, 1.568, 2.45, -0.229, s2 * 0.42, 0);
+    for (let k = 0; k < 4; k++) {
+      P.add('hullTrack', xform(box(0.16, 0.012, 0.050), -0.3075 + k * 0.205, 0.010, 0),
+        s2 * 0.44, 1.568, 2.45, -0.229, s2 * 0.42, 0);
+    }
+    for (const bx of [-0.415, 0.415]) {
+      P.add('hullDetail', xform(box(0.020, 0.016, 0.053), bx, 0.006, 0),
+        s2 * 0.44, 1.568, 2.45, -0.229, s2 * 0.42, 0);
+    }
   }
   // #1 glacis anti-slip zones (dark matte, slope-aligned, <=10 mm proud —
   // the ref line already reads ~0.03 UNDER our certified glacis skin here,
@@ -1103,17 +1117,18 @@ function buildLeo2A6(P) {
     P.add('hullRubber', box(0.60, 0.008, 0.56), s2 * 0.52, gY(3.00) + 0.002, 3.00, -0.396, 0, 0);
     P.add('hullRubber', box(0.50, 0.008, 0.44), s2 * 0.50, gY(2.34) + 0.002, 2.34, -0.086, 0, 0);
   }
-  // #1/#9 glacis tow cable half-sunk in clamp blocks. r3: the 0.007 tube was
-  // an invisible hairline — thickened to a readable 0.012 dark cable but
-  // SUNK 4 mm so the crown stays at the r2 +0.009 profile (the read is tone
-  // contrast, not proudness; the first r3 cut at +0.017 cost hull columns).
-  KIT.towCable(P, [[-1.02, gY(2.30) - 0.003, 2.30], [-0.30, gY(2.98) - 0.002, 2.98],
-    [0.55, gY(2.60) - 0.003, 2.60], [1.02, gY(2.22) - 0.003, 2.22]], 0.012);
+  // #1/#9 glacis tow cable half-sunk in clamp blocks. r4 #5 (3rd flag on
+  // cables): 0.012 was still a hairline at board scale — r 0.022 (44 mm,
+  // ~5 px in close-front) with the centers sunk a further 10 mm so the crown
+  // holds the r2 +0.009 profile EXACTLY (tone reads, proudness certified).
+  // Clamp blocks/end fittings widened in plan only (crowns unchanged).
+  KIT.towCable(P, [[-1.02, gY(2.30) - 0.013, 2.30], [-0.30, gY(2.98) - 0.012, 2.98],
+    [0.55, gY(2.60) - 0.013, 2.60], [1.02, gY(2.22) - 0.013, 2.22]], 0.022);
   for (const [cx2, cz2] of [[-0.68, 2.64], [0.15, 2.82], [0.80, 2.40]]) {
-    P.add('hullDetail', box(0.06, 0.018, 0.06), cx2, gY(cz2) + 0.006, cz2, -0.2, 0, 0);
+    P.add('hullDetail', box(0.085, 0.018, 0.078), cx2, gY(cz2) + 0.006, cz2, -0.2, 0, 0);
   }
-  P.add('hullDark', box(0.05, 0.022, 0.08), -1.02, gY(2.30) + 0.002, 2.30, -0.2, 0, 0);
-  P.add('hullDark', box(0.05, 0.022, 0.08), 1.02, gY(2.22) + 0.002, 2.22, -0.2, 0, 0);
+  P.add('hullDark', box(0.07, 0.022, 0.10), -1.02, gY(2.30) + 0.002, 2.30, -0.2, 0, 0);
+  P.add('hullDark', box(0.07, 0.022, 0.10), 1.02, gY(2.22) + 0.002, 2.22, -0.2, 0, 0);
   // #1 tow-eye shackle rings half-embedded in the certified clevis faces
   for (const s2 of [-1, 1]) {
     P.add('hullDark', xform(torus(0.052, 0.015, 12), 0, 0, 0, Math.PI / 2, 0, 0), s2 * 0.676, 1.075, 3.655);
@@ -1135,12 +1150,25 @@ function buildLeo2A6(P) {
   // outward: frame field, then near-black slot layer, then 6 wide pale
   // slats in FRONT of both. Everything stays in the certified 1.373..1.771
   // band (content deeper than z -3.627 is band-legal).
-  P.add('hullDark', box(2.86, 0.30, 0.018), 0, 1.545, -3.630);
-  P.add('hullShadow', box(2.80, 0.26, 0.006), 0, 1.545, -3.639);
-  for (let k = 0; k < 6; k++) {
-    P.add('hullDetail', box(2.78, 0.032, 0.014), 0, 1.425 + k * 0.050, -3.643);
+  // r4 #3 grille deepening: the r3 band read faint and short next to the
+  // ref's tall full-width grille — field/shadow extended DOWN to the band
+  // floor (bottom 1.375 >= the 1.373 legality line), 6 thin slat rows ->
+  // 7 taller rows (0.040 @ 0.047 pitch, tops 1.700 < 1.771), two extra
+  // frame verticals at +-0.32 (ref grille is 4-sectioned). All faces keep
+  // the r3-certified planes (-3.639/-3.642/-3.650/-3.651); the shackle
+  // D-rings drop to y 1.30 so the extended field cannot occlude them
+  // (still z >= -3.626 wall-column legal, above the 1.13 wall bottom).
+  P.add('hullDark', box(2.86, 0.32, 0.018), 0, 1.535, -3.630);
+  P.add('hullShadow', box(2.80, 0.32, 0.006), 0, 1.535, -3.6365);
+  // slats TILTED 0.25 rad (real louvers angle down): a flat rear face sees
+  // neither sun (+z side) nor hemi sky — the tilt turns each face normal
+  // up-back like the pale X-braces below, +~25% luminance. Envelope: z
+  // half-extent 0.0107 about -3.639 -> deepest -3.6497, inside the
+  // r3-certified -3.650 louver plane; bottom edge 1.3745 >= 1.373.
+  for (let k = 0; k < 7; k++) {
+    P.add('hullDetail', box(2.78, 0.048, 0.010), 0, 1.399 + k * 0.047, -3.639, 0.25, 0, 0);
   }
-  for (const vx of [-0.95, 0.95]) P.add('hullDetail', box(0.035, 0.30, 0.036), vx, 1.545, -3.633);
+  for (const vx of [-0.95, -0.32, 0.32, 0.95]) P.add('hullDetail', box(0.035, 0.32, 0.036), vx, 1.535, -3.633);
   for (const s2 of [-1, 1]) {
     P.add('hullDark', box(0.40, 0.17, 0.030), s2 * 1.16, 1.50, -3.630);
     P.add('hullShadow', box(0.36, 0.15, 0.005), s2 * 1.16, 1.50, -3.6435);
@@ -1149,8 +1177,8 @@ function buildLeo2A6(P) {
     P.add('hullGlass', box(0.035, 0.055, 0.012), s2 * 1.345, 1.663, -3.632);
     P.add('hullGlass', box(0.035, 0.055, 0.012), s2 * 1.285, 1.663, -3.632);
     P.add('hullDetail', box(0.17, 0.012, 0.030), s2 * 1.315, 1.722, -3.626);
-    P.add('hullDark', xform(torus(0.036, 0.012, 10), 0, 0, 0, Math.PI / 2, 0, 0), s2 * 0.72, 1.425, -3.622);
-    P.add('hullDetail', box(0.06, 0.045, 0.020), s2 * 0.72, 1.425, -3.624);
+    P.add('hullDark', xform(torus(0.036, 0.012, 10), 0, 0, 0, Math.PI / 2, 0, 0), s2 * 0.72, 1.30, -3.622);
+    P.add('hullDetail', box(0.06, 0.045, 0.020), s2 * 0.72, 1.30, -3.624);
   }
   // r3 #3: rear plate BELOW the vent band — round taillight clusters, tow
   // hooks, coupling + cross braces. LEGALITY: everything below y 1.373
@@ -1205,9 +1233,13 @@ function buildLeo2A6(P) {
   for (const s2 of [-1, 1]) {
     for (let k = 0; k < 3; k++) {
       const pz = 2.46 + k * 0.44;
-      P.add('hull', box(0.036, 0.20, 0.40), s2 * 1.853, 1.085, pz);
+      // r4 #4: block DARKENING — the camo blocks vanished into the camo
+      // skirt at board scale. Same certified geometry, bucket flipped to
+      // hullDark (gunmetal module read) with the bolts flipped PALE so
+      // they register on the dark face (two-tone law).
+      P.add('hullDark', box(0.036, 0.20, 0.40), s2 * 1.853, 1.085, pz);
       for (const bz of [-0.155, 0.155]) for (const by of [-0.072, 0.072]) {
-        P.add('hullDark', box(0.008, 0.026, 0.026), s2 * 1.869, 1.085 + by, pz + bz);
+        P.add('hullDetail', box(0.008, 0.026, 0.026), s2 * 1.869, 1.085 + by, pz + bz);
       }
       // r3 #5: dark outline frame so the armor blocks register at board
       // scale — held AT the certified 1.871 pad plane (the first cut's
@@ -1229,6 +1261,18 @@ function buildLeo2A6(P) {
     P.add('hull', box(0.010, 0.12, 4.80), s2 * 1.7265, 0.93, -0.965);
     for (let k = 0; k < 8; k++) {
       P.add('hullShadow', box(0.012, 0.098, 0.26), s2 * 1.726, 0.919, -3.22 + k * 0.585);
+    }
+    // r4 #4 seam registration: the segRun hairline plates (0.014 z) are
+    // sub-pixel at board scale — wide near-black seam bars at the SAME
+    // boundaries. Faces ride +1 mm over the certified segRun plate planes
+    // (front 1.836 -> 1.837, rear 1.721 -> 1.722; the r2 plates are
+    // themselves +1 mm over the segment faces — contrast reads, not
+    // proudness) and stay behind the prouder certified scallop/lip planes.
+    for (let k = 1; k <= 4; k++) {
+      P.add('hullShadow', box(0.074, 0.374, 0.055), s2 * 1.80, 1.0875, 1.52 + k * 0.427);
+    }
+    for (let k = 1; k <= 10; k++) {
+      P.add('hullShadow', box(0.049, 0.44, 0.050), s2 * 1.6975, 1.13, -3.42 + k * 0.4418);
     }
   }
 
@@ -1469,6 +1513,15 @@ function buildLeo2A6(P) {
   // center rear knob (the ref's turret-side mask reaches -2.85w at
   // 1.86-2.30 world)
   P.add('turretCloth', box(0.62, 0.40, 0.10), 0, 0.30, -3.04);
+  // r4 #3: the knob's rear face read as a blank bright TAN rectangle from
+  // dead rear (it pokes 8 cm past the rack fence). Dark cinch straps
+  // near-flush on the face (rear faces -3.0915, 1.5 mm past the certified
+  // -3.09 carrier — sub-pixel at the 10.5 mm trace pitch) + the a6 cloth
+  // retone below break it into a strapped bedroll read.
+  for (const sx of [-0.16, 0.16]) {
+    P.add('turretDark', box(0.032, 0.40, 0.012), sx, 0.30, -3.0855);
+  }
+  P.add('turretDark', box(0.62, 0.034, 0.012), 0, 0.30, -3.0855);
   P.add('turretCloth', box(0.85, 0.16, 0.20), 0, 0.57, -2.52);
   P.decal('turret', 'crossgrey', null, 0.36, [1.15, 0.36, -0.9], Math.PI / 2);
   P.decal('turret', 'crossgrey', null, 0.36, [-1.15, 0.36, -0.9], -Math.PI / 2);
@@ -1558,12 +1611,23 @@ function buildLeo2A6(P) {
     P.mats.glass.envMapIntensity = 0.45;
     P.mats.wood.color.setHex(0x4a463a);                  // grey-brown timber (the r2 0x574f40 read as a cream tab on the rear plate)
     P.mats.wood.roughness = 0.94;
+    // r4 #1 BAND RETONE (refined fleet law: sample ON the exact element).
+    // The r3 "ref 72.5deg" was sampled off CAMO-PAINTED upper gear; the
+    // ref's EXPOSED band strip samples 31.8-40.0deg brown-grey (view-left
+    // median 70,63,55 / lum 63.9 — R>G). All band-family tones rotate to
+    // R>G>B at near-constant luminance (proc strip lum was already in law
+    // at ratio 0.972). WHEELS ARE DONE (hue 78-86, dish/drum/rubber/dishR
+    // untouched — the r3-certified wheel law).
     for (const tm of [P.mats.trackL, P.mats.trackR]) {
-      tm.color.setRGB(1.42, 1.68, 1.38);                 // linear lift over the link map, G>R (r2 1.80/1.74/1.48 printed tan; 1.56/1.70 still sampled hue 54 vs ref 72)
+      tm.color.setRGB(1.60, 1.40, 1.20);                 // linear lift over the link map, R>G brown-grey
       tm.envMapIntensity = 0.2;
     }
-    P.mats.spareTrack.color.setHex(0x444a38);            // sprocket teeth/recess + spare links
+    P.mats.spareTrack.color.setHex(0x4c4237);            // sprocket teeth/recess + spare links + glacis rack pads
     P.mats.rubber.color.setHex(0x2c2a26);                // tires/flaps/anti-slip: weathered dark grey
+    // r4 #3: OD cloth pulled off the tan/khaki axis (the rear "blank bright
+    // rectangle" sampled hue 67.8 vs the ref bustle's 84.8) — darker
+    // green-biased canvas, luminance ratio ref/proc moves 1.11 -> ~1.0.
+    P.mats.canvasCloth.color.setHex(0x3e4532);
     const wornDish = P.mats.wheels.clone();              // road-wheel dishes: weathered grey-olive
     wornDish.color.setHex(0x525c46);
     wornDish.envMapIntensity = 0.25;
@@ -1583,10 +1647,10 @@ function buildLeo2A6(P) {
       const m = ob.material;
       if (!m || !m.color || !m.color.getHex) return;
       if (ob.isInstancedMesh && m.color.getHex() === 0x171614) {
-        rehook(m).color.setHex(0x3f4533);                // link pads: worn grey-olive steel (G>R)
+        rehook(m).color.setHex(0x41392f);                // link pads: dusty brown-grey (R>G — the band's dominant read; the first r4 cut's 0x4a3f34 fired 0.87/0.83 wrap-crown ratios under the close-front key)
         m.envMapIntensity = 0.22;
       } else if (ob.isInstancedMesh && m.color.getHex() === 0x27251f) {
-        rehook(m).color.setHex(0x33392c);                // inner chain / guide-horn layer (G>R)
+        rehook(m).color.setHex(0x362e26);                // inner chain / guide-horn layer (R>G)
         m.envMapIntensity = 0.26;
       } else if (m === P.mats.wheels) {
         ob.material = ob.isInstancedMesh ? wornDish : wornDrum;
