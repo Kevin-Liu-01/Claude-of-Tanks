@@ -56,7 +56,7 @@ import { toCreasedNormals, mergeGeometries } from 'three/examples/jsm/utils/Buff
 import {
   applyCamoToModel, getSharedCamoTexture, getSharedRoughnessTexture,
   getCommunityGearMaterials, getKitPaintTexture, vehicleAmbientFloorHook,
-  warmNextGlbShare,
+  warmNextGlbShare, applyBurnHook,
 } from './materials.js';
 
 const _loader = new GLTFLoader();
@@ -418,6 +418,27 @@ function uploadTextureSlice(texs, start) {
     try { D.renderer.initTexture(t); } catch (_) { /* warm-up only */ }
   }
   return i;
+}
+
+/** Pre-install the DISARMED burn-mask hook (uBurnT -1, ctx.burnU from the
+ * visual) on every staged material setDestroyed would later sweep — the hook
+ * changes each material's program cache key ('|burn-r6'), and installing it
+ * BEFORE precompileStaged means the burn program variants compile here in
+ * the idle slot instead of synchronously at kill time (the visible pause
+ * right before a destruction played). Same eligibility rules as the
+ * setDestroyed sweep: rendered meshes only, never colorWrite:false shadow
+ * proxies, every slot of multi-material meshes. Idempotent (applyBurnHook
+ * self-guards per material). */
+function prewarmBurnStaged(stagedScene, ctx) {
+  if (!ctx || !ctx.burnU) return;
+  try {
+    stagedScene.traverse((o) => {
+      if (!o.isMesh || !o.visible) return;
+      const mm = Array.isArray(o.material) ? o.material : [o.material];
+      if (!mm[0] || mm[0].colorWrite === false) return;
+      for (const sm of mm) applyBurnHook(sm, ctx.burnU);
+    });
+  } catch (_) { /* warm-up only — never block the swap */ }
 }
 
 /** Compile the DETACHED staged clone's programs against the live scene
@@ -2697,6 +2718,7 @@ export async function applyGlbModel(ctx) {
           if (st.ti >= st.texs.length) st.phase = 'compile';
           return 'more';
         case 'compile':
+          prewarmBurnStaged(st.staged.scene, ctx);
           precompileStaged(st.staged.scene);
           st.phase = 'commit';
           return 'more';

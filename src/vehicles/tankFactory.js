@@ -4234,6 +4234,29 @@ export function createTank(specId, engineCtx, opts = {}) {
     isDestroyed() { return destroyed; },
 
     /**
+     * Install the burn-mask shader hook (DISARMED, uBurnT -1) on every
+     * material setDestroyed would later sweep, without any wreck side
+     * effects. The hook changes each material's program cache key
+     * ('|burn-r6'), so first use forces a shader compile — done lazily at
+     * kill time that compile stalled the frame right before the destruction
+     * played ("a pause that can get long until the destroying actually
+     * happens"). Called from warmCombatPipeline for every battle tank (the
+     * final scene compile then builds the programs behind the loading
+     * screen); the GLB swap pipeline installs the same hook on staged
+     * materials pre-compile. Idempotent (applyBurnHook self-guards); a
+     * disarmed hook is exact-identity output (mix factors are 0).
+     */
+    prewarmBurn() {
+      if (destroyed) return;
+      root.traverse((o) => {
+        if (!o.isMesh || !o.visible) return;
+        const mm = Array.isArray(o.material) ? o.material : [o.material];
+        if (!mm[0] || mm[0].colorWrite === false) return;
+        for (const sm of mm) applyBurnHook(sm, burnU);
+      });
+    },
+
+    /**
      * Restore the live (pre-wreck) visual for a rematch: original materials,
      * decals, neutral turret/gun pose, re-seated ERA bricks and track bands,
      * cleared flinch/recoil/pop animation state. Safe on a never-destroyed
@@ -4327,7 +4350,11 @@ export function createTank(specId, engineCtx, opts = {}) {
   // registry. This flag is deliberately opt-in and leaves every gameplay
   // caller on the normal sourced-model path.
   if (!proceduralOnly && modelCfg && modelCfg.source === 'glb' && modelCfg.glb) {
-    const ctx = { spec, cfg: modelCfg.glb, hullG, turretG, recoilG, muzzle };
+    // burnU rides along so the swap pipeline can pre-install the DISARMED
+    // burn-mask hook (uBurnT -1) on the staged materials and compile the
+    // '|burn-r6' program variants off the render path — first-kill program
+    // compiles were the visible pause before any destruction played.
+    const ctx = { spec, cfg: modelCfg.glb, hullG, turretG, recoilG, muzzle, burnU };
     if (_modelLoaderMod && _modelLoaderMod.hasCachedGlb(modelCfg.glb.path)) {
       // GLB already parsed (garage re-entry, icon generation): swap in the
       // same frame so the first render never shows the procedural model.

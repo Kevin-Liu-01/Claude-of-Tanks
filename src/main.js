@@ -3307,6 +3307,17 @@ function warmCombatPipeline() {
     try { renderer.compile(warm.visual.root, camera, scene); } catch (_) { /* fine */ }
     warm.visual.resetDestroyed();
   }
+  // KILL-HITCH FIX: the single-tank wreck dance above only compiles THAT
+  // tank's burn program variants — programs are cached per material
+  // param-class, so every other tank family still paid its burn-hook shader
+  // compiles synchronously on its first kill (the visible pause right before
+  // a destruction played). Install the DISARMED hook on every battle tank
+  // now; the scene compile below then builds all the '|burn-r6' variants
+  // behind the loading screen. (GLB tanks committing later get the same
+  // treatment inside the swap pipeline's compile phase.)
+  for (const e of game.tanks) {
+    if (e.visual && e.visual.prewarmBurn) e.visual.prewarmBurn();
+  }
   warmWreckTextures(renderer);
   fx.group.traverse((o) => {
     const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);

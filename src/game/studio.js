@@ -300,6 +300,11 @@ export function createStudio(ctx) {
     const camoSeed = cfg.camoSeed != null ? cfg.camoSeed | 0 : 4200 + uidSeq * 17;
     const visual = createTank(specId, engineCtx, { camoSeed, quality: 'high' });
     scene.add(visual.root);
+    // KILL-HITCH FIX: studio actors are not game.tanks, so they miss
+    // warmCombatPipeline's burn prewarm — install the disarmed burn hook now
+    // so setActorState('wrecked'/'turret-popped') never pays first-use
+    // program compiles mid-beat. (GLB swaps re-hook in the swap pipeline.)
+    if (visual.prewarmBurn) visual.prewarmBurn();
     if (visual.setGroundSampler) {
       visual.setGroundSampler((x, z) => hfProxy.getHeightAt(x, z));
     }
