@@ -248,6 +248,70 @@ warp-invariant, z quoted RAW — body map z' = -0.4425 + (z+0.4425)*1.0289):
 Verification after warp: expect overall' 8.63 / body' 7.45 / p95' ~2.65
 / whips' ~3.43-3.45; fresh workorder mandatory before any re-lay.
 
+### Batch-18 push round (2026-08-02, merkava family agent) — GATE PASS ×2
+From the post-warp baseline **23.8** (hull 81.3 / whole 60.5 / turret 23.8 /
+stations 67.9 / dims 100) to **min 90.1 gatePassed, TWO consecutive runs
+bit-identical**: hull 91.3 / whole 90.1 / turret 90.6 / stations 93.7 /
+dims 100 / floaters 100. All 1B-gated params + sibling-gated shared params
+(smallTurret gains ringTub (extracted merkavaRingTub helper — modular path
+byte-identical), beakBridgeY/beakBotY (beak underside line), beakW/beakW2
+(beak plan width), station.drumR/cupR, mgLoaderDy, and a skirtless
+rearFlaps path gated `!c.skirt` so skirted siblings keep mesh order).
+WARPED-REF FRAME (fresh workorder mandatory; loader shift ~−0.145; body
+map z' = 1.0289z − 0.132): muzzle +4.32, hull full −4.313..3.118, body-12%
+−4.288..2.922, band p95 2.631, whips (x −0.845 z −2.96 top 3.42) and
+(x 0.795 z −2.38 top 3.44) + the 2.772 feather pot at x −0.855 (p95 = 3
+spikes). Side dAlong 0.147 → 0.000 (body front carrier: station z 2.92
+with band > 0.21; rear carrier: wing z1 −4.29; pods 3.09-3.12 and pins
+−4.30 are sub-threshold dims carriers; bow hullPost DELETED — work-order
+item 2: ref body carries hullLength itself now).
+What moved (the load-bearing set):
+1. RING TUB on the 1B print too (work-order item 9 is STALE): turret-mask
+   bots 0.595 flat −0.32..−2.03, front ramp −0.05..−0.32, rear step 1.17
+   at −2.115 then the 3B-class 4-box shelf to −2.31. Turret 23.8 → ~75 on
+   the tub alone (the same “~8% side mean” cap class as 3B/3C).
+2. Dome band at the WARPED stature: station box x −0.85..−0.61 top 2.631
+   (drumR 0.13/cupR 0.19 — the default 0.30/0.24 lathe/cupola lit the ref's
+   bare −0.43..−1.03 front cols), peak pot 2.652 @ −1.74, center head
+   2.635 @ ±0.06, roof CAMBER split: wide slabs at 2.475-2.492 (w 0.34
+   nose — a 0.40 first slab leaked the plan nose cols) + center spine pot
+   2.538 (±0.32 × z −0.02..0.94); saddle 2.34; brow 2.53 @ 0.92..1.55.
+3. Basket rim FALLS (work-order item 1): basket top 2.455 → 2.435 to
+   −3.59, vane 2.44 → 2.26 to −4.04; chainDrop 0.05 (the 0.12 drops broke
+   the ref's flat 1.895 tail bots); whip-can pot band 2.628 @ −2.545;
+   right-furniture pots (item 6): 2.578 @ x 0.99..1.255 + bins to x 1.395
+   with the −1.20..−1.27 edge nub; left casting wall strip 2.26 (plan
+   −1.16..−1.25 over −0.49..−2.20) + low bulge 1.84 (item 7 asymmetry).
+4. M64 line: mantlet drum [1.87..2.12] z 1.55..1.95 (item 4: bot raised
+   0.17), bare tube r 0.072 axis 1.975, sleeve r 0.088 to 4.00 +
+   sleeveClamp end ring r 0.13 @ 3.985 (the ref plan ±0.134-0.158 muzzle
+   cols — x-wide y-thin), gunTipZ 4.32, muzzleCollar DELETED.
+5. Hull: glacis-top re-lay (1.36@2.58 / 1.50@2.41), keel knee (2.66, 0.50)
+   → (2.28), belly ARCHES DOWN outboard (0.43 / 0.40@0.62-0.88 /
+   0.235@0.88-1.24 — inverse of 3B), deckY 1.585 (the deck grille rode
+   +0.045 over the bare 1.60 deck), tail: rack z1 −4.215 + wing −4.29 +
+   pins y 1.42 @ −4.30 + skirtless rearFlaps (0.49/−4.04, 0.66/−4.13,
+   0.78/−4.22), fender corners (item 5): lip y 1.26 [1.24..1.29] + corner
+   posts [0.68..1.59 R / 1.47 L] @ ±1.786 + stubs [0.66..1.46] @ ±1.818,
+   plank drops at x 1.80 bot 0.68, gear: trackW 0.54 / gearOut 1.70 (outer
+   1.70+bleed lights the ref's ±1.73 track col but not the bare ±1.77 —
+   the sprocket disc there cost 0.33×2 cols), sprocket y 0.66, pods
+   podX 0.60 / podIn −0.085.
+MEASUREMENT LAWS (1B round additions):
+- The r2 "rim RISES to 2.64" and v10 pot-band reads are pre-warp ghosts;
+  the warp maps 2.848 → 2.640, 2.769 → 2.622 etc (y-band slope 0.4032).
+- smallTurret hardcodes that needed params: beak underside (gy−0.16),
+  bridge box (gy−0.18), loader MG (roof+0.02), station drum/cupola radii —
+  all now optional-param'd, siblings untouched (2b/2d hold bit-identical).
+- The roof-slab top ring insets 0.96w; a station's w is a PLAN width too —
+  the first slab's 0.40 leaked z 1.02 into the ±0.39 plan cols (scan mode
+  `--blame=scan:x0,x1` pinpoints per-mesh column ownership).
+Board 90.3 (was 82.1): orientation truth, full articulation, exposed gear
+with dished wheels, top 98.3, no floaters; the falling basket rim now
+tracks the print. Residuals: board turret 73.6 = the ref's irregular
+packed-stowage upper mask (certified class); front ±0.85-1.02 belly-arch
+transition cols (~0.06); the 0.77 whip partial col.
+
 #### Round record (2026-08-02): before = after (audit round, no build edits)
 hull 81.5 / whole 75.2 / turret 62.5 / stations 81.2 / dims 100 /
 floaters 100, bit-identical on the post-audit verification run.

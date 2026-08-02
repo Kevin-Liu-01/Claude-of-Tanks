@@ -434,7 +434,7 @@ function merkavaChassis(P, c) {
         // the r4 deep lobes' 1.774 inner faces leaked the 0.62 hem into the
         // x 1.78 trace column (ref bottoms 0.80 there — err doubled). All
         // deep-hem content stays outboard of the 1.801 column edge.
-        const xin = s * (sx + (sk.lobeBot !== undefined ? 0.010 : -0.022)), xout = s * (sx + 0.026);
+        const xin = s * (sx + (sk.lobeIn ?? (sk.lobeBot !== undefined ? 0.010 : -0.022))), xout = s * (sx + 0.026);
         const [lbL, lbR] = s > 0 ? [xin, xout] : [xout, xin];
         for (const [a, b] of lobes) {
           const archA = a < z0 - 0.01;      // arch on the front side of this lobe
@@ -751,7 +751,10 @@ function merkavaChassis(P, c) {
           P.add('hullDark', box(0.036, tr.wall.top - eb, 0.09), s * tr.hw, (tr.wall.top + eb) / 2, tr.z1 - 0.04);
         }
       }
-      P.add('hullDark', box(x0 * 2, 0.035, 0.035), 0, tr.bot + 0.04, tr.z1 + 0.55);
+      // railZ (optional, 3D batch-18): the center low rail must stay INSIDE
+      // the clamshell notch depth — at the default 0.55 it poked 0.23 past
+      // the 3D ref's -3.63 center plan line. Siblings keep 0.55.
+      P.add('hullDark', box(x0 * 2, 0.035, 0.035), 0, tr.bot + 0.04, tr.z1 + (tr.railZ ?? 0.55));
       KIT.jerryCan(P, c.paleKit ? 'hullDetail' : 'hullCloth', -railX + 0.25, tr.top - 0.34, mid + 0.06, 0.15);
     } else {
       for (const ry of [tr.bot + 0.04, tr.top - 0.04]) {
@@ -910,6 +913,18 @@ function merkavaChassis(P, c) {
   // Thin high side lips: the warped refs' outermost plan/front columns are
   // short guard-lip slivers (front-left mudguard corner, rear guard edges),
   // not full-depth flares. { x (signed outer face), z0, z1, top, bot }.
+  // Rear mud flaps for SKIRTLESS marks (1B batch-18): the in-skirt flap loop
+  // never runs when skirt is null — same drawing, gated so skirted siblings
+  // keep their original mesh order (freeze-hash safety).
+  if (!c.skirt && c.rearFlaps) {
+    const xcF = (c.gearOut ?? hw - 0.036) - c.trackW / 2;
+    for (const s of [-1, 1]) {
+      for (const rf2 of c.rearFlaps) { // { z, bot, top?, w?, x?, mat?, wood? }
+        P.add(rf2.mat ?? 'hullRubber', box(rf2.w ?? 0.26, (rf2.top ?? 0.95) - rf2.bot, 0.05),
+          s * (rf2.x ?? xcF), ((rf2.top ?? 0.95) + rf2.bot) / 2, rf2.z);
+      }
+    }
+  }
   if (c.lipStrips) {
     for (const lp of c.lipStrips) {
       const sgn = Math.sign(lp.x);
@@ -1339,6 +1354,49 @@ function merkavaAntennas(P, list) {
 // running almost to the hull tail with the chain curtain beneath.
 // Turret-local coordinates (pivot at hull deck + 0.02, p.pivotZ).
 // ---------------------------------------------------------------------------
+// Turret ring tub: the crew/ammo basket descending through the ring into
+// the hull (real Merkava turrets hang one). The batch-normalized refs carry
+// it in their turret masks (side bottoms ~0.58-0.60 flat with short ramps at
+// both ends) — and it is INVISIBLE everywhere else: inside the hull
+// silhouette for whole/hull/front/plan rows and every station slice; only
+// the turret-only side render sees it. Extracted verbatim from the modular
+// path (3B/3C freeze-hash safe) so the small-turret marks (1B) can carry
+// their own measured tub. Solid closed volume (fill rule): two ramp slabs +
+// one flat-bottom box, flush to the shell base.
+function merkavaRingTub(P, t) {
+  const { box, slab } = KIT;
+  const rt = t.ringTub; // { z0, zF0, zF1, z1, top, bot, hw, stepY? } local
+  P.add('turret', slab( // front ramp down
+    [-rt.hw, rt.bot, rt.zF0], [rt.hw, rt.bot, rt.zF0], [rt.hw, rt.top - 0.06, rt.z0], [-rt.hw, rt.top - 0.06, rt.z0],
+    [-rt.hw, rt.top, rt.zF0], [rt.hw, rt.top, rt.zF0], [rt.hw, rt.top, rt.z0], [-rt.hw, rt.top, rt.z0]));
+  P.add('turret', box(rt.hw * 2, rt.top - rt.bot, rt.zF0 - rt.zF1), 0, (rt.top + rt.bot) / 2, (rt.zF0 + rt.zF1) / 2);
+  // rear end: the warped refs step near-vertically 0.58 -> ~1.05 at the
+  // tub tail, then shelve up to the bustle line (stepY); default = ramp.
+  const sy = rt.stepY ?? (rt.top - 0.06);
+  P.add('turret', slab( // vertical-ish step
+    [-rt.hw, rt.bot, rt.zF1], [rt.hw, rt.bot, rt.zF1], [rt.hw, sy, rt.zF1 - 0.015], [-rt.hw, sy, rt.zF1 - 0.015],
+    [-rt.hw, rt.top, rt.zF1], [rt.hw, rt.top, rt.zF1], [rt.hw, rt.top, rt.zF1 - 0.015], [-rt.hw, rt.top, rt.zF1 - 0.015]));
+  // r8: the single thin shelf WEDGE mis-rasterized (the long-standing
+  // "-2.26 interp seam": whole columns read the 1.51 bustle line instead
+  // of the shelf bottom — 0.17-0.41 m errors on 3-4 turret-side columns
+  // every run). Four stepped solid boxes now follow the ref's own
+  // measured ramp (bots 1.05 -> 1.18 -> 1.28 -> 1.40 over the shelf run)
+  // and rasterize robustly at any resolution.
+  {
+    // band edges/bots matched to the 1024 gate's own ref columns: bot 1.05
+    // flat to ~-2.21 world, ramp to ~1.51 by -2.25, bustle line beyond
+    // (fractions of the shelf span so both tanks share the shape)
+    const shZ0 = rt.zF1 - 0.015, shSpan = shZ0 - rt.z1;
+    const shEdge = [0, 0.4375, 0.594, 0.70, 1.0];
+    const shBots = [0, 0.258, 0.645, 0.989];
+    for (let sb = 0; sb < 4; sb++) {
+      const bz0 = shZ0 - shSpan * shEdge[sb], bz1 = shZ0 - shSpan * shEdge[sb + 1];
+      const bBot = sy + (rt.top - 0.045 - sy) * shBots[sb];
+      P.add('turret', box(rt.hw * 2, rt.top - bBot, bz0 - bz1), 0, (rt.top + bBot) / 2, (bz0 + bz1) / 2);
+    }
+  }
+}
+
 function merkavaSmallTurret(P, t) {
   const { box, cylY, polyTurret, slab, lathe, xform } = KIT;
   const apex = t.apexZ, gy = t.apexY;
@@ -1365,14 +1423,19 @@ function merkavaSmallTurret(P, t) {
   // Cast cheek beak: one continuous plane per side from the gun-notch band
   // to the roof shoulder. Undersides stay at the measured casting-bottom
   // line (~gy-0.16) — the repaired turret masks bottom high at the face.
+  const bkB = t.beakBot ?? (gy - 0.16);
+  const bkW = t.beakW ?? (t.planPts ? 0.60 : 0.74), bkW2 = t.beakW2 ?? (t.planPts ? 0.52 : 0.62);
   for (const s of [-1, 1]) {
     P.add('turret', slab(
-      [s * 0.12, gy - 0.16, apex], [s * (t.notchHW + 0.04), gy - 0.14, apex - 0.04],
-      [s * hwM * (t.planPts ? 0.60 : 0.74), 0.16, sf - (t.planPts ? 0.25 : 0.35)], [s * 0.06, 0.16, sf - (t.planPts ? 0.20 : 0.30)],
+      [s * 0.12, bkB, apex], [s * (t.notchHW + 0.04), bkB + 0.02, apex - 0.04],
+      [s * hwM * bkW, 0.16, sf - (t.planPts ? 0.25 : 0.35)], [s * 0.06, 0.16, sf - (t.planPts ? 0.20 : 0.30)],
       [s * 0.12, gy + 0.22, apex], [s * (t.notchHW + 0.04), gy + 0.19, apex - 0.04],
-      [s * hwM * (t.planPts ? 0.52 : 0.62), shellH + 0.02, sf - (t.planPts ? 0.22 : 0.30)], [s * 0.06, rf[0][1], sf - (t.planPts ? 0.20 : 0.28)]));
+      [s * hwM * bkW2, shellH + 0.02, sf - (t.planPts ? 0.22 : 0.30)], [s * 0.06, rf[0][1], sf - (t.planPts ? 0.20 : 0.28)]));
   }
-  P.add('turret', box(0.34, 0.12, apex - sf + 0.30), 0, gy - 0.18, (apex + sf) / 2 - 0.12);
+  // bridgeY (optional, 1B batch-18): the warped 1B ref chin bottoms 1.87-1.90
+  // under the gun notch — the default gy-0.18 bridge undercut it 0.14 over
+  // four side-turret columns. Siblings (2B/2D) keep the default line.
+  P.add('turret', box(0.34, 0.12, apex - sf + 0.30), 0, t.bridgeY ?? (gy - 0.18), (apex + sf) / 2 - 0.12);
   for (const cp of (Array.isArray(t.cheekPod) ? t.cheekPod : t.cheekPod ? [t.cheekPod] : [])) {
     P.add('turret', box(Math.abs(cp.x1 - cp.x0), cp.top - cp.bot, cp.z0 - cp.z1),
       (cp.x0 + cp.x1) / 2, (cp.top + cp.bot) / 2, (cp.z0 + cp.z1) / 2);
@@ -1401,6 +1464,10 @@ function merkavaSmallTurret(P, t) {
       [-w0, y0 - 0.10, z0], [w0, y0 - 0.10, z0], [w1, y1 - 0.10, z1], [-w1, y1 - 0.10, z1],
       [-w0 * 0.96, y0, z0], [w0 * 0.96, y0, z0], [w1 * 0.96, y1, z1], [-w1 * 0.96, y1, z1]));
   }
+
+  // Ring tub (batch-18 refs: the 1B print carries the same descending crew
+  // basket as the 3-series — turret mask bottoms 0.595 flat over the ring).
+  if (t.ringTub) merkavaRingTub(P, t);
 
   // Casting-ring apron — post-repair, the reference turret masks bottom out
   // at the carved ring plane (side bottoms ~1.5 world at mid-casting, rising
@@ -1437,10 +1504,11 @@ function merkavaSmallTurret(P, t) {
   const csHW = cs.hw ?? 0.52;
   P.add('turret', box(csHW * 2, cs.top - 0.03 - csBase, csLen * 0.94), cs.x, (cs.top - 0.03 + csBase) / 2, csMid);
   P.add('turret', box(csHW * 1.8, 0.03, csLen * 0.80), cs.x, cs.top - 0.015, csMid);
+  const csDrumR = cs.drumR ?? csLen * 0.30;
   P.add('turret', KIT.xform(lathe([
-    [csLen * 0.30, 0], [csLen * 0.30, (cs.top - csBase) * 0.88], [0.02, cs.top - csBase],
+    [csDrumR, 0], [csDrumR, (cs.top - csBase) * 0.88], [0.02, cs.top - csBase],
   ], 18, 1.15), cs.x, csBase, csMid));
-  KIT.cupola(P, 'turret', cs.x, cs.top - 0.16, csMid - 0.05, 0.24, 0.09, 6); // crown cs.top-0.01
+  KIT.cupola(P, 'turret', cs.x, cs.top - 0.16, csMid - 0.05, cs.cupR ?? 0.24, 0.09, 6); // crown cs.top-0.01
   merkavaMG(P, cs.x + 0.34, cs.top - 0.24, csMid - 0.22, 0.8);              // top cs.top-0.01
   if (cs.peak) { // true-height spike: the real MG/periscope head crests the
     // published-height line only in this single trace column (dims p95
@@ -1453,7 +1521,10 @@ function merkavaSmallTurret(P, t) {
   P.add('turret', box(0.34, 0.13, 0.30), -cs.x * 0.72, roofAt(t.sightZ) - 0.04, t.sightZ);
   P.add('turretGlass', box(0.20, 0.06, 0.02), -cs.x * 0.72, roofAt(t.sightZ) - 0.02, t.sightZ + 0.16);
   P.add('turret', cylY(0.19, 0.19, 0.045, 12), -cs.x * 0.9, roofAt(csMid) + 0.01, csMid + 0.02);
-  merkavaMG(P, -cs.x * 0.9, roofAt(csMid) + 0.02, csMid - 0.28, 0.66);
+  // mgLoaderDy (optional, 1B batch-18): the warped 1B ref roof reads 2.46
+  // where the default loader-MG crown rode 2.63 — drop it under the local
+  // band. Siblings keep the default seat.
+  merkavaMG(P, -cs.x * 0.9, roofAt(csMid) + 0.02 + (t.mgLoaderDy ?? 0), csMid - 0.28, 0.66);
   // internal 60 mm mortar lid + periscopes
   if (t.planPts) { // measured-wedge path: mortar tucks under the dome drum
     P.add('turret', cylY(0.11, 0.12, 0.035, 10), cs.x * 0.5, roofAt(csMid) + 0.02, csMid + 0.32);
@@ -1565,45 +1636,10 @@ function merkavaModularTurret(P, t) {
     [-hwM, t.maxWZ], [-hwM * 0.90, t.noseZ - (t.noseZ - t.maxWZ) * 0.55],
   ], shellTop - base, 1.0, t.roofInset ?? 0.96), 0, base, 0));
 
-  // Turret ring tub: the crew/ammo basket descending through the ring into
-  // the hull (real Merkava turrets hang one). The warped 3B/3C refs carry it
-  // in their turret masks (side bottoms 0.58 flat over z −0.36..−2.14 with
-  // short ramps at both ends) — and it is INVISIBLE everywhere else: inside
-  // the hull silhouette for whole/hull/front/plan rows and every station
-  // slice; only the turret-only side render sees it. Solid closed volume
-  // (fill rule): two ramp slabs + one flat-bottom box, flush to shell base.
-  if (t.ringTub) {
-    const rt = t.ringTub; // { z0, zF0, zF1, z1, top, bot, hw, stepY? } local
-    P.add('turret', slab( // front ramp down
-      [-rt.hw, rt.bot, rt.zF0], [rt.hw, rt.bot, rt.zF0], [rt.hw, rt.top - 0.06, rt.z0], [-rt.hw, rt.top - 0.06, rt.z0],
-      [-rt.hw, rt.top, rt.zF0], [rt.hw, rt.top, rt.zF0], [rt.hw, rt.top, rt.z0], [-rt.hw, rt.top, rt.z0]));
-    P.add('turret', box(rt.hw * 2, rt.top - rt.bot, rt.zF0 - rt.zF1), 0, (rt.top + rt.bot) / 2, (rt.zF0 + rt.zF1) / 2);
-    // rear end: the warped refs step near-vertically 0.58 -> ~1.05 at the
-    // tub tail, then shelve up to the bustle line (stepY); default = ramp.
-    const sy = rt.stepY ?? (rt.top - 0.06);
-    P.add('turret', slab( // vertical-ish step
-      [-rt.hw, rt.bot, rt.zF1], [rt.hw, rt.bot, rt.zF1], [rt.hw, sy, rt.zF1 - 0.015], [-rt.hw, sy, rt.zF1 - 0.015],
-      [-rt.hw, rt.top, rt.zF1], [rt.hw, rt.top, rt.zF1], [rt.hw, rt.top, rt.zF1 - 0.015], [-rt.hw, rt.top, rt.zF1 - 0.015]));
-    // r8: the single thin shelf WEDGE mis-rasterized (the long-standing
-    // "-2.26 interp seam": whole columns read the 1.51 bustle line instead
-    // of the shelf bottom — 0.17-0.41 m errors on 3-4 turret-side columns
-    // every run). Four stepped solid boxes now follow the ref's own
-    // measured ramp (bots 1.05 -> 1.18 -> 1.28 -> 1.40 over the shelf run)
-    // and rasterize robustly at any resolution.
-    {
-      // band edges/bots matched to the 1024 gate's own ref columns: bot 1.05
-      // flat to ~-2.21 world, ramp to ~1.51 by -2.25, bustle line beyond
-      // (fractions of the shelf span so both tanks share the shape)
-      const shZ0 = rt.zF1 - 0.015, shSpan = shZ0 - rt.z1;
-      const shEdge = [0, 0.4375, 0.594, 0.70, 1.0];
-      const shBots = [0, 0.258, 0.645, 0.989];
-      for (let sb = 0; sb < 4; sb++) {
-        const bz0 = shZ0 - shSpan * shEdge[sb], bz1 = shZ0 - shSpan * shEdge[sb + 1];
-        const bBot = sy + (rt.top - 0.045 - sy) * shBots[sb];
-        P.add('turret', box(rt.hw * 2, rt.top - bBot, bz0 - bz1), 0, (rt.top + bBot) / 2, (bz0 + bz1) / 2);
-      }
-    }
-  }
+  // Turret ring tub (shared helper — see merkavaRingTub above; the warped
+  // 3B/3C/3D refs carry it in their turret masks, side bottoms 0.58 flat
+  // over z −0.36..−2.14 with short ramps at both ends).
+  if (t.ringTub) merkavaRingTub(P, t);
 
   // Rotor/crest housing: narrow front face at the apex (the side-view 2.56
   // wall), widening to the crest plateau; bottom rides the mantlet band.
@@ -2333,7 +2369,12 @@ function buildMerkavaMark(P, p) {
     basketXoff: p.basketXoff,
     chainDrop: p.chainDrop, chainGap: p.chainGap,
     station: p.station ? { x: p.station.x, z0: L(p.station.z0), z1: L(p.station.z1), top: V(p.station.top), hw: p.station.hw,
+      drumR: p.station.drumR, cupR: p.station.cupR,
       peak: p.station.peak ? { z: L(p.station.peak.z), top: V(p.station.peak.top) } : undefined } : undefined,
+    bridgeY: p.beakBridgeY !== undefined ? V(p.beakBridgeY) : undefined,
+    beakW: p.beakW, beakW2: p.beakW2,
+    beakBot: p.beakBotY !== undefined ? V(p.beakBotY) : undefined,
+    mgLoaderDy: p.mgLoaderDy,
     stow: p.stow ? { z0: L(p.stow.z0), z1: L(p.stow.z1), top: V(p.stow.top), bot: V(p.stow.bot), hw: p.stow.hw, xoff: p.stow.xoff } : undefined,
     stow2: p.stow2 ? { z0: L(p.stow2.z0), z1: L(p.stow2.z1), top: V(p.stow2.top), bot: V(p.stow2.bot), hw: p.stow2.hw, xoff: p.stow2.xoff } : undefined,
     turretRack: p.turretRack ? { z0: L(p.turretRack.z0), z1: L(p.turretRack.z1), top: V(p.turretRack.top), bot: V(p.turretRack.bot), hw: p.turretRack.hw, x0: p.turretRack.x0 } : undefined,
@@ -2432,7 +2473,9 @@ function buildMerkavaMark(P, p) {
   // the MEASURED band (m.z0 world start when given — the repaired refs read
   // a fat 0.5-0.7 m drum just past the crest face, tube-only beyond).
   const gunZL = p.gunZL ?? 0.32;
-  P.gunG.position.set(0, V(p.gunAxisY), gunZL);
+  // gunXoff (3D batch-18): the warped 3D ref's gun/sleeve plan spans
+  // x -0.115..+0.064 — its rig_gun is seated ~35 mm left in its own frame.
+  P.gunG.position.set(p.gunXoff ?? 0, V(p.gunAxisY), gunZL);
   const gLen = p.gunTipZ - p.pivotZ - gunZL + 0.03;
   const apexG = t.apexZ - gunZL;
   const m = p.mantlet; // { r0, r1, len, drop, z0?, legacy? } external cast sleeve
@@ -2546,6 +2589,13 @@ function buildMerkavaMark(P, p) {
     for (const rz of p.sleeveRings) {
       P.addGunExtraDark(cylZ((p.sleeveR ?? 0.15) + 0.008, 0.05, 12), 0, 0, L(rz) - gunZL);
     }
+  }
+  if (p.muzzleRing) { // batch-18: sleeve/muzzle end ring — the warped refs
+    // read a wide thin ring near the sleeve end (plan ±0.14-0.15 cols reach
+    // the ring z while the side band stays tube-thin). x is WORLD (the ref
+    // rings are not centered on the gun axis; gunXoff is compensated).
+    const mr = p.muzzleRing;
+    P.addGunExtraDark(cylZ(mr.r, mr.len, 12), (mr.x ?? 0) - (p.gunXoff ?? 0), 0, L(mr.z) - gunZL);
   }
   if (p.sleeveClamp) { // r5: fat mid-sleeve junction clamp — the ref side
     // trace bumps to 2.12 at z 2.23-2.27 (a collar the plain sleeve run
@@ -3332,104 +3382,138 @@ export const MERKAVA_PROFILES = {
   // gun axis 1.97 tip 4.06; whips at -2.15/-2.80 to y 4.8.
   merkava1b: {
     build: buildMerkavaMark, ...MK12_GEAR,
-    deckY: 1.63, rearDeckZ: -2.55,
-    // r2 post-repair re-line (true-camera profile + fresh gate tables):
-    // deck 1.63 flat -2.36..-0.20 rising to 1.73-1.75 over 0.2..0.9 and at
-    // the shelf crest -2.55; rear falls 1.75->1.56 to the tail; glacis knee
-    // (2.44,1.51) toe (3.05,1.07 over 0.95); center rear recesses at -3.82
-    // (clamshell door) while the corners run to -3.97.
+    deckY: 1.585, rearDeckZ: -2.76,
+    // BATCH-18 PUSH (2026-08-02): authored in the WARPED-REF world frame
+    // (loader re-centered ~-0.145 after the muzzle warp; old-frame z map
+    // z' = 1.0289z - 0.132 for the body zone). Registration carriers:
+    // body-span front 2.92 (band > 0.21), deep-run wing end -4.29; pods at
+    // 3.09-3.12 + tail pins -4.31 are sub-threshold dims carriers.
+    // Warped deck: toe (3.04, 1.01), knee (2.41, 1.50), plateau 1.674
+    // @ 1.43..1.03, peak 1.748 @ 0.79..0.64, bare 1.601 -0.34..-2.20,
+    // shelf crest 1.748 @ -2.65..-2.69, rack zone 1.72 falling beyond;
+    // center clamshell notch -3.77..-3.80 (|x|<=0.31), corners -4.215.
     body: [
-      { z: 3.00, yT: 1.05, yB: 0.95, wT: 0.48, wB: 0.48 },
-      { z: 2.96, yT: 1.13, yB: 0.96, wT: 1.30, wB: 1.05 },
-      { z: 2.60, yT: 1.42, yB: 1.00, wT: 1.66, wB: 1.40 },
-      { z: 2.15, yT: 1.58, yB: 1.02, wT: 1.71, wB: 1.71 },
-      { z: 1.45, yT: 1.66, yB: 1.02, wT: 1.71, wB: 1.71 },
-      { z: 0.85, yT: 1.73, yB: 1.02, wT: 1.71, wB: 1.71 },
-      { z: 0.15, yT: 1.71, yB: 1.02, wT: 1.71, wB: 1.71 },
-      { z: -0.20, yT: 1.63, yB: 1.02, wT: 1.71, wB: 1.71 },
-      { z: -2.36, yT: 1.63, yB: 1.02, wT: 1.71, wB: 1.71 },
-      { z: -2.55, yT: 1.745, yB: 1.02, wT: 1.71, wB: 1.71 },
-      { z: -2.95, yT: 1.72, yB: 1.00, wT: 1.71, wB: 1.71 },
-      { z: -3.35, yT: 1.655, yB: 0.98, wT: 1.70, wB: 1.70 },
-      { z: -3.55, yT: 1.62, yB: 0.94, wT: 1.69, wB: 1.69 },
-      { z: -3.97, yT: 1.56, yB: 0.90, wT: 1.64, wB: 1.64 },
+      { z: 2.895, yT: 1.05, yB: 0.95, wT: 0.30, wB: 0.35 },
+      { z: 2.92, yT: 1.14, yB: 0.92, wT: 1.30, wB: 1.05 },
+      { z: 2.58, yT: 1.36, yB: 1.00, wT: 1.62, wB: 1.40 },
+      { z: 2.41, yT: 1.50, yB: 1.01, wT: 1.66, wB: 1.71 },
+      { z: 2.08, yT: 1.555, yB: 1.02, wT: 1.66, wB: 1.71 },
+      { z: 1.55, yT: 1.585, yB: 1.02, wT: 1.66, wB: 1.71 },
+      { z: 1.30, yT: 1.645, yB: 1.02, wT: 1.66, wB: 1.71 },
+      { z: 0.72, yT: 1.725, yB: 1.02, wT: 1.55, wB: 1.71 },
+      { z: 0.30, yT: 1.72, yB: 1.02, wT: 1.62, wB: 1.71 },
+      { z: 0.02, yT: 1.70, yB: 1.02, wT: 1.66, wB: 1.71 },
+      { z: -0.34, yT: 1.60, yB: 1.02, wT: 1.66, wB: 1.71 },
+      { z: -2.20, yT: 1.60, yB: 1.02, wT: 1.66, wB: 1.71 },
+      { z: -2.50, yT: 1.625, yB: 1.02, wT: 1.66, wB: 1.71 },
+      { z: -2.67, yT: 1.73, yB: 1.00, wT: 1.55, wB: 1.71 },
+      { z: -2.87, yT: 1.65, yB: 1.00, wT: 1.66, wB: 1.71 },
+      { z: -3.30, yT: 1.69, yB: 0.98, wT: 1.70, wB: 1.70 },
+      { z: -3.79, yT: 1.62, yB: 0.94, wT: 1.69, wB: 1.69 },
+      { z: -4.215, yT: 1.55, yB: 0.90, wT: 1.64, wB: 1.64 },
     ],
-    tailNotch: { hw: 0.30 },
-    keel: { toeZ: 2.96, toeY: 0.98, toeHW: 0.42, midZ: 2.30, midY: 0.40, groundZ: 1.90, bellyY: 0.44, tailLowZ: -3.35 }, // plan center bow 2.95; rear wedge top ends -3.55 (ref center rear)
-    glacis: { z0: 0.95, z1: 3.02 },
-    podX: 0.62, podIn: -0.10, podY: 0.99,
-    hullPosts: [{ x: -0.60, z: 3.40, top: 1.10, base: 0.97 }],
-    // Fender planks at the measured y 1.43 line; post-repair plan runs
-    // SYMMETRIC 2.95..-3.95 (the old per-side clip was a broken-rig read).
-    // Outer lip carries the published 3.70 width (WIDTH GUARD: outer face
-    // exactly +-1.85, widest point of the build).
-    fenderPlank: { x0: 1.42, x1: 1.73, z0: 2.56, z1: -3.94, y: 1.43, drops: { bot: 0.68, x: [1.775, 1.735], z: [2.0, 1.1, 0.2, -0.7, -1.6, -2.5, -3.4] } }, // L edge 1.80 / R 1.76: both clear of the 1.822 col boundary (1.82+AA lit the left-only column = dAlong 0.048)
-    frontBoard: { z0: 2.94, z1: 2.54, y: 1.09, x0: 1.42, x1: 1.73 }, // ref bow keeps the fender LOW fwd of 2.56 (side tops are the glacis)
-    // Ref is laterally SEATED +0.05 in its own frame (registration nulls
-    // it): its fender line runs full-length at seat-corrected ~1.825 (mid
-    // stations read 3.65) — author the symmetric equivalent.
-    fenderLip: { x: 1.825, w: 0.07, z0: 2.36, z1: -3.44, y: 1.33 },
-    fenderLip2: { x: 1.85, w: 0.06, z0: -2.90, z1: -3.48, y: 1.35 }, // WIDTH GUARD: published 3.70 lives at the rear fender flare
+    tailNotch: { hw: 0.31 },
+    // Warped lower glacis (3.04, 0.94) -> (2.62, 0.52) -> ground ~1.8; the
+    // 1B belly ARCHES DOWN outboard: front bots 0.43 center / 0.32 mid /
+    // 0.235 at x 0.97-1.13 (the inverse of the 3B arch).
+    keel: { toeZ: 2.90, toeY: 0.90, toeHW: 0.42, midZ: 2.66, midY: 0.50, groundZ: 2.28, bellyY: 0.43, bellyMidX: 0.88, bellyMidY: 0.40, bellySideY: 0.235, tailLowZ: -3.58 },
+    glacis: { z0: 0.85, z1: 2.975 },
+    podX: 0.60, podIn: -0.085, podY: 0.99,
+    // Fender planks at the measured y 1.43 line; the corner mud flaps drop
+    // to 0.66-0.73 under a THIN lip [1.13..1.26] (work-order item 5) — the
+    // warped refs carry the corner content on BOTH sides symmetrically.
+    fenderPlank: { x0: 1.42, x1: 1.73, z0: 2.50, z1: -3.70, y: 1.43, drops: { bot: 0.68, x: [1.80, 1.80], z: [1.93, 1.00, 0.07, -0.85, -1.78, -2.70, -3.63] } },
+    frontBoard: { z0: 2.88, z1: 2.48, y: 1.09, x0: 1.42, x1: 1.74 },
+    fenderLip: { x: 1.825, w: 0.07, z0: [2.40, 2.39], z1: [-3.72, -3.72], y: 1.26 },
+    fenderLip2: { x: 1.85, w: 0.06, z0: -3.12, z1: -3.71, y: 1.26 }, // WIDTH GUARD: published 3.70 lives at the rear fender flare
+    lipStrips: [
+      { x: 1.786, z0: 1.96, z1: 1.90, top: 1.59, bot: 0.68 },  // fender corner posts (ref front ±1.77 cols [0.68..1.59])
+      { x: -1.786, z0: 1.96, z1: 1.90, top: 1.47, bot: 0.68 },
+      { x: 1.818, z0: 1.95, z1: 1.91, top: 1.46, bot: 0.66 },  // outer corner stub (ref ±1.81 col [0.64..1.46])
+      { x: -1.818, z0: 1.95, z1: 1.91, top: 1.46, bot: 0.66 },
+    ],
     bodyHW: 1.70,
     skirt: null,
-    wheelZs: [1.55, 0.73, -0.09, -0.91, -1.73, -2.45],
-    sprocket: { z: 2.02, y: 0.60, r: 0.28 }, idler: { z: -3.42, y: 0.80, r: 0.28 }, // ramp: flat ends -2.65, 0.44 slope into a high wrap
-    rollers: [1.1, 0.25, -0.6, -1.45, -2.25],
-    // Hull tail rack: center-notched (ref plan opens x<0.35 to -3.82) with
-    // the deep run x 0.35..1.04 to -4.01 and slim wings carrying the dims
-    // hullLength span to -4.22 (published 7.45 needs the rear reach; ~1
-    // sub-margin cover column vs the 7.21 m ref hull is the cheapest trade).
+    trackW: 0.54, gearOut: 1.70, // outer 1.70(+bleed) lights the ref's ±1.73 track col but not ±1.77; inner 1.16 clears the ±1.10 col
+    wheelZs: [1.46, 0.62, -0.23, -1.07, -1.91, -2.65],
+    sprocket: { z: 1.95, y: 0.66, r: 0.28 }, idler: { z: -3.65, y: 0.80, r: 0.28 },
+    rollers: [1.0, 0.12, -0.75, -1.62, -2.45],
+    // Hull tail: center notch to -3.79, rack band [0.92..1.58] to -4.215
+    // full width, deep run x 0.35..1.02 to -4.29 (= the ref body-span end),
+    // hairline pins at -4.30 carrying overall (ref deepest -4.313 band
+    // [1.36..1.48]).
     tailRack: {
-      z0: -3.56, z1: -4.01, top: 1.60, bot: 0.92, hw: 1.72, x0: 0.35,
-      wings: { x0: 0.44, x1: 1.02, z1: -4.03, top: 1.55, bot: 0.86 },
+      z0: -3.72, z1: -4.215, top: 1.58, bot: 0.92, hw: 1.72, x0: 0.33,
+      wings: [{ x0: 0.35, x1: 1.02, z1: -4.29, top: 1.55, bot: 0.79 }],
     },
-    tailPins: [{ x: 0.62, y: 1.00, z: -4.24 }, { x: -0.62, y: 1.00, z: -4.24 }],
-    pivotZ: -1.00,
+    tailPins: [{ x: 0.53, y: 1.42, z: -4.30 }, { x: -0.53, y: 1.42, z: -4.30 }],
+    rearFlaps: [{ z: -4.04, bot: 0.49, top: 0.92, w: 0.30 }, { z: -4.13, bot: 0.66, top: 0.95, w: 0.30 }, { z: -4.22, bot: 0.78, top: 1.00, w: 0.30 }],
+    pivotZ: -1.16,
     turretStyle: 'small',
-    // Muzzle set from published overall length off the wing tail: -4.22 +
-    // 8.63*0.995 = 4.37 (the oracle's M64 is modelled short at 4.00-4.09 —
-    // the symmetric-coverage cost on side_whole is the certified gun cap).
-    gunAxisY: 1.97, gunR: 0.075, sleeve: true, evac: null, collar: false, gunTipZ: 4.39, gunZL: 0.40, sleeveTo: 3.80, sleeveR: 0.148, // ref M64 thermal sleeve reads to +3.8
-    muzzleCollar: { r: 0.145, len: 0.28 },
-    mantlet: { r0: 0.148, r1: 0.10, len: 0.80, drop: 0.005, z0: 1.18 },
-    apexZ: 1.21, notchHW: 0.20, hwMax: 1.30, roofHW: 0.98, roofInset: 0.90,
-    shoulderZ: 0.30, shellRearZ: -2.05, maxWZ: -1.15,
-    // r3 measured plan wedge (full-curve dump): nose plateau ±0.33 at
-    // z +1.15, sweep to (0.66, 0.36), max width ±1.30 confined to
-    // z -0.56..-1.22, rear corner (1.20, -1.90); casting bottoms 1.90 at
-    // the face; shell capped at the 2.35 saddle (roof slabs carry the
-    // rising crest with per-station widths following the wedge).
-    planPts: [[0.33, 1.15], [0.66, 0.36], [1.28, -0.42], [1.28, -0.85], [1.18, -1.90], [0.90, -2.08]],
-    shellBotY: 1.90, shellTopY: 2.35,
+    // Gun: warped-ref muzzle +4.32 (tail -4.31 + committed 8.63). Tube band
+    // [1.895..2.067] -> axis 1.975; sleeve r 0.088 to ~4.0, bare 0.072
+    // beyond (the warped print reads a uniform slim tube, no muzzle mass).
+    gunAxisY: 1.975, gunR: 0.072, sleeve: true, evac: null, collar: false, gunTipZ: 4.32, gunZL: 0.40, sleeveTo: 4.00, sleeveR: 0.088,
+    sleeveClamp: { z: 3.985, r: 0.13, len: 0.04 }, // sleeve-end ring: ref plan ±0.134-0.158 cols read fwd 4.007 (r trimmed: side cols 3.94/4.04 read the band ±0.06)
+    // Mantlet drum band [1.871..2.116] over z 1.60..1.94 (work-order item 4:
+    // the old bot 1.70 was 0.17 too deep).
+    mantlet: { r0: 0.125, r1: 0.09, len: 0.40, drop: 0.02, z0: 1.55 },
+    apexZ: 1.11, notchHW: 0.20, hwMax: 1.16, roofHW: 0.98, roofInset: 0.90,
+    shoulderZ: 0.18, shellRearZ: -2.24, maxWZ: -1.32,
+    // Warped plan wedge: nose plateau ±0.33 at z +1.03, sweep (0.42, 0.72)
+    // -> (0.64, 0.48), right wall corner (0.99, -0.22) -> 1.14, walls 1.14
+    // to -2.06, rear corner (0.90, -2.28). The left -1.29 bulge and the
+    // right x 1.12-1.39 furniture band ride pots (per-side asymmetry).
+    planPts: [[0.33, 1.01], [0.40, 0.62], [0.47, 0.40], [0.56, 0.30], [0.64, 0.26], [0.99, -0.22], [1.14, -0.44], [1.14, -2.06], [0.90, -2.28]],
+    beakBridgeY: 1.93, beakBotY: 1.875, mgLoaderDy: -0.16, beakW: 0.42, beakW2: 0.36,
+    shellBotY: 1.88, shellTopY: 2.34,
     cheekPod: [
-      { x0: 0.67, x1: 1.02, z0: 0.83, z1: 0.28, top: 2.20, bot: 1.78 },
-      { x0: -0.74, x1: -1.04, z0: 0.51, z1: 0.05, top: 2.12, bot: 1.80 },
+      { x0: 0.67, x1: 1.00, z0: 0.71, z1: 0.24, top: 2.20, bot: 1.78 },
+      { x0: -0.76, x1: -1.07, z0: 0.40, z1: -0.08, top: 2.12, bot: 1.80 },
     ],
-    // Roof (ref side turret tops): front plateau 2.58-2.62 (1.1..0.15),
-    // saddle 2.35 (-0.02..-0.44), dome-band drum 2.66 (capped; ref rides
-    // 2.80-2.87), rear shelf 2.50-2.53.
-    roofLine: [[1.12, 2.58, 0.34], [0.36, 2.61, 0.65], [0.16, 2.62, 0.70], [0.06, 2.35, 0.80], [-0.36, 2.35, 0.90], [-1.75, 2.50, 0.98], [-2.00, 2.53, 0.94]],
-    // dims cap: published height 2.65 (p95 of tops) — the flat dome drum,
-    // cupola lid and MG crowns all live at 2.66; the repaired oracle's
-    // 2.80-2.87 dome band stays deliberately capped (heightM is sovereign).
-    station: { x: -0.45, z0: -0.46, z1: -1.70, top: 2.66, hw: 0.53 },
-    sightZ: 0.35,
-    // Casting-ring underside (repaired-oracle turret mask bottoms): 1.53
-    // flat across the ring with the -0.9 dip to 1.48, rising to the mantlet
-    // line (1.86) fore and the bustle (1.86) aft.
-    apron: [[1.05, 1.88, 0.30], [0.60, 1.72, 0.60], [0.02, 1.53], [-0.80, 1.53], [-0.93, 1.48], [-1.10, 1.48], [-1.25, 1.53], [-2.10, 1.53], [-2.40, 1.64], [-2.62, 1.75], [-2.85, 1.86]],
+    // Warped roof: 2.533 flat 1.50..0.03 (brow + crest), saddle 2.31-2.36
+    // over -0.07..-0.56, dome band 2.631 @ -0.76..-1.64 (peak 2.655 at
+    // -1.74), rear shelf 2.508 to -2.13.
+    roofLine: [[1.02, 2.475, 0.34], [0.24, 2.49, 0.64], [0.03, 2.492, 0.66], [-0.07, 2.34, 0.80], [-0.50, 2.34, 0.90], [-1.93, 2.50, 0.88], [-2.19, 2.512, 0.86]],
+    // Commander dome band at the WARPED stature (2.631 — the batch-18 warp
+    // brought the old 2.80-2.87 band down to published): long station box
+    // x -0.85..-0.61 (front band cols) over z -0.76..-1.64.
+    station: { x: -0.73, z0: -0.76, z1: -1.64, top: 2.631, hw: 0.12, drumR: 0.13, cupR: 0.19 },
+    sightZ: -0.20,
+    // Casting-ring underside (warped): 1.625 flat across the ring (the tub
+    // below owns the side bottoms there), rising to the mantlet line fore
+    // and the bustle aft.
+    apron: [[0.36, 1.72, 0.30], [0.05, 1.64, 0.80], [-0.10, 1.625], [-2.30, 1.625], [-2.50, 1.66], [-2.65, 1.73], [-2.80, 1.80], [-2.95, 1.87]],
     apronHW: 1.05,
-    stow: { z0: -1.70, z1: -1.96, top: 2.64, bot: 2.05, hw: 1.14, xoff: 0 }, // ref band spans |x|<=1.16 (front cols 1.0-1.2 read 2.65)
-    stow2: { z0: -1.96, z1: -2.44, top: 2.64, bot: 2.02, hw: 1.00, xoff: 0 }, // band continues aft NARROW (plan x 1.13 column ends at -1.96)
-    basket: { z0: -2.18, z1: -3.38, top: 2.48, topRear: 2.64, bot: 1.88 }, basketHW: 1.08, basketXoff: -0.06, // ref: LEFT rail full-aft at x 1.12, RIGHT at 1.03 (rail edges 18mm clear of the 1024 col boundaries); rim RISES to 2.64
-    tailVane: { z0: -3.45, z1: -3.85, top: 2.42, topRear: 2.06, bot: 1.92, hw: 1.06, hwRear: 0.36, drop: 0.03 },
-    chainDrop: 0.12, chainGap: 0.18,
-    // Whips on the measured ref columns (side crossfire fix: one gate
-    // column rearward of the raw probe read) at the ref's +0.8 x station
-    // (front-view trace: BOTH 1B whips ride the RIGHT side).
-    antennas: [{ x: -0.85, y: 2.48, z: -2.78, h: 2.35, stem: 0.35 }, { x: 0.80, y: 2.46, z: -2.22, h: 2.42, stem: 0.35 }],
-    pots: [{ x: 0.79, z: -2.35, top: 2.64, base: 2.40, w: 0.20, d: 0.12 }, { x: -0.86, z: -2.72, top: 2.64, base: 2.40, w: 0.18, d: 0.18 }, { x: 1.33, z: -1.00, top: 2.63, base: 2.10, w: 0.18, d: 0.24 }],
-    brow: { z0: 1.68, z1: 1.02, top: 2.56 },
+    // Turret ring tub (batch-18: the 1B print carries it too — turret mask
+    // bottoms 0.595 flat over z -0.32..-2.03, ramps -0.07..-0.32 and
+    // -2.08..-2.28, step to 1.06). Top 1.66 overlaps the apron (connected).
+    ringTub: { z0: -0.05, zF0: -0.32, zF1: -2.115, z1: -2.31, top: 1.66, bot: 0.595, hw: 0.85, stepY: 1.17 },
+    stow: { z0: -1.86, z1: -2.14, top: 2.44, bot: 2.02, hw: 0.98, xoff: 0 },
+    stow2: { z0: -2.14, z1: -2.32, top: 2.51, bot: 1.98, hw: 0.75, xoff: -0.20 },
+    // Basket rim FALLS 2.46 -> 2.42 (work-order item 1 — the old "rises to
+    // 2.64" read is dead); left rail runs deeper than right (xoff -0.045).
+    basket: { z0: -2.32, z1: -3.59, top: 2.455, topRear: 2.435, bot: 1.90 }, basketHW: 1.06, basketXoff: -0.04,
+    tailVane: { z0: -3.59, z1: -4.04, top: 2.44, topRear: 2.26, bot: 1.92, hw: 1.00, hwRear: 0.38, drop: 0.03 },
+    chainDrop: 0.05, chainGap: 0.18,
+    // Whips on the warped ref columns: left x -0.855 @ z -2.96 (top 3.42),
+    // right x 0.795 @ z -2.38 (top 3.44).
+    antennas: [{ x: -0.845, y: 2.40, z: -2.96, h: 1.03, stem: 0.35 }, { x: 0.795, y: 2.40, z: -2.38, h: 1.05, stem: 0.35 }],
+    pots: [
+      { x: 0.785, z: -2.545, top: 2.628, base: 2.38, w: 0.05, d: 0.10 },  // whip-can pot band (side 2.631 @ -2.52..-2.57)
+      { x: -0.855, z: -2.96, top: 2.772, base: 2.40, w: 0.04, d: 0.05 },  // left whip feather col (front 2.772; p95 spike #3)
+      { x: -0.73, z: -1.74, top: 2.652, base: 2.50, w: 0.14, d: 0.10 },   // dome-band peak 2.655 @ -1.74
+      { x: 0.03, z: -1.00, top: 2.635, base: 2.40, w: 0.12, d: 0.12 },    // center head (front ±0.06 @ 2.635)
+      { x: 1.1225, z: -1.25, top: 2.578, base: 2.20, w: 0.265, d: 1.30 }, // right furniture band (ref front 2.567-2.58 spans 0.98..1.12)
+      { x: 0.03, z: 0.46, top: 2.538, base: 2.42, w: 0.64, d: 0.96 },      // roof center spine (ref camber: center 2.533-2.548, shoulders 2.49; plan nose ±0.33 ends 1.03)
+      { x: -0.30, z: -3.42, top: 2.53, base: 2.30, w: 0.06, d: 0.10 },     // basket-run pot (ref side -3.41..-3.45 col 2.53-2.56)
+      { x: 1.25, z: -1.03, top: 2.565, base: 2.30, w: 0.10, d: 0.94 },    // (front 2.565 @ 1.13..1.38 — work-order item 6)
+      { x: 1.3275, z: -1.065, top: 2.565, base: 2.35, w: 0.045, d: 0.71 },  // outer bin (ref plan 1.31-1.35: -0.71..-1.42)
+      { x: 1.3725, z: -1.2355, top: 2.56, base: 2.40, w: 0.045, d: 0.075 }, // edge nub (ref plan 1.39-1.43: -1.20..-1.27)
+      { x: -1.175, z: -1.345, top: 2.26, base: 1.90, w: 0.09, d: 1.71 },  // left casting wall strip (ref plan -1.16..-1.25 spans -0.49..-2.20)
+      { x: -1.235, z: -0.94, top: 1.84, base: 1.58, w: 0.155, d: 0.52 },  // left plan bulge (ref -1.26..-1.29 @ z -0.68..-1.20, front top 1.85)
+    ],
+    brow: { z0: 1.55, z1: 0.92, top: 2.53 },
     turretKit: merkava1bKit,
   },
 
@@ -3983,84 +4067,199 @@ export const MERKAVA_PROFILES = {
   // Print note (certified): bustle band in the HULL node like 3C.
   merkava3d: {
     build: buildMerkavaMark, ...MK3_GEAR,
-    deckY: 1.63, rearDeckZ: -2.30,
-    // r4: 3B-family re-lay (see merkava3b.md round-4) with the 3D long nose
-    // and LOW rear rack. Deck line, gear ramp, skirt band + flares, grace
-    // caps and the bustle ramp/vane V are the shared measured anatomy.
+    // BATCH-18 PUSH (2026-08-02): authored in the WARPED-REF world frame
+    // (loader re-centered ~-0.31 after the muzzle warp; old-frame z map
+    // z' = 1.019z - 0.302 for the body zone). All targets from the fresh
+    // 384 world probe + 96-col workorder. Registration carriers: body-span
+    // front 2.89 (band > 0.21 there), tail-frame wing end -4.52; pods at
+    // 3.055 are sub-threshold hullLength carriers (metrology-selective law).
+    trackW: 0.60, // 3D ref front track inner face reads ~1.10-1.13 (x ±1.11 cols carry 0.24 bots)
+    wheelZs: [1.20, 0.45, -0.37, -1.18, -2.00, -2.81],
+    sprocket: { z: 2.00, y: 0.72, r: 0.29 }, idler: { z: -3.56, y: 0.72, r: 0.27 },
+    rollers: [0.95, 0.10, -0.75, -1.60, -2.45],
+    deckY: 1.598, rearDeckZ: -2.65,
+    // Warped-ref hull: plan face 2.865-2.89, glacis 1.13@2.89 -> 1.49@2.37,
+    // deck peak 1.728 @ 0.75..0.13 (center-narrow), bare 1.598 -0.19..-2.33,
+    // engine crest 1.728 @ -2.85..-2.90 (narrow), 1.68-1.665 to -3.47, rack
+    // falling beyond; center tail notch -3.63 (|x|<=0.30), corners -4.44.
     body: [
-      { z: 3.33, yT: 1.00, yB: 0.86, wT: 1.05, wB: 0.90 },
-      { z: 2.98, yT: 1.30, yB: 0.97, wT: 1.44, wB: 1.28 },
-      { z: 2.55, yT: 1.58, yB: 1.00, wT: 1.70, wB: 1.45 },
-      { z: 2.00, yT: 1.63, yB: 1.00, wT: 1.75, wB: 1.75 },
-      { z: 1.10, yT: 1.75, yB: 1.00, wT: 1.75, wB: 1.75 },
-      { z: 0.10, yT: 1.62, yB: 1.00, wT: 1.75, wB: 1.75 },
-      { z: -1.00, yT: 1.60, yB: 1.00, wT: 1.75, wB: 1.75 },
-      { z: -1.92, yT: 1.605, yB: 1.00, wT: 1.75, wB: 1.75 },
-      { z: -2.42, yT: 1.63, yB: 0.99, wT: 1.75, wB: 1.75 },
-      { z: -2.48, yT: 1.725, yB: 0.99, wT: 1.75, wB: 1.75 },
-      { z: -2.58, yT: 1.725, yB: 0.98, wT: 1.75, wB: 1.75 },
-      { z: -2.67, yT: 1.66, yB: 0.98, wT: 1.75, wB: 1.75 },
-      { z: -2.90, yT: 1.68, yB: 0.98, wT: 1.75, wB: 1.75 },
-      { z: -3.28, yT: 1.58, yB: 0.95, wT: 1.70, wB: 1.70 },
-      { z: -4.06, yT: 1.44, yB: 0.88, wT: 1.62, wB: 1.62 },
+      { z: 2.89, yT: 1.13, yB: 0.90, wT: 1.30, wB: 1.12 },
+      { z: 2.72, yT: 1.25, yB: 0.98, wT: 1.52, wB: 1.30 },
+      { z: 2.53, yT: 1.35, yB: 1.00, wT: 1.62, wB: 1.45 },
+      { z: 2.30, yT: 1.47, yB: 1.00, wT: 1.66, wB: 1.74 },
+      { z: 2.05, yT: 1.545, yB: 1.00, wT: 1.66, wB: 1.74 },
+      { z: 1.75, yT: 1.60, yB: 1.00, wT: 1.66, wB: 1.74 },
+      { z: 1.40, yT: 1.625, yB: 1.00, wT: 1.63, wB: 1.74 },
+      { z: 1.05, yT: 1.69, yB: 1.00, wT: 1.60, wB: 1.74 },
+      { z: 0.75, yT: 1.725, yB: 1.00, wT: 1.43, wB: 1.74 },
+      { z: 0.13, yT: 1.725, yB: 1.00, wT: 1.43, wB: 1.74 },
+      { z: -0.05, yT: 1.65, yB: 1.00, wT: 1.60, wB: 1.74 },
+      { z: -0.19, yT: 1.60, yB: 1.00, wT: 1.66, wB: 1.74 },
+      { z: -2.33, yT: 1.60, yB: 0.99, wT: 1.66, wB: 1.74 },
+      { z: -2.72, yT: 1.625, yB: 0.99, wT: 1.66, wB: 1.74 },
+      { z: -2.83, yT: 1.725, yB: 0.98, wT: 1.43, wB: 1.74 },
+      { z: -2.92, yT: 1.725, yB: 0.98, wT: 1.43, wB: 1.74 },
+      { z: -2.99, yT: 1.68, yB: 0.98, wT: 1.66, wB: 1.74 },
+      { z: -3.47, yT: 1.665, yB: 0.98, wT: 1.66, wB: 1.74 },
+      { z: -3.63, yT: 1.62, yB: 0.95, wT: 1.66, wB: 1.74 },
+      { z: -4.44, yT: 1.44, yB: 0.87, wT: 1.62, wB: 1.62 },
     ],
-    tailNotch: { hw: 0.30 },
-    keel: { toeZ: 3.33, toeY: 0.86, toeHW: 0.90, midZ: 2.95, midY: 0.50, groundZ: 2.50, bellyY: 0.36, tailLowZ: -3.20 },
-    glacis: { z0: 1.95, z1: 3.30 },
-    podX: 0.66, podIn: 0.05, podY: 0.98,
-    fenderPlank: { x0: 1.40, x1: 1.74, z0: 2.42, z1: -3.30, y: 1.60 },
-    skirt: { z0: [2.60, 2.47], z1: -3.44, top: 1.36, bot: 0.84, scallop: true, x: 1.833, flareF: { len: 0.20, x: 1.8435 }, flareR: { z0: -3.10, z1: -3.44, x: 1.855 } },
-    fenderLip: { x: 1.86, w: 0.07, z0: -3.12, z1: -3.40, y: 1.06 }, // widthM carrier inside the rear-guard window
-    frontBoard: { z0: 3.08, z1: 2.52, y: 1.06, x0: 1.30, x1: [1.79, 1.72] },
-    rearFlaps: [{ z: -3.60, bot: 0.44 }, { z: -3.72, bot: 0.62 }],
-    // 3D rear: LOW rack band (tops 1.54 falling, hanging 0.74-0.88) with
-    // the mid shelf; slim wings carry the hullLength tail columns.
+    tailNotch: { hw: 0.33 },
+    keel: { toeZ: 2.89, toeY: 0.88, toeHW: 0.75, midZ: 2.62, midY: 0.55, groundZ: 2.15, bellyY: 0.34, tailLowZ: -3.56 },
+    glacis: { z0: 1.70, z1: 2.81 },
+    // pods ARE the ref's side nose tip (x ±0.56..0.67, y 0.87..1.00, poking
+    // to 3.047-3.073 = the hull mask front edge and the dims hullLength bow).
+    podX: 0.62, podIn: -0.245, podY: 0.93,
+    fenderPlank: { x0: 1.40, x1: 1.748, z0: 2.16, z1: -3.66, y: 1.60 },
+    bodyHW: 1.70, // exhaust louvre bank rides bodyHW: the default hw*0.985 put it at 1.84 (front ±1.83 cols read its 1.55 top)
+    // Skirt: plate 1.833 (stations 3.67 mid); ref outermost ±1.846-1.859 is
+    // a THIN HIGH LIP [1.284..1.352] (thin-lip law) — lipStrips below;
+    // flareR at 1.8435 is the widthM 0.40-run carrier inside station s1.
+    // Ref band: full-plate bots 0.79-0.88 INSIDE ±1.80, deep 0.63-0.85 only
+    // in the outer face band (the 3B r4 deep-hem law) -> cutHem lobes.
+    // PLAN REGISTRATION (the -0.051 dAlong): the ref's front lip is
+    // LEFT-ONLY at the ±1.84-1.86 extreme (right 1.85 plan col is
+    // rear-guard-only) — flareF retired for a left-only lip strip so the
+    // plan body-span mids match (3B R2 law).
+    skirt: { z0: [2.32, 2.24], z1: -3.81, top: 1.36, bot: 0.63, scallop: false, x: 1.833, flush: true,
+      cutHem: true, archH: 0.19, lobeBot: 0.64, lintelBot: 0.79, lobeIn: 0.016,
+      flareR: { z0: -3.46, z1: -3.81, x: 1.8435, top: 1.35, bot: 1.27 } },
+    lipStrips: [
+      { x: -1.8435, z0: 2.335, z1: 2.135, top: 1.35, bot: 1.27 },
+      { x: -1.8575, z0: 2.34, z1: 2.22, top: 1.35, bot: 1.28 },
+      { x: -1.8575, z0: -3.70, z1: -3.80, top: 1.35, bot: 1.28 },
+      { x: 1.8575, z0: -3.72, z1: -3.81, top: 1.35, bot: 1.28 },
+    ],
+    frontBoard: { z0: [2.90, 2.90], z1: 2.26, y: 1.06, x0: 1.30, x1: [1.78, 1.75] },
+    rearFlaps: [{ z: -3.97, bot: 0.45 }, { z: -4.08, bot: 0.60 }, { z: -4.16, bot: 0.64, w: 0.22 }],
+    // Warped rear: rack band tops 1.70 falling to 1.44; plan rear steps
+    // -3.63 center notch / -4.49 deep run x 0.35-1.05 / -4.41..-4.44 rack
+    // wall zone / LOW TAIL FRAME [0.74..1.44] at -4.47..-4.52 = the ref's
+    // own body-span end (registration-critical; replaces the old tailPins).
     tailRack: {
-      z0: -3.28, z1: -4.05, top: 1.55, bot: 0.86, hw: 1.755, x0: 0.40,
-      wall: { top: 1.30, bot: 0.87, endBot: 0.74 },
-      midShelf: { x1: 0.95, z1: -3.62, top: 1.53 },
+      z0: -3.63, z1: -4.20, top: 1.58, bot: 0.86, hw: 1.755, x0: 0.35, railZ: 0.80,
+      wall: { top: 1.42, bot: 0.87, endBot: 0.87 },
+      midShelf: { x1: 0.95, z1: -3.98, top: 1.56 },
       wings: [
-        { x0: 0.42, x1: 1.10, z1: -4.15, top: 1.44, bot: 0.78 },
+        { x0: 0.38, x1: 1.05, z1: -4.49, top: 1.47, bot: 0.87 },
+        { x0: 1.10, x1: 1.69, z1: -4.44, top: 1.47, bot: 0.90 },
+        { x0: 0.36, x1: 1.06, z1: -4.52, top: 1.44, bot: 0.74 },
+        { x0: 1.69, x1: 1.755, z1: -4.44, top: 1.44, bot: 0.90 },
       ],
     },
-    hullPosts: [{ x: -0.60, z: 3.44, top: 1.02, base: 0.90 }],
-    tailPins: [{ x: 0.52, y: 1.02, z: -4.27 }, { x: -0.52, y: 1.02, z: -4.27 }],
-    pivotZ: -0.75,
+    pivotZ: -1.07,
     turretStyle: 'mod',
-    gunAxisY: 1.97, gunR: 0.085, sleeve: true, evac: 0.516, evacR: 1.94, collar: false, gunTipZ: 4.74, gunZL: 0.32, sleeveTo: 3.86, sleeveR: 0.15,
-    mantlet: { r0: 0.165, r1: 0.115, len: 0.66, drop: 0.03, z0: 1.84 },
-    apexZ: 1.76, notchHW: 0.30, hwMax: 1.55, roofHW: 1.00, roofInset: 0.96,
-    shellFrontZ: 0.85, noseZ: 0.30, noseHW: 1.42, maxWZ: -0.35, shellRearZ: -1.72, rearWide: 0.97,
-    shellBotY: 1.55, shellTopY: 2.41,
-    crest: { z0: 1.76, zW: 1.21, z1: 0.50, hw0: 0.19, hw1: 0.44, top0: 2.56, top1: 2.65, bot: 1.86 },
-    cheek: { pts: [[0.62, 1.20], [0.72, 0.72], [1.00, 0.52], [1.30, 0.50], [1.53, 0.40]], topIn: 2.48, topOut: 1.96, botIn: 1.86, botOut: 1.70 },
-    chin: { z0: 0.66, z1: 0.30, bot0: 1.72, bot1: 1.55, hw: 1.10 },
-    roofLine: [[0.30, 2.41], [-0.28, 2.41], [-0.40, 2.47], [-1.55, 2.47], [-1.61, 2.56], [-1.94, 2.56], [-2.06, 2.48], [-2.30, 2.44], [-2.90, 2.42]],
-    plinth: { x0: -0.94, x1: -0.60, z0: -0.15, z1: -2.48, top: 2.68 }, // 3D band runs aft to -2.48
+    // Gun: warped-ref muzzle +4.51 (tail -4.52 + published 9.04). Tube band
+    // [1.878..2.034] -> axis 1.955 r 0.085; sleeve r ~0.089 with clamp-ring
+    // bumps at 3.49/4.01/4.27 -> sleeveR 0.118, sleeveTo 4.30 (3B law);
+    // MG251 evac sleeve-flush (evacR 1.35). Mantlet band [1.832..2.145]
+    // over z 1.66..2.19.
+    gunAxisY: 1.955, gunXoff: -0.0285, gunR: 0.0665, sleeve: true, evac: 0.72, evacR: 1.35, collar: false, gunTipZ: 4.52, gunZL: 0.32, sleeveTo: 4.10, sleeveR: 0.078,
+    muzzleRing: { x: -0.005, z: 4.02, r: 0.132, len: 0.05 }, // ref plan ±0.15 cols read fwd 4.04-4.11 (the sleeve-end ring; side band stays thin)
+    mantlet: { r0: 0.150, r1: 0.110, len: 0.51, drop: -0.03, z0: 1.70 }, // r0 trimmed for the 1024 2px mask-bleed law (plan -0.242 col); band re-centered [1.83..2.14]
+    // Warped turret: crest face z 1.51 (top jumps 2.067 -> 2.537), plateau
+    // 2.537 to z ~0.10, saddle DIP 2.380-2.406 over -0.11..-0.53, band
+    // 2.615 @ -0.55..-1.05 / 2.641 @ -1.07..-1.49 / 2.615 to -1.80.
+    apexZ: 1.50, notchHW: 0.30, hwMax: 1.34, roofHW: 0.95, roofInset: 0.92,
+    shellFrontZ: 0.50, noseZ: -0.05, noseHW: 1.28, maxWZ: 0.00, shellRearZ: -2.10, rearWide: 0.985,
+    shellBotY: 1.57, shellTopY: 2.40,
+    crest: { z0: 1.50, zW: 0.88, z1: -0.06, hw0: 0.19, hw1: 0.44, top0: 2.535, top1: 2.545, bot: 1.86 },
+    // Cheek plan (warped plan_turret row): right plateau 0.60 held to the
+    // sight pod at x 1.10-1.32; left cuts back hard to 0.18 by x 0.93.
+    cheek: { pts: [[0.41, 0.92], [0.60, 0.88], [0.72, 0.80], [0.82, 0.70], [0.92, 0.55], [1.05, 0.44]],
+      ptsL: [[0.41, 0.92], [0.50, 0.62], [0.60, 0.47], [0.72, 0.40], [0.82, 0.27], [0.90, 0.15], [1.03, 0.15]],
+      topIn: 2.48, topOut: 1.98, botIn: 1.87, botOut: 1.77 },
+    cheekPod: [
+      { x0: 1.09, x1: 1.34, z0: 0.63, z1: 0.29, top: 2.19, bot: 1.76 },
+      { x0: -1.04, x1: -1.36, z0: 0.36, z1: 0.00, top: 2.10, bot: 1.78 },
+    ],
+    chin: { z0: 0.75, z1: 0.06, bot0: 1.86, bot1: 1.575, hw: 0.42 },
+    // Roof deck (warped): saddle with the real mid dip, low shoulders 2.47,
+    // rear plateau via roofBoxes, bustle deck dipping 2.43 to -3.06.
+    roofLine: [[-0.06, 2.405], [-0.31, 2.385], [-0.53, 2.41], [-0.64, 2.47], [-1.90, 2.47], [-1.97, 2.465], [-2.42, 2.45], [-2.70, 2.43], [-3.06, 2.425], [-3.28, 2.43]],
+    // Left sight plinth at the warped 2.615 band (front cols -0.64..-0.97
+    // read 2.576-2.617; the 2.641 side band rides the cupola block + pots).
+    plinth: { x0: -0.93, x1: -0.60, z0: -0.55, z1: -1.88, top: 2.615 },
     roofBoxes: [
-      { x0: -0.45, x1: 0.55, z0: -2.55, z1: -2.92, top: 2.60, bot: 2.30 },
-      { x0: 1.30, x1: 1.58, z0: 0.20, z1: -2.55, top: 2.42, bot: 1.90 },  // Dor-Dalet side plates
-      { x0: -1.58, x1: -1.30, z0: 0.20, z1: -2.55, top: 2.42, bot: 1.90 },
+      // rear plateau + measured pot/stack bumps
+      { x0: -0.40, x1: 0.40, z0: -1.91, z1: -2.13, top: 2.535, bot: 2.40 },
+      { x0: -0.45, x1: 0.40, z0: -2.29, z1: -2.36, top: 2.56, bot: 2.40 },
+      { x0: -0.005, x1: 0.055, z0: -2.53, z1: -2.615, top: 2.615, bot: 2.38 },
+      // right band furniture (front 2.617 @ x 1.13..1.36, warped-invariant)
+      { x0: 1.10, x1: 1.36, z0: -0.55, z1: -1.88, top: 2.617, bot: 2.10 },
+      // commander cupola block (front 2.644-2.657 @ 0.95..1.09; side 2.641
+      // @ -1.07..-1.49 — an oval box, NOT a wide ring: the ref front run is
+      // only 0.14 wide while the side run is 0.42 long)
+      { x0: 0.95, x1: 1.09, z0: -1.06, z1: -1.50, top: 2.645, bot: 2.40 },
+      // Dor-Dalet side modules (work-order item 1): per-side plan-tapered
+      // tiers; front tops RISE inboard 1.97 -> 2.06 -> 2.19 -> 2.28 -> 2.37
+      // -> 2.445; plan fwd/rear edges from the fresh plan_turret row.
+      // (tier x-edges sit clear of the 1024 front column windows: cols at
+      // 1.491/1.533/... have windows [1.470..1.512] etc — an edge inside a
+      // window AA-bleeds the taller tier into it)
+      { x0: 1.30, x1: 1.383, z0: -0.08, z1: -2.86, top: 2.43, bot: 1.90 },
+      { x0: 1.33, x1: 1.468, z0: -0.06, z1: -2.87, top: 2.335, bot: 1.88 },
+      { x0: 1.466, x1: 1.512, z0: -0.22, z1: -2.79, top: 2.25, bot: 1.88 },
+      { x0: 1.510, x1: 1.596, z0: -0.40, z1: -2.74, top: 2.20, bot: 1.88 },
+      { x0: 1.594, x1: 1.679, z0: -0.62, z1: -2.66, top: 2.175, bot: 1.88 },
+      { x0: 1.677, x1: 1.716, z0: -0.74, z1: -2.60, top: 2.055, bot: 1.90 },
+      { x0: 1.714, x1: 1.752, z0: -1.00, z1: -2.57, top: 2.055, bot: 1.90 },
+      { x0: 1.747, x1: 1.790, z0: -1.23, z1: -2.53, top: 1.955, bot: 1.92 },
+      { x0: -1.383, x1: -1.30, z0: -0.30, z1: -3.00, top: 2.43, bot: 1.90 },
+      { x0: -1.468, x1: -1.33, z0: -0.30, z1: -3.01, top: 2.30, bot: 1.88 },
+      { x0: -1.512, x1: -1.466, z0: -0.42, z1: -2.85, top: 2.26, bot: 1.88 },
+      { x0: -1.596, x1: -1.510, z0: -0.55, z1: -2.76, top: 2.21, bot: 1.88 },
+      { x0: -1.679, x1: -1.594, z0: -0.70, z1: -2.64, top: 2.15, bot: 1.88 },
+      { x0: -1.716, x1: -1.677, z0: -0.75, z1: -2.58, top: 2.03, bot: 1.90 },
+      { x0: -1.752, x1: -1.714, z0: -0.90, z1: -2.56, top: 2.03, bot: 1.90 },
+      { x0: -1.790, x1: -1.747, z0: -1.30, z1: -2.50, top: 1.945, bot: 1.92 },
+      // left inner tier (front 2.427-2.468 @ -1.21..-1.33)
+      { x0: -1.345, x1: -1.20, z0: -0.30, z1: -2.95, top: 2.455, bot: 1.92 },
+      { x0: -1.150, x1: -1.090, z0: -1.00, z1: -1.52, top: 2.505, bot: 2.30 }, // left band step (ref front -1.10 col 2.511)
+      { x0: -1.005, x1: -0.935, z0: -0.60, z1: -1.60, top: 2.53, bot: 2.35 },  // band shoulder step (ref front -0.98 col 2.532)
+      // shelf runs behind the modules (plan -3.0..-3.42)
+      { x0: -1.14, x1: -1.08, z0: -2.90, z1: -3.42, top: 2.42, bot: 1.94 },
+      { x0: -1.30, x1: -1.14, z0: -2.90, z1: -3.13, top: 2.40, bot: 1.94 },
+      { x0: 1.08, x1: 1.17, z0: -2.90, z1: -3.19, top: 2.42, bot: 1.94 },
+      { x0: 1.17, x1: 1.33, z0: -2.90, z1: -3.03, top: 2.40, bot: 1.94 },
     ],
+    // Turret ring tub: the warped 3D ref's turret mask bottoms 0.58 flat
+    // over z -0.34..-2.12 (ramps -0.19..-0.34 and -2.14..-2.25, stepY 1.05).
+    ringTub: { z0: -0.235, zF0: -0.375, zF1: -2.12, z1: -2.27, top: 1.56, bot: 0.58, hw: 0.85, stepY: 1.05 },
+    // bustle underside ramp 1.57 flat to -2.56 rising 1.94 by -3.27; plan
+    // taper 1.20 -> 1.10.
     bustleSegs: [
-      { z: -1.62, bot: 1.56, hw: 1.42 }, { z: -2.22, bot: 1.58, hw: 1.42 },
-      { z: -2.32, bot: 1.70, hw: 1.40 }, { z: -2.60, bot: 1.82, hw: 1.30 },
-      { z: -2.96, bot: 1.94, hw: 1.10 },
+      { z: -2.10, bot: 1.57, hw: 1.20 }, { z: -2.56, bot: 1.57, hw: 1.20 },
+      { z: -2.62, bot: 1.66, hw: 1.20 }, { z: -2.72, bot: 1.73, hw: 1.18 },
+      { z: -2.85, bot: 1.79, hw: 1.16 }, { z: -3.00, bot: 1.84, hw: 1.13 },
+      { z: -3.10, bot: 1.87, hw: 1.10 },
     ],
-    rearRoofHW: 1.10,
-    bustleZ1: -2.90, bustleBot: 1.60, bustleHW: 1.55,
-    basket: { z0: -2.90, z1: -3.30, top: 2.44, topRear: 2.40, bot: 1.95 }, basketHW: 1.05,
-    tailVane: { z0: -3.30, z1: -3.96, zMid: -3.60, top: 2.36, bot: 1.90, hw: 0.95, hwMid: 0.85, hwRear: 0.66, xoff: -0.045, drop: 0.02 },
-    chainDrop: 0.04, chainGap: 0.22, chainHW: 0.80,
-    // Rear chain-mat tip: measured tail band falling to -4.0 center.
-    rearTip: { z: -3.99, hw: 0.55, top: 2.30, bot: 2.22 },
-    kitCapY: 2.68,
-    cupolaX: 0.92, cupolaZ: -0.85, cupolaR: 0.20, cupolaRaise: 0.02,
-    pano: { x: -0.70, z: -0.75, top: 2.66 }, sightX: 0.45,
-    // ONE tall whip at the measured -3.05 column (top 4.80) + the short
-    // pot whip at -2.60 (top 2.57).
-    antennas: [{ x: 0.21, y: 2.44, z: -3.18, h: 2.38, stem: 0.4 }, { x: 0.26, y: 2.44, z: -2.60, h: 0.13, stem: 0.30 }], // whip INSIDE our s1 window (ref's rides its own s1); the 1-col side crossfire is cheaper than 49% station tops
-    pots: [{ x: -0.70, z: -2.95, top: 2.685, base: 2.40, w: 0.07, d: 0.06 }], // rear band spike at the grace line
+    rearRoofHW: 1.09,
+    bustleZ1: -3.10, bustleBot: 1.64, bustleHW: 1.14,
+    basket: { z0: -3.10, z1: -3.62, top: 2.475, topRear: 2.44, bot: 1.94 }, basketHW: 1.07, basketXoff: -0.01,
+    // Long chain-mat band to the ref's -4.41 (tops 2.43-2.46 flat, bots
+    // 1.94 -> 1.86), V-taper full-rear across |x| <= 0.72.
+    tailVane: { z0: -3.62, z1: -4.24, zMid: -3.90, top: 2.45, bot: 1.90, hw: 1.00, hwMid: 0.86, hwRear: 0.74, xoff: -0.045, drop: 0.02 },
+    chainDrop: 0.04, chainGap: 0.22, chainHW: 0.72,
+    // Rear rail tip: thin high rail [2.20..2.28] at -4.31..-4.42 (the ref
+    // tail rows 2.25-2.28 with bots rising to 2.25 at the very end).
+    rearTip: { z: -4.405, hw: 0.68, top: 2.28, bot: 1.90 },
+    kitCapY: 2.64,
+    cupolaX: 1.03, cupolaZ: -1.28, cupolaR: 0.09, cupolaRaise: 0.0,
+    pano: { x: -0.70, z: -1.07, top: 2.62, seat: true }, sightX: 0.45,
+    // ONE whip at the warped ref column (x 0.198..0.211, z -3.55, top 3.554).
+    antennas: [{ x: 0.198, y: 2.42, z: -3.55, h: 1.135, stem: 0.4 }],
+    // p95 spike budget = whip + the -3.31 can (2.66); everything else <= 2.645.
+    pots: [
+      { x: 1.00, z: -3.315, top: 2.66, base: 2.35, w: 0.05, d: 0.04 },   // can spike 2.641-2.667 @ -3.29..-3.34 (front col hides in the ref's 2.657 cupola band)
+      { x: 0.198, z: -3.51, top: 2.585, base: 2.30, w: 0.04, d: 0.04 },  // small can at the whip base (ref -3.52 col 2.589)
+      { x: -0.87, z: -2.825, top: 2.638, base: 2.40, w: 0.05, d: 0.04 }, // 2.641 bump @ -2.82..-2.85 (front col hides in the plinth band)
+      { x: -0.49, z: 0.54, top: 2.553, base: 2.40, w: 0.10, d: 0.14 },   // left sight hood (ref front -0.48 col 2.553; side 2.563 @ 0.54)
+      { x: 0.49, z: 0.60, top: 2.50, base: 2.38, w: 0.10, d: 0.12 },     // right hood (ref front 0.49 col 2.501)
+      { x: -0.70, z: -0.63, top: 2.64, base: 2.45, w: 0.16, d: 0.10 },   // s7-window head (ref -0.63 col 2.641; front band starts -0.62)
+      { x: -0.14, z: -2.92, top: 2.52, base: 2.40, w: 0.05, d: 0.06 },    // rear-roof step (1024 ref -2.92 col 2.526)
+      { x: -1.165, z: -1.30, top: 2.644, base: 2.35, w: 0.05, d: 0.05 }, // left band pot (front -1.14..-1.19 @ 2.644)
+    ],
     turretKit: merkava3dKit,
   },
 

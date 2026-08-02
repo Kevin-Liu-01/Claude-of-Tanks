@@ -206,6 +206,64 @@ Verification after warp: expect overall' 9.04 / body' 7.60 / p95' ~2.66
 / whip' ~3.56; then fresh workorder (this section's z targets pre-map
 the body zone only — the barrel zone stretches 1.773x).
 
+### Batch-18 push round (2026-08-02, merkava family agent) — GATE PASS ×2
+From the post-warp baseline **32.1** (hull 83.0 / whole 57.4 / turret 32.1 /
+stations 82.0 / dims 100) to **min 91.7 gatePassed, TWO consecutive runs
+bit-identical**: hull 91.8 / whole 91.7 / turret 92.1 / stations 92.7 /
+dims 100 / floaters 100. All changes 3D-gated params in
+`src/vehicles/profiles/merkava.js` + sibling-gated optional shared params
+(tailRack.railZ, skirt.lobeIn, gunXoff, muzzleRing — defaults preserve
+every sibling byte-for-byte; graduate hashes verified below).
+WARPED-REF FRAME (fresh workorder mandatory — the loader re-centered
+~-0.31 after the muzzle warp; old-frame body map z' = 1.019z − 0.302):
+ref world muzzle +4.51, hull full −4.517..3.073 (tail frame/pods), body-12%
+span −4.517..2.891, band p95 2.641, whip top 3.554 @ (x 0.198..0.211,
+z −3.55). Side dAlong 0.417 → 0.000 via global re-lay in the ref frame
+(gear on the 3B warped overrides; body nose 2.89 with band > 0.21 there —
+the body-span front carrier; tail-frame wing z1 −4.52 = rear carrier).
+What moved (the load-bearing set):
+1. RING TUB IS BACK: the batch-18 print carries the 3B/3C crew-basket tub
+   (turret-mask bots 0.58 flat over −0.34..−2.12, stepY 1.05) — the audit's
+   "no tub on this print" note is STALE post-normalization. Tub authored at
+   the 3B geometry (z0 −0.235, zF0 −0.375, zF1 −2.12, z1 −2.27); it alone
+   carried turret ~32 → ~70.
+2. Dor-Dalet modules (work-order item 1): per-side plan-tapered roofBox
+   tier stacks (7 right / 7 left + left inner 2.455 tier), x-edges seated
+   clear of the 1024 column windows, front tops staircase 1.955 → 2.43.
+3. Band re-lay: plinth 2.615 (x −0.93..−0.60), right furniture 2.617
+   (x 1.10..1.36 — the audit's "2.769 band" warps to 2.622), cupola BLOCK
+   2.645 (x 0.95..1.09 × z −1.06..−1.50 — an oval box, NOT a ring: ref
+   front run is 0.14 wide, side run 0.42 long), saddle 2.385-2.41, crest
+   2.535/2.545 @ z0 1.50, kitCapY 2.64. p95 spikes: whip 3.555 + can 2.66
+   (the can hides at x ~1.0 inside the ref's own cupola-band front cols).
+4. GUN: the warped ref's gun rig is seated LEFT in its own frame — plan
+   muzzle spans x −0.115..+0.038 (c −0.039), sleeve −0.157..+0.065, and a
+   MUZZLE END RING at z ~4.0-4.1 spanning ±0.14-0.15 (c ~−0.01!). New
+   shared params: gunXoff (gun group x-seat) + muzzleRing { x, z, r, len }
+   (x is WORLD; gunXoff compensated). Final: gunXoff −0.0285, gunR 0.0665,
+   sleeveR 0.078, sleeveTo 4.10, muzzleRing { −0.005, 4.02, r 0.132 },
+   gunTipZ 4.52, mantlet r0 0.150 drop −0.03 band [1.83..2.14] z 1.70-2.21.
+5. Hull: 3B-pattern nose (body 2.89 blunt + boards 2.90 + pods 3.055 via
+   podIn −0.245 — metrology-selective hullLength carriers), tail rack z1
+   −4.20 with wings −4.44/−4.49 + tail frame [0.74..1.44] @ −4.52, center
+   notch −3.63 (tailNotch 0.33 + railZ 0.80 keeps the center rail inside
+   the notch), skirt cutHem lobes 0.64 / lintels 0.79 / plate bot 0.80
+   (thin-lip law: lipStrips ±1.8575 + flareR 1.8435; flareF RETIRED for a
+   LEFT-only 1.8435 lip strip — the ref's right ±1.85 plan col is
+   rear-guard-only; that asymmetry was the plan dAlong −0.051 smear).
+MEASUREMENT LAWS (new, hard-won):
+- 1024 MASK BLEED: gate masks at 1024 catch box edges ~20-25 mm outside a
+  scored column window (384 probes show them clean). Keep authored edges
+  ≥25 mm clear of window boundaries, or intentionally inside.
+- The plan rows run at ~0.026 pitch (384-equivalent), not the side rows'
+  0.104 — plan column windows are ±0.013.
+- The gate JSON's turretRows/curveRows 'at' values are camera-frame; only
+  the vertex-workorder maps them to world. Chase columns via the workorder.
+Board 91.2 (was 82.3): orientation truth, full articulation strip, no
+floaters, top 98.6. Residual honest gaps: t_plan ±1.78 module-edge cols
+(~0.1-0.2), the ±0.77-0.87 cheek-sweep cols (~0.1), rear tip sliver at
+−4.45; all sub-p95 now.
+
 #### Round record (2026-08-02): before = after (audit round, no build edits)
 hull 82.4 / whole 67.8 / turret 68.1 / stations 82.5 / dims 100 /
 floaters 100, bit-identical on the post-audit verification run.
