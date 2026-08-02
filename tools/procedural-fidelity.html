@@ -111,9 +111,24 @@ const LOCAL_REFERENCE_OVERRIDES = {
       turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))',
       gunFollowers:'vehicle#gun_barrel_' },
   },
-  // m60a1 / m60a3 / kv2 (pre-handoff graduates): retired configs not yet
-  // recovered from history — do NOT gate them until entries land here
-  // (hash-freeze discipline covers them; tmp-hashgeo only).
+  // m60a1 / m60a3: retired configs RECOVERED from history (2026-08-02) but
+  // NOT YET LOAD-PROVEN — a trial gate through the entries below rendered
+  // EMPTY masks (false 0 rows; ledger repaired same session). DO NOT GATE
+  // m60a1/m60a3 until the entries are enabled AND a fidelity-page load
+  // shows the reference rendering. Recovered configs (m60a1 source() at
+  // 205a095~1 userdrops5.js; m60a3 removed in 5acc7ec, articulated over
+  // the SAME recovered m60a1 GLB):
+  //   m60a1/m60a3: { source:'glb', glb:{
+  //     path:'/models/tanks/community/recovered/m60a1.glb',
+  //     turretNode:'^Turret$', gunNode:'^weapon$', autoPivot:true,
+  //     yawOffset:-Math.PI/2 } }
+  // Failure hypothesis to check headlessly (repo puppeteer, NOT pane
+  // screenshots): loader throw on node resolution or spec/armor gate
+  // (turretless?) — read the page console.
+  // kv2: reference UNRECOVERABLE from git by design — its oracle lived in
+  // gitignored candidates-gen2/ (100MB class); no MODEL_SOURCE entry ever
+  // existed in committed history. Verification = freeze hash (tmp-hashgeo
+  // f01e1e00) ONLY; never gate kv2.
 };
 const source = LOCAL_REFERENCE_OVERRIDES[id] || MODEL_SOURCE[id];
 const sourceIds = ALL_TANK_IDS.filter((tankId) => MODEL_SOURCE[tankId]?.source === 'glb');
