@@ -422,3 +422,40 @@ rearright 8.5-9.0 · right 9.0 · frontright 8.5-9.0 · top 9.0.
 ## Shaded-parity r7 (2026-08-02) — FAIL 8.5 all views; same six-item set
 Shared r7 work order. 3C extras: drop the left w8 rod float (ref shows
 none), chains thick-sticks → fine.
+
+## VISUAL round r8 (2026-08-02, merkava agent) — the six-item 9.0 set
+Gate after the round, TWO consecutive runs bit-identical: **hull 91.5 /
+whole 90.6 / turret 90.8 / stations 92 / dims 100 / floaters 100 (min
+90.6, PASS x2)**. Siblings bit-identical; npm test 166/166. Shared fix
+list + ALL r8 laws (the rear-skyline crown measurement + crownprofile
+calibration, lane/slope/span laws, the ringTub stepY BUG FIX + 1024-ref
+tail shape, up-face-gated roof lift, fine chains, mantlet wrap, skirt
+hem/bead, tower shave): see merkava3b.md "VISUAL round r8".
+MEASURED (tools/tmp-crownprofile.py, same window):
+- CROWN: maxflat 39px -> **15px (ref 24)**, rev(w3) 11 -> **21 (ref
+  20; critic target ~17)**, amp 102px.
+- ROOF (top rect): med 77 -> **87.1 (ref 86.5)**, p5 65 -> **78 (ref
+  78 EXACT)**.
+- MG RODS: **left w8 float DROPPED (PROC 0 runs = REF 0 runs)** — the r8
+  work-order extra. Mechanics: left band box top 2.52 -> 2.545 (the
+  r7-measured <1px-sky kill value; the droop bottoms at 2.556 so the
+  certified 2.62 side cols still ride the rod), split into three x-steps
+  (2.545/2.539/2.543 — the raised top would otherwise rule a 32px
+  skyline flat). Right float: proc w19@263 main run (+w9/w10 rearward)
+  vs ref w23@277 — the box lift absorbed the front ~7px of the r7 w27
+  as predicted; float alive and within family.
+3C-SPECIFIC this round:
+- The 32px flat @x391 was ITS plinth FRONT wall segment (z -0.72..-0.74
+  top 2.65 — the 2 cm sliver's forward-z h'-boost crowns the skyline
+  x -0.66..-0.94): same three-x-step treatment as 3B via crestWaves.
+- The 19px flat @x232 was the r7 shelf clutter plates' ruled tops: both
+  re-rolled (rz 0.022-0.05) + split; third shelf nub at x 0.665.
+- Kasag stack untouched (still crowns the field; certified band).
+- Band rect: proc 63/84/93/105/112 vs ref 82/88/96/101/114 (med/p75/p95
+  in family; p5 63 = fine-chain darks + valley shadows, same class as
+  3B's honest residual).
+Honest residuals: as 3B (band p5, sleeve ring rhythm, tub quantization);
+its s4 window quantization note stands.
+Predicted per-view (r7 critic: 8.5 all nine): front 8.5-9.0 · frontleft
+8.5-9.0 · left 8.5-9.0 · rearleft 8.5-9.0 · rear 9.0 · rearright
+8.5-9.0 · right 9.0 · frontright 8.5-9.0 · top 9.0.
