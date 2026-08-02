@@ -111,3 +111,20 @@ What moved it (round-2 79.2 -> 90.6):
 NEXT: independent visual critic (>= 9.0 every view) + turntable review ->
 graduation per docs/GEOMETRY-GATE.md §10 (retire fixed('isu122s') in
 userdrops6.js, drop from USERDROP6_SOURCED_IDS, icons, freeze hash).
+
+
+## Shaded-parity r1 (2026-08-02, independent critic) — FAIL min 4/10
+
+Geometric 90.6 stands; visual gate FAILED on gate-blind classes (full
+verdict + defect list: docs/critique/shaded-parity-isu122s-r1.md).
+Headliners: no ball mantlet volume (depth feature, mask-invisible), track
+material unlit black + exposed toothed top run, fuel drums absent, roof
+furniture ~20% density, sponson underside void, ORANGE mis-materialed
+fragments, rod-beam dims carrier reads floating (needs bow bracket, keep
+the beam — it carries hullLengthM), muzzle brake lost its double-baffle
+read. Fix round = additive volumes INSIDE the certified silhouette +
+m60a1-r5 material recipe; isu152 (shared isuCommon) must hold 72.4;
+re-run BOTH gates after.
+
+Freeze-hash baseline at the geometric pass: bcc377d8 (31 meshes, 71440
+verts) — will re-freeze at graduation after the visual round.
