@@ -950,3 +950,9 @@ frontleft 8.5-9.0 · left 9.0 · rearleft 8.5-9.0 · rear 9.0 · rearright
 8.5-9.0 · right 9.0 · frontright 8.5-9.0 · top 9.0 — all three gating
 items are measured-verified (rod spans pasted, p75 103, roof p5 70,
 crown waves in my own 1x read).
+
+## Shaded-parity r7 (2026-08-02) — FAIL 8.5 all views; rods+roof FIXED measured
+Work order: shaded-parity-merkava3bc-r7.md — six-item 9.0 set: crown
+amplitude x3 (dips 0.20-0.25 under cap), pack de-mechanized, cloth
+mantlet wrap, skirt hem lowered (wheels half-occluded), towers shaved,
+roof +8L lift.

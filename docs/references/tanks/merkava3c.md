@@ -418,3 +418,7 @@ quantization note stands.
 Predicted per-view (r6 critic: 8.5 min ALL NINE): front 8.5-9.0 ·
 frontleft 8.5-9.0 · left 8.5-9.0 · rearleft 8.5-9.0 · rear 9.0 ·
 rearright 8.5-9.0 · right 9.0 · frontright 8.5-9.0 · top 9.0.
+
+## Shaded-parity r7 (2026-08-02) — FAIL 8.5 all views; same six-item set
+Shared r7 work order. 3C extras: drop the left w8 rod float (ref shows
+none), chains thick-sticks → fine.
