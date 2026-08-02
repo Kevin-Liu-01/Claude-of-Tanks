@@ -169,3 +169,25 @@ Gate: 34.3 -> min 39.7 (hull 59.4 / whole 39.7 / turret 49.7 / stations
 1.62-1.66 vs col edge 1.626 — decode before moving anything), center-left
 1.76-1.94 band residual, side rear-gear fade (certified family class),
 turret plan columns.
+
+## r3 WORKORDER STASH (2026-08-02, decoded NOT applied — re-run before use)
+
+Fresh digest banked from tools/vertex-workorder.mjs (world coords, dAlong
+0.000 — registration clean). Top movers for the next owner:
+- side_turret ONLY-PROC at world -1.536 (my content 1.53..1.75 band where
+  ref turret is empty — bustle basket rear lip?) + z +0.9..+1.4 cols: ref
+  2.12 vs my 1.99-2.04 (crown front LOW there) and my 1.02 bottoms vs ref
+  1.48 (something of mine hangs 0.45 low at the cheek band — probably the
+  ERAWA cheek rows).
+- side_whole/hull z -2.0..-2.9: my bottoms 0-0.4 vs ref 0.19-0.89 (rear
+  gear-fade class, t90a/t72b3m treatment: raise/shrink sprocket wrap).
+- z +2.3..+3.2: my glacis tops 1.29-1.75 read 0.1-0.27 proud (t90a-style
+  clean-glacis treatment: chevrons/cable/headlights hug the plate).
+- plan center cols: ref rear -2.864 vs my -3.428 at |x|<0.6 AND ref front
+  3.10 vs my 3.449: the familiar REAR NOTCH + BOW NOTCH pair (t90a/t90sm/
+  t64bv1 pattern — powerpack tail carried by rack, bow corners by prongs).
+  ref rear -2.864 also at x +-1.22-1.36 (my skirts/lips reach -3.35).
+- plan_whole x -0.148: ref front 6.108 vs proc 4.013 — MY plan tube dies
+  at 4.01 where the ref's reads to 6.11 (muzzle): tube/evac radii vs the
+  0.107/0.16 column boundaries (t72b3m gun law; check which cols its
+  fatter sleeve owns before touching r).

@@ -217,3 +217,40 @@ turret Relikt cassette reach toward 1.85 and raise skirt yBot toward 0.90;
 front |x| 1.85 wants the hull Relikt course y-span 0.575..1.725 — VERIFY
 against side first (it vetoed once already); stations 50.5 top rows at the
 tower slices; plan_hull 53.5 p95 12.55 (worst plan row — undecoded).
+
+## VERTEX ROUND r6-r7 (2026-08-02): rear-plate decode, roof re-band, cheek seat
+
+37.9 -> 41.7 (hull 49.9->51.2, whole 37.9->41.7, turret 39.6->48.0!!,
+stations 50.5->63.5, dims 98.4->100). What moved it:
+- HULL REAR (the plan gold mine, 10+ cols x 0.4): the ref rear PLATE is at
+  -2.91 (plan center); the -3.38..-3.45 tail is a NARROW rack at |x|
+  0.95..1.3 (side band 1.00..1.38 thinning to a 1.11..1.19 sliver at
+  -3.45). Loft rear pulled to -2.92 + rack box pair (0.98..1.25, body-
+  thick so hullLengthM keeps its -3.40 column: measured 6.83 pre / 100
+  after). The old full-width -3.43 loft owned ten 0.43-0.48 errors.
+- K-COURSE: heavy panels live ONLY over z -0.88..-2.78 and hang 0.59..1.31
+  (front pair DELETED — ref has no 1.88-wide hull content forward of
+  -0.88); panels x 1.822 (1.842 read the x-1.9 sliver cols); skirt yBot
+  0.94 (ref's shallow front skirts).
+- ROOF RE-BAND: prism h 0.78 -> 0.59 (ref front cols +-0.1..0.61 read
+  1.99 — the flat 2.18 prism roof was proud over 20 front columns); the
+  2.24-2.26 band lives on flank roof boxes at |x| 0.65..1.05 (ref front
+  gap cols); tower bodies low (1.94-1.95) with THIN z-spikes at world
+  -1.39/-1.94 tops 2.24-2.25 (ref side 1-col spikes); heightM p95 2.24
+  vs pub 2.23 -> dims 100.
+- BUSTLE: full depth only to |x| 0.91 (ref plan staircase -2.43 center /
+  -1.99 @1.0 / -1.31 @1.15 / -1.0 @1.23) — 3 step boxes per side; back
+  panel 1.80 wide at -2.42 (its old -2.575 seat was an ONLY-PROC column).
+- CHEEK FLARE: side panels x to 1.855 (3 ONLY-REF plan cols at 1.78-1.89)
+  seated FORWARD (ref cheek chord at x 1.46: world -0.37..+1.43; mine sat
+  0.7 aft) — turret_plan 36.6 -> 48 in one move with the MRS fix;
+- MRS bulge moved to world 4.55..4.81 (ref plan front 4.79; it sat at
+  5.35..5.61) and r 0.128 so the +-0.16 plan cols read it like the ref's.
+Board reviewed (r7): orientation/articulation clean, prism+steps closed
+volumes, top-down fill solid, wheels/cupola circular.
+NEXT: whole rows now the min (41.7) — side_whole worst at z -2.5..-3.0
+(bustle-to-rack transition band) and +2.7..+3.3 (glacis kit vs ref clean
+line, t90a treatment); turret_side 60.9 residuals are the drooped-tube
+class cols at +2.8..+3.7 (same certified-candidate as t64bv1 — ask the
+owner); plan_hull x +-1.2..1.36 rear -2.86 vs my -3.35 (skirt tail; pull
+skirt z0 or taper); front x +-1.7 skirt-vs-cassette split still open.
