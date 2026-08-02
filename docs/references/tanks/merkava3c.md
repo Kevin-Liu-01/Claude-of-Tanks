@@ -81,3 +81,24 @@ front_whole deficit (50.6 -> 81+ after re-seat). Its stations s4-s6 are
 CLEAN (1.7-2.0) where 3B's read 3.5 — the s4-6 station-top anomaly is
 3B-print-specific. Standing: min 52.9 -> 81.2 (hull 85.8 / whole 81.2 /
 turret 83.1 / stations 84.3 / dims 99.9 / floaters 100).
+
+### Round-4 fleet dual-gate pass (2026-07-31, gate v10)
+Shared 3B re-lay (see merkava3b.md round-4 for the full fix list: deck line,
+track ramp/gear, skirt 1.83-band + end flares + relocated WIDTH-GUARD lip,
+segmented plate, rack outer wall, pack taper, bustle ramp+taper, chin wedge,
+2.68 grace-line plinth/caps, vane V, whip law). 3C-specific: whips at
+z −3.21 (x −0.63) / −3.00 (x 1.015); whip-can pot tower reading 2.94 at the
+z −2.90 column; Kasag hump bundle x −0.82..−1.02 capped at 2.649 with the
+mast-head spike AT the 2.68 grace line (p95 budget 3 = whips + the 2.94
+pot); left roof wing x −1.26..−1.36 LOW (2.06) to z −1.66; left shelf pair
+x −1.10/−1.17/−1.25 to z −3.05/−2.82; plinth x1 −0.545 (its band is wider
+than 3B's); right roofBox keeps the 2.63 hump (3B's is 2.47).
+Standing: **hull 90.9 / whole 84.8 / turret 90.3 / stations 92.1 / dims 100
+/ floaters 100** (from 85.8/81.2/83.1/84.3/99.9/100). Every component ≥ 90
+except wholeCurves.
+- REFINED wholeCurves cap (certified): short MG251 (+4.14 vs +4.74) →
+  side_whole cover 4.05% (−6.1) + the certified 2.73-2.77 stature band
+  residual above the 2.68 grace line (~0.25 mean% ≈ −3.0). Measured ceiling
+  ≈ 87; standing 84.8. All other components pass, per the gate's short-gun
+  cap rule.
+- Station s11: same self-trimming window-shift artifact as 3B.

@@ -139,3 +139,40 @@ carries a ~0.6 anomaly (suspect gate-side interp at a proc grid boundary).
 Stations 82: s4-s6 tops ~3.5% unexplained at 384-probe parity (windows
 match, tops match within 0.014 — 1024-only effect, unresolved); s11 whip
 window luck; both trimmed. Remaining honest headroom: stations, front rows.
+
+### Round-4 fleet dual-gate pass (2026-07-31, gate v10)
+World-probe re-lay against the LIVE 1024 gate frame (tools/tmp-merkava-probe.mjs
+maps every worst row to world meters; the stale docs/references/profiles dump
+is pre-repair for the deck/turret split and was retired as an authority).
+Standing: **hull 90.9 / whole 83.4 / turret 90.0 / stations 92.6 / dims 100 /
+floaters 100** (from 86.7/81.0/83.1/82.1/99.9/100). Every component ≥ 90
+except wholeCurves — see refined cap below.
+Load-bearing fixes: measured deck line into the body loft (rearBins deleted;
+lift eyes/grille fins hug the deck); front track ramp = one 0.478-slope line
+from (1.79, 0.02) — wheel1 at 1.55, sprocket HIGH/FWD (2.35, 0.72, r .29),
+trackW 0.58 at gearOut 1.72 (print's inner track face ≥ 1.10); skirts re-laid
+at the measured ±1.83 mid-band (stations read 3.66!) with front/rear end
+flares 1.844/1.855 and the WIDTH-GUARD lip moved INSIDE the rear-guard
+window (z −3.12..−3.40) — published 3.72 lives there, mid-hull 1.86 content
+broke s3-s10; segmented skirt plate (slice-cap law); tailRack to ±1.755 with
+a LOW outer wall [0.87..1.35] + 0.72 end-drop; rearPack tail taper 2.39→2.22;
+bustle rebuilt as a lofted underside RAMP 1.56→1.96 with plan taper
+1.20→1.06 (rear roof slab 1.09 — the old hwM*rw*.94 flare planted phantom
+plan columns); shell nose pulled to +0.30 with a chin wedge carrying the
+1.53→1.72 underside rise; sight plinth at the 2.68 dims-GRACE line spanning
+the print's true x −0.70..−0.94 band; chain-vane V re-measured (hwMid .852 @
+−3.575, hwRear .73, xoff −0.045); whips at z −3.19/−3.00 with tapered tips
+(a full-width box read 0.3 over the print's aliased tip in the split
+column); ONE p95-budget mast-head at 2.845 inside the s5 window (the p95
+exclusion budget is 3 columns here: 2 whips + this spike — a 4th tall
+column becomes heightM and killed dims twice this round).
+- REFINED wholeCurves cap (certified): oracle MG251 tip +4.14 vs published
+  +4.74 → side_whole symmetric-coverage 4.05% (−6.1 pts) PLUS the certified
+  2.81-2.87 stature band above the 2.68 grace line (~10 columns × 0.13-0.19
+  → ~0.3 mean% ≈ −3.6 pts). Measured ceiling ≈ 86-87; standing 83.4.
+  Hull/turret/stations/dims all pass — consistent with GEOMETRY-GATE.md's
+  rule that a short-gun oracle caps ONLY wholeCurves.
+- Station s11 note: the pins/pods that carry published lengths stretch the
+  proc hull span (−4.24..+3.42 vs ref −4.15..+3.34), so the fractional s11
+  window shifts ~0.07 rearward off the crest face; reads ~7.7% and is
+  dropped by the gate's own trimmed mean (not certified, self-trimming).
