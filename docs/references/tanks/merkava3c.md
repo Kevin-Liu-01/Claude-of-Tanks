@@ -286,3 +286,7 @@ the ref's edge-to-edge canvas chaos is still denser at 2x.
 Predicted per-view (r3 critic: 3C min 7.0, held SOLELY by the dead-rear
 tarp miss): front 8.5 · frontleft 8.5 · left 8.0-8.5 · rearleft 8.0-8.5
 · rear 8.0-8.5 · rearright 8.5 · right 8.5 · frontright 8.5 · top 8.5.
+
+## Shaded-parity r4 (2026-08-02) — FAIL 7.5 (up from 7.0; "different vehicle" gone)
+Shared work order r4 doc. 3C extras: pot crown to ~1.5x width (certified
+column check), dead-rear fold shading language.

@@ -625,3 +625,8 @@ Predicted per-view (r3 critic: 3B min 7.5): front 8.5 · frontleft 8.5 ·
 left 8.5 · rearleft 8.0-8.5 · rear 8.5 · rearright 8.5 · right 8.5 ·
 frontright 8.5 · top 8.5 — the hem overshoot (the r3-introduced 7.5
 holder) is gone; weakest remaining read is dead-rear canvas amplitude.
+
+## Shaded-parity r4 (2026-08-02) — FAIL 7.5 (band-height cert ACCEPTED; character remains)
+Work order: shaded-parity-merkava3bc-r4.md — brown-flap rear corners,
+return-run lift to ~50 (r4 mute hit only teeth), sagged vane, roofline
+clutter breaks, MG yaw, tower span read.
