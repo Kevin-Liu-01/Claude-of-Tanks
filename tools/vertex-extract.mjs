@@ -96,6 +96,15 @@ const REG = {
   // the certified wholeCurves caps in the 3b/3c packets). pubDims from the
   // userdrops5.js make() rows; registration = the articulated() default
   // ('^Turret$'/'^Gun$', autoPivot) the game loader uses for the family.
+  // ---- casemate lane (batch-17 prep, 2026-08-02) ---------------------------
+  // isu152: userdrops6.js fixed() registration — fixedMount casemate, whole
+  // model is hull, loader scales the FULL box to overallLengthM (9.05).
+  // pubDims from the userdrops6 make() row.
+  isu152: {
+    path: 'public/models/tanks/community/recovered/isu152.glb',
+    fixedMount: true,
+    pubDims: { hullLengthM: 6.77, overallLengthM: 9.05, widthM: 3.07, heightM: 2.48 },
+  },
   merkava3b: {
     path: 'public/models/tanks/community/recovered/merkava3b.glb',
     turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
@@ -594,12 +603,14 @@ for (const id of ids) {
   }
 
   // ---- registration resolution (loader parity) ----
-  const turretIdx = findNodeIdx(scene, cfg.turretNode || 'turret');
-  if (turretIdx < 0) throw new Error(`${id}: no turret node`);
-  const turretSet = subtreeSet(scene, turretIdx);
+  // fixedMount (casemate) parity: loader sets turret=null, gun=null — whole
+  // box scales to overallLengthM and every instance partitions as hull.
+  const turretIdx = cfg.fixedMount ? -1 : findNodeIdx(scene, cfg.turretNode || 'turret');
+  if (turretIdx < 0 && !cfg.fixedMount) throw new Error(`${id}: no turret node`);
+  const turretSet = turretIdx >= 0 ? subtreeSet(scene, turretIdx) : new Set();
   const gunRe = cfg.gunNode || '(^|[_\\s.-])(gun|barrel|cannon)(?=$|[_\\s.-])';
-  let gunIdx = findBestGunIdx(scene, instances, gunRe, turretSet);
-  if (gunIdx < 0 && cfg.gunNode) gunIdx = findBestGunIdx(scene, instances, gunRe, null);
+  let gunIdx = cfg.fixedMount ? -1 : findBestGunIdx(scene, instances, gunRe, turretSet);
+  if (gunIdx < 0 && !cfg.fixedMount && cfg.gunNode) gunIdx = findBestGunIdx(scene, instances, gunRe, null);
   const gunSet = gunIdx >= 0 ? subtreeSet(scene, gunIdx) : new Set();
   const partOf = (it) => {
     if (it.name.startsWith('runtime_')) return 'turret';
@@ -774,7 +785,9 @@ for (const id of ids) {
   const stylization = {
     heightPct: measured.bodyHeightM ? +((measured.bodyHeightM / pub.heightM - 1) * 100).toFixed(1) : null,
     hullLenPct: measured.bodyLenM ? +((measured.bodyLenM / pub.hullLengthM - 1) * 100).toFixed(1) : null,
-    hullMaskPct: hullMask ? +((hullMask.span / pub.hullLengthM - 1) * 100).toFixed(1) : null,
+    // fixedMount: the loader's "hull mask" is the FULL box (gun included) —
+    // the honest published compare is overallLengthM, not hullLengthM.
+    hullMaskPct: hullMask ? +((hullMask.span / (cfg.fixedMount ? pub.overallLengthM : pub.hullLengthM) - 1) * 100).toFixed(1) : null,
     overallPct: +((measured.overallLenM / pub.overallLengthM - 1) * 100).toFixed(1),
     widthPct: measured.widthM ? +((measured.widthM / pub.widthM - 1) * 100).toFixed(1) : null,
   };

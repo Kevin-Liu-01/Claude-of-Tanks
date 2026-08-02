@@ -150,6 +150,20 @@ export const PLANS = {
     z: [[-3.713, -3.9565], [3.73, 3.9665], [5.85, 5.8135]],
     yTopMax: 2.48,
   },
+  // ---- batch-17: isu152 (fixedMount casemate; REG batch-17 prep entry).
+  // Print UNIFORMLY SQUAT (-11.1% p95 roof 2.204 vs 2.48) + body -5.8%
+  // (6.40 vs 6.77) + gun short (overall 8.35 vs 9.05). Inverse of the
+  // proud-band class: UNIFORM y stretch x1.1252 from ground (p95 -> 2.48
+  // for any percentile placement; ratios preserved so the 12% filter
+  // behaves identically). Body z x1.0609 about body center -0.9705
+  // (rear -4.3555, front 2.4145), gun segment 2.23->4.18 lands muzzle at
+  // 4.6945 = rear + 9.05 overall. hullMask verify compares overallLengthM
+  // under fixedMount (extract fix, this batch).
+  isu152: {
+    y: [[0, 0], [2.204, 2.48]],
+    z: [[-4.171, -4.3555], [2.23, 2.4145], [4.18, 4.6945]],
+    yTopMax: 2.51,
+  },
 };
 
 const args = process.argv.slice(2);

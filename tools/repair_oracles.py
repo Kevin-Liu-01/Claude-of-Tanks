@@ -2571,6 +2571,27 @@ REPAIRS['m1a2'] = {
     ],
 }
 
+# =============================================================== batch 17 ===
+# ISU-152 NORMALIZATION (number reserved in the program queue before
+# batch-18/19 landed; appended here to keep this file append-only in
+# EXECUTION order per id — chains after the batch-7 radial tube slim,
+# which is radial-only and leaves the y/z extent basis unchanged).
+# Print UNIFORMLY SQUAT: p95 roof 2.204 vs pub 2.48 (-11.1%), body 6.40 vs
+# 6.77 (-5.8%), gun short (overall 8.35 vs 9.05); width TRUE (anchor).
+# Inverse of the proud-band class: UNIFORM y stretch x1.1252 from ground
+# (p95 -> 2.48 wherever the percentile lands; mask-height ratios preserved
+# so the 12% body filter partitions identically). Body z x1.0609 about the
+# body center; gun segment stretched so the muzzle lands at rear + 9.05.
+# fixedMount REG parity + hullMask-vs-overall verify fix landed in
+# vertex-extract with this batch. Plan: vertex-normalize batch-17 entry.
+REPAIRS['isu152'] = [
+    *REPAIRS['isu152'],
+    ('py2', _axis_warp('isu152', long_axis='z',
+                       y_map=[(0, 0), (24.2655, 27.3042)],
+                       long_map=[(0.2785, -1.7528), (70.7519, 72.7832), (92.2209, 97.8854)],
+                       y_top_max=27.8546, expect=(1, 54979, 110000))),
+]
+
 
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)
