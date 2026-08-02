@@ -666,3 +666,10 @@ Residuals: strip hue medpx +3.8 warm of ref (quantization floor, sat/
 lum/distribution all at parity); skirt lum (above); prior classes
 (louver softness bound, loader-blotch ring, fan wells, -3.81 tail,
 PERI 4th column) stand.
+
+## Shaded-parity r5 (2026-08-02) — FAIL 8.5; SEVEN views at 9.0
+Work order: shaded-parity-leo2a6-r5.md — two elements: front wrap
+darkening (never landed; target 0.92x of face) + grille contrast/grid
+tint. Sampling lesson: rects must be placed on the VIEW/element scored
+(side-run rects lied about front faces). Hero sky-leak patch (fan
+wells) — game-visible, not gate-visible.
