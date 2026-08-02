@@ -218,3 +218,30 @@ frontright 8.5 · top 8.5 — worst views the rear arc ~8.0.
 Shared work order: shaded-parity-merkava3bc-r2.md. 3C emphasis: the
 ref's wrinkled Kasag tarp mass dominates rear/top — its absence is the
 loudest gap; add soft masses.
+
+## VISUAL round r3 (2026-08-02, merkava agent) — all 7 r2 items addressed
+Gate after the round, TWO consecutive runs bit-identical: **hull 91.4 /
+whole 90.7 / turret 90.3 / stations 93.9 / dims 100 / floaters 100 (min
+90.3, PASS ×2)**. Siblings bit-identical; npm test 166/166; board total
+87.7. Shared fix list + the span-carrier incident + all mechanics: see
+merkava3b.md "VISUAL round r3" (same optional params; 3C roofSpine top
+2.53 to its 2.54 plateau, plinth-wall seams at its x -0.94, extra
+chamfers on its two left-step boxes ch 0.03/0.04).
+3C-SPECIFIC this round:
+- TARP CHAOS (the r2 'tidier than ref' flag): SIX wrinkled lumps across
+  the bustle deck — four in the 2.46-2.49 band (-2.74/-2.90/-3.00 + the
+  pot-shoulder one at -2.36 under the 2.575 line) and a REAR PAIR at
+  -3.10/-3.13 whose crowns poke ~2 cm over the basket rim so the
+  dead-rear top edge reads as a crumpled canvas line, not a straight
+  rim. Kasag stack (certified band) untouched; the lumps surround it.
+- Turret 90.5 -> 90.3 (-0.2, stable across three identical runs): the
+  r3 furniture's diffuse cost; every remaining worst column is the
+  pre-existing ringTub-step interp seam (-2.26), the 3.9 m whip-tip
+  aliasing pair, or the vane V-taper AA columns — no r3 mesh appears in
+  any worst list.
+Honest residuals: as 3B (clean-panel grunge gap, plain bustle side
+walls) — the Kasag zone now carries mass AND crumple, but the ref's
+canvas chaos is still denser at 2x.
+Predicted per-view (r2 was 7.0-8.0, worst rr 7.0): front 8.5 ·
+frontleft 8.5 · left 8.0-8.5 · rearleft 8.0 · rear 8.5 · rearright
+8.0-8.5 · right 8.5 · frontright 8.5 · top 8.5.

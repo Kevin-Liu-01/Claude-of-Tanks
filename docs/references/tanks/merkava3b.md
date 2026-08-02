@@ -448,3 +448,93 @@ shading — envelope unchanged), rear-right cabinet stack → low open-frame
 baskets + full-width chain fringe + tarp masses. Wheels dark (value
 flip), flaps brown, MGs bulk laterally, skirt scallops between station
 slice z's.
+
+## VISUAL round r3 (2026-08-02, merkava agent) — all 7 r2 items addressed
+Gate after the round, TWO consecutive runs bit-identical: **hull 90.6 /
+whole 90.7 / turret 90.5 / stations 93.3 / dims 100 / floaters 100 (min
+90.5, PASS ×2)**. Siblings bit-identical (1b 62.5 / 2b 39.9 / 2d 34.9 /
+3d 67.8 / 4b 34.6); npm test 166/166; board total 87.6 (= r2 — silhouette
+pinned). All changes 3B/3C-scoped optional params in merkava.js
+(roofMerge/roofSpine, roofBox ch/chR chamfers, skirt.cutHem, refTone,
+sleeveRings, wide ring-MGs, paleKit branch restyles) — sibling paths
+byte-identical per the gate.
+Per-item status (each verified at 2x zoom on the fresh critic pairs):
+1. TURRET SECOND STORY — FIXED: (a) cheek-shoulder WASHES continue each
+   cheek plane from its raked top edge down onto the shell top (the 2.40
+   trough behind the cheeks was the sawtooth seam) — strictly inside the
+   envelope (tops <= local cheek edge / crest line; plan interior; bottoms
+   embed in the chin); (b) CENTER SPINE z -0.66..-1.99 |x|<=0.40 top 2.52,
+   raked front — bridges the saddle to the rear plateau between the plinth
+   and the ring pad (the "two towers over a moat" read is gone; side cols
+   it adds sit UNDER the flanking 2.605-2.66 band, front center cols
+   already read 2.52); (c) right pad + left step roofBoxes CHAMFERED
+   (ch 0.05 slab ends instead of vertical cliffs — sub-column); (d) wall
+   seams/bolts on the plinth/pad outer walls + crest flanks.
+2. REAR-RIGHT CORNER — FIXED: rack band re-dressed as LOW OPEN-FRAME
+   basket (2 uprights, bright rim + mid rack rails, dark under-rim shadow
+   band = air over packed kit, under-basket shadow gap, rivet dots, outer
+   side rail language); wings lost the full dark cabinet face → pale
+   RIVETED bin plates (dot rows z-inset 8 mm inside the wing ends — span
+   law); rearPack tail face = strapped tarp bundles (2 proud bundle faces,
+   parting shadow, rope-X diagonals) + side strap lines + rolled-tarp end
+   discs (<=3 mm proud of the certified hw face); chain fringe now FULL
+   WIDTH: rear comb + ball row (r2) + NEW flank combs riding the vane's V
+   flanks (rod outer faces keyed to the flank line at each rod's rear
+   corner — <=4 mm proud so plan-taper columns never move) + front-segment
+   hem rail + under-basket shadow stripe; TARP soft masses (wrinkled
+   3-facet lumps + straps) on the bustle deck at z -2.7..-3.14, crowns
+   deck+15 mm max and only where the ref side band (2.44-2.49) sits ABOVE
+   our bare deck — the rear pair pokes ~2 cm above the basket rim so the
+   crumple band reads from dead rear.
+3. WHEELS — FIXED pixel-exact: refTone clone-swap (leopard wornDish
+   precedent; instanced discs + sprocket/idler drums). Sampled on the
+   final pairs: proc disc (56,56,47) vs ref (57,57,47). KEY MECHANIC: the
+   board hemi renders shaded vertical faces at ~1.09x ALBEDO — the ref
+   face needs albedo 0x34342b (near tire rubber 0x2e2d2a; the first two
+   guesses 0x6b6a58/0x4e4d3f rendered 79/85 — iterate by sampling, never
+   by eye).
+4. FLAPS — FIXED: mats.wood retoned 0x6b543a -> 0x42392c (bow strip
+   sampled (117,92,65) saturated orange -> now zero saturated-warm pixels
+   in the front pair; HUE LAW satisfied); tail corner flaps bucket-swapped
+   hullRubber -> hullWood = muted brown (65,59,49) vs ref (68,63,52) —
+   geometry untouched (the r2 AA-bleed revert stands).
+5. MGs — FIXED: wide=true ring MGs (receiver 0.09s->0.15s, bigger ammo
+   box + far-side tray, cradle arms, low shield) — all lateral, crowns
+   unchanged under the p95 cap.
+6. SKIRT HEM — FIXED with TRUE CUT arches: plate split into an upper band
+   (1.01..1.36, still the segmented station width carrier) + full-depth
+   lobes between wheel-arch openings (apex 1.03, chord 0.54, sloped ends
+   cut into each lobe slab's bottom quad); per-lobe V-nicks (teeth sized
+   to their lobe so nothing hangs in an opening); dark arch apex liners +
+   hullShadow backer wall at gearOut-0.02 (NOT at 1.75 — a backer in the
+   plank column dropped one front_hull col 0.3) so openings read as
+   shadow over the dark wheels. STATION MECHANICS (measured from the gate
+   source): station windows measure WIDTH + TOP only (meas() records
+   minX/maxX/maxY — no bottom!), and side/front bots ride the tracks/
+   teeth, so the cuts are silhouette-free: stations 93.3 unchanged, twice.
+7. Blue tick KILLED (mats.glass -> dark olive lens 0x393d33: 0 blue px
+   across all fresh pairs, both tanks); sleeve rhythm AT-ROOT (dark clamp
+   rings r sleeve+8 mm at world 2.45/2.76/3.50 + the 4.20 end ring — the
+   evac drum owns 2.9-3.3); bolt/seam density up (glacis weld lines +
+   bolt row, skirt mid-panel + hem-lobe bolt rows, turret wall seams,
+   rivet fields on rack/wings).
+GATE INCIDENT (r3, caught in-round): the first tarp-roll cut placed a
+roll at rearPack z0-1.10 = -4.60 and a wrinkle facet reaching -4.57 —
+PAST the -4.52 tail-frame registration carrier. Side dAlong flipped to
+0.054 and every component collapsed (min 77, dims 91.9, overall read
+9.22). The probe's camera-frame table (side world z = -at - 0.0455)
+traced the phantom -4.56 column to the roll in minutes. Law re-confirmed:
+NOTHING in the hull node may extend past the pods (3.055) or tail frame
+(-4.52) — crown dressing included.
+Honest residuals: roof/deck still reads cleaner than the ref's grunge
+density (structure now matches; micro-clutter does not); bustle side
+walls remain plain slabs (certified silhouette); the -2.26 turret-side
+interp seam at the ringTub step and the whip-top aliasing columns are
+pre-existing measurement artifacts; 3B hull 90.6 vs r2's 91.2 (the r3
+furniture costs ~0.6 hull-side — accepted for the visual wins, margin
+still ≥0.5 everywhere, stable across three identical runs).
+Predicted per-view (r2 was 7.0-8.0, worst rr 7.0): front 8.5 ·
+frontleft 8.5 · left 8.5 · rearleft 8.0 · rear 8.5 · rearright 8.0-8.5 ·
+right 8.5 · frontright 8.5 · top 8.5 — the two flip-items (ziggurat,
+rear-right cabinet) and the value-flip wheels are gone; weakest remaining
+read is rear-arc micro-chaos density.
