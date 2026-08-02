@@ -53,6 +53,19 @@
  *      leader lines and overlap deconfliction, and an annotation block
  *      (shell, distance, angle, nominal→effective armor, pen roll, damage).
  *      Holds XRAY_HOLD_S, any key/click skips.
+ *   3. FINALE (killcam r3, OWN DEATHS ONLY — owner: "shows the tank as it was
+ *      before it blew up with the turret still attached, then the skeleton
+ *      with shell going through, and then us blowing up and turret coming off
+ *      again"): when the player is the victim the IMPACT beat above is
+ *      RE-ORDERED to play AFTER the x-ray. The analysis layer is torn down
+ *      first (endXrayDressing — ghost skin, veil, internals, chips, light dim
+ *      and vegetation hide all released, so nothing phantom survives over the
+ *      fireball), then the exact same impact beat runs and exits to the
+ *      results. Phase order per replay direction:
+ *        own death, shell kill : [wreck] approach [flight] xray impact exit
+ *        own death, burn-out   : [wreck] xray exit           (no rack pop —
+ *                                the cook-off already played live)
+ *        player kill / staged  : approach flight impact xray exit  (r2 order)
  *
  * The camera is driven exclusively through rig.setExternalPose (the rig's
  * external-pose API) — the rig is used, never modified.
@@ -95,6 +108,16 @@ const IMPACT_HOLD_S = 2.05;
 const IMPACT_SLOWMO = 0.55;     // fx-clock rate through the turret launch
 const IMPACT_DRIFT_RAD_S = 0.06; // impact-beat orbital drift (parallax)
 const REPLAY_BUDGET_S = 15.0;   // begin() -> exit start, wall clock
+// killcam r3 — OWN-DEATH FINALE (owner: "our tank blows up turret pops sure.
+// but then it shows kill cam, and shows the tank as it was before it blew up
+// with the turret still attached, then the skeleton with shell going through,
+// and then us blowing up and turret coming off again"): when the PLAYER is
+// the victim the destruction beat moves BEHIND the x-ray, so the replay reads
+// restaged-intact approach -> skeleton -> blow up again. FINAL BLOW replays
+// (we killed someone) keep the r2 order: impact, then analysis.
+const FINALE_HOLD_S = 2.45;      // finale window in ANIM seconds (beat + settle)
+const FINALE_RESERVE_S = 3.2;    // wall seconds reserved out of REPLAY_BUDGET_S
+const FINALE_XRAY_FLOOR_S = 3.6; // x-ray floor while a finale still has to play
 const TRAJ_KEEP = 32;          // shell traces retained (oldest evicted)
 const TRAJ_MAX_PTS = 400 * 3;  // ≥ SHELL_MAX_LIFETIME_S at 60 Hz
 const ORBIT_RAD_S = 0.05;      // x-ray camera drift
@@ -1462,14 +1485,27 @@ export function createKillCam(deps) {
 
   function onSkipKey() {
     if (!active || !pb || staged) return;
-    // click-to-skip stays at every stage: wreck/approach/flight/impact jump
-    // to the x-ray payoff (beginXray restages + re-hides fx from any live
-    // beat), x-ray starts the exit. A second skip DURING the exit is
-    // ignored — the 0.4 s close is already the fastest path out, and
-    // re-entering beginExit would double-arm the handover timers.
-    if (pb.phase === 'wreck' || pb.phase === 'approach'
-      || pb.phase === 'flight' || pb.phase === 'impact') beginXray();
-    else if (pb.phase === 'xray') beginExit();
+    // click-to-skip stays at every stage: wreck/approach/flight jump to the
+    // x-ray payoff (beginXray restages + re-hides fx from any live beat),
+    // x-ray starts the exit. A second skip DURING the exit is ignored — the
+    // 0.4 s close is already the fastest path out, and re-entering beginExit
+    // would double-arm the handover timers.
+    // killcam r3: the impact beat now sits on BOTH sides of the x-ray. The
+    // r2 beat (player kills) still skips forward into the analysis; the
+    // own-death FINALE is the last thing before the results, so it skips
+    // straight out. Skipping the x-ray itself cancels a pending finale —
+    // "get me out" must never route through another 3 s of cinematic — and
+    // teardown() re-applies the settled wreck, so the victim still ends up
+    // destroyed however early the skip lands.
+    if (pb.phase === 'wreck' || pb.phase === 'approach' || pb.phase === 'flight') {
+      beginXray();
+    } else if (pb.phase === 'impact') {
+      if (pb.isFinale) beginExit();
+      else beginXray();
+    } else if (pb.phase === 'xray') {
+      pb.finalePending = false;
+      beginExit();
+    }
   }
 
   function begin(snap, kind, onDone, xrayOnly, freshKill) {
@@ -1513,6 +1549,12 @@ export function createKillCam(deps) {
       impactVis: null,  // victim visual driven through the impact beat
       xrayAng0: 0,      // orbit angle inherited from the impact drift
       xrayHoldS: XRAY_HOLD_S, // trimmed by beginXray to the replay budget
+      // killcam r3 own-death finale: the destruction beat plays AFTER the
+      // x-ray. finalePending arms the re-order (cleared once it fires or a
+      // skip cancels it), isFinale marks the beat currently running as the
+      // closing one (exit instead of x-ray), impactAng0 carries the orbit
+      // azimuth in from whichever phase handed the beat the camera.
+      finalePending: false, isFinale: false, impactAng0: 0,
     };
     pb.group.name = 'killcam';
     scene.add(pb.group);
@@ -1545,7 +1587,7 @@ export function createKillCam(deps) {
       };
     }
     // wreck-look bookkeeping for finish() — computed whether or not the
-    // restage runs now (the WRECK hold defers it, see restageLive)
+    // restage runs now (the WRECK hold defers it, see restageIntact)
     {
       const vis0 = snap.targetEnt && snap.targetEnt.visual;
       if (vis0 && vis0.isDestroyed && vis0.isDestroyed()) {
@@ -1559,6 +1601,18 @@ export function createKillCam(deps) {
         };
       }
     }
+
+    // OWN-DEATH FINALE GATE (killcam r3): the destruction re-plays AFTER the
+    // x-ray only when the PLAYER is the victim and a SHELL actually killed
+    // them. Requirements, all three load-bearing:
+    //   isDeathView — FINAL BLOW replays keep the r2 order (impact first);
+    //   !xrayOnly   — a burn-out death's captured shell only LIT the fire, so
+    //                 a replayed rack pop would be a lie (and its cook-off
+    //                 already played live in the wreck hold / death beat);
+    //   rewreck     — the victim's visual is genuinely wrecked, which is what
+    //                 lets teardown() own the final look after the beat.
+    pb.finalePending = !!(pb.isDeathView && !xrayOnly && pb.rewreck
+      && snap.ev.destroyed);
 
     // WRECK HOLD ELIGIBILITY (killcam r2): a battle-deciding own death whose
     // destruction is still playing on the live visual — the replay opens on
@@ -1583,7 +1637,7 @@ export function createKillCam(deps) {
       // death cam afterwards is honest again. The sim/visual sync loop is
       // frozen while the replay runs (main.js step 5), so nothing overwrites
       // the pose.
-      restageLive();
+      restageIntact();
     }
     d.titleT.textContent = playerKill ? 'FINAL BLOW' : 'KILL CAM';
     d.titleS.textContent = playerKill
@@ -1841,17 +1895,40 @@ export function createKillCam(deps) {
   }
 
   /**
-   * PRE-WRECK RESTAGE (r2 major, killcam r2: factored out so the WRECK hold
-   * can defer it and the x-ray can re-run it after the IMPACT beat): restore
-   * the live visual and re-pose it from the SNAPSHOT state, with the damage
-   * the tank already carried INTO the hit (broken tracks, spent ERA)
-   * re-applied so the ghost never under-reports what the sim resolved.
-   * No-op when the visual is not currently wrecked.
+   * RESTAGE INTACT (r2 "pre-wreck restage", extended in killcam r3): put the
+   * victim back the way it stood the instant BEFORE the killing hit — turret
+   * re-seated on its ring, gun level, paint unburnt, pop/ember timelines
+   * cleared — and re-pose it from the SNAPSHOT state, with the damage the
+   * tank already carried INTO the hit (broken tracks, spent ERA) re-applied
+   * so neither the restage nor the ghost ever under-reports what the sim
+   * resolved.
+   *
+   * killcam r3: IDEMPOTENT and SKIP-SAFE. The r2 version early-returned on a
+   * not-currently-wrecked visual, so it silently did nothing exactly where
+   * the owner's sequence needs a guarantee ("shows the tank as it was before
+   * it blew up with the turret still attached"). Every own-death entry point
+   * (begin, the WRECK hold handover, the approach, the x-ray, the finale) can
+   * now call it and get the pre-hit victim out, whatever order they run in.
+   * It also re-asserts visibility — dying while scoped hides the player's own
+   * hull, and the replay must not open on an invisible tank.
+   *
+   * @param {boolean} [prime] force the pose write even when the victim is
+   *   already intact. Re-posing an intact hull is not free — it steps the
+   *   sway decay and resets the track-scroll layer, which would perturb the
+   *   staged `killcam_xray` screenshot contract (whose victim is a LIVE tank
+   *   the harness never wrecks) for no gain. The one caller that needs it
+   *   anyway is the finale: syncFromState is also what PRIMES the visual's
+   *   fx-clock cursor, and that must happen before any re-wreck (see the
+   *   beginImpact note). Left false, an already-intact victim is untouched —
+   *   exact r2 parity.
    */
-  function restageLive() {
+  function restageIntact(prime) {
     const vis = pb && pb.snap.targetEnt && pb.snap.targetEnt.visual;
-    if (!vis || !vis.isDestroyed || !vis.isDestroyed()) return;
-    vis.resetDestroyed();
+    if (!vis) return;
+    const wrecked = !!(vis.isDestroyed && vis.isDestroyed());
+    if (wrecked) vis.resetDestroyed();
+    if (vis.setVisible) vis.setVisible(true);
+    if (!wrecked && !prime) return;
     vis.syncFromState(pb.snapPoseState, 0);
     if (pb.rewreck) {
       for (const m of pb.rewreck.brokenTracks) vis.setTrackState(m, true);
@@ -1935,7 +2012,7 @@ export function createKillCam(deps) {
     const next = pb.wreck ? pb.wreck.next : 'xray';
     pb.wreck = null;
     hideFx();       // deferred begin()-time suppression (see wreckHold)
-    restageLive();  // deferred pre-wreck restage — the replay shows the hit
+    restageIntact();  // deferred pre-wreck restage — the replay shows the hit
     if (next === 'approach') {
       if (pb.isDeathView && beginApproach()) return;
       pb.phase = 'flight';
@@ -1956,6 +2033,13 @@ export function createKillCam(deps) {
    * @returns {boolean} false when no meaningful move exists (skip to flight)
    */
   function beginApproach() {
+    // killcam r3 (owner: the replay "shows the tank as it was before it blew
+    // up with the turret still attached"): the approach is the first frame of
+    // the replay proper, so the victim is guaranteed intact HERE — whatever
+    // the entry path (fresh wreck hold handover, mid-battle death beat, a
+    // skipped beat). Idempotent, so the earlier begin()/endWreck restages
+    // stay exactly as they were.
+    restageIntact();
     const toPos = new THREE.Vector3();
     const toLook = new THREE.Vector3();
     flightStartPose(toPos, toLook);
@@ -2267,9 +2351,14 @@ export function createKillCam(deps) {
       pb.halo.scale.set(1.7 * th, 1.7 * th, 1);
     }
     rig.setExternalPose(_a, _b, 50 - 8 * k);
-    // killcam r2: the shell has arrived — the kill plays out LIVE (impact
-    // beat) before the analytical x-ray takes the frame.
-    if (u >= 1) beginImpact();
+    // The shell has arrived. killcam r2: the kill plays out LIVE (impact
+    // beat) before the analytical x-ray takes the frame. killcam r3: on an
+    // OWN death that order is inverted — the tank the player just watched
+    // arrive intact goes straight to the skeleton, and blows up after it.
+    if (u >= 1) {
+      if (pb.finalePending) beginXray();
+      else beginImpact();
+    }
   }
 
   /**
@@ -2300,8 +2389,72 @@ export function createKillCam(deps) {
   // camera pushes out from the x-ray vantage for the fireball and eases back
   // onto it, so the x-ray hold that follows starts without a cut.
   // ---------------------------------------------------------------------------
+  /**
+   * X-RAY TEARDOWN (killcam r3): strike the whole analysis layer and hand the
+   * frame back to the normally-shaded world, so the own-death FINALE detonates
+   * over the real tank instead of over a phantom. Everything beginXray() put
+   * up comes down here: the fresnel ghost skin (restored FIRST — setDestroyed
+   * lazily captures the victim's current materials for the rematch restore and
+   * it must capture the LIVE ones, never the ghost), the internals/boxes/shell
+   * path/trail ribbon under pb.group, the DOM veil + damage chips + leader
+   * lines, the backdrop light dim and the vegetation hide.
+   *
+   * The annotation block, the AMMO RACK banner and the killer card deliberately
+   * STAY: they are the death's chrome, already revealed during the hold, and
+   * the exit choreography is what fades them.
+   *
+   * Idempotent, and every restore it performs is nulled out behind it so the
+   * teardown() path can never double-apply a stale one (a surviving
+   * ghostBackup would repaint pristine camo over the wreck it just made).
+   */
+  function endXrayDressing() {
+    if (!pb) return;
+    if (pb.ghostBackup) {
+      for (const [mesh, mat, ro, cs] of pb.ghostBackup) {
+        mesh.material = mat;
+        mesh.renderOrder = ro || 0;
+        mesh.castShadow = !!cs;
+      }
+      pb.ghostBackup = null;
+    }
+    pb.ghostSkin = null;
+    pb.ghostVis = null;
+    // scene dressing: hidden rather than disposed — teardown() still owns the
+    // geometry lifetime, and one flag retires trail, ribbon, module boxes,
+    // proxies, spall cone and shell path in a single stroke
+    pb.group.visible = false;
+    if (pb.dimmedLights) {
+      for (const [L, i] of pb.dimmedLights) L.intensity = i;
+      pb.dimmedLights = null;
+    }
+    if (pb.vegGroup) {
+      pb.vegGroup.visible = pb.vegWasVisible;
+      pb.vegGroup = null;
+    }
+    if (dom) {
+      dom.root.classList.remove('xr'); // veil fades out on its own transition
+      dom.labelHost.textContent = '';
+      dom.leader.textContent = '';
+    }
+    pb.labels.length = 0;
+    pb.obstacles = null;
+  }
+
   function beginImpact() {
-    if (pb.phase === 'impact' || pb.phase === 'xray') return;
+    if (!pb || pb.phase === 'impact' || pb.phase === 'exit') return;
+    // killcam r3: arriving FROM the x-ray means this is the own-death FINALE —
+    // the analysis layer must come down before the destruction re-fires, the
+    // orbit azimuth carries over from where the hold left it (no snap back to
+    // the solved zero), and the beat exits to the results instead of looping
+    // back into an x-ray it already played.
+    pb.isFinale = pb.phase === 'xray';
+    if (pb.isFinale) {
+      pb.impactAng0 = pb.xrayAng0 + ORBIT_RAD_S * pb.xt;
+      endXrayDressing();
+    } else {
+      pb.impactAng0 = 0;
+    }
+    pb.finalePending = false;
     pb.phase = 'impact';
     pb.it = 0;
     pb.itWall = 0;
@@ -2322,14 +2475,14 @@ export function createKillCam(deps) {
     showFx();
     const vis = snap.targetEnt && snap.targetEnt.visual;
     if (vis) {
-      vis.setVisible(true);
-      if (vis.isDestroyed && vis.isDestroyed()) vis.resetDestroyed();
-      // PRIME the visual's fx-clock cursor BEFORE re-wrecking: its last sync
-      // was seconds of approach/flight ago, and the first destroyed-sync
-      // would swallow that whole gap as one clamped advance — popT jumped
+      // restageIntact() is the pre-hit state AND the fx-clock cursor PRIME:
+      // the visual's last sync was seconds of approach/flight — or, for the
+      // r3 finale, a whole x-ray hold — ago, and the first destroyed-sync
+      // would swallow that entire gap as one clamped advance; popT jumped
       // straight past the arc and the replayed turret never left its seat
       // (live probe: impact rise 0.00 m while the wreck-hold rise read 2.9).
-      vis.syncFromState(pb.snapPoseState, 0);
+      // Priming must happen BEFORE the re-wreck, whichever phase we came from.
+      restageIntact(true);
       vis.setDestroyed({ pop: !!snap.ev.ammoRacked, ageS: 0 });
       pb.impactVis = vis;
     }
@@ -2369,9 +2522,12 @@ export function createKillCam(deps) {
     // camera: hold the solved x-ray vantage, pushed out for the fireball and
     // eased back onto it — u runs 0..1 over the beat, the push-out bump is 0
     // at BOTH ends so the flight exit and the x-ray entry meet it exactly.
+    // The camera/fov shape stays keyed to IMPACT_HOLD_S whatever the window,
+    // so the r3 finale's extra settle tail plays out with the push-out bump
+    // already back at zero, parked on the x-ray vantage.
     const u = Math.min(1, pb.it / IMPACT_HOLD_S);
     const bump = Math.sin(Math.PI * Math.min(1, u * 1.12));
-    const ang = IMPACT_DRIFT_RAD_S * pb.it;
+    const ang = pb.impactAng0 + IMPACT_DRIFT_RAD_S * pb.it;
     const c = pb.xcam.center;
     const o = pb.xcam.off;
     const scale = 1 + 0.3 * bump;
@@ -2401,11 +2557,20 @@ export function createKillCam(deps) {
     // fov: detonation punch (fast decay) over the base the x-ray hold uses
     const fov = 42 + 5 * Math.exp(-pb.itWall / 0.16);
     rig.setExternalPose(_a, _b, fov);
-    // hand over to the x-ray: window served (anim time), or the wall-clock
-    // stall guard (a starved pane must still finish the battle flow)
-    if (pb.it >= IMPACT_HOLD_S || pb.itWall > IMPACT_HOLD_S * 2.5) {
-      pb.xrayAng0 = ang; // orbit continuity — the hold inherits the drift
-      beginXray();
+    // hand the beat over: window served (anim time), or the wall-clock stall
+    // guard (a starved pane must still finish the battle flow). killcam r3 —
+    // the own-death FINALE is the last beat of the replay, so it runs the
+    // slightly longer FINALE_HOLD_S (fireball + turret arc + a short settle)
+    // and goes straight to the exit; the r2 player-kill beat still hands the
+    // frame to the analytical x-ray.
+    const win = pb.isFinale ? FINALE_HOLD_S : IMPACT_HOLD_S;
+    if (pb.it >= win || pb.itWall > win * 2.5) {
+      if (pb.isFinale) {
+        beginExit();
+      } else {
+        pb.xrayAng0 = ang; // orbit continuity — the hold inherits the drift
+        beginXray();
+      }
     }
   }
 
@@ -2563,16 +2728,21 @@ export function createKillCam(deps) {
     // Both are no-ops when flight/approach handed over normally.
     pb.impactVis = null;
     pb.wreck = null;
-    restageLive();
+    restageIntact();
     hideFx();
     // X-RAY BUDGET (killcam r2): the live beats spend seconds the buffered
     // battle report's 16 s watchdog (shotInfo) does not know about — give
     // back whatever they used so exit + killcam:done always land first.
     // Floor keeps the analysis readable; no-beat replays still get the full
     // legacy hold (elapsed ~5 s -> clamped to XRAY_HOLD_S).
+    // killcam r3: an own-death replay still owes the frame a FINALE after this
+    // hold, so its wall cost is reserved up front. The trim lands on the
+    // ANALYSIS, never on the destruction — the owner asked to see the tank
+    // blow up again, and a budget squeeze must not be what deletes it.
     pb.xrayHoldS = THREE.MathUtils.clamp(
-      REPLAY_BUDGET_S - (performance.now() - lastBeginWallMs) / 1000,
-      4.0, XRAY_HOLD_S);
+      REPLAY_BUDGET_S - (pb.finalePending ? FINALE_RESERVE_S : 0)
+        - (performance.now() - lastBeginWallMs) / 1000,
+      pb.finalePending ? FINALE_XRAY_FLOOR_S : 4.0, XRAY_HOLD_S);
     // x-ray dressing thickness follows the SOLVED orbit radius (r5: fixed
     // radii read as a fat baton at the tight Tiger-class orbit): ~1 at an
     // 8.5 m orbit, floored/capped so huge and tiny victims both stay legible.
@@ -3478,7 +3648,12 @@ export function createKillCam(deps) {
       pb.killerShown = true;
       dom.killer.root.classList.add('rv');
     }
-    if (pb.xt >= pb.xrayHoldS) beginExit();
+    // killcam r3: the own-death replay's last act is the destruction itself —
+    // the analysis hands the frame to the FINALE, everything else exits.
+    if (pb.xt >= pb.xrayHoldS) {
+      if (pb.finalePending) beginImpact();
+      else beginExit();
+    }
   }
 
   /**
@@ -3536,6 +3711,12 @@ export function createKillCam(deps) {
       // setDestroyed lazily captures current materials for the rematch
       // restore, and it must capture the LIVE ones, never the ghost).
       // Settled pose + cooled embers: by replay end the destruction is old.
+      // killcam r3: after an own-death FINALE the visual is ALREADY destroyed
+      // (the beat just wrecked it from t=0), so setDestroyed no-ops and the
+      // wreck hands back mid-arc with hot embers — which is the honest look
+      // for a tank the player watched detonate one second ago; the resumed
+      // live sync loop settles and cools it from there. The track/ERA
+      // re-application below runs on both paths.
       if (pb.rewreck && pb.snap.targetEnt && pb.snap.targetEnt.visual) {
         const vis = pb.snap.targetEnt.visual;
         vis.setDestroyed({ pop: pb.rewreck.pop, ageS: 12 });
