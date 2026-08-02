@@ -771,3 +771,160 @@ round). NEW FLEET LAW (zone-rect fraud class): done-gate rects go ON THE
 ELEMENT (drum body only, wheel face only, casting only) — zone rects that
 average rails/deck reproduce false parity. isu152 post-batch-17 baseline
 is 14.4 (true-scale oracle) — do NOT chase isu152 in r6; keep flag-gated.
+
+## Visual r6 (2026-08-02, casemate family agent) — ROUND COMPLETE
+
+FINAL STATE: geometry gate **min 90.6 PASS x2 consecutive** (hull 90.6 /
+whole 90.7 / turret 100 / stations 95.5 / dims 98.2 / floaters 100 —
+ABOVE the certified 90.2 row on every moved component); isu152 **14.4
+exact** both final runs (the batch-17 true-scale baseline, untouched —
+every isuCommon change is opt-gated: bracketGap, noDecal, dimTail:2, the
+channel-branch rail thinning + rear-lip skip; isu152 passes none). npm
+test exit 0 (166 checks + track-geometry). All work in
+src/vehicles/profiles/casemate.js. All rects below are ON-ELEMENT with
+coordinates pasted (the r5 fleet law).
+
+### Item 1 — MANTLET: one cast pot, measured roll-off (was flat IQR 0.0)
+- ALL FOUR crown-clipped sectors + both crown lids DELETED (their chord
+  cuts were the "truncated D" dead-front and, from the elevated cameras,
+  the S1/S2 tops terraced the casting into onion rings). The segment-box
+  flange BELL + lip chips DELETED (at 6x its 3/9-o'clock segments were
+  the two brightest white crescents on the face — the ref has no proud
+  lit hoop; its 2.69 "flange ring" is fused lateral width).
+- THE CAST LENS: sph r 0.662 (the oracle table's own disc peak — also
+  registration-critical: a 0.575 first cut moved the front-view 12%-band
+  span edge and collapsed front rows to 83.5 with dAlong -0.018 + 0.56
+  cover; matching the sectors' 0.662 width healed it exactly), z-scale
+  0.10 (5.75 cm bulge), baked pitch -0.42, world-y squash 0.695 (vertical
+  semi 0.420 — the fine-probe "wider than tall" fact, aspect ~0.70).
+  Margin ledger vs the certified line: rim top 2.020@2.290 (m 0.13),
+  phi50 1.910@2.431 (m 0.09), phi55 1.856@2.472 (m 0.036), phi60
+  1.826@2.493 (m 0.034), apex 1.632@2.649 (m 0.19). Gate held 90.4 on
+  the swap, 90.6 final.
+- SOFT CRESCENT: two tapered cone-annulus lower arcs pitched+squashed
+  with the lens (plate dashes failed first — unsquashed tangents gap on
+  the squashed ellipse; untapered open shells project as hairlines).
+  Offsets +0.062/+0.072 along the pitched normal — the first cut buried
+  both bands INSIDE the 0.0575 lens bulge and nothing rendered. Wash arc
+  rides the claimed hullRubber bucket (tires pinned to a pre-retone
+  clone, mats.rubber re-tuned 0x585e4e — the r5 claimed-bucket pattern);
+  core arc hullDark.
+- Ball + emergence RING (hullCloth torus 0.168 w/ four cast lugs) + ear
+  bosses ON the ring at 10/2 (they floated at r 0.42 on the open disc);
+  13-bolt arc kept at r 0.50; matte pass killed the "polished pipe"
+  streak (canvasCloth envMapIntensity 0.3 -> 0.08).
+- DONE-GATE MEASURED (view-front, casting-only strips): p25->p75
+  73.4->102.9 (spread 29.5) at rect (855,212)-(885,308) and 76.4->104.6
+  (28.2) at (950,212)-(980,308); whole casting (825,212)-(1015,308)
+  76.4->103.6. Ref's own: 70->101 (spread 31). REQUIRED >= 20: MET.
+
+### Item 2 — ROAD WHEELS: pockets buried, dark rib-cast, in-band
+- Root cause found: the kit's 'holes' pocket inserts are w*1.16 wide and
+  poked 2 mm PAST the 16 mm cover disc (pockets end x 1.301, old cover
+  1.299). Cover thickened to span 1.2815..1.3075; face package shifted
+  outboard; six cast rib spokes added per face; hullWood retoned
+  0x565a4f dark-olive.
+- DONE-GATE MEASURED (view-right lit): wheel faces L 75.6 / 73.6 at
+  rects (976,356)-(992,364) / (1016,356)-(1032,364) vs ref wheel face
+  80.1 at (288,354)-(300,366) — within +-8 L. Zero black pocket pixels
+  at 8x (p25 76.9 on-face). Bay windows behind wheels get the ref's
+  near-black read via hullShadow bay walls at x +-1.005 (the lit-camo
+  tub was a side-view mismatch).
+
+### Item 3 — TOP RUN: flange + ticks + family tone
+- Fender side-flange plates INSIDE the certified grounded band-face
+  window (x 1.451..1.485): fwd 1.4665 (y 1.025..1.425, z -0.42..3.14),
+  rear 1.4700 (y 1.045..1.30, z -2.42..-0.38, welded via 4 cm z-overlap).
+  First cut at x 1.5195 put the rear piece in the +-1.54 strip bins
+  (certified bottom 1.425) — 0.36 m bottom error on two columns; second
+  cut's 1.445 top belted the drum bellies (drum surface at the flange
+  plane spans y 1.41..1.55) — 1.30 hides the 1.12 top run and frees the
+  drums.
+- Cleat ticks: 30 hullTrack bars/side at link pitch riding 3-8 mm proud
+  of the smooth cover — the channel reads as cleated track full length
+  from every top/tilt camera. Track band multipliers (0.95,1.11,0.86) +
+  link pads 0x41453a -> 0x4a4f43: ground-run ratio ref/proc = 1.11 by
+  rect means (ref (150,378)-(450,390) L 50.1 vs proc (780,368)-(1120,380)
+  L 45.1, equal-bg rects) — inside the 0.92-1.16 law, same value r3
+  passed with. Idler radial ribs DELETED (the "toothed gear face" was
+  that four-spoke pattern), idler/sprocket dressing re-bucketed to
+  hullTrack ("faces darkened").
+
+### Item 4 — DRUMS: true-scale, skyline break, 94-100 band
+- r 0.145 -> 0.200 bodies (hoops 0.205) seated LOWER (centers 1.4795) so
+  the hoops top the EXACT certified 1.6845 bump line — the critic's "2x
+  area" caps come from diameter below the line, not height above it
+  (the r5 lift lesson). x 1.287 keeps the fatter circle-top under the
+  certified 1.50-1.535 front columns.
+- THE SKYLINE FIX was three separate occluders: (a) sponsonTop 1.67 ->
+  1.653 — the constant slab overprinted the loft's own falling deck line
+  and swallowed the bump line (gate IMPROVED: stations 94.6 -> 95.3);
+  (b) the rear rail belt 1.42..1.51 thinned to 1.4925..1.5125 with the
+  certified front-column union preserved by three 0.11-long stubs parked
+  in the DRUM GAPS at z -0.46/-1.445/-2.35 (front cameras integrate all
+  z — stations 95.3 -> 95.5); (c) rear brackets deleted via
+  bracketGap [-2.60,-0.40] (the "crosshatch rack", with the saddles).
+  Drums now show 1.30..1.6845 from the side and break the deck skyline
+  in view-right/rearright like the ref.
+- Bodies/hoops ride hullCloth (the bright cast bucket). DONE-GATE
+  MEASURED: drum-body-only rect (1090,300)-(1130,310) view-right lit:
+  L 99.4, p50 103.7 — >= 90 required, inside the ref's 94-100 band
+  (ref body rect (448,312)-(472,323): L 88.0, p50 94.4). All four bodies
+  read as full tubes from view-top; smooth concentric end rings added
+  (two raised rings + dish + hub cap per end).
+
+### Item 5 — TOP DECK FILL: the r2 web was the slab
+- The horizontal web at the fender plane (x 1.215..1.505, FULL fender
+  run, both sides — r2's void fix) was the "slab deck" covering both
+  track runs from above. DELETED; the channel now shows the top run +
+  cleat ticks full length both sides (8x strips verified at three
+  z-stations), AO strip softened 0x161a12 -> 0x1e2418.
+- Engine deck: the 2x4 cell grids -> transverse LOUVRES (two flanking
+  banks + a 6-row full-width aft band, slat tops 1.6565 under the
+  1.684 waves; deck furniture reseated to the dropped slab).
+
+### Items 6-10 (status)
+6. ROOF: left dome dressed as a chunky cupola (collar ring + seam +
+   raised lid + hinge lugs inside the 0.085 carrier), ventilator rebuilt
+   as base collar + TRUE half-dome r 0.066 (crown exactly 2.221), two
+   periscope pots in the certified 2.165-2.177 band, two more stud rows
+   + edge studs (density ~0.9 of ref closeup).
+7. REAR PLATE: three vertical stiffeners DELETED, tow bar re-bucketed
+   fitting-olive (dimTail: 2) + end bolt plates + clevis (the "slot-bar"
+   read), four-row bolt field, raised inner rings on the tail hatch
+   discs, rear-wall grab rail; peaked-deck read fixed by the dome
+   footprint shrink (0.28 -> 0.22) + louvred flat deck.
+8. MUZZLE: geometry frozen (cover-probe law); the bulb was tonal — exit
+   collar + mid divider re-bucketed matte fitting-olive, dark seam discs
+   flush inside each drum face; reads as stepped cylinders at range.
+9. GLOBAL VALUE: hull/barrel camo lifted x(1.10,1.10,1.05), detail
+   0x585c4f, dark 0x31362d. Pane means (bg-diluted): rear -11.2 -> -8.9,
+   front -5.7 -> -4.6, sides/top within 0.6. Casemate flanks keep the
+   scheme (smooth skins unchanged); AO/void classes softened.
+10. INVENTIONS DELETED: numeral decals (noDecal — the pink "314"), the
+    crossed tail cables + eyes AND the roof-edge conduit (the two "wavy
+    bright deck-edge cable" sources), mesh-read bins re-bucketed solid
+    olive (geometry exact — certified 1.862 cols), rod-end caps deleted
+    + the bow support post widened into a bracket web (floater weld
+    preserved), r4 sight-hood box deleted.
+
+### Honest residuals (r6 — for the critic)
+- The crescent is a two-step tone gradient (wash + core), not a
+  continuous falloff: at 6-8x its inner/outer boundaries are readable
+  arcs; the measured spread matches ref but the ref's transition is
+  smoother.
+- The lens bulge is 5.75 cm over a 1.32 m disc — the geometric roll-off
+  is gentle; most of the measured spread comes from the shading arcs +
+  ball/ring AO, same mechanism class as the print's own bake.
+- Sprocket/idler faces are darkened and de-gear-toothed, but the sprocket
+  end still reads flatter/paler than the ref's buried end wheels; the
+  kit's toothed carrier rings are fleet-shared geometry.
+- Rear pane mean still -8.9 vs ref (rear-facing faces are hemi-lit; the
+  key-light lift helps them least). Front/sides/top within -4.6..-0.2.
+- The bins float 17 mm above the dropped slab (welded to the casemate
+  wall; the gap line is in shadow behind the rail) — bin tops carry
+  certified 1.862 front columns and could not move.
+- dims 98.2 unchanged (the hullLengthM carrier-window tax, certified).
+- Board front cameras remain elevated ~10-15 deg: the full-circle lens
+  read is strongest in view-front/close-front; quarters read the pot
+  (ball + ring + sleeve) against the face.
