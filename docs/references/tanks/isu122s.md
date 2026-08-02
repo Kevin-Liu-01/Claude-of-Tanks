@@ -760,3 +760,14 @@ rearleft 7.5, rear 7.5-8, rearright 8, right 7.5, frontright 7, top 8,
 toptilt 8, close-front 7.5, close-roof 7.5. The two headliners are
 render-verified with numbers; the binding residual is shade-side drum
 subtlety, which is now a measured gate ceiling, not a build gap.
+
+## Shaded-parity r5 (2026-08-02) — FAIL min 5.5; FILL FAIL; ON-ELEMENT law
+Verdict: docs/critique/shaded-parity-isu122s-r5.md. Floor stuck 4-5-5.5-5.5.
+Hull silhouette verified certified-grade (1-2px all stations) — the gap is
+SKIN: mantlet three-parts-not-one-cast (flat plate IQR 0.0 vs ref 31-L
+roll-off), white pocket wheels, cream zipper, drums buried (ref parity in
+zero views), top deck covers track runs 2/3 length (owner FILL FAIL, 3rd
+round). NEW FLEET LAW (zone-rect fraud class): done-gate rects go ON THE
+ELEMENT (drum body only, wheel face only, casting only) — zone rects that
+average rails/deck reproduce false parity. isu152 post-batch-17 baseline
+is 14.4 (true-scale oracle) — do NOT chase isu152 in r6; keep flag-gated.
