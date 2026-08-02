@@ -391,3 +391,106 @@ rack, fan slab, gun. NOT FIXED: hatch rings (must READ raised from top —
 wide flat contrast ring is the silhouette-neutral path). FLEET LESSON
 banked: retones keep overshooting WARM (2nd tank) — match ref HUE family
 by pixel sampling, luminance ratio alone is insufficient.
+
+## Shaded-parity r3 — VISUAL FIX ROUND (2026-08-02)
+
+All 10 r2 work-order items addressed in `src/vehicles/profiles/leopard.js`
+(buildLeo2A6 + opt-in params only: `leoGear g.dishR`, `leoHullV3
+H.dishR/H.splashArms`; the PERI round-cap edit lives in the `PR.crownW`
+branch only a6 reaches). Gate after round: **min 91.0 PASS** (hull 91.1 /
+whole 91.0 / turret 91.2 / stations 93.4 / dims 91.0 / floaters 100),
+stable across 4 consecutive runs. Siblings score-identical: leo2a5 69.2 /
+kf51 63.6 / leo2_revolution 45.0. Board 95.2 (was 95.0; H97 T91 G95 R94).
+Full `npm test` passes (166 checks).
+
+Per-item status (r2 work order):
+1. RUNNING-GEAR PALETTE — DONE, hue-verified. All gear tones hue-rotated
+   into the ref's grey-brown/olive family (G >= R): trackL/R lift
+   (1.80,1.74,1.48) -> (1.42,1.68,1.38); pads 0x474134 -> 0x3f4533;
+   inner chain 0x3a362c -> 0x33392c; spareTrack -> 0x444a38; dish clone
+   0x5e5c4b -> 0x525c46; drum clone -> 0x3e4437. Dark tire rings via
+   dishR 0.78 (opt-in; siblings hold 0.84). PIXEL-SAMPLE EVIDENCE
+   (view-left medians, matched rects both halves): band hue r2 41.7deg ->
+   r3 63.5 vs ref 72.5 (meanRGB now 76,77,60 — G>R like the ref's
+   75,76,60); wheels r2 53.7 -> r3 85.7 vs ref 87.3 (74,79,63 vs
+   83,90,68). Luminance ratios ref/proc 0.966 band / 1.068 wheels —
+   inside the 0.92-1.16 law.
+2. HATCH RINGS — DONE (3rd attempt; reads from straight top AND at hero
+   tilt). ROOT CAUSE found: the r2 raised rims were keyed to hatchTop and
+   sat half BURIED in the sloped roof V (commander rim top 0.780 vs local
+   roof 0.776 -> the "dashed engraving"). Fix: wide FLAT two-tone ring
+   discs ON the roof plane, tilted to its slope (rz +-0.079/0.0897):
+   pale race r 0.30/0.28 (0.60/0.56 m — the ref's apparent diameter),
+   dark groove disc, pale mid ring, 6 lug dots, dark lid capping the drum
+   (+0.011 over the certified 0.80/0.84 tops), hinge tab. Loader survives
+   its blotch via the PALE race (two-tone-rim law). PERI reads round from
+   above: crown box shaved 16 mm, capped by a PALE full-footprint disc
+   (top EXACTLY at the 1.08/2.85w p95 anchor) + dark ring/hub; the two
+   square dark top plates (1.073/1.079) deleted, head band dropped to
+   1.056 (below the cap bottom).
+3. REAR PLATE — DONE. Louver-burial ROOT CAUSE: the r2 ribs' faces sat
+   4 mm BEHIND the dark field's own face (-3.646 vs -3.650) — re-layered
+   outward (field -3.639, near-black slot layer -3.642, 6 wide pale slats
+   -3.650; wells likewise). Below the band: round taillight/marker
+   clusters (dark disc + dotted detail ring + 3 lenses at +-1.28),
+   C-shape tow hooks on plates (+-0.85), center coupling ring + jaw,
+   crossed X braces — all y 1.13..1.373, z >= -3.626 (wall-column legal),
+   <=6 mm proud. Wood jack retoned 0x4a463a (cream tab killed).
+4. PERI FACE + LENSES — DONE. glass 0x46525b m0.50 -> 0x3d4536 r0.55
+   m0.32 env 0.45 (olive-glass/dark-lens); no cool/bright lens pixels
+   remain on the front at critic zoom.
+5. SKIRT — DONE. Scallop: scheme-camo lower band + near-black notch
+   plates (hullShadow) on BOTH runs at the certified r2 face planes
+   (front 1.847/1.848, rear 1.7315/1.732), bottoms hold 0.87; armor
+   blocks get dark outline frames AT the certified 1.871 pad plane.
+6. FAN RINGS — DONE, survives hero tilt: raised rim curb (torus r 0.385)
+   over a near-black recess floor + 8 radial blades — a real ~5 mm well;
+   max top 1.8615 (the pre-existing hub) stays in the certified fan-col
+   row.
+7. SMOKE BANKS — DONE. The two mount rails went DARK and WIDE (backdrop
+   plates the camo tubes silhouette against), both rows nudged outboard
+   (+9/+12 mm), row1 muzzles r 0.0435 + all collars 0.0385. Outermost
+   reach: caps 1.339, rails 1.342 — both >=12 mm under the 1.36- column
+   boundary (pixel-growth law); row2 cap tops keep their certified line.
+8. ROOF CLUTTER — DONE. Crosswind mast head (cross arms + vane + base
+   disc), two FOLDED whip rods + base pots lying on the neck roofline
+   (matches the folded-stowed oracle; <=0.028 proud), 3 flat tie-down
+   rings + dark dots on the roof quarters.
+9. GLACIS CABLES — DONE. Glacis run thickened 0.007 -> 0.012 but SUNK
+   3-4 mm (crown holds the r2 +0.009 profile — the read is dark-on-camo
+   tone, not proudness), clamp blocks enlarged, dark cast-eye end
+   fittings added. Deck rope kept at 0.008 (its 1.839+ top is the
+   certified pixel-fine line).
+10. GREY GLACIS SLABS — DONE. The two 0.85 m detail-grey splash-arm
+    slabs (leoHullV3) are deleted for a6 (splashArms:false) and replaced
+    by scheme-camo deflector boards + dark cap strips on the same
+    footprint (top +0.006).
+
+Round lessons (mechanics worth keeping):
+- SLOPED-ROOF FURNITURE LAW: anything keyed to a hatch/stack line can sit
+  BURIED under the sloped roof course at its x — compute the LOCAL roof
+  plane (vT + (|x|-0.10)*slope) and mount flat furniture ON it, tilted to
+  the slope. Flat discs there are silhouette-neutral (sub-row) from side
+  AND front.
+- LAYER-ORDER LAW (rear plate): a "texture" layer must be PROUDER than
+  the field it sits on — the r2 louvres were geometrically present but
+  4 mm behind their own backdrop's face.
+- FACE-PLANE BUDGET: the first r3 cut floated skirt/pad/cable faces
+  +3..+5 mm past the certified planes and cost hull 91.5->91.0, stations
+  93.4->92.1 (gate min 90.7); re-parking every face AT the certified r2
+  planes (contrast does the reading, not proudness) restored 91.0 with
+  the visual fixes intact. Tone/material swaps are free; every millimeter
+  of new proudness on an owned plane is not.
+- Gate accounting vs the r2 entry: hull 91.5->91.1 and turret
+  91.0->91.2 (net flips inside the documented registration-residual
+  classes); min unchanged at 91.0 across 4 runs.
+
+Residuals (documented, not caps): ring lids read dark-on-dark where the
+loader blotch crosses the drum (the pale race carries the circle);
+track-band hue 63.5 vs ref 72.5 — same olive family, ~9deg short of the
+median (further green push starts fighting the luminance-ratio law);
+louver slats read a touch softer than the ref's (bounded by the
+1.373..1.771 band depth). Predicted critic scores: the three r2 7.0
+views (rear, top) carry the heaviest fixes — rear plate below-band now
+furnished, rings/PERI circular from top, fan wells real; expect all
+views >= 7.5 if the reads hold at the critic's zoom.

@@ -50,7 +50,10 @@ import { vehicleAmbientFloorHook } from '../materials.js';
 function leoGear(P, g) {
   const { buildRunningGear } = KIT;
   buildRunningGear(P, {
-    style: 'rubber', dishR: 0.84,
+    // dishR opt-in (r3 leo2a6 #1): a smaller painted dish widens the dark
+    // rubber tire ring on the wheel faces; default 0.84 keeps every sibling
+    // byte-identical.
+    style: 'rubber', dishR: g.dishR ?? 0.84,
     wheelR: g.wheelR, wheelW: Math.min(0.23, g.trackW * 0.36),
     wheelY: g.wheelY ?? g.wheelR + 0.03, xc: g.xc,
     wheelZs: evenStations(7, g.span[0] - g.span[1], (g.span[0] + g.span[1]) / 2),
@@ -479,7 +482,12 @@ function leoHullV3(P, H) {
   P.add('hullDark', box(hw * 1.8, 0.014, 0.026), 0, cr[1] + 0.006, cr[0] + 0.02);
   const gRx = -Math.atan2(g[0][1] - g[1][1], g[1][0] - g[0][0]);
   for (const s of [-1, 1]) {
-    P.add('hullDetail', box(0.85, 0.020, 0.05), s * 0.44, cr[1] - 0.10, cr[0] + 0.40, gRx, s * 0.42, 0);
+    // splashArms opt-out (r3 leo2a6 #10): these bare detail-grey slabs were
+    // the critic's "two untextured grey glacis slabs" — a6 replaces them
+    // with scheme-camo deflector boards on the same footprint.
+    if (H.splashArms !== false) {
+      P.add('hullDetail', box(0.85, 0.020, 0.05), s * 0.44, cr[1] - 0.10, cr[0] + 0.40, gRx, s * 0.42, 0);
+    }
     headlight(P, s * hw * 0.66, H.headlightY ?? (tip[1] + 0.02), H.headlightZ ?? (tip[0] - 0.62), gRx);
   }
   // driver hatch + flush periscopes front-right, ammo hatch left
@@ -649,7 +657,7 @@ function leoHullV3(P, H) {
   leoGear(P, {
     xc: H.xc, trackW: H.trackW, wheelR: H.wheelR, wheelY: H.wheelY,
     span: H.span, sprocket: H.sprocket, idler: H.idler, topY: H.topY,
-    botY: H.botY ?? 0.06, rollers: H.rollers,
+    botY: H.botY ?? 0.06, rollers: H.rollers, dishR: H.dishR,
   });
 }
 
@@ -813,7 +821,15 @@ function wedgeTurretV3(P, T) {
     // + a base at the full w/d whose top stays inside the 1% heightM grace
     // (the ref's blister tapers — a full-size box read the crown height on
     // its boundary columns and blew the p95 budget when body-N shrank)
-    P.add(periB, box(PR.crownW, 0.26, PR.crownD ?? 0.20), PR.crownX ?? PR.x, PR.top - 0.13, PR.z);
+    // r3 #2 (a6-only branch — only a6 passes crownW): the head reads ROUND
+    // from above. Crown box shaved 16 mm and capped by a full-footprint
+    // lathed disc + dark ring/hub; the cap top sits EXACTLY at PR.top so
+    // the certified p95 spike columns and the heightM anchor cannot move
+    // (corner side-columns lose <=0.016 = sub-row).
+    P.add(periB, box(PR.crownW, 0.244, PR.crownD ?? 0.20), PR.crownX ?? PR.x, PR.top - 0.138, PR.z);
+    P.add('turretDetail', cylY(PR.crownW / 2, PR.crownW / 2, 0.016, P.q ? 24 : 16), PR.crownX ?? PR.x, PR.top - 0.008, PR.z);
+    P.add('turretDark', torus(PR.crownW * 0.35, 0.009, P.q ? 22 : 14), PR.crownX ?? PR.x, PR.top - 0.010, PR.z);
+    P.add('turretDark', cylY(0.042, 0.042, 0.006, 12), PR.crownX ?? PR.x, PR.top - 0.006, PR.z);
     P.add(periB, box(PR.w ?? 0.24, 0.26, prD), PR.x, (PR.baseTop ?? (PR.top - 0.15)) - 0.13, PR.z);
     P.add('turretGlass', box(0.15, 0.09, 0.016), PR.x, PR.top - 0.11, PR.z + (PR.crownD ?? 0.20) / 2);
   } else {
@@ -950,6 +966,13 @@ function buildLeo2A6(P) {
     // (0.23@-2.81, 0.48@-3.18, 0.62@-3.36); idler (3.285, 1.04) far edge 3.76.
     // The old (-3.26, 1.05) wrap reached -3.755 into the ref's bare tail strip.
     wheelR: 0.365, wheelY: 0.39, span: [2.66, -2.14],
+    // r3 #1: wider dark tire ring on the wheel faces (dishR 0.84 -> 0.78,
+    // opt-in — siblings hold 0.84); the grey-brown/olive retone below
+    // carries the rest of the running-gear hue law.
+    dishR: 0.78,
+    // r3 #10: the two leoHullV3 grey splash-arm slabs are replaced by camo
+    // deflector boards (same footprint) in the glacis block below.
+    splashArms: false,
     // idler refit (r6, pixel-owned): the ref wrap prints top ~1.31@3.39,
     // underside 0.98@3.76, 0.70@3.63 — a SMALL HIGH idler (y 0.98 r 0.22;
     // pads add ~0.155 radially) whose far edge still parks at ~3.755
@@ -1065,6 +1088,14 @@ function buildLeo2A6(P) {
     P.add('hullDetail', box(0.055, 0.016, 0.30), s2 * 0.58, gY(2.50) + 0.008, 2.50, 0, s2 * 0.42, 0);
   }
   P.add('hullDark', box(0.50, 0.008, 0.020), 0, gY(2.40) + 0.006, 2.40);
+  // r3 #10: textured replacement for the deleted leoHullV3 splash-arm slabs
+  // (splashArms: false above) — scheme-camo deflector boards with a dark cap
+  // strip, same footprint/rotation as the certified originals (top +0.006 =
+  // sub-row; the first cut's +0.013 boards cost side_hull columns).
+  for (const s2 of [-1, 1]) {
+    P.add('hull', box(0.85, 0.024, 0.052), s2 * 0.44, 1.570, 2.45, -0.229, s2 * 0.42, 0);
+    P.add('hullDark', box(0.86, 0.006, 0.055), s2 * 0.44, 1.583, 2.45, -0.229, s2 * 0.42, 0);
+  }
   // #1 glacis anti-slip zones (dark matte, slope-aligned, <=10 mm proud —
   // the ref line already reads ~0.03 UNDER our certified glacis skin here,
   // so proudness stays sub-row)
@@ -1072,12 +1103,17 @@ function buildLeo2A6(P) {
     P.add('hullRubber', box(0.60, 0.008, 0.56), s2 * 0.52, gY(3.00) + 0.002, 3.00, -0.396, 0, 0);
     P.add('hullRubber', box(0.50, 0.008, 0.44), s2 * 0.50, gY(2.34) + 0.002, 2.34, -0.086, 0, 0);
   }
-  // #1 glacis tow cable half-sunk in clamp blocks (deck-rope recipe)
-  KIT.towCable(P, [[-1.02, gY(2.30) + 0.002, 2.30], [-0.30, gY(2.98) + 0.003, 2.98],
-    [0.55, gY(2.60) + 0.002, 2.60], [1.02, gY(2.22) + 0.002, 2.22]], 0.007);
+  // #1/#9 glacis tow cable half-sunk in clamp blocks. r3: the 0.007 tube was
+  // an invisible hairline — thickened to a readable 0.012 dark cable but
+  // SUNK 4 mm so the crown stays at the r2 +0.009 profile (the read is tone
+  // contrast, not proudness; the first r3 cut at +0.017 cost hull columns).
+  KIT.towCable(P, [[-1.02, gY(2.30) - 0.003, 2.30], [-0.30, gY(2.98) - 0.002, 2.98],
+    [0.55, gY(2.60) - 0.003, 2.60], [1.02, gY(2.22) - 0.003, 2.22]], 0.012);
   for (const [cx2, cz2] of [[-0.68, 2.64], [0.15, 2.82], [0.80, 2.40]]) {
-    P.add('hullDetail', box(0.05, 0.018, 0.05), cx2, gY(cz2) + 0.007, cz2, -0.2, 0, 0);
+    P.add('hullDetail', box(0.06, 0.018, 0.06), cx2, gY(cz2) + 0.006, cz2, -0.2, 0, 0);
   }
+  P.add('hullDark', box(0.05, 0.022, 0.08), -1.02, gY(2.30) + 0.002, 2.30, -0.2, 0, 0);
+  P.add('hullDark', box(0.05, 0.022, 0.08), 1.02, gY(2.22) + 0.002, 2.22, -0.2, 0, 0);
   // #1 tow-eye shackle rings half-embedded in the certified clevis faces
   for (const s2 of [-1, 1]) {
     P.add('hullDark', xform(torus(0.052, 0.015, 12), 0, 0, 0, Math.PI / 2, 0, 0), s2 * 0.676, 1.075, 3.655);
@@ -1094,14 +1130,21 @@ function buildLeo2A6(P) {
   // -3.627 column boundary keep y inside the certified 1.373..1.771 band;
   // pieces at z >= -3.626 live in the wall column (bottom 1.13 preserved
   // by the wall itself).
-  P.add('hullDark', box(2.86, 0.30, 0.024), 0, 1.545, -3.638);
-  for (let k = 0; k < 5; k++) {
-    P.add('hullDetail', box(2.80, 0.024, 0.034), 0, 1.425 + k * 0.06, -3.629);
+  // r3 #3 louver TEXTURE: the r2 ribs sat 4 mm BEHIND the dark field's own
+  // face (-3.646 vs -3.650) — buried, hence "no louver texture". Re-layered
+  // outward: frame field, then near-black slot layer, then 6 wide pale
+  // slats in FRONT of both. Everything stays in the certified 1.373..1.771
+  // band (content deeper than z -3.627 is band-legal).
+  P.add('hullDark', box(2.86, 0.30, 0.018), 0, 1.545, -3.630);
+  P.add('hullShadow', box(2.80, 0.26, 0.006), 0, 1.545, -3.639);
+  for (let k = 0; k < 6; k++) {
+    P.add('hullDetail', box(2.78, 0.032, 0.014), 0, 1.425 + k * 0.050, -3.643);
   }
-  for (const vx of [-0.95, 0.95]) P.add('hullDetail', box(0.035, 0.30, 0.036), vx, 1.545, -3.629);
+  for (const vx of [-0.95, 0.95]) P.add('hullDetail', box(0.035, 0.30, 0.036), vx, 1.545, -3.633);
   for (const s2 of [-1, 1]) {
     P.add('hullDark', box(0.40, 0.17, 0.030), s2 * 1.16, 1.50, -3.630);
-    for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.34, 0.022, 0.040), s2 * 1.16, 1.445 + k * 0.052, -3.632);
+    P.add('hullShadow', box(0.36, 0.15, 0.005), s2 * 1.16, 1.50, -3.6435);
+    for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.34, 0.030, 0.016), s2 * 1.16, 1.443 + k * 0.052, -3.6475);
     P.add('hullDark', box(0.15, 0.095, 0.03), s2 * 1.315, 1.665, -3.618);
     P.add('hullGlass', box(0.035, 0.055, 0.012), s2 * 1.345, 1.663, -3.632);
     P.add('hullGlass', box(0.035, 0.055, 0.012), s2 * 1.285, 1.663, -3.632);
@@ -1109,6 +1152,27 @@ function buildLeo2A6(P) {
     P.add('hullDark', xform(torus(0.036, 0.012, 10), 0, 0, 0, Math.PI / 2, 0, 0), s2 * 0.72, 1.425, -3.622);
     P.add('hullDetail', box(0.06, 0.045, 0.020), s2 * 0.72, 1.425, -3.624);
   }
+  // r3 #3: rear plate BELOW the vent band — round taillight clusters, tow
+  // hooks, coupling + cross braces. LEGALITY: everything below y 1.373
+  // keeps z >= -3.6255 (the -3.627 side-column law: only in-band content
+  // may go deeper) and <=6 mm proud of the -3.62 wall face; nothing hangs
+  // below the wall's certified 1.13 bottom. Flush/tonal reads only.
+  for (const s2 of [-1, 1]) {
+    P.add('hullDark', cylZ(0.078, 0.005, 14), s2 * 1.28, 1.215, -3.6225);
+    P.add('hullDetail', xform(torus(0.076, 0.006, 14), 0, 0, 0, Math.PI / 2, 0, 0), s2 * 1.28, 1.215, -3.617);
+    P.add('hullGlass', cylZ(0.024, 0.004, 10), s2 * 1.312, 1.246, -3.623);
+    P.add('hullGlass', cylZ(0.024, 0.004, 10), s2 * 1.248, 1.246, -3.623);
+    P.add('hullGlass', cylZ(0.024, 0.004, 10), s2 * 1.28, 1.182, -3.623);
+    P.add('hullDetail', box(0.11, 0.11, 0.005), s2 * 0.85, 1.205, -3.6225);
+    P.add('hullDark', box(0.075, 0.022, 0.006), s2 * 0.85, 1.246, -3.623);
+    P.add('hullDark', box(0.022, 0.062, 0.006), s2 * 0.874, 1.215, -3.623);
+    P.add('hullDark', box(0.022, 0.062, 0.006), s2 * 0.826, 1.215, -3.623);
+    P.add('hullDark', box(0.052, 0.020, 0.006), s2 * 0.85, 1.172, -3.623);
+  }
+  P.add('hullDark', cylZ(0.055, 0.005, 12), 0, 1.20, -3.6225);                // coupling ring
+  P.add('hullDetail', box(0.15, 0.048, 0.005), 0, 1.158, -3.6225);            // coupling jaw
+  P.add('hullDetail', box(0.42, 0.024, 0.004), 0, 1.245, -3.6225, 0, 0, 0.50);
+  P.add('hullDetail', box(0.42, 0.024, 0.004), 0, 1.245, -3.6225, 0, 0, -0.50);
   // #2 running-gear end caps: rim-fill rings closing the dark annulus
   // between the small measured end wheels and their raised band wraps (the
   // "hollow black box" read); hubs capped dark. Everything sits INSIDE the
@@ -1119,6 +1183,20 @@ function buildLeo2A6(P) {
     P.add('hullDetail', xform(torus(0.283, 0.022, P.q ? 22 : 14), 0, 0, 0, 0, 0, Math.PI / 2), s2 * 1.558, 1.02, -3.11);
     P.add('hullDark', cylX(0.075, 0.05, 10), s2 * 1.53, 0.98, 3.38);
     P.add('hullDark', cylX(0.085, 0.05, 10), s2 * 1.56, 1.02, -3.11);
+  }
+  // r3 #6: fan-ring relief that survives hero tilt — raised rim curb over a
+  // near-black recess floor with radial blades (a real ~5 mm well). Trace
+  // safety: the fan columns are a certified +1-row residual; the new max
+  // (old hub 1.8615) stays in the SAME row as the r2 torus top 1.8505
+  // (row pitch 0.0305), and everything is plan-interior (x 0.369..1.191).
+  for (const s2 of [-1, 1]) {
+    const fy2 = 1.8165;
+    P.add('hullDark', KIT.cylY(0.36, 0.36, 0.024, P.q ? 26 : 16), s2 * 0.78, fy2 + 0.012, -2.55);
+    P.add('hullShadow', KIT.cylY(0.345, 0.345, 0.005, P.q ? 26 : 16), s2 * 0.78, fy2 + 0.0345, -2.55);
+    P.add('hullDetail', torus(0.385, 0.026, P.q ? 28 : 18), s2 * 0.78, fy2 + 0.016, -2.55);
+    for (let k = 0; k < 4; k++) {
+      P.add('hullDetail', box(0.62, 0.006, 0.034), s2 * 0.78, fy2 + 0.0375, -2.55, 0, k * Math.PI / 4, 0);
+    }
   }
   // #10 skirts: heavier front-third armor-block pads (faces 1.871 — inside
   // the committed 1.875 width line; rows 0.985..1.185 already carried by
@@ -1131,13 +1209,27 @@ function buildLeo2A6(P) {
       for (const bz of [-0.155, 0.155]) for (const by of [-0.072, 0.072]) {
         P.add('hullDark', box(0.008, 0.026, 0.026), s2 * 1.869, 1.085 + by, pz + bz);
       }
+      // r3 #5: dark outline frame so the armor blocks register at board
+      // scale — held AT the certified 1.871 pad plane (the first cut's
+      // 1.8735 faces cost station rows)
+      P.add('hullDark', box(0.006, 0.016, 0.42), s2 * 1.868, 1.19, pz);
+      P.add('hullDark', box(0.006, 0.016, 0.42), s2 * 1.868, 0.98, pz);
+      P.add('hullDark', box(0.006, 0.226, 0.016), s2 * 1.868, 1.085, pz - 0.208);
+      P.add('hullDark', box(0.006, 0.226, 0.016), s2 * 1.868, 1.085, pz + 0.208);
     }
-    P.add('hullRubber', box(0.012, 0.05, 2.08), s2 * 1.841, 0.897, 2.585);
-    for (let k = 0; k < 5; k++) P.add('hullRubber', box(0.012, 0.112, 0.24), s2 * 1.841, 0.928, 1.66 + k * 0.435);
-    P.add('hullDark', box(0.013, 0.014, 2.10), s2 * 1.8415, 0.878, 2.585);
-    P.add('hullRubber', box(0.010, 0.045, 4.80), s2 * 1.7265, 0.894, -0.965);
-    for (let k = 0; k < 8; k++) P.add('hullRubber', box(0.010, 0.102, 0.22), s2 * 1.7265, 0.923, -3.25 + k * 0.585);
-    P.add('hullDark', box(0.011, 0.014, 4.82), s2 * 1.727, 0.877, -0.965);
+    // r3 #5: scallop that reads at board scale — scheme-camo lower band with
+    // near-black notch plates (the r2 rubber-on-dark tone read was
+    // invisible). Bottoms hold the certified 0.87 skirt line; faces hold the
+    // certified r2 planes exactly (front 1.847/1.848, rear 1.7315/1.732 —
+    // the first r3 cut's +5 mm faces cost stations 93.4 -> 92.1).
+    P.add('hull', box(0.012, 0.13, 2.10), s2 * 1.841, 0.935, 2.585);
+    for (let k = 0; k < 4; k++) {
+      P.add('hullShadow', box(0.014, 0.105, 0.30), s2 * 1.841, 0.9225, 1.90 + k * 0.44);
+    }
+    P.add('hull', box(0.010, 0.12, 4.80), s2 * 1.7265, 0.93, -0.965);
+    for (let k = 0; k < 8; k++) {
+      P.add('hullShadow', box(0.012, 0.098, 0.26), s2 * 1.726, 0.919, -3.22 + k * 0.585);
+    }
   }
 
   // turret: pivot (0,1.77,0.35); measured wedge tables from the fresh
@@ -1228,6 +1320,64 @@ function buildLeo2A6(P) {
     // the launchers as MISSING. Replaced by the proud chamfer-slope banks
     // below (T.smoke omitted -> the shared block skips).
   });
+  // r3 #2 (owner circularity law, 3rd round on this item): the r2 raised
+  // rims sat half BURIED in the sloped roof V (commander rim top 0.780 vs
+  // its local roof 0.776 — the "dashed engraving" read; the loader's dark
+  // ring then vanished on its dark camo blotch). Wide FLAT two-tone ring
+  // discs now lie ON the roof plane, tilted to its slope, at the ref's
+  // ~0.6 m apparent diameter; dark lids cap the certified drum tops.
+  // Silhouette: discs are <=0.019 proud of the local roof surface
+  // (sub-row, pitch 0.0305), plan-interior, and the lids top +0.011 over
+  // the certified 0.80/0.84 drum lines.
+  {
+    const ringSeg = P.q ? 30 : 20;
+    // flat stacked discs, not raised tori: max +0.021 over the local roof
+    // plane (the tori's +0.027 crowns were flip-bait at the 0.0305 pitch)
+    // commander (x 0.62, z -0.55) on the RIGHT roof slope (0.0793)
+    const cyR = 0.735 + (0.62 - 0.10) * 0.0793;
+    P.add('turretDetail', KIT.cylY(0.30, 0.30, 0.014, ringSeg), 0.62, cyR + 0.009, -0.55, 0, 0, 0.079);
+    P.add('turretDark', KIT.cylY(0.257, 0.257, 0.006, ringSeg), 0.62, cyR + 0.014, -0.55, 0, 0, 0.079);
+    P.add('turretDetail', KIT.cylY(0.222, 0.222, 0.005, ringSeg), 0.62, cyR + 0.0185, -0.55, 0, 0, 0.079);
+    P.add('turretDark', KIT.cylY(0.155, 0.155, 0.010, P.q ? 24 : 16), 0.62, 0.806, -0.55);
+    P.add('turretDetail', box(0.06, 0.006, 0.024), 0.62, 0.8135, -0.44);
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2 + 0.2;
+      const dx = Math.sin(a) * 0.283;
+      P.add('turretDark', KIT.cylY(0.015, 0.015, 0.010, 8), 0.62 + dx, cyR + 0.016 + dx * 0.0793, -0.55 + Math.cos(a) * 0.283);
+    }
+    // loader (x -0.66, z -0.42) on the LEFT slope (0.0899): the pale race +
+    // pale mid ring survive the dark blotch (two-tone-rim law)
+    const cyL = 0.735 + (0.66 - 0.10) * 0.0899;
+    P.add('turretDetail', KIT.cylY(0.28, 0.28, 0.014, ringSeg), -0.66, cyL + 0.009, -0.42, 0, 0, -0.0897);
+    P.add('turretDark', KIT.cylY(0.24, 0.24, 0.006, ringSeg), -0.66, cyL + 0.014, -0.42, 0, 0, -0.0897);
+    P.add('turretDetail', KIT.cylY(0.205, 0.205, 0.005, ringSeg), -0.66, cyL + 0.0185, -0.42, 0, 0, -0.0897);
+    P.add('turretDark', KIT.cylY(0.118, 0.118, 0.010, P.q ? 24 : 16), -0.66, 0.846, -0.42);
+    P.add('turretDetail', box(0.055, 0.006, 0.022), -0.66, 0.8535, -0.31);
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2 + 0.55;
+      const dx = Math.sin(a) * 0.263;
+      P.add('turretDark', KIT.cylY(0.014, 0.014, 0.010, 8), -0.66 + dx, cyL + 0.016 - dx * 0.0899, -0.42 + Math.cos(a) * 0.263);
+    }
+  }
+  // r3 #8: roof clutter readable from straight top — crosswind-mast head
+  // (cross arms + base disc), two FOLDED whip antennas lying along the neck
+  // roofline (the repaired oracle's whips are folded stowed), and flat
+  // tie-down rings. Everything <=0.028 proud of its local roof surface.
+  P.add('turretDetail', KIT.cylY(0.048, 0.054, 0.018, 12), -0.85, 0.768, -2.20);
+  P.add('turretDark', box(0.15, 0.016, 0.016), -0.85, 0.776, -2.20);
+  P.add('turretDark', box(0.016, 0.016, 0.085), -0.85, 0.776, -2.245);
+  for (const s2 of [-1, 1]) {
+    // neck roof y at |x|: 0.64 + (|x|-0.10)/0.76*0.12 — rods/pots embed
+    // 2-3 mm into the slope so nothing floats (left runs at a lower row)
+    const wx = s2 < 0 ? -0.76 : 0.80;
+    const wy = s2 < 0 ? 0.7442 : 0.7505;
+    P.add('turretDetail', KIT.cylY(0.030, 0.036, 0.028, 10), wx, wy + 0.012, -1.83);
+    P.add('turretDark', box(0.022, 0.020, 0.50), wx, wy + 0.007, -2.10);
+  }
+  for (const [lx, lz, ly] of [[0.55, -0.05, 0.7707], [-0.45, -1.25, 0.7665], [0.30, -1.62, 0.6874]]) {
+    P.add('turretDetail', torus(0.042, 0.012, 14), lx, ly + 0.005, lz);
+    P.add('turretDark', KIT.cylY(0.018, 0.018, 0.008, 8), lx, ly + 0.006, lz);
+  }
   // r2 #3: 2x4 Wegmann smoke banks per side, proud of the wall->roof chamfer
   // slope (plane (1.38,0.30)->(1.05,0.62): row1 centers sit ON it, row2 rides
   // 22 mm proud). MASK LAW: every tube+cap tops >=0.03 below the certified
@@ -1235,29 +1385,37 @@ function buildLeo2A6(P) {
   // outermost reach is 1.325 — the ref-empty 1.36+/1.45 front columns and
   // the 1.419 boundary stay dark. Camo tube bodies + dark muzzles + collar
   // rings so the bank reads as launchers, not black sticks.
+  // r3 #7 (prominence pass): the r2 banks read as flush ribs — camo tubes
+  // against the camo step with pale rails. Now: the two mount rails go DARK
+  // and WIDE (a backdrop plate the tube cylinders silhouette against), both
+  // rows nudge outboard (+9/+12 mm), and row1 muzzles grow to r 0.0435.
+  // MASK LAW re-audit: outermost reach = row1 cap edge 1.3390, rails to
+  // 1.3419 — both stay >=12 mm under the ref-empty 1.36- column boundary
+  // (pixel-growth law: keep +x faces 12 mm clear); row2 caps keep their
+  // certified r 0.041 (their top 0.573 already rides 8 mm under the crest).
   {
     const gs = P.q ? 12 : 10;
     for (const s of [-1, 1]) {
       for (let k = 0; k < 4; k++) {
         const zA = -0.40 - k * 0.14, zB = -0.47 - k * 0.14;
-        P.add('turret', KIT.cylZ(0.036, 0.24, gs), s * 1.272, 0.405, zA, -0.52, s * 0.16, 0);
-        P.add('turretDark', KIT.cylZ(0.041, 0.026, gs), s * 1.2865, 0.457, zA + 0.090, -0.52, s * 0.16, 0);
-        P.add('turretDetail', KIT.cylZ(0.0375, 0.018, 8), s * 1.277, 0.423, zA + 0.031, -0.52, s * 0.16, 0);
-        P.add('turret', KIT.cylZ(0.036, 0.24, gs), s * 1.238, 0.468, zB, -0.52, s * 0.16, 0);
-        P.add('turretDark', KIT.cylZ(0.041, 0.026, gs), s * 1.2525, 0.520, zB + 0.090, -0.52, s * 0.16, 0);
-        P.add('turretDetail', KIT.cylZ(0.0375, 0.018, 8), s * 1.243, 0.486, zB + 0.031, -0.52, s * 0.16, 0);
+        P.add('turret', KIT.cylZ(0.036, 0.24, gs), s * 1.281, 0.405, zA, -0.52, s * 0.16, 0);
+        P.add('turretDark', KIT.cylZ(0.0435, 0.034, gs), s * 1.2955, 0.457, zA + 0.090, -0.52, s * 0.16, 0);
+        P.add('turretDetail', KIT.cylZ(0.0385, 0.018, 8), s * 1.286, 0.423, zA + 0.031, -0.52, s * 0.16, 0);
+        P.add('turret', KIT.cylZ(0.036, 0.24, gs), s * 1.250, 0.468, zB, -0.52, s * 0.16, 0);
+        P.add('turretDark', KIT.cylZ(0.041, 0.026, gs), s * 1.2645, 0.520, zB + 0.090, -0.52, s * 0.16, 0);
+        P.add('turretDetail', KIT.cylZ(0.0385, 0.018, 8), s * 1.255, 0.486, zB + 0.031, -0.52, s * 0.16, 0);
       }
-      // mount rails lying on the chamfer under each row (x reach <= 1.333,
-      // tops under the crest fall at their columns)
-      P.add('turret', box(0.024, 0.11, 0.66), s * 1.286, 0.362, -0.61, 0, 0, s * 0.77);
-      P.add('turret', box(0.024, 0.11, 0.66), s * 1.252, 0.425, -0.68, 0, 0, s * 0.77);
+      // dark backdrop rails on the chamfer under each row
+      P.add('turretDark', box(0.020, 0.14, 0.68), s * 1.286, 0.360, -0.61, 0, 0, s * 0.77);
+      P.add('turretDark', box(0.020, 0.14, 0.68), s * 1.252, 0.423, -0.68, 0, 0, s * 0.77);
     }
   }
-  // r2 #6: PERI R17 head furniture over the (now camo) crown — dark head
-  // band + lid seam + optic surround + wiper bar, all inside the certified
-  // crown footprint and under its 1.08 top (p95 spike budget untouched).
-  P.add('turretDark', box(0.246, 0.05, 0.286), -0.285, 1.048, -0.87);
-  P.add('turretDark', box(0.20, 0.016, 0.24), -0.285, 1.071, -0.87);
+  // r2 #6 / r3 #2: PERI R17 head furniture. The two SQUARE dark top plates
+  // (head band at 1.073, lid seam at 1.079) were what read square from
+  // straight above — deleted; the round cap disc + dark ring/hub in the
+  // crownW branch now own the top-down read, and the head band drops below
+  // the cap disc bottom (top 1.056 < 1.064). Face plate + wiper stay.
+  P.add('turretDark', box(0.246, 0.040, 0.286), -0.285, 1.036, -0.87);
   P.add('turretDark', box(0.19, 0.115, 0.012), -0.285, 0.975, -0.7295);
   P.add('turretDetail', box(0.21, 0.014, 0.014), -0.285, 0.917, -0.7285);
   // r2 #5/#8: bustle basket mass CENTERED (|x| <= 0.37 incl. tarp lids) so
@@ -1382,23 +1540,35 @@ function buildLeo2A6(P) {
   // jack tab. createTankMaterials is per-instance so this scopes to
   // leo2a6; the pad/inner-chain clones are retoned by hex match with the
   // ambient floor re-hooked (clones lose onBeforeCompile).
+  // r3 #1 HUE-FAMILY RETONE (fleet law, 2nd occurrence of the warm
+  // overshoot): the r2 tones passed the 0.92-1.16 luminance-ratio law but
+  // landed WARM (pixel-sampled r2 pairs: band hue 41.7deg / wheels 53.7deg
+  // vs the ref's 72.5 / 87.3 — proc meanRGB had R>G where every ref sample
+  // has G>=R). Every gear tone below is hue-rotated into the ref's
+  // grey-brown/olive family (G >= R) at near-constant luminance; verified
+  // by re-sampling the r3 pairs (evidence in the packet).
   {
-    P.mats.glass.color.setHex(0x46525b);                 // smoked optics (m60 recipe)
-    P.mats.glass.roughness = 0.52;
-    P.mats.glass.metalness = 0.50;
-    P.mats.wood.color.setHex(0x574f40);                  // grey-brown timber, kills the orange tab
+    // r3 #4: the m60-recipe smoked glass (0x46525b metal 0.50) still fired
+    // the brightest, coolest pixels on the front (sky reflections on every
+    // lens). Olive-glass/dark-lens instead: hue in the scheme's 80-90deg
+    // band, metalness cut so optics read as dark glass, env trimmed.
+    P.mats.glass.color.setHex(0x3d4536);
+    P.mats.glass.roughness = 0.55;
+    P.mats.glass.metalness = 0.32;
+    P.mats.glass.envMapIntensity = 0.45;
+    P.mats.wood.color.setHex(0x4a463a);                  // grey-brown timber (the r2 0x574f40 read as a cream tab on the rear plate)
     P.mats.wood.roughness = 0.94;
     for (const tm of [P.mats.trackL, P.mats.trackR]) {
-      tm.color.setRGB(1.80, 1.74, 1.48);                 // linear lift over the link map
+      tm.color.setRGB(1.42, 1.68, 1.38);                 // linear lift over the link map, G>R (r2 1.80/1.74/1.48 printed tan; 1.56/1.70 still sampled hue 54 vs ref 72)
       tm.envMapIntensity = 0.2;
     }
-    P.mats.spareTrack.color.setHex(0x4d4838);            // sprocket teeth/recess + spare links
+    P.mats.spareTrack.color.setHex(0x444a38);            // sprocket teeth/recess + spare links
     P.mats.rubber.color.setHex(0x2c2a26);                // tires/flaps/anti-slip: weathered dark grey
-    const wornDish = P.mats.wheels.clone();              // road-wheel dishes: weathered olive-grey
-    wornDish.color.setHex(0x5e5c4b);
+    const wornDish = P.mats.wheels.clone();              // road-wheel dishes: weathered grey-olive
+    wornDish.color.setHex(0x525c46);
     wornDish.envMapIntensity = 0.25;
-    const wornDrum = P.mats.wheels.clone();              // sprocket/idler body drums: worn steel
-    wornDrum.color.setHex(0x45423a);
+    const wornDrum = P.mats.wheels.clone();              // sprocket/idler body drums: worn grey-olive steel
+    wornDrum.color.setHex(0x3e4437);
     wornDrum.envMapIntensity = 0.25;
     P.disposables.push(wornDish, wornDrum);
     const rehook = (m) => {
@@ -1413,10 +1583,10 @@ function buildLeo2A6(P) {
       const m = ob.material;
       if (!m || !m.color || !m.color.getHex) return;
       if (ob.isInstancedMesh && m.color.getHex() === 0x171614) {
-        rehook(m).color.setHex(0x474134);                // link pads: worn grey-olive steel
+        rehook(m).color.setHex(0x3f4533);                // link pads: worn grey-olive steel (G>R)
         m.envMapIntensity = 0.22;
       } else if (ob.isInstancedMesh && m.color.getHex() === 0x27251f) {
-        rehook(m).color.setHex(0x3a362c);                // inner chain / guide-horn layer
+        rehook(m).color.setHex(0x33392c);                // inner chain / guide-horn layer (G>R)
         m.envMapIntensity = 0.26;
       } else if (m === P.mats.wheels) {
         ob.material = ob.isInstancedMesh ? wornDish : wornDrum;

@@ -3,18 +3,18 @@
  "geoMin": 91,
  "gatePassed": true,
  "components": {
-  "hullCurves": 91.5,
+  "hullCurves": 91.1,
   "wholeCurves": 91,
-  "turretCurves": 91,
+  "turretCurves": 91.2,
   "stations": 93.4,
   "dims": 91,
   "floaters": 100
  },
  "curveRows": {
   "side_hull": {
-   "score": 91.46298376910879,
-   "meanPct": 0.54,
-   "p95Pct": 1.38,
+   "score": 91.07685328894038,
+   "meanPct": 0.58,
+   "p95Pct": 1.37,
    "coverPct": 0.79,
    "reg": {
     "dAlong": -0.003,
@@ -35,7 +35,7 @@
      "refBot": -1.24,
      "procTop": 0.07,
      "procBot": -1.28,
-     "errM": 0.06
+     "errM": 0.061
     },
     {
      "at": -1.4,
@@ -54,6 +54,14 @@
      "errM": 0.039
     },
     {
+     "at": -1.04,
+     "refTop": 0.12,
+     "refBot": -1.42,
+     "procTop": 0.19,
+     "procBot": -1.43,
+     "errM": 0.034
+    },
+    {
      "at": -1.77,
      "refTop": -0.12,
      "refBot": -1.02,
@@ -70,12 +78,20 @@
      "errM": 0.03
     },
     {
-     "at": -1.04,
-     "refTop": 0.12,
-     "refBot": -1.42,
-     "procTop": 0.18,
+     "at": 3.97,
+     "refTop": 0.37,
+     "refBot": -1.41,
+     "procTop": 0.42,
      "procBot": -1.43,
-     "errM": 0.029
+     "errM": 0.028
+    },
+    {
+     "at": 4.09,
+     "refTop": 0.39,
+     "refBot": -1.38,
+     "procTop": 0.42,
+     "procBot": -1.41,
+     "errM": 0.028
     },
     {
      "at": -1.89,
@@ -86,42 +102,26 @@
      "errM": 0.027
     },
     {
+     "at": 4.46,
+     "refTop": 0.39,
+     "refBot": -1.21,
+     "procTop": 0.42,
+     "procBot": -1.17,
+     "errM": 0.027
+    },
+    {
      "at": -1.28,
      "refTop": 0.02,
      "refBot": -1.39,
      "procTop": 0.05,
      "procBot": -1.4,
      "errM": 0.024
-    },
-    {
-     "at": 2.01,
-     "refTop": 0.18,
-     "refBot": -1.42,
-     "procTop": 0.22,
-     "procBot": -1.43,
-     "errM": 0.023
-    },
-    {
-     "at": 2.14,
-     "refTop": 0.18,
-     "refBot": -1.42,
-     "procTop": 0.22,
-     "procBot": -1.43,
-     "errM": 0.023
-    },
-    {
-     "at": 3.97,
-     "refTop": 0.37,
-     "refBot": -1.41,
-     "procTop": 0.41,
-     "procBot": -1.43,
-     "errM": 0.023
     }
    ]
   },
   "side_whole": {
-   "score": 90.99793123198936,
-   "meanPct": 0.63,
+   "score": 91.02384798226423,
+   "meanPct": 0.62,
    "p95Pct": 1.11,
    "coverPct": 0.56,
    "reg": {
@@ -218,12 +218,12 @@
      "errM": 0.029
     },
     {
-     "at": -2.25,
-     "refTop": 0.7,
-     "refBot": 0.38,
-     "procTop": 0.69,
-     "procBot": 0.34,
-     "errM": 0.026
+     "at": 4.46,
+     "refTop": 0.39,
+     "refBot": -1.21,
+     "procTop": 0.42,
+     "procBot": -1.17,
+     "errM": 0.028
     }
    ]
   },
@@ -444,46 +444,94 @@
    ]
   },
   "front_hull": {
-   "score": 94.93803554511396,
-   "meanPct": 0.38,
-   "p95Pct": 0.77,
+   "score": 94.1091557477423,
+   "meanPct": 0.45,
+   "p95Pct": 0.9,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
-    "dy": -0.01
+    "dy": -0.012
    },
    "worst": [
     {
      "at": -0.95,
      "refTop": 0.4,
      "refBot": -0.96,
-     "procTop": 0.41,
+     "procTop": 0.42,
      "procBot": -0.99,
-     "errM": 0.024
+     "errM": 0.028
     },
     {
      "at": -0.91,
      "refTop": 0.4,
      "refBot": -0.96,
-     "procTop": 0.41,
+     "procTop": 0.42,
      "procBot": -0.99,
-     "errM": 0.024
+     "errM": 0.028
     },
     {
      "at": 0.91,
      "refTop": 0.4,
      "refBot": -0.96,
-     "procTop": 0.41,
+     "procTop": 0.42,
      "procBot": -0.99,
-     "errM": 0.024
+     "errM": 0.028
     },
     {
      "at": 0.95,
      "refTop": 0.4,
      "refBot": -0.96,
-     "procTop": 0.41,
+     "procTop": 0.42,
      "procBot": -0.99,
-     "errM": 0.024
+     "errM": 0.028
+    },
+    {
+     "at": -0.86,
+     "refTop": 0.41,
+     "refBot": -0.96,
+     "procTop": 0.42,
+     "procBot": -0.99,
+     "errM": 0.026
+    },
+    {
+     "at": -0.82,
+     "refTop": 0.41,
+     "refBot": -0.96,
+     "procTop": 0.42,
+     "procBot": -0.99,
+     "errM": 0.026
+    },
+    {
+     "at": -0.78,
+     "refTop": 0.41,
+     "refBot": -0.96,
+     "procTop": 0.42,
+     "procBot": -0.99,
+     "errM": 0.026
+    },
+    {
+     "at": 0.78,
+     "refTop": 0.41,
+     "refBot": -0.96,
+     "procTop": 0.42,
+     "procBot": -0.99,
+     "errM": 0.026
+    },
+    {
+     "at": 0.82,
+     "refTop": 0.41,
+     "refBot": -0.96,
+     "procTop": 0.42,
+     "procBot": -0.99,
+     "errM": 0.026
+    },
+    {
+     "at": 0.87,
+     "refTop": 0.41,
+     "refBot": -0.96,
+     "procTop": 0.42,
+     "procBot": -0.99,
+     "errM": 0.026
     },
     {
      "at": -1.71,
@@ -491,74 +539,26 @@
      "refBot": -0.56,
      "procTop": -0.02,
      "procBot": -0.57,
-     "errM": 0.022
-    },
-    {
-     "at": -0.86,
-     "refTop": 0.41,
-     "refBot": -0.96,
-     "procTop": 0.41,
-     "procBot": -0.99,
-     "errM": 0.022
-    },
-    {
-     "at": -0.82,
-     "refTop": 0.41,
-     "refBot": -0.96,
-     "procTop": 0.41,
-     "procBot": -0.99,
-     "errM": 0.022
-    },
-    {
-     "at": -0.78,
-     "refTop": 0.41,
-     "refBot": -0.96,
-     "procTop": 0.41,
-     "procBot": -0.99,
-     "errM": 0.022
-    },
-    {
-     "at": 0.78,
-     "refTop": 0.41,
-     "refBot": -0.96,
-     "procTop": 0.41,
-     "procBot": -0.99,
-     "errM": 0.022
-    },
-    {
-     "at": 0.82,
-     "refTop": 0.41,
-     "refBot": -0.96,
-     "procTop": 0.41,
-     "procBot": -0.99,
-     "errM": 0.022
-    },
-    {
-     "at": 0.87,
-     "refTop": 0.41,
-     "refBot": -0.96,
-     "procTop": 0.41,
-     "procBot": -0.99,
-     "errM": 0.022
+     "errM": 0.024
     },
     {
      "at": -1.67,
      "refTop": 0.19,
      "refBot": -0.56,
-     "procTop": 0.23,
+     "procTop": 0.22,
      "procBot": -0.57,
      "errM": 0.02
     }
    ]
   },
   "front_whole": {
-   "score": 91.32298896187491,
-   "meanPct": 0.65,
-   "p95Pct": 1.46,
+   "score": 91.10634555378066,
+   "meanPct": 0.66,
+   "p95Pct": 1.53,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
-    "dy": -0.01
+    "dy": -0.012
    },
    "worst": [
     {
@@ -567,7 +567,7 @@
      "refBot": -1.01,
      "procTop": 1.07,
      "procBot": -0.99,
-     "errM": 0.051
+     "errM": 0.049
     },
     {
      "at": 0.78,
@@ -583,7 +583,15 @@
      "refBot": -1.01,
      "procTop": 1.06,
      "procBot": -0.99,
-     "errM": 0.047
+     "errM": 0.045
+    },
+    {
+     "at": 0.91,
+     "refTop": 1.27,
+     "refBot": -0.96,
+     "procTop": 1.22,
+     "procBot": -0.99,
+     "errM": 0.044
     },
     {
      "at": 0.99,
@@ -594,10 +602,10 @@
      "errM": 0.044
     },
     {
-     "at": 0.91,
-     "refTop": 1.27,
+     "at": -0.95,
+     "refTop": 1.11,
      "refBot": -0.96,
-     "procTop": 1.23,
+     "procTop": 1.16,
      "procBot": -0.99,
      "errM": 0.042
     },
@@ -605,9 +613,9 @@
      "at": -0.86,
      "refTop": 1.27,
      "refBot": -0.96,
-     "procTop": 1.23,
+     "procTop": 1.22,
      "procBot": -0.99,
-     "errM": 0.04
+     "errM": 0.042
     },
     {
      "at": 0.74,
@@ -618,12 +626,28 @@
      "errM": 0.04
     },
     {
-     "at": 0.7,
+     "at": 0.61,
      "refTop": 1.09,
      "refBot": -1.01,
      "procTop": 1.14,
      "procBot": -0.99,
      "errM": 0.037
+    },
+    {
+     "at": 0.65,
+     "refTop": 1.09,
+     "refBot": -1.01,
+     "procTop": 1.14,
+     "procBot": -0.99,
+     "errM": 0.037
+    },
+    {
+     "at": -0.91,
+     "refTop": 1.13,
+     "refBot": -0.96,
+     "procTop": 1.16,
+     "procBot": -0.99,
+     "errM": 0.036
     },
     {
      "at": -0.48,
@@ -632,38 +656,14 @@
      "procTop": 1.22,
      "procBot": -0.99,
      "errM": 0.036
-    },
-    {
-     "at": -0.44,
-     "refTop": 1.28,
-     "refBot": -1.01,
-     "procTop": 1.22,
-     "procBot": -0.99,
-     "errM": 0.036
-    },
-    {
-     "at": 0.87,
-     "refTop": 1.19,
-     "refBot": -0.96,
-     "procTop": 1.23,
-     "procBot": -0.99,
-     "errM": 0.036
-    },
-    {
-     "at": 0.65,
-     "refTop": 1.09,
-     "refBot": -1.01,
-     "procTop": 1.14,
-     "procBot": -0.99,
-     "errM": 0.035
     }
    ]
   }
  },
  "turretRows": {
   "side": {
-   "score": 91.0358403991047,
-   "meanPct": 0.58,
+   "score": 91.15599881986972,
+   "meanPct": 0.57,
    "p95Pct": 1.1,
    "coverPct": 0.86,
    "reg": {
