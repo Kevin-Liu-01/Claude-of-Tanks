@@ -213,3 +213,8 @@ not).
 Predicted per-view (was 7.0-8.0 everywhere): front 8.5 · frontleft 8.5 ·
 left 8.0 · rearleft 8.0 · rear 8.0 · rearright 8.0 · right 8.5 ·
 frontright 8.5 · top 8.5 — worst views the rear arc ~8.0.
+
+## Shaded-parity r2 (2026-08-02) — FAIL min 7.0 (converging; roof law PASS)
+Shared work order: shaded-parity-merkava3bc-r2.md. 3C emphasis: the
+ref's wrinkled Kasag tarp mass dominates rear/top — its absence is the
+loudest gap; add soft masses.

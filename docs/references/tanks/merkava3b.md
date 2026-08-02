@@ -440,3 +440,11 @@ bolt/seam texture density still higher overall.
 Predicted per-view (was 7.0-8.0 everywhere): front 8.5 · frontleft 8.5 ·
 left 8.5 · rearleft 8.0 · rear 8.0 · rearright 8.0 · right 8.5 ·
 frontright 8.5 · top 8.5 — worst view rear ~8.0 (clutter granularity).
+
+## Shaded-parity r2 (2026-08-02) — FAIL min 7.0 (converging; roof law now PASS)
+Work order: docs/critique/shaded-parity-merkava3bc-r2.md. Two flip-items:
+flatten turret second story to a continuous raked roofline (interior
+shading — envelope unchanged), rear-right cabinet stack → low open-frame
+baskets + full-width chain fringe + tarp masses. Wheels dark (value
+flip), flaps brown, MGs bulk laterally, skirt scallops between station
+slice z's.
