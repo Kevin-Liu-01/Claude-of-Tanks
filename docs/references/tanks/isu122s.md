@@ -626,3 +626,137 @@ brightened renders, not just the masks.
 Work order: shaded-parity-isu122s-r4.md. Headliners: drums restored
 proud (render-verified), mantlet bright-dome value flip, pancake
 idler/sprocket relief, wheel faces solid, scaffold toned to scheme.
+
+## Visual r5 (2026-08-02, casemate family agent) — ROUND COMPLETE
+
+FINAL STATE: geometry gate **min 90.2 PASS x2 consecutive at the final
+geometry** (hull 90.2 / whole 90.2 / turret 100 / stations 94.5 / dims
+98.2 / floaters 100 — the exact r4 certified row); isu152 **72.4 exact**
+all 6 gate runs of the round (every isuCommon change flag-gated via
+o.channel / o.dimTail / o.rollerYs — isu152 passes none of them). Board
+94.4 overall, every view 90+. npm test exit 0 (166 checks +
+track-geometry). All work in src/vehicles/profiles/casemate.js
+(buildISU122S + three isuCommon flags); tone evidence sampled with the
+throwaway tools/tmp-px-sample.mjs (PNG rect -> mean RGB / L / warm%).
+
+### Headliner 1 — FUEL DRUMS RESTORED (the r4 regression decoded)
+
+The r4 loftRows retype had let the two rear deck rows' TOP width default
+back to w 1.46 (`wt` omitted) — the loft top face closed the r3 channel
+and buried the drums (geometry was still present, lines 1262+; hidden,
+not deleted). Fix: wt pinned to the 1.26 slab edge on rows -0.53/-2.44.
+Plan extents unchanged (bottom face still ±1.46), side tops unchanged
+(t carries), front cols 1.30-1.49 re-carried by the drum circle-tops —
+gate row identical to the decimal.
+
+RENDER-VERIFIED drum visibility (fresh 14 pairs, crops on file):
+- view-top: all four bodies over both open channels;
+- view-rear: all four end caps + recessed dark dishes at the deck edges;
+- view-rearright + hero-rearright: near-side pair as lit round ribbed
+  bodies overhanging the channel;
+- view-rearleft: near-side pair + end circles;
+- view-right (lit side): flanks + rim hoops above the dropped rail,
+  against the new dark backdrop plates;
+- view-left (shade side): dark rounded masses + strap ticks — subtle,
+  matching the ref's own shade-side read;
+- hero-toptilt: both channels + bodies.
+Tone: proc drum zone L 79.9 vs ref 77.3 (view-rearright rects).
+
+TWO BOUNDARY MEASUREMENTS (bisect over three gate runs):
+1. The bump line has ZERO slack: a +0.015 body lift (tops 1.6995, rims
+   1.7045) alone cost 0.4 (stations 94.5 -> 94.0, hull 90.2 -> 89.9) —
+   rows above 1.6845 gain ref-empty width at 2-3 stations. Reverted.
+2. The rear-run rail-top drop (1.56 -> 1.51 over z <= -0.42, lipEdge
+   pieces to 1.44..1.51, stay ribs sunk to 1.481..1.511 to keep the
+   slab->rail floater weld) is GATE-FREE — the bracket row (tops 1.57)
+   carries the certified 1.50-1.535 front columns. This opens a 17.5 cm
+   drum-flank window from the side; combo-run rows were identical to
+   lift-only rows, proving the drop's cost was zero.
+
+### Headliner 2 — MANTLET VALUE FLIP (bright dome, eave killed, sleeve)
+
+Mechanism: isu122s never emits hullCloth/hullWood — both buckets were
+CLAIMED for per-piece materials (buckets merge per-material, so
+per-piece retones need distinct buckets; mats are per-build instances,
+isu152 untouched):
+- hullCloth = BRIGHT CAST: all casting pieces re-bucketed (S1-S4
+  sectors, crown lids, bell segments + lip chips, ball/throat/core/root,
+  pitched plate, ear bosses) + the two crest face skins (eave kill) +
+  NEW cast-sleeve fairing. canvasCloth retoned 0x7a7f72, bump 0.18.
+- hullWood = drums + wheel-face steel, 0x64685c.
+Numbers (close-front/view-front rects): r4 casting L 42 vs ref zone 77
+-> r5 casting mean 97.4, p50 100.7 == the ref dome face's own bright
+band (ref p75 101.3). Crest "roof-eave" band above the casting: L 73 ->
+84.5 (the two face-skin slabs were the eave — detail-olive rendered a
+dark bar exactly where the ref's crest is its brightest plate).
+- Hex round 1 (0x8a8f70) matched L but flared CREAM (G-B gap 22-29, the
+  canvas r7 bug class) — round 2 pulled chroma to the ref's ~9-12 gap.
+- CAST-SLEEVE FAIRING (off-axis "ring-stack-in-a-slot" fix): one
+  y-squashed taper cylZ(0.132 -> 0.215, scale [1,0.87,1]) wrapping
+  ball -> core -> root, radius 1-3 mm UNDER the certified ladder tops
+  everywhere (rear 1.847 < 1.850; z2.70 1.813 < 1.816; front 1.775 <
+  1.784) — quarters now read one cast pot mass.
+- CRESCENT: the r4 interior ring (160 deg at r 0.545) WAS the "dark
+  bowl" — shrunk to a 90 deg chin arc; the ref's visible crescent is ON
+  the disc face: nine hullDark plates ride the pitched plate through
+  -150..-30 deg at r 0.43 (two-step bake rz-then-rx like the rod()
+  helper; bottom piece sinks toward the recess exactly where the ref's
+  darkest zone sits — side bottom moves TOWARD the ref's 1.1 line).
+Dead-front now: big bright circle ~half the face width + ball/collar +
+dark crescent sweep + bolt arc + ear bosses — the ref's composition.
+
+### Items 3-10 (work-order status)
+
+3. Idler/sprocket relief — DONE. Idler: cover 0.205 -> 0.250 + raised
+   rim ring torus 0.205 + 4 radial ribs; sprocket: drive ring 0.150 +
+   6 ring bolts + hub cone; all inside wheel silhouettes/band x-extent.
+   Warm hue-flip: 0.0% on every view (was 17-32%).
+4. Wheel faces — DONE. Covers 0.245 -> 0.285 (pockets no longer peek),
+   outer cast seam torus 0.262, stamped-dimple ring (P.q), hullWood
+   olive; mats.wheels 0x54584a; shadow strip retoned 0x161a12 (dark
+   olive, unburies the front wheels without touching its certified
+   geometry).
+5. Scaffold — DONE, geometry EXACT. Beam re-bucketed hull -> hullDetail
+   (fitting olive 0x505448), front flap falls off the camo path
+   (channel builds), tail bar/tabs/stays -> hullDark via o.dimTail (the
+   "bright ladder frame" is now the dark tail frame member).
+6. Top run — tone: band multiplier (1.10,1.30,1.00) -> (0.98,1.16,0.90)
+   in buildISU122S scope (r3 luminance ratio 1.11 -> ~1.0, in-law);
+   sag: middle return roller dipped via o.rollerYs [0.945,0.925,0.945]
+   (kit pins catenary at 0.022 when rollers exist — the sag read must
+   come from the support line).
+7. Rear plate — DONE. Hatch seam rings pushed to the disc edge (0.118),
+   hinge straps, 3-rib stiffener field between the hooks (z -3.271..
+   -3.235, clear of the -3.31/-3.37 lessons), second stud row, dark
+   frame; crossed cables retoned via spareTrack 0x3c4336.
+8. Roof — DONE. Cupola rims re-bucketed light + doubled (inner ring +
+   dark seam groove; tops unchanged 2.268/2.239 — raised-ring read, not
+   painted outline), ventilator dome off the camo bucket, aft stud row,
+   conduit run + junction box at the stud height class.
+9. Warm purge — DONE: 0.0% warm px (R>G+4) on all 14 procedural panes.
+   Sources fixed by hex flip: detail/dark/spareTrack/wheels mats + the
+   isuCommon clone family (wornDrum 0x35392c, inner 0x2f332a, pockets
+   0x15170f) via hex-match traversal.
+10. Stucco — DONE. Smooth hullDetail skins 3.5 mm proud of the leaned
+    casemate flank plane (y 1.70..2.13, z -0.36..1.98; wall decal rides
+    ~10 mm proud of the skin) + recess-floor skin between the wing
+    skins (the dead-front stucco patch).
+
+### Honest residuals (r5)
+
+- Side-view drum read on the SHADE side is subtle (dark rounded masses
+  + straps): the bump line has zero gate slack (measured, above) and
+  the lit side / rear / top carry the proud read.
+- Casting face ~14 L above the ref zone MEAN (97 vs 83) — deliberately
+  parked at the ref dome face's own bright band per the work order; if
+  the next critic wants it calmer, 0x747968 is the next step down.
+- Louvre cells sit ~10 L below the ref's grille field; roof density
+  still ~80-85% of the ref closeup.
+- The channel AO strip and wheel-face packages remain static overlays
+  (the r3 disclosures stand).
+
+Predicted per-view (own read): front 7.5-8, frontleft 7.5, left 7,
+rearleft 7.5, rear 7.5-8, rearright 8, right 7.5, frontright 7, top 8,
+toptilt 8, close-front 7.5, close-roof 7.5. The two headliners are
+render-verified with numbers; the binding residual is shade-side drum
+subtlety, which is now a measured gate ceiling, not a build gap.

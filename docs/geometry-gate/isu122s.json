@@ -12,7 +12,7 @@
  },
  "curveRows": {
   "side_hull": {
-   "score": 90.19486107302451,
+   "score": 90.18401358508203,
    "meanPct": 0.62,
    "p95Pct": 2.28,
    "coverPct": 0.64,
@@ -120,7 +120,7 @@
    ]
   },
   "side_whole": {
-   "score": 90.2080835915467,
+   "score": 90.20790952457081,
    "meanPct": 0.62,
    "p95Pct": 2.27,
    "coverPct": 0.64,
@@ -444,8 +444,8 @@
    ]
   },
   "front_hull": {
-   "score": 91.50421281377625,
-   "meanPct": 0.64,
+   "score": 91.54819845985458,
+   "meanPct": 0.63,
    "p95Pct": 1.43,
    "coverPct": 0,
    "reg": {
@@ -502,19 +502,19 @@
      "errM": 0.033
     },
     {
-     "at": -0.4,
-     "refTop": 1.02,
-     "refBot": -0.8,
-     "procTop": 0.95,
-     "procBot": -0.81,
-     "errM": 0.032
-    },
-    {
      "at": -1.23,
      "refTop": 0.64,
      "refBot": -1.23,
      "procTop": 0.69,
      "procBot": -1.24,
+     "errM": 0.031
+    },
+    {
+     "at": -0.4,
+     "refTop": 1.02,
+     "refBot": -0.8,
+     "procTop": 0.95,
+     "procBot": -0.81,
      "errM": 0.031
     },
     {
@@ -552,7 +552,7 @@
    ]
   },
   "front_whole": {
-   "score": 91.50228582106338,
+   "score": 91.50922834028472,
    "meanPct": 0.64,
    "p95Pct": 1.43,
    "coverPct": 0,
