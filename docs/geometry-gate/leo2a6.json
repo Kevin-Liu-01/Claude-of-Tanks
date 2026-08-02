@@ -552,8 +552,8 @@
    ]
   },
   "front_whole": {
-   "score": 91.10634555378066,
-   "meanPct": 0.66,
+   "score": 91.30171763843632,
+   "meanPct": 0.65,
    "p95Pct": 1.53,
    "coverPct": 0,
    "reg": {

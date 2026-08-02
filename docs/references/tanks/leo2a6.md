@@ -673,3 +673,110 @@ darkening (never landed; target 0.92x of face) + grille contrast/grid
 tint. Sampling lesson: rects must be placed on the VIEW/element scored
 (side-run rects lied about front faces). Hero sky-leak patch (fan
 wells) — game-visible, not gate-visible.
+
+## Shaded-parity r6 — FRONT WRAP + REAR GRILLE/GRID + HERO SEALS (2026-08-02)
+
+All r5 work-order items in `src/vehicles/profiles/leopard.js` (buildLeo2A6
++ two OPT-IN leoHullV3 params siblings do not pass). Gate after round:
+**min 91.0 PASS, gatePassed:true** (hull 91.2 / whole 91.0 / turret 91.2 /
+stations 93.4 / dims 91.0 / floaters 100 — byte-identical to r5; grille
+re-pitch, rack seals, fan floor and both wing opt-ins proved
+silhouette-free). Siblings score-identical: leo2a5 69.2 / kf51 63.6 /
+leo2_revolution 45.0. `npm test` 166 checks pass.
+
+Sampled on the critic pair (paired rects ON the view/element; proc top
+746/1096,335-822/1172,368, face 746/1096,428-822/1172,490; ref top
+84/468,410-168/552,432, face 84/468,448-168/552,510):
+1. FRONT WRAP (view-front corner vs face, lum-mean ratio): proc
+   L 1.000, R 0.984 (med 1.040/0.979) vs ref 0.933/0.934 (med 0.928/0.929)
+   — from the r5 1.19-1.23x LIGHTER. Tops L 61.6 / R 60.8 vs ref
+   54.9/55.2; faces 61.6/61.8 vs ref 58.8/59.1. Pink band DEAD (top p90
+   82.6 -> 74; chevron X glints gone). Mechanisms (all probe-verified,
+   evidence in round tools tmp-leo-r6-*):
+   - MAGENTA/TRICOLOR OWNERSHIP PROBE: the "wrap" rect was never mostly
+     track — it is glacis-edge sliver (rows 1.24-1.31) + BEAK WING front
+     band (0.93-1.22) + wrap crown; the tread gaps are the INNER CHAIN
+     web, not the band surface; the pale X bands are the band texture on
+     the arc; the >75 tail is pad GROUSER RIDGES.
+   - WING WINDING BUG (fleet-visible, opt-in fixed): the s=-1 beakWings
+     slab reuses +x corner order with negated x -> inside-out solid, every
+     face culled: the LEFT wing was INVISIBLE shaded (see-through wrap +
+     flip-lit bottom face) while masks (DoubleSide override) always saw
+     it. `mirrorFix: true` reverses the mirrored rings; gate/sibling
+     scores untouched (mask-identical), shaded render symmetric.
+   - `rubberTip: 0.18` builds the wing's leading 0.18 m as hullRubber on
+     the same footprint (corner-ring lerp split): the ref's dark
+     mudguard-front band over the idler wrap; silhouette-identical.
+   - TOP-GRIME HOOK (the "darken wrap materials" ask, done as a shader
+     term because an A/B probe measured albedo/rough/bump moves <1 lum on
+     the arc — the corner heat is ANGULAR: ~1.9x key + full sky on
+     up-facing shoes): pad+chain clones chain a fragment term
+     `outgoingLight *= 1 - 0.26*saturate(normal.y)` after the fleet
+     ambient-floor hook (own cache key, zero shared-path edits). Vertical
+     faces (side strip, front faces) render byte-identical.
+   - Residual +0.05-0.07 over the ref ratio = the certified glacis-edge
+     camo sliver inside any honest corner rect + the -x outboard shoulder
+     strip; the track element itself (rect clipped to the wrap below the
+     glacis line) reads 0.96-1.01. A physical mudflap cover was tried and
+     REMOVED: pads clip through any cover inside the certified wrap
+     contour (the pad crests ARE the contour).
+2. REAR GRILLE + GRID — DONE. Grille 10 rows @0.0335 -> 7 rows of 0.028
+   slats @0.048 pitch (~6 px rendered = the ref's own pitch; >4.5px
+   distinctness law), tilt 0.25 -> 0.35; envelope: top 1.6959<1.715,
+   bottom 1.3781>=1.375, deepest -3.6485 inside -3.650, planes unchanged.
+   Slats re-bucketed hullDetail -> hullWood with wood as the a6's
+   per-build slat tone (0x424836; jack re-bucketed dark via opt-in
+   `jackDark` — wood dressed only the jack here). SLAT/GAP LAW FOUND: the
+   gap layer renders AT the fleet deep-shade floor (~52) whatever its
+   albedo, and the slat side rides floor*albedo-gate — the delta must be
+   opened from the slat side. Sampled: slat med (78,85,65)/82.1 vs ref
+   (79,87,65)/83.7; separator delta 29.9 (was 8-17, ref 30-45). Bustle
+   grid cells: backing panel turretDark -> turretCloth: med (70,78,58)
+   hue 81-84 sat 25.6 lum 74.9 vs ref bins 78-80/25.3 (was 56-62/12.1).
+3. BAND FRONT FACES — DONE. Face sat(medpx) 15.9 vs ref 15.0-15.2 (was
+   20.0); hue(medpx) 32.7 vs ref 33.3 (was 27.7 — the +6 landed); face
+   med lum 57.7/58.5 vs ref 60.5 (ratio 1.03-1.05, in law). Shadow floor
+   p10 55.1 -> 52.4 (ref 46.4): the p10 pixels are 1-2 px pad/chain
+   BLENDS and the same band multiplier owns the certified view-left
+   strip — mult 1.00 hit p10 50.7 but pushed the strip ratio to
+   1.187/1.168 (LAW BREAK), re-split at (1.12,1.086,1.02): strip back to
+   1.146/1.113 (r5 1.123/1.090), p10 52.4 documented residual. Track
+   mats: pads 0x3f3935 -> 0x403c39 (rough 1.0, metal 0.04, env 0.05),
+   chain 0x2a2723 -> 0x252320 (env 0.08), band rough 1.0 bump 0.12 env
+   0.06 (ridge/bump glint kill).
+4. HERO SEALS — DONE, re-scanned (tools/tmp-leo-r6-heroleak.mjs, 8 cams):
+   rack sky TRIANGLE (raycast-identified: over the fence band, across the
+   empty side bays, out past the neck-wall rear edge — not the fan wells)
+   sealed by two turretDark side boards inside the outer-rail line
+   (x 1.140..1.156, fence band, z -2.445..-2.99) + a rear bulkhead 17 mm
+   behind the neck walls (x +-1.12 in the rail slot, top 0.64 = the
+   certified 2.41w rack line); fan-well floor r 0.345 -> 0.365 tucks
+   under the rim torus (kills the 14 mm annulus for below-deck cameras).
+   Counts: hero-rearright-class cam 576 -> 183, all other cams 0-17
+   (were 24-90), below-deck cams 0-8. The remaining 183 = under-skirt/
+   running-gear daylight between wheels (the real vehicle has it; sealing
+   would light front/rear mask pixels — not attempted).
+
+Round lessons (fleet-visible):
+- OWNERSHIP BEFORE TONE: paint suspect materials magenta/tricolor in a
+  10-line probe before retoning — three r6 "track" targets were wing,
+  glacis and chain pixels. Rect-on-element is necessary but NOT
+  sufficient; know which MESH owns the pixels.
+- MIRRORED SLAB WINDING: any slab() built per-side by negating x flips
+  inside-out on the mirrored side (invisible + flip-lit); masks are
+  DoubleSide so gates never catch it — check shaded renders. Reverse the
+  corner rings per side (see beakWings mirrorFix).
+- DEEP-SHADE FLOOR CAP: on rear-facing detail the fleet ambient floor
+  sets a ~52-lum brightness floor for near-black and a floor*gate value
+  for mid albedos — separator contrast can only be opened from the pale
+  side once the dark side hits the floor.
+- ANGULAR HEAT NEEDS A SHADER TERM: up-facing vs camera-facing imbalance
+  cannot be retoned away (albedo scales both); a per-clone chained
+  onBeforeCompile term (normal.y grime) is the material-layer tool, and
+  it must ride the CLONES (merge keeps one material per bucket).
+
+Residuals: face p10 52.4 vs ref 46.4 (strip-law bound, above); corner
+ratio +0.05-0.07 glacis-sliver class; strip hue medpx +6.7 warm (was
++3.8 — same quantization family, sat/lum at parity); under-gear daylight
+183 px at one extreme low-oblique cam; prior classes (louver softness
+bound, loader-blotch ring, -3.81 tail, PERI 4th column) stand.

@@ -457,7 +457,7 @@ function leoHullV3(P, H) {
   // wing's outer end toward the refs' thin low tip band (a6: [0.97..1.06]).
   const tip = g[g.length - 1];
   if (H.beakWings) {
-    const BW = H.beakWings;               // {z: wing tip z, x0: notch half-w, th?, dropTip?}
+    const BW = H.beakWings;               // {z: wing tip z, x0: notch half-w, th?, dropTip?, mirrorFix?, rubberTip?}
     const bwT = BW.th ?? 0.17;
     const dt = BW.dropTip ?? 0;           // outer-end y drop
     for (const s of [-1, 1]) {
@@ -465,9 +465,44 @@ function leoHullV3(P, H) {
       // stopping at the glacis tip) left the far wing columns a <0.1 blade —
       // below the 12% body filter, so the bow body column never lit and the
       // hull registration sat a full column off the ref's midpoint.
-      P.add('hull', slab(
-        [s * BW.x0, tip[1] - bwT - dt, BW.z], [s * (hw * 0.97), tip[1] - bwT - dt, BW.z - 0.02], [s * (hw * 0.97), tip[1] - bwT + 0.01, tip[0] - 0.3], [s * BW.x0, tip[1] - bwT + 0.01, tip[0] - 0.3],
-        [s * BW.x0, tip[1] - dt, BW.z], [s * (hw * 0.97), tip[1] - dt + 0.005, BW.z - 0.02], [s * (hw * 0.97), tip[1] + 0.01, tip[0] - 0.3], [s * BW.x0, tip[1] + 0.01, tip[0] - 0.3]));
+      const bot = [
+        [s * BW.x0, tip[1] - bwT - dt, BW.z], [s * (hw * 0.97), tip[1] - bwT - dt, BW.z - 0.02],
+        [s * (hw * 0.97), tip[1] - bwT + 0.01, tip[0] - 0.3], [s * BW.x0, tip[1] - bwT + 0.01, tip[0] - 0.3],
+      ];
+      const top = [
+        [s * BW.x0, tip[1] - dt, BW.z], [s * (hw * 0.97), tip[1] - dt + 0.005, BW.z - 0.02],
+        [s * (hw * 0.97), tip[1] + 0.01, tip[0] - 0.3], [s * BW.x0, tip[1] + 0.01, tip[0] - 0.3],
+      ];
+      // a6 r6 OPT-IN mirrorFix (default off — siblings render byte-identical):
+      // the s=-1 slab reuses the +x corner order with negated x, which turns
+      // the solid inside-out — every face backface-culled from outside, so
+      // the LEFT wing was invisible in shaded renders (see-through to the
+      // wrap, with its bottom face flip-lit). Masks use a DoubleSide override
+      // (procedural-fidelity.html maskMaterial), so gate scores never saw the
+      // difference — this is a shaded-render-only repair. Reversing each
+      // corner ring restores outward winding on the mirrored side.
+      const ord = (r) => (BW.mirrorFix && s < 0) ? [r[1], r[0], r[3], r[2]] : r;
+      if (BW.rubberTip) {
+        // a6 r6 OPT-IN rubberTip: the leading rubberTip meters of the wing
+        // build as a hullRubber nose piece on the SAME footprint (corner
+        // rings split by lerp at the cut plane) — the ref's front view
+        // reads a DARK mudguard-front band over the idler wrap where ours
+        // read lit camo; silhouette-identical, bucket/tone change only.
+        const zc = BW.z - BW.rubberTip;
+        const lerp3 = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+        const split = (ring) => {
+          const f0 = (ring[0][2] - zc) / (ring[0][2] - ring[3][2]);
+          const f1 = (ring[1][2] - zc) / (ring[1][2] - ring[2][2]);
+          const m3 = lerp3(ring[0], ring[3], f0);
+          const m2 = lerp3(ring[1], ring[2], f1);
+          return { nose: [ring[0], ring[1], m2, m3], rear: [m3, m2, ring[2], ring[3]] };
+        };
+        const sb = split(bot), st = split(top);
+        P.add('hullRubber', slab(...ord(sb.nose), ...ord(st.nose)));
+        P.add('hull', slab(...ord(sb.rear), ...ord(st.rear)));
+      } else {
+        P.add('hull', slab(...ord(bot), ...ord(top)));
+      }
     }
   }
   // beak underside: tip band down-back to the belt
@@ -554,7 +589,10 @@ function leoHullV3(P, H) {
     P.add('hullDark', box(0.14, 0.08, 0.04), s * hw * 0.80, R.yTop - 0.11, R.wallZ - 0.005);
   }
   P.add('hullDark', box(0.14, 0.085, 0.04), 0, R.yTop - 0.13, R.wallZ - 0.005); // convoy light
-  P.add('hullWood', box(0.24, 0.10, 0.08), 0, H.jackY ?? (R.yBot + 0.08), R.wallZ - 0.02);
+  // a6 r6 opt-in jackDark: the a6 repurposes the per-build wood material as
+  // its pale grille-slat tone, so its jack block moves to the gunmetal
+  // bucket (same dark fitting family as its r3 grey-brown read).
+  P.add(H.jackDark ? 'hullDark' : 'hullWood', box(0.24, 0.10, 0.08), 0, H.jackY ?? (R.yBot + 0.08), R.wallZ - 0.02);
   // rear corner mud flaps hanging off the fender ends (real A5/A6 fit; they
   // also carry the tail body-span columns the published hullLengthM needs)
   if (H.rearFlaps) {
@@ -928,7 +966,12 @@ function buildLeo2A6(P) {
     // col 0.931 (ref bow reads 3.608 there, wings-forward only from ~1.0).
     // dropTip 0.09: ref side col 3.756 tops at 1.129 (wrap far edge + the
     // diving mudguard front) — the flat 1.22 wing read one row high.
-    beakWings: { z: 3.77, x0: 0.995, th: 0.24, dropTip: 0.09 },
+    // r6: mirrorFix un-flips the inside-out LEFT wing (shaded-render-only;
+    // masks are DoubleSide so gate/sibling scores never saw it) and
+    // rubberTip builds the leading 0.10 m as a dark hullRubber nose — the
+    // ref's front view reads a dark mudguard-front band over the idler
+    // wrap; both opt-in, siblings unchanged.
+    beakWings: { z: 3.77, x0: 0.995, th: 0.24, dropTip: 0.09, mirrorFix: true, rubberTip: 0.18 },
     beltY: 0.62, bellyY: 0.50,
     // headlight pods: fresh grid reads the ref col 3.267 top at 1.495 =
     // pod top (1.44+0.055r); the old 1.51 center read one row high
@@ -986,7 +1029,8 @@ function buildLeo2A6(P) {
     tubZrear: -3.0, tubRearY: 0.80, tubWedgeEnd: -3.58,
     // jack block hoisted into the strap band: at the default yBot+0.08 it
     // was the 1.16 bottom of the -3.688 column (ref bottoms 1.373 there)
-    jackY: 1.42,
+    // r6: jackDark — wood becomes the a6's pale grille-slat material below
+    jackY: 1.42, jackDark: true,
     // kit rope OFF: its 0.024-r sag read one trace row above the bare
     // 1.825 deck on ~15 front columns and the z -3.05..-3.46 side columns
     rope: false,
@@ -1155,18 +1199,29 @@ function buildLeo2A6(P) {
   // them (still z >= -3.626 wall-column legal, above the 1.13 wall bottom).
   // r5 #2 grille DENSITY (root cause of the r4 "soft" read: the 0.048-tall
   // rows at 0.047 pitch TILED — zero dark gap between slats, so the field
-  // read as a continuous ridged sheet): 7 rows -> 10 rows of 0.022 slats at
-  // 0.0335 pitch = 2 px pale slat / 1 px near-black gap onto the hullShadow
-  // layer — the ref's high-contrast ~10-slat read. Field/shadow raised
-  // 0.32 -> 0.34 tall (1.375..1.715, inside the certified 1.373..1.771
-  // band) so the top row keeps dark backdrop. All planes unchanged
-  // (-3.630/-3.6365/-3.639); slats stay TILTED 0.25 (rear-face light law).
-  // Envelope: slat y-extent 0.0119 -> top 1.7064 < 1.715, bottom 1.381 >=
-  // 1.375; z-extent 0.0076 -> deepest -3.6466, inside the certified -3.650.
+  // read as a continuous ridged sheet): 7 rows -> 10 rows of 0.022 slats.
+  // r6 #2 grille CONTRAST (critic r5: the 10 rows at 0.0335 pitch render
+  // ~4.2 px/row on the board — below the ~4.5 px distinctness floor, so
+  // adjacent rows alias into 8-17 lum separator deltas vs the ref's 30-45).
+  // RENDERED distinctness beats nominal count: 7 rows of 0.028 slats at
+  // 0.048 pitch = ~6 px/row (the ref's own rendered pitch), each gap a true
+  // 2.5 px of the near-black hullShadow layer; tilt 0.25 -> 0.35 lifts the
+  // slat faces another notch of sky (rear-face light law) so the pale/dark
+  // delta clears ~30. Field/shadow stay 1.375..1.715 inside the certified
+  // 1.373..1.771 band; planes unchanged (-3.630/-3.6365/-3.639). Envelope:
+  // slat y-extent 0.0149 -> top 1.6959 < 1.715, bottom 1.3781 >= 1.375;
+  // z-extent 0.0095 -> deepest -3.6485, inside the certified -3.650.
+  // Slat bucket hullDetail -> hullWood (r6): the separator delta is capped
+  // from below — the near-black gap layer renders at the fleet deep-shade
+  // floor (~52) no matter the albedo — so the ref's 30-40 delta must come
+  // from the SLAT side (ref slat faces ~80). mats.detail is fleet-shared
+  // tone; wood on this build dresses ONLY the jack block (re-bucketed dark
+  // via jackDark), so the per-build wood material becomes the a6's pale
+  // grille-slat tone (retoned in the tone family below).
   P.add('hullDark', box(2.86, 0.34, 0.018), 0, 1.545, -3.630);
   P.add('hullShadow', box(2.80, 0.34, 0.006), 0, 1.545, -3.6365);
-  for (let k = 0; k < 10; k++) {
-    P.add('hullDetail', box(2.78, 0.022, 0.010), 0, 1.393 + k * 0.0335, -3.639, 0.25, 0, 0);
+  for (let k = 0; k < 7; k++) {
+    P.add('hullWood', box(2.78, 0.028, 0.010), 0, 1.393 + k * 0.048, -3.639, 0.35, 0, 0);
   }
   for (const vx of [-0.95, -0.32, 0.32, 0.95]) P.add('hullDetail', box(0.035, 0.34, 0.036), vx, 1.545, -3.633);
   for (const s2 of [-1, 1]) {
@@ -1201,6 +1256,13 @@ function buildLeo2A6(P) {
   P.add('hullDetail', box(0.15, 0.048, 0.005), 0, 1.158, -3.6225);            // coupling jaw
   P.add('hullDetail', box(0.42, 0.024, 0.004), 0, 1.245, -3.6225, 0, 0, 0.50);
   P.add('hullDetail', box(0.42, 0.024, 0.004), 0, 1.245, -3.6225, 0, 0, -0.50);
+  // (r6 #1 note: a physical mudflap cover over the naked front wrap was
+  // TRIED — chord plates inside the certified 0.333 wrap print circle —
+  // and REMOVED: the moving link pads clip through any static cover that
+  // stays inside the certified contour (the pad crests ARE the contour),
+  // a worse game-visual than the bright wrap. The wrap darkening is done
+  // in the material layer instead: see the top-grime hook in the tone
+  // family below.)
   // #2 running-gear end caps: rim-fill rings closing the dark annulus
   // between the small measured end wheels and their raised band wraps (the
   // "hollow black box" read); hubs capped dark. Everything sits INSIDE the
@@ -1220,7 +1282,12 @@ function buildLeo2A6(P) {
   for (const s2 of [-1, 1]) {
     const fy2 = 1.8165;
     P.add('hullDark', KIT.cylY(0.36, 0.36, 0.024, P.q ? 26 : 16), s2 * 0.78, fy2 + 0.012, -2.55);
-    P.add('hullShadow', KIT.cylY(0.345, 0.345, 0.005, P.q ? 26 : 16), s2 * 0.78, fy2 + 0.0345, -2.55);
+    // r6 #4 HERO SEAL (fan-well floor): r 0.345 -> 0.365 tucks the recess
+    // floor edge UNDER the rim torus (tube inner edge r 0.359) — the old
+    // 14 mm annular slit between floor edge and curb top let upward rays
+    // (game camera below deck level) thread the well to sky. Plan-interior
+    // under the certified torus (outer 0.411), y unchanged: silhouette-free.
+    P.add('hullShadow', KIT.cylY(0.365, 0.365, 0.005, P.q ? 26 : 16), s2 * 0.78, fy2 + 0.0345, -2.55);
     P.add('hullDetail', torus(0.385, 0.026, P.q ? 28 : 18), s2 * 0.78, fy2 + 0.016, -2.55);
     for (let k = 0; k < 4; k++) {
       P.add('hullDetail', box(0.62, 0.006, 0.034), s2 * 0.78, fy2 + 0.0375, -2.55, 0, k * Math.PI / 4, 0);
@@ -1485,7 +1552,32 @@ function buildLeo2A6(P) {
   // (-2.9675) and clear of the slat backs (-2.995). Silhouette-free by
   // construction (inside the certified gap-inclusive rack band); re-gated
   // once this round to prove it.
-  P.add('turretDark', box(2.00, 0.42, 0.016), 0, 0.32, -2.955);
+  // r6 #2b GRID TINT: bucket turretDark -> turretCloth. The cells between
+  // the fence slats sampled 56-62 lum / 12-14% sat (gunmetal void) vs the
+  // ref's BIN-GREEN 78/26 — the ref bustle reads as OD canvas bins, not a
+  // dark cage interior. The a6 canvasCloth retone (0x3e4532) is already the
+  // bin-green family; same certified geometry, material read only.
+  P.add('turretCloth', box(2.00, 0.42, 0.016), 0, 0.32, -2.955);
+  // r6 #4 HERO SEAL (rack cage sky-leak; not board-scored, game-visible):
+  // at low-oblique rear the open TOP+SIDES of the basket read a sky
+  // TRIANGLE bounded by the neck-wall rear edge, the rack rails and the
+  // fence band (raycast-verified corridor: rays enter over the fence band,
+  // cross the empty side bays and exit past the wall rear edge at
+  // |x| ~0.95-1.15). Seals, all interior:
+  // (a) side boards tucked against the OUTER rack rails: x 1.140..1.156
+  //     hides inside the certified rail line (rails 1.1425..1.1875 draw
+  //     there from top — no new top-down line, fan rims stay complete),
+  //     y = the fence band, z clear of the wall rear faces (-2.43) and the
+  //     fence slat fronts (-2.995);
+  // (b) a rear bulkhead 17 mm behind the neck-wall rear faces (z -2.463..
+  //     -2.447), x +-1.12 lands in the inner/outer rail slot (1.110..
+  //     1.1425), top 0.64 = the certified 2.41w rack-band line — rays over
+  //     it land on the aft-step walls (x +-1.29 band). Side projection of
+  //     both pieces stays inside the certified 1.83..2.41w rack band.
+  for (const s2 of [-1, 1]) {
+    P.add('turretDark', box(0.016, 0.42, 0.545), s2 * 1.148, 0.32, -2.7175);
+  }
+  P.add('turretDark', box(2.24, 0.54, 0.016), 0, 0.37, -2.455);
   // center roof rib (ref front reads 2.51 on the +-0.02 columns only)
   P.add('turret', box(0.07, 0.10, 1.32), 0, 0.69, -0.64);
   // center-left periscope riser: the ref's tallest non-PERI roof element
@@ -1625,8 +1717,15 @@ function buildLeo2A6(P) {
     P.mats.glass.roughness = 0.55;
     P.mats.glass.metalness = 0.32;
     P.mats.glass.envMapIntensity = 0.45;
-    P.mats.wood.color.setHex(0x4a463a);                  // grey-brown timber (the r2 0x574f40 read as a cream tab on the rear plate)
+    // r6 #2: wood is the GRILLE-SLAT material now (jack re-bucketed dark
+    // via jackDark) — pale scheme green-grey so the rear louver field
+    // reads pale slats over the near-black gap layer at the ref's ~30-40
+    // separator delta (the gap side is pinned at the fleet deep-shade
+    // floor ~52; only the slat side can open the delta). env pinned low —
+    // rear faces otherwise pick up sky wash.
+    P.mats.wood.color.setHex(0x424836);
     P.mats.wood.roughness = 0.94;
+    P.mats.wood.envMapIntensity = 0.25;
     // r4 #1 BAND RETONE (refined fleet law: sample ON the exact element).
     // The r3 "ref 72.5deg" was sampled off CAMO-PAINTED upper gear; the
     // ref's EXPOSED band strip samples 31.8-40.0deg brown-grey (view-left
@@ -1643,9 +1742,34 @@ function buildLeo2A6(P) {
     // wrap darkens with it (item 4). The strip MEDIAN stays a pad pixel
     // (70% coverage), so the sampled med tracks the pad tone; the mean
     // absorbs the gap darkening inside the 0.92-1.16 law.
+    // r6 #1 FRONT WRAP DARKENING (critic r5: proc wrap corners 1.19-1.23x
+    // LIGHTER than their own faces; the ref wrap reads ~0.92-0.93x of face
+    // — decomposed on view-front rects, the gap comes from the LOW
+    // percentiles: ref top-zone p25 46 (baked grime/recess) vs proc gaps
+    // flat at 55, plus the r5 1.22x band lift firing pale pink chevron
+    // bands on the wrap arc (top-zone p90 82.6). The band surface drops to
+    // ~1.0x (gaps/chevrons -18%, face-rect p10 55 -> ~46 = item 3's shadow
+    // floor) with the R-lean multiplier flattened (pink kill: R/B tilt
+    // 1.151 -> 1.099) and env cut so the sky IBL stops re-lighting the
+    // up-facing wrap arc.
     for (const tm of [P.mats.trackL, P.mats.trackR]) {
-      tm.color.setRGB(1.22, 1.13, 1.06);                 // gap/recess surface: desat brown-grey, ~20% under the pads
-      tm.envMapIntensity = 0.2;
+      // 1.12 is the measured law split: the SIDE-STRIP median (view-left
+      // certified rect) rides this multiplier at ~18 lum per unit — 1.00
+      // put the r5-certified strip ratio over the 1.16 law ceiling, 1.22
+      // was the r5 pink band. 1.12 holds the strip at ~1.12 ratio and
+      // still takes the front-face shadow floor (p10) down from 55.
+      tm.color.setRGB(1.12, 1.086, 1.02);
+      tm.envMapIntensity = 0.06;
+      // r6 #1 measured root cause of the pale wrap chevrons: an A/B probe
+      // (multiplier 1.22 -> 0.5) moved the wrap-arc brights by <1 lum —
+      // they are BUMP-RIDGE SPECULAR GLINTS off the chevron strokes in the
+      // shared band bump map (albedo-independent), fired by the 45-deg
+      // wrap-arc normals under the board key. Dusty field track is
+      // near-Lambertian: roughness to the ceiling, metal spec tint out,
+      // bump ridges flattened to a trace.
+      tm.roughness = 1.0;
+      tm.metalness = 0.02;
+      tm.bumpScale = 0.12;
     }
     P.mats.spareTrack.color.setHex(0x48423a);            // sprocket teeth/recess + spare links + glacis rack pads (desat 27.6% -> 19.4%)
     P.mats.rubber.color.setHex(0x2c2a26);                // tires/flaps/anti-slip: weathered dark grey
@@ -1667,16 +1791,56 @@ function buildLeo2A6(P) {
     };
     rehook(wornDish);
     rehook(wornDrum);
+    // r6 #1 TOP-GRIME HOOK (track-shoe clones only; the measured mechanism
+    // behind the critic's 1.19-1.23x front wrap): the wrap corners read hot
+    // because up-facing shoe surfaces take ~1.9x the key + full sky of a
+    // vertical face — an ANGULAR term no albedo/roughness value can undo
+    // (A/B-probed: multiplier 1.22 -> 0.5 moved the arc brights <1 lum).
+    // The ref's wrap is grime-baked dark ON TOP. Equivalent material move:
+    // scale outgoing light by (1 - 0.26*saturate(normal.y)) on the pad and
+    // chain CLONES — up-facing crowns/corners shade toward the ref's wrap
+    // accent, vertical faces (the certified r5 side-strip and front-face
+    // parity rects, normal.y ~ 0) render byte-identical. Chained after the
+    // fleet ambient-floor hook on these per-build clones; own cache key;
+    // zero shared-path edits.
+    const regrime = (m) => {
+      m.onBeforeCompile = (shader) => {
+        vehicleAmbientFloorHook(shader);
+        shader.fragmentShader = shader.fragmentShader.replace(
+          '#include <opaque_fragment>',
+          'outgoingLight *= ( 1.0 - 0.26 * saturate( normal.y ) );\n\t#include <opaque_fragment>',
+        );
+      };
+      m.customProgramCacheKey = () => 'leo-shoe-topgrime-v1';
+      return m;
+    };
     P.hullG.traverse((ob) => {
       if (!ob.isMesh && !ob.isInstancedMesh) return;
       const m = ob.material;
       if (!m || !m.color || !m.color.getHex) return;
       if (ob.isInstancedMesh && m.color.getHex() === 0x171614) {
-        rehook(m).color.setHex(0x3f3935);                // link pads: r5 desat (0x41392f sat 27.7% -> 15.9%) at EXACTLY the r4 material lum (58.0) so the certified wrap-crown ratios hold
-        m.envMapIntensity = 0.22;
+        // link pads r6 #3: solved per-rect (transfer method) against the
+        // ref FRONT faces — rendered front med lands (64,60,55) = the ref's
+        // exact read (hue 27.7 -> ~34, sat 20 -> ~15, lum med ~60.5); the
+        // side strip stays a +-4-hue straddle inside the r5 quantization
+        // floor. env 0.22 -> 0.05: the sky IBL was the wrap-crown heater
+        // (item 1) — pads keep their key/hemi modeling, lose the top-facing
+        // sky wash.
+        regrime(m).color.setHex(0x403c39);
+        m.envMapIntensity = 0.05;
+        m.roughness = 1.0;                               // r6 #1: ridge-glint cut — the wrap-arc grouser
+        m.metalness = 0.04;                              // ridges fired the top-zone p90 tail
       } else if (ob.isInstancedMesh && m.color.getHex() === 0x27251f) {
-        rehook(m).color.setHex(0x2a2723);                // inner chain / guide-horn layer: r5 deepened (-16% lum) + desat — pin caps and horns recede into the tread shadows
-        m.envMapIntensity = 0.26;
+        // inner chain / guide-horn layer. r6 #1+#3: the tread-recess pixels
+        // are 1-2 px SUB-PIXEL BLENDS of pad and chain (tricolor-probe
+        // verified — pure chain pixels are rare at board scale), so the
+        // rendered shadow floor moves at roughly HALF any chain-albedo move:
+        // 0x2a2723 -> 0x252320 walks the face-rect p10 from 55 toward the
+        // ref's 46 (lands ~51 — a deeper cut passed the front floor but
+        // broke the certified view-left strip mean ratio over 1.16, so the
+        // strip law owns the floor here). Still warm R>G>B.
+        regrime(m).color.setHex(0x252320);
+        m.envMapIntensity = 0.08;                        // r6: sky-wash cut with the pad/band family
       } else if (m === P.mats.wheels) {
         ob.material = ob.isInstancedMesh ? wornDish : wornDrum;
       }
