@@ -92,6 +92,20 @@ const REG = {
     runtimeKit: 't90a_k5_wedges',
     pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.23 },
   },
+  // merkava batch-14 candidates (short-MG251 + proud roof-furniture band —
+  // the certified wholeCurves caps in the 3b/3c packets). pubDims from the
+  // userdrops5.js make() rows; registration = the articulated() default
+  // ('^Turret$'/'^Gun$', autoPivot) the game loader uses for the family.
+  merkava3b: {
+    path: 'public/models/tanks/community/recovered/merkava3b.glb',
+    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+    pubDims: { hullLengthM: 7.60, overallLengthM: 9.04, widthM: 3.72, heightM: 2.66 },
+  },
+  merkava3c: {
+    path: 'public/models/tanks/community/recovered/merkava3c.glb',
+    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+    pubDims: { hullLengthM: 7.60, overallLengthM: 9.04, widthM: 3.72, heightM: 2.66 },
+  },
 };
 const RUSSIA_IDS = Object.keys(REG);
 

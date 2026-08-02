@@ -88,6 +88,23 @@ export const PLANS = {
     z: [[-3.74, -3.43], [3.74, 3.43], [6.13, 6.10]],
     yTopMax: 2.36,
   },
+  // ---- batch-14: merkava 3B/3C (certified wholeCurves caps retired at the
+  // source). Shared hull: body 7.409 (-2.5% vs pub 7.60) stretched about its
+  // center; fused-short MG251 muzzle +4.13 -> +4.8525 = tail'+9.04 (pub
+  // overall; barrel zone continuous at the nose). Stature: 3B roof-furniture
+  // band 2.84 -> 2.66 (pub height), 3C 2.766 -> 2.66; hull/deck true to 2.50
+  // (slope 1). Whip tips compress with the last zone (3B ~3.61, 3C ~3.92) —
+  // build re-tunes whips in the push round. Width untouched (-0.8%, anchor).
+  merkava3b: { // +6.7% stature band, -2.5% body, -8.6% overall (short gun)
+    y: [[0, 0], [2.50, 2.50], [2.84, 2.66]],
+    z: [[-4.092, -4.1875], [3.317, 3.4125], [4.13, 4.8525]],
+    yTopMax: 3.65,
+  },
+  merkava3c: { // +3.9% stature band, same shared hull/gun as 3B
+    y: [[0, 0], [2.50, 2.50], [2.766, 2.66]],
+    z: [[-4.092, -4.1875], [3.317, 3.4125], [4.13, 4.8525]],
+    yTopMax: 3.95,
+  },
 };
 
 const args = process.argv.slice(2);

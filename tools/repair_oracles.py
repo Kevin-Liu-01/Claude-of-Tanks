@@ -2450,6 +2450,38 @@ REPAIRS['t72b_1987'] = [
 ]
 
 
+# =============================================================== batch 14 ===
+# MERKAVA 3B/3C VERTEX-SPACE NORMALIZATION (same sanction and mechanism as
+# batch 12 — owner vertex-freedom ruling 2026-08-01). Retires the certified
+# wholeCurves caps documented in the 3B/3C packets (round-4 sections):
+#   * fused-short MG251: print muzzle +4.13 gate-m vs published-overall
+#     +4.85 (tail'+9.04) -> barrel zone slope forward of the nose;
+#   * hull body 7.409 (-2.5% vs published 7.60) -> stretched about its
+#     center (near-1 slope 1.026);
+#   * proud roof-furniture band (3B 2.84 / 3C 2.766 vs published height
+#     2.66) -> top zone compression; hull/deck true to 2.50 (slope 1);
+#     whip tips ride the last zone down (3B ~3.61 / 3C ~3.92 gate-m) — the
+#     builds re-tune whips in the family push round.
+# Width untouched (-0.8%, safeScale anchor). Plans derived by
+# tools/vertex-normalize.mjs from docs/references/vertex/merkava3{b,c}.json
+# (the derivation record); recipes chain after the batch-4 node repairs and
+# rebuild from the pristine .bak per the standard idempotency contract.
+REPAIRS['merkava3b'] = [
+    *REPAIRS['merkava3b'],
+    ('py2', _axis_warp('merkava3b', long_axis='z',
+                       y_map=[(-0.0204, -0.0204), (2.65, 2.65), (3.0132, 2.821)],
+                       long_map=[(-4.1594, -4.2614), (3.7548, 3.8568), (4.6232, 5.3949)],
+                       y_top_max=3.8998, expect=(186, 148961, 110179))),
+]
+REPAIRS['merkava3c'] = [
+    *REPAIRS['merkava3c'],
+    ('py2', _axis_warp('merkava3c', long_axis='z',
+                       y_map=[(-0.0204, -0.0204), (2.6501, 2.6501), (2.9342, 2.821)],
+                       long_map=[(-4.1595, -4.2615), (3.7547, 3.8567), (4.6231, 5.3949)],
+                       y_top_max=4.2203, expect=(176, 152905, 110264))),
+]
+
+
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)
     if ops is None:

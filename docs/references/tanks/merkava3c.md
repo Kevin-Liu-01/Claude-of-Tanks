@@ -102,3 +102,12 @@ except wholeCurves.
   ≈ 87; standing 84.8. All other components pass, per the gate's short-gun
   cap rule.
 - Station s11: same self-trimming window-shift artifact as 3B.
+
+### Batch-14 oracle normalization (2026-08-02, orchestrator) — caps RETIRED
+Same warp as merkava3b (shared hull plan; see merkava3b.md batch-14 entry):
+muzzle +4.13 -> +4.85 (published overall 9.04), body 7.409 -> 7.60, 3C
+stature band 2.766 -> 2.66 published (whips to ~3.92). Post-repair verify:
+height -0.1% / overall +0.5% / body -0.3%. Same hullMask-replica caveat as
+3B (mantlet band crosses the 12% filter — informational only). The round-4
+certified wholeCurves cap is RETIRED; fresh workorder required before any
+build edits (pre-warp digests invalid).

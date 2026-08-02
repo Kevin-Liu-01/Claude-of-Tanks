@@ -176,3 +176,23 @@ column becomes heightM and killed dims twice this round).
   proc hull span (−4.24..+3.42 vs ref −4.15..+3.34), so the fractional s11
   window shifts ~0.07 rearward off the crest face; reads ~7.7% and is
   dropped by the gate's own trimmed mean (not certified, self-trimming).
+
+### Batch-14 oracle normalization (2026-08-02, orchestrator) — caps RETIRED
+Vertex-space axis warp (tools/repair_oracles.py batch 14; plans derived by
+tools/vertex-normalize.mjs from docs/references/vertex/merkava3b.json, same
+sanction/mechanism as russia batch 12): fused-short MG251 muzzle +4.13 ->
++4.85 gate-m (= tail'+9.04 published overall; barrel zone forward of the
+nose), hull body 7.409 -> 7.60 published (slope 1.026 about body center),
+proud roof-furniture band 2.84 -> 2.66 published height (hull/deck true to
+2.50, slope 1; whips ride the last zone to ~3.61 — re-tune build whips in
+the push round). Width untouched (-0.8%, safeScale anchor).
+Post-repair verify: height -0.2% / overall +0.5% / body -0.3% vs published.
+NOTE: the extract's hullMask replica now reads 9.085 (+19.5%) — the boxy
+mantlet/evacuator band crosses the 12% body filter on this print class, so
+the replica measures muzzle-span. This is informational only (gate
+registration is hull-PART-anchored; dims measures the BUILD) — do not
+"fix" the build against it.
+The round-4 certified wholeCurves cap (short gun + stature band) is hereby
+RETIRED — wholeCurves is no longer capped; the family push round re-tunes
+the build to the normalized oracle (fresh workorder mandatory; the old
+work-order digests are pre-warp and invalid).
