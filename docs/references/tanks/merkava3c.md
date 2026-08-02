@@ -375,3 +375,7 @@ quantization).
 Predicted per-view (r5 critic: 8.0 min): front 8.5 · frontleft 8.5 ·
 left 8.5-9.0 · rearleft 8.5 · rear 8.5-9.0 · rearright 8.5 · right
 8.5-9.0 · frontright 8.5 · top 8.5.
+
+## Shaded-parity r6 (2026-08-02) — FAIL 8.5 all views; MG rods zero on 3C
+Shared r6 work order. 3C: rods absent on all four elevations — build
+them to measured-render proof; flap tone 63→70.

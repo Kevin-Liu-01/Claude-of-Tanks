@@ -838,3 +838,8 @@ left 8.5-9.0 · rearleft 8.5 · rear 8.5-9.0 · rearright 8.5 · right
 8.5-9.0 · frontright 8.5 · top 8.5 — the three gating items are
 rendered-verified (canvas volume at 1x, corner med ~62, MG lines
 breaking both silhouettes).
+
+## Shaded-parity r6 (2026-08-02) — FAIL 8.5 all views (5th floor rise); flaps FIXED
+Work order: shaded-parity-merkava3bc-r6.md — canvas FORM (undulate the
+crown DOWNWARD from the cap), MG rods with measured-render proof (4th
+miss — the render measurement IS the done-gate), roof tone-on-tone.
