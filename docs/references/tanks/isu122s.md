@@ -621,3 +621,8 @@ top 8, toptilt 8, close-front 7, close-roof 7. The r2 verdict's three
 mantlet demands (ball + circular casting ring + crescent under-shadow
 dominating the face) are all present and were verified against my own
 brightened renders, not just the masks.
+
+## Shaded-parity r4 (2026-08-02) — FAIL 6.5; casting composition landed, value inverted; DRUMS REGRESSED
+Work order: shaded-parity-isu122s-r4.md. Headliners: drums restored
+proud (render-verified), mantlet bright-dome value flip, pancake
+idler/sprocket relief, wheel faces solid, scaffold toned to scheme.
