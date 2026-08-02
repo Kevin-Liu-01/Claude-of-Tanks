@@ -273,3 +273,14 @@ solids under perspective. Probe tooling for successors:
 tmp-leo-whatsat.mjs (bbox window), tmp-leo-pixelowner.mjs (definitive
 mask-pixel -> triangle bisect; found the idler-pad and phantom-bridge
 readers), tmp-leo-topdown.mjs (directive review captures).
+
+## Shaded-parity r1 (2026-08-02, independent critic) — FAIL min 6.5
+Geometric 91.0 stands. Full verdict + work order:
+docs/critique/shaded-parity-leo2a6-r1.md. FILL passes; CIRCULARITY
+borderline (hatch rings flat, fan circles occluded). Headliners: blank
+glacis (no lights/tow eyes/periscope bank + BLUE placeholder dots),
+black-box sprocket/idler ends, missing turret smoke launchers (stray
+clusters on fenders instead), rear plate missing louvered grilles
+(+ ORANGE tab), fence-railing bustle rack, untextured PERI with BLUE
+face, bamboo tube read (keep certified r 0.1175/0.1195), slab skirts,
+flat wheels, near-black track band.

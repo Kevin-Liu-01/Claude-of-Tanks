@@ -307,3 +307,14 @@ filtered from the failure gate).
 - Shade-side (rearleft/frontright) pad shoulders read slightly tan under
   the hemisphere fill.
 - Track band ratio 1.154 is inside but near the 1.16 edge of the law.
+
+## Shaded-parity r2 (2026-08-02, fresh independent critic) — FAIL min 5 (was 4)
+Full verdict + r3 work order: docs/critique/shaded-parity-isu122s-r2.md.
+FIXED: silhouette break, sponson void (webbed), beam float. NOT FIXED:
+ball mantlet (token collar only — the ball must DOMINATE the face) and
+fuel drums (critic overruled the near-flush vertex claim: the print
+RENDERS proud ribbed cylinders — the visual gate judges the render).
+r2 regressions to purge in r3: sand-pink track hue (luminance legal, hue
+not), beige tow cable (brightest object + sprocket intersection), maroon
+louvre field swallowed the hatch cluster, slab deck hides the track runs
+from top, stucco noise reads as corrosion.
