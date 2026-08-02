@@ -280,3 +280,43 @@ flat-end class, certified; partial), stations 76.7 (i-slice tops at the
 new stack — re-check), turret_plan front staircase cols (tile arc vs ref
 1.3@0.93), housing 2.19 vs ref band 2.122 (5 side cols x 0.07 — the dims
 trade, documented). Board review pending this round.
+
+## r10 LANDING (2026-08-02): 56.5 -> 70.8 — housing band + front-floor + asym decode
+
+Final row: hull 74.8 / whole 70.8 / turret 74.8 / stations 80.1 / dims 100
+/ floaters 100 (min 70.8). One batch off a fresh workorder:
+- SAVAN/roof band: ref carries 2.13-2.19 across x -0.24..-0.74 AND z world
+  -0.02..1.37 (the r9 0.14x0.50 stub left ~11 cols 0.10-0.12 short both
+  views). Housing now box(0.46,0.295,1.42)@(-0.47,0.5825,0.525) top 2.19 —
+  p95 anchor VALUE unchanged, more columns at it, dims stayed 100.
+- FRONT-FLOOR LAW (b3m r10 class): belly plate 0.30 -> 0.42/0.43 — the
+  front rows read min-over-z belly and the ref floor between the tracks is
+  0.434 (~20 cols x 0.13). Rear rake pts unchanged.
+- SPROCKET-SPAN LAW: xc 1.37 -> 1.41 — the gear assembly's INNER face
+  (xc - trackW/2 - 0.035 = 1.045) grounded the -1.065 front col where the
+  ref floor is its 0.384 belly line.
+- OBRA ASYMMETRY (decode overturns r9's symmetric read): only the LEFT
+  sensor exists — right +1.641/+1.681 front cols read the 1.40-1.41 bin
+  line and plan +1.676 is ref-EMPTY (old right sensor was ONLY-PROC err
+  9). Left narrowed to x 1.623..1.653 (its edge leaked 1px into the
+  -1.671 col, err 0.28).
+- DOME sz 0.97 -> 0.94: the dome rear edge (world -1.40) painted the
+  -1.414 side col where the ref is only a thin 1.743..1.824 rail band
+  (new rear rail sliver box owns it); plan center rear -1.354 = ref
+  -1.363. RIGHT basket staircase pulled in (rears -1.03/-0.79 vs ref
+  -1.014/-0.773; LEFT stays deeper — r9 print asymmetry confirmed).
+- Micro: roll w 0.40 (0.60 painted plan +-0.255 at 2.016 vs ref 1.453);
+  mast c -0.268 w 0.028 (leaked the -0.217 front col at 2.484); rear
+  center stack's 1.69 step moved to |x| 0.13..0.20 side tabs (front
+  +-0.02..0.11 cols read the ref's 1.555 line; side -2.845 keeps 1.69);
+  commander ring y 0.34; idler y 0.72 (front fade).
+Board r10 reviewed: orientation correct, articulation clean, no floaters,
+masks 87.4-98.5 (top 98.5).
+NEXT (whole 70.8): side rear-ramp -2.0..-2.8 bottoms (belt flat-end
+class, certified partial — ref 0.16-0.78 vs ramp 0-0.51); front +-1.68
+right-track absence (certified print asym — symmetric buildRunningGear
+grounds +1.681 where the ref is skirt-only 0.818..1.403); plan_turret
+right-flank chords (dome round vs ref's pinched rear-sides at x 1.0-1.46:
+ref front 0.809@1.46 vs dome-chord — needs cheek boxes or a flank-wall
+decode); stations 80.1 (slice tops at the new housing); erawa row-2 lean
+cols +-0.31..0.51 (~0.05 x 6).
