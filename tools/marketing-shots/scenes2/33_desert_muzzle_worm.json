@@ -1,0 +1,72 @@
+{
+  "map": "desert",
+  "seed": 6133,
+  "actors": [
+    {
+      "id": "leclerc",
+      "name": "hero",
+      "pos": [
+        10,
+        64
+      ],
+      "facingDeg": 205,
+      "turretDeg": -14,
+      "gunDeg": -2,
+      "camo": "desert",
+      "camoSeed": 331
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        9,
+        59
+      ],
+      "tMs": 60,
+      "params": {
+        "count": 14,
+        "intensity": 1.3,
+        "dirDeg": 200
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        12,
+        67
+      ],
+      "tMs": 200,
+      "params": {
+        "count": 8,
+        "intensity": 0.7,
+        "dirDeg": 230
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 340,
+      "params": {
+        "ageS": 0.07
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      12.4,
+      0.9,
+      55.2
+    ],
+    "lookAt": [
+      9.4,
+      2.8,
+      65.6
+    ],
+    "groundRel": true,
+    "fov": 54,
+    "rollDeg": 3
+  },
+  "fxTime": 340,
+  "timeScale": 0
+}

@@ -1,0 +1,112 @@
+{
+  "map": "urban",
+  "seed": 6142,
+  "actors": [
+    {
+      "id": "leclerc",
+      "name": "doomed",
+      "pos": [
+        36,
+        -16
+      ],
+      "facingDeg": 300,
+      "turretDeg": 10,
+      "camo": "digital",
+      "camoSeed": 421
+    },
+    {
+      "id": "m1a2_sepv2",
+      "name": "s1",
+      "pos": [
+        36,
+        -68
+      ],
+      "facingDeg": 2,
+      "gunDeg": 0.5,
+      "camo": "urbanblock",
+      "camoSeed": 422,
+      "turretDeg": -2
+    },
+    {
+      "id": "challenger1",
+      "name": "s2",
+      "pos": [
+        -8,
+        -16
+      ],
+      "facingDeg": 88,
+      "gunDeg": 0.5,
+      "camo": "ambushdot",
+      "camoSeed": 423,
+      "turretDeg": 2
+    },
+    {
+      "id": "kf51",
+      "name": "s3",
+      "pos": [
+        36,
+        30
+      ],
+      "facingDeg": 182,
+      "gunDeg": 0.5,
+      "camo": "flecktarn",
+      "camoSeed": 424,
+      "turretDeg": -3.3
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "doomed",
+      "tMs": 145,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "s1",
+      "tMs": 585,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "s2",
+      "tMs": 600,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "s3",
+      "tMs": 615,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      12,
+      28,
+      -44
+    ],
+    "lookAt": [
+      32,
+      0,
+      -16
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": -8
+  },
+  "fxTime": 640,
+  "timeScale": 0
+}

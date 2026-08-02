@@ -1,0 +1,111 @@
+{
+  "map": "verdant",
+  "seed": 6145,
+  "actors": [
+    {
+      "id": "leo2a7v",
+      "name": "lead",
+      "pos": [
+        10,
+        -160
+      ],
+      "facingDeg": 8,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 451,
+      "turretDeg": -53
+    },
+    {
+      "id": "m1a2",
+      "name": "mid",
+      "pos": [
+        13,
+        -136
+      ],
+      "facingDeg": 4,
+      "turretDeg": -70,
+      "gunDeg": 1,
+      "camo": "desert",
+      "camoSeed": 452
+    },
+    {
+      "id": "t90a",
+      "name": "tail",
+      "pos": [
+        15,
+        -112
+      ],
+      "facingDeg": 12,
+      "turretDeg": 25,
+      "camo": "factory"
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "tail",
+      "tMs": 80,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "detrack",
+      "actor": "mid",
+      "tMs": 310,
+      "params": {
+        "side": "L"
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        11,
+        -140
+      ],
+      "tMs": 320,
+      "params": {
+        "count": 16,
+        "intensity": 1.3,
+        "dirDeg": 190
+      }
+    },
+    {
+      "type": "impact",
+      "actor": "mid",
+      "tMs": 500,
+      "params": {
+        "kind": "nonpen",
+        "caliberMm": 125,
+        "hFrac": 0.5
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "lead",
+      "tMs": 610,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -10,
+      6,
+      -178
+    ],
+    "lookAt": [
+      12,
+      1.6,
+      -132
+    ],
+    "groundRel": true,
+    "fov": 34,
+    "rollDeg": -3
+  },
+  "fxTime": 635,
+  "timeScale": 0
+}

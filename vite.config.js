@@ -56,8 +56,10 @@ function reachableSrcModules(root) {
  * Pretty routes (owner: "/studio" and "/home"). Pure URL rewrites — the
  * browser's address bar keeps the pretty path while the server serves the
  * real file. /studio boots the game (index.html; src/game/studio.js sees the
- * pathname and auto-enters), /home serves the brand page. Queries pass
- * through (/studio?map=desert works).
+ * pathname and auto-enters), /home serves the showcase page (home.html — a
+ * real build entry, so /home also ships in dist; vercel.json carries the
+ * same two rewrites for the deployed host). Queries pass through
+ * (/studio?map=desert works).
  */
 function rewriteRoutes(req, res, next) {
   const url = req.url || '';
@@ -65,7 +67,7 @@ function rewriteRoutes(req, res, next) {
   const path = qi === -1 ? url : url.slice(0, qi);
   const query = qi === -1 ? '' : url.slice(qi);
   if (path === '/studio' || path === '/studio/') req.url = '/index.html' + query;
-  else if (path === '/home' || path === '/home/') req.url = '/tools/brand.html' + query;
+  else if (path === '/home' || path === '/home/') req.url = '/home.html' + query;
   next();
 }
 
@@ -99,8 +101,18 @@ export default {
       clientFiles: reachableSrcModules(process.cwd()).map((u) => '.' + u),
     },
   },
+  build: {
+    rollupOptions: {
+      // two-page build: the game + the /home showcase (which bundles its
+      // module script, so the FEATURED_SHOTS import resolves in dist too)
+      input: {
+        main: resolve(process.cwd(), 'index.html'),
+        home: resolve(process.cwd(), 'home.html'),
+      },
+    },
+  },
   optimizeDeps: {
-    entries: ['index.html'],
+    entries: ['index.html', 'home.html'],
     include: [
       'three',
       'three/examples/jsm/loaders/GLTFLoader.js',

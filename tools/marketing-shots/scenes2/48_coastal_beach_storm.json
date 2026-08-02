@@ -1,0 +1,112 @@
+{
+  "map": "coastal",
+  "seed": 6148,
+  "actors": [
+    {
+      "id": "m1a2",
+      "name": "lead",
+      "pos": [
+        168,
+        -54
+      ],
+      "facingDeg": 356,
+      "turretDeg": -6,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 481
+    },
+    {
+      "id": "leclerc",
+      "name": "w1",
+      "pos": [
+        161,
+        -70
+      ],
+      "facingDeg": 4,
+      "turretDeg": 10,
+      "gunDeg": 1,
+      "camo": "naval",
+      "camoSeed": 482
+    },
+    {
+      "id": "challenger1",
+      "name": "w2",
+      "pos": [
+        176,
+        -74
+      ],
+      "facingDeg": 350,
+      "turretDeg": -5,
+      "gunDeg": 1,
+      "camo": "tropic",
+      "camoSeed": 483
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        167,
+        -60
+      ],
+      "tMs": 240,
+      "params": {
+        "count": 18,
+        "intensity": 1.4,
+        "dirDeg": 176
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        162,
+        -76
+      ],
+      "tMs": 300,
+      "params": {
+        "count": 14,
+        "intensity": 1.2,
+        "dirDeg": 184
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        175,
+        -80
+      ],
+      "tMs": 280,
+      "params": {
+        "count": 14,
+        "intensity": 1.2,
+        "dirDeg": 170
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "lead",
+      "tMs": 495,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      166,
+      1.6,
+      -40
+    ],
+    "lookAt": [
+      168.5,
+      2.5,
+      -58
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": 3
+  },
+  "fxTime": 520,
+  "timeScale": 0
+}

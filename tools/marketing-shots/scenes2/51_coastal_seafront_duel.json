@@ -1,0 +1,77 @@
+{
+  "map": "coastal",
+  "seed": 6151,
+  "actors": [
+    {
+      "id": "kf51",
+      "name": "west",
+      "pos": [
+        156,
+        -52
+      ],
+      "facingDeg": 88,
+      "gunDeg": 0.5,
+      "camo": "tropic",
+      "camoSeed": 511,
+      "turretDeg": 0
+    },
+    {
+      "id": "m1a2",
+      "name": "east",
+      "pos": [
+        214,
+        -50
+      ],
+      "facingDeg": 268,
+      "gunDeg": 0.5,
+      "camo": "naval",
+      "camoSeed": 512,
+      "turretDeg": 0
+    }
+  ],
+  "effects": [
+    {
+      "type": "sparks",
+      "actor": "west",
+      "tMs": 510,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.6
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "east",
+      "tMs": 572,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "west",
+      "tMs": 590,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      146,
+      3.4,
+      -57
+    ],
+    "lookAt": [
+      216,
+      2,
+      -49
+    ],
+    "groundRel": true,
+    "fov": 30
+  },
+  "fxTime": 615,
+  "timeScale": 0
+}

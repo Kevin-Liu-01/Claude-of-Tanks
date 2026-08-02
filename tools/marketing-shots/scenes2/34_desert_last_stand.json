@@ -1,0 +1,115 @@
+{
+  "map": "desert",
+  "seed": 6134,
+  "actors": [
+    {
+      "id": "challenger1",
+      "name": "holdout",
+      "pos": [
+        -48,
+        44
+      ],
+      "facingDeg": 96,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 341,
+      "turretDeg": -3.1
+    },
+    {
+      "id": "abramsx",
+      "name": "atk1",
+      "pos": [
+        30,
+        40
+      ],
+      "facingDeg": 275,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 342,
+      "turretDeg": -2.1
+    },
+    {
+      "id": "m1a2",
+      "name": "atk2",
+      "pos": [
+        18,
+        66
+      ],
+      "facingDeg": 246,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 343,
+      "turretDeg": 6.6
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        -56,
+        50
+      ],
+      "tMs": 160,
+      "params": {
+        "size": "medium"
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "holdout",
+      "tMs": 545,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.75
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "holdout",
+      "tMs": 608,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "atk1",
+      "tMs": 622,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        24,
+        52
+      ],
+      "tMs": 380,
+      "params": {
+        "count": 12,
+        "intensity": 1,
+        "dirDeg": 260
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -59,
+      3.1,
+      34
+    ],
+    "lookAt": [
+      -22,
+      2,
+      45
+    ],
+    "groundRel": true,
+    "fov": 40,
+    "rollDeg": -3
+  },
+  "fxTime": 645,
+  "timeScale": 0
+}

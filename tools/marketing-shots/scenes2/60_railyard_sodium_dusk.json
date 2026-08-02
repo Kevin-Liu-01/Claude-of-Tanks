@@ -1,0 +1,77 @@
+{
+  "map": "railyard",
+  "seed": 6160,
+  "actors": [
+    {
+      "id": "kf51",
+      "name": "hero",
+      "pos": [
+        -30,
+        30
+      ],
+      "facingDeg": 150,
+      "turretDeg": -20,
+      "gunDeg": 1,
+      "camo": "washworn",
+      "camoSeed": 601
+    },
+    {
+      "id": "m1a2",
+      "name": "pyre",
+      "pos": [
+        -74,
+        46
+      ],
+      "facingDeg": 320,
+      "turretDeg": 40,
+      "state": "wrecked-burnt",
+      "stateAgeS": 420,
+      "smoking": true
+    }
+  ],
+  "effects": [
+    {
+      "type": "engine_smoke",
+      "actor": "pyre",
+      "tMs": 0
+    },
+    {
+      "type": "dust",
+      "at": [
+        -33,
+        26
+      ],
+      "tMs": 2550,
+      "params": {
+        "count": 8,
+        "intensity": 0.7,
+        "dirDeg": 244
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 2800,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -21,
+      1.3,
+      22
+    ],
+    "lookAt": [
+      -33,
+      2.5,
+      31.5
+    ],
+    "groundRel": true,
+    "fov": 48,
+    "rollDeg": -3
+  },
+  "fxTime": 2800,
+  "timeScale": 0
+}

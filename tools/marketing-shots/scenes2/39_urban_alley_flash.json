@@ -1,0 +1,98 @@
+{
+  "map": "urban",
+  "seed": 6139,
+  "actors": [
+    {
+      "id": "abramsx",
+      "name": "south",
+      "pos": [
+        112,
+        52
+      ],
+      "facingDeg": 4,
+      "gunDeg": 0,
+      "camo": "urbanblock",
+      "camoSeed": 391,
+      "turretDeg": -1.4
+    },
+    {
+      "id": "t90a",
+      "name": "north",
+      "pos": [
+        113,
+        74
+      ],
+      "facingDeg": 186,
+      "gunDeg": 0,
+      "camo": "factory",
+      "turretDeg": -3.4
+    }
+  ],
+  "effects": [
+    {
+      "type": "sparks",
+      "actor": "south",
+      "tMs": 520,
+      "params": {
+        "caliberMm": 125,
+        "hFrac": 0.7
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "north",
+      "tMs": 545,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.6
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "south",
+      "tMs": 612,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "north",
+      "tMs": 622,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        112.5,
+        63
+      ],
+      "tMs": 420,
+      "params": {
+        "count": 10,
+        "intensity": 0.9,
+        "dirDeg": 95
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      130,
+      2,
+      63
+    ],
+    "lookAt": [
+      104,
+      2.2,
+      63
+    ],
+    "groundRel": true,
+    "fov": 46
+  },
+  "fxTime": 645,
+  "timeScale": 0
+}

@@ -1,0 +1,103 @@
+{
+  "map": "verdant",
+  "seed": 6147,
+  "actors": [
+    {
+      "id": "leo2a5",
+      "name": "holdout",
+      "pos": [
+        44,
+        78
+      ],
+      "facingDeg": 255,
+      "gunDeg": 1,
+      "camo": "dpm",
+      "camoSeed": 471,
+      "turretDeg": 3.1
+    },
+    {
+      "id": "t90m",
+      "name": "atk1",
+      "pos": [
+        6,
+        70
+      ],
+      "facingDeg": 82,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 472,
+      "turretDeg": -3.9
+    },
+    {
+      "id": "abramsx",
+      "name": "atk2",
+      "pos": [
+        34,
+        104
+      ],
+      "facingDeg": 168,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 473,
+      "turretDeg": -14.6
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        30,
+        90
+      ],
+      "tMs": 155,
+      "params": {
+        "size": "medium"
+      }
+    },
+    {
+      "type": "impact",
+      "actor": "holdout",
+      "tMs": 540,
+      "params": {
+        "kind": "pen",
+        "caliberMm": 125,
+        "hFrac": 0.65
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "atk1",
+      "tMs": 610,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "holdout",
+      "tMs": 625,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      18,
+      3.4,
+      58
+    ],
+    "lookAt": [
+      36,
+      1.8,
+      80
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": -3
+  },
+  "fxTime": 650,
+  "timeScale": 0
+}

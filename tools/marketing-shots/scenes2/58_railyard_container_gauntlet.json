@@ -1,0 +1,89 @@
+{
+  "map": "railyard",
+  "seed": 6158,
+  "actors": [
+    {
+      "id": "abramsx",
+      "name": "gunner",
+      "pos": [
+        -9,
+        -64
+      ],
+      "facingDeg": 4,
+      "gunDeg": 0.5,
+      "camo": "urbanblock",
+      "camoSeed": 581,
+      "turretDeg": -2.1
+    },
+    {
+      "id": "t90a",
+      "name": "victim",
+      "pos": [
+        -8,
+        -34
+      ],
+      "facingDeg": 188,
+      "turretDeg": 15,
+      "camo": "factory"
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 132,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "gunner",
+      "tMs": 520,
+      "params": {
+        "caliberMm": 125,
+        "hFrac": 0.7
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -12,
+        -58
+      ],
+      "tMs": 380,
+      "params": {
+        "count": 10,
+        "intensity": 0.9,
+        "dirDeg": 186
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "gunner",
+      "tMs": 608,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -24,
+      14,
+      -76
+    ],
+    "lookAt": [
+      -7,
+      0,
+      -42
+    ],
+    "groundRel": true,
+    "fov": 44,
+    "rollDeg": -6
+  },
+  "fxTime": 632,
+  "timeScale": 0
+}

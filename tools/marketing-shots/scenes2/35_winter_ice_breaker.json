@@ -1,0 +1,87 @@
+{
+  "map": "winter",
+  "seed": 6135,
+  "actors": [
+    {
+      "id": "leo2a7v",
+      "name": "shooter",
+      "pos": [
+        176,
+        -108
+      ],
+      "facingDeg": 122,
+      "gunDeg": 0.5,
+      "camo": "washworn",
+      "camoSeed": 351,
+      "turretDeg": -1
+    },
+    {
+      "id": "t90a",
+      "name": "kill1",
+      "pos": [
+        206,
+        -126
+      ],
+      "facingDeg": 300,
+      "turretDeg": 20,
+      "camo": "factory"
+    },
+    {
+      "id": "t90m",
+      "name": "kill2",
+      "pos": [
+        188,
+        -142
+      ],
+      "facingDeg": 350,
+      "turretDeg": -35,
+      "camo": "amoeba",
+      "camoSeed": 352
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "kill1",
+      "tMs": 60,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "tank_kill",
+      "actor": "kill2",
+      "tMs": 230,
+      "params": {
+        "cause": "fuel",
+        "pop": false
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "shooter",
+      "tMs": 610,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      163,
+      1.1,
+      -132
+    ],
+    "lookAt": [
+      193,
+      2.4,
+      -124
+    ],
+    "groundRel": true,
+    "fov": 30
+  },
+  "fxTime": 635,
+  "timeScale": 0
+}

@@ -1,0 +1,112 @@
+{
+  "map": "steppe",
+  "seed": 6155,
+  "actors": [
+    {
+      "id": "t90a",
+      "name": "lead",
+      "pos": [
+        -100,
+        -60
+      ],
+      "facingDeg": 184,
+      "turretDeg": 5,
+      "gunDeg": -1,
+      "camo": "amoeba",
+      "camoSeed": 551
+    },
+    {
+      "id": "t90m",
+      "name": "w1",
+      "pos": [
+        -86,
+        -48
+      ],
+      "facingDeg": 190,
+      "turretDeg": -10,
+      "gunDeg": 1,
+      "camo": "summer",
+      "camoSeed": 552
+    },
+    {
+      "id": "leo2a6",
+      "name": "w2",
+      "pos": [
+        -116,
+        -46
+      ],
+      "facingDeg": 178,
+      "turretDeg": 12,
+      "gunDeg": 1,
+      "camo": "dpm",
+      "camoSeed": 553
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -100,
+        -52
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 20,
+        "intensity": 1.6,
+        "dirDeg": 4
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -86,
+        -40
+      ],
+      "tMs": 320,
+      "params": {
+        "count": 14,
+        "intensity": 1.2,
+        "dirDeg": 10
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -116,
+        -38
+      ],
+      "tMs": 300,
+      "params": {
+        "count": 14,
+        "intensity": 1.2,
+        "dirDeg": 358
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "lead",
+      "tMs": 500,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -101,
+      2,
+      -84
+    ],
+    "lookAt": [
+      -100.5,
+      2.7,
+      -58
+    ],
+    "groundRel": true,
+    "fov": 42,
+    "rollDeg": 3
+  },
+  "fxTime": 525,
+  "timeScale": 0
+}

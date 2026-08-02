@@ -1,0 +1,66 @@
+{
+  "map": "steppe",
+  "seed": 6157,
+  "actors": [
+    {
+      "id": "leclerc",
+      "name": "sniper",
+      "pos": [
+        -114,
+        -52
+      ],
+      "facingDeg": 92,
+      "gunDeg": 0.5,
+      "camo": "dpm",
+      "camoSeed": 571,
+      "turretDeg": 5.6
+    },
+    {
+      "id": "t90m",
+      "name": "victim",
+      "pos": [
+        -84,
+        -56
+      ],
+      "facingDeg": 275,
+      "turretDeg": 20,
+      "camo": "factory"
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 112,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "sniper",
+      "tMs": 588,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -99,
+      2.4,
+      -75
+    ],
+    "lookAt": [
+      -99,
+      2.6,
+      -54
+    ],
+    "groundRel": true,
+    "fov": 46
+  },
+  "fxTime": 612,
+  "timeScale": 0
+}

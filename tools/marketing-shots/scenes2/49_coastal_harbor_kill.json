@@ -1,0 +1,80 @@
+{
+  "map": "coastal",
+  "seed": 6149,
+  "actors": [
+    {
+      "id": "leclerc",
+      "name": "fg",
+      "pos": [
+        150,
+        78
+      ],
+      "facingDeg": 62,
+      "gunDeg": 0.5,
+      "camo": "naval",
+      "camoSeed": 491,
+      "turretDeg": -11.3
+    },
+    {
+      "id": "t90a",
+      "name": "victim",
+      "pos": [
+        172,
+        96
+      ],
+      "facingDeg": 244,
+      "turretDeg": 30,
+      "camo": "factory"
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 112,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        154,
+        80
+      ],
+      "tMs": 340,
+      "params": {
+        "count": 10,
+        "intensity": 0.8,
+        "dirDeg": 240
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "fg",
+      "tMs": 588,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      137,
+      3.6,
+      64
+    ],
+    "lookAt": [
+      164,
+      2,
+      90
+    ],
+    "groundRel": true,
+    "fov": 38,
+    "rollDeg": 4
+  },
+  "fxTime": 612,
+  "timeScale": 0
+}

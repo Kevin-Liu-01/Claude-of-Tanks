@@ -1,0 +1,78 @@
+{
+  "map": "coastal",
+  "seed": 6150,
+  "actors": [
+    {
+      "id": "abramsx",
+      "name": "crest",
+      "pos": [
+        230,
+        50
+      ],
+      "facingDeg": 262,
+      "gunDeg": -5,
+      "turretDeg": 2,
+      "camo": "desert",
+      "camoSeed": 501
+    },
+    {
+      "id": "challenger1",
+      "name": "pyre",
+      "pos": [
+        213,
+        45
+      ],
+      "facingDeg": 10,
+      "turretDeg": 55,
+      "state": "turret-popped",
+      "stateAgeS": 180,
+      "burning": true
+    }
+  ],
+  "effects": [
+    {
+      "type": "engine_smoke",
+      "actor": "pyre",
+      "tMs": 0
+    },
+    {
+      "type": "dust",
+      "at": [
+        227,
+        49.5
+      ],
+      "tMs": 2530,
+      "params": {
+        "count": 16,
+        "intensity": 1.4,
+        "dirDeg": 262
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "crest",
+      "tMs": 2872,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      203,
+      1.5,
+      51
+    ],
+    "lookAt": [
+      223,
+      2.8,
+      48
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": -3
+  },
+  "fxTime": 2900,
+  "timeScale": 0
+}

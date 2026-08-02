@@ -1,0 +1,115 @@
+{
+  "map": "desert",
+  "seed": 6131,
+  "actors": [
+    {
+      "id": "m1a2",
+      "name": "lead",
+      "pos": [
+        44,
+        73
+      ],
+      "facingDeg": 88,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 311,
+      "turretDeg": 7
+    },
+    {
+      "id": "t90a",
+      "name": "mid",
+      "pos": [
+        24,
+        71
+      ],
+      "facingDeg": 84,
+      "turretDeg": 30,
+      "camo": "factory"
+    },
+    {
+      "id": "leclerc",
+      "name": "tail",
+      "pos": [
+        2,
+        74
+      ],
+      "facingDeg": 106,
+      "turretDeg": -40,
+      "gunDeg": 1,
+      "camo": "digital",
+      "camoSeed": 312
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "mid",
+      "tMs": 140,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        6,
+        76
+      ],
+      "tMs": 300,
+      "params": {
+        "count": 16,
+        "intensity": 1.4,
+        "dirDeg": 286
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        40,
+        70
+      ],
+      "tMs": 340,
+      "params": {
+        "count": 12,
+        "intensity": 1,
+        "dirDeg": 268
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "tail",
+      "tMs": 520,
+      "params": {
+        "caliberMm": 125,
+        "hFrac": 0.65
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "lead",
+      "tMs": 615,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      56,
+      2,
+      66
+    ],
+    "lookAt": [
+      20,
+      2.6,
+      72.5
+    ],
+    "groundRel": true,
+    "fov": 38,
+    "rollDeg": 3
+  },
+  "fxTime": 640,
+  "timeScale": 0
+}

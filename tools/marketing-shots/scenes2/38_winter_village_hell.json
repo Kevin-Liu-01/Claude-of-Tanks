@@ -1,0 +1,115 @@
+{
+  "map": "winter",
+  "seed": 6138,
+  "actors": [
+    {
+      "id": "leo2a5",
+      "name": "pyre",
+      "pos": [
+        8,
+        36
+      ],
+      "facingDeg": 130,
+      "state": "turret-popped",
+      "stateAgeS": 200,
+      "burning": true
+    },
+    {
+      "id": "leo2a6",
+      "name": "a1",
+      "pos": [
+        -12,
+        60
+      ],
+      "facingDeg": 132,
+      "gunDeg": 0.5,
+      "camo": "winter",
+      "camoSeed": 381,
+      "turretDeg": -8.3
+    },
+    {
+      "id": "leclerc",
+      "name": "a2",
+      "pos": [
+        2,
+        14
+      ],
+      "facingDeg": 52,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 382,
+      "turretDeg": 5.3
+    },
+    {
+      "id": "t90m",
+      "name": "foe",
+      "pos": [
+        30,
+        32
+      ],
+      "facingDeg": 262,
+      "gunDeg": 1,
+      "camo": "washworn",
+      "camoSeed": 383,
+      "turretDeg": 41.7
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        14,
+        46
+      ],
+      "tMs": 2480,
+      "params": {
+        "size": "medium"
+      }
+    },
+    {
+      "type": "impact",
+      "actor": "foe",
+      "tMs": 2790,
+      "params": {
+        "kind": "pen",
+        "caliberMm": 120,
+        "hFrac": 0.6
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "a2",
+      "tMs": 2872,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "foe",
+      "tMs": 2882,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -8,
+      22,
+      -6
+    ],
+    "lookAt": [
+      12,
+      0,
+      38
+    ],
+    "groundRel": true,
+    "fov": 44,
+    "rollDeg": -6
+  },
+  "fxTime": 2905,
+  "timeScale": 0
+}

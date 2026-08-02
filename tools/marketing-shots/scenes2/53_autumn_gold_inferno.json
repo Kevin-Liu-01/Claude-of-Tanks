@@ -1,0 +1,80 @@
+{
+  "map": "autumn",
+  "seed": 6153,
+  "actors": [
+    {
+      "id": "abramsx",
+      "name": "victim",
+      "pos": [
+        52,
+        58
+      ],
+      "facingDeg": 210,
+      "turretDeg": 15,
+      "camo": "factory"
+    },
+    {
+      "id": "leclerc",
+      "name": "passer",
+      "pos": [
+        30,
+        40
+      ],
+      "facingDeg": 66,
+      "turretDeg": 40,
+      "gunDeg": 0.5,
+      "camo": "autumn",
+      "camoSeed": 531
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 70,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        33,
+        42
+      ],
+      "tMs": 300,
+      "params": {
+        "count": 14,
+        "intensity": 1.2,
+        "dirDeg": 66
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "passer",
+      "tMs": 590,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      18,
+      1.5,
+      30
+    ],
+    "lookAt": [
+      44,
+      2.6,
+      52
+    ],
+    "groundRel": true,
+    "fov": 44,
+    "rollDeg": -4
+  },
+  "fxTime": 615,
+  "timeScale": 0
+}

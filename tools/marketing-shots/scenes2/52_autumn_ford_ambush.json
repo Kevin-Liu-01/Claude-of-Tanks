@@ -1,0 +1,93 @@
+{
+  "map": "autumn",
+  "seed": 6152,
+  "actors": [
+    {
+      "id": "t90m",
+      "name": "forder",
+      "pos": [
+        10,
+        8
+      ],
+      "facingDeg": 8,
+      "turretDeg": -58,
+      "gunDeg": 1,
+      "camo": "autumn",
+      "camoSeed": 521
+    },
+    {
+      "id": "leo2a5",
+      "name": "ambusher",
+      "pos": [
+        -30,
+        30
+      ],
+      "facingDeg": 128,
+      "gunDeg": 0.5,
+      "camo": "flecktarn",
+      "camoSeed": 522,
+      "turretDeg": -9.2
+    }
+  ],
+  "effects": [
+    {
+      "type": "sparks",
+      "actor": "forder",
+      "tMs": 530,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.75
+      }
+    },
+    {
+      "type": "explosion",
+      "at": [
+        20,
+        2
+      ],
+      "tMs": 180,
+      "params": {
+        "size": "small"
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        9,
+        14
+      ],
+      "tMs": 320,
+      "params": {
+        "count": 10,
+        "intensity": 0.8,
+        "dirDeg": 190
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "ambusher",
+      "tMs": 615,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      24,
+      1.6,
+      -8
+    ],
+    "lookAt": [
+      0,
+      2.3,
+      18
+    ],
+    "groundRel": true,
+    "fov": 40,
+    "rollDeg": 3
+  },
+  "fxTime": 640,
+  "timeScale": 0
+}

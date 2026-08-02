@@ -1,0 +1,81 @@
+{
+  "map": "urban",
+  "seed": 6140,
+  "actors": [
+    {
+      "id": "leclerc",
+      "name": "victim",
+      "pos": [
+        36,
+        60
+      ],
+      "facingDeg": 40,
+      "turretDeg": -20,
+      "camo": "digital",
+      "camoSeed": 401
+    },
+    {
+      "id": "leo2a7v",
+      "name": "cutter",
+      "pos": [
+        22,
+        44
+      ],
+      "facingDeg": 32,
+      "turretDeg": 55,
+      "gunDeg": 0.5,
+      "camo": "urbanblock",
+      "camoSeed": 402
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 122,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        24,
+        47
+      ],
+      "tMs": 280,
+      "params": {
+        "count": 18,
+        "intensity": 1.5,
+        "dirDeg": 32
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "cutter",
+      "tMs": 590,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      33,
+      48,
+      54
+    ],
+    "lookAt": [
+      35.5,
+      0,
+      59.5
+    ],
+    "groundRel": true,
+    "fov": 42,
+    "rollDeg": 20
+  },
+  "fxTime": 615,
+  "timeScale": 0
+}

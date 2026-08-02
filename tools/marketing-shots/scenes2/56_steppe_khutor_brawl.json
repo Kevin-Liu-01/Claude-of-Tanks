@@ -1,0 +1,102 @@
+{
+  "map": "steppe",
+  "seed": 6156,
+  "actors": [
+    {
+      "id": "m1a2_sepv2",
+      "name": "holdout",
+      "pos": [
+        34,
+        62
+      ],
+      "facingDeg": 252,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 561,
+      "turretDeg": 0.8
+    },
+    {
+      "id": "t90a",
+      "name": "a1",
+      "pos": [
+        -24,
+        44
+      ],
+      "facingDeg": 74,
+      "gunDeg": 0.5,
+      "camo": "amoeba",
+      "camoSeed": 562,
+      "turretDeg": -1.2
+    },
+    {
+      "id": "leo2a6",
+      "name": "a2",
+      "pos": [
+        -2,
+        92
+      ],
+      "facingDeg": 142,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 563,
+      "turretDeg": -14.1
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        10,
+        68
+      ],
+      "tMs": 150,
+      "params": {
+        "size": "medium"
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "holdout",
+      "tMs": 535,
+      "params": {
+        "caliberMm": 125,
+        "hFrac": 0.7
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "a1",
+      "tMs": 605,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "holdout",
+      "tMs": 620,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -12,
+      16,
+      26
+    ],
+    "lookAt": [
+      16,
+      0,
+      64
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": -5
+  },
+  "fxTime": 645,
+  "timeScale": 0
+}

@@ -1,0 +1,71 @@
+{
+  "map": "urban",
+  "seed": 6143,
+  "actors": [
+    {
+      "id": "leo2a6",
+      "name": "hero",
+      "pos": [
+        -40,
+        60
+      ],
+      "facingDeg": 118,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "urbanblock",
+      "camoSeed": 431
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -44,
+        56
+      ],
+      "tMs": 60,
+      "params": {
+        "count": 10,
+        "intensity": 0.9,
+        "dirDeg": 118
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -36,
+        63
+      ],
+      "tMs": 220,
+      "params": {
+        "count": 6,
+        "intensity": 0.6,
+        "dirDeg": 60
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 320,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -28,
+      1.25,
+      55
+    ],
+    "lookAt": [
+      -42,
+      2.6,
+      61.5
+    ],
+    "groundRel": true,
+    "fov": 50
+  },
+  "fxTime": 320,
+  "timeScale": 0
+}

@@ -1,0 +1,70 @@
+{
+  "map": "autumn",
+  "seed": 6154,
+  "actors": [
+    {
+      "id": "challenger1",
+      "name": "hero",
+      "pos": [
+        -40,
+        30
+      ],
+      "facingDeg": 108,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "dpm",
+      "camoSeed": 541
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        -48,
+        38
+      ],
+      "tMs": 160,
+      "params": {
+        "size": "medium"
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -44,
+        26
+      ],
+      "tMs": 300,
+      "params": {
+        "count": 12,
+        "intensity": 1,
+        "dirDeg": 108
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 400,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -34.5,
+      1.25,
+      24.5
+    ],
+    "lookAt": [
+      -42.5,
+      2.4,
+      32
+    ],
+    "groundRel": true,
+    "fov": 52,
+    "rollDeg": 3
+  },
+  "fxTime": 400,
+  "timeScale": 0
+}

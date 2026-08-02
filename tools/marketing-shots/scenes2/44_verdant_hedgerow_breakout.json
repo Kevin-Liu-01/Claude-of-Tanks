@@ -1,0 +1,72 @@
+{
+  "map": "verdant",
+  "seed": 6144,
+  "actors": [
+    {
+      "id": "kf51",
+      "name": "breaker",
+      "pos": [
+        22,
+        -96
+      ],
+      "facingDeg": 262,
+      "turretDeg": 4,
+      "gunDeg": 0.5,
+      "camo": "flecktarn",
+      "camoSeed": 441
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        26,
+        -95
+      ],
+      "tMs": 220,
+      "params": {
+        "count": 24,
+        "intensity": 1.8,
+        "dirDeg": 82
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        18,
+        -98
+      ],
+      "tMs": 360,
+      "params": {
+        "count": 12,
+        "intensity": 1.1,
+        "dirDeg": 95
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "breaker",
+      "tMs": 430,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      10,
+      1.5,
+      -102
+    ],
+    "lookAt": [
+      24,
+      2.4,
+      -95
+    ],
+    "groundRel": true,
+    "fov": 44,
+    "rollDeg": 3
+  },
+  "fxTime": 430,
+  "timeScale": 0
+}

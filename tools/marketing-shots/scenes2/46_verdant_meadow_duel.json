@@ -1,0 +1,81 @@
+{
+  "map": "verdant",
+  "seed": 6146,
+  "actors": [
+    {
+      "id": "t90m",
+      "name": "near",
+      "pos": [
+        -20,
+        -100
+      ],
+      "facingDeg": 272,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 461,
+      "turretDeg": 3.2
+    },
+    {
+      "id": "m1a2",
+      "name": "far",
+      "pos": [
+        -86,
+        -94
+      ],
+      "facingDeg": 94,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 462,
+      "turretDeg": 1.2
+    }
+  ],
+  "effects": [
+    {
+      "type": "fire",
+      "actor": "near",
+      "tMs": 575,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "far",
+      "tMs": 552,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -24,
+        -101
+      ],
+      "tMs": 380,
+      "params": {
+        "count": 8,
+        "intensity": 0.7,
+        "dirDeg": 270
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -8,
+      2.8,
+      -104
+    ],
+    "lookAt": [
+      -52,
+      2.2,
+      -97
+    ],
+    "groundRel": true,
+    "fov": 28
+  },
+  "fxTime": 600,
+  "timeScale": 0
+}

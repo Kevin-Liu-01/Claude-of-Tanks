@@ -1,0 +1,93 @@
+{
+  "map": "desert",
+  "seed": 6132,
+  "actors": [
+    {
+      "id": "kf51",
+      "name": "victim",
+      "pos": [
+        16,
+        71
+      ],
+      "facingDeg": 320,
+      "turretDeg": 25,
+      "camo": "factory"
+    },
+    {
+      "id": "m1a2_sepv2",
+      "name": "runner",
+      "pos": [
+        7,
+        62
+      ],
+      "facingDeg": 242,
+      "turretDeg": 168,
+      "gunDeg": 1,
+      "camo": "desert",
+      "camoSeed": 321
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 118,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        9,
+        64
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 20,
+        "intensity": 1.6,
+        "dirDeg": 62
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        12,
+        67
+      ],
+      "tMs": 420,
+      "params": {
+        "count": 10,
+        "intensity": 0.9,
+        "dirDeg": 55
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "runner",
+      "tMs": 585,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      11,
+      38,
+      65
+    ],
+    "lookAt": [
+      14.2,
+      0,
+      69.5
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": 15
+  },
+  "fxTime": 610,
+  "timeScale": 0
+}

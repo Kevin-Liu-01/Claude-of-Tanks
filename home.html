@@ -1,0 +1,1195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude of Tanks — Home</title>
+<meta name="description" content="Free-roam armored warfare in the browser — pure Three.js. The gallery, the battlefields, the scene studio and the systems underneath.">
+<meta property="og:title" content="Claude of Tanks" />
+<meta property="og:description" content="Armored warfare rendered live in the browser — the gallery, eight battlefields, and the scene studio that shot every frame." />
+<meta property="og:type" content="website" />
+<meta property="og:image" content="/brand/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Claude of Tanks" />
+<meta name="twitter:image" content="/brand/og-image.png" />
+<link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png">
+<link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
+<link rel="preload" href="/fonts/inter/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/media/featured/f6_studio_strv_steinburg_duel.webp" as="image">
+<style>
+  @font-face {
+    font-family: 'Inter';
+    src: url('/fonts/inter/InterVariable.woff2') format('woff2');
+    font-weight: 100 900; font-style: normal; font-display: swap;
+  }
+  :root {
+    /* the game's own palette (index.html boot / garage / studio panel) */
+    --bg: #05080b; --bg2: #0b1117; --panel: rgba(11,15,20,.88);
+    --ink: #e6edf3; --bright: #f2f7fb;
+    --mut: #9fb0bf; --dim: #6e7d8a; --faint: #4b5865;
+    --hair: rgba(146,164,180,.22); --hair2: rgba(146,164,180,.13);
+    --amber: #f0a030; --gold: #ffd27a; --battle: #ee8912;
+    --amber-dim: rgba(240,160,48,.55);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-weight: 500; font-size: 15px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility; font-optical-sizing: auto; font-synthesis: none;
+  }
+  ::selection { background: var(--amber); color: #05080b; }
+  a { color: inherit; text-decoration: none; }
+  img { display: block; max-width: 100%; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 28px; }
+
+  /* ---- icons (sprite at top of <body>) ---- */
+  .ic { display: inline-block; width: 1em; height: 1em; flex: none; }
+
+  /* micro-label — the game's tracked-caps voice */
+  .micro {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .26em;
+    text-transform: uppercase; color: var(--dim);
+  }
+  .micro b { color: var(--gold); font-weight: 700; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* armor-plate grid + horizon glow, straight off the boot screen */
+  .field { position: relative; }
+  .field::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(146,164,180,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(146,164,180,.05) 1px, transparent 1px);
+    background-size: 74px 74px;
+    mask-image: radial-gradient(90% 76% at 50% 40%, #000 10%, transparent 78%);
+    -webkit-mask-image: radial-gradient(90% 76% at 50% 40%, #000 10%, transparent 78%);
+  }
+
+  /* hatched divider, dark cut */
+  .hatch {
+    height: 22px; border-top: 1px solid var(--hair2); border-bottom: 1px solid var(--hair2);
+    background: repeating-linear-gradient(45deg, transparent 0 8px, var(--hair2) 8px 9px);
+  }
+
+  /* ---- buttons ---- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 13px 26px; border: 1px solid var(--amber);
+    font-size: 12.5px; font-weight: 800; letter-spacing: .22em; text-indent: .22em;
+    text-transform: uppercase; white-space: nowrap;
+    transition: background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .btn.solid { background: var(--amber); color: #0b0f12; box-shadow: 0 0 22px rgba(240,160,48,.28); }
+  .btn.solid:hover { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 30px rgba(255,210,122,.4); }
+  .btn.solid::before { content: '▶'; font-size: 9px; text-indent: 0; }
+  .btn.ghost { border-color: rgba(146,164,180,.45); color: var(--ink); }
+  .btn.ghost:hover { border-color: var(--amber); color: var(--gold); }
+
+  /* ---- nav ---- */
+  nav.top {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 90;
+    background: rgba(5,8,11,.78); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--hair2);
+  }
+  nav.top .row { display: flex; align-items: center; justify-content: space-between; height: 58px; }
+  nav.top .id { display: flex; align-items: center; gap: 11px; }
+  nav.top .id img { width: 28px; height: 28px; }
+  nav.top .id .wm { font-size: 13.5px; font-weight: 800; letter-spacing: .17em; text-transform: uppercase; color: var(--bright); }
+  nav.top .id .wm span { color: var(--amber); }
+  nav.top .links { display: flex; align-items: center; gap: 24px; }
+  nav.top .links a.lnk {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--mut); padding: 4px 0; border-bottom: 1px solid transparent;
+    transition: color .15s ease, border-color .15s ease;
+  }
+  nav.top .links a.lnk:hover { color: var(--bright); }
+  nav.top .links a.lnk.on { color: var(--gold); border-bottom-color: var(--amber); }
+  nav.top .play {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 18px; background: var(--amber); color: #0b0f12;
+    font-size: 11px; font-weight: 800; letter-spacing: .22em; text-indent: .22em; text-transform: uppercase;
+    transition: background .15s ease;
+  }
+  nav.top .play::before { content: '▶'; font-size: 8px; text-indent: 0; }
+  nav.top .play:hover { background: var(--gold); }
+  @media (max-width: 880px) { nav.top .links a.lnk { display: none; } }
+
+  /* ---- hero ---- */
+  header.hero {
+    position: relative; min-height: 100svh; overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 120px 24px 90px;
+  }
+  #heroStage { position: absolute; inset: 0; z-index: 0; background: var(--bg2); }
+  #heroStage .ly {
+    position: absolute; inset: -4%;
+    background-size: cover; background-position: center 40%;
+    opacity: 0; transition: opacity 1.6s ease;
+    will-change: transform, opacity;
+  }
+  #heroStage .ly.on { opacity: 1; }
+  #heroStage .ly.kbA { animation: kbA 14s ease-in-out infinite alternate; }
+  #heroStage .ly.kbB { animation: kbB 14s ease-in-out infinite alternate; }
+  @keyframes kbA { from { transform: scale(1.02) translate(0,0); } to { transform: scale(1.1) translate(-1.2%, -.8%); } }
+  @keyframes kbB { from { transform: scale(1.1) translate(1%, .6%); } to { transform: scale(1.02) translate(0,0); } }
+  header.hero .scrim {
+    position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background:
+      linear-gradient(180deg, rgba(5,8,11,.82) 0%, rgba(5,8,11,.42) 30%, rgba(5,8,11,.38) 58%, rgba(5,8,11,.92) 100%),
+      radial-gradient(120% 90% at 50% 38%, rgba(5,8,11,.08) 0%, rgba(5,8,11,.6) 92%);
+  }
+  header.hero .glow {
+    position: absolute; left: -10%; right: -10%; bottom: -8%; height: 55%; z-index: 2; pointer-events: none;
+    background: radial-gradient(60% 100% at 50% 100%, rgba(240,160,48,.16) 0%, rgba(240,160,48,.04) 45%, transparent 72%);
+  }
+  .hero-inner { position: relative; z-index: 3; width: min(880px, 92vw); }
+  .hero-mark { width: 108px; height: 108px; margin: 0 auto 18px; filter: drop-shadow(0 6px 30px rgba(0,0,0,.6)); }
+  .hero-word .l1 {
+    display: block; font-weight: 800; letter-spacing: .17em; text-indent: .17em;
+    font-size: clamp(40px, 7vw, 76px); line-height: .95; color: var(--bright);
+    text-shadow: 0 2px 30px rgba(0,0,0,.8);
+  }
+  .hero-word .l2 {
+    display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 13px;
+    font-weight: 700; letter-spacing: .42em; text-indent: .42em;
+    font-size: clamp(13px, 1.9vw, 19px); color: var(--amber);
+  }
+  .hero-word .l2 i { display: block; height: 1px; width: clamp(30px, 8vw, 96px);
+    background: linear-gradient(90deg, rgba(240,160,48,0), var(--amber)); }
+  .hero-word .l2 i:last-child { background: linear-gradient(270deg, rgba(240,160,48,0), var(--amber)); }
+  .hero-tag { margin-top: 22px; font-size: 11px; font-weight: 700; letter-spacing: .3em; text-indent: .3em;
+    text-transform: uppercase; color: var(--mut); }
+  .hero-tag b { color: var(--gold); font-weight: 800; }
+  .hero-lede { margin: 20px auto 0; max-width: 58ch; color: rgba(230,237,243,.82); font-size: 15.5px; font-weight: 500; }
+  .hero-cta { margin-top: 34px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .hero-cap {
+    position: absolute; right: 22px; bottom: 20px; z-index: 3; text-align: right;
+    font-size: 10px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: rgba(159,176,191,.75);
+  }
+  .hero-cap b { color: var(--gold); }
+  .hero-scroll {
+    position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 3;
+    font-size: 9.5px; font-weight: 700; letter-spacing: .34em; text-indent: .34em; text-transform: uppercase; color: var(--dim);
+    animation: bob 2.2s ease-in-out infinite;
+  }
+  @keyframes bob { 0%,100% { transform: translate(-50%,0); opacity: .55; } 50% { transform: translate(-50%,6px); opacity: 1; } }
+  @media (max-width: 720px) {
+    .hero-scroll { display: none; }
+    .hero-cap { right: 50%; transform: translateX(50%); text-align: center; bottom: 16px; }
+  }
+
+  /* ---- stat band ---- */
+  .stats { display: grid; grid-template-columns: repeat(6, 1fr); border: 1px solid var(--hair); background: var(--panel); }
+  .stats .cell { position: relative; padding: 22px 18px 18px; border-right: 1px solid var(--hair2); }
+  .stats .cell .cico { position: absolute; top: 19px; right: 16px; font-size: 23px; color: var(--amber); opacity: .85; }
+  .stats .cell:last-child { border-right: 0; }
+  .stats .n { font-size: 34px; font-weight: 800; letter-spacing: -.01em; line-height: 1; color: var(--bright); }
+  .stats .n em { font-style: normal; font-size: 21px; color: var(--amber); font-weight: 800; }
+  .stats .l { margin-top: 9px; }
+  @media (max-width: 1020px) { .stats { grid-template-columns: repeat(3, 1fr); } .stats .cell { border-bottom: 1px solid var(--hair2); } }
+  @media (max-width: 560px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+
+  /* ---- section scaffolding ---- */
+  section { padding: 96px 0; position: relative; }
+  .shead { display: flex; align-items: baseline; justify-content: space-between; gap: 18px;
+    border-bottom: 1px solid var(--hair); padding-bottom: 16px; margin-bottom: 12px; }
+  .shead h2 { font-size: clamp(26px, 4vw, 42px); font-weight: 800; letter-spacing: -.015em; color: var(--bright); }
+  .shead h2 .no { color: var(--amber); font-weight: 800; margin-right: 16px; font-size: .62em; vertical-align: .18em; letter-spacing: .08em; }
+  .shead h2 .sic {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.55em; height: 1.55em; margin-right: .5em; vertical-align: -.28em;
+    border: 1px solid var(--hair); background: var(--panel); color: var(--amber);
+    font-size: .62em;
+  }
+  .shead h2 .sic .ic { font-size: .82em; }
+  .shead .ann { font-size: 10.5px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase; color: var(--dim); text-align: right; }
+  @media (max-width: 640px) {
+    .shead { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .shead .ann { text-align: left; }
+  }
+  .slede { max-width: 74ch; color: var(--mut); font-size: 15px; margin-bottom: 38px; }
+  .slede b { color: var(--gold); font-weight: 700; }
+
+  /* reveal on scroll */
+  .rv { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
+  .rv.in { opacity: 1; transform: none; }
+
+  /* ---- gallery bento ---- */
+  .bento { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; }
+  .shot { position: relative; overflow: hidden; border: 1px solid var(--hair); background: var(--bg2); cursor: zoom-in; }
+  .shot img { width: 100%; height: 100%; object-fit: cover; aspect-ratio: 16/9;
+    transition: transform .6s cubic-bezier(.2,.6,.2,1), filter .4s ease; filter: saturate(.98); }
+  .shot:hover img { transform: scale(1.035); filter: saturate(1.08); }
+  .shot .plate {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+    display: flex; justify-content: space-between; align-items: flex-end; gap: 12px;
+    padding: 26px 14px 11px;
+    background: linear-gradient(180deg, transparent, rgba(5,8,11,.86) 62%);
+    opacity: 0; transform: translateY(6px); transition: opacity .3s ease, transform .3s ease;
+  }
+  .shot:hover .plate, .shot:focus-visible .plate { opacity: 1; transform: none; }
+  .shot .plate .t { font-size: 12.5px; font-weight: 700; color: var(--bright); line-height: 1.35; text-align: left; }
+  .shot .plate .t small { display: block; margin-top: 2px; font-size: 9.5px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--mut); }
+  .chip {
+    flex: none; font-size: 10px; font-weight: 800; letter-spacing: .14em; padding: 4px 8px;
+    color: #0b0f12; background: var(--amber); text-transform: uppercase; font-variant-numeric: tabular-nums;
+  }
+  .chip.ghost { background: transparent; color: var(--gold); border: 1px solid var(--amber-dim); }
+  .shot.s6 { grid-column: span 6; } .shot.s4 { grid-column: span 4; }
+  .shot.s8 { grid-column: span 8; } .shot.s12 { grid-column: span 12; }
+  @media (max-width: 900px) { .shot.s6, .shot.s8, .shot.s4 { grid-column: span 6; } }
+  @media (max-width: 580px) { .shot.s6, .shot.s8, .shot.s4 { grid-column: span 12; } }
+  .gal-foot { margin-top: 16px; display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  .gal-foot .micro { display: inline-flex; align-items: center; gap: 9px; }
+  .gal-foot .micro .ic { font-size: 15px; color: var(--amber); opacity: .85; }
+
+  /* second production — denser grid */
+  .subhead { display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+    border-bottom: 1px solid var(--hair); padding-bottom: 12px; margin: 58px 0 22px; }
+  .subhead h3 { font-size: 19px; font-weight: 800; color: var(--bright); letter-spacing: -.005em; }
+  .subhead h3 .no { color: var(--amber); font-size: 12px; margin-right: 10px; letter-spacing: .08em; }
+  .subhead .ann { font-size: 10px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--dim); text-align: right; }
+  .bento2 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .bento2 .shot .plate { padding: 18px 10px 8px; }
+  .bento2 .shot .plate .t { font-size: 11px; }
+  .bento2 .shot .plate .t small { font-size: 8.5px; letter-spacing: .18em; }
+  @media (max-width: 1000px) { .bento2 { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 700px) { .bento2 { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 440px) { .bento2 { grid-template-columns: 1fr; } }
+
+  /* ---- battlefields ---- */
+  .bio { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .bio .map { position: relative; overflow: hidden; border: 1px solid var(--hair); cursor: zoom-in; }
+  .bio .map img { width: 100%; aspect-ratio: 16/8.2; object-fit: cover;
+    transition: transform .6s cubic-bezier(.2,.6,.2,1); }
+  .bio .map:hover img { transform: scale(1.03); }
+  .bio .map .tag {
+    position: absolute; top: 12px; left: 12px; z-index: 2;
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(5,8,11,.82); color: var(--gold); border: 1px solid var(--amber-dim);
+    font-size: 9.5px; font-weight: 800; letter-spacing: .22em; padding: 5px 10px; text-transform: uppercase;
+  }
+  .bio .map .tag .ic { font-size: 13px; }
+  .bio .map .bar {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 24px 14px 11px;
+    background: linear-gradient(180deg, transparent, rgba(5,8,11,.88) 60%);
+  }
+  .bio .map .bar .t { font-weight: 800; font-size: 15px; color: var(--bright); letter-spacing: .04em; }
+  @media (max-width: 720px) { .bio { grid-template-columns: 1fr; } }
+  .atlas { margin-top: 14px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .post { border: 1px solid var(--hair); background: var(--panel); transition: border-color .2s ease, transform .2s ease; }
+  .post:hover { border-color: rgba(240,160,48,.5); transform: translateY(-2px); }
+  .post img { width: 100%; aspect-ratio: 16/9; object-fit: cover; filter: saturate(.95); }
+  .post .meta { padding: 11px 13px 13px; border-top: 1px solid var(--hair2); }
+  .post .meta .t { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-size: 13px; font-weight: 800; color: var(--bright); letter-spacing: .03em; }
+  .post .meta .t .ic { font-size: 16px; color: var(--dim); transition: color .2s ease; }
+  .post:hover .meta .t .ic { color: var(--amber); }
+  .post .meta .d { margin-top: 4px; font-size: 11.5px; font-weight: 500; color: var(--dim); line-height: 1.5; }
+  @media (max-width: 900px) { .atlas { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) { .atlas { grid-template-columns: 1fr; } }
+
+  /* ---- studio feature ---- */
+  #studio { background: linear-gradient(180deg, var(--bg) 0%, #070c12 24%, #070c12 76%, var(--bg) 100%); }
+  .stud { display: grid; grid-template-columns: 7fr 5fr; gap: 34px; align-items: start; }
+  @media (max-width: 940px) { .stud { grid-template-columns: 1fr; } }
+  .stud .lead { border: 1px solid var(--hair); cursor: zoom-in; position: relative; overflow: hidden; }
+  .stud .lead img { width: 100%; }
+  .stud .lead .cap { display: flex; justify-content: space-between; gap: 10px; padding: 10px 13px;
+    border-top: 1px solid var(--hair2); background: var(--panel); }
+  .stud h3 { font-size: 21px; font-weight: 800; color: var(--bright); letter-spacing: -.01em; margin-bottom: 12px; }
+  .stud p.d { color: var(--mut); font-size: 14.5px; margin-bottom: 22px; }
+  .stud p.d b { color: var(--gold); font-weight: 700; }
+  .spec { border-top: 1px solid var(--hair); }
+  .spec .row { display: grid; grid-template-columns: 158px 1fr; gap: 14px; padding: 11px 2px;
+    border-bottom: 1px solid var(--hair2); font-size: 13px; align-items: baseline; }
+  .spec .row .k { display: flex; align-items: center; gap: 8px; font-size: 9.5px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: var(--amber); }
+  .spec .row .k .ic { font-size: 15px; }
+  .spec .row .v { color: rgba(230,237,243,.86); font-weight: 500; }
+  .spec .row .v b { color: var(--bright); font-weight: 700; }
+  .stud .cta { margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .stud-strip { margin-top: 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .stud-strip .shot img { aspect-ratio: 16/9.8; }
+  @media (max-width: 720px) { .stud-strip { grid-template-columns: 1fr; } }
+
+  /* ---- systems cards ---- */
+  .sys { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .sys .card { border: 1px solid var(--hair); background: var(--panel); overflow: hidden;
+    transition: border-color .2s ease, transform .2s ease; }
+  .sys .card:hover { border-color: rgba(240,160,48,.5); transform: translateY(-2px); }
+  .sys .card .im { position: relative; cursor: zoom-in; overflow: hidden; }
+  .sys .card .im img { width: 100%; aspect-ratio: 16/9.2; object-fit: cover;
+    transition: transform .6s cubic-bezier(.2,.6,.2,1); }
+  .sys .card:hover .im img { transform: scale(1.025); }
+  .sys .card .tx { padding: 16px 18px 19px; border-top: 1px solid var(--hair2); }
+  .sys .card .tx .k { display: flex; align-items: center; gap: 9px; font-size: 10px; font-weight: 800; letter-spacing: .26em; text-transform: uppercase; color: var(--amber); }
+  .sys .card .tx .k .ic { font-size: 16px; }
+  .sys .card .tx .t { margin-top: 6px; font-size: 16.5px; font-weight: 800; color: var(--bright); letter-spacing: -.005em; }
+  .sys .card .tx .d { margin-top: 7px; font-size: 13px; color: var(--mut); line-height: 1.6; }
+  .sys .card .tx .d b { color: rgba(242,247,251,.94); font-weight: 700; }
+  @media (max-width: 800px) { .sys { grid-template-columns: 1fr; } }
+
+  /* ---- fleet band ---- */
+  #fleet { background: #04060a; border-top: 1px solid var(--hair2); border-bottom: 1px solid var(--hair2); }
+  .gate { display: flex; gap: 12px; flex-wrap: wrap; margin: 26px 0 30px; }
+  .gate .g { display: flex; flex: 1 1 220px; align-items: center; gap: 15px; border: 1px solid var(--hair); background: var(--panel); padding: 14px 18px; }
+  .gate .g .gico { display: flex; align-items: center; align-self: stretch; padding-right: 15px;
+    border-right: 1px solid var(--hair2); font-size: 25px; color: var(--amber); opacity: .9; }
+  .gate .g .n { font-size: 24px; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+  .gate .g .l { margin-top: 3px; }
+  .rows { border-top: 1px solid var(--hair); }
+  .rowi { display: grid; grid-template-columns: 52px 1fr auto; gap: 18px; align-items: baseline;
+    padding: 15px 4px; border-bottom: 1px solid var(--hair2); font-size: 14.5px; }
+  .rowi .no { color: var(--faint); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .rowi .t { font-weight: 800; color: var(--bright); }
+  .rowi .t small { display: block; font-weight: 500; color: var(--mut); font-size: 12.5px; margin-top: 3px; letter-spacing: 0; }
+  .rowi .ann { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); text-align: right; }
+  .rowi .ann b { color: var(--gold); font-variant-numeric: tabular-nums; }
+  @media (max-width: 640px) { .rowi { grid-template-columns: 40px 1fr; } .rowi .ann { grid-column: 2; text-align: left; } }
+
+  /* ---- media kit ---- */
+  .kit { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--hair); }
+  .kit .item { border-right: 1px solid var(--hair2); border-bottom: 1px solid var(--hair2); }
+  .kit .item:nth-child(3n) { border-right: 0; }
+  .kit .stage { display: flex; align-items: center; justify-content: center; min-height: 190px; padding: 26px; background: var(--bg2); }
+  .kit .stage.grid2 {
+    background-image:
+      repeating-linear-gradient(0deg, transparent 0 21px, var(--hair2) 21px 22px),
+      repeating-linear-gradient(90deg, transparent 0 21px, var(--hair2) 21px 22px);
+  }
+  .kit .stage.paper { background: #dfe3e6; }
+  .kit .stage img { max-height: 140px; }
+  .kit .meta { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 11px 14px;
+    border-top: 1px solid var(--hair2); font-size: 12.5px; background: var(--panel); }
+  .kit .meta b { color: var(--bright); }
+  .kit .meta .p { color: var(--faint); font-size: 10.5px; }
+  .kit .meta a { display: inline-flex; align-items: center; gap: 7px; font-weight: 800; letter-spacing: .12em; font-size: 10.5px; text-transform: uppercase; color: var(--mut); }
+  .kit .meta a .ic { font-size: 12px; }
+  .kit .meta a:hover { color: var(--gold); }
+  @media (max-width: 760px) { .kit { grid-template-columns: 1fr; } .kit .item { border-right: 0; } }
+  .pngrow { display: flex; flex-wrap: wrap; gap: 10px 26px; margin-top: 18px; align-items: center; }
+  .pngrow a { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--mut);
+    border-bottom: 1px solid var(--hair); padding-bottom: 2px; font-weight: 600; }
+  .pngrow a:hover { color: var(--gold); border-color: var(--amber); }
+  .pngrow img { height: 20px; }
+
+  /* ---- footer ---- */
+  footer { position: relative; overflow: hidden; border-top: 1px solid var(--hair2); }
+  footer .bg { position: absolute; inset: 0; background: url('/media/home/ui_boot.webp') center 30%/cover; opacity: .5; }
+  footer .scrim { position: absolute; inset: 0;
+    background: linear-gradient(180deg, var(--bg) 0%, rgba(5,8,11,.72) 40%, rgba(5,8,11,.96) 100%); }
+  footer .inner { position: relative; z-index: 2; padding: 96px 0 40px; }
+  footer .grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 44px; align-items: start; }
+  footer h3 { font-size: clamp(34px, 5.4vw, 56px); font-weight: 800; letter-spacing: -.015em; line-height: 1; color: var(--bright); }
+  footer h3 span { color: var(--amber); }
+  footer p { color: var(--mut); margin-top: 16px; max-width: 46ch; font-size: 14px; }
+  footer .idx { border-top: 1px solid var(--hair); }
+  footer .idx a { display: flex; justify-content: space-between; gap: 14px; padding: 12px 2px;
+    border-bottom: 1px solid var(--hair2); font-size: 13px; color: var(--mut); font-weight: 600;
+    transition: color .15s ease, padding-left .15s ease; }
+  footer .idx a:hover { color: var(--bright); padding-left: 6px; }
+  footer .idx a span:first-child { display: inline-flex; align-items: center; gap: 10px; }
+  footer .idx a .ic { font-size: 15px; color: var(--faint); transition: color .15s ease; }
+  footer .idx a:hover .ic { color: var(--amber); }
+  footer .idx a span:last-child { font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--faint); }
+  footer .base { margin-top: 52px; padding-top: 20px; border-top: 1px solid var(--hair2);
+    display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; align-items: center; }
+  footer .base img { width: 30px; }
+  @media (max-width: 760px) { footer .grid { grid-template-columns: 1fr; } }
+
+  /* ---- lightbox ---- */
+  #lb { position: fixed; inset: 0; z-index: 200; display: none; align-items: center; justify-content: center;
+    background: rgba(4,6,9,.94); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  #lb.open { display: flex; }
+  #lb figure { max-width: min(1620px, 94vw); width: 100%; margin: 0 auto; padding: 0 20px; }
+  #lb img { width: 100%; max-height: 80vh; object-fit: contain; border: 1px solid var(--hair);
+    background: var(--bg2); box-shadow: 0 30px 90px rgba(0,0,0,.6); }
+  #lb figcaption { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 13px 4px 0; }
+  #lb .cap-t { font-size: 14px; font-weight: 700; color: var(--bright); }
+  #lb .cap-t small { display: block; margin-top: 3px; font-size: 10px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--mut); }
+  #lb .cap-n { font-size: 11px; font-weight: 800; letter-spacing: .2em; color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #lb .x { position: fixed; top: 16px; right: 20px; font-size: 26px; line-height: 1; color: var(--mut); padding: 10px; }
+  #lb .x:hover { color: var(--gold); }
+  #lb .pv, #lb .nx { position: fixed; top: 50%; transform: translateY(-50%); padding: 22px 14px;
+    font-size: 22px; color: var(--mut); user-select: none; }
+  #lb .pv { left: 8px; } #lb .nx { right: 8px; }
+  #lb .pv:hover, #lb .nx:hover { color: var(--gold); }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    #heroStage .ly, #heroStage .ly.kbA, #heroStage .ly.kbB { animation: none; transition: opacity .4s ease; }
+    .hero-scroll { animation: none; }
+    .rv { opacity: 1; transform: none; transition: none; }
+    .shot img, .bio .map img, .sys .card .im img { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ICON SPRITE — drawn in the game's equipment-icon language (src/ui/equipIcons.js):
+     24x24 grid, ONE ink (currentColor), flat silhouette fills + >=1.5px strokes,
+     no gradients. Color comes from CSS context (amber accents, steel quiet). -->
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+  <!-- tank, side silhouette -->
+  <symbol id="i-tank" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M8.6 4.9h6l1 2.4H7.6Z"/>
+    <rect x="14.6" y="5.6" width="7.2" height="1.5" fill="currentColor"/>
+    <path fill="currentColor" d="M5 8h13.6l2.8 3.1H2.2Z"/>
+    <rect x="4" y="12.6" width="16" height="5.8" rx="2.9" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    <circle cx="8" cy="15.5" r="1.3" fill="currentColor"/>
+    <circle cx="12" cy="15.5" r="1.3" fill="currentColor"/>
+    <circle cx="16" cy="15.5" r="1.3" fill="currentColor"/>
+  </symbol>
+  <!-- field map, folded, objective marker -->
+  <symbol id="i-map" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="miter"
+      d="M3.2 5.4 9 3.6l6 1.8 5.8-1.8v15L15 20.4l-6-1.8-5.8 1.8Z"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.2" opacity=".55" d="M9 3.6v15M15 5.4v15"/>
+    <path fill="currentColor" d="m12 8.2 2 2-2 2-2-2Z"/>
+  </symbol>
+  <!-- camouflage swatch -->
+  <symbol id="i-camo" viewBox="0 0 24 24">
+    <rect x="3.4" y="3.4" width="17.2" height="17.2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    <path fill="currentColor" d="M6.2 6.1c2.4-.9 4 .5 3.4 2.1-.5 1.5.7 2.7-.7 3.7-1.5 1-3.6.1-3.3-1.5.2-1.2-.5-3 .6-4.3Z"/>
+    <path fill="currentColor" opacity=".55" d="M13.8 12.3c2-.9 3.9 0 3.7 1.7-.2 1.5 1 2.4-.4 3.4-1.5 1-3.7.2-3.7-1.4 0-1.2-.8-2.7.4-3.7Z"/>
+    <path fill="currentColor" opacity=".3" d="M13 5.4c1.4-.5 2.7.3 2.4 1.5-.3 1 .6 1.7-.3 2.3-1 .7-2.5.1-2.5-1 0-.8-.5-2 .4-2.8Z"/>
+  </symbol>
+  <!-- 7v7 clash -->
+  <symbol id="i-vs" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M2.6 6.2 9.8 12l-7.2 5.8v-3.5L6.2 12 2.6 9.7Z"/>
+    <path fill="currentColor" d="M21.4 6.2 14.2 12l7.2 5.8v-3.5L17.8 12l3.6-2.3Z"/>
+    <path fill="currentColor" d="m12 8.6.8 2.6 2.6.8-2.6.8-.8 2.6-.8-2.6-2.6-.8 2.6-.8Z"/>
+  </symbol>
+  <!-- equipment wrench -->
+  <symbol id="i-equip" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M20.8 6a4.9 4.9 0 0 1-6.3 6.3l-6.6 6.6a2.1 2.1 0 1 1-3-3l6.6-6.6A4.9 4.9 0 0 1 17.8 3l-2.9 2.9 1 2.2 2.2 1Z"/>
+  </symbol>
+  <!-- capture viewfinder -->
+  <symbol id="i-capture" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.8" d="M3 7.2V3h4.2M16.8 3H21v4.2M21 16.8V21h-4.2M7.2 21H3v-4.2"/>
+    <circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    <circle cx="12" cy="12" r="1.2" fill="currentColor"/>
+  </symbol>
+  <!-- gallery frame -->
+  <symbol id="i-gallery" viewBox="0 0 24 24">
+    <rect x="3" y="4.4" width="18" height="15.2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    <path fill="currentColor" d="m5.4 16.6 4.2-5.2 3 3.4 2.3-2.5 3.7 4.3Z"/>
+    <circle cx="15.6" cy="8.8" r="1.6" fill="currentColor"/>
+  </symbol>
+  <!-- battlefields: flag over contours -->
+  <symbol id="i-terrain" viewBox="0 0 24 24">
+    <rect x="10.9" y="2.6" width="1.7" height="12.4" fill="currentColor"/>
+    <path fill="currentColor" d="M12.6 3.2h6.9l-2.3 2.7 2.3 2.7h-6.9Z"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.5" opacity=".85" d="M2.6 17.2c3.1-2.3 6.2-2.3 9.4 0 3.1 2.3 6.2 2.3 9.4 0"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.5" opacity=".5" d="M2.6 20.8c3.1-2.3 6.2-2.3 9.4 0 3.1 2.3 6.2 2.3 9.4 0"/>
+  </symbol>
+  <!-- studio: camera rig on tripod -->
+  <symbol id="i-studio" viewBox="0 0 24 24">
+    <path fill="currentColor" fill-rule="evenodd" d="M5.4 5.6h11.2v7.6H5.4Zm5.6 1.7a2.1 2.1 0 1 0 0 4.2 2.1 2.1 0 0 0 0-4.2Z"/>
+    <path fill="currentColor" d="m17.4 7.6 4-2v8l-4-2Z"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.6" d="M8.6 13.2 5.4 21M13.4 13.2 16.6 21M11 13.2V21"/>
+  </symbol>
+  <!-- systems: reticle -->
+  <symbol id="i-reticle" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="6.4" fill="none" stroke="currentColor" stroke-width="1.7"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.9" d="M12 1.6v4M12 18.4v4M1.6 12h4M18.4 12h4"/>
+    <circle cx="12" cy="12" r="1.7" fill="currentColor"/>
+  </symbol>
+  <!-- fleet gate: caliper -->
+  <symbol id="i-caliper" viewBox="0 0 24 24">
+    <rect x="2.6" y="3.2" width="18.8" height="2.6" fill="currentColor"/>
+    <rect x="4.8" y="5.8" width="2.2" height="9.6" fill="currentColor"/>
+    <rect x="14.6" y="5.8" width="2.2" height="6.8" fill="currentColor"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.3" opacity=".7" d="M9.4 5.8v2.6M12 5.8v2.6M19 5.8v2.6"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.6" d="M5.9 18.6h9.8"/>
+    <path fill="currentColor" d="M5.9 16.8 3 18.6l2.9 1.8Zm11.8 0 2.9 1.8-2.9 1.8Z"/>
+  </symbol>
+  <!-- media kit: crest shield -->
+  <symbol id="i-shield" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.7" d="M12 2.4 20.6 5v7c0 5-3.4 8-8.6 9.8C6.8 20 3.4 17 3.4 12V5Z"/>
+    <rect x="7" y="9.2" width="10" height="3.2" fill="currentColor"/>
+  </symbol>
+  <!-- reference packet -->
+  <symbol id="i-packet" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.6" d="M5.6 3h8.6l4.2 4.2V21H5.6Z"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.4" d="M13.8 3.4v4.2h4.2"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.5" d="M8.4 12h7.2M8.4 15.1h7.2M8.4 18.2h4.8"/>
+  </symbol>
+  <!-- scorecard ledger -->
+  <symbol id="i-ledger" viewBox="0 0 24 24">
+    <rect x="4.4" y="4" width="15.2" height="17" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    <rect x="9" y="2.3" width="6" height="3.4" fill="currentColor"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.5" d="M7.6 10.4h4.2M7.6 14h4.2M7.6 17.6h4.2"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.6" d="m13.9 9.9 1.2 1.2 2.1-2.3M13.9 13.5l1.2 1.2 2.1-2.3M13.9 17.1l1.2 1.2 2.1-2.3"/>
+  </symbol>
+  <!-- dual-gate pass: checkpoint -->
+  <symbol id="i-gate" viewBox="0 0 24 24">
+    <rect x="2.6" y="4.6" width="18.8" height="2.5" fill="currentColor"/>
+    <rect x="3.6" y="7.1" width="2.5" height="13.9" fill="currentColor"/>
+    <rect x="17.9" y="7.1" width="2.5" height="13.9" fill="currentColor"/>
+    <path fill="none" stroke="currentColor" stroke-width="2" d="m8.7 13.9 2.5 2.5 4.4-4.9"/>
+  </symbol>
+  <!-- families tree -->
+  <symbol id="i-family" viewBox="0 0 24 24">
+    <rect x="9.3" y="2.8" width="5.4" height="4.2" fill="currentColor"/>
+    <rect x="3.2" y="16.9" width="5.4" height="4.2" fill="currentColor"/>
+    <rect x="15.4" y="16.9" width="5.4" height="4.2" fill="currentColor"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.6" d="M12 7v4.6M5.9 16.9v-2.5h12.2v2.5M12 11.6v2.8"/>
+  </symbol>
+  <!-- damage flame -->
+  <symbol id="i-flame" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12.8 2.2c.5 3.2-1.1 4.9-2.6 6.6-1.5 1.8-3 3.6-2.6 6.4a5.6 5.6 0 0 0 11.2-.7c0-2.7-1.5-4-2.1-6.2-1.6 1-2.1 2.3-1.9 4.2-1.5-1.5-2.6-4.3-2-10.3Z"/>
+  </symbol>
+  <!-- fx burst -->
+  <symbol id="i-burst" viewBox="0 0 24 24">
+    <path fill="currentColor" d="m12 1.8 1.7 6 5.4-2.9-2.9 5.4 6 1.7-6 1.7 2.9 5.4-5.4-2.9-1.7 6-1.7-6-5.4 2.9 2.9-5.4-6-1.7 6-1.7L4.9 4.9l5.4 2.9Z"/>
+    <circle cx="12" cy="12" r="1.8" fill="currentColor"/>
+  </symbol>
+  <!-- fx time: stopwatch -->
+  <symbol id="i-clock" viewBox="0 0 24 24">
+    <circle cx="12" cy="13.4" r="7.8" fill="none" stroke="currentColor" stroke-width="1.7"/>
+    <rect x="10" y="1.6" width="4" height="2.5" fill="currentColor"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.8" d="M12 8.8v4.6l3.4 2"/>
+  </symbol>
+  <!-- camera, photo body -->
+  <symbol id="i-camera" viewBox="0 0 24 24">
+    <path fill="currentColor" fill-rule="evenodd" d="M3.4 7.2h4.2l1.7-2.4h5.4l1.7 2.4h4.2V18.6H3.4Zm8.6 2a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Z"/>
+    <circle cx="12" cy="12.8" r="1.5" fill="currentColor"/>
+  </symbol>
+  <!-- scene json braces -->
+  <symbol id="i-scene" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.8" d="M9.2 3.6c-2.5 0-3 1.1-3 2.9 0 1.6.3 3.1-2.2 3.6v.9c2.5.5 2.2 2 2.2 3.6 0 1.8.5 2.9 3 2.9M14.8 3.6c2.5 0 3 1.1 3 2.9 0 1.6-.3 3.1 2.2 3.6v.9c-2.5.5-2.2 2-2.2 3.6 0 1.8-.5 2.9-3 2.9"/>
+    <circle cx="12" cy="10.5" r="1.3" fill="currentColor"/>
+  </symbol>
+  <!-- garage: tank on jack stands -->
+  <symbol id="i-garage" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M9 3.4h5.4l.9 2H8.2Z"/>
+    <rect x="14.6" y="4" width="6.6" height="1.4" fill="currentColor"/>
+    <path fill="currentColor" d="M5.6 6.4h12.8l2.4 2.7H3.2Z"/>
+    <rect x="5" y="10.4" width="14" height="4.6" rx="2.3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+    <path fill="currentColor" d="M6 16.6h4.6l-1.2 3.6H7.2Zm7.4 0H18l-1.2 3.6h-2.2Z"/>
+    <rect x="3" y="21" width="18" height="1.6" fill="currentColor"/>
+  </symbol>
+  <!-- AP shell -->
+  <symbol id="i-shell" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.8c2.7 1.9 4.3 4.8 4.3 8.5v6.5H7.7v-6.5c0-3.7 1.6-6.6 4.3-8.5Z"/>
+    <rect x="7.7" y="18.4" width="8.6" height="3.2" fill="currentColor"/>
+  </symbol>
+  <!-- killcam x-ray: dashed hull, module hits -->
+  <symbol id="i-xray" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.4" d="M8.8 4.6h5.6l.9 2.2H7.9Z"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.4" d="M4.8 8.6h14l2.2 2.6H2.6Z"/>
+    <rect x="4.4" y="13" width="15.2" height="5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2.7 1.7"/>
+    <circle cx="9" cy="15.5" r="1.2" fill="currentColor"/>
+    <circle cx="15" cy="15.5" r="1.2" fill="currentColor"/>
+  </symbol>
+  <!-- smoke column over fire -->
+  <symbol id="i-smoke" viewBox="0 0 24 24">
+    <circle cx="12.6" cy="5.4" r="2.5" fill="currentColor" opacity=".45"/>
+    <circle cx="10.9" cy="9.9" r="2.9" fill="currentColor" opacity=".7"/>
+    <circle cx="12.7" cy="14.6" r="3.3" fill="currentColor"/>
+    <path fill="currentColor" d="M7.6 21.6c0-2.2 1.9-3.2 4.9-3.2s4.9 1 4.9 3.2Z"/>
+  </symbol>
+  <!-- after-action report -->
+  <symbol id="i-report" viewBox="0 0 24 24">
+    <rect x="4.4" y="4" width="15.2" height="17" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    <rect x="9" y="2.3" width="6" height="3.4" fill="currentColor"/>
+    <path fill="currentColor" d="M7.6 17.8v-4h2.3v4Zm3.5 0v-8h2.3v8Zm3.5 0v-5.8h2.3v5.8Z"/>
+  </symbol>
+  <!-- biome: wheat -->
+  <symbol id="i-b-verdant" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.5" d="M12 21.5V6.5"/>
+    <path fill="currentColor" d="M12 8.7C9.9 8.2 8.9 6.7 9.1 4.4c2.1.5 3.1 2 2.9 4.3Zm0 0c2.1-.5 3.1-2 2.9-4.3-2.1.5-3.1 2-2.9 4.3ZM12 13.2c-2.1-.5-3.1-2-2.9-4.3 2.1.5 3.1 2 2.9 4.3Zm0 0c2.1-.5 3.1-2 2.9-4.3-2.1.5-3.1 2-2.9 4.3ZM12 17.7c-2.1-.5-3.1-2-2.9-4.3 2.1.5 3.1 2 2.9 4.3Zm0 0c2.1-.5 3.1-2 2.9-4.3-2.1.5-3.1 2-2.9 4.3Z"/>
+  </symbol>
+  <!-- biome: desert sun over dune -->
+  <symbol id="i-b-desert" viewBox="0 0 24 24">
+    <circle cx="15.8" cy="7.2" r="3" fill="currentColor"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.4" opacity=".8" d="M15.8 1.4v2M21 4l-1.4 1.4M21.6 9.2h-2"/>
+    <path fill="currentColor" d="M1.8 20.6c2.8-4.4 7.4-4.9 10.6-1.6 2.5-2.1 5.9-1.7 8.4.5l1.4 1.1Z"/>
+  </symbol>
+  <!-- biome: snowflake -->
+  <symbol id="i-b-winter" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.6" d="M12 2.2v19.6M3.5 7.1l17 9.8M20.5 7.1l-17 9.8"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.4" d="M9.8 3.4 12 5.6l2.2-2.2M14.2 20.6 12 18.4l-2.2 2.2"/>
+  </symbol>
+  <!-- biome: urban blocks -->
+  <symbol id="i-b-urban" viewBox="0 0 24 24">
+    <path fill="currentColor" fill-rule="evenodd" d="M3.2 21V8.4h7V21Zm2-10.6v1.9h1.5v-1.9Zm0 3.8v1.9h1.5v-1.9Z"/>
+    <path fill="currentColor" fill-rule="evenodd" d="M11.6 21V3.6h9.2V21Zm2.2-14.9v1.9h1.6V6.1Zm3.4 0v1.9h1.6V6.1Zm-3.4 4v1.9h1.6v-1.9Zm3.4 0v1.9h1.6v-1.9Zm-3.4 4v1.9h1.6v-1.9Zm3.4 0v1.9h1.6v-1.9Z"/>
+  </symbol>
+  <!-- biome: coastal waves -->
+  <symbol id="i-b-coastal" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.7" d="M2 9.2c2.5-2.6 5-2.6 7.5 0s5 2.6 7.5 0c1.6-1.7 3.3-2 5-.7"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.7" opacity=".6" d="M2 15.4c2.5-2.6 5-2.6 7.5 0s5 2.6 7.5 0c1.6-1.7 3.3-2 5-.7"/>
+  </symbol>
+  <!-- biome: autumn leaf -->
+  <symbol id="i-b-autumn" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M20.8 3.2C12 2.7 5.3 7.4 4.6 15.4c-.1 1.4 0 2.7.4 3.9l-2.1 2.2 1.4 1.3 2.1-2.2c4.5 1.6 9.9-.4 12.3-5.4 1.7-3.5 2.3-7.5 2.1-12Z"/>
+  </symbol>
+  <!-- biome: steppe grass + wind -->
+  <symbol id="i-b-steppe" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.5" d="M4.2 21.4c.2-3.2.9-5.4 2.1-7.5M8 21.4c.3-4.2 1.3-7 3.2-9.6M11.6 21.4c.2-3.2 1-5.6 2.4-7.9"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="3 2" opacity=".8" d="M13.6 7.6h8.2M15.8 11.8h6"/>
+  </symbol>
+  <!-- biome: rails -->
+  <symbol id="i-b-rail" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.7" d="M8.6 2.8 5 21.2M15.4 2.8 19 21.2"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.4" d="M7.7 7.4h8.6M7 12h10M6.2 16.6h11.6"/>
+  </symbol>
+  <!-- download -->
+  <symbol id="i-dl" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="1.9" d="M12 3.2v11.2M7.4 10 12 14.6 16.6 10"/>
+    <rect x="3.8" y="18.4" width="16.4" height="2.6" fill="currentColor"/>
+  </symbol>
+  <!-- zoom -->
+  <symbol id="i-zoom" viewBox="0 0 24 24">
+    <circle cx="10.4" cy="10.4" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+    <path fill="none" stroke="currentColor" stroke-width="2.2" d="m15.3 15.3 5.5 5.5"/>
+    <path fill="none" stroke="currentColor" stroke-width="1.6" d="M10.4 7.5v5.8M7.5 10.4h5.8"/>
+  </symbol>
+</svg>
+
+<nav class="top">
+  <div class="wrap row">
+    <a class="id" href="#top" aria-label="Claude of Tanks — top">
+      <img src="/brand/logo-mark.svg" alt="">
+      <span class="wm">Claude <span>of</span> Tanks</span>
+    </a>
+    <div class="links">
+      <a class="lnk" href="#gallery">Gallery</a>
+      <a class="lnk" href="#battlefields">Battlefields</a>
+      <a class="lnk" href="#studio">Studio</a>
+      <a class="lnk" href="#systems">Systems</a>
+      <a class="lnk" href="#fleet">Fleet</a>
+      <a class="lnk" href="#kit">Media kit</a>
+      <a class="play" href="/">Play</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div id="heroStage" aria-hidden="true"><div class="ly"></div><div class="ly"></div></div>
+  <div class="scrim" aria-hidden="true"></div>
+  <div class="glow" aria-hidden="true"></div>
+  <div class="hero-inner">
+    <img class="hero-mark" src="/brand/logo-mark.svg" alt="Claude of Tanks crest">
+    <div class="hero-word">
+      <span class="l1">CLAUDE</span>
+      <span class="l2"><i></i><span>OF TANKS</span><i></i></span>
+    </div>
+    <div class="hero-tag num" id="heroTag"><b>102</b> vehicles · <b>8</b> battlefields · <b>30</b> camouflages · tiers I–X</div>
+    <p class="hero-lede">Free-roam armored warfare rendered live in the browser — pure Three.js,
+    no installs, no accounts. Every frame below was shot inside the engine.</p>
+    <div class="hero-cta">
+      <a class="btn solid" href="/">Play in browser</a>
+      <a class="btn ghost" href="/studio">Open the studio</a>
+      <a class="btn ghost" href="#gallery">See the gallery</a>
+    </div>
+  </div>
+  <div class="hero-cap micro" id="heroCap"></div>
+  <a class="hero-scroll" href="#gallery">Scroll</a>
+</header>
+
+<div class="wrap" style="position:relative; z-index:4; margin-top:-1px;">
+  <div class="stats rv" id="statband">
+    <div class="cell"><svg class="ic cico"><use href="#i-tank"/></svg><div class="n num" data-stat="vehicles">102</div><div class="l micro"><b>vehicles</b> · tiers I–X</div></div>
+    <div class="cell"><svg class="ic cico"><use href="#i-map"/></svg><div class="n num">8</div><div class="l micro"><b>battlefields</b> · six biomes</div></div>
+    <div class="cell"><svg class="ic cico"><use href="#i-camo"/></svg><div class="n num">30</div><div class="l micro"><b>camouflages</b> · map-matched</div></div>
+    <div class="cell"><svg class="ic cico"><use href="#i-vs"/></svg><div class="n num">7<em>v</em>7</div><div class="l micro"><b>battles</b> · per-class AI doctrine</div></div>
+    <div class="cell"><svg class="ic cico"><use href="#i-equip"/></svg><div class="n num">14</div><div class="l micro"><b>equipment items</b> · real modifiers</div></div>
+    <div class="cell"><svg class="ic cico"><use href="#i-capture"/></svg><div class="n num">6<em>K</em></div><div class="l micro"><b>studio captures</b> · in-engine</div></div>
+  </div>
+</div>
+
+<section id="gallery" class="field">
+  <div class="wrap">
+    <div class="shead rv">
+      <h2><span class="sic"><svg class="ic"><use href="#i-gallery"/></svg></span><span class="no">01</span>The gallery</h2>
+      <span class="ann">shot in engine · staged in the scene studio</span>
+    </div>
+    <p class="slede rv">Thirty scenes were staged, graded on five axes and re-shot until the set held —
+    <b class="num">7.62 average, nothing under 7.0</b>. The keepers live here. No offline renderer,
+    no paint-over: what the gallery shows is what the game draws.</p>
+    <div class="bento" id="galGrid"></div>
+    <div class="gal-foot rv">
+      <span class="micro"><svg class="ic"><use href="#i-scene"/></svg>every frame reproducible from its checked-in scene file · <b>tools/marketing-shots/scenes</b></span>
+      <span class="micro"><svg class="ic"><use href="#i-zoom"/></svg>click any frame to inspect</span>
+    </div>
+    <div class="subhead rv">
+      <h3><span class="no">01b</span>The second production — thirty more</h3>
+      <span class="ann">crazier angles · heavier pyro · all eight battlefields · sourced fleet only</span>
+    </div>
+    <div class="bento2" id="galGrid2"></div>
+  </div>
+</section>
+
+<div class="hatch"></div>
+
+<section id="battlefields">
+  <div class="wrap">
+    <div class="shead rv">
+      <h2><span class="sic"><svg class="ic"><use href="#i-terrain"/></svg></span><span class="no">02</span>Battlefields</h2>
+      <span class="ann">eight maps · six biomes · one light rig each</span>
+    </div>
+    <p class="slede rv">A square kilometre apiece, hand-tuned end to end — terrain splats, vegetation hues,
+    prop kits, sky and post grade. Golden hour in the streets, alpine glare on the ice, sodium haze over the sidings.</p>
+    <div class="bio rv" id="bioGrid"></div>
+    <div class="atlas" id="atlas"></div>
+  </div>
+</section>
+
+<section id="studio">
+  <div class="wrap">
+    <div class="shead rv">
+      <h2><span class="sic"><svg class="ic"><use href="#i-studio"/></svg></span><span class="no">03</span>The scene studio</h2>
+      <span class="ann">the production rig, shipped inside the game</span>
+    </div>
+    <p class="slede rv">Press <b>F8</b> in the garage — or hit <a href="/studio" style="color:var(--gold); border-bottom:1px solid var(--amber-dim);">/studio</a> —
+    and the battle map goes fully live with no battle sim: just you, the fleet, the effects language and a free camera.
+    Every gallery frame above came out of this rig.</p>
+    <div class="stud rv">
+      <div>
+        <div class="lead" data-lb data-full="/media/home/st_scene.webp" data-t="Turret-popped M60 — glowing ring, twin smoke columns" data-m="Scene studio · Saltmere Bay set">
+          <img src="/media/home/st_scene.webp" alt="Scene studio — staged wreck with glowing turret ring and smoke columns, panel open" loading="lazy">
+          <div class="cap">
+            <span class="micro"><b>live staging</b> — turret-popped state, ring still glowing</span>
+            <span class="micro num">capture · up to 6144 px</span>
+          </div>
+        </div>
+        <div class="stud-strip">
+          <div class="shot" data-lb data-full="/media/home/st_roster.webp" data-t="Any vehicle in the roster, placeable as an actor" data-m="Scene studio · actor picker">
+            <img src="/media/home/st_roster.webp" alt="Studio actor picker listing the tank roster" loading="lazy">
+            <div class="plate"><span class="t">The whole roster, placeable<small>actor picker</small></span></div>
+          </div>
+          <div class="shot" data-lb data-full="/media/home/st_timeline.webp" data-t="FX timeline — freeze, step +10 ms, play" data-m="Scene studio · fx time control">
+            <img src="/media/home/st_timeline.webp" alt="Studio FX timeline controls with muzzle flash frozen mid-frame" loading="lazy">
+            <div class="plate"><span class="t">Freeze the fireball, step by 10&thinsp;ms<small>fx timeline</small></span></div>
+          </div>
+          <div class="shot" data-lb data-full="/media/home/st_burning.webp" data-t="Six damage states — intact to turret-popped" data-m="Scene studio · damage states">
+            <img src="/media/home/st_burning.webp" alt="Studio scene with burning turret-popped wreck" loading="lazy">
+            <div class="plate"><span class="t">Six damage states, live fire<small>turret-popped · burning</small></span></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3>Compose the shot, then take it.</h3>
+        <p class="d">The studio is a first-class game mode: the chosen battlefield with terrain, vegetation,
+        sky and post all live — <b>no AI, no spotting, no HUD chrome</b> — plus placeable actors with full pose
+        control and the game's real effects language.</p>
+        <div class="spec">
+          <div class="row"><span class="k"><svg class="ic"><use href="#i-tank"/></svg>Actors</span><span class="v">Any vehicle in the roster — hull facing, turret yaw, gun pitch <b>within real spec limits</b>, any camo</span></div>
+          <div class="row"><span class="k"><svg class="ic"><use href="#i-flame"/></svg>Damage states</span><span class="v"><b>Six</b> — intact · engine-smoking · burning · wrecked · wrecked-burnt · turret-popped</span></div>
+          <div class="row"><span class="k"><svg class="ic"><use href="#i-burst"/></svg>Effects</span><span class="v">The battle set, addressable: muzzle flash, tracers, impacts, ammo-rack kills, dust, engine smoke, detrack</span></div>
+          <div class="row"><span class="k"><svg class="ic"><use href="#i-clock"/></svg>FX time</span><span class="v">Studio-owned clock — <b>freeze</b>, scale, step in 10&thinsp;ms increments to catch the exact flash frame</span></div>
+          <div class="row"><span class="k"><svg class="ic"><use href="#i-camera"/></svg>Camera</span><span class="v">Free-fly + orbit, FOV and roll control, shift for 4× — <b>no pointer lock needed</b></span></div>
+          <div class="row"><span class="k"><svg class="ic"><use href="#i-capture"/></svg>Capture</span><span class="v">Hi-res path to <b class="num">6144 px</b> — full post chain, all shadow cascades forced</span></div>
+          <div class="row"><span class="k"><svg class="ic"><use href="#i-scene"/></svg>Scenes</span><span class="v">Round-trippable JSON — <b>identical scene, identical frame</b>, which is how the 30-shot set stays reproducible</span></div>
+        </div>
+        <div class="cta">
+          <a class="btn solid" href="/studio">Open the studio</a>
+          <a class="btn ghost" href="#gallery">What it shot</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="hatch"></div>
+
+<section id="systems" class="field">
+  <div class="wrap">
+    <div class="shead rv">
+      <h2><span class="sic"><svg class="ic"><use href="#i-reticle"/></svg></span><span class="no">04</span>In the fight</h2>
+      <span class="ann">what the demo actually simulates</span>
+    </div>
+    <p class="slede rv">Under the paint is the deep end: plate-level armor with slope and ricochet gates,
+    the real WoT concealment formula, per-module damage and a five-bus sound stage with a radio crew.
+    These frames are pulled straight from play.</p>
+    <div class="sys" id="sysGrid"></div>
+  </div>
+</section>
+
+<section id="fleet">
+  <div class="wrap">
+    <div class="shead rv">
+      <h2><span class="sic"><svg class="ic"><use href="#i-caliper"/></svg></span><span class="no">05</span>The fleet gate</h2>
+      <span class="ann">measured, not eyeballed</span>
+    </div>
+    <p class="slede rv">Every hull is being rebuilt against reference geometry and published dimensions.
+    A tank ships only when it clears the <b>dual gate</b>: every measured component at <b class="num">≥ 90</b>,
+    and an independent critic at <b class="num">≥ 9/10</b> on every view for shaded parity.</p>
+    <div class="gate rv">
+      <div class="g"><span class="gico"><svg class="ic"><use href="#i-packet"/></svg></span><div><div class="n num">93</div><div class="l micro"><b>reference packets</b> · cited dims</div></div></div>
+      <div class="g"><span class="gico"><svg class="ic"><use href="#i-ledger"/></svg></span><div><div class="n num">85</div><div class="l micro"><b>geometry scorecards</b> · live ledger</div></div></div>
+      <div class="g"><span class="gico"><svg class="ic"><use href="#i-gate"/></svg></span><div><div class="n num">3</div><div class="l micro"><b>dual-gate passes</b> · so far</div></div></div>
+      <div class="g"><span class="gico"><svg class="ic"><use href="#i-family"/></svg></span><div><div class="n num">7</div><div class="l micro"><b>families</b> · in the gate loop</div></div></div>
+    </div>
+    <div class="rows rv">
+      <div class="rowi"><span class="no">01</span><span class="t">M60A1 Patton<small>welded hull loft · measured fittings · searchlight rig</small></span><span class="ann">first pass · geometry min <b>90.7</b> · views <b>9/10</b></span></div>
+      <div class="rowi"><span class="no">02</span><span class="t">KV-2<small>the fridge — rebuilt turret rear, machined gear faces</small></span><span class="ann">second pass · geometry min <b>90.2</b> · views <b>9/10</b></span></div>
+      <div class="rowi"><span class="no">03</span><span class="t">M60A3<small>the searchlight variant — cleared the critic in one round</small></span><span class="ann">third pass · geometry min <b>90.0</b> · views <b>9/10</b></span></div>
+      <div class="rowi"><span class="no">04</span><span class="t">Leopard · Merkava · casemates · WWII · UK · misc · T-26 line<small>seven families in the loop — the whole library follows</small></span><span class="ann">in progress</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="hatch"></div>
+
+<section id="kit">
+  <div class="wrap">
+    <div class="shead rv">
+      <h2><span class="sic"><svg class="ic"><use href="#i-shield"/></svg></span><span class="no">06</span>Media kit</h2>
+      <span class="ann">the shield, three ways · click to download</span>
+    </div>
+    <div class="kit rv">
+      <div class="item"><div class="stage grid2"><img src="/brand/logo-mark.svg" alt="colored shield"></div>
+        <div class="meta"><span><b>Shield — colored</b><div class="p">public/brand/logo-mark.svg</div></span><a href="/brand/logo-mark.svg" download><svg class="ic"><use href="#i-dl"/></svg>Download</a></div></div>
+      <div class="item"><div class="stage paper"><img src="/brand/logo-mark-bw.svg" alt="black and white shield"></div>
+        <div class="meta"><span><b>Shield — black &amp; white</b><div class="p">public/brand/logo-mark-bw.svg</div></span><a href="/brand/logo-mark-bw.svg" download><svg class="ic"><use href="#i-dl"/></svg>Download</a></div></div>
+      <div class="item"><div class="stage"><img src="/brand/logo-mark-metal.svg" alt="metal shield"></div>
+        <div class="meta"><span><b>Shield — metal</b><div class="p">public/brand/logo-mark-metal.svg</div></span><a href="/brand/logo-mark-metal.svg" download><svg class="ic"><use href="#i-dl"/></svg>Download</a></div></div>
+      <div class="item"><div class="stage paper"><img src="/brand/logo-full.svg" alt="full lockup"></div>
+        <div class="meta"><span><b>Full lockup</b><div class="p">public/brand/logo-full.svg</div></span><a href="/brand/logo-full.svg" download><svg class="ic"><use href="#i-dl"/></svg>Download</a></div></div>
+      <div class="item"><div class="stage grid2"><img src="/brand/logo-mark-simple.svg" alt="simple mark"></div>
+        <div class="meta"><span><b>Simple mark</b><div class="p">public/brand/logo-mark-simple.svg</div></span><a href="/brand/logo-mark-simple.svg" download><svg class="ic"><use href="#i-dl"/></svg>Download</a></div></div>
+      <div class="item"><div class="stage"><img src="/brand/og-image.png" alt="opengraph image" style="max-height:128px"></div>
+        <div class="meta"><span><b>OpenGraph card</b><div class="p">public/brand/og-image.png</div></span><a href="/brand/og-image.png" download><svg class="ic"><use href="#i-dl"/></svg>Download</a></div></div>
+    </div>
+    <div class="pngrow rv">
+      <span class="micro"><b>Derivatives</b> ·</span>
+      <a href="/brand/favicon.svg" download><img src="/brand/favicon.svg" alt="">favicon.svg</a>
+      <a href="/brand/favicon-32.png" download><img src="/brand/favicon-32.png" alt="">favicon-32</a>
+      <a href="/brand/favicon-192.png" download><img src="/brand/favicon-192.png" alt="">favicon-192</a>
+      <a href="/brand/apple-touch-icon.png" download><img src="/brand/apple-touch-icon.png" alt="">apple-touch-icon</a>
+      <a href="/brand/og-logo.png" download><img src="/brand/og-logo.png" alt="">og-logo</a>
+      <a href="/brand/og-logo-transparent.png" download><img src="/brand/og-logo-transparent.png" alt="">og-logo-transparent</a>
+      <span class="micro">archives: <a href="/brand/v1/logo-mark.svg" style="text-transform:none">v1</a> · <a href="/brand/v2-roundel/logo-mark.svg" style="text-transform:none">v2 roundel</a> · <a href="/brand/v3-shield/logo-mark.svg" style="text-transform:none">v3 shield</a></span>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="bg" aria-hidden="true"></div>
+  <div class="scrim" aria-hidden="true"></div>
+  <div class="wrap inner">
+    <div class="grid">
+      <div class="rv">
+        <h3>Roll <span>out.</span></h3>
+        <p>The whole demo runs in the browser tab you already have open — pick a tank,
+        pick a battlefield, and take the first shot. The studio is one keypress away.</p>
+        <div style="margin-top:26px; display:flex; gap:12px; flex-wrap:wrap;">
+          <a class="btn solid" href="/">Play in browser</a>
+          <a class="btn ghost" href="/studio">Scene studio</a>
+        </div>
+      </div>
+      <div class="idx rv">
+        <a href="#gallery"><span><svg class="ic"><use href="#i-gallery"/></svg>01 The gallery</span><span>shot in engine</span></a>
+        <a href="#battlefields"><span><svg class="ic"><use href="#i-terrain"/></svg>02 Battlefields</span><span>eight maps</span></a>
+        <a href="#studio"><span><svg class="ic"><use href="#i-studio"/></svg>03 The scene studio</span><span>the rig</span></a>
+        <a href="#systems"><span><svg class="ic"><use href="#i-reticle"/></svg>04 In the fight</span><span>the systems</span></a>
+        <a href="#fleet"><span><svg class="ic"><use href="#i-caliper"/></svg>05 The fleet gate</span><span>dual gate</span></a>
+        <a href="#kit"><span><svg class="ic"><use href="#i-shield"/></svg>06 Media kit</span><span>the shield</span></a>
+      </div>
+    </div>
+    <div class="base">
+      <img src="/brand/logo-mark-metal.svg" alt="">
+      <span class="micro">claude of tanks · three.js technology demo · every frame rendered in-engine · shots staged in the scene studio</span>
+    </div>
+  </div>
+</footer>
+
+<div id="lb" role="dialog" aria-modal="true" aria-label="Image viewer">
+  <button class="x" aria-label="Close">×</button>
+  <button class="pv" aria-label="Previous">‹</button>
+  <button class="nx" aria-label="Next">›</button>
+  <figure>
+    <img alt="">
+    <figcaption>
+      <span class="cap-t"><span id="lbT"></span><small id="lbM"></small></span>
+      <span class="cap-n num" id="lbN"></span>
+    </figcaption>
+  </figure>
+</div>
+
+<script type="module">
+// FEATURED_SHOTS is the ONE canonical featured list the game itself uses
+// (boot splash / garage gallery / transitions). The home gallery leads with
+// the two owner-authored studio cuts + the set hero, exactly like the game.
+import { FEATURED_SHOTS } from '/src/ui/featuredShots.js';
+
+/* per-shot metadata for the grid (grade + map from docs/marketing-shots-report.md) */
+const META = {
+  '/media/featured/f6_studio_strv_steinburg_duel.webp': { t: 'Strv 103 street duel', m: 'Steinburg', tag: 'studio cut', span: 's8' },
+  '/media/featured/f7_studio_t90_column_fire.webp':     { t: 'T-90 column under fire', m: 'Verdant Fields', tag: 'studio cut', span: 's4' },
+  '/media/featured/f1_09_winter_lake_duel.webp':        { t: 'Ammo-rack kill on the ice', m: 'Frosthollow', sc: 8.6, tag: 'set hero', span: 's6' },
+  '/media/featured/f3_19_urban_overwatch_church.webp':  { t: 'Church overwatch, golden hour', m: 'Steinburg', sc: 8.2, span: 's6' },
+  '/media/featured/f2_06_desert_hero_kf51.webp':        { t: 'KF51 firing still', m: 'Sirocco Wadi', sc: 8.2, span: 's4' },
+  '/media/featured/f4_20_urban_ruin_brawl.webp':        { t: 'Ruin brawl, crossing tracers', m: 'Steinburg', sc: 8.1, span: 's4' },
+  '/media/featured/f5_01_desert_duel_leclerc_kill.webp':{ t: 'Leclerc duel, ammo-rack fire', m: 'Sirocco Wadi', sc: 8.1, span: 's4' },
+};
+const EXTRA = [
+  { img: '/media/home/g27_verdant_village_brawl.webp', t: 'Past the sandbags, roof burning', m: 'Verdant Fields', sc: 8.0, span: 's6' },
+  { img: '/media/home/g17_urban_street_duel.webp',     t: 'Street duel up the cobbled canyon', m: 'Steinburg', sc: 8.0, span: 's6' },
+  { img: '/media/home/g04_desert_village_brawl.webp',  t: 'Village brawl, ricochet sparks', m: 'Sirocco Wadi', sc: 8.0, span: 's4' },
+  { img: '/media/home/g22_urban_hero_abramsx.webp',    t: 'AbramsX, blast jet on the cobbles', m: 'Steinburg', sc: 8.0, span: 's4' },
+  { img: '/media/home/g10_winter_ram_leo2a6.webp',     t: 'Hull-displacing T-bone', m: 'Frosthollow', sc: 7.8, span: 's4' },
+];
+
+const LEAD = [
+  '/media/featured/f6_studio_strv_steinburg_duel.webp',
+  '/media/featured/f7_studio_t90_column_fire.webp',
+  '/media/featured/f1_09_winter_lake_duel.webp',
+];
+const featured = [
+  ...LEAD.map((img) => FEATURED_SHOTS.find((s) => s.img === img)).filter(Boolean),
+  ...FEATURED_SHOTS.filter((s) => !LEAD.includes(s.img)),
+];
+const GALLERY = [
+  ...featured.map((s) => ({ img: s.img, cap: s.cap, ...(META[s.img] || {}) })),
+  ...EXTRA,
+];
+
+/* ---- gallery grid ---- */
+const grid = document.getElementById('galGrid');
+GALLERY.forEach((g) => {
+  const d = document.createElement('div');
+  d.className = `shot rv ${g.span || 's4'}`;
+  d.setAttribute('data-lb', '');
+  d.setAttribute('data-full', g.img);
+  d.setAttribute('data-t', g.t || g.cap);
+  d.setAttribute('data-m', g.m ? `${g.m}${g.tag ? ' · ' + g.tag : ''}` : (g.cap || ''));
+  d.setAttribute('tabindex', '0');
+  d.setAttribute('role', 'button');
+  d.setAttribute('aria-label', `${g.t || g.cap} — open`);
+  const chip = g.sc ? `<span class="chip num">${g.sc.toFixed(1)}</span>`
+    : (g.tag ? `<span class="chip ghost">${g.tag}</span>` : '');
+  d.innerHTML = `<img loading="lazy" src="${g.img}" alt="${g.t || g.cap}">
+    <div class="plate"><span class="t">${g.t || g.cap}<small>${g.m || ''}${g.tag && g.sc ? ' · ' + g.tag : ''}</small></span>${chip}</div>`;
+  grid.appendChild(d);
+});
+
+/* ---- second production (scenes2, shot 2026-08-02 — sourced fleet only) ---- */
+const P2 = [
+  ['p2_31_desert_wadi_gauntlet',      'Wadi gauntlet — ambushed column', 'Sirocco Wadi'],
+  ['p2_32_desert_rooftop_dive',       'Vertical kill, straight down', 'Sirocco Wadi'],
+  ['p2_33_desert_muzzle_worm',        'Under the muzzle', 'Sirocco Wadi'],
+  ['p2_34_desert_last_stand',         'Last stand at the wall', 'Sirocco Wadi'],
+  ['p2_35_winter_ice_breaker',        'Ice breaker — double kill', 'Frosthollow'],
+  ['p2_36_winter_birch_ambush',       'Ambush over the wreck', 'Frosthollow'],
+  ['p2_37_winter_road_charge',        'Road charge, head-on', 'Frosthollow'],
+  ['p2_38_winter_village_hell',       'Village hell', 'Frosthollow'],
+  ['p2_39_urban_alley_flash',         'Point-blank alley', 'Steinburg'],
+  ['p2_40_urban_overpass_dive',       'The crossing, rolled 20°', 'Steinburg'],
+  ['p2_41_urban_ruin_stalk',          'Rubble stalk', 'Steinburg'],
+  ['p2_42_urban_crossfire_x',         'Crossfire X', 'Steinburg'],
+  ['p2_43_urban_hero_leo2a6',         'Canyon hero — Leopard 2A6', 'Steinburg'],
+  ['p2_44_verdant_hedgerow_breakout', 'Hedgerow breakout', 'Verdant Fields'],
+  ['p2_45_verdant_column_massacre',   'Column massacre', 'Verdant Fields'],
+  ['p2_46_verdant_meadow_duel',       'Over the barrel, dawn range', 'Verdant Fields'],
+  ['p2_47_verdant_farm_siege',        'Farm siege from the eaves', 'Verdant Fields'],
+  ['p2_48_coastal_beach_storm',       'Coast-road column', 'Saltmere Bay'],
+  ['p2_49_coastal_harbor_kill',       'Harbor kill', 'Saltmere Bay'],
+  ['p2_50_coastal_dune_ambush',       'Dune-crest silhouette', 'Saltmere Bay'],
+  ['p2_51_coastal_seafront_duel',     'Seafront duel, telephoto', 'Saltmere Bay'],
+  ['p2_52_autumn_ford_ambush',        'Amber ambush', 'Amberford'],
+  ['p2_53_autumn_gold_inferno',       'Gold inferno', 'Amberford'],
+  ['p2_54_autumn_orchard_stand',      'Orchard stand', 'Amberford'],
+  ['p2_55_steppe_horizon_charge',     'Horizon charge', 'Tarkhan Steppe'],
+  ['p2_56_steppe_khutor_brawl',       'Khutor brawl', 'Tarkhan Steppe'],
+  ['p2_57_steppe_windbreak_snipe',    'Windbreak snipe', 'Tarkhan Steppe'],
+  ['p2_58_railyard_container_gauntlet','Container gauntlet', 'Cinder Junction'],
+  ['p2_59_railyard_crane_dive',       'Gantry dive', 'Cinder Junction'],
+  ['p2_60_railyard_sodium_dusk',      'Sodium dusk — the set closer', 'Cinder Junction'],
+];
+const grid2 = document.getElementById('galGrid2');
+P2.forEach(([f, t, m]) => {
+  const img = `/media/home/${f}.webp`;
+  const d = document.createElement('div');
+  d.className = 'shot rv';
+  d.setAttribute('data-lb', '');
+  d.setAttribute('data-full', img);
+  d.setAttribute('data-t', t);
+  d.setAttribute('data-m', `${m} · second production`);
+  d.setAttribute('tabindex', '0');
+  d.setAttribute('role', 'button');
+  d.setAttribute('aria-label', `${t} — open`);
+  d.innerHTML = `<img loading="lazy" src="${img}" alt="${t} — ${m}">
+    <div class="plate"><span class="t">${t}<small>${m}</small></span></div>`;
+  grid2.appendChild(d);
+});
+
+/* ---- hero slideshow (ken burns crossfade over the same featured set) ---- */
+const SLIDES = GALLERY.slice(0, 5);
+const stage = document.getElementById('heroStage');
+const lys = stage.querySelectorAll('.ly');
+const cap = document.getElementById('heroCap');
+let si = 0, active = 0;
+function showSlide(i) {
+  const next = 1 - active;
+  lys[next].style.backgroundImage = `url("${SLIDES[i].img}")`;
+  lys[next].classList.remove('kbA', 'kbB');
+  void lys[next].offsetWidth;
+  lys[next].classList.add(i % 2 ? 'kbB' : 'kbA', 'on');
+  lys[active].classList.remove('on');
+  active = next;
+  cap.innerHTML = `<b>${SLIDES[i].m || ''}</b> — ${SLIDES[i].t || SLIDES[i].cap}`;
+}
+showSlide(0);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (!reduced) setInterval(() => { si = (si + 1) % SLIDES.length; showSlide(si); }, 6400);
+
+/* ---- battlefields ---- */
+const BIOMES = [
+  { img: '/media/featured/f2_06_desert_hero_kf51.webp', tag: 'Desert', ic: 'i-b-desert', name: 'Sirocco Wadi', d: 'adobe · mesa · palm lines' },
+  { img: '/media/home/g10_winter_ram_leo2a6.webp',      tag: 'Winter', ic: 'i-b-winter', name: 'Frosthollow', d: 'alpine ring · black ice' },
+  { img: '/media/featured/f4_20_urban_ruin_brawl.webp', tag: 'Urban',  ic: 'i-b-urban', name: 'Steinburg', d: 'cobbled canyons · golden hour' },
+  { img: '/media/home/g27_verdant_village_brawl.webp',  tag: 'Grassland', ic: 'i-b-verdant', name: 'Verdant Fields', d: 'wheat · hedgerows · villages' },
+];
+const bio = document.getElementById('bioGrid');
+BIOMES.forEach((b) => {
+  const a = document.createElement('div');
+  a.className = 'map';
+  a.setAttribute('data-lb', '');
+  a.setAttribute('data-full', b.img);
+  a.setAttribute('data-t', b.name);
+  a.setAttribute('data-m', `${b.tag} · ${b.d}`);
+  a.setAttribute('tabindex', '0');
+  a.setAttribute('role', 'button');
+  a.setAttribute('aria-label', `${b.name} — open`);
+  a.innerHTML = `<span class="tag"><svg class="ic"><use href="#${b.ic}"/></svg>${b.tag}</span><img loading="lazy" src="${b.img}" alt="${b.name} — ${b.tag}">
+    <div class="bar"><span class="t">${b.name}</span><span class="micro">${b.d}</span></div>`;
+  bio.appendChild(a);
+});
+
+/* all eight, with the map cards the game's loading screens use */
+const MAPS = [
+  ['verdant',  'Verdant Fields',  'Rolling grassland, hedgerows and a road-junction village', 'i-b-verdant'],
+  ['desert',   'Sirocco Wadi',    'Sun-baked dunes, red mesas and an adobe crossroads village', 'i-b-desert'],
+  ['winter',   'Frosthollow',     'Snowbound farmland, bare birch stands and a frozen lake', 'i-b-winter'],
+  ['urban',    'Steinburg',       'Dense town grid — paved streets, rowhouses, rubble cover', 'i-b-urban'],
+  ['coastal',  'Saltmere Bay',    'Turquoise bay, dune-backed strand and a fishing village', 'i-b-coastal'],
+  ['autumn',   'Amberford',       'Fall-gold broadleaf valley, a fording river and hill farms', 'i-b-autumn'],
+  ['steppe',   'Tarkhan Steppe',  'Golden grassland — long sightlines, folds, windbreak lines', 'i-b-steppe'],
+  ['railyard', 'Cinder Junction', 'Brownfield rail depot — warehouses, containers, gravel flats', 'i-b-rail'],
+];
+const atlas = document.getElementById('atlas');
+MAPS.forEach(([id, name, d, ic]) => {
+  const el = document.createElement('div');
+  el.className = 'post rv';
+  el.innerHTML = `<img loading="lazy" src="/maps/${id}.png" alt="${name}">
+    <div class="meta"><div class="t">${name}<svg class="ic"><use href="#${ic}"/></svg></div><div class="d">${d}</div></div>`;
+  atlas.appendChild(el);
+});
+
+/* ---- combat systems ---- */
+const SYS = [
+  { img: '/media/home/ui_garage.webp', k: 'the garage', ic: 'i-garage', t: '102 hulls on the pedestal',
+    d: 'Full 360° orbit, era-filtered carousel, per-map <b>camouflage</b> that feeds the real concealment math, equipment loadouts and the tech tree.',
+    m: 'Garage · Leopard 2A6' },
+  { img: '/media/home/ui_roster.webp', k: '7v7 battles', ic: 'i-vs', t: 'Tier-balanced teams, per-class doctrine',
+    d: 'Heavies lead and hull-angle, flankers slip cover between enemy reloads, TDs shoot-and-scoot, scouts kite and <b>spot-feed</b> the line.',
+    m: 'Battle load · Verdant Fields' },
+  { img: '/media/home/ui_sniper.webp', k: 'the gunnery model', ic: 'i-shell', t: 'Every shot is a real solve',
+    d: 'Slope, normalization and <b>ricochet gates</b>; composite RHAe, ERA and HEAT standoff; five shell types with WoT-order RNG. The panel shows the roll.',
+    m: 'Sniper mode · penetration readout' },
+  { img: '/media/home/ui_killcam.webp', k: 'killcam x-ray', ic: 'i-xray', t: 'The autopsy, every time',
+    d: 'Destruction beats live — detonation flash, turret toss, slow-mo — then the <b>x-ray</b>: entry channel, module hits, and the exact plate that failed.',
+    m: 'Killcam · hull side lower, ammo rack' },
+  { img: '/media/home/ui_battle.webp', k: 'a scarred field', ic: 'i-smoke', t: 'Wrecks burn where they died',
+    d: 'Smoke columns mark the kills across the map. Ammo-rack cooks throw the turret; engine kills bleed <b>black smoke</b> until the fire takes.',
+    m: 'Verdant Fields · mid-battle' },
+  { img: '/media/home/ui_aar.webp', k: 'after-action report', ic: 'i-report', t: 'The battle, itemized',
+    d: 'Credits and XP, damage dealt and blocked, spots, <b>best shot</b> with shell, target and distance — and both team tables, kill by kill.',
+    m: 'Victory screen · Verdant Fields' },
+];
+const sys = document.getElementById('sysGrid');
+SYS.forEach((s) => {
+  const d = document.createElement('div');
+  d.className = 'card rv';
+  d.innerHTML = `<div class="im" data-lb data-full="${s.img}" data-t="${s.t}" data-m="${s.m}" tabindex="0" role="button" aria-label="${s.t} — open">
+      <img loading="lazy" src="${s.img}" alt="${s.m}"></div>
+    <div class="tx"><div class="k"><svg class="ic"><use href="#${s.ic}"/></svg>${s.k}</div><div class="t">${s.t}</div><div class="d">${s.d}</div></div>`;
+  sys.appendChild(d);
+});
+
+/* ---- lightbox ---- */
+const lb = document.getElementById('lb');
+const lbImg = lb.querySelector('img');
+const lbT = document.getElementById('lbT');
+const lbM = document.getElementById('lbM');
+const lbN = document.getElementById('lbN');
+let items = [], idx = 0, lastFocus = null;
+function collect() {
+  items = [...document.querySelectorAll('[data-lb]')].map((el) => ({
+    src: el.getAttribute('data-full'), t: el.getAttribute('data-t') || '', m: el.getAttribute('data-m') || '', el,
+  }));
+}
+function openLb(i) {
+  collect();
+  idx = i; lastFocus = document.activeElement;
+  render();
+  lb.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  lb.querySelector('.x').focus();
+}
+function render() {
+  const it = items[idx];
+  lbImg.src = it.src; lbImg.alt = it.t;
+  lbT.textContent = it.t; lbM.textContent = it.m;
+  lbN.textContent = `${String(idx + 1).padStart(2, '0')} / ${String(items.length).padStart(2, '0')}`;
+  [1, -1].forEach((d) => { const n = items[(idx + d + items.length) % items.length]; new Image().src = n.src; });
+}
+function closeLb() {
+  lb.classList.remove('open');
+  document.body.style.overflow = '';
+  if (lastFocus) lastFocus.focus();
+}
+function step(d) { idx = (idx + d + items.length) % items.length; render(); }
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-lb]');
+  if (t) { collect(); openLb(items.findIndex((it) => it.el === t)); }
+});
+document.addEventListener('keydown', (e) => {
+  const t = e.target.closest && e.target.closest('[data-lb]');
+  if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); collect(); openLb(items.findIndex((it) => it.el === t)); return; }
+  if (!lb.classList.contains('open')) return;
+  if (e.key === 'Escape') closeLb();
+  else if (e.key === 'ArrowRight') step(1);
+  else if (e.key === 'ArrowLeft') step(-1);
+});
+lb.querySelector('.x').addEventListener('click', closeLb);
+lb.querySelector('.pv').addEventListener('click', () => step(-1));
+lb.querySelector('.nx').addEventListener('click', () => step(1));
+lb.addEventListener('click', (e) => { if (e.target === lb) closeLb(); });
+
+/* ---- reveal on scroll ---- */
+const io = new IntersectionObserver((es) => {
+  es.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+}, { rootMargin: '0px 0px -8% 0px', threshold: 0.04 });
+document.querySelectorAll('.rv').forEach((el) => io.observe(el));
+
+/* ---- scrollspy ---- */
+const links = [...document.querySelectorAll('nav.top .links a.lnk')];
+const spy = new IntersectionObserver((es) => {
+  es.forEach((en) => {
+    if (!en.isIntersecting) return;
+    const id = '#' + en.target.id;
+    links.forEach((l) => l.classList.toggle('on', l.getAttribute('href') === id));
+  });
+}, { rootMargin: '-30% 0px -55% 0px' });
+['gallery', 'battlefields', 'studio', 'systems', 'fleet', 'kit'].forEach((id) => {
+  const el = document.getElementById(id);
+  if (el) spy.observe(el);
+});
+</script>
+</body>
+</html>

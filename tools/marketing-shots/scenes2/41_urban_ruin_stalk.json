@@ -1,0 +1,78 @@
+{
+  "map": "urban",
+  "seed": 6141,
+  "actors": [
+    {
+      "id": "t90a",
+      "name": "pyre",
+      "pos": [
+        58,
+        -16
+      ],
+      "facingDeg": 205,
+      "turretDeg": 60,
+      "state": "wrecked-burnt",
+      "stateAgeS": 260,
+      "burning": true
+    },
+    {
+      "id": "leo2a7v",
+      "name": "crosser",
+      "pos": [
+        24,
+        -17
+      ],
+      "facingDeg": 88,
+      "turretDeg": 14,
+      "gunDeg": 0.5,
+      "camo": "urbanblock",
+      "camoSeed": 411
+    }
+  ],
+  "effects": [
+    {
+      "type": "engine_smoke",
+      "actor": "pyre",
+      "tMs": 0
+    },
+    {
+      "type": "dust",
+      "at": [
+        18,
+        -18
+      ],
+      "tMs": 2550,
+      "params": {
+        "count": 12,
+        "intensity": 1,
+        "dirDeg": 268
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "crosser",
+      "tMs": 2875,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      6,
+      1.1,
+      -28
+    ],
+    "lookAt": [
+      42,
+      2.2,
+      -15
+    ],
+    "groundRel": true,
+    "fov": 38,
+    "rollDeg": -3
+  },
+  "fxTime": 2900,
+  "timeScale": 0
+}

@@ -1,0 +1,78 @@
+{
+  "map": "winter",
+  "seed": 6136,
+  "actors": [
+    {
+      "id": "t90a",
+      "name": "pyre",
+      "pos": [
+        -26,
+        -36
+      ],
+      "facingDeg": 318,
+      "turretDeg": 40,
+      "state": "turret-popped",
+      "stateAgeS": 220,
+      "burning": true
+    },
+    {
+      "id": "challenger1",
+      "name": "advancer",
+      "pos": [
+        -21,
+        -12
+      ],
+      "facingDeg": 192,
+      "turretDeg": 4,
+      "gunDeg": 0.5,
+      "camo": "winter",
+      "camoSeed": 361
+    }
+  ],
+  "effects": [
+    {
+      "type": "engine_smoke",
+      "actor": "pyre",
+      "tMs": 0
+    },
+    {
+      "type": "dust",
+      "at": [
+        -22,
+        -6
+      ],
+      "tMs": 2550,
+      "params": {
+        "count": 12,
+        "intensity": 1,
+        "dirDeg": 12
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "advancer",
+      "tMs": 2872,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -30.5,
+      1.8,
+      -45
+    ],
+    "lookAt": [
+      -22.5,
+      2.2,
+      -24
+    ],
+    "groundRel": true,
+    "fov": 42,
+    "rollDeg": -4
+  },
+  "fxTime": 2900,
+  "timeScale": 0
+}
