@@ -3793,6 +3793,14 @@ export function createTank(specId, engineCtx, opts = {}) {
   let popT = 0;
   let popYaw0 = 0;
   let popTrailAcc = 0;               // trail emission cursor along the arc
+  // Pre-wreck turret seat, captured at setDestroyed time. The spec's
+  // armor.turretPivot is only where the PROCEDURAL turret sits — a GLB swap
+  // re-seats turretG on the model's real ring (t90m: y 1.607 z -1.042 vs
+  // spec 1.4/0.15). The pop arc, settle pose and resetDestroyed all key off
+  // this captured seat so GLB turrets launch from and restore to their true
+  // mount (killcam r3 made the old spec-pivot restage visibly ~1.2 m off).
+  const wreckSeat = new THREE.Vector3(
+    armor.turretPivot[0], armor.turretPivot[1], armor.turretPivot[2]);
   // r5: V0 6.2 -> 12.2 tossed the turret ~5.5 m up — r6 critic: "reads as a
   // tiny bird-like speck for its whole flight ... never lands readable".
   // 8.4 m/s peaks ~2.6 m over the ring (inside/just above the fireball crown
@@ -3815,8 +3823,8 @@ export function createTank(specId, engineCtx, opts = {}) {
     // drooping — the WoT wreck read. Plain kills stay "just unseated".
     turretG.rotation.z = 0.42 * popScale + 0.03;
     turretG.rotation.y = popYaw0 + 0.09 + 0.85 * popScale;
-    turretG.position.y = armor.turretPivot[1] + POP_SETTLE_Y * popScale - 0.04;
-    turretG.position.x = 1.30 * popScale;
+    turretG.position.y = wreckSeat.y + POP_SETTLE_Y * popScale - 0.04;
+    turretG.position.x = wreckSeat.x + 1.30 * popScale;
     gunG.rotation.x = 0.10 + 0.12 * popScale; // tube dropped, muzzle to dirt
     popActive = false;
   }
@@ -3847,9 +3855,9 @@ export function createTank(specId, engineCtx, opts = {}) {
         const a = popArcAt(popTrailAcc, v0);
         if (a.h <= settleY) break;
         _popV.set(
-          a.x + (rng() - 0.5) * 0.3,
-          armor.turretPivot[1] + a.h + 0.2,
-          armor.turretPivot[2] + (rng() - 0.5) * 0.3,
+          wreckSeat.x + a.x + (rng() - 0.5) * 0.3,
+          wreckSeat.y + a.h + 0.2,
+          wreckSeat.z + (rng() - 0.5) * 0.3,
         ).applyEuler(root.rotation).add(root.position);
         emitPopTrail(_popV.x, _popV.y, _popV.z,
           Math.max(0, 1 - popTrailAcc * 0.75), -(t - popTrailAcc));
@@ -3857,10 +3865,10 @@ export function createTank(specId, engineCtx, opts = {}) {
     }
     const h = v0 * t - 0.5 * POP_G * t * t;
     if (h <= settleY && t > 0.12 / Math.max(popScale, 0.2)) { settleTurret(); return; }
-    turretG.position.y = armor.turretPivot[1] + Math.max(h, settleY);
+    turretG.position.y = wreckSeat.y + Math.max(h, settleY);
     // r6: lateral drift 0.6 -> 1.3 m — the tumbling silhouette separates
     // from the smoke column and the settle pose lands where the arc points
-    turretG.position.x = popArcAt(t, v0).x;
+    turretG.position.x = wreckSeat.x + popArcAt(t, v0).x;
     turretG.rotation.y = popYaw0 + POP_SPIN * popScale * t;
     turretG.rotation.z = Math.min(0.16 + t * 0.45, 0.7) * popScale;
     gunG.rotation.x = Math.min(0.12 + t * 0.25, 0.3);
@@ -4202,6 +4210,11 @@ export function createTank(specId, engineCtx, opts = {}) {
       burnU.uBurnEmber.value = 0.10 + 0.85 * Math.exp(-ageS0 / 8);
       mats.burnt.emissiveIntensity = 0.035 + 0.55 * Math.exp(-ageS0 / 8);
       gunG.rotation.x = 0.12; // gun droops on any death
+      // capture the LIVE turret seat on the intact->destroyed edge (GLB
+      // swaps re-seat turretG off the spec pivot; see wreckSeat note). The
+      // early `if (destroyed) return` guarantees this runs once per wreck,
+      // before the pop mutates the position.
+      wreckSeat.copy(turretG.position);
       popYaw0 = turretG.rotation.y;
       // r2: EVERY kill plays the pop arc — full ammo-rack toss (popScale 1)
       // or a low ~20% jolt on plain kills that unseats the turret and drops
@@ -4233,7 +4246,11 @@ export function createTank(specId, engineCtx, opts = {}) {
           mesh.visible = wasVisible !== false;
         }
         for (const d of decalMeshes) d.visible = true;
-        turretG.position.set(armor.turretPivot[0], armor.turretPivot[1], armor.turretPivot[2]);
+        // restore the CAPTURED pre-wreck seat, never spec.armor.turretPivot —
+        // the spec pivot is only where the procedural turret sits; a GLB
+        // swap seats turretG on the model's real ring (t90m restaged 1.21 m
+        // off before this, clearly visible in the killcam r3 intact beat).
+        turretG.position.copy(wreckSeat);
         turretG.rotation.set(0, 0, 0);
         gunG.rotation.x = 0;
       }
