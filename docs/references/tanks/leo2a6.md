@@ -384,3 +384,10 @@ Round lessons (mechanics worth keeping):
   (pale detail ring + dark groove) survives any patch.
 - Rear-plate furniture legality bands: z >= -3.626 free (wall column
   bottom 1.13), deeper-than--3.627 content must stay y 1.373..1.771.
+
+## Shaded-parity r2 (2026-08-02) — FAIL min 7.0 (was 6.5); gate holds 91.0
+Work order: docs/critique/shaded-parity-leo2a6-r2.md. FIXED: end caps,
+rack, fan slab, gun. NOT FIXED: hatch rings (must READ raised from top —
+wide flat contrast ring is the silhouette-neutral path). FLEET LESSON
+banked: retones keep overshooting WARM (2nd tank) — match ref HUE family
+by pixel sampling, luminance ratio alone is insufficient.
