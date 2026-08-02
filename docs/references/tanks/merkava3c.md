@@ -181,3 +181,7 @@ carriers). Final 3C-only deltas beyond the shared re-lay: bellyMidX 1.10
 1.09 / R 0.15 (its cupola ring must clear the x 0.87 column the 3B ref
 fills), left-band notch step { -0.535..-0.455, top 2.59 } (ref: 2.51 at
 -0.55, 2.59 at -0.49..-0.53), hem lip bot 0.72 (3B: 0.62).
+
+## Shaded-parity r1 (2026-08-02) — FAIL min 7.0 (geometric 90.5 stands)
+Shared work order: docs/critique/shaded-parity-merkava3bc-r1.md. 3C extras:
+Kasag/pot gesture present but toy-scaled — bring to the ref's mass.

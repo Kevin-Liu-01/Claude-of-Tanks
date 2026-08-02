@@ -373,3 +373,10 @@ and the gun tube read as true circles; the ring tub is fully hidden
 inside the hull from every exterior view. Sibling gate run: merkava1b
 62.5 / 2b 39.9 / 2d 34.9 / 3d 67.8 / 4b 34.6 — bit-identical to the
 required baselines, zero regression.
+
+## Shaded-parity r1 (2026-08-02) — FAIL min 7.0 (geometric 90.5 stands)
+Work order: docs/critique/shaded-parity-merkava3bc-r1.md (shared with 3C).
+Headline: slab turret front (needs wedge cheeks + boxy mantlet depth
+volumes), container-wall rear (needs low baskets + chain curtain),
+missing cupola rings/pintle MGs (circularity law), olive/blue palette off
+the ref's pale sand, scalloped skirts.
