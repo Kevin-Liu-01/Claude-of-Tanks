@@ -193,7 +193,11 @@ const USERDROP3_SPECS = {
       // overlay composite + the procedural stand-in while the GLB streams)
       scheme: 'nato', base: '#49543c', weather: '#515e44',
       patches: ['#23261f', '#4a3a2c'],
-      marking: 'cross', number: '51', trackWidthM: 0.65, camoScale: 0.5,
+      // camoScale 0.5 → 0.34 (visual r1 #8 "blotch edge-hardness": the finer
+      // 0.5 mapping shrank the blotches ~1.5x vs the ref's sweeping woodland
+      // bands and rendered their edges texel-crisp; the fleet-default 0.34
+      // magnifies the same texture — larger patches, softer sampled edges).
+      marking: 'cross', number: '51', trackWidthM: 0.65, camoScale: 0.34,
     },
   },
 };

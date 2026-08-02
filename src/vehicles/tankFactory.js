@@ -881,7 +881,10 @@ function buildRunningGear(P, cfg) {
     segsT.push({ z: a[0], y: a[1], tz: dz / sl, ty: dy / sl, l: sl, c0: loopLen });
     loopLen += sl;
   }
-  const nLinks = Math.max(24, Math.round(loopLen / 0.165));
+  // cfg.linkPitchM opt-in (leopard-family visual round): per-tank shoe pitch
+  // for fine modern link runs; the 0.165 default keeps every existing tank's
+  // instancing byte-identical.
+  const nLinks = Math.max(24, Math.round(loopLen / (cfg.linkPitchM ?? 0.165)));
   const lp = loopLen / nLinks;
   const shoe = trackShoeGeometries(trackW,lp);
   P.disposables.push(shoe.pad,shoe.inner);
