@@ -153,3 +153,108 @@ Standing: min 54.2 -> 75.3 (hull 81.8 / whole 77.1 / turret 75.3 /
 stations 76.6 / dims 99.8 / floaters 100). Residuals: dome band 2.81-2.87
 capped at 2.66 (~18 side cols, certified stature); short-gun cover
 (oracle M64 +4.06 vs published-true 4.39); stations s11/s12 window luck.
+
+### Push-round stylization audit (2026-08-02, merkava agent) — STOP: WARP REQUIRED
+Gate v11 standing at audit: hull 81.5 / whole 75.2 / turret 62.5 /
+stations 81.2 / dims 100 / floaters 100 (min 62.5; the v10->v11 gate
+re-measure alone moved turret 75.3 -> 62.5 on the unchanged build).
+Fresh 96-col workorder + full 384 world-curve probe (probe-merkava1b.
+json). NO build changes this round — the print fails the >2% rule on
+three axes; per the push rule the warp spec is reported instead of
+chased:
+- OVERALL axis: ref whole -4.063..+4.053 = 8.116 vs committed 8.63 ->
+  **-6.0%** (short M64, muzzle +4.053 vs published-true ~+4.39).
+- HEIGHT axis: ref p95 side-top 2.823 vs published 2.65 -> **+6.5%**,
+  STRUCTURAL: 45 contiguous cols z -1.58..-0.49 tops 2.702-2.872 +
+  whip-can pot band 2.848 @ -2.31..-2.36 + 2.726 @ -2.17 — far beyond
+  the p95 spike budget (only the two whips are spike-class).
+- BODY axis: ref hull mask -4.063..+3.178 = 7.241 vs published 7.45 ->
+  **-2.8%** (12%-body read 6.999/-6.1%).
+- Width 3.670 (-0.8%) — safeScale anchor, untouched. Whips: front
+  trace x -0.857..-0.871 (top 4.815) and +0.788..+0.802 (top 4.856) —
+  the build's -0.85/+0.80 seats are already on-column.
+The 62.5 turret / 75.2 whole binders decompose as ~2/3 stylization
+(dome band ~17 side cols vs the 2.62-2.66 cap; 4-5 ONLY-PROC published-
+muzzle cols 4.10..4.39; pot band 2.85 vs 2.64 cap) and ~1/3 honest
+mis-lays banked below.
+
+#### Warp spec (batch-15 candidate — same sanction/mechanism as batch 14)
+vertex-normalize PLANS entry (gate meters; 384-probe landmarks —
+re-derive exact literals from the extract's hullMask replica per the
+batch-14 precedent):
+```
+merkava1b: { // +6.5% dome-band stature (max 2.872), -2.8% body, -6.0% overall (short M64)
+  y: [[0, 0], [2.50, 2.50], [2.872, 2.65]],
+  z: [[-4.063, -4.1675], [3.178, 3.2825], [4.053, 4.4625]],
+  yTopMax: 3.50,
+},
+```
+z: body -4.063..3.178 -> 7.45 span about the preserved center -0.4425
+(slope 1.0289); barrel zone slope 1.349; muzzle lands tail'+8.63 =
+4.4625. NOTE: sources give overall 8.30-8.65 — the warp targets the
+COMMITTED game dims row (userdrops5 make(): 8.63), which dims scores
+against. y: deck true to 2.50 (slope 1); band 2.872 -> 2.65; whips
+4.815/4.856 ride the last zone to ~3.43-3.45 (re-tune post-warp).
+The oracle sits ~0.44 m rearward in its own frame — irrelevant to the
+center-preserved warp. Prerequisite REG entry in tools/vertex-extract.
+mjs (extract currently FAILS — no entry):
+```
+merkava1b: {
+  path: 'public/models/tanks/community/recovered/merkava1b.glb',
+  turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+  pubDims: { hullLengthM: 7.45, overallLengthM: 8.63, widthM: 3.70, heightM: 2.65 },
+},
+```
+Chain the _axis_warp after the batch-4 (no-op) repair entry, standard
+idempotency contract.
+
+#### Post-warp work order (measured this round; x and y<2.5 values are
+warp-invariant, z quoted RAW — body map z' = -0.4425 + (z+0.4425)*1.0289):
+1. BASKET REAR RIM (top honest turret deficit): ref rim FALLS 2.459 ->
+   2.386 over z -2.5..-3.4 (2.406 @ -3.09, 2.381 @ -3.38) vs build
+   basket top 2.48 rising to topRear 2.64 — the v10 "rim RISES to 2.64"
+   read is dead (v11 gate and 384 probe agree it falls). Whole rear
+   stack ~0.15 proud through -2.5..-3.4 (build 2.576-2.624). Fix:
+   basket top ~2.46 falling to ~2.40, re-check stations s0-s2 widths.
+2. BOW POST BAND: the hullLength carrier post (x -0.60, z 3.40, band
+   [0.97..1.10]) puts a proc-only 0.948 BOTTOM under the ref's bare
+   sleeve cols at z 3.32-3.42 — err 0.486 x2, the two worst finite
+   side_whole cols. Post-warp the ref body grows to ~3.28: re-anchor
+   hullLength on ref content and reshape/relocate the carrier so the
+   side_whole bot mismatch dies (sub-threshold band tucked at the
+   sleeve line, or ride the pods).
+3. TAIL PINS: ONLY-PROC at -4.16/-4.26 (side_whole+hull); ref tail
+   content ends -4.06 (post-warp -4.17 — the pins nearly land;
+   re-quantize against the fresh workorder).
+4. MANTLET DRUM: ref band bot 1.871 at z 1.09 vs build 1.701 — 0.17
+   too deep (ref mantlet band [1.87..2.11] over 0.9..1.9).
+5. FRONT FENDER CORNERS: ref ±1.80-1.84 carries mud-flap content DOWN
+   to 0.65-0.73 under a lip [1.13..1.29] vs the build's floating
+   [1.22..1.37] lip band (front err 0.30 x2) — drop a flap band, thin
+   the lip.
+6. RIGHT-FRONT FURNITURE BAND: ref x +1.282..+1.378 tops 2.649-2.662
+   (build 2.33-2.40 there; the x 1.33 pot may be seated too far
+   inboard/low — re-trace at 1024 post-warp).
+7. TURRET PLAN ASYMMETRY: left max -1.30 (corner z -0.69..-0.81), right
+   +1.373 (z -0.90..-1.10); left basket runs to -3.55 at x -1.03..-1.06
+   vs right -3.33 at +1.01 (build basketXoff -0.055 direction correct,
+   taper differs — plan errs 0.10-0.17 at x -0.42..-0.62/+0.45..+1.03).
+8. 384-vs-1024 CAUTION: the saddle/dome-boundary gate cols read ~0.26
+   higher than the 384 probe at z -0.37 (gate 2.624 vs probe 2.362) —
+   tune the saddle/shoulder against the 1024 gate rows only.
+9. NO RING TUB on this print: ref turret-mask min bot 1.462 (batch-4
+   carve clean); r8 ringTub.stepY class N/A (no tub authored — config
+   verified this round).
+Verification after warp: expect overall' 8.63 / body' 7.45 / p95' ~2.65
+/ whips' ~3.43-3.45; fresh workorder mandatory before any re-lay.
+
+#### Round record (2026-08-02): before = after (audit round, no build edits)
+hull 81.5 / whole 75.2 / turret 62.5 / stations 81.2 / dims 100 /
+floaters 100, bit-identical on the post-audit verification run.
+Siblings held bit-identical (3d 67.8 / 2b 39.9 / 2d 34.9 / 4b 34.6);
+graduates hash-verified (3b 5296950a, 3c 5287233e). Board re-rendered
++ read (IoU total 82.1, top 96.9, tracks 97.0): orientation truth,
+full articulation strip, no floaters; the proc rear basket rim visibly
+rides high vs the ref's falling rim — work-order item 1. NEXT =
+orchestrator runs REG + extract + batch-15 warp, then the family push
+round re-lays to the normalized print (work order above).

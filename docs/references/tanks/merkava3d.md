@@ -101,3 +101,120 @@ carries a symmetric fwd~2.67 anomaly at |x|~0.25 (unidentified mesh, cf.
 pass. Standing min 40.4 -> 38.4 (hull 64.9 / whole 58.0 / turret 38.4 /
 stations 74.0 / dims 100) — turret -2 pending the measured pass; hull
 row unchanged (its certified bustle-in-hull cap).
+
+### Push-round stylization audit (2026-08-02, merkava agent) — STOP: WARP REQUIRED
+Gate v11 standing at audit: hull 82.4 / whole 67.8 / turret 68.1 /
+stations 82.5 / dims 100 / floaters 100 (min 67.8). Fresh 96-col
+workorder + full 384 world-curve probe (tools/tmp-merkava-probe.mjs
+--id=merkava3d; scratchpad probe-merkava3d.json). NO build changes this
+round — the print fails the >2% stylization rule on two axes and the
+push rule says report the warp, not chase it:
+- OVERALL axis: ref whole span -4.136..+4.134 = 8.270 vs published 9.04
+  -> **-8.5%** (fused-short MG251, muzzle +4.134 — identical class to
+  pre-warp 3B/3C, same sculpt family).
+- HEIGHT axis: ref p95 side-top 2.801 vs published 2.66 -> **+5.3%**,
+  STRUCTURAL: 49 contiguous cols z -1.47..-0.23 top 2.700-2.826, plus
+  rear zones -2.18..-2.26 @2.750, -2.46..-2.51 @2.801-2.826,
+  -2.94..-2.97 @2.852 — far beyond the 2-3-col p95 spike budget.
+- BODY axis: ref hull mask -4.136..+3.322 = 7.458 (**-1.9%**, inside
+  tolerance; the 12%-threshold body read 7.256/-4.5% is depressed by the
+  thin tail rails). Width 3.678 (-1.1%) — safeScale anchor, untouched.
+- Whips: ONE whip, front trace x 0.198..0.211, top 4.826 (side z
+  -3.17..-3.20).
+The 67.8/68.1 whole/turret binders decompose as ~60% stylization-bound
+(6 ONLY-PROC side gun cols 4.24..4.74 vs ref muzzle 4.13; the capped
+2.66 line under the ref 2.70-2.85 band) and ~40% honest mis-lays banked
+below as the POST-WARP work order.
+
+#### Warp spec (batch-15 candidate — same sanction/mechanism as batch 14)
+vertex-normalize PLANS entry (gate meters; landmarks are 384-probe reads
+— re-derive exact literals from the extract's own hullMask replica per
+the batch-14 precedent):
+```
+merkava3d: { // +5.3% stature band (max 2.852), -1.9% body, -8.5% overall (short gun)
+  y: [[0, 0], [2.50, 2.50], [2.852, 2.66]],
+  z: [[-4.136, -4.207], [3.322, 3.393], [4.134, 4.833]],
+  yTopMax: 3.60,
+},
+```
+z: body -4.136..3.322 -> 7.60 span about the preserved center -0.407
+(slope 1.0190); barrel zone forward of the nose, slope 1.773, muzzle
+lands tail'+9.04 = 4.833. y: ground/deck true to 2.50 (slope 1); band
+2.852 -> published 2.66; whip 4.831 rides the last zone to ~3.56
+(re-tune build whip in the post-warp round). Prerequisite REG entry in
+tools/vertex-extract.mjs (extract currently FAILS — no entry):
+```
+merkava3d: {
+  path: 'public/models/tanks/community/recovered/merkava3d.glb',
+  turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+  pubDims: { hullLengthM: 7.60, overallLengthM: 9.04, widthM: 3.72, heightM: 2.66 },
+},
+```
+(= the userdrops5 articulated() default; the follower regexes affect
+hull/turret split only, not dims.) Chain the _axis_warp after the
+batch-4 node repair, standard idempotency contract.
+
+#### Post-warp work order (measured this round; x and y<2.5 values are
+warp-invariant, z values quoted RAW — body-zone map z' = -0.407 +
+(z+0.407)*1.019):
+1. TURRET PLAN WIDTH (4 ONLY-REF plan cols, the largest honest deficit):
+   the Dor-Dalet side modules reach x ±1.79 vs build plates x1 1.58.
+   Ref module plan (probe): fwd edge x 1.408 -> z +0.28 / 1.535 -> -0.03
+   / 1.662 -> -0.36 / 1.738 -> -0.74 / 1.763 -> -1.12; rear edge -2.54
+   @1.41 -> -2.23 @1.71 -> -1.30 @1.76 (RIGHT side; LEFT differs: fwd
+   -1.408 -> 0.00 / -1.662 -> -0.41 / -1.763 -> -1.02, rear -2.67
+   @-1.41 -> -2.16 @-1.76). Front-view module tops RISE inboard:
+   1.92-2.01 @|x| 1.75-1.79 -> 2.16 @1.65 -> 2.29 @1.46 -> 2.46 @1.29
+   (left trace; right similar 1.96-2.42 with a stylized 2.769 furniture
+   band at x +1.287..+1.355). Module bots sit at the casting line
+   (~1.86-1.90; front-view bots are hull-occluded). Author as 2-3
+   stacked plan-tapered roofBoxes per side, per-side asymmetric.
+2. CREST/FACE: ref face z 1.8 already tops 2.537 (96-col gate read) vs
+   build 2.156 — the crest starts too far back/low (apexZ 1.76, top0
+   2.56 vs the measured jump AT 1.8).
+3. SADDLE OVERSHOOT: ref 2.395 flat over z -0.18..+0.18 vs build 2.664
+   at -0.128 (kit mesh at the saddle; find with --blame). Rear roof:
+   ref 2.446-2.497 over -2.36..-3.02 vs build 2.588-2.664 (roofBoxes[0]
+   top 2.60 + basket rim ~0.15 proud).
+4. SLEEVE FAT IN PLAN: plan_turret x ±0.165 col reads proc 3.88 (the
+   r 0.15 sleeve lights it to its 3.86 end) vs ref 2.561 — err 0.647,
+   the worst finite turret plan col. Ref sleeve reads r~0.089 (side
+   band 2.03..1.852 @z 3.42). sleeveR -> ~0.118 (3B lesson).
+5. WHIP SEAT: build x 0.21 straddles the 96-col boundary — proc-alias
+   4.223 in the 0.252 col vs ref 2.574 (ref whip cols 0.198/0.211).
+   Seat at ~0.200 post-warp (top re-tuned to the warped ~3.56).
+6. HULL TAIL: ref center notch opens to -3.25 for |x| <= 0.32 (build
+   fills -4.03..-4.06 — tailNotch hw 0.30 does not carve the real
+   content; plan_hull err 0.48-0.49 x2 center cols); ref mid-x tail
+   -4.11..-4.14 (0.37..1.08), outboard -4.04 (1.13..1.76); build pins
+   ±0.52 @ -4.27 read -4.263 (err 0.165 x2); ref tail rail at -4.19 is
+   THIN [1.218..1.319] vs build wings [0.736..1.421] (err 0.292).
+7. NOSE: ref body plan fwd +3.09..+3.15 center (corner boards +3.17,
+   pods +3.30..+3.32 at x ±0.53-0.70, hullPost col -0.62 -> +3.32);
+   build glacis line reads 3.322 flat — ~0.18 too far forward on the
+   center-plan cols (plan_whole err 0.29-0.36 near x 0).
+8. SKIRT/LIP: ref outermost ±1.846-1.859 is a THIN HIGH LIP
+   [1.284..1.352] (3B thin-lip law); ±1.805-1.832 bots 0.63-0.85; build
+   band [0.858..1.539] at ±1.87 (front err 0.33/0.22). Ref front bots
+   0.79-0.88 INSIDE ±1.78 (curtained gear) vs build 0.327 — arch-lintel
+   class fix, silhouette-free (station windows measure width+top only).
+9. NO RING TUB on this print: ref turret-mask min bot 1.533 (batch-4
+   carve is clean; the tub only exists on the 3B/3C prints). Do NOT add
+   one; the r8 ringTub.stepY shelf class is N/A here (no tub authored —
+   config verified this round).
+Verification after warp: expect overall' 9.04 / body' 7.60 / p95' ~2.66
+/ whip' ~3.56; then fresh workorder (this section's z targets pre-map
+the body zone only — the barrel zone stretches 1.773x).
+
+#### Round record (2026-08-02): before = after (audit round, no build edits)
+hull 82.4 / whole 67.8 / turret 68.1 / stations 82.5 / dims 100 /
+floaters 100, bit-identical on the post-audit verification run.
+Siblings held bit-identical (1b 62.5 / 2b 39.9 / 2d 34.9 / 4b 34.6);
+graduates hash-verified (3b 5296950a, 3c 5287233e). Board re-rendered
++ read (IoU total 82.3, top 96.2): orientation truth (gun over the
+louvred bow, front sprocket), turret articulates through the full
+strip, no floaters; the shaded pair shows the ref's proud band + wide
+Dor-Dalet modules vs the capped narrow proc turret — the two headline
+items of this audit. NEXT = orchestrator runs REG + extract +
+batch-15 warp, then the family push round re-lays to the normalized
+print (work order above).
