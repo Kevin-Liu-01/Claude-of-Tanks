@@ -1150,25 +1150,25 @@ function buildLeo2A6(P) {
   // outward: frame field, then near-black slot layer, then 6 wide pale
   // slats in FRONT of both. Everything stays in the certified 1.373..1.771
   // band (content deeper than z -3.627 is band-legal).
-  // r4 #3 grille deepening: the r3 band read faint and short next to the
-  // ref's tall full-width grille — field/shadow extended DOWN to the band
-  // floor (bottom 1.375 >= the 1.373 legality line), 6 thin slat rows ->
-  // 7 taller rows (0.040 @ 0.047 pitch, tops 1.700 < 1.771), two extra
-  // frame verticals at +-0.32 (ref grille is 4-sectioned). All faces keep
-  // the r3-certified planes (-3.639/-3.642/-3.650/-3.651); the shackle
-  // D-rings drop to y 1.30 so the extended field cannot occlude them
-  // (still z >= -3.626 wall-column legal, above the 1.13 wall bottom).
-  P.add('hullDark', box(2.86, 0.32, 0.018), 0, 1.535, -3.630);
-  P.add('hullShadow', box(2.80, 0.32, 0.006), 0, 1.535, -3.6365);
-  // slats TILTED 0.25 rad (real louvers angle down): a flat rear face sees
-  // neither sun (+z side) nor hemi sky — the tilt turns each face normal
-  // up-back like the pale X-braces below, +~25% luminance. Envelope: z
-  // half-extent 0.0107 about -3.639 -> deepest -3.6497, inside the
-  // r3-certified -3.650 louver plane; bottom edge 1.3745 >= 1.373.
-  for (let k = 0; k < 7; k++) {
-    P.add('hullDetail', box(2.78, 0.048, 0.010), 0, 1.399 + k * 0.047, -3.639, 0.25, 0, 0);
+  // r4 #3 grille deepening: field/shadow extended DOWN to the band floor;
+  // shackle D-rings drop to y 1.30 so the extended field cannot occlude
+  // them (still z >= -3.626 wall-column legal, above the 1.13 wall bottom).
+  // r5 #2 grille DENSITY (root cause of the r4 "soft" read: the 0.048-tall
+  // rows at 0.047 pitch TILED — zero dark gap between slats, so the field
+  // read as a continuous ridged sheet): 7 rows -> 10 rows of 0.022 slats at
+  // 0.0335 pitch = 2 px pale slat / 1 px near-black gap onto the hullShadow
+  // layer — the ref's high-contrast ~10-slat read. Field/shadow raised
+  // 0.32 -> 0.34 tall (1.375..1.715, inside the certified 1.373..1.771
+  // band) so the top row keeps dark backdrop. All planes unchanged
+  // (-3.630/-3.6365/-3.639); slats stay TILTED 0.25 (rear-face light law).
+  // Envelope: slat y-extent 0.0119 -> top 1.7064 < 1.715, bottom 1.381 >=
+  // 1.375; z-extent 0.0076 -> deepest -3.6466, inside the certified -3.650.
+  P.add('hullDark', box(2.86, 0.34, 0.018), 0, 1.545, -3.630);
+  P.add('hullShadow', box(2.80, 0.34, 0.006), 0, 1.545, -3.6365);
+  for (let k = 0; k < 10; k++) {
+    P.add('hullDetail', box(2.78, 0.022, 0.010), 0, 1.393 + k * 0.0335, -3.639, 0.25, 0, 0);
   }
-  for (const vx of [-0.95, -0.32, 0.32, 0.95]) P.add('hullDetail', box(0.035, 0.32, 0.036), vx, 1.535, -3.633);
+  for (const vx of [-0.95, -0.32, 0.32, 0.95]) P.add('hullDetail', box(0.035, 0.34, 0.036), vx, 1.545, -3.633);
   for (const s2 of [-1, 1]) {
     P.add('hullDark', box(0.40, 0.17, 0.030), s2 * 1.16, 1.50, -3.630);
     P.add('hullShadow', box(0.36, 0.15, 0.005), s2 * 1.16, 1.50, -3.6435);
@@ -1477,6 +1477,15 @@ function buildLeo2A6(P) {
   for (let k = 0; k < 10; k++) {
     P.add('turretDetail', box(0.024, 0.42, 0.024), -0.9265 + k * 0.206, 0.32, -3.007);
   }
+  // r5 #3: solid dark panel BEHIND the fence slats — kills the see-through
+  // cage (the ref's bustle reads as solid bins; ours showed sky between
+  // every slat). Entirely inside the certified basket volume: |x| 1.00 <
+  // the side-rail inner face (1.0075), y 0.11..0.53 = the fence band,
+  // z -2.963..-2.947 rides 4.5 mm behind the top rail's back face
+  // (-2.9675) and clear of the slat backs (-2.995). Silhouette-free by
+  // construction (inside the certified gap-inclusive rack band); re-gated
+  // once this round to prove it.
+  P.add('turretDark', box(2.00, 0.42, 0.016), 0, 0.32, -2.955);
   // center roof rib (ref front reads 2.51 on the +-0.02 columns only)
   P.add('turret', box(0.07, 0.10, 1.32), 0, 0.69, -0.64);
   // center-left periscope riser: the ref's tallest non-PERI roof element
@@ -1572,6 +1581,13 @@ function buildLeo2A6(P) {
       const joint = zr === 2.565 || zr === 4.925;
       P.add(joint ? 'gunDark' : 'gun', KIT.cylZ(0.1195, joint ? 0.07 : 0.045, gseg), 0, 0, zr);
     }
+    // r5 trivia: barrel camo blotching — two dark wrap bands on the sleeve
+    // runs, parked in the ring GAPS (2.6475..2.9275 and 4.025..4.325, clear
+    // of every certified cinch ring). r 0.118 = 0.5 mm over the 0.1175
+    // sleeve — sub-pixel, shares the sleeve's trace rows exactly like the
+    // certified 0.1195 rings do. Silhouette-free.
+    P.add('gunDark', KIT.cylZ(0.118, 0.26, gseg), 0, 0, 2.7875);
+    P.add('gunDark', KIT.cylZ(0.118, 0.30, gseg), 0, 0, 4.175);
     P.add('gun', KIT.cylZ(0.1175, 0.36, gseg), 0, 0, 5.10);                    // muzzle-zone sleeve 6.47..6.83w (ref rows stay r~0.117 here too)
     P.add('gunDark', KIT.cylZ(0.1195, 0.04, gseg), 0, 0, 4.945);
     P.add('gunDark', KIT.cylZ(0.1195, 0.04, gseg), 0, 0, 5.255);
@@ -1614,15 +1630,24 @@ function buildLeo2A6(P) {
     // r4 #1 BAND RETONE (refined fleet law: sample ON the exact element).
     // The r3 "ref 72.5deg" was sampled off CAMO-PAINTED upper gear; the
     // ref's EXPOSED band strip samples 31.8-40.0deg brown-grey (view-left
-    // median 70,63,55 / lum 63.9 — R>G). All band-family tones rotate to
-    // R>G>B at near-constant luminance (proc strip lum was already in law
-    // at ratio 0.972). WHEELS ARE DONE (hue 78-86, dish/drum/rubber/dishR
-    // untouched — the r3-certified wheel law).
+    // median 70,63,55 / lum 63.9 — R>G). WHEELS ARE DONE (hue 78-86,
+    // dish/drum/rubber/dishR untouched — the r3-certified wheel law).
+    // r5 #1 SATURATION + TREAD SHADOWS (3rd tone dimension, critic r4:
+    // proc band sat 1.8x ref — clean warm tan, not greasy brown-grey; and
+    // the front wrap read FLAT pads with no recesses). Two moves, hue held
+    // 32-34 / lum in law: (a) every band tone desaturated toward the ref's
+    // ~21% on-element read (lift sat 25% -> 16%, pads 27.7% -> 19.4%);
+    // (b) the CONTINUOUS band surface — the 28% inter-pad gap the shoe
+    // geometry exposes (pads cover pitch*0.72) — drops ~19% below the pad
+    // faces, so every gap reads as a dark tread recess and the front-corner
+    // wrap darkens with it (item 4). The strip MEDIAN stays a pad pixel
+    // (70% coverage), so the sampled med tracks the pad tone; the mean
+    // absorbs the gap darkening inside the 0.92-1.16 law.
     for (const tm of [P.mats.trackL, P.mats.trackR]) {
-      tm.color.setRGB(1.60, 1.40, 1.20);                 // linear lift over the link map, R>G brown-grey
+      tm.color.setRGB(1.22, 1.13, 1.06);                 // gap/recess surface: desat brown-grey, ~20% under the pads
       tm.envMapIntensity = 0.2;
     }
-    P.mats.spareTrack.color.setHex(0x4c4237);            // sprocket teeth/recess + spare links + glacis rack pads
+    P.mats.spareTrack.color.setHex(0x48423a);            // sprocket teeth/recess + spare links + glacis rack pads (desat 27.6% -> 19.4%)
     P.mats.rubber.color.setHex(0x2c2a26);                // tires/flaps/anti-slip: weathered dark grey
     // r4 #3: OD cloth pulled off the tan/khaki axis (the rear "blank bright
     // rectangle" sampled hue 67.8 vs the ref bustle's 84.8) — darker
@@ -1647,10 +1672,10 @@ function buildLeo2A6(P) {
       const m = ob.material;
       if (!m || !m.color || !m.color.getHex) return;
       if (ob.isInstancedMesh && m.color.getHex() === 0x171614) {
-        rehook(m).color.setHex(0x41392f);                // link pads: dusty brown-grey (R>G — the band's dominant read; the first r4 cut's 0x4a3f34 fired 0.87/0.83 wrap-crown ratios under the close-front key)
+        rehook(m).color.setHex(0x3f3935);                // link pads: r5 desat (0x41392f sat 27.7% -> 15.9%) at EXACTLY the r4 material lum (58.0) so the certified wrap-crown ratios hold
         m.envMapIntensity = 0.22;
       } else if (ob.isInstancedMesh && m.color.getHex() === 0x27251f) {
-        rehook(m).color.setHex(0x362e26);                // inner chain / guide-horn layer (R>G)
+        rehook(m).color.setHex(0x2a2723);                // inner chain / guide-horn layer: r5 deepened (-16% lum) + desat — pin caps and horns recede into the tread shadows
         m.envMapIntensity = 0.26;
       } else if (m === P.mats.wheels) {
         ob.material = ob.isInstancedMesh ? wornDish : wornDrum;

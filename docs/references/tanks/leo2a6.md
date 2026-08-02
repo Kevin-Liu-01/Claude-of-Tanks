@@ -597,3 +597,72 @@ Work order: docs/critique/shaded-parity-leo2a6-r4.md. Hue+lum confirmed
 dead-on; SATURATION 1.8x ref caught (fleet law now 3-dimensional:
 hue+lum+sat on-element). r5 = narrow tone pass: band desat ~16% + tread
 shadows, 10-slat grille density, solid bustle backing.
+
+## Shaded-parity r5 — NARROW TONE PASS (2026-08-02)
+
+All r4 work-order items in `src/vehicles/profiles/leopard.js` (buildLeo2A6
+only; zero shared-path edits). Gate after round: **min 91.0 PASS,
+gatePassed:true** (hull 91.2 / whole 91.0 / turret 91.2 / stations 93.4 /
+dims 91.0 / floaters 100 — identical to the r4 entry; the two geometry-
+class additions were silhouette-free as argued). Siblings score-identical:
+leo2a5 69.2 / kf51 63.6 / leo2_revolution 45.0. Full `npm test` passes
+(166 checks). Sampler upgraded: tools/tmp-leo-bandsample.py now reports
+HSV SATURATION (median-pixel + of-median) alongside hue/lum — the 3-dim
+law tool.
+
+Per-item status, sampled ON-element both halves (identical paired rects;
+view-left strip 110,385-420,393 ref / 760,377-1060,386 proc; close-front
+wrap 302,360-352,415 / 945,365-992,400; cf strip 60,415-250,428 /
+680,405-890,418):
+1. BAND DESAT + TREAD SHADOWS — DONE. Retone at near-constant lum, hue
+   family held R>G>B: pads 0x41392f -> 0x3f3935 (mat sat 27.7% -> 15.9%
+   at EXACTLY the r4 mat lum 58.0 so the certified crown ratios hold),
+   band lift (1.60,1.40,1.20) -> (1.22,1.13,1.06) — the continuous band
+   surface (the 28% inter-pad gap; pads cover pitch*0.72) now renders
+   ~20% under the pad faces, so every gap reads as a dark tread recess
+   and the front-corner wrap darkens with it (item 4); chain 0x362e26 ->
+   0x2a2723 (-16% lum, horns/pins recede); spareTrack 0x4c4237 ->
+   0x48423a. SAMPLES (ref vs proc, sat medpx/med): strip 21.7/21.4 vs
+   22.7/23.4 (was 28.6/29.7 — 1.3x gap closed to ~1 pt); wrap 16.7/15.2
+   vs 18.6/18.6 (was 21.7); cf-strip 24.3/20.5 vs 20.0/21.6 (parity).
+   Hue: strip 33.3/32.0 vs 37.1/36.0, wrap 36.0/42.0 vs 30.0/27.7 —
+   deltas +-4 STRADDLE the ref across rects = 8-bit quantization floor
+   (1 unit of g ~ 5 deg at this sat; do not chase further). Lum ratios
+   ref/proc: strip 1.123/1.090, wrap 0.990/0.986, cf-strip 0.966/0.997 —
+   all in the 0.92-1.16 law. Distribution shape now matches too: ref
+   strip mean-over-med +6% (bright pads / dark recesses) — proc was
+   +2.5% flat, now carries the same bright-pad tail. WHEELS UNTOUCHED:
+   byte-identical samples (83.6/73.5 lum, hue 86.4/81.8) vs the r4 run.
+2. REAR GRILLE ~10-SLAT — DONE. Root cause of the r4 "soft" read: the
+   0.048-tall rows at 0.047 pitch TILED — zero dark gap. Now 10 rows of
+   0.022 slats at 0.0335 pitch (2 px pale / 1 px near-black onto the
+   hullShadow layer); field/shadow raised 0.32 -> 0.34 (1.375..1.715,
+   inside the 1.373..1.771 band); planes unchanged -3.630/-3.6365/-3.639,
+   slat deepest -3.6466 < the certified -3.650; tilt 0.25 kept
+   (rear-face light law).
+3. BUSTLE BACKING — DONE. Solid turretDark panel 2.00x0.42x0.016 at
+   (0, 0.32, -2.955) turret-local: BEHIND the fence slats (backs -2.995),
+   4.5 mm clear of the top rail back face (-2.9675), |x| 1.00 inside the
+   rail inner faces, y = the fence band. See-through cage dead from rear
+   AND quarters; gate re-run proved silhouette-free (91.0 unchanged).
+4. TRIVIA — barrel camo blotching DONE: two gunDark wrap bands r 0.118 x
+   0.26/0.30 at gun-local z 2.7875/4.175, parked in the certified ring
+   GAPS; 0.5 mm over the 0.1175 sleeve = shares its trace rows like the
+   0.1195 rings (silhouette-free). Skirt lum 0.83 -> 0.9 SKIPPED —
+   bucket-merge constraint: the skirt IS the fleet-shared 'hull' camo
+   mat; no mid-tone camo bucket exists and a hullShadow wash would kill
+   the camo read (documented residual).
+
+Round lesson (fleet-visible): PER-RECT COLOR TRANSFER — the same
+material renders ~5 deg hue apart and ~6 sat pts apart between the
+side strip (warm key, b x0.96) and the wrap (fill light, b x1.08).
+Tune by measuring the per-channel transfer (rendered_med / material)
+on EACH law rect from the current build, then solve the material once
+for the rect set; single-rect tuning ping-pongs. At sat < 20% hue is
+mush (ref's own wrap reads 36-42 vs its strip 32-33) — judge hue on
+the strip, sat on all rects.
+
+Residuals: strip hue medpx +3.8 warm of ref (quantization floor, sat/
+lum/distribution all at parity); skirt lum (above); prior classes
+(louver softness bound, loader-blotch ring, fan wells, -3.81 tail,
+PERI 4th column) stand.
