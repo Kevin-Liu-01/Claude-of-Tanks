@@ -199,6 +199,13 @@ const container = document.getElementById('app');
 boot.begin('renderer');
 const renderer = createRenderer(container);
 const scene = new THREE.Scene();
+// perf-smooth r1: the GLB idle queue's priority lane must know the LIVE scene
+// from the very first boot job — window.__DEBUG (its old signal) is only
+// assigned at the END of this module, so every pedestal-hero pipeline stage
+// queued during boot paced on the cold rIC path instead of the hot lane
+// (measured: hero reveal 1.5 s -> 5.2 s after ready). Published at creation,
+// before any tank build can queue a job.
+if (typeof window !== 'undefined') window.__COT_LIVE_SCENE = scene;
 // zero-viewport boot hardening: booting inside a pane that has not laid out
 // yet (innerWidth/innerHeight 0) used to seed a NaN aspect (0/0) that poisons
 // the projection matrix; fall back to 16:9 — the first real layout re-derives
@@ -1603,6 +1610,16 @@ async function startBattleLoading(specId, mapId = null) {
   const shownAt = performance.now();
   const resolved = resolveMapId(mapId || pendingMapId);
   const cfg = getMapConfig(resolved);
+  // perf-smooth r1: per-stage wall-clock telemetry for the player battle-entry
+  // path (same pattern as __BOOT_TIMINGS) — probes and future perf rounds
+  // read window.__BATTLE_LOAD instead of guessing where entry time went.
+  const blt = { map: resolved, worldCached: !!worldCache.get(resolved), stages: {} };
+  let bltMark = shownAt;
+  const bltStage = (key) => {
+    const now = performance.now();
+    blt.stages[key] = Math.round(now - bltMark);
+    bltMark = now;
+  };
   battleLoad.show({
     mapName: cfg.name || resolved,
     mapSub: cfg.sub || '',
@@ -1616,27 +1633,80 @@ async function startBattleLoading(specId, mapId = null) {
   // 1. battlefield (0 → 55%). Already-cached maps skip straight through.
   battleLoad.progress(0.02, 'Loading battlefield');
   await ensureWorld(resolved, (f, label) => battleLoad.progress(0.02 + f * 0.53, label));
+  bltStage('world');
 
   // 2. roster: pick the participants, then bake any visual still missing one
-  //    chunk-by-chunk (55 → 92%) so the bar moves through the texture bakes.
+  //    chunk-by-chunk (55 → 88%) so the bar moves through the texture bakes.
   battleLoad.progress(0.56, 'Assembling rosters');
   await nextFrame();
   startBattle(specId, resolved, { deferVisuals: true });
+  bltStage('roster');
   battleLoad.rosters(rosterRows('player'), rosterRows('enemy'));
+  // PERF (perf-smooth r1): the roster is decided — kick every sourced-GLB
+  // FETCH for it right now, in parallel with the visual bake loop below.
+  // Fetches are network-only (the parse/swap pipeline stays behind the
+  // battle-safe idle queue), but starting them here instead of inside each
+  // createTank call means the last model's download no longer serializes
+  // behind ~13 sequential visual bakes — on a cold cache the whole roster's
+  // fetch+parse wave overlaps the 'Painting vehicles' stage and the swap
+  // pipeline drains behind this loading screen instead of into the flyby.
+  import('./vehicles/modelLoader.js').then((m) => {
+    for (const ent of game.tanks) {
+      const src = MODEL_SOURCE[ent.specId];
+      if (src && src.source === 'glb' && src.glb) m.prefetchGlb(src.glb);
+    }
+  }).catch(() => { /* prefetch is a hint — createTank's own load path remains */ });
   battleLoad.progress(0.58, 'Painting vehicles');
   await nextFrame();
   const missing = game.tanks.filter((e) => !e.visual).length;
   for (let i = 0; i < missing + 1; i++) {
     if (ensureStagedVisuals(game, 1)) break;
-    battleLoad.progress(0.58 + ((i + 1) / Math.max(1, missing)) * 0.34, 'Painting vehicles');
+    battleLoad.progress(0.58 + ((i + 1) / Math.max(1, missing)) * 0.30, 'Painting vehicles');
     await nextFrame();
   }
+  bltStage('bake');
 
-  // 3. shader/texture warm (92 → 100%): pulling this in front of the countdown
+  // 3. shader/texture warm: pulling this in front of the countdown
   //    is what keeps the opening flyby from hitching on a compile storm.
-  battleLoad.progress(0.94, 'Compiling shaders');
+  battleLoad.progress(0.90, 'Compiling shaders');
   await nextFrame();
   warmCombatPipeline();
+  bltStage('warm');
+
+  // 3b. PERF (perf-smooth r1): sourced-model swap drain (92 → 100%). The GLB
+  // swap pipeline (modelLoader idle queue) used to keep landing parse/swap
+  // chunks through the opening flyby — the probe measured 38-359 ms jobs as
+  // late as t+5 s into the battle, each a visibly dropped frame. The roster
+  // fetches started at 56% (above), so by now most commits have landed; hold
+  // the loading screen — bounded — until no fielded tank has a pending swap,
+  // with the bar driven by the REAL committed-model count. Fully-cached
+  // rosters pass through instantly; a straggler past the bound still lands
+  // via the (now pipelined, much smaller) idle jobs during the flyby.
+  {
+    const glbTanks = game.tanks.filter((e) => {
+      const src = MODEL_SOURCE[e.specId];
+      return src && src.source === 'glb' && src.glb;
+    });
+    if (glbTanks.length) {
+      const loader = await import('./vehicles/modelLoader.js').catch(() => null);
+      if (loader && loader.hasPendingSwap) {
+        const deadline = performance.now() + 8000;
+        for (;;) {
+          const pending = glbTanks.filter(
+            (e) => !e.visual || loader.hasPendingSwap(e.visual.root),
+          ).length;
+          const done = glbTanks.length - pending;
+          battleLoad.progress(
+            0.92 + (done / glbTanks.length) * 0.08,
+            pending ? 'Loading vehicle models' : 'Ready',
+          );
+          if (!pending || performance.now() > deadline) break;
+          await new Promise((r) => setTimeout(r, 120));
+        }
+      }
+    }
+  }
+  bltStage('swapDrain');
   battleLoad.progress(1, 'Ready');
 
   // Cached maps can finish in only a few frames. Give the page enough dwell
@@ -1651,6 +1721,9 @@ async function startBattleLoading(specId, mapId = null) {
   }
   battleLoad.countdown(0);
   await new Promise((r) => setTimeout(r, Math.min(360, battleCountdownMs)));
+  bltStage('holdCountdown');
+  blt.totalMs = Math.round(performance.now() - shownAt);
+  if (typeof window !== 'undefined') window.__BATTLE_LOAD = blt;
   battleLoad.hide();
   openBattle();
 }
@@ -3722,6 +3795,12 @@ window.__DEBUG = {
   fastForward: debugFastForward,
   slayEnemies: debugSlayEnemies,
   startBattle,
+  // perf-smooth r1: the PLAYER battle-entry path (loading screen -> chunked
+  // world build -> roster bake -> GLB swap drain -> countdown), so probes can
+  // measure the real pre-battle timeline instead of only the synchronous
+  // startBattle shortcut. Resolves when the battle opens.
+  beginBattleEntry,
+  enterGarage,
   // SPOTTING WIRING: live SpottingSystem for headless concealment checks
   get spotting() { return game.spotting; },
   killcam,                             // KILL-CAM introspection (phase, cancel)

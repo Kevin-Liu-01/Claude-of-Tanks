@@ -3493,6 +3493,43 @@ function retintGlbModels() {
 }
 
 /**
+ * PERF (perf-smooth r1): amortized share-composite warm-up for the pipelined
+ * GLB swap. acquireGlbShare's per-source-sheet build (canvas draw + two full
+ * getImageData passes + per-pixel detail remap + despeckle over a 1024²/512²
+ * sheet) is the dominant slice of the old one-shot swap job (probe: 340 ms
+ * prep on a 42-material asset). It is cached globally per source texture, so
+ * modelLoader can warm ONE not-yet-built share per battle-safe idle slot
+ * before applyCamoToModel runs; the camo pass then hits the cache for every
+ * sheet. Mirrors applyCamoToModel's own conditions exactly (same skip
+ * regexes) so no share is ever built that the camo pass would not have
+ * built itself — over-acquiring would allocate composite canvases (VRAM)
+ * for name-skipped gear sheets.
+ * @param {THREE.Object3D} root normalized GLB scene (pre-camo)
+ * @param {object} spec TankSpec
+ * @param {{shareCap?: number}} [opts] same cap the camo pass will use
+ * @returns {boolean} true when a share was built this call (more may remain);
+ *   false when every paintable sheet already has its share cached
+ */
+export function warmNextGlbShare(root, spec, opts = null) {
+  const shareCap = (opts && typeof opts === 'object' && opts.shareCap) || 1024;
+  const specSkipRe = GLB_SPEC_SKIP_RE[spec.id] || null;
+  let built = false;
+  root.traverse((o) => {
+    if (built || !o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mats) {
+      if (built || !m || !m.color || !m.map) continue;
+      const name = m.name || '';
+      if (GLB_SKIP_RE.test(name) || (specSkipRe && specSkipRe.test(name))) continue;
+      if (GLB_MAP_SHARE.has(m.map.uuid)) continue;
+      acquireGlbShare(m.map, shareCap);
+      built = true;
+    }
+  });
+  return built;
+}
+
+/**
  * Apply the active camo pattern to a sourced-GLB tank model (texture-space
  * pattern composite; the asset's baked AO/weathering is preserved as an
  * overlay layer). Called by modelLoader.applyGlbModel after its material
@@ -3530,17 +3567,68 @@ export function applyCamoToModel(root, spec, opts = null) {
       return m;
     };
   const specSkipRe = GLB_SPEC_SKIP_RE[spec.id] || null;
+  // PERF (perf-smooth r1, draw-call worst-frame): clone ONCE PER PARAM-CLASS,
+  // not once per mesh. The per-mesh clone made every mesh of a 40-60-part kit
+  // its own unique material instance, which defeated modelLoader's
+  // mergeStaticKit entirely (it buckets by material instance) — swapped GLB
+  // tanks submitted 30-100 main-pass draws each and a 14-tank battle heat
+  // frame breached the 900-call worst-frame budget (probe census: m1a2 115
+  // unique material instances across 144 meshes, 51 param-classes).
+  // Two sources land in one class only when EVERY render-relevant parameter
+  // AND texture identity AND the name-rule outcome (the skip regexes below
+  // are the only name-driven decision left at this point) are identical, so
+  // the shared clone is configured exactly as each per-mesh clone would have
+  // been — visual output is identical by construction. Within a single tank
+  // this is the sharing the procedural fleet already uses (mats.hull et al
+  // span many meshes), so the burn/wreck paths handle it (applyBurnHook's
+  // __burnU guard). Restyle entries are pushed once per clone, so pattern
+  // switches composite once instead of N times.
+  const classKey = (m) => {
+    const name = m.name || '';
+    const skip = GLB_SKIP_RE.test(name) || (specSkipRe && specSkipRe.test(name)) ? 1 : 0;
+    const parts = [
+      m.type, skip,
+      m.color ? m.color.getHex() : -1,
+      m.roughness, m.metalness,
+      m.transparent ? 1 : 0, m.opacity, m.side, m.alphaTest || 0,
+      m.vertexColors ? 1 : 0, m.flatShading ? 1 : 0,
+      m.depthWrite ? 1 : 0, m.depthTest ? 1 : 0, m.blending,
+      m.emissive ? m.emissive.getHex() : -1, m.emissiveIntensity,
+      'envMapIntensity' in m ? m.envMapIntensity : -1,
+      'specularIntensity' in m ? m.specularIntensity : -1,
+      'clearcoat' in m ? m.clearcoat : -1,
+      'sheen' in m ? m.sheen : -1,
+      'transmission' in m ? m.transmission : -1,
+      'ior' in m ? m.ior : -1,
+      m.normalScale ? `${m.normalScale.x},${m.normalScale.y}` : '-',
+      m.aoMapIntensity != null ? m.aoMapIntensity : -1,
+      m.bumpScale != null ? m.bumpScale : -1,
+    ];
+    for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap',
+      'emissiveMap', 'alphaMap', 'bumpMap', 'clearcoatMap', 'specularColorMap']) {
+      parts.push(m[k] ? m[k].uuid : '-');
+    }
+    return parts.join('|');
+  };
+  const cloneByClass = new Map();
   root.traverse((o) => {
     if (!o.isMesh) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
     for (let i = 0; i < mats.length; i++) {
       const m = mats[i];
       if (!m || !m.color) continue;
+      const key = classKey(m);
+      const shared = cloneByClass.get(key);
+      if (shared) {
+        if (Array.isArray(o.material)) o.material[i] = shared; else o.material = shared;
+        continue;
+      }
       // clone: GLTF clones share materials with the loader cache.
       // Material.clone() drops onBeforeCompile/customProgramCacheKey, so the
       // clone is re-registered with the CSM rig + readability floor above —
       // 'skip' materials included (they were equally over-lit).
       const own = setup(m.clone());
+      cloneByClass.set(key, own);
       if (Array.isArray(o.material)) o.material[i] = own; else o.material = own;
       if (GLB_SKIP_RE.test(own.name || '') ||
           (specSkipRe && specSkipRe.test(own.name || ''))) {

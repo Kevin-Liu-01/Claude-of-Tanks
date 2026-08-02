@@ -56,6 +56,7 @@ import { toCreasedNormals, mergeGeometries } from 'three/examples/jsm/utils/Buff
 import {
   applyCamoToModel, getSharedCamoTexture, getSharedRoughnessTexture,
   getCommunityGearMaterials, getKitPaintTexture, vehicleAmbientFloorHook,
+  warmNextGlbShare,
 } from './materials.js';
 
 const _loader = new GLTFLoader();
@@ -89,6 +90,19 @@ const _resolved = new Map(); // url -> GLTF (parse finished; sync path usable)
 const _stats = { started: 0, settled: 0 };
 if (typeof window !== 'undefined') window.__GLB_STATS = _stats;
 
+// PERF-SMOOTH r1 telemetry: per-idle-job main-thread cost ledger, so swap
+// hitches are attributable to a phase (parse / swap / warm) and a model
+// instead of guessed from rAF deltas. Ring-capped; read via window.__GLB_JOBS.
+// `ms` is the SYNCHRONOUS slice the job spent on the main thread inside its
+// idle slot — exactly the time stolen from the frame the job landed in.
+const _jobLog = [];
+const JOB_LOG_CAP = 400;
+function logJob(kind, tag, ms, detail) {
+  if (_jobLog.length >= JOB_LOG_CAP) _jobLog.shift();
+  _jobLog.push({ kind, tag, ms: +ms.toFixed(1), at: +performance.now().toFixed(0), ...(detail || {}) });
+}
+if (typeof window !== 'undefined') window.__GLB_JOBS = _jobLog;
+
 // ---------------------------------------------------------------------------
 // PERF (performance_budget r4, docs/perf-r3.json remainingKnownHitch): the
 // GLTF parse + swap + first-render program compile/texture upload used to run
@@ -121,11 +135,17 @@ const _pendingSwapCtx = new Set();
 
 function isMainSceneCtx(ctx) {
   try {
+    // perf-smooth r1: prefer the boot-time handle (main.js publishes it at
+    // scene creation) — window.__DEBUG is only assigned at the end of the
+    // main module, which left every boot-window pedestal job looking cold
+    // and pacing on the rIC path instead of the hot lane.
     const D = typeof window !== 'undefined' ? window.__DEBUG : null;
-    if (!D || !D.scene) return false;
+    const liveScene = (typeof window !== 'undefined' && window.__COT_LIVE_SCENE)
+      || (D && D.scene) || null;
+    if (!liveScene) return false;
     let root = ctx.hullG;
     while (root.parent) root = root.parent;
-    return root === D.scene;
+    return root === liveScene;
   } catch (_) { return false; }
 }
 
@@ -139,13 +159,33 @@ function hotTags() {
   return hot;
 }
 
+// perf-smooth r1 PIPELINE AFFINITY: with the swap split into 5-20 stages per
+// model, plain FIFO hot selection round-robins every live-scene pipeline —
+// the garage pedestal hero's commit then lands after the COMBINED work of all
+// boot-staged heroes (measured reveal 1.5 s -> 5.2 s after ready). Stick to
+// the tag of the last hot job taken until its pipeline has no pending swap,
+// so one model completes end-to-end before the next starts (exactly the old
+// monolith's ordering).
+let _hotAffinityTag = null;
+
 /** Queue index of the highest-priority runnable job (0 when no hot job). */
 function nextJobIndex() {
-  if (_idleQueue.length < 2 || !_pendingSwapCtx.size) return 0;
+  if (!_idleQueue.length || !_pendingSwapCtx.size) return 0;
   const hot = hotTags();
-  if (!hot) return 0;
+  if (!hot) { _hotAffinityTag = null; return 0; }
+  if (_hotAffinityTag && !hot.has(_hotAffinityTag)) _hotAffinityTag = null; // pipeline done
+  if (_hotAffinityTag) {
+    const ai = _idleQueue.findIndex((j) => j.tag === _hotAffinityTag);
+    if (ai >= 0) return ai;
+    // affinity pipeline is between stages (its next job lands within a
+    // microtask) — never burn the slot on a cold job while it is pending
+  }
   const i = _idleQueue.findIndex((j) => j.tag && hot.has(j.tag));
-  return i > 0 ? i : 0;
+  if (i >= 0) {
+    _hotAffinityTag = _idleQueue[i].tag;
+    return i;
+  }
+  return 0;
 }
 
 // Battle STAGING window: startBattle resets game.timeS to 0 and plays a 3 s
@@ -155,11 +195,41 @@ function nextJobIndex() {
 // procedural box stacks for the whole match (content_breadth r1 CRITICAL).
 const BATTLE_STAGE_GRACE_S = 6;
 
+/** perf-smooth r1: the pre-battle loading screen (main.js startBattleLoading,
+ * ui/battleLoad.js `.cot-bl.on`) counts as staging no matter what the sim
+ * clock says — game.timeS starts ticking at startBattle, which the player
+ * path calls at ~56% of the loading screen, so on a cold-world entry the 6 s
+ * grace could expire BEHIND the screen and strand half the roster's swap
+ * pipeline un-drained into (or past) the flyby. Frames behind the screen are
+ * invisible; every job landed there is one that cannot hitch live combat.
+ * (DOM read from the queue pump — same pattern as bootHeld above.) */
+function battleScreenUp() {
+  try {
+    if (typeof document === 'undefined') return false;
+    const el = document.querySelector('.cot-bl');
+    return !!(el && el.classList.contains('on'));
+  } catch (_) { return false; }
+}
+
 function inBattle() {
   try {
     const D = typeof window !== 'undefined' ? window.__DEBUG : null;
     if (!(D && D.game && D.game.phase === 'battle')) return false;
-    return !(typeof D.game.timeS === 'number' && D.game.timeS < BATTLE_STAGE_GRACE_S);
+    if (typeof D.game.timeS === 'number' && D.game.timeS < BATTLE_STAGE_GRACE_S) return false;
+    return !battleScreenUp();
+  } catch (_) { return false; }
+}
+
+/** True inside the battle-staging grace (loading screen / opening flyby) —
+ * the window where the queue should DRAIN FAST: frames are hidden behind the
+ * pre-battle screen or the flyby sweep, and every job that lands here is one
+ * that cannot hitch live combat later. */
+function inStagingWindow() {
+  try {
+    const D = typeof window !== 'undefined' ? window.__DEBUG : null;
+    if (!(D && D.game && D.game.phase === 'battle')) return false;
+    if (typeof D.game.timeS === 'number' && D.game.timeS < BATTLE_STAGE_GRACE_S) return true;
+    return battleScreenUp();
   } catch (_) { return false; }
 }
 
@@ -242,15 +312,19 @@ function pumpIdle() {
     if (takeIdx < 0) return; // nothing hot — resume via pauseIdleQueue(false)
   }
   let ran = false;
+  let ranMs = 0;
   if (!inBattle()) {
     const job = _idleQueue.splice(takeIdx >= 0 ? takeIdx : nextJobIndex(), 1)[0];
     ran = true;
+    const t0 = performance.now();
     try { job.res(job.fn()); } catch (e) { job.rej(e); }
+    ranMs = performance.now() - t0;
+    logJob(job.kind || 'job', job.tag, ranMs);
   }
-  scheduleIdlePump(ran);
+  scheduleIdlePump(ran, ranMs);
 }
 
-function scheduleIdlePump(afterJob = false) {
+function scheduleIdlePump(afterJob = false, lastJobMs = 0) {
   if (_idlePumpScheduled || !_idleQueue.length) return;
   if (_queuePaused) {
     // paused: only keep pumping while a hot main-scene job is waiting
@@ -271,20 +345,92 @@ function scheduleIdlePump(afterJob = false) {
   // r3 garage-capture fix (see inShotPhase above): shot phase drains on a
   // ~16 ms cadence — one rendered frame between jobs, hero swap lands well
   // inside the 1.2 s capture window instead of ~1.4 s after it.
-  const hot = nextJobIndex() > 0 || inShotPhase();
-  if (afterJob) setTimeout(pumpIdle, inBattle() ? 300 : (hot ? 16 : 120));
-  else if (hot) setTimeout(pumpIdle, 0);
+  // perf-smooth r1: `nextJobIndex() > 0` is an index helper — it can never
+  // flag a SINGLE queued hot job (index 0), so the last tank of a battle
+  // roster used to chain its pipeline stages through the rIC 350 ms-timeout
+  // path, ~0.35 s per stage (probe: the final model's commit landed seconds
+  // after every other tank). Hot = any queued job whose tag has a pending
+  // main-scene swap, regardless of queue position.
+  const hotSet = hotTags();
+  const hot = (hotSet && _idleQueue.some((j) => j.tag && hotSet.has(j.tag))) || inShotPhase();
+  // Sub-frame jobs (pipeline stages — texture-upload slices, pivot math)
+  // chain on a one-frame cadence instead of the 120 ms bulk spacing, so
+  // splitting the old monolithic swap into 5-7 stages does not multiply the
+  // garage-thumb drain time. Heavy stages keep the wide spacing that
+  // guarantees rendered frames between them. Inside the battle-staging grace
+  // the queue always drains on the one-frame cadence — those frames are
+  // behind the pre-battle loading screen or the opening flyby, and every
+  // pipeline stage landed there is one that cannot hitch live combat.
+  const tiny = afterJob && lastJobMs < 10;
+  if (afterJob) setTimeout(pumpIdle, inBattle() ? 300 : ((hot || tiny || inStagingWindow()) ? 16 : 120));
+  else if (hot || inStagingWindow()) setTimeout(pumpIdle, 16);
   else if (typeof requestIdleCallback === 'function') requestIdleCallback(pumpIdle, { timeout: 350 });
   else setTimeout(pumpIdle, 80);
 }
 
 /** Run `fn` in the next out-of-battle idle slot (one job per slot).
- * `tag` (GLB url) lets the garage priority lane reorder queued jobs. */
-function idleGate(fn, tag = null) {
+ * `tag` (GLB url) lets the garage priority lane reorder queued jobs.
+ * `kind` labels the job in the __GLB_JOBS telemetry ring. */
+function idleGate(fn, tag = null, kind = 'job') {
   return new Promise((res, rej) => {
-    _idleQueue.push({ fn, res, rej, tag });
+    _idleQueue.push({ fn, res, rej, tag, kind });
     scheduleIdlePump();
   });
+}
+
+// ---------------------------------------------------------------------------
+// PERF (perf-smooth r1): amortized warm-up for the pipelined async swap.
+// GPU texture uploads are the classic swap-frame spike (the r4 probe measured
+// a 773 ms frame as ~8 GLB texture sets bound on first use; the vegetation
+// upload amortization is the in-repo precedent). The async pipeline uploads
+// the staged clone's textures a few MB per idle slot, then pre-compiles its
+// programs against the live scene, and only then commits the swap — so the
+// first frame that can SEE the model binds nothing new.
+const WARM_SLICE_BYTES = 8 * 1024 * 1024; // ~1-2 full 1024² RGBA mips per slot
+
+/** Unique textures reachable from the staged clone's materials. */
+function collectStagedTextures(scene) {
+  const seen = new Set();
+  const out = [];
+  scene.traverse((o) => {
+    const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
+    for (const m of mats) {
+      for (const k of Object.keys(m)) {
+        const v = m[k];
+        if (v && v.isTexture && !seen.has(v.uuid)) { seen.add(v.uuid); out.push(v); }
+      }
+    }
+  });
+  return out;
+}
+
+/** Upload textures[start..] until the byte budget is spent (min one).
+ * @returns {number} next index (== length when done) */
+function uploadTextureSlice(texs, start) {
+  const D = typeof window !== 'undefined' ? window.__DEBUG : null;
+  if (!D || !D.renderer) return texs.length; // headless tooling: no GPU warm
+  let bytes = 0;
+  let i = start;
+  for (; i < texs.length && bytes < WARM_SLICE_BYTES; i++) {
+    const t = texs[i];
+    const img = t.image;
+    bytes += (img && img.width) ? img.width * img.height * 4 : (1 << 20);
+    try { D.renderer.initTexture(t); } catch (_) { /* warm-up only */ }
+  }
+  return i;
+}
+
+/** Compile the DETACHED staged clone's programs against the live scene
+ * (three r152+ compile(object, camera, targetScene) takes lights/fog from
+ * targetScene, so the programs match what the attached model will use; with
+ * KHR_parallel_shader_compile the driver keeps linking off-thread during the
+ * slots between here and the commit). */
+function precompileStaged(scene) {
+  try {
+    const D = typeof window !== 'undefined' ? window.__DEBUG : null;
+    if (!D || !D.renderer || !D.camera || !D.scene) return;
+    D.renderer.compile(scene, D.camera, D.scene);
+  } catch (_) { /* warm-up only — never block the swap */ }
 }
 
 /** Pre-upload the swapped subtree's textures and compile its programs against
@@ -377,12 +523,14 @@ function loadGltf(url, texCaps = GLB_TEX_CAPS) {
       try {
         const g = await idleGate(() => new Promise((res, rej) => {
           _loader.parse(buf, url.slice(0, url.lastIndexOf('/') + 1), res, rej);
-        }), url);
+        }), url, 'parse');
         // PERF r3: shrink oversized baked maps before the scene is cached —
         // see the texture-cap block above. GLTFLoader resolves before its
         // textures finish decoding; images that are not ready yet are capped
         // lazily by capGlbSceneTextures on the next swap of the same URL.
+        const tCap0 = performance.now();
         capGlbSceneTextures(g.scene, texCaps);
+        logJob('texcap', url, performance.now() - tCap0);
         // PERF (performance_budget r2): the cache must retain gltf.scene (the
         // clone source for later createTank calls) — but gltf.parser hangs on
         // to the decoded JSON tree, its own per-load caches and associations,
@@ -408,6 +556,21 @@ function loadGltf(url, texCaps = GLB_TEX_CAPS) {
 
 /** True when the GLB is parsed and applyGlbModelSync can run. */
 export function hasCachedGlb(url) { return _resolved.has(url); }
+
+/**
+ * PERF (perf-smooth r1): fire-and-forget fetch+parse warm for a battle
+ * roster's sourced models (main.js battle loading screen). The network fetch
+ * starts immediately; the parse joins the same battle-safe idle queue the
+ * real load path uses, and the eventual applyGlbModel call for the same path
+ * hits the shared cache. Failures are the load path's to report — the
+ * prefetch is only a scheduling hint.
+ * @param {object} cfg spec.model.glb config ({ path, heroTex? })
+ */
+export function prefetchGlb(cfg) {
+  if (!cfg || !cfg.path) return;
+  loadGltf(cfg.path, cfg.heroTex ? GLB_TEX_CAPS_HERO : GLB_TEX_CAPS)
+    .catch(() => { /* the real load path owns error reporting */ });
+}
 
 /**
  * TANK-SWITCH PERF (switching r1): true while a queued/in-flight applyGlbModel
@@ -1924,55 +2087,12 @@ function upgradeMaterials(root) {
 // shadow pass only respects object.visible + layers vs the MAIN camera
 // (WebGLShadowMap.renderObject), so a shadow-only mesh must stay visible and
 // simply write nothing in the color pass (3 null draws per vehicle).
-const _shadowProxyMat = new THREE.MeshBasicMaterial({
-  name: 'ShadowProxy', colorWrite: false, depthWrite: false,
-});
-function buildShadowProxy(g, label) {
-  const sources = [];
-  g.updateWorldMatrix(true, false);
-  const inv = new THREE.Matrix4().copy(g.matrixWorld).invert();
-  const collect = (node) => {
-    if (node.isLOD) {
-      // highest-detail level only — the proxy is already the LOD
-      if (node.levels && node.levels[0] && node.levels[0].object) collect(node.levels[0].object);
-      return;
-    }
-    if (node.isMesh && !node.isInstancedMesh && node.castShadow && node.geometry &&
-        node.geometry.attributes && node.geometry.attributes.position &&
-        node.geometry.attributes.position.count >= 12) {
-      sources.push(node);
-    }
-    for (const c of node.children) collect(c);
-  };
-  for (const child of g.children) {
-    // only the procedural stand-ins the swap just hid
-    if (child.visible === false && (child.isMesh || child.isLOD || child.isInstancedMesh)) collect(child);
-  }
-  if (!sources.length) return null;
-  const geos = [];
-  for (const m of sources) {
-    m.updateWorldMatrix(true, false);
-    // depth-only pass: position (+index) is all a shadow map samples
-    let geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', m.geometry.attributes.position.clone());
-    if (m.geometry.index) geo.setIndex(m.geometry.index.clone());
-    geo = geo.toNonIndexed ? (geo.index ? geo.toNonIndexed() : geo) : geo;
-    geo.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld));
-    geos.push(geo);
-  }
-  const merged = geos.length === 1 ? geos[0] : mergeGeometries(geos, false);
-  if (!merged) return null;
-  const proxy = new THREE.Mesh(merged, _shadowProxyMat);
-  proxy.name = `shadowProxy_${label}`;
-  proxy.castShadow = true;
-  proxy.receiveShadow = false;
-  proxy.frustumCulled = true;
-  // shadow-only: must never intercept aim/LOS/picking Raycasters — the
-  // procedural silhouette overhangs the GLB hull in places
-  proxy.raycast = () => {};
-  g.add(proxy);
-  return proxy;
-}
+// perf-smooth r1: buildShadowProxy is GONE. Since tankFactory's build-time
+// installProceduralShadowProxies landed, the swap-time proxy build only
+// re-merged those very procShadow_* meshes into identical copies (the
+// detailed procedural meshes stopped casting at build). commitSwap now simply
+// keeps the build proxies visible+casting — same silhouettes, one merge less
+// per swap, and no undisposed per-swap proxy geometry on eviction.
 
 // ---------------------------------------------------------------------------
 // PERF (performance_budget r3): main-pass kit merge for multi-mesh GLBs.
@@ -1982,15 +2102,15 @@ function buildShadowProxy(g, label) {
 // mesh's transform relative to the subtree root, merges every 2+ bucket into
 // ONE mesh, and removes the originals. Material instances are reused as-is,
 // so the camo repaint registry keeps working; buckets of one are untouched.
-function mergeStaticKit(container, label) {
+function mergeStaticKit(container, label, excludeRoots = null) {
   const buckets = new Map();
   container.updateWorldMatrix(true, false);
   const inv = new THREE.Matrix4().copy(container.matrixWorld).invert();
   const rel = new THREE.Matrix4();
-  container.traverse((o) => {
+  const visit = (o) => {
     if (!o.isMesh || o.isSkinnedMesh || o.isInstancedMesh || o === container) return;
     if (!o.visible || Array.isArray(o.material) || !o.material) return;
-    if (o.name && o.name.startsWith('shadowProxy_')) return;
+    if (o.name && (o.name.startsWith('shadowProxy_') || o.name.startsWith('procShadow_'))) return;
     const g = o.geometry;
     if (!g || !g.attributes || !g.attributes.position) return;
     if (g.morphAttributes && Object.keys(g.morphAttributes).length) return;
@@ -2002,7 +2122,17 @@ function mergeStaticKit(container, label) {
     let b = buckets.get(key);
     if (!b) { b = { mat: o.material, meshes: [] }; buckets.set(key, b); }
     b.meshes.push(o);
-  });
+  };
+  // perf-smooth r1: this now runs on the DETACHED clone, where the turret /
+  // gun / follower subtrees are still inside the hull scene (commitSwap
+  // re-parents them into the articulation groups afterwards) — they must
+  // never be merged into the static hull kit, so the walk skips them.
+  const walk = (node) => {
+    if (excludeRoots && excludeRoots.has(node)) return;
+    visit(node);
+    for (const c of node.children) walk(c);
+  };
+  walk(container);
   let mergedCount = 0;
   for (const b of buckets.values()) {
     if (b.meshes.length < 2) continue;
@@ -2036,33 +2166,47 @@ function mergeStaticKit(container, label) {
   }
 }
 
-/** Effective-visibility traverse: skip subtrees hidden by the swap sweep. */
+/** Effective-visibility traverse RELATIVE to `root`: skips subtrees hidden by
+ * internal flags (the swap sweep, surgery-hidden GLB parts) but deliberately
+ * ignores the visibility of `root` itself. Battle staging and spotting hide
+ * whole TANK ROOTS (unspotted enemies render nothing) — a commit that lands
+ * on a hidden tank must still see its would-be-visible meshes, or the
+ * castShadow-off sweep silently no-ops and the tank casts 25-83 per-mesh
+ * cascade draws the moment it is spotted (this was live on HEAD: the old
+ * absolute-visibility walk returned immediately at the hidden root). */
 function visibleMeshes(root, fn) {
-  const walk = (node) => {
-    if (node.visible === false) return;
+  const walk = (node, atRoot) => {
+    if (!atRoot && node.visible === false) return;
     if (node.isMesh || node.isInstancedMesh) fn(node);
-    for (const c of node.children) walk(c);
+    for (const c of node.children) walk(c, false);
   };
-  walk(root);
+  walk(root, true);
 }
 
-/** Core swap, fully synchronous once the parsed GLTF is in hand. */
-function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
+// ---------------------------------------------------------------------------
+// PERF (perf-smooth r1): the swap is split into two synchronous halves so the
+// battle-safe idle queue can pipeline it across frames instead of paying one
+// 40-360 ms main-thread chunk per model (measured per-job on the 14-tank
+// battle storm: applySwap 26-188 ms + first-use warm 12-171 ms in ONE slot).
+//
+//   prepareSwapStart(gltf, ctx) — clone, articulation gate, fidelity
+//     surgery, orientation/scale, pivot derivation, material upgrade passes.
+//     The live tank keeps its procedural stand-in and is never touched.
+//     Throws = keep procedural.
+//   finishPrepareSwap(staged, ctx) — camo composite + static-kit merges
+//     (exclusion-aware — see mergeStaticKit), still fully detached.
+//   commitSwap(staged, ctx) — the short live-scene half: attach, re-parent
+//     turret/gun into the articulation groups, muzzle re-derivation, sweep
+//     the procedural render nodes hidden, shadow-caster bookkeeping.
+//
+// Between the halves the async pipeline (applyGlbModel) builds the camo
+// share composites one sheet per slot, uploads every texture and
+// pre-compiles programs against the live scene, so the commit's first
+// rendered frame binds nothing new and there is never a half-textured frame:
+// the model becomes visible only when it is fully ready.
+/** Detached-clone phase, first half. @returns {object} staged state */
+function prepareSwapStart(gltf, { spec, cfg }) {
   const scene = cloneWithSkeleton(gltf.scene);
-  // Snapshot every procedural render node before the sourced scene enters the
-  // tank hierarchy. Direct-child sweeps miss nested barrel/mantlet parts on
-  // some builders (the Merkava's detached procedural tube was the visible
-  // failure); this identity set hides exactly the old stand-in and never a
-  // subsequently re-parented GLB node.
-  const proceduralRenderNodes = new Set();
-  const proceduralRoot = hullG.parent || hullG;
-  proceduralRoot.traverse((o) => {
-    // battle-damage decal batches (src/fx/impactDecals.js) ride the tank
-    // nodes but are not stand-in geometry — sweeping them made every armor
-    // scar landed BEFORE a lazy GLB swap vanish when the swap pumped in.
-    if (o.name === 'fx_impactDecals') return;
-    if (o.isMesh || o.isLOD || o.isInstancedMesh) proceduralRenderNodes.add(o);
-  });
 
   // ---- articulation gate ----
   // A fixed mount is a fact about the real vehicle, never a workaround for a
@@ -2235,11 +2379,67 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
       [-1.38, 0.55, -1.05, -Math.PI / 2],
     ], 0.55);
   }
+  return {
+    scene, turret, gun, turretFollowers, gunFollowers,
+    autoTurretPos, autoGunPos, autoMuzzleLen,
+  };
+}
+
+/** Second prep half (still detached): camo composite + static-kit merges.
+ * Split from prepareSwapStart so the async pipeline can amortize the
+ * per-source-sheet share composites (materials.warmNextGlbShare) in the
+ * slots between the two halves. */
+function finishPrepareSwap(staged, { spec, cfg }) {
+  const { scene, turret, gun, turretFollowers, gunFollowers } = staged;
   // camo: texture-space pattern composite onto the asset's baked albedo
   // (materials.js owns it — pattern tile + luminance-normalized grayscale
   // detail overlay + alpha restore; weathering/AO preserved).
   // Live when the garage picker or an AUTO biome switch changes the pattern.
   applyCamoToModel(scene, spec, { shareCap: cfg.heroTex ? 1024 : 512 });
+
+  // PERF (performance_budget r3 → perf-smooth r1): GLB kit-merge, moved into
+  // the DETACHED phase so its mergeGeometries cost never lands on a live
+  // frame. Runs after every name-targeted surgery/camo pass exactly as
+  // before; the articulated subtrees (turret, gun, followers — which
+  // commitSwap re-parents into the yaw/pitch groups) are excluded from the
+  // hull merge so articulation is untouched. With the camo pass now cloning
+  // one material per param-class (materials.js applyCamoToModel), the
+  // buckets actually group again: the per-mesh clones had silently defeated
+  // this merge and swapped tanks were submitting 30-100 main-pass draws each.
+  const excludeFromHull = new Set([turret, gun, ...turretFollowers, ...gunFollowers].filter(Boolean));
+  mergeStaticKit(scene, 'hull', excludeFromHull);
+  if (turret) mergeStaticKit(turret, 'turret', new Set(gun ? [gun] : []));
+  if (gun) mergeStaticKit(gun, 'gun');
+  return staged;
+}
+
+/** Full detached-phase prep — the synchronous composition of both halves
+ * (applyGlbModelSync path; the async pipeline runs them as separate jobs
+ * with amortized share warm-up in between). */
+function prepareSwap(gltf, ctx) {
+  return finishPrepareSwap(prepareSwapStart(gltf, ctx), ctx);
+}
+
+/** Live-scene phase — attach the staged clone and hide the stand-in. */
+function commitSwap(staged, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
+  const {
+    scene, turret, gun, turretFollowers, gunFollowers,
+    autoTurretPos, autoGunPos, autoMuzzleLen,
+  } = staged;
+  // Snapshot every procedural render node before the sourced scene enters the
+  // tank hierarchy. Direct-child sweeps miss nested barrel/mantlet parts on
+  // some builders (the Merkava's detached procedural tube was the visible
+  // failure); this identity set hides exactly the old stand-in and never a
+  // subsequently re-parented GLB node.
+  const proceduralRenderNodes = new Set();
+  const proceduralRoot = hullG.parent || hullG;
+  proceduralRoot.traverse((o) => {
+    // battle-damage decal batches (src/fx/impactDecals.js) ride the tank
+    // nodes but are not stand-in geometry — sweeping them made every armor
+    // scar landed BEFORE a lazy GLB swap vanish when the swap pumped in.
+    if (o.name === 'fx_impactDecals') return;
+    if (o.isMesh || o.isLOD || o.isInstancedMesh) proceduralRenderNodes.add(o);
+  });
 
   // ---- re-parent turret (and gun) into the articulation groups ----
   // The swap can land while the tank is already posed in the world (async
@@ -2326,51 +2526,80 @@ function applySwap(gltf, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
   // ---- swap: hide procedural render meshes, keep anchors/instancing intact.
   // gunG (recoilG's parent) carries the procedural mantlet (gunMount bucket)
   // and must be swept too.
-  for (const node of proceduralRenderNodes) node.visible = false;
+  //
+  // PERF (perf-smooth r1): the tank's shadow casters after the swap are the
+  // procedural shadow proxies tankFactory installed at build time
+  // (procShadow_hull/turret/gun — spec-accurate, articulation-aware,
+  // colorWrite:false). The old path swept them hidden with the rest of the
+  // stand-in and then buildShadowProxy re-merged their geometry into
+  // identical shadowProxy_* copies (the detailed procedural meshes already
+  // cast nothing since the build-time install) — a pure duplicate merge per
+  // swap, and its geometry was never disposed on eviction. Keep the build
+  // proxies visible+casting instead; silhouettes are unchanged by
+  // construction and the swap commit gets cheaper.
+  for (const node of proceduralRenderNodes) {
+    if (node.name && node.name.startsWith('procShadow_')) continue;
+    node.visible = false;
+  }
   // tank_models r1: flag the swap so later visibility toggles on procedural
   // gear (tankFactory setBroken repair path) never resurrect the hidden
   // stand-in meshes beside the GLB.
   hullG.userData.__glbSwapped = true;
 
-  // PERF (performance_budget r3): GLB kit-merge — the draw-call worst-frame
-  // fix the r2 shadow proxy left unfinished. Community/print GLBs ship the
-  // vehicle as 25-83 separate kit meshes; the proxy removed their CASCADE
-  // draws but every mesh still costs one MAIN-pass draw, so a random roster
-  // fielding several unmerged GLBs measured 1095 worst-frame calls vs the
-  // 900 budget (round-2 critic) while merged-kit rosters passed with 2x
-  // headroom. After all name-targeted surgery/camo passes are done (order
-  // matters: this runs LAST), merge static single-material leaf meshes per
-  // articulation subtree (hull scene / turret / gun keep articulating).
-  // Buckets key on material instance + attribute layout, so the camo
-  // repaint path (materials.js entry.mats — material references, not mesh
-  // references) keeps restyling merged kits live. Skinned/instanced/multi-
-  // material meshes are left alone. kv2: 83 meshes -> 7. Merged geometry is
-  // per-instance (clones share cache geometry, merges cannot) — tankFactory
-  // dispose() frees anything tagged __kitMerged on eviction.
-  mergeStaticKit(scene, 'hull');
-  if (turret) mergeStaticKit(turret, 'turret');
-  if (gun) mergeStaticKit(gun, 'gun');
-
-  // PERF (performance_budget r2): shadow-proxy LODs — see buildShadowProxy.
-  // Order matters: proxies are built FROM the just-hidden procedural casters,
-  // then every still-visible (= GLB + kit) mesh stops casting. The proxies are
-  // idempotent per group (repeat swaps on the same visual bail on the flag).
+  // Every still-visible GLB + kit mesh stops casting: the proxies carry the
+  // cascade silhouette (performance_budget r2 measured tank shadow passes at
+  // ~55% of ALL draw calls — 25-83 casters x cascades per vehicle — and the
+  // entire worst-frame budget breach). Idempotent per visual via the flag.
+  const sweepRoot = (hullG.parent && !hullG.parent.isScene) ? hullG.parent : hullG;
   if (!hullG.userData.__shadowProxied) {
     hullG.userData.__shadowProxied = true;
-    buildShadowProxy(hullG, 'hull');
-    buildShadowProxy(turretG, 'turret');
-    buildShadowProxy(recoilG, 'gun');
-    if (gunG) buildShadowProxy(gunG, 'mantlet');
     // hullG and turretG are SIBLINGS under the tank root (tankFactory
     // articulation layout) — sweep the whole root or the turret-side GLB
     // subtree (where most signature-kit addPart meshes live) keeps casting.
-    const sweepRoot = (hullG.parent && !hullG.parent.isScene) ? hullG.parent : hullG;
     visibleMeshes(sweepRoot, (o) => {
-      if (o.name && o.name.startsWith('shadowProxy_')) return;
+      if (o.name && (o.name.startsWith('shadowProxy_') || o.name.startsWith('procShadow_'))) return;
       o.castShadow = false;
     });
   }
+
+  // PERF (perf-smooth r1, texture headroom): the swept-hidden procedural
+  // stand-in keeps its full generated texture set resident forever — a
+  // hero-tier bake is 2048² albedo + 1024² normal/rough (~32 MB), an 'ai'
+  // bake ~8 MB, and a 14-tank battle fields 10+ swapped vehicles whose
+  // stand-ins can never be shown again (__glbSwapped guards every re-show
+  // path). Null the texture slots on materials that are used ONLY by hidden
+  // stand-in meshes; textures also worn by anything still visible (decor and
+  // runtime kit parts wear the shared camo canvas) are left untouched, and
+  // the per-spec TEX_CACHE canvases themselves stay cached for future
+  // builds/repaints — this drops GPU/reachability, not the CPU bake.
+  const liveMats = new Set();
+  visibleMeshes(sweepRoot, (o) => {
+    const mm = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mm) { if (m) liveMats.add(m); }
+  });
+  const TEX_SLOTS = ['map', 'normalMap', 'roughnessMap', 'metalnessMap',
+    'aoMap', 'emissiveMap', 'alphaMap', 'bumpMap', 'lightMap'];
+  const strippedMats = new Set();
+  for (const node of proceduralRenderNodes) {
+    if (!(node.isMesh || node.isInstancedMesh)) continue;
+    if (node.name && node.name.startsWith('procShadow_')) continue;
+    const mm = Array.isArray(node.material) ? node.material : [node.material];
+    for (const m of mm) {
+      if (!m || liveMats.has(m) || strippedMats.has(m)) continue;
+      strippedMats.add(m);
+      let touched = false;
+      for (const k of TEX_SLOTS) {
+        if (m[k] && m[k].isTexture) { m[k] = null; touched = true; }
+      }
+      if (touched) m.needsUpdate = true;
+    }
+  }
   return true;
+}
+
+/** Core swap, fully synchronous once the parsed GLTF is in hand. */
+function applySwap(gltf, ctx) {
+  return commitSwap(prepareSwap(gltf, ctx), ctx);
 }
 
 /**
@@ -2415,33 +2644,107 @@ export async function applyGlbModel(ctx) {
     // late-decoded textures (resilient-loader retries) get capped on the
     // next swap — no-op when the parse-time pass already shrank everything.
     capGlbSceneTextures(gltf.scene, ctx.cfg.heroTex ? GLB_TEX_CAPS_HERO : GLB_TEX_CAPS);
-    // PERF (performance_budget r4): the swap itself (skeleton clone, triangle
-    // surgery, creased normals, camo composite) is also a main-thread chunk —
-    // run it through the same battle-safe idle gate, then pre-upload textures
-    // and compile programs in the same slot so the next frame binds nothing new.
-    return await idleGate(() => {
-      // The visual may have been evicted/disposed while the job waited (battle
-      // roster change, thumbs booth teardown): a detached tank root means the
-      // procedural stand-in is gone from the scene — skip the dead swap.
+    // The visual may be evicted/disposed while pipeline stages wait (battle
+    // roster change, thumbs booth teardown): a detached tank root means the
+    // procedural stand-in is gone from the scene — skip the dead swap.
+    const live = () => {
       let root = ctx.hullG;
       while (root.parent) root = root.parent;
-      if (!root.isScene) return false;
-      const ok = applySwap(gltf, ctx);
-      if (ok) warmSwappedModel(ctx);
-      // tank_models r2 (critic major: pedestal placeholder/blank for 15-45 s):
-      // main.js hides the garage hero while its GLB loads, but its reveal poll
-      // waits for the WHOLE load queue to settle (~20 thumb GLBs) — the hero
-      // stayed hidden long after its own swap landed (probe: swap at t+8 s,
-      // reveal never before t+30 s). The swap is the authoritative "this
-      // tank's real model is on stage" moment: re-show the tank root here.
-      // Battle spotting re-asserts visibility per frame, so this only ever
-      // matters on the garage pedestal.
-      if (ok && !inBattle()) {
-        const tankRoot = ctx.hullG.parent;
-        if (tankRoot && tankRoot.visible === false) tankRoot.visible = true;
+      return root.isScene;
+    };
+    // PERF (performance_budget r4 → perf-smooth r1): the swap used to run as
+    // ONE idle job (skeleton clone, surgery, camo composite, kit merge, every
+    // texture upload and program compile) — measured 38-359 ms per model on
+    // the 14-tank battle storm, a guaranteed dropped frame per landing. It is
+    // now a PIPELINE of small battle-safe idle jobs:
+    //   prep (clone/gate/surgery/scale/material upgrades) → camoShare xN
+    //   (one per-source-sheet composite build per slot — the dominant slice
+    //   of the old monolith) → camoMerge (pattern composite over the warm
+    //   share cache + kit merges) → warmTex xN (amortized GPU texture
+    //   uploads) → compile (program pre-compile vs the live scene) → commit
+    //   (attach + re-parent + sweep — the only stage that touches the tank).
+    // The model stays procedural until commit, so no frame ever shows a
+    // half-textured or un-posed model; commit binds nothing new.
+    //
+    // CAPTURE CONTEXTS (shot phase / paused capture session): there are no
+    // combat frames to protect and the screenshot harness's settle window is
+    // short — a hero pipeline spread over ~20 slots can miss the capture the
+    // way the old monolith never did (player_view captured the procedural
+    // m1a2 stand-in). A job that runs while a capture context is active
+    // drains EVERY remaining stage in its slot — exactly the old one-job
+    // behavior, in contexts where that was always safe.
+    const st = { phase: 'prep', pre: null, staged: null, texs: null, ti: 0 };
+    const shareCap = { shareCap: ctx.cfg.heroTex ? 1024 : 512 };
+    const advance = () => {
+      switch (st.phase) {
+        case 'prep':
+          if (!live()) return 'dead';
+          st.pre = prepareSwapStart(gltf, ctx);
+          st.phase = 'camoShare';
+          return 'more';
+        case 'camoShare':
+          if (!warmNextGlbShare(st.pre.scene, ctx.spec, shareCap)) st.phase = 'camoMerge';
+          return 'more';
+        case 'camoMerge':
+          if (!live()) return 'dead';
+          st.staged = finishPrepareSwap(st.pre, ctx);
+          st.texs = collectStagedTextures(st.staged.scene);
+          st.ti = 0;
+          st.phase = 'warmTex';
+          return 'more';
+        case 'warmTex':
+          st.ti = uploadTextureSlice(st.texs, st.ti);
+          if (st.ti >= st.texs.length) st.phase = 'compile';
+          return 'more';
+        case 'compile':
+          precompileStaged(st.staged.scene);
+          st.phase = 'commit';
+          return 'more';
+        case 'commit': {
+          if (!live()) return 'dead';
+          const ok = commitSwap(st.staged, ctx);
+          // tank_models r2 (critic major: pedestal placeholder/blank for
+          // 15-45 s): main.js hides the garage hero while its GLB loads, but
+          // its reveal poll waits for the WHOLE load queue to settle (~20
+          // thumb GLBs) — the hero stayed hidden long after its own swap
+          // landed. The swap is the authoritative "this tank's real model is
+          // on stage" moment: re-show the tank root here. Battle spotting
+          // re-asserts visibility per frame, so this only ever matters on
+          // the garage pedestal.
+          if (ok && !inBattle()) {
+            const tankRoot = ctx.hullG.parent;
+            if (tankRoot && tankRoot.visible === false) tankRoot.visible = true;
+          }
+          return ok ? 'done' : 'dead';
+        }
+        default:
+          return 'dead';
       }
-      return ok;
-    }, ctx.cfg.path);
+    };
+    const runJob = () => {
+      // Capture contexts (shot phase / paused capture session): unbounded
+      // drain — no combat frames exist and the harness settle windows are
+      // short. Boot-splash dwell ("press any key" armed): the player is
+      // reading the splash and no gameplay frame can be seen, but a keypress
+      // must stay responsive — drain in ~150 ms bounded chunks instead
+      // (the old monolithic swap ran freely in this window; bootHeld() still
+      // parks the queue outright during boot stages and splash teardown).
+      const capture = inShotPhase() || _queuePaused;
+      const splashDwell = !capture && typeof document !== 'undefined'
+        && !!document.getElementById('cot-boot');
+      const t0 = performance.now();
+      let r = advance();
+      while (r === 'more'
+        && (capture || (splashDwell && performance.now() - t0 < 150))) {
+        r = advance();
+      }
+      return r;
+    };
+    for (;;) {
+      const r = await idleGate(runJob, ctx.cfg.path, st.phase);
+      if (r === 'done') return true;
+      if (r === 'dead') return false;
+    }
   } finally {
     _pendingSwapCtx.delete(ctx);
   }
