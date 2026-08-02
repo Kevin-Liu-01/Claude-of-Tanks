@@ -887,3 +887,7 @@ its plate runs to ~0.90); ref's central X-propeller intentionally not
 rebuilt (work order: delete the invented X-cross, add twin fans only);
 trivia items skipped (under-fender 0.92x, wrap-joint tan X-marks —
 short round). Prior classes stand.
+
+## Shaded-parity r7 (2026-08-02) — FAIL 8.5; EIGHT at 9.0; view-rear = 3 elements
+Work order: shaded-parity-leo2a6-r7.md — delete center grid (invented),
+lower plate bevel+brighten+fittings, center fan + taillight ovals.
