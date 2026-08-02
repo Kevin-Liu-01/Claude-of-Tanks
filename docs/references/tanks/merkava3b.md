@@ -542,3 +542,86 @@ read is rear-arc micro-chaos density.
 ## Shaded-parity r3 (2026-08-02) — FAIL 7.5 (floor rising; palette class CLOSED)
 Work order: shaded-parity-merkava3bc-r3.md — 3 moves: rake the side
 walls, real tarp+full chain+low corners, hem arches back to mid-wheel.
+
+## VISUAL round r4 (2026-08-02, merkava agent) — three moves + cheap wins
+Gate after the round, TWO consecutive runs bit-identical: **hull 90.6 /
+whole 90.6 / turret 90.4 / stations 92.9 / dims 100 / floaters 100 (min
+90.4, PASS x2)**. Siblings bit-identical (1b 62.5 / 2b 39.9 / 2d 34.9 /
+3d 67.8 / 4b 34.6); npm test 166/166. The -0.1 vs r3's 90.5 is diffuse
+sub-4mm AA cost of the r4 furniture (no single worst column is new —
+same acceptance as r3's own -0.6 hull note).
+Per-move status:
+1. HEM PULL-BACK — FIXED (gate-POSITIVE): the r3 wheel-top arches are
+   gone. skirt.lobeBot 0.682 / lintelBot 0.74: full-depth hem lobes run
+   to the certified 0.62 front-hem line (tooth tips land ON it, dip
+   0.062), arch LINTELS (lintelBot..archY) curtain the upper wheel + the
+   whole track band, openings are shallow scallops (chord 0.74) showing
+   only the lower wheel — the ref's curtained-gear read. Upper band
+   (1.01..1.36 station carrier) untouched. Track band muted on-element:
+   trackL/R emissive 0x231e15, trackLink 0x16130d (pixel-sampled: run
+   was (35,33,28) vs ref (58,55,45); arch-band now (54,54,47) vs ref
+   (59,59,50)).
+2. REAR SOFT MASS — FIXED: merkavaTarpLump REWRITTEN as organic cluster
+   (thick base pillow + two YAWED/TILTED crown facets + creases; ry per
+   lump so plans stop being axis-aligned); 15-lump field edge-to-edge on
+   the bustle deck in four certified rows (2.484 max fwd / 2.466 mid /
+   2.442-2.448 rim pokers / 2.412-2.418 in-basket heap) + 2 rear-slope
+   lumps at 2.484-2.487 (-2.60..-2.63). Vane tail face de-DOORED: canvas
+   sub-faces 2 mm UNDER the chain rods + sagging fold lines; pack tail
+   face re-dressed asymmetric (3 offset bundles, split parting shadows,
+   one diagonal, sagging hems). Chain fringe CONTINUOUS: tail comb
+   widened to hwR 0.96 (16 rods), 8 flank rods/side, NEW outer combs (5
+   rods+balls/side at x 0.70..1.06) on the basket rear rail plane with
+   hems AT the basket floor line. Rear corners: wingA re-dressed as
+   HANGING TARP (crown caps inside the thin wing plate z-span, bundle
+   faces, rope X, under-hem shadow — the gate check confirmed the ref
+   mask OWNS the tall corner content: side -4.44 tops 2.25-2.36, so
+   volumes stay, dressing softens); wingB/rack got dark top plates +
+   outer-third hullShadow recess bays (visible void under the basket).
+3. TURRET SIDE-WALL RAKE — IMPROVED (mask-bounded): merkavaRakeZ/X
+   aprons carry the band tops down fore/aft in the side elevations
+   (saddle->step 2.418->2.595, plinth->plateau 2.648->2.525, pad->deck),
+   pad->ring bevel (1.313,2.528 -> 1.205,2.588), spine->shelf wedges,
+   TWO new second-story shelf roofBoxes at the ref front shoulder lines
+   (right 2.462 = ref 2.44-2.47 at x 0.42..0.87; left 2.545 = ref center
+   2.54-2.58) fill the towers-over-moat; plinth/pad walls re-dressed as
+   HOUSING CLUSTERS (dark recess bays + proud sub-faces + sight aperture
+   + conduit, all <= 8 mm); casting flanks: tilted module seams (rz =
+   s*0.121 hugs the wall slope) + mid reveal line; bustle-front straps.
+   The hard band silhouette is the certified mask's own (ref side is
+   2.65 FLAT over -0.83..-1.88) — one-tier now reads via transitions,
+   not silhouette.
+Cheap wins: wide-MG barrels are full rods (0.74s at receiver height,
+booster + sight blade on the REAR half); pot dome (drum + sph crown
+2.565 at -2.33, ref 2.57) rounds the flat pot box; roof clutter plates
+on the new shelves; wallSeams gained hz horizontal reveals.
+GATE INCIDENTS (r4 lessons):
+- Pad-wall dressing at x 1.323/1.324 (9 mm proud) re-fired the r2 "2 mm
+  leak" law EXACTLY: the plan x-1.38 column read z -1.795 content, err
+  1.02 m, turret 88.6 BOTH tanks. All band-wall dressing now keeps outer
+  edges <= 1.3225 (the r3-proven 2mm poke). Same law applied left
+  (plinth face + 4 mm max).
+- MG head hardware vs stations: the first sight blade (top 2.676) and
+  booster (2.647) straddled the s6/s7 boundary (~-0.87 world) and put
+  +0.9% on BOTH windows (ref tops 2.649/2.622). The s7 window's 2.622
+  target polices ALL forward-MG content: barrel line dropped 12 mm
+  (y+0.246s), booster/blade moved to the rear half (z+0.66s/0.58s).
+- Outer comb hems 4 cm under the basket floor cost -0.4 t_side on both
+  tanks (ref turret mask bottoms AT the floor); hems raised to the line.
+- Deep-hem plates: full-thickness lobes (inner face 1.774) leaked the
+  0.62 hem into the x 1.78 front column (ref bottoms 0.80 there) — err
+  doubled to 0.101. All deep-hem content (lobes/lintels/teeth/strips)
+  now lives in the OUTER face band sx+0.010..sx+0.026, clear of the
+  1.801 column edge.
+- Casting-seam tilt sign: rz = -s*0.121 swung strip TOPS outboard into
+  the x -1.28 front column (+0.10); correct sign follows the wall lean.
+Honest residuals: the second story's hard rectangle silhouette is the
+certified mask itself (profiles read one-tier only via the transition
+planes); dead-rear organic amplitude still under the ref's (crowns are
+capped at the certified side bands; the ref's own print does the rest
+with texture); outer fringe combs partly occluded by the (ref-true)
+corner stacks from dead rear.
+Predicted per-view (r3 critic: 3B min 7.5): front 8.5 · frontleft 8.5 ·
+left 8.5 · rearleft 8.0-8.5 · rear 8.5 · rearright 8.5 · right 8.5 ·
+frontright 8.5 · top 8.5 — the hem overshoot (the r3-introduced 7.5
+holder) is gone; weakest remaining read is dead-rear canvas amplitude.

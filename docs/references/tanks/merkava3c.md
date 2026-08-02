@@ -249,3 +249,40 @@ frontleft 8.5 · left 8.0-8.5 · rearleft 8.0 · rear 8.5 · rearright
 ## Shaded-parity r3 (2026-08-02) — FAIL 7.0 (tarp miss alone holds the floor)
 Work order: shaded-parity-merkava3bc-r3.md. Dead-rear = the ref's tarp
 edge-to-edge; deliver real lump masses. Pot dome scale up.
+
+## VISUAL round r4 (2026-08-02, merkava agent) — three moves + pot dome
+Gate after the round, TWO consecutive runs bit-identical: **hull 91.4 /
+whole 90.7 / turret 90.2 / stations 93.9 / dims 100 / floaters 100 (min
+90.2, PASS x2)**. Siblings bit-identical; npm test 166/166. Shared fix
+list + ALL r4 gate incidents/laws: see merkava3b.md "VISUAL round r4"
+(1.3225 band-wall boundary, s7 window 2.622 MG police line, comb hems at
+the basket floor, hem outer-face band, seam tilt sign). The -0.1 vs r3's
+90.3 is the same diffuse AA cost (t_side mean 0.64 -> 0.65; every top
+worst column is the pre-existing ringTub seam / whip aliasing set).
+3C-SPECIFIC this round:
+- HEM at ITS certified 0.72 line: lobeBot 0.782 / lintelBot 0.84 (tooth
+  tips 0.718 ON the ref hem; scallop amplitude 0.06 — the 3C ref skirt
+  hangs higher than 3B's).
+- POT DOME (work-order cheap win) at the ref's chunky mass: drum r 0.105
+  + sph r 0.115 crown 2.59 = the certified 2.59 @ -2.35 column EXACTLY
+  (was a flat 2.575 crate); dark rim torus. Sphere reach trimmed so the
+  -2.51 window (Kasag hump boundary) never sees it.
+- TARP FIELD, 16 lumps (its ref rear IS tarp edge-to-edge): fwd row
+  crowns 2.486 max (band 2.46-2.49), rim row 2.446-2.452, in-basket heap
+  2.410-2.415, rear-slope pair 2.484-2.487 at -2.64..-2.67 — all placed
+  CLEAR of the Kasag stack's certified -2.56..-2.61 band and the -2.71
+  lesson column; Kasag keeps its two-tier strapped mass + canister.
+- Second-story shelves at ITS ref front lines (gate-POSITIVE both: the
+  standing under-reads closed): right shelf 2.542 (ref 2.54-2.55 from x
+  0.09) and mid-left shelf 2.585 (ref 2.59-2.61 at -0.24..-0.53), left
+  spine wedge RISES 2.525 -> 2.578 into the notch box; pad->ring bevel
+  to ITS ring (x 1.115 r 0.185).
+- Band-wall housing cluster on ITS plinth wall (-0.94 face, dressing
+  outer edges <= -0.944).
+Honest residuals: as 3B (mask-bound second-story rectangle, dead-rear
+amplitude under the print's) — the dead-rear now carries organic
+crumple + continuous fringe + canvas mat + recessed corner bays, but
+the ref's edge-to-edge canvas chaos is still denser at 2x.
+Predicted per-view (r3 critic: 3C min 7.0, held SOLELY by the dead-rear
+tarp miss): front 8.5 · frontleft 8.5 · left 8.0-8.5 · rearleft 8.0-8.5
+· rear 8.0-8.5 · rearright 8.5 · right 8.5 · frontright 8.5 · top 8.5.
