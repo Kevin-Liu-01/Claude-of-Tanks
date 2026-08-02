@@ -88,3 +88,26 @@ REMAINING HONEST COSTS (quantified, not oracle-repairable):
 - print hull short: body 6.5 vs 6.77 -> beam/flap carriers (~2 low-err cols);
 - fused-print texture: sponson/skirt lip fine structure ~0.05-0.1 per col.
 Ceiling estimate with perfect authoring ~85 hull/whole; stations ~80-85.
+
+
+## Geometry gate v11 round-3 (2026-07-31/08-01, casemate family agent) — FULL PASS
+
+Probe-tuned rebuild beat the round-2 ceiling estimate:
+Row: hull 90.6 / whole 90.6 / turret 100 (vacuous fixedMount) /
+stations 95.1 / dims 99.7 / floaters 100 — **min 90.6, GEOMETRIC GATE PASS**
+(reproduced 2026-08-02 by the adjudication re-run, exact to the decimal).
+
+What moved it (round-2 79.2 -> 90.6):
+- Roof cluster re-authored on the ref's own hump plateau (pedestal band
+  pedZ0..pedZ1 at 2.218) with ONE slim panorama stalk carrying published
+  heightM 2.48 — exactly 4 side columns of ~+0.10 top error (the certified
+  squat-print cost, down from the round-2 broad-housing spread).
+- Droop strip SEGMENTED per the edge-on prism law (o.stripSegs): rear run
+  holds exactly ±(widthM/2) as the pixel width anchor, forward run pulls in
+  to the print's narrower front half (stations 5-9 healed).
+- Lift eyes tucked inside the cluster z-band; vent hump moved to the left
+  dome's x so its rise prints no new front-view columns.
+
+NEXT: independent visual critic (>= 9.0 every view) + turntable review ->
+graduation per docs/GEOMETRY-GATE.md §10 (retire fixed('isu122s') in
+userdrops6.js, drop from USERDROP6_SOURCED_IDS, icons, freeze hash).
