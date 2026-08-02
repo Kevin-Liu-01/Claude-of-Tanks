@@ -1,18 +1,18 @@
 {
  "id": "m45_patton",
- "geoMin": 22.6,
+ "geoMin": 56.7,
  "gatePassed": false,
  "components": {
   "hullCurves": 70.4,
   "wholeCurves": 69.4,
   "turretCurves": 56.7,
   "stations": 73.9,
-  "dims": 22.6,
+  "dims": 70.5,
   "floaters": 100
  },
  "curveRows": {
   "side_hull": {
-   "score": 77.10265460574549,
+   "score": 77.1026546057455,
    "meanPct": 1.62,
    "p95Pct": 4.28,
    "coverPct": 0.57,
@@ -120,7 +120,7 @@
    ]
   },
   "side_whole": {
-   "score": 71.10932132133848,
+   "score": 71.10932132133853,
    "meanPct": 1.95,
    "p95Pct": 6.46,
    "coverPct": 1.12,
@@ -228,7 +228,7 @@
    ]
   },
   "plan_hull": {
-   "score": 70.44259375000001,
+   "score": 70.44259374999999,
    "meanPct": 2.29,
    "p95Pct": 3.48,
    "coverPct": 0,
@@ -336,7 +336,7 @@
    ]
   },
   "plan_whole": {
-   "score": 69.4288509791933,
+   "score": 69.42885097919329,
    "meanPct": 2.37,
    "p95Pct": 3.48,
    "coverPct": 0,
@@ -444,7 +444,7 @@
    ]
   },
   "front_hull": {
-   "score": 91.33348561024094,
+   "score": 91.33348561024093,
    "meanPct": 0.63,
    "p95Pct": 1.75,
    "coverPct": 0,
@@ -662,7 +662,7 @@
  },
  "turretRows": {
   "side": {
-   "score": 56.651607414684584,
+   "score": 56.651607414684555,
    "meanPct": 2.75,
    "p95Pct": 13.3,
    "coverPct": 1.6,
@@ -770,7 +770,7 @@
    ]
   },
   "plan": {
-   "score": 62.562599971520335,
+   "score": 62.56259997152035,
    "meanPct": 2.85,
    "p95Pct": 5.33,
    "coverPct": 0,
@@ -954,8 +954,8 @@
   {
    "name": "heightM",
    "actual": 3.08,
-   "published": 2.78,
-   "pct": 10.68
+   "published": 3,
+   "pct": 2.56
   },
   {
    "name": "hullLengthM",
@@ -966,8 +966,8 @@
   {
    "name": "overallLengthM",
    "actual": 6.39,
-   "published": 6.4,
-   "pct": 0.11
+   "published": 6.6,
+   "pct": 3.13
   },
   {
    "name": "widthM",

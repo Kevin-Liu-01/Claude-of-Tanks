@@ -1,13 +1,13 @@
 {
  "id": "m26_pershing",
- "geoMin": 25.3,
+ "geoMin": 71.2,
  "gatePassed": false,
  "components": {
   "hullCurves": 77.3,
   "wholeCurves": 71.2,
   "turretCurves": 73.5,
   "stations": 83.2,
-  "dims": 25.3,
+  "dims": 95.4,
   "floaters": 100
  },
  "curveRows": {
@@ -954,8 +954,8 @@
   {
    "name": "heightM",
    "actual": 3.07,
-   "published": 2.78,
-   "pct": 10.34
+   "published": 3.02,
+   "pct": 1.57
   },
   {
    "name": "hullLengthM",
