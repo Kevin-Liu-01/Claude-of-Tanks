@@ -2506,6 +2506,22 @@ REPAIRS['m1a2_tejas'] = {
     ],
 }
 
+# =============================================================== batch 16 ===
+# TEJAS W1b (supersedes batch-15 W1; rebind per the batch-8/12 precedent).
+# The re-tune round measured W1's 0.12 tail as the last cap: an 8-column
+# knee band at 2.545-2.572 gate-m vs the sovereign 2.464 dims grace
+# (m1a1.md residual law). Tail slope 0.12 -> 0.03: knee band -> ~2.463,
+# whips 4.09 -> 2.509 gate-m. Same .bak-frame knots and census as W1.
+REPAIRS['m1a2_tejas'] = {
+    'path': 'public/models/tanks/m1a2_tejas.glb',
+    'ops': [
+        ('py2', _axis_warp('m1a2_tejas', long_axis='x',
+                           y_map=[(0.0306, 0.0306), (2.5212, 2.5212), (4.1715, 2.5707)],
+                           long_map=[(-4.8226, -4.8226), (4.9982, 4.9982)],
+                           y_top_max=2.6427, expect=(25, 392797, 285183))),
+    ],
+}
+
 
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)

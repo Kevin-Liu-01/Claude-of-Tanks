@@ -111,11 +111,13 @@ export const PLANS = {
   // per the m1a1.md work order: everything above 2.46 -> 2.46 + 0.12*(y-2.46)
   // (whips 4.09 -> 2.656, CROWS 3.30 -> 2.561). Hull/deck/roof untouched
   // (nothing but furniture lives above 2.46). z identity (length true).
-  m1a1: { // file m1a2_tejas.glb (public/models/tanks/, not recovered/)
+  m1a1: { // file m1a2_tejas.glb — W1b (batch-16): tail slope 0.12 -> 0.03
+    // so the 8-col knee band 2.545-2.572 lands inside the 2.464 dims grace
+    // (agent-measured residual law, m1a1.md post-warp round).
     file: 'm1a2_tejas',
-    y: [[0, 0], [2.46, 2.46], [4.09, 2.6556]],
+    y: [[0, 0], [2.46, 2.46], [4.09, 2.5089]],
     z: [[-4.8, -4.8], [4.9, 4.9]],
-    yTopMax: 2.72,
+    yTopMax: 2.56,
   },
 };
 
