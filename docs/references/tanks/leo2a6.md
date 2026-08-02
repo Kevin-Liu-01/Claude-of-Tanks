@@ -284,3 +284,103 @@ clusters on fenders instead), rear plate missing louvered grilles
 (+ ORANGE tab), fence-railing bustle rack, untextured PERI with BLUE
 face, bamboo tube read (keep certified r 0.1175/0.1195), slab skirts,
 flat wheels, near-black track band.
+
+## Shaded-parity r2 — VISUAL FIX ROUND (2026-08-02)
+
+All 11 r1 defects addressed in `src/vehicles/profiles/leopard.js`
+(buildLeo2A6 + opt-in params only). Gate after round: **min 91.0 PASS**
+(hull 91.5 / whole 91.0 / turret 91.0 / stations 93.4 / dims 91.0 /
+floaters 100) — same headline as the certified entry; stations +0.4;
+whole/turret -0.3/-0.6 absorbed by documented residual classes (PERI
+4th-column, the -1.144 flip-flop rack column). Stable across repeat
+runs. Siblings byte-identical: leo2a5 69.2 / kf51 63.6 /
+leo2_revolution 45.0 (new shared-path switches are all opt-in:
+`T.smoke` now optional, `PR.mat`, `T.hatchRound`, `RK.slats`,
+`RK.cargo:false`). Full `npm test` passes. Board re-rendered.
+
+Per-item status (r1 defect list):
+1. GLACIS — DONE. Headlight pods clustered (armored plate + blackout
+   lamp + 3-bar brush guards INSIDE the certified 3.267 col, tops
+   <=1.492), shackle rings half-embedded in the certified clevis faces,
+   splash-board V on the flat 1.60/1.575 shelf (z 2.31..2.64, tone-read,
+   <=+0.02 proud), driver periscope frames + smoked glass slits
+   (<=1.690), 2x2 anti-slip zones + diagonal tow cable half-sunk.
+   BLUE dots dead (glass retone below).
+2. GEAR END CAPS — DONE. m60a1/kv2 retone (below) turns band + wrap
+   pads warm; rim-fill tori close the dark annulus between the small
+   measured end wheels and their raised wraps (idler r 0.245 @ 3.38,
+   sprocket r 0.283 @ -3.11, anchored to rim/carrier, fully inside the
+   pad-wrapped side silhouette); dark hub caps. The r1 "stray black
+   cylinder clusters on the fenders" were the WRAP-TOP LINK PADS
+   reading unlit black — they now read as track.
+3. SMOKE LAUNCHERS — DONE. The old T.smoke cluster sat INSIDE the
+   +-1.38 wall solid (invisible — hence "missing"). New 2x4 Wegmann
+   banks per side ride PROUD of the wall->roof chamfer plane
+   ((1.38,0.30)->(1.05,0.62)): row1 centers ON the plane, row2 22 mm
+   proud, camo tubes + dark muzzles + collar rings + slope rails.
+   Mask law held: every top >=0.03 under the crest line at its column,
+   outermost reach 1.325 (1.36+/1.419/1.45 columns stay dark).
+4. REAR PLATE — DONE. Full-width louvred grille field (2.86 x 0.30 +
+   5 ribs + frame verticals), exhaust wells + slats at +-1.16,
+   taillight clusters (+-1.315, twin smoked lenses + guard lip),
+   shackle D-rings; ORANGE tab killed (wood mat -> 0x574f40).
+   Legality: proud pieces crossing the -3.627 side-column boundary
+   keep y in the certified 1.373..1.771 band; z >= -3.626 pieces live
+   in the wall column. RESIDUAL: plate below y 1.38 stays bare (any
+   proud content there would break the -3.688 col bottom 1.373).
+5. BUSTLE RACK — DONE. Mid rail + 10 half-pitch inner slats densify
+   the fence; slatted floor (7 longitudinal slats) + CENTERED cargo
+   (2 strapped bundles, jerry, ammo can, tarp roll — |x| <= 0.37 incl
+   lids) give basket depth while keeping the stowed-load side band.
+6. PERI R17 — DONE. Body now scheme camo (PR.mat param), dark head
+   band + lid seam + optic surround + wiper bar all inside the
+   certified crown footprint/top; face glass smoked (no blue).
+7. HATCH RINGS — DONE (circularity law). Both stacks now carry raised
+   circular lids: pale two-tone rim torus (lidR+0.022) over an inner
+   dark groove + recessed dark lid center + 6 clamp lugs + hinge boss;
+   square dark lid boxes deleted. Every part tops at the certified
+   2.55/2.61 lines; the widened rims only touch columns the stack
+   drums already light. RESIDUAL: ring diameters are capped by the
+   certified stack footprint (0.41/0.33 m vs the ref's ~0.6 m cupola
+   ring) and the loader ring sits on a dark camo blotch — reads, but
+   fainter than the commander's at board resolution.
+8. FAN RINGS — DONE. Solid rack floor slab replaced by slats + cargo
+   centered between the fans: both rim arcs now read COMPLETE from
+   straight top (verified in view-top zoom). FILL law holds (furniture
+   over the closed deck).
+9. GUN — DONE. All 15 cinch rings keep their certified geometry
+   (seam-spacing law) but only the two real sleeve joints (2.565,
+   4.925) stay dark -> smooth camo sleeves + 2 joints + MRS collar;
+   bellows collar (dark skin + 3 accordion ribs INSIDE the certified
+   2.96..3.40w step) + dark joint plates dress the "stacked disc"
+   root; MRS mirror window flush on the housing face; recessed dark
+   bore disc. Tube/root silhouette byte-identical.
+10. SKIRTS + WHEELS — DONE. Three armor-block pads on the front-third
+    face (faces 1.871 < the 1.875 width line, rows already carried by
+    the certified 1.864 lip bands) + bolt heads; tone-only scalloped
+    rubber lower edge on both runs (strip + tabs <=13 mm proud,
+    bottoms hold 0.87). Wheels: weathered olive dish clone + worn
+    steel end drums + lifted rubber -> rim/tire/hub depth reads.
+    RESIDUAL: the scallop is a tone read, not real cutouts (real
+    cutouts would break station-slice width rows).
+11. TONES — DONE (m60a1/kv2 recipe, materials only, leo2a6-scoped):
+    glass 0x46525b r0.52 m0.50 (smoked), wood 0x574f40, trackL/R
+    setRGB(1.80,1.74,1.48) env 0.2, spareTrack 0x4d4838, rubber
+    0x2c2a26, pads 0x171614->0x474134 env 0.22, inner chain
+    0x27251f->0x3a362c env 0.26 (both re-hooked on
+    vehicleAmbientFloorHook), dish clone 0x5e5c4b, drum clone
+    0x45423a. Measured band luminance ratio ref/proc **1.153** —
+    inside the 0.92-1.16 law (same side as isu122s' accepted 1.154).
+
+Round lessons (mechanics worth keeping):
+- YAWED GLACIS FURNITURE: a yaw-rotated board at constant y sweeps
+  into the falling plate zone and prints +0.06..+0.11 tops (the first
+  splash-V cut cost side_hull 91.5 -> 90.7 on four columns; confine
+  boards to the flat shelf or chain slope-following segments).
+- The certified turret walls are SOLID to +-1.38: anything mounted at
+  |x| < the local wall/chamfer surface is invisible. Chamfer-plane
+  mounting (center-on-plane => half-proud) is the legal visible band.
+- Dark-only furniture vanishes on dark camo blotches — two-tone
+  (pale detail ring + dark groove) survives any patch.
+- Rear-plate furniture legality bands: z >= -3.626 free (wall column
+  bottom 1.13), deeper-than--3.627 content must stay y 1.373..1.771.
