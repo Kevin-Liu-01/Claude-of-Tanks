@@ -111,3 +111,73 @@ height -0.1% / overall +0.5% / body -0.3%. Same hullMask-replica caveat as
 3B (mantlet band crosses the 12% filter — informational only). The round-4
 certified wholeCurves cap is RETIRED; fresh workorder required before any
 build edits (pre-warp digests invalid).
+
+### Push round 1 intel (2026-08-02, merkava agent) — 3C deltas vs 3B
+Fresh baseline: hull 87.8 / whole 79.8 / turret 40.7 / stations 82.2 /
+dims 99.7 / floaters 100. READ merkava3b.md "Push round 1 intel" FIRST —
+same warped-ref frame (−0.35 shift), same registration law, same hull
+targets (rack/tail/nose/skirt/flareR/stations), same ring-tub lobe
+(0.58 bottoms over −0.36..−2.14), same muzzle +4.56 / vane-to-−4.44.
+3C-SPECIFIC ref targets (world):
+- WHIPS: tops 3.90-3.93 (not 3B's 3.61): z −3.58 (x −0.63) and −3.34
+  (x +1.015). Spring can z −3.55 top 2.75 (x −0.63). p95 budget = 3.
+- Crest: face z 1.53 top 2.54; 2.57 zone wider (0.53..−0.04) -> top1 2.57.
+- Sight band: 2.62 at −0.62..−0.67, 2.65 at −0.72..−1.51, flickers 2.62-
+  2.67 to −1.88. Front x-split: left plinth band 2.62-2.65 spans x −0.61..
+  −0.94 (wider + lower than 3B's 2.68); mid-left 2.59-2.61 at −0.24..−0.53;
+  CENTER 2.65 spike at x +0.01..0.05 (pano head sits near centerline, not
+  x −0.34); right 2.54-2.55 from 0.09.
+- Rear roof 2.54 at −1.93..−2.24; pot bump 2.57@−2.29 / 2.59@−2.35;
+  KASAG hump 2.65 at −2.56..−2.61 (kit bundle -> z −2.58 top 2.65; the old
+  2.94 whip-can tower at −2.90 is DEAD — ref max there is 2.49);
+  bustle 2.46-2.49 to −3.03, rim 2.41 to −3.29.
+- Stations (ref): s0 2.375, s1 3.897, s2 3.91, s3 2.649, s4-s7 2.663,
+  s8/s9 2.581, s10/s11 2.54, s12 2.156, s13 2.074; widths as 3B.
+PLAN: same rebuild as 3B with these deltas.
+
+### Push rounds 1-4 (2026-08-02) — shared trajectory with 3B
+R1 40.7 -> 63.2 (frame shift; read merkava3b.md round-1/2 notes for the
+mechanics), R2 -> 82.1, R3 -> 84.2 (dims 100 -> 98.3 after pods moved to
+the ref 3.10 tip; hullLength quantization), R4 pending. All shared fixes
+are 3B's (lipStrips, flush skirt, flareF/flareR thin lips, sleeveTo 4.22,
+ringTub step, vane V re-fit, roofBox[0] x1 1.32 — a 2 mm leak into the
+plan x-1.38 column read as z -1.85 content and cost ~1.6 turret_plan pts).
+3C-SPECIFIC learned this round:
+- rearPack has NO left lobe (3B's lobeL comes from ITS ref only; adding it
+  to 3C put 2.18-content at x -1.0 where the 3C ref hull reads 1.58).
+- 3C whip straddles: whip1 x -0.64 (was -0.63: its x-column pair reads
+  2.76/3.90 on the ref — the -0.60 col is carried by the 2.75 spring can),
+  whip2 x 1.02 (1.015 split the 0.996/1.05 cols differently than the ref).
+- Second spring can z -3.64 top 2.45 (the ref's -3.6 column reads 2.45,
+  not the can crown 2.75 which hides in the whip column).
+- Kasag hump bundle at z -2.58 top ~2.65 lands clean (not in any worst
+  list since R2); pano head near centerline x 0.03 confirmed (no center
+  columns in the R3 worst).
+
+### R4-R8: the 3C front phantom was ENVIRONMENTAL (2026-08-02)
+Several consecutive gate runs read constant proc tops ~3.27-3.33 at the
+whip-neighbor front columns (±0.6-0.7, +0.95-1.05) — build-invariant
+across whip rebuilds (thin 0.20 solid, bright material) — costing front
+_whole ~12 pts (75.2). A fresh in-page 1024 re-render (probe --blame=
+dump:) read the same columns CLEAN (2.57-2.62), proving no such build
+geometry; after the width-guard incident was fixed and the environment
+quieted, the SAME build gated at whole 87.8 twice byte-identically (the
+phantom never returned). Verdict: transient measurement contamination
+under concurrent headless-Chrome/GPU load, not build or oracle. Protocol:
+before chasing any inexplicable column, (1) re-run the gate twice, (2)
+pixel-dump the column. Whips stay thin: 0.20 + bright: true (harmless,
+kept). 3C-vs-3B roof deltas confirmed this round: left band x1 -0.56
+(3B: -0.548), plateau 2.54 vs 2.52, pot bump 2.575 vs 2.545.
+
+### GATE PASS (2026-08-02, gate v11): min 90.5
+**hull 91.5 / whole 90.7 / turret 90.5 / stations 93.3 / dims 100 /
+floaters 100** — from the batch-14 baseline 40.7 (hull 87.8 / whole 79.8
+/ turret 40.7 / stations 82.2 / dims 99.7). NO CAPS. Stable across two
+consecutive runs; siblings unregressed (see 3B packet for the shared
+registration law — pods 3.055 / tail frame -4.52 are untouchable span
+carriers). Final 3C-only deltas beyond the shared re-lay: bellyMidX 1.10
+(its outer 0.24 belly starts at |x| 1.10 vs 3B's 1.04), spring can top
+2.90 (carries the ref whip-ribbon's x -0.60 feather column), cupolaX
+1.09 / R 0.15 (its cupola ring must clear the x 0.87 column the 3B ref
+fills), left-band notch step { -0.535..-0.455, top 2.59 } (ref: 2.51 at
+-0.55, 2.59 at -0.49..-0.53), hem lip bot 0.72 (3B: 0.62).

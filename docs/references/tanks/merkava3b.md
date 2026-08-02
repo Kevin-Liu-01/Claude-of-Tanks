@@ -196,3 +196,180 @@ The round-4 certified wholeCurves cap (short gun + stature band) is hereby
 RETIRED — wholeCurves is no longer capped; the family push round re-tunes
 the build to the normalized oracle (fresh workorder mandatory; the old
 work-order digests are pre-warp and invalid).
+
+### Push round 1 intel (2026-08-02, merkava agent) — WARPED-REF WORLD FRAME
+Fresh baseline: hull 86.7 / whole 73.7 / turret 34.7 / stations 72.6 /
+dims 99.7 / floaters 100. Probe = tools/tmp-merkava-probe.mjs (full world
+curves both models; OUTDIR now this session's scratchpad).
+MASTER FACT: the warped ref is TRUE to published but sits ~0.35 m REARWARD
+of the build's old frame (loader re-centered after the muzzle grew). Ref
+world: muzzle +4.56, hull full span −4.54..+3.10, overall 9.10 (=9.04+0.7%),
+side-hull BODY span (12% rule) −4.54..+2.81..2.86. Gate side reg dAlong
+0.368 (= procBodyMid −0.525 minus refBodyMid −0.865) — a 3.5-pitch offset
+whose 0.5-pitch FRACTION smears every sharp column (r3 law). Fix = author
+the whole build in the REF frame (global z −0.35 + per-feature re-lay), NOT
+chase published absolutes: dims are translation-invariant.
+Registration mechanics (from tools/procedural-fidelity.html source):
+dAlong = refBodyMid − procBodyMid over side-hull cols with band >12% of
+hull rough; ONLY-REF fires when a ref col maps >0.02 outside proc FULL
+span (tight!); ONLY-PROC margin 0.75·pitch. Turret rows trim each model to
+its OWN hull full span ±0.6 (so the proc gun tip is already trimmed out of
+turret rows — workorder gun ONLY-PROC rows there are a tool artifact).
+Stations slice each model's own side-hull FULL span (s0 = rear).
+KEY REF TARGETS (world z, tops in m — author the build to THESE):
+- Muzzle +4.56 (tail −4.54 + 9.04 within aliasing). Gun band 1.86..2.04,
+  sleeve-ring bumps 2.07 at 4.01..4.30 / 3.46..3.54.
+- Mantlet drum band top 2.15 over z 1.55..2.26 (bots 1.83).
+- Crest face z 1.51 (top jumps 2.07 -> 2.52); plateau 2.52-2.54 to z ~0.2,
+  2.57 bump 0.11..0.04, saddle DIP 2.38-2.41 over −0.10..−0.59.
+- Sight band (p95 stature): 2.59-2.62 at −0.62..−0.80, 2.65 (max 2.67) at
+  −0.83..−1.88; front x-split: LEFT plinth 2.64-2.68 only x −0.61..−0.86
+  (falls 2.58 by −0.94), RIGHT band 2.59-2.62 x 0.91..1.32, CENTER only
+  2.54-2.58 (old center 2.65 crest/pano content was 0.1 proud).
+- Rear roof 2.52 at −1.93..−2.27; pot bump 2.57 at −2.29..−2.37; 3B stack
+  hump 2.57-2.59 at −2.45..−2.53 (kit bundle z −2.50, top 2.58); bustle top
+  2.46-2.49 to −3.05, 2.44 to −3.18, rim 2.38-2.41 to −3.29.
+- WHIPS: z −3.34 (top 3.61, x +1.015) and −3.58 (top 3.59, x +0.19); spring
+  CAN at z −3.55 top 2.70 (x 0.19). p95 budget = 2 whips + this can.
+- Vane (TURRET node) runs to −4.44: tops 2.33 -> 2.25, bots 1.94 -> 1.86;
+  plan V: full-rear −4.41 across |x| <= 0.72, taper to basket rim by ±1.0.
+- TURRET RING TUB (was the 34.7 killer): ref turret mask bottoms 0.58 flat
+  over z −0.36..−2.14 (ramps −0.25..−0.36 and −2.14..−2.28) — the turret
+  basket/interior descends into the hull. Build a turret-node tub (hw
+  ~0.85, bot 0.58) fully hidden inside the hull silhouette: invisible in
+  whole/hull/front/plan rows and all stations; only turret side rows see
+  it. Without it turret_side mean carries ~8% and caps at ~35.
+- HULL: rack band 2.38-2.41 over −3.50..−4.12 falling 2.36->2.25 by −4.46
+  (rearPack z −3.50..−4.41 + outboard tall lobes to −4.465 top 2.26); tail
+  frame 1.42..0.74 at −4.49..−4.54 (replaces hairline pins; it IS the ref
+  body-span end). Plan rear: center −4.41 (|x|<0.33), −4.52..−4.54 at
+  0.35..1.06 (wings), −4.44 at 1.08..1.77 (rack wall zone).
+- NOSE: plan face 2.89 (2.91 at |x| 1.32..1.77 = front boards); pods
+  (x ±0.56..0.69) poke to 3.10 at y 0.87..1.00 — they ARE the ref side
+  tip; glacis top 1.21@2.81 -> 1.36@2.55 -> 1.52@2.31. Deck line survives
+  the −0.35 shift almost exactly (peak 1.73 @ 0.40..0.74, crest 1.73 @
+  −2.84..−2.92 — but crest is CENTER-narrow: front tops 1.65-1.68 outside
+  |x|~1.42, so the two crest loft stations need wT ~1.42).
+- SKIRT: z0 L 2.36 / R 2.28 (plan L −1.82 col 2.36; R +1.82 col 2.28 and
+  +1.84 col starts 1.84 -> per-side flareF z0 [2.36, 1.84]); z1 −3.79 with
+  rear content to −3.84-3.87. Outermost ±1.84-1.86 front-view column is a
+  THIN HIGH LIP 1.28..1.33 (not a deep flare!) — retire fenderLip(1.86,
+  y1.06); make flareR the width carrier: x 1.8575, z −3.47..−3.87 (0.40
+  run >= 0.35 so pixel widthM counts it; fully inside station s1 window
+  [−4.0..−3.45] so s1 reads 3.715 like the ref and s2 stays 3.66), y-band
+  1.27..1.35 (flareR now takes top/bot in the shared chassis — additive,
+  sibling-safe). widthM -> 3.715 (−0.13%), WIDTH GUARD max |x| 1.8575 <
+  committed 1.86.
+- STATION TOP TARGETS (ref): s0 2.375, s1 3.595 (whip), s2 3.609 (whip),
+  s3 2.594, s4 2.677, s5 2.663, s6 2.649, s7 2.622, s8 2.553, s9 2.567,
+  s10 2.526, s11 2.526 (crest face must sit at z >= 1.51 to be caught!),
+  s12 2.156, s13 2.074; widths 3.66 mid / 3.715 s1 / 3.687 s12 / 3.55 s0
+  / 3.52 s13.
+- dims plan: heightM p95 excludes exactly 3 spikes (2 whips + can) ->
+  reads plateau 2.66; hullLength = pods 3.10 to tail frame −4.54 = 7.64
+  (+0.5%); overall 9.10 (+0.66%); width 3.715 (−0.13%) -> dims 100.
+PLAN: rebuild profile in ref frame (all z −0.35 + above targets), incl.
+per-profile wheelZs/sprocket/idler/rollers copies (MK3_GEAR override,
+sibling-safe), pivotZ −1.10, gunTipZ 4.56, evac ~0.70 (verify), plinth
+split into stepped bands, ring tub, vane to −4.44, delete 2.845 mast pot.
+
+### Push round 1 RESULT + round 2 (2026-08-02)
+R1 (frame shift + re-lay): 34.7 -> min 55.8: hull 56.3 / whole 55.8 /
+turret 76.1 / stations 95.8 / dims 96.9. SIDE dAlong 0.368 -> 0.000 (the
+shift worked; side_hull 91.3, stations s1-s13 all <1% except s10 9.4/s13
+2.2). Plan rows 56 = ONE poisoned column: the ref's ±1.9 plan columns are
+ASYMMETRIC (LEFT = front-mudguard corner z~2.32 AND rear guard to −3.80;
+RIGHT = rear-guard sliver −3.82 only) — my symmetric 1.8575 flareR put
+rear-only content on the left, err 5.8 m on that column, which dragged
+plan dy to −0.167 and smeared EVERY plan column (mean-dy echo). Lesson:
+plan dy is a MEAN — one bad column shifts the whole row's frame.
+R2 fixes: flareR pulled to 1.8435 (still the 0.40-run widthM carrier,
+inside s1) + per-side lipStrips at ±1.8575 (new chassis param): left
+front lip 2.26..2.38, left rear lip −3.75..−3.85, right rear lip only
+−3.78..−3.86; skirt `flush: true` (new param — proud panel seams/bolts
+leaked into the outermost front column, bots read 0.85 vs ref lip 1.27);
+gunAxisY 1.95 (ref tube band 1.849..2.029), evacR 1.35 (ref MG251 evac is
+sleeve-flush — the 1.94 drum lit plan ±0.167 cols; buildGun sleeve clamp
+rings r*1.31 at 0.46/0.82*len are the remaining small plan bumps, ref has
+its rings at world 4.14/3.5/3.0/2.7/2.4), evac 0.72; podIn is SUBTRACTED
+(hz = z1 − podIn!) — −0.33 pushed pods FORWARD, now podX 0.62 podIn −0.25
+(pods x 0.535..0.705, foremost ~3.06; ref pod cols 0.53..0.69 to 3.10,
+col 0.475 is glacis-only 2.906); crest z1 −0.08 (ref dip starts −0.10);
+right box top 2.60 z0 −0.63; pot bump 2.545; shelf2 x0 −1.24; cheekPod R
+{1.08..1.44, z 0.62..0.29, top 2.19} L top 2.10; tailRack z1 −4.445,
+lobes x1 0.86, frame z1 −4.52; rearPack hw 0.92 x −0.06 + NEW lobeL
+{−1.04..−0.95, top 2.18} (ref front_hull 2.176@−1.02); rearFlaps 3rd row
+bot 0.57@−4.17; bustle segs hw 1.16@−2.94/1.12@−3.05; basketHW 1.10;
+vane z1 −4.415; deck stations 1.58/1.42/1.24 re-lay; frontBoard R x1
+1.77 (ref right board reaches ~1.77); ringTub rear STEP (stepY 1.05,
+zF1 −2.145, z1 −2.30 — ref tub tail steps 0.58->1.05 near-vertically at
+−2.15 then shelves to the bustle); spring can w 0.036 tucked INTO the
+whip trace column (x 0.20; its 0.05 width lit the neighbour col at 2.70
+vs ref 2.55); gunTipZ 4.55, dims quantization (7.71 hullLength was
+content straddling one extra trace column at each end).
+OPEN mystery: r1 workorder showed ONE col z=−3.65 proc top 3.57 (turret
+node, unexplained — whips are at −3.58/−3.34 tops 3.59/3.61, pot 2.70;
+mesh-blame merged buckets max out at 3.615=whip2 top). Recheck after r2.
+
+### Rounds 3-7 log (2026-08-02, cont.)
+R3 84.0 (whips seated in-column, sleeveTo 4.22/r 0.118 for the ref's
+muzzle-ring plan cols, evacR 1.35 — the MG251 evac is sleeve-flush).
+R4 REGRESSED to 82.6/75.7: three lessons: (1) tailRack z1 −4.445 squeezed
+wingA (z1 −4.465) to a 2 cm sliver — the tail tops collapsed; keep rack z1
+−4.41 and carry plan x 1.4-1.6 rear −4.44 with a LOW outboard frame wing
+{1.10..1.69, z1 −4.45, 1.60..0.92}. (2) wingB z1 −4.49 moved the body-span
+mid → side dAlong −0.05 = half-pitch smear everywhere; the tail frame END
+(−4.52) is REGISTRATION-CRITICAL — dims hullLength is instead trimmed at
+the POD end (podIn −0.245, foremost 3.055, out of the 3.13 trace column;
+costs one ONLY-REF pod col, accepted). (3) plank x1 1.775 leaked into the
+±1.78 front col (ref plank ends ~1.75 → x1 1.748).
+R5 3B 86.6 (turret 90.5, dims 100). Remaining front_whole 86.6 fixed in
+R6/R7 by: ARCHED BELLY (ref front bots: 0.41 center / 0.33 mid / 0.24
+outboard — new keel.bellySideY, center box 1.30 wide), rear-roof plateau
+CENTER-NARROW (2.52 only |x|<=0.40 via roofBox; roofLine shoulders 2.465;
+ref front reads 2.44-2.47 at x 0.42..0.87), left band step to x −0.548,
+spring cans w 0.030 fully inside the whip trace columns, front skirt hem
+drops (rearFlaps gained per-flap x).
+WIDTH GUARD INCIDENT (R7): a hem flap at x 1.795 w 0.18 put its outer
+edge at 1.885 > 1.86 → the loader rescaled the WHOLE tank 0.986 → every
+dim read −1.4..−1.7% and all components collapsed to ~62-66 IDENTICALLY
+on both tanks. Any new outboard part: outer edge = x + w/2 MUST stay
+< 1.86. Fixed (x 1.775 w 0.14).
+MEASUREMENT-STABILITY NOTE: the fidelity page's load-time geo report has
+shown run-to-run swings under concurrent headless-Chrome load (3C front
+rows carried constant phantom ~3.3 tops at the whip-neighbor columns
+across several runs; a fresh in-page 1024 re-render of the same build
+reads those columns CLEAN at 2.57-2.62 — tools/tmp-merkava-probe.mjs
+--blame=dump:<x,...> prints per-column pixel tops + luminance to verify).
+The scene is UNLIT with self-lit mask materials (mask threshold is pure
+geometry). Do not chase phantom columns without a dump first.
+
+### GATE PASS (2026-08-02, gate v11): min 90.5
+**hull 91.2 / whole 90.9 / turret 90.5 / stations 92.7 / dims 100 /
+floaters 100** — from the batch-14 baseline 34.7 (hull 86.7 / whole 73.7
+/ turret 34.7 / stations 72.6 / dims 99.7). NO CAPS. dims: heightM 2.66
+(0.12%) hullLength 7.59 (0.12%) overall 9.11 (0.72%) width 3.70 (0.49%).
+Final r9/r10 knob states vs r8: podIn −0.245 (pods 3.055 — pods at 3.10
+flip the side registration to dAlong −0.05 in the CURRENT tail state and
+smear every side row for −8 turret; the ONE pod ONLY-REF col at z 3.13
+is the accepted cost, worth net +4); three-tier arched belly (0.41 /
+0.35 to |x| 1.04 / 0.24 outboard); rear plateau center box ±0.40; hem
+lip drop x 1.815 w 0.04 (single trace column); spring cans w 0.030.
+REGISTRATION LAW (hard-won, THREE incidents): the side dAlong nulls only
+with the tail frame end at −4.52 AND pods at 3.055 — touching EITHER
+hull-mask extremity re-quantizes the body-span columns and flips dAlong
+to ±0.05 (half-pitch smear, −5 to −8 on side/turret rows). Fine-tune
+dims via content-vs-column-boundary placement, never by moving the span
+carriers.
+VISUAL REVIEW (owner "top-down fill & circularity" directive, this
+round): board re-rendered (IoU 92.7 overall, total 87.7) + dedicated
+shaded top-down and high-perspective shots (tools/tmp-merkava-topdown.
+{html,mjs}, shots/procedural-fidelity/boards/merkava3b-topdown-*.png).
+Verdict: orientation truth OK (gun over the louvred bow, front
+sprocket); turret seated through the full articulation strip; deck,
+turret roof, rear pack/rack/basket all read as CLOSED fabricated
+volumes from above (no hollow shells/see-through); cupola + hatch rings
+and the gun tube read as true circles; the ring tub is fully hidden
+inside the hull from every exterior view. Sibling gate run: merkava1b
+62.5 / 2b 39.9 / 2d 34.9 / 3d 67.8 / 4b 34.6 — bit-identical to the
+required baselines, zero regression.
