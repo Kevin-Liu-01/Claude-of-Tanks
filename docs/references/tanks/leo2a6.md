@@ -591,3 +591,9 @@ band + -3.650 plane budget); ring lids still dark-on-dark where the
 loader blotch crosses (pale race carries the circle); fan-well
 size/order (above); the -3.81 tail col ~0.16 and PERI 4th-column
 p95 classes stand unchanged.
+
+## Shaded-parity r4 (2026-08-02) — FAIL min 8.5 (6.5→7.0→8.0→8.5; 5 views at 9.0)
+Work order: docs/critique/shaded-parity-leo2a6-r4.md. Hue+lum confirmed
+dead-on; SATURATION 1.8x ref caught (fleet law now 3-dimensional:
+hue+lum+sat on-element). r5 = narrow tone pass: band desat ~16% + tread
+shadows, 10-slat grille density, solid bustle backing.
