@@ -211,14 +211,11 @@ if (SHIP_QUARANTINE_USERDROPS) {
 // Sourced-model credit lines on the two replaced specs (m1a1 rule: variantOf
 // keeps them off the COMMUNITY tab; gameplay stats in modern1/modern3 are
 // untouched — only the model source changes).
-if (TANK_SPECS.leo2a6 && !TANK_SPECS.leo2a6.community) {
-  TANK_SPECS.leo2a6.variantOf = 'leo2a6';
-  TANK_SPECS.leo2a6.community = {
-    author: 'buh',
-    source: 'https://sketchfab.com/buh-late',
-    license: 'CC-BY 4.0',
-  };
-}
+// leo2a6: DUAL-GATE GRADUATE (2026-08-02) — the procedural build is the
+// model of record everywhere (geometry min 91.0 gatePassed, independent
+// critic 9.0 on all nine views, round 8). The buh GLB (CC-BY 4.0) remains
+// on disk as the measurement oracle only; provenance in ATTRIBUTION.md.
+// The credit block below is retired with the model source.
 // r3 QUARANTINE DELIST: the DustyMojito Ariete swap is personal-use only —
 // the C1 Ariete now ships its PROCEDURAL modern3.js model (no credit line,
 // no 'QUARANTINE' text in the player-facing panel). Restore the block below
@@ -236,17 +233,9 @@ if (SHIP_QUARANTINE_USERDROPS && TANK_SPECS.ariete && !TANK_SPECS.ariete.communi
 // 'procedural' rows the modern spec modules registered at import time.
 // Node names verified offline against each GLB's node tree (scratchpad
 // glbtree.mjs probes; GLTFLoader sanitizes dots out of names).
-MODEL_SOURCE.leo2a6 = {
-  source: 'glb',
-  // authored body/turret/gun split + individual wheel/track nodes; turret
-  // and gun carry authored origins (ring center / trunnion), gun is a
-  // turret SIBLING (is3 rule — explicit gunNode resolves scene-wide)
-  glb: {
-    path: '/models/tanks/leo2a6_buh.glb',
-    turretNode: '^turret$', gunNode: '^gun$', autoPivot: true,
-    yawOffset: Math.PI,                       // asset faces -z (probe render)
-  },
-};
+// leo2a6: NO MODEL_SOURCE — dual-gate graduate; the procedural build ships
+// in every flavor (freeze hash 37cc0789, tools/tmp-hashgeo.mjs). The
+// reference file /models/tanks/leo2a6_buh.glb stays for measurement.
 if (SHIP_QUARANTINE_USERDROPS) {
   MODEL_SOURCE.ariete = {
     source: 'glb',
