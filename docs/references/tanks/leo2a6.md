@@ -494,3 +494,9 @@ louver slats read a touch softer than the ref's (bounded by the
 views (rear, top) carry the heaviest fixes — rear plate below-band now
 furnished, rings/PERI circular from top, fan wells real; expect all
 views >= 7.5 if the reads hold at the critic's zoom.
+
+## Shaded-parity r3 (2026-08-02) — FAIL min 8.0 (6.5->7.0->8.0; top-down law PASSES)
+Work order: docs/critique/shaded-parity-leo2a6-r3.md. Wheels in law;
+TRACK BAND is the miss (builder sampled camo-painted upper gear — true
+ref band 31.8-40.0 deg brown-grey). Fleet law refined: sample ON the
+exact element. Grey slabs still placeholder. r4 = 5 mechanical items.
