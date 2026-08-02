@@ -1061,3 +1061,9 @@ Predicted per-view (r7 critic: 8.5 all nine): the four measured gates
 (crown flat/rev, roof med/p5, rods, gate x2) all sit at ref parity now —
 front 8.5-9.0 · frontleft 8.5-9.0 · left 9.0 · rearleft 8.5-9.0 · rear
 9.0 · rearright 8.5-9.0 · right 9.0 · frontright 8.5-9.0 · top 9.0.
+
+## GRADUATED 2026-08-02 — DUAL-GATE PASS (fleet graduate 8)
+Geo 90.1 gatePassed + critic 9.0 ALL NINE VIEWS (r8, eight visual
+rounds). FREEZE HASH 5296950a (41 meshes, 146562 verts). Registration
+retired (userdrops5.js loop); override added w/ followers; icons x5
+staged. Any intentional change re-runs BOTH gates and re-freezes.

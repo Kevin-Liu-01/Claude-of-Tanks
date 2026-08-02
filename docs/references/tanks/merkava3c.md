@@ -459,3 +459,8 @@ its s4 window quantization note stands.
 Predicted per-view (r7 critic: 8.5 all nine): front 8.5-9.0 · frontleft
 8.5-9.0 · left 8.5-9.0 · rearleft 8.5-9.0 · rear 9.0 · rearright
 8.5-9.0 · right 9.0 · frontright 8.5-9.0 · top 9.0.
+
+## GRADUATED 2026-08-02 — DUAL-GATE PASS (fleet graduate 9)
+Geo 90.6 gatePassed + critic 9.0 ALL NINE VIEWS (r8). FREEZE HASH
+5287233e (41 meshes, 147216 verts). Registration retired; override
+added w/ followers; icons x5 staged.
