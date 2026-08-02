@@ -379,3 +379,42 @@ left 8.5-9.0 · rearleft 8.5 · rear 8.5-9.0 · rearright 8.5 · right
 ## Shaded-parity r6 (2026-08-02) — FAIL 8.5 all views; MG rods zero on 3C
 Shared r6 work order. 3C: rods absent on all four elevations — build
 them to measured-render proof; flap tone 63→70.
+
+## VISUAL round r7 (2026-08-02, merkava agent) — the three 9.0-gating items
+Gate after the round, TWO consecutive runs bit-identical: **hull 91.2 /
+whole 90.6 / turret 90.7 / stations 92.5 / dims 100 / floaters 100 (min
+90.6, PASS x2)**. Siblings bit-identical; npm test 166/166. Shared fix
+list + ALL r7 laws (the measured FLOAT LAW — the ref's forward "band"
+is two floating rod lines over sky, its wall lives only at z -1.3..-1.9;
+short-pitched-crown reach law; per-half frame anchors; camo-bucket roof
+plates): see merkava3b.md "VISUAL round r7".
+3C-SPECIFIC this round:
+- MG RODS MEASURED (was ZERO everywhere): right x 358..384 w27
+  ytop~263 (+ w9/w10 rearward) vs REF x 356..378 w23 ytop~277 — and the
+  float BREAK at its pano (ref -0.97, proc -0.98: the 3C pano at -1.10
+  STAYS, it IS the break; only the ring moved to -1.45). Left: proc w8
+  (its ref shows zero — band wall from z0 -0.72; presence kept per the
+  work order's "rods visible" intent). Front: ref zero = proc zero.
+  Rear: ref's w6/w13 floats are its whip-can furniture (p95 budget —
+  documented gap, see 3B).
+- Float-law knob deltas vs 3B: slot z0 -0.95 -> -0.74; rodZf -0.63 /
+  tipDrop 0.0555 (its -0.594 col stays saddle-clean; s4-s7 targets are
+  2.663 — no police pinch); left band box 2.62 -> 2.52 (its lower droop
+  bottoms at 2.556); notch box 2.59 -> 2.55; mid-left shelf z0 -0.78 ->
+  -1.28 (front x-run z-agnostic); spine wedge rakeX 2.578 -> 2.548;
+  pad z0 -1.28 + wall dressing rides it.
+- CANVAS: band rect p5/p25/p50/p75/p95 = 84/87/95/104/109 vs its ref
+  81/86/92/98/112 (r6 p75 95 -> 104) — closest quartile match in the
+  family; same crown-wave + prism-fold + hem-smile grammar as 3B
+  (Kasag stack untouched, still crowns the field).
+- ROOF: top rect p5 66 (ref 75), med 76 vs 85 — fused; saucer shadow
+  plate -> detail, shelf plate -> camo bucket.
+- FLAP TONE (work-order trivia): woodHex 0x463d30 -> corner flap block
+  samples 68.2 vs ref ~70 (was 62.2; first cut 0x4a4134 sampled 74.9 —
+  sRGB law, dialed back).
+Honest residuals: as 3B (crown amplitude vs print texture, med 95
+floor-clamp, rear mast floats unmatched) plus its s4 window
+quantization note stands.
+Predicted per-view (r6 critic: 8.5 min ALL NINE): front 8.5-9.0 ·
+frontleft 8.5-9.0 · left 8.5-9.0 · rearleft 8.5-9.0 · rear 9.0 ·
+rearright 8.5-9.0 · right 9.0 · frontright 8.5-9.0 · top 9.0.

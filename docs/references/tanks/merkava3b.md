@@ -843,3 +843,110 @@ breaking both silhouettes).
 Work order: shaded-parity-merkava3bc-r6.md — canvas FORM (undulate the
 crown DOWNWARD from the cap), MG rods with measured-render proof (4th
 miss — the render measurement IS the done-gate), roof tone-on-tone.
+
+## VISUAL round r7 (2026-08-02, merkava agent) — the three 9.0-gating items
+Gate after the round, TWO consecutive runs bit-identical: **hull 90.6 /
+whole 90.5 / turret 90.5 / stations 92.9 / dims 100 / floaters 100 (min
+90.5, PASS x2 — whole UP from the r6 90.1: the float-law pulls were
+gate-POSITIVE)**. Siblings bit-identical (1b 62.5 / 2b 39.9 / 2d 34.9 /
+3d 67.8 / 4b 34.6); npm test 166/166.
+MASTER DISCOVERY (measured, tools/tmp-mgrod-measure.py — the critic's
+method reproduced: sky-gap rule, DARK<=75/PALE>=78, gap 5, minw 6; it
+re-derives the r6 critique numbers exactly): the ref's 2.59-2.66 "band"
+side content forward of z ~-1.3 is NOT a wall — it is TWO FLOATING MG
+ROD LINES over SKY (plinth rod 2.65-2.66 + cupola barrel 2.50-2.53)
+above a 2.40-2.47 roofline; the ref's pale cupola/pano cluster lives at
+z -1.35..-1.66 and its band wall only at -1.3..-1.9. Every proc second-
+story mass parked in z -0.6..-1.3 at y 2.42-2.62 was killing the rod
+float reads (dark-on-pale = no silhouette).
+1. MG RODS — READ + MEASURED (the done-gate paste, 640 px pairs; the
+   proc half's frame sits ~13 px higher than the ref's — same world y):
+   - 3B left:  PROC x 268..283 w16 ytop~260 (world ~2.60-2.66, the
+     drooping muzzle run) vs REF x 271..283 w13 ytop~268 (2.63-2.65).
+   - 3B right: PROC x 359..402 w44 ytop~254 (2.66) + x 414..429 w16
+     (rear-slot run) vs REF x 356..390 w35 ytop~267 (2.65).
+   - 3C right: PROC x 358..384 w27 ytop~263 + w9/w10 rearward vs REF
+     x 356..378 w23 ytop~277 (its float breaks at the pano z -0.97 —
+     matched: ours breaks -0.98).
+   - 3C left: PROC w8 (proc-only presence; its REF shows zero — the 3C
+     band wall starts at its z0 -0.72).
+   - fronts: REF zero = PROC zero both tanks. rears: REF shows w14/w6
+     (3B) + w6/w13 (3C) floating MAST/CAN cluster bits at ~2.7-2.8 —
+     NOT MG rods; matching needs the p95/front-col budget the spring-can
+     width law forbids (cans stay w 0.030). Documented gap.
+   Mechanics: cupolaRing z -1.20 -> -1.45 (+ pano -1.10 -> -1.42; 3C
+   pano STAYS at -1.10 — it IS the ref's float break), pad roofBox z0
+   -0.63 -> -1.28 (plan rides the shell casting; front z-agnostic),
+   roofSpine z0 -0.66 -> -1.28, rakeX washes follow, saddle wedges
+   retarget 2.468/2.505, left step box 2.605 -> 2.515 (its certified
+   2.59-2.62 side cols are the ROD's drooping run: merkavaPlinthMG
+   rodZf -0.64 / tipDrop 0.0505 — s7 crossing 2.627 vs the 2.622 police
+   line, +0.005 absorbed), plinth slot z0 -1.02 -> -0.84 (the front
+   full-height wall cut the measured run at -0.85..-1.03), cupola MG
+   re-seated at the ring FRONT (mount ring.z+0.10, rod dy 0.141/dz
+   0.50/len 0.80 = the ref's own 2.50-2.53 second line), r5 tower-span
+   dark sleeves DELETED (dark under the rods = no sky gap), booster
+   slim/high (its fat r 0.028 bottom AA-closed the 640 px gap).
+2. CANVAS FORM — the crown WAVES at dead-rear (own 1x reading) and the
+   band carries real gradient: rear-band rect p5/p25/p50/p75/p95 =
+   84/87/95/103/109 vs ref 82/95/98/101/112 (r6: p75 94-95 "no lit
+   crowns" -> 103). Mechanics: vane loft split at zW (z1+0.115) with
+   the last stretch dropped 0.085 and EIGHT pitched crown lobes (dips
+   0.012..0.085 under the certified falling line — silhouette dips are
+   critic-blessed; least-dipped lobes keep the tail side cols within
+   ~0.01); dark top rail ENDS at zW; cloth-toned under-crown backer in
+   the 5 mm vane/pack slot (a turretDark cut sampled p5 56 vs ref 82 —
+   the valleys read CLOTH 84); rearPack taper loft split into 4
+   x-strips, rear top corners dipped 0.004..0.058 (pale-gated; the pack
+   edge was the last ruled line); wing crown caps -> 3 pitched lobes +
+   cloth backer per wing; prism folds: each kinked shade band gains
+   stacked LIT flank strips + 2 long 3-seg S-sweep crowns — ALL lit
+   strips at the PROVEN 0.55-0.72 sun-graze pitches (first cut at
+   0.30-0.55 still sampled 95: sub-graze gains drown in the ±10 camo
+   patch noise); hem SMILE (ball row on a corner-lifting curve, 3
+   chained corner rolls per side + a flank roll, fringe rod hems rising
+   k*0.013 to the corners); rim-lump crowns VARIED (2.408..2.446 —
+   the r6 2.442-2.448 cluster read flat); 6 lit rolls in the tarp field
+   (tops under every local crown); bustle-wall vertical rib rods ->
+   diagonal cloth folds + up-tilted crown rolls (rz s*0.30, x inset to
+   the local plan line); mantlet drape (stepped sag creases + flank
+   crease lines + under-hem edges, all <=3 mm proud, band 1.83..2.15
+   untouched).
+3. ROOF TONE-ON-TONE — fused-surface law PASS: top-view roof rect p5
+   54 -> 70 (ref 77; no plate now renders <L60 from above; med 78 vs
+   ref 86 is the base camo-vs-print tone, out of item scope).
+   Mechanics: the roofBox auto dark top plates ride the CAMO bucket on
+   pale marks (each mesh samples its own patch tone ±10 — the ref's
+   patchwork read; rbPlate = t.pale ? 'turret' : 'turretDark',
+   sibling-gated), crest-kit box + ringAsm cross plate + big shelf
+   plates + 3C saucer plate -> detail/camo, detail LIDS on every wide-MG
+   receiver/ammo/tray and the plinth receiver (side faces stay gunmetal
+   — the rod reads depend on them).
+GATE INCIDENTS (r7 lessons):
+- The r6 left-step/notch/left-band boxes were REIFICATIONS of rod-line
+  curve content: the certified side cols they carried belong to the
+  drooping rod run. Dropping their tops under the rod's sky gap was
+  gate-NEUTRAL (front x-overhang cols absorb -0.04..-0.07 across <=3
+  cols) and whole went UP 0.4.
+- Tall pitched boxes swing their top edge rearward h/2*sin(rx): every
+  crown/lit piece on the tail face is SHORT (h <= 0.12) and placed by
+  reach = z_c - (h/2 sin + d/2 cos) >= z1-0.017 (the certified crest
+  cap; ball reach -4.435).
+- Per-half critic frames differ (~13 px, bbox y-min pollution): always
+  compare rod ytops in WORLD height, and sample band rects per-half
+  (the r6 3B "p75 94" rect was half off the band — the corrected r6
+  state read 95).
+Secondaries: 3C flap tone via per-mark woodHex (see 3C packet); the
+idler-horn artifact and track-bead scale were not touched (unchanged
+certified gear).
+Honest residuals: crown wave amplitude still under the ref print's big
+pillow crumple (dips capped by the certified lines; the ref does the
+rest with texture); the proc-only w16 rear-slot rod run and the 3C
+left w8 (the ref hides those spans behind its band walls — ours are
+open per the measured float law); rear-elevation mast/can floats
+unmatched (p95 budget); med 95 floor-clamp wall stands.
+Predicted per-view (r6 critic: 8.5 min ALL NINE): front 8.5-9.0 ·
+frontleft 8.5-9.0 · left 9.0 · rearleft 8.5-9.0 · rear 9.0 · rearright
+8.5-9.0 · right 9.0 · frontright 8.5-9.0 · top 9.0 — all three gating
+items are measured-verified (rod spans pasted, p75 103, roof p5 70,
+crown waves in my own 1x read).
