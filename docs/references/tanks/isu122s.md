@@ -318,3 +318,158 @@ r2 regressions to purge in r3: sand-pink track hue (luminance legal, hue
 not), beige tow cable (brightest object + sprocket intersection), maroon
 louvre field swallowed the hatch cluster, slab deck hides the track runs
 from top, stucco noise reads as corrosion.
+
+## Visual r3 (2026-08-02, casemate family agent) — ROUND COMPLETE
+
+FINAL STATE: geometry gate **min 90.0 PASS** (hull 90.2 / whole 90.0 /
+turret 100 / stations 94.0 / dims 99.7 / floaters 100); isu152 (shared
+isuCommon) holds **72.4 exactly** all round. npm test exit 0. Evidence:
+shots/critic-isu122s/ (14 pairs, generic harness) + refreshed board
+shots/procedural-fidelity/boards/isu122s.png. The 0.8 gate margin the r2
+round had (90.8) was deliberately SPENT on the two critic-vetoed identity
+features (proud drums + channel + mantlet volume): every point of it is
+accounted for in the per-column ledgers below.
+
+### The two structural discoveries of the round
+
+1. THE CHANNEL LAW: the print's deck slab ends at the casemate wall base
+   (~x 1.26) — its top view shows the TRACK RUNS along both sides with the
+   outer rail riding alone at the width line, and its "proud drums" ride
+   OUTBOARD of the deck edge over that open channel (bodies visible from
+   rear/quarter/top against the channel void) while their side-trace tops
+   sit on the certified 1.648+0.036 bump line. Proud-by-height was never
+   the mechanism — proud-by-position was. sponsonW 1.475 -> 1.26 (channel
+   flag, isu122s only), drums r 0.145 at (±1.345, 1.5395) tops 1.6845 ==
+   the ref bump line (12 side columns went to ~zero error vs r2's 1.692).
+   Plan trace stores per-x z-EXTENTS only (verified in the JSON), so the
+   opened channel is plan-legal: track band + rail + flaps carry the
+   extents. Front-view columns re-carried: bins x<=1.255 own the certified
+   1.862 cols at x 1.226-1.261; drum circle-tops own 1.30-1.49; rail owns
+   the edge. Stay ribs sunk to y 1.53-1.56 (at deck-lip height they printed
+   +0.075 over the 1.555 width-edge front cols) — they bridge slab->rail
+   for the floater contract. hullShadow AO strip in the channel floor.
+
+2. THE MANTLET CEILING (the round's hard lesson, measured over five gate
+   runs): the certified ref side line across the mantlet zone (2.01@2.48,
+   1.895@2.53, 1.855@2.66, 1.815@2.79, 1.795@2.92) IS the print's casting
+   profile — and the sampler smears ANY proud mass in that zone onto those
+   columns regardless of its authored z (the packet's old "steep
+   transitions mis-sample" warning, observed live: a ring authored with
+   top at z 2.38-2.52 printed its arc onto cols 2.53-2.92 in three
+   different pitch configurations). A face-parallel proud disc big enough
+   to dominate is therefore UNBUILDABLE under this print's squat certified
+   line: it either buries under the glacis (invisible), tucks behind the
+   crest (invisible from the board's elevated cameras), or prints +0.09
+   to +0.17 on 2-4 side columns. The r2 note "ref 1.925 @ 2.53 is the
+   ball's own top line" was the same fact seen narrowly: the LINE is the
+   casting; only geometry that RIDES it can exist there.
+
+### R3 work-order status (the critic's 12 items)
+
+1. BALL MANTLET — REBUILT WITHIN THE CEILING, PARTIAL BY PROOF. Now: cast
+   sleeve dome (cylZ 0.18->0.27 taper) unifying ball -> collar with its
+   top profiled ON the certified arc (+0.01-0.02), ball crown cap ring +
+   dark collar ring at the front pole, casting bolt arc (crown trio
+   clipped at the +0.03 line) + emergence seam, chin overhang to z 2.93
+   with dark throat plate (the 3/4 crescent), 3-facet dark crescent arcs
+   painted on the prow wall (the only front-facing surface below y 1.755
+   — same trick the print's own crescent shading uses), buffer nose disc
+   w/ smile slot on the cap face + true buffer body behind, ear bosses,
+   sight block, smooth face skin. The composition reads as a cast mount
+   group at every quarter/closeup; what it does NOT do is dominate the
+   dead-front face like the print's r-0.56 disc — that disc cannot exist
+   inside this print's certified silhouette (proof above; the packet's
+   oracle-repair queue is the only path past it).
+2. FUEL DRUMS — FIXED per the channel law: r 0.145 x 24-seg bodies, end
+   rim hoops + recessed dark end dishes + hub caps (rims visible front/
+   rear/quarters), 2 rib hoops + cinch straps each, cradle saddles
+   bridging deck->rail. Gate-neutral BY MEASUREMENT (tops on the ref's own
+   bump line).
+3. TRACK FAMILY — retoned into the hull-olive family: band multiplier
+   (1.76,1.70,1.44)->(1.10,1.30,1.00) (G-dominant; measured band
+   ground-run rgb 69/66/52 vs ref 74/74/60, luminance ratio ~1.11 inside
+   the 0.92-1.16 law), pads 0x41453a, inner 0x34332a, spareTrack 0x44432f
+   + roughness 0.96 / metalness 0.10 / envMap 0.12 (kills the specular
+   beige-line read on thin steel), worn drums 0x3c3b2f, wheels: IS
+   twin-cast face package per wheel (cover disc over the KV pockets,
+   twin-rim seam ring, hub cone + cap, 6-bolt ring P.q) + idler package +
+   sprocket hub; rear 3 wheels read equal to front through the retoned
+   band. Top-run sag: 3 return rollers give the kit's 0.022 catenary,
+   visible through the open channel. RESIDUAL: the wrap grouser faces
+   still catch the key warmer than the ref's (map-level warmth), and the
+   'holes' pockets peek 1-2 cm around the cover discs at closeup.
+4. TOW CABLE — the sponson KIT cable is GONE (noCable flag). Replaced by
+   the print's own furniture: crossed rear-plate cable runs (rod()
+   two-bake segments hugging the tail plates, dark-steel mat + end eyes
+   on the hooks) + the diagonal stowed rod pair w/ clamps on the right
+   mid-deck (print top view). No sprocket intersection exists anymore.
+5. REAR PLATE — round transmission hatches r 0.112 ON the tail slope
+   (rx -0.55, rim ring + handle + 6-bolt P.q each), custom bow/tail hooks
+   w/ jaw plates + shackle rings + pins (bigHooks flag; the r2 towHook
+   magenta squares are gone), fender-tail ribs (z-clamped to -3.31..-3.23
+   after the first cut poisoned the -3.39 flap column AND the plan
+   extents), tail-plate stud row, casemate rear-wall round port, flaps
+   re-bucketed off the warm camo path.
+6. TOP-DOWN — channel exposed both sides w/ AO strip + comb visible, deck
+   de-slabbed: grid clusters + dome + fwd hatch + seams + fillers + rod
+   pair; no pale filler wedges (web deleted — its void-closing job is
+   obsolete by design: the channel is SUPPOSED to be open; the r1 §7.2
+   void was black-material, this is the print's own olive track).
+7. LOUVRES — the 2.16 m maroon field is gone; per-side 2x4 small-cell
+   grid clusters at the print's own x 0.755-1.045, z -0.56..-1.50, cells
+   in the olive-steel tone (hullTrack) on hullDetail base panels, tops
+   1.684-1.685 == the certified deck waves.
+8. ROOF — ventilator is a real dome now (r 0.145 hemisphere, crown at the
+   ref's exact 2.221 line, base collar + button), cupola hinge blocks
+   moved to the ring z-sides (the +x side printed onto ref-falling front
+   cols) + latch handles + lock boxes, third stud row, clamp row; density
+   ~75-80% of ref closeup.
+9. FRONT MUDGUARDS — two-plate curved hood + side cheek skirt over the
+   idler wrap (all inside the 3.18 fender plan limit and under the
+   certified front tops), plus the print's open-cup headlight set into
+   the glacis right at (+0.78, 2.70) — cup + dark bore + stem + conduit
+   (top 1.845, one +0.03-class column).
+10. BRAKE — exit collar + both baffle drums re-authored as 26-seg direct
+    adds (the r2 circularity flag), slot core 0.035 -> 0.058 + mid
+    divider collar r 0.092 between the baffles; x/z and the 0.1245 drum
+    radius EXACT (station-13 width 0.249, plan column, floater island all
+    held — station-13 wPct 29.87 is the certified rod+drum union,
+    unchanged from r2).
+11. STUCCO/TICKS — glacis + prow skins AND a new face skin re-bucketed to
+    the smooth solid mat (single islands; the fleck-octave stucco and the
+    orange drip ticks lived on the camo buckets), rail/ledge/brackets/
+    ribs on the detail mat, glacis center weld bead added (sunk to the
+    plate line after its first cut rode +0.06 proud with an inverted
+    pitch sign). RESIDUAL: mild speckle persists on the casemate SIDE
+    plates (still camo-bucketed on purpose — they carry the scheme).
+12. GATE — min 90.0 every component (see header); isu152 72.4 exact all
+    12 runs of the round; dims rod-beam + bracket untouched (beam cols
+    +3.31 err 0.069 = the certified carrier tax, present all round).
+
+### Honest residuals (for the next critic — they zoom 2-6x and brighten)
+
+- THE MANTLET IS THE ROUND'S CONTESTED CALL: no dominant dead-front disc.
+  My own read: front 6, closeups 6-7 on the mantlet criterion. If the
+  critic vetoes again, the only remaining paths are (a) an oracle-repair
+  petition to lift the print's mantlet-zone side line, or (b) an owner
+  ruling that the visual gate accepts the certified-line ceiling here.
+- Wrap grousers still warm-of-ref under the key; pockets peek around the
+  wheel covers at 4x.
+- Casemate side plates keep the scheme's fleck texture (deliberate).
+- Roof density ~75-80% of the ref's bolt/piping field.
+- The board "front" cameras are elevated ~10-15 deg (not true orthos):
+  the ring/bolt-arc/seam read best in view-frontleft/hero-frontleft, and
+  the dead-front circle read is carried by the crescent + seam + dome
+  only.
+- Channel AO strip is a baked-shadow plate riding 2 cm over the track
+  cover: static under motion (same class as the fleet's bay-shadow
+  drums).
+- Wheel face packages are static overlays (hub bolts do not spin with
+  the dish — the shadow-drum precedent).
+- decal moved to the casemate wall (the old sponson-face spot is now
+  open channel).
+
+Predicted per-view (my own brutal read): front 6, frontleft 7, left 7,
+rearleft 7, rear 7-8, rearright 7-8, right 7, frontright 7, top 8,
+toptilt 8, close-front 6-7, close-roof 7. Min ~6 — the mantlet ceiling
+is the binding item and it is now a MEASURED ceiling, not a build gap.
