@@ -538,3 +538,7 @@ frontleft 8.5 · left 8.5 · rearleft 8.0 · rear 8.5 · rearright 8.0-8.5 ·
 right 8.5 · frontright 8.5 · top 8.5 — the two flip-items (ziggurat,
 rear-right cabinet) and the value-flip wheels are gone; weakest remaining
 read is rear-arc micro-chaos density.
+
+## Shaded-parity r3 (2026-08-02) — FAIL 7.5 (floor rising; palette class CLOSED)
+Work order: shaded-parity-merkava3bc-r3.md — 3 moves: rake the side
+walls, real tarp+full chain+low corners, hem arches back to mid-wheel.

@@ -245,3 +245,7 @@ canvas chaos is still denser at 2x.
 Predicted per-view (r2 was 7.0-8.0, worst rr 7.0): front 8.5 ·
 frontleft 8.5 · left 8.0-8.5 · rearleft 8.0 · rear 8.5 · rearright
 8.0-8.5 · right 8.5 · frontright 8.5 · top 8.5.
+
+## Shaded-parity r3 (2026-08-02) — FAIL 7.0 (tarp miss alone holds the floor)
+Work order: shaded-parity-merkava3bc-r3.md. Dead-rear = the ref's tarp
+edge-to-edge; deliver real lump masses. Pot dome scale up.
