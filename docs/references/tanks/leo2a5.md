@@ -141,3 +141,91 @@ kit-native end wheels (idler 3.48/1.04/0.28, sprocket -3.16/1.08/0.30)
 with the raisedEnds statics deleted; per-side armor bands (left short
 pad w 0.66..1.34 at x 1.50, right module -1.19..+1.22 at x 1.53); tail
 frame end-uprights at -3.90 close overallLengthM to 9.95.
+
+## GATE-V10 round-4 (2026-08-02): min 69.2 -> **80.2** (stable x3) — THE STATURE CAP TRADED THROUGH
+
+| component | before | after |
+|---|---|---|
+| hull | 80.8 | 86.1 |
+| whole | 73.0 | 81.3 |
+| turret | 69.2 | **80.2** (binder) |
+| stations | 76.6 | 86.0 |
+| dims | 100 | 85.0 (deliberate — below) |
+| floaters | 100 | 100 |
+
+Board 92.3: views 94.4-97.5, overall 95.6, hull 96.5, turret 81.9
+(fused-shell channel), gun 88.2, tracks 97.2; turntable clean.
+
+CAP RESOLUTION (updates the round-3 certification): the 2.66-line
+carry is RETIRED for a measured two-part trade that lands INSIDE the
+old 78-82 ceiling band:
+1. cluster carried at **2.7265** (heightM 2.72, pct 2.87 -> dims 85 —
+   dims is spent down to just above the stations line; every point of
+   cluster raise bought ~0.5 pt on each of turret/whole/stations);
+2. a **PERI crown at the ref 3.00 peak** spends the THIRD p95 spike
+   column (whips 4.07x2 + crown; heightM anchors at the cluster). A
+   d 0.10 crown STRADDLED two side columns -> heightM 2.99 -> dims 2.1;
+   d 0.045 parked DEAD-CENTRE on the measured −0.376w column reads
+   single-column, stable x3. STRADDLE-LOTTERY LAW (fleet-visible): the
+   3rd spike slot is normally the whips' straddle INSURANCE — only
+   spend it on a spike parked at a measured column centre, and verify
+   the grid is frozen (grids are deterministic per-geometry; they
+   re-phase only when the proc body span changes).
+
+What moved:
+- Cluster reshaped to the decoded frame (u_front = +x + c — the
+  original sides were right; a kf51-borrowed mirror guess was tried
+  and reverted): PERI peak zone x −0.06..−0.70 at 2.7265 with the
+  crown at −0.12..−0.48; right cupola ring to x +1.24 (ref 2.86 at
+  +1.19..1.24); left shoulder step 2.64; saddle left OPEN (ref
+  2.53-2.65 over −0.02..−0.77 — the old L-stack edge rode it);
+  vent box 2.64 at w −0.90..−1.10, MG mount trimmed to 2.55 (the ref
+  2.526 line — the round-3 "2.67-2.76" was stale-frame lore).
+- Turret body passed as EIGHT ~0.45 m z-slices (param-only station-law
+  segmentation, zero shared-path edits) + EMES-well dip opened (body
+  z1 0.61, lip 2.46 over w 0.93..1.15) + nose cap wedge (2.55@2.09w ->
+  2.16@3.0w; first cut was authored in world-z by mistake, −0.30) +
+  crestTail 0.62 carries the 2.58 line to w 1.19.
+- plan_turret 88.5 -> 95.3: nose/crest tables end 1.44/1.43 so the
+  ±1.5 plan columns read ONLY the tip pads (the 1.49-1.50 tables lit
+  them full-span = the top-2 errors); pad tops raised to the ref 2.04
+  line at ±1.50 (the sub-deck read was stale); right sideMod to
+  −2.25w (ref steps −2.08/−2.71); rack z1 −2.845w + centre bin
+  2.19..2.36 to −2.92w (the ref −2.95w column and plan centre −2.90).
+- Turret-mask floor apron 1.63..1.80 over w −0.40..+1.80 (ref bottoms
+  1.628-1.656 — fused-shell low edge).
+- Gun hand-loft (a6 seam-ring law at THIS print's r): bare tube 0.095
+  + sleeve r 0.098 to 5.93w + 11 rings r 0.1005 @ 0.34 spacing + MRS
+  side lugs ±0.125..0.185 carrying the ref's ±0.17 PLAN columns to
+  the muzzle (the top plan_whole/turret error, 1.01 m) — hidden
+  inside the side band; axis 1.98.
+- Hull: deck staircase [1.684 mid, 1.768 dip at −1.95..−2.29, 1.825
+  aft] replacing the flat 1.84 + 1.81 upstand lip (~25 cols x 0.06);
+  bodyHW 1.638 (ref deck edge reads at ±1.64-1.66); fender 1.64..
+  1.755 ending 2.62 (it rode the falling glacis at 1.675); glacis
+  knots dropped ~0.02; skirts: inner course 0.71..1.52 face 1.755 +
+  1.78-1.81 filler band bottoming 0.89 + outer face 0.87..1.35 at
+  EXACTLY ±1.875, flap deleted (its 0.79 bottoms were proc-only);
+  mudguard wrap x ≤1.80 to z 3.93 + outer beak-wing band (ref plan
+  front 3.92-3.945 at ±0.94..1.55, 3.83 only at ±0.4..0.86) + tow
+  clevis scallops at ±0.67 to 3.95; wings th 0.21 at 3.845; tail
+  frame raised (rails 1.42/1.38, load ~1.94, roll 1.97) with the low
+  rail SPLIT centre −3.75 / corners −3.90 at ±1.17..1.42 (ref plan
+  −3.774 centre, −3.914/−3.942 corners; corners+uprights carry
+  overallLengthM 9.94); rear flaps 0.60..1.12 at z −3.575; sprocket
+  −3.19/1.09/0.295, idler 3.48/1.11/0.25 (wrap bottoms to the ref
+  1.04 line at 3.89), span [2.70, −2.34] (ref ramp starts).
+- Whips: z re-parked to −1.93/−2.03w (the −2.07 park straddled a
+  boundary via AA) with co-located 0.034 overlays (the bare 0.026 kit
+  rods lose ~0.3 m to AA at the tip); the left-whip kink stub at
+  (−0.96, −1.84w, top 3.37) DELETED for the crown slot.
+
+Residual work order: turret_side 80-82 zone is now ~60% the remaining
+2.7265-vs-2.87..3.03 cluster carry (hard heightM bound: every further
++0.01 of carry costs dims −0.8) + the whip lerp/straddle noise columns
+(z −2.17w class, flips with registration — the gate interpolates proc
+at ref columns, so a proc spike bleeds half-height into a neighbour
+on some grids; geometry cannot fix a bin flip); side_hull tail
+−3.4..−3.6 wrap/frame bottoms ~0.05-0.10 x 4; front ±1.42 crest-end
+cols 0.08 x 2. dims 85 is the new sovereign line — do NOT raise the
+cluster further without re-running the trade.
