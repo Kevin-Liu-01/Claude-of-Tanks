@@ -2544,6 +2544,33 @@ REPAIRS['merkava1b'] = [
                        y_top_max=3.7554, expect=(156, 150418, 110096))),
 ]
 
+# =============================================================== batch 19 ===
+# M1A2 SEPV3 NORMALIZATION (m1a2_sepv3_dannzjs.glb; specs.js TurretPivot rig;
+# chained AFTER the batch-5 turret translation — extract measured the post-
+# batch-5 state; the translate is x-lateral only, so the y/z plan basis is
+# unaffected). Width TRUE (-0.5%). Hull -5.9% short: body x1.0645 (hullMask
+# 7.461 -> 7.93), muzzle pinned (5.85 -> 5.8135 gate-m) so overall = 9.77 —
+# the tube gives back its +2% overmodel. Height +59.4% is crown-band
+# furniture + antenna spikes (crown 2.6-3.0; spikes 3.89 / 5.23 / pair 3.13):
+# tejas-W1-class ceiling compress — knee 2.38 (deck 1.864 / ring 2.26
+# untouched), crown band -> 2.407-2.455 (slope 0.123), tail flattened to
+# slope 0.009 by a 4th point [5.23 -> 2.475] (y_top_max is an ASSERTION,
+# not a clamp — first-run lesson): spikes land 2.456-2.475, worst-case
+# dims +1.43% (-3.4 past grace) only if p95 lands ON a spike column;
+# realistic placement 2.44-2.456. Plan: vertex-normalize batch-19.
+# sepv2 DEFERRED to its own batch: defective oracle (131-vert turret
+# interpenetration 0.81 m + hull-node masts at y 3.62) needs triage first.
+REPAIRS['m1a2'] = {
+    'path': REPAIRS['m1a2']['path'],
+    'ops': [
+        *REPAIRS['m1a2']['ops'],
+        ('py2', _axis_warp('m1a2', long_axis='z',
+                           y_map=[(0, 0), (3.1637, 3.1637), (3.9746, 3.2634), (6.9523, 3.29)],
+                           long_map=[(-5.7321, -6.0558), (4.1619, 4.4763), (6.98, 6.9315)],
+                           y_top_max=3.3233, expect=(29, 327079, 255884))),
+    ],
+}
+
 
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)

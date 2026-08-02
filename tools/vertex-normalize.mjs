@@ -130,6 +130,26 @@ export const PLANS = {
     z: [[-4.8, -4.8], [4.9, 4.9]],
     yTopMax: 2.56,
   },
+  // ---- batch-19: m1a2 sepv3 print (m1a2_sepv3_dannzjs.glb; specs.js
+  // TurretPivot rig). Width TRUE (-0.5%). Hull -5.9% short: stretch body
+  // x1.0645 (hullMask 7.461 -> 7.93), muzzle pinned so overall = 9.77
+  // (tube segment gives back its +2% overmodel). Height +59.4% is the
+  // crown-band furniture + antenna spikes (crown 2.6-3.0, spikes 3.89 /
+  // 5.23 at z -2.16/-1.81, pair 3.13 at z 0): knee 2.38 (deck 1.86 and
+  // ring 2.26 untouched), crown band -> 2.407-2.455 (slope 0.123, tejas
+  // W1 class), spikes ride the extended slope then clamp at yTopMax
+  // (emit adds +0.02 slack -> ceiling 2.46, +0.8% inside dims grace).
+  // 4th point flattens the tail to slope 0.009 (tejas W1b class — y_top_max
+  // is an ASSERTION in _axis_warp, not a clamp): spikes land 2.456-2.475.
+  // p95 lands 2.407-2.475 for ANY percentile placement (raw-sim p95 3.129
+  // -> 2.456; extract p95 3.888 -> 2.463). sepv2 DEFERRED: defective oracle
+  // (131-vert turret interpenetration 0.81m + hull-node masts at y 3.62)
+  // needs triage before any warp.
+  m1a2: { // file m1a2_sepv3_dannzjs.glb
+    y: [[0, 0], [2.38, 2.38], [2.99, 2.455], [5.23, 2.475]],
+    z: [[-3.713, -3.9565], [3.73, 3.9665], [5.85, 5.8135]],
+    yTopMax: 2.48,
+  },
 };
 
 const args = process.argv.slice(2);
