@@ -21,7 +21,7 @@ import { vehicleAmbientFloorHook } from '../materials.js';
 // import cycle with the profile modules — resolve members lazily.
 const {
   box, cylX, cylY, cylZ, torus, slab, frustum, buildRunningGear, buildGun,
-  liftEye, periscope, towCable, headlight,
+  liftEye, periscope, towCable, headlight, xform,
 } = new Proxy({}, { get: (_, name) => (...args) => KIT[name](...args) });
 
 // ---------------------------------------------------------------------------
@@ -1942,7 +1942,15 @@ const SEPV3_HULL = {
   // takes over); sprocket high at the real M1 tail with its teeth inside
   // -3.90 (the ref's CURVED rear descent is carried by the descent-shoe
   // plates below; the band's straight ramp rides above them).
-  trackXc: 1.29, trackW: 0.44, wheelR: 0.40, wheelY: 0.51,
+  // R4 items 2a+2b (critic stance finding, pair-measured): band widened so
+  // the OUTER PAD faces land on the ref's ground columns — the instanced
+  // shoes overhang the band solid by 0.024/side, so band 1.065..1.535 puts
+  // pad faces at 1.559 (ref front cols reach ground at |x| 1.549; a 1.56
+  // band face put pad edges at 1.584 and lit the 1.59 column the ref keeps
+  // at 0.504). wheelY 0.51 -> 0.45: the old wheels floated 0.11 off the
+  // ground and the band rode their undersides — the proc's lowest shaded
+  // pixel sat 11px above the ref's ground line in both side views.
+  trackXc: 1.30, trackW: 0.47, wheelR: 0.40, wheelY: 0.45,
   wheelZs: [2.52, 1.70, 0.88, 0.06, -0.76, -1.55, -2.35],
   // Sprocket pulled in to (-3.42, 1.02, r 0.26): at -3.50/1.13/0.30 the band
   // wrap + shoe pads overshot the tail plate (mesh to z -4.32) and painted
@@ -2024,22 +2032,33 @@ function buildSepv3(P) {
     }
     // Inter-wheel void deepeners at the exposed row (merkava/tejas class:
     // near-black blocks between wheel faces so each wheel separates).
+    // (r4 stance: x/y follow the widened band + dropped wheel line)
     for (const vz of [2.11, 1.29, 0.47, -0.35, -1.16, -1.95]) {
-      P.add('hullDark', box(0.20, 0.42, 0.18), s * 1.20, 0.50, vz);
+      P.add('hullDark', box(0.20, 0.42, 0.18), s * 1.23, 0.44, vz);
     }
-    // Item 9 + R3 item 3: drive ends — the r2 kit discs (r 0.229) left the
-    // running-gear dark ring exposed as a VOID-BLACK annulus (hero-rearright
-    // worst read). Body disc + rim now cover the full wrap window; dressed
-    // hub + jittered teeth ring; warm inner backer enlarged.
+    // Item 9 + R3 item 3 + R4 item 4 (twice-missed sprocket face): drive
+    // ends. The r3 kit filled the wrap window with a CAMO disc — the critic's
+    // "track wraps hull-colored fill". The window now carries a dark-warm
+    // SPROCKET assembly: carrier disc in the track-steel channel, recess
+    // ring, bolt circle, hub cap, and a denser proud tooth ring at the drive
+    // end (idler end keeps a plain dished face + bolt ring). x shifted +0.05
+    // with the widened band (r4 stance).
     for (const [ez, ey, er, teeth] of [[-3.42, 1.02, 0.26, 11], [3.50, 0.92, 0.26, 0]]) {
-      P.add('hull', cylX(er * 0.96, 0.035, 18), s * 1.468, ey, ez);
-      P.add('hullTrack', cylX(er * 1.12, 0.020, 18), s * 1.479, ey, ez);
-      P.add('hullDetail', cylX(er * 0.34, 0.030, 12), s * 1.484, ey, ez);
-      P.add('hullDetail', torus(er * 0.62, 0.011, 16), s * 1.4955, ey, ez, 0, 0, Math.PI / 2);
-      P.add('hullTrack', cylX(er * 1.15, 0.014, 16), s * 1.30, ey, ez);
+      P.add('hullTrack', cylX(er * 0.96, 0.035, 18), s * 1.497, ey, ez);
+      P.add('hullTrack', cylX(er * 1.12, 0.020, 18), s * 1.508, ey, ez);
+      P.add('hullDark', cylX(er * 0.78, 0.014, 18), s * 1.520, ey, ez);
+      P.add('hullTrack', cylX(er * 0.52, 0.022, 16), s * 1.5235, ey, ez);
+      P.add('hullDetail', cylX(er * 0.30, 0.034, 12), s * 1.515, ey, ez);
+      P.add('hullDetail', torus(er * 0.62, 0.011, 16), s * 1.5245, ey, ez, 0, 0, Math.PI / 2);
+      for (let bk = 0; bk < 8; bk++) {
+        const ba = (bk / 8) * Math.PI * 2 + 0.2;
+        P.add('hullDetail', cylX(0.014, 0.016, 8), s * 1.533,
+          ey + Math.sin(ba) * er * 0.44, ez + Math.cos(ba) * er * 0.44);
+      }
+      P.add('hullTrack', cylX(er * 1.15, 0.014, 16), s * 1.31, ey, ez);
       if (teeth) for (let tk = 0; tk < teeth; tk++) {
         const a = (tk / teeth) * Math.PI * 2 + (tk % 3) * 0.04;
-        P.add('hullTrack', box(0.05, 0.055, 0.062), s * 1.44,
+        P.add('hullTrack', box(0.05, 0.055, 0.062), s * 1.47,
           ey + Math.sin(a) * (er + 0.026), ez + Math.cos(a) * (er + 0.026), -a, 0, 0);
       }
     }
@@ -2051,10 +2070,10 @@ function buildSepv3(P) {
     // bottoms hang below the skirt hem like the ref's. Tire ring + painted
     // disc + hub, matching the ref's dark warm read.
     for (const wz of g.wheelZs) {
-      P.add('hullRubber', cylX(0.40, 0.026, 20), s * 1.496, 0.51, wz);
-      P.add('hullTrack', cylX(0.315, 0.030, 18), s * 1.4965, 0.51, wz);
-      P.add('hullDetail', cylX(0.095, 0.038, 12), s * 1.4935, 0.51, wz);
-      P.add('hullDetail', torus(0.20, 0.009, 14), s * 1.5035, 0.51, wz, 0, 0, Math.PI / 2);
+      P.add('hullRubber', cylX(0.40, 0.026, 20), s * 1.521, 0.45, wz);
+      P.add('hullTrack', cylX(0.315, 0.030, 18), s * 1.5215, 0.45, wz);
+      P.add('hullDetail', cylX(0.095, 0.038, 12), s * 1.5185, 0.45, wz);
+      P.add('hullDetail', torus(0.20, 0.009, 14), s * 1.5285, 0.45, wz, 0, 0, Math.PI / 2);
     }
     // Bow prow nubs: plan 3.99 in the +-0.595 column ONLY (the +-0.706
     // column reads 3.902); side tip band 0.886..1.123 stays under the 12%
@@ -2099,14 +2118,22 @@ function buildSepv3(P) {
     // |x| <= 1.641 (the tail-plate edge; the ±1.7075 i1 flap plates keep the
     // station width), tops <= the 1.6655 deck line (side-interior), plus an
     // upper shelf at the body width class under the rack overhang.
-    sb('hull', s, 1.44, 1.641, 1.05, 1.655, -3.875, -2.85);
+    // R4 item 3: bottom 1.05 -> 0.78 (shelf-bottom class). The fill's outer
+    // edge STAYS at the r3-certified 1.641: any wider drags its -3.875 rear
+    // reach into a plan column the ref stops at -2.853 (the LEFT grid bin
+    // opens at 1.6474 — asymmetric camera grid; 1.667/1.6915 cuts both
+    // cost hull ~2 pts). The whole 1.641..1.693 lane closes with the
+    // rear-facing mask-invisible quad in the curtain block below.
+    sb('hull', s, 1.44, 1.641, 0.78, 1.655, -3.875, -2.85);
     sb('hull', s, 1.44, 1.556, 1.60, 1.75, -3.70, -2.85);
     // upper corner block: tops in the ref hull line's own 1.711 bin (a 1.85
     // block put +0.14 on four bare-hull side columns — hull 92.7 -> 89.5);
     // rear rays crossing the open -3.7..-3.35 window die on its face.
     sb('hull', s, 1.556, 1.641, 1.60, 1.7145, -3.33, -2.85);
-    // corner dressing: a strapped stowage read (ref carries pale kit there)
-    sb('hullDetail', s, 1.642, 1.6475, 1.12, 1.60, -3.60, -3.05);
+    // corner dressing: a strapped stowage read — R4 item 5 calms the r3
+    // "brown ribbed crate" (detail-channel slats) into scheme camo with a
+    // mid-shade strap line only.
+    sb('hull', s, 1.642, 1.6475, 1.12, 1.60, -3.60, -3.05);
     sb('hullTrack', s, 1.6475, 1.6495, 1.16, 1.56, -3.52, -3.13);
     // Rear service nubs: the gate ref carries 0.33/0.51 front-view bottoms
     // at +-1.67/+-1.59 — seated in the rear ramp shadow (side line 0.19-0.25
@@ -2118,6 +2145,44 @@ function buildSepv3(P) {
     // plan rear -2.85 left / -3.07 right).
     sb('hullDetail', s, 1.40, 1.60, 0.90, 1.06, -3.86, -3.74);
     sb('hullRubber', s, 1.578, 1.655, 0.644, 1.05, -3.88, -3.72);
+    // R4 item 2c — rear mud-flap CURTAIN: the ref hangs a full camo flap
+    // panel across each track lane (rear pair rows 0.99..0.43 read ±1.66
+    // where the proc showed bare shoe ladders). The ref's own curtain is
+    // ABSENT from all three metrology masks (its side/front columns keep
+    // 0.664/0.504 bottoms — one-sided planes), so the proc curtain uses the
+    // same trick: ZERO-THICKNESS slab quads (coincident opposite-winding
+    // faces) are edge-on to the side/plan cameras and rasterize nothing
+    // there, while the rear pair and hero views render a full curtain. The
+    // front camera sees them only at columns whose bottoms already sit
+    // lower (x<=1.55 pads at -0.008; the 1.653..1.682 wing matches the
+    // ref's own 0.324 column bottom).
+    {
+      const cq = (bk, x0, x1, y0, y1, zq) => {
+        const M = (x, y) => [s * x, y, zq];
+        P.add(bk, slab(M(x0, y0), M(x1, y0), M(x1, y0), M(x0, y0),
+          M(x0, y1), M(x1, y1), M(x1, y1), M(x0, y1)));
+      };
+      // (main panel bottom 0.42 = the ref's own curtain hem — a 0.27 hem
+      // buried the pale pad ladder the ref shows beneath its flaps)
+      cq('hull', 0.98, 1.55, 0.42, 0.80, -3.772);
+      cq('hull', 1.653, 1.682, 0.325, 0.80, -3.772);
+      cq('hullShadow', 1.045, 1.075, 0.44, 0.78, -3.766);
+      cq('hullShadow', 1.255, 1.285, 0.44, 0.78, -3.766);
+      cq('hullShadow', 1.465, 1.495, 0.44, 0.78, -3.766);
+      cq('hullRubber', 0.99, 1.54, 0.42, 0.462, -3.7665);
+      // R4 item 3 rear-slit closer: the fill-to-panel lane (1.641..1.693,
+      // plan-bin-locked for solid geometry) closes with a rear-facing quad
+      // at the fill's rear plane — full curtain in the rear pair, nothing
+      // in any metrology mask.
+      cq('hull', 1.60, 1.6915, 0.78, 1.52, -2.846);
+    }
+    // ground-run LEAD PAD FACES (r4 ground line): the band loop presents
+    // only a grazing knee to the straight-on cameras — the ref's pad-stack
+    // face reads to the ground in front/rear pairs while the proc went
+    // background below ~0.15. True vertical pad faces at both ground-run
+    // ends, in the pad-earth channel, bottoms at the ref's own -0.01 class.
+    sb('hullTrack', s, 1.075, 1.545, -0.008, 0.115, 2.665, 2.755);
+    sb('hullTrack', s, 1.075, 1.545, -0.008, 0.135, -2.615, -2.525);
     sb('hullDetail', s, 1.44, 1.705, 0.95, 1.06, s < 0 ? -2.915 : -3.072, s < 0 ? -2.855 : -3.005);
     sb('hullRubber', s, 1.70, 1.7075, 0.74, 1.10, s < 0 ? -2.915 : -3.072, s < 0 ? -2.855 : -3.005);
     // Station i3 gap flaps at +-1.789 (slab -2.278..-1.708 must NOT see the
@@ -2169,9 +2234,12 @@ function buildSepv3(P) {
     headlight(P, s * 1.02, 1.155, 3.815, -0.30, 0.042);
     // slim guard hoop BEHIND the 3.79 bin edge (a forward bar would light
     // the 3.847 tip column at 1.26 vs the ref's 1.129).
-    sb('hullDetail', s, 0.895, 0.909, 1.10, 1.245, 3.655, 3.785);
-    sb('hullDetail', s, 1.131, 1.145, 1.10, 1.245, 3.655, 3.785);
-    sb('hullDetail', s, 0.895, 1.145, 1.232, 1.246, 3.655, 3.785);
+    // R4 item 5 (de-pale): hoop frames into the SCHEME — the unpainted-
+    // fitting channel rendered the bow corners as pale ribbed stacks where
+    // the ref's guards read camo-on-camo.
+    sb('hull', s, 0.895, 0.909, 1.10, 1.245, 3.655, 3.785);
+    sb('hull', s, 1.131, 1.145, 1.10, 1.245, 3.655, 3.785);
+    sb('hull', s, 0.895, 1.145, 1.232, 1.246, 3.655, 3.785);
   }
   // Tow lugs on the mid-plane centerline pair (ref close-front lugs).
   for (const s of [-1, 1]) {
@@ -2294,17 +2362,14 @@ function buildSepv3(P) {
           // panel tops and the deck edge lit as daylight dashes at ±1.81 in
           // the front pair; side columns still read the deck line).
           const pTop = Math.min(1.52, dmin - 0.005);
-          P.add('hull', box(0.135, pTop - 0.751, pd * 0.985), s * 1.7605, (pTop + 0.751) / 2, zc);
+          // R4 item 6 (joints flush): panels BUTT-JOINED (0.985 -> 1.0 depth)
+          // and the r3 shadow-channel joint bars + top caps are deleted — the
+          // pairs still measured a ±12-13L bar rhythm at the joint stations
+          // where the ref skirt reads one fused plate (0.4L seams). The
+          // panel-face rhythm now comes only from the flush rib pairs.
+          P.add('hull', box(0.135, pTop - 0.751, pd * 1.0), s * 1.7605, (pTop + 0.751) / 2, zc);
           P.add('hull', box(0.02, pTop - 0.90, 0.02), s * 1.818, (pTop + 0.90) / 2 - 0.005, zc - pd * 0.24);
           P.add('hull', box(0.02, pTop - 0.90, 0.02), s * 1.818, (pTop + 0.90) / 2 - 0.005, zc + pd * 0.24);
-          if (P.q && k < nP - 1) {
-            // R3 item 4 (calm skirts): panel joints in the shadow channel,
-            // slimmed — the 5 cm near-black bars were the checkerboard rhythm.
-            P.add('hullShadow', box(0.035, (pTop - 0.79) * 0.86, 0.014), s * 1.795, (pTop + 0.79) / 2, zc + pd * 0.492);
-            // joint top cap: the open sliver between panel end faces read as
-            // a daylight pinline from straight above (view-top census)
-            P.add('hull', box(0.132, 0.014, 0.026), s * 1.7605, pTop - 0.008, zc + pd * 0.492);
-          }
           if (P.q) P.add('hullDetail', cylX(0.016, 0.05, 8), s * 1.80, pTop - 0.08, zc);
           // R3 lane cap: the body-to-panel slot showed the ground straight
           // through from above once the plan edge closed. Cap follows the
@@ -2349,6 +2414,14 @@ function buildSepv3(P) {
       // straight above (view-top 13px x 26px daylight pair). Camo cap under
       // the 1.27 step line, inside the ref's own ±1.73@3.74 plan reach.
       sb('hull', s, 1.550, 1.692, 1.095, 1.13, 3.485, 3.738);
+      // R4 item 3: the ray-verified 9x22px punch-throughs live FORWARD of
+      // the diagonal-cut panel's z0 — the lane x 1.50..1.693 over z 3.09..
+      // 3.485 had no floor at all (the bow wedge narrows to ±1.5025 there).
+      // Three stepped caps under the local hood line close it; tops stay
+      // below deckAt(z)-0.02 so no side/front/plan column moves.
+      sb('hull', s, 1.500, 1.692, 1.02, 1.270, 3.09, 3.24);
+      sb('hull', s, 1.500, 1.692, 1.02, 1.247, 3.24, 3.38);
+      sb('hull', s, 1.500, 1.692, 1.02, 1.226, 3.38, 3.49);
     }
   }
 
@@ -2392,6 +2465,30 @@ function buildSepv3(P) {
   tsb('turret', 1, 1.552, 1.6035, 1.70, 2.27, 0.22, 1.985); // right forward lobe
   tsb('turret', -1, 1.482, 1.516, 2.20, 2.2765, -1.40, -0.62); // L shoulder cap
   tsb('turret', 1, 1.492, 1.566, 2.20, 2.2765, -1.40, -0.62);  // R shoulder cap
+  // R4 item 7 — turret-side furniture (ref flanks carry a grouser zigzag
+  // row + a wire-mesh crate; the proc walls were bare camo). All pieces are
+  // FLUSH dressing on the 1.745 wall band: max proudness 9 mm keeps every
+  // piece inside the wall's own front/plan column bins (horns at 1.777/
+  // 1.806 carry the certified extremes), so the read is tonal/relief only.
+  for (const s of [-1, 1]) {
+    // grouser rack: top/bottom rails + 8 alternating chevron plates
+    P.add('turretDetail', box(0.008, 0.016, 1.06), s * 1.7472, 0.245, -1.005);
+    P.add('turretDetail', box(0.008, 0.016, 1.06), s * 1.7472, 0.015, -1.005);
+    for (let k = 0; k < 8; k++) {
+      const zc = -1.4425 + k * 0.125;
+      P.add('turretTrack', box(0.010, 0.118, 0.030), s * 1.7487, 0.130, zc,
+        (k % 2 ? 0.55 : -0.55), 0, 0);
+    }
+    // wire-mesh stowage crate (forward flank): recessed mid-shade mesh
+    // behind a pale frame + cross straps
+    P.add('turretTrack', box(0.007, 0.29, 0.43), s * 1.7458, 0.115, -0.03);
+    P.add('turretDetail', box(0.009, 0.018, 0.45), s * 1.7468, 0.264, -0.03);
+    P.add('turretDetail', box(0.009, 0.018, 0.45), s * 1.7468, -0.034, -0.03);
+    P.add('turretDetail', box(0.009, 0.30, 0.016), s * 1.7468, 0.115, -0.253);
+    P.add('turretDetail', box(0.009, 0.30, 0.016), s * 1.7468, 0.115, 0.193);
+    P.add('turretDetail', box(0.010, 0.012, 0.43), s * 1.7478, 0.115, -0.03);
+    P.add('turretDetail', box(0.010, 0.29, 0.012), s * 1.7478, 0.115, -0.03);
+  }
   // Smoke banks, pancake era: the ref's 1.415 front-bottom line lives on a
   // thin LEFT tongue (one side column at z 2.26..2.30); bodies at 1.60/1.525.
   tsb('turret', -1, 0.76, 1.213, 1.60, 2.095, 2.26, 2.505);
@@ -2474,7 +2571,21 @@ function buildSepv3(P) {
   // tools/tmp-abrams-refcurves is the instrument that sees it, the raw-GLB
   // vertex extract does not). Matching it costs the whole 3-column p95
   // budget; margins >=7 mm to every gate column edge (AA bleed law).
-  tb('turret', -0.7295, -0.4545, 2.15, 2.851, 1.156, 1.4725);
+  // R4 item 9: the ghost cert BINDS the 2.851 height (dropping it would put
+  // 0.14 err on the 3 budget columns), so the +0.14 skyline stays a
+  // documented residual — but the mast now reads like the ref's PROFILE:
+  // slim NECK + wide sensor HEAD. The head keeps the exact certified
+  // footprint at the top band, so every side/front ghost column top is
+  // byte-identical; the neck lives strictly inside it.
+  tb('turret', -0.655, -0.529, 2.15, 2.725, 1.238, 1.392);            // neck
+  tb('turretDetail', -0.685, -0.499, 2.42, 2.47, 1.208, 1.422);       // slew collar
+  tb('turret', -0.7295, -0.4545, 2.715, 2.851, 1.156, 1.4725);        // sensor head
+  tb('turretDetail', -0.7295, -0.4545, 2.706, 2.7215, 1.156, 1.4725); // head base lip
+  // flush head furniture: dark window inlay on the forward face + side
+  // cooling ribs (all inside the head footprint — no column moves)
+  tb('turretDark', -0.70, -0.484, 2.745, 2.815, 1.4575, 1.4735);
+  tb('turretDark', -0.7305, -0.7245, 2.74, 2.82, 1.20, 1.43);
+  tb('turretDark', -0.4595, -0.4535, 2.74, 2.82, 1.20, 1.43);
   // Doghouse ghost CLAMPED at the plateau (ref 2.51-2.54 over z 1.74..2.19,
   // x 0.36..0.80 — matching it would set heightM p95 to 2.54 and cost dims
   // 100 -> 82; bounded cap documented in the packet).
@@ -2484,42 +2595,52 @@ function buildSepv3(P) {
   tb('turret', 0.36, 0.80, 2.15, 2.40, 1.74, 2.134);
   if (P.q) {
     tb('turretGlass', -0.30, -0.06, 2.415, 2.445, -0.10, -0.08);
-    tb('turretGlass', -0.70, -0.48, 2.72, 2.80, 1.442, 1.457);
+    // (r4: CITV lens moved ONTO the new head's dark window inlay — the r3
+    // pane sat 15 mm INSIDE the mast solid and never rendered)
+    tb('turretGlass', -0.664, -0.520, 2.762, 2.800, 1.462, 1.4745);
     // Doghouse aperture in the MID-SHADE channel (r3 crack law): the
     // turretDark plate's front face classified as background in view-front
     // (the 47x9 hole over the doghouse) — ref's own window reads dark-gray.
     tb('turretTrack', 0.40, 0.76, 2.36, 2.445, 1.78, 2.15);
   }
-  // VISUAL R2 item 2 (roof third dimension) — the r1 pedestal collars sat
-  // HALF-SUNK in the 2.36 shell roof and the hatch rings read as engraved
-  // broken arcs. Both stations are now real standing DRUMS with rims + lids;
-  // tops stay in the ref's own 2.40-2.45 side-column class (side_turret ref
-  // z +0.19..+0.63 = 2.403-2.431; z -0.8..-1.2 = 2.431-2.458).
-  // Commander (world x 0.70, z 0.40): drum wall + rim ring + domed lid.
-  P.add('turret', cylY(0.250, 0.262, 0.064, 16), 0.70, 0.572, 0.645);
-  P.add('turretDetail', torus(0.252, 0.012, 20), 0.70, 0.607, 0.645);
-  P.add('turret', cylY(0.195, 0.205, 0.020, 16), 0.70, 0.618, 0.645);
-  P.add('turret', cylY(0.115, 0.150, 0.014, 14), 0.70, 0.622, 0.645);
-  P.add('turretDetail', box(0.085, 0.024, 0.16), 0.90, 0.615, 0.645);   // hinge
-  P.add('turretDetail', box(0.16, 0.014, 0.04), 0.66, 0.632, 0.645);    // grab bar
-  // vision-block ring on the drum wall (dark blocks + glass slits)
-  for (let k = 0; k < 6; k++) {
-    const a = (k - 2.5) * 0.52;
-    const px = 0.70 + Math.sin(a) * 0.255, pz = 0.645 + Math.cos(a) * 0.255;
-    P.add('turretDark', box(0.075, 0.042, 0.045), px, 0.578, pz, 0, a, 0);
-    P.add('turretGlass', box(0.056, 0.020, 0.048), px, 0.588, pz, 0, a, 0);
+  // VISUAL R2 item 2 + R4 item 1b (standing cupola): the r3 drums still read
+  // as low ellipses from top/tilt — walls were 0.064/0.070 tall with lids
+  // only 0.033 above the neighbor plates. Walls raised to 0.100 (bottoms
+  // sunk into the roof), rims/lids to the 2.44-2.45 side-column class the
+  // refcurves certify (z +0.19..+0.63 = 2.403-2.431 + quantize grace;
+  // z -0.8..-1.2 = 2.431-2.458), and the vision-block ring rides the TALL
+  // wall band where top/tilt views see it.
+  // Commander (world x 0.70, z 0.40): standing drum + rim + stepped lid.
+  P.add('turret', cylY(0.250, 0.262, 0.100, 16), 0.70, 0.5905, 0.645);
+  P.add('turretDetail', torus(0.253, 0.012, 20), 0.70, 0.634, 0.645);
+  P.add('turret', cylY(0.195, 0.205, 0.018, 16), 0.70, 0.6315, 0.645);
+  P.add('turret', cylY(0.115, 0.150, 0.012, 14), 0.70, 0.6425, 0.645);
+  // dark ring-well channel between lid and wall edge (the ref's hatch rings
+  // read as recessed wells from top/tilt, not solid discs)
+  P.add('turretDark', torus(0.2275, 0.012, 20), 0.70, 0.6395, 0.645);
+  P.add('turretDetail', box(0.085, 0.024, 0.16), 0.90, 0.628, 0.645);   // hinge
+  P.add('turretDetail', box(0.16, 0.014, 0.04), 0.66, 0.645, 0.645);    // grab bar
+  // vision-block ring on the standing wall (dark blocks + glass slits)
+  for (let k = 0; k < 8; k++) {
+    const a = (k - 3.5) * 0.52;
+    const px = 0.70 + Math.sin(a) * 0.257, pz = 0.645 + Math.cos(a) * 0.257;
+    P.add('turretDark', box(0.075, 0.052, 0.045), px, 0.6035, pz, 0, a, 0);
+    P.add('turretGlass', box(0.056, 0.024, 0.048), px, 0.6165, pz, 0, a, 0);
   }
-  // Loader (world x -0.55, z -0.95): ring drum + rim + lid, skate-rail base
-  // plate kept at the zone plates' certified 2.44 class.
-  P.add('turret', cylY(0.270, 0.282, 0.070, 16), -0.55, 0.578, -0.705);
-  P.add('turretDetail', torus(0.272, 0.012, 20), -0.55, 0.616, -0.705);
-  P.add('turret', cylY(0.210, 0.220, 0.020, 16), -0.55, 0.627, -0.705);
-  P.add('turretDetail', box(0.075, 0.022, 0.15), -0.35, 0.624, -0.705);
-  for (let k = 0; k < 3; k++) {
-    const a = (k - 1) * 0.62 + 2.6;
-    const px = -0.55 + Math.sin(a) * 0.262, pz = -0.705 + Math.cos(a) * 0.262;
-    P.add('turretDark', box(0.070, 0.040, 0.045), px, 0.585, pz, 0, a, 0);
-    P.add('turretGlass', box(0.052, 0.018, 0.048), px, 0.594, pz, 0, a, 0);
+  // Loader (world x -0.55, z -0.95): standing ring drum + R4 item 1c PALE
+  // OCTAGON rim (8-seg prism in the unpainted-fitting channel — the ref's
+  // loader ring reads as a pale octagon from directly above).
+  P.add('turret', cylY(0.270, 0.282, 0.095, 16), -0.55, 0.588, -0.705);
+  P.add('turretDetail', cylY(0.284, 0.294, 0.016, 8), -0.55, 0.6345, -0.705, 0, 0.39, 0);
+  P.add('turretDetail', torus(0.272, 0.011, 20), -0.55, 0.627, -0.705);
+  P.add('turret', cylY(0.210, 0.220, 0.018, 16), -0.55, 0.6335, -0.705);
+  P.add('turretDark', torus(0.244, 0.011, 20), -0.55, 0.6305, -0.705); // ring well
+  P.add('turretDetail', box(0.075, 0.022, 0.15), -0.35, 0.634, -0.705);
+  for (let k = 0; k < 5; k++) {
+    const a = (k - 2) * 0.62 + 2.6;
+    const px = -0.55 + Math.sin(a) * 0.264, pz = -0.705 + Math.cos(a) * 0.264;
+    P.add('turretDark', box(0.070, 0.048, 0.045), px, 0.600, pz, 0, a, 0);
+    P.add('turretGlass', box(0.052, 0.022, 0.048), px, 0.6115, pz, 0, a, 0);
   }
   // Loader's pintle M240 (MG PHYSICS: pale top-lit members, ref-length ~1.2;
   // the sepv3 skyline is plateau-flat in every ortho, so the free-sky read
@@ -2546,16 +2667,29 @@ function buildSepv3(P) {
   P.add('turretDetail', box(0.20, 0.026, 0.20), -0.15, 0.628, 0.13);          // ring cap
   // (cradle arms unrotated: the 0.18 rz tilt lifted their corners to 2.4566
   // and nudged heightM p95 2.45 -> 2.47, dims 100 -> 97.8)
-  P.add('turretDetail', box(0.05, 0.055, 0.14), -0.15, 0.625, 0.185);         // cradle arm L
-  P.add('turretDetail', box(0.05, 0.055, 0.14), -0.15, 0.625, 0.075);         // cradle arm R
-  P.add('turretDark', box(0.53, 0.0605, 0.09), -0.155, 0.6222, 0.145);        // receiver (depth)
-  P.add('turretDark', box(0.30, 0.028, 0.055), -0.155, 0.596, 0.145);         // underslung frame
-  P.add('turretDetail', box(0.11, 0.058, 0.14), -0.36, 0.619, 0.145);         // ammo can
-  P.add('turretDark', cylX(0.020, 0.40, 10), 0.31, 0.628, 0.145);             // barrel
-  P.add('turretDark', cylX(0.027, 0.06, 10), 0.525, 0.6245, 0.145);           // muzzle booster
+  P.add('turretDetail', box(0.05, 0.075, 0.15), -0.15, 0.615, 0.19);          // cradle arm L
+  P.add('turretDetail', box(0.05, 0.075, 0.15), -0.15, 0.615, 0.10);          // cradle arm R
+  // R4 item 1a — the M2 becomes an OLIVE RECEIVER VOLUME: the r3 turretDark
+  // box rendered as a flat black diagonal glyph from top/tilt (x0.45 crush
+  // kills the top face). Body now rides the mid-shade olive channel
+  // (turretTrack -> post-merge midShade) with real depth (0.105 tall, 0.13
+  // deep), a lit top face, dark inset charging groove, trunnion block and
+  // feed-tray seam; barrel/muzzle/optics stay true-dark. Top face holds the
+  // exact 2.4525 grace line so the certified x -0.44..+0.15 front-column
+  // tops do not move.
+  P.add('turretTrack', box(0.53, 0.105, 0.130), -0.155, 0.600, 0.145);        // receiver volume
+  P.add('turretTrack', box(0.155, 0.020, 0.135), -0.245, 0.6425, 0.145);      // feed tray cover hump
+  P.add('turretDark', box(0.30, 0.024, 0.018), 0.02, 0.6395, 0.098);          // charging groove (inset)
+  P.add('turretDark', box(0.53, 0.014, 0.016), -0.155, 0.6445, 0.208);        // top-rear seam rib
+  P.add('turretTrack', box(0.09, 0.055, 0.17), -0.15, 0.560, 0.145);          // trunnion block
+  P.add('turretDark', box(0.30, 0.028, 0.055), -0.155, 0.585, 0.145);         // underslung frame
+  P.add('turretDetail', box(0.11, 0.075, 0.15), -0.375, 0.610, 0.145);        // ammo can
+  P.add('turretTrack', box(0.115, 0.012, 0.155), -0.375, 0.6435, 0.145);      // can lid
+  P.add('turretDark', cylX(0.020, 0.40, 10), 0.31, 0.630, 0.145);             // barrel
+  P.add('turretDark', cylX(0.027, 0.06, 10), 0.525, 0.6255, 0.145);           // muzzle booster
   P.add('turretDetail', box(0.05, 0.020, 0.05), 0.19, 0.6425, 0.145);         // front sight block
-  P.add('turretDark', box(0.055, 0.048, 0.075), -0.075, 0.6285, 0.10);        // optics head
-  P.add('turretGlass', box(0.045, 0.030, 0.012), -0.075, 0.6375, 0.145);      // lens
+  P.add('turretDark', box(0.055, 0.048, 0.075), -0.075, 0.6285, 0.085);       // optics head
+  P.add('turretGlass', box(0.045, 0.030, 0.012), -0.075, 0.6375, 0.125);      // lens
   // R3 item 2 whips: PRICED OUT, empirically. A single shared side column at
   // 2.83 (both rods at z -1.79/-1.80) flipped the heightM p95 — the skip
   // budget is exactly 3 columns and the CITV mast owns all of them (gate
@@ -2566,19 +2700,26 @@ function buildSepv3(P) {
     P.add('turretDetail', cylY(0.024, 0.030, 0.055, 8), wx, 0.625, wz);       // base pot
     P.add('turretDark', cylY(0.012, 0.014, 0.026, 8), wx, 0.6385, wz);        // stub cap (<=2.4525)
   }
-  // R3 item 2 duffel row: the flat strip becomes real LUMPS — two fat rolls
-  // with end caps + a soft kit bag, same z-window, tangent tops in the old
-  // boxes' 2.438-2.446 class (the ref's own 2.431 side column at z -2.13).
+  // R3 item 2 duffel row + R4 item 1d: the rolls now read as CYLINDERS from
+  // plan — proud END RINGS at both ends of both rolls (the tie-off bulges
+  // that break the "flat strip" read from above), a cinch ring mid-roll,
+  // and the cloth channel retoned tan in the tone kit below. Ring crowns
+  // stay at/below the 2.4525 grace (0.558+0.094 = 0.652 local).
   P.add('turretCloth', cylX(0.088, 0.58, 12), -0.66, 0.558, -1.945);          // roll L (top 2.446)
-  P.add('turretCloth', cylX(0.088, 0.026, 12), -0.375, 0.558, -1.945);        // end cap ring
+  P.add('turretCloth', cylX(0.094, 0.022, 12), -0.938, 0.558, -1.945);        // end ring L-out
+  P.add('turretCloth', cylX(0.094, 0.022, 12), -0.382, 0.558, -1.945);        // end ring L-in
   P.add('turretCloth', cylX(0.078, 0.70, 12), 0.14, 0.560, -1.925, 0, 0, 0);  // roll R (top 2.438)
+  P.add('turretCloth', cylX(0.084, 0.020, 12), -0.198, 0.560, -1.925);        // end ring R-in
+  P.add('turretCloth', cylX(0.084, 0.020, 12), 0.478, 0.560, -1.925);         // end ring R-out
   P.add('turretCloth', box(0.30, 0.075, 0.16), -0.20, 0.545, -1.93, 0, 0.14, 0); // kit bag between
   P.add('turretCloth', cylX(0.054, 0.44, 10), 0.82, 0.588, -1.955);
+  P.add('turretCloth', cylX(0.058, 0.016, 10), 0.90, 0.588, -1.955);          // small roll end ring
   // straps re-fitted over the roll crowns (mid-shade)
   P.add('turretTrack', box(0.035, 0.012, 0.185), -0.84, 0.640, -1.945);
   P.add('turretTrack', box(0.035, 0.012, 0.185), -0.50, 0.640, -1.945);
   P.add('turretTrack', box(0.032, 0.012, 0.17), 0.075, 0.632, -1.925);
   P.add('turretTrack', torus(0.086, 0.008, 12), -0.50, 0.558, -1.945, 0, 0, Math.PI / 2);
+  P.add('turretTrack', torus(0.080, 0.008, 12), 0.14, 0.560, -1.925, 0, 0, Math.PI / 2);
   // R3 item 2: doghouse mesh WELL — recessed dark floor + crossbars inside
   // 2.4525 rim strips (the flat sheet read as a painted patch). The four
   // rims keep every side/front column in the window at the clamp top.
@@ -2611,32 +2752,28 @@ function buildSepv3(P) {
   // ---- gun group (mount world y 1.985, z 0.62) ---------------------------
   const gx = (x0, x1, y0, y1, z0, z1) =>
     P.addGunExtra(box(x1 - x0, y1 - y0, z1 - z0), (x0 + x1) / 2, (y0 + y1) / 2 - 1.985, (z0 + z1) / 2 - 0.62);
-  // R3 item 6 (gun form): octagonal-section cover segments — same certified
-  // top/bottom lines and ±w plan corridor as the r2 boxes, with the four
-  // long edges chamfered so the train reads ROUND from the front-quarter
-  // views (the critic's "square-section segments").
-  const goct = (x0, x1, y0, y1, z0, z1, c) => {
-    const gl = (x, y, z) => [x, y - 1.985, z - 0.62];
-    P.addGunExtra(box(x1 - x0, (y1 - y0) - 2 * c, z1 - z0),
-      (x0 + x1) / 2, (y0 + y1) / 2 - 1.985, (z0 + z1) / 2 - 0.62);
-    P.addGunExtra(slab(
-      gl(x0, y1 - c, z1), gl(x1, y1 - c, z1), gl(x1, y1 - c, z0), gl(x0, y1 - c, z0),
-      gl(x0 + c, y1, z1), gl(x1 - c, y1, z1), gl(x1 - c, y1, z0), gl(x0 + c, y1, z0)));
-    P.addGunExtra(slab(
-      gl(x0 + c, y0, z1), gl(x1 - c, y0, z1), gl(x1 - c, y0, z0), gl(x0 + c, y0, z0),
-      gl(x0, y0 + c, z1), gl(x1, y0 + c, z1), gl(x1, y0 + c, z0), gl(x0, y0 + c, z0)));
-  };
+  // R4 item 8 (gun form, r3 "octagonal->rounder"): the telescoping cover
+  // segments are now ELLIPTICAL cylinders (20-seg, xform-scaled). Every
+  // segment keeps the exact certified extremes — side projection of a
+  // z-cylinder is the same rectangle as the old box, plan corridor is the
+  // same ±a — so no gate column moves while the front-quarter/hero views
+  // read a round cinched dust-cover train instead of square steps.
+  const gell = (x0, x1, y0, y1, z0, z1, seg = 20) =>
+    P.addGunExtra(xform(cylZ(1, z1 - z0, seg), 0, 0, 0, 0, 0, 0,
+      [(x1 - x0) / 2, (y1 - y0) / 2, 1]),
+    (x0 + x1) / 2, (y0 + y1) / 2 - 1.985, (z0 + z1) / 2 - 0.62);
   // Mantlet + dust-cover train (refcurves side band: 2.177@1.95..2.29,
   // hump 2.2435@2.33..2.46, 2.112@2.46..2.575, 2.0775@2.575..3.0,
   // 2.028@3.0..3.35; plan corridor +-0.20 with the mantlet face 3.045 at
   // +-0.34). The stock buildGun tube would poke over the 2.03 covers, so
   // the base gun ends at world 3.05 and hand segments carry the tube.
-  goct(-0.20, 0.20, 1.618, 2.1775, 1.945, 2.31, 0.062);
-  goct(-0.205, 0.205, 1.63, 2.2435, 2.368, 2.46, 0.065);
-  goct(-0.20, 0.20, 1.70, 2.112, 2.46, 2.575, 0.055);
-  goct(-0.20, 0.20, 1.755, 2.0775, 2.575, 3.00, 0.048);
-  goct(-0.145, 0.145, 1.775, 2.028, 3.00, 3.35, 0.038);
-  goct(-0.34, 0.34, 1.78, 2.02, 2.90, 3.045, 0.05);
+  gell(-0.20, 0.20, 1.618, 2.1775, 1.945, 2.31);
+  gell(-0.205, 0.205, 1.63, 2.2435, 2.368, 2.46);
+  gell(-0.20, 0.20, 1.70, 2.112, 2.46, 2.575);
+  gell(-0.20, 0.20, 1.755, 2.0775, 2.575, 3.00);
+  gell(-0.145, 0.145, 1.775, 2.028, 3.00, 3.35);
+  // rounded mantlet slab (r4 item 8: was the squarest block on the train)
+  gell(-0.34, 0.34, 1.78, 2.02, 2.90, 3.045, 24);
   P.addGunExtraDark(box(0.56, 0.03, 0.03), 0, 0.10, 2.15);
   // MRS/muzzle-zone box: the ref plan carries an |x| 0.11..0.15 band out to
   // z 5.72, FLAT in side view (hidden under the tube line).
@@ -2660,9 +2797,9 @@ function buildSepv3(P) {
   // the columns as BODY and drags measured hullLengthM to 8.8 (dims 80.8,
   // re-proven this round). The ref's 1.849..1.905 descent stays a bounded
   // residual, exactly as the post-warp packet certified.)
-  goct(-0.104, 0.104, 2.10, 2.168, 3.945, 4.015, 0.030);
-  goct(-0.104, 0.104, 1.845, 2.098, 4.017, 4.122, 0.036);
-  goct(-0.104, 0.104, 1.930, 2.209, 4.148, 4.840, 0.040);
+  gell(-0.104, 0.104, 2.10, 2.168, 3.945, 4.015, 16);
+  gell(-0.104, 0.104, 1.845, 2.098, 4.017, 4.122, 16);
+  gell(-0.104, 0.104, 1.930, 2.209, 4.148, 4.840, 16);
   // R3 item 6: bore-evacuator EGG -> straight cylinder drum. The buildGun
   // ellipsoid peaked 2.126@3.45 then FELL where the ref side band runs FLAT
   // 2.126-2.154 over z 3.40..3.96 — the drum both rounds the read and pulls
@@ -2758,11 +2895,20 @@ function buildSepv3(P) {
   P.mats.wheels.color.setHex(0x4a4237);
   P.mats.wheels.envMapIntensity = 0.20;
   // Rear-grille slat channel (hullWood is otherwise unused on this build):
-  // R3 item 5 — the r2 0x89926f slats read PALE (a banner, ~1.3x plate);
-  // dropped to the ref's ~1.0x-plate olive, calmer spec.
-  P.mats.wood.color.setHex(0x646d51);
+  // R3 item 5 / R4 item 5 — slat crowns measured L91-103 vs the ref's L83-85
+  // p90 class on the re-rendered pairs; hex dropped another step + spec
+  // calmed so the crowns land in the ref band (the r3 "L26=ref" claim
+  // sampled the backer, not the slats).
+  // (r4 calibration pass 2: 0x555c47/env0.10 undershot to p90 67 vs the
+  // ref's 83 — crowns land on the ref class at 0x5d654d with the stock
+  // spec response restored)
+  P.mats.wood.color.setHex(0x5d654d);
   P.mats.wood.roughness = 0.95;
   P.mats.wood.envMapIntensity = 0.15;
+  // R4 item 1d: duffel/stowage cloth toward the ref's pale khaki rolls (the
+  // olive-drab base read L50 vs the ref's L64 roll class from above).
+  P.mats.canvasCloth.color.setHex(0x565941);
+  P.mats.canvasCloth.envMapIntensity = 0.30;
   // Instanced link pads -> the ref's pale dusty-earth run (matched by the
   // buildRunningGear clone hexes, the tejas pattern).
   P.hullG.traverse((ob) => {
