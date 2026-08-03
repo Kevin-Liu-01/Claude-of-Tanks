@@ -58,6 +58,12 @@ export const EFFECT_TYPES = [
   'fire', 'muzzle_flash', 'tracer', 'impact', 'sparks', 'explosion',
   'tank_kill', 'dust', 'engine_smoke', 'burning', 'detrack',
   'firing_moment', 'explosion_moment',
+  // studio r2 additions (panel refresh) — all composed from the same fx
+  // language the battle uses, so they stay deterministic under load():
+  'mg_burst',   // coax-MG tracer stream from the actor's muzzle
+  'barrage',    // artillery stonk — ring of ground bursts around the anchor
+  'armor_scar', // permanent battle scarring stamped on the actor's plates
+  'exhaust',    // diesel belch off the engine deck
 ];
 
 // scratch
@@ -65,6 +71,7 @@ const _v1 = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
+const _up = new THREE.Vector3(0, 1, 0);
 const _size = new THREE.Vector2();
 const _ray = new THREE.Raycaster();
 const _ndc = new THREE.Vector2();
@@ -795,6 +802,88 @@ export function createStudio(ctx) {
       }
       case 'explosion_moment': {
         fx.composeExplosionMoment({ pos: pos.clone(), ageS: params.ageS != null ? params.ageS : 0.6 });
+        break;
+      }
+      case 'mg_burst': {
+        // coax-MG stream: N small tracers spawned as a chain down the gun
+        // line (a frozen frame reads them as rounds in flight), plus a small
+        // flash. Jitter is a FIXED per-index pattern — deterministic under
+        // load(), no rng draw.
+        if (!a) { ok = false; break; }
+        a.visual.gunMuzzleWorld(_v2);
+        a.visual.gunDirWorld(_v3);
+        fx.muzzleFlash(_v2, _v3, params.caliberMm || 25);
+        const n = Math.max(1, Math.min(14, params.count != null ? params.count : 7));
+        const gapM = params.gapM != null ? params.gapM : 7;
+        const spread = (params.spreadDeg != null ? params.spreadDeg : 0.9) * DEG;
+        for (let i = 0; i < n; i++) {
+          const spec = {
+            name: 'studio-mg', type: 'AP', tracer: 'AP',
+            velocityMps: params.speedMps || 820, caliberMm: params.caliberMm || 12.7,
+          };
+          const jy = ((i % 3) - 1) * spread;          // fixed yaw fan
+          const jp = ((i % 2) ? 0.45 : -0.35) * spread; // fixed pitch stagger
+          const dir = _v3.clone();
+          dir.applyAxisAngle(_up, jy);
+          dir.y += jp;
+          dir.normalize();
+          const from = _v2.clone().addScaledVector(dir, 2 + i * gapM);
+          shells.push(createShell(spec, a.uid, false, from, dir, uidSeq * 1000 + shells.length));
+        }
+        break;
+      }
+      case 'barrage': {
+        // artillery stonk: deterministic ring of ground bursts around the
+        // anchor (marker / actor / at). size: 'small' | 'medium' | 'mixed'.
+        const n = Math.max(1, Math.min(12, params.count != null ? params.count : 5));
+        const rad = params.radiusM != null ? params.radiusM : 10;
+        const size = params.size || 'mixed';
+        const seedA = (params.seedDeg || 23) * DEG;
+        for (let i = 0; i < n; i++) {
+          const ang = seedA + (i / n) * Math.PI * 2;
+          const rr = rad * (0.3 + 0.7 * (((i * 37) % 10) / 10));
+          const x = pos.x + Math.sin(ang) * rr;
+          const z = pos.z + Math.cos(ang) * rr;
+          const y = hfProxy.getHeightAt(x, z) + 0.05;
+          const medium = size === 'medium' || (size === 'mixed' && i % 3 === 0);
+          if (medium) {
+            fx.destruction(_v2.set(x, y, z), null, 'shot');
+          } else {
+            fxBus.emit('shell:expired', { shellId: -1, hitTerrain: true, pos: [x, y, z] });
+          }
+        }
+        break;
+      }
+      case 'armor_scar': {
+        // battle scarring: stamp N permanent impact decals around the hull
+        // shell at fixed bearings/heights (deterministic — no rng draw).
+        if (!a) { ok = false; break; }
+        const n = Math.max(1, Math.min(10, params.count != null ? params.count : 4));
+        const reach = Math.max(a.spec.dims.widthM || 3.6, a.spec.dims.hullLengthM || 7) * 0.62;
+        const seedA = (params.seedDeg || 0) * DEG;
+        for (let i = 0; i < n; i++) {
+          const ang = seedA + ((i * 137) % 360) * DEG;
+          const hf = 0.3 + 0.42 * (((i * 53) % 10) / 10);
+          _v3.set(Math.sin(ang), 0.14, Math.cos(ang)).normalize();
+          _v2.copy(a.state.pos);
+          _v2.y += a.spec.dims.heightM * hf;
+          _v2.addScaledVector(_v3, reach);
+          fx.armorScar(a.visual, _v2, _v3, params.caliberMm || 100);
+        }
+        break;
+      }
+      case 'exhaust': {
+        // diesel belch off the engine deck (same anchor the continuous
+        // engine-smoke emitter uses). fx.exhaust is probability-gated on the
+        // seeded fx rng, so bursts stay deterministic under load().
+        if (!a) { ok = false; break; }
+        _fwd.set(Math.sin(a.state.yaw), 0, Math.cos(a.state.yaw));
+        _v2.copy(a.state.pos).addScaledVector(_fwd, -a.spec.dims.hullLengthM * 0.42);
+        _v2.y += a.spec.dims.heightM * 0.72;
+        const n = Math.max(1, Math.min(30, params.count != null ? params.count : 14));
+        for (let i = 0; i < n; i++) {
+          fx.exhaust(_v2, params.intensity != null ? params.intensity : 0.95, params.sooty !== false);
+        }
         break;
       }
       default:

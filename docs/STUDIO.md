@@ -154,6 +154,10 @@ neither, the panel marker (or the ground ahead of the camera) is used.
 | `detrack` | actor | `side`: `L`/`R` | thrown-track visual + link/spark/dust burst |
 | `firing_moment` | actor | `ageS` (default 0.05), `caliberMm`, `shellType` | the composed frozen firing still (contract `combat_firing` language) |
 | `explosion_moment` | point/actor | `ageS` (default 0.6) | the composed frozen destruction still |
+| `mg_burst` | actor | `count` (default 7), `gapM` (chain spacing, default 7), `spreadDeg`, `caliberMm` (default 12.7), `speedMps` | coax-MG volley: small flash + a chain of live small-caliber tracers already strung down the gun line (fixed per-index jitter — deterministic) |
+| `barrage` | point/actor | `count` (default 5), `radiusM` (default 10), `size`: `small`/`medium`/`mixed` (default), `seedDeg` | artillery stonk — deterministic ring of ground bursts around the anchor |
+| `armor_scar` | actor | `count` (default 4), `caliberMm` (default 100), `seedDeg` | battle scarring: permanent impact decals stamped around the hull at fixed bearings/heights |
+| `exhaust` | actor | `count` (default 14), `intensity` (default 0.95), `sooty` (default true) | diesel belch off the engine deck (the continuous emitter's anchor, one burst) |
 
 ### Determinism contract
 
