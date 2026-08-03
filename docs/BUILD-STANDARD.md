@@ -150,6 +150,18 @@ Tanks are built as RIGS, not bespoke mesh piles. Three layers:
    family packet). Orchestrator schedules rig-consolidation rounds per
    family once ≥2 variants pass the gate.
 
+4. **VARIANT VARIETY (owner directive 2026-08-03)**: sharing a rig must
+   NOT mean looking alike. Every variant in a family carries a DISTINCT,
+   era/mark-appropriate loadout — different MG arrangements, stowage
+   selections, ERA/appliqué kits, antennas, lights, dressing — such that a
+   player can tell any two family members apart in the garage at a glance.
+   Reference truth first (each mark's real distinguishing kit), then
+   FITTINGS variety within the decoration law. Critics carry a standing
+   VARIANT-DISTINCTIVENESS check whenever a family has ≥2 built members:
+   name the tells; 'same tank re-badged' is a failing read. The t80 line
+   (B brow applique, BV K-1 cheeks) and the abrams variety round are the
+   exemplars.
+
 ## I. KIT.fittings usage (§B3/§B4 workflow — kit-fittings round)
 Decoration is a WORKFLOW, not per-tank authorship: use
 `KIT.fittings.<fn>` (src/vehicles/profiles/kit.js) — hand-authored
