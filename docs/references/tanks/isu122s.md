@@ -1145,3 +1145,10 @@ square; drum crescents — occlusion cert DISPROVEN by the ref's own
 render; critic evidence outranks row analysis). Gear light logic
 inverted (Δ39 vs ref Δ≤3; real air 1.33% vs 6.03%). r9 = calibrated
 lift + gear logic + true-ellipse pot + real disc caps.
+
+## Shaded-parity r9 (2026-08-02) — FAIL 7.0; CIRCULARITY first PASS; MG law
+Verdict: docs/critique/shaded-parity-isu122s-r9.md. Pot FIXED at
+ref-grade fit (rms 2.45 vs ref's own 3.09). Gear inversion dead. Lift
+confirmed. DECORATION FAILS: no roof MG anywhere (mandatory). Holders:
+rear-quarter composition, close pot material, front tone inversion.
+r10 opens with the MG.
