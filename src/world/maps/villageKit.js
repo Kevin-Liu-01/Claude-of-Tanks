@@ -93,7 +93,11 @@ export function makeFarmhouse(rng, buckets, wallBucket = 'plaster') {
     const ang = Math.atan2(wR + 0.1, ww / 2 + 0.35);
     for (const side of [-1, 1]) {
       const slab = slabBox(wd + 0.7, 0.12, slope + 0.15, 0.35);
-      slab.rotateX(side * ang);
+      // rotateX(+ang) tips the +z edge DOWN (opposite of rotateZ, which lifts
+      // +x) — the sign must oppose the z-offset side or the two planes form a
+      // sunken V: ridge edges inside the walls, eave edges floating in air
+      // (the "roofs are on wrong" farmhouse)
+      slab.rotateX(-side * ang);
       slab.translate(wx, wH + wR / 2 + 0.06, -d * 0.16 - side * (ww / 4 + 0.18));
       wing.roof.push(slab);
     }
