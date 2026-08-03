@@ -245,6 +245,19 @@ export const PLANS = {
     z: [[-3.949, -3.949], [6.031, 6.031]],
     yTopMax: 2.745,
   },
+  // ---- batch-33: t80 + t80b end compression (russia r26 blocker: the
+  // certified 4.3%/2.5%-long hull ends own ~60% of the remaining whole-row
+  // error; heights TRUE — z-only, body-center compress + muzzle pin).
+  t80: {
+    y: [[0, 0], [3.0, 3.0]],
+    z: [[-4.883, -4.7385], [2.186, 2.0415], [4.889, 4.9215]],
+    yTopMax: 4.5,
+  },
+  t80b: {
+    y: [[0, 0], [3.0, 3.0]],
+    z: [[-4.852, -4.7675], [2.098, 2.0135], [4.857, 4.8925]],
+    yTopMax: 4.5,
+  },
   abramsx: {
     y: [[0, 0], [2.30, 2.30], [3.0, 2.44], [4.2, 2.47]],
     z: [[-3.932, -3.932], [3.968, 3.968], [6.168, 5.838]],

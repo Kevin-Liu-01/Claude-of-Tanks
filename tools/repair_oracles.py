@@ -3028,5 +3028,26 @@ REPAIRS['t90m'] = {
 }
 
 
+# =============================================================== batch 33 ===
+# T80 + T80B END COMPRESSION (russia r26 blocker: certified-long hull ends
+# own ~60% of the remaining whole-row error; heights TRUE — z-only body-
+# center compress + muzzle pin at rear+9.66). LAW v2: fresh baselines (no
+# prior .baks — first repairs on these files; disk == HEAD verified),
+# gate-in-loop against the STABLE r26 builds (expect whole-row release,
+# hull/dims hold). Plans: vertex-normalize batch-33 entries.
+REPAIRS['t80'] = [
+    ('py2', _axis_warp('t80', long_axis='z',
+                       y_map=[(0, 0), (30.4334, 30.4334)],
+                       long_map=[(-35.8606, -34.3948), (35.8505, 34.3846), (63.271, 63.6007)],
+                       y_top_max=45.8529, expect=(2, 64977, 129998))),
+]
+REPAIRS['t80b'] = [
+    ('py2', _axis_warp('t80b', long_axis='z',
+                       y_map=[(0, 0), (30.4342, 30.4342)],
+                       long_map=[(-35.2712, -34.414), (35.2347, 34.3775), (63.224, 63.5842)],
+                       y_top_max=45.8542, expect=(2, 64982, 129997))),
+]
+
+
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
