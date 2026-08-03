@@ -100,3 +100,13 @@ authored first (3 gated components vs 1), stations carry the bounded
 residual. Dims 99.7, floaters 100.
 Numbers (baseline -> now): hull 16.3 -> 21-23, whole 0 -> ~0.4, turret
 0 -> 28.2, stations 32.3 -> 34.5, dims 100 -> 99.7, floaters 100.
+
+## Vertex round r1 (2026-08-03, uk agent) — triage note
+Zero-row triage: reference renders; whole 0.6 remains the CERTIFIED
+short/z-shifted print + short-tube caps (v10 cert stands — my muzzle at
+the published overall vs the print tube ending ~z 4.9 registered = the
+wholeCurves cover floor). Stylization -4.9% mask / -6.2% overall: a warp
+plan is the unlock, but this blender-re-repaired print needs an
+orchestrator node audit first (comet-class extract frame unreliability).
+TRACK CONTAINMENT LAW (shared cromwellHull fixes): audit 1235/1435 vox ->
+0/4. Banked: min 0.6 (hull 25.2, turret 28.7, stations 37.3, dims 99.7).

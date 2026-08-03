@@ -152,3 +152,21 @@ The shared ukHull fender-wedge fill is a no-op here by construction (fender
 span ends before the glacis dip). Gate v11 before/after byte-identical (hull
 63 whole 47.3 turret 44.9 stations 63.7 dims 100 floaters 100). Evidence:
 shots/plate-fill-r1/chieftain5-{before,after}/ + crop-chieftain5-binslot-*.
+
+## Vertex round r1 (2026-08-03, uk agent) — WARP PLAN AUTHORED, build paused
+Extract (docs/references/vertex/chieftain5.json): hull mask 7.173 (-4.6% vs
+7.52), overall 10.425 (-3.4%), width -1.9%, and the 96-col p95 reads 3.54
+(+22%) because the four thin mast columns (3.54-3.80) own indices 63-66 of
+67 body cols — the WIDE crown is actually SQUAT (print cupola tops 2.735 vs
+published 2.90). Per the >2% stylization law the build is PAUSED and the
+normalize plan is authored in tools/vertex-normalize.mjs (chieftain5 entry):
+z hull span -> ±3.76 + muzzle 6.839 -> 7.03; y cupola band 2.56->2.735
+rises to 2.90 with masts knee'd to 2.93-2.94 (post-warp p95 sim in-grace
+for any 3-5 mast-col placement). ORCHESTRATOR CAVEAT: this print is Z-UP in
+glb world (gate y = glb Z, long = -glb Y; loader pitchOffset -pi/2) —
+_axis_warp applies y_map to glb axis 1 and needs a height-axis parameter
+(or a pre-rotation) before the emitted literals can land.
+TRACK CONTAINMENT LAW: rakeHalfW 1.00 keeps the bow/tail lofts out of the
+1.07..1.51 track channel — audit 369/302 vox -> 0/0; gate impact bounded
+(min 44.9 -> 43.4, registration wobble on stylization-capped rows). Build
+resumes after the warp lands (re-extract + retune masts ~2.93).

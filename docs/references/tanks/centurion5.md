@@ -100,3 +100,30 @@ Same shared ukHull fender-wedge fill as centurion3 (see that packet): the
 fender-over-glacis sky wedge is closed with lofted mudguard solids. Gate v11
 before/after byte-identical (hull 46.4 whole 27.2 turret 24.3 stations 74
 dims 100 floaters 100). Evidence: shots/plate-fill-r1/centurion5-{before,after}/.
+
+## Vertex round r1 (2026-08-03, uk agent)
+Full retable against REGISTERED PARITY TABLES (tools/tmp-uk-parity.mjs ->
+shots/uk-r1/centurion5*/; the gate's own hull-row registration applied to
+both masks — extract z-frames are NOT trusted for placement on this family).
+STALE CERTS RETIRED: (a) "basket band bottoms 0.65 over z -0.7..+1.2" — the
+re-repaired print's basket reads bottom ~0.65-0.68 over z -0.10..+1.47 ONLY,
+with the casting bottom at 1.54 around the ring; (b) "no tall masts" stands;
+(c) the print's END WHEELS are RAISED (idler rim tip ~3.85, y-center ~1.03;
+sprocket rim tail ~-3.7, y ~1.06-1.15) with long climbing runs — the ground
+line ends ~±2.4 and the rims own the silhouette past the hull plates. Hull:
+24-inch track band |x| 0.94..1.55, belly 0.53, stepped driver plate
+(1.69 deck -> 1.51 glacis flat -> vertical nose at 3.48), engine deck
+ceiling 1.755 (all furniture under it), fender lid ends 1.60/skirt top 1.48.
+Turret: slab-walled casting (walls ±1.16, crown 2.55-2.64), cupola at the
+print's own peak zone (x -0.48, world z -0.15) carrying the 2.92 p95 anchor
+(print peak 2.79-2.85 — bounded anchor tax ~4 pts across side rows), WIDE
+flat bustle ±1.15 ending world -1.71 (mk5), flank stowage shelves to ±1.54
+(rounded outer stub 0.6 m), roof MG pintle (owner decoration law), L7 tube
+Ø0.28 with muzzle collar to the tip. TRACK CONTAINMENT LAW (owner
+2026-08-03): rake lofts narrowed to ±0.88 (rakeHalfW), horn plates outboard
+x 1.59..1.70 ending before the wrap crown, sprocket y capped 1.06 under the
+fender, flap hems above the rim line — audit 1233/1178 vox -> 0/0.
+Numbers (r0 -> banked): min 24.3 -> 66.9 (hull 46.4 -> 85.1, whole 27.2 ->
+70.7, turret 24.3 -> 66.9, stations 74 -> 81.8, dims 100 -> 98.3 [hullMask
+~7.58 = +0.3% grace], floaters 100). Mask-end law: band+shoes render ~0.57
+beyond each end-wheel center — calibrate idler/sprocket z against it.

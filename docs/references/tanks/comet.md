@@ -95,3 +95,29 @@ cost. Published height 2.68 vs print crown 2.55: the 2.66-2.68 cupola
 anchor carries the dims-sovereign delta. Dims 100, floaters 100.
 Numbers (baseline -> now): hull 28.3 -> 35.2, whole 0 -> ~0.5, turret
 6.7 -> 13.4, stations 29.8 -> 24.7 (front-view caps dominate; see above).
+
+## Vertex round r1 (2026-08-03, uk agent)
+Stylization: print +3.9% overall / +4.2% hull mask (buildable; the +20.4%
+bodyLen read is the fat 77mm+brake crossing the extract's 12% body filter).
+FRAME LAW LEARNED THE HARD WAY: this print's EXTRACT z-frame is mirrored/
+shifted vs the lab (its own hull-center normalization on the blender-
+re-repaired fused print) — an extract-driven turret re-seat zeroed the
+rows; only the REGISTERED PARITY TABLES (tools/tmp-uk-parity.mjs) are
+authoritative here. Lab truth banked (world frame): casting face 1.50 with
+the mantlet band 1.50..1.97 (y 1.52..2.14), crown 2.45-2.57 peaking z
+-0.02..0.55, turret rear ends -1.00, walls ±1.15, basket 0.74 under z
+0.27..1.50 only, gun axis ~1.87 with the muzzle brake at 4.4-4.8 (print
++4% long; my muzzle stays at the published 4.39 — bounded cover). STALE
+CERT RETIRED: "print carries its tall fender bin in the TURRET mask at
+x 1.08..1.52 (top 2.26)" — the re-repaired print's bin reads x 1.34..1.53,
+y 1.92..2.29, and the front camera 'at' axis = +world_x (pinned by a
+one-sided marker experiment; the r2 hull-bucket and left-side attempts
+both regressed). Track: ref grounds |x| ~1.10..1.50 (the narrow first
+read was dy-shifted). Cupola carries the 2.66 p95 anchor (print peak
+2.57). TRACK CONTAINMENT LAW: cromwellHull guards raised above the wrap
+line (wrapTop rule), pannier band split at the wrap line, toe/inner
+solids held to the inter-track channel — audit 1200/1105 vox -> 0/0.
+Numbers (r0 -> banked): min 0.5 -> 11.3 (turret 13.4 -> 39.4, stations
+24.7 -> 61.3, whole 0.5 -> 11.3, hull 35.2 -> 32.0, dims 100). Residual
+floor: front rows (crown x-profile + track/guard bands) — next round
+works front_whole worst-first from fresh boards.

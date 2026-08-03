@@ -112,3 +112,20 @@ and the falling glacis/tail deck line wherever the deck drops below fenderY
 (lofted mudguard solids inside the plate's own footprint). Blast radius:
 chieftain5 / challenger1 / centurion3 / centurion5 / fv510 — all five re-run
 at gate v11 with byte-identical component rows vs pre-fill HEAD.
+
+## Vertex round r1 (2026-08-03, uk agent) — WARP PLAN AUTHORED, build paused
+Extract: hull mask 7.992 (-3.9% vs 8.32), overall 10.779 (-6.3%), width 0%;
+p95 3.264 (+10.5%) is four thin antenna cols at 3.26-3.33 over a SQUAT wide
+roof plateau (2.756 vs published 2.95). Normalize plan authored
+(tools/vertex-normalize.mjs challenger1): z hull -> ±4.16 + muzzle 6.783 ->
+7.34; y roof band 2.60->2.76 rises to 2.93 with antennas knee'd to
+2.97-2.98 (p95 sim -0.95..+1.0% any placement). Standard Y-up — _axis_warp
+applies as-is. FALSE-ALARM CERT: the extract's ORIENTATION MISMATCH is the
+un-modeled CHALLENGER_TURRET_FOLLOWERS contaminating its hull top-curve
+(roof panels 2.76 + antennas) + the normal-vote fallback; the glacis truly
+faces +z (hull tops fall 2.0@z2.2 -> 1.2@z3.9, bow belly rake rises to the
++z nose, tail undercut at -z, gun overhang +z). TRACK CONTAINMENT LAW:
+rakeHalfW 1.19, inner skirt plate trimmed to z -1.82..2.28 and the outer
+layer moved to the 1.65..1.73 plane clear of the shoe surface — audit
+413/293 -> 20/0 (residual sub-severe boundary kiss). Gate steady at 32.2
+min (turret 32.7 -> 35). Build resumes after the warp lands.

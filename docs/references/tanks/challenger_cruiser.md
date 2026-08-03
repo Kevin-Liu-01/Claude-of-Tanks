@@ -82,3 +82,14 @@ structurally capped by the print). Dims hold >= 90 under the v10 pixel
 semantics (90.4: hullLengthM reads 7.88 vs 8.03 = 1.81% — the thin bow
 visor band trims the measured body span; heightM 1.22%, overall 1.17%,
 width 0.14%). Floaters 100. A cap never excuses dims — dims stays green.
+
+## Vertex round r1 (2026-08-03, uk agent) — triage note
+Zero-row triage: reference renders (grey/red boards, shots/uk-r1/
+challenger_cruiser/) — the zeros are the CERTIFIED 15%-short print cap
+(v10 cert stands: "curve rows 0, stations 0 structurally capped"). The
+17-pdr muzzle-brake ball and the seated stubby turret read in the boards;
+extract hullMask -16.1% vs bodyLen -5.8% disagree (blender-repair node
+layout) — flag for orchestrator-level plan with a node audit before any
+warp (comet-class extract unreliability). TRACK CONTAINMENT LAW (shared
+cromwellHull fixes): audit 1259/1435 vox -> 16/4. dims 90.4 -> 96.9 (the
+containment inboard-solids trim also fixed a silent hull-mask overrun).

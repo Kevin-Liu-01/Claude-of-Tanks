@@ -123,3 +123,16 @@ before/after: byte-identical rows (hull 46.7 whole 32.8 turret 22.9 stations
 59.9 dims 100 floaters 100; ledger's older 47.5/33/24.1/60.5 row was a stale
 pre-v11 scoring). centurion5 identical treatment (46.4/27.2/24.3/74/100/100
 held byte-identical).
+
+## Vertex round r1 (2026-08-03, uk agent)
+Shares the centurion5 rebuild (see its packet r1 log — registered-table
+retable, raised end wheels, slab casting, containment law). Mk.3 deltas
+banked from its own print: shorter bustle (tail local -1.55 vs mk5 -2.06),
+20-pdr at Ø0.24-0.28 with the muzzle collar run to the tip (the thin-tube
+r 0.09 read starved the plan trace bins and zeroed plan_whole center
+columns), 3-tube smoke banks. Numbers (r0 -> banked): min 22.9 -> 60.8
+(hull 46.7 -> 84.8, whole 32.8 -> 69.4, turret 22.9 -> 60.8, stations
+59.9 -> 76.2, dims 100 -> 98.3). Residual: turret row lags c5 ~6 pts —
+the c3 print's crown band reads ~0.10-0.13 lower through the face zone
+(DIFF table in shots/uk-r1/; next round should split the crown heights
+per mark instead of sharing the c5 slab values).

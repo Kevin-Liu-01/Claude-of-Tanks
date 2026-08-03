@@ -312,6 +312,19 @@ export const PLANS = {
     z: [[-3.996, -4.16], [3.996, 4.16], [6.783, 7.34]],
     yTopMax: 2.99,
   },
+  // fv510: uniformly SHORT print (-10.9% hull mask = overall; the RARDEN
+  // never clears the bow, so one centered hull zone covers both and the
+  // pure centered stretch is MIRROR-INVARIANT — the print's flip:true
+  // cannot corrupt the literals). Stature near-true: p95 2.851 (+1.8%,
+  // the gunner-sight pod band) with three thin mast cols to 3.90 — knee at
+  // 2.60 drops the pod to 2.787 and the masts to 2.82-2.83; p95 lands
+  // -0.5..+0.7% for any percentile placement. Width -0.3% untouched.
+  // Build retunes the mast rod (~2.83) post-warp.
+  fv510: {
+    y: [[0, 0], [2.60, 2.60], [2.86, 2.795], [3.90, 2.83]],
+    z: [[-2.822, -3.17], [2.824, 3.17]],
+    yTopMax: 2.85,
+  },
   // ---- patton family (agent derivation 2026-08-03; extracts this batch).
   // All three are Z-ONLY body-span + muzzle-pin warps (merkava batch-14
   // class); width anchored, y IDENTITY — heights read +1.8/-1.1/+0.6%.
