@@ -799,10 +799,21 @@ function wedgeTurretV3(P, T) {
       // dark spaced-armor shadow wall behind the plate (wallDrop: how far
       // its top edge sits below the crest — the wall peeks out in the side
       // trace behind the plate's top face, so it must track the ref there)
+      // a6 r9 OPT-IN wallShadowXCap (default Infinity — siblings render
+      // byte-identical: Math.min(x, Infinity) === x): clamps the wall's
+      // outboard reach. The a6's 0.97*crest-x put the wall's outer-rear fin
+      // at x 1.368..1.397 — PROUD of the 1.38 wall face and the chamfer —
+      // where it read as a black pocket between the side band and the smoke
+      // rails from garage quarters (owner contiguity flag). The clipped
+      // rows were never wall-carried in any trace: side projection there is
+      // wall/chamfer-covered at every (y,z), front is cheek-plate-covered,
+      // plan cells belonged to the wall's own certified footprint.
       const wD = T.wallDrop ?? 0.06;
-      P.add('turretDark', slab(
-        [s * (cx0 * 0.97), aB + 0.2, nz(cx0) - 0.44], [s * (cx1 * 0.97), aB + 0.2, nz(cx1) - 0.44], [s * (cx1 * 0.97), aB + 0.2, nz(cx1) - 0.52], [s * (cx0 * 0.97), aB + 0.2, nz(cx0) - 0.52],
-        [s * (cx0 * 0.97), cy0 - wD, cz0 - 0.36], [s * (cx1 * 0.97), cy1 - wD, cz1 - 0.36], [s * (cx1 * 0.97), cy1 - wD - 0.04, cz1 - 0.44], [s * (cx0 * 0.97), cy0 - wD - 0.04, cz0 - 0.44]));
+      const wxCap = T.wallShadowXCap ?? Infinity;
+      const wx0 = Math.min(cx0 * 0.97, wxCap), wx1 = Math.min(cx1 * 0.97, wxCap);
+      if (wx0 !== wx1 || wx0 < wxCap) P.add('turretDark', slab(
+        [s * wx0, aB + 0.2, nz(cx0) - 0.44], [s * wx1, aB + 0.2, nz(cx1) - 0.44], [s * wx1, aB + 0.2, nz(cx1) - 0.52], [s * wx0, aB + 0.2, nz(cx0) - 0.52],
+        [s * wx0, cy0 - wD, cz0 - 0.36], [s * wx1, cy1 - wD, cz1 - 0.36], [s * wx1, cy1 - wD - 0.04, cz1 - 0.44], [s * wx0, cy0 - wD - 0.04, cz0 - 0.44]));
     }
   }
   // mantlet slot back wall + cheeks
@@ -1510,8 +1521,17 @@ function buildLeo2A6(P) {
   // line (ref front reads bare deck 1.83 at their x), side module band to
   // +-1.43, rack +-1.03 to -2.82w with floor 1.83.
   P.turretG.position.set(0, 1.77, 0.35);
+  // contiguity r9: crest tables hoisted to consts — the wedge END-CLOSURE
+  // pieces below (owner contiguity flag) are computed off the same points.
+  const crestR = [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.32, 0.58, -0.12], [1.36, 0.24, -0.16], [1.43, 0.19, -0.20]];
+  const crestLt = [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.30, 0.61, -0.10], [1.41, 0.55, -0.16], [1.44, 0.30, -0.20]];
   wedgeTurretV3(P, {
     h: 0.75, apexY: 0.09, gunW: 0.36, slotZ: 1.55, crestTail: 0.05, wallDrop: 0.10,
+    // r9 contiguity: clamp the spaced-armor shadow wall's outboard reach —
+    // its 0.97*crest fin (x to 1.397 L) stood proud of the 1.38 wall face
+    // and read as a black pocket from garage quarters (see the opt-in note
+    // in wedgeTurretV3; siblings pass nothing and render byte-identical).
+    wallShadowXCap: 1.335,
     chamferY: 0.55, roofX: 1.05,
     // WALL-STEP-ROOF law + V-TROUGH law (this round): walls stop at 2.17 on
     // their outer edge (cY 0.40 — ref front falls through 2.15 at x 1.38),
@@ -1569,8 +1589,8 @@ function buildLeo2A6(P) {
     // deck line like the ref. (A +0.035 bump of the inner tops was tried
     // and REVERTED: the ref roofline rows flip with the grid registration
     // and the raise printed +0.06..+0.12 on the 0.58-0.95w columns.)
-    crest: [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.32, 0.58, -0.12], [1.36, 0.24, -0.16], [1.43, 0.19, -0.20]],
-    crestL: [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.30, 0.61, -0.10], [1.41, 0.55, -0.16], [1.44, 0.30, -0.20]],
+    crest: crestR,
+    crestL: crestLt,
     emes: { x: 0.66, z: 0.25, top: 0.70 },
     // peri: 2-column 2.85 crown (the p95 spike budget after the tail/bow
     // re-lay shrank body-N) + a 2.66 base (1% heightM grace) carrying the
@@ -1653,6 +1673,43 @@ function buildLeo2A6(P) {
     P.add('turretDetail', torus(0.042, 0.012, 14), lx, ly + 0.005, lz);
     P.add('turretDark', KIT.cylY(0.018, 0.018, 0.008, 8), lx, ly + 0.006, lz);
   }
+  // r9 DECORATION MINIMUM (owner law — leo2a6 graduated before it): loader's
+  // MG3 on a pintle beside the hatch, STOWED pointing aft along the roofline.
+  // BUDGET (gate margins wholeCurves/dims 1.0): every part tops <= 0.895
+  // local = the 2.665w grace line — no new p95 spike columns; the receiver
+  // rides the PERI's certified side band (crown z -1.01..-0.73 / base
+  // -1.05..-0.69 at x-projection), so its side rows are pre-covered; the
+  // barrel run hugs the aft roof V (+0.02..0.04 over the 2.60-2.62w line =
+  // sub-row to 1 row on ~15 cols); front adds ~2 rows on the 4 receiver
+  // columns over the 2.605w lid line. MG PHYSICS: dark pintle/cradle/butt/
+  // muzzle, camo receiver + belt box, PALE barrel/top-cover (mgPale in the
+  // tone family below — top-lit rod against sky at the quarter skylines).
+  P.add('turretDark', KIT.cylY(0.017, 0.020, 0.086, 10), -0.60, 0.815, -0.78);  // pintle post rooted on the roof slope (0.780 at |x| 0.60)
+  P.add('turretDark', box(0.052, 0.035, 0.05), -0.60, 0.848, -0.78);            // cradle rocker
+  P.add('turret', box(0.095, 0.080, 0.34), -0.60, 0.855, -0.87);                // receiver body (z -0.70..-1.04, top 0.895 = grace line)
+  P.add('turretDark', box(0.05, 0.048, 0.07), -0.60, 0.852, -0.685);            // butt/spade at the stowed-forward end
+  P.add('turretDark', KIT.cylZ(0.019, 0.065, 10), -0.60, 0.845, -1.645);        // muzzle booster/flash-hider (dark)
+  P.add('turret', box(0.075, 0.095, 0.13), -0.515, 0.845, -0.90);               // belt box hung inboard, abutting the PERI base flank (contiguous)
+  P.add('turretDark', box(0.05, 0.04, 0.022), -0.552, 0.868, -0.90);            // belt tray into the receiver
+  P.add('turretDark', box(0.032, 0.045, 0.045), -0.60, 0.813, -1.45);           // barrel travel clamp rooted on the aft roof slope (no hovering rod)
+  // r9 CONTIGUITY: the two aft roof-V courses leave an 8 cm see-through seam
+  // (course insets: body[4] V ends z -1.48, body[6] V starts -1.56) that the
+  // stowed barrel above turned into an ENCLOSED side-view hole (ortho probe:
+  // 93 px sky at z -1.13w..-1.16w between the walls' 0.62 top and the V
+  // peaks; the ref side profile STEPS 2.60 -> 2.53 there — solid, no slit).
+  // V-following seam fillers, one per side: tops ride 10 mm under the lower
+  // course's profile (side rows stay under the certified 0.82/0.835 peaks),
+  // bottoms sink into the certified 0.62 wall band — zero trace movement.
+  for (const s2 of [-1, 1]) {
+    const ordS = (r) => (s2 < 0 ? [r[1], r[0], r[3], r[2]] : r);
+    P.add('turret', slab(
+      ...ordS([[s2 * 0.06, 0.60, -1.47], [s2 * 0.87, 0.60, -1.47], [s2 * 0.87, 0.60, -1.57], [s2 * 0.06, 0.60, -1.57]]),
+      ...ordS([[s2 * 0.06, 0.628, -1.47], [s2 * 0.87, 0.808, -1.47], [s2 * 0.87, 0.808, -1.57], [s2 * 0.06, 0.628, -1.57]])));
+  }
+  // (barrel + receiver top cover are mgPale TONE meshes in the material
+  // block below — MG PHYSICS pale class, geometry/placement documented here:
+  // barrel cylZ r 0.0145 len 0.58 @(-0.60, 0.845, -1.33), cover box
+  // 0.078 x 0.012 x 0.30 @(-0.60, 0.888, -0.87).)
   // r2 #3: 2x4 Wegmann smoke banks per side, proud of the wall->roof chamfer
   // slope (plane (1.38,0.30)->(1.05,0.62): row1 centers sit ON it, row2 rides
   // 22 mm proud). MASK LAW: every tube+cap tops >=0.03 below the certified
@@ -1683,6 +1740,63 @@ function buildLeo2A6(P) {
       // dark backdrop rails on the chamfer under each row
       P.add('turretDark', box(0.020, 0.14, 0.68), s * 1.286, 0.360, -0.61, 0, 0, s * 0.77);
       P.add('turretDark', box(0.020, 0.14, 0.68), s * 1.252, 0.423, -0.68, 0, 0, s * 0.77);
+    }
+  }
+  // r9 CONTIGUITY (owner flag: "empty areas... behind the cheek"): the slot
+  // between the cheek plate's trailing edge and the wall chamfer showed the
+  // turretDark spaced-armor shadow wall as a BLACK POCKET from garage
+  // quarter angles (desert probe: ray @garage-left(372,425) hit the 0x36342f
+  // wall at [-1.385, 2.044w, -0.089]). The real 2A6 wedge module is CLOSED —
+  // top plate + end plate. Two camo closure pieces per side, both strictly
+  // inside the certified masks:
+  // - TOP CAP over the slot opening (crest seg [1.02,0.61,0.02] ->
+  //   [1.32/1.30, ...]): rides 22 mm UNDER the local crest line (front/side
+  //   curves cannot move — the crest edge itself carries those rows), rear
+  //   edge -0.295 abuts the smoke-bank backdrop rails (z -0.27..) so the
+  //   certified row-2 muzzle caps stay top-visible; inboard edge embeds in
+  //   the wall chamfer solid (x 1.035 < chamfer face at cap height).
+  // - END CURTAIN hanging from the diving outer crest segments down into
+  //   the side-band top (bottom 0.235 embeds 5 mm into the certified 0.24/
+  //   0.28 band tops): the module end wall. Top edge 20 mm under the crest
+  //   polyline at every x (mask-free per the crest-envelope argument); z
+  //   plane cz-0.055 sits flush behind the plate's own 0.05 top-face band,
+  //   so the certified side-trace dark seam (shadow-wall top edge at
+  //   cz-0.36..-0.44) keeps its exposed rows below/behind the cap.
+  // - two dark mount brackets under each cap rear edge (visible attachment
+  //   read — "standoff masses with visible mounts").
+  // MIRROR LAW: slab corner rings reverse for s=-1 (the r6 beak-wing
+  // inside-out lesson — masks are DoubleSide, shaded renders are not).
+  {
+    const ordC = (s, r) => (s < 0 ? [r[1], r[0], r[3], r[2]] : r);
+    const mirC = (s, r) => r.map(([x, y, z]) => [s * x, y, z]);
+    for (const s of [-1, 1]) {
+      const C = s < 0 ? crestLt : crestR;
+      // top cap over crest segment 4->5
+      const [xA0, yA0, zA0] = C[4], [xB0, yB0, zB0] = C[5];
+      const fA = 0.05 / (xB0 - xA0);                     // inset the inner end 5 cm along the segment
+      const xA = xA0 + 0.05, yA = yA0 + (yB0 - yA0) * fA, zA = zA0 + (zB0 - zA0) * fA;
+      const xB = xB0 - 0.006, yB = yB0, zB = zB0 - 0.006;
+      const capBot = mirC(s, [[xA, yA - 0.038, zA - 0.048], [xB, yB - 0.038, zB - 0.048], [xB, yB - 0.038, -0.295], [xA, yA - 0.038, -0.295]]);
+      const capTop = mirC(s, [[xA, yA - 0.022, zA - 0.048], [xB, yB - 0.022, zB - 0.048], [xB, yB - 0.022, -0.295], [xA, yA - 0.022, -0.295]]);
+      P.add('turret', slab(...ordC(s, capBot), ...ordC(s, capTop)));
+      // end curtains over the diving outer segments (stop where the crest
+      // line meets the band-top closure: cy - 0.02 >= 0.235)
+      for (let i = 5; i < C.length - 1; i++) {
+        let [x0, y0, z0] = C[i];
+        let [x1, y1, z1] = C[i + 1];
+        if (y0 - 0.02 <= 0.235) continue;
+        if (y1 - 0.02 < 0.235) {
+          const f = (y0 - 0.255) / (y0 - y1);
+          x1 = x0 + (x1 - x0) * f; z1 = z0 + (z1 - z0) * f; y1 = 0.255;
+        }
+        const botR = mirC(s, [[x0, 0.235, z0 - 0.055], [x1, 0.235, z1 - 0.055], [x1, 0.235, z1 - 0.075], [x0, 0.235, z0 - 0.075]]);
+        const topR = mirC(s, [[x0, y0 - 0.02, z0 - 0.055], [x1, y1 - 0.02, z1 - 0.055], [x1, y1 - 0.02, z1 - 0.075], [x0, y0 - 0.02, z0 - 0.075]]);
+        P.add('turret', slab(...ordC(s, botR), ...ordC(s, topR)));
+      }
+      // cap mount brackets (dark, tucked under the cap rear edge)
+      for (const bx of [1.13, 1.26]) {
+        P.add('turretDark', box(0.045, 0.05, 0.026), s * bx, yA - 0.065, -0.283);
+      }
     }
   }
   // r2 #6 / r3 #2: PERI R17 head furniture. The two SQUARE dark top plates
@@ -1754,10 +1868,27 @@ function buildLeo2A6(P) {
   //     1.1425), top 0.64 = the certified 2.41w rack-band line — rays over
   //     it land on the aft-step walls (x +-1.29 band). Side projection of
   //     both pieces stays inside the certified 1.83..2.41w rack band.
+  // r9 CONTIGUITY (owner flag: "empty areas... turret rear masses"): from
+  // garage quarter angles the bustle read as a DARK OPEN BOX — the r6 hero-
+  // seal side boards (turretDark, x +-1.156 faces) rendered as naked
+  // gunmetal planes at the deep-shade floor (desert probe: ray @(110,415)
+  // hit 0x36342f at [-1.156, 2.21w, -2.567]) and the r6 bulkhead's dark rim
+  // ringed the neck walls. The ref bustle is SOLID OD stowage bins (the r6
+  // #2b bin-green law). Material reads only — certified geometry unchanged:
+  // - side boards -> turretCloth (bin-green family, same mechanism as the
+  //   r6 backing retone) + two pale strap frames per face (4 mm proud at
+  //   x 1.162, still inside the certified 1.1425..1.1875 rail-line band)
+  //   + a bin top lip, so the faces read as strapped canvas bins;
+  // - bulkhead -> 'turret' camo (it is the turret rear wall read; its seal
+  //   role is geometric, not tonal).
   for (const s2 of [-1, 1]) {
-    P.add('turretDark', box(0.016, 0.42, 0.545), s2 * 1.148, 0.32, -2.7175);
+    P.add('turretCloth', box(0.016, 0.42, 0.545), s2 * 1.148, 0.32, -2.7175);
+    for (const sz of [-2.60, -2.84]) {
+      P.add('turretDetail', box(0.012, 0.40, 0.032), s2 * 1.162, 0.32, sz);
+    }
+    P.add('turretDetail', box(0.014, 0.028, 0.52), s2 * 1.161, 0.516, -2.7175);
   }
-  P.add('turretDark', box(2.24, 0.54, 0.016), 0, 0.37, -2.455);
+  P.add('turret', box(2.24, 0.54, 0.016), 0, 0.37, -2.455);
   // center roof rib (ref front reads 2.51 on the +-0.02 columns only)
   P.add('turret', box(0.07, 0.10, 1.32), 0, 0.69, -0.64);
   // center-left periscope riser: the ref's tallest non-PERI roof element
@@ -1996,6 +2127,23 @@ function buildLeo2A6(P) {
     platePale.envMapIntensity = 0.25;
     P.disposables.push(platePale);
     rehook(platePale);
+    // r9 MG PHYSICS pale parts (kf51 r8 recipe, merkava r5 ruling: pintle
+    // guns read as PALE top-lit rods — the shared detail bucket tops out
+    // 70-85 where the M2/MG3 class reads 95-101L). Barrel + receiver top
+    // cover for the stowed loader MG3 placed in the roof-clutter block.
+    const mgPale = rehook(P.mats.shadow.clone());
+    mgPale.color.setHex(0x60624c);
+    mgPale.envMapIntensity = 0.18;
+    P.disposables.push(mgPale);
+    for (const g of [
+      KIT.xform(KIT.cylZ(0.0145, 0.58, 10), -0.60, 0.845, -1.33),
+      KIT.xform(KIT.box(0.078, 0.012, 0.30), -0.60, 0.888, -0.87),
+    ]) {
+      const mesh = new THREE.Mesh(g, mgPale);
+      mesh.receiveShadow = true;
+      P.turretG.add(mesh);
+      P.disposables.push(g);
+    }
     // r6 #1 TOP-GRIME HOOK (track-shoe clones only; the measured mechanism
     // behind the critic's 1.19-1.23x front wrap): the wrap corners read hot
     // because up-facing shoe surfaces take ~1.9x the key + full sky of a

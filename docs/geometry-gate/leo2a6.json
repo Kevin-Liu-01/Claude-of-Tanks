@@ -1,18 +1,18 @@
 {
  "id": "leo2a6",
- "geoMin": 91,
+ "geoMin": 90.9,
  "gatePassed": true,
  "components": {
   "hullCurves": 91.2,
-  "wholeCurves": 91,
-  "turretCurves": 91.2,
-  "stations": 93.4,
+  "wholeCurves": 90.9,
+  "turretCurves": 90.9,
+  "stations": 92.6,
   "dims": 91,
   "floaters": 100
  },
  "curveRows": {
   "side_hull": {
-   "score": 91.17951382919829,
+   "score": 91.17951290552534,
    "meanPct": 0.57,
    "p95Pct": 1.37,
    "coverPct": 0.79,
@@ -120,8 +120,8 @@
    ]
   },
   "side_whole": {
-   "score": 91.02384798226423,
-   "meanPct": 0.62,
+   "score": 90.88033481964784,
+   "meanPct": 0.64,
    "p95Pct": 1.11,
    "coverPct": 0.56,
    "reg": {
@@ -218,11 +218,11 @@
      "errM": 0.029
     },
     {
-     "at": 4.46,
-     "refTop": 0.39,
-     "refBot": -1.21,
-     "procTop": 0.42,
-     "procBot": -1.17,
+     "at": 2.99,
+     "refTop": 1.13,
+     "refBot": -1.42,
+     "procTop": 1.18,
+     "procBot": -1.43,
      "errM": 0.028
     }
    ]
@@ -444,7 +444,7 @@
    ]
   },
   "front_hull": {
-   "score": 94.1091557477423,
+   "score": 94.10915503460912,
    "meanPct": 0.45,
    "p95Pct": 0.9,
    "coverPct": 0,
@@ -552,8 +552,8 @@
    ]
   },
   "front_whole": {
-   "score": 91.30171763843632,
-   "meanPct": 0.65,
+   "score": 90.9153818325453,
+   "meanPct": 0.68,
    "p95Pct": 1.53,
    "coverPct": 0,
    "reg": {
@@ -662,8 +662,8 @@
  },
  "turretRows": {
   "side": {
-   "score": 91.15599881986972,
-   "meanPct": 0.57,
+   "score": 90.93191748926716,
+   "meanPct": 0.59,
    "p95Pct": 1.1,
    "coverPct": 0.86,
    "reg": {
@@ -677,7 +677,7 @@
      "refBot": 0.34,
      "procTop": 1.22,
      "procBot": 0.38,
-     "errM": 0.081
+     "errM": 0.08
     },
     {
      "at": 2.26,
@@ -728,12 +728,12 @@
      "errM": 0.029
     },
     {
-     "at": 2.51,
-     "refTop": 1.2,
-     "refBot": 0.36,
-     "procTop": 1.16,
-     "procBot": 0.38,
-     "errM": 0.029
+     "at": 2.99,
+     "refTop": 1.13,
+     "refBot": 0.41,
+     "procTop": 1.18,
+     "procBot": 0.4,
+     "errM": 0.028
     },
     {
      "at": -1.65,
@@ -902,7 +902,7 @@
   {
    "i": 4,
    "wPct": 0.46,
-   "topPct": 0.69
+   "topPct": 1.66
   },
   {
    "i": 5,

@@ -1004,3 +1004,15 @@ close the voids (attach standoff masses w/ mounts + contact shadows),
 then re-gate ≥90 + re-critic ≥9.0 + RE-FREEZE hash in the SAME commit
 (graduate-change protocol). Also apply the DECORATION MINIMUM law
 (roof MG present? flat areas dressed?).
+
+## RE-FREEZE (2026-08-03) — owner contiguity flag ANSWERED; hash 2e18db54
+Graduate-change round complete per protocol: voids closed (behind-cheek
+1194→159 dark px, bustle 3094→311, roof slit 93→3px specks — all with
+attached mounts/brackets/curtains, not plating), loader's MG3 added
+per the decoration law at zero p95 cost (tops ≤ the 2.665w grace line),
+gate 90.9 PASS x2 (priced −0.1/−0.3/−0.8 within the pintle allowance),
+re-certification critic PASS min 9.0 all views with zero regressions.
+NEW FREEZE HASH **2e18db54** (46 meshes, 153300 verts) supersedes
+37cc0789. kf51 co-resident hash d94171cc verified EXACT; leo2a5/
+leo2_revolution byte-identical. Verdict:
+docs/critique/leo2a6-recert-2026-08-03.md.
