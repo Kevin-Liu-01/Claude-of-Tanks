@@ -305,3 +305,19 @@ corner cuts the ref's crest where the shared wedge crest tables cannot
 be split per-z; 2 cols x 0.05); front ±1.42 crest-end cols (proc 2.304
 vs ref 2.174 — shrinking the body wall trades an equal-magnitude miss
 the other way, wash); side_hull tail −3.4..−3.6 bottoms ~0.05 x 4.
+
+## Vertex round r2 (2026-08-03) — ORCHESTRATOR LANDING NOTE
+(Builder finished without a section; from its verified report.) 80.5 ->
+84.2 (hull 93.8 / whole 87.8 / turret 84.2 / stations 92.5 / dims 94.6).
+dims 85->94.6 by dropping the cluster/PERI/ring line to 2.697; stations
++6.4 via fender narrowing to the ref's +-1.737 station width + nose-saddle
+reprofile; hull +5.7 via mudflap stack, skirt-corner flaps, stowage re-lay
+(blade-stacking law), muzzle band ride. Loader-ring pintle MG added at 0
+gate cost (decoration law). ORACLE DEFECT BLOCKS >=90: the print's roof-
+furniture band reads 2.85-3.02 over THIRTEEN side columns (+13.8% heightM
+vs published 2.64) — under dims sovereignty the proc anchor stays <=2.699
+with only a 3-column spike budget, so turret-side floors at ~84-85. Band-
+flatten warp is the unlock — QUEUED behind the 2026-08-03 incident law
+(gate-in-loop verification; this will be the pilot case since leo2a5 has
+a stable real profile). Sprocket-resize interaction documented in-file
+(kit band loop warps the bow arc when sprocket params change).

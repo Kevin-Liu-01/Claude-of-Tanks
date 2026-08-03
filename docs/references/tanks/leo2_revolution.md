@@ -142,3 +142,20 @@ invisible to slice cameras; segmenting them like the a5/kf51 skirts is
 the next single largest win), whole 49.7 (RWS station carried at the
 2.66 grace line vs the print's 2.74-2.85 — same stature class as a5's
 certified cluster; ~11 side columns), turret 50.9 (basket/RWS bounds).
+
+## Vertex round r2 (2026-08-03) — ORCHESTRATOR LANDING NOTE
+(Builder finished without a section; from its verified report.) 45.9 ->
+77.3 (hull 88.1 / whole 86.8 / turret 77.3 / stations 91.4 / dims 96.5).
+Re-laid end-to-end: AMAP jacket split rear/front with bare mid-gap
+(station law; old stations read the naked track band), bow armor hump
+staircase, tracks re-banded to x +-0.98..1.62, RWS deck as two pods with
+two z-thin spike blades inside the 3-col p95 budget, whips consolidated
+to the ref's single 4.02 column (the old pair straddled a bin edge and
+printed a phantom column, err 0.6), zone-laid turret floors, tail mast/
+undercut/sprocket-dip. Same oracle-taller-than-published pattern as
+leo2a5 (~5 uncovered RWS-plateau columns); realistic ceiling ~82-84
+pre-warp. Zero-row triage: leo2a7v print is ~2.4x oversize and the
+harness safeScale clamp floors at 0.68 (procedural-fidelity.html:253) —
+cannot reach the needed x0.62 (registration-level fix, orchestrator);
+leopard2_proto keeps its certified sunken-turret print defect (needs
+warp/replacement; build carries the real proud-turret PT).
