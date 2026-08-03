@@ -26,7 +26,7 @@
 //  - Oracle-defect caps (quantified in docs/references/tanks/<id>.md): the
 //    ISU pair and T95/Strv103 oracles are proportionally off published dims;
 //    dims stays sovereign here and the curve ceilings are documented.
-import { BufferAttribute, BufferGeometry, Float32BufferAttribute } from 'three';
+import { BufferAttribute, BufferGeometry, Float32BufferAttribute, Mesh } from 'three';
 import { KIT } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
@@ -1496,11 +1496,19 @@ function buildISU152(P) {
           paintVerts(dg, (xl, yl, zl) => {
             const rho = Math.min(1, Math.hypot(xl, zl) / 0.278);
             const th = Math.atan2(zl, xl);
+            // r6 order 1c (flank layering): pale UPPER-RIM CRESCENT, the
+            // ordered +0.10-0.15 crown class — the ref's quarter wheels read
+            // bright-rimmed; the kit r 0.30 wheel is certified so the rim
+            // BRIGHTENS, never resizes. World-up maps to local -s*xl through
+            // the -s*PI/2 z-rotation at the add site.
+            const upN = (-s * xl) / 0.278;
+            const cresc = 0.135 * sm01((rho - 0.72) / 0.09) * sm01((upN - 0.05) / 0.40);
             return 0.935
               - 0.026 * Math.exp(-(((rho - 0.34) / 0.14) ** 2))
               + 0.014 * Math.exp(-(((rho - 0.58) / 0.13) ** 2))
               - 0.016 * (0.5 + 0.5 * Math.cos(6 * th - s * ph6)) * sm01((rho - 0.28) / 0.16) * sm01((0.90 - rho) / 0.12)
               - 0.028 * sm01((rho - 0.84) / 0.10)
+              + cresc
               + mottle(xl * 2.2, zl * 2.2, wz * 3.7, 0.009, 0.011);
           });
           P.add('hullCloth', KIT.xform(dg, 0, 0, 0, 0, 0, -s * Math.PI / 2), s * 1.2665, 0.36, wz);
@@ -1667,16 +1675,38 @@ function buildISU152(P) {
       [-1.045, bt + 0.0015, bz1 - 0.005], [1.045, bt + 0.0015, bz1 - 0.005],
       [1.045, bt + 0.0015, bz0 + 0.005], [-1.045, bt + 0.0015, bz0 + 0.005], 40, 26),
     (x, y, z) => {
+      // r6 order 3b (view-top dome-slice): the r5 band CROSSED the deck
+      // dome's circle and sliced it into crescents — the dome crown (1.7028)
+      // rides 2 mm UNDER this 1.705 board, so the geometry dome can never
+      // win these rows. The slats now END at the dome rim (the ref composes
+      // its part-bands stopping where the circle begins) and the circle
+      // itself is PAINTED onto the board tops inside the rim: the dome
+      // mesh's own crescent formula (0.88 + 0.15ny + 0.075nx + 0.045nz)
+      // evaluated on synthesized squashed-dome normals, plus the dark rim
+      // ring at the geometry ring's own r 0.303 (ref radial dips p25 81).
+      const dD = Math.hypot(x - 0.10, z + 0.98);
+      const domeIn = sm01((0.345 - dD) / 0.04);
       const lv = sm01((0.33 - Math.abs(x)) / 0.05)
-        * sm01((z + 1.27) / 0.05) * sm01((-0.61 - z) / 0.05);
+        * sm01((z + 1.27) / 0.05) * sm01((-0.61 - z) / 0.05) * (1 - domeIn);
       // (r5 run-3: amp 0.17 / pow 1.2 — the 26-row vertex lattice halves
       // narrow-notch depth by interpolation; the first cuts rendered minima
       // 92-96 where the ref band's row minima run 65-88. Wider, deeper
       // troughs survive the lattice at the ref's own class.)
       const groove = Math.pow(0.5 + 0.5 * Math.cos(z * 92.4), 1.2);
-      return 0.90 + lv * (0.025 - 0.17 * groove)
+      // (r6 run-2: the first cut reused the dome MESH's q-formula and read
+      // 104-119 on the sun-lit flat board — the mesh only reads 84-96
+      // because its 3D normals shed key light. Recalibrated to the ref's
+      // own circle: interior 84-92 class = deck -3, rim dips ~81-86.)
+      const t = Math.min(1, dD / 0.335);
+      const nxF = 0.6 * t * (x - 0.10) / Math.max(0.02, dD);
+      const nzF = 0.6 * t * (z + 0.98) / Math.max(0.02, dD);
+      const domeQ = 0.875 - 0.035 * t + 0.05 * nxF + 0.03 * nzF
+        - 0.085 * sm01((dD - 0.272) / 0.03) * sm01((0.335 - dD) / 0.03)
+        + mottle(x * 2.2, z * 2.2, 6.6, 0.012, 0.010);
+      const base = 0.90 + lv * (0.025 - 0.17 * groove)
         + mottle(x * 1.1, z * 1.3, 4.7, 0.020, 0.010);
-    }));                                                                       // board skin + louver band
+      return base * (1 - domeIn) + domeQ * domeIn;
+    }));                                                                       // board skin + louver band (dome-masked)
   }
   // louver field right end rail (the existing -0.33 short strip already
   // frames the left edge; tall board only, riding its own top)
@@ -2209,7 +2239,10 @@ function buildISU152(P) {
     // <= 45L needs the floor-free bucket, so the panels ride hullShadow and
     // the build's own mats.shadow is unhooked + retoned in the tone pass —
     // the pocketVoid precedent, shipped on the isu122s graduate)
-    for (const [gz, gw, gy0] of [[2.22, 0.36, 0.16], [1.475, 0.38, 0.06], [0.725, 0.38, 0.06],
+    // (r6 order 2: the BOW bay panel [2.22, 0.36, 0.16] moves off this
+    // shared near-bg mat to its own lifted deep-shadow clone below — the
+    // inter-wheel window panels and the stern pocket are certified as-is)
+    for (const [gz, gw, gy0] of [[1.475, 0.38, 0.06], [0.725, 0.38, 0.06],
       [-0.025, 0.38, 0.06], [-0.775, 0.38, 0.06], [-1.525, 0.38, 0.06], [-2.26, 0.36, 0.20]]) {
       P.add('hullShadow', box(0.015, 0.52 - gy0, gw), sd * 0.7995, (0.52 + gy0) / 2, gz);
     }
@@ -2231,6 +2264,175 @@ function buildISU152(P) {
     // front mud-flap ribs on the fall plate (r1 "single angled plate" class)
     for (const fx of [1.15, 1.27, 1.39]) {
       P.add('hullDetail', box(0.05, 0.024, 0.30), sd * fx, 1.078, 3.222, -0.85, 0, 0);
+    }
+    // ---- r6 order 1a (flank layering, PAINT ONLY): the FENDER SHADOW RUN —
+    // a 5.2 cm dark line in the ordered 55-65L class (above the 51.3 ambient
+    // clamp, so plain hooked paint reaches it) immediately under the
+    // deck-edge lip on the sponson flank, full hull side, both flanks. The
+    // ref's quarters read a continuous 3-5px shadow run under the fender
+    // ledge; our flank is flush and casts none, so the run is painted (the
+    // order prescribes paint — the lip cannot move). 1.2 mm proud of the
+    // 1.435 sponson flank; y 1.548..1.600 inside the sponson band
+    // [1.463, 1.603] — every mask interior.
+    {
+      // (q per flank: the official rig's sun sits at +x — the -x flank rides
+      // the camera-facing shade floor where the q->L transfer has a knee at
+      // ~q0.72, the +x flank renders albedo-proportional under the key. The
+      // r6 calibration ladder measured LEFT q0.555 -> 52-73 / quarter
+      // col-min ~60, RIGHT q0.555 -> ~45: per-side q lands BOTH flanks in
+      // the ordered 55-65 window.)
+      const zA = sd > 0 ? 3.35 : -2.50, zB = sd > 0 ? -2.50 : 3.35;
+      const runQ = sd > 0 ? 0.68 : 0.555;
+      P.add('hullCloth', paintVerts(gridQuad(
+        [sd * 1.4362, 1.548, zA], [sd * 1.4362, 1.548, zB],
+        [sd * 1.4362, 1.600, zB], [sd * 1.4362, 1.600, zA], 72, 3),
+      (x, y, z) => runQ - 0.035 * sm01((y - 1.578) / 0.016)));
+      // r6 order 1b: SKIRT/WALL TONE SPLIT — one clean ~5L step below the
+      // sponson bottom (upper wall stays the camo ~94; the curtain + the
+      // exposed inner-curtain band drop to the ordered 88-90 class). Flat
+      // painted skins 0.8-1.0 mm proud of their own faces, no new mottle
+      // (the mottle amplitudes stay at their r4-halved values elsewhere).
+      // (same per-flank law: LEFT q0.71 sits on the shade-floor knee ->
+      // ~88.5-90 against the floor's flat 94 wall; RIGHT q0.84 renders ~81
+      // against the sun side's ~85-87 wall — each flank shows the ordered
+      // ~5L split in its own light. Ladder-calibrated on the official rig.)
+      const zC = sd > 0 ? 3.02 : -2.51, zD = sd > 0 ? -2.51 : 3.02;
+      // (LEFT q 0.69 sits on the shade-floor knee -> the ordered 88-90 read
+      // against the floor's flat-94 wall; micro-ladder-calibrated: q0.675 ->
+      // 85.4, q0.695 -> 90.5 on the official rig. RIGHT q 0.84 -> 81 under
+      // the key against its 85-87 wall — the same ~5L split in its light.)
+      const skirtQ = (z) => sd > 0 ? 0.84 : 0.69;
+      P.add('hullCloth', paintVerts(gridQuad(
+        [sd * 1.5085, 0.586, zC], [sd * 1.5085, 0.586, zD],
+        [sd * 1.5085, 1.166, zD], [sd * 1.5085, 1.166, zC], 72, 6),
+      (x, y, z) => skirtQ(z)));
+      const zE = sd > 0 ? 2.99 : -2.79, zF = sd > 0 ? -2.79 : 2.99;
+      P.add('hullCloth', paintVerts(gridQuad(
+        [sd * 1.4708, 1.169, zE], [sd * 1.4708, 1.169, zF],
+        [sd * 1.4708, 1.368, zF], [sd * 1.4708, 1.368, zE], 72, 3),
+      (x, y, z) => skirtQ(z)));
+    }
+  }
+  // ---- r6 order 2 (BOW FLAP-POCKET VOID LIFT, paint only): the r5 bow-bay
+  // void panel read 6-28L cutout-black checker blocks at the quarters
+  // (frontleft (330-450, 340-410) + mirror) — the ref's same pocket between
+  // front flap / idler wrap / wheel 1 reads structured deep shadow. The two
+  // bow panels move OFF the shared near-bg shadow mat onto their own
+  // UNHOOKED clone (Material.clone() drops onBeforeCompile — the r5
+  // clamp-law route, pocketVoid precedent) retoned to the ordered 48-55L
+  // class, plus a painted vertical gradient + coarse mottle (structure).
+  // Geometry: the exact r5 box footprint (mask-identical) + a 1 mm-proud
+  // outboard lattice quad that carries the structured read (a plain box
+  // interpolates paint across whole faces — the slab-zero-UV law).
+  {
+    // (clone drops the ambient-floor hook per the r5 clamp law; NO custom
+    // program cache key — a shared key on this clone made every mesh after
+    // the first-compiled one rasterize black in the critic rig, while an
+    // identical keyless clone rendered. Default key = safe.)
+    const bowMat = P.mats.shadow.clone();
+    bowMat.color.setHex(0x5e5341);
+    bowMat.vertexColors = true;
+    bowMat.needsUpdate = true;
+    P.disposables.push(bowMat);
+    for (const sd of [-1, 1]) {
+      const bg2 = paintFlat(box(0.015, 0.36, 0.36), 0.98, 0.02);
+      const mB = new Mesh(KIT.xform(bg2, sd * 0.7995, 0.34, 2.22), bowMat);
+      mB.castShadow = mB.receiveShadow = true;
+      P.disposables.push(bg2);
+      P.hullG.add(mB);
+      const zA = sd > 0 ? 2.40 : 2.04, zB = sd > 0 ? 2.04 : 2.40;
+      const gq = paintVerts(gridQuad(
+        [sd * 0.808, 0.16, zA], [sd * 0.808, 0.16, zB],
+        [sd * 0.808, 0.52, zB], [sd * 0.808, 0.52, zA], 8, 8),
+      (x, y, z) => 1.05 - 0.14 * sm01((y - 0.16) / 0.36)
+        + mottle(y * 2.7, z * 2.7, sd * 2.6 + 1.3, 0.05, 0.028));
+      const mQ = new Mesh(gq, bowMat);
+      mQ.castShadow = mQ.receiveShadow = true;
+      P.disposables.push(gq);
+      P.hullG.add(mQ);
+      // BAY REAR BAFFLE (the frontleft half of the order, magenta-mapped):
+      // at the front-LEFT quarter the bow panel shows only ~4 px — the
+      // 6-28L checkers there are the diagonal sight-line THROUGH the bow
+      // bay corridor onto the CERTIFIED gz-1.475 window panel behind it.
+      // A transverse (+z-facing) deep-shadow plane at the bay rear catches
+      // that corridor: side-on it is edge-on inside the wheel-1 disc column
+      // (the certified window read never sees it), front-on it sits inside
+      // the track band's 0.005..1.07 column extent, plan under the sponson.
+      const bzA = sd > 0 ? 0.805 : -1.385, bzB = sd > 0 ? 1.385 : -0.805;
+      const bf = paintVerts(gridQuad(
+        [bzA, 0.06, 2.03], [bzB, 0.06, 2.03],
+        [bzB, 0.52, 2.03], [bzA, 0.52, 2.03], 8, 8),
+      (x, y, z) => 1.02 - 0.12 * sm01((y - 0.06) / 0.46)
+        + mottle(y * 2.7, x * 2.7, sd * 1.9 + 4.1, 0.05, 0.028));
+      const mF = new Mesh(bf, bowMat);
+      mF.castShadow = mF.receiveShadow = true;
+      P.disposables.push(bf);
+      P.hullG.add(mF);
+      // BAY INNER WALL (magenta-probe mapped): the residual checkers are
+      // diagonal sight-lines INTO the band cavity/idler internals (link-map
+      // near-black texels, pocket inserts — unpaintable instanced maps). An
+      // x-facing deep-shadow wall at ±1.377, just inside the band's 1.380
+      // inner face, catches them at the bay mouth. z 2.05..2.40 spans the
+      // certified end-bay panel band (side-on it reads the same ~50L the
+      // ordered panel lift already put there — no new side content); the
+      // z 2.40..3.00 strip tucks its band under the idler-disc cover
+      // (y 0.47..0.52) so no open side-view (z,y) cell gains mask.
+      const wq = (g) => paintVerts(g, (x, y, z) =>
+        1.03 - 0.13 * sm01((y - 0.10) / 0.42)
+        + mottle(y * 2.9, z * 2.4, sd * 3.1 + 2.2, 0.05, 0.026));
+      for (const [wz0, wz1, wy0, wy1] of [[2.05, 2.40, 0.16, 0.52], [2.40, 3.00, 0.47, 0.52]]) {
+        const wzA = sd > 0 ? wz1 : wz0, wzB = sd > 0 ? wz0 : wz1;
+        const wg = wq(gridQuad(
+          [sd * 1.377, wy0, wzA], [sd * 1.377, wy0, wzB],
+          [sd * 1.377, wy1, wzB], [sd * 1.377, wy1, wzA], 6, 6));
+        const mW = new Mesh(wg, bowMat);
+        mW.castShadow = mW.receiveShadow = true;
+        P.disposables.push(wg);
+        P.hullG.add(mW);
+      }
+      // IDLER-LOOP FILLER (the last checker source, RGB-identified): the
+      // (7,6,4) pixels are the track band map's UNLIT INNER texels — the
+      // loop interior visible through the front-wrap opening at quarter
+      // angles ("not paintable", the r5 3d class; fix per the r5 overprint
+      // precedent). A painted disc fills the wrap annulus at the idler:
+      // r 0.34 sits inside the wrap envelope (~0.40) and outside the idler
+      // disc (0.31) — side/front/plan all interior to certified content.
+      const fg = paintVerts(KIT.cylX(0.34, 0.05, 22), (x, y, z) =>
+        1.02 - 0.12 * sm01(y / 0.30)
+        + mottle(y * 2.9, z * 2.9, sd * 2.3 + 5.0, 0.05, 0.026));
+      const mI = new Mesh(KIT.xform(fg, sd * 1.375, 0.78, 2.72), bowMat);
+      mI.castShadow = mI.receiveShadow = true;
+      P.disposables.push(fg);
+      P.hullG.add(mI);
+      // FAR-WALL LINING (raycast-identified, the checkers' true owner): the
+      // quarter rays THREAD the near-side inter-panel gaps, cross the hull
+      // and land on the FAR side's void-panel BACKS (unhooked 0x262218,
+      // unlit -> the (7,6,4) cutout blocks). Dead-side cameras only ever
+      // see the near panels' certified outboard faces, so an INBOARD-facing
+      // deep-shadow lining 4.5 mm inside the panel plane is quarter-only by
+      // construction: it turns the corridor read into the ordered
+      // structured shadow without touching the certified window numbers.
+      // z clipped to -1.70 so the certified stern/idler-gap darkness at the
+      // rear quarters stays as scored in r5.
+      // (own clone, ~2x the panel albedo: the lining lives in the deepest
+      // interior shade — 0x5e5341 rendered 22-28L there; the pocket order's
+      // 48-55L needs ~0.39 linear albedo at that depth. Only ever visible
+      // through the quarter corridors, so the pale hex never shows lit.)
+      const liningMat = P.mats.shadow.clone();
+      liningMat.color.setHex(0xaa9676);
+      liningMat.vertexColors = true;
+      liningMat.needsUpdate = true;
+      P.disposables.push(liningMat);
+      const lzA = sd > 0 ? -1.70 : 2.40, lzB = sd > 0 ? 2.40 : -1.70;
+      const lg = paintVerts(gridQuad(
+        [sd * 0.7875, 0.06, lzA], [sd * 0.7875, 0.06, lzB],
+        [sd * 0.7875, 0.52, lzB], [sd * 0.7875, 0.52, lzA], 24, 6),
+      (x, y, z) => 1.03 - 0.13 * sm01((y - 0.06) / 0.46)
+        + mottle(y * 2.8, z * 1.9, sd * 1.4 + 7.3, 0.05, 0.026));
+      const mL = new Mesh(lg, liningMat);
+      mL.castShadow = mL.receiveShadow = true;
+      P.disposables.push(lg);
+      P.hullG.add(mL);
     }
   }
   // ---- belly slab between the keel strips (front center bot 0.451; the
@@ -2379,6 +2581,24 @@ function buildISU152(P) {
       return stackPaint(ball, 0.97);
     })(), -0.24, 1.795, 2.665);
     P.add('hullCloth', stackPaint(cylZ(0.115, 0.60, 12, 0.13), 0.85), -0.24, 1.575, 3.00); // buffer under-tube
+    // r6 order 3a (view-top plan signature): the ref's gun-root plan mass is
+    // a ~48px RECTANGULAR HOUSING (measured on the official ref pane: block
+    // x -0.640..+0.164 at the root rows, housing-rect tone p50 88.7) where
+    // the r5 build read a ~28px ball+collar. Flat cheek FAIRINGS flank the
+    // ball root: tops 2.045 < the 2.22 ring band; z 2.70..2.92 side-interior
+    // (ring band to z 2.82, horn line 2.083->2.060 and the ball flank cover
+    // every (y,z) of the boxes); fronts emerge from the 29-deg glacis plane
+    // at y >= 1.785 and the bottoms weld into ball/buffer/face (contiguity);
+    // the main glacis slab's plan mask already spans ±1.19 at this z, so the
+    // plan trace never widens — the 48px read is the tone block + dark edge
+    // lines on the flat tops (the (0,1,0.02) plan read is tone-driven).
+    for (const [fcx, fph] of [[-0.525, 3.3], [0.055, 6.1]]) {
+      P.add('hullCloth', paintVerts(box(0.21, 0.345, 0.22), (x, y, z, nx, ny, nz) =>
+        0.85 + 0.055 * ny + 0.02 * nz - 0.02 * Math.abs(nx)
+        + mottle((z + fcx) * 2.4, (x + y) * 2.4, fph, 0.012, 0.008)), fcx, 1.8725, 2.81);
+      P.add('hullDark', box(0.010, 0.005, 0.214), fcx + (fcx < 0 ? -0.098 : 0.098), 2.0475, 2.81); // outer edge line
+      P.add('hullDark', box(0.196, 0.005, 0.010), fcx, 2.0475, 2.912);         // front edge line
+    }
     // r4 order 4: the 12 DARK bolt-hole dots on the collar face are deleted
     // (the critic's "perforated flange") — the bolted read moves to the
     // ref's TRAPEZOID FRAME on the casemate cheek: four face-conformal bars
