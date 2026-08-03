@@ -416,3 +416,95 @@ flatten warp is the unlock — QUEUED behind the 2026-08-03 incident law
 (gate-in-loop verification; this will be the pilot case since leo2a5 has
 a stable real profile). Sprocket-resize interaction documented in-file
 (kit band loop warps the bow arc when sprocket params change).
+
+## Track-containment round r4 (2026-08-03) — §B4, front 534 / rear 140 -> 0 / 0
+
+Owner law §B4 (GEOMETRY-GATE.md directive #4): wrap arcs clear of hull
+solids. Baseline exact-voxel audit read front 534 / rear 140; a per-mesh
+diagnosis (tools/tmp-leo-clipdiag.*, diagnosis-only) showed the OFFICIAL
+tool undercounts — its hits Map keys every unnamed merged bucket as one
+"(unnamed)" entry and the last setter wins, so colliding buckets vanish
+from the total. TRUE baseline: front 907 / rear 628. Final: **0 / 0 on
+both tools** (target was <=60/zone). Gate HELD at min 90.6 PASS x2
+(92.4/91.8/90.6/94.3/100/100 — headline and every component unchanged
+from ab83632); standard-check contiguity 0 holes.
+
+Front members pulled clear (idler disc: centre (3.48,1.11), shell radii
+0.25..0.34, far edge 3.818; lane x 1.05..1.69):
+- GLACIS SHEET (the 512-vox 'hull' bulk): the wrap crest rode 9 mm under
+  the full-width slab-3/4 top faces (same voxel row over z 3.42..3.54 x 27
+  columns) and the pads punched visibly through the plate. New shared
+  opt-in `glacisLaneCut {x:1.02, z0:3.14}` (leoHullV3): the sheet narrows
+  to the inter-track body beyond z0 — side is centre-carried, front tops
+  are deck-carried (1.665 full width at z<=2.42), plan cols 1.05..1.55
+  are wing-band-carried (3.9325) and 1.55..1.69 pad-carried (3.905).
+  Beak underside + nose interior fill narrow with it (same param).
+- MUDFLAP STACK (hullDark, the r6 side-bottom plates): flat 0.93 tops ran
+  through the departure ramp — tops now SLOPE parallel to the band's
+  lower envelope at >=0.028 clearance (ramp lower y = 0.841 - 1.047 x
+  (3.693-z), then the arc past the tangent). Certified side bottoms
+  0.30/0.41/0.50/0.61/0.72 untouched; the <=4 cm sliver above each plate
+  is pad-covered (shoes hang 3-8 cm below the band surface).
+- HEADLIGHTS: pods straddled the lane at x 1.081 and grazed the crest —
+  new shared opt-in `headlightX` slides them to 0.90 (side is
+  x-invariant; vacated front cols are wrap/deck-covered).
+- Beak WINGS: in-lane span deleted via new opt-in `BW.x1 1.02` (front
+  cols rim-covered 0.77..1.45, plan wing-band/pad-covered); beak-wing
+  band rear face steps off the 3.818 far edge (z 3.845..3.925, plan face
+  3.925 EXACT); mudguard-wrap box + dark plate pull outboard to x>=1.71
+  (their 1.63/1.65 inner faces shared the band side face's voxel column;
+  vacated front cols are pin-cap-covered — caps orbit x 1.655..1.713).
+- Inner tall skirt course: LAST segment (z 3.186..3.594) dropped — its
+  1.700 inner face shared the 1.69 band-face voxel column; the front
+  ±1.703 col keeps its 0.708 bottom from segments 0-3 (front projection
+  is z-blind); plan/stations there are outer-course/box-owned.
+
+Rear members (sprocket disc: centre (-3.19,1.09), shell 0.295..0.385,
+rear extreme -3.575):
+- REAR WALL stood inside the wrap's swept disc — new shared opt-in
+  `rearWallHW 1.02` narrows it between the sprockets (real config);
+  louvres ride the narrowed plate (lvX derives); taillights keep x 1.31
+  attached under the tail lip. Frame LEGS slide 1.42 -> 0.99 inboard;
+  the forward rack rail narrows 3.05 -> 2.04 (its over-track span
+  skimmed the crest; legs still land under it).
+- REAR FLAPS: kit rearFlaps+bracket (which bridged THROUGH the wrap) are
+  OFF; replaced by three boards whose tops staircase under the rim
+  (1.12 / 0.98 / 0.85 at z -3.645..-3.516, arc-lower clearance >=0.02)
+  with every certified 0.632-bottom trace bin held, widened inboard to
+  x 0.96 and hung on posts through the band-free inter-track corridor
+  (x 0.955..1.025) up to the tail lip — the LANE-CORRIDOR ROUTING LAW:
+  attachments route inboard of laneInner or outboard of the band, never
+  through it.
+- Deck band: new shared opt-in `sponsonLaneLift {z0:-3.36, z1:-2.86,
+  x0:1.02, y:1.50}` — the sponson floor (1.32) sliced the wrap crest
+  (1.475 max); over the crest window the outboard floor lifts to 1.50
+  (real sponson-over-track config; rear view slot sits behind the wrap).
+- Rear skirt th 0.045 -> 0.013: outer face keeps the certified 1.725
+  line and stations read the same ±1.725 cross-section, but ALL plate
+  content pulls into the 1.712..1.725 voxel column — the old box
+  straddled the band's 1.69 side-face column and the arc-swept
+  1.66..1.71 columns. Stowage piles: bottoms rise 1.395 -> 1.45 (they
+  grazed the crest and sank through the 1.445 rail top); lid TOPS stay
+  exactly 1.857/1.836 (the certified front-top law) via h/centre rederive.
+
+LAW DISCOVERIES (bank): (1) the audit Map-collision undercount above —
+fleet numbers are floors, not totals; (2) VOXEL-BOUNDARY ASYMMETRY — JS
+Math.round is half-toward-+inf, so a +x face at 1.69 owns voxel 85 while
+the mirrored -1.69 face owns -84: left/right clearances differ by a
+voxel and both sides must be checked; (3) FLOAT32 BOUNDARY LAW —
+authored 1.63 stores as 1.62999995 and rounds DOWN a voxel (the a6
+fenderFore sliver needed 1.632); margins at voxel boundaries need >=2 mm
+slack past the naive arithmetic; (4) pin-cap/pad orbits are mask
+citizens: pads carry plan bow columns (3.905) and pin caps carry front
+columns outboard of the band — vacating solids over the lane is free
+where the shoe system already owns the read.
+
+Residuals: none measured (0/0 exact both tools). Fittings census reads
+mg0+0d — the r6 loader pintle MG is hand-authored, predating
+KIT.fittings; §B3 satisfied by it (packet justification per the
+standard-check hint; migration is fleet-program scope, not containment).
+New procedural hash dabf2a27 (42 meshes / 101972 verts; a5 is not
+hash-frozen). Siblings byte-exact: leo2_revolution 44acdee0, leo2a7v
+e28fc316, leopard2_proto 5647ef3e (all shared leoHullV3 edits are
+opt-in params with byte-identical defaults, verified by hash).
+Shots: shots/critic-leo2a5/ (14 ref/proc pairs, fresh at this state).

@@ -1016,3 +1016,54 @@ NEW FREEZE HASH **2e18db54** (46 meshes, 153300 verts) supersedes
 37cc0789. kf51 co-resident hash d94171cc verified EXACT; leo2a5/
 leo2_revolution byte-identical. Verdict:
 docs/critique/leo2a6-recert-2026-08-03.md.
+
+## Track-containment round r4 (2026-08-03) — GRADUATE CHANGE, §B4: 418/148 -> 0/0
+
+Graduate-change protocol round (orchestrator brief; re-freeze at the
+landing commit after independent re-cert). Baseline exact-voxel audit
+front 418 / rear 148 (TRUE per-mesh totals 1044 / 148 — the official
+tool's unnamed-bucket Map collision undercounts; see the a5 r4 packet
+law). Final: **0 / 0 on both tools**. Gate through the override path
+HELD: min 90.9 PASS x2 (91.2/90.9/90.9/92.6/91/100; was 91.0 — one
+sub-0.1 registration flutter, every component >=90). Standard-check:
+contiguity 0 holes, clip 0/0. Critic pairs re-rendered
+(shots/critic-leo2a6/) and self-audited on the changed views
+(close-front, view-top, view-rearright): bow reads the real
+tracks-proud-of-nose config, deck filled, rear clean.
+**NEW HASH: 80b76338** (46 meshes / 154164 verts; was 2e18db54).
+
+Changes (minimal-footprint, wrap clearance only):
+- Idler disc (3.38,0.98, shell 0.22..0.31, far edge 3.688): the OLD kit
+  beak wings (z 3.30..3.77, y 0.88..1.22 plank) ran THROUGH the disc,
+  and their hullRubber noses ate the forward rim (314 vox alone).
+  beakWings OFF; inline "diving mudguard front" planks x 0.985..1.5326
+  per side: rear face sloped (3.675,1.145)->(3.715,1.045) along the arc
+  +0.03, front face 3.77 EXACT (plan law), top line 1.145->1.122 (ref
+  side col 3.756 tops 1.129), hullRubber nose band z 3.758..3.77 (the
+  dark mudguard-front read), hanger brackets through the inter-track
+  corridor (x 0.89..0.985) onto the beak underside — never through the
+  band (lane-corridor routing law). Centre notch stays open (plan col
+  0.931 = bare 3.608 glacis tip). Wing side-top duty z 3.30..3.64 is
+  wrap-crest-carried; the one residual: side col ~3.66 reads the band's
+  1.106 vs the old wing 1.147 (-0.04, single column, priced in the
+  held gate).
+- glacisLaneCut {x:0.988, z0:3.13}: glacis sheet/beak underside/nose
+  fill narrow to the inter-track body (the crest rode 0-2 cm through
+  the full-width plate at the crown; front tops deck-carried, plan
+  pad-carried to 3.755, side centre-carried). fenderFore last segment
+  (z 3.18..3.72) keeps only its outboard 1.632..1.66 sliver (float32
+  boundary law: authored 1.63 stores 1.62999995 and falls into the
+  band-face voxel column).
+- Drum-face rim rings: idler/sprocket ring circles 0.245/0.283 ->
+  0.170/0.210 — the old tubes were EMBEDDED in the band shell (the
+  hullDetail cluster at x ±1.49..1.58 both ends); outers now sit >=26 mm
+  inside the band's inner surface, still reading as face rim rings.
+- sponsonLaneLift {z0:-3.34, z1:-2.88, x0:0.988, y:1.42}: the deck
+  band's 1.30 sponson floor sliced the sprocket crest (1.37 max); the
+  over-track floor lifts to the rear-skirt top line (1.42) over the
+  crest window — zero rear-view slit (skirt tops meet it).
+
+Fittings census mg0+0d: the r6-refreeze MG3 is hand-authored (predates
+KIT.fittings) — §B3 carried by packet justification, unchanged this
+round. Siblings byte-exact (44acdee0/e28fc316/5647ef3e): every shared
+leoHullV3 edit is an opt-in param with byte-identical defaults.
