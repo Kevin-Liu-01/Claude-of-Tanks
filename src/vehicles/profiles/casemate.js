@@ -1328,11 +1328,21 @@ function buildISU152(P) {
     // sprocket tucked under the rear-plate overhang like the print: the
     // band tangent from the last wheel passes the ref's own (-2.48, 0.123)
     // (-2.61, 0.215) (-2.79, 0.311) descent, and the sprocket's own low
-    // arc hides behind the plate toe (b 0.446-0.593) from -2.99 rearward
-    // sprocket y 0.86: the kit's tooth ring reaches y-(r+0.096) — at 0.75
-    // the tooth arc printed 0.41 under the plate toe's 0.545 side line;
-    // 0.86 tucks it (0.524, aa-flush) for ~+0.04 on the wrap-descent cols
-    sprocket: { z: -2.99, y: 0.87, r: 0.22 }, idler: { z: 2.72, y: 0.78, r: 0.31 },
+    // arc hides behind the plate toe (b 0.446-0.593) from -2.99 rearward.
+    // r4 order 5 (wrap-descent teeth, MEASURED on the official view-left
+    // pair): the r3 wrap envelope (r 0.22 + CLEAR 0.045 + band 0.045 +
+    // shoe rOut 0.057 + grouser 0.073) hung procBot 0.45-0.60 where the
+    // ref reads 0.58-0.78 over z -3.37..-3.04 — the gate's top-4 worst
+    // side columns were all this overhang. r 0.195 pulls the whole shoe
+    // envelope in 2.5 cm (wrap bottom ~0.505 vs ref 0.482) and lifts the
+    // kit tooth ring to 0.875-0.291 = 0.584 = the ref's own 0.587 front
+    // skirt line at x ±1.42 (the certified "infeasible" ±1.43 pair —
+    // feasible at this radius). y +0.005 keeps the ground-ramp tangent.
+    // (idler r 0.245 test REVERTED to the certified 0.31: shrinking the
+    // front wrap moved the side body-span end and broke the registration —
+    // dAlong 1.156 -> 1.097, -6 curve pts of phantom error. The front-wrap
+    // procBot residual stays priced instead.)
+    sprocket: { z: -2.99, y: 0.875, r: 0.195 }, idler: { z: 2.72, y: 0.78, r: 0.31 },
     rollerZs: [-1.45, 0.05, 1.50], rollerYs: [1.08, 1.08, 1.08],
     decalPos: [1.185, 1.85, 0.60], decalSize: 0.20,
     // MAIN CHAIN: bow face/toe -> tub (deck top under the casemate lofts
@@ -1401,6 +1411,40 @@ function buildISU152(P) {
     const pos = g.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       if (Math.abs(pos.getX(i)) <= 0.25 && pos.getY(i) < -0.085) pos.setY(i, -0.085);
+    }
+    pos.needsUpdate = true;
+    g.computeBoundingBox();
+    g.computeBoundingSphere();
+  });
+  // ---- r4 order 5b: GROUSER WEDGE TAPER (critic: "knock the wrap-descent
+  // teeth back to the ref's faint nub read"). The descent cascade is the pad
+  // layer's two square grouser bars seen in (y,z) profile along both wrap
+  // tangents. The template's grouser TOP-FACE verts (local y 0.073 — the
+  // only verts above 0.052; pad box tops 0.036, shoulders 0.036) pull to
+  // 42% z-width around their own bar centers: each tooth becomes a wedge
+  // (10.7 -> 4.5 mm tip) that reads as a nub at the 60 px/m pane scale.
+  // Tips keep their exact depth (y untouched) so the certified ground line
+  // and the sim's contact clamp never move; x untouched so the front-view
+  // pad band is identical. Per-call template geometry — the graduate and
+  // the other casemate tanks are untouched.
+  P.hullG.traverse((ob) => {
+    if (!ob.isInstancedMesh || !ob.geometry?.attributes?.position) return;
+    const g = ob.geometry;
+    if (!g.boundingBox) g.computeBoundingBox();
+    const bb = g.boundingBox;
+    if (bb.min.y < -0.06 || bb.max.y < 0.06 || (bb.max.z - bb.min.z) > 0.16) return; // pad template only
+    const pos = g.attributes.position;
+    let zSum = 0, zN = 0;
+    for (let i = 0; i < pos.count; i++) {
+      if (pos.getY(i) > 0.052) { zSum += Math.abs(pos.getZ(i)); zN++; }
+    }
+    if (!zN) return;
+    const zc = zSum / zN;                                              // grouser bar center |z|
+    for (let i = 0; i < pos.count; i++) {
+      if (pos.getY(i) > 0.052) {
+        const z = pos.getZ(i), c = Math.sign(z) * zc;
+        pos.setZ(i, c + (z - c) * 0.42);
+      }
     }
     pos.needsUpdate = true;
     g.computeBoundingBox();
@@ -1509,10 +1553,12 @@ function buildISU152(P) {
     // up-tilted planes catch more key light for the same albedo).
     {
       const zA = sd > 0 ? 2.640 : -0.312, zB = sd > 0 ? -0.312 : 2.640;
+      // (r4: camo-cloth marbling HALVED — critic r3: wall band iqr louder
+      // than the ref's near-uniform plate, "visible streak structure")
       P.add('hullCloth', paintVerts(gridQuad(
         [sd * 1.1962, 1.606, zA], [sd * 1.1962, 1.606, zB],
         [sd * 1.1962, 1.9445, zB], [sd * 1.1962, 1.9445, zA], 78, 10),
-      (x, y, z) => 0.845 + mottle(z * 1.02, y, sd > 0 ? 2.9 : 8.3, 0.042, 0.024)));
+      (x, y, z) => 0.845 + mottle(z * 1.02, y, sd > 0 ? 2.9 : 8.3, 0.021, 0.012)));
       for (const [xa, ya, xb, yb, qv, ph] of [
         [1.1970, 1.9465, 1.1370, 2.0075, 0.785, 5.1],   // chamfer knee 1 (45 deg)
         [1.1370, 2.0085, 1.0850, 2.0595, 0.785, 7.3],   // chamfer knee 2 (45 deg)
@@ -1521,7 +1567,7 @@ function buildISU152(P) {
         P.add('hullCloth', paintVerts(gridQuad(
           [sd * xa, ya, zA], [sd * xa, ya, zB],
           [sd * xb, yb, zB], [sd * xb, yb, zA], 78, 8),
-        (x, y, z) => qv + mottle(z * 1.02, y, ph + (sd > 0 ? 0 : 5.4), 0.042, 0.024)));
+        (x, y, z) => qv + mottle(z * 1.02, y, ph + (sd > 0 ? 0 : 5.4), 0.021, 0.012)));
       }
     }
   }
@@ -1541,12 +1587,55 @@ function buildISU152(P) {
     { z: -0.315, b: 2.06, t: 2.329, w: 1.083, wt: 1.065 },
   ]);
   // ---- engine-deck boards: the ref's wavy 1.654-1.705 top reads over the
-  // 1.603 deck plane
+  // 1.603 deck plane.
+  // r4 order 3 (deck identity, view-top 7.5): the r3 full-width dark seam
+  // at every board edge printed the critic's "6 bold full-width rails" —
+  // the ref deck has NO full-width bars. Seams DELETED; each board top gets
+  // a painted skin in ONE tone family (the banding was tone steps between
+  // bare camo boards), and the ref's real furniture goes on: two dark
+  // intake-grid patches + three short thin strips + the dome (below).
   for (const [bz0, bz1, bt] of [[-1.695, -1.415, 1.683], [-1.415, -1.215, 1.660],
     [-1.125, -0.835, 1.705], [-0.845, -0.735, 1.680], [-0.735, -0.555, 1.654]]) {
     P.add('hull', box(2.10, bt - 1.58, bz1 - bz0), 0, (1.58 + bt) / 2, (bz0 + bz1) / 2);
-    P.add('hullDark', box(2.04, 0.012, 0.02), 0, bt, bz1 - 0.01);              // grille seams
+    P.add('hullCloth', paintVerts(gridQuad(
+      [-1.045, bt + 0.0015, bz1 - 0.005], [1.045, bt + 0.0015, bz1 - 0.005],
+      [1.045, bt + 0.0015, bz0 + 0.005], [-1.045, bt + 0.0015, bz0 + 0.005], 40, 6),
+    (x, y, z) => 0.90 + mottle(x * 1.1, z * 1.3, 4.7, 0.020, 0.010)));         // one-family board skin (up-facing winding)
   }
+  // the ref's two dark INTAKE GRIDS (measured off its view-top: patches at
+  // x ±0.83, z -1.30..-0.56, 2 cols of dark cells in a bright frame).
+  // Painted cell fields per BOARD (each sub-quad rides its own board top
+  // +1.5 mm — one continuous quad would float 3-5 cm over the lower boards
+  // and open shadow gaps in hero-toptilt); relief rails only on the tall
+  // 1.705 board.
+  for (const gs of [-1, 1]) {
+    const cellRow = (z0, z1, yq, rows, ph) => {
+      const xL = Math.min(gs * 0.965, gs * 0.695), xR = Math.max(gs * 0.965, gs * 0.695);
+      P.add('hullCloth', paintVerts(gridQuad(
+        [xL, yq, z1], [xR, yq, z1],
+        [xR, yq, z0], [xL, yq, z0], 16, 10 * rows),
+      (x, y, z) => {
+        const u = (Math.abs(x) - 0.695) / 0.27, v = (z - z0) / (z1 - z0);
+        const cu = (u * 2) % 1, cv = (v * rows) % 1;
+        const inCell = sm01((cu - 0.10) / 0.07) * sm01((0.90 - cu) / 0.07)
+          * sm01((cv - 0.10) / 0.07) * sm01((0.90 - cv) / 0.07);
+        return 0.92 - 0.54 * inCell + mottle(x * 2, z * 2, ph, 0.012, 0.008);
+      }));
+    };
+    cellRow(-1.29, -1.22, 1.6615, 1, 8.1);                                     // on the 1.660 board
+    cellRow(-1.115, -0.85, 1.7065, 2, 8.7);                                    // on the 1.705 board
+    cellRow(-0.84, -0.745, 1.6815, 1, 9.3);                                    // on the 1.680 board
+    cellRow(-0.725, -0.565, 1.6555, 1, 9.9);                                   // on the 1.654 board
+    P.add('hullDetail', box(0.014, 0.007, 0.28), gs * 0.965, 1.707, -0.9825);  // raised frame rails (tall board only)
+    P.add('hullDetail', box(0.014, 0.007, 0.28), gs * 0.695, 1.707, -0.9825);
+    P.add('hullDetail', box(0.284, 0.007, 0.014), gs * 0.83, 1.707, -1.115);
+    P.add('hullDetail', box(0.284, 0.007, 0.014), gs * 0.83, 1.707, -0.85);
+  }
+  // the ref's three SHORT thin deck strips (not full-width): two along the
+  // deck lips + one short mid-left run, each riding its own board top
+  P.add('hullDetail', box(0.020, 0.007, 0.26), -1.015, 1.707, -0.98);
+  P.add('hullDetail', box(0.020, 0.007, 0.26), 1.015, 1.707, -0.99);
+  P.add('hullDetail', box(0.022, 0.007, 0.26), -0.33, 1.707, -0.975);
   // r3 item 7b: THE REF'S BIG SOFT DECK DOME — its view-top renders one
   // large soft circle at (x +0.10, z -0.98, r ~0.34) and its side trace's
   // wavy 1.705 peak at ref -2.03 (proc -0.89) IS this dome's crown (the r2
@@ -1557,9 +1646,12 @@ function buildISU152(P) {
     const dd = KIT.sph(0.335, 30, Math.PI / 2);
     dd.scale(1, 0.31, 1);
     dd.computeVertexNormals();
-    P.add('hullCloth', paintVerts(dd, (x, y, z, nx, ny) =>
-      0.86 + 0.11 * ny + mottle(x * 2.2, z * 2.2, 6.6, 0.014, 0.012)), 0.10, 1.599, -0.98);
-    P.add('hullDetail', KIT.torus(0.302, 0.010, 26), 0.10, 1.647, -0.98);      // dome rim ring (on the flank)
+    // r4 order 3: the r3 dome read as a faint pillow — the ref's plan circle
+    // carries a directional CRESCENT (bright NW rim -> shaded SE) and a dark
+    // rim ring. Amplitudes up, ring to the dark bucket.
+    P.add('hullCloth', paintVerts(dd, (x, y, z, nx, ny, nz) =>
+      0.88 + 0.15 * ny + 0.075 * nx + 0.045 * nz + mottle(x * 2.2, z * 2.2, 6.6, 0.012, 0.010)), 0.10, 1.599, -0.98);
+    P.add('hullDark', KIT.torus(0.303, 0.0115, 26), 0.10, 1.646, -0.98);       // dome rim ring (dark, on the flank)
     P.add('hullDetail', cylY(0.052, 0.052, 0.014, 14), 0.10, 1.6955, -0.98);   // crown cap (top 1.7025 < the 1.705 line)
   }
   // ---- rear stowage pile (r2 item 4 — the r1 sage/dark two-tone MONOLITH
@@ -1611,8 +1703,27 @@ function buildISU152(P) {
   // moved (above), ring beefed 0.011 -> 0.014 so the plan donut reads
   // continuous at the 60 px/m top-view scale.
   P.add('hullDetail', KIT.xform(KIT.torus(0.185, 0.014, 28), 0, 0, 0, 0, 0, 0), -0.23, 2.0915, -2.34);
-  P.add('hullDark', cylY(0.172, 0.172, 0.008, 26), -0.23, 2.092, -2.34);       // vent throat
+  // r4 order 3 (tone-inverted donut): the r3 near-black throat printed the
+  // view-top's dominant DARK circle where the ref lid carries BRIGHT
+  // fittings — throat repainted into the bright fitting family (geometry
+  // exact), hub kept.
+  P.add('hullCloth', paintFlat(cylY(0.172, 0.172, 0.008, 26), 0.88, 0.03), -0.23, 2.092, -2.34); // vent throat (bright)
   P.add('hullDetail', cylY(0.052, 0.052, 0.016, 14), -0.23, 2.098, -2.34);     // hub cap
+  // the ref box-top's two BRIGHT domed covers (its view-top prints two
+  // dominant pale circles on the crate lids): painted low domes + dark seam
+  // rings, crowns +12 mm over the 2.146 lids (one side-trace column, bin
+  // noise class).
+  // (crowns +4.5 mm only: a +12 mm first cut spiked stations 1-2 topPct
+  // +0.48/+0.60 — the read is tonal + rim, not height)
+  for (const [cvx, cvr] of [[-0.575, 0.078], [0.34, 0.098]]) {
+    const cv = KIT.sph(cvr, 24, Math.PI / 2);
+    cv.scale(1, 0.0045 / cvr, 1);
+    cv.computeVertexNormals();
+    P.add('hullCloth', paintVerts(cv, (x, y, z, nx, ny) =>
+      1.02 - 0.13 * Math.min(1, Math.hypot(x, z) / cvr) + mottle(x * 4, z * 4, cvx * 5, 0.012, 0.008)),
+    cvx, 2.146, -2.12);
+    P.add('hullDark', KIT.torus(cvr + 0.002, 0.0028, 24), cvx, 2.1465, -2.12); // seam ring
+  }
   // crate/frame structure on the exposed pile end faces (replaces the dark
   // monolith faces; all pieces inside the pile's own silhouette envelope)
   for (const s of [-1, 1]) {
@@ -1642,13 +1753,14 @@ function buildISU152(P) {
     const eR = (g) => { g.scale(1, 1, 1.4667); return g; };                    // R cupola footprint ellipse
     const eL = (g) => { g.scale(1, 1, 0.912); return g; };                     // L cupola footprint ellipse
     P.add('hullDark', eR(KIT.torus(0.0715, 0.0035, 22)), 0.45, 2.435, 1.53);   // R collar seam groove
-    P.add('hullDark', eR(KIT.torus(0.0715, 0.0035, 22)), 0.45, 2.312, 1.53);   // R base seam
     P.add('hullCloth', paintFlat(eR(cylY(0.030, 0.042, 0.010, 18)), 0.78, 0.03), 0.45, 2.4875, 1.53); // R lid crown roll
     P.add('hullDetail', box(0.026, 0.018, 0.05), 0.45, 2.478, 1.612);          // R hinge lug (z-side)
     P.add('hullDark', eL(KIT.torus(0.0815, 0.0035, 22)), -0.61, 2.435, 1.3775); // L collar seam groove
-    P.add('hullDark', eL(KIT.torus(0.0815, 0.0035, 22)), -0.61, 2.312, 1.3775); // L base seam
     P.add('hullCloth', paintFlat(eL(cylY(0.034, 0.047, 0.010, 18)), 0.78, 0.03), -0.61, 2.4875, 1.3775); // L lid crown
     P.add('hullDetail', box(0.026, 0.018, 0.045), -0.61, 2.478, 1.443);        // L hinge lug
+    // (r4 order 2: the r3 2.312 base-seam tori are deleted — they sit inside
+    // the new mound drums; the head slit/visor dressing below carries the
+    // periscope-head read instead.)
     // roof stud rows (6-8 mm — the open-plate rows stay in the bin-noise
     // class; the z 0.62..1.73 rows ride under the 2.3505 center-plate cover)
     if (P.q) for (let k = 0; k < 9; k++) {
@@ -1677,30 +1789,57 @@ function buildISU152(P) {
         0.90 + 0.13 * ny + mottle(x * 3.1, z * 3.1, 4.1, 0.012, 0.010)), -0.11, 2.3500, 1.04);
     }
     P.add('hullDark', KIT.torus(0.107, 0.0045, 20), -0.11, 2.3560, 1.04);      // collar seam
-    // (b) plan-visible ARC-RING cupola rims (the ref's dashed-circle read,
-    // r ~0.25 around both cupolas — the r2 drums footprint 0.15 alone is
-    // the critic's "faint square"). Flush dash plates <= 8 mm proud of the
-    // local carrier (the sibling's sub-pixel ring class), placed on open
-    // sectors only (pedestal / hatch dome / riser / pod dodged).
+    // (b) r4 order 2 — REAL RAISED CUPOLA MOUNDS (close-roof floor 7.0: "ref
+    // shows two RAISED cupola drums with periscope heads; proc shows a flush
+    // X-disc + dashed arcs + one low drum"). The r3 flush dash arcs are
+    // DELETED; each cupola becomes the ref's own wide stepped mound: wall
+    // drum r 0.25 -> plate 2.370, step ring -> 2.402/2.428, with the
+    // certified 2.494 narrow drums on top re-read as the periscope HEADS.
+    // Priced off the vertex extract's own traces: ref FRONT tops run 2.360-
+    // 2.503 across x 0.19..0.97 (both mound bands) where the r3 build left
+    // 2.25-2.35 — the walls are a front REFUND; ref SIDE cols z 1.28..1.60
+    // read 2.483-2.502 (heads) and 2.388 fore/aft (riser/pedestal), so both
+    // walls stay UNDER the existing side carriers (side-neutral). Spend on
+    // WALLS not crowns (the 2.494 head ceiling is certified; 2.502 failed
+    // heightM p95 in the realign round).
     {
-      const dash = (cx, cz, r, thDeg, ph) => {
-        const th = (thDeg * Math.PI) / 180;
-        const px2 = cx + r * Math.cos(th), pz = cz + r * Math.sin(th);
-        const onPlate = px2 > -0.47 && px2 < 0.33 && pz > 0.62 && pz < 1.73;
-        P.add(ph ? 'hullCloth' : 'hullDetail',
-          ph ? paintFlat(KIT.xform(box(0.026, 0.007, 0.062), 0, 0, 0, 0, -th, 0), 0.80, 0.03)
-            : KIT.xform(box(0.026, 0.007, 0.062), 0, 0, 0, 0, -th, 0),
-          px2, (onPlate ? 2.3505 : 2.263) + 0.0055, pz);
+      const mound = (cx, cz, zScale, stepR, stepZScale, stepTop, ph) => {
+        const wall = KIT.cylY(0.25, 0.25, 0.104, 36); wall.scale(1, 1, zScale);
+        P.add('hullCloth', paintVerts(wall, (x, y, z, nx, ny, nz) =>
+          0.80 + 0.09 * nx + 0.05 * nz + 0.04 * ny + mottle(x * 3, z * 3, ph, 0.014, 0.010)),
+        cx, 2.310, cz);                                                        // wall drum 2.258..2.362
+        const plate = KIT.cylY(0.2495, 0.2495, 0.008, 36); plate.scale(1, 1, zScale);
+        P.add('hullCloth', paintFlat(plate, 0.90, 0.02), cx, 2.366, cz);       // top plate -> 2.370 (ref's own band)
+        const edge = KIT.torus(0.246, 0.006, 36); edge.scale(1, 1, zScale);
+        P.add('hullCloth', paintFlat(edge, 1.00), cx, 2.3695, cz);             // pale top-lit rim edge
+        const baseSh = KIT.torus(0.2515, 0.0055, 36); baseSh.scale(1, 1, zScale);
+        P.add('hullDark', baseSh, cx, 2.2655, cz);                             // under-shadow ring at the roof
+        const stepH = stepTop - 0.006 - 2.368;
+        const step = KIT.cylY(stepR, stepR, stepH, 30); step.scale(1, 1, stepZScale);
+        P.add('hullCloth', paintVerts(step, (x, y, z, nx, ny, nz) =>
+          0.84 + 0.08 * nx + 0.05 * nz + mottle(x * 4, z * 4, ph + 3, 0.012, 0.008)),
+        cx, 2.368 + stepH / 2, cz);                                            // step ring drum
+        const stepPl = KIT.cylY(stepR - 0.003, stepR - 0.003, 0.006, 28); stepPl.scale(1, 1, stepZScale);
+        P.add('hullCloth', paintFlat(stepPl, 0.92, 0.02), cx, stepTop - 0.003, cz); // step plate
+        const stepEdge = KIT.torus(stepR - 0.005, 0.005, 30); stepEdge.scale(1, 1, stepZScale);
+        P.add('hullCloth', paintFlat(stepEdge, 0.98), cx, stepTop - 0.0015, cz); // pale step edge
+        const stepSh = KIT.torus(stepR + 0.003, 0.004, 30); stepSh.scale(1, 1, stepZScale);
+        P.add('hullDark', stepSh, cx, 2.371, cz);                              // step under-shadow
       };
-      for (const t of [96, 110, 124]) dash(0.45, 1.53, 0.26, t, 1);            // R cupola upper-left arc
-      for (const t of [283, 297, 311]) dash(0.45, 1.53, 0.26, t, 1);           // R cupola lower-right arc
-      for (const t of [30, 55, 80, 105, 130, 155, 180, 205, 230]) {
-        // L cupola ring — skip the riser sector (x -0.60..-0.385 z < 1.27)
-        const px3 = -0.61 + 0.25 * Math.cos((t * Math.PI) / 180);
-        const pz3 = 1.3775 + 0.25 * Math.sin((t * Math.PI) / 180);
-        if (px3 > -0.62 && px3 < -0.37 && pz3 < 1.28) continue;
-        dash(-0.61, 1.3775, 0.25, t, 1);
-      }
+      // (step-ring z spans trimmed after run 1: the L step's fore sliver
+      // over the 2.3505 plate cols and the R step's 5 mm slivers past the
+      // head band were side-trace spends; both steps now live entirely
+      // under their heads' certified z-bands. R wall rear trimmed to stay
+      // under the 2.388 behind-cupola step cover.)
+      mound(-0.61, 1.3775, 0.96, 0.152, 0.78, 2.402, 5.2);                     // L mound (ref 2.370/2.401 bands)
+      mound(0.45, 1.53, 0.84, 0.105, 1.04, 2.428, 7.9);                        // R mound (ref 2.370/2.432 bands)
+      // periscope-head dressing on both 2.494 heads: dark aperture slit +
+      // visor lip (all under the certified 2.494 ceiling; R set rides the
+      // OUTBOARD flank inside the head's own 0.375..0.525 front band)
+      P.add('hullDark', box(0.05, 0.020, 0.005), -0.61, 2.464, 1.4585);        // L slit (fore flank)
+      P.add('hullDetail', box(0.062, 0.009, 0.016), -0.61, 2.4805, 1.459);     // L visor lip
+      P.add('hullDark', box(0.005, 0.020, 0.05), 0.5235, 2.464, 1.53);         // R slit (outboard flank)
+      P.add('hullDetail', box(0.016, 0.009, 0.062), 0.5175, 2.4805, 1.53);     // R visor lip
       // (c) crossbar hatch discs: bright rim ring + cross straps on the fwd
       // hatch lid; rim ring inside the rear dome's own lid top (its 2.447
       // is already the certified ceiling class at the station-4/5 seam).
@@ -1797,14 +1936,14 @@ function buildISU152(P) {
   P.add('hullCloth', paintVerts(gridQuad(
     [-1.30, 1.386, -2.741], [1.30, 1.386, -2.741],
     [1.30, 1.1056, -3.1996], [-1.30, 1.1056, -3.1996], 66, 12),
-  (x, y, z) => 1.085 + mottle(x * 1.03, z, 6.4, 0.030, 0.014)));
+  (x, y, z) => 1.085 + mottle(x * 1.03, z, 6.4, 0.015, 0.007)));               // (r4: marbling halved)
   // lower vertical tail wall skin (the ref's rear-plate rect reads 106.9 —
   // rear-facing hemi-lit plane, so q runs hot; the manholes/hooks ride
   // proud of it)
   P.add('hullCloth', paintVerts(gridQuad(
     [1.28, 0.605, -3.213], [-1.28, 0.605, -3.213],
     [-1.28, 1.015, -3.213], [1.28, 1.015, -3.213], 64, 8),
-  (x, y, z) => 1.06 + mottle(x * 1.05, y * 1.4, 9.9, 0.036, 0.020)));
+  (x, y, z) => 1.06 + mottle(x * 1.05, y * 1.4, 9.9, 0.018, 0.010)));          // (r4: marbling halved)
   // ---- r2 item 9a addendum: painted glacis skin (face-conformal +6 mm).
   // r3 item 3: skin measured +6.0 L over the ref glacis zone (94.9 vs 88.9)
   // with the appliqué blue-lift and a floating border (x ±0.95 on a ±1.06
@@ -1825,8 +1964,15 @@ function buildISU152(P) {
     // and rendered as the critic's repeated "gray-green louver stacks";
     // solid fitting olive calms the row and its AA. The front seg is the
     // r1 "front beam" floating caution — item 10 adds its brackets below.)
-    for (let k = 0; k < 14; k++) {
-      P.add('hullDetail', box(0.033, 0.391, 0.38), sd * 1.499, 0.9135, -3.11 + k * 0.44); // rearmost seg [-3.30,-2.92]
+    // r4 order 5c: the r3 metronome row (14 segs, pitch 0.44, gap 0.06) was
+    // the critic's "punched slot row ... regularity". Irregular lengths +
+    // jittered stations; every 0.65 m station window still holds >= 1 rail
+    // face piece (the w-3.031 station carrier) and the six ±1.5345 hinge
+    // tabs (widthM anchor) are untouched.
+    for (const [rzc, rln] of [[-3.10, 0.40], [-2.63, 0.30], [-2.24, 0.42], [-1.75, 0.34],
+      [-1.38, 0.30], [-0.92, 0.44], [-0.47, 0.30], [-0.02, 0.38], [0.42, 0.32],
+      [0.88, 0.44], [1.36, 0.30], [1.74, 0.36], [2.22, 0.44], [2.72, 0.34]]) {
+      P.add('hullDetail', box(0.033, 0.391, rln), sd * 1.499, 0.9135, rzc);
     }
     P.add('hullDetail', box(0.033, 0.391, 0.38), sd * 1.499, 0.9135, 3.10);    // front seg [2.91,3.29]
     for (const tz of [-2.43, -1.13, -0.48, 0.82, 1.46, 2.76]) {
@@ -1870,7 +2016,15 @@ function buildISU152(P) {
     // texture from the side — the run rect read p50 57 vs the ref's lit 94;
     // a 3 cm base sliver keeps the bin's 0.02 bottom inside the pads' own
     // serration band and lets the lit pads read over it.)
-    P.add('hullTrack', box(0.012, 0.030, 4.60), sd * 1.387, 0.035, -0.025);     // run base ground line (steel family)
+    // r4 order 5a (ground row): the strip drops to y 0.012..0.046 so the
+    // critic's sparse dark tooth row at y398 (0.017-0.033 m — grouser side
+    // faces between pads) reads through the strip instead. MEASURED on the
+    // official pair: the r3 spareTrack-steel strip itself read p50 60.2 —
+    // the DARKNESS was the strip tone, not the teeth — so it moves to the
+    // painted bucket at pad-family brightness (the ref's ground row runs
+    // 85-95L). Ref's own ±1.39 front bins ground at bot 0.001 (vertex
+    // extract), so the lower bottom is a small refund, not a spend.
+    P.add('hullCloth', paintFlat(box(0.012, 0.034, 4.60), 0.98, 0.02), sd * 1.387, 0.022, -0.025); // run base ground line (pad-bright, body covers y398)
     P.add('hullShadow', box(0.012, 0.125, 4.35), sd * 0.955, 0.5275, -0.025);   // window structure shelf
     // inner band-face strips: behind the wheels ONLY (the ±0.79 bins keep
     // their any-z 0.02 ground; the old full-length run walled the opened
@@ -1988,42 +2142,68 @@ function buildISU152(P) {
       base + 0.17 * ny - 0.10 * nx + mottle(z * 3.1, x * 3.4, 7.7, 0.014, 0.012));
     const ringG = cylZ(0.28, 0.22, 16); ringG.scale(0.42, 1, 1);
     P.add('hullCloth', stackPaint(xform2(ringG, 0, 0, 0, -0.42), 0.95), -0.24, 1.94, 2.71); // bolted ring -> 2.22
-    const rU = cylZ(0.16, 0.14, 14); rU.scale(0.72, 1, 1);
-    P.add('hullCloth', stackPaint(rU, 1.00), -0.24, 1.94, 2.83);               // recup upper -> 2.10
-    const rM = cylZ(0.14, 0.14, 14); rM.scale(0.80, 1, 1);
-    P.add('hullCloth', stackPaint(rM, 0.99), -0.24, 1.92, 2.93);               // recup mid -> 2.06
-    const rL = cylZ(0.13, 0.30, 14); rL.scale(0.85, 1, 1);
-    P.add('hullCloth', stackPaint(rL, 0.98), -0.24, 1.906, 3.11);              // recup long -> 2.036
-    const rN = cylZ(0.12, 0.20, 14); rN.scale(0.90, 1, 1);
-    P.add('hullCloth', stackPaint(rN, 0.97), -0.24, 1.895, 3.34);              // recup nose -> 2.015
+    // r4 order 4 (close-front 7.5: "lathe-work vs casting"): the r3 four-
+    // cylinder step stack + three joint collars are REPLACED by one
+    // continuous tapered recuperator horn — three cylZ tapers sharing one
+    // axis (y 1.90) and meeting at identical radii, so the profile is a
+    // single smooth cast fall with two shallow slope breaks. Top line runs
+    // the step stack's own certified fall (2.100@2.76 -> 2.055@2.955 ->
+    // 2.030@3.26 -> 2.008@3.46, each old bin's max within a half-pixel);
+    // bottoms stay interior over the buffer; x compressed per segment so
+    // the plan never leaves the certified tube band [-0.36,-0.12].
+    {
+      const horn = (rF, len, rR, sx, zc, base) => {
+        const g = cylZ(rF, len, 18, rR); g.scale(sx, 1, 1);
+        P.add('hullCloth', stackPaint(g, base), -0.24, 1.90, zc);
+      };
+      // (line dropped 4 mm after run 1: the smooth taper's mid-bins rode
+      // ABOVE the old step tops and spiked stations 9/10 topPct +0.2/+0.35 —
+      // the fall now runs UNDER every certified step top)
+      horn(0.152, 0.195, 0.196, 0.612, 2.8575, 1.00);                          // 2.096 -> 2.052
+      horn(0.128, 0.305, 0.152, 0.79, 3.1075, 0.98);                           // 2.052 -> 2.028
+      horn(0.106, 0.200, 0.128, 0.937, 3.360, 0.97);                           // 2.028 -> 2.006
+    }
     P.add('hullCloth', stackPaint(KIT.sph(0.20, 16), 0.95), -0.24, 1.83, 2.88); // ball shield (inside the stack)
     P.add('hullCloth', stackPaint(cylZ(0.115, 0.60, 12, 0.13), 0.85), -0.24, 1.575, 3.00); // buffer under-tube
     // r3 item 9b: mask-interior CAST DOME BULGE — frontal mass closing the
-    // step gaps between the stack cylinders (the critic's offered move).
-    // Ellipsoid x-clamped to the certified tube band [-0.36,-0.12]; every
-    // y-top rides under the local bin max (2.083 < rU 2.10 at 2.83; 2.032
-    // < rL 2.036 at 2.95).
+    // root gap between horn and ball (kept: it is the cast-read mass).
     {
       const bulge = KIT.sph(0.235, 20);
       bulge.scale(0.5, 0.95, 1);
       bulge.computeVertexNormals();
       P.add('hullCloth', stackPaint(bulge, 0.95), -0.24, 1.86, 2.80);
     }
-    // joint collars: continuous-radius bridges at the three step joints,
-    // tops always under the local certified bin max (each bin still holds
-    // the fatter neighbor).
-    const jc1 = cylZ(0.138, 0.05, 20, 0.155); jc1.scale(0.76, 1, 1);
-    P.add('hullCloth', stackPaint(jc1, 0.995), -0.24, 1.930, 2.895);
-    const jc2 = cylZ(0.128, 0.05, 20, 0.138); jc2.scale(0.825, 1, 1);
-    P.add('hullCloth', stackPaint(jc2, 0.985), -0.24, 1.913, 2.995);
-    const jc3 = cylZ(0.118, 0.05, 20, 0.128); jc3.scale(0.875, 1, 1);
-    P.add('hullCloth', stackPaint(jc3, 0.975), -0.24, 1.900, 3.25);
-    // bolt ring on the fixed collar face (12 studs on the pitched ellipse)
-    for (let bk = 0; bk < 12; bk++) {
-      const a = (bk / 12) * Math.PI * 2 + 0.13;
-      const lx = Math.cos(a) * 0.096, ly = Math.sin(a) * 0.236;
-      const wy = ly * 0.913 + 0.0428, wz = -ly * 0.408 + 0.0958;
-      P.add('hullDark', xform2(box(0.021, 0.021, 0.016), 0, 0, 0, -0.42), -0.24 + lx, 1.94 + wy, 2.71 + wz);
+    // r4 order 4: the 12 DARK bolt-hole dots on the collar face are deleted
+    // (the critic's "perforated flange") — the bolted read moves to the
+    // ref's TRAPEZOID FRAME on the casemate cheek: four face-conformal bars
+    // + soft same-tone studs (cast family, not drilled holes). Face plane:
+    // z(y) = 2.99 - (y - 1.66) * 0.5619 (the 29.3-deg crest loft), pieces
+    // ride 11 mm along the face normal (0, 0.49, 0.87).
+    {
+      const fz = (y) => 2.99 - (y - 1.66) * 0.5619;
+      const FN = [0, 0.4897, 0.8719];
+      const put = (g, x, y, out = 0.011) =>
+        P.add('hullDetail', g, x, y + FN[1] * out, fz(y) + FN[2] * out);
+      put(KIT.xform(box(0.60, 0.030, 0.016), 0, 0, 0, -0.512, 0, 0), -0.24, 2.235);   // top bar
+      put(KIT.xform(box(0.90, 0.032, 0.016), 0, 0, 0, -0.512, 0, 0), -0.24, 1.575);   // bottom bar
+      put(KIT.xform(box(0.028, 0.70, 0.016), 0, 0, 0, -0.512, 0, 0.115), -0.685, 1.905); // left slant bar
+      put(KIT.xform(box(0.028, 0.70, 0.016), 0, 0, 0, -0.512, 0, -0.115), 0.205, 1.905); // right slant bar
+      for (const [bxq, byq] of [[-0.50, 2.235], [-0.24, 2.235], [0.02, 2.235],
+        [-0.62, 1.575], [-0.24, 1.575], [0.14, 1.575],
+        [-0.665, 2.08], [-0.705, 1.73], [0.185, 2.08], [0.225, 1.73]]) {
+        P.add('hullCloth', paintFlat(xform2(cylZ(0.0125, 0.010, 10), 0, 0, 0, -0.512), 0.92, 0.03),
+          bxq, byq + FN[1] * 0.019, fz(byq) + FN[2] * 0.019);                  // soft frame studs
+      }
+    }
+  }
+  // r4 order 4d: RIB COMBS on the fender bin front faces (the ref's "rib
+  // combs" the r3 bins lacked) — five vertical strips per face with dark
+  // inter-rib grooves (the comb reads by alternation), 4 mm proud, inside
+  // the bins' own x/y spans (no new tops, widths or bottoms).
+  for (const sd of [-1, 1]) {
+    for (let rb = 0; rb < 5; rb++) {
+      P.add('hullDetail', box(0.030, 0.20, 0.008), sd * (1.085 + rb * 0.0535), 1.676, 3.283);
+      if (rb < 4) P.add('hullDark', box(0.020, 0.19, 0.005), sd * (1.112 + rb * 0.0535), 1.676, 3.282);
     }
   }
   // ---- tube (axis y 1.858, x -0.24, ELLIPTICAL rx/ry=rx*1.1252): root
@@ -2061,54 +2241,89 @@ function buildISU152(P) {
   // disc mid-window keeps the slice lit at the tube's exact width.
   P.add('hull', ell(cylZ(0.102, 0.03, 18)), -0.24, 1.858, 4.06);
   P.add('hullCloth', paintFlat(cylZ(0.035, 0.012, 12), 0.54, 0.03), -0.24, 1.858, 5.716); // bore (shrunk, softened)
-  // ---- DShK on the right cupola (OWNER DECORATION LAW; r2 item 8 — the r1
-  // placeholder read in 1/14 panes). Rebuilt to the sibling r10 recipe:
-  // AA ring + pintle pedestal + ribbed receiver MASS + spade grips + ammo
-  // can + sleeve-stepped barrel, the whole gun on the PAINTED bucket in the
-  // pale MG family (it reads against the roof plane and over the crest from
-  // the elevated front cameras). Envelope law unchanged: receiver/can/grips
-  // live inside the cupola's certified 2.494 columns (z 1.42..1.64, front
-  // x <= 0.505); the sleeve rides under the 2.388 pedestal bins (z <= 1.73)
-  // and the barrel keeps the r1 barrel's priced 2.35-class line, ending
-  // inside the 2.348 shelf-bin cover.
+  // ---- DShK on the right cupola head — r4 ORDER 1 REBUILD (owner
+  // decoration law + MG PHYSICS; critic r3: "thin rod + small block lying
+  // flat across the roof — no receiver mass, no pintle column, no sky
+  // silhouette in ANY pane"). The gun rides the AA RING'S RIGHT RAIL
+  // (x 0.53 lane — DShK cradles clamp the ring), on a real pintle column
+  // standing on the mound step, receiver BOX beside the head, barrel group
+  // running AFT-UP at ~11 deg past the head's rear quarter so the muzzle
+  // booster hangs in open sky over the 2.388 riser band (view-left /
+  // view-right / close-roof / heroes).
+  // HEIGHT-LAW ENGINEERING (both measured this round, in gate points):
+  // (a) dims: the side-trace p95 keeps only TWO columns free above the
+  // 2.494 cupola read — a first cut with the whole barrel group elevated
+  // put three columns over it and heightM jumped to 1.35% (dims 97.2);
+  // (b) CAMERA-PHASE LAW: the gate frames its shared cameras on the
+  // union bbox, and the REF's own ymax is 2.503 — ANY proc geometry above
+  // 2.503 re-centers every raster row and cost a broad -1.9 curve points
+  // (bisected: identical build with the barrel deleted scored 91.1 vs
+  // 89.2). So the WHOLE gun caps at geo 2.503: apex 2.5035 booster, and
+  // the sky break is read against the LOCAL roofline — the muzzle hangs
+  // over the 2.388 riser band with ~4px of true sky under it and ~7px of
+  // total rise above the local line. Elevation 12 deg (order band 10-20).
+  // Whole gun pale 0.80-1.00 (MG physics, pale top-lit edges).
   {
-    const MGX = 0.47, MGY = 2.345;
-    // r3 item 5 — the r2 AA ring (r_x 0.072 at y 2.481) sat INSIDE the
-    // cupola drum wall (r_x 0.075, top 2.494): only leaked arcs rendered —
-    // the critic's "open C-ring". The ring now clears the wall (r_x 0.079)
-    // with its top at 2.494 EXACT (the certified cupola ceiling — a 2.502
-    // run failed heightM p95 in the realign round), on three stanchions.
+    const MGX = 0.53;                                                          // ring right-rail lane
     const aaG = KIT.torus(0.079, 0.0045, 26); aaG.scale(1, 1, 1.4667);
-    P.add('hullCloth', paintFlat(aaG, 0.86), 0.45, 2.4895, 1.53);              // AA ring (closed, proud of the drum)
+    P.add('hullCloth', paintFlat(aaG, 0.86), 0.45, 2.4895, 1.53);              // AA ring (kept — it reads)
     for (const a of [0.7, 2.8, 4.7]) {
       P.add('hullCloth', paintFlat(cylY(0.006, 0.007, 0.016, 8), 0.80),
         0.45 + Math.cos(a) * 0.077, 2.4825, 1.53 + Math.sin(a) * 0.113);       // ring stanchions
     }
-    // pintle: the r2 toothpick (r 0.015) read as a wireframe leg — a real
-    // column + cradle arm ground the gun to the cupola lid.
-    P.add('hullCloth', paintFlat(cylY(0.023, 0.030, 0.095, 12), 0.82), 0.49, 2.4055, 1.56);
-    P.add('hullCloth', paintFlat(box(0.026, 0.020, 0.105), 0.84), 0.485, 2.446, 1.555); // cradle arm -> receiver
-    P.add('hullCloth', paintFlat(box(0.05, 0.034, 0.08), 0.86), MGX, 2.457, 1.55); // cradle/trunnion
-    P.add('hullCloth', paintFlat(box(0.10, 0.075, 0.20), 0.94, 0.05), 0.455, 2.42, 1.52); // receiver mass
-    P.add('hullCloth', paintFlat(box(0.045, 0.014, 0.19), 0.90), 0.455, 2.464, 1.52); // top cover ridge
-    for (const rz of [1.455, 1.505, 1.555]) {
-      P.add('hullCloth', paintFlat(box(0.10, 0.044, 0.016), 0.88), 0.455, 2.418, rz); // receiver ribs
+    // pintle: flanged column standing on the mound TOP PLATE (2.370, just
+    // off the step edge) rising to the cradle yoke under the receiver —
+    // the ordered real pintle column, ~5 cm visible
+    P.add('hullCloth', paintFlat(cylY(0.021, 0.027, 0.010, 14), 0.78), 0.548, 2.375, 1.462); // base flange
+    P.add('hullCloth', paintFlat(cylY(0.0145, 0.019, 0.048, 12), 0.84, 0.02), 0.548, 2.399, 1.462); // column
+    P.add('hullCloth', paintFlat(box(0.038, 0.016, 0.044), 0.88, 0.03), 0.542, 2.4287, 1.475); // cradle yoke
+    // RECEIVER BOX MASS beside the head (top geo 2.4637 — under the 2.494
+    // head line, the p95 carrier never moves; the 0.072 x 0.165 plan mass
+    // is the close-roof read), dark charging groove, backplate + spade
+    // grips at the aft end. The top face is the pale top-lit edge.
+    // (top face pale top-lit 1.05, flanks dropped to 0.78 — the flat-0.94
+    // first cut merged into the pale step below; a dark gap-shadow plate
+    // under the floating bottom finishes the box-mass separation)
+    P.add('hullCloth', paintVerts(box(0.072, 0.042, 0.165), (x, y, z, nx, ny) =>
+      0.92 + 0.13 * ny - 0.07 * Math.abs(nx) + mottle(z * 6, x * 8, 3.3, 0.012, 0.008)), MGX, 2.4427, 1.5225); // receiver
+    P.add('hullDark', box(0.076, 0.0045, 0.168), MGX, 2.4195, 1.5225);         // under-receiver gap shadow
+    P.add('hullDark', box(0.0735, 0.005, 0.05), MGX, 2.4422, 1.50);            // receiver side groove
+    P.add('hullCloth', paintFlat(box(0.064, 0.042, 0.012), 0.88), MGX, 2.4397, 1.606); // backplate
+    P.add('hullCloth', paintFlat(box(0.010, 0.032, 0.024), 0.90), 0.514, 2.402, 1.600); // spade grips
+    P.add('hullCloth', paintFlat(box(0.010, 0.032, 0.024), 0.90), 0.546, 2.402, 1.600);
+    // barrel group AFT-UP at 12 deg (slope 0.2126; rx -0.2095 tips the -z
+    // muzzle end up — RH rotation about +x sends -z toward -y, so the sign
+    // is NEGATIVE for muzzle-up). Axis y = 2.4427 + (1.44 - z) * 0.2126.
+    // Rings/sleeve/neck stay under geo 2.494; the booster knob tops at
+    // 2.5035 (under the ref's 2.503 union-ymax by construction).
+    {
+      const tilt = -0.2095;
+      // per-piece top-lit shading (MG physics): pale >= 2px top edge on
+      // every barrel member, darker underside — the flat first cut read as
+      // a low-contrast rod against the pale roof
+      const seg = (g, zc, q) => {
+        P.add('hullCloth', paintVerts(KIT.xform(g, 0, 0, 0, tilt, 0, 0),
+          (x, y, z, nx, ny) => q + 0.13 * ny - 0.04 * Math.abs(nx)),
+        MGX, 2.4427 + (1.44 - zc) * 0.2126, zc);
+      };
+      for (let k = 0; k < 5; k++) seg(cylZ(0.0215, 0.014, 12), 1.428 - k * 0.017, 0.97); // cooling rings
+      seg(cylZ(0.0135, 0.045, 10), 1.3355, 0.95);                              // sleeve core
+      seg(cylZ(0.0135, 0.035, 10), 1.2925, 1.00);                              // barrel neck (pale)
+      // (booster slimmed r 0.0175 -> 0.0145 after the official-pair
+      // measurement: the 4.3px geometric under-gap was AA-merged with the
+      // riser line — the slimmer knob lifts its underside 3.5 mm and keeps
+      // the same 2.5035 apex via its higher axis)
+      seg(cylZ(0.0145, 0.048, 12), 1.2443, 0.98);                              // muzzle booster (sky knob)
+      seg(cylZ(0.0125, 0.007, 12), 1.2225, 0.94);                              // booster end ring (inside the booster span)
+      P.add('hullDark', KIT.xform(cylZ(0.0075, 0.005, 8), 0, 0, 0, tilt, 0, 0),
+        MGX, 2.4427 + (1.44 - 1.2210) * 0.2126, 1.2210);                       // bore dot
     }
-    P.add('hullCloth', paintFlat(box(0.012, 0.05, 0.038), 0.88), 0.437, 2.392, 1.448); // spade grips
-    P.add('hullCloth', paintFlat(box(0.012, 0.05, 0.038), 0.88), 0.473, 2.392, 1.448);
-    P.add('hullCloth', paintFlat(box(0.055, 0.075, 0.16), 0.90, 0.04), 0.36, 2.35, 1.50); // ammo can (feed side)
-    P.add('hullDark', box(0.045, 0.006, 0.14), 0.36, 2.389, 1.50);             // can lid seam
-    // r3 item 5: breech joint block — the r2 receiver (bottom 2.3825) and
-    // barrel line (2.345) never touched; this bridges them visually inside
-    // the cupola's certified z <= 1.64 columns.
-    P.add('hullCloth', paintFlat(box(0.052, 0.068, 0.046), 0.92, 0.03), MGX, 2.398, 1.617);
-    for (let k = 0; k < 5; k++) {
-      P.add('hullCloth', paintFlat(cylZ(0.023, 0.016, 12), 0.96), MGX, MGY, 1.648 + k * 0.018); // cooling rings
-    }
-    P.add('hullCloth', paintFlat(cylZ(0.019, 0.07, 10), 0.95), MGX, MGY, 1.683); // sleeve core
-    P.add('hullCloth', paintFlat(cylZ(0.0155, 0.28, 10), 1.00), MGX, 2.336, 1.87); // barrel (priced 2.35-class)
-    P.add('hullCloth', paintFlat(cylZ(0.018, 0.045, 10), 0.98), MGX, 2.333, 2.03); // muzzle booster
-    P.add('hullDark', cylZ(0.009, 0.008, 8), MGX, 2.332, 2.056);               // bore dot
+    // ammo can hanging off the step's right flank under the receiver (top
+    // 2.4305 = the ref's own 2.432 front band at x 0.527..0.559 — free) +
+    // hanger strap to the receiver bottom
+    P.add('hullCloth', paintFlat(box(0.048, 0.085, 0.14), 0.90, 0.04), 0.545, 2.386, 1.50);
+    P.add('hullDark', box(0.040, 0.005, 0.12), 0.545, 2.4265, 1.50);           // can lid seam
+    P.add('hullCloth', paintFlat(box(0.014, 0.022, 0.014), 0.86), 0.5395, 2.4375, 1.47); // hanger strap
   }
   // spare track links on the glacis (replaces the isuCommon pair that would
   // float past the new steeper face)
