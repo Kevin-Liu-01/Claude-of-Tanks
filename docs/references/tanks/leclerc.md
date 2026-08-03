@@ -143,3 +143,10 @@ CERTIFIED-PENDING-WARP residuals (do not chase pre-warp): mast columns
 the bow nose-tip/idler-ramp ONLY-REF columns (dims-sovereign trade).
 Boards: shots/misc-r1/after/leclerc.png (legacy visual 85.2; turret reads
 chunky vs the print's slimmer cheeks — critic pass queued post-warp).
+
+## Oracle warp verify note (orchestrator, batch-27)
+height -1.4% / overall -0.8% / width 0% — in grace. hullMask +3.4% is the
+REAL rear rack overhang (documented pre-warp by the r1 agent): the rack is
+hull-node geometry past the hull plate, so the mask window includes it.
+Expected flag; not a defect. Builders take hull length from published dims
+(7.92 hullLengthM > mask window) per dims sovereignty.

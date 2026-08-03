@@ -120,3 +120,13 @@ plan authored** (tools/vertex-normalize.mjs `type74`): y [[0,0],
 x0.978 about -1.1135 + muzzle -> rear'+9.42. NOTE scaleToOverall: the
 loader re-normalizes post-warp — `--verify` must re-check the landed
 factors. DO NOT BUILD pre-warp (>2% law).
+
+## Oracle warp verify note (orchestrator, batch-27)
+height -1% / overall -0.4% / width 0% — in grace. hullMask reads 40.1% and
+is UNMEASURABLE BY DESIGN on this print: it is a skinned/armature model
+(Hull_17/Tower_9/Gun_7 are bones; all geometry lives in shared skinned
+meshes Object_7..12, so the barrel is inseparable from the hull mask in
+bind pose). In-game articulation drives the bones and works; only the
+extract's node partition is blind here. Census also counts differently on
+skinned prims (guard numbers used per the batch-19 law). Dims-sovereign
+building unaffected: the GATE measures the proc build vs published dims.

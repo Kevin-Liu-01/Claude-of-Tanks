@@ -2741,6 +2741,66 @@ REPAIRS['amx30b2'] = {
     ],
 }
 
+# =============================================================== batch 27 ===
+# MISC-MODERN NORMALIZATION x5 (plans authored by the misc r1 agent with
+# p95 dims-replica sims, all in grace; literals emitted by vertex-normalize
+# 2026-08-03; execution + verification = orchestrator). leclerc: +9.1% H is
+# the pano/mast furniture band only (W1b ceiling compress, z identity;
+# hullMask +3.4% is the real rack overhang — expected verify flag,
+# documented in its packet). t80u: dome-preserving map (knee 1.35, shoulder
+# 2.28->2.16, clamshell/Utyos band -> 2.19-2.22), barrel stretched to
+# rear+9.65 — retires the certified whole/stations ceilings in t80u.md.
+# type90: +59.3% H two-knee map (roof band +21%, rear mast cluster 4.42),
+# body/muzzle z (overall -4.9%). ariete: body stretch x1.0412 + muzzle pin
+# (-6.3% overall), band compress. type74: near-uniform +13.9% H compress +
+# body/muzzle z; scaleToOverall registration — verify re-checks post-warp.
+REPAIRS['leclerc'] = {
+    'path': 'public/models/tanks/char_leclerc_andertan.glb',
+    'ops': [
+        ('py2', _axis_warp('leclerc', long_axis='x',
+                           y_map=[(0.0822, 0.0822), (1.6131, 1.6131), (1.8004, 1.638), (1.9927, 1.6635)],
+                           long_map=[(-2.8195, -2.8195), (3.273, 3.273)],
+                           y_top_max=1.6816, expect=(28, 215082, 120227))),
+    ],
+}
+REPAIRS['t80u'] = {
+    'path': 'public/models/tanks/t80u_javanilga.glb',
+    'ops': [
+        ('py2', _axis_warp('t80u', long_axis='z',
+                           y_map=[(0.0184, 0.0184), (1.5543, 1.5543), (2.6124, 2.4759), (2.8422, 2.51), (3.0561, 2.5441)],
+                           long_map=[(-4.0567, -4.0567), (3.8219, 3.8219), (6.7594, 6.9221)],
+                           y_top_max=2.5896, expect=(25, 28091, 28079))),
+    ],
+}
+REPAIRS['type90'] = [
+    ('py2', _axis_warp('type90', long_axis='x',
+                       y_map=[(0, 0), (15.1166, 13.822), (16.8686, 14.2113), (28.2279, 22.485), (43.0233, 23.3611)],
+                       long_map=[(-38.7171, -37.6415), (35.7658, 34.8751), (51.5929, 57.3602)],
+                       y_top_max=23.6531, expect=(3, 9272, 7711))),
+]
+REPAIRS['ariete'] = {
+    'path': 'public/models/tanks/community/ariete-dustymojito.glb',
+    'ops': [
+        ('py2', _axis_warp('ariete', long_axis='z',
+                           y_map=[(-1.5023, -1.5023), (1.0557, 1.0557), (1.3052, 1.1623), (1.465, 1.1836)],
+                           long_map=[(-4.108, -4.2679), (3.6622, 3.8221), (5.5467, 6.0391)],
+                           y_top_max=1.2156, expect=(6, 189181, 139776))),
+    ],
+}
+REPAIRS['type74'] = {
+    'path': 'public/models/tanks/community/type74-nullops.glb',
+    'ops': [
+        ('py2', _axis_warp('type74', long_axis='z',
+                           y_map=[(-0.0662, -0.0662), (1.5919, 1.3639), (2.8634, 2.4831), (3.1028, 2.5142)],
+                           long_map=[(-4.2267, -4.1495), (2.8708, 2.7936), (5.1787, 5.6124)],
+                           y_top_max=2.5452,
+                           # guard-reported census (banked batch-19 law: the
+                           # guard counts prims/verts its own way; tris match
+                           # the extract exactly so the file is right).
+                           expect=(5, 73411, 65350))),
+    ],
+}
+
 
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)
