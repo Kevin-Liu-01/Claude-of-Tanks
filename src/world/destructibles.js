@@ -26,11 +26,27 @@ export function setBreakFxProvider(fn) { fxProvider = fn; }
 /**
  * props.js calls this whenever a destructible breaks or topples — the FX cap
  * lives on the props side (it knows batch sizes); this just forwards.
+ * dx/dz carry MAGNITUDE (impact energy): 1 = shell-grade break, ramming hulls
+ * scale it with their overrun speed so debris inherits the tank's velocity.
  * @param {string} kind destructible kind ('barrel', 'fence', 'bale', ...)
  */
 export function emitBreakFx(kind, x, y, z, dx, dz, h) {
   if (fxProvider) fxProvider(kind, x, y, z, dx, dz, h);
 }
+
+// DESTRUCTIBLES r1: bus seam for prop destruction — the AUDIO layer (and any
+// other bus consumer) subscribes to 'prop:destroyed' without the world layer
+// ever importing the bus. main.js wires the sink at boot; every breakRecord
+// in props.js reports through here regardless of trigger path.
+let eventSink = null;
+
+/** main.js registers (ev) => bus.emit('prop:destroyed', ev). */
+export function setDestroyedEventSink(fn) { eventSink = fn; }
+
+/**
+ * @param {{kind:string, pos:number[], cause:('ram'|'shell'|'blast')}} ev
+ */
+export function emitDestroyed(ev) { if (eventSink) eventSink(ev); }
 
 /** @type {Array<{key:string,isActive:function():boolean,sweep:Function,impact:Function}>} */
 const worlds = [];

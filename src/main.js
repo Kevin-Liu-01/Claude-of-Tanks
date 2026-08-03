@@ -29,6 +29,8 @@ import { createLighting } from './engine/lighting.js';
 import { createPost } from './engine/post.js';
 import { createCameraRig, createShowroomOrbit } from './engine/cameraRig.js';
 import { createMap, createMapAsync } from './world/map.js';
+// DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
+import { setDestroyedEventSink } from './world/destructibles.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
 import { MAP_THUMBS } from './ui/mapThumbs.js';
 import { ALL_TANK_IDS, getSpec, MODEL_SOURCE } from './vehicles/specs.js';
@@ -1303,6 +1305,10 @@ bus.on('prop:crushed', (ev) => {
   _fwd.set(ev.dir[0], 0, ev.dir[2]);
   fx.propCrush(_v1, _fwd, ev.h);
 });
+// DESTRUCTIBLES r1: every destructible break (ram, shell hit, HE splash or
+// chained drum blast) reports through the destructibles.js sink — forwarded
+// onto the bus as the AUDIO seam ('prop:destroyed' {kind, pos, cause}).
+setDestroyedEventSink((ev) => bus.emit('prop:destroyed', ev));
 // Bot-vs-player pressure telemetry (same round, minor #4): per-battle
 // counters for enemy shells whose fire ray passes near the player (aimed at
 // us) vs those that connect, so return-fire consistency is measurable per
@@ -1780,6 +1786,9 @@ function startBattle(specId, mapId = null, opts = {}) {
   // MAP-CONFIG WIRING: battle on the picked map ('random' rolls here)
   switchMap(resolveMapId(mapId || pendingMapId));
   setWorldDormant(false); // the battle world wakes up (see setWorldDormant)
+  // DESTRUCTIBLES r1: worlds are cached and reused across battles — stand
+  // every broken wall/fence/sandbag/prop back up for the rematch.
+  if (world.resetDestructibles) world.resetDestructibles();
   game.mapId = world.mapId;
   // CAMO WIRING: AUTO patterns resolve to the biome of the map being fought;
   // only tanks whose resolved pattern actually changed get repainted.
@@ -2187,7 +2196,9 @@ function updateDustAndSync(dtFrame) {
           if (c.toppled) continue;
           const dx = c.x - ent.state.pos.x, dz = c.z - ent.state.pos.z;
           if (dx * dx + dz * dz > hl * hl) continue;
-          if (world.crushProp(ci, _fwd.x, _fwd.z)) {
+          // DESTRUCTIBLES r1: the hull speed rides into the break so tossed
+          // drums/debris inherit the rammer's velocity
+          if (world.crushProp(ci, _fwd.x, _fwd.z, sp)) {
             _v1.set(c.x, c.y, c.z);
             fx.propCrush(_v1, _fwd, c.h);
           }

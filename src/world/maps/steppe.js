@@ -123,7 +123,11 @@ export default {
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     // the steppe's dressing IS hay + stone: bale silhouettes on every fold
     haystacks: 34, rocks: 230, outcrops: 34, craters: 42, rubblePiles: 0,
-    wrecks: 6,
+    // DESTRUCTIBLES r1: the Kursk read — WWII hulks scattered on the open
+    // plain (baked roster tanks, paired duel beats), tank-trap lines
+    tankWrecks: { era: 'ww2', count: 4 },
+    sandbagLines: 10,
+    hedgehogs: 6,
     cropFields: 5,
     // world-dressing r1: open-plain hay economy — heavy bale/stook scatter,
     // stone-post rail fences, troughs at the farmsteads
@@ -133,6 +137,9 @@ export default {
       bales: 16, stooks: 10,
       troughs: 1, churns: 1, handcarts: 1, carts: 2,
       roadFence: 'fencerail', yardFence: 'fencewattle',
+      // DESTRUCTIBLES r1: steppe columns — trucks + field cars on the road
+      // net, fuel dumps, bivouac clusters in the balkas
+      trucks: 3, jeeps: 2, drumClusters: 3, camps: 3,
     },
   },
 

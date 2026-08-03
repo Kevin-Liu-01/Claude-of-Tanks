@@ -122,7 +122,11 @@ export default {
     ],
     well: false, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     haystacks: 0, rocks: 60, outcrops: 4, craters: 62, rubblePiles: 90,
-    lampposts: true, hedgehogs: 10, wrecks: 7,
+    lampposts: true, hedgehogs: 10,
+    // DESTRUCTIBLES r1: WWII hulks on the yard aprons (baked roster tanks) —
+    // the armor that fought over the railhead
+    tankWrecks: { era: 'ww2', count: 4 },
+    sandbagLines: 10,
     // world-dressing r1: brick yard walls; industrial inhabitants — oil-drum
     // ranks + pallet/crate stacks along the aprons, benches by the depot
     wallStyle: 'brick',
@@ -131,6 +135,9 @@ export default {
       drums: 16,
       handcarts: 1, carts: 1,
       roadFence: 'fencerail',
+      // DESTRUCTIBLES r1: railhead logistics — truck ranks on the aprons,
+      // fuel points between the sidings, ammo stacks
+      trucks: 4, jeeps: 1, drumClusters: 4, camps: 1,
     },
     townCraters: true, // shell pocks on the hardstand
   },

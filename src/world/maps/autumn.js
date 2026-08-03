@@ -144,7 +144,11 @@ export default {
     ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     haystacks: 30, rocks: 180, outcrops: 18, craters: 44, rubblePiles: 0,
-    wrecks: 5,
+    // DESTRUCTIBLES r1: WWII hulks along the valley lanes (baked roster
+    // tanks) + harvest-season logistics dressing
+    tankWrecks: { era: 'ww2', count: 4 },
+    sandbagLines: 10,
+    hedgehogs: 5,
     cropFields: 7, // the harvest is in — stubble plots + standing rows
     // world-dressing r1: harvest dressing — stook-heavy fields, wattle yard
     // hurdles, churns + laundry in the farmyards, carts on the lanes
@@ -154,6 +158,8 @@ export default {
       bales: 12, stooks: 14,
       troughs: 1, churns: 1, laundry: 1, handcarts: 1, carts: 3,
       roadFence: 'fenceplank', yardFence: 'fencewattle',
+      // DESTRUCTIBLES r1: requisitioned farm lorries + roadside camps
+      trucks: 3, jeeps: 1, drumClusters: 3, camps: 2,
     },
   },
 

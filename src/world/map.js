@@ -127,6 +127,10 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
     // props first — they bound the terrain march
     let best = Infinity, bestKind = null;
     for (const c of props.colliders) {
+      // DESTRUCTIBLES r1: a destroyed wall segment / truck stops blocking
+      // shells and AI line-of-sight — its collider is flagged dead in place
+      // (O(1) rematch restore) rather than spliced out.
+      if (c.dead) continue;
       const t = rayAABB(origin, dir, c, Math.min(maxDist, best), _aabbNrm);
       if (t >= 0 && t < best) { best = t; bestKind = 'prop'; _bestNrm.copy(_aabbNrm); }
     }
@@ -186,22 +190,29 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
     // 'loop'-class small clutter) — hull overlap in main.js triggers
     // crushProp (hinge-topple / debris swap) + fx.propCrush splinters.
     crushables: props.crushables || [],
-    crushProp: (i, dx, dz) => props.crushProp && props.crushProp(i, dx, dz),
+    crushProp: (i, dx, dz, speedMps = 0) => props.crushProp && props.crushProp(i, dx, dz, speedMps),
     // world-dressing r1: destructible small-prop records (probes/debug —
     // gameplay paths run through crushObstacle/crushProp/the fx seam)
     destructibles: props.destructibles || [],
+    // DESTRUCTIBLES r1: baked real-tank wreck placements (probes/debug)
+    tankWreckSpots: props.tankWreckSpots || [],
     // gameplay_feel r6: crushable OBSTACLE records. state.js's collider
     // queues the hull overrun, marks the record `crushed`, then calls this
     // for the world-side fall/break. Tree trunks (treeIdx, vegetation.js)
     // hinge-topple; world-dressing r1 destructible props (propIdx, props.js
     // — fences, carts, stalls, bales, lamps...) topple or swap to debris via
     // the same seam.
-    crushObstacle: (ob, dx, dz) => {
+    crushObstacle: (ob, dx, dz, speedMps = 0) => {
       if (!ob) return false;
       if (ob.treeIdx != null && vegetation.crushTree) return vegetation.crushTree(ob, dx, dz);
-      if (ob.propIdx != null && props.crushDestructible) return props.crushDestructible(ob.propIdx, dx, dz);
+      // DESTRUCTIBLES r1: the overrun speed rides through so debris inherits
+      // the hull's velocity (props.js breakRecord scales the throw).
+      if (ob.propIdx != null && props.crushDestructible) return props.crushDestructible(ob.propIdx, dx, dz, speedMps, 'ram');
       return false;
     },
+    // DESTRUCTIBLES r1: rematch hook — startBattle restores every broken/
+    // toppled destructible of the (cached, reused) world to its intact state.
+    resetDestructibles: () => { if (props.resetDestructibles) props.resetDestructibles(); },
     spawnPoints,
     /** @returns {{roads:Array, buildings:Array, treeClusters:Array, waterOrSoft:Array}} minimap features */
     getMinimapFeatures: () => ({

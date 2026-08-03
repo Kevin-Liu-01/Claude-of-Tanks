@@ -147,7 +147,11 @@ export default {
     ],
     well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
     haystacks: 8, rocks: 200, outcrops: 22, craters: 30, rubblePiles: 0,
-    wrecks: 4,
+    // DESTRUCTIBLES r1: modern hulks on the shore road (baked roster tanks)
+    // + landing-defense dressing (hedgehog obstacles, sandbag lines)
+    tankWrecks: { era: 'modern', count: 3 },
+    sandbagLines: 10,
+    hedgehogs: 7,
     // world-dressing r1: harbor-village inhabitants — fish-crate/barrel
     // clutter through the lanes, a quayside stall pair, laundry between the
     // crofts; stone-post rail fences on the field boundaries
@@ -157,6 +161,9 @@ export default {
       bales: 4,
       troughs: 1, laundry: 1, handcarts: 1, carts: 2,
       roadFence: 'fencerail', yardFence: 'fencepicket',
+      // DESTRUCTIBLES r1: quayside logistics — trucks at the harbor lanes,
+      // fuel-drum points, a shore bivouac
+      trucks: 3, jeeps: 2, drumClusters: 3, camps: 2,
     },
     cropFields: 3,
   },

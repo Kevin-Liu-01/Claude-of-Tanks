@@ -254,7 +254,11 @@ export default {
     // settlement read as "~10 bare boxes on empty sand" (critique); collapsed
     // mud-brick piles knit the compounds into a lived-in, fought-over block
     rubblePiles: 14,
-    wrecks: 7,
+    // DESTRUCTIBLES r1: modern-era hulks on the wadi routes (baked roster
+    // tanks), convoy dressing + defended-crossroads clutter
+    tankWrecks: { era: 'modern', count: 4 },
+    sandbagLines: 12,
+    hedgehogs: 8,
     // world-dressing r1: adobe boundary walls + souk inhabitants — stall
     // ring on the bazaar crossroads, terracotta jar clusters and hung-rug
     // display frames along the compound walls (all destructible)
@@ -264,6 +268,9 @@ export default {
       pots: 10,
       troughs: 1, laundry: 1, handcarts: 1, carts: 2,
       yardFence: 'fencewattle',
+      // DESTRUCTIBLES r1: stalled convoy dressing — supply trucks on the
+      // wadi road, utility 4x4s at the compounds, fuel dumps, a desert camp
+      trucks: 4, jeeps: 2, drumClusters: 4, camps: 2,
     },
   },
 

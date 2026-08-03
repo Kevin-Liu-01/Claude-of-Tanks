@@ -166,7 +166,11 @@ export default {
     // march the paved grid, anti-tank hedgehogs hold intersections/approaches
     // and two more road wrecks ("urban streets missing furniture, wrecks and
     // debris variety" critique)
-    lampposts: true, hedgehogs: 16, wrecks: 6,
+    lampposts: true, hedgehogs: 16,
+    // DESTRUCTIBLES r1: modern hulks in the streets (baked roster tanks) —
+    // the shelled-town read finally includes the armor that died taking it
+    tankWrecks: { era: 'modern', count: 4 },
+    sandbagLines: 12,
     // world-dressing r1: brick boundary walls w/ coping; street inhabitants —
     // a market ring on the central square, oil drums + pallet/crate work
     // clutter down the alleys, benches on the pavements (all destructible;
@@ -177,6 +181,8 @@ export default {
       drums: 12,
       handcarts: 1, carts: 2,
       roadFence: 'fenceplank',
+      // DESTRUCTIBLES r1: abandoned vehicles + fuel points down the blocks
+      trucks: 3, jeeps: 2, drumClusters: 3, camps: 1,
     },
   },
 

@@ -11,8 +11,10 @@ import { URBAN_BUILDERS } from './maps/urbanKit.js';
 import { dressMapExtras } from './maps/mapKits.js'; // content_breadth r2
 // world-dressing r1: building-catalog extension + destructible small props
 import { VILLAGE_BUILDERS } from './maps/villageKit.js';
-import { DESTRUCTIBLE_TYPES, FENCE_SEG } from './maps/inhabitKit.js';
-import { registerWorldDestructibles, emitBreakFx } from './destructibles.js';
+import { DESTRUCTIBLE_TYPES, FENCE_SEG, WALL_SEG, bSandbagBroken } from './maps/inhabitKit.js';
+import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.js';
+// DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
+import { bakeTankWreck, wreckPool } from './wrecks.js';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). Synchronous import keeps the __GAME_READY contract.
 import MODELS from './props-models.json';
@@ -1026,8 +1028,29 @@ ${snowCap ? `
   const dPools = new Map(); // kind -> {meta, mats4: Matrix4[], imI, imB, nBroken}
   const _dq = new THREE.Quaternion();
   const _de = new THREE.Euler();
+  // DESTRUCTIBLES r1: kinds whose INTACT geometry is a licensed baked model
+  // (props-models.json) — they cannot live in inhabitKit (no bakedGeometry
+  // there). Same meta shape; the shared broken state is the burst-bag heap.
+  // keep 0.97: driving a sandbag line barely registers on the speedo.
+  const LOCAL_TYPES = {
+    sandbagbig: {
+      cls: 'break', mat: 'baked', contact: 'ob', r: 2.0, h: 1.35, keep: 0.97,
+      build: () => bakedGeometry('sack_trench_quaternius', { targetH: 1.35, sink: 0.12 }),
+      broken: bSandbagBroken,
+    },
+    sandbagsmall: {
+      cls: 'break', mat: 'baked', contact: 'ob', r: 1.7, h: 1.05, keep: 0.975,
+      build: () => bakedGeometry('sack_trench_small_quaternius', { targetH: 1.05, sink: 0.1 }),
+      broken: bSandbagBroken,
+    },
+    sandbagwall: {
+      cls: 'break', mat: 'baked', contact: 'ob', r: 1.5, h: 1.0, keep: 0.975,
+      build: () => bakedGeometry('sandbags_jtoastie', { targetH: 1.0, sink: 0.1 }),
+      broken: bSandbagBroken,
+    },
+  };
   function addDestructible(kind, x, y, z, yaw = 0, sc = 1, tiltX = 0, tiltZ = 0) {
-    const meta = DESTRUCTIBLE_TYPES[kind];
+    const meta = LOCAL_TYPES[kind] || DESTRUCTIBLE_TYPES[kind];
     if (!meta) throw new Error('world/props: unknown destructible kind ' + kind);
     let pool = dPools.get(kind);
     if (!pool) { pool = { meta, mats4: [], imI: null, imB: null, nBroken: 0 }; dPools.set(kind, pool); }
@@ -1043,21 +1066,34 @@ ${snowCap ? `
     const idx = destructibles.length;
     destructibles.push(rec);
     if (meta.contact === 'ob') {
-      const rr = meta.fence ? Math.max(meta.r * sc, 0.6) : rec.r;
-      // fences: tight oriented-ish AABB — use run direction extents
+      const rr = (meta.fence || meta.wall) ? Math.max(meta.r * sc, 0.6) : rec.r;
+      // fence/wall modules: tight oriented-ish AABB — run direction extents
       let hx = rr, hz = rr;
-      if (meta.fence) {
+      if (meta.fence || meta.wall) {
+        const segLen = meta.wall ? WALL_SEG : FENCE_SEG;
+        const thick = meta.wall ? 0.35 : 0.2;
         const cs = Math.abs(Math.cos(yaw)), sn = Math.abs(Math.sin(yaw));
-        hx = (0.2 * cs + FENCE_SEG * 0.5 * sn) * sc + 0.05;
-        hz = (0.2 * sn + FENCE_SEG * 0.5 * cs) * sc + 0.05;
+        hx = (thick * cs + segLen * 0.5 * sn) * sc + 0.05;
+        hz = (thick * sn + segLen * 0.5 * cs) * sc + 0.05;
       }
       const ob = {
         min: [x - hx, y, z - hz], max: [x + hx, y + rec.h, z + hz],
         crushable: true, crushed: false, propIdx: idx, kind,
       };
+      // DESTRUCTIBLES r1: per-kind overrun feel — momentum bite + threshold
+      // ride the obstacle record into the state.js crush seam.
+      if (meta.keep != null) ob.crushKeep = meta.keep;
+      if (meta.crushMin != null) ob.crushMin = meta.crushMin;
       rec.ob = ob;
       obstacles.push(ob);
-      // NO collider entry: shells pass through light props (sapling rule)
+      // Shells: light props stay shoot-through (sapling rule) — but wall
+      // modules and trucks are REAL cover while intact: their collider blocks
+      // shells/LOS until the record breaks (flagged dead, restored on rematch).
+      if (meta.collider) {
+        const col = { min: ob.min.slice(), max: ob.max.slice(), dead: false };
+        rec.col = col;
+        colliders.push(col);
+      }
     } else if (meta.contact === 'loop') {
       const entry = { x, y, z, r: rec.r, h: rec.h, recIdx: idx, toppled: false };
       crushables.push(entry);
@@ -1581,52 +1617,65 @@ ${snowCap ? `
     }
   }
 
-  // --- low boundary walls (cover) — axis-aligned runs for tight AABBs ---
-  // world-dressing r1 WALL KIT: the old one-box-per-6m stone run repeated a
-  // single silhouette map-wide. Runs now build from a styled kit — per-map
-  // masonry family (P.wallStyle: fieldstone | brick w/ coping | adobe), real
-  // height variation, square END/CORNER POSTS with caps, and the authored gap
-  // (gapAt) renders as a BROKEN breach: crumbled remnant courses + tumbled
-  // block rubble instead of a clean void. Masonry runs stay SOLID (obstacles
-  // + colliders — the drive impact stop against heavy walls is unchanged).
+  // --- low boundary walls (cover) ---
+  // world-dressing r1 built these as a styled merged kit; DESTRUCTIBLES r1
+  // rebuilds every run as WALL_SEG (3 m) DESTRUCTIBLE MODULES: a tank at
+  // speed plows through (crushable obstacle, per-kind momentum scrub, never
+  // a hard stop), shells + HE splash breach them LOCALLY (module-granular),
+  // and each broken module leaves low crumbled rubble that persists for the
+  // battle. Intact modules keep REAL cover value — a per-module collider
+  // blocks shells/LOS until it dies with the module. Square END/CORNER POSTS
+  // stay static dressing (they anchor breach lips visually), as does the
+  // authored gapAt breach (crumbled courses + tumbled blocks).
   function addWallRun(x0, z0, x1, z1, gapAt = -1) {
     const style = P.wallStyle || 'fieldstone';
     const wallB = style === 'adobe' ? 'plaster' : 'stone';
+    // brick-style maps route to the stone module (urban's 'stone' texture IS
+    // the brick print); adobe keeps its own thicker mud module
+    const wallKind = style === 'adobe' ? 'walladobe' : 'wallstone';
     const along = Math.hypot(x1 - x0, z1 - z0);
-    const nSeg = Math.max(1, Math.round(along / 6));
-    const dx = (x1 - x0) / nSeg, dz = (z1 - z0) / nSeg;
-    const horizontal = Math.abs(dx) > Math.abs(dz);
-    const thick = style === 'adobe' ? 0.52 : 0.45;
-    const runH = (style === 'adobe' ? 1.05 : 1.0) + rng() * 0.2; // family height
+    const nSeg6 = Math.max(1, Math.round(along / 6)); // legacy gapAt frame
+    const nMod = Math.max(1, Math.round(along / WALL_SEG));
+    const tx = (x1 - x0) / along, tz = (z1 - z0) / along;
+    const yaw = Math.atan2(tx, tz); // module runs along local +z
+    const thick = style === 'adobe' ? 0.52 : 0.46;
+    const runH = 1.0 + rng() * 0.15; // family height scale
     let prevBuilt = false;
     function endPost(px, pz) {
       const py = heightField.getHeightAt(px, pz) - 0.15;
-      const ph = runH + 0.3;
+      const ph = runH * 1.05 + 0.3;
       const post = box(thick + 0.22, ph, thick + 0.22, 0.7);
       jitterUV(post, rng);
       buckets[wallB].push(post.translate(px, py + ph / 2, pz));
       buckets[wallB].push(box(thick + 0.34, 0.12, thick + 0.34, 0.8)
         .translate(px, py + ph + 0.05, pz)); // cap slab
     }
-    for (let k = 0; k < nSeg; k++) {
-      const cx = x0 + dx * (k + 0.5), cz = z0 + dz * (k + 0.5);
-      const skip = heightField._roadDist(cx, cz) < 5.5 || noVeg(cx, cz);
-      if (k === gapAt || skip) {
-        if (!skip && k === gapAt) {
-          // BROKEN BREACH: low crumbled remnant + tumbled blocks (drive-over)
-          const len = Math.abs(horizontal ? dx : dz) * 0.96;
-          for (const t of [0.18, 0.82]) { // stub courses at both breach lips
-            const sx = x0 + dx * (k + t), sz = z0 + dz * (k + t);
+    for (let k = 0; k < nMod; k++) {
+      const t0 = k * WALL_SEG, t1 = Math.min((k + 1) * WALL_SEG, along);
+      const tc = (t0 + t1) / 2;
+      const cx = x0 + tx * tc, cz = z0 + tz * tc;
+      // legacy gapAt (authored in the old ~6 m segmentation): modules whose
+      // center falls in that span render the static breach instead
+      const inGap = gapAt >= 0 && tc >= gapAt * (along / nSeg6) && tc < (gapAt + 1) * (along / nSeg6);
+      const skip = heightField._roadDist(cx, cz) < 5.5 || noVeg(cx, cz)
+        || Math.max(Math.abs(cx), Math.abs(cz)) > 478;
+      if (inGap || skip) {
+        if (!skip && inGap && !(k > 0 && gapAt >= 0
+          && (tc - WALL_SEG) >= gapAt * (along / nSeg6))) {
+          // BROKEN BREACH (once per gap): crumbled remnant + tumbled blocks
+          for (const bt of [0.18, 0.82]) { // stub courses at both breach lips
+            const sx = x0 + tx * (t0 + bt * (t1 - t0)), sz = z0 + tz * (t0 + bt * (t1 - t0));
             const sy = heightField.getHeightAt(sx, sz) - 0.15;
             const sh = 0.30 + rng() * 0.25;
-            const stub = box(horizontal ? len * 0.22 : thick, sh, horizontal ? thick : len * 0.22, 0.7);
+            const stub = box(thick, sh, WALL_SEG * 0.4, 0.7);
             jitterUV(stub, rng);
+            stub.rotateY(yaw);
             buckets[wallB].push(stub.translate(sx, sy + sh / 2, sz));
           }
           for (let b = 0; b < 5; b++) { // tumbled blocks feathering the gap
             const bt = 0.2 + rng() * 0.6;
-            const bx2 = x0 + dx * (k + bt) + (rng() - 0.5) * 1.6;
-            const bz2 = z0 + dz * (k + bt) + (rng() - 0.5) * 1.6;
+            const bx2 = x0 + tx * (t0 + bt * (t1 - t0)) + (rng() - 0.5) * 1.6;
+            const bz2 = z0 + tz * (t0 + bt * (t1 - t0)) + (rng() - 0.5) * 1.6;
             const bs = 0.16 + rng() * 0.22;
             const blk = roughenChunk(box(bs * 1.5, bs * 0.8, bs, 1.2), rng, bs * 0.4);
             jitterUV(blk, rng);
@@ -1635,31 +1684,17 @@ ${snowCap ? `
             buckets[wallB].push(blk);
           }
         }
-        if (prevBuilt) endPost(x0 + dx * k, z0 + dz * k); // post at the breach lip
+        if (prevBuilt) endPost(x0 + tx * t0, z0 + tz * t0); // post at the lip
         prevBuilt = false;
         continue;
       }
-      if (!prevBuilt) endPost(x0 + dx * k, z0 + dz * k); // run start / re-start
-      const y = heightField.getHeightAt(cx, cz) - 0.15;
-      const h = runH + (rng() - 0.5) * 0.22; // per-segment settle
-      const len = Math.abs(horizontal ? dx : dz) * 0.96;
-      const g = box(horizontal ? len : thick, h, horizontal ? thick : len, 0.7);
-      jitterUV(g, rng); // de-sync coursing between segments
-      g.translate(cx, y + h / 2, cz);
-      buckets[wallB].push(g);
-      if (style === 'brick') { // proud coping course
-        const cop = box(horizontal ? len * 1.01 : thick + 0.16, 0.10,
-          horizontal ? thick + 0.16 : len * 1.01, 0.9);
-        jitterUV(cop, rng);
-        buckets.stone.push(cop.translate(cx, y + h + 0.04, cz));
-      } else if (style === 'adobe' && rng() < 0.5) { // rounded mud cap read
-        const cap = box(horizontal ? len : thick * 0.7, 0.14,
-          horizontal ? thick * 0.7 : len, 0.9);
-        buckets.plaster.push(cap.translate(cx, y + h + 0.05, cz));
-      }
-      const hx = (horizontal ? len : thick) / 2, hz = (horizontal ? thick : len) / 2;
-      obstacles.push({ min: [cx - hx, y, cz - hz], max: [cx + hx, y + h, cz + hz] });
-      colliders.push({ min: [cx - hx, y, cz - hz], max: [cx + hx, y + h, cz + hz] });
+      if (!prevBuilt) endPost(x0 + tx * t0, z0 + tz * t0); // run (re)start
+      const ya = heightField.getHeightAt(x0 + tx * t0, z0 + tz * t0);
+      const yb = heightField.getHeightAt(x0 + tx * t1, z0 + tz * t1);
+      const cy = Math.min(ya, yb);
+      const tiltX = Math.atan2(yb - ya, t1 - t0) * 0.85;
+      addDestructible(wallKind, cx, cy - 0.13, cz, yaw,
+        runH * (0.94 + rng() * 0.12), tiltX, (rng() - 0.5) * 0.02);
       prevBuilt = true;
     }
     if (prevBuilt) endPost(x1, z1); // closing post
@@ -1827,6 +1862,124 @@ ${snowCap ? `
     }
   }
 
+  // --- DESTRUCTIBLES r1: soft-vehicle + military-clutter dressing ----------
+  // Supply trucks and utility 4x4s parked on roadside pull-offs and yards
+  // (destructible to burnt hulks), fuel-drum clusters with the rare RED
+  // explosive drum, ammo-box stacks, and campsite/supply-dump story clusters
+  // (tents + firewood + crates + drums) in the off-road clearings where
+  // battles funnel. Everything rides the instanced destructible layer.
+  {
+    const inh = P.inhabit || {};
+    const vrng = mulberry32(seed + 12007);
+    // roadside spot finder: offset from a road node, clear of buildings/spawns
+    function roadsideSpot(offMin, offMax, tries = 40) {
+      for (let t = 0; t < tries; t++) {
+        const nodes = roads[(vrng() * roads.length) | 0];
+        if (!nodes || nodes.length < 4) continue;
+        const i = 2 + ((vrng() * (nodes.length - 3)) | 0);
+        const [ax, az] = nodes[i], [bx, bz] = nodes[i + 1] || nodes[i - 1];
+        const tl = Math.hypot(bx - ax, bz - az) || 1;
+        const side = vrng() < 0.5 ? -1 : 1;
+        const off = offMin + vrng() * (offMax - offMin);
+        const x = ax - ((bz - az) / tl) * off * side;
+        const z = az + ((bx - ax) / tl) * off * side;
+        if (Math.max(Math.abs(x), Math.abs(z)) > 455) continue;
+        if (heightField._roadDist(x, z) < 4.6 || noVeg(x, z)) continue;
+        if (heightField.getGroundType(x, z) === 'soft') continue;
+        if (heightField.getNormalAt(x, z).y < 0.90) continue;
+        let bad = false;
+        for (const s of [L.spawns.player, ...L.spawns.enemies]) {
+          if (Math.hypot(x - s.x, z - s.z) < 24) { bad = true; break; }
+        }
+        if (bad) continue;
+        for (const pb of placedB) {
+          if (Math.hypot(x - pb.x, z - pb.z) < pb.rr + 2.5) { bad = true; break; }
+        }
+        if (bad) continue;
+        return [x, z, Math.atan2(bx - ax, bz - az)];
+      }
+      return null;
+    }
+    // parked supply trucks: nose along the road, the odd one mid-turn
+    for (let k = 0, cap = inh.trucks ?? 0; k < cap; k++) {
+      const spot = roadsideSpot(5.6, 9.5);
+      if (!spot) continue;
+      const y = heightField.getHeightAt(spot[0], spot[1]);
+      addDestructible('truck', spot[0], y - 0.04, spot[1],
+        spot[2] + (vrng() < 0.25 ? (vrng() - 0.5) * 1.6 : (vrng() - 0.5) * 0.3),
+        0.96 + vrng() * 0.10);
+      // truck stops spill cargo: crates/ammo beside the tailgate
+      if (vrng() < 0.6) scatterDestructibles('crate', spot[0], spot[1], 1, 2.6, 4.2);
+      if (vrng() < 0.45) scatterDestructibles('ammobox', spot[0], spot[1], 1, 2.4, 4.0);
+    }
+    // light utility 4x4s: yards + plaza edges
+    for (let k = 0, cap = inh.jeeps ?? 0; k < cap; k++) {
+      const spot = roadsideSpot(4.8, 7.5);
+      if (!spot) continue;
+      const y = heightField.getHeightAt(spot[0], spot[1]);
+      addDestructible('jeep', spot[0], y - 0.03, spot[1],
+        spot[2] + (vrng() - 0.5) * 0.9, 0.95 + vrng() * 0.1);
+    }
+    // fuel-drum clusters (2-4 drums; ~12% carry one RED explosive drum)
+    for (let k = 0, cap = inh.drumClusters ?? 0; k < cap; k++) {
+      const spot = roadsideSpot(5.0, 12);
+      if (!spot) continue;
+      const n = 2 + ((vrng() * 3) | 0);
+      let redDone = false;
+      for (let d = 0; d < n; d++) {
+        const a = vrng() * Math.PI * 2, r = vrng() * 1.4;
+        const x = spot[0] + Math.cos(a) * r, z = spot[1] + Math.sin(a) * r;
+        const y = heightField.getHeightAt(x, z);
+        const red = !redDone && vrng() < 0.12;
+        if (red) redDone = true;
+        addDestructible(red ? 'drumred' : 'drum', x, y - 0.02, z, vrng() * Math.PI * 2, 0.95 + vrng() * 0.1);
+      }
+      if (vrng() < 0.4) scatterDestructibles('pallet', spot[0], spot[1], 1, 1.6, 3.0);
+    }
+    // campsites / supply dumps: tents, firewood, crates, drums — the "life"
+    // clusters at village outskirts and along the approach woods
+    for (let k = 0, cap = inh.camps ?? 0; k < cap; k++) {
+      const spot = roadsideSpot(10, 26, 60);
+      if (!spot) continue;
+      const [cx, cz] = spot;
+      const yawC = vrng() * Math.PI * 2;
+      const y0 = heightField.getHeightAt(cx, cz);
+      addDestructible('tent', cx, y0 - 0.03, cz, yawC, 0.95 + vrng() * 0.15);
+      if (vrng() < 0.7) { // second tent facing the fire
+        const a = yawC + Math.PI * (0.6 + vrng() * 0.5);
+        const tx = cx + Math.cos(a) * (4 + vrng() * 2), tz = cz + Math.sin(a) * (4 + vrng() * 2);
+        if (heightField._roadDist(tx, tz) > 4.5 && !noVeg(tx, tz)) {
+          addDestructible('tent', tx, heightField.getHeightAt(tx, tz) - 0.03, tz,
+            a + Math.PI + (vrng() - 0.5) * 0.5, 0.9 + vrng() * 0.15);
+        }
+      }
+      // fire ring: small static stone circle + char decal read via clutter
+      const nStone = 5 + ((vrng() * 3) | 0);
+      const fy = heightField.getHeightAt(cx + 2.6, cz + 1.4);
+      for (let s2 = 0; s2 < nStone; s2++) {
+        const a = (s2 / nStone) * Math.PI * 2;
+        const st = box(0.22 + vrng() * 0.1, 0.18, 0.2, 1.4);
+        jitterUV(st, vrng);
+        st.rotateY(vrng() * Math.PI);
+        st.translate(cx + 2.6 + Math.cos(a) * 0.55, fy + 0.08, cz + 1.4 + Math.sin(a) * 0.55);
+        buckets.stone.push(st);
+      }
+      scatterDestructibles('firewood', cx, cz, 1, 2.2, 4.5);
+      scatterDestructibles('crate', cx, cz, 1 + ((vrng() * 2) | 0), 2.4, 5.5);
+      scatterDestructibles('ammobox', cx, cz, 1 + ((vrng() * 2) | 0), 2.0, 5.0);
+      if (vrng() < 0.5) scatterDestructibles('drum', cx, cz, 1 + ((vrng() * 2) | 0), 3.0, 6.0);
+      if (vrng() < 0.35) { // parked vehicle completes the camp read
+        const a = vrng() * Math.PI * 2;
+        const px2 = cx + Math.cos(a) * (6.5 + vrng() * 2), pz2 = cz + Math.sin(a) * (6.5 + vrng() * 2);
+        if (heightField._roadDist(px2, pz2) > 4.6 && !noVeg(px2, pz2)
+          && heightField.getNormalAt(px2, pz2).y > 0.9) {
+          addDestructible(vrng() < 0.5 ? 'jeep' : 'truck', px2,
+            heightField.getHeightAt(px2, pz2) - 0.04, pz2, vrng() * Math.PI * 2, 0.95);
+        }
+      }
+    }
+  }
+
   // --- hay bales + crates near buildings (world-dressing r1: instanced
   // DESTRUCTIBLES — a hull crushes them, shells burst them, hay puffs) ---
   for (let i = 0; P.hayCrates && i < Math.min(5, placedB.length); i++) {
@@ -1966,6 +2119,39 @@ ${snowCap ? `
           buckets.dark.push(wire);
           prevX = cx2; prevY = cy2; prevZ = cz2;
         }
+      }
+    }
+    // DESTRUCTIBLES r1: telegraph-pole DEBRIS — every pole line lost a few
+    // to the shelling: a snapped stump, the felled pole across the verge
+    // with its crossarm splayed, a coil of downed wire. Static dressing
+    // (no collision) that sells the fought-over road.
+    if (P.telegraph && poleLine.length > 3) {
+      const prng2 = mulberry32(seed + 4407);
+      const nDebris = Math.min(3, (poleLine.length / 5) | 0);
+      for (let d = 0; d < nDebris; d++) {
+        const pl = poleLine[(prng2() * poleLine.length) | 0];
+        const ox = pl.x + (prng2() - 0.5) * 4, oz = pl.z + (prng2() - 0.5) * 4;
+        if (Math.max(Math.abs(ox), Math.abs(oz)) > 460 || noVeg(ox, oz)) continue;
+        if (heightField._roadDist(ox, oz) < 4.2) continue;
+        const oy = heightField.getHeightAt(ox, oz);
+        const yawD = prng2() * Math.PI * 2;
+        // snapped stump
+        const stump = new THREE.CylinderGeometry(0.13, 0.17, 0.9 + prng2() * 0.6, 7, 1);
+        scaleUV(stump, 0.8, 1.0);
+        stump.rotateZ((prng2() - 0.5) * 0.24);
+        stump.translate(ox, oy + 0.45, oz);
+        buckets.wood.push(stump);
+        // felled pole lying along yawD, slightly proud of the grass
+        const fall = new THREE.CylinderGeometry(0.09, 0.15, 5.6 + prng2() * 1.2, 7, 1);
+        scaleUV(fall, 0.8, 3.0);
+        fall.rotateX(Math.PI / 2);
+        fall.rotateY(yawD);
+        fall.translate(ox + Math.sin(yawD) * 3.4, oy + 0.16, oz + Math.cos(yawD) * 3.4);
+        buckets.wood.push(fall);
+        const arm = box(1.4, 0.10, 0.09, 1.0); // crossarm knocked loose
+        arm.rotateY(yawD + 0.5 + prng2());
+        arm.translate(ox + Math.sin(yawD) * 5.6, oy + 0.10, oz + Math.cos(yawD) * 5.6);
+        buckets.wood.push(arm);
       }
     }
   }
@@ -2371,14 +2557,17 @@ ${snowCap ? `
   }
 
   // --- sandbag emplacements: defensive clusters along the main road + plaza ---
+  // DESTRUCTIBLES r1: sandbags no longer wall a hull OR eat shells — every
+  // emplacement is a destructible record (crushKeep ~0.97: you barely feel
+  // them) that bursts into spilled bags. The three sourced silhouettes ride
+  // the LOCAL_TYPES pools; a tank at speed just drives over the position.
   if (SOURCED.sandbags) {
     const srng = mulberry32(seed + 401);
-    const sbBig = bakedGeometry('sack_trench_quaternius', { targetH: 1.35, sink: 0.12 });
-    const sbSmall = bakedGeometry('sack_trench_small_quaternius', { targetH: 1.05, sink: 0.1 });
-    const sbWall = bakedGeometry('sandbags_jtoastie', { targetH: 1.0, sink: 0.1 });
+    const sbKind = (pick) => (pick < 0.45 ? 'sandbagbig' : pick < 0.8 ? 'sandbagsmall' : 'sandbagwall');
     let placedS = 0;
+    const sandbagCap = P.sandbagLines ?? 9;
     const roadA = L.roads[0];
-    for (let i = 6; i < roadA.length - 2 && placedS < 9; i += 3) {
+    for (let i = 6; i < roadA.length - 2 && placedS < sandbagCap; i += 3) {
       const [ax, az] = roadA[i], [bx, bz] = roadA[i + 1];
       if (Math.abs(az) > 330) continue;
       const tl = Math.hypot(bx - ax, bz - az);
@@ -2394,123 +2583,156 @@ ${snowCap ? `
       const y = heightField.getHeightAt(sx, sz);
       // face the road: bags run perpendicular to the offset direction
       const yaw = Math.atan2(bx - ax, bz - az) + (srng() - 0.5) * 0.3;
-      const pick = srng();
-      const geo = pick < 0.45 ? sbBig : pick < 0.8 ? sbSmall : sbWall;
-      const name = pick < 0.45 ? 'sbBig' : pick < 0.8 ? 'sbSmall' : 'sbWall';
-      addBakedInstance(name, geo, sx, y - 0.04, sz, yaw, 1.25 + srng() * 0.3);
-      const e = 2.6;
-      obstacles.push({ min: [sx - e, y, sz - e], max: [sx + e, y + 1.3, sz + e] });
-      colliders.push({ min: [sx - e, y, sz - e], max: [sx + e, y + 1.3, sz + e] });
+      addDestructible(sbKind(srng()), sx, y - 0.04, sz, yaw, 1.25 + srng() * 0.3);
+      // DESTRUCTIBLES r1: defended positions carry supplies — ammo boxes and
+      // the odd drum cluster behind the bags (all destructible clutter)
+      if (srng() < 0.55) scatterDestructibles('ammobox', sx, sz, 1, 1.8, 3.2);
+      if (srng() < 0.3) scatterDestructibles('crate', sx, sz, 1, 1.8, 3.0);
       placedS++;
     }
     // plaza corner nest by the well
     {
       const nx = junction.x - 11, nz = junction.z - 8;
       const y = heightField.getHeightAt(nx, nz);
-      addBakedInstance('sbBig', sbBig, nx, y - 0.04, nz, Math.PI * 0.7, 1.4);
-      addBakedInstance('sbSmall', sbSmall, nx + 3.4, y - 0.04, nz + 1.6, Math.PI * 0.25, 1.3);
-      obstacles.push({ min: [nx - 3, y, nz - 2.5], max: [nx + 4.5, y + 1.4, nz + 3] });
-      colliders.push({ min: [nx - 3, y, nz - 2.5], max: [nx + 4.5, y + 1.4, nz + 3] });
+      addDestructible('sandbagbig', nx, y - 0.04, nz, Math.PI * 0.7, 1.4);
+      addDestructible('sandbagsmall', nx + 3.4,
+        heightField.getHeightAt(nx + 3.4, nz + 1.6) - 0.04, nz + 1.6, Math.PI * 0.25, 1.3);
+      scatterDestructibles('ammobox', nx + 1.5, nz + 1, 2, 1.2, 2.6);
     }
   }
 
-  // --- burned-out vehicle wrecks (r7): charred hulks along the roads -------
-  // Every map read PEACEFUL (critique: "no wrecks... maps read uncontested").
-  // Generic knocked-out hulks — low hull with collapsed running gear, skewed
-  // turret, drooped gun — in charred vertex colors with rust bloom, one merged
-  // mesh on the rock material (matte, no spec sparkle), plus a scorch decal
-  // pushed into the crater decal pass below.
+  // --- knocked-out TANK WRECKS: real roster vehicles, baked static ----------
+  // DESTRUCTIBLES r1 replaces the r7 generic box hulks with the game's own
+  // tank models: era-appropriate roster vehicles built through tankFactory,
+  // posed by the factory's settled-wreck machinery (turret tossed or unseated,
+  // gun drooped), charred/rust-painted and BAKED into ONE static merged mesh
+  // per map (src/world/wrecks.js — no live tank cost, no articulation).
+  // They are pure DRESSING: solid obstacles + shell colliders, never in
+  // game.tanks, invisible to spotting and the minimap. Placement stays the
+  // storytelling read: roadside kills along the advance routes, plus paired
+  // "duel" beats where two hulks face each other off the same verge.
   const wreckScorch = [];
-  if ((P.wrecks ?? 0) > 0) {
-    const wrng = mulberry32(seed + 909);
-    const wreckGeos = [];
-    function charPaint(geo, rustBias) {
-      const n = geo.attributes.position.count;
-      const col = new Float32Array(n * 3);
-      for (let i = 0; i < n; i++) {
-        const v = 0.055 + wrng() * 0.05;
-        if (wrng() < rustBias) { // rust bloom patches
-          const rl = 0.10 + wrng() * 0.10;
-          col[i * 3] = rl * 1.9; col[i * 3 + 1] = rl * 0.95; col[i * 3 + 2] = rl * 0.55;
-        } else {
-          col[i * 3] = v * 1.06; col[i * 3 + 1] = v; col[i * 3 + 2] = v * 0.94;
-        }
+  const tankWreckSpots = []; // probe/debug: {specId,x,z,yaw,hx,hz,h} per hulk
+  {
+    const wCfg = P.tankWrecks || null;
+    const wreckCount = wCfg ? (wCfg.count ?? 3) : (P.wrecks ?? 0);
+    if (wreckCount > 0) {
+      const wrng = mulberry32(seed + 909);
+      const era = (wCfg && wCfg.era) || 'ww2';
+      const pool = (wCfg && wCfg.ids) || wreckPool(era);
+      const bakeCache = new Map(); // specId|pop -> bake result
+      const wreckGeos = [];
+      const wreckShadowGeos = []; // factory shadow proxies, wreck-posed
+      let bakedTris = 0;
+      function bakeFor(specId, pop) {
+        const key = specId + (pop ? '|p' : '');
+        if (bakeCache.has(key)) return bakeCache.get(key);
+        const baked = bakeTankWreck(engineCtx, specId, {
+          seed: seed + bakeCache.size * 131, pop,
+        });
+        bakeCache.set(key, baked);
+        return baked;
       }
-      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-      return geo;
-    }
-    function buildWreck(x, z, yaw) {
-      const y = heightField.getHeightAt(x, z);
-      const parts = [];
-      const rust = 0.22 + wrng() * 0.25;
-      // hull, settled low on dead suspension
-      parts.push(charPaint(box(2.9, 0.95, 5.4, 0.6).translate(0, 0.78, 0), rust));
-      // glacis wedge
-      const gl = box(2.9, 0.9, 1.3, 0.6);
-      gl.rotateX(-0.6);
-      parts.push(charPaint(gl.translate(0, 0.86, 2.55), rust));
-      // track runs (thrown/collapsed): one side sags, one spills forward
-      parts.push(charPaint(box(0.55, 0.62, 5.7, 0.8).translate(-1.68, 0.42, 0), rust + 0.1));
-      parts.push(charPaint(box(0.55, 0.5, 4.6, 0.8).rotateY(0.06).translate(1.7, 0.34, -0.4), rust + 0.1));
-      // skewed turret + drooped gun (knocked out, not parked)
-      const tYaw = (wrng() - 0.5) * 1.6;
-      const tur = new THREE.CylinderGeometry(1.12, 1.28, 0.62, 10, 1);
-      scaleUV(tur, 1, 1);
-      tur.rotateY(tYaw);
-      parts.push(charPaint(tur.translate(-0.15, 1.55, -0.5), rust));
-      const gun = new THREE.CylinderGeometry(0.075, 0.10, 3.3, 6, 1);
-      scaleUV(gun, 1, 1);
-      gun.rotateX(Math.PI / 2 + 0.10); // droops toward the ground
-      gun.rotateY(tYaw);
-      parts.push(charPaint(gun.translate(-0.15 + Math.sin(tYaw) * 2.2, 1.28, -0.5 + Math.cos(tYaw) * 2.2), rust * 0.6));
-      // blown-open hatch leaning on the turret roof
-      parts.push(charPaint(box(0.62, 0.07, 0.62, 1).rotateZ(0.9).translate(0.42, 1.98, -0.7), rust));
-      const tilt = (wrng() - 0.5) * 0.12;
-      for (const g of parts) {
+      function placeWreck(x, z, yaw) {
+        const specId = pool[(wrng() * pool.length) | 0];
+        const pop = wrng() < 0.45; // mix ammo-rack tosses with unseated kills
+        const baked = bakeFor(specId, pop);
+        if (!baked) return false;
+        bakedTris += baked.tris; // budget counts PLACED tris (clones render too)
+        const y = heightField.getHeightAt(x, z);
+        const tilt = (wrng() - 0.5) * 0.10;
+        const g = baked.geo.clone();
         g.rotateZ(tilt);
         g.rotateY(yaw);
-        g.translate(x, y - 0.06, z);
+        g.translate(x, y - 0.14, z); // settled on dead suspension
         wreckGeos.push(g);
-      }
-      obstacles.push({ min: [x - 3.1, y, z - 3.1], max: [x + 3.1, y + 2.0, z + 3.1] });
-      colliders.push({ min: [x - 3.1, y, z - 3.1], max: [x + 3.1, y + 2.0, z + 3.1] });
-      wreckScorch.push([x, z]);
-    }
-    let placedW = 0;
-    for (let ri = 0; ri < roads.length && placedW < P.wrecks; ri++) {
-      const nodes = roads[ri];
-      for (let i = 5; i < nodes.length - 1 && placedW < P.wrecks; i += 4 + ((wrng() * 3) | 0)) {
-        const [ax, az] = nodes[i], [bx, bz] = nodes[i + 1];
-        const tl = Math.hypot(bx - ax, bz - az) || 1;
-        const side = wrng() < 0.5 ? -1 : 1;
-        const off = 6.5 + wrng() * 4.5;
-        const px = ax - ((bz - az) / tl) * off * side;
-        const pz = az + ((bx - ax) / tl) * off * side;
-        if (Math.max(Math.abs(px), Math.abs(pz)) > 440) continue;
-        if (heightField._roadDist(px, pz) < 5.2) continue;
-        if (heightField.getGroundType(px, pz) === 'soft' || noVeg(px, pz)) continue;
-        if (heightField.getNormalAt(px, pz).y < 0.88) continue;
-        let bad = false;
-        for (const s of [L.spawns.player, ...L.spawns.enemies]) {
-          if (Math.hypot(px - s.x, pz - s.z) < 30) { bad = true; break; }
+        if (baked.shadowGeo) {
+          const sg = baked.shadowGeo.clone();
+          sg.rotateZ(tilt);
+          sg.rotateY(yaw);
+          sg.translate(x, y - 0.14, z);
+          wreckShadowGeos.push(sg);
         }
-        if (bad) continue;
-        for (const pb of placedB) {
-          if (Math.hypot(px - pb.x, pz - pb.z) < pb.rr + 4) { bad = true; break; }
-        }
-        if (bad || Math.hypot(px - junction.x, pz - junction.z) < 20) continue;
-        buildWreck(px, pz, Math.atan2(bx - ax, bz - az) + (wrng() - 0.5) * 0.9);
-        placedW++;
+        // solid obstacle + shell collider from the yaw-rotated footprint
+        const cs = Math.abs(Math.cos(yaw)), sn = Math.abs(Math.sin(yaw));
+        const hx = baked.hx * cs + baked.hz * sn + 0.2;
+        const hz = baked.hx * sn + baked.hz * cs + 0.2;
+        obstacles.push({ min: [x - hx, y, z - hz], max: [x + hx, y + baked.h - 0.2, z + hz] });
+        colliders.push({ min: [x - hx, y, z - hz], max: [x + hx, y + baked.h - 0.2, z + hz] });
+        wreckScorch.push([x, z]);
+        tankWreckSpots.push({ specId, x, z, yaw, hx, hz, h: baked.h });
+        return true;
       }
-    }
-    if (wreckGeos.length > 0) {
-      const wm = new THREE.Mesh(
-        mergeGeometries(wreckGeos.map((g) => (g.index ? g.toNonIndexed() : g)), false),
-        mats.rock);
-      wm.castShadow = true;
-      wm.receiveShadow = true;
-      wm.matrixAutoUpdate = false;
-      group.add(wm);
+      let placedW = 0;
+      for (let ri = 0; ri < roads.length && placedW < wreckCount; ri++) {
+        const nodes = roads[ri];
+        for (let i = 5; i < nodes.length - 1 && placedW < wreckCount; i += 4 + ((wrng() * 3) | 0)) {
+          if (bakedTris > 260000) break; // perf stop — enough hulks for one map
+          const [ax, az] = nodes[i], [bx, bz] = nodes[i + 1];
+          const tl = Math.hypot(bx - ax, bz - az) || 1;
+          const side = wrng() < 0.5 ? -1 : 1;
+          const off = 6.5 + wrng() * 4.5;
+          const px = ax - ((bz - az) / tl) * off * side;
+          const pz = az + ((bx - ax) / tl) * off * side;
+          if (Math.max(Math.abs(px), Math.abs(pz)) > 440) continue;
+          if (heightField._roadDist(px, pz) < 5.2) continue;
+          if (heightField.getGroundType(px, pz) === 'soft' || noVeg(px, pz)) continue;
+          if (heightField.getNormalAt(px, pz).y < 0.88) continue;
+          let bad = false;
+          for (const s of [L.spawns.player, ...L.spawns.enemies]) {
+            if (Math.hypot(px - s.x, pz - s.z) < 30) { bad = true; break; }
+          }
+          if (bad) continue;
+          for (const pb of placedB) {
+            if (Math.hypot(px - pb.x, pz - pb.z) < pb.rr + 4) { bad = true; break; }
+          }
+          if (bad || Math.hypot(px - junction.x, pz - junction.z) < 20) continue;
+          const yawW = Math.atan2(bx - ax, bz - az) + (wrng() - 0.5) * 0.9;
+          if (!placeWreck(px, pz, yawW)) continue;
+          placedW++;
+          // paired DUEL beat: a second hulk 9-14 m off, guns facing the first
+          if (placedW < wreckCount && wrng() < 0.4) {
+            const da = wrng() * Math.PI * 2;
+            const dd = 9 + wrng() * 5;
+            const qx = px + Math.cos(da) * dd, qz = pz + Math.sin(da) * dd;
+            if (Math.max(Math.abs(qx), Math.abs(qz)) <= 440
+              && heightField._roadDist(qx, qz) >= 5.2
+              && heightField.getGroundType(qx, qz) !== 'soft' && !noVeg(qx, qz)
+              && heightField.getNormalAt(qx, qz).y >= 0.88) {
+              if (placeWreck(qx, qz, Math.atan2(px - qx, pz - qz) + (wrng() - 0.5) * 0.3)) placedW++;
+            }
+          }
+        }
+      }
+      if (wreckGeos.length > 0) {
+        const wm = new THREE.Mesh(mergeGeometries(wreckGeos, false), mats.baked);
+        wm.name = 'tank-wrecks';
+        // PERF: the full hulks never enter the shadow passes — the factory's
+        // own low-poly proxies (baked below in the same pose) cast instead,
+        // exactly like live procedural tanks (installProceduralShadowProxies)
+        wm.castShadow = false;
+        wm.receiveShadow = true;
+        wm.matrixAutoUpdate = false;
+        group.add(wm);
+        for (const g of wreckGeos) g.dispose();
+        if (wreckShadowGeos.length > 0) {
+          const shadowMat = new THREE.MeshBasicMaterial({
+            name: 'TankWreckShadowProxy', colorWrite: false, depthWrite: false,
+          });
+          const sm = new THREE.Mesh(mergeGeometries(wreckShadowGeos, false), shadowMat);
+          sm.name = 'tank-wrecks-shadow';
+          sm.castShadow = true;
+          sm.receiveShadow = false;
+          sm.matrixAutoUpdate = false;
+          group.add(sm);
+          for (const g of wreckShadowGeos) g.dispose();
+        }
+      }
+      for (const baked of bakeCache.values()) {
+        if (!baked) continue;
+        baked.geo.dispose();
+        if (baked.shadowGeo) baked.shadowGeo.dispose();
+      }
     }
   }
 
@@ -3091,15 +3313,23 @@ ${snowCap ? `
   const _zeroScale = new THREE.Vector3(1e-4, 1e-4, 1e-4);
   for (const [kind, pool] of dPools) {
     const meta = pool.meta;
-    const mat = meta.mat === 'wood' ? mats.wood
-      : meta.mat === 'straw' ? mats.straw : mats.baked;
+    // DESTRUCTIBLES r1: wall modules ride the map-toned masonry materials
+    // ('stone'/'plaster') so runs match the biome exactly like the old
+    // merged walls did; everything else keeps the r1 wood/straw/baked split.
+    const mat = mats[meta.mat] || mats.baked;
     const geoI = meta.build(drng);
     const imI = new THREE.InstancedMesh(geoI, mat, pool.mats4.length);
     for (let i = 0; i < pool.mats4.length; i++) imI.setMatrixAt(i, pool.mats4[i]);
+    // winter: sourced sandbag models take the dark wet-hessian tint the old
+    // solid emplacements wore (see bakedTint note below)
+    if (mapId === 'winter' && kind.startsWith('sandbag')) {
+      const tint = new THREE.Color(0.52, 0.50, 0.47);
+      for (let i = 0; i < pool.mats4.length; i++) imI.setColorAt(i, tint);
+    }
     imI.castShadow = true;
     imI.receiveShadow = true;
     imI.matrixAutoUpdate = false;
-    if (meta.cls === 'topple') imI.frustumCulled = false; // instances animate
+    if (meta.cls === 'topple' || meta.cls === 'toss') imI.frustumCulled = false; // instances animate
     else imI.computeBoundingSphere();
     imI.name = 'destructible-' + kind;
     group.add(imI);
@@ -3155,31 +3385,59 @@ ${snowCap ? `
     if (crushAnims.length >= MAX_CRUSH_ANIMS) {
       const old = crushAnims.shift(); // snap-finish the oldest
       if (!old.placement) { old.im.getMatrixAt(old.index, _cm); old.placement = _cm.clone(); }
-      poseToppled(old, old.maxAng);
+      if (old.type === 'toss') {
+        if (old.spin == null) { old.spin = 6; old.r = old.h * 0.35; }
+        poseTossed(old, old.dur);
+      } else {
+        poseToppled(old, old.maxAng);
+      }
     }
     crushAnims.push(a);
   }
 
+  // DESTRUCTIBLES r1: explosive chain queue — a red fuel drum detonating
+  // inside breakRecord must not recurse into shellImpact mid-iteration, so
+  // blasts are deferred one tick (also naturally staggers chained drums).
+  const pendingBlasts = [];
+
   /**
-   * Break/topple one destructible record. All three trigger paths land here
+   * Break/topple/toss one destructible record. All trigger paths land here
    * (hull-overrun obstacle seam, hull-radius loop, shell sweep/impact).
    * @param {number} idx destructibles index
    * @param {number} dx break direction (XZ, need not be unit)
+   * @param {number} [speed=0] impact speed m/s (hull overrun) — debris throw
+   *   inherits it; 0 = shell-grade base energy
+   * @param {string} [cause='shell'] 'ram' | 'shell' | 'blast'
    * @returns {boolean} true if the record broke now
    */
-  function breakRecord(idx, dx, dz) {
+  function breakRecord(idx, dx, dz, speed = 0, cause = 'shell') {
     const rec = destructibles[idx];
     if (!rec || rec.state) return false;
     const pool = dPools.get(rec.kind);
     if (!pool || !pool.imI) return false;
     rec.state = 1;
     if (rec.ob) rec.ob.crushed = true;          // ghost for collision + AI
+    if (rec.col) rec.col.dead = true;           // shells/LOS pass the breach
     if (rec.loopRef) rec.loopRef.toppled = true; // stop the main.js loop
     const l = Math.hypot(dx, dz) || 1;
     if (rec.cls === 'topple') {
       pushCrushAnim({
         im: pool.imI, index: rec.slot, x: rec.x, y: rec.y, z: rec.z,
         ax: -dz / l, az: dx / l, t: 0, placement: null, maxAng: 1.48,
+      });
+    } else if (rec.cls === 'toss') {
+      // DESTRUCTIBLES r1: rammed drums/churns go FLYING — short ballistic
+      // arc along the impact direction (speed-scaled), tumbling in flight,
+      // settling on their side. Persists via the anim's final pose.
+      const th = 2.2 + Math.min(speed, 12) * 0.55;    // horizontal throw m/s
+      pushCrushAnim({
+        type: 'toss', im: pool.imI, index: rec.slot,
+        x: rec.x, y: rec.y, z: rec.z, h: rec.h * rec.sc,
+        vx: (dx / l) * th + (drng() - 0.5) * 1.2,
+        vz: (dz / l) * th + (drng() - 0.5) * 1.2,
+        vy: 2.6 + Math.min(speed, 12) * 0.30,
+        ax: -dz / l, az: dx / l,
+        t: 0, placement: null, dur: 1.5,
       });
     } else {
       // swap-out: zero-scale the intact slot, activate a broken slot in place
@@ -3197,18 +3455,29 @@ ${snowCap ? `
         }
       }
     }
+    // explosive kinds (red fuel drums): a proper blast next tick — flavored
+    // fireball via the fx seam + chained radius damage onto nearby records
+    if (pool.meta.explosive) {
+      pendingBlasts.push({ x: rec.x, y: rec.y + rec.h * 0.4, z: rec.z });
+    }
     if (fxBudget > 0) {
       fxBudget--;
-      emitBreakFx(rec.kind, rec.x, rec.y + Math.min(0.5, rec.h * 0.3), rec.z, dx / l, dz / l, rec.h);
+      // debris inherits the rammer's velocity: dir magnitude carries energy
+      // (1 = shell-grade break; a 14 m/s overrun throws ~2.6x as hard)
+      const throwK = 1 + Math.min(speed, 14) * 0.115;
+      emitBreakFx(rec.kind, rec.x, rec.y + Math.min(0.5, rec.h * 0.3), rec.z,
+        (dx / l) * throwK, (dz / l) * throwK, rec.h);
     }
+    // audio seam (DESTRUCTIBLES r1): every destruction reports on the bus
+    emitDestroyed({ kind: rec.kind, pos: [rec.x, rec.y, rec.z], cause });
     return true;
   }
 
   /** main.js crushables-loop contract (poles + 'loop'-class destructibles). */
-  function crushProp(i, dx, dz) {
+  function crushProp(i, dx, dz, speed = 0) {
     const c = crushables[i];
     if (!c || c.toppled) return false;
-    if (c.recIdx != null) { c.toppled = true; return breakRecord(c.recIdx, dx, dz); }
+    if (c.recIdx != null) { c.toppled = true; return breakRecord(c.recIdx, dx, dz, speed, 'ram'); }
     if (!poleIM) return false;
     c.toppled = true;
     const l = Math.hypot(dx, dz) || 1;
@@ -3221,8 +3490,8 @@ ${snowCap ? `
   }
 
   /** map.js crushObstacle seam for prop-tagged crushable obstacles. */
-  function crushDestructible(propIdx, dx, dz) {
-    return breakRecord(propIdx, dx, dz);
+  function crushDestructible(propIdx, dx, dz, speed = 0, cause = 'ram') {
+    return breakRecord(propIdx, dx, dz, speed, cause);
   }
 
   // shell paths (registered through src/world/destructibles.js; effects.js
@@ -3270,12 +3539,13 @@ ${snowCap ? `
           if (u1 < t1) t1 = u1;
           if (t0 > t1) { hit = false; break; }
         }
-        if (hit && breakRecord(idx, dx, dz) && ++broke >= 3) return;
+        if (hit && breakRecord(idx, dx, dz, 0, 'shell') && ++broke >= 3) return;
       }
     }
   }
   function shellImpact(x, y, z, opts = {}) {
     const r = opts.r ?? (opts.he ? 4.6 : 1.0);
+    const cause = opts.cause || 'blast';
     let broke = 0;
     for (const cell of cellsAround(x, z, x, z, r + 2.5)) {
       for (const idx of cell) {
@@ -3284,7 +3554,7 @@ ${snowCap ? `
         const ddx = rec.x - x, ddz = rec.z - z;
         if (Math.hypot(ddx, ddz) > r + rec.r) continue;
         if (y < rec.y - r || y > rec.y + rec.h + r) continue;
-        if (breakRecord(idx, ddx, ddz) && ++broke >= 6) return;
+        if (breakRecord(idx, ddx, ddz, 0, cause) && ++broke >= 6) return;
       }
     }
   }
@@ -3298,31 +3568,133 @@ ${snowCap ? `
     impact: shellImpact,
   });
 
+  // DESTRUCTIBLES r1: tossed-prop pose — ballistic arc along the impact
+  // direction with tumble, composed about the prop's own center against the
+  // ORIGINAL placement (same non-compounding rule as the hinge topple).
+  const _tq = new THREE.Quaternion();
+  function poseTossed(a, t) {
+    const u = Math.min(t / a.dur, 1);
+    const ox = a.vx * t, oz = a.vz * t;
+    let oy = a.vy * t - 4.9 * t * t;
+    // rest pose: lying on its side — center drops from h/2 to its radius
+    const rest = (a.r ?? a.h * 0.34) - a.h * 0.5;
+    const gd = heightField.getHeightAt(a.x + ox, a.z + oz)
+      - heightField.getHeightAt(a.x, a.z);
+    if (oy < rest + gd) oy = rest + gd;
+    // tumble, easing into a flat-lying quarter-turn multiple by touchdown
+    const rawAng = a.spin * t;
+    const lieAng = (Math.floor(rawAng / Math.PI) + 0.5) * Math.PI;
+    const ang = u < 0.72 ? rawAng : rawAng + (lieAng - rawAng) * ((u - 0.72) / 0.28);
+    _cax.set(a.ax, 0, a.az).normalize();
+    _tq.setFromAxisAngle(_cax, ang);
+    // M = T(flight offset) * T(center) * R * T(-center) * placement — tumble
+    // about the prop's own mid-height, carried along the ballistic offset
+    const cy = a.y + a.h * 0.5;
+    const m = new THREE.Matrix4().makeTranslation(a.x + ox, cy + oy, a.z + oz)
+      .multiply(new THREE.Matrix4().makeRotationFromQuaternion(_tq))
+      .multiply(new THREE.Matrix4().makeTranslation(-a.x, -cy, -a.z))
+      .multiply(a.placement);
+    a.im.setMatrixAt(a.index, m);
+    a.im.instanceMatrix.needsUpdate = true;
+  }
+
   function updateProps(dt) {
     fxBudget = 6; // per-frame kind-burst cap refill
+    // DESTRUCTIBLES r1: deferred explosive-drum blasts (max 2/tick so chains
+    // ripple instead of detonating as one frame spike)
+    for (let b = 0; b < 2 && pendingBlasts.length; b++) {
+      const bl = pendingBlasts.shift();
+      emitBreakFx('drumblast', bl.x, bl.y, bl.z, 0, 0, 1.4); // flavored fireball
+      shellImpact(bl.x, bl.y, bl.z, { r: 5.4, he: true, cause: 'blast' });
+    }
     if (!crushAnims.length) return; // zero per-frame cost when idle
     for (let k = crushAnims.length - 1; k >= 0; k--) {
       const a = crushAnims[k];
+      if (!a.placement) {
+        // capture the ORIGINAL placement on the first tick so the hinge/arc
+        // composes against it, never an already-rotated matrix
+        a.im.getMatrixAt(a.index, _cm);
+        a.placement = _cm.clone();
+        if (a.type === 'toss') {
+          a.spin = 5.0 + mulberry32((a.index + 3) * 2654435761)() * 4.5;
+          a.r = a.h * 0.35;
+        } else {
+          // random hinge-axis wobble so simultaneous topples de-sync
+          const wob = (mulberry32((a.index + 1) * 2654435761)() - 0.5) * 0.22;
+          const cw = Math.cos(wob), sw = Math.sin(wob);
+          const nx = a.ax * cw - a.az * sw, nz = a.ax * sw + a.az * cw;
+          a.ax = nx; a.az = nz;
+        }
+      }
+      if (a.type === 'toss') {
+        a.t = Math.min(a.t + dt, a.dur);
+        poseTossed(a, a.t);
+        if (a.t >= a.dur) crushAnims.splice(k, 1);
+        continue;
+      }
       a.t = Math.min(a.t + dt, 1.1);
       // eased fall to ~83-85deg with a small end bounce
       const u = Math.min(a.t / 0.8, 1);
       let ang = a.maxAng * u * u * (3 - 2 * u);
       if (a.t > 0.8) ang = a.maxAng - 0.06 * Math.sin((a.t - 0.8) * 18) * Math.exp(-(a.t - 0.8) * 6);
-      if (!a.placement) {
-        // capture the ORIGINAL placement on the first tick so the hinge
-        // composes against it, never an already-rotated matrix
-        a.im.getMatrixAt(a.index, _cm);
-        a.placement = _cm.clone();
-        // random hinge-axis wobble so simultaneous topples de-sync
-        const wob = (mulberry32((a.index + 1) * 2654435761)() - 0.5) * 0.22;
-        const cw = Math.cos(wob), sw = Math.sin(wob);
-        const nx = a.ax * cw - a.az * sw, nz = a.ax * sw + a.az * cw;
-        a.ax = nx; a.az = nz;
-      }
       poseToppled(a, ang);
       if (a.t >= 1.1) crushAnims.splice(k, 1);
     }
   }
+
+  /**
+   * DESTRUCTIBLES r1: rematch restore — worlds are cached and reused across
+   * battles, so startBattle() calls this to stand every broken/toppled/
+   * tossed destructible back up: records reset, intact instance matrices
+   * restored, broken pools emptied, obstacle/collider ghosts revived, pole
+   * topples righted and any in-flight anims dropped.
+   */
+  function resetDestructibles() {
+    crushAnims.length = 0;
+    pendingBlasts.length = 0;
+    for (const rec of destructibles) {
+      if (rec.ob) {
+        rec.ob.crushed = false;
+        rec.ob._pressS = 0;
+        rec.ob._pressT = -1e9;
+      }
+      if (rec.col) rec.col.dead = false;
+      if (rec.loopRef) rec.loopRef.toppled = false;
+      if (!rec.state) continue;
+      rec.state = 0;
+      const pool = dPools.get(rec.kind);
+      if (pool && pool.imI) {
+        pool.imI.setMatrixAt(rec.slot, pool.mats4[rec.slot]);
+        pool.imI.instanceMatrix.needsUpdate = true;
+      }
+    }
+    for (const pool of dPools.values()) {
+      pool.nBroken = 0;
+      if (pool.imB) {
+        pool.imB.count = 0;
+        pool.imB.visible = false;
+        pool.imB.instanceMatrix.needsUpdate = true;
+      }
+    }
+    // felled telegraph poles stand back up (their placement matrices are
+    // authoritative in bakedInstances; the topple only ever composed on top)
+    if (poleIM) {
+      let dirty = false;
+      for (const c of crushables) {
+        if (c.recIdx != null || c.index == null) continue;
+        if (!c.toppled) continue;
+        c.toppled = false;
+        const e = bakedInstances.get('pole');
+        if (e && e.list[c.index]) {
+          poleIM.setMatrixAt(c.index, e.list[c.index]);
+          dirty = true;
+        }
+      }
+      if (dirty) poleIM.instanceMatrix.needsUpdate = true;
+    }
+  }
+
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible,
-    destructibles, updateProps, features: { buildings: buildingFeatures } };
+    destructibles, updateProps, resetDestructibles, tankWreckSpots,
+    features: { buildings: buildingFeatures } };
 }

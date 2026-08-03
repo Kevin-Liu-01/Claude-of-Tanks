@@ -3408,11 +3408,243 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      */
     propBreak(kind, pos, dir, heightM = 1.2) {
       const gy = groundY(pos.x, pos.z);
-      const fam = /^fence|^gate|crate|pallet|cart|stall|bench|trough|firewood|sled|rugframe/.test(kind) ? 'wood'
-        : /bale|stook|hay/.test(kind) ? 'hay'
-          : kind === 'barrel' ? 'barrel'
-            : kind === 'pot' ? 'pot'
-              : /lamp|drum|churn/.test(kind) ? 'metal' : 'wood';
+      // DESTRUCTIBLES r1: dir now carries MAGNITUDE — 1 = shell-grade break,
+      // a ramming hull scales it with its overrun speed (props.js breakRecord)
+      // so every throw velocity below inherits the tank's momentum.
+      const fam = kind === 'drumblast' ? 'drumblast'
+        : /^wall/.test(kind) ? 'masonry'
+          : /^sandbag/.test(kind) ? 'sandbag'
+            : /truck|jeep/.test(kind) ? 'vehicle'
+              : kind === 'tent' ? 'canvas'
+                : kind === 'ammobox' ? 'ammo'
+                  : /^fence|^gate|crate|pallet|cart|stall|bench|trough|firewood|sled|rugframe/.test(kind) ? 'wood'
+                    : /bale|stook|hay/.test(kind) ? 'hay'
+                      : kind === 'barrel' ? 'barrel'
+                        : kind === 'pot' ? 'pot'
+                          : /lamp|drum|churn/.test(kind) ? 'metal' : 'wood';
+      if (fam === 'masonry') {
+        // wall module breach: a dense shower of masonry chunks with real
+        // ballistics (velocity inherited from the rammer via dir magnitude,
+        // gravity, tumble, ground settle in the debris shader) + a rolling
+        // stone-dust cloud. Adobe walls dust warmer than fieldstone.
+        const adobe = /adobe/.test(kind);
+        const dustA = adobe ? 0xa58a64 : 0x8d877b, dustB = adobe ? 0x86704f : 0x6f695e;
+        for (let i = 0; i < 15; i++) {
+          _debO.pos[0] = pos.x + (rng() - 0.5) * 1.6;
+          _debO.pos[1] = gy + 0.25 + rng() * Math.min(1.0, heightM * 0.8);
+          _debO.pos[2] = pos.z + (rng() - 0.5) * 1.6;
+          _debO.vel[0] = dir.x * (2.2 + rng() * 2.6) + (rng() - 0.5) * 3.6;
+          _debO.vel[1] = 1.8 + rng() * 3.4;
+          _debO.vel[2] = dir.z * (2.2 + rng() * 2.6) + (rng() - 0.5) * 3.6;
+          _debO.life = 1.5 + rng() * 0.5;
+          _debO.scale = 0.10 + rng() * 0.12; // real masonry lumps, not chips
+          _debO.spin = 8 + rng() * 14;
+          _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+          _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
+          particles.emit('debris', _debO);
+        }
+        for (let i = 0; i < 11; i++) {
+          const a = rng() * Math.PI * 2;
+          _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.8;
+          _puffO.pos[1] = gy + 0.3 + rng() * 0.7;
+          _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.8;
+          _puffO.vel[0] = Math.cos(a) * (1.8 + rng() * 2.4) + dir.x * 2.2;
+          _puffO.vel[1] = 1.0 + rng() * 1.5;
+          _puffO.vel[2] = Math.sin(a) * (1.8 + rng() * 2.4) + dir.z * 2.2;
+          _puffO.life = 1.6 + rng() * 1.1;
+          _puffO.size0 = 0.7 + rng() * 0.4; _puffO.size1 = 2.8 + rng() * 1.5;
+          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.8;
+          col3(dustA, _puffO.col0); col3(dustB, _puffO.col1);
+          _puffO.alpha = 0.46 + rng() * 0.16; _puffO.grav = -0.42; _puffO.birthOffset = 0;
+          particles.emit('dust', _puffO);
+        }
+        return;
+      }
+      if (fam === 'sandbag') {
+        // burst bags: a heavy LOW sand-dust surge (the bags absorb the hit —
+        // almost no hard fragments, all spilling fill)
+        for (let i = 0; i < 13; i++) {
+          const a = rng() * Math.PI * 2;
+          _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.8;
+          _puffO.pos[1] = gy + 0.2 + rng() * 0.5;
+          _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.8;
+          _puffO.vel[0] = Math.cos(a) * (1.5 + rng() * 2.2) + dir.x * 2.6;
+          _puffO.vel[1] = 0.7 + rng() * 1.0; // hugs the ground
+          _puffO.vel[2] = Math.sin(a) * (1.5 + rng() * 2.2) + dir.z * 2.6;
+          _puffO.life = 1.5 + rng() * 1.0;
+          _puffO.size0 = 0.6 + rng() * 0.4; _puffO.size1 = 2.6 + rng() * 1.4;
+          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+          col3(0xa89772, _puffO.col0); col3(0x8a7b5c, _puffO.col1);
+          _puffO.alpha = 0.48 + rng() * 0.14; _puffO.grav = -0.55; _puffO.birthOffset = 0;
+          particles.emit('dust', _puffO);
+        }
+        for (let i = 0; i < 4; i++) { // a few whipped bag scraps
+          _debO.pos[0] = pos.x; _debO.pos[1] = gy + 0.4; _debO.pos[2] = pos.z;
+          _debO.vel[0] = dir.x * (2 + rng() * 2.5) + (rng() - 0.5) * 3;
+          _debO.vel[1] = 1.6 + rng() * 2.0;
+          _debO.vel[2] = dir.z * (2 + rng() * 2.5) + (rng() - 0.5) * 3;
+          _debO.life = 1.1; _debO.scale = 0.06 + rng() * 0.05; _debO.spin = 10 + rng() * 12;
+          _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+          _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
+          particles.emit('debris', _debO);
+        }
+        return;
+      }
+      if (fam === 'vehicle') {
+        // soft-skin vehicle killed: metal panel chunks, a spark clang, one
+        // short flame lick and a fast-building dark smoke slug — reads as
+        // the truck torching down to its hulk without a full HE fireball
+        _v3.set(pos.x, gy + Math.min(1.2, heightM * 0.5), pos.z);
+        sparkFan(_v3, _UP, 14, 11, 1.2, 0xffce8a, 0.5, 0.04, 0.04, 0, 0.12);
+        for (let i = 0; i < 10; i++) {
+          _debO.pos[0] = pos.x + (rng() - 0.5) * 1.4;
+          _debO.pos[1] = gy + 0.4 + rng() * Math.min(1.4, heightM * 0.6);
+          _debO.pos[2] = pos.z + (rng() - 0.5) * 1.4;
+          _debO.vel[0] = dir.x * (2.6 + rng() * 3.2) + (rng() - 0.5) * 4.5;
+          _debO.vel[1] = 2.4 + rng() * 3.6;
+          _debO.vel[2] = dir.z * (2.6 + rng() * 3.2) + (rng() - 0.5) * 4.5;
+          _debO.life = 1.5; _debO.scale = 0.08 + rng() * 0.09; _debO.spin = 10 + rng() * 16;
+          _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+          _debO.groundY = gy; _debO.hot = rng() < 0.2 ? 0.45 : 0; _debO.seed = rng(); _debO.birthOffset = 0;
+          particles.emit('debris', _debO);
+        }
+        for (let i = 0; i < 5; i++) { // brief flame licks out of the cab/bed
+          _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.2;
+          _puffO.pos[1] = gy + 0.7 + rng() * 0.8;
+          _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.2;
+          _puffO.vel[0] = (rng() - 0.5) * 1.2; _puffO.vel[1] = 1.8 + rng() * 1.6; _puffO.vel[2] = (rng() - 0.5) * 1.2;
+          _puffO.life = 0.5 + rng() * 0.3;
+          _puffO.size0 = 0.5 + rng() * 0.3; _puffO.size1 = 1.1 + rng() * 0.5;
+          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
+          col3(0xffb054, _puffO.col0); col3(0xd96a22, _puffO.col1);
+          _puffO.alpha = 0.85; _puffO.grav = 0.6; _puffO.birthOffset = 0;
+          particles.emit('fire', _puffO);
+        }
+        for (let i = 0; i < 8; i++) { // oily smoke slug
+          const a = rng() * Math.PI * 2;
+          _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.2;
+          _puffO.pos[1] = gy + 0.8 + rng() * 0.8;
+          _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.2;
+          _puffO.vel[0] = Math.cos(a) * (0.8 + rng() * 1.2) + dir.x * 1.4;
+          _puffO.vel[1] = 1.6 + rng() * 1.6;
+          _puffO.vel[2] = Math.sin(a) * (0.8 + rng() * 1.2) + dir.z * 1.4;
+          _puffO.life = 1.8 + rng() * 1.2;
+          _puffO.size0 = 0.7 + rng() * 0.4; _puffO.size1 = 3.0 + rng() * 1.6;
+          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.6;
+          col3(0x2e2b28, _puffO.col0); col3(0x4a4642, _puffO.col1);
+          _puffO.alpha = 0.5 + rng() * 0.15; _puffO.grav = 0.25; _puffO.birthOffset = 0;
+          particles.emit('smoke', _puffO);
+        }
+        return;
+      }
+      if (fam === 'canvas') {
+        // tent folding: pale canvas dust whoosh + snapped-pole chips
+        for (let i = 0; i < 9; i++) {
+          const a = rng() * Math.PI * 2;
+          _puffO.pos[0] = pos.x + (rng() - 0.5) * 1.4;
+          _puffO.pos[1] = gy + 0.3 + rng() * 0.9;
+          _puffO.pos[2] = pos.z + (rng() - 0.5) * 1.4;
+          _puffO.vel[0] = Math.cos(a) * (1.4 + rng() * 1.8) + dir.x * 2.0;
+          _puffO.vel[1] = 0.9 + rng() * 1.2;
+          _puffO.vel[2] = Math.sin(a) * (1.4 + rng() * 1.8) + dir.z * 2.0;
+          _puffO.life = 1.3 + rng() * 0.8;
+          _puffO.size0 = 0.5 + rng() * 0.3; _puffO.size1 = 2.0 + rng() * 1.0;
+          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+          col3(0xa39676, _puffO.col0); col3(0x857a5e, _puffO.col1);
+          _puffO.alpha = 0.4 + rng() * 0.14; _puffO.grav = -0.35; _puffO.birthOffset = 0;
+          particles.emit('dust', _puffO);
+        }
+        for (let i = 0; i < 4; i++) {
+          _debO.pos[0] = pos.x; _debO.pos[1] = gy + 0.5; _debO.pos[2] = pos.z;
+          _debO.vel[0] = dir.x * (2 + rng() * 2.5) + (rng() - 0.5) * 3.2;
+          _debO.vel[1] = 2.0 + rng() * 2.4;
+          _debO.vel[2] = dir.z * (2 + rng() * 2.5) + (rng() - 0.5) * 3.2;
+          _debO.life = 1.2; _debO.scale = 0.05 + rng() * 0.05; _debO.spin = 12 + rng() * 14;
+          _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+          _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
+          particles.emit('debris', _debO);
+        }
+        return;
+      }
+      if (fam === 'ammo') {
+        // ammo boxes splinter with a short cook-off crackle of spark streaks
+        _v3.set(pos.x, gy + 0.4, pos.z);
+        sparkFan(_v3, _UP, 8, 8, 1.0, 0xffd58a, 0.4, 0.03, 0.035, 0, 0.14);
+        for (let i = 0; i < 9; i++) {
+          _debO.pos[0] = pos.x + (rng() - 0.5) * 0.6;
+          _debO.pos[1] = gy + 0.3 + rng() * 0.4;
+          _debO.pos[2] = pos.z + (rng() - 0.5) * 0.6;
+          _debO.vel[0] = dir.x * (2.4 + rng() * 3.0) + (rng() - 0.5) * 4.0;
+          _debO.vel[1] = 2.2 + rng() * 3.0;
+          _debO.vel[2] = dir.z * (2.4 + rng() * 3.0) + (rng() - 0.5) * 4.0;
+          _debO.life = 1.3; _debO.scale = 0.05 + rng() * 0.06; _debO.spin = 12 + rng() * 16;
+          _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+          _debO.groundY = gy; _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
+          particles.emit('debris', _debO);
+        }
+        return;
+      }
+      if (fam === 'drumblast') {
+        // EXPLOSIVE fuel drum: a real (small) fireball — flash core, fire
+        // bloom, oily billow column, hot debris with paired ember streaks,
+        // radial spark fan and a scorch stamp. Deliberately ~40% of a tank
+        // explosion's particle count: cheap enough for a chained row.
+        const cy = gy + 0.7;
+        spawnScorch(pos.x, pos.z, 2.4 + rng() * 0.7);
+        _puffO.pos[0] = pos.x; _puffO.pos[1] = cy + 0.4; _puffO.pos[2] = pos.z;
+        _puffO.vel[0] = 0; _puffO.vel[1] = 0.6; _puffO.vel[2] = 0;
+        _puffO.life = 0.22;
+        _puffO.size0 = 1.6; _puffO.size1 = 3.6;
+        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 0;
+        col3(0xffe9b8, _puffO.col0); col3(0xffb45e, _puffO.col1);
+        _puffO.alpha = 0.95; _puffO.grav = 0; _puffO.birthOffset = 0;
+        particles.emit('flash', _puffO);
+        for (let i = 0; i < 12; i++) { // fire bloom
+          const a = rng() * Math.PI * 2;
+          _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.7;
+          _puffO.pos[1] = cy + rng() * 0.7;
+          _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.7;
+          _puffO.vel[0] = Math.cos(a) * (1.6 + rng() * 2.4);
+          _puffO.vel[1] = 2.6 + rng() * 3.0;
+          _puffO.vel[2] = Math.sin(a) * (1.6 + rng() * 2.4);
+          _puffO.life = 0.5 + rng() * 0.35;
+          _puffO.size0 = 0.8 + rng() * 0.5; _puffO.size1 = 2.0 + rng() * 0.9;
+          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 4;
+          col3(0xffc262, _puffO.col0); col3(0xe06a1e, _puffO.col1);
+          _puffO.alpha = 0.9; _puffO.grav = 1.1; _puffO.birthOffset = 0;
+          particles.emit('fire', _puffO);
+        }
+        for (let i = 0; i < 7; i++) { // oily billow column
+          _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.9;
+          _puffO.pos[1] = cy + 0.4 + rng() * 0.9;
+          _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.9;
+          _puffO.vel[0] = (rng() - 0.5) * 1.6;
+          _puffO.vel[1] = 2.2 + rng() * 2.2;
+          _puffO.vel[2] = (rng() - 0.5) * 1.6;
+          _puffO.life = 1.9 + rng() * 1.3;
+          _puffO.size0 = 1.0 + rng() * 0.6; _puffO.size1 = 3.6 + rng() * 1.8;
+          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.4;
+          col3(0x241f1b, _puffO.col0); col3(0x45403a, _puffO.col1);
+          _puffO.alpha = 0.62; _puffO.grav = 0.35; _puffO.birthOffset = 0;
+          particles.emit('billow', _puffO);
+        }
+        _v3.set(pos.x, cy, pos.z);
+        sparkFan(_v3, _UP, 16, 15, 1.15, 0xffc274, 0.55, 0.045, 0.05, 0, 0.1);
+        for (let i = 0; i < 10; i++) { // hot drum shrapnel
+          const a = rng() * Math.PI * 2;
+          _debO.pos[0] = pos.x; _debO.pos[1] = cy; _debO.pos[2] = pos.z;
+          _debO.vel[0] = Math.cos(a) * (6 + rng() * 7);
+          _debO.vel[1] = 3.5 + rng() * 5;
+          _debO.vel[2] = Math.sin(a) * (6 + rng() * 7);
+          _debO.life = 1.3 + rng() * 0.5;
+          _debO.scale = 0.07 + rng() * 0.09;
+          _debO.spin = 12 + rng() * 18;
+          _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+          _debO.groundY = gy; _debO.hot = rng() < 0.5 ? 1 : 0.45; _debO.seed = rng(); _debO.birthOffset = 0;
+          particles.emit('debris', _debO);
+        }
+        return;
+      }
       if (fam === 'hay') {
         // hay puff: slow pale chaff cloud + a few light straws, no hard chips
         for (let i = 0; i < 12; i++) {

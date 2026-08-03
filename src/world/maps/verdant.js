@@ -82,6 +82,13 @@ export default {
     // 24, rocks 170 -> 195) — the critique still read "one lone bale" and a
     // golf course; paired with the bigger crater radii in props.js
     haystacks: 26, rocks: 195, outcrops: 24, craters: 58, rubblePiles: 0,
+    // DESTRUCTIBLES r1: real-roster WWII hulks staged as roadside kills +
+    // paired duels (baked static via src/world/wrecks.js), soft-vehicle and
+    // military-clutter dressing, and more sandbag lines along the roads —
+    // all destructible (drive-through, shell-breakable)
+    tankWrecks: { era: 'ww2', count: 4 },
+    sandbagLines: 12,
+    hedgehogs: 6,
     // r6 terrain_environment: standing grain plots on the open farmland —
     // "summer fields have no crops" was a major dressing gap; pairs with the
     // fieldPatch splat tint so plots sit inside visibly worked fields
@@ -95,6 +102,10 @@ export default {
       bales: 10, stooks: 8,
       troughs: 1, churns: 1, laundry: 1, handcarts: 1, carts: 3,
       roadFence: 'fenceplank', yardFence: 'fencepicket',
+      // DESTRUCTIBLES r1: parked supply trucks + field cars on the lanes,
+      // fuel-drum clusters (rare red explosive), roadside camps in the
+      // hedgerow clearings
+      trucks: 3, jeeps: 2, drumClusters: 3, camps: 2,
     },
   },
 

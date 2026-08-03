@@ -1209,7 +1209,11 @@ function makeCollide(game, world) {
       }
       if (separated) continue;
       if (ob.crushable && self) {
-        let crushNow = selfSpeed > CRUSH_MIN_MPS;
+        // DESTRUCTIBLES r1: per-obstacle overrun threshold — heavy light-cover
+        // (stone wall runs) resists a touch harder than a sapling before the
+        // hull powers through; the held-press saw below still defeats
+        // everything crushable, so nothing tagged can permanently wall a hull.
+        let crushNow = selfSpeed > (ob.crushMin ?? CRUSH_MIN_MPS);
         // BATTLE-AI r7: held-press threshold 0.5 -> 0.35. AI throttle shaping
         // (arrival ease-in, obstacle damping) legitimately drives at 0.35-0.5
         // against a sapling and used to dead-stop under the old bar forever
@@ -1591,8 +1595,14 @@ export function simStep(game, bus, world, rig, collider) {
       const dirSign = ent.state ? Math.sign(ent.state.speed || 1) : 1;
       const dirX = ent.state ? Math.sin(ent.state.yaw) * dirSign : 0;
       const dirZ = ent.state ? Math.cos(ent.state.yaw) * dirSign : 1;
-      if (world.crushObstacle) world.crushObstacle(ob, dirX, dirZ);
-      if (ent.state) ent.state.speed *= CRUSH_SPEED_KEEP;
+      // DESTRUCTIBLES r1: the overrun speed rides into the world break so
+      // debris inherits the hull's velocity (a 50 km/h ram throws chunks; a
+      // crawl shoulders them aside), and the momentum bite is per-prop mass
+      // (ob.crushKeep — sandbags barely register, a stone wall run scrubs
+      // noticeably, but nothing crushable ever hard-stops the hull).
+      const overrunMps = ent.state ? Math.abs(ent.state.speed) : 0;
+      if (world.crushObstacle) world.crushObstacle(ob, dirX, dirZ, overrunMps);
+      if (ent.state) ent.state.speed *= (ob.crushKeep ?? CRUSH_SPEED_KEEP);
       bus.emit('prop:crushed', {
         id: ent.id,
         specId: ent.specId,

@@ -738,18 +738,369 @@ function bGateBroken(rng) {
 }
 
 // ---------------------------------------------------------------------------
+// DESTRUCTIBLES r1 — heavier light-cover + vehicle families. Same intact/
+// broken pairing as the r1 kit; the new metadata knobs (keep/crushMin/
+// collider/explosive) are consumed by props.js (see DESTRUCTIBLE_TYPES docs).
+// ---------------------------------------------------------------------------
+
+export const WALL_SEG = 3.0; // wall-kit module pitch, meters
+
+// dark faded olive-drab / field-grey band — the first cut sat at l 0.22-0.30
+// with s 0.24+ and the truck cabs tonemapped to toy lego-green in the frame
+// review; military paint under this sun needs to start near-charcoal
+const OLIVE = [0.19, 0.20, 0.185];
+const OLIVE_D = [0.20, 0.22, 0.145];
+const FIELDGREY = [0.58, 0.07, 0.28];
+const TENTCANVAS = [0.10, 0.16, 0.295];
+const TENTCANVAS_D = [0.095, 0.14, 0.225];
+const CHAR = [0.07, 0.10, 0.055];
+const CHAR_RUST = [0.05, 0.42, 0.16];
+const REDDRUM = [0.015, 0.62, 0.34];
+const GLASS_D = [0.58, 0.10, 0.16];
+const TIRE = [0.60, 0.03, 0.075];
+
+/** char-paint with rust bloom — burnt-hulk vertex palette (truck/jeep wrecks) */
+function charPaint(geo, rng, rustBias = 0.2) {
+  const n = geo.attributes.position.count;
+  const col = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    if (rng() < rustBias) {
+      _c.setHSL(CHAR_RUST[0], CHAR_RUST[1], CHAR_RUST[2] + (rng() - 0.5) * 0.07, THREE.SRGBColorSpace);
+    } else {
+      _c.setHSL(CHAR[0], CHAR[1], Math.max(0.02, CHAR[2] + (rng() - 0.5) * 0.045), THREE.SRGBColorSpace);
+    }
+    col[i * 3] = _c.r; col[i * 3 + 1] = _c.g; col[i * 3 + 2] = _c.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return geo;
+}
+
+// --- masonry wall modules (WALL_SEG pitch, run along local Z) ---------------
+// UV'd for the map-toned stone/plaster materials (props.js routes meta.mat).
+// Irregular per-course offsets kill the one-box-per-6m silhouette the old
+// merged runs had; the broken state is a low crumbled remnant + tumbled
+// blocks — drive-over rubble that persists for the battle.
+
+function wallCourses(rng, thick, courses) {
+  const parts = [];
+  let y = 0;
+  for (let c = 0; c < courses.length; c++) {
+    const ch = courses[c];
+    const seg = box(thick + (rng() - 0.5) * 0.04, ch, WALL_SEG * (0.985 + rng() * 0.03), 0.7);
+    seg.rotateY((rng() - 0.5) * 0.012);
+    parts.push(seg.translate((rng() - 0.5) * 0.05, y + ch / 2, 0));
+    y += ch - 0.015;
+  }
+  return { parts, top: y };
+}
+
+function bWallStone(rng) {
+  const { parts, top } = wallCourses(rng, 0.46, [0.42, 0.38, 0.30]);
+  // uneven capstone course: 4 slabs with per-slab pitch
+  for (let k = 0; k < 4; k++) {
+    const cap = box(0.56, 0.11, WALL_SEG * 0.26, 0.9);
+    cap.rotateX((rng() - 0.5) * 0.08);
+    cap.rotateZ((rng() - 0.5) * 0.06);
+    parts.push(cap.translate((rng() - 0.5) * 0.04, top + 0.04, -WALL_SEG / 2 + (k + 0.5) * (WALL_SEG / 4)));
+  }
+  return merge(parts);
+}
+function bWallStoneBroken(rng) {
+  const parts = [];
+  // crumbled remnant courses: two low stubs with a bite between them
+  for (const [z0, len] of [[-WALL_SEG / 2, WALL_SEG * 0.30], [WALL_SEG * 0.14, WALL_SEG * 0.34]]) {
+    const h = 0.20 + rng() * 0.22;
+    const stub = box(0.46, h, len, 0.7);
+    stub.rotateX((rng() - 0.5) * 0.1);
+    parts.push(stub.translate((rng() - 0.5) * 0.08, h / 2, z0 + len / 2));
+  }
+  for (let k = 0; k < 7; k++) { // tumbled blocks feathering both faces
+    const bs = 0.14 + rng() * 0.20;
+    const blk = box(bs * (1.1 + rng() * 0.7), bs * 0.75, bs, 1.2);
+    blk.rotateY(rng() * Math.PI);
+    blk.rotateX((rng() - 0.5) * 0.5);
+    blk.translate((rng() - 0.5) * 1.7, bs * 0.3, (rng() - 0.5) * WALL_SEG * 0.95);
+    parts.push(blk);
+  }
+  return merge(parts);
+}
+
+function bWallAdobe(rng) {
+  const { parts, top } = wallCourses(rng, 0.52, [0.56, 0.46]);
+  const cap = box(0.40, 0.15, WALL_SEG * 1.0, 0.9); // rounded mud cap read
+  parts.push(cap.translate(0, top + 0.05, 0));
+  return merge(parts);
+}
+function bWallAdobeBroken(rng) {
+  const parts = [];
+  const h = 0.24 + rng() * 0.2;
+  const stub = box(0.52, h, WALL_SEG * 0.44, 0.7);
+  stub.rotateX((rng() - 0.5) * 0.12);
+  parts.push(stub.translate(0, h / 2, -WALL_SEG * 0.22));
+  for (let k = 0; k < 5; k++) { // mud-brick clods
+    const bs = 0.13 + rng() * 0.16;
+    const blk = box(bs * 1.4, bs * 0.6, bs, 1.2);
+    blk.rotateY(rng() * Math.PI);
+    parts.push(blk.translate((rng() - 0.5) * 1.5, bs * 0.28, (rng() - 0.5) * WALL_SEG * 0.9));
+  }
+  return merge(parts);
+}
+
+// --- sandbag emplacement (broken state for the sourced baked intact) --------
+// The intact geometry is the licensed baked model (props.js LOCAL kinds need
+// bakedGeometry, so the kind entries live there); this is the shared
+// driven-through state: bags burst, split and spilled.
+export function bSandbagBroken(rng) {
+  const parts = [];
+  const HESS = [0.105, 0.22, 0.46];
+  for (let k = 0; k < 11; k++) { // spilled single bags
+    const a = rng() * Math.PI * 2, rr = Math.sqrt(rng()) * 1.9;
+    const bag = new THREE.SphereGeometry(0.26 + rng() * 0.08, 6, 5);
+    bag.scale(1.35, 0.42 + rng() * 0.12, 0.85);
+    bag.rotateY(rng() * Math.PI);
+    bag.translate(Math.cos(a) * rr, 0.10, Math.sin(a) * rr * 0.7);
+    parts.push(P(bag, HESS, 0.14, rng));
+  }
+  // low surviving bag course at one end
+  for (let k = 0; k < 3; k++) {
+    const bag = new THREE.SphereGeometry(0.28, 6, 5);
+    bag.scale(1.4, 0.5, 0.9);
+    bag.translate(-1.2 + k * 0.62, 0.13, -0.5 + (rng() - 0.5) * 0.2);
+    parts.push(P(bag, HESS, 0.12, rng));
+  }
+  return merge(parts);
+}
+
+// --- supply truck (era-neutral bonneted cargo truck) + burnt hulk -----------
+function truckWheel(rng, r = 0.44, w = 0.26) {
+  const t = new THREE.CylinderGeometry(r, r, w, 10, 1);
+  t.rotateZ(Math.PI / 2);
+  return P(t, TIRE, 0.05, rng);
+}
+function bTruck(rng) {
+  const parts = [];
+  const body = rng() < 0.5 ? OLIVE : OLIVE_D;
+  // chassis + bonnet + cab
+  parts.push(P(box(1.9, 0.28, 5.9).translate(0, 0.62, 0), [body[0], body[1] * 0.8, body[2] * 0.7], 0.08, rng));
+  parts.push(P(box(1.44, 0.72, 1.5).translate(0, 1.12, 2.05), body, 0.17, rng));   // bonnet
+  parts.push(P(box(0.24, 0.5, 1.3).translate(0, 1.5, 2.72), body, 0.08, rng));     // grille/rad
+  parts.push(P(box(1.7, 1.06, 1.15).translate(0, 1.45, 1.06), body, 0.17, rng));   // cab
+  parts.push(P(box(1.5, 0.5, 0.06).translate(0, 1.62, 1.64), GLASS_D, 0.05, rng)); // windshield
+  parts.push(P(box(1.86, 0.10, 0.55).translate(0, 1.02, 2.9), body, 0.08, rng));   // front fenders
+  // cargo bed with canvas tilt (or open bed with crates)
+  parts.push(P(box(1.94, 0.32, 3.1).translate(0, 0.94, -1.35), [0.075, 0.30, 0.26], 0.12, rng));
+  if (rng() < 0.62) {
+    const tilt = new THREE.CylinderGeometry(0.98, 0.98, 3.0, 7, 1, false, Math.PI, Math.PI);
+    tilt.rotateX(Math.PI / 2);
+    tilt.scale(1, 0.72, 1);
+    parts.push(P(tilt.translate(0, 1.14, -1.35), CANVAS, 0.09, rng));
+    parts.push(P(box(1.9, 0.9, 0.06).translate(0, 1.4, -2.83), CANVAS2, 0.08, rng)); // rear flap
+  } else {
+    for (let k = 0; k < 3; k++) { // open load: crates + a drum
+      parts.push(P(box(0.6, 0.5, 0.6).translate(-0.45 + k * 0.5, 1.35, -0.7 - k * 0.75), WOOD, 0.12, rng));
+    }
+    parts.push(P(cyl(0.26, 0.26, 0.8, 9).translate(0.55, 1.5, -2.3), STEEL, 0.08, rng));
+  }
+  // wheels: 2 front + 4 rear (dualies read as one wide drum)
+  parts.push(truckWheel(rng).translate(-0.98, 0.44, 2.05));
+  parts.push(truckWheel(rng).translate(0.98, 0.44, 2.05));
+  parts.push(truckWheel(rng, 0.44, 0.4).translate(-0.95, 0.44, -1.0));
+  parts.push(truckWheel(rng, 0.44, 0.4).translate(0.95, 0.44, -1.0));
+  parts.push(truckWheel(rng, 0.44, 0.4).translate(-0.95, 0.44, -2.1));
+  parts.push(truckWheel(rng, 0.44, 0.4).translate(0.95, 0.44, -2.1));
+  return merge(parts);
+}
+function bTruckBroken(rng) {
+  // burnt hulk: settled chassis, torched cab shell, bed ribs bare, tires gone
+  const parts = [];
+  parts.push(charPaint(box(1.9, 0.26, 5.7).translate(0, 0.34, 0), rng, 0.3));
+  const cab = box(1.66, 0.78, 1.1);
+  cab.rotateZ((rng() - 0.5) * 0.14);
+  parts.push(charPaint(cab.translate(0.04, 0.94, 1.08), rng, 0.22));
+  parts.push(charPaint(box(1.4, 0.5, 1.42).translate(0, 0.68, 2.05), rng, 0.3)); // burnt bonnet
+  const block = box(0.7, 0.5, 0.9); // exposed engine block
+  parts.push(charPaint(block.translate(0, 0.75, 2.1), rng, 0.45));
+  for (const bz of [-0.5, -1.35, -2.2]) { // bare bed ribs
+    parts.push(charPaint(box(1.9, 0.3, 0.09).translate(0, 0.62, bz), rng, 0.25));
+  }
+  const rim = (x, z, tip) => {
+    const w = new THREE.CylinderGeometry(0.30, 0.30, 0.2, 8, 1);
+    w.rotateZ(Math.PI / 2 + tip);
+    return charPaint(w.translate(x, 0.30, z), rng, 0.5);
+  };
+  parts.push(rim(-0.98, 2.05, 0.3), rim(0.98, -1.0, -0.2), rim(0.95, -2.1, 0.1));
+  const door = box(0.06, 0.7, 0.9); // blown-open door on the ground
+  door.rotateY(rng());
+  door.rotateX(Math.PI / 2 - 0.12);
+  parts.push(charPaint(door.translate(1.5, 0.08, 0.9), rng, 0.3));
+  return merge(parts);
+}
+
+// --- light utility 4x4 (open-top field car) ---------------------------------
+function bJeep(rng) {
+  const parts = [];
+  const body = rng() < 0.5 ? OLIVE : FIELDGREY;
+  parts.push(P(box(1.5, 0.5, 3.3).translate(0, 0.72, 0), body, 0.16, rng));        // tub
+  parts.push(P(box(1.44, 0.34, 1.0).translate(0, 1.05, 1.25), body, 0.10, rng));   // bonnet
+  parts.push(P(box(1.34, 0.44, 0.05).translate(0, 1.42, 0.72), GLASS_D, 0.05, rng)); // windshield
+  parts.push(P(box(1.34, 0.06, 0.09).translate(0, 1.66, 0.72), body, 0.06, rng));
+  for (const [sx, sz] of [[-0.5, -0.15], [0.5, -0.15]]) { // seat backs
+    parts.push(P(box(0.55, 0.4, 0.08).translate(sx, 1.12, sz), CANVAS2, 0.08, rng));
+  }
+  parts.push(P(box(1.5, 0.09, 0.4).translate(0, 0.96, -1.6), body, 0.08, rng));    // rear shelf
+  const spare = new THREE.CylinderGeometry(0.36, 0.36, 0.2, 9, 1);
+  spare.rotateX(Math.PI / 2);
+  parts.push(P(spare.translate(0, 1.0, -1.72), TIRE, 0.05, rng));
+  parts.push(truckWheel(rng, 0.38, 0.22).translate(-0.78, 0.38, 1.1));
+  parts.push(truckWheel(rng, 0.38, 0.22).translate(0.78, 0.38, 1.1));
+  parts.push(truckWheel(rng, 0.38, 0.22).translate(-0.78, 0.38, -1.05));
+  parts.push(truckWheel(rng, 0.38, 0.22).translate(0.78, 0.38, -1.05));
+  return merge(parts);
+}
+function bJeepBroken(rng) {
+  const parts = [];
+  const tub = box(1.5, 0.42, 3.2); // burnt tub settled on rims, nose skewed
+  tub.rotateY(0.12);
+  tub.rotateZ(0.06);
+  parts.push(charPaint(tub.translate(0, 0.42, 0), rng, 0.25));
+  parts.push(charPaint(box(1.4, 0.3, 0.95).rotateY(0.12).translate(0.1, 0.62, 1.22), rng, 0.3));
+  const frame = box(1.3, 0.05, 0.07); // windshield frame folded flat
+  frame.rotateY(0.12);
+  parts.push(charPaint(frame.translate(0, 0.68, 0.68), rng, 0.2));
+  const rim = (x, z) => {
+    const w = new THREE.CylinderGeometry(0.26, 0.26, 0.18, 8, 1);
+    w.rotateZ(Math.PI / 2);
+    return charPaint(w.translate(x, 0.26, z), rng, 0.5);
+  };
+  parts.push(rim(-0.78, 1.1), rim(0.78, 1.1), rim(-0.78, -1.05));
+  return merge(parts);
+}
+
+// --- ammunition boxes (stacked pair + strewn broken state) ------------------
+function bAmmobox(rng) {
+  const parts = [];
+  const spots = [[0, 0, 0, 0.14], [0.14, 0.36, -0.08, -0.3], [-0.5, 0, 0.32, 0.5]];
+  for (const [px, py, pz, ry] of spots) {
+    const bx = box(0.85, 0.36, 0.42);
+    bx.rotateY(ry);
+    parts.push(P(bx.translate(px, py + 0.18, pz), OLIVE_D, 0.10, rng));
+    const lid = box(0.87, 0.06, 0.44);
+    lid.rotateY(ry);
+    parts.push(P(lid.translate(px, py + 0.38, pz), [OLIVE_D[0], OLIVE_D[1], OLIVE_D[2] * 1.25], 0.08, rng));
+  }
+  return merge(parts);
+}
+function bAmmoboxBroken(rng) {
+  const parts = [];
+  for (let k = 0; k < 3; k++) { // burst boxes, lids blown
+    const bx = box(0.8, 0.14, 0.4);
+    bx.rotateY(rng() * Math.PI);
+    bx.rotateX((rng() - 0.5) * 0.3);
+    parts.push(P(bx.translate((rng() - 0.5) * 1.4, 0.08, (rng() - 0.5) * 1.2), OLIVE_D, 0.12, rng));
+  }
+  parts.push(...plankScatter(4, 0.5, 0.14, 0.8, rng, OLIVE_D));
+  return merge(parts);
+}
+
+// --- field tent (canvas ridge tent) ------------------------------------------
+function bTent(rng) {
+  const parts = [];
+  const W = 2.4, H = 1.5, L = 3.2;
+  for (const s of [-1, 1]) { // canvas slopes — weathered field canvas, not paper
+    const slope = Math.hypot(W / 2, H);
+    const panel = box(slope + 0.1, 0.05, L);
+    panel.rotateZ(s * Math.atan2(H, W / 2));
+    parts.push(P(panel.translate(-s * W / 4, H / 2 + 0.32, 0),
+      s < 0 ? TENTCANVAS : [TENTCANVAS[0], TENTCANVAS[1], TENTCANVAS[2] * 0.92], 0.13, rng));
+  }
+  // rear gable canvas closed (triangular panel under the slopes); the front
+  // stays open with one flap pulled aside
+  {
+    const tri = new THREE.Shape();
+    tri.moveTo(-W * 0.46, 0);
+    tri.lineTo(W * 0.46, 0);
+    tri.lineTo(0, H * 0.92);
+    tri.closePath();
+    const end = new THREE.ExtrudeGeometry(tri, { depth: 0.05, bevelEnabled: false });
+    parts.push(P(end.translate(0, 0.30, -(L / 2 - 0.03)), TENTCANVAS_D, 0.12, rng));
+  }
+  const flap = box(W * 0.4, H * 0.7, 0.05);
+  flap.rotateY(0.7);
+  parts.push(P(flap.translate(W * 0.28, H * 0.36 + 0.3, L / 2 + 0.14), TENTCANVAS, 0.12, rng));
+  for (const pz of [-L / 2 + 0.1, L / 2 - 0.1]) { // ridge poles
+    parts.push(P(box(0.07, H + 0.34, 0.07).translate(0, (H + 0.34) / 2, pz), WOOD, 0.10, rng));
+  }
+  parts.push(P(box(0.06, 0.06, L + 0.2).translate(0, H + 0.30, 0), WOOD, 0.08, rng)); // ridge beam
+  return merge(parts);
+}
+function bTentBroken(rng) {
+  const parts = [];
+  // collapsed canvas: two crumpled sheets over a snapped ridge pole
+  for (let k = 0; k < 2; k++) {
+    const sheet = box(1.6 + rng() * 0.8, 0.10, 2.0 + rng() * 0.9);
+    sheet.rotateY(rng() * Math.PI);
+    sheet.rotateX((rng() - 0.5) * 0.16);
+    parts.push(P(sheet.translate((rng() - 0.5) * 1.2, 0.10 + k * 0.07, (rng() - 0.5) * 0.8), k ? TENTCANVAS : TENTCANVAS_D, 0.12, rng));
+  }
+  const pole = box(0.07, 0.07, 2.2);
+  pole.rotateY(rng());
+  parts.push(P(pole.translate(0.2, 0.22, 0), WOOD, 0.10, rng));
+  return merge(parts);
+}
+
+// --- EXPLOSIVE fuel drum (rare red variant — fx blast + chain damage) --------
+function bDrumRed(rng) {
+  const parts = [];
+  const body = cyl(0.30, 0.30, 0.90, 11);
+  parts.push(P(body.translate(0, 0.45, 0), REDDRUM, 0.08, rng));
+  for (const hy of [0.28, 0.62]) {
+    const rib = new THREE.CylinderGeometry(0.315, 0.315, 0.045, 11, 1, true);
+    parts.push(P(rib.translate(0, hy, 0), [REDDRUM[0], REDDRUM[1] * 0.8, REDDRUM[2] * 0.72], 0.05, rng));
+  }
+  const band = new THREE.CylinderGeometry(0.305, 0.305, 0.12, 11, 1, true); // pale hazard band
+  parts.push(P(band.translate(0, 0.45, 0), [0.11, 0.30, 0.62], 0.06, rng));
+  return merge(parts);
+}
+function bDrumRedBroken(rng) {
+  const parts = [];
+  // torn-open shell: split half-cylinders peeled flat + charred base ring
+  for (const s of [-1, 1]) {
+    const half = new THREE.CylinderGeometry(0.30, 0.30, 0.82, 6, 1, true, s > 0 ? 0 : Math.PI, Math.PI);
+    half.rotateZ(Math.PI / 2 - s * 0.4);
+    half.rotateY(rng() * Math.PI);
+    parts.push(charPaint(half.translate(s * 0.42, 0.16, (rng() - 0.5) * 0.4), rng, 0.35));
+  }
+  const base = new THREE.CylinderGeometry(0.29, 0.29, 0.05, 11, 1);
+  parts.push(charPaint(base.translate(0.05, 0.03, 0.1), rng, 0.4));
+  return merge(parts);
+}
+
+// ---------------------------------------------------------------------------
 // registry
 // ---------------------------------------------------------------------------
 
 /**
- * Destructible type table (world-dressing r1).
- * cls: 'break' swaps intact -> broken debris; 'topple' hinge-falls and persists.
- * mat: 'wood' | 'straw' (map-toned textured materials) | 'baked' (vertex color).
+ * Destructible type table (world-dressing r1, extended DESTRUCTIBLES r1).
+ * cls: 'break' swaps intact -> broken debris; 'topple' hinge-falls and
+ *   persists; 'toss' (DESTRUCTIBLES r1) is thrown on a short ballistic arc
+ *   with tumble and settles on its side (rammed drums/churns).
+ * mat: 'wood' | 'straw' | 'stone' | 'plaster' (map-toned textured materials)
+ *   | 'baked' (vertex color).
  * contact: 'ob' = crushable obstacle (state.js SAT seam — resists a crawl,
  *   breaks on real overrun, exactly the tree mechanism); 'loop' = cosmetic
  *   hull-radius crush via the world.crushables loop in main.js (no obstacle
  *   at all — sapling class); 'none' = shells only.
  * r/h: record radius / height (AABB + shell sweep bounds).
+ * DESTRUCTIBLES r1 knobs (consumed by props.js):
+ *   keep: per-overrun speed retention (ob.crushKeep — 0.97 sandbags barely
+ *     bite, 0.82 stone wall scrubs hard; default state.js CRUSH_SPEED_KEEP);
+ *   crushMin: overrun threshold m/s override (ob.crushMin);
+ *   collider: record blocks SHELLS/LOS while intact (flagged dead on break —
+ *     walls/trucks are real cover until breached; everything else stays
+ *     shoot-through per the sapling rule);
+ *   explosive: breaking detonates — fx blast + chained radius damage;
+ *   wall: module marches at WALL_SEG pitch with run-oriented AABBs (like
+ *     fence, but thick masonry footprint).
  */
 export const DESTRUCTIBLE_TYPES = {
   barrel:      { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.40, h: 1.0,  build: bBarrel,      broken: bBarrelBroken },
@@ -761,9 +1112,9 @@ export const DESTRUCTIBLE_TYPES = {
   trough:      { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.95, h: 0.68, build: bTrough,      broken: bTroughBroken },
   stall:       { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.45, h: 2.3,  build: bStall,       broken: bStallBroken },
   bench:       { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.85, h: 1.0,  build: bBench,       broken: bBenchBroken },
-  churn:       { cls: 'topple', mat: 'baked', contact: 'loop', r: 0.26, h: 0.82, build: bChurn,       broken: null },
+  churn:       { cls: 'toss',   mat: 'baked', contact: 'loop', r: 0.26, h: 0.82, build: bChurn,       broken: null },
   lamp:        { cls: 'topple', mat: 'baked', contact: 'ob',   r: 0.30, h: 4.7,  build: bLamp,        broken: null },
-  drum:        { cls: 'topple', mat: 'baked', contact: 'loop', r: 0.32, h: 0.92, build: bDrum,        broken: null },
+  drum:        { cls: 'toss',   mat: 'baked', contact: 'loop', r: 0.32, h: 0.92, build: bDrum,        broken: null },
   sled:        { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.75, h: 0.5,  build: bSled,        broken: bSledBroken },
   pot:         { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.55, h: 0.75, build: bPot,         broken: bPotBroken },
   rugframe:    { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.15, h: 2.2,  build: bRugFrame,    broken: bRugFrameBroken },
@@ -776,4 +1127,12 @@ export const DESTRUCTIBLE_TYPES = {
   fencewattle: { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 1.25, h: 1.0,  build: bFenceWattle, broken: bFenceWattleBroken, fence: true },
   fencerail:   { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.25, h: 1.05, build: bFenceRail,   broken: bFenceRailBroken, fence: true },
   gate:        { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 1.0,  h: 1.3,  build: bGate,        broken: bGateBroken },
+  // --- DESTRUCTIBLES r1: heavier light cover + soft vehicles ---------------
+  wallstone:   { cls: 'break',  mat: 'stone',   contact: 'ob', r: 1.6,  h: 1.15, build: bWallStone,  broken: bWallStoneBroken, wall: true, collider: true, keep: 0.82, crushMin: 2.2 },
+  walladobe:   { cls: 'break',  mat: 'plaster', contact: 'ob', r: 1.6,  h: 1.2,  build: bWallAdobe,  broken: bWallAdobeBroken, wall: true, collider: true, keep: 0.86, crushMin: 2.0 },
+  truck:       { cls: 'break',  mat: 'baked', contact: 'ob',   r: 2.6,  h: 2.2,  build: bTruck,      broken: bTruckBroken, collider: true, keep: 0.88, crushMin: 2.0 },
+  jeep:        { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.7,  h: 1.7,  build: bJeep,       broken: bJeepBroken, keep: 0.94 },
+  ammobox:     { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.85, h: 0.75, build: bAmmobox,    broken: bAmmoboxBroken },
+  tent:        { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.7,  h: 2.1,  build: bTent,       broken: bTentBroken, keep: 0.985 },
+  drumred:     { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.34, h: 0.92, build: bDrumRed,    broken: bDrumRedBroken, explosive: true },
 };
