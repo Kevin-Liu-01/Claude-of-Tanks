@@ -168,3 +168,13 @@ PATHOLOGY (measured, for the orchestrator/next agent):
   recess 3.42/gear xc 1.25) are BANKED here for reuse once the row
   pathology is resolved — they match the front rows and the r2 packet's own
   measured deck/bow lines.
+
+## Side-row pathology SOLVED (orchestrator probe, 2026-08-03)
+The r3 escalation (side rows mean 10% while plan rows 83-85) is the REF
+GUN ELEVATED AT REST: the probe overlay shows the red barrel line riding
+above the proc's level tube across the forward columns — every forward
+side-column's refTop reads the raised barrel, not the deck (m48 pitched-
+tube class; gun component reads 8.3 vs hull 89.9). Fix = batch-32 class
+gun-node rest-pitch-zero rotation (orchestrator lane, law v2: fresh
+baseline + probe/gate-in-loop). ariete + type74 share the class (type74
+via its Gun_7 bone rest pose). Builds resume after the batch.
