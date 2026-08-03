@@ -664,6 +664,96 @@ unchanged zones; basket rim, dome band, crest, hem — code untouched.
 Tools left for the critic: tools/tmp-r7-merkava.py (ITU-601 rect/
 rectbg/runs2/rod/cells/dark scanners), tools/tmp-r7-whatsat.mjs.
 
+## FLOOR round r10 (2026-08-03, merkava 1b agent) — 90.0 PASS x2
+Goal: lift the r9 floors (view-right 8.4, the 8.0-8.5 carries) toward
+8.8-9.0 everywhere. Gates 90.0 PASS x2 (hull 91.2 / whole 90.0 / turret
+90.8 / stations 91.9 / dims 100 / floaters 100; gatePassed re-read from
+JSON both runs — whole rides the exact 90.0 razor all round). merkava3d
+CRITIC-LOCK verified: hash a804b3f8 byte-exact all round AND re-gated
+90.6-to-the-decimal (91.5/90.6/91.6/92.1/100/100). Graduates 3b
+5296950a / 3c 5287233e exact; 2b/2d/4/4b hashes exact. npm test green.
+1. GEAR IDENTITY (the view-right 8.4 driver; lifts left/quarters/
+   close-front too). Official-pair measurements: ref wheels ~0.72 m dia
+   with 9-12 px pale between-wheel windows and DISHED faces (face rect
+   med 56.0 / sd 5.83); ours at MK12 R 0.40 nearly touched (4-5 px
+   windows), read as flat punched arches (med 53.5 / sd 0.42), and their
+   dark tops ate the plain side band (ref band y358-382 uniform 83-86L,
+   ours alternated 65-79). Fixes, all 1B-gated: wheelR 0.355 entry
+   override; c.wheelFace five-band dish anatomy (pale 0.85R / dark 0.60R
+   ring / pale 0.50R / dark 0.34R / pale hub 0.15R, cylX stack proud of
+   the disc face) -> face med 56.0 / sd 4.91 = ref class; backer plate
+   extended down (sc.backH 0.64 — ref pale windows run to world ~0.28,
+   the 0.42 plate stopped at 0.49); plate band now uniform 81-82.
+2. SPROCKET BLACK C (critic r8 item, unfixed through r9: "p5 30, 19%
+   sub-30, ~90px flat-black disc, 4+ views"): sprocketGeo's DARK ROOT
+   RING rides the band edges at xc±ringSpan/2 with outer face ~1.731 —
+   two cover cuts died INSIDE it (0.72R @ +0.006 and 0.93R @ wfXe+0.004).
+   The landed cover rides xc + trackW/2*0.99 + 0.033 (outer ~1.737,
+   still the certified ±1.73 col; the bare ±1.77 col stays dark): pale
+   0.93R wheel-form + dark 0.42R hub ring + pale hub cap; teeth tips
+   (0.376R) keep poking around it = toothed identity preserved. Idler
+   covered at the band face too. Close-front pocket DEAD both ends.
+3. BOW DE-JUMBLE: 1B opts into the 3D r7 towLit path (detail-tint
+   guard/lens/stem + bevel-lit clevis filler + toe bracket row) — the
+   floating dark guard-frame jumble at the nose is gone. On top (1B
+   glacisKit): 7-tab toe RIB ROW (ref dead-front carries ~8 vertical
+   tabs across the toe band; ribs z 2.925+0.017 inside the 3.05 prow
+   plan line, tops <=1.065 under the ~1.17 glacis side line) + clevis
+   MOUTH PLUGS (the residual dark-diamond icons = the shadow slot around
+   the shared, 3D-locked filler; a 1B overlay plate plugs it flush).
+4. GLACIS KIT (r5 packet note "ref scatters fittings across the glacis"
+   finally closed): wiper plates, toolbox+strap, spare-link plate,
+   filler cap, 3 cable staples (under the cable's own certified line),
+   4 off-grid tie-downs — ALL flush (<= +0.013 proud = sub-pixel to the
+   side ortho; the r7 "+0.020 = 2.7px" poke class deliberately unused;
+   zero new columns).
+5. REAR: flaps hullRubber -> hullDark (dead-rear corner p5 36/sd 12.6 vs
+   ref uniform 59-64 — the near-black rubber was the punch); tailKit
+   notch furniture (hinge blocks + tow pintle + latch bar in the recess
+   — ref lower-center sd 10.8 vs our flat 2.2); c.keelDarkTail: the
+   pale keel side-step rear faces (x 0.88..1.16, y 0.235..0.43, 94.5L
+   vs ref ~55 tunnel) split at z -3.30 into a hullDark tail segment —
+   IDENTICAL union silhouette, zero new columns; panel now 56.
+   BISECT LAW BANKED: ANY rear-visible geometry below the idler-wrap
+   line (~0.436 @ z -3.585) writes new side-mask bottoms — a tilted
+   full-width plate cost -0.3 hull/whole, small step covers -0.4; the
+   MATERIAL split is the only free path. Rack-occluded flap fills at
+   z -4.06..-4.12 priced +0.4 hull as flap-band side-col content
+   (A/B verified both directions) — kept as mask content.
+6. TURRET (all in merkava1bKit or 1B config; siblings byte-exact):
+   commander .50 CLUSTER MASS for close-roof (receiver 0.185 wide +
+   twin cradle cheeks + elevation-quadrant tray + second low can; tops
+   pinned on the certified 2.553/2.556 lines, plan inside the nose
+   lane); r5 right-cheek pot -> CAST WEDGE (identical plan footprint
+   x 0.45..0.65 / z 0.125..0.545, front edge drops 2.20->1.96 — the
+   close-roof "crate on the cheek" read dies); LOADER-RING SEAT pad
+   (r8 polish leftover — cast collar cylY under the certified 2.490
+   ring); SHOULDER-SHELF MERGE (one 2.397-top shelf under the four
+   x -0.62/-0.80 pots — crates-on-a-table -> raised cast shelf);
+   stow-deck STRAPS (+3 mm, sub-pixel) + sunk duffel/kit patches
+   (tops <= 2.437 under the 2.44/2.51 cloth lines); roof hairline
+   seams on the camber/crest lanes; right-wall fittings at x <= 1.185
+   (inside the bins' certified 1.35-1.395 plan reach).
+Self-read on the FINAL official pairs (before -> after, driver):
+right 8.4 -> ~8.8 (gear identity); left ~8.5 -> ~8.8 (gear);
+front 8.5 -> ~8.7-8.8 (glacis fill + bow grammar; certified cast-mass
+gap caps it); close-front 8.0 -> ~8.7 (sprocket + gear + .50 mass);
+rear ~8.7 -> ~8.8 (flap punch + keel panel + notch furniture);
+rearleft/rearright -> ~8.6-8.8 (gear + flaps + wall fittings);
+top ~8.8 -> ~8.8-8.9 (straps/patches); toptilt -> ~8.7-8.8 (ring seat
++ shelf merge); close-roof 8.5 -> ~8.7 (.50 mass + wedge + seams);
+hero-frontleft -> ~8.7-8.8; hero-rearright 8.0 -> ~8.5-8.7 (gear +
+wall; the basket through-shadow class remains).
+RESIDUALS (honest, for the next critic): (a) wheel-tunnel/flap-gap
+corner rect p5 36 vs ref 59-64 — every geometric fill prices -0.3+
+(bisected twice), lighting-class residual; (b) hero-rearright basket
+through-read still shallower than the ref's 26-class deep shadow
+(rim-cresting contents are razor-blocked at whole 90.0); (c) the
+turret front cast-mass/mantlet-bulk gap is certified geometry;
+(d) top-view panel-edge contrast vs the ref's soft cast borders;
+(e) cheekPod box edges (shared builder shape — a param'd wedge
+variant is a structure-round job).
+
 ## Visual r9 (2026-08-03, stand-off round) — ORCHESTRATOR LANDING NOTE
 (Builder finished without writing this section; summarized from its verified
 report at landing. Gate 90.0 PASS; turret +0.2, stations +0.6.)
