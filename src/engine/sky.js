@@ -909,6 +909,13 @@ export function createSky(scene, renderer) {
     cloudsBaked = true;
     const swap = (deck, baked) => {
       const tex = deck.material.uniforms.uMap.value;
+      // dispose BEFORE the image swap (same fix as particles.js sprite
+      // sheets): the placeholder has usually been uploaded by now, and
+      // swapping `image` to a different-sized canvas with only needsUpdate
+      // re-uses the old GL allocation — the upload no-ops (blank clouds) or
+      // throws texSubImage offset-overflow, which the mobile tier's scaled
+      // bake sizes made live (caught on the deployed build under WebKit).
+      tex.dispose();
       tex.image = baked.image;
       tex.needsUpdate = true;
       baked.dispose(); // wrapper never uploaded — frees only CPU-side state
