@@ -928,3 +928,11 @@ coordinates pasted (the r5 fleet law).
 - Board front cameras remain elevated ~10-15 deg: the full-circle lens
   read is strongest in view-front/close-front; quarters read the pot
   (ball + ring + sleeve) against the face.
+
+## Shaded-parity r6 (2026-08-02) — FAIL 6.0; FILL PASS (first); floor moved
+Verdict: docs/critique/shaded-parity-isu122s-r6.md. Coverage/inventory
+converging; identity holds it: mantlet decomposes off-axis (ring-stack +
+pipe-mouth + patch), drum ends never circular, gear discs migrated the
+r5 gear-face. MEASUREMENT LAW: critic luma = ITU-601 — builder rects must
+use it (r6's 1.11 track ratio re-read 1.26). r7 = the 10-item identity
+order; margins now 0.6 (90.6).
