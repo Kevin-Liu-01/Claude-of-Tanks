@@ -2697,6 +2697,22 @@ REPAIRS['t84'] = [
                        y_top_max=25.1194, expect=(2, 98284, 259887))),
 ]
 
+# =============================================================== batch 25 ===
+# T54 NORMALIZATION (recovered; runs AFTER batch-22's hull un-reversal —
+# REPAIRS['t54'] list order preserves both ops from the pristine .bak).
+# Dome crest TRUE (2.29-2.38 vs pub 2.40); cupola cluster 2.70-2.81 over
+# gate-z -1.13..-0.43: knee 2.40 -> lands 2.40-2.424, p95 in the 1% grace.
+# hullMask +2%: body z x0.9808 about center; tube long +10%: muzzle pinned
+# rear+9.00 (segment x0.9017). Fused shell (no gun node in the print).
+# Plan: vertex-normalize batch-25 entry.
+REPAIRS['t54'] = [
+    *REPAIRS['t54'],
+    ('py2', _axis_warp('t54', long_axis='z',
+                       y_map=[(0, 0), (24.3669, 24.3669), (28.4992, 24.6106)],
+                       long_map=[(-33.3868, -32.7471), (33.3888, 32.7492), (62.091, 58.6289)],
+                       y_top_max=24.8746, expect=(2, 59953, 119998))),
+]
+
 
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)

@@ -121,3 +121,11 @@ The full vertex-extract pass (REG batch 0a39d55) revises the mini-extract's
 
 Build-order impact: t80-line + t44/type59/vickers_mk1/m60a2 are buildable
 now; t54/amx30-line/t84/m48/t90m wait on orchestrator oracle work.
+
+STATUS UPDATE (orchestrator, same day): batch-22 un-reversed t54/amx30/
+amx30b2 hulls; batch-23 normalized t90m (+ first packet written); batch-24
+normalized t84; batch-25 normalized t54. NOW BUILDABLE: t80-line, t44,
+type59, vickers_mk1, m60a2, t90m, t84, t54. Still waiting: m48 (pitched
+fused tube — decision banked in its stub, warp sketch ready) and the
+amx30-line stylization warp (searchlight/cupola band; orientation already
+fixed).

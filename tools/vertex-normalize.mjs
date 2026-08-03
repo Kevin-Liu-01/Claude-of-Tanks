@@ -206,6 +206,16 @@ export const PLANS = {
     z: [[-4.288, -4.6299], [2.108, 2.4499], [4.294, 5.0901]],
     yTopMax: 2.245,
   },
+  // ---- batch-25: t54 (recovered, post batch-22 orientation fix). Dome
+  // crest TRUE (2.29-2.38 vs pub 2.40); cupola cluster 2.70-2.81 (z
+  // -1.13..-0.43): knee 2.40 -> 2.40-2.424, p95 in grace. hullMask +2%:
+  // body x0.9808 about center -1.4095; tube long (+10%): muzzle pinned
+  // rear+9.00 (segment x0.9017). Fused shell (no gun node).
+  t54: {
+    y: [[0, 0], [2.40, 2.40], [2.807, 2.424]],
+    z: [[-4.698, -4.6350], [1.879, 1.8160], [4.706, 4.3650]],
+    yTopMax: 2.43,
+  },
   abramsx: {
     y: [[0, 0], [2.30, 2.30], [3.0, 2.44], [4.2, 2.47]],
     z: [[-3.932, -3.932], [3.968, 3.968], [6.168, 5.838]],
