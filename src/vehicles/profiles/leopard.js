@@ -2754,8 +2754,21 @@ function buildKF51(P) {
     // class) — rubber 0x000000 read a flat-16 black billboard vs the ref
     // flap zone med 51.2; the shadow bucket's unlit floor 52.6 lands ON
     // the ref number, and the black pop was the whole "oversized" read.
-    P.add('hullShadow', box(0.52, 0.62, 0.03), s * 1.32, 0.70, -3.70);
-    P.add('hullDetail', box(0.07, 0.06, 0.14), s * 1.36, 0.98, -3.64);         // flap bracket to the plate
+    // r8 #2 FLAP RE-DECODED FROM THE GATE ITSELF (the r7 51.2 claim matched
+    // the UNDER-HULL SHADOW — critic flag): the ref plan cols x 1.62..1.73
+    // read rear extents -3.72..-3.75 and the rear pair renders a DEAD-FLAT
+    // 16.0 square (RGB 16,16,16, n=3339 min=max) at x 1.22..1.72, y 0.39..
+    // 0.81 (64x54 px at 125.5 px/m = 0.51 x 0.43 m). The old 0.52 x 0.62
+    // shadow board (x 1.06..1.58, top 1.01) was 1.44x too tall, a column
+    // inboard, and 52-floored. Replaced by: a 16-class FLAT flap board at
+    // the ref footprint (tone block — flat() is the only route below the
+    // unlit 52.6 floor), a small mudguard-shadow remnant above it (ref
+    // upper band med 51.3 = shadow class), and the hanger bracket moved
+    // onto the new flap line. Side col -3.70 keeps its certified 0.39
+    // bottom (the flap bottom IS the carrier, z EXACT); vacated rear cols
+    // x 1.06..1.21 fall back to the sprocket wrap like the ref's own.
+    P.add('hullShadow', box(0.36, 0.20, 0.02), s * 1.39, 0.91, -3.695);        // mudguard shadow above the flap (y 0.81..1.01 = old top line)
+    P.add('hullDetail', box(0.07, 0.10, 0.10), s * 1.46, 0.86, -3.66);         // flap hanger bracket onto the tail (y 0.81..0.91)
   }
   // tail bin course raised to the ref 1.835 top line; slats keep a 0.44 band
   // (>=12% body filter) so the −3.84 column stays the hullLengthM carrier
@@ -2955,8 +2968,19 @@ function buildKF51(P) {
     // mask inert: every new column keeps its 0.013 band-ground bottom and
     // the 1.02 top sits far under the wrap's 1.2-1.38 line; side/plan
     // untouched (same y/z envelope).
-    P.add('hullShadow', box(0.56, 0.62, 0.08), s * 1.28, 0.71, 3.74);          // forward flap board y 0.40..1.02, z 3.70..3.78 (r7: shadow class = ref's flat 58-68 zone)
+    // r8 #2 (front pair): the board stops impersonating the FLAP — the ref
+    // front flap is the same 0.51 x 0.43 corner square as the rear (front
+    // render 25.2 dead-flat at x 1.21..1.71, y 0.39..0.81; front_hull col
+    // 1.68 refBot 0.39 = the flap line, plan cols 1.62..1.73 fore 3.76-3.78
+    // = its face). The 16-class flat flap lives in the tone block at that
+    // exact footprint (z 3.744..3.768, inside the 3.79 hard stop); this
+    // board shrinks to the UNDER-FENDER SHADOW remnant above it (y 0.70..
+    // 1.02 — rung cover duty x 1.00..1.56 intact: y 0.39..0.81 is flap-
+    // covered, 0.40..0.70 board-covered below via the 3.71 idler flap) and
+    // retreats behind the flap plane (z 3.70..3.74).
+    P.add('hullShadow', box(0.56, 0.32, 0.04), s * 1.28, 0.86, 3.72);          // under-fender shadow board y 0.70..1.02
     P.add('hullDark', box(0.18, 0.09, 0.10), s * 1.28, 1.06, 3.73);            // flap hanger bracket into the wrap shoulder
+    P.add('hullDark', box(0.10, 0.09, 0.05), s * 1.46, 0.855, 3.745);          // flap hanger onto the new corner flap (y 0.81..0.90)
     P.add('hullShadow', box(0.05, 0.42, 0.28), s * 1.7375, 0.98, 3.58);        // outer corner flap panel under the fender tip
     P.add('hullDark', box(0.05, 0.05, 0.30), s * 1.7375, 1.21, 3.57);          // fender-tip gusset joining tip → flap
   }
@@ -3214,8 +3238,13 @@ function buildKF51(P) {
   // race" signature) is a ROOF-LEVEL collar around the column — not a well
   // ring, so the head-envelope bound does not apply. Flat concentric discs
   // (the certified r1 hatch-ring recipe, ≤12 mm over the roof, plan-
-  // interior): Ø0.51 = 80% of ref, capped by the certified loader-drum
-  // position (dist 0.158 m — a bigger race slides under the loader rings).
+  // interior): Ø0.51 authored = 80% of ref, capped by the certified
+  // loader-drum position (dist 0.158 m — a bigger race slides under the
+  // loader rings). r8 HONEST RESTATE (critic r7 measured): the RENDERED
+  // dia is 53% of the ref ring, not the declared 63% — the mouth-ring cap
+  // (r 0.200 vs ref Ø0.59's visible annulus) is the read from top, and the
+  // 0.255 base race is parapet-occluded to crescents. 53% is the true
+  // carried number; the loader-adjacency + head-depth caps still bind.
   // r6 #5a RING POLARITY: the ref top ring is a pale annulus FRAMED by two
   // bold near-black outline circles (~2px each at 640 — measured outline
   // p5 34, pale face 66-70); ours read as one low-contrast pale serration.
@@ -3311,6 +3340,41 @@ function buildKF51(P) {
   P.add('turret', cylY(0.130, 0.130, 0.005, 18), -0.64, h + 0.0385, -0.65);
   periscope(P, 'turretDetail', 0.62, h + 0.04, -0.45);
   periscope(P, 'turretDetail', -0.40, h + 0.04, -0.40, 0.3);
+  // ---- r8 #1 ROOF MG (owner decoration law, pintle allowance ≤0.4): MG5-
+  // class pintle gun on the commander hatch ring, parked TRANSVERSE (swung
+  // right, +4° elevation) — the pose is the entire budget trick, priced off
+  // the gate's own cost model (12·mean + 0.6·p95 per row):
+  //   SIDE (the 90.4 gating row): every piece z-parks inside WORLD
+  //   −0.30..+0.13 = the SEOSS block's own side-column window (3.02w tops)
+  //   — receiver z −0.2375..−0.1325, barrel ±0.0155 about −0.185, belt-box
+  //   −0.17..−0.086: ZERO new side columns.
+  //   FRONT: butt/receiver/pintle keep x ≤ 0.955 under the bustle tower's
+  //   2.955w columns — only the bare barrel run crosses x 0.955..1.17. The
+  //   front camera is TILTED 4.6° (dir (0,0.08,1) — the r4 cheek-window
+  //   law), so the screen skyline at those columns is the REAR right
+  //   shelf's projected line u = y·0.9968 − z·0.0799 ≈ 2.77 (its 2.532w
+  //   top at z −2.9 rides +0.23 up-screen), NOT the 2.53 roof edge: a
+  //   first cut at axis 2.66 measured ZERO sky (shelf camo behind the
+  //   rod). The mount therefore stands a REAL pintle column: barrel axis
+  //   2.816w at z −0.185 → rod-bottom u 2.815 vs shelf-line 2.771 = a
+  //   true 5 px sky slot under the whole exposed run, muzzle tip in open
+  //   sky. Cost vs the ref's own shelf line: Δtop 0.07-0.09 over ~15
+  //   columns → front_whole ~−0.5, far inside its 3.6-point slack; the
+  //   90.4 headline row is untouched by construction.
+  //   PLAN: muzzle 1.17 < the 1.44 mid-wall line — interior. STATIONS/DIMS:
+  //   top 2.86 << SEOSS 3.02 anchor, slice widths hull-owned.
+  // MG PHYSICS (merkava r5 ruling): barrel/booster/receiver-cap ride the
+  // PALE detail bucket — top-lit rod against sky, not gunmetal-on-camo.
+  P.add('turretDark', KIT.cylY(0.020, 0.020, 0.157, 10), 0.60, 0.9315, -0.635); // pintle column rooted in the hatch drum (w 2.563..2.720)
+  P.add('turretDark', box(0.06, 0.04, 0.05), 0.60, 1.030, -0.635);             // cradle rocker (w 2.720..2.760)
+  P.add('turret', box(0.34, 0.095, 0.105), 0.565, 1.0814, -0.635, 0, 0, 0.0699); // receiver body (camo; w 2.744..2.851 incl tilt — under the 2.955 tower cols)
+  P.add('turretDark', box(0.05, 0.055, 0.045), 0.375, 1.0814, -0.635);         // butt/spade grip at the inboard end
+  P.add('turretDark', KIT.cylX(0.0205, 0.008, 10), 1.170, 1.1237, -0.635, 0, 0, 0.0699);   // dark muzzle face
+  P.add('turret', box(0.10, 0.095, 0.085), 0.35, 1.025, -0.578);               // belt-box hung on the receiver's left flank (z −0.128w, inside the SEOSS side window)
+  P.add('turretDark', box(0.06, 0.045, 0.024), 0.43, 1.065, -0.607);           // belt tray into the receiver
+  // (barrel/booster/receiver-cap/belt-lid are mgPale TONE meshes — same
+  // geometry/placement, tone block: mats.detail topped out 70-85 lit vs
+  // the ordered 95-101L M2 class.)
   // bustle (u = +x + c decoded): plateau 2.94w spans WORLD −0.80..+0.92
   // (offset RIGHT like the print) with the front face at −1.96w; the LEFT
   // side steps down — 2.54 band −0.80..−1.31 with a 2.93 sensor pedestal
@@ -3556,6 +3620,32 @@ function buildKF51(P) {
       tm.roughness = 1.0;
       tm.metalness = 0.02;
       tm.bumpScale = 0.07;                               // r7: ridge-glint calm (the "tooth zipper" scallop row on the wrap)
+      // r8 #3 GOLD-ZIPPER AMPLITUDE CAP. The bright rib population is
+      // OUTPUT-side, not texel-side: sun/camera-facing run faces render
+      // ~1.85x albedo (measured: the (92,86,60) plateau = pad albedo
+      // (69,64,42) x1.85 linear; band texels ride the same stack), so an
+      // albedo cap can't reach it and any view/normal-keyed grime either
+      // misses these +z faces or swims with vehicle yaw. The fix is a
+      // hue-preserving OUTPUT luma ceiling at the ref's own flat-leg class:
+      // linear 601-luma 0.0545 = sRGB 66 (ref front legs are DEAD-FLAT
+      // 63.4-63.8, p90 63.8 — a flat plateau IS the ref read). Side-facing
+      // run surfaces render 45-60 — under the ceiling, byte-identical: the
+      // locked side-strip p90 59.5 parity class never engages the cap.
+      // Chained after the fleet ambient-floor hook on these per-build
+      // materials (leo2a6 regrime precedent); own cache key; white-mask
+      // law: the gate's mask pass overrides materials — silhouette-inert.
+      tm.onBeforeCompile = (shader) => {
+        vehicleAmbientFloorHook(shader);
+        shader.fragmentShader = shader.fragmentShader.replace(
+          '#include <opaque_fragment>',
+          `{
+		float kfTrkL = dot( outgoingLight, vec3( 0.299, 0.587, 0.114 ) );
+		if ( kfTrkL > 0.0545 ) outgoingLight *= 0.0545 / kfTrkL;
+	}
+	#include <opaque_fragment>`,
+        );
+      };
+      tm.customProgramCacheKey = () => 'kf51-track-hicap-r8';
     }
     const rehook = (m) => {
       m.onBeforeCompile = vehicleAmbientFloorHook;
@@ -3661,7 +3751,29 @@ function buildKF51(P) {
         // PROUD of the ref wrap rows to ~on them (gf-base: plan front 3.760
         // vs ref 3.726 at x 1.38..1.50; side top 1.278 vs ref 1.245).
         ob.geometry.scale(1, 0.45, 1);
-        rehook(m).color.setHex(0x45402a);                // link pads — r7: olive-iron ROTATED WARM at held luma (0x3f4433 was G-heavy; the pads are the visible ground-run surface, so the band multiplier alone could not kill the lavender cast; B cut with the band's second pass)
+        // r8 #3 (the REAL zipper): the front-column bright rib rows are the
+        // PAD STACK's fore-facing faces on the ramp/wrap — a dead-uniform
+        // (92,86,60) plateau = pad albedo (69,64,42) x1.85 linear (sun +
+        // fill on +z faces), immune to the band-texture route and to any
+        // n.y-keyed grime (these faces are NOT up-facing; a first n.y cut
+        // measured zero movement on the plateau). Same output ceiling as
+        // the band material: linear 601-luma capped at 0.0545 (sRGB 66 =
+        // the ref's flat 63.8 leg class), hue-preserving scalar — R>G
+        // warmth lock intact; side faces render 45-60 and never engage
+        // (locked side-strip parity byte-identical).
+        m.onBeforeCompile = (shader) => {
+          vehicleAmbientFloorHook(shader);
+          shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <opaque_fragment>',
+            `{
+		float kfPadL = dot( outgoingLight, vec3( 0.299, 0.587, 0.114 ) );
+		if ( kfPadL > 0.0545 ) outgoingLight *= 0.0545 / kfPadL;
+	}
+	#include <opaque_fragment>`,
+          );
+        };
+        m.customProgramCacheKey = () => 'kf51-shoe-hicap-r8';
+        m.color.setHex(0x45402a);                        // link pads — r7: olive-iron ROTATED WARM at held luma (0x3f4433 was G-heavy; the pads are the visible ground-run surface, so the band multiplier alone could not kill the lavender cast; B cut with the band's second pass)
         m.envMapIntensity = 0.05;
         m.roughness = 1.0;
         m.metalness = 0.04;
@@ -3844,6 +3956,34 @@ function buildKF51(P) {
         tone(chanDark, KIT.xform(KIT.cylZ(0.028, 0.002, 12), sx, sy, -3.3535), true);   // 16-class socket bore
       }
     }
+    // ---- r8 #2 CORNER MUDFLAPS AT THE REF FOOTPRINT, FLAT 16-CLASS. All
+    // four ref corners render DEAD-FLAT dark squares (rear pair 16.0
+    // min=max, front pair 25.2 min=max — ITU-601 on the r7 pairs) at
+    // x 1.21..1.71, y 0.39..0.81 (0.51 x 0.43 m at 125.5 px/m). The shadow
+    // bucket floors at 52.6 there, so the boards are flat() meshes — light-
+    // immune like the ref's own dead-flat read (its n=3339 sample has ZERO
+    // spread), split per the per-end anchors. GEOMETRY (gate-checked): rear
+    // z −3.688..−3.712 keeps the certified −3.70 side class and its 0.39
+    // bottom; front z 3.744..3.768 inside the 3.79 hard stop; the new
+    // x 1.578..1.71 columns land ON ref lines (front_hull col 1.68 refBot
+    // 0.39; plan cols 1.62..1.73 fore 3.76-3.78 / rear −3.72..−3.75 = the
+    // ref's own flap faces, previously our two worst plan columns).
+    const flapRear16 = flat(0x101010);                   // rear pair — ref anchor 16.0
+    const flapFront25 = flat(0x191917);                  // front pair — ref anchor 25.2
+    for (const s of [-1, 1]) {
+      tone(flapRear16, KIT.xform(KIT.box(0.50, 0.42, 0.024), s * 1.46, 0.60, -3.700));
+      tone(flapFront25, KIT.xform(KIT.box(0.50, 0.42, 0.024), s * 1.46, 0.60, 3.756));
+    }
+    // ---- r8 #1 MG pale parts (MG PHYSICS: ref pintle guns read as PALE
+    // top-lit rods, M2 class 95-101L where lit — merkava r5 ruling;
+    // mats.detail measured 70-85 on the first cut). Same geometry and
+    // placement as the P.add cut — barrel, booster, receiver cap, belt
+    // lid re-materialed one class up.
+    const mgPale = mkTone(0x60624c, 0.18);
+    tone(mgPale, KIT.xform(KIT.box(0.32, 0.020, 0.088), 0.565, 1.1364, -0.635, 0, 0, 0.0699), true);
+    tone(mgPale, KIT.xform(KIT.cylX(0.0155, 0.365, 10), 0.9175, 1.106, -0.635, 0, 0, 0.0699), true);
+    tone(mgPale, KIT.xform(KIT.cylX(0.020, 0.066, 10), 1.133, 1.1211, -0.635, 0, 0, 0.0699), true);
+    tone(mgPale, KIT.xform(KIT.box(0.102, 0.012, 0.087), 0.35, 1.0785, -0.578), true);
     // ---- r6 #6a turret-side AO grade, geometry half: wall-base shadow
     // shells 1.2mm proud and slope-parallel to the cheek/mid wall frusta
     // (y 0.165..0.30). The deep-shade floor is albedo-normalized, so the
@@ -3999,6 +4139,21 @@ function buildKF51(P) {
     tone(glacisTan, KIT.slab(                                                  // crease-slab sliver between moat band and the knee
       [-1.52, 1.4244, 2.555], [1.52, 1.4244, 2.555], [1.52, 1.4682, 2.47], [-1.52, 1.4682, 2.47],
       [-1.52, 1.4288, 2.555], [1.52, 1.4288, 2.555], [1.52, 1.4726, 2.47], [-1.52, 1.4726, 2.47]));
+    // ---- r8 minor: FRONT BOW PALE-TAN. The ref bow plate (the reverse-
+    // slope nose face under the beak, front rect x ±0.9 / y 0.46..1.04)
+    // renders med 60.9 RGB (71,59,47) — R−G +12 warm tan; ours read 62.7
+    // at (69,66,48) — green-dominant camo. Same shell recipe as the glacis:
+    // a slope-parallel R-heavy shell 8 mm proud along the face normal
+    // (n = (0,−0.539,0.842) — the face is self-shaded, key dot −0.045, so
+    // the read is hemi/fill-driven and hue tracks the albedo tint per the
+    // floor-tint law). x inset to ±1.29/±1.54, y 0.470..1.030 — interior
+    // of the certified wedge face in every view (belly law: shell low edge
+    // 0.4656 stays inside the ref's own 0.456..0.471 belly band). FRONT-
+    // first quad order = the wedge's own certified winding.
+    const bowTan = mkTone(0x372c1b, 0.08);               // (0x4a3a24 rendered med 73.6 (89,71,47); 0x352a1a landed 58.7 (70,57,38) vs ref 60.9 (71,59,47) — half-notch up, R−G held at the ref's +12 class)
+    tone(bowTan, KIT.slab(
+      [-1.29, 1.0257, 3.7903], [1.29, 1.0257, 3.7903], [1.54, 0.4657, 3.4318], [-1.54, 0.4657, 3.4318],
+      [-1.29, 1.0300, 3.7836], [1.29, 1.0300, 3.7836], [1.54, 0.4700, 3.4251], [-1.54, 0.4700, 3.4251]));
   }
   // r4 #7 CAMO DISTRIBUTION SPLIT (+ #1 phase break, #8 pano-lid pop).
   // The camo texture is one shared per-spec canvas boxUV'd at camoScale on
