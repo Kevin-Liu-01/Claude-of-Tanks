@@ -288,3 +288,54 @@ bottoms kept). Tone table all within ~1L of ref (packet r2 verdict rects).
 MG runs (dark<=66): front M2 27px, plinth 12px, side floats 14/16px vs
 ref's own 2/6/1 — side float reads vs pale band (ref equally fused, 6px).
 Gate paid 0.2 net (91.7->91.5, margin 1.5). Hashes/sibs exact.
+
+## STRUCTURE round r3 (2026-08-02, merkava 3d/1b agent) — 91.1 PASS x2
+Critic r2 order executed (all switches 3D-gated: softGoods/rackX/noDecal/
+sleevePale/crestChamfer/glacisBreak/wheelHex + skirt.soft + muzzleRing.pale
++ ring.solid + wedgeFront/cheekRake 0.24/roofMerge; shared-helper edits all
+flag-gated — 3b/3c hashes 5296950a/5287233e re-verified EXACT, 2b/2d/4b
+scores exact 39.9/34.9/34.6).
+1. REAL MGs: (a) LEFT plinth MG re-staged — slot z0 -0.72->-0.62, curb
+   2.525->2.492, gun at x -0.885 with receiver/pintles/booster in the slot
+   sky + a PALE STAGE WALL (x -0.645, top 2.598) killing the dark-on-dark
+   see-through: left ortho now shows receiver hump + 55 px rod + muzzle
+   booster + 2 pintle ticks over an 8 cm slot gap (crop verified 16x).
+   (b) RIGHT .50-cal — window sill 2.525->2.470 (sides ride the far plinth
+   band, fronts the flanking 2.617 segs), pintle post in the 2.470..2.545
+   gap, receiver 2.545..2.617 + pale lid, TAPERED barrel (r 25->16 mm) +
+   booster + sight, pale stage wall at x 1.125. (c) crest M2 rebuilt from
+   the "sleeve box": dark receiver + spade grips + pintle + tapered barrel
+   to z 1.47 (booster 1.415) — all <= 2.540 under the crest cols; the old
+   turretDetail box pair deleted. (d) loader MG got taper+booster.
+2. SOFT GOODS: chainCurtain soft mode (pale rods on camo, pitch +-28%,
+   drop +-18%, lean, gaps, sparse small balls); rearTip fence -> half-height
+   cloth shadow band + 15 jittered PALE rods (fence rect p5 66 -> 83, p50
+   83; ref 89/96); vane flank combs + under-basket combs jittered/paled/
+   skipped; flank rail + basket soft (pack 90% + 6 yawed rim tarp lumps +
+   2 leaning tie rods); skirt seams -> camo + pale bolts (band p5 66->76,
+   ticks then deleted -> expect ~85+); smoke tubes pale w/ dark bore dots
+   (the tight dark row WAS the critic's "Militek text" — zoom-verified).
+3. TURRET MASS: shell->module transition washes (2 raked slabs/side,
+   0.90..1.295 at 2.462->2.437, interior — plan trench gone); wedgeFront +
+   cheekRake 0.24 + roofMerge (the 3B arrowhead planes); crestChamfer
+   0.035 on outer lanes (crown rounds off in heroes; centers hold top0);
+   module seam engravings -> 4 short raked cleats/side; rear rack ->
+   X-braced bays (correct-rotation braces v2 — v1 poked 0.22 over the
+   band, hull 91.5->90.3->91.5) + soft bay wash + 2 yawed stow humps/side
+   + midShelf X-brace + hump; roof density x3 (conduit+wire, 3-can row,
+   strap box, yawed tarp, 2 pots, 2 periscopes, rope coil, plateau bundle
+   + can — all in the |x|<=0.44 / band-shadow corridor <= 2.52/2.53);
+   noDecal (number quad deleted); muzzleRing + sleeve-end ring pale;
+   solid hatch rings (fat rim torus r*0.955 + inner seam ring + 3 tucked
+   scopes — the toptilt dashed-circle relic).
+4. MINORS: glacisBreak (rub strip + step plates + seam ON the keel plane —
+   v1 floated 0.14 off-plane, hull -1.2, fixed); wheelHex 0x3d3d31 + env
+   0.65 (arch windows p50 56 kept, p95 62->65+ toward ref 76).
+GATES: 91.1 = hull 91.5 / whole 91.1 / turret 91.7 / stations 92.9 / dims
+100 / floaters 100, PASS x2 bit-identical. Net -0.4 vs r2 (crest chamfer
+front cols + M2/window content) — margin 1.1 held.
+RESIDUALS (honest, for critic r3): hero-FL turret still reads tall-ish
+(the certified module staircase + left band wall persist; washes/chamfer
+soften but don't transform); right .50 window backdrop partially
+segmented by its own pale stage; wheel-window p95 65 vs ref 76; fence
+zone p50 83 vs ref 96 before the r3b backer shrink (re-measure).

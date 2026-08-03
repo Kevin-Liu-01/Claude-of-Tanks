@@ -323,6 +323,58 @@ rides high vs the ref's falling rim — work-order item 1. NEXT =
 orchestrator runs REG + extract + batch-15 warp, then the family push
 round re-lays to the normalized print (work order above).
 
+## STRUCTURE round r3 (2026-08-02, merkava 3d/1b agent) — 90.7 PASS x2
+Critic r2 order executed; margin GREW 90.6 -> 90.7 (paired-refund law
+held: the basket LEFT rim rail dropped to the ref's own 2.373 front col
+at x -1.098 — was +0.083 over, side rows keep the falling rim via the
+RIGHT rail max-over-x — and that refund paid the dome adds).
+1. DOME-AS-CROWN (the #1 identity item, hero-frontleft done-gate): vault
+   rx 0.155 -> 0.19 (r3 workorder PERMIT: ref front cols x -0.89/-0.93
+   read 2.581/2.591 vs our 2.508/2.539 UNDER — broadening was a deficit
+   close, not a raise); capF 0.145 (the ellipse now lands the ref's own
+   2.605 stair arc at z -0.70), capR 0.155; FOUR skirt fillet slabs blend
+   flanks + both caps into the roof (no perched-pill edge; plan reads
+   oval); ring r 0.10 with fat rim torus r*0.95 + inner seam ring (CIRC
+   "pill" + dash kill). Hero-frontleft verified: broad rounded crown with
+   ring + sloped shoulders where r2 was absent. Certified flat 2.630 side
+   band untouched (crown ridge exact).
+2. REAL MGs: commander — barrel now TAPERS (21->14.5 mm), spade grips,
+   FRONT support post at the saddle-sky window edge (z -0.565, inside the
+   ref's own 2.557 stair col — visible from the LEFT under the rod);
+   receiver+can read from the RIGHT against the pale dome. Loader — the
+   certified 2.451 wide-low carrier keeps its 0.555-0.665 front window,
+   plus a RAISED twin (receiver 2.488 + tapered rod 2.470 + booster) at
+   the ring rim x ~0.50 (under the ring's 2.490 front cols, under the
+   2.63 dome side cols) that pokes 5-6 cm over the roof camber — the
+   side-visible gun; the right shoulder pot shortened z -1.42..-2.20
+   (fronts keep 2.446 max-over-z; sides there are roof-ruled) so the gun
+   owns the -1.04..-1.42 window. Toptilt: both guns + both rings read.
+3. FLANK (crenellation + guide-teeth INVENTED -> DEAD): drops cut to the
+   single z 1.93 corner tab (front ±1.80 col carrier kept via the corner
+   posts), sideCurtain PLAIN (3 hairline seams total, no dark hem, no
+   segment ticks) + extended z 2.32..-3.38, and the dark shadow wall ->
+   PALE backer at x 1.46 INBOARD of the wheel discs (v1 at 1.685 sat
+   between track and wheels and CURTAINED them — bay crop now shows the
+   ref's exact idiom: plain pale plate over bare dished wheels).
+4. MINORS: bow cable LEVEL (bowFlat — constant world-y route, 12 mm sag;
+   the r2 constant-z route still smiled on the raked glacis); grilles
+   de-pinked (glacis louvres + deck grille -> camo base + tone-on-tone
+   slats + hairline shadows; louvre rect 70 -> 82.7 neutral, maroon
+   stripes dead); fenderKit on (boards furnished); basket soft pass
+   (pack to 90% + 6 yawed tarp crowns under the falling rim + jittered
+   pale chains + leaning tie rods — "empty scaffold" filled).
+GATES: 90.7 = hull 91.3 / whole 91.1 / turret 90.7 / stations 93.6 /
+dims 100 / floaters 100, PASS x2 bit-identical. Shared-helper edits all
+flag-gated: 3b/3c hashes 5296950a/5287233e exact, 2b/2d/4b 39.9/34.9/34.6
+exact.
+RESIDUALS (honest, for critic r3): plan_turret x ±0.43-0.62 carries a
+PRE-EXISTING symmetric +0.17-0.29 forward over-read (proc 0.844 vs ref
+0.55-0.67, errs 0.09-0.14 — unidentified mesh, needs --blame; the planned
+plan-bow was therefore SKIPPED); basket rear p5 56 vs ref 26 (the packed
+soft contents cost the deep through-frame shadow); louvre zone still
+-14L vs the ref's oddly-bright panel; dome is certified-height so the
+crown reads broad-low rather than tall.
+
 ## VISUAL round r2 (2026-08-02, merkava agent) — paired w/ 3d; 90.6 PASS x2
 MARGIN GREW 90.1 -> 90.6: dome/MG/roof rebuild authored as PAIRED REFUNDS
 (deleted old cupola drum's +0.09 over-read + loader zone's +0.06 plateau,
