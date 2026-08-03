@@ -2632,6 +2632,33 @@ REPAIRS['abramsx'] = {
     ],
 }
 
+# =============================================================== batch 22 ===
+# ORIENTATION REPAIRS (t62_bergman/batch-12 class; found by the REG
+# instrument sweep 0a39d55): t54 (recovered), amx30b_ahab and amx30b2_ahab
+# all render glacis -z under a +z gun — hull BACKWARDS vs its rig. Same
+# recipe as batch-12: rotate ONLY HullMesh 180 deg about y through its
+# referenced-verts bbox center. All three hulls are x/z-symmetric boxes
+# (t54 z +-33.47, amx z +-33.44, x symmetric), so the AABB is unchanged and
+# the authored Turret node stays seated at its station — the glacis simply
+# swaps under the gun. True rotation (chirality kept), positions + normals
+# rewritten, census-guarded (accessor reads 2026-08-03). The extract's
+# DO-NOT-SCORE stands until re-extract reports the orientation agreeing.
+REPAIRS['t54'] = [
+    ('py2', _rotate_mesh_180y('t54', 'HullMesh', expect_verts=43074)),
+]
+REPAIRS['amx30'] = {
+    'path': 'public/models/tanks/community/amx30b_ahab.glb',
+    'ops': [
+        ('py2', _rotate_mesh_180y('amx30', 'HullMesh', expect_verts=8789)),
+    ],
+}
+REPAIRS['amx30b2'] = {
+    'path': 'public/models/tanks/community/amx30b2_ahab.glb',
+    'ops': [
+        ('py2', _rotate_mesh_180y('amx30b2', 'HullMesh', expect_verts=8895)),
+    ],
+}
+
 
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)
