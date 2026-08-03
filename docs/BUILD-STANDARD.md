@@ -60,6 +60,28 @@ wins and this file needs a patch.
 - Done-gates measure on the OFFICIAL rigs only: gate runs +
   `tools/tmp-tank-critic.mjs --id=<id>` pairs. Bespoke harnesses are
   diagnosis-only. Custom crops never count as verdict evidence.
+- ANGLES / EXACT GEOMETRY / ROUNDNESS (owner directive 2026-08-03):
+  `node tools/visual-evaluator.mjs --id=<id>` is part of the official rig
+  set — critics run it EVERY visual round (same 14 critic views, camoSeed
+  4242, <10 s). Any claim about edge angles/slopes (glacis-rake class),
+  rounded structures (radii, arc spans, domes reading polygonal — lathe
+  facet counts), or silhouette profile deltas CITES ITS NUMBERS: segment
+  Δangle with its printed ± noise band, arc radius/span/fit-residual and
+  facet read, per-column top/bottom deltas in world meters. Eyeball reads
+  of these classes no longer count as evidence. Round evidence lives at
+  shots/visual-eval-<id>/ (report.json + annotated overlay per view).
+  - RIG PARITY IS GATING: a `RIG MISMATCH` verdict (yaw-proxy > 10° —
+    skew flip or principal-axis break; driver exits 2) ABORTS scoring.
+    Fix registration first, never score a mismatched pair (the pt91m
+    yaw-180 class would have been caught before round 1).
+  - Calibration (re-derive with `--selftest`): angle σ ≈ 24/len_px°
+    (~0.1° on ≥1 m edges); sub-0.25 m segments carry corner bias (±4°
+    floor) — a Δ below the printed noise band is NO-FINDING. Radii honest
+    to ~3%; facet count ±1; `reads polygonal` requires both >1.2° tangent
+    steps AND overlay-visible sagitta.
+  - Coordinates in findings are PROC-frame world (comparison itself is
+    self-registered per-model rig; the printed ref↔proc world offset is
+    registration data, not a defect).
 - Sky/air claims: MASK-METHOD (bg |px−0x151b20| maxch ≤13 + rect). Tone
   claims: ITU-601 luma rects WITH coordinates. Banked numbers re-derive
   from current renders before re-use.
