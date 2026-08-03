@@ -271,10 +271,23 @@ That is the point: it is the definition of done, not a description of today.
    launchers, railings and holders. Decoration is part of "done", not
    garnish.
 
-Enforcement: critics add three checks to every verdict — FRONT-SLOPE
+4. **TRACK CONTAINMENT (fleet-wide, 2026-08-03).** Tracks must not clip
+   through the front or rear of the tank (owner garage screenshot: track
+   shoes piercing the bow plate/fender on the turntable). The track
+   loop's wrap arcs — band, shoes, guide horns — must stay CLEAR of hull
+   solids (bow/stern plates, fenders, mud flaps): either the plate sits
+   proud of the wrap with real clearance, or the wrap is genuinely open
+   to air. Audit tool: `tools/tmp-track-clip.mjs` (voxel overlap between
+   the band meshes and center-reaching hull solids in the front/rear
+   wrap zones; offenders in shots/track-clip.json). Builders self-check
+   bow/stern close views on every round that moves nose/tail geometry
+   or wheel positions; critics add a TRACK-CONTAINMENT check to front/
+   rear/hero views.
+
+Enforcement: critics add four checks to every verdict — FRONT-SLOPE
 (abrams only), CONTIGUITY (all angles), DECORATION MINIMUM (roof MGs
-present? flat areas dressed?). Builders treat missing MGs as a
-work-order item of the same rank as a failed view. Graduates are not
-exempt: leo2a6 is flagged for a contiguity fix round (leopard lane,
-after kf51 r7); the m1a1-line graduates queue for a front-slope +
-decoration audit.
+present? flat areas dressed?), TRACK-CONTAINMENT (bow/stern wraps clear
+of hull solids). Builders treat missing MGs as a work-order item of the
+same rank as a failed view. Graduates are not exempt: leo2a6 is flagged
+for a contiguity fix round (leopard lane, after kf51 r7); the m1a1-line
+graduates queue for a front-slope + decoration audit.
