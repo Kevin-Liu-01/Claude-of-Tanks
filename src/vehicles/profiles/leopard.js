@@ -2693,34 +2693,48 @@ function buildKF51(P) {
   // already fully lit y 0.52..1.80 by the plate itself, so nothing changes
   // any gate column band; the exhaust slits sit inside the existing louver
   // band's −3.5875..−3.6225 shell.
-  for (const s of [-1, 1]) {
-    // r4 #6 CHEVRON → RECESSED-FRAME STYLE: the r3 pale-strap + dark-core
-    // pair read as a 6-7 px wire at view distance (the 0.30 pale flanks ate
-    // the member). The ref member is a WIDE low-contrast pressed panel with
-    // dark recess edges — restyled: plate-tone camo face panel + dark edge
-    // shadow lines flanking it + a thin pressed-lip highlight. Same member
-    // axis/rotation; ends still clear the hex rims.
-    P.add('hull', box(0.30, 0.78, 0.0024), s * 0.60, 1.19, -3.6008, 0, 0, s * -1.05);        // member face panel (plate tone)
-    P.add('hullDark', box(0.032, 0.80, 0.0028), s * (0.60 + 0.0757), 1.19 - 0.1318, -3.6019, 0, 0, s * -1.05); // recess edge (low flank)
-    P.add('hullDark', box(0.032, 0.80, 0.0028), s * (0.60 - 0.0757), 1.19 + 0.1318, -3.6019, 0, 0, s * -1.05); // recess edge (high flank)
-    P.add('hullDetail', box(0.014, 0.74, 0.0030), s * (0.60 - 0.0498), 1.19 + 0.0867, -3.6030, 0, 0, s * -1.05); // pressed-lip highlight
-    // r3 #5: hex taillight recesses grown to the ref's ~0.4 m bore (r2's
-    // Ø0.24 was unfindable) at the ref's TRUE spots — rear-zoom measured
-    // the ref bores at x ±0.74, INBOARD of the corner flaps (the first
-    // r3 placement at ±1.14 hid them behind the moved flaps).
-    // r4 #6: BORE POLARITY — the pale lens dot sat dead-centre and read as
-    // a pale NUT; ref is a black hole in a frame. Dot deleted; the bore
-    // goes to the darkest bucket (rubber — floor-scaled below the V21
-    // class) with a deeper inner disc shaping the recess.
-    P.add('hullDetail', cylZ(0.205, 0.0015, 6), s * 0.74, 0.78, -3.6012);             // hex rim ring (pale race)
-    P.add('hullShadow', cylZ(0.192, 0.0022, 6), s * 0.74, 0.78, -3.6028);             // hex recess wall
-    P.add('hullRubber', cylZ(0.158, 0.0025, 6), s * 0.74, 0.78, -3.6043);             // hex bore — darkest reachable
-    P.add('hull', box(0.44, 0.26, 0.003), s * 1.19, 1.42, -3.6015);                   // corner exhaust box
-    for (let k = 0; k < 3; k++) P.add('hullDark', box(0.38, 0.05, 0.0022), s * 1.19, 1.34 + k * 0.08, -3.6042);
+  // r5 #1 CHEVRON TO REF WEIGHT. The r4 recessed-frame restyle kept the
+  // member READ in two 0.032 hairlines (~4 px) because the 0.30 face panel
+  // was plate-tone camo — invisible. Rebuilt to the ref composition (rear
+  // crop decoded): apex-UP wide pressed V — a 0.14 m recessed CHANNEL per
+  // arm (~17 px at the 120 px/m rear raster) whose floor is the floored-
+  // dark class (ref channel med 56 ≈ our unlit-face floor 52.6), with a
+  // pale bevel lip on the LOWER edge (recess wall catching top light, ref
+  // 74-77) and a sub-floor shadow line on the UPPER edge (ref 45-47 — the
+  // sub-0x06 albedo ramp, see edgeDark in the tone block). Arms drop 12.2
+  // deg from the apex sides to x ±1.10, riding ABOVE the locked hex rings
+  // (axis-to-hex distance 0.298 = lip edge 3 mm clear of the 0.205 race).
+  // r4 polarity bug: the old members ran apex-DOWN (rz s*-1.05 rises
+  // outward); the ref V is apex-UP.
+  {
+    const aAng = 1.3337;                                                       // arm axis 12.2 deg below horizontal (see workorder r5 §1)
+    const nX = 0.2348, nY = 0.972;                                             // arm-perpendicular unit (offsets ride it)
+    for (const s of [-1, 1]) {
+      const off = (d) => [s * (0.655 + nX * d), 1.1075 + nY * d];
+      const [fx, fy] = off(0);
+      P.add('hullShadow', box(0.140, 0.92, 0.0022), fx, fy, -3.6010, 0, 0, s * aAng);   // arm channel floor (floored-dark, 17 px)
+      // pale bevel lip + upper shadow line live in the tone block (paleLip /
+      // edgeDark custom mats — hullDetail read only 62-67 on this face vs
+      // the ref lip's 74-77, and >=0x04 albedos floor flat at 52)
+      // r3 #5 hex taillights (position/size LOCKED): pale race + recess
+      // wall + bore. r5: the bore rides mats.rubber which drops to the
+      // 0x000000 tint-collapse class this round — reads ~15 vs the ref
+      // hole's 5-8 (was floored 52.6).
+      P.add('hullDetail', cylZ(0.205, 0.0015, 6), s * 0.74, 0.78, -3.6012);             // hex rim ring (pale race)
+      P.add('hullShadow', cylZ(0.192, 0.0022, 6), s * 0.74, 0.78, -3.6028);             // hex recess wall (floored 52 = the lit mouth ring vs the black core)
+      P.add('hullRubber', cylZ(0.158, 0.0025, 6), s * 0.74, 0.78, -3.6043);             // hex bore — true black via the rubber retone
+      P.add('hull', box(0.44, 0.26, 0.003), s * 1.19, 1.42, -3.6015);                   // corner exhaust box
+      for (let k = 0; k < 3; k++) P.add('hullDark', box(0.38, 0.05, 0.0022), s * 1.19, 1.34 + k * 0.08, -3.6042);
+    }
+    // apex trapezoid recess between the arm roots (ref centre panel):
+    // floor slab + pale lip along the bottom edge + sloped side rails.
+    P.add('hullShadow', slab(
+      [-0.16, 1.10, -3.5990], [0.16, 1.10, -3.5990], [0.16, 1.10, -3.6012], [-0.16, 1.10, -3.6012],
+      [-0.28, 1.26, -3.5990], [0.28, 1.26, -3.5990], [0.28, 1.26, -3.6012], [-0.28, 1.26, -3.6012]));
+    // tie bar to match (same member weight, horizontal): floored channel +
+    // paleLip/edgeDark frame lines in the tone block.
+    P.add('hullShadow', box(0.50, 0.135, 0.0022), 0, 0.795, -3.6010);
   }
-  P.add('hull', box(0.56, 0.13, 0.0024), 0, 0.78, -3.6015);                    // tie bar face panel (recessed-frame style)
-  P.add('hullDark', box(0.60, 0.026, 0.0028), 0, 0.847, -3.6019);              // tie bar recess edges
-  P.add('hullDark', box(0.60, 0.026, 0.0028), 0, 0.713, -3.6019);
   P.add('hull', box(0.30, 0.26, 0.0035), 0, 1.02, -3.6015);                    // centre coupling plate
   P.add('hullDark', torus(0.075, 0.005, 14), 0, 1.02, -3.6005, Math.PI / 2, 0, 0); // coupling ring (z −3.5955..−3.6055 — ≤1 mm past the plate's own column)
   for (const s of [-1, 1]) {
@@ -2744,7 +2758,14 @@ function buildKF51(P) {
   P.add('hullDark', box(2.20, 0.34, 0.02), 0, 1.60, -3.735);
   // VISUAL r1 #3/#6: tail slats camo-painted — the detail-grey field read as
   // a second louver tower from the rear quarters (same envelope/carriers).
-  for (let k = 0; k < 8; k++) P.add('hull', box(0.03, 0.44, 0.045), -1.08 + k * 0.31, 1.60, -3.775);
+  // r5 #8 RACK SLATS IRREGULAR: even 0.31 pitch read as a pale metronome —
+  // positions/widths jittered, two slats swapped to the dark bucket (they
+  // sink into the backdrop = broken rhythm). y/z/height EXACT (the 0.44
+  // band + the -3.7975 rear face are the hullLengthM carrier class).
+  {
+    const tailSlats = [[-1.09, 0.026, 0], [-0.80, 0.040, 0], [-0.46, 0.024, 1], [-0.13, 0.034, 0], [0.24, 0.022, 0], [0.55, 0.038, 1], [0.86, 0.028, 0], [1.09, 0.032, 0]];
+    for (const [sx, sw, dk] of tailSlats) P.add(dk ? 'hullDark' : 'hull', box(sw, 0.44, 0.045), sx, 1.60, -3.775);
+  }
   // full-length fender plank, SEGMENTED ~0.45 (station-slice law: an
   // unbroken box is edge-on invisible to the clipped slice cameras). The
   // outer lip steps to ±1.74 over the tail zone (ref station-0 width 3.48)
@@ -2926,17 +2947,24 @@ function buildKF51(P) {
   // exact 0.005 floor under the band bottom run (sub-pixel sliver, dark,
   // under-track — invisible at render scale).
   for (const s of [-1, 1]) P.add('hullDark', box(0.02, 0.010, 0.02), s * 1.262, 0.010, -1.585);
-  // engine deck furniture: flush fan discs + louvre field + torsion caps
+  // engine deck furniture — r5 #6 REAR DECK DE-INVENT (hero-zoom): the fan
+  // discs + pale torus shoulder arcs + long slat grilles had no ref
+  // counterpart (ref deck = dot-perforated dark plates + low stowage).
+  // Fans/arcs/hubs/slat-grilles DELETED (delete-safe: their z -2.39..-3.11
+  // side columns are owned by the 1.8415 deck edge bands / 2.525w bustle
+  // overhang, plan is interior). Replacements: dot-perforated plates at the
+  // fan spots (tone block — moat-class plate + true-dark bore dots) and low
+  // strap-lidded stowage boxes on the old louvre-field footprints, capped
+  // at 1.839 under the 1.8415 deck-band side line.
   for (const s of [-1, 1]) {
-    P.add('hullDark', cylY(0.36, 0.36, 0.016, P.q ? 24 : 14), s * 0.74, 1.822, -2.75);
-    P.add('hullDetail', torus(0.36, 0.014, P.q ? 22 : 14), s * 0.74, 1.826, -2.75);
-    P.add('hullDetail', cylY(0.06, 0.065, 0.03, 10), s * 0.74, 1.83, -2.75);
-    P.add('hullDark', box(0.40, 0.016, 0.9), s * 1.30, 1.825, -2.55);
-    for (let k = 0; k < 4; k++) P.add('hullDetail', box(0.34, 0.014, 0.06), s * 1.30, 1.832, -2.85 + k * 0.2);
-    P.add('hullDetail', cylY(0.09, 0.09, 0.02, 12), s * 1.30, 1.815, -1.60);
+    P.add('hull', box(0.34, 0.044, 0.42), s * 1.30, 1.817, -2.32);             // stowage lid (top 1.839 < band 1.8415)
+    P.add('hull', box(0.30, 0.044, 0.36), s * 1.28, 1.817, -2.80);
+    P.add('hullDark', box(0.36, 0.010, 0.028), s * 1.30, 1.833, -2.42);        // lid straps (flush, top 1.838)
+    P.add('hullDark', box(0.36, 0.010, 0.028), s * 1.30, 1.833, -2.24);
+    P.add('hullDark', box(0.32, 0.010, 0.028), s * 1.28, 1.833, -2.80);
+    P.add('hullDetail', cylY(0.09, 0.09, 0.02, 12), s * 1.30, 1.815, -1.60);   // torsion caps (kept — real deck fittings)
   }
-  P.add('hullDark', box(2.6, 0.016, 0.44), 0, 1.826, -3.28);                   // transverse louver inset
-  for (let k = 0; k < 3; k++) P.add('hullDetail', box(2.5, 0.014, 0.06), 0, 1.833, -3.40 + k * 0.12);
+  P.add('hullDark', box(2.6, 0.016, 0.44), 0, 1.826, -3.28);                   // transverse grille inset (dark panel kept; pale slats -> dot rows in the tone block)
   P.add('hullDark', box(1.9, 0.014, 0.03), 0, 1.612, 2.20);                    // crease weld seam
   // flat tie-down cleats, NOT proud lift eyes (a6 law: a 0.07 eye ring was
   // the +0.09 side_hull column over the bare deck line)
@@ -3190,12 +3218,28 @@ function buildKF51(P) {
   P.add('turretDark', box(0.466, 0.010, 0.386), -0.51, 1.2505, -0.535);        // recessed well floor (widened)
   P.add('turretDetail', torus(0.185, 0.007, 20), -0.51, 1.2600, -0.535);       // pale well ring — full circle, flush to the thinned walls
   P.add('turretDetail', cylY(0.180, 0.187, 0.013, 8), -0.51, 1.3105, -0.535);  // OCTAGON collar lip (volumetric, top 1.317 — crests the 1.3155 wall run)
+  // r5 #4 PANO RING VOLUME: the top-view ring (this octagon collar + well
+  // ring seen into the parapet) read painted-on. A raised sun-side rim
+  // highlight arc (half torus aimed at the key (30,42,24): yaw 0.9 rad) +
+  // an inner groove shadow arc on the far side (tone block, moat-class).
+  // Arc top 1.3305 stays 3.5 mm under the 1.334 heightM anchor.
+  P.add('turretDetail', xform(xform(new THREE.TorusGeometry(0.187, 0.010, 8, 26, Math.PI), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0, 0, 0, 0.9, 0), -0.51, 1.3230, -0.535); // rim highlight arc (tube 0.0068 AA'd to 0.7 px — fattened to 2.4 px; top 1.3330 keeps 1 mm under the 1.334 anchor)
   P.add('turret', cylY(0.150, 0.163, 0.052, 16), -0.51, 1.2825, -0.535);       // pano column body (fattened toward the well)
   P.add('turret', cylY(0.104, 0.142, 0.017, 16), -0.51, 1.3170, -0.535);       // dome step 1 (shoulders over the collar)
   P.add('turret', cylY(0.052, 0.096, 0.0085, 12), -0.51, 1.32975, -0.535);     // dome core — FLAT top 1.334 EXACT (the anchor), crest +18.5 mm over the wall run
   P.add('turret', box(0.51, 0.1115, 0.43), -0.51, 1.11975, -0.535);            // camo base band (housing body, unchanged)
   P.add('turretDark', box(0.51, 0.07, 0.415), -0.51, 1.2105, -0.5425);         // optics band — front face recessed 15 mm into the slot
-  P.add('turretGlass', box(0.20, 0.058, 0.016), -0.51, 1.2105, -0.328);        // window glass fills the slot at the head face
+  // r5 #2 FRONT OPTICS CLUSTER — the SEOSS face gets its FACE back: the r4
+  // single wide glass slot read as one more mullion in the billboard crest.
+  // Two round sight eyes on the z -0.32 face plane (59 px wide at the front
+  // raster): pale bezel ring + near-black bore collar (tone block) + glassy
+  // pupil each, spanning the optics band + wall run (y 1.181..1.305, inside
+  // the certified head envelope; ≤2.5 mm proud of the -0.32 wall face =
+  // side-view sub-raster slivers).
+  for (const ex of [-0.615, -0.405]) {
+    P.add('turretDetail', new THREE.TorusGeometry(0.056, 0.0062, 8, 20), ex, 1.243, -0.3185); // bezel ring (axis z)
+    P.add('turretGlass', cylZ(0.024, 0.004, 16), ex, 1.243, -0.3165);          // glass pupil core (r 0.033 read a 58-luma grey eye; the dark collar annulus grows to 2.8 px and carries the ref's ~40 pupil)
+  }
   // hatches + periscopes
   P.add('turret', cylY(0.24, 0.24, 0.04, 14), 0.62, h + 0.018, -0.75);
   P.add('turret', cylY(0.21, 0.21, 0.036, 14), -0.64, h + 0.016, -0.65);
@@ -3255,13 +3299,19 @@ function buildKF51(P) {
   P.add('turret', pbox(0.049, 0.05, 0.445), 0.9255, 1.220, -3.1225);
   P.add('turret', pbox(1.21, 0.05, 0.049), 0.345, 1.220, -2.9245);
   P.add('turret', pbox(1.21, 0.05, 0.049), 0.345, 1.220, -3.3205);
-  for (let k = 0; k < 5; k++) {                                                // slat rails over the void faces (inside the old face planes)
-    P.add('turret', box(0.028, 0.40, 0.012), -0.10 + k * 0.244, 1.005, -2.907);
-    P.add('turret', box(0.028, 0.40, 0.012), -0.10 + k * 0.244, 1.005, -3.338);
+  // r5 #8 + #2: the rails read as a pale metronome billboard from the front
+  // (even 0.244 pitch, all camo). Irregular pitch/width + tone splits (dark
+  // slats sink into the void core = broken mullion rhythm, lattice keeps
+  // its depth). Envelope identical: same faces, same 0.40 heights.
+  {
+    const fSlats = [[-0.116, 0.040, 0], [0.128, 0.024, 1], [0.352, 0.034, 0], [0.596, 0.022, 1], [0.878, 0.036, 0]];
+    for (const [sx, sw, dk] of fSlats) P.add(dk ? 'turretDark' : 'turret', box(sw, 0.40, 0.012), sx, 1.005, -2.907);
+    const rSlats = [[-0.084, 0.030, 0], [0.180, 0.038, 1], [0.410, 0.022, 0], [0.648, 0.040, 0], [0.862, 0.026, 1]];
+    for (const [sx, sw, dk] of rSlats) P.add(dk ? 'turretDark' : 'turret', box(sw, 0.40, 0.012), sx, 1.005, -3.338);
   }
   P.add('turret', box(1.16, 0.036, 0.012), 0.345, 1.10, -2.906);               // horizontal strap front face
-  for (const rz of [-2.99, -3.1225, -3.255]) {
-    P.add('turret', box(0.012, 0.40, 0.030), 0.9435, 1.005, rz);               // right-face verticals (relief over the 0.94 core face)
+  for (const [rz, dk] of [[-2.97, 0], [-3.16, 1], [-3.27, 0]]) {
+    P.add(dk ? 'turretDark' : 'turret', box(0.012, 0.40, 0.030), 0.9435, 1.005, rz); // right-face verticals (jittered, one dark)
   }
   P.add('turret', box(0.012, 0.034, 0.40), 0.9435, 1.10, -3.1225);             // right-face strap
   P.add('turret', box(0.08, 0.44, 0.08), 0.59, 1.025, -2.51);                  // slim mast post z −2.02..−2.10w, top 1.245 = 2.955w: keeps the side −2.04w col at its certified 2.94 cap (ref 3.22 pot col)
@@ -3278,7 +3328,11 @@ function buildKF51(P) {
   // the dark face. Re-dressed as the ref's scheme-tone slat/stowage basket:
   // camo slats + two camo straps over the same shadow face, same envelope.
   P.add('turretDark', box(0.64, 0.70, 0.024), 0.24, 0.845, -3.484);            // slat-bay shadow face
-  for (let k = 0; k < 6; k++) P.add('turret', box(0.026, 0.72, 0.04), -0.06 + k * 0.124, 0.85, -3.478);
+  // r5 #8: bay slats jittered + two dark (same envelope/face plane)
+  {
+    const bSlats = [[-0.062, 0.030, 0], [0.052, 0.022, 1], [0.150, 0.030, 0], [0.290, 0.020, 0], [0.395, 0.034, 1], [0.540, 0.026, 0]];
+    for (const [sx, sw, dk] of bSlats) P.add(dk ? 'turretDark' : 'turret', box(sw, 0.72, 0.04), sx, 0.85, -3.478);
+  }
   P.add('turret', box(0.60, 0.05, 0.012), 0.24, 1.03, -3.480);                 // camo straps across the slats
   P.add('turret', box(0.60, 0.05, 0.012), 0.24, 0.62, -3.480);
   P.add('turret', box(0.66, 0.035, 0.035), 0.24, 1.21, -3.482);
@@ -3393,15 +3447,15 @@ function buildKF51(P) {
     P.mats.glass.roughness = 0.55;
     P.mats.glass.metalness = 0.32;
     P.mats.glass.envMapIntensity = 0.45;
-    P.mats.rubber.color.setHex(0x0a0908);                // r3 #5: flaps/hem lips toward the ref's near-black V6 (r2 0x27251f rendered V21; 0x141310 still sampled V21 — the rig's ambient lifts darks, so the albedo goes near-zero)
-    P.mats.rubber.envMapIntensity = 0.02;
+    P.mats.rubber.color.setHex(0x000000);                // r5 LAW CORRECTION: the deep-shade floor's tint term is albedo/luma — any albedo >=0x06 normalizes to a FULL floor (52.6 measured on the r4 flaps/bore), while 0x000000 collapses the tint to 0.08 grey => flaps/hex bores render ~15 vs the ref's 16.0/5-8. (0x0a0908 was still tint-1.0 class.)
+    P.mats.rubber.envMapIntensity = 0.0;
     P.mats.rubber.roughness = 1.0;
     P.mats.rubber.metalness = 0.0;
     P.mats.dark.color.setHex(0x353226);                  // fittings: warm neutral (hue ~48 — the r2 0x33352b sat greenish 67)
     P.mats.dark.envMapIntensity = 0.15;
     P.mats.spareTrack.color.setHex(0x221f17);            // r3 #3: sprocket teeth/recess rings DARK (r2 0x443f33 was lighter than the drum body — the teeth ring read pale)
     for (const tm of [P.mats.trackL, P.mats.trackR]) {
-      tm.color.setRGB(1.52, 1.60, 1.30);                 // band base up into the ref's 40s brown-grey
+      tm.color.setRGB(0.84, 0.88, 0.72);                 // r5 #3 TRACK BRIGHTS: r4 (1.52,1.60,1.30) rendered shoes p90 87/max 92 vs ref p90 59.5/max 67 — the whole band multiplier comes down x0.55 (fill and direct are both linear in albedo, so both sides dim together)
       tm.envMapIntensity = 0.06;
       tm.roughness = 1.0;
       tm.metalness = 0.02;
@@ -3473,14 +3527,14 @@ function buildKF51(P) {
       [-1.53, 1.490, 2.46], [1.53, 1.490, 2.46], [1.53, 1.552, 2.34], [-1.53, 1.552, 2.34]));
     moat(KIT.xform(KIT.box(1.10, 0.008, 0.12), 0, 1.816, -2.98));              // rear dash between the fans
     const wornDish = rehook(P.mats.wheels.clone());      // road-wheel dishes — r3 #6: faces must sit BELOW the skirt value (ref wheel V21 vs skirt 30; r2's 0x44462f rendered V26-28, INVERTED)
-    wornDish.color.setHex(0x36342a);
-    wornDish.envMapIntensity = 0.12;
+    wornDish.color.setHex(0x2e2c22);                     // r5 #7: dishes darker (lit-side response 44 -> ~37; unlit side stays floor-bound) — amplitude vs the lit skirt fields grows toward the ref's D24
+    wornDish.envMapIntensity = 0.05;                     // r5 #7: PMREM lift off the lit-side faces (bank of the r4 env-on-shadow find)
     const wornDrum = rehook(P.mats.wheels.clone());      // sprocket/idler drums (the blank tan disc — r3 #3 darkened under the skirt line)
     wornDrum.color.setHex(0x302e24);
     wornDrum.envMapIntensity = 0.10;
     const tireMat = rehook(P.mats.rubber.clone());       // r3 #6: tires split from the flap material — dark rubber rim ring per wheel without dragging the tires to flap-black
-    tireMat.color.setHex(0x232119);
-    tireMat.envMapIntensity = 0.05;
+    tireMat.color.setHex(0x000000);                      // r5 #7: tire rims to the full tint-collapse class (0x020202 still read ~52 on side faces; the 0x000000 hem dashes provably render near-black there)
+    tireMat.envMapIntensity = 0.0;
     P.disposables.push(wornDish, wornDrum, tireMat);
     P.hullG.traverse((ob) => {
       if (!ob.isMesh && !ob.isInstancedMesh) return;
@@ -3504,12 +3558,108 @@ function buildKF51(P) {
         m.roughness = 1.0;
         m.metalness = 0.04;
       } else if (ob.isInstancedMesh && m.color.getHex() === 0x27251f) {
-        rehook(m).color.setHex(0x2c2f26);                // inner chain / tread recess
-        m.envMapIntensity = 0.08;
+        rehook(m).color.setHex(0x020202);                // r5 #3: inner chain / tread recess into the sub-floor ramp — the between-shoe gaps carry the ref's p10-32 dark tail (0x2c2f26 and 0x040404 both floor at 52; the collapse needs <0x04)
+        m.envMapIntensity = 0.02;
       } else if (m === P.mats.wheels) {
         ob.material = ob.isInstancedMesh ? wornDish : wornDrum;
       }
     });
+    // ---- r5 tone-block furniture (LAW CORRECTION applied). Two material
+    // regimes measured on the r4 pairs: (a) sub-0x06 albedos collapse the
+    // deep-shade floor's tint term (materials.js vehFloorL: tint =
+    // albedo/max(luma,0.001)) — on UNLIT faces 0x000000~15, 0x030303~31,
+    // 0x050505~41 where everything >=0x06 floors flat at 52.6; on LIT faces
+    // they render near-black (bores/notches only). (b) moat-class albedos
+    // (real 0x15-0x28 with env ~0.05) own the lit-top 26-40 band (the r4
+    // moat's 31 is the proof case). All pieces silhouette-interior or
+    // sub-raster proud like the moat shell.
+    const tone = (mat, geo, toTurret) => {
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.receiveShadow = true;
+      (toTurret ? P.turretG : P.hullG).add(mesh);
+      P.disposables.push(geo);
+    };
+    const mkTone = (hex, env) => {
+      const m = rehook(P.mats.shadow.clone());
+      m.color.setHex(hex);
+      m.envMapIntensity = env;
+      P.disposables.push(m);
+      return m;
+    };
+    // MEASURED unlit-face albedo ramp (this rig, ITU-601): the deep-shade
+    // tint collapse needs LINEAR luma < 0.001 => only 0x000000-0x030303
+    // escape the 52.6 floor (0x00 -> 16.0 flat, 0x03 -> ~26; 0x040404
+    // measured floored). Pale classes must beat the fill crossover: lit
+    // output needs albedo-linear >= ~0.11 (0x686a54 -> ~75 on the rear
+    // face) — mid-tone 0x38-class floors to 52 there.
+    const edgeDark = mkTone(0x000000, 0.0);              // chevron/tie upper shadow edges (0x030303 box-strips read 53-56 in place — only the full 0x000000 collapse anchors below the floor; ref 45-47 is unreachable between the collapse step and the 52 floor)
+    const boreDark = mkTone(0x010101, 0.0);              // notch floor, SEOSS bore collars, drum eyes (~19)
+    const paleLip = mkTone(0x474935, 0.08);              // chevron/tie pale bevel lips. Unlit-face floor ladder (measured): albedo-luma >=0.09 pins at the FULL deep-shade floor (~94, albedo-independent — 0x5b and 0x68 both read 94); 0x383a2b rode the dark-scale ramp to 59; 0x474935 lands the ref lip's 74-77 band
+    const roofDark = mkTone(0x191a10, 0.05);             // rubber-mat roof panels (lit ~28)
+    const roofDark2 = mkTone(0x25261a, 0.06);            // second dark plate family (lit ~38)
+    const paleStrip = mkTone(0x484a36, 0.10);            // pale roof walk strips (0x383a2b delivered p90 57.6 vs ref 63.3 — brightened)
+    const deckPlate = mkTone(0x202115, 0.06);            // dot-perforated deck plates
+    const dotDark = mkTone(0x101107, 0.03);              // perforation dots
+    // #1 chevron member frames: pale bevel lip on each LOWER edge, shadow
+    // line on each UPPER edge (the beveled-recessed-frame pair)
+    for (const s of [-1, 1]) {
+      tone(edgeDark, KIT.xform(KIT.box(0.018, 0.90, 0.0024), s * (0.655 + 0.2348 * 0.080), 1.1075 + 0.972 * 0.080, -3.6013, 0, 0, s * 1.3337));
+      tone(paleLip, KIT.xform(KIT.box(0.022, 0.90, 0.0014), s * (0.655 - 0.2348 * 0.081), 1.1075 - 0.972 * 0.081, -3.6014, 0, 0, s * 1.3337)); // d 0.0014: the skyward ribbon face fired a 94-luma glint sliver at d 0.0026 (mint-ribbon law class)
+      tone(paleLip, KIT.xform(KIT.box(0.014, 0.26, 0.0014), s * 0.225, 1.18, -3.6013, 0, 0, s * -0.6435)); // apex side rails
+    }
+    tone(edgeDark, KIT.xform(KIT.box(0.56, 0.014, 0.0024), 0, 0.871, -3.6013));
+    tone(edgeDark, KIT.xform(KIT.box(0.58, 0.014, 0.0024), 0, 1.267, -3.6013));
+    tone(paleLip, KIT.xform(KIT.box(0.34, 0.016, 0.0014), 0, 1.092, -3.6014)); // apex bottom bevel lip
+    tone(paleLip, KIT.xform(KIT.box(0.54, 0.016, 0.0014), 0, 0.719, -3.6014)); // tie bar lower lip
+    tone(boreDark, KIT.slab(                                                   // bottom-centre bumper notch (ref's dark trapezoid)
+      [-0.21, 0.525, -3.5990], [0.21, 0.525, -3.5990], [0.21, 0.525, -3.6011], [-0.21, 0.525, -3.6011],
+      [-0.135, 0.655, -3.5990], [0.135, 0.655, -3.5990], [0.135, 0.655, -3.6011], [-0.135, 0.655, -3.6011]));
+    // #2 SEOSS bore collars (dark annulus behind each glass pupil) + the
+    // pano drum's two-eyed hint on its front arc (close-roof/toptilt read;
+    // 1.5 mm proud of the r 0.157 drum surface, inside the parapet well)
+    for (const ex of [-0.615, -0.405]) tone(boreDark, KIT.xform(KIT.cylZ(0.048, 0.0035, 16), ex, 1.243, -0.3200), true);
+    tone(boreDark, KIT.xform(KIT.cylZ(0.021, 0.003, 10), -0.545, 1.288, -0.3805), true);
+    tone(boreDark, KIT.xform(KIT.cylZ(0.021, 0.003, 10), -0.475, 1.288, -0.3805), true);
+    // #4 octagon inner groove shadow arc (far side of the key; the rim
+    // highlight arc is a turretDetail piece by the octagon collar)
+    tone(moatMat, KIT.xform(KIT.xform(new THREE.TorusGeometry(0.160, 0.0052, 8, 24, Math.PI), 0, 0, 0, Math.PI / 2, 0, 0), -0.51, 1.3160, -0.535, 0, 0.9 + Math.PI, 0), true);
+    // #5 roof per-plate value breaks: two rubber-dark mats aft of the
+    // hatches, a small third plate, pale walk strips flanking the crown and
+    // riding the 0.79 fore-step plane (+2.5..4.5 mm, all plan-interior)
+    tone(roofDark, KIT.xform(KIT.box(0.54, 0.005, 0.80), 0.60, 0.8180, -1.52), true);
+    tone(roofDark2, KIT.xform(KIT.box(0.50, 0.005, 0.62), -0.60, 0.8178, -1.42), true);
+    tone(roofDark, KIT.xform(KIT.box(0.36, 0.005, 0.30), -0.15, 0.8176, -1.80), true);
+    tone(paleStrip, KIT.xform(KIT.box(0.09, 0.004, 1.26), 0.86, 0.8177, -0.15), true);
+    tone(paleStrip, KIT.xform(KIT.box(0.09, 0.004, 1.26), -0.86, 0.8177, -0.05), true);
+    tone(paleStrip, KIT.xform(KIT.box(0.10, 0.004, 1.50), 1.13, 0.7936, 0.30), true);
+    tone(paleStrip, KIT.xform(KIT.box(0.10, 0.004, 1.50), -1.13, 0.7936, 0.30), true);
+    // #7 WHEEL/SKIRT AMPLITUDE — the ref's wheel-zone dark tail (p5 25.8)
+    // is the BAY VOID between the wheel arcs, not the wheel faces: our
+    // certified gap piers/AO wall are shadow-bucket (52-floored). Collapse-
+    // class overlays ride 1.5-3 mm proud of their certified faces (seam-
+    // ring-law class, xy-interior): the wall band shows the black wedges
+    // between the lower arcs, the pier faces darken the 0.55..0.71 gaps.
+    // (pier-face overlays tried and REMOVED: ref gaps read ~51 at p25 — the
+    // certified 52-class piers already match; only the wedge zone goes black)
+    const bayVoid = mkTone(0x000000, 0.0);
+    for (const s of [-1, 1]) {
+      tone(bayVoid, KIT.xform(KIT.box(0.002, 0.325, 5.09), s * 1.1625, 0.5875, 0.145));   // AO wall face overlay (0.425..0.75 — the ref's black inter-arc wedges)
+      tone(bayVoid, KIT.xform(KIT.box(0.002, 0.036, 4.17), s * 1.1625, 0.4215, -0.29375)); // wall lip strip overlay
+    }
+    // #6 deck dot-perforated plates at the old fan spots + grille dot rows
+    // (tops <= 1.8375, under the 1.8415 deck-band side line)
+    for (const s of [-1, 1]) {
+      tone(deckPlate, KIT.xform(KIT.box(0.74, 0.012, 0.62), s * 0.74, 1.8215, -2.75));
+      for (const dx of [-0.30, -0.15, 0, 0.15, 0.30]) {
+        for (const dz of [-2.53, -2.675, -2.825, -2.97]) {
+          tone(dotDark, KIT.xform(KIT.cylY(0.017, 0.017, 0.004, 8), s * 0.74 + dx, 1.8285, dz));
+        }
+      }
+    }
+    for (let k = 0; k < 12; k++) {
+      tone(dotDark, KIT.xform(KIT.cylY(0.015, 0.015, 0.004, 8), -1.10 + k * 0.2, 1.8355, -3.22));
+      tone(dotDark, KIT.xform(KIT.cylY(0.015, 0.015, 0.004, 8), -1.10 + k * 0.2, 1.8355, -3.34));
+    }
   }
   // r4 #7 CAMO DISTRIBUTION SPLIT (+ #1 phase break, #8 pano-lid pop).
   // The camo texture is one shared per-spec canvas boxUV'd at camoScale on
