@@ -1446,6 +1446,9 @@ const touchControls = createTouchControls({
   input, bus,
   isBattleActive: () => game.phase === 'battle',
   onLeaveBattle: () => leaveBattleToGarage(),
+  // MOBILE-UX r1: pinch-to-scope needs the live camera mode so a spread
+  // ENTERS the scope (sniperToggle lane) and further spread steps zoomIn.
+  isSniper: () => rig.mode === 'SNIPER',
 });
 
 // CURSOR-AIM FALLBACK: pointer lock durably unavailable (sandboxed iframes,

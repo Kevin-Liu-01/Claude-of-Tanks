@@ -65,19 +65,35 @@ body.cot-touch-layout .cot-top .fg,body.cot-touch-layout .cot-top .fe{font-size:
 body.cot-touch-layout .cot-top .tm{font-size:12px;}
 body.cot-touch-layout .cot-killfeed{top:48px;left:50%;transform:translateX(-50%);max-width:48%;align-items:center;}
 body.cot-touch-layout .cot-kf{font-size:9px;padding:3px 7px;background:rgba(7,10,14,.68);}
+/* MOBILE-UX r1: the top-right tray is AMMO ONLY (>=44 px thumb targets) —
+   the consumables move to a right-edge column, see .cot-cons below. */
 body.cot-touch-layout .cot-shells{left:auto;right:max(10px,env(safe-area-inset-right));
-  top:max(8px,env(safe-area-inset-top));bottom:auto;transform:none;gap:3px;z-index:3;align-items:flex-start;}
-body.cot-touch-layout .cot-shell{width:45px;height:48px;}
-body.cot-touch-layout .cot-shell canvas{transform:translate(-50%,-50%) scale(.72);}
+  top:max(8px,env(safe-area-inset-top));bottom:auto;transform:none;gap:4px;z-index:3;align-items:flex-start;}
+body.cot-touch-layout .cot-shell{width:48px;height:52px;}
+body.cot-touch-layout .cot-shell canvas{transform:translate(-50%,-50%) scale(.76);}
 body.cot-touch-layout .cot-shell .key,body.cot-touch-layout .cot-con .key{display:none;}
-body.cot-touch-layout .cot-shell .ty{font-size:6px}.cot-shell .cnt{font-size:11px;}
-body.cot-touch-layout .cot-consep{height:40px;margin:2px 3px;align-self:auto;}
-body.cot-touch-layout .cot-con{width:38px;height:43px;}
-body.cot-touch-layout .cot-con svg{transform:scale(.78);}
+body.cot-touch-layout .cot-shell .ty{font-size:7px}.cot-shell .cnt{font-size:11px;}
+/* stronger ACTIVE-AMMO read at glance distance: brighter amber frame, inner
+   keyline + glow (the desktop .sel border alone washes out at phone size) */
+body.cot-touch-layout .cot-shell.sel{border-color:#ffbd5c;border-bottom-color:#ffbd5c;
+  background:linear-gradient(180deg,rgba(58,42,17,.97),rgba(30,20,9,.97));
+  box-shadow:inset 0 0 0 1px rgba(255,196,107,.5),0 0 16px rgba(240,160,48,.5);}
+body.cot-touch-layout .cot-shell.sel .ty{font-size:8px;}
+/* MOBILE-UX r1 (owner: "move equipment to right side in a vertical column"):
+   the consumable tray re-parks on the RIGHT EDGE as a thumb-reachable
+   column sitting above the FIRE cluster. 48 px targets; the selection/used/
+   cooldown chrome is the same .cot-con skin the desktop tray wears. */
+body.cot-touch-layout .cot-consep{display:none;}
+body.cot-touch-layout .cot-cons{display:flex;flex-direction:column;gap:9px;position:fixed;
+  left:auto;right:max(14px,env(safe-area-inset-right));
+  bottom:calc(max(22px,env(safe-area-inset-bottom)) + 124px);z-index:3;}
+body.cot-touch-layout .cot-con{width:48px;height:48px;}
+body.cot-touch-layout .cot-con svg{transform:none;}
 body.cot-touch-layout .cot-minimap{left:max(8px,env(safe-area-inset-left));right:auto;top:54px;bottom:auto;
   width:116px!important;height:116px!important;opacity:.86;}
-body.cot-touch-layout .cot-dp{left:238px;bottom:max(8px,env(safe-area-inset-bottom));
-  transform:scale(.68);transform-origin:left bottom;}
+body.cot-touch-layout .cot-dp{left:max(232px,calc(env(safe-area-inset-left) + 224px));
+  bottom:max(8px,env(safe-area-inset-bottom));
+  transform:scale(.58);transform-origin:left bottom;}
 body.cot-touch-layout .cot-alert{bottom:28%;font-size:12px;}
 body.cot-touch-layout .cot-bounce{top:31%;font-size:12px;}
 
@@ -86,18 +102,24 @@ body.cot-touch-layout .cot-bounce{top:31%;font-size:12px;}
   .cot-touch .arrow.l{top:48px}.cot-touch .arrow.r{top:48px}
   .cot-touch .fire{width:82px;height:82px}.cot-touch .scope{right:112px;width:54px;height:54px}
   .cot-touch .fire.alt{left:137px;bottom:136px;width:56px;height:56px}.cot-touch .brake{left:137px;width:48px;height:48px}
+  body.cot-touch-layout .cot-cons{bottom:calc(max(22px,env(safe-area-inset-bottom)) + 110px);}
   body.cot-touch-layout .cot-minimap{width:92px!important;height:92px!important;}
   body.cot-touch-layout .cot-dp{display:none;}
 }
 @media (orientation:portrait) and (max-width:900px){
   .cot-touch .aimhint::after{content:" · LANDSCAPE RECOMMENDED";}
+  /* MOBILE-UX r1: in portrait the centered score plate and the right-aligned
+     ammo tray share the same band — the tray buried the timer (owner shot).
+     Drop the tray below the plate; the killfeed steps below the tray. */
+  body.cot-touch-layout .cot-shells{top:calc(max(4px,env(safe-area-inset-top)) + 46px);}
+  body.cot-touch-layout .cot-killfeed{top:calc(max(4px,env(safe-area-inset-top)) + 106px);}
 }
 `;
 
 const SHELL = `<svg viewBox="0 0 34 56" aria-hidden="true"><path d="M17 2 24 15v27H10V15Z" fill="currentColor"/><path d="M8 42h18v10H8z" fill="currentColor"/><path d="M11 25h12" stroke="#1a2025" stroke-width="2"/></svg>`;
 const SCOPE = `<svg viewBox="0 0 42 28" aria-hidden="true"><path d="M7 8h8l3 5h6l3-5h8l4 13H25l-2-4h-4l-2 4H3Z" fill="currentColor"/><circle cx="11" cy="13" r="5" fill="#202a31"/><circle cx="31" cy="13" r="5" fill="#202a31"/></svg>`;
 
-export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle }) {
+export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle, isSniper = () => false }) {
   if (!document.getElementById('cot-touch-style')) {
     const style = document.createElement('style');
     style.id = 'cot-touch-style'; style.textContent = CSS; document.head.appendChild(style);
@@ -123,12 +145,19 @@ export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle 
   let joyPointer = null;
   let aimPointer = null;
   let aimX = 0, aimY = 0;
+  // MOBILE-UX r1 PINCH = SCOPE: live touches on the aim surface. Two or more
+  // fingers switch the pad from swipe-aim to a zoom gesture (aimPointer is
+  // parked, so the joystick and one-finger aim are never disturbed).
+  const aimPts = new Map(); // pointerId -> {x,y}
+  let pinchRef = -1;        // reference finger spread (px); -1 = not pinching
+  const PINCH_STEP_PX = 44; // one zoom step per this much spread/close
 
   function wantsTouchLayout() {
     return input.isTouchLayout();
   }
   function resetMove() {
     joyPointer = null; input.setVirtualMove(0, 0); knob.style.transform = 'translate(0px,0px)';
+    aimPointer = null; aimPts.clear(); pinchRef = -1;
   }
   function syncLayout() {
     layout = wantsTouchLayout();
@@ -136,6 +165,31 @@ export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle 
     root.classList.toggle('on', layout && battle);
     if (!layout || !battle) resetMove();
   }
+
+  // -------------------------------------------------------------------------
+  // BROWSER PINCH-ZOOM KILL (owner: "sometimes i can zoom into the screen
+  // doing pinch to zoom — don't allow this"). Defense in depth around the
+  // index.html viewport meta (maximum-scale=1 covers spec-compliant mobile
+  // browsers): iOS Safari ignores user-scalable, but its pinch runs through
+  // the non-standard gesture* events — cancelling those kills page zoom
+  // without touching one-finger scrolling anywhere. The touchmove and
+  // ctrl+wheel (desktop trackpad pinch) guards are scoped to gameplay
+  // surfaces so menus/garage DOM keeps every native scroll it has.
+  function onGameplaySurface(t) {
+    if (battle && layout) return true; // live touch battle: the frame is HUD
+    if (!t || !t.closest) return false;
+    return !!(t.closest('#app') || t.closest('.cot-touch') || t.closest('.cot-hud'));
+  }
+  const killGesture = (e) => e.preventDefault();
+  for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
+    document.addEventListener(type, killGesture, { passive: false });
+  }
+  document.addEventListener('touchmove', (e) => {
+    if (e.touches.length >= 2 && onGameplaySurface(e.target)) e.preventDefault();
+  }, { passive: false });
+  window.addEventListener('wheel', (e) => {
+    if (e.ctrlKey && onGameplaySurface(e.target)) e.preventDefault();
+  }, { passive: false });
 
   function updateJoy(e) {
     const r = joy.getBoundingClientRect();
@@ -157,17 +211,77 @@ export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle 
   joy.addEventListener('pointerup', endJoy); joy.addEventListener('pointercancel', endJoy);
   joy.addEventListener('lostpointercapture', endJoy);
 
+  // PINCH = SCOPE (MOBILE-UX r1, owner: pinch "should be activating scope").
+  // The gesture drives the SAME rebindable action lanes the desktop wheel
+  // and SCOPE button use (input.js virtual taps -> main.js wheelStep ->
+  // cameraRig.stepZoom) — no forked zoom logic:
+  //   spread from arcade  -> sniperToggle (enter scope, the SCOPE button lane)
+  //   spread in scope     -> zoomIn  (wheel-notch zoom step)
+  //   pinch in scope      -> zoomOut (stepZoom exits scope below the lowest
+  //                          step — cameraRig's own wheel-out behavior)
+  //   pinch in arcade     -> nothing (never yanks the orbit mid-fight)
+  function pinchDist() {
+    const it = aimPts.values();
+    const a = it.next().value;
+    const b = it.next().value;
+    return a && b ? Math.hypot(b.x - a.x, b.y - a.y) : 0;
+  }
+  // scopePending: the rig enters sniper on its NEXT update, so a fast spread
+  // that lands 2+ ratchet steps inside one pointermove must not tap
+  // sniperToggle twice (it would toggle back out) — the entry is latched for
+  // the rest of the gesture and follow-up steps become zoom steps. Both the
+  // toggle and the wheel notches are consumed in the same rig.update (shift
+  // edge first, wheel after), so enter+zoom in one frame lands correctly.
+  let scopePending = false;
+  function stepScope(dir) {
+    const scoped = isSniper() || scopePending;
+    if (dir > 0) {
+      if (scoped) input.tapVirtual('zoomIn');
+      else { input.tapVirtual('sniperToggle'); scopePending = true; }
+    } else {
+      if (!scoped) return; // arcade pinch-in: never yank the orbit out
+      input.tapVirtual('zoomOut'); // stepZoom exits scope below the lowest step
+    }
+    bus.emit('ui:click', {});
+  }
   aimPad.addEventListener('pointerdown', (e) => {
-    e.preventDefault(); aimPointer = e.pointerId; aimX = e.clientX; aimY = e.clientY;
+    e.preventDefault();
+    aimPts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     try { aimPad.setPointerCapture(e.pointerId); } catch (_) { /* capture unavailable */ }
+    if (aimPts.size >= 2) {
+      aimPointer = null;      // second finger: the pad is now a zoom gesture
+      pinchRef = pinchDist();
+      scopePending = false;   // fresh gesture reads the live rig mode
+    } else {
+      aimPointer = e.pointerId; aimX = e.clientX; aimY = e.clientY;
+    }
   });
   aimPad.addEventListener('pointermove', (e) => {
+    const p = aimPts.get(e.pointerId);
+    if (p) { p.x = e.clientX; p.y = e.clientY; }
+    if (pinchRef >= 0 && aimPts.size >= 2) {
+      // ratchet: each PINCH_STEP_PX of spread/close = one zoom step, so a
+      // long pinch walks the zoom ladder exactly like wheel notches
+      const d = pinchDist();
+      while (d - pinchRef >= PINCH_STEP_PX) { stepScope(1); pinchRef += PINCH_STEP_PX; }
+      while (pinchRef - d >= PINCH_STEP_PX) { stepScope(-1); pinchRef -= PINCH_STEP_PX; }
+      return;
+    }
     if (e.pointerId !== aimPointer) return;
     const dx = e.clientX - aimX, dy = e.clientY - aimY;
     aimX = e.clientX; aimY = e.clientY;
     input.addVirtualAim(dx * 1.18, dy * 1.18);
   });
-  const endAim = (e) => { if (e.pointerId === aimPointer) aimPointer = null; };
+  const endAim = (e) => {
+    aimPts.delete(e.pointerId);
+    if (aimPts.size < 2) pinchRef = -1;
+    if (e.pointerId === aimPointer) aimPointer = null;
+    // one finger survives the pinch: hand swipe-aim back to it seamlessly
+    if (aimPointer === null && aimPts.size === 1) {
+      const [id, p] = aimPts.entries().next().value;
+      aimPointer = id; aimX = p.x; aimY = p.y;
+    }
+  };
   aimPad.addEventListener('pointerup', endAim); aimPad.addEventListener('pointercancel', endAim);
   aimPad.addEventListener('lostpointercapture', endAim);
 

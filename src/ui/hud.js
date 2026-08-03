@@ -22,6 +22,20 @@ const CIRCLE_COL = 'rgba(208,233,211,0.85)';
 const SNIPER_COL = 'rgba(140,242,140,0.95)';      // sniper circle + furniture
 const SNIPER_NONE = 'rgba(186,248,186,0.97)';     // sniper neutral marker ink
 const RELOAD_ACCENT = 'rgba(240,160,48,0.95)';    // reload sweep + countdown
+// MOBILE-UX r1 (owner: "don't let the reticle grow too large — it should only
+// show the actual hit zones of shells"): the dispersion circle now draws the
+// TRUE 2σ cone. computeDispersionRadM is the radius shells are re-rolled
+// into (ballistics.applyDispersion never places a shot outside it), and
+// aimView.radPx is that radius projected at the aim distance under the LIVE
+// zoomed FOV — so the ring carries the same angular truth at every zoom step.
+// The old ×3.2 stylization, the 0.7 post-shot display pulse (the sim's
+// afterShot bloom already rides bloomF → radPx) and the 34 px floor drew
+// cones the shells never fly. What remains is a pure DISPLAY clamp:
+//   floor   — a usable aiming mark when the true cone is sub-pixel at range;
+//   ceiling — full bloom on a close target (or high sniper magnification)
+//             can never balloon past ~15% of the frame's short side.
+const RET_FLOOR_PX = 11;
+const RET_CEIL_FRAC = 0.15;
 // Shared Inter type system (see src/ui/fonts.js): FONT_COND drives the
 // numeral/label hierarchy with tabular figures (weight floor 500).
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
@@ -509,6 +523,11 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
    shorter slots bottom-aligned with the tray (the old equal-weight boxes
    made the dock read as six same-y grey squares) */
 .cot-consep{width:1px;align-self:stretch;background:rgba(146,164,180,.3);margin:2px 6px;}
+/* MOBILE-UX r1: the consumables live in their own container so the mobile
+   tier can re-park them as a right-edge thumb column (touchControls.js).
+   display:contents = the wrapper generates NO box on desktop — the slots
+   stay direct flex items of the tray, pixel-identical to the old markup. */
+.cot-cons{display:contents;}
 .cot-con{width:44px;height:52px;position:relative;cursor:pointer;
   background:linear-gradient(180deg,rgba(14,19,24,.92),rgba(8,11,14,.95));
   border:1px solid rgba(146,164,180,.28);border-bottom:2px solid rgba(146,164,180,.28);
@@ -992,10 +1011,13 @@ export function initHud(bus) {
     slotEls.push(s);
   }
   el('div', 'cot-consep', shellBox);
+  // MOBILE-UX r1: consumables get their own wrapper (desktop: display:contents
+  // — no box, no layout change; mobile tier re-parks it as a vertical column)
+  const conBox = el('div', 'cot-cons', shellBox);
   const conEls = [];
   for (let i = 0; i < CONSUMABLES.length; i++) {
     const c = CONSUMABLES[i];
-    const s = el('div', 'cot-con', shellBox);
+    const s = el('div', 'cot-con', conBox);
     s.title = c.label;
     s.innerHTML = `<div class="key">${c.key}</div>${c.svg}` +
       `<div class="cnt">${c.count != null ? c.count : ''}</div><div class="cool"></div>`;
@@ -1335,7 +1357,7 @@ export function initHud(bus) {
     // The arms still yield to the over-target plate (a line slicing through
     // the enemy's name text read as a rendering bug, not a sight element).
     {
-      const rNow = Math.max(26, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
+      const rNow = clampRetR(smoothRadPx); // same clamp the circle draws with
       const gap = rNow + 3;
       const armEnd = rNow * 1.55 + 3; // arms clipped to ~1.55x circle radius
       const vRuns = [[cy - armEnd, cy - gap], [cy + gap, cy + armEnd]];
@@ -1480,7 +1502,7 @@ export function initHud(bus) {
     // clamp of smoothRadPx, one frame stale — fine), floored at WoT's fixed
     // read distance and capped so top/bottom wedges stay in frame and clear
     // of the corner furniture (minimap / damage panel) even mid-bloom.
-    const drawnR = Math.max(26, Math.min(smoothRadPx, minWH * 0.42));
+    const drawnR = clampRetR(smoothRadPx); // same clamp the circle draws with
     const R0 = Math.min(Math.max(minWH * 0.185, drawnR + 26), minWH * 0.30);
     const thickBase = Math.min(Math.max(minWH * 0.115, 64), 118);
     // expiry sweep first, then draw oldest -> newest so a fresh wedge always
@@ -1576,6 +1598,56 @@ export function initHud(bus) {
         ctx.stroke();
         ctx.globalCompositeOperation = 'source-over';
       }
+      // ------- POOLED FIGURE ON THE WEDGE (MOBILE-UX r1, owner: "add damage
+      // numbers to our deflections and so on like it was before, but i do
+      // like the new look of the indicators"). The number rides just outside
+      // the wedge's outer arc at its angular center, on the wedge's OWN
+      // envelopes: it scales in with the attack (`grow`, so a re-pulsed merge
+      // flashes the new POOLED total — e.dmg accumulates in pushHitDirection)
+      // and fades on the same aEnv as the crescent. Class ink: damage-red
+      // family on pen wedges, HE amber, steel for deflects — which carry the
+      // RICOCHET/BLOCKED word instead of a number. The wedge geometry itself
+      // is untouched; the damage log / shot log keep their entries (the
+      // figures live in both places, matching the pre-rebuild behavior).
+      {
+        const isB = e.kind === 'bounce';
+        const label = isB ? (e.bk || 'BLOCKED')
+          : e.dmg > 0 ? `-${Math.round(e.dmg)}`
+            : e.crit ? 'CRIT' : null;
+        if (label) {
+          const ink = isB ? '216,226,236' : e.kind === 'he' ? '255,198,100' : '255,138,116';
+          const tR = R0 + thick + (isB ? 13 : 15);
+          let tx = cx + Math.cos(c) * tR;
+          let ty = cy + Math.sin(c) * tR;
+          // keep the widest figure (and its CRIT tag) inside the frame on
+          // top/bottom wedges over small mobile viewports
+          tx = Math.min(Math.max(tx, 44), w - 44);
+          ty = Math.min(Math.max(ty, 26), h - 26);
+          const s = Math.min(grow, 1.02); // attack scale-in, no lingering overshoot
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.shadowColor = 'rgba(0,0,0,0.9)';
+          ctx.shadowBlur = 4;
+          ctx.font = isB
+            ? `800 ${(11.5 * s).toFixed(2)}px ${FONT_COND}`
+            : `800 ${(18 * s).toFixed(2)}px ${FONT_COND}`;
+          // dark under-pass first (HUD convention — sunlit sand cannot erase
+          // the figure), then the class ink
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = `rgba(8,11,14,${(0.75 * aEnv).toFixed(3)})`;
+          ctx.strokeText(label, tx, ty);
+          ctx.fillStyle = `rgba(${ink},${(0.96 * aEnv).toFixed(3)})`;
+          ctx.fillText(label, tx, ty);
+          // crit tag rides above the number (old damage-number grammar)
+          if (e.crit && !isB && e.dmg > 0) {
+            ctx.font = `800 ${(9 * s).toFixed(2)}px ${FONT_COND}`;
+            ctx.fillStyle = `rgba(255,216,164,${(0.92 * aEnv).toFixed(3)})`;
+            ctx.fillText('CRIT', tx, ty - 15 * s);
+          }
+          ctx.restore();
+        }
+      }
     }
     ctx.lineCap = 'butt';
   }
@@ -1635,36 +1707,24 @@ export function initHud(bus) {
 
   // WoT dual-element system: a fixed central GUN MARKER (pen-color-coded)
   // plus a separate DISPERSION CIRCLE that blooms with movement/firing and
-  // converges while holding the aim. The sim already folds hull/turret
-  // movement into dispersionRadM (state.bloomF); the display layer adds the
-  // POST-SHOT bloom read — the circle snaps wide the instant the gun fires
-  // (reload starts) and converges back over the aim time, so a mid-reload
-  // frame always shows a visibly opened circle (WoT's signature element).
-  // Visual scale: WoT's circle is a stylized (enlarged) rendering of the true
-  // cone — a raw projection is near-invisible at range.
+  // converges while holding the aim. The sim folds hull/turret movement AND
+  // the post-shot snap into dispersionRadM (state.bloomF; fireRecoil applies
+  // afterShot instantly), so the target radius IS the true 2σ cone projected
+  // at the aim distance — no stylization multiplier, no display-side fire
+  // pulse (MOBILE-UX r1, owner: "only show the actual hit zones of shells";
+  // constants + rationale at RET_FLOOR_PX/RET_CEIL_FRAC). The [floor,
+  // ceiling] clamp is applied at DRAW time (clampRetR) so smoothing eases
+  // toward the truth and the clamp can never amplify it.
   function reticleTargetR(view) {
-    const rl = view.reload;
-    let fire = 1;
-    if (rl && rl.totalS > 0 && rl.t > 0.001) {
-      const sinceShotS = Math.max(0, rl.totalS - rl.t);
-      // 1.2 s display time-constant matches the faster sim re-settle
-      // (movement.js LN6 shrink tau — controls_gunnery r2 item 3).
-      // gameplay_feel r6 (round critique MINOR): amplitude 2.4 → 0.7. The
-      // sim's own afterShot bloom already rides view.radPx (movement.js
-      // fireRecoil ×1.5–2.5, instant grow) — the display pulse stacked ON
-      // TOP of it, and together with the pre-multiplied 48 px floor below it
-      // blew the close-range sniper circle to ~half the frame height, an
-      // accuracy penalty the r(D) model does not contain. The pulse is now a
-      // small top-up so the fire snap still reads on long-reload guns.
-      fire = 1 + 0.7 * Math.exp(-sinceShotS / 1.2);
-    }
-    // gameplay_feel r6: stylization (×3.2) scales the TRUE angular radius
-    // (radPx is dispersionRadM projected at the aim distance under the LIVE
-    // zoomed FOV); the legibility floor applies LAST so neither the fire
-    // pulse nor the floor can amplify each other. 48 → 34 px: at x8 over
-    // close ground the old floor alone was ~13% of frame height.
-    return Math.max(34, view.radPx * 3.2 * fire);
+    return view.radPx;
   }
+  // Display clamp for the DRAWN dispersion-circle radius — the single
+  // authority every consumer reads (circle, sniper hairline gaps, hit-wedge
+  // ring, nameplate avoidance), so all sight furniture agrees on the size.
+  function retCeilPx() { return Math.min(w, h) * RET_CEIL_FRAC; }
+  function clampRetR(r) { return Math.max(RET_FLOOR_PX, Math.min(r, retCeilPx())); }
+  let lastDrawnR = RET_FLOOR_PX;   // actual radius painted by drawReticle
+  let lastGunOutside = false;      // gun-off-circle hold-open engaged
 
   function drawReticle(view, dt) {
     const cx = view.cx, cy = view.cy;
@@ -1672,22 +1732,28 @@ export function initHud(bus) {
     const targetR = reticleTargetR(view);
     const k = 1 - Math.exp(-14 * dt);
     smoothRadPx += (targetR - smoothRadPx) * k;
-    let r = Math.max(26, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
+    let r = clampRetR(smoothRadPx);
     // controls_gunnery r3 (major): the aim circle BOUNDS shell landing (WoT
     // contract). While the barrel still points OUTSIDE the drawn circle
     // (slew in progress / residual lay error), a converged circle plus a
     // pen-colored cross promises an impact the gun cannot deliver — hold
     // the circle open to at least the gun-marker offset and drop the pen
     // coloring to neutral until the gun is physically inside the circle.
+    // MOBILE-UX r1: the hold-open now respects the SAME display ceiling as
+    // the bloom (the old 0.46 cap let every fast traverse balloon the ring
+    // to half the frame). When the gun sits beyond the ceiling the circle
+    // parks there and the neutral marker + true-gun ghost carry the read.
     let gunOutside = false;
     let gunOffPx = 0;
     if (view.gunX != null && view.gunY != null) {
       gunOffPx = Math.hypot(view.gunX - cx, view.gunY - cy);
       if (gunOffPx > r) {
         gunOutside = true;
-        r = Math.min(Math.max(r, gunOffPx + 8), Math.min(w, h) * 0.46);
+        r = Math.min(Math.max(r, gunOffPx + 8), retCeilPx());
       }
     }
+    lastDrawnR = r;
+    lastGunOutside = gunOutside;
     // r7-2 MAJOR (WoT dual-element grammar): the DISPERSION CIRCLE belongs
     // to the GUN — it is centered on the barrel's projected lay point and
     // visibly lags/diverges from the camera-axis cross during a fast turret
@@ -2057,7 +2123,7 @@ export function initHud(bus) {
       // keep the plate clear of the dispersion circle: if it would overlap
       // the reticle region, lift it above the circle's top arc.
       let plateY = _sy - 34;
-      const rNow = Math.max(20, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
+      const rNow = clampRetR(smoothRadPx); // same clamp the circle draws with
       if (Math.abs(_sx - aimView.cx) < rNow + 58 &&
           plateY + 30 > aimView.cy - rNow - 4 && plateY < aimView.cy + rNow) {
         plateY = aimView.cy - rNow - 38;
@@ -3018,6 +3084,10 @@ export function initHud(bus) {
     // it keeps the red wedge (+ crit flash), never the deflect read
     const pen = hit.kind === 'pen' || hit.kind === 'he_pen';
     const kind = hit.kind === 'he_splash' ? 'he' : (pen || dmg > 0) ? 'pen' : 'bounce';
+    // MOBILE-UX r1: which word the steel deflect wedge carries (drawn by
+    // drawHitIndicators) — a true ricochet says RICOCHET, every other
+    // 0-damage eat (nonpen / spaced / ERA / 0-dmg screen pierce) says BLOCKED.
+    const bk = hit.kind === 'ricochet' ? 'RICOCHET' : 'BLOCKED';
     // repeat fire from (nearly) the same bearing RE-PULSES the existing wedge
     // — refresh its timer, pool the damage weight — instead of stacking a
     // second copy on top (WoT read; ~20° merge window per class)
@@ -3030,14 +3100,15 @@ export function initHud(bus) {
       if (d < 0.35) {
         e.wx = wx;
         e.wz = wz;
-        e.dmg = (e.dmg || 0) + dmg;
+        e.dmg = (e.dmg || 0) + dmg; // pooled total — the wedge number re-pulses with it
         e.crit = e.crit || crit;
+        e.bk = bk;
         e.t0 = lastTimeS; // decay timer restarts
         e.re = true;      // attack re-runs as a flash, not a full re-grow
         return;
       }
     }
-    hitDirs.push({ wx, wz, kind, crit, dmg, t0: lastTimeS, re: false, _screenAng: null });
+    hitDirs.push({ wx, wz, kind, crit, dmg, bk, t0: lastTimeS, re: false, _screenAng: null });
     // hard cap: 5 simultaneous wedges — drop the oldest, never visual soup
     while (hitDirs.length > 5) hitDirs.shift();
   }
@@ -3140,9 +3211,11 @@ export function initHud(bus) {
     blockedLabel: false, // gameplay_feel r7: dwell-gated PATH BLOCKED text
     gunX: null, gunY: null, atGunLimit: false, gunLimitSpec: false,
     reload: { t: 0, totalS: 1 }, zoom: 1,
+    dispRadM: null, // MOBILE-UX r1: last assembled sim dispersion (probe seam)
   };
 
   function assembleAimView(camera, aim) {
+    aimView.dispRadM = aim.dispersionRadM != null ? aim.dispersionRadM : null;
     aimView.penRatio = aim.penRatio != null ? aim.penRatio : null;
     aimView.blockedDistM = aim.blockedDistM != null ? aim.blockedDistM : null;
     aimView.blockedLabel = !!aim.blockedLabel;
@@ -3234,6 +3307,7 @@ export function initHud(bus) {
         kind: d.kind,
         crit: !!d.crit,
         dmg: d.dmg || 0,
+        word: d.bk || null, // MOBILE-UX r1: deflect word (RICOCHET/BLOCKED)
         screenAngRad: d._screenAng,
         ageS: Math.round((lastTimeS - d.t0) * 1000) / 1000,
       }));
@@ -3442,6 +3516,24 @@ export function initHud(bus) {
     window.__HUD_DEBUG = {
       getHitArcs: () => hud.getHitArcs(),
       getSpectateBar: () => hud.getSpectateBar(),
+      // MOBILE-UX r1 probe seam (introspection only): everything the reticle
+      // clamp math consumed and produced on the LAST drawn frame, so a
+      // numeric gate can assert drawnR == clamp(projection, floor, ceiling)
+      // and radPx == dispRadM · pxPerMeter(distM) under the live zoomed FOV.
+      getReticleState: () => ({
+        mode,
+        w,
+        h,
+        zoom: aimView.zoom || 1,
+        distM: aimView.distM,
+        dispRadM: aimView.dispRadM,
+        radPx: aimView.radPx,
+        smoothRadPx,
+        drawnR: lastDrawnR,
+        gunOutside: lastGunOutside,
+        floorPx: RET_FLOOR_PX,
+        ceilPx: retCeilPx(),
+      }),
     };
   }
 

@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- MOBILE-UX r1: pinch must never zoom the PAGE (pinch-out is the scope
+       gesture in battle — touchControls.js). maximum-scale/user-scalable stop
+       spec-compliant mobile browsers; iOS Safari ignores user-scalable, so
+       touchControls.js also cancels its non-standard gesture* pinch events.
+       viewport-fit=cover exposes env(safe-area-inset-*) on notched phones —
+       the touch HUD keeps its controls off the notch/home bar with them. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Claude of Tanks</title>
   <!-- social cards (brand set lives in public/brand/, see docs/ATTRIBUTION.md) -->
   <meta property="og:title" content="Claude of Tanks" />
@@ -36,7 +42,11 @@
          sizes (boot wordmark, garage title) take the tighter optical cut. */
       font-optical-sizing: auto;
     }
-    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #05080b; }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #05080b;
+      /* MOBILE-UX r1: no double-tap zoom anywhere (taps stay instant); menus
+         keep one-finger scrolling — their own overflow containers pan as
+         normal under touch-action: manipulation. */
+      touch-action: manipulation; }
     body, button, input, select, textarea {
       -webkit-font-smoothing: inherit;
       text-rendering: optimizeLegibility;
@@ -49,6 +59,10 @@
     #app { width: 100%; height: 100%; }
     canvas, img { image-rendering: auto; }
     canvas { display: block; }
+    /* MOBILE-UX r1: the 3D surface is a gameplay surface on every screen
+       (battle swipe-aim, garage orbit drag) — never a browser pan/pinch
+       target. Menus/garage DOM keeps its own scrolling; this is canvas-only. */
+    #app canvas { touch-action: none; }
     svg { shape-rendering: geometricPrecision; text-rendering: geometricPrecision; }
 
     /* ---------------------------------------------------------------------
