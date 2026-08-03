@@ -405,3 +405,17 @@ the shrink; the ref's right-rear pinch is beyond a lathe — cheek-void
 class); plan 'at -1.66' cell (0.317) reads a ref bracket sliver 0.81..
 0.94 vs my full-length rail — decode which x-window the rail may keep;
 stations i9/i11-13 tube tops (certified band).
+
+## Vertex round r25 (2026-08-03) — ORCHESTRATOR LANDING NOTE — 90.7 PASS
+(Builder finished without a section; from its verified report.) 83.4 ->
+90.7 PASS x2 (hull 92.0 / whole 90.7 / turret 95.1 / stations 91.8 / dims
+100). Movers: corner-pad clearance (wheels respaced, diagonals steepened),
+fade strips re-lined on the current grid (r12's had drifted half a step +
+bled into neighbor windows), botY 0.055, front-center finger decode,
+powerpack rake, skirt re-face with opt-in dressIn/lipY (dressing was
+printing 1.747-1.756 into stations i1-i7), SAVAN cover as a 4-step raked
+staircase, ERAWA rows re-seated on the 1.475 seam (right-only flank tiles
+— print asymmetry verified), tube decoded inside the circle law (true
+r 0.078 cylinder + side-invisible sleeve-clamp rails carry plan width).
+Residuals: the certified set (heightM-trade col, muzzle-band bottoms,
+row2-corner ~0.05x2). NEXT: visual pipeline (critic round).
