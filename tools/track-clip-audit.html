@@ -1,0 +1,141 @@
+<!doctype html>
+<!-- Track-containment audit (owner law 2026-08-03, GEOMETRY-GATE.md #4): detects
+     track band geometry interpenetrating hull solids at the bow/stern wrap
+     zones. Band meshes are fingerprinted by their DynamicDrawUsage position
+     buffers (the only two in a procedural build). Hull candidates are
+     regular meshes that reach toward center-x (plates/fenders), so in-lane
+     running gear (instanced wheels, sprocket cylinders) can't false-flag.
+     Overlap = shared 2cm voxels between the (1-voxel-dilated) band surface
+     and a candidate's sampled surface. mode=list emits procedural ids. -->
+<meta charset="utf-8">
+<title>tmp-track-clip</title>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
+
+const params = new URLSearchParams(location.search);
+const mode = params.get('mode') || 'audit';
+
+if (mode === 'list') {
+  const ids = Object.keys(TANK_SPECS).filter((id) => {
+    const src = MODEL_SOURCE[id];
+    return !src || src.source !== 'glb';
+  });
+  window.__CLIP_RESULT = { ids };
+  window.__CLIP_READY = true;
+} else {
+  const id = params.get('id') || 'm1a2_tejas';
+  const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
+  const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+  tank.root.updateMatrixWorld(true);
+
+  const V = 0.02; // voxel edge (m)
+  const key = (x, y, z) => `${Math.round(x / V)},${Math.round(y / V)},${Math.round(z / V)}`;
+
+  // ---- classify ----
+  const bands = [];
+  const meshes = [];
+  tank.root.traverse((o) => {
+    if (!o.visible) return;
+    if (o.isMesh && !o.isInstancedMesh && o.geometry) {
+      const pos = o.geometry.getAttribute('position');
+      if (pos && pos.usage === THREE.DynamicDrawUsage) bands.push(o);
+      else if (!o.material || o.material.colorWrite !== false) meshes.push(o);
+    }
+  });
+
+  const out = { id, bands: bands.length, zones: [], anomaly: null };
+  if (bands.length !== 2) {
+    out.anomaly = `expected 2 band meshes, found ${bands.length}`;
+    window.__CLIP_RESULT = out; window.__CLIP_READY = true;
+  } else {
+    // ---- band extremes + lanes ----
+    const bbox = new THREE.Box3();
+    const lanes = bands.map((b) => { bbox.setFromObject(b); return bbox.clone(); });
+    const zMax = Math.max(...lanes.map((l) => l.max.z));
+    const zMin = Math.min(...lanes.map((l) => l.min.z));
+    const yTop = Math.max(...lanes.map((l) => l.max.y));
+    const yBot = Math.min(...lanes.map((l) => l.min.y));
+    const laneInnerX = Math.min(...lanes.map((l) => Math.min(Math.abs(l.min.x), Math.abs(l.max.x))));
+
+    const zones = [
+      { name: 'front', z0: zMax - 0.50, z1: zMax + 0.06 },
+      { name: 'rear', z0: zMin - 0.06, z1: zMin + 0.50 },
+    ];
+    const y0 = yBot + 0.02, y1 = yTop + 0.06;
+
+    // ---- surface sampler into a voxel set, restricted to a zone ----
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), p = new THREE.Vector3();
+    function sampleMesh(o, z0, z1, set, xFilter) {
+      const g = o.geometry, pos = g.getAttribute('position'), idx = g.index;
+      const n = idx ? idx.count : pos.count;
+      for (let i = 0; i < n; i += 3) {
+        const i0 = idx ? idx.getX(i) : i, i1 = idx ? idx.getX(i + 1) : i + 1, i2 = idx ? idx.getX(i + 2) : i + 2;
+        a.fromBufferAttribute(pos, i0).applyMatrix4(o.matrixWorld);
+        b.fromBufferAttribute(pos, i1).applyMatrix4(o.matrixWorld);
+        c.fromBufferAttribute(pos, i2).applyMatrix4(o.matrixWorld);
+        const zc = (a.z + b.z + c.z) / 3;
+        const zr = Math.max(a.z, b.z, c.z) - Math.min(a.z, b.z, c.z);
+        if (zc + zr < z0 || zc - zr > z1) continue;
+        const area = b.clone().sub(a).cross(c.clone().sub(a)).length() / 2;
+        const steps = Math.max(1, Math.min(24, Math.ceil(Math.sqrt(area) / 0.012)));
+        for (let u = 0; u <= steps; u++) {
+          for (let v = 0; v + u <= steps; v++) {
+            const w = steps - u - v;
+            p.set(0, 0, 0).addScaledVector(a, u / steps).addScaledVector(b, v / steps).addScaledVector(c, w / steps);
+            if (p.z < z0 || p.z > z1 || p.y < y0 || p.y > y1) continue;
+            if (xFilter && !xFilter(p.x)) continue;
+            set.add(key(p.x, p.y, p.z));
+          }
+        }
+      }
+    }
+
+    for (const zone of zones) {
+      // band voxels (both sides), dilated 1 voxel
+      const bandSet = new Set();
+      for (const bm of bands) sampleMesh(bm, zone.z0, zone.z1, bandSet, null);
+      const dilate = params.get('dilate') !== '0';
+      const dilated = new Set(bandSet);
+      if (dilate) for (const k of bandSet) {
+        const [x, y, z] = k.split(',').map(Number);
+        for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) dilated.add(`${x + dx},${y + dy},${z + dz}`);
+      }
+      // hull candidates: regular meshes reaching toward center-x
+      const hits = new Map();
+      const zoneBox = new THREE.Box3(
+        new THREE.Vector3(-1e3, y0, zone.z0), new THREE.Vector3(1e3, y1, zone.z1));
+      for (const m of meshes) {
+        bbox.setFromObject(m);
+        if (!bbox.intersectsBox(zoneBox)) continue;
+        const reach = Math.min(Math.abs(bbox.min.x), bbox.min.x <= 0 && bbox.max.x >= 0 ? 0 : Math.abs(bbox.max.x));
+        if (reach > Math.max(0.05, laneInnerX - 0.15)) continue; // lane-local gear: skip
+        const set = new Set();
+        sampleMesh(m, zone.z0, zone.z1, set, null);
+        let ov = 0; let lo = [1e9, 1e9, 1e9]; let hi = [-1e9, -1e9, -1e9];
+        for (const k of set) {
+          if (!dilated.has(k)) continue;
+          ov++;
+          const [x, y, z] = k.split(',').map(Number);
+          lo = [Math.min(lo[0], x), Math.min(lo[1], y), Math.min(lo[2], z)];
+          hi = [Math.max(hi[0], x), Math.max(hi[1], y), Math.max(hi[2], z)];
+        }
+        if (ov > 0) {
+          hits.set(m.name || m.parent?.name || '(unnamed)', {
+            vox: ov,
+            box: [lo.map((v) => +(v * V).toFixed(3)), hi.map((v) => +(v * V).toFixed(3))],
+          });
+        }
+      }
+      const total = [...hits.values()].reduce((s, h) => s + h.vox, 0);
+      out.zones.push({
+        name: zone.name, overlapVox: total,
+        hits: [...hits.entries()].sort((x, y) => y[1].vox - x[1].vox).slice(0, 6)
+          .map(([n, h]) => ({ mesh: n, vox: h.vox, box: h.box })),
+      });
+    }
+    window.__CLIP_RESULT = out; window.__CLIP_READY = true;
+  }
+}
+</script>

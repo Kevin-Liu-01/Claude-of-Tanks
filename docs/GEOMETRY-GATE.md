@@ -277,7 +277,8 @@ That is the point: it is the definition of done, not a description of today.
    loop's wrap arcs — band, shoes, guide horns — must stay CLEAR of hull
    solids (bow/stern plates, fenders, mud flaps): either the plate sits
    proud of the wrap with real clearance, or the wrap is genuinely open
-   to air. Audit tool: `tools/tmp-track-clip.mjs` (voxel overlap between
+   to air. Audit tool: `tools/track-clip-audit.mjs` (--exact for true
+   interpenetration; default adds a 2cm near-contact margin) (voxel overlap between
    the band meshes and center-reaching hull solids in the front/rear
    wrap zones; offenders in shots/track-clip.json). Builders self-check
    bow/stern close views on every round that moves nose/tail geometry
