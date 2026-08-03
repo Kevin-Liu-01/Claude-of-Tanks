@@ -18,7 +18,7 @@
 // masks (gun overhang especially) line up. Everything is an original
 // primitive construction — measured dimensions only, no source topology.
 import * as THREE from 'three';
-import { KIT, evenStations } from './kit.js';
+import { KIT, FITTINGS, evenStations } from './kit.js';
 
 // NOTE: KIT bindings are only dereferenced inside build-time functions —
 // never at module scope — because of the tankFactory extension-module cycle.
@@ -1588,23 +1588,28 @@ function buildT80Line(P, v) {
   //    2 = T-80BV (Kontakt-1 field: cheeks via the k1 arc + glacis raft)
   const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
   loftHull(P, {
-    deck: [[-3.26, 1.43], [-2.90, 1.41], [-2.55, 1.44], [-1.95, 1.465], [-1.66, 1.503], [-1.36, 1.503], [-1.10, 1.458], [1.25, 1.44], [1.55, 1.452], [1.80, 1.44], [2.00, 1.415], [2.12, 1.345], [2.30, 1.32], [2.44, 1.283], [2.58, 1.232], [3.08, 1.235], [3.30, 1.212], [3.39, 1.06]],
-    belly: [[-3.26, 0.95], [-3.14, 0.73], [-2.96, 0.73], [-2.86, 0.52], [-2.60, 0.44], [2.60, 0.44], [3.00, 0.55], [3.39, 0.79]],
-    wUp: [[-3.26, 1.28], [3.39, 1.28]],
-    wLo: [[-3.26, 1.05], [3.39, 1.02]],
+    // r26: nose pulled to 3.17 — the ref bow plan is an ARROW (center
+    // 3.13-3.16; the wedge/corner kit below carries the diagonals to 3.44).
+    deck: [[-3.26, 1.43], [-2.90, 1.41], [-2.55, 1.44], [-1.95, 1.465], [-1.66, 1.503], [-1.36, 1.503], [-1.10, 1.458], [1.25, 1.44], [1.55, 1.452], [1.80, 1.44], [2.00, 1.415], [2.12, 1.345], [2.30, 1.32], [2.44, 1.283], [2.58, 1.232], [3.08, 1.235], [3.17, 1.19]],
+    belly: [[-3.26, 0.95], [-3.14, 0.73], [-2.96, 0.73], [-2.86, 0.52], [-2.60, 0.44], [2.60, 0.44], [3.00, 0.55], [3.17, 0.72]],
+    wUp: [[-3.26, 1.28], [3.17, 1.28]],
+    wLo: [[-3.26, 1.05], [3.17, 1.02]],
     sponsonY: 0.82,
   });
   // rear side-hump band (turbine deck): raked top 1.86 -> 1.70, recessed
-  // center channel; rear plate slabs carry the clamped -3.39 plan corners
-  // (ref -3.52..-3.54 at |x| 0.79..1.63) over the 0.72/0.95 belly steps.
+  // center channel. r26: everything below the 1.24 lip pulls forward of
+  // -3.30 — the ref stern fades to an overhanging deck (side col -3.33
+  // reads 1.28..1.88). Mask ends stay HARD at ±3.39: the r26a ±3.44
+  // extension read hullLengthM 6.93/7.03 by grid phase (dims -9/-22) and
+  // was reverted — the certified-long oracle keeps its ~2-col end miss.
   const hy = 0;  // (r25f: BV smallness left as a structural residual — see
                  // the squash post-mortem note at the turret section)
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.885, 0.45, 0.33), s * 1.2125, 1.635 + hy, -3.225);  // top 1.86, z -3.39..-3.06, x 0.77..1.655
+    P.add('hull', box(0.875, 0.45, 0.335), s * 1.2175, 1.635 + hy, -3.2225);  // top 1.86, z -3.39..-3.055, x 0.78..1.655
     P.add('hull', box(0.885, 0.33, 0.10), s * 1.2125, 1.575 + hy, -3.01);   // 1.74 taper step
-    P.add('hull', box(0.885, 0.24, 0.09), s * 1.2125, 1.52 + hy, -2.925);   // 1.64 taper toe
-    P.add('hull', box(0.90, 0.69, 0.38), s * 1.21, 1.065, -3.10);   // rear plate 0.72..1.41, x 0.76..1.66
-    P.add('hull', box(0.90, 0.44, 0.10), s * 1.21, 1.18, -3.34);    // tail 0.96..1.40
+    P.add('hull', box(0.885, 0.24, 0.06), s * 1.2125, 1.52 + hy, -2.95);    // 1.64 taper toe (ref top cliff -2.90)
+    P.add('hull', box(0.90, 0.60, 0.38), s * 1.21, 1.11, -3.10);    // rear plate 0.81..1.41, x 0.76..1.66
+    P.add('hull', box(0.90, 0.17, 0.11), s * 1.21, 1.325, -3.335);  // tail lip 1.24..1.41 (ref -3.33 bot 1.28)
     // fender/stow runs at the 1.21-1.25 line feeding the long mid-deck cols
     P.add('hull', box(0.36, 0.14, 4.6), s * 1.44, 1.19, 0.35);
   }
@@ -1617,47 +1622,61 @@ function buildT80Line(P, v) {
   // periscopes, V-board, headlights, tow eyes
   P.add('hull', box(1.90, 0.045, 0.16), 0, 1.253, 2.78);
   ruGlacisKit(P, { w: 3.0, y: 1.06, z: 2.72, eyeZ: 3.02, hookY: 0.82, hookZ: 3.12, hlY: 1.13 });
-  // bow fender corners: the ARROW plan (center 3.16 -> corners at the pub
-  // clamp; ref corners 3.49-3.54 certified-long)
+  // bow fender corners: the ARROW plan — diagonal wedge edges 3.17@x0.40 ->
+  // 3.44@x1.30 (ref staircase 3.13/3.22/3.31/3.41), corner shelves at 3.44
+  // (half of the certified-long ref corners, inside the 1% grace), and the
+  // mudguard tips that own the ref's 0.84 bow floor at z 3.45.
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.30, 0.10, 0.30), s * 0.61, 1.06, 3.16);      // f 3.31
-    P.add('hull', box(0.72, 0.10, 0.24), s * 1.26, 1.10, 3.27);      // f 3.39
-    P.add('hull', box(0.72, 0.05, 0.10), s * 1.26, 1.155, 3.33);
-    P.add('hullRubber', box(0.34, 0.30, 0.045), s * 1.38, 0.90, 3.30);
-    P.add('hullRubber', box(0.34, 0.26, 0.045), s * 1.36, 0.86, -3.32);
+    P.add('hull', box(0.96, 0.10, 0.05), s * 0.85, 1.11, 3.27, 0, -s * 0.24, 0);
+    P.add('hull', box(0.38, 0.07, 0.18), s * 0.75, 1.10, 3.205);   // arrow pocket fill (SSB2 hole cells at +-0.77,3.18)
+    P.add('hull', box(0.82, 0.10, 0.21), s * 1.21, 1.10, 3.285);    // f 3.39
+    P.add('hull', box(0.82, 0.05, 0.10), s * 1.21, 1.155, 3.34);
+    P.add('hullRubber', box(0.34, 0.30, 0.045), s * 1.38, 0.85, 3.30);
+    P.add('hullRubber', box(0.34, 0.30, 0.045), s * 1.38, 0.99, 3.3675);
+    P.add('hullRubber', box(0.34, 0.26, 0.045), s * 1.36, 1.00, -3.24);
   }
-  // rear plate kit: turbine grille + fuel drums + unditching log (owner law)
-  P.add('hullDark', box(1.45, 0.32, 0.05), 0, 1.06, -3.27);
-  for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.40, 0.04, 0.05), 0, 0.92 + k * 0.10, -3.28);
+  // rear plate kit: turbine grille + fuel drums + unditching log (owner law).
+  // r26: everything below the tail lip pulls forward of -3.30 and rides the
+  // ref's 0.81-0.87 stern floor (log bot 0.87 owns the -3.21 column).
+  P.add('hullDark', box(1.20, 0.32, 0.05), 0, 1.10, -3.24);
+  for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.16, 0.04, 0.05), 0, 0.92 + k * 0.10, -3.24);
   for (const s of [-1, 1]) {
     P.add('hullDetail', cylY(0.135, 0.135, 0.58, 12), s * 1.02, 1.55, -3.15, 0, 0, s * 0.08);
     P.add('hullDark', cylY(0.14, 0.14, 0.03, 12), s * 1.02, 1.815, -3.16, 0, 0, s * 0.08);
   }
-  P.add('hullWood', cylX(0.10, 1.95, 10), 0, 0.86, -3.30);
-  for (const s of [-0.5, 0.5]) P.add('hullDark', cylX(0.107, 0.04, 10), s * 1.5, 0.86, -3.30);
+  P.add('hullWood', cylX(0.10, 1.95, 10), 0, 0.97, -3.16);
+  for (const s of [-0.5, 0.5]) P.add('hullDark', cylX(0.107, 0.04, 10), s * 1.5, 0.97, -3.16);
   KIT.towCable(P, [[-1.15, 1.05, 2.72], [0, 1.12, 2.42], [1.15, 1.05, 2.72]]);
   // running gear: pt91m r25 corner-pad recipe from birth — flat dies at the
   // ref's ground reads (rear -1.90 / front +2.33), dip zones land inside
   // ground columns, steep diagonals keep the link pads above the strips.
   buildRunningGear(P, {
-    style: 'dished', wheelR: 0.335, wheelW: 0.21, wheelY: 0.44, xc: 1.30, dishR: 0.80,
+    // r26: trackW 0.66 -> 0.57 @ xc 1.315 — the ref front view shows BELLY
+    // (0.44 floor) at |x| 0.94..1.01; its track band runs |x| 1.03..1.60.
+    style: 'dished', wheelR: 0.335, wheelW: 0.21, wheelY: 0.44, xc: 1.345, dishR: 0.80,
     wheelZs: [-1.60, -0.88, -0.16, 0.56, 1.28, 2.00],
     sprocket: { z: -2.55, y: 0.95, r: 0.235 }, idler: { z: 2.72, y: 0.86, r: 0.19 },
     rollers: [-1.24, -0.52, 0.20, 0.92, 1.64].map((z) => ({ z, y: 0.86, r: 0.08 })),
-    trackW: 0.66, topY: 0.85, botY: 0.055, paintedEnds: true, coveredTop: true, arms: true,
+    trackW: 0.58, topY: 0.85, botY: 0.055, paintedEnds: true, coveredTop: true, arms: true,
   });
-  // gear-fade strips on the ref ramp lines (rear slope 0.52, front 0.75)
+  // gear-fade strips on the ref ramp lines. r26 remap from the registered
+  // column table: rear line 0.24@-2.18 -> 0.52@-2.68 then the 0.775 jump at
+  // -2.81; front line 0.12@2.58 -> 0.68@3.33 (col minima carry the read).
   for (const [sz2, sy] of [
-    [-2.05, 0.078], [-2.15, 0.130], [-2.25, 0.182], [-2.35, 0.234],
-    [-2.45, 0.287], [-2.55, 0.339], [-2.65, 0.391], [-2.75, 0.443], [-2.84, 0.49],
-    [2.45, 0.09], [2.55, 0.165], [2.65, 0.241], [2.75, 0.316], [2.85, 0.391],
-    [2.95, 0.466], [3.05, 0.541], [3.15, 0.617], [3.25, 0.692], [3.34, 0.762],
+    [-2.10, 0.250], [-2.19, 0.295], [-2.28, 0.340], [-2.37, 0.385],
+    [-2.46, 0.430], [-2.55, 0.474], [-2.64, 0.518], [-2.73, 0.560],
+    [-2.79, 0.700], [-2.86, 0.775],
+    [2.49, 0.088], [2.52, 0.118], [2.61, 0.190], [2.67, 0.245], [2.76, 0.320],
+    [2.90, 0.400], [3.02, 0.520], [3.14, 0.590], [3.27, 0.680], [3.34, 0.780],
   ]) {
-    for (const s of [-1, 1]) P.add('hullDark', box(0.60, 0.05, 0.078), s * 1.30, sy + 0.025, sz2);
+    for (const s of [-1, 1]) P.add('hullDark', box(0.62, 0.05, 0.078), s * 1.345, sy + 0.025, sz2);
   }
-  // skirts: full band at the EXACT pub width (faces ±1.76), z -2.93..3.30.
+  // skirts: outer face at the EXACT pub width (±1.76) but THICK panels
+  // (r26: the ref front view fills x 1.64..1.76 — a 0.032 sheet left lerp
+  // junk in the 1.68 column), band re-seated to the ref's 0.82..1.17 line.
   // BV: the print wears the short K-1 skirt (front bottom line 1.049).
-  ruSkirtBand(P, { x: 1.744, th: 0.032, z0: -2.93, z1: 3.30, yTop: 1.23, yBot: v === 2 ? 1.03 : 0.63, panels: 7, lipX: 1.727, dressIn: 0.012, lipY: v === 2 ? 1.045 : 0.675 });
+  ruSkirtBand(P, { x: v === 2 ? 1.744 : 1.71, th: v === 2 ? 0.032 : 0.10, z0: -2.93, z1: 3.30, yTop: v === 2 ? 1.23 : 1.16, yBot: v === 2 ? 1.03 : 0.79, panels: 7, lipX: 1.727, dressIn: 0.012, lipY: v === 2 ? 1.045 : 0.805 });
+  if (v !== 2) for (const s of [-1, 1]) P.add('hullTrack', box(0.10, 0.37, 0.09), s * 1.71, 1.045, 3.345);
   // K-1 skirt front plates (BV only; faces stay inside the pub width)
   if (v === 2) for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
     P.add('hullTrack', box(0.028, 0.42, 0.50), s * 1.745, 0.95, 2.98 - i * 0.55);
@@ -1670,57 +1689,108 @@ function buildT80Line(P, v) {
   // under-scale after width normalization stays a structural residual for
   // a certification ruling next round.)
   P.turretG.position.set(0, 1.45, 0.0);
-  // r25b: the ref dome is WIDE and FLAT — front tops 2.14 out to x ±1.19,
-  // 2.19 at ±0.86, edge falloff 1.9 only at ±1.44+; plan is front-biased
-  // (rear chords -0.65@±1.13 vs front 1.07@±1.05) -> sz 0.88 cz +0.17.
-  const ringsT = [[1.44, 0.06], [1.465, 0.42], [1.435, 0.47], [1.28, 0.655], [1.19, 0.69], [0.80, 0.74], [0.02, 0.75]];
-  meshDome(P, ringsT, 0.88, 0, 0.17);
-  // hidden turret-node carrier: the ref turret mask bottoms 0.66 across
-  // z -0.49..1.08 (print bakes hull-side kit into the turret node); the
-  // carrier hides inside the hull tub in every real view.
+  // r26 dome recalibration from the registered tables: the ref crown is
+  // WIDE-FLAT at 2.22-2.25 (raised crown 2.23, +1.4% inside the dims-grace
+  // budget) with a LOW front-edge falloff (front cols 2.03@±1.19, 2.07@±1.05
+  // — the old rings read 2.11-2.17 there); plan bias cz +0.22. The side
+  // 2.16 line at z 1.05..1.35 is NOT the lathe (a revolve cannot hold both
+  // views) — the hood step carries it.
+  const ringsT = v === 2
+    ? [[1.44, 0.06], [1.465, 0.42], [1.435, 0.47], [1.28, 0.655], [1.19, 0.69], [0.80, 0.74], [0.02, 0.75]]
+    : [[1.44, 0.06], [1.465, 0.40], [1.435, 0.44], [1.30, 0.545], [1.19, 0.585], [1.05, 0.615], [0.86, 0.68], [0.60, 0.72], [0.02, 0.75]];
+  meshDome(P, ringsT, 0.88, 0, v === 2 ? 0.17 : 0.22);
+  // crown plate: the ref roof is FLAT 2.20-2.25 clear out to |x| 1.02 with a
+  // cliff to 2.03 beyond (a lathe can't hold the flat-then-cliff read) —
+  // top 2.2215 rides the 1% heightM grace exactly.
+  if (v !== 2) P.add('turret', box(2.04, 0.045, 1.25), 0, 0.749, 0.125);
+  // hidden turret-node carrier: the ref turret mask bottoms 0.715 across
+  // z -0.44..+1.15 (print bakes hull-side kit into the turret node; both
+  // ends re-measured from the r26a/r25 boundary-column pair). Hides inside
+  // the hull tub in every real view.
   P.add('turretDark', box(1.00, 0.78, 1.55), 0, -0.40, 0.30);
-  // mantlet block + V-nose (plan center front 1.66..1.79 at |x|<=0.24)
-  P.addGunExtra(box(0.46, 0.32, 0.34), 0, 0.02, 0.72);
-  P.add('turret', box(0.30, 0.20, 0.14), 0, 0.24, 1.70);
-  P.add('turret', box(0.56, 0.26, 0.36), 0, 0.22, 1.44);
-  // cheek staircase (plan fronts 1.31..1.39 at |x| 0.9..1.13)
+  // mantlet hood + saddle root own the ref's 1.94-2.06 side band over
+  // z 1.19..1.75; the V-nose dust cover carries 1.9 out to z 1.98.
+  if (v === 2) {
+    P.addGunExtra(box(0.46, 0.32, 0.34), 0, 0.02, 0.72);
+    P.add('turret', box(0.30, 0.20, 0.14), 0, 0.24, 1.70);
+    P.add('turret', box(0.56, 0.26, 0.36), 0, 0.22, 1.44);
+    P.add('turretDetail', box(0.26, 0.26, 0.24), 0.55, 0.40, 0.96);
+    P.add('turretGlass', box(0.18, 0.18, 0.02), 0.55, 0.40, 1.09);
+  } else {
+    P.addGunExtra(box(0.46, 0.50, 0.40), 0, -0.10, 0.75);
+    P.add('turret', box(1.30, 0.32, 0.50), 0, 0.39, 1.44);
+    P.add('turret', box(0.90, 0.12, 0.24), 0, 0.65, 1.155);
+    P.add('turret', box(0.30, 0.40, 0.28), 0, 0.26, 1.84);
+    // Luna IR seated right of the mantlet (ref plan front 1.81 at x 0.6-0.85)
+    P.add('turretDetail', box(0.26, 0.26, 0.24), 0.72, 0.35, 1.62);
+    P.add('turretGlass', box(0.18, 0.18, 0.02), 0.72, 0.35, 1.755);
+  }
+  // cheek staircase + flank slabs (ref plan fronts 1.31@±1.0, 1.12@±1.3,
+  // 0.9@±1.45; flank rears +0.1@±1.33 — the old shoulder run owned the
+  // ±1.30 rear columns 0.6 too deep)
   for (const s of [-1, 1]) {
     P.add('turret', box(0.34, 0.30, 0.46), s * 1.00, 0.22, 1.08, 0, s * 0.42, 0);
-    P.add('turret', box(0.30, 0.26, 0.40), s * 1.28, 0.16, 0.55, 0, s * 0.72, 0);
-    // shoulder boxes carrying the plan rears -0.4..-0.68 at |x| 0.92..1.13
-    P.add('turret', box(0.40, 0.34, 1.10), s * 1.10, 0.14, -0.08, 0, s * 0.08, 0);
-    P.add('turretDetail', box(0.36, 0.05, 0.9), s * 1.11, 0.335, -0.10, 0, s * 0.08, 0);
+    if (v === 2) {
+      P.add('turret', box(0.30, 0.26, 0.40), s * 1.28, 0.16, 0.55, 0, s * 0.72, 0);
+      P.add('turret', box(0.40, 0.34, 1.10), s * 1.10, 0.14, -0.08, 0, s * 0.08, 0);
+      P.add('turretDetail', box(0.36, 0.05, 0.9), s * 1.11, 0.335, -0.10, 0, s * 0.08, 0);
+    } else {
+      P.add('turret', box(0.28, 0.26, 0.40), s * 1.27, 0.16, 0.72, 0, s * 0.66, 0);
+      P.add('turret', box(0.12, 0.24, 0.95), s * 1.33, 0.14, 0.575);
+      P.add('turret', box(0.34, 0.34, 1.10), s * 1.07, 0.14, -0.08, 0, s * 0.08, 0);
+      P.add('turretDetail', box(0.36, 0.05, 0.9), s * 1.08, 0.335, -0.10, 0, s * 0.08, 0);
+    }
   }
-  // commander cupola + Utyos NSVT right (receiver band prints the ref's
-  // 2.29 x2 side cols at -0.64..-0.49; ring under the 2.20 crown line)
+  // commander cupola + Utyos NSVT right (hand receiver keeps the r25c
+  // 2.2195 anchor on every variant; the r26 fitting NSVT below owns the
+  // ref's 2.34 MG spike for t80/t80b)
   P.add('turret', cylY(0.24, 0.26, 0.10, 14), 0.52, 0.66, -0.42);
   P.add('turretDark', KIT.torus(0.25, 0.018, 14), 0.52, 0.72, -0.42);
-  // (r25c: receiver top 2.2195 — the 2.29 seat read p95 on the BV's
-  // tighter shared camera and broke heightM; 0.9% sits inside the dims
-  // grace at any pitch. The ref's 2.29 spike costs ~0.08 x2 side cols.)
   P.add('turretDark', box(0.09, 0.10, 0.16), 0.55, 0.7195, -0.57);
   P.add('turretDark', cylZ(0.024, 0.58, 8), 0.55, 0.725, -0.14, -0.03, 0, 0);
   P.add('turretDark', cylZ(0.036, 0.11, 8), 0.55, 0.735, 0.17, -0.03, 0, 0);
   P.add('turretDetail', box(0.10, 0.12, 0.18), 0.42, 0.69, -0.60);
   P.add('turret', cylY(0.21, 0.21, 0.045, 14), -0.48, 0.70, -0.36);
   P.add('turretDark', cylY(0.215, 0.215, 0.012, 14), -0.48, 0.735, -0.36);
-  // gunner sight doghouse left + Luna IR right of the gun
+  if (v !== 2) {
+    // left sight head — the ref front view spikes 2.35 at BOTH ±0.42 in the
+    // same z band as the MG cluster (2 side cols total, p95-safe; BV keeps
+    // the r25 roof under its tighter shared camera)
+    P.add('turretDetail', box(0.13, 0.15, 0.13), -0.44, 0.815, -0.50);
+    // rear crown cap: the flattened lathe alone drops to 2.0 behind the
+    // ring; the ref holds 2.17-2.22 back to z -0.9 (stowage bin row)
+    P.add('turret', box(0.55, 0.08, 0.40), -0.30, 0.70, -0.68);
+  }
+  // gunner sight doghouse left
   P.add('turret', box(0.38, 0.22, 0.40), -0.45, 0.63, 0.40);
   P.add('turret', box(0.40, 0.04, 0.44), -0.45, 0.73, 0.40);
-  P.add('turretDetail', box(0.26, 0.26, 0.24), 0.55, 0.40, 0.96);
-  P.add('turretGlass', box(0.18, 0.18, 0.02), 0.55, 0.40, 1.09);
-  // bustle: 2.20-top band with the ref's raked 1.84 -> 1.70 bottom
-  P.add('turret', box(1.76, 0.36, 0.23), 0, 0.57, -1.515);
+  // bustle: 2.20-top band, ref underside rake 1.70 -> 1.91 with the rear
+  // cliff at -1.58 (the old -1.63 rear face aliased a 0.2 err column); the
+  // wide box owns the ref's -1.46 plan corner at ±0.96 (right-biased ref,
+  // symmetric build keeps the roll)
   P.add('turret', box(1.76, 0.50, 0.31), 0, 0.50, -1.245);
+  if (v === 2) {
+    P.add('turret', box(1.76, 0.36, 0.23), 0, 0.57, -1.515);
+  } else {
+    P.add('turret', box(0.16, 0.50, 0.31), 0.96, 0.50, -1.245);
+    P.add('turret', box(1.76, 0.36, 0.16), 0, 0.57, -1.48);
+    P.add('turret', box(1.60, 0.22, 0.06), 0, 0.64, -1.58);
+  }
   P.add('turretDark', cylX(0.07, 1.5, 10), 0, 0.40, -1.06);
   P.add('turretDetail', box(0.05, 0.05, 0.66), 0.80, 0.46, -0.86, 0, 0.5, 0);
   P.add('turretDetail', box(0.05, 0.05, 0.66), -0.80, 0.46, -0.86, 0, -0.5, 0);
   if (v >= 1) {
-    // T-80B brow applique blocks on the cheeks + 902 smoke tubes left
-    for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
-      P.add('turretTrack', box(0.26, 0.16, 0.10), s * (0.36 + i * 0.30), 0.30, 1.30 - i * 0.16, -0.20, s * 0.35, 0);
+    // T-80B brow: forward shelf + spread applique tiles (t80b ref plan
+    // front reads 1.74 out to |x| 0.8, 1.43-1.56 to 1.15) + 902 tubes left
+    P.add('turret', box(0.50, 0.20, 0.30), -0.86, 0.32, 1.24, 0, -0.50, 0);
+    for (const s of [-1, 1]) {
+      P.add('turretTrack', box(0.30, 0.16, 0.12), s * 0.40, 0.30, 1.52, -0.20, s * 0.35, 0);
+      P.add('turretTrack', box(0.30, 0.16, 0.12), s * 0.74, 0.28, 1.46, -0.20, s * 0.35, 0);
+      P.add('turretTrack', box(0.30, 0.16, 0.12), s * 1.06, 0.26, 1.32, -0.20, s * 0.35, 0);
     }
     for (let k = 0; k < 4; k++) P.add('turretDark', cylZ(0.040, 0.26, 8), -1.00 - k * 0.09, 0.52 + (k % 2) * 0.03, 0.42 - k * 0.10, -0.45, -(0.9 + k * 0.13), 0);
+    // bustle tail bin — the t80b ref keeps a 2.0..2.18 band out to z -1.68
+    P.add('turret', box(0.30, 0.18, 0.09), -0.55, 0.64, -1.665);
   }
   if (v === 2) {
     // T-80BV Kontakt-1: cheek arc (shared k1 kit, opt-in params) + glacis raft
@@ -1732,31 +1802,215 @@ function buildT80Line(P, v) {
   const dxT = ringSkin(ringsT, 0.30) + 0.02;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [dxT, 0.22, -0.30], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [-dxT, 0.22, -0.30], -Math.PI / 2);
-  // ---- 125 mm 2A46M-1: FAT sleeved tube (ref band 1.56..1.86 — true
-  // cylinders at r 0.125-0.14, circle law kept; muzzle pub +6.27) ----
-  P.gunG.position.set(0, 0.26, 0.60);
-  ruSaddle(P, { rollR: 0.15, rollW: 0.40, tubeR: 0.135, rootR: 0.15, rootL: 0.55 });
-  // r25d: tube r 0.128 (band 0.256 — 9 mm under the 12% body cut at any
-  // raster, so hullLengthM never swallows it; the 0.29-band ref tube DOES
-  // count as its own body — the residual whole-row fit skew is the known
-  // ~0.09 registration cost, documented for the finishing round).
+  // ---- 125 mm 2A46M-1 (r26 re-read from the RENDERED ref — render truth
+  // outranks the r25 extract decode): axis 1.765, working tube r 0.112
+  // (band 1.65..1.88 matches the ref muzzle band exactly and stays under
+  // the 12% body cut), FAT bore-evacuator swell topping the ref's 1.94
+  // line over world 2.63..3.50 (its columns are body via the bow below
+  // anyway), muzzle 6.30 — covers the ref's last tube column inside the
+  // 1% overall grace. ----
+  P.gunG.position.set(0, 0.315, 0.60);
+  ruSaddle(P, { rollR: 0.15, rollW: 0.40, tubeR: 0.112, rootR: 0.28, rootL: 0.62 });
   tubeGun(P, [
-    [0.55, 5.67, 0.128, 0.128],
-  ], { rings: [[1.80, 0.130], [2.90, 0.130], [4.40, 0.130]], muzzle: 5.67 });
-  // r25f sleeve clamp plate (pt91m precedent): the FAT ref tube's plan edges
-  // (±0.19) own the ±0.16..0.19 plan columns to the muzzle — the slim
-  // cylinder missed them and one column carried a 2.1 m only-proc-style err.
-  // Thin plate at the axis plane: side-invisible inside the tube band,
-  // never a body column (0.014 band), top-down reads as flush clamp lips.
-  P.add('gun', box(0.37, 0.014, 5.10), -0.005, -0.002, 3.10);
+    [0.55, 2.03, 0.125], [2.03, 2.78, 0.128], [2.78, 5.67, 0.112],
+  ], { rings: [[3.60, 0.118], [4.40, 0.118], [5.10, 0.118]], muzzle: 5.67 });
+  // r25f sleeve clamp plate (pt91m precedent): the ref tube's plan edges
+  // (±0.19) own the ±0.16..0.19 plan columns — but only to world 6.04
+  // (r26: the full-length plate owned the muzzle-tip plan columns 0.23
+  // past the ref). Thin plate at the axis plane: side-invisible inside
+  // the tube band, never a body column (0.014 band).
+  P.add('gun', box(0.37, 0.014, 4.89), -0.005, -0.002, 2.995);
+  P.add('gun', box(0.022, 0.344, 0.75), 0, 0, 2.405);   // evac crest fin (side 1.59..1.94, plan-invisible)
   // (r25e: a whole-tank z-seat was tried and reverted — the fitted view
   // registration re-centers on the body span, so it is seat-invariant;
   // and turretG is NOT a hullG child, so the seat sheared the rig.)
+  if (v !== 2) {
+    // §I decoration law: the AA NSVT rides as a KIT fitting (census). The
+    // carriage is swung INBOARD (barrel sweeps over the roof toward the
+    // gunner's side) so the whole assembly adds only the ref's own 2-col
+    // 2.34 MG band in side view (heightM p95 law) — receiver mass covers
+    // the ref's right-side 2.35 front spike at x 0.38..0.60.
+    const mg = FITTINGS.pintleMG({
+      mats: P.mats, cls: 'nsvt', scale: 0.54, tone: 'dark', ammo: false,
+      elev: -0.25, rotation: [0, -Math.PI / 2, 0],
+    });
+    mg.position.set(0.52, 0.72, -0.55);
+    P.turretG.add(mg);
+  }
   P.topY = 1.20;
 }
 function buildT80(P) { buildT80Line(P, 0); }
 function buildT80B(P) { buildT80Line(P, 1); }
 function buildT80BV(P) { buildT80Line(P, 2); }
+
+// ---- T-90M Proryv (docs/references/vertex/t90m.json, batch-31 warped oracle)
+// FIRST BUILD (r26). World frame = extract + 1.38 (hull mask re-centered to
+// ±3.43 = pub 6.86). PUB SOVEREIGN: width 3.78, height 2.23 (roof plateau
+// 2.24-2.25 rides the 1% grace), muzzle +6.20 (9.63 overall).
+// Decode (world): flat deck 1.35-1.39; glacis corner prongs 3.44 over a 3.20
+// center V-bow (t90sm bow-notch class); rear plate -2.90 full width with the
+// drum/log RACK to -3.43 at |x|<=0.99 (tops 1.84, floor 1.23-1.44); WELDED
+// turret vs the t90a cast dome — flat cheeks (plan front 1.91 center ->
+// 0.92@|x|1.74, chamfered corners), broad roof plateau 2.24-2.25 over z
+// -1.2..+0.5, turret-node APRON bottoming 0.88 across z -0.8..+0.9 (print
+// carries hull-side kit in the turret node — hidden carrier, t80 pattern);
+// Kord RWS + bustle bins as SEPARATED THIN MEMBERS (post-warp ref holds them
+// at 2.20-2.25 / bins band 1.58..1.91 reaching z -2.32); Relikt skirt line;
+// 2A46M-5 axis 1.61, evac swell r 0.138 at 3.20..3.44, muzzle +6.20.
+function buildT90MProryv(P) {
+  const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret, slab } = KIT;
+  loftHull(P, {
+    // r26a render re-read: plan bow center is 3.05 (extract corners said
+    // 3.20 — REF-RENDER OUTRANKS ROW ANALYSIS), corners 3.27, lower tub
+    // wall at 1.08 (ref front cols show belly out to |x| 1.08, track from
+    // 1.13), belly floor 0.365.
+    deck: [[-2.90, 1.37], [-2.47, 1.39], [-1.77, 1.35], [-1.10, 1.37], [0.10, 1.385], [1.22, 1.38], [2.18, 1.28], [2.70, 1.23], [3.00, 1.17], [3.06, 1.05]],
+    belly: [[-2.90, 0.89], [-2.72, 0.78], [-2.60, 0.45], [-2.30, 0.365], [2.45, 0.365], [3.00, 0.50], [3.06, 0.62]],
+    wUp: [[-2.90, 1.20], [-2.77, 1.60], [2.95, 1.60], [3.06, 1.52]],
+    wLo: [[-2.90, 1.00], [3.06, 1.08]],
+    sponsonY: 0.81,
+  });
+  // glacis corner prongs carry the ref's 3.27 plan corners over the 3.05
+  // center line (V-bow), mud flaps behind them; a slim CENTER bow probe
+  // (tow-hook cluster) owns the ref's 3.43 hull-mask nose — it hides in
+  // plan behind the gun so hullLengthM anchors at zero plan cost.
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.72, 0.28, 0.26), s * 1.35, 1.02, 3.14);
+    P.add('hull', box(0.72, 0.05, 0.12), s * 1.35, 1.145, 3.21);
+    P.add('hullRubber', box(0.30, 0.38, 0.045), s * 1.45, 0.85, 3.235);
+  }
+  P.add('hull', box(0.18, 0.36, 0.06), 0, 0.92, 3.37);
+  // rear RACK zone (|x|<=0.99): floor at the ref's 1.17 line, transverse
+  // fuel drums + spare bin (tops 1.89 @ -3.13), mesh rear face at -3.43
+  // (hullLengthM body anchor), unditching log slung BEHIND the plate at
+  // -3.50 (band-thin: the ref's plan rear reads -3.59 at |x|<0.9 while
+  // overall stays inside the 1% grace)
+  for (const s of [-1, 1]) P.add('hull', box(0.72, 0.08, 0.50), s * 0.48, 1.21, -3.16);
+  for (const s of [-1, 1]) {
+    P.add('hullDetail', cylX(0.14, 0.75, 12), s * 0.48, 1.62, -3.18);
+    P.add('hull', box(0.16, 0.60, 0.44), s * 0.96, 1.50, -3.10);
+  }
+  for (const s of [-1, 1]) P.add('hullDetail', box(0.44, 0.14, 0.30), s * 0.38, 1.82, -3.15);
+  for (const s of [-1, 1]) P.add('hullWood', cylX(0.09, 0.72, 10), s * 0.50, 1.60, -3.44);
+  for (const s of [-0.86, 0.86]) P.add('hullDark', cylX(0.097, 0.04, 10), s, 1.60, -3.44);
+  for (const s of [-1, 1]) P.add('hullDark', box(0.52, 0.34, 0.045), s * 0.42, 1.52, -3.4325);
+  P.add('hull', box(0.24, 0.20, 0.18), 0, 1.10, -3.02);
+  P.add('hullDark', box(1.45, 0.32, 0.05), 0, 1.05, -2.925);   // hull rear grille
+  widthAnchor(P, 1.88, 0.90, -1.60);
+  // fender lips (prism law) at the tub edge
+  for (const s of [-1, 1]) for (let i = 0; i < 11; i++) {
+    P.add('hull', box(0.20, 0.05, 0.50), s * 1.70, 1.37, -2.60 + i * 0.545);
+  }
+  ruDeck(P, { deckY: 1.38, hatchZ: 2.05, gz: -1.70, grilles: 5, gw: 1.5 });
+  ruGlacisKit(P, { w: 3.5, y: 1.16, z: 2.60, eyeZ: 2.86, hookY: 0.68, hookZ: 2.97 });
+  // Relikt glacis wedge rows (t90sm pattern)
+  for (let row = 0; row < 2; row++) for (const s of [-1, 1]) {
+    P.add('hullTrack', box(0.72, 0.075, 0.30), s * 0.42, 1.26 - row * 0.07, 2.32 + row * 0.28, -0.42, s * 0.35, 0);
+  }
+  KIT.towCable(P, [[-1.25, 1.30, 2.05], [0, 1.37, 1.60], [1.25, 1.30, 2.05]]);
+  stowage(P, 'hull', P.rng, [[0, 1.37, -2.60, 1.53, 0.13, 0.38]]);
+  buildRunningGear(P, {
+    // r26a: ref ground contact spans -1.49..2.52 with the track band at
+    // |x| 1.12..1.73 (front view) — wheels re-seated, arms off (the strip
+    // fade owns the lower-run line).
+    style: 'rubber', wheelR: 0.385, wheelW: 0.21, wheelY: 0.46, xc: 1.435, dishR: 0.84,
+    wheelZs: evenStations(6, 4.01, 0.515),
+    sprocket: { z: -2.10, y: 0.78, r: 0.28 }, idler: { z: 2.90, y: 0.78, r: 0.22 },
+    rollers: [-1.10, 0.30, 1.70].map((z) => ({ z, y: 0.80, r: 0.086 })),
+    trackW: 0.58, topY: 0.83, botY: 0.05, paintedEnds: true, coveredTop: true, arms: false,
+  });
+  // gear-fade strips on the ref's rendered ramp lines (rear 0.12@-1.68 ->
+  // 0.52@-2.68 then the 0.86 plate line; front 0.52@3.16)
+  for (const [sz2, sy] of [
+    [-1.55, 0.06], [-1.67, 0.12], [-1.79, 0.18], [-1.91, 0.235], [-2.03, 0.285],
+    [-2.15, 0.325], [-2.27, 0.335], [-2.39, 0.375], [-2.51, 0.52], [-2.63, 0.67], [-2.72, 0.78],
+    [2.60, 0.10], [2.72, 0.21], [2.84, 0.315], [2.96, 0.42], [3.06, 0.50], [3.14, 0.57],
+  ]) {
+    for (const s of [-1, 1]) P.add('hullDark', box(0.58, 0.05, 0.08), s * 1.435, sy + 0.025, sz2);
+  }
+  // skirts: soft band (thick panels) + the heavy Relikt course OUTBOARD at
+  // the ref's ±1.89 plan faces spanning z 2.46..-2.66 (render truth: the
+  // widest ref content is the course, nearly full-length), bow mirrors
+  ruSkirtBand(P, { x: 1.815, th: 0.09, z0: -3.00, z1: 3.28, yTop: 1.36, yBot: 0.78, panels: 7, lipX: 1.80, lipY: 0.80 });
+  for (const s of [-1, 1]) {
+    for (let k = 0; k < 6; k++) {
+      P.add('hullTrack', box(0.045, 0.86, 0.80), s * 1.8675, 0.91, 2.05 - k * 0.86);
+      P.add('hullDark', box(0.04, 0.74, 0.045), s * 1.865, 0.91, 1.62 - k * 0.86);
+    }
+  }
+
+  // ---- WELDED turret (identity delta vs the t90a cast dome): flat cheek
+  // planform w/ chamfered corners, broad flat roof, separated furniture ----
+  P.turretG.position.set(0, 1.40, 0.13);
+  const twm = 1.74, hm = 0.59;
+  // planform staircase from the r26a rendered plan row (local z = world-0.13;
+  // near-vertical welded walls — inset 0.93, the 0.80 draft read 0.3 narrow
+  // at the roof line in front view)
+  P.add('turret', polyTurret([
+    [-0.45, 1.75], [0.45, 1.75], [0.90, 1.52], [1.14, 1.32], [1.32, 1.06],
+    [1.50, 0.90], [1.62, 0.77], [1.72, 0.57], [1.55, -0.13],
+    [1.35, -0.58], [1.15, -1.03], [1.00, -1.38], [0.90, -1.62],
+    [-0.90, -1.62], [-1.00, -1.38], [-1.15, -1.03], [-1.35, -0.58],
+    [-1.55, -0.13], [-1.72, 0.57], [-1.62, 0.77], [-1.50, 0.90],
+    [-1.32, 1.06], [-1.14, 1.32], [-0.90, 1.52], [-0.45, 1.75],
+  ], hm, 1.00, 0.93));
+  // roof tiers from the rendered profile: 2.245 plateau z -1.11..-0.03 over
+  // a 2.20 full-width tier (|x| to 1.15), 2.20 step to +0.51, 2.03 step to
+  // +0.93, 1.94 wedge to +1.48 — the r26a draft ran the 2.24 plateau 0.5 m
+  // too far forward and read +0.2 over ten columns.
+  P.add('turret', box(1.64, 0.25, 1.08), 0, 0.7225, -0.70);
+  P.add('turret', box(2.30, 0.20, 1.04), 0, 0.70, -0.70);
+  P.add('turret', box(1.56, 0.20, 0.54), 0, 0.70, 0.11);
+  P.add('turret', box(1.30, 0.12, 0.36), 0, 0.57, 0.62);
+  P.add('turret', box(1.00, 0.10, 0.30), 0, 0.44, 1.20);
+  // hidden turret-node carrier (ref turret mask bottoms 0.88, z -0.8..+0.9)
+  P.add('turretDark', box(1.05, 0.52, 1.51), 0, -0.34, -0.035);
+  P.add('turretDark', box(1.05, 0.26, 0.15), 0, -0.21, 0.795);
+  P.add('turretDark', box(1.05, 0.26, 0.13), 0, -0.21, -0.855);
+  // bustle stowage bins — SEPARATED members on rails: upper tier tops the
+  // ref's 2.01 line (z -1.2..-1.9), tail tier 1.90 to world -2.31
+  P.add('turret', box(1.90, 0.50, 0.72), 0, 0.36, -1.81);
+  P.add('turret', box(1.82, 0.44, 0.52), 0.04, 0.32, -2.30);
+  P.add('turretDark', box(1.78, 0.30, 0.03), 0.04, 0.32, -2.575);
+  for (const s of [-1, 1]) P.add('turretDetail', box(0.05, 0.05, 1.15), s * 0.60, 0.42, -1.62);
+  P.add('turretDetail', box(1.66, 0.04, 0.68), 0, 0.62, -1.81);
+  // Kord RWS on a recessed pedestal — the fitting receiver crests at the
+  // roof plateau line (post-warp ref holds the RWS inside 2.20-2.25)
+  P.add('turret', box(0.26, 0.10, 0.26), 0.28, 0.63, -0.50);
+  {
+    const kord = FITTINGS.pintleMG({
+      mats: P.mats, cls: 'nsvt', scale: 0.54, tone: 'dark', ammo: true, elev: 0.04,
+    });
+    kord.position.set(0.28, 0.68, -0.50);
+    P.turretG.add(kord);
+  }
+  // commander/gunner furniture kept under the plateau line
+  P.add('turret', cylY(0.24, 0.26, 0.09, 14), -0.45, 0.66, -0.62);
+  P.add('turretDark', cylY(0.245, 0.245, 0.012, 14), -0.45, 0.72, -0.62);
+  P.add('turret', box(0.36, 0.14, 0.45), 0.42, 0.67, 0.255);       // Sosna-U housing
+  P.add('turretGlass', box(0.26, 0.10, 0.02), 0.42, 0.68, 0.49);
+  P.add('turretDark', box(0.12, 0.12, 0.24), -0.50, 0.72, 0.16);   // gunner day sight
+  // Relikt cheek wedges on the welded planform (weldFlat class)
+  eraRuCheeks(P, {
+    rings: [[twm, 0], [twm * 0.96, hm * 0.6], [twm * 0.9, hm]], sz: 0.95,
+    weldFlat: true, rCz: 0.10, rDist: -0.14,
+  }, 'relikt');
+  // mantlet hood over the gun root
+  P.add('turret', box(0.80, 0.26, 0.36), 0, 0.26, 1.53);
+  P.add('turret', box(0.44, 0.04, 0.85), 0, 0.56, 0.30);
+  // ---- 2A46M-5 (axis 1.61): thermal sleeve, evac swell at the ref's 1.75
+  // crest (world 3.20..3.44), muzzle +6.20 ----
+  P.gunG.position.set(0, 0.21, 1.15);
+  ruSaddle(P, { rollR: 0.17, rollW: 0.56, tubeR: 0.108, rootR: 0.17, rootL: 0.62 });
+  P.addGunExtra(box(0.60, 0.30, 0.30), 0, 0.06, 0.16);
+  tubeGun(P, [
+    [0.55, 1.92, 0.118], [1.92, 2.16, 0.128], [2.16, 4.92, 0.100],
+  ], { rings: [[2.60, 0.106], [3.40, 0.106], [4.20, 0.106]], muzzle: 4.92 });
+  P.add('gun', box(0.02, 0.276, 0.24), 0, 0, 2.04);      // evac crest fin
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [twm * 0.94, 0.30, -0.30], Math.PI / 2);
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [-twm * 0.94, 0.30, -0.30], -Math.PI / 2);
+  P.topY = 1.55;
+}
 
 // ---- T-72B obr.1987 (profiles/t72b_1987.json) ------------------------------
 // Aft frame: hull -4.84..+2.43, deck 1.56-1.61, tail rack to 1.74 (drums+log
@@ -5432,4 +5686,5 @@ export const RUSSIA_PROFILES = {
   t80: { build: buildT80 },
   t80b: { build: buildT80B },
   t80bv: { build: buildT80BV },
+  t90m: { build: buildT90MProryv },
 };
