@@ -216,6 +216,22 @@ export const PLANS = {
     z: [[-4.698, -4.6350], [1.879, 1.8160], [4.706, 4.3650]],
     yTopMax: 2.43,
   },
+  // ---- batch-26: amx30 + amx30b2 (ahab prints, post batch-22 hull fix).
+  // Roofs TRUE (~2.17-2.22 vs pub 2.29); proud band = bustle stowage
+  // 2.27-2.47 + searchlight/cupola blob (amx30 2.91, b2 2.755) + antenna
+  // tips (3.152 / 2.985): knee 2.20 -> tops land 2.31, p95 well in grace.
+  // Hulls short (-2.2% / -7.4%): body stretched about center; muzzles
+  // pinned rear+9.48 (segments x1.03 / x1.088).
+  amx30: {
+    y: [[0, 0], [2.20, 2.20], [3.152, 2.31]],
+    z: [[-4.622, -4.6950], [1.822, 1.8950], [4.628, 4.7850]],
+    yTopMax: 2.32,
+  },
+  amx30b2: {
+    y: [[0, 0], [2.20, 2.20], [2.985, 2.31]],
+    z: [[-4.377, -4.6210], [1.725, 1.9690], [4.382, 4.8590]],
+    yTopMax: 2.32,
+  },
   abramsx: {
     y: [[0, 0], [2.30, 2.30], [3.0, 2.44], [4.2, 2.47]],
     z: [[-3.932, -3.932], [3.968, 3.968], [6.168, 5.838]],

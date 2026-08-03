@@ -2713,6 +2713,34 @@ REPAIRS['t54'] = [
                        y_top_max=24.8746, expect=(2, 59953, 119998))),
 ]
 
+# =============================================================== batch 26 ===
+# AMX30 + AMX30B2 NORMALIZATION (ahab prints; runs AFTER batch-22's hull
+# un-reversal — dict 'ops' lists carry both ops from the pristine .bak).
+# Roofs TRUE (~2.17-2.22 vs pub 2.29); proud band = bustle stowage + the
+# searchlight/cupola blob + antenna tips: knee 2.20 -> tops land 2.31, p95
+# in grace. Hulls short (-2.2% / -7.4%): body stretched about center;
+# muzzles pinned rear+9.48. Plan: vertex-normalize batch-26 entries.
+REPAIRS['amx30'] = {
+    'path': 'public/models/tanks/community/amx30b_ahab.glb',
+    'ops': [
+        *REPAIRS['amx30']['ops'],
+        ('py2', _axis_warp('amx30', long_axis='z',
+                           y_map=[(0, 0), (22.7885, 22.7885), (32.6497, 23.9279)],
+                           long_map=[(-33.3779, -34.1341), (33.3717, 34.1279), (62.4374, 64.0637)],
+                           y_top_max=24.2387, expect=(2, 11290, 21956))),
+    ],
+}
+REPAIRS['amx30b2'] = {
+    'path': 'public/models/tanks/community/amx30b2_ahab.glb',
+    'ops': [
+        *REPAIRS['amx30b2']['ops'],
+        ('py2', _axis_warp('amx30b2', long_axis='z',
+                           y_map=[(0, 0), (24.064, 24.064), (32.6504, 25.2672)],
+                           long_map=[(-33.3778, -36.0467), (33.3669, 36.0358), (62.4296, 67.6471)],
+                           y_top_max=25.5953, expect=(2, 11396, 22160))),
+    ],
+}
+
 
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)
