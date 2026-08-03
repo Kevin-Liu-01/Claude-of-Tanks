@@ -1326,3 +1326,16 @@ isu152: 14.4 EXACT x2.
   field); if the critic wants the ref's finer print grain, halve the
   13 cm octave and double the 3 cm octave amplitude — one-line change
   per surface.
+
+## GRADUATION (2026-08-03) — DUAL-GATE PASS; 11th graduate
+Critic r11: PASS, every view ≥9.0 (min 9.0, top 9.5) after eleven
+visual rounds (4.0 → 9.0). Geometry 90.1 gatePassed, re-verified
+THROUGH the LOCAL_REFERENCE_OVERRIDES path post-retirement (90.1
+identical). FREEZE HASH **b472e956** (34 meshes, 368162 verts,
+tools/tmp-hashgeo.mjs) — supersedes the stale pre-critic bcc377d8.
+Registration retired from userdrops6.js (fixed('isu122s') removed;
+USERDROP6_SOURCED_IDS excludes it; chips under CUSTOM); recovered GLB
+measurement-only; override configs live in procedural-fidelity.html +
+tmp-tank-critic.html (both pre-added). isu152 remains registered
+(14.4 post-batch-17 baseline; its own rebuild pending). Any intentional
+change re-runs BOTH gates and re-freezes in the same commit.
