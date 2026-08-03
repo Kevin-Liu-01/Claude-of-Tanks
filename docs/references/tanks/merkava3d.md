@@ -396,3 +396,60 @@ proven at 76 — the lit 'turret' strip renders 78-84 on the sun side);
 wheel-arch window row still repeats 6x (certified arch geometry, ref
 has 6 too but dimmer wheels); rear rack bays read panel-ish at dead
 rear (thin rails remain); turret height class unchanged (certified).
+
+## ALLOWANCE round r5 (2026-08-03, merkava 3d/1b agent) — 90.8 PASS x2
+Pintle-gun silhouette allowance executed; gates 90.8 PASS x2 bit-identical
+(hull 91.5 / whole 90.8 / turret 91.4 / stations 91.8 / dims 100 /
+floaters 100) — NET +0.2 over the r4 90.6: the gun columns were paid for
+by misread-column refunds. 3b/3c hashes 5296950a/5287233e EXACT; 2b/2d/4b
+39.9/34.9/34.6 exact.
+1. CREST DECODE (the round's finding): the freesky scanner on the r4 pairs
+   proved the ref's 2.527-2.552 side cols over z 0.57..1.49 are its own M2
+   BARREL (2 px block + 5-25 px sky), not a wall — the r4 solid narrow
+   crest box was barrel-as-wall and WAS the 90 px ruled crest. New
+   crest.low anatomy: raked face 2.40 @ zW -> 2.12 @ z0 + low plan shelf
+   (keeps the 0.90 plan front edge) + wide box trimmed to zW2 0.60 with
+   UNEVEN lanes. The M2 moved to the x 0.14 lane (its old 0.245 lane paid
+   the worst t_plan col 0.268 — the new lane hides under the ref's own
+   x 0.115..0.166 clamp cols) and is a PALE full rod (turret bucket):
+   free-sky runs L 49 px / R 48 px @ lum 89/83, gap 11 px (ref 64 @ 82,
+   gap 25). Booster tip z 1.505 carries station s11 + col 1.53 like the
+   ref's own muzzle.
+2. PLINTH GUN LANE CORRECTION: the ref's left gun stands at x ~-1.16 on
+   the band (front cols 2.648 at -1.156..-1.177; the old slot lane
+   x -0.885 read only 2.606-2.616 and its receiver overpaid 3 front cols
+   +0.04..+0.07). Re-seated: rod top 2.644 / receiver hump 2.653 (ref side
+   2.629/2.654 near-exact), stage walls DELETED, s7-window head pot
+   DELETED (+0.053 front col overread), slot curb 2.492 -> 2.455, right
+   window sill 2.470 -> 2.445, step-B rake/cap shortened out of the
+   window, roof-corridor kit dropped <= 2.505. Free-sky: L 17 px @ lum 95
+   (gap 4 px vs ref 38 — capped by the ref-true pano at z -1.02 and the
+   cupola block at -1.06). The right .50 is a pale rod at 2.645 whose
+   under-sky reads fused from the right (far-band v-projection closes it;
+   the ref's own right run there is 13 px).
+3. REAR UN-PUNCH: the 3 rearTip void windows -> turretCloth tone-on-tone
+   slats (~84 on the ~93 face); rack under-rim void bar -> hairline
+   (0.016); bay pockets -> hullCloth; rackX rails 0.022 -> 0.013;
+   X-braces detail-toned (ref braces p5 84). Measured: tip rect p5 41.9
+   -> 84 (ref 89), upper-rear rect p5 82 (ref 88). Residual: the rack rim
+   assembly band still reads med 84 vs ref 96 (stacked rail/void lines).
+4. HEM: round 3-step wheel-top scallops (sk.round) + lintelJit amplified
+   — render-measured arch-ceiling spread 0.066 m = 35% of archH (r4
+   rendered 1-3%); per-wheel ceilings 0.560/0.576/0.609/0.626 mixed.
+5. RINGS de-ticked: solid rim torus + flush lid + hairline seam + ONE
+   hinge lump; cross bars, tucked scopes, third collar circle deleted.
+6. GRAMMAR: 3-can trio -> can/small-can/soft-pouch at uneven pitch
+   (0.19/0.36) and scattered x; module plan edges pulled to the ref
+   boundary (t_plan cols +-1.78: 0.234/0.184 -> ~0.05); turret_plan
+   91.8 -> 94.4.
+LAWS BANKED: (a) SELF-LIT MASK LAW — the gate renders self-lit masks, so
+NOTHING can hide below the rgba threshold; every raised rod pays its
+front column wherever it stands (the ref's dark root guns can drop out,
+ours never do). (b) The freesky scanner (tools/tmp-freesky.py) is the
+mask method for gun claims: first content block + sky gap per column.
+(c) Front-cam bleed is ~8 mm (pitch 0.042), side/plan ~20-25 mm — lane
+margins differ per view.
+RESIDUALS (honest, for critic r5): plinth-gun run 17 px vs ref 38 (pano/
+cupola-block cap); right .50 under-sky fused from the right; rack rim
+band med 84 vs ref 96; module edge cols ~0.05 remain; wheel-arch window
+row unchanged (certified).

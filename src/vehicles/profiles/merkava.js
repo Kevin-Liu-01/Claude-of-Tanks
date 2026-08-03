@@ -619,7 +619,22 @@ function merkavaChassis(P, c) {
             // the front-col bottoms, tracks the side bots) — jitter-free
             // marks (3B/3C) pass no array and keep the exact old line.
             const lb9 = lintelBot + (sk.lintelJit ? sk.lintelJit[wi % sk.lintelJit.length] : 0);
-            P.add('hull', slab(
+            if (sk.round) {
+              // r5 (critic r4: "claimed ±17% jitter renders 1-3% — the
+              // 48.3 px metronome; round wheel-top scallops"): the flat
+              // chord becomes a 3-step ROUND arch — center ceiling lifts
+              // 3.4-6 cm (18-32% of the arch height, render-real), with
+              // per-wheel width jitter on top of the amplified lintelJit.
+              const wJ = 1 + ((wi * 7) % 5 - 2) * 0.07;
+              const zA = wz + (flatW / 2 + slope * 0.55) * wJ, zB = wz - (flatW / 2 + slope * 0.55) * wJ;
+              const rise = 0.034 + ((wi * 3) % 3) * 0.013;
+              for (const [fa, fb, lift] of [[0, 0.30, 0], [0.30, 0.70, rise], [0.70, 1.0, 0]]) {
+                const za = zA + (zB - zA) * fa, zb9 = zA + (zB - zA) * fb;
+                P.add('hull', slab(
+                  [lbL, lb9 + lift, za], [lbR, lb9 + lift, za], [lbR, lb9 + lift, zb9], [lbL, lb9 + lift, zb9],
+                  [lbL, archY + 0.02, za], [lbR, archY + 0.02, za], [lbR, archY + 0.02, zb9], [lbL, archY + 0.02, zb9]));
+              }
+            } else P.add('hull', slab(
               [lbL, lb9, wz + flatW / 2 + slope * 0.55], [lbR, lb9, wz + flatW / 2 + slope * 0.55],
               [lbR, lb9, wz - flatW / 2 - slope * 0.55], [lbL, lb9, wz - flatW / 2 - slope * 0.55],
               [lbL, archY + 0.02, wz + flatW / 2 + slope * 0.55], [lbR, archY + 0.02, wz + flatW / 2 + slope * 0.55],
@@ -898,15 +913,15 @@ function merkavaChassis(P, c) {
           // + two yawed tarp humps riding the rack top (crowns under the
           // certified 1.56/1.58 band tops).
           const bh = (tr.top - tr.bot);
-          P.add('hullTrack', box(wd * 0.94, 0.075, 0.020), xm, tr.top - 0.075, tr.z1 + 0.012); // under-rim VOID pocket (26-class)
-          // r4 SHADOW BUDGET (critic: "crate-slat fronts; rears pin darks at
-          // ~56 vs ref racks hitting 26"): the uniform 0.72-height cloth
-          // wash becomes irregular DEEP void pockets (retoned spareTrack —
-          // the 26-class) split by a pale kit lump, per-side asymmetric;
-          // the bays read packed-with-voids, not framed crates.
-          P.add('hullTrack', box(wd * (s > 0 ? 0.34 : 0.28), bh * 0.52, 0.006),
+          // r5 REAR UN-PUNCH (3D only — rackX marks): the full-width 26-class
+          // under-rim bar + the two big bay voids punched black slots into a
+          // rack face the 3D ref keeps BRIGHT. The under-rim shadow thins to
+          // a hairline (rims keep a void LINE, not a bar) and the bay pockets
+          // go tone-on-tone cloth (~84 on the ~93 face — basket-rung class).
+          P.add('hullTrack', box(wd * 0.94, 0.016, 0.020), xm, tr.top - 0.058, tr.z1 + 0.012); // under-rim void LINE (hairline)
+          P.add('hullCloth', box(wd * (s > 0 ? 0.34 : 0.28), bh * 0.52, 0.006),
             xm - s * wd * 0.20, (tr.top + tr.bot) / 2 + bh * 0.06, tr.z1 + 0.004);
-          P.add('hullTrack', box(wd * (s > 0 ? 0.22 : 0.30), bh * (s > 0 ? 0.38 : 0.46), 0.006),
+          P.add('hullCloth', box(wd * (s > 0 ? 0.22 : 0.30), bh * (s > 0 ? 0.38 : 0.46), 0.006),
             xm + s * wd * 0.24, (tr.top + tr.bot) / 2 - bh * 0.05, tr.z1 + 0.004);
           P.add('hull', box(wd * 0.22, bh * 0.44, 0.010), xm + s * wd * 0.02, (tr.top + tr.bot) / 2 - bh * 0.10, tr.z1 - 0.001, 0, 0, s * 0.05); // kit lump between pockets
           // X-brace: two crossed diagonals per bay, thin, camo-dark tone.
@@ -917,8 +932,10 @@ function merkavaChassis(P, c) {
           const xSpan = wd * 0.80, ySpan = bh * 0.62;
           const xr = Math.atan2(xSpan, ySpan);
           const xLen = Math.hypot(xSpan, ySpan);
-          P.add('hullDark', box(0.013, xLen, 0.013), xm, (tr.top + tr.bot) / 2 - 0.02, tr.z1 - 0.004, 0, 0, xr);
-          P.add('hullDark', box(0.013, xLen, 0.013), xm, (tr.top + tr.bot) / 2 - 0.02, tr.z1 - 0.004, 0, 0, -xr);
+          // r5: braces detail-toned — the ref's own braces sample p5 84
+          // ("no black rails"); gunmetal X's were the bays' p5-56 source
+          P.add('hullDetail', box(0.013, xLen, 0.013), xm, (tr.top + tr.bot) / 2 - 0.02, tr.z1 - 0.004, 0, 0, xr);
+          P.add('hullDetail', box(0.013, xLen, 0.013), xm, (tr.top + tr.bot) / 2 - 0.02, tr.z1 - 0.004, 0, 0, -xr);
           P.add('hullDetail', box(0.016, bh * 0.88, 0.016), s * (x0 + 0.10), (tr.top + tr.bot) / 2, tr.z1 - 0.004, 0, 0, s * 0.03); // pale corner posts
           P.add('hullDetail', box(0.016, bh * 0.84, 0.016), s * (railX - 0.10), (tr.top + tr.bot) / 2, tr.z1 - 0.004);
           // stowage humps ON the rack (tops <= tr.top - 0.015; certified
@@ -976,12 +993,16 @@ function merkavaChassis(P, c) {
           // bay corner) read as crate framing / ladder rungs from dead
           // rear — halved to thin service rails, bottom rail dropped on
           // the rear face (the under-basket shadow band owns that line).
-          P.add('hullDark', box(0.022, 0.022, len), s * railX, tr.top - 0.04, mid);
-          P.add('hullDark', box(0.022, 0.022, len), s * railX, tr.bot + 0.04, mid);
+          // r5 (3D rackX only — the rear un-punch): rails thin again to
+          // hairlines; the r4 0.022 pair fused with the under-rim line
+          // into the 4-5 px black bars the critic p5-sampled at 41.9.
+          const rTh = c.rackX ? 0.013 : 0.022;
+          P.add('hullDark', box(rTh, rTh, len), s * railX, tr.top - 0.04, mid);
+          P.add('hullDark', box(rTh, rTh, len), s * railX, tr.bot + 0.04, mid);
           // rear top rail split + dipped (its straight full-width line was
           // a 50 px hull-crown run in the elevated front camera)
-          P.add('hullDark', box(wd * 0.55, 0.022, 0.022), xm - s * wd * 0.225, tr.top - 0.04, tr.z1 + 0.02);
-          P.add('hullDark', box(wd * 0.43, 0.022, 0.022), xm + s * wd * 0.285, tr.top - 0.054, tr.z1 + 0.02);
+          P.add('hullDark', box(wd * 0.55, rTh, rTh), xm - s * wd * 0.225, tr.top - 0.04, tr.z1 + 0.02);
+          P.add('hullDark', box(wd * 0.43, rTh, rTh), xm + s * wd * 0.285, tr.top - 0.054, tr.z1 + 0.02);
           P.add('hullDark', box(0.020, tr.top - tr.bot, 0.020), s * railX, (tr.top + tr.bot) / 2, tr.z1 + 0.02, 0, 0, s * 0.02);
           P.add('hullDark', box(0.020, tr.top - tr.bot, 0.020), s * x0 + (s > 0 ? 0.02 : -0.02), (tr.top + tr.bot) / 2, tr.z1 + 0.02);
         } else {
@@ -1454,12 +1475,15 @@ function merkavaPlinthMG(P, m) {
   // byte-identical for the frozen 3B/3C graduates.
   const { box, cylZ } = KIT;
   if (m.pale) {
-    // r4b AA-scale law: a 1.8 px pale strip dissolves against the sky —
-    // strip fattened to ~2.7 px (0.044) with the rod under it; the strip
-    // TOP still lands exactly on the certified rod-top line.
+    // r5 PINTLE-GUN ALLOWANCE (orchestrator ruling): the r4 two-tone rod
+    // (pale strip over a VOID under-rod, backed by a pale stage wall 1 px
+    // under it) was contradicted on-element — the ref's own guns are PALE
+    // FULL RODS (front M2 class 95-101L) floating in REAL SKY. The barrel
+    // is now one pale cylinder whose TOP lands on the certified rod line;
+    // the stage walls are deleted at the call sites so background shows
+    // under it (freesky mask method is the done-gate).
     const rodTop = m.rodY + 0.026;                       // certified silhouette line
-    P.add('turret', box(0.032, 0.044, m.rodZ0 - m.rodZ1), m.x, rodTop - 0.022, (m.rodZ0 + m.rodZ1) / 2);
-    P.add('turretTrack', cylZ(0.023, m.rodZ0 - m.rodZ1, 10), m.x, rodTop - 0.057, (m.rodZ0 + m.rodZ1) / 2); // VOID under-rod (shade-independent dark line)
+    P.add('turret', cylZ(0.024, m.rodZ0 - m.rodZ1, 10), m.x, rodTop - 0.024, (m.rodZ0 + m.rodZ1) / 2);
   } else P.add('turretDark', cylZ(0.026, m.rodZ0 - m.rodZ1, 10), m.x, m.rodY, (m.rodZ0 + m.rodZ1) / 2);
   if (m.rodZf !== undefined) {
     const fLen = m.rodZf - m.rodZ0; // rodZf forward (larger z) of rodZ0
@@ -1474,9 +1498,9 @@ function merkavaPlinthMG(P, m) {
     P.add('turretDark', cylZ(0.025, 0.085, 10), m.x, m.rodY - drop * 0.62 + 0.002, m.rodZf - 0.055, pitch, 0, 0); // muzzle booster (high/slim: its fat r 0.028 bottom AA-closed the float's sky gap at 640)
     P.add('turretDark', box(0.014, 0.018, 0.016), m.x, m.rodY - drop * 0.40 + 0.022, m.rodZf - 0.16);             // front sight
   } else if (m.pale) {
-    P.add('turretDark', cylZ(0.026, 0.10, 10), m.x, m.rodY - 0.020, m.rodZ0 - 0.07);   // muzzle booster (under the pale line)
-    P.add('turret', box(0.034, 0.022, 0.075), m.x, m.rodY + 0.008, m.rodZ0 - 0.07);    // booster lit cap
-    P.add('turretDark', box(0.014, 0.020, 0.016), m.x, m.rodY - 0.002, m.rodZ0 - 0.17); // front sight
+    // r5: pale booster (the ref muzzle mass is the bright end of the line)
+    P.add('turret', cylZ(0.028, 0.09, 10), m.x, m.rodY + 0.002, m.rodZ0 - 0.065);
+    P.add('turretDark', box(0.014, 0.020, 0.016), m.x, m.rodY + 0.020, m.rodZ0 - 0.17); // front sight
   } else {
     P.add('turretDark', cylZ(0.029, 0.10, 10), m.x, m.rodY - 0.004, m.rodZ0 - 0.07);   // muzzle booster
     P.add('turretDark', box(0.016, 0.020, 0.018), m.x, m.rodY + 0.012, m.rodZ0 - 0.17); // front sight
@@ -1487,11 +1511,14 @@ function merkavaPlinthMG(P, m) {
   // keeps recTop (side cols = max-over-x, certified 2.66 unchanged), the
   // outer half drops 0.020 to the front band's own 2.64 edge, so the front
   // x-run still reads 2.64+ everywhere.
-  const recW = Math.abs(m.x - m.xIn);
+  const recW = m.recW ?? Math.abs(m.x - m.xIn);   // r5: explicit hump width
   const sgn9 = Math.sign(m.x - m.xIn);
-  P.add('turretDark', box(recW * 0.52, m.recTop - recY0, m.recZ0 - m.recZ1),
+  // r5 (pale marks): the receiver body rides the SAND bucket — the ref
+  // receiver hump is a top-lit pale mass (95-101L class), not gunmetal.
+  const recMat = m.pale ? 'turret' : 'turretDark';
+  P.add(recMat, box(recW * 0.52, m.recTop - recY0, m.recZ0 - m.recZ1),
     m.xIn + sgn9 * recW * 0.26, (m.recTop + recY0) / 2, (m.recZ0 + m.recZ1) / 2);
-  P.add('turretDark', box(recW * 0.48, m.recTop - 0.020 - recY0, m.recZ0 - m.recZ1),
+  P.add(recMat, box(recW * 0.48, m.recTop - 0.020 - recY0, m.recZ0 - m.recZ1),
     m.xIn + sgn9 * recW * 0.76, (m.recTop - 0.020 + recY0) / 2, (m.recZ0 + m.recZ1) / 2);
   // r7 roof tone-on-tone: detail lid on the receiver crown (top view fuses;
   // side faces stay dark for the elevation read)
@@ -1666,9 +1693,20 @@ function merkavaBasket(P, b) {
       P.add('turretDark', box(b.hw * (fb - fa), 0.045, 0.045), bx + b.hw * (fa + fb) / 2, topR - dp, b.z1 + 0.02);
     }
   } else P.add('turretDark', box(b.hw * 2 + 0.045, 0.045, 0.045), bx, topR, b.z1 + 0.02);
-  P.add('turretDark', box(b.hw * 2 + 0.03, 0.030, 0.030), bx, midY - 0.12, b.z1 + 0.03);
-  for (const px of [-b.hw, -b.hw * 0.34, b.hw * 0.34, b.hw]) {
-    P.add('turretDark', box(0.034, topR - b.bot, 0.034), bx + px, (topR + b.bot) / 2, b.z1 + 0.02);
+  if (b.soft) {
+    // r5 (critic r4 "goalpost H-frames"): the full-width mid rail + four
+    // plumb posts framed the rear into goalposts. Soft baskets get a
+    // SPLIT mid rail at staggered heights and thin posts, two leaning.
+    P.add('turretDark', box(b.hw * 0.98, 0.024, 0.024), bx - b.hw * 0.46, midY - 0.12, b.z1 + 0.03);
+    P.add('turretDark', box(b.hw * 0.74, 0.024, 0.024), bx + b.hw * 0.52, midY - 0.155, b.z1 + 0.03);
+    for (const [pf, pw9, ln9] of [[-1, 0.026, 0], [-0.34, 0.018, 0.055], [0.34, 0.020, -0.045], [1, 0.026, 0]]) {
+      P.add('turretDark', box(pw9, topR - b.bot, pw9), bx + pf * b.hw, (topR + b.bot) / 2, b.z1 + 0.02, 0, 0, ln9);
+    }
+  } else {
+    P.add('turretDark', box(b.hw * 2 + 0.03, 0.030, 0.030), bx, midY - 0.12, b.z1 + 0.03);
+    for (const px of [-b.hw, -b.hw * 0.34, b.hw * 0.34, b.hw]) {
+      P.add('turretDark', box(0.034, topR - b.bot, 0.034), bx + px, (topR + b.bot) / 2, b.z1 + 0.02);
+    }
   }
   for (const s of [-1, 1]) {
     P.add('turretDark', box(0.034, b.top - b.bot, 0.034), bx + s * b.hw, midY, b.z0 - 0.04);
@@ -1869,19 +1907,22 @@ function merkavaSmallTurret(P, t) {
     const b = t.brow; // { z0, z1, top }
     // brow stays inside |x| 0.17: the print's own brow never lights the
     // 0.20+ plan columns (a 0.19+AA edge cost an 0.84 t_plan worst row)
-    P.add('turret', box(0.34, 0.10, b.z0 - b.z1), 0, b.top - 0.20, (b.z0 + b.z1) / 2);
-    P.add('turretDark', box(0.28, (b.top - 0.15) - (gy + 0.24), 0.30), 0, ((b.top - 0.15) + gy + 0.24) / 2, (b.z0 + b.z1) / 2 + 0.05);
     if (t.planPts) {
-      // 1B r4 FRONT-CROWN ARC (order item 5: "156px dead-flat run must
-      // break; longest flat <= 40px"): the brow cap was one ruled 0.32 m
-      // line fused with the spine/ring tops — three staggered x-lanes now
-      // (holder lane keeps b.top for the certified cols; dips are
-      // downward-only, silhouette-free).
-      P.add('turretDark', box(0.13, 0.15, b.z0 - b.z1 - 0.10), -0.095, b.top - 0.075, (b.z0 + b.z1) / 2 - 0.02);
-      P.add('turretDark', box(0.11, 0.126, b.z0 - b.z1 - 0.10), 0.025, b.top - 0.087, (b.z0 + b.z1) / 2 - 0.02);
-      P.add('turretDark', box(0.08, 0.140, b.z0 - b.z1 - 0.12), 0.12, b.top - 0.080, (b.z0 + b.z1) / 2 - 0.03);
-    } else P.add('turretDark', box(0.32, 0.15, b.z0 - b.z1 - 0.10), 0, b.top - 0.075, (b.z0 + b.z1) / 2 - 0.02);
-    P.add(glassMat, box(0.22, 0.10, 0.02), 0, b.top - 0.16, b.z0 - 0.02);
+      // r5 (pintle-allowance round): the r4 three-lane 2.53 brow was the
+      // commander-.50-barrel-as-structure misread — the ref's under-gun
+      // surface reads 2.2-2.33 with the barrel floating over it. The brow
+      // is now a LOW cast hood (pale, top = config 2.30) with a slit; the
+      // gun in merkava1bKit owns the 2.51-2.534 line above it.
+      P.add('turret', box(0.34, 0.16, b.z0 - b.z1), 0, b.top - 0.08, (b.z0 + b.z1) / 2);
+      P.add('turretDark', box(0.28, (b.top - 0.13) - (gy + 0.24), 0.30), 0, ((b.top - 0.13) + gy + 0.24) / 2, (b.z0 + b.z1) / 2 + 0.05);
+      P.add(glassMat, box(0.20, 0.055, 0.018), 0, b.top - 0.055, b.z0 - 0.03);
+      P.add('turretDark', box(0.24, 0.012, 0.016), 0, b.top - 0.008, b.z0 - 0.10);
+    } else {
+      P.add('turret', box(0.34, 0.10, b.z0 - b.z1), 0, b.top - 0.20, (b.z0 + b.z1) / 2);
+      P.add('turretDark', box(0.28, (b.top - 0.15) - (gy + 0.24), 0.30), 0, ((b.top - 0.15) + gy + 0.24) / 2, (b.z0 + b.z1) / 2 + 0.05);
+      P.add('turretDark', box(0.32, 0.15, b.z0 - b.z1 - 0.10), 0, b.top - 0.075, (b.z0 + b.z1) / 2 - 0.02);
+      P.add(glassMat, box(0.22, 0.10, 0.02), 0, b.top - 0.16, b.z0 - 0.02);
+    }
   }
 
   // Roof: slabs following the measured rising crest line; per-station
@@ -1995,16 +2036,13 @@ function merkavaSmallTurret(P, t) {
     // hatch-seam arc torus hugging the dome around the ring base — the
     // plan circle reads at the ref's diameter class while the drum keeps
     // its certified top.
+    // r5 ring de-tick (critic r4 "dial-tick ring rims"): the 5 vision
+    // blocks + cross bar dash-arced the circle — now solid rim + flush lid
+    // with one hairline seam + ONE hinge lump, nothing else on the dial.
     P.add('turretDark', KIT.torus(rg.r * 0.95, 0.024, rcs), rg.x, rg.top - 0.003, rg.z);
     P.add('turretDetail', KIT.torus(rg.r * 1.55, 0.0095, rcs), rg.x, rg.base - 0.012, rg.z);
-    P.add('turret', cylY(rg.r * 0.62, rg.r * 0.62, 0.016, rcs), rg.x, rg.top + 0.003, rg.z);
-    P.add('turretDark', KIT.torus(rg.r * 0.63, 0.010, rcs), rg.x, rg.top + 0.009, rg.z);
-    P.add('turretDetail', box(rg.r * 1.10, 0.010, 0.026), rg.x, rg.top + 0.007, rg.z);
-    for (let k = 0; k < 5; k++) { // vision blocks tucked under the rim arc
-      const a = -Math.PI * 0.44 + (k / 4) * Math.PI * 0.88;
-      P.add('turretDark', box(0.048, 0.028, 0.038),
-        rg.x + Math.sin(a) * rg.r * 0.60, rg.top - 0.038, rg.z + Math.cos(a) * rg.r * 0.60, 0, a, 0);
-    }
+    P.add('turret', cylY(rg.r * 0.66, rg.r * 0.66, 0.016, rcs), rg.x, rg.top + 0.003, rg.z);
+    P.add('turretDark', KIT.torus(rg.r * 0.665, 0.008, rcs), rg.x, rg.top + 0.009, rg.z);
     P.add('turret', box(0.055, 0.035, 0.085), rg.x - rg.r * 0.92, rg.top - 0.010, rg.z); // hinge block
     if (d.scope) { // periscope head on the dome's left shoulder (ref front
       // -0.75..-0.85 band carrier)
@@ -2024,11 +2062,16 @@ function merkavaSmallTurret(P, t) {
       [cs.x + d.rx * 1.95, roofAt(dzc) - 0.06, chZ1], [cs.x + d.rx * 0.55, roofAt(dzc) - 0.06, chZ1],
       [cs.x + d.rx * 0.55, d.rimY + 0.035, chZ0], [cs.x + d.rx * 1.80, d.rimY - 0.085, chZ0 - 0.02],
       [cs.x + d.rx * 1.80, d.rimY - 0.085, chZ1 + 0.02], [cs.x + d.rx * 0.55, d.rimY + 0.035, chZ1]));
-    P.add('turret', slab( // rear cheek: dome tail sloping into the bustle
-      [cs.x - 0.15, roofAt(d.z1 - 0.30) - 0.05, d.z1 + 0.05], [cs.x + 0.15, roofAt(d.z1 - 0.30) - 0.05, d.z1 + 0.05],
-      [cs.x + 0.20, roofAt(d.z1 - 0.42) - 0.04, d.z1 - 0.42], [cs.x - 0.20, roofAt(d.z1 - 0.42) - 0.04, d.z1 - 0.42],
-      [cs.x - 0.13, d.rimY + 0.020, d.z1 + 0.05], [cs.x + 0.13, d.rimY + 0.020, d.z1 + 0.05],
-      [cs.x + 0.18, d.rimY - 0.075, d.z1 - 0.42], [cs.x - 0.18, d.rimY - 0.075, d.z1 - 0.42]));
+    // r5 teardrop (critic r4 "plan pill 2.2:1 -> teardrop taper if a cheap
+    // geometry slot exists"): the rear cheek is that slot — it now TAPERS
+    // from the dome's width to a narrow tail, so the plan reads oval-with-
+    // tail instead of a parallel pill. Interior x (inside the shell walls),
+    // tops under the certified stairs: silhouette-free.
+    P.add('turret', slab( // rear cheek: tapering teardrop tail into the bustle
+      [cs.x - 0.26, roofAt(d.z1 - 0.30) - 0.05, d.z1 + 0.05], [cs.x + 0.26, roofAt(d.z1 - 0.30) - 0.05, d.z1 + 0.05],
+      [cs.x + 0.09, roofAt(d.z1 - 0.50) - 0.04, d.z1 - 0.50], [cs.x - 0.09, roofAt(d.z1 - 0.50) - 0.04, d.z1 - 0.50],
+      [cs.x - 0.21, d.rimY + 0.020, d.z1 + 0.05], [cs.x + 0.21, d.rimY + 0.020, d.z1 + 0.05],
+      [cs.x + 0.07, d.rimY - 0.095, d.z1 - 0.50], [cs.x - 0.07, d.rimY - 0.095, d.z1 - 0.50]));
     for (const kb of d.kit ?? []) { // stepped kit boxes riding the rear cheek
       // ([x, z0, z1, top] — the ref's own descending 2.532/2.508 stair)
       P.add('turretDetail', box(0.14, 0.09, kb[1] - kb[2]), kb[0], kb[3] - 0.045, (kb[1] + kb[2]) / 2);
@@ -2103,11 +2146,12 @@ function merkavaSmallTurret(P, t) {
     // ring-scale order — the plan circle grows toward the ref dia while
     // the collar top 2.452 tucks under the local cover lines: spine 2.538
     // inboard, drum 2.490 mid, MG carrier 2.451 outboard).
+    // r5 de-tick: cross bar deleted (dial read); rim + collar + flush lid
+    // + one hinge only.
     P.add('turretDark', KIT.torus(lr.ringR * 0.94, 0.022, lcs), lr.ringX, lr.ringTop - 0.003, lr.ringZ);
     P.add('turret', cylY(0.205, 0.21, 0.018, lcs), lr.ringX, lr.ringTop - 0.062, lr.ringZ);
     P.add('turretDark', KIT.torus(0.200, 0.013, lcs), lr.ringX, lr.ringTop - 0.052, lr.ringZ);
     P.add('turret', cylY(lr.ringR * 0.60, lr.ringR * 0.60, 0.015, lcs), lr.ringX, lr.ringTop + 0.003, lr.ringZ);
-    P.add('turretDetail', box(lr.ringR * 1.06, 0.010, 0.024), lr.ringX, lr.ringTop + 0.006, lr.ringZ);
     P.add('turret', box(0.05, 0.032, 0.08), lr.ringX + lr.ringR * 0.92, lr.ringTop - 0.010, lr.ringZ);
     // wide low MG beside the ring (dark to the crown — silhouette carrier).
     // r3 (critic "replicate the real one into the side-visible positions"):
@@ -2125,22 +2169,25 @@ function merkavaSmallTurret(P, t) {
     P.add('turretDark', KIT.cylZ(0.021, 0.055, 8), lrx, lr.rodY - 0.004, lr.rodZ0 - 0.040);   // booster
     P.add('turret', box(0.026, 0.016, 0.050), lrx, lr.rodY + 0.010, lr.rodZ0 - 0.040);        // booster lit cap
     P.add('turretDark', box(0.010, 0.015, 0.013), lrx, lr.rodY + 0.012, lr.rodZ0 - 0.10);     // front sight
-    // RAISED twin at the ring's inboard rim (r3): the wide-low carrier
-    // above is roof-camber-buried from the RIGHT ortho — this pair rides
-    // at x ~0.50 (under the ring's own 2.490 front cols, still under the
-    // 2.63 dome side cols) and pokes over the roof edge — the side-visible
-    // loader gun. r4 MG PHYSICS: two-tone (sand top strip at the 2.4895
-    // line over a slimmed dark rod), receiver pale-capped, thin run
-    // extended forward — booster..receiver now ~0.83 m ~ 53 px.
-    P.add('turretDark', box(0.095, 0.052, 0.22), lr.ringX + 0.04, lr.ringTop - 0.048, (lr.mgZ0 + lr.mgZ1) / 2);
-    P.add('turret', box(0.088, 0.024, 0.20), lr.ringX + 0.04, lr.ringTop - 0.012, (lr.mgZ0 + lr.mgZ1) / 2); // receiver pale cap
-    P.add('turretTrack', KIT.cylZ(0.017, 0.42, 8), lr.ringX + 0.045, lr.ringTop - 0.034, lr.mgZ0 + 0.16); // void under-rod
-    P.add('turret', box(0.024, 0.034, 0.40), lr.ringX + 0.045, lr.ringTop - 0.0175, lr.mgZ0 + 0.16); // rod lit strip (~2 px; top 2.4895)
-    P.add('turretTrack', KIT.cylZ(0.013, 0.28, 8), lr.ringX + 0.045, lr.ringTop - 0.034, lr.mgZ0 + 0.475);
-    P.add('turret', box(0.019, 0.028, 0.26), lr.ringX + 0.045, lr.ringTop - 0.020, lr.mgZ0 + 0.475); // taper lit strip
-    P.add('turretDark', KIT.cylZ(0.019, 0.05, 8), lr.ringX + 0.045, lr.ringTop - 0.034, lr.mgZ0 + 0.585);
-    P.add('turret', box(0.026, 0.022, 0.05), lr.ringX + 0.045, lr.ringTop - 0.017, lr.mgZ0 + 0.585); // booster lit cap
-    P.add('turretDark', box(0.018, 0.045, 0.020), lr.ringX + 0.04, lr.ringTop - 0.078, (lr.mgZ0 + lr.mgZ1) / 2 + 0.02); // its pintle into the ring rim
+    // r5 (critic r4: "toptilt pair REGRESSED to deck-hugging rods"; the
+    // ref's right-view loader gun is a DARK floating line, lum ~56, over
+    // kit with real sky). SELF-LIT MASK LAW (this round, hard-won): the
+    // gate renders self-lit masks, so a raised rod pays its front column
+    // wherever it stands — the only tall right-side front lane the ref
+    // budgets is the furniture-bin band x 1.15..1.35 (2.568-2.578). The
+    // elevated loader gun therefore rides THAT lane: receiver+rod tops at
+    // the bins' own 2.578/2.572 lines (column-free), the bin under it
+    // drops to 2.45, and the gun reads as a dark floating rod with 6 px
+    // sky from the right ortho and the toptilt.
+    const lr2X = lr.rod2X ?? (lr.ringX + 0.05);
+    const lr2Y = lr.rod2Y ?? lr.rodY, lr2Z0 = lr.rod2Z0 ?? lr.rodZ0, lr2Z1 = lr.rod2Z1 ?? lr.rodZ1;
+    const lrRun = lr2Z0 - lr2Z1;
+    P.add('turretDark', box(0.085, 0.062, 0.17), lr2X, lr2Y - 0.010, lr2Z1 + 0.075);            // receiver body (top 2.578 = the bins' own front cols)
+    P.add('turretDark', KIT.cylZ(0.016, lrRun * 0.72, 8), lr2X + 0.005, lr2Y, lr2Z1 + 0.075 + lrRun * 0.45);
+    P.add('turretDark', KIT.cylZ(0.0115, lrRun * 0.24, 8), lr2X + 0.005, lr2Y, lr2Z0 - lrRun * 0.10);
+    P.add('turretDark', KIT.cylZ(0.019, 0.05, 8), lr2X + 0.005, lr2Y, lr2Z0 - 0.02);            // booster
+    P.add('turretDark', box(0.018, 0.10, 0.020), lr2X, lr2Y - 0.075, lr2Z1 + 0.05);             // pintle post into the bin
+    P.add('turretDark', box(0.012, 0.034, 0.012), lr2X, lr2Y - 0.055, lr2Z1 + 0.14);            // grip frame
     {
       const lrMidZ = (lr.mgZ0 + lr.mgZ1) / 2;
       const stemH = Math.max(0.035, lr.mgBot - roofAt(lrMidZ) + 0.03);
@@ -2240,7 +2287,10 @@ function merkavaSmallTurret(P, t) {
         -hwR * 0.34, tv.bot + (topR - tv.bot) * 0.44, tv.z1 - 0.002, 0, 0, 0.07);
       P.add(clothMat, box(hwR * 0.46, (topR - tv.bot) * 0.50, 0.006),
         hwR * 0.42, tv.bot + (topR - tv.bot) * 0.50, tv.z1 - 0.002, 0, 0, -0.05);
-      P.add('turretTrack', box(hwR * 0.20, (topR - tv.bot) * 0.34, 0.004),
+      // r5: void slot pinned to its r4 ABSOLUTE size (0.076) — it scaled
+      // with the widened hwRear into a fat punched window (rear 25.8 class
+      // is certified by AREA, not proportion)
+      P.add('turretTrack', box(0.076, (topR - tv.bot) * 0.34, 0.004),
         hwR * 0.06, tv.bot + (topR - tv.bot) * 0.52, tv.z1 - 0.004);
       P.add(clothMat, box(0.13, 0.070, 0.010),
         -hwR * 0.12, tv.bot + (topR - tv.bot) * 0.62, tv.z1 + 0.004, 0.58, 0, 0.06);
@@ -2341,7 +2391,53 @@ function merkavaModularTurret(P, t) {
   // Rotor/crest housing: narrow front face at the apex (the side-view 2.56
   // wall), widening to the crest plateau; bottom rides the mantlet band.
   const cr = t.crest; // { z0(face), zW(widen), z1(rear), hw0, hw1, top0, top1, bot }
-  if (t.crestWaves) {
+  if (cr && cr.low) {
+    // r5 PINTLE-GUN ALLOWANCE (3D): the freesky scan on the r4 pairs proved
+    // the ref's 2.527-2.552 side cols over z 0.57..1.49 are its own M2
+    // BARREL — a 2 px line with 5-25 px of real sky beneath — while the
+    // "crest face" solid tops only ~2.2-2.45 and rakes to the mantlet. The
+    // r4 solid narrow box at 2.535 was a barrel-as-wall misread that ruled
+    // the 90 px crest line. New anatomy (mask-neutral by construction):
+    //  - LOW raked face wedge (hw0) falling zW -> z0 toward the mantlet;
+    //  - low plan shelf out to hw1 keeping the ref's own 0.91 plan front
+    //    edge at |x| 0.19..0.44 (top far below the barrel's sky window);
+    //  - wide rear crest box trimmed to zW2 (the receiver zone) with
+    //    UNEVEN x-lanes (the r4 evenly-nicked crown at y179 +-1 is dead);
+    //  - the M2 in merkava3Kit owns the 2.527-2.552 line with real sky.
+    const lowA = cr.lowFace?.[0] ?? (cr.top0 - 0.115);   // face top at zW
+    const lowB = cr.lowFace?.[1] ?? (cr.bot + 0.27);     // face top at z0
+    P.add('turret', slab(
+      [-cr.hw0, cr.bot, cr.z0], [cr.hw0, cr.bot, cr.z0],
+      [cr.hw0, cr.bot - 0.06, cr.zW], [-cr.hw0, cr.bot - 0.06, cr.zW],
+      [-cr.hw0, lowB, cr.z0], [cr.hw0, lowB, cr.z0],
+      [cr.hw0, lowA, cr.zW], [-cr.hw0, lowA, cr.zW]));
+    // low plan shelf (|x| <= hw1, zW2..zW+0.02): keeps the certified plan
+    // front edge; top stays >= 6 px under the barrel line for the sky read
+    const zW2 = cr.zW2 !== undefined ? cr.zW2 : cr.zW;
+    P.add('turret', box(cr.hw1 * 2, (cr.shelfTop ?? (lowA - 0.06)) - (cr.bot - 0.06), cr.zW + 0.02 - zW2),
+      0, ((cr.shelfTop ?? (lowA - 0.06)) + cr.bot - 0.06) / 2, (cr.zW + 0.02 + zW2) / 2);
+    // wide rear crest box zW2 -> z1: core + uneven lane caps
+    const baseW = cr.top1 - 0.055;
+    P.add('turret', slab(
+      [-cr.hw1, cr.bot - 0.06, zW2], [cr.hw1, cr.bot - 0.06, zW2],
+      [cr.hw1, shellTop - 0.02, cr.z1], [-cr.hw1, shellTop - 0.02, cr.z1],
+      [-cr.hw1, baseW, zW2], [cr.hw1, baseW, zW2],
+      [cr.hw1, baseW, cr.z1], [-cr.hw1, baseW, cr.z1]));
+    // uneven lanes: widths and dips both irregular; the tallest lane holds
+    // top1 for the side max-over-x, dips are downward-only
+    // holder = LEFT outer lane (ref front is HIGH outboard: 2.575-2.585 at
+    // x -0.36..-0.42 — dipping it cost front cols on the first cut)
+    const lanesL = [[-1.0, -0.58, 0.000], [-0.58, -0.22, 0.026], [-0.22, 0.14, 0.010], [0.14, 0.55, 0.032], [0.55, 1.0, 0.004]];
+    for (const [fa, fb, dp] of lanesL) {
+      const xa = cr.hw1 * fa, xb = cr.hw1 * fb;
+      const sl = (fa < 0 ? -1 : 1) * 0.014;
+      P.add('turret', slab(
+        [xa, baseW - 0.02, zW2], [xb, baseW - 0.02, zW2],
+        [xb, baseW - 0.02, cr.z1], [xa, baseW - 0.02, cr.z1],
+        [xa, cr.top1 - dp - Math.max(0, sl), zW2 + 0.01], [xb, cr.top1 - dp - Math.max(0, -sl), zW2 + 0.01],
+        [xb, cr.top1 - dp - Math.max(0, -sl), cr.z1], [xa, cr.top1 - dp - Math.max(0, sl), cr.z1]));
+    }
+  } else if (t.crestWaves) {
     // r8 CROWN FLAT-RUN BREAK (critic item 1, MEASURED): the slightly
     // elevated dead-rear critic camera (dir 0,0.08,-1) crowns the whole rear
     // profile with the FORWARD crest tops (h' = y + 0.08z puts the crest
@@ -2452,7 +2548,11 @@ function merkavaModularTurret(P, t) {
   // converging wedge under shading.
   if (t.wedgeFront && t.crest) {
     const cr0 = t.crest;
-    const fB = cr0.bot, fT = cr0.top0 ?? shellTop, fT2 = ck.topIn - 0.002;
+    // crest.low (3D r5): the V-planes' inner top edge follows the lowered
+    // face line — tied to top0 they walled the M2 barrel's sky window shut
+    const fB = cr0.bot;
+    const fT = (cr0.low ? (cr0.lowFace?.[0] ?? (cr0.top0 - 0.115)) : cr0.top0) ?? shellTop;
+    const fT2 = Math.min(ck.topIn - 0.002, cr0.low ? fT + 0.06 : Infinity);
     const rake2 = t.wedgeRake ?? 0.30;
     const zi = cr0.zW + 0.03, zo = cr0.zW - 0.03;
     const ri = cr0.zW - 0.14, ro = Math.max(cr0.zW - 0.48, t.maxWZ + 0.32);
@@ -3034,26 +3134,21 @@ function merkavaModularTurret(P, t) {
     if (rg.collar) {
       P.add('turret', cylY(rg.collar.r, rg.collar.r * 1.02, 0.022, 24), rg.x, rg.collar.y, rg.z);
       P.add('turretDark', KIT.torus(rg.collar.r * 0.97, 0.016, 24), rg.x, rg.collar.y + 0.012, rg.z);
-      P.add('turretDetail', KIT.torus(rg.collar.r * 0.80, 0.008, 24), rg.x, rg.collar.y + 0.013, rg.z);
+      // r5 ring de-tick: the third concentric detail circle joined the
+      // dash-tick census (compass-dial read) — collar keeps disc + one
+      // dark edge ring only.
     }
     P.add('turret', cylY(rg.r, rg.r * 1.03, rg.top - rg.base, cs), rg.x, (rg.top + rg.base) / 2, rg.z);
     if (rg.solid) {
-      // 3D structure r3 (toptilt CIRC "dashed circle relic"): the thin
-      // inset torus + 5 scope boxes aliased into dash segments. Solid mode:
-      // a fat rim torus AT the drum edge + a continuous inner seam ring —
-      // the circle reads as one machined ring; scopes drop low + inboard.
+      // 3D structure r3 (toptilt CIRC "dashed circle relic") + r5 de-tick
+      // (critic r4: "dial-tick ring rims"): the cross bar, second hinge,
+      // tucked scopes and the extra lip torus all read as tick marks around
+      // the dial. The ring is now: fat rim torus + flush lid disc with ONE
+      // hairline seam + ONE hinge lump. Nothing else on the circle.
       P.add('turretDark', KIT.torus(rg.r * 0.955, 0.021, 24), rg.x, rg.top - 0.003, rg.z);
-      P.add('turret', cylY(rg.r * 0.66, rg.r * 0.66, 0.018, 24), rg.x, rg.top + 0.004, rg.z);
-      P.add('turretDark', KIT.torus(rg.r * 0.665, 0.009, 24), rg.x, rg.top + 0.010, rg.z);
-      P.add('turretDetail', box(rg.r * 1.10, 0.010, 0.026), rg.x, rg.top + 0.008, rg.z);
-      P.add('turret', box(0.06, 0.04, 0.09), rg.x + rg.r * 0.90, rg.top - 0.014, rg.z);
-      P.add('turret', box(0.06, 0.04, 0.09), rg.x - rg.r * 0.90, rg.top - 0.014, rg.z);
-      if (rg.scopes) for (let k = 0; k < 3; k++) { // 3 blocks, tucked fully
-        // under the rim shadow — 5 at r*0.58 still dash-arced from toptilt
-        const a = -Math.PI * 0.30 + (k / 2) * Math.PI * 0.60;
-        P.add('turretDark', box(0.048, 0.024, 0.036),
-          rg.x + Math.sin(a) * rg.r * 0.50, rg.top - 0.052, rg.z + Math.cos(a) * rg.r * 0.50, 0, a, 0);
-      }
+      P.add('turret', cylY(rg.r * 0.70, rg.r * 0.70, 0.018, 24), rg.x, rg.top + 0.004, rg.z);
+      P.add('turretDark', KIT.torus(rg.r * 0.705, 0.0075, 24), rg.x, rg.top + 0.009, rg.z);
+      P.add('turret', box(0.065, 0.042, 0.095), rg.x + rg.r * 0.90, rg.top - 0.014, rg.z);
       return;
     }
     P.add('turretDark', KIT.torus(rg.r * 0.88, 0.016, cs), rg.x, rg.top - 0.002, rg.z);
@@ -3157,7 +3252,11 @@ function buildMerkavaMark(P, p) {
           ringTop: V(loader.ringTop), ringBase: V(loader.ringBase),
           mgX0: loader.mgX0, mgX1: loader.mgX1, mgTop: V(loader.mgTop), mgBot: V(loader.mgBot),
           mgZ0: L(loader.mgZ0), mgZ1: L(loader.mgZ1),
-          rodY: V(loader.rodY), rodZ0: L(loader.rodZ0), rodZ1: L(loader.rodZ1) } : undefined,
+          rodY: V(loader.rodY), rodZ0: L(loader.rodZ0), rodZ1: L(loader.rodZ1),
+          rod2X: loader.rod2X,
+          rod2Y: loader.rod2Y !== undefined ? V(loader.rod2Y) : undefined,
+          rod2Z0: loader.rod2Z0 !== undefined ? L(loader.rod2Z0) : undefined,
+          rod2Z1: loader.rod2Z1 !== undefined ? L(loader.rod2Z1) : undefined } : undefined,
       }))(p.station.dome) : undefined } : undefined,
     bridgeY: p.beakBridgeY !== undefined ? V(p.beakBridgeY) : undefined,
     beakW: p.beakW, beakW2: p.beakW2,
@@ -3184,7 +3283,12 @@ function buildMerkavaMark(P, p) {
       top0: p.crest.top0 !== undefined ? V(p.crest.top0) : undefined,
       top1: p.crest.top1 !== undefined ? V(p.crest.top1) : undefined,
       bot: p.crest.bot !== undefined ? V(p.crest.bot) : undefined,
-      top: p.crest.top !== undefined ? V(p.crest.top) : undefined, hw: p.crest.hw } : undefined,
+      top: p.crest.top !== undefined ? V(p.crest.top) : undefined, hw: p.crest.hw,
+      // r5 3D low-crest params (barrel-as-wall misread fix)
+      low: p.crest.low,
+      zW2: p.crest.zW2 !== undefined ? L(p.crest.zW2) : undefined,
+      lowFace: p.crest.lowFace ? p.crest.lowFace.map(V) : undefined,
+      shelfTop: p.crest.shelfTop !== undefined ? V(p.crest.shelfTop) : undefined } : undefined,
     noseHW: p.noseHW, noseZ: p.noseZ !== undefined ? L(p.noseZ) : undefined,
     planPts: p.planPts ? p.planPts.map(([x, z]) => [x, L(z)]) : undefined,
     shellBotY: p.shellBotY !== undefined ? V(p.shellBotY) : undefined,
@@ -3266,12 +3370,18 @@ function buildMerkavaMark(P, p) {
       // height, separated by pale kit lumps: the ref grammar (pale volumes
       // punctured by shadow pockets), not a ruled radiator band.
       P.add('turret', box(rt.hw * 2 + 0.01, 0.030, 0.105), 0, V(rt.top) - 0.015, L(rt.z) + 0.05);
-      P.add('turretDark', box(rt.hw * 2 - 0.02, 0.014, 0.100), 0, V(rt.top) - 0.037, L(rt.z) + 0.048);
+      P.add('turretDark', box(rt.hw * 2 - 0.02, 0.009, 0.100), 0, V(rt.top) - 0.0345, L(rt.z) + 0.048);
       const tipH = V(rt.top) - V(rt.bot);
+      // r5 REAR UN-PUNCH (critic r4: "punched 3 BLACK windows into a face
+      // the 3D ref keeps BRIGHT — p5 41.9 vs ref 83.2; the 26-class target
+      // was 1B's"). The three 24-luma void pockets become TONE-ON-TONE
+      // cloth slats (~84 on the ~93 face — the ref's own basket-rung
+      // grammar); the only void left on this face is the thin under-rim
+      // shadow line above (rims/interiors keep the 24.4 recipe).
       for (const [px, pw, ph, pyF] of [
         [-0.44, 0.40, 0.62, 0.46], [0.04, 0.28, 0.48, 0.52], [0.46, 0.38, 0.68, 0.42],
-      ]) { // deep pockets (recessed 4 mm behind the face)
-        P.add('turretTrack', box(rt.hw * pw, tipH * ph, 0.004),
+      ]) {
+        P.add('turretCloth', box(rt.hw * pw, tipH * ph, 0.004),
           rt.hw * px, V(rt.bot) + tipH * pyF, L(rt.z) - 0.0035);
       }
       P.add('turret', box(rt.hw * 0.26, tipH * 0.42, 0.006), -rt.hw * 0.13, V(rt.bot) + tipH * 0.38, L(rt.z) - 0.002, 0, 0, 0.06); // kit lump between pockets
@@ -3521,7 +3631,14 @@ function buildMerkavaMark(P, p) {
       // sampled r4d: 0x9a937d rendered (132,124,103) = 124 warm-tan vs the
       // ref panel's (108,113,100) = 107 neutral-green — pulled 0.86x with
       // the green channel leading (sRGB law, iterated on the render).
-      P.mats.glass.color.setHex(0x72806a);
+      // r5 HUE (critic: G-B +19.7 vs ref +13.9; 62-65% green-flag px vs 0):
+      // 0x72806a rendered (98-104,108-112,87-89) — green-led. Blue raised /
+      // red rebalanced toward the ref's neutral (108,113,100) class.
+      // r5 sampled on the renders (the mint sticker lived in the TOP view):
+      // 0x72806a read (103,112,88), G-B +21.3, green-flag 79.6% from above;
+      // 0x888f84 read (122,124,109), +14.6, flag 0.0% — hue class hit, one
+      // luma notch back toward the ref's (108,113,100) front-panel target.
+      P.mats.glass.color.setHex(0x888f84); // final: top-view (122,124,109) G-B +14.6 = ref's own +14.8; flag 0.0%
       P.mats.glass.roughness = 0.9;
       P.mats.glass.metalness = 0.02;
       P.mats.glass.envMapIntensity = 0.4;
@@ -3823,23 +3940,29 @@ function merkava1bKit(P, p, t) {
   // forward so the muzzle stays behind the shell's own plan nose line
   // (±0.33 plateau to z 1.01), and the lit line rides the spine-lane
   // height class (2.535 vs lanes 2.522-2.544): side/plan rows move <=1 px.
+  // ---- r5 PINTLE-GUN ALLOWANCE re-lay: the r4 yawed-inboard gun "did not
+  // render as a gun ANYWHERE" (critic r4 — hidden inside mask extents by
+  // the old economy). The ref's .50 is CENTER-MOUNTED (x ~+0.11 lane: its
+  // 2.557 front cols at x 0.099..0.120, plan lane inside the main-gun
+  // columns) with the barrel to z ~1.55 at the 2.51-2.534 line and 20-27 px
+  // of sky under it (the fwd roof is reclassified low to open that sky).
+  // Still on the GUN NODE — elevates like the print's.
   {
     const gy9 = (y) => y - p.gunAxisY;                 // gun-local y
     const gz9 = (z) => z + (-p.pivotZ) - (p.gunZL ?? 0.32); // gun-local z
-    const yawM = 0.17;                                 // inboard-forward lay
-    P.addGunExtraDark(KIT.xform(KIT.box(0.115, 0.075, 0.34), 0, 0, 0, 0, yawM, 0), -0.415, gy9(2.478), gz9(0.20)); // receiver body
-    P.addGunExtra(KIT.xform(KIT.box(0.100, 0.032, 0.31), 0, 0, 0, 0, yawM, 0), -0.415, gy9(2.519), gz9(0.20));     // pale cap (top 2.535)
-    P.addGunExtraDark(KIT.box(0.05, 0.016, 0.05), -0.445, gy9(2.486), gz9(0.015));   // spade grips
-    P.addGunExtraDark(KIT.box(0.016, 0.040, 0.016), -0.445, gy9(2.458), gz9(-0.01));
-    P.addGunExtraDark(KIT.box(0.080, 0.055, 0.13), -0.505, gy9(2.468), gz9(0.16));   // ammo can (plan: shell fwd 0.40 at x -0.50)
-    P.addGunExtraDark(KIT.box(0.030, 0.50, 0.036), -0.415, gy9(2.20), gz9(0.20));    // pintle arm down to the tube line
-    P.addGunExtraDark(KIT.xform(KIT.cylZ(0.019, 0.56, 8), 0, 0, 0, 0, yawM, 0), -0.365, gy9(2.500), gz9(0.655));   // barrel under-body -> muzzle (x -0.315, z 0.93)
-    P.addGunExtra(KIT.xform(KIT.box(0.024, 0.036, 0.54), 0, 0, 0, 0, yawM, 0), -0.365, gy9(2.517), gz9(0.655));    // lit top strip (top 2.535)
-    P.addGunExtraDark(KIT.xform(KIT.cylZ(0.013, 0.16, 8), 0, 0, 0, 0, yawM, 0), -0.3205, gy9(2.498), gz9(0.915));  // taper (to z ~0.99, |x| < 0.33 plateau)
-    P.addGunExtra(KIT.xform(KIT.box(0.019, 0.028, 0.15), 0, 0, 0, 0, yawM, 0), -0.3205, gy9(2.513), gz9(0.91));    // taper lit strip
-    P.addGunExtraDark(KIT.xform(KIT.cylZ(0.020, 0.07, 8), 0, 0, 0, 0, yawM, 0), -0.309, gy9(2.498), gz9(0.985));   // muzzle booster (z <= 1.00)
-    P.addGunExtra(KIT.xform(KIT.box(0.026, 0.022, 0.065), 0, 0, 0, 0, yawM, 0), -0.309, gy9(2.514), gz9(0.985));   // booster lit cap
-    P.addGunExtraDark(KIT.box(0.011, 0.024, 0.014), -0.325, gy9(2.522), gz9(0.885)); // front sight
+    P.addGunExtraDark(KIT.box(0.024, 0.26, 0.028), 0.115, gy9(2.37), gz9(0.26));     // pintle post into the roof
+    P.addGunExtraDark(KIT.box(0.055, 0.055, 0.20), 0.115, gy9(2.505), gz9(0.24));    // cradle/elevator block
+    P.addGunExtra(KIT.box(0.105, 0.062, 0.26), 0.115, gy9(2.522), gz9(0.43));        // receiver body (PALE mass, top 2.553)
+    P.addGunExtra(KIT.box(0.093, 0.020, 0.23), 0.115, gy9(2.546), gz9(0.43));        // receiver crown (top 2.556 = ref station class)
+    P.addGunExtraDark(KIT.box(0.046, 0.014, 0.05), 0.115, gy9(2.532), gz9(0.10));    // spade grips
+    P.addGunExtraDark(KIT.box(0.013, 0.046, 0.013), 0.115, gy9(2.503), gz9(0.075));
+    P.addGunExtraDark(KIT.box(0.012, 0.012, 0.05), 0.176, gy9(2.522), gz9(0.50));    // charging handle
+    P.addGunExtra(KIT.box(0.090, 0.055, 0.16), -0.115, gy9(2.508), gz9(0.36));       // ammo can (pale; ref front x -0.088..-0.13 = 2.536)
+    P.addGunExtraDark(KIT.box(0.080, 0.012, 0.017), -0.115, gy9(2.537), gz9(0.36));  // its strap
+    P.addGunExtraDark(KIT.box(0.018, 0.012, 0.10), 0.02, gy9(2.516), gz9(0.40));     // feed chute
+    P.addGunExtra(KIT.cylZ(0.020, 0.88, 10), 0.115, gy9(2.514), gz9(1.00));          // barrel: PALE rod (top 2.534 = the ref's own gun cols)
+    P.addGunExtra(KIT.cylZ(0.0235, 0.105, 10), 0.115, gy9(2.514), gz9(1.4925));      // muzzle booster (tip 1.545 carries station s11 like the ref's)
+    P.addGunExtraDark(KIT.box(0.011, 0.022, 0.014), 0.115, gy9(2.539), gz9(1.38));   // front sight
   }
   // r4 CIRC/plan order ("plan capsule 2.5:1 -> teardrop taper"): the left
   // casting-wall strip pots rode 8 cm BELOW the shell wall top as separate
@@ -3885,38 +4008,33 @@ function merkava3Kit(P, p, t, opts = {}) {
     // sub-boxes; the taller sub keeps the old certified top so front/side
     // columns never move, the stagger cuts the skyline run.
     if (opts.pale && opts.m2) {
-      // 3D structure r3 built the mantlet-bridge M2; r4 MG-PHYSICS rebuild
-      // (critic: "crest M2 = riveted crate — make it a GUN"): the receiver +
-      // twin flanking trays + two pale counterweight boxes clustered into a
-      // crate read, and every part was gunmetal-on-pale-crest (no polarity).
-      // Now: ONE slim receiver with a 28 mm PALE cap (ref receivers sample
-      // p50 84 — pale top-lit), spade grips + charging handle as the only
-      // dark jewelry, a LONG two-tone barrel (dark rod under a sand top
-      // strip whose crown rides the 2.540 cap line — reads pale-over-dark
-      // against crest/sky in the side orthos, ~64 px at 640), muzzle
-      // booster, ONE offset ammo can low on the left. Everything <= 2.540
-      // under the crest cols (r3 law), |x| <= 0.44, z 0.05..1.47.
+      // r5 PINTLE-GUN ALLOWANCE rebuild (critic r4: "every gun backed by
+      // pale wall 1px under the rod, ZERO free-sky columns; ref M2 class
+      // 95-101L"). With the crest.low rebuild the wall under the barrel is
+      // GONE — the M2 now stands free over the raked face with real sky:
+      //  - x-lane moved 0.245 -> ~0.14: the plan columns there hide under
+      //    the ref's own x 0.115..0.166 clamp-collar reach (z 2.18-2.23),
+      //    so the pale barrel's plan reach to z ~1.49 costs nothing (the
+      //    r4 lane paid the worst 3d t_plan col, 0.268 at x 0.26);
+      //  - the barrel is ONE PALE ROD (ref luma class) whose top rides the
+      //    ref's own 2.527-2.552 gun cols; sky under it = the mask method
+      //    done-gate (ref free-sky run 64 px, gap 5-25 px).
       const zb = t.crest.z1;
-      P.add('turretDark', box(0.030, 0.13, 0.032), 0.245, crTop - 0.115, zb + 0.34);   // pintle post
-      P.add('turretDark', box(0.115, 0.080, 0.38), 0.245, crTop - 0.062, zb + 0.34);   // receiver body
-      P.add('turret', box(0.105, 0.028, 0.34), 0.245, crTop - 0.019, zb + 0.34);       // PALE cap (top 2.540 law)
-      P.add('turretDetail', box(0.085, 0.052, 0.14), 0.155, crTop - 0.105, zb + 0.22); // ammo can, low-left
-      P.add('turretDark', box(0.020, 0.014, 0.12), 0.20, crTop - 0.068, zb + 0.28);    // feed chute
-      P.add('turretDark', box(0.05, 0.016, 0.05), 0.245, crTop - 0.052, zb + 0.11);    // spade grips
-      P.add('turretDark', box(0.016, 0.042, 0.016), 0.245, crTop - 0.082, zb + 0.085);
-      P.add('turretDark', box(0.014, 0.014, 0.055), 0.302, crTop - 0.040, zb + 0.45);  // charging handle
-      // r4c: the M2 reads from the RIGHT (sun side) where lit gunmetal
-      // renders ~75 — the under-rod goes VOID-dark (retoned spareTrack,
-      // shade-independent) and the lit line rides 2.552, 1.5 px of true
-      // sky over the local 2.535/2.545 crest cols (+0.007..0.017 on ~6
-      // turret-side cols — paid; the ref's own gun line floats there).
-      P.add('turretTrack', KIT.cylZ(0.024, 0.66, 8), 0.248, crTop - 0.038, zb + 0.87); // barrel (void under-body)
-      P.add('turret', box(0.030, 0.040, 0.62), 0.248, crTop - 0.013, zb + 0.86);       // barrel lit top strip (top 2.552)
-      P.add('turretTrack', KIT.cylZ(0.016, 0.32, 8), 0.248, crTop - 0.034, zb + 1.32); // barrel taper
-      P.add('turret', box(0.024, 0.032, 0.28), 0.248, crTop - 0.018, zb + 1.30);       // taper lit strip (top 2.543)
-      P.add('turretDark', KIT.cylZ(0.027, 0.10, 8), 0.248, crTop - 0.032, zb + 1.42);  // muzzle booster
-      P.add('turret', box(0.032, 0.026, 0.08), 0.248, crTop - 0.014, zb + 1.42);       // booster lit cap (top 2.544)
-      P.add('turretDark', box(0.012, 0.026, 0.016), 0.248, crTop - 0.026, zb + 1.36);  // front sight
+      P.add('turretDark', box(0.026, 0.16, 0.030), 0.14, crTop - 0.135, zb + 0.36);    // pintle post (into the crest core)
+      P.add('turret', box(0.090, 0.062, 0.37), 0.14, crTop - 0.046, zb + 0.395);       // receiver body (pale mass, top 2.530)
+      P.add('turret', box(0.080, 0.024, 0.33), 0.14, crTop - 0.012, zb + 0.395);       // receiver crown (top 2.5405 law)
+      P.add('turretDetail', box(0.070, 0.050, 0.15), 0.055, crTop - 0.098, zb + 0.26); // ammo can, low-left
+      P.add('turretDark', box(0.018, 0.012, 0.11), 0.105, crTop - 0.060, zb + 0.30);   // feed chute
+      P.add('turretDark', box(0.046, 0.015, 0.048), 0.14, crTop - 0.048, zb + 0.145);  // spade grips
+      P.add('turretDark', box(0.015, 0.040, 0.015), 0.14, crTop - 0.080, zb + 0.115);
+      P.add('turretDark', box(0.013, 0.013, 0.050), 0.182, crTop - 0.036, zb + 0.50);  // charging handle
+      P.add('turret', KIT.cylZ(0.021, 0.86, 10), 0.142, crTop - 0.034, zb + 1.01);     // barrel: PALE rod (top 2.532, sky under)
+      P.add('turret', KIT.cylZ(0.0145, 0.20, 8), 0.142, crTop - 0.036, zb + 1.37);     // taper run
+      // booster ends z 1.505: covers station s11 + side col 1.53 like the
+      // ref's own barrel tip (ref s11 top 2.522 IS its gun), while the
+      // 25 mm bleed stays clear of the bare 1.63 col window (ref 2.068)
+      P.add('turret', KIT.cylZ(0.026, 0.105, 10), 0.142, crTop - 0.030, zb + 1.5125);  // muzzle booster (pale)
+      P.add('turretDark', box(0.011, 0.024, 0.015), 0.142, crTop - 0.022, zb + 1.41);  // front sight
       P.add('turretDetail', box(0.13, 0.075, 0.26), -0.24, crTop - 0.085, zb + 0.30, 0, 0.05, 0); // counterweight kit, single + yawed
       P.add('turretDark', box(0.11, 0.012, 0.020), -0.24, crTop - 0.045, zb + 0.33, 0, 0.05, 0);  // its strap
     } else if (opts.pale) {
@@ -3994,7 +4112,10 @@ function merkava3dKit(P, p, t) {
     [1.470, 1.512, 2.283, 2.256, -0.15, -0.27, -2.83, -2.79],
     [1.512, 1.660, 2.256, 2.160, -0.27, -0.68, -2.79, -2.65],
     [1.660, 1.735, 2.090, 2.048, -0.68, -0.86, -2.65, -2.56],
-    [1.735, 1.790, 2.030, 1.940, -0.86, -1.30, -2.56, -2.50],
+    // r5 plan-edge pull: the outer module's front corner overshot the ref
+    // (gate col +1.79: proc fwd -0.85 vs ref -1.21, err 0.184) — the last
+    // tier now steps back to the ref's own module boundary.
+    [1.735, 1.790, 2.030, 1.940, -1.12, -1.32, -2.56, -2.50],
   ];
   const dorL = [
     [-1.386, -1.300, 2.400, 2.430, -0.29, -0.30, -3.00, -3.00],
@@ -4004,8 +4125,10 @@ function merkava3dKit(P, p, t) {
     [-1.600, -1.525, 2.158, 2.248, -0.63, -0.50, -2.70, -2.78],
     [-1.655, -1.600, 2.140, 2.158, -0.71, -0.63, -2.62, -2.70],
     [-1.695, -1.655, 2.118, 2.136, -0.76, -0.71, -2.59, -2.62],
-    [-1.755, -1.695, 2.018, 2.044, -0.85, -0.76, -2.53, -2.59],
-    [-1.790, -1.755, 1.938, 2.008, -1.35, -0.85, -2.49, -2.53],
+    // r5 plan-edge pull (see dorR note; gate col -1.78: proc fwd -0.83 vs
+    // ref -1.29, err 0.234 — the two outer left tiers step back)
+    [-1.755, -1.695, 2.018, 2.044, -1.20, -1.02, -2.53, -2.59],
+    [-1.790, -1.755, 1.938, 2.008, -1.36, -1.20, -2.49, -2.53],
   ];
   const dorBot = V(1.895);
   for (const segs of [dorR, dorL]) {
@@ -4035,38 +4158,35 @@ function merkava3dKit(P, p, t) {
   // cols) and the curb dropped 2.525 -> 2.492 (front cols ride the z-end
   // wall segments, max-over-z) so receiver/pintles/booster all silhouette
   // in the LEFT ortho: rod 2.575..2.627 over an 8 cm slot-sky gap.
-  // r4 MG PHYSICS: pale mode — the rod becomes a sand top strip (top at the
-  // certified 2.627 line) over a slimmed dark under-rod, receiver crowns go
-  // pale (ref guns read PALE top-lit against sky; ours were dark-on-dark).
-  // r4b run-length law: the receiver used to sit MID-run and ate the rod
-  // down to 27 px — receiver slides to the slot rear (-1.22..-1.44), rod
-  // spans the whole slot; visible pale-over-dark run -0.62..-1.22 ~ 37 px.
-  merkavaPlinthMG(P, { x: -0.885, xIn: -0.63, rodY: V(2.601), rodZ0: L(-0.62), rodZ1: L(-1.50),
-    recTop: V(2.615), recZ0: L(-1.22), recZ1: L(-1.44), slotTop: V(2.492), pale: true });
-  // pale stage wall inside the slot: from the LEFT ortho the gun used to
-  // read dark-on-dark (the far band's shaded inner faces showed through the
-  // slot). A sand wall 3 cm behind the gun gives the dark anatomy its pale
-  // backdrop; top 2.560 (r4: dropped from 2.598 so the two-tone rod owns a
-  // real sky window — the wall now backs only the dark under-rod line).
-  P.add('turret', box(0.024, 0.136, 0.78), -0.645, V(2.492), L(-1.05));
-  // ---- item 7 (r3): RIGHT commander .50-cal. r4 MG-PHYSICS re-lay: the r3
-  // gun read as a "slotted box" (dark bar fused with the window frame) and
-  // its 0.53 m run was ~32 px — under the 35 px scale floor. The window
-  // widened -0.66..-1.38 (config; side cols ride the plinth rod at 2.627
-  // max-over-x, fronts the flanking 2.617 segments max-over-z), the whole
-  // gun is TWO-TONE (sand crown strips at the certified 2.617 line over
-  // dark under-bodies), and the run is now booster -0.60 .. stock -1.36 =
-  // 0.76 m ~ 46 px at 640.
-  P.add('turret', box(0.022, 0.100, 0.66), 1.125, V(2.510), L(-1.05));               // stage wall (top 2.560)
+  // r5 PINTLE-GUN ALLOWANCE: the r4 stage walls (the "pale wall 1px under
+  // the rod" the critic contradicted) are DELETED — the slot sky is real
+  // background now. The rod is one PALE cylinder at the certified 2.627
+  // line (merkavaPlinthMG pale branch, ref class 95-101L) and the receiver
+  // slides to z -0.94..-1.14 with its hump at the ref's own 2.654 cols
+  // (the ref gun anatomy: rod + rear receiver hump + block behind).
+  // r5c LANE CORRECTION: the ref's own gun stands OUTBOARD on the band at
+  // x ~-1.16 — its front cols read 2.648 at x -1.156..-1.177 while the
+  // slot lane x -0.86..-0.93 reads only 2.606-2.616 (a rod there overpaid
+  // 3 front cols +0.04..+0.07). Re-seated on the ref lane: rod top 2.644 /
+  // receiver hump 2.653 land the ref's 2.629-2.654 side cols and 2.648
+  // front col near-exactly, and the sky under the rod is the module tier
+  // line (2.43-2.46) — a 8-10 px real gap.
+  // (gun x-lane -1.14..-1.20: the ref's 2.648 front cols live in the -1.15/
+  // -1.19 windows only — the -1.11 window is ref-bare 2.46 and the -1.23
+  // one 2.48; front-cam AA bleed is ~8 mm, so the lane holds both margins)
+  merkavaPlinthMG(P, { x: -1.17, xIn: -1.14, rodY: V(2.618), rodZ0: L(-0.62), rodZ1: L(-0.98),
+    recTop: V(2.653), recZ0: L(-0.94), recZ1: L(-1.14), slotTop: V(2.462), pale: true, recW: 0.06 });
+  // ---- item 7 (r3): RIGHT commander .50-cal. r5 free-sky re-lay: stage
+  // wall deleted, barrel one PALE rod (top at the certified 2.613 class),
+  // receiver pale-bodied; under the rod the window shows true sky down to
+  // the 2.470 sill from BOTH side orthos.
   P.add('turretDark', box(0.024, 0.085, 0.026), 1.215, V(2.512), L(-1.10));          // pintle post (sky gap under receiver)
-  P.add('turretDark', box(0.15, 0.058, 0.30), 1.215, V(2.560), L(-1.29));            // receiver body (slot-rear seat)
-  P.add('turret', box(0.13, 0.040, 0.28), 1.215, V(2.5975), L(-1.29));               // receiver PALE cap (top 2.6175)
-  P.add('turretTrack', KIT.cylZ(0.024, 0.50, 10), 1.218, V(2.566), L(-0.89));        // barrel VOID under-body z -0.64..-1.14
-  P.add('turret', box(0.030, 0.040, 0.50), 1.218, V(2.595), L(-0.89));               // barrel lit top strip (top 2.615, ~2.5 px)
-  P.add('turretDark', KIT.cylZ(0.015, 0.10, 10), 1.218, V(2.566), L(-0.66));         // taper
-  P.add('turretDark', KIT.cylZ(0.026, 0.075, 10), 1.218, V(2.566), L(-0.625));       // muzzle booster
-  P.add('turret', box(0.032, 0.026, 0.075), 1.218, V(2.595), L(-0.625));             // booster lit cap
-  P.add('turretDark', box(0.011, 0.024, 0.014), 1.218, V(2.596), L(-0.72));          // front sight
+  P.add('turret', box(0.15, 0.058, 0.30), 1.215, V(2.560), L(-1.29));                // receiver body (pale mass, slot-rear seat)
+  P.add('turret', box(0.13, 0.040, 0.28), 1.215, V(2.5975), L(-1.29));               // receiver crown (top 2.6175)
+  P.add('turret', KIT.cylZ(0.023, 0.50, 10), 1.218, V(2.622), L(-0.89));             // barrel: PALE rod (top 2.645, sky to the 2.445 sill; under the plinth line so side cols are free)
+  P.add('turret', KIT.cylZ(0.014, 0.10, 10), 1.218, V(2.620), L(-0.66));             // taper
+  P.add('turret', KIT.cylZ(0.026, 0.075, 10), 1.218, V(2.622), L(-0.625));           // muzzle booster (pale)
+  P.add('turretDark', box(0.011, 0.024, 0.014), 1.218, V(2.648), L(-0.72));          // front sight
   P.add('turretDetail', box(0.085, 0.062, 0.13), 1.135, V(2.545), L(-1.24));         // ammo can (pale, beside)
   P.add('turretDark', box(0.022, 0.070, 0.024), 1.16, V(2.505), L(-1.24));           // can leg
   P.add('turretDark', box(0.05, 0.030, 0.11), 1.215, V(2.560), L(-1.41));            // stock/grips
@@ -4118,12 +4238,15 @@ function merkava3dKit(P, p, t) {
     [-1.155, V(2.462), L(-1.00)], [-1.119, V(2.508), L(-1.00)],
     [-1.119, V(2.508), L(-1.52)], [-1.155, V(2.462), L(-1.52)]));
   P.add('turret', KIT.box(0.034, 0.208, 0.52), -1.102, V(2.404), L(-1.26)); // holder cap (front col -1.10 = 2.508; ref 2.511)
+  // r5: step-B rake + holder cap shortened out of the plinth gun's sky
+  // window (they filled it at 2.53, choking the rod's under-sky to 2 px);
+  // the front col x -0.98 keeps its 2.532 via max-over-z on the kept run.
   P.add('turret', KIT.slab( // step B rake
-    [-1.010, V(2.35), L(-0.60)], [-0.961, V(2.35), L(-0.60)],
+    [-1.010, V(2.35), L(-1.14)], [-0.961, V(2.35), L(-1.14)],
     [-0.961, V(2.35), L(-1.60)], [-1.010, V(2.35), L(-1.60)],
-    [-1.010, V(2.496), L(-0.60)], [-0.961, V(2.532), L(-0.60)],
+    [-1.010, V(2.496), L(-1.14)], [-0.961, V(2.532), L(-1.14)],
     [-0.961, V(2.532), L(-1.60)], [-1.010, V(2.496), L(-1.60)]));
-  P.add('turret', KIT.box(0.026, 0.182, 1.00), -0.948, V(2.441), L(-1.10)); // holder cap (front col -0.98 = 2.532 exact)
+  P.add('turret', KIT.box(0.026, 0.182, 0.44), -0.948, V(2.441), L(-1.38)); // holder cap (front col -0.98 = 2.532 exact)
   // (r4b: NO wall-crown chamfer slab here — a first cut ran a pale sloped
   // top across x -0.952..-0.930 over the whole slot z-run and its lit top
   // face OCCLUDED the plinth MG's dark under-rod from the LEFT ortho, the
@@ -4145,12 +4268,18 @@ function merkava3dKit(P, p, t) {
   // dark strips gone), coil replaced by a folded strap bundle.
   P.add('turretDark', box(0.016, 0.014, 1.05), 0.10, V(2.481), L(-1.12));            // cable conduit run
   P.add('turretDark', box(0.014, 0.012, 0.55), -0.06, V(2.479), L(-0.85), 0, 0.12, 0); // second wire, skewed
-  P.add('turretDetail', box(0.085, 0.055, 0.15), -0.21, V(2.498), L(-0.79), 0, 0.14, 0);  // ammo cans, broken row
-  P.add('turretDetail', box(0.070, 0.048, 0.12), -0.185, V(2.494), L(-0.975), 0, -0.10, 0);
-  P.add('turretDetail', box(0.092, 0.040, 0.16), -0.225, V(2.490), L(-1.16), 0, 0.06, 0);
-  P.add('turretDark', box(0.014, 0.011, 0.13), -0.20, V(2.522), L(-0.80), 0, 0.14, 0); // one strap only
-  P.add('turretDetail', box(0.15, 0.065, 0.20), 0.20, V(2.50), L(-0.74));            // stow box
-  P.add('turretDark', box(0.13, 0.012, 0.02), 0.20, V(2.529), L(-0.74));             // its strap
+  // r5 (critic r4 "even 3-can trio"): the r4 cans still metered — near-equal
+  // pitch (0.185/0.185) on one x-column. Broken for real: unequal z gaps
+  // (0.19 / 0.36), x scatter, one can swapped for a soft pouch.
+  // (r5: everything in the |z| -0.62..-1.06 corridor holds tops <= 2.505 —
+  // the plinth/.50 rods' free-sky window; the r4 stow box at 2.53 was the
+  // 1-px choke the critic's scanner kept catching)
+  P.add('turretDetail', box(0.085, 0.042, 0.15), -0.245, V(2.478), L(-0.76), 0, 0.17, 0);  // ammo can
+  P.add('turretDetail', box(0.064, 0.036, 0.11), -0.165, V(2.472), L(-0.95), 0, -0.08, 0); // small can, pulled inboard
+  P.add('turret', box(0.10, 0.030, 0.15), -0.225, V(2.468), L(-1.31), 0.04, 0.11, 0);      // soft pouch (ex third can)
+  P.add('turretDark', box(0.014, 0.011, 0.13), -0.245, V(2.502), L(-0.77), 0, 0.17, 0); // one strap only
+  P.add('turretDetail', box(0.15, 0.028, 0.20), 0.20, V(2.485), L(-0.74));           // stow box (low-profile)
+  P.add('turretDark', box(0.13, 0.012, 0.02), 0.20, V(2.502), L(-0.74));             // its strap
   P.add('turret', box(0.17, 0.05, 0.24), -0.06, V(2.494), L(-1.42), 0.04, 0.22, 0);  // folded tarp, yawed
   P.add('turretDetail', KIT.cylY(0.052, 0.052, 0.045, 10), 0.10, V(2.492), L(-1.60)); // pot
   P.add('turretDetail', KIT.cylY(0.040, 0.040, 0.055, 10), -0.13, V(2.497), L(-1.62)); // second pot
@@ -4712,7 +4841,15 @@ export const MERKAVA_PROFILES = {
     // 0.86-0.88-wide 2.512 deck read +0.05..+0.07 over the ref's 2.441-2.461
     // right shoulder for ~15 columns — the shoulder pots below carry the
     // measured asymmetric shelf lines instead).
-    roofLine: [[1.02, 2.475, 0.34], [0.24, 2.49, 0.64], [0.03, 2.492, 0.66], [-0.07, 2.34, 0.80], [-0.50, 2.34, 0.90], [-1.93, 2.50, 0.54], [-2.19, 2.512, 0.54]],
+    // r5 FORWARD-ROOF RECLASSIFICATION (pintle-allowance round): the freesky
+    // scan proved the ref's flat 2.51-2.534 cols over z 0.0..1.53 are its
+    // commander .50 BARREL (2 px line, 20-27 px sky under) — the r4 solid
+    // 2.475-2.492 slabs to z 1.02 were barrel-as-roof. The fwd roof now
+    // falls 2.49 @ 0.24 -> 2.24 @ 1.02 (the ref's real under-gun surface
+    // reads 2.2-2.33) and the intermediate stations track the shell wedge
+    // (the old 0.34->0.64 linear taper owned the worst t_plan cols at
+    // x ±0.44-0.62, dF +0.27).
+    roofLine: [[1.02, 2.24, 0.33], [0.62, 2.30, 0.40], [0.40, 2.36, 0.47], [0.24, 2.42, 0.64], [0.03, 2.492, 0.66], [-0.07, 2.34, 0.80], [-0.50, 2.34, 0.90], [-1.93, 2.50, 0.54], [-2.19, 2.512, 0.54]],
     // Commander dome band at the WARPED stature (2.631). Visual r2, critic
     // item 1 — THE ROUND DOME: barrel-vault cast dome + raised cupola ring +
     // sloped cheeks replace the flat-topped prism; crown ridge holds the
@@ -4732,17 +4869,22 @@ export const MERKAVA_PROFILES = {
     // fattened torus + dome hatch-seam arc in code; front exposure lands on
     // front_whole only, the turret rows carry no front view). Commander MG
     // run extended -0.50..-1.04 (two-tone; ~47 px with booster/stock).
-    station: { x: -0.73, z0: -0.76, z1: -1.64, top: 2.631, hw: 0.12, drumR: 0.13, cupR: 0.19,
+    // r5 CROWN DOMINANCE (+0.042 dome rise, critic r6 order item; paired
+    // with the fwd-roof/brow reclassification refunds): crown 2.631 ->
+    // 2.673, rim/ring/caps track; scope slides to the raised flank so it
+    // stays a surface fitting (x -0.875 lands the ref's own 2.616 col).
+    station: { x: -0.73, z0: -0.76, z1: -1.64, top: 2.655, hw: 0.12, drumR: 0.13, cupR: 0.19,
       dome: {
-        rx: 0.19, ry: 0.128, z0: -0.79, z1: -1.61, capF: 0.145, capR: 0.155, rimY: 2.503,
-        ring: { x: -0.66, z: -1.50, r: 0.135, top: 2.628, base: 2.53 },
-        scope: { x: -0.80, z: -1.12, top: 2.630, w: 0.10, d: 0.15 },
+        rx: 0.19, ry: 0.128, z0: -0.79, z1: -1.61, capF: 0.145, capR: 0.155, rimY: 2.527,
+        ring: { x: -0.685, z: -1.50, r: 0.135, top: 2.651, base: 2.553 },
+        scope: { x: -0.875, z: -1.12, top: 2.630, w: 0.09, d: 0.15 },
         kit: [[-0.73, -1.80, -1.92, 2.526]],
         mg: { x: -0.37, rodY: 2.532, rodZ0: -0.50, rodZ1: -1.04,
           recX0: -0.44, recX1: -0.30, recTop: 2.578, recZ0: -1.04, recZ1: -1.22 },
         loader: { ringX: 0.46, ringZ: -1.145, ringR: 0.095, ringTop: 2.490, ringBase: 2.42,
           mgX0: 0.555, mgX1: 0.665, mgTop: 2.451, mgBot: 2.376, mgZ0: -1.16, mgZ1: -1.38,
-          rodY: 2.432, rodZ0: -0.72, rodZ1: -1.30 },
+          rodY: 2.432, rodZ0: -0.72, rodZ1: -1.30,
+          rod2X: 1.20, rod2Y: 2.554, rod2Z0: -0.62, rod2Z1: -1.16 },
       } },
     sightZ: -0.20,
     // Casting-ring underside (warped): 1.625 flat across the ring (the tub
@@ -4763,7 +4905,10 @@ export const MERKAVA_PROFILES = {
     // certified falling rim via the right rail (max-over-x).
     basket: { z0: -2.32, z1: -3.59, top: 2.455, topRear: 2.435, bot: 1.90 }, basketHW: 1.06, basketXoff: -0.04,
     basketRailTopL: 2.375,
-    tailVane: { z0: -3.59, z1: -4.04, top: 2.44, topRear: 2.26, bot: 1.92, hw: 1.00, hwRear: 0.38, drop: 0.03 },
+    // r5: hwRear 0.38 -> 0.60 — the ref's vane/chain rear reaches z -4.0 out
+    // to x ±0.63-0.73 (gate t_plan cols -0.63/-0.73 read the proc rear
+    // SHORT 0.12-0.16; this is the paired plan refund for the dome rise)
+    tailVane: { z0: -3.59, z1: -4.04, top: 2.44, topRear: 2.26, bot: 1.92, hw: 1.00, hwRear: 0.60, drop: 0.03 },
     chainDrop: 0.05, chainGap: 0.18,
     // Whips on the warped ref columns: left x -0.855 @ z -2.96 (top 3.42),
     // right x 0.795 @ z -2.38 (top 3.44).
@@ -4771,7 +4916,13 @@ export const MERKAVA_PROFILES = {
     pots: [
       { x: 0.785, z: -2.545, top: 2.628, base: 2.38, w: 0.05, d: 0.10 },  // whip-can pot band (side 2.631 @ -2.52..-2.57)
       { x: -0.855, z: -2.96, top: 2.772, base: 2.40, w: 0.04, d: 0.05 },  // left whip feather col (front 2.772; p95 spike #3)
-      { x: -0.73, z: -1.74, top: 2.652, base: 2.50, w: 0.14, d: 0.10 },   // dome-band peak 2.655 @ -1.74
+      // r5 crown dominance: the peak pot out-crowned the dome by 2 cm as a
+      // fat block — slimmed to a knob (same top: the ref -1.76 col spike)
+      { x: -0.73, z: -1.74, top: 2.652, base: 2.52, w: 0.08, d: 0.06 },   // dome-band peak 2.655 @ -1.74
+      // r5 plan item: right-cheek casting fitting — the ref's right plan
+      // front edge holds 0.48-0.55 at x 0.45..0.65 (the shell wedge alone
+      // under-read it 0.12-0.24; sits under the roof so side/front-free)
+      { x: 0.55, z: 0.335, top: 2.20, base: 1.86, w: 0.20, d: 0.42 },
       { x: 0.03, z: -1.00, top: 2.635, base: 2.40, w: 0.12, d: 0.12 },    // center head (front ±0.06 @ 2.635)
       // visual r2 roof shoulders (paired with the roofLine crown narrow):
       // left shelf holds the ref's 2.513 line, right the 2.441-2.461 line
@@ -4798,13 +4949,20 @@ export const MERKAVA_PROFILES = {
       { x: 0.09, z: 0.47, top: 2.522, base: 2.42, w: 0.24, d: 0.96 },
       { x: 0.275, z: 0.44, top: 2.538, base: 2.42, w: 0.125, d: 0.84 },
       { x: -0.30, z: -3.42, top: 2.53, base: 2.30, w: 0.06, d: 0.10 },     // basket-run pot (ref side -3.41..-3.45 col 2.53-2.56)
-      { x: 1.25, z: -1.03, top: 2.565, base: 2.30, w: 0.10, d: 0.94 },    // (front 2.565 @ 1.13..1.38 — work-order item 6)
+      // r5: the tall bin drops to 2.45 under the elevated loader gun (the
+      // gun's receiver/rod now carry the 2.568-2.578 front cols on this
+      // lane); a narrow rear riser keeps the 1.27 col behind the gun.
+      { x: 1.25, z: -0.95, top: 2.45, base: 2.30, w: 0.10, d: 0.80 },
+      { x: 1.275, z: -1.33, top: 2.565, base: 2.35, w: 0.05, d: 0.24 },
       { x: 1.3275, z: -1.065, top: 2.565, base: 2.35, w: 0.045, d: 0.71 },  // outer bin (ref plan 1.31-1.35: -0.71..-1.42)
       { x: 1.3725, z: -1.2355, top: 2.56, base: 2.40, w: 0.045, d: 0.075 }, // edge nub (ref plan 1.39-1.43: -1.20..-1.27)
       { x: -1.175, z: -1.345, top: 2.26, base: 1.90, w: 0.09, d: 1.71 },  // left casting wall strip (ref plan -1.16..-1.25 spans -0.49..-2.20)
       { x: -1.235, z: -0.94, top: 1.84, base: 1.58, w: 0.155, d: 0.52 },  // left plan bulge (ref -1.26..-1.29 @ z -0.68..-1.20, front top 1.85)
     ],
-    brow: { z0: 1.55, z1: 0.92, top: 2.53 },
+    // r5: the 2.53 brow was the .50-barrel-as-structure misread (ref cols
+    // 1.50..1.53 = its gun; z 1.55+ bare 2.121) — now a LOW hood under the
+    // barrel's sky window; the gun itself carries the 2.51-2.534 line.
+    brow: { z0: 1.50, z1: 0.92, top: 2.30 },
     turretKit: merkava1bKit,
   },
 
@@ -5419,9 +5577,12 @@ export const MERKAVA_PROFILES = {
     // r4 M-scallop kill: lintels drop 0.665 -> 0.652 with a stronger jitter
     // spread (openings vary slit-to-closed against the 0.64 lobe line) and
     // the identical dark chord strips thin/skip/jitter in code (sk.soft).
+    // r5: round 3-step wheel-top scallops (sk.round) + lintelJit amplified
+    // to a render-real ±0.03 spread (the r4 ±0.02 rendered 1-3% — the
+    // critic's 48.3 px metronome; jitter now 16-33% of the arch height).
     skirt: { z0: [2.32, 2.24], z1: -3.81, top: 1.36, bot: 0.63, scallop: false, x: 1.833, flush: true,
-      cutHem: true, archH: 0.19, lobeBot: 0.64, lintelBot: 0.652, lobeIn: 0.016,
-      lintelJit: [0.0, -0.015, 0.010, -0.020, 0.005, -0.012], soft: true,
+      cutHem: true, archH: 0.19, lobeBot: 0.64, lintelBot: 0.652, lobeIn: 0.016, round: true,
+      lintelJit: [0.012, -0.030, 0.018, -0.024, 0.032, -0.014], soft: true,
       flareR: { z0: -3.46, z1: -3.81, x: 1.8435, top: 1.35, bot: 1.27 } },
     lipStrips: [
       { x: -1.8435, z0: 2.335, z1: 2.135, top: 1.35, bot: 1.27 },
@@ -5480,7 +5641,14 @@ export const MERKAVA_PROFILES = {
     apexZ: 1.50, notchHW: 0.30, hwMax: 1.34, roofHW: 0.95, roofInset: 0.92,
     shellFrontZ: 0.50, noseZ: -0.05, noseHW: 1.28, maxWZ: 0.00, shellRearZ: -2.10, rearWide: 0.985,
     shellBotY: 1.57, shellTopY: 2.40,
-    crest: { z0: 1.50, zW: 0.88, z1: -0.06, hw0: 0.19, hw1: 0.44, top0: 2.535, top1: 2.545, bot: 1.86 },
+    // r5 crest.low (pintle-allowance round): the freesky scan proved the
+    // ref's 2.527-2.552 cols over z 0.57..1.49 are its own M2 barrel (2 px
+    // line + 5-25 px sky) — the old solid 2.535 narrow box was the misread
+    // that ruled the 90 px crest. Face now rakes 2.42 @ zW -> 2.13 @ z0;
+    // the wide box trims to the receiver zone (zW2 0.60) with a low plan
+    // shelf keeping the certified 0.90 plan front edge at |x| 0.19..0.44.
+    crest: { z0: 1.50, zW: 0.88, zW2: 0.60, z1: -0.06, hw0: 0.19, hw1: 0.44, top0: 2.535, top1: 2.545, bot: 1.86,
+      low: true, lowFace: [2.40, 2.12], shelfTop: 2.36 },
     // Cheek plan (warped plan_turret row): right plateau 0.60 held to the
     // sight pod at x 1.10-1.32; left cuts back hard to 0.18 by x 0.93.
     cheek: { pts: [[0.41, 0.92], [0.60, 0.88], [0.72, 0.80], [0.82, 0.70], [0.92, 0.55], [1.05, 0.44]],
@@ -5503,7 +5671,9 @@ export const MERKAVA_PROFILES = {
     // needs its muzzle + pintles silhouetted in the slot sky; side cols
     // -0.58..-0.72 ride the -0.63 pot + the rod itself, fronts the z-end
     // wall segments)
-    plinth: { x0: -0.93, x1: -0.60, z0: -0.55, z1: -1.56, top: 2.615, slot: { z0: -0.62, z1: -1.50, top: 2.492 } },
+    // r5: slot curb dropped 2.492 -> 2.455 — the rod-bottom..curb sky gap
+    // was 4.5 px and AA ate it to ~2 (the freesky scanner's floor is 4).
+    plinth: { x0: -0.93, x1: -0.60, z0: -0.55, z1: -1.56, top: 2.615, slot: { z0: -0.62, z1: -1.50, top: 2.455 } },
     roofBoxes: [
       // rear plateau + measured pot/stack bumps
       { x0: -0.40, x1: 0.40, z0: -1.91, z1: -2.13, top: 2.535, bot: 2.40 },
@@ -5518,8 +5688,11 @@ export const MERKAVA_PROFILES = {
       // flanking 2.617 segments — max-over-z). r4: window widened
       // -0.66..-1.38 for the 46 px two-tone gun run (side cols across the
       // widened stretch ride the plinth MG rod at 2.627, max-over-x).
-      { x0: 1.10, x1: 1.36, z0: -0.55, z1: -0.66, top: 2.617, bot: 2.10 },
-      { x0: 1.10, x1: 1.36, z0: -0.66, z1: -1.44, top: 2.470, bot: 2.10 },
+      // r5: front full seg trimmed -0.66 -> -0.62 so the left free-sky
+      // window opens at the slot mouth; sill 2.470 -> 2.445 (the .50 rod's
+      // under-sky was AA-choked at 4.5 px)
+      { x0: 1.10, x1: 1.36, z0: -0.55, z1: -0.62, top: 2.617, bot: 2.10 },
+      { x0: 1.10, x1: 1.36, z0: -0.62, z1: -1.44, top: 2.445, bot: 2.10 },
       { x0: 1.10, x1: 1.36, z0: -1.44, z1: -1.56, top: 2.617, bot: 2.10 },
       { x0: 1.10, x1: 1.36, z0: -1.56, z1: -1.73, top: 2.590, bot: 2.10 },
       { x0: 1.10, x1: 1.36, z0: -1.73, z1: -1.88, top: 2.563, bot: 2.10 },
@@ -5599,7 +5772,10 @@ export const MERKAVA_PROFILES = {
       { x: -0.87, z: -2.825, top: 2.638, base: 2.40, w: 0.05, d: 0.04 }, // 2.641 bump @ -2.82..-2.85 (front col hides in the plinth band)
       { x: -0.49, z: 0.54, top: 2.553, base: 2.40, w: 0.10, d: 0.14 },   // left sight hood (ref front -0.48 col 2.553; side 2.563 @ 0.54)
       { x: 0.49, z: 0.60, top: 2.50, base: 2.38, w: 0.10, d: 0.12 },     // right hood (ref front 0.49 col 2.501)
-      { x: -0.70, z: -0.63, top: 2.64, base: 2.45, w: 0.16, d: 0.10 },   // s7-window head (ref -0.63 col 2.641; front band starts -0.62)
+      // r5: the s7-window head pot (x -0.70, z -0.63, top 2.64) is DELETED
+      // — its front col read +0.053 OVER the ref's 2.595 (r5 front table)
+      // and it blocked the plinth gun's sky window mouth; the side -0.63
+      // col rides the rod's own 2.627 line (ref 2.629).
       { x: -0.14, z: -2.92, top: 2.52, base: 2.40, w: 0.05, d: 0.06 },    // rear-roof step (1024 ref -2.92 col 2.526)
       { x: -1.165, z: -1.30, top: 2.644, base: 2.35, w: 0.05, d: 0.05 }, // left band pot (front -1.14..-1.19 @ 2.644)
     ],

@@ -444,3 +444,66 @@ rail dissolved, segmented sideCurtain to wheel-top hem (certified ±1.80
 bottoms kept). Basket pale + ball/chain fringe + tarp lumps. MGs: front
 31px/37px dark runs (loader crown re-set to ref's 2.451 shoulder, shelf
 pot carved so the MG owns its window). Tone table ~1L of ref throughout.
+
+## ALLOWANCE round r5 (2026-08-03, merkava 3d/1b agent) — 90.4 PASS x2
+Pintle-gun allowance executed; gates 90.4 PASS x2 bit-identical (hull
+91.3 / whole 90.4 / turret 90.6 / stations 92.4 / dims 100 / floaters
+100) — gun budget spent 0.3 of the 0.4 allowance (r4 was 90.7). 3b/3c
+hashes exact; siblings exact.
+1. COMMANDER .50 = THE IDENTITY FITTING (critic: "does not render as a
+   gun ANYWHERE"): the freesky scan + station table decoded the ref's
+   layout — CENTER-MOUNTED at the x ~+0.11 lane (its 2.557 front cols at
+   x 0.099..0.120; plan lane inside the main-gun columns = plan-free),
+   receiver z 0.30..0.56 top 2.556 (= ref stations s8/s9 2.557), barrel
+   at 2.514 (top 2.534 = the ref's own flat 2.534 side cols z 0.0..1.53),
+   booster tip z 1.545 (fixes station s11: ref 2.526 IS its muzzle tip —
+   the old brow read -0.104 there). The r4 yawed-hidden gun deleted; the
+   two dark quads it printed on the plan front deck die with it (grammar
+   item verified on view-top).
+2. FORWARD-ROOF RECLASSIFICATION (the .50's sky): the ref's flat 2.51-
+   2.534 cols z 0.0..1.53 are GUN, its real under-gun surface reads
+   2.2-2.33 — the r4 2.475-2.492 roof slabs + the 2.53 brow were
+   barrel-as-structure. Roof now falls 2.49 @ 0.24 -> 2.24 @ 1.02 with
+   stations tracking the shell wedge (the old 0.34->0.64 linear taper
+   owned the worst t_plan cols, dF +0.27); brow -> low hood 2.30.
+   Free-sky result: 42 px @ lum 96, gap 10-11 px, BOTH orthos (ref 72 —
+   run capped at z 0.78 by the certified 2.34 shell wall under the
+   elevated side cam; noted for a future shell-nose reshape).
+3. LOADER GUN (toptilt pair restore): SELF-LIT MASK LAW killed the x 0.5
+   raise (bare ref front cols 2.49); the gun rides the furniture-bin lane
+   x 1.20 instead — receiver top 2.578 / rod 2.572 = the bins' own front
+   cols (column-free), bin body dropped to 2.45 under it (narrow rear
+   riser keeps the 1.27 col). Reads as the ref's dark (lum ~56-61)
+   elevated rod over kit from the right + full gun in toptilt; only its
+   booster clears the dome line as true sky (5 px) — the ref's own dark
+   gun is mask-sub-threshold, ours can never be (honest cap).
+4. CROWN DOMINANCE: dome crown +0.024 (2.631 -> 2.655, rimY 2.527, ring
+   2.651 — the +0.042 first cut cost -0.75 t_side and broke dims via the
+   p95 heightM read; trimmed to budget) + flanker suppression: peak pot
+   -> slim knob (same 2.652 col), center-head block replaced by the low
+   pale .50, ring re-centered x -0.685 (its edge overread the ref-bare
+   -0.52 front col +0.135). Teardrop: the dome rear cheek now TAPERS
+   0.26 -> 0.09 half-width (plan pill -> oval-with-tail; interior x,
+   silhouette-free).
+5. LOUVRE HUE: 0x72806a -> 0x888f84 (sampled where the mint sticker
+   lived, the TOP view): G-B +21.3 -> +14.6 (ref's own zone +14.8),
+   green-flag 79.6% -> 0.0%, medRGB (122,124,109). Front-panel profile
+   census (109,113,99)-class ✓.
+6. PLAN REFUNDS (paired for the crown): first roof slab tracks the shell
+   (t_plan dF +0.27 cols dead), right-cheek fitting pot carries the
+   ref's 0.48-0.55 front edge at x 0.45..0.65, vane hwRear 0.38 -> 0.60
+   (ref chains reach z -4.0 at x +-0.63-0.73); vane void slot pinned to
+   its r4 ABSOLUTE 0.076 width (it had scaled into a punched window);
+   turret_plan 90.7 -> 93.2.
+7. GOALPOSTS: basket rear mid-rail split at staggered heights, posts
+   thinned with two leaning (b.soft marks only).
+PROTECTIONS verified byte-stable vs the r4 pairs (same scanner, same
+rects): front crown longest-flat 89 px == r4's 89 (method reads ~2x the
+critic's 37; ref reads 66 by the same method), rear broad p5 56 == r4,
+tone table untouched, voidTone recipe untouched, dome shoulders kept.
+RESIDUALS (honest, for critic r5): .50 run 42 px vs ref 72 (shell-wall
+cap fwd of z 0.78); loader gun reads against the pale dome from the
+right (dark-on-pale, not sky — dome is certified-high vs the ref's low
+casting); dome-band side cols now +0.02-0.03 over (the sanctioned crown
+rise); louvre luma from above 122 vs ref-zone 90 (ref zone is its
+shadowed fittings; front-panel class matched).

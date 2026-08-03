@@ -1,12 +1,12 @@
 {
  "id": "merkava3d",
- "geoMin": 90.6,
+ "geoMin": 90.8,
  "gatePassed": true,
  "components": {
   "hullCurves": 91.5,
-  "wholeCurves": 90.6,
-  "turretCurves": 91.3,
-  "stations": 92.1,
+  "wholeCurves": 90.8,
+  "turretCurves": 91.4,
+  "stations": 91.8,
   "dims": 100,
   "floaters": 100
  },
@@ -120,7 +120,7 @@
    ]
   },
   "side_whole": {
-   "score": 91.82281157291696,
+   "score": 91.89449649771974,
    "meanPct": 0.6,
    "p95Pct": 1.58,
    "coverPct": 0,
@@ -444,7 +444,7 @@
    ]
   },
   "front_hull": {
-   "score": 91.50432269499186,
+   "score": 91.496565949735,
    "meanPct": 0.64,
    "p95Pct": 1.43,
    "coverPct": 0,
@@ -462,19 +462,19 @@
      "errM": 0.178
     },
     {
+     "at": 1.78,
+     "refTop": -0.41,
+     "refBot": -0.96,
+     "procTop": -0.35,
+     "procBot": -1.14,
+     "errM": 0.118
+    },
+    {
      "at": -1.11,
      "refTop": -0.05,
      "refBot": -1.53,
      "procTop": -0.04,
      "procBot": -1.76,
-     "errM": 0.116
-    },
-    {
-     "at": 1.78,
-     "refTop": -0.41,
-     "refBot": -0.96,
-     "procTop": -0.35,
-     "procBot": -1.13,
      "errM": 0.116
     },
     {
@@ -552,8 +552,8 @@
    ]
   },
   "front_whole": {
-   "score": 90.64518523915999,
-   "meanPct": 0.68,
+   "score": 90.7701096627704,
+   "meanPct": 0.67,
    "p95Pct": 1.93,
    "coverPct": 0,
    "reg": {
@@ -582,8 +582,8 @@
      "refTop": 0.19,
      "refBot": -0.96,
      "procTop": 0.23,
-     "procBot": -1.13,
-     "errM": 0.104
+     "procBot": -1.14,
+     "errM": 0.106
     },
     {
      "at": -1.78,
@@ -613,9 +613,9 @@
      "at": -0.61,
      "refTop": 0.79,
      "refBot": -1.4,
-     "procTop": 0.86,
+     "procTop": 0.85,
      "procBot": -1.42,
-     "errM": 0.049
+     "errM": 0.041
     },
     {
      "at": -1.61,
@@ -642,28 +642,28 @@
      "errM": 0.037
     },
     {
-     "at": -0.65,
-     "refTop": 0.82,
-     "refBot": -1.41,
-     "procTop": 0.88,
-     "procBot": -1.42,
-     "errM": 0.037
-    },
-    {
      "at": 1.69,
      "refTop": 0.31,
      "refBot": -1.76,
      "procTop": 0.37,
      "procBot": -1.77,
      "errM": 0.037
+    },
+    {
+     "at": 1.49,
+     "refTop": 0.5,
+     "refBot": -1.76,
+     "procTop": 0.55,
+     "procBot": -1.77,
+     "errM": 0.035
     }
    ]
   }
  },
  "turretRows": {
   "side": {
-   "score": 91.33869913079549,
-   "meanPct": 0.63,
+   "score": 91.39918328609784,
+   "meanPct": 0.62,
    "p95Pct": 1.85,
    "coverPct": 0,
    "reg": {
@@ -739,9 +739,9 @@
      "at": -1.48,
      "refTop": 0.75,
      "refBot": 0.08,
-     "procTop": 0.76,
+     "procTop": 0.77,
      "procBot": 0,
-     "errM": 0.048
+     "errM": 0.053
     },
     {
      "at": -1.38,
@@ -770,31 +770,15 @@
    ]
   },
   "plan": {
-   "score": 91.81722122440642,
-   "meanPct": 0.55,
-   "p95Pct": 2.59,
+   "score": 94.38333184916264,
+   "meanPct": 0.42,
+   "p95Pct": 1.03,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
     "dy": -0.012
    },
    "worst": [
-    {
-     "at": 0.26,
-     "refTop": 4.39,
-     "refBot": -0.91,
-     "procTop": 4.4,
-     "procBot": -1.43,
-     "errM": 0.268
-    },
-    {
-     "at": -1.78,
-     "refTop": 2.52,
-     "refBot": 1.29,
-     "procTop": 2.53,
-     "procBot": 0.83,
-     "errM": 0.234
-    },
     {
      "at": 1.79,
      "refTop": 2.56,
@@ -818,6 +802,14 @@
      "procTop": 4.39,
      "procBot": -0.62,
      "errM": 0.081
+    },
+    {
+     "at": -1.78,
+     "refTop": 2.52,
+     "refBot": 1.29,
+     "procTop": 2.53,
+     "procBot": 1.16,
+     "errM": 0.067
     },
     {
      "at": 0.97,
@@ -874,6 +866,14 @@
      "procTop": 4.26,
      "procBot": -0.27,
      "errM": 0.043
+    },
+    {
+     "at": 1.28,
+     "refTop": 3.05,
+     "refBot": -0.61,
+     "procTop": 3.02,
+     "procBot": -0.66,
+     "errM": 0.041
     }
    ]
   }
@@ -912,12 +912,12 @@
   {
    "i": 6,
    "wPct": 0.43,
-   "topPct": 0.75
+   "topPct": 0.86
   },
   {
    "i": 7,
    "wPct": 0.64,
-   "topPct": 0.42
+   "topPct": 0.86
   },
   {
    "i": 8,
@@ -932,12 +932,12 @@
   {
    "i": 10,
    "wPct": 0.21,
-   "topPct": 0.97
+   "topPct": 0.64
   },
   {
    "i": 11,
    "wPct": 0.43,
-   "topPct": 0.64
+   "topPct": 0.75
   },
   {
    "i": 12,
