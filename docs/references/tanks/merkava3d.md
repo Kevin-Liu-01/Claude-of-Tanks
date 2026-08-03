@@ -607,3 +607,142 @@ New laws banked in the r9 report: sliver-follows-dip-reorder; camera-side
 tall corners; per-face corner air; >=25mm plan outlines; pale-deck roof
 guns invert the gun-metal AA law; close-roof frames z +1.2..-1.1 only;
 re-read gatePassed from JSON at razors (console rounds 89.9976 to "90").
+
+## RETONE round r11 (2026-08-03, merkava family agent) — 90.7 PASS (+0.1)
+Executed the critic-r9 five orders (docs/critique/shaded-parity-merkava3d-r9.md).
+Gates: merkava3d 90.7 PASS (hull 91.5 / whole 90.7 / turret 91.6 / stations
+92.3 / dims 100 / floaters 100 — whole +0.1, stations +0.2 over the r10
+lock; gatePassed re-read True from JSON). Freezes verified after EVERY
+batch: 3b 5296950a / 3c 5287233e / 2b 9bfe0895 / 2d 62456460 / 4 e1d164dc /
+4b d44a3624 all EXACT (hash-A/B against git HEAD proved only 3d/1b move).
+Final 3d hash 966f6fd0. Renders zero console errors; all numbers below
+re-run on the FINAL official pairs (tools/tmp-r11-verify.py, ITU-601).
+1. WARM RETONE (defect A) — LAW BANKED, THE WARM-KEY DECODE: warm hue is
+   not a material family, it is ANY lit dark/detail surface under the rig
+   key — turretDark albedo (54,52,47) is R=G+2 and renders (91,87,78)
+   R>G+4 when top-lit; turretDetail albedo (79,84,72) G=R+5 STILL renders
+   R-G +1..+4 (sampled antenna base (77,75,65)); only camo/cloth/track
+   render R<=G+3. The "top bar" decoded to the FULL-WIDTH turretDark
+   shadow-gap stripe at the vane root (whatsat-pinned, z -3.675, top-lit)
+   + the 7-ball knuckle row on it. Retones (3d-gated): ring tori + collar
+   ring + stripe + knuckle rows -> 'turret' camo (the r7 pale-mark roofBox
+   law: edges+AA carry the seam); plinth segment lids -> camo
+   (rackShelf-gated); crest rear bar -> detail hairline moved down; deck
+   conduits + bay diagonal + taper member B -> turretTrack (neutral);
+   glacis welds/bolts + cupola lid seam -> detail. MEASURED (deck rects):
+   view-front turret zone 329 -> 46 (ref 1; order <= ~57 PASS); view-top
+   1593 -> 587 (ref 63); close-roof deck 1554 -> 626 (ref 138). RESIDUAL
+   (honest): the 5-600 view-top/close-roof floor is the SUN-GRAZE GRAMMAR
+   — every 0.45-0.7-rad pale crown (pokes/rolls/heaps, the banked
+   rear-p95 highlight carriers) warm-flips by construction; killing it
+   would forfeit the r6-r8 highlight laws. Flagged for critic arbitration.
+2. WING UNDER-RIM PALE REFUND (defect B): the 0.036 hullDark frame rails
+   -> hullDetail hairlines (0.012) at the SAME outer lines (top edge
+   wg.top-0.012, bottom wg.bot+0.012, z-span wlen+0.02 — the hullLength
+   registration carriers untouched); latch seam -> detail; ROLLED STOW
+   cylinders on the wing tops (crowns wg.top-0.014, under the rail line)
+   fill the plate-top depth slot that measured as the dark bar; inter-wing
+   gap filler at x +-1.075. MEASURED: view-rear x150..295 y382..392 p5
+   56.0 -> 82.4 (order >= 72 PASS, ref 82.5 parity); view-rearleft p5 56.3
+   -> 66.6 (order 85 — PARTIAL, the residual is the quarter-angle shadow
+   of the plate-top recess, geometric not albedo); view-rearright 51.3 ->
+   63.6 (order 70 — PARTIAL).
+3. DEAD-REAR CROWN PARAPET (defect C): heap tops staggered to 2.21-2.355
+   (uneven, camera-side edges kept); plinth FRONT wall segment gains
+   config dipsX x-lanes (0.108-0.118 deep; the REAR segment holds pl.top
+   for every front col via max-over-z, the f 0..0.10 zero lane holds the
+   side band); crest.low lanesL deepened to 0.105 on both flanks + core
+   dropped to top1-0.103, with TWO REAR CARRIER plates ('turret',
+   x -0.13..-0.44 and +0.29..+0.44 at 2.545, z -1.92 behind the rings) so
+   every certified 2.545 front column keeps an exact carrier while the
+   wide box's projection leaves the crown window; counterweight+strap
+   lowered 0.043; BOTH hood pots slid to the deck (z -0.80/-0.85 — their
+   z 0.54-0.60 seats projected solid crown bands where the ref reads
+   EMPTY; front cols keep 2.50/2.553 via max-over-z; the left pot's z-0.54
+   side col falls to the M2 barrel's own 2.542 line, -0.021 on ~7 cols);
+   plinth-MG furniture de-wall (can/strap/tray below h' 2.462; the
+   certified receiver hump 2.653 + band pot 2.644 stay as ref-grammar
+   spikes). MEASURED: crown air y195..232 66.7% -> 76.4% (order >= 80
+   PARTIAL; ref 87.2); skyline steps 3-25px: 23 (order >= 6 PASS); window
+   solid 3937 -> ~2790; proc top-med through the west band fell from the
+   ruled 216 line to ref-class steps. RESIDUAL: the remaining excess is
+   (a) the M2/crest center cluster (the ref's own cluster class but ~30px
+   wider), (b) the cupola/.50 cluster x_img 160-199 (+210 vs ref), (c)
+   the certified plinth zero-lane + rear-segment 3-4px bands.
+4. REAR-FACE RE-POLARIZATION (defect D): four 0.034 hullDark wing end
+   posts -> 0.016 hullDetail (full certified reach kept); main-rack rear
+   rails/posts + center low rail -> hullDetail (rackX-gated; 1B keeps its
+   shadow-budget hullTrack backer — 3D's backer -> hullDark 56-class);
+   midShelf X-braces -> detail; r5 under-rim hullTrack void line ->
+   detail seam (the 3D ref keeps this face bright — 25 sub-70px total);
+   tone-on-tone mesh: 2 sun-graze strips (0.55 rad) + detail mesh patch
+   per wing face, 2 strips + seam on the clamshell-notch face. MEASURED:
+   sub-70 census x150..295 y385..480: 1274 -> 672 (order <= 300 PARTIAL —
+   the residual is the true depth slot between plate top and rack face,
+   plus wing-end shadows); p95 95.6 -> 99.3 (order 104-106 PARTIAL);
+   center bay med 94.4 flat (the 4.6%-area patches cannot move a median —
+   honest miss).
+5. ROOF VOLUME + GUNS (defect F): (i) DOME LIDS — the flush lid disc +
+   drawn seam circle became a low dome cap (sph y-scaled, crown
+   rg.top+0.020, inside the ref's own 2.52-2.541 cover cols; the old
+   lid+seam stack already reached +0.0165 — sub-pixel union move); the
+   close-roof drawn-circle read is dead (rings now shade as volumes).
+   (ii) TOP-DOWN FOOTPRINTS — M2/loader/.50 receiver crowns split into
+   pale lower band + DARK top plate at the SAME certified tops (first cut
+   used turretDark and re-lit WARM — the plates ride turretTrack, the
+   sub-78 neutral class; plinth MG gunmetal lids likewise split).
+   MEASURED view-top sub-78: M2 zone 146 (was 92 over a wider lane, ref's
+   own window carries 485), .50 zone 291 vs ref 1, loader 10 (small cap —
+   residual), plinth 68 vs ref 232 (the ref's plinth gun is DARKER-heavier
+   than ours — residual). (iii) LOUVRE RIBS — six 0.052-pitch ribs +
+   hairline gap lines on the bustle deck (z -2.80..-3.06, tops <=
+   deck+0.012, the r10 flush-kit class). LAW BANKED: deck top faces must
+   tilt rx NEGATIVE (toward the sun's +z) — the r6/r8 "+0.2 -> +5"
+   calibration is for REAR faces catching the sky; a +0.45 deck tilt
+   renders DARKER. MEASURED: window sd 3.70 -> 7.0 (order >= 6 PASS),
+   p75 88.9 -> 97.1, p95 92.7 -> 102.8 (ref 8.31/99.7/107.2).
+6. POLISH (defect G/H/E): arch chord shadow lines -> detail; second
+   backer wall closes the run-filler..backer see-through slot; six pale
+   rim-ring tori behind the arch openings (NOTE + LAW: KIT.torus is
+   PRE-ROTATED rx pi/2 — a flat y-axis ring; an ry spin is a NO-OP and
+   left the first cut lying flat, reaching x +-2.06 and poisoning the
+   fidelity width normalization to a 0.905 global shrink = the r11
+   "gate-0 incident" (dims 0, all curves ~17-35). rz pi/2 is the correct
+   stand-up. ALWAYS whatsat-audit new tori.) hero-fl band-wall curb
+   hairline; hero-rr near-corner members thinned (x0.66) + near chord
+   0.022x0.020 + near hem rail deleted + near bay-mouth stack 0.16 (the
+   -x twins keep every ortho union). MEASURED: arch row p5 29.5 / skirt
+   band p5 60.8 UNCHANGED (the pockets are the arch-opening depth reads
+   at ortho — the rings sit at gear x 1.708 behind the 1.833 skirt and
+   barely print; honest miss); hero-rr corner air 27.5% UNCHANGED —
+   STRUCTURAL CONFLICT: the r9 dead-rear pale kit-wall backing owns the
+   through-corridor, so thinned members reveal PALE KIT, not sky. The
+   dead-rear-window law and the hero-through-sky law fight over the same
+   volume; critic arbitration requested.
+Self-read on the FINAL pairs (r9 verdict complaints, before -> after):
+front 8.8 -> ~9.0 (maroon ellipses dead, warm 46 vs ref+50); frontleft
+8.9 -> ~8.9; left/right 8.8 -> ~8.8 (G residuals hold them); rearleft
+8.7 -> ~8.8; rear 8.7 -> ~8.9 (crown broken, faces re-polarized, band
+parity); rearright 8.7 -> ~8.8; top 9.0 -> ~9.0-9.1 (louvre + footprints
++ warm -63%); hero-fl 8.6 -> ~8.7-8.8 (domes + curb + cleanups); hero-rr
+8.8 -> ~8.8 (corner air structural); toptilt 8.9 -> ~9.0 (domes read);
+close-front 8.8 -> ~8.8; close-roof 8.6 -> ~8.9 (mauve dead, domes in,
+deck kit density still sparser than ref). NOT a universal >=9.0 —
+defects B/C/D/E/G keep honest partials listed above.
+Shots: shots/critic-merkava3d/ (14 views, final = this round's last render).
+
+## Orchestrator arbitration rulings (post-r11, 2026-08-03)
+1. **Corner-air conflict RULED: the backing stays.** The r9 pale kit-wall
+   backing owns the corner corridor; thinning reveals pale kit, not sky
+   (27.5% vs the ref's 43.7% hero corner). The per-face corner-air law
+   cannot be satisfied on both faces by one geometry: the dead-rear
+   inversion (r8's 8.5-class identity failure) outranks the hero corner-sky
+   percentage. CERTIFIED as a priced residual at the current class —
+   critics judge hero-rearright on the overall read; the corner-sky
+   percentage alone must not floor the view.
+2. **close-roof warm floor RULED: 626-class is the material floor.** The
+   rig key's sun-graze highlight grammar warm-flips lit deck surfaces
+   regardless of albedo (r11 law: warm != one material). The albedo work
+   is delivered (1554 -> 626); the residual is lighting-rig grammar.
+   CERTIFIED — further warm-census grinding on the deck is out of order;
+   relief/structure work remains fair game.

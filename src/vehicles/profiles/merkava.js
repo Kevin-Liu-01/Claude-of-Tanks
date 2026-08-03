@@ -401,11 +401,15 @@ function merkavaChassis(P, c) {
       }
     }
     if (c.paleVents) { // r3 seam/bolt density: glacis plate weld lines
+      // r11 (defect A family, 3D/rackShelf-gated): lit hullDark seams
+      // classify warm (R>G+3) on the hue-uniform glacis — detail tone
+      // keeps the seam rhythm; 3B/3C/1B byte-identical.
+      const wm11 = c.rackShelf ? 'hullDetail' : 'hullDark';
       for (const gz of [2.12, 1.78]) {
-        P.add('hullDark', box(w * 0.40, 0.010, 0.016), -w * 0.06, gTop(gz) + 0.010, gz, rxAt(gz), 0, 0);
+        P.add(wm11, box(w * 0.40, 0.010, 0.016), -w * 0.06, gTop(gz) + 0.010, gz, rxAt(gz), 0, 0);
       }
       for (let k = 0; k < 4; k++) {
-        P.add('hullDark', box(0.018, 0.010, 0.018), -w * 0.30 + k * 0.16, gTop(2.30) + 0.010, 2.30, rxAt(2.30), 0, 0);
+        P.add(wm11, box(0.018, 0.010, 0.018), -w * 0.30 + k * 0.16, gTop(2.30) + 0.010, 2.30, rxAt(2.30), 0, 0);
       }
     }
     if (c.bowFlat && c.grilleBright) {
@@ -864,8 +868,11 @@ function merkavaChassis(P, c) {
             // dark chords at wheel pitch WERE the metronome — soft marks
             // skip two, thin the rest and jitter their lengths.
             if (sk.soft) {
+              // r11 (critic r9 defect G "skirt slit p5 60.8 vs ref 91.8"):
+              // the chord shadow lines leave the dark class — detail tone
+              // hairlines keep the ceiling rhythm at the ref's 75+ floor.
               if (wi !== 1 && wi !== 4) {
-                P.add('hullDark', box(0.040, 0.013, (flatW + slope) * (0.62 + ((wi * 5) % 3) * 0.17)),
+                P.add('hullDetail', box(0.040, 0.011, (flatW + slope) * (0.62 + ((wi * 5) % 3) * 0.17)),
                   s * (sx + 0.003), lb9 + 0.006, wz + ((wi * 3) % 3 - 1) * 0.05);
               }
             } else P.add('hullDark', box(0.040, 0.022, flatW + slope), s * (sx + 0.003), lb9 + 0.008, wz);
@@ -890,6 +897,26 @@ function merkavaChassis(P, c) {
         // the side bots, wheels the tops, plank the plan extremes.
         P.add('hullDark', box(0.016, 0.30, 5.34),
           s * ((c.gearOut ?? hw - 0.036) - 0.008), 0.295, -0.81);
+        if (sk.soft) {
+          // r11 (critic r9 defect G: arch-row p5 29.5 near-black pockets vs
+          // ref 52.9; order 6 floor p5 >= 45): the band between the r5 run
+          // filler (tops 0.445) and the main backer (bots 0.66) was an
+          // uncovered see-through slot at the arch-opening line — a second
+          // hullDark wall closes it at the ~50 dusty shade. And the ref's
+          // pale wheel rims (p95 94.6 vs our 71.0): one thin detail-tone
+          // rim ring per wheel just outside the gear face — visible only
+          // through the arch openings (skirt owns every silhouette).
+          P.add('hullDark', box(0.016, 0.26, z0 - z1 - 0.1),
+            s * ((c.gearOut ?? hw - 0.036) - 0.02), 0.51, (z0 + z1) / 2);
+          // (KIT.torus is pre-rotated rx pi/2 — a flat y-axis ring; rz
+          // pi/2 stands it facing +-x. An ry spin here was a no-op that
+          // left the rings FLAT, reaching x +-2.06 and poisoning the
+          // fidelity width normalization — r11 gate-0 incident.)
+          for (const wz9 of c.wheelZs) {
+            P.add('hullDetail', KIT.torus((c.wheelR ?? 0.39) * 0.86, 0.009, 18),
+              s * ((c.gearOut ?? hw - 0.036) - 0.012), (c.wheelR ?? 0.39) + 0.07, wz9, 0, 0, Math.PI / 2);
+          }
+        }
       }
       // Scallop tabs stay SHALLOW (hem dips ~8 cm below the plate line):
       // the measured front-view skirt columns bottom at the dip line — the
@@ -1189,7 +1216,9 @@ function merkavaChassis(P, c) {
           // rack face the 3D ref keeps BRIGHT. The under-rim shadow thins to
           // a hairline (rims keep a void LINE, not a bar) and the bay pockets
           // go tone-on-tone cloth (~84 on the ~93 face — basket-rung class).
-          P.add('hullTrack', box(wd * 0.94, 0.016, 0.020), xm, tr.top - 0.058, tr.z1 + 0.012); // under-rim void LINE (hairline)
+          // r11c: the 3D ref keeps this face bright (25 sub-70px total) —
+          // the void line goes detail-tone (the r5 idiom retired on 3D).
+          P.add('hullDetail', box(wd * 0.94, 0.016, 0.020), xm, tr.top - 0.058, tr.z1 + 0.012); // under-rim seam (hairline)
           // r6 (critic r5 3d item c: rack rim band med 83.5 vs ref 95.1,
           // p95 -11.5): the r5 un-punch cloth pockets covered ~40% of the
           // face and pinned the band at the 84 class — they shrink to
@@ -1289,7 +1318,11 @@ function merkavaChassis(P, c) {
         // interior backer: rackVoid marks run it in the VOID channel — the
         // 56-luma hullDark interior WAS the pinned rear dark (shadow-budget
         // order: the ref racks hit the 26 class through their frames).
-        P.add(c.rackVoid ? 'hullTrack' : 'hullDark', box(wd + 0.02, (tr.top - tr.bot) * 0.9, 0.022), xm, (tr.top + tr.bot) / 2 - 0.01, mid + 0.28 * len);
+        // r11 (defect D: cell p5 24.4 = this 24L track-channel backer
+        // showing through the frame gaps; the 3D ref keeps its rack face
+        // BRIGHT — r5 un-punch law): rackX/3D backs at the 56 hullDark
+        // class; 1B keeps the 26-class channel (its own shadow-budget law).
+        P.add(c.rackVoid && !c.rackX ? 'hullTrack' : 'hullDark', box(wd + 0.02, (tr.top - tr.bot) * 0.9, 0.022), xm, (tr.top + tr.bot) / 2 - 0.01, mid + 0.28 * len);
         if (c.rackVoid) {
           // r4 grammar audit: the 40 mm frame grid (rails + posts at every
           // bay corner) read as crate framing / ladder rungs from dead
@@ -1306,10 +1339,14 @@ function merkavaChassis(P, c) {
           // r7 (tr.dips marks): the outboard rail drops UNDER the notch
           // floors — at -0.054 it re-ruled the notch windows sub-2px under
           // the line (interior x, downward-only; siblings byte-identical)
-          P.add('hullDark', box(wd * 0.55, rTh, rTh), xm - s * wd * 0.225, tr.top - 0.04, tr.z1 + 0.02);
-          P.add('hullDark', box(wd * 0.43, rTh, rTh), xm + s * wd * 0.285, tr.top - (tr.dips ? 0.12 : 0.054), tr.z1 + 0.02);
-          P.add('hullDark', box(0.020, tr.top - tr.bot, 0.020), s * railX, (tr.top + tr.bot) / 2, tr.z1 + 0.02, 0, 0, s * 0.02);
-          P.add('hullDark', box(0.020, tr.top - tr.bot, 0.020), s * x0 + (s > 0 ? 0.02 : -0.02), (tr.top + tr.bot) / 2, tr.z1 + 0.02);
+          // r11 re-polarization (defect D, rackX/3D only): the rear frame
+          // rails/posts leave the sub-70 band — detail tone (~81L, the
+          // ref's own "no black rails" p5-84 class); 1B keeps dark.
+          const frMat = c.rackX ? 'hullDetail' : 'hullDark';
+          P.add(frMat, box(wd * 0.55, rTh, rTh), xm - s * wd * 0.225, tr.top - 0.04, tr.z1 + 0.02);
+          P.add(frMat, box(wd * 0.43, rTh, rTh), xm + s * wd * 0.285, tr.top - (tr.dips ? 0.12 : 0.054), tr.z1 + 0.02);
+          P.add(frMat, box(0.020, tr.top - tr.bot, 0.020), s * railX, (tr.top + tr.bot) / 2, tr.z1 + 0.02, 0, 0, s * 0.02);
+          P.add(frMat, box(0.020, tr.top - tr.bot, 0.020), s * x0 + (s > 0 ? 0.02 : -0.02), (tr.top + tr.bot) / 2, tr.z1 + 0.02);
         } else {
           for (const ry of [tr.bot + 0.04, tr.top - 0.04]) {
             P.add('hullDark', box(0.04, 0.04, len), s * railX, ry, mid);
@@ -1329,7 +1366,19 @@ function merkavaChassis(P, c) {
       // railZ (optional, 3D batch-18): the center low rail must stay INSIDE
       // the clamshell notch depth — at the default 0.55 it poked 0.23 past
       // the 3D ref's -3.63 center plan line. Siblings keep 0.55.
-      P.add('hullDark', box(x0 * 2, c.rackVoid ? 0.024 : 0.035, c.rackVoid ? 0.024 : 0.035), 0, tr.bot + 0.04, tr.z1 + (tr.railZ ?? 0.55));
+      // r11 (defect D center bay): the low rail leaves the sub-70 band on
+      // rackX/3D (detail tone); 1B/siblings byte-identical.
+      P.add(c.rackX && c.paleKit ? 'hullDetail' : 'hullDark', box(x0 * 2, c.rackVoid ? 0.024 : 0.035, c.rackVoid ? 0.024 : 0.035), 0, tr.bot + 0.04, tr.z1 + (tr.railZ ?? 0.55));
+      if (c.rackX && c.paleKit) {
+        // r11c (defect D center bay med 94.4 vs ref 98.4): two sun-graze
+        // strips + a seam on the clamshell-notch face — the flat-94 center
+        // wall gains the ref's tone-on-tone texture (rear faces lift by
+        // up-tilt per the r6 calibration; 6 mm proud = 0.4px to the plan
+        // center line, metrology-selective class).
+        P.add('hull', box(0.44, 0.034, 0.008), -0.05, 1.30, -3.636, 0.55, 0, 0.03);
+        P.add('hull', box(0.36, 0.030, 0.008), 0.10, 1.08, -3.636, 0.50, 0, -0.02);
+        P.add('hullDetail', box(0.50, 0.010, 0.006), 0.02, 1.19, -3.634);
+      }
       KIT.jerryCan(P, c.paleKit ? 'hullDetail' : 'hullCloth', -railX + 0.25, tr.top - 0.34, mid + 0.06, 0.15);
     } else {
       for (const ry of [tr.bot + 0.04, tr.top - 0.04]) {
@@ -1364,9 +1413,15 @@ function merkavaChassis(P, c) {
           const fz = ms.z1 + (tr.z0 - ms.z1) * 0.03 - 0.008;
           const xr2 = Math.atan2(msH * 0.66, msW * 0.80);
           P.add('hullCloth', box(msW * 0.84, msH * 0.64, 0.007), s * (x0 + msW * 0.5), msY - 0.01, fz + 0.004);
-          P.add('hullDark', box(0.015, Math.hypot(msH * 0.66, msW * 0.80), 0.013), s * (x0 + msW * 0.5), msY, fz, 0, 0, xr2);
-          P.add('hullDark', box(0.015, Math.hypot(msH * 0.66, msW * 0.80), 0.013), s * (x0 + msW * 0.5), msY, fz, 0, 0, -xr2);
+          // r11 (defect D center bay, med 94.4 vs ref 98.5): dark X-braces
+          // -> detail tone (the r5 "ref braces sample p5 84, no black
+          // rails" law finally applied to the CENTER bay too) + one
+          // sun-tilted pale mesh strip lifting the bay median.
+          P.add('hullDetail', box(0.015, Math.hypot(msH * 0.66, msW * 0.80), 0.013), s * (x0 + msW * 0.5), msY, fz, 0, 0, xr2);
+          P.add('hullDetail', box(0.015, Math.hypot(msH * 0.66, msW * 0.80), 0.013), s * (x0 + msW * 0.5), msY, fz, 0, 0, -xr2);
           P.add('hullDetail', box(0.045, 0.045, 0.016), s * (x0 + msW * 0.5), msY, fz - 0.004);
+          P.add('hull', box(msW * 0.62, 0.034, 0.008), s * (x0 + msW * 0.44), msY + msH * 0.27, fz - 0.004, 0.30, 0, s * 0.03);
+          P.add('hull', box(msW * 0.46, 0.030, 0.008), s * (x0 + msW * 0.56), msY - msH * 0.20, fz - 0.004, 0.26, 0, -s * 0.02);
           P.add('hull', box(msW * 0.52, 0.065, (tr.z0 - ms.z1) * 0.42), s * (x0 + msW * 0.46), (ms.top ?? tr.top) - 0.048, (tr.z0 + ms.z1) / 2 + 0.03, 0.05, s * 0.16, 0);
         } else if (c.paleKit) { // strapped-bundle dressing on the shelf rear face
           const msY = ((ms.top ?? tr.top) + tr.bot) / 2, msH = ((ms.top ?? tr.top) - tr.bot);
@@ -1416,7 +1471,10 @@ function merkavaChassis(P, c) {
             // plan/side column moves. rackX gates to 3D (3B/3C wings=tarp).
             const fz9 = wmid - (wlen * 0.96 - wPull) / 2; // plate rear face
             const wTop9 = (wg.top + wg.bot) / 2 + (wg.top - wg.bot) * 0.45;
-            P.add('hullDark', box(wd * 0.86, 0.008, 0.005), xm, wTop9 - 0.052, fz9 - 0.002);
+            // r11b (defect B quarters: rect p5 58.1/55.4 after the rail
+            // refund — this full-width dark seam was the residual dark
+            // line): detail hairline; the dark keepers stay the hardware.
+            P.add('hullDetail', box(wd * 0.86, 0.008, 0.005), xm, wTop9 - 0.052, fz9 - 0.002);
             const nL9 = wd > 0.5 ? 5 : 4;
             for (let l9 = 0; l9 < nL9; l9++) {
               const lx9 = xm + wd * (-0.38 + l9 * (0.76 / (nL9 - 1)) + (((l9 * 7) % 3) - 1) * 0.02);
@@ -1426,8 +1484,34 @@ function merkavaChassis(P, c) {
             P.add('hullDetail', box(0.030, 0.030, 0.006), xm - wd * 0.36, (wg.top + wg.bot) / 2 - (wg.top - wg.bot) * 0.32, fz9 - 0.003);
           }
         }
-        for (const ry of [wg.bot + 0.03, wg.top - 0.03]) {
-          P.add('hullDark', box(0.036, 0.036, wlen + 0.02), xm, ry, wmid);
+        if (c.paleKit && c.rackX) {
+          // r11c ROLLED STOW ON THE WING TOP (defects B+D, measured: the
+          // sub-70 band y396-420 was the DEPTH SLOT between the wing plate
+          // top and the rack face 0.3 m behind — the ref fills it with a
+          // lit stow roll on the plate edge; p5 58.1/55.4 on the quarters
+          // and 964 sub-70 in the face rect were this shadow, not albedo).
+          // Roll crowns hold wg.top-0.002 (under the certified rail line).
+          P.add('hull', KIT.cylX(0.034, wd * 0.92, 12), xm, wg.top - 0.048, wz1 + 0.062);
+          if (wg.x0 > 1.05) { // outer wing: fill the 5 cm inter-wing shadow slot (quarters p5)
+            P.add('hullDetail', box(0.07, (wg.top - wg.bot) * 0.72, 0.05), s * (wg.x0 - 0.025), (wg.top + wg.bot) / 2 - 0.02, wz1 + 0.075);
+          }
+          P.add('hull', KIT.cylX(0.026, wd * 0.55, 10), xm - s * wd * 0.16, wg.top - 0.042, wz1 + 0.075);
+          P.add('hullDark', box(wd * 0.30, 0.010, 0.012), xm + s * wd * 0.2, wg.top - 0.038, wz1 + 0.055); // strap
+          // r11 PALE-REFUND (critic r9 defect B — the r8 dark-overshoot
+          // class recurring on these frame rails: view-rearleft x70..210
+          // y340..354 proc p5 56.3 vs ref p5 102.6 IN A PALE STRIP; rear
+          // y382..392 p5 56.0 vs 82.5/77.6). The rails are the wings'
+          // z-extreme carriers (hullLength registration — the r9 latch note
+          // pins every rear extreme inside their reach), so they THIN to
+          // hairlines at detail tone (~80L ordered class) with the SAME
+          // outer lines: top rail keeps its top edge (wg.top-0.012), bottom
+          // rail keeps its bottom edge (wg.bot+0.012), z-span unchanged.
+          P.add('hullDetail', box(0.036, 0.012, wlen + 0.02), xm, wg.top - 0.018, wmid);
+          P.add('hullDetail', box(0.036, 0.012, wlen + 0.02), xm, wg.bot + 0.018, wmid);
+        } else {
+          for (const ry of [wg.bot + 0.03, wg.top - 0.03]) {
+            P.add('hullDark', box(0.036, 0.036, wlen + 0.02), xm, ry, wmid);
+          }
         }
         if (wg.tarp && c.paleKit) {
           // r6 SCULPTED TARP (critic gating item 1): the r4 flat sub-faces +
@@ -1513,8 +1597,30 @@ function merkavaChassis(P, c) {
         } else {
           P.add('hullDark', box(wd + 0.02, wg.top - wg.bot, 0.03), xm, (wg.top + wg.bot) / 2, wz1 + 0.02);
         }
-        P.add('hullDark', box(0.034, wg.top - wg.bot, 0.034), s * wg.x0 + (s > 0 ? 0.015 : -0.015), (wg.top + wg.bot) / 2, wz1 + 0.05);
-        P.add('hullDark', box(0.034, wg.top - wg.bot, 0.034), s * wg.x1 - (s > 0 ? 0.015 : -0.015), (wg.top + wg.bot) / 2, wz1 + 0.05);
+        if (c.paleKit && c.rackX) {
+          // r11 RE-POLARIZATION (critic r9 defect D: proc rear faces read
+          // "flat-94 with dark frames" — p95 95.6 / 1274 sub-70px vs the
+          // ref's PALE-textured mesh p95 106.2 / 25 sub-70px; these four
+          // full-height 0.034 dark posts WERE ~1100 of the census). Posts
+          // thin to wire class at detail tone (~81L — out of the sub-70
+          // band) keeping their full wg.top..wg.bot reach; the faces gain
+          // tone-on-tone mesh: two sun-tilted pale strips (the calibrated
+          // +4..+6L response — the ref's own p95 104-106 class) + one
+          // detail mesh patch, all <= 8 mm proud inside the dark-rail
+          // z-reach (no plan/side column moves).
+          P.add('hullDetail', box(0.016, wg.top - wg.bot, 0.016), s * wg.x0 + (s > 0 ? 0.015 : -0.015), (wg.top + wg.bot) / 2, wz1 + 0.05);
+          P.add('hullDetail', box(0.016, wg.top - wg.bot, 0.016), s * wg.x1 - (s > 0 ? 0.015 : -0.015), (wg.top + wg.bot) / 2, wz1 + 0.05);
+          const wfz = wmid - (wlen * 0.96) / 2 - 0.004; // 4 mm proud of the plate rear face
+          // r11b: p95 moved 95.6 -> 97.2 only — the strips double in height
+          // toward the ref's 104-106 class (rear-swing capped inside the
+          // rails' wz1-0.01 reach: (0.046*sin0.32 + 0.008*cos0.32)/2 = 11 mm)
+          P.add('hull', box(wd * 0.72, 0.032, 0.008), xm - s * wd * 0.06, (wg.top + wg.bot) / 2 + (wg.top - wg.bot) * 0.24, wfz, 0.55, 0, s * 0.03);
+          P.add('hull', box(wd * 0.55, 0.030, 0.008), xm + s * wd * 0.14, (wg.top + wg.bot) / 2 - (wg.top - wg.bot) * 0.16, wfz, 0.52, 0, -s * 0.04);
+          P.add('hullDetail', box(wd * 0.44, (wg.top - wg.bot) * 0.30, 0.006), xm - s * wd * 0.16, (wg.top + wg.bot) / 2 + (wg.top - wg.bot) * 0.02, wfz + 0.002, 0, 0, s * 0.02);
+        } else {
+          P.add('hullDark', box(0.034, wg.top - wg.bot, 0.034), s * wg.x0 + (s > 0 ? 0.015 : -0.015), (wg.top + wg.bot) / 2, wz1 + 0.05);
+          P.add('hullDark', box(0.034, wg.top - wg.bot, 0.034), s * wg.x1 - (s > 0 ? 0.015 : -0.015), (wg.top + wg.bot) / 2, wz1 + 0.05);
+        }
       }
     }
   }
@@ -1903,10 +2009,26 @@ function merkavaPlinthMG(P, m) {
   // AT the same certified crowns.
   const lidH = m.pale ? 0.028 : 0.010;
   const lidMat = m.pale ? 'turret' : 'turretDetail';
-  P.add(lidMat, box(recW * 0.48, lidH, (m.recZ0 - m.recZ1) * 0.90),
-    m.xIn + sgn9 * recW * 0.26, m.recTop - lidH / 2 + 0.001, (m.recZ0 + m.recZ1) / 2);
-  P.add(lidMat, box(recW * 0.44, lidH, (m.recZ0 - m.recZ1) * 0.86),
-    m.xIn + sgn9 * recW * 0.76, m.recTop - 0.020 - lidH / 2 + 0.001, (m.recZ0 + m.recZ1) / 2);
+  if (m.gunmetal) {
+    // r11 TOP-DOWN GUN FOOTPRINT (critic r9 defect F-ii — the plinth MG was
+    // invisible from above: 32 dark px in its lane): each pale cap splits
+    // into a pale lower band + a DARK receiver top plate at the same
+    // certified crowns (union identical; gunmetal = 3D-only, siblings
+    // byte-exact).
+    P.add(lidMat, box(recW * 0.48, lidH - 0.010, (m.recZ0 - m.recZ1) * 0.90),
+      m.xIn + sgn9 * recW * 0.26, m.recTop - lidH / 2 - 0.004, (m.recZ0 + m.recZ1) / 2);
+    P.add('turretTrack', box(recW * 0.48, 0.010, (m.recZ0 - m.recZ1) * 0.90),
+      m.xIn + sgn9 * recW * 0.26, m.recTop - 0.004, (m.recZ0 + m.recZ1) / 2);
+    P.add(lidMat, box(recW * 0.44, lidH - 0.010, (m.recZ0 - m.recZ1) * 0.86),
+      m.xIn + sgn9 * recW * 0.76, m.recTop - 0.020 - lidH / 2 - 0.004, (m.recZ0 + m.recZ1) / 2);
+    P.add('turretTrack', box(recW * 0.44, 0.010, (m.recZ0 - m.recZ1) * 0.86),
+      m.xIn + sgn9 * recW * 0.76, m.recTop - 0.024, (m.recZ0 + m.recZ1) / 2);
+  } else {
+    P.add(lidMat, box(recW * 0.48, lidH, (m.recZ0 - m.recZ1) * 0.90),
+      m.xIn + sgn9 * recW * 0.26, m.recTop - lidH / 2 + 0.001, (m.recZ0 + m.recZ1) / 2);
+    P.add(lidMat, box(recW * 0.44, lidH, (m.recZ0 - m.recZ1) * 0.86),
+      m.xIn + sgn9 * recW * 0.76, m.recTop - 0.020 - lidH / 2 + 0.001, (m.recZ0 + m.recZ1) / 2);
+  }
   P.add('turretDetail', box(Math.abs(m.x - m.xIn) * 0.72, 0.045, (m.recZ0 - m.recZ1) * 0.7),
     (m.x + m.xIn) / 2, recY0 - 0.018, (m.recZ0 + m.recZ1) / 2 - 0.015);
   P.add('turretDark', box(0.05, 0.032, 0.13), m.x, m.recTop - 0.058, m.recZ1 - 0.035); // stock/grip
@@ -2181,6 +2303,29 @@ function merkavaBasket(P, b) {
   const packLen = b.shelf ? 0.52 : 0.92;
   P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 1.86, (b.top - b.bot) * packH, len * packLen),
     bx - b.hw * 0.04, b.bot + (b.top - b.bot) * (packH * 0.5 + 0.02), b.shelf ? b.z0 - 0.02 - len * packLen / 2 : mid - len * 0.02);
+  if (b.soft && b.voids && !b.shelf) {
+    // r11 1B THROUGH-READ (critic-r10 residual b, MEASURED against the
+    // official pair this round: the ref's hero-rr through-zone is NOT a
+    // dark wall — it reads med 85.8 / p75 99.5 (pale bars + scattered
+    // pockets) where ours sat FLAT-77 (ambient-floored pack in shade). A
+    // first cut split the pack rear segment DARK (keelDarkTail law) and
+    // moved the median the WRONG way (77.5 vs ref 85.8) — reverted. The
+    // ref class instead comes from LIT ROLLS riding the pack's rear top
+    // edge: 0.55-0.65-rad sun-graze crowns render 100-110 through the rim
+    // gap over the pack's own shaded base. Crowns cap at bot+0.395H,
+    // under the rim rails' falling 2.38-2.435 line (silhouette-free; the
+    // razor-blocked rim-cresting is untouched).
+    const bH9 = b.top - b.bot;
+    const pkT9 = b.bot + bH9 * packH;
+    const rollY9 = Math.min(pkT9 + 0.030, (b.topRear ?? b.top) - 0.048); // crowns under every rim-rail top (rimJit min topR-0.036, rail h 0.045)
+    for (const [rf9, rw9, rz9, rx9] of [
+      [-0.52, 0.44, 0.14, 0.58], [0.02, 0.36, 0.20, 0.64], [0.55, 0.40, 0.11, 0.55],
+    ]) {
+      P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * rw9, 0.055, 0.014),
+        bx + b.hw * rf9, rollY9, b.z1 + rz9, rx9, ((rf9 * 7) % 2) * 0.06, 0);
+    }
+    P.add('turretDark', box(b.hw * 0.30, 0.009, 0.012), bx + b.hw * 0.28, rollY9 - 0.022, b.z1 + 0.17); // strap seam between rolls
+  }
   P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 0.90, (b.top - b.bot) * 0.55, len * 0.52),
     b.hw * 0.42, b.bot + (b.top - b.bot) * 0.32, b.shelf ? b.z0 - 0.02 - len * 0.28 : mid + len * 0.08);
   if (b.shelf) {
@@ -3069,7 +3214,7 @@ function merkavaModularTurret(P, t) {
     P.add('turret', box(cr.hw1 * 2, (cr.shelfTop ?? (lowA - 0.06)) - (cr.bot - 0.06), cr.zW + 0.02 - zW2),
       0, ((cr.shelfTop ?? (lowA - 0.06)) + cr.bot - 0.06) / 2, (cr.zW + 0.02 + zW2) / 2);
     // wide rear crest box zW2 -> z1: core + uneven lane caps
-    const baseW = cr.top1 - 0.055;
+    const baseW = cr.top1 - 0.103; // r11b: core top out of the crown window
     P.add('turret', slab(
       [-cr.hw1, cr.bot - 0.06, zW2], [cr.hw1, cr.bot - 0.06, zW2],
       [cr.hw1, shellTop - 0.02, cr.z1], [-cr.hw1, shellTop - 0.02, cr.z1],
@@ -3079,7 +3224,22 @@ function merkavaModularTurret(P, t) {
     // top1 for the side max-over-x, dips are downward-only
     // holder = LEFT outer lane (ref front is HIGH outboard: 2.575-2.585 at
     // x -0.36..-0.42 — dipping it cost front cols on the first cut)
-    const lanesL = [[-1.0, -0.58, 0.000], [-0.58, -0.22, 0.026], [-0.22, 0.14, 0.010], [0.14, 0.55, 0.032], [0.55, 1.0, 0.004]];
+    // r11 PARAPET BREAK (critic r9 defect C): the shallow r5 dips left the
+    // wide box's projected top a ruled dead-rear parapet at y213-217 across
+    // x_img 263-389 (ref: sky there outside its own M2 cluster — its
+    // 2.5+ front-col carriers live at z <= -1.4, so they project BELOW the
+    // crown window). Lanes deepen 0.055-0.085; the LEFT lanes' front
+    // columns move to a REAR CARRIER plate at the same 2.545 top behind the
+    // loader ring (z -1.86..-1.98 — front cols keep max-over-z EXACT, its
+    // own projection lands y~241, below the window; side cols hide under
+    // the 2.588/2.617 stair bands). One zero-dip lane still holds top1 for
+    // the side max-over-x.
+    // r11b (measured: the 0.03 left-mid dip held y 219 and the 2.490 CORE
+    // top projected y 224 — bands 320-399 read 620/506 solid vs ref 211/1):
+    // both carrier-compensated flank lanes deepen to 0.105 and the core
+    // drops to top1-0.103, so the wide box's whole west/east projection
+    // falls to the ref's own ~3px base band at y 229-232.
+    const lanesL = [[-1.0, -0.62, 0.105], [-0.62, -0.30, 0.105], [-0.30, 0.02, 0.008], [0.02, 0.38, 0.030], [0.38, 0.68, 0.000], [0.68, 1.0, 0.105]];
     for (const [fa, fb, dp] of lanesL) {
       const xa = cr.hw1 * fa, xb = cr.hw1 * fb;
       const sl = (fa < 0 ? -1 : 1) * 0.014;
@@ -3089,6 +3249,12 @@ function merkavaModularTurret(P, t) {
         [xa, cr.top1 - dp - Math.max(0, sl), zW2 + 0.01], [xb, cr.top1 - dp - Math.max(0, -sl), zW2 + 0.01],
         [xb, cr.top1 - dp - Math.max(0, -sl), cr.z1], [xa, cr.top1 - dp - Math.max(0, sl), cr.z1]));
     }
+    // rear carriers (see the parapet-break note): certified 2.545 front-col
+    // lines for x -0.13..-0.44 and +0.30..+0.44, standing on the deck
+    // behind the hatch rings (bottoms embedded ~5 mm into the 2.465 deck
+    // slab — floater-safe; both project y~241, below the crown window)
+    P.add('turret', box(0.31, 0.085, 0.13), -0.285, cr.top1 - 0.0425, -0.85);
+    P.add('turret', box(0.15, 0.085, 0.13), 0.365, cr.top1 - 0.0425, -0.85);
   } else if (t.crestWaves) {
     // r8 CROWN FLAT-RUN BREAK (critic item 1, MEASURED): the slightly
     // elevated dead-rear critic camera (dir 0,0.08,-1) crowns the whole rear
@@ -3165,7 +3331,11 @@ function merkavaModularTurret(P, t) {
       [-cr.hw1, cr.top0 + 0.01, cr.zW], [cr.hw1, cr.top0 + 0.01, cr.zW],
       [cr.hw1, cr.top1, cr.z1], [-cr.hw1, cr.top1, cr.z1]));
   }
-  P.add('turretDark', box(cr.hw1 * 1.55, 0.03, 0.03), 0, cr.top1 - 0.02, cr.z1 + 0.02);
+  // r11 (defect A/C): the full-width crest rear bar was a lit-turretDark
+  // warm line AND a y-222 crown-window run — rackShelf/3D: detail hairline
+  // lower on the rear face; siblings byte-identical.
+  if (t.rackShelf) P.add('turretDetail', box(cr.hw1 * 1.55, 0.014, 0.03), 0, cr.top1 - 0.052, cr.z1 + 0.02);
+  else P.add('turretDark', box(cr.hw1 * 1.55, 0.03, 0.03), 0, cr.top1 - 0.02, cr.z1 + 0.02);
 
   // Cheek wedges: swept plan taper (measured plateau -> shoulder), underside
   // rising from the ring plane to the mantlet line at the inner face.
@@ -3296,9 +3466,26 @@ function merkavaModularTurret(P, t) {
             P.add('turret', box(x1s - x0s, 0.16 - dd, a - b), (x0s + x1s) / 2, pl.top - 0.08 - dd / 2, (a + b) / 2);
           }
           P.add('turretDark', box(plW * 0.30, 0.02, (a - b) * 0.86), plX - plW * 0.33, pl.top - 0.012, (a + b) / 2);
+        } else if (pl.dipsX && a === pl.z0) {
+          // r11 PARAPET BREAK (critic r9 defect C / r4 elevated-cam law —
+          // 3D config-gated, siblings byte-exact): the FRONT wall segment's
+          // ruled top was the x_img 397-439 dead-rear parapet run (h' =
+          // 2.615 - 0.044 projects OVER the whole rear band). x-lanes dip
+          // 0.05-0.07 (6-9px sky gaps down to the REAR segment's own
+          // projected edge / the pano head); the zero-dip lane keeps every
+          // side column (max-over-x) and the REAR segment holds pl.top at
+          // every x, so front columns never move (max-over-z).
+          for (const [f0, f1, dd] of pl.dipsX) {
+            const x0s = plX - plW / 2 + plW * f0, x1s = plX - plW / 2 + plW * f1;
+            P.add('turret', box(x1s - x0s, 0.16 - dd, a - b), (x0s + x1s) / 2, pl.top - 0.08 - dd / 2, (a + b) / 2);
+          }
+          P.add(t.rackShelf ? 'turret' : 'turretDark', box(plW * 0.26, 0.02, (a - b) * 0.86), plX - plW * 0.35, pl.top - 0.012, (a + b) / 2);
         } else {
           P.add('turret', box(plW, 0.16, a - b), plX, pl.top - 0.08, (a + b) / 2);
-          P.add('turretDark', box(plW * 0.9, 0.02, (a - b) * 0.86), plX, pl.top - 0.012, (a + b) / 2);
+          // r11 warm-retone (defect A family): rackShelf/3D rides the camo
+          // bucket for the segment lids (the r7 roofBox pale-mark law);
+          // 3B/3C keep the dark lids byte-identical.
+          P.add(t.rackShelf ? 'turret' : 'turretDark', box(plW * 0.9, 0.02, (a - b) * 0.86), plX, pl.top - 0.012, (a + b) / 2);
         }
       }
       const base = pl.top - 0.16;
@@ -3530,10 +3717,17 @@ function merkavaModularTurret(P, t) {
         // (r9b: the TALL top corners live at the zb/zM end — the end FACING
         // the dead-rear camera; the first cut sloped them away and the
         // camera read the dropped edge, leaving the upper window open.)
+        // r11 HEAP-TOP STAGGER (critic r9 defect C, order 3: "stagger the six
+        // kit-wall heap tops — uneven 2.20-2.35, camera-side edges kept"):
+        // the r9 2.29-2.375 cluster read as one continuous wall crown; the
+        // tops now swing 0.15 m (2.20-2.35) so the wall's top line breaks
+        // into six uneven crests. Camera-side (zb) tall corners keep the r9b
+        // law; the window still backs PALE everywhere (dips reveal the pale
+        // kit/pack behind, never through-frame sky).
         for (const [hf0, hf1, hTop, hz0, hz1] of [
-          [-0.80, -0.38, 0.475, 0.0, 0.42], [-0.46, 0.02, 0.445, 0.06, 0.55],
-          [-0.06, 0.34, 0.465, 0.0, 0.36], [-0.72, -0.18, 0.415, 0.40, 0.78],
-          [0.30, 0.72, 0.455, 0.04, 0.50], [0.08, 0.54, 0.405, 0.42, 0.74],
+          [-0.80, -0.38, 0.450, 0.0, 0.42], [-0.46, 0.02, 0.310, 0.06, 0.55],
+          [-0.06, 0.34, 0.425, 0.0, 0.36], [-0.72, -0.18, 0.340, 0.40, 0.78],
+          [0.30, 0.72, 0.455, 0.04, 0.50], [0.08, 0.54, 0.365, 0.42, 0.74],
         ]) {
           const za9 = tv.z0 - (tv.z0 - zM) * hz0, zb9 = tv.z0 - (tv.z0 - zM) * hz1;
           const wa9 = tv.hw + (hwM2 - tv.hw) * hz0, wb9 = tv.hw + (hwM2 - tv.hw) * hz1;
@@ -3548,8 +3742,11 @@ function merkavaModularTurret(P, t) {
         // tops 2.34 stay under the rim, the hero corner corridor passes
         // beside them (raycast: its rays land |x| <= 0.55 by z -3.6).
         for (const s9 of [-1, 1]) {
-          P.add(vaneMat, box(0.20, 0.29, 0.055), vx + s9 * 0.855, tv.bot + 0.295, tv.z0 + 0.055, -0.06, 0, s9 * 0.03);
-          P.add(vaneMat, box(0.15, 0.05, 0.045), vx + s9 * 0.84, tv.bot + 0.46, tv.z0 + 0.06, 0.55, s9 * 0.08, 0); // sun-graze crown roll on the stack
+          // r11 (order 6 corner air): the +x stack thins 0.20 -> 0.16 —
+          // still backs the dead-rear bay window (covers x 0.775..0.935 of
+          // the 0.72..0.95 lane), frees ~2pp of the hero corner corridor.
+          P.add(vaneMat, box(s9 > 0 ? 0.16 : 0.20, 0.29, 0.055), vx + s9 * 0.855, tv.bot + 0.295, tv.z0 + 0.055, -0.06, 0, s9 * 0.03);
+          P.add(vaneMat, box(s9 > 0 ? 0.13 : 0.15, 0.05, 0.045), vx + s9 * 0.84, tv.bot + 0.46, tv.z0 + 0.06, 0.55, s9 * 0.08, 0); // sun-graze crown roll on the stack
         }
         // TWO floating PERIMETER rim rails (the ref reads thin edge lines
         // sloping to the corner, not interior plates): square-section rails
@@ -3590,7 +3787,9 @@ function merkavaModularTurret(P, t) {
           const ya = tv.bot + 0.10, yb = tv.top - 0.06;
           const dlen = Math.hypot(xb - xa, yb - ya);
           const ang = Math.atan2(yb - ya, xb - xa);
-          P.add(s9 < 0 ? 'turretDark' : vaneMat, box(dlen * 0.96, 0.016, 0.010), (xa + xb) / 2, (ya + yb) / 2, tv.z0 - 0.008, 0, 0, ang);
+          // r11 (defect A): the dark diagonal reads warm from the top —
+          // neutral track channel keeps the dead-rear dark-line contrast.
+          P.add(s9 < 0 ? 'turretTrack' : vaneMat, box(dlen * 0.96, 0.016, 0.010), (xa + xb) / 2, (ya + yb) / 2, tv.z0 - 0.008, 0, 0, ang);
           for (const hh9 of [0.30, 0.62]) { // hatch hairlines, parallel, offset into the bay
             const xh0 = vx + tv.hw * s9 * (0.985 - hh9 * 0.12), xh1 = vx + tv.hw * s9 * (0.985 - hh9 * 0.12 - 0.22);
             const yh0 = tv.bot + 0.10 + (yb - ya) * hh9 * 0.35, yh1 = yh0 + (yb - ya) * 0.34;
@@ -3642,16 +3841,22 @@ function merkavaModularTurret(P, t) {
           // side-face lattice on the taper plane: post at zM + X diagonal
           // pair to the zW corner (the members framing the corner sky)
           // r9: post/members wire class + pale (pale-refund law)
+          // r11 NEAR-CORNER THIN (critic r9 defect E / order 6 "+6pp corner
+          // air; thin one scaffold member"): the +x (hero-rr near) members
+          // thin a class further — the -x twins keep every ortho union
+          // identical (silhouette = union over both sides), so this is
+          // mask-free air.
+          const th11 = s > 0 ? 0.66 : 1;
           const xM = vx + s * (hwM2 - 0.016);
-          P.add(vaneMat, box(0.015, (topM - 0.155) - (tv.bot + 0.05) + 0.02, 0.016), xM, ((topM - 0.155) + tv.bot + 0.05) / 2 - 0.01, zM - 0.02);
+          P.add(vaneMat, box(0.015 * th11, (topM - 0.155) - (tv.bot + 0.05) + 0.02, 0.016), xM, ((topM - 0.155) + tv.bot + 0.05) / 2 - 0.01, zM - 0.02);
           const yLo = tv.bot + 0.09, yHi = topW - 0.215;
           const zA = zM - 0.02, zB = zW; // zB < zA (tailward)
           const dl2 = Math.hypot(yHi - yLo, zA - zB);
           const angX = Math.atan2(yHi - yLo, zA - zB); // rise per forward-z
           // member A: low at the tail (zB), high at zM -> +z end up = rx < 0
-          P.add(vaneMat, box(0.012, 0.022, dl2 * 0.97), xM, (yLo + yHi) / 2, (zA + zB) / 2, -angX, 0, 0);
+          P.add(vaneMat, box(0.012 * th11, 0.022 * th11, dl2 * 0.97), xM, (yLo + yHi) / 2, (zA + zB) / 2, -angX, 0, 0);
           // member B: high at the tail, low at zM -> +z end down = rx > 0
-          P.add('turretDark', box(0.009, 0.016, dl2 * 0.97), xM - s * 0.005, (yLo + yHi) / 2, (zA + zB) / 2, angX, 0, 0);
+          P.add('turretTrack', box(0.009 * th11, 0.016 * th11, dl2 * 0.97), xM - s * 0.005, (yLo + yHi) / 2, (zA + zB) / 2, angX, 0, 0);
         }
       } else {
         P.add(vaneMat, slab(
@@ -3688,11 +3893,17 @@ function merkavaModularTurret(P, t) {
           railRun(vx - (hwW + hwR) / 2, (topW - 0.13 + topRear - eD9 - 0.13) / 2 - 0.017,
             vx + (hwW + hwR) / 2 * 0.10, (topW + topRear - eD9) / 2 - 0.017, zC9);
           // right chord: center -> corner, riding 0.16 lower into the corner
-          railRun(vx + (hwW + hwR) / 2 * 0.10, (topW - 0.24 + topRear - eD9 - 0.24) / 2 - 0.017,
-            vx + (hwW + hwR) / 2, (topW - 0.28 + topRear - eD9 - 0.28) / 2 - 0.017, zC9);
+          // r11 (order 6 "shrink the mid-corner beam"): the near chord thins
+          // 0.034x0.030 -> 0.022x0.020 — still the rim-slope line, less beam
+          {
+            const xA9 = vx + (hwW + hwR) / 2 * 0.10, yA9 = (topW - 0.24 + topRear - eD9 - 0.24) / 2 - 0.017;
+            const xB9 = vx + (hwW + hwR) / 2, yB9 = (topW - 0.28 + topRear - eD9 - 0.28) / 2 - 0.017;
+            const dl9 = Math.hypot(xB9 - xA9, yB9 - yA9);
+            P.add(vaneMat, box(dl9, 0.022, 0.020), (xA9 + xB9) / 2, (yA9 + yB9) / 2, zC9, 0, 0, Math.atan2(yB9 - yA9, xB9 - xA9));
+          }
         }
         for (const s of [-1, 1]) { // corner posts at the tail (wire class)
-          P.add(vaneMat, box(0.014, (topW - 0.21) - (tv.bot + 0.06) + 0.03, 0.015), vx + s * (hwR + (hwW - hwR) * 0.5) * 0.97, ((topW - 0.21) + tv.bot + 0.06) / 2 - 0.01, (zW + tv.z1) / 2);
+          P.add(vaneMat, box(s > 0 ? 0.010 : 0.014, (topW - 0.21) - (tv.bot + 0.06) + 0.03, s > 0 ? 0.011 : 0.015), vx + s * (hwR + (hwW - hwR) * 0.5) * 0.97, ((topW - 0.21) + tv.bot + 0.06) / 2 - 0.01, (zW + tv.z1) / 2);
         }
       } else {
         P.add(vaneMat, slab(
@@ -3988,7 +4199,12 @@ function merkavaModularTurret(P, t) {
         // inboard rearward; a full-run rail would stand proud of the plan
         // taper columns at the tail). softGoods: pale (the dark rail was a
         // p5-56 line in the r3 flank rect; ref flank p5 89-90).
-        P.add(t.softGoods ? vaneMat : 'turretDark', box(0.016, 0.022, tv.z0 - zM - 0.06), vx + s * ((tv.hw + hwM2) / 2 - 0.068), tv.top - 0.30, (tv.z0 + zM) / 2 - 0.02);
+        // r11 (order 6 mid-corner beam): the +x hem rail crossed the
+        // hero-rr bay at mid-height — lattice/3D drops the NEAR instance
+        // (the -x twin keeps the ortho union; siblings byte-identical).
+        if (!(tv.lattice && s > 0)) {
+          P.add(t.softGoods ? vaneMat : 'turretDark', box(0.016, 0.022, tv.z0 - zM - 0.06), vx + s * ((tv.hw + hwM2) / 2 - 0.068), tv.top - 0.30, (tv.z0 + zM) / 2 - 0.02);
+        }
         // r7 corner hem roll hugging the rear V-flank (item 1b): the rolled
         // hem wraps around the corner onto the flank plane. d 0.10 + the
         // 0.24-rad yaw swing keeps the outer face within +-1 mm of the
@@ -4026,21 +4242,29 @@ function merkavaModularTurret(P, t) {
         }
         // rim knuckle dots along the basket rear rail: from above they break
         // the tray's straight rear rim line (top-bustle work-order item)
+        // r11 WARM-RETONE (critic r9 defect A): sun-lit turretDark spheres
+        // classify warm (R>G+3) — lattice/3D rides the olive detail bucket;
+        // 3B/3C keep the dark dots byte-identical.
+        const knuckMat = t.tailVane && t.tailVane.lattice ? 'turret' : 'turretDark';
         for (let k = 0; k < 11; k++) {
           const kx = (t.basketXoff ?? 0) - t.basketHW * 0.85 + k * t.basketHW * 0.17;
-          P.add('turretDark', KIT.sph(0.014, 8), kx + ((k * 3) % 2 ? 0.012 : -0.01),
+          P.add(knuckMat, KIT.sph(0.014, 8), kx + ((k * 3) % 2 ? 0.012 : -0.01),
             (t.basket.topRear ?? t.basket.top) + 0.010, t.basket.z1 + 0.012);
         }
       }
       // under-basket shadow gap stripe across the mat root (full width)
-      P.add('turretDark', box(tv.hw * 2 - 0.08, 0.006, 0.075), vx, tv.top - 0.002, tv.z0 - 0.055);
+      // r11 WARM-RETONE (critic r9 defect A — THE view-top "top bar" at
+      // x260..370 y94..104, RGB (91,87,78) vs field (88,89,74): this
+      // full-width top-lit turretDark plate was the loudest warm item in
+      // the plan view). Lattice/3D: olive detail; siblings byte-identical.
+      P.add(tv.lattice ? 'turret' : 'turretDark', box(tv.hw * 2 - 0.08, 0.006, 0.075), vx, tv.top - 0.002, tv.z0 - 0.055);
       // r5 hanger-knuckle dot row on the vane ROOT (top-bustle item): breaks
       // the rectangular tray outline from above and carries the ref's own
       // 2.35-2.38 stubble band at z0-0.05..-0.09 (side cols read 2.377/2.352
       // against our bare 2.33 slab there).
       for (let k = 0; k < 7; k++) {
         const dx2 = vx - tv.hw * 0.78 + k * tv.hw * 0.26;
-        P.add('turretDark', KIT.sph(0.018, 8), dx2 + ((k * 3) % 2 ? 0.02 : -0.015),
+        P.add(tv.lattice ? 'turret' : 'turretDark', KIT.sph(0.018, 8), dx2 + ((k * 3) % 2 ? 0.02 : -0.015),
           tv.top + 0.016 + ((k * 5) % 3) * 0.004, tv.z0 - 0.048 - ((k * 7) % 3) * 0.012);
       }
     }
@@ -4063,7 +4287,13 @@ function merkavaModularTurret(P, t) {
     // under the local deck/plateau cover lines (front/side rows unmoved).
     if (rg.collar) {
       P.add('turret', cylY(rg.collar.r, rg.collar.r * 1.02, 0.022, 24), rg.x, rg.collar.y, rg.z);
-      P.add('turretDark', KIT.torus(rg.collar.r * 0.97, 0.016, 24), rg.x, rg.collar.y + 0.012, rg.z);
+      // r11 WARM-RETONE (critic r9 defect A: every LIT turretDark surface
+      // classifies warm — its 0x36342f albedo is R=G+2, so sun-lit tori
+      // rendered mauve-brown rings on a hue-uniform olive ref deck; warm
+      // census close-roof 1396 vs ref 116). Collar/rim/seam rings ride the
+      // olive DETAIL bucket (albedo G=R+5 — the ordered R <= G-1 class).
+      // collar/solid are 3D-only config branches (3B/3C byte-exact).
+      P.add('turret', KIT.torus(rg.collar.r * 0.97, 0.016, 24), rg.x, rg.collar.y + 0.012, rg.z);
       // r5 ring de-tick: the third concentric detail circle joined the
       // dash-tick census (compass-dial read) — collar keeps disc + one
       // dark edge ring only.
@@ -4073,11 +4303,19 @@ function merkavaModularTurret(P, t) {
       // 3D structure r3 (toptilt CIRC "dashed circle relic") + r5 de-tick
       // (critic r4: "dial-tick ring rims"): the cross bar, second hinge,
       // tucked scopes and the extra lip torus all read as tick marks around
-      // the dial. The ring is now: fat rim torus + flush lid disc with ONE
-      // hairline seam + ONE hinge lump. Nothing else on the circle.
-      P.add('turretDark', KIT.torus(rg.r * 0.955, 0.021, 24), rg.x, rg.top - 0.003, rg.z);
-      P.add('turret', cylY(rg.r * 0.70, rg.r * 0.70, 0.018, 24), rg.x, rg.top + 0.004, rg.z);
-      P.add('turretDark', KIT.torus(rg.r * 0.705, 0.0075, 24), rg.x, rg.top + 0.009, rg.z);
+      // the dial. The ring is now: fat rim torus + domed lid + ONE hinge
+      // lump. Nothing else on the circle.
+      // r11 DOME LID (critic r9 defect F-i, perspective-volume law: "ref
+      // hatches are domed volumes — proc lids are flat with thin dashed
+      // circles; at close-roof range the flat maroon rims are the loudest
+      // item on the deck"): the flush lid disc + drawn seam circle become a
+      // LOW DOME CAP — crown rg.top+0.020, inside the ref's own cover
+      // lines (cupola: its 2.52-2.541 front cols at x 0.23..0.58; the old
+      // lid+seam stack already reached +0.0165, so the union moves < 4 mm
+      // = sub-pixel at 640) — sphere shading kills the drawn-circle read.
+      P.add('turret', KIT.torus(rg.r * 0.955, 0.021, 24), rg.x, rg.top - 0.003, rg.z);
+      P.add('turret', KIT.xform(KIT.sph(rg.r * 0.76, 22, Math.PI * 0.5), 0, 0, 0, 0, 0, 0,
+        [1, 0.020 / (rg.r * 0.76), 1]), rg.x, rg.top, rg.z);
       P.add('turret', box(0.065, 0.042, 0.095), rg.x + rg.r * 0.90, rg.top - 0.014, rg.z);
       return;
     }
@@ -4230,6 +4468,7 @@ function buildMerkavaMark(P, p) {
       topIn: V(p.cheek.topIn), topOut: V(p.cheek.topOut),
       botIn: V(p.cheek.botIn), botOut: V(p.cheek.botOut) } : undefined,
     plinth: p.plinth ? { x0: p.plinth.x0, x1: p.plinth.x1, z0: L(p.plinth.z0), z1: L(p.plinth.z1), top: V(p.plinth.top),
+      dipsX: p.plinth.dipsX, // r11 parapet-break lanes (3D-only config)
       slot: p.plinth.slot ? { z0: L(p.plinth.slot.z0), z1: L(p.plinth.slot.z1), top: V(p.plinth.slot.top) } : undefined } : undefined,
     chin: p.chin ? { z0: L(p.chin.z0), z1: L(p.chin.z1), bot0: V(p.chin.bot0), bot1: V(p.chin.bot1), hw: p.chin.hw } : undefined,
     cheekPod: p.cheekPod ? (Array.isArray(p.cheekPod) ? p.cheekPod : [p.cheekPod]).map((cp) => ({
@@ -5179,8 +5418,15 @@ function merkava3Kit(P, p, t, opts = {}) {
       // inside the crest shelf, can/chute stay on their r5 columns.
       P.add('turretDark', box(0.026, 0.16, 0.030), 0.14, crTop - 0.135, zb + 0.36);    // pintle post (into the crest core)
       P.add('turret', box(0.118, 0.062, 0.37), 0.14, crTop - 0.046, zb + 0.395);       // receiver body (pale mass, top 2.530)
-      P.add('turret', box(0.104, 0.024, 0.33), 0.14, crTop - 0.012, zb + 0.395);       // receiver crown (top 2.5405 law)
-      P.add('turretDark', box(0.095, 0.026, 0.115), 0.135, crTop - 0.098, zb + 0.175); // mount tray under the receiver rear (footprint mass)
+      // r11 TOP-DOWN GUN FOOTPRINT (critic r9 defect F-ii, pale-deck
+      // roof-gun law: "ref M2 window carries 485 sub-78px vs proc 92 — the
+      // side-ortho rod engineering does not print top-down"): the crown
+      // splits into a pale lower band + a DARK receiver top plate at the
+      // SAME certified crown line — union silhouette identical, the plan
+      // view gains the dark gun form.
+      P.add('turret', box(0.104, 0.014, 0.33), 0.14, crTop - 0.017, zb + 0.395);       // receiver crown lower band (pale sides)
+      P.add('turretTrack', box(0.104, 0.010, 0.33), 0.14, crTop - 0.005, zb + 0.395);  // receiver top plate (void-channel: lit turretDark reads WARM ~87L; the ref footprint class is sub-78 neutral)
+      P.add('turretTrack', box(0.095, 0.026, 0.115), 0.135, crTop - 0.098, zb + 0.175); // mount tray under the receiver rear (footprint mass, void-channel)
       P.add('turretDetail', box(0.070, 0.050, 0.15), 0.055, crTop - 0.098, zb + 0.26); // ammo can, low-left
       P.add('turretDark', box(0.018, 0.012, 0.11), 0.105, crTop - 0.060, zb + 0.30);   // feed chute
       P.add('turretDark', box(0.046, 0.015, 0.048), 0.14, crTop - 0.048, zb + 0.145);  // spade grips
@@ -5225,8 +5471,11 @@ function merkava3Kit(P, p, t, opts = {}) {
       // stays fat/pale — the ref muzzle mass is the bright end of the line
       P.add('turretDetail', KIT.cylZ(0.026, 0.105, 10), 0.142, crTop - 0.030, zb + 1.5125); // muzzle booster
       P.add('turretDark', box(0.011, 0.024, 0.015), 0.142, crTop - 0.022, zb + 1.41);  // front sight
-      P.add('turretDetail', box(0.13, 0.075, 0.26), -0.24, crTop - 0.085, zb + 0.30, 0, 0.05, 0); // counterweight kit, single + yawed
-      P.add('turretDark', box(0.11, 0.012, 0.020), -0.24, crTop - 0.045, zb + 0.33, 0, 0.05, 0);  // its strap
+      // r11 parapet break: the counterweight + strap rode the dead-rear
+      // crown window (h' 2.517/2.526 -> y 225) — lowered 0.045 out of it;
+      // nothing certified (kit-class, front cols owned by the crest lanes).
+      P.add('turretDetail', box(0.13, 0.075, 0.26), -0.24, crTop - 0.128, zb + 0.30, 0, 0.05, 0); // counterweight kit, single + yawed
+      P.add('turretDark', box(0.11, 0.012, 0.020), -0.24, crTop - 0.094, zb + 0.33, 0, 0.05, 0);  // its strap
     } else if (opts.pale) {
       // r8b span law: splits are X-ONLY — side columns take max-over-x, so
       // x-lanes at staggered heights break the dead-rear crown for free,
@@ -5390,9 +5639,15 @@ function merkava3dKit(P, p, t) {
   // -1.11/-1.23 bare windows (r5 lane law) — mass comes from the z-run
   // instead: ammo can behind the receiver + mount tray under it, both in
   // the plinth's column shadow, so the top view reads a gun cluster.
-  P.add('turretDetail', box(0.075, 0.055, 0.15), -1.155, V(2.596), L(-1.235));       // ammo can behind the hump
-  P.add('turretDark', box(0.062, 0.011, 0.016), -1.155, V(2.626), L(-1.235));        // its strap
-  P.add('turretDark', box(0.095, 0.028, 0.20), -1.15, V(2.545), L(-1.045));          // mount tray (under the receiver line)
+  // r11 parapet break (defect C, the x_img 460-479 "furniture wall"): the
+  // can/strap/tray filled every gap between the certified receiver hump
+  // (2.653) and band pot (2.644) spikes — from the dead-rear the cluster
+  // read one solid block at y 217-231 where the ref keeps air to ~251.
+  // Can + tray drop below the crown window (h' < 2.462); the certified
+  // spikes stay; z-run mass (rods->guns law) is preserved.
+  P.add('turretDetail', box(0.075, 0.055, 0.15), -1.155, V(2.518), L(-1.235));       // ammo can behind the hump (lowered)
+  P.add('turretDark', box(0.062, 0.011, 0.016), -1.155, V(2.548), L(-1.235));        // its strap
+  P.add('turretDark', box(0.095, 0.028, 0.20), -1.15, V(2.520), L(-1.045));          // mount tray (under the receiver line)
   // ---- item 7 (r3): RIGHT commander .50-cal. r5 free-sky re-lay put the
   // pale rod under the plinth line — from the RIGHT the plinth (far side,
   // rendered high by the elevated cam) backed the rod 1-2px under it: zero
@@ -5407,7 +5662,10 @@ function merkava3dKit(P, p, t) {
   // the top/hero read is a weapon cluster.
   P.add('turretDark', box(0.024, 0.155, 0.026), 1.215, V(2.525), L(-0.86));          // pintle post (sill -> rod; ends the sky run)
   P.add('turret', box(0.19, 0.058, 0.26), 1.215, V(2.560), L(-1.00));                // receiver body (pale mass, forward seat)
-  P.add('turret', box(0.16, 0.040, 0.24), 1.215, V(2.5975), L(-1.00));               // receiver crown (top 2.6175)
+  // r11 top-down footprint (defect F-ii): crown splits pale-lower + dark
+  // top plate at the same 2.6175 line — the .50 prints from above.
+  P.add('turret', box(0.16, 0.028, 0.24), 1.215, V(2.5915), L(-1.00));               // receiver crown lower band (top 2.6055)
+  P.add('turretTrack', box(0.16, 0.012, 0.24), 1.215, V(2.6115), L(-1.00));          // receiver top plate (top 2.6175 unchanged; void-channel — lit dark reads warm)
   P.add('turretDark', box(0.022, 0.030, 0.22), 1.10, V(2.556), L(-0.99));            // cradle cheek plate (inboard)
   // r7 gun-metal law: the .50 barrel thins to the ref's AA-coverage pixel
   // class (see the M2 note — a full-coverage rod reads 95 from the far
@@ -5426,7 +5684,10 @@ function merkava3dKit(P, p, t) {
   // ---- loader MG on the left hatch ring (front/quarter read; the LEFT
   // ortho gun is the plinth MG above). r4: two-tone like the rest ----
   P.add('turretDark', box(0.095, 0.070, 0.20), -0.535, V(2.451), L(-1.72));          // receiver
-  P.add('turret', box(0.085, 0.032, 0.18), -0.535, V(2.470), L(-1.72));              // pale cap
+  // r11 top-down footprint (defect F-ii): the pale cap kept the loader MG
+  // invisible from above — split pale-lower + dark top plate, same top.
+  P.add('turret', box(0.085, 0.020, 0.18), -0.535, V(2.464), L(-1.72));              // pale cap lower band
+  P.add('turretTrack', box(0.085, 0.012, 0.18), -0.535, V(2.480), L(-1.72));         // cap top plate (top 2.486 unchanged; void-channel)
   P.add('turretTrack', KIT.cylZ(0.019, 0.56, 8), -0.535, V(2.456), L(-1.56));        // rod z -1.28..-1.84 (void under-body)
   P.add('turret', box(0.026, 0.032, 0.52), -0.535, V(2.477), L(-1.56));              // rod lit strip
   P.add('turretDark', KIT.cylZ(0.013, 0.14, 8), -0.535, V(2.462), L(-1.235));        // taper
@@ -5438,7 +5699,7 @@ function merkava3dKit(P, p, t) {
   // r4 kit-lid de-maroon: the dark seam plate read as a floating maroon
   // rectangle from the top — detail tone with a hairline dark seam only.
   P.add('turretDetail', box(0.125, 0.014, 0.40), 1.02, V(2.6455) + 0.003, L(-1.28)); // lid plate
-  P.add('turretDark', box(0.012, 0.010, 0.36), 1.02, V(2.6455) + 0.006, L(-1.28));   // its seam
+  P.add('turretDetail', box(0.012, 0.010, 0.36), 1.02, V(2.6455) + 0.006, L(-1.28)); // its seam (r11: lit dark = warm)
   P.add('turretDetail', box(0.05, 0.030, 0.09), 1.015, V(2.634), L(-1.10));          // scope hood
   // ---- r3 TURRET-MASS item: shell->module transition wash. From above the
   // narrow roof deck (±0.92) fell off a cliff to the module band (±1.30+) —
@@ -5485,6 +5746,10 @@ function merkava3dKit(P, p, t) {
   // exact polarity read this round exists to create. The step-B rake's own
   // top edge at 2.532-2.548 already hides the wall below ~2.53 from the
   // hero, leaving only a 0.07 m curb of plumb face.)
+  // r11 (critic r9 defect H polish, r4 swept-low pattern "curb shadows"):
+  // a base-shadow hairline where the plumb band wall meets the shoulder —
+  // breaks the flat-wall read in hero-fl without touching the wall planes.
+  P.add('turretDark', box(0.006, 0.010, 0.82), -0.9315, V(2.302), L(-1.05));
   // module top wedge cleats (replace the long horizontal seam engravings —
   // the "framed inset" lines): short raked stops riding the module slope
   for (const s of [-1, 1]) {
@@ -5498,8 +5763,8 @@ function merkava3dKit(P, p, t) {
   // strips) and the rope-coil torus (the BANNED dot-circle idiom) were
   // named regularity instances — cans re-laid jittered (sizes/yaws vary,
   // dark strips gone), coil replaced by a folded strap bundle.
-  P.add('turretDark', box(0.016, 0.014, 1.05), 0.10, V(2.481), L(-1.12));            // cable conduit run
-  P.add('turretDark', box(0.014, 0.012, 0.55), -0.06, V(2.479), L(-0.85), 0, 0.12, 0); // second wire, skewed
+  P.add('turretTrack', box(0.016, 0.014, 1.05), 0.10, V(2.481), L(-1.12));           // cable conduit run (r11: neutral channel — lit dark = warm)
+  P.add('turretTrack', box(0.014, 0.012, 0.55), -0.06, V(2.479), L(-0.85), 0, 0.12, 0); // second wire, skewed
   // r5 (critic r4 "even 3-can trio"): the r4 cans still metered — near-equal
   // pitch (0.185/0.185) on one x-column. Broken for real: unequal z gaps
   // (0.19 / 0.36), x scatter, one can swapped for a soft pouch.
@@ -5536,6 +5801,25 @@ function merkava3dKit(P, p, t) {
     const b8 = sz8 >= -3.08 ? 2.362 : 2.388;
     P.add('turret', box(sw8, 0.048, 0.105), sx8, V(b8), L(sz8), rx8, 0, (sx8 > 0 ? -1 : 1) * 0.06);
   }
+  // ---- r11 LOUVRE RIB PANEL (critic r9 defect F-iii: "view-top x325..375
+  // y128..155 ref sd 8.31 / p95 107.2 visible ribs vs proc sd 3.70 / p95
+  // 92.7 — grilleSoft went too soft"): the ref carries a ribbed grille
+  // panel on the right bustle deck (z -2.79..-3.05). Eight pale sun-tilted
+  // ribs + hairline dark gap lines on the bare deck slabs — rib tops <=
+  // deck+0.010 (the r10 flush-kit law's sub-pixel class; the deck line at
+  // 2.425-2.429 rules those side columns, so nothing certified moves).
+  for (let k9 = 0; k9 < 6; k9++) {
+    // r11c: the 0.022-deep ribs were SUB-PIXEL at the 60px/m ortho (sd
+    // stuck at 4.1) — six ribs at 0.052 pitch, 0.036-deep crowns in the
+    // proven 0.45-rad sun-graze band (+10L) over 0.016 dark gap lines;
+    // crown tops +0.012 stay in the r10 flush-kit sub-pixel class.
+    const rz9 = -2.800 - k9 * 0.052;
+    const rdY9 = 2.43 + (rz9 + 2.70) * (0.005 / 0.36); // local deck line
+    P.add('turret', box(0.74, 0.005, 0.036), 0.49, V(rdY9) + 0.0045, L(rz9), -0.45, 0, 0);
+    if (k9 < 5) P.add('turretDark', box(0.70, 0.005, 0.016), 0.49, V(rdY9) + 0.003, L(rz9 - 0.026));
+  }
+  P.add('turretDetail', box(0.015, 0.009, 0.29), 0.115, V(2.4285) + 0.0035, L(-2.925)); // panel frame rails
+  P.add('turretDetail', box(0.015, 0.009, 0.29), 0.865, V(2.4285) + 0.0035, L(-2.925));
   // ---- bustle tarp crowns: raised to the rim shadow + two more, yawed
   // (critic: "rings raised but no lids/dome mass ... contents don't read") --
   // r8 rack relay: the two rear lumps (-3.52/-3.44) pulled onto the
@@ -7049,7 +7333,16 @@ export const MERKAVA_PROFILES = {
     // wall segments)
     // r5: slot curb dropped 2.492 -> 2.455 — the rod-bottom..curb sky gap
     // was 4.5 px and AA ate it to ~2 (the freesky scanner's floor is 4).
-    plinth: { x0: -0.93, x1: -0.60, z0: -0.55, z1: -1.56, top: 2.615, slot: { z0: -0.62, z1: -1.50, top: 2.455 } },
+    // r11 dipsX (critic r9 defect C): x-lane dips in the FRONT wall segment
+    // — its ruled top was the x_img 397-439 dead-rear parapet; the REAR
+    // segment holds pl.top at every x (front cols max-over-z exact) and the
+    // f 0..0.18 zero lane keeps the side band (max-over-x).
+    plinth: { x0: -0.93, x1: -0.60, z0: -0.55, z1: -1.56, top: 2.615, slot: { z0: -0.62, z1: -1.50, top: 2.455 },
+      // r11b: 0.06-0.07 dips left the lanes at y 226-228, still inside the
+      // crown window (solid 509 vs ref 125 in the x_img 400-439 band) — all
+      // dipped lanes now clear h' 2.462 (front top <= 2.507); the REAR
+      // segment's own y-228 line remains, the ref's own 3px class there.
+      dipsX: [[0, 0.10, 0], [0.10, 0.42, 0.115], [0.42, 0.60, 0.108], [0.60, 0.82, 0.118], [0.82, 1.0, 0.112]] },
     roofBoxes: [
       // rear plateau + measured pot/stack bumps
       { x0: -0.40, x1: 0.40, z0: -1.91, z1: -2.13, top: 2.535, bot: 2.40 },
@@ -7163,8 +7456,21 @@ export const MERKAVA_PROFILES = {
       { x: 1.00, z: -3.315, top: 2.66, base: 2.35, w: 0.05, d: 0.04 },   // can spike 2.641-2.667 @ -3.29..-3.34 (front col hides in the ref's 2.657 cupola band)
       { x: 0.198, z: -3.51, top: 2.585, base: 2.30, w: 0.04, d: 0.04 },  // small can at the whip base (ref -3.52 col 2.589)
       { x: -0.87, z: -2.825, top: 2.638, base: 2.40, w: 0.05, d: 0.04 }, // 2.641 bump @ -2.82..-2.85 (front col hides in the plinth band)
-      { x: -0.49, z: 0.54, top: 2.553, base: 2.40, w: 0.10, d: 0.14 },   // left sight hood (ref front -0.48 col 2.553; side 2.563 @ 0.54)
-      { x: 0.49, z: 0.60, top: 2.50, base: 2.38, w: 0.10, d: 0.12 },     // right hood (ref front 0.49 col 2.501)
+      // r11c parapet: like the right hood, the left pot at z 0.54 ruled
+      // x_img 377-390 of the crown window (h' 2.596 -> y 215; the ref band
+      // there is EMPTY — its own 2.553 front carrier cannot be at z 0.54).
+      // Front col -0.48 keeps 2.553 via max-over-z; the z-0.54 side col
+      // falls to the M2 barrel's own 2.542 line (-0.021 on ~7 cols, the
+      // r5 freesky note's 2.527-2.552 window class).
+      { x: -0.49, z: -0.85, top: 2.553, base: 2.45, w: 0.10, d: 0.14 },  // left sight hood (ref front -0.48 col 2.553)
+      // r11 parapet break (defect C): the hood pot at z 0.60 projected the
+      // whole x_img 240-259 crown band solid (h' 2.548, ref band EMPTY —
+      // the ref's own 2.501 front-col carrier must live at z <= -0.5). The
+      // pot slides to the deck at z -0.80: front col x 0.49 keeps 2.50 via
+      // max-over-z, the side cols there were never the pot's (crest zero
+      // lane 2.545 > 2.50), and the rear projection falls to y~236, out of
+      // the crown window.
+      { x: 0.49, z: -0.80, top: 2.50, base: 2.45, w: 0.10, d: 0.12 },    // right hood (ref front 0.49 col 2.501)
       // r5: the s7-window head pot (x -0.70, z -0.63, top 2.64) is DELETED
       // — its front col read +0.053 OVER the ref's 2.595 (r5 front table)
       // and it blocked the plinth gun's sky window mouth; the side -0.63

@@ -769,3 +769,40 @@ with pale breaks, booster — slid aft after the forward lay merged with the
 loader gun, inside probe-verified shadow lanes. Builder self-read: changed
 views 8.4-8.8 (view-rear ~8.7, view-top ~8.8, right ~8.4) — floor work
 continues in r10 before a critic round.
+
+## RETONE round r11 (2026-08-03, merkava family agent) — 90.0 PASS x3
+One order this round: the r10 residual (b) hero-rearright basket
+through-read, via a material-split path (the keelDarkTail law). Gate held
+the 90.0 razor at every landing point (hull 91.2 / whole 90.0 / turret
+90.8 / stations 91.9 / dims 100 / floaters 100; gatePassed re-read True
+from the JSON each run). Final 1b hash 6bcb98c9 (3d critic-lock n/a this
+round — both tanks were owned; 3b 5296950a / 3c 5287233e / 2b / 2d / 4 /
+4b byte-EXACT after every batch).
+1. THROUGH-READ MEASUREMENT FIRST (bank law): the official-pair window
+   (hero-rr x420..500 y325..385) reads REF p5 75.2 / p25 81.5 / med 85.8 /
+   p75 99.5 — the ref through-zone is NOT a 26-class dark wall; it is
+   PALE-WITH-CONTRAST (lit bars over a mid base with scattered deep
+   pockets — both halves carry 36-52-class pocket cells elsewhere in the
+   basket zone). Our zone read FLAT-77 (ambient-floored pack in shade).
+2. FIRST CUT (reverted, negative result BANKED): the pack box split at a
+   z-plane with the rear 0.13 m segment turretDark (identical union,
+   gate-free per keelDarkTail). It moved the median the WRONG way (77.5
+   vs ref 85.8) and deepened p5 to 57 — the through-read problem is a
+   MISSING-HIGHLIGHT problem, not a missing-shadow problem. Split
+   reverted to the byte-identical single pack box.
+3. LANDED: three LIT ROLLS on the pack's rear top edge (0.55-0.64-rad
+   sun-graze crowns, the r6 calibration class) + a strap seam — crowns at
+   min(packTop+0.030, topRear-0.048), under every rimJit rail top:
+   silhouette-free, the razor-blocked rim-cresting untouched. MEASURED
+   (final pairs): p95 98.9 (ref 107.2), p25 74.5 -> 75.0, med 77.2 —
+   the rolls print but cover ~15% of the window; the med gap (-8.6) is
+   the ambient floor of the shaded pack mass. RESIDUAL (honest): closing
+   it needs either geometry above the rim (razor-blocked at whole 90.0)
+   or a lighting-class change — same conclusion as r10, now with the
+   material-split branch measured and excluded.
+4. Plan-face law re-verified after the work: basket-zone sub-55 census 84
+   vs ref 163 (the r9 <=~50-class law holds with margin; the reverted
+   dark split would have added ~130).
+Shots: shots/critic-merkava1b/ (14 views, final = this round's last
+render). Tools: tools/tmp-r11-verify.py (the one-shot order sweep, both
+tanks), tools/tmp-r11-warm.py (warm census/clusters).
