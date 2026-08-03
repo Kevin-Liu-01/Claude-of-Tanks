@@ -3008,5 +3008,25 @@ REPAIRS['fv510'] = [
 REPAIRS.pop('fv510', None)
 
 
+# =============================================================== batch 31 ===
+# T90M RE-WARP UNDER LAW v2 (the batch-23 plan re-landed on a FRESH HEAD
+# baseline; batch-23 was reverted in the incident purely on donor-drift
+# ambiguity — no defect was ever shown in the warp itself). Verification
+# class: PROBE-VERIFIED (t90m has no stable proc build yet — the law's
+# gate-in-loop clause is satisfied by a real harness render probe: ref
+# renders, oriented, articulated + extract --verify on all axes; the
+# first t90m build round provides the full gate check). Plan comments in
+# vertex-normalize batch-23 entry.
+REPAIRS['t90m'] = {
+    'path': 'public/models/tanks/t90m_minehffd.glb',
+    'ops': [
+        ('py2', _axis_warp('t90m', long_axis='x',
+                           y_map=[(-1.4819, -1.4819), (2.117, 2.117), (3.3815, 2.2036)],
+                           long_map=[(-9.9847, -10.0515), (-6.0309, -5.5225), (6.2102, 5.7017)],
+                           y_top_max=2.2478, expect=(116, 175206, 122516))),
+    ],
+}
+
+
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
