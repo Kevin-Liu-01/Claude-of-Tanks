@@ -1,22 +1,9 @@
 {
- "generatedAt": "2026-08-03T21:35:01.685Z",
+ "generatedAt": "2026-08-03T21:55:31.398Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 18,
  "total": 85,
  "rows": [
-  {
-   "id": "t90m",
-   "geoMin": 0,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 0,
-    "wholeCurves": 0,
-    "turretCurves": 0,
-    "stations": 0,
-    "dims": 0,
-    "floaters": 100
-   }
-  },
   {
    "id": "recon_tank",
    "geoMin": 0,
@@ -499,6 +486,19 @@
    }
   },
   {
+   "id": "t90m",
+   "geoMin": 38.2,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 50.4,
+    "wholeCurves": 38.2,
+    "turretCurves": 60.3,
+    "stations": 47.3,
+    "dims": 97,
+    "floaters": 100
+   }
+  },
+  {
    "id": "merkava2b",
    "geoMin": 39.9,
    "gatePassed": false,
@@ -668,6 +668,19 @@
    }
   },
   {
+   "id": "t80",
+   "geoMin": 62.7,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 77.1,
+    "wholeCurves": 68.8,
+    "turretCurves": 62.7,
+    "stations": 81.3,
+    "dims": 90.6,
+    "floaters": 100
+   }
+  },
+  {
    "id": "newc_pziii",
    "geoMin": 63,
    "gatePassed": false,
@@ -694,6 +707,19 @@
    }
   },
   {
+   "id": "t80u",
+   "geoMin": 66.6,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 78.5,
+    "wholeCurves": 72.5,
+    "turretCurves": 66.6,
+    "stations": 78,
+    "dims": 98.2,
+    "floaters": 100
+   }
+  },
+  {
    "id": "pziii_konserwa",
    "geoMin": 67,
    "gatePassed": false,
@@ -708,40 +734,14 @@
   },
   {
    "id": "t80b",
-   "geoMin": 68.6,
+   "geoMin": 70.3,
    "gatePassed": false,
    "components": {
-    "hullCurves": 76.6,
-    "wholeCurves": 68.6,
-    "turretCurves": 72.7,
-    "stations": 84.3,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "t80u",
-   "geoMin": 69.2,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 74.8,
-    "wholeCurves": 69.2,
-    "turretCurves": 72.6,
-    "stations": 74.5,
-    "dims": 99.8,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "t80",
-   "geoMin": 69.5,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 77.3,
-    "wholeCurves": 69.5,
-    "turretCurves": 72.2,
-    "stations": 86,
-    "dims": 100,
+    "hullCurves": 77.7,
+    "wholeCurves": 70.3,
+    "turretCurves": 73,
+    "stations": 86.9,
+    "dims": 78.4,
     "floaters": 100
    }
   },
