@@ -2968,5 +2968,45 @@ expect=(125, 153345, 121412))),
 ]
 
 
+
+# =============================================================== batch 30 ===
+# UK RE-WARPS UNDER LAW v2 (fresh .baks from committed HEAD bytes — old
+# .baks kept as *.pre-batch30-history; the committed bytes already embody
+# repair_chieftain5 / the old challenger1 recipe, so BOTH legacy recipes
+# demote to history and each active recipe is the warp ALONE — these
+# assignments intentionally override the incident block's restorations
+# above). Plans are the uk r1 agent's (p95 sims in grace); chieftain5 is
+# the Z-up print — height_axis='z'. Gate-in-loop: expected movement is
+# top-band retune debt only (leo2a5 pilot pattern) with hull/plan/stations
+# HOLDING; anything else reverts. CENSUS LESSON (law v2 addendum): a
+# mismatch with EQUAL tris but FEWER prims/verts than the extract is the
+# STALE-BAK signature — refresh the baseline; never patch the expect DOWN
+# to match a stale replay.
+REPAIRS['chieftain5'] = [
+    ('py2', _axis_warp('chieftain5', long_axis='y', height_axis='z',
+                       y_map=[(0.1189, 0.1189), (112.8871, 112.8871), (120.5958, 127.8641), (167.5091, 129.6261)],
+                       long_map=[(-229.6241, -238.0377), (-86.3733, -93.994), (229.5977, 237.2624)],
+                       y_top_max=130.9476, expect=(15, 60868, 55143))),
+]
+REPAIRS['challenger1'] = [
+    ('py2', _axis_warp('challenger1', long_axis='z',
+                       y_map=[(-0.0104, -0.0104), (2.8381, 2.8381), (3.0134, 3.1997), (3.6379, 3.2544)],
+                       long_map=[(-4.8536, -5.0332), (3.9024, 4.0821), (6.9558, 7.566)],
+                       y_top_max=3.2873, expect=(149, 157826, 121277))),
+]
+# fv510: INVESTIGATION HOLD — its warp verified clean offline TWICE (stale
+# and fresh baselines) yet the harness reads all-0 with dims 100 either
+# way (warp inert in the gate). Same investigation bucket as q_heavy's
+# visible=false latch + the 0.0125-glb-unit extreme-scale suspicion.
+# Recipe parked (popped) until the harness path is understood.
+REPAIRS['fv510'] = [
+    ('py2', _axis_warp('fv510', long_axis='z',
+                       y_map=[(-0.0086, -0.0086), (0.0029, 0.0029), (0.004, 0.0037), (0.0086, 0.0039)],
+                       long_map=[(-0.0125, -0.014), (0.0125, 0.014)],
+                       y_top_max=0.0041, expect=(5, 29817, 28582))),
+]
+REPAIRS.pop('fv510', None)
+
+
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
