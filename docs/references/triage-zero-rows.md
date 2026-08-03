@@ -103,3 +103,21 @@ Modern first per owner (t90m / t84 / t80-line lead), then score-per-effort:
 Probe artifacts for family agents: `shots/triage-zero/<id>.png` (overlay
 boards), `shots/triage-zero/triage-probe.json` (raw probe data),
 `docs/geometry-gate/<id>.json` (refreshed work orders, 2026-08-03 run).
+
+## Instrument-grade addendum (orchestrator, post-REG full extracts)
+
+The full vertex-extract pass (REG batch 0a39d55) revises the mini-extract's
+"9 of 13 dimensionally clean" and the probe's "no orientation flips":
+
+- **ORIENTATION MISMATCH (t62_bergman class) — t54, amx30, amx30b2**: glacis
+  faces −z while the gun faces +z (hull BACKWARDS vs gun). The render probe
+  cannot see this (the print renders fine; the landmark analysis catches it).
+  DO-NOT-SCORE until an orientation repair batch lands (orchestrator lane).
+- **Dims warps needed**: t84 overall −11.8% / hullMask −9.7% (short-baked
+  tube compounds it); m48 hullMask +11.1% / overall +7.8% / bodyH −13.3%;
+  t90m bodyH +25.9% (roof furniture; warp after its packet is written).
+- **Borderline, family judgment**: t80 hullMask +4.3%, t80bv overall −4.8%.
+- **Confirmed clean**: t44, type59, vickers_mk1, m60a2, t80b.
+
+Build-order impact: t80-line + t44/type59/vickers_mk1/m60a2 are buildable
+now; t54/amx30-line/t84/m48/t90m wait on orchestrator oracle work.
