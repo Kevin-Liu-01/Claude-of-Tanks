@@ -121,3 +121,50 @@ next round, all world-frame:
   columns lost ~0.1; re-anchor when the hull is re-laid).
 DO NOT trust the r1-era "certified capped at 53/31.3/3.1/0" numbers for
 anything — the caps are RETIRED; these are now live work orders.
+
+## VERTEX ROUND r3 (2026-08-03, misc agent) — build attempts REVERTED; §B4 + §B3 landed; frame pathology diagnosed
+
+Final state: gate rows AT BASELINE (hull 27.3 / whole 0 / turret 0 /
+stations 0 / dims 98.7 / floaters 100 — byte-identical hull/turret layout to
+HEAD except the items below). Track-clip exact: **front 14 / rear 6** (from
+275/224): flaps re-hung at the fender line above the wrap arcs, lower nose
+narrowed to x<=1.10 below the glacis (same z-extent, dims-safe). §B3: the
+hand M2 is now FITTINGS.pintleMG m2 (scale 0.85, foot 0.61 — receiver rides
+AT the published 2.34 roofline; at 0.72 its 8-column run pushed heightM p95
+to 2.39/-9.2 dims. The stowed-whip spike stays the p95 anchor). Boards:
+shots/misc-r3/after/type90.png.
+
+TWO FULL RE-LAYS WERE BUILT AND REVERTED (gate refused both; ledger kept):
+1. r3a: packet-ordered turret-aft 0.75 + gear inboard + thin skirts + bow
+   recess -> hull 21.7, dims 83.5. 2. r3b: front-row-derived heights (deck/
+   fender line 1.46-1.48 per the r2 packet's own "ref deck line reads 1.48",
+   tub belly 0.61, wheels exposed to x~1.10, thin 0.67..0.87 skirt band,
+   xc 1.25/trackW 0.50) + bustle/rack extension to world -3.43 (the ref
+   turret front matches ours 0.79 vs 0.82; its REAR is 0.86 longer — the r2
+   "move the whole turret aft" order is WRONG, it is a bustle extension)
+   -> hull 21.2, dims 76. Both reverted to HEAD bytes.
+
+PATHOLOGY (measured, for the orchestrator/next agent):
+- The warped print lives in an aft frame: plan body 2.574..-4.816 (mid
+  -1.12), muzzle 4.88. The gate REGISTERS it (side dAlong 1.045, plan dy
+  1.117) yet side_whole mean stays 10.1% (score 0) while plan rows score
+  83-85 (mean 1.1!) — the same geometry matches top-down and fails in side.
+- A rigid whole-build z-shift of -1.10 (hullG experiment) did NOT improve
+  side rows (hull 21.7 -> 19) — the offset is absorbed; the failure is NOT
+  the frame per se. Something in the side/front row comparison of THIS print
+  disagrees with the legacy board, which scores the SAME build 72.2 overall
+  (hull 89.9, masks 77-96, shots/misc-r3/probe/type90.png) — i.e. the print
+  and build visually overlap at ~80-90 when width-normalized, but the gate's
+  raw side comparison reads means of 5-10%.
+- HYPOTHESIS for next round: the print's side silhouette is scale-true in z
+  but its y-profile (deck 1.48, roof 2.31) vs our published-dims build
+  differs by a near-uniform band it cannot register away (the gate has no
+  y-scale registration; the legacy lab normalizes). Verify by dumping the
+  gate's own side_hull ref curve (docs/geometry-gate/type90.json worst cols
+  decode with y = val + centerY) BEFORE building anything; if the ref side
+  curve is uniformly ~+0.1-0.2 over ours, this is a certified-cap class
+  (dims sovereign) or an oracle y-warp retune, NOT a build order.
+- The r3b hull numbers (deck 1.46/fenders 1.475/thin skirts/tub 0.61/bow
+  recess 3.42/gear xc 1.25) are BANKED here for reuse once the row
+  pathology is resolved — they match the front rows and the r2 packet's own
+  measured deck/bow lines.

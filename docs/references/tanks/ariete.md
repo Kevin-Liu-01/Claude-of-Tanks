@@ -120,3 +120,31 @@ the translation; the internal hull-to-turret offsets and the hull end
 profiles must be re-derived from a fresh vertex-workorder dump). dims
 already 100 — dims-sovereign scaffolding is in place; the next round is
 a leclerc-style worst-first hull+turret re-lay against fresh dumps.
+
+## VERTEX ROUND r3 (2026-08-03, misc agent) — §B4 + §B3 landed; rows held; same side-row pathology as type90
+
+Final: gate rows held at baseline (hull 27.4 / whole 0 / turret 0 /
+stations 37.2 / dims 100 / floaters 100). Track-clip exact: **front 6 /
+rear 28** (from 100/120). §B3: loader's MG42-class = FITTINGS.pintleMG mag
+two-tone, foot sunk to 0.80 (receiver ~2.53w, 2 cols inside the ≤4-col
+budget under the 2.50 TURMS-lid anchor; dims stayed 100). Boards:
+shots/misc-r3/after/ariete.png.
+
+§B4 fixes (all lateral-margin class): hull tub 2.35 -> 2.28 wide (its
+±1.175 edges sat ONE dilation voxel inside the ±1.18 band planes through
+both wrap zones — the audit dilates 2cm); raked lower bow narrowed to
+x<=1.06 below the 0.98 glacis line (the 1.66 width crossed the idler
+wrap; z-extent kept, dims safe); the rear skirt panel's dark edge strip
+flipped to its FRONT edge (it capped over the sprocket wrap at -3.27);
+left exhaust box shortened+forward (rear face -2.99, its fins re-centered)
+— its old -3.20 face and 1.755-1.771 fins grazed the wrap laterally.
+
+NO whole/turret build round attempted: ariete shows the SAME class of
+side-row pathology as type90 (side dAlong 0.962 registered, side_whole
+mean 7.5% -> 0 while plan rows score 78-83 at mean 1.4-1.7; front_hull
+48.9). Read docs/references/tanks/type90.md r3 section for the full
+diagnosis + the verification recipe before building here — the r2 note
+"leclerc-style worst-first re-lay against fresh dumps" stands ONLY after
+the side-row comparison question is resolved. dims already 100 (the
+dims-sovereign scaffolding is in place; the print measures the published
+envelope post-warp).

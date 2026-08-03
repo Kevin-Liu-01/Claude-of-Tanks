@@ -147,3 +147,30 @@ Note the packet's hullMask-40.1% flag: the extract's node partition is
 blind on this skinned print (batch-27 note) — buildable only from the
 whole-silhouette rows + published dims; turret rows score against the
 re-rigged bone split, which DOES measure.
+
+## VERTEX ROUND r3 (2026-08-03, misc agent) — SEVERE §B4 flag RESOLVED (463/278 -> 6/0) + §B3 mg
+
+Final: gate hull 0 / whole 0 / turret 0 / stations 0 / **dims 90.4** /
+floaters 100 (rows floored as at round start — same comparison-pathology
+class as type90/ariete, see type90.md r3; type74 adds side dAlong 1.45 and
+front dy 0.37 mean 16.6). Track-clip exact: **front 6 / rear 0** from the
+SEVERE pre-build 463/278 (audited 370/93 front + 260/18 rear). standard-
+check: clip ✓ contig 0 ✓ mg1. Boards: shots/misc-r3/after/type74.png.
+
+§B4 fixes (type74 has NO skirts — the wrap arcs are fully exposed):
+- Both mudflap pairs were INSIDE the wrap arcs (370 front / 260 rear
+  exact vox): re-hung from the fender tips at y 1.19 (tops at the 1.336
+  fender underside), clear above the wrap crowns.
+- Glacis half-slabs: lower edge TAPERS to x ±0.98 (was full-width 1.59 —
+  inside the idler wrap; the real vehicle's glacis tapers between the
+  exposed tracks). Lower nose narrowed to x<=0.98 AND made 0.32-band tall
+  (0.40..0.72) so it stays the hullLength front BODY anchor at 3.35 (the
+  taper alone dropped hullLength to 6.55/-2.2%; this restored dims 90.4).
+- Tail plate split: narrow 2.00-wide course below the wrap line + wide
+  2.86 upper course with its bottom at 0.78 above the sprocket wrap.
+- Sponson band bottom 0.90 -> 0.94 (grazed the dilated idler crown).
+- Residual 6 vox: the auto-generated hull LOD's simplified gear blob at
+  (±1.06, 0.78, 2.89) — not directly authorable, well under the 60 line.
+- §B3: commander's M2 = FITTINGS.pintleMG m2 two-tone on the cupola lid,
+  foot 0.76 — receiver ~2.50w keeps the heightM p95 anchor at the
+  published 2.48 (at foot 0.725 heightM read 2.42/-2.3%).
