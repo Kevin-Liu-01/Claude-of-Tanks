@@ -183,6 +183,280 @@ const REG = {
     turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
     pubDims: { hullLengthM: 7.45, overallLengthM: 8.63, widthM: 3.70, heightM: 2.65 },
   },
+  // ---- UK family (append-only, 2026-08-03) ---------------------------------
+  // Lab registrations mirrored from userdrops5.js (challenger1/chieftain5/
+  // fv510) and userdrops6.js articulated() (centurion3/5, comet,
+  // challenger_cruiser, charioteer — turretNode only, default gun regex).
+  // challenger1's loader also carries turretFollowers/gunFollowers regexes
+  // this tool does not model — affects hull/turret SPLIT only, not dims.
+  // pubDims from the userdrops5/6 make() rows.
+  chieftain5: {
+    path: 'public/models/tanks/community/recovered/chieftain5.glb',
+    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+    pitchOffset: -Math.PI / 2, // authored Z-up OBJ heritage (userdrops5)
+    pubDims: { hullLengthM: 7.52, overallLengthM: 10.79, widthM: 3.50, heightM: 2.90 },
+  },
+  challenger1: {
+    path: 'public/models/tanks/community/recovered/challenger1.glb',
+    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+    pubDims: { hullLengthM: 8.32, overallLengthM: 11.50, widthM: 3.52, heightM: 2.95 },
+  },
+  fv510: {
+    path: 'public/models/tanks/community/recovered/fv510.glb',
+    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true, yawOffset: Math.PI,
+    pubDims: { hullLengthM: 6.34, overallLengthM: 6.34, widthM: 3.03, heightM: 2.80 },
+  },
+  centurion3: {
+    path: 'public/models/tanks/community/recovered/centurion3.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 7.56, overallLengthM: 9.83, widthM: 3.38, heightM: 2.94 },
+  },
+  centurion5: {
+    path: 'public/models/tanks/community/recovered/centurion5.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 7.56, overallLengthM: 9.83, widthM: 3.38, heightM: 2.94 },
+  },
+  comet: {
+    path: 'public/models/tanks/community/recovered/comet.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.55, overallLengthM: 7.66, widthM: 3.05, heightM: 2.68 },
+  },
+  challenger_cruiser: {
+    path: 'public/models/tanks/community/recovered/challenger_cruiser.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 8.03, overallLengthM: 8.15, widthM: 2.91, heightM: 2.77 },
+  },
+  charioteer: {
+    path: 'public/models/tanks/community/recovered/charioteer.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.55, overallLengthM: 9.20, widthM: 3.05, heightM: 2.58 },
+  },
+  // ---- patton family (append-only, 2026-08-03) -----------------------------
+  // Lab registrations mirrored from userdrops6.js articulated() (turretNode
+  // '^Turret$', autoPivot, no gun node — the bergman prints fuse the gun into
+  // TurretMesh). pubDims from the userdrops6 make() rows (heightM uses the
+  // over-mounted-M2 convention per the batch-8 packet; m45 overallLengthM 6.6
+  // is the seated-oracle muzzle ruling, flagged mid-flight in 4bbf0de).
+  m26_pershing: {
+    path: 'public/models/tanks/community/recovered/m26_pershing.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.33, overallLengthM: 8.65, widthM: 3.51, heightM: 3.02 },
+  },
+  m45_patton: {
+    path: 'public/models/tanks/community/recovered/m45_patton.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.33, overallLengthM: 6.6, widthM: 3.51, heightM: 3.0 },
+  },
+  m46_patton: {
+    path: 'public/models/tanks/community/recovered/m46_patton.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.33, overallLengthM: 8.48, widthM: 3.51, heightM: 3.18 },
+  },
+  m47_patton: {
+    path: 'public/models/tanks/community/recovered/m47_patton.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.33, overallLengthM: 8.51, widthM: 3.51, heightM: 3.35 },
+  },
+  // ---- misc/Euro-Asia moderns family (append-only, 2026-08-03) -------------
+  // Lab registrations mirrored verbatim: leclerc userdrops2.js, t80u
+  // userdrops3.js, type90 userdrops5.js source(), ariete + type74 from the
+  // fidelity harness LOCAL_REFERENCE_OVERRIDES (quarantine oracles),
+  // recon_tank specs.js MODEL_SOURCE. pubDims from the spec dims rows
+  // (modern2.js t80u/leclerc, modern3.js ariete, userdrops5 type90 make(),
+  // misc.js TYPE74_SPEC, specs.js recon_tank).
+  leclerc: {
+    path: 'public/models/tanks/char_leclerc_andertan.glb',
+    turretNode: '^turret$', gunNode: '^Cylinder086$', autoPivot: true,
+    yawOffset: -Math.PI / 2,
+    pubDims: { hullLengthM: 6.88, overallLengthM: 9.87, widthM: 3.60, heightM: 2.53 },
+  },
+  t80u: {
+    path: 'public/models/tanks/t80u_javanilga.glb',
+    turretNode: '^Object09_24$', gunNode: '^Object1101_22$', autoPivot: true,
+    pubDims: { hullLengthM: 7.01, overallLengthM: 9.65, widthM: 3.60, heightM: 2.20 },
+  },
+  type90: {
+    path: 'public/models/tanks/community/recovered/type90.glb',
+    turretNode: '^Turret$', autoPivot: true, yawOffset: -Math.PI / 2,
+    pubDims: { hullLengthM: 7.45, overallLengthM: 9.76, widthM: 3.43, heightM: 2.34 },
+  },
+  ariete: {
+    path: 'public/models/tanks/community/ariete-dustymojito.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 7.59, overallLengthM: 9.67, widthM: 3.60, heightM: 2.50 },
+  },
+  type74: {
+    path: 'public/models/tanks/community/type74-nullops.glb',
+    turretNode: '^Tower_9$', gunNode: '^Gun_7$', autoPivot: true,
+    scaleToOverall: true,
+    pubDims: { hullLengthM: 6.7, overallLengthM: 9.42, widthM: 3.18, heightM: 2.48 },
+  },
+  recon_tank: {
+    path: 'public/models/tanks/community/recon_tank_mophs.glb',
+    turretNode: '^Turret$', gunNode: '^Barrel$', autoPivot: true,
+    scaleToOverall: true,
+    pubDims: { hullLengthM: 6.2, overallLengthM: 7.2, widthM: 3.0, heightM: 2.5 },
+  },
+  // ---- soviet-heavy family (append-only, 2026-08-03) -----------------------
+  // Lab registrations mirrored verbatim: is3/is7/object279/is6b from specs.js
+  // MODEL_SOURCE (snowleopard prints fuse the gun into the Turret mesh — no
+  // gun node, loader normalizes on the FULL box); is3_bergman from
+  // userdrops6.js articulated('is3_bergman','bergman_is3'). Explicit loader
+  // pivots (specs.js pivot:[...]) affect articulation seating only, not the
+  // yaw-0 silhouettes this tool measures. pubDims from specs.js dims rows
+  // (is3_bergman inherits is3 via make()).
+  is3: {
+    path: 'public/models/tanks/community/is3_panzerfactory.glb',
+    turretNode: '^turret$', gunNode: '^gun$', autoPivot: true,
+    pubDims: { hullLengthM: 6.77, overallLengthM: 9.85, widthM: 3.15, heightM: 2.45 },
+  },
+  is7: {
+    path: 'public/models/tanks/community/is7-snowleopard.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 7.38, overallLengthM: 11.17, widthM: 3.4, heightM: 2.6 },
+  },
+  object279: {
+    path: 'public/models/tanks/community/object279-snowleopard.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.99, overallLengthM: 10.24, widthM: 3.4, heightM: 2.6 },
+  },
+  is6b: {
+    path: 'public/models/tanks/community/is6b-snowleopard.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.9, overallLengthM: 9.1, widthM: 3.2, heightM: 2.5 },
+  },
+  is3_bergman: {
+    path: 'public/models/tanks/community/recovered/bergman_is3.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.77, overallLengthM: 9.85, widthM: 3.15, heightM: 2.45 },
+  },
+  // ---- WW2 family (append-only, 2026-08-03) --------------------------------
+  // Lab registrations mirrored verbatim from specs.js MODEL_SOURCE (tiger2 /
+  // sherman_jumbo / t34_85_cad / pziii_konserwa carry explicit loader pivots —
+  // articulation-only, no effect on the yaw-0 silhouettes this tool measures;
+  // fused-gun prints (no gunNode) normalize on the FULL box to
+  // overallLengthM, loader parity). pubDims from the specs.js dims rows.
+  sherman_jumbo: {
+    path: 'public/models/tanks/community/sherman-jumbo.glb',
+    turretNode: '^turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.27, overallLengthM: 6.35, widthM: 2.95, heightM: 2.95 },
+  },
+  tiger2: {
+    path: 'public/models/tanks/community/tiger2-maximus.glb',
+    turretNode: '^Object_2$', autoPivot: true,
+    pubDims: { hullLengthM: 7.38, overallLengthM: 10.29, widthM: 3.76, heightM: 3.09 },
+  },
+  t34_85_cad: {
+    path: 'public/models/tanks/community/t34_85_weihe.glb',
+    turretNode: '^turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.10, overallLengthM: 8.10, widthM: 3.0, heightM: 2.72 },
+  },
+  pziii_konserwa: {
+    path: 'public/models/tanks/community/pziii_konserwa.glb',
+    // loader sees GLTFLoader-sanitized 'Plane000'; raw GLB keeps 'Plane.000'
+    turretNode: '^Plane\\.?000$', autoPivot: true, yawOffset: Math.PI,
+    pubDims: { hullLengthM: 5.52, overallLengthM: 6.28, widthM: 2.9, heightM: 2.5 },
+  },
+  newc_pziii: {
+    path: 'public/models/tanks/community/pziii_newc42.glb',
+    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+    pubDims: { hullLengthM: 5.56, overallLengthM: 6.41, widthM: 2.9, heightM: 2.5 },
+  },
+  newc_tiger: {
+    path: 'public/models/tanks/community/tiger_newc42.glb',
+    turretNode: '^Turret$', gunNode: '^Barrel$', autoPivot: true,
+    pubDims: { hullLengthM: 6.32, overallLengthM: 8.45, widthM: 3.71, heightM: 3.0 },
+  },
+  leichttraktor: {
+    path: 'public/models/tanks/community/leichttraktor_newc42.glb',
+    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+    pubDims: { hullLengthM: 4.4, overallLengthM: 4.87, widthM: 2.28, heightM: 2.4 },
+  },
+  q_heavy: {
+    path: 'public/models/tanks/community/tank_quaternius_fa5.glb',
+    turretNode: '^Tank_Turret$', gunNode: '^Tank_Gun$', autoPivot: true,
+    yawOffset: Math.PI / 2,
+    pubDims: { hullLengthM: 7.2, overallLengthM: 8.8, widthM: 3.6, heightM: 3.0 },
+  },
+  // ---- zero-row instrument batch (triage 2026-08-03): 13 no-profile tanks.
+  // Registrations mirror userdrops7 glb() (turret '^Turret$', autoPivot, gun
+  // via the loader's default gun|barrel|cannon regex — same default as this
+  // tool) and userdrops2's t90m override. recovered/* rows are the NC-SA
+  // LOCAL-ONLY quarantine class; these REG rows are local instruments, and
+  // the tanks' public builds stay procedural. pubDims from the scout-gen2
+  // packet stubs (docs/references/tanks/scout-gen2-*.md).
+  t44: {
+    path: 'public/models/tanks/community/t44_foxygamer.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.07, overallLengthM: 7.65, widthM: 3.18, heightM: 2.46 },
+  },
+  m48: {
+    path: 'public/models/tanks/community/m48a5_atmodeler.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.42, overallLengthM: 9.31, widthM: 3.63, heightM: 3.09 },
+  },
+  m60a2: {
+    path: 'public/models/tanks/community/m60a2_ahab.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.95, overallLengthM: 7.27, widthM: 3.63, heightM: 3.11 },
+  },
+  amx30: {
+    path: 'public/models/tanks/community/amx30b_ahab.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.59, overallLengthM: 9.48, widthM: 3.10, heightM: 2.29 },
+  },
+  amx30b2: {
+    // B2 = upgraded AMX-30B; published dims shared with amx30 above.
+    path: 'public/models/tanks/community/amx30b2_ahab.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.59, overallLengthM: 9.48, widthM: 3.10, heightM: 2.29 },
+  },
+  type59: {
+    // Asset is a Type 69-II print (lasttriarius); packet stub keys Type 59
+    // dims — same WZ-120 lineage hull.
+    path: 'public/models/tanks/community/type69_lasttriarius.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.04, overallLengthM: 9.00, widthM: 3.27, heightM: 2.59 },
+  },
+  vickers_mk1: {
+    path: 'public/models/tanks/community/vickers_mk1_jack.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 7.92, overallLengthM: 9.79, widthM: 3.17, heightM: 2.71 },
+  },
+  t54: {
+    path: 'public/models/tanks/community/recovered/t54.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.45, overallLengthM: 9.00, widthM: 3.27, heightM: 2.40 },
+  },
+  t80: {
+    path: 'public/models/tanks/community/recovered/t80.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.78, overallLengthM: 9.66, widthM: 3.52, heightM: 2.20 },
+  },
+  t80b: {
+    // gen2 stub covers the t80 family; B shares the base hull dims.
+    path: 'public/models/tanks/community/recovered/t80b.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.78, overallLengthM: 9.66, widthM: 3.52, heightM: 2.20 },
+  },
+  t80bv: {
+    path: 'public/models/tanks/community/recovered/t80bv.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.78, overallLengthM: 9.66, widthM: 3.52, heightM: 2.20 },
+  },
+  t84: {
+    path: 'public/models/tanks/community/recovered/t84.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 7.08, overallLengthM: 9.72, widthM: 3.56, heightM: 2.22 },
+  },
+  t90m: {
+    // userdrops2 override (minehffd print): no clean hull-only box, so the
+    // loader uses scaleToOverall; nose raw -X -> yaw +90.
+    path: 'public/models/tanks/t90m_minehffd.glb',
+    turretNode: '^Turret$', gunNode: '^Main_barrel$', autoPivot: true,
+    scaleToOverall: true, yawOffset: Math.PI / 2,
+    pubDims: { hullLengthM: 6.86, overallLengthM: 9.63, widthM: 3.78, heightM: 2.23 },
+  },
 };
 const RUSSIA_IDS = Object.keys(REG);
 
