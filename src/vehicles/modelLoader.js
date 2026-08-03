@@ -2259,7 +2259,9 @@ function prepareSwapStart(gltf, { spec, cfg }) {
     ? findFollowerRoots(scene, cfg.gunFollowers, [turret, gun, ...turretFollowers]) : [];
 
   // ---- fidelity surgery in the raw asset frame (before orient/scale) ----
-  if (spec.id === 'm1a2') applyModelFixes(scene, turret, spec);
+  // applyModelFixes was authored for the retired sepv3 (Leopard 2A5) print's
+  // node tree — guard on the path so the SEPv2 oracle loads untouched.
+  if (spec.id === 'm1a2' && /sepv3/.test(cfg.path || '')) applyModelFixes(scene, turret, spec);
   // tank_models r2: variant GLB kit fixes (ARAT flatten, slat cage seat,
   // muzzle collar slim) — see applyAbramsVariantFixes
   if (spec.id === 'm1a1' || spec.id === 'm1a2_tusk') applyAbramsVariantFixes(scene, spec);

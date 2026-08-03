@@ -173,6 +173,19 @@ export const PLANS = {
   // tube segment x0.85 pins muzzle at rear+9.77. The 342-vert turret
   // interpenetration is INTERIOR (below-deck bustle content, silhouette
   // unaffected) — packet cert already documents the fused shell class.
+  // ---- batch-21: m1a2_sepv2 (recovered; OWNER ORACLE SWITCH 2026-08-03 —
+  // the sepv3 print is deprecated as the m1a2's reference; the owner's
+  // exemplar is this SEPv2 drop). Body/overall both -16.5%: uniform z
+  // x1.1972 about body center fixes both (overall lands -0.25%). Height
+  // +30.2% = hull-node masts 3.62 + deck furniture 2.56-2.96: knee 2.30,
+  // band -> 2.44 @2.95, tail flat to 2.465 @3.65. Sim: p90/p93/p95/p97/
+  // max = 2.437/2.439/2.440/2.464/2.464 — all in grace. Interpenetration
+  // (131 verts, 0.81m) is INTERIOR-only — warp legal (triage 2026-08-02).
+  m1a2_sepv2: {
+    y: [[0, 0], [2.30, 2.30], [2.95, 2.44], [3.65, 2.465]],
+    z: [[-3.295, -3.9457], [3.305, 3.9556]],
+    yTopMax: 2.47,
+  },
   abramsx: {
     y: [[0, 0], [2.30, 2.30], [3.0, 2.44], [4.2, 2.47]],
     z: [[-3.932, -3.932], [3.968, 3.968], [6.168, 5.838]],

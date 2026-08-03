@@ -48,6 +48,8 @@ replaced by a CC-BY user drop (integrated 2026-07-28):
 | Asset | Author | Source | License | Files |
 |---|---|---|---|---|
 | Abrams M1A2 SEPv3 | dannzjs | https://sketchfab.com/3d-models/abrams-m1a2-sepv3-eb6f5560198740269507e9948376414c (obtained without login via public GitHub mirror DhruvBhargava007/Morv_AI @ Dhruv) | CC-BY-4.0 — "This work is based on \"Abrams M1A2 SEPv3\" (https://sketchfab.com/3d-models/abrams-m1a2-sepv3-eb6f5560198740269507e9948376414c) by dannzjs (https://sketchfab.com/dannzjs) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)" | `public/models/tanks/m1a2_sepv3_dannzjs.glb` (offline preprocess: textures downscaled 1K/512 + WebP, TurretPivot/GunPivot articulation grouping baked in; original license.txt + Sketchfab API license record + geometry notes preserved in `docs/licenses/m1a2_sepv3_dannzjs/`) |
+
+> **Identity correction (2026-08-03):** the dannzjs asset above is a mislabeled **Leopard 2A5**, not an Abrams (owner-identified from parity renders). Authorship and CC-BY-4.0 license stand as recorded; the file remains on disk but no tank registers it — `m1a2` now measures against the recovered SEPv2 drop (local-only quarantine, not this table's concern).
 | Leopard 2 A6 | buh | https://sketchfab.com/buh-late (user-supplied download, batch user-drops 2026-07-28) | CC-BY 4.0 | `public/models/tanks/leo2a6_buh.glb` (textures recompressed to WebP; authored turret/gun nodes used as-is; yawOffset PI in `src/vehicles/userdrops.js`) — replaces the procedural `leo2a6` visual, gameplay stats unchanged |
 
 Integration verdict (harness renders `tank_closeup_modern`, `garage`,

@@ -2592,6 +2592,24 @@ REPAIRS['isu152'] = [
                        y_top_max=27.8546, expect=(1, 54979, 110000))),
 ]
 
+# =============================================================== batch 21 ===
+# M1A2 SEPV2 NORMALIZATION (recovered drop; OWNER ORACLE SWITCH 2026-08-03:
+# the "sepv3" dannzjs print is a MISLABELED LEOPARD 2A5 — owner id'd the
+# odd dimensions and front/side plating; m1a2's reference moves to this
+# SEPv2 drop, which the owner attached as the actual Abrams exemplar).
+# Body/overall both -16.5%: uniform z x1.1972 about body center (overall
+# lands -0.25%). Height +30.2% = hull-node masts 3.62 + deck furniture
+# 2.56-2.96: knee 2.30, band -> 2.44 @2.95, flat tail 2.465 @3.65; sim
+# p90/p95/p97/max = 2.437/2.440/2.464/2.464 all in grace. 131-vert
+# turret interpenetration is INTERIOR-only (triage 2026-08-02) — legal.
+# Plan: vertex-normalize batch-21 entry.
+REPAIRS['m1a2_sepv2'] = [
+    ('py2', _axis_warp('m1a2_sepv2', long_axis='z',
+                       y_map=[(-1.1201, -1.1201), (1.6468, 1.6468), (2.4288, 1.8152), (3.2709, 1.8453)],
+                       long_map=[(-3.5975, -4.3802), (4.3424, 5.1252)],
+                       y_top_max=1.8754, expect=(143, 195838, 130614))),
+]
+
 # =============================================================== batch 20 ===
 # ABRAMSX NORMALIZATION (abramsx-mortavex.glb). Body/width TRUE (-0.3%/0%);
 # +41% height = RWS bridge band (3.0-3.47 gate-m across z -0.83..+0.42,

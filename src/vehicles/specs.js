@@ -1693,19 +1693,21 @@ export const MODEL_SOURCE = {
   t34_85: { source: 'procedural' },
   is2: { source: 'procedural' },
   panther_g: { source: 'procedural' },
-  // Deep-hunt winner 2026-07: "Abrams M1A2 SEPv3" by dannzjs, CC-BY-4.0
-  // (docs/ATTRIBUTION.md). Preprocessed offline (texture downscale + webp,
-  // TurretPivot/GunPivot articulation grouping baked into the node tree).
+  // ORACLE SWITCH (owner, 2026-08-03): the dannzjs "SEPv3" print is a
+  // MISLABELED LEOPARD 2A5 (odd dims + wrong front/side plating — owner
+  // id'd it after five visual rounds converged toward the wrong shape
+  // language). m1a2 now measures against the recovered SEPv2 drop the
+  // owner attached as the actual Abrams exemplar (LOCAL-ONLY QUARANTINE,
+  // batch-21 normalized to published dims). The old file stays on disk;
+  // its provenance note is corrected in the m1a2 packet.
   m1a2: {
     source: 'glb',
     glb: {
-      path: '/models/tanks/m1a2_sepv3_dannzjs.glb',
-      turretNode: 'TurretPivot',
-      gunNode: 'GunPivot',
-      // PERF (performance_budget r3): closeup-contract hero — keeps 2048
-      // color maps at import; every other GLB caps at 1024 (modelLoader
-      // capGlbSceneTextures, frozen 512 MB scene-texture gate).
-      heroTex: true,
+      path: '/models/tanks/community/recovered/m1a2_sepv2.glb',
+      turretNode: '^Turret$', gunNode: '^misc_b$', autoPivot: true,
+      yawOffset: Math.PI,
+      turretFollowers: '^(?:ammo_(?:5|box)|armor_turret|ex_armoc|ex_armor(?!_body)|ex_era_turret|ex_decor_04|glsaa_[6-8]|hatch_0[34]|mg_aamount_h|misc_a|optic_commander)$',
+      paintUntextured: true,
     },
   },
   t90m: { source: 'procedural' },
