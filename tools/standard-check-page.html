@@ -1,0 +1,335 @@
+<!doctype html>
+<!-- tank-standard-check v2 page (BUILD-STANDARD §B2/§B3 machine census).
+     Two modes, driven by tools/tank-standard-check.mjs:
+
+     ?id=<specId>   DECORATION CENSUS + CONTIGUITY SCAN on the PROCEDURAL
+                    build (proceduralOnly, camoSeed 4242 — the tmp-hashgeo
+                    bootstrap, so GLB swaps and the cosmetic decorations.js
+                    layer never pollute the measurement):
+                    - census: counts KIT.fittings marker roots
+                      (userData.fittingRoot / userData.fitting) — mg = pintleMG
+                      instances (>=1 required by §B3), dressing = every other
+                      fitting instance. Hand-authored decoration carries no
+                      markers and censuses ZERO by design.
+                    - contiguity: top-down orthographic render over the whole
+                      plan footprint on a magenta key, downsampled to ~6 cm
+                      cells; uncovered cells NOT connected to the frame border
+                      are enclosed sky = §B2 holes (0 target). FrontSide
+                      materials mean reversed-winding slabs read as holes —
+                      the winding audit is built in.
+                    -> window.__STANDARD + __STANDARD_READY
+
+     ?fixture=fittings  KIT.fittings library self-test (no tank, no profile
+                    edits): builds every fitting + variants standalone and
+                    asserts (a) marker coverage on every mesh, (b) the stamped
+                    userData.aabb matches the meshes, (c) seed determinism
+                    (same opts => identical geometry hash), (d) top-down
+                    FrontSide coverage > 0 (winding), (e) mats is required.
+                    -> window.__FIXTURE + __FIXTURE_READY -->
+<meta charset="utf-8">
+<title>tank-standard-check</title>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+import { FITTINGS } from '/src/vehicles/profiles/kit.js';
+
+const params = new URLSearchParams(location.search);
+const CELL_M = 0.06;   // §B2 scan grid (~6 cm)
+const SUB = 3;         // subpixels per cell edge (thin rails survive sampling)
+const MARGIN_CELLS = 2;
+
+const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(1);
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
+
+function pinLODs(root) {
+  root.traverse((o) => {
+    if (!o.isLOD) return;
+    o.autoUpdate = false;
+    o.levels.forEach((l, i) => { if (l.object) l.object.visible = i === 0; });
+  });
+}
+
+const effectivelyVisible = (o, top) => {
+  for (let p = o; p && p !== top.parent; p = p.parent) if (!p.visible) return false;
+  return true;
+};
+const isColorWriting = (o) => {
+  const m = Array.isArray(o.material) ? o.material[0] : o.material;
+  return !m || m.colorWrite !== false;
+};
+
+// AABB over everything that actually writes color (instance-aware — shadow
+// proxies are colorWrite:false and excluded from scan AND framing).
+function renderedAABB(root) {
+  root.updateMatrixWorld(true);
+  const bb = new THREE.Box3();
+  const local = new THREE.Box3();
+  const m = new THREE.Matrix4();
+  root.traverse((o) => {
+    if (!(o.isMesh || o.isInstancedMesh) || !o.geometry) return;
+    if (!effectivelyVisible(o, root) || !isColorWriting(o)) return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    if (!o.geometry.boundingBox) return;
+    if (o.isInstancedMesh) {
+      for (let i = 0; i < o.count; i++) {
+        o.getMatrixAt(i, m);
+        const el = m.elements;
+        if (Math.abs(el[0]) + Math.abs(el[5]) + Math.abs(el[10]) < 1e-5) continue; // collapsed
+        local.copy(o.geometry.boundingBox);
+        local.applyMatrix4(m).applyMatrix4(o.matrixWorld);
+        bb.union(local);
+      }
+    } else {
+      local.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld);
+      bb.union(local);
+    }
+  });
+  return bb;
+}
+
+// Top-down coverage raster + enclosed-void (hole) count on the ~6 cm grid.
+function topDownScan(root) {
+  const bb = renderedAABB(root);
+  if (bb.isEmpty()) return { error: 'empty AABB' };
+  const hidden = [];
+  root.traverse((o) => {
+    if ((o.isMesh || o.isInstancedMesh) && !isColorWriting(o) && o.visible) { o.visible = false; hidden.push(o); }
+  });
+  const margin = MARGIN_CELLS * CELL_M;
+  const x0 = bb.min.x - margin, x1 = bb.max.x + margin;
+  const z0 = bb.min.z - margin, z1 = bb.max.z + margin;
+  const gridW = Math.max(4, Math.ceil((x1 - x0) / CELL_M));
+  const gridH = Math.max(4, Math.ceil((z1 - z0) / CELL_M));
+  const pw = gridW * SUB, ph = gridH * SUB;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xff00ff);
+  scene.add(root);
+  const cam = new THREE.OrthographicCamera(
+    -(x1 - x0) / 2, (x1 - x0) / 2, (z1 - z0) / 2, -(z1 - z0) / 2, 0.1, bb.max.y - bb.min.y + 20);
+  cam.position.set((x0 + x1) / 2, bb.max.y + 5, (z0 + z1) / 2);
+  cam.up.set(0, 0, -1);
+  cam.lookAt((x0 + x1) / 2, 0, (z0 + z1) / 2);
+  cam.updateMatrixWorld(true);
+
+  const target = new THREE.WebGLRenderTarget(pw, ph, { depthBuffer: true, stencilBuffer: false });
+  renderer.setSize(pw, ph, false);
+  renderer.setRenderTarget(target);
+  renderer.render(scene, cam);
+  const buf = new Uint8Array(pw * ph * 4);
+  renderer.readRenderTargetPixels(target, 0, 0, pw, ph, buf);
+  renderer.setRenderTarget(null);
+  target.dispose();
+  scene.remove(root);
+  for (const o of hidden) o.visible = true;
+
+  // covered = not the magenta key (unlit black meshes still separate cleanly)
+  const covered = new Uint8Array(gridW * gridH);
+  let coveredCells = 0;
+  for (let gy = 0; gy < gridH; gy++) {
+    for (let gx = 0; gx < gridW; gx++) {
+      let hit = 0;
+      for (let sy = 0; sy < SUB && !hit; sy++) {
+        for (let sx = 0; sx < SUB && !hit; sx++) {
+          const px = gx * SUB + sx, py = gy * SUB + sy;
+          const k = (py * pw + px) * 4;
+          if (Math.abs(buf[k] - 255) + buf[k + 1] + Math.abs(buf[k + 2] - 255) > 60) hit = 1;
+        }
+      }
+      covered[gy * gridW + gx] = hit;
+      coveredCells += hit;
+    }
+  }
+  // flood fill outside-background from the border; leftover uncovered = holes
+  const outside = new Uint8Array(gridW * gridH);
+  const stack = [];
+  const push = (gx, gy) => {
+    if (gx < 0 || gy < 0 || gx >= gridW || gy >= gridH) return;
+    const i = gy * gridW + gx;
+    if (covered[i] || outside[i]) return;
+    outside[i] = 1;
+    stack.push(gx, gy);
+  };
+  for (let gx = 0; gx < gridW; gx++) { push(gx, 0); push(gx, gridH - 1); }
+  for (let gy = 0; gy < gridH; gy++) { push(0, gy); push(gridW - 1, gy); }
+  while (stack.length) {
+    const gy = stack.pop(), gx = stack.pop();
+    push(gx + 1, gy); push(gx - 1, gy); push(gx, gy + 1); push(gx, gy - 1);
+  }
+  // cluster the enclosed voids for actionable coordinates (top 3 by size)
+  const seen = new Uint8Array(gridW * gridH);
+  const clusters = [];
+  let holeCells = 0;
+  for (let i = 0; i < gridW * gridH; i++) {
+    if (covered[i] || outside[i] || seen[i]) continue;
+    let cells = 0, sx = 0, sy = 0;
+    const st = [i];
+    seen[i] = 1;
+    while (st.length) {
+      const j = st.pop();
+      const gx = j % gridW, gy = (j / gridW) | 0;
+      cells++; sx += gx; sy += gy;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = gx + dx, ny = gy + dy;
+        if (nx < 0 || ny < 0 || nx >= gridW || ny >= gridH) continue;
+        const n = ny * gridW + nx;
+        if (covered[n] || outside[n] || seen[n]) continue;
+        seen[n] = 1; st.push(n);
+      }
+    }
+    holeCells += cells;
+    clusters.push({
+      cells,
+      // grid -> world: +x is screen right; camera up = world -z, and
+      // readRenderTargetPixels row 0 is the screen BOTTOM = world +z side,
+      // so gy counts DOWN from z1.
+      x: +(x0 + ((sx / cells) + 0.5) * CELL_M).toFixed(2),
+      z: +(z1 - ((sy / cells) + 0.5) * CELL_M).toFixed(2),
+    });
+  }
+  clusters.sort((a, b) => b.cells - a.cells);
+  return { holeCells, clusters: clusters.slice(0, 3), coveredCells, gridW, gridH, cellM: CELL_M };
+}
+
+// §B3 census: KIT.fittings marker roots + per-mesh marker integrity.
+function censusFittings(root) {
+  let mg = 0, dressing = 0, markedMeshes = 0;
+  const byType = {};
+  root.traverse((o) => {
+    if (o.userData && o.userData.fittingRoot) {
+      const t = o.userData.fitting || '?';
+      byType[t] = (byType[t] || 0) + 1;
+      if (t === 'pintleMG') mg++; else dressing++;
+    }
+    if ((o.isMesh || o.isInstancedMesh) && o.userData && o.userData.fitting) markedMeshes++;
+  });
+  return { mg, dressing, markedMeshes, byType };
+}
+
+// --------------------------------------------------------------------------
+// mode: per-tank standard scan
+// --------------------------------------------------------------------------
+async function runTank(id) {
+  const t0 = performance.now();
+  const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+  tank.root.updateMatrixWorld(true);
+  pinLODs(tank.root);
+  const census = censusFittings(tank.root);
+  const holes = topDownScan(tank.root);
+  window.__STANDARD = { id, census, holes, ms: Math.round(performance.now() - t0) };
+  window.__STANDARD_READY = true;
+}
+
+// --------------------------------------------------------------------------
+// mode: fittings library self-test (validation without touching any profile)
+// --------------------------------------------------------------------------
+function fixtureMats() {
+  return {
+    hull: new THREE.MeshStandardMaterial({ color: 0x6b6f52, vertexColors: true }),
+    barrel: new THREE.MeshStandardMaterial({ color: 0x656a4e, vertexColors: true }),
+    detail: new THREE.MeshStandardMaterial({ color: 0x8a8f78 }),
+    dark: new THREE.MeshStandardMaterial({ color: 0x24282c }),
+    canvasCloth: new THREE.MeshStandardMaterial({ color: 0x55583e }),
+    wood: new THREE.MeshStandardMaterial({ color: 0x6e5637 }),
+    spareTrack: new THREE.MeshStandardMaterial({ color: 0x3a3d40 }),
+    glass: new THREE.MeshStandardMaterial({ color: 0x30414f }),
+    rubber: new THREE.MeshStandardMaterial({ color: 0x2e2d2a }),
+  };
+}
+
+function geoHash(group) {
+  group.updateMatrixWorld(true);
+  const fnv = (h, b) => { h ^= b; return (h * 0x01000193) >>> 0; };
+  const hashBytes = (bytes, h) => { for (let i = 0; i < bytes.length; i++) h = fnv(h, bytes[i]); return h >>> 0; };
+  const digests = [];
+  group.traverse((o) => {
+    if (!o.isMesh || !o.geometry) return;
+    let h = hashBytes(new Uint8Array(new Float32Array(o.geometry.getAttribute('position').array).buffer), 0x811c9dc5);
+    h = hashBytes(new Uint8Array(new Float32Array(o.matrixWorld.elements).buffer), h);
+    digests.push(h);
+  });
+  digests.sort((a, b) => a - b);
+  let total = 0x811c9dc5;
+  for (const d of digests) for (const sh of [0, 8, 16, 24]) total = fnv(total, (d >> sh) & 0xff);
+  return total.toString(16);
+}
+
+function fixtureScan(group) {
+  const holder = new THREE.Group();
+  holder.add(group);
+  return topDownScan(holder);
+}
+
+async function runFixture() {
+  const cases = [
+    ['pintleMG', { cls: 'm2', tone: 'two-tone', ring: true, shield: true }],
+    ['pintleMG', { cls: 'dshk', tone: 'pale' }],
+    ['pintleMG', { cls: 'nsvt', tone: 'dark' }],
+    ['pintleMG', { cls: 'mag', elev: 0.12, ammo: false }],
+    ['stowageRack', {}],
+    ['stowageRack', { w: 1.6, fill: 1, rails: 3, seed: 7 }],
+    ['stowageRack', { fill: 0 }],
+    ['towCable', { pts: [[-0.5, 0.10, 0], [0, 0.02, 0.15], [0.5, 0.10, 0]] }],
+    ['jerryCans', { count: 3 }],
+    ['spareTrackLinks', { links: 5, rotation: [0.3, 0, 0] }],
+    ['lightCluster', {}],
+    ['lightCluster', { pods: 1, lens: 'dark' }],
+    ['smokeBank', { count: 4 }],
+    ['smokeBank', { count: 6, splay: -1.12 }],
+    ['antennaWhip', {}],
+    ['unditchingLog', {}],
+    ['unditchingLog', { axis: 'z', straps: 3, seed: 5 }],
+  ];
+  const results = [];
+  const failures = [];
+  for (let ci = 0; ci < cases.length; ci++) {
+    const [type, opts] = cases[ci];
+    const label = `${type}#${ci}`;
+    try {
+      const mk = () => FITTINGS[type]({ ...opts, mats: fixtureMats(), seed: opts.seed ?? 1 });
+      const g = mk();
+      let meshes = 0, marked = 0;
+      g.traverse((o) => { if (o.isMesh) { meshes++; if (o.userData.fitting === type) marked++; } });
+      if (!meshes) failures.push(`${label}: no meshes`);
+      if (marked !== meshes) failures.push(`${label}: ${meshes - marked} unmarked meshes`);
+      if (!g.userData.fittingRoot || g.userData.fitting !== type) failures.push(`${label}: missing root marker`);
+      // stamped AABB matches the as-built meshes
+      const bb = new THREE.Box3().setFromObject(g);
+      const st = g.userData.aabb;
+      const near = (a, b) => Math.abs(a - b) < 1e-4;
+      if (!st || !near(st.min[0], bb.min.x) || !near(st.min[1], bb.min.y) || !near(st.min[2], bb.min.z)
+        || !near(st.max[0], bb.max.x) || !near(st.max[1], bb.max.y) || !near(st.max[2], bb.max.z)) {
+        failures.push(`${label}: stamped aabb drifts from meshes`);
+      }
+      // determinism: identical opts => identical geometry hash
+      const h1 = geoHash(g), h2 = geoHash(mk());
+      if (h1 !== h2) failures.push(`${label}: nondeterministic (hash ${h1} vs ${h2})`);
+      // winding: top-down FrontSide coverage must exist
+      const scan = fixtureScan(mk());
+      if (!scan.coveredCells) failures.push(`${label}: zero top-down coverage (winding?)`);
+      results.push({
+        label, meshes, hash: h1, coveredCells: scan.coveredCells, holeCells: scan.holeCells,
+        aabb: st ? [st.min.map((v) => +v.toFixed(3)), st.max.map((v) => +v.toFixed(3))] : null,
+      });
+    } catch (e) {
+      failures.push(`${label}: threw ${e.message}`);
+    }
+  }
+  try { FITTINGS.pintleMG({}); failures.push('pintleMG without mats did not throw'); }
+  catch (e) { /* required contract */ }
+  window.__FIXTURE = { ok: failures.length === 0, failures, results };
+  window.__FIXTURE_READY = true;
+}
+
+try {
+  if (params.get('fixture') === 'fittings') await runFixture();
+  else if (params.get('id')) await runTank(params.get('id'));
+  else throw new Error('pass ?id=<specId> or ?fixture=fittings');
+} catch (e) {
+  window.__STANDARD = { error: String(e && e.message || e) };
+  window.__FIXTURE = { ok: false, failures: [String(e && e.message || e)], results: [] };
+  window.__STANDARD_READY = true;
+  window.__FIXTURE_READY = true;
+}
+</script>

@@ -470,3 +470,507 @@ export const CLASSIC={hull:'classic',wheels:6,skirts:false,turret:'cast',turretW
 export const WW2={...CLASSIC,pano:false,smoke:false,antennas:false,sleeve:false,evac:null,mg:false,arms:true};
 export const CASEMATE={...WW2,hull:'casemate',turret:'casemate',turretWidth:1.5,turretDepth:1.8,turretHeight:0.35,turretFront:0.72,turretRear:-0.9};
 export const ABRAMS={...WESTERN,family:'abrams',hull:'western',turret:'abrams',width:3.05,hullLength:7.25,roofY:1.58,trackW:0.56,turretWidth:2.48,turretDepth:3.42,turretHeight:0.74,turretFront:1.05,turretRear:-1.96,pano:true,mg:true,gunLength:3.25,antennaHeight:0.72};
+
+// ===========================================================================
+// KIT.fittings — STANDARD DECORATION FITTINGS (kit-fittings round, 2026-08-03)
+// ===========================================================================
+// Owner directive (BUILD-STANDARD §B3): builders CALL these instead of
+// hand-authoring roof MGs / stowage per tank. Everything below is ADDITIVE —
+// nothing above this banner changed (graduates hash on the factory chain;
+// tools/tmp-hashgeo.mjs proves byte-identity).
+//
+// CONTRACT (every builder in KIT.fittings):
+//  * Returns a THREE.Group. EVERY mesh inside carries
+//    `userData.fitting = '<type>'`; the group itself carries the same marker
+//    plus `userData.fittingRoot = true` (one root per fitting instance —
+//    tools/tank-standard-check.mjs v2 censuses these markers).
+//  * DETERMINISTIC: no Math.random anywhere — jitter comes from `opts.seed`
+//    (default 1) through a local mulberry32. Same opts => byte-identical
+//    geometry.
+//  * MATERIAL SLOTS: callers pass their family material set as `opts.mats`
+//    (normally just `P.mats`). Builders pick slots by the createTankMaterials
+//    keys (dark / detail / canvasCloth / wood / spareTrack / glass / hull /
+//    barrel / rubber) and fall back to `mats.dark`. A neutral white vertex-
+//    color attribute is baked into every merged geometry so the camo slots
+//    (hull/barrel, vertexColors:true) never render black.
+//  * AABB FRAMING (BUILD-STANDARD §C): fittings must never change the model
+//    AABB. The CALLER anchors the group so its whole envelope stays INSIDE
+//    the hull/turret AABB; the as-built local envelope is stamped on
+//    `group.userData.aabb = {min:[x,y,z], max:[x,y,z]}` for containment
+//    checks (standard-check's fixture mode asserts it matches the meshes).
+//  * WINDING: geometry is composed exclusively from canonical three.js
+//    primitives (box/cyl/sphere/torus/lathe/tube) — never hand-wound slabs —
+//    so top-view backface culling can't eat a fitting. standard-check's
+//    fixture mode renders each fitting top-down with FrontSide materials and
+//    asserts non-zero coverage.
+//  * MG PHYSICS (banked law): pintleMG builds a receiver MASS (never a
+//    stick), a barrel that can break the roofline, and tone options — dark
+//    body + pale top caps ('two-tone', the abrams/merkava proven recipe),
+//    all-pale ('pale', the casemate sky-silhouette recipe: pale top-lit over
+//    sky), or all-dark ('dark': pale-deck roof guns invert to dark
+//    crown-riding lines). Callers pick tone by their deck polarity. Pintle
+//    silhouette allowance stays within the ≤0.4 gate-pt law when the caller
+//    keeps the envelope inside certified bins (see the casemate/abrams
+//    packets).
+//  * Shadows: castShadow/receiveShadow default true (fittings replace
+//    bucket-authored greebles which cast); pass `shadows:false` to opt out.
+//
+// Distinct from the legacy P-bucket helpers (KIT.pintleMG / KIT.towCable /
+// KIT.stowage — those write into merged material buckets and stay for the
+// already-graduated call sites): KIT.fittings.* return marker-carrying
+// groups, which is what the §B3 census machine-checks.
+//
+// Profile usage (import { FITTINGS } is the timing-proof spelling — see the
+// cycle note at the attach site below; KIT.fittings is the same object on
+// every runtime build path):
+//   import { KIT, FITTINGS } from './kit.js';
+//   const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone' });
+//   mg.position.set(0.62, roofY, -0.85);     // anchor INSIDE the turret AABB
+//   P.turretG.add(mg);
+import * as THREE from 'three';
+
+function fitRng(seed) {
+  let a = (seed | 0) ^ 0x2c9277b5;
+  return function () {
+    a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// Per-fitting part collector with P.add ergonomics, keyed by MATERIAL SLOT.
+function fitParts() {
+  const bySlot = {};
+  return {
+    bySlot,
+    add(slot, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
+      (bySlot[slot] || (bySlot[slot] = [])).push(KIT.xform(geo, x, y, z, rx, ry, rz, s));
+    },
+  };
+}
+
+function fitMat(mats, slot) {
+  const m = mats[slot] || mats.dark;
+  if (m && m.isMaterial) return m;
+  for (const v of Object.values(mats)) if (v && v.isMaterial) return v;
+  return null;
+}
+
+// Merge one mesh per material slot, stamp markers + local AABB, return group.
+function fitAssemble(type, parts, opts) {
+  if (!opts || !opts.mats) {
+    throw new Error(`KIT.fittings.${type}: opts.mats (family material set, e.g. P.mats) is required`);
+  }
+  const g = new THREE.Group();
+  g.name = `fitting_${type}`;
+  const shadows = opts.shadows !== false;
+  for (const [slot, geos] of Object.entries(parts.bySlot)) {
+    if (!geos.length) continue;
+    const merged = KIT.mergeAll(geos);
+    // Camo slots (hull/barrel) sample vertexColors; a missing attribute reads
+    // (0,0,0) in WebGL and renders BLACK — bake neutral white (ERA precedent).
+    merged.setAttribute('color', new THREE.BufferAttribute(
+      new Float32Array(merged.attributes.position.count * 3).fill(1), 3));
+    const mesh = new THREE.Mesh(merged, fitMat(opts.mats, slot));
+    mesh.castShadow = mesh.receiveShadow = shadows;
+    mesh.userData.fitting = type;
+    mesh.userData.fittingSlot = slot;
+    g.add(mesh);
+  }
+  g.userData.fitting = type;
+  g.userData.fittingRoot = true;
+  if (opts.rotation) g.rotation.set(opts.rotation[0] || 0, opts.rotation[1] || 0, opts.rotation[2] || 0);
+  const bb = new THREE.Box3().setFromObject(g);
+  g.userData.aabb = { min: [bb.min.x, bb.min.y, bb.min.z], max: [bb.max.x, bb.max.y, bb.max.z] };
+  return g;
+}
+
+// MG class table (era/caliber families). rec = [w,h,d] receiver mass.
+const MG_CLASSES = {
+  m2:   { s: 1.00, rec: [0.115, 0.095, 0.46], barrelR: 0.0165, barrelL: 0.52, jacket: 'sleeve', flashR: 0.021, flashL: 0.07 },
+  dshk: { s: 1.02, rec: [0.100, 0.100, 0.44], barrelR: 0.0155, barrelL: 0.50, jacket: 'fins',   flashR: 0.035, flashL: 0.10 },
+  nsvt: { s: 0.98, rec: [0.090, 0.100, 0.42], barrelR: 0.0240, barrelL: 0.55, jacket: 'none',   flashR: 0.035, flashL: 0.10 },
+  mag:  { s: 0.78, rec: [0.100, 0.045, 0.34], barrelR: 0.0120, barrelL: 0.46, jacket: 'none',   flashR: 0.017, flashL: 0.06 },
+};
+
+/**
+ * Roof pintle machine gun (MANDATORY §B3 decoration — MG PHYSICS compliant).
+ * Origin: pintle FOOT on the roof plate (caller seats it on the deck/cupola).
+ * @param {object} opts
+ *   mats     family material set (required — normally P.mats)
+ *   cls      'm2' | 'dshk' | 'nsvt' | 'mag'                  (default 'm2')
+ *   scale    extra uniform scale on the class                (default 1)
+ *   tone     'two-tone' | 'pale' | 'dark'                    (default 'two-tone')
+ *   elev     barrel elevation in radians, up positive        (default 0.06)
+ *   ring     AA ring around the foot: true | {r, stubs}      (default false)
+ *   ammo     ammo can on the receiver's left                 (default true)
+ *   shield   small gun shield ahead of the receiver          (default false)
+ *   seed, shadows, rotation
+ * Envelope (m2/scale 1, no ring): x ±0.17, y 0..0.36, z -0.30..+0.93 —
+ * authoritative per-build box in group.userData.aabb.
+ */
+function fittingPintleMG(opts = {}) {
+  const { box, cylY, cylZ, torus, xform } = KIT;
+  const cls = MG_CLASSES[opts.cls || 'm2'] || MG_CLASSES.m2;
+  const s = (opts.scale || 1) * cls.s;
+  const tone = opts.tone || 'two-tone';
+  const elev = opts.elev ?? 0.06;
+  const B = tone === 'pale' ? 'detail' : 'dark';   // body slot
+  const CAP = tone === 'dark' ? null : 'detail';   // pale top caps
+  const parts = fitParts();
+  const [rw, rh, rd] = cls.rec.map((v) => v * s);
+
+  // pintle column: flanged foot -> tapered post -> cradle yoke (real column,
+  // never a floating gun — casemate r10 law).
+  const colH = 0.16 * s;
+  parts.add(B, cylY(0.030 * s, 0.038 * s, 0.014, 12), 0, 0.007, 0);
+  parts.add(B, cylY(0.016 * s, 0.021 * s, colH, 10), 0, 0.014 + colH / 2, 0);
+  const colTop = 0.014 + colH;
+  parts.add(B, box(0.10 * s, 0.05 * s, 0.15 * s), 0, colTop + 0.025 * s, 0.01);
+
+  // receiver MASS (not a stick) + top-cover ridge + pale cap.
+  const recY = colTop + 0.05 * s + rh / 2 - 0.01;
+  const recZ = 0.06 * s;
+  parts.add(B, box(rw, rh, rd), 0, recY, recZ);
+  parts.add(B, box(rw * 0.44, 0.016 * s, rd * 0.9), 0, recY + rh / 2 + 0.008 * s, recZ);
+  if (CAP) parts.add(CAP, box(rw * 0.9, 0.008, rd * 0.88), 0, recY + rh / 2 + 0.020 * s, recZ);
+  // spade grips + charging handle (dark accents in every tone).
+  parts.add('dark', box(0.016 * s, 0.020 * s, 0.05 * s), -0.03 * s, recY - 0.01, recZ - rd / 2 - 0.02 * s);
+  parts.add('dark', box(0.016 * s, 0.020 * s, 0.05 * s), 0.03 * s, recY - 0.01, recZ - rd / 2 - 0.02 * s);
+  parts.add('dark', box(0.044 * s, 0.016 * s, 0.016 * s), 0, recY - 0.028 * s, recZ - rd / 2 - 0.045 * s);
+
+  // barrel group, elevated about the trunnion at the receiver front.
+  const trunY = recY + 0.004;
+  const trunZ = recZ + rd / 2;
+  const aim = (geo, dz, dy = 0) => xform(xform(geo, 0, dy, dz), 0, 0, 0, -elev, 0, 0);
+  if (cls.jacket === 'sleeve') {
+    parts.add(B, aim(cylZ(cls.barrelR * s * 1.7, 0.10 * s, 10), 0.05 * s), 0, trunY, trunZ);
+  } else if (cls.jacket === 'fins') {
+    for (let k = 0; k < 5; k++) {
+      parts.add(B, aim(cylZ(cls.barrelR * s * 1.5, 0.020 * s, 12), (0.03 + k * 0.028) * s), 0, trunY, trunZ);
+    }
+  }
+  const bl = cls.barrelL * s;
+  parts.add(B, aim(cylZ(cls.barrelR * s, bl, 8), 0.10 * s + bl / 2), 0, trunY, trunZ);
+  if (CAP) parts.add(CAP, aim(box(0.012 * s, 0.006, bl * 0.8), 0.10 * s + bl / 2, cls.barrelR * s + 0.003), 0, trunY, trunZ);
+  parts.add(B, aim(cylZ(cls.flashR * s, cls.flashL * s, 8), 0.10 * s + bl + cls.flashL * s / 2), 0, trunY, trunZ);
+  parts.add('dark', aim(cylZ(cls.barrelR * s * 0.55, 0.008, 8), 0.10 * s + bl + cls.flashL * s + 0.005), 0, trunY, trunZ);
+  parts.add('dark', box(0.012 * s, 0.017 * s, 0.015 * s), 0, trunY + cls.barrelR * s + 0.012, trunZ + 0.14 * s);
+
+  if (opts.ammo !== false) {
+    const ax = -(rw / 2 + 0.055 * s);
+    parts.add('detail', box(0.085 * s, 0.11 * s, 0.17 * s), ax, recY - 0.005, recZ - 0.02);
+    parts.add('dark', box(0.075 * s, 0.006, 0.15 * s), ax, recY + 0.055 * s, recZ - 0.02);
+  }
+  if (opts.shield) {
+    parts.add(tone === 'pale' ? 'detail' : 'dark', box(0.34 * s, 0.22 * s, 0.02), 0, recY + 0.02, trunZ + 0.03);
+  }
+  if (opts.ring) {
+    const rr = (opts.ring.r || 0.20) * s;
+    const rSlot = tone === 'dark' ? 'dark' : 'detail';
+    parts.add(rSlot, torus(rr, 0.011, 26), 0, 0.035, 0);
+    const stubs = opts.ring.stubs || 3;
+    for (let k = 0; k < stubs; k++) {
+      const a = 0.6 + k * (Math.PI * 2 / stubs);
+      parts.add(rSlot, box(0.024, 0.032, 0.024), Math.cos(a) * rr * 0.98, 0.018, Math.sin(a) * rr * 0.98);
+    }
+  }
+  return fitAssemble('pintleMG', parts, opts);
+}
+
+/**
+ * Rail stowage rack with soft fill (§B3 dressing). Rail fence + dark mesh
+ * back panel + tone-varied duffels/crates/tarp rolls.
+ * Origin: center of the rack FLOOR plane; +z is the open/outboard face.
+ * @param {object} opts
+ *   mats; w=1.2 rack width; d=0.45 depth; h=0.30 rail height;
+ *   posts   post count                     (default from width)
+ *   rails   1..3 horizontal rails          (default 2)
+ *   mesh    dark mesh back panel           (default true)
+ *   fill    0..1 soft-fill density         (default 0.75; 0 = bare rack)
+ *   seed, shadows, rotation
+ * Envelope: x ±w/2, y 0..~1.35h with fill (0..h bare), z ±d/2 — see
+ * group.userData.aabb.
+ */
+function fittingStowageRack(opts = {}) {
+  const { box, cylX } = KIT;
+  const w = opts.w || 1.2, d = opts.d || 0.45, h = opts.h || 0.30;
+  const rails = Math.min(3, Math.max(1, opts.rails || 2));
+  const rng = fitRng(opts.seed ?? 1);
+  const parts = fitParts();
+
+  // fence: posts + rails on the outer face, short end rails closing the bay.
+  const zFace = d / 2 - 0.02;
+  const nPosts = Math.min(10, Math.max(2, opts.posts || Math.round(w / 0.22)));
+  for (let i = 0; i < nPosts; i++) {
+    const x = -w / 2 + 0.02 + i * ((w - 0.04) / (nPosts - 1));
+    parts.add('dark', box(0.025, h, 0.025), x, h / 2, zFace);
+  }
+  const railYs = rails === 1 ? [h * 0.95] : rails === 2 ? [h * 0.95, h * 0.45] : [h * 0.95, h * 0.70, h * 0.45];
+  for (const ry of railYs) {
+    parts.add('dark', box(w, 0.032, 0.032), 0, ry, zFace);
+    for (const sx of [-1, 1]) parts.add('dark', box(0.032, 0.032, d * 0.9), sx * (w / 2 - 0.016), ry, zFace - d * 0.45);
+  }
+  for (const sx of [-1, 1]) parts.add('dark', box(0.025, h, 0.025), sx * (w / 2 - 0.016), h / 2, zFace - d * 0.9);
+  if (opts.mesh !== false) parts.add('dark', box(w * 0.98, h * 0.82, 0.014), 0, h * 0.52, zFace - 0.035);
+  parts.add('dark', box(w, 0.025, 0.04), 0, 0.0125, zFace);
+
+  // soft fill: tone-varied bundles (cloth / wood / pale) with seeded jitter.
+  const fill = opts.fill ?? 0.75;
+  if (fill > 0) {
+    const n = Math.max(1, Math.round(fill * w / 0.26));
+    const slots = ['canvasCloth', 'wood', 'canvasCloth', 'detail'];
+    for (let i = 0; i < n; i++) {
+      const x = (n === 1 ? 0 : -w / 2 + 0.18 + i * ((w - 0.36) / (n - 1))) + (rng() - 0.5) * 0.03;
+      const slot = slots[i % slots.length];
+      const yaw = (rng() - 0.5) * 0.16;
+      if (slot === 'wood') {
+        const bw = 0.24 + rng() * 0.06, bh = 0.16 + rng() * 0.05;
+        parts.add('wood', box(bw, bh, d * 0.62), x, bh / 2 + 0.02, -d * 0.08, 0, yaw, 0);
+        parts.add('dark', box(bw * 1.03, bh * 0.16, 0.02), x, bh * 0.5 + 0.02, -d * 0.08 + d * 0.31, 0, yaw, 0);
+      } else {
+        const r = 0.10 + rng() * 0.035, len = 0.22 + rng() * 0.10;
+        parts.add(slot, cylX(r, len, 10), x, r * 0.92 + 0.02, -d * 0.05, 0, yaw, 0);
+        parts.add('dark', cylX(r * 1.05, 0.022, 10), x - len * 0.22, r * 0.92 + 0.02, -d * 0.05, 0, yaw, 0);
+        parts.add('dark', cylX(r * 1.05, 0.022, 10), x + len * 0.22, r * 0.92 + 0.02, -d * 0.05, 0, yaw, 0);
+      }
+    }
+    // one long tarp roll across wide racks, over the bundles.
+    if (w > 0.8 && fill >= 0.5) {
+      const r = 0.085;
+      parts.add('canvasCloth', cylX(r, w * 0.55, 10), 0, h * 0.9 + r * 0.4, -d * 0.12);
+      parts.add('dark', cylX(r * 1.06, 0.024, 10), -w * 0.16, h * 0.9 + r * 0.4, -d * 0.12);
+      parts.add('dark', cylX(r * 1.06, 0.024, 10), w * 0.16, h * 0.9 + r * 0.4, -d * 0.12);
+    }
+  }
+  return fitAssemble('stowageRack', parts, opts);
+}
+
+/**
+ * Draped tow cable with end eyes + clamp blocks.
+ * Origin: caller's local frame — `pts` are LOCAL [x,y,z] knots (>= 2), the
+ * tube runs through them (CatmullRom, centripetal).
+ * @param {object} opts  mats; pts (required); r=0.020; eyes=true; seg=20;
+ *   tone 'dark'|'pale' (default 'dark'); seed, shadows, rotation
+ */
+function fittingTowCable(opts = {}) {
+  const pts = opts.pts;
+  if (!pts || pts.length < 2) throw new Error('KIT.fittings.towCable: opts.pts (>= 2 local [x,y,z]) required');
+  const { box, xform } = KIT;
+  const r = opts.r || 0.020;
+  const slot = opts.tone === 'pale' ? 'detail' : 'dark';
+  const parts = fitParts();
+  const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
+  parts.add(slot, new THREE.TubeGeometry(curve, opts.seg || 20, r, 6, false));
+  if (opts.eyes !== false) {
+    for (const t of [0, 1]) {
+      const p = curve.getPointAt(t);
+      const tan = curve.getTangentAt(t).multiplyScalar(t === 0 ? -1 : 1);
+      const yaw = Math.atan2(tan.x, tan.z);
+      const eye = xform(new THREE.TorusGeometry(r * 2.6, r * 0.75, 6, 12), 0, 0, r * 3.4);
+      parts.add(slot, xform(eye, 0, 0, 0, 0, yaw, 0), p.x, p.y, p.z);
+      parts.add(slot, xform(box(r * 2.6, r * 2.4, r * 3.2), 0, 0, r * 1.2, 0, yaw, 0), p.x, p.y, p.z);
+    }
+  }
+  return fitAssemble('towCable', parts, opts);
+}
+
+/**
+ * Jerry can row with retaining strap.
+ * Origin: bottom center of the row; cans face +z.
+ * @param {object} opts  mats; count=2; gap=0.05; slot='detail'
+ *   ('detail' pale metal | 'canvasCloth' olive | 'hull' scheme-painted);
+ *   strap=true; seed, shadows, rotation
+ * Envelope: x ±(count*(0.16+gap))/2, y 0..0.50, z ±0.17.
+ */
+function fittingJerryCans(opts = {}) {
+  const { box, cylY } = KIT;
+  const count = Math.max(1, opts.count || 2);
+  const gap = opts.gap ?? 0.05;
+  const slot = opts.slot || 'detail';
+  const rng = fitRng(opts.seed ?? 1);
+  const parts = fitParts();
+  const pitchX = 0.16 + gap;
+  for (let i = 0; i < count; i++) {
+    const x = (i - (count - 1) / 2) * pitchX;
+    const yaw = (rng() - 0.5) * 0.10;
+    parts.add(slot, box(0.16, 0.44, 0.32), x, 0.22, 0, 0, yaw, 0);
+    parts.add(slot, box(0.04, 0.055, 0.12), x, 0.465, 0, 0, yaw, 0);
+    parts.add('dark', cylY(0.020, 0.020, 0.035, 8), x + Math.sin(yaw) * 0.10 + 0.04, 0.455, Math.cos(yaw) * 0.10, 0, yaw, 0);
+  }
+  if (opts.strap !== false) {
+    const w = count * pitchX + 0.02;
+    parts.add('dark', box(w, 0.028, 0.018), 0, 0.30, 0.168);
+    parts.add('dark', box(w, 0.028, 0.018), 0, 0.30, -0.168);
+  }
+  return fitAssemble('jerryCans', parts, opts);
+}
+
+/**
+ * Spare track-link strip (worn track steel — never blockout black, r5 law).
+ * Origin: strip center; links run along z. Use opts.rotation for glacis
+ * lay-flat / turret-side hang poses.
+ * @param {object} opts  mats; links=4; width=0.5; pitch=0.165; seed,
+ *   shadows, rotation=[rx,ry,rz]
+ */
+function fittingSpareTrackLinks(opts = {}) {
+  const { box } = KIT;
+  const links = Math.max(1, opts.links || 4);
+  const width = opts.width || 0.5;
+  const pitch = opts.pitch || 0.165;
+  const parts = fitParts();
+  for (let k = 0; k < links; k++) {
+    const z = (k - (links - 1) / 2) * pitch;
+    parts.add('spareTrack', box(width, 0.045, 0.15), 0, 0, z);
+    parts.add('spareTrack', box(width * 0.88, 0.06, 0.05), 0, 0.02, z);
+  }
+  return fitAssemble('spareTrackLinks', parts, opts);
+}
+
+/**
+ * Headlight pod cluster with brush guards.
+ * Origin: center between pods at drum axis height; lenses face +z.
+ * @param {object} opts  mats; pods=2; spacing=0.16; r=0.055; guard=true;
+ *   lens='glass' ('glass' | 'dark' — dark-lens law for pale decks);
+ *   rake=-0.30 (drum pitch, matches glacis rake); seed, shadows, rotation
+ */
+function fittingLightCluster(opts = {}) {
+  const { box, cylZ, xform } = KIT;
+  const pods = Math.max(1, opts.pods || 2);
+  const spacing = opts.spacing ?? 0.16;
+  const r = opts.r || 0.055;
+  const rake = opts.rake ?? -0.30;
+  const lensSlot = opts.lens === 'dark' ? 'dark' : 'glass';
+  const parts = fitParts();
+  for (let i = 0; i < pods; i++) {
+    const x = (i - (pods - 1) / 2) * spacing;
+    parts.add('detail', xform(cylZ(r, r * 1.35, 12), 0, 0, 0, rake, 0, 0), x, 0, 0);
+    parts.add(lensSlot, xform(xform(cylZ(r * 0.8, 0.02, 12), 0, 0, r * 0.72), 0, 0, 0, rake, 0, 0), x, 0, 0);
+    if (opts.guard !== false) {
+      for (const sx of [-1, 1]) {
+        parts.add('dark', xform(xform(box(0.016, r * 2.5, 0.016), sx * r * 0.62, 0, r * 0.55), 0, 0, 0, rake, 0, 0), x, 0, 0);
+      }
+      parts.add('dark', xform(xform(box(r * 1.9, 0.016, 0.016), 0, r * 0.85, r * 0.55), 0, 0, 0, rake, 0, 0), x, 0, 0);
+    }
+  }
+  return fitAssemble('lightCluster', parts, opts);
+}
+
+/**
+ * Smoke-launcher tube bank (one cluster — call twice for L/R, mirroring
+ * `splay` sign and x anchor).
+ * Origin: bracket center; tubes fan forward/up from it.
+ * @param {object} opts  mats; count=4; r=0.038; len=0.24; pitch=-0.5 (tube
+ *   pitch rx); splay=1.12 (cluster yaw — negative for the far side);
+ *   arc=0.55; spacing=0.095; base=true; caps=true; slot='detail'
+ *   ('detail' pale tubes | 'dark'); seed, shadows, rotation
+ */
+function fittingSmokeBank(opts = {}) {
+  const { box, cylZ, xform } = KIT;
+  const n = Math.min(8, Math.max(1, opts.count || 4));
+  const r = opts.r || 0.038;
+  const len = opts.len || 0.24;
+  const pitch = opts.pitch ?? -0.5;
+  const splay = opts.splay ?? 1.12;
+  const arc = opts.arc ?? 0.55;
+  const spacing = opts.spacing ?? 0.095;
+  const slot = opts.slot || 'detail';
+  const parts = fitParts();
+  for (let k = 0; k < n; k++) {
+    const f = k - (n - 1) / 2;
+    const a = splay + f * (arc / n);
+    const dx = Math.cos(splay) * f * spacing;
+    const dz = -Math.sin(splay) * f * spacing;
+    parts.add(slot, xform(cylZ(r, len, 8), 0, 0, 0, pitch, a, 0), dx, 0, dz);
+    if (opts.caps !== false) {
+      parts.add('dark', xform(xform(cylZ(r * 0.88, 0.012, 8), 0, 0, len / 2 + 0.007), 0, 0, 0, pitch, a, 0), dx, 0, dz);
+    }
+  }
+  if (opts.base !== false) {
+    parts.add('dark', xform(box(n * spacing + 0.06, 0.05, 0.08), 0, -0.06, -0.06, 0, splay * 0.5, 0));
+  }
+  return fitAssemble('smokeBank', parts, opts);
+}
+
+/**
+ * Whip antenna on a base pot (PALE-REFUND-aware: the thin member defaults to
+ * the PALE detail slot so it refunds silhouette cost; pass slot:'dark' only
+ * over pale backdrops).
+ * Origin: pot base on the deck.
+ * @param {object} opts  mats; h=0.9; r=0.011; rake=0.06 (rz lean);
+ *   base=true; slot='detail'; seed, shadows, rotation
+ */
+function fittingAntennaWhip(opts = {}) {
+  const { box, cylY } = KIT;
+  const h = opts.h || 0.9;
+  const r = opts.r || 0.011;
+  const rake = opts.rake ?? 0.06;
+  const slot = opts.slot || 'detail';
+  const parts = fitParts();
+  if (opts.base !== false) {
+    parts.add('dark', cylY(0.035, 0.045, 0.08, 10), 0, 0.04, 0);
+    parts.add('dark', cylY(0.020, 0.020, 0.05, 8), 0, 0.10, 0);
+  }
+  const baseTop = opts.base !== false ? 0.12 : 0;
+  parts.add(slot, box(r * 2, h, r * 2), -Math.sin(rake) * h * 0.5, baseTop + Math.cos(rake) * h * 0.5, 0, 0, 0, rake);
+  return fitAssemble('antennaWhip', parts, opts);
+}
+
+/**
+ * Unditching log with cinch straps (rear-deck dressing, soviet tradition).
+ * Origin: log axis center; log runs along x ('x') or z ('z').
+ * @param {object} opts  mats; len=2.4; r=0.13; axis='x'; straps=2; seed,
+ *   shadows, rotation
+ */
+function fittingUnditchingLog(opts = {}) {
+  const { box, cylX } = KIT;
+  const len = opts.len || 2.4;
+  const r = opts.r || 0.13;
+  const straps = Math.max(0, opts.straps ?? 2);
+  const rng = fitRng(opts.seed ?? 1);
+  const parts = fitParts();
+  parts.add('wood', cylX(r, len, 14), 0, 0, 0);
+  parts.add('detail', cylX(r * 0.94, 0.016, 14), -(len / 2 + 0.004), 0, 0);
+  parts.add('detail', cylX(r * 0.94, 0.016, 14), len / 2 + 0.004, 0, 0);
+  for (let i = 0; i < straps; i++) {
+    const x = -len / 2 + (i + 1) * (len / (straps + 1)) + (rng() - 0.5) * 0.10;
+    parts.add('dark', cylX(r * 1.06, 0.032, 14), x, 0, 0);
+    parts.add('dark', box(0.034, r * 0.9, 0.016), x, -r * 0.62, r * 0.55, 0.5, 0, 0);
+  }
+  if (opts.axis !== 'z') return fitAssemble('unditchingLog', parts, opts);
+  const r0 = opts.rotation || [0, 0, 0];
+  return fitAssemble('unditchingLog', parts, { ...opts, rotation: [r0[0] || 0, (r0[1] || 0) + Math.PI / 2, r0[2] || 0] });
+}
+
+export const FITTINGS = {
+  pintleMG: fittingPintleMG,
+  stowageRack: fittingStowageRack,
+  towCable: fittingTowCable,
+  jerryCans: fittingJerryCans,
+  spareTrackLinks: fittingSpareTrackLinks,
+  lightCluster: fittingLightCluster,
+  smokeBank: fittingSmokeBank,
+  antennaWhip: fittingAntennaWhip,
+  unditchingLog: fittingUnditchingLog,
+};
+
+// Attach on the shared KIT object so callers reach the fittings as
+// KIT.fittings.<fn>. Additive property; no existing KIT key is touched.
+// CYCLE LAW: kit.js evaluates INSIDE the deliberate tankFactory module cycle
+// (tankFactory -> profiledProcedurals -> kit.js), BEFORE the KIT const
+// initializes — a bare module-scope read here is a TDZ ReferenceError (the
+// same law that forbids profiles reading KIT bindings at module scope). The
+// try arm covers out-of-cycle evaluation; the microtask arm lands the attach
+// the moment the module graph settles, which precedes every runtime build
+// path (game boot, garage, critic/gate rigs — all async). The one window it
+// cannot cover is a SYNCHRONOUS top-level createTank in the same job as
+// graph evaluation (tmp-hashgeo pattern): those rigs — and profile builders
+// that must stay loadable under them — use the timing-proof spelling
+//   import { FITTINGS } from './kit.js';
+// which is initialized before any profile module evaluates.
+try {
+  KIT.fittings = FITTINGS;
+} catch (_) {
+  queueMicrotask(() => { if (!KIT.fittings) KIT.fittings = FITTINGS; });
+}

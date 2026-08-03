@@ -127,3 +127,31 @@ Tanks are built as RIGS, not bespoke mesh piles. Three layers:
    rig-conformant build defines the rig (document its param surface in the
    family packet). Orchestrator schedules rig-consolidation rounds per
    family once ≥2 variants pass the gate.
+
+## I. KIT.fittings usage (§B3/§B4 workflow — kit-fittings round)
+Decoration is a WORKFLOW, not per-tank authorship: use
+`KIT.fittings.<fn>` (src/vehicles/profiles/kit.js) — hand-authored
+decorations need a packet justification.
+- Library: `pintleMG` (M2/DShK/NSVT/MAG classes, tone
+  'two-tone'/'pale'/'dark' per MG PHYSICS deck polarity, optional AA ring /
+  ammo / shield), `stowageRack`, `towCable`, `jerryCans`,
+  `spareTrackLinks`, `lightCluster`, `smokeBank`, `antennaWhip`,
+  `unditchingLog`. All deterministic (seed param, no Math.random), material
+  slots come from the caller's own family mats.
+- Call pattern (in a profile builder):
+  `import { KIT, FITTINGS } from './kit.js';`
+  `const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2' });`
+  `mg.position.set(x, roofY, z); P.turretG.add(mg);`
+  (`KIT.fittings` is the same object on every runtime path; the `FITTINGS`
+  import is the spelling that also survives synchronous top-level
+  createTank rigs — kit.js evaluates inside the tankFactory module cycle,
+  see the attach-site note in kit.js.)
+  Anchor the WHOLE stamped envelope (`group.userData.aabb`) INSIDE the
+  hull/turret AABB — fittings must never change the model AABB (§C).
+- Census (§B3 machine check): every fitting mesh carries
+  `userData.fitting`; `node tools/tank-standard-check.mjs --ids=<id>`
+  requires mg ≥ 1 fitting instance and reports the dressing count, plus the
+  §B2 top-down hole scan (0 enclosed cells). Hand-authored decoration
+  censuses ZERO — migrate it or justify it in the packet.
+- Library self-test: `node tools/tank-standard-check.mjs --fixture`
+  (marker coverage, AABB stamp, seed determinism, top-down winding).
