@@ -12,6 +12,9 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { getSpec, MODEL_SOURCE, TANK_SPECS } from './specs.js';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook } from './materials.js';
+// MOBILE r1: sourced-GLB swaps are tier-gated (modelLoader also self-gates;
+// checking here skips even the dynamic import + pipeline bookkeeping).
+import { glbModelsEnabled } from '../engine/quality.js';
 // DECORATION SYSTEM (2026-07): cosmetic stowage/fittings layer — attaches
 // under dedicated rig_decor_hull / rig_decor_turret groups at the end of
 // createTank (see the seam near the GLB-swap block). Skipped for
@@ -4349,7 +4352,8 @@ export function createTank(specId, engineCtx, opts = {}) {
   // fallback beside its sourced model without mutating the shared source
   // registry. This flag is deliberately opt-in and leaves every gameplay
   // caller on the normal sourced-model path.
-  if (!proceduralOnly && modelCfg && modelCfg.source === 'glb' && modelCfg.glb) {
+  if (!proceduralOnly && glbModelsEnabled()
+      && modelCfg && modelCfg.source === 'glb' && modelCfg.glb) {
     // burnU rides along so the swap pipeline can pre-install the DISARMED
     // burn-mask hook (uBurnT -1) on the staged materials and compile the
     // '|burn-r6' program variants off the render path — first-kill program

@@ -52,6 +52,99 @@
 
 const LS_KEY = 'cot.gfxPreset';
 
+// ---------------------------------------------------------------------------
+// MOBILE r1: DEVICE TIER (mobile/tablet vs desktop), resolved ONCE at boot by
+// createRenderer (renderer.js) and overridable via ?tier=mobile|desktop for
+// testing. Phones were bricking on the deployed build because 'auto' resolved
+// to the 'high' DESKTOP preset everywhere: ~0.5 GB of GPU textures (full GLB
+// roster + hero-grade canvas bakes) + 4096² shadow cascades on devices whose
+// browsers OOM-kill a tab well below that. The mobile tier is a real preset
+// on the same ladder (data, not scattered if-statements): every engine module
+// that already reads the preset (post.js, lighting.js) picks it up, and the
+// texture levers below (textureScale/textureCap/glbModels) are consumed by
+// the texture creation sites (materials.js, world bakers, modelLoader).
+//
+// Detection inputs (cheap, boot-safe): UA/touch class, gl MAX_TEXTURE_SIZE
+// (a 4096 cap identifies constrained GPUs even under desktop UAs), and
+// navigator.deviceMemory where available. iPadOS 13+ masquerades as
+// Macintosh — its touch points give it away.
+// ---------------------------------------------------------------------------
+let _deviceTier = null;      // 'mobile' | 'desktop' once resolved
+let _glMaxTexSize = 16384;   // renderer capability, captured at resolve time
+
+/**
+ * Resolve the device tier once. Called by createRenderer immediately after
+ * WebGLRenderer construction — before any preset consumer (post/lighting/
+ * material bakes) reads the ladder.
+ * @param {THREE.WebGLRenderer} [renderer] capability source (maxTextureSize)
+ * @returns {'mobile'|'desktop'}
+ */
+export function resolveDeviceTier(renderer) {
+  if (_deviceTier) return _deviceTier;
+  try {
+    if (renderer && renderer.capabilities && renderer.capabilities.maxTextureSize) {
+      _glMaxTexSize = renderer.capabilities.maxTextureSize;
+    }
+  } catch (_) { /* capability probe only */ }
+  let forced = null;
+  try {
+    const t = new URLSearchParams(window.location.search).get('tier');
+    if (t === 'mobile' || t === 'desktop') forced = t;
+  } catch (_) { /* no window/URL — headless import */ }
+  if (forced) {
+    _deviceTier = forced;
+  } else {
+    let mobile = false;
+    try {
+      const nav = navigator;
+      const ua = nav.userAgent || '';
+      const touchPts = nav.maxTouchPoints || 0;
+      const phoneUA = /Android|iPhone|iPad|iPod|Windows Phone|Mobile|Silk/i.test(ua);
+      const iPadDesktopUA = /Macintosh/.test(ua) && touchPts > 1; // iPadOS 13+
+      const tightGpu = _glMaxTexSize <= 4096;
+      const smallMem = typeof nav.deviceMemory === 'number' && nav.deviceMemory <= 4;
+      const coarse = typeof window.matchMedia === 'function'
+        && window.matchMedia('(pointer: coarse)').matches;
+      mobile = phoneUA || iPadDesktopUA || tightGpu || (coarse && smallMem);
+    } catch (_) { mobile = false; }
+    _deviceTier = mobile ? 'mobile' : 'desktop';
+  }
+  try {
+    // one-line boot breadcrumb probes/users can quote from a phone
+    console.info(`[quality] device tier: ${_deviceTier} (maxTex ${_glMaxTexSize})`);
+  } catch (_) { /* consoleless env */ }
+  return _deviceTier;
+}
+
+/** @returns {'mobile'|'desktop'} resolved tier ('desktop' until resolved) */
+export function getDeviceTier() { return _deviceTier || 'desktop'; }
+
+/** True when sourced-GLB model swaps are enabled on this tier (modelLoader
+ * gates its whole fetch/parse/upload pipeline on this — procedural tanks are
+ * the models of record on mobile). */
+export function glbModelsEnabled() { return getPreset().glbModels !== false; }
+
+/**
+ * CENTRAL texture-resolution lever. Texture/canvas creation sites pass their
+ * authored dimension through this: desktop tiers return it unchanged; the
+ * mobile tier scales it (textureScale) and clamps to both the tier cap and
+ * the live gl MAX_TEXTURE_SIZE so no texture can exceed the device.
+ * @param {number} px authored texture dimension
+ * @returns {number} dimension to allocate on the active tier
+ */
+export function texSize(px) {
+  const p = getPreset();
+  const scaled = px * (p.textureScale || 1);
+  return Math.max(1, Math.round(Math.min(scaled, p.textureCap || Infinity, _glMaxTexSize)));
+}
+
+/** Clamp WITHOUT the tier scale — for sizes that must not shrink on mobile
+ * (readability-critical bakes) but still may never exceed device caps. */
+export function clampTexSize(px) {
+  const p = getPreset();
+  return Math.max(1, Math.min(px, p.textureCap || Infinity, _glMaxTexSize));
+}
+
 export const PRESETS = {
   // r5: cascade 2 (roughly the 130-230 m band where pole/tree/building
   // shadows are most readable at gameplay camera angles) went 2048 → 4096 on
@@ -127,6 +220,38 @@ export const PRESETS = {
     shadowMapSizes: [2048, 2048, 1024, 1024],
     shadowMaxFar: 380,
   },
+  // MOBILE r1: the DEVICE tier for phones/tablets — never offered by the
+  // settings picker (PRESET_ORDER below is unchanged) and never resolved on a
+  // desktop-class device; resolvePresetName pins it whenever the device tier
+  // is mobile. Sized against a ~192 MB GPU texture budget on a 3-4 GB-RAM
+  // phone whose browser kills the tab near 1-1.5 GB total:
+  // - glbModels false — the sourced-GLB swap pipeline (fetch/parse/upload of
+  //   5-14 community models, 100s of MB decoded) never runs; the procedural
+  //   fleet is the model of record. Single biggest win.
+  // - textureScale 0.5 / textureCap 2048 — every procedural canvas bake
+  //   (tank albedo/normal/rough sets, world layers) allocates at half its
+  //   authored dimension through the central texSize() lever, and nothing may
+  //   exceed 2048 (or the live gl cap) in any dimension.
+  // - 1024/512 shadow cascades + 300 m range — the desktop 'high' cascades
+  //   (2x 4096² + 2x 2048² ≈ 170 MB of RTs) were a third of the whole mobile
+  //   budget; lighting.js' penumbra compensation keeps softness constant.
+  // - composer at 1.0x CSS pixels, may earn 1.25x (adaptiveBase/max), MSAA 2,
+  //   AO off, half bloom chain, governor floor 0.6 — the post chain's
+  //   cheapest stable configuration without forking its structure.
+  mobile: {
+    label: 'Mobile',
+    msaaSamples: 2,
+    maxPixelRatio: 1.25,
+    adaptiveBasePixelRatio: 1.0,
+    aoScale: 0,
+    bloomScale: 0.5,
+    shadowMapSizes: [1024, 1024, 512, 512],
+    shadowMaxFar: 300,
+    textureScale: 0.5,
+    textureCap: 2048,
+    glbModels: false,
+    dynMin: 0.6,
+  },
 };
 
 export const PRESET_ORDER = ['low', 'medium', 'high', 'ultra'];
@@ -156,6 +281,12 @@ export function getStoredChoice() {
  * of permanently presenting every Retina player with a 1.0x upscaled scene.
  */
 export function resolvePresetName(choice = getStoredChoice()) {
+  // MOBILE r1: the device tier OWNS the ladder on phones/tablets. A stored
+  // desktop choice (or a tap on the settings picker) must never re-enable the
+  // desktop texture/shadow footprint on a device that OOMs under it — that is
+  // exactly the deployed-build brick this tier exists to fix. ?tier=desktop
+  // remains the explicit test/escape hatch (resolveDeviceTier).
+  if (getDeviceTier() === 'mobile') return 'mobile';
   if (choice !== 'auto') return choice;
   return 'high';
 }

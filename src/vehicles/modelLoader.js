@@ -58,6 +58,11 @@ import {
   getCommunityGearMaterials, getKitPaintTexture, vehicleAmbientFloorHook,
   warmNextGlbShare, applyBurnHook,
 } from './materials.js';
+// MOBILE r1: the device tier gates this WHOLE pipeline. On phones/tablets the
+// sourced-GLB swap never runs (no fetch, no parse, no texture decode/upload —
+// the decoded community set alone is 100s of MB, the single biggest slice of
+// the mobile OOM brick); the procedural fleet is the model of record there.
+import { glbModelsEnabled } from '../engine/quality.js';
 
 const _loader = new GLTFLoader();
 // Resilient texture path (killcam_shotinfo r2, harness-reliability critical):
@@ -576,7 +581,12 @@ function loadGltf(url, texCaps = GLB_TEX_CAPS) {
 }
 
 /** True when the GLB is parsed and applyGlbModelSync can run. */
-export function hasCachedGlb(url) { return _resolved.has(url); }
+export function hasCachedGlb(url) {
+  // MOBILE r1: no GLB is ever "ready" on the mobile tier — callers take
+  // their procedural path without touching the loader cache.
+  if (!glbModelsEnabled()) return false;
+  return _resolved.has(url);
+}
 
 /**
  * PERF (perf-smooth r1): fire-and-forget fetch+parse warm for a battle
@@ -588,6 +598,7 @@ export function hasCachedGlb(url) { return _resolved.has(url); }
  * @param {object} cfg spec.model.glb config ({ path, heroTex? })
  */
 export function prefetchGlb(cfg) {
+  if (!glbModelsEnabled()) return; // MOBILE r1: never even fetch
   if (!cfg || !cfg.path) return;
   loadGltf(cfg.path, cfg.heroTex ? GLB_TEX_CAPS_HERO : GLB_TEX_CAPS)
     .catch(() => { /* the real load path owns error reporting */ });
@@ -2630,6 +2641,7 @@ function applySwap(gltf, ctx) {
  * @returns {boolean} true when applied
  */
 export function applyGlbModelSync(ctx) {
+  if (!glbModelsEnabled()) return false; // MOBILE r1: procedural stays
   const gltf = _resolved.get(ctx.cfg.path);
   if (!gltf) return false;
   const ok = applySwap(gltf, ctx);
@@ -2656,6 +2668,9 @@ export function applyGlbModelSync(ctx) {
  * @returns {Promise<boolean>}
  */
 export async function applyGlbModel(ctx) {
+  // MOBILE r1: the whole pipeline is tier-gated — resolve false (procedural
+  // retained) without fetching, parsing, or registering a pending swap.
+  if (!glbModelsEnabled()) return false;
   // tank_models r2: register the pending swap BEFORE the load so the priority
   // lane can bump this tank's parse job the moment its root joins the live
   // scene (garage pedestal selection vs the thumbs booth queue).

@@ -8,6 +8,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { sampleSplatNoise, applyTone } from './terrain.js';
+// MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
+import { texSize } from '../engine/quality.js';
 
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -275,7 +277,8 @@ function makeGrassCardTexture(rng, variant, tone = null) {
 // noise" on every card by 15 m (the diorama-prop critique). Distinct readable
 // leaf shapes are what survive minification as foliage.
 function makeLeafClusterTexture(rng, tone = null) {
-  const s = 512, K = s / 256;
+  // MOBILE r1: tier-scaled atlas (painter is K-relative)
+  const s = texSize(512), K = s / 256;
   const c = document.createElement('canvas');
   c.width = c.height = s;
   const ctx = c.getContext('2d');

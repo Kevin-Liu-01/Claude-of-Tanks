@@ -1390,7 +1390,12 @@ export function createPost(renderer, scene, camera) {
   // on the canvas (1 Hz), plus the read-only post.dynScale getter below —
   // reachable for probes via window.__DEBUG.post.dynScale. Nothing about the
   // scale is persisted: every boot re-earns resolution from the preset base.
-  const DYN_MIN = 0.75;
+  // MOBILE r1: the governor floor is preset data now — the mobile tier lets
+  // the chain fall further (0.6) before it stops shedding load; desktop tiers
+  // keep the historical 0.75 (preset.dynMin unset). Reads the LIVE preset so
+  // a settings-driven preset switch re-floors correctly.
+  const DYN_MIN_DEFAULT = 0.75;
+  const dynMin = () => preset.dynMin ?? DYN_MIN_DEFAULT;
   const DYN_STEP = 0.09;
   const DYN_INTERVAL_S = 2.5;
   const DYN_WARMUP_S = 6; // ignore boot/shader-compile turbulence
@@ -1495,8 +1500,8 @@ export function createPost(renderer, scene, camera) {
       dynUpBackoffS = DYN_INTERVAL_S; // flap-free minute: forgiven
     }
     if (dynEma > dynBudgetMs * DYN_DOWN_LEVEL && missRatio > DYN_DOWN_MISS_MIN
-        && dynScale > DYN_MIN) {
-      dynScale = Math.max(DYN_MIN, dynScale - DYN_STEP);
+        && dynScale > dynMin()) {
+      dynScale = Math.max(dynMin(), dynScale - DYN_STEP);
       if (dynClock - dynLastUpAt < DYN_FLAP_S) {
         // the last up-step flapped — back the next try off exponentially
         dynUpBackoffS = Math.min(dynUpBackoffS * 2, DYN_BACKOFF_MAX_S);
@@ -1673,7 +1678,7 @@ export function createPost(renderer, scene, camera) {
      * @returns {void}
      */
     pinDynScale(v) {
-      dynPin = v == null ? null : Math.min(1, Math.max(DYN_MIN, v));
+      dynPin = v == null ? null : Math.min(1, Math.max(dynMin(), v));
       if (dynPin !== null && dynPin !== dynScale) {
         dynScale = dynPin;
         if (cssW > 0 && cssH > 0) applySize(cssW, cssH);

@@ -16,6 +16,10 @@
 //   materials have no dedicated AO channel).
 
 import * as THREE from 'three';
+// MOBILE r1: central tier texture scale — the sourced photo-set composites
+// below were the largest world textures left on the mobile tier (7-10 live
+// 1024² albedo+normal canvases ≈ 40-70 MB). Desktop sizes are unchanged.
+import { texSize } from '../engine/quality.js';
 
 /** Master switches — flip to false to ship pure procedural again. */
 export const USE_SOURCED_TERRAIN = true;
@@ -157,7 +161,7 @@ function loadImage(url) {
  * alpha=255 (props). Returns a canvas sized to the color map (max 1024).
  */
 function composeAlbedo(color, ao, rough, { roughInAlpha = false, roughMul = 1, tint = null, desat = 0, lift = 0 } = {}) {
-  const s = Math.min(color.width, 1024);
+  const s = Math.min(color.width, texSize(1024)); // MOBILE r1: tier-scaled compose
   const c = document.createElement('canvas');
   c.width = c.height = s;
   const ctx = c.getContext('2d');
@@ -203,7 +207,7 @@ function composeAlbedo(color, ao, rough, { roughInAlpha = false, roughMul = 1, t
 }
 
 function normalCanvas(img) {
-  const s = Math.min(img.width, 1024);
+  const s = Math.min(img.width, texSize(1024)); // MOBILE r1: tier-scaled compose
   const c = document.createElement('canvas');
   c.width = c.height = s;
   c.getContext('2d').drawImage(img, 0, 0, s, s);

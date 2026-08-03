@@ -6,6 +6,8 @@ import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.js';
 import { applySourcedTerrain } from './sourcedTextures.js';
 import { buildHorizonRing } from './maps/horizon.js';
+// MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
+import { texSize } from '../engine/quality.js';
 
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -633,7 +635,7 @@ function drawWrapped(ctx, s, fn) {
 // Painted grass layer: noise macro base + thousands of individual blade
 // strokes so the near field reads as turf, not single-frequency speckle.
 function makeGrassLayer(seed, anisotropy, tone = null) {
-  const s = 512;
+  const s = texSize(512); // MOBILE r1: tier-scaled layer bake
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const rng = mulberry32(seed ^ 0x7f4a);
   const c = document.createElement('canvas');
@@ -718,7 +720,7 @@ function makeGrassLayer(seed, anisotropy, tone = null) {
 // Painted dirt layer: clods + drawn pebbles + cracks — real macro structure
 // for the sub-10 m ground and the road gravel pass.
 function makeDirtLayer(seed, anisotropy, tone = null) {
-  const s = 512;
+  const s = texSize(512); // MOBILE r1: tier-scaled layer bake
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const rng = mulberry32(seed ^ 0x2e91);
   const c = document.createElement('canvas');
@@ -811,7 +813,7 @@ function makeDirtLayer(seed, anisotropy, tone = null) {
 // Roughness (packed in alpha) is LOW on clear ice, high on the drifts, so the
 // sheet picks up sun/sky specular and reads as ice, not mud.
 function makeIceLayer(seed, anisotropy) {
-  const s = 512;
+  const s = texSize(512); // MOBILE r1: tier-scaled layer bake
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const rng = mulberry32(seed ^ 0x1cE5);
   const c = document.createElement('canvas');
@@ -932,7 +934,7 @@ function makeIceLayer(seed, anisotropy) {
 // shader's marsh-gloss + fresnel terms give it the specular water identity —
 // and high on the foam streaks so they read matte.
 function makeSeaLayer(seed, anisotropy, tone = null) {
-  const s = 512;
+  const s = texSize(512); // MOBILE r1: tier-scaled layer bake
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const rng = mulberry32(seed ^ 0x5EA1);
   const c = document.createElement('canvas');
@@ -1003,7 +1005,7 @@ function makeSeaLayer(seed, anisotropy, tone = null) {
 // splat shader's wall projection maps v to world height, so the beds land
 // horizontal on every cliff face regardless of orientation.
 function makeSandstoneLayer(seed, anisotropy, tone = null) {
-  const s = 512;
+  const s = texSize(512); // MOBILE r1: tier-scaled layer bake
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const rng = mulberry32(seed ^ 0x5a4d);
   // bed table: resistant ledges, soft recessed beds, occasional dark markers
@@ -1075,7 +1077,7 @@ function makeSandstoneLayer(seed, anisotropy, tone = null) {
 }
 
 function makeGroundLayer(seed, kind, anisotropy, tone = null, roughMul = 1) {
-  const s = 512;
+  const s = texSize(512); // MOBILE r1: tier-scaled layer bake
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const px = new Uint8ClampedArray(s * s * 4);
   const hgt = new Float32Array(s * s);
@@ -1128,7 +1130,10 @@ function makeGroundLayer(seed, kind, anisotropy, tone = null, roughMul = 1) {
 function makeMaskTexture(seedNoi, layout, landformW = null) {
   const _VILLAGE = layout.village;
   const _MARSHES = [...layout.marshes, ...layout.lakes]; // lakes share the wet/ice channel
-  const s = 2048, T = s / MAP_SIZE;
+  // MOBILE r1: tier-scaled mask (features derive from T = s/MAP_SIZE, so the
+  // bake is resolution-relative; mobile trades 0.5 m/texel road-edge crispness
+  // for a 16 MB saving on its ~192 MB budget)
+  const s = texSize(2048), T = s / MAP_SIZE;
   // r6 terrain_environment: landform (mesa/rim) weight pre-sampled on a
   // coarse grid (the field is ~700 m wavelength; 4 m texels bilerped) so the
   // 2048^2 mask bake stays cheap — B channel carries it on landformW maps.

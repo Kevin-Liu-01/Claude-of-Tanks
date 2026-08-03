@@ -7,6 +7,12 @@
 // No top-level side effects — canvases are created inside createTankMaterials.
 
 import * as THREE from 'three';
+// MOBILE r1: central texture-resolution lever (quality.js). Every canvas bake
+// below allocates through texSize(): desktop tiers get the authored size
+// unchanged; the mobile tier halves it and clamps to the device texture cap.
+// The painters are all canvas.width-relative, so this is a pure resolution
+// change — identical feature plan, quarter the pixels at scale 0.5.
+import { texSize } from '../engine/quality.js';
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -1909,7 +1915,7 @@ function paintPatchRoughness(roughCanvas, camoCanvas, visual) {
 
 // One track texture: 4 link rows per repeat, chevron/waffle grousers.
 function paintTrack(rng) {
-  const S = 512;
+  const S = texSize(512); // MOBILE r1: central tier scale (painter is S-relative)
   const c = makeCanvas(S, S);
   const ctx = c.getContext('2d');
   // r3 (critic: Tiger "track links are bright sparkly silver-gray instead of
@@ -2112,7 +2118,11 @@ const QUALITY_SIZES = {
 };
 
 function bakeSharedCanvases(entry, quality) {
-  const sz = QUALITY_SIZES[quality] || QUALITY_SIZES.high;
+  // MOBILE r1: tier scale applied at the ONE place every shared vehicle bake
+  // sizes itself ('high' hero 2048/1024 → 1024/512 on mobile, 'ai' roster
+  // 1024/512 → 512/256) — burnt/ember/camo repaints all derive from these.
+  const szq = QUALITY_SIZES[quality] || QUALITY_SIZES.high;
+  const sz = { albedo: texSize(szq.albedo), map: texSize(szq.map) };
   const { spec, seed } = entry;
   // modernWelds: welded-composite hulls draw no rivet/bolt rows (r10)
   const vis = { ...resolveCamoVisual(spec, entry.patternId), modernWelds: spec.era === 'modern' };
@@ -2252,7 +2262,7 @@ function releaseSharedTextures(spec) {
  */
 function ensureBurntTextures(entry, aniso) {
   if (entry.burntTex) return;
-  const S = 1024;
+  const S = texSize(1024); // MOBILE r1: central tier scale (S-relative painter)
   const cv = makeCanvas(S, S);
   const ctx = cv.getContext('2d');
   ctx.drawImage(entry.camoCanvas, 0, 0, S, S);

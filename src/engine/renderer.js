@@ -13,6 +13,7 @@
  * resolution governor.
  */
 import * as THREE from 'three';
+import { resolveDeviceTier } from './quality.js';
 
 // engine-aa r1: 1.5 → 2. This caps the CANVAS BACKING STORE, not the render
 // cost: the composer renders the scene + post chain at the preset's
@@ -42,6 +43,25 @@ export function createRenderer(container) {
     stencil: false,
   });
 
+  // MOBILE r1: resolve the device tier (quality.js) before ANY preset
+  // consumer runs — sky bake, lighting, post and every texture bake read the
+  // ladder after this point. Also captures gl MAX_TEXTURE_SIZE for the
+  // central texSize() clamp.
+  resolveDeviceTier(renderer);
+  // MOBILE r1: a lost WebGL context used to be a SILENT PERMANENT black
+  // screen (no handler anywhere) — on phones, where the OS reclaims the GPU
+  // under memory pressure, that was indistinguishable from a crash. Keep the
+  // context restorable (preventDefault) and give the player a branded
+  // explanation + reload path; a successful in-place restore reloads
+  // outright, which re-runs the whole boot cleanly.
+  renderer.domElement.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    showContextLossOverlay();
+  }, false);
+  renderer.domElement.addEventListener('webglcontextrestored', () => {
+    try { window.location.reload(); } catch (_) { /* overlay reload remains */ }
+  }, false);
+
   const width = container.clientWidth || window.innerWidth;
   const height = container.clientHeight || window.innerHeight;
 
@@ -70,6 +90,41 @@ export function createRenderer(container) {
 
   container.appendChild(renderer.domElement);
   return renderer;
+}
+
+/**
+ * MOBILE r1: branded context-loss overlay. Built lazily from JS (no index.html
+ * dependency), idempotent, sits above every game surface. The message keeps to
+ * the boot splash's visual language (dark steel, orange accent, Inter stack).
+ */
+function showContextLossOverlay() {
+  try {
+    if (document.getElementById('cot-ctxlost')) return;
+    const el = document.createElement('div');
+    el.id = 'cot-ctxlost';
+    el.setAttribute('style', [
+      'position:fixed', 'inset:0', 'z-index:100000',
+      'display:flex', 'align-items:center', 'justify-content:center',
+      'background:#05080b', 'color:#eef4f9',
+      "font-family:'Inter',system-ui,sans-serif", 'text-align:center',
+    ].join(';'));
+    el.innerHTML = [
+      '<div style="max-width:min(520px,86vw)">',
+      '<div style="font-size:22px;font-weight:800;letter-spacing:.34em;color:#f0ad45">CLAUDE&nbsp;OF&nbsp;TANKS</div>',
+      '<div style="margin-top:18px;font-size:15px;font-weight:600">Graphics device was reset</div>',
+      '<div style="margin-top:10px;font-size:12.5px;line-height:1.6;color:#9fb0bf">',
+      'The browser reclaimed the game’s graphics memory (this can happen on phones and tablets under memory pressure). ',
+      'Reload to jump back in — your garage and progress are saved.',
+      '</div>',
+      '<button id="cot-ctxlost-btn" style="margin-top:22px;padding:12px 34px;border:1px solid rgba(240,173,69,.6);',
+      'border-left:3px solid #f0ad45;background:rgba(240,173,69,.12);color:#ffd27a;font:800 12px/1 \'Inter\',system-ui,sans-serif;',
+      'letter-spacing:.22em;text-transform:uppercase;cursor:pointer">Reload</button>',
+      '</div>',
+    ].join('');
+    (document.body || document.documentElement).appendChild(el);
+    const btn = el.querySelector('#cot-ctxlost-btn');
+    if (btn) btn.addEventListener('click', () => { try { window.location.reload(); } catch (_) { /* ignore */ } });
+  } catch (_) { /* overlay is best-effort — never throw from a GL event */ }
 }
 
 /**

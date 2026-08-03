@@ -24,6 +24,10 @@
  */
 import * as THREE from 'three';
 import { createRenderer, onResize } from './engine/renderer.js';
+// MOBILE r1: device tier — sourced-GLB swaps are disabled wholesale on the
+// mobile tier (modelLoader gates its own pipeline; the checks here are the UI
+// bookkeeping that must not WAIT for swaps that will never arrive).
+import { glbModelsEnabled } from './engine/quality.js';
 import { createSky } from './engine/sky.js';
 import { createLighting } from './engine/lighting.js';
 import { createPost } from './engine/post.js';
@@ -544,6 +548,18 @@ function isGlbSwapped(vis) {
  * the visible hero crispens without a rebuild — same mechanism the garage
  * always used when selecting a spec the AI roster had baked at 'ai').
  */
+/**
+ * MOBILE r1: "this spec ships a sourced GLB *and* the active device tier will
+ * actually swap it in." Every hide-until-swap / wait-for-swap UI path keys on
+ * this instead of the raw MODEL_SOURCE shape — on the mobile tier the
+ * procedural build IS the final model and nothing may wait for a swap.
+ * @param {object|undefined} src MODEL_SOURCE row
+ * @returns {boolean}
+ */
+function wantsSourcedGlb(src) {
+  return glbModelsEnabled() && !!(src && src.source === 'glb' && src.glb);
+}
+
 function buildPedestalVisual(specId) {
   const vis = createTank(specId, engineCtx, { camoSeed: 4200, quality: 'ai' });
   const pedSpec = getSpec(specId);
@@ -561,7 +577,7 @@ function buildPedestalVisual(specId) {
   // hide landed. The reveal poll / modelLoader's in-place swap shows it the
   // moment the real model is on the hull; the outgoing hero covers till then.
   const srcB = MODEL_SOURCE[specId];
-  if (srcB && srcB.source === 'glb' && srcB.glb && !isGlbSwapped(vis) && vis.setVisible) {
+  if (wantsSourcedGlb(srcB) && !isGlbSwapped(vis) && vis.setVisible) {
     vis.setVisible(false);
   }
   pedestalPose(vis);
@@ -669,7 +685,7 @@ function setPedestalTank(specId, force = false) {
     touchCache(specId, cached);
     pedestalPose(cached);
     const src0 = MODEL_SOURCE[specId];
-    const wantsGlb = !!(src0 && src0.source === 'glb' && src0.glb);
+    const wantsGlb = wantsSourcedGlb(src0);
     if (!wantsGlb || isGlbSwapped(cached)) {
       if (cached.setVisible) cached.setVisible(true);
       retirePrev();
@@ -694,7 +710,7 @@ function setPedestalTank(specId, force = false) {
   // compileAsync material poll (unhandled TypeError). Dynamic import keeps
   // GLTFLoader off the boot-critical bundle path (perf-budget rule).
   const src = MODEL_SOURCE[specId];
-  if (src && src.source === 'glb' && src.glb) {
+  if (wantsSourcedGlb(src)) {
     const token = pedestalPollToken;
     const vis = pedestalVisual;
     import('./vehicles/modelLoader.js').then((m) => {
@@ -1689,10 +1705,7 @@ async function startBattleLoading(specId, mapId = null) {
   // rosters pass through instantly; a straggler past the bound still lands
   // via the (now pipelined, much smaller) idle jobs during the flyby.
   {
-    const glbTanks = game.tanks.filter((e) => {
-      const src = MODEL_SOURCE[e.specId];
-      return src && src.source === 'glb' && src.glb;
-    });
+    const glbTanks = game.tanks.filter((e) => wantsSourcedGlb(MODEL_SOURCE[e.specId]));
     if (glbTanks.length) {
       const loader = await import('./vehicles/modelLoader.js').catch(() => null);
       if (loader && loader.hasPendingSwap) {

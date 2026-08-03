@@ -15,6 +15,9 @@
  */
 import * as THREE from 'three';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
+// MOBILE r1: central tier texture scale (desktop returns sizes unchanged);
+// read inside the bake functions (post-renderer), never at module eval.
+import { texSize } from './quality.js';
 
 const SUN_ELEVATION_DEG = 32; // slightly lower sun → longer, more readable shadows
 // 140° put the sun almost directly BEHIND the standard chase/establishing
@@ -500,8 +503,8 @@ function makeFbm(rng, octaves, base) {
  * @returns {THREE.CanvasTexture}
  */
 function makeCloudTexture() {
-  const W = CLOUD_TEX;
-  const H = CLOUD_TEX;
+  const W = texSize(CLOUD_TEX); // MOBILE r1: tier-scaled bake (u/v-relative painter)
+  const H = texSize(CLOUD_TEX);
   const rng = mulberry32(CLOUD_SEED);
   // NOTE: keep fbmD at 6 octaves — a 7th octave shifts the seeded rng stream
   // and re-rolls the whole deck LAYOUT (the composed masses in the frozen
@@ -606,8 +609,8 @@ function makeCloudTexture() {
  * @returns {THREE.CanvasTexture}
  */
 function makeCirrusTexture() {
-  const W = CIRRUS_TEX;
-  const H = CIRRUS_TEX;
+  const W = texSize(CIRRUS_TEX); // MOBILE r1: tier-scaled bake
+  const H = texSize(CIRRUS_TEX);
   const rng = mulberry32(CLOUD_SEED + 11);
   const fbm = makeFbm(rng, 4, 4);
   const fbmW = makeFbm(rng, 2, 3);

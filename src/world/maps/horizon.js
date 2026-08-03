@@ -25,6 +25,8 @@
 
 import * as THREE from 'three';
 import { SimplexNoise } from '../../engine/simplexFast.js';
+// MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
+import { texSize } from '../../engine/quality.js';
 
 function mulberry32(a) {
   return function () {
@@ -151,7 +153,7 @@ const PROFILES = {
 // vertex colors, so one texture serves rock, forest, sand and snow zones.
 // ---------------------------------------------------------------------------
 function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyAmp = 1, coolRock = false }) {
-  const su = 1536, sv = 512;
+  const su = texSize(1536), sv = texSize(512); // MOBILE r1: tier-scaled bake
   const c = document.createElement('canvas');
   c.width = su; c.height = sv;
   const ctx = c.getContext('2d');
@@ -454,7 +456,7 @@ function makeTreeLineTexture(rng) {
   // and every tree carries INTERNAL shading — sun-lit upper tiers/crown lobes
   // over a darker shadow core — so the magnified skyline reads as lit forest
   // depth instead of flat paper cutouts.
-  const w = 2048, h = 320;
+  const w = texSize(2048), h = texSize(320); // MOBILE r1: tier-scaled bake
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   const ctx = c.getContext('2d');
