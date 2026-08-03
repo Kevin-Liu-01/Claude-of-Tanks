@@ -1162,3 +1162,167 @@ history; five r9 holders dead; graduation blocked by the MATERIAL TIER
 on big flats (iqr-0.00 surfaces; r8 item 7 never landed) + dead-rear
 cap circles + comb + deck density. Verdict:
 docs/critique/shaded-parity-isu122s-r10.md. r11 = material-tier round.
+
+## r11 BUILDER PACKET (2026-08-03) — THE MATERIAL-TIER ROUND
+
+Build state: working tree on top of e59b390 (uncommitted, per round rules).
+Pairs: `node tools/tmp-tank-critic.mjs --id=isu122s` -> shots/critic-isu122s/
+(all claims below re-measured on the FINAL pair files; rects are pair-image
+coords, ITU-601, sky-masked, ON-ELEMENT; proc pane = ref pane + 640).
+Rect batch tool: tools/tmp-isu122s-r11-rects.py; bucket-id probe:
+tools/tmp-isu122s-r11-idprobe.{html,mjs} (renders the proc build with
+buckets tinted — how every rect below was seated on its surface).
+
+### GATE (final, with ALL r11 geometry) — run twice, pasted verbatim
+```
+[geo  1] isu122s   min 90.1 | hull 90.3 whole 90.1 turret 100 stations 94.9 dims 98.3 floaters 100 PASS
+[geo  2] isu152    min 14.4 | hull 37.1 whole 37.1 turret 100 stations 14.4 dims 100 floaters 100
+[geo  1] isu122s   min 90.1 | hull 90.3 whole 90.1 turret 100 stations 94.9 dims 98.3 floaters 100 PASS
+[geo  2] isu152    min 14.4 | hull 37.1 whole 37.1 turret 100 stations 14.4 dims 100 floaters 100
+```
+90.1 PASS x2 — every r11 geometry move (skins, deck rails, cap dressing,
+wheel discs) priced at ZERO net cost; isu152 14.4 EXACT x2 (flag-gating
+held; the only isuCommon change, o.dashZs, defaults off).
+`npm test`: equipment.selftest all 166 checks passed; track-geometry
+verified; suite exit 0.
+
+### WHY THE TIER NEVER LANDED BEFORE (the r8-item-7 root cause)
+Every big flat on this build is slab()-built, and slab() fills UVs with
+ZEROS — normalScale/bumpScale sample one texel forever, so the r9
+material-level cures (detail.normalScale 0.60, wood.bumpScale 1.0) were
+no-ops on exactly the surfaces they targeted. paintVerts on an 8-corner
+slab interpolates its hash corner-to-corner (the r10 crest "hash jitter"
+rendered as one flat 87.3). The pot never had the problem because it has a
+96-seg lattice. r11 mechanism: `gridQuad` — a bilinear tessellated quad
+(~3 cm vertex pitch) painted per-vertex with a two-octave field
+(`mottle` = 13 cm smoothstep value-noise + 3 cm hash grain). Continuous
+field, dark% 0.0 everywhere — not the r8 speckle-dot class.
+
+Second discovery (calibration law): the painted-vertex response is
+PLANE-SPECIFIC and S-shaped. The dead-on +z plate runs ~40% hotter per
+unit albedo than the crest/side planes (q 0.735 rendered 86.4 where the
+side planes give ~72); below q ~0.45 the paintVerts lin floor (0.015)
+makes all q identical (the "shadow well one step darker" nit is therefore
+unreachable by albedo — see residuals). Every skin below was calibrated by
+bracketed measurement on its own plane, not by a shared gain.
+
+### ITEM 1 — TEXTURE-FLOOR TIER: iqr + offset table (the done-gate)
+surface / rect                          r10 (measured)   r11 final        ref (same-station rect)
+front plate  proc (1032,224)-(1145,296) 87.3 iqr 0.00 -> p50 73.6 iqr 3.6  ref (430,210)-(545,300) p50 73.6 iqr 4.4
+  quantiles p05/p25/p50/p75             (flat 87.3)      69.4/71.7/73.6/75.3  ref 68.5/71.7/73.6/76.1  — quantile-for-quantile
+  (the -14 L offset order 87.3->73.3 landed at 73.6; left wing (776,224)-(818,296) p50 72.6)
+casemate side  proc (950,285)-(1050,288) iqr 0.00 flat -> p50 71.6, core p05..p50 61.9..71.6
+                                                          ref strip (320,282)-(400,286) p50 69.2 iqr 6.2
+  (skin value parity ±0.4 vs the ref wall p50 71.2 at (305,274)-(405,294); intrinsic mottle ±4.6 display;
+   both wide rects stay fitting-contaminated — mine by the wall handrail/deck sliver at 81.8, the ref's by its rivets)
+wheel faces  proc (1020,354)-(1038,371)  iqr 1.2      -> iqr 4.3, p50 82.5   ref (429,359)-(443,371) iqr 3.6, p50 80.0
+  (painted stamped-structure disc: hub-shoulder valley, pressed ring, 6-spoke shading phase-locked to each
+   wheel's own cast ribs, rim roll — structure, zero new tone classes; all six road wheels)
+tub flare    proc (1078,331)-(1140,344)  ~flat        -> p50 81.8 iqr 7.7    ref (440,339)-(505,351) p50 86.1 iqr 2.3
+tub face     proc (1093,343)-(1105,357)  82.5 iqr 0.0 -> p50 80.2 iqr 6.9    ref (448,344)-(462,358) p50 85.1 iqr 3.3
+  (the critic's 10.1 rect is not reproducible from the verdict; both tub surface classes now carry the tier —
+   my windows land between the ref's same-window 2.3-3.3 and the ordered 10.1)
+
+### ITEM 2 — REAR CAPS AT DEAD-REAR (within priced rows)
+Done: rear-facing outer caps tilt 0.16 -> 0.30 rad (top point 1.661 <
+1.6845 certified bump line — MORE tilt lowers the top), a proud bright rim
+ring (painted q 1.02, torus r 0.1895 outer 0.198 < the 0.205 rim hoops)
+over a dark under-groove, and a CROSS-BAR strap pair (q 0.52) across every
+outer cap face; the vertical member's top end rides the dead-rear nose
+window (its dark notch is visible cutting the crescents at 12 o'clock).
+view-rear read (736,258)-(790,305): p50 94.7 = the ref cap face's own 94.1
+((530,290)-(585,340)); p95 105.6 (lit rim arcs), p05 65.8 (bar + groove).
+hero-rearright: both cap faces read as lit discs with rim rings (fuller
+than r10 — the 0.30 tilt gains ~6 px of lit face at the crown).
+NOT done (certified-impossible): a FILLED circle at dead-rear. The
+occluders are the tank's own certified tail rows (w 1.38-1.44 to top
+1.475) in front of the cap (z -2.30 vs -2.53..-3.26); exposing the disc
+needs the mounting move the r9 round priced at min 86.8 (-3.3). The r9
+ruling banked partial caps as the certified-occlusion acceptance class;
+r11 delivers the boldest partial read the priced rows allow.
+
+### ITEM 3 — GROUND-RUN COMB
+The certified-pitch tick row (56 boxes, 0.165 m pitch, geometry EXACT)
+moved to the painted bucket at q 0.72: the fringe's link-pitch teeth now
+read ~57-70 dark nubs against the band — the ref's own tooth class
+(its teeth sample 58-75) — instead of the r10 bright 84-92 sawtooth.
+Band rect (1000,366)-(1170,380): L 78.8 vs ref (360,366)-(530,380) 71.4 —
+ratio 1.10, inside the 0.92-1.16 law and unchanged from the r10 cert.
+Diagnostic honesty: a -13% pad test and a -12% inner-chain test both
+proved the REMAINING bright points are the six wheel ground-contact arcs
+(mats.wheels, one per station at 0.84 m pitch), not link-pitch teeth; the
+chain test also dropped the r9 gear-light gap window to p50 67.9 vs ref
+79.2 and was REVERTED (final gap window (998,356)-(1014,370) p50 76.1,
+back inside the r9 cert class; view-left wide-lower p05 restored to the
+r10 baseline 71.8 exactly).
+
+### ITEM 4 — PLAN DECK DENSITY
+Frame-grid continuation on the mid-deck blank bands, slat mask class
+(every top <= 1.6655 < the certified 1.684 deck waves; rear-view columns
+covered by the drums' own 1.6755+ tops): per side one deck-edge frame
+rail (z -0.52..-2.36 at |x| 1.115), one inner panel seam scribe
+(hullDark, |x| 0.975), and transverse frame ribs at z -1.325 / -2.145
+bridging the louvre banks. Reads on view-top/hero-toptilt as the ref's
+panel grid; gate-free (table above).
+
+### ITEM 5 — NITS
+5a crest: REBUILT as gridQuads with a key-side field. Ref measured this
+   round: left half (120,150)-(320,185) p75 99.0 / p95 113.0 vs right
+   half (320,150)-(520,185) p50 70.6 / p95 91.1 — the ref's crest is
+   left-biased with a concentrated corner peak. Ours now: left rect
+   (788,172)-(818,212) p95 111.9 (peak term saturates q 1.13 at the
+   left-top corner; paintVerts display ceiling raised 1.06 -> 1.15 to
+   stop the 105.4 clamp), right rect (1032,172)-(1140,212) p50 78.6 —
+   above the 73.6 plate, so the r10 un-inversion class holds while the
+   symmetric-22-31 spread becomes the ref's asymmetric ~38-45.
+5b inter-drum slot: MEASURED OUT — the well already renders at the
+   painted floor (lin floors at 0.015 for q < 0.454; a q 0.07 test was
+   byte-identical). p50 is lighting-bound (the sun reaches the well's +x
+   face). Disclosed, not regressed.
+5c dash rows: o.dashZs (isuCommon, flag-gated, isu152 defaults exact) —
+   per-side irregular stations [-0.268,0.014,0.242]/[-0.221,0.052,0.266]
+   inside the box mass; the metronome pitch is gone.
+5d muzzle brake: both baffle drums moved off the camo bucket to painted
+   q 0.86 (radius/x/z EXACT — the frozen collar-face contracts are
+   untouched; collar + divider keep their r10 scheme paint). The camo
+   patch boundaries that drove the shading swings are gone — at 8x the
+   brake reads one calm olive family with the dark slot core. Same-rect
+   parity proc (688,278)-(742,296) iqr 28.6 vs ref (58,288)-(114,316)
+   25.0 (both rects span the full curvature; the critic's 31.8-vs-8.2
+   rect is not reproducible from the verdict).
+
+### PROTECTED READS — re-verified on the final pairs
+DShK: close-roof mass (pedestal+receiver+ribs+grips+sleeve-stepped
+barrel+ammo can), view-top plan, toptilt, view-left rod with GENUINE
+sky-under (14 columns re-counted this round), right, front — all present;
+MG geometry untouched this round. Cap-forward hero-rr discs: improved
+(rim rings), not regressed. Front un-inversion: crest > plate holds
+(5a). Pot at 6x: no terraces/smudge/seam (close-front zoom verified;
+pot/snout/ellipse code untouched). Cupola lids in-family (close-roof).
+Pot ellipse boundary untouched. Gear light logic: gap window p50 76.1 /
+wheels 82.5 / idler-sprocket ends buried one-family (chain revert above).
+Gex on every new painted surface 5.9-8.5 (in family). FILL/CIRC/
+CONTIGUITY: no geometry deleted; all additions inside existing masks.
+isu152: 14.4 EXACT x2.
+
+### Honest residuals (r11 — for the critic)
+- Dead-rear caps remain PARTIAL (bold arcs + rim ring + bar notch + lit
+  crown lens, p50 at ref's cap-face value) — the full circle is priced
+  at -3.3 gate points (r9 mounting cert). Render-vs-cert conflict is
+  disclosed, not hidden.
+- The inter-drum slot p50 sits at the paint floor; "one step darker"
+  needs a light-blocking change, not albedo.
+- Ground-run band L +7.4 over ref (ratio 1.10, in-law): bounded by the
+  protected r9 trackL/R p05 lift; the six wheel ground arcs stay
+  wheel-family bright (protected quiet-band class).
+- Casemate-side wide rects stay above ref iqr (16.1 vs 9.8) from wall
+  fittings (handrail/deck sliver at 81.8) — the SKIN core is at value
+  parity with ref-class mottle; a fitting retone was out of item scope.
+- Tub flare value -4.3 under ref in the visible window (81.8 vs 86.1)
+  with more texture (7.7 vs 2.3): split the difference between the
+  ref's own window and the ordered 10.1; can trim next round with one
+  base step (+0.04 q) if the critic prefers the ref window exactly.
+- The plate/crest mottle at 6x reads as soft cast patches (continuous
+  field); if the critic wants the ref's finer print grain, halve the
+  13 cm octave and double the 3 cm octave amplitude — one-line change
+  per surface.

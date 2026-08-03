@@ -26,7 +26,7 @@
 //  - Oracle-defect caps (quantified in docs/references/tanks/<id>.md): the
 //    ISU pair and T95/Strv103 oracles are proportionally off published dims;
 //    dims stays sovereign here and the curve ceilings are documented.
-import { BufferAttribute } from 'three';
+import { BufferAttribute, BufferGeometry, Float32BufferAttribute } from 'three';
 import { KIT } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
@@ -977,7 +977,13 @@ function isuCommon(P, o) {
     // r10 (isu122s minors, o.seamH): the three seam dashes per fender box read
     // as the critic's "dirt-dash row" at full 0.11 height — isu122s thins
     // them INSIDE the box mass (x/z exact, mask-neutral); isu152 unchanged.
-    for (const bz of [-0.24, 0.02, 0.26]) P.add('hullDark', box(0.29, o.seamH ?? (o.boxH - 0.05), 0.024), s * o.boxX, o.boxY + 0.01, o.boxZ + bz);
+    // r11 (isu122s minors, o.dashZs): the critic's "dash-row regularity" nit —
+    // per-side irregular dash stations replace the metronome [-0.24,0.02,0.26]
+    // pitch. Stations stay inside the box mass (|bz| <= 0.355), so the change
+    // is mask-neutral; isu152 (no flag) keeps the exact r10 rows.
+    for (const bz of (o.dashZs ? o.dashZs[s > 0 ? 1 : 0] : [-0.24, 0.02, 0.26])) {
+      P.add('hullDark', box(0.29, o.seamH ?? (o.boxH - 0.05), 0.024), s * o.boxX, o.boxY + 0.01, o.boxZ + bz);
+    }
     if (!o.bigHooks) {
       towHook(P, s * 0.62, 0.95, o.bowZ - 0.25);
       towHook(P, s * 0.62, 0.90, o.tailZ + 0.10);
@@ -1283,6 +1289,8 @@ function buildISU122S(P) {
     // (spare-track family), fender-box seam dashes thinned (dirt-dash row),
     // hatch-dome lids sunk under the painted cupola dressing.
     railBucket: 'hullTrack', seamH: 0.055, sunkLids: true,
+    // visual r11 flag (critic r10 nit 5d): irregular dash stations per side.
+    dashZs: [[-0.268, 0.014, 0.242], [-0.221, 0.052, 0.266]],
     // xc/trackW solve the front-view window constraint set exactly (probe
     // rounds 2-3): shoe pin caps at xc±(0.49W+0.029) must clear the
     // [0.796,0.830] window yet stay inside the strip width for stations 5-9,
@@ -1433,7 +1441,10 @@ function buildISU122S(P) {
     const col = new Float32Array(p.count * 3);
     const S = 0.196;
     for (let i = 0; i < p.count; i++) {
-      const D = Math.max(0.05, Math.min(1.06, fn(p.getX(i), p.getY(i), p.getZ(i), nrm.getX(i), nrm.getY(i), nrm.getZ(i))));
+      // (r11: display ceiling 1.06 -> 1.15 — the crest's ref-matched 112
+      // peak needs q 1.13; the old clamp capped every crest render at 105.4.
+      // All other painters stay <= 1.02, so nothing else moves.)
+      const D = Math.max(0.05, Math.min(1.15, fn(p.getX(i), p.getY(i), p.getZ(i), nrm.getX(i), nrm.getY(i), nrm.getZ(i))));
       const lin = Math.max(0.015, Math.pow(D, 2.2) * (1 + S) - S);
       col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = lin;
     }
@@ -1447,6 +1458,51 @@ function buildISU122S(P) {
     const h = Math.sin(x * 63.73 + y * 187.19 + z * 41.7) * 30269.3;
     return q + ((h - Math.floor(h)) - 0.5) * jit;
   });
+  // ---- r11 TEXTURE-FLOOR TIER machinery (critic r10 item 1 — the #1 gap,
+  // r8 item 7 that never landed). WHY the r9 material attempts read iqr 0.00:
+  // every big flat on this build is slab()-built, and slab fills its UV
+  // attribute with ZEROS — normalScale/bumpScale sample one texel forever, so
+  // no material octave can put variation on those plates. And paintVerts on
+  // an 8-corner slab interpolates its hash across the whole face (the crest
+  // "hash jitter" rendered as one flat 87.3). The pot works because it has a
+  // 96-seg lattice: REAL vertices at ~3cm pitch. This grid gives the same
+  // lattice to a flat: a bilinear quad over 4 world-space corners, painted
+  // per-vertex. Non-indexed; duplicated verts hash identically (no seams).
+  const gridQuad = (c00, c10, c11, c01, nu, nv) => {
+    const pos = [];
+    const at = (u, v) => [0, 1, 2].map((k) =>
+      (1 - v) * ((1 - u) * c00[k] + u * c10[k]) + v * ((1 - u) * c01[k] + u * c11[k]));
+    for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
+      const a = at(i / nu, j / nv), b = at((i + 1) / nu, j / nv);
+      const c = at((i + 1) / nu, (j + 1) / nv), d = at(i / nu, (j + 1) / nv);
+      pos.push(...a, ...b, ...c, ...a, ...c, ...d);
+    }
+    const g = new BufferGeometry();
+    g.setAttribute('position', new Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new Float32BufferAttribute(new Array((pos.length / 3) * 2).fill(0), 2));
+    g.computeVertexNormals();
+    return g;
+  };
+  // smooth 2D value noise (0..1) — the coarse mottle octave. Plain per-vertex
+  // hash is the fine grain octave; the SUM is the ref's cast/plate micro tier
+  // (soft 8-15 cm patches + 3 cm grain), NOT the r8 speckle-dot class: the
+  // field is continuous, amplitudes stay inside the p05 lift table, and
+  // dark% stays 0 (nothing within 25 L of the dark threshold).
+  const vn2 = (x, y) => {
+    const h2 = (a, b) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
+    const xi = Math.floor(x), yi = Math.floor(y);
+    const su = sm01(x - xi), sv = sm01(y - yi);
+    return (h2(xi, yi) * (1 - su) + h2(xi + 1, yi) * su) * (1 - sv)
+      + (h2(xi, yi + 1) * (1 - su) + h2(xi + 1, yi + 1) * su) * sv;
+  };
+  // cast/plate mottle field: u/v in meters on the surface, per-surface phase
+  // (ph) decorrelates plates. aC = coarse amplitude (13 cm patches), aF =
+  // fine grain amplitude (per-vertex hash at the ~3 cm lattice pitch).
+  const mottle = (u, v, ph, aC, aF) => {
+    const c = (vn2(u / 0.13 + ph, v / 0.13 - ph * 0.7) - 0.5) * 2;
+    const h = Math.sin(u * 141.27 + v * 89.93 + ph * 197.1) * 43758.5453;
+    return aC * c + aF * ((h - Math.floor(h)) - 0.5) * 2;
+  };
   // ---- rear fuel drums (visual r3 — the r2 critic overruled the r2
   // near-flush cut: the print RENDERS proud ribbed cylinders with end rims
   // in >=5 views). Re-measured on the print's own renders: the drums ride
@@ -1524,7 +1580,25 @@ function buildISU122S(P) {
           // tucks UNDER the deck-step slope in true side view (priced this
           // round: see the r10 gate table). Bump-line carriage is unchanged
           // (rims + hoops still top 1.6845).
-          const a = e > 0 ? -0.16 : 0.16;
+          // r11 (critic r10 item 2 — dead-rear "soft noses vs the ref's bold
+          // circles + cross-bar"; the mounting is FROZEN by the r9 pricing,
+          // so the read comes from the visible-window dressing): the REAR
+          // drum's outer cap tilts 0.16 -> 0.22 (top point 0.190cos(0.22) ->
+          // 1.665, still under the certified 1.6845 bump line; the face
+          // normal gains 3.4 deg toward the elevated rear camera), and every
+          // outer cap gets the ref's own cap furniture — a PROUD BRIGHT RIM
+          // RING over a dark under-groove (the bold circle outline the
+          // crescent window shows) and a CROSS-BAR strap pair across the
+          // face (dark steel over the 94-L plate; the vertical member's top
+          // end rides the dead-rear nose window at y 1.657). All pieces stay
+          // inside the drum's own certified mask (outer radius 0.198 < the
+          // 0.205 rim hoops; aft extent -2.367 > the -2.44 deck plan row).
+          // (r11 round 2: rear tilt 0.22 -> 0.30 — at 0.22 the dead-rear
+          // read stayed arc-only; 17.2 deg opens ~6 px of lit cap FACE at
+          // the crown between plate edge and rim ring. Top point 0.190*
+          // cos(0.30) = 1.661 still under the 1.6845 line; hero-rr keeps a
+          // fuller face view, not less.)
+          const a = (e > 0 ? -1 : 1) * (dz === -0.95 ? 0.16 : 0.30);
           const zc = dz + e * (dl / 2 + 0.014);
           const capAdd = (bucket, geo, ry, t) => P.add(bucket, xform2(geo, 0, 0, 0, a),
             s * 1.287,
@@ -1536,6 +1610,13 @@ function buildISU122S(P) {
           capAdd('hullDark', KIT.torus(0.148, 0.0045, 28), 0, 0.009);          // thin scribe ring
           capAdd('hullGlass', cylZ(0.055, 0.014, 16), 0, 0.013);               // hub boss
           capAdd('hullDark', cylZ(0.022, 0.012, 10), 0.0655, 0.015);           // filler plug (10 o'clock, per ref)
+          capAdd('hullDark', KIT.torus(0.181, 0.005, 30), 0, 0.006);           // rim under-groove (dark seam)
+          { const rim = KIT.torus(0.1895, 0.0105, 30); paintFlat(rim, 1.02, 0.02);
+            capAdd('hullCloth', rim, 0, 0.012); }                              // proud bright rim ring
+          { const barV = box(0.040, 0.355, 0.010); paintFlat(barV, 0.52, 0.05);
+            capAdd('hullCloth', barV, 0, 0.022); }                             // cross-bar (vertical member)
+          { const barH = box(0.355, 0.028, 0.010); paintFlat(barH, 0.52, 0.05);
+            capAdd('hullCloth', barH, 0, 0.022); }                             // cross-bar (horizontal member)
         } else {
           P.add('hullDark', cylZ(0.186, 0.014, 28), s * 1.287, 1.4795, dz + e * (dl / 2 + 0.004));  // dark inner end
         }
@@ -1573,6 +1654,11 @@ function buildISU122S(P) {
     // exactly like the ref's gap. Round 4: taller/wider — top 1.648 tucks
     // under the deck line and the face rides at 1.40, so the well fills
     // the whole visible gap window instead of an 11% sliver.)
+    // r11 (critic r10 nit 5b, MEASURED OUT): "slot p50 one step darker" is
+    // not reachable by albedo — paintVerts floors lin at 0.015 for q<0.454,
+    // so the q 0.10 well ALREADY renders at the material's darkest (a 0.07
+    // test rendered byte-identical). The slot p50 is lighting-bound (the sun
+    // reaches the well's +x face); disclosed as an honest residual.
     P.add('hullCloth', paintFlat(box(0.28, 0.348, 0.115), 0.10), s * 1.26, 1.474, -1.4425);
     // r6 rail gap stubs: the rear rail's certified front-view column band
     // (x 1.505..1.535 reading 1.44..1.51) now lives in three short stubs
@@ -1664,6 +1750,19 @@ function buildISU122S(P) {
   P.add('hullDark', box(0.30, 0.008, 0.020), 0, 1.6575, -2.17);                          // spine end seam
   P.add('hull', box(1.88, 0.022, 0.30), 0, 1.6525, -2.25);                               // transverse step plate (top 1.6635)
   P.add('hullDark', box(1.86, 0.010, 0.014), 0, 1.6560, -2.102);                         // step riser shadow seam
+  // r11 (critic r10 item 4, PLAN DECK DENSITY): the mid-deck bands outboard
+  // of the louvre banks and between the bank groups rendered BLANK from
+  // top/toptilt where the ref's deck carries a continuous frame grid. Thin
+  // frame rails + seam scribes continue the grid in the deck plane — same
+  // mask-safe class as the louvre slats (every top <= 1.6655 < the certified
+  // 1.684 deck waves; rear-view columns at |x| 1.115 are covered by the
+  // drums' own 1.6755+ tops; plan interior).
+  for (const s of [-1, 1]) {
+    P.add('hullDetail', box(0.022, 0.012, 1.84), s * 1.115, 1.6595, -1.44);              // deck-edge frame rail
+    P.add('hullDark', box(0.010, 0.008, 1.80), s * 0.975, 1.6575, -1.44);                // inner panel seam scribe
+    P.add('hullDetail', box(0.80, 0.012, 0.020), s * 0.705, 1.6595, -1.325);             // transverse frame rib (mid gap)
+    P.add('hullDetail', box(0.86, 0.012, 0.020), s * 0.685, 1.6595, -2.145);             // transverse frame rib (aft gap)
+  }
   // centerline engine dome (print: low round dome w/ rim ring at z -1.19).
   // r6: footprint shrunk 0.28 -> 0.22 (the broad hill fed the hero
   // "peaked deck" read); crown holds the same 1cm-proud line.
@@ -1746,6 +1845,34 @@ function buildISU122S(P) {
     P.add('hullDetail', box(0.016, 0.115, 0.045), s * 1.346, 1.295, -1.44);    // strap cleats
     P.add('hullDetail', box(0.016, 0.115, 0.045), s * 1.346, 1.295, -1.96);
     P.add('hullDetail', box(0.020, 0.075, 0.45), s * 1.372, 1.14, -2.02);      // low batten
+    // r11 item 1d — TUB SLAB material tier (critic: iqr 4.3 vs ref 10.1;
+    // measured flare band (1075,307)-(1175,341) p50 79.6 vs ref (440,312)-
+    // (545,347) p50 86.9). A painted grid 2 mm proud of the flare face
+    // (lean x = 1.46 - 0.2128*(y-0.72)) carries the ref's heavy cast/grime
+    // tier: two-octave mottle + a bottom grime fade. Edges hold 5-15 mm
+    // inside the certified rows (z -0.53..-2.44, flare foot y 0.72), the
+    // plank/cleat/batten dressing stays proud of the skin, and the +2 mm
+    // face (max x 1.4609 at the foot) stays far inside the ±1.535 width
+    // anchor and under the drums' plan cover.
+    {
+      const fxT = (yy) => 1.46 - 0.2128 * (yy - 0.72) + 0.002;
+      const cT = (yy, zz) => [s * fxT(yy), yy, zz];
+      const zA = s > 0 ? -0.545 : -2.435, zB = s > 0 ? -2.435 : -0.545;
+      P.add('hullCloth', paintVerts(gridQuad(
+        cT(0.725, zA), cT(0.725, zB), cT(1.41, zB), cT(1.41, zA), 63, 23),
+      (x, y, z) => 0.875 + mottle(z, y * 1.03, s > 0 ? 5.6 : 9.1, 0.085, 0.040)
+        - 0.035 * sm01((0.95 - y) / 0.20)));
+      // r11 item 1d (second surface): the LOWER TUB's own ±x faces — the
+      // inter-wheel gap windows read them at 82.5 / iqr 0.0 dead flat vs the
+      // ref's 84.5-84.7 / 1.5-3.3 textured band. Same painted-grid tier,
+      // 1.5 mm proud of the r7 tub face (1.20), fully inside the wheel-gap
+      // sightlines and the certified station widths (1.2015 << the 1.46
+      // flare above and the 1.34 wheel faces outboard).
+      P.add('hullCloth', paintVerts(gridQuad(
+        [s * 1.2015, 0.43, s > 0 ? -0.51 : -2.45], [s * 1.2015, 0.43, s > 0 ? -2.45 : -0.51],
+        [s * 1.2015, 0.72, s > 0 ? -2.45 : -0.51], [s * 1.2015, 0.72, s > 0 ? -0.51 : -2.45], 64, 10),
+      (x, y, z) => 0.835 + mottle(z * 1.06, y * 1.1, s > 0 ? 3.3 : 7.7, 0.045, 0.025)));
+    }
   }
   // r6 tail-plate BOLT FIELD (critic item 7: "bolt field", and the three
   // r5 vertical stiffener ribs — the "invented vertical composition" — are
@@ -2057,8 +2184,14 @@ function buildISU122S(P) {
     // r9 item 7: fine-tick, not sawtooth — the r8 0.105x0.055 bars at full
     // wrap-dark contrast drove the ground-run sd to 10.8 vs the ref's 7.4;
     // slimmer ticks + the lifted spareTrack hex halve the swing.
+    // r11 (critic r10 item 3): the spareTrack ticks still read as a BRIGHT
+    // sawtooth fringe (band p95 92.2 over a p50 80.9 run vs the ref's quiet
+    // 72.4 band). Geometry/pitch certified and UNTOUCHED — the ticks move to
+    // the painted bucket at q 0.72 (≈ the ref band's own value) with per-
+    // tick jitter, so the comb reads as link texture inside the ref's quiet
+    // dark band instead of teeth on top of it.
     for (let tz = -2.30; tz <= 2.20; tz += 0.165) {
-      P.add('hullTrack', box(0.008, 0.078, 0.038), s * 1.4695, 0.185, tz);
+      P.add('hullCloth', paintFlat(box(0.008, 0.078, 0.038), 0.72, 0.06), s * 1.4695, 0.185, tz);
     }
     // r9 (work-order item 2): the r6 "bay AO wall" is GONE — the critic
     // measured the ref's inter-wheel windows at 77-90 L (wheel-family, NOT
@@ -2113,6 +2246,21 @@ function buildISU122S(P) {
     P.add('hullDetail', KIT.slab(
       [lo0, 1.70, -0.36], [hi0, 1.70, -0.36], [hi0, 1.70, 1.98], [lo0, 1.70, 1.98],
       [lo1, 2.13, -0.36], [hi1, 2.13, -0.36], [hi1, 2.13, 1.98], [lo1, 2.13, 1.98]));
+    // r11 item 1b — CASEMATE SIDE material tier (critic: iqr 0.00 vs ref
+    // 6.0; the r9 detail.normalScale cure was a no-op because the skin is a
+    // zero-UV slab — see gridQuad note). The r5 stucco-purge slab stays as
+    // the certified surface; a painted grid 1.2 mm proud carries the ref's
+    // plate-mottle tier at the skin's own flat value (71.5 measured on
+    // (950,280)-(1050,288) this round). 5 mm edge margins keep every mottle
+    // vertex inside the slab's own silhouette.
+    {
+      const fx = (yy) => (1.1354 - 0.0693 * (yy - 1.70) + 0.0012);
+      const c = (yy, zz) => [s * fx(yy), yy, zz];
+      const zA = s > 0 ? 1.975 : -0.355, zB = s > 0 ? -0.355 : 1.975;
+      P.add('hullCloth', paintVerts(gridQuad(
+        c(1.703, zA), c(1.703, zB), c(2.127, zB), c(2.127, zA), 78, 14),
+      (x, y, z) => 0.721 + mottle(z * 1.02, y, s > 0 ? 2.9 : 8.3, 0.042, 0.024)));
+    }
     // r9 SPONSON-WALL FURNITURE (work-order item 8; FILL-PASS caveat "~70%
     // of sponson wall blank vs ref's cable/rail/rivets"). All pieces are
     // interior dressing: max lateral 1.152 < the 1.26 sponson edge (plan),
@@ -2223,17 +2371,31 @@ function buildISU122S(P) {
   // class at the top band while the lower crest stays near plate value and
   // the bow below is untouched (relatively calmer, per the order).
   // Geometry EXACT — bucket + vertex tone only.
+  // r11 (critic r10 nit 5a): the r10 crest was SYMMETRIC (both halves ~94.6,
+  // spread 22-31) where the ref's crest is KEY-SIDE BIASED: its left half
+  // runs p75 99 / p95 113 while its right half sits at plate value (p50
+  // 70.6) — measured this round on the ref pane (left (120,150)-(320,185)
+  // vs right (320,150)-(520,185)). New field: the vertical rise keeps the
+  // r10 un-inversion class, an x-ramp lifts the LEFT (-x) top corner toward
+  // the ref's 112 peak and lets the right half fall to ~80 (still over the
+  // 73.3 plate — the un-inversion holder stays dead). Slabs -> gridQuads so
+  // the mottle tier finally renders (the slab hash never did — see gridQuad).
   {
     const crestQ = (x, y) => {
-      const h = Math.sin(x * 57.31 + y * 131.7) * 43758.5453;
-      return 0.88 + 0.16 * sm01((y - 1.86) / 0.22) + ((h - Math.floor(h)) - 0.5) * 0.03;
+      // (r11 round 2: the first x-ramp lifted the whole left HALF to ~98
+      // where the ref concentrates its 113 peak in the left-top corner over
+      // an otherwise plate-toned band — peak term now gated at x < -0.35
+      // and weighted toward the top row.)
+      const ty = sm01((y - 1.85) / 0.26);
+      return 0.80 + 0.07 * ty + (0.05 + 0.21 * ty) * sm01((-x - 0.35) / 0.75)
+        + mottle(x, y * 3.1, 4.2, 0.026, 0.016);
     };
-    P.add('hullCloth', paintVerts(KIT.slab(
-      [-1.24, 1.850, 2.502], [1.24, 1.850, 2.502], [1.195, 1.970, 2.446], [-1.195, 1.970, 2.446],
-      [-1.24, 1.8523, 2.5076], [1.24, 1.8523, 2.5076], [1.195, 1.9723, 2.4516], [-1.195, 1.9723, 2.4516]), crestQ));
-    P.add('hullCloth', paintVerts(KIT.slab(
-      [-1.195, 1.970, 2.446], [1.195, 1.970, 2.446], [1.13, 2.142, 2.382], [-1.13, 2.142, 2.382],
-      [-1.195, 1.9723, 2.4516], [1.195, 1.9723, 2.4516], [1.13, 2.1443, 2.3876], [-1.13, 2.1443, 2.3876]), crestQ));
+    P.add('hullCloth', paintVerts(gridQuad(
+      [-1.24, 1.8523, 2.5076], [1.24, 1.8523, 2.5076],
+      [1.195, 1.9723, 2.4516], [-1.195, 1.9723, 2.4516], 82, 4), crestQ));
+    P.add('hullCloth', paintVerts(gridQuad(
+      [-1.195, 1.9723, 2.4516], [1.195, 1.9723, 2.4516],
+      [1.13, 2.1443, 2.3876], [-1.13, 2.1443, 2.3876], 82, 6), crestQ));
   }
   // r7 LOWER FACE SKIN: the plate the casting sits on, from the recess floor
   // to the crest break, on the same bucket — one continuous smooth front
@@ -2242,6 +2404,27 @@ function buildISU122S(P) {
   P.add('hullRubber', KIT.slab(
     [-1.23, 1.120, 2.566], [1.23, 1.120, 2.566], [1.23, 1.120, 2.560], [-1.23, 1.120, 2.560],
     [-1.23, 1.860, 2.506], [1.23, 1.860, 2.506], [1.23, 1.860, 2.500], [-1.23, 1.860, 2.500]));
+  // r11 item 1a — FRONT PLATE material tier (the critic's headline rect:
+  // proc 87.3 / iqr 0.00 over the whole plate vs ref 73.3 / iqr 3.0; my
+  // reproduction (1032,224)-(1145,296) p25=p50=p75=87.3 EXACT). The
+  // hullRubber slab stays EXACTLY as the certified mask/geometry carrier; a
+  // painted grid rides 1.5 mm proud of its face and OWNS the read.
+  // q CALIBRATION IS PLANE-SPECIFIC: the dead-on +z plate runs ~40% hotter
+  // per unit albedo than the crest/side planes (grazing-spec + hemi mix —
+  // measured, not modeled): q 0.735 rendered 86.4, q 0.20 rendered the 50.0
+  // paint floor. Two-point inversion in linear light (F 0.0248, L 0.164)
+  // puts the ref's 73.3 at q 0.632; local gain ~130 display/q, so the
+  // two-octave mottle (13 cm patches + 3 cm grain) runs (0.023, 0.013) for
+  // the ref's iqr ~3.0. p05 stays >= the ref's 65.7 and dark% 0.0 —
+  // nowhere near the r8 speckle-dot class.
+  P.add('hullCloth', paintVerts(gridQuad(
+    [-1.23, 1.120, 2.5675], [1.23, 1.120, 2.5675],
+    [1.23, 1.860, 2.5075], [-1.23, 1.860, 2.5075], 82, 25),
+  // (r11 round 3: 0.632 landed 64.8 — the plate response is S-shaped, not
+  // affine; local gain ~210/q between the bracketing measurements. 0.6725
+  // interpolates the 73.3 target inside the 64.8..86.4 bracket and the
+  // amps drop to hold iqr ~3 at that gain.)
+  (x, y) => 0.664 + mottle(x, y * 1.04, 11.7, 0.018, 0.010)));
   const MX = -0.25, MY = 1.66;
   // (r7: the arcSec partial-theta helper is DELETED with its last two users,
   // the r6 crescent shells — a free open shell is exactly what projects as
@@ -2594,8 +2777,15 @@ function buildISU122S(P) {
   // brackets cannot re-roll; the collar box itself is untouched.
   P.add('hull', cylZ(0.100, 0.0625, 26), -0.2525, 1.66, 6.45285);              // exit collar (scheme family)
   P.add('hullDark', cylZ(0.056, 0.012, 20), -0.2525, 1.66, 6.4795);            // dark bore face -> 6.4855
-  P.add('hull', cylZ(0.1245, 0.120, 26), -0.2525, 1.66, 6.365);                // front baffle drum
-  P.add('hull', cylZ(0.1245, 0.130, 26), -0.2525, 1.66, 6.080);                // rear baffle drum
+  // r11 (critic r10 nit 5e, brake iqr 31.8 vs ref 8.2): the two baffle drums
+  // rode the CAMO bucket — on a 25 cm drum the scheme's patch boundaries and
+  // normal octave read as violent shading swings the ref brake never shows.
+  // Both drums move to the painted bucket at the scheme-olive value with a
+  // whisper of jitter (calm, still in-family chroma — the r10 "neutral gray"
+  // complaint was about the COLLAR/divider, which keep their scheme paint).
+  // Radius/x/z EXACT per the frozen collar-face contracts — bucket+tone only.
+  P.add('hullCloth', paintFlat(cylZ(0.1245, 0.120, 26), 0.86, 0.03), -0.2525, 1.66, 6.365);  // front baffle drum
+  P.add('hullCloth', paintFlat(cylZ(0.1245, 0.130, 26), 0.86, 0.03), -0.2525, 1.66, 6.080);  // rear baffle drum
   P.add('hull', cylZ(0.092, 0.028, 22), -0.2525, 1.66, 6.225);                 // mid divider collar (scheme family)
   // r9 (work-order item 6): the two flush hullDark face-seam rings are
   // DELETED FOR REAL — dead-side they drew the "muzzle black outline ring"
@@ -2680,6 +2870,34 @@ function buildISU122S(P) {
       // wheel-family bucket: same geometry, self-colored relief that shades
       // itself instead of painting black rings.
       P.add('hullWood', cylX(0.285, 0.026, 22), s * 1.2945, 0.36, wz);         // cover disc (buries pockets)
+      // r11 item 1c — WHEEL FACE material tier (critic: iqr 1.2 vs ref 4.8,
+      // "structure not contrast — hub/rib shading"; the r9 wood.bumpScale
+      // cure never rendered at pane scale). A painted near-flat dome rides
+      // 0.8 mm outboard of the cover: a squashed hemisphere has REAL
+      // concentric vertex rings (rim-dense), so the paint carries stamped
+      // structure — hub-shoulder valley, pressed ring, soft 6-spoke shading
+      // phase-locked to this wheel's own cast ribs, rim roll — all within
+      // the wheel family band (base = the cover's own 82.5 read; no new
+      // tone contrast class). Crown 1.3133 stays inside the hub cone
+      // (1.3165) and the 0.30 wheel silhouette; geometry is static face
+      // dressing inside the track band x-extent like the cover it rides.
+      {
+        const ph6 = 6 * (wz * 2.1 + 0.52);
+        const dg = KIT.sph(0.281, 44, Math.PI / 2);
+        dg.scale(1, 0.005 / 0.281, 1);
+        dg.computeVertexNormals();
+        paintVerts(dg, (xl, yl, zl) => {
+          const rho = Math.min(1, Math.hypot(xl, zl) / 0.281);
+          const th = Math.atan2(zl, xl);
+          return 0.833
+            - 0.056 * Math.exp(-(((rho - 0.36) / 0.15) ** 2))
+            + 0.030 * Math.exp(-(((rho - 0.60) / 0.13) ** 2))
+            - 0.032 * (0.5 + 0.5 * Math.cos(6 * th - s * ph6)) * sm01((rho - 0.30) / 0.18) * sm01((0.92 - rho) / 0.12)
+            - 0.055 * sm01((rho - 0.86) / 0.10)
+            + mottle(xl * 2.2, zl * 2.2, wz * 3.7, 0.012, 0.017);
+        });
+        P.add('hullCloth', KIT.xform(dg, 0, 0, 0, 0, 0, -s * Math.PI / 2), s * 1.3083, 0.36, wz);
+      }
       P.add('hullWood', KIT.xform(KIT.torus(0.190, 0.010, 20), 0, 0, 0, 0, 0, Math.PI / 2), s * 1.3105, 0.36, wz); // twin-rim seam
       P.add('hullWood', KIT.xform(KIT.torus(0.262, 0.008, 22), 0, 0, 0, 0, 0, Math.PI / 2), s * 1.3095, 0.36, wz); // outer cast seam
       P.add('hullWood', cylX(0.078, 0.055, 14), s * 1.3165, 0.36, wz);         // hub cone
@@ -2835,16 +3053,36 @@ function buildISU122S(P) {
     P.mats.rubber.color.setHex(0x53584a);                  // front-plate olive (59.3 -> ref 70.4)
     P.mats.rubber.roughness = 0.95;
     P.mats.rubber.envMapIntensity = 0.05;
+    // r11 (critic r10 item 3, the REAL comb): the bright sawtooth teeth at
+    // the ground run's bottom edge are the kit's INSTANCED carrier teeth on
+    // mats.spareTrack (sunlit +x faces ~87 vs the ref's 58-75 tooth band).
+    // A dedicated clone retones ONLY those instances — the merged spareTrack
+    // pieces (rail boards, link stacks, shackles, louvre wells: the r9
+    // view-top p05 lift) keep the 0x4e5047 family. Certified pitch/geometry
+    // untouched.
+    const toothSteel = P.mats.spareTrack.clone();
+    toothSteel.color.setHex(0x40423a);
+    toothSteel.onBeforeCompile = vehicleAmbientFloorHook;
+    toothSteel.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    P.disposables.push(toothSteel);
     // the isuCommon clone family kept warm hexes — flip by hex match
     P.hullG.traverse((ob) => {
       if (!ob.isMesh && !ob.isInstancedMesh) return;
       const m = ob.material;
       if (!m || !m.color) return;
+      if (ob.isInstancedMesh && m === P.mats.spareTrack) { ob.material = toothSteel; return; }
       const hx = m.color.getHex();
       if (hx === 0x3c3b2f) m.color.setHex(0x4b4e42);       // worn end-wheel drums (r9: +8%, quiet band)
-      else if (hx === 0x34332a) m.color.setHex(0x4a5040);  // inner chain layer (r9 +12%, p05 floor)
+      else if (hx === 0x34332a) m.color.setHex(0x4a5040);  // inner chain layer (r9 +12%, p05 floor —
+      // r11 note: a -12% chain test was REVERTED: it broke the r9 gear-light
+      // cert (gap window p50 79->68 vs ref 79.2) and the comb's remaining
+      // bright points are the six wheel ground arcs, not chain teeth. The
+      // link-pitch comb is quieted by the painted tick row alone.)
       else if (hx === 0x191715) m.color.setHex(0x22261b);  // 'holes' pocket floors (r9 +30%, p05 floor)
-      else if (hx === 0x41453a) m.color.setHex(0x5f6359);  // link pads (r8: green-neutral, same L)
+      else if (hx === 0x41453a) m.color.setHex(0x5f6359);  // link pads (r8: green-neutral, same L —
+      // r11 note: a -13% pad test proved the pads are NOT the comb's bright
+      // teeth (band/tooth reads byte-similar); reverted to the r8 cert. The
+      // comb fix is the instanced-teeth clone above.
       // 601 ratio ref/proc 1.22 -> ~1.0 (the 0.92-1.16 law, re-measured)
     });
   }
