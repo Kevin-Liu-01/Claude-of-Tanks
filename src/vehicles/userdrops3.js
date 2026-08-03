@@ -266,15 +266,10 @@ MODEL_SOURCE.t80u = {
     paintUntextured: true, stripBakedTextures: true,
   },
 };
-MODEL_SOURCE.kf51 = {
-  source: 'glb',
-  // authored turret/gun/MG chain; explicit ring pivot (raw pre-yaw units:
-  // x=0.52 ring center, y=1.7 ring plane) because the authored node origin
-  // sits at deck level and autoPivot's containment test would reject it.
-  glb: {
-    path: '/models/tanks/kf51_grip420.glb',
-    turretNode: '^KF51_Turret_Msh$', gunNode: '^Gun_Msh$',
-    autoPivot: true, pivot: [0.52, 1.7, 0],
-    yawOffset: -Math.PI / 2,
-  },
-};
+// kf51: DUAL-GATE GRADUATE (2026-08-03) — the procedural build is the
+// model of record everywhere (geometry min 90.4 gatePassed, independent
+// critic 9.0+ on all FOURTEEN views, round 8 — the program's first
+// post-handoff visual PASS). The GRIP420 GLB remains on disk as the
+// measurement oracle only (registration recorded in
+// tools/procedural-fidelity.html LOCAL_REFERENCE_OVERRIDES); provenance
+// in ATTRIBUTION.md. NO MODEL_SOURCE — freeze hash via tmp-hashgeo.

@@ -95,6 +95,15 @@ const LOCAL_REFERENCE_OVERRIDES = {
     glb:{ path:'/models/tanks/community/recovered/isu122s.glb',
       fixedMount:true, paintUntextured:true },
   },
+  // kf51 (graduated 2026-08-03): retired userdrops3.js registration —
+  // measurement-only.
+  kf51: {
+    source:'glb',
+    glb:{ path:'/models/tanks/kf51_grip420.glb',
+      turretNode:'^KF51_Turret_Msh$', gunNode:'^Gun_Msh$',
+      autoPivot:true, pivot:[0.52, 1.7, 0],
+      yawOffset:-Math.PI/2 },
+  },
   merkava3b: {
     source:'glb',
     glb:{ path:'/models/tanks/community/recovered/merkava3b.glb',
