@@ -95,3 +95,29 @@ sim p95 2.359 +0.8%), z body x0.974 about -0.813 + muzzle -> rear'+9.76.
 DO NOT BUILD against this print pre-warp (>2% law) — the v9/v10 "no rigid
 transform repairs proportions" note is RETIRED by the piecewise warp
 toolchain; post-warp the certified caps (53/31.3/3.1/0) dissolve.
+
+## VERTEX ROUND r2 note (2026-08-03, misc agent) — post-warp standing, NOT rebuilt
+
+Post-warp gate rows (v11, fresh oracle): hull 53.6 / whole 30.2 / turret
+4.4 / stations 0 / dims 94.1 — the certified caps are gone and the rows
+are HONEST residuals vs the now-true-proportioned print. Fresh workorder
+captured (scratchpad wo-type90-full); key structural findings for the
+next round, all world-frame:
+- REGISTRATION: side reg dAlong 0.782 / plan dy 0.79 — the warped print
+  (z body x0.974 about -0.813, muzzle -> rear'+9.76) sits ~0.8 aft of
+  our zero-centered build. Translation registration absorbs that, BUT
+  the print's TURRET mass (side cols -2.9..-1.0, tops 2.31-2.37) sits
+  ~0.6-0.9 further AFT relative to its own hull mid than ours does —
+  the whole turret (and therefore a correspondingly longer visible
+  tube to keep overallLengthM) must move aft in the next re-lay; that
+  single move is most of turret 4.4 and the whole-row 30.2.
+- Ref hull deck line reads 1.48 at its rear cols and its bow line falls
+  1.32 -> 0.77 over its 1.8..3.2 — our deck 1.43/1.41 + steeper bow is
+  close in shape but offset by the registration issue above.
+- stations 0 is REAL (the two hull z-ranges slice different features;
+  fixing the turret offset + hull ends should restore most rows).
+- dims 94.1: heightM 2.37 (+1.33% — shave the M2/whip cluster to the
+  2.34 line) and hullLengthM 7.34 (-1.41% vs 7.45 — the bow/stern body
+  columns lost ~0.1; re-anchor when the hull is re-laid).
+DO NOT trust the r1-era "certified capped at 53/31.3/3.1/0" numbers for
+anything — the caps are RETIRED; these are now live work orders.

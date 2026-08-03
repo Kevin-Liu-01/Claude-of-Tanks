@@ -130,3 +130,20 @@ bind pose). In-game articulation drives the bones and works; only the
 extract's node partition is blind here. Census also counts differently on
 skinned prims (guard numbers used per the batch-19 law). Dims-sovereign
 building unaffected: the GATE measures the proc build vs published dims.
+
+## VERTEX ROUND r2 note (2026-08-03, misc agent) — post-warp standing, NOT rebuilt
+
+Post-warp gate rows (v11): hull 43.2 / whole 25.8(6 in ledger) / turret
+0 / stations 0 / dims 100. Honest zeros (reg side dAlong 1.138 dy 0.113
+/ plan dy 1.068 — the warped skinned print sits ~1.1 aft of our frame;
+plan_hull already 86.5, so the FOOTPRINT matches well and the errors
+are vertical-band + turret placement/shape). TRACK CONTAINMENT: the
+pre-build audit measured SEVERE front 370 / rear 260 exact voxels on
+this id — the next hull re-lay must keep the lower bow/stern plate lips
+clear of the wrap arcs (kit band far edge = end-wheel r + 0.09 + ~0.08
+link pads; see the leclerc r2 numbers) and re-run
+`node tools/track-clip-audit.mjs --exact --ids=type74`.
+Note the packet's hullMask-40.1% flag: the extract's node partition is
+blind on this skinned print (batch-27 note) — buildable only from the
+whole-silhouette rows + published dims; turret rows score against the
+re-rigged bone split, which DOES measure.

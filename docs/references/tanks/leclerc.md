@@ -150,3 +150,60 @@ REAL rear rack overhang (documented pre-warp by the r1 agent): the rack is
 hull-node geometry past the hull plate, so the mask window includes it.
 Expected flag; not a defect. Builders take hull length from published dims
 (7.92 hullLengthM > mask window) per dims sovereignty.
+
+## VERTEX ROUND r2 (2026-08-03, misc agent) — 55.2 -> 85.2+ GEO TARGET MET
+
+Post-warp re-derive from FRESH workorders (r1 hull numbers retired as
+instructed). Round log (gate v11): 55.2 -> 68.5 -> 71.9 -> 72 -> 74.1 ->
+74.6 -> 83 -> 84.3 -> 84.7 -> 84.9 -> **85.2** (85.3 after the bow
+containment restructure) | hull 86.6 / whole 85.3 / turret 87.5 /
+stations 89.7 / dims 100 / floaters 100. What the print actually is
+(all world-frame, from tools/vertex-workorder.mjs dumps):
+- DECK LINE steps: 1.549 fore (-0.28..2.05) / 1.494 dip (-0.50..-0.34) /
+  1.577 mid / 1.632 engine (to -3.05) / two 1.715 filler POTS at x ±1.05,
+  z -2.27..-2.38 (not a full-width hump) / 1.605 tail lip to -3.28. The
+  sponson band tops 1.49 UNDER these (it owned the r1 1.60 line).
+- BOW: the raked glacis line IS the silhouette: (1.64,1.55)->(2.66,1.36)
+  then TAPERED to x ±0.94 by z 2.78 and a narrow nose to (3.46,1.21) —
+  the ascending track band crosses the full-width plane at z>2.75
+  (containment law; the print itself interpenetrates there, we cannot).
+  Front skirt blocks hang 0.86..1.43 + a SIXTH low block (0.86..1.24,
+  z 3.23..3.53, inner face 1.68 CLEAR of the link pads) which is the
+  3.497 hullLengthM body-column anchor. Outer mudguard strips x
+  1.70..1.785 raked 1.445->1.235 carry the plan's 3.32 outer front.
+- HIGH SHORT IDLER (3.16, 1.04, r 0.19, thin band trackTh 0.06): wrap
+  top 1.40-1.44 IS the ref's 1.411 bump at z 3.15..3.26; far edge +
+  pads 3.51 covers the 3.43..3.54 body columns. Sprocket (-2.86, 1.00,
+  0.27): pad far edge -3.27 (pads add ~0.08 past the band — the 6.99
+  hullLengthM incident). Wheelbase [-1.92, 2.12] (r1 sat 0.35 aft).
+- hullLengthM measures col-center to col-center: body cols must be
+  EXACTLY [-3.385, 3.497] for 6.88 — rear plate face at -3.36 (raised
+  band 1.245..1.545 + step filler), rack rails 4 SEGMENTS with plan
+  gaps at x -0.6/-0.15/+0.62, bags to -3.56 (overall 9.87 with the
+  5.90 gun + muzzle drum r 0.146 — a 0.165 drum crossed the 12% side
+  filter and hullLengthM swallowed the gun: 9.44 incident).
+- TURRET: roof plateau 2.352 to z -1.42 then 0.201-slope to the 2.05..
+  2.18 tail shelf; CENTER-RECESSED roof channel (2.248) between raised
+  side bands |x| 0.30..1.05 (ref front-view center tops 2.25 vs side
+  2.35 — impossible for a flat roof); roof edge chamfers (1.00,2.352)->
+  (1.40,2.215); cheek complex: left front ~2.20w flat, right shorter
+  with the gunner-sight WELL notch at x 0.55-0.70 (front 1.84w); side
+  boxes bottom 1.60w/top chamfer 2.13->1.92w, outer face 1.545-1.555
+  (1px off the 1.62 plan column); LOW applique band 1.246..1.60w (left
+  z to 1.41w, right to 1.04w — print asym); baskets outer 1.5725 (plan
+  x1.62 col sees it, front x1.605 col must NOT); tail: shelf tip right
+  -2.17w only to x 0.90 / left -2.33w, center rear NOTCH x 0.0..0.14
+  exposing the -1.81w rear face (rails+cage split around it); pano head
+  at x ~0.05 z -1.66w top 2.49 (NOT x -0.55; also station-slice i3/i4
+  boundary at -1.57w constrains its depth to 0.14); masts L -1.11/R
+  +0.99 tops 2.53/2.54; MG receiver 2.40w by the mast (heightM p95
+  anchors: sight lid 2.52 x4 cols + masts + pano = p95 2.52).
+- GUN: axis 1.85 (r1 1.93 was high), r 0.085, fat junction collars
+  0.132/0.126, fore sleeve band 0.138, muzzle drum 0.146 — every gun
+  band HELD < 0.296 (the 12% filter).
+TRACK CONTAINMENT: exact-audit rear 0 / front 56 -> bow restructure
+(glacis taper + outer-strip-only flares + flap below the wrap arc);
+gate re-verified 85.3 post-restructure. Boards: shots/misc-r2/.
+Residuals if chasing 90: the mirrored one-sided ground columns at
+front x ±1.64 (print asymmetry, ~2 cols), plan_whole rack-gap dither,
+side_whole 0.56 cover col at the bag tail.

@@ -104,3 +104,19 @@ published 2.50), width -0.7%. **Normalize plan authored**
 (tools/vertex-normalize.mjs `ariete`): y identity to 2.40 then band ->
 2.50/2.52 (sim p95 2.500, h -0.1%); z body x1.0412 about -0.884 + muzzle
 -> rear'+9.67. DO NOT BUILD pre-warp (>2% law).
+
+## VERTEX ROUND r2 note (2026-08-03, misc agent) — post-warp standing, NOT rebuilt
+
+Post-warp gate rows (v11): hull 29.6 / whole 0 / turret 0 / stations
+26.2 / dims 100. Zeros are honest big residuals (no orientationFlip;
+reg side dAlong 0.759 dy 0.101 / plan dy 0.788). The stretched print
+(z body x1.0412 about -0.884, muzzle -> rear'+9.67) now measures the
+published envelope, so the old short-print caps (hull 30.1 / whole 0 /
+turret 0 / stations 26.4) DISSOLVED into live work orders of nearly
+identical magnitude — i.e. the build must now actually match the
+stretched geometry it was never tuned to. Same structural class as
+type90: the print sits ~0.8-0.9 aft of our frame (registration handles
+the translation; the internal hull-to-turret offsets and the hull end
+profiles must be re-derived from a fresh vertex-workorder dump). dims
+already 100 — dims-sovereign scaffolding is in place; the next round is
+a leclerc-style worst-first hull+turret re-lay against fresh dumps.
