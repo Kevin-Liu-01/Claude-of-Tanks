@@ -15,8 +15,9 @@
 //
 // Usage: node tools/strip-nc-assets.mjs   (see package.json "build:public")
 
-import { rm, readFile, readdir, stat } from 'node:fs/promises';
+import { rm, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -82,40 +83,35 @@ async function main() {
   }
 
   // 2. cross-check: registered playables must not point at deleted paths.
-  // Import the spec registry (registration side effects included). Recovered
-  // rows remain in ALL_TANK_IDS; their restricted MODEL_SOURCE overrides do not.
-  const { ALL_TANK_IDS, MODEL_SOURCE } =
-    await import(path.join(ROOT, 'src', 'vehicles', 'specs.js'))
-      .then(async (specs) => {
-        // pull in every spec module that mutates the registry, mirroring the
-        // app's import graph (order matters only for completeness, not data)
-        for (const mod of ['modern1.js', 'modern2.js', 'modern3.js',
-          'variants.js', 'userdrops.js', 'userdrops2.js', 'userdrops3.js',
-          'userdrops4.js', 'userdrops5.js', 'userdrops6.js', 'userdrops7.js']) {
-          const p = path.join(ROOT, 'src', 'vehicles', mod);
-          if (existsSync(p)) {
-            try { await import(p); } catch (e) {
-              console.log(`[strip-nc] note: ${mod} not importable outside the app (${e.message}) — path scan below still covers it`);
-            }
-          }
-        }
-        return specs;
-      });
+  // The spec registry is imported in a SUBPROCESS (tools/
+  // strip-nc-registry-probe.mjs): profile modules carry dev-server-tolerant
+  // circular-import fallbacks that surface as unhandled microtask exceptions
+  // under a bare-node import, and an in-process import let those kill the
+  // whole build. The probe tolerates them; this guard still fails CLOSED if
+  // no registry comes back. Recovered rows remain in ALL_TANK_IDS; their
+  // restricted MODEL_SOURCE overrides resolve the public way in the probe
+  // (no import.meta.env under node).
+  const MARKER = '__STRIP_NC_REGISTRY__';
+  const probe = await new Promise((resolveP) => {
+    execFile(process.execPath, [path.join(ROOT, 'tools', 'strip-nc-registry-probe.mjs')],
+      { cwd: ROOT, timeout: 120000, maxBuffer: 16 * 1024 * 1024 },
+      (err, stdout, stderr) => resolveP({ err, stdout: String(stdout || ''), stderr: String(stderr || '') }));
+  });
+  for (const line of probe.stderr.split('\n')) if (line.trim()) console.log(`[strip-nc] ${line}`);
+  const markerLine = probe.stdout.split('\n').find((l) => l.startsWith(MARKER));
+  if (!markerLine) {
+    console.error('[strip-nc] FAIL: spec registry unavailable — cannot verify that no');
+    console.error('[strip-nc] registered playable ships a stripped NC path. Refusing to pass.');
+    if (probe.err) console.error(`[strip-nc] probe error: ${probe.err.message}`);
+    process.exit(1);
+  }
+  const { allIds: ALL_TANK_IDS, sources } = JSON.parse(markerLine.slice(MARKER.length));
+  console.log(`[strip-nc] registry probe: ${ALL_TANK_IDS.length} playables, ${Object.keys(sources).length} GLB-sourced`);
 
   const offenders = [];
   for (const id of ALL_TANK_IDS) {
-    const src = MODEL_SOURCE[id];
-    const p = src && src.glb && src.glb.path;
+    const p = sources[id];
     if (p && NC_PATH_RE.test(p)) offenders.push({ id, path: p });
-  }
-  // belt-and-braces: raw grep of the spec modules for NC paths, cross-checked
-  // against ALL_TANK_IDS above (catches sources assigned via literals the
-  // import may have skipped)
-  const vehDir = path.join(ROOT, 'src', 'vehicles');
-  for (const f of await readdir(vehDir)) {
-    if (!f.endsWith('.js')) continue;
-    const text = await readFile(path.join(vehDir, f), 'utf8');
-    if (NC_PATH_RE.test(text) && !/MODEL_SOURCE/.test(text)) continue;
   }
 
   if (offenders.length) {

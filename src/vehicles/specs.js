@@ -1714,6 +1714,19 @@ export const MODEL_SOURCE = {
   leo2a7: { source: 'procedural' },
 };
 
+// PUBLIC-BUILD GATE for the m1a2 exemplar: its GLB lives under
+// community/recovered/ (LOCAL-ONLY QUARANTINE — strip-nc-assets deletes that
+// whole tree from public dists, and its postbuild guard fails the build if a
+// registered playable still points there). Same polarity as the userdrops
+// gates: only an explicit local/dev vite env keeps the GLB; public builds and
+// bare-node imports (the strip guard itself) fall back to the procedural
+// m1a2, which ships everywhere.
+{
+  const allowLocalRecovered = typeof import.meta !== 'undefined'
+    && import.meta.env && !import.meta.env.VITE_PUBLIC_BUILD;
+  if (!allowLocalRecovered) delete MODEL_SOURCE.m1a2;
+}
+
 // COMMUNITY TANKS: all sourced GLBs (public/models/tanks/community/*.glb).
 // Node names below were verified offline against each asset's node tree
 // (GLTFLoader sanitizes names: dots stripped, e.g. 'Plane.000' -> 'Plane000').
