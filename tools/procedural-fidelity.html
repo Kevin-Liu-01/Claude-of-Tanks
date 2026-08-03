@@ -111,20 +111,28 @@ const LOCAL_REFERENCE_OVERRIDES = {
       turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))',
       gunFollowers:'vehicle#gun_barrel_' },
   },
-  // m60a1 / m60a3: retired configs RECOVERED from history (2026-08-02) but
-  // NOT YET LOAD-PROVEN — a trial gate through the entries below rendered
-  // EMPTY masks (false 0 rows; ledger repaired same session). DO NOT GATE
-  // m60a1/m60a3 until the entries are enabled AND a fidelity-page load
-  // shows the reference rendering. Recovered configs (m60a1 source() at
-  // 205a095~1 userdrops5.js; m60a3 removed in 5acc7ec, articulated over
-  // the SAME recovered m60a1 GLB):
-  //   m60a1/m60a3: { source:'glb', glb:{
-  //     path:'/models/tanks/community/recovered/m60a1.glb',
-  //     turretNode:'^Turret$', gunNode:'^weapon$', autoPivot:true,
-  //     yawOffset:-Math.PI/2 } }
-  // Failure hypothesis to check headlessly (repo puppeteer, NOT pane
-  // screenshots): loader throw on node resolution or spec/armor gate
-  // (turretless?) — read the page console.
+  // m60a1 / m60a3: retired configs RECOVERED (205a095~1 / 5acc7ec) and
+  // LOAD-PROVEN via tmp-m60probe (2026-08-02): the ref RENDERS through
+  // these entries (board 42.9, hull masks aligned at yaw -PI/2 — probe
+  // shots/m60probe/). REMAINING DEFECT, still DO-NOT-GATE: the ref
+  // TURRET/GUN renders ~90deg yawed vs proc (gun west in top view; gun
+  // component 0.0) — yaw 0 and PI both rotate the HULL (worse, 37.1);
+  // -PI/2 is hull-correct. Pre-graduation this same GLB gated 90.7, so
+  // the delta is in how the override path (vs the retired MODEL_SOURCE
+  // path) zeroes the turret rest yaw — read the page's rig/zeroing
+  // internals before enabling gate runs. False-0 law applies until then.
+  m60a1: {
+    source:'glb',
+    glb:{ path:'/models/tanks/community/recovered/m60a1.glb',
+      turretNode:'^Turret$', gunNode:'^weapon$', autoPivot:true,
+      yawOffset:-Math.PI/2 },
+  },
+  m60a3: {
+    source:'glb',
+    glb:{ path:'/models/tanks/community/recovered/m60a1.glb',
+      turretNode:'^Turret$', gunNode:'^weapon$', autoPivot:true,
+      yawOffset:-Math.PI/2 },
+  },
   // kv2: reference UNRECOVERABLE from git by design — its oracle lived in
   // gitignored candidates-gen2/ (100MB class); no MODEL_SOURCE entry ever
   // existed in committed history. Verification = freeze hash (tmp-hashgeo
