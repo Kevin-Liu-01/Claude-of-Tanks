@@ -936,3 +936,196 @@ pipe-mouth + patch), drum ends never circular, gear discs migrated the
 r5 gear-face. MEASUREMENT LAW: critic luma = ITU-601 — builder rects must
 use it (r6's 1.11 track ratio re-read 1.26). r7 = the 10-item identity
 order; margins now 0.6 (90.6).
+
+## Visual r7 (2026-08-02, casemate family agent) — ROUND COMPLETE
+
+FINAL STATE: geometry gate **min 90.3 PASS x2 consecutive at the final
+file** (hull 90.3 / whole 90.3 / turret 100 / stations 95.5 / dims 98.2 /
+floaters 100); isu152 **14.4 exact** every run of the round (all isuCommon
+changes opt-gated: noPeriGlass, roundStalk, plus the r5/r6 flags — isu152
+passes none). npm test exit 0 (166 checks + track-geometry). All work in
+src/vehicles/profiles/casemate.js. **Every rect below is ITU-601,
+ON-ELEMENT, with coordinates** (the r6 measurement law).
+
+### Item 1+2 — ONE CAST POT (the r6 ring-stack / pipe-mouth / patch)
+
+The r6 mantlet was three things reading as three things and all three are
+DELETED: the 5.75 cm lens (too shallow to shade — it measured 92.9 left /
+96.2 right, no gradient), the ball->throat->core->root->sleeve LADDER
+(five concentric radii inside 12 cm = the near-white ring stack, r6
+(900,215)-(940,228) L 106.3, brightest rect on the vehicle), and the two
+FREE cone-annulus arc shells (a drawn outline dead-front, a pipe-mouth
+hole off-axis).
+
+r7 = ONE ellipsoid POT + ONE snout cone + a conformal AO gradient.
+- POT: lateral semi 0.662 EXACT (registration-critical, untouched),
+  vertical semi 0.560 (world squash 0.8459), DEPTH semi 0.220 -> 0.260
+  (z-scale 0.3927), pitch -0.26, centre (-0.25, 1.58, 2.42).
+- THE r6 ASPECT BUG DECODED: the r6 lens' pitch -0.42 made its plane fall
+  backward at dz/dy -0.64 while the casemate face ramp falls at -0.50 —
+  the lens DIVED INTO the face and its upper third was simply buried.
+  That, not the squash, was the 0.44 aspect. Pitch -0.26 emerges instead.
+- cz 2.42 is a MEASURED BOUNDARY: seating the pot 3.5 cm further forward
+  (2.455) to un-bury more crown cost 0.5 gate points outright
+  (90.3 -> 89.8, hull 89.9 / whole 89.8). Reverted.
+- SNOUT: one taper cylZ(0.137, 0.53, 26, 0.255) sY 0.755, riding the same
+  certified line the ladder rode (1.853@2.52 / 1.797@2.79 / 1.774@2.90).
+- CRESCENT = ATTACHED: three conformal open partial-theta cone BANDS laid
+  on the pot's own face between face radii (0.255/0.400/0.530/0.648) at
+  the ellipsoid's own sag +4 mm, azimuth windows narrowing as they darken.
+  **Polar caps do NOT work**: on a 0.26-deep / 0.662-wide ellipsoid a cap
+  boundary is a plane of constant local y, so dead-front it draws a
+  STRAIGHT CHORD — two cut attempts reproduced the r6 "hard-edged dark
+  band" exactly. Bands bounded by circles about the bore project as
+  rim-hugging ellipse arcs, which is the ref's own crescent.
+- WHY A TONAL GRADIENT AT ALL: the BARE 0.26-deep pot measured L 102.1 /
+  100.7 across +-0.4 m — the board's flat fill compresses Lambert to a
+  1.4-L swing where the ref disc runs 107 lit / 71 shaded.
+- DONE-GATE (view-front, ON-ELEMENT): casting whole (835,200)-(1015,318)
+  L 91.2, p25/50/75 74.8/99.3/103.2, **spread 28.4** (>= 25 REQUIRED);
+  the REF's own (180,175)-(365,320) is L 87.2, spread 30.6, dark% 17.6 vs
+  our 17.6 — the distributions now match.
+- FRONT PLATE: the two crest skins moved OFF the bright cast bucket onto a
+  new dedicated front-plate bucket (hullRubber, re-claimed from the
+  deleted crescent) plus a new lower face skin; (806,220)-(830,300)
+  L 90.2 -> **74.8** vs ref 75.2/72.0, spread 0.0 vs ref 5.0.
+- ASPECT: **0.617** (bbox 227 x 140, plate-value discriminator) vs r6's
+  0.44 and the 0.75 gate. HEIGHT is now ref-correct: our casting height /
+  hull width = 140/458 = 0.306 vs the ref's 165/520 = 0.317 (-3%). The
+  whole residual is WIDTH: 227 px vs the ref's 210 px at a 1.135x bigger
+  pane = 185 proc-px equivalent, i.e. our casting is 23% too WIDE because
+  the 0.662 lateral is mandated. At the ref's own width the same height
+  gives 140/185 = 0.757.
+
+### Items 3-10
+
+3. END WHEELS — DONE, measured. Three causes: the r6 idler package
+   painted a bolt ring + two concentric rings on a 0.250 cover (that IS a
+   gear face) — deleted; the cover read outside the track wrap — pulled to
+   0.208; the covers rode hullTrack while the wheels rode hullWood — both
+   end wheels now ride the ROAD-WHEEL family. Sprocket drive ring + 6 ring
+   bolts deleted. DONE-GATE (view-right): idler end (890,322)-(920,350)
+   68.0 -> **79.0** vs ref (236,340)-(268,368) 79.8; sprocket end
+   (1190,322)-(1220,350) 73.1 -> **83.1** vs ref (556,336)-(586,364) 82.4.
+   Both inside +-10 (actually +-1).
+4. REAR PLATE — DONE. Two circular hatch discs r 0.19 (0.38 m = 12.4% hull
+   width, the largest the 0.55..1.02 plate band holds) with rim seams,
+   raised inner rings, hinge arcs at 8/10 o'clock, centre bosses and grab
+   handles, plus open tow JAWS (two cheek plates + cross pin). All at
+   |x| <= 0.75 where the frozen tow bar already carries the plan columns.
+   Disc renders 59 px across. DONE-GATE: rear plate (850,400)-(1070,440)
+   L 89.8 vs ref (200,430)-(440,470) 95.1 — **-5.3, inside +-6**.
+5. DRUMS — PARTIAL, with a measured ceiling. Own bucket (hullGlass,
+   claimed; the roof periscope slits move to hullDark via o.noPeriGlass),
+   rimmed end caps (proud outer rim at full body radius + seam groove +
+   cap plate + dish + hub boss + filler plug), TWO rolling hoop bands per
+   body at +-0.24 with cinch straps, plus two more straps at +-0.42 for
+   the ref's 2x4 aft-flank slat grid. DONE-GATE: drum body
+   (1090,300)-(1130,310) 98.6 -> **96.1** (in the 94-100 band; ref
+   (448,312)-(472,323) is 87.2 / p50 93.5).
+   **REAR-VIEW FULL CIRCLES ARE GEOMETRICALLY IMPOSSIBLE HERE** and this
+   is now measured, not guessed: the rear cap sits at z -2.29 and the
+   occluder is the deck itself (loft row z -2.44 top 1.65, row -2.53 top
+   1.475). A cap centred 1.4795 r 0.205 spans y 1.275..1.685, so only
+   1.65..1.6845 clears — the crescent wafer. Exposing it needs either the
+   drum aft of z -2.75 (tops the certified 1.37 tail line by +0.31 over
+   2-3 columns) or a centre above 1.68 (the bump line has zero slack, the
+   r5 +0.015 lift cost 0.4). Quarter/top views DO read them as circles.
+6. REAR WHEELS UN-BURIED — DONE, and the cause was not a bin. Loft rows
+   z -0.53 / -2.44 carried the rear hull's +-1.46 BOTTOM half-width from
+   y 0.428, i.e. the tub flared outboard of the wheels' own outer face
+   (1.34) past their tops (0.66). The flare now starts at y 0.72 and a
+   narrower DARK lower tub (+-1.20, y 0.425..0.725) re-carries the
+   side-trace bottom — plan extents and station widths unchanged, front
+   columns at x 1.20..1.467 carried by the track band. Item 9's "green
+   camo tub" is solved by the same piece (it rides hullDark).
+   DONE-GATE (view-right): rear three wheels (1070,355)-(1086,369) /
+   (1118..)/(1157..) L **81.8 / 80.9 / 81.2**, p50 88.1 vs ref w4/w5/w6
+   (428,358)-(444,372) etc 78.8 / 78.1 / 76.9, p50 80.0/79.2/78.2 —
+   within +-10 (means within +3..+4.3). All SIX wheels now lit.
+7. ROOF — PARTIAL. Both cupolas rebuilt as ROUND VOLUMES (collar drum,
+   seam groove, lid shoulder, lid roll, lid crown, hinge lug) inside the
+   SAME certified tops 2.268 / 2.239 — relief, not height. Cupola 2's
+   wedge-crate top gets the same treatment inside the 0.085 box
+   half-width. Ventilator: footprint 0.088 -> 0.128, shell 0.066 ->
+   0.105, crown still EXACTLY on the certified 2.221 line (the pea read
+   was diameter). Periscope pots -> MUSHROOM stalks (stalk + wider round
+   head + seam + vision band, tops 2.220).
+   CHIMNEY PRISM NOT DELETED — see residuals.
+8. SPECKLE — DONE and overshot. mats.hull/barrel normalScale 1.3 -> 0.34
+   (per-build instance; that normal octave WAS the speckle on the big
+   plates) plus the whole front face on one smooth skin. Front plate
+   (806,220)-(830,300) dark% **0.0**, spread 0.0 (ref 5.0). Casemate flank
+   (960,262)-(1080,286) dark% **0.5** vs ref (430,270)-(520,292) 10.6 —
+   we are now SMOOTHER than the print.
+9. CAMO TUB — DONE via the item-6 lower tub (hullDark).
+10. TONE SWEEP (601, all ON-ELEMENT): ground run (900,368)-(1200,382)
+    58.0 -> **68.0** vs ref (240,368)-(560,382) 70.9 (ratio 1.04, inside
+    the 0.92-1.16 law; the r6 "1.11" was a 709 read of the same 1.26);
+    road wheels 65.8 -> 81 vs ref 78-80; flank (960,262)-(1080,286)
+    82.0 -> **75.2** vs ref 71.0 (mats.detail -8%); front plate 90.2 ->
+    74.8 vs 74.6. BOW FURNITURE added (spare track link rack x4 per wing,
+    rack rail, lug pocket pads with voids, bolt ring along the recess
+    lip), all topping <= 1.136 on the dropped bow.
+    BOW FLOOR DROP: rows z 2.56/2.82/2.90/2.96 t 1.20 -> 1.12 and
+    3.12/3.19 t 1.19 -> 1.12 (with the recess/wing skins, headlight and
+    furniture) — **GATE-FREE, min 90.3 unchanged**, confirming the r4
+    front-slice reading that the ref has "fenders only at y 1.1" and
+    nothing in the bow centre at 1.2. It bought ~0.08 m of casting height.
+
+### Honest residuals (r7 — for the critic)
+
+- Front casting aspect 0.617 vs the 0.75 gate. Height is at ref parity
+  (-3% of hull width); the entire gap is the mandated 0.662 lateral, which
+  makes the casting 23% wider than the print's. Two independent ceilings
+  were measured this round (pot cz +0.035 = -0.5 gate; bow floor drop =
+  free and already spent). Closing this needs an owner ruling on the
+  lateral radius.
+- The crescent is still a THREE-BAND ladder, not a continuous falloff: at
+  6-8x the band boundaries are readable as nested arcs, and the innermost
+  band's radial end-cuts are visible at ~11 and ~7 o'clock. The bands are
+  attached to the pot's face (they cannot outline or read as a mouth), and
+  the whole-casting histogram matches the ref's, but the ref's transition
+  is smoother. A true falloff needs a gradient map, not geometry.
+- The CHIMNEY PRISM survives. The stalk is the published-heightM p95
+  carrier over ~4 body columns; it was given a half-round hood ridge
+  inside its own 0.10 footprint and 2.482 crown, but the box top is still
+  square from above because anything that rounds it must LOWER the 2.482
+  line and re-roll dims (already 98.2). Needs an owner decision.
+- Drum rear-view circles: measured impossible at this mounting (above).
+- Rear plate is -5.3 L and the casemate rear wall is +4.8 L vs the ref —
+  our lower plate is shadowed by the deck overhang where the ref's is not;
+  a global camo multiplier moves both the wrong way, so it was left alone.
+- The ear bosses sit at lateral 0.28 rather than the ref's 0.155: the
+  snout cone is 0.22 wide where they seat and a 0.155 pair renders inside
+  it. Buried lugs are worse than slightly wide ones.
+- hullGlass is now CLAIMED by isu122s (drums). Any future roof optic on
+  this build must not use KIT.periscope/KIT.headlight without the flag.
+
+Predicted per-view (own read): front 7-7.5, frontleft 7, left 7,
+rearleft 7, rear 7, rearright 7, right 7.5, frontright 7, top 7.5,
+hero-frontleft 7, hero-rearright 7, hero-toptilt 7.5, close-front 7,
+close-roof 6.5-7. The identity items the r6 verdict named (ring stack,
+pipe-mouth, isolated gear discs, buried wheels, letterbox rear) are all
+measured out; the binding residuals are the mandated casting width, the
+banded crescent transition and the heightM chimney.
+
+## ORCHESTRATOR RULINGS post-r7 (2026-08-02) — three ceilings adjudicated
+1. CASTING ASPECT vs the 0.662 lateral: the ORACLE SPEC radii are per-z
+   ENVELOPE bounds (disc r95 0.597-0.662 across stations) — 0.662 is the
+   widest station and IS the gate/registration carrier (r6: a 0.575 cut
+   crashed front rows). RULING: geometry KEEPS the 0.662 envelope; the
+   VISIBLE face circle shrinks TONALLY — darken the outer annulus beyond
+   r~0.60 toward plate value so the bright-disc read lands ~0.60 lateral
+   (aspect → ~0.72-0.75 on the read the critic bboxes). Same acceptance
+   class as tone-split reads elsewhere.
+2. DRUM REAR CIRCLES measured impossible under the certified deck rows
+   (t 1.65@−2.44, 1.475@−2.53; drum cap clears only 1.65..1.6845).
+   RULING: first check the REF's OWN side/plan rows at z −2.3..−2.6 for
+   a local deck notch at the drum stations (the ref renders 2x cap area
+   somehow — if its rows dip there, matching the dip is gate-positive);
+   if no notch exists, partial caps are ACCEPTED as certified-occlusion
+   (MG-span acceptance class) — bank and tell the critic.
+3. CHIMNEY PRISM is the heightM p95 carrier (top 2.482). RULING: keep
+   the TOP (p95 reads the top row, not the cross-section) — round the
+   SHAFT to a cylinder with the same flat top. No dims re-roll.
