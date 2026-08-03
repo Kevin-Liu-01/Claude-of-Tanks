@@ -276,3 +276,15 @@ Dor-Dalet modules vs the capped narrow proc turret — the two headline
 items of this audit. NEXT = orchestrator runs REG + extract +
 batch-15 warp, then the family push round re-lays to the normalized
 print (work order above).
+
+## VISUAL round r2 (2026-08-02, merkava agent) — paired w/ 1b; 91.5 PASS x2
+Ziggurat (16 tier boxes, +0.03..+0.09 over ref rows) -> THREE swept wedge
+modules/side on the ref's own rows; turret-side p5 56 -> 91 (rib shadows
+dead). Rear: pale rack + chain fringe, 3d-tuned near-flat vane falls (3B
+0.085 would under-read the flat tail band); L56 inset traced to rearTip
+dark bucket -> (93,97,85) vs ref (93,97,86). Roof 86.7 vs 86.8. Hem
+lintels 0.79->0.665 w/ jitter (wheels half-occluded, certified 0.64
+bottoms kept). Tone table all within ~1L of ref (packet r2 verdict rects).
+MG runs (dark<=66): front M2 27px, plinth 12px, side floats 14/16px vs
+ref's own 2/6/1 — side float reads vs pale band (ref equally fused, 6px).
+Gate paid 0.2 net (91.7->91.5, margin 1.5). Hashes/sibs exact.

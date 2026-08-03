@@ -322,3 +322,17 @@ full articulation strip, no floaters; the proc rear basket rim visibly
 rides high vs the ref's falling rim — work-order item 1. NEXT =
 orchestrator runs REG + extract + batch-15 warp, then the family push
 round re-lays to the normalized print (work order above).
+
+## VISUAL round r2 (2026-08-02, merkava agent) — paired w/ 3d; 90.6 PASS x2
+MARGIN GREW 90.1 -> 90.6: dome/MG/roof rebuild authored as PAIRED REFUNDS
+(deleted old cupola drum's +0.09 over-read + loader zone's +0.06 plateau,
+rebuilt to ref rows) — bank the pattern: at razor margins, author adds as
+refund pairs. THE DOME: barrel-vault cast station (rim 2.503 -> crown
+2.631, 0.128 rise) + ring ON the dome + sloped cast cheeks + descending
+kit stair; certified FLAT 2.630 side band held (ref's own rows flat = the
+permit); roundness carried by quarters/heros per the perspective-volume
+law (no >15px flat runs on the crown arc). Gear: 3d wheel recipe, posts/
+rail dissolved, segmented sideCurtain to wheel-top hem (certified ±1.80
+bottoms kept). Basket pale + ball/chain fringe + tarp lumps. MGs: front
+31px/37px dark runs (loader crown re-set to ref's 2.451 shoulder, shelf
+pot carved so the MG owns its window). Tone table ~1L of ref throughout.
