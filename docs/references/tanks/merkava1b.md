@@ -375,6 +375,62 @@ soft contents cost the deep through-frame shadow); louvre zone still
 -14L vs the ref's oddly-bright panel; dome is certified-height so the
 crown reads broad-low rather than tall.
 
+## PHYSICS round r4 (2026-08-02, merkava 3d/1b agent) — 90.7 PASS x2
+Critic r3 shared order executed; helpers flag-gated; 3b/3c hashes exact,
+2b/2d/4b scores exact; gates 90.7 PASS x2 bit-identical (margin 0.7 held
+— every raise paired: rim/rail dips toward the ref's falling 2.381-2.406
+tail rim paid the MG/crown adds).
+1. MG PHYSICS: commander gun REPLICATED FROM THE REF — the 1B ref's only
+   side-readable gun is a big pale .50 on its ROOT rig floating over the
+   crest (measured on the ref pair: ~100 px pale line in free sky). Ours
+   rides the GUN NODE (elevates like the print) — FIRST CUT COST -1.1
+   turret (gun node is INSIDE our turret mask, the ref's is mask-absent:
+   the MASK-NODE LAW) — re-laid YAWED INBOARD-FORWARD so every part
+   hides inside the turret's existing plan/side extents (muzzle behind
+   the ±0.33 plan-nose line, lit line at the spine-lane 2.535 class):
+   47 px pale-over-dark @82 in the LEFT ortho, turret rows restored
+   90.7. Dome stair gun + loader twin two-toned (sand strip at the
+   certified 2.553/2.4895 lines over VOID under-rods) + pale receiver
+   caps; loader run extended fwd (-0.545). Dome MG receiver slid to
+   -1.04..-1.22 so the rod owns its window.
+2. FRONT CROWN ARC (156 px flat -> 37 px): the flat was NOT the roof —
+   the ELEVATED front camera projects the REAR vane z0 top edge + the
+   basket rear rail OVER the turret (h' = y + 0.08|z| ~ 2.72-2.73,
+   fused ±1 px). Fix: vane split into SEVEN <=0.30 m x-lanes with
+   >=2 px downward top dips (zero-dip holder lane keeps every certified
+   side col), rear rail segments track the lanes +0.022 (refund class),
+   rack rear rail split/dipped, spine pot -> 3 staggered lanes
+   2.544/2.522/2.538, brow cap -> 3 lanes, right furniture pot split
+   2.578/2.556. Scan on the pair file: longest crown flat 37 px (ref's
+   own longest 32 px).
+3. GRAMMAR: full-length dark hem bar DELETED (lipNoHem — flank now one
+   pale band like the ref's 91-94); vane sawtooth facets -> two broad
+   billows + roll + a VOID slot; chain/fringe ball rows -> sparse
+   off-grid ((i*3)%5); rack rivet dots -> void pockets; segment gaps
+   jittered; pot lids de-marooned.
+4. SHADOW/VOIDS: basket packH 0.72 + rear/top void pockets + rim-rail
+   segment dips with tarp crowns breaking the (dipped) rim; voidTone
+   channel lands 24.4 (ref 26 class) — vane slot + rack pockets sampled
+   24.4.
+5. RINGS: dome ring r 0.10 -> 0.135 + fattened tori + dome hatch-seam
+   arc (r*1.55); loader gets a flat collar ring r 0.205/0.21 tucked at
+   2.437-2.451 under the spine/drum/MG-carrier cover lines. Top-view
+   dias now ~0.40 (was 0.20/hairline; ref class 0.5+ — partial, front-
+   col constrained).
+6. LOUVRE +14L: the unused GLASS channel became the bright panel
+   (grilleBright; hullGlass bucket + retone) — sampled (98-104,108-112,
+   87-89) = 103-107 vs ref (108,113,100) = 105-111, neutral-green hue
+   (first cut 0x9a937d rendered 124 warm-tan; iterated 0x72806a).
+RESIDUALS (honest, for critic r4): loader gun side-ortho runs 26 px @76
+— it is occluded by REF-TRUE masses from both sides (dome left,
+2.578 furniture wall right; the ref's own side-readable gun is the
+forward .50, replicated — loader reads full in toptilt/close-roof);
+broad-rect rear p5 still 56 (the 24.4 pockets are <5% of the whole
+rear rect — ref spreads its 26-class wider); ring dias 0.40 vs ref
+0.5+ (raising further lights bare ref front cols); teardrop: mid-bulge
+fill wedges added over the left strip pots, plan nose taper unchanged
+(the ±0.43-0.62 fwd over-read stays the unidentified-mesh residual).
+
 ## VISUAL round r2 (2026-08-02, merkava agent) — paired w/ 3d; 90.6 PASS x2
 MARGIN GREW 90.1 -> 90.6: dome/MG/roof rebuild authored as PAIRED REFUNDS
 (deleted old cupola drum's +0.09 over-read + loader zone's +0.06 plateau,

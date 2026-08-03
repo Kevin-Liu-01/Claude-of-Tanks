@@ -339,3 +339,60 @@ RESIDUALS (honest, for critic r3): hero-FL turret still reads tall-ish
 soften but don't transform); right .50 window backdrop partially
 segmented by its own pale stage; wheel-window p95 65 vs ref 76; fence
 zone p50 83 vs ref 96 before the r3b backer shrink (re-measure).
+
+## PHYSICS round r4 (2026-08-02, merkava 3d/1b agent) — 90.6 PASS x2
+Critic r3 shared order (scale + polarity) executed; all shared-helper
+edits flag-gated (segJit/rackVoid/voidTone/basketVoids/collar/pale MG
+params) — 3b/3c hashes 5296950a/5287233e EXACT, 2b/2d/4b 39.9/34.9/34.6
+exact, gates 90.6/90.7 PASS x2 bit-identical.
+1. MG PHYSICS: every gun rebuilt TWO-TONE — sand top strip (~2.5 px)
+   whose crown holds the certified line over a VOID under-rod (retoned
+   hookless spareTrack — reads dark from BOTH sun sides; lit gunmetal
+   rendered ~75 and failed polarity from the right) + pale receiver caps
+   (ref receivers sample p50 84). Measured on pair files @640: left
+   plinth 39 px pale-over-dark (was ~invisible), right .50 51 px (window
+   widened -0.66..-1.44, receiver slid to the slot rear — side cols ride
+   the plinth rod 2.627 max-over-x), crest M2 33 px @pale-76 vs the
+   REF'S OWN 31 px @76 (ref-parity; the strict-82 run is 3 px because
+   the ref class itself is 79-92 there). M2 rebuilt gun-shaped: slim
+   receiver + pale cap 2.540-law, spade grips, charging handle, 64 px
+   barrel w/ lit line at 2.552 (1.5 px sky over the crest cols, ~6 cols
+   +0.007..0.017 paid), ONE yawed counterweight box (crate cluster gone).
+2. GRAMMAR: rope-coil torus DELETED (strap bundle); 3-can row jittered,
+   strips gone; window-strip killed — rearTip rail PALE on a thin shadow
+   line, cloth letterbox -> 3 VOID pockets (24.4 sampled = ref 26 class)
+   behind the pale rods; rack bays: under-rim voids + kit lumps + thin
+   rails (0.022) + leaning posts, gussets/rivets gone; door latch bar
+   detail-tone; lintel chord strips skip 2 wheels + length-jitter;
+   lintels 0.652 + stronger jit (openings vary slit-to-closed); plank/
+   lip/skirt segment gaps boundary-jittered ±17% (segJit — the even
+   12 mm gap beat was a tick row); deck/glacis grilles -> grilleSoft
+   tone-on-tone (dark-slat rungs dead); pot lids detail-tone + latch
+   chip (kit-lid de-maroon).
+3. SHADOW BUDGET: voidTone channel (spareTrack, hook stripped, emissive
+   floor 0x181712) lands 24.4 vs ref 26; deep pockets in rearTip band
+   (p5/p25 24.4 over the band rect), rack interior backer void, basket
+   packH 0.72 + rear/top void pockets.
+4. RINGS x2: flat hatch collars (r 0.34/0.32 tori just proud of the
+   2.47 deck, tops 2.469/2.486 sub-2 cm class) — top-view diameters now
+   ~0.64-0.68 vs ref 0.54-0.67 (was 50%).
+5. SWEPT-LOW: the two left step boxes -> RAKED wedges + flat holder
+   caps on the exact ref cols (2.508@-1.10 vs ref 2.511, 2.532@-0.98
+   exact); hero-FL now climbs module->rake->band; the wall shows a
+   0.07 m curb (a first-cut wall chamfer was REVERTED — its lit slope
+   occluded the plinth MG's dark rod from the left, the exact polarity
+   read the round exists for).
+LAWS BANKED: (a) MASK-NODE LAW — gun-node content lights OUR turret
+mask but the refs' root-rigged MGs are mask-absent: new guns must hide
+inside existing turret extents or pay proc-only columns. (b) ELEVATED-
+CAM CROWN LAW — the 0.08-elevation pair cameras project REAR straight
+edges (vane z0 rim, basket rear rail) OVER the turret as ruled crown
+lines: h' = y + 0.08|z|; x-lane dips on those edges are the fix and
+they're refund-class where the ref rim falls. (c) voidTone needs the
+ambient-floor hook STRIPPED (clamps at 52) + emissive floor (hookless
+is 2.7 true-black; 0x181712 lands 24.4).
+RESIDUALS (honest, for critic r4): M2 strict-82 run 3 px (ref-parity
+proven at 76 — the lit 'turret' strip renders 78-84 on the sun side);
+wheel-arch window row still repeats 6x (certified arch geometry, ref
+has 6 too but dimmer wheels); rear rack bays read panel-ish at dead
+rear (thin rails remain); turret height class unchanged (certified).
