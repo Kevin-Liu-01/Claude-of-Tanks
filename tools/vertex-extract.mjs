@@ -293,6 +293,13 @@ const REG = {
     scaleToOverall: true,
     pubDims: { hullLengthM: 6.7, overallLengthM: 9.42, widthM: 3.18, heightM: 2.48 },
   },
+  // leo2a5 (userdrops5 articulated(): recovered drop). PILOT CASE for the
+  // 2026-08-03 gate-in-loop warp law (band-flatten, see leo2a5.md).
+  leo2a5: {
+    path: 'public/models/tanks/community/recovered/leo2a5.glb',
+    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+    pubDims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 3.75, heightM: 2.64 },
+  },
   recon_tank: {
     path: 'public/models/tanks/community/recon_tank_mophs.glb',
     turretNode: '^Turret$', gunNode: '^Barrel$', autoPivot: true,

@@ -232,6 +232,19 @@ export const PLANS = {
     z: [[-4.377, -4.6210], [1.725, 1.9690], [4.382, 4.8590]],
     yTopMax: 2.32,
   },
+  // ---- batch-29 PILOT (gate-in-loop law): leo2a5 band-flatten. Roof-
+  // furniture band 2.77-3.01 over z -0.67..+0.78 (+14.1% bodyH vs pub
+  // 2.64) -> 2.659-2.696, under the proc's 2.697 anchor; whip cluster
+  // 4.107-4.114 rides the tail segment to ~2.739 (abramsx antenna
+  // precedent; proc whips retune next leopard round). Length axes TRUE
+  // (hullMask +2.1% is real rack content, overall 0%) — y-only warp.
+  // Post-warp ref p95 lands ~2.68-2.69 (+1.7% — bookkeeping flag only;
+  // dims measures the PROC, which anchors 2.697 with <2% p95).
+  leo2a5: {
+    y: [[0, 0], [2.64, 2.64], [3.014, 2.6959], [4.114, 2.7391]],
+    z: [[-3.949, -3.949], [6.031, 6.031]],
+    yTopMax: 2.745,
+  },
   abramsx: {
     y: [[0, 0], [2.30, 2.30], [3.0, 2.44], [4.2, 2.47]],
     z: [[-3.932, -3.932], [3.968, 3.968], [6.168, 5.838]],

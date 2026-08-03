@@ -2654,9 +2654,17 @@ REPAIRS['abramsx'] = {
 # until real profiles exist. (C) fv510's warp verified clean offline but
 # changed nothing in the harness (suspect: the harness safeScale clamp
 # floor 0.68, procedural-fidelity.html:253, on a 0.0125-glb-unit print).
-# STANDING LAW: every future warp batch is verified IN THE GATE (a real
-# harness run on a tank with a stable proc build) before commit; offline
-# --verify alone is NOT proof. Batch-27 (leclerc/t80u/type90/ariete/type74)
+# STANDING LAW (v2, amended by the batch-29 pilot): (1) FRESH BASELINE —
+# before any new batch on an id, refresh its .glb.bak from the committed
+# HEAD bytes (ancient .baks + evolved recipes silently drop committed
+# content: leo2a5's replay lost 6,637 verts; keep the old bak as
+# *.bak.pre-batchNN-history and demote legacy recipe ops to history);
+# (2) guard censuses come from the GUARD's own numbers (extract counts
+# differ in convention); (3) every warp batch is verified IN THE GATE (a
+# real harness run on a tank with a stable proc build) before commit —
+# offline --verify alone is NOT proof; expected post-warp movements
+# (documented retune debts like proc whips above a flattened band) are
+# the only acceptable regressions; (4) never flat-assign REPAIRS[id]. Batch-27 (leclerc/t80u/type90/ariete/type74)
 # stays LIVE: leclerc/t80u gate-measured functional post-warp.
 # =============================================== batch 22 (DISABLED) ===
 # ORIENTATION REPAIRS (t62_bergman/batch-12 class; found by the REG
@@ -2913,10 +2921,6 @@ def main(argv):
     return 0
 
 
-if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))
-
-
 # INCIDENT 2026-08-03 (see note above batch 22): disabled recipes popped so
 # `repair --all` can't reapply them; sources kept above for the
 # loader-parity investigation.
@@ -2933,3 +2937,36 @@ REPAIRS['challenger1'] = [
         fold_node(gltf, 'vehicle#ex_decor_r_12_98', 'z', 90.0, [-1.903487, 1.553626, 0.0]),
     ] and None),
 ]
+
+
+# =============================================================== batch 29 ===
+# LEO2A5 BAND-FLATTEN — THE GATE-IN-LOOP PILOT (first batch under the
+# 2026-08-03 incident law: verified by a REAL harness gate run against
+# leo2a5's stable proc profile, not by offline --verify alone). The print's
+# roof-furniture band (2.77-3.01 over gate-z -0.67..+0.78, +14.1% bodyH vs
+# published 2.64) capped turret-side floors at ~84-85 under dims
+# sovereignty (proc anchor <=2.699, 3-col spike budget). Band -> 2.659-
+# 2.696; whips ride to ~2.739 (abramsx antenna precedent — proc whips
+# retune next leopard round). Length axes TRUE: y-only. NOTE: leo2a5 has a
+# PRE-EXISTING recipe (repair_leo2a5, line ~554) — this batch EXTENDS it
+# with the splat pattern per the incident law; flat assignment is the bug
+# class that broke chieftain5/challenger1.
+# RE-BASELINE (batch-29): the committed leo2a5.glb embodies MORE history
+# than the recipe chain reproduces (replay(bak + repair_leo2a5) counts
+# 146708 verts vs the committed 153345 — the ancient .bak predates recipe
+# evolution). The old .bak is kept as leo2a5.glb.bak.pre-batch29-history;
+# the committed bytes become the new pristine .bak, and this recipe is the
+# warp op ALONE on top of it (repair_leo2a5 stays in source as history but
+# out of the active chain — re-running it on the new baseline would
+# double-apply).
+REPAIRS['leo2a5'] = [
+    ('py2', _axis_warp('leo2a5', long_axis='z',
+                       y_map=[(-0.0116, -0.0116), (2.6071, 2.6071), (2.978, 2.6625), (4.0692, 2.7054)],
+                       long_map=[(-4.1515, -4.1515), (5.7479, 5.7479)],
+                       y_top_max=2.7311,
+expect=(125, 153345, 121412))),
+]
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))
