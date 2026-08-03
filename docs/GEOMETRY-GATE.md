@@ -243,3 +243,38 @@ certify a tank again.
 See `docs/geometry-gate/ledger.json`. At gate freeze the fleet's best tank
 (m60a1) scores min 40 — the gate is deliberately far ahead of the fleet.
 That is the point: it is the definition of done, not a description of today.
+
+## Owner directives 2026-08-02 (evening) — three new visual laws
+
+1. **M1 FRONT SLOPE (abrams family).** The M1's upper front plate is NOT
+   flat-vertical — it is one of the most raked glacis plates ever
+   fielded. Any abrams-family build whose front reads as a flat/blocky
+   face fails the visual gate regardless of curve scores. Verify the
+   slope reads in the garage/perspective renders, not just orthos.
+
+2. **NO EMPTY AREAS / TURRET CONTIGUITY (fleet-wide).** Tanks must not
+   render with hollow pockets, gaps between shapes, or see-through
+   voids (owner example: leo2a6 turret side/rear showed dark empty
+   areas between masses). Turrets are CONTIGUOUS volumes for the most
+   part — no "shaping for the sake of shaping": every standoff mass
+   must read as attached (mounts, brackets, contact shadows), not
+   floating with air behind it. This extends the top-down fill law to
+   ALL angles, garage/perspective included.
+
+3. **DECORATION MINIMUM (fleet-wide, gate-blocking).** A tank is NOT
+   READY while any large surface reads totally flat. Roof MACHINE GUNS
+   are MANDATORY (multiple allowed and encouraged) — even where the
+   reference lacks one, add a tastefully-integrated pintle MG; critics
+   must not penalize that as a parity deviation. Beyond MGs, dress flat
+   areas from this class list: lights, ropes/tow cables, ladders,
+   ERA/generic armor blocks, wooden trunks, canisters, bags, smoke
+   launchers, railings and holders. Decoration is part of "done", not
+   garnish.
+
+Enforcement: critics add three checks to every verdict — FRONT-SLOPE
+(abrams only), CONTIGUITY (all angles), DECORATION MINIMUM (roof MGs
+present? flat areas dressed?). Builders treat missing MGs as a
+work-order item of the same rank as a failed view. Graduates are not
+exempt: leo2a6 is flagged for a contiguity fix round (leopard lane,
+after kf51 r7); the m1a1-line graduates queue for a front-slope +
+decoration audit.
