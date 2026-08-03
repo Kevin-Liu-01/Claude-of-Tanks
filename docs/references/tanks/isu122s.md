@@ -1129,3 +1129,10 @@ banded crescent transition and the heightM chimney.
 3. CHIMNEY PRISM is the heightM p95 carrier (top 2.482). RULING: keep
    the TOP (p95 reads the top row, not the cross-section) — round the
    SHAFT to a cylinder with the same flat top. No dims re-roll.
+
+## Shaded-parity r7 (2026-08-02) — FAIL 6.5; FIFTH straight floor rise
+Verdict: docs/critique/shaded-parity-isu122s-r7.md. Every r7 rect
+reproduced ("honest builder"). Identity killers dead; r8 = TONE round:
+green bucket (Gex 12-13.5 → ≤8), pot gradient + ruling-1 cheek shrink +
+collar −31L, wheel dimple halve, drum split + NOTCH CHECK (ruling-2
+clause 1 was skipped), plank/disc shading, roof relief + chimney shaft.
