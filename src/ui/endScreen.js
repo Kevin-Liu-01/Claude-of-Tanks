@@ -489,15 +489,16 @@ export function createEndScreen(bus, host) {
       again.type = 'button';
       again.textContent = 'BATTLE AGAIN';
       again.addEventListener('click', () => {
-        // adopted flow only: the garage-return handler main.js installed on
-        // the end button, then the garage's own BATTLE button — the full
-        // loading-screen entry path with the player's tank/map selection.
-        if (garageBtn) garageBtn.click();
+        // battle_again fix: the old flow clicked the garage-return button and
+        // the garage BATTLE button 60 ms apart — but the garage return runs a
+        // branded transition whose enterGarage() callback fires AFTER the
+        // fade-in (~300 ms), so on a warm map the freshly started battle got
+        // clobbered back to the garage right as its loading screen finished.
+        // main.js now owns the sequencing (garage re-entry transition first,
+        // THEN the garage's own battle path with the current selection).
+        bus.emit('ui:click', {});
+        bus.emit('ui:battleAgain', {});
         api.hide();
-        setTimeout(() => {
-          const b = document.querySelector('.cot-battle');
-          if (b) b.click();
-        }, 60);
       });
       adoptEndOverlay(actions);
 

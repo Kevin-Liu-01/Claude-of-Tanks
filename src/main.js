@@ -1895,6 +1895,35 @@ function leaveBattleToGarage() {
   }).finally(() => { leavingBattle = false; });
 }
 
+// End-screen BATTLE AGAIN (battle_again fix): the garage return and the new
+// battle entry must be SEQUENCED, not raced — transition.run defers its
+// enterGarage() callback past the fade-in, so firing the garage BATTLE button
+// on a timer let a warm-cache startBattle() land first and then get clobbered
+// back to the garage. Await the full garage re-entry transition, then drive
+// the garage's own BATTLE button so the standard loading path runs with the
+// player's current tank/map selection.
+bus.on('ui:battleAgain', async () => {
+  if (leavingBattle) return;
+  leavingBattle = true;
+  try {
+    // a verdict can land while the previous entry pipeline is still in its
+    // drain/countdown tail (battleEntryPending true) — wait it out, bounded,
+    // instead of silently dropping the click
+    const t0 = performance.now();
+    while (battleEntryPending && performance.now() - t0 < 15000) {
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    await transition.run(() => { enterGarage(); }, {
+      kicker: 'Regrouping', title: 'Next battle',
+      progress: false, minShowMs: 420,
+    });
+  } finally {
+    leavingBattle = false;
+  }
+  const b = document.querySelector('.cot-battle');
+  if (b) b.click();
+});
+
 // ---------------------------------------------------------------------------
 // HUD frame assembly (§4 step 7)
 // ---------------------------------------------------------------------------
@@ -3778,7 +3807,9 @@ function debugSlayEnemies() {
     ent.combat.fire.burning = false;
     if (!ent._destroyedAnnounced) {
       ent._destroyedAnnounced = true;
-      ent.visual.setDestroyed();
+      // battle-ai r7 defers bot visuals behind the swap queue — a bot whose
+      // GLB hasn't landed yet has visual=null; the combat kill still counts.
+      if (ent.visual && ent.visual.setDestroyed) ent.visual.setDestroyed();
       bus.emit('tank:destroyed', {
         id: ent.id,
         specId: ent.specId,
