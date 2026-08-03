@@ -586,3 +586,24 @@ trios, chevron, hem, rings, crest, main gun — code untouched.
 RESIDUALS for critic r8: band img-L med -4.4; M2 L p75 94.7 (pale
 crown-phase cols, ref's own p75 is 93.6 — same class); diamond p5
 67-68 vs ref 78-81.
+
+## Visual r9 (2026-08-03, stand-off round) — ORCHESTRATOR LANDING NOTE
+(Builder finished without writing this section; summarized from its verified
+report at landing. Gate held 90.6 at every landing point, 5 full runs.)
+Respawn round: the prior r9 agent died mid-work; its WIP was kept after A/B
+hash proof (1b + graduates untouched by it). Root causes closed: shelfRuns
+had been split out of roofBoxes with NO consumer (four shelf runs silently
+absent) — consumer added (thin plates at certified tops, pale legs); the
+"remaining pale panel" was an ORPHANED under-crown backer sliver at
+lobeXs[0] (raycast-pinned) left floating when r8's lattice dips reordered
+the least-dipped lobes — moved to lobeXs[3]. Center kit-wall raised (6
+heaps, tops 2.29-2.375, tall edge camera-side), bay-mouth kit stacks,
+bay-anchored diagonals + hatch hairlines. Dead-rear center p5 65.6->74.0,
+med 94.1 vs ref 94.5 (r8's open-scaffold inversion gone); top vane band
+pale, crate band air parity 35.6 vs 34.4. Builder self-read: view-rear/top/
+toptilt ~9.0-9.1, hero-rearright ~8.9 (corner-sky triangle honestly smaller
+than ref 43.7%), left/right ~8.7 — independent critic to adjudicate.
+New laws banked in the r9 report: sliver-follows-dip-reorder; camera-side
+tall corners; per-face corner air; >=25mm plan outlines; pale-deck roof
+guns invert the gun-metal AA law; close-roof frames z +1.2..-1.1 only;
+re-read gatePassed from JSON at razors (console rounds 89.9976 to "90").

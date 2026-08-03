@@ -663,3 +663,19 @@ PROTECTED (re-measured): rear-view fender faces / gear census
 unchanged zones; basket rim, dome band, crest, hem — code untouched.
 Tools left for the critic: tools/tmp-r7-merkava.py (ITU-601 rect/
 rectbg/runs2/rod/cells/dark scanners), tools/tmp-r7-whatsat.mjs.
+
+## Visual r9 (2026-08-03, stand-off round) — ORCHESTRATOR LANDING NOTE
+(Builder finished without writing this section; summarized from its verified
+report at landing. Gate 90.0 PASS; turret +0.2, stations +0.6.)
+Goals were un-started by the dead prior agent; all delivered: basket plan
+ARC (5-segment pale hoop, apex 0.045 over the vane deck inside the ref's
+falling line, probe-verified gate-positive) with dark plan border + kit and
+drum inside; pocket re-split from r8's fused letterbox into two unequal
+pockets + pale mullion + 3 pits (23.7-class floors, 4.2-4.8% real air);
+top-void plates retoned turretTrack->turretDark (plan sub-55 census 458->48,
+remainder certified corner bays); SECOND ROOF MG (owner law): right-ring
+rear-guard MAG on a boom arm — receiver mass, pale top-lit crown, dark rod
+with pale breaks, booster — slid aft after the forward lay merged with the
+loader gun, inside probe-verified shadow lanes. Builder self-read: changed
+views 8.4-8.8 (view-rear ~8.7, view-top ~8.8, right ~8.4) — floor work
+continues in r10 before a critic round.
