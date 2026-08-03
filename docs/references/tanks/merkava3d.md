@@ -528,3 +528,61 @@ all rear bands), module edges, tone table. The 1b r6 section records
 the shared law finding: "ref voids to 25.8" = the render background
 luma (see-through fringe), and the ref 1b loader gun's true anatomy
 (center-post, dome AFT of the certified band).
+
+## CHEAP-HOLDERS round r7 (2026-08-03, merkava 3d/1b agent) — 90.6 PASS x2
+Gates 90.6 PASS x2 bit-identical (hull 91.5 / whole 90.6 / turret 91.5 /
+stations 91.9 / dims 100 / floaters 100 — turret +0.1 over r6, others
+exact). 3b/3c hashes 5296950a/5287233e EXACT; 2b/2d/4b 9bfe0895/
+62456460/d44a3624 identical pre/post (git-stash A/B). Tests green
+(equipment 166 + full suite). Every number below RE-RUN ON THE FINAL
+RENDERS (bank law 3); ITU-601 throughout (tools/tmp-r7-merkava.py).
+1. ROD RETONE (item b, GUN-METAL LUMA LAW) — THE DECODE: the ref's
+   60-80L rod class is not albedo. Three mechanisms, all measured:
+   (i) AA COVERAGE — the ref rod is ~0.6-1px, ours was 2.6px
+   full-coverage (95.0 flat); (ii) MSAA ROW-LOCK — a dead-level 1.2px
+   rod renders one near-solid 94.4 row every column (the ref line
+   sweeps phases because it is slightly tilted: its own side-col window
+   2.527-2.552 IS the tilt); (iii) the SHADE-SIDE READABILITY FILL
+   floors any single-tint thin rod ~94 (albedo-gated — a detail retone
+   alone moved only the lit side 81.2 -> 70.8). Fix = thin rod r 0.010
+   (top pinned on the certified line) + muzzle droop rx 0.042 (M2) /
+   0.055 (plinth, gunmetal flag — pale path byte-identical for 3B/3C) /
+   0.043 (.50) + detail tint + UNEVEN DARK JACKET SLEEVES (the ref's
+   own 58-101 mixed-albedo line). MEASURED (per-column line medians):
+   M2 L 82.2 (p25 69.1 / p75 94.7) vs REF L 81.9 (81.0/93.6) — median
+   parity; M2 R 68.6 vs ref 79.1; plinth/far-.50 left line 71.4 (was
+   95.0-95.4); .50 own-side 66.9. The 88-95 class is dead on every rod
+   in both orthos. RUNS PRESERVED (tone-agnostic float-col method): M2
+   50 L / 48 R (r6 48/49; ref 56/53 same method), plinth 19-20px.
+2. REAR-BAND STOW-STACK (item a): first cut embedded pitched slivers
+   under the local surface — whatsat proved they built but the rack-box
+   top 1.558 / loft line owns the visible deck (sub-surface kit renders
+   NOTHING; the r6 "20 hull-side columns of kit height" costing was
+   right). Final: 4 stow pokes + 2 flat dark seam strips per side, tops
+   +0.028..+0.045 over the local max(loft, rack, wing) surface,
+   rx-tilted into the rear camera (gate priced the spend 0.0).
+   MEASURED rear band y336-392: img-L med 84.4 -> 87.9 (mean 91.7, p75
+   103.0) vs ref 92.3; img-R med 86.2 -> 88.1 (p75 107.8) vs ref 89.4;
+   row-SD 8.51/8.65 (ref 9.62/12.16). RESIDUAL (honest): img-L med
+   still -4.4 under ref — the next round can widen the pokes.
+3. BOW DIAMOND DE-PUNCH (item c): the pixel map pinned the "~53L
+   diamond tow-plates" on the paleVents HEADLIGHT cluster (dark lens
+   disc + stem + brush-guard frame) + clevis pin, all in the
+   bow-overhang shadow where even detail tone floors ~53. towLit
+   (3D-only flag): lens -> detail ring + small dark pupil, stem/guard
+   thinned + detail, clevis filler FLUSH + up-beveled rx -0.35 (sky
+   term inside the shadow), pin tucked behind it. MEASURED plate
+   windows (24x24px): p5 53.1 -> 67.2/68.1, p25 53.1 -> 68.2, med 67.9
+   -> 96.2/96.7 (ref 78-81 / 104-105). RESIDUAL: p5 sits ~11L under
+   ref — the bow-shadow ambient floor.
+4. FRINGE DROP PITCH (item d): hem-ball row re-spaced on cumulative
+   uneven weights 0.62x..1.38x (softGoods-gated — 3B/3C byte-identical)
+   + the rack-rim 4-ball clusters at 0.026/0.047/0.031 gaps. MEASURED:
+   detected drop pitches 17/85/48/34px, CV 0.54 (the r6 row was a 9%
+   wobble on an even 15px pitch).
+PROTECTED (re-measured on finals): rear p95 rows y300-330 proc 112.2
+vs ref 113.6 (r6 parity class); M2/plinth free-sky runs above; mottle,
+trios, chevron, hem, rings, crest, main gun — code untouched.
+RESIDUALS for critic r8: band img-L med -4.4; M2 L p75 94.7 (pale
+crown-phase cols, ref's own p75 is 93.6 — same class); diamond p5
+67-68 vs ref 78-81.

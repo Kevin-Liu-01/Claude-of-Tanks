@@ -589,3 +589,77 @@ PROTECTED (verified on the final pairs): .50 side runs 43/42px @ 81/96
 both orthos (r5 level), main-gun float 152px, tone table, fill, dome
 elevation/rings, hem, crest. EXTENT AUDIT: see merkava3d.md (shared
 finding — rig framing artifact, no geometry change).
+
+## CHEAP-HOLDERS round r7 (2026-08-03, merkava 3d/1b agent) — 90.0 PASS x2
+Gates 90.0 PASS x2 bit-identical (hull 91.1 / whole 90.0 / turret 90.4 /
+stations 91.4 / dims 100 / floaters 100). Spend vs the r6 90.2: whole
+-0.2 (the sanctioned RAZOR budget — shoulder kit breaks), stations -0.7
+(the granted s8/s9 T-mast), hull -0.2 (kit breaks); turret net 0.0
+(-0.2 mast +0.2 vane-lane refund). Every number RE-RUN ON THE FINAL
+RENDERS (bank law 3); ITU-601 (tools/tmp-r7-merkava.py).
+1. LOUVRE KILL (item a, thrice-flagged contradiction): the order was
+   "tone-match <=+10 or KILL" — killed: the grilleBright glass-channel
+   plate + slats ride the CAMO bucket (geometry identical, zero mask
+   movement; hairline shadows keep the slat rhythm). MEASURED view-top:
+   zone med 121.7 -> 81.5 vs surround 88.9 = contrast +32.8 -> -7.4
+   (<= +10 law PASSED); brightest front-half 20x20 cell 120.8 -> 94.4
+   vs ref 95.3 (class match). RESIDUAL: the zone now reads 7.4 UNDER
+   its surround (ref's own zone reads -0.9) — slat shadow lines.
+2. SHOULDER DE-RULE (item b): whatsat-traced the front-cam y287
+   constant-y lines to the z -2.67/-3.30 REAR-LOFT CREST STATIONS (not
+   the rack — the r6 rack split sat 9px below the line, which is why
+   it "didn't land"). Fix: three minimal stow pokes (+0.020 = 2.7px
+   design, 3px measured in-render at img x 103-112 / 522-528) + rack
+   body-box notch dips [1.28-1.40 -0.048, 1.52-1.64 -0.030] with the
+   outboard rail dropped beneath them + the vane lane-7 split
+   (0.70-0.86 / 0.86-1.0 @ -0.040). MEASURED front runs2 (brk>=2px):
+   63/41/41px >= 40 -> ONE 41px @ y185 remains (ref same-method max
+   34); >=2px breaks verified at 3+ points. RESIDUAL (honest): the
+   41px y185 run is a +-1px composite (furniture-pot rear corners +
+   basket-rim/vane-crown elements at h' 2.69-2.71); an interrupter
+   there prices -0.15..-0.25 whole against the 90.0 floor — declined.
+   (First-cut kit at 0.10-0.16 footprints cost hull -0.5/whole -0.4;
+   slimmed to minimal legal breaks.)
+3. TAIL-POCKET PLAN LEAK (item c, plan-face law): the pockets tilt
+   face-DOWN rx -0.35 in the SAME turretTrack bucket — from top and
+   toptilt the plates BACKFACE-CULL (the pale vane behind shows), from
+   dead-rear the near-black recess read stays. Bottom edges swing 27 mm
+   rearward, inside the certified curtain-rail reach. Pocket 1 slid to
+   x -0.22*hwR (void coverage back over the center strip). Curtain: 3
+   extra rod skips + hairline rods (extraSkips param, this call only)
+   keep real see-through air. MEASURED: toptilt tail zone p5 64.7 ->
+   65.1 (excl-bg), the pocket punch cells (p5 24.4-51.2) GONE from the
+   sub-55 map — remaining dark cells are the r6-certified rack corner
+   bays (39.9-48.6) + certified gear; pure-top plan census 11 sub-38px
+   (ref 4; was the flagged 213-class on toptilt). Rear void class
+   (rectbg, background INCLUDED — the critic's metric: ref strips run
+   8-13% air): proc strips p5 25.8 / 41.3 / 55.6 (r6 40.7/24.4/24.4)
+   with air 6.1% @ the y210-250 band (p5 25.8) and the tilted pockets
+   at 23.7 in the y290-330 band. RESIDUAL: the third x-strip floor
+   rose to 55.6 (pocket area shifted centerward).
+4. .50 T-MAST (item d, the granted s8/s9 budget): rear-sight pole +
+   15px T-head at the dims-grace ceiling (head top 2.659; pole
+   2.554-2.646 on the receiver). THE WHOLE-ECONOMY FINDING: at the gun
+   lane x 0.115 the head paid -0.5 whole; offset into the REF'S OWN
+   mast window x 0.004..0.11 it is whole-FREE (89.7 -> 90.2 on the
+   move) — cost lands -0.7 stations only. MEASURED dead-front: dark T
+   at y197-198 (63L bar + pole against the 78-98 backdrop) over the
+   box bank. RESIDUAL (honest, physics): a true SKY float dead-front
+   needs h' >= 2.79 — the tail stack (basket rim/vane crown) projects
+   at h' 2.72-2.75 BEHIND the gun lane in the elevated front cam — so
+   top >= 2.81 at the receiver station: blocked by heightM p95 + the
+   s8/s9 ceiling (the ref's own float reads at h' 2.83; its mast is
+   mask-thin there).
+5. ROD LAW on the commander .50 (shared item b): thin pale rod r 0.010
+   (top 2.530, 4 mm inside the certified 2.534 flat line — the
+   sub-pixel row-phase shift) + uneven dark jacket sleeves; booster
+   keeps its pale muzzle mass (s11 carrier). MEASURED: L med 84.9
+   (p25 63.8) vs ref L 77-84; R 69.1 vs ref 63-77 — the flagged 88-95
+   class (was 90/83) dead both orthos. RESIDUAL: L med sits 0.5 over
+   the ref's own left-line max. Float-runs 40/40px (r6 43/42 — the
+   thin rod's AA eats 3 edge cols; window and extent unchanged; the
+   ref reads 69/75 by the same tone-agnostic method).
+PROTECTED (re-measured): rear-view fender faces / gear census
+unchanged zones; basket rim, dome band, crest, hem — code untouched.
+Tools left for the critic: tools/tmp-r7-merkava.py (ITU-601 rect/
+rectbg/runs2/rod/cells/dark scanners), tools/tmp-r7-whatsat.mjs.
