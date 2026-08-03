@@ -993,3 +993,14 @@ retired in userdrops.js (procedural ships everywhere); buh GLB stays as
 measurement oracle (CC-BY 4.0, ATTRIBUTION.md). FREEZE HASH 37cc0789
 (44 meshes, 151604 verts) — any intentional change re-runs BOTH gates
 and re-freezes. Icons regenerated (5, staged per the icon trap rule).
+
+## OWNER FLAG 2026-08-02 (evening) — contiguity fix round QUEUED
+Owner screenshot (desert scheme, side view): "a lot of empty areas...
+no empty areas in tanks. turrets should be contiguous for the most
+part; we're not just doing shaping for the sake of shaping." Dark
+hollow pockets read between turret masses / behind cheek from garage
+angles. GRADUATE FIX ROUND queued on the leopard lane (after kf51 r7):
+close the voids (attach standoff masses w/ mounts + contact shadows),
+then re-gate ≥90 + re-critic ≥9.0 + RE-FREEZE hash in the SAME commit
+(graduate-change protocol). Also apply the DECORATION MINIMUM law
+(roof MG present? flat areas dressed?).
