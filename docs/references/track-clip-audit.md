@@ -7,6 +7,12 @@ between the two track band meshes (DynamicDrawUsage fingerprint) and
 center-reaching hull solids in the front/rear wrap zones. `--exact` counts
 true surface coincidence; the default adds a 2cm near-contact margin.
 Full JSON: shots/track-clip.json (local).
+UNDERCOUNT FIX (leopard r4 law, landed with this note): the tool's hit map
+collided unnamed merged buckets on one display key — all numbers in the
+table below are FLOORS (true leopard baselines were ~2x: a5 907/628, a6
+1044, kf51 935; m1a2_tejas rear re-reads 683 not 219). Re-audit any tank
+before ordering its fix round; the leopard trio re-measures 0/0 post-fix
+(their zeros are real).
 
 ## Exact-overlap results (voxels; ≥300 = visible clip class)
 

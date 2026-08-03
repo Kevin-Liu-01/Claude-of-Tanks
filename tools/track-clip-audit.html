@@ -122,7 +122,11 @@ if (mode === 'list') {
           hi = [Math.max(hi[0], x), Math.max(hi[1], y), Math.max(hi[2], z)];
         }
         if (ov > 0) {
-          hits.set(m.name || m.parent?.name || '(unnamed)', {
+          // per-mesh key (leopard r4 law: unnamed merged buckets collided on
+          // one display name and the totals UNDERCOUNTED — uuid keys, name
+          // kept for display)
+          hits.set(m.uuid, {
+            name: m.name || m.parent?.name || '(unnamed)',
             vox: ov,
             box: [lo.map((v) => +(v * V).toFixed(3)), hi.map((v) => +(v * V).toFixed(3))],
           });
@@ -131,8 +135,8 @@ if (mode === 'list') {
       const total = [...hits.values()].reduce((s, h) => s + h.vox, 0);
       out.zones.push({
         name: zone.name, overlapVox: total,
-        hits: [...hits.entries()].sort((x, y) => y[1].vox - x[1].vox).slice(0, 6)
-          .map(([n, h]) => ({ mesh: n, vox: h.vox, box: h.box })),
+        hits: [...hits.values()].sort((x, y) => y.vox - x.vox).slice(0, 6)
+          .map((h) => ({ mesh: h.name, vox: h.vox, box: h.box })),
       });
     }
     window.__CLIP_RESULT = out; window.__CLIP_READY = true;
