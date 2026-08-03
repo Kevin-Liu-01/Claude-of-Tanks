@@ -2012,19 +2012,27 @@ def _pw_slope(pts, v):
     return (pts[-1][1] - pts[-2][1]) / (pts[-1][0] - pts[-2][0])
 
 
-def _axis_warp(tank_id, *, long_axis, y_map, long_map, y_top_max, expect):
+def _axis_warp(tank_id, *, long_axis, y_map, long_map, y_top_max, expect,
+               height_axis='y'):
     """Batch-12 'py2' builder: axis-wise piecewise-linear vertex warp of every
     scene-reachable prim, in GLB-WORLD space (through each node's world
     matrix and its affine inverse). expect=(prims, verts, tris) is the exact
-    reachable census — mismatch refuses to write (wrong input file?)."""
+    reachable census — mismatch refuses to write (wrong input file?).
+    height_axis (batch-28, chieftain5 Z-up print): the glb-world axis that
+    carries HEIGHT (y_map applies to it); default 'y' keeps every prior
+    batch byte-identical. Width = the remaining axis, invariance-checked."""
+    if height_axis == long_axis:
+        raise SystemExit(f'{tank_id}: height_axis == long_axis')
     for pts in (y_map, long_map):
         for p0, p1 in zip(pts, pts[1:]):
             if not (p1[0] > p0[0] and p1[1] > p0[1]):
                 raise SystemExit(f'{tank_id}: non-monotone warp map')
 
     def op(gltf, chunks, _id=tank_id, ax=long_axis, ym=tuple(y_map),
-           lm=tuple(long_map), ytop=y_top_max, exp=tuple(expect)):
+           lm=tuple(long_map), ytop=y_top_max, exp=tuple(expect),
+           hax=height_axis):
         li = {'x': 0, 'y': 1, 'z': 2}[ax]
+        hi = {'x': 0, 'y': 1, 'z': 2}[hax]
         bi = _bin_chunk_index(chunks)
         data = bytearray(chunks[bi][1])
 
@@ -2080,14 +2088,14 @@ def _axis_warp(tank_id, *, long_axis, y_map, long_map, y_top_max, expect):
                     p = struct.unpack_from('<fff', data, poff + i * pstride)
                     w = transform_point(world, p)
                     wl = list(w)
-                    sy = _pw_slope(ym, w[1])
+                    sy = _pw_slope(ym, w[hi])
                     sl = _pw_slope(lm, w[li])
-                    wl[1] = _pw_eval(ym, w[1])
+                    wl[hi] = _pw_eval(ym, w[hi])
                     wl[li] = _pw_eval(lm, w[li])
                     q = transform_point(winv, wl)
                     struct.pack_into('<fff', data, poff + i * pstride, *q)
                     # width-axis invariance through the W^-1 . W round trip
-                    wi = 2 - li  # long x -> width z, long z -> width x
+                    wi = 3 - li - hi  # the remaining axis carries width
                     w2 = transform_point(world, q)
                     width_drift = max(width_drift, abs(w2[wi] - w[wi]))
                     if has_n:
@@ -2098,7 +2106,7 @@ def _axis_warp(tank_id, *, long_axis, y_map, long_map, y_top_max, expect):
                               w3it[6] * n[0] + w3it[7] * n[1] + w3it[8] * n[2])
                         # warp Jacobian J = diag with sy at y, sl at long axis
                         j = [1.0, 1.0, 1.0]
-                        j[1] = sy
+                        j[hi] = sy
                         j[li] = sl
                         nw = (nw[0] / j[0], nw[1] / j[1], nw[2] / j[2])
                         # world -> local: (W3)^T . n
@@ -2120,8 +2128,8 @@ def _axis_warp(tank_id, *, long_axis, y_map, long_map, y_top_max, expect):
                 pacc['max'] = [max(r[k] for r in rows) for k in range(3)]
                 for i in used:
                     w = transform_point(world, struct.unpack_from('<fff', data, poff + i * pstride))
-                    if w[1] > top_after:
-                        top_after = w[1]
+                    if w[hi] > top_after:
+                        top_after = w[hi]
                     if w[li] < long_lo:
                         long_lo = w[li]
                     if w[li] > long_hi:
@@ -2632,7 +2640,25 @@ REPAIRS['abramsx'] = {
     ],
 }
 
-# =============================================================== batch 22 ===
+# ============================================================ INCIDENT NOTE ===
+# 2026-08-03: batches 22-26 and 28 are DISABLED (entries popped below, GLBs
+# reverted to their pre-batch git states, honest gate rows restored).
+# What happened: post-warp gate runs read 0s on their tanks. Root causes
+# found so far: (A) chieftain5/challenger1 — the new batch entries FLAT-
+# ASSIGNED over PRE-EXISTING REPAIRS entries (lines ~454/~949), so the
+# replay-from-pristine DROPPED the old committed repairs (LAW: extending an
+# id's recipe MUST splat the old list: REPAIRS[id] = [*REPAIRS[id], ...]).
+# (B) the five no-profile tanks (t54/t84/t90m/amx30/amx30b2) score against
+# DONOR stand-in builds that were mid-edit across four profile files — their
+# gate deltas are donor drift, and warp validity is UNPROVEN either way
+# until real profiles exist. (C) fv510's warp verified clean offline but
+# changed nothing in the harness (suspect: the harness safeScale clamp
+# floor 0.68, procedural-fidelity.html:253, on a 0.0125-glb-unit print).
+# STANDING LAW: every future warp batch is verified IN THE GATE (a real
+# harness run on a tank with a stable proc build) before commit; offline
+# --verify alone is NOT proof. Batch-27 (leclerc/t80u/type90/ariete/type74)
+# stays LIVE: leclerc/t80u gate-measured functional post-warp.
+# =============================================== batch 22 (DISABLED) ===
 # ORIENTATION REPAIRS (t62_bergman/batch-12 class; found by the REG
 # instrument sweep 0a39d55): t54 (recovered), amx30b_ahab and amx30b2_ahab
 # all render glacis -z under a +z gun — hull BACKWARDS vs its rig. Same
@@ -2801,6 +2827,42 @@ REPAIRS['type74'] = {
     ],
 }
 
+# =============================================================== batch 28 ===
+# UK NORMALIZATION x3 (plans authored by the uk r1 agent with p95 sims in
+# grace; literals emitted by vertex-normalize; execution = orchestrator).
+# chieftain5: -4.6% hull/-3.4% overall, squat cupola raised 2.735->2.90,
+# masts kneed 2.93-2.94. THE PRINT IS Z-UP in glb world (gate y = glb Z,
+# long = -glb Y; loader pitchOffset -pi/2) — first use of the height_axis
+# parameter added to _axis_warp with this batch (default-path regression:
+# t84 re-repair byte-identical). challenger1: -3.9% hull/-6.3% overall,
+# roof plateau raised to 2.93, antennas kneed 2.97-2.98; its extract
+# ORIENTATION MISMATCH is a certified false alarm (un-modeled turret
+# followers contaminate the hull curve; glacis faces +z — packet cert).
+# fv510: -10.9% uniform centered z-stretch (mirror-invariant vs its
+# flip:true) + y knee 2.60.
+REPAIRS['chieftain5'] = [
+    ('py2', _axis_warp('chieftain5', long_axis='y', height_axis='z',
+                       y_map=[(0.1189, 0.1189), (112.8871, 112.8871), (120.5958, 127.8641), (167.5091, 129.6261)],
+                       long_map=[(-229.6241, -238.0377), (-86.3733, -93.994), (229.5977, 237.2624)],
+                       y_top_max=130.9476,
+                       # guard-reported census (batch-19 law; tris match)
+                       expect=(12, 60133, 55143))),
+]
+REPAIRS['challenger1'] = [
+    ('py2', _axis_warp('challenger1', long_axis='z',
+                       y_map=[(-0.0104, -0.0104), (2.8381, 2.8381), (3.0134, 3.1997), (3.6379, 3.2544)],
+                       long_map=[(-4.8536, -5.0332), (3.9024, 4.0821), (6.9558, 7.566)],
+                       y_top_max=3.2873, expect=(149, 157826, 121277))),
+]
+REPAIRS['fv510'] = [
+    ('py2', _axis_warp('fv510', long_axis='z',
+                       y_map=[(-0.0086, -0.0086), (0.0029, 0.0029), (0.004, 0.0037), (0.0086, 0.0039)],
+                       long_map=[(-0.0125, -0.014), (0.0125, 0.014)],
+                       y_top_max=0.0041,
+                       # guard-reported census (batch-19 law; tris match)
+                       expect=(4, 28223, 28582))),
+]
+
 
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)
@@ -2853,3 +2915,21 @@ def main(argv):
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
+
+
+# INCIDENT 2026-08-03 (see note above batch 22): disabled recipes popped so
+# `repair --all` can't reapply them; sources kept above for the
+# loader-parity investigation.
+for _disabled in ('t54', 't84', 't90m', 'amx30', 'amx30b2',
+                  'chieftain5', 'challenger1', 'fv510'):
+    REPAIRS.pop(_disabled, None)
+# chieftain5/challenger1 keep their ORIGINAL pre-incident recipes:
+REPAIRS['chieftain5'] = [('py', repair_chieftain5)]
+REPAIRS['challenger1'] = [
+    ('py', lambda gltf: [
+        fold_node(gltf, 'vehicle#ex_decor_l_09_109', 'z', -90.0, [1.902325, 1.553626, 0.0]),
+        fold_node(gltf, 'vehicle#ex_decor_l_10_114', 'z', -90.0, [1.902325, 1.553626, 0.0]),
+        fold_node(gltf, 'vehicle#ex_decor_r_11_104', 'z', 90.0, [-1.903487, 1.553626, 0.0]),
+        fold_node(gltf, 'vehicle#ex_decor_r_12_98', 'z', 90.0, [-1.903487, 1.553626, 0.0]),
+    ] and None),
+]

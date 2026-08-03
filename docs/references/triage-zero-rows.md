@@ -122,11 +122,13 @@ The full vertex-extract pass (REG batch 0a39d55) revises the mini-extract's
 Build-order impact: t80-line + t44/type59/vickers_mk1/m60a2 are buildable
 now; t54/amx30-line/t84/m48/t90m wait on orchestrator oracle work.
 
-STATUS UPDATE (orchestrator, same day): batch-22 un-reversed t54/amx30/
-amx30b2 hulls; batch-23 normalized t90m (+ first packet written); batch-24
-normalized t84; batch-25 normalized t54. NOW BUILDABLE: t80-line, t44,
-type59, vickers_mk1, m60a2, t90m, t84, t54. Still waiting: m48 only (pitched
-fused tube — pitch-flatten vs certified-cap decision banked in its stub,
-warp sketch ready; decide inside its build round). batch-26 cleared the
-amx30-line (roofs were true; bustle/searchlight knee 2.20; hulls stretched,
-muzzles pinned rear+9.48) — 12 of 13 fully buildable.
+STATUS UPDATE 2 (orchestrator, 2026-08-03 incident): batches 22-26 are
+DISABLED and their GLBs REVERTED to pristine (see the INCIDENT NOTE in
+tools/repair_oracles.py). Post-warp gate runs read 0s; root causes: two
+flat-assignment bugs (uk pair) + donor-drift ambiguity on the five
+no-profile tanks (their gate rows ride donor stand-ins that were mid-edit
+in four profile files). STANDING LAW: warps verify IN THE GATE against a
+stable proc build before commit. BUILDERS: author all 13 to PUBLISHED dims
+regardless (dims sovereignty) — the pristine prints stay the visual
+reference; re-warps land after real profiles exist, one at a time,
+gate-in-loop. m48 unchanged (decision banked in its stub).

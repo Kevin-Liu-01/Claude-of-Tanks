@@ -12,7 +12,7 @@
  },
  "curveRows": {
   "side_hull": {
-   "score": 2.9274778272104243,
+   "score": 0,
    "meanPct": 7.22,
    "p95Pct": 15.34,
    "coverPct": 0.83,
@@ -117,7 +117,9 @@
      "procBot": -1.21,
      "errM": 0.252
     }
-   ]
+   ],
+   "orientationFlip": true,
+   "mirrorScore": 16.6
   },
   "side_whole": {
    "score": 0,
