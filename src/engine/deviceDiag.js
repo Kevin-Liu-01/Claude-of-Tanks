@@ -157,6 +157,74 @@ export function applyDiagRescue(renderer, diag) {
 }
 
 /**
+ * Environment validity gate (mobile r4). The owner's iPhone proved the PMREM
+ * environment bake is the black-scene culprit (watchdog rescue
+ * 'environment-off', band 2.3 -> 22.7): on that GPU the bake yields a
+ * poisoned (NaN/black) texture whose IBL term blackens every lit material,
+ * while desktop bakes are healthy. Validate the installed environment by
+ * rendering a chrome probe sphere lit by NOTHING but the env — a healthy sky
+ * bake reflects bright horizon (clearly non-black); a poisoned one reads
+ * black. When invalid: strip scene.environment and add a compensating
+ * ambient tuned to the lost IBL diffuse so the scene lights correctly from
+ * frame one (shadows/fog untouched). Re-run after EVERY bake — the sky
+ * re-bakes per map (sun tracking), which would otherwise reinstall the
+ * poisoned texture mid-session.
+ */
+let _envCompLight = null;
+export function enforceEnvValidity(renderer, scene) {
+  if (!scene.environment) return true;
+  let lum = -1;
+  const prevTarget = renderer.getRenderTarget();
+  const rt = new THREE.WebGLRenderTarget(16, 16, { depthBuffer: true });
+  try {
+    const probe = new THREE.Scene();
+    probe.environment = scene.environment;
+    const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
+    cam.position.set(0, 0, 2.4);
+    const ball = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 24, 16),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1.0, roughness: 0.15 }),
+    );
+    probe.add(ball);
+    renderer.setRenderTarget(rt);
+    renderer.clear();
+    renderer.render(probe, cam);
+    const buf = new Uint8Array(4);
+    renderer.readRenderTargetPixels(rt, 8, 8, 1, 1, buf);
+    lum = buf[0] + buf[1] + buf[2];
+    ball.geometry.dispose();
+    ball.material.dispose();
+  } catch (_) {
+    lum = -1; // treat an unreadable probe as invalid — never risk a black scene
+  } finally {
+    renderer.setRenderTarget(prevTarget);
+    rt.dispose();
+  }
+  const ok = lum > 12 && FORCE !== 'badenv';
+  const bag = window.__GL_DIAG;
+  if (ok) {
+    if (_envCompLight) { scene.remove(_envCompLight); _envCompLight = null; }
+    return true;
+  }
+  scene.environment = null;
+  if (!_envCompLight) {
+    // tuned against the desktop verdant battle band (mobile r4 probe):
+    // env-on 23.85 vs env-off+ambient sweep 1.0->17.3 / 2.0->20.3 /
+    // 3.0->23.4 / 4.5->28.0 — 3.1 interpolates to the env-on level
+    _envCompLight = new THREE.AmbientLight(0xc3d2e4, ENV_COMP_INTENSITY);
+    scene.add(_envCompLight);
+  }
+  if (bag) {
+    if (bag.errors.length < 8) bag.errors.push(`env bake invalid (probe ${lum}) — compensated ambient engaged`);
+    bag.rescue = bag.rescue || 'environment-fallback (bake validation)';
+    if (bag._showOverlay) bag._showOverlay();
+    else if (bag._refresh) bag._refresh();
+  }
+  return false;
+}
+const ENV_COMP_INTENSITY = 3.1;
+
+/**
  * Black-scene watchdog (mobile r3). The owner's iPhone passes all three
  * probes above — vanilla lit + vanilla-shadowed rendering work — yet the
  * REAL scene's lit meshes are black. The remaining suspect set (custom CSM

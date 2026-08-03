@@ -18,6 +18,7 @@ import { Sky } from 'three/examples/jsm/objects/Sky.js';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged);
 // read inside the bake functions (post-renderer), never at module eval.
 import { texSize } from './quality.js';
+import { enforceEnvValidity } from './deviceDiag.js';
 
 const SUN_ELEVATION_DEG = 32; // slightly lower sun → longer, more readable shadows
 // 140° put the sun almost directly BEHIND the standard chase/establishing
@@ -1013,6 +1014,7 @@ export function createSky(scene, renderer) {
       envTarget = nextTarget;
       scene.environment = envTarget.texture;
       scene.environmentIntensity = Math.max(preset.envIntensity, ENV_INTENSITY_FLOOR);
+      enforceEnvValidity(renderer, scene); // MOBILE r4: see bakeEnvironment
     }).catch((e) => console.warn('[sky] HDRI env failed, procedural bake kept —', e.message));
   };
 
@@ -1062,6 +1064,13 @@ export function createSky(scene, renderer) {
 
       envSky.geometry.dispose();
       envSky.material.dispose();
+
+      // MOBILE r4: some iOS GPUs poison the PMREM bake (NaN texels) and the
+      // IBL term blackens every lit material (proven on-device by the r3
+      // watchdog: rescue 'environment-off'). Validate after EVERY bake — the
+      // sky re-bakes per map and would reinstall the bad texture — and swap
+      // to compensated ambient when invalid (deviceDiag.js).
+      enforceEnvValidity(renderer, scene);
     },
 
     horizonColor,
