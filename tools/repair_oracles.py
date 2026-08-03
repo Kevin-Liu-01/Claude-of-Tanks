@@ -2659,6 +2659,27 @@ REPAIRS['amx30b2'] = {
     ],
 }
 
+# =============================================================== batch 23 ===
+# T90M NORMALIZATION (minehffd print; first packet written with this batch —
+# the id was a zero-row with no packet until the 2026-08-03 triage). Width
+# and the turret ROOF line are TRUE (roof cols 2.25-2.32 vs pub 2.23); the
+# +25.9% bodyH is entirely the wide Kord-RWS/bustle furniture band (crest
+# 2.72-2.97 over gate-z -2.4..-1.2): knee 2.20, band lands 2.20-2.253,
+# post-map p95 ~2.24 inside the 1% dims grace. hullMask +9.1%: body x0.9169
+# about body center; muzzle pinned at rear+9.63 (tube segment stretches
+# ~x1.15 to absorb it — abramsx pin class, opposite sign). Long axis glb x
+# sign -1 (nose raw -X, scaleToOverall registration — extract/verify handle
+# the loader parity). Plan: vertex-normalize batch-23 entry.
+REPAIRS['t90m'] = {
+    'path': 'public/models/tanks/t90m_minehffd.glb',
+    'ops': [
+        ('py2', _axis_warp('t90m', long_axis='x',
+                           y_map=[(-1.4819, -1.4819), (2.117, 2.117), (3.3815, 2.2036)],
+                           long_map=[(-9.9847, -10.0515), (-6.0309, -5.5225), (6.2102, 5.7017)],
+                           y_top_max=2.2478, expect=(116, 175206, 122516))),
+    ],
+}
+
 
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)
