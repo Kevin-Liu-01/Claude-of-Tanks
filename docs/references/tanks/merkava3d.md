@@ -453,3 +453,78 @@ RESIDUALS (honest, for critic r5): plinth-gun run 17 px vs ref 38 (pano/
 cupola-block cap); right .50 under-sky fused from the right; rack rim
 band med 84 vs ref 96; module edge cols ~0.05 remain; wheel-arch window
 row unchanged (certified).
+
+## DECORATION round r6 (2026-08-03, merkava 3d/1b agent) — 90.6 PASS x2
+Gates 90.6 PASS x2 (hull 91.5 / whole 90.6 / turret 91.4 / stations
+91.9 / dims 100 / floaters 100; r5 was 90.8 — -0.2 spent on the .50
+re-lay + receiver masses, no new worst-list rows). 3b/3c hashes
+5296950a/5287233e EXACT; 2b/2d/4b 39.9/34.9/34.6 exact; tests green.
+0. EXTENT AUDIT (the critic's step-0 order) — RIG FRAMING ARTIFACT,
+   no geometry change. Numbers: with the pair labels masked out, the
+   solid-content aspect drift proc/ref is +2.8% (3d front) / -0.7%
+   (3d rear) / +1.9% / -0.5% (1b) — i.e. NO stance drift; band-width
+   ratios (track:fender:hull) match ref per-half to 3 digits
+   (e.g. 1b fender/track 1.061 ref vs 1.062 proc). What the critic
+   measured as "narrower-per-height" is a UNIFORM per-half scale
+   offset: the proc half renders ~8% smaller in BOTH axes (raw W/H
+   440/464 vs ref 478/506 on 3d front; 452/461 vs 492/504 on 1b).
+   Cause: the critic rig frames each half on its own visibleBox, and
+   the PROC box carries a phantom origin-parked disc y -0.397..+0.397
+   (InstancedMesh wheel-template bbox — geometry bbox ignores instance
+   matrices, so the running-gear instancer reads as one wheel half
+   buried at the origin) while the ref's equivalents hide under the
+   swapped-out fallback. Proc front-view framing ext 2.252 vs ref
+   ~2.08 → the ~8%. Affects every procedural half in the fleet
+   equally; fixing it is a RIG change (or an instancer bbox fix in
+   shared code), not a profile item.
+1. RIGHT .50 FREE-SKY (item a): the flanking 2.617 roofBox seg DELETED
+   (front col x 1.13..1.36 rides the rear 2.617 stair segs max-over-z;
+   side cols ride the 2.615 plinth max-over-x) and the whole gun slid
+   forward — barrel z -0.60..-0.88 over the opened 2.445 sill, pintle
+   post at -0.86 ends the run, receiver+crown+can follow (widened
+   0.15->0.19 + cradle cheek per the rods->guns order). MEASURED
+   (final pairs): a 13px pale float @ lum 95, gap 4px, at z ~-0.66 in
+   the LEFT ortho = the ref's own 13-14px class. RESIDUAL (honest):
+   from the RIGHT the run cannot exist under the mask economy — the
+   far-side 2.615 plinth renders at up-component 2.650 under the
+   elevated cam (ABOVE any dims-legal near rod), and a saddle-window
+   rod would pay ~14 proc-only columns at +0.23 (the 3d ref's guns are
+   mask-absent). The ref's right-view run mirrors to our left view.
+2. RODS -> GUNS (item b): crest M2 receiver 0.090->0.118 wide + mount
+   tray aft (footprint mass; the clamp window x 0.115..0.166 tolerates
+   the r5-proven ~0.02-0.03 overhang, so width stayed conservative);
+   plinth MG gains ammo can behind the hump + mount tray under it
+   (x-lane pinned by the ref-bare -1.11/-1.23 windows — mass comes
+   from the z-run); right .50 receiver/crown/can widened. Top/toptilt
+   read: receiver-block + can + tray clusters, not bare rails.
+3. REAR HIGHLIGHTS (item c): basket rim slabs + rear rim rails retoned
+   to the sand class w/ hairline dark unders (b.soft-gated; the dark
+   full-width chainCurtain hanger rail likewise soft-gated to detail
+   tone + hairline); two top-lit rim cap plates on the rearTip; ball
+   chain fringe beefed (balls on most rods, mixed tone/size) + a
+   4-ball chain cluster hanging off each rack rim corner. MEASURED:
+   rear p95 rows y 300-330 113.7 vs ref 114.7 (was -11.5 short), rim
+   rows y 330-360 111.3 vs 114.9. RESIDUAL (honest): the band MED at
+   y 336-392 stays ~84 vs ref 95 — pixel-sampled + whatsat-traced,
+   that surface is the GRAZING-LIT tops of the certified rack
+   shelf/wing frames (1.44-1.62 falling band, registration-critical),
+   not paintable kit; the ref stacks bright stow there. Tilted cap
+   plates were added at the shelf line but read 1-2px at grazing;
+   closing the med gap needs ~20 hull-side columns of kit height (over
+   budget this round).
+4. CRATE-BAY TRIOS (item d): the rearTip's three same-class cloth
+   slats re-laid as UNEVEN stow — wide low patch + narrow tall one
+   offset high + rolled tarp lying ACROSS the rhythm + leaning strap +
+   tilted pouch; the shared basket's 3-pocket trio (3d/1b voids path)
+   became two unequal pockets + offset slit + hanging pouch.
+5. SPLASH CHEVRON (item e): the hullDark towCable arc (lum ~56 on the
+   ~95 glacis — the loudest dark line on the bow) re-drawn as
+   hullDetail segments on the same polyline + a center hairline only.
+   MEASURED: glacis columns x 250-338 read 82-84 uniform; the arc now
+   tone-on-tone (visible as form, not sticker).
+PROTECTED (verified): M2 48/49px runs both orthos, plinth-gun 17px
+class, main gun 141px, hem scallops, rings, un-punch (rear p5 80-91 on
+all rear bands), module edges, tone table. The 1b r6 section records
+the shared law finding: "ref voids to 25.8" = the render background
+luma (see-through fringe), and the ref 1b loader gun's true anatomy
+(center-post, dome AFT of the certified band).

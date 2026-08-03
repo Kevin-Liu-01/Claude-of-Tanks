@@ -507,3 +507,85 @@ right (dark-on-pale, not sky — dome is certified-high vs the ref's low
 casting); dome-band side cols now +0.02-0.03 over (the sanctioned crown
 rise); louvre luma from above 122 vs ref-zone 90 (ref zone is its
 shadowed fittings; front-panel class matched).
+
+## DECORATION round r6 (2026-08-03, merkava 3d/1b agent) — 90.2 PASS x2
+Two twice-flagged cheap holders killed; gates 90.2 PASS x2 (hull 91.3 /
+whole 90.2 / turret 90.4 / stations 92.1 / dims 100 / floaters 100; r5
+was 90.4 — net -0.2 spent on the loader-gun columns). 3b/3c hashes
+5296950a/5287233e EXACT; 2b/2d/4b 39.9/34.9/34.6 exact; tests green.
+1. REAR DARK-ZONE UN-INVERSION (holder 1, stale since r3) — DECODED:
+   "ref voids to 25.8" IS the ITU-601 luma of the render background
+   (0x151b20 = 25.78) — the ref's basket rect contains SEE-THROUGH air
+   in its chain fringe, not dark paint. The 1B tail now reads the same:
+   two UNEQUAL turretTrack recess pockets on the vane's lower rear face
+   + rolled hem lip + the chainCurtain re-aimed across them (rods
+   1.98-2.07, balls to ~1.96 — the first cut's 2.22 rail paid the -4.1
+   row and was pulled back to the certified 2.08 rail line). MEASURED:
+   basket-band strips (x 260-380, y 210-330) p5 56.1 -> 24.6/24.6/40.9
+   = the ref 25.8 class. The FENDER BLOCKS: the two ~30x45 near-black
+   rects were the r4 hullTrack rack-face pockets + hullShadow recess
+   bays — retoned to the cloth class + slimmed (rackVoid-gated;
+   3B/3C byte-identical). MEASURED: block zones p5 24.6 -> 65.7/76.1,
+   med 95; face-band sub-38 census 1900 -> 1169, ALL remaining in the
+   wheel/gear tone band below y 0.95 (the certified dark-gear recipe),
+   zero on the rack face itself (ref face band reads 0).
+2. LOADER GUN (holder 2) — the struck mask law let the ref be decoded:
+   its right-view 41px @ 56 run is a CENTER-POST pintle gun (solid post
+   at z ~-1.44 reading h175 in the scan, dark rod z -0.94..-1.38 at
+   y 2.68-2.70, ABOVE its dome crown line — the ref's real dome casting
+   sits AFT of -1.44, not the certified -0.76..-1.64 band, which its
+   rod+post own). Ours re-lays center-post on the certified head-pot
+   column (x 0.03, ±0.06 @ 2.635): dark receiver+rod z -0.86..-1.09
+   top 2.664, stock/grips/ammo-can dropped BELOW the 2.655 dome line
+   (column-free), old bins-lane rod2 deleted, bin restored to its
+   r4-certified 2.565 top. ECONOMY (measured, three gate iterations):
+   rod at 2.700 read heightM p95 2.70 (+1.9%, dims 92.8) and -2.1
+   turret — the ref's root-rigged gun is MASK-ABSENT, so every rod
+   column is proc-only; 2.664 is the dims-grace ceiling (heightM stays
+   2.65/100) and costs 3 rows @ +0.036. RESIDUAL (honest): the rod
+   rides the crown line (dark line 1px proud from the right — the
+   ref's own right-view crown relationship) but has NO freesky gap:
+   a true sky float needs y>=2.70 over >=9 columns (blocked by dims
+   p95 + the certified dome z-position under our hull frame).
+3. .50 DEAD-FRONT (holder 2b) — three decodes deep: (i) the x 0.09
+   crown pot (the gun's under-lane filler) DELETED — its front cols
+   ride the gun cluster (max-over-z); flanking pots stay on their r5
+   columns (a slide onto the saddle paid +0.21/row — the pair-visible
+   2.55 fitting there is root-rigged and mask-absent); (ii) the z 0.03
+   crest station dropped 2.492 -> 2.44 with two flank camber pots
+   (x ±0.44, 2.492) holding the side/front columns — the ref keeps
+   this lane OPEN to its fore-roof; (iii) the mount hid below the
+   roofline (post 2.44 / cradle 2.455), receiver slimmed to the ref's
+   block class (bottom 2.515), reconnected through a 2px elevation
+   screw (a fully hidden mount read floaters 0). RESIDUAL (honest):
+   the ref's actual float is its rear-sight T-mast (15px head @ ytop
+   173); a replica at top 2.635 paid -1.7 STATIONS (the head sits on
+   the s8/s9 slice) and a station-safe height floats <4px — deleted.
+   Our cluster now sits ON the skyline with the lane opened beneath
+   (r5 buried it in pots); scanner still reads 0 front floats.
+4. LOUVRE STICKER: bright panel shrunk to ~1/4 plan area (0.46x0.42 vs
+   0.89x0.72, 4 slats, camo plate carries the old footprint — glacis
+   silhouette unmoved). MEASURED from the top: brightest 20x20 cell
+   102.8 (was 122 vs ref-zone 90); quadrant >110 census 116 px vs ref's
+   own 614.
+5. 58px RULED FRONT SHOULDER: the 0.36-wide 2.512 shelf split into a
+   0.19 holder lane (every certified column kept) + 0.17 outboard lane
+   dipped 0.015 (2px at 640, downward-only).
+6. DOME PLAN PILL (2.9:1) — DOCUMENTED AS BLOCKED: widening mid-body
+   is pinned both ways — inboard by the ref-bare -0.52 front col (the
+   r5 ring re-center was -0.135 for exactly this) and outboard by the
+   ref 2.581/2.591 cols at x -0.89/-0.93 (an ellipse test at rx 0.16
+   reads +0.036 over at -0.89). The rear-cheek teardrop stays the only
+   sanctioned taper; a plan re-aspect needs a dome z-relay (see item 2:
+   the ref casting is AFT of the certified band) — a structure-round
+   job, not a decoration slot.
+7. RODS->GUNS + highlights: .50 receiver/crown widened 0.105->0.150
+   (tops unchanged), can bulked, cradle side plate; basket rim rails
+   retoned to the sand class with hairline dark unders (rim med chase);
+   chainCurtain soft rows now carry balls on most rods (mixed tone,
+   off-grid); voids-trio in the shared basket re-laid as two unequal
+   pockets + offset slit + hanging pouch (grammar class test).
+PROTECTED (verified on the final pairs): .50 side runs 43/42px @ 81/96
+both orthos (r5 level), main-gun float 152px, tone table, fill, dome
+elevation/rings, hem, crest. EXTENT AUDIT: see merkava3d.md (shared
+finding — rig framing artifact, no geometry change).
