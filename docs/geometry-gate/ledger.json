@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-03T20:48:11.447Z",
+ "generatedAt": "2026-08-03T20:49:35.275Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 18,
  "total": 85,
@@ -9,7 +9,7 @@
    "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 19.7,
+    "hullCurves": 0,
     "wholeCurves": 0,
     "turretCurves": 0,
     "stations": 0,
@@ -838,12 +838,12 @@
   },
   {
    "id": "vickers_mk1",
-   "geoMin": 80,
+   "geoMin": 78.2,
    "gatePassed": false,
    "components": {
     "hullCurves": 82,
-    "wholeCurves": 80,
-    "turretCurves": 81.5,
+    "wholeCurves": 78.2,
+    "turretCurves": 81.9,
     "stations": 88.1,
     "dims": 99,
     "floaters": 100
