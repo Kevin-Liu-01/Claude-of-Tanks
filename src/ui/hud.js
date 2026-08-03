@@ -1038,10 +1038,12 @@ export function initHud(bus) {
   let heightFieldRef = null; // for spotting line-of-sight tests
   const nameById = new Map();
   const specIdById = new Map(); // entity id -> tank spec id (icon lookups)
-  // incoming-hit direction arcs (killcam_endscreen r1): SHOOTER world pos +
-  // tier — screen angle re-projected per frame from the camera basis so the
-  // arcs counter-rotate with the camera (see pushHitDirection root-cause note)
-  const hitDirs = []; // { wx, wz, kind:'pen'|'bounce'|'he', crit, dmg, t0, _screenAng }
+  // incoming-hit direction wedges (hitind r1, on the killcam_endscreen r1
+  // world-anchoring): SHOOTER world pos + class — screen angle re-projected
+  // per frame from the camera basis so the wedges counter-rotate with the
+  // camera (see pushHitDirection root-cause note). `re` marks a merged
+  // repeat (re-pulse attack); max 5 live entries.
+  const hitDirs = []; // { wx, wz, kind:'pen'|'bounce'|'he', crit, dmg, t0, re, _screenAng }
   const liveNums = []; // { x, y, until } — active damage-number rects (stacking)
   let hitMark = null; // { t0, bounced } — reticle hit-confirm marker (own shots)
   let bounceTimer = null;
@@ -1400,10 +1402,59 @@ export function initHud(bus) {
     ctx.globalAlpha = 1;
   }
 
-  // hit-arc timing: fast ease-in, ~1.2 s hold, fade (owner spec)
-  const ARC_IN_S = 0.12;
-  const ARC_HOLD_S = 1.2;
-  const ARC_FADE_S = 0.6;
+  // -------------------------------------------------------------------------
+  // INCOMING-FIRE WEDGES (hitind r1 — owner: indicators "much better and more
+  // like the actual world of tanks"). Each hit paints a tapered CRESCENT ring
+  // segment around screen center at the shooter's camera-relative bearing —
+  // bright inner rim, radial glow falling off outward, pointed tips — the WoT
+  // damage-arc read. Per-class span/weight/palette/decay so a mere bounce is
+  // instantly distinguishable from real damage:
+  //   pen    — bold red wedge, ~64° span, heavy body, ~4 s decay
+  //   he     — amber splash wedge, widest (~76°), mid weight, ~3 s decay
+  //   bounce — thin steel-white arc, ~44° span, light body, ~2.5 s decay
+  // Crits ride the pen wedge as a hot core flash (~2 Hz, first ~1.4 s) — no
+  // separate class. Numbers/chevrons no longer ride the arcs: WoT keeps the
+  // received-damage figures in the damage log (pushDamageLog carries them).
+  const ARC_IN_S = 0.12; // shared fast pulse-in attack
+  const ARC_CLASS = {
+    pen: {
+      holdS: 0.9, fadeS: 3.0, half: 0.56, thickF: 0.92,
+      rim: '255,126,92', body: '246,58,38', rimA: 0.95, bodyA: 0.60,
+    },
+    he: {
+      holdS: 0.7, fadeS: 2.2, half: 0.66, thickF: 0.78,
+      rim: '255,198,100', body: '250,146,42', rimA: 0.90, bodyA: 0.50,
+    },
+    bounce: {
+      holdS: 0.5, fadeS: 1.9, half: 0.38, thickF: 0.60,
+      rim: '234,244,252', body: '168,192,214', rimA: 0.95, bodyA: 0.44,
+    },
+  };
+  const ARC_SEGS = 22; // crescent outline resolution
+
+  // tapered crescent path: the inner edge rides the ring at R0; the outer
+  // edge lifts to R0+thick at the wedge center and returns to R0 at the tips
+  // (gradient fill handles the radial falloff, the taper the angular one —
+  // never a cheap solid triangle)
+  function wedgePath(cx, cy, cAng, half, R0, thick) {
+    ctx.beginPath();
+    for (let i = 0; i <= ARC_SEGS; i++) {
+      const a = cAng + (-1 + (2 * i) / ARC_SEGS) * half;
+      const x = cx + Math.cos(a) * R0;
+      const y = cy + Math.sin(a) * R0;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    for (let i = ARC_SEGS; i >= 0; i--) {
+      const u = -1 + (2 * i) / ARC_SEGS;
+      const a = cAng + u * half;
+      // 0.5 exponent: near-uniform band through the middle, quick taper at
+      // the tips — WoT's arc is a BAND with soft ends, not a bulging lens
+      const R = R0 + thick * Math.pow(Math.max(0, 1 - u * u), 0.5);
+      ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R);
+    }
+    ctx.closePath();
+  }
+
   function drawHitIndicators(timeS) {
     if (!hitDirs.length) return;
     const cam = lastCamera;
@@ -1411,7 +1462,8 @@ export function initHud(bus) {
     if (!cam || !pl) return;
     // camera basis, y-flattened: screen-right = +X column of matrixWorld,
     // forward = -Z column (the exact convention the damage panel's camYaw
-    // read uses) — no yaw-sign folklore, works at any camera orientation
+    // read uses) — recomputed EVERY frame so the wedges stay WORLD-anchored
+    // and counter-rotate as the camera/turret turns (probe-asserted)
     const m = cam.matrixWorld.elements;
     let rx = m[0];
     let rz = m[2];
@@ -1423,109 +1475,109 @@ export function initHud(bus) {
     rx /= rl; rz /= rl; fx /= fl; fz /= fl;
     const cx = w / 2;
     const cy = h / 2;
-    // never overlap the reticle: ride outside the live dispersion circle
-    const R0 = Math.max(Math.min(w, h) * 0.17, (aimView.radPx || 0) + 36);
-    const drawn = []; // angular slots -> radius stagger for stacked hits
-    ctx.lineCap = 'round';
+    const minWH = Math.min(w, h);
+    // ring radius: just outside the DRAWN dispersion circle (drawReticle's
+    // clamp of smoothRadPx, one frame stale — fine), floored at WoT's fixed
+    // read distance and capped so top/bottom wedges stay in frame and clear
+    // of the corner furniture (minimap / damage panel) even mid-bloom.
+    const drawnR = Math.max(26, Math.min(smoothRadPx, minWH * 0.42));
+    const R0 = Math.min(Math.max(minWH * 0.185, drawnR + 26), minWH * 0.30);
+    const thickBase = Math.min(Math.max(minWH * 0.115, 64), 118);
+    // expiry sweep first, then draw oldest -> newest so a fresh wedge always
+    // paints over an older overlapping one
     for (let i = hitDirs.length - 1; i >= 0; i--) {
       const e = hitDirs[i];
+      const cls = ARC_CLASS[e.kind] || ARC_CLASS.pen;
       const age = timeS - e.t0;
-      if (age > ARC_IN_S + ARC_HOLD_S + ARC_FADE_S || age < 0) { hitDirs.splice(i, 1); continue; }
+      if (age > ARC_IN_S + cls.holdS + cls.fadeS || age < 0) hitDirs.splice(i, 1);
+    }
+    for (let i = 0; i < hitDirs.length; i++) {
+      const e = hitDirs[i];
+      const cls = ARC_CLASS[e.kind] || ARC_CLASS.pen;
+      const age = timeS - e.t0;
       const dx = e.wx - pl.x;
       const dz = e.wz - pl.z;
       const dl = Math.hypot(dx, dz);
       if (dl < 1e-3) continue;
       const nx = dx / dl;
       const nz = dz / dl;
-      // + = screen right, 0 = camera forward — recomputed EVERY frame so the
-      // arc counter-rotates as the camera turns (probe-asserted)
+      // + = screen right, 0 = camera forward
       const rel = Math.atan2(nx * rx + nz * rz, nx * fx + nz * fz);
       e._screenAng = rel;
       const c = rel - Math.PI / 2; // canvas frame: -PI/2 = screen top
-      // stacked simultaneous hits: separate radius rings per angular slot
-      let R = R0;
-      for (const dc of drawn) {
-        let dd = Math.abs(c - dc.c) % (Math.PI * 2);
-        if (dd > Math.PI) dd = Math.PI * 2 - dd;
-        if (dd < 0.55 && R <= dc.R) R = dc.R + 26; // full ring per stacked hit — labels stay separate
+      // envelopes: fast pulse-in with a small overshoot (a re-pulsed wedge
+      // re-runs the attack from 0.8 so repeats flash instead of re-growing),
+      // brief hold, then an eased fade-out
+      let aEnv;
+      let grow;
+      if (age < ARC_IN_S) {
+        const t = age / ARC_IN_S;
+        aEnv = t;
+        const from = e.re ? 0.8 : 0.55;
+        grow = from + (1.05 - from) * (1 - (1 - t) * (1 - t));
+      } else {
+        grow = 1.05 - 0.05 * Math.min(1, (age - ARC_IN_S) / 0.14);
+        const fadeT = age - ARC_IN_S - cls.holdS;
+        aEnv = fadeT <= 0 ? 1 : Math.pow(Math.max(0, 1 - fadeT / cls.fadeS), 1.35);
       }
-      drawn.push({ c, R });
-      const a = age < ARC_IN_S ? age / ARC_IN_S
-        : age < ARC_IN_S + ARC_HOLD_S ? 1
-          : 1 - (age - ARC_IN_S - ARC_HOLD_S) / ARC_FADE_S;
-      const grow = age < ARC_IN_S ? 0.45 + 0.55 * (age / ARC_IN_S) : 1;
-      const he = e.kind === 'he';
-      const bounce = e.kind === 'bounce';
-      // arc span/weight by tier: pen thickness scales with damage
-      const half = (he ? 0.55 : bounce ? 0.24 : 0.3) * grow;
-      const lw = bounce ? 5
-        : he ? 6.5
-          : 6 + 7 * Math.min(1, e.dmg / 520);
-      const col = bounce
-        ? `rgba(206,220,232,${(0.9 * a).toFixed(3)})`
-        : he ? `rgba(255,176,46,${(0.8 * a).toFixed(3)})`
-          : `rgba(242,64,52,${(0.92 * a).toFixed(3)})`;
-      // dark under-stroke so sunlit terrain can never erase the arc
+      const half = cls.half * grow;
+      // damage weights the wedge's radial reach (big hits loom larger)
+      const dmgK = e.kind === 'bounce' ? 0 : Math.min(1, (e.dmg || 0) / 520);
+      const thick = thickBase * cls.thickF * (0.74 + 0.40 * dmgK) * grow;
+      // body: dark grounding pass, then the class glow — both radial-gradient
+      // falloffs off the bright inner edge (sunlit sand cannot erase it)
+      wedgePath(cx, cy, c, half, R0, thick);
+      let g = ctx.createRadialGradient(cx, cy, R0, cx, cy, R0 + thick);
+      g.addColorStop(0, `rgba(8,11,14,${(0.40 * aEnv).toFixed(3)})`);
+      g.addColorStop(0.55, `rgba(8,11,14,${(0.16 * aEnv).toFixed(3)})`);
+      g.addColorStop(1, 'rgba(8,11,14,0)');
+      ctx.fillStyle = g;
+      ctx.fill();
+      g = ctx.createRadialGradient(cx, cy, R0, cx, cy, R0 + thick);
+      g.addColorStop(0, `rgba(${cls.body},${(cls.bodyA * aEnv).toFixed(3)})`);
+      g.addColorStop(0.32, `rgba(${cls.body},${(cls.bodyA * 0.62 * aEnv).toFixed(3)})`);
+      g.addColorStop(1, `rgba(${cls.body},0)`);
+      ctx.fillStyle = g;
+      ctx.fill();
+      // bright inner rim (the WoT edge): middle ~82% of the span, round caps,
+      // dark under-stroke per HUD convention
+      const rimHalf = half * 0.82;
+      ctx.lineCap = 'round';
       for (const pass of [
-        { c: `rgba(8,11,14,${(0.7 * a).toFixed(3)})`, lw: lw + 4 },
-        { c: col, lw },
+        { col: `rgba(8,11,14,${(0.70 * aEnv).toFixed(3)})`, lw: 4.6 },
+        { col: `rgba(${cls.rim},${(cls.rimA * aEnv).toFixed(3)})`, lw: 2.3 },
       ]) {
-        ctx.strokeStyle = pass.c;
+        ctx.strokeStyle = pass.col;
         ctx.lineWidth = pass.lw;
         ctx.beginPath();
-        ctx.arc(cx, cy, R, c - half, c + half);
+        ctx.arc(cx, cy, R0 + 1, c - rimHalf, c + rimHalf);
         ctx.stroke();
       }
-      const ox = Math.cos(c);
-      const oy = Math.sin(c);
-      if (bounce) {
-        // deflect chevron: a ricochet glances OFF — two strokes kicking
-        // outward-sideways off the arc, unmistakably not-damage
-        const bx = cx + ox * (R + 11);
-        const by = cy + oy * (R + 11);
-        const tx = -oy;
-        const ty = ox;
-        ctx.strokeStyle = col;
-        ctx.lineWidth = 2.5;
-        for (const s2 of [0, 7]) {
-          ctx.beginPath();
-          ctx.moveTo(bx + tx * (s2 - 6) - ox * 4, by + ty * (s2 - 6) - oy * 4);
-          ctx.lineTo(bx + tx * s2, by + ty * s2);
-          ctx.lineTo(bx + tx * (s2 - 6) + ox * 4, by + ty * (s2 - 6) + oy * 4);
-          ctx.stroke();
-        }
-      } else if (e.dmg > 0) {
-        // damage number riding the arc's outer edge
-        const tx2 = cx + ox * (R + 24);
-        const ty2 = cy + oy * (R + 24);
-        ctx.font = `800 ${he ? 14 : 16}px ${FONT_COND}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        const label = `−${Math.round(e.dmg)}`;
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = `rgba(8,11,14,${(0.85 * a).toFixed(3)})`;
-        ctx.strokeText(label, tx2, ty2);
-        ctx.fillStyle = e.kind === 'he'
-          ? `rgba(255,196,90,${a.toFixed(3)})`
-          : `rgba(255,209,102,${a.toFixed(3)})`;
-        ctx.fillText(label, tx2, ty2);
-        if (e.crit) {
-          // module-crit pulse: diamond beside the number, blinking on the
-          // same beat as the damage panel's module flash (~2 Hz)
-          const pulse = 0.55 + 0.45 * Math.sin(age * Math.PI * 4);
-          const px2 = tx2 + (ox >= 0 ? 1 : -1) * (ctx.measureText(label).width / 2 + 12);
-          ctx.save();
-          ctx.translate(px2, ty2);
-          ctx.rotate(Math.PI / 4);
-          ctx.fillStyle = `rgba(255,138,92,${(a * pulse).toFixed(3)})`;
-          ctx.fillRect(-4.5, -4.5, 9, 9);
-          ctx.restore();
-        }
+      // attack flash: additive white-hot rim pop for the first ~0.25 s
+      if (age < 0.25) {
+        const f = 1 - age / 0.25;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = `rgba(255,236,220,${(0.55 * f * aEnv).toFixed(3)})`;
+        ctx.lineWidth = 3.4;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R0 + 1, c - rimHalf * 0.9, c + rimHalf * 0.9);
+        ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      // crit accent (damage wedges only): hot core flash pulsing on the
+      // damage panel's ~2 Hz module beat for the first ~1.4 s
+      if (e.crit && e.kind !== 'bounce' && age < 1.4) {
+        const pulse = 0.55 + 0.45 * Math.sin(age * Math.PI * 4);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = `rgba(255,216,164,${(0.8 * pulse * aEnv).toFixed(3)})`;
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R0 + 3.5, c - half * 0.34, c + half * 0.34);
+        ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over';
       }
     }
     ctx.lineCap = 'butt';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
   }
 
   // Hit-confirm marker: four diagonal ticks flaring out of the reticle center
@@ -2956,17 +3008,38 @@ export function initHud(bus) {
       }
     }
     if (wx === null) return; // no honest bearing — draw nothing
-    // visual language tiers (drawHitIndicators): red damage arc / pale steel
-    // deflect / wide amber splash; crits ride the pen arc with a glyph pulse
+    // visual language tiers (drawHitIndicators): red damage wedge / thin
+    // steel deflect arc / amber splash wedge; crits ride the damage wedge
+    // as a hot core flash
     const dmg = hit.damage || 0;
     const crit = (hit.modulesHit || []).some((m) => m.newState === 'red' || m.newState === 'yellow')
       || (hit.crewHit || []).length > 0;
     // a 0-damage PENETRATION that cost a module/crewman is still damage-in —
-    // it keeps the red arc (+ crit pulse), never the deflect chevron
+    // it keeps the red wedge (+ crit flash), never the deflect read
     const pen = hit.kind === 'pen' || hit.kind === 'he_pen';
     const kind = hit.kind === 'he_splash' ? 'he' : (pen || dmg > 0) ? 'pen' : 'bounce';
-    hitDirs.push({ wx, wz, kind, crit, dmg, t0: lastTimeS, _screenAng: null });
-    if (hitDirs.length > 8) hitDirs.shift();
+    // repeat fire from (nearly) the same bearing RE-PULSES the existing wedge
+    // — refresh its timer, pool the damage weight — instead of stacking a
+    // second copy on top (WoT read; ~20° merge window per class)
+    const ang = Math.atan2(wx - pp.x, wz - pp.z);
+    for (const e of hitDirs) {
+      if (e.kind !== kind) continue;
+      const ea = Math.atan2(e.wx - pp.x, e.wz - pp.z);
+      let d = Math.abs(ang - ea) % (Math.PI * 2);
+      if (d > Math.PI) d = Math.PI * 2 - d;
+      if (d < 0.35) {
+        e.wx = wx;
+        e.wz = wz;
+        e.dmg = (e.dmg || 0) + dmg;
+        e.crit = e.crit || crit;
+        e.t0 = lastTimeS; // decay timer restarts
+        e.re = true;      // attack re-runs as a flash, not a full re-grow
+        return;
+      }
+    }
+    hitDirs.push({ wx, wz, kind, crit, dmg, t0: lastTimeS, re: false, _screenAng: null });
+    // hard cap: 5 simultaneous wedges — drop the oldest, never visual soup
+    while (hitDirs.length > 5) hitDirs.shift();
   }
 
   function showAlert(text, red) {
