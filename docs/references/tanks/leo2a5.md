@@ -306,6 +306,101 @@ be split per-z; 2 cols x 0.05); front ±1.42 crest-end cols (proc 2.304
 vs ref 2.174 — shrinking the body wall trades an equal-magnitude miss
 the other way, wash); side_hull tail −3.4..−3.6 bottoms ~0.05 x 4.
 
+## Vertex round r3 (2026-08-03) — POST-WARP RETUNE: min 64.7 -> **90.6 PASS** (stable x3)
+
+| component | post-warp unretuned | after r3 |
+|---|---|---|
+| hull | 90.9 | 92.4 |
+| whole | 64.7 | 91.8 |
+| turret | 79.4 | **90.6** (binder) |
+| stations | 90.5 | 94.3 |
+| dims | 91.4 | **100** |
+| floaters | 100 | 100 |
+
+Third geometric pass of the family. The band-flatten warp (batch-29
+fbc4f14) left pure retune debt; every fix authored off the live
+workorder raster (the committed vertex extract predates the warp by 6
+minutes — its curves still show the 4.11 whips; TRUST THE WORKORDER).
+
+What moved:
+- **GRID RE-PHASE LAW (fleet-visible):** dropping the 4.11 whips shrank
+  the shared visible box (center y 2.046 -> 1.351) — the camera
+  re-framed and EVERY column boundary moved. Two consequences: (a) the
+  warped ref keeps only ONE whip column on the settled grid (z −1.954
+  reads 2.723; the old −2.06 column falls to the bare 2.498 roof), so
+  both rods AND the crosswind mast co-park there (x −0.96/+1.045 keep
+  two front columns, ref 2.668/2.737); (b) members tuned to old-grid
+  column centres (corner rails, tail bottoms) needed re-parking.
+- Whips 4.11 -> 2.72 stubs, PERI crown (3.0225) and the r5 blade stack
+  (2.90/2.866/2.79) DELETED — the warped band 2.656-2.691 is carried
+  bare by the cluster/ring line. One blade survives, retargeted: roof
+  wedge at +0.19..+0.40, top 2.625 (ref front ridge 2.621-2.633).
+- Cluster/PERI/ring/EMES line 2.697 -> **2.653** = the p95 heightM
+  anchor (whips + kink spend only two columns now): dims 91.4 -> 100.
+  Kink blade to 2.695 (settled-grid column −1.841). Spike order:
+  2.723 > 2.695 > 2.653 anchor.
+- EMES-well dip FIXED (retires the r5 "shared crest tables cannot be
+  split per-z" cert): the 0.20->1.00 crest segment's interpolated tail
+  swept the dip columns (ref 2.47) at 2.54-2.58 — an intermediate
+  table point [0.95, 0.775, 1.70] holds the crest line high (tail
+  1.21w) until x 0.95 so only x 0.95..1.0 crosses, at 2.47-2.51
+  (front-safe under the 2.653 EMES hood). Lip raised to 2.47; plateau
+  tail plate carries the 2.582 line to 2.145w (col 2.089).
+- Fore body walls 1.40 -> 1.38 with per-slice cY 0.62: the warped
+  front reads the wall shoulder 2.40 at ±1.36 falling to 2.16 by
+  ±1.41 (old 1.40/0.52 wall lit ±1.41 at 2.29). Pads re-edged to the
+  warped print (left x 1.545, right 1.515 — its old 1.53 edge AA-lit
+  the +1.545 column, ref bare 1.835); right-pad tail wedge keeps the
+  plan −1.19w rear while bottoming at the ref 1.80 shell line; riser
+  strips (x 1.42..1.462, top 2.155) buy the ±1.45 front columns.
+- Bustle plan re-lay: rack x 1.26 / z1 −2.775w authored (ref rear line
+  −2.764..−2.792; the −2.845w rail read −2.876 on ten columns), centre
+  bin x −0.43..+0.11 owns the −2.90 dip, right sideMod to −2.69w
+  (plan_turret worst column 0.261 -> 0.039).
+- Gun: root-fill bottom ladder to the warped reads (chin plate 1.684
+  over 2.26..2.49w, fill bottom 1.797 run to 2.915w), step tail plate
+  top 2.13 over 3.00..3.25w, sleeve collar d 0.20, muzzle face box
+  authored 1.92..2.085 (reads the ref 2.077..1.909 end column exactly
+  — a first cylZ try overshot; asymmetric box beats r-centred).
+- Hull: kit splashArms OFF for a5 (their yawed inner ends rode the
+  2.88..3.00 side columns at 1.63-1.66 vs the ref's bare 1.488
+  glacis; flush boards on the same footprint keep the decoration).
+  Rear-deck side shelf (±1.685, top 1.79) for the warped front ±1.66
+  columns. Skirt inner-course X-RESPLIT: the 0.708 course bottom is a
+  narrow sliver (x <= 1.7245) — the ±1.746 columns bottom at 0.886
+  (widened filler band owns them). Corner rails to −3.917/y 1.49 +
+  hook straps (plan corners read −3.943; the −3.862 side column
+  bottoms 1.291); plan mid-step stubs at ±1.05 (ref −3.859); corner
+  flap x-narrowed to 1.812..1.848; belly chins widened inboard to
+  0.675; stowage roll x −0.075 (its edge AA-bled into the −0.017 col).
+- **ONE-PIXEL AA LEAK LAW (fleet-visible):** a box edge parked within
+  ~1 px (10 mm at this frame) of a column boundary half-tones one
+  pixel into the neighbour column and prints its full height there —
+  the vent box at −1.10w printed 2.611 into the −1.168 column (ref
+  2.526, whatsat shows NO geometry above 2.55 there). Fix: 14+ mm
+  setbacks (vent d 0.17, bustle plate z −2.695L, fill z1 2.915w).
+
+Residuals (certified, measured): the ref band's 2.695 crown columns
+(−0.269/−0.382/−0.494/−0.606) vs the 2.653 anchor line, 4 cols x
+0.028-0.032 — the POST-WARP dims-sovereign pair (dims 100 > turret
+90.6; raising the line to 2.695 would put the anchor at 2.08% and
+spend ~8 dims for ~0.5 turret). Jerry-can bottom at −2.74 (0.042,
+kit-placed cargo offset). Nose-tier plan asymmetry (±0.39 columns
+read 3.103 left / 3.159 right off one mirrored table — wash).
+
+Track-clip audit (--exact): leo2a5 flags front 534 / rear 140 vox —
+ALL r2-era members at unchanged coordinates (glacis/mudflap stack
+z 3.32..3.82, headlights, rear flaps z −3.52..−3.61, low rail); no r3
+member intersects a hit box (tail-frame moves live z −3.77..−3.94 at
+y >= 1.29, beyond the sprocket wrap). Pre-existing; queue with the
+leo2a6 clip round.
+
+Shots: shots/leopard-r3/leo2a5-{topdown,tilt55,rearq,sideprofile,
+frontq}.png — top-down fill law holds, whip stubs read, tail frame
+solid. Graduates verified unchanged: leo2a6 2e18db54, kf51 d94171cc;
+siblings leo2_revolution 44acdee0 / leo2a7v e28fc316 / leopard2_proto
+5647ef3e (all diff hunks inside buildLeo2A5).
+
 ## Vertex round r2 (2026-08-03) — ORCHESTRATOR LANDING NOTE
 (Builder finished without a section; from its verified report.) 80.5 ->
 84.2 (hull 93.8 / whole 87.8 / turret 84.2 / stations 92.5 / dims 94.6).
