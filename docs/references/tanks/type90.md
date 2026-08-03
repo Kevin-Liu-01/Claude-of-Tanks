@@ -178,3 +178,13 @@ tube class; gun component reads 8.3 vs hull 89.9). Fix = batch-32 class
 gun-node rest-pitch-zero rotation (orchestrator lane, law v2: fresh
 baseline + probe/gate-in-loop). ariete + type74 share the class (type74
 via its Gun_7 bone rest pose). Builds resume after the batch.
+
+## batch-32 scoping (orchestrator): REGION-ROTATION op required
+Node-level reads: type90 + ariete have NO gun/barrel/cannon node at all —
+the pitched tube is FUSED into turret geometry (m48 class exactly);
+type74's Gun_7 is a bone with an axis-frame rest quaternion. One new
+repair op serves all four prints (m48/type90/ariete/type74): rotate verts
+in a geometric region (z>=z0, |x|<=x0, y-band) about a pivot axis, census-
+guarded, law-v2 (fresh baseline + probe/gate-in-loop). Until it lands,
+the three misc builds stay parked (side rows honestly floored by the
+elevated ref tubes); m48's banked decision joins the same batch.
