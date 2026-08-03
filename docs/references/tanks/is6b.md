@@ -76,3 +76,52 @@ Dims vs published (all inside the 1% grace -> dims 100): heightM 2.5/2.5 (0.14%)
 Oracle re-derivation (TRUE_AXES profile trace, width-normalized, 12% body filter): bodyH 2.346 vs pub 2.50 (-6.2%), bodyLen 6.449 vs 6.90 (-6.5%); whole span 9.90 vs oal 9.10 (+8.8% - the gun is proportionally LONG)
 Cap verdict: NEW quantification — undersized hull + oversized gun cap the whole/turret rows in opposite directions
 A cap never excuses dims: this build measures published spec.dims at 100 with zero floaters across all five articulation poses.
+
+## r6 vertex re-lay (2026-08-03, soviet-heavy family agent)
+STATE: oracle FLAGGED for warp (orchestrator batch): extract 2026-08-03 reads
+the print UNIFORMLY SHORT+SQUAT with a LONG gun — bodyH -6.2%, hullMask -4.7%,
+overall +8.3%, width 0%. Warp plan banked in tools/vertex-normalize.mjs (is6b:
+uniform y x1.0666, z body x1.0491 about -1.639, D-30 muzzle 4.935 -> 4.011 =
+rear' + 9.10; sim: p95 2.50, hullMask 6.90, overall 9.094). ORCHESTRATOR-ONLY.
+
+Build re-laid ENTIRELY to the POST-WARP frame (nothing on this print is
+warp-stable) from the mapped docs/references/vertex/is6b.json curves. The
+committed ledger row is therefore an INTERIM current-frame measurement — the
+build is 6.7% taller than today's print by design:
+  before 6.8 min (hull 50.6 whole 32.6 turret 6.8 stations 56 dims 100)
+  after 26.6 min (hull 32 whole 26.6 turret 43 stations 32.4 dims 100
+  floaters 100; dims: 2.51/0.37% 6.89/0.11% 9.12/0.17% 3.20/0.08%)
+PREDICTED post-warp rows (tmp-sovheavy-postwarp.py, validated predictor):
+  hull 60.5 (side 74.7 plan 93.9 FRONT 60.5) whole 55.9 turret 58.4.
+
+Re-lay anchors (mapped-curve truths):
+- sloped rear deck starts at -4.05 (the old build sloped from -3.27 — 0.7 m
+  early, a pre-warp bug too) falling 1.664 -> 1.27@-4.91 -> 1.122@-5.058
+  (convex, two slabs); mid deck 1.652 (humps 1.685), fore roof 1.601, deck
+  step at -1.1; glacis 1.601@0.28 -> 1.224@1.13 -> nose 1.10@1.73 with the
+  driver hatch dome 1.512@0.70 ON the glacis.
+- fender plane 1.44 (x 0.9625..1.535) ends at -4.40 (it must dive under the
+  deck slope) and breaks at 0.60 into ramp -> 1.16 tip band (1.30..1.56) ->
+  toe 1.10@1.805 = the plan front anchor 1.81; WIDTH ANCHOR = outer skirt
+  lip x 1.545..1.60 (y 0.80..1.145, z -4.16..0.78) = 3.20 exactly.
+- belly 0.50 + tub steps 0.34/0.296; tracks xc 1.24 trackW 0.56 botY 0.02
+  (ref inner face 0.95, outer 1.53); sprocket far back (dz 0.80) under the
+  slope, idler high-forward (y 0.66, dz 0.76).
+- turret: collar 1.60..1.79 (1.38-1.48 wide), dome bulge 2.07 at 2.03, crown
+  2.50 with the rear crown cap (ref plateau rides the egg's aft half,
+  -1.19..-0.57); ring basket r 0.74 to 1.18 (ref turret-mask bottom); gun
+  axis 2.026, muzzle 4.011, brake drums r 0.130 (plan-sliver rule: an 0.148
+  drum painted a phantom 3.95 front on the x 0.18 plan_turret column).
+
+KNOWN OPEN (needs the real post-warp gate, not the predictor):
+1. front_hull 60.5 predicted — the extract front curve and the gate render
+   DISAGREE at the width extremes on this print (extract col 1.549 reads
+   1.438..0.019 vs dump-ref 1.47..0.64); per-column front targets are fuzzy.
+   Fix against the warped gate's own workorder.
+2. plan_turret 58.4: dump-ref shows a dome-flank chord (x ~1.06, z -0.1..
+   -1.7 raw) WIDER than the extract's 1.045 max halfW — resolve whether the
+   ref dome plan is fuller than its front-view 2.07 bulge before touching
+   the dome (perspective-volume law: verify in hero views too).
+3. The is6b curve-dump frame sits shifted ~+0.47 z vs true world (shared-box
+   centre pollution) — scores are registration-invariant, labels need the
+   +0.47 correction (muzzle-anchor calibration, this round).

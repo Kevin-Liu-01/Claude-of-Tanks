@@ -79,3 +79,14 @@ Dims vs published (all inside the 1% grace -> dims 100): heightM 2.61/2.6 (0.36%
 Oracle re-derivation (TRUE_AXES profile trace, width-normalized, 12% body filter): bodyH 2.376 vs pub 2.60 (-8.6%), bodyLen 6.418 vs 6.99 (-8.2%)
 Cap verdict: NEW quantification — proportionally undersized print; curves capped near current values while dims hold published
 A cap never excuses dims: this build measures published spec.dims at 100 with zero floaters across all five articulation poses.
+
+## Zero-row triage + warp derivation (2026-08-03, soviet-heavy family agent)
+Reference RENDERS (tmp-sovheavy-triage: refPx 5956, refBox [3.4,2.4,9.72],
+rig 10/4 meshes) — the committed 0 row is HONEST (preview reproduces it:
+wholeCurves 0). NOT a registration defect. Extract: hullMask -9.1%, bodyH
+-8.3%, overall -5.2%, width 0% — print short+squat; 266-vert turret dip
+interior (warp legal). Warp plan banked in tools/vertex-normalize.mjs
+(object279: uniform y x1.0906 (2.384 -> 2.60), z hull x1.0999 about -1.6775,
+M-65 muzzle 4.855 -> 5.067 = rear'+10.24; sim: h 2.6001, hullMask 6.990,
+overall 10.252). BUILD after the batch lands — trust the extract for the
+quad-track skirted saucer (owner note), not intuition.

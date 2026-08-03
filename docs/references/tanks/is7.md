@@ -83,3 +83,17 @@ Dims vs published (all inside the 1% grace -> dims 100): heightM 2.61/2.6 (0.47%
 Oracle re-derivation (TRUE_AXES profile trace, width-normalized, 12% body filter): bodyH 2.441 vs pub 2.60 (-6.1%), bodyLen 6.536 vs 7.38 (-11.4%)
 Cap verdict: HOLDS — the 9-11% SHORT claim re-derives to -11.4% length / -6.1% height; irreducible plan/side conflict vs published dims
 A cap never excuses dims: this build measures published spec.dims at 100 with zero floaters across all five articulation poses.
+
+## Zero-row triage + warp derivation (2026-08-03, soviet-heavy family agent)
+Reference RENDERS (tmp-sovheavy-triage: refPx 3338, refBox [3.4,2.62,10.11],
+rig 12/4 meshes) — the committed 0 row is an HONEST baseline (geo preview
+reproduces it: turretCurves 0 from the short-print muzzle vs my published
+11.17 build). NOT a registration defect. Extract: hullMask -11.1%, overall
+-9.7%, bodyH -5.9%, width -2.6% (band-measured; box pinned 3.40) — print
+SHORT everywhere; 420-vert turret dip is the dome skirt in the ring recess
+(interior, warp legal). Warp plan banked in tools/vertex-normalize.mjs (is7:
+uniform y x1.0625 anchored on the replica p95 2.447 -> 2.60; z hull x1.1252
+about -1.7665, S-70 muzzle 5.045 -> 5.713 = rear'+11.17; sim: h 2.6001,
+hullMask 7.380, overall 11.186). RETIRES the r5 "print 9-11% short" cap at
+the source. BUILD after the batch lands (packet-driven; buildIS7 already
+carries the r5 dims-first envelope).

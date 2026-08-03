@@ -93,3 +93,25 @@ read 2.49 vs published 2.45 (1.45% -> dims 96.4) while is3 itself read 2.47 (ins
 buildIS3Bergman now seats the turret 25mm lower on this id only (identity geometry shared
 with is3 is untouched): dims 100. Curve/station rows remain the certified degenerate-print
 caps (dims+floaters only id).
+
+## Zero-row triage + warp derivation (2026-08-03, soviet-heavy family agent)
+Reference RENDERS (tmp-sovheavy-triage: refPx 9248, refBox [3.15,2.97,9.29],
+rig 13/5 meshes) — the committed 0 row is HONEST (preview reproduces it).
+TODAY'S BYTES ARE THE BLENDER-REPAIRED RIG (2026-07-30 re-process): the
+extract confirms the PROUD dome + full D-25T live in the Turret node (turret
+yMax 2.97, interpen 0, muzzle 2.45 m past the bow) — the v6/v10 "degenerate
+sunken shell" cap text describes the PRE-repair bytes and is retired by the
+warp round. Extract: bodyH +16.6% (dome shoulder 2.0-2.2, crown to 2.48,
+broad DShK cluster 2.7-2.97 over ~24% of body cols), overall -5.8%, hullMask
++1.0%, width 0%; bodyLen +35.7% is the fat fused tube crossing the 12% body
+filter (v10 law), not hull geometry. Warp plan banked in
+tools/vertex-normalize.mjs (is3_bergman: is3-class ceiling compress — knee
+2.20, crown -> 2.42, cluster flat to 2.47; z hull 6.836 -> 6.77 about
+-1.219 KEEPING the whole-box rear-shifted frame, muzzle 4.644 -> 5.2465 =
+rear'+9.85; sim: h 2.4575, hullMask 6.770, overall 9.857). Stations-0 root
+cause is the STATURE (committed stationErr: widths 0-4.4%, topPct 13-28% on
+turret slices), not the frame — the frame is gate-harmless (hull-anchored
+registration + per-model station ranges). NOTE for the build round: this
+print seats its dome ~0.5 m further FORWARD of hull centre than the
+panzerfactory is3 — buildIS3Bergman must re-seat the shared turret, not
+clone the is3 placement.

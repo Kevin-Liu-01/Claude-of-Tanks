@@ -302,112 +302,259 @@ function buildIS7(P) {
 // is3_bergman reuses the hull AND (r2) the full proud turret: its own oracle
 // is degenerate, so identity wins over the turret metric (see packet).
 // ---------------------------------------------------------------------------
+// Mirrored 8-corner slab: author corners for the +x side; side=-1 mirrors x
+// AND swaps the corner order so the winding stays outward (abrams.js pattern).
+function sideSlab(P, bucket, side, b0, b1, b2, b3, t0, t1, t2, t3) {
+  const M = ([x, y, z]) => [side * x, y, z];
+  P.add(bucket, side > 0
+    ? KIT.slab(b0, b1, b2, b3, t0, t1, t2, t3)
+    : KIT.slab(M(b1), M(b0), M(b3), M(b2), M(t1), M(t0), M(t3), M(t2)));
+}
+
+// r6 vertex re-lay (2026-08-03): authored to the POST-WARP oracle frame
+// (vertex-normalize is3 plan: y ceiling-compress above 2.30, z hull
+// 6.836->6.77 about centre, muzzle -> 6.465 = rear'+9.85). Hull rows are
+// warp-stable (identity below y 2.30); every line below quotes the mapped
+// docs/references/vertex/is3.json curve. Key measured truths:
+//  - side roofline: tail point (-3.385, 0.923) -> plate face -3.232 (top
+//    1.448) -> deck slope 1.514@-3.167 -> 1.573@-3.14 -> plate A 1.585-1.595
+//    -> V-channel dip 1.459@-2.81 -> plate B 1.602 (-2.69..-2.37) -> DRUM
+//    LINE 1.745-1.756 (-2.36..-1.36 and -1.29..-0.30, deck 1.587 in the
+//    gap) -> crew roof 1.510 (-0.28..+2.01) -> driver hump 1.598@2.15 ->
+//    pike crease (0,1.552,2.42)->(0,0.923,3.385) with headlight bump
+//    1.32@2.97 and tow-hook step 1.02-1.08 @ 3.19..3.245.
+//  - front: centre deck 1.605 (|x|<=0.87), sponson shelf 1.60-1.62 to 1.20,
+//    drums 1.745-1.756 (x 1.22..1.56), fender lip band 1.686..1.488 at
+//    1.558; bottoms: keel 0.455 (|x|<=0.64), tub strips 0.275 (0.66..0.88),
+//    tracks own 0.90..1.53 (ground 0).
+//  - plan: pike V (0,3.385)->(0.74,3.212), fender tips 3.297 (x 0.8..1.53),
+//    fender rears -3.371, tail wedge -3.385.
+// WIDTH GUARD: fenders 1.545+... stay the committed 3.15 anchor; track pads
+// reach 1.525 only (ref front shows nothing at ground past 1.54).
 function is3Hull(P) {
-  const { box, cylY, cylZ, frustum, fenders, headlight, towCable, liftEye, shovelTool } = KIT;
-  P.add('hull', box(1.90, 0.66, 6.55), 0, 0.63, -0.005);                       // belly
-  P.add('hull', frustum(1.48, 2.06, -3.36, 1.40, 2.08, -3.33, 0.84, 1.49));    // sloped sponson band (skirt floor 0.84)
+  const { box, cylY, frustum, headlight, towCable } = KIT;
+  // belly: centre keel 0.455 + lower tub strips 0.275 (ref front bottoms)
+  P.add('hull', box(1.30, 0.55, 5.10), 0, 0.73, -0.35);                        // centre belly 0.455..1.005
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.28, 0.30, 0.035), s * 1.36, 0.60, -3.33);              // rear mud flaps (corner open below)
-    P.add('hull', box(0.24, 0.26, 0.030), s * 1.30, 0.58, 3.06);               // front mud flaps
-  }
-  P.add('hull', box(2.80, 0.05, 2.30), 0, 1.405, 0.80);                        // crew roof (ref 1.43, z -0.15..1.95)
-  P.add('hull', box(2.80, 0.05, 2.42), 0, 1.62, -1.36);                        // raised engine deck (edge 1.645; ref cambers 1.60 edge/1.67 centre)
-  P.add('hull', box(2.80, 0.05, 0.30), 0, 1.545, -0.22, 0.45, 0, 0);           // deck step transition
-  P.add('hull', box(2.70, 0.04, 0.42), 0, 1.50, -2.76, 0.30, 0, 0);            // rear deck fall (ref 1.52@-2.65 -> 1.44@-2.86)
-  // r2: shallow louvered V-hump on the engine deck (r1: "flat wedge")
+    P.add('hull', box(0.2075, 0.62, 5.45), s * 0.77625, 0.585, -0.425);        // tub strips 0.6725..0.88 (ref 0.275 band;
+  }                                                                            // aft to -3.15: the ref tail-belly 0.31 line)
+  P.add('hull', frustum(1.48, 2.06, -3.05, 1.40, 2.04, -3.02, 0.84, 1.505));   // sloped sponson band
+  // ---- stern (wedge tail + plate + deck slope) ----
+  P.add('hull', KIT.slab(                                                      // lower stern rake A (bottom 0.44: the
+    [-1.42, 0.44, -2.93], [1.42, 0.44, -2.93], [1.40, 0.50, -3.24], [-1.40, 0.50, -3.24], // ref's low 0.25 side line here is its
+    [-1.42, 1.02, -2.93], [1.42, 1.02, -2.93], [1.40, 1.05, -3.24], [-1.40, 1.05, -3.24])); // TRACK wrap — the hull keeps 0.44+)
+  P.add('hull', KIT.slab(                                                      // tail wedge B -> point (-3.385, 0.92)
+    [-1.40, 0.48, -3.24], [1.40, 0.48, -3.24], [1.38, 0.895, -3.385], [-1.38, 0.895, -3.385],
+    [-1.40, 1.05, -3.24], [1.40, 1.05, -3.24], [1.38, 0.945, -3.385], [-1.38, 0.945, -3.385]));
+  P.add('hull', box(2.80, 0.40, 0.09), 0, 1.25, -3.165);                       // tail plate (face -3.21, top 1.45 —
+                                                                               // 2 cm shy of the ref's -3.232 so the
+                                                                               // bin-edge pixel never bleeds aft)
+  P.add('hull', KIT.slab(                                                      // rear deck slope: steep 1.448 -> 1.585
+    [-1.42, 1.30, -3.10], [1.42, 1.30, -3.10], [1.40, 1.30, -3.225], [-1.40, 1.30, -3.225], // then flat to plate A (the ref line
+    [-1.42, 1.585, -3.10], [1.42, 1.585, -3.10], [1.40, 1.448, -3.225], [-1.40, 1.448, -3.225])); // is convex: 1.573 already @-3.14)
+  P.add('hull', box(2.84, 0.04, 0.07), 0, 1.567, -3.075);                      // slope-to-deck filler (1.587)
   for (const s of [-1, 1]) {
-    P.add('hull', box(1.10, 0.022, 1.40), s * 0.58, 1.655, -1.55, 0, 0, s * -0.055);
-    for (let i = 0; i < 3; i++) {
-      P.add('hullDark', box(0.98, 0.014, 0.10), s * 0.58, 1.671, -1.08 - i * 0.44, 0, 0, s * -0.055);
-    }
+    // BDSh smoke canisters tucked under the deck-slope line (close-up read;
+    // tops 1.49 stay under the 1.51-1.60 slope silhouette)
+    P.add('hullDetail', KIT.cylX(0.09, 0.32, 10), s * 0.70, 1.40, -3.14);
+    P.add('hullDark', KIT.cylX(0.094, 0.028, 10), s * 0.70 + 0.10, 1.40, -3.14);
+    // rear tow hooks under the fender ramps (ref ledge band 0.9..1.06)
+    P.add('hull', box(0.055, 0.16, 0.10), s * 0.55, 0.98, -3.235);
+    P.add('hullDark', box(0.06, 0.08, 0.06), s * 0.55, 0.94, -3.26);
+    P.add('hullDetail', KIT.torus(0.055, 0.013, 10), s * 0.55, 0.82, -3.25, Math.PI / 2, 0, 0);
+    P.add('hull', box(0.28, 0.38, 0.12), s * 1.375, 0.775, -3.34);             // rear mud flaps (0.585..0.965, aft to -3.40:
+                                                                               // the hullLengthM rear body anchor — band
+                                                                               // 0.37 clears the 12% filter at rough 2.82,
+                                                                               // and the 15mm hang past the wedge tip is
+                                                                               // the v10 flap-nudge guard: it puts the
+                                                                               // last body column's CENTER at -3.43 in
+                                                                               // the current shared frame (measured len
+                                                                               // 6.80) AND -3.42 post-warp (6.77 exact))
   }
+  // ---- decks (rear -> bow), all full width 2.86 like the ref ----
+  P.add('hull', box(2.86, 0.045, 0.29), 0, 1.5655, -2.90);                     // plate A 1.588 (-3.045..-2.755)
+  P.add('hull', box(2.86, 0.04, 0.17), 0, 1.44, -2.81);                        // V-channel floor 1.46
+  P.add('hull', KIT.slab(                                                      // channel fall 1.588 -> 1.459
+    [-1.43, 1.42, -2.755], [1.43, 1.42, -2.755], [1.43, 1.42, -2.87], [-1.43, 1.42, -2.87],
+    [-1.43, 1.459, -2.755], [1.43, 1.459, -2.755], [1.43, 1.588, -2.87], [-1.43, 1.588, -2.87]));
+  P.add('hull', KIT.slab(                                                      // channel rise 1.459 -> 1.602
+    [-1.43, 1.42, -2.69], [1.43, 1.42, -2.69], [1.43, 1.42, -2.755], [-1.43, 1.42, -2.755],
+    [-1.43, 1.602, -2.69], [1.43, 1.602, -2.69], [1.43, 1.459, -2.755], [-1.43, 1.459, -2.755]));
+  P.add('hull', box(2.86, 0.045, 0.33), 0, 1.5795, -2.525);                    // plate B 1.602 (-2.69..-2.36)
+  P.add('hull', box(2.80, 0.045, 2.08), 0, 1.5645, -1.32);                     // engine deck 1.587 (-2.36..-0.28)
+  for (let i = 0; i < 5; i++) {
+    P.add('hullDark', box(2.20, 0.012, 0.11), 0, 1.590, -2.20 + i * 0.42);     // flush louver strips
+  }
+  P.add('hull', box(2.80, 0.05, 2.29), 0, 1.485, 0.86);                        // crew roof 1.510 (-0.285..2.005)
   for (const s of [-1, 1]) {
-    // external fuel tanks own the 1.72 side-profile line (the oracle's deck
-    // is flat ~1.55; its raised roof stations are these drums). r2: split
-    // into the four real drums with dark caps + mounting straps.
-    fuelDrum(P, s * 1.395, 1.495, -0.92, 1.02);
-    fuelDrum(P, s * 1.395, 1.495, -2.00, 1.02);
-    // BDSh smoke canisters on the tail plate (packet cue; kept inside the
-    // oracle hull z-bound -3.41 — extending it shifts the gun-overhang crop)
-    P.add('hullDetail', KIT.cylX(0.095, 0.34, 10), s * 0.72, 1.42, -3.285);
-    P.add('hullDark', KIT.cylX(0.099, 0.03, 10), s * 0.72 + 0.10, 1.42, -3.285);
-    // front fender stowage bins with dark latch straps
-    P.add('hull', box(0.26, 0.13, 0.78), s * 1.30, 1.10, 2.62);
-    P.add('hullDark', box(0.27, 0.10, 0.026), s * 1.30, 1.125, 2.42);
-    P.add('hullDark', box(0.27, 0.10, 0.026), s * 1.30, 1.125, 2.84);
-    towHook(P, s * 0.52, 0.60, 3.16);                                          // pike-toe tow hooks
+    // external fuel tanks own the 1.745-1.756 side line (two long drums,
+    // deck gap -1.36..-1.29 shows 1.587 like the ref). WIDTH ANCHOR: drum
+    // outer arc 1.575 = spec 3.15 exactly — the ref's own outermost plan
+    // column (x 1.558+) is drums-only (z-band -2.37..-0.30), so the drums,
+    // not the fenders, must carry the committed width (r3: a 1.575 fender
+    // put a full-length band on that column and cost plan_hull p95 24.8).
+    fuelDrum(P, s * 1.405, 1.585, -1.856, 1.00, 0.17);
+    fuelDrum(P, s * 1.405, 1.585, -0.792, 1.00, 0.17);
   }
-  shovelTool(P, -1.26, 1.075, 0.55);                                           // fender pioneer tools
-  P.add('hull', box(0.92, 0.09, 0.55), 0, 1.53, 2.12, -0.10, 0, 0);            // driver hump
-  P.add('hull', cylY(0.19, 0.19, 0.028, 12), 0, 1.585, 2.10);                  // driver hatch lid
-  P.add('hullDark', cylY(0.196, 0.196, 0.012, 12), 0, 1.578, 2.10);            // hatch seam
-  KIT.periscope(P, 'hullDetail', -0.22, 1.60, 1.98); KIT.periscope(P, 'hullDetail', 0.22, 1.60, 1.98);
-  pikeNose(P, { zBreak: 2.06, zTip: 3.44, yBelt: 0.95, yRoof: 1.49, yBelly: 0.38, wRoof: 1.18, wBelt: 1.47, cheekW: 1.15 });
-  P.add('hull', frustum(1.40, -3.31, -3.36, 1.40, -2.98, -3.36, 0.42, 0.95));  // rear lower slope
-  P.add('hull', box(2.78, 0.52, 0.12), 0, 1.20, -3.31);                        // rear plate
-  fenders(P, 1.02, 1.545, 1.02, -3.31, 3.10, 0.03);
-  headlight(P, -0.55, 1.26, 3.02, -0.42); headlight(P, 0.55, 1.26, 3.02, -0.42);
-  P.add('hullDetail', KIT.torus(0.075, 0.011, 12), -0.55, 1.26, 3.09);         // brush guard hoop
-  towCable(P, [[-1.34, 1.71, -1.4], [-1.42, 1.47, 0.6], [-1.34, 1.46, 2.2]]);
-  liftEye(P, 'hullDetail', -0.85, 1.52, -2.9); liftEye(P, 'hullDetail', 0.85, 1.52, -2.9);
-  P.add('hullTrack', box(0.5, 0.05, 0.26), -0.55, 1.30, 2.78, -0.36, 0, 0);    // spare links on the pike
-  sovGear(P, { xc: 1.14, trackW: 0.65, wheels: 6, wheelR: 0.33, wheelY: 0.36, span: 4.50, zc: -0.05, topY: 0.94, sprocketY: 0.60, sprocketR: 0.26, idlerY: 0.55, idlerR: 0.25 });
+  // tow cables live on the engine deck beside the drums (any fender-side
+  // run pokes over the ref's flat 1.510 roof line)
+  towCable(P, [[-0.95, 1.60, -2.2], [-1.02, 1.598, -1.3], [-0.95, 1.60, -0.5]], 0.024);
+  towCable(P, [[0.95, 1.60, -2.2], [1.02, 1.598, -1.3], [0.95, 1.60, -0.5]], 0.024);
+  KIT.shovelTool(P, -0.85, 1.575, 0.30);                                       // pioneer tools flush on the roof step
+  P.add('hullDark', KIT.torus(0.045, 0.011, 10), -0.85, 1.594, -2.55);         // flat deck lift rings (a proud liftEye
+  P.add('hullDark', KIT.torus(0.045, 0.011, 10), 0.85, 1.594, -2.55);          // owned the x 0.87 front column in r1)
+  // ---- driver station (hump plateau 1.598, fall-in 1.543@2.01) ----
+  P.add('hull', KIT.slab(
+    [-1.30, 1.46, 2.145], [1.30, 1.46, 2.145], [1.30, 1.46, 2.005], [-1.30, 1.46, 2.005],
+    [-1.30, 1.598, 2.145], [1.30, 1.598, 2.145], [1.30, 1.510, 2.005], [-1.30, 1.510, 2.005]));
+  P.add('hull', box(2.60, 0.05, 0.185), 0, 1.563, 2.2375);                     // hump plateau 1.588 (2.145..2.33)
+  P.add('hull', KIT.slab(                                                      // hump fall: STEEP 1.588 -> 1.44 by 2.55
+    [-1.30, 1.40, 2.55], [1.30, 1.40, 2.55], [1.30, 1.40, 2.33], [-1.30, 1.40, 2.33],      // (the ref crease only shallows
+    [-1.30, 1.44, 2.55], [1.30, 1.44, 2.55], [1.30, 1.588, 2.33], [-1.30, 1.588, 2.33]));  // after 2.55: 1.44 -> 1.31@2.86)
+  P.add('hull', cylY(0.19, 0.19, 0.024, 12), 0, 1.576, 2.18);                  // flush driver hatch lid
+  P.add('hullDark', cylY(0.196, 0.196, 0.010, 12), 0, 1.586, 2.18);            // hatch seam ring (reach 2.376 — clear of
+                                                                               // the 2.38+ bin where the ref is 1.56)
+  P.add('hullDark', box(0.10, 0.012, 0.05), -0.22, 1.601, 2.16);               // periscope slits (flush dark)
+  P.add('hullDark', box(0.10, 0.012, 0.05), 0.22, 1.601, 2.16);
+  // ---- pike nose (custom slabs from the extract corners; the shared
+  // pikeNose helper's weld beads rotated UP-forward and owned the worst
+  // side_hull columns — beads deleted, plates re-laid) ----
+  for (const s of [-1, 1]) {
+    // upper plate seg A (x 0..0.74), split at the ref's convex crease
+    // mid-anchor (0, 1.312, 2.86) — a straight tip-to-hump crease ran
+    // 3-6 cm low through z 2.7..3.15 (r1 gate columns)
+    sideSlab(P, 'hull', s,
+      [0.00, 1.035, 2.66], [0.74, 0.977, 2.46], [0.74, 1.245, 2.009], [0.00, 1.20, 2.35],
+      [0.00, 1.312, 2.86], [0.74, 1.257, 2.66], [0.74, 1.525, 2.209], [0.00, 1.44, 2.55]);
+    sideSlab(P, 'hull', s,                                                     // (belt bulge at x 0.38: the plan V is
+      [0.00, 0.643, 3.185], [0.38, 0.646, 3.14], [0.38, 1.06, 2.56], [0.00, 1.035, 2.66],  // convex — a straight tip->0.74 chord
+      [0.00, 0.923, 3.385], [0.38, 0.926, 3.34], [0.38, 1.285, 2.76], [0.00, 1.312, 2.86]); // read 5 cm short at x 0.4..0.7)
+    sideSlab(P, 'hull', s,
+      [0.38, 0.646, 3.14], [0.74, 0.650, 3.012], [0.74, 0.977, 2.46], [0.38, 1.06, 2.56],
+      [0.38, 0.926, 3.34], [0.74, 0.930, 3.212], [0.74, 1.257, 2.66], [0.38, 1.285, 2.76]);
+    // upper plate seg B (x 0.74..1.42): belt -> sponson corner
+    sideSlab(P, 'hull', s,
+      [0.74, 0.650, 3.012], [1.42, 0.670, 1.880], [1.40, 1.220, 1.840], [0.74, 1.245, 2.029],
+      [0.74, 0.930, 3.212], [1.42, 0.950, 2.060], [1.40, 1.500, 2.020], [0.74, 1.525, 2.209]);
+  }
+  P.add('hull', frustum(0.64, 3.04, 2.32, 1.40, 2.30, 2.06, 0.455, 0.94));     // lower bow core (keel 0.455)
+  P.add('hull', KIT.slab(                                                      // lower beak: keel edge -> belt point
+    [-0.02, 0.455, 3.06], [0.02, 0.455, 3.06], [0.62, 0.50, 2.96], [-0.62, 0.50, 2.96],   // (ref keel rise: 0.42@3.02,
+    [-0.02, 0.923, 3.385], [0.02, 0.923, 3.385], [0.70, 0.930, 3.16], [-0.70, 0.930, 3.16])); // 0.53@3.10, 0.66@3.16)
+  for (const s of [-1, 1]) {
+    // bow tow hooks: plates + up-curled horn at the ref 3.19..3.245 step
+    P.add('hull', box(0.06, 0.30, 0.10), s * 0.55, 0.93, 3.19);
+    P.add('hull', KIT.xform(box(0.05, 0.13, 0.08), 0, 0, 0, -0.40, 0, 0), s * 0.55, 1.022, 3.215);
+    P.add('hullDark', box(0.06, 0.09, 0.08), s * 0.55, 0.86, 3.215);           // dark hook throat
+    P.add('hullDark', KIT.cylX(0.022, 0.13, 6), s * 0.55, 0.80, 3.19);         // shackle pin
+    // fender stowage bins ride the bow ramps (tops under the crease line;
+    // outer edge 1.51 — the ref's 1.55+ columns carry only the drum band)
+    P.add('hull', box(0.22, 0.13, 0.72), s * 1.40, 1.235, 2.52, 0.19, 0, 0);
+    P.add('hullDark', box(0.23, 0.10, 0.024), s * 1.40, 1.30, 2.30, 0.19, 0, 0);
+    P.add('hullDark', box(0.23, 0.10, 0.024), s * 1.40, 1.22, 2.72, 0.19, 0, 0);
+  }
+  P.add('hullTrack', box(0.5, 0.045, 0.26), -0.55, 1.29, 2.72, -0.60, 0, 0);   // spare links flush on the pike face
+  // pike spine weld strips: the crease is a knife edge and the mask trace
+  // reads it ~0.1 low — the ref print rounds it (its own weld bead). Two
+  // segments following the convex crease line exactly.
+  P.add('hull', box(0.06, 0.024, 0.33), 0, 1.376, 2.705, 0.395, 0, 0);         // spine weld (2.55..2.86)
+  P.add('hull', box(0.06, 0.024, 0.66), 0, 1.1055, 3.1225, 0.636, 0, 0);       // spine weld (2.86..tip)
+  headlight(P, -0.55, 1.26, 2.99, -0.42, 0.062); headlight(P, 0.55, 1.26, 2.99, -0.42, 0.062);
+  P.add('hullDetail', KIT.torus(0.06, 0.011, 12), -0.55, 1.256, 3.03, Math.PI / 2, 0, 0); // brush guard hoop UPRIGHT
+                                                                               // (flat-lying torus trap: KIT.torus is
+                                                                               // pre-rotated XZ-flat; rx pi/2 stands it up)
+  // ---- fenders: stern ramp / flat plane / bow ramp per side ----
+  for (const s of [-1, 1]) {
+    // fenders end at 1.545 — the ref's full-length plan band stops there
+    // (its 1.558+ columns are drums-only); the drums above own the width.
+    // Flat plane spans INBOARD to 1.02 (ref plan front 3.33 from x 0.84);
+    // the ramps' outer edge stays 1.51 — the ref's outermost front columns
+    // (1.54+) hold ONLY the 1.42..1.68 drum/lip band, and r5's 1.545-wide
+    // diving ramps put a 0.98..1.52 band there (-0.57 errM columns).
+    P.add('hull', box(0.5225, 0.03, 5.02), s * 1.28375, 1.503, -0.41);         // flat plane (x 1.0225..1.545, top 1.518)
+    sideSlab(P, 'hull', s,                                                     // bow ramp down the pike side
+      [0.90, 0.981, 3.28], [1.51, 0.981, 3.28], [1.51, 1.488, 2.10], [0.90, 1.488, 2.10],
+      [0.90, 1.011, 3.28], [1.51, 1.011, 3.28], [1.51, 1.518, 2.10], [0.90, 1.518, 2.10]);
+    sideSlab(P, 'hull', s,                                                     // stern ramp to the 1.05 ledge
+      [0.90, 1.488, -2.92], [1.51, 1.488, -2.92], [1.51, 1.02, -3.36], [0.90, 1.02, -3.36],
+      [0.90, 1.518, -2.92], [1.51, 1.518, -2.92], [1.51, 1.05, -3.36], [0.90, 1.05, -3.36]);
+    P.add('hull', box(0.24, 0.22, 0.03), s * 1.425, 0.90, 3.288);              // front mud flaps (toe 3.297, edge 1.545)
+  }
+  // idler/sprocket close behind the end wheels so the wrap RISE starts at
+  // the ref's +-2.35 line instead of sagging flat (bottom targets: 0.03@2.2
+  // -> 0.15@2.45 -> 0.42@3.02 front; 0.14@-2.6 -> 0.25@-2.93 rear)
+  sovGear(P, { xc: 1.185, trackW: 0.58, wheels: 6, wheelR: 0.33, wheelY: 0.36, span: 4.64, zc: -0.05, topY: 0.94, botY: 0.04, sprocketY: 0.68, sprocketR: 0.26, sprocketDz: 0.38, idlerY: 0.72, idlerR: 0.24, idlerDz: 0.44 });
 }
 
 // Squat proud IS-3 casting + D-25T, shared by is3 and (r2) is3_bergman.
+// r6 vertex re-lay: authored to the POST-WARP oracle (crown band 2.42-2.44,
+// DShK/cupola cluster flattened to <=2.455 over world z -1.13..-0.73, ring
+// basket down to 0.92 in the turret mask, muzzle 6.465 = published 9.85).
+// The tall DShK mast shrinks to ONE thin rod to 2.82: it holds rough height
+// >= 2.80 so the 12% body filter keeps the 0.33-band brake discs out of
+// hullLengthM (v10 law), while costing only ~2 thin columns vs the warped
+// ref's flat cluster (heightM p95 spike budget: 2 of 4).
 function is3TurretAndGun(P, num) {
   const { box, cylY, cylZ, buildGun, liftEye } = KIT;
-  // squat wide casting: base ring floats at ~1.72, crown 2.54
-  P.turretG.position.set(0, 1.50, 0.10);
+  // ring pivot at the print's own race (extract turretPivot z -0.17 -> the
+  // dome centres near world -0.09); crown 2.435, near-circular plan (sz 1.03)
+  P.turretG.position.set(0, 1.505, -0.09);
+  P.add('turret', cylY(0.56, 0.56, 0.60, 16), 0, -0.29, -0.11);                // ring basket (turret-mask parity: ref
+                                                                               // bottom 0.92 over world z -0.76..+0.36)
   panDome(P, [
-    [1.42, 0.00], [1.46, 0.17], [1.44, 0.42], [1.33, 0.64],
-    [1.10, 0.80], [0.60, 0.91], [0.02, 0.95],
-  ], 1.20, 0.0, 0.05);
-  P.add('turret', cylY(0.21, 0.23, 0.07, 14), -0.44, 0.82, -1.10);             // commander ring at the 2.45 ceiling
-  P.add('turret', cylY(0.185, 0.185, 0.03, 14), -0.44, 0.885, -1.10);          // cupola lid
-  P.add('turretDark', cylY(0.215, 0.215, 0.012, 14), -0.44, 0.879, -1.10);     // lid seam ring
-  P.add('turret', cylY(0.19, 0.21, 0.06, 14), 0.44, 0.84, -0.30);              // loader ring
-  P.add('turret', cylY(0.165, 0.165, 0.028, 12), 0.44, 0.902, -0.30);          // loader lid
-  KIT.periscope(P, 'turretDetail', -0.44, 0.93, -0.90);                        // cupola periscope (spike col)
-  KIT.periscope(P, 'turretDetail', 0.10, 0.88, -0.05);                         // gunner periscope
-  P.add('turret', box(0.06, 0.62, 0.06), 0.15, 1.14, -0.90);                   // DShK mast to 2.95 (ref spike 3.05; keeps rough*12% over the brake discs)
-  P.add('turret', box(0.42, 0.30, 0.40), 0.14, 0.77, -0.72);                   // mount pedestal at the ceiling
-  aaMG(P, 0.15, 0.40, -0.95);                                                  // DShK folded under the 2.45 roof (only the MAST spikes: a raised receiver band claimed p95)
+    [1.42, 0.205], [1.455, 0.335], [1.44, 0.525], [1.33, 0.685],
+    [1.10, 0.805], [0.64, 0.895], [0.30, 0.925], [0.02, 0.930],
+  ], 1.026, 0.0, 0.0);
+  panDome(P, [                                                                 // rear crown cap: the warped ref dome
+    [0.94, 0.84], [0.80, 0.885], [0.44, 0.920], [0.02, 0.925],                 // holds 2.42-2.46 from world -1.40 to
+  ], 0.87, 0.0, -0.55);                                                        // +0.20 (fat end aft); base ring stops
+                                                                               // at -1.46 — a 1.28-sz cap swept to
+                                                                               // -2.02 and owned four whole-row cols
+  P.add('turret', cylY(0.21, 0.225, 0.055, 14), -0.44, 0.845, -1.01);          // commander ring (top 2.40)
+  P.add('turret', cylY(0.185, 0.185, 0.026, 14), -0.44, 0.885, -1.01);         // cupola lid (top 2.416)
+  P.add('turretDark', cylY(0.215, 0.215, 0.012, 14), -0.44, 0.881, -1.01);     // lid seam ring
+  P.add('turret', cylY(0.19, 0.205, 0.05, 14), 0.44, 0.855, -0.26);            // loader ring
+  P.add('turret', cylY(0.165, 0.165, 0.026, 12), 0.44, 0.908, -0.26);          // loader lid
+  KIT.periscope(P, 'turretDetail', -0.44, 0.90, -0.82);                        // cupola periscope
+  KIT.periscope(P, 'turretDetail', 0.10, 0.905, -0.02);                        // gunner periscope
+  // DShK cluster: compact folded mount matching the warped ref's flat
+  // 2.44-2.455 band (world z -1.13..-0.73) + the thin rough-lifter rod
+  P.add('turret', box(0.42, 0.26, 0.38), 0.14, 0.815, -0.75);                  // mount pedestal (top 2.45)
+  aaMG(P, 0.15, 0.42, -0.86);                                                  // DShK folded at the ceiling (receiver 2.36, barrel 2.43)
+  P.add('turret', box(0.032, 0.60, 0.032), 0.15, 1.015, -0.76);                // rough-lifter rod to 2.82 (2 thin cols)
   for (const s of [-1, 1]) {
-    domeRail(P, s * 1.435, 0.44, -0.15, 0.95);                                 // dome grab rails (LEFT shows rails)
-    liftEye(P, 'turretDetail', s * 0.96, 0.87, 0.42, s * 0.4);                 // lifting bosses
-    liftEye(P, 'turretDetail', s * 0.96, 0.86, -0.72, s * -0.4);
+    domeRail(P, s * 1.465, 0.46, -0.10, 0.95);                                 // dome grab rails (LEFT shows rails)
+    liftEye(P, 'turretDetail', s * 0.96, 0.86, 0.38, s * 0.4);                 // lifting bosses
+    liftEye(P, 'turretDetail', s * 0.96, 0.85, -0.76, s * -0.4);
   }
-  P.decal('turret', 'number', P.spec.visual.number || num, 0.32, [1.32, 0.42, -0.2], Math.PI / 2, 0, 0.12);
-  P.decal('turret', 'number', P.spec.visual.number || num, 0.32, [-1.32, 0.42, -0.2], -Math.PI / 2, 0, -0.12);
-  // 122 mm D-25T: axis 2.02, fat sleeved tube (mask Ø ~0.24), muzzle +5.66.
-  // r2: sealed cast saddle on the trunnion (the r1 socket box opened a gap at
-  // depression) + a double-baffle brake that actually READS: dark core in the
-  // side windows, dark face rings, horizontal gas-divider spine.
-  P.gunG.position.set(0, 0.46, 1.55);
-  saddle(P, { rollR: 0.30, rollW: 0.84, ballR: 0.24, ballZ: 0.28, boltR: 0.309, boltX: [-0.33, 0.33] });
-  P.addGunExtra(cylZ(0.17, 0.42, 12, 0.20), 0, 0, 0.40);                       // bulged root (meas: no deep chin)
-  P.add('turret', box(0.76, 0.18, 0.44), 0, 0.58, 1.56, -0.55, 0, 0);          // cast brow over the saddle
+  P.decal('turret', 'number', P.spec.visual.number || num, 0.32, [1.34, 0.50, -0.15], Math.PI / 2, 0, 0.12);
+  P.decal('turret', 'number', P.spec.visual.number || num, 0.32, [-1.34, 0.50, -0.15], -Math.PI / 2, 0, -0.12);
+  // 122 mm D-25T: axis 2.02 (warp keeps it: y<2.30 identity), muzzle 6.465
+  // world = tail'(-3.385) + published 9.85. Warped brake zone 5.35..6.465
+  // (the z map stretches the print's short tube x1.369 past the bow).
+  // mantlet cluster hugs the dome face: the warped ref's plan-turret front
+  // is 1.13@x0.6 / 1.40@x0.4 — the old 1.64 seat pushed the saddle roll to
+  // 1.85 and cost plan_turret 0.25 errM across the mantlet columns
+  P.gunG.position.set(0, 0.515, 1.20);
+  saddle(P, { rollR: 0.30, rollW: 0.84, ballR: 0.30, ballZ: 0.32, boltR: 0.309, boltX: [-0.33, 0.33] });
+  P.addGunExtra(cylZ(0.17, 0.42, 12, 0.20), 0, 0, 0.40);                       // bulged root (plan nose 1.81@x<0.2 = ref 1.76)
+  P.add('turret', box(0.76, 0.18, 0.44), 0, 0.615, 1.36, -0.55, 0, 0);         // cast brow over the saddle
   for (const s of [-1, 1]) {
-    P.add('turret', box(0.22, 0.44, 0.38), s * 0.50, 0.46, 1.40, -0.10, s * -0.50, 0); // cheek castings hugging the roll ends
+    P.add('turret', box(0.22, 0.44, 0.38), s * 0.50, 0.50, 1.10, -0.10, s * -0.50, 0); // cheek castings hugging the roll ends
   }
-  // r3 brake: the r2a Ø0.35 blob with hairline rings measurably existed but
-  // still read as "a faint step" on the fresh boards (verified by zoom) —
-  // the r1/r2 identity bullet stayed open. Rebuilt as a REAL silhouette
-  // feature: flat baffle discs at 1.6x tube radius, a wide open slot with
-  // the dark core punched through the side windows, dark rings on BOTH disc
-  // faces, horizontal gas-divider spine. The few-point overhang-mask cost
-  // the r2a note feared is accepted — the gate is identity, not the crop.
-  buildGun(P, { len: 4.85, r: 0.15, brake: null, baseR: 0.19, sleeve: false, evac: null });
-  P.add('gunDark', cylZ(0.10, 0.66, 12), 0, 0, 4.49);                         // dark core through the side windows
-  P.add('gun', cylZ(0.165, 0.10, 16), 0, 0, 4.23);                             // REAR baffle disc (band-thin vs the 12% body filter)
-  P.add('gunDark', cylZ(0.161, 0.016, 16), 0, 0, 4.174);                       // rear disc back-face ring
-  P.add('gunDark', cylZ(0.161, 0.016, 16), 0, 0, 4.286);                       // rear disc front-face ring
-  P.add('gun', cylZ(0.162, 0.10, 16), 0, 0, 4.65);                             // FRONT baffle disc
-  P.add('gunDark', cylZ(0.158, 0.016, 16), 0, 0, 4.594);                       // front disc back-face ring
-  P.add('gunDark', cylZ(0.158, 0.016, 16), 0, 0, 4.706);                       // front disc front-face ring
-  P.add('gun', box(0.29, 0.05, 0.30), 0, 0, 4.45);                             // horizontal gas-divider spine
-  P.add('gun', cylZ(0.12, 0.11, 12), 0, 0, 4.72);                              // exit block (muzzle 6.43 world -> 9.85 published overall)
+  // double-baffle brake at the warped-oracle seat: discs r 0.165 (band 0.33
+  // stays under rough 2.82 x 12% = 0.338), dark slot core + face rings +
+  // gas-divider spine (the r3 readability build, re-seated for 6.465)
+  buildGun(P, { len: 5.30, r: 0.148, brake: null, baseR: 0.185, sleeve: false, evac: null });
+  P.add('gunDark', cylZ(0.10, 0.70, 12), 0, 0, 4.96);                          // dark core through the side windows
+  P.add('gun', cylZ(0.165, 0.11, 16), 0, 0, 4.74);                             // REAR baffle disc (world 5.85)
+  P.add('gunDark', cylZ(0.161, 0.016, 16), 0, 0, 4.678);                       // rear disc back-face ring
+  P.add('gunDark', cylZ(0.161, 0.016, 16), 0, 0, 4.802);                       // rear disc front-face ring
+  P.add('gun', cylZ(0.162, 0.11, 16), 0, 0, 5.16);                             // FRONT baffle disc (world 6.27)
+  P.add('gunDark', cylZ(0.158, 0.016, 16), 0, 0, 5.098);                       // front disc back-face ring
+  P.add('gunDark', cylZ(0.158, 0.016, 16), 0, 0, 5.222);                       // front disc front-face ring
+  P.add('gun', box(0.29, 0.05, 0.32), 0, 0, 4.95);                             // horizontal gas-divider spine
+  P.add('gun', cylZ(0.12, 0.11, 12), 0, 0, 5.30);                              // exit block (muzzle 6.465 world)
   P.topY = 1.10;
 }
 
@@ -537,95 +684,173 @@ function buildObject279(P) {
 
 // ---------------------------------------------------------------------------
 // IS-6B — docs/references/tanks/is6b.md
-// hull z −4.92..+1.65 (len 6.57): sloped rear deck 1.18→1.55, flat 1.53,
-// glacis→1.06; onion dome on a narrow ring collar, crown 2.34; muzzle +4.94
-// (3.29 m) axis 1.90 with a compact brake.
+// r6 vertex re-lay (2026-08-03): authored to the POST-WARP oracle
+// (vertex-normalize is6b plan: uniform y x1.0666, z body x1.0491 about
+// -1.639, muzzle -> 4.011 = rear' + 9.10). Every number below quotes the
+// MAPPED docs/references/vertex/is6b.json curve. Key measured truths:
+//  - side: tail band (-5.06, 0.79..1.12) -> sloped rear deck 1.122@-5.06 ->
+//    1.664@-4.05 -> mid deck 1.652 (bumps 1.685 @ -2.90..-2.75) to -1.17 ->
+//    fore roof 1.601 (-1.03..+0.28) -> glacis fall with driver-hatch bump
+//    1.512@0.70 / periscopes 1.533@0.84 -> fender-tip line 1.16 @ 1.28..1.56
+//    -> toe 1.10@1.71; bottoms: stern rake 0.30@-4.75 -> 0.80@-5.09, track
+//    0.02 flat -3.90..0.62, bow rake 0.45@1.54 -> 1.00@1.73.
+//  - front: deck 1.678 (|x|<=1.08) chamfering to the 1.44 fender plane
+//    (1.35..1.545); belly 0.50 (|x|<=0.52), tub steps 0.34/0.296
+//    (0.55..0.88); tracks 0.95..1.53; outer skirt lip band 0.82..1.14 at
+//    x 1.545..1.60 = the committed 3.20 WIDTH ANCHOR (full-length band).
+//  - plan: nose 1.663 centre, fender tips 1.812 (x 0.82..1.55) = hull mask
+//    front; rear -5.01..-5.06 (hook slivers deepest at x 0.42..0.62).
 // ---------------------------------------------------------------------------
 function buildIS6B(P) {
-  const { box, cylY, cylZ, frustum, slab, fenders, headlight, towCable, buildGun, liftEye, shovelTool } = KIT;
-  const zc = -1.635;
-  P.add('hull', box(1.90, 0.66, 6.62), 0, 0.62, zc + 0.03);                    // belly
-  P.add('hull', frustum(1.60, zc + 1.95, zc - 1.65, 1.53, zc + 1.97, zc - 1.65, 0.95, 1.52)); // mid sponson band
-  P.add('hull', box(2.86, 0.04, 3.30), 0, 1.505, zc + 0.15);                   // flat roof
-  // sloped rear deck: top edge falls to 1.16 at the tail
+  const { box, cylY, cylZ, frustum, slab, headlight, towCable, buildGun, liftEye } = KIT;
+  const zc = -1.639;
+  // belly + tub steps (ref front bottoms 0.50 / 0.34 / 0.296)
+  P.add('hull', box(1.04, 0.56, 6.10), 0, 0.78, -1.75);                        // centre belly 0.50..1.06
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.15, 0.56, 6.00), s * 0.625, 0.62, -1.80);              // tub step A 0.34 (x 0.55..0.70)
+    P.add('hull', box(0.18, 0.56, 6.00), s * 0.79, 0.576, -1.80);              // tub step B 0.296 (x 0.70..0.88)
+  }
+  P.add('hull', frustum(1.42, 0.30, -3.92, 1.33, 0.30, -3.90, 0.90, 1.60));    // sponson band (walls under the deck edge)
+  P.add('hull', box(2.32, 0.05, 2.73), 0, 1.627, -2.545);                      // mid deck 1.652 (-3.91..-1.18)
+  P.add('hull', box(2.32, 0.05, 1.30), 0, 1.576, -0.38);                       // fore roof 1.601 (-1.03..+0.27)
+  P.add('hull', slab(                                                          // deck step -1.18..-1.03
+    [-1.16, 1.50, -1.03], [1.16, 1.50, -1.03], [1.16, 1.50, -1.18], [-1.16, 1.50, -1.18],
+    [-1.16, 1.601, -1.03], [1.16, 1.601, -1.03], [1.16, 1.652, -1.18], [-1.16, 1.652, -1.18]));
+  for (const s of [-1, 1]) {
+    P.add('hull', slab(                                                        // deck-edge chamfer to the fender plane
+      [s * 1.06, 1.42, 0.20], [s * 1.34, 1.42, 0.20], [s * 1.34, 1.42, -3.90], [s * 1.06, 1.42, -3.90],
+      [s * 1.06, 1.652, 0.20], [s * 1.33, 1.445, 0.20], [s * 1.33, 1.445, -3.90], [s * 1.06, 1.652, -3.90]));
+  }
+  // sloped rear deck: 1.664@-4.05 -> 1.27@-4.91 -> 1.122@-5.058 (the ref
+  // slope is convex — one straight slab read +0.15 over the last 0.35 m)
   P.add('hull', slab(
-    [-1.56, 0.95, zc - 1.63], [1.56, 0.95, zc - 1.63], [1.47, 0.95, zc - 3.42], [-1.47, 0.95, zc - 3.42],
-    [-1.53, 1.52, zc - 1.63], [1.53, 1.52, zc - 1.63], [1.44, 1.16, zc - 3.42], [-1.44, 1.16, zc - 3.42]));
-  // r2: IS-2-style louver rows down the sloped deck (packet cue)
+    [-1.45, 1.30, -4.05], [1.45, 1.30, -4.05], [1.43, 0.95, -4.91], [-1.43, 0.95, -4.91],
+    [-1.45, 1.664, -4.05], [1.45, 1.664, -4.05], [1.43, 1.27, -4.91], [-1.43, 1.27, -4.91]));
+  P.add('hull', slab(
+    [-1.43, 0.95, -4.91], [1.43, 0.95, -4.91], [1.42, 0.79, -5.058], [-1.42, 0.79, -5.058],
+    [-1.43, 1.27, -4.91], [1.43, 1.27, -4.91], [1.42, 1.122, -5.058], [-1.42, 1.122, -5.058]));
+  P.add('hull', slab(                                                          // mid-to-slope transition 1.652 -> 1.664
+    [-1.44, 1.30, -3.91], [1.44, 1.30, -3.91], [1.45, 1.30, -4.05], [-1.45, 1.30, -4.05],
+    [-1.44, 1.652, -3.91], [1.44, 1.652, -3.91], [1.45, 1.664, -4.05], [-1.45, 1.664, -4.05]));
   for (let i = 0; i < 4; i++) {
-    const z = zc - 2.00 - i * 0.36;
-    const y = 1.52 + (z - (zc - 1.63)) / 1.79 * 0.36;
-    P.add('hullDark', box(2.30, 0.016, 0.11), 0, y + 0.012, z, 0.215, 0, 0);
+    const z = -4.25 - i * 0.20;
+    const y = 1.664 + (z + 4.05) / 1.008 * 0.542;
+    P.add('hullDark', box(2.30, 0.016, 0.11), 0, y + 0.014, z, 0.494, 0, 0);   // IS-2-style louver rows
   }
-  // glacis: flat 1.47 fore roof, slope to 1.06, fender tips reach the nose
-  P.add('hull', frustum(1.55, zc + 2.60, zc + 1.93, 1.46, zc + 2.02, zc + 1.90, 0.95, 1.47));
-  P.add('hull', frustum(1.50, zc + 3.15, zc + 2.75, 1.52, zc + 2.82, zc + 2.70, 0.95, 1.30));
-  P.add('hull', frustum(1.30, zc + 3.05, zc + 2.75, 1.50, zc + 3.25, zc + 2.72, 0.44, 0.95)); // lower glacis
-  P.add('hull', box(2.86, 0.28, 0.55), 0, 0.98, zc + 3.20);                    // nose shelf / mudguard belt
-  P.add('hull', box(2.80, 0.50, 0.12), 0, 0.90, zc - 3.385);                   // tail plate
-  fenders(P, 1.02, 1.53, 1.02, zc - 3.36, zc + 3.30, 0.03);
+  // stern undercut: lower rake 0.30@-4.75 -> 0.80@-5.06 under the deck slope
+  P.add('hull', slab(
+    [-1.42, 0.30, -4.72], [1.42, 0.30, -4.72], [1.40, 0.78, -5.06], [-1.40, 0.78, -5.06],
+    [-1.42, 0.95, -4.72], [1.42, 0.95, -4.72], [1.40, 1.10, -5.06], [-1.40, 1.10, -5.06]));
   for (const s of [-1, 1]) {
-    fuelDrum(P, s * 1.33, 1.42, zc - 2.45, 0.85, 0.155);                       // rear external fuel tanks
-    P.add('hull', box(0.34, 0.20, 0.95), s * 1.30, 1.22, zc + 1.15);           // fender boxes
-    P.add('hullDark', box(0.35, 0.16, 0.026), s * 1.30, 1.24, zc + 0.90);      // bin latch straps
-    P.add('hullDark', box(0.35, 0.16, 0.026), s * 1.30, 1.24, zc + 1.40);
-    towHook(P, s * 0.58, 1.00, zc + 3.40);                                     // bow tow hooks
-    P.add('hullDetail', KIT.torus(0.072, 0.011, 12), s * 0.58, 1.20, zc + 3.31); // headlight guards
+    // rear tow hooks: the plan's deepest slivers (-5.09) at x 0.42..0.62 —
+    // also the overallLengthM tail anchor with the 4.011 muzzle
+    P.add('hull', box(0.055, 0.30, 0.10), s * 0.52, 0.95, -5.04);
+    P.add('hullDark', box(0.06, 0.09, 0.07), s * 0.52, 0.90, -5.065);
+    P.add('hullDetail', KIT.torus(0.052, 0.012, 10), s * 0.52, 0.78, -5.05, Math.PI / 2, 0, 0);
+    P.add('hull', box(0.26, 0.34, 0.05), s * 1.36, 0.62, -5.02);               // rear mud flaps
   }
-  P.add('hull', box(0.30, 0.14, 0.72), 1.28, 1.585, zc - 0.65);                // rear fender toolbox
-  shovelTool(P, -1.26, 1.055, zc + 2.0);
-  P.add('hull', cylY(0.25, 0.25, 0.045, 14), -0.55, 1.49, zc + 1.55);          // driver hatch
-  P.add('hullDark', cylY(0.257, 0.257, 0.012, 14), -0.55, 1.487, zc + 1.55);   // hatch seam
-  KIT.periscope(P, 'hullDetail', -0.55, 1.525, zc + 1.90);                     // driver periscopes
-  KIT.periscope(P, 'hullDetail', -0.20, 1.525, zc + 1.90);
-  headlight(P, -0.58, 1.20, zc + 3.25, -0.4); headlight(P, 0.58, 1.20, zc + 3.25, -0.4);
-  towCable(P, [[-1.38, 1.28, zc - 1.2], [-1.46, 1.32, zc + 0.6], [-1.38, 1.28, zc + 2.0]]);
-  sovGear(P, { xc: 1.205, trackW: 0.65, wheels: 6, wheelR: 0.33, wheelY: 0.36, span: 4.65, zc, topY: 0.94 });
+  // glacis: 1.601@0.28 -> 1.224@1.13 -> nose 1.10@1.71; toe rake up 0.45@1.54
+  P.add('hull', slab(
+    [-1.16, 1.42, 1.16], [1.16, 1.42, 1.16], [1.16, 1.44, 0.27], [-1.16, 1.44, 0.27],
+    [-1.13, 1.212, 1.16], [1.13, 1.212, 1.16], [1.16, 1.601, 0.27], [-1.16, 1.601, 0.27]));
+  P.add('hull', slab(                                                          // nose wedge to the 1.10 toe line
+    [-1.10, 1.00, 1.73], [1.10, 1.00, 1.73], [1.13, 1.05, 1.14], [-1.13, 1.05, 1.14],
+    [-1.10, 1.10, 1.73], [1.10, 1.10, 1.73], [1.13, 1.224, 1.14], [-1.13, 1.224, 1.14]));
+  P.add('hull', slab(                                                          // lower glacis rake (0.45@1.54 -> 1.00@1.73)
+    [-1.30, 0.30, 1.30], [1.30, 0.30, 1.30], [1.10, 0.45, 1.56], [-1.10, 0.45, 1.56],
+    [-1.30, 0.60, 1.30], [1.30, 0.60, 1.30], [1.10, 1.02, 1.74], [-1.10, 1.02, 1.74]));
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.06, 0.26, 0.10), s * 0.55, 0.98, 1.72);                // bow tow hooks on the toe
+    P.add('hullDark', box(0.06, 0.09, 0.07), s * 0.55, 0.93, 1.755);
+    P.add('hullDetail', KIT.torus(0.052, 0.012, 10), s * 0.55, 0.80, 1.74, Math.PI / 2, 0, 0);
+  }
+  // driver hatch dome + periscopes ON the glacis (ref bumps 1.512@0.70,
+  // 1.533@0.84 — the fore-roof 1.601 stays the p95 line here)
+  P.add('hull', cylY(0.24, 0.26, 0.035, 14), -0.35, 1.452, 0.70);
+  P.add('hullDark', cylY(0.267, 0.267, 0.012, 14), -0.35, 1.478, 0.70);        // hatch seam
+  P.add('hullDetail', box(0.09, 0.045, 0.06), -0.42, 1.505, 0.86);             // periscope pods (top 1.527)
+  P.add('hullDetail', box(0.09, 0.045, 0.06), -0.14, 1.505, 0.86);
+  headlight(P, 0.58, 1.24, 1.32, -0.4, 0.055);                                 // headlight on the glacis shoulder
+  P.add('hullDetail', KIT.torus(0.058, 0.011, 12), 0.58, 1.238, 1.36, Math.PI / 2, 0, 0);
+  // fenders: flat plane 1.44 with bow ramps to the 1.81 tips (the hull-mask
+  // front anchor) + the full-length outer skirt lip = width 3.20 EXACTLY
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.2925, 0.03, 5.00), s * 1.24875, 1.425, -1.90);         // fender plane (x 0.9625..1.535, top 1.44,
+                                                                               // z -4.40..0.60 — it must DIVE under the
+                                                                               // rear deck slope where that falls through
+                                                                               // 1.44, or it owns every tail column)
+    sideSlab(P, 'hull', s,                                                     // bow ramp knee at 0.60 (ref plane ends
+      [0.9625, 1.13, 1.30], [1.535, 1.13, 1.30], [1.535, 1.44, 0.60], [0.9625, 1.44, 0.60],   // at the 1.457@0.56 dip), then the
+      [0.9625, 1.16, 1.30], [1.535, 1.16, 1.30], [1.535, 1.47, 0.60], [0.9625, 1.47, 0.60]);  // 1.16 flat tip band 1.30..1.56
+    sideSlab(P, 'hull', s,
+      [0.9625, 1.13, 1.56], [1.535, 1.13, 1.56], [1.535, 1.13, 1.30], [0.9625, 1.13, 1.30],
+      [0.9625, 1.16, 1.56], [1.535, 1.16, 1.56], [1.535, 1.16, 1.30], [0.9625, 1.16, 1.30]);
+    sideSlab(P, 'hull', s,                                                     // toe wedge to 1.10@1.805
+      [0.9625, 1.07, 1.805], [1.535, 1.07, 1.805], [1.535, 1.13, 1.56], [0.9625, 1.13, 1.56],
+      [0.9625, 1.10, 1.805], [1.535, 1.10, 1.805], [1.535, 1.16, 1.56], [0.9625, 1.16, 1.56]);
+    P.add('hull', box(0.055, 0.345, 4.94), s * 1.5725, 0.9725, -1.69);         // outer skirt lip 0.80..1.145 (x 1.545..1.60,
+                                                                               // z -4.16..0.78): the committed 3.20 anchor
+                                                                               // (gate-render widest band, dump-measured)
+    P.add('hullDark', box(0.34, 0.16, 0.026), s * 1.24, 1.30, -2.30);          // bin latch straps on the plane
+    P.add('hullDark', box(0.34, 0.16, 0.026), s * 1.24, 1.30, -2.80);
+    fuelDrum(P, s * 1.26, 1.53, -3.30, 0.85, 0.145);                           // rear external fuel tanks (tops 1.675)
+  }
+  P.add('hull', box(0.30, 0.115, 0.72), 1.20, 1.594, -2.55);                   // rear fender toolbox (the 1.685 side bumps)
+  P.add('hull', box(0.30, 0.115, 0.55), -1.20, 1.594, -2.80);
+  KIT.shovelTool(P, -0.85, 1.60, -1.60);                                       // pioneer tools flush on the mid deck
+  towCable(P, [[-0.95, 1.66, -3.2], [-1.02, 1.658, -2.3], [-0.95, 1.66, -1.5]], 0.024);
+  towCable(P, [[0.95, 1.66, -3.2], [1.02, 1.658, -2.3], [0.95, 1.66, -1.5]], 0.024);
+  liftEye(P, 'hullDetail', -0.85, 1.655, -3.60); liftEye(P, 'hullDetail', 0.85, 1.655, -3.60);
+  // high-forward idler + far-back sprocket per the ref wrap lines (bottom
+  // 0.02 flat -3.90..0.62; rear rise to 0.30@-4.75; bow rise to 0.45@1.54)
+  sovGear(P, { xc: 1.24, trackW: 0.56, wheels: 6, wheelR: 0.33, wheelY: 0.36, span: 4.45, zc: -1.639, topY: 0.94, botY: 0.02, sprocketY: 0.65, sprocketR: 0.26, sprocketDz: 0.80, idlerY: 0.66, idlerR: 0.22, idlerDz: 0.76 });
 
-  // onion dome on a narrow ring collar (front view: 1.38 at y1.6 under a
-  // 2.07 bulge at y1.9), crown 2.34 — no cupola spikes
-  P.turretG.position.set(0, 1.50, -0.50);
-  P.add('turret', cylY(0.70, 0.74, 0.16, P.q ? 26 : 14), 0, 0.08, 0.0);        // ring collar
-  P.add('turretDark', cylY(0.755, 0.755, 0.022, 16), 0, 0.155, 0.0);           // collar seat seam (dome sits ON it)
+  // onion dome on a narrow ring collar (WARPED ref: collar band 1.38-wide
+  // at world 1.62..1.79, bulge 2.07-wide at 2.03, crown plateau 2.50 over
+  // world z -1.19..-0.57 — the egg's fat end sits AFT of the dome centre)
+  P.turretG.position.set(0, 1.60, -0.44);
+  P.add('turret', cylY(0.74, 0.74, 0.42, 16), 0, -0.21, 0.12);                 // ring basket (turret-mask parity: ref
+                                                                               // bottom 1.18 over world z -1.06..+0.42)
+  P.add('turret', cylY(0.66, 0.71, 0.19, P.q ? 26 : 14), 0, 0.095, 0.0);       // ring collar (1.60..1.79)
+  P.add('turretDark', cylY(0.725, 0.725, 0.022, 16), 0, 0.18, 0.0);            // collar seat seam (dome sits ON it)
   panDome(P, [
-    [0.74, 0.00], [0.99, 0.155], [1.04, 0.36], [0.94, 0.575],
+    [0.72, 0.16], [0.99, 0.28], [1.035, 0.43], [0.94, 0.60],
     [0.66, 0.755], [0.34, 0.85], [0.02, 0.875],
-  ], 1.50, 0.13, 0.0);
-  // dome fittings riding the published 2.50 roofline
-  P.add('turret', cylY(0.20, 0.21, 0.045, 12), -0.42, 0.90, -0.35);            // commander hatch ring
-  P.add('turretDark', cylY(0.215, 0.215, 0.012, 12), -0.42, 0.933, -0.35);     // seam
-  P.add('turret', cylY(0.17, 0.18, 0.04, 12), 0.40, 0.90, -0.22);              // loader hatch
-  P.add('turretDark', cylY(0.185, 0.185, 0.012, 12), 0.40, 0.938, -0.22);
-  P.add('turretDark', KIT.torus(0.155, 0.016, 14), 0.40, 0.955, -0.22);        // DShK ring mount
-  KIT.periscope(P, 'turretDetail', -0.05, 0.955, 0.12);                        // periscope pods
-  KIT.periscope(P, 'turretDetail', -0.42, 0.955, -0.62, 0.3);
+  ], 1.50, 0.0, -0.14);
+  panDome(P, [                                                                 // rear crown cap: lifts the plateau to
+    [0.72, 0.62], [0.52, 0.82], [0.28, 0.885], [0.02, 0.90],                   // 2.50 over local -0.75..-0.13 (the ref
+  ], 1.30, 0.0, -0.44);                                                        // crown rides the egg's rear half)
+  // dome fittings riding the published 2.50 roofline (crown plateau zone)
+  P.add('turret', cylY(0.20, 0.21, 0.04, 12), -0.40, 0.845, -0.55);            // commander hatch ring
+  P.add('turretDark', cylY(0.215, 0.215, 0.012, 12), -0.40, 0.878, -0.55);     // seam
+  P.add('turret', cylY(0.17, 0.18, 0.038, 12), 0.40, 0.85, -0.35);             // loader hatch
+  P.add('turretDark', cylY(0.185, 0.185, 0.012, 12), 0.40, 0.885, -0.35);
+  P.add('turretDark', KIT.torus(0.155, 0.014, 14), 0.40, 0.884, -0.35);        // DShK ring mount (top 2.498)
+  KIT.periscope(P, 'turretDetail', -0.05, 0.79, -0.02);                        // periscope pods (tops under 2.50 —
+  KIT.periscope(P, 'turretDetail', -0.40, 0.79, -0.80, 0.3);                   // heightM p95 anchors on the crown)
   for (const s of [-1, 1]) {
-    liftEye(P, 'turretDetail', s * 0.82, 0.65, 0.55, s * 0.4);                 // lifting bosses
-    liftEye(P, 'turretDetail', s * 0.82, 0.635, -0.90, s * -0.4);
+    liftEye(P, 'turretDetail', s * 0.84, 0.62, 0.42, s * 0.4);                 // lifting bosses
+    liftEye(P, 'turretDetail', s * 0.84, 0.60, -1.05, s * -0.4);
   }
-  P.decal('turret', 'number', P.spec.visual.number || '6', 0.30, [1.00, 0.44, -0.1], Math.PI / 2, 0, 0.10);
-  P.decal('turret', 'number', P.spec.visual.number || '6', 0.30, [-1.00, 0.44, -0.1], -Math.PI / 2, 0, -0.10);
-  // 122 mm D-30: axis 1.90, compact brake, muzzle +4.94. r2: cast saddle at
-  // the trunnion + coax port; the brake becomes a dark-slotted double drum
-  // sized to the oracle blob (y 1.76-2.03) so it finally reads as a brake.
-  P.gunG.position.set(0, 0.40, 1.30);
+  P.decal('turret', 'number', P.spec.visual.number || '6', 0.30, [1.02, 0.42, -0.2], Math.PI / 2, 0, 0.10);
+  P.decal('turret', 'number', P.spec.visual.number || '6', 0.30, [-1.02, 0.42, -0.2], -Math.PI / 2, 0, -0.10);
+  // 122 mm D-30: axis 2.026 (warped tube band 1.94..2.11), muzzle 4.011 =
+  // tail'(-5.089) + published 9.10; brake swell world 3.60..4.01 (band
+  // 0.297 — stays under the 12% filter at rough 2.50, like the ref's own).
+  P.gunG.position.set(0, 0.426, 1.363);
   saddle(P, { rollR: 0.26, rollW: 0.66, ballR: 0.20, ballZ: 0.36 });
   P.addGunExtra(cylZ(0.14, 0.36, 12, 0.17), 0, 0, 0.42);                       // sleeve step
   P.addGunExtraDark(cylZ(0.024, 0.10, 8), 0.20, 0.10, 0.30);                   // coax port
-  // r3: the r2 drums at 1.5x tube radius with 0.013 rings measurably existed
-  // but the board zoom shows a plain tube tip — same readability failure as
-  // is3. Drums up to >=1.6x tube radius, slot widened, dark core fattened,
-  // dark rings on both faces of BOTH drums.
-  buildGun(P, { len: 3.20, r: 0.085, brake: null, baseR: 0.15, sleeve: false, evac: null });
-  P.add('gunDark', cylZ(0.060, 0.46, 10), 0, 0, 2.96);                         // dark core through the slot
-  P.add('gun', cylZ(0.140, 0.10, 14), 0, 0, 2.82);                             // rear drum (1.65x tube r)
-  P.add('gunDark', cylZ(0.136, 0.014, 14), 0, 0, 2.763);                       // rear drum back-face ring
-  P.add('gunDark', cylZ(0.136, 0.014, 14), 0, 0, 2.877);                       // rear drum front-face ring
-  P.add('gun', cylZ(0.136, 0.10, 14), 0, 0, 3.08);                             // front drum
-  P.add('gunDark', cylZ(0.132, 0.014, 14), 0, 0, 3.023);                       // front drum back-face ring
-  P.add('gunDark', cylZ(0.132, 0.014, 14), 0, 0, 3.137);                       // front drum front-face ring
-  P.add('gun', cylZ(0.090, 0.07, 10), 0, 0, 3.175);                            // exit collar
-  P.topY = 0.95;
+  buildGun(P, { len: 3.06, r: 0.088, brake: null, baseR: 0.15, sleeve: false, evac: null });
+  P.add('gunDark', cylZ(0.060, 0.42, 10), 0, 0, 2.86);                         // dark core through the slot
+  P.add('gun', cylZ(0.130, 0.10, 14), 0, 0, 2.74);                             // rear drum (world 3.66; r 0.130 keeps
+  P.add('gunDark', cylZ(0.126, 0.014, 14), 0, 0, 2.683);                       // the drum sliver out of the 0.13+ plan
+  P.add('gunDark', cylZ(0.126, 0.014, 14), 0, 0, 2.797);                       // column bin — an 0.148 drum painted a
+  P.add('gun', cylZ(0.130, 0.10, 14), 0, 0, 2.98);                             // 3.95-vs-1.22 phantom front on the
+  P.add('gunDark', cylZ(0.126, 0.014, 14), 0, 0, 2.923);                       // x 0.18 plan_turret column)
+  P.add('gunDark', cylZ(0.126, 0.014, 14), 0, 0, 3.037);
+  P.add('gun', cylZ(0.090, 0.062, 10), 0, 0, 3.061);                           // exit collar (muzzle 4.011 world)
+  P.topY = 1.0;
 }
 
 // ---------------------------------------------------------------------------

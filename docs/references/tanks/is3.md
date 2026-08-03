@@ -102,3 +102,56 @@ v10 measurement mechanics established this round (probe-verified, family-wide):
 - 12% body filter vs fat muzzle furniture: is3's 0.35-band brake discs crossed
   rough*0.12=0.324 and hullLengthM swallowed the gun (9.86); discs sized to 0.33 with
   the DShK mast lifting rough to 2.94 restored the filter margin.
+
+## r6 vertex re-lay (2026-08-03, soviet-heavy family agent)
+STATE: oracle FLAGGED for warp (orchestrator batch): extract 2026-08-03 reads
+bodyH +27.9% (dome crown mass 2.46-2.55 + broad DShK cluster 3.0-3.14 holding
+p95 at 3.13 — NOT a thin mast) and overall -7.8% (short D-25T) on an honest
+hull (hullMask +1.0%, width 0%). Warp plan banked in tools/vertex-normalize.mjs
+(is3 entry; sim on side_whole_96: h 2.4623, hullMask 6.770, overall 9.858) —
+literals emitted for tools/repair_oracles.py; ORCHESTRATOR-ONLY to land.
+
+Build re-laid to the POST-WARP frame from docs/references/vertex/is3.json
+mapped curves (hull rows are warp-stable: y-map identity below 2.30, z ends
+move 33 mm). Committed ledger (CURRENT unwarped oracle, honest):
+  before 3.0 min (hull 62.4 whole 46.9 turret 3.0 stations 54.1 dims 100)
+  after 45.2 min (hull 87.8 whole 56.1 turret 45.2 stations 51.9 dims 100
+  floaters 100; dims: 2.45/0.11% 6.78/0.14% 9.84/0.09% 3.15/0.15%)
+PREDICTED post-warp rows (tools/tmp-sovheavy-postwarp.py on the r6 curve dump;
+predictor validated ±1 pt against the live gate under an identity map):
+  hull 84.2 (side 84.2 plan 96.5 front 87.7) whole 79.9 turret 77.4.
+
+What moved it (laws confirmed):
+- pikeNose helper's weld beads rotated UP-forward (compound-rotation trap) —
+  they owned the worst side_hull columns since v10. Pike rebuilt as explicit
+  sideSlab plates from extract corners: crease (2.42,1.552)->(2.86,1.312)->
+  tip (3.385,0.923) with the belt-V bulge at x 0.38 (plan 3.385->3.34->3.21).
+- WIDTH ANCHOR moved to the DRUMS (x +-1.405, r 0.17 -> 1.575 = 3.15): the
+  ref's own outermost plan column is drums-only; a 1.575-wide FENDER put a
+  full-length band there (plan p95 24.8). Fenders end 1.545; ramps 1.51.
+- decks re-laid: rear plates 1.588/1.602 with the -2.81 V-channel, engine
+  deck 1.587 flat (V-hump deleted), crew roof 1.510, drum line 1.745-1.755
+  (two 1.0 m drums, gap at -1.36..-1.29), hump 1.588 with the STEEP fall to
+  (1.44, 2.55).
+- front bottoms are ref-true: keel 0.455 (|x|<=0.64), tub strips 0.275
+  (0.6725..0.88), tracks 0.895..1.515 (xc 1.185, trackW 0.58, botY 0.04).
+- tail: wedge point (-3.385, 0.92), plate face -3.21, hooks + BDSh tucked
+  under the deck slope; rear flaps 0.585..0.965 hanging to -3.40 = the
+  hullLengthM rear anchor (v10 flap-nudge: last body column centre -3.43
+  current frame / -3.42 post-warp; 6.78 both).
+- turret: ring basket r 0.56 (ref turret-mask bottom 0.92 over -0.76..+0.36),
+  crown 2.435 + rear crown cap (ref dome holds 2.42-2.46 from -1.40 to +0.20),
+  DShK folded pancake <=2.455 + ONE thin rod to 2.82 (rough-lifter: keeps the
+  0.33-band brake discs out of the 12% body filter; costs 2 thin columns).
+- gun: axis 2.02, gunG z 1.20 (plan nose 1.81@x<0.2 vs ref 1.76; ball r 0.30),
+  muzzle 6.465 = tail'+9.85; discs r 0.165 at world 5.85/6.27.
+
+NEXT (post-warp round, after the orchestrator lands the batch):
+1. Re-gate + workorder against the WARPED oracle; the predictor's residuals:
+   side_hull 2.55-2.77 crease still +0.03-0.05; front_hull 87.7 worst is the
+   x +-0.87 arm-dip (kit arms below the tub line) and outer drum-cap columns.
+2. side_turret 77.4: dome front shoulder z 1.3-1.6 (+0.1) and the rod columns
+   (2 cols, accepted). plan_turret 86.0.
+3. The -3.40 flap hang can trim to -3.3555 if the post-warp frame check
+   confirms (packet r6 sim says both pass).
+4. Decoration re-pass after geometry lands (bins/cables were minimized).
