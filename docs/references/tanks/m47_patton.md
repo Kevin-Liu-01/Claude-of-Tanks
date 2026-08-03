@@ -162,3 +162,16 @@ over -1.6..-2.85; fenders full width to -3.32; tail plate -3.36 undercut to
 re-seated +1.37 z / +0.42 y to the ring frame.
 State at handoff: hull 77.5 / whole 66.1 / turret 74.0 / stations 79.7 /
 dims 100 / floaters 100.
+
+## Vertex round r1 (2026-08-03) — ORCHESTRATOR LANDING NOTE
+(Builder finished without a section; from its verified report.) 66.1 ->
+82.5 (hull 89.2 / whole 83.3 / turret 82.5 / stations 95.1 / dims 100).
+Full extract-frame re-author: the batch-8 re-seat had moved the reference
+~0.66 aft of the old trace frame (old dAlong 0.67-0.74 now <=0.05).
+Fender law: ref fenders are 1.677 half-width with DISCRETE 1.755 hanger
+bumps — modeling the bumps (not a full lip) took stations 83.7->95.1.
+Pre-warp ceiling ~2.5-3 pts (short-tube oracle columns at the published
+muzzle station); tube-stretch warp literals banked in vertex-normalize
+PLANS — EXECUTION FROZEN by the 2026-08-03 incident law (gate-in-loop
+verification required). Worst remaining: front_whole dome-roll (~30 cols,
+0.07-0.13), turret_plan edges +-1.16-1.21.

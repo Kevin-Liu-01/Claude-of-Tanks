@@ -169,3 +169,16 @@ authored print trait; certifying wholeCurves alone cannot make turret_plan
 satisfiable against this oracle.
 State at handoff: hull 74.9 / whole 66.1 / turret 63.2 / stations 69.3 /
 dims 91 / floaters 100.
+
+## Vertex round r1 (2026-08-03) — ORCHESTRATOR LANDING NOTE
+(Builder finished without a section; from its verified report.) 63.2 ->
+72.6 (hull 86.9 / whole 77.3 / turret 72.6 / stations 90.4 / dims 100).
+Extract-frame re-author like m47. Single LEFT tow casting (right eye never
+printed on this oracle). Remains under the certified long-tube cap (~4-6
+pts; cap never covers dims — dims 100). Body+tube-compress warp literals
+banked; execution frozen per the incident law. m26 heightM spec true-up
+recommended (3.02 -> 3.08, userdrops6.js — over-M2 datum re-measures
+3.078); m45 built to pub 6.6 overall (seated muzzle 6.468, convention
+open). Extract ORIENTATION MISMATCH warnings on m26/m46 are certified
+false alarms of the descent-run vote (rear deck out-runs the steep
+glacis); boards prove bow-under-gun.
