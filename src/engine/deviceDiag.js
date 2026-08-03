@@ -156,11 +156,125 @@ export function applyDiagRescue(renderer, diag) {
   return null;
 }
 
+/**
+ * Black-scene watchdog (mobile r3). The owner's iPhone passes all three
+ * probes above — vanilla lit + vanilla-shadowed rendering work — yet the
+ * REAL scene's lit meshes are black. The remaining suspect set (custom CSM
+ * getShadow injection, fog/haze patches, material chains) all share one
+ * property: shadows-off makes their black variant impossible or moot. So
+ * instead of guessing which, render the ACTUAL scene once to a tiny target;
+ * if the lower band reads black, disable shadow maps, force a recompile
+ * (programs drop USE_SHADOWMAP and the CSM injection with it) and re-check.
+ * Costs one 64x36 render when healthy; runs at garage-ready and at battle
+ * start.
+ * @returns {{before:number, after:?number, rescued:boolean}}
+ */
+export function runSceneBlackWatchdog(renderer, scene, camera, { onRescue } = {}) {
+  const rt = new THREE.WebGLRenderTarget(64, 36, { depthBuffer: true });
+  const buf = new Uint8Array(64 * 22 * 4);
+  // FORCE==='blackscene' test rig: simulated band readings — black baseline,
+  // stage 1 (shadows) does NOT cure, stage 2 (environment) does, and the
+  // confirm re-measure after reverting stage 1 stays cured. Exercises the
+  // full ladder walk + revert logic deterministically on a healthy desktop.
+  const sim = FORCE === 'blackscene' ? [0, 0, 42, 42] : null;
+  let simI = 0;
+  const measure = () => {
+    if (sim) return sim[Math.min(simI++, sim.length - 1)];
+    const prev = renderer.getRenderTarget();
+    renderer.setRenderTarget(rt);
+    renderer.clear();
+    renderer.render(scene, camera);
+    // lower 60% of the frame — terrain/vehicle band; sky stays out of it
+    renderer.readRenderTargetPixels(rt, 0, 0, 64, 22, buf);
+    renderer.setRenderTarget(prev);
+    let s = 0;
+    for (let i = 0; i < buf.length; i += 4) s += buf[i] + buf[i + 1] + buf[i + 2];
+    return s / (buf.length / 4) / 3;
+  };
+  const recompile = () => scene.traverse((o) => {
+    if (!o.material) return;
+    const mm = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mm) m.needsUpdate = true;
+  });
+  // Rescue ladder, cheapest-degradation first. Each stage: {apply, revert,
+  // label}. The owner's device proved shadows-off alone does NOT cure the
+  // black scene (live ?diagforce=noshadow test), so the ladder continues to
+  // the scene ENVIRONMENT (PMREM bake NaN/black poisons every lit material's
+  // IBL sum while env-free probe scenes pass — the current prime suspect)
+  // and then fog. The first curing stage stays; non-curing stages revert.
+  const stages = [
+    {
+      label: 'shadows-off',
+      can: () => renderer.shadowMap.enabled,
+      apply() { this._v = renderer.shadowMap.enabled; renderer.shadowMap.enabled = false; recompile(); },
+      revert() { renderer.shadowMap.enabled = this._v; recompile(); },
+    },
+    {
+      label: 'environment-off',
+      can: () => !!scene.environment,
+      apply() { this._v = scene.environment; scene.environment = null; recompile(); },
+      revert() { scene.environment = this._v; recompile(); },
+    },
+    {
+      label: 'fog-off',
+      can: () => !!scene.fog,
+      apply() { this._v = scene.fog; scene.fog = null; recompile(); },
+      revert() { scene.fog = this._v; recompile(); },
+    },
+  ];
+  const out = { before: 0, after: null, rescued: false, stage: null };
+  const bag = window.__GL_DIAG;
+  const note = (m) => { if (bag && bag.errors.length < 8) bag.errors.push(m); };
+  try {
+    out.before = measure();
+    // darkest legitimate biome band measures far above this; a failed lit
+    // pipeline reads ~0
+    if (out.before >= 6) return out;
+    const applied = [];
+    for (const st of stages) {
+      if (!st.can()) continue;
+      st.apply();
+      applied.push(st);
+      const lum = measure();
+      note(`watchdog: +${st.label} -> band ${lum.toFixed(1)}`);
+      if (lum >= 6) {
+        // cured — drop every earlier stage that wasn't needed, confirm
+        for (const prev of applied.slice(0, -1)) prev.revert();
+        if (applied.length > 1) {
+          const confirm = measure();
+          if (confirm < 6) { // interaction: the earlier stages mattered too
+            for (const prev of applied.slice(0, -1)) prev.apply();
+            note(`watchdog: revert broke it (band ${confirm.toFixed(1)}) — keeping all stages`);
+          }
+        }
+        out.after = lum;
+        out.rescued = true;
+        out.stage = st.label;
+        if (bag) {
+          bag.rescue = `${st.label} (scene watchdog, band ${out.before.toFixed(1)}->${lum.toFixed(1)})`;
+          if (bag._showOverlay) bag._showOverlay();
+          else if (bag._refresh) bag._refresh();
+        }
+        if (onRescue) onRescue(out);
+        return out;
+      }
+    }
+    // nothing cured it: revert everything, report
+    for (const st of applied.reverse()) st.revert();
+    note(`watchdog: black scene (band ${out.before.toFixed(1)}) — no ladder stage cured it`);
+    if (bag && bag._showOverlay) bag._showOverlay();
+  } catch (e) {
+    note('watchdog threw: ' + String(e && e.message ? e.message : e).slice(0, 160));
+  } finally {
+    rt.dispose();
+  }
+  return out;
+}
+
 /** Small fixed overlay; safe to call unconditionally (it decides visibility). */
 export function mountDiagOverlay({ tier, diag, rescue, renderer }) {
   const webdriver = typeof navigator !== 'undefined' && navigator.webdriver;
   const wanted = DIAG_PARAM === '1' || (!webdriver && (rescue || !diag.lit));
-  if (!wanted) return;
   const gl = renderer.getContext();
   const cap = (k) => { try { return gl.getParameter(gl[k]); } catch (_) { return '?'; } };
   const el = document.createElement('div');
@@ -168,19 +282,28 @@ export function mountDiagOverlay({ tier, diag, rescue, renderer }) {
   el.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:400;background:rgba(5,8,11,.88);'
     + 'color:#ffd27a;font:10px/1.5 ui-monospace,Menlo,monospace;padding:8px 10px;border:1px solid #6b5a33;'
     + 'border-radius:4px;max-width:82vw;pointer-events:none;white-space:pre-wrap;';
-  const bag = window.__GL_DIAG || { errors: [] };
+  const bag = window.__GL_DIAG || (window.__GL_DIAG = { errors: [] });
   const render = () => {
     const ok = (v) => (v ? 'OK' : 'FAIL');
+    const liveRescue = bag.rescue || rescue; // watchdog rescues land after mount
     el.textContent =
       `COT DIAG  tier=${tier}  ${String(cap('VERSION')).slice(0, 40)}\n`
       + `fragVec=${cap('MAX_FRAGMENT_UNIFORM_VECTORS')} vertVec=${cap('MAX_VERTEX_UNIFORM_VECTORS')} `
       + `tex=${cap('MAX_TEXTURE_IMAGE_UNITS')} texSize=${cap('MAX_TEXTURE_SIZE')} dpr=${window.devicePixelRatio}\n`
       + `probe: basic=${ok(diag.basic)} lit=${ok(diag.lit)} lit+shadow=${ok(diag.litShadow)}`
-      + (rescue ? `\nRESCUE: ${rescue === 'shadows-off' ? 'shadow maps disabled for this session' : rescue}` : '')
-      + (bag.errors.length ? `\nshader errors (${bag.errors.length}):\n` + bag.errors.map((e) => '  ' + e.slice(0, 220)).join('\n') : '');
+      + (liveRescue ? `\nRESCUE: ${liveRescue === 'shadows-off' ? 'shadow maps disabled for this session' : liveRescue}` : '')
+      + (bag.errors.length ? `\nnotes (${bag.errors.length}):\n` + bag.errors.map((e) => '  ' + e.slice(0, 220)).join('\n') : '');
   };
   bag._refresh = render;
   render();
-  const mount = () => document.body.appendChild(el);
-  if (document.body) mount(); else window.addEventListener('DOMContentLoaded', mount, { once: true });
+  let mounted = false;
+  const mount = () => {
+    if (mounted) return;
+    mounted = true;
+    if (document.body) document.body.appendChild(el);
+    else window.addEventListener('DOMContentLoaded', () => document.body.appendChild(el), { once: true });
+  };
+  // a late watchdog rescue must surface the panel even when boot was healthy
+  bag._showOverlay = () => { render(); if (!webdriver || DIAG_PARAM === '1') mount(); };
+  if (wanted) mount();
 }

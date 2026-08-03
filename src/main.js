@@ -26,6 +26,7 @@ import * as THREE from 'three';
 import { createRenderer, onResize } from './engine/renderer.js';
 import {
   installShaderErrorCollector, runDeviceDiag, applyDiagRescue, mountDiagOverlay,
+  runSceneBlackWatchdog,
 } from './engine/deviceDiag.js';
 // MOBILE r1: device tier — sourced-GLB swaps are disabled wholesale on the
 // mobile tier (modelLoader gates its own pipeline; the checks here are the UI
@@ -1819,6 +1820,12 @@ function startBattle(specId, mapId = null, opts = {}) {
   // DESTRUCTIBLES r1: worlds are cached and reused across battles — stand
   // every broken wall/fence/sandbag/prop back up for the rematch.
   if (world.resetDestructibles) world.resetDestructibles();
+  // MOBILE r3: second black-scene watchdog pass — terrain is only present in
+  // battle, so a device that renders the garage but blacks out the world gets
+  // caught here (see deviceDiag.js; webdriver-skipped for harness parity).
+  if (!navigator.webdriver) {
+    setTimeout(() => runSceneBlackWatchdog(renderer, scene, camera), 1800);
+  }
   game.mapId = world.mapId;
   // CAMO WIRING: AUTO patterns resolve to the biome of the map being fought;
   // only tanks whose resolved pattern actually changed get repainted.
@@ -3912,3 +3919,11 @@ if (typeof window !== 'undefined') window.__COT_BOOT_HOLD = false;
 window.__GAME_READY = true;
 window.__BOOT_TIMINGS = BOOT_TIMINGS;
 window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);
+// MOBILE r3: black-scene watchdog — the owner's iPhone passes every synthetic
+// probe yet renders the REAL scene's lit meshes black. Sample the actual
+// garage frame shortly after ready; if the lit band reads black, shadows-off
+// rescue + recompile (deviceDiag.js). Skipped under webdriver so harness
+// captures stay deterministic; a second check runs at battle start.
+if (!navigator.webdriver || new URLSearchParams(location.search).get('diagforce') === 'blackscene') {
+  setTimeout(() => runSceneBlackWatchdog(renderer, scene, camera), 1200);
+}
