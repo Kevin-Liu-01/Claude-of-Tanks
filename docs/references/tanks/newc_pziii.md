@@ -81,3 +81,17 @@ Round-2 row: hull 38 whole 32.1 turret 67.6 stations 66.9 dims 100
 floaters 100 (dims closed from 82.2: KwK 39 L/60 lengthened to published
 overall 6.41; cupola stack lowered 0.03 to published heightM p95; muffler
 tucked inside the hullLengthM span).
+
+## ww2 r1 side-effect (2026-08-03)
+
+32.1 -> 63.0 min WITHOUT a dedicated round (hull 38->74.1, whole 32.1->63,
+turret 67.6->63.6*, stations 66.9->71.9, dims 100, floaters 100): the
+shared pziiiHull re-author for pziii_konserwa (flat transmission deck,
+driver plate, long rear-deck fall, tail undercut, segmented fenders,
+symmetric flap anchors, high sprocket) generalized to this print.
+*turret -4: the konserwa-shaped changes moved hull registration; the
+newc turret hasn't had its own pass yet — its params (noseDeckY 1.42,
+trackXc 1.20 preserved as-is) and its turret/schürzen are the next round.
+Oracle stylization -4/-4.9% lengths, +2.2% height: NORMALIZATION PLAN
+AUTHORED in tools/vertex-normalize.mjs (body x1.0404, muzzle 3.415->3.64,
+y squeeze 2.554->2.50).

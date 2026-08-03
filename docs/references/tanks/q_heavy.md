@@ -78,3 +78,34 @@ cap (mean errors 18-45% are the envelope difference itself, not authoring
 error). No round-2 geometry changes; the build still tracks the oracle's
 SHAPE inside the published envelope. If the spec row is ever re-derived
 from the oracle, the v9 measurement (hull ~47 / turret ~56) stands.
+
+## ww2 r1 TRIAGE (2026-08-03) — REGISTRATION DEFECT, do not gate
+
+Classification: (b) broken registration IN THE HARNESS (false-0 law).
+Evidence (headless probe of tools/procedural-fidelity.html?id=q_heavy&geo=1,
+scratchpad qheavy-triage probe):
+- page reaches __FIDELITY_READY, no page errors (the console 404 is only
+  /favicon.ico);
+- reference root carries 41 meshes but 0 effectively visible — the tank
+  ROOT node (`tank_q_heavy`) is visible=false at snapshot time, so the
+  harness `baseVisible` map latches everything hidden and every reference
+  mask renders EMPTY;
+- procedural side: 25/32 visible, renders normally.
+This exactly reproduces the committed ledger row (all curve rows 0, dims
+94.1 + floaters 100 nonzero — those two are proc-only measures). The GLB
+file itself is healthy: vertex-extract parses it (13k verts) and resolves
+'^Tank_Turret$'/'^Tank_Gun$'.
+Suspected mechanism: modelLoader's async texture-ready re-show
+(src/vehicles/modelLoader.js ~line 2740: `if (ok && !inBattle())
+tankRoot.visible = true`) never fires for this asset under the harness, so
+the swap completes (__glbSwapped=true) with the root still hidden. Other
+paintUntextured refs (kv2/is3/t34_85_cad/pziii_konserwa) do get re-shown —
+q_heavy's paint job presumably parks in the queue state that needs frames
+the harness doesn't pump.
+ROUTING: orchestrator — either fix the loader path or have the harness
+force reference-root visibility (and re-snapshot baseVisible) after the
+swap settles. Measurement-instrument change = affects every family's
+numbers; NOT a family-agent edit. DO NOT record gate rows for q_heavy
+until then (the existing zero row is a false 0).
+No oracle-normalization plan: published dims are the documented invented
+spec (proportion cap above) — dims-first build already carries them.

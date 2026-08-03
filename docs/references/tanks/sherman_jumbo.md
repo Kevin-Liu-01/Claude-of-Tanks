@@ -91,3 +91,47 @@ Round-2 honest casting iteration against the repaired print:
   and the bustle pulled in to ±0.82/-1.55.
 Round-2 row: hull 47 whole 43.2 turret 69.9 stations 50.3 dims 93.8
 floaters 100 (ledger: 46.9/22.6/27.6/50.3/93.8/100 — turretCurves +42).
+
+## ww2 r1 (2026-08-03, geometry gate v11 + track-containment law)
+
+43.2 -> 77.1 min over 9 iterations (hull 47->80.7, whole 43.2->74.5*,
+turret 69.9->81.1, stations 50.3->83.7, dims 93.8->95.3, floaters 100).
+*whole dipped ~2 pts landing the containment law (severe 474/193 exact-clip
+-> 60/38, at/below the kv2-graduate band).
+
+What moved it: full hull re-author from the vertex extract — E2 sand skirts
+to near-ground with sprocket/idler cutouts (6 segmented plates/side per the
+edge-on prism law), two-slope engine deck + 1.82 vent ridge, undercut tail
+(plate face -3.13, center+outer lip spans with the ref's ±0.78 notches),
+3-piece diff housing with center face 2.90/flanges 2.905, sponson chamfers
+1.865->2.012 with a deck-following rear section, glacis mid-step, raised
+sprocket y0.74/idler y0.72 (wrap arcs ride the ref's skirt-cutout line);
+turret re-authored as plan-exact 28-pt shell + ellipse crown lathe (sz 1.25
+c -0.235), undercut bustle to -1.78, basket drum r 0.60 to y 1.22, M62-style
+tapering rotor + face plate at z 1.37 + sleeve r 0.165-0.185, tube to +3.18
+(published overall exactly = the print's muzzle).
+
+DIMS-vs-ORACLE structural cap (heightM): the print's cast crown+MG band
+rides 2.99-3.13 across z -0.7..0.55 (its own p95 = 3.116, +5.6% over
+published 2.95). Any >4 side-cols of mass above ~3.0 flips the build's
+heightM p95 off the 2.96 crown (measured: the .50cal at 3.16 spanning 15
+cols alone cost dims 95.7->49.5). Current compromise: crown 2.96, ONE
+narrow ridge z -0.52..-0.28 x -0.82..+0.58 at 3.085 (3 side cols, carries
+the ref's front-view crown), cupola/.50cal capped 2.99. This caps
+side_whole/front_whole/stations ~77-84 until the oracle warp lands:
+NORMALIZATION PLAN AUTHORED in tools/vertex-normalize.mjs (y compress
+2.62->2.58, 3.13->2.94; z body x1.0405 about -0.132, muzzle 3.179->3.078)
+— literals printed, ORCHESTRATOR-ONLY to execute as a repair batch.
+
+hullLengthM anchors: nose links block face 2.955 (1-col ONLY-PROC) + rear
+flaps x ±0.45 face -3.2225 + tail lip -3.215 (measured 6.17, -1.6%).
+Track containment: trackW 0.56 xc 1.14, skirts hug 1.448..1.4745, chin/
+flanges/diff-cyl pulled between the tracks, rear underside center-only with
+outer fills behind the wrap, end-wheel shadow discs skipped.
+
+NEXT: (1) post-warp re-gate should release ~+5-8 on side/front/stations;
+(2) plan_turret rear-fat at x ±1.0-1.2 (~1 pt, dome chord vs bustle);
+(3) visual round: dome facets read angular vs the cast print at close-up
+(lathe 18-seg at q=false); periscope bumps absent.
+shots/ww2-r1/after/sherman_jumbo.png (board eyeballed: orientation ✓,
+containment ✓, no floaters, roof .50cal present).

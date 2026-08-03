@@ -63,3 +63,46 @@ Round-2 row: hull 52.2 whole 42.7 turret 64.6 stations 77.9 dims 100
 floaters 100 (ledger: 49.7/46.5/68.2/78.5/82.5/100).
 Dims closed: cupola stack raised to published heightM 2.5 (p95) and the
 3.7 cm KwK 36 lengthened to published overall 6.28 (muzzle +3.15).
+
+## ww2 r1 (2026-08-03, geometry gate v11 + track-containment law)
+
+42.7 -> 67.0 min over 7 iterations (hull 52.2->70.8, whole 42.7->67,
+turret 64.6->74.7, stations 77.9->75.3*, dims 100, floaters 100).
+*stations peaked 79.1; the round-6 idler/undercut edits moved the sampled
+span — see NEXT.
+
+THE ROUND'S BIG LESSON (family-general): the gate registers each view by
+the 12%-band BODY-span midpoint. Dims anchors that qualify as body at ONE
+end skew dAlong (+0.141 measured = every column systematically off) and
+poison every side row. FIX = SYMMETRIC anchors about the REF's own body
+mid (-0.425): front flaps at the fender tips (2.30..2.345, y 0.80..1.12
+matching the ref bow-lip band) + rear flaps x ±0.45 at -3.16..-3.185
+(y 0.86..1.20 matching the ref tail-sliver band) + muzzle 3.095. This one
+change was worth +18 (46.2 -> 64.1). Anchor bands sit AT the ref's own
+band heights so the qualifying columns cost ~0.1-0.2 err, not 0.8+.
+
+Hull re-author from the extract: flat transmission deck 1.27 with floating
+bow lip (center face 2.12 recessed, fender tips lead at 2.32), driver
+plate 1.24..1.45, long gentle rear deck fall 1.58->1.43 (superstructure
+shortened to the ref's -1.99 roof end), tail undercut wedge (0.52@-2.66 ->
+0.9@-2.95, between the tracks), high sprocket y0.56 / small high idler
+y0.62 r0.20 (ref's rear bottom line is the hull undercut, not a wrap),
+tracks xc 1.17 w 0.37 (ref 1.07..1.40), segmented 6-panel fenders (edge-on
+prism law: stations +10), headlights flush on the driver plate (guard
+hoops deleted — they owned a 1.48 top vs ref 1.26), tow hooks up into the
+bow-lip band. Turret: steep-walled 20-pt poly (±0.93 base -> x0.58 inset,
+ref walls ~55°), rear roof shelf + broad cupola dome r 0.36 c -0.62 (ref
+crown band 2.48 spans z -0.28..-0.91), rotor drum r 0.17 to z 0.98 +
+slim sleeve r ~0.10 to 1.66, muzzle 3.095 (+2-col ONLY-PROC, overall 100).
+Track containment: 30/14 -> 42/42 exact voxels (low band; deck wings above
+the wrap line, belly ±0.97, end-wheel shadow discs skipped).
+
+Oracle stylization: lengths -3.5/-4.4% — NORMALIZATION PLAN AUTHORED
+(vertex-normalize.mjs: body x1.0366 about -0.3135, muzzle 3.009->3.206,
+y 2.482->2.50); post-warp the anchors retract to ref-parity.
+
+NEXT: (1) registration wobble is the noise floor (dAlong dances ±1 col
+between runs — worth ~±2-3 hull pts); (2) stations: st4 5.1 (cupola edge
+vs slab boundary) + st7 cupola front edge; (3) cupola rise slope at
+z -0.96..-1.12 underfilled ~0.1; (4) muzzle ONLY-PROC 2 cols retires with
+the warp. shots/ww2-r1/after/pziii_konserwa.png (eyeballed ✓).
