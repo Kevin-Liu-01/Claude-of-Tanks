@@ -97,3 +97,33 @@ Geometry ≥90 every component + independent critic ≥9.0 EVERY view (same
 vehicle, same tier) + turntable eyeball + graduation per GEOMETRY-GATE.md
 §10 in the same commit. Any geometry edit invalidates a prior critic
 verdict.
+
+## H. RIG STANDARD (owner directive 2026-08-03: standard + family rigs)
+Tanks are built as RIGS, not bespoke mesh piles. Three layers:
+
+1. **BASE RIG** (KIT layer, kit.js): every tank exposes the same skeleton —
+   hull loft (station-profile driven), running gear (wheelZs/wheelR/idler/
+   sprocket + the two-layer track system), turret ring + yaw pivot, gun
+   assembly (trunnion/mantlet/tube/muzzle) with elevation pivot, fittings
+   mounts (KIT.fittings consumers), family material slots. The gate's
+   articulation poses and the game's damage/recoil systems assume this
+   skeleton — a build that fights it is wrong even at 90+.
+
+2. **FAMILY RIG** (one per family file): similar tanks SHARE one
+   parameterized rig — abrams varieties (m1a1/m1a1ha/m1a2/tejas/tusk/
+   abramsx/sepv2), leopard varieties (leo2a4/a5/a6/a7/a7v/revolution/
+   proto), merkavas (1b/2b/2d/3b/3c/3d/4/4b), t-series lineages
+   (t54/t62/t64/t72/t80/t84/t90 chains), pattons (m26/m45/m46/m47/m48/
+   m60s), centurions, IS-line. A variant is a PARAM DELTA on its family
+   rig (dims, turret planform, skirt/ERA kit, fittings selection, era
+   dressing) — not a new loft. Litmus: adding the next variant of a family
+   should be <150 lines of params, not a re-author. The t80/t80b/t80bv
+   batch (russia r25) and merkava_batch4() are the live exemplars.
+
+3. **MIGRATION RULE**: graduates are hash-frozen — they adopt the family
+   rig ONLY inside a graduate-change round (fix → gate hold → critic
+   re-cert → re-freeze, one commit), never as a side effect. New builds
+   and rebuilds go through the family rig from birth; a family's first
+   rig-conformant build defines the rig (document its param surface in the
+   family packet). Orchestrator schedules rig-consolidation rounds per
+   family once ≥2 variants pass the gate.
