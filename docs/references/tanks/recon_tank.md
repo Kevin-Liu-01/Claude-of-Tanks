@@ -38,3 +38,19 @@ the family-wide raisedEnds-workaround removal: the certified oracle/print
 defect cap STANDS (curve/station rows unchanged at their capped levels)
 and dims HOLDS >= 90. No compensation was re-introduced; end wheels are
 plain kit-native fits.
+
+## Zero-row triage (2026-08-03, misc agent) — NEEDS OWNER/ORCHESTRATOR RULING
+
+Reference renders (honest rows, no false-0), but this is a FICTIONAL
+community vehicle whose spec dims are authored numbers that structurally
+disagree with its own print: bodyLen 5.43 (-12.5% vs the invented 6.2),
+hullMask = the FULL 7.13 span (+15% — the ^Barrel$ node exists but
+carries NO mesh, so the gun cannot be excluded from the hull mask), deck
+plateau 2.30 vs the parametric profile's 1.62 roofY, an antenna mast to
+4.45, and the gate turret rows read the empty-mask signature (mean 100 /
+cover 100). Extract REG appended. NO normalize plan authored — "published
+dims" sovereignty is undefined for an invented vehicle; the cheap paths
+are (a) re-spec dims to the print and rebuild the parametric profile to
+its actual proportions, or (b) accept the GLB as the permanent model (it
+ships as MODEL_SOURCE) and delist the procedural fallback from the gate.
+Ruling needed before any build effort is meaningful.

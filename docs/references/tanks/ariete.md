@@ -91,3 +91,16 @@ the family-wide raisedEnds-workaround removal: the certified oracle/print
 defect cap STANDS (curve/station rows unchanged at their capped levels)
 and dims HOLDS >= 90. No compensation was re-introduced; end wheels are
 plain kit-native fits.
+
+## Zero-row triage + normalize plan (2026-08-03, misc agent)
+
+Ledger 0 (wholeCurves/turretCurves) is HONEST — the quarantine reference
+renders (gate rows carry real ref values); the zeros are big residuals vs
+a SHORT print, not registration failure. Extract REG appended (quarantine
+oracle path, ^Turret$ autoPivot). Stylization: hullMask -4.0% (7.29 vs
+7.59), overall -6.3% (9.059 vs 9.67), bodyH +5.3% (a 12-col pano/sight
+furniture band 2.55-2.78; roof plateau 2.25-2.35 is honest under the
+published 2.50), width -0.7%. **Normalize plan authored**
+(tools/vertex-normalize.mjs `ariete`): y identity to 2.40 then band ->
+2.50/2.52 (sim p95 2.500, h -0.1%); z body x1.0412 about -0.884 + muzzle
+-> rear'+9.67. DO NOT BUILD pre-warp (>2% law).

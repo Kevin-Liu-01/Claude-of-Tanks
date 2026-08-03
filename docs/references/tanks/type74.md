@@ -106,3 +106,17 @@ the family-wide raisedEnds-workaround removal: the certified oracle/print
 defect cap STANDS (curve/station rows unchanged at their capped levels)
 and dims HOLDS >= 90. No compensation was re-introduced; end wheels are
 plain kit-native fits.
+
+## Zero-row triage + normalize plan (2026-08-03, misc agent)
+
+Ledger 0 (turretCurves/stations) is HONEST — the quarantine reference
+renders (gate rows carry real ref values; side reg dAlong 1.14 shows the
+scale/offset mismatch, not a false-0). Extract REG appended (quarantine
+oracle, ^Tower_9$/^Gun_7$ scaleToOverall). Stylization: bodyH +13.9%
+(near-uniform tall: deck band 1.5-1.6, dome/cupola band 2.8 vs pub 2.48,
+whip spike 3.06), hullMask +2.2%, overall -3.7%, width 0%. **Normalize
+plan authored** (tools/vertex-normalize.mjs `type74`): y [[0,0],
+[1.60,1.38],[2.827,2.46],[3.058,2.49]] (sim p95 2.460, h -0.9%); z body
+x0.978 about -1.1135 + muzzle -> rear'+9.42. NOTE scaleToOverall: the
+loader re-normalizes post-warp — `--verify` must re-check the landed
+factors. DO NOT BUILD pre-warp (>2% law).

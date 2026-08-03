@@ -92,3 +92,54 @@ tops need the full a5 treatment (probe-driven cluster mapping); turret
 rows carry ~0.3-0.5 m band errors across the autoloader roof furniture.
 dims must be re-checked after any end-wheel retune (the +-3.36/3.40
 far-edge guard).
+
+## VERTEX ROUND r1 (2026-08-03, misc agent) — 21.9 -> 58.2 + normalize plan
+
+Extract (`docs/references/vertex/leclerc.json`, REG appended with the lab
+registration; the extract's raw-name matcher needed `^Cylinder\.?086$` —
+GLTFLoader sanitizes the dot, the offline parser sees the raw name):
+bodyH +9.1% / bodyLen -0.6% / hullMask +3.4% / overall -0.8% / width 0%.
+The +9.1% p95 height is a 7-COLUMN furniture band only (pano head 2.76 at
+world -1.65, TWO mast/whip spike columns at x ±1.0 z -0.93 topping 3.06,
+antenna pots 2.76 at x~0); the roof plateau (2.35-2.45) sits UNDER the
+published 2.53 — print otherwise honest. **Normalize plan authored**
+(tools/vertex-normalize.mjs `leclerc`): tejas-W1b ceiling compress, knee
+2.46, band -> 2.50, max 3.065 -> 2.541; z IDENTITY (hullMask +3.4% is the
+REAL rear rack overhang, band 1.30-1.47, 12%-filter exempt — verify will
+keep flagging hullMask; documented accepted-real-overhang). ORCHESTRATOR
+lands the warp; furniture tops in the build already target the POST-WARP
+lines (masts 2.54 at ±1.05/-0.93w, pano head 2.50 at -0.55/-1.65w, HL-70
+lid 2.50-2.52 at 0.74..1.16w).
+
+Round log (gate v11): 21.9 -> 53.7 -> 56.8/58.2 (dims dip repaired) ->
+**58.2** | hull 62.9 / whole 58.2 / turret 62.1 / stations 58.7 / dims
+97.3 / floaters 100. What moved it:
+- skirts: REF stations carry full 3.60 width ONLY over the front blocks
+  (i9-13, world z >~1.15); the rear two-thirds rubber sheet sits INBOARD
+  at ±1.70 with a deeper band (0.53..1.51) — stations 25 -> ~64.
+- front blocks hang 0.86..1.43 (not 0.48..1.46); fenders split: deck-edge
+  plane (1.575, x<=1.70, z -3.42..2.95) + front flares (1.41, x->1.79,
+  z 1.28..3.30).
+- engine run FLATTENED to top 1.62 (the old raised 1.74 run was a misread;
+  ref deck 1.618 across -2.45..-3.0).
+- rear: deep body ends z -3.30 (plate face -3.31); the rack overhang is a
+  THIN LADDER -3.40..-3.63 — top rail at 1.50 (a 1.29+1.555 rail pair
+  spans a 0.30 column band = EXACTLY the 12% side filter, and hullLengthM
+  read the rack as body: dims 71.9 incident, repaired to 97.3).
+- turret: sloped aft roof (2.40 front -> 2.26 at the bustle end), DEEP
+  turret-frame mantlet chin (band 1.26..2.23 to world z 1.57), forward
+  cheek WEDGE pair sweeping to z~2.2 over the glacis, low outer applique
+  plates (1.2..1.7 band at x->1.65, z 0.17..0.79), bustle tail rises to a
+  thin top shelf (2.05..2.21 at -2.3), basket/kit inside world -2.32,
+  whips STOWED, roof MG pintle added at the gunner ring (decoration law;
+  tops at the 2.54 post-warp mast line — zero net gate cost).
+- gear: wheels re-laid to the measured flat patch (centers 1.61..-2.16),
+  sprocket -3.06/1.02/0.24; idler HELD at 2.94/0.96/0.26 — the r3 attempt
+  to chase the ref's high idler (3.32/1.04/0.23, far edge 3.55) re-ran the
+  round-3 dims incident (hullLengthM 7.19): the ±3.36 far-edge guard is
+  LAW until the loader gains a wrap-exempt trace.
+CERTIFIED-PENDING-WARP residuals (do not chase pre-warp): mast columns
+(ref 3.06 vs build 2.54), pano/pot tops (2.76 vs 2.50), sight band, and
+the bow nose-tip/idler-ramp ONLY-REF columns (dims-sovereign trade).
+Boards: shots/misc-r1/after/leclerc.png (legacy visual 85.2; turret reads
+chunky vs the print's slimmer cheeks — critic pass queued post-warp).

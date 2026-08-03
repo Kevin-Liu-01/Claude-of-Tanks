@@ -80,3 +80,18 @@ the family-wide raisedEnds-workaround removal: the certified oracle/print
 defect cap STANDS (curve/station rows unchanged at their capped levels)
 and dims HOLDS >= 90. No compensation was re-introduced; end wheels are
 plain kit-native fits.
+
+## Zero-row triage + normalize plan (2026-08-03, misc agent)
+
+Ledger 0 is HONEST (reference renders; stations row bottomed, not false-0:
+gate rows carry real ref values). Extract REG appended (recovered/
+type90.glb, ^Turret$ autoPivot yaw -PI/2). Measured stylization: bodyH
++59.3% (roof band 2.8-2.9 = +21%, 13 cols, under a REAR MAST CLUSTER to
+4.42 at z -3.24..-2.56 that holds p95 at 3.73), decks 1.553/1.733 print
++9..+21% tall, hullMask +2.7%, overall -4.9% (short tube), width -0.8%.
+**Normalize plan authored** (tools/vertex-normalize.mjs `type90`):
+two-knee y map (decks -> 1.42/1.46, roof 2.90 -> 2.31, mast tail -> 2.40;
+sim p95 2.359 +0.8%), z body x0.974 about -0.813 + muzzle -> rear'+9.76.
+DO NOT BUILD against this print pre-warp (>2% law) — the v9/v10 "no rigid
+transform repairs proportions" note is RETIRED by the piecewise warp
+toolchain; post-warp the certified caps (53/31.3/3.1/0) dissolve.

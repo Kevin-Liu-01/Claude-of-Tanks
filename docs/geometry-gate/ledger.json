@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-03T17:53:48.087Z",
+ "generatedAt": "2026-08-03T18:04:56.199Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 16,
  "total": 85,
@@ -356,19 +356,6 @@
    }
   },
   {
-   "id": "comet",
-   "geoMin": 0,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 0,
-    "wholeCurves": 0,
-    "turretCurves": 4.7,
-    "stations": 11.7,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "charioteer",
    "geoMin": 0.5,
    "gatePassed": false,
@@ -395,14 +382,14 @@
    }
   },
   {
-   "id": "is6b",
-   "geoMin": 6.8,
+   "id": "comet",
+   "geoMin": 10.6,
    "gatePassed": false,
    "components": {
-    "hullCurves": 50.6,
-    "wholeCurves": 32.6,
-    "turretCurves": 6.8,
-    "stations": 56,
+    "hullCurves": 31.5,
+    "wholeCurves": 10.6,
+    "turretCurves": 39.6,
+    "stations": 61.3,
     "dims": 100,
     "floaters": 100
    }
@@ -455,6 +442,19 @@
     "wholeCurves": 55.3,
     "turretCurves": 20.1,
     "stations": 49.5,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "is6b",
+   "geoMin": 25.4,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 30,
+    "wholeCurves": 25.4,
+    "turretCurves": 47.2,
+    "stations": 27.7,
     "dims": 100,
     "floaters": 100
    }
@@ -585,19 +585,6 @@
     "wholeCurves": 41.8,
     "turretCurves": 63.2,
     "stations": 76.9,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "pziii_konserwa",
-   "geoMin": 41.8,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 54.8,
-    "wholeCurves": 41.8,
-    "turretCurves": 65.8,
-    "stations": 64.6,
     "dims": 100,
     "floaters": 100
    }
@@ -765,22 +752,35 @@
    "components": {
     "hullCurves": 62.9,
     "wholeCurves": 58.2,
-    "turretCurves": 62.6,
-    "stations": 59.7,
+    "turretCurves": 62.1,
+    "stations": 58.7,
     "dims": 97.3,
     "floaters": 100
    }
   },
   {
    "id": "m46_patton",
-   "geoMin": 63.2,
+   "geoMin": 59.4,
    "gatePassed": false,
    "components": {
-    "hullCurves": 74.9,
-    "wholeCurves": 66.1,
-    "turretCurves": 63.2,
-    "stations": 69.3,
-    "dims": 91,
+    "hullCurves": 74.2,
+    "wholeCurves": 65.3,
+    "turretCurves": 59.4,
+    "stations": 83.2,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "pziii_konserwa",
+   "geoMin": 65.5,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 67.5,
+    "wholeCurves": 65.5,
+    "turretCurves": 75,
+    "stations": 68.5,
+    "dims": 100,
     "floaters": 100
    }
   },
@@ -864,12 +864,12 @@
   },
   {
    "id": "m47_patton",
-   "geoMin": 80.5,
+   "geoMin": 82.5,
    "gatePassed": false,
    "components": {
     "hullCurves": 89.2,
-    "wholeCurves": 82.2,
-    "turretCurves": 80.5,
+    "wholeCurves": 83.3,
+    "turretCurves": 82.5,
     "stations": 95.1,
     "dims": 100,
     "floaters": 100

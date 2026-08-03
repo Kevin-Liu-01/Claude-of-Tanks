@@ -266,7 +266,9 @@ const REG = {
   // misc.js TYPE74_SPEC, specs.js recon_tank).
   leclerc: {
     path: 'public/models/tanks/char_leclerc_andertan.glb',
-    turretNode: '^turret$', gunNode: '^Cylinder086$', autoPivot: true,
+    // raw GLB name is 'Cylinder.086' — GLTFLoader sanitizes the dot out;
+    // the extract matches raw names, so the regex accepts both forms.
+    turretNode: '^turret$', gunNode: '^Cylinder\\.?086$', autoPivot: true,
     yawOffset: -Math.PI / 2,
     pubDims: { hullLengthM: 6.88, overallLengthM: 9.87, widthM: 3.60, heightM: 2.53 },
   },
