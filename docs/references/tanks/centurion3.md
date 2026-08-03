@@ -136,3 +136,18 @@ columns), 3-tube smoke banks. Numbers (r0 -> banked): min 22.9 -> 60.8
 the c3 print's crown band reads ~0.10-0.13 lower through the face zone
 (DIFF table in shots/uk-r1/; next round should split the crown heights
 per mark instead of sharing the c5 slab values).
+
+## vertex r2 (uk family, 2026-08-03) — mark-split turret: 60.8 -> 78.7
+Shares the centurion5 r2 extract-true rebuild (basket/collars/cupola/crown
+ridge — see centurion5.md r2 section) with mk3-specific truth from ITS
+extract: SHORTER LOWER bustle (flat 2.488 roof to local −1.31, hump 2.527
+at −1.48, rear edge 2.335 at −1.73; bottom 1.79 rising 1.82-1.85 at the
+tail) authored as its own loftBand; narrow walls (±1.02 ending −1.27 —
+the r1 shared lid plate overhung this short bustle by 0.3 and minted
+degenerate 2.43-2.46 columns); c3 crown falls by ±1.0 on BOTH sides
+(right top 0.66, left 0.78 local vs c5's 0.78/0.85 — the r1 note
+"c3 crown 0.10 lower" was the average of this split); 20-pdr tube fattened
+to r 0.125 (thin-tube plan columns aliased out at r 0.12).
+Numbers: min 60.8 -> **78.7** (hull 84.8 -> 81.5, whole 69.4 -> 78.7,
+turret 60.8 -> 80.6, stations 76.2 -> 78.9, dims 98.3 -> 100, floaters
+100). Track-clip --exact 0/0. Boards: shots/uk-r2/centurion3.

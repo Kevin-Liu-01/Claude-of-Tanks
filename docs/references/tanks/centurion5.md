@@ -127,3 +127,29 @@ Numbers (r0 -> banked): min 24.3 -> 66.9 (hull 46.4 -> 85.1, whole 27.2 ->
 70.7, turret 24.3 -> 66.9, stations 74 -> 81.8, dims 100 -> 98.3 [hullMask
 ~7.58 = +0.3% grace], floaters 100). Mask-end law: band+shoes render ~0.57
 beyond each end-wheel center — calibrate idler/sprocket z against it.
+
+## vertex r2 (uk family, 2026-08-03) — extract-true turret rebuild: 66.9 -> 80.8
+The r1 "registered tables" carried four mis-reads the extract exposes
+(local z = extract + 0.883): the under-ring basket sat +0.24 forward
+(true: 0.651 world over local −0.49..+0.90, ring-centered), the cupola sat
+0.3 too far rear (print dome peak 2.848 at x −0.48, local −0.19..−0.30),
+the 2.747-2.754 CROWN RIDGE (left-biased, x −0.91..−0.20, local −0.90..
+−0.49) was missing, and the bustle roofline is a STEPPED profile (dip
+2.488 at −1.02..−1.08, crest 2.55-2.60 to −1.54, rear flat 2.386 to −2.13)
+with 1.49/1.53 ring-collar bands each side of the basket — not a flat
+2.55-2.64 slab. Bustle authored as a mark-parameterized loftBand + wall
+boxes (asymmetric: LEFT to x 1.25, right 1.21; walls floor at the print's
+1.78 line, never below); rounded plan rear (full-width to −1.63, inner
+sliver to −1.77, center-only tail to −2.09 local).
+HULL side re-reads: the MAIN skirt plane lives in the ±1.561..1.599 front
+column (sk.x 1.61 with the shared 5 cm panels), an OUTER armour strip rides
+at ±1.679..1.6895 (front band 1.31..0.81, SEGMENTED — prism law — 9 panels
+to z −3.13), fender horns run to 3.70 INSIDE the ±1.675 column, mud flaps
+at the ref's −3.12 plane, sprocket z −3.075 (wrap rear −3.635 = ref mask
+end), tracks 0.575 wide (the r1 0.61 band's shoes lit the ±1.58 columns to
+ground where the ref reads skirt hem), tail lip rail 1.21..1.48 at −3.62.
+WIDTH GUARD lesson: an 8 mm strip overshoot (1.705 > 1.6895) rescaled the
+whole build 0.991x and cost 4.6 dims + ~3 pts on every curve row.
+Numbers: min 66.9 -> **80.8** (hull 85.1 -> 82.3, whole 70.7 -> 80.8,
+turret 66.9 -> 81.8, stations 81.8 -> 82.6, dims 98.3 -> 100, floaters
+100). Track-clip --exact 0/0. Boards: shots/uk-r2/centurion5.
