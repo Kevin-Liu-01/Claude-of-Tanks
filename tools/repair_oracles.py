@@ -2680,6 +2680,23 @@ REPAIRS['t90m'] = {
     ],
 }
 
+# =============================================================== batch 24 ===
+# T84 NORMALIZATION (recovered drop; triage 2026-08-03). Roof TRUE (cols
+# 2.13-2.225 vs pub 2.22); the +16.2% bodyH is the Kord/commander-sight
+# furniture cluster (2.53-2.58 over gate-z -1.67..-1.17): knee 2.23, band
+# lands 2.240-2.241, post-map p95 in the 1% grace. Hull AND fused tube bake
+# SHORT (hullMask -9.7%, overall -11.8% — the triage's "tube bakes 11%
+# short"): body z x1.1069 about center -1.09; muzzle pinned at rear+9.72
+# (tube segment x1.208 — abramsx pin class, stretch sign). No gun node in
+# this print (extract gunBox undefined) — fused shell; the pin operates on
+# vertex z-position maps, mesh-agnostic. Plan: vertex-normalize batch-24.
+REPAIRS['t84'] = [
+    ('py2', _axis_warp('t84', long_axis='z',
+                       y_map=[(0, 0), (24.7312, 24.7312), (28.8679, 24.8643)],
+                       long_map=[(-35.4322, -39.2239), (35.5009, 39.2927), (59.7442, 68.5731)],
+                       y_top_max=25.1194, expect=(2, 98284, 259887))),
+]
+
 
 def repair(tank_id):
     ops = REPAIRS.get(tank_id)

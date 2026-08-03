@@ -196,6 +196,16 @@ export const PLANS = {
     z: [[-4.946, -4.6352], [2.537, 2.2262], [4.954, 4.9948]],
     yTopMax: 2.26,
   },
+  // ---- batch-24: t84 (recovered; triage 2026-08-03). Roof TRUE (cols
+  // 2.13-2.225 vs pub 2.22); furniture band 2.53-2.58 (Kord/sight cluster
+  // z -1.67..-1.17): knee 2.23 -> band 2.240-2.241, in grace. Hull AND
+  // fused tube bake short (hullMask -9.7%, overall -11.8%): body x1.1069
+  // about center -1.09; muzzle pinned rear+9.72 (tube segment x1.208).
+  t84: {
+    y: [[0, 0], [2.23, 2.23], [2.603, 2.242]],
+    z: [[-4.288, -4.6299], [2.108, 2.4499], [4.294, 5.0901]],
+    yTopMax: 2.245,
+  },
   abramsx: {
     y: [[0, 0], [2.30, 2.30], [3.0, 2.44], [4.2, 2.47]],
     z: [[-3.932, -3.932], [3.968, 3.968], [6.168, 5.838]],

@@ -26,3 +26,9 @@ Dimension sources (secondary military references — cite the specific page at i
 - [ ] verify dims against a second source; fill missing (hull-only length, track width)
 - [ ] geometry gate: model scaled to overall/hull length, width, height above
 - [ ] dual-gate render judgment vs the photo references
+
+## Oracle state (orchestrator, 2026-08-03)
+Warped to published dims by repair batch-24 (roof was TRUE; Kord/sight
+furniture knee 2.23; hull + FUSED tube stretched, muzzle pinned rear+9.72
+— print has no gun node, so the game gun never elevates; fused-shell
+class). Extract verifies 0.0-0.9% all axes. Buildable.
