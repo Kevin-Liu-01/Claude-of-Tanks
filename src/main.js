@@ -24,10 +24,13 @@
  */
 import * as THREE from 'three';
 import { createRenderer, onResize } from './engine/renderer.js';
+import {
+  installShaderErrorCollector, runDeviceDiag, applyDiagRescue, mountDiagOverlay,
+} from './engine/deviceDiag.js';
 // MOBILE r1: device tier — sourced-GLB swaps are disabled wholesale on the
 // mobile tier (modelLoader gates its own pipeline; the checks here are the UI
 // bookkeeping that must not WAIT for swaps that will never arrive).
-import { glbModelsEnabled } from './engine/quality.js';
+import { glbModelsEnabled, resolveDeviceTier } from './engine/quality.js';
 import { createSky } from './engine/sky.js';
 import { createLighting } from './engine/lighting.js';
 import { createPost } from './engine/post.js';
@@ -204,6 +207,16 @@ if (typeof window !== 'undefined') window.__COT_BOOT_HOLD = true;
 const container = document.getElementById('app');
 boot.begin('renderer');
 const renderer = createRenderer(container);
+// MOBILE r2: GPU self-test + rescue ladder. The owner's iPhone renders every
+// LIT mesh black (unlit sky/HUD fine) and no desktop browser reproduces it —
+// so the device itself proves at boot which pipeline stage it can render,
+// auto-disables shadow maps when only the depth-compare stage fails
+// (flat-lit beats black), and ?diag=1 overlays verdicts + captured shader
+// link errors so one phone screenshot names the fault. Runs BEFORE
+// createLighting so the CSM compiles against the rescued state.
+installShaderErrorCollector(renderer);
+const _diag = runDeviceDiag(renderer);
+const _diagRescue = applyDiagRescue(renderer, _diag);
 const scene = new THREE.Scene();
 // perf-smooth r1: the GLB idle queue's priority lane must know the LIVE scene
 // from the very first boot job — window.__DEBUG (its old signal) is only
@@ -232,6 +245,7 @@ const sky = await bootStage('sky', () => {
   return s;
 });
 const lighting = await bootStage('lighting', () => createLighting(scene, camera, sky.sunDir));
+mountDiagOverlay({ tier: resolveDeviceTier(renderer), diag: _diag, rescue: _diagRescue, renderer });
 
 const engineCtx = {
   renderer,
