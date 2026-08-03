@@ -26,6 +26,7 @@
 //  - Oracle-defect caps (quantified in docs/references/tanks/<id>.md): the
 //    ISU pair and T95/Strv103 oracles are proportionally off published dims;
 //    dims stays sovereign here and the curve ceilings are documented.
+import { BufferAttribute } from 'three';
 import { KIT } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
@@ -817,18 +818,22 @@ function isuCommon(P, o) {
   // (2.48, p95-sovereign) rides ONE slim panorama stalk inside it — exactly
   // 4 side columns of ~+0.10 top error (the certified squat-print cost).
   P.add('hull', box(0.155, o.pedestalTop - o.roofY, o.pedZ1 - o.pedZ0), 0.4725, (o.roofY + o.pedestalTop) / 2, (o.pedZ0 + o.pedZ1) / 2);
-  P.add('hull', box(0.10, o.stalkTop - o.roofY, o.stalkZ1 - o.stalkZ0), o.stalkX, (o.roofY + o.stalkTop) / 2, (o.stalkZ0 + o.stalkZ1) / 2);
   if (o.roundStalk) {
-    // r7 (isu122s, work-order item 7 "DELETE the chimney prism"): the stalk
-    // is the published-heightM p95 carrier — its TOP LINE cannot move — so
-    // the square-chimney read is killed by shape instead: a half-round hood
-    // ridge inside the same 0.10 x-footprint, same 2.482 crown, same z
-    // window. It reads as the sight head the ref carries there.
-    P.add('hull', cylZ(0.050, (o.stalkZ1 - o.stalkZ0) * 0.98, 18),
-      o.stalkX, o.stalkTop - 0.050, (o.stalkZ0 + o.stalkZ1) / 2);
-    P.add('hullDetail', cylZ(0.043, 0.022, 16), o.stalkX, o.stalkTop - 0.050, o.stalkZ1 - 0.012);
-    P.add('hullDark', box(0.062, 0.018, 0.014), o.stalkX, o.stalkTop - 0.042, o.stalkZ1 - 0.022);
+    // r8 RULING-3 (isu122s only): the chimney SHAFT itself is rounded — one
+    // vertical oval cylinder (x half-width 0.05 EXACT as the old box, z
+    // stretched to the same certified window) with a FLAT top at EXACTLY
+    // o.stalkTop 2.482. The p95 heightM carrier keeps its whole top row
+    // (flat cap across the full z window — strictly cleaner than the r7
+    // box+hood whose crown was a tangent line), the front-view columns keep
+    // their ±0.05 band, and from above the square chimney cross-section is
+    // gone. The r7 half-round hood ridge + cap ring are DELETED with the
+    // prism they dressed.
+    const stG = KIT.cylY(0.05, 0.05, o.stalkTop - o.roofY, 24);
+    stG.scale(1, 1, (o.stalkZ1 - o.stalkZ0) / 0.10);
+    P.add('hull', stG, o.stalkX, (o.roofY + o.stalkTop) / 2, (o.stalkZ0 + o.stalkZ1) / 2);
+    P.add('hullDark', box(0.056, 0.018, 0.014), o.stalkX, o.stalkTop - 0.030, o.stalkZ1 - 0.055);
   } else {
+    P.add('hull', box(0.10, o.stalkTop - o.roofY, o.stalkZ1 - o.stalkZ0), o.stalkX, (o.roofY + o.stalkTop) / 2, (o.stalkZ0 + o.stalkZ1) / 2);
     P.add('hullDark', box(0.084, 0.024, (o.stalkZ1 - o.stalkZ0) * 0.8), o.stalkX, o.stalkTop - 0.014, (o.stalkZ0 + o.stalkZ1) / 2);
   }
   // pedestal shoulder pod (the ref's own 2.25-shelf right of the sight line)
@@ -977,7 +982,13 @@ function isuCommon(P, o) {
   // hullDark bar read as the critic's "invented slot-bar" black slot; the
   // r5 flare is gone because the detail mat is deep olive this round)
   const tbB = o.dimTail === 2 ? 'hullDetail' : o.dimTail ? 'hullDark' : 'hull';
-  if (o.tailBarZ) P.add(tbB, box(1.50, 0.10, 0.09), 0, o.tailBarY, o.tailBarZ);
+  // r8 (isu122s item 5, o.tailBarH): the 0.10-tall bar was the rear view's
+  // fat 14-px plank — the brightest element, crossing both hatch rings where
+  // the ref's rail is thin and flush. The bar's dims-carrier role is its
+  // PLAN footprint (1.50 x 0.09 at o.tailBarZ) — x/z stay EXACT and only the
+  // height thins; the side-trace extremes at that column are carried by the
+  // tail wall (0.55..1.02), so the thinner band changes no curve row.
+  if (o.tailBarZ) P.add(tbB, box(1.50, o.tailBarH ?? 0.10, 0.09), 0, o.tailBarY, o.tailBarZ);
   if (o.tailTabZ) {
     // rear hullLengthM carrier: one narrow body-band tab pair a full trace
     // column behind the tail (inside the ref's cover margin, so it costs
@@ -1273,7 +1284,7 @@ function buildISU122S(P) {
     podTop: 2.255, podZ: 1.605, domeX: -0.675, domeTop: 2.372,
     ventX: -0.66, ventZ: -0.105, ventTop: 2.30,
     eyeYL: 2.135, eyeYR: 2.10,
-    flapY0: 0.615, flapY1: 0.932, flapXo: 1.4945, tailBarY: 0.885, tailBarZ: -3.325, tailTabZ: -3.43,
+    flapY0: 0.615, flapY1: 0.932, flapXo: 1.4945, tailBarY: 0.885, tailBarZ: -3.325, tailBarH: 0.042, tailTabZ: -3.43,
     strakes: [[0.10, 0.09, 1.15, 2.06, -0.385, 2.015]],                        // roof-edge chamfer (ref corner 2.09-2.14 @ x 1.12-1.21)
     bellyKeel: 0.363, armY: 0.365, keelLen: 5.75, keelZc: 0.075,
     boxX: 1.13, boxY: 1.79, boxH: 0.16, boxZ: 2.08,
@@ -1384,7 +1395,15 @@ function buildISU122S(P) {
       // alone, so the pot can hold the ref's bright dome value while the
       // drums drop -8 L into the ref's own 94-100 body band (r6 measured
       // proc 98.6 mean / p50 103.0 vs ref 87.2 / p50 93.5).
-      P.add('hullGlass', cylZ(0.200, dl, 32), s * 1.287, 1.4795, dz);          // body (top 1.6795)
+      // r8 (work-order item 4): body r 0.200 -> 0.196 so the end rims and
+      // rolling hoops stand a visible 9 mm proud instead of 5 — the body
+      // reads INSET between its rims and the dead-side flush-panel row
+      // breaks up. The certified 1.6845 bump line stays carried by the end
+      // rims (1.6845) and hoops (1.684); ruling-2's notch check (run this
+      // round) found the ref's own skyline dipping 1.2 cm over the
+      // inter-drum band (build z -1.34..-1.60), so the deeper body/gap
+      // relief matches the ref's own rows.
+      P.add('hullGlass', cylZ(0.196, dl, 32), s * 1.287, 1.4795, dz);          // body (top 1.6755)
       for (const e of [-1, 1]) {
         // r7 RIMMED END CAP (critic: "crescent wafers, no rimmed circle any
         // view"): a proud outer rim ring at the FULL body radius plus two
@@ -1417,6 +1436,13 @@ function buildISU122S(P) {
       // fatter body (inside the slab/drum mask union — materials-class).
       P.add('hullShadow', box(0.004, 0.30, dl + 0.04), s * 1.078, 1.50, dz);
     }
+    // r8 inter-drum CRADLE (work-order item 4): a dark saddle block filling
+    // the z -1.389..-1.497 gap between the two bodies — with the inset
+    // bodies it splits the dead-side read into [rim][body][rim] GAP [rim]
+    // [body][rim] instead of one flush panel row. Front-view columns at its
+    // x are already carried by the drums; its 1.598 top sits under the deck
+    // line; ruling-2's certified dip lives exactly here.
+    P.add('hullDark', box(0.052, 0.185, 0.108), s * 1.287, 1.505, -1.4425);
     // r6 rail gap stubs: the rear rail's certified front-view column band
     // (x 1.505..1.535 reading 1.44..1.51) now lives in three short stubs
     // parked in the DRUM GAPS — the front cameras integrate all z, so the
@@ -1549,6 +1575,9 @@ function buildISU122S(P) {
     P.add('hullDark', box(0.020, 0.020, 0.012), s2 * 0.70, 0.930, -3.306);
   }
   P.add('hullDetail', box(0.10, 0.075, 0.042), 0, 0.862, -3.316);              // center clevis block
+  // r8 item 5: cast-shadow line under the (now thin) tow bar — the ref's
+  // rail reads as a flush strip with a dark seam below it.
+  P.add('hullDark', box(1.46, 0.014, 0.012), 0, 0.852, -3.300);
   // ---- r7 REAR PLATE ROUND HATCHES + REAL TOW JAWS (work-order item 4:
   // "kill the letterbox slot-bar composition; circular hatch discs at ~14%
   // hull width each with hinge arcs; real tow jaws"). The tail bar is a
@@ -1562,8 +1591,17 @@ function buildISU122S(P) {
   // the tail tabs, so the round mass costs no new plan extent.
   for (const s2 of [-1, 1]) {
     P.add('hullDetail', cylZ(0.190, 0.022, 26), s2 * 0.545, 0.795, -3.272);    // hatch disc (r 0.19 = 12.4% hull width)
-    P.add('hullDark', cylZ(0.198, 0.010, 26), s2 * 0.545, 0.795, -3.268);      // rim seam
+    // r8 (work-order item 5 "scribed outlines -> volumetric"): the flat
+    // dark rim ring becomes a true TORUS — its curved section takes the rig
+    // light as a lit top arc / shaded bottom arc (rim highlight) — and a
+    // dark under-disc crescent (a slightly smaller disc offset 12 mm DOWN,
+    // seated behind the face) peeks below the rim as the drop shadow.
+    P.add('hullDetail', KIT.xform(KIT.torus(0.190, 0.009, 26), 0, 0, 0, Math.PI / 2, 0, 0),
+      s2 * 0.545, 0.795, -3.283);                                              // volumetric rim
+    P.add('hullDark', cylZ(0.186, 0.008, 26), s2 * 0.545, 0.783, -3.266);      // under-rim AO crescent
     P.add('hullDetail', cylZ(0.148, 0.014, 24), s2 * 0.545, 0.795, -3.286);    // raised inner ring
+    P.add('hullDark', KIT.xform(KIT.torus(0.148, 0.006, 24), 0, 0, 0, Math.PI / 2, 0, 0),
+      s2 * 0.545, 0.795, -3.288);                                              // inner-ring seam groove
     P.add('hullDark', cylZ(0.052, 0.012, 16), s2 * 0.545, 0.795, -3.294);      // centre boss
     // hinge arcs wrapping the disc rim at 8 and 10 o'clock
     for (const ha of [2.30, 3.98]) {
@@ -1590,7 +1628,7 @@ function buildISU122S(P) {
   // outside the pedestal's x 0.395..0.55 front band over-prints the ref's
   // falling crown columns (front_hull 90.6 -> 88.3) — the drum stays fully
   // inside the band; the round read comes from the rim ring + hatch rings.
-  P.add('hull', cylY(0.0775, 0.0775, 0.093, 20), 0.4725, 2.3265, 1.35);        // panorama drum 2.28..2.373
+  P.add('hullDark', cylY(0.0775, 0.0775, 0.093, 20), 0.4725, 2.3265, 1.35);    // panorama drum 2.28..2.373 (dark wall, r8)
   P.add('hullDark', KIT.torus(0.066, 0.011, 18), 0.4725, 2.362, 1.35);         // rim ring
   P.add('hull', cylY(0.056, 0.056, 0.014, 16), 0.4725, 2.366, 1.35);           // head cap
   P.add('hullDark', box(0.04, 0.016, 0.08), 0.4725, 2.364, 1.26);              // hinge
@@ -1607,7 +1645,7 @@ function buildISU122S(P) {
   // dressing on top becomes a raised ROUND cupola — collar drum, rolled lid
   // and crown — instead of a flat ring painted around a square crate top.
   // Every outer radius <= the 0.085 box half-width (gate lesson 3).
-  P.add('hullDetail', cylY(0.078, 0.085, 0.034, 22), -0.675, 2.343, 1.35);     // collar drum (2.326..2.360)
+  P.add('hullDark', cylY(0.078, 0.085, 0.034, 22), -0.675, 2.343, 1.35);       // collar drum (dark wall, r8 item 6)
   P.add('hullDark', KIT.torus(0.0855, 0.007, 22), -0.675, 2.352, 1.35);        // collar seam groove
   P.add('hullDetail', cylY(0.058, 0.076, 0.016, 20), -0.675, 2.366, 1.35);     // lid shoulder
   P.add('hullDetail', cylY(0.034, 0.055, 0.010, 16), -0.675, 2.377, 1.35);     // lid crown (top 2.382)
@@ -1621,8 +1659,12 @@ function buildISU122S(P) {
   // 0.088 -> 0.128 and the shell r 0.066 -> 0.105 while the crown stays
   // EXACTLY on the certified 2.221 front-centre line — the pea read was
   // diameter, not height.
-  P.add('hullDetail', cylY(0.118, 0.128, 0.024, 22), -0.10, 2.128, 0.88);      // base collar
-  P.add('hullDetail', KIT.sph(0.105, 22, Math.PI / 2), -0.10, 2.116, 0.88);    // dome (crown 2.221)
+  P.add('hullDark', cylY(0.118, 0.128, 0.024, 22), -0.10, 2.128, 0.88);        // base collar (dark wall, r8 item 6)
+  // r8: dome on the CAMO bucket — as fitting-olive it was the palest object
+  // on the roof from above (the bakeDirt up-facing multiplier only exists on
+  // camo surfaces, so the detail sphere caught the full sky). Crown stays
+  // EXACTLY on the certified 2.221 line — bucket move only.
+  P.add('hull', KIT.sph(0.105, 22, Math.PI / 2), -0.10, 2.116, 0.88);          // dome (crown 2.221)
   P.add('hullDark', KIT.torus(0.108, 0.008, 20), -0.10, 2.146, 0.88);          // collar seam
   P.add('hullDetail', cylY(0.030, 0.030, 0.010, 12), -0.10, 2.2215, 0.88);     // crown button
   // r7 MUSHROOM periscope stalks (work-order item 7: the ref's roof optics
@@ -1631,7 +1673,7 @@ function buildISU122S(P) {
   // 2.221 class as the vent crown, so the skyline break is shape, not new
   // height.
   for (const [px3, pz3] of [[0.13, 1.86], [-0.08, 1.95]]) {
-    P.add('hullDetail', cylY(0.030, 0.034, 0.044, 12), px3, 2.172, pz3);       // stalk
+    P.add('hullDark', cylY(0.030, 0.034, 0.044, 12), px3, 2.172, pz3);         // stalk (dark, r8 item 6)
     P.add('hullDetail', cylY(0.062, 0.056, 0.026, 16), px3, 2.207, pz3);       // mushroom head (top 2.220)
     P.add('hullDark', KIT.torus(0.060, 0.007, 16), px3, 2.199, pz3);           // head seam
     P.add('hullDark', box(0.070, 0.014, 0.014), px3, 2.206, pz3 + 0.058);      // vision band
@@ -1652,9 +1694,17 @@ function buildISU122S(P) {
   // stepped ROUND VOLUME — collar drum, chamfer step, domed lid, dark seam
   // — inside the SAME certified tops (2.268 fwd / 2.239 rear): the read is
   // relief, not height, so the front crown columns cannot move.
+  // r8 (work-order item 6 "relief-side shading under the certified
+  // ceiling"): the whole stack was one fitting-olive tone and the obliques
+  // read it near-flat. The COLLAR DRUM wall moves to the dark bucket (the
+  // ref's collar walls read as shadowed steel under its lit lids) and a
+  // dark LID SHADOW RING tucks under the lid-shoulder overhang, so from
+  // close-roof/hero angles each cupola reads drum -> shadow ring -> lit
+  // dome. Tops unchanged (2.268 / 2.239) — relief is tone, not height.
   for (const [cx, cz2, cTop, cR] of [[0.68, 0.95, 2.268, 0.215], [-0.68, -0.02, 2.239, 0.205]]) {
-    P.add('hullDetail', cylY(cR - 0.010, cR, 0.050, 24), cx, cTop - 0.083, cz2);        // collar drum
+    P.add('hullDark', cylY(cR - 0.010, cR, 0.050, 24), cx, cTop - 0.083, cz2);          // collar drum (dark wall)
     P.add('hullDark', KIT.torus(cR + 0.003, 0.008, 24), cx, cTop - 0.076, cz2);         // collar seam groove
+    P.add('hullDark', KIT.torus(cR - 0.026, 0.008, 22), cx, cTop - 0.050, cz2);         // lid shadow ring
     P.add('hullDetail', cylY(cR - 0.055, cR - 0.018, 0.026, 22), cx, cTop - 0.045, cz2); // lid shoulder
     P.add('hullDetail', cylY(cR - 0.110, cR - 0.052, 0.020, 20), cx, cTop - 0.022, cz2); // lid roll
     P.add('hullDetail', cylY(cR - 0.170, cR - 0.105, 0.012, 18), cx, cTop - 0.006, cz2); // lid crown
@@ -1717,6 +1767,16 @@ function buildISU122S(P) {
     for (let tz = -2.55; tz <= 2.30; tz += 0.165) {
       P.add('hullTrack', box(0.60, 0.014, 0.075), s * 1.16, 1.118, tz);
     }
+    // r8 (work-order item 7 "left ground-run texture"): link-pitch grouser
+    // ticks on the OUTER face of the ground run — the ref's bottom band
+    // shows per-link value variation ours lacked (proc spread 8.1 vs ref
+    // 9.8 on the r7 rect, and flatter still at the critic's crop). Outer
+    // face 1.4645..1.4745 stays inside the certified grounded band window
+    // [1.451, 1.485]; y 0.13..0.24 rides the band side above the contact
+    // line, same static-dressing class as the top-run cleats.
+    for (let tz = -2.30; tz <= 2.20; tz += 0.165) {
+      P.add('hullTrack', box(0.010, 0.105, 0.055), s * 1.4695, 0.185, tz);
+    }
     // bay AO wall (ref side view: the windows between road wheels read
     // near-black; ours showed lit camo tub). Baked-shadow plate inboard of
     // the wheel line — same static-overlay class as the channel AO strip.
@@ -1731,6 +1791,15 @@ function buildISU122S(P) {
     P.add('hullDetail', box(0.27, 0.030, 0.28), s * 1.315, 1.505, 3.06, -0.72, 0, 0); // hood fall
     P.add('hullDetail', box(0.26, 0.014, 0.05), s * 1.315, 1.645, 2.87);       // hinge bead
     P.add('hullDetail', box(0.016, 0.17, 0.40), s * 1.446, 1.375, 2.96);       // side cheek skirt
+    // r8 inner mudguard cheek: the probe pinned the LEFT "sponson dot
+    // patch" stripes on the front wrap's LINK PADS (instanced mesh tops
+    // y 1.25, forward arc to z 3.01) peeking dead-front between the wing
+    // skin (1.147) and the hood (1.38) at x 1.0-1.16 — the ref covers that
+    // window with its own mudguard cheek (flat 72.8 there). Vertical plate
+    // at the law cap (top 1.2285 <= the certified 1.228 wing headroom),
+    // seated forward of the wrap crest rows it must hide; a ~2 px crest
+    // sliver above the cap remains and is disclosed as residual.
+    P.add('hullTrack', box(0.16, 0.106, 0.030), s * 1.075, 1.1755, 2.96);
   }
   // ---- r5 stucco purge (work-order item 10): smooth single-island skins
   // over the casemate FLANK panels — the camo fleck octave read as
@@ -1749,15 +1818,21 @@ function buildISU122S(P) {
   // recess floor skin: the center strip between the wing skins was the
   // loft's camo top — dead-front stucco inside the mantlet recess (r4
   // residual). Same 6 mm plate read as the wings.
-  P.add('hullDetail', box(1.10, 0.006, 0.465), 0, 1.1235, 2.7725);
+  P.add('hullTrack', box(1.10, 0.006, 0.465), 0, 1.1235, 2.7725);   // r8: shaded family (see wing skins)
   // ---- r4 bow-carve furniture. The glacis skins/weld/spare links are
   // GONE with the fictional upper bow (they would float over the recess);
   // the recess floor is the loft's own low-bow top. Wing skins keep the
   // stucco fix on the two visible wing tops, and the open-cup headlight
   // reseats onto the right wing like the print's low service light.
+  // r8: wing skins to the wrap-dark bucket — the r8 ref probe at the true
+  // equivalent rect (151,296)-(168,313) reads the ref's whole bow-wing band
+  // as a FLAT SHADED 72.8 (baked casting-overhang AO in the print), while
+  // our lit detail-olive skins + furniture edges ran 81-105 banding = the
+  // critique's LEFT "sponson dot patch". One dark family kills both the
+  // stripes and the +24 L error; geometry EXACT.
   for (const s of [-1, 1]) {
     const x0 = s < 0 ? -1.21 : 0.56, x1 = s < 0 ? -0.56 : 1.21;
-    P.add('hullDetail', KIT.slab(
+    P.add('hullTrack', KIT.slab(
       [x0, 1.121, 3.02], [x1, 1.121, 3.02], [x1, 1.121, 2.53], [x0, 1.121, 2.53],
       [x0, 1.127, 3.02], [x1, 1.127, 3.02], [x1, 1.127, 2.53], [x0, 1.127, 2.53]));
   }
@@ -1767,11 +1842,20 @@ function buildISU122S(P) {
   // so the front-view wing columns keep their certified 1.19-1.20 line.
   for (const s of [-1, 1]) {
     for (let lk = 0; lk < 4; lk++) {                                           // spare track link rack
-      P.add('hullTrack', box(0.115, 0.020, 0.082), s * 0.86, 1.133, 2.62 + lk * 0.10);
+      // r8: racks off the (now track-dark) spareTrack bucket, and the link
+      // depth grows 0.082 -> 0.096 (4 mm gaps instead of 18): dead-front
+      // the per-link shadow gaps stacked into the critique's LEFT "sponson
+      // dot patch" stripes (x795-812 y305-320) where the ref's wing band is
+      // flat (spread 1.6). Fitting olive keeps the top-view link relief.
+      P.add('hullTrack', box(0.115, 0.020, 0.096), s * 0.86, 1.133, 2.62 + lk * 0.10);
     }
-    P.add('hullDetail', box(0.028, 0.030, 0.44), s * 0.795, 1.132, 2.77);      // rack rail
-    P.add('hullDetail', box(0.13, 0.018, 0.13), s * 1.06, 1.129, 2.70);        // lug pocket pad
-    P.add('hullDark', box(0.082, 0.012, 0.082), s * 1.06, 1.136, 2.70);        // pocket void
+    P.add('hullTrack', box(0.028, 0.030, 0.44), s * 0.795, 1.132, 2.77);       // rack rail (shaded family)
+    // r8: pad + void pulled inboard (1.06 -> 0.98) out of the measured
+    // patch band |x| 1.00-1.12, and the void shrunk/sunk so its dark top
+    // face stops printing a stripe at the 8-deg front camera. The wing band
+    // there now reads as the ref's own flat plate.
+    P.add('hullTrack', box(0.13, 0.018, 0.13), s * 0.98, 1.129, 2.70);         // lug pocket pad (shaded family)
+    P.add('hullDark', box(0.070, 0.008, 0.070), s * 0.98, 1.134, 2.70);        // pocket void
     if (P.q) for (let bk2 = 0; bk2 < 5; bk2++) {                               // bolt ring along the recess lip
       P.add('hullDark', box(0.020, 0.012, 0.020), s * (0.30 + bk2 * 0.11), 1.129, 2.545);
     }
@@ -1891,71 +1975,139 @@ function buildISU122S(P) {
   // the front view is therefore structural, not a tuning miss.
   const POT_R = 0.662, POT_DEP = 0.26, POT_SY = 0.8459, POT_PITCH = -0.26;
   const POT_C = [MX, 1.58, 2.42];
-  // Conformal pot shell: the SAME ellipsoid scaled by k, optionally cut to a
-  // polar cap of thetaLen tl and swung by rz about the pot axis. k slightly
-  // over 1 puts the piece a few mm proud of the pot everywhere, so a cap is
-  // literally the pot's own surface in another tone — an ATTACHED gradient
-  // that cannot project as a free outline or a pipe mouth (the r6 failure
-  // mode was open cone-annulus shells standing off the face).
-  const potShell = () => {
-    const g = KIT.sph(POT_R, 56);
-    g.scale(1, 1, POT_DEP / POT_R);
-    return xform2(g, 0, 0, 0, POT_PITCH);
+  // ---- r8 ONE-CAST GRADIENT (work-order item 2). The r7 three-band ladder
+  // is DELETED with its whole failure class: the band end-cut arcs readable
+  // at 4x, the dead-front bullseye lip (bare pot beyond the 0.648 band read
+  // 103 against the 59 band next to it), the left plateau (spread 1.1 vs
+  // ref 5.9) and the right cliff (27.8 vs 5.6). The critique's own verdict:
+  // "a true falloff needs a gradient map, not geometry" — the map here is
+  // PER-VERTEX COLOR on the pot's own 56x28 sphere (hullCloth claims
+  // vertexColors in the tone block; the merge keeps the attribute because
+  // every hullCloth piece paints one).
+  // FIELD FITTED TO THE REF'S OWN DEAD-FRONT PROFILES (measured this round
+  // on view-front): dark pole is UPPER-RIGHT (+60 deg) — ref disc top band
+  // 71.6, upper-right 71.6, lower-left 97.7/p50 104, left strip 100.8,
+  // right strip mid-height 63-75 monotone to the rim, bottom rim BRIGHT
+  // (101 to the edge), thin dark rim roll 2-4 px on the lit side only.
+  // This one axis also produces the close-roof read the ref shows (crown/
+  // collar ~66-70 from above) because the crown sits near the dark pole.
+  const sm01 = (t) => { const c = Math.min(1, Math.max(0, t)); return c * c * (3 - 2 * c); };
+  const potQ = (x, y) => {
+    const rho = Math.min(1, Math.hypot(x, y) / POT_R);
+    const ang = Math.atan2(y, x);
+    // r8 round 4 — the ref field, finally decoded by octant sweep at rho
+    // 0.85-0.95: a DARK ARC (values saturate 63-75 from rho ~0.64 out to
+    // the rim) spanning ang -27..+112 deg — i.e. an arc centered ~42.5 deg
+    // with ~70 deg half-width — over a bright 100-104 remainder, with the
+    // transition INWARD being radial (rho), not directional: ref right-mid
+    // row runs 63 rim -> 75 @ lat 0.5 -> 91-96 @ lat 0.25 regardless of
+    // height inside the arc. Rounds 2-3 tried directional s-ramps and kept
+    // failing opposite corners (bright ref lower-right 104.9 / upper-left
+    // 85.3 vs dark right rim 63 at the SAME |s|). Field: q = radial ramp
+    // gated by the angular arc, plus the lit lower-left tail (ref p50 104).
+    const lobe = sm01((Math.cos(ang - 0.742) - 0.24) / 0.30);  // arc: pole 42.5deg, HW ~70deg
+    const d = rho * lobe;
+    let q = 1.0
+      - 0.385 * sm01((d - 0.18) / 0.46)                        // 1.0 -> 0.615, saturating rho>=0.64
+      + 0.045 * sm01((-rho * Math.cos(ang - 0.742) - 0.35) / 0.50) // lower-left lit tail
+      // round 5: the ref's dark arc is FLAT 63-70 wall to wall, but our
+      // multiplier rides the pot's own Lambert, which dims toward the
+      // mid-right interior (bare ~83 vs the 100-104 rim zones) — the arc
+      // interior measured 49-55. Boost the multiplier exactly where the
+      // local response dims so the PRODUCT stays on the ref's flat band.
+      // (round 6: gated off the crown — the sky-lit top does NOT dim, so
+      // the same boost read +6 L from close-roof and broke the <=75 collar
+      // gate at 76.4.)
+      + 0.15 * sm01((d - 0.45) / 0.25) * sm01((0.97 - rho) / 0.22)
+        * (1 - 0.80 * sm01((Math.sin(ang) - 0.50) / 0.32));
+    // RULING-1 tonal cheek shrink: darken beyond lateral ~0.60 m toward
+    // plate value so the bright-disc read lands ~0.60 lateral (the ruling's
+    // own number: cap crosses the L85 discriminator at |x| ~0.593).
+    q = Math.min(q, 1 - 0.34 * sm01((Math.abs(x) / POT_R - 0.82) / 0.16));
+    // thin rim roll-off toward the shaded value — full strength on the lit
+    // left/top rim (the ref's 2-4 px dark edge), fading out at the BOTTOM
+    // rim which the ref keeps bright to the very edge.
+    const rimT = sm01((rho - 0.945) / 0.055) * (1 - 0.80 * Math.max(0, -Math.sin(ang)));
+    q = q * (1 - rimT) + 0.615 * rimT;
+    // CROWN LIP: the ref's topmost disc rows (y 176-186, x 248-262) carry a
+    // thin 88-90 highlight crescent where the casting's rolled top edge
+    // catches sky under the hood shadow — it is what stretches the ref's
+    // own bright-disc bbox to 0.85 aspect. Same thin crescent here.
+    const lip = sm01((rho - 0.90) / 0.055) * sm01((Math.sin(ang) - 0.90) / 0.08);
+    return q * (1 - lip) + 0.91 * lip;
   };
-  // Conformal AO BAND: an open partial-theta cone laid on the pot's own face
-  // between two face radii, at the ellipsoid's own sag for each radius and
-  // 4 mm proud along the pot axis. Its boundaries are CIRCLES ABOUT THE BORE
-  // — they project as rim-hugging ellipse arcs. (A polar cap does not: on a
-  // 0.26-deep / 0.662-wide ellipsoid a cap boundary is a plane of constant
-  // local y, so dead-front it draws a STRAIGHT chord — that is exactly the
-  // r6 "hard-edged dark band", and two cut attempts reproduced it.)
-  // cylY theta 0 points down after the rx=PI/2 lay-down and grows toward +x,
-  // so [th0, th0+thL] windows select the shaded lower-RIGHT sweep.
-  const potBand = (rIn, rOut, th0, thL) => {
-    const sag = (r) => POT_DEP * Math.sqrt(Math.max(0, 1 - (r / POT_R) ** 2)) + 0.004;
-    const zi = sag(rIn), zo = sag(rOut);
-    const g = cylY(rIn, rOut, zi - zo, 34, true, th0, thL);
-    KIT.xform(g, 0, 0, (zi + zo) / 2, Math.PI / 2, 0, 0);
+  // display-ratio -> linear vertex color. Round 2: the naive q^2.2 encode
+  // landed the dark zone +8-9 L high — the standard material's GGX specular
+  // (F0 0.04, albedo-INDEPENDENT) adds a floor the albedo cut can't touch.
+  // Fit on the round-1 render: spec ~= 0.196x of the lit diffuse response
+  // (q_v 0.629 -> display 0.706; 0.68 -> 0.755). Invert it so the SUM lands
+  // on the target: lin = D^2.2*(1+S) - S.
+  const paintVerts = (g, fn) => {
+    const p = g.attributes.position, nrm = g.attributes.normal;
+    const col = new Float32Array(p.count * 3);
+    const S = 0.196;
+    for (let i = 0; i < p.count; i++) {
+      const D = Math.max(0.05, Math.min(1.06, fn(p.getX(i), p.getY(i), p.getZ(i), nrm.getX(i), nrm.getY(i), nrm.getZ(i))));
+      const lin = Math.max(0.015, Math.pow(D, 2.2) * (1 + S) - S);
+      col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = lin;
+    }
+    g.setAttribute('color', new BufferAttribute(col, 3));
+    return g;
+  };
+  const potShell = () => {
+    const g = KIT.sph(POT_R, 72);   // r8: 72x36 — smoother arc-boundary interpolation
+    g.scale(1, 1, POT_DEP / POT_R);
+    paintVerts(g, (x, y) => potQ(x, y));
     return xform2(g, 0, 0, 0, POT_PITCH);
   };
   P.add('hullCloth', potShell(), ...POT_C, 0, 0, 0, [1, POT_SY, 1]);           // the pot
-  // AO gradient under the rim, over the pot's rolled-away lower-RIGHT sweep.
-  // WHY IT IS NEEDED AT ALL: a 0.26-deep dome over a 1.324 lateral gives an
-  // equivalent sphere R 0.97 and a 43-deg rim normal swing, but the board's
-  // flat fill compresses Lambert — the BARE pot measured L 102.1 left /
-  // 100.7 right (view-front (840,235)-(870,265) vs (970,235)-(1000,265)),
-  // a 1.4-L swing where the ref's own disc runs 107 lit / 71 shaded. The
-  // roll-off therefore has to be material, and it is put ON the pot's face
-  // rather than in front of it.
-  // THREE-STEP LADDER (cloth ~101 -> wood ~90 -> rubber ~80 -> dark ~66),
-  // each band NARROWING as it darkens toward the rim, so the three arcs
-  // nest and fade out at both ends instead of ending on a hard radial cut.
-  P.add('hullWood', potBand(0.255, 0.400, -0.55, 2.90), ...POT_C, 0, 0, 0, [1, POT_SY, 1]);
-  P.add('hullRubber', potBand(0.400, 0.530, -0.35, 2.45), ...POT_C, 0, 0, 0, [1, POT_SY, 1]);
-  P.add('hullDark', potBand(0.530, 0.648, -0.10, 1.95), ...POT_C, 0, 0, 0, [1, POT_SY, 1]);
-  // ONE SNOUT: a single smooth taper from inside the pot into the tube,
-  // replacing the whole r6 ladder. Radii ride the same certified line the
-  // ladder rode: top 1.853@2.52 (line 1.849), 1.797@2.79 (1.802),
-  // 1.774@2.90 (1.782) — one cone instead of five stacked rings.
-  P.add('hullCloth', cylZ(0.137, 0.53, 26, 0.255), MX, MY, 2.715, 0, 0, 0, [1, 0.755, 1]);
-  // ear bosses ON the pot face at 10 and 2, seated on the ellipsoid surface
-  // (z solved from the pitched/squashed section) so they read as cast-in
-  // bumps, not floating dots. Lateral 0.28 (not the ref's own 0.155): the
-  // snout's cone is 0.22 wide where they sit, and a 0.155 pair renders
-  // INSIDE it — buried lugs are worse than slightly wide ones.
-  for (const es of [-1, 1]) P.add('hullCloth', KIT.sph(0.044, 12), MX + es * 0.28, 1.75, 2.603);
+  // ONE SNOUT: a single smooth taper from inside the pot into the tube.
+  // Radii ride the same certified line the r6 ladder rode: top 1.853@2.52
+  // (line 1.849), 1.797@2.79 (1.802), 1.774@2.90 (1.782).
+  // r8 vertex tones (work-order item 7): base 0.92 pulls the snout into the
+  // cast family (it read 108-111 dead-front vs the ref mount's 99-100); the
+  // up-facing wedge darkens (view-top read a pale wedge where the ref's
+  // mount area is 72-77); the +z cap ring was the "collar ring 111.8 —
+  // brightest casting element".
+  const snoutG = cylZ(0.137, 0.53, 26, 0.255);
+  paintVerts(snoutG, (x, y, z, nx, ny, nz) => {
+    let q = 0.92;
+    const rr = Math.hypot(x, y);
+    q -= 0.20 * sm01(((rr > 1e-4 ? y / rr : 0) - 0.25) / 0.55);                // top wedge
+    if (nz > 0.9) q = Math.min(q, 0.86);                                       // front cap annulus
+    return q;
+  });
+  P.add('hullCloth', snoutG, MX, MY, 2.715, 0, 0, 0, [1, 0.755, 1]);
+  // ear bosses at the ref's own 0.155 lateral (r7 parked them at 0.28 on the
+  // pot face — the critic's "floating washer ears"). At z 2.79 the snout has
+  // tapered to r 0.179 x 0.135, so a 0.155 pair seated ON that surface pokes
+  // clear as two cast lugs instead of rendering inside the cone. Tops 1.768
+  // stay under the certified 1.797-1.802 @ 2.79 side line.
+  for (const es of [-1, 1]) {
+    const earG = KIT.sph(0.040, 12);
+    paintVerts(earG, () => 0.87);
+    P.add('hullCloth', earG, MX + es * 0.155, 1.728, 2.79);
+  }
   if (P.q) for (let k = 0; k < 13; k++) {
     // rim bolt arc ON the pot's own face: local face radius 0.50 (rho 0.755)
     // -> lz = 0.220*sqrt(1-rho^2) = 0.1443, then the pot's pitch/squash.
+    // r8: r 0.012 -> 0.008 — at the lower-right rim the fat dots on the (now
+    // deleted) bright lip were the critique's second "sponson dot patch"
+    // (x962-980 y305-320); the slimmer studs melt into the gradient.
     const a = (196 + k * 12.6) * Math.PI / 180;
-    P.add('hullDark', cylZ(0.012, 0.024, 8),
+    P.add('hullDark', cylZ(0.008, 0.020, 8),
       MX + Math.cos(a) * 0.50, 1.5914 + Math.sin(a) * 0.4087, 2.5594 - Math.sin(a) * 0.1286);
   }
   // r4: the painted bow-wall buffer nose is GONE with the carved bow (its
-  // canvas was the fictional tip face) — the REAL buffer body now shows in
-  // the recess under the casting, nose ring on its front face.
-  P.add('hull', cylZ(0.115, 0.85, 14, 0.125), -0.25, 1.40, 2.42);              // recoil buffer body
-  P.add('hullDark', cylZ(0.088, 0.014, 16), -0.25, 1.40, 2.842);               // buffer nose bore ring
+  // canvas was the fictional tip face) — the REAL buffer body shows in the
+  // recess under the casting.
+  // r8 (work-order item 2e): the buffer's exposed round face + dark bore
+  // ring past the pot face was the "under-barrel drum stub — pipe-mouth-in-
+  // miniature at both heroes". Face pulled from 2.845 back to 2.61 (the pot
+  // surface at the buffer's offset reaches z ~2.66, so the drum now ends
+  // UNDER the casting) and the nose bore ring is DELETED. Side rows keep
+  // their bottoms from the low bow (0.43) — verified by the r8 gate run.
+  P.add('hull', cylZ(0.115, 0.62, 14, 0.125), -0.25, 1.40, 2.30);              // recoil buffer body
   // (r7: the r6 emergence ring + its four cast lugs + the duplicate ear-boss
   // pair are DELETED — every one of them was a separate small ring/dot in
   // the 12 cm around the tube root, i.e. the ring-stack the critic reads.
@@ -2113,14 +2265,21 @@ function buildISU122S(P) {
       // cover ended 1.299). Cover thickened to span 1.2815..1.3075 — the
       // pocket ring is now fully buried — and the face package shifts
       // outboard with it. Six cast ribs give the IS twin-disc rib read.
+      // r8 (work-order item 3 "halve the dimple-ring depth"): the r7 face
+      // was TWO-tone — pale cover 88 against hullDark seam rings/bolts 64,
+      // spreads 22-24 on the 22x20 face rect where the ref runs 5-7. The
+      // ref's own wheel face is ONE family (p25/75 within ~4 L) with relief
+      // read only — so the seam tori, bolt dimples and hub cap all join the
+      // wheel-family bucket: same geometry, self-colored relief that shades
+      // itself instead of painting black rings.
       P.add('hullWood', cylX(0.285, 0.026, 22), s * 1.2945, 0.36, wz);         // cover disc (buries pockets)
-      P.add('hullDark', KIT.xform(KIT.torus(0.190, 0.010, 20), 0, 0, 0, 0, 0, Math.PI / 2), s * 1.3105, 0.36, wz); // twin-rim seam
-      P.add('hullDark', KIT.xform(KIT.torus(0.262, 0.008, 22), 0, 0, 0, 0, 0, Math.PI / 2), s * 1.3095, 0.36, wz); // outer cast seam
+      P.add('hullWood', KIT.xform(KIT.torus(0.190, 0.010, 20), 0, 0, 0, 0, 0, Math.PI / 2), s * 1.3105, 0.36, wz); // twin-rim seam
+      P.add('hullWood', KIT.xform(KIT.torus(0.262, 0.008, 22), 0, 0, 0, 0, 0, Math.PI / 2), s * 1.3095, 0.36, wz); // outer cast seam
       P.add('hullWood', cylX(0.078, 0.055, 14), s * 1.3165, 0.36, wz);         // hub cone
-      P.add('hullDark', cylX(0.046, 0.030, 12), s * 1.341, 0.36, wz);          // hub cap
+      P.add('hullWood', cylX(0.046, 0.030, 12), s * 1.341, 0.36, wz);          // hub cap
       if (P.q) for (let bk = 0; bk < 6; bk++) {
         const ba = (bk / 6) * Math.PI * 2 + (wz * 2.1);
-        P.add('hullDark', box(0.016, 0.017, 0.017), s * 1.3115, 0.36 + Math.cos(ba) * 0.118, wz + Math.sin(ba) * 0.118);
+        P.add('hullWood', box(0.013, 0.014, 0.014), s * 1.3115, 0.36 + Math.cos(ba) * 0.118, wz + Math.sin(ba) * 0.118);
         const ra = ba + 0.52;                                                  // cast rib spokes on the cover face
         P.add('hullWood', KIT.xform(box(0.010, 0.135, 0.022), 0, 0, 0, ra, 0, 0),
           s * 1.3095, 0.36 + Math.cos(ra) * 0.165, wz - Math.sin(ra) * 0.165);
@@ -2143,7 +2302,7 @@ function buildISU122S(P) {
     //      (ref idler-end L 79.8 / sprocket-end 82.4 / road wheel 80.7 —
     //      one tone, +-3 across the whole run).
     P.add('hullWood', cylX(0.208, 0.016, 22), s * 1.291, 0.77, 2.53);         // idler cover (inside the wrap)
-    P.add('hullDark', KIT.xform(KIT.torus(0.150, 0.008, 18), 0, 0, 0, 0, 0, Math.PI / 2), s * 1.300, 0.77, 2.53); // single cast seam
+    P.add('hullWood', KIT.xform(KIT.torus(0.150, 0.008, 18), 0, 0, 0, 0, 0, Math.PI / 2), s * 1.300, 0.77, 2.53); // cast seam (self-color, r8)
     P.add('hullWood', cylX(0.068, 0.046, 14), s * 1.306, 0.77, 2.53);         // hub boss
     P.add('hullDark', cylX(0.038, 0.024, 12), s * 1.326, 0.77, 2.53);         // hub cap
     // sprocket: hub only — the r6 drive ring + 6 ring bolts were the second
@@ -2177,22 +2336,44 @@ function buildISU122S(P) {
     P.mats.canvasCloth.bumpScale = 0.18;         // cast grain, not canvas weave
     P.mats.canvasCloth.envMapIntensity = 0.08;   // r6: matte the sleeve — the 0.3 env fired the
     P.mats.canvasCloth.roughness = 0.97;         //  "polished pipe" streak/band highlights
+    // r8: the casting bucket carries the ONE-CAST gradient as per-vertex
+    // color (every hullCloth piece paints an attribute — pot field, snout
+    // family tones, ear lugs). Per-build mats instance + the material cache
+    // key already folds vertexColors, so no other build recompiles.
+    P.mats.canvasCloth.vertexColors = true;
+    P.mats.canvasCloth.needsUpdate = true;
     // hullGlass == the r7 DRUM bucket (claimed; the roof slits moved off it
     // via o.noPeriGlass). The stock glass is metalness 0.85 / roughness 0.12
     // — it MUST be re-set to the matte painted-steel family or the drums
     // render as chrome barrels.
-    P.mats.glass.color.setHex(0x656a5e);   // r7 round 2: drum body 96.8 -> ref 87.2 / p50 93.5
+    // r8 drum -9L (work-order item 4): body rect 96.1 -> the ref's own 87.2.
+    // Round 2: the first -9% hex cut measured a bare -0.2 on the done-gate
+    // rect — the smaller body (0.196) put MORE lit rim/hoop pixels in the
+    // fixed rect and masked the drop; body pixels micro-probed 104 where the
+    // ref's bright band is 95-99. Second -9% step lands the body family.
+    P.mats.glass.color.setHex(0x474b40);
     P.mats.glass.roughness = 0.95;
     P.mats.glass.metalness = 0.05;
     P.mats.glass.envMapIntensity = 0.08;
-    P.mats.wood.color.setHex(0x696e61);          // hullWood == wheel faces + BOTH end wheels:
-    P.mats.wood.bumpScale = 0.22;                //  ref wheel face 80.7 lit, ours 65.8 (601)
+    // r8 GREEN BUCKET KILL (work-order item 1, the loudest defect): the
+    // r7 wood/wheels/spareTrack hexes all ran mint (material Gex +9/+11/
+    // +16.5) and rendered the gear covers at Gex 12.0-13.5 vs the fleet's
+    // <=7-8 — the idler/sprocket read as pale-green discs and the sprocket
+    // teeth as a 10-12 petal "gear flower" (the banned isolated-teeth
+    // class). All three move to hull/wheel chroma (Gex <=8 material) —
+    // values keep parity except spareTrack, which also DARKENS toward the
+    // track band (~71) so the petal pads die into the wrap.
+    P.mats.wood.color.setHex(0x6a6e61);          // hullWood == wheel faces + end covers (Gex 7.5; round 7 +4% — the teeth darkening had dragged the end-cover rects to -10/-12 vs ref)
+    P.mats.wood.bumpScale = 0.22;
     P.mats.wood.envMapIntensity = 0.1;
     P.mats.detail.color.setHex(0x515549);        // fittings + the casemate flank skins: 82.0 -> ~76
     P.mats.dark.color.setHex(0x31362d);          // gunmetal: green-neutral (maroon purge)
-    P.mats.spareTrack.color.setHex(0x535c44);    // cleat ticks/louvre wells/spare links: +20%
+    P.mats.spareTrack.color.setHex(0x3f4237);    // sprocket teeth/cleats/shackles: wrap-dark, Gex 6.5
+    // (r8 round 6: at 0x46493e the tooth ring still read at 5x against the
+    // ref's smooth drum — the ref's own teeth hide inside its wrap; at wrap
+    // value the ring melts like the ref's.)
     P.mats.shadow.color.setHex(0x1e2418);        // r6: channel AO softened (the "void slot")
-    P.mats.wheels.color.setHex(0x616655);        // wheel dishes + end-wheel bodies: +23%
+    P.mats.wheels.color.setHex(0x5f6156);        // wheel dishes + end-wheel bodies (Gex 6.5)
     // r6 hull-family lift (item 9: proc panes 8-11 L darker on 12/14):
     // >1 multipliers over the camo map lift every scheme-painted plate;
     // the barrel shares the camo map — lift it identically.
@@ -2236,10 +2417,10 @@ function buildISU122S(P) {
       const m = ob.material;
       if (!m || !m.color) return;
       const hx = m.color.getHex();
-      if (hx === 0x3c3b2f) m.color.setHex(0x454a39);       // worn end-wheel drums (r7 +23%)
+      if (hx === 0x3c3b2f) m.color.setHex(0x45483c);       // worn end-wheel drums (r8: Gex 7.5, same L)
       else if (hx === 0x34332a) m.color.setHex(0x3b4034);  // inner chain layer (r7 +25%)
       else if (hx === 0x191715) m.color.setHex(0x1a1d13);  // 'holes' pocket floors
-      else if (hx === 0x41453a) m.color.setHex(0x606657);  // r7: link pads +22% — ground-run
+      else if (hx === 0x41453a) m.color.setHex(0x5f6359);  // link pads (r8: green-neutral, same L)
       // 601 ratio ref/proc 1.22 -> ~1.0 (the 0.92-1.16 law, re-measured)
     });
   }
