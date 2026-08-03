@@ -1136,3 +1136,12 @@ reproduced ("honest builder"). Identity killers dead; r8 = TONE round:
 green bucket (Gex 12-13.5 → ≤8), pot gradient + ruling-1 cheek shrink +
 collar −31L, wheel dimple halve, drum split + NOTCH CHECK (ruling-2
 clause 1 was skipped), plank/disc shading, roof relief + chimney shaft.
+
+## Shaded-parity r8 (2026-08-02) — FAIL 6.5 (floor HELD, first no-rise)
+Verdict: docs/critique/shaded-parity-isu122s-r8.md. Green bucket dead
+in all panes (real win) but executed as GLOBAL DARKENING: −8..−17L
+overshoots + p05 below ref 14/14. CIRCULARITY regressed (pot rounded-
+square; drum crescents — occlusion cert DISPROVEN by the ref's own
+render; critic evidence outranks row analysis). Gear light logic
+inverted (Δ39 vs ref Δ≤3; real air 1.33% vs 6.03%). r9 = calibrated
+lift + gear logic + true-ellipse pot + real disc caps.
