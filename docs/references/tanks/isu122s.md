@@ -1152,3 +1152,13 @@ ref-grade fit (rms 2.45 vs ref's own 3.09). Gear inversion dead. Lift
 confirmed. DECORATION FAILS: no roof MG anywhere (mandatory). Holders:
 rear-quarter composition, close pot material, front tone inversion.
 r10 opens with the MG.
+
+## r10 round + verdict (2026-08-03) — floor 7.0 → 8.0; ALL OWNER LAWS PASS
+r10 build (e59b390): DShK standing (six-pane read; left rod has true
+sky-under 14/19 — beyond the rig ruling), cap-forward disc faces at
+hero-rr, front un-inverted (crest 96-103), pot material fixed at 6x,
+cupola z-fight dead. Critic r10: FAIL 8.0 — largest rise in tank
+history; five r9 holders dead; graduation blocked by the MATERIAL TIER
+on big flats (iqr-0.00 surfaces; r8 item 7 never landed) + dead-rear
+cap circles + comb + deck density. Verdict:
+docs/critique/shaded-parity-isu122s-r10.md. r11 = material-tier round.
