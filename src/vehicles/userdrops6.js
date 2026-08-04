@@ -112,7 +112,13 @@ for (const spec of SPECS) {
 
 if (ALLOW_LOCAL_RECOVERED_MODELS) {
   articulated('is3_bergman', 'bergman_is3');
-  fixed('isu152');
+  // isu152: DUAL-GATE GRADUATE (2026-08-03) — the procedural build is the
+  // model of record everywhere (geometry min 90.2 gatePassed x2, graduation
+  // critic 9.0 on ALL fourteen views at round r6; floor climbed 4.0 -> 7.0
+  // -> 8.0 -> 8.5 -> 9.0 across six builder + four critic rounds). The
+  // recovered GLB (batch-17-warped) stays on disk as the measurement oracle
+  // only (override configs in procedural-fidelity.html + tmp-tank-critic
+  // .html); NO MODEL_SOURCE — freeze hash via tmp-hashgeo.
   // isu122s: DUAL-GATE GRADUATE (2026-08-03) — the procedural build is the
   // model of record everywhere (geometry min 90.1 gatePassed, independent
   // critic 9.0+ on all fourteen views, round 11; floor climbed 4.0 -> 9.0
@@ -137,7 +143,7 @@ export const USERDROP6_TANK_IDS = SPECS.map((s) => s.id);
 // Sourced-intent roster for garage bucketing: dual-gate GRADUATES leave this
 // list (they render our builds and chip under CUSTOM), everything else stays
 // in its era bucket even when public builds render procedural fallbacks.
-export const USERDROP6_SOURCED_IDS = USERDROP6_TANK_IDS.filter((id) => id !== 'm60a3' && id !== 'isu122s');
+export const USERDROP6_SOURCED_IDS = USERDROP6_TANK_IDS.filter((id) => id !== 'm60a3' && id !== 'isu122s' && id !== 'isu152');
 
 // USER DROPS wave 8 (scout-gen2 integration): chain-loaded here because
 // tankFactory.js (the usual registration hook) is frozen during the fleet
