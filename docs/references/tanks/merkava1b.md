@@ -806,3 +806,180 @@ round — both tanks were owned; 3b 5296950a / 3c 5287233e / 2b / 2d / 4 /
 Shots: shots/critic-merkava1b/ (14 views, final = this round's last
 render). Tools: tools/tmp-r11-verify.py (the one-shot order sweep, both
 tanks), tools/tmp-r11-warm.py (warm census/clusters).
+
+## SHADED-PARITY round r13 (2026-08-04, merkava family agent, respawned) — 90.0 PASS x2
+Verdict worked: docs/critique/shaded-parity-merkava1b-r12.md (FAIL floor
+8.4, four drivers + mandatory containment). Two agents: the original r13
+landed order 0 + the material halves of 1a/1b/3a/3c as uncommitted WIP
+(adjudicated per the merkava-r9 protocol: gate 90.0 PASS, gatePassed true,
+containment 119/607 -> 8/0 — KEPT); this respawn delivered the rest over
+six measured cycles. Gate at landing: **90.0 PASS x2 bit-identical**
+(hull 91.2 / whole 90.0 / turret 90.9 / stations 91.4 / dims 100 /
+floaters 100; gatePassed re-read true each run). Component drift across
+the round: turret +0.4 (the smoke-cluster down-slope is ref-parity on the
+side masks), stations -0.5 (drum graze crowns + quilt end-corners at
+slice boundaries — priced knowingly). Standard-check: gate ok, clip 8/0 ok,
+contig 0 ok, decor mg0+0d = the standing §I owner-call carry (hand-authored
+ref-parity instruments, 3-series precedent). Hashes: 1b **106b0074** (was
+6bcb98c9); graduates BYTE-EXACT 3b a4ed2c82 / 3c 1d9b026c / 3d 954a9650;
+2b 9bfe0895 / 2d 62456460 / 4 e1d164dc / 4b d44a3624 all unchanged.
+
+Per-order (fresh official pairs each cycle; windows from the r12 verdict):
+0. CONTAINMENT ✓ 8/0 vs the <=60 band (was 119/607). WIP recipe: station
+   yB lifts above the wrap crest (tail 0.98/0.94/0.90 -> 1.17/1.20/1.20),
+   keel hwClamp 1.15, rack wrapClear {x 1.15, bot 1.20, z -4.07} + rear
+   sub-slab, curtain backZ0 1.80, idler cover +14 mm out, flap/fill
+   nudges, deckStow slot filler (§B2). Residual 8 = a one-voxel-layer kiss
+   at y 1.0, z 2.06-2.10 (the z-2.08 station bottom flange crossing the
+   DESCENDING sprocket-wrap shell); every candidate nudge trades into the
+   crest voxel layer — left honest, documented.
+1a ✓✓ close-front sub-30 census 1995 -> 391 (WIP padHex/gearFloor) -> **0**
+   (ref 0); wheel-window p5 85.2 (>=45). THE FIND: the surviving 391 were
+   RGB(25,25,20) EXACTLY = the sprocket/idler dark parts (teeth/root
+   rings/bolts) on the SHARED family spareTrack mat under the ~0.417
+   deep-shade display floor — the pad/chain clones were never the
+   offender. Fix = p.gearDarkLift (1B-only): spinner-scoped spareTrack
+   clone at 0x544e42 (shade ~35 = the ref's own darkest gear-cell class),
+   floor hook re-attached (Material.clone() drops onBeforeCompile — r12
+   lesson re-confirmed). The recess buckets (hullTrack/turretTrack) keep
+   their certified 26-class voids.
+1b ✓ rear idler bullseye dead: disc zone med 56.0 (<=65, was ~90 pale);
+   dead-rear corners p5 56.0 (>=46.5 — no black-pocket return).
+1c ✓ done-gate met visually (4x stern crop reads ONE continuous warm band
+   around the idler like the ref): cover disc widened r*0.93 -> r*1.02
+   (still 11 mm inside the band inner shell = zero audit voxels) + the
+   teeth lift + padHex 0x1d1b16 -> 0x2b2820 killing the black-vs-pale comb
+   contrast. The through-gap 94.4-camo slivers are gone.
+2a PARTIAL p5 60.2 final (<=55 ordered; hit 53.6 on two mid-round
+   renders — the p5 rides a small under-run population, +-7 across
+   renders; the sleeve lower-quadrant dark runs are the carrier). p75
+   97.9 vs >=103 RESIDUAL — see law #2 (same-bucket crowns on the tube's
+   own lit top are tone-invisible; the ref's 105-112 mass is its ring
+   fittings + brighter tube specular, gun-bucket-bound). Sleeve-end clamp
+   flipped pale (scl.pale — the measured ref ring tone med 102/p75 110;
+   the 3D sleevePale finding repeated, but the ring sits at img x 573,
+   outside the [330..560] window, so it prices the VIEW not the window).
+2b ✓ view-top sub-55 2038 -> 1164 vs ref 1103 (1.06x, ordered <=1.5x):
+   the differential cell map pinned ~850 of the excess on TWO 41.5-class
+   hairlines at x +-1.75 the full hull length — the 25 mm slot between
+   the fender-plank outer edge and the curtain sheet, dropping 0.4 m to
+   the gear. sc.lipFill sill (top 1.418, under both neighbor lines)
+   closed it. sub-38 11 (ref 39; order band 15-30 — glacis pits later
+   joined the cloth bucket, see 2c); close-roof sub-45 472 vs ref 744.
+2c keel ✓ sd 6.48/6.45 (>=5 ordered; ref 9.12): micro-facet quilt on the
+   rear wedge face — material+graze carries it (cloth wash plates for the
+   84-class low half + up-pitched crown slivers, the r6 0.55-0.72 rad
+   class, for the 101-106 tail); in-plane tilt jitter alone is a no-op on
+   an ambient-lit rear face. med 97.6 vs ref 102.6 residual (palette:
+   nothing in the hull buckets renders >base on that face; crowns carry
+   the p95 only).
+2c "glacis-top band" — THE WINDOW DECODE (law #3): view-top frames
+   TAIL-UP; the verdict's [200..440]x[60..120] = the STERN PLAN zone
+   (z -3.17..-4.12), not the glacis. Both were quilted: stern-plan
+   (c.sternQuilt, 18 plates + 2 pockets + 2 grazes on the tail-deck
+   gTop) lands sd 9.12 (>=9 ordered; ref 11.5) / p5 69.2 / p75 93.8 (ref
+   76.1/91.2); med 91.9 vs 85.7 RESIDUAL — the deck base bucket is the
+   binding constraint (cloth reads ~90 top-lit; a deck-wide family-bucket
+   retone is out of a solo round's lane). True-glacis zone
+   ([200..440]x[430..500]) lands med 86.2 / sd 7.97 vs ref 87.0 / 6.15 —
+   parity class (c.glacisQuilt 22 plates, cloth-biased mix, trimmed once
+   after a first cut overshot the dark tail).
+2d ✓ visual: the drawn circle pair is broken — chained pale tangent
+   boxes cover the ring/lid tori tops along the sun arc (key azimuth
+   ~0.90 rad from +z), dark band survives only on the shade arc; every
+   box top stays 2.5 mm under the torus crest (zero silhouette columns).
+3a ✓ stable all six cycles: y290-330 band p5 84.7 (>=70 ordered, ref 90):
+   the WIP's pocket retone (two pockets + low pit -> clothMat lit-kit
+   class, two upper pits kept dark per the verdict's <=2-cells rule).
+3b PARTIAL-BANKED air 5.6% vs >=15% (ref 32.5%). THE STRUCTURAL FIND
+   (probe-verified, tools/tmp-r13-rearprobe.{html,mjs} — rays through the
+   actual critic camera at the window pixels): the [260..380]x[210..250]
+   band is the FORWARD-ROOF SKYLINE in the (0,0.08,-1)-tilted rear ortho —
+   its blockers are the r6 dead-front camber/flanking pots (gate-tuned
+   front-row carriers), the saddle plates (certified roofline), the .50
+   cluster riding the dome (the r12-certified honest cap), and the
+   crown/shelf lines. The ref's 32.5% air exists because ITS equivalents
+   are root-rigged and mask-absent (the r6 decode) and its .50 floats at
+   h' 2.83 with sky runs under it — both certified-blocked for this
+   build. The sanctioned mechanisms were landed anyway (grammar value,
+   zero gate cost): vane center-lane dips 0.058-0.072 + lanes 7/8
+   0.055/0.060 (front top edge h' 2.655-2.67), rear-rail center dips
+   0.075/0.100, smoke cluster slid down-slope (dy -0.09/dz +0.25 —
+   turret +0.4 on the gate), center roll relocated (WIP). Arc thinning
+   was ANALYZED OUT: its pipes sit under the crown line at the open
+   slots and its apex top is a certified plan carrier top-aligned
+   thinning cannot lower.
+3c PARTIAL-PLATEAUED hero-rr [420..500]x[325..385]: med 77.2 -> 78.1 /
+   p75 79.2 -> 82.9 / p5 59.8 -> 64.3 / p95 104.6 (ordered 81/88/-/<=107;
+   ref 85.8/99.5/75.2/107.2) over five content passes: slat rows on the
+   near frame (sun-graze rolled, the flat first cut was tone-on-tone
+   invisible), roll stack fattened 0.055x0.014 -> 0.085x0.030 + second
+   row + widened, pack rear-FACE ledge crowns (the in-pack strips were
+   embedded — law #1), rail-top strips upsized, frame darks retoned to
+   the ref's own 75-class shadow floor (turretDark -> turretCloth on the
+   1B rimJit path: mid rails, posts, corner posts, strap seam, arc plan
+   borders — the ref basket's darkest window content is 75.2, not
+   gunmetal 56). The residual med/p75 gap is the ambient-77 pack/vane
+   wall mass — the r11 conclusion (needs geometry above the razor-blocked
+   rim or a lighting-class change) re-confirmed with five more measured
+   mechanisms; banked.
+
+LAW DISCOVERIES (bank):
+1. EMBEDDED-GEOMETRY NO-OP CLASS: three separate cuts this round measured
+   BYTE-EQUAL windows because the new geometry never reached the surface
+   (tube strips 3 mm INSIDE the solid sleeve; pack strips inside the
+   solid pack; keel pieces placed outside the measured window). Tone
+   strips must ride ON the surface (the r8-3D "4 mm proud wrinkle-run"
+   class is the precedent), and every new strip needs a window-coordinate
+   check before the cycle is spent.
+2. SAME-BUCKET CROWNS ARE TONE-INVISIBLE on their own lit line: a camo
+   strip on the camo tube's lit top cannot move quartiles at any width;
+   graze needs a bucket delta or a real N.L delta. And rx-pitching a long
+   strip lifts its END corners len/2*sin(rx) off the surface — stations
+   -1.2 caught at the gate before render (reverted to rz-roll only).
+3. CRITIC-WINDOW WORLD-MAPPING must be probe-derived, not assumed (three
+   wrong camera models this round): view-rear is an ortho tilted
+   (0,0.08,-1) — h'=y+0.08|z| toward the horizon, view-front mirrors it,
+   view-top frames TAIL-UP (rows 60-120 = stern plan; the r12 "glacis-top
+   band" numbers were the stern deck), and view-left puts the bow at
+   img-RIGHT. tools/tmp-r13-rearprobe.{html,mjs} (build + exact critic
+   camera + per-pixel raycast) is the reusable instrument.
+4. spareTrack deep-shade display floor ~0.417x albedo (measured
+   (60,58,51) -> (25,25,20) uniform): target-albedo arithmetic for dark-
+   gear retones (35-class shade needs ~84-class albedo).
+5. RENDER NONDETERMINISM: whole-image censuses swing between critic runs
+   (ref sub-55 472 -> 1103 across rounds; small-window p5 +-7) — only
+   same-run ref-relative readings are stable; banked absolutes must be
+   re-derived (bank law held).
+
+RESIDUALS carried (with the r12 certified list): 3b air (structural,
+probe-documented), 3c med/p75 (lighting-class), 2a p75 (gun-bucket-bound),
+2c stern-plan med (deck base bucket), order-0 8-voxel kiss, mg0+0d §I
+owner call, .50 free-sky float, dome crown arc, rim-cresting contents,
+fender-nose watch items.
+
+Self-read (changed views): view-left/right ~8.7 (gear band + tube anatomy
++ flank texture), close-front ~8.8 (census 0, continuous wrap), view-rear
+~8.6 (frame retone + quilts; air structural), view-top ~8.8 (seam network
++ stern texture), hero-rr ~8.6 (quartiles up but the wall mass stands),
+close-roof ~8.7 (dome asymmetry). Not claiming 9.0 — the three banked
+residual classes are real; next lane is the orchestrator's (lighting/
+bucket-class calls are family-level).
+Shots: shots/critic-merkava1b/ (14 views, final = this round's last
+render). Tools: tools/tmp-r13-rearprobe.{html,mjs} (window ray probe);
+measure driver session-local (scratchpad measure-r13.py).
+
+## Orchestrator arbitration rulings (post-r13)
+1. **Order-3b dead-rear air RULED: certified structural bound at the
+   delivered ~5.6%.** Probe-verified: the ref's 32.5% air comes from
+   root-rigged mask-absent fittings + its floating .50 — both classes
+   certified-blocked on our side (floaters law; mask-node law). The
+   sanctioned mechanisms (vane/rail dips, smoke down-slope, roll
+   relocation) landed at zero gate cost. Critics judge the rear skyline
+   READ; the air percentage alone must not floor a view (corner-air
+   precedent).
+2. **Orders 2a/3c lighting-class floors RULED CERTIFIED**: the ambient-77
+   wall mass (r11-confirmed lighting class, re-confirmed r13) and the
+   same-bucket crown invisibility on the tube's lit top are rig-grammar
+   floors, not albedo debts — no further tone grinding on those windows;
+   structure/relief lanes stay fair.

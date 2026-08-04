@@ -137,6 +137,47 @@ function merkavaChassis(P, c) {
     [kihw * 0.96, tail.yB, wedgeZ], [-kihw * 0.96, tail.yB, wedgeZ],
     [-kihw, k.bellyY + 0.3, k.tailLowZ - 0.2], [kihw, k.bellyY + 0.3, k.tailLowZ - 0.2],
     [kihw * 0.96, tail.yB + 0.2, wedgeZ], [-kihw * 0.96, tail.yB + 0.2, wedgeZ]));
+  if (c.keelQuilt) {
+    // r13b order 2c (1B, critic r12 driver B): the wedge's dead-rear faces
+    // measured sd 0.32-1.39 vs the ref's cast 8-9 (a 4-vertex slab face
+    // interpolates the baked vertex jitter into one smooth wash). A
+    // micro-facet quilt re-breaks it: same-bucket plates lying ~in the
+    // face plane, each with its own pitch/roll (N.L spread under the
+    // (30,42,24) key) and its own baked-jitter verts. Plates sit 6 mm
+    // proud toward the rear camera — the rear silhouette extremes at
+    // these columns are the rack/flaps 0.4 m further aft, and the side
+    // view is wrap-band-occluded; mask-neutral.
+    const kqN = (wedgeZ - k.tailLowZ) / (tail.yB - k.bellyY); // face dz/dy
+    const kqA = Math.atan(-kqN); // base pitch matching the face plane
+    // (r13b second cut: the first mix measured sd 1.3-2.0 — hullDetail
+    // renders AT the camo base on an ambient-lit rear face, and the
+    // in-plane tilts move nothing on an unlit face. The spread now comes
+    // from MATERIAL + SUN-GRAZE: cloth wash plates carry the ref's 87-95
+    // low half, up-pitched crown slivers (the r6 0.55-0.72 rad class,
+    // proven 103-118 from the rear) carry its 105-112 top quartile.)
+    for (const sq of [-1, 1]) {
+      for (let q = 0; q < 8; q++) {
+        const fx = 0.50 + ((q * 37) % 5) * 0.118 + (q % 2) * 0.04;      // 0.50..1.01 (side edge kihw-0.06 guarded)
+        const fu = 0.14 + ((q * 23) % 4) * 0.155 + ((q * 7) % 2) * 0.05; // 0.14..0.65
+        const qy = k.bellyY + fu * (tail.yB - k.bellyY);
+        const qz = k.tailLowZ + fu * (wedgeZ - k.tailLowZ) - 0.006;
+        const dp = [-0.16, -0.07, 0.06, 0.13][(q * 5) % 4] * (sq > 0 ? 1 : -0.9);
+        const rl = [0.10, -0.08, 0.05, -0.11][(q * 3) % 4];
+        const km2 = ['hullCloth', 'hull', 'hullCloth', 'hull'][(q * 11) % 4];
+        P.add(km2,
+          box(0.11 + ((q * 13) % 3) * 0.045, 0.008, 0.09 + ((q * 17) % 3) * 0.03),
+          sq * fx, qy, qz, kqA + dp * 0.5 + 1.5708, 0, rl);
+      }
+      // up-pitched crown slivers: thin lit lines on the face (top-quartile
+      // carriers); 8 mm proud toward the rear camera, rack/flap-occluded
+      // everywhere else.
+      P.add('hull', box(0.14, 0.014, 0.024), sq * 0.68, k.bellyY + 0.31, k.tailLowZ - 0.075 - 0.008, 0.62, 0, sq * 0.06);
+      P.add('hull', box(0.11, 0.013, 0.022), sq * 0.95, k.bellyY + 0.17, k.tailLowZ - 0.040 - 0.008, 0.58, 0, -sq * 0.05);
+      P.add('hull', box(0.10, 0.012, 0.020), sq * 0.93, k.bellyY + 0.145, k.tailLowZ - 0.034 - 0.008, 0.60, 0, sq * 0.04);
+      P.add('hullCloth', box(0.12, 0.008, 0.10), sq * 0.96, k.bellyY + 0.30, k.tailLowZ - 0.074 - 0.006, kqA + 1.5708 - 0.06, 0, -sq * 0.07);
+      P.add('hullDark', box(0.10, 0.0055, 0.014), sq * 0.82, k.bellyY + 0.24, k.tailLowZ - 0.058 - 0.006, kqA + 1.5708, 0, sq * 0.08);
+    }
+  }
 
   // Fender planks: the measured plan keeps a near-full-width footprint all
   // the way to the nose line — the prow narrows only between the planks.
@@ -216,8 +257,31 @@ function merkavaChassis(P, c) {
         // r10: sc.backH extends the plate DOWN (1B: the ref's pale between-
         // wheel windows run to world ~0.28; the 0.42 plate stopped at 0.49
         // and the lower half of every window went dark). Top edge pinned.
+        // r13 §B4 opt-in sc.backZ0 (1B track containment): the backer's
+        // forward end cap + side faces stood inside the sprocket-wrap
+        // annulus (exact-voxel hits at x ±1.44..1.48, z 2.06..2.30). The
+        // plate ends at backZ0 instead — everything forward of ~1.82 was
+        // side-occluded by the wrap band itself (windows start at wheel 1),
+        // so the read is unchanged. Siblings without the param byte-exact.
         const bH = sc.backH ?? 0.42;
-        P.add('hull', box(0.030, bH, sc.z0 - sc.z1 - 0.05), s * (sc.x - 0.33), sc.bot + 0.05 - bH / 2, (sc.z0 + sc.z1) / 2);
+        const bz0 = sc.backZ0 ?? sc.z0;
+        P.add('hull', box(0.030, bH, bz0 - sc.z1 - 0.05), s * (sc.x - 0.33), sc.bot + 0.05 - bH / 2, (bz0 + sc.z1) / 2);
+        // r13b order 2b opt-in sc.lipFill (1B): the 25 mm slot between the
+        // fender-plank outer edge and the curtain sheet dropped 0.4 m to
+        // the gear and drew TWO 41.5-class hairlines the full hull length
+        // from the top (differential sub-55 map: cells x208/x416 y240-448,
+        // ~850 of the 935 excess px — the ref's plan seam network is half
+        // ours). A pale sill closes the slot 14 mm down: top 1.418 stays
+        // under the curtain top AND the plank plane, so no ortho column
+        // moves; segmented <=0.47 m (station end-cap law).
+        if (sc.lipFill) {
+          const fSegs = Math.max(2, Math.ceil((sc.z0 - sc.z1) / 0.47));
+          const fL = (sc.z0 - sc.z1) / fSegs;
+          for (let fk = 0; fk < fSegs; fk++) {
+            P.add('hull', box(0.030, 0.030, fL - 0.006),
+              s * (sc.x - 0.0475), sc.top - 0.017, sc.z0 - (fk + 0.5) * fL);
+          }
+        }
       } else {
         // dark hem line + soft shadow wall behind the hem (the gear shades
         // off through the slot below like the skirted marks' backer)
@@ -550,6 +614,75 @@ function merkavaChassis(P, c) {
       P.add('hullDark', KIT.cylX(0.018, 0.10, 8), tx, tyE - 0.012, c.keel.toeZ + 0.042);
     }
   }
+  if (c.glacisQuilt) {
+    // r13b order 2c (1B, critic r12 driver B): the glacis-top band read
+    // med 92.1 / sd 6.56 vs the ref's cast 85.7 / 11.5 — bright and half
+    // the texture (one interpolated slab face). Micro-facet quilt: large
+    // same-bucket plates riding gTop with per-plate pitch/roll biased
+    // AWAY from the (30,42,24) key (most tilt -N.L: the med comes DOWN as
+    // the spread opens), plus a few detail chips and two hairline pits
+    // for the distribution tails. 3 mm proud, end-poke <=16 mm (tilt cap
+    // 0.12), all inside the plank lines/plan footprint: mask-neutral.
+    // Lanes dodge the driver hatch/louvre bank (outboard thirds + a low
+    // center strip under the cable run).
+    // (r13b second cut: 14 plates at ~24% in-window coverage moved med/sd
+    // by noise only — the cloth wash lands 83-89, overlapping the base's
+    // own low quartile, so it needs REAL coverage. 22 bigger plates
+    // (~45-50%), cloth-heavy mix.)
+    for (let gq = 0; gq < 22; gq++) {
+      const lane = gq % 3; // 0: left band, 1: right band, 2: center-low
+      const gx = lane === 2
+        ? -0.48 + ((gq * 13) % 4) * 0.30
+        : (lane ? 1 : -1) * (0.88 + ((gq * 37) % 4) * 0.155);
+      const gz = lane === 2
+        ? 2.30 + ((gq * 7) % 4) * 0.125
+        : 1.24 + ((gq * 23) % 8) * 0.183;
+      const gw = 0.26 + ((gq * 17) % 3) * 0.07;
+      const gd = 0.17 + ((gq * 11) % 3) * 0.06;
+      const dp2 = [-0.12, -0.08, -0.10, 0.06, -0.05][(gq * 5) % 5];
+      const rl2 = [-0.13, -0.05, -0.09, 0.08][(gq * 3) % 4];
+      // material mix IS the med/sd dial (the glacis rake sits ~at the key
+      // light's stationary point, so pitch jitter alone is +-1L): the
+      // pale-mark cloth bucket (r3 canvas-shade channel, 0x464a3e) carries
+      // the 83-88 wash, camo the base, detail chips the 96+ tail.
+      // (r13b trim: the cloth-heavy first mix measured med 86.1 / sd 8.83 /
+      // p5 65.2 vs the REAL-glacis-zone ref 87.0 / 6.15 / 79.4 — a touch
+      // past the ordered class on the dark tail. One cloth slot returns
+      // to base; the dark pits shrink below p5 weight.)
+      const gm2 = ['hullCloth', (gq % 2 ? 'hullCloth' : 'hull'), 'hull',
+        'hull', (gq % 4 === 1 ? 'hullDetail' : 'hullCloth')][(gq * 7) % 5];
+      P.add(gm2, box(gw, 0.007, gd),
+        gx, gTop(gz) + 0.004, gz, rxAt(gz) + dp2, 0, rl2);
+    }
+    // (pits joined the cloth bucket — the ref's REAL glacis zone carries
+    // p5 79.4 with NO deep pockets; the hullDark pair read 65-68.)
+    P.add('hullCloth', box(0.06, 0.0055, 0.014), -1.02, gTop(1.62) + 0.0035, 1.62, rxAt(1.62), 0, 0.06);
+    P.add('hullCloth', box(0.05, 0.0055, 0.012), 0.78, gTop(2.42) + 0.0035, 2.42, rxAt(2.42), 0, -0.05);
+  }
+  if (c.sternQuilt) {
+    // r13b (the TRUE critic-r12 "glacis-top" window): the banked view-top
+    // [200..440]x[60..120] numbers decode to the STERN PLAN zone (the top
+    // camera frames tail-up: rows 60-120 = z -3.17..-4.12) — the tail
+    // deck/rack plan read med 92.1 / sd 6.8 vs the ref's 85.7 / 11.5,
+    // bright and half the texture. Same quilt recipe as the glacis: cloth
+    // wash + base plates riding gTop (the loft tail deck interpolator
+    // covers these stations), two small deep pockets (the ref's few-deep-
+    // pockets ink law; whole-image sub-38 stays ~26 <= the 15-30 order
+    // band), two graze slivers for the bright tail. All flush (<=4 mm),
+    // plan-interior (|x|<=1.42 vs deck half-width 1.64+).
+    for (let sq2 = 0; sq2 < 18; sq2++) {
+      const sx2 = (sq2 % 2 ? 1 : -1) * (0.30 + ((sq2 * 29) % 6) * 0.22);
+      const sz2 = -3.36 - ((sq2 * 17) % 7) * 0.118;
+      const sm2 = ['hullCloth', 'hull', 'hullCloth', (sq2 % 3 === 1 ? 'hullDetail' : 'hullCloth')][(sq2 * 7) % 4];
+      P.add(sm2, box(0.22 + ((sq2 * 13) % 3) * 0.07, 0.0065, 0.15 + ((sq2 * 11) % 3) * 0.05),
+        sx2, gTop(sz2) + 0.004, sz2, rxAt(sz2) + [-0.05, 0.04, -0.03, 0.05][(sq2 * 5) % 4], 0,
+        [-0.06, 0.05, -0.04, 0.07][(sq2 * 3) % 4]);
+    }
+    P.add('hullDark', box(0.05, 0.006, 0.045), -0.72, gTop(-3.62) + 0.0035, -3.62, rxAt(-3.62), 0, 0.05);
+    P.add('hullDark', box(0.045, 0.006, 0.05), 0.95, gTop(-3.96) + 0.0035, -3.96, rxAt(-3.96), 0, -0.04);
+    P.add('hull', box(0.16, 0.013, 0.024), 0.55, gTop(-3.52) + 0.006, -3.52, rxAt(-3.52) + 0.58, 0, 0.04);
+    P.add('hull', box(0.13, 0.012, 0.022), -0.85, gTop(-3.88) + 0.006, -3.88, rxAt(-3.88) + 0.55, 0, -0.05);
+  }
   if (c.bowHug) {
     // 3D/1B visual r2 (family ban item 5): the 3-point catenary rendered as
     // a BOW SMILE — one deep sagging arc dominating the glacis. The ref bow
@@ -792,10 +925,25 @@ function merkavaChassis(P, c) {
       P.add('hullDetail', KIT.cylX(c.sprocket.r * 0.93, 0.012, 16), s * wfXs, c.sprocket.y, c.sprocket.z);
       P.add('hullDark', KIT.cylX(c.sprocket.r * 0.42, 0.014, 10), s * (wfXs + 0.004), c.sprocket.y, c.sprocket.z);
       P.add('hullDetail', KIT.cylX(c.sprocket.r * 0.16, 0.016, 8), s * (wfXs + 0.009), c.sprocket.y, c.sprocket.z);
-      const wfXe = xc + c.trackW / 2 + 0.004;
-      P.add('hullDetail', KIT.cylX(c.idler.r * 0.93, 0.012, 16), s * wfXe, c.idler.y, c.idler.z);
+      // r13 §B4: at +0.004 the idler cover's inner-face samples rounded onto
+      // the band's outer-face voxel plane and clipped the wrap ring (14
+      // exact voxels) — the disc rides 14 mm further out (outermost face
+      // 1.735, still the certified ±1.73 col; 0.3 px side-view shift).
+      // r13 order 1b (critic r12 driver A): the pale cover here was the
+      // REAR IDLER BULLSEYE — the ref's idler is dark/occluded (only the
+      // FRONT sprocket cover is ref-true pale). Disc face + hub join the
+      // dark-gear class (hullDark ~56, NOT the 26-class track channel — the
+      // r8 black-pocket must not return; dead-rear corner p5 >= 46.5 gate).
+      const wfXe = xc + c.trackW / 2 + 0.018;
+      // r13b order 1c: cover widened r*0.93 -> r*1.02 — the 4x stern crop
+      // showed hull-camo (94.4-class) slivers through the pad gaps around
+      // the disc rim; the wider dark face closes the annulus between the
+      // old cover edge and the band inner shell (still 11 mm inside the
+      // band inner radius = zero audit voxels; side silhouette unchanged —
+      // the wrap ring's own disc covers r<=0.355 there).
+      P.add('hullDark', KIT.cylX(c.idler.r * 1.02, 0.012, 16), s * wfXe, c.idler.y, c.idler.z);
       P.add('hullDark', KIT.cylX(c.idler.r * 0.42, 0.014, 10), s * (wfXe + 0.004), c.idler.y, c.idler.z);
-      P.add('hullDetail', KIT.cylX(c.idler.r * 0.16, 0.016, 8), s * (wfXe + 0.009), c.idler.y, c.idler.z);
+      P.add('hullDark', KIT.cylX(c.idler.r * 0.16, 0.016, 8), s * (wfXe + 0.009), c.idler.y, c.idler.z);
     }
   }
 
@@ -1321,10 +1469,39 @@ function merkavaChassis(P, c) {
             cx0 = dx1;
           }
           if (cx0 < railX) segs.push([cx0, railX, 0]);
+          // r13 §B4 opt-in tr.wrapClear {x, bot, z} for the dips path (1B):
+          // the body segments' bottom band (0.94..1.17) stood inside the
+          // idler-wrap annulus — outboard of wrapClear.x the segment bottoms
+          // lift to wrapClear.bot (above the wrap crest), the notch tops and
+          // the whole rear face stay EXACTLY where the r7 shoulder-de-rule
+          // certified them: a rear sub-slab (wrapClear.z .. z-rear, behind
+          // the wrap's rear face) restores the y 0.94..bot band so the
+          // dead-rear face footprint is byte-identical in the masks. Removed
+          // volume faces the wrap only (band paints those columns). Siblings
+          // without the param keep the single-box loop byte-exact.
+          const wc = tr.wrapClear;
           for (const [sx0, sx1, drop] of segs) {
-            const sw = sx1 - sx0, sxm = s * (sx0 + sx1) / 2;
             const th = (tr.top - tr.bot) * 0.94 - bodyDrop - drop;
-            P.add(rackMat, box(sw, th, len * 0.94), sxm, tr.bot + (tr.top - tr.bot) * 0.03 + th / 2, mid);
+            const yBase = tr.bot + (tr.top - tr.bot) * 0.03;
+            const parts = wc && sx1 > wc.x
+              ? (sx0 < wc.x ? [[sx0, wc.x, false], [wc.x, sx1, true]] : [[sx0, sx1, true]])
+              : [[sx0, sx1, false]];
+            for (const [px0, px1, lifted] of parts) {
+              const sw = px1 - px0, sxm = s * (px0 + px1) / 2;
+              const pb = lifted ? wc.bot : yBase;
+              P.add(rackMat, box(sw, yBase + th - pb, len * 0.94), sxm, (yBase + th + pb) / 2, mid);
+            }
+          }
+          if (wc) {
+            // rear sub-slab: the lifted segments' lower band re-lands behind
+            // the wrap (front face at wrapClear.z, one voxel clear of the
+            // annulus rear extreme) so the dead-rear corner read + side
+            // columns keep their certified bottoms. Rear face rides tr.z1
+            // (the raised loft tail plate's old plane) so the last side
+            // column keeps painted down to 0.94 — no sub-pixel mask seam.
+            const bT = wc.bot + 0.02, bB = tr.bot + (tr.top - tr.bot) * 0.03;
+            P.add(rackMat, box(railX - wc.x + 0.02, bT - bB, wc.z - tr.z1),
+              s * (wc.x - 0.02 + railX) / 2, (bT + bB) / 2, (wc.z + tr.z1) / 2);
           }
         } else if (tr.frontClear) {
           // r12 CONTAINMENT opt-in tr.frontClear {z, bot}: the rack body's
@@ -1466,8 +1643,13 @@ function merkavaChassis(P, c) {
         // r12 §B4 (frontClear marks): the backer plane stood inside the
         // idler-wrap annulus — it re-seats behind the wrap's rear face
         // (same backdrop job through the frame gaps).
+        // r13 §B4 (wrapClear/1B): same move for the dips path — the plane
+        // crossed the wrap crest (60 exact voxels); on 1B it is fully
+        // embedded in the solid dips body either way (render-inert), so the
+        // rearward seat is visually free.
         P.add(c.rackVoid && !c.rackX ? 'hullTrack' : 'hullDark', box(wd + 0.02, (tr.top - tr.bot) * 0.9, 0.022), xm, (tr.top + tr.bot) / 2 - 0.01,
-          tr.frontClear ? Math.min(mid + 0.28 * len, tr.frontClear.z - 0.03) : mid + 0.28 * len);
+          tr.frontClear ? Math.min(mid + 0.28 * len, tr.frontClear.z - 0.03)
+            : tr.wrapClear ? mid - 0.28 * len : mid + 0.28 * len);
         if (c.rackVoid) {
           // r4 grammar audit: the 40 mm frame grid (rails + posts at every
           // bay corner) read as crate framing / ladder rungs from dead
@@ -1480,8 +1662,14 @@ function merkavaChassis(P, c) {
           P.add('hullDark', box(rTh, rTh, len), s * railX, tr.top - 0.04, mid);
           // r12: with frontClear the BOTTOM side rail (rides tr.bot, inside
           // the wrap annulus up front) clamps to the rear segment.
-          if (tr.frontClear) {
-            P.add('hullDark', box(rTh, rTh, tr.frontClear.z - tr.z1), s * railX, tr.bot + 0.04, (tr.frontClear.z + tr.z1) / 2);
+          // r13 (wrapClear/1B): same clamp — the rail's forward run crossed
+          // the wrap shells at the band's outer-face plane; the surviving
+          // stub keeps the tail-station width carrier class, and losing the
+          // dark hairline OVER the wrap band is order-1c-aligned (continuous
+          // dark band around the idler).
+          const railClearZ = tr.frontClear ? tr.frontClear.z : tr.wrapClear ? tr.wrapClear.z : null;
+          if (railClearZ !== null) {
+            P.add('hullDark', box(rTh, rTh, railClearZ - tr.z1), s * railX, tr.bot + 0.04, (railClearZ + tr.z1) / 2);
           } else P.add('hullDark', box(rTh, rTh, len), s * railX, tr.bot + 0.04, mid);
           // rear top rail split + dipped (its straight full-width line was
           // a 50 px hull-crown run in the elevated front camera)
@@ -1534,7 +1722,12 @@ function merkavaChassis(P, c) {
       }
       // r12: with frontClear the left jerry can re-seats onto the rear
       // segment (its old perch overhung the idler-wrap crest — §B4 hits).
-      KIT.jerryCan(P, c.paleKit ? 'hullDetail' : 'hullCloth', -railX + 0.25, tr.top - 0.34,
+      // r13 (wrapClear/1B): on the dips path the can is FULLY EMBEDDED in
+      // the solid rack body (render-inert since r7) but its surfaces still
+      // voxel-hit the wrap crest — it slides inboard of the band's inner
+      // face (still embedded, zero visual delta).
+      KIT.jerryCan(P, c.paleKit ? 'hullDetail' : 'hullCloth',
+        tr.wrapClear ? -1.02 : -railX + 0.25, tr.top - 0.34,
         tr.frontClear ? (tr.frontClear.z + tr.z1) / 2 + 0.06 : mid + 0.06, 0.15);
     } else {
       for (const ry of [tr.bot + 0.04, tr.top - 0.04]) {
@@ -1822,7 +2015,10 @@ function merkavaChassis(P, c) {
         // bottoms ride flap-band side cols the ref reads continuous — the
         // A/B pair (fills present 91.2 hull / removed 90.8) prices them
         // gate-positive. Kept as mask content.
-        P.add('hullDark', box(0.30, 0.22, 0.20), s * xcF, 0.895, -4.12);
+        // r13 §B4: -4.12 -> -4.14 — the deep fill's forward face was
+        // voxel-coincident with the idler wrap's rear pole (72 exact vox);
+        // 2 cm aft = 1.4 px in the side ortho, same side-col class.
+        P.add('hullDark', box(0.30, 0.22, 0.20), s * xcF, 0.895, -4.14);
         P.add('hullDark', box(0.34, 0.13, 0.02), s * xcF, 0.975, -4.06);
       }
     }
@@ -2342,6 +2538,13 @@ function merkavaBasket(P, b) {
   // rails/posts stay dark for depth. 3b/3c and the 2-series keep the dark
   // rims byte-identical (b.soft off).
   const rimMat = b.soft ? 'turret' : 'turretDark';
+  // r13b order 3c (rimJit marks = 1B): the ref basket's DARKEST window
+  // content is 75-class (hero-rr ref p5 75.2 / p25 81.5 — warm mid frame
+  // members over shade, not gunmetal); the proc's 56-60 dark rails/posts
+  // dragged p5 to 59.8 and pinned the quartiles. The 1B frame joins the
+  // cloth-shade bucket (renders 77-84 shaded = the ref's own shadow
+  // class); siblings keep the dark frame byte-exact.
+  const frameMat = b.rimJit ? 'turretCloth' : 'turretDark';
   for (const s of [-1, 1]) {
     const rTop = (s < 0 && b.railTopL !== undefined) ? b.railTopL : b.top;
     const rTopR = (s < 0 && b.railTopL !== undefined) ? b.railTopL - (b.top - topR) : topR;
@@ -2362,6 +2565,21 @@ function merkavaBasket(P, b) {
           [bx + s * b.hw + 0.023, tB - 0.045, zb2], [bx + s * b.hw - 0.023, tB - 0.045, zb2],
           [bx + s * b.hw - 0.023, tA, za], [bx + s * b.hw + 0.023, tA, za],
           [bx + s * b.hw + 0.023, tB, zb2], [bx + s * b.hw - 0.023, tB, zb2]));
+        // r13 order 3c (rimJit marks = 1B): LIT RAIL-TOP segments on the
+        // NEAR (right) frame — thin sun-graze strips rolled outboard-up on
+        // three of the five rail segments (the r6 0.55-0.72 rad class);
+        // crests 2 mm under each segment's own certified top line, faces
+        // inboard of the rail's outer plane. The hero-rr window's missing
+        // p75 quartile (79.2 vs ref 99.5) is this rail line in shade.
+        if (s > 0 && (k === 1 || k === 2 || k === 4)) {
+          // r13b: strips upsized 0.030x0.009 -> 0.034x0.016 — the first cut
+          // was sub-pixel at the hero cam (window quartiles measured
+          // byte-identical to r11); crests stay 2 mm under the segment
+          // tops, faces inboard of the rail outer plane (unchanged).
+          const segT9 = Math.min(tA, tB);
+          P.add(rimMat, box(0.034, 0.016, (za - zb2) * 0.72),
+            bx + s * b.hw - 0.004, segT9 - 0.014, (za + zb2) / 2, 0, 0, s * -0.62);
+        }
       }
     } else {
       // b.shelf (r8 rack relay): the NEAR/right rail falls toward the rear
@@ -2375,7 +2593,7 @@ function merkavaBasket(P, b) {
         [bx + s * b.hw - 0.023, rTop - dR0, b.z0], [bx + s * b.hw + 0.023, rTop - dR0, b.z0],
         [bx + s * b.hw + 0.023, rTopR - dR1, b.z1], [bx + s * b.hw - 0.023, rTopR - dR1, b.z1]));
     }
-    P.add('turretDark', box(0.030, 0.030, len), bx + s * b.hw, midY - 0.12, mid);
+    P.add(frameMat, box(0.030, 0.030, len), bx + s * b.hw, midY - 0.12, mid);
   }
   if (b.shelf) {
     // center spine tie-beam: THE certified rim-line carrier (max-over-x) —
@@ -2395,8 +2613,13 @@ function merkavaBasket(P, b) {
     // r4d: rail dips track the vane lanes +0.022 (same cuts) so the rail
     // never re-fills a vane notch in the projected crown; the deepest dips
     // are the ref-falling-rim refund class (ref tail rim 2.381-2.406).
-    const rSeg = [[-1.0, -0.70, 0.022], [-0.70, -0.42, 0.052], [-0.42, -0.14, 0.032],
-      [-0.14, 0.14, 0.055], [0.14, 0.42, 0.038], [0.42, 0.70, 0.055], [0.70, 1.0, 0.028]];
+    // r13b order 3b: center-3 dips deepen 0.032-0.055 -> 0.100 (rail top
+    // h' 2.62 — under the turret crown 2.687, so the rear-mask top at
+    // |x|<0.45 is crown-carried and the rail stops blocking the air band);
+    // the flanking pair deepens to 0.075 (h' 2.646). |x|>0.70 segments
+    // keep their certified dips (side-adjacent carriers). Downward-only.
+    const rSeg = [[-1.0, -0.70, 0.022], [-0.70, -0.42, 0.075], [-0.42, -0.14, 0.100],
+      [-0.14, 0.14, 0.100], [0.14, 0.42, 0.100], [0.42, 0.70, 0.075], [0.70, 1.0, 0.028]];
     for (const [fa, fb, dp] of rSeg) {
       P.add(rimMat, box(b.hw * (fb - fa), 0.045, 0.045), bx + b.hw * (fa + fb) / 2, topR - dp, b.z1 + 0.02);
       // r6 highlight chase: thin dark parting line under each pale rim
@@ -2437,10 +2660,10 @@ function merkavaBasket(P, b) {
     // r5 (critic r4 "goalpost H-frames"): the full-width mid rail + four
     // plumb posts framed the rear into goalposts. Soft baskets get a
     // SPLIT mid rail at staggered heights and thin posts, two leaning.
-    P.add('turretDark', box(b.hw * 0.98, 0.024, 0.024), bx - b.hw * 0.46, midY - 0.12, b.z1 + 0.03);
-    P.add('turretDark', box(b.hw * 0.74, 0.024, 0.024), bx + b.hw * 0.52, midY - 0.155, b.z1 + 0.03);
+    P.add(frameMat, box(b.hw * 0.98, 0.024, 0.024), bx - b.hw * 0.46, midY - 0.12, b.z1 + 0.03);
+    P.add(frameMat, box(b.hw * 0.74, 0.024, 0.024), bx + b.hw * 0.52, midY - 0.155, b.z1 + 0.03);
     for (const [pf, pw9, ln9] of [[-1, 0.026, 0], [-0.34, 0.018, 0.055], [0.34, 0.020, -0.045], [1, 0.026, 0]]) {
-      P.add('turretDark', box(pw9, topR - b.bot, pw9), bx + pf * b.hw, (topR + b.bot) / 2, b.z1 + 0.02, 0, 0, ln9);
+      P.add(frameMat, box(pw9, topR - b.bot, pw9), bx + pf * b.hw, (topR + b.bot) / 2, b.z1 + 0.02, 0, 0, ln9);
     }
   } else {
     P.add('turretDark', box(b.hw * 2 + 0.03, 0.030, 0.030), bx, midY - 0.12, b.z1 + 0.03);
@@ -2449,8 +2672,8 @@ function merkavaBasket(P, b) {
     }
   }
   for (const s of [-1, 1]) {
-    P.add('turretDark', box(0.034, b.top - b.bot, 0.034), bx + s * b.hw, midY, b.z0 - 0.04);
-    P.add('turretDark', box(0.034, (b.top + topR) / 2 - b.bot, 0.034), bx + s * b.hw, midY, mid);
+    P.add(frameMat, box(0.034, b.top - b.bot, 0.034), bx + s * b.hw, midY, b.z0 - 0.04);
+    P.add(frameMat, box(0.034, (b.top + topR) / 2 - b.bot, 0.034), bx + s * b.hw, midY, mid);
   }
   // packed kit visible through the rails, filling to the rear face
   // (b.pale: monochrome-sand kit — 3B/3C visual round)
@@ -2488,13 +2711,72 @@ function merkavaBasket(P, b) {
     const bH9 = b.top - b.bot;
     const pkT9 = b.bot + bH9 * packH;
     const rollY9 = Math.min(pkT9 + 0.030, (b.topRear ?? b.top) - 0.048); // crowns under every rim-rail top (rimJit min topR-0.036, rail h 0.045)
+    // r13 orders 3b+3c (critic r12 drivers C/D): the CENTER roll (old f
+    // 0.02) sat square in the dead-rear air window (x ±0.42) at the exact
+    // h'-slot where sky can escape over the bustle — it relocates outboard-
+    // left; a fourth roll lands on the near-right flank so the hero-rr
+    // window gains coverage (r11 rolls ~15% -> ~40% ordered, with the
+    // strap crowns + rail-top lit segments below). Crowns stay under the
+    // rollY9 cap (rim-cresting razor-blocked, untouched).
+    // r13b: rolls FATTENED 0.055x0.014 -> 0.085x0.030 (the r11/r13a thin
+    // strips were 2-3 px at the hero cam — window quartiles measured
+    // byte-identical) + a SECOND row forward so the corner reads a coil
+    // stack like the ref's. Crest check: rollY9 2.326 + 0.043cos(rx) +
+    // 0.015sin(rx) = 2.370 max < topR-0.048 = 2.387 (razor cap held).
     for (const [rf9, rw9, rz9, rx9] of [
-      [-0.52, 0.44, 0.14, 0.58], [0.02, 0.36, 0.20, 0.64], [0.55, 0.40, 0.11, 0.55],
+      [-0.85, 0.28, 0.16, 0.60], [-0.52, 0.44, 0.14, 0.58], [0.55, 0.46, 0.11, 0.55], [0.80, 0.34, 0.18, 0.62],
     ]) {
-      P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * rw9, 0.055, 0.014),
-        bx + b.hw * rf9, rollY9, b.z1 + rz9, rx9, ((rf9 * 7) % 2) * 0.06, 0);
+      P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * rw9, 0.085, 0.030),
+        bx + b.hw * rf9, rollY9 - 0.012, b.z1 + rz9, rx9, ((rf9 * 7) % 2) * 0.06, 0);
     }
-    P.add('turretDark', box(b.hw * 0.30, 0.009, 0.012), bx + b.hw * 0.28, rollY9 - 0.022, b.z1 + 0.17); // strap seam between rolls
+    for (const [rf9, rw9, rz9, rx9] of [[-0.68, 0.30, 0.26, 0.52], [0.68, 0.32, 0.24, 0.56]]) {
+      P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * rw9, 0.075, 0.028),
+        bx + b.hw * rf9, rollY9 - 0.070, b.z1 + rz9, rx9, ((rf9 * 5) % 2) * 0.05, 0);
+    }
+    P.add('turretCloth', box(b.hw * 0.30, 0.009, 0.012), bx + b.hw * 0.28, rollY9 - 0.022, b.z1 + 0.17); // strap seam between rolls (r13b: cloth — the ref window floors at 75)
+    // 3c strap crowns: small sun-graze bumps riding the right-flank rolls
+    // (the r6 0.55-0.72 rad calibration class renders 103-118 — the ref
+    // window's own p75/p95 99.5/107 class); crests <= rollY9 + 0.006.
+    P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 0.10, 0.014, 0.018), bx + b.hw * 0.50, rollY9 + 0.004, b.z1 + 0.11, 0.66, 0.04, 0);
+    P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 0.09, 0.013, 0.017), bx + b.hw * 0.72, rollY9 + 0.002, b.z1 + 0.16, 0.60, -0.05, 0);
+    // r13b 3c SLAT ROWS (the decisive 4x read: ref = pale slats over deep
+    // through-shadow; proc = one flat wall + dark L-frame): tone-on-tone
+    // slat bars on the NEAR/right side face flush against the rail plane
+    // (outer faces 9 mm inside the rail outer, side-mask columns already
+    // painted by the pack behind) + two rear-face bars on the right half.
+    // Segmented <=0.48 m + per-segment y jitter (shoulder de-rule).
+    {
+      // r13b second cut: the flat slats rendered but read TONE-ON-TONE
+      // (the whole window is ambient-77 at the hero-rr angle; the ref's
+      // bars are LIT 99-107 over 75-82 shade). Every bar now carries a
+      // sun-graze face — side slats ROLL outboard-up (rz, the r6
+      // calibration class renders 103-118 from the rear quarters), rear
+      // bars PITCH up (rx 0.55-0.62) like the proven roll crowns.
+      const slX9 = bx + b.hw - 0.006;
+      for (let sl = 0; sl < 3; sl++) {
+        const slY = b.bot + 0.115 + sl * 0.098;
+        for (let sg2 = 0; sg2 < 2; sg2++) {
+          const za2 = b.z0 - 0.14 - sg2 * 0.52 - sl * 0.045;
+          P.add(rimMat, box(0.028, 0.022, 0.46),
+            slX9, slY + sg2 * 0.007 + ((sl * 7) % 3) * 0.004, za2 - 0.23, 0, 0, -0.72 - sl * 0.04);
+        }
+      }
+      P.add(rimMat, box(b.hw * 0.86, 0.024, 0.030), bx + b.hw * 0.44, b.bot + 0.155, b.z1 + 0.055, 0.58, 0, 0.015);
+      P.add(rimMat, box(b.hw * 0.80, 0.024, 0.028), bx + b.hw * 0.47, b.bot + 0.265, b.z1 + 0.058, 0.55, 0, -0.012);
+      // pack rear-FACE ledge crowns (r13b third cut: the first strips sat
+      // at y 0.36-0.62 bH INSIDE the solid pack — embedded, invisible;
+      // the pack fills to bot+0.74 bH and its rear face is z -3.564).
+      // Up-tilted ledges 1 cm proud of the face catch the key like the
+      // proven rolls; visible through the frame from the rear quarters.
+      const pkRear9 = (mid - len * 0.02) - len * 0.46 - 0.012;
+      for (const [lf9, lw9, ly9, lr9] of [
+        [0.52, 0.34, 0.66, 0.60], [0.20, 0.28, 0.615, 0.56], [0.68, 0.26, 0.50, 0.62],
+        [0.34, 0.22, 0.44, 0.58], [0.58, 0.24, 0.36, 0.60], [0.30, 0.20, 0.295, 0.56],
+      ]) {
+        P.add(rimMat, box(b.hw * lw9, 0.020, 0.028), bx + b.hw * lf9,
+          b.bot + (b.top - b.bot) * ly9, pkRear9, lr9, ((lf9 * 9) % 2 - 0.5) * 0.08, 0);
+      }
+    }
   }
   P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 0.90, (b.top - b.bot) * 0.55, len * 0.52),
     b.hw * 0.42, b.bot + (b.top - b.bot) * 0.32, b.shelf ? b.z0 - 0.02 - len * 0.28 : mid + len * 0.08);
@@ -2586,7 +2868,11 @@ function merkavaBasket(P, b) {
         // border over the deck (tone-on-tone alone was invisible; the
         // first 9 mm cut was 0.6px at the plan camera's 68 px/m — sub-
         // pixel. 28 mm per side = ~2px borders).
-        P.add('turretDark', box(dl9 * 0.96, 0.008, 0.096),
+        // r13b 3c: border bucket turretDark -> turretCloth — the 56-class
+        // borders were hero-rr p5 content (ref window floor 75.2); cloth
+        // (77-84 shaded) keeps the plan outline at ~-10L vs the pale deck
+        // and drops the window's sub-70 mass.
+        P.add('turretCloth', box(dl9 * 0.96, 0.008, 0.096),
           (x0 + x1) / 2, (y0 + y1) / 2 - 0.008, (z0a + z1a) / 2, 0, -ry9, rz9);
       }
       P.add(b.pale ? 'turret' : 'turretCloth', box(0.32, 0.075, 0.10), -0.18, topR - 0.062, b.z1 - 0.160, 0.04, 0.07, 0); // kit under the apex (top 2.4105)
@@ -2921,6 +3207,25 @@ function merkavaSmallTurret(P, t) {
     P.add('turretDetail', KIT.torus(rg.r * 1.55, 0.0095, rcs), rg.x, rg.base - 0.012, rg.z);
     P.add('turret', cylY(rg.r * 0.66, rg.r * 0.66, 0.016, rcs), rg.x, rg.top + 0.003, rg.z);
     P.add('turretDark', KIT.torus(rg.r * 0.665, 0.008, rcs), rg.x, rg.top + 0.009, rg.z);
+    // r13b order 2d (critic r12: from above the dome reads a DRAWN CIRCLE
+    // PAIR — uniform dark ring + lid seam — vs the ref's shaded cast
+    // mound; the 3d cert-5 lesson). Sun-asymmetric rim: chained pale
+    // tangent boxes cover the ring band's top face along the sun arc
+    // (key at (30,42,24) -> plan azimuth ~0.90 rad from +z toward +x),
+    // leaving the full dark band only on the shade arc; the tube crest
+    // survives as a 1 px hatch-seam hairline. Every box top +0.0185 <
+    // the torus crest +0.021 and radially inside the torus outer 0.152 —
+    // zero silhouette columns move.
+    for (let da = 0; da < 5; da++) {
+      const aa = -0.18 + da * 0.54;
+      P.add('turret', box(0.078, 0.0165, 0.037),
+        rg.x + rg.r * 0.95 * Math.sin(aa), rg.top + 0.0100, rg.z + rg.r * 0.95 * Math.cos(aa), 0, aa, 0);
+    }
+    for (let da = 0; da < 3; da++) {
+      const aa = 0.28 + da * 0.62;
+      P.add('turret', box(0.062, 0.011, 0.026),
+        rg.x + rg.r * 0.665 * Math.sin(aa), rg.top + 0.0105, rg.z + rg.r * 0.665 * Math.cos(aa), 0, aa, 0);
+    }
     P.add('turret', box(0.055, 0.035, 0.085), rg.x - rg.r * 0.92, rg.top - 0.010, rg.z); // hinge block
     if (d.scope) { // periscope head on the dome's left shoulder (ref front
       // -0.75..-0.85 band carrier)
@@ -3177,9 +3482,23 @@ function merkavaSmallTurret(P, t) {
       // apparent rule at x 0.82..1.12 — it splits with a 0.040 interior
       // dip (5px break at img x~434-453). Zero-dip lane 1 still holds
       // every certified side column (max-over-x); downward-only.
-      const vLanes = [[-1.0, -0.70, 0.0], [-0.70, -0.42, 0.030], [-0.42, -0.14, 0.010],
-        [-0.14, 0.14, 0.038], [0.14, 0.42, 0.016], [0.42, 0.70, 0.044],
-        [0.70, 0.86, 0.006], [0.86, 1.0, 0.040]];
+      // r13b order 3b (critic r12 driver C, dead-rear window [260..380]x
+      // [210..250] = the h' 2.47-2.77 band, h' = y+0.08|z|): air escapes
+      // over the turret crown (h' 2.687) only where the vane's FRONT top
+      // edge (the h'-max of the sloped slab, 2.727-dip) drops under it —
+      // the center-lane dips deepen to 0.058-0.072 (front edge h' 2.655-
+      // 2.669). Lane 1 keeps the zero-dip side carrier (max-over-x), lanes
+      // 7-8 keep the r7 shoulder-de-rule values; downward-only, plan
+      // unchanged, side masks carried by lane 1 (this path is 1B-only:
+      // smallTurret + softGoods).
+      // r13b second cut: lanes 7-8 deepen too (0.006/0.040 -> 0.055/0.060)
+      // — the hero-rr sight lines to the fattened right-flank rolls cross
+      // the vane at f 0.70-1.0, and the near-undipped lane 7 was the
+      // occluder (rolls crest 2.358 vs the lane's 2.434 line). Lane 1
+      // stays the zero-dip certified side carrier (max-over-x).
+      const vLanes = [[-1.0, -0.70, 0.0], [-0.70, -0.42, 0.062], [-0.42, -0.14, 0.072],
+        [-0.14, 0.14, 0.058], [0.14, 0.42, 0.072], [0.42, 0.70, 0.062],
+        [0.70, 0.86, 0.055], [0.86, 1.0, 0.060]];
       for (const [fa, fb, dp] of vLanes) {
         const xa0 = tv.hw * fa, xb0 = tv.hw * fb, xa1 = hwR * fa, xb1 = hwR * fb;
         P.add(clothMat, KIT.slab(
@@ -3237,14 +3556,22 @@ function merkavaSmallTurret(P, t) {
       // with a real pale mullion between (f -0.09..+0.27), plus three small
       // PITS (tilted, same recess bucket) — left/center/right image strips
       // each keep a 25-45 floor via pocket1 / center pit / pocket2.
-      P.add('turretTrack', box(hwR * 0.66, vH9 * 0.44, 0.004),
+      // r13 order 3a (critic r12 driver C: "the proc's dark is in the WRONG
+      // band" — y290-330 reads p5 23.7 where the ref band is uniformly
+      // BRIGHT p5 90/med 99.4): the two pockets + the low pit leave the
+      // 26-class recess bucket for the vane's own lit-kit tone (>=70
+      // ordered; the cloth face measures ~90 dead-rear). The TWO UPPER pits
+      // stay dark — the verdict's "<=2 dark cells adjacent to the upper
+      // band". The r6-r9 rear-strip void class moves UP a band as real air
+      // (order 3b) instead of painted darkness here.
+      P.add(clothMat, box(hwR * 0.66, vH9 * 0.44, 0.004),
         -hwR * 0.42, tv.bot + vH9 * 0.33, tv.z1 - 0.001, -0.35, 0, 0);
-      P.add('turretTrack', box(hwR * 0.46, vH9 * 0.32, 0.004),
+      P.add(clothMat, box(hwR * 0.46, vH9 * 0.32, 0.004),
         hwR * 0.50, tv.bot + vH9 * 0.29, tv.z1 - 0.001, -0.35, 0, 0);
-      for (const [pf9, pw9, ph9, py9] of [
-        [0.09, 0.11, 0.14, 0.40], [-0.86, 0.08, 0.10, 0.28], [0.83, 0.07, 0.11, 0.35],
+      for (const [pf9, pw9, ph9, py9, pm9] of [
+        [0.09, 0.11, 0.14, 0.40, 'turretTrack'], [-0.86, 0.08, 0.10, 0.28, clothMat], [0.83, 0.07, 0.11, 0.35, 'turretTrack'],
       ]) { // pits: small tilted recess squares, unequal, off-grid
-        P.add('turretTrack', box(hwR * pw9, vH9 * ph9, 0.004),
+        P.add(pm9, box(hwR * pw9, vH9 * ph9, 0.004),
           hwR * pf9, tv.bot + vH9 * py9, tv.z1 - 0.001, -0.35, 0, 0);
       }
       P.add(clothMat, box(hwR * 1.72, vH9 * 0.155, 0.008),
@@ -3286,7 +3613,20 @@ function merkavaSmallTurret(P, t) {
   }
   // smoke cluster snugged low on the port cheek (the measured plan keeps the
   // casting front inside z~1.2 at cheek width — the rosette must not lead it)
-  merkavaSmokeCluster(P, -hwM * 0.42, gy + 0.40, apex - 0.85, -0.55, 5, { pitch: -0.34, soft: t.softGoods });
+  // r13b order 3b (softGoods=1B only): the cluster's tube tips (~2.74) were
+  // the LEFT-flank blocker of the dead-rear air window (straight rear
+  // ortho: the front-cheek tubes project clean through at x -0.3..-0.55;
+  // the ref's own line there is 2.66-2.68 with 13-15 air px/col). Slide
+  // it DOWN-SLOPE (dy -0.09 / dz +0.25 follows the cheek's tan(0.34)
+  // pitch, so the plate stays surface-seated); tips land ~2.65 and the
+  // rosette front (z 0.60) stays inside the z~1.2 casting-front rule.
+  // Side masks IMPROVE toward the ref (proc side cols there rode 2.7+ vs
+  // the ref's 2.51-2.53 barrel line). Siblings byte-identical.
+  if (t.softGoods) {
+    merkavaSmokeCluster(P, -hwM * 0.42, gy + 0.31, apex - 0.60, -0.55, 5, { pitch: -0.34, soft: true });
+  } else {
+    merkavaSmokeCluster(P, -hwM * 0.42, gy + 0.40, apex - 0.85, -0.55, 5, { pitch: -0.34, soft: t.softGoods });
+  }
 
   // TURRET-NODE rear rack: the repaired 2-series rigs carry the low tail
   // rack under rig_turret (their hull body masks END at the shelf crest) —
@@ -4988,11 +5328,62 @@ function buildMerkavaMark(P, p) {
     if (mr.pale) P.addGunExtra(cylZ(mr.r, mr.len, 12), (mr.x ?? 0) - (p.gunXoff ?? 0), 0, L(mr.z) - gunZL);
     else P.addGunExtraDark(cylZ(mr.r, mr.len, 12), (mr.x ?? 0) - (p.gunXoff ?? 0), 0, L(mr.z) - gunZL);
   }
+  if (p.tubeShade) {
+    // r13b order 2a (1B, critic r12 driver B): the ref tube band reads p5
+    // 42.8 (deep under-sleeve shade runs) / p75 111.2 (lit crown runs)
+    // where the floor-clamped proc sleeve sat 57 / 106.3 flat. Paint the
+    // anatomy back: dark under-runs hugging the sleeve's lower quadrant
+    // between the clamp stations + sun-graze crown strips riding the top
+    // line (sun az +x: crowns sit slightly +x of crest, faces rolled
+    // toward it). Every strip is RECESSED — outer reach r-3 mm inside the
+    // certified tube/sleeve silhouette, so no ortho column moves; runs
+    // segmented <=0.47 m (station end-cap law). Siblings skip (opt-in).
+    // (r13b first cut sat the strips 3 mm INSIDE the solid sleeve —
+    // embedded geometry renders nothing; the window measured byte-equal.
+    // They now ride the surface 4 mm proud, the r8-3D wrinkle-run class:
+    // "~4 mm over the bare sleeve on non-ring side columns — sub-alias".)
+    const tsR = (p.sleeveR ?? 0.15) + 0.001;
+    for (const [uz0, uz1, ux] of [[1.98, 2.12, -0.32], [2.16, 2.62, -0.36], [2.74, 3.20, -0.30], [3.34, 3.72, -0.40]]) {
+      P.addGunExtraDark(KIT.xform(box(0.060, 0.009, L(uz1) - L(uz0)), 0, 0, 0, 0, 0, ux),
+        tsR * Math.sin(ux), -tsR * Math.cos(ux), (L(uz0) + L(uz1)) / 2 - gunZL);
+    }
+    // (r13b third cut: same-bucket strips ON the tube's own lit top line
+    // are tone-invisible — the window p75 measured byte-equal twice. The
+    // crowns steepen (rz -0.62 + rx toward the key's +z) so their N.L
+    // clears the tube top's own response — the r6 sun-graze class.)
+    for (const [cz0, cz1, cx] of [[2.05, 2.24, 0.30], [2.28, 2.64, 0.32], [2.90, 3.30, 0.24], [3.30, 3.44, 0.38], [3.48, 3.86, 0.36], [3.90, 4.00, 0.28]]) {
+      // (rz roll only — an rx pitch lifts the strip END corners len/2*sin
+      // off the tube: the first steepen cut cost stations -1.2.)
+      P.addGunExtra(KIT.xform(box(0.058, 0.012, L(cz1) - L(cz0)), 0, 0, 0, 0, 0, -cx - 0.32),
+        tsR * Math.sin(cx), tsR * Math.cos(cx), (L(cz0) + L(cz1)) / 2 - gunZL);
+    }
+    // mantlet drum top-shoulder graze crowns (the ref drum band's own lit
+    // crest class): rolled toward the front-top key, crests <=6 mm over
+    // the drum top on interior columns (the certified band top 2.116 is
+    // carried by the drum's own crest line at r0).
+    const mzC = (p.mantlet.z0 !== undefined ? L(p.mantlet.z0) : t.apexZ - 0.06) - gunZL;
+    P.addGunExtra(KIT.xform(box(0.10, 0.014, 0.11), 0, 0, 0, -0.42, 0, -0.28),
+      0.032, (p.mantlet.drop ?? 0) + p.mantlet.r0 - 0.040, mzC + 0.13);
+    P.addGunExtra(KIT.xform(box(0.09, 0.013, 0.10), 0, 0, 0, -0.45, 0, 0.22),
+      -0.040, (p.mantlet.drop ?? 0) + p.mantlet.r0 - 0.043, mzC + 0.28);
+    // mantlet drum under-shoulder shade pair (the ref drum band's own deep
+    // under-line) — 2 mm proud under the drum (bottom 1.868 stays inside
+    // the certified 1.83 band line).
+    const mzS = (p.mantlet.z0 !== undefined ? L(p.mantlet.z0) : t.apexZ - 0.06) - gunZL;
+    const mrS = p.mantlet.r0 + 0.002;
+    P.addGunExtraDark(box(0.20, 0.011, 0.17), -0.045, (p.mantlet.drop ?? 0) - mrS + 0.004, mzS + 0.11);
+    P.addGunExtraDark(box(0.16, 0.011, 0.15), 0.055, (p.mantlet.drop ?? 0) - mrS + 0.005, mzS + 0.29);
+  }
   if (p.sleeveClamp) { // r5: fat mid-sleeve junction clamp — the ref side
     // trace bumps to 2.12 at z 2.23-2.27 (a collar the plain sleeve run
     // missed); r stays inside the boxy mantlet's plan half-width.
+    // scl.pale (r13b/1B, the 3D sleevePale finding repeated): the ref's
+    // clamp ring zone reads med 102.3 / p75 110.3 (its ring is its own
+    // sand tone); the dark ring dragged the proc zone to med 95 / p25 75.
+    // Same geometry, pale bucket. Siblings without the flag byte-exact.
     const scl = p.sleeveClamp;
-    P.addGunExtraDark(cylZ(scl.r, scl.len, 12), 0, 0, L(scl.z) - gunZL);
+    if (scl.pale) P.addGunExtra(cylZ(scl.r, scl.len, 12), 0, 0, L(scl.z) - gunZL);
+    else P.addGunExtraDark(cylZ(scl.r, scl.len, 12), 0, 0, L(scl.z) - gunZL);
     P.addGunExtra(cylZ(scl.r * 0.72, scl.len + 0.05, 12), 0, 0, L(scl.z) - gunZL);
   }
 
@@ -5129,21 +5520,56 @@ function buildMerkavaMark(P, p) {
     // innerMat 0x27251f in buildRunningGear) — the trackLink retone above
     // never reaches them, and their zero-emissive shaded faces were the
     // (7,7,5) black tooth rows in the run zone. Lift the clones directly.
+    // r13 1B order 1a (p.beadKeep, 1B-only): with padHex/chainHex the clone
+    // colors change and the old hex matches go dead — exactly how the 3D
+    // graduate ships (no emissive lift, no bead scale; byte-frozen).
+    // beadKeep re-keys the BEAD SCALE onto the mark's own hexes so 1B keeps
+    // its r8 fine-link read while adopting the r12 gearFloor recipe; the
+    // emissive lift stands down whenever gearFloor owns the shade floor.
+    const padHx9 = p.beadKeep ? (p.padHex ?? 0x171614) : 0x171614;
+    const chainHx9 = p.beadKeep ? (p.chainHex ?? 0x27251f) : 0x27251f;
     P.hullG.traverse((ob) => {
       if (!(ob.isMesh || ob.isInstancedMesh) || !ob.material || !ob.material.color || !ob.material.emissive) return;
       const hx = ob.material.color.getHex();
-      if (hx === 0x171614) ob.material.emissive.setHex(0x2a2315);
-      else if (hx === 0x27251f) ob.material.emissive.setHex(0x201a0e);
+      if (hx === padHx9 && !p.gearFloor) ob.material.emissive.setHex(0x2a2315);
+      else if (hx === chainHx9 && !p.gearFloor) ob.material.emissive.setHex(0x201a0e);
       // r8 (critic item 4 "shrink the track bead scale"): the link shoes
       // rendered as fat square beads along the exposed lower run. Shrink
       // the per-build shoe geometry ALONG-RUN only (z) — radial extents are
       // untouched so the ground line, wrap crests and every silhouette
       // extreme stay bit-identical; the pitch gaps read as finer links.
-      if ((hx === 0x171614 || hx === 0x27251f) && ob.isInstancedMesh && !ob.geometry.__mk3BeadScaled) {
+      if ((hx === padHx9 || hx === chainHx9) && ob.isInstancedMesh && !ob.geometry.__mk3BeadScaled) {
         ob.geometry.scale(1, 1, 0.88);
         ob.geometry.__mk3BeadScaled = true;
       }
     });
+    // r13b order 1a (p.gearDarkLift, 1B-only): the close-front 24.4-class
+    // wedge knobs are the sprocket/idler DARK parts (teeth/root rings/
+    // bolts) on the SHARED family spareTrack mat — (60,58,51) x the ~0.42
+    // deep-shade display floor = (25,25,20) EXACTLY (391-px census, byte-
+    // stable through the padHex lift, which proved the pads were never
+    // the offender). Clone-lift ONLY the spinner meshes (direct hullG
+    // children seated at the end wheels) — the merged hullTrack/
+    // turretTrack recess buckets keep the certified 26-class voids.
+    // Material.clone() drops onBeforeCompile (the r12 lesson): re-attach
+    // the family floor hook. Target: shade floor ~35 = the ref's own
+    // darkest close-front gear-cell class (35.2-35.5).
+    if (p.gearDarkLift) {
+      let gdlMat = null;
+      P.hullG.traverse((ob) => {
+        if (!ob.isMesh || ob.material !== P.mats.spareTrack) return;
+        const zNear = Math.abs(ob.position.z - p.sprocket.z) < 0.12 || Math.abs(ob.position.z - p.idler.z) < 0.12;
+        if (!zNear || Math.abs(ob.position.x) < 0.8) return;
+        if (!gdlMat) {
+          gdlMat = P.mats.spareTrack.clone();
+          gdlMat.color.setHex(p.gearDarkLift);
+          gdlMat.onBeforeCompile = vehicleAmbientFloorHook;
+          gdlMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+          P.disposables.push(gdlMat);
+        }
+        ob.material = gdlMat;
+      });
+    }
     if (P.mats.trackLink && P.mats.trackLink.emissive) {
       P.mats.trackLink.color.setHex(0x232019);
       P.mats.trackLink.emissive.setHex(0x2c2517);
@@ -6593,6 +7019,22 @@ export const MERKAVA_PROFILES = {
     // tops eating the plain side band (ref band y358-382 uniform 83-86L, ours
     // alternated 65-79). Face anatomy + end covers ride c.wheelFace.
     wheelR: 0.355, wheelFace: true, glacisKit: true, tailKit: true, keelDarkTail: true,
+    // r13 order 1a (critic r12 driver A): the shaded chain/shoe floor read
+    // 24-30L (close-front sub-30 census 1995 vs ref 0; wheel-window p5 29.5
+    // vs 52.9) — the r12 3D recipe: gearFloor re-attaches the family
+    // ambient hook the Material.clone() dropped, chain/pad albedo lifts to
+    // the ref's 35-45 shade class. beadKeep holds the r8 fine-link scale
+    // under the new hexes (see the family traverse note).
+    // r13b: padHex 0x1d1b16 -> 0x2b2820 — the first cut lifted the CHAIN
+    // only; the pad clones still floored at RGB(25,25,20) = 24.4L in full
+    // shade (close-front residual census 391, all pad wedges at the bow
+    // wrap). 0x2b2820 floors the shaded faces at ~34L = the ref's own
+    // darkest gear-cell class (ref close-front p5 cells 35.2-35.5), and
+    // softens the knob-comb contrast at both wraps (order 1c's front half).
+    chainHex: 0x322e24, padHex: 0x2b2820, gearFloor: true, beadKeep: true,
+    // r13b: the 24.4 wedges were the spinner teeth/rings (shared spareTrack
+    // mat), not the pads — see the gearDarkLift traverse note.
+    gearDarkLift: 0x544e42,
     // r10 bow de-jumble: the dark headlight guard + dark lens/stem + dark
     // clevis pin cluster read as a floating dark bracket jumble at the nose
     // (ref bow: one clean pale mass, tiny hook) — the same read the r7 3D
@@ -6613,8 +7055,16 @@ export const MERKAVA_PROFILES = {
       { z: 2.92, yT: 1.14, yB: 0.92, wT: 1.30, wB: 1.05 },
       { z: 2.58, yT: 1.36, yB: 1.00, wT: 1.62, wB: 1.40 },
       { z: 2.41, yT: 1.50, yB: 1.01, wT: 1.66, wB: 1.71 },
-      { z: 2.08, yT: 1.555, yB: 1.02, wT: 1.66, wB: 1.71 },
-      { z: 1.55, yT: 1.585, yB: 1.02, wT: 1.66, wB: 1.71 },
+      { z: 2.08, yT: 1.555, yB: 1.005, wT: 1.66, wB: 1.72 },
+      // r13 §B4: yB 1.02 -> 1.005 on the two stations whose bottom flange
+      // rode the band top-run/wrap-crest voxel line (front-zone hits at
+      // y 1.02) — 1.5 cm drop, side-covered by the band (top run 1.03+).
+      // (same order-0 pass) wB 1.71 -> 1.72 on the two bow-wrap stations:
+      // the side-wall plane at 1.71 rounded onto the band's outer-face
+      // voxel and clipped the top-run line — 1 cm bottom-lean, wT/plan
+      // tops unchanged, still inside the ref's 1.71..1.81 plan band and
+      // under the 1.825 width guard.
+      { z: 1.55, yT: 1.585, yB: 1.005, wT: 1.66, wB: 1.72 },
       { z: 1.30, yT: 1.645, yB: 1.02, wT: 1.66, wB: 1.71 },
       { z: 0.72, yT: 1.725, yB: 1.02, wT: 1.55, wB: 1.71 },
       { z: 0.30, yT: 1.72, yB: 1.02, wT: 1.62, wB: 1.71 },
@@ -6624,15 +7074,30 @@ export const MERKAVA_PROFILES = {
       { z: -2.50, yT: 1.625, yB: 1.02, wT: 1.66, wB: 1.71 },
       { z: -2.67, yT: 1.73, yB: 1.00, wT: 1.55, wB: 1.71 },
       { z: -2.87, yT: 1.65, yB: 1.00, wT: 1.66, wB: 1.71 },
-      { z: -3.30, yT: 1.69, yB: 0.98, wT: 1.70, wB: 1.70 },
-      { z: -3.79, yT: 1.62, yB: 0.94, wT: 1.69, wB: 1.69 },
-      { z: -4.215, yT: 1.55, yB: 0.90, wT: 1.64, wB: 1.64 },
+      // r13 §B4 (order 0): the loft tail's bottom flange + lower side walls
+      // ran THROUGH the rising idler band + wrap annulus (the rear audit's
+      // whole rig_hull residue: bottom faces at y 0.90-0.98 crossing both
+      // shells, walls at x 1.66-1.70 crossing the crest rise). The tail
+      // bottom lifts above the wrap crest (1.17): yB 0.98->1.17 @ -3.30,
+      // 0.94/0.90->1.20 aft. Every revealed pixel re-lands on same-camo
+      // surfaces: rack body/sub-slab (rear), wedge risen via tail.yB
+      // (center), deckStow slot filler (the y 1.12..1.20 interior slot —
+      // §B2). wT/yT/plan untouched; stations measure width+top only.
+      { z: -3.30, yT: 1.69, yB: 1.17, wT: 1.70, wB: 1.70 },
+      { z: -3.79, yT: 1.62, yB: 1.20, wT: 1.69, wB: 1.675 },
+      { z: -4.215, yT: 1.55, yB: 1.20, wT: 1.64, wB: 1.64 },
     ],
     tailNotch: { hw: 0.31 },
     // Warped lower glacis (3.04, 0.94) -> (2.62, 0.52) -> ground ~1.8; the
     // 1B belly ARCHES DOWN outboard: front bots 0.43 center / 0.32 mid /
     // 0.235 at x 0.97-1.13 (the inverse of the 3B arch).
-    keel: { toeZ: 2.90, toeY: 0.90, toeHW: 0.42, midZ: 2.66, midY: 0.50, groundZ: 2.28, bellyY: 0.43, bellyMidX: 0.88, bellyMidY: 0.40, bellySideY: 0.235, tailLowZ: -3.58 },
+    // r13 §B4: hwClamp 1.15 (band inner face 1.16 − 0.01, the 3-series r12
+    // recipe) — the belly side steps / glacis slab edges at the default
+    // kihw 1.28 cut through BOTH wrap annuli. Interior from every mask cam
+    // except a ~2 cm front-view bottom sliver at |x| 1.14..1.16 (the
+    // 3-series-cleared class); the certified keelDarkTail rear panel
+    // narrows 0.88..1.28 -> 0.88..1.15 (re-measured this round, §4b lane).
+    keel: { toeZ: 2.90, toeY: 0.90, toeHW: 0.42, midZ: 2.66, midY: 0.50, groundZ: 2.28, bellyY: 0.43, bellyMidX: 0.88, bellyMidY: 0.40, bellySideY: 0.235, tailLowZ: -3.58, hwClamp: 1.15 },
     glacis: { z0: 0.85, z1: 2.975 },
     podX: 0.60, podIn: -0.085, podY: 0.99,
     // Fender planks at the measured y 1.43 line; the corner mud flaps drop
@@ -6648,7 +7113,10 @@ export const MERKAVA_PROFILES = {
     // the corner posts); the curtain runs PLAIN (sc.plain) and longer, and
     // a pale backer replaces the dark shadow wall behind the wheels.
     fenderPlank: { x0: 1.42, x1: 1.73, z0: 2.50, z1: -3.70, y: 1.43, drops: { bot: 0.68, x: [1.80, 1.80], z: [1.93], mat: 'hull' } },
-    sideCurtain: { x: 1.79, top: 1.42, bot: 0.86, z0: 2.32, z1: -3.38, plain: true, backH: 0.64 },
+    sideCurtain: { x: 1.79, top: 1.42, bot: 0.86, z0: 2.32, z1: -3.38, plain: true, backH: 0.64, backZ0: 1.80, lipFill: true },
+    // r13b group 2 (cast-vs-CAD, all material/flush lanes — see the build
+    // blocks): keel/glacis/stern-plan micro-facet quilts + gun tube shade.
+    keelQuilt: true, glacisQuilt: true, tubeShade: true, sternQuilt: true,
     frontBoard: { z0: 2.88, z1: 2.48, y: 1.09, x0: 1.42, x1: 1.74 },
     // Visual r2 switches (shaded-parity r1 family work order): pale-sand
     // furniture + rack, tone-on-tone vents, dark wheels/tracks (the r1
@@ -6691,6 +7159,11 @@ export const MERKAVA_PROFILES = {
       // r7 shoulder de-rule: body-box notch windows (front-cam runs 63/41px
       // at h'~1.88 decode to this box's ruled top; breaks 6.4/4.0px at 640)
       dips: [[1.28, 1.40, 0.048], [1.52, 1.64, 0.030]],
+      // r13 §B4: outboard of x 1.15 the body bottom lifts to 1.20 (above the
+      // idler-wrap crest 1.17); the y 0.94..1.22 band re-lands on a rear
+      // sub-slab behind the wrap's rear face (z -4.07) — dead-rear face
+      // footprint identical, notch tops untouched (r7 cert).
+      wrapClear: { x: 1.15, bot: 1.20, z: -4.07 },
     },
     // r7 SHOULDER DE-RULE kit interruptions (critic r6: "constant-y edge
     // runs ... >=2px breaks at 3+ points or kit interruptions, VERIFIED
@@ -6707,19 +7180,28 @@ export const MERKAVA_PROFILES = {
       { x: -1.60, y: 1.680, z: -3.30, w: 0.06, h: 0.060, d: 0.07, ry: 0.12, detail: true }, // small can (top 1.710)
       { x: -1.38, y: 1.740, z: -2.68, w: 0.06, h: 0.056, d: 0.07, ry: -0.18 },              // pouch (top 1.768)
       { x: 1.55, y: 1.682, z: -3.30, w: 0.055, h: 0.056, d: 0.07, ry: 0.10 },               // pouch (top 1.710)
+      // r13 §B4 slot filler: the raised tail loft bottom (1.17-1.20) opened
+      // an interior y 1.12..1.20 slot over the belly-step tops between the
+      // curtain end (-3.38) and the rack front — this fully-embedded box
+      // seals it (§B2 no-see-through). x ±1.13 keeps it a voxel clear of
+      // the band's inner face; every face overlaps neighbor solids.
+      { x: 0, y: 1.16, z: -3.545, w: 2.26, h: 0.12, d: 0.49 },
     ],
     tailPins: [{ x: 0.53, y: 1.42, z: -4.30 }, { x: -0.53, y: 1.42, z: -4.30 }],
     // r10: flaps hullRubber -> hullDark (dead-rear corner zones read p5 36 /
     // sd 12.6 vs the ref's uniform 59-64 track class — the near-black rubber
     // was the pocket)
-    rearFlaps: [{ z: -4.04, bot: 0.49, top: 0.92, w: 0.30, mat: 'hullDark' }, { z: -4.13, bot: 0.66, top: 0.95, w: 0.30, mat: 'hullDark' }, { z: -4.22, bot: 0.78, top: 1.00, w: 0.30, mat: 'hullDark' }],
+    // r13 §B4: first flap -4.04 -> -4.065 — its forward face was voxel-
+    // coincident with the idler wrap's rear pole (the y 0.76..0.86 band
+    // across the flap width). 2.5 cm aft = 1.8 px in the side ortho.
+    rearFlaps: [{ z: -4.065, bot: 0.49, top: 0.92, w: 0.30, mat: 'hullDark' }, { z: -4.13, bot: 0.66, top: 0.95, w: 0.30, mat: 'hullDark' }, { z: -4.22, bot: 0.78, top: 1.00, w: 0.30, mat: 'hullDark' }],
     pivotZ: -1.16,
     turretStyle: 'small',
     // Gun: warped-ref muzzle +4.32 (tail -4.31 + committed 8.63). Tube band
     // [1.895..2.067] -> axis 1.975; sleeve r 0.088 to ~4.0, bare 0.072
     // beyond (the warped print reads a uniform slim tube, no muzzle mass).
     gunAxisY: 1.975, gunR: 0.072, sleeve: true, evac: null, collar: false, gunTipZ: 4.32, gunZL: 0.40, sleeveTo: 4.00, sleeveR: 0.088,
-    sleeveClamp: { z: 3.985, r: 0.13, len: 0.04 }, // sleeve-end ring: ref plan ±0.134-0.158 cols read fwd 4.007 (r trimmed: side cols 3.94/4.04 read the band ±0.06)
+    sleeveClamp: { z: 3.985, r: 0.13, len: 0.04, pale: true }, // sleeve-end ring: ref plan ±0.134-0.158 cols read fwd 4.007 (r trimmed: side cols 3.94/4.04 read the band ±0.06); pale = the measured ref ring tone (r13b)
     // Mantlet drum band [1.871..2.116] over z 1.60..1.94 (work-order item 4:
     // the old bot 1.70 was 0.17 too deep).
     mantlet: { r0: 0.125, r1: 0.09, len: 0.40, drop: 0.02, z0: 1.55 },
