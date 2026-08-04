@@ -3308,6 +3308,16 @@ const BUCKET_DEF = {
   // spare track links (dark oily track steel, r6) + baked-shadow AO panels
   hullTrack: ['hullG', 'spareTrack'], turretTrack: ['turretG', 'spareTrack'],
   hullShadow: ['hullG', 'shadow'],
+  // Per-SIDE in-lane track trim (russia §B4 t72b3m round, opt-in — no other
+  // caller): gear-fade strips / wrap chord fans / ramp joint fills are
+  // running-gear dressing living INSIDE the track x-band. Merged into the
+  // center-spanning hullDark bucket they defeat track-clip-audit's designed
+  // lane-local skip (reach computed on the merged AABB reads 0); split
+  // per side, each merged mesh keeps an honest one-sided AABB and the
+  // audit classifies it as the in-lane gear it is. Same material slot and
+  // LOD path as hullDark — renders byte-identical. The /track/i name also
+  // carries the §B4 trackBucket tag (hand-rolled audit mode + §B5 skip).
+  hullTrackTrimL: ['hullG', 'dark'], hullTrackTrimR: ['hullG', 'dark'],
 };
 const CAMO_BUCKETS = new Set(['hull', 'turret', 'gun', 'gunMount']);
 // Buckets that survive past LOD1 — everything else is greeble-class and
