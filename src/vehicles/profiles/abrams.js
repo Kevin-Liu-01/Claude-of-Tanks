@@ -2049,6 +2049,14 @@ const M1A2_DECK = [[3.97, 1.175], [3.90, 1.183], [3.85, 1.178], [3.62, 1.195],
   [3.50, 1.222], [3.40, 1.253], [2.88, 1.256], [2.76, 1.278], [2.58, 1.30], [2.44, 1.328],
   [2.31, 1.352], [2.24, 1.362], [2.185, 1.405], [2.005, 1.405], [1.985, 1.386],
   [1.775, 1.386], [1.755, 1.404], [0.45, 1.404],
+  // §B5 r2 mid-deck knots (coordinated-normalize round): moving the works
+  // field to the turret EXPOSED the ref's own deck line under the old
+  // hull-mask stowage (vertex-workorder world rows, this round): flat
+  // 1.402-bin to z ~-0.78, a one-bin step to the 1.43 shelf holding to
+  // z ~-1.15, then a 0.25-slope ramp onto the 1.567 rear deck. The old
+  // single 0.45 -> -2.06 interpolation read up to 6.5 cm high there — it
+  // was authored blind (those columns were works-covered at landing time).
+  [-0.78, 1.404], [-0.84, 1.432], [-1.15, 1.432], [-1.68, 1.566],
   [-2.06, 1.572], [-3.28, 1.578], [-3.88, 1.578], [-3.955, 1.565]];
 // Bow blade underside (side_hull bow bottoms 0.69@3.63 -> 1.00@3.96; tip
 // knots lifted to the ref's 1.026 bin — col 20 read 0.998).
@@ -2121,16 +2129,24 @@ function buildM1a2(P) {
   // x 0.94 (2 cells inboard of the 0.985 band face) keeps the bay reading
   // shadow, not daylight, from the rear quarters.
   band('hull', -0.95, 0.95, M1A2_DECK, M1A2_FLATB, -3.43, 2.21);
+  // §B5 r2 REAR SHOULDER: the works/wall departure exposed the ref's rear
+  // deck EDGE — its high plate ends at |x| ~1.47 (front bins ±1.498/1.508
+  // read skirt-class 1.34/1.39 there, NOT deck 1.578). The rear bands pull
+  // to 1.468 aft of z -0.90 (9.5/19.5 mm clear of the ±1.4775/1.4875 bin
+  // boundaries); fwd of -0.90 the full 1.51 shoulder stands (certified
+  // fwd-deck bins unchanged). Plan/side rows hold: hem + tail corners keep
+  // every plan extent; side tops still read the deck at |x| <= 1.468.
   for (const s of [-1, 1]) {
-    band('hull', s * 0.95, s * 1.51, M1A2_DECK, M1A2_FLATB, -2.60, 2.21);
-    band('hull', s * 0.95, s * 1.51, M1A2_DECK, [[-4, 1.24], [4, 1.24]], -3.43, -2.60);
+    band('hull', s * 0.95, s * 1.51, M1A2_DECK, M1A2_FLATB, -0.90, 2.21);
+    band('hull', s * 0.95, s * 1.468, M1A2_DECK, M1A2_FLATB, -2.60, -0.90);
+    band('hull', s * 0.95, s * 1.468, M1A2_DECK, [[-4, 1.24], [4, 1.24]], -3.43, -2.60);
     sb('hullDark', s, 0.90, 0.92, 0.95, 1.24, -3.42, -2.62);
   }
   // Tail band over the shelf underside, with the plan notches: right notch
   // (plan -3.77 at x 1.02..1.23), full corners to -3.905.
-  band('hull', -1.51, 1.00, M1A2_DECK, M1A2_TAILB, -3.905, -3.43);
+  band('hull', -1.468, 1.00, M1A2_DECK, M1A2_TAILB, -3.905, -3.43);   // r2: 1.51 -> 1.468 (rear-shoulder note above)
   band('hull', 1.00, 1.24, M1A2_DECK, M1A2_TAILB, -3.775, -3.43);
-  band('hull', 1.24, 1.51, M1A2_DECK, M1A2_TAILB, -3.905, -3.43);
+  band('hull', 1.24, 1.468, M1A2_DECK, M1A2_TAILB, -3.905, -3.43);
   // Tail plate steps: -3.94 plate, -3.97 center tab, low tip lip (side col
   // -4.01 reads 1.36..0.97). (Visual r3 order 4b: the steps ride the WOOD
   // bare-plate channel — camo off the rear plate without skinning the tab
@@ -2474,12 +2490,29 @@ function buildM1a2(P) {
   }
 
   // ---- sponson stowage walls (front-view 1.96-2.12 at |x| 1.29..1.63) ----
+  // §B5 r2 COORDINATED NORMALIZE (owner law: turret furniture yaws): these
+  // walls are the ref's ex_era_turret_2/3 stowage — the extended follower
+  // registration (all three override maps, same round) yaws them with the
+  // ref turret, so the proc mirror rides the TURRET buckets. World pose
+  // preserved at rest: RL maps a world corner into the ring frame.
+  // SEATING (m1a1 cable lesson): bottoms leave the old 1.42 deck-embed for
+  // the ref's own 1.615 stowage floor (census ex_era_turret_2/3 y-min) —
+  // the turret-only masks read the ref band and nothing drags the deck arc
+  // at yaw (deck tops 1.57 max under the sweep).
+  // Z-FOOTPRINT (r2 gate, plan_turret bins ±1.499/1.581): the ref's OUTER
+  // sponson band (|x| > ~1.44) spans z -0.81/-0.83 .. +1.3/1.64 (its deep
+  // -1.93 stowage lives INBOARD, carried on our side by the rail boxes) —
+  // the old -0.94..-1.92 span was authored blind behind the plan-interior
+  // hem and overpainted the outer bins 1.1 m aft (err 0.59/0.55). The
+  // panels sit at the ref band, abutting the wall lips at z 0.41/0.42.
+  const RL = ([x, y, z]) => [x, y - M1A2_RING[1], z - M1A2_RING[2]];
   for (const s of [-1, 1]) {
     const xo = s > 0 ? 1.512 : 1.63;                       // right band ends 1.53
     const ti = s > 0 ? 2.00 : 2.09, to = s > 0 ? 1.96 : 1.955;
-    sideSlab(P, 'hull', s,
-      [1.44, 1.42, -0.94], [xo, 1.42, -0.94], [xo, 1.42, -1.92], [1.44, 1.42, -1.92],
-      [1.44, ti, -0.94], [xo, to, -0.94], [xo, to, -1.92], [1.44, ti, -1.92]);
+    const zF = s > 0 ? 0.42 : 0.41, zA = s > 0 ? -0.81 : -0.83;
+    sideSlab(P, 'turret', s,
+      RL([1.44, 1.615, zF]), RL([xo, 1.615, zF]), RL([xo, 1.615, zA]), RL([1.44, 1.615, zA]),
+      RL([1.44, ti, zF]), RL([xo, to, zF]), RL([xo, to, zA]), RL([1.44, ti, zA]));
   }
   // Left skirt hem steps (ref front bots 0.70 @ -1.50 / 0.535 @ -1.46).
   // (r6: main piece ends flush with the -2.10 run end; the 0.702 col-11
@@ -2493,39 +2526,68 @@ function buildM1a2(P) {
   // read as a detached floating pod; the ref element is gear-dark).
   hb('hullTrack', -1.478, -1.44, 0.535, 1.05, 1.95, 2.65);
   hb('hullTrack', 1.44, 1.475, 0.525, 1.05, 1.95, 2.65);   // right hem hanger (ref 0.522)
-  hb('hull', -1.445, -1.325, 1.42, 2.115, -2.02, -0.92);   // left rail box
-  hb('hull', -1.317, -1.283, 1.42, 1.695, -1.90, -1.10);   // left rail step
-  hb('hull', 1.205, 1.315, 1.42, 2.115, -2.02, -0.92);     // right rail box
-  hb('hull', 1.315, 1.44, 1.42, 2.042, -2.02, -0.92);      // right rail step
+  // Rail boxes/steps = the ref's ex_armor_l/r followers (§B5 r2): turret
+  // buckets, world pose held; bottoms 1.42 -> 1.566 (census ex_armor_l/r
+  // y-min) — sub-bin over the proc core's own 1.578 rear knee, and the
+  // yaw sweep grazes the 1.567 deck crest exactly like the ref's own rig.
+  tb('turret', -1.445, -1.325, 1.566, 2.115, -2.02, -0.92); // left rail box
+  tb('turret', -1.317, -1.283, 1.566, 1.695, -1.90, -1.10); // left rail step
+  tb('turret', 1.205, 1.315, 1.566, 2.115, -2.02, -0.92);   // right rail box
+  // r2: step edge 1.44 -> 1.415 (clear of BOTH trace grids' bin boundary —
+  // the gate's ~1.43 and the workorder's 1.444; at 1.44/1.429 its deep aft
+  // span AA-bled into the outer bin and hung the 1.48 turret_plan column
+  // 1.1 m aft, err 0.58-0.59; the r5 boundary law, measured on each grid).
+  tb('turret', 1.315, 1.415, 1.566, 2.042, -2.02, -0.92);   // right rail step
 
-  // ---- static mid-deck works field (ref HULL mask keeps these) -----------
+  // ---- mid-deck works field: TURRET furniture (§B5 r2 re-parent) ---------
+  // The ref's mis-split stowage nodes (ex_armor_turret/turret2 = blocks
+  // A2/A, ex_armor_01/02 = the B field, ex_armor_04/04_2 = crates C) ride
+  // the extended follower registration now — the proc mirror moves to the
+  // turret buckets with world pose preserved at rest (tb = world − ring).
+  // SEATING (m1a1 cable lesson, census-cited): A/A2 keep 1.36 (their
+  // bottoms embed in the 1.375-knee core at every yaw — never exposed,
+  // never clipping); B 1.36 -> 1.58 (>= every core knee, so the core's
+  // ref-mirror bins keep writing the turret side rows, and the deck sweep
+  // at yaw stays clear of the 1.572 crest); crates C 1.36 -> 1.71 (fully
+  // interior over the rear connector's 1.60/1.652/1.708 ref-mirror bins —
+  // the ref's own ex_armor_04 floats its 1.748 floor the same way — so
+  // nothing sweeps mid-air over the yaw-90/180 x ±2.1..2.6 arc).
   // Block A: the tall works stack left of center (side 2.38 @ z -0.47..0.13
   // with the 2.33/2.30/2.02 front stair; front 2.40 @ x -0.26..-0.10).
-  hb('hull', -0.28, -0.045, 1.36, 2.398, -0.492, 0.112);
-  hb('hull', -0.315, -0.28, 1.36, 2.155, -0.42, 0.02);
-  hb('hull', -0.28, -0.04, 1.36, 2.368, 0.115, 0.222);
-  hb('hull', -0.28, -0.04, 1.36, 2.281, 0.226, 0.332);
-  hb('hull', -0.28, -0.04, 1.36, 2.055, 0.336, 0.442);
-  hb('hull', 0.50, 0.94, 1.36, 2.328, 0.05, 0.30);         // block A2 right
+  tb('turret', -0.28, -0.045, 1.36, 2.398, -0.492, 0.112);
+  tb('turret', -0.315, -0.28, 1.36, 2.155, -0.42, 0.02);
+  tb('turret', -0.28, -0.04, 1.36, 2.368, 0.115, 0.222);
+  tb('turret', -0.28, -0.04, 1.36, 2.281, 0.226, 0.332);
+  tb('turret', -0.28, -0.04, 1.36, 2.055, 0.336, 0.442);
+  tb('turret', 0.50, 0.94, 1.36, 2.328, 0.05, 0.30);       // block A2 right
   // Block B: the 2.16 mid band (front 2.17-2.18 over x -0.76..0.48).
-  hb('hull', -0.77, 0.50, 1.36, 2.178, -2.045, -0.86);
-  hb('hull', -0.50, 0.30, 1.36, 2.122, -0.875, -0.735);    // 2.12 step (r2: 2.126-bin)
-  hb('hull', -0.50, 0.30, 1.36, 2.095, -0.735, -0.54);     // 2.09 step
+  tb('turret', -0.77, 0.50, 1.58, 2.178, -2.045, -0.86);
+  tb('turret', -0.50, 0.30, 1.58, 2.122, -0.875, -0.735);  // 2.12 step (r2: 2.126-bin)
+  tb('turret', -0.50, 0.30, 1.58, 2.095, -0.735, -0.54);   // 2.09 step
   // Crates C: rear works pair (side 2.21/2.24, hidden under A in front).
-  hb('hull', -0.30, -0.06, 1.36, 2.262, -2.72, -2.30);
-  hb('hull', 0.52, 0.93, 1.36, 2.262, -2.72, -2.30);
-  hb('hull', -0.28, -0.08, 1.36, 2.148, -2.785, -2.725);
-  hb('hull', 0.54, 0.91, 1.36, 2.148, -2.785, -2.725);
-  hb('hull', 0.33, 0.455, 1.36, 2.22, -2.30, -2.235);
-  hb('hull', 0.50, 0.93, 1.36, 2.215, -2.30, -2.235);
-  hb('hull', -0.30, -0.06, 1.36, 2.21, -2.30, -2.235);
-  // Driver's wind-sensor post (the lone 1.88 spike at side col 2.52).
-  hb('hullDetail', -0.20, -0.13, 1.30, 1.925, 2.612, 2.642);
+  tb('turret', -0.30, -0.06, 1.71, 2.262, -2.72, -2.30);
+  tb('turret', 0.52, 0.93, 1.71, 2.262, -2.72, -2.30);
+  tb('turret', -0.28, -0.08, 1.71, 2.148, -2.785, -2.725);
+  tb('turret', 0.54, 0.91, 1.71, 2.148, -2.785, -2.725);
+  tb('turret', 0.33, 0.455, 1.71, 2.22, -2.30, -2.235);
+  tb('turret', 0.50, 0.93, 1.71, 2.215, -2.30, -2.235);
+  tb('turret', -0.30, -0.06, 1.71, 2.21, -2.30, -2.235);
+  // Driver's wind-sensor post (the lone 1.88 spike at side col 2.52) —
+  // genuine HULL kit (ref glsaa_5 stays hull-side in the registration).
+  // r2: x widened -0.20 -> -0.225 (census glsaa_5 -0.223..-0.137) — the
+  // works-A departure left the -0.221 front bin reading the post alone,
+  // and the old edge missed that bin by half a millimetre (err 0.164).
+  hb('hullDetail', -0.225, -0.13, 1.30, 1.925, 2.612, 2.642);
   // Works-field dressing (visual r2): the bare camo boxes read as a crate
   // stack of pale-edged line-art from top/heroes. Tarp caps, ratchet
   // straps, rib slats and grab handles put equipment identity on them —
   // every piece flush-class (<= 12 mm proud, inside each block's footprint).
   if (P.q) {
+    // §B5 r2: the dressing rides its works blocks into the TURRET buckets
+    // (turretCloth/turretDark/turretDetail — same material slots; ta() is
+    // ring-local P.add, so the world-pose authoring below is unchanged).
+    const ta = (bk, geo, x, y, z, rx = 0, ry = 0, rz = 0) =>
+      P.add(bk, geo, x, y - M1A2_RING[1], z - M1A2_RING[2], rx, ry, rz);
     // Block B: canvas tarp bed. (Visual r3 orders 2/3 — the SADDLE PIT:
     // the critique's tarp+pad rectangle (p05 42, hard-edged dark pit from
     // above) IS this works-B field — the turret-core saddle underneath is
@@ -2534,35 +2596,37 @@ function buildM1a2(P) {
     // own 2.168-2.251 whole/hull side band here, round-form crown shading
     // + the cloth up-face term give the ref's top-lit sausage read, and
     // the straps re-route over the bundles.)
-    P.add('hullCloth', box(1.21, 0.014, 1.13), -0.135, 2.183, -1.4525);
+    ta('turretCloth', box(1.21, 0.014, 1.13), -0.135, 2.183, -1.4525);
     const sad = (x, z, r, l) => {
-      P.add('hullCloth', cylX(r, l, 14), x, 2.105, z);
-      P.add('hullCloth', cylX(r * 0.60, 0.05, 10), x - l / 2 - 0.018, 2.105, z);
-      P.add('hullCloth', cylX(r * 0.60, 0.05, 10), x + l / 2 + 0.018, 2.105, z);
-      P.add('hullDark', box(0.016, 0.010, r * 2.04), x - l * 0.24, 2.105 + r - 0.004, z);
-      P.add('hullDark', box(0.016, 0.010, r * 2.04), x + l * 0.26, 2.105 + r - 0.004, z);
+      ta('turretCloth', cylX(r, l, 14), x, 2.105, z);
+      ta('turretCloth', cylX(r * 0.60, 0.05, 10), x - l / 2 - 0.018, 2.105, z);
+      ta('turretCloth', cylX(r * 0.60, 0.05, 10), x + l / 2 + 0.018, 2.105, z);
+      ta('turretDark', box(0.016, 0.010, r * 2.04), x - l * 0.24, 2.105 + r - 0.004, z);
+      ta('turretDark', box(0.016, 0.010, r * 2.04), x + l * 0.26, 2.105 + r - 0.004, z);
     };
     sad(-0.13, -1.145, 0.100, 1.02);
     sad(-0.20, -1.335, 0.100, 0.90);
     sad(-0.11, -1.525, 0.100, 0.96);
-    P.add('hullDark', box(1.23, 0.008, 0.03), -0.135, 2.186, -1.72);
-    P.add('hullDark', box(1.23, 0.008, 0.03), -0.135, 2.186, -1.16);
+    ta('turretDark', box(1.23, 0.008, 0.03), -0.135, 2.186, -1.72);
+    ta('turretDark', box(1.23, 0.008, 0.03), -0.135, 2.186, -1.16);
     // Block A stack: ammo-crate rib slats on the stair fronts + lid seam.
-    P.add('hullDetail', box(0.235, 0.014, 0.56), -0.17, 2.404, -0.21);
-    P.add('hullDark', box(0.20, 0.006, 0.024), -0.16, 2.410, -0.44);
-    P.add('hullDark', box(0.20, 0.006, 0.024), -0.16, 2.410, -0.20);
-    P.add('hullDark', box(0.20, 0.006, 0.024), -0.16, 2.410, 0.03);
+    ta('turretDetail', box(0.235, 0.014, 0.56), -0.17, 2.404, -0.21);
+    ta('turretDark', box(0.20, 0.006, 0.024), -0.16, 2.410, -0.44);
+    ta('turretDark', box(0.20, 0.006, 0.024), -0.16, 2.410, -0.20);
+    ta('turretDark', box(0.20, 0.006, 0.024), -0.16, 2.410, 0.03);
     for (const z of [0.14, 0.25, 0.36]) {
-      P.add('hullDetail', box(0.245, 0.012, 0.05), -0.16, 2.30 - (z - 0.14) * 2.2, z);
+      ta('turretDetail', box(0.245, 0.012, 0.05), -0.16, 2.30 - (z - 0.14) * 2.2, z);
     }
-    P.add('hullCloth', box(0.42, 0.05, 0.22), 0.72, 2.34, 0.175);   // A2 duffel
+    ta('turretCloth', box(0.42, 0.05, 0.22), 0.72, 2.34, 0.175);    // A2 duffel
     // Crates C: ribbed lids + straps (the ref's rear works pair).
     for (const [cx0, cx1] of [[-0.30, -0.06], [0.52, 0.93]]) {
-      P.add('hullDetail', box(cx1 - cx0 - 0.04, 0.012, 0.36), (cx0 + cx1) / 2, 2.268, -2.51);
-      P.add('hullDark', box(cx1 - cx0 - 0.02, 0.007, 0.026), (cx0 + cx1) / 2, 2.272, -2.60);
-      P.add('hullDark', box(cx1 - cx0 - 0.02, 0.007, 0.026), (cx0 + cx1) / 2, 2.272, -2.42);
+      ta('turretDetail', box(cx1 - cx0 - 0.04, 0.012, 0.36), (cx0 + cx1) / 2, 2.268, -2.51);
+      ta('turretDark', box(cx1 - cx0 - 0.02, 0.007, 0.026), (cx0 + cx1) / 2, 2.272, -2.60);
+      ta('turretDark', box(cx1 - cx0 - 0.02, 0.007, 0.026), (cx0 + cx1) / 2, 2.272, -2.42);
     }
-    // Grab handles along the deck edge + tie-down cleats (fitting relief).
+    // Grab handles along the deck edge + tie-down cleats (fitting relief) —
+    // deck-edge HULL kit the bustle merely overhangs: stays in hullG (§B5
+    // law, deck-gear clause; ref keeps no follower here).
     for (const z of [1.9, 0.9, -0.1, -1.6]) {
       for (const s of [-1, 1]) {
         P.add('hullDetail', box(0.02, 0.022, 0.16), s * 1.40, deckAt({ deck: M1A2_DECK }, z) + 0.012, z);
@@ -2682,9 +2746,9 @@ function buildM1a2(P) {
   tb('turret', -1.31, 1.20, 1.525, 2.158, -1.408, -1.19);
   // (Visual r3 note: a sunken saddle pocket was cut into these two rows and
   // REVERTED — the mid-roof turret core is fully covered from above by the
-  // hull-mask works-field B block + tarp at 2.178-2.19, so the recess never
-  // rendered; the critique's "saddle pit" is the WORKS-B tarp field, and
-  // the duffel bed now rides there in the hull frame below.)
+  // works-field B block + tarp at 2.178-2.19, so the recess never rendered;
+  // the critique's "saddle pit" is the WORKS-B tarp field, and the duffel
+  // bed rides there — since §B5 r2 in the TURRET frame, same world pose.)
   tb('turret', -1.31, 1.20, 1.552, 2.158, -1.52, -1.408);
   tb('turret', -1.31, 1.20, 1.558, 2.158, -1.75, -1.52);
   tb('turret', -1.31, 1.20, 1.578, 2.158, -2.005, -1.75);
@@ -3216,6 +3280,13 @@ function buildM1a2(P) {
   gb('gunMount', -0.20, 0.42, 1.565, 2.148, 2.265, 2.375); // sight band D1
   gb('gunMount', -0.20, 0.42, 1.565, 2.175, 2.375, 2.44);  // D1 rear step
   gb('gunMount', -0.20, 0.42, 1.565, 2.148, 2.44, 2.905);  // sight band D2
+  // (§B5 r2 measurement note, bank it: the vertex-workorder's 96-col grid
+  // is PHASE-SHIFTED from the gate's — its 0.179 plan bin (boundary 0.124)
+  // read the E band's 0.12 edge as a 1-m overpaint, but on the GATE grid
+  // (boundary ~0.11) that content mirrors the ref's own misc_b sight band
+  // (ref fwd 3.878 in the 0.16 bin). An r2 pull of these +x edges to 0.095
+  // "fixed" the workorder row and broke the real one (err 0.294) — REVERTED.
+  // Confirm bin ownership on the gate's own worst list before moving edges.)
   gb('gunMount', -0.20, 0.12, 1.575, 2.172, 2.905, 2.955); // D2 center tail
   gb('gunMount', -0.26, -0.20, 1.565, 2.15, 2.265, 2.82);  // D left corner
   gb('gunMount', -0.17, 0.12, 1.565, 2.118, 2.955, 3.895); // sensor band E
