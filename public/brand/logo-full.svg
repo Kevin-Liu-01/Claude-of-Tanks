@@ -13,7 +13,7 @@
   </style>
   <g transform="translate(5 5) scale(0.78125)">
   <defs>
-    <clipPath id="cotHatchClipF"><rect x="70" y="26" width="68" height="44"/></clipPath>
+    <clipPath id="cotHatchClipF"><rect x="70" y="29" width="68" height="44"/></clipPath>
   </defs>
 
   <!-- ===== crest: ink band, amber pinstripe groove, dark steel field ===== -->
@@ -64,21 +64,21 @@
 
     <!-- the commander: Claude Code mascot, faithful source path (brand orange;
          legs clipped by the hatch), centered on x=106 with the hatch ring -->
-    <rect x="91" y="57" width="30" height="12" fill="#0c1218"/>
+    <rect x="91" y="60" width="30" height="12" fill="#0c1218"/>
     <g clip-path="url(#cotHatchClipF)">
       <path clip-rule="evenodd" fill-rule="evenodd" fill="#D97757" stroke="#0b0f12"
-        stroke-width="1.5" paint-order="stroke" transform="translate(82.6 42.75) scale(1.95)"
+        stroke-width="1.5" paint-order="stroke" transform="translate(82.6 45.75) scale(1.95)"
         d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z"/>
     </g>
     <!-- hatch coaming (arms rest on the ring) -->
-    <rect x="81" y="68" width="50" height="6.5" rx="1.5" fill="#3a4c5f" stroke="#0c1218" stroke-width="2.5"/>
+    <rect x="81" y="71" width="50" height="6.5" rx="1.5" fill="#3a4c5f" stroke="#0c1218" stroke-width="2.5"/>
 
     <!-- tanker helmet: light steel dome + rim + goggles, all symmetric on x=106 -->
-    <path d="M87.5 52.5a18.5 12 0 0 1 37 0Z" fill="#7d90a3" stroke="#0c1218" stroke-width="2.5" stroke-linejoin="round"/>
-    <rect x="85.5" y="52.3" width="41" height="4.2" rx="2" fill="#0e151d"/>
-    <rect x="93.75" y="45.2" width="24.5" height="5.2" rx="1.5" fill="#0e151d"/>
-    <circle cx="101.75" cy="47.8" r="3.8" fill="#0e151d" stroke="#9fb2c4" stroke-width="1.8"/>
-    <circle cx="110.25" cy="47.8" r="3.8" fill="#0e151d" stroke="#9fb2c4" stroke-width="1.8"/>
+    <path d="M87.5 55.5a18.5 12 0 0 1 37 0Z" fill="#7d90a3" stroke="#0c1218" stroke-width="2.5" stroke-linejoin="round"/>
+    <rect x="85.5" y="55.3" width="41" height="4.2" rx="2" fill="#0e151d"/>
+    <rect x="93.75" y="48.2" width="24.5" height="5.2" rx="1.5" fill="#0e151d"/>
+    <circle cx="101.75" cy="50.8" r="3.8" fill="#0e151d" stroke="#9fb2c4" stroke-width="1.8"/>
+    <circle cx="110.25" cy="50.8" r="3.8" fill="#0e151d" stroke="#9fb2c4" stroke-width="1.8"/>
 
     <!-- main gun, elevated 10 degrees: steel barrel, light keylines + muzzle
          step — trimmed so the muzzle stays inside the shield's inner border -->
