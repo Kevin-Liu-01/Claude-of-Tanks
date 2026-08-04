@@ -67,6 +67,15 @@ function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a
 const D2R = Math.PI / 180;
 const SIM_STEP = 1 / 60;
 
+// PERF (perf-r2): beyond this camera distance the track dressing (per-wheel
+// heightAt conform + link/band/wheel instance pass) updates every 3rd sync —
+// see the gearNow gate in syncFromState. Matches the ~150 m LOD1 de-greeble
+// band. The per-visual phase is staggered by creation order so a 14-tank
+// battle spreads its reduced-rate updates across frames instead of bursting
+// them all on the same one.
+const GEAR_FULL_RATE_M = 160;
+let _gearStaggerSeq = 0;
+
 // modelLoader.js module ref, captured after the first dynamic import so later
 // createTank calls can apply an already-parsed GLB synchronously (icons,
 // garage re-entry) instead of one-frame-late.
@@ -3787,6 +3796,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   // ---- animation-layer state (visual only, self-timed at SIM_STEP) ---------
   let groundSampler = null;          // (x, z) => terrain height, set by integration
   let sway = 0;                      // turn-lean roll (rad), smoothed
+  let gearPhase = (_gearStaggerSeq++) % 3; // perf-r2: distant-gear cadence stagger
   let flinchP = 0, flinchR = 0;      // hit-reaction damped oscillator
   let flinchPV = 0, flinchRV = 0;
   // Hit/recoil impulses accumulate here and are routed into the SIM's flinch
@@ -3933,7 +3943,7 @@ export function createTank(specId, engineCtx, opts = {}) {
      *   render loop should pass its true dt so a 120 Hz client does not
      *   play the recuperator cycle twice as fast.
      */
-    syncFromState(state, dt = SIM_STEP) {
+    syncFromState(state, dt = SIM_STEP, viewDistM) {
       root.position.copy(state.pos);
       // r5 fx-clock advancement for the SELF-TIMED timelines (recoil, pop,
       // wreck char/embers): see the lastFxS note above. adv == dt live;
@@ -4050,15 +4060,27 @@ export function createTank(specId, engineCtx, opts = {}) {
         turretG.rotation.y = state.turretYaw;
         gunG.rotation.x = -state.gunPitch;
       }
+      // PERF (perf-r2, measured in the perf-smooth r1 V8 profile and blessed
+      // by its handoff): the track dressing below — per-wheel heightAt
+      // conform (the analytic heightfield runs noise octaves PER QUERY) plus
+      // the link/band/wheel instance-matrix pass — is fine detail that LOD1
+      // already de-greebles beyond ~150 m. When the battle loop reports a
+      // camera distance past GEAR_FULL_RATE_M, run it every 3rd sync (20 Hz):
+      // wheel spin and link scroll place from ABSOLUTE track scroll, so a
+      // skipped frame delays the sub-pixel motion by <= 33 ms with no drift.
+      // Callers that omit viewDistM (studio, killcam, staged one-shot poses,
+      // probes) always take the full-rate path.
+      const gearNow = viewDistM === undefined || viewDistM <= GEAR_FULL_RATE_M
+        || ((gearPhase = (gearPhase + 1) % 3) === 0);
       // per-wheel suspension conformance before the gear placement pass
-      if (P.gear && groundSampler && !destroyed) {
+      if (P.gear && groundSampler && !destroyed && gearNow) {
         // gameplay_feel r5: conform at the EXACT rendered attitude (see the
         // conform() jsdoc) — root.rotation was just set from these terms.
         P.gear.conform(state, groundSampler,
           state.visualPitch + suspP - flinchP,
           state.visualRoll + suspR + sway + flinchR);
       }
-      if (P.gear) P.gear.update(state.trackScroll.l, state.trackScroll.r);
+      if (P.gear && gearNow) P.gear.update(state.trackScroll.l, state.trackScroll.r);
       // GLB gear spin (see scanGlbSpinners): ground-speed-correct wheel
       // rotation for swapped visuals; wrecks freeze with everything else.
       if (!destroyed && hullG.userData.__glbSwapped) {

@@ -31,6 +31,22 @@ const qs = typeof location !== 'undefined' ? new URLSearchParams(location.search
 const DIAG_PARAM = qs ? qs.get('diag') : null;
 const FORCE = qs ? qs.get('diagforce') : null; // 'noshadow' | 'nolit' (test rig)
 
+/**
+ * Battle-time relaxation (perf-r2): three's checkShaderErrors forces a
+ * SYNCHRONOUS getProgramInfoLog wait on every program link — the V8 profile
+ * billed 0.56 s of link stalls to a 60 s battle window as lazily-created
+ * materials (fx variants, wreck swaps, killcam ghosts) compiled mid-fight,
+ * each one landing as a frame hitch in the p99 tail. Boot keeps full checks
+ * (the whole main pipeline compiles behind the splash and the diag rescue
+ * path needs the logs); main.js calls this once the game is up. ?diag pins
+ * the checks for a diagnosis run. onShaderError stays installed either way —
+ * it only fires from the check path, so a diag run still collects.
+ */
+export function relaxShaderChecks(renderer) {
+  if (DIAG_PARAM != null || FORCE != null) return; // diagnosis run: keep checks
+  renderer.debug.checkShaderErrors = false;
+}
+
 /** Global shader-error collector — installed once, survives the whole run. */
 export function installShaderErrorCollector(renderer) {
   const bag = (window.__GL_DIAG = window.__GL_DIAG || { errors: [] });

@@ -322,6 +322,12 @@ const browser = await puppeteer.launch({
     '--enable-precise-memory-info',
     // unlock rAF from vsync so we measure true render throughput
     '--disable-frame-rate-limit', '--disable-gpu-vsync',
+    // headless-hidden pages SUSPEND setTimeout (intensive throttling) — the
+    // battle-entry pipeline paces its drain/countdown on real timers and
+    // reads as a hang without these. A visible browser (what the budget
+    // certifies) never throttles a foreground game tab.
+    '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding',
     // expose window.gc for the pre-sample warmup collection (see below)
     '--js-flags=--expose-gc',
   ],

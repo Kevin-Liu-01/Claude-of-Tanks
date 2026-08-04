@@ -451,6 +451,10 @@ const fmtTime = (s) => {
 // fallback filter and swap in the bake when it lands (same-origin PNG, so
 // canvas readback is always allowed; any failure keeps the fallback).
 const schemCache = new Map();
+// Card box sizes (shared with warmSchematics so the pre-warm hits the exact
+// cache keys the live cards request).
+const CARD_TOP_S = 84;
+const CARD_SIDE_W = 116, CARD_SIDE_H = 58;
 function schematicUrl(id, view, outW, outH) {
   const key = `${id}|${view}|${outW}x${outH}`;
   let p = schemCache.get(key);
@@ -721,7 +725,7 @@ export function createShotInfo(bus) {
     };
 
     // --- top view (84x84; icon: forward = up, screen right = -X world) ---
-    const TS = 84;
+    const TS = CARD_TOP_S;
     const top = el('div', 'box', wrap);
     top.style.width = `${TS}px`; top.style.height = `${TS}px`;
     const topSil = el('div', 'sil', top);
@@ -813,7 +817,7 @@ export function createShotInfo(bus) {
     top.appendChild(ovT);
 
     // --- side view (aspect 2:1; icon: front = right, up = +Y) ---
-    const SW = 116, SH = 58;
+    const SW = CARD_SIDE_W, SH = CARD_SIDE_H;
     const side = el('div', 'box', wrap);
     side.style.width = `${SW}px`; side.style.height = `${SH}px`;
     const sideSil = el('div', 'sil', side);
@@ -1369,6 +1373,24 @@ export function createShotInfo(bus) {
   bus.on('ui:battleStart', () => api.reset());
 
   const api = {
+    /**
+     * PERF (perf-r2): pre-bake the plan-form schematics for a roster while
+     * the battle loading screen holds the frame. The bake is a synchronous
+     * double getImageData + unsharp over a 512² icon — the V8 profile billed
+     * ~0.28 s of it to the battle window because the FIRST shot card per
+     * enemy type paid the bake on the exact frame the player landed a hit.
+     * schematicUrl caches per id/view/size, so warming here makes every
+     * in-battle card a cache hit. Fire-and-forget; failures keep the CSS
+     * fallback path exactly as before.
+     * @param {string[]} specIds fielded roster (both teams)
+     */
+    warmSchematics(specIds) {
+      for (const id of specIds || []) {
+        if (!id) continue;
+        schematicUrl(id, 'top', CARD_TOP_S * 2, CARD_TOP_S * 2);
+        schematicUrl(id, 'side', CARD_SIDE_W * 2, CARD_SIDE_H * 2);
+      }
+    },
     root,
     statsRoot,
     toggleLog,

@@ -3322,6 +3322,11 @@ export function initHud(bus) {
       };
     },
 
+    /** PERF (perf-r2): pre-bake shot-card schematics for a fielded roster
+     * while the battle loading screen holds the frame (shotInfo owns the
+     * cache; see warmSchematics there). @param {string[]} specIds */
+    warmShotCards(specIds) { shotInfo.warmSchematics(specIds); },
+
     /**
      * Switch overall HUD mode.
      * @param {'battle'|'sniper'|'hidden'} m

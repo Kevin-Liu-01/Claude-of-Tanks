@@ -25,8 +25,8 @@
 import * as THREE from 'three';
 import { createRenderer, onResize } from './engine/renderer.js';
 import {
-  installShaderErrorCollector, runDeviceDiag, applyDiagRescue, mountDiagOverlay,
-  runSceneBlackWatchdog, reclaimShadows,
+  installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
+  mountDiagOverlay, runSceneBlackWatchdog, reclaimShadows,
 } from './engine/deviceDiag.js';
 // MOBILE r1: device tier — sourced-GLB swaps are disabled wholesale on the
 // mobile tier (modelLoader gates its own pipeline; the checks here are the UI
@@ -1682,6 +1682,10 @@ async function startBattleLoading(specId, mapId = null) {
   startBattle(specId, resolved, { deferVisuals: true });
   bltStage('roster');
   battleLoad.rosters(rosterRows('player'), rosterRows('enemy'));
+  // PERF (perf-r2): bake the shot-card schematics for this exact roster now,
+  // behind the loading screen — the first hit on each enemy type used to pay
+  // a synchronous ~5-15 ms canvas bake on the very frame the shell landed.
+  hud.warmShotCards(game.tanks.map((e) => e.specId));
   // PERF (perf-smooth r1): the roster is decided — kick every sourced-GLB
   // FETCH for it right now, in parallel with the visual bake loop below.
   // Fetches are network-only (the parse/swap pipeline stays behind the
@@ -2190,7 +2194,12 @@ function updateDustAndSync(dtFrame) {
     // effects_combat r1: pass the real frame dt so self-timed visual
     // timelines (recuperator recoil, turret-pop arc, ember cooldown) play at
     // wall-clock speed on 120 Hz displays (undefined at boot -> 1/60 default).
-    ent.visual.syncFromState(ent.state, dtFrame);
+    // PERF (perf-r2): the camera distance lets the visual run its track
+    // dressing (per-wheel heightAt conform + link/band instance pass) at a
+    // reduced cadence beyond fine-detail range — battle loop only; studio,
+    // killcam and staged poses omit it and keep full-rate updates.
+    ent.visual.syncFromState(ent.state, dtFrame,
+      camera.position.distanceTo(ent.state.pos));
     // SPOTTING WIRING: unspotted live enemies do not render (WoT rule).
     // Wrecks stay visible; the player is never gated; outside battle
     // (garage/shot/killcam) everything renders. isSpotted already includes
@@ -3907,6 +3916,11 @@ window.__DEBUG = {
   get damagePanel() { return damagePanel; },
 };
 await bootStage('ready', null);
+// perf-r2: the boot pipeline is compiled and error-checked; battle-time
+// program links (lazy fx/wreck/killcam materials) drop the synchronous
+// info-log wait from here on (see deviceDiag.relaxShaderChecks — ?diag keeps
+// full checks for diagnosis runs).
+relaxShaderChecks(renderer);
 // ready() arms the "press any key" entry gate (auto-dismissed under
 // ?nosplash / webdriver). Deliberately not awaited: __GAME_READY means
 // "fully initialised" and must not depend on a keypress.
