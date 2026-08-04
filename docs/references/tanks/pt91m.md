@@ -419,3 +419,101 @@ staircase, ERAWA rows re-seated on the 1.475 seam (right-only flank tiles
 r 0.078 cylinder + side-invisible sleeve-clamp rails carry plan width).
 Residuals: the certified set (heightM-trade col, muzzle-band bottoms,
 row2-corner ~0.05x2). NEXT: visual pipeline (critic round).
+
+## r27 (2026-08-03): critic-order delivery — gate 90.7 -> 91.2 PASS x2, all six orders delivered or measured-residual
+
+Builder round against docs/critique/shaded-parity-pt91m-r25.md (FAIL floor
+8.2, every deduction tone/read class). Gate HELD through the round: 91.2
+PASS x2 (hull 92.2 / whole 91.2 / turret 95.1 / stations 92.3 / dims 100 /
+floaters 100 — whole +0.5 over r25's 90.7). standard-check: clip 24/0 ✓
+contig 0 ✓ decor mg1+4d ✓ (was mg0+0d). Evidence: shots/russia-r27/,
+fresh official pairs shots/critic-pt91m/, visual-evaluator parity clean
+(yawProxy 0.1-0.6°, no RIG MISMATCH).
+
+Delivered, with the verdict's own done-gates measured on the official
+pairs (ITU-601 via tools/tmp-r7-merkava.py, warm census
+tools/tmp-pt91m-warm.py):
+
+1. RUNNING-GEAR RETONE (order 1) — ALL GATES PASS. view-left dark census
+   x45..460 y330..405 thr25: 1861 -> **0** (<=200). Wheel band x150..520
+   y355..390: med **55.5** (50-56) / p5 **51.4** (>=38; ref 50.6) / sd
+   **3.93** (<=11; ref 7.4). Rear ramp x45..175 y330..400 p5 **51.4**
+   (>=40), med 59.7 vs ref 62.8. Recipe: opt-in gear params padHex
+   0x343a29 / chainHex 0x2b3122 / gearFloor:true (merkava r12 params);
+   band emissive floor 0x293021 with dimmed diffuse (t72b3m run-lift);
+   mats.dark -> shadow-olive 0x2e3426+0x0c100a (strips/skids/grille);
+   tire clone 0x26291f + dish clone x0.66 both rehooked (CLONE-MATERIAL
+   LAW). First pass overshot pale (med 62.1) — one family notch down per
+   the overshoot law.
+2. WARM POLARITY SWAP (order 2) — 3 of 4 gates pass. frontright warm
+   census x300..420 y270..330: 470 -> **0** (<=200). Front L-cheek med
+   **61.4** (>=58; ref 60.9) / p95 **101.5** (>=80). Skirt band view-left
+   med **71.4** vs ref 73.7 (Δ2.3 <= 5L; was -10L) via the new opt-in
+   ruSkirtBand rubberBotH 0.16 (lower 0.16 m of each panel re-buckets to
+   hullRubber at identical faces) + warm rubber 0x483e31. spareTrack
+   (ERAWA family) -> neutral olive 0x475039+0x15180f (R<=G-2 ✓).
+   RESIDUAL: top glacis rows med 56.4 vs the >=60 order — the med pixel
+   decodes as the per-spec camo deck between tile rows (t72b3m r16b camo
+   value-split class, unmovable from a profile); a hullTrack clone-lift to
+   0x525a42 moved only p95 (72->74) while washing the skirt plates pale in
+   side views — measured and reverted.
+3. REAR DRUMS (order 3) — built + read delivered; census 3/4 cells.
+   TRANSVERSE ribbed drums (axis along x — the ref dead-rear shows two
+   wide cylinder bodies; a first along-z pair measured as two small
+   circles and was rebuilt) inside the certified hump envelope: r 0.245 at
+   (±0.55, 1.47, -3.10), rails keep every certified extreme (side
+   staircase, station-0 width, plan -3.37, the ±0.107-column center
+   notch). Hue matched by sample: ref drums (72,64,56) family; wood
+   0x473e32. Dead-rear zone med **72.4** / sd **5.89** vs ref 68.6 / 5.85.
+   Straps + tail lip re-bucketed hullWood (the camo lip was slicing the
+   warm mass; in the ref those -3.38..-3.45 columns ARE the drums).
+   Top-view warm cells (256..352,32): **279-297 >= 250 ✓**; cells (·,64):
+   **229-238 vs 250** — honest residual: the forward-arc shaded pixels sit
+   under the R>55 census at the ref-matched tone; pushing hotter flared
+   the caps salmon (measured, reverted) and moved zero census.
+4. FRONT KIT + MG (order 4) — delivered, census green. Smoke banks BOTH
+   cheeks: 5 parallel vertical 'detail' tubes/side at x 1.237..1.603,
+   tops 1.78 — INSIDE the wall/filler front silhouette (first seat at
+   1.95/±1.78 cost front_whole 18 pts + turret_plan 4.6% cover, measured
+   and reseated; the stock smokeBank base bracket reached x 1.82 and
+   safeScale shrank the whole model 1.24% — base:false + slim authored
+   bracket). lightCluster guards both fender noses (tops 1.298 under the
+   1.33 bin line). NSVT -> FITTINGS.pintleMG cls nsvt scale 1.05 tone
+   'dark' (pale-deck polarity), receiver mass tops 1.92 at the ref's
+   1.931 line, 0.57 m crown-riding barrel. Census mg1+4d.
+5. CONTAINMENT (order 5, geometry-priced) — **178/220 -> 24/0** (<=60
+   band; residual 24 = tow-eye tori at their measured seat grazing the
+   band end-cap dilation). Movers, each audit-verified: sponsonY 0.86 ->
+   1.00 (the floor plane sat on the band-top dilation; lower slab lofts
+   with it so no mask change), high side rails inner face 1.625 -> 1.66
+   (it sat ON the band wall's voxel key; the deck's own 1.5525..1.575
+   slice already owns the ±1.606 plan column), sprocket 0.98/0.24 ->
+   0.75/0.115 + idler 0.86/0.19 -> 0.70/0.13 (constraint-solved: arc tops
+   clear the sponson plane by a full key AND every in-band strip top
+   keeps >=2 keys under the arc bottom — the intermediate 0.72/0.15 try
+   clipped three strip tops, measured 142), skirt-course box i0 z-trimmed
+   out of the wrap zone. Gate x2 + fresh pairs after.
+6. POLISH (order 6) — glass 0x3d4233 (blue dashes gone), OBRA sensor
+   slimmed (h 0.13 -> 0.095, x extents untouched), basket post-rhythm
+   slats proud 1.5 mm (sub-half-pixel) on rear/side faces. DECLINED:
+   crown-air staggering (front air 55.8% vs >=63% — every box in the
+   1.95-2.10 band owns front columns per the r25 notes; needs a
+   front-column decode round) and dome tile-arc seams (torus-on-squashed-
+   lathe pokes plan; risk over budget).
+
+LAW NOTES (bank): (a) vertex-workorder's printed side/front absolutes are
+polluted this round — its union-center recompute reads the ref root
+invisible after the page's last renderMask (C.z read 1.44 vs the true
+0.7184); scratchpad true-workorder.mjs recovers the page camera center
+and applies gate registration to the pairing. (b) The track-clip audit
+dilates band SURFACE voxels ±1 key (2 cm) — clearance design is by voxel
+key, not distance. (c) smokeBank/lightCluster envelopes must be checked
+against the width anchor BEFORE seating (safeScale shrink class).
+
+Self-read vs the 14 r25 views (orders cleared per view): left/right/
+quarters/heroes/close-front (A+B) 8.8-9.0; rear family (C) 8.8-9.0; top
+8.7 (glacis-med camo residual); front/close-front (D) 8.8; close-roof (E)
+8.8; front crown-air residual holds front at ~8.7. Rebuild of the critic
+pairs required per §G (geometry edits invalidate the r25 verdict).
+NEXT: independent critic re-cert; the two residual classes above are the
+only known sub-9 reads.

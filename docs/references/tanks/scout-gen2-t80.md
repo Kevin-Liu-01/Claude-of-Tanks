@@ -137,3 +137,92 @@ RULING OPTIONS (recommend b):
     about ground/width-center — the t90m batch-23/31 recipe class; the
     build then re-tunes in one round;
 (c) retire the BV print to a visual variant (kit delta on t80b's ref).
+
+## r27 (2026-08-03): re-phase to the batch-33 compressed oracles — t80 65.3 -> 82.5, t80b 55.7 -> 81.6 (both >= 80)
+
+Fresh authoring against the compressed ends (batch-33, 226f3bb): the
+brief's grid re-phase debt is paid. Final rows, gate x2 stable
+(shots/russia-r27/*.json):
+- t80  82.5 | hull 88.7 whole 82.5 turret 84.7 stations 88.3 dims 98.9
+  floaters 100 (dims = heightM 1.14% — non-binding; see the quantization
+  note below)
+- t80b 81.6 | hull 87.5 whole 81.6 turret 84.3 stations 92.3 dims 100
+  floaters 100
+- standard-check: contig 0 ✓ mg1 ✓ both; clip 221/280 / 221/310 — the
+  strip/sponson fleet-band item flagged in r26 stands (orchestrator
+  ruling pending; not this round's order).
+
+TOOLING (bank): tools/vertex-workorder.mjs printed side/front absolutes
+are WRONG this round — after the fidelity page's own gate run, one model
+root is left invisible, so the tool's recomputed union center collapses
+to the proc box (C.z 1.44 vs true 0.7184) and every side/front value
+shifts. A scratchpad gate-faithful probe (true-workorder.mjs: recovers
+the page camera center from cameraFor, pairs columns with the gate's own
+hull-registration) was the authoring source; docs/references/vertex/
+t80*.json extract curves cross-checked (ref frame is bbox-centered; hull
+mid -1.4345 -> +1.4345 maps extract z to proc frame).
+
+What landed (all in buildT80Line; t72b3m/t90m + every non-t80-line
+sibling re-gated EXACT to committed decimals):
+- STERN UNDERCUT (the p95 driver, 0.25-0.39 on three columns both
+  variants): the compressed ref's stern is an overhanging deck — bottoms
+  rake 0.71@-2.96 -> 1.23@-3.23 -> lip 1.43@-3.36. Belly re-raked, hump
+  band ends -3.27 (its -3.30 sliver crossed the -3.276 column boundary),
+  full-width LIP STEP 1.405..1.71 to -3.39 (band kept > the 12% body cut
+  so hullLengthM's rear anchor holds; x to 1.65 RIGHT / 1.62 LEFT —
+  print-asymmetric per the gate's ±1.69 plan columns), rear plate/grille/
+  log/flaps re-seated above the rake (log -3.00, its old -3.16 seat sat
+  0.19 under the new line), vertical fuel drums z -3.12 (rear sliver
+  crossed -3.276).
+- BOW ARROW re-line: center 3.02/3.09/3.27 (nose 3.05; two-segment
+  slow-then-steep wedges; corner stacks keep hullLengthM body at 3.41 so
+  dims hold), corners widen to 1.745 (the ±1.70 plan column reads 3.40 in
+  the ref; 1.76 leaked the ±1.82 window whose ref front is the skirt),
+  pocket fill re-seated (printed 3.21 into the ±0.56 columns), tow eyes
+  eyeY 0.63 (default 0.50 bottomed 0.40 vs the ref's 0.525 floor), first
+  flap 0.945.
+- SKIRT z-window -2.66..2.96 + yTop 1.10 (the two outermost plan columns
+  carried 0.31 each against the compressed ref's skirt span; front
+  ±1.70..1.77 tops read 1.101); fender/stow run widens to x 1.715 (the
+  ±1.66..1.72 front columns read the 1.22-1.23 fender line).
+- TUBE: the compressed ref band is 1.555..1.868 (0.313 thick, axis
+  1.7115) — r 0.128 seated cy -0.054 (band 0.256 keeps the 12% body-cut
+  LANDMINE margin; the ±0.03 band residual is the certified circle-law
+  trade), crest fin follows, clamp plate cy -0.056. t80b muzzle 6.33
+  (its print's last tube column; overall 9.72 = +0.67% inside grace).
+- TURRET: crown plate 1.24 wide (the ref front falls continuously from
+  ±0.60 — the 2.04-wide plate printed +0.15 x5 columns) + LEFT crown
+  shelf and LEFT-only mid-cheek riser (the compressed falloff is
+  asymmetric: left holds 2.14-2.18 where right reads 1.96-2.05); cheek
+  chain raised to 2.13/1.98 t80-ONLY (t80b's print reads 1.84-2.00
+  there); hood/step -0.10; bustle plan asymmetry (main boxes -0.82..0.88,
+  right corner to 1.005 — the ref rear is -1.41@+0.95 but -0.54@+1.08
+  and -0.76@-0.92); rear-most bustle column is a thin 1.95..2.10 lip;
+  t80b bin -1.575 + its 2.05..2.18 stowage row over z -0.80..-1.06; MG
+  cluster re-seated (fitting receiver 2.29 on the +0.38..0.46 spike
+  columns, barrel dips under the crown; sight head inboard to -0.325 —
+  t80's spike columns are -0.33..-0.39 ONLY, and t80b has NO left spike
+  at all: its head drops to 2.18); 902 tubes -0.12; the hidden
+  turret-node carrier is PER-PRINT (t80 -0.40..1.00, t80b -0.44..1.10 —
+  each print's apron zone measured from its own -0.48/+1.04 columns).
+- HEIGHTM QUANTIZATION STACK (law): the dims heightM reads the p95 crown
+  +1.5 px MSAA bleed stacked on the corner-pad floor dip (authored 2.20
+  read 2.225) — crown 2.1925, doghouse cap 2.17, apex 0.735, receiver
+  2.2075 leave the crown box the single p95 carrier at 0.9% grace... on
+  t80b (dims 100). t80's phase still reads 2.22/1.14% (non-binding at
+  dims 98.9; its bottom dip column differs by grid phase — the botY 0.06
+  bump was kept, further floor chasing declined).
+- t80bv (PARKED, certification case): 28.4 -> 35.5 — the shared hull
+  re-phase lifts it exactly like r26's recalibration did (+7.1; its
+  turret/kit stays v2-guarded). NOT byte-exact to its committed row by
+  necessity of the family rig (§H); the pending oracle re-warp ruling
+  will re-tune it in one round regardless.
+
+HONEST RESIDUALS: whole rows bind at 82.5/81.6 — the largest remaining
+classes are the tube-band circle-law trade (±0.03 x ~24 columns, capped
+by the 12% body cut), the stern window columns at 0.09-0.12 (bin-phase
+mixes of lip/hump/drum edges), per-print single columns (t80b -2.72
+fade line now v-conditioned; its 3.42 bow fender depth unaddressed), and
+cheek-corner plan columns ±1.3..1.5 at 0.15-0.26 (the compressed ref's
+pinched corners want a planform decode round). Stretch >=85 needs those
+two decodes; this round's floor (>=80 both) is met with margin.
