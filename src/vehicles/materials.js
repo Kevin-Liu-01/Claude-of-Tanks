@@ -307,12 +307,82 @@ const inGap = (line, t) => (line.gaps || []).some(([g0, g1]) => t >= g0 && t <= 
 // ---------------------------------------------------------------------------
 // Albedo (2048) — camo scheme base + feature overlay + weathering.
 // ---------------------------------------------------------------------------
+
+// FLEET DARK-CLASS ALBEDO FLOOR (materials albedo-floor round, 2026-08-04 —
+// the escalated B3 class: m47 r6 / t84 r32 / leo2a5 r8 cited the same
+// blocker from three independent critics: "the fleet camo's near-black
+// blotch albedo holds the top/steep views"). OPT-IN KNOB, SHIPPED DISABLED
+// (0 = byte-identical to the authored palettes, the §F.2 shared-helper
+// contract) — the measured round record below is why.
+//
+// MECHANISM (proven end-to-end with a 41/50/80 floor ladder on official
+// critic pairs): any authored PATCH tone whose ITU-601 luma sits below the
+// floor is scaled up to it — a pure luma scale (hue / r/g ratios preserved
+// exactly, so every packet hue gate holds by construction). Applied at
+// paintCamo palette ingestion under `visual.fleetAlbedoFloor`, which ONLY
+// the procedural bake paths set (bakeSharedCanvases / repaintEntry);
+// glbPatternTile keeps authored tones, wheelToneOf/paintKitCanvas read
+// visual.patches directly and are untouched. Sub-floor authored classes in
+// the fleet: '#1d1f1c' L30.1 (challenger2 / leclerc / chieftain_mk10 /
+// chieftain5-GRADUATE stripes), '#1f2420' L34.0 (abramsx), '#23261e' L36.2
+// (type99a), '#23261f' L36.3 (the leo1a5-family nato black on the
+// patton/leo2a6/kf51/tejas cohort), plus picker patterns (digital '#262a20',
+// m90 '#26292b', midnight '#26292c', tigerstripe '#272b22').
+//
+// WHY DISABLED — the round's measured finding (2026-08-04, floor ladder on
+// m47_patton / t84 / leo2a5 official pairs, docs/references/
+// materials-albedo-floor.md for the full censuses):
+// 1. The three cited windows are NOT held by the authored hex. Recovered
+//    references paint their hulls from the SAME shared proc canvas
+//    (modelLoader paintUntextured → getSharedCamoTexture), so the class's
+//    own albedo cancels out of every proc-vs-ref census. The m47 top-window
+//    gap (proc sub50 2189 vs ref 1160) is (a) tankFactory bakeDirt's
+//    up-facing deck multiplier ×0.84 (tank_models r4 anti-blowout law) which
+//    the ref-side refineCommunityGeometry bake does NOT carry — every proc
+//    deck texel renders ~16% darker than the ref's identical texel — plus
+//    (b) proc-only sub-50 content (floor-80 experiment residual: proc 496 vs
+//    ref 71 — spareTrack/fittings/panel-line classes). Lifting the class
+//    lifts BOTH halves and the ref responds faster (no deck penalty): at
+//    floor 50 the gap WIDENED (1318 vs 1029 baseline).
+// 2. leo2a5 gear-band sub45 2358: dark-class share measured ≈ 0 (floor 50 =
+//    +13.7 canvas-luma on the class moved the census by -4 px). The
+//    population is leopard-lane gear hexes (the r8 corner-ladder-capped
+//    system) + BASE-class texels under tankFactory bakeDirt's hem dust
+//    (G ×0.66 at ground) — neither is the patch palette.
+// 3. t84 lower-band pale>=95 (1/0 vs ref 93/246): the nato proc canvas has
+//    no >=95 class at all (max patch tone renders 88.7 on-canvas after the
+//    0.86 exposureTrim) and the hem takes bakeDirt ×0.66 G on top; the ref
+//    (also shared-canvas) reaches >=95 through its own recovered-geometry
+//    lit response. Not reachable from the palette without moving the
+//    mid/light classes (banned: 19 graduates' med/hue windows are scored
+//    against them). Banked residual on the 19th graduate — frozen.
+// Held windows stayed EXACT under every tested floor (m47 A1 med 66.6 /
+// p75 70.5, t84 letterbox med 67.8, leo2a5 hull-side med 71.4), so the knob
+// is SAFE — it is just not the lever the cited windows hang on. The real
+// B3-class levers are bakeDirt-lane (tankFactory deck/hem constants vs the
+// modelLoader refine bake). Flipping this floor on (recommended 41, just
+// under the calibrated '#2e2e2e'/L46 summer-black family) is a fleet
+// re-paint of the sub-floor cohort above — graduate re-cert scope is the
+// orchestrator's call, never a side effect.
+const CAMO_DARK_CLASS_FLOOR_L = 0; // 0 = disabled (authored palettes verbatim)
+const liftDarkClassTone = (c) => {
+  const L = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+  return L >= CAMO_DARK_CLASS_FLOOR_L ? c
+    : scale3(c, CAMO_DARK_CLASS_FLOOR_L / Math.max(L, 1));
+};
+
 function paintCamo(canvas, visual, rng, feats, seed) {
   const ctx = canvas.getContext('2d');
   const S = canvas.width;
   const base = hexToRgb(visual.base);
   const weather = hexToRgb(visual.weather || visual.base);
-  const patches = (visual.patches || []).map(hexToRgb);
+  // fleetAlbedoFloor: set by the procedural bake paths only (bakeSharedCanvases
+  // / repaintEntry) — never by glbPatternTile, so ref oracles keep authored
+  // tones. 'winter'/'washworn' patches[0] is the show-through UNDER color
+  // (not a top-coat blotch) but shares the same darkest-class semantics; no
+  // shipped wash palette sits under the floor, so the branch is a no-op there.
+  const rawPatches = (visual.patches || []).map(hexToRgb);
+  const patches = visual.fleetAlbedoFloor ? rawPatches.map(liftDarkClassTone) : rawPatches;
 
   // World-size normalization (r7): camoScale is UV repeats per meter (boxUV
   // in tankFactory), so a tank at the 0.34 default spreads one tile over ~3 m
@@ -2206,7 +2276,10 @@ function bakeSharedCanvases(entry, quality) {
   const sz = { albedo: texSize(szq.albedo), map: texSize(szq.map) };
   const { spec, seed } = entry;
   // modernWelds: welded-composite hulls draw no rivet/bolt rows (r10)
-  const vis = { ...resolveCamoVisual(spec, entry.patternId), modernWelds: spec.era === 'modern' };
+  // fleetAlbedoFloor: procedural-canvas dark-class floor (see paintCamo) —
+  // proc bakes only; glbPatternTile stays authored-tone (ref oracle frozen).
+  const vis = { ...resolveCamoVisual(spec, entry.patternId), modernWelds: spec.era === 'modern',
+    fleetAlbedoFloor: true };
   const rng = mulberry32(seed);
   entry.feats = genPlateFeatures(rng);
   // tank_models r5 ("hull sides show a grid of panel seams on what are single
@@ -3047,7 +3120,10 @@ const wheelDarkRgbOf = (v) => scale3(wheelRgbOf(v), 0.66);
 const detailRgbOf = (v) => scale3(mix([65, 70, 58], wheelToneOf(v), 0.5), 0.9);
 
 function repaintEntry(entry, patternId) {
-  const vis = { ...patternVisual(entry.spec, patternId), modernWelds: entry.spec.era === 'modern' };
+  // fleetAlbedoFloor: same proc-only dark-class floor as bakeSharedCanvases —
+  // picker/biome repaints must land on the identical canvas.
+  const vis = { ...patternVisual(entry.spec, patternId), modernWelds: entry.spec.era === 'modern',
+    fleetAlbedoFloor: true };
   // pattern-specific rng stream; the shared `feats` plan keeps panel lines,
   // welds and bolts aligned with the (unchanged) normal map.
   let ph = 0;
