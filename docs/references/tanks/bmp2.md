@@ -172,3 +172,14 @@ end-stretch cover band (z -3.19..-3.42, ~3 cols/end) and the certified
 plan rows carry the flat -40 stylization tax documented above. The
 pre-warp gate CEILING for a published-dims build against this print is
 ~58 on plan rows; the lane hands over to the E-lane warp batch.
+
+## Batch-39 warp EXECUTED (2026-08-04, orchestrator lane)
+The r1 formal request landed as repair_oracles.py batch-39: uniform z
+x1.0613 about the centred mask mid (long_map (-3.357,-3.5627)..(3.357,
+3.5627) glb units), y identity, width untouched. Byte-idempotent
+396cb021 x2; census 2/379253/149999 exact; verify height -1.3% (honest)
+/ hullMask 0% / overall 0% / width 0% OK. Gate-in-loop vs the r1 57.7:
+min 57.2 — RESHUFFLE, not crater: hull 57.7 -> 75.1 (the plan tax
+released), whole 58.1, turret 68.6, stations 74.9 -> 57.2 (slice
+re-phase debt — the ref slices moved with the stretch), dims 100 held.
+AFV r2 re-anchors per the standard post-warp arc.

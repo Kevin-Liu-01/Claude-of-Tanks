@@ -38,6 +38,16 @@ const VDIR = path.join(ROOT, 'docs/references/vertex');
 // Derivations: docs/references/vertex/<id>.json measured landmarks vs pubDims
 // (see the per-tank packet batch-12 sections for the full derivation).
 export const PLANS = {
+  // AFV program batch-39 (the AFV-r1 formal warp request, bmp2.md): the
+  // Bergman print is -5.8% short — uniform z stretch about the centred
+  // mask mid to the published 6.72; y identity (bodyH -1.1% honest);
+  // width anchor untouched.
+  bmp2: {
+    file: 'bmp2_bergman',
+    y: [[0, 0], [2.471, 2.471]],
+    z: [[-3.166, -3.36], [3.166, 3.36]],
+    yTopMax: 2.49,
+  },
   // AFV owner drop (2026-08-04, 42manako CC-BY): +10.7% stature, -8% short.
   // Uniform z stretch to the published 6.55 (IFV: overall = hull); y identity
   // below the 2.06 deck knee, turret band 2.06..3.30 -> published 2.98 top.

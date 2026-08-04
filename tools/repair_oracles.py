@@ -3196,6 +3196,24 @@ REPAIRS['t84'] = [
 ]
 
 
+# =============================================================== batch 39 ===
+# BMP2 NORMALIZE (AFV r1 formal warp request, bmp2.md + 17a6a3f: the
+# Bergman print is -5.8% short; the r1 build is warp-ready — published
+# dims, mid features at the print's own lines, ends stretched to the
+# 6.72 envelope). Uniform z x1.0613 about the centred mask mid; y
+# identity; width anchor untouched. Fresh file first-run .bak from the
+# committed pristine bytes (ada5a1c7 census verified by the r1 probe).
+# PROBE-VERIFIED CLASS + gate-in-loop vs the r1 57.7 baseline: the plan
+# stylization tax (-40 pts) should release; dims 100 must hold.
+REPAIRS['bmp2'] = {
+    'path': 'public/models/tanks/community/bmp2_bergman.glb',
+    'ops': [('py2', _axis_warp('bmp2', long_axis='z',
+                               y_map=[(0, 0), (2.62, 2.62)],
+                               long_map=[(-3.357, -3.5627), (3.357, 3.5627)],
+                               y_top_max=2.6614, expect=(2, 379253, 149999)))],
+}
+
+
 # =============================================================== batch 38 ===
 # M2A2_BRADLEY NORMALIZE (AFV program, owner drop 2026-08-04 — 42manako
 # CC-BY-4.0, ATTRIBUTION.md "AFV oracle drop"; PLANS m2a2_bradley). The
