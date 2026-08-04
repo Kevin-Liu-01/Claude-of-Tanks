@@ -105,3 +105,22 @@ axis is what the harness normalizes on); the roof band above 2.46 then
 needs the same W1-style compression as the family (CROWS II mast 3.6-3.9,
 pedestal 2.79). Until warped: not buildable past the cert; build stays
 published-true.
+
+## §B1 TURRET FRONT SLOPE (2026-08-04, abrams builder)
+MEASURED (probe shots/abrams-b1/probe-m1a2_sepv2.json, same print as
+m1a2): print cheek rake 40.4° from vertical (chin y 1.66 z 2.372, slope
+-0.851, res 6 mm). Authored before: implicit faceRake default 0.34 ~ 30°
+(visible carrier read ~22° through the chamfers). After: explicit
+faceRake 0.51 = 40.3° over the 0.60 cheek edge, chin keeps zTip (plan);
+slot plate pitches with the face (shared abramsShell §B1 mechanics).
+GATE x2 IDENTICAL runs, IMPROVED: min 0 -> 0 (hull 0 unchanged) but
+whole 0 -> 7.9, turret 0 -> 15.2, stations 15.3 -> 30.1, dims 98 -> 100,
+floaters 100 x2 — the raked face pulls the turret rows toward the print
+even under this tank's known misregistration (proc turret front z 1.80
+world vs print chin 2.37 — the 0.57 m offset class is the REAL sepv2
+work order, its own round). §B5 audit: pre-existing stranded-1
+"(unnamed)" reproduced byte-exact at HEAD (HEAD-swap proof this round) —
+not from this change; documented for the sepv2 registration round.
+Standard-check: pre-existing skirt-zone holes/clip/census unchanged.
+Hash 95c8592c -> 11a471d (43/77912). After-pairs
+shots/abrams-b1/after-m1a2_sepv2/.

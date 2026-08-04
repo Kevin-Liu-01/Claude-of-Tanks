@@ -554,8 +554,14 @@ function abramsShell(P, t) {
   // (centered on t.slotX = the gun axis); the exposed throat face on either
   // side then reads as cheek-plane camo. Geometry class unchanged (same z
   // plane, thin plate inside the embrasure pocket).
+  // §B1 (owner photo directive 2026-08-04): the plate PITCHES with the raked
+  // face plane (same slope, still ~0.03 behind it) — an unrotated plate at
+  // the old vertical plane would stand proud of the steepened face as a
+  // floating dark slab in the embrasure air.
+  const faceSlope = faceRake / Math.max((t.roofTip - 0.03) - yBF, 0.01);
+  const slotY = (t.roofTip + yBF) / 2 - 0.03;
   P.add('turretDark', box(t.slotW ?? thr * 1.9, t.slotW ? 0.44 : (t.roofTip - yBF) * 0.8, 0.05),
-    t.slotX ?? 0, (t.roofTip + yBF) / 2 - 0.03, zFace - skew / 2 - 0.03);
+    t.slotX ?? 0, slotY, zFace - skew / 2 - 0.03 - (slotY - yBF) * faceSlope, -Math.atan(faceSlope), 0, 0);
   // Cheek->roof transition wedge (roofWide across the shoulders). wedgePull
   // keeps its bottom face inside the next plan trace column when the flank
   // wall is authored separately (plan-column sliver law).
@@ -934,9 +940,17 @@ const TEJAS_TURRET = {
   // roofTip 0.59: ref cheek line reads 2.16-2.19 over z 2.0..2.37 world
   // (r4 rows + station i10 top 2.181).
   yBot: -0.195, yBotRear: 0.28, roofTip: 0.58, roofWide: 0.65, roofMain: 0.79, roofRear: 0.745,
-  // faceRake 0.02: the ref carries its 2.16 cheek roofline flat out to the
-  // face (side 2.386 read 2.162 vs our raked-back 2.03 tip).
-  faceRake: 0.02,
+  // faceRake 0.32 (§B1 TURRET FRONT SLOPE, owner photo directive 2026-08-04):
+  // the print's own cheek plane rakes 34.8° from vertical (turret-only side
+  // profile, gun excluded: chin y 1.80 z 2.348 world falling to 2.10 at the
+  // 2.13 roof knee, slope dz/dy -0.695, fit residual 6 mm — probe
+  // shots/abrams-b1/probe-m1a2_tejas.json). The old 0.02 "flat roofline"
+  // read fit a side column (z 2.386) that the print carries on its GUN
+  // COVER mass, not the cheek plate — flattening the cheek to own it was
+  // the vertical-slab failing read the owner flagged. 0.32 over the 0.46
+  // cheek edge = 34.8° exact; chin corners keep zTip so every certified
+  // plan bin still lands on the bottom edge.
+  faceRake: 0.32,
   // Bustle bottom polyline (r7 refit against the live-mask bottoms: dip to
   // 1.53w at -1.14 world, then a CONCAVE rise 1.67w@-1.36 / 1.73w@-2.07 /
   // 1.85w@-3.0 to the 1.85 rack-zone line).
@@ -2800,6 +2814,17 @@ function buildM1a2(P) {
   // max still lands exactly at its inner edge (values unchanged from the
   // r1 workorder fit), the y-step undercut is preserved via layer clips,
   // and the rendered face is one continuous plane per cheek.
+  // §B1 TURRET FRONT SLOPE (owner photo directive 2026-08-04): the top face
+  // band is no longer vertical — the print's cheek planes rake back from a
+  // CHIN at y 1.66 (turret-only side profile, gun excluded, probe
+  // shots/abrams-b1/probe-m1a2.json): left slope dz/dy -0.784 = 38.1°,
+  // right -0.851 = 40.4° from vertical (fit residual 6 mm). The chin band
+  // (1.555..1.66) stays at the polyline fronts so every certified plan bin
+  // still lands on it (plan max is now the chin, not the whole face), and
+  // the raked band pulls its TOP edge back 0.24 L / 0.26 R over the
+  // 1.66..1.965 rise (= the print's per-side angles). x/y corners are
+  // untouched: the front-view footprint is byte-identical, side/station
+  // rows move toward the print's own raked class.
   {
     const CHEEK_L = [[-0.315, 2.405], [-0.425, 2.295], [-0.536, 2.285],
       [-0.647, 2.26], [-0.758, 2.21], [-0.869, 2.16], [-0.98, 2.085],
@@ -2808,15 +2833,18 @@ function buildM1a2(P) {
       [0.647, 2.11], [0.758, 2.005], [0.869, 1.93], [0.98, 1.815],
       [1.09, 1.735], [1.203, 1.62], [1.315, 1.505]];
     const LAYERS = [[1.375, 1.445, 1.895], [1.445, 1.508, 2.14],
-      [1.508, 1.555, 2.31], [1.555, 1.965, 9]];
+      [1.508, 1.555, 2.31], [1.555, 1.66, 9], [1.66, 1.965, 9, 1]];
+    const RAKE = { L: 0.24, R: 0.26 };      // §B1 top pull-back per side
     const zR = 0.55;                        // shared rear plane (body covers)
     for (const pts of [CHEEK_L, CHEEK_R]) {
+      const rake = pts === CHEEK_L ? RAKE.L : RAKE.R;
       for (let i = 0; i < pts.length - 1; i++) {
         const [xa, za] = pts[i], [xb, zb] = pts[i + 1];
         const [xL, zL, xR2, zR2, bL, bR] = xa < xb
           ? [xa, za, xb, zb, pts[i][2], pts[i + 1][2]]
           : [xb, zb, xa, za, pts[i + 1][2], pts[i][2]];
-        for (const [y0, y1, clip] of LAYERS) {
+        for (const [y0, y1, clip, raked] of LAYERS) {
+          const pull = raked ? rake : 0;
           const fL = Math.min(zL, clip), fR = Math.min(zR2, clip);
           // Optional per-point bottom lift (ref front bins: the right cheek
           // undercut rises 1.41/1.44 over its outer two bins) — layer 1 only.
@@ -2825,7 +2853,7 @@ function buildM1a2(P) {
           P.add('turret', slab(
             [xL, yL - M1A2_RING[1], fL - M1A2_RING[2]], [xR2, yR - M1A2_RING[1], fR - M1A2_RING[2]],
             [xR2, yR - M1A2_RING[1], zR - M1A2_RING[2]], [xL, yL - M1A2_RING[1], zR - M1A2_RING[2]],
-            [xL, y1 - M1A2_RING[1], fL - M1A2_RING[2]], [xR2, y1 - M1A2_RING[1], fR - M1A2_RING[2]],
+            [xL, y1 - M1A2_RING[1], fL - pull - M1A2_RING[2]], [xR2, y1 - M1A2_RING[1], fR - pull - M1A2_RING[2]],
             [xR2, y1 - M1A2_RING[1], zR - M1A2_RING[2]], [xL, y1 - M1A2_RING[1], zR - M1A2_RING[2]]));
         }
       }
@@ -3518,6 +3546,12 @@ const SEPV2_TURRET = {
   tw: 1.50, throat: 0.56, zTip: 2.20, zWide: 0.9, zMain: -0.4, zRear: -2.37,
   yBot: -0.33, yBotRear: -0.07, roofTip: 0.27, roofWide: 0.71, roofMain: 0.71, roofRear: 0.44,
   inset: 0.13, rackTop: 0.66, rackBot: -0.05, rackDepth: 0.4,
+  // faceRake 0.51 (§B1 owner photo directive 2026-08-04): the sepv2 print's
+  // cheek plane rakes 40.4° from vertical (probe
+  // shots/abrams-b1/probe-m1a2_sepv2.json: chin y 1.66 z 2.372 world,
+  // slope -0.851, residual 6 mm). 0.51 over the 0.60 cheek edge = 40.3°;
+  // the old implicit 0.34 default read ~30°. Chin keeps zTip (plan bins).
+  faceRake: 0.51,
   ring: [0, 1.73, -0.4], gun: [0, -0.05, 0.90], gunLen: 5.31, gunR: 0.09,
 };
 
@@ -3872,9 +3906,22 @@ function buildAbramsX(P) {
   // Hexagonal plan (current bake): face 2.34 wide ±0.6 chamfering to the
   // ±1.70 flanks at z 1.9, flank run to -1.29, rear chamfer to the flat
   // ±0.78 stern at -2.14 (world -2.53... -2.45 tail line).
-  P.add('turret', slab(   // front face + corner chamfers
+  // §B1 TURRET FRONT SLOPE (owner photo directive 2026-08-04): the print's
+  // center face rakes 29.4° from vertical FROM A CHIN at world y 1.84 =
+  // local -0.11 (probe shots/abrams-b1/probe-abramsx.json: chin z 2.40
+  // world, slope -0.5635, face band 1.84..2.16 world); the old one-slab
+  // 2.60 top read 13°. Split at the print's own chin: vertical chin prism
+  // to -0.11 (keeps every plan bin + the certified low-column class), then
+  // the raked band pulls the top center corners to 2.567 (= 2.73 -
+  // 0.5635*0.29 rise, 29.4° exact — a first cut raking from the LOW -0.38
+  // corner put the mid-face side columns 0.22 under the print and cost
+  // turretCurves 0.2; the print's rake lives at its own chin height).
+  P.add('turret', slab(   // front chin prism + corner chamfers (plan carrier)
     [-0.60, -0.38, 2.73], [0.60, -0.38, 2.73], [1.68, -0.38, 2.26], [-1.68, -0.38, 2.26],
-    [-0.52, 0.18, 2.60], [0.52, 0.18, 2.60], [1.60, 0.30, 2.22], [-1.60, 0.30, 2.22]));
+    [-0.60, -0.11, 2.73], [0.60, -0.11, 2.73], [1.648, -0.11, 2.244], [-1.648, -0.11, 2.244]));
+  P.add('turret', slab(   // raked face band (print 29.4° from vertical)
+    [-0.60, -0.11, 2.73], [0.60, -0.11, 2.73], [1.648, -0.11, 2.244], [-1.648, -0.11, 2.244],
+    [-0.52, 0.18, 2.567], [0.52, 0.18, 2.567], [1.60, 0.30, 2.22], [-1.60, 0.30, 2.22]));
   P.add('turret', slab(   // face slope up to the roof plateau
     [-1.70, -0.38, 2.28], [1.70, -0.38, 2.28], [1.70, -0.34, 1.04], [-1.70, -0.34, 1.04],
     [-1.62, 0.30, 2.24], [1.62, 0.30, 2.24], [1.62, 0.51, 1.06], [-1.62, 0.51, 1.06]));

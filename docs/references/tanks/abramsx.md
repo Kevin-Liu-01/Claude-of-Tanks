@@ -150,3 +150,28 @@ registration dy pollution that costs every turret/whole column ~25 pts.
 The masked-registration gate option in the 2026-08-01 caps section is
 NOT exercised this round (owner order: abramsx last; no build or gate-run
 changes made — ledger row left as the 2026-08-01 state).
+
+## §B1 TURRET FRONT SLOPE (2026-08-04, abrams builder)
+MEASURED (probe shots/abrams-b1/probe-abramsx.json): print center face
+rakes 29.4° from vertical FROM A CHIN at world y 1.84 (z 2.40, slope
+-0.5635, face band 1.84..2.16). Authored before: 13.1° (one slab, top
+z 2.60 from the LOW -0.38 chin). REAL CLASS: owner photo = steep rake;
+print carries it — print is authority.
+FIX: the front-face slab splits at the print's own chin — vertical chin
+prism to local y -0.11 (world 1.84; keeps every plan bin + the certified
+low-column class), then the raked band pulls top center corners to 2.567
+= 29.4° exact. LESSON BANKED: the first cut raked from the authored low
+chin (-0.38) — visually steep but it dropped the mid-face side columns
+0.22 under the print and cost turretCurves 0.2 (65.6 -> 65.4). The
+print's rake lives AT ITS OWN CHIN HEIGHT — measure the chin, not just
+the slope (bisect-proven: chin-split restores 65.6 exactly).
+GATE x2 IDENTICAL to baseline: min 3.7 both runs (3.7/9.1/65.6/77.5/
+100/100, floaters 100 x2) — §B1 read delivered at zero gate cost on this
+pre-gate build. §B5 0/0/0. Standard-check: pre-existing bow/tail holes +
+clip unchanged (hull zones). Hash 72df04a8 -> 5ae4bd90 (40/71756 ->
+40/71792). After-pairs shots/abrams-b1/after-abramsx/.
+NOTE m1a1_aim (measured, NOT changed, byte-identical 2804b74): its
+bergman print's turret node is gun-fused (single mesh, probe zMax = the
+4.54 tube) — leading edge unmeasurable by the turret-only probe; the
+proc turret is the certified round-casting identity whose front slopes
+continuously (no vertical/slab read, §B1-conformant as built).

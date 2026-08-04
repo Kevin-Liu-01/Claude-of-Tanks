@@ -137,3 +137,17 @@ read 97 -> 83: on TUSK's slat-stretched frame phase the heightM p95 lands
 on the 2.52 M240-shield column (4th tallest there). Chimera cert unchanged;
 a tusk-owned round should revisit the 3-column spike allocation under its
 own frame.
+
+## §B1 TURRET FRONT SLOPE (2026-08-04, abrams builder — shared-shell move)
+Inherits the TEJAS_TURRET faceRake 0.02 -> 0.32 + pitched slot plate via
+buildTejasFamily (trio round notes in m1a1.md). Own chimera print measures
+34.5° from vertical (probe shots/abrams-b1/probe-m1a2_tusk.json: chin
+y 1.68 z 2.21, face band to y 2.00); the shared 0.32 lands 34.6° on the
+built carrier — print-exact, §H.4-consistent (one family class, per-print
+values). Gate x2 IDENTICAL: min 13.7 both runs (hull 24.3 / whole 13.7 /
+turret 42.2 / stations 39 -> 39.6 / dims 100 / floaters 100) — stations
+IMPROVED, nothing regressed; the pre-gate hull/whole caps (chimera oracle)
+stand untouched. §B5 audit 0/0/0. Standard-check: pre-existing tail holes
+(x -1.12/-1.02, z -3.9) + rear clip 10 unchanged (hull zones, unrelated).
+Hash f1aebbec -> f7ecade4 (47/182584). After-pairs
+shots/abrams-b1/after-m1a2_tusk/.

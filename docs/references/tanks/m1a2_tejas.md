@@ -166,3 +166,18 @@ false-0). Gate: 89.4 = today's pristine-HEAD read exactly (x3; bisect-
 proven neutral; the 90.5→89.4 ledger delta pre-exists — orchestrator
 lane: override-path drift on this oracle). Critic pairs re-rendered:
 shots/critic-m1a2_tejas/. Re-freeze at landing.
+
+## §B1 TURRET FRONT SLOPE (graduate-change round, 2026-08-04)
+Shares buildTejasFamily/TEJAS_TURRET — full round notes + angle table in
+m1a1.md. Own print cheek rake 34.8° from vertical (chin y 1.80 z 2.348,
+slope -0.695, res 5 mm); authored before 2.5° (faceRake 0.02 — the old
+comment's "flat 2.16 roofline" column z 2.386 is gun-cover-carried in the
+print, not cheek); after faceRake 0.32 = 34.8° exact (probe re-run reads
+the built carrier at 35.5°). Slot plate pitches with the face plane.
+Gate x2: 89.4 held both runs (turret 89.6->89.8, stations 93.5->93.9,
+dims/floaters 100); evaluator full digest: net +7 flags = churn + two
+marginal roof-shoulder reads (Δ<=1.9°), gate rows improved; §B5 0/0/0;
+standard-check PASS. Pairs shots/abrams-b1/{before,after}-m1a2_tejas/
+(change localized to the turret front in all 14 views; close-front zoom
+pair zoom-tejas-closefront-*.png shows the slab -> raked wedge read).
+NEW HASH 526341c0 -> 3fcae440 (47/158248) for re-cert + re-freeze.

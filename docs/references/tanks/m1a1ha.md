@@ -96,3 +96,13 @@ tops 2.00 — under the stowed barrel line). Census mg1+1d ✓. Gate: the
 identical 89.4 as m1a1 (bisect-proven neutral — pristine HEAD reads the
 same 89.4 today; pre-existing override-path drift, orchestrator lane).
 Critic pairs: shots/critic-m1a1ha/. Re-freeze at landing.
+
+## §B1 TURRET FRONT SLOPE (graduate-change round, 2026-08-04)
+Shares buildTejasFamily/TEJAS_TURRET — full round notes + angle table in
+m1a1.md. Print (m1a2_tejas.glb, the registered ref) cheek rake 34.8° from
+vertical; authored before 2.5° (faceRake 0.02, the slab read); after
+faceRake 0.32 = 34.8° cheek edge exact. Gate x2: 89.4 held both runs
+(turret 89.6->89.8, stations 93.5->93.9, dims/floaters 100). §B5 audit
+0/0/0; standard-check PASS; pairs shots/abrams-b1/{before,after}-m1a1ha/
+(proc-half diff localized to the turret front, 295 px view-left; ref half
+0-diff). NEW HASH b14be581 -> 5c765fc4 (46/158212) for re-cert+re-freeze.
