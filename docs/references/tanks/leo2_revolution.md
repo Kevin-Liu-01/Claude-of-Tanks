@@ -453,3 +453,161 @@ Residuals (certified, measured):
   the pair, stations 90.6-90.8 in all states.
 - Front ±1.73 columns 2.121 vs ref 2.161 (2 x 0.034 — the wall-top
   class; +1.64's shoulder mid-park costs 0.05 in its low state).
+
+## Visual round r9 (2026-08-04) — FINISH TIER round 1 (shaded-parity r7 verdict, commit aa7d234): all six drivers delivered
+
+Gate at landing: **min 90.7 PASS ×2 bit-identical** (hull 91.5 / whole 90.7
+/ turret 91.8 / stations 90.8 / dims 99.5 / floaters 100 — whole binder
+unchanged from r7; hull −0.2 and turret +0.1 vs the r7 line, dims +0.1).
+Hash c5d9e131 → **f6a1d3c0** (39→58 meshes, 96020→111368 verts). Frozen
+siblings verified at the same sitting: leo2a5 **50c34724** (byte-frozen
+through the leoGear opt-in change), leo2a6 **80b76338**, kf51 **77020c58**.
+Evaluator: RIG PARITY OK, max yawProxy 0.8° @close-front, no skew flip
+(shots/visual-eval-leo2_revolution/). standard-check: gateMin 90.7 | clip
+**98/429 — the documented §B4 carry TO THE DIGIT** (B1 was material-only,
+condition verified) | contig 0 ✓ | decor **mg1+4d** ✓ (stowed MAG + 2
+rear-wall cable fittings + 2 light clusters). npm test 166 checks pass.
+Shots: shots/leopard-r9/. Measurement rigs: the r7 critic's own
+tmp-rev-critic-measure.py windows + refined blue-signature flood.
+
+Orders → deliveries (per-order done-gates, official pairs):
+1. **A2 RWS STATION (mandatory)**: left pod re-sculpted IN PLACE into an
+   open-top station tub — floor + full-height outboard/inboard/rear walls
+   + low front race band carrying ring race, pedestal, head box, optic
+   glass, dark barrel + muzzle ring, elevation arm, equipment box with
+   dark deck cover. Ortho silhouettes preserved BY CONSTRUCTION (side
+   rect = side walls, front rect = rear wall, plan = floor); wall tops
+   EXACTLY 2.66 = the heightM anchor (dims 99.5 ≥ r7's 99.4); st4 cap
+   blades byte-untouched (stations 90.8 held ×2). Front + toptilt/hero
+   at 2× parse ring/pedestal/head/optic/barrel; the old buried optic
+   deleted (never painted), the certified low co-ax tube KEPT
+   byte-identical (it owns the w −0.6..−0.72 side band).
+2. **A1 GUN FACE**: dark bore end-disc r 0.062 INSIDE the 0.078 tube,
+   face 0.5 mm proud of buildGun's own camo cap (tube length untouched —
+   r7 law 2; dims overallLengthM pct unchanged, cover 0.56 stable) +
+   dark collar band 0.13 m aft (+2 mm radial, sub-pixel) + mantlet
+   bolted-flange disc + 6 studs inside the notch envelope (side-covered
+   by the mantlet wall's 2.02 top). Done-gate: view-front at 2× shows
+   the dark muzzle circle ✓ (close-front frames the bow; muzzle out of
+   its crop — front view is the evidence view).
+3. **A3 STOWED MAG**: kept flush (pintle allowance unspent); pale
+   receiver cap + barrel co-rod (a5 mgPale recipe) with tops 1.9865-1.988
+   inside the r7-certified ≤1.99 band. Reads as a weapon at 2× on the
+   wing.
+4. **B1 GEAR BAND**: leoGear grew padHex/chainHex/tireHex/gearFloor
+   OPT-IN passthroughs (defaults undefined — a5/a6/kf51 byte-identical,
+   hash-proven above); revolution passes the pt91m r27 recipe (0x343a29 /
+   0x2b3122 / gearFloor). Sprocket-dip plates + band-edge guard strips
+   moved to an olive-dark rehooked clone at byte-identical geometry (§C
+   material split); tires+flap rubber 0x35362c. Done-gate: view-left band
+   strip [120:500]×[372:392] **p5 6.8 → 51.4, med 56.0** (gate p5 ≥40,
+   med 48..58; ref 53.0/51.1) ✓✓; clip audit unchanged 98/429 ✓.
+5. **C1 FAN ARCHES**: the r7 flush discs at (±0.72, −1.15) were z-BURIED
+   under the 2.06 deck plate (and at the wrong z — the ref's arches
+   measure r≈0.55 at x ±0.58 over z −2.75..−3.37, px-calibrated 55.5
+   px/m). Rebuilt on the tail box top at the ref's own z: twin wells
+   r 0.36 at (±0.42, −3.2675) — dark recess + pale screen + rim ring +
+   4 blades + hub + hinge chord bar with bolt row against the riser;
+   every top ≤1.7185 (+8.5 mm = 0.33 px; tail cols keep 1.71). Bounded
+   by the bridge rear (−2.90) and riser front (−3.635) — r 0.36 is the
+   max the deck carries; ref-size parity (0.55) is priced as geometry
+   the tail cannot hold. Done-gate: top/toptilt read two circles ✓.
+6. **C2 DECK CABLES**: one draped run on the mid deck INSIDE the riser
+   z-window (0.04..−0.61 — the only zone where a 2.104 crown stays
+   side-covered; measured law below) + flat recess-level runs across the
+   tail deck. Top-view cable read ✓, no new columns ✓.
+7. **D3 §B2 END-CAPS (mandatory)**: px-calibration (137.25 px/m) showed
+   the verdict's channels are the 6 cm DECK-EDGE↔SKIRT corridors at
+   x ±1.55..±1.64 (not −1.95/−1.35): walled with per-side bulkheads
+   stacked in the left guard strip's own z-window (−0.60) + a right
+   forward bulkhead at z +1.9 (per-side tops 1.99/1.75+2.03-tab/1.74 —
+   the ref front ±1.64 cols are ASYMMETRIC 1.98L/1.78R; a symmetric 2.02
+   cut printed err 0.138 and was re-cut). The front pod-corner pocket
+   (88 px) takes a launcher stowage plate at the cluster's own depth;
+   the quarter pockets ride the OPEN SPONSON-TOP corridors (ray-traced
+   x+z = −3.65..−3.37 at y 1.83..2.04 and mirror) — closed by intake
+   housings hung off both engine-course flanks (front cols deck-topped,
+   side cols course/post-topped, plan inside the band footprint).
+   Done-gate: refined-mask flood ≤ label-noise on EVERY view — front
+   92/0, rear 101/9, rearleft 92/0, rearright 92/0, frontleft 92/0,
+   frontright 92/0, left 119/27, right 125/33 (both BELOW their r7
+   130/38, 152/61), top 122/30, toptilt 94/2 ✓✓; stations 90.8 ×2;
+   floaters 100.
+8. **D1 TAIL LATTICE**: hull tail — 9 grey ribs (med 56.0 flat) replaced
+   by pale slats + frame verticals over the grown dark backdrop; A-panel
+   assembly gets per-segment pale grid bars (rear + outboard faces,
+   INSIDE each segment's w-window) + camo bleed. Material: the family
+   canvasCloth instance retinted 0x414737 (measured: shadow-clone paths
+   CANNOT land the window — floor-hooked renders 82+0.11·albedo, raw
+   clone crushes to 26.5) + a +12% rehooked clone on alternate slats.
+   Done-gate: rear panel window med **56.0 → 77.3** (gate 70..85, ref
+   78.6), **sd 12.50** (≥10, ref 13.65) ✓✓.
+9. **D2 REAR WALL**: FITTINGS cable-X (2 runs, eyes:false — see law 3)
+   + 2 dark-lens light clusters + shackle blocks, everything z ≥ −3.8585
+   (inside the rails' −3.885). Done-gate: wall rowmean-sd **3.99 → 5.59**
+   (toward ref 6.08) ✓; hullLengthM pct held (dims 99.5).
+10. **E1/E2 (cited classes — shading only)**: bow rake seam engraving on
+    the beak faces + shelf module seam + module-underline shadow strips
+    (≤+5 mm, sub-pixel). The measured flats stay ledger-parked; toe
+    untouched (dAlong law).
+11. **F1/F2 FINISH**: jacket courses re-bucketed to ONE tinted camo mesh
+    re-using P.mats.hull (factory boxUV/bakeDirt math + per-plate tint
+    0.875..0.910 — geometry byte-identical, ±2.00 width guard still on
+    a ±2.00 mesh). Done-gate: jacket window med **73.2 → 68.0** vs ref
+    same-rect 67.4 (Δ+0.6; the −8 order landed) ✓. Wing cover de-CAD'd
+    with camo overlay quads + panel seams; deck-base/fore-roof tint
+    panels (non-casting per the a5 r8-g law).
+    F3 (fore-quarter launcher) NOT taken — r5 plan-column price stands.
+
+LAW DISCOVERIES (bank):
+1. **VERDICT COORDS vs PX TRUTH**: the r7 verdict's world-x callouts for
+   the §B2 channels (−1.95, −1.35) were scale-shifted; the PX coords were
+   exact. Re-derive world positions from the pair renders' own body
+   extents (cols 45..594 ↔ ±2.00, 137.25 px/m) before authoring caps —
+   the real corridors sat at ±1.55..±1.64.
+2. **OBLIQUE-CORRIDOR CLASS**: enclosed-sky in quarter/oblique views can
+   ride DIAGONAL corridors (x+z ≈ const) over open sponson tops — ray
+   bands computed from the orthoFor math (center-offset included!) name
+   the one blocker position that is silhouette-free in all three orthos;
+   blocking PART of a corridor merely re-shapes the enclosure (the first
+   pelmet/card cuts moved nothing until the c-band was fully covered).
+3. **FITTING EYES AT BODY PLANES**: FITTINGS.towCable end EYES reach
+   r·3.4 past the end knots — on the rear wall they landed at z −3.883,
+   on the rails' −3.885 boundary plane, and cost turret −0.6 through the
+   whole-model crop. eyes:false (or 50 mm setback) at any body-extent
+   plane.
+4. **SEGMENT-GAP DRESSING LAW**: the A-panel cards are 14 mm-parked with
+   OPEN 28 mm gap columns the runner owns at 2.00 — dressing spanning
+   across segment gaps prints the gap columns (bars/bleeds must sit
+   INSIDE one segment's w-window each; a gap-crossing outboard bar cost
+   side_turret −0.4).
+5. **SHADE-PANEL TONE LEVERS (rear faces)**: floor-hooked shadow-clones
+   render ≈82 + 0.11·albedo (window 70..85 unreachable); raw clones
+   crush to ~26; the family canvasCloth instance responds ~1.13× albedo
+   and is the right base for pale rear-face fixtures. Two-point-measure
+   before walking hexes.
+6. **DECK-CABLE WINDOW**: proud deck runs are side-visible wherever the
+   deck line IS the silhouette — the only legal crown zone is under the
+   riser/course tops (here z 0.04..−0.61); elsewhere cables go flat at
+   recess level.
+
+Residuals (certified/measured, no new orders):
+- §B4 sprocket-dip carry: clip 98/429 and the front −1.01 col (err
+  0.133/0.139 across runs) — untouched, the queued round owns it. The
+  r9 corner-pocket work stayed out of the dip-plate lane.
+- plan_turret single-column flicker at cam +1.61: the REF-side rear read
+  flips −1.0/−2.48 run-to-run (0.809 err in one state, 0.071 in the
+  other; plan_turret 92.7/95.9). Ref-side render bistability, not a
+  proc defect — logged for the critic.
+- §B5 audit: stranded 3 — the two r7-adjudicated false positives
+  (driver periscopes, merged-hull AABB) + the merged hullDark bucket now
+  crossing the 30% AABB-overlap report line via the E2 deck seams
+  (whole-bucket flag class; the seams are correctly hull-parented deck
+  furniture).
+- Front-view lattice-wing read at the bustle corners: partial — the
+  pocket card + tubes carry the corner mass dead-front, but the ref's
+  fine slat texture there has no front-facing proc analogue (the panel
+  lattice lives on rear/outboard faces). Cite for round 2.
+- Fan-arch size: r 0.36 vs ref ≈0.55 (deck-carry bound, see order 5).
+- frontright/left/right residual flood 27-57 px in earlier states traced
+  to the same corridor class; final state has every view ≤ label+33.

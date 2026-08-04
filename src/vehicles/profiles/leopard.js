@@ -65,6 +65,12 @@ function leoGear(P, g) {
     // keeps the kit default so every sibling stays byte-identical.
     linkPitchM: g.linkPitchM,
     paintedEnds: true, coveredTop: true,
+    // r9 leo2_revolution B1 opt-ins (merkava r12 gear-tone params via the
+    // uk.js chieftain5 precedent): per-tank pad/chain tones + the ambient
+    // floor rehook. All undefined for every other caller — buildRunningGear
+    // defaults stay byte-identical (a6/kf51/a5 hashes hold).
+    padHex: g.padHex, chainHex: g.chainHex, tireHex: g.tireHex,
+    gearFloor: g.gearFloor,
   });
 }
 
@@ -3889,6 +3895,15 @@ function buildLeo2Proto(P) {
 // ---------------------------------------------------------------------------
 function buildLeo2Revolution(P) {
   const { box, slab, cylY, cylZ, torus, periscope, liftEye } = KIT;
+  // r9 F1/F2 accumulators: jacket flank pieces leave the 'hull' bucket and
+  // merge into ONE camo mesh re-using P.mats.hull with a -8-luma vertex
+  // tint (the a5 r8 PANEL-TINT mechanism — same boxUV frame, same bakeDirt
+  // math, per-plate tint constant). Geometry byte-identical to the bucket
+  // path; the ±2.00 width-guard faces stay on a mesh that reaches ±2.00.
+  const r9jacket = [];                                                         // [geo, tint]
+  const r9jkT = [0.875, 0.905, 0.885, 0.910, 0.880, 0.900];                    // F2 per-plate jitter (±2-3 L about the -8 target)
+  let r9jkN = 0;
+  const r9gear = [];                                                           // B1 near-black band trim -> olive-dark clone
   // ---- hull ----
   P.add('hull', box(2.40, 1.00, 5.80), 0, 0.86, 0.0);                          // tub y 0.36..1.36, z -2.9..2.9
   P.add('hull', box(3.10, 0.05, 2.85), 0, 2.035, -0.375);                      // main deck plate z -1.80..1.05
@@ -3966,7 +3981,9 @@ function buildLeo2Revolution(P) {
       const n = Math.max(2, Math.round((z1 - z0) / 0.52));
       const L = (z1 - z0) / n;
       for (let k = 0; k < n; k++) {
-        P.add('hull', box(th, y1 - y0, L - 0.012), s * (x - th / 2), (y0 + y1) / 2, z0 + L * (k + 0.5));
+        // r9 F1: course segments route to the tinted-camo jacket mesh
+        // (geometry unchanged — see the r9jacket note at the top)
+        r9jacket.push([KIT.xform(box(th, y1 - y0, L - 0.012), s * (x - th / 2), (y0 + y1) / 2, z0 + L * (k + 0.5)), r9jkT[r9jkN++ % r9jkT.length]]);
       }
       for (let k = 1; k < n; k++) {
         P.add('hullDark', box(th + 0.002, (y1 - y0) * 0.86, 0.016), s * (x - th / 2), (y0 + y1) / 2, z0 + L * k);
@@ -3980,7 +3997,7 @@ function buildLeo2Revolution(P) {
     // r5: tail course z0 pulled off the -3.79 column (its 0.95 bottom read
     // the ref's 1.139 undercut line); an end box carries the column at 1.15
     segRunX(2.0, 0.36, 0.95, 1.70, -3.7225, -2.90);                            // low tail course over the undercut
-    P.add('hull', box(0.36, 0.55, 0.083), s * 1.82, 1.425, -3.792);            // tail course end (bot 1.15 — ref 1.139)
+    r9jacket.push([KIT.xform(box(0.36, 0.55, 0.083), s * 1.82, 1.425, -3.792), 0.89]); // tail course end (bot 1.15 — ref 1.139)
     segRunX(2.0, 0.36, 0.71, 1.70, 1.70, 3.20);                                // front jacket course
     P.add('hullDark', box(0.02, 0.10, 3.3), s * 1.957, 0.685, -1.2);           // dark bottom lip (rear)
     P.add('hullDark', box(0.02, 0.10, 1.4), s * 1.957, 0.685, 2.45);           // dark bottom lip (front)
@@ -3990,9 +4007,9 @@ function buildLeo2Revolution(P) {
     // try printed 1.62 into the 3.552 column where the ref beak line falls
     // to 1.271 (the ref's own fall zone is 3.50..3.60 and wobbles with the
     // grid); at 3.485 the beak top line 1.263@3.55 owns that column.
-    P.add('hull', slab(                                                        // nose taper 3.20 -> 3.485
+    r9jacket.push([slab(                                                       // nose taper 3.20 -> 3.485 (r9: tinted-camo mesh)
       [s * 1.92, 0.66, 3.20], [s * 2.0, 0.66, 3.20], [s * 2.0, 0.66, 3.22], [s * 1.72, 0.70, 3.485],
-      [s * 1.92, 1.68, 3.20], [s * 2.0, 1.68, 3.20], [s * 2.0, 1.68, 3.22], [s * 1.72, 1.64, 3.485]));
+      [s * 1.92, 1.68, 3.20], [s * 2.0, 1.68, 3.20], [s * 2.0, 1.68, 3.22], [s * 1.72, 1.64, 3.485]), 0.895]);
     // low fender strip over the wall (deck edge line) — ENDS at the tail
     // box (its old -3.55 reach printed 2.05 over the ref's 1.71 tail band).
     // r5: x1 1.60 -> 1.583 (14mm off the front 1.597 column boundary — its
@@ -4054,7 +4071,7 @@ function buildLeo2Revolution(P) {
     // 3.667 side column where the ref reads the 1.211 idler wrap) and
     // x-size 0.11 -> 0.096 (its 1.889 edge AA-printed 3.55 into the ±1.95
     // plan columns, ref jacket corner 3.30)
-    P.add('hull', box(0.096, 0.30, 0.185), s * 1.827, 1.15, 3.4925);
+    r9jacket.push([KIT.xform(box(0.096, 0.30, 0.185), s * 1.827, 1.15, 3.4925), 0.885]);
     // r7 §B2 pocket fill: the lip/taper/bulge/course-end ring enclosed 5
     // top-down cells at (±1.75, z 3.3) — a low plate inside the pocket
     // (under the 1.70 jacket line, above the 0.71 bottoms, plan-inside the
@@ -4082,8 +4099,39 @@ function buildLeo2Revolution(P) {
   // settled -1.547 front column reads the ref's left band to ground (its
   // 1.63 band edge) where our 1.5225 band edge left the col at the track's
   // AA fringe.
-  P.add('hullDark', box(0.0815, 0.38, 0.20), -1.57925, 0.21, -0.60);
-  P.add('hullDark', box(0.026, 0.38, 0.20), 0.985, 0.21, -0.60);              // r7: bottom 0.06 -> 0.02 (ref right band-edge column reads to 0.011)
+  // r9 B1: the two band-edge guard strips leave hullDark for the olive-dark
+  // gear-trim clone (geometry byte-identical — they own the -1.547/+0.983
+  // front ground columns; §C material splits are gate-free).
+  r9gear.push(KIT.xform(box(0.0815, 0.38, 0.20), -1.57925, 0.21, -0.60));
+  r9gear.push(KIT.xform(box(0.026, 0.38, 0.20), 0.985, 0.21, -0.60));         // r7: bottom 0.06 -> 0.02 (ref right band-edge column reads to 0.011)
+  // r9 D3 §B2 CHANNEL END-CAPS (r7 critic mandatory order): the 6 cm
+  // corridor between the deck edge (x ±1.55) and the skirt/jacket faces
+  // (x ±1.61..1.64) is open LENGTHWISE — px-calibrated on the critic pairs
+  // (137.25 px/m): rear-view enclosed sky x533..539 = world -1.559..-1.603
+  // (538 px), front-view x100..107 = the same corridor (416 px). One
+  // transverse bulkhead per side walls the corridor from BOTH ends: y
+  // 0.36..2.02 (top tucks under the deck plate, bottom meets the skirt
+  // line / stacks over the left band-edge guard strip), z inside the
+  // strip's own -0.50..-0.70 window so no new station z-plane opens.
+  // Front-mask neutral: cols ±1.55..±1.64 keep their 2.06-2.14 tops
+  // (deck edge/turret slab) and 0.011-0.36 bottoms (guard strip/skirts).
+  // (tops are PER-SIDE: the ref's front ±1.64 columns are asymmetric —
+  // left ~1.98, right ~1.78 (gate cam-frame 0.6/0.4) — a symmetric 2.02
+  // first cut printed err 0.138 into the +1.64 front_hull column. Rays
+  // over the trimmed tops exit forward unenclosed, so §B2 still closes.)
+  P.add('hull', box(0.095, 1.63, 0.05), -1.5935, 1.175, -0.60);               // left corridor bulkhead (top 1.99)
+  P.add('hull', box(0.095, 1.39, 0.05), 1.5935, 1.055, -0.60);                // right corridor bulkhead (top 1.75; 16 px hairline mirror)
+  // (r9-b: 52 px leaked over the right bulkhead's 1.75 trim — an inboard
+  // top tab x 1.546..1.583 rises to 2.00 BEHIND the fender-strip line
+  // (strip owns 2.06 there, cols 1.55/1.59 unchanged; col 1.64 keeps the
+  // ref's 1.78-line trim).)
+  P.add('hull', box(0.037, 0.28, 0.05), 1.5645, 1.89, -0.60);                 // right bulkhead inboard top tab (top 2.03 embeds in the deck plate)
+  // (r9-c: 60 px still enter the right corridor over the 1.75 trim between
+  // x 1.583 and the jacket face — a SECOND bulkhead at z +1.9 catches the
+  // same descending rays at y <=1.73 (u 1.886 there), safely under the
+  // +1.64 column's 1.78 ref line; z sits mid-col inside st10 whose
+  // extremes the hump caps already own.)
+  P.add('hull', box(0.092, 1.38, 0.05), 1.592, 1.05, 1.90);                   // right corridor forward bulkhead
   // raised engine course + corner posts + tail
   P.add('hull', box(1.94, 0.16, 0.50), 0, 2.13, -2.10);                        // engine course top 2.21 (x +-0.97)
   P.add('hullDark', box(1.7, 0.02, 0.4), 0, 2.145, -2.10);
@@ -4110,8 +4158,11 @@ function buildLeo2Revolution(P) {
   // deck BARE at 2.05 (the old grid's 2.223@-0.68 read re-phased into the
   // -0.569 column's zone; our piece printed 2.19 there, err 0.072).
   P.add('hull', box(2.90, 0.58, 0.94), 0, 1.42, -3.37);                        // tail box top 1.71, z -2.90..-3.84 (r7: bottom 1.09 -> 1.13 — it printed into the -3.783 column where the ref undercut reads 1.121; the wedge/dip plates own every lower read)
-  P.add('hullDark', box(2.60, 0.40, 0.05), 0, 1.38, -3.835);                    // tail slat face
-  for (let k = 0; k < 9; k++) P.add('hullDetail', box(0.03, 0.48, 0.06), -1.24 + k * 0.31, 1.40, -3.85);
+  P.add('hullDark', box(2.60, 0.50, 0.05), 0, 1.40, -3.835);                    // tail slat face (r9: grown to 1.15..1.65 so every lattice hole reads the dark backdrop, not the camo wall)
+  // r9 D1: the 9 sparse grey ribs (med 56.0 flat vs ref lattice 78.6/sd
+  // 13.65) are replaced by the pale open-frame lattice in the finish block
+  // below — same z-envelope (-3.877..-3.822 inside the old -3.88..-3.82),
+  // interior to every gate row (top rail 1.725 / tail box own the reads).
   P.add('hullDetail', box(2.85, 0.05, 0.05), 0, 1.70, -3.86);                  // tail top rail (body col -3.88)
   P.add('hullDetail', box(2.85, 0.05, 0.05), 0, 1.19, -3.86);                  // low rail (r5: 1.08 -> 1.19 — the ref -3.90 column bottoms 1.167)
   // r2 tail riser + mast: the ref -3.68 col tops 1.796 and its -3.79 col
@@ -4142,14 +4193,57 @@ function buildLeo2Revolution(P) {
   P.add('hullDark', torus(0.25, 0.011, 14), -0.62, 2.01, 1.45);
   periscope(P, 'hullDetail', -0.62, 2.0, 1.80);
   periscope(P, 'hullDetail', -0.36, 2.0, 1.78, 0.25);
+  // r9 C1 TWIN FAN ARCHES (r7 critic driver 3 — "engine-deck fans missing"):
+  // the old flush discs at (±0.72, -1.15) sat at 2.034..2.058, UNDER the
+  // 2.06 deck-plate top — z-buried, invisible, and at the WRONG z anyway:
+  // the ref's twin arches measure r≈0.55 at x ±0.58 over z -2.75..-3.37
+  // (top-view px calibration, 55.5 px/m) — the TAIL deck, where the proc's
+  // mid deck shows plain. Old discs deleted (buried => pixel-free); wells
+  // rebuilt on the tail box top (1.71) at the ref's own z, r bounded 0.36
+  // by the bridge rear (-2.90) and the tail riser front (-3.635). a5-r6
+  // recipe flush-sunk: every top <=1.7185 (+8.5 mm = 0.33 px at gate
+  // scale — the tail cols keep their 1.71 read).
   for (const s of [-1, 1]) {
-    P.add('hullDark', cylY(0.33, 0.33, 0.014, P.q ? 24 : 14), s * 0.72, 2.042, -1.15);
-    P.add('hullDetail', torus(0.33, 0.012, P.q ? 22 : 14), s * 0.72, 2.046, -1.15);
+    P.add('hullDark', cylY(0.36, 0.36, 0.004, P.q ? 26 : 16), s * 0.42, 1.7125, -3.2675); // recess disc (top 1.7145)
+    P.add('hullDetail', cylY(0.29, 0.29, 0.003, P.q ? 26 : 16), s * 0.42, 1.7135, -3.2675); // screen ring (r9-b: pale — the ref arches read BRIGHT, luma 84-93)
+    P.add('hullDark', cylY(0.225, 0.225, 0.003, P.q ? 24 : 14), s * 0.42, 1.7145, -3.2675); // inner grille disc
+    P.add('hullDetail', torus(0.355, 0.005, P.q ? 28 : 18), s * 0.42, 1.7135, -3.2675);   // rim ring (tube top 1.7185)
+    for (let k = 0; k < 4; k++) {
+      P.add('hullDetail', box(0.62, 0.003, 0.034), s * 0.42, 1.716, -3.2675, 0, k * Math.PI / 4, 0); // radial blades
+    }
+    P.add('hullDark', cylY(0.055, 0.055, 0.006, 10), s * 0.42, 1.7135, -3.2675);          // hub
+    P.add('hull', box(0.80, 0.004, 0.048), s * 0.44, 1.7145, -3.617);                     // hinge chord bar against the riser
+    for (let k = 0; k < 4; k++) {
+      P.add('hullDark', box(0.02, 0.004, 0.02), s * (0.14 + k * 0.19), 1.7165, -3.617);   // chord bolt row
+    }
     P.add('hullDetail', cylY(0.085, 0.085, 0.018, 12), s * 1.26, 2.043, 0.35);
   }
+  // r9 C2 deck cable: one draped run on the mid deck INSIDE the riser
+  // z-window (side cols 0.04..-0.61 are riser-topped 2.13-2.21 — the only
+  // deck zone where a 2.104 cable crown stays side-covered; the bare-deck
+  // and tail zones read 2.06/1.71 exactly and take no proud runs).
+  KIT.towCable(P, [[-0.90, 2.082, -0.06], [-0.45, 2.086, -0.28], [-0.88, 2.082, -0.54]], 0.020);
+  // flat cable runs at recess level across the tail deck (top-view read,
+  // zero silhouette — tops ride the fan-well +10 mm budget)
+  KIT.towCable(P, [[-1.30, 1.716, -3.05], [-0.42, 1.717, -3.10], [0.30, 1.716, -3.02], [1.18, 1.716, -3.08]], 0.011);
   P.add('hullDark', box(1.9, 0.014, 0.44), 0, 2.044, -1.62);
   for (let k = 0; k < 3; k++) P.add('hullDetail', box(1.8, 0.012, 0.055), 0, 2.05, -1.74 + k * 0.12);
   P.add('hullDark', box(0.15, 0.45, 0.30), -1.70, 1.475, -2.35);               // left-hull exhaust outlet (under the 1.72 jacket line)
+  // r9-d REARRIGHT POCKET BLOCKER (137 px, ray-traced): the quarter-view
+  // rays fly the diagonal corridor x+z = -3.65..-3.37 at y 1.83..2.04 over
+  // the open left sponson-top behind the deck. An intake housing hung off
+  // the engine course's outboard face intercepts the WHOLE band (c-coverage
+  // -3.77..-3.05): front cols -0.97..-1.42 stay deck-topped (2.06 > 2.04),
+  // side cols w -2.10..-2.35 stay course-topped (2.21), plan is inside the
+  // track band's own footprint. (A first cut ON the jacket top face at
+  // x -1.72 printed 0.17-0.19 errs into the -1.69..-1.78 front_hull cols —
+  // ref hull tops there are the bare 1.74 jacket line; reverted.)
+  P.add('hull', box(0.47, 0.49, 0.25), -1.185, 1.795, -2.225);                 // sponson intake housing (left)
+  // r9-e: the RIGHT sponson-top corridor mirrors the mechanism into the
+  // frontright oblique (57 px at x-z 3.37..3.80, y 1.94..2.00 over the
+  // housing zone) — mirrored housing, z-grown to -2.38 for the c 3.80
+  // edge (the post front step's 2.24 top covers w -2.35..-2.41).
+  P.add('hull', box(0.47, 0.49, 0.28), 1.185, 1.795, -2.24);                   // sponson intake housing (right)
   // r7: eyes sunk 2.045 -> 1.96 (torus tops y+0.101: they printed 2.146
   // into the 0.227 side column, ref bare deck 2.061 — low deck rings now)
   liftEye(P, 'hullDetail', -1.30, 1.96, 0.2);
@@ -4160,9 +4254,10 @@ function buildLeo2Revolution(P) {
   // 0.35 bottom into the -3.46 column and left -3.24 on the bare 0.64 wall);
   // three per-column plates hang from the tail box, 14mm inside the bins
   for (const s of [-1, 1]) {
-    P.add('hullDark', box(0.30, 0.94, 0.103), s * 1.42, 1.02, -3.2365);        // 0.55 bottom (col -3.24)
-    P.add('hullDark', box(0.30, 1.14, 0.086), s * 1.42, 0.92, -3.345);         // 0.35 bottom (col -3.35)
-    P.add('hullDark', box(0.30, 0.83, 0.084), s * 1.42, 1.075, -3.458);        // 0.66 bottom (col -3.46)
+    // r9 B1: dip plates -> olive-dark gear-trim clone (geometry identical)
+    r9gear.push(KIT.xform(box(0.30, 0.94, 0.103), s * 1.42, 1.02, -3.2365));   // 0.55 bottom (col -3.24)
+    r9gear.push(KIT.xform(box(0.30, 1.14, 0.086), s * 1.42, 0.92, -3.345));    // 0.35 bottom (col -3.35)
+    r9gear.push(KIT.xform(box(0.30, 0.83, 0.084), s * 1.42, 1.075, -3.458));   // 0.66 bottom (col -3.46)
   }
   // gear: HIGH raised end wheels, kit-native tangent ramps (fresh probe:
   // flat ends 2.60/-2.42, front ramp 0.13@2.77 -> 0.96@3.88 far edge 3.94,
@@ -4188,6 +4283,10 @@ function buildLeo2Revolution(P) {
     // dims-guard carry (ref's last ramp columns uncovered).
     sprocket: { z: -3.46, y: 1.12, r: 0.10 }, idler: { z: 3.44, y: 1.06, r: 0.15 },
     topY: 0.95, botY: 0.058,
+    // r9 B1 (critic driver 2 — band p5 6.8 vs ref 51.1, the merkava-class
+    // near-black read): pads/chain to the pt91m r27 olive-brown recipe +
+    // the gearFloor rehook (Material.clone drops the family ambient floor).
+    padHex: 0x343a29, chainHex: 0x2b3122, gearFloor: true,
   });
 
   // ---- turret: ring pivot (0, 1.60, -0.35); local z = w + 0.35, y = w - 1.60
@@ -4344,8 +4443,36 @@ function buildLeo2Revolution(P) {
   // columns read the ref band front edge (2.391/2.604 across the grid
   // wobble: the ref edge lives at w -0.72..-0.75; a -0.69 try overprinted
   // the -0.668 column with 2.651 where the ref falls to 2.391).
-  P.add('turret', box(0.9055, 0.47, 1.285), -0.83275, 0.825, -1.0275);         // left pod (top 2.66w = the flattened band carry)
-  P.add('turretDark', box(0.82, 0.03, 1.185), -0.83, 1.04, -1.0475);
+  // r9 A2 RWS STATION RE-SCULPT (r7 critic mandatory order, §B3 identity —
+  // "pods read as cargo"): the left pod re-sculpted IN PLACE into a weapon
+  // station: open-top tub (floor + full-height outboard/inboard/rear walls +
+  // low front race band) carrying ring race + pedestal + head box + optic +
+  // barrel relief. EVERY face inside the old pod AABB (x -1.2855..-0.38,
+  // y 0.59..1.06 local, z -1.67..-0.385) and the ortho silhouettes are
+  // preserved BY CONSTRUCTION: side rect = side walls (full z-run, full
+  // height over the floor band), front rect = rear wall (full x-run), plan
+  // footprint = the floor slab; wall tops EXACTLY 1.06 local = the 2.66
+  // heightM anchor. The two st4 cap blades below stay byte-identical, and
+  // the tub's front-plane caps (floor + wall ends at w -0.735) keep st5's
+  // 2.66 anchor read (station cap law).
+  P.add('turret', box(0.9055, 0.13, 1.285), -0.83275, 0.655, -1.0275);         // station floor (full footprint, top 2.32w)
+  P.add('turret', box(0.0655, 0.34, 1.285), -1.25275, 0.89, -1.0275);          // outboard wall (x -1.2855..-1.220, top 2.66w)
+  P.add('turret', box(0.0655, 0.34, 1.285), -0.41275, 0.89, -1.0275);          // inboard wall (x -0.4455..-0.38, top 2.66w)
+  P.add('turret', box(0.9055, 0.34, 0.075), -0.83275, 0.89, -1.6325);          // rear wall (full x — owns the front-view 2.66 rect)
+  P.add('turret', box(0.9055, 0.095, 0.075), -0.83275, 0.7675, -0.4225);       // front race band (low wall, top 2.415w)
+  P.add('turretDark', box(0.9055, 0.014, 0.070), -0.83275, 0.822, -0.42);      // dark race lip riding the low wall
+  P.add('turret', box(0.7745, 0.30, 0.575), -0.83275, 0.87, -1.3075);          // equipment box (on the floor, z -1.595..-1.02 — embeds both st4 blades)
+  P.add('turretDark', box(0.71, 0.022, 0.50), -0.83, 1.031, -1.32);            // dark equipment deck cover (top 2.642w, under the anchor)
+  P.add('turretDark', cylY(0.27, 0.27, 0.022, P.q ? 22 : 14), -0.80, 0.731, -0.75); // ring-base race plate on the floor
+  P.add('turretDetail', torus(0.255, 0.013, P.q ? 22 : 14), -0.80, 0.744, -0.75);   // turntable race ring
+  P.add('turret', cylY(0.115, 0.14, 0.16, P.q ? 18 : 12), -0.80, 0.80, -0.75); // pedestal (floor -> head bottom)
+  P.add('turret', box(0.42, 0.175, 0.48), -0.80, 0.9675, -0.79);               // head box (top 2.655w, z -1.03..-0.55 — overlaps the equipment box)
+  P.add('turretDark', box(0.30, 0.10, 0.009), -0.80, 0.97, -0.5495);           // dark sensor face plate on the head front
+  P.add('turretGlass', box(0.13, 0.075, 0.014), -0.72, 0.975, -0.545);         // optic glass on the face plate
+  P.add('turretDark', cylZ(0.024, 0.30, 10), -0.90, 0.985, -0.55);             // RWS barrel (z -0.70..-0.40, inside the AABB)
+  P.add('turretDark', cylZ(0.034, 0.045, 10), -0.90, 0.985, -0.4225);          // muzzle ring at the front plane
+  P.add('turret', box(0.05, 0.17, 0.32), -1.03, 0.925, -0.75);                 // elevation arm (hooks the head's left face)
+  P.add('turret', box(0.028, 0.16, 0.028), -0.66, 0.80, -0.62);                // front standoff post (floor -> head)
   P.add('turret', box(0.3865, 0.39, 1.10), 0.29325, 0.785, -1.02);             // right pod (top 2.58w = the ref's knee-compressed line)
   P.add('turretDark', box(0.34, 0.025, 1.02), 0.29, 0.9625, -1.02);
   P.add('turret', box(0.32, 0.16, 1.10), 0.66, 0.67, -1.02);                   // right shoulder 2.35w
@@ -4357,8 +4484,12 @@ function buildLeo2Revolution(P) {
   // the window at zero silhouette/p95 cost (tops 0.5mm under the pod top).
   P.add('turret', box(0.62, 0.099, 0.05), -0.75, 1.01, -0.99);                 // st4 cap blade (w -1.34)
   P.add('turret', box(0.62, 0.099, 0.05), -0.75, 1.01, -1.11);                 // st4 cap blade (w -1.46)
-  P.add('turretGlass', box(0.16, 0.08, 0.02), -0.60, 0.95, -0.42);             // RWS optic on the pod front face
-  P.add('turretDetail', cylZ(0.02, 0.44, 8), -0.60, 0.70, -0.22, -0.08, 0, 0); // RWS barrel under the 2.38 fore-roof line
+  // r9: the old buried optic (z -0.42 — 2.5cm INSIDE the old pod solid,
+  // never visible) deleted with the solid pod; the new station optic above
+  // replaces it. The old low tube below is KEPT byte-identical: it prints
+  // the w -0.6..-0.72 side band (the r7-b -0.67/-0.69 column zone) and now
+  // reads as the station's co-ax sensor tube under the floor lip.
+  P.add('turretDetail', cylZ(0.02, 0.44, 8), -0.60, 0.70, -0.22, -0.08, 0, 0); // co-ax sensor tube under the 2.38 fore-roof line
   // rear basket: the re-normalized print reads a THIN HIGH band (2.13..
   // 2.16w) at the bustle tail, not a deep tub — rails only, no cargo
   P.add('turretDetail', box(0.62, 0.045, 0.045), -0.86, 0.565, -2.05);
@@ -4490,6 +4621,30 @@ function buildLeo2Revolution(P) {
     KIT.smokeCluster(P, s * (s > 0 ? 1.18 : 1.22), 0.53, s > 0 ? -1.90 : -1.98, 4, s * 0.9, 0.8);
     liftEye(P, 'turretDetail', s * 0.95, 0.62, 0.6, s * 0.4);
   }
+  // r9 D3(ii): the 88 px enclosed-sky pocket in the front view (px x124..142
+  // = world x -1.293..-1.424, u 2.255..2.292) threads between the left
+  // smoke-cluster tubes and the pod's outboard wall. A stowage plate among
+  // the tubes blocks the whole u-window at the cluster's own depth: w
+  // -2.31..-2.36 sits INSIDE the A4 panel band's side cover (top 2.29 >
+  // plate 2.145) and inside the cluster's certified plan extent (tubes
+  // print to w -2.375/-2.48 on the -1.375/-1.419 plan cols); overlaps
+  // tube k=1/k=2 bodies so it reads racked, not floating.
+  // (r9-b: widened to x -1.44 — a 6 px AA column survived at the card's
+  // -1.42 edge, px x124 = world -1.424; plan col -1.464 starts -1.4415,
+  // 1.5 mm clear. And the rear-quarter pocket: a rack card hung off the
+  // left rail's inner edge blocks the x -0.86..-1.01 lateral gap the
+  // rearright oblique sees — w -2.315..-2.355 inside A4's 2.29 side band
+  // and the -2.40 plan read, top 2.145 tucked under the rail's 2.14 line.)
+  P.add('turretDark', box(0.20, 0.09, 0.05), -1.34, 0.50, -1.985);            // launcher stowage plate (blob-2 end cap)
+  P.add('turretDark', box(0.15, 0.145, 0.04), -0.937, 0.4725, -1.985);        // rail rack card
+  // r9-c QUARTER-POCKET PELMET (rearright 137 px / rearleft 225 px): the
+  // pockets are the y-slot 2.08..2.14 (over the runner line, under the
+  // rail) across the rail<->panel x-gap (-0.86..-1.01), seen from both
+  // rear obliques. The rail's own 2.1875 top ALREADY owns every side
+  // column over w -2.09..-2.77, so a slot-filling pelmet under it is
+  // side-free; w stops at -2.385 so the -0.931 plan column keeps its
+  // certified -2.40 rear (k=1 fence post read).
+  P.add('turretDark', box(0.175, 0.076, 0.285), -0.9425, 0.51, -1.8925);      // rail pelmet (x -1.03..-0.855, y 2.072..2.148w, w -2.10..-2.385)
   // r5 DECAL RE-PARK (§C: decals ARE mask geometry): the 0.36 crosses at
   // y 0.30L printed 1.72 bottoms into the ref's 2.084 ring columns AND sat
   // buried 0.2 inside the wall solid — now sized into the wall's 1.88..2.12
@@ -4515,6 +4670,16 @@ function buildLeo2Revolution(P) {
   P.addGunExtra(box(0.46, 0.24, 0.30), 0, 0.12, 0.32);
   P.addGunExtra(cylZ(0.10, 0.5, 12, 0.12), 0, 0.03, 0.90);
   P.addGunExtraDark(cylZ(0.026, 0.10, 8), 0.23, 0.08, 0.50);
+  // r9 A1 mantlet-face relief (critic order — ref paints "mantlet drum +
+  // bolted flange"): flange disc proud of the drum's front face (r 0.126 >
+  // the drum's 0.10 nose) + 6 bolt studs. All inside the notch envelope:
+  // side rows covered by the mantlet back wall's 2.02 top at the same w,
+  // front/plan interior (world y 1.75..2.01 under the turret line).
+  P.addGunExtraDark(cylZ(0.126, 0.018, P.q ? 20 : 14), 0, 0.03, 1.155);
+  for (let k = 0; k < 6; k++) {
+    const ba = k * Math.PI / 3 + 0.26;
+    P.addGunExtraDark(cylZ(0.0095, 0.014, 8), 0.104 * Math.cos(ba), 0.03 + 0.104 * Math.sin(ba), 1.166);
+  }
   // r5: sleeve OFF + r 0.078 — the kit sleeve/clamp rings (r*1.22/1.31)
   // printed 1.985+AA over the ref's bare 1.917 tube band on six columns.
   // baseR degenerate (2mm axis sliver): the 0.10 breech collar hung a 1.735
@@ -4522,6 +4687,15 @@ function buildLeo2Revolution(P) {
   // ref breech lives INSIDE its shell) — the box mantlet block carries the
   // visual root.
   KIT.buildGun(P, { len: 5.005, r: 0.078, sleeve: false, evac: null, collar: false, baseR: 0.001 });
+  // r9 A1 GUN FACE (critic order — "no gun read dead-front; camo end-cap
+  // vanishes"): dark bore end-disc INSIDE the 0.078 tube radius, face 0.5 mm
+  // proud of the tube's own camo cap (buildGun tube ends at len-0.02 =
+  // recoil z 4.985) so the depth test picks it dead-on — sub-half-pixel on
+  // every rig, tube LENGTH untouched (r7 law 2: the muzzle is a plan-grid
+  // phase knob; 6.005 stays). Plus the ordered dark collar band 0.13 m
+  // behind the tip: +2 mm radial (sub-pixel), zero z change.
+  P.add('gunDark', cylZ(0.062, 0.010, P.q ? 18 : 12), 0, 0, 4.9805);          // bore end-disc (face 4.9855)
+  P.add('gunDark', cylZ(0.0805, 0.05, P.q ? 18 : 12), 0, 0, 4.855);           // muzzle collar band
   // r5 left plan lug (a5 MRS-lug law): the ref tube rides ~35mm left-offset —
   // its plan -0.153 column runs to the muzzle (err 1.76, the top plan error).
   // Flat lug hidden inside the tube's side band (y ±0.025 about the axis).
@@ -4532,6 +4706,204 @@ function buildLeo2Revolution(P) {
   // w 2.83..2.93 — its travel-clamp jaw rides the gun/turret node while
   // the pedestal stays hull; our hull rod can't print the turret row)
   P.addGunExtra(box(0.10, 0.14, 0.096), 0, 0.108, 1.8775);
+  // ---- r9 FINISH TIER (critic drivers 2/4/5/6 + A3): B1 gear trim, D1
+  // lattice, D2 rear-wall dressing, E1/E2 seam grammar, F1/F2 albedo +
+  // de-CAD, A3 stowed-MAG legibility. Zero-mask mechanisms throughout:
+  // material splits on byte-identical geometry (§C), sub-pixel overlays
+  // inside certified envelopes, fittings inside the body AABB. Patterns
+  // are the a5 r8 recipes: every clone rehooks the family ambient floor;
+  // camo overlays re-use P.mats.hull with the factory's own local-planar
+  // boxUV + bakeDirt math and a per-plate tint constant (the cast-mottle
+  // read); thin dressing renders NON-CASTING (a5 r8-g bisect law).
+  {
+    const camoScale = (P.spec.visual && P.spec.visual.camoScale) || 0.34;
+    const rehook = (m) => {
+      m.onBeforeCompile = vehicleAmbientFloorHook;
+      m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+      return m;
+    };
+    const prepCamo = (geo, yOff, strength, tint) => {
+      const pos = geo.attributes.position, nor = geo.attributes.normal;
+      const uv = new Float32Array(pos.count * 2);
+      const col = new Float32Array(pos.count * 3);
+      for (let i = 0; i < pos.count; i++) {
+        const nx = Math.abs(nor.getX(i)), ny = Math.abs(nor.getY(i)), nz = Math.abs(nor.getZ(i));
+        let u, v;
+        if (ny >= nx && ny >= nz) { u = pos.getX(i); v = pos.getZ(i); }
+        else if (nx >= nz) { u = pos.getZ(i); v = pos.getY(i); }
+        else { u = pos.getX(i); v = pos.getY(i); }
+        uv[i * 2] = u * camoScale; uv[i * 2 + 1] = v * camoScale;
+        const wy = pos.getY(i) + yOff;
+        const t = Math.min(1, Math.max(0, (1.45 - wy) / 1.45));
+        const d = Math.min(0.85, Math.pow(t, 1.7) * 1.12 * strength);
+        const nyv = nor.getY(i);
+        const ao = (1 - Math.max(0, -nyv) * 0.28) * (1 - Math.max(0, nyv) * 0.16);
+        const hsh = Math.sin(pos.getX(i) * 12.9898 + pos.getZ(i) * 78.233 + wy * 37.719) * 43758.5453;
+        const nj = ((hsh - Math.floor(hsh)) - 0.5) * 0.09;
+        col[i * 3] = ((1 - d) + d * 0.68 + nj) * ao * tint;
+        col[i * 3 + 1] = ((1 - d) + d * 0.6 + nj) * ao * tint;
+        col[i * 3 + 2] = ((1 - d) + d * 0.46 + nj) * ao * tint;
+      }
+      geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      return geo;
+    };
+    const meshUp = (geo, mat, parent, cast) => {
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.receiveShadow = true;
+      mesh.castShadow = !!cast;
+      parent.add(mesh);
+      P.disposables.push(geo);
+      return mesh;
+    };
+    // -- F1 JACKET ALBEDO (side-course med 73.2 -> ref 64.9±2) + F2
+    // per-plate jitter: the accumulated course geometry as ONE camo mesh,
+    // tint base 0.885 cycling ±0.02 (real armor: casts shadows like the
+    // bucket path it replaces).
+    meshUp(KIT.mergeAll(r9jacket.map(([g, t]) => prepCamo(g, 0, 1, t))), P.mats.hull, P.hullG, true);
+    // -- B1 gear trim: dip plates + band-edge strips in pad-family
+    // olive-dark (kills the pure-black bricks at the band corners).
+    const gearOlv = rehook(P.mats.shadow.clone());
+    gearOlv.color.setHex(0x343a29);
+    gearOlv.roughness = 0.97;
+    gearOlv.metalness = 0.05;
+    gearOlv.envMapIntensity = 0.06;
+    P.disposables.push(gearOlv);
+    meshUp(KIT.mergeAll(r9gear), gearOlv, P.hullG, true);
+    // -- B1 rubber: the tires + left jacket flap out of near-black into the
+    // a5-family weathered olive-grey (per-tank material instance).
+    P.mats.rubber.color.setHex(0x35362c);
+    // -- D1 TAIL LATTICE (hull rear band): pale open-frame grid over the
+    // dark slat backing — ref med 78.6 / p95 95.6 / sd 13.65 vs the flat
+    // 56.0 ribs. Bars sit at the old ribs' own z-plane (-3.877..-3.822),
+    // interior to the rails' silhouette.
+    // r9-c: shadow-clone paths can't land the 70..85 window (floor-hooked
+    // renders 82 + 0.11*albedo — two-point 0x808465 -> 96.4 / 0x6a6d54 ->
+    // 93.9; raw clone crushes to 26.5). The lattice rides the family
+    // CANVAS material instead — unused by any other consumer in this
+    // build, proper family hooks, measured ~1.13x rear-face response
+    // (a5 r8-c: 0x4c5441 canvas rendered 91.9 on rear faces).
+    const latticePale = P.mats.canvasCloth;                                    // family instance — factory owns disposal
+    latticePale.color.setHex(0x414737);
+    {
+      // r9-b polarity fix: the first grid ran 21% pale coverage and left
+      // the window med at the dark holes' 56 — the REF band is the
+      // INVERSE (pale slats, dark slits, med 78.6). Five horizontal slats
+      // (~59% coverage) + frame verticals.
+      const bars = [];
+      const barsB = [];
+      for (let k = 0; k < 5; k++) {
+        (k % 2 ? barsB : bars).push(KIT.xform(box(2.56, 0.062, 0.055), 0, 1.19 + k * 0.105, -3.8495));
+      }
+      for (let k = 0; k < 11; k++) bars.push(KIT.xform(box(0.026, 0.48, 0.055), -1.26 + k * 0.252, 1.40, -3.8495));
+      meshUp(KIT.mergeAll(bars), latticePale, P.hullG, false);
+      // r9-d two-tone slats (window sd 9.45 vs the >=10 gate): alternate
+      // slats ride a +12% clone (rehooked — clones drop the family hooks).
+      const slatB = rehook(P.mats.canvasCloth.clone());
+      slatB.color.setHex(0x4a503e);
+      P.disposables.push(slatB);
+      meshUp(KIT.mergeAll(barsB), slatB, P.hullG, false);
+    }
+    // -- D1 hanging-panel lattice (turret): pale grid bars 3 mm proud of
+    // each A-segment's rear face (through-hole read over the dark cards;
+    // per-piece so the certified plan-rear stair moves <=3.5 mm, sub-pixel
+    // and mid-bin). Two outboard-face bars carry the read into the left
+    // ortho. Yaws with the panels (turretG).
+    {
+      const pb = [];
+      const seg = [
+        [-0.7085, 0.29, -1.7085, 0.307, 0.372],  // A1
+        [-0.7085, 0.3225, -1.8195, 0.307, 0.30], // A2
+        [-0.7085, 0.29, -1.9305, 0.307, 0.372],  // A3
+        [-0.7085, 0.4675, -2.0415, 0.307, 0.437],// A4
+        [-0.652, 0.29, -2.1525, 0.194, 0.372],   // A5
+        [-0.5965, 0.29, -2.2635, 0.083, 0.372],  // A6
+      ];
+      for (const [cx, cy, cz, w, h] of seg) {
+        const nB = Math.max(1, Math.round(w / 0.10));
+        for (let k = 0; k < nB; k++) {
+          pb.push(KIT.xform(box(0.024, h, 0.004), cx - w / 2 + (k + 0.5) * (w / nB), cy, cz));
+        }
+        pb.push(KIT.xform(box(w * 0.96, 0.024, 0.004), cx, cy, cz));
+      }
+      // (outboard bars stay INSIDE one segment's w-window each — a first
+      // cut crossing the A2/A3 and A3/A4 seg gaps printed 1.71 bottoms
+      // into the gap columns the runner owns at 2.00)
+      pb.push(KIT.xform(box(0.004, 0.36, 0.17), -0.8635, 0.29, -1.62));
+      pb.push(KIT.xform(box(0.004, 0.36, 0.075), -0.8635, 0.29, -1.886));
+      meshUp(KIT.mergeAll(pb), latticePale, P.turretG, false);
+    }
+    // -- D1 camo bleed over both lattice fields (a5 louvre-bleed class)
+    const camoRed = rehook(P.mats.shadow.clone());
+    camoRed.color.setHex(0x453428);
+    camoRed.envMapIntensity = 0.12;
+    const camoOlv = rehook(P.mats.shadow.clone());
+    camoOlv.color.setHex(0x2f3526);
+    camoOlv.envMapIntensity = 0.12;
+    P.disposables.push(camoRed, camoOlv);
+    meshUp(KIT.xform(box(0.34, 0.42, 0.012), -0.72, 1.38, -3.8515, 0, 0, 0.38), camoRed, P.hullG, false);
+    meshUp(KIT.xform(box(0.30, 0.40, 0.012), 0.55, 1.42, -3.8515, 0, 0, -0.42), camoOlv, P.hullG, false);
+    meshUp(KIT.xform(box(0.24, 0.40, 0.012), 0.98, 1.40, -3.8515, 0, 0, 0.30), camoRed, P.hullG, false);
+    meshUp(KIT.xform(box(0.20, 0.26, 0.006), -0.70, 0.30, -1.63, 0, 0, 0.35), camoOlv, P.turretG, false); // (inside A1's w-window, top 2.046 under A1's 2.08)
+
+    // -- D2 REAR WALL DRESSING (wall rowmean-sd 3.99 -> ref 6.08): tow-cable
+    // X + light clusters + shackle kit, everything z >= -3.8585 (inside the
+    // rails' -3.885 plane; hullLengthM untouched).
+    {
+      const cxA = FITTINGS.towCable({ mats: P.mats, r: 0.014, seed: 3, eyes: false, pts: [[-1.08, 1.63, -3.836], [-0.20, 1.36, -3.842], [0.60, 1.28, -3.840], [1.08, 1.60, -3.836]] });
+      P.hullG.add(cxA);
+      const cxB = FITTINGS.towCable({ mats: P.mats, r: 0.014, seed: 8, eyes: false, pts: [[-1.08, 1.26, -3.840], [-0.10, 1.52, -3.842], [1.08, 1.30, -3.836]] });
+      P.hullG.add(cxB);
+      for (const s of [-1, 1]) {
+        const lc = FITTINGS.lightCluster({ mats: P.mats, pods: 2, r: 0.040, lens: 'dark', rake: 0, seed: 5, rotation: [0, Math.PI, 0] });
+        lc.position.set(s * 1.18, 1.615, -3.826);
+        P.hullG.add(lc);
+      }
+      P.add('hullDark', box(0.10, 0.09, 0.035), -0.62, 1.24, -3.845);          // shackle blocks
+      P.add('hullDark', box(0.10, 0.09, 0.035), 0.85, 1.55, -3.845);
+    }
+    // -- E1 (cited flats — shading only): bow rake seam engraving on the
+    // beak faces + one shelf seam; suggests the missing rake lines at the
+    // measured Δ+13/Δ+12 columns without touching the pinned geometry.
+    for (const s of [-1, 1]) {
+      P.add('hullDark', box(0.56, 0.006, 0.014), s * 0.72, 1.474, 3.336, -0.777, 0, 0);
+      P.add('hullDark', box(0.56, 0.006, 0.014), s * 0.72, 1.176, 3.638, -0.777, 0, 0);
+    }
+    P.add('hullDark', box(2.30, 0.012, 0.018), 0, 2.013, 1.70);                // shelf module seam
+    // -- E2 hull/turret plane split: shadow seams at the module underline
+    // (2.5 mm proud on the deck/shelf lines, zero mask).
+    P.add('hullDark', box(0.018, 0.005, 2.30), -1.315, 2.0625, -0.15);
+    P.add('hullDark', box(0.018, 0.005, 2.30), 1.315, 2.0625, -0.15);
+    // -- F2 DE-CAD: wing cover (the a5 'backdrop plate' class) — camo
+    // overlay quads at the cover's own plane (+2 mm), panel-tint pair +
+    // dark panel seams; roof-plate tints on the deck base + fore steps.
+    {
+      const wing = [];
+      wing.push(prepCamo(KIT.xform(box(0.62, 0.004, 0.52), 0.52, 0.3195, 3.05), 1.78, 0.5, 1.07));
+      wing.push(prepCamo(KIT.xform(box(0.55, 0.004, 0.46), 1.12, 0.3195, 3.42), 1.78, 0.5, 0.95));
+      wing.push(prepCamo(KIT.xform(box(0.40, 0.004, 0.34), 0.38, 0.3195, 3.62), 1.78, 0.5, 1.03));
+      wing.push(prepCamo(KIT.xform(box(0.55, 0.004, 0.60), -0.30, 0.6640, -0.70), 1.78, 0.5, 1.06));
+      wing.push(prepCamo(KIT.xform(box(0.50, 0.004, 0.55), 0.45, 0.6640, -1.30), 1.78, 0.5, 0.96));
+      wing.push(prepCamo(KIT.xform(box(0.44, 0.004, 0.40), -0.70, 0.6640, -1.55), 1.78, 0.5, 1.04));
+      wing.push(prepCamo(KIT.xform(box(0.60, 0.004, 0.30), 0.42, 0.5690, 1.805), 1.78, 0.5, 1.05));
+      const wm = new THREE.Mesh(KIT.mergeAll(wing), P.mats.hull);
+      wm.receiveShadow = true;
+      wm.castShadow = false;
+      P.turretG.add(wm);
+      P.disposables.push(wm.geometry);
+      P.add('turretDark', box(0.012, 0.004, 1.20), 0.50, 0.317, 3.24);         // wing cover panel seams
+      P.add('turretDark', box(1.36, 0.004, 0.012), 0.85, 0.317, 3.10);
+    }
+    // -- A3 stowed-MAG legibility (kept flush; the §C pintle allowance
+    // stays unspent): pale receiver cap + barrel co-rod inside the wing
+    // band — the a5 mgPale two-tone recipe, read-on-any-backdrop.
+    const mgPale = rehook(P.mats.shadow.clone());
+    mgPale.color.setHex(0x60624c);
+    mgPale.envMapIntensity = 0.18;
+    P.disposables.push(mgPale);
+    meshUp(KIT.xform(box(0.070, 0.005, 0.24), 0.897, 0.3855, 2.751, 0, 1.55, 0), mgPale, P.turretG, false); // cap top 1.988w — inside the r7-certified <=1.99 band
+    meshUp(KIT.xform(box(0.34, 0.007, 0.011), 1.21, 0.378, 2.757, 0, 0, 0.03), mgPale, P.turretG, false);   // co-rod top 1.9865w
+  }
   P.topY = 1.9;
 }
 // small rectangular mud flap helper (leopard family)
