@@ -55,6 +55,14 @@ wins and this file needs a patch.
   bottoms — split materials instead).
 - Shadow-proxy meshes ARE in gate masks (overrideMaterial defeats
   colorWrite:false).
+- STATION END-CAPS (uk r3): station slices render front-on with near/far
+  clipping — thin axis-aligned planes paint only their end caps and VANISH
+  from mid slices. Segment long thin members (fenders, guards, skirt lips)
+  into ≤0.48 m chunks. Related: decals ARE mask geometry (pin them on real
+  planes); keep boundary-critical faces ≥15 mm clear of trace-column
+  boundaries (AA bleed lights the neighbor column); one stray body-thick
+  column at a silhouette edge shifts dAlong half a pitch and smears every
+  row in that view.
 
 ## D. Measurement discipline (claims law)
 - Done-gates measure on the OFFICIAL rigs only: gate runs +
