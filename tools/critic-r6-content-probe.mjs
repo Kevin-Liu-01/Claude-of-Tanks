@@ -29,7 +29,7 @@ async function acquireLock(timeoutMs) {
       }
       if (head === myTicket) {
         try { mkdirSync(LOCK_DIR); lockHeld = true; return; } catch {}
-        try { if (Date.now() - statSync(LOCK_DIR).mtimeMs > LOCK_STALE_MS) { rmdirSync(LOCK_DIR); continue; } } catch { continue; }
+        try { if (Date.now() - statSync(LOCK_DIR).mtimeMs > LOCK_STALE_MS) { try { rmdirSync(LOCK_DIR); } catch (e) { if (e.code === 'ENOTDIR') unlinkSync(LOCK_DIR); else throw e; } continue; } } catch { continue; }
       }
       if (Date.now() - t0 > timeoutMs) throw new Error('lock timeout');
       await new Promise((r) => setTimeout(r, head === myTicket ? 300 : 1000));

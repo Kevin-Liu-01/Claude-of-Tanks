@@ -65,7 +65,7 @@ async function acquireLock(timeoutMs) {
       if (head === myTicket) {
         try { mkdirSync(LOCK_DIR); lockHeld = true; return; } catch (_) { /* held */ }
         try {
-          if (Date.now() - statSync(LOCK_DIR).mtimeMs > LOCK_STALE_MS) { rmdirSync(LOCK_DIR); continue; }
+          if (Date.now() - statSync(LOCK_DIR).mtimeMs > LOCK_STALE_MS) { try { rmdirSync(LOCK_DIR); } catch (e) { if (e.code === 'ENOTDIR') unlinkSync(LOCK_DIR); else throw e; } continue; }
         } catch (_) { continue; }
       }
       if (Date.now() - t0 > timeoutMs) throw new Error('cot-shots lock timeout');

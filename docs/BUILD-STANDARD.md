@@ -139,7 +139,10 @@ never excuses missing it.
   - Coordinates in findings are PROC-frame world (comparison itself is
     self-registered per-model rig; the printed ref↔proc world offset is
     registration data, not a defect).
-- Sky/air claims: MASK-METHOD (bg |px−0x151b20| maxch ≤13 + rect). Tone
+- Sky/air claims: MASK-METHOD (bg |px−0x151b20| maxch ≤13 + rect) PLUS
+  the BLUE-SIGNATURE term (revolution-r7 critic find): a sky pixel must
+  also read B−R ≥ +8 — warm near-black track-shadow (e.g. 24,22,19)
+  passes the maxch window alone and inflates hole counts 5-15×. Tone
   claims: ITU-601 luma rects WITH coordinates. Banked numbers re-derive
   from current renders before re-use.
 - REF-RENDER OUTRANKS ROW ANALYSIS; ref-silhouette permit; perspective-
