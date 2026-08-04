@@ -292,3 +292,13 @@ of hull solids). Builders treat missing MGs as a work-order item of the
 same rank as a failed view. Graduates are not exempt: leo2a6 is flagged
 for a contiguity fix round (leopard lane, after kf51 r7); the m1a1-line
 graduates queue for a front-slope + decoration audit.
+
+
+## §10 amendment (2026-08-03, isu152 re-cert finding)
+Graduation retires the registration into THREE override maps, not two:
+`tools/procedural-fidelity.html` LOCAL_REFERENCE_OVERRIDES,
+`tools/tmp-tank-critic.html` CRITIC_REFERENCE_OVERRIDES (local tmp), AND
+`tools/visual-evaluator-page.html` CRITIC_REFERENCE_OVERRIDES (committed —
+the §D evaluator aborts on graduates without it). Also: evaluator evidence
+dirs are per-run — archive shots/visual-eval-<id>/ before re-runs when the
+prior round's evidence matters.
