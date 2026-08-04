@@ -188,3 +188,15 @@ in a geometric region (z>=z0, |x|<=x0, y-band) about a pivot axis, census-
 guarded, law-v2 (fresh baseline + probe/gate-in-loop). Until it lands,
 the three misc builds stay parked (side rows honestly floored by the
 elevated ref tubes); m48's banked decision joins the same batch.
+
+## batch-32 CORRECTION (orchestrator, post-measurement): NO PITCH — no oracle repair
+The full extract read shows the tube axis DEAD LEVEL (1.577-1.599 across
+gate-z 1.09-4.89) and the batch-27 warp clean (hullMask 0%, overall 0%,
+bodyH -1.5%). The earlier probe's 'raised red barrel' was a HEIGHT OFFSET
+vs the donor stand-in's tube, not a rest pitch. The side-row mean-10%
+pathology is the T80-LINE REGISTRATION CLASS: the ref's tube band counts
+as side-row BODY span, shifting the 12%-band midpoint (~1m dAlong class)
+— fixed on the BUILDER side with the banked safe-carrier pattern (slim
+cylinder + clamp plate, scout-gen2-t80.md landmines) + SS-A symmetric
+dims anchors. ariete/type74 share the class. batch-32 (_region_pitch)
+now applies to m48 ONLY (its slope 0.223 is real and measured).
