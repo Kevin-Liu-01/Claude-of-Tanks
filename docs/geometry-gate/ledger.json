@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-08-04T02:52:42.107Z",
+ "generatedAt": "2026-08-04T07:38:02.766Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 15,
+ "passed": 16,
  "total": 85,
  "rows": [
   {
@@ -96,19 +96,6 @@
    }
   },
   {
-   "id": "type90",
-   "geoMin": 0,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 27.3,
-    "wholeCurves": 0,
-    "turretCurves": 0,
-    "stations": 0,
-    "dims": 98.7,
-    "floaters": 100
-   }
-  },
-  {
    "id": "is3_bergman",
    "geoMin": 0,
    "gatePassed": false,
@@ -143,19 +130,6 @@
     "wholeCurves": 0,
     "turretCurves": 0,
     "stations": 0,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "ariete",
-   "geoMin": 0,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 27.4,
-    "wholeCurves": 0,
-    "turretCurves": 0,
-    "stations": 37.2,
     "dims": 100,
     "floaters": 100
    }
@@ -642,6 +616,32 @@
    }
   },
   {
+   "id": "ariete",
+   "geoMin": 63.4,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 65.1,
+    "wholeCurves": 65.9,
+    "turretCurves": 63.4,
+    "stations": 68,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "type90",
+   "geoMin": 63.7,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 68.8,
+    "wholeCurves": 63.7,
+    "turretCurves": 68.4,
+    "stations": 76.4,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
    "id": "t90m",
    "geoMin": 64.7,
    "gatePassed": false,
@@ -785,19 +785,6 @@
    }
   },
   {
-   "id": "chieftain5",
-   "geoMin": 80.4,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 83.8,
-    "wholeCurves": 80.4,
-    "turretCurves": 88,
-    "stations": 88.3,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "centurion5",
    "geoMin": 80.8,
    "gatePassed": false,
@@ -921,7 +908,7 @@
    "components": {
     "hullCurves": 91.2,
     "wholeCurves": 90,
-    "turretCurves": 90.8,
+    "turretCurves": 90.5,
     "stations": 91.9,
     "dims": 100,
     "floaters": 100
@@ -1084,6 +1071,19 @@
    }
   },
   {
+   "id": "chieftain5",
+   "geoMin": 91.4,
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 91.4,
+    "wholeCurves": 91.8,
+    "turretCurves": 94.1,
+    "stations": 93.2,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
    "id": "m1a2",
    "geoMin": 91.5,
    "gatePassed": true,
@@ -1091,7 +1091,7 @@
     "hullCurves": 93.1,
     "wholeCurves": 92.5,
     "turretCurves": 91.5,
-    "stations": 94.1,
+    "stations": 94,
     "dims": 100,
     "floaters": 100
    }

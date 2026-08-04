@@ -153,3 +153,34 @@ whole build 0.991x and cost 4.6 dims + ~3 pts on every curve row.
 Numbers: min 66.9 -> **80.8** (hull 85.1 -> 82.3, whole 70.7 -> 80.8,
 turret 66.9 -> 81.8, stations 81.8 -> 82.6, dims 98.3 -> 100, floaters
 100). Track-clip --exact 0/0. Boards: shots/uk-r2/centurion5.
+
+## r4 analysis note (2026-08-04, uk agent — NO BUILD EDITS, byte-stable 80.8)
+Chieftain5 consumed the round (80.4 -> 91.4 PASS, the family's first);
+centurion work stopped at analysis per the honest-budget rule rather than
+risk a half-landed retable. Paired workorder decode (BOTH marks; the
+fidelity scene places ref ~-0.6 / proc ~+0.58 in z — pair ref[z] with
+proc[z+1.233]; law #7 in the chieftain5 packet):
+- GLACIS/idler-wrap band, proc-frame z 3.10..4.21: proc tops 1.573..1.727
+  vs ref 1.48..1.54 (+0.06..+0.185 over ~8 hull columns, both marks). The
+  1.60-1.73 line is the RAISED-IDLER track wrap (idler y 1.03 r 0.38, top
+  = y+r+0.135+shoe) plus the flat 1.505-1.51 deck run — the ref wrap tops
+  ~1.48-1.51 (its idler reads lower/tighter, ~y 0.98 r 0.345) and its
+  glacis keeps falling to a 1.20 tip where proc holds 1.08 (tip -0.12).
+- DOME/cupola zone (proc z 0.39..0.88): proc 2.93/2.87 vs ref 2.776..2.837
+  (+0.09..+0.19, 3-4 columns, both marks) — the dome peak wants ~2.84.
+- Forward crown/face zone: c5 ±0.03-0.09 mixed; c3 confirmed the
+  orchestrator's 0.10-0.13-lower face read — split the shared mid-casting
+  slab tops per mark (the mk===5 ternaries already exist at the -0.60
+  station; the face-zone pair needs the same treatment).
+- TAIL: ref rear overhang bottoms 1.23@-3.067(proc-frame)..0.62@-2.82 vs
+  proc sprocket-wrap 0.89..0.59 (-0.10..-0.34 on 3 columns): the ref tail
+  plate hangs a HIGH shelf over the sprocket; author a rear overhang like
+  chieftain5 r4's (band ~1.2..1.7 at the wrap line).
+- Muzzle: proc tube band 2.066..1.82 vs ref 2.066..1.758 (r 0.123 vs
+  0.154, axis 1.912 vs 1.943): drop the gun axis ~0.03 and fatten the
+  tube ~0.03 (raycast the print first — chieftain law: mask reads
+  under-report the axis).
+Estimated +3.5-5 pts from the glacis/idler + dome + tail set; stations
+82.6/78.9 should ride the same fixes. Start by pinning each model's world
+offset with tools/tmp-ukr4-probe.mjs root boxes (kept for r5), THEN author
+from paired columns only.
