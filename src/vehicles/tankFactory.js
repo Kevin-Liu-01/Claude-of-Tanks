@@ -862,8 +862,12 @@ function buildRunningGear(P, cfg) {
     // wraps (references do; the old extension to the end wheels ran the
     // flat band underneath raised sprockets). The ground run stays the
     // trapezoid's wide base: the tangent overhang lands outside the patch.
-    zF: Math.max(...wheelZs) + wheelR * 0.5,
-    zR: Math.min(...wheelZs) - wheelR * 0.5,
+    // cfg.contactZF/contactZR opt-in (abrams r6 wheel-row round): pin the
+    // contact patch when a wheel-size retune must NOT move the certified
+    // ramp/wrap tangents (m1a2 rides gate-certified 0.399/0.465-0.53 ramp
+    // bins derived at the r4 patch). Defaults byte-identical.
+    zF: cfg.contactZF ?? Math.max(...wheelZs) + wheelR * 0.5,
+    zR: cfg.contactZR ?? Math.min(...wheelZs) - wheelR * 0.5,
   };
   const pts = trackLoopPoints({ idler: { ...frontEnd }, sprocket: { ...rearEnd }, botY, topY, sag, supports, contact });
   // Track-band normals and individual link orientation assume a clockwise

@@ -2186,35 +2186,75 @@ function buildM1a2(P) {
     // keeps 1.315 via the inner/outer rims + bevel, and interior cross-ribs
     // at both channel ends keep the front/rear columns at 1.315 — the
     // edge-on prism law again.)
-    sb('hull', s, s > 0 ? 1.46 : 1.5245, 1.532, 0.60, 1.315, -2.38, 2.42);
-    sb('hull', s, 1.529, 1.775, 0.60, 1.253, -2.38, 2.42);   // channel floor
-    sb('hull', s, 1.772, 1.808, 0.60, 1.315, -2.38, 2.42);   // outer rim
-    sb('hull', s, 1.529, 1.775, 0.60, 1.315, 2.345, 2.42);   // fwd end rib
-    sb('hull', s, 1.529, 1.775, 0.60, 1.315, -2.38, -2.345); // rear end rib
+    // r6 UN-CURTAIN (critic r4 order 1): the main-run hem rises 0.60 ->
+    // 0.66 and the run's full-depth section now ENDS at z -2.10, handing
+    // to a DIAGONAL hem-rise (0.66 @ -2.10 -> 1.10 @ -2.38, below) that
+    // opens the sprocket bay like the print (ref view-left: low hem stops
+    // at z ~-2.26, bay OPEN aft) — the first cut's flat -2.25 end face
+    // re-flagged the evaluator's four quarter 90-degree 0.83 m cliffs at
+    // the new station; the ~57-degree stepped diagonal is the ref's own
+    // transition language (its ramp/bay edges). FRONT-VIEW CERT BINS
+    // UNTOUCHED: every 0.60/0.70-bottom front column is carried by the
+    // z >= 2.42 forward pieces (min-over-z), the left -1.83 plane keeps
+    // its 0.599 col-3 line on the forward bevel run, and the 0.702 col-11
+    // line rides the hem steps (0.70, both segments kept).
+    sb('hull', s, s > 0 ? 1.46 : 1.5245, 1.532, 0.66, 1.315, -2.10, 2.42);
+    sb('hull', s, 1.529, 1.775, 0.66, 1.253, -2.10, 2.42);   // channel floor
+    sb('hull', s, 1.772, 1.808, 0.66, 1.315, -2.10, 2.42);   // outer rim
+    sb('hull', s, 1.529, 1.775, 0.66, 1.315, 2.345, 2.42);   // fwd end rib
+    sb('hull', s, 1.529, 1.775, 0.66, 1.315, -2.10, -2.065); // rear end rib
+    // r6 BOW-END TAPER: the fwd run's flat end faces stacked into the
+    // evaluator's OTHER two 89.5-89.8 deg 0.84 m quarter cliffs (the rear
+    // quarters' UNMATCHED edges — proven bow-end, not tail: they survived
+    // the tail-curtain removal byte-identical). Hems keep the certified
+    // 0.60/0.70 lines over z 2.42..2.70 (the front-view min-over-z
+    // carriers), then rise ~45 deg to the run ends like the ref's own
+    // fragmented bow transition. Plan/station extents unchanged (y-only).
     sb('hull', s, s > 0 ? 1.46 : 1.5245, 1.808, 0.60, 1.30, 2.42, 2.70);
-    sb('hull', s, s > 0 ? 1.46 : 1.5245, 1.808, 0.60, 1.272, 2.70, 2.95);
-    sb('hull', s, s > 0 ? 1.46 : 1.5245, 1.808, 0.60, 1.24, 2.95, 3.05);
+    band('hull', s * (s > 0 ? 1.46 : 1.808), s * (s > 0 ? 1.808 : 1.5245),
+      [[2.70, 1.272], [2.95, 1.272]], [[2.70, 0.60], [2.95, 0.85]], 2.70, 2.95);
+    band('hull', s * (s > 0 ? 1.46 : 1.808), s * (s > 0 ? 1.808 : 1.5245),
+      [[2.95, 1.24], [3.05, 1.24]], [[2.95, 0.85], [3.05, 0.95]], 2.95, 3.05);
     // Paneled outer bevel, main run. Ref front col 3 reads the LEFT -1.83
     // plane down to 0.599 (right stays 0.897) — left panels drop to 0.60.
     // Slots carved at the run ends carry pale mount strips (face 1.8295,
     // half a mm inside the plane so the panels stay the width carrier).
     const bevB = s > 0 ? 0.90 : 0.60;
+    // r6: main-run panel hems ride the raised 0.66 line on the LEFT (the
+    // certified 0.599 col-3 line lives on the z >= 2.42 forward bevel run,
+    // kept at bevB); the right bevel stays 0.897-class as before. The
+    // paneled field ends at -2.054 (mount slot in the carved end recess
+    // -2.10..-2.054); the diagonal tail piece below owns -2.38..-2.10.
+    const bevM = s > 0 ? 0.90 : 0.66;
     {
-      let zA = -2.33;                       // -2.38..-2.33 = rear mount slot
+      let zA = -2.054;
       for (const zj of [...SKJ, 2.37]) {
-        sb('hull', s, 1.815, 1.83, bevB, 1.315, zA + 0.012, zj - 0.012);
-        sb('hullShadow', s, 1.815, 1.822, bevB, 1.313, zj - 0.012, zj + 0.012);
+        sb('hull', s, 1.815, 1.83, bevM, 1.315, zA + 0.012, zj - 0.012);
+        sb('hullShadow', s, 1.815, 1.822, bevM, 1.313, zj - 0.012, zj + 0.012);
         zA = zj;
       }
     }
-    sb('hullShadow', s, 1.815, 1.822, bevB, 1.313, -2.38, -2.33);
+    sb('hullShadow', s, 1.815, 1.822, bevM, 1.313, -2.10, -2.054);
     sb('hullShadow', s, 1.815, 1.822, bevB, 1.313, 2.37, 2.42);
-    sb('hull', s, 1.815, 1.83, bevB, 1.27, 2.42, 2.94);
-    sb('hullShadow', s, 1.815, 1.822, bevB, 1.268, 2.94, 2.964);
-    sb('hull', s, 1.815, 1.83, bevB, 1.27, 2.964, 3.05);
+    // (r6 bow taper: the LEFT plane's certified 0.599 col-3 line is
+    // carried by the 2.42..2.70 stretch; the run end rises with the
+    // taper. The right bevel's 0.897 line is above the taper start and
+    // keeps its flat run.)
+    sb('hull', s, 1.815, 1.83, bevB, 1.27, 2.42, 2.70);
+    if (s > 0) {
+      sb('hull', s, 1.815, 1.83, bevB, 1.27, 2.70, 2.94);
+      sb('hullShadow', s, 1.815, 1.822, bevB, 1.268, 2.94, 2.964);
+      sb('hull', s, 1.815, 1.83, bevB, 1.27, 2.964, 3.05);
+    } else {
+      band('hull', -1.83, -1.815,
+        [[2.70, 1.27], [2.94, 1.27]], [[2.70, 0.60], [2.94, 0.84]], 2.70, 2.94);
+      sb('hullShadow', s, 1.815, 1.822, 0.845, 1.268, 2.94, 2.964);
+      band('hull', -1.83, -1.815,
+        [[2.964, 1.27], [3.05, 1.27]], [[2.964, 0.865], [3.05, 0.95]], 2.964, 3.05);
+    }
     // Pale mount strips in the end slots + panel bolt dots (flush class).
     if (P.q) {
-      sb('hullDetail', s, 1.8145, 1.8295, Math.max(bevB, 0.66), 1.30, -2.372, -2.338);
+      sb('hullDetail', s, 1.8145, 1.8295, Math.max(bevM, 0.66), 1.30, -2.096, -2.062);
       sb('hullDetail', s, 1.8145, 1.8295, Math.max(bevB, 0.66), 1.30, 2.378, 2.412);
       for (const zj of SKJ) {
         for (const dz of [-0.28, 0.28]) {
@@ -2238,15 +2278,70 @@ function buildM1a2(P) {
         if (s < 0) P.add('hullDetail', box(0.208, 0.012, 0.078), s * 1.652, 1.2955, z);
       }
     }
-    sb('hull', s, 1.46, 1.76, s > 0 ? 0.60 : 0.70, 1.24, -2.44, 3.11);
-    sb('hull', s, 1.46, 1.66, s > 0 ? 0.60 : 0.70, 1.22, -2.49, 3.16);
+    // r6: inner deep bands split at 2.42 — main run rides the raised hem
+    // (0.66 right / 0.70 left as before), the forward pieces KEEP the r1
+    // 0.60/0.70 bottoms that carry the certified front-view columns.
+    sb('hull', s, 1.46, 1.76, s > 0 ? 0.66 : 0.70, 1.24, -2.10, 2.42);
+    sb('hull', s, 1.46, 1.76, s > 0 ? 0.60 : 0.70, 1.24, 2.42, 2.70);
+    band('hull', s * (s > 0 ? 1.46 : 1.76), s * (s > 0 ? 1.76 : 1.46),
+      [[2.70, 1.24], [3.11, 1.24]],
+      [[2.70, s > 0 ? 0.60 : 0.70], [3.11, 1.01]], 2.70, 3.11);
+    sb('hull', s, 1.46, 1.66, s > 0 ? 0.66 : 0.70, 1.22, -2.10, 2.42);
+    sb('hull', s, 1.46, 1.66, s > 0 ? 0.60 : 0.70, 1.22, 2.42, 2.70);
+    band('hull', s * (s > 0 ? 1.46 : 1.66), s * (s > 0 ? 1.66 : 1.46),
+      [[2.70, 1.22], [3.16, 1.22]],
+      [[2.70, s > 0 ? 0.62 : 0.72], [3.16, 1.06]], 2.70, 3.16);
     // EDGE-ON PRISM LAW (docs/GEOMETRY-GATE.md): the clipped station cameras
     // see only z-facing faces — interior rib plates keep the ±1.83 width
     // plane visible in EVERY ~0.57 m station slab (buried in the solid
     // skirt, invisible in any normal view).
-    for (let k = 0; k < 13; k++) {
+    // (r6: k=0 at z -2.45 dropped — it sat aft of the new -2.25 run end and
+    // would float in the open sprocket bay; its station slab keeps the
+    // ±1.83 width on the -2.38..-2.25 tail wedge's end caps below.)
+    for (let k = 1; k < 13; k++) {
       sb('hull', s, 1.462, 1.828, 0.905, 1.31, -2.45 + k * 0.45, -2.43 + k * 0.45);
     }
+    // r6 TAIL DIAGONAL: the print ends its skirt at z ~-2.26 and opens the
+    // sprocket bay; our run hands over through a stepped ~57-degree
+    // hem-rise (0.66 @ -2.10 -> 1.10 @ -2.38) whose -2.38 end face is only
+    // 0.215 m tall — no quarter-view 90-degree cliff (the r4 curtain end
+    // and the first r6 cut both flagged 0.83 m verticals there). The
+    // outer face still runs the FULL ±1.83 plane over -2.38..-2.10, so
+    // the r1-certified plan rails keep their 5.39-5.40 m dead-straight
+    // length and the aft station slab keeps its width end-caps.
+    // FRONT-BIN GUARD: on the RIGHT the diagonal's sub-0.897 portion
+    // (hem corner 0.66..0.90) stays inboard at 1.46..1.808 — the
+    // 1.808..1.83 shell piece bottoms at bevM (0.90 R / 0.66 L), so the
+    // ±1.83 front columns hold their certified lines (the flat-wedge cut
+    // ran the 0.66 corner onto the right plane's 0.897 col: front_hull
+    // 'at 1.83' err 0.118, gate-measured).
+    band('hull', s > 0 ? 1.46 : -1.808, s > 0 ? 1.808 : -1.46,
+      [[-2.38, 1.315], [-2.10, 1.315]],
+      [[-2.38, 1.10], [-2.32, 1.02], [-2.25, 0.90], [-2.17, 0.77], [-2.10, 0.66]],
+      -2.38, -2.10);
+    band('hull', s > 0 ? 1.808 : -1.83, s > 0 ? 1.83 : -1.808,
+      [[-2.38, 1.315], [-2.10, 1.315]],
+      s > 0 ? [[-2.38, 1.10], [-2.28, 0.98], [-2.20, 0.90], [-2.10, 0.90]]
+            : [[-2.38, 1.10], [-2.32, 1.02], [-2.25, 0.90], [-2.17, 0.77], [-2.10, 0.66]],
+      -2.38, -2.10);
+    // r6 BAY WALLS: near-black backers so the exposed wheel gaps and the
+    // open sprocket bay read as bay shadow, not see-through daylight or
+    // far-side camo (r2 corridor-baffle / r4 closure-wall precedents).
+    // Mid-run wall: fully inboard of the wheel inner faces (1.097), 7+ cm
+    // off the 0.977 band inner plane (voxel law), z clear of both §B4
+    // audit zones (front [2.72, 3.28], rear [-3.39, -2.83]). hullDark:
+    // the first cut's mid-shadow wall caught the key light through the
+    // wheel gaps and read L~50 flat — the discs need the ref's dark-bay
+    // contrast (ref gap shadow under the hem, near-black class).
+    sb('hullDark', s, 1.05, 1.09, 0.30, 0.74, -2.62, 2.35);
+    // Tail-bay wall: same 0.90..0.92 plane as the r4-certified sponson
+    // closure wall above it (5.7 cm inboard of the wrap band — the
+    // audit-proven clearance). z stops at the -2.62 carve line (the
+    // certified baffle + sprocket body own the view aft of it) and the
+    // bottom rides 0.50 — above the 0.44 belly front bins and the rising
+    // wrap-arc side line (the first cut's 0.30 floor hung 0.17-low flat
+    // bottoms on four side columns and 0.11-low front columns at ±0.91).
+    sb('hullDark', s, 0.90, 0.92, 0.50, 0.95, -2.62, -2.27);
   }
   // Visual r4 order 4 — SUN-FLANK SCALLOP CROWNS (tone-only, the ordered
   // "brighter slot"): the right-side link-pad crown bars ride a dedicated
@@ -2318,10 +2413,29 @@ function buildM1a2(P) {
   // the hull's 0.95-plane family (center deck side faces, pod bottoms,
   // belly sides), which is what empties the §B4 audit zones — 0.95-exact
   // coincidence was the first cut's 107-voxel rear hit.
+  // r6 UN-CURTAIN retune (critic r4 protagonist): the r4 wheels (r 0.40,
+  // hub 0.70) hid their hubs behind the 0.60 hem and their camo rims fused
+  // with the skirt — the flank read one curtain. The SEPv2 print's own row
+  // (official-pair measurement, view-left ref: pitch 42.3px = 0.745 m,
+  // hub rings at y ~0.45, discs r ~0.22 spanning band-top 0.26 to hem 0.62)
+  // is SMALL SEPARATED discs over a dark bay. Wheels retuned to the print:
+  // r 0.25, hub 0.50 (tire bottom 0.25 tucks behind the band face exactly
+  // like the print's 0.23-vs-0.26); disc gaps 0.25 m read as bay shadow.
+  // contactZF/ZR pin the r4 contact patch (2.30/-2.62 = the old
+  // wheelR*0.5 overhang) so the certified ramp/wrap tangents (bow 0.399,
+  // idler-shoe 0.465-0.53, grouser 0.150, sag 0.005) are BYTE-STABLE —
+  // only the (skirt-hidden) top-run support line moves (1.125 -> 0.775,
+  // still above the 0.66 hem; more §B4 clearance under the 1.12 wings).
+  // (wheelY 0.46: hub at the print's own 0.455 line — the 0.50 first cut
+  // left the disc tops cut flat by the 0.66 hem ("tombstone" read); at
+  // 0.46 the top arc clears like the ref's and the full hub ring shows.
+  // Top-run supports 0.735 − 0.03 sag keep the run's underside at the hem
+  // line, still skirt-hidden.)
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.40, wheelW: 0.20, wheelY: 0.70, xc: 1.197,
+    style: 'rubber', wheelR: 0.25, wheelW: 0.20, wheelY: 0.46, xc: 1.197,
     wheelZs: [2.10, 1.347, 0.593, -0.16, -0.913, -1.667, -2.42],
     botY: 0.28, trackW: 0.44, topY: 1.10, trackTh: 0.09,
+    contactZF: 2.30, contactZR: -2.62,
     sprocket: { z: -3.00, y: 0.86, r: 0.24 },
     idler: { z: 2.92, y: 0.7675, r: 0.2125 },
     paintedEnds: true, coveredTop: true, deadSag: 0.03, gearFloor: true,
@@ -2368,8 +2482,13 @@ function buildM1a2(P) {
       [1.44, ti, -0.94], [xo, to, -0.94], [xo, to, -1.92], [1.44, ti, -1.92]);
   }
   // Left skirt hem steps (ref front bots 0.70 @ -1.50 / 0.535 @ -1.46).
-  hb('hull', -1.522, -1.478, 0.70, 1.315, -2.38, 2.42);
-  hb('hull', -1.522, -1.478, 0.70, 1.27, 2.42, 3.05);
+  // (r6: main piece ends flush with the -2.10 run end; the 0.702 col-11
+  // front bin is carried by the main piece + the fwd 2.42..2.70 stretch;
+  // the fwd end rises with the r6 bow taper.)
+  hb('hull', -1.522, -1.478, 0.70, 1.315, -2.10, 2.42);
+  hb('hull', -1.522, -1.478, 0.70, 1.27, 2.42, 2.70);
+  band('hull', -1.522, -1.478,
+    [[2.70, 1.27], [3.05, 1.27]], [[2.70, 0.70], [3.05, 0.96]], 2.70, 3.05);
   // The 0.535 hanger rides the track-family tone (visual r2: as camo it
   // read as a detached floating pod; the ref element is gear-dark).
   hb('hullTrack', -1.478, -1.44, 0.535, 1.05, 1.95, 2.65);
@@ -2735,9 +2854,16 @@ function buildM1a2(P) {
   // carried no row: plan/side extents live on the side/cross rails, front
   // x -0.10..-0.02 tops belong to the M1 center plateau.)
   tb('turret', -1.045, 0.955, 1.72, 1.758, -3.235, -2.86);  // floor shelf
-  tb('turretTrack', -0.26, 0.26, 1.72, 2.30, -3.155, -2.865); // center depth sheet
+  // r6 order 2 root cause: the r2 depth sheets topped at 2.30/2.24 — the
+  // CENTER DUFFEL (crown 2.31) was buried inside them, so from plan the
+  // trio read one flat L42 sheet with 1 cm of crown poking out ("weak
+  // 3-lobe", r4 residual). Tops drop to 2.02: the side/rear depth read
+  // keeps its dark backdrop below the duffel discs, and the full crown
+  // arcs now render from plan. No mask rows (interior x ±0.26; the front
+  // frame wall + floor still close every through-line).
+  tb('turretTrack', -0.26, 0.26, 1.72, 2.02, -3.155, -2.865); // center depth sheet
   tb('turret', -1.045, 0.955, 2.216, 2.262, -3.235, -3.16); // rear step rail
-  tb('turretTrack', -0.26, 0.26, 1.72, 2.24, -3.23, -3.155);  // rear sheet
+  tb('turretTrack', -0.26, 0.26, 1.72, 2.02, -3.23, -3.155);  // rear sheet
   tb('turret', -0.36, 0.30, 1.70, 2.175, -3.26, -3.235);
   tb('turret', -0.36, 0.30, 1.655, 2.175, -3.325, -3.26);
   tb('turret', -1.045, -0.92, 1.72, 2.24, -3.28, -3.245);
@@ -2768,9 +2894,19 @@ function buildM1a2(P) {
     // moves), bottoms seat on the 1.758 floor shelf, x-packed to the ref's
     // near-full-width row. The crate/jerry verticals + tarp roll they
     // replace were frame-grid contributors from plan.
-    duf(-0.62, 2.025, -3.03, 0.265, 0.56);
+    // r6 order 2 (duffel plan-separation, tone/spacing only): the r4 trio
+    // read as one fused mass from plan (3-lobe dips ~4L). Outer duffels
+    // slide 3-4 cm outward (gaps 8/9.5 cm; caps stay inside the rails:
+    // duf3 cap 0.835 vs the 0.865 rail) and each gap takes a near-black
+    // separator sheet (turretDark, tops 2.24 < the 2.272 rails, seated
+    // on the 1.758 floor) so the plan read shows three ROUNDS over dark
+    // slots — the merkava recess-bay law (shadow behind the frame).
+    // Crowns unchanged (2.29/2.31/2.28 <= 2.318 — no column moves).
+    duf(-0.66, 2.025, -3.03, 0.265, 0.56);
     duf(-0.02, 2.03, -3.05, 0.28, 0.48);
-    duf(0.56, 2.02, -3.04, 0.26, 0.46);
+    duf(0.585, 2.02, -3.04, 0.26, 0.46);
+    tb('turretDark', -0.345, -0.295, 1.75, 2.24, -3.16, -2.90);
+    tb('turretDark', 0.265, 0.315, 1.75, 2.24, -3.16, -2.90);
     // §I census fitting (visual r3): a stowed M240 rides the rack floor
     // between the duffel row and the rear step (AA-mount stowage class) —
     // barrel lies along the rack, whole stamp under the 2.318 rails, so
@@ -3217,6 +3353,17 @@ function m1a2ToneKit(P) {
   P.mats.wood.color.setHex(0x363c2d);  // r3 second dial: bed-tone plate measured 66.4 at 0x3a4031, ref 61.1
   P.mats.wood.roughness = 0.92;
   P.mats.wood.envMapIntensity = 0.22;
+  // r6 order 3 (rear lower-band micro-texture, tone-only): the r4 wood
+  // skins metered sd 0.0 in the verdict rect where the ref keeps a 9.6-
+  // class subtle panel variance. Deterministic per-panel tone offsets
+  // (~0.24 m plank pitch, ±8%) + a fine grain term (±5%) lift sd toward
+  // the ref class while the max excursion (+13% on L60.5 ≈ 68) stays
+  // far under the L75 wedge line — ge75 stays 0 (the banked wedge kill).
+  worldTone(P.mats.wood, 'm1a2-woodpanel-r6', `{
+\tfloat m1a2wp = fract( sin( floor( vM1a2P.x * 4.2 + 0.5 ) * 12.9898 ) * 43758.5453 ) - 0.5;
+\tfloat m1a2wg = sin( vM1a2P.x * 21.0 ) * sin( vM1a2P.y * 15.0 + 1.3 );
+\toutgoingLight *= ( 1.0 + 0.16 * m1a2wp + 0.05 * m1a2wg );
+}`);
   // Camo shell/tube — r3 combined world-frame term (replaces the r2
   // view-space down-grime pair; same 0.58 down-face floor, now pose-true):
   // 1) DOWN-FACE grime keeps the tan-plinth fix (tail shelf, bow blade,
