@@ -3327,26 +3327,48 @@ const LOD0_KEEP = new Set(['hull', 'turret', 'gun', 'gunDark', 'gunMount', 'hull
 // Baked per-vertex weathering for camo surfaces: vertical dust gradient (heavy
 // at skirt bottoms / running gear height), downward-face AO, and a subtle
 // positional tone jitter so large plates don't read as one flat color.
-function bakeDirt(geo, yOffset, strength = 1) {
+// bakeDirt-lane ref-equalization round (materials-albedo-floor packet §3/§7):
+// the recovered references paint the SAME shared camo canvas through
+// modelLoader.refineCommunityGeometry — d = min(0.8, t^1.7*1.05), dust tint
+// (0.70, 0.62, 0.50), NO up-face term — so every proc-vs-ref census delta is
+// carried by the BAKE deltas, not the palette. Two dispositions, measured on
+// the official critic pairs (round record in the packet):
+//  - HEM/DUST equalization (cap 0.85->0.8, *1.12->*1.05, tint -> ref) ships
+//    GLOBAL: held windows m47 A1 66.6/70.5, N1 r/g 1.005, t84 letterbox
+//    67.8, leo2a5 hull-side 71.4 all inside +-1.5L, graduate spot meds
+//    inside the 1.5L bar. It carries the t84 2b pale-reach and the leo2a5
+//    1c BASE-class hem share (G 0.66 -> 0.696 at ground).
+//  - UP-FACE deck equalization (drop the *0.84) is OPT-IN per spec
+//    (visual.bakeDirtDeckEq): global removal moved graduate TOP-view medians
+//    +3.3..+6.8L (m1a1/isu152/merkava3d — the textured-ref graduates
+//    OVERSHOOT their refs, which never took the proc deck penalty ONLY
+//    shared-canvas refs did). Knob-on closes the m47 B3 top census
+//    2189 -> 1561 vs ref 1160 with A1/N1 held exact — consumers (m46 R1
+//    re-baseline, m47 top view, leo2a5) flip it in their own lanes with
+//    re-cert bundled.
+// Down-face AO 0.28 (ref 0.26) and jitter 0.09 (ref 0.08) intentionally
+// kept — cited by no window.
+function bakeDirt(geo, yOffset, strength = 1, deckEq = false) {
   const pos = geo.attributes.position, nor = geo.attributes.normal;
   const col = new Float32Array(pos.count * 3);
   for (let i = 0; i < pos.count; i++) {
     const wy = pos.getY(i) + yOffset;
     let t = Math.min(1, Math.max(0, (1.45 - wy) / 1.45));
-    const d = Math.min(0.85, Math.pow(t, 1.7) * 1.12 * strength);
+    const d = Math.min(0.8, Math.pow(t, 1.7) * 1.05 * strength);
     // tank_models r4 (T-14 "missing-texture cream band" / T-34/IS-2 "pastel
     // mint" majors): up-facing plates blow out under the overhead garage key
     // + sky IBL, splitting one paint job into two apparent albedos. Matte
     // tank paint + settled dust flatten the top-light response — bake a
     // gentle up-facing multiplier so decks/glacis stay in the same family
-    // as the vertical plates under any key.
+    // as the vertical plates under any key. deckEq (opt-in above) drops it
+    // to ref-bake parity.
     const nyv = nor.getY(i);
-    const ao = (1 - Math.max(0, -nyv) * 0.28) * (1 - Math.max(0, nyv) * 0.16);
+    const ao = (1 - Math.max(0, -nyv) * 0.28) * (deckEq ? 1 : 1 - Math.max(0, nyv) * 0.16);
     const h = Math.sin(pos.getX(i) * 12.9898 + pos.getZ(i) * 78.233 + wy * 37.719) * 43758.5453;
     const n = ((h - Math.floor(h)) - 0.5) * 0.09;
-    col[i * 3] = ((1 - d) + d * 0.68 + n) * ao;
-    col[i * 3 + 1] = ((1 - d) + d * 0.6 + n) * ao;
-    col[i * 3 + 2] = ((1 - d) + d * 0.46 + n) * ao;
+    col[i * 3] = ((1 - d) + d * 0.7 + n) * ao;
+    col[i * 3 + 1] = ((1 - d) + d * 0.62 + n) * ao;
+    col[i * 3 + 2] = ((1 - d) + d * 0.5 + n) * ao;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   return geo;
@@ -3570,7 +3592,8 @@ export function createTank(specId, engineCtx, opts = {}) {
     const merged = mergeAll(list);
     if (CAMO_BUCKETS.has(bucket)) {
       boxUV(merged, spec.visual.camoScale ?? 0.34);
-      bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5);
+      bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
+        !!spec.visual.bakeDirtDeckEq);
     }
     disposables.push(merged);
     const mesh = new THREE.Mesh(merged, mats[matKey]);

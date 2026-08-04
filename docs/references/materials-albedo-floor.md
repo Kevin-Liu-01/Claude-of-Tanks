@@ -241,3 +241,178 @@ their lane stabilizes.
 3. tools/tmp-albedofloor-probe.{html,mjs} is the canvas-census rig for this
    knob (per-spec resolved visual + albedo histograms); kept for the flip
    round, delete after.
+
+---
+
+# bakeDirt-lane round (the TRUE B3 fix — §7.1 executed) — 2026-08-04
+
+Lane: tankFactory.js bakeDirt/dust constants ONLY (the two §7.1 levers).
+Baseline: HEAD c1160ed working tree carrying three concurrent-lane edits —
+russia BUCKET_DEF park (kept byte-exact), patton r8 (+131/−5 dropped 16:20
+MID-ROUND), leopard r10 (leo2a5 broken `evenStations` TDZ 16:05→16:44+).
+All verdict evidence below is same-tree A/B (see the m47 redo note).
+
+## R1. Constants before/after (bakeDirt, tankFactory.js ~3350)
+
+| lever | before | after | disposition |
+|---|---|---|---|
+| dust cap `d` | min(**0.85**, t^1.7 × **1.12** × strength) | min(**0.8**, t^1.7 × **1.05** × strength) | GLOBAL (ref-bake parity) |
+| dust tint | (0.68, 0.60, 0.46) | (0.70, 0.62, 0.50) | GLOBAL (ref-bake parity) |
+| hem G at ground | 0.660 | **0.696 = ref exact** | (derived) |
+| up-face deck ao | ×(1 − max(0,ny)·0.16) always | unchanged by default; ×1 when `spec.visual.bakeDirtDeckEq` | **OPT-IN knob, default = current behavior** |
+| down-face AO / jitter | 0.28 / ±0.045 | kept (ref 0.26 / ±0.04) | cited by no window — not touched |
+
+Call site passes `!!spec.visual.bakeDirtDeckEq` (4th arg). No spec sets it
+yet — the knob is byte-inert fleet-wide until a consumer lane flips it.
+
+## R2. Why the deck lever could NOT ship global (the measured coupling)
+
+Full up-face removal measured on official pairs before falling back
+(mission order): graduate TOP-view proc medians moved **merkava3d 86.0 →
+92.8 (+6.8), isu152 85.5 → 91.6 (+6.1), m1a1 52.2 → 55.5 (+3.3)** — all
+far over the ±1.5L spot bar. Root cause is a REF-CLASS SPLIT the materials
+round's shared-canvas analysis only covered half of: merkava3d/isu152 refs
+carry their OWN baked albedo (never took the proc deck penalty, already at
+parity — removal OVERSHOOTS them above their refs), while shared-canvas
+refs (m47/m1a1 class) sit a full ×0.84 apart (removal converges them).
+One global constant cannot serve both classes → per-spec opt-in.
+
+## R3. Cited windows (official pairs, mask-method §D, ITU-601)
+
+m47 rows measured at the FIXED patton-r8 tree state (the 16:20 drop
+landed between my first baseline and ship renders; the whole m47 A/B/C
+was REDONE at one tree state, patton.js sha 1ff9efdf guarded across all
+three renders — packet-baseline numbers reproduced exactly at r8 state).
+A SECOND patton drop (+216/−15, sha 11524738, ~16:5x) landed after the
+A/B/C completed; an informational re-measure at that state reproduced
+B3 2189 / A1 66.6-71.1 / N1 1.005 exactly — the conclusions are robust
+across all three patton states seen this round.
+
+| window | before | ship (hem global) | deck knob ON | ref / target |
+|---|---|---|---|---|
+| m47 B3 top sub-50 [260..380]×[330..490] | 2189 (p5 44.1) | 2189 — deck window, hem-inert by construction | **1561 (p5 46.0), gap 1029 → 401** | ref 1160 (p5 46.9); residual ≈ the §3 proc-only 425-500 px class |
+| leo2a5 1c gear sub45 [100..540]×[352..400] | 2358 (r8) | see R6 | — | ≤1500 retired gate |
+| t84 2b pale95 view-L / view-R y346..386 | 1 / 0 (p95 88.9 / 77.0) | **8 / 0 (p95 90.4 / 78.0)** | (2b rows are vertical hem — deck-inert) | ref 93 / 246; targets 60 / 150 |
+
+t84 2b residual coupling (honest): the hem ALBEDO is now ref-exact
+(0.696 = 0.696) — the remaining pale-tail gap is (a) view-R is mostly
+TRACK-FACE print-glint content (ref pale95 839/520 baked into track
+tiles; gear mats, not a camo bucket — out of bakeDirt reach), and (b) the
+proc hull's lit-response (community ref mats vs proc MeshPhysicalMaterial
+specular family — materials-lane, exposureTrim frozen). pale95 8 vs 93 is
+the bakeDirt-reachable share of the order; the rest is priced above.
+
+## R4. Held windows (ship state)
+
+| window | held value | ship | Δ |
+|---|---|---|---|
+| m47 A1 view-left med / p75 | 66.6 / 70.5 | **66.6 / 71.1** | 0.0 / +0.6 ✓ |
+| m47 A1 sub-30 | 0 | 0 | ✓ |
+| m47 N1 hero-rr gear r/g | 1.005 (≤1.01) | **1.005** | 0.000 ✓ |
+| t84 letterbox med / g−r / sd | 67.8 / +7.6 / ≥8 | **68.0 / +7.6 / 11.3** | +0.2 ✓ |
+| t84 2a lower-band sub-30 / track-rows med | 0 / 51.4 | 0 / 51.4 | ✓ |
+| leo2a5 hull-side med | 71.4 (ref 73.0 ±2) | see R6 | |
+
+## R5. Spot table (graduates, 14 views each, proc-half masked med)
+
+base → ship, per-view worst printed; ref-drift 0.00 on all 70 views
+(determinism control):
+
+| tank | worst-shift view | Δmed | verdict |
+|---|---|---|---|
+| merkava3d | hero-rearright | +0.11 | ✓ (13 views ≤0.07) |
+| isu152 | all 13 views | 0.00 | ✓ solid-scheme high hull: hem rows never carry a med |
+| m1a1 | view-front | +0.39 | ✓ |
+| m47_patton | view-rear | +0.16 | ✓ |
+| t84 | view-front | +0.47 | ✓ |
+
+Fleet-wide worst = 0.47L vs the 1.5L bar. The hem lift only enters rows
+below y≈1.45 m at partial d — median ranks everywhere sit above it.
+
+## R6. leo2a5 — measured at COMMITTED leopard state (isolated worktree)
+
+Concurrent-lane facts first: the leopard r10 editor held working-tree
+edits all round (drops 16:10/16:18/16:28/16:30) and re-stamped
+shots/critic-leo2a5 mid-round (gear p75 63.4 → 67.5 on disk with no
+render of mine) — the main-tree leo2a5 was unscorable AND un-baselineable
+(never score a broken/moving build). Standalone `import()` of leopard.js
+is NOT a valid stability probe: the COMMITTED file throws the same
+`evenStations` TDZ standalone (kit.js-cycle artifact, like modern3.js)
+while rendering perfectly in-app — the probe that matters is a critic
+render. Resolution: `git worktree` at HEAD c1160ed + this round's
+tankFactory.js copied in (their tree untouched, single-owner law) —
+committed leopard renders CLEAN there, and the A/B baseline reproduced
+the r8 packet EXACTLY (gear sub45 2358, hull-side med 71.4, hash
+50c34724 = the materials-round baseline hash).
+
+leo2a5 A/B (view-left, committed state, zero-error renders ×2):
+
+| window | base | ship | verdict |
+|---|---|---|---|
+| 1c gear sub45 [100..540]×[352..400] | **2358 (r8-exact)** | **2354 (−4 px)** | measured coupling below |
+| gear med / p5 / r/g | 61.8 / 44.6 / 1.011 | 61.9 / 44.6 / 1.010 | window class unchanged |
+| hull-side held med [120..500]×[308..348] | 71.4 (r8-exact) | 71.5 | +0.1 ✓ held (ref 73.0) |
+| 14-view proc med shifts | — | worst +0.15 (frontleft) | ✓ bar 1.5 |
+
+**The 1c coupling (this round's law discovery):** the BASE-class hem
+share crosses the 45 threshold at the ALBEDO level under ref-exact hem G
+(canvas 67 × 0.660 = 44.2 → × 0.696 = 46.6) yet the rendered census
+moves only −4 px — the same −4 the materials round measured for a
++13.7 canvas-L dark-class lift in this window. The deep-shade band's
+RENDERED luma is lighting-floor-dominated (vehicleAmbientFloorHook 30%
+rolloff, r8 law 5), not albedo-dominated: BOTH albedo lanes (patch
+palette AND vertex bake) are now measured ~inert here. The residual
+2358-vs-59 census is carried by the leopard-lane gear hexes (pads
+0x474734 / chain 0x393524, corner-ladder-capped) and the lit-response
+side — the ≤1500 number stays retired; no bakeDirt constant reaches it.
+
+## R7. Gate / hash / test proofs
+
+- geometry-gate ×2 (ship state): `m47_patton min 90.5 |
+  90.5/91/91.5/93.6/100/100 PASS`, `t84 min 90.2 |
+  92/92.3/90.2/95.3/99.1/100 PASS` — run1 == run2 exact; t84 JSON
+  line-exact vs committed. m47 turretCurves 91.4 → 91.5 is EXTERNAL to
+  this lane: batch-34 warp-repaired the m47 ref GLB this morning (commit
+  0fb5aa1, GLB mtime 06:58, post-dating the committed r6-era JSON) and
+  the patton-r8 working-tree drop (+483 verts) was live in both runs.
+  Dirt provably cannot move masks: procedural-fidelity.html renders masks
+  under `scene.overrideMaterial = MeshBasicMaterial` (no vertexColors) —
+  vertex colors never reach a mask pixel.
+- leo2a5 gate ×2 (worktree, committed leopard + ship constants):
+  `leo2a5 min 90.8 | 90.8/91.1/91.5/94.3/100/100 PASS` run1 == run2, and
+  the rewritten docs/geometry-gate/leo2a5.json is BYTE-EXACT vs the
+  committed record (empty git diff) — the full gate pipeline reproduces
+  the committed output under the new dirt constants. leo2a5
+  standard-check: clip 0/0 ✓ contig 0 ✓ decor mg0+4d — the r8-packet
+  known census of the COMMITTED build (pre-library MG; the r8 critique
+  carries it), not a regression of this lane (vertex colors census
+  nothing).
+- tmp-hashgeo A/B at the SAME tree state: m47_patton **78daa9a**
+  (96/101301, patton-r8 state) identical with old constants and ship
+  constants — the edit moves zero geometry. Read-point hashes at session
+  start matched the brief (m47 **f02ef936** 96/100818 pre-drop, t84
+  **531fe4f0** 47/84292); t84/merkava3d/isu152/m1a1 hashes exact at both
+  read points (531fe4f0 / 954a9650 / 6df708a8 / 97c10194).
+- tank-standard-check: m47_patton clip 0/0 ✓ contig 0 ✓ mg1+1d ✓; t84
+  clip 4/0 ✓ contig 0 ✓ mg1+6d ✓.
+- npm test: all selftests pass (equipment 166 checks, track-geometry,
+  movement/combat/spotting).
+- Renders: every critic run zero console errors; my pre-drop baseline
+  windows reproduced the r6/materials-packet numbers to the decimal
+  (B3 2189/1160, A1 66.6/70.5, N1 1.005, letterbox 67.8, 2b 1/0).
+
+## R8. Re-cert consumers at landing
+
+- GLOBAL hem change: every proc tank's hem rows lift ≤~0.5L rendered.
+  Graduates stay inside the 1.5L bar (R5) — adjudicated no-re-cert class,
+  but t84's 2b window value changes (pale95 1 → 8, p95 +1.5) — bundle a
+  t84 verdict-note (its 2b residual was banked evidence, now improved).
+- DECK KNOB consumers (flip `visual.bakeDirtDeckEq` in their own lanes,
+  re-cert bundled): **m46 R1 re-baseline** (same shared-canvas patton
+  class), **m47** (B3 top view — knob-on evidence above), **leo2a5**
+  (knob-on measured at committed state: view-top whole proc med 54.0 →
+  56.9 toward ref 60.9, sub50 24579 → 18150 vs ref 6239; gear window
+  deck-inert 2354 exact; hull-side 72.0, inside both gates). Do NOT
+  flip it on textured-ref tanks (merkava/isu class) — R2 overshoot.
+- shots/critic-{m47_patton,t84,merkava3d,isu152,m1a1} re-stamped at ship
+  state (zero-error renders at HEAD c1160ed + this diff).
