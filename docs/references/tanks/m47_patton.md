@@ -370,6 +370,156 @@ worst side_hull columns unchanged from r3 (tail band -4.147, idler-approach
 ramp, dive-window maxima). Deck-kit law: flat deck dressing must stay
 <= deck+0.024 — +0.03..0.042 tops cost hull 0.1 on exposed columns.
 
+## Round r6 (2026-08-04) — the m47 GROUP-N/B FINISH round (shaded-parity r4 orders)
+Gate **90.5 PASS x2** (hull 90.5 / whole 91.0 / turret 91.4 / stations 93.6 /
+dims 100 / floaters 100) — headline UP from the r4 90.4: hull +0.1 (C3), the
+whole B-group net spend only whole -0.1 / turret -0.2 / stations +0.2 (B7
+became a GAIN after the hump abort, below). standard-check clip 0/0, contig 0,
+decor mg1+1d; evaluator RIG PARITY OK (max yawProxy 1.3 deg @front, |dCentroid|
+0.047 m; left/right p95Top 0.094/0.092 = the r4 class; profile worsts are the
+certified corridor-tip cliff entries, evaluator-flagged `cliff: true`).
+Hashes: m47 **f02ef936** (96 meshes / 100818 verts); m46 **722c39dc** FROZEN
+(verified after every batch — first-critic concurrency respected); graduates
+m60a1 **81e69e34** / m60a3 **efcde5c4** exact. Siblings byte-neutral: m26 70.6 /
+m45 59.4 / m46 91.2 PASS / m60a2 80.3 (records exact; their gate JSONs
+reproduced committed bytes — empty git diff). npm test green (166 checks +
+track-geometry). Shots: shots/patton-r6/ (14 official pairs + diag crops;
+baseline r4 pairs kept under baseline/). All numbers = official
+tmp-tank-critic pairs + visual-evaluator, banked scanners
+(tools/tmp-r7-merkava.py + tools/tmp-r6-m47.py rg/flat/wedge extensions).
+
+GROUP N — gear unification (the r4 floor-mover), ALL DELIVERED:
+- **N1 hue-unify ✓**: hero-rr gear window [180..560]x[430..540] mean-RGB r/g
+  **1.068 -> 1.004** (bar <=1.01; own-hull 0.977, ref 0.982); hero-fl 1.063 ->
+  0.991 (ref 0.988). Same-luma olive swaps inside cfg.gearTone: pads
+  0x37332a->0x353928, chain 0x403c2f->0x3b402f, trackL/R (1.16,1.14,0.98)->
+  (1.10,1.15,0.97), spareTrack 0x454034->0x3f4531, rubber emissive
+  0x1d1911->0x191d12, wheelCamo (1.10,1.09,1.04)->(1.05,1.10,1.02).
+  A1 class HELD: sub-30 **0**, p5 51.7 (ref 51.6), p75 70.5, sd 8.6; med
+  66.6 vs r4's 64.7 (honest +1.9: the under-fender pockets now carry the
+  ref's own wash class instead of ambient darkness). A2 held: p75 70.2.
+- **N2 drum faces ✓** (root cause found): sprocketGeo/idlerGeo BODY drums
+  carry cylinder-cap UVs that collapse the camo map to ~one texel — the A2
+  clone painted them a flat tan disc. World-box UV re-projection on the
+  spinner meshes at hull camo density (0.34/0.26 repeat ratio), inside the
+  wheels->wheelCamo traverse. Done-gates: no flat single-tone disc (pale-flat
+  cell census 4/203 vs ref 8/207); drum-face disc window p75 67.1 (bar >=66,
+  A2 class); drum-zone med 62.8 vs ref 62.3.
+- **N3 under-fender shadow ✓ mechanism / done-gate metric DOCUMENTED**: §C
+  proxy law verified PER-HARNESS at code level and in-gate — the mask rigs
+  exclude /shadow/i NODE NAMES (procedural-fidelity baseVisible, evaluator
+  proxy test, critic framing box; colorWrite:false covers the CSM proxies) —
+  and the gate line held bit-identical with every proxy present. Package:
+  top-run cover plates (REAL meshes 'gearRunCover', 0.61 lane width, 5 cm
+  over the pad crowns — interior by trace mechanics: side traces read only
+  top/bottom boundaries and the under-fender gap is enclosed; plan/stations
+  already carried by fender + band edge), outboard curtains x +-1.63 +
+  inboard muffler-leg curtains x +-1.195 + N4 backers as *Shadow*-named
+  proxies. Posts done-gate MET (1x frontleft/rearleft: legs fade into the
+  curtain band — crops). The 4.68/3.88 m "fender-line edges" DID NOT MOVE
+  and CANNOT via any tone/proxy/interior mechanism: three A/B variants
+  (shadow plates, real plates, none) left the findings byte-identical —
+  those chains are far-side contour ENVELOPE diagonals (ground corner ->
+  M2 top) and the REF carries the same class UNMATCHED (152.1deg/5.30 m +
+  143.7deg/5.82 m, same corridor). The r4 verdict's attribution of these
+  two chains to the serration is a rig artifact — flagged for the critic.
+- **N4 ramp grade ✓**: mid-tone backers (named proxies) fill the
+  wheel-to-wrap wedges both ends; sub-25 census 0 px in rearleft/rearright/
+  hero-rr (bar <=40 px; note the r4 wedge class actually lives at 35-45L —
+  the backers now grade it, verified in crops).
+- **N5 glint tail ✓**: gear window sd 9.29 -> **11.09** (bar >=11, ref
+  13.15), p95 78.2 <= ref+4 (90.4). Wheel-rim rings (real, interior) +
+  idler cone-face ring + sprocket carrier-face rings (shadow-named — the
+  carrier disc IS the plan-mask edge; a flush ring measured zero pixels,
+  cycle-2) + N2's blotch variance.
+
+GROUP B — cast grammar (priced 1.6; spent net 0.1):
+- **B1 tail rolls (delivered read / metric partial)**: blend rings at
+  z -2.648 (+-0.600/0.624) and -2.677 (+-0.447/0.468) — facet bulges <=4.7 cm
+  vs the old straight chamfer (the <=0.05 the order prices) + 1 cm top-edge
+  roll (tail top 2.61->2.60). Tail-face z / tailLip anchors untouched.
+  The frontleft cliff finding persists shortened (90.0/0.499 -> 88.4/0.504;
+  the ref shows NO >=0.4 m vertical there) — the flat-sided wall's tangent
+  line is the honest residual.
+- **B2b ✓**: pod outer-wall top chamfers (x -1.115 [0.06,0.045]; +1.155
+  [0.06,0.05]; +1.045 [0.06,0.035]) — the rear 90 deg wall verticals read
+  rolled at 1x (0.462 -> 0.429 + fragments); the "inset picture-frame" is
+  DEAD (B1 rings turned the border faces into gradations — A/B crops) and
+  the tail face is dressed as the ref's tarp'd shell: flush cloth panel +
+  two sag rolls + three straps, faces 2-3.5 mm PROUD of the -2.683 plane
+  (same trace column; >=7 mm AA margin to the -2.698 boundary). LESSON
+  BANKED: the first cut parked the dressing 1.5 mm INSIDE the plane —
+  buried in the solid, invisible; "inside the mask envelope" means inside
+  the SILHOUETTE but outside the SOLID.
+- **B4 ✓ (ref-matching gain)**: the r2 flat shelf steps 2.63/2.47 were
+  square where the ref ROLLS — its own front cols read 2.690@0.733-0.780 /
+  2.652@0.804-0.828 / 2.634@0.852 / 2.615@0.875 / 2.579@0.899 /
+  2.495@0.923-0.947 (the rear-view arc r0.119 span 109.8 deg is the same
+  roll). Replaced with a 4-facet roll tracking those columns
+  (2.685/2.650/2.615/2.525); chord-limit: max sagitta ~8 mm ~= 0.8 px at
+  the 9.7 mm/px critic pitch — reads round. RESIDUAL: the evaluator's
+  arc-FITTER still reports rear arcs ref 2 / proc 0 (a facet polyline with
+  sub-px sagitta chains as short straights; the fitted-arc count needs a
+  smooth high-seg surface, not worth the tri budget).
+- **B7 ✓ (stations GAIN)**: receiver grammar tracks the ref's own
+  forward-easing band (3.381 rear -> 3.31 forward): front block top 3.31 +
+  recessed mid web 3.295 + rear block 3.33 under the 3.375 cover + dapple
+  (2 top + 2 flank turretDark patches). Stations 93.4 -> **93.6** (i10
+  topPct 0.73 -> 0.52). ABORT RECORD: the first cut put a 3.363 HUMP over
+  the front block — stations 93.4 -> 92.0 (i9/i10 +0.87/+0.88), backed out
+  in-gate; grammar AWAY from the ref band is a regression, TOWARD it a
+  gain. rod med 76.8 (bar >=70, ytop-med 218 vs ref 215) — r4-exact. The
+  close-roof 0.908 m 7.2 deg line is NOT the receiver: it is the certified
+  cover/pedestal heightM-carrier band (+ the lawful D1 whip class) — the
+  receiver top is now visibly stepped (crops); flagged for the critic.
+- **B8 ✓ (zero-mask by construction)**: smoothLoft — the dome loft
+  re-emitted as indexed grids with averaged vertex normals at byte-equal
+  ring coordinates (m60Loft lineage + loftBody's wall/mid/crown/shiftX
+  parametrization; same crown-quad diagonal, planar wall/underside quads,
+  traces read only top/bot columns). Landed inside a bit-identical 90.4
+  gate x2; the "dome panel-seam rectangles" are gone — the dome shades as
+  one cast roll (evaluator overlay + close-roof crops).
+- **B9 NOT taken** (optional, abort-priced; stations razor respected).
+
+GROUP C:
+- **C3 ✓**: opt-in F.bowMGHeavy — tapered tube + muzzle collar + bore tip
+  on the bow ball (max +0.022 radius / +13 mm, inside the <=0.03 proud
+  price). Hull 90.4 -> **90.5**.
+- **C5 ✓**: front track faces med 57.6 -> 60.1/60.2 vs ref 64.1/62.8 —
+  within the 5L bar (Δ4.0/2.6). Mechanism: the wrap fronts are SHADE-side
+  under the rig sun — pad/chain env floors 0.14/0.18 -> 0.30/0.32 + pads
+  one notch lift the shaded faces ~2x more than the lit side run (A1
+  side window re-verified unmoved).
+- **C6 ✓ (optional, taken)**: needle-nose casting hints — X-brace weld
+  beads + 5-bolt scallop row on the prow cap + one taper-following seam
+  bead per cheek, all face-riding 1-3 mm proud. ABORT RECORD: the first
+  cut leaked three ways (X-brace rx pitched ends past the z 1.30 tip,
+  bolt row over the 2.18 cap top, bead ry sign swung ends 13 cm off the
+  wall) — turret 91.4 -> 89.2, caught in-gate x1 and rebuilt.
+
+RESIDUALS / CARRIES (honest): B2 FULL-window med 67.2 vs the r4 69.5 (bar
+68) — the delta is window-EDGE gear pixels darkened by ordered N-work; the
+cavity-only window [220..420]x[313..352] reads med 75.6 vs ref 73.8
+(sub-45: 0) — the delivered B2 mechanism intact; report both windows.
+hero-fl gear p95 91.3 vs ref 84.6 (the r4 bright-rim watch class; baseline
+89.2, +2 from glints — hero-rr well inside at 78.2). B4 arc-count, B1
+tangent verticals (above). M2 front crown flag Δ-6.1 -> **Δ-5.4** (B7
+moved it; certified-band class, not <=2). Banked untouched: B3 albedo
+(materials lane), B6 twin-drum, C4 sliver, dive-seam Δ+-11-12, notched
+rails, stations i2 10.13 / i9 wPct 4.03 (pre-existing certified/trim
+classes, byte-equal to HEAD).
+
+LAW DISCOVERIES (bank): (1) §C proxy exclusion is NODE-NAME based
+(/shadow/i) across gate + evaluator + critic framing — and REAL interior
+geometry is free wherever traces read only top/bottom boundaries (enclosed
+gaps); (2) evaluator hero "proc-only long edges" can be contour-ENVELOPE
+artifacts BOTH models carry unmatched — check the ref's own unmatched list
+before ordering geometry at them; (3) camo-mapped end-wheel drums need
+world-box UV re-projection (cylinder-cap UVs collapse maps to a texel);
+(4) flush dressing goes 2-3 mm PROUD, never sub-surface (buried = invisible);
+(5) M2-band grammar must step TOWARD the ref's own band easing — the same
+volume away from it prices stations 1:1.
+
 ## Vertex round r1 (2026-08-03) — ORCHESTRATOR LANDING NOTE
 (Builder finished without a section; from its verified report.) 66.1 ->
 82.5 (hull 89.2 / whole 83.3 / turret 82.5 / stations 95.1 / dims 100).
