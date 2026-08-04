@@ -26,7 +26,7 @@ import * as THREE from 'three';
 import { createRenderer, onResize } from './engine/renderer.js';
 import {
   installShaderErrorCollector, runDeviceDiag, applyDiagRescue, mountDiagOverlay,
-  runSceneBlackWatchdog,
+  runSceneBlackWatchdog, reclaimShadows,
 } from './engine/deviceDiag.js';
 // MOBILE r1: device tier — sourced-GLB swaps are disabled wholesale on the
 // mobile tier (modelLoader gates its own pipeline; the checks here are the UI
@@ -3924,6 +3924,10 @@ window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);
 // garage frame shortly after ready; if the lit band reads black, shadows-off
 // rescue + recompile (deviceDiag.js). Skipped under webdriver so harness
 // captures stay deterministic; a second check runs at battle start.
-if (!navigator.webdriver || new URLSearchParams(location.search).get('diagforce') === 'blackscene') {
+if (!navigator.webdriver || new URLSearchParams(location.search).has('diagforce')) {
   setTimeout(() => runSceneBlackWatchdog(renderer, scene, camera), 1200);
+  // MOBILE r5: if the boot probe turned shadows off (one-boot false-negatives
+  // happen — the owner's phone), try them back on once the live scene proves
+  // healthy; keep only if the measured frame stays healthy (deviceDiag.js).
+  setTimeout(() => reclaimShadows(renderer, scene, camera), 3400);
 }

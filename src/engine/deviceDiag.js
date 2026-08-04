@@ -105,17 +105,22 @@ export function runDeviceDiag(renderer) {
       out.basic = readCenter(renderer, rt, buf) > 24;
       scene.traverse((o) => { if (o.material) o.material.dispose(); if (o.geometry) o.geometry.dispose(); });
     }
-    // lit, shadows OFF
+    // lit, shadows OFF — render twice, judge the second frame (the owner's
+    // iPhone produced a one-boot litShadow false-negative: first-frame
+    // warmup/compile flakes must not cost the session a pipeline stage)
     {
       renderer.shadowMap.enabled = false;
       const p = probeScene(false);
-      renderer.setRenderTarget(rt);
-      renderer.clear();
-      renderer.render(p.scene, p.cam);
+      for (let i = 0; i < 2; i++) {
+        renderer.setRenderTarget(rt);
+        renderer.clear();
+        renderer.render(p.scene, p.cam);
+      }
       out.lit = FORCE === 'nolit' ? false : readCenter(renderer, rt, buf) > 24;
       p.scene.traverse((o) => { if (o.material) o.material.dispose(); if (o.geometry) o.geometry.dispose(); });
     }
-    // lit, shadows ON (CSM-style depth compare path compiles here)
+    // lit, shadows ON (CSM-style depth compare path compiles here) — three
+    // warmup frames before judging, same flake defense
     {
       renderer.shadowMap.enabled = true;
       const p = probeScene(true);
@@ -125,10 +130,13 @@ export function runDeviceDiag(renderer) {
       p.sun.shadow.camera.far = 30;
       p.ground.receiveShadow = true;
       if (p.box) p.box.castShadow = true;
-      renderer.setRenderTarget(rt);
-      renderer.clear();
-      renderer.render(p.scene, p.cam);
-      out.litShadow = FORCE === 'noshadow' ? false : readCenter(renderer, rt, buf) > 24;
+      for (let i = 0; i < 3; i++) {
+        renderer.setRenderTarget(rt);
+        renderer.clear();
+        renderer.render(p.scene, p.cam);
+      }
+      out.litShadow = (FORCE === 'noshadow' || FORCE === 'flakyshadow')
+        ? false : readCenter(renderer, rt, buf) > 24;
       p.scene.traverse((o) => { if (o.material) o.material.dispose(); if (o.geometry) o.geometry.dispose(); });
       if (p.sun.shadow.map) p.sun.shadow.map.dispose();
     }
@@ -213,12 +221,8 @@ export function enforceEnvValidity(renderer, scene) {
     // 3.0->23.4 / 4.5->28.0 — 3.1 interpolates to the env-on level
     _envCompLight = new THREE.AmbientLight(0xc3d2e4, ENV_COMP_INTENSITY);
     scene.add(_envCompLight);
-  }
-  if (bag) {
-    if (bag.errors.length < 8) bag.errors.push(`env bake invalid (probe ${lum}) — compensated ambient engaged`);
-    bag.rescue = bag.rescue || 'environment-fallback (bake validation)';
-    if (bag._showOverlay) bag._showOverlay();
-    else if (bag._refresh) bag._refresh();
+    if (bag && bag.errors.length < 8) bag.errors.push(`env bake invalid (probe ${lum}) — compensated ambient engaged`);
+    appendRescue('environment-fallback (bake validation)');
   }
   return false;
 }
@@ -237,6 +241,80 @@ const ENV_COMP_INTENSITY = 3.1;
  * start.
  * @returns {{before:number, after:?number, rescued:boolean}}
  */
+/** Mean luminance of the lower 60% band of one real scene render (0-255). */
+function measureSceneBand(renderer, scene, camera) {
+  const rt = new THREE.WebGLRenderTarget(64, 36, { depthBuffer: true });
+  const buf = new Uint8Array(64 * 22 * 4);
+  try {
+    const prev = renderer.getRenderTarget();
+    renderer.setRenderTarget(rt);
+    renderer.clear();
+    renderer.render(scene, camera);
+    renderer.readRenderTargetPixels(rt, 0, 0, 64, 22, buf);
+    renderer.setRenderTarget(prev);
+    let s = 0;
+    for (let i = 0; i < buf.length; i += 4) s += buf[i] + buf[i + 1] + buf[i + 2];
+    return s / (buf.length / 4) / 3;
+  } finally {
+    rt.dispose();
+  }
+}
+
+function recompileScene(scene) {
+  scene.traverse((o) => {
+    if (!o.material) return;
+    const mm = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mm) m.needsUpdate = true;
+  });
+}
+
+function appendRescue(label) {
+  const bag = window.__GL_DIAG;
+  if (!bag) return;
+  bag.rescue = bag.rescue ? `${bag.rescue} + ${label}` : label;
+  if (bag._showOverlay) bag._showOverlay();
+  else if (bag._refresh) bag._refresh();
+}
+
+/**
+ * Shadow reclaim (mobile r5). The owner's phone hit a one-boot litShadow
+ * probe false-negative, so the boot rescue turned shadows off even though
+ * the env fallback was the real cure — the session ran flatter than the
+ * device deserves. Once the live scene proves HEALTHY, try shadows back on
+ * and keep them only if the measured frame stays healthy. Runs at
+ * garage-ready, after the black-scene watchdog; skipped when
+ * ?diagforce=noshadow explicitly wants shadows held off.
+ * @returns {{reclaimed:boolean, reason:string}}
+ */
+export function reclaimShadows(renderer, scene, camera) {
+  const bag = window.__GL_DIAG;
+  const note = (m) => { if (bag && bag.errors.length < 8) bag.errors.push(m); };
+  if (renderer.shadowMap.enabled) return { reclaimed: false, reason: 'already-on' };
+  if (FORCE === 'noshadow') return { reclaimed: false, reason: 'forced-off' };
+  try {
+    const before = measureSceneBand(renderer, scene, camera);
+    if (before < 6) return { reclaimed: false, reason: 'scene-black' };
+    renderer.shadowMap.enabled = true;
+    recompileScene(scene);
+    // warmup render before judging (same flake defense as the boot probes)
+    measureSceneBand(renderer, scene, camera);
+    const after = measureSceneBand(renderer, scene, camera);
+    if (after >= 6) {
+      note(`shadows reclaimed (band ${before.toFixed(1)} -> ${after.toFixed(1)})`);
+      appendRescue('shadows-reclaimed');
+      return { reclaimed: true, reason: 'healthy' };
+    }
+    renderer.shadowMap.enabled = false;
+    recompileScene(scene);
+    note(`shadow reclaim failed (band ${after.toFixed(1)}) — staying off`);
+    return { reclaimed: false, reason: 'still-black' };
+  } catch (e) {
+    note('reclaim threw: ' + String(e && e.message ? e.message : e).slice(0, 160));
+    renderer.shadowMap.enabled = false;
+    return { reclaimed: false, reason: 'threw' };
+  }
+}
+
 export function runSceneBlackWatchdog(renderer, scene, camera, { onRescue } = {}) {
   const rt = new THREE.WebGLRenderTarget(64, 36, { depthBuffer: true });
   const buf = new Uint8Array(64 * 22 * 4);
@@ -318,11 +396,7 @@ export function runSceneBlackWatchdog(renderer, scene, camera, { onRescue } = {}
         out.after = lum;
         out.rescued = true;
         out.stage = st.label;
-        if (bag) {
-          bag.rescue = `${st.label} (scene watchdog, band ${out.before.toFixed(1)}->${lum.toFixed(1)})`;
-          if (bag._showOverlay) bag._showOverlay();
-          else if (bag._refresh) bag._refresh();
-        }
+        appendRescue(`${st.label} (scene watchdog, band ${out.before.toFixed(1)}->${lum.toFixed(1)})`);
         if (onRescue) onRescue(out);
         return out;
       }
@@ -351,9 +425,13 @@ export function mountDiagOverlay({ tier, diag, rescue, renderer }) {
     + 'color:#ffd27a;font:10px/1.5 ui-monospace,Menlo,monospace;padding:8px 10px;border:1px solid #6b5a33;'
     + 'border-radius:4px;max-width:82vw;pointer-events:none;white-space:pre-wrap;';
   const bag = window.__GL_DIAG || (window.__GL_DIAG = { errors: [] });
+  // seed the boot-probe rescue so later rescues APPEND instead of hiding it
+  // (the owner's phone ran shadows-off + environment-fallback simultaneously
+  // and the panel only showed the latter)
+  if (rescue && !bag.rescue) bag.rescue = rescue;
   const render = () => {
     const ok = (v) => (v ? 'OK' : 'FAIL');
-    const liveRescue = bag.rescue || rescue; // watchdog rescues land after mount
+    const liveRescue = bag.rescue; // all rescues accumulate here
     el.textContent =
       `COT DIAG  tier=${tier}  ${String(cap('VERSION')).slice(0, 40)}\n`
       + `fragVec=${cap('MAX_FRAGMENT_UNIFORM_VECTORS')} vertVec=${cap('MAX_VERTEX_UNIFORM_VECTORS')} `
