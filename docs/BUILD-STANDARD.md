@@ -53,8 +53,11 @@ wins and this file needs a patch.
   inverts the law. Material splits are free where geometry is priced
   (rear-visible content below the idler-wrap line writes side-mask
   bottoms — split materials instead).
-- Shadow-proxy meshes ARE in gate masks (overrideMaterial defeats
-  colorWrite:false).
+- Shadow proxies: A/B mask dumps (russia r29) show proxies EXCLUDED from
+  gate masks in the current harness — but their SIZES must still track
+  the real geometry (a stale spec value ran a gun proxy 1.3m long).
+  Verify per-harness before pricing either way; the older 'proxies ARE
+  in masks' reading is stale for the gate path.
 - STATION END-CAPS (uk r3): station slices render front-on with near/far
   clipping — thin axis-aligned planes paint only their end caps and VANISH
   from mid slices. Segment long thin members (fenders, guards, skirt lips)
