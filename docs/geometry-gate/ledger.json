@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-08-04T10:02:45.356Z",
+ "generatedAt": "2026-08-04T11:01:49.564Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 16,
- "total": 85,
+ "total": 86,
  "rows": [
   {
    "id": "recon_tank",
@@ -263,6 +263,11 @@
     "dims": 63.3,
     "floaters": 100
    }
+  },
+  {
+   "id": "cruiser",
+   "geoMin": 0,
+   "gatePassed": false
   },
   {
    "id": "charioteer",
@@ -1064,7 +1069,7 @@
    "components": {
     "hullCurves": 91.7,
     "wholeCurves": 91.2,
-    "turretCurves": 93.8,
+    "turretCurves": 94.1,
     "stations": 92.9,
     "dims": 100,
     "floaters": 100

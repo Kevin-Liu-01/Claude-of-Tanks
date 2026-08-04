@@ -492,3 +492,164 @@ close-front sleeve→evac Δ-10.7° persists after two taper fits; top
 rack-corner Δ-9.9° @ x 1.63. Deferred: centurion r5 retable untouched
 (byte-stable 80.8/78.7; the honest-budget rule — chieftain5 exited 0.2
 under its 91.4 entry, and the r4 analysis note already stages the work).
+
+## CAST-SHADING round r6 (2026-08-04, uk agent) — the r5 orders answered
+Entry: gate 91.2 PASS (f533a08); critic FAIL min 7.0 mean 7.5
+(docs/critique/shaded-parity-chieftain5-r5.md, 8ce608e). Exit: **gate
+91.2 min PASS ×2 identical decimals on final bytes** (hull 91.7, whole
+91.2, **turret 93.8 → 94.1**, stations 92.9, dims 100, floaters 100),
+standard-check FULL (clip 0/0 exact, holes 0, contig 0, mg1),
+track-clip 0/0 exact, all eight siblings re-gated BYTE-STABLE to
+committed decimals (challenger1 69.9 / vickers 81.8 / c5 80.8 / c3 78.7
+/ comet 11.3 / charioteer 0.6 / challenger_cruiser 0 / fv510 0). No
+graduates live in uk.js (hash-freeze n/a). All measurements below are
+official-rig on FINAL bytes (fresh tmp-tank-critic pairs re-rendered
+after the last edit; visual-evaluator digest + vertex-workorder columns
+same bytes). Protected columns honored: W3 nose-roll untouched
+(close-roof Δ-21.1 still prints — proof), wing-tips (side dAlong 0.000
+both rows), W1 wing-shelf tops (side_hull 3.489 unchanged), the
+-0.292/-0.3 plan-turret marginals (x -0.29 ref 6.445/proc 6.475, same
+marginal class as r5).
+
+**O1a — cheek slabs → rolled facets (silhouette-neutral, the O4a
+pattern).** (i) The reclined face's ONE canted quad split into a center
+panel ON the original plane + two cheek facets rotated back about their
+own bottom edges (outer-top corners pulled 0.05/0.033 along the face
+normal; dihedrals ~7-9°, evaluator-visible >1.2° tangent steps). Bottom
+quad byte-identical; dropped top corners (0.62 → 0.570 at |x|
+0.16..0.30) sit under the saucer dome; cheek outer walls under the
+0.578 tier lid — no gate column moved (gate ×2 identical proves it).
+(ii) Cheek forward box top now DIVES to the nose like the casting
+(flat 0.47 to world 1.755 → 0.410-cap at 1.93): side col 1.905 read
+2.163 → off both worst-14 lists (ref 2.132), and the evaluator's
+frontleft 'proc 177.0 level vs ref 9.1 falling' chin-plateau finding is
+GONE. (iii) Ordered driver kills, before → after: hero-rearright
+collar/cheek Δ+14.8° (len 0.51) → **matched Δ-1.8° ±0.2 (len 1.43)**;
+frontleft upper Δ-12.1 GONE. rearright far-side upper-rear Δ-12.3 (len
+0.29, ±4 band) stands — it lives on the tier-END step whose side cols
+are matched; geometric rolls there priced +0.05 on matched columns and
+were left (short + inside the corner-bias band).
+
+**O1b — crown bin-fence stepped/toned.** Every rack lid re-authored as
+a pinned-height detail RIM FRAME around a camo tray panel dropped
+0.028-0.034 (side rows ride the x-strips, front rows the z-strips —
+pinned reads exact by construction, gate ×2 identical); the three long
+lids (waist 1.74 m, tier, sliver, long-bin) split detail|camo|detail so
+no unbroken pale rail rings the saucer; dark moat plates on every
+crown-facing bin/rack face (x ±1.02/1.25 runs, rack fronts -1.041/
+-1.106, bustle front -1.316; tops 10-20 mm under their lids). The
+toptilt pair now reads the saucer as a distinct rounded mass against a
+shadow moat instead of the r5 'rectangle-city' co-planar ring
+(shots/critic-chieftain5/hero-toptilt.png).
+
+**O1c — quarter-round crests extended cheek→crown (chord-limit class,
+radii authored + cited, not tool-paired: r 0.045-0.05 < 0.48).** Tier
+top-outer corner and searchlight top-outer corner rebuilt as L-unions
+(full-height wall + full-width body + tangent crest cylinder) — the
+0.92/-0.98 walls and 0.578/0.58 tops stay exactly owned, only the sharp
+corner line rounds; brow bead r 0.05 across the face→crown crease + two
+diagonal r 0.045 beads down the new facet creases.
+
+**O2 — LEFT HEM PARITY (hem 0.60 → 0.79 wheel-top).** The guard lip
+split: raised-hem run y 0.79..1.60 over the wheel span (z -2.55..1.50)
++ a stern stub keeping the old 0.59 hem (z -3.45..-2.55) — front/rear
+rows read the min bottom over all z, so one 0.59 segment preserves
+every -1.69..-1.75 column read (bank law #10 applied in reverse). The
+five gap tabs shrank to ground stubs (h 0.625 → 0.10, bottoms 0.005
+unchanged = the ref's -1.51..-1.71 front-column ground reads; the
+0.10..0.63 band was interval-interior) — the 'dark teeth over the gear'
+read is dead. A 0.02 hullShadow backdrop at x -1.105 (y 0.10..0.76,
+interval-interior on every row, clear of pads at 1.1165 and shims at
+1.119) keeps the opened gaps reading as bay shadow. Gear-zone rect
+(700,345)..(1065,395) view-left: p5/mean/p95 **25.8/52.7/63.6** vs ref
+25.8/53.3/65.3 (r5 proc: 25.8/52.8/63.3 — parity held while the wheels
+gained full discs). side/side_hull dAlong 0.000 both; stations 92.9
+unchanged; left view now shows six full wheel discs under a wheel-top
+hem like the ref's.
+
+**O3 — tone chips, all landed (ITU-601 rects, final renders).**
+(a) Mauve ring: the gunMountDark hood ring (r 0.175) + 0.72 collar
+clamp rebucketed to scheme camo — ring-band rect (880,300)..(930,340)
+close-front now rgb (55,62,48), **g−r +6.7** (r5: ~(66,63,56), r≥g);
+warm-gray census over the whole gun-root zone 0.1% of lit pixels.
+(b) Wood lump: tarpRoll hullWood → hullTrack (dusty spare-track steel):
+rear rect (745,335)..(763,350) L~135 → **mean 62.2 / p95 63.4** rgb
+(64,63,55) — inside the ref's ≤~80 warm-accent band, still the one warm
+accent. (c) Under-collar band: the offender was the turretCloth chin
+canvas blowing out on its key-facing -0.24 tilt (identified by pixel
+census, not the detail tint) → scheme camo with the dirt bake: front
+rect (925,225)..(995,250) p95 **90.7 → 71.1** vs ref 68.1 (mean 63.0 →
+59.9 vs 54.9; rgb 57,64,48 green-family). r4/r5 deliveries re-verified
+unchanged on final bytes: rear corners 63.3 vs ref 63.5, sprocket-C p5
+25.8, zero regressions.
+
+**O4 — sleeve→evac THIRD fit: every column EXACT.** Root cause found by
+mask pixel-dump (diagnosis-only scratchpad tool): buildGun's own evac
+drum (top 1.985, world 4.41..5.39) was the real 4.586-top contaminator,
+and the mask only lights a 0.0305 grid row at ≥~55-60% AA coverage
+(tops at 1.9804 read 1.949 while 1.985 reads 1.98). buildGun evac
+DISABLED (evac: null); the swell authored as four pixel-fenced pieces:
+level run (r 0.121→0.115, bottom 1.717→1.711), swell body 4.740..5.225
+(top 1.9865, bottom 1.7085), sag pocket 4.798..4.852 (bottom 1.6875 =
+the ref's own ~1.69 bulge class, so the 1.675 col read at 4.829 coins
+WITH the ref's), MRS clamp band 5.416..5.575 (the ref's 5.438/5.56
+dips); rear octagon bottom flat lifted 1.706 → 1.733 (the ref's 1.736
+tube line) and a thin axis-level plan wedge tapers the evac chord
+-0.264 → -0.233 aft (side masks never see it: y 1.826..1.856 inside the
+tube). Columns (side_whole, ±0.002-0.003 = quantization floor): 4.586
+err 0.020 → **0.002**; 4.829 dip **exact**; 4.707/4.951/5.073/5.195
+tops 1.949 → **1.98 = ref**; 5.317 + ten tube cols 5.68..6.9 bottoms
+1.706 → **1.736 = ref**; clamp dips 5.438/5.56 held. Turret component
+93.8 → **94.1**. Evaluator: close-front sleeve→evac Δ-10.7 **GONE from
+the digest**; top-view swell-step flag gone; left-view kink Δ-11.3 →
+**Δ-8.7 ±0.8** (residual documented: the fitted line integrates the
+4.829 sag that the ref carries only as an AA coin — the exact-column
+constraint and the smooth-render constraint are mutually exclusive at
+mask resolution; third fit delivered, leaving per order).
+
+**O5 (SHOULD) — bustle duffels.** The flat rear-rack lip re-authored as
+tray + end posts with two KIT tarpRoll duffel-class rolls (turretCloth
++ dark cinch rings) riding the SAME 0.515 line the flat lip owned — the
+0.52 rail band above still owns every side/rear column (silhouette
+byte-neutral, §C AABB unchanged, floaters 100); rear/heroes/toptilt now
+read rounded stowage masses in the basket mouth instead of a flat
+plate. tarpRoll is the §I stowage-class KIT primitive (merged-bucket
+lane; census stays mg1+0d with the r4 packet justification carried).
+
+LAW DISCOVERIES (bank):
+13. **The mask lights a pixel row only at ~55-60% AA coverage, and the
+   workorder's printed grid labels sit ~2-3 mm above the true pixel
+   boundaries** — a surface top at 1.9804 reads 1.949 while 1.985 reads
+   1.98 (proven by A/B against buildGun's evac). Author tops/bottoms
+   8-10 mm PAST the intended label, never within ±3 mm of a boundary
+   (those are per-run coins — extends law #6 to the y-axis).
+14. **Hidden buildGun contributors poison swell authoring**: buildGun's
+   evac drum spans ~0.9 m at 1.23× tube radius even when every visible
+   band is addGunExtra-authored — the r5 'exact' drum was reading the
+   EVAC's top, not its own. Disable overlapping buildGun features
+   (evac: null) before column-fitting gun bands (§C shadow-proxy law's
+   builder-side cousin).
+15. **Pixel-fencing beats margin for sub-column features**: a feature
+   meant to own exactly one 0.122 m digest column must cover ≥~85% of
+   its home pixel and ≤~15% of the neighbor (the 0.061 m render pixel,
+   not the 15 mm AA law, is the working quantum at feature scale — the
+   sag pocket at 4.798..4.852 and clamp at 5.416..5.575 are the
+   templates).
+16. **L-union corner rolls are silhouette-exact**: wall-box (full
+   height, inset r) + body-box (full width, height-r) + tangent crest
+   cylinder rounds a lid/wall corner with BOTH planes still exactly
+   owned — the only change is the corner point itself (tier +
+   searchlight corners; generalizes the r5 shoulder-crest recipe to any
+   box corner).
+
+Honest residuals (91.2 r6 state): the gate top-14 is now entirely
+pre-existing priced classes (bustle-rack cols -1.75/-1.872 +0.03,
+MG-receiver cols 0.077/-0.897 +0.03 inside the pintle allowance, tail
+-3.578/-3.821, W-heel 3.002); left-view gun line Δ-8.7 ±0.8 (the sag
+coin, documented above); rearright tier-end Δ-12.3 (len 0.29, ±4);
+rear bin-run top line Δ+8.5 (unordered r5 polish class); wing-shelf
+3/4 blends Δ±9-12.6 and close-roof W3 Δ-21.1 (protected, no order);
+hero-frontleft upper-rear Δ-12 ±4 (len 0.34, rear-deck class, new
+watch item). Evidence: shots/critic-chieftain5/ (14 pairs, final
+bytes), shots/visual-eval-chieftain5/ (report + overlays), workorder
+column dumps cited above, tone rects per rect coordinates in-line.
