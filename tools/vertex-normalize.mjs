@@ -38,6 +38,16 @@ const VDIR = path.join(ROOT, 'docs/references/vertex');
 // Derivations: docs/references/vertex/<id>.json measured landmarks vs pubDims
 // (see the per-tank packet batch-12 sections for the full derivation).
 export const PLANS = {
+  // AFV owner drop (2026-08-04, 42manako CC-BY): +10.7% stature, -8% short.
+  // Uniform z stretch to the published 6.55 (IFV: overall = hull); y identity
+  // below the 2.06 deck knee, turret band 2.06..3.30 -> published 2.98 top.
+  // Width -1.5% never touched (anchor).
+  m2a2_bradley: {
+    file: 'm2_bradley_ifv',
+    y: [[0, 0], [2.06, 2.06], [3.30, 2.98]],
+    z: [[-3.012, -3.275], [3.012, 3.275]],
+    yTopMax: 2.99,
+  },
   t62mv1: { // bergman bake: crown/cupola stature + bow-log body span
     file: 't62_bergman',
     y: [[0, 0], [1.50, 1.44], [2.50, 2.40], [2.85, 2.43]],

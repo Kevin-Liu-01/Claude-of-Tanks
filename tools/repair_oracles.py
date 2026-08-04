@@ -3196,6 +3196,27 @@ REPAIRS['t84'] = [
 ]
 
 
+# =============================================================== batch 38 ===
+# M2A2_BRADLEY NORMALIZE (AFV program, owner drop 2026-08-04 — 42manako
+# CC-BY-4.0, ATTRIBUTION.md "AFV oracle drop"; PLANS m2a2_bradley). The
+# print reads +10.7% stature / -8% short vs published (extract probe,
+# docs/references/vertex/m2a2_bradley.json): uniform z stretch to the
+# published 6.55 overall (IFV — overall = hull), y identity below the
+# 2.06 deck knee with the turret band 2.06..3.30 -> 2.98 published top;
+# width -1.5% untouched (anchor). Fresh file, no prior chain: the .bak
+# is created on first run from the committed onboard bytes (7578848).
+# PROBE-VERIFIED CLASS (no proc gate baseline exists yet — the AFV round
+# gates against the normalized print): verify = vertex-normalize
+# --verify deltas ~0%.
+REPAIRS['m2a2_bradley'] = {
+    'path': 'public/models/tanks/community/m2_bradley_ifv.glb',
+    'ops': [('py2', _axis_warp('m2a2_bradley', long_axis='z',
+                               y_map=[(0.0003, 0.0003), (0.8384, 0.8384), (1.3429, 1.2127)],
+                               long_map=[(-1.2259, -1.3329), (1.225, 1.332)],
+                               y_top_max=1.225, expect=(7, 37824, 20460)))],
+}
+
+
 # =============================================================== batch 37 ===
 # LEO2_REVOLUTION RWS-PLATEAU BAND-FLATTEN (packet plan "batch-29 format",
 # leo2_revolution.md; the a5 batch-29 fbc4f14 pilot is the precedent).

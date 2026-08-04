@@ -40,6 +40,14 @@ const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 // pubDims from userdrops5.js make() rows (t72b_1987/t72b3m inherit t72b3 in
 // modern1.js; t72bu/t90a_vladimir inherit t90a in variants.js).
 const REG = {
+  // AFV program (owner drop 2026-08-04, CC-BY-4.0 42manako; ATTRIBUTION.md).
+  // IFV: no gun overhang — overall = hull length; heightM published over the
+  // turret roof (2.98 class), width the base 3.28 datum (packet two-datum note).
+  m2a2_bradley: {
+    path: 'public/models/tanks/community/m2_bradley_ifv.glb',
+    turretNode: '^turret_lod$', autoPivot: true,
+    pubDims: { hullLengthM: 6.55, overallLengthM: 6.55, widthM: 3.28, heightM: 2.98 },
+  },
   t62mv1: {
     path: 'public/models/tanks/community/recovered/t62_bergman.glb',
     turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: false,
@@ -465,6 +473,17 @@ const REG = {
     turretNode: '^Turret$', gunNode: '^Main_barrel$', autoPivot: true,
     scaleToOverall: true, yawOffset: Math.PI / 2,
     pubDims: { hullLengthM: 6.86, overallLengthM: 9.63, widthM: 3.78, heightM: 2.23 },
+  },
+  // ---- AFV family (append-only, 2026-08-04) --------------------------------
+  // bmp2: registration mirrors the fidelity harness LOCAL_REFERENCE_OVERRIDES
+  // quarantine-oracle row (b584a7c) — m_bergman print, gate/measure LOCAL-ONLY,
+  // in-game MODEL_SOURCE stays procedural. pubDims from the modern3.js spec
+  // dims row (2.45 = the turret+ATGM-stack height datum, packet two-datum
+  // note).
+  bmp2: {
+    path: 'public/models/tanks/community/bmp2_bergman.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 6.72, overallLengthM: 6.72, widthM: 3.15, heightM: 2.45 },
   },
 };
 const RUSSIA_IDS = Object.keys(REG);

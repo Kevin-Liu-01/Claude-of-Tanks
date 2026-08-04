@@ -35,7 +35,18 @@ TOW pod folding on the turret LEFT, ODS appliqué armor package.
   runs flat from the turret aft to the rear ramp (troop compartment).
 
 ## Oracle status
-NO local reference GLB. Candidates found on Sketchfab (license/provenance
+ORACLE LANDED (2026-08-04): owner-downloaded 42manako "M2 Bradley IFV"
+(CC-BY-4.0 embedded; ATTRIBUTION.md "AFV oracle drop") at
+`public/models/tanks/community/m2_bradley_ifv.glb`, wired in
+LOCAL_REFERENCE_OVERRIDES (turret_lod split, autoPivot). Batch-38
+normalize applied (print was +10.7% tall / -8% short): verify height 0%
+/ hullMask 0% / overall 0%; width -1.3% is the untouched anchor axis —
+reconcile the in-game spec width (3.24-class?) vs the published 3.28 at
+the first gate round and document which datum dims scores against.
+Full curve gate is OPEN.
+
+Superseded scouting note:
+NO local reference GLB (pre-drop). Candidates found on Sketchfab (license/provenance
 UNVETTED — the "[BA]" one reads as a game-mod export, prohibited class;
 the others need CC verification before any download is even proposed):
 42manako "M2 Bradley IFV" / maddex88 "M2 Bradley". Owner decision needed
