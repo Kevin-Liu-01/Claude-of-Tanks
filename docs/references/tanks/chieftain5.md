@@ -353,3 +353,142 @@ hero 3/4 views (same class the r3 board carried at 91.2) — geometry-gate
 silhouettes cannot see it; the visual-evaluator run (shots/visual-eval-
 chieftain5/, rig parity yawProxy ≤0.7°, no RIG MISMATCH) is staged for the
 critic.
+
+## VISUAL round r5 (2026-08-04, uk agent) — first-critic FAIL answered
+Entry: gate 91.4 PASS (df12562); critic FAIL min 5.0 mean 6.4
+(docs/critique/shaded-parity-chieftain5-r4.md). Exit: **gate 91.2 min
+PASS ×2 identical decimals on final bytes** (hull 91.7 ↑, whole 91.2,
+turret 93.8, stations 92.9, dims 100, floaters 100), standard-check FULL
+(clip 0/0 exact, holes 0, mg1), all eight other UK ids re-gated
+BYTE-STABLE to committed decimals (challenger1 69.9 / vickers 81.8 /
+c5 80.8 / c3 78.7 / comet 11.3 / charioteer 0.6 / cruiser 0 / fv510 0).
+All five order families delivered; measurements below are official-rig
+(critic renders, ITU-601 luma rects; evaluator numbers cited per §D).
+
+**O1 — left running gear EXPOSED (the 5.0 floor family).** The r2-era
+'inner deep run to the ground' (x -1.71..-1.51, y 0..1.58, z -2.45..1.5)
+deleted — all six paired Horstmann wheels + idler + rollers now render
+below the kept -1.75..-1.69 lip band, matching the proc's own right side.
+The ref's -1.51..-1.71 front-column GROUND reads survive via five 0.045-m
+hullShadow hem tabs at the wheel-gap stations (1.86/0.98/0.10/-0.78/
+-1.66): side bottoms untouched (ground run already 0 at every tab column),
+stations fender-owned, fronts read 0.005. Left gear zone now luma p5 25.8
+/ mean 52.8 / p95 63.3 vs ref 25.8/53.3/65.3 (rect (700,345)..(1065,395)
+view-left) — the r4 wall zone read p5 6.8/mean 47.1.
+
+**O2 — track tone + bow bay.** (a) The 'glitch zipper' was the merkava
+r12 clone-drop class: buildRunningGear pad/chain clones lose the family
+ambient hook and render ambient-black (p5 3-7). ukHull grew opt-in
+padHex/chainHex/tireHex/gearFloor pass-throughs (defaults byte-identical,
+all other callers undefined); chieftain5 runs the proven russia recipe
+padHex 0x343a29 / chainHex 0x2b3122 / gearFloor:true. Rear-corner columns
+(rect (745,395)..(800,575) view-rear): luma mean 19.5 → **63.3** vs ref
+64.1; rearleft sprocket C p5 6.8 → 25.8 (ref band 26..76 ✓). The ref's
+'corner flap blocks' in front/rear views measured rgb (69,63,53) FLAT —
+they are its dusty TRACK WRAP FACES, not geometry; the tone fix alone
+recovers the read. (b) Close-front bow bay closed with two hullTrack
+corner flaps tucked behind the bow-wing undersides FORWARD of the idler
+wrap (z 3.08..3.16 vs wrap end ~3.02; bottoms 0.31 ≥ ref side-col 0.305
+@ z 3.123 so no gate row moved; audit stayed 0/0 exact). W1 wing heels
+lifted 0.22 → 0.30 (ref col 3.123 bottoms 0.305; the r4-worst side col
+err 0.061 → 0.004).
+
+**O3 — off-palette fittings.** (a) Tan sight plate: the camo pale patch
+on the 'turret' bucket — re-bucketed (turretDark; detail tint still read
+62 up-facing vs the ref's 48.6). The cited rect's p95 fell 91 → 70 and
+the yellow shift (g-b) 21 → 14; no tan reads anywhere on the crown
+(§H.4 centurion-mantlet tell protected). (b) Glass set: searchlight pane
+→ near-black door + one 0.04-m glint (rect luma 58.9 b≥r → 62.6 with
+r>b; blue-pixel scan of view-front proc fell 174 px → 25 px = the glint;
+view-rear 0); sight-housing + gunner chips → turretDark; kit headlight
+lenses got blackout cover discs; the kit periscope's hullGlass band
+(driver plate) rebuilt as a dark-visor periscope. (c) The ~6-8 warm plan
+lids were the 0x36342f gunmetal plates reading red-brown from above — 11
+lid plates re-bucketed to scheme detail tint; the fender tarp went
+hullWood as the ONE sanctioned brown accent (ref carries a single
+red-brown tarp; top view now reads casting-on-hull).
+
+**O4 — cast-form reads (evaluator-driven).** (a) Needle-nose: B1's 0.595
+rear edge now breaks into a falling B2/B3 bevel (0.505@1.44 → 0.46@1.58
+→ 0.40@1.95 turret; world 2.225 → 2.12 ≈ 164°); chin canvas trimmed
+under it (the roll owned the z 1.905 col 0.03 high, and its removal
+exposed the ref's 2.041 hood read @ z 2.027 — answered with a dark hood
+ring r 0.175 inside that one column). Evaluator: the left-view 'edge
+upper 177° vs ref 163° (Δ+14°)' finding is GONE; left worst flag is now
+Δ+4.4° and the left profile p95 Δbot fell to 0.053 m. (b) Collar: the
+two square bracket boxes → a conical cast stack (cylZ 0.17/0.20 →
+0.155/0.185 → r 0.22 boss keeping the probed 1.546 block bottom and
+1.83 z-end) — the L11 emerges from a casting in front/close views.
+(c) Sleeve: the 0.43-wide box band → an OCTAGONAL prism (flats ±0.111,
+rz π/8) at the ref's plan line (edge -0.236 vs ref -0.24; the old -0.34
+edge sat inside col -0.29 whose extremes are MRS-owned, so plan rows
+never moved), ending at world 4.47 for the ref's side sleeve→tube STEP
+(ref lines 1.95..4.47 + 4.83..7.00); rear section is a sagged octagon
+(band 1.706..1.949 = ref cols @ 5.44/5.56, formerly +0.03 err both) and
+the fume-extractor swell drum r 0.1525 lands the ref's 1.98..1.675 @
+col 4.829 EXACTLY. Side cols 5.438/5.56/3.123 left the worst-14 list;
+4.586 err 0.031 → 0.020. Ring→sleeve and sleeve→evac transition tapers
+added (interior lines). (d) Belly V: two-segment per side fitted to the
+ref's own front columns (L 0.49@-0.03 → 0.513@-0.40 → 0.5715@-0.90;
+R 0.49@0.03 → 0.5525@0.60 → 0.5645@0.90), z-span extended under BOTH
+rake lofts (2.55/-2.30) because the loft bottom edges owned the
+evaluator's 0° read. The front Δ±5.5°/rear Δ±4.4° belly findings are
+GONE from the digest (front flags 6 → 3, worst +4.3°).
+Casting-shoulder order: the ref's right band rolls 2.295→2.245→2.235→
+2.215 where the proc stepped 2.295 | 2.19 | 2.21 square — the 2.295
+sliver now stops at the 1.5402 boundary, the hull run rises to the ref's
+2.2325 line (cols 1.56/1.599: +0.049/-0.02 → +0.005/-0.003), the left
+aft end wall trimmed 2.285 → 2.235 (ref cols -1.315/-1.355 exact), and
+r 0.045/0.05 quarter-round crests roll both top-outer edges. The r 0.246
+arc itself is chord-limit class (<0.48) — radius authored and cited, not
+tool-paired; 0 paired arcs remain the honest evaluator line (the ref's
+big bow-wrap/glacis-blend arcs live on wing-tip columns protected by the
+r4 dAlong-threshold law — re-pitching them risks the side registration).
+
+**O5 — MG read (SHOULD).** A full open-crown re-pose priced 7 front
+columns at +0.15-0.19 (over the 0.4-pt pintle allowance) and was
+REVERTED; the delivered pose keeps the r4-priced aft-left station,
+yawed π+0.45 so the barrel diagonal crosses the now-olive bustle lids
+(reads at close-roof/toptilt/rear-quarter; garage-distance read remains
+modest — honest SHOULD-partial within allowance).
+
+Bonus residual killed: the left mast HEAD widened 0.022 → 0.052 m
+(x -1.281..-1.229) pinning BOTH of the ref's 2.926 front columns
+(-1.278/-1.239) — this round's workorder caught the r4 coin flapped
+(proc 2.294 vs ref 2.924, a 0.316 whole-row error some runs).
+
+LAW DISCOVERIES (bank):
+9. **Ref-render outranks row analysis, corner-flap edition**: the ref's
+   front/rear 'filled corner blocks' (rgb 69,63,53, dead flat) are its
+   dusty TRACK WRAP FACES — r2's floating corner plates and r4's deep
+   guard wall were both chasing a TONE read with geometry. Before
+   authoring occluders, measure the block: if p5≈p95 it is a material.
+10. **Interval masks free the hem**: gate columns store top..bottom only
+   — a full-height wall whose top and bottom are both owned elsewhere
+   (fender above, ground/tabs below) contributes NOTHING to any row and
+   can be deleted wholesale; ground reads can ride z-thin tabs at
+   wheel-gap stations (side bottoms already 0 across the ground run,
+   stations take width from the wider fender plane).
+11. **Evaluator 0° lines at the belly are the RAKE LOFT bottom edges**
+   (x-flat 0.56), not the mid-hull V — a correct V that stops at z ±1.5
+   never reaches the front/rear FACES the evaluator traces; run the V
+   under both rake spans (front columns identical, containment clear at
+   |x| ≤ 0.90).
+12. **cylZ taper direction**: cylZ(rT, len, seg, rB) puts rT at +z (the
+   MUZZLE end after the internal rx=π/2) — collar cones that should
+   fatten toward the breech need rT < rB (the tiger collars flare
+   forward deliberately; copying their arg order inverts the read).
+
+Honest residuals (91.2 state): whole 91.8 → 91.2 = the pintle-MG
+allowance recost + the -1.118..-1.197 discharger-tube cols (+0.039 ×3,
+pre-existing) + the -1.394 end-wall AA coin (≤0.05, one col); front
+center cols -0.212..-0.291 carry the MG receiver at +0.06-0.08 ×3
+(inside allowance). Evaluator residual classes, all cited and left by
+design: close-roof W3 nose-roll Δ-21.3° @ z 3.52..3.70 (wing-tip columns
+= the r4 registration-poison coin — protected); frontleft/frontright
+wing-shelf blends Δ±8-11° (W1 tops are side_hull-priced at the ref's own
+1.34/1.249 columns — the 3/4 delta is 3D form the masks cannot trade);
+close-front sleeve→evac Δ-10.7° persists after two taper fits; top
+rack-corner Δ-9.9° @ x 1.63. Deferred: centurion r5 retable untouched
+(byte-stable 80.8/78.7; the honest-budget rule — chieftain5 exited 0.2
+under its 91.4 entry, and the r4 analysis note already stages the work).

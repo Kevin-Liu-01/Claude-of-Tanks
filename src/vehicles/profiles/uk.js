@@ -13,7 +13,7 @@ import { KIT, FITTINGS, evenStations } from './kit.js';
 const {
   box, cylX, cylY, cylZ, sph, torus, slab, frustum, lathe, buildRunningGear,
   buildGun, liftEye, periscope, headlight, cupola, pintleMG, smokeCluster,
-  stowage, tarpRoll, jerryCan, spareTrackStrip,
+  stowage, tarpRoll, jerryCan, spareTrackStrip, xform,
 } = new Proxy({}, { get: (_, name) => (...args) => KIT[name](...args) });
 
 // ---------------------------------------------------------------------------
@@ -147,6 +147,13 @@ function ukHull(P, g) {
     sprocket: g.sprocket, idler: g.idler, rollers: g.rollers ?? [],
     trackW: g.trackW, topY: g.trackTop, paintedEnds: true,
     coveredTop: g.coveredTop ?? !!g.skirt, arms: g.arms ?? !g.skirt,
+    // uk r5 opt-ins (merkava r12 gear-tone law): per-tank pad/chain/tire
+    // tones + the ambient-floor re-attach (Material.clone drops the family
+    // hook and the default near-black pads render ambient-dead in wheel-bay
+    // shade — the chieftain5 'teeth zipper' read). All undefined for every
+    // other caller — buildRunningGear defaults are byte-identical.
+    padHex: g.padHex, chainHex: g.chainHex, tireHex: g.tireHex,
+    gearFloor: g.gearFloor,
   });
   // Mud flaps hang from the FENDER TIPS (hanging them at the hull nose/tail
   // left them floating over the raked plates -> articulation floaters).
@@ -231,6 +238,10 @@ const CHIEFTAIN_HULL = {
   // edge reads |x| >= 1.062 (the -1.042 column keeps the 0.374 sponson
   // channel floor). Both pad faces hold ~15 mm off the column boundaries.
   trackXc: 1.2805, trackW: 0.328, wheelW: 0.20, flapDrop: 0.055,
+  // r5 O2a gear tones (critic: guide-horn/pad luma p5 3-7 as 'glitch zipper
+  // teeth' on pale discs vs the ref's whole-zone 26..76 band): the russia
+  // r-series dark-olive recipe + gearFloor ambient re-attach.
+  padHex: 0x343a29, chainHex: 0x2b3122, gearFloor: true,
   wheelR: 0.33, wheelY: 0.38, wheelStyle: 'rubber',
   wheelZs: [2.3, 1.42, 0.54, -0.34, -1.22, -2.1],
   // HIGH rear drive sprocket (the real Chieftain layout; the warped print's
@@ -266,8 +277,12 @@ function chieftain5Build(P) {
     [[0.875, 1.484], [0.875, 1.523], [0.875, 1.523]],
   ]) {
     if (xw1) {
+      // r5: W1 underside lifted 0.22 -> 0.30 at the z 3.05 heel — the ref's
+      // 3.123 side column bottoms at 0.305 (the old heel read 0.244, the
+      // r4 worst-3 side column). Front bottoms are track/tab-owned, so this
+      // is side-only; the corner flap above closes the taller bay.
       P.add('hull', slab(                                  // W1 glacis wing
-        [xw1[0], 0.56, 3.43], [xw1[1], 0.56, 3.43], [xw1[1], 0.22, 3.05], [xw1[0], 0.22, 3.05],
+        [xw1[0], 0.56, 3.43], [xw1[1], 0.56, 3.43], [xw1[1], 0.30, 3.05], [xw1[0], 0.30, 3.05],
         [xw1[0], 1.25, 3.43], [xw1[1], 1.25, 3.43], [xw1[1], 1.34, 3.05], [xw1[0], 1.34, 3.05]));
     }
     P.add('hull', slab(                                    // W2a shoulder
@@ -297,21 +312,43 @@ function chieftain5Build(P) {
   // (right 0.766..0.875 with a 0.44 step at 0.705..0.736, left
   // -0.959..-1.068) the probe located at z ~2.56 by the idler.
   P.add('hull', box(0.05, 0.10, 3.4), -0.115, 0.51, 0.2);
+  // r5 O4d: cast belly V steepened to the evaluator's ±5.5° class (proc
+  // read 0°/179.5° where the ref rises 5.6° front / 4.9° rear). Two-segment
+  // per side, fitted to the ref's own front columns: left 0.512@-0.37 /
+  // 0.561@-0.803, right 0.551@0.575 (the r4 flat 0.49->0.555 sat 0.02 low
+  // mid-span and read level).
+  // z-span runs under BOTH rake lofts (2.55/-2.30) — the rake loft bottom
+  // edges are x-flat at 0.56 and owned the evaluator's 0-degree read even
+  // after the V landed mid-hull; the V bottoms (0.49..0.5645) hang below
+  // and give the front/rear faces the ref's rising lower edge. Front
+  // columns are unchanged (same profile, longer span).
   P.add('hull', slab(
-    [-0.90, 0.555, 1.5], [-0.03, 0.49, 1.5], [-0.03, 0.49, -1.8], [-0.90, 0.555, -1.8],
-    [-0.90, 0.62, 1.5], [-0.03, 0.62, 1.5], [-0.03, 0.62, -1.8], [-0.90, 0.62, -1.8]));
+    [-0.40, 0.513, 2.55], [-0.03, 0.49, 2.55], [-0.03, 0.49, -2.3], [-0.40, 0.513, -2.3],
+    [-0.40, 0.62, 2.55], [-0.03, 0.62, 2.55], [-0.03, 0.62, -2.3], [-0.40, 0.62, -2.3]));
   P.add('hull', slab(
-    [0.03, 0.49, 1.5], [0.90, 0.555, 1.5], [0.90, 0.555, -1.8], [0.03, 0.49, -1.8],
-    [0.03, 0.62, 1.5], [0.90, 0.62, 1.5], [0.90, 0.62, -1.8], [0.03, 0.62, -1.8]));
+    [-0.90, 0.5715, 2.55], [-0.40, 0.513, 2.55], [-0.40, 0.513, -2.3], [-0.90, 0.5715, -2.3],
+    [-0.90, 0.62, 2.55], [-0.40, 0.62, 2.55], [-0.40, 0.62, -2.3], [-0.90, 0.62, -2.3]));
+  P.add('hull', slab(
+    [0.03, 0.49, 2.55], [0.60, 0.5525, 2.55], [0.60, 0.5525, -2.3], [0.03, 0.49, -2.3],
+    [0.03, 0.62, 2.55], [0.60, 0.62, 2.55], [0.60, 0.62, -2.3], [0.03, 0.62, -2.3]));
+  P.add('hull', slab(
+    [0.60, 0.5525, 2.55], [0.90, 0.5645, 2.55], [0.90, 0.5645, -2.3], [0.60, 0.5525, -2.3],
+    [0.60, 0.62, 2.55], [0.90, 0.62, 2.55], [0.90, 0.62, -2.3], [0.60, 0.62, -2.3]));
   P.add('hullDark', box(0.109, 0.21, 0.5), -1.0135, 0.475, 2.45);
   P.add('hullDark', box(0.109, 0.21, 0.5), 0.8205, 0.475, 2.45);
   P.add('hullDark', box(0.022, 0.15, 0.5), 0.755, 0.515, 2.45);
   // Glacis furniture: flush splash rail, driver periscope, headlight pods
   // (the print's 1.385 bump at z 2.94..3.02), shackles.
   P.add('hullDetail', box(1.7, 0.02, 0.08), 0, deckAtUK(g, 2.42) + 0.01, 2.42);
-  periscope(P, 'hullDetail', -0.3, deckAtUK(g, 1.95) + 0.01, 1.95);
+  // r5 O3b: the kit periscope's pale-blue glass band read as a blue chip on
+  // the glacis (ref driver periscope is dark) — hand-built with a dark visor.
+  P.add('hullDetail', box(0.14, 0.07, 0.1), -0.3, deckAtUK(g, 1.95) + 0.01, 1.95);
+  P.add('hullDark', box(0.11, 0.032, 0.104), -0.3, deckAtUK(g, 1.95) + 0.022, 1.95);
   for (const side of [-1, 1]) {
     headlight(P, side * 1.15, 1.33, 2.96, -0.2);
+    // r5 O3b: blackout covers over the kit lenses — the pale-blue glass
+    // chips popped on the glacis where the ref's lamps read dark.
+    P.add('hullDark', xform(cylZ(0.046, 0.014, 12), 0, 0, 0.052), side * 1.15, 1.33, 2.96, -0.2, 0, 0);
     P.add('hullDetail', box(0.24, 0.02, 0.18), side * 1.15, 1.385, 2.96, -0.25, 0, 0);
     P.add('hullDetail', box(0.11, 0.1, 0.15), side * 0.9, 0.66, 3.30);
     P.add('hullDetail', torus(0.065, 0.017, 10), side * 0.9, 0.66, 3.41, Math.PI / 2, 0, 0);
@@ -374,8 +411,8 @@ function chieftain5Build(P) {
   P.add('hull', box(0.0155, 0.32, 0.37), 1.71375, 2.05, -0.535);  // nub rib
   P.add('hull', box(0.21, 0.42, 0.32), 1.475, 2.0, -1.44);
   P.add('hull', box(0.15, 0.44, 0.17), 1.455, 1.985, -1.635);
-  P.add('hullDark', box(0.275, 0.02, 0.66), 1.5025, 2.205, -0.62);
-  P.add('hullDark', box(0.225, 0.02, 0.30), 1.4975, 2.205, -1.135);
+  P.add('hullDetail', box(0.275, 0.02, 0.66), 1.5025, 2.205, -0.62);
+  P.add('hullDetail', box(0.225, 0.02, 0.30), 1.4975, 2.205, -1.135);
   // plate-fill r1 (owner directive 2026-08-01): the tall bin FLOATED 0.2 m
   // above the fender plane — a clean see-through slot ran under the whole
   // width-committing face (ray-probed: sight lines crossed the vehicle
@@ -390,15 +427,33 @@ function chieftain5Build(P) {
   // 1.421..1.786 only — the old z 0.85..2.35 run smeared five deck columns
   // 0.09 high) with the inner edge clear of the -1.6923 front boundary.
   P.add('hull', box(0.27, 0.14, 0.456), -1.535, 1.63, 1.604);
-  tarpRoll(P, 'hullCloth', 1.42, 1.63, -2.2, 1.0, 0.07, false);
-  // LEFT track-guard planes (ref front: outer lip band 0.6..1.6 at x -1.73,
-  // inner deep run to the GROUND — the ref's deep plane reaches x -1.73, so
-  // the r4 run widens outboard to own the -1.712 front column's ground read
-  // like the print) + a right guard lip extended to the tail (ref station
-  // 0/1 width 1.532); the forward fender sweep strips carry the plan run
-  // toward the bow wings (right side stops at the ref's 1.53 plane).
+  // r5 O3c: the plan read scattered ~6-8 warm lids vs the ref's SINGLE
+  // red-brown fender tarp — the lid plates above went scheme-detail olive
+  // and this roll becomes the one sanctioned brown accent (hullWood).
+  tarpRoll(P, 'hullWood', 1.42, 1.63, -2.2, 1.0, 0.07, false);
+  // LEFT track-guard: outer lip band 0.6..1.6 at x -1.73 (kept) — but the
+  // r2-era 'inner deep run to the GROUND' (x -1.71..-1.51, y 0..1.58) is
+  // DELETED (r5 O1): it hid all six paired Horstmann wheels that the ref's
+  // own left view shows below a wheel-top hem. The ref's -1.51..-1.71 front
+  // columns still read to the ground (its left flap/track smear), so five
+  // thin near-black hem tabs at the wheel-GAP stations own those column
+  // BOTTOMS instead (§C material-split lane: hullShadow reads as wheel-bay
+  // shadow between the wheels). Side rows are untouched — the ground run
+  // already reads y=0 across every tab column; stations are fender-owned
+  // (the -1.75 plate outspans the old wall in every window).
   segBoxZ(P, 'hull', 0.06, 1.01, 4.95, -1.72, 1.095, -0.975);
-  segBoxZ(P, 'hull', 0.20, 1.58, 3.95, -1.61, 0.79, -0.475);
+  for (const zTab of [1.86, 0.98, 0.10, -0.78, -1.66]) {
+    P.add('hullShadow', box(0.203, 0.625, 0.045), -1.6115, 0.3175, zTab);
+  }
+  // r5 O2b: front corner flaps tucked behind the bow-wing undersides,
+  // FORWARD of the idler wrap (wrap ends z ~3.02; flaps at 3.08..3.16 —
+  // containment-clear) with bottoms 0.31 ≥ the ref's own side-column
+  // bottoms (0.305 @ z 3.123), so no gate row moves. They close the
+  // close-front bow-bay cavity the way the ref's corners read filled;
+  // hullTrack matches the ref's warm dusty flap/track tone (measured
+  // rgb ~(69,63,53)).
+  P.add('hullTrack', box(0.6393, 0.55, 0.08), -1.39365, 0.585, 3.12);
+  P.add('hullTrack', box(0.5957, 0.55, 0.08), 1.17965, 0.585, 3.12);
   segBoxZ(P, 'hull', 0.06, 0.98, 4.20, 1.50, 1.08, -0.60);
   segBoxZ(P, 'hull', 0.06, 0.29, 1.00, 1.50, 1.425, -3.20);
   for (const s of [-1, 1]) {
@@ -439,20 +494,29 @@ function chieftain5Build(P) {
   P.add('turret', slab(
     [-1.30, 0.05, 0.03], [-0.90, 0.05, 0.03], [-0.90, 0.05, -0.87], [-1.30, 0.05, -0.87],
     [-1.30, 0.572, 0.03], [-0.90, 0.635, 0.03], [-0.90, 0.635, -0.87], [-1.30, 0.572, -0.87]));
-  P.add('turretDark', box(1.74, 0.024, 0.8), 0, 0.645, -0.42);
+  P.add('turretDetail', box(1.74, 0.024, 0.8), 0, 0.645, -0.42);
   // Right cheek tier along the casting (warped ref plan: front edge 1.95 at
   // x 0.50..0.92, top at the 2.29 band; z-shortened clear of the 1.4817
   // side-column boundary so the chin band owns those columns).
   segBoxZ(P, 'turret', 0.42, 0.55, 2.05, 0.71, 0.295, 0.405);
-  P.add('turretDark', box(0.40, 0.014, 1.95), 0.71, 0.578, 0.405);
+  P.add('turretDetail', box(0.40, 0.014, 1.95), 0.71, 0.578, 0.405);
   P.add('turret', box(0.36, 0.45, 0.36), 0.68, 0.245, 1.75);
   // Right low bin sliver rows (ref plan: the deep run behind the bins reads
   // to z -1.44 at x 1.60..1.63 — plan col 1.658 — while station 4 caps the
   // slice width at the same 1.63; one x 1.49..1.628 run satisfies both).
   segBoxZ(P, 'turret', 0.21, 0.40, 2.08, 1.355, 0.29, -0.75);
-  P.add('turretDark', box(0.19, 0.014, 2.00), 1.355, 0.497, -0.75);
-  segBoxZ(P, 'hull', 0.138, 0.38, 1.12, 1.559, 2.00, -0.88);
-  segBoxZ(P, 'turret', 0.091, 0.475, 1.30, 1.5205, 0.3375, -0.28);
+  P.add('turretDetail', box(0.19, 0.014, 2.00), 1.355, 0.497, -0.75);
+  // r5 O4 casting shoulder (evaluator refOnly arc r 0.246 span 124° — the
+  // ref's right band rolls 2.295 @ x<=1.52 -> 2.245 @ 1.56 -> 2.235 @ 1.60
+  // -> 2.215 @ 1.68 where the proc stepped 2.295 | 2.19 | 2.21 square):
+  // the 2.295 turret sliver now stops at the 1.5402 column boundary, the
+  // hull run behind it rises to the ref's 2.2325 line, and quarter-round
+  // crests roll both top-outer edges (r < 0.48 chord-limit class — radius
+  // authored, cited, not tool-paired).
+  segBoxZ(P, 'hull', 0.138, 0.415, 1.12, 1.559, 2.025, -0.88);
+  P.add('hull', xform(cylY(0.045, 0.045, 1.12, 10, false, Math.PI / 2, Math.PI / 2), 0, 0, 0, Math.PI / 2, 0, 0), 1.583, 2.1875, -0.88);
+  segBoxZ(P, 'turret', 0.0505, 0.475, 1.30, 1.50025, 0.3375, -0.28);
+  P.add('turret', xform(cylY(0.05, 0.05, 1.30, 10, false, Math.PI / 2, Math.PI / 2), 0, 0, 0, Math.PI / 2, 0, 0), 1.4755, 0.525, -0.28);
   P.add('turret', box(0.04, 0.35, 0.50), 1.62, 0.29, 0.04);
   P.add('turret', box(0.034, 0.045, 0.07), 1.583, 0.4425, 0.275);
   // IR searchlight box on the LEFT cheek (warped ref: front face 1.56-1.58,
@@ -461,7 +525,11 @@ function chieftain5Build(P) {
   P.add('turret', box(0.29, 0.30, 0.32), -0.695, -0.05, 1.60);
   P.add('turret', box(0.14, 0.30, 0.17), -0.91, -0.05, 1.525);
   P.add('turretDark', box(0.36, 0.34, 0.05), -0.765, 0.30, 1.44, -0.1, 0, 0);
-  P.add('turretGlass', box(0.28, 0.24, 0.02), -0.765, 0.30, 1.47, -0.1, 0, 0);
+  // r5 O3b: the full-size glass pane read PALE BLUE at luma 58.9 (b>=r)
+  // where the ref's panes are barely distinct — near-black door with one
+  // small lens glint only.
+  P.add('turretDark', box(0.28, 0.24, 0.02), -0.765, 0.30, 1.47, -0.1, 0, 0);
+  P.add('turretGlass', box(0.04, 0.03, 0.015), -0.765, 0.325, 1.478, -0.1, 0, 0);
   // Chin casting band over the driver, r4 three-piece to the ref's own side
   // line: 2.285->2.315 rising to z 1.44 (B1), a 2.22 step band to 1.58 (B2),
   // then the dive 2.17 -> 2.12 at the driver plate (B3). The old single
@@ -472,13 +540,19 @@ function chieftain5Build(P) {
   P.add('turret', slab(                                               // B1
     [-0.62, 0.10, 1.44], [0.62, 0.10, 1.44], [0.66, 0.14, 0.90], [-0.66, 0.14, 0.90],
     [-0.56, 0.595, 1.44], [0.56, 0.595, 1.44], [0.62, 0.56, 0.90], [-0.62, 0.56, 0.90]));
+  // r5 O4a needle-nose recline: the crown-to-collar line ran LEVEL 177°
+  // where the ref falls 163° (left view, z 1.47..1.94; ref columns bound
+  // the line at ~2.22 @ z 1.54 -> 2.132 @ 1.905). B1's 0.595 rear edge now
+  // BREAKS down to a falling B2/B3 bevel (0.505@1.44 -> 0.46@1.58 ->
+  // 0.40@1.95, world 2.225 -> 2.12, ~164°) and the chin canvas is trimmed
+  // under it (the old roll owned the z 1.905 side column 0.03 high).
   P.add('turret', slab(                                               // B2
     [-0.60, 0.185, 1.58], [0.60, 0.185, 1.58], [0.62, 0.10, 1.44], [-0.62, 0.10, 1.44],
-    [-0.56, 0.50, 1.58], [0.56, 0.50, 1.58], [0.56, 0.50, 1.44], [-0.56, 0.50, 1.44]));
+    [-0.56, 0.46, 1.58], [0.56, 0.46, 1.58], [0.56, 0.505, 1.44], [-0.56, 0.505, 1.44]));
   P.add('turret', slab(                                               // B3
     [-0.55, 0.34, 1.95], [0.55, 0.34, 1.95], [0.60, 0.185, 1.58], [-0.60, 0.185, 1.58],
-    [-0.52, 0.395, 1.95], [0.52, 0.395, 1.95], [0.56, 0.45, 1.58], [-0.56, 0.45, 1.58]));
-  P.add('turretCloth', box(0.5, 0.16, 0.5), 0, 0.30, 1.72, -0.24, 0, 0);
+    [-0.52, 0.40, 1.95], [0.52, 0.40, 1.95], [0.56, 0.46, 1.58], [-0.56, 0.46, 1.58]));
+  P.add('turretCloth', box(0.5, 0.13, 0.44), 0, 0.285, 1.70, -0.24, 0, 0);
   // No.15 commander cupola LEFT of center (warped ref: drum 2.845 with the
   // 2.90 cap owning exactly ONE side column at z -0.163 — the published-
   // height p95 anchor; drum top 2.833 reads in the -0.285 column like the
@@ -502,7 +576,7 @@ function chieftain5Build(P) {
   // Roof sight housing forward-left (ref front 2.708 flat band at
   // x -0.42..-0.71, one side column at z ~-0.05).
   P.add('turret', box(0.31, 0.35, 0.11), -0.575, 0.813, -0.075);
-  P.add('turretGlass', box(0.23, 0.035, 0.02), -0.575, 0.935, -0.012);
+  P.add('turretDark', box(0.23, 0.035, 0.02), -0.575, 0.935, -0.012);
   // Loader hatch ring right of the cupola.
   P.add('turretDetail', cylY(0.19, 0.21, 0.06, 14), 0.46, 0.595, -0.54);
   // Crown furniture (probed off the warped print): gunner sight ON the
@@ -510,8 +584,12 @@ function chieftain5Build(P) {
   // -0.26 / z -0.20..-0.60), the loader periscope (2.43 at x 0.48..0.55)
   // and the ventilator dome (2.385 at x 0.61..0.67).
   P.add('turret', box(0.2, 0.07, 0.24), 0.3, 0.625, -0.14);
-  P.add('turretGlass', box(0.14, 0.045, 0.03), 0.3, 0.645, -0.01);
-  P.add('turret', box(0.135, 0.082, 0.38), -0.1925, 0.701, -0.40);
+  P.add('turretDark', box(0.14, 0.045, 0.03), 0.3, 0.645, -0.01);
+  // r5 O3a: the raised sight plate caught the camo scheme's pale patch and
+  // read TAN (luma 63.1/p95 91, yellow-shifted — tan belongs to the
+  // CENTURIONS' mantlet canvas, §H.4). detail tint still read 62 up-facing
+  // vs the ref's 48.6 at the same columns — dark fitting steel matches.
+  P.add('turretDark', box(0.135, 0.082, 0.38), -0.1925, 0.701, -0.40);
   P.add('turret', box(0.08, 0.10, 0.12), 0.515, 0.665, -0.50);
   P.add('turret', cylY(0.034, 0.030, 0.055, 12), 0.6425, 0.6375, -0.50);
   // Twin sight/searchlight masts KNEED to the warped ref tops (2.93 band,
@@ -525,7 +603,11 @@ function chieftain5Build(P) {
   P.add('turretDark', box(0.028, 0.23, 0.09), 0.865, 1.10, 0.57);
   P.add('turret', box(0.022, 0.05, 0.12), -1.249, 0.585, 0.50);
   P.add('turret', box(0.02, 0.44, 0.11), -1.25, 0.84, 0.50);
-  P.add('turretDark', box(0.022, 0.235, 0.05), -1.25, 1.0875, 0.445);
+  // r5: head widened to pin BOTH of the ref's 2.926 front columns
+  // (-1.278/-1.239) — the r4 0.022 head covered the -1.276 column by only
+  // 4.5 mm and the boundary drift law made it a ±0.32 whole-row coin (this
+  // round's workorder caught it flapped: proc 2.294 vs ref 2.924).
+  P.add('turretDark', box(0.052, 0.235, 0.05), -1.255, 1.0875, 0.445);
   // Whip antenna: base pot on the crown rear + slim kneed mast (the ref's
   // single 2.92 column at z -1.03).
   P.add('turret', box(0.06, 0.16, 0.08), 0.72, 0.70, -1.02);
@@ -536,9 +618,15 @@ function chieftain5Build(P) {
   // mandatory roof MG — FITTINGS census; envelope inside the turret AABB,
   // receiver 2.67 < the 2.90 cap, barrel under the whip column).
   {
+    // r5 O5: a fully-open crown pose priced 7 front columns at +0.15 (the
+    // receiver rides the low saucer) — over the 0.4-pt pintle allowance.
+    // Kept the r4-priced aft-left station but raised 0.04 and yawed 0.15
+    // more aft so the receiver crests the saddle edge and the barrel line
+    // crosses the (now olive-detail) bustle lids instead of the dark
+    // saddle — dark crown-riding polarity per MG PHYSICS.
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0, scale: 0.8, seed: 5 });
     mg.position.set(-0.33, 0.60, -0.32);
-    mg.rotation.y = Math.PI + 0.6;
+    mg.rotation.y = Math.PI + 0.45;
     P.turretG.add(mg);
   }
   // Smoke discharger bins on bracket arms, below the brow.
@@ -557,8 +645,10 @@ function chieftain5Build(P) {
   segBoxZ(P, 'turret', 0.13, 0.84, 1.99, -1.305, 0.10, 0.375);
   segBoxZ(P, 'turret', 0.13, 0.715, 0.31, -1.305, 0.1625, -0.775);
   segBoxZ(P, 'turret', 0.36, 0.50, 0.86, -1.20, 0.255, -1.54);
-  P.add('turret', box(0.36, 0.56, 0.145), -1.20, 0.285, -1.6175);
-  P.add('turretDark', box(0.205, 0.02, 2.225), -1.1325, 0.552, 0.2025);
+  // r5: end wall trimmed 2.285 -> 2.235 — the ref's -1.315/-1.355 front
+  // columns read 2.235 (was +0.049 on both).
+  P.add('turret', box(0.36, 0.51, 0.145), -1.20, 0.26, -1.6175);
+  P.add('turretDetail', box(0.205, 0.02, 2.225), -1.1325, 0.552, 0.2025);
   segBoxZ(P, 'turret', 0.07, 0.42, 2.92, -1.515, 0.26, -0.26);
   P.add('turretDark', box(0.16, 0.06, 0.06), -1.44, 0.46, 0.40);
   P.add('turretDark', box(0.16, 0.06, 0.06), -1.44, 0.46, -0.80);
@@ -567,20 +657,20 @@ function chieftain5Build(P) {
   // to 2.285 in the -1.625 column) with the 2.185 outer tier; RIGHT rack
   // pair at the ref's 2.295/2.315 station-4 top.
   P.add('turret', box(0.42, 0.62, 0.50), -1.03, 0.31, -1.295);
-  P.add('turretDark', box(0.40, 0.02, 0.44), -1.03, 0.612, -1.295);
+  P.add('turretDetail', box(0.40, 0.02, 0.44), -1.03, 0.612, -1.295);
   P.add('turret', box(0.26, 0.475, 0.50), -1.38, 0.2275, -1.40);
   P.add('turret', box(0.66, 0.54, 0.62), 1.12, 0.305, -1.42);
-  P.add('turretDark', box(0.66, 0.02, 0.56), 1.12, 0.585, -1.42);
+  P.add('turretDetail', box(0.66, 0.02, 0.56), 1.12, 0.585, -1.42);
   P.add('turret', box(0.36, 0.46, 0.45), -1.17, 0.28, -1.87);
-  P.add('turretDark', box(0.36, 0.02, 0.40), -1.17, 0.51, -1.87);
+  P.add('turretDetail', box(0.36, 0.02, 0.40), -1.17, 0.51, -1.87);
   P.add('turret', box(0.48, 0.46, 0.40), 1.05, 0.28, -1.845);
-  P.add('turretDark', box(0.46, 0.02, 0.36), 1.05, 0.51, -1.845);
+  P.add('turretDetail', box(0.46, 0.02, 0.36), 1.05, 0.51, -1.845);
   P.add('turret', box(0.42, 0.10, 0.17), -1.03, 0.44, -1.735);
   // Bustle bins + NBC pack + rear rack lip (warped ref: 2.24 band to the
   // -2.3 turret tail; its rear basket top rail reads 2.01..2.07 in the
   // -2.356 side column — the left rail stub carries it).
   P.add('turret', box(1.5, 0.46, 0.6), 0, 0.29, -1.62);
-  P.add('turretDark', box(1.38, 0.03, 0.5), 0, 0.505, -1.62);
+  P.add('turretDetail', box(1.38, 0.03, 0.5), 0, 0.505, -1.62);
   P.add('turret', box(1.15, 0.46, 0.5), 0.1, 0.29, -2.02);
   P.add('turret', box(1.49, 0.40, 0.16), -0.015, 0.315, -2.18);
   P.add('turretDark', box(0.4, 0.24, 0.05), 0.1, 0.235, -2.17);
@@ -595,15 +685,36 @@ function chieftain5Build(P) {
   // the ref's and cost ~10 tube columns), breech ring 1.98 to z 2.52, and
   // the muzzle-end MRS block reaching x -0.265..0.065 (plan cols -0.292..
   // 0.074 read the ref gun to z 6.45-6.70 there).
-  P.addGunExtra(box(0.4, 0.4, 0.4), 0, 0, 0.15);
-  P.addGunExtra(box(0.42, 0.44, 0.28), 0.01, -0.09, 1.05);
+  // r5 O4b/O4c: the L11 emerges from a CASTING, not a bracket — the square
+  // collar boxes are now a conical cast stack (same probed bands: block
+  // bottom 1.546, z-end 1.83 — r4 raycast anchors); the 0.43-wide sleeve
+  // box band is an OCTAGONAL prism at the ref's plan line (flats +-0.111 ->
+  // plan edge -0.236 vs the ref's one straight -0.24 line; y-band 0.222
+  // unchanged) ending at world 4.47 for the ref's side sleeve->tube STEP
+  // (ref bottom lines break 2.52 m @ z 1.95..4.47 + 2.17 m @ 4.83..7.00),
+  // then a fatter sagged rear octagon (band 1.706..1.949 — ref columns
+  // 1.949..1.706 at z 5.44/5.56) carries to the muzzle kit. The fume-
+  // extractor drum swells to the ref's r_y 0.1525 (col 4.829 bottom 1.675).
+  P.addGunExtra(cylZ(0.17, 0.42, 18, 0.20), 0, 0, 0.16);
+  P.addGunExtra(cylZ(0.155, 0.55, 18, 0.185), 0, -0.01, 0.62);
+  P.addGunExtra(cylZ(0.22, 0.28, 18), 0.01, -0.09, 1.05);
   P.addGunExtra(cylZ(0.1375, 0.62, 18), 0.01, -0.012, 1.57);
-  P.addGunExtra(box(0.43, 0.222, 3.15), 0, 0, 2.525);
-  P.addGunExtra(box(0.21, 0.222, 2.26), 0.02, 0, 5.17);
+  // canvas hood ring at the gun root — the chin-canvas trim above exposed
+  // the ref's 2.041 read in the z 2.027 side column (hood bulge r ~0.20,
+  // z-narrow inside the one column, 15 mm off both boundaries).
+  P.addGunExtraDark(cylZ(0.175, 0.092, 16), 0, 0.015, 1.387);
+  P.addGunExtra(xform(cylZ(0.1201, 2.88, 8), 0, 0, 0, 0, 0, Math.PI / 8), 0, -0.01, 2.39);
+  P.addGunExtra(xform(cylZ(0.1315, 2.11, 8), 0, 0, 0, 0, 0, Math.PI / 8), 0, -0.0285, 5.245);
+  P.addGunExtra(cylZ(0.1525, 0.213, 18), 0, -0.0285, 4.2495);
+  // transition tapers (evaluator: the ring->sleeve staircase fitted +3.5°
+  // vs the ref's 179.1° line, and the sleeve->evac step read 157.8° vs the
+  // ref's 168.5° falling swell in close-front) — interior shading lines;
+  // the swell taper's 4.80 top meets the ref's own 1.98 column read.
+  P.addGunExtra(cylZ(0.124, 0.25, 12, 0.135), 0.005, -0.014, 1.82);
+  P.addGunExtra(cylZ(0.148, 0.33, 12, 0.111), 0, -0.02, 3.995);
   P.addGunExtra(box(0.17, 0.19, 0.30), 0.105, 0, 5.91);
   P.addGunExtra(box(0.143, 0.19, 0.26), -0.0565, 0, 5.74);
-  P.addGunExtra(box(0.27, 0.10, 0.36), 0, 0, 4.08);
-  P.addGunExtraDark(box(0.42, 0.235, 0.06), 0, 0, 4.00);
+  P.addGunExtraDark(cylZ(0.126, 0.05, 16), 0, 0, 4.00);
   P.addGunExtraDark(cylZ(0.108, 0.05, 16), 0, 0, 2.95);
   P.addGunExtraDark(cylZ(0.108, 0.05, 16), 0, 0, 5.32);
   P.addGunExtra(cylZ(0.145, 0.62, 16, 0.215), 0, 0, 0.45);
