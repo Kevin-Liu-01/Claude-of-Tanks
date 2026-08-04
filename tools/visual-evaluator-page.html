@@ -71,6 +71,16 @@ const CRITIC_REFERENCE_OVERRIDES = {
   kf51: { source:'glb', glb:{ path:'/models/tanks/kf51_grip420.glb',
     turretNode:'^KF51_Turret_Msh$', gunNode:'^Gun_Msh$',
     autoPivot:true, pivot:[0.52, 1.7, 0], yawOffset:-Math.PI/2 } },
+  // merkava3d (graduated 2026-08-03, the 13th): retired userdrops5
+  // registration — measurement-only.
+  merkava3d: {
+    source:'glb',
+    glb:{ path:'/models/tanks/community/recovered/merkava3d.glb',
+      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
+      paintUntextured:true,
+      turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))',
+      gunFollowers:'vehicle#gun_barrel_' },
+  },
   merkava3b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava3b.glb',
     turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, paintUntextured:true,
     turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))',

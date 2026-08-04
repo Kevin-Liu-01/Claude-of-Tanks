@@ -177,7 +177,13 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // merkava3b + merkava3c: DUAL-GATE GRADUATES (2026-08-02) — no
   // MODEL_SOURCE; procedural ships everywhere (hashes 5296950a/5287233e;
   // critic 9.0 all nine views, r8). GLBs stay as measurement oracles.
-  for (const id of ['merkava1b', 'merkava2b', 'merkava2d', 'merkava3d', 'merkava4b']) {
+  // merkava3d: DUAL-GATE GRADUATE (2026-08-03) — the program's 13th.
+  // Geometry min 90.4 gatePassed x2 + graduation critic 9.0 on ALL
+  // FOURTEEN views (floor climbed 8.6 -> 8.9 -> 9.0 across r11-r13; five
+  // arbitration certs transfer with the graduation record). NO
+  // MODEL_SOURCE — freeze hash 954a9650 via tmp-hashgeo; the recovered
+  // GLB stays as the measurement oracle (all three override maps).
+  for (const id of ['merkava1b', 'merkava2b', 'merkava2d', 'merkava4b']) {
     articulated(id, {
       turretFollowers: MERKAVA_TURRET_FOLLOWERS,
       gunFollowers: MERKAVA_GUN_FOLLOWERS,
@@ -245,4 +251,4 @@ export const USERDROP5_TANK_IDS = SPECS.map((s) => s.id);
 // signal — the garage catalog keys era buckets off this list instead, keeping
 // local and public grouping identical. m60a1 is excluded: it graduated the
 // dual gate and its procedural build ships everywhere (a true original now).
-export const USERDROP5_SOURCED_IDS = USERDROP5_TANK_IDS.filter((id) => !['m60a1', 'm1a1ha', 'merkava3b', 'merkava3c'].includes(id));
+export const USERDROP5_SOURCED_IDS = USERDROP5_TANK_IDS.filter((id) => !['m60a1', 'm1a1ha', 'merkava3b', 'merkava3c', 'merkava3d'].includes(id));

@@ -1064,3 +1064,21 @@ shifted dAlong 0.05 by adding band content near the 12%-band mid
    (gate 83.6, bisected, reverted) — rings ship OFF correctly. The dome
    grammar is judged at 3x render: shaded cast mounds, no double-circle.
    CERTIFIED; evaluator-scope note stands in SS-D.
+
+## GRADUATION (2026-08-03) — the program's 13th graduate
+DUAL GATE PASSED: geometry min 90.4 gatePassed x2 (hull 90.4 / whole 90.6 /
+turret 91.4 / stations 91.7 / dims 100 / floaters 100) + graduation critic
+9.0 on ALL FOURTEEN views, floor 9.0 mean 9.01 (verdict docs/critique/
+shaded-parity-merkava3d-r13.md — floor climbed 8.6 -> 8.9 -> 9.0 across
+r11-r13; third consecutive clean claims sheet). SS-10 executed: userdrops5
+articulated('merkava3d') registration RETIRED (procedural is the model of
+record; chips under CUSTOM); USERDROP5_SOURCED_IDS excludes merkava3d;
+icons regenerated (5 staged, tree restored); measurement-only override
+configs in ALL THREE maps (procedural-fidelity + tmp-tank-critic +
+visual-evaluator-page, per the SS-10 amendment).
+**FREEZE HASH 954a9650 (39 meshes / 169604 verts)** — any intentional
+change re-runs gate + critic re-cert and re-freezes in the same commit.
+FIVE ARBITRATION CERTS TRANSFER with this record (corner-air backing,
+626-class warm floor, crown-air 76.2 carrier floor, fwd-plane p95 87.8
+zero-cost ceiling, dome-arc detectability). Watch items in the verdict's
+graduation-record section; the mg0+0d SS-I owner call remains queued.
