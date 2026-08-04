@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-04T13:58:43.915Z",
+ "generatedAt": "2026-08-04T14:02:16.927Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 16,
  "total": 86,
@@ -257,6 +257,19 @@
    }
   },
   {
+   "id": "t84",
+   "geoMin": 11.1,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 18.3,
+    "wholeCurves": 11.1,
+    "turretCurves": 39.1,
+    "stations": 79.7,
+    "dims": 55.9,
+    "floaters": 100
+   }
+  },
+  {
    "id": "comet",
    "geoMin": 11.3,
    "gatePassed": false,
@@ -279,19 +292,6 @@
     "turretCurves": 42.2,
     "stations": 39,
     "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "t84",
-   "geoMin": 15.4,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 29.9,
-    "wholeCurves": 15.4,
-    "turretCurves": 36.1,
-    "stations": 69.3,
-    "dims": 99.4,
     "floaters": 100
    }
   },

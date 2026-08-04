@@ -3179,5 +3179,22 @@ REPAIRS['m47_patton'] = [
 ]
 
 
+# =============================================================== batch 35 ===
+# T84 RE-WARP UNDER LAW v2 (the batch-24 plan re-lands: the incident
+# reverted it on donor-drift ambiguity; t84 now has a REAL profile at
+# 15.4 dims-sovereign — gate-in-loop legal). Fresh .bak from committed
+# HEAD bytes (the print is pristine at HEAD; the popped batch-24 recipe
+# stays disabled in the incident block — this is the same warp re-landed
+# clean). Roof TRUE, furniture knee 2.23, hull + fused tube stretched,
+# muzzle pinned rear+9.72. Expect the r30 build's short-print cover
+# columns to release; dims should approach 100.
+REPAIRS['t84'] = [
+    ('py2', _axis_warp('t84', long_axis='z',
+                       y_map=[(0, 0), (24.7312, 24.7312), (28.8679, 24.8643)],
+                       long_map=[(-35.4322, -39.2239), (35.5009, 39.2927), (59.7442, 68.5731)],
+                       y_top_max=25.1194, expect=(2, 98284, 259887))),
+]
+
+
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
