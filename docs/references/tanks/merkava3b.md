@@ -1188,3 +1188,109 @@ COUPLED CHANGES REQUIRED TO FLIP (orchestrator lanes):
    Deterministic flag-ON hash for that re-freeze (measured this round,
    camoSeed 4242): a4ed2c82 -> 207989d0 (41 meshes / 146058 verts — vert
    count unchanged: pure re-parent).
+
+## §B5-r2 RE-TUNE round (merkava-b5-r2, 2026-08-04)
+The coupled flip LANDED IN-TREE and re-tuned to the record: bustlePackTurret
+:true + the three override maps' followers extension (3b: ex_decor_(?:0[1-9]|
+1[0-3]|1[78])) + this round's re-anchor work = gate min 90.1 PASS x2 with the
+pile ROTATING (owner chimney report closed). FINAL HASH FOR THE RE-FREEZE:
+a9d987f0 (41 meshes / 148218 verts — vert count moved: the notch/fall
+re-tessellation below, not the re-parent). Siblings byte-frozen (hashgeo
+x4 this round): 1b 106b0074, 2b 9bfe0895, 2d 62456460, 3d 954a9650,
+4 e1d164dc, 4b d44a3624.
+
+ROW LEDGER (pre-flip record -> coupled-flip crater -> §B5-r2 final):
+  side_hull    90.7 -> 89.8 -> 91.1      turret_side  90.5 -> 73.9 -> 90.4
+  side_whole   90.1 -> 89.9 -> 90.6      turret_plan  92.3 -> 84.3 -> 91.7
+  plan_hull    96.7 -> 81.5 -> 93.7      stations     93.5 -> 93.5 -> 93.6
+  plan_whole   95.6 -> 90.1 -> 95.2      dims          100 -> 100  -> 100
+  front_hull   90.4 -> 91.6 -> 91.5      floaters      100 -> 100  -> 100 (x5)
+  front_whole  90.3 -> 90.3 -> 90.1      min          90.1 -> 73.9 -> 90.1 PASS x2
+
+MECHANISM (why the crater, what re-anchored — all worlds from fresh
+vertex-workorder probes, gate-JSON at-values never decoded raw):
+a) plan_hull 81.5: the followers extension exposed the print's CLAMSHELL
+   NOTCH — ref hull plan center columns (|x|<0.33) end at -3.63 (door
+   face; ex_armor_body_02 -3.629, gate row -3.635) while our loft +
+   door dressing ran to -4.47. Center excess ~0.82 x 7 bins ALSO dragged
+   plan dy to -0.073, taxing every matched column ~0.15. FIX: tailNotch
+   {hw 0.33} on a NEW collinear body station z -3.575 (yT 1.651, yB
+   1.0399, wT 1.6555, wB 1.7266 — exactly on the old -3.47->-4.41 loft
+   lines, zero silhouette delta; recessed door plate rear face -3.64) +
+   the wedge/door furniture auto-recess that comes with tailNotch. dy
+   healed to -0.025.
+b) HULL side tail-top band: the pile used to carry hull side tops 2.39
+   over z -3.5..-4.41 in BOTH models; post-flip the ref reads its own
+   FALLING rack-band line (1.615 @ -3.74 / 1.564 plateau -3.95..-4.15 /
+   1.538 @ -4.25 / 1.461 @ -4.36..-4.46 / 1.436 @ -4.56) while our rack
+   dressing held flat 1.60-1.62 rails/posts/rims. FIX: tr.fall
+   [[-3.88,1.562],[-4.18,1.532],[-4.31,1.462]] — fallCap(z) caps/segments
+   the rack body chunks (frontClear §B4 bottom-lift preserved exactly),
+   side top rails, rear rails, posts (both sets), rim rails, under-rim,
+   outer-face hairlines, recess-bay dark bar, interior backer, jerry
+   crest. wings[1].top 1.60->1.47, wings[2].top 1.42->1.445 (ref -4.56
+   row 1.436; fenderPlank keeps the 1.60 front cols at x 1.4+).
+c) TURRET side 73.9: the moved pack hung to rp.bot 1.30 where the ref
+   pile bottoms 1.86-1.97 (ref turret side bots 1.872..1.949; its vane
+   band bot ~1.88 flat). FIX: rp.liftBot 1.93 / wings[0].liftBot 1.90 —
+   pile strips, lobeL, parting rail, billows (compressed into 1.95..2.27
+   on the tail face), straps, wing plates/rails/posts/curtain re-band
+   into y >= 1.90 with every certified TOP unchanged; the over-top
+   wrinkle crowns (+4..+12 mm) duck -14 mm under the ref's flat 2.384
+   turret-row band (their 2.41 was a HULL-row certification).
+d) TURRET plan 84.3: the moved assembly was a full-depth rectangle where
+   the print pile's plan corner ROUNDS (ref rear: -4.44 to |x|~0.72,
+   -4.26 @ 0.78, -3.93 @ 0.96, -3.59 @ 1.06). FIX: outer strips st0/st7
+   pull their OUTER kink/rear corners to -3.95/-3.90 (plan diagonals);
+   wings[0] x1 0.86->0.802 with the RIGHT outer plate/lobe/fold/backer
+   presenting +0.148 forward; outer tarp posts retired; lobeL x0 -1.04->
+   -1.005 z1 -4.30->-3.93 (it was the -1.08-bin leader, 0.337); side
+   straps shorten to the tapered faces (r1 leaders 0.25/0.236 at x
+   +-0.98/0.83 — the 0.73-0.79 m runs still painted -4.32); tarp-roll
+   end discs slide z0-0.42 -> z0-0.28.
+e) side_hull bottoms: cornerCurtain re-tiered [[-3.66,0.278,0.290],
+   [-3.76,0.34,0.362],[-3.86,0.365,0.46],[-3.92,0.415,0.62]] (w 0.50) —
+   the old -3.70 tier straddled the -3.69 bin boundary; four thin tiers
+   sit IN their bins on the ref's falling bottom line with tops under
+   the idler-wrap shell (§B4). A first cut at tier1 top 0.298 rounded
+   into the wrap's y-0.30 voxel layer (+20 rear exact voxels vs the r12
+   0/0 record); 0.290 restores clip 0/0 with the same 0.282 bottom row.
+f) sleeveR 0.118 -> 0.112: the tube edge crossed the +-0.116 plan pixel
+   boundary writing 4.30-long +-0.167 turret/whole plan bins the ref
+   keeps empty (its tube < 0.116; the r 0.163 clamp still carries the
+   ref's own 2.25 content there). An r1 over-shave to 0.106 LOST the
+   -0.15 bin's tube run (err 0.174->0.216) — 0.112 is the measured
+   sweet spot between the two pixel flips.
+g) podDeep [3.005, 2.985] (left/right): plan-front parity nudge toward
+   the print's asymmetric pod tips (L 3.097 / R 3.072). r1 measured a
+   HARD dims tripwire: tips past ~3.084 join the SLEEVE run in the
+   z 3.13 trace bin -> band 1.20 > 0.12x rough -> BODY column ->
+   hullLengthM 7.59->7.69 (1.21%, past the 1% grace, dims 98.3). Tips
+   hold 3.072/3.052 inside the 3.03 bin; the ref's z 3.13 pod sliver
+   stays the certified ONLY-REF residual (side cover 0.66, pre-flip
+   class).
+h) roofBoxes wing front nub z 0.40/0.17 -> 0.31/0.08 (the ref's own
+   -1.37 plan column spans 0.30..0.07).
+
+HONEST RESIDUALS (worst columns, official gate frame): front_whole 90.1
+is the floor — +-1.07 skirt-hem bottoms (proc -1.56 vs ref -1.38/-1.39,
+0.096/0.095, the certified pre-flip class) + +-1.78 (0.084/0.080);
+turret_side 90.4 mean is sleeve/mantlet-band columns (<=0.096 each);
+turret_plan keeps the -0.87-bin vane crown-fold lit strips at -4.44
+(0.144, pre-flip certified class) and the +-0.15 sleeve bins (0.13).
+side_hull cover 0.66 = the z 3.13 ref pod sliver (see g). Every
+component >= 90 x2 with margin elsewhere.
+
+LAW BANK (generalizable):
+- BODY-COLUMN FUSION: a thin sliver (pod tip) entering a trace bin the
+  GUN SLEEVE also crosses fuses into one top..bot EXTENT — band jumps
+  past the 0.12x threshold and the bin becomes a hullLengthM BODY
+  column. Dims can move 0.1 m from a 15 mm tip nudge; check
+  bodyExtent's first/last body bins whenever content near the bow/stern
+  shares a bin with the gun run.
+- The certified "cheap pixel bar" for camo-bucket re-parents stays
+  unreachable (r1 §B5 finding) — this round re-certifies via the full
+  gate + critic flow, not pixel-diff.
+- Trace-bin razors: the old -3.70 cornerCurtain tier straddling its bin
+  boundary under-read BOTH bins; per-bin tier placement (fully inside
+  one bin) reads exactly.

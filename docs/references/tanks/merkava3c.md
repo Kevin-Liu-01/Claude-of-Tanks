@@ -528,3 +528,29 @@ true + gate hold + critic re-cert + re-freeze, one commit.
 Deterministic flag-ON hash for that re-freeze (measured this round,
 camoSeed 4242): 1d9b026c -> e454a60a (41 meshes / 146136 verts — vert
 count unchanged: pure re-parent).
+
+## §B5-r2 RE-TUNE round (merkava-b5-r2, 2026-08-04)
+Same coupled flip + re-anchor as 3B (see merkava3b.md §B5-r2 for the full
+mechanism a-h; the two marks share every tail assembly and took identical
+geometry values — 3C has no lobeL and its own followers extension
+ex_decor_(?:0[1-9]|1[01]|13|1[5-7])). Per-mark deltas only:
+- tr.fall breaks one bin earlier: [[-3.88,1.562],[-3.99,1.532],
+  [-4.31,1.462]] (3C ref reads 1.538 already at -4.05..-4.15 where 3B
+  holds 1.564).
+- Known residual: the loft line at -3.74 reads 1.615 vs 3C ref 1.59
+  (one bin, 0.026 — the shared body table favors 3B's ref there).
+FINAL HASH FOR THE RE-FREEZE: d3358744 (41 meshes / 148584 verts).
+Siblings byte-frozen (see 3B §B5-r2 list).
+
+ROW LEDGER (pre-flip record -> coupled-flip crater -> §B5-r2 final):
+  side_hull    91.5 -> 90.6 -> 91.9      turret_side  90.8 -> 75.7 -> 90.8
+  side_whole   90.7 -> 90.5 -> 91.1      turret_plan  92.3 -> 85.8 -> 91.7
+  plan_hull    96.7 -> 81.5 -> 93.6      stations     92.0 -> 92.0 -> 92.3
+  plan_whole   95.6 -> 90.1 -> 95.2      dims          100 -> 100  -> 100
+  front_hull   92.3 -> 93.2 -> 93.1      floaters      100 -> 100  -> 100 (x5)
+  front_whole  90.5 -> 90.6 -> 90.5      min          90.5 -> 75.7 -> 90.5 PASS x2
+
+HONEST RESIDUALS: front_whole 90.5 floor (skirt-hem bottom class, see
+3B); turret_side 90.8 (sleeve-band columns + the 3.34-row 0.159);
+side_hull cover 0.66 (ref z 3.13 pod sliver — dims-tripwire adjudicated,
+see 3B law bank).
