@@ -171,9 +171,14 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // m60a1: NO source() call — dual-gate graduate, procedural build ships in
   // every flavor. The recovered m60a1.glb FILE stays on disk: userdrops6's
   // m60a3 still aliases it directly (and has NOT passed the gate).
-  source('pt91m', {
-    turretNode: '^misc_a$', gunNode: '^misc_b$', autoPivot: true,
-  });
+  // pt91m: DUAL-GATE GRADUATE (2026-08-03) — the program's 14th. Geometry
+  // min 91.3 gatePassed x2 + graduation critic 9.0 on ALL FOURTEEN views
+  // (floor 8.2 -> 8.6 -> 9.0 across r25-r28; crown-air column cert audited
+  // and binding). NO MODEL_SOURCE — freeze hash via tmp-hashgeo; the
+  // recovered GLB stays as the measurement oracle (all three override
+  // maps; NOTE the print is authored -z-forward: the critic + evaluator
+  // harnesses need yawOffset PI in their entries, the fidelity page does
+  // not — probe-proven both ways).
   // merkava3b + merkava3c: DUAL-GATE GRADUATES (2026-08-02) — no
   // MODEL_SOURCE; procedural ships everywhere (hashes 5296950a/5287233e;
   // critic 9.0 all nine views, r8). GLBs stay as measurement oracles.
@@ -251,4 +256,4 @@ export const USERDROP5_TANK_IDS = SPECS.map((s) => s.id);
 // signal — the garage catalog keys era buckets off this list instead, keeping
 // local and public grouping identical. m60a1 is excluded: it graduated the
 // dual gate and its procedural build ships everywhere (a true original now).
-export const USERDROP5_SOURCED_IDS = USERDROP5_TANK_IDS.filter((id) => !['m60a1', 'm1a1ha', 'merkava3b', 'merkava3c', 'merkava3d'].includes(id));
+export const USERDROP5_SOURCED_IDS = USERDROP5_TANK_IDS.filter((id) => !['m60a1', 'm1a1ha', 'merkava3b', 'merkava3c', 'merkava3d', 'pt91m'].includes(id));

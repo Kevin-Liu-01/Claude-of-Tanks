@@ -111,6 +111,16 @@ const LOCAL_REFERENCE_OVERRIDES = {
       autoPivot:true, pivot:[0.52, 1.7, 0],
       yawOffset:-Math.PI/2 },
   },
+  // pt91m (graduated 2026-08-03, the 14th): retired userdrops5
+  // registration — measurement-only. NO yawOffset here: this harness
+  // renders the print correctly without it (probe-proven; the critic +
+  // evaluator maps carry PI).
+  pt91m: {
+    source:'glb',
+    glb:{ path:'/models/tanks/community/recovered/pt91m.glb',
+      turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true,
+      paintUntextured:true },
+  },
   // merkava3d (graduated 2026-08-03, the 13th): retired userdrops5
   // registration — measurement-only.
   merkava3d: {

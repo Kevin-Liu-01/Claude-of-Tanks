@@ -663,3 +663,23 @@ delivered — expect 8.6 -> ~8.9+), rear/rearleft/rearright (drum train
 one warm mass, seam runs at ref parity, basket rhythm, rear-crown gun),
 hero-rr (drums proud), close-roof (dark 34px gun run), front (crown air
 +3.0pts, residual certified). Ready for the graduation critic.
+
+## GRADUATION (2026-08-03) — the program's 14th graduate
+DUAL GATE PASSED: geometry min 91.3 gatePassed x2 (hull 93.0 / whole 91.3 /
+turret 95.0 / stations 92.8 / dims 100 / floaters 100) + graduation critic
+9.0 on ALL FOURTEEN views, floor 9.0 mean 9.01 (verdict docs/critique/
+shaded-parity-pt91m-r28.md — floor climbed 8.2 -> 8.6 -> 9.0 across
+r25-r28; the crown-air column cert independently audited and binding).
+SS-10 executed: userdrops5 source('pt91m') registration RETIRED
+(procedural is the model of record; chips under CUSTOM);
+USERDROP5_SOURCED_IDS excludes pt91m; icons regenerated (5 staged, tree
+restored); measurement-only override configs in ALL THREE maps — NOTE the
+-z-forward print: critic + evaluator entries carry yawOffset PI, the
+fidelity entry does not (probe-proven both ways; load-prove gate run at
+graduation confirms).
+**FREEZE HASH e6994e54 (52 meshes / 100624 verts)** — any intentional
+change re-runs gate + critic re-cert and re-freezes in the same commit.
+Certified carries: crown-air column cert, heightM-trade col, muzzle-band
+bottoms, row2 corners, camo-split-final glacis rows. Non-blocking wishlist
+in the verdict (dome seam decals, drum ribs, tube-end grid, rear-stack
+decode).
