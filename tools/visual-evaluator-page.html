@@ -836,6 +836,13 @@ function analyzeMask(field, cam) {
   cuu /= sw; cvv /= sw; cuv /= sw;
   const principalDeg = 0.5 * Math.atan2(2 * cuv, cuu - cvv) * 180 / Math.PI;
   const e = [Math.cos(principalDeg * Math.PI / 180), Math.sin(principalDeg * Math.PI / 180)];
+  // CANONICAL EIGENVECTOR DIRECTION (russia r30 root-cause): the principal
+  // axis is defined mod 180 deg — near-vertical plans land ref/proc on
+  // OPPOSITE atan2 branches, pointing e opposite ways and flipping the
+  // skew sign spuriously (t72b3m/t90m top-view false yaw-180s). Flip by
+  // the DOMINANT component (cos(+-90deg) is +6e-17 for BOTH branches, so
+  // a plain e[0]<0 test never fires at vertical axes).
+  if ((Math.abs(e[1]) > Math.abs(e[0]) ? e[1] : e[0]) < 0) { e[0] = -e[0]; e[1] = -e[1]; }
   let m2 = 0, m3 = 0;
   for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
     if (field[y * S + x] < 127.5) continue;
