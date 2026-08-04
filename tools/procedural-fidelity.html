@@ -48,6 +48,18 @@ const LOCAL_REFERENCE_OVERRIDES = {
       turretNode:'^Turret$', autoPivot:true,
     },
   },
+  // AFV program (owner directive 2026-08-04, packet docs/references/tanks/
+  // bmp2.md): the m_bergman BMP-2 print is QUARANTINE class — gate/measure
+  // local-only through this override; the in-game MODEL_SOURCE registration
+  // stays delisted (userdrops2 SHIP_USERDROP2_NEW). Same wiring as the
+  // delisted registration it mirrors.
+  bmp2: {
+    source:'glb',
+    glb:{
+      path:'/models/tanks/community/bmp2_bergman.glb',
+      turretNode:'^Turret$', autoPivot:true, paintUntextured:true,
+    },
+  },
   // Same quarantine-oracle pattern as ariete: the NullOps Type 74 is
   // PERSONAL-USE (docs/ATTRIBUTION.md) and never ships as a MODEL_SOURCE;
   // the roster's type74 spec + procedural build live in profiles/misc.js.
