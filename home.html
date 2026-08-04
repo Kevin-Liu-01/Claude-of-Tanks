@@ -290,18 +290,29 @@
 
   /* ---- gallery bento ---- */
   .bento { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; }
-  .shot { position: relative; overflow: hidden; border: 1px solid var(--hair); background: var(--bg2); cursor: zoom-in; }
+  .shot { position: relative; overflow: hidden; border: 1px solid var(--hair); background: var(--bg2); cursor: zoom-in;
+    transition: border-color .3s ease, box-shadow .3s ease; }
+  .shot:hover, .shot:focus-visible { border-color: var(--amber-dim); box-shadow: 0 6px 28px rgba(0,0,0,.45), 0 0 0 1px rgba(240,160,48,.12); }
   .shot img { width: 100%; height: 100%; object-fit: cover; aspect-ratio: 16/9;
     transition: transform .6s cubic-bezier(.2,.6,.2,1), filter .4s ease; filter: saturate(.98); }
   .shot:hover img { transform: scale(1.035); filter: saturate(1.08); }
+  /* full-width cinematic band (the T-90 studio cut leads the grid) */
+  .shot.cine img { aspect-ratio: 21/8; object-position: 50% 42%; }
+  @media (max-width: 700px) { .shot.cine img { aspect-ratio: 16/9; } }
+  /* caption plates read at rest; hover lifts them brighter (was hover-only —
+     tiles scanned as anonymous thumbnails and only the cursor target ever
+     showed its title) */
   .shot .plate {
     position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
     display: flex; justify-content: space-between; align-items: flex-end; gap: 12px;
     padding: 26px 14px 11px;
-    background: linear-gradient(180deg, transparent, rgba(5,8,11,.86) 62%);
-    opacity: 0; transform: translateY(6px); transition: opacity .3s ease, transform .3s ease;
+    background: linear-gradient(180deg, transparent, rgba(5,8,11,.78) 66%);
+    opacity: .94; transition: opacity .3s ease, background .3s ease;
   }
-  .shot:hover .plate, .shot:focus-visible .plate { opacity: 1; transform: none; }
+  .shot:hover .plate, .shot:focus-visible .plate { opacity: 1;
+    background: linear-gradient(180deg, transparent, rgba(5,8,11,.9) 60%); }
+  .shot.cine .plate { padding: 34px 18px 13px; }
+  .shot.cine .plate .t { font-size: 14.5px; }
   .shot .plate .t { font-size: 12.5px; font-weight: 700; color: var(--bright); line-height: 1.35; text-align: left; }
   .shot .plate .t small { display: block; margin-top: 2px; font-size: 9.5px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--mut); }
   .chip {
@@ -1010,26 +1021,29 @@
 import { FEATURED_SHOTS } from '/src/ui/featuredShots.js';
 
 /* per-shot metadata for the grid (grade + map from docs/marketing-shots-report.md) */
+/* Grid discipline: every bento row sums to exactly 12 columns —
+   12 | 6+6 | 4+4+4 | 4+4+4 | 4+4+4 — no holes, ever. The T-90 studio cut
+   leads FULL-WIDTH as a cinematic band (owner call, 2026-08-04). */
 const META = {
-  '/media/featured/f6_studio_strv_steinburg_duel.webp': { t: 'Strv 103 street duel', m: 'Steinburg', tag: 'studio cut', span: 's8' },
-  '/media/featured/f7_studio_t90_column_fire.webp':     { t: 'T-90 column under fire', m: 'Verdant Fields', tag: 'studio cut', span: 's4' },
+  '/media/featured/f7_studio_t90_column_fire.webp':     { t: 'T-90 column under fire', m: 'Verdant Fields', tag: 'studio cut', span: 's12 cine' },
+  '/media/featured/f6_studio_strv_steinburg_duel.webp': { t: 'Strv 103 street duel', m: 'Steinburg', tag: 'studio cut', span: 's6' },
   '/media/featured/f1_09_winter_lake_duel.webp':        { t: 'Ammo-rack kill on the ice', m: 'Frosthollow', sc: 8.6, tag: 'set hero', span: 's6' },
-  '/media/featured/f3_19_urban_overwatch_church.webp':  { t: 'Church overwatch, golden hour', m: 'Steinburg', sc: 8.2, span: 's6' },
   '/media/featured/f2_06_desert_hero_kf51.webp':        { t: 'KF51 firing still', m: 'Sirocco Wadi', sc: 8.2, span: 's4' },
+  '/media/featured/f3_19_urban_overwatch_church.webp':  { t: 'Church overwatch, golden hour', m: 'Steinburg', sc: 8.2, span: 's4' },
   '/media/featured/f4_20_urban_ruin_brawl.webp':        { t: 'Ruin brawl, crossing tracers', m: 'Steinburg', sc: 8.1, span: 's4' },
   '/media/featured/f5_01_desert_duel_leclerc_kill.webp':{ t: 'Leclerc duel, ammo-rack fire', m: 'Sirocco Wadi', sc: 8.1, span: 's4' },
 };
 const EXTRA = [
-  { img: '/media/home/g27_verdant_village_brawl.webp', t: 'Past the sandbags, roof burning', m: 'Verdant Fields', sc: 8.0, span: 's6' },
-  { img: '/media/home/g17_urban_street_duel.webp',     t: 'Street duel up the cobbled canyon', m: 'Steinburg', sc: 8.0, span: 's6' },
+  { img: '/media/home/g27_verdant_village_brawl.webp', t: 'Past the sandbags, roof burning', m: 'Verdant Fields', sc: 8.0, span: 's4' },
+  { img: '/media/home/g17_urban_street_duel.webp',     t: 'Street duel up the cobbled canyon', m: 'Steinburg', sc: 8.0, span: 's4' },
   { img: '/media/home/g04_desert_village_brawl.webp',  t: 'Village brawl, ricochet sparks', m: 'Sirocco Wadi', sc: 8.0, span: 's4' },
   { img: '/media/home/g22_urban_hero_abramsx.webp',    t: 'AbramsX, blast jet on the cobbles', m: 'Steinburg', sc: 8.0, span: 's4' },
   { img: '/media/home/g10_winter_ram_leo2a6.webp',     t: 'Hull-displacing T-bone', m: 'Frosthollow', sc: 7.8, span: 's4' },
 ];
 
 const LEAD = [
-  '/media/featured/f6_studio_strv_steinburg_duel.webp',
   '/media/featured/f7_studio_t90_column_fire.webp',
+  '/media/featured/f6_studio_strv_steinburg_duel.webp',
   '/media/featured/f1_09_winter_lake_duel.webp',
 ];
 const featured = [
