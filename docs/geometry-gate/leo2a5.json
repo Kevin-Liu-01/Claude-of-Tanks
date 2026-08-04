@@ -4,9 +4,9 @@
  "gatePassed": true,
  "components": {
   "hullCurves": 92.4,
-  "wholeCurves": 91.8,
+  "wholeCurves": 92,
   "turretCurves": 90.6,
-  "stations": 94.3,
+  "stations": 94.6,
   "dims": 100,
   "floaters": 100
  },
@@ -552,8 +552,8 @@
    ]
   },
   "front_whole": {
-   "score": 91.79701207984445,
-   "meanPct": 0.62,
+   "score": 91.95103219844277,
+   "meanPct": 0.61,
    "p95Pct": 1.3,
    "coverPct": 0,
    "reg": {
@@ -650,11 +650,11 @@
      "errM": 0.03
     },
     {
-     "at": -0.44,
-     "refTop": 1.31,
-     "refBot": -0.84,
-     "procTop": 1.28,
-     "procBot": -0.81,
+     "at": 1.67,
+     "refTop": 0.43,
+     "refBot": -1.32,
+     "procTop": 0.42,
+     "procBot": -1.37,
      "errM": 0.03
     }
    ]
@@ -912,12 +912,12 @@
   {
    "i": 6,
    "wPct": 0.23,
-   "topPct": 1
+   "topPct": 0.85
   },
   {
    "i": 7,
    "wPct": 0.23,
-   "topPct": 0.56
+   "topPct": 0.42
   },
   {
    "i": 8,

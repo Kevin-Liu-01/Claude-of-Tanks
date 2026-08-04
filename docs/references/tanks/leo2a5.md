@@ -508,3 +508,74 @@ hash-frozen). Siblings byte-exact: leo2_revolution 44acdee0, leo2a7v
 e28fc316, leopard2_proto 5647ef3e (all shared leoHullV3 edits are
 opt-in params with byte-identical defaults, verified by hash).
 Shots: shots/critic-leo2a5/ (14 ref/proc pairs, fresh at this state).
+
+## VISUAL r1 SELF-PREP (2026-08-04, family r5) — tone/read port, gate 90.6 HELD
+
+First visual round (no critic verdict yet — this is the builder's own
+prep per the r5 brief). Baseline 14 official pairs re-captured
+byte-identical to the r4 state, then re-rendered after each batch
+(`tools/tmp-tank-critic.mjs`, shots/critic-leo2a5/). Gate after round:
+**min 90.6 PASS x2 at final bytes** — hull 92.4 / whole **92.0 (+0.2 vs
+r4)** / turret 90.6 / stations **94.6 (+0.3)** / dims 100 / floaters
+100; containment re-audited **0/0 exact**; `npm test` 166 checks pass;
+§D evaluator run (shots/visual-eval-leo2a5/, parity yawProxy <=1.1 deg
+all 14 views — no RIG MISMATCH). New hash **ae077807** (45 meshes /
+105252 verts). Graduates verified leo2a6 80b76338 / kf51 77020c58;
+leo2a7v + leopard2_proto byte-identical.
+
+Baseline self-read: the pairs showed the a6-r1 defect classes verbatim
+(near-pure-black band+chain, saturated BLUE glass dots, ORANGE wood
+jack tab, flat pale scheme wheels, bare rear wall) — min view ~5.5-6.5.
+
+What landed (a6 shaded-parity r2..r8 recipe, a5-scoped; every tone
+re-SAMPLED on THIS print's pairs, not copied blind):
+1. TONES (m60a1/kv2 family recipe): olive-glass 0x3d4536 r0.55 m0.32
+   (blue dots dead), wood 0x4a463a (orange tab dead), canvasCloth
+   0x3e4532, spareTrack 0x48423a, rubber 0x2c2a26; wornDish/wornDrum
+   clones rehooked on vehicleAmbientFloorHook + dishR 0.78 opt-in.
+2. BAND 3-DIM LAW RE-SOLVED ON-ELEMENT (view-left strip rects, sampler
+   tools/tmp-leo-bandsample.py): the a6-landed values passed ratio
+   (1.01-1.06) and hue family but sampled sat 11 vs THIS ref strip's
+   26.7 — band lift (1.12,1.086,1.02)->(1.18,1.08,0.90), pads 0x453f2f,
+   chain 0x2b241b. KEY MECHANISM (banked): the under-skirt strip pixels
+   ride the DEEP-SHADE FLOOR whose tint is NORMALIZED albedo — the
+   sat-11 read was the chain layer's near-neutral hex; saturation there
+   is set by the albedo's own sat at constant floor luma. Final: hue
+   34.7 vs ref 41-49 (family), sat 32.2 vs 26.7 (Δ5 ~ quantization
+   floor), ratio 1.025/1.065 in the 0.92-1.16 law.
+3. WHEELS re-solved for THIS print (its exposed wheel band reads warm
+   hue 60-64 at lum ~57 where the a6's print sat at 78-86/brighter):
+   dish 0x3c3c2e, drum 0x333527 -> rendered hue 60/64.3, ratio 0.946
+   mean (law), sat 21.5 vs 26.3.
+4. MG PHYSICS (a6 r9/kf51 r8): pale 0x60624c barrel overlay + receiver
+   top cover on the loader MG3; receiver top shaved 12mm so the cover
+   rides ON it at 2.651w — under the 2.653 heightM anchor line.
+5. REAR DRESSING: crossed spare tow cables + end eyes routed in the
+   |x|<=1.02 inter-track corridor (a +-1.3 first cut put the low ends
+   inside the sprocket-wrap swept band — 22 exact-voxels, caught by the
+   audit and re-routed per the r4 lane-corridor law); taillight lenses
+   on the kit clusters; louvred grille fields (near-black field + 4
+   tilted pale slats per side, layer-order law); flap boards
+   re-bucketed hullRubber->hullTrack (ref flaps sample warm brown-grey
+   68,62,52 sat 23.5 where the rubber bucket rides the neutral floor).
+6. ROOF: two-tone hatch rings (a6 r3 circularity law — pale race + dark
+   groove + pale lid + recessed centre + 6 lug dots) on the cmdr/loader
+   positions at +1.2..3.4mm over the flat 2.653 cluster tops (heightM
+   2.6564, inside the 1% grace; dims held 100).
+7. GLACIS: spare cable run + headlight pod bezels. LAW RE-CONFIRMED:
+   a 1.55-long yaw-0.5 cable first cut swept into the falling plate
+   zone and printed +0.06 tops (-0.4 hull, the a6-r2 yawed-furniture
+   law) — re-authored at the r3 deflector boards' certified transform
+   class (len 0.85, yaw 0.42, crown 1.512).
+
+Self-scores after round (/10, builder read): left/right 8.3, front 8.0,
+rear 7.9, frontleft/frontright 8.2, rearleft/rearright 8.0, top 8.4,
+close-front 8.2, close-roof 8.4, hero-frontleft 8.2, hero-rearright
+7.9, hero-toptilt 8.1 — **min ~7.9, READY FOR FIRST CRITIC** (predicted
+verdict 7.5-8.0 min view; the a6 started its critic ladder at 6.5).
+Known remaining classes for the critic rounds (a6-r4..r7 ladder): rear
+grille density at ref scale + light-ring reads, under-bustle backing at
+hero-rearright, front wrap-crown grime term (a6 r6 #1 — not yet
+ported), PERI face two-tone, glacis anti-slip zones, headlight pod
+cluster plates. Hand-authored dressing predates KIT.fittings (census
+mg0+0d — §B3 carried by the r6 loader MG + this packet justification).
