@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-04T07:38:02.766Z",
+ "generatedAt": "2026-08-04T07:53:24.201Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 16,
  "total": 85,
@@ -143,7 +143,7 @@
     "wholeCurves": 0,
     "turretCurves": 0,
     "stations": 0,
-    "dims": 90.4,
+    "dims": 99.6,
     "floaters": 100
    }
   },
@@ -616,19 +616,6 @@
    }
   },
   {
-   "id": "ariete",
-   "geoMin": 63.4,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 65.1,
-    "wholeCurves": 65.9,
-    "turretCurves": 63.4,
-    "stations": 68,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "type90",
    "geoMin": 63.7,
    "gatePassed": false,
@@ -637,6 +624,19 @@
     "wholeCurves": 63.7,
     "turretCurves": 68.4,
     "stations": 76.4,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "ariete",
+   "geoMin": 64.4,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 69.5,
+    "wholeCurves": 67.8,
+    "turretCurves": 64.4,
+    "stations": 71.9,
     "dims": 100,
     "floaters": 100
    }
