@@ -2144,6 +2144,119 @@ def _axis_warp(tank_id, *, long_axis, y_map, long_map, y_top_max, expect,
     return op
 
 
+def _region_pitch(tank_id, *, region, pivot, angle_deg, pitch_about, expect):
+    """batch-32 helper (four pitched-tube prints: m48/type90/ariete/type74):
+    rotate every scene-reachable vert whose WORLD position falls inside
+    `region` by angle_deg about the horizontal axis `pitch_about` ('x' or
+    'z') through `pivot` (full (x,y,z) world point). Levels rest-pitched gun
+    tubes FUSED into hull/turret meshes. Proper rotation (chirality kept);
+    normals rotated by the same rotation; POSITION min/max rebuilt from
+    referenced verts. region = dict of any of x=(lo,hi), y=(lo,hi),
+    z=(lo,hi) in glb world — verts must satisfy ALL given bands.
+    REGION-BOUNDARY REQUIREMENT: the boundary must sit INSIDE an occluding
+    mass (mantlet/turret) — boundary verts tear from their neighbors, and
+    the tear must be hidden. SET-INVARIANCE REQUIREMENT (selftest-proven,
+    2026-08-03): the region must select the IDENTICAL vert set before and
+    after the rotation (boundary in empty space / occluder interior on
+    both sides) — a boundary crossing geometry sweeps foreign verts on
+    replay/inversion (first selftest failed exactly this way: a 2-unit
+    band widening swept 404 hull verts and did 3.5-unit damage; the fixed
+    tube-isolated region inverts to 4e-6). expect=(total_reachable_verts,
+    region_verts): the region count is the sensitive guard (a drifted
+    region selects a different set — refuse). Probe censuses with
+    expect=(0,0) first; the refusal message reports the true counts."""
+    import math as _math
+    th = _math.radians(angle_deg)
+    c, sn = _math.cos(th), _math.sin(th)
+
+    def op(gltf, chunks, _id=tank_id, reg=dict(region), piv=tuple(pivot),
+           ax=pitch_about, exp=tuple(expect)):
+        bi = _bin_chunk_index(chunks)
+        data = bytearray(chunks[bi][1])
+        reach = []
+
+        def visit(ni, parent):
+            node = gltf['nodes'][ni]
+            world = mat_mul(parent, local_matrix(node))
+            if 'mesh' in node:
+                reach.append((ni, node['mesh'], world))
+            for ci in node.get('children', []):
+                visit(ci, world)
+        for ri in gltf['scenes'][gltf.get('scene', 0)]['nodes']:
+            visit(ri, IDENT)
+
+        def inside(w):
+            for k, i in (('x', 0), ('y', 1), ('z', 2)):
+                if k in reg and not (reg[k][0] <= w[i] <= reg[k][1]):
+                    return False
+            return True
+
+        def rot(w):
+            if ax == 'x':
+                dy, dz = w[1] - piv[1], w[2] - piv[2]
+                return (w[0], piv[1] + dy * c - dz * sn, piv[2] + dy * sn + dz * c)
+            dx, dy = w[0] - piv[0], w[1] - piv[1]
+            return (piv[0] + dx * c - dy * sn, piv[1] + dx * sn + dy * c, w[2])
+
+        def rotn(n):
+            if ax == 'x':
+                return (n[0], n[1] * c - n[2] * sn, n[1] * sn + n[2] * c)
+            return (n[0] * c - n[1] * sn, n[0] * sn + n[1] * c, n[2])
+
+        total = 0
+        picked = 0
+        acc_seen = set()
+        for _ni, mi, world in reach:
+            winv = _mat4_affine_inverse(world)
+            w3it = _mat3_inverse_t(world)
+            for prim in gltf['meshes'][mi]['primitives']:
+                pa = prim['attributes']['POSITION']
+                if pa in acc_seen:
+                    raise SystemExit(f'{_id}: shared POSITION accessor — refusing')
+                acc_seen.add(pa)
+                pacc, pn, pfmt, poff, pstride = _acc_reader(gltf, data, pa)
+                if pfmt != 'f' or pn != 3:
+                    raise SystemExit(f'{_id}: POSITION not vec3 float')
+                has_n = 'NORMAL' in prim['attributes']
+                if has_n:
+                    nacc, nn, nfmt, noff, nstride = _acc_reader(gltf, data, prim['attributes']['NORMAL'])
+                total += pacc['count']
+                for i in range(pacc['count']):
+                    pt = struct.unpack_from('<fff', data, poff + i * pstride)
+                    w = transform_point(world, pt)
+                    if not inside(w):
+                        continue
+                    picked += 1
+                    q = transform_point(winv, rot(w))
+                    struct.pack_into('<fff', data, poff + i * pstride, *q)
+                    if has_n:
+                        n = struct.unpack_from('<fff', data, noff + i * nstride)
+                        nw = (w3it[0] * n[0] + w3it[1] * n[1] + w3it[2] * n[2],
+                              w3it[3] * n[0] + w3it[4] * n[1] + w3it[5] * n[2],
+                              w3it[6] * n[0] + w3it[7] * n[1] + w3it[8] * n[2])
+                        nw = rotn(nw)
+                        nl = (world[0] * nw[0] + world[1] * nw[1] + world[2] * nw[2],
+                              world[4] * nw[0] + world[5] * nw[1] + world[6] * nw[2],
+                              world[8] * nw[0] + world[9] * nw[1] + world[10] * nw[2])
+                        ln = (nl[0] ** 2 + nl[1] ** 2 + nl[2] ** 2) ** 0.5
+                        if ln > 1e-20:
+                            nl = (nl[0] / ln, nl[1] / ln, nl[2] / ln)
+                        struct.pack_into('<fff', data, noff + i * nstride, *nl)
+                used = sorted({v[0] for v in _read_rows(gltf, data, prim['indices'])}) \
+                    if 'indices' in prim else range(pacc['count'])
+                rows = [struct.unpack_from('<fff', data, poff + i * pstride) for i in used]
+                if rows:
+                    pacc['min'] = [min(r[k] for r in rows) for k in range(3)]
+                    pacc['max'] = [max(r[k] for r in rows) for k in range(3)]
+        if (total, picked) != exp:
+            raise SystemExit(f'{_id}: region census mismatch — expected {exp} '
+                             f'(total, region), got {(total, picked)}; refusing')
+        chunks[bi] = (BIN_CHUNK, bytes(data))
+        print(f'[repair] {_id}: region pitch {angle_deg:+.2f} deg about {ax} '
+              f'through {piv} — {picked}/{total} verts')
+    return op
+
+
 def _rotate_mesh_180y(tank_id, node_name, *, expect_verts, center_from_indices=True):
     """Batch-12 orientation repair (owner bug 2026-08-01: 't62mv1 hull is
     backwards'): rotate ONE mesh's vertices 180 deg about the vertical axis
