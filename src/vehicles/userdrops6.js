@@ -69,10 +69,15 @@ const SPECS = [
     { hp: 2400, weightTons: 63, gun: { reloadS: 6.2 } }),
   make('m60a1', 'm46_patton', 'M46 Patton', 'USA',
     { hp: 1450, weightTons: 44, topSpeedKmh: 48, gun: { caliberMm: 90, reloadS: 7.0 },
-      dims: { hullLengthM: 6.33, overallLengthM: 8.48, widthM: 3.51, heightM: 3.18 } }),
+      dims: { hullLengthM: 6.33, overallLengthM: 8.48, widthM: 3.51, heightM: 3.18 },
+      // bakeDirt deck equalizer (f243966): the Bergman refs paint from the
+      // shared canvas with NO deck penalty — knob-on is ref-parity for this
+      // print class (m47-top census gap 1029 -> 401 measured).
+      visual: { bakeDirtDeckEq: true } }),
   make('m60a1', 'm47_patton', 'M47 Patton', 'USA',
     { hp: 1550, weightTons: 46, topSpeedKmh: 48, gun: { caliberMm: 90, reloadS: 6.8 },
-      dims: { hullLengthM: 6.33, overallLengthM: 8.51, widthM: 3.51, heightM: 3.35 } }),
+      dims: { hullLengthM: 6.33, overallLengthM: 8.51, widthM: 3.51, heightM: 3.35 },
+      visual: { bakeDirtDeckEq: true } }),
   make('m4a3e8', 'm26_pershing', 'M26 Pershing', 'USA',
     { hp: 1450, weightTons: 41.9, topSpeedKmh: 40, gun: { caliberMm: 90, reloadS: 7.5 },
       // heightM uses the over-mounted-M2 convention (matching the m46/m47
