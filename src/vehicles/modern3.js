@@ -400,9 +400,15 @@ function buildChieftain(P) {
   // sponson band over the tracks — front face slants parallel to the glacis
   // so the side profile flows nose lip -> deck in one line
   P.add('hull', frustum(1.52, 2.49, -3.68, 1.52, 0.62, -3.68, 1.04, 1.68));
-  // ONE continuous shallow glacis: nose lip (0.66, 3.74) -> ring (1.70, 0.55)
-  P.add('hull', frustum(1.55, 3.74, 0.50, 1.55, 0.58, 0.50, 0.66, 1.70));
-  P.add('hull', frustum(1.42, 3.42, 3.62, 1.52, 3.74, 3.62, 0.32, 0.66));       // nose plate
+  // ONE continuous shallow glacis: nose lip (0.66, 3.74) -> ring (1.70, 0.55).
+  // §B6/§B4 (uk b6 round, 2026-08-04): both bow plates NARROWED to the
+  // inter-track span (halfW 1.15 < band inner face 1.195) — the old ±1.55
+  // solids ran THROUGH the track channel and the front wrap was buried in
+  // the glacis wedge (track-clip 75 vox front, the owner's §B4 class). The
+  // raised-idler wrap now climbs in the open bow corner under the fender
+  // toe like the real Mk 10 (idler proud of the glacis toe corners).
+  P.add('hull', frustum(1.15, 3.74, 0.50, 1.15, 0.58, 0.50, 0.66, 1.70));
+  P.add('hull', frustum(1.15, 3.42, 3.62, 1.15, 3.74, 3.62, 0.32, 0.66));       // nose plate (between the idlers)
   // r5 ("rear hull is a featureless container-like box nearly as tall as the
   // turret"): the raised deck drops to the real Chieftain's LOW engine deck —
   // a shallow 14 cm louvre platform just proud of the sponson line, sloping
@@ -446,12 +452,16 @@ function buildChieftain(P) {
   }
   // splash-board ridge across the glacis (§19.5)
   P.add('hullDetail', box(2.0, 0.055, 0.10), 0, 1.29, 1.85, -1.25, 0, 0);
-  headlight(P, -1.30, 0.86, 3.34, -1.1);
-  headlight(P, 1.30, 0.86, 3.34, -1.1);
+  // §B6/§B4: headlights + glacis cable pulled INBOARD of the track channel
+  // (old x ±1.30 / ±1.35 sat inside the band span 1.195..1.805 and the
+  // raised idler wrap sweeps that corner — they now sit on the narrowed
+  // glacis plate like the real Mk 10's inboard lamp brackets).
+  headlight(P, -1.06, 0.88, 3.28, -1.1);
+  headlight(P, 1.06, 0.88, 3.28, -1.1);
   periscope(P, 'hullDetail', 0, 1.63, 0.85);                                    // reclined driver's periscope
   liftEye(P, 'hullDetail', -1.35, 1.72, 0.3);
   liftEye(P, 'hullDetail', 1.35, 1.72, 0.3);
-  towCable(P, [[-1.35, 0.90, 3.0], [-0.4, 0.80, 3.42], [0.6, 0.85, 3.28]]);
+  towCable(P, [[-1.10, 0.86, 3.02], [-0.4, 0.78, 3.40], [0.6, 0.82, 3.28]]);
   spareTrackStrip(P, 'hull', -0.85, 0.94, 3.0, 2, -1.25, 0);
   // bridge-class yellow disc "60" stand-in + ZAP plate
   P.decal('hull', 'number', '60', 0.26, [0.95, 0.82, 3.35], 0, -1.25);
@@ -481,7 +491,12 @@ function buildChieftain(P) {
     // 0.20 row spread) so the visible gap between paired rims reads; dishR
     // gives every wheel its rubber tire ring + hub separation.
     layers: [[-0.10, 0.10]], recessDepth: 0.30,                                 // paired steel-rimmed wheels
-    sprocket: { z: -3.18, y: 0.70, r: 0.33 }, idler: { z: 3.12, y: 0.50, r: 0.29 },
+    // §B6 TRACK-RUN SILHOUETTE (owner law 2026-08-04): idler RAISED from the
+    // r3 y 0.50 (road-wheel height, wheelY 0.46 — the front curled to ground
+    // for a parallelogram read) to 0.60: wrap bottom 0.265, ~24° approach
+    // ramp from the first road wheel, top wrap 0.935 meeting the stepped
+    // roller line — the \________/ trapezoid at BOTH ends (rear ramp ~18°).
+    sprocket: { z: -3.18, y: 0.70, r: 0.33 }, idler: { z: 3.12, y: 0.60, r: 0.29 },
     rollers: [[1.55, 0.80], [0.05, 0.88], [-1.6, 0.97]].map(([z, y]) => ({ z, y, r: 0.08 })),
     // r3: §19.5 "top run covered by shallow fenders with stowage bins" — the
     // exposed Horstmann wheel line stays (authentic), the horn comb goes.
