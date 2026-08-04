@@ -3,17 +3,83 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Claude of Tanks — Home</title>
-<meta name="description" content="Free-roam armored warfare in the browser — pure Three.js. The gallery, the battlefields, the scene studio and the systems underneath.">
-<meta property="og:title" content="Claude of Tanks" />
-<meta property="og:description" content="Armored warfare rendered live in the browser — the gallery, eight battlefields, and the scene studio that shot every frame." />
+<title>Claude of Tanks — Gallery, Battlefields &amp; Scene Studio | Free Browser Tank Game</title>
+<meta name="description" content="The showcase for Claude of Tanks: an in-engine battle gallery, all 8 battlefields, the scene studio that staged every frame, and the combat systems underneath — 102 vehicles, 7v7 AI battles, killcam X-rays. Free, browser-only, pure Three.js.">
+<link rel="canonical" href="https://claude-of-tanks.vercel.app/home" />
+<meta name="robots" content="index, follow, max-image-preview:large" />
+<meta name="theme-color" content="#05080b" />
+<meta property="og:site_name" content="Claude of Tanks" />
+<meta property="og:title" content="Claude of Tanks — Gallery, Battlefields &amp; Scene Studio" />
+<meta property="og:description" content="Every frame shot in-engine: the battle gallery, eight battlefields, and the scene studio that staged it all. Free browser tank game — no install." />
 <meta property="og:type" content="website" />
-<meta property="og:image" content="/brand/og-image.png" />
+<meta property="og:url" content="https://claude-of-tanks.vercel.app/home" />
+<meta property="og:image" content="https://claude-of-tanks.vercel.app/brand/og-image.png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="Claude of Tanks — in-engine battle still with the crest wordmark" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Claude of Tanks" />
-<meta name="twitter:image" content="/brand/og-image.png" />
+<meta name="twitter:title" content="Claude of Tanks — Gallery, Battlefields &amp; Scene Studio" />
+<meta name="twitter:description" content="Every frame shot in-engine — the gallery, eight battlefields, and the scene studio behind them. Free browser tank game." />
+<meta name="twitter:image" content="https://claude-of-tanks.vercel.app/brand/og-image.png" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "VideoGame",
+      "@id": "https://claude-of-tanks.vercel.app/#game",
+      "name": "Claude of Tanks",
+      "url": "https://claude-of-tanks.vercel.app/",
+      "image": "https://claude-of-tanks.vercel.app/brand/og-image.png",
+      "description": "Free-roam armored warfare rendered live in the browser: 102 vehicles across tiers I-X, 8 hand-tuned battlefields, 7v7 battles against per-class AI, a plate-level armor model with killcam X-rays, and an in-game scene studio.",
+      "genre": ["Vehicular combat", "Simulation", "Action"],
+      "playMode": "SinglePlayer",
+      "gamePlatform": "Web Browser",
+      "applicationCategory": "Game",
+      "operatingSystem": "Any (WebGL2-capable browser)",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "availability": "https://schema.org/InStock" }
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://claude-of-tanks.vercel.app/home#page",
+      "url": "https://claude-of-tanks.vercel.app/home",
+      "name": "Claude of Tanks — Gallery, Battlefields & Scene Studio",
+      "about": { "@id": "https://claude-of-tanks.vercel.app/#game" }
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://claude-of-tanks.vercel.app/home#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is Claude of Tanks free to play?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Claude of Tanks is completely free and runs in the browser tab you already have open — no install, no account, no payments." }
+        },
+        {
+          "@type": "Question",
+          "name": "What do I need to play Claude of Tanks?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Any modern desktop browser with WebGL2 (Chrome, Edge, Firefox, Safari). It is also playable on recent phones and tablets with touch controls on a reduced quality tier." }
+        },
+        {
+          "@type": "Question",
+          "name": "How many tanks and maps does Claude of Tanks have?",
+          "acceptedAnswer": { "@type": "Answer", "text": "102 vehicles across tiers I-X (WWII to modern main battle tanks) and 8 battlefields spanning six biomes: grassland, desert, winter, urban, coastal, autumn, steppe and a rail depot." }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the Scene Studio?",
+          "acceptedAnswer": { "@type": "Answer", "text": "A built-in staging tool (press F8 in the garage, or open /studio): place any vehicle on a live battlefield, pose it, set damage states, fire the game's real effects, freeze time, and capture stills up to 6144 px. Every image in the gallery was shot with it." }
+        },
+        {
+          "@type": "Question",
+          "name": "What engine does Claude of Tanks run on?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Pure Three.js (WebGL2) with no game-engine framework — procedural terrain and vehicles, a cascaded-shadow renderer, an HDR post chain, and a deterministic effects system, all in JavaScript." }
+        }
+      ]
+    }
+  ]
+}
+</script>
 <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png">
 <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
@@ -877,6 +943,22 @@
   </div>
 </section>
 
+<section id="faq" style="padding-top: 0;">
+  <div class="wrap">
+    <div class="shead rv">
+      <h2 style="font-size: clamp(20px, 3vw, 30px);"><span class="no">07</span>Field manual — quick answers</h2>
+      <span class="ann">the facts, straight</span>
+    </div>
+    <div class="rows rv">
+      <div class="rowi"><span class="no">Q1</span><span class="t">Is Claude of Tanks free to play?<small>Yes — completely free, in the browser tab you already have open. No install, no account, no payments.</small></span></div>
+      <div class="rowi"><span class="no">Q2</span><span class="t">What do I need to play?<small>Any modern desktop browser with WebGL2 (Chrome, Edge, Firefox, Safari). Recent phones and tablets work too, with touch controls on a reduced quality tier.</small></span></div>
+      <div class="rowi"><span class="no">Q3</span><span class="t">How many tanks and maps are there?<small>102 vehicles across tiers I–X — WWII to modern MBTs — and 8 battlefields across six biomes.</small></span></div>
+      <div class="rowi"><span class="no">Q4</span><span class="t">What is the Scene Studio?<small>The built-in staging rig (F8 in the garage, or /studio): place any vehicle on a live battlefield, pose it, set damage states, fire real effects, freeze time, capture up to 6144&thinsp;px. Every gallery frame above came out of it.</small></span></div>
+      <div class="rowi"><span class="no">Q5</span><span class="t">What engine does it run on?<small>Pure Three.js on WebGL2 — no game-engine framework. Procedural terrain and vehicles, cascaded shadows, an HDR post chain, deterministic effects.</small></span></div>
+    </div>
+  </div>
+</section>
+
 <footer>
   <div class="bg" aria-hidden="true"></div>
   <div class="scrim" aria-hidden="true"></div>
@@ -898,6 +980,7 @@
         <a href="#systems"><span><svg class="ic"><use href="#i-reticle"/></svg>04 In the fight</span><span>the systems</span></a>
         <a href="#fleet"><span><svg class="ic"><use href="#i-caliper"/></svg>05 The fleet gate</span><span>dual gate</span></a>
         <a href="#kit"><span><svg class="ic"><use href="#i-shield"/></svg>06 Media kit</span><span>the shield</span></a>
+        <a href="#faq"><span><svg class="ic"><use href="#i-packet"/></svg>07 Field manual</span><span>quick answers</span></a>
       </div>
     </div>
     <div class="base">
