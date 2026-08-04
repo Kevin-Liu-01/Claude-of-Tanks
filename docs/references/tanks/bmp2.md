@@ -183,3 +183,91 @@ min 57.2 — RESHUFFLE, not crater: hull 57.7 -> 75.1 (the plan tax
 released), whole 58.1, turret 68.6, stations 74.9 -> 57.2 (slice
 re-phase debt — the ref slices moved with the stretch), dims 100 held.
 AFV r2 re-anchors per the standard post-warp arc.
+
+## AFV r2 — post-warp re-anchor (2026-08-04)
+
+### Trajectory (gate x2 identical at close)
+57.2 -> **78.7** | hull 75.1 -> 80.6 / whole 58.1 -> 78.7 / turret
+68.6 -> 79.5 / stations 57.2 -> 87.6 / dims 100 (held, one mid-round
+dip repaired) / floaters 100. Geometry hash 3c496032 -> dc28248
+(54 meshes / 67136 verts). Oracle bytes 396cb021 untouched. npm test
+265 ok. Evaluator digests: shots/visual-eval-bmp2/ (yawProxy <=1.5 deg,
+no RIG MISMATCH).
+
+### The r2 REGISTRATION LAW (bank-worthy, the round's central find)
+The warped print fills the published envelope but its NOSE is
+body-THIN (its 5 cm lip + converging prow columns fail the gate's
+0.12*roughH body filter; its own front body column is z ~3.13, giving
+its bodyLen read 6.589). dims law forces MY nose body-THICK to z 3.37
+(hullLengthM is sovereign to the published 6.72), so the side rows'
+bodySpan registration structurally settles at dAlong +0.076 — and the
+gate then samples proc at z_r+0.076. CONSEQUENCE: every MID feature
+(ring included: spec turretPivot z 0.03 of the allowed ~0.04) authors
+FORWARD of the print line, the ends hold the envelope, and the tail
+doors stay dims-pinned at -3.36 (they anchor the registration
+fixpoint). Stations are PROC-FRACTIONAL and cap the shift: the dome
+rear must stay inside its slab (pivot <=0.04) and the fender planks/
+width carriers sit at proc fractions, NOT at the mapped lines — the
+build now serves three frames at once (side: +0.076, plan/front: 0,
+stations: proc-fractional).
+
+### Slice-render laws confirmed/extended (§C bank)
+- buildGun's tube is 12-seg at gate quality and RASTERIZES in the
+  station slice renders where the print's smooth tube vanishes (st11/12
+  read +17/+21). Fix pattern (also applied to the Bradley): SHORT
+  buildGun stub ending inside a slab the ref also paints + own 28-seg
+  smooth tube extension + P.muzzleZ restored. Slice paint is about
+  FACET ANGLE, not thinness: 6-12-seg cylinders paint, 28-seg vanish;
+  box z-faces paint, box side/top faces vanish.
+- The gate station tops come from the SLICE renders, NOT the vertex
+  registry's stations table (a different instrument — its st10 top
+  2.018 misled the first collar anchor). Instrumented tmp copy of the
+  fidelity page (tools/tmp-bmp2-fidelity.html) is the ground truth
+  for station internals.
+- Boundary-critical faces: the root collar's front face rode the
+  st10/11 slab boundary (1.92-1.93) — parked 40+ mm clear per the §C
+  15 mm law (slab bounds move with the proc span).
+
+### Fresh warped anchors delivered (workorder/extract frame)
+Stern rebuilt to the print's own profile: belly ledge 0.35->0.49 to
+-3.09 (inter-track only — §B4), cliff to 0.96, upper step wedge, door
+recess frame, tail doors y 1.135..1.555 with bulge tips -3.36 (the
+tail columns stay >0.30 thick under ANY trace grouping — dims body
+filter, AA shaves ~10 mm). Prow: covered-run plane A from (2.21,0.40)
+slope 0.69, knuckle plane B to the (3.365,1.225) lip, nose lip band y
+1.00..1.345 (the dims trade: ~2 tip columns +0.07 top / -0.16 bottom).
+Bow corner wedges ride the print's plan step at x 1.07 then the
+fender-tip diagonal to (1.545, 2.97). Six-rib glacis sawtooth at the
+ref pitch. Gear: contact pinned 1.566/-2.094 (contactZF/ZR — the
+default patch overhangs wheelR*0.5 past the last wheel), sprocket
+(2.256, 0.80, 0.26) kissing the covered-run line, idler (-2.554, 0.60,
+0.24) riding the ref's own wrap-bottom 0.21 read. Turret: cone
+steepened at the base wall (ref front wall (1.0,1.66)->(0.95,2.0) is
+NOT a revolution of its side profile — composite masses carry the
+shoulders), basket z -0.50..+0.66 (raw ASCII read), riser crest
+2.151 @ -0.81..-0.63, Konkurs tube top 2.39 z -0.49..+0.17, MG apex
+2.47 on the ref's own spike columns, TKN-3 head at the ref's front
+block (0.66, 2.288, z 0.15..0.36 + mount stalk — floaters caught the
+corner-touch), gunner day-sight housing carrying the left-stack west
+flank, 2A42 fat tube (r 0.055 — the print's fused band is 1.875..2.0)
+to the ref muzzle 3.245.
+
+### §B table at close
+§B2 top-down flood 0 (bow fender webs close the r2-found corner
+slits); §B3 census mg1+6d; §B4 clip 0/0; §B5 turret-parent 0/0/0;
+§B6 trapezoid: raised front sprocket y 0.80 + raised rear idler y
+0.60, certified wrap-bulge residual now ~0.03 on 1-2 approach
+columns (the covered-run line is otherwise ridden exactly).
+
+### Worst remaining columns (honest residuals)
+side rows: the nose-tip dims trade (2-3 cols, ~0.14 mean each), the
+tail door band vs the ref's thin tail sliver (1-2 cols ~0.16), stern
+cols -2.6..-3.0 ramp/ledge class ~0.07; front rows: the roof-stack
+saddle x 0.16..0.30 (my ring band vs the ref's fall-off, ~0.08),
+x ±1.36-1.40 track-top corner (~0.08); plan rows 96.8. Stations:
+st3 wPct ~10 (UNEXPLAINED against a matching probe read — trimmed
+slot; suspect slice-vanish of the thin track walls vs the ref's
+lumpy band), st11/12 topPct 3.4/0.9 residual rib phase. The honest
+ceiling of this arc without another instrument-grade find is ~82-85;
+>=90 needs the front saddle rebuilt and the stations wPct spread
+(1.3-1.7 class) retired.

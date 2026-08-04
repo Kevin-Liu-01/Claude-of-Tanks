@@ -190,3 +190,75 @@ plan-turret (thin-rail column lottery + the print's turret-node oddities
 at plan resolution). These are print-shape items, documented in the
 r2-r4 findings; the whole-vehicle read is verified in the overlay pair
 and the visual-eval digests (yawProxy <=2.4 deg, no RIG MISMATCH).
+
+## AFV r2 — drive-end swap + whole-front push (2026-08-04)
+
+### Trajectory (gate x2 identical at close)
+49.3 -> **58.2** | hull 63.3 -> 65.5 / whole 49.3 -> 62.3 / turret
+53.8 -> 58.2 / stations 70.4 -> 73.4 / dims 96.6 -> 100 / floaters
+100. Geometry hash 260e9650 -> 27dd300e (63 meshes / 66104 verts).
+Oracle bytes e699c868 untouched. npm test 265 ok. Evaluator digests:
+shots/visual-eval-m2a2_bradley/ (yawProxy <=1.9 deg, no RIG MISMATCH).
+
+### DRIVE-END SWAP EXECUTED (the corrected-packet order)
+sprocket now FRONT (z 2.55, y 0.56, r 0.24), idler REAR (z -2.72,
+y 0.68, r 0.28) — positions/radii stayed per-END so the §B6 trapezoid
+and wrap geometry are mask-identical; only the toothed ring moved to
+the bow (buildRunningGear sorts ends by z, so the loop is safe under
+the swap). §B4 after the swap: **0 front / 0 rear** — BETTER than the
+r1 22-rear kv2-band pass; the r1 erratum flag is closed.
+
+### dims 96.6 -> 100 (the flagged 3.4% driver: BUILD CONSTANT)
+heightM read 2.94 vs published 2.98 (1.43%): the p95 anchor — the
+left-mast plateau rail sat at 2.958 and read low. NOT a spec datum
+item. Fix: the mast tower/antenna rail now carry the print's own
+2.88-2.98 plateau across x -0.75..-1.12 (fresh front read; the r1
+packet's "front x -0.77..-1.01" undershot it), top 2.98. heightM now
+2.95-2.98 (0.91% grace) with the whips as the ref-aligned spikes.
+
+### front_whole 49.3 -> 62.3 (the binder order)
+Fresh workorder columns against the packet r2-r4 asymmetry notes:
+- LEFT flank rebuilt to the print's narrow read: flare ends -1.49,
+  upper applique at -1.475, tilted deep skirt plate (front band
+  0.85..1.50 over x 1.31..1.50, z -3.05..2.70 — the r1 thin outboard
+  plate left the track visible to ground at x -1.34..-1.38), left
+  rear bracket now the print's own narrow 1.22..1.33 band, and the
+  front-left fender BAG box (plan x to -1.65 over z 2.0..2.5, the
+  tapering 1.13..1.55 -> 1.24..1.33 front wedge) — the r1 "left rack
+  box" was this element mis-read as amidships.
+- RIGHT: skirt on the print's full-length 1.62 line (width datum caps
+  the outer face at 1.6455, 3.29 = 0.34% grace), stowage tower widened
+  to the print's x 0.77..1.36, exhaust pulled onto the slab face.
+- TREAD ASYMMETRY (print: right to ~1.46, left ~1.30): rig band now
+  matches the LEFT (xc 1.135, trackW 0.33); a static right outer
+  shoe-pad row + return cover strip (hullTrack bucket, so §B4 measures
+  it as track) carries the right's extra width. Any symmetric band
+  pays ~4 columns of 0.5-0.9 err — this was the only honest split.
+- Nose reshaped to the print's rounded-corner trapezoid (center 3.17,
+  3.26 @ |x| 0.65-1.2, corners to 2.94): overallLengthM 6.57 (0.24%).
+- Bustle rack lowered to the print's 2.46-2.55 front center band
+  (rails 2.56); the floating C-21 decals moved onto the slab faces
+  (decals are mask geometry — the right one owned two front columns
+  and a plan column at x 1.66).
+- turret plan 47.4 -> 58.2-supporting fix: the r1 right-tower seat sat
+  0.4 aft — the packet's "plan z -1.09..0.18" is WORLD frame, not
+  turret-local. M242 tube split per the bmp2 r2 law (12-seg buildGun
+  stub + 28-seg extension + P.muzzleZ restored); coax stub 16-seg.
+
+### §B table at close
+§B2 top-down flood 0; §B3 census mg1+9d; §B4 clip 0/0 (post-swap);
+§B5 turret-parent 0/0/0 (the r1 tarp-roll abutting adjudication
+stands — it no longer flags); §B6 trapezoid both ends raised (front
+sprocket 0.56 + rear idler 0.68, the print's own real ramps).
+
+### Worst remaining rows (honest)
+front_whole 62.3: the mast-plateau west edge x -0.75..-0.88 (~0.15),
+the right 1.32-1.46 tread cols (partially served by the pad row), and
+the turret saddle x -0.3..+0.73 (my rack band vs the ref's 2.46-2.55
+fall-off). side_whole 70.9 carries dAlong -0.075 (the side bodySpan
+mid moved with the bow/nose reshape — same registration class as the
+bmp2 r2 law; re-anchoring the side mids under that mapping is the
+next arc's first order). plan rows 70.8 (the x ±1.5-1.7 flank-edge
+lottery). turret plan residual: the x ~0.04 column (one col, e0.92,
+unidentified against the yawed capture — packet-flagged for the next
+probe).
