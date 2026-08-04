@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-04T01:08:27.546Z",
+ "generatedAt": "2026-08-04T01:19:19.843Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 15,
  "total": 85,
@@ -876,6 +876,19 @@
    }
   },
   {
+   "id": "m1a1",
+   "geoMin": 89.4,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 91.7,
+    "wholeCurves": 89.4,
+    "turretCurves": 89.6,
+    "stations": 93.5,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
    "id": "m1a2_tejas",
    "geoMin": 89.4,
    "gatePassed": false,
@@ -890,19 +903,6 @@
   },
   {
    "id": "m1a1ha",
-   "geoMin": 89.4,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 91.7,
-    "wholeCurves": 89.4,
-    "turretCurves": 89.6,
-    "stations": 93.5,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "m1a1",
    "geoMin": 89.4,
    "gatePassed": false,
    "components": {

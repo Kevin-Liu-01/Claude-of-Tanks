@@ -149,3 +149,20 @@ Shared-build round banked in m1a1.md ("POST-WARP RE-TUNE ROUND"): trio now
 hull 92.4 / whole 88.9 / turret 85.9 / stations 90.3 / dims 100 / floaters
 100. The knee-band + whip residual law (heightM sovereign vs the warped
 ref's 2.556 band) and the W1b orchestrator flag live there.
+
+## FAMILY VARIETY + §B4 CONTAINMENT (graduate-change round, 2026-08-03)
+NEW FREEZE HASH: 526341c0 (was b432d89d; 47 meshes / 158248 verts).
+Shares the family §B4 set (TEJAS_HULL laneCarve bow [2.60,3.49] / stern
+[−3.61,−2.90] @ ±1.08, gear_wrapPads per-side migration, rear outboard
+doors onto the inter-track wall — details in m1a1.md): audit front 0 /
+rear 0 exact (was 1139/683). VARIETY loadout (CROWS identity kept):
+rackDufMul [0.7, 0, 1] (left duffel slimmed, center out, small right
+kept) + stowed loader's pintleMG 'mag' (muzzle resting at the right
+duffel edge, top 2.15) + a FITTINGS.antennaWhip base pot (h 0.20, dark)
+by the rear rack post. Census mg1+1d ✓. m1a2_tusk inherits the carve +
+the tejas loadout via the shared build (its chimera-oracle caps stand;
+dims/floaters 100 verified this round — the committed ledger row was a
+false-0). Gate: 89.4 = today's pristine-HEAD read exactly (x3; bisect-
+proven neutral; the 90.5→89.4 ledger delta pre-exists — orchestrator
+lane: override-path drift on this oracle). Critic pairs re-rendered:
+shots/critic-m1a2_tejas/. Re-freeze at landing.

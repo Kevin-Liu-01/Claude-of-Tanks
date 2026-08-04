@@ -84,3 +84,15 @@ Shared-build round banked in m1a1.md ("POST-WARP RE-TUNE ROUND"): trio now
 hull 92.4 / whole 88.9 / turret 85.9 / stations 90.3 / dims 100 / floaters
 100. The knee-band + whip residual law (heightM sovereign vs the warped
 ref's 2.556 band) and the W1b orchestrator flag live there.
+
+## FAMILY VARIETY + §B4 CONTAINMENT (graduate-change round, 2026-08-03)
+NEW FREEZE HASH: b14be581 (was 88a4a978; 46 meshes / 158212 verts).
+Shares the m1a1 round's §B4 set (TEJAS_HULL laneCarve, gear_wrapPads
+per-side migration, rear-door narrowing — see m1a1.md): audit front 0 /
+rear 0 exact. VARIETY loadout (distinct from m1a1): rackDufMul [1,0,0] +
+stowed pintleMG 'm2' WITH SHIELD (top 2.27 < the 2.31 class) + a
+FITTINGS.spareTrackLinks strip flat on the freed floor (links along x,
+tops 2.00 — under the stowed barrel line). Census mg1+1d ✓. Gate: the
+identical 89.4 as m1a1 (bisect-proven neutral — pristine HEAD reads the
+same 89.4 today; pre-existing override-path drift, orchestrator lane).
+Critic pairs: shots/critic-m1a1ha/. Re-freeze at landing.
