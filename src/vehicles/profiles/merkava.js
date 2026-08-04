@@ -496,6 +496,44 @@ function merkavaChassis(P, c) {
       // siblings/3B/3C keep the dark-pin path byte-identical.
       P.add('hull', box(0.058, 0.070, 0.045), tx, tyE - 0.005, c.keel.toeZ + 0.033, -0.35, 0, 0);
       P.add('hullDetail', KIT.cylX(0.018, 0.10, 8), tx, tyE - 0.012, c.keel.toeZ + 0.020);
+      if (c.towRings) {
+        // r13 order 3 (evaluator close-roof arcs ref 2 / proc 0; ref-
+        // silhouette permit): the ref's only two close-roof arc reads are
+        // ROUND tow shackle rings at its toe corners (r ~0.08, one smooth,
+        // one 8-faceted), read where their loops overhang the bow edge
+        // against the under-bow background. Measured iterations: an upright
+        // +-x-facing ring drowned in the clevis furniture, and the toe face
+        // is near edge-on to this camera (0.23 m of face -> ~9 px), so only
+        // a LYING ring reads round: the loop lies on the toe shoulder
+        // (rx 0.35 up-forward, rz -s*0.5 toward the key) with its forward
+        // rim overhanging the toe edge — the ref's own eye grammar. Free by
+        // construction: plan covered by the pod lanes (|x| 0.537..0.693
+        // inside the pods' 3.055 reach; rim z<=2.99), side under the gun
+        // tube's 2.08 line, front interior to the glacis face, rear rim
+        // embedded in the toe corner (contiguity). 3D-only opt-in —
+        // merkava1b shares towLit and stays byte-exact.
+        // Both eyes SEATED on the toe shoulder (the floating-eye read over
+        // the brackets), plus ONE shackle HANGING under the toe inboard of
+        // the right clevis: probed on the official pair, the only open
+        // background pocket under the bow at this camera is the (57,581)-
+        // class void at x ~0.35..0.5 (further outboard the keel toe ramp
+        // backs everything) — the hanging loop's lower rim crosses the toe
+        // bottom-edge contour there, the ref's own arc grammar. Its bottom
+        // rides the keel-toe silhouette line (side/front interior); the
+        // forward rim's ~0.04 plan poke on 1-2 cols is AA mask-bleed class.
+        P.add('hullDetail', KIT.torus(0.058, 0.020, 18, 10),
+          tx, tyE + 0.13, c.keel.toeZ + 0.05, 0.35, 0, s * -0.5);
+        if (s > 0 && c.towHang) {
+          // (camera-ray criterion: under-toe content prints against the
+          // background only where y < 0.88 - 1.573*(2.89 - z) — the 27-deg
+          // sight-line under the toe edge outruns the keel ramp. The loop's
+          // low-forward rim crosses it by ~5 cm; its y-min 0.81 stays above
+          // the existing 0.715 bottom envelope at these columns (workorder),
+          // z-max 2.92 is a ~1 px AA-class plan graze on one column.)
+          P.add('hullDetail', KIT.torus(0.095, 0.024, 20, 10),
+            0.42, tyE - 0.085, c.keel.toeZ - 0.07, 0.35, 0, -0.5);
+        }
+      }
       if (s > 0) {
         // r8 cheap polish (critic r7: "3d bow bracket/hanger row"): a row
         // of small mount brackets + hanger hooks across the bow toe plate
@@ -678,7 +716,14 @@ function merkavaChassis(P, c) {
   if (exTop - exBot > 0.10) {
     const bodyHW = c.bodyHW ?? hw * 0.985 / 1;
     const exY = (exTop + exBot) / 2, exZ = g.z0 - 0.55;
-    P.add('hullDark', box(0.02, exTop - exBot, 0.62), bodyHW + 0.006, exY, exZ);
+    // c.louvreSoft (3D r13 order 1a): the dark back panel between the pale
+    // slats read 56-57 at the close-roof angle — ~580px of the gear-band
+    // sub-60 pool the ref keeps in its 60+ slat-panel class. CLOTH tone
+    // (measured ~65-70 on this vertical plane at the steep view) so the
+    // pale slats keep their rhythm contrast against the panel — a detail-
+    // tone first cut made panel and slats one pale block. Siblings
+    // byte-identical.
+    P.add(c.louvreSoft ? 'hullCloth' : 'hullDark', box(0.02, exTop - exBot, 0.62), bodyHW + 0.006, exY, exZ);
     for (let i = 0; i < 4; i++) {
       P.add('hullDetail', box(0.028, (exTop - exBot) * 0.86, 0.045), bodyHW + 0.010, exY, exZ - 0.24 + i * 0.16);
     }
@@ -942,8 +987,24 @@ function merkavaChassis(P, c) {
           // the ref's own curtain class. The wheel window above (0.42+)
           // stays open — wheels + dish anatomy own it. z-clamped clear of
           // both wrap rings (§B4).
-          P.add('hullDark', box(0.016, 0.12, 4.72),
-            s * ((c.gearOut ?? hw - 0.036) - 0.012), 0.36, -0.77);
+          // r13 order 1a (critic r12: gear band 4691 vs ref 3408 — "lift the
+          // curtain sub-60 graze rows into the 60-68L band"): the curtain
+          // SPLITS. Measured on the official pairs, the curtain's ~56 mass
+          // is ALSO the VL wheel-row median carrier (~24% of the window at
+          // exactly 56 — pull it all above 57.5 and the window median jumps
+          // to 63.7 against the protected 56.0 +-1.5; tone is view-
+          // independent, so no single value can read >=60 above and <=57.5
+          // from the side). The UPPER GRAZE BAND (y 0.365..0.42, the rows at
+          // the hem line the order names) rides the cloth channel — its
+          // close-roof read lands the ordered 60-68 class — while the LOWER
+          // band keeps the hullDark 56 = the ref's own side curtain class
+          // AND the median pool. (Candidates measured at this plane, side /
+          // close-roof: hullDark 56/57, hullCloth ~80/65, hullDetail —
+          // scheme-repainted pale sand — 94/76.) sk.soft is 3D-only.
+          P.add('hullCloth', box(0.016, 0.045, 4.72),
+            s * ((c.gearOut ?? hw - 0.036) - 0.012), 0.3975, -0.77);
+          P.add('hullDark', box(0.016, 0.075, 4.72),
+            s * ((c.gearOut ?? hw - 0.036) - 0.012), 0.3375, -0.77);
           // (KIT.torus is pre-rotated rx pi/2 — a flat y-axis ring; rz
           // pi/2 stands it facing +-x. An ry spin here was a no-op that
           // left the rings FLAT, reaching x +-2.06 and poisoning the
@@ -4402,10 +4463,14 @@ function merkavaModularTurret(P, t) {
       // census close-roof 1396 vs ref 116). Collar/rim/seam rings ride the
       // olive DETAIL bucket (albedo G=R+5 — the ordered R <= G-1 class).
       // collar/solid are 3D-only config branches (3B/3C byte-exact).
-      P.add('turret', KIT.torus(rg.collar.r * 0.97, 0.016, 24), rg.x, rg.collar.y + 0.012, rg.z);
-      // r5 ring de-tick: the third concentric detail circle joined the
-      // dash-tick census (compass-dial read) — collar keeps disc + one
-      // dark edge ring only.
+      // r13 order 3: the round-tube collar torus drew the OUTERMOST of the
+      // concentric circles at close range — it becomes a CONICAL SHOULDER
+      // sweeping the whole annulus from the collar rim up to the drum wall
+      // (top radius tucks at the drum so no flat top-edge circle prints;
+      // same 2.485-class crest as the old torus). The sloped flank shades
+      // continuously around the circumference instead of printing a ring
+      // line. r5 de-tick still holds — no third circle.
+      P.add('turret', cylY(rg.collar.r * 0.55, rg.collar.r * 0.985, 0.016, 24), rg.x, rg.collar.y + 0.019, rg.z);
     }
     P.add('turret', cylY(rg.r, rg.r * 1.03, rg.top - rg.base, cs), rg.x, (rg.top + rg.base) / 2, rg.z);
     if (rg.solid) {
@@ -4422,9 +4487,20 @@ function merkavaModularTurret(P, t) {
       // lines (cupola: its 2.52-2.541 front cols at x 0.23..0.58; the old
       // lid+seam stack already reached +0.0165, so the union moves < 4 mm
       // = sub-pixel at 640) — sphere shading kills the drawn-circle read.
-      P.add('turret', KIT.torus(rg.r * 0.955, 0.021, 24), rg.x, rg.top - 0.003, rg.z);
-      P.add('turret', KIT.xform(KIT.sph(rg.r * 0.76, 22, Math.PI * 0.5), 0, 0, 0, 0, 0, 0,
-        [1, 0.020 / (rg.r * 0.76), 1]), rg.x, rg.top, rg.z);
+      // r13 order 3 (critic r12 close-roof (c): the rim torus + dome-edge
+      // seam still read as DRAWN concentric ring+seam circles at the native
+      // crop): the round-tube rim torus is retired for a SHADED STEP at the
+      // SAME certified cap — a shallow conical shoulder ring whose sloped
+      // flank shades continuously around the circumference (key side bright
+      // -> far side dark, the perspective-volume read), and the squashed
+      // dome crown rides it with its fat zone OVER the cone's top disc so
+      // no flat edge prints (the two-step first cut left a protruding disc
+      // edge = a fresh drawn circle). Crown rg.top+0.020 exactly; outer
+      // r*0.972 inside the old torus bulge; cone lip 2.5275-class + crown
+      // 2.540 keep the certified 2.52-2.541 front-col carriers.
+      P.add('turret', cylY(rg.r * 0.60, rg.r * 0.972, 0.017, 24), rg.x, rg.top - 0.0005, rg.z);
+      P.add('turret', KIT.xform(KIT.sph(rg.r * 0.72, 22, Math.PI * 0.5), 0, 0, 0, 0, 0, 0,
+        [1, 0.016 / (rg.r * 0.72), 1]), rg.x, rg.top + 0.004, rg.z);
       P.add('turret', box(0.065, 0.042, 0.095), rg.x + rg.r * 0.90, rg.top - 0.014, rg.z);
       return;
     }
@@ -4970,6 +5046,15 @@ function buildMerkavaMark(P, p) {
       if (P.mats.spareTrack.emissive) P.mats.spareTrack.emissive.setHex(0x181712);
       P.mats.spareTrack.needsUpdate = true;
     }
+    // p.rubberHex (3D r13 order 1a): the tire treads + rubber hem/flap kit
+    // read 51-57 through the hem windows at the close-roof angle where the
+    // ref keeps its gear shade in the 60-68 band (gear-band census 4691 vs
+    // 3408). One notch up from the stock 0x2e2d2a — the retone rides the
+    // ORIGINAL material (hook kept; the clone()-drops-hook law is why this
+    // is not a clone), so tires, plank hems and mud flaps lift together.
+    // Side-window gates re-verified (p5 rises AWAY from the 45/42 floors;
+    // the med-56 mass lives on the wheelHex dish faces, untouched).
+    if (p.rubberHex) P.mats.rubber.color.setHex(p.rubberHex);
     // p.grilleBright (1B r4 minor: "louvre +14L — the ref's oddly-bright
     // panel reads 97, ours 83"): the glass material is otherwise unused on
     // this mark (glassTiles false routes every tile dark), so the glacis
@@ -5543,12 +5628,21 @@ function merkava3Kit(P, p, t, opts = {}) {
       P.add('turretTrack', box(0.104, 0.010, 0.33), 0.14, crTop - 0.005, zb + 0.395);  // receiver top plate (void-channel: lit turretDark reads WARM ~87L; the ref footprint class is sub-78 neutral)
       P.add('turretTrack', box(0.095, 0.026, 0.115), 0.135, crTop - 0.098, zb + 0.175); // mount tray under the receiver rear (footprint mass, void-channel)
       // r12 order 6 (gun-FORM footprints): the M2's 146px top-down chip
-      // extends into a receiver+barrel LINE — two dark strips lying ON the
+      // extends into a receiver+barrel LINE — dark prints lying ON the
       // raked crest lowFace under the barrel's own lane (8 mm proud of the
-      // face plane, split with a gap; front/side masks keep their rod/crest
-      // maxima — the strips sit far below the certified rod line).
-      P.add('turretTrack', box(0.040, 0.008, 0.24), 0.142, crTop - 0.227, zb + 1.14, 0.424, 0, 0);  // barrel-line print, rear segment (on the lowFace slope)
-      P.add('turretTrack', box(0.032, 0.008, 0.18), 0.142, crTop - 0.358, zb + 1.43, 0.424, 0, 0);  // fwd segment (tapered)
+      // face plane; front/side masks keep their rod/crest maxima — the
+      // prints sit far below the certified rod line).
+      // r13 order 4 (critic r12: the two solid strips read as PARALLELOGRAM
+      // SLOTS at close-roof/hero-fl): each strip breaks into a DASH TRIPLET
+      // tapering muzzle-ward — same lane, same rake (dashes follow the
+      // lowFace fall, dy = -0.452*dz), same 0.008 proudness; the top-down
+      // M2 gun line keeps its ~70% print mass (sub-78 line class held).
+      for (const [dzz, dw, dl] of [[-0.085, 0.040, 0.058], [0, 0.035, 0.056], [0.085, 0.031, 0.054]]) {
+        P.add('turretTrack', box(dw, 0.008, dl), 0.142, crTop - 0.227 - 0.452 * dzz, zb + 1.14 + dzz, 0.424, 0, 0);  // rear triplet
+      }
+      for (const [dzz, dw, dl] of [[-0.065, 0.028, 0.044], [0, 0.025, 0.042], [0.065, 0.022, 0.040]]) {
+        P.add('turretTrack', box(dw, 0.008, dl), 0.142, crTop - 0.358 - 0.452 * dzz, zb + 1.43 + dzz, 0.424, 0, 0);  // fwd triplet (tapered)
+      }
       // r12 order 4: cluster edge thinned — the can slims toward the
       // receiver lane (dead-rear crown rows shed ~1px/side here).
       P.add('turretDetail', box(0.054, 0.050, 0.15), 0.048, crTop - 0.098, zb + 0.26); // ammo can, low-left (slimmed)
@@ -5793,8 +5887,18 @@ function merkava3dKit(P, p, t) {
   // 2.453 < the 2.462 crown-window law line).
   P.add('turret', box(0.19, 0.058, 0.17), 1.215, V(2.560), L(-1.015));               // receiver body (pale mass, forward seat)
   P.add('turret', box(0.16, 0.028, 0.17), 1.215, V(2.5915), L(-1.015));              // receiver crown lower band (top 2.6055)
-  P.add('turretTrack', box(0.062, 0.012, 0.17), 1.218, V(2.6115), L(-1.015));        // receiver spine plate (top 2.6175 unchanged; gun-shaped print)
-  P.add('turretTrack', box(0.030, 0.008, 0.26), 1.218, V(2.449), L(-0.70));          // barrel-line print on the sill (under the rod's own lane)
+  // r13 order 1b (critic r12: the ~(495..530, 377..390) half-frame bar +
+  // sill bar are the named NEAR-BLACK deck bars — void-channel prints read
+  // 42/45L at close-roof where the order wants the 60-75L soft class): both
+  // .50 prints leave the void channel for ROLLED CAMO (the r12 conduit lane
+  // — rz ~0.5 rolled away from the key lands the ref's own 60-75L soft-
+  // shadow class, warm-neutral). The roll is compensated so the HIGH edge
+  // carries the certified line exactly (spine max corner 2.6175, sill max
+  // 2.4525 < the 2.462 crown-window law line); low edges embed in the
+  // crown band / sill solids below (no floaters). The view-top .50 window
+  // keeps its gun-shaped sub-78 print (60-75 < 78).
+  P.add('turret', box(0.062, 0.009, 0.17), 1.218, V(2.5987), L(-1.015), 0, 0, 0.50); // receiver spine plate (rolled soft; high edge 2.6175 unchanged)
+  P.add('turret', box(0.030, 0.008, 0.26), 1.218, V(2.4418), L(-0.70), 0, 0, 0.50);  // barrel-line print on the sill (rolled soft; high edge 2.4525)
   P.add('turretDark', box(0.022, 0.030, 0.18), 1.10, V(2.556), L(-0.99));            // cradle cheek plate (inboard)
   // r7 gun-metal law: the .50 barrel thins to the ref's AA-coverage pixel
   // class (see the M2 note — a full-coverage rod reads 95 from the far
@@ -5946,6 +6050,73 @@ function merkava3dKit(P, p, t) {
   P.add('turretDetail', box(0.13, 0.008, 0.28), -0.105, V(2.175), L(1.40), 0.424, 0, 0);  // lowFace wash B
   P.add('turretDetail', box(0.20, 0.010, 0.22), 0.33, V(2.350), L(0.70), -0.18, 0.14, 0); // right shelf graze cap
   P.add('turretDetail', box(0.18, 0.010, 0.20), -0.33, V(2.349), L(0.66), -0.16, -0.12, 0); // left shelf graze cap
+  // r13 order 2 (critic r12: fwd-plane pale relief CROWNS sparser than the
+  // ref's cast 95-98L grammar — window x120..350 y360..450 p95 87.2 vs
+  // order >=90): three RIDGE-TRIPLET cast crowns on the fwd-roof plane band
+  // between the crest edge and the right cheek fall (pixprobe-mapped: the
+  // plane pixels there decode to z 0.16..0.59 — OUTSIDE the 0.6..1.75 crest
+  // lowFace contamination zone the r12 probe documented). A flat-crown
+  // first cut measured 84.6 at rx -0.22 — too shallow for the >=90 tail;
+  // these ride the louvre-proven 0.42-rad sun-graze band (+10L over the
+  // 80-84 deck class) as packed narrow ridges: each crown's HIGH edge stays
+  // <= +0.012 over the local plane (flush-kit class), the low edge buries
+  // in the cheek solid. M2 lane x 0.08..0.20 untouched; x < the 0.62
+  // cheek-fall shoulder so no silhouette row moves.
+  // (measured iteration, three cuts: (i) flat crowns at rx -0.22 printed
+  // 84.6; (ii) plateau ridge patches at z 0.10..0.47 rendered NOTHING — the
+  // whole z<0.6 turret plateau is OCCLUDED behind the cheek-front crest at
+  // the close-roof camera (pixprobed: the window's "plateau" pixels decode
+  // to the z 0.6..0.85 cheek slope); (iii) the crest-adjacent zones sit in
+  // the crest's light shadow, so detail-pale there prints 84-91, while on
+  // the OPEN hull deck the same pale channel prints 90+ (the towLit bits at
+  // (210,380), the chocks class). Final layout: the visible cheek-SHOULDER
+  // strip keeps a ridge paving (letter-clean plane hits, z 0.42..0.595),
+  // and the ordered 2-3 pale cast crowns land on the WINDOW'S true big
+  // plane — the open LEFT HULL FWD DECK (pixprobe y 1.59-1.68 = the deck
+  // plane, not the banned crest-lowFace/cheek-slope surfaces; those live at
+  // y 2.1-2.4).
+  for (const [rgx, rgw, rgz, rgy] of [
+    [0.585, 0.18, 0.420, 2.3515], [0.585, 0.18, 0.465, 2.3435], [0.585, 0.18, 0.510, 2.3355],
+    [0.585, 0.18, 0.555, 2.3275], [0.585, 0.17, 0.595, 2.3195],
+  ]) {
+    P.add('turretDetail', box(rgw, 0.022, 0.044), rgx, V(rgy), L(rgz), -0.52, 0.10, 0);
+  }
+  // hull-deck cast crowns (hull-frame coords — kit builders may add hull
+  // buckets; the deck plane is 73-80L at this angle, so the pale channel
+  // clears 90 without steep tilt; crowns <= +0.012 over the local deck/
+  // plank line = sub-2cm side-trace class, interior plan/front)
+  // (deck plane pixprobed at 8 points: y 1.692 @z1.03 falling -0.185/z to
+  // 1.655 @z1.24 — the first-cut crowns sat 1-4 cm under it; centers =
+  // plane - 0.0073 so the high corners ride plane+0.012 exactly)
+  if (p.deckCast) {
+    // The crowns as CAST BOSSES on the LEFT PLANK STRIP (flush washes on
+    // the deck emerge <=3 px at this camera; a fitting face needs real
+    // height to print area, and bosses ON THE DECK plane pay side_hull —
+    // measured -0.2 on the first cut: side_hull's top at z 0.9..1.5 IS the
+    // deck crown yT line, and the crest only covers side_WHOLE, not the
+    // hull-only row). The zero-cost lane, measured on the gate: the deck
+    // crown line (yT 1.708..1.655 over z 0.95..1.36) overhangs the OUTER
+    // PLANK strip (surface 1.60) by 0.05..0.10 — bosses seated on the
+    // plank with tops <= yT(z)-0.006 emerge fully for the camera yet stay
+    // under the side trace; front cols covered by the deck's own wT
+    // columns (1.625 @ z1.40), plan interior to the 1.748 plank edge.
+    // Pale tilted caps print the 90-96 class the ref's cast grammar
+    // carries.
+    // (the strip's window coverage is split by the y360 crop edge: the
+    // z<1.1 bosses print above it — they still dress the 3x-crop read —
+    // and the z>1.3 stretch is crest-occluded; the two z 1.13/1.19 seam
+    // bosses are the only fully-in-window carriers. This is the measured
+    // ceiling of the zero-cost lane — see the packet's order-2 residual.)
+    P.add('hullDetail', box(0.15, 0.040, 0.11), -1.630, 1.663, 0.96, -0.44, 0.05, 0);
+    P.add('hullDetail', box(0.14, 0.040, 0.11), -1.650, 1.654, 1.03, -0.46, -0.04, 0);
+    P.add('hullDetail', box(0.13, 0.040, 0.11), -1.660, 1.645, 1.10, -0.44, 0.06, 0);
+    P.add('hullDetail', box(0.12, 0.040, 0.11), -1.670, 1.636, 1.17, -0.45, -0.05, 0);
+    P.add('hullDetail', box(0.11, 0.040, 0.10), -1.680, 1.627, 1.24, -0.44, 0.04, 0);
+    P.add('hullDetail', box(0.10, 0.040, 0.10), -1.690, 1.618, 1.31, -0.46, -0.03, 0);
+    P.add('hullDetail', box(0.09, 0.038, 0.09), -1.698, 1.610, 1.37, -0.44, 0.05, 0);
+    P.add('hullDetail', box(0.13, 0.040, 0.10), -1.600, 1.6275, 1.14, -0.45, -0.03, 0);
+    P.add('hullDetail', box(0.12, 0.040, 0.10), -1.615, 1.6165, 1.20, -0.44, 0.05, 0);
+  }
   // ---- r12 order 5b: hero-fl band-wall washes — three ry-faceted flush
   // plates on the plumb wall BELOW the MG slot curb (2.455): the wall reads
   // swept-faceted instead of tall-flat; every max-over rule keeps the
@@ -7450,6 +7621,23 @@ export const MERKAVA_PROFILES = {
     // r7 switches: clevis-mouth de-punch (bow diamond ~53L -> lit class) +
     // rear-band stow slivers (see deckStow below).
     towLit: true,
+    // r13 order 3 (evaluator close-roof arcs): round tow shackle rings in
+    // the clevis lanes — the ref's own two r0.08 bow arcs (ref-silhouette
+    // permit; extents inside the pod plan/side lanes). 3D-only.
+    towRings: false,
+    // r13 order 1a: the exhaust-louvre back panel joins the slats' detail
+    // tone (close-roof gear-band census; see the chassis note).
+    louvreSoft: true,
+    // r13 order 2: plank-strip cast bosses (see the deckCast note in
+    // merkava3dKit — the zero-side-cost crown lane).
+    deckCast: true,
+    // (r13 order 1a first cut set rubberHex 0x363530 — the lifted tires
+    // rendered 62-64.6 in the VL wheel-row window and TOOK THE MED there
+    // (56.0 -> 64.6 vs the protected 56.0 +-1.5). Tire luma is view-
+    // independent: any lift that clears 60 at close-roof also leaves the
+    // side window's ≤57.5 median pool. Reverted — the census rides on the
+    // curtain/louvre/print lanes instead; the rubberHex plumbing stays for
+    // marks whose ref wants it.)
     // r7 REAR-BAND STOW (item a, the critic-priced "~20 hull-side columns
     // of kit height"): a first cut embedded slivers UNDER the local
     // surface (whatsat: they built but the rack box top 1.558 / loft line

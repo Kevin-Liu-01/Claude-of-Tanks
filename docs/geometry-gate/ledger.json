@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-04T01:52:42.111Z",
+ "generatedAt": "2026-08-04T02:39:37.827Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 15,
  "total": 85,
@@ -994,10 +994,10 @@
   },
   {
    "id": "merkava3d",
-   "geoMin": 90.3,
+   "geoMin": 90.4,
    "gatePassed": true,
    "components": {
-    "hullCurves": 90.3,
+    "hullCurves": 90.4,
     "wholeCurves": 90.6,
     "turretCurves": 91.4,
     "stations": 91.7,
@@ -1072,13 +1072,13 @@
   },
   {
    "id": "pt91m",
-   "geoMin": 91.2,
+   "geoMin": 91.3,
    "gatePassed": true,
    "components": {
-    "hullCurves": 92.2,
-    "wholeCurves": 91.2,
-    "turretCurves": 95.1,
-    "stations": 92.3,
+    "hullCurves": 93,
+    "wholeCurves": 91.3,
+    "turretCurves": 95,
+    "stations": 92.8,
     "dims": 100,
     "floaters": 100
    }

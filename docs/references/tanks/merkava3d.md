@@ -918,3 +918,149 @@ parapet, the 2.644 front-col pot) and banked the elevated-rear-cam law
 crown-air grinding against certified carriers is out of order; skyline
 STRUCTURE work (step rhythm, spike placement) remains fair game. Critics
 judge the rear skyline on read, not the percentage.
+
+## Push round 13 — THE ALBEDO ROUND (2026-08-03, hash 954a9650)
+
+r12 critic verdict (docs/critique/shaded-parity-merkava3d-r12.md): FAIL
+floor 8.9 close-roof only, mean 9.00, thirteen views >=9.0 — four
+albedo/hairline orders at zero silhouette price. Gate PASS x2 at min
+**90.4** (r12 record 90.3: hull 90.3->90.4, whole 90.6 EXACT, turret
+91.4 EXACT, stations 91.7, dims/floaters 100/100 — the round's total
+geometry price is NEGATIVE 0.1). merkava3b/3c/1b/2b/2d/4/4b BYTE-EXACT
+after every build (a4ed2c82/1d9b026c/6bcb98c9/9bfe0895/62456460/
+e1d164dc/d44a3624). Every claim below re-derived on the FINAL pairs,
+official rigs only (tmp-tank-critic + tmp-critic3d-r12-measure.py, the
+r12 critic's own windows).
+
+1. **close-roof census (order 1, order-of-record <=6000) — DELIVERED
+   5519** (was 6779; ref 4086) with near-black<45 626 vs ref 805 (we now
+   under-ink the ref's own dark class). Lanes, all albedo-only:
+   (a) CURTAIN SPLIT — the r12 curtain's ~56L mass is ALSO the VL
+   wheel-row median carrier (~24% of the window at exactly 56; pixel-
+   probed + histogrammed on the official pairs). Tone is view-
+   independent, so no single value reads >=60 at close-roof AND <=57.5
+   from the side: the UPPER GRAZE BAND (y 0.365..0.42, the hem-line rows
+   the order names) moves to the cloth channel (measured side/close-roof
+   at this plane: hullDark 56/57, hullCloth ~80/65, hullDetail 94/76 —
+   the scheme repaints detail to pale sand), the LOWER band keeps
+   hullDark = the median pool. Two first cuts that lifted the whole
+   curtain measured VL med 63.7-64.6 vs the protected 56.0+-1.5 and were
+   reverted. (b) LOUVRE PANEL — the exhaust-bank back panel (~580px at
+   56-57) joins the cloth class behind its pale slats (c.louvreSoft,
+   3D-only; slat rhythm kept). (c) tireHex/rubberHex lifts were BUILT,
+   MEASURED (VL med +6.4/+8.6 — the tires are median mass too) and
+   REVERTED; the rubberHex opt-in plumbing stays for marks whose ref
+   wants it. SIDE GATES on the final pairs: VL p5 52.1 / med 56.0 EXACT
+   / p95 93.7 / air 3.3; VR p5 47.4 / p95 81.5; VR med 60.1 = the r12
+   watch item exactly.
+2. **Named near-black bars (order 1b) — DELIVERED.** The (495..530,
+   377..390) half-frame bar (the .50 spine plate) + the sill bar leave
+   the void channel for ROLLED CAMO (the r12 conduit lane, rz 0.50
+   compensated so the HIGH edge carries the certified line exactly:
+   spine 2.6175, sill 2.4525 < the 2.462 law line; low edges embed in
+   the crown band/sill solids). Rect census sub-45: 2 (was ~160, ref 0);
+   the zone now reads deck-blend ~80L soft. View-top .50 window sub-78
+   stays **44 EXACT** (order 30-60; ref 32) — gun-FORM intact.
+3. **Fwd-plane pale crowns (order 2) — sd DELIVERED, p95 at the
+   measured zero-cost ceiling.** Window x120..350 y360..450: sd 6.66
+   (>=6.5, ref 7.48), p95 **87.8** vs the >=90 order (r12 87.2).
+   Pixprobe-confirmed crowns: cheek-shoulder ridge paving at world
+   (0.645..0.658, 2.33-2.36, z 0.435..0.485 — OUTSIDE the 0.6..1.75
+   ban) + a 9-boss cast field on the left plank strip (y 1.61-1.69 =
+   the hull fwd plane; z 0.96-1.37). HONEST RESIDUAL, fully measured:
+   a deck-surface boss variant DID deliver p95 90.5 but cost hull
+   90.3->90.1 (side_hull's top at z 0.9-1.5 IS the deck crown line —
+   the crest only covers side_WHOLE, not the hull-only row) and was
+   REJECTED per this round's zero-price law. Every other lane was
+   probed and measured: flush (+0.012) crowns emerge <=3px at the 27
+   deg camera; the z<0.6 turret plateau is cheek-crest-OCCLUDED (the
+   window's "plateau" pixels decode to the z 0.6-0.85 cheek slope);
+   crest-adjacent zones sit in the crest light shadow (pale prints
+   84-91); the ref's own >=90 tail lives on its gun-tube top-line +
+   the banned crest slopes + deck heights the gate taxes. The
+   87.8-vs-90 gap is surface-ownership, not missing relief — flagged
+   for arbitration (r12 order-5 p95 class).
+4. **Dome grammar (order 3, albedo half) — DELIVERED.** Both drawn
+   ring+seam circle sets are retired: the collar torus becomes a
+   CONICAL SHOULDER sweeping rim->drum (top tucks at the drum wall, no
+   flat-edge circle), the rim torus + flat-lid stack becomes ONE
+   shallow shoulder cone + the squashed dome crown riding its fat zone
+   OVER the cone's disc edge (a two-step first cut left a protruding
+   disc edge = a fresh drawn circle — reworked). Crown rg.top+0.020
+   EXACT (certified cap), cone lip 2.5275/crown 2.540 keep the
+   2.52-2.541 front-col carriers — gate turret/whole EXACT. 3x crops
+   (close-roof + toptilt): both lids read as shaded cast mounds like
+   the ref's rings; no double-circle read.
+5. **Evaluator close-roof arcs (order 3 win condition) — NOT MET (proc
+   0, ref 2); arbitration requested.** Findings bank: (a) the
+   evaluator's arcs live on the MASK CONTOUR only — interior dome rims
+   CANNOT register regardless of shading (the order's causal premise);
+   (b) the ref's two arcs are its bow TOW-HOOK LOOPS reading against
+   the under-bow void (overlay + ray-probes); (c) ref-parity round tow
+   eyes were built four ways and measured: upright rings drown in the
+   clevis furniture (the toe face is edge-on: 0.23m -> ~9px); seated
+   loops on the toe shoulder are HULL-BACKED at this camera (every
+   backward ray re-enters the glacis/toe body — traced point-by-point);
+   a hanging loop's rim DID cross the contour (mask boundary bulge rows
+   584-603) but under-fills the detector's 28.8px@1024 run gate; and
+   the seated pair POISONED the side registration (dAlong 0 -> 0.05,
+   gate 83.6 — the SS-C registration-poisoning law live-fired; bisected
+   and reverted same-session). All rings ship OFF (towRings:false /
+   towHang unset — params kept for a sanctioned re-try); the bow keeps
+   its protected r12 towLit read.
+6. **M2 crest dashes (order 4) — DELIVERED.** Each strip breaks into a
+   DASH TRIPLET tapering muzzle-ward on the same lowFace rake (dy =
+   -0.452 dz, same 0.008 proudness, real 0.022-0.030 gaps). Close-roof
+   3x: broken dashes, no parallelogram slots. View-top M2 zone sub-78:
+   300 (the ordered ~200-300 line class; ref 21 in the same window);
+   .50 window 44 EXACT.
+7. **Warm note (cert 2 respected).** Close-roof warm 552 vs the
+   626-class floor: the DROP is a side effect of the two ordered
+   gear-band retones (lit hullDark classifies warm — the curtain/louvre
+   px that left sub-60 also left the warm count); the deck warm
+   carriers (collar/rim rings, camo swells) are untouched. No deck-warm
+   grinding was performed. VF 57 / VT 575 unchanged-class.
+
+PROTECT verification on the final pairs: containment 0/0 exact + clean
+bow; wheel-row gates 52.1/93.7/56.0-EXACT + 47.4/81.5; under-rims
+88.6/76.8 + rear 82.3; rear-face 343/102.6; skirt band 93.7; crown air
+76.2 + steps 24; louvre sd 6.98/97.1/102.8 EXACT; mottle/med parity
+85.4/86.4 + 94.4/94.4; VT tail band air 14.7 (watch, unchanged);
+hero-rr corridor untouched (cert 1); dome volumes (upgraded per order);
+hem scallops/chevron/towLit plates untouched paths; contig 0; standard-
+check clip 0/0; decor mg0+0d with the standing SI justification (owner
+call still pending). RIG PARITY OK (yawProxy <=1.1). Honest new deltas:
+VF band row med 82.0 -> 79.5 (the collar cone shades the front rows the
+old lit torus tube caught — ordered grammar trade on a standing
+unpriced item, ref 91.9); window n 19836->19993 / air 4.2->3.4 (the
+plank bosses stand in former window background); VT mid-deck p95 90.7
+-> 93.6 (toward ref 96.8); close-roof near-black 786 -> 626.
+
+LAW BANKED (fleet-relevant): (1) side_hull vs side_whole cover SPLIT —
+turret masses cover deck furniture only in the WHOLE row; the hull-only
+row taxes any poke above the deck crown line (the r13 deck-boss -0.2
+incident). The free deck-dressing lane is the PLANK/step band under the
+crown line's overhang (headroom = yT(z) - local surface). (2) The
+scheme repaint makes hullDetail/turretDetail PALE-SAND (~94L lit) — it
+is the pale-kit channel, not an olive mid-tone; the 60-75 soft class on
+this rig is rolled camo (rz ~0.5) or the cloth channel (~65-70 on
+shaded verticals). (3) Registration poisoning fires from INTERIOR
+free-air masses too: the seated bow eyes moved no mask extreme yet
+shifted dAlong 0.05 by adding band content near the 12%-band mid
+(SS-C law confirmation, this time caught by the gate hold).
+
+## Orchestrator arbitration rulings (post-r13)
+1. **Order-2 p95 ceiling RULED: 87.8 is the certified zero-cost ceiling.**
+   The variant reaching p95 90.5 priced hull -0.2 (side_hull's top over
+   z 0.9-1.5 IS the deck crown line — banked law). The delivered crowns
+   (sd 6.66 >= 6.5, pixprobe-confirmed ridges + 9-boss cast field) satisfy
+   the order's intent; the number chased a priced trade. CERTIFIED — no
+   further p95 grinding on the fwd plane; critics judge the relief READ.
+2. **Order-3 arc win-condition RULED: miscalibrated order — delivered by
+   render.** The evaluator is mask-contour-only (its own §D caveat): dome
+   rims never reach the silhouette, and the ref's two detected 'arcs' are
+   its bow tow-hook loops, not the dome. Four ring placements were built
+   and measured; the seated pair live-fired the registration-poisoning law
+   (gate 83.6, bisected, reverted) — rings ship OFF correctly. The dome
+   grammar is judged at 3x render: shaded cast mounds, no double-circle.
+   CERTIFIED; evaluator-scope note stands in SS-D.
