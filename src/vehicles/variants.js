@@ -228,15 +228,13 @@ export const VARIANT_SPECS = {
 // (untextured CARC-green Principled materials) onto the live camo canvas and
 // keeps near-black hardware dark, exactly like the community CAD assets.
 export const VARIANT_MODEL_SOURCE = {
-  m1a1: {
-    source: 'glb',
-    glb: {
-      path: '/models/tanks/community/variants/m1a1_dannzjs_variant.glb',
-      turretNode: 'TurretPivot',
-      gunNode: 'GunPivot',
-      paintUntextured: true,
-    },
-  },
+  // m1a1: DUAL-GATE GRADUATE (2026-08-02, freeze e500174c after the r5
+  // cable re-freeze) — NO variant backfill. The graduation retired the
+  // primary registration and this backfill silently re-sourced the slot,
+  // keeping the graduate OFF the CUSTOM tab and showing a dannzjs-lineage
+  // GLB (the print family owner-identified as a mislabeled Leopard 2A5)
+  // instead of the graduated procedural build. Caught 2026-08-04 by the
+  // owner's custom-list check. The variant GLB stays on disk unregistered.
   t90a: {
     source: 'glb',
     glb: {
