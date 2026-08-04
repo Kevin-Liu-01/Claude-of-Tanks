@@ -200,3 +200,75 @@ as side-row BODY span, shifting the 12%-band midpoint (~1m dAlong class)
 cylinder + clamp plate, scout-gen2-t80.md landmines) + SS-A symmetric
 dims anchors. ariete/type74 share the class. batch-32 (_region_pitch)
 now applies to m48 ONLY (its slope 0.223 is real and measured).
+
+## VERTEX ROUND r4 (2026-08-04, misc agent) — FULL RE-LAY: 0 -> 63.7 min (hull 27.3->68.8, whole 0->63.7, turret 0->68.4, stations 0->76.4, dims 100)
+
+Gate x2 stable: min **63.7** | hull 68.8 / whole 63.7 / turret 68.4 /
+stations 76.4 / dims 100 / floaters 100. Track-clip exact **0/0**;
+standard-check clip ✓ contig 0 ✓ **mg1+5d** (M2 + 2x smokeBank + 2x
+antennaWhip + towCable + spareTrack->towCable swap). Legacy visual board
+86.1: shots/misc-r4/after/type90.png. t80u/leclerc/recon_tank re-gated
+byte-exact to committed decimals.
+
+WORKORDER TOOLING (bank): tools/vertex-workorder.mjs carries the r27
+landmine (the fidelity page's geo run leaves the last renderMask 'other'
+root invisible, collapsing the union center). Scratchpad copy (wo.mjs)
+restores both roots before the union box + saves full-row JSON; authored
+from its ABSOLUTE world columns per §A.
+
+WHAT LANDED (world frame; ref rows shifted +1.045 side / +1.117 plan):
+- HULL: stepped deck 1.392/1.423/1.454 fore->aft; long shallow glacis
+  1.392@1.80 -> 1.177 plateau -> nose 1.03@3.38 (ref plan center bow 3.35);
+  proud V splash board 1.30@3.03-3.22; front mudguard slabs to z 3.56 with
+  the plan-3.69 front carried by a THIN flap at x 1.065-1.655 (non-body);
+  stern boat-tail wedge (bottoms 0.58@-3.2 -> 0.93@-3.73) + raised wide
+  plate course + thin tail lip; SHORT contact patch [-2.4, 2.2] with small
+  high end wheels (r 0.21; far edges 3.59/-3.33).
+- WIDTH PROFILE (from the profiles-extraction stations): rear ~22% at
+  +-1.693, mid +-1.55-1.59 with a +-1.545 amidships inset, front panels
+  +-1.715 over z 2.30-3.30 ONLY (= widthM anchor; deck plates follow
+  1.545/1.585/1.615).
+- SS-A ANCHORS: front = a low bracket x 0.55-0.92 z 3.585-3.615 hidden
+  under the flap union (BODY col ~3.6); rear = mudflap pods x 1.44-1.58
+  z -3.70..-3.83 (the ref's own -3.76 plan cols); hullLengthM 7.43,
+  overallLengthM 9.76 EXACT (muzzle 5.96 = the ref's own 5.93 tube end).
+- TURRET (all-new): LOW long slab — walls 1.77, extension band 1.85
+  (asymmetric plan: LEFT wide to x -1.34, right 1.30, per the print),
+  roof plate 2.06 x<=0.88 with steep edge chamfer, hatch-zone plate 2.00,
+  bustle roof 1.885, center-right SIGHT RIDGE 2.19-2.33 (gunner box +
+  commander tower + pano + the M2 fitting at receiver ~2.26 with a 2.33
+  lid step as the heightM p95 anchor), LOW overhung basket (floor rails
+  1.47-1.56, cargo top 1.89-1.98) + NARROW center top frame 2.29
+  (x +-0.10) + corner whips raked AFT to 2.33@-2.39 (the ref's mast
+  diagonal); low side rails at the deck line (the ref's +-1.4 plan band
+  prints NO front-view height); smoke banks tucked (tips <=1.29).
+- GUN: axis 1.562 (ref tube band 1.485..1.639), slim r 0.065 (sleeve band
+  0.159, evac 0.246 — both under the ~0.28 12% cut), muzzle 5.96.
+- Shadow proxy: tightenHullShadowProxy() re-fits the factory's generic
+  track boxes to the real contact patch (they are colorWrite:false in
+  curve masks but count in the voxel audit).
+
+LAWS BANKED:
+1. z_w = z_l + turretG.z — HALF the r4a ridge furniture was seated 0.20
+   aft by the sign slip; check every turret-frame z twice.
+2. BAND-SOLVER LANDMINE: end-wheel r >= 0.23 with this wheel layout drove
+   the kit track band into a malformed rear segment (real band verts at
+   z -3.57/y 0.05; mask content to -3.72 junking the outer plan cols).
+   r 0.21 ends are safe (t80u precedent).
+3. OUTER PLAN COLUMN LAW: the outermost x-bin must carry BOTH front and
+   rear content (or none) — a short outer strip lerp-junks the neighbor
+   column under the ref's own half-col grid phase (kills ~1.4 err on 1
+   col; the ref's own outer col is short the same way, certify the rest).
+4. The ref's own front-view walls end x ~1.31-1.33 and its widest plan
+   band (+-1.40) is DECK-LEVEL side rails — matching them as tall shelves
+   printed 1.85 tops over its deck cols.
+
+CERTIFIED RESIDUALS (orchestrator awareness):
+- REF MASK ISLANDS: plan_hull carries a hull-classified island at the
+  muzzle (col x -0.05: front 4.81-scene) and turret-classified slivers at
+  the stern (plan_turret cols +-0.06-0.18 rear to -4.3-scene) — node-split
+  artifacts in the print; unmatchable without fake masses (a hull rod
+  under the tube would float at gun elevation = floater fail). Cost ~7-13
+  pts on plan_hull/plan_whole/turret_plan p95+mean. THE binding item.
+- The 1.64-col lerp junk (law 3 above, ~6 pts on plan rows).
+- whole 63.7 needs the plan rows; side rows are at mean 1.6-1.75%.

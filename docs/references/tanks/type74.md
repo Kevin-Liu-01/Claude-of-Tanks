@@ -174,3 +174,44 @@ check: clip ✓ contig 0 ✓ mg1. Boards: shots/misc-r3/after/type74.png.
 - §B3: commander's M2 = FITTINGS.pintleMG m2 two-tone on the cupola lid,
   foot 0.76 — receiver ~2.50w keeps the heightM p95 anchor at the
   published 2.48 (at foot 0.725 heightM read 2.42/-2.3%).
+
+## VERTEX ROUND r4 (2026-08-04, misc agent) — dims 90.4 -> 99.6; curve rows CONFIRMED oracle-floored (normalize escalation)
+
+Gate x2: hull 0 / whole 0 / turret 0 / stations 0 / **dims 99.6** /
+floaters 100 (heightM 2.46/0.64%, hullLengthM 6.63/1.05%, overallLengthM
+9.42/0.05%, widthM 3.19/0.24%). Track-clip exact **14/2** (<=60 band ✓);
+standard-check clip ✓ contig 0 ✓ mg1. Board: shots/misc-r4/after/type74.png.
+
+WHAT LANDED (measured from the r27-fixed workorder dump):
+- The print re-normalizes ~+13% TALL at load: scaleToOverall undoes the
+  batch-27 y-warp (side dy 0.28-0.35 every run; its deck reads 1.70,
+  dome 2.52-2.58 against the published 1.38/2.48 proportions). Features
+  are now seated at the DY-EFFECTIVE lines: deck band raised to 1.395
+  (print-effective 1.40), dome crown 2.25 longer/rounder (its 2.52-2.58
+  dome reads effective 2.22-2.28), cupola lid ~2.36, M2 receiver kept
+  2.46-2.50 as the published-2.48 heightM p95 anchor (t80u
+  partially-tall trade, unchanged from r3).
+- Contact patch pulled to the print's [-2.35, 2.15]: wheels
+  [2.05, 0.975, -0.10, -1.175, -2.25], RAISED end wheels (idler 2.80/
+  0.62/0.24, sprocket -2.85/0.65/0.24) for its climbing-ramp read.
+- SS-A anchors: nose body cols 3.14+3.26 (published 6.7 about the ref
+  band mid ~-0.14) + tail plates/flaps at -3.42..-3.47; muzzle step at
+  the measured mask end (overall 9.42 EXACT).
+- tightenHullShadowProxy() fitted to the real gear envelope.
+
+ESCALATION (orchestrator lane — oracle work, builders never run repairs):
+1. The re-rigged TURRET MASK RENDERS EMPTY in the gate (side_turret ref
+   0 columns this round) — turretCurves is a hard 0 for ANY build until
+   the Tower_9 split is restored/re-baked. Worth re-checking the batch-6
+   re-rig against the current loader.
+2. scaleToOverall RE-NORMALIZATION defeats the batch-27 y-warp (the
+   packet's own warp-verify note warned of this): the print renders
+   ~+13% uniformly tall, so side/front rows floor at mean 11-15% under
+   dy-registration (the t80bv certification class, option-b re-warp:
+   bake the y map into bind pose ACCOUNTING for the loader's re-scale,
+   or parameterize the loader's normalization for warped GLBs).
+3. The skinned hull mask still carries the barrel (side_hull cover ~20%
+   = ~19 ONLY-REF barrel columns) — certified per batch-27; hull rows
+   cap in the low tens regardless of build until then.
+With 1-3 resolved this build's rows re-score in one round; the frame,
+gear, and dy-effective bands are already seated.
