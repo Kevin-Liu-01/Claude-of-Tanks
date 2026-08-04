@@ -170,3 +170,62 @@ TRACK CONTAINMENT LAW: rakeHalfW 1.00 keeps the bow/tail lofts out of the
 1.07..1.51 track channel — audit 369/302 vox -> 0/0; gate impact bounded
 (min 44.9 -> 43.4, registration wobble on stylization-capped rows). Build
 resumes after the warp lands (re-extract + retune masts ~2.93).
+
+## Vertex round r3 — POST-WARP RETUNE (2026-08-03, uk agent)
+Build retuned to the law-v2 re-warped oracle (batch-30, 665aa7f: cupola band
+2.735 -> 2.90, masts KNEED 2.93-2.94). Gate: 11.8 -> **80.4** min
+(hull 83.8, whole 80.4, turret 88, stations 88.3, dims 100, floaters 100);
+containment 22/0 (law <=60); FITTINGS census mg1 (MAG GPMG on the crown
+left, stowed aft, inside the pintle allowance).
+Decode-to-build (workorder absolute columns):
+- Masts kneed to the warped tops: whip ONE 2.92 column at (x 0.72,
+  z -1.00); twin sight masts at (x 0.865/-1.244, z 0.52) topping 2.935 —
+  z-depth 0.18 so BOTH the ref's 0.43/0.55 spike columns and stations 7+8
+  catch them. Old 3.5-3.8 towers deleted.
+- No.15 cupola moved to the print's (x -0.88, z -0.22): drum r 0.105 to
+  2.87, cap to 2.90 (the p95 anchor); sight housing 2.708 at (x -0.57,
+  z -0.05); saddle 2.58 behind it; crown saucer LOWERED + aft-shifted
+  (top 2.385, profile falls 2.44@-0.9 -> 2.36@-1.3 like the print).
+- Casting collar narrowed 2.90 -> 2.40 wide with 2.26 shoulder steps (the
+  print's 2.43 plateau is only |x|<=1.2; its 2.24 band carries to 1.45).
+- Warped-print bow: glacis center notched to z 3.47; fender WINGS carry the
+  3.73 bow corners (left -1.04..-1.74 full, right 0.875..1.495 + the 1.56
+  tip sliver — certified left-fender asymmetry); wing tips THIN (<12% band)
+  so the side registration's first body column stays at the ref's own.
+- HIGH rear sprocket (z -3.10, y 0.875): the hull-mask rear-bottom line is
+  the track's own climb 0.03@-2.47 -> 0.66@-3.57, wrap ending -3.60.
+- Track band 1.11..1.47 (pads 1.068..1.512) matching the print's LEFT
+  ground plane; the right 0.89..1.06 inner band is a dark sponson filler
+  (certified 0.08 left-shift print).
+- Right engine-bay bin retabled: outer face 1.71 with the print's own
+  width-plane NUB at 1.745 (z -0.35..-0.72, 0.37 z-band: counts for
+  pixelWidth, stays sub-body for registration); belly raised to 0.50
+  (the print's 0.49-0.56 front-bottom band); tail recessed center plate
+  -3.615 + side stubs -3.705 + exhaust anchor -3.775.
+LAW DISCOVERIES (bank):
+1. **Station end-caps**: the gate's 14 station slices render FRONT-ON with
+   near/far clipping — an axis-aligned thin box paints ONLY its end caps
+   inside a slice, so long planes (fenders, guards, bin runs) vanish from
+   every mid slice and station width collapses to the track band. Split
+   long planes into <=0.48 m z-chunks (segBoxZ helper; ukHull grew an
+   opt-in fenderSegLen param, default byte-identical). chieftain5 stations
+   72.5 -> 88.5 from this alone.
+2. **Registration poisoning**: curveScore's dAlong comes from the 12%-band
+   bodySpan midpoint — ONE stray body-thick column at a plan/side edge
+   (side-number decal quad, a 0.98-band bin face bleeding across a column
+   boundary, track-link STRAYS behind the sprocket) shifts dAlong by half
+   a column pitch and the fixed-registration resampling then SMEARS every
+   sharp transition in every row of that view. Decals are mask geometry —
+   pin them onto real side planes (numberR/L/Size opt-in params on ukHull).
+3. **Mask AA bleed**: gate masks render with antialiasing — faces within
+   ~half a pixel (~0.006 m) of a trace-column boundary bleed into the
+   neighbor column. Keep boundary-critical faces >=0.015 m clear.
+4. The recovered GLB emits track-link STRAYS ~0.6-1.8 m beyond raised end
+   wheels (factory walker overshoot, endemic — centurion's r1 packet
+   "mask-span calibration" was measuring them). They are near-ground thin
+   and mask-harmless UNLESS a tail plate stacks a band over them (see
+   law 2); keep tail lips thin (<12% band) where they overlap.
+Honest residuals: front_whole 80.4 (worst ~0.25 cols at the mast/track
+boundary columns — the certified left-shift makes the ±1.51 ground columns
+unwinnable symmetric); side p95 4.3 (bow-bottom line vs idler wrap);
+whole-row cover 0.56 (one ref-only tail sliver at -3.80).

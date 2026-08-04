@@ -129,3 +129,53 @@ rakeHalfW 1.19, inner skirt plate trimmed to z -1.82..2.28 and the outer
 layer moved to the 1.65..1.73 plane clear of the shoe surface — audit
 413/293 -> 20/0 (residual sub-severe boundary kiss). Gate steady at 32.2
 min (turret 32.7 -> 35). Build resumes after the warp lands.
+
+## Vertex round r3 — POST-WARP RETUNE (2026-08-03, uk agent)
+Full rebuild to the law-v2 re-warped oracle (roof plateau -> 2.93, antennas
+kneed 2.97-2.98). Gate: 18.8 -> **69.9** min (hull 74.9, whole 75.8, turret
+69.9-region, stations 81.3, dims 95, floaters 100); containment 176/194 ->
+**0/0**; FITTINGS census mg1 (MAG GPMG on the bustle, swept inboard-aft
+inside the hull-basket silhouette band).
+LIVE-RIG SPLIT (supersedes the extract read): the batch-5 repair moved BOTH
+followers (antennas) AND the roof furniture INTO the live `Turret` node —
+the extract's raster shows them in hull, but the gate's live hull mask is
+BARE (rough 1.82 = deck height). Everything decorative is turret-bucket:
+casting shell (plateau 2.498, nose z 2.84 center arc, face bottom 2.70 at
+|x|<=1.0), long side bins (L inner z -0.99..2.20 / L outer -1.65..1.47 at
+x to 1.48; R -1.40..2.45 at x to 1.43 — the print's asymmetry), outer
+skirt-top tiers (L midship -0.94..0.63, R 0.0..2.36 at x to 1.65), stepped
+rear basket (2.165 tail at |x|<=0.60 only, 2.415 hump z -1.92..-1.68, 2.24
+mid, left wall to -1.55), roof furniture (commander sight 2.945 anchor at
+x -0.515..-0.265 z 0.22..0.68; left block 2.87 + 2.51 outer shelf at
+z 0.80..1.30; roof step 2.795 left-of-center; TOGS body LOW 2.32 with the
+thin 2.955 head at (0.93, 0.91)), kneed antennas 2.945 at (-1.375, -1.08)
+and (0.95, -0.82).
+GUN: fat cast collar boxes (r 0.43 at z 0.55..1.40 + 0.21 step to 2.33),
+wide-flat sleeve sections (plan half-width 0.12 per the print), evac box,
+L11 to muzzle 7.41; right-biased cradle/clamp mass (x -0.37..+0.64,
+z 3.34..3.78, y 1.29..1.65 — the print's turret-mask nose at 3.75).
+HULL: belly 0.52; skirt plane 1.655 (hem 0.53, z -3.30..2.55) OUTSIDE the
+0.95..1.58 pad envelope (containment law); fender run z -0.40..3.30 at
+±1.70 with the 1.435 outer edge-roll strip carrying the width plane and
+the 0.63-hem lip plates at ±1.71; bow wings ±(0.95..1.65) to z 4.165
+riding ABOVE the idler wrap (mud guards — the print's rising bow-bottom
+line is the TRACK's own climb; hanging tip flaps carry the 0.65-1.0 line
+past the wrap); track 1.005..1.535 (print grounds 0.97..1.56); idler
+(3.50, 0.60, 0.28), sprocket (-2.60, 0.74, 0.33); tail: rake into the
+1.12 undercut at -3.60, side deep boxes to -4.09, recessed center, THIN
+tail lip at -4.10..-4.19 (sub-12%-band so the strays+lip never mint a
+rear body column — see the chieftain5 r3 law bank).
+Honest residuals (plateaued 68-70 over 4 iterations): t_side ~68 — the
+basket/bustle boundary columns flip-flop with the ref's own AA edges
+(z -1.3..-2.1 band, ~6 cols x 0.10-0.16); the ONE stubborn plan_turret
+column at x 0.21 (proc reads z 4.84 content this agent could not locate
+with vertex probes — suspected gun-group AA stack); hullLengthM 8.16 vs
+8.32 pub (1.87%) is the print's own certified -2% hullLen stylization —
+the body-column span cannot reach 8.24 without minting registration-
+breaking body columns at the thin wing/lip tips. dims 95 is the floor
+under that stylization. Stations 81.3 (st5/st8 top jitter at the antenna
+columns).
+STOP note: challenger1 fell short of the 75 target (69.9 at lock); the
+remaining levers are all sub-0.15-per-column trades against the ref's own
+edge jitter. Recommend an oracle-lane look at the basket band and the
+x 0.21 gun column before the next builder round.

@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-08-04T00:30:41.097Z",
+ "generatedAt": "2026-08-04T00:39:36.319Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 18,
+ "passed": 15,
  "total": 85,
  "rows": [
   {
@@ -876,6 +876,45 @@
    }
   },
   {
+   "id": "m1a2_tejas",
+   "geoMin": 89.4,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 91.7,
+    "wholeCurves": 89.4,
+    "turretCurves": 89.6,
+    "stations": 93.5,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "m1a1ha",
+   "geoMin": 89.4,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 91.7,
+    "wholeCurves": 89.4,
+    "turretCurves": 89.6,
+    "stations": 93.5,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "m1a1",
+   "geoMin": 89.4,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 91.8,
+    "wholeCurves": 89.4,
+    "turretCurves": 89.6,
+    "stations": 93.5,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
    "id": "merkava1b",
    "geoMin": 90,
    "gatePassed": true,
@@ -976,45 +1015,6 @@
     "turretCurves": 90.4,
     "stations": 92.1,
     "dims": 97.8,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "m1a2_tejas",
-   "geoMin": 90.5,
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 92.6,
-    "wholeCurves": 90.5,
-    "turretCurves": 90.8,
-    "stations": 92.4,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "m1a1ha",
-   "geoMin": 90.5,
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 92.6,
-    "wholeCurves": 90.5,
-    "turretCurves": 90.8,
-    "stations": 92.4,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "m1a1",
-   "geoMin": 90.5,
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 92.6,
-    "wholeCurves": 90.5,
-    "turretCurves": 90.8,
-    "stations": 92.4,
-    "dims": 100,
     "floaters": 100
    }
   },
