@@ -111,6 +111,14 @@ const LOCAL_REFERENCE_OVERRIDES = {
       autoPivot:true, pivot:[0.52, 1.7, 0],
       yawOffset:-Math.PI/2 },
   },
+  // chieftain5 (graduated 2026-08-04, the 18th — UK's first): retired
+  // userdrops5 registration — measurement-only (Z-up print).
+  chieftain5: {
+    source:'glb',
+    glb:{ path:'/models/tanks/community/recovered/chieftain5.glb',
+      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
+      pitchOffset:-Math.PI/2, paintUntextured:true },
+  },
   // m1a2 (graduated 2026-08-04, the 17th): retired specs.js SEPv2
   // registration — measurement-only.
   m1a2: {

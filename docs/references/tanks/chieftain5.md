@@ -653,3 +653,22 @@ hero-frontleft upper-rear Δ-12 ±4 (len 0.34, rear-deck class, new
 watch item). Evidence: shots/critic-chieftain5/ (14 pairs, final
 bytes), shots/visual-eval-chieftain5/ (report + overlays), workorder
 column dumps cited above, tone rects per rect coordinates in-line.
+
+## GRADUATION (2026-08-04) — the program's 18th graduate, the UK family's FIRST
+DUAL GATE PASSED: geometry min 91.2 gatePassed x2 (hull 91.7 / whole 91.2 /
+turret 94.1 / stations 92.9 / dims 100 / floaters 100) + graduation critic
+9.0 on ALL FOURTEEN views, floor 9.0 mean 9.04, right view 9.5 (verdict
+docs/critique/shaded-parity-chieftain5-r6.md — floor 5.0 -> 7.0 -> 9.0
+across r4-r6: the fastest three-verdict climb in the program). SS-10
+executed: userdrops5 source('chieftain5') registration RETIRED
+(procedural is the model of record; chips under CUSTOM);
+USERDROP5_SOURCED_IDS excludes chieftain5; icons regenerated (EXACTLY 5
+by filename); measurement-only override configs in ALL THREE maps (the
+Z-up print's pitchOffset -PI/2 + paintUntextured carried); variants.js
+backfill verified impossible (not in VARIANT_TANK_IDS).
+**FREEZE HASH e8919e36 (43 meshes / 101168 verts)** — any intentional
+change re-runs gate + critic re-cert and re-freezes in the same commit.
+Certified carries: the sag coin (left gun line -8.7 — the ref carries it
+only as an AA coin), tier-end -12.3 (+-4 band), protected W3/wing-shelf
+classes, priced gate classes (bustle racks, MG receiver, tail). Laws
+#1-16 in the packet body are this tank's instrument legacy.
