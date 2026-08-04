@@ -983,3 +983,23 @@ measure driver session-local (scratchpad measure-r13.py).
    same-bucket crown invisibility on the tube's lit top are rig-grammar
    floors, not albedo debts — no further tone grinding on those windows;
    structure/relief lanes stay fair.
+
+## GRADUATION (2026-08-04) — the program's 16th graduate
+DUAL GATE PASSED: geometry min 90.0 gatePassed x2 at the EXACT RAZOR
+(hull 91.2 / whole 90.0 / turret 91.0 / stations 91.4 / dims 100 /
+floaters 100) + graduation critic 9.0 on ALL FOURTEEN views, floor 9.0
+mean 9.01 (verdict docs/critique/shaded-parity-merkava1b-r13.md — floor
+8.4 -> 9.0 across r12-r13; all three arbitration certs honored and
+decisive; builder numbers honest to the decimal). The merkava family's
+FOURTH graduate. SS-10 executed: userdrops5 articulated registration
+RETIRED; USERDROP5_SOURCED_IDS excludes merkava1b; icons regenerated
+(5 staged, tree restored); measurement-only override configs in ALL
+THREE maps (family registration incl. MERKAVA followers).
+**FREEZE HASH 106b0074 (41 meshes / 131762-class verts)** — any
+intentional change re-runs gate + critic re-cert and re-freezes in the
+same commit. THREE CERTS TRANSFER with this record (dead-rear structural
+air bound, ambient-77/same-bucket lighting floors, razor-blocked rim).
+The verdict's graduate ledger carries the group-4 polish tail (corner
+flap-gap, tail furniture density, wheel ring-contrast) for any future
+graduate-change round; the 8-voxel bow kiss is the documented containment
+residual; mg0+0d carries the standing SS-I owner call.

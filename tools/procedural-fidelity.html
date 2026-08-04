@@ -111,6 +111,16 @@ const LOCAL_REFERENCE_OVERRIDES = {
       autoPivot:true, pivot:[0.52, 1.7, 0],
       yawOffset:-Math.PI/2 },
   },
+  // merkava1b (graduated 2026-08-04, the 16th): retired userdrops5
+  // registration — measurement-only.
+  merkava1b: {
+    source:'glb',
+    glb:{ path:'/models/tanks/community/recovered/merkava1b.glb',
+      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
+      paintUntextured:true,
+      turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))',
+      gunFollowers:'vehicle#gun_barrel_' },
+  },
   // t72b3m (graduated 2026-08-04, the 15th): retired userdrops5
   // registration — measurement-only.
   t72b3m: {
