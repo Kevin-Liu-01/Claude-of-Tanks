@@ -3196,6 +3196,29 @@ REPAIRS['t84'] = [
 ]
 
 
+# =============================================================== batch 37 ===
+# LEO2_REVOLUTION RWS-PLATEAU BAND-FLATTEN (packet plan "batch-29 format",
+# leo2_revolution.md; the a5 batch-29 fbc4f14 pilot is the precedent).
+# Print's RWS/sensor plateau reads norm 2.807-2.862 vs published 2.64
+# (+8.4%): 7 side + ~10 front columns stay uncovered above the 2.68 proc
+# anchor — turret-side floors ~87. Y-ONLY warp in raw glb frame (ground
+# raw -1.108): identity below the roof knee (raw 1.634 = norm 2.48), band
+# top raw 2.0563 -> 1.855 (norm 2.862 -> 2.68), whip tips raw 3.343 ->
+# 1.895 (the ONE spike column, abramsx precedent). long_map identity.
+# LAW v2: fresh .bak from committed HEAD bytes (Jul-29 pre-reparent bak
+# archived *.pre-batch37-history; the blender-lane gun reparent is IN the
+# committed bytes — no prior REPAIRS chain existed for this id, recipe is
+# the warp alone). EXPECTED RETUNE DEBT (documented): proc blades/whips
+# above the flattened band read proc-only until the leopard r7 retune
+# (~10-17 cols, a5 post-batch-29 class); dims should rise 96.5 -> ~100.
+REPAIRS['leo2_revolution'] = [
+    ('py2', _axis_warp('leo2_revolution', long_axis='z',
+                       y_map=[(-1.108, -1.108), (1.634, 1.634), (2.0563, 1.855), (3.343, 1.895)],
+                       long_map=[(-6.041, -6.041), (4.796, 4.796)],
+                       y_top_max=1.921, expect=(31, 69542, 47420))),
+]
+
+
 # =============================================================== batch 36 ===
 # M46_PATTON BODY+TUBE-COMPRESS (patton r1 plan, execution unfrozen; r3
 # measured the dims equilibrium as FULLY PINNED — no free-row fix exists,

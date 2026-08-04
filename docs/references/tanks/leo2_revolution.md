@@ -318,5 +318,26 @@ recipe format to mirror; gate-in-loop law v2 applies).
   the replay census matches the committed bytes (else re-baseline like
   batch-29 did; guard census from the guard's own numbers). Never
   flat-assign REPAIRS['leo2_revolution'] — EXTEND.
+
+## Batch-37 warp EXECUTED (2026-08-04, orchestrator lane) — retune debt open
+The plan above landed as repair_oracles.py batch-37. Correction to the
+plan's chain note: REPAIRS['leo2_revolution'] never existed (the gun
+reparent came from the blender lane and is IN the committed bytes), so
+the fresh-.bak recipe is the warp ALONE — a new entry, not an extend;
+the Jul-29 pre-reparent .bak archived *.pre-batch37-history. Census
+31/69542/47420 exact; byte-idempotent 07a71c2c x2; y-only map exactly
+as planned (knee raw 1.634, band 2.0563 -> 1.855, whips -> 1.895).
+Gate-in-loop x2 vs the stable r5 87.0 baseline: min 87.0 -> **69.4 x2**
+(hull 89.8->84.1 / whole 88.6->**69.4** / turret 87.0->79.1 / stations
+93.1->80.1 / dims 96.5 UNCHANGED-as-expected / floaters 100). This is
+the PRICED retune debt from the plan (a5 post-batch-29 whole-64.7
+class): the proc's two 2.853 blades + whips + roof furniture above the
+flattened 2.68 band read proc-only, and the hull/stations dips are the
+m47-class registration re-phase. KEEP per law v2 (documented debt, no
+crater). LEOPARD R7 RETUNE ORDER (the a5-r3 recipe): drop the proc
+blades to the band, re-park whips at the new ~2.72 spike line, chase
+the re-phased side rows; dims then rises 96.5 -> ~100 (heightM anchor
+becomes the 2.68 pod line) and turret-side's 7+10 uncovered columns
+are released — the >=90 unlock this warp bought.
 - VERIFY IN THE GATE against this build (stable at 87.0 x3, hash
   cd61999c) before commit.

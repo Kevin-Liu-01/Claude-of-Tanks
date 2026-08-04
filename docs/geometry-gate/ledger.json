@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-04T16:06:11.644Z",
+ "generatedAt": "2026-08-04T16:10:54.776Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 18,
  "total": 86,
@@ -634,6 +634,19 @@
    }
   },
   {
+   "id": "leo2_revolution",
+   "geoMin": 69.4,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 84.1,
+    "wholeCurves": 69.4,
+    "turretCurves": 79.1,
+    "stations": 80.1,
+    "dims": 96.5,
+    "floaters": 100
+   }
+  },
+  {
    "id": "challenger1",
    "geoMin": 69.9,
    "gatePassed": false,
@@ -825,19 +838,6 @@
     "turretCurves": 85.5,
     "stations": 87.8,
     "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "leo2_revolution",
-   "geoMin": 87,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 89.8,
-    "wholeCurves": 88.6,
-    "turretCurves": 87,
-    "stations": 93.1,
-    "dims": 96.5,
     "floaters": 100
    }
   },
