@@ -101,7 +101,7 @@ const GARAGE_CSS = `
 .cot-garage .band-r{position:absolute;right:0;top:0;bottom:0;width:30%;
   background:linear-gradient(270deg,rgba(5,8,11,.85) 0%,rgba(5,8,11,.35) 60%,rgba(5,8,11,0) 100%);}
 .cot-garage .title{position:absolute;top:20px;left:34px;font-size:17px;font-weight:800;
-  letter-spacing:.30em;color:#9fb0bf;text-transform:uppercase;
+  letter-spacing:.20em;color:#9fb0bf;text-transform:uppercase;
   display:flex;align-items:center;gap:10px;}
 .cot-garage .title b{color:#f0a030;}
 /* garage_ui: compact brand badge (v3 colored crest, tank + Claude Code
@@ -150,8 +150,8 @@ const GARAGE_CSS = `
 .cot-battle{position:absolute;top:26px;left:50%;transform:translateX(-50%);
   pointer-events:auto;cursor:pointer;border:none;outline:none;
   width:252px;height:46px;padding:0 0 1px;
-  font-family:${FONT_STACK};font-size:19px;font-weight:800;letter-spacing:.30em;
-  text-indent:.30em;color:#fff8ee;text-shadow:none;
+  font-family:${FONT_STACK};font-size:19px;font-weight:800;letter-spacing:.24em;
+  text-indent:.24em;color:#fff8ee;text-shadow:none;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 252 46'%3E%3Cpath d='M11.2 .5H240.8L251.5 23 240.8 45.5H11.2L.5 23Z' fill='%23ee8912' stroke='%238a4a06' stroke-width='1'/%3E%3Cpath d='M1.4 24.8 11.8 45.1h228.4l10.4-20.3' fill='none' stroke='%23a85a05' stroke-width='2' opacity='.9'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat;
   transition:filter .12s,transform .06s;}
 .cot-battle:hover{filter:brightness(1.07);}

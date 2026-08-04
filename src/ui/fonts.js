@@ -40,8 +40,8 @@ export const TYPE = {
   label: 11,   // uppercase micro-labels
   body: 12.5,  // body copy
   micro: 9.5,  // hints, footnotes
-  trackHead: '.30em', // heading letterspacing (uppercase display lines)
-  trackLabel: '.18em', // uppercase label letterspacing
+  trackHead: '.24em', // heading letterspacing (uppercase display lines) — fonts r4b: Monument Grotesk's wide caps read airy at Inter-era .30em
+  trackLabel: '.15em', // uppercase label letterspacing (was .18em under Inter)
   trackTight: '-.01em', // former-condensed layer: Inter tightened for density
   wBody: 500,  // weight floor — no UI text below this
   wLabel: 600,
