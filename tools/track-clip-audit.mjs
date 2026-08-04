@@ -88,7 +88,7 @@ try {
       const f = r.zones?.[0]?.overlapVox ?? '?';
       const b = r.zones?.[1]?.overlapVox ?? '?';
       const worst = r.zones?.flatMap((z) => z.hits.map((h) => `${z.name}:${h.mesh}(${h.vox})`)).slice(0, 3).join(' ') || '';
-      console.log(`[track-clip] ${id.padEnd(18)} front ${String(f).padStart(5)} rear ${String(b).padStart(5)} ${r.anomaly || ''} ${worst}`);
+      console.log(`[track-clip] ${id.padEnd(18)} front ${String(f).padStart(5)} rear ${String(b).padStart(5)} ${r.mode && r.mode !== 'bands' ? r.mode + ' ' : ''}${r.anomaly || ''} ${worst}`);
     } catch (e) {
       results.push({ id, error: e.message.slice(0, 120) });
       console.log(`[track-clip] ${id.padEnd(18)} ERROR ${e.message.slice(0, 80)}`);

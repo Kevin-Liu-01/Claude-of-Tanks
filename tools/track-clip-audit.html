@@ -45,19 +45,60 @@ if (mode === 'list') {
     }
   });
 
-  const out = { id, bands: bands.length, zones: [], anomaly: null };
+  const out = { id, bands: bands.length, zones: [], anomaly: null, mode: 'bands' };
+  // HAND-ROLLED FALLBACK (containment-law gap fix): builds without the two
+  // factory band meshes previously passed VACUOUSLY ("found 0"). When bands
+  // are absent, collect track-family bucket meshes (tankFactory tags them
+  // with userData.trackBucket) that RIDE THE GROUND (AABB min.y <= 0.35 —
+  // excludes spare-link stowage on glacis/turret, which shares the bucket
+  // material) and audit those as the track set instead.
+  let trackSet = bands;
   if (bands.length !== 2) {
-    out.anomaly = `expected 2 band meshes, found ${bands.length}`;
-    window.__CLIP_RESULT = out; window.__CLIP_READY = true;
-  } else {
-    // ---- band extremes + lanes ----
+    const bbp = new THREE.Box3();
+    const handRolled = meshes.filter((m) => {
+      if (!m.userData || !m.userData.trackBucket) return false;
+      bbp.setFromObject(m);
+      return bbp.min.y <= 0.35;
+    });
+    if (handRolled.length) {
+      trackSet = handRolled;
+      out.mode = `hand-rolled(${handRolled.length})`;
+      // hand-rolled meshes are hull-side candidates no longer
+      for (const m of handRolled) meshes.splice(meshes.indexOf(m), 1);
+    } else {
+      out.anomaly = `expected 2 band meshes, found ${bands.length} (no ground-riding track buckets either)`;
+      window.__CLIP_RESULT = out; window.__CLIP_READY = true;
+    }
+  }
+  if (!out.anomaly) {
+    // ---- track-set extremes + lanes ----
     const bbox = new THREE.Box3();
-    const lanes = bands.map((b) => { bbox.setFromObject(b); return bbox.clone(); });
+    const lanes = trackSet.map((b) => { bbox.setFromObject(b); return bbox.clone(); });
     const zMax = Math.max(...lanes.map((l) => l.max.z));
     const zMin = Math.min(...lanes.map((l) => l.min.z));
     const yTop = Math.max(...lanes.map((l) => l.max.y));
     const yBot = Math.min(...lanes.map((l) => l.min.y));
-    const laneInnerX = Math.min(...lanes.map((l) => Math.min(Math.abs(l.min.x), Math.abs(l.max.x))));
+    let laneInnerX = Math.min(...lanes.map((l) => Math.min(Math.abs(l.min.x), Math.abs(l.max.x))));
+    if (out.mode !== 'bands') {
+      // merged hand-rolled buckets can span both lanes in ONE mesh (min|x|
+      // ~0) — derive the true inner lane edge from the vertex distribution:
+      // 5th percentile of |x| among samples with |x| >= 0.15.
+      const xs = [];
+      const va = new THREE.Vector3();
+      for (const m of trackSet) {
+        const pos = m.geometry.getAttribute('position');
+        const step = Math.max(1, Math.floor(pos.count / 4000));
+        for (let i = 0; i < pos.count; i += step) {
+          va.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
+          const ax = Math.abs(va.x);
+          if (ax >= 0.15) xs.push(ax);
+        }
+      }
+      if (xs.length > 50) {
+        xs.sort((p1, p2) => p1 - p2);
+        laneInnerX = xs[Math.floor(xs.length * 0.05)];
+      }
+    }
 
     const zones = [
       { name: 'front', z0: zMax - 0.50, z1: zMax + 0.06 },
@@ -95,7 +136,7 @@ if (mode === 'list') {
     for (const zone of zones) {
       // band voxels (both sides), dilated 1 voxel
       const bandSet = new Set();
-      for (const bm of bands) sampleMesh(bm, zone.z0, zone.z1, bandSet, null);
+      for (const bm of trackSet) sampleMesh(bm, zone.z0, zone.z1, bandSet, null);
       const dilate = params.get('dilate') !== '0';
       const dilated = new Set(bandSet);
       if (dilate) for (const k of bandSet) {

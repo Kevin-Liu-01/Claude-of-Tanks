@@ -3551,6 +3551,10 @@ export function createTank(specId, engineCtx, opts = {}) {
     }
     disposables.push(merged);
     const mesh = new THREE.Mesh(merged, mats[matKey]);
+    // Track-containment law (BUILD-STANDARD SS-B4): tag track-family bucket
+    // meshes so the audit can measure hand-rolled track geometry (userData
+    // only — geometry/hash-invariant; banded builds are unaffected).
+    if (/track|tread/i.test(bucket)) mesh.userData.trackBucket = bucket;
     mesh.castShadow = mesh.receiveShadow = true;
     const parent = ({ hullG, turretG, recoilG, gunG })[parentKey];
     if (LOD0_KEEP.has(bucket)) parent.add(mesh);
