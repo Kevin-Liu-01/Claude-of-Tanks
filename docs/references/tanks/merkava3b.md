@@ -1067,3 +1067,46 @@ Geo 90.1 gatePassed + critic 9.0 ALL NINE VIEWS (r8, eight visual
 rounds). FREEZE HASH 5296950a (41 meshes, 146562 verts). Registration
 retired (userdrops5.js loop); override added w/ followers; icons x5
 staged. Any intentional change re-runs BOTH gates and re-freezes.
+
+## Graduate-change round r12 — TRACK CONTAINMENT (2026-08-03, NEW hash a4ed2c82)
+
+Fleet-worst rear clip (docs/references/track-clip-audit.md: 315 front /
+727 rear exact voxels) fixed under the graduate-change protocol; NEW
+hash a4ed2c82 (was 5296950a) — re-freeze at the orchestrator's landing
+after critic re-cert. Gate HELD x2 at the graduation-class line: min
+90.1 (90.4/90.1/90.5/93.5/100/100). `track-clip-audit --exact` now
+reads **0 / 0**.
+
+Minimal-footprint changes (wrap clearance only):
+1. Sponson-floor stations over both wrap crests lift (yB 1.00 -> 1.13 at
+   z 2.28/1.95; 0.98 -> 1.06 at -3.47) — interior (skirt/board/track own
+   every visible extreme there; mid-hull stations keep all z-agnostic
+   columns).
+2. keel.hwClamp 1.13: the arched-belly side strips ran 0.11 inside the
+   band inner face (1.16) — clamped clear (incl. the tail wedge).
+3. The r6 CORNER-CURTAIN tiers were deliberately seated INSIDE the
+   idler-wrap annulus (the 602-voxel offender). cornerCurtain now takes
+   explicit tiers OUTSIDE the band shell: [[-3.70, 0.215..0.30],
+   [-3.815, 0.315..0.40], [-3.92, 0.415..0.62], w 0.50] — two under the
+   belly arc, one behind the rear face; same brown fill through the
+   inter-pad gaps, bottoms at/above the same certified column bots.
+4. rearFlaps[0] -3.90 -> -3.945 (its front face stood voxel-coincident
+   with the wrap rear face; ~2 cols at 1024, rising-bottom grammar
+   unchanged). frontBoard z1 2.17 -> 2.26 (its underside crossed the
+   sprocket ring over z 2.17..2.24; 2.26 = 3D's own certified clearance
+   class). In-band tone walls clamp clear of both rings
+   (sk.wallClamp/fillerClamp). tailRack.frontClear {z:-3.92, bot:1.06}
+   lifts the rack body's forward third + bottom rail off the annulus
+   (interior; certified rear-face depth kept).
+
+SELF-AUDIT on fresh critic pairs (shots/merkava-r12/critic-merkava3b-
+final; before/after rects on the changed views): rear-corner zones are
+epsilon-class or ref-ward — view-rearleft cornerL med IDENTICAL 72.3
+(p25 64.3 -> 63.9), flap band med 93.8 -> 87.8 (ref 70.8: toward ref);
+view-rear corners p25 85.1 -> 86.3 / 86.8 -> 87.1 (ref 93.7/93.8:
+toward ref); wheel-row stats byte-identical. No regression candidate
+found; re-cert requested per protocol.
+
+§I mg-census note: the 3B roof guns are hand-authored ref-parity
+instruments (graduation anatomy) — see the 3D packet's §I justification;
+the same owner call covers 3B.

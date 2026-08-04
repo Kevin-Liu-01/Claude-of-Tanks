@@ -746,3 +746,175 @@ Shots: shots/critic-merkava3d/ (14 views, final = this round's last render).
    is delivered (1554 -> 626); the residual is lighting-rig grammar.
    CERTIFIED — further warm-census grinding on the deck is out of order;
    relief/structure work remains fair game.
+
+## Push round 12 — CONTAINMENT + TONE (2026-08-03, hash 4515d944)
+
+r11 critic verdict (docs/critique/shaded-parity-merkava3d-r11.md): FAIL
+floor 8.6 close-front — the §B4 track-containment law — mean 8.85, "one
+containment fix plus a tone/relief round from the bar." All eight r12
+orders worked; gate PASS x2 at min 90.3 (was 90.7: hull 91.5->90.3,
+whole 90.7->90.6, turret 91.6->91.4, stations 92.3->91.7, dims/floaters
+100/100 — the -0.4 min is the round's whole geometry price; every claim
+below re-derived on the FINAL pairs, official rigs only).
+
+1. **TRACK CONTAINMENT (order 1) — DELIVERED, 208/143 -> 0/0 exact.**
+   `track-clip-audit --exact` reads front 0 / rear 0 (band ≤60, target 0).
+   Root causes measured with a per-mesh triangle diag (tmp-merk-clipdiag):
+   (a) the SPONSON FLOOR (loft yB 1.00 sheet) sliced both wrap crests
+   (sprocket ring tops 1.10 over z 1.74..2.26, idler 1.08 over
+   -3.24..-3.88) — the wrap stations lift yB to 1.13/1.12 (interior: skirt
+   /board/track own every visible extreme there; mid-hull stations keep
+   all z-agnostic cols); (b) belly/lower-glacis half-width ran 0.11 INSIDE
+   the band inner face — keel.hwClamp 1.09 (new opt-in, kihw) pulls every
+   center piece clear incl. the tail wedge (the last 28 voxels — it used
+   raw ihw); (c) the r5/r11 in-band tone walls (backer/run-filler) ran
+   into both wrap annuli — clamped clear (sk.wallClamp/fillerClamp, new
+   opt-ins); (d) the idler flap stood voxel-coincident with the wrap rear
+   face — sk.idlerFlapDz 0.19 steps it clear; (e) the tailRack body/
+   bottom-rail/backer/jerry-can forward reach stood inside the idler
+   annulus — tr.frontClear {z:-3.95, bot:1.10} splits the body (front
+   segment lifts clear; certified rear face keeps full depth), clamps the
+   bottom rail, re-seats the interior backer + can. RENDER READ: final
+   close-front 3x crop shows NO teeth crossing the bow plate/splash-flap
+   line; the fender-corner "exposed brown steps" are gone (the wrap tucks
+   under the board with real clearance). Every containment change is an
+   opt-in param or 3D-profile data — merkava1b/2b/2d/4/4b BYTE-EXACT
+   (hashes 6bcb98c9/9bfe0895/62456460/e1d164dc/d44a3624 verified after
+   every shared-code edit).
+2. **Wheel-row polarity (order 2) — DELIVERED all four gates.** view-left
+   x150..450 y392..425: p5 29.5 -> 52.1 (order >=45, ref 52.9), p95 69.3
+   -> 93.7 (order >=85, ref 94.5), med 56.0 EXACT (certified parity
+   held), air 3.1 vs ref 3.0. view-right x190..490: p5 43.2 -> 48.6
+   (>=42, ref 46.7), p95 63.2 -> 81.5 (>=80, ref 87.2). HOW: the flat-56
+   curtain WAS the r5/r11 outboard walls — the ref shows WHEELS there.
+   The r11 second wall is retired; the run-filler top drops below the
+   window (sk.fillerTop 0.30); the wheels gain the 1B-proven FOUR-TONE
+   dish anatomy (pale dish/break/mid/inner/hub, ~38% pale share) on the
+   wheel faces; a LOW LIT CURTAIN at the proven gearOut-0.012 plane
+   covers only the hem-shadow rows (y 0.30..0.42, ambient-black at any
+   albedo per probe); an INBOARD backer (x 1.10, 2 cm clear of the band
+   inner face — zero §B4 interaction) catches the through-gaps. LAW
+   BANKED (fleet-relevant): **THREE.Material.clone() DROPS
+   onBeforeCompile — the kit's pad/chain clones silently lost the family
+   vehicleAmbientFloorHook and rendered ambient-black (13.8L) in skirt
+   shade while the hooked band mesh read 56 in the same pocket.** New
+   opt-in cfg.gearFloor re-attaches the hook (default byte-identical
+   fleet-wide); with it the pads/horns floor at the ref's own gear shade.
+   cfg.chainHex 0x322e24 / cfg.padHex 0x1d1b16 tune the layers; the
+   close-front teeth land the ref's own brown class.
+3. **Under-rim chocks (order 3) — DELIVERED both gates.** view-rearleft
+   x70..210 y340..354 p5 66.6 -> 88.6 (order >=85, ref 102.6);
+   view-rearright x430..570 p5 63.6 -> 76.8 (order >=70, ref 79.0).
+   The floor was NOT the recess alone: pixel-raycast probes
+   (tmp-merk-pixprobe, new diag) pinned it on (a) the r4 wing "under-
+   basket VOID plates" (hullShadow, 11-56L from the quarters) — retired
+   on the rackX mark (3B/3C keep theirs byte-identical), dark upper face
+   band -> detail; (b) the tail-plate corner fittings (64L flat) — new
+   opt-in c.tailFitLit; (c) the wing hairline rails' flat shade — they
+   ROLL outboard-up (rz -0.42s) into the quarter-lit band, z-extremes/
+   edge lines kept; (d) six pale CHOCKS at the ordered wg.top-0.005 line
+   fill the per-bay recess (deckStow, poke-class rx). The r7 dark seam
+   strips ride detail tone (the ref band carries NO dark strips at p5
+   102.6/79.0). BONUS: the same fix family took the r11 D-order rear-face
+   sub-70 census 738 -> 343 (r11 order <=300, was 2.7x over) and p95
+   99.3 -> 102.6 (toward the 104-106 class).
+4. **Crown air (order 4) — PARTIAL 76.2% (order >=80; ref 87.2); steps
+   24 (>=20 held), under-rim rear p5 82.3 (>=80 held, ref parity).**
+   Delivered cuts in the ordered zone: .50 receiver/crown/spine z-depth
+   -25%, ammo can BELOW the receiver crown (top 2.576 -> 2.530) + tucked
+   inboard, cradle cheek -20%, M2 can slimmed 0.070 -> 0.054 + grips/
+   handle edge trims. Residual solid DECOMPOSED (window x_img columns,
+   123 px/m): +195 cupola/.50 zone (the certified cupola block + lid at
+   2.644-2.657 carries most), +226 M2/crest zone (certified crest zero
+   lane 2.545 + receiver at the certified 2.530/2.5405 tops), +278
+   plinth zone (the r11b-CERTIFIED rear-segment parapet + dips), +175
+   left band pot (carries the certified -1.14..-1.19 @ 2.644 front
+   cols; a slide FORWARD was tried and measured WRONG — LAW BANKED: the
+   elevated rear cam projects h' ~= y + 0.08z, so +z content rises in
+   the window; escaping it needs z < -2.3 where the side cols would pay
+   +0.18). The remaining air gap is certified-carrier-owned; flagged for
+   critic arbitration like the r11 corner-air ruling.
+5. **Deck ink->shade + relief (order 5) — PARTIAL on census/p95,
+   DELIVERED on sd + the named grammar.** close-roof sub-60 census 9258
+   -> 6824 (order <=6000, ref 4086): the conduit run + skewed wire are
+   SEGMENTED (real gaps) and retoned to camo ROLLED AWAY from the key
+   (rz ~0.5 — warm-neutral, the wood channel would flip the warm cert);
+   the "vent rectangle" was the .50's r11 solid top plate (reshaped by
+   order 6); the LEGACY RUBBER HEM BAR under the skirt (0.61..0.73,
+   full length) was the single biggest class (-1100 px) — retired on
+   cutHem-without-wavy marks (3D only; wavy siblings never built it) —
+   and this ALSO closed the r11 defect-G skirt band: y360..392 p5 60.8
+   -> 93.7 (r11 order >=75, ref 91.8) BONUS-DELIVERED. Census residual
+   decomposition: gear band 4691 vs ref 3408 (skirt graze rows + wheel
+   tops at the steep angle), deck 2088 vs 678 (ordered gun prints ~280 +
+   the r9 corner-air shelf gaps ~430 (arbitration-1 protected) +
+   module-band/bow structural shade). fwd-roof plane sd 5.83 -> 6.83
+   (order >=6.5, ref 7.48) via three rx-NEGATIVE cast swells (shelf/
+   saddle) + two lowFace washes + two shelf graze caps; p95 87.2 (order
+   >=93, ref 98.4) HONEST MISS — probe-corrected finding: the measured
+   window samples the CREST LOW FACE + cheek slopes (z 0.6..1.75), and
+   detail-pale washes there print 88-95 at this angle; the bright tail
+   stays <5%. hero-fl wall med 85.6 (order >=89, ref 93.8) MISS — the
+   window decodes to the crest silhouette band (probe: x330..560
+   y250..300 hits (0.16, 2.51, 0.61) and SKY at 445+/520+), not the
+   plumb band wall; three ry-faceted wall washes added anyway (texture,
+   sub-curb). Warm certs: close-roof 652 (floor 626, +26 drift from the
+   camo swell/wash grazes — within the ruled material-floor class),
+   view-front 57 (order-edge ~57), view-top 581 (was 587 — improved).
+6. **Gun-FORM footprints (order 6) — DELIVERED.** view-top .50 window
+   x374..392 y270..330 sub-78: 291 -> 44 (order: <=150 gun-shaped; ref
+   32) — the solid plate is now a 0.062 receiver SPINE (same certified
+   2.6175 top) + a barrel-line print on the window sill (top 2.453 <
+   the 2.462 crown-window law line). Loader MG 10px invisible -> ~130px
+   receiver+rod line (the r11 pale lit strip COVERED the rod from
+   above — narrowed 0.026 -> 0.017 so the dark flanks print; cap plate
+   +0.010). M2 chip 146 -> ~273px receiver+barrel line via two dark
+   face strips lying ON the crest lowFace slope (rx 0.424, 8 mm proud,
+   split with a gap; the certified rod/crest maxima rule every mask).
+7. **Process items.** (a) The 2-cell enclosed top-down hole at
+   (x 0.24, z -4.38) is CLOSED (standard-check contig 0 ✓) — a
+   turretDark sliver shelf slung under the vane/rail members (turret
+   node: plan cols already reach the rail's -4.405, rear view is
+   vane-covered, sides interior). (b) mg census: see the §I
+   justification below. (c) 3b/3c graduate clips fixed this round (see
+   their packets).
+
+PROTECT verification on the final pairs: warm floors 652/581/57 (certs
+respected, see order 5); crown steps 24; under-rim rear p5 82.3; louvre
+sd 7.0 EXACT (p75 97.1/p95 102.8 unchanged); M2/plinth/.50 free-sky
+geometry untouched (rods, sills, slots — only receiver z-depth/can/grip
+kit trimmed); dome volumes/mottle/med parity/module plan edges/hem
+scallops/chevron/towLit/rear p95 rows: untouched paths. hero-rr corner
+air 27.4 vs 27.5 recorded (render-noise class, corridor untouched).
+
+Gate margin note: the round's total geometry price is min 90.7 -> 90.3
+(hull -1.2, stations -0.6, turret -0.2), all inside PASS with x2 holds
+on the final build. The wheel-lane rebuild (dishes + wall moves +
+backer) and the containment lane-lifts are the priced members; every
+tone item is bucket/param-only.
+
+## §I KIT.fittings census justification (order 7b, owner call requested)
+
+`tank-standard-check` reads mg0+0d on merkava3d/3b/3c: every roof MG is
+HAND-AUTHORED (r3-r7, predating kit.js's fittings library). These guns
+are measured ref-parity INSTRUMENTS, not generic decoration: the crest
+M2's free-sky runs (50/48px @ lum 84/70, two-tone class), the plinth
+MG's slot-sky float, the .50's sill window and drooping AA-phase-break
+barrels were each pixel-calibrated against this ref across r3-r11 and
+carry certified side/front columns (2.627/2.644/2.6175 lines). A
+KIT.pintleMG migration would rebuild all of them from generic
+primitives and re-roll every free-sky/tone cert for zero visual gain —
+the r11 critic itself recommended "a packet §I justification over
+migration (migration risks the certified free-sky runs)". Requesting
+the owner accept this justification for the 3-series; new marks start
+from KIT.fittings per §I.
+
+## Orchestrator arbitration ruling (post-r12): crown-air carrier floor
+Crown air 76.2% vs the ordered >=80 is RULED a CERTIFIED CARRIER-OWNED
+FLOOR: the r12 builder decomposed the residual column-by-column onto
+certified structures (cupola block, crest lane, r11b-certified plinth
+parapet, the 2.644 front-col pot) and banked the elevated-rear-cam law
+(h' ~ y + 0.08z — a forward slide raises apparent height). Further
+crown-air grinding against certified carriers is out of order; skyline
+STRUCTURE work (step rhythm, spike placement) remains fair game. Critics
+judge the rear skyline on read, not the percentage.

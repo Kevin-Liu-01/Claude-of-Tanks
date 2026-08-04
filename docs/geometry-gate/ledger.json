@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-08-03T23:51:07.136Z",
+ "generatedAt": "2026-08-04T00:30:41.097Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 17,
+ "passed": 18,
  "total": 85,
  "rows": [
   {
@@ -655,19 +655,6 @@
    }
   },
   {
-   "id": "pt91m",
-   "geoMin": 63.9,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 80.9,
-    "wholeCurves": 63.9,
-    "turretCurves": 80.5,
-    "stations": 84.3,
-    "dims": 88.2,
-    "floaters": 100
-   }
-  },
-  {
    "id": "t90m",
    "geoMin": 64.7,
    "gatePassed": false,
@@ -721,14 +708,14 @@
   },
   {
    "id": "challenger1",
-   "geoMin": 69.4,
+   "geoMin": 69.9,
    "gatePassed": false,
    "components": {
-    "hullCurves": 69.4,
-    "wholeCurves": 76,
-    "turretCurves": 71.7,
-    "stations": 80.2,
-    "dims": 97,
+    "hullCurves": 71.9,
+    "wholeCurves": 78.5,
+    "turretCurves": 69.9,
+    "stations": 86.6,
+    "dims": 95,
     "floaters": 100
    }
   },
@@ -967,6 +954,19 @@
    }
   },
   {
+   "id": "merkava3d",
+   "geoMin": 90.3,
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 90.3,
+    "wholeCurves": 90.6,
+    "turretCurves": 91.4,
+    "stations": 91.7,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
    "id": "kf51",
    "geoMin": 90.4,
    "gatePassed": true,
@@ -1045,19 +1045,6 @@
    }
   },
   {
-   "id": "merkava3d",
-   "geoMin": 90.7,
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 91.5,
-    "wholeCurves": 90.7,
-    "turretCurves": 91.6,
-    "stations": 92.3,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "m60a1",
    "geoMin": 90.7,
    "gatePassed": true,
@@ -1085,13 +1072,26 @@
   },
   {
    "id": "m1a2",
-   "geoMin": 91.2,
+   "geoMin": 91.1,
    "gatePassed": true,
    "components": {
     "hullCurves": 93.1,
-    "wholeCurves": 93.3,
-    "turretCurves": 91.2,
-    "stations": 93.4,
+    "wholeCurves": 93.2,
+    "turretCurves": 91.1,
+    "stations": 94.1,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "pt91m",
+   "geoMin": 91.2,
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 92.2,
+    "wholeCurves": 91.2,
+    "turretCurves": 95.1,
+    "stations": 92.3,
     "dims": 100,
     "floaters": 100
    }

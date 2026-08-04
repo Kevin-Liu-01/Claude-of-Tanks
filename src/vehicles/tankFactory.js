@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { getSpec, MODEL_SOURCE, TANK_SPECS } from './specs.js';
-import { createTankMaterials, makeBurnUniforms, applyBurnHook } from './materials.js';
+import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.js';
 // MOBILE r1: sourced-GLB swaps are tier-gated (modelLoader also self-gates;
 // checking here skips even the dynamic import + pipeline bookkeeping).
 import { glbModelsEnabled } from '../engine/quality.js';
@@ -751,7 +751,19 @@ function buildRunningGear(P, cfg) {
     P.disposables.push(geo);
     return im;
   };
-  if (tire) mkInst(tire, mats.rubber, entries);
+  // cfg.tireHex opt-in (merkava r12 order 5): per-tank tire tone — the stock
+  // rubber's steep-view read sat sub-45 where the 3D ref keeps its gear
+  // shade >=50. Clone re-attaches the family ambient hook (clone() drops
+  // onBeforeCompile). Default byte-identical.
+  let tireMat = mats.rubber;
+  if (cfg.tireHex) {
+    tireMat = mats.rubber.clone();
+    tireMat.color = new THREE.Color(cfg.tireHex);
+    tireMat.onBeforeCompile = vehicleAmbientFloorHook;
+    tireMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    P.disposables.push(tireMat);
+  }
+  if (tire) mkInst(tire, tireMat, entries);
   const dishMat = style === 'rubber' || style === 'holes' || style === 'dished' ? mats.wheels : mats.detail;
   const proudList = entries.filter((e) => !e.rec);
   const recList = entries.filter((e) => e.rec);
@@ -894,14 +906,32 @@ function buildRunningGear(P, cfg) {
   // Fixed neutral iron tones prevent the garage key light from turning the
   // now-thicker faces into a tan/white necklace.  The inner chain is only a
   // notch lighter, enough to separate the two levels without looking new.
+  // cfg.padHex opt-in (merkava r12 order 2): per-tank shoe-pad tone — the 3D
+  // arch windows keep a >=45L gear floor in the ref where the fixed iron
+  // read sub-30. Default byte-identical.
   const padMat=(mats.trackLink || mats.dark).clone();
-  padMat.color=new THREE.Color(0x171614);
+  padMat.color=new THREE.Color(cfg.padHex ?? 0x171614);
   padMat.roughness=0.97;
   padMat.metalness=0.08;
+  // cfg.chainHex opt-in (merkava r12 order 2): the inner chain/guide-horn
+  // layer's fixed iron read 29.5L through the 3D arch windows where its ref
+  // keeps a >=52.9 gear-shade floor — per-tank chain tone, default
+  // byte-identical.
   const innerMat=(mats.spareTrack || mats.dark).clone();
-  innerMat.color=new THREE.Color(0x27251f);
+  innerMat.color=new THREE.Color(cfg.chainHex ?? 0x27251f);
   innerMat.roughness=0.96;
   innerMat.metalness=0.09;
+  // cfg.gearFloor opt-in (merkava r12 order 2): Material.clone() drops
+  // onBeforeCompile, so these pad/chain clones silently lost the family
+  // ambient floor and rendered ambient-black in skirt shade (13.8L vs the
+  // hooked band's 56L in the same pocket). Re-attach on request; default
+  // path byte-identical.
+  if (cfg.gearFloor) {
+    for (const gm of [padMat, innerMat]) {
+      gm.onBeforeCompile = vehicleAmbientFloorHook;
+      gm.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    }
+  }
   P.disposables.push(padMat,innerMat);
   const padIM = new THREE.InstancedMesh(shoe.pad,padMat,nLinks*2);
   const innerIM = new THREE.InstancedMesh(shoe.inner,innerMat,nLinks*2);

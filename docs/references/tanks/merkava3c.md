@@ -464,3 +464,26 @@ Predicted per-view (r7 critic: 8.5 all nine): front 8.5-9.0 · frontleft
 Geo 90.6 gatePassed + critic 9.0 ALL NINE VIEWS (r8). FREEZE HASH
 5287233e (41 meshes, 147216 verts). Registration retired; override
 added w/ followers; icons x5 staged.
+
+## Graduate-change round r12 — TRACK CONTAINMENT (2026-08-03, NEW hash 1d9b026c)
+
+Fleet-worst-class rear clip (303 front / 718 rear exact voxels) fixed
+under the graduate-change protocol; NEW hash 1d9b026c (was 5287233e) —
+re-freeze at the orchestrator's landing after critic re-cert. Gate HELD
+x2 at the graduation-class line: min 90.5 (91.5/90.5/90.8/92/100/100).
+`track-clip-audit --exact` now reads **0 / 0**.
+
+Same minimal-footprint set as 3B (see its r12 note): wrap-station yB
+lifts (2.28/1.95 -> 1.13; -3.47 -> 1.06), keel.hwClamp 1.13,
+corner-curtain v2 tiers outside the band shell, rearFlaps[0] -> -3.945,
+frontBoard z1 -> 2.26, wall/filler clamps, tailRack.frontClear
+{z:-3.92, bot:1.06}.
+
+SELF-AUDIT (shots/merkava-r12/critic-merkava3c-final, before/after on
+the changed views): rearleft cornerL IDENTICAL (p5/p25/med 29.5/64.3/
+78.7); rearright flapR med 99.8 -> 97.7 (ref 81.3: toward ref);
+view-rear corners p25 82.6 -> 83.4 / 84.0 IDENTICAL; wheel row
+byte-identical. No regression candidate; re-cert requested.
+
+§I mg-census note: the 3C roof guns are the same hand-authored
+ref-parity instruments as 3B/3D (see the 3D packet's §I justification).
