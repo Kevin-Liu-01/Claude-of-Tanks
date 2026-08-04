@@ -280,11 +280,17 @@
   section { padding: 96px 0; position: relative; }
   .shead { display: flex; align-items: baseline; justify-content: space-between; gap: 18px;
     border-bottom: 1px solid var(--hair); padding-bottom: 16px; margin-bottom: 12px; }
-  .shead h2 { font-size: clamp(26px, 4vw, 42px); font-weight: 800; letter-spacing: -.015em; color: var(--bright); }
-  .shead h2 .no { color: var(--amber); font-weight: 800; margin-right: 16px; font-size: .62em; vertical-align: .18em; letter-spacing: .08em; }
+  /* home r3 (owner): icon chips drifted off the titles after the Monument
+     Grotesk swap — the old inline vertical-align hacks were tuned to Inter's
+     metrics. Headers are flex rows now: number + title share a baseline, the
+     chip self-centers against them, no per-font magic numbers. */
+  .shead h2 { display: flex; align-items: baseline; gap: 14px;
+    font-size: clamp(26px, 4vw, 42px); font-weight: 800; letter-spacing: -.015em; color: var(--bright); }
+  .shead h2 .no { color: var(--amber); font-weight: 800; font-size: .62em; letter-spacing: .08em; }
   .shead h2 .sic {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 1.55em; height: 1.55em; margin-right: .5em; vertical-align: -.28em;
+    flex: none; align-self: center;
+    width: 1.55em; height: 1.55em;
     border: 1px solid var(--hair); background: var(--panel); color: var(--amber);
     font-size: .62em;
   }
