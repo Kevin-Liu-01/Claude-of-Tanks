@@ -517,3 +517,149 @@ quarters/heroes/close-front (A+B) 8.8-9.0; rear family (C) 8.8-9.0; top
 pairs required per §G (geometry edits invalidate the r25 verdict).
 NEXT: independent critic re-cert; the two residual classes above are the
 only known sub-9 reads.
+
+## r28 (2026-08-03): critic r27 fix round — gate 91.2 -> 91.3 PASS x2, four
+## of five orders delivered on their done-gates, crown-air delivered-partial
+## + §6-style column cert
+
+Builder round against docs/critique/shaded-parity-pt91m-r27.md (FAIL floor
+8.6 top, five views at 9.0). Gate: **91.3 PASS x2** (hull 92.2 -> 93.0 /
+whole 91.2 -> 91.3 / turret 95.0 / stations 92.3 -> 92.8 / dims 100 /
+floaters 100 — every component at or above r27). standard-check clip
+**24/0 ✓** contig **0 ✓** decor **mg1+4d ✓**. visual-evaluator rig parity
+CLEAN (yawProxy 0-0.5°, all 14 views; the hero-rr 0.606 m² enclosed void is
+the r27-inspected benign under-barrel sky-window, ref carries it too).
+t72b3m locked at hash 3be08468 ✓ (re-gated 91.8 = committed); every diff
+hunk inside buildPT91M (siblings byte-exact). Profile md5 4a46fafa.
+Evidence shots/russia-r28/ (final official pairs + diagnosis zooms); all
+numbers below re-derived on the final pairs (ITU-601 tmp-r7-merkava.py,
+warm census tmp-pt91m-warm.py).
+
+1. **DECK-PLATE FAMILY LIFT (order 1) — ALL THREE DONE-GATES PASS.**
+   view-top proc: grille x240..400 y130..170 med **59.6** (>=58; ref 60.0,
+   was 53.4) / mid-deck x240..400 y200..300 med **60.7** (>=60; ref 62.3,
+   was 55.3) / hull-edge x408..430 y280..360 med **60.4** (>=57; ref 59.6,
+   was 54.4). NO skirt regression: view-left band med **71.8** vs ref 73.7
+   (Δ1.9 <= 5; r27 was Δ2.3) — the ERAWA/spareTrack family was never
+   touched (the r27 wash lesson). Glacis rows re-measured **56.4** (<60,
+   unchanged by design — z>2.04 excluded to protect close-front glacis
+   parity) => per the verdict's own rule the camo value-split declaration
+   is FINAL for the rows. Owned as the UNIFORM family lift it was (law
+   note a): a post-merge VERTEX-COLOR pass on the merged camo hull+turret
+   meshes (queueMicrotask, t72b3m post-merge precedent) scaling bakeDirt
+   colors on UP-FACING verts only (ny>=0.55, smooth onset; hull k 1.30
+   y>=1.30 z<=2.04 + bin shelf |x|>=1.42 z<=2.20; turret k 1.25) — pure
+   albedo, masks byte-identical, per-tank meshes only.
+2. **DRUM COMPLETION (order 2) — delivered on all three prongs.**
+   (a) Plan: row-64 warm cells **464/454/322/311, all >= 250** (ordered
+   >=250 each; were 238/229/181/178; ref 463-578); total drum-window warm
+   **3344 vs ref 3701** (90%, r27 was 53%). The green constraint rails
+   re-bucketed hullWood (law note b — the rails now JOIN the drum family
+   instead of eating it) — same boxes where kept, mask-identical.
+   (b) Dead-rear: the stepped-slab read is gone — the whole train is one
+   warm mass with drumShell() cylinder normals (meshDomeCurved class,
+   shading-only: rear-facing verts get normals about the drum axis, so the
+   lip/rack/sliver/step boxes shade as one crown-banded cylinder).
+   constant-y edge runs >=12px in the drum band x190..300 y310..375:
+   **0 (= ref's own 0)**. Zone med 73.5 / sd 5.53 vs ref 68.6 / 5.85
+   (Δ+4.9, inside the ±5 family window; rowsd-gradient parity held).
+   (c) hero-rr: rail BODIES dropped to a 1.52 cradle line (the r28c
+   rear-stack decode below) — the drum bodies + end discs stand proud of
+   the rails (zoom z-herorr2.png vs the r27 'half-buried' read).
+3. **MG READ COMPLETION (order 3) — both done-gates PASS.** close-roof
+   proc x540..640 y320..400: **98 sub-45px** (>=40; was 4) including a
+   **34px connected run** (>=30) — the fitting now carries its OWN
+   gun-steel clones (0x20251a body/barrel + 0x2a2f20 can; order 1's
+   family-dark lift had washed the r27 barrel to within ~8L of the dome).
+   view-rear crown: **gun-class silhouette present at 1x** (zoom
+   z-rearcrown.png) — elev 0.10 -> 0.26 + seat +0.02 puts the muzzle/
+   flash hider at 2.06-2.11 world, clearing the local dome line by ~20px
+   from dead-rear while staying UNDER the 2.19 crest's side-col z-run
+   (side-invisible; heightM/dims untouched; receiver top 1.94 vs the
+   ref's 1.931 line — equal |err| to r27's 1.92). Pintle cost measured in
+   the gate: front_whole cols x +0.51..0.59 read +0.2 (the §C <=0.4
+   allowance); whole still rose 91.2 -> 91.3. Top-plan bonus: the dark
+   crown line now reads in view-top.
+4. **CROWN AIR (order 4) — DELIVERED-PARTIAL 55.6% -> 58.6% + the
+   §6-style cert with column proof (the verdict's accepted alternative).**
+   Done-gate was >=60% (full order >=63; ref 67.0). Delivered shaves, all
+   front-col-preserving (gate held x2 through them): SAVAN 2.19 crest
+   x-narrowed -0.262..-0.70 -> -0.575..-0.70 (heightM p95 is SIDE-column;
+   inboard band 2.085 + front cols fall to the fwd slab's 2.146 = the
+   ref's own raked read), 2.13 inner ledge z-forward (rear half owned no
+   side col), left-step z-slide, cupola outer shelf z-split (narrow rear
+   finger keeps the -0.448 side col), right roof boxes 2.035/2.010 ->
+   1.98 (their own certified purpose line), rear corner boxes 1.825 ->
+   1.73 (plan footprints unchanged), left wall z-split (rear half 1.76,
+   front half keeps the 1.835 cols), -1.37 filler transfer (1.8275 top
+   moved to a forward crest fin over the rails' plan cover — front cols
+   identical, tilt v 1.867 -> 1.79), stair nubs 1.79 -> 1.7275, mast head
+   pinned at the ref's 2.525 spike and slimmed 0.030 -> 0.022, straps
+   flush, fingers shortened to the ref's own z-seat, and the r28c
+   REAR-STACK DECODE (the big one, below). RESIDUAL COLUMN PROOF (v-space
+   law: the critic front ortho tilts 0.08 down, v = y*0.9968 - z*0.0797;
+   owner table from fresh-pair per-column tops + raycast probe
+   tools/tmp-skyprobe.{html,mjs}): x206..231 = the 2.19 heightM crest
+   (dims-sovereign, the verdict's own certified residual); x237..277 =
+   the 2.146/2.119 fwd slabs at their side-col-pinned z (ref's own
+   staircase bands); x147..200 + x285..435 + x461..487 = the DRUM CROWNS
+   (1.715@-3.10, v 1.954 — the order-2 protagonists; the ref's drums read
+   r~0.35 on a lower axis, v~1.94 — shrinking mine regresses order 2) +
+   the crest bar/posts/sliver at the certified stack-front cols +
+   station-i0/side-staircase carriers; x280..282 = the mast station-i5
+   column. Every residual owner is gate-pinned; the ref itself carries
+   NOTHING above v 1.94 outside its SAVAN/NSVT cluster and right cupola
+   (fresh-pair ref column scan) — the remaining 1.4% needs a rear-stack
+   x/z re-decode round (station-i0 + side staircase + plan -3.37 + the
+   order-2 drum-warm plan all pin the same carriers). Scheduling ask,
+   r27-crown-air class.
+5. **POLISH (order 5).** (a) cassette pale-pop -1 notch total (two half
+   steps, sampled): front L-cheek med **61.5**/p95 **92.9** (>=58/>=80 ✓;
+   p95 was 101.5, ref 87.3); skirt band p95 **84.5** (<=85 target ✓).
+   (b) basket frame read at 550px: band rear face recessed 8.5 mm, SEVEN
+   22 mm dark slats stand 5 mm proud at the old plane (rears -1.3565
+   world, 4 mm clear of the -1.3605 col boundary — no plan col moves) —
+   3px-wide verticals at 15px pitch read in view-rear (zoom
+   z-basket2.png); band-zone med 67.0 -> **70.2** vs ref 71.7. (c) tire
+   rings one hue step warm at held luma: view-left gear-zone warm census
+   1164 -> **2099** (ref 3499); every r27 gear luma gate re-verified
+   (dark census 0, band med 55.5/p5 51.4/sd 3.23, ramp p5 51.4). Dome
+   arc-seam decals: DECLINED again (plan-poke risk over budget — same
+   r27 reason; optional item).
+
+**r28c REAR-STACK DECODE (the round's law-grade finding):** the fresh
+tilted pair proves the ref's tall rear-stack content is the CENTER drum
+train — its front view carries no column above v 1.94 at wx 0.84..1.10,
+while its ±0.2..0.98 cols' 1.716-1.727 line projects at v 1.94 = a
+carrier at the stack FRONT (z ≈ -2.9). The r25 full-height outer/inner
+rails (tops 1.735 at z -2.91..-3.17) were therefore (a) the r27 hero-rr
+'burying frames' and (b) ~1500px of the crown window. Fix: rail bodies
+drop to a 1.52 cradle (footprints identical — plan -3.37 / station-0
+width are height-free), the side staircase (1.735@-2.92..-3.17,
+1.716@-3.30, 1.69@-3.37) rides the full-height station-width sliver at
+x -1.114 (side view maxes over x; third step added), and a FRONT CREST
+BAR at z -2.93 (top 1.72, sunk to the drum fronts, outer support posts
+down to the cradle) carries the ±0.2..1.11 front-hull cols at the ref's
+own skyline height. Gate confirmed the decode: hull 92.2 -> 88 with the
+naive drop, **93.0** with the crest bar (above the r27 build).
+
+LAW NOTES (bank): (a) the critic standard views are TILTED orthos (front
+dir (0,0.08,1) => v = y*0.9968 - z*0.0797, up = cross(dir,right)) — a
+rear-seated top prints ~8px/m-of-z higher than the same height forward;
+front-col transfers (same top, same x, forward z) are gate-silhouette-
+IDENTICAL and buy tilted-view air. Owner attribution for skyline pixels
+is a raycast under the exact rig (tmp-skyprobe), not window luma.
+(b) A fitting that must stay DARK cannot ride a family mat that a tone
+order lifts — clone at the fitting boundary (pintleMG mats override).
+(c) Per-half orthoFor framing re-centers on the content bbox: trimming
+top content (mast) shifts the whole proc half UP ~2px in the fixed
+window — bbox-coupled framing eats ~40% of naive skyline shaves; budget
+from measured deltas, not geometry alone.
+
+Self-read vs the r27 verdict's five 9.0 views: unchanged classes only
+(left/right/frontleft/frontright/hero-fl untouched except tone-family
+lifts that track the ref). The five fix orders: top (deck family
+delivered — expect 8.6 -> ~8.9+), rear/rearleft/rearright (drum train
+one warm mass, seam runs at ref parity, basket rhythm, rear-crown gun),
+hero-rr (drums proud), close-roof (dark 34px gun run), front (crown air
++3.0pts, residual certified). Ready for the graduation critic.
