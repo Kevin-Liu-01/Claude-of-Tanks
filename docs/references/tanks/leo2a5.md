@@ -579,3 +579,166 @@ hero-rearright, front wrap-crown grime term (a6 r6 #1 — not yet
 ported), PERI face two-tone, glacis anti-slip zones, headlight pod
 cluster plates. Hand-authored dressing predates KIT.fittings (census
 mg0+0d — §B3 carried by the r6 loader MG + this packet justification).
+
+## VISUAL r6 — FIRST CRITIC LADDER ROUND (2026-08-04, verdict 5d361ab: FAIL floor 7.7 rear / mean 8.0)
+
+Work order: docs/critique/shaded-parity-leo2a5-r5.md (three drivers:
+gear grammar, rear-plate grammar, furniture tier). Gate after round:
+**min 90.8 PASS x2 bit-identical on final bytes** (hull 90.8 / whole
+91.2 / turret **91.5 (+0.9 over the r5 entry — the binder moved off
+turret)** / stations 94.3 / dims 100 / floaters 100); containment
+`--exact` **0/0**; `tank-standard-check` gate ✓ clip ✓ contig 0 ✓ decor
+mg0+0d (the standing §I packet carry — hand-authored MGs predate
+KIT.fittings; migration stays fleet-program scope); §D evaluator **RIG
+PARITY OK** (max yawProxy 1.5° @close-front, exit 0); `npm test` 166
+✓. New hash **8066a678** (60 meshes / 125796 verts). Graduates frozen
+on my watch: leo2a6 **80b76338**, kf51 **77020c58**; siblings
+cd61999c / e28fc316 / 5647ef3e byte-stable (every diff hunk lives in
+buildLeo2A5 + two leoHullV3 opt-ins with byte-identical defaults:
+`fanWell`, and a5 newly passes the existing `jackDark`).
+
+Per-order status, measured on the critic's own windows
+(tools/tmp-critic-a5r5-measure.py, fresh official pairs):
+- **1a FRONT FLAPS — LANDED (structure) with a banked residual
+  (texture)**: front face window med 66.5 vs ref 63.5 (was 63.1 but
+  comb), **vgrad 6.54 -> 2.34** (ref 0.22), sub45 31 ≈ ref 21,
+  rowmean-sd **8.85 -> 6.58 vs the ≤4.5 done-gate** — the residual is
+  the pad-row CONTACT SHADOW on the flap face + the legal comb's top
+  line (both absent on the ref's smooth print track). Build: one FLUSH
+  plate z 3.842..3.854 y 0.395..0.88 + low plate z 3.302 y 0.16..0.40
+  + pale top-edge cap, all hullTrack, inside the wing-band z-slab.
+  Priced side columns (banked, measured): +3.82w bottom 0.395 vs the
+  0.72 ref bin (errM 0.17), +3.37w bottom 0.16 vs 0.30 (0.07).
+- **1a REAR — DONE-GATE PASSED**: rear corner window med 62.2 vs ref
+  62.8 (was 73.9, +11.1), rowmean-sd 3.98 ≤ 4.5 ✓; boards widened
+  x1 1.56->1.70 per the order + a low cover plate in the deep-board
+  z-slab (bottom 0.50; its column errM 0.066 banked).
+- **1b SPROCKET DISC — DONE-GATE PASSED**: view-left disc window med
+  54.7 ≤ 65 ✓, hue 74.8 ≥ 55 ✓ (ref 76.2 olive family), p5 51 ≥ 45 ✓.
+  OWNERSHIP FINDING: the pale pixels were the BAND's lit side-face
+  ring at |x| 1.69, not the drum (wornDrum was already applied) —
+  olive cover discs + dark hubs park at x 1.724..1.7385, OUTBOARD of
+  the caps' 1.713, touching the rear-skirt/filler plates (no floaters).
+  Station width moves toward the ref's own ±1.737 line (r6 fender law).
+- **1c WRAP-CROWN GRIME — ported+extended**: ny term 0.26 -> 0.34 and a
+  NEW |normal.z| mud term 0.30 on the shoe clones (vertical strip faces
+  byte-identical — strip law re-measured in law: med 63.4, ratio 1.048,
+  hue family ✓). Front p95 74.0 vs the ref+4=72.7 sub-gate (1.3 over,
+  banked; was 81.0). OVERSHOOT LAW CONFIRMED TWICE: ny 0.44 / nz 0.40
+  cuts inverted the windows (sub45 spikes) and were pulled back.
+- **2a LOUVRE BAND — DONE-GATE PASSED**: rear window med 91.9 ≥ 82 ✓
+  (ref 86.4; +5.5 hot residual, coupled to the 2c canvas lift),
+  rowmean-sd 7.26 ≥ 4.5 ✓ (ref 6.41). Full-scale band: inboard
+  wall-face panels + OUTBOARD FACADES z -3.610..-3.598 (0.023 behind
+  the band's -3.575 rear extreme — the real A5 rear plate is
+  full-width; our wall stays narrowed for r4 containment), slats on
+  the per-build wood mat (jackDark opt-in frees it; 0.040-fill rows,
+  rx 0.35 per the rear-face light law).
+- **2b GUARD RINGS — DONE-GATE PASSED**: taillight window hue 59.3
+  ≥ 45 ✓ (ref 52.2), med 65.0 ≈ ref 65.7 ✓; concentric ribbed ring
+  cages + olive lenses at (±0.87, 1.06) on the wall face, 3x crop
+  shows both round guards.
+- **2c UNDER-BUSTLE — p75 GATE PASSED, sub45 banked**: hero-rr window
+  p75 69.8 ≥ 69 ✓ (ref 71.4; was 65.8), sub45 572 vs the ≤430 gate
+  (ref 363) — the residual is real under-rack shade; pockets/under-
+  shadow cuts that WORSENED it were removed (the mechanism is lit
+  crowns, not pockets). Canvas kit sits ON a luma plateau: the p75
+  only moved when the plateau itself lifted (0x3e4532 -> 0x4b5340).
+- **3a MG READ (owner-law) — delivered, critic to judge**: loader MG3
+  upscaled to the MG-physics floor (barrel Ø 0.038 = 2.1 px at 54px/m,
+  receiver 0.075 mass, pale co-rod + full-width cover, tops ≤ 2.649w)
+  + the stowed MG3 now a GUN on its certified mount: DIAGONAL across
+  the bustle roof (ry -0.6, two-tone pale crown strips, zero new
+  silhouette — tops hold the mount's 2.55w line). Reads: top ✓,
+  close-roof ✓, rear 3x (diagonal against the horizontal stern
+  grammar). TWO failed cuts banked as laws below.
+- **3b PERI — delivered**: body -> scheme camo (the existing PR.mat
+  param), pale cap disc + dark ring + pale inner + hub at the hatch
+  ring +0.7..1.4 mm grace class (top 2.6564w = the anchor read), dark
+  head-band plates, optic surround + wiper. The critic's "grey-mauve
+  slab" was partly the VENT BOX/MG MOUNT — small camo boxes
+  MIP-AVERAGING to flat grey (a6 r4 #2 law): both re-bucketed
+  turretDark + pale grille slats.
+- **3c LAUNCHERS — delivered**: per-tube dark muzzle caps + collar
+  rings + pale breech caps (co-axial, the same transform math as
+  KIT.smokeCluster — every piece shares the tube's columns) + dark
+  backdrop plates behind both cheeks. Reach 1.378 < the 1.41 col
+  limit; backdrop tops 2.18w ≥0.03 under the crest.
+- **3d MANTLET ROUNDS — delivered**: dark round face r 0.148 on the
+  deep block + round evacuator drum r 0.080 + end seam over the
+  collar — close-front reads round-over-round vs the nested squares.
+  EVERY radius inside the certified box tops (see the dims incident).
+- **3e GLACIS — DONE-GATE PASSED**: view-front window med 63.3 ≤ 66 ✓
+  (ref 61.8; was 73.6, +11.8). Slope-aligned dark anti-slip fields on
+  all three plate slopes (≤8 mm proud) + pale X-straps in 2-segment
+  chains (the a6-r2 yawed-furniture law) + headlight backing plates +
+  3-bar brush guards (tops ≤ the pods' 1.45 line).
+- **4a DECK — geometry delivered, tone window banked**: real fan wells
+  via the leoHullV3 `fanWell` opt-in (a6 r3 #6 recipe; curb top under
+  the old torus row) + radiator-slat camo covers (tops 1.8445 = the
+  existing slat row). The verdict window [±0.58 x-strip] is the
+  TURRET-ROOF/fore-deck camo zone: med 54.9 vs the ≥57 gate is
+  camo-field-bound (per-tank untunable) — banked with numbers.
+- **4b STERN FRAME — DONE-GATE PASSED**: rearleft window sd 14.69 ≥ 11
+  ✓ (ref 13.31), p95 105.4 ≥ 95 ✓ (ref 102.3). Pale crowns on every
+  sun-facing rail/strap/upright top (+2..6 mm, sub-row) + sky-tilted
+  rail crowns (rx 0.12).
+- **4c TURRET FLANK — partial (banked)**: p95 81.5 vs the ≥83 gate —
+  module top-edge crowns (7+3 segments, station end-cap law) + lift
+  strips landed inside certified planes but the window median mass is
+  camo-bound. 4d tube mottle: REVERTED (below) — banked residual.
+
+LAW DISCOVERIES (fleet bank):
+1. **BODY-COLUMN REGISTRATION TRAP**: the 12%-band registration mid is
+   set by the FIRST/LAST side columns whose span > rough·0.12 — ANY new
+   bow/stern member that pushes a sub-body column over the threshold
+   (my z 3.93 flap plate: wing-band col 0.21 -> 0.56 span) slides
+   dAlong (0.058 here) and smears EVERY curve row (min 90.6 -> 83.2).
+   Author new end-of-vehicle mass INTO already-body columns only.
+2. **THE AUDIT COUNTS THE BAND SHELL, NOT THE SHOES**: the wing band
+   itself sits legally INSIDE the pad orbit (z 3.845 vs pads to 3.905)
+   — `track-clip-audit --exact` audits the swept SHELL (far edge
+   3.818); pad/cap orbits govern only the shaded 4x tooth-over-plate
+   check. Flap plates can live in the wing-band z-slab; keep tops
+   ≥0.02 under the local pad-arc lower rim for the visual check.
+3. **GUN-COLUMN BODY THRESHOLD (dims)**: hullLengthM reads the
+   side_whole body span; under the gate's gun-aft pose the tube's
+   columns sit just UNDER the 12% threshold (span 0.284 vs 0.326) —
+   any radial add on the gun (tube bands r+0.0005 x0.22, a rim ring
+   +0.011 over the block top) tips one and dims pays -6.3
+   (hullLengthM 7.75 -> 7.86). Gun dressing must stay strictly inside
+   the certified box/sleeve radial envelopes.
+4. **DIAGONAL-ROD ANCHOR STAIRCASE**: an AA-elevated MG barrel (20
+   deg) lights a STAIRCASE of side columns (2.66..2.79) — the p95
+   anchor slid to 2.70 and dims paid -10. The r5 anchor law
+   generalizes: any member above the anchor line must fit its whole
+   above-anchor run inside ONE column of z (>=52 deg here) — or stay
+   below the line.
+5. **CAST-SHADOW LADDER**: a z-STEPPED flap ladder (plates at 3.85 /
+   3.59 / 3.30) reads striped even with perfect tone — the comb's
+   cast shadows land mid-face when the receiving plane sits 0.3-0.5 m
+   deeper (shadow drop ≈ Δz·tan(sun)). One FLUSH plane moves every
+   caster to <=0.06 ahead and the shadows hug the top edge.
+6. **ONE-PIXEL AA LEAK re-confirmed at 15 mm**: the flap top-cap's far
+   edge 15-18 mm (1.4 px at the 1024 frame) off a column boundary
+   leaked its 0.878 band into the bow neighbour column on the GATE's
+   grid phase (the probe's grid did not leak it) — 20+ mm setbacks;
+   grid phase differs per harness.
+7. **PLATEAU TONE LAW (2c)**: when a percentile gate sits ON a big
+   flat-material mass, small brightening of OTHER kit cannot move it —
+   lift the plateau material itself (canvas 67.6 -> 69.8 only via the
+   canvas hex).
+8. **MULTI-SITE REPLACE HAZARD (process)**: a python str.replace on a
+   hex shared with the graduate's block (canvasCloth 0x3e4532) edited
+   buildLeo2A6 — caught by section-diff audit, restored byte-identical
+   same session (geometry hashes cannot catch material-only drift;
+   diff hunks are the check).
+
+Residuals carried to r7 (all with numbers above): front-face
+rowmean-sd 6.58 (≤4.5 gate) + p95 +1.3; louvre med +5.5 hot; 2c sub45
+572 (≤430); 4a window med -2.1/vgrad/sub45 (camo-bound); 4c p95 -1.5;
+4d tube mottle (needs a mask-free mechanism); disc-window p95 89.8
+(lit crescent on the cover disc); gear-window sub45 2763 (mud-term
+shade tail — hue 40.9 unchanged from the r5 read, still the 1c
+family). Prior certified classes (2.695 crown pair, jerry-can bottom,
+fender-nose/wedge-crest flags, evaluator top Δbot) stand.
