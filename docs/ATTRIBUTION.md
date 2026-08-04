@@ -6,7 +6,8 @@ served locally from `public/`, no CDN or network fetches in game code.
 
 | Asset | Author | Source | License | Files |
 |---|---|---|---|---|
-| Inter variable font v4.1 (InterVariable.woff2 straight from the official release, unmodified; wght 100–900 × opsz 14–32, roman only — the UI sets no italics). OWNER-DIRECTED CHOICE replacing Archivo, with a UI usage floor of weight 500 (medium) — body/default 500, hierarchy 600/700/800. PROVENANCE NOTE (kept for the record): the owner originally requested Klim Type Foundry's "Die Grotesk" (https://klim.co.nz/fonts/die-grotesk/) — that face is commercial-only and Klim's test-font licence (https://klim.co.nz/licences/test-fonts/) is evaluation-only and excludes personal projects/games, so it remains unobtainable for this project; Archivo shipped as the interim free substitute and has now been replaced by Inter (removed from `public/fonts/archivo/`). Inter has no width axis: the former condensed HUD layer (once 'Archivo Condensed' at 79% stretch, before that SwitzerCondensed, removed from `public/fonts/switzer/`) is now plain Inter with tightened letter-spacing at the consuming rules. | Rasmus Andersson (The Inter Project Authors) | https://rsms.me/inter/ (release: https://github.com/rsms/inter/releases/tag/v4.1) | SIL Open Font License 1.1 — free for personal & commercial use, modification and redistribution allowed; license committed alongside the font. No public-build strip needed (not NC/personal-use restricted). | `public/fonts/inter/InterVariable.woff2`, license: `public/fonts/inter/OFL.txt` |
+| ABC Monument Grotesk (Regular/Medium/Bold, woff2 converted from the owner's OTF cut with fontTools, otherwise unmodified). OWNER-DIRECTED CHOICE (fonts r4, 2026-08-04) replacing Inter as the UI face — the owner supplied their own Dinamo cut; ABC Monument Grotesk is a COMMERCIAL typeface and is used here under the owner's own Dinamo license terms, NOT under this repo's asset licenses. It must not be copied out of this repo for reuse. Weight mapping via @font-face ranges: 100-400 Regular, 500-600 Medium, 700-900 Bold (UI usage floor stays 500). | Dinamo Typefaces | https://abcdinamo.com/typefaces/monument-grotesk | Commercial (Dinamo EULA, owner-held) — all rights reserved by Dinamo; not covered by the licenses in this file. | `public/fonts/abc-monument-grotesk/ABCMonumentGrotesk-{Regular,Medium,Bold}.woff2` |
+| Inter variable font v4.1 — RETIRED from the live UI (fonts r4 swap to ABC Monument Grotesk, 2026-08-04; previously the UI face per the r3 owner-directed swap from Archivo, which had replaced the unobtainable Klim "Die Grotesk"). InterVariable.woff2 itself is removed from public/; Inter survives ONLY as the two ~1.5 KB wordmark subsets embedded in the brand lockups (see the brand row below), so the OFL license file stays committed. | Rasmus Andersson (The Inter Project Authors) | https://rsms.me/inter/ (release: https://github.com/rsms/inter/releases/tag/v4.1) | SIL Open Font License 1.1 | license: `public/fonts/inter/OFL.txt` (font file removed; subsets embedded in `public/brand/logo-full.svg` + `logo-full-metal.svg`) |
 
 ## Brand / logo set (public/brand/) — added 2026-07-31
 
@@ -31,7 +32,7 @@ is first-party:
 | Asset | Author | Source | License | Files |
 |---|---|---|---|---|
 | Claude Code mascot icon (pristine 24×24 path; `color.svg` and `default.svg` on the source CDN are byte-identical, fill `#D97757`). Used verbatim inside the brand marks via `translate(...) scale(...)` with the legs clipped below the hatch ring — the glyph geometry itself is unmodified; the helmet/goggles are drawn as separate first-party shapes layered on top. | Anthropic (Claude Code branding; icon page curated by theSVG) | https://thesvg.org/icon/claude-code (file: https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/claude-code/color.svg) | Anthropic trademark/branding, © Anthropic. Used in this PRIVATE, personal-use, never-published fan project only; not an endorsement. Would require Anthropic's permission for any public/commercial use — strip `public/brand/` mascot art if that ever changes. | pristine source: `public/brand/claude-code-source.svg`; composed into `public/brand/logo-mark.svg` (colored crest primary), `logo-mark-bw.svg`, `logo-mark-metal.svg`, `logo-full.svg` (v3 crest marks; `logo-mark-simple.svg`/`favicon.svg` drop the mascot to a helmet dome; PNG exports `favicon-32.png`, `favicon-192.png`, `apple-touch-icon.png`, `og-logo.png`, `og-logo-transparent.png`; v1 set archived in `public/brand/v1/`, v2 roundel set — incl. the retired `logo-mark-accent.svg` — in `public/brand/v2-roundel/`), and inlined in `index.html` boot splash |
-| Inter wordmark subsets inside `logo-full.svg` (two static instances of the repo's Inter variable font — wght 800 and 700 at opsz 32 — subset to the 13 glyphs of "CLAUDE OF TANKS" with fontTools and embedded as ~1.5 KB woff2 data URIs so the lockup renders correctly standalone). | Rasmus Andersson (The Inter Project Authors) | derived from `public/fonts/inter/InterVariable.woff2` (see Inter row above) | SIL OFL 1.1 — modification/subsetting and embedding permitted; license at `public/fonts/inter/OFL.txt` | embedded in `public/brand/logo-full.svg` |
+| Inter wordmark subsets inside `logo-full.svg` / `logo-full-metal.svg` (two static instances of the repo's Inter variable font — wght 800 and 700 at opsz 32 — subset to the 13 glyphs of "CLAUDE OF TANKS" with fontTools and embedded as ~1.5 KB woff2 data URIs so the lockup renders correctly standalone). | Rasmus Andersson (The Inter Project Authors) | derived from `public/fonts/inter/InterVariable.woff2` (see Inter row above) | SIL OFL 1.1 — modification/subsetting and embedding permitted; license at `public/fonts/inter/OFL.txt` | embedded in `public/brand/logo-full.svg`, `public/brand/logo-full-metal.svg` |
 
 PNG exports are produced by `tools/brand-render.mjs` (export mode) and the og
 composition script; regenerate any raster from its SVG master rather than
@@ -546,6 +547,20 @@ new quarantine entries.
 The remaining batch contents (t-90m / char-leclerc / bergman-p1 shipped-source
 folders from wave 2, this wave's three source archives, and the stray original
 `tank_t-80u.glb`) were deleted from the gitignored drop area after integration.
+
+### AFV oracle drop (2026-08-04) — M2 Bradley, CC-BY 4.0
+
+Owner-downloaded for the AFV program (owner directive: "show the bradley
+bmp and more of the afv types some love"). Used as the `m2a2_bradley`
+geometry-gate ORACLE (local measurement reference via
+LOCAL_REFERENCE_OVERRIDES); NOT registered as a shipped visual. CC-BY 4.0
+permits shipping later with the credit line if the owner chooses.
+License/author/source are embedded in the GLB's own `asset.extras`
+(generator Sketchfab-16.68.0) and verified from the binary at integration.
+
+| In-game vehicle (spec id) | Asset | Author | Source | License | File |
+|---|---|---|---|---|---|
+| M2A2 Bradley (`m2a2_bradley`, oracle only) | M2 Bradley IFV | 42manako | https://sketchfab.com/3d-models/m2-bradley-ifv-ab022158ab5f4fbfa55d4142db7595ab | CC-BY-4.0 (embedded: "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)") | `public/models/tanks/community/m2_bradley_ifv.glb` (nodes: body_lod0 hull, turret_lod turret+25mm, treads_lod, bagsbagsba stowage; ground y=0, z long) |
 
 ### User drops waves 5–7 (recovered fleet, integrated 2026-07-29) — local-only models
 

@@ -60,6 +60,17 @@ const LOCAL_REFERENCE_OVERRIDES = {
       turretNode:'^Turret$', autoPivot:true, paintUntextured:true,
     },
   },
+  // AFV program: owner-downloaded 42manako M2 Bradley (CC-BY-4.0, embedded
+  // credit; docs/ATTRIBUTION.md "AFV oracle drop"). Oracle only — the
+  // playable stays procedural. Print carries a real turret split
+  // (turret_lod, 25mm fused in it) + textures.
+  m2a2_bradley: {
+    source:'glb',
+    glb:{
+      path:'/models/tanks/community/m2_bradley_ifv.glb',
+      turretNode:'^turret_lod$', autoPivot:true,
+    },
+  },
   // Same quarantine-oracle pattern as ariete: the NullOps Type 74 is
   // PERSONAL-USE (docs/ATTRIBUTION.md) and never ships as a MODEL_SOURCE;
   // the roster's type74 spec + procedural build live in profiles/misc.js.
