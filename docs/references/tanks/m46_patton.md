@@ -314,6 +314,142 @@ curveHull gear contactZF/contactZR pass-through, m2Station coverZ/coverL
 (existing) consumed. NEXT (r6+): the residual list above is the measured
 ceiling map — the tank enters the visual pipeline per the r5 stop rule.
 
+## Round r7 (2026-08-04) — the m46 TONE round (shaded-parity r5 orders)
+Gate **91.1 PASS x2** (hull 91.9 / whole 91.8 / turret 91.1 / stations 92.5 /
+dims 100 / floaters 100) — total round spend from the r5 91.2: turret -0.1
+(turret_side 91.1 / turret_plan 92.5), whole -0.6, stations -0.5, dims 100
+HELD x2 through every landing (the pedestal/cover heightM carriers never
+moved). standard-check clip **0/0**, contig **0**, decor **mg1+2d** (was
+mg1+0d). Evaluator RIG PARITY OK (max yawProxy 1 deg @frontleft, |dCentroid|
+0.061 m — the r5 numbers exactly), npm test green (166 + track-geometry).
+Hashes: m46 **99a3b0b4** (86 meshes / 90250 verts); m47 **f02ef936 FROZEN**
+(verified after EVERY batch incl. the gearShade/wheelCamo shared-code
+edits — its concurrent r6 critic never drifted); graduates m60a1
+**81e69e34** / m60a3 **efcde5c4** exact; siblings m26 **2621292c** / m45
+**e103a2dc** byte-identical to HEAD (stash round-trip proof — the t26Cast/
+bustleRack opt-ins default byte-identical). Shots: shots/patton-r7/ (14
+official pairs + r5-pairs baseline/ + diag + a6 crops). All numbers =
+official tmp-tank-critic pairs, banked scanners (tmp-r7-merkava.py +
+tmp-r6-m47.py + tmp-m46r5crit-scan.py).
+
+GROUP A — gear tone, ALL SIX DELIVERED (m47 r4+r6 recipes, olive-variant):
+- **A1 ✓**: view-left [60..580]x[358..427] sub-30 census **7481 -> 0** (bar
+  <=300, ref 0); p5 6.8 -> **54.1** (bar >=35, ref 51.4); med 56.0 -> 66.6
+  (ref 63.2, bar 6L); sd 25.73 -> **7.39** (ref 8.71); p95 75.8 <= ref+4
+  (81.5). Mechanism: cfg.gearTone (the SHARED m47 r6-olive path: gearFloor
+  rehook + 0x353928/0x3b402f + trackL/R (1.10,1.15,0.97) + spareTrack
+  0x3f4531 + rubber emissive 0x191d12 + env floors 0.30/0.32) + darkGearFit
+  + fenderSkirtB 'hullDark'. N1 pre-priced ✓: hero-rr gear r/g **0.995**
+  (bar <=1.01; own hull 0.959 -> split 0.036 vs the REF'S OWN 0.039 on the
+  same windows — matched in kind, no tan).
+- **A2 ✓ (two sampled dial notches)**: wheel band [170..380]x[380..416] p75
+  61.3 -> **72.5** (bar >=66, ref 67.6), med 67.4 (ref 62.7), p95 75.1 <=
+  ref+4 (77.0). NEW opt-in cfg.wheelMul/[wheelEnv] — the shared
+  (1.05,1.10,1.02) multiplier renders the m46's own camo instance a class
+  hot (first cut p75 81.0): landed (0.865,0.91,0.845)/0.15 (same olive r/g,
+  luma x0.79). Drum faces carry blotches via the shared N2 world-box UV
+  re-projection; flat-cell census rearright 7/157 vs ref 5/155 (in class);
+  hub rings/bolts kept. The far-side idler STARBURST read is dead
+  (hero-fl/frontleft crops).
+- **A3 ✓**: front track columns [85..175]/[468..558]x[400..555] med 32.4 ->
+  **60.0 / 60.1** (bar within 5L of ref 62.7 — Δ2.7/2.6) — rides the shared
+  env-floor lift (m47 C5) inside gearTone.
+- **A4 ✓**: cfg.gearShade OBJECT form (NEW: `true` keeps the m47 literals
+  byte-identical — f02ef936 verified; object supplies per-hull spans). m46
+  spans measured off M46_HULL: BOTH end wraps sit BELOW the 1.215 top run
+  (idler crest 1.045, tension-drum crest 0.975 — the m47 covers rise, these
+  descend). Covers 5+cm over pad crowns under the 1.369 fender-doubler
+  bottom; curtains x +-1.63 / +-1.18 (m46 muffler-leg stations -2.40/-2.60);
+  done-gates: sponson window p5 54.1 (bar >=20), hero-rr far-side
+  fender-line proc-only edges max **0.823 m** (bar <2 m; the r5 4.68/3.88
+  chains gone — the 1.15 m lower-rear survivor is the adjudicated y<0
+  under-belly class), posts fade into the curtain band at 1x.
+- **A5 ✓**: hero-rr gear window sub-25 **3756 -> 0** (target class <=300);
+  window p5 42.2 / med 56.1 / sd 9.18 vs ref 44.0 / 58.6 / 10.85 — the r5
+  floor view's driver is in-class.
+- **A6 ✓ (identity piece READS)**: the tension-idler-sized rear drum now
+  reads as a DISTINCT painted wheel + wrap dip at 1x in left/right/rearleft
+  — camo drum face (A2 UV re-projection) + pale rim rings (endRings param:
+  0.126/0.082 shadow-named pair on the 0.342 carrier face + 0.145 real
+  idler ring). Crops: shots/patton-r7/a6-*.png.
+
+GROUP B — M2/AA hardware, BOTH DELIVERED:
+- **B1 ✓**: view-left rod [280..420]x[200..250] block-luma med 57.0 ->
+  **76.8** (bar >=70; ref 73.3; the m47 landing exactly), ytop-med 223 =
+  ref 223; close-roof cluster [200..420]x[195..260] med 48.4 -> **60.6**
+  (ref 58.9). Mechanism: t26Cast mgPale opt-in (NEW, default OFF — m26/m45
+  byte-identical): leo-r9 0x424635 clone + ambient rehook, m2Station/
+  aaPedestal paleMat wiring + crown strips (grammar-aware), mg/pedestal
+  tone 'two-tone'.
+- **B2 ✓**: M.grammar on the m46 station — receiver steps 3.090/3.075/3.110
+  under the 3.155 cover (certified band: receiver 3.103 / cover 3.127
+  class), dapple patches, barrel taper + muzzle collar with the collar END
+  pinned at tipZ 1.222 (station-i12 carrier untouched); pedestal head 3.18
+  (heightM p95) never moved — **dims 100 x2 at every landing**. The
+  close-roof monotone-slab read is broken (crops).
+
+GROUP C/D (priced; measured in-gate):
+- **C1 ✓ (decal lane)**: cfg.bowCasting — 4 transverse rib crests + dark
+  under-bars (louvre rhythm) on the undercut plane, toe-face seam, clevis
+  bases behind the shackle rings; all faces <=13 mm proud, interior to
+  every gate view (side bottoms owned by the idler wrap, plan front by the
+  2.00/2.087 anchors). Hull 91.9 unchanged.
+- **C2 ✓**: T.zWedges — z-sloped blends across the four crest-ladder step
+  boundaries (x -0.60..-0.06: every front column stays M2-hidden per the
+  r5 pod law; the ladder was the trace quantization of the ref's own
+  smooth roll). Cost stations -0.2, turret 0. Terrace shadow lines
+  smoothed at close-roof.
+- **C3 ✓ (cycle-2, measured in-gate)**: rack reads LOADED — R.loadBucket
+  'turretCloth' bucket swap (zero-mask: the certified dark loads were
+  render-invisible against the dark background, the m47 B2/B3 lesson) +
+  slim cloth bed/roll/straps INSIDE the certified load envelope. ABORT
+  RECORD: the first cut added a bedroll+duffel in the REAR rack half —
+  turret 91.1 -> 90.2 (turret_plan: the ref keeps those columns open);
+  slimmed to the r5 load mass envelope, turret restored 91.1 in-gate.
+- **C4 PARTIAL (tone half delivered)**: cfg.rearLouvres — dark backer +
+  6 pale slat rows on the tail plate, faces >=0.5 mm INSIDE the -4.246
+  plane (12%-band anchor untouched; zero-mask by construction). The
+  texture-plain read is dead; rear-band window med 59.3 vs ref 67.6 (was
+  the r5 in-class-camo read; the remaining delta is the ref's brighter
+  slat crowns). RESIDUAL (banked): the corner verticals @ x +-1.684
+  (88.9/91.1 deg len 0.57) persist — they are the shared track band's
+  flat side face vs the ref's fragmented link edges; no in-envelope
+  chamfer exists on trackBandGeo (the m47 B1 tangent-line class; occluder
+  variants would add new near-verticals).
+- **C5 ✓**: G.baffleSlot — dark transverse window bars on the drum flanks
+  (faces <=3 mm proud at the ellipse equator, corners inside the
+  front-view contour, muzzle z untouched; overallLengthM sovereign, dims
+  100 x2).
+- **D ✓ (+2d census)**: FITTINGS.towCable coiled on the rear plateau
+  INSIDE the 1.7645 deckCaps side window (crown 1.7596; mufflers 1.784 own
+  the front columns) + FITTINGS.spareTrackLinks hung on the right shelf
+  wall (outer face 1.128 inside the certified 1.135 plan column, z inside
+  the 0.07..-0.562 pod). §H.4: m46's OWN loadout tells vs m47 — Korea
+  canvas rack load + turret-flank spare links + rear-deck cable + ribbed
+  bow vs m47's tail-tray tarp bed + deck pioneer row + whip antenna.
+
+SELF-READ (builder estimate, not a verdict): every r5 hold-list driver
+addressed except two banked residuals (deck grille faintness — usKit
+frozen lane, no r6 order line; C4 corner verticals above). r5 floor view
+hero-rr: all five of its named drivers (black wrap, bare drums, starburst,
+scaffold rack, grey masts) are delivered-or-certed; floors self-read
+~8.8-9.0. Ready for the second adjudication.
+
+NEW SHARED-CODE OPT-INS (all default byte-identical, proven by hash):
+cfg.gearShade object form {covers/curtains/backers/endRings},
+cfg.wheelMul/wheelEnv, t26Cast mgPale via mg/pedestal tone:'two-tone' +
+grammar crown strips, T.zWedges, T.rackLoad, T.sideLinks, bustleRack
+R.loadBucket, cfg.bowCasting, cfg.rearLouvres, cfg.towCable, G.baffleSlot.
+
+LAW NOTES (bank): (1) the shared wheelCamo multiplier is NOT
+tank-portable — per-spec camo instances differ a full class (m46 first cut
+p75 81.0 vs m47's landed 70.2 with identical constants); dial per tank on
+the render. (2) gearShade cover geometry is per-hull: end wraps BELOW the
+top run need descending ceilings (the m47 literals assume rising ones).
+(3) rack fills price turret_plan/side 1:1 wherever they exceed the ref's
+own load envelope — bucket-swap the existing certified loads FIRST (zero
+mask), add volume only inside it.
+
 ## Vertex round r3 (2026-08-04) — probe round: r2 baseline RESTORED, deltas banked
 Budget remainder after the m47 pass. Attempted the r1/r2 'free rows'
 (front centre-can band, right-roof line, bow eye, rack floor); closing

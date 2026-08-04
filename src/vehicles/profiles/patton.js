@@ -499,9 +499,13 @@ function bustleRack(P, R, yl, zl, rng) {
   }
   P.add('turretDetail', box(R.halfW * 2, 0.03, 0.03), 0, yl(R.railY), zl(zC));
   const loadY = R.loadTop != null ? R.loadTop : R.floorY + 0.19;
-  tarpRoll(P, 'turretDark', -R.halfW * 0.3, yl(loadY - 0.09), zl(R.z0 - dC * 0.3), R.halfW * 0.95, 0.09, true, P.q ? 12 : 8);
+  // R.loadBucket opt-in (m46 r7 C3): the dark loads are mask-visible but
+  // RENDER-invisible against the dark background (the m47 B2/B3 lesson —
+  // cloth reads, dark drowns). Bucket swap only: geometry byte-identical.
+  const loadB = R.loadBucket || 'turretDark';
+  tarpRoll(P, loadB, -R.halfW * 0.3, yl(loadY - 0.09), zl(R.z0 - dC * 0.3), R.halfW * 0.95, 0.09, true, P.q ? 12 : 8);
   ammoCan(P, 'turretDark', R.halfW * 0.45, yl(R.floorY + 0.11), zl(R.z0 - dC * 0.35), 0.3);
-  P.add('turretDark', box(0.40, loadY - R.floorY - 0.02, dC * 0.5), -R.halfW * 0.25, yl((loadY + R.floorY) / 2), zl(R.z0 - dC * 0.35), 0, rng() * 0.25, 0);
+  P.add(loadB, box(0.40, loadY - R.floorY - 0.02, dC * 0.5), -R.halfW * 0.25, yl((loadY + R.floorY) / 2), zl(R.z0 - dC * 0.35), 0, rng() * 0.25, 0);
 }
 
 // Tall AA-pedestal mount (real T26/T42 fitting the recovered oracles model
@@ -542,6 +546,30 @@ function t26Cast(P, T) {
   const { box, cylY, sph, liftEye, cupola, tarpRoll } = KIT;
   const yl = (y) => y - T.ringY, zl = (z) => z - T.ringZ;
   const secs = T.sections;
+  // r7 B1 (m46, adopting the m47 r4 B5 lane): shared pale-fitting material
+  // for the sky-backed M2/pedestal cluster — the shared 'detail' bucket
+  // ceilings at ~67 on vertical faces where the ref's lit station reads the
+  // 73-80 class (m46 r5 verdict: rod med 57.0 vs ref 73.3). leo r9 mgPale
+  // recipe, per-build clone + ambient rehook (merkava gearFloor law).
+  // Default OFF — m26/m45 stay byte-identical.
+  let mgPale = null;
+  if ((T.mg && T.mg.tone === 'two-tone') || (T.pedestal && T.pedestal.tone === 'two-tone')) {
+    mgPale = P.mats.shadow.clone();
+    mgPale.color.setHex(0x424635);
+    mgPale.roughness = 0.9;
+    mgPale.metalness = 0.02;
+    mgPale.envMapIntensity = 0.18;
+    mgPale.onBeforeCompile = vehicleAmbientFloorHook;
+    mgPale.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    P.disposables.push(mgPale);
+  }
+  const paleMesh = (geo, x, y, z) => {
+    const mesh = new THREE.Mesh(geo, mgPale);
+    mesh.position.set(x, y, z);
+    mesh.receiveShadow = true;
+    P.turretG.add(mesh);
+    P.disposables.push(geo);
+  };
   loftBody(P, 'turret', secs, { oy: T.ringY, oz: T.ringZ, wall: 0.46, mid: 0.79, midW: 0.85, crownW: 0.46, ...(T.loft || {}) });
   if (T.basket) { // crew basket under the ring: the reference rig_turret
     // subtrees hang to y 0.35-0.41 — the gate measures it.
@@ -554,7 +582,49 @@ function t26Cast(P, T) {
     P.add('turret', box(C.x1 - C.x0, C.y1 - C.y0, C.z0 - C.z1),
       (C.x0 + C.x1) / 2, yl((C.y0 + C.y1) / 2), zl((C.z0 + C.z1) / 2));
   }
+  // r7 C2 (m46): z-sloped blend wedges across the crest-ladder step
+  // boundaries — the 2.4-2.8 cm rearward step walls self-shadowed into
+  // terrace lines at close-roof where the ref casting ROLLS (the ladder is
+  // the trace-column quantization of the ref's own smooth roll, so a
+  // diagonal across each boundary tracks the true surface more closely).
+  // Winding mirrors m47Cast rollWedges (§C slab audit). Default absent.
+  for (const Wg of T.zWedges || []) {
+    const { slab } = KIT;
+    P.add('turret', slab(
+      [Wg.x1, yl(Wg.y0), zl(Wg.z0)], [Wg.x0, yl(Wg.y0), zl(Wg.z0)], [Wg.x0, yl(Wg.y0), zl(Wg.z1)], [Wg.x1, yl(Wg.y0), zl(Wg.z1)],
+      [Wg.x1, yl(Wg.top0), zl(Wg.z0)], [Wg.x0, yl(Wg.top0), zl(Wg.z0)], [Wg.x0, yl(Wg.top1), zl(Wg.z1)], [Wg.x1, yl(Wg.top1), zl(Wg.z1)]));
+  }
   bustleRack(P, T.rack, yl, zl, P.rng);
+  // r7 C3 (m46, §H.4): the rack read as a bare pale-floored scaffold — the
+  // r5 dark loads vanish against the dark background (the m47 B2/B3 lesson:
+  // CLOTH loads read, dark loads drown). m46's OWN era loadout — Korea-kit
+  // canvas: folded tarp bed + bedroll pair + duffel + hold-down straps, all
+  // inside the certified rack walls (tops <= loadTop 2.295, z inside
+  // -2.00..-2.352, plan inside +-0.45). Default absent — byte-identical.
+  if (T.rackLoad) {
+    // (cycle-2, measured in-gate: the first cut added a bedroll + duffel in
+    // the REAR rack half — the ref keeps those side columns open and turret
+    // dropped 91.1 -> 90.2. The load now rides INSIDE the existing certified
+    // load mass: cloth bed low in the floor zone, one roll interior to the
+    // r5 tarp envelope, straps thin — plus the R.loadBucket swap that makes
+    // the certified loads READ. turret restored in-gate.)
+    const R = T.rack;
+    P.add('turretCloth', box(0.72, 0.05, 0.17), 0.02, yl(R.floorY + 0.028), zl(-2.115));
+    tarpRoll(P, 'turretCloth', -0.06, yl(2.196), zl(-2.115), 0.66, 0.068, true, P.q ? 12 : 8);
+    for (const sx of [-0.30, 0.02, 0.33]) { // straps over the load (slat rhythm)
+      P.add('turretDark', box(0.032, 0.010, 0.19), sx, yl(2.29), zl(-2.115));
+    }
+  }
+  // r7 D (m46, §B3/§H.4): spare track links hung on the right stowage-shelf
+  // wall — a real M46 tell (crews hung links on the T26 casting flanks).
+  // Whole envelope interior: outer face inside the certified 1.135 shelf
+  // column, tops under the 2.505-2.535 shelf band. Default absent.
+  if (T.sideLinks) {
+    const L = T.sideLinks;
+    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: L.links ?? 3, width: L.width ?? 0.42, rotation: [0, 0, Math.PI / 2], seed: 46 });
+    links.position.set(L.x, yl(L.y), zl(L.z));
+    P.turretG.add(links);
+  }
   if (T.stowBump) {
     tarpRoll(P, 'turretDark', T.stowBump.x, yl(T.stowBump.y), zl(T.stowBump.z), T.stowBump.len, T.stowBump.r, true, P.q ? 12 : 8);
   }
@@ -573,8 +643,34 @@ function t26Cast(P, T) {
     P.add('turretDetail', cylY(0.045, 0.06, 0.10, 8), T.antenna.x, yl(T.antenna.y), zl(T.antenna.z));
     P.add('turretDetail', cylY(0.014, 0.018, 0.16, 6), T.antenna.x, yl(T.antenna.y + 0.11), zl(T.antenna.z));
   }
-  m2Station(P, T.mg, yl, zl);
-  if (T.pedestal) aaPedestal(P, T.pedestal, yl, zl);
+  m2Station(P, mgPale && T.mg.tone === 'two-tone' ? { ...T.mg, paleMat: mgPale } : T.mg, yl, zl);
+  if (T.pedestal) {
+    aaPedestal(P, mgPale && T.pedestal.tone === 'two-tone' ? { ...T.pedestal, paleMat: mgPale } : T.pedestal, yl, zl);
+  }
+  if (T.mg.tone === 'two-tone' && mgPale) {
+    // r7 B1 crown strips (MG PHYSICS: >=2px pale top-lit edges over the
+    // upper works; m47 r4 B5 lesson — crowns FLUSH with their parts, widths
+    // WRAP by +0.02; with M.grammar the receiver crown follows the broken
+    // profile). heightM carriers (cover top / pedestal head) never move.
+    const axis = T.mg.topY - 0.10;
+    const rl = T.mg.rl ?? 0.56;
+    const rc7 = T.mg.z + rl / 2 - 0.14;
+    const strips = T.mg.grammar
+      ? [
+        [0.24, 0.034, 0.20, T.mg.x, axis + 0.113, T.mg.coverZ ?? (T.mg.z + 0.10)],
+        [0.38, 0.034, 0.30, T.mg.x, axis + 0.048, rc7 + rl * 0.2975],
+        [0.38, 0.034, 0.30, T.mg.x, axis + 0.070, rc7 - rl * 0.2975],
+        [0.125, 0.026, 0.25, T.mg.x, axis + 0.062, T.mg.z + rl + 0.05],
+      ]
+      : [
+        [0.24, 0.034, 0.20, T.mg.x, axis + 0.113, T.mg.coverZ ?? (T.mg.z + 0.10)],
+        [0.38, 0.034, 0.78, T.mg.x, axis + 0.070, rc7],
+        [0.125, 0.026, 0.25, T.mg.x, axis + 0.062, T.mg.z + rl + 0.05],
+      ];
+    for (const [gw, gh, gd, gx, gy, gz] of strips) {
+      paleMesh(box(gw, gh, gd), gx, yl(gy), zl(gz));
+    }
+  }
   if (T.stowMG) {
     // §B3 census fitting: stowed spare MG tucked inside the casting
     // silhouette (the measured m2Station stays the gate-driven roof gun)
@@ -992,6 +1088,17 @@ function pattonGun(P, G) {
     P.add('gun', cylZ(0.160, w2l(G.evacZ1) - w2l(G.evacZ0), seg), 0, 0, (w2l(G.evacZ0) + w2l(G.evacZ1)) / 2);
     const dl = G.drumL ?? 0.17;                             // single baffle drum
     sq(G.drumR ?? 0.24, dl, G.drumL ? len - dl / 2 - 0.02 : len - 0.115, G.drumSy ?? 0.66);
+    if (G.baffleSlot) {
+      // r7 C5 (m46): single-baffle SLOT hint — dark transverse window bars
+      // on the drum flanks (texture/inset lane: faces <=3 mm proud of the
+      // certified 0.40 print frame at the ellipse equator, corners inside
+      // the front-view ellipse contour; muzzle z untouched).
+      const dz = len - dl / 2 - 0.02;
+      const drumR = G.drumR ?? 0.24;
+      for (const side of [-1, 1]) {
+        P.add('gunDark', box(0.008, 0.062, dl * 0.44), side * (drumR - 0.001), 0, dz);
+      }
+    }
     P.add('gunDark', xform(cylZ(0.23, 0.03, seg), 0, 0, 0, 0, 0, 0, [1, 0.7, 1]), 0, 0, len - 0.21);
     sq(0.18, 0.05, len - 0.022, 0.8);                       // muzzle face
   } else if (G.device === 'm36') {
@@ -1182,6 +1289,47 @@ function buildPershing(P, cfg) {
       }
     }
   }
+  if (cfg.bowCasting) {
+    // r7 C1 (m46): ribbed transmission-cover/step grammar on the lower bow
+    // — the ref's loudest bow texture (shaded-parity r5, close-front crop).
+    // Transverse rib bars half-embedded ON the undercut plane between the
+    // final drives + a toe-face seam step + shackle clevis bases. Flush/
+    // decal lane: every proud face <=13 mm, interior to the bow silhouette
+    // in all gate views (side bottoms owned by the idler wrap, plan front
+    // by the 2.00/2.087 fender/eye anchors, front by the nose face
+    // itself). Default absent — byte-identical.
+    const BC = cfg.bowCasting;
+    const zAt = (y) => BC.z0 + (y - BC.y0) * (BC.z1 - BC.z0) / (BC.y1 - BC.y0);
+    for (const ry of BC.ribYs) {
+      // pale rib crest + dark shadow bar under it (louvre rhythm — the
+      // shading contrast is what reads at the glancing close-front angle)
+      P.add('hullDetail', box(BC.hw * 2, 0.024, 0.026), 0, ry, zAt(ry) - 0.010);
+      P.add('hullDark', box(BC.hw * 2 - 0.04, 0.016, 0.020), 0, ry - 0.024, zAt(ry - 0.024) - 0.006);
+    }
+    if (BC.seamY != null) P.add('hullDetail', box(BC.hw * 2, 0.020, 0.020), 0, BC.seamY, BC.toeZ + 0.008);
+    for (const side of [-1, 1]) { // clevis bases behind the shackle rings
+      P.add('hullDetail', box(0.11, 0.085, 0.05), side * 0.58, BC.clevisY ?? 1.10, BC.toeZ - 0.012);
+    }
+  }
+  if (cfg.rearLouvres) {
+    // r7 C4 (m46, tone lane): slat/grille louvre hint on the tail plate —
+    // the ref reads slat rows where ours was texture-plain. Dark backer +
+    // pale slat rows, faces FLUSH (>=0.5 mm INSIDE the -4.246 tail plane:
+    // zero-mask by construction; the 12%-band tail anchor never moves).
+    const RL = cfg.rearLouvres;
+    P.add('hullDark', box(RL.hw0 * 2, RL.backH, 0.006), 0, RL.backY, RL.z + 0.004);
+    for (const [ly, lhw] of RL.rows) {
+      P.add('hullDetail', box(lhw * 2, 0.022, 0.013), 0, ly, RL.z);
+    }
+  }
+  if (cfg.towCable) {
+    // r7 D (m46, §B3): KIT tow cable coiled on the rear deck plateau,
+    // outboard of the 1.7645/1.740 deckCaps that carry the side tops there
+    // (cable crown 1.760 < 1.7645 — interior by the caps' own band).
+    const TC = cfg.towCable;
+    const cable = FITTINGS.towCable({ mats: P.mats, pts: TC.pts, r: TC.r ?? 0.016, eyes: false, seed: 46 });
+    P.hullG.add(cable);
+  }
   if (cfg.bowEyes) {
     // towing-eye prongs at the bow tip: the m47 extract's side toe columns
     // (band 1.02..1.21 over z 1.92..2.17) are the eyes, not the glacis —
@@ -1366,8 +1514,12 @@ function buildPershing(P, cfg) {
     wheelCamo.map.repeat.set(0.26, 0.26);
     wheelCamo.map.offset.set(0.08, 0.42);
     wheelCamo.map.needsUpdate = true;
-    wheelCamo.color.setRGB(1.05, 1.10, 1.02); // r6 N1: multiplier r/g -> 0.955, luma held (drum class ≥66)
-    wheelCamo.envMapIntensity = 0.22;
+    // r7 (m46): cfg.wheelMul opt-in — the same map multiplier renders the
+    // m46's own camo instance a class hot (drum p75 81.0 vs ref 67.6 on the
+    // first cut; m47's landed 70.2). Default byte-identical (m47 r6 N1).
+    const wm = cfg.wheelMul || [1.05, 1.10, 1.02];
+    wheelCamo.color.setRGB(wm[0], wm[1], wm[2]);
+    wheelCamo.envMapIntensity = cfg.wheelEnv ?? 0.22;
     P.disposables.push(wheelCamo, wheelCamo.map);
     P.hullG.traverse((o) => {
       if ((o.isMesh || o.isInstancedMesh) && o.material === P.mats.wheels) {
@@ -1415,6 +1567,19 @@ function buildPershing(P, cfg) {
     // ramp wedges.
     const H = cfg.hull;
     const xcS = H.W / 2 - H.trackW / 2 - (H.trackInset || 0);
+    // r7 (m46 TONE round): the shade package geometry is per-tank — the m47
+    // literals below assume its high end wheels (idler crest 1.30 / sprocket
+    // crest 1.375 ABOVE the 1.215 top run) and its muffler-leg stations.
+    // cfg.gearShade === true keeps the m47 r6 literals byte-identical
+    // (frozen f02ef936); the object form supplies another hull's spans:
+    // { covers: [[w,h,d,y,z,rx]...], curtains: [[w,h,d,x,y,z]...],
+    //   backers: [[w,h,d,y,z]...], endRings: [[r,dx,y,z,name?]...] | null }.
+    const GS = cfg.gearShade === true ? {
+      covers: [[0.61, 0.016, 1.26, 1.40, -2.71, 0.157], [0.61, 0.016, 2.82, 1.30, -0.70, 0], [0.61, 0.016, 0.74, 1.34, 1.06, -0.111]],
+      curtains: [[0.016, 0.19, 4.07, 1.63, 1.425, -1.00], [0.014, 0.22, 0.40, 1.195, 1.39, -2.46]],
+      backers: [[0.05, 0.95, 0.62, 0.93, -3.00], [0.05, 0.85, 0.42, 0.90, 1.52]],
+      endRings: null,
+    } : cfg.gearShade;
     const mkShade = (hex, env = 0.12) => {
       const m = P.mats.shadow.clone();
       m.color.setHex(hex);
@@ -1465,9 +1630,9 @@ function buildPershing(P, cfg) {
     };
     for (const side of [-1, 1]) {
       const sx = side * xcS;
-      coverBox(0.61, 0.016, 1.26, sx, 1.40, -2.71, 0.157);  // rear rise to the sprocket wrap
-      coverBox(0.61, 0.016, 2.82, sx, 1.30, -0.70, 0);      // mid flat run
-      coverBox(0.61, 0.016, 0.74, sx, 1.34, 1.06, -0.111);  // front rise to the idler wrap
+      // [rear rise/descent to the sprocket wrap, mid flat run, front
+      // rise/descent to the idler wrap] — spans from GS (per-hull)
+      for (const [cw, ch, cd, cy, cz, crx] of GS.covers) coverBox(cw, ch, cd, sx, cy, cz, crx);
     }
     // N3b — under-fender curtains: the ref's dark band between fender lip
     // and track top; swallows the A3-darkened posts (muffler legs, roller
@@ -1479,8 +1644,7 @@ function buildPershing(P, cfg) {
     // 64.7 -> 66.6 by replacing pocket darkness with its own wash).
     const curtainMat = mkShade(0x272a23, 0.12);
     for (const side of [-1, 1]) {
-      shadeBox(curtainMat, 0.016, 0.19, 4.07, side * 1.63, 1.425, -1.00);
-      shadeBox(curtainMat, 0.014, 0.22, 0.40, side * 1.195, 1.39, -2.46);
+      for (const [cw, ch, cd, cx, cy, cz] of GS.curtains) shadeBox(curtainMat, cw, ch, cd, side * cx, cy, cz);
     }
     // N4 — ramp-wedge backers: mid-dark GRADE (not black) filling the hard
     // see-through triangles between the last/first road wheel and the wrap
@@ -1488,8 +1652,8 @@ function buildPershing(P, cfg) {
     const backerMat = mkShade(0x31342b, 0.18);
     for (const side of [-1, 1]) {
       const sx = side * xcS;
-      shadeBox(backerMat, 0.05, 0.95, 0.62, sx, 0.93, -3.00);   // rear gap (wheel -> sprocket wrap)
-      shadeBox(backerMat, 0.05, 0.85, 0.42, sx, 0.90, 1.52);    // front gap (wheel -> idler wrap)
+      // [rear gap (wheel -> sprocket wrap), front gap (wheel -> idler wrap)]
+      for (const [bw, bh, bd, by, bz] of GS.backers) shadeBox(backerMat, bw, bh, bd, sx, by, bz);
     }
     // N5 — rim glints: the ref gear carries a highlight tail (window sd
     // 13.2 vs the r4 proc's matte 9.3) — pale steel rim rings on the road
@@ -1528,10 +1692,16 @@ function buildPershing(P, cfg) {
     // sprocket ring joins the §C proxy package (mask-excluded *Shadow*
     // name, shaded-render visible), 10 mm proud of the face it accents.
     // The idler ring rides its dished cone face as real interior geometry.
+    const endRings = GS.endRings || [
+      [G.sprocket.r * 0.80, 0.342, G.sprocket.y, G.sprocket.z, 'gearShadowGlint'],
+      [G.sprocket.r * 0.52, 0.342, G.sprocket.y, G.sprocket.z, 'gearShadowGlint'],
+      [G.idler.r * 0.76, 0.235, G.idler.y, G.idler.z],
+    ];
     for (const side of [-1, 1]) {
-      glintRing(G.sprocket.r * 0.80, side * (xcS + 0.342), G.sprocket.y, G.sprocket.z, 'gearShadowGlint');
-      glintRing(G.sprocket.r * 0.52, side * (xcS + 0.342), G.sprocket.y, G.sprocket.z, 'gearShadowGlint');
-      glintRing(G.idler.r * 0.76, side * (xcS + 0.235), G.idler.y, G.idler.z);
+      for (const [rr, rdx, ry, rz, rname] of endRings) {
+        if (rname) glintRing(rr, side * (xcS + rdx), ry, rz, rname);
+        else glintRing(rr, side * (xcS + rdx), ry, rz);
+      }
     }
   }
   P.topY = cfg.topWorld - cfg.ring[0] + 0.12;
@@ -2377,6 +2547,9 @@ const M45_FIT = {
 const M46_HULL = {
   W: 3.51, bandHW: 1.42, trackW: 0.60, trackInset: 0.10, sponsonY: 1.12, bellyY: 0.48, noseW: 1.30,
   bellyHW: 1.025, glacisWingY0: 1.30, glacisWingDrop: 0.04, sponsonAftY: 1.35, sponsonAftZ: -2.39,
+  darkGearFit: true, // r7 A4 (m47 A3 recipe): muffler legs + roller brackets +
+                     // flap straps off the pale bucket — they stood as primer
+                     // sticks against the black band (shaded-parity r5)
   // deck polyline: warped ref side-hull tops — bow hood/deck band 1.664 to
   // z 0.75, terraces 1.612/1.638 with the r5b-measured breakpoints, dip
   // 1.636 at -1.28..-1.40, mid deck 1.7155, plateau band 1.7276 (the
@@ -2752,6 +2925,37 @@ export const PATTON_PROFILES = {
     build: (P) => buildPershing(P, {
       hull: M46_HULL, fit: M46_FIT,
       ring: [1.56, -0.29], topWorld: 3.18,
+      // r7 TONE round (shaded-parity r5 orders): GROUP A adopts m47's proven
+      // r4+r6 gear recipes OLIVE-variant (the m46 never made m47's tan
+      // mistake — the r6 N1 olive constants in the shared cfg.gearTone path
+      // ARE the pre-priced recipe: hue r/g <=1.0 per hex, env floors 0.30/
+      // 0.32 for the shade-side wrap faces, N2 drum-face world-box UV
+      // re-projection). A4/A5 ride cfg.gearShade with m46's OWN gear spans
+      // (object form; `true` keeps the m47 literals byte-identical).
+      gearTone: true, fenderSkirtB: 'hullDark',
+      // drum dial (ordered-class law, sampled on the render): the shared
+      // (1.05,1.10,1.02) multiplier read the m46 drum band p75 81.0 / med
+      // 69.1 vs ref 67.6 / 62.7 — the m46 camo instance is hotter than
+      // m47's. Same r/g (olive), luma x0.905.
+      wheelMul: [0.865, 0.91, 0.845], wheelEnv: 0.15,
+      // m46 shade spans (measured off M46_HULL gear): BOTH end wraps sit
+      // BELOW the 1.215 top run (idler crest 1.045 @ 1.64, tension-idler-
+      // sized sprocket crest 0.975 @ -3.88 — the m47 covers rose, these
+      // descend). Covers 5+ cm over the pad crowns, under the 1.369 fender
+      // doubler bottom; curtains under the fender lip clear of both wrap
+      // zones; backers fill the m46's own wheel->wrap wedges; end rings
+      // sized to the 0.16 carrier discs (sprocket pair shadow-named — the
+      // carrier face is the plan-mask edge; idler ring real interior).
+      gearShade: {
+        covers: [[0.61, 0.016, 1.30, 1.195, -3.10, 0.146], [0.61, 0.016, 3.25, 1.30, -0.825, 0], [0.61, 0.016, 0.80, 1.23, 1.20, -0.14]],
+        curtains: [[0.016, 0.19, 4.85, 1.63, 1.30, -1.125], [0.014, 0.22, 0.44, 1.18, 1.27, -2.50]],
+        backers: [[0.05, 0.90, 0.80, 0.75, -3.35], [0.05, 0.80, 0.40, 0.80, 1.45]],
+        endRings: [
+          [0.126, 0.342, 0.815, -3.88, 'gearShadowGlint'],
+          [0.082, 0.342, 0.815, -3.88, 'gearShadowGlint'],
+          [0.145, 0.235, 0.765, 1.64],
+        ],
+      },
       // width slices: the REF's slice grid FLICKERS ±0.05 between runs (its
       // side-mask end columns are AA-marginal slivers), so the i4/i12-class
       // hanger plates STRADDLE the proc slice boundaries (-2.0125 / 1.6315
@@ -2794,6 +2998,17 @@ export const PATTON_PROFILES = {
       // guard depth 0.15: the ref guard band lives inside one window pair
       // (1.52..1.69) — the 0.18 default straddled a boundary each phase
       bowGuards: [[0.75, 1.62, 1.605, 0.15]],
+      // r7 C1: ribbed transmission-cover grammar on the undercut plane
+      // (toe 1.722/1.06 -> belly 1.26/0.48), toe-face seam + clevis bases
+      // behind the shackle rings. All faces <=13 mm proud, bow-interior.
+      bowCasting: { y0: 1.06, z0: 1.722, y1: 0.48, z1: 1.26, hw: 0.62, ribYs: [0.74, 0.84, 0.94, 1.03], seamY: 1.14, toeZ: 1.722, clevisY: 1.10 },
+      // r7 C4 (tone lane): louvre rows on the tail plate, faces >=0.5 mm
+      // INSIDE the -4.246 tail plane (12%-band anchor untouched).
+      rearLouvres: { z: -4.239, hw0: 0.50, backH: 0.26, backY: 1.17, rows: [[1.06, 0.62], [1.13, 0.62], [1.20, 0.62], [1.27, 0.62], [1.35, 0.45], [1.41, 0.45]] },
+      // r7 D: tow cable coiled on the rear plateau INSIDE the 1.7645
+      // deckCaps side window (crown 1.7596; mufflers 1.784 own the front
+      // columns); +1d census with the turret sideLinks.
+      towCable: { pts: [[-1.05, 1.7436, -3.425], [-1.13, 1.7436, -3.475], [-1.14, 1.7436, -3.545], [-1.06, 1.7436, -3.605]], r: 0.016 },
       turret: {
         ringY: 1.56, ringZ: -0.29,
         // r3 banked crown order landed: crownW 0.40 -> 0.20, crownX -0.30.
@@ -2875,7 +3090,21 @@ export const PATTON_PROFILES = {
           // LEFT of the tube shadow only (plan cols -0.33..-0.53)
           { x0: -0.57, x1: -0.375, y0: 1.85, y1: 2.28, z0: 1.228, z1: 0.95 },
         ],
-        rack: { z0: -2.00, z1: -2.352, zC: -2.11, halfW: 0.45, floorY: 2.075, railY: 2.295, loadTop: 2.295, sideFloorY: 2.10 },
+        rack: { z0: -2.00, z1: -2.352, zC: -2.11, halfW: 0.45, floorY: 2.075, railY: 2.295, loadTop: 2.295, sideFloorY: 2.10, loadBucket: 'turretCloth' },
+        // r7 C3/D: Korea-kit canvas rack load (tops <=2.295) + spare links
+        // hung inside the right shelf's certified 1.135 plan column
+        rackLoad: true,
+        sideLinks: { x: 1.105, y: 2.28, z: -0.30, links: 3, width: 0.42 },
+        // r7 C2: crest-ladder step blend wedges (x-bounded -0.60..-0.06 —
+        // every front column stays hidden under the M2 band per the r5
+        // pod law; side deltas bounded by the 2.4-2.8 cm step heights
+        // across one trace column per boundary)
+        zWedges: [
+          { x0: -0.60, x1: -0.06, y0: 2.55, z0: -0.765, z1: -0.825, top0: 2.818, top1: 2.794 },
+          { x0: -0.60, x1: -0.06, y0: 2.55, z0: -0.87, z1: -0.93, top0: 2.794, top1: 2.766 },
+          { x0: -0.60, x1: -0.06, y0: 2.55, z0: -0.97, z1: -1.03, top0: 2.766, top1: 2.742 },
+          { x0: -0.60, x1: -0.06, y0: 2.55, z0: -1.06, z1: -1.12, top0: 2.742, top1: 2.718 },
+        ],
         cupola: { x: -0.715, z: -0.335, r: 0.175, base: 2.56, h: 0.10 },
         loader: { x: 0.55, z: -0.233, y: 2.605 },
         // vent + antenna tucked under the M2 band (the old exposed spots
@@ -2888,9 +3117,15 @@ export const PATTON_PROFILES = {
         // heightM p95 rides cover+pedestal), pedestal head columns -0.37/
         // -0.47 EXACTLY (zw 0.16: the head must live inside one window
         // pair); barrel tip 1.245 (ref band ends in the 1.27 column).
-        mg: { x: -0.47, z: -0.10, baseY: 2.68, topY: 3.125, tipZ: 1.222, rl: 0.70, w: 1.5, canY: 2.85, coverZ: 0.02, coverL: 0.40, cans: [0.28, 0.375] },
+        // r7 B1/B2 (shaded-parity r5): pale two-tone station + receiver
+        // grammar INSIDE the certified band (jacket/barrel 3.079-class,
+        // receiver 3.103, cover 3.127 — grammar steps 3.090/3.075/3.110
+        // stay under the cover; collar END pinned at tipZ 1.222, the
+        // station-i12 carrier; pedestal head/cover are the heightM p95
+        // carriers and never move — dims 100 x2 required).
+        mg: { x: -0.47, z: -0.10, baseY: 2.68, topY: 3.125, tipZ: 1.222, rl: 0.70, w: 1.5, canY: 2.85, coverZ: 0.02, coverL: 0.40, cans: [0.28, 0.375], tone: 'two-tone', grammar: true },
         stowMG: [0.30, 2.30, -0.335],
-        pedestal: { x: -0.175, z: -0.39, baseY: 2.62, top: 3.18, zw: 0.13, w: 0.24 },
+        pedestal: { x: -0.175, z: -0.39, baseY: 2.62, top: 3.18, zw: 0.13, w: 0.24, tone: 'two-tone' },
         decalSec: 17,
       },
       // warped print = published: muzzle +4.246 (ref boxZ), bore axis 2.033
@@ -2901,7 +3136,7 @@ export const PATTON_PROFILES = {
       // symmetric 0.56 rotor face at z 1.228 + 1.32 wings at 1.002 (plan
       // cols pair the ref's 1.2315/1.0109 bands; the left overhang rides
       // the rotor-cheek pod above).
-      gun: { rootZ: 1.21, axisY: 2.0355, muzzle: 4.246, r: 0.116, device: 'm3a1', evacZ0: 3.065, evacZ1: 3.80, drumL: 0.39, drumR: 0.25, drumSy: 0.70, shield: { w: 0.56, h: 0.48, dy: 0.0, zF: 1.228, d: 0.52, chinRise: 0.13, rotorR: 0.12, wings: { w: 1.32, h: 0.42, dy: 0.046, zF: 0.99, d: 0.34 } } },
+      gun: { rootZ: 1.21, axisY: 2.0355, muzzle: 4.246, r: 0.116, device: 'm3a1', evacZ0: 3.065, evacZ1: 3.80, drumL: 0.39, drumR: 0.25, drumSy: 0.70, baffleSlot: true, shield: { w: 0.56, h: 0.48, dy: 0.0, zF: 1.228, d: 0.52, chinRise: 0.13, rotorR: 0.12, wings: { w: 1.32, h: 0.42, dy: 0.046, zF: 0.99, d: 0.34 } } },
     }),
   },
   m47_patton: {
