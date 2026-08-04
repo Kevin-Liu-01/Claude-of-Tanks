@@ -132,6 +132,90 @@ function loft(P, sts, bucket = 'hull') {
 }
 
 // ---------------------------------------------------------------------------
+// TRACK-CONTAINMENT lane-corridor loft (ISU graduate-change round 2026-08-03,
+// BUILD-STANDARD §B4 / leopard-r4 glacisLaneCut+sponsonLaneLift pattern).
+// Over the bow/stern wrap zones the full-width loft rows collide with the
+// band's wrap arcs INSIDE the track lane (row planes, top/bottom faces and
+// side faces all cross the ribbon) — the fix is the real vehicle's own
+// configuration: the hull narrows to the inter-track CORE (|x| <= cut.x,
+// held 2+ voxels inboard of the band's inner face), and the over-track span
+// survives only as a WING whose underside is floored ABOVE the local shoe
+// envelope (cut.*.floor — band top + pad/grouser stack + slack), i.e. the
+// sponson-over-track shelf. Wings reproduce the original outer surface
+// above the floor (outer width lerped at the floor height), so front-view
+// plate reads above the floor are unchanged; vacated columns are band/shoe/
+// behind-body covered (audited per tank in the round packet). Rows outside
+// the corridor windows emit exactly like loft(); boundary rows are lerped in
+// so no span straddles a window edge. loft() itself is untouched — the other
+// casemate builders stay byte-identical.
+// cut = { x, front?: {z0, z1?, floor}, rear?: {z0?, z1, floor} }
+function loftCorridor(P, sts, cut, bucket = 'hull') {
+  const { slab } = KIT;
+  const lerpRow = (a, c, z) => {
+    const t = (z - a.z) / (c.z - a.z);
+    const awt = a.wt ?? a.w, cwt = c.wt ?? c.w;
+    return { z, b: a.b + (c.b - a.b) * t, t: a.t + (c.t - a.t) * t,
+      w: a.w + (c.w - a.w) * t, wt: awt + (cwt - awt) * t };
+  };
+  const rows = [];
+  for (let i = 0; i < sts.length; i++) {
+    rows.push(sts[i]);
+    const a = sts[i], c = sts[i + 1];
+    if (!c) break;
+    const cuts = [];
+    for (const zb of [cut.front?.z0, cut.front?.z1, cut.rear?.z0, cut.rear?.z1]) {
+      if (zb != null && a.z > zb + 1e-6 && c.z < zb - 1e-6) cuts.push(zb);
+    }
+    for (const zb of cuts.sort((p, q) => q - p)) rows.push(lerpRow(a, c, zb));
+  }
+  const zoneOf = (z) => {
+    const F = cut.front, R = cut.rear;
+    if (F && z >= F.z0 - 1e-6 && z <= (F.z1 ?? Infinity) + 1e-6) return F;
+    if (R && z <= R.z1 + 1e-6 && z >= (R.z0 ?? -Infinity) - 1e-6) return R;
+    return null;
+  };
+  for (let i = 0; i < rows.length - 1; i++) {
+    const a = rows[i], c = rows[i + 1];
+    const awt = a.wt ?? a.w, cwt = c.wt ?? c.w;
+    const ax = a.x ?? 0, cx = c.x ?? 0;
+    const zone = zoneOf((a.z + c.z) / 2);
+    if (!zone) {
+      P.add(bucket, slab(
+        [ax - a.w, a.b, a.z], [ax + a.w, a.b, a.z], [cx + c.w, c.b, c.z], [cx - c.w, c.b, c.z],
+        [ax - awt, a.t, a.z], [ax + awt, a.t, a.z], [cx + cwt, c.t, c.z], [cx - cwt, c.t, c.z]));
+      continue;
+    }
+    // corridor core: same slab, half-widths clamped to the inter-track body
+    const X = cut.x, F = zone.floor;
+    const aw = Math.min(a.w, X), cw = Math.min(c.w, X);
+    const awc = Math.min(awt, X), cwc = Math.min(cwt, X);
+    P.add(bucket, slab(
+      [ax - aw, a.b, a.z], [ax + aw, a.b, a.z], [cx + cw, c.b, c.z], [cx - cw, c.b, c.z],
+      [ax - awc, a.t, a.z], [ax + awc, a.t, a.z], [cx + cwc, c.t, c.z], [cx - cwc, c.t, c.z]));
+    // over-track wings: original outer surface kept above the floor only.
+    // Per-end: outer width at the floor height (lerp along the leaned side);
+    // ends whose top sits at/under the floor pinch to a line at (X, floor).
+    const end = (r, rwt) => {
+      if (r.t <= F + 0.012) return { top: F, wTop: X, wBot: X };
+      const k = Math.min(1, Math.max(0, (F - r.b) / (r.t - r.b)));
+      return { top: r.t, wTop: Math.max(rwt, X), wBot: Math.max(r.w + (rwt - r.w) * k, X) };
+    };
+    const ea = end(a, awt), ec = end(c, cwt);
+    if (ea.wBot <= X + 0.002 && ec.wBot <= X + 0.002) continue;   // no over-track span
+    if (ea.top <= F + 0.012 && ec.top <= F + 0.012) continue;      // fully under the floor
+    for (const s of [-1, 1]) {
+      const w0 = s * X, wa = s * ea.wBot, wc = s * ec.wBot;
+      const ta = s * ea.wTop, tc = s * ec.wTop;
+      P.add(bucket, s > 0
+        ? slab([w0, F, a.z], [wa, F, a.z], [wc, F, c.z], [w0, F, c.z],
+          [w0, ea.top, a.z], [ta, ea.top, a.z], [tc, ec.top, c.z], [w0, ec.top, c.z])
+        : slab([wa, F, a.z], [w0, F, a.z], [w0, F, c.z], [wc, F, c.z],
+          [ta, ea.top, a.z], [w0, ea.top, a.z], [w0, ec.top, c.z], [tc, ec.top, c.z]));
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Shared fittings (all hull buckets — see GATE-STRUCTURAL RULES above)
 // ---------------------------------------------------------------------------
 
@@ -881,7 +965,11 @@ function isuCommon(P, o) {
   // invariant footprint — the gate masks and floater poses never see them).
   P.add('turret', cylY(0.20, 0.22, 0.16, 12), 0, -0.08, 0);
   P.add('gun', cylZ(0.115, 0.26, 10), 0, 0, 0.14);
-  loft(P, o.loftRows);                                         // oracle-true silhouette loft
+  // oracle-true silhouette loft. o.laneCut (containment graduate round):
+  // wrap-zone rows narrow to the inter-track core + floored over-track wings
+  // (see loftCorridor) — absent flag keeps the exact legacy loft.
+  if (o.laneCut) loftCorridor(P, o.loftRows, o.laneCut);
+  else loft(P, o.loftRows);
   // ---- roof cluster (probe-tuned, round 3). The ref's own hump cluster
   // plateaus at o.pedestalTop over z o.pedZ0..o.pedZ1; published heightM
   // (2.48, p95-sovereign) rides ONE slim panorama stalk inside it — exactly
@@ -1050,8 +1138,13 @@ function isuCommon(P, o) {
       // between deck edge and rail — the print's top view reads its track
       // channels as dark bands; the open channel alone reads too light
       // under the board's flat fill light. Inside every silhouette.
-      P.add('hullShadow', box(0.185, 0.006, o.fenderFront - o.fenderRear - 0.55),
-        s * 1.363, 1.085, (o.fenderFront + o.fenderRear) / 2 - 0.1);
+      // (o.aoZ, containment round: the strip's front reach crossed the
+      // idler-wrap zone where the band's own top run covers the channel in
+      // plan anyway — the run clips ahead of the wrap; default is the exact
+      // legacy span.)
+      const aoZ = o.aoZ || [o.fenderRear + 0.175, o.fenderFront - 0.375];
+      P.add('hullShadow', box(0.185, 0.006, aoZ[1] - aoZ[0]),
+        s * 1.363, 1.085, (aoZ[0] + aoZ[1]) / 2);
       // fender stay ribs bridging deck edge -> rail (structural: they keep
       // the rail island connected for the floater check, and read as the
       // print's fender support ribs crossing the channel from above). Outer
@@ -1092,7 +1185,11 @@ function isuCommon(P, o) {
     // front flap fall (r5: off the camo path on the channel build — the
     // up-tilted plate took the dust bake + warm patch and flared cream in
     // the front views; geometry identical)
-    P.add(o.channel ? 'hullDetail' : 'hull', box(0.40, 0.05, 0.36), s * 1.27, o.lipTop - 0.10, o.fenderFront - 0.21, -0.85, 0, 0);
+    // (o.flapFallDz, containment round: isu152's plate lower edge dipped
+    // into the idler-wrap shell (band voxels at y 0.92-0.98, z 3.06-3.10) —
+    // a pure z-shift clears the wrap front extreme with the front-view
+    // (x,y) footprint IDENTICAL; default 0 keeps siblings exact.)
+    P.add(o.channel ? 'hullDetail' : 'hull', box(0.40, 0.05, 0.36), s * 1.27, o.lipTop - 0.10, o.fenderFront - 0.21 + (o.flapFallDz ?? 0), -0.85, 0, 0);
     // rear mud flap: the 12%-band hullLengthM REAR carrier. One narrow flap
     // per side fully inside the last side-trace window (z o.flapRear±0.012),
     // band o.flapY0..o.flapY1 centered on the ref's own thin flap line.
@@ -1333,6 +1430,20 @@ function buildISU152(P) {
     gearShadows: false,
     bowZ: 3.52, tailZ: -3.30, fenderFront: 3.424, fenderRear: -2.57, flapRear: -3.395,
     number: '152',
+    // TRACK-CONTAINMENT graduate round (§B4, audit was front 306 / rear 582
+    // — the loft row planes/faces crossed the wrap ribbon inside the lane):
+    // core 0.77 sits 2 voxels inside the band inner face (0.792); corridor
+    // windows start 2 voxels outside the audit zones (front zone 2.62..3.18,
+    // rear -3.335..-2.775 from band extremes 3.12/-3.2745); wing floors
+    // clear the SHOE envelope (idler crest 0.78+0.53=1.31 -> 1.33; sprocket
+    // crest 0.875+0.415=1.29 -> 1.31), not just the audited band, so no
+    // grouser tips pierce the shelves. Vacated columns: front x .77-1.25
+    // y<1.33 = band/shoe (to 1.31) + tub-behind (w 1.19-1.26, y.90-1.60);
+    // rear = full-width -2.74 face + flaps + shoe wrap disc.
+    laneCut: { x: 0.77, front: { z0: 2.58, floor: 1.33 }, rear: { z1: -2.74, floor: 1.31 } },
+    // idler-wrap clearance for the front fender flap-fall plate (+z shift,
+    // front-view footprint identical; fender tip 3.424 still clears it)
+    flapFallDz: 0.07,
     wheelZs: [1.85, 1.10, 0.35, -0.40, -1.15, -1.90],
     // sprocket tucked under the rear-plate overhang like the print: the
     // band tangent from the last wheel passes the ref's own (-2.48, 0.123)
@@ -2043,11 +2154,34 @@ function buildISU152(P) {
   // was the flaps starting body-band at -3.40.
   for (const sd of [-1, 1]) {
     P.add('hull', box(0.72, 0.19, 0.049), sd * 1.11, 0.685, -3.3825);          // tip strip 0.59..0.78 (thin band)
-    P.add('hull', box(0.79, 0.399, 0.088), sd * 1.115, 0.7855, -3.313);        // A: 0.586..0.985 (body from -3.357)
+    // CONTAINMENT round: flaps A/B spanned the whole track lane (x 0.72..
+    // 1.51) inside the sprocket-wrap z-range — A's front face sat ON the
+    // band's rear arc (shared voxels y 0.76-0.98 @ z -3.26) and B's faces
+    // crossed both wrap branches. Each splits into an OUTBOARD board
+    // (x 1.42..1.51, clear of the band's 1.38 outer face, keeping the FULL
+    // certified depth = the side-view read) and a LANE piece the wrap can't
+    // touch: A-lane keeps the certified -3.357 rear face (the 12%-band body
+    // anchor) and thins to 0.044 so its front face (-3.313) sits 2 voxels
+    // behind the band's rear extreme (-3.2745); B-lane shrinks to the
+    // MEASURED wrap-ring hole at the axle line (y 0.84..0.90, z -3.155..
+    // -3.055 — profile holes 0.8-0.94 .. 0.64-1.06 along that run) and
+    // welds hull core <-> outboard stack like a sprocket-axle beam.
+    // Rear-view columns the lane pieces vacate stay covered by A-lane's own
+    // face + the shoe wrap disc; side view is byte-identical (outboard
+    // boards carry it).
+    P.add('hull', box(0.09, 0.399, 0.088), sd * 1.465, 0.7855, -3.313);        // A outboard: 0.586..0.985 full depth
+    P.add('hull', box(0.71, 0.399, 0.044), sd * 1.075, 0.7855, -3.335);        // A lane: rear face -3.357 (anchor)
+    // A lane plan lid: the thinned face uncovered 1-cell pad-gap leaks in
+    // the top-down hole scan (cells at x ~0.72-0.78, z -3.31 that A's body
+    // used to cover). A low full-depth slab UNDER the wrap arc restores the
+    // exact original plan footprint — top 0.66 sits 2+ voxels below the
+    // band's rear-arc bottom (0.76 @ z -3.26), so it adds zero band voxels.
+    P.add('hull', box(0.72, 0.074, 0.088), sd * 1.07, 0.623, -3.313);          // A lane lid: y 0.586..0.66, z -3.357..-3.269
     // r5 order 3c: flap B's rear edge clips -3.27 -> -3.19 (the ref shows an
     // under-curl pocket behind its fender tip; front cols keep their full
     // 0.62..1.09 band from the remaining z-run, plan zmin stays flap A's)
-    P.add('hull', box(0.79, 0.47, 0.11), sd * 1.115, 0.855, -3.135);           // B: 0.62..1.09 (rear-clipped)
+    P.add('hull', box(0.09, 0.47, 0.11), sd * 1.465, 0.855, -3.135);           // B outboard: 0.62..1.09 (rear-clipped)
+    P.add('hull', box(0.71, 0.06, 0.10), sd * 1.075, 0.87, -3.105);            // B lane: axle beam through the ring hole
     // r5 order 3c — THE REAR-FENDER CURL HORN (ref view-right (560-595,
     // 320-355)): a swept fender tip riding the REF'S OWN side descent
     // (extract: 1.28@-2.86 -> 1.15@-3.16 -> 1.11@-3.21 -> 1.00@-3.30 ->
@@ -2125,9 +2259,14 @@ function buildISU152(P) {
   // lower vertical tail wall skin (the ref's rear-plate rect reads 106.9 —
   // rear-facing hemi-lit plane, so q runs hot; the manholes/hooks ride
   // proud of it)
+  // CONTAINMENT round: the skin's ±1.28 wings crossed the sprocket wrap's
+  // merged rear arc (band y 0.70-1.04 at z -3.22 — 106 shared voxels); the
+  // wall it dresses is now the corridor CORE, so the skin narrows with it
+  // to ±0.76 (2 voxels inside the 0.792 band inner face). Vacated columns
+  // read flaps/shoes like the wall itself.
   P.add('hullCloth', paintVerts(gridQuad(
-    [1.28, 0.605, -3.213], [-1.28, 0.605, -3.213],
-    [-1.28, 1.015, -3.213], [1.28, 1.015, -3.213], 64, 8),
+    [0.76, 0.605, -3.213], [-0.76, 0.605, -3.213],
+    [-0.76, 1.015, -3.213], [0.76, 1.015, -3.213], 38, 8),
   (x, y, z) => 1.06 + mottle(x * 1.05, y * 1.4, 9.9, 0.018, 0.010)));          // (r4: marbling halved)
   // ---- r2 item 9a addendum: painted glacis skin (face-conformal +6 mm).
   // r3 item 3: skin measured +6.0 L over the ref glacis zone (94.9 vs 88.9)
@@ -2170,9 +2309,19 @@ function buildISU152(P) {
     // hull. Bracket arms ride INSIDE the front-view track-band mask
     // (y <= 1.00 at x 0.79..1.38) and the beam's own side window
     // (z 3.05..3.15 inside [2.91,3.29], y inside [0.718,1.109]).
-    P.add('hullDetail', box(0.60, 0.030, 0.055), sd * 1.17, 0.975, 3.10);      // bracket arm beam -> hull
-    P.add('hullDetail', box(0.055, 0.085, 0.030), sd * 1.463, 0.96, 3.10);     // corner gusset at the beam
-    P.add('hullDetail', box(0.055, 0.030, 0.16), sd * 0.895, 0.975, 3.055);    // hull-end foot
+    // CONTAINMENT round: the r2 arm/foot (y 0.975, z 3.055-3.13) crossed the
+    // idler-wrap ribbon (band voxels y 0.96-1.0, z 3.02-3.10). The tie now
+    // routes through the WRAP RING'S MEASURED HOLE at the idler-axle line
+    // (y 0.78 = idler center): the lanescan profile reads the ring interior
+    // OPEN at z-voxels 2.96..3.00 (holes 0.60-0.96 / 0.64-0.92 / 0.68-0.88)
+    // and closed from 3.02 forward, so the arm parks at z 2.9575..3.0025
+    // with 4+ voxel margins. Same welds as r2: foot overlaps the corridor
+    // core face (0.77), arm overlaps the inner curtain (x 1.4325..1.47) +
+    // gusset, gusset bridges to the beam (1.4825+); the window stays inside
+    // the beam's [2.91,3.29] side footprint and the front-view track mask.
+    P.add('hullDetail', box(0.75, 0.030, 0.045), sd * 1.095, 0.78, 2.98);      // bracket arm beam -> hull (axle line)
+    P.add('hullDetail', box(0.055, 0.085, 0.030), sd * 1.463, 0.78, 2.98);     // corner gusset at the beam
+    P.add('hullDetail', box(0.055, 0.030, 0.09), sd * 0.75, 0.78, 2.98);       // hull-end foot (into the core)
     // inner curtain widened to x 1.41 and SPLIT at the rear: the full-height
     // run ends with the deck (-2.80) and two low tails duck under the
     // falling plate/flap silhouette (1.302->0.985) while still curtaining
@@ -2988,6 +3137,24 @@ function buildISU122S(P) {
     clusterZ: 1.35, hatchZ: 0.95, hatchZ2: -0.02, faceZ: 2.20,
     bowZ: 3.34, tailZ: -3.30, fenderFront: 3.19, fenderRear: -2.48, flapRear: -3.37,
     number: '122',
+    // TRACK-CONTAINMENT graduate round (§B4, audit was front 401 / rear 215):
+    // the bow-recess floor rows (t 1.12) ran UNDER the band's top run
+    // (1.06..1.16) and the tail rows crossed the sprocket wrap. Core 0.82 =
+    // 2 voxels inside the 0.857 band inner face. Front corridor is BOUNDED
+    // (2.40..2.955): the band ends at z 2.92, so the beak taper beyond 2.955
+    // keeps its exact graduated plan (no §B2 notch growth). Wing floors
+    // clear the SHOE envelope (idler crest 0.77+0.52=1.29 -> 1.31; sprocket
+    // crest 0.775+0.48=1.255 -> 1.28): the casemate-face rows keep their
+    // over-track span above 1.31 (front read above the shoe line intact),
+    // the recess-floor rows (t 1.12) drop their over-track span entirely —
+    // those columns are the print's own open track channel (band+shoes
+    // cover them in plan/front; mid-hull rows carry the 1.16-1.26 slivers).
+    // Rear wings (floor 1.28) keep the deck-fall read to z -3.01.
+    laneCut: { x: 0.82, front: { z0: 2.40, z1: 2.955, floor: 1.31 }, rear: { z1: -2.70, floor: 1.28 } },
+    // channel-AO strip clipped ahead of the idler wrap (its tip shared the
+    // band's outer-face voxels at z 2.5-2.7; the band top run owns the
+    // channel plan there anyway)
+    aoZ: [-2.305, 2.38],
     // r3 channel-law relocations: shovel off the open channel onto the left
     // rear deck; side number onto the casemate wall (the old sponson-face
     // spot now floats in the channel)
@@ -3729,7 +3896,13 @@ function buildISU122S(P) {
     // r6 cut put the rear piece at x 1.5195 inside the ±1.54 strip bins,
     // whose certified bottom is the 1.425 rail underside — 0.36 m of new
     // bottom error on two columns. They overlap 4 cm in z for the weld.)
-    P.add('hullDetail', box(0.006, 0.40, 3.56), s * 1.4665, 1.225, 1.36);      // fwd: z -0.42..3.14
+    // CONTAINMENT round: the fwd flange sat ON the band's outer plane
+    // (1.4635..1.4695 straddled the 1.467 face — 27 shared voxels at the
+    // idler wrap). It steps 13 mm outboard (faces 1.4765/1.4825 — the next
+    // voxel over, still inside the certified 1.451..1.485 window, still
+    // welded under the fwd rail 1.458..1.494). Rear piece untouched (its
+    // z-run never enters a wrap zone).
+    P.add('hullDetail', box(0.006, 0.40, 3.56), s * 1.4795, 1.225, 1.36);      // fwd: z -0.42..3.14
     // (rear piece tops out at 1.30 — the top run it hides only reaches
     // ~1.12, and a 1.445 top belted the drum bellies, whose surface at the
     // flange's x plane spans y 1.41..1.55. Drums now show 1.30..1.6845.)
@@ -3868,7 +4041,12 @@ function buildISU122S(P) {
   // critique's LEFT "sponson dot patch". One dark family kills both the
   // stripes and the +24 L error; geometry EXACT.
   for (const s of [-1, 1]) {
-    const x0 = s < 0 ? -1.21 : 0.56, x1 = s < 0 ? -0.56 : 1.21;
+    // CONTAINMENT round: the skins' over-track span (|x| 0.857..1.21) sat
+    // INSIDE the band's top run (skin 1.121-1.127 vs run 1.06-1.16 — the
+    // audit's 104-voxel front hit); they narrow to the corridor core edge
+    // (0.80) with the floor they dress. The vacated columns are the open
+    // track channel (band top run owns them in plan).
+    const x0 = s < 0 ? -0.80 : 0.56, x1 = s < 0 ? -0.56 : 0.80;
     // r9: wing skins hullTrack -> hullWood — the r8 "one dark family" cut
     // overshot (rendered ~58-62 vs the ref band's own 72.8); worn steel
     // lands the band and the rack gaps now read wood-on-wood (no stripes).
@@ -3880,29 +4058,36 @@ function buildISU122S(P) {
   // pockets, bolt ring, spare track links per ref"). Everything tops at
   // <= 1.228, i.e. under the +0.03 headroom the 1.20 wing plateau allows,
   // so the front-view wing columns keep their certified 1.19-1.20 line.
+  // CONTAINMENT round: the outboard furniture (racks/rail/pad/void at x up
+  // to 1.045, y 1.12-1.14) shared voxels with the band top run and stood on
+  // floor the corridor vacates; the WHOLE group shifts a uniform -0.215
+  // inboard (relative composition identical) so every piece sits on the
+  // 0.82 core with its outermost surface (pad 0.83, drum rim 0.657) clear
+  // of the 0.857 band face. The vacated wing columns are the open track
+  // channel per the print.
   for (const s of [-1, 1]) {
     for (let lk = 0; lk < 4; lk++) {                                           // spare track link rack
       // r8: racks off the (now track-dark) spareTrack bucket, 4 mm gaps.
       // r9: the ref's own bow links render as BRIGHT worn steel (its
       // close-mantlet bow reads 90-100 where our rack read 55-65 and fed
       // the front-pane p05 floor) — the racks join the worn-steel family.
-      P.add('hullWood', box(0.115, 0.020, 0.096), s * 0.86, 1.133, 2.62 + lk * 0.10);
+      P.add('hullWood', box(0.115, 0.020, 0.096), s * 0.645, 1.133, 2.62 + lk * 0.10);
     }
-    P.add('hullWood', box(0.028, 0.030, 0.44), s * 0.795, 1.132, 2.77);        // rack rail (r9: worn steel w/ racks)
+    P.add('hullWood', box(0.028, 0.030, 0.44), s * 0.58, 1.132, 2.77);         // rack rail (r9: worn steel w/ racks)
     // r8: pad + void pulled inboard (1.06 -> 0.98) out of the measured
     // patch band |x| 1.00-1.12, and the void shrunk/sunk so its dark top
     // face stops printing a stripe at the 8-deg front camera. The wing band
     // there now reads as the ref's own flat plate.
-    P.add('hullWood', box(0.13, 0.018, 0.13), s * 0.98, 1.129, 2.70);          // lug pocket pad (r9: worn steel)
-    P.add('hullDark', box(0.070, 0.008, 0.070), s * 0.98, 1.134, 2.70);        // pocket void
+    P.add('hullWood', box(0.13, 0.018, 0.13), s * 0.765, 1.129, 2.70);         // lug pocket pad (r9: worn steel)
+    P.add('hullDark', box(0.070, 0.008, 0.070), s * 0.765, 1.134, 2.70);       // pocket void
     if (P.q) for (let bk2 = 0; bk2 < 5; bk2++) {                               // bolt ring along the recess lip
       P.add('hullDark', box(0.020, 0.012, 0.020), s * (0.30 + bk2 * 0.11), 1.129, 2.545);
     }
   }
-  P.add('hullDetail', KIT.xform(cylY(0.086, 0.092, 0.026, 18), 0, 0, 0, 0, 0, 0), 0.78, 1.142, 2.75);
-  P.add('hullDark', KIT.xform(cylY(0.068, 0.068, 0.012, 16), 0, 0.014, 0, 0, 0, 0), 0.78, 1.144, 2.75);
-  P.add('hullDetail', box(0.040, 0.026, 0.10), 0.78, 1.116, 2.66);              // stem foot
-  P.add('hullDark', box(0.014, 0.014, 0.16), 0.72, 1.126, 2.52, 0, 0, 0.2);     // cable conduit
+  P.add('hullDetail', KIT.xform(cylY(0.086, 0.092, 0.026, 18), 0, 0, 0, 0, 0, 0), 0.565, 1.142, 2.75);
+  P.add('hullDark', KIT.xform(cylY(0.068, 0.068, 0.012, 16), 0, 0.014, 0, 0, 0, 0), 0.565, 1.144, 2.75);
+  P.add('hullDetail', box(0.040, 0.026, 0.10), 0.565, 1.116, 2.66);             // stem foot
+  P.add('hullDark', box(0.014, 0.014, 0.16), 0.505, 1.126, 2.52, 0, 0, 0.2);    // cable conduit
   // ---- D-25S mantlet AUTHORED TO THE ORACLE TABLE (visual r4). The
   // orchestrator's vertex inspection of the pristine HullMesh (ref bank
   // tail: ORACLE MANTLET SPEC) retired the r3 "measured ceiling" — the
@@ -3969,9 +4154,21 @@ function buildISU122S(P) {
   // to the crest break, on the same bucket — one continuous smooth front
   // plate (this also unifies the bow's half-smooth / half-stipple diagonal
   // split, work-order item 8) at the ref's own 74.6 plate value.
+  // CONTAINMENT round: the plate's 1.120 bottom edge crossed the band's top
+  // run at the lane (6 shared voxels at z 2.56) — and the recess floor it
+  // met there is now corridor-cored. L-SPLIT: the center strip keeps the
+  // exact 1.120 bottom on the core (|x| <= 0.80); the over-track thirds
+  // start at y 1.20 (2 voxels over the 1.16 run top). Union above 1.20 is
+  // identical; the vacated lane band is pad-covered dead-front.
   P.add('hullRubber', KIT.slab(
-    [-1.23, 1.120, 2.566], [1.23, 1.120, 2.566], [1.23, 1.120, 2.560], [-1.23, 1.120, 2.560],
-    [-1.23, 1.860, 2.506], [1.23, 1.860, 2.506], [1.23, 1.860, 2.500], [-1.23, 1.860, 2.500]));
+    [-0.80, 1.120, 2.566], [0.80, 1.120, 2.566], [0.80, 1.120, 2.560], [-0.80, 1.120, 2.560],
+    [-0.80, 1.860, 2.506], [0.80, 1.860, 2.506], [0.80, 1.860, 2.500], [-0.80, 1.860, 2.500]));
+  for (const s of [-1, 1]) {
+    const fx0 = s < 0 ? -1.23 : 0.80, fx1 = s < 0 ? -0.80 : 1.23;
+    P.add('hullRubber', KIT.slab(
+      [fx0, 1.20, 2.5595], [fx1, 1.20, 2.5595], [fx1, 1.20, 2.5535], [fx0, 1.20, 2.5535],
+      [fx0, 1.860, 2.506], [fx1, 1.860, 2.506], [fx1, 1.860, 2.500], [fx0, 1.860, 2.500]));
+  }
   // r11 item 1a — FRONT PLATE material tier (the critic's headline rect:
   // proc 87.3 / iqr 0.00 over the whole plate vs ref 73.3 / iqr 3.0; my
   // reproduction (1032,224)-(1145,296) p25=p50=p75=87.3 EXACT). The
@@ -3985,14 +4182,25 @@ function buildISU122S(P) {
   // two-octave mottle (13 cm patches + 3 cm grain) runs (0.023, 0.013) for
   // the ref's iqr ~3.0. p05 stays >= the ref's 65.7 and dark% 0.0 —
   // nowhere near the r8 speckle-dot class.
-  P.add('hullCloth', paintVerts(gridQuad(
-    [-1.23, 1.120, 2.5675], [1.23, 1.120, 2.5675],
-    [1.23, 1.860, 2.5075], [-1.23, 1.860, 2.5075], 82, 25),
   // (r11 round 3: 0.632 landed 64.8 — the plate response is S-shaped, not
   // affine; local gain ~210/q between the bracketing measurements. 0.6725
   // interpolates the 73.3 target inside the 64.8..86.4 bracket and the
   // amps drop to hold iqr ~3 at that gain.)
-  (x, y) => 0.664 + mottle(x, y * 1.04, 11.7, 0.018, 0.010)));
+  // CONTAINMENT round: same L-split as the hullRubber carrier (the tier's
+  // 1.120 bottom row crossed the band top run at the lane — the 28-voxel
+  // front hit); q field unchanged, so the kept area renders byte-alike.
+  {
+    const tierQ = (x, y) => 0.664 + mottle(x, y * 1.04, 11.7, 0.018, 0.010);
+    P.add('hullCloth', paintVerts(gridQuad(
+      [-0.80, 1.120, 2.5675], [0.80, 1.120, 2.5675],
+      [0.80, 1.860, 2.5075], [-0.80, 1.860, 2.5075], 54, 25), tierQ));
+    for (const s of [-1, 1]) {
+      const tx0 = s < 0 ? -1.23 : 0.80, tx1 = s < 0 ? -0.80 : 1.23;
+      P.add('hullCloth', paintVerts(gridQuad(
+        [tx0, 1.20, 2.5610], [tx1, 1.20, 2.5610],
+        [tx1, 1.860, 2.5075], [tx0, 1.860, 2.5075], 15, 23), tierQ));
+    }
+  }
   const MX = -0.25, MY = 1.66;
   // (r7: the arcSec partial-theta helper is DELETED with its last two users,
   // the r6 crescent shells — a free open shell is exactly what projects as

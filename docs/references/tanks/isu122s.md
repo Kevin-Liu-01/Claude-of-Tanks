@@ -1339,3 +1339,61 @@ measurement-only; override configs live in procedural-fidelity.html +
 tmp-tank-critic.html (both pre-added). isu152 remains registered
 (14.4 post-batch-17 baseline; its own rebuild pending). Any intentional
 change re-runs BOTH gates and re-freezes in the same commit.
+
+## TRACK-CONTAINMENT graduate-change round (2026-08-03, casemate family agent)
+
+The queued §B4 round (fixed audit; the graduation-day 215-rear reading was
+the undercount — true numbers below). BEFORE (exact mode): front **401**
+(rig_hull 210 = loft recess-floor/face rows under+through the band top run;
+hullWood 104 = bow wing skins + racks/pad at y 1.12-1.14 inside the run;
+hullCloth 28 = front-plate tier 1.120 bottom row; hullDetail 27 = fwd
+fender flange straddling the band's 1.467 outer plane; hullDark 24 =
+pocket voids; hullRubber 6 = face-skin bottom edge; hullShadow 2 = channel
+AO tip) / rear **215** (rig_hull = tail rows crossing the sprocket wrap).
+AFTER: **front 0 / rear 0** (target 0), `track-clip-audit --exact`. Band
+truth: lanes x 0.857..1.467, idler wrap to z 2.92 (top run 1.06..1.16 over
+z 2.42..2.86), sprocket arc to -3.229; shoe crests 1.29/1.255.
+
+Changes (leopard-r4 lane-corridor pattern via isuCommon `laneCut` — same
+mechanism as isu152, siblings byte-exact):
+1. **loftCorridor** (`x 0.82, front z 2.40..2.955 floor 1.31, rear z≤-2.70
+   floor 1.28`): the recess-floor rows (t 1.12 — they ran THROUGH the band)
+   drop their over-track span entirely (those columns are the print's own
+   open track channel; band+shoes own them in plan/front; mid-hull rows
+   carry the 1.16-1.26 slivers); the casemate-face rows keep their span
+   above 1.31 (front read above the shoe line intact); rear wings at 1.28
+   keep the deck-fall read to z -3.01. Front corridor BOUNDED at 2.955 so
+   the beak taper keeps the exact graduated plan (no §B2 notch growth).
+2. Bow furniture group (racks/rail/pad/void/lug drum/cap/stem/conduit)
+   shifted a uniform **-0.215 x** onto the core (composition preserved;
+   outermost pad 0.83 / drum rim 0.657 clear of the 0.857 band face).
+3. Wing skins narrowed to the core edge (x1 1.21 → 0.80, same y/z).
+4. Front-plate tier + hullRubber face skin **L-split**: center keeps the
+   exact 1.120 bottom on the core (|x| ≤ 0.80); over-track thirds start at
+   y 1.20 (2 voxels over the run top). q field unchanged.
+5. Fwd fender side-flange 1.4665 → **1.4795** (13 mm outboard — the next
+   voxel, still inside the certified 1.451..1.485 grounded-window, still
+   rail-welded). Rear piece untouched.
+6. Channel-AO strip clipped ahead of the wrap (o.aoZ [-2.305, 2.38]; the
+   band top run owns the channel plan there).
+
+GATES (final bytes): geometry **90.1 ×2** (hull 90.3 / whole 90.1 / turret
+100 / stations 94.9 / dims 98.3 / floaters 100 — the graduation line
+EXACT); standard-check clip 0/0 ✓ contig 0 ✓ (decor mg0+0d pre-existing,
+packet-carried). CERTIFIED SPOT-CHECKS on fresh official pairs (r11 rect
+battery re-run; baseline pairs re-rendered from HEAD bytes for the diff):
+headline PLATE R rect p50 **73.7** / iqr 3.9 vs certified 73.3-class (ref
+73.6 / 4.4) — p95 77.3 → 87.6 is the vacated face-wing columns now reading
+PADS at the rect's track side (toward the ref's own 101.0 tail); tub flare
+**81.9** = banked 81.8 class EXACT; flank skins / ground comb / drum slots
+untouched-EXACT vs baseline; `proc brakeX iqr 10.7` reproduces byte-
+identically on HEAD-bytes baseline pairs too — the packet's 28.6 was a
+stale-bank number, not a regression (bank re-derivation law §D). Re-cert
+deltas for the critic: bow furniture sits 21.5 cm inboard; the bow wing
+band (x 0.86..1.26 at y 1.12) is now open track channel dead-front/top —
+the r8 "sponson dot patch" mudguard-cheek window content is track-owned.
+Round shots: shots/critic-isu122s-contain1/.
+
+**RE-FREEZE HASH fdb91d50 (34 meshes / 368714 verts)** — supersedes
+b472e956; re-freeze lands at the orchestrator's landing after the re-cert
+critic verdict per §H.3.
