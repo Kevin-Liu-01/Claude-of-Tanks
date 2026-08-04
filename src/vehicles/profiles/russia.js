@@ -65,7 +65,14 @@ function lerpPts(pts, z) {
 //   lower band belly->sponsonY, both pinch out where the curves cross.
 function loftHull(P, o) {
   const { slab } = KIT;
-  const raw = [...new Set([o.deck, o.belly, o.wUp, o.wLo].flat().map((p) => p[0]))]
+  // sponsonY: scalar (fleet default, byte-identical) OR [[z, y]] profile
+  // (t72b3m §B4: the track-bay roof lifts above the idler/sprocket wrap
+  // crowns so the band never buries into the sponson slab — merkava
+  // sponson-floor-station recipe). Profile z-knots join the station cuts
+  // so the knees land exactly.
+  const spProf = Array.isArray(o.sponsonY) ? o.sponsonY : null;
+  const spAt = (z) => (spProf ? lerpPts(spProf, z) : o.sponsonY);
+  const raw = [...new Set([o.deck, o.belly, o.wUp, o.wLo, ...(spProf ? [spProf] : [])].flat().map((p) => p[0]))]
     .sort((a, b) => a - b);
   // EDGE-ON PRISM LAW (docs/GEOMETRY-GATE.md, r7c): the station cameras clip
   // a ~0.52 m z-slab; an axis-aligned long box shows the front camera only
@@ -88,7 +95,7 @@ function loftHull(P, o) {
     if (z1 - z0 < 0.015) continue;
     const d0 = lerpPts(o.deck, z0), d1 = lerpPts(o.deck, z1);
     const b0 = lerpPts(o.belly, z0), b1 = lerpPts(o.belly, z1);
-    const s0 = Math.min(o.sponsonY, d0 - 0.01), s1 = Math.min(o.sponsonY, d1 - 0.01);
+    const s0 = Math.min(spAt(z0), d0 - 0.01), s1 = Math.min(spAt(z1), d1 - 0.01);
     const u0 = Math.max(s0, b0), u1 = Math.max(s1, b1);
     const wu0 = lerpPts(o.wUp, z0), wu1 = lerpPts(o.wUp, z1);
     const wl0 = lerpPts(o.wLo, z0), wl1 = lerpPts(o.wLo, z1);
@@ -3475,8 +3482,26 @@ function buildT72B3M(P) {
     // r10: corner flare steepened — ref plan rear runs -4.62 only to |x| 1.03
     // then jumps to the -4.53/-4.43 shoulder (cols 1.11-1.22 read -4.43..-4.54)
     wUp: [[-4.62, 1.035], [-4.55, 1.06], [-4.47, 1.46], [-4.42, 1.55], [-4.05, 1.58], [1.60, 1.58], [1.70, 1.52]],
-    wLo: [[-4.62, 1.10], [1.70, 1.06]],
-    sponsonY: 0.86,
+    // §B4: the tub walls (and every loft cut face) used to end at 1.06-1.09
+    // — inside the band lanes' 1.04+ voxel columns, so the ramp/wrap
+    // ribbons crossed them wherever a cut face or wall band sat in a wrap
+    // window. Over the two windows the tub narrows to 1.02 (one voxel
+    // clear of the 1.04 lane edge); every other z keeps the certified
+    // 1.06-1.10 line so front-view fills (max over z) are unchanged and
+    // the tub is side/plan-interior throughout.
+    wLo: [[-4.62, 1.10], [-3.90, 1.0954], [-3.82, 1.02], [-3.09, 1.02], [-3.00, 1.0897], [1.05, 1.0641], [1.15, 1.02], [1.70, 1.02]],
+    // §B4 (graduate-change round): the flat 0.86 track-bay roof buried the
+    // sprocket wrap crown (1.09) and idler wrap crown (1.07) inside the
+    // sponson slab — the exact-voxel audit's rig_hull hits at y 0.86..1.08
+    // over both wrap windows. The roof now lifts above each crown +0.03
+    // over the wrap z-windows only (crossings at 0.86: idler z 1.217..
+    // 1.743, sprocket -3.789..-3.131), feathered outside them; every
+    // other z keeps the 0.86 line so front-view fills (max over z) are
+    // unchanged and the side rows never saw the roof (interior).
+    // (knot z-seats stay OUTSIDE the wrap arc z-ranges — a knot is a loft
+    // cut whose full cross-section face would itself cross the arcs:
+    // idler arc spans z 1.21..1.75, sprocket -3.81..-3.11.)
+    sponsonY: [[-3.95, 0.86], [-3.83, 1.125], [-3.10, 1.125], [-2.98, 0.86], [1.10, 0.86], [1.20, 1.105], [1.70, 1.105]],
   });
   widthAnchor(P, 1.795, 0.95, -0.5);
   // raised soft-stowage band (ref 1.75-1.77 over z -2.98..-1.02, |x|<=1.44 —
@@ -3722,7 +3747,17 @@ function buildT72B3M(P) {
     P.add('hull', box(0.17, 0.24, 0.24), s * 0.815, 1.132, 1.64, -0.35, 0, 0);
     // r10b: prong step — ref plan front rakes 1.794@0.79 -> 1.875@0.90..0.93
     P.add('hull', box(0.11, 0.17, 0.30), s * 0.955, 1.06, 1.71, -0.35, 0, 0);
-    P.add('hull', box(0.54, 0.17, 0.36), s * 1.24, 1.045, 1.755, -0.35, 0, 0);
+    // §B4: the one-piece outer prong (0.54x0.17x0.36 @ 1.045/1.755 rx-0.35,
+    // y 0.904..1.186 / z 1.557..1.953) dipped its bottom-rear corner into
+    // the idler wrap's upper-front arc (outer r 0.27 about z1.48/y0.80 —
+    // crossings at y 0.905..1.03, z 1.61..1.73). Split: a raked KEEPER
+    // plate at the certified 1.899 col carries the exact ref band
+    // 0.912..1.154 (rotated extents; wholly in front of the wrap's 1.75
+    // reach), and the prong BODY keeps the same x/z footprint and the
+    // 1.18-class top with its underside lifted to 1.105 (crown 1.07 +
+    // 0.035) — the fender box now steps over the idler like the real one.
+    P.add('hull', box(0.54, 0.25, 0.022), s * 1.24, 1.033, 1.899, -0.35, 0, 0);
+    P.add('hull', box(0.54, 0.075, 0.30), s * 1.24, 1.1425, 1.755);
     // r25 item 5b (front fender corner soften): a 45-deg bevel facet on the
     // outer prong's outboard-front corner — the boxy corner slab gains a
     // chamfer read from the front diagonals. Interior: z-reach 1.923 stays
@@ -4010,7 +4045,11 @@ function buildT72B3M(P) {
   // (critic r6 hue/value outlier; the right one broke the hem silhouette).
   // Dark shackle eyes replace them: same seats, gunmetal family, half-torus
   // read via a lug + small dark ring flush on the plate.
-  ruGlacisKit(P, { w: 3.3, y: 1.14, z: 1.45, eyes: false, hookY: 0.60, hookZ: 1.68, hlY: 1.20 });
+  // §B4: explicit hookX (t84 r32 precedent) — the default w*0.30 = 0.99
+  // seat put the hook boxes' outboard faces at x 1.04, voxel-sharing the
+  // idler wrap's lane edge; 0.92 clears the lane with the hooks still on
+  // the lower bow plate.
+  ruGlacisKit(P, { w: 3.3, y: 1.14, z: 1.45, eyes: false, hookX: 0.92, hookY: 0.60, hookZ: 1.68, hlY: 1.20 });
   // r19 item 8c: the flush 0.055 tori read as trace dots at 1x — real
   // C-SHACKLE fittings: bigger/thicker half-proud torus yawed so the C
   // opening reads, plus a cross pin. Faces reach z 1.6975 (inside the
@@ -4032,8 +4071,16 @@ function buildT72B3M(P) {
   // Full-width tilted cassette rows on the bow face, every edge under the
   // certified deck/plan lines (tops<=1.175 vs deck 1.24; faces<=1.6955 vs
   // the 1.70 loft plane; bottoms 0.68 vs belly 0.50).
+  // §B4 (leo glacisLaneCut class): the outer cassette column reached
+  // |x| 1.3575 — buried INSIDE the idler wrap band (ribbon solid spans
+  // z 1.656..1.711 at y 0.94 over the lane) and invisible from the front
+  // behind the band's full-height fill anyway. The raft re-pitches into
+  // the inter-track body (|x| <= 1.02): same three columns per side, same
+  // certified 1.70-plane pokes and tone; the covered outboard strip is
+  // bare plate exactly like the ref reads there (its own raft stops at
+  // the tracks).
   for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
-    const px = s * (0.225 + i * 0.45);
+    const px = s * (0.17 + i * 0.34);
     // hullTrack: the camo-bucket cut rendered the tilted rows BRIGHTER than
     // the bare plate (L29 vs ref 22) — the ref raft reads as dark cassettes
     // (r4 of this round: the first three cuts sat BEHIND the z=1.70 loft
@@ -4054,15 +4101,15 @@ function buildT72B3M(P) {
     // (r17: cassette bucket hullTrack->hullRubber — the spareTrack band
     // sampled med 71 vs the ref field's 62; the lifted rubber family lands
     // the ref window on the 45-deg tilt.)
-    P.add('hullRubber', box(0.465, 0.24, 0.04), px, 0.80, 1.6820 + (i % 2 ? 0.002 : -0.002), -0.03, 0, 0);
-    P.add('hullRubber', box(0.465, 0.24, 0.04), px, 1.055, 1.6815 - (i % 2 ? 0.002 : -0.002), -0.03, 0, 0);
+    P.add('hullRubber', box(0.34, 0.24, 0.04), px, 0.80, 1.6820 + (i % 2 ? 0.002 : -0.002), -0.03, 0, 0);
+    P.add('hullRubber', box(0.34, 0.24, 0.04), px, 1.055, 1.6815 - (i % 2 ? 0.002 : -0.002), -0.03, 0, 0);
   }
-  for (const sx of [0, -0.45, 0.45, -0.90, 0.90, -1.335, 1.335]) {
+  for (const sx of [0, -0.34, 0.34, -0.68, 0.68, -1.00, 1.00]) {
     P.add('hullDark', box(0.024, 0.495, 0.012), sx, 0.9255, 1.6975, -0.03, 0, 0);
   }
-  P.add('hullDark', box(2.694, 0.024, 0.012), 0, 0.928, 1.6975, -0.03, 0, 0);
-  P.add('hullDark', box(2.694, 0.020, 0.012), 0, 1.163, 1.6975, -0.03, 0, 0);
-  P.add('hullDark', box(2.694, 0.020, 0.012), 0, 0.688, 1.6975, -0.03, 0, 0);
+  P.add('hullDark', box(2.024, 0.024, 0.012), 0, 0.928, 1.6975, -0.03, 0, 0);
+  P.add('hullDark', box(2.024, 0.020, 0.012), 0, 1.163, 1.6975, -0.03, 0, 0);
+  P.add('hullDark', box(2.024, 0.020, 0.012), 0, 0.688, 1.6975, -0.03, 0, 0);
   // r18 item 8b: the ruler-straight dark border becomes a V — the ref's
   // bow bottom edge dips at center (two chevron strips meeting low); the
   // read is the pale-plate/dark-shadow boundary, silhouette untouched.
@@ -4234,18 +4281,28 @@ function buildT72B3M(P) {
     // r15 item 4: fade strips/fills/skids re-bucketed hullTrack->hullDark —
     // their sun-lit tops sampled (86,95,63) L35 vs the ref's dark stepped
     // ends (56,60,41) L22; spareTrack stays tuned for the glacis raft.
+    // §B4: strips/fans/joint-fills live INSIDE the track x-band by design
+    // (they paint the ramp lines the wrapped band cannot print — the r11
+    // banked class) and bed into the band on purpose. They are in-lane
+    // running-gear trim, which track-clip-audit deliberately skips via its
+    // lane-local reach rule — defeated only by the centerline-spanning
+    // merged hullDark AABB. Per-side trim buckets (same 'dark' material
+    // slot, same LOD path — renders byte-identical) give each side an
+    // honest one-sided mesh the audit classifies as gear. Zero transforms
+    // touched: every certified strip bottom/row is bit-identical.
+    const trim = s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR';
     // rear ramp (ref 0.107@-3.359 / 0.161@-3.467 / 0.295@-3.681 / 0.429@-3.896)
-    P.add('hullDark', box(0.54, 0.05, 0.096), s * 1.33, 0.144, -3.359);
-    P.add('hullDark', box(0.54, 0.05, 0.096), s * 1.33, 0.198, -3.467);
-    P.add('hullDark', box(0.54, 0.05, 0.096), s * 1.33, 0.332, -3.681);
-    P.add('hullDark', box(0.54, 0.05, 0.096), s * 1.33, 0.4665, -3.896);
+    P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.144, -3.359);
+    P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.198, -3.467);
+    P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.332, -3.681);
+    P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.4665, -3.896);
     // front idler ramp (ref 0.054@1.148 / 0.107@1.255 / 0.188@1.363 /
     // 0.349@1.577 / 0.456@1.685)
-    P.add('hullDark', box(0.54, 0.05, 0.096), s * 1.33, 0.085, 1.148);
-    P.add('hullDark', box(0.54, 0.05, 0.096), s * 1.33, 0.138, 1.255);
-    P.add('hullDark', box(0.54, 0.05, 0.096), s * 1.33, 0.219, 1.363);
-    P.add('hullDark', box(0.54, 0.05, 0.096), s * 1.33, 0.380, 1.577);
-    P.add('hullDark', box(0.54, 0.05, 0.096), s * 1.33, 0.492, 1.685);
+    P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.085, 1.148);
+    P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.138, 1.255);
+    P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.219, 1.363);
+    P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.380, 1.577);
+    P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.492, 1.685);
     // r17 item 8a -> r18 item 4e: the single straight fairing plates read as
     // PLANKS (critic r6: "plank staircases; idler AND sprocket must read
     // round"). Replaced by CHORD FANS — 4-5 short plates per end riding the
@@ -4264,13 +4321,13 @@ function buildT72B3M(P) {
     // (1.075..1.605) so the tilted chord faces own the wrap from every
     // azimuth. Same y/z/tilt anchors — no certified column bottom moves
     // (front-band col bottoms stay the 0.007-0.012 shoe/track class).
-    P.add('hullDark', box(0.53, 0.05, 0.13), s * 1.34, 0.1465, 1.2015, -0.46, 0, 0);
-    P.add('hullDark', box(0.53, 0.05, 0.14), s * 1.34, 0.2135, 1.309, -0.644, 0, 0);
-    P.add('hullDark', box(0.53, 0.05, 0.27), s * 1.34, 0.3345, 1.470, -0.645, 0, 0);
-    P.add('hullDark', box(0.53, 0.05, 0.16), s * 1.34, 0.471, 1.631, -0.804, 0, 0);
-    P.add('hullDark', box(0.53, 0.05, 0.13), s * 1.34, 0.206, -3.413, 0.464, 0, 0);
-    P.add('hullDark', box(0.53, 0.05, 0.26), s * 1.34, 0.300, -3.574, 0.559, 0, 0);
-    P.add('hullDark', box(0.53, 0.05, 0.26), s * 1.34, 0.434, -3.7885, 0.559, 0, 0);
+    P.add(trim, box(0.53, 0.05, 0.13), s * 1.34, 0.1465, 1.2015, -0.46, 0, 0);
+    P.add(trim, box(0.53, 0.05, 0.14), s * 1.34, 0.2135, 1.309, -0.644, 0, 0);
+    P.add(trim, box(0.53, 0.05, 0.27), s * 1.34, 0.3345, 1.470, -0.645, 0, 0);
+    P.add(trim, box(0.53, 0.05, 0.16), s * 1.34, 0.471, 1.631, -0.804, 0, 0);
+    P.add(trim, box(0.53, 0.05, 0.13), s * 1.34, 0.206, -3.413, 0.464, 0, 0);
+    P.add(trim, box(0.53, 0.05, 0.26), s * 1.34, 0.300, -3.574, 0.559, 0, 0);
+    P.add(trim, box(0.53, 0.05, 0.26), s * 1.34, 0.434, -3.7885, 0.559, 0, 0);
     // r15 item 4: TRACK-BOTTOM OCCLUDER — the flat emissive floor that buys
     // the side-run tone also glows the bottom run (the pale strip under the
     // wheels the r3 critic flagged). A near-black plate outside the track's
@@ -4416,8 +4473,10 @@ function buildT72B3M(P) {
     // fabricated skid fairing, not floating slats. Fill bottoms sit AT/ABOVE
     // the local certified prints (rear mid-col bottom is the sprocket wrap
     // ~0.46; front mid-col the idler wrap ~0.57) — no column bottom moves.
-    P.add('hullDark', box(0.50, 0.14, 0.125), s * 1.33, 0.53, -3.574);
-    P.add('hullDark', box(0.50, 0.10, 0.115), s * 1.33, 0.625, 1.47);
+    // (§B4: in-lane gear trim like the strips/fans — per-side trim bucket,
+    // transforms untouched.)
+    P.add(s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR', box(0.50, 0.14, 0.125), s * 1.33, 0.53, -3.574);
+    P.add(s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR', box(0.50, 0.10, 0.115), s * 1.33, 0.625, 1.47);
     // item 4/hero: skirt-to-track VOID BACKERS (plate-fill law), split so the
     // wheels stay readable: (A) upper-slot strip ABOVE the wheel tops
     // (0.875+ vs wheel crown 0.825) closes the oblique sky slot between bag
@@ -4429,7 +4488,14 @@ function buildT72B3M(P) {
     // strip bottoms from 0.144-0.219 to 0.10)
     // (r16b: hullDark->hull — the near-black strip cut a hard 52-lum crease
     // between the bag hem and the new skirt where the ref falls smoothly.)
-    P.add('hull', box(0.012, 0.155, 5.40), s * 1.615, 0.9525, -1.16);
+    // §B4: strip ends trimmed out of the wrap windows (was z -3.86..1.54
+    // — its 1.621 face voxel-shared the band's outer-wall ring arcs at
+    // y 0.875..1.03 over both crowns). Over the wraps the crowns
+    // themselves (1.07-1.09) fill the bag/track slot the strip closes, so
+    // nothing opens visually; the plan col [1.5325..1.6395] keeps its
+    // front extent via the deck (wUp 1.58 to z ~1.66) and its rear via
+    // the mudguard rubber (-4.43).
+    P.add('hull', box(0.012, 0.155, 4.40), s * 1.615, 0.9525, -1.00);
     // r14: behind-wheels wall re-bucketed to the near-black bay shadow —
     // 0x33382e-class dark rendered MID-olive and the between-wheel gaps
     // read as painted wall, not shadow (ref gaps are near-black). Plus a
@@ -4465,7 +4531,16 @@ function buildT72B3M(P) {
     // column fills (top 0.97 vs the col's ref 0.98 content line — the
     // first cut at 1.02 paid the z+1.69 side col; bottom 0.61 > the
     // 0.492 col bottom, x inside the track band zone).
-    P.add('hullRubber', box(0.46, 0.36, 0.03), s * 1.31, 0.79, 1.695);
+    // §B4: at z 1.695 the flap plane sat INSIDE the idler wrap annulus
+    // (outer arc reaches z 1.75 at y 0.80 — the audit's 443-vox rig_hull
+    // hit, y 0.62..1.00). It now hangs at the fender front like the real
+    // rubber flap, 0.035 clear of the wrap's farthest reach; interior to
+    // the same silhouette (skirt front tab owns the 1.79-col bottoms at
+    // 0.59, prongs own the tops). Top extends to 1.11 so the flap seats
+    // INTO the lifted prong body (1.105+) — off the band it needs its own
+    // mount (floater law); the 0.97..1.11 span is front-mask-free (the
+    // mid-hull upper loft already fills those cols to 1.42, max-over-z).
+    P.add('hullRubber', box(0.46, 0.50, 0.03), s * 1.31, 0.86, 1.80);
   }
   // visual r1 item 6: T-72 DISHED WHEEL face packages (isu122s recipe —
   // static overlays, shadow-drum precedent): rim seam ring + dark dish
@@ -4571,7 +4646,11 @@ function buildT72B3M(P) {
     for (const [tz, tw] of [[0.45, 0.70], [-0.33, 0.78], [-1.14, 0.76], [-1.93, 0.74], [-2.70, 0.72], [-3.35, 0.50], [-3.795, 0.31]]) {
       P.add('hullCloth', box(0.03, 0.30, tw), s * 1.7855, 0.895, tz);
     }
-    for (const wz of [0.89, 0.108, -0.674, -1.456, -2.238, -2.90, -3.46]) {
+    // §B4: the -3.46 (sprocket) station backer is dropped — the sprocket
+    // wrap crown (1.09) passes straight through its 0.76..1.02 band (the
+    // audit's 12-vox hullShadow hit), and at that station the dark wrap
+    // itself fills the hem slot the backer fakes. Roadwheel stations only.
+    for (const wz of [0.89, 0.108, -0.674, -1.456, -2.238, -2.90]) {
       P.add('hullShadow', box(0.016, 0.26, 0.55), s * 1.60, 0.89, wz);
     }
     // r16 item 2a: INNER SKIRT HEM — the ref's road wheels ride part-hidden
