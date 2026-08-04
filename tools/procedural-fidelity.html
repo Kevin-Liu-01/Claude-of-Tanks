@@ -205,6 +205,14 @@ const LOCAL_REFERENCE_OVERRIDES = {
       turretNode:'^Turret$', gunNode:'^weapon$', autoPivot:true,
       yawOffset:-Math.PI/2 },
   },
+  // t30: NO gate oracle possible through this harness (ww2 r2 finding).
+  // The candidateGlb is ONE fused node ('hull', mesh Object.113 — probed
+  // 2026-08-04); modelLoader's fixedMount guard was written expressly so
+  // this print can never load as a casemate on the turreted t30 spec, and
+  // without a turret node the swap throws 'no articulable turret node'.
+  // Gating t30 needs an orchestrator-lane decision (loader measurement
+  // path or a split repair of the print) — do NOT add a source override
+  // here: a failing override costs every fleet gate run a 150 s timeout.
   // kv2: reference UNRECOVERABLE from git by design — its oracle lived in
   // gitignored candidates-gen2/ (100MB class); no MODEL_SOURCE entry ever
   // existed in committed history. Verification = freeze hash (tmp-hashgeo

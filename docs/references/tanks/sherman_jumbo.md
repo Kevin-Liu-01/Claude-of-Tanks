@@ -135,3 +135,69 @@ NEXT: (1) post-warp re-gate should release ~+5-8 on side/front/stations;
 (lathe 18-seg at q=false); periscope bumps absent.
 shots/ww2-r1/after/sherman_jumbo.png (board eyeballed: orientation ✓,
 containment ✓, no floaters, roof .50cal present).
+
+## ww2 r2 (2026-08-04, dims-sovereign; warp plans still FROZEN)
+
+74.5 -> 85.5 min over 12 iterations (hull 80.7->88.7, whole 74.5->86.7,
+turret 80.9->85.5, stations 83.7->87.8, dims 95.3->100, floaters 100).
+Gate line x2 (85.4/85.5/85.5 across three closing runs), containment
+384/213 (worst mid-round) -> 22/10 exact voxels, standard-check clip/
+contig/mg all green.
+
+What moved it (law-bank items marked *):
+- *ANCHOR-BAND LAW (counterweight law refined): a dims anchor's Y-BAND
+  must sit at the ref's own band heights AND its registration class must
+  match the ref's (band-fat vs band-thin vs the 12% body threshold —
+  fat-where-ref-is-thin steers dAlong by half a pitch and blends every
+  proc sample mid-transition). The r1 nose-links block (y 0.62..1.10 vs
+  the ref's gun-only 2.22..2.42 band) cost 0.78 err on its column AND the
+  half-pitch smear; it is now a gunMount travel-lock collar ON the tube
+  (z 3.078..3.118, y 1.98..2.45): pose-articulates with the gun (no
+  floater), plan-interior (x +-0.12 inside the tube-lit columns), and the
+  column reads ~0.10 err. hullLengthM 6.20 via collar col 3.098 + tail
+  plate col; rear flap slimmed to the -3.175 bin at the lip band heights.
+- *dAlong 0.000 achieved: hull body span mids now equal the ref's own
+  (front nose-face col + tail-plate col). The transition-blend artifacts
+  (nose 0.48, stub 0.34) died with it.
+- *BIN-DRIFT LAW: any model-extreme change re-bins every trace view
+  (shared-box center moves) — anchor faces must clear bin boundaries by
+  >=15mm in the CURRENT run's frame, and one-bin features must be < one
+  pitch (0.0705) deep. The 2+2 crown spikes are 0.055-0.065 deep so they
+  can never straddle 3 columns; heightM p95 rides the 2.975 grace-free
+  plateau (crown plate/receiver caps/cupola seam) with exactly 4 columns
+  above 2.98 aligned to the ref's own 3.09-3.12 spikes (front spike
+  z 0.45..0.515, rear ridge -0.408..-0.473, both LEFT-weighted x<=+0.24
+  like the print's asymmetric crown).
+- Dome rebuilt as TWO stacked lathes (drum max-width LOW at y 2.16 +
+  crown cap sz 0.61): the ref cast is wide/vertical in front view up high
+  but short fore-aft — one lathe could not do both (r1 read +0.15..0.23
+  tall on the dome front slope). Basket drum span matched to the ref's
+  z -0.635..+0.585 read. Bustle plan: straight ref side edge
+  (0.96,-0.96)->(0.74,-1.50), side wings x 0.95..1.05, cheeks two-facet
+  to (1.19, 0.44), mantlet face +-0.70 with sloped wings to (0.91, 0.85),
+  narrow tail stub |x|<=0.26 to -1.80 (the ref's -1.82 tail is plan-narrow).
+- Tracks: duckbill end connectors trackW 0.56->0.60 at xc 1.11 (band
+  faces 0.81/1.41): the ref's ground-reaching front columns at x +-0.80
+  registered (front_whole +-0.8 err 0.24 died); containment restored by
+  moving the gear-bay dark backing INBOARD plates -> behind-wheel plate
+  (x 0.84..0.89, z-clear of both wrap-zone audits), diff cyl +-0.73,
+  chin +-0.76, nose cap underside 1.165.
+- §B3 census: hand-authored .50cal -> FITTINGS.pintleMG (m2, dark, scale
+  0.8, elev 0.24) seated (0.42, 2.50, +0.52) on the dome beside the crown
+  plate: receiver rides the dome slope under the ref's own fused-MG band,
+  muzzle line tops ~2.94 (under the 2.9795 grace line). Census mg1; the
+  fitting is net +0.1 gate pts vs the hand MG (within the §C 0.4 pintle
+  allowance).
+- Visual evaluator: 14/14 views RIG PARITY OK (yawProxy <=2.4 deg); the
+  0.37-0.40 dTop p95 tails on 3/4 views are the priced crown stylization
+  (print crown+MG 3.03-3.16 vs published 2.95, dims sovereign). One
+  unmatched proc edge at y 3.20..3.32 (close-front) traces to the
+  DECORATIONS layer (random stowage), not the profile — proceduralOnly
+  dims stay 100.
+
+Residuals (honest): turret side 85.5 is crown-cap-limited (~12 columns
+x ~0.06 err vs the print's over-published crown — releases only with the
+frozen warp); collar dims-anchor columns 2x ~0.10; plan_whole/hull ~94
+carry the print's 5-10cm lateral asymmetry (certified oracle cap).
+shots/ww2-r2/after/sherman_jumbo.png (eyeballed: orientation, containment,
+collar reads as travel-lock, no holes top-down, MG present).

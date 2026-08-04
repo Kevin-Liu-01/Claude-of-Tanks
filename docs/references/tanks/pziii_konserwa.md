@@ -106,3 +106,44 @@ between runs — worth ~±2-3 hull pts); (2) stations: st4 5.1 (cupola edge
 vs slab boundary) + st7 cupola front edge; (3) cupola rise slope at
 z -0.96..-1.12 underfilled ~0.1; (4) muzzle ONLY-PROC 2 cols retires with
 the warp. shots/ww2-r1/after/pziii_konserwa.png (eyeballed ✓).
+
+## ww2 r2 (2026-08-04)
+
+67.0 -> 72.0 min (hull 70.8->77.4, whole 67->72.0, turret 74.7->77.2,
+stations 75.3->83.1, dims 100, floaters 100; target 78 MISSED — honest
++5.0). Gate line x2 (72.0/72.0). Track containment 42/42 -> 0/0 exact
+(gear re-laned to the ref's own band faces 1.01..1.41: xc 1.21, W 0.40).
+Census: FITTINGS.pintleMG MG34 (mag class, dark) on the rear shelf beside
+the cupola, barrel forward over the roof — mg1, and the fitting measured
++0.2 gate pts (the aft aim variant cost -3.2: barrel past the turret rear
+writes only-proc columns; LAW: park fitting barrels over EXISTING masses).
+
+Moved: shared pziiiHull rework — drooping fender bow tips (ref line
+1.23->1.12 over the last 0.25m; flat tips cost 0.2-0.3 on three columns/
+side), lower nose plate (ref bow rises 0.43..0.76 between the tracks — r1
+was hollow there), tail plate raised to the ref's floating 0.95..1.40 band
++ lip overhang sliver (1.00..1.07 to rear-0.055), Notek stalk deleted (it
+owned a 1.54 top vs the ref's 1.28 bow line), muffler pulled clear of the
+tail trace column, front/rear flap anchors re-banded (front slim 1.04..
+1.20 = registration-invisible like the ref's own thin bow flap, rear fat
+0.34 = the hullLengthM column), cupola widened to the ref's r~0.40 with a
+z-ellipse (crown ends -0.97), turret poly extended to the ref's -1.14
+rear + low rear bin (ref band 1.60..1.78 at z -1.0..-1.15), KwK 36 sleeve
+shortened to a stub (the ref's plan-turret front ends at its rotor ~0.99;
+the r1 0.72m sleeve painted plan columns to 1.66).
+
+*LAW (bank): the registration bodySpan uses rough = the CURVE's total
+vertical extent (not per-column) — hull-mask threshold ~0.19-0.20, whole-
+mask ~0.30-0.36. An anchor plate can be leg-free in one mask and body in
+the other ONLY inside that window; konserwa's window is real (hull 1.62
+vs whole 2.48 extents) where jumbo's was empty.
+*LAW: spare-track strips/tow-hook clusters UNION with thin tips into
+body-fat columns — the 2.233-col phantom was spareTrackStrip-at-2.25 ∪
+droop-tip; keep bow furniture z-ends >=15mm inside the last fat column.
+
+Residuals: whole 72.0 carries the front-anchor column vs the ref's
+tube-only band (~0.38x2 cols, priced by the frozen warp: ref lengths
+-3.5/-4.4%), and the +-1-column registration wobble (the packet's r1
+noise-floor note stands: reconstruction attempts of the measured-best
+state reproduced 66-72 across runs with byte-similar geometry).
+shots/ww2-r2/after/pziii_konserwa.png (eyeballed).

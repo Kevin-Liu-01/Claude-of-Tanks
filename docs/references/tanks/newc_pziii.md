@@ -95,3 +95,29 @@ trackXc 1.20 preserved as-is) and its turret/schürzen are the next round.
 Oracle stylization -4/-4.9% lengths, +2.2% height: NORMALIZATION PLAN
 AUTHORED in tools/vertex-normalize.mjs (body x1.0404, muzzle 3.415->3.64,
 y squeeze 2.554->2.50).
+
+## ww2 r2 (2026-08-04)
+
+63.0 -> 68.0 min (hull 74.1->73.6, whole 63->68.0, turret 63.6->74.3,
+stations 71.9->75.7, dims 100, floaters 100; target 73 MISSED — honest
++5.0). Gate line x2 (68.0/68.0). Containment 0/0 exact (trackW 0.42->
+0.40 at xc 1.20: band faces 1.00..1.40 = the ref's). Census mg1
+(FITTINGS.pintleMG mag/dark beside the cupola, barrel forward).
+
+Moved: the shared pziiiHull r2 rework (see pziii_konserwa r2: droop tips,
+lower nose plate, floating tail band, flap anchor re-banding — newc keeps
+its FAT front flap per its own ref's band-fat bow column, param
+frontFlapFat) plus newc-only: TURRET +10.7 — external mantlet widened to
+the ref's plan span (2.00 wide, centered -0.10 against the +0.12
+fused-gun print cap), sleeve step extended to the ref's 1.74 plan front,
+superstructure narrowed 1.41 -> 1.31 (the ref's front-view walls end
+~1.31; 1.41 wrote +0.18 tops across x 1.32..1.46), KwK 39 muzzle to
+published overall 6.41 (len 2.90). Rommelkiste kept at the r1 seat —
+measured: a rear-shifted/enlarged bin and a raised rear-roof band BOTH
+regressed (their reads were dAlong-blend artifacts, reverted).
+
+Residuals: whole 68.0 = bow anchor columns vs tube-only ref bands +
+registration wobble (dAlong danced -0.109..+0.034 across the round; the
+best-state reconstruction landed -0.037-class); hull 73.6 vs r1 74.1 is
+inside the same wobble. stations 75.7 (st tail columns follow the tail
+rework). shots/ww2-r2/after/newc_pziii.png (eyeballed).
