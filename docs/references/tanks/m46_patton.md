@@ -170,6 +170,44 @@ satisfiable against this oracle.
 State at handoff: hull 74.9 / whole 66.1 / turret 63.2 / stations 69.3 /
 dims 91 / floaters 100.
 
+## Vertex round r3 (2026-08-04) — probe round: r2 baseline RESTORED, deltas banked
+Budget remainder after the m47 pass. Attempted the r1/r2 'free rows'
+(front centre-can band, right-roof line, bow eye, rack floor); closing
+state = the EXACT r2 baseline 82.0 (87.4/83/82/91.3/100/100, clip 22/0,
+contig 0, mg1) — every r3 delta reverted after in-gate measurement.
+
+MEASURED FINDINGS (bank for r4, all workorder/trace world coords):
+- DIMS EQUILIBRIUM (the m46 pre-warp wall, now measured exactly): dims
+  are FULLY PINNED — overallLengthM fixes tail -4.465 + muzzle 4.02
+  (8.48), and hullLengthM 6.33 vs the SHORT print hull (ref hull body
+  6.08-6.15) consumes the entire eye-to-tail content span INCLUDING the
+  proud eye-pin reach to 1.775 (the 12%-body columns are window-centre
+  quantized ±half pitch: content 6.24 reads 6.19-6.28 by phase; r2's
+  dims-100 rides a favorable phase). A rear tail-core to -4.60 fixed
+  hullLengthM but broke overallLengthM (+1.84%); an interior pin read
+  6.19 (-2.27%). NO free-row fix exists: the frozen body+tube-compress
+  warp is the only unlock. The r2 carriers are restored byte-exact.
+- FRONT-ROOF deltas (measured against the ref front profile, valid but
+  NET-NEGATIVE at the current phase via a turret-trim boundary column —
+  land only with a post-warp re-anchor): ref roof reads a flat 2.612
+  right of x +0.02 (the r2 crown plateau runs 2.66-2.68 to +0.41, ~10
+  cols +0.06..+0.11); ref tall-centre column is ONE column wide (2.953
+  at x -0.02) — the centre can at -0.025 lights two ref-bare columns;
+  ref crest band 2.738-2.768 (pod y1 2.82 is +0.05); loader cols ref
+  2.72 (+0.05); wedge-pod (x 0.03..0.42, y1 2.605) + crownX -0.30/W 0.20
+  carried the right roof cleanly (front_whole 83.0 -> 85.9 measured)
+  but turret_side lost a cover column (83.2 -> 81.7 after the carrier
+  restore) — the trim boundary follows the hull-mask front.
+- BASKET FRAME WARNING (law bank): gate-JSON top/bot are CAMERA-frame;
+  decoding them with another tank's centre (m47's 1.689 vs m46's own)
+  mis-places features by ~0.5 m — a basket 're-pair' authored from that
+  read cost turret_side 35 pts in one cycle. Only the workorder tool's
+  printed world values or a retrace probe (which prints its centres)
+  are author-grade. (Second sighting of the r2 'at'-decode class.)
+- turret_side residual map: three 0.21-0.22 columns (at-frame -1.05 /
+  -0.25 / +1.25) + ~2 cover columns are the floor; the certified
+  long-tube ONLY-REF block (z +3.9..+4.2) caps side rows ~87.
+
 ## Vertex round r2 (2026-08-04) — patton-family builder
 72.6 -> 82.0 (hull 86.9->87.4 / whole 77.3->83.0 / turret 72.6->82.0 /
 stations 90.4->91.3 / dims 100 / floaters 100), gate x2 stable; still under

@@ -527,6 +527,11 @@ function m47Cast(P, T) {
   for (let i = 0; i < 5; i++) {
     P.add('turretDetail', box(0.026, B.top1 - B.floor1 - 0.18, 0.026), -rw + 0.08 + i * ((rw - 0.08) / 2), yl((B.top1 + B.floor1) / 2), zl(B.z1 + 0.03));
   }
+  // r3 (post-warp re-anchor): the warped ref keeps a rack-floor lip sliver
+  // (y 2.048..2.072) running ~2 columns past the bustle tail — a single
+  // low bar over the mapped span (ends 15+ mm clear of the -2.698 / -2.890
+  // trace boundaries) pairs it; the r2 full-height frame read ~0.29 err.
+  if (T.tailLip) P.add('turretDetail', box(rw * 2, 0.035, T.tailLip[2]), 0, yl(T.tailLip[0]), zl(T.tailLip[1]));
   // LEFT cheek roll wedges (r2): the ref front rolls 2.815 @ x -0.79 down
   // to 2.43 @ -1.03 (workorder cols -0.805..-1.002) — piecewise slabs whose
   // sloped tops carry the roll; z-spans stay under the dome/pedestal side
@@ -763,9 +768,13 @@ function buildPershing(P, cfg) {
     // towing-eye prongs at the bow tip: the m47 extract's side toe columns
     // (band 1.02..1.21 over z 1.92..2.17) are the eyes, not the glacis —
     // they carry the hull-mask front and the 12%-filter bodyLen station.
+    // E.pinDz opt-in (m47 r3): the default 0.03 setback leaves the r-0.05
+    // cross-pin proud of the box face — on the mask-front anchor eye it
+    // bled 5 mm past the +2.213 trace boundary and fattened the next
+    // column into a fake body-class read (0.42 err + hullLengthM +0.09).
     for (const E of cfg.bowEyes) {
       P.add('hull', box(E.w ?? 0.22, E.y1 - E.y0, E.z0 - E.z1), E.x, (E.y0 + E.y1) / 2, (E.z0 + E.z1) / 2);
-      P.add('hullDark', cylX(0.05, (E.w ?? 0.22) * 0.73, 8), E.x, (E.y0 + E.y1) / 2, E.z0 - 0.03);
+      P.add('hullDark', cylX(0.05, (E.w ?? 0.22) * 0.73, 8), E.x, (E.y0 + E.y1) / 2, E.z0 - (E.pinDz ?? 0.03));
     }
   }
   if (cfg.hatchHoods) {
@@ -1709,9 +1718,13 @@ const M47_HULL = {
   mufflers: { z0: -2.26, z1: -2.62, top: 1.784, straps: [0.10, -0.14], legY0: 1.22 },
   gear: {
     // ref lower runs are straight lines: front y=0.855(z-1.15) to ~+1.93,
-    // rear y=0.5(|z|-2.65) to ~-3.95 — idler/sprocket circles fitted to them
+    // rear y=0.5(|z|-2.65) to ~-3.95 — idler/sprocket circles fitted to them.
+    // r3: idler +0.075 / sprocket -0.075, r 0.315 — the warp stretched the
+    // ref's wrap ramps outward (±3.1 cm body stretch): measured wrap-bottom
+    // lines re-fit at the +0.105 registration (ref 0.725 @1.872 -> proc
+    // 0.725 @1.977; ref 0.652 @-4.074 -> proc 0.652 @-3.969).
     wheelR: 0.33, span: [0.985, -2.395], rollerN: 3, rollerY: 1.00,
-    idler: { z: 1.47, y: 0.94, r: 0.27 }, sprocket: { z: -3.50, y: 0.96, r: 0.30 },
+    idler: { z: 1.515, y: 0.94, r: 0.27 }, sprocket: { z: -3.555, y: 0.96, r: 0.325 },
   },
 };
 const M47_FIT = {
@@ -1721,7 +1734,10 @@ const M47_FIT = {
   // caps moved under the bustle overhang (z -1.55): at -0.55 they poked
   // 1.682 over the ref's 1.654 deck band (r2 workorder)
   grille: { z0: -1.42, z1: -2.20, y: 1.70, rx: 0, x: 0.52, w: 0.88 }, caps: [0.85, -1.55],
-  rearGrilleY: 1.15, rearGrilleW: 0.56, rearGrilleZ: -4.105, noRearEyes: true,
+  // r3: grille re-seated onto the tail-core rear face (-4.19); at -4.105 it
+  // sat hidden inside the new tail band. Face 1 mm proud, 27 mm clear of
+  // the -4.218 trace boundary, y-band interior to the core.
+  rearGrilleY: 1.15, rearGrilleW: 0.56, rearGrilleZ: -4.176, noRearEyes: true,
 };
 
 const M60_HULL = {
@@ -2010,6 +2026,13 @@ export const PATTON_PROFILES = {
       // is carried by the SINGLE left tow casting (plan bump 1.762 @ -0.66 —
       // the right eye never printed on this oracle)
       bowFenders: { x0: 1.00, x1: 1.677, y0: 1.21, z0: 1.62, y1: 1.40, z1: 1.36 },
+      // r3 NOTE (dims equilibrium, measured): m46's dims are fully pinned
+      // pre-warp — overallLengthM fixes tail -4.465 + muzzle 4.02 (8.48)
+      // while hullLengthM 6.33 vs the SHORT print hull (6.15) needs the
+      // whole eye-to-tail content span incl. the proud eye pin to 1.775
+      // (a tail-core extension broke overallLengthM +1.84%; an interior
+      // pin read hullLengthM 6.19). The frozen compress warp is the
+      // unlock; r3 front-roof deltas are banked in the packet for r4.
       bowEyes: [
         { x: -0.66, y0: 1.10, y1: 1.21, z0: 1.755, z1: 1.40 },
       ],
@@ -2091,13 +2114,42 @@ export const PATTON_PROFILES = {
     build: (P) => buildPershing(P, {
       hull: M47_HULL, fit: M47_FIT,
       ring: [1.676, -0.318], topWorld: 3.37,
+      // r3 REAR ANCHOR (post-warp re-anchor): the warped ref carries a FAT
+      // (0.48-0.53 band) tail to -4.27 in its frame — proc-content -4.16 at
+      // the plan-measured +0.111 shift. The r2 hull stopped at -4.17 with a
+      // 0.21-thin grille sliver (5 mm under the 12% threshold), so the side
+      // body-span mid sat half a column forward AND hullLengthM read 6.24
+      // (-1.44%). Narrow core to -4.19 (28 mm clear of the -4.218 boundary)
+      // + wide lip to -4.14 matching the ref's 1.03..1.51 tail band.
+      tailStack: [
+        { hw: 0.28, y0: 1.03, y1: 1.50, z0: -4.10, z1: -4.19 },
+        // interp-coverage whisker: the ref's -4.27 column samples proc
+        // -4.172, past the -4.147 last-column bound (interp NULL = an
+        // ONLY-REF 1.5x cover hit). A THIN (0.18 < the 0.213 class
+        // threshold) lip strip one column deeper keeps the sample
+        // interpolable WITHOUT extending the 12%-band span (a fat column
+        // there re-steers dAlong half a pitch — the batch-2 lesson).
+        { hw: 0.29, y0: 1.19, y1: 1.37, z0: -4.19, z1: -4.215 },
+        { hw: 0.95, y0: 1.03, y1: 1.50, z0: -4.09, z1: -4.14 },
+      ],
       // bumps re-seated clear of the station slab boundaries (i2 edge -3.248,
       // i9 edge -0.093 — AA bleed was lighting the neighbour slices)
       fenderBumps: [[-4.02, -4.095], [-3.62, -3.55], [-3.34, -3.27], [-1.97, -1.80], [-0.31, -0.14], [0.63, 0.75]],
       fenderSkirt: 0.51,
       // sloped bow fenders: flat 1.545 leading box 1.66..1.78, then the
-      // full-width dive 1.545 -> 1.185 out to plan front 2.10 (extract bow)
-      bowFenders: { x0: 1.00, x1: 1.755, y0: 1.185, z0: 2.10, y1: 1.545, z1: 1.78 },
+      // full-width dive following the ref line. r3 ANCHOR-CLASS (profile-
+      // matched): the trace grid re-phases every run, so the front span-end
+      // class is robust only if the proc's band(z) PROFILE equals the ref's
+      // at +0.105: ref bands 0.09 @2.035 / 0.218 @1.945 / 0.65 @1.845 —
+      // dive tip (2.102, 1.19) + eye-bottom 1.02 gives 0.11 @2.14 / 0.229
+      // @2.05 / 0.62 @1.95 (idler wrap). The batch-2 1.085 tip undershot
+      // (0.20 @2.04) and the front end fell a column at the next phase;
+      // z0 2.102 also keeps the PLAN front on the ref's 2.122 line.
+      // dive line refit to the measured ref pairs at +0.098: (2.13, 1.20)
+      // (2.04, 1.24) (1.94, 1.32) (1.90, 1.35) — the old 1.545 shelf-joined
+      // slope read the 1.90-1.99 window maxima 0.07-0.09 high; the 0.10
+      // step under the bowShelf lip reads as the fender stay seam.
+      bowFenders: { x0: 1.00, x1: 1.755, y0: 1.19, z0: 2.102, y1: 1.44, z1: 1.78 },
       bowShelf: { x0: 1.00, x1: 1.755, y: 1.527, z0: 1.78, z1: 1.66 },
       // mid-fender dip plates (ref side 1.44-1.51 over the idler bay)
       fenderRamps: [{ x0: 1.00, x1: 1.677, y0: 1.462, z0: 1.66, y1: 1.492, z1: 1.10 }],
@@ -2122,10 +2174,15 @@ export const PATTON_PROFILES = {
       // single LEFT tow casting — the oracle never printed the right eye
       // (plan cols +0.539..0.731 read the bare glacis; same class as m46).
       // Box edges parked >=15 mm clear of the plan trace columns at -0.563
-      // and -0.755 (AA-bleed law).
+      // and -0.755 (AA-bleed law). r3: upper prong 2.17 -> 2.176 — the
+      // ref's own eye-tip content ends at 2.069..2.086 (intersected across
+      // three grid phases), so the proc edge sits at +0.098 exactly one
+      // trace pitch away and the two masks' end-column classes flip
+      // TOGETHER as the grid re-phases (a 2.198 first try left a 12 mm
+      // next-window sliver: 0.41 err column + hullLengthM read 6.40).
       bowEyes: [
-        { x: -0.6675, w: 0.145, y0: 1.10, y1: 1.21, z0: 2.17, z1: 1.92 },
-        { x: -0.6675, w: 0.145, y0: 1.02, y1: 1.115, z0: 2.08, z1: 1.92 },
+        { x: -0.6675, w: 0.145, y0: 1.10, y1: 1.21, z0: 2.176, z1: 1.92, pinDz: 0.10 },
+        { x: -0.6675, w: 0.145, y0: 1.02, y1: 1.115, z0: 2.105, z1: 1.92, pinDz: 0.10 },
       ],
       hatchHoods: [{ x: 0.55, top: 1.695, z0: 0.80, z1: 0.64, w: 0.34 },
         { x: -0.55, top: 1.695, z0: 0.80, z1: 0.64, w: 0.34 }],
@@ -2186,8 +2243,12 @@ export const PATTON_PROFILES = {
           { z: -1.90, xL: -0.74, xR: 0.76, top: 2.615, floor: 1.968 },
           { z: -2.20, xL: -0.72, xR: 0.755, top: 2.615, floor: 1.968 },
           { z: -2.62, xL: -0.675, xR: 0.70, top: 2.613, floor: 1.968 },
-          { z: -2.71, xL: -0.40, xR: 0.42, top: 2.61, floor: 1.968 },
+          // r3: tail face pulled -2.71 -> -2.683 (15+ mm clear of the
+          // -2.698 trace boundary) so the ref's one-past-the-tail rack
+          // sliver column samples the new low tail bar, not the core face
+          { z: -2.683, xL: -0.40, xR: 0.42, top: 2.61, floor: 1.968 },
         ],
+        tailLip: [2.0575, -2.773, 0.12],
         basket: { w: 1.50, y0: 0.84, y1: 1.62, z0: 0.42, z1: -0.94 },
         blisterX: 0.72, blisterY: 2.47, blisterZ: 0.30,
         cupola: { x: -0.52, z: -0.55, r: 0.18, base: 2.815, h: 0.12 },
@@ -2197,13 +2258,26 @@ export const PATTON_PROFILES = {
         // z -0.42..-0.88 (pedestal cap) easing 3.31 forward; barrel corridor
         // to z +0.88 (side col 0.85 read 3.309 — the r1 0.78 tip missed it).
         // heightM p95 keeps the cap band under 5 side columns (grace 3.384).
-        mg: { x: 0.17, z: -0.28, baseY: 2.92, topY: 3.345, tipZ: 0.80, rl: 0.84, w: 2.0, canY: 3.02, cans: [-0.26], coverZ: -0.29, coverL: 0.22 },
+        // r3: tip 0.80 -> 0.814 — the ref corridor tip is 0.702..0.730
+        // (intersected across three grid phases): +0.098 registration puts
+        // the proc edge one pitch out so the hard corridor->dome column
+        // step lands on the same phase for both masks (0.85 first try lit
+        // one column too many: a 0.46 top err at the ref's 0.78 column).
+        // Station-11: both models' M2 tips ride their slice-11 near planes
+        // (ref 0.716 vs 0.711+jitter; proc 0.814 vs 0.829+jitter) — the
+        // slice-11 flip is inherent to this pair and lives in the
+        // stations trim slot with i9 (the r2-packet flip-flop class).
+        mg: { x: 0.17, z: -0.28, baseY: 2.92, topY: 3.345, tipZ: 0.814, rl: 0.84, w: 2.0, canY: 3.02, cans: [-0.26], coverZ: -0.29, coverL: 0.22 },
         pedestal: { x: -0.095, z: -0.64, baseY: 2.94, top: 3.38, zw: 0.53, w: 0.24, capW: 0.23 },
       },
-      // published overall 8.51 m: muzzle 4.395 with the tail at -4.115 (the
-      // oracle deflector face reads ~4.10 — pre-warp print trait); evac
-      // sleeve re-measured 3.00..3.78 (workorder cols 3.056/3.727 r 0.156)
-      gun: { rootZ: 1.30, axisY: 2.046, muzzle: 4.395, r: 0.115, device: 'm36', tubeZ0: 1.45, evacZ0: 3.04, evacL: 0.74, shield: { w: 0.62, h: 0.26, dy: 0.0, zF: 1.48, d: 0.36, rotorR: 0.10 } },
+      // r3: muzzle re-paired to the WARPED oracle (its face now reads 4.25
+      // in its frame = proc 4.36 at the +0.111 shift): 4.395 -> 4.353 kills
+      // the 2 only-proc deflector columns while overallLengthM stays 8.55
+      // (+0.5%, inside grace; tail now -4.19). Evac sleeve re-paired to the
+      // stretched ref band (its lit sleeve columns span 2.99..3.87):
+      // 3.04..3.78 -> 3.10..3.96 at the +0.105 registration, both ends
+      // 15+ mm clear of the current-phase trace boundaries.
+      gun: { rootZ: 1.30, axisY: 2.046, muzzle: 4.353, r: 0.115, device: 'm36', tubeZ0: 1.45, evacZ0: 3.10, evacL: 0.86, shield: { w: 0.62, h: 0.26, dy: 0.0, zF: 1.48, d: 0.36, rotorR: 0.10 } },
     }),
   },
   m60a2: {

@@ -211,6 +211,64 @@ tail shape (ref -3.94..-4.08 vs proc -4.10 band, ~0.5 pt).
 Shots: shots/patton-r2/m47_patton-*.png; §D evaluator clean (yawProxy 0-0.6°,
 no RIG MISMATCH), report at shots/visual-eval-m47_patton/report.json.
 
+## Vertex round r3 (2026-08-04) — the m47 RE-ANCHOR round: FIRST PASS 90.3
+Post-warp (batch-34) re-anchor: 75 -> **90.3 PASS x2** (hull 83.1->90.3 /
+whole 77.5->92.4 / turret 75->92.9 / stations 94.4->95.4 / dims 96.5->100 /
+floaters 100) — the patton family's first gate pass. Standard-check clean
+(clip 0/0, contig 0, mg1); visual evaluator 14/14 RIG PARITY OK (yawProxy
+<=1.7deg); graduates m60a1 81e69e34 / m60a3 efcde5c4 hash-verified; sibling
+re-gate byte-neutral (m26 70.6 / m45 59.4 / m46 82.0 / m60a2 80.3 — exactly
+their r2 numbers). Shots: shots/patton-r3/.
+
+MECHANISM (bank): the tube warp moved the ORACLE's pose in the harness
+frame (AABB recenter, muzzle +0.28) and stretched its body ±3.1 cm — plan
+rows absorbed the shift in dy (0.111) but the side rows registered dAlong
+0.197 vs the content's 0.111 because the r2 proc's 12%-band SPAN ENDS were
+one column off class at both ends (front: eye/dive column 0.229-fat where
+the ref's matching content reads 0.17-thin; rear: mask stopped -4.17 with
+a 0.21-thin grille sliver where the warped ref carries a 0.48-fat tail
+band to -4.27). Anchor surgery alone took 75 -> 90 before any curve work.
+
+LAW REFINEMENTS (all verified in-gate this round):
+- ANCHOR-PROFILE law (extends ww2-r2 anchor-class): the trace grid
+  re-phases whenever EITHER model's extremes change, so span-end classes
+  are only robust if the proc's band(z) PROFILE matches the ref's at the
+  registration shift — then the two masks' end columns flip class
+  TOGETHER as the grid moves. Matching one phase's columns is not enough
+  (a 1.085-tip dive undershoot cost half a column of dAlong at the next
+  phase; a 0.218-band ref column is knife-edge for the REF itself).
+- HARD-EDGE PAIRING: a hard silhouette step (M2 corridor tip, eye-tip
+  end) must sit at ref_edge + dAlong so the column-value step lands one
+  whole pitch away: 0.85 vs the ideal 0.814 tip lit one extra column and
+  read a 0.46 top err at the ref's 0.78 column. Ref edges intersected
+  across grid phases: corridor tip 0.702..0.730, eye tip end 2.069..2.086.
+- INTERP-COVERAGE WHISKER: when the ref's mask outlives the proc's by
+  ~one column, a THIN (sub-12%-threshold) strip one column deeper keeps
+  the ref's end column interpolable (kills a 1.5x ONLY-REF cover hit)
+  WITHOUT moving the 12%-band mid — a fat strip there re-steers dAlong
+  (the batch-2 regression, 90 -> 79.8, was exactly that class).
+- The tailStack cross-pin (cylX at z0-0.03) and the bowEyes pin bled past
+  trace boundaries (5 mm) and faked body-class columns: new opt-in
+  E.pinDz (default byte-identical); hullLengthM read 6.40 through one
+  such sliver.
+- Station slices are per-model (hullZRange, NOT the union box): the
+  slice-11 near plane rides the proc's own hull-mask span; both models'
+  M2 tips sit ON their slice-11 planes (ref 0.716 vs 0.711, proc 0.814
+  vs 0.829) — the i11 flip is inherent to this pair and lives in the
+  stations trim slot with i9 (4.23 wPct, rangefinder-shelf window).
+RE-PAIRED CONSTANTS (all +~0.098 content shift + ref's own stretch):
+evac sleeve 3.04..3.78 -> 3.10..3.96; muzzle 4.395 -> 4.353 (ref face
+4.25 + shift; overall 8.55 = +0.48%); idler z 1.515, sprocket -3.555
+r 0.325 (wrap-bottom lines refit: ref 0.725@1.872 / 0.652@-4.074 / wrap
+end -4.12); bustle tail -2.683 + low rack-lip bar at (2.058, -2.773);
+dive tip (2.102, 1.19) with y1 1.44 (line refit to ref pairs).
+RESIDUALS (honest): side_hull 90.3 is the floor — worst cols: -4.147
+(tail-band top/bot vs the ref's undercut shape, 0.116), the 1.18-1.48
+idler-approach ramp bots ~0.05 low x3 cols (wheel-span surgery not worth
+it), dive-window maxima ~0.03-0.05 x2. close-roof evaluator notes a
+0.041 m2 void under the dive tip at (0.31, 1.10, 2.14) — §B2 top-down
+hole scan is 0 (covered from above); watch it if the dive changes.
+
 ## Vertex round r1 (2026-08-03) — ORCHESTRATOR LANDING NOTE
 (Builder finished without a section; from its verified report.) 66.1 ->
 82.5 (hull 89.2 / whole 83.3 / turret 82.5 / stations 95.1 / dims 100).
