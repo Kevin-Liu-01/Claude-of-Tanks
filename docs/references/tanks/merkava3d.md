@@ -1082,3 +1082,27 @@ FIVE ARBITRATION CERTS TRANSFER with this record (corner-air backing,
 626-class warm floor, crown-air 76.2 carrier floor, fwd-plane p95 87.8
 zero-cost ceiling, dome-arc detectability). Watch items in the verdict's
 graduation-record section; the mg0+0d SS-I owner call remains queued.
+
+## §B5 TURRET-FURNITURE PARENTING round (merkava-b5, 2026-08-04)
+Owner law 2026-08-04 (BUILD-STANDARD §B5). NO PROFILE CHANGES for this
+mark — hash 954a9650 unchanged; gate x2 IDENTICAL to the ledger row
+(min 90.4: hull 90.4 / whole 90.6 / turret 91.4 / stations 91.7 /
+dims 100 / floaters 100).
+
+Official audit read: stranded 2, dangling 0 — both rows are MERGED-BUCKET
+unions (hull loft 60%, hullDetail 52%) flagged by the casting-envelope
+smear (ring tub to y 0.58; Dor-Dalet side modules widen the envelope to
+x ±1.79), not stranded furniture. Per-add attribution
+(shots/merkava-b5/addprobe-merkava3d.json): loft bands (:30), factory
+periscope rims, rear-deck rail/bin items (tops <=1.65 — deck gear the
+bustle overhangs), left sponson-plank cast bosses (merkava3dKit, flush
+deck dressing, tops <=1.71). ALL hull-correct. LEAVE.
+The 3D's tail soft stack / vane / chain lattice is already TURRET-parented
+and rotates: yaw proof shots/merkava-b5/yaw90-merkava3d/ (turret 90) and
+articulation strip artic-before-merkava3d.png — at yaw 180 the vane+
+lattice present over the bow; the tail keeps only the low hull racks
+(tailRack tops <=1.58, wings <=1.47, all below the bustle underside).
+Ref split parity: the 3D oracle's rear is genuinely low (rack band
+1.44-1.70, NO tall pile; ex_armor_08/09 kit under its Turret node) —
+agreement with our split. Probe: tools/tmp-merkava-b5-refsplit.py.
+Residual: official stranded stays 2 (adjudicated-hull, AABB-coarse class).

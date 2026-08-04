@@ -487,3 +487,44 @@ byte-identical. No regression candidate; re-cert requested.
 
 §I mg-census note: the 3C roof guns are the same hand-authored
 ref-parity instruments as 3B/3D (see the 3D packet's §I justification).
+
+## §B5 TURRET-FURNITURE PARENTING round (merkava-b5, 2026-08-04)
+Owner law 2026-08-04 (BUILD-STANDARD §B5). Same mark class and same
+delivery as the 3B (see merkava3b.md §B5 for the full mechanics — the
+two marks share merkavaChassis's rearPack/tailRack code paths; the 3C has
+no lobeL and its own oracle decor numbering). LANDED STATE: opt-in
+machinery only (c.bustlePackTurret, default OFF, set on NO mark) — hash
+1d9b026c UNCHANGED, gate x2 IDENTICAL to the ledger row (min 90.5: hull
+91.5 / whole 90.5 / turret 90.8 / stations 92 / dims 100 / floaters 100).
+Flip BLOCKED on the same coupled oracle/override change.
+
+STRANDED FURNITURE: identical assembly to 3B (rearPack pile y 1.30..2.39
++ tarp wings tops 2.26 + posts/dressing) — swing-test fails against the
+vane underside 1.88 the same way. Articulation strips: bug in
+artic-before-merkava3c.png, fix in board-after-merkava3c.png.
+
+MEASUREMENTS (flag temporarily ON, then reverted):
+- Official audit: stranded 4 -> 2, dangling 0 (residuals = merged
+  hull-loft 44% + hullDetail 63% envelope-smear unions, adjudicated-hull).
+  Per-add: 61 -> 11 (periscope rims + loft bands only).
+- Gate vs current oracle: min 90.5 -> 18.6 (hull 18.6, whole 43.9,
+  turret 60.0; stations 92, dims 100, floaters 100) — hull-anchored
+  height-registration collapse, plan rows survive (~96): the coupling
+  proof, see 3B.
+- Rest pixel-diff: 75,918 changed px across 12/14 views (close-front +
+  close-roof IDENTICAL), max delta 48, confined to the pack/wings region
+  (shots/merkava-b5/diff-rest-merkava3c/) — camo-bucket vertex-bake
+  frame dependence; full §10 critic re-cert required, cheap pixel bar
+  unreachable.
+- Yaw proof pairs: yaw90-before-merkava3c/ (bug) vs yaw90-after-
+  merkava3c/ (pack rides the bustle).
+
+COUPLED CHANGES TO FLIP: oracle repair (preferred) — re-parent
+vehicle#ex_decor_10/11/15/16/17 (raw y 1.96..2.55, z -4.23..-3.18) into
+the 3C print's ^Turret$ node, world transforms preserved (deck boards
+12/14 stay hull); FALLBACK followers extension for the three override
+maps: 3c: ex_decor_(?:0[1-9]|1[01]|13|1[5-7]). Then bustlePackTurret:
+true + gate hold + critic re-cert + re-freeze, one commit.
+Deterministic flag-ON hash for that re-freeze (measured this round,
+camoSeed 4242): 1d9b026c -> e454a60a (41 meshes / 146136 verts — vert
+count unchanged: pure re-parent).

@@ -1110,3 +1110,81 @@ found; re-cert requested per protocol.
 §I mg-census note: the 3B roof guns are hand-authored ref-parity
 instruments (graduation anatomy) — see the 3D packet's §I justification;
 the same owner call covers 3B.
+
+## §B5 TURRET-FURNITURE PARENTING round (merkava-b5, 2026-08-04)
+Owner law 2026-08-04 (BUILD-STANDARD §B5); the owner-reported mark class
+("stuff in the back of the turrets ... isn't rotating"). LANDED STATE:
+opt-in machinery only — c.bustlePackTurret in merkavaChassis (default
+OFF, flag set on NO mark) — hash a4ed2c82 UNCHANGED, gate x2 IDENTICAL
+to the ledger row (min 90.1: hull 90.4 / whole 90.1 / turret 90.5 /
+stations 93.5 / dims 100 / floaters 100). The actual flip is BLOCKED on
+two coupled changes outside this file (measured below).
+
+STRANDED FURNITURE (genuine, owner-visible): the tall tail-top assembly —
+rearPack pile (8 kinked 'hull' strips + taper slabs, y 1.30..2.39,
+x -0.985..0.835, z -3.50..-4.41) + lobeL + dark parting rail + 5 crown
+tarp rolls + crown straps/wrinkles + rear-face billow set + side straps/
+discs, and the tailRack tarp WINGS (wings[0] tarp:true, x 0.38..0.86 both
+sides: split plates, rails, 3 crumple lobes, cloth backer + fold curtains
++ hem tabs, 4 full-height corner posts y 1.35..2.26). SWING-TEST PROOF:
+pile top 2.39-2.41 and wing tops 2.26 stand 0.38-0.53 m ABOVE the turret
+vane/basket underside (vane bot 1.88 / basket bot 1.93) — a yawing bustle
+would plough through hull-fixed stowage; it can only be bustle-borne.
+Articulation strips show the bug (artic-before-merkava3b.png: the stack
+stands like a chimney at yaw -90/+90/180) and the fix (board-after-
+merkava3b.png: tail clean at yaw, the full pack presents over the bow at
+180). Deck items that STAY hull-side: tailRack body/wall (<=1.62), low
+wings [1] top 1.60 / [2] top 1.42 (hullLength registration carriers),
+rear-door furniture, sternQuilt.
+
+MEASUREMENT CAMPAIGN (flag temporarily ON, then reverted):
+- Official audit: stranded 4 -> 2, dangling 0, abutting 0. The two
+  residual rows are merged hull-loft (44%) + hullDetail (63%) envelope-
+  smear unions — the same adjudicated class as 3D's baseline 2 (the
+  envelope descends to y 0.58 via the ring tub; see the 1B/3D packets).
+  Per-add probe: 61 -> 10 rows, every mover registering turret-side with
+  world AABBs byte-identical (addprobe JSONs).
+- WORLD POSE PRESERVED at rest: per-add world AABBs identical pre/post;
+  close-front + close-roof renders byte-IDENTICAL; plan gate rows ~96
+  (unchanged) prove no in-plan movement.
+- Gate vs the CURRENT (unrepaired) oracle: min 90.1 -> 13.5 (hull 13.5,
+  whole 40.9, turret 58.4; side_hull 58.5, front_hull 13.5, plan_hull
+  96.7; stations 93.5, dims 100, floaters 100). ROOT CAUSE (structural,
+  code-verified): (a) setPart splits hull/turret masks BY RIG SUBTREE, and
+  (b) viewReg — the per-view registration derived from the HULL curves —
+  is reused for the whole rows ("hull anchors the frame"); the oracle
+  keeps ITS pile hull-side, so the proc hull mask losing the tail-top
+  collapses the height registration for front/side (plan, registered on
+  length, survives at 96.7/95.6). Floaters stayed 100 at all 5 poses.
+- Rest pixel-diff (14 official-shaped views, tools/tmp-b5-shots.html +
+  tmp-merkava-b5-pairdiff.py): NOT identical — 74,163 changed px across
+  12/14 views, max |channel delta| 37, ALL confined to the pack/wings
+  region (diff heatmaps shots/merkava-b5/diff-rest-merkava3b/). Cause is
+  mechanical and unavoidable in-profile: the pile body lives in the CAMO
+  'hull' bucket; camo buckets bake boxUV + bakeDirt VERTEX COLORS in the
+  merged bucket's LOCAL frame, so the +-4.5% tone jitter reseeds when
+  local z shifts by -pivotZ (and the sub-1.45 m dust term halves, hull
+  strength 1 -> turret 0.5). The §B5 cheap re-cert bar ("14 views pixel-
+  identical") is therefore UNREACHABLE for any correct re-parent of
+  camo-bucket furniture on a pivotZ != 0 rig — the full §10 graduate-
+  change flow (critic re-cert) is required.
+
+COUPLED CHANGES REQUIRED TO FLIP (orchestrator lanes):
+1. Oracle repair (PREFERRED, E-lane batch): re-parent the 3B print's tail
+   pile meshes vehicle#ex_decor_10/11/12/17/18 (raw y 1.96..2.55,
+   z -4.23..-3.18) INTO its ^Turret$ node with world transforms preserved
+   (deck boards 14/15/16 stay hull). Heals all three override maps at
+   once; refs become physically truthful (their own articulation strips
+   currently strand the pile identically). The batch-4 note (:1990,
+   "healed its split halves hull-side") is superseded by owner law B5 —
+   owner law outranks oracle matching (M1-slope precedent).
+   FALLBACK: extend turretFollowers in the three override maps
+   (procedural-fidelity LOCAL_REFERENCE_OVERRIDES; tmp-tank-critic +
+   visual-evaluator-page CRITIC_REFERENCE_OVERRIDES):
+   3b: ex_decor_(?:0[1-9]|1[0-3]|1[78])
+2. Same-round: set bustlePackTurret: true on merkava3b, gate hold >=90,
+   independent critic re-cert (pixel-diff cannot certify — mottle class
+   above), re-freeze the new hash.
+   Deterministic flag-ON hash for that re-freeze (measured this round,
+   camoSeed 4242): a4ed2c82 -> 207989d0 (41 meshes / 146058 verts — vert
+   count unchanged: pure re-parent).

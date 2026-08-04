@@ -1003,3 +1003,41 @@ The verdict's graduate ledger carries the group-4 polish tail (corner
 flap-gap, tail furniture density, wheel ring-contrast) for any future
 graduate-change round; the 8-voxel bow kiss is the documented containment
 residual; mg0+0d carries the standing SS-I owner call.
+
+## §B5 TURRET-FURNITURE PARENTING round (merkava-b5, 2026-08-04)
+Owner law 2026-08-04 (BUILD-STANDARD §B5). NO PROFILE CHANGES for this
+mark — hash 106b0074 unchanged; gate x2 IDENTICAL to the ledger row
+(min 90: hull 91.2 / whole 90 / turret 91 / stations 91.4 / dims 100 /
+floaters 100).
+
+Official audit read: stranded 5, dangling 0. Per-add attribution
+(tools/tmp-merkava-b5-addprobe.{html,mjs} — instrumented-P replica that
+reproduces the official casting envelope byte-for-byte;
+shots/merkava-b5/addprobe-merkava1b.json): all five rows are MERGED-BUCKET
+unions flagged by envelope smear, not stranded furniture —
+1. merged hullGlass == the driver periscope glass sliver
+   ([-0.795,1.663,0.994]..[-0.685,1.691,1.096], factory periscope) +
+   its hullDetail rim. Driver equipment on the hull deck under the
+   turret-nose overhang; must NOT yaw. LEAVE.
+2-5. merged hullCloth / hull(loft) / hullDark / hullDetail whole-hull
+   unions: the casting envelope descends to y 0.595 (merkavaRingTub —
+   turret-bucket geometry matching the ref Turret node's own below-deck
+   tub, ref node bottoms 0.61) and reaches z -4.13 (turret tail), so the
+   deck-band unions overlap >=25% of their own volume. Contents at the
+   flagged coordinates: glacisQuilt/sternQuilt flush deck-texture plates,
+   loft bands, engine louvres, fender straps — all hull surface. LEAVE.
+Adjudication: NO stranded turret furniture on this mark. The 1B's bustle
+basket, ball-and-chain curtain and turret rear stowage are authored in
+turret buckets (chainCurtain/merkavaBasket) and rotate correctly — yaw
+proof shots/merkava-b5/yaw90-merkava1b/ (14 views, turret at 90) and the
+articulation strip shots/merkava-b5/artic-before-merkava1b.png (-90/0/
++90/180): at yaw 180 the basket+chains present over the bow; the rear
+deck keeps only deck gear the bustle overhangs (law-correct).
+Ref split parity: 1B oracle carries its bustle stack TURRET-side
+(ex_decor_08/09 under the Turret node, y 2.07..2.63) = our parenting;
+its hull-side tail decor (10-12, l/r_03) is low fender/deck gear
+(y <= 1.67) = ours. Probe: tools/tmp-merkava-b5-refsplit.py.
+Residual: official stranded stays 5 (adjudicated-hull, kf51 precedent —
+audit is AABB-coarse). Fleet-audit note filed in the round report: an
+envelope floor clamped to ringY-0.10 would retire this false-positive
+class fleet-wide.
