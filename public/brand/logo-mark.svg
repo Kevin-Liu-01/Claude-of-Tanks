@@ -28,8 +28,12 @@
 
   <g transform="translate(-0.8 24) scale(1.06)">
 
-    <!-- whip antenna: one clean 45-degree diagonal off the rear deck -->
-    <path d="M52 96 32 76" stroke="#55697e" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+    <!-- whip antenna: deck mount box + raked whip curving off the rear
+         quarter, bead tip (logo v4.5 — the bare diagonal read as a stray
+         line) -->
+    <rect x="49.5" y="90" width="6" height="5" rx="1" fill="#1c2833"/>
+    <path d="M52.5 90 Q46.5 76 40.5 57" stroke="#55697e" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+    <circle cx="40.5" cy="57" r="1.1" fill="#7d90a3"/>
     <!-- flag: vertical pole from the bustle rack + amber pennant streaming back -->
     <path d="M68 84V34" stroke="#55697e" stroke-width="2.5" stroke-linecap="round" fill="none"/>
     <path d="M68 34 46 39.5 68 45Z" fill="#f5b64b"/>
@@ -87,12 +91,17 @@
     <!-- main gun, elevated 10 degrees: steel barrel, light keylines + muzzle
          step — trimmed so the muzzle stays inside the shield's inner border -->
     <g transform="translate(0 4) rotate(-10 140 82)">
-      <rect x="136" y="76" width="18" height="12" rx="1.5" fill="#24313f"/>
-      <rect x="154" y="78.3" width="48" height="7.4" fill="#2b3947"/>
-      <rect x="154" y="78.3" width="48" height="1.9" fill="#4d637a"/>
-      <rect x="154" y="84.5" width="48" height="1.2" fill="#1a232d"/>
-      <rect x="166" y="76.4" width="16" height="11.2" rx="4.4" fill="#24313f" stroke="#7d90a3" stroke-width="1.8"/>
-      <rect x="199.5" y="76.2" width="11" height="11.6" rx="1.5" fill="#7d90a3" stroke="#0b0f12" stroke-width="2.5"/>
+      <rect x="136" y="75.5" width="16" height="13" rx="1.5" fill="#24313f"/>
+      <rect x="152" y="77.9" width="22" height="8.2" rx="1.2" fill="#2b3947"/>
+      <rect x="152" y="77.9" width="22" height="1.8" fill="#4d637a"/>
+      <rect x="157.5" y="77.4" width="2.6" height="9.2" fill="#1a232d"/>
+      <rect x="166.5" y="77.4" width="2.6" height="9.2" fill="#1a232d"/>
+      <rect x="174" y="76.6" width="15" height="10.8" rx="4.2" fill="#24313f"/>
+      <rect x="177" y="77.9" width="9" height="1.6" rx="0.8" fill="#4d637a"/>
+      <rect x="189" y="79.3" width="15.5" height="5.4" fill="#2b3947"/>
+      <rect x="189" y="79.3" width="15.5" height="1.3" fill="#4d637a"/>
+      <rect x="189" y="83.7" width="15.5" height="1" fill="#1a232d"/>
+      <rect x="204.5" y="78.2" width="6" height="7.6" rx="1" fill="#7d90a3" stroke="#0b0f12" stroke-width="2"/>
     </g>
   </g>
 </svg>
