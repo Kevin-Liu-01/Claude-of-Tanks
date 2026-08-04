@@ -233,10 +233,13 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
     path: `${ROOT}t62_bergman.glb`, turretNode: '^Turret$', gunNode: '^Gun$',
     autoPivot: false,
   });
-  source('t72b3m', {
-    turretNode: '^misc_a$', gunNode: '^misc_b$', autoPivot: true,
-    yawOffset: Math.PI,
-  });
+  // t72b3m: DUAL-GATE GRADUATE (2026-08-04) — the program's 15th. Geometry
+  // min 91.8 gatePassed x2 + graduation critic 9.0 on ALL FOURTEEN views
+  // (floor 8.0 -> 8.5 -> 9.0 across thirteen builder rounds; three views
+  // banked early and held; five-for-five order reproduction, zero flips).
+  // NO MODEL_SOURCE — freeze hash c19ec9f0 via tmp-hashgeo; the recovered
+  // GLB stays as the measurement oracle (all three override maps carry the
+  // registration incl. yawOffset PI).
   source('t90sm', {
     turretNode: '^misc_a$', gunNode: '^misc_b$', autoPivot: true,
     yawOffset: Math.PI,
@@ -256,4 +259,4 @@ export const USERDROP5_TANK_IDS = SPECS.map((s) => s.id);
 // signal — the garage catalog keys era buckets off this list instead, keeping
 // local and public grouping identical. m60a1 is excluded: it graduated the
 // dual gate and its procedural build ships everywhere (a true original now).
-export const USERDROP5_SOURCED_IDS = USERDROP5_TANK_IDS.filter((id) => !['m60a1', 'm1a1ha', 'merkava3b', 'merkava3c', 'merkava3d', 'pt91m'].includes(id));
+export const USERDROP5_SOURCED_IDS = USERDROP5_TANK_IDS.filter((id) => !['m60a1', 'm1a1ha', 'merkava3b', 'merkava3c', 'merkava3d', 'pt91m', 't72b3m'].includes(id));
