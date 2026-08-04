@@ -46,6 +46,7 @@
 // lands ONLY in wholeCurves/turretCurves and is certified per packet.
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations } from './kit.js';
+import { vehicleAmbientFloorHook } from '../materials.js';
 
 // ---------------------------------------------------------------------------
 // Piecewise deck lookup (z descending front->rear).
@@ -228,6 +229,12 @@ function curveHull(P, H) {
     }
   }
 
+  // r4 (m47 TONE round, order A3) opt-in H.darkGearFit: the pale 'hullDetail'
+  // gear-zone fittings (muffler legs, roller brackets, flap hanger straps)
+  // read as bare primer sticks against the dark track band / sky in every
+  // quarter view — route them to the dark-fitting bucket. Default
+  // byte-identical ('hullDetail'), so graduates m60a1/m60a3 are untouched.
+  const gearFitB = H.darkGearFit ? 'hullDark' : 'hullDetail';
   // fender mufflers (M46/M47): proud cylinders, end caps, elbows, tailpipes.
   // Opt-in x/straps (m47 r2): the r1 m47 band (-2.26..-2.52) made the body
   // length degenerate (0.26 fixed trim) while the hardcoded strap offsets
@@ -245,7 +252,7 @@ function curveHull(P, H) {
       for (const dz of H.mufflers.straps ?? [0.32, -0.52]) {
         const ly0 = H.mufflers.legY0 ?? spons;
         P.add('hullDark', cylZ(mr * 1.04, 0.032, 12), side * mx, my, (z0 + z1) / 2 + dz);
-        P.add('hullDetail', box(0.05, my - ly0 + 0.02, 0.07), side * mx, (my + ly0) / 2, (z0 + z1) / 2 + dz);
+        P.add(gearFitB, box(0.05, my - ly0 + 0.02, 0.07), side * mx, (my + ly0) / 2, (z0 + z1) / 2 + dz);
       }
     }
   }
@@ -284,14 +291,14 @@ function curveHull(P, H) {
   }
   // roller brackets + mud flaps at the fender tips (measured hang bands)
   for (const rl of rollers) for (const side of [-1, 1]) {
-    P.add('hullDetail', box(0.05, Math.max(0.05, spons - rl.y - 0.02), 0.13), side * xc, (spons + rl.y) / 2, rl.z);
+    P.add(gearFitB, box(0.05, Math.max(0.05, spons - rl.y - 0.02), 0.13), side * xc, (spons + rl.y) / 2, rl.z);
   }
   for (const [fz, fy0, fy1] of [H.flapF, H.flapR].filter(Boolean)) {
     for (const side of [-1, 1]) {
       P.add('hullRubber', box(H.trackW * 0.92, fy1 - fy0, 0.03), side * xc, (fy0 + fy1) / 2, fz);
       // hanger strap: articulation floater guard (the flap must stay one
       // island with the hull in every pose)
-      P.add('hullDetail', box(0.035, Math.max(0.08, spons - fy1 + 0.06), 0.035), side * xc, (spons + fy1) / 2 - 0.01, fz);
+      P.add(gearFitB, box(0.035, Math.max(0.08, spons - fy1 + 0.06), 0.035), side * xc, (spons + fy1) / 2 - 0.01, fz);
     }
   }
   return { hw, bhw, xc, iw, spons, deckAt, toeZ, tailZ: tail[0], kneeZ, kneeY };
@@ -370,23 +377,62 @@ function m2Station(P, M, yl, zl) {
   const axis = M.topY - 0.10;
   const rl = M.rl ?? 0.56;
   const w = M.w ?? 1;
+  // r4 B5 (m47, MG PHYSICS): sky-backed roof guns read PALE top-lit — the
+  // all-dark station rendered rod med 56.0 vs the ref's 79.5 class. Opt-in
+  // M.tone 'two-tone' routes the upper works (receiver / top cover / jacket
+  // / tube / cans) to the pale detail bucket while the pintle mast, cradle
+  // yoke and spade grips stay dark unders; it also adds the barrel taper +
+  // muzzle collar (tip Z untouched — the corridor tip is a hard-edge
+  // anchor). Default byte-identical ('turretDark' everywhere, no taper).
+  const two = M.tone === 'two-tone';
+  const up = two ? 'turretDetail' : 'turretDark';
+  // M.paleMat (cycle-6): the shared detail bucket CEILINGS at ~67 on
+  // vertical faces where the ref's sky-backed station reads the 79.5 class
+  // (the rod med is a body-side median — crown strips cannot move it).
+  // When provided, the upper works emit as direct meshes on the caller's
+  // pale-fitting material; geometry and transforms are identical to the
+  // bucket path (xform semantics replicated via mesh position+rotation).
+  const emUp = (geo, x, y, z, rx = 0) => {
+    if (two && M.paleMat) {
+      const mesh = new THREE.Mesh(geo, M.paleMat);
+      mesh.position.set(x, y, z);
+      if (rx) mesh.rotation.set(rx, 0, 0);
+      mesh.receiveShadow = true;
+      P.turretG.add(mesh);
+      P.disposables.push(geo);
+    } else {
+      P.add(up, geo, x, y, z, rx, 0, 0);
+    }
+  };
   P.add('turretDark', cylY(0.04, 0.055, axis - 0.12 - M.baseY, 10), M.x, yl((M.baseY + axis - 0.12) / 2), zl(M.z));
   P.add('turretDark', box(0.08 * w, 0.14, 0.09), M.x, yl(axis - 0.09), zl(M.z));
   // cradle + receiver + top cover (the reference station is a solid block);
   // coverZ/coverL opt-ins seat the cover on the ref's own high band (m47 r2:
   // the default forward cover read 3.381 at z -0.01 where the ref holds
   // 3.333 — its 3.38 band lives at -0.18..-0.35)
-  P.add('turretDark', box(0.18 * w, 0.17, rl), M.x, yl(axis), zl(M.z + rl / 2 - 0.14), 0.025, 0, 0);
-  P.add('turretDark', box(0.11 * w, 0.05, M.coverL ?? rl * 0.45), M.x, yl(axis + 0.105), zl(M.coverZ ?? (M.z + 0.10)));
+  emUp(box(0.18 * w, 0.17, rl), M.x, yl(axis), zl(M.z + rl / 2 - 0.14), 0.025);
+  emUp(box(0.11 * w, 0.05, M.coverL ?? rl * 0.45), M.x, yl(axis + 0.105), zl(M.coverZ ?? (M.z + 0.10)));
   P.add('turretDark', box(0.15 * w, 0.05, 0.07), M.x, yl(axis), zl(M.z - 0.16)); // spade grips
   // barrel: perforated jacket then tube, forward to tipZ
   const jl = 0.30;
   const j0 = M.z + rl - 0.10;
-  P.add('turretDark', cylZ(0.055, jl, 8), M.x, yl(axis + 0.02), zl(j0 + jl / 2), 0.03, 0, 0);
+  emUp(cylZ(0.055, jl, 8), M.x, yl(axis + 0.02), zl(j0 + jl / 2), 0.03);
   const bl = M.tipZ - (j0 + jl);
-  if (bl > 0.05) P.add('turretDark', cylZ(0.038, bl, 8), M.x, yl(axis + 0.02), zl(j0 + jl + bl / 2), 0.02, 0, 0);
+  if (bl > 0.05) {
+    if (two) {
+      // tapered tube + muzzle collar: collar END stays exactly at tipZ so
+      // the hard corridor->dome column step never moves (anchor law); on
+      // short-tube stations (m47: bl 0.054) the collar owns the whole run
+      const cl = Math.min(0.055, bl);
+      if (bl - cl > 0.04) emUp(cylZ(0.033, bl - cl, 8, 0.038), M.x, yl(axis + 0.02), zl(j0 + jl + (bl - cl) / 2), 0.02);
+      emUp(cylZ(0.045, cl, 8), M.x, yl(axis + 0.02), zl(M.tipZ - cl / 2), 0.02);
+      P.add('turretDark', cylZ(0.024, 0.012, 8), M.x, yl(axis + 0.02), zl(M.tipZ - 0.005), 0.02, 0, 0);
+    } else {
+      P.add('turretDark', cylZ(0.038, bl, 8), M.x, yl(axis + 0.02), zl(j0 + jl + bl / 2), 0.02, 0, 0);
+    }
+  }
   for (const dx of M.cans ?? [0.22]) {
-    ammoCan(P, 'turretDark', M.x + dx, yl(M.canY ?? (axis - 0.07)), zl(M.z + 0.04));
+    ammoCan(P, up, M.x + dx, yl(M.canY ?? (axis - 0.07)), zl(M.z + 0.04));
   }
 }
 
@@ -423,9 +469,27 @@ function bustleRack(P, R, yl, zl, rng) {
 function aaPedestal(P, A, yl, zl) {
   const { box, cylY } = KIT;
   const w = A.w ?? 0.15;
+  // r4 B5 (m47): A.tone 'two-tone' paints the cradle/cap in the pale
+  // fitting class (the ref's whole sky-backed station reads the 79.5 pale
+  // family); the thin pole stays dark. A.paleMat upgrades the pale parts
+  // to the caller's fitting material (detail ceilings at ~67 on sides).
+  // Default byte-identical.
+  const up = A.tone === 'two-tone' ? 'turretDetail' : 'turretDark';
   P.add('turretDark', cylY(0.026, 0.034, A.top - 0.16 - A.baseY, 8), A.x, yl((A.baseY + A.top - 0.16) / 2), zl(A.z));
-  P.add('turretDark', box(w, 0.10, A.zw), A.x, yl(A.top - 0.11), zl(A.z));
-  P.add('turretDark', box(A.capW ?? w * 0.66, 0.06, A.zw * 0.55), A.x, yl(A.top - 0.03), zl(A.z));
+  for (const [geo, gy] of [
+    [box(w, 0.10, A.zw), A.top - 0.11],
+    [box(A.capW ?? w * 0.66, 0.06, A.zw * 0.55), A.top - 0.03],
+  ]) {
+    if (A.tone === 'two-tone' && A.paleMat) {
+      const mesh = new THREE.Mesh(geo, A.paleMat);
+      mesh.position.set(A.x, yl(gy), zl(A.z));
+      mesh.receiveShadow = true;
+      P.turretG.add(mesh);
+      P.disposables.push(geo);
+    } else {
+      P.add(up, geo, A.x, yl(gy), zl(A.z));
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -489,6 +553,32 @@ function t26Cast(P, T) {
 function m47Cast(P, T) {
   const { box, slab, cylY, cylX, sph, liftEye, cupola, tarpRoll } = KIT;
   const yl = (y) => y - T.ringY, zl = (z) => z - T.ringZ;
+  // r4 shared pale-fitting material (B2 cavity + B5 M2 upper works): the
+  // shared 'detail' bucket ceilings at ~67 on vertical faces where the
+  // ref's lit-fitting class reads 73-80 — leo r9 mgPale recipe, hex
+  // sampled on the render; clone drops onBeforeCompile -> rehook
+  // (merkava gearFloor law). Per-build clone, disposed with the tank.
+  let mgPale = null;
+  if (T.rackFill || (T.mg && T.mg.tone === 'two-tone')) {
+    mgPale = P.mats.shadow.clone();
+    // cycle-7/8 dial (ordered-class law, sampled on the render): 0x565a45
+    // rendered the rod med 94, 0x484c3a rendered 85.2 — final step lands
+    // the ref's 79.5 class while the B2 cavity med stays >= 68
+    mgPale.color.setHex(0x424635);
+    mgPale.roughness = 0.9;
+    mgPale.metalness = 0.02;
+    mgPale.envMapIntensity = 0.18;
+    mgPale.onBeforeCompile = vehicleAmbientFloorHook;
+    mgPale.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    P.disposables.push(mgPale);
+  }
+  const paleMesh = (geo, x, y, z) => {
+    const mesh = new THREE.Mesh(geo, mgPale);
+    mesh.position.set(x, y, z);
+    mesh.receiveShadow = true;
+    P.turretG.add(mesh);
+    P.disposables.push(geo);
+  };
   loftBody(P, 'turret', T.sections, { oy: T.ringY, oz: T.ringZ, wall: 0.42, mid: 0.78, midW: 0.84, crownW: 0.44, ...(T.loft || {}) });
   if (T.basket) {
     const Bk = T.basket;
@@ -512,8 +602,29 @@ function m47Cast(P, T) {
   }
   const B = { z0: BS[0].z, z1: BS[BS.length - 1].z, w0: BS[0].xR, w1: BS[BS.length - 2].xR, top0: BS[0].top, top1: BS[BS.length - 1].top, floor0: BS[0].floor, floor1: BS[BS.length - 1].floor };
   // ammo chin under the bustle throat: ref bottom dips 1.726 ONLY over
-  // z -1.40..-1.50 (col -1.548 already reads 1.87) — thin box inside it
-  P.add('turretDark', box(0.9, 0.13, 0.145), 0, yl(B.floor0 - 0.06), zl(-1.41));
+  // z -1.40..-1.50 (col -1.548 already reads 1.87) — thin box inside it.
+  // r4 B2: with rackFill the chin joins the pale fitting class — its rear
+  // face is the biggest single surface in the rear-view under-bustle band
+  // (the ref's cavity reads as a LIT tray, ours read dark-panel 55L).
+  if (T.rackFill) paleMesh(box(0.9, 0.13, 0.145), 0, yl(B.floor0 - 0.06), zl(-1.41));
+  else P.add('turretDark', box(0.9, 0.13, 0.145), 0, yl(B.floor0 - 0.06), zl(-1.41));
+  if (T.rackFill) {
+    // r4 B2 slat ceiling: pale transverse slats flush under the bustle
+    // floor (bottoms <= 9 mm under the certified floor line — sub-pixel at
+    // the gate pitch; the rear camera reads their lit rear faces + the
+    // dark underside between = the ref's slat/through-shadow rhythm).
+    const floorAt = (z) => {
+      for (let i = 0; i < BS.length - 1; i++) {
+        if (z <= BS[i].z && z >= BS[i + 1].z) {
+          return BS[i].floor + (BS[i + 1].floor - BS[i].floor) * ((z - BS[i].z) / (BS[i + 1].z - BS[i].z));
+        }
+      }
+      return BS[BS.length - 1].floor;
+    };
+    for (let zs = -1.60; zs > -2.62; zs -= 0.14) {
+      paleMesh(box(1.36, 0.008, 0.075), 0, yl(floorAt(zs) - 0.0045), zl(zs));
+    }
+  }
   // bustle-roof stowage, r2 (ref side: knob 2.805 over -1.80..-1.96, mid
   // band ~2.71 over -1.70..-2.26, bare 2.613 roof aft): duffel knob box +
   // a low tarp roll ALONG Z carrying the mid band
@@ -560,8 +671,67 @@ function m47Cast(P, T) {
     liftEye(P, 'turretDetail', side * 0.80, yl(2.55), zl(-0.10));
     P.add('turretDetail', box(0.02, 0.02, 0.55), side * (B.w1 - 0.02), yl(B.top0 - 0.24), zl(-2.10));
   }
-  m2Station(P, T.mg, yl, zl);
-  if (T.pedestal) aaPedestal(P, T.pedestal, yl, zl);
+  m2Station(P, mgPale && T.mg.tone === 'two-tone' ? { ...T.mg, paleMat: mgPale } : T.mg, yl, zl);
+  if (T.pedestal) {
+    aaPedestal(P, mgPale && T.pedestal.tone === 'two-tone' ? { ...T.pedestal, paleMat: mgPale } : T.pedestal, yl, zl);
+  }
+  // r4 B5 (m47): mount-truss mass inside the pedestal-to-roof gap so the
+  // M2/pedestal cluster reads MOUNTED, not a floating H-frame. Everything
+  // interior: base plate + legs inside the dome plan, tops <= 3.25 (under
+  // the certified 3.33-3.38 band, so no side/front column top moves); the
+  // 0.177 m^2 H-frame sky window aft of the pedestal stays open (MG
+  // PHYSICS wants it).
+  if (T.mountTruss && T.pedestal) {
+    const Tp = T.pedestal;
+    P.add('turretDark', box(0.30, 0.045, 0.36), Tp.x, yl(2.915), zl(Tp.z));
+    for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      P.add('turretDark', box(0.032, 0.34, 0.032), Tp.x + dx * 0.085, yl(3.08), zl(Tp.z + dz * 0.11),
+        dz * -0.35, 0, dx * 0.27);
+    }
+    // tie beam pedestal head -> M2 mast base (the mounted bridge; pale —
+    // it rides the sky-backed band with the rest of the station)
+    P.add('turretDetail', box(0.05, 0.042, 0.45), (Tp.x + T.mg.x) / 2, yl(3.175), zl((Tp.z + T.mg.z) / 2),
+      0, Math.atan2(T.mg.x - Tp.x, T.mg.z - Tp.z), 0);
+  }
+  if (T.mg.tone === 'two-tone' && mgPale) {
+    // r4 B5 crown strips (MG PHYSICS: >=2px pale top-lit edges over the
+    // upper works, shared mgPale material). Crown tops FLUSH with their
+    // parts (the 3.375 heightM carrier never moves); widths WRAP the parts
+    // by +0.02 (cycle-5: equal-width crowns sat INSIDE the wider boxes).
+    const axis = T.mg.topY - 0.10;
+    const rl = T.mg.rl ?? 0.56;
+    for (const [gw, gh, gd, gx, gy, gz] of [
+      [0.24, 0.034, 0.20, T.mg.x, axis + 0.113, T.mg.coverZ ?? (T.mg.z + 0.10)],
+      [0.38, 0.034, 0.78, T.mg.x, axis + 0.070, T.mg.z + rl / 2 - 0.14],
+      [0.125, 0.026, 0.25, T.mg.x, axis + 0.062, T.mg.z + rl + 0.05],
+    ]) {
+      paleMesh(box(gw, gh, gd), gx, yl(gy), zl(gz));
+    }
+  }
+  // r4 B2/B3 (m47): the rack tray behind the bustle tail read as a closed
+  // dark pit — folded-tarp bed + roll + duffel + straps INSIDE the rack
+  // walls. Every top <= 2.072 (the warped ref's own rack-floor sliver band
+  // is 2.048..2.072 — the r3 tailLip stays the side-mask carrier; fat
+  // content above it would re-run the r2 full-height frame error), plan
+  // inside the existing tailLip bar width, rear end 24+ mm clear of the
+  // -2.890 trace boundary. Doubles as the D3 era-stowage tell vs m46.
+  if (T.rackFill) {
+    P.add('turretCloth', box(1.04, 0.062, 0.155), -0.04, yl(2.041), zl(-2.788));
+    tarpRoll(P, 'turretCloth', -0.30, yl(2.042), zl(-2.72), 0.46, 0.030, true, P.q ? 12 : 8);
+    P.add('turretDetail', box(0.26, 0.05, 0.12), 0.30, yl(2.045), zl(-2.75), 0, 0.09, 0);
+    for (const sx of [-0.34, 0.04, 0.42]) { // hold-down straps (slat rhythm)
+      P.add('turretDark', box(0.035, 0.012, 0.150), sx, yl(2.064), zl(-2.788));
+    }
+  }
+  // r4 D1 (m47): the ref carries a whip antenna at dome-rear right (spike
+  // band z ~ -0.8, pale, tip ~3.5) that the proc was missing — KIT.fittings
+  // antennaWhip on the PALE-REFUND slot, aligned so both masks' whip
+  // columns pair (heightM p95 budget: 1-2 side columns, verdict-priced).
+  if (T.whip) {
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: T.whip.h, rake: 0.05, seed: 47 });
+    whip.position.set(T.whip.x, yl(T.whip.y), zl(T.whip.z));
+    P.turretG.add(whip);
+  }
   // §B3 census fitting: loader's spare cal-.30 stowed beside the pedestal —
   // whole envelope tucked UNDER the measured M2/pedestal side band (tops
   // 3.32-3.38 over z -0.9..+0.44) and inside the dome plan: zero gate pixels
@@ -629,6 +799,13 @@ function pattonGun(P, G) {
     const t0 = G.tubeZ0 != null ? w2l(G.tubeZ0) : 0.02;
     P.add('gun', cylZ(G.r, len - 0.28 - t0, seg), 0, 0, (len - 0.28 + t0) / 2);
     P.add('gun', cylZ(0.15, G.evacL, seg), 0, 0, w2l(G.evacZ0) + G.evacL / 2);
+    // r4 D2 (m47): transverse tube relief — the ref tube reads banded from
+    // above (top-view tube rect row-SD 2.98 vs proc 1.33): collar seam
+    // rings, sub-centimeter proud, every ring >= 0.16 m clear of the
+    // re-paired 3.10 evac anchor and inside the certified tube columns.
+    if (G.rings) for (const [rz, rr, rw] of G.rings) {
+      P.add('gunDark', cylZ(rr, rw, seg), 0, 0, w2l(rz));
+    }
     sq(0.35, 0.14, len - 0.24, 0.34);                       // rear drum
     P.add('gunDark', xform(cylZ(0.32, 0.05, seg), 0, 0, 0, 0, 0, 0, [1, 0.30, 1]), 0, 0, len - 0.15);
     sq(0.35, 0.12, len - 0.075, 0.34);                      // front drum
@@ -764,6 +941,43 @@ function buildPershing(P, cfg) {
       P.add('hull', box(C.hw * 2, C.h, C.z0 - C.z1), 0, C.top - C.h / 2, (C.z0 + C.z1) / 2);
     }
   }
+  if (cfg.tailTray) {
+    // r4 B2 (m47): the rear band under the bustle overhang read a full
+    // class darker than the ref's lit slatted tray (view-rear med 60.7 vs
+    // 73.2, sub-45 census 77 vs 3). The real M47 tail descent carries
+    // transverse louvre banks — pale tray plates (+2..12 mm, following the
+    // deck slope) with dark slat lines (+17 mm crests) in two banks either
+    // side of the centre spine. Deck-bump class (certified +0.03 deck
+    // furniture band), segments <= 0.15 m (station end-cap law), forward
+    // of the -4.09 tailStack anchors, inboard of the fender bump plates.
+    const { slab } = KIT;
+    const TT = cfg.tailTray;
+    const dk = cfg.hull.deck;
+    for (let i = 1; i < dk.length - 1; i++) {
+      let [z0, y0] = dk[i], [z1, y1] = dk[i + 1];
+      if (z1 >= TT.z0 || z0 <= TT.z1) continue;
+      if (z0 > TT.z0) { y0 = y0 + (y1 - y0) * ((TT.z0 - z0) / (z1 - z0)); z0 = TT.z0; }
+      if (z1 < TT.z1) { y1 = y0 + (y1 - y0) * ((TT.z1 - z0) / (z1 - z0)); z1 = TT.z1; }
+      const lineAt = (z) => y0 + (y1 - y0) * ((z - z0) / (z1 - z0));
+      for (const side of [-1, 1]) {
+        const xa = side * TT.x0, xb = side * TT.x1;
+        // INVERTED scheme (cycle-3, sampled at the rear camera's ~4.6 deg
+        // grazing): dark slats over a pale base visually MERGED into a dark
+        // panel from dead-rear — the ref's read is PALE lit slats with the
+        // dark tray peeking through the seams. Dark shadow base + pale
+        // louvre slats delivers that from both rear and top.
+        P.add('hullDark', slab(
+          [Math.min(xa, xb), y0 + 0.002, z0], [Math.max(xa, xb), y0 + 0.002, z0],
+          [Math.max(xa, xb), y1 + 0.002, z1], [Math.min(xa, xb), y1 + 0.002, z1],
+          [Math.min(xa, xb), y0 + 0.010, z0], [Math.max(xa, xb), y0 + 0.010, z0],
+          [Math.max(xa, xb), y1 + 0.010, z1], [Math.min(xa, xb), y1 + 0.010, z1]));
+        for (let zs = z0 - 0.026; zs > z1 + 0.016; zs -= 0.075) {
+          P.add('hullDetail', box(TT.x1 - TT.x0 - 0.03, 0.014, 0.036),
+            side * (TT.x0 + TT.x1) / 2, lineAt(zs) + 0.012, zs);
+        }
+      }
+    }
+  }
   if (cfg.bowEyes) {
     // towing-eye prongs at the bow tip: the m47 extract's side toe columns
     // (band 1.02..1.21 over z 1.92..2.17) are the eyes, not the glacis —
@@ -777,12 +991,52 @@ function buildPershing(P, cfg) {
       P.add('hullDark', cylX(0.05, (E.w ?? 0.22) * 0.73, 8), E.x, (E.y0 + E.y1) / 2, E.z0 - (E.pinDz ?? 0.03));
     }
   }
+  if (cfg.deckKit) {
+    // r4 B3/D3 (m47): the top-view sub-50 census is dominated by the fleet
+    // camo's near-black blotches on the bare front deck (the critic rig
+    // renders NO shadow map — this is albedo, not shadow; the ref print's
+    // darkest greens hold ~46-53 where ours drop to ~32-45). Dress the two
+    // dark fields with era-true flat kit — pioneer tools + stowage boards
+    // (left), a glacis stowage tray (right, fully covered in side view by
+    // the 1.462+ fender ramps) — which is also the m47 loadout tell vs the
+    // near-bare m46 (§H.4/D3). Everything flat: tops <= deck +0.028 (the
+    // carried dive-window noise class), plan-interior.
+    const dAt = hull.deckAt;
+    // left field (x -0.58..-0.94, z 0.25..1.05): flat canvas bundle under a
+    // shovel + mattock row + boards (solid coverage over the blotch; tops
+    // <= deck +0.032, partially under the 1.695 hood side band)
+    // (cycle-4 shave: every top <= deck +0.024 — the +0.03..0.042 first cut
+    // cost hull 90.3 -> 90.2 on the exposed z 0.43..1.01 columns)
+    P.add('hullCloth', box(0.34, 0.016, 0.36), -0.755, dAt(0.68) + 0.010, 0.68);
+    P.add('hullWood', box(0.034, 0.014, 0.58), -0.705, dAt(0.72) + 0.017, 0.72, 0, 0.10, 0);
+    P.add('hullDetail', box(0.125, 0.012, 0.19), -0.74, dAt(0.46) + 0.016, 0.46, 0, 0.10, 0);
+    P.add('hullWood', box(0.034, 0.014, 0.50), -0.845, dAt(0.70) + 0.017, 0.70, 0, -0.05, 0);
+    P.add('hullDark', box(0.20, 0.016, 0.055), -0.85, dAt(0.965) + 0.014, 0.965, 0, 1.15, 0);
+    P.add('hullDetail', box(0.15, 0.012, 0.30), -0.865, dAt(0.38) + 0.014, 0.38, 0, -0.03, 0);
+    for (const tz of [0.58, 0.86]) { // hold-down straps over the tool row
+      P.add('hullDark', box(0.25, 0.010, 0.028), -0.79, dAt(tz) + 0.019, tz);
+    }
+    P.add('hullDetail', box(0.14, 0.012, 0.18), -0.83, dAt(0.95) + 0.015, 0.95, 0, 0.06, 0);
+    // right field (x 0.66..0.95, z 1.10..1.46): flat stowage tray + lid
+    // straps, tops <= 1.455 — UNDER the 1.462 fender-ramp side cover
+    P.add('hullDetail', box(0.28, 0.022, 0.34), 0.805, 1.437, 1.28);
+    for (const sx of [0.72, 0.89]) {
+      P.add('hullDark', box(0.03, 0.012, 0.35), sx, 1.449, 1.28);
+    }
+  }
   if (cfg.hatchHoods) {
     // proud driver/bow-gunner hatch hoods (extract deck bumps 1.695 over
     // z 0.70..0.80 vs the 1.615 plate — the flush usKit discs stay under)
     for (const H of cfg.hatchHoods) {
       P.add('hull', box(H.w, H.top - hull.deckAt(H.z0) + 0.005, H.z0 - H.z1),
         H.x, (H.top + hull.deckAt(H.z0)) / 2 - 0.002, (H.z0 + H.z1) / 2);
+      if (cfg.hoodScopes) {
+        // r4 D2 (m47): driver/bow-gunner periscope faces on the hood fronts
+        // (ref front-deck furniture) — flush class, tops UNDER the certified
+        // 1.695 hood band, +9 mm z-proud on the interior hood face only.
+        P.add('hullDetail', box(0.11, 0.034, 0.016), H.x, H.top - 0.022, H.z0 + 0.006);
+        P.add('hullGlass', box(0.085, 0.016, 0.017), H.x, H.top - 0.018, H.z0 + 0.0065);
+      }
     }
   }
   if (cfg.hull.fenderY) {
@@ -805,7 +1059,10 @@ function buildPershing(P, cfg) {
           P.add('hull', box(hull.hw - lipHW + 0.01, 0.037, Math.abs(bz0 - bz1)),
             side * (lipHW + hull.hw) / 2, fy - 0.019, (bz0 + bz1) / 2);
           if (skirtD) {
-            P.add('hullDetail', box(0.04, skirtD, Math.abs(bz0 - bz1)),
+            // r4 A3 (m47): cfg.fenderSkirtB routes the hanger-skirt drops off
+            // the pale detail bucket (they serrated the deck line as primer
+            // sticks against the dark band). Default byte-identical.
+            P.add(cfg.fenderSkirtB || 'hullDetail', box(0.04, skirtD, Math.abs(bz0 - bz1)),
               side * (hull.hw - 0.02), fy - 0.019 - skirtD / 2, (bz0 + bz1) / 2);
           }
         }
@@ -828,6 +1085,79 @@ function buildPershing(P, cfg) {
   P.gunG.position.set(0, cfg.gun.axisY - cfg.ring[0], cfg.gun.rootZ - cfg.ring[1]);
   if (cfg.turret.m47) m47Cast(P, cfg.turret); else t26Cast(P, cfg.turret);
   pattonGun(P, cfg.gun);
+  // -------------------------------------------------------------------------
+  // r4 (m47 TONE round) material work. createTankMaterials is PER-INSTANCE
+  // and the gate renders self-lit masks — nothing here moves a curve.
+  // C1 (family-wide, m47 r3 driver D): the shared 'glass' lens is a smooth
+  // blue-grey MIRROR (0x2a3540, metalness 0.85) — under the PMREM sky it
+  // fired the only saturated-BLUE discs on the vehicle (m46 shares the
+  // class; m26/m45 carry the same headlight helper). Smoked dark-olive
+  // glass instead (m60 r4 'glass calm-down' lineage): soft sheen at
+  // closeup, near-invisible at distance. buildPershing is the family
+  // source — m60a1/m60a3 (buildM60) keep their own certified fix.
+  P.mats.glass.color.setHex(0x3d443c);
+  P.mats.glass.roughness = 0.48;
+  P.mats.glass.metalness = 0.38;
+  P.mats.glass.envMapIntensity = 0.3;
+  if (cfg.gearTone) {
+    // A1/A2 (m47 r4): the running gear rendered as a black-and-grey
+    // mechanical diagram on an olive tank (view-left gear band [60..580]x
+    // [365..432] sub-30 census 5470 vs ref 0, p5 6.8 vs 51.6; wheel drums
+    // single-tone p75 61.3 vs 69.5). Recipe = the merkava r12 gearFloor law
+    // (Material.clone() drops onBeforeCompile — re-attach the family
+    // ambient floor on the per-build pad/chain clones, the leo r13b
+    // gearDarkLift pattern) + the m60 r4 grey-olive retone + camo-painted
+    // wheel drums (the ref paints its whole wheel train).
+    const rehook = (m) => {
+      m.onBeforeCompile = vehicleAmbientFloorHook;
+      m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+      return m;
+    };
+    // shoe pads (0x171614) / inner chain+guide horns (0x27251f): per-build
+    // clones whose colors buildRunningGear pins — retone by hex on this
+    // build's own subtree and re-hook the ambient floor the clone dropped
+    // (the black horn-comb was mostly self-shadowed geometry rendering
+    // ambient-black, not albedo).
+    // Cycle-2 dial (ordered-class law — the first pass overshot BRIGHT:
+    // band med 73.8 / p75 90.9 / sd 14.2 vs the ref's 64.0 / 69.6 / 7.9;
+    // hexes and multiplier re-sampled on the render toward the ref class).
+    const retone = new Map([[0x171614, [0x37332a, 0.14]], [0x27251f, [0x403c2f, 0.18]]]);
+    P.hullG.traverse((o) => {
+      const m = o.material;
+      if (m && m.color && m.color.getHex && retone.has(m.color.getHex())) {
+        const [hex, env] = retone.get(m.color.getHex());
+        m.color.setHex(hex);
+        m.envMapIntensity = env;
+        rehook(m);
+      }
+    });
+    // band material: linear multiplier over the shared band map (m60 recipe)
+    for (const tm of [P.mats.trackL, P.mats.trackR]) {
+      tm.color.setRGB(1.16, 1.14, 0.98);
+      tm.envMapIntensity = 0.12;
+    }
+    P.mats.spareTrack.color.setHex(0x454034);  // sprocket/idler teeth + rings
+    // tires: small emissive floor only (merkava r12 tire law) — the rubber
+    // ring in wheel-bay shade fed the sub-30 census; recess bays stay dark.
+    if (P.mats.rubber.emissive) P.mats.rubber.emissive.setHex(0x1d1911);
+    // A2: camo-paint the wheel drums — swap dish/drum meshes off the
+    // single-tone 'wheels' material onto a camo-mapped clone (own texture
+    // instance so the hull map's transform is untouched; repeat sized so
+    // the blotch scale on a 0.66 m drum matches the hull plates). Hub
+    // rings/bolts are hullDark — kept, per the order.
+    const wheelCamo = rehook(P.mats.hull.clone());
+    wheelCamo.vertexColors = false;
+    wheelCamo.map = P.mats.hull.map.clone();
+    wheelCamo.map.repeat.set(0.26, 0.26);
+    wheelCamo.map.offset.set(0.08, 0.42);
+    wheelCamo.map.needsUpdate = true;
+    wheelCamo.color.setRGB(1.10, 1.09, 1.04); // drum med toward the ref's 65.1
+    wheelCamo.envMapIntensity = 0.22;
+    P.disposables.push(wheelCamo, wheelCamo.map);
+    P.hullG.traverse((o) => {
+      if ((o.isMesh || o.isInstancedMesh) && o.material === P.mats.wheels) o.material = wheelCamo;
+    });
+  }
   P.topY = cfg.topWorld - cfg.ring[0] + 0.12;
 }
 
@@ -1708,6 +2038,7 @@ const M47_HULL = {
   // 1.774 @ -3.25..-3.47, stepped tail descent).
   W: 3.51, bandHW: 1.40, trackW: 0.60, trackInset: 0.10, sponsonY: 1.12, bellyY: 0.468, bellyHW: 1.025, noseW: 1.30,
   glacisWingY0: 1.40, sponsonAftY: 1.44, sponsonAftZ: -2.90,
+  darkGearFit: true, // r4 A3: muffler legs + roller brackets off the pale bucket
   deck: [[1.92, 1.30], [1.32, 1.402], [1.16, 1.628], [0.63, 1.607], [0.10, 1.638],
     [-0.05, 1.602], [-0.22, 1.602], [-0.38, 1.652], [-1.28, 1.652], [-1.36, 1.702],
     [-2.20, 1.712], [-2.95, 1.698], [-3.18, 1.75], [-3.27, 1.735], [-3.47, 1.735],
@@ -2114,6 +2445,11 @@ export const PATTON_PROFILES = {
     build: (P) => buildPershing(P, {
       hull: M47_HULL, fit: M47_FIT,
       ring: [1.676, -0.318], topWorld: 3.37,
+      // r4 TONE round (shaded-parity r3 orders, all material/flush-lane):
+      // A1/A2 gear retone + camo wheels, A3 dark gear fittings (with
+      // hull.darkGearFit), B2 tail slat tray, D2 hood periscopes.
+      gearTone: true, fenderSkirtB: 'hullDark', hoodScopes: true, deckKit: true,
+      tailTray: { z0: -3.64, z1: -4.04, x0: 0.24, x1: 0.92 },
       // r3 REAR ANCHOR (post-warp re-anchor): the warped ref carries a FAT
       // (0.48-0.53 band) tail to -4.27 in its frame — proc-content -4.16 at
       // the plan-measured +0.111 shift. The r2 hull stopped at -4.17 with a
@@ -2267,8 +2603,12 @@ export const PATTON_PROFILES = {
         // (ref 0.716 vs 0.711+jitter; proc 0.814 vs 0.829+jitter) — the
         // slice-11 flip is inherent to this pair and lives in the
         // stations trim slot with i9 (the r2-packet flip-flop class).
-        mg: { x: 0.17, z: -0.28, baseY: 2.92, topY: 3.345, tipZ: 0.814, rl: 0.84, w: 2.0, canY: 3.02, cans: [-0.26], coverZ: -0.29, coverL: 0.22 },
-        pedestal: { x: -0.095, z: -0.64, baseY: 2.94, top: 3.38, zw: 0.53, w: 0.24, capW: 0.23 },
+        mg: { x: 0.17, z: -0.28, baseY: 2.92, topY: 3.345, tipZ: 0.814, rl: 0.84, w: 2.0, canY: 3.02, cans: [-0.26], coverZ: -0.29, coverL: 0.22, tone: 'two-tone' },
+        pedestal: { x: -0.095, z: -0.64, baseY: 2.94, top: 3.38, zw: 0.53, w: 0.24, capW: 0.23, tone: 'two-tone' },
+        // r4: B5 mount truss, B2/B3 rack tray fill, D1 whip (ref spike band
+        // z ~ -0.8, tip ~3.5 = 2.72 base + 0.12 pot + 0.66 whip)
+        mountTruss: true, rackFill: true,
+        whip: { x: -0.60, y: 2.72, z: -0.88, h: 0.66 },
       },
       // r3: muzzle re-paired to the WARPED oracle (its face now reads 4.25
       // in its frame = proc 4.36 at the +0.111 shift): 4.395 -> 4.353 kills
@@ -2277,7 +2617,10 @@ export const PATTON_PROFILES = {
       // stretched ref band (its lit sleeve columns span 2.99..3.87):
       // 3.04..3.78 -> 3.10..3.96 at the +0.105 registration, both ends
       // 15+ mm clear of the current-phase trace boundaries.
-      gun: { rootZ: 1.30, axisY: 2.046, muzzle: 4.353, r: 0.115, device: 'm36', tubeZ0: 1.45, evacZ0: 3.10, evacL: 0.86, shield: { w: 0.62, h: 0.26, dy: 0.0, zF: 1.48, d: 0.36, rotorR: 0.10 } },
+      gun: { rootZ: 1.30, axisY: 2.046, muzzle: 4.353, r: 0.115, device: 'm36', tubeZ0: 1.45, evacZ0: 3.10, evacL: 0.86, shield: { w: 0.62, h: 0.26, dy: 0.0, zF: 1.48, d: 0.36, rotorR: 0.10 },
+        // r4 D2: collar-seam rings (world z; all >= 0.16 clear of the 3.10
+        // evac anchor, sub-cm proud of the r 0.115 tube)
+        rings: [[2.50, 0.121, 0.035], [2.72, 0.1205, 0.028], [2.94, 0.121, 0.035]] },
     }),
   },
   m60a2: {

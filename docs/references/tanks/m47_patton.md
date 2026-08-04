@@ -269,6 +269,107 @@ it), dive-window maxima ~0.03-0.05 x2. close-roof evaluator notes a
 0.041 m2 void under the dive tip at (0.31, 1.10, 2.14) — §B2 top-down
 hole scan is 0 (covered from above); watch it if the dive changes.
 
+## Round r4 (2026-08-04) — the m47 TONE round (shaded-parity r3 orders)
+Gate **90.4 PASS x2 bit-identical** (hull 90.4 / whole 91.1 / turret 91.6 /
+stations 93.4 / dims 100 / floaters 100; gatePassed re-read from JSON both
+runs) — hull UP 0.3->0.4 headroom vs the r3 razor; turret spent 1.3 / stations
+2.0 of the priced headroom on B-group volume. standard-check clip 0/0, contig
+0, decor **mg1+1d**; evaluator RIG PARITY OK (max yawProxy 1.3 deg
+@close-roof, |dCentroid| 0.046 m, exit 0). Graduates m60a1 **81e69e34** /
+m60a3 **efcde5c4** exact; siblings m26 70.6 / m45 59.4 / m46 83.0 / m60a2
+80.3 byte-neutral (gate JSONs reproduced committed bytes — no diff).
+Shots: shots/patton-r4/ (14 official pairs). All numbers below are official
+tmp-tank-critic pairs measured with the banked ITU-601 scanners
+(tools/tmp-r7-merkava.py), windows quoted per §D.
+
+ORDERS DELIVERED (done-gates, before -> after):
+- **A1 gear shade** (zero mask): view-left [60..580]x[365..432] sub-30
+  census **5470 -> 0** (bar <=300, ref 0); p5 6.8 -> **53.8** (bar >=35, ref
+  51.6); class landed med 64.7 / p75 70.5 / sd 7.73 vs ref 64.0 / 69.6 /
+  7.93 (first cut overshot bright — med 73.8 / p75 90.9 — dialed back per
+  the ordered-class law over three sampled steps). Mechanism: merkava r12
+  gearFloor law (buildRunningGear's pad/chain clones drop onBeforeCompile —
+  re-hooked the family ambient floor) + hex retone 0x171614->0x37332a /
+  0x27251f->0x403c2f + trackL/R multiplier 1.16/1.14/0.98 + spareTrack
+  0x454034 + rubber emissive floor 0x1d1911 (all inside cfg.gearTone,
+  m47-scoped, buildPershing).
+- **A2 camo wheel drums**: wheel band [170..380]x[386..416] p75 61.3 ->
+  **70.1** (bar >=66, ref 69.5); camo-mapped 'wheels' clone (own texture
+  instance, repeat 0.26, x1.10 lift), blotches read on all 6 drums/side,
+  hub rings + bolts kept.
+- **A3 pale posts**: muffler legs + roller brackets + flap straps ->
+  hullDark via opt-in H.darkGearFit (curveHull, default byte-identical);
+  fender-skirt drops -> cfg.fenderSkirtB 'hullDark'. Done-gate met: no pale
+  verticals against track/sky in any quarter/hero pair.
+- **B2 rack/rear band** (mask-free): view-rear [175..465]x[313..352] med
+  60.7 -> **69.5** (bar >=68; ref 73.2), sub-45 77 -> **22** (ref 3).
+  Discovery: the rear camera renders NO shadow map — the "dark panel" was
+  the bustle UNDERSIDE + ammo-chin down-faces rendering ambient-dark, and
+  dark-slats-over-pale merged into a dark panel at the 4.6-deg grazing
+  angle. Landed scheme: pale slat CEILING under the bustle floor (8 slats,
+  bottoms <=9 mm under the certified floor line — sub-pixel at gate pitch)
+  + pale chin + hull tail-descent louvre tray (dark shadow base + pale
+  slats, deck-bump class <=+17 mm) in two banks; >=6 dark through-shadow
+  lines read in both rear and top.
+- **B3 rack pit + top census** (PARTIAL, residual documented): top
+  [260..380]x[330..490] sub-50 **2557 -> 2024** (bar <=1400, ref 1160).
+  The rack pit itself is FILLED (folded-tarp bed + roll + duffel + straps,
+  tops <=2.072 = the ref's own rack-floor sliver band; the r3 tailLip
+  stays the side-mask carrier) and the front-deck dark fields are dressed
+  (pioneer kit left, covered stowage tray right — tops <=deck+0.024 after
+  a measured hull 90.3->90.2 lesson at +0.03..0.042, reclaimed to 90.4).
+  RESIDUAL (honest): the remaining ~600 px over ref are the fleet camo's
+  near-black blotch class on bare deck plates (albedo, not shadow — no
+  shadow map in the rig) + the anchor-fenced bow-eye/dive zones; a
+  materials-owner lane item, not reachable from the profile without
+  repainting the shared camo generator.
+- **B5 M2 tone law + mount truss**: view-left rod [215..370]x[200..240]
+  block-luma med 56.0 -> **76.8** (bar >=70; ref 78.6-79.5 — in-class;
+  sampled dial chain 94.0 -> 85.2 -> 76.8), ytop-med 217 vs ref 215.
+  m2Station M.tone 'two-tone' (opt-in, default byte-identical): upper
+  works pale / unders dark, barrel taper + muzzle collar with the collar
+  END exactly at tipZ 0.814 (hard-edge anchor untouched); aaPedestal
+  A.tone pale cradle/cap; pyramid mount truss + tie beam INSIDE the
+  pedestal-to-roof gap (tops <=3.25, under the certified 3.33-3.38 band;
+  the 0.177 m^2 H-frame sky window kept open). LAW FINDING: the shared
+  'detail' bucket CEILINGS at ~67 on vertical faces — the 79.5-class M2
+  read needs a dedicated pale-fitting clone (leo r9 mgPale recipe,
+  0x424635 + ambient rehook); crown strips must be >=0.034 thick (2 px)
+  AND WRAP the parts (+0.02) — equal-width crowns bury inside their boxes.
+- **C1 blue lenses** (family-wide): P.mats.glass mirror -> smoked
+  dark-olive (0x3d443c, rough 0.48, metal 0.38) in buildPershing (m26/m45/
+  m46/m47; graduates keep their own certified fix). Done-gate: **zero**
+  blue-dominant pixels (b-max(r,g)>8) in front + close-front, both halves.
+- **C2 dive band**: the "primer stripe" carriers were the pale fender-skirt
+  drops + detail-bucket furniture riding the band — now dark/camo (A3
+  buckets); band chroma verified blue-free; silhouette untouched (anchor
+  law, material lane only).
+- **D1 whip antenna**: FITTINGS.antennaWhip (PALE-REFUND slot) at
+  (-0.60, 2.72, -0.88), h 0.66 -> tip ~3.50, aligned with the ref's own
+  dome-rear spike band (z ~-0.8); censuses as the +1d dressing fitting;
+  heightM p95 held (dims 100 x2), evaluator parity clean.
+- **D2 deck/tube relief**: top-view tube rect [215..425]x[470..524] row-SD
+  1.33 -> **2.92** (bar >=2.2, ref 2.98) via three collar-seam rings
+  (gunDark, sub-cm proud, all >=0.16 m clear of the 3.10 evac anchor);
+  driver/bow-gunner periscope faces on the hood fronts (flush class).
+  NOTE (bank): the r3 verdict's "engine-deck relief" rect actually frames
+  the GUN TUBE over the bow (y_px 470..524 = z +2.4..+3.3 in the top
+  ortho) — the number was honored on the real content.
+- **D3 era variety** (with B2/B3): rack tarp bed + roll + duffel, pioneer
+  tool row + stowage boards/tray, whip — the m47 loadout tell vs m46's
+  bare build (§H.4).
+- **B6 cast arcs: NOT TAKEN** (only-if-priced; hull razor + muzzle/idler/
+  blister anchor fences — banked for a turret-lane round with headroom).
+
+RESIDUALS/CARRIES: B3 census 2024 vs 1400 (fleet-camo class, above);
+front-deck med 55 vs 60.5 (same class); stations 95.4 -> 93.4 (the M2
+muzzle collar fattens the slice-11 tip read — the i9/i11 trim-slot class,
+priced inside the turret headroom); whole 92.4 -> 91.1 / turret 92.9 ->
+91.6 (B-group volume: truss, rack fill, slat ceiling, crowns — all priced);
+worst side_hull columns unchanged from r3 (tail band -4.147, idler-approach
+ramp, dive-window maxima). Deck-kit law: flat deck dressing must stay
+<= deck+0.024 — +0.03..0.042 tops cost hull 0.1 on exposed columns.
+
 ## Vertex round r1 (2026-08-03) — ORCHESTRATOR LANDING NOTE
 (Builder finished without a section; from its verified report.) 66.1 ->
 82.5 (hull 89.2 / whole 83.3 / turret 82.5 / stations 95.1 / dims 100).
