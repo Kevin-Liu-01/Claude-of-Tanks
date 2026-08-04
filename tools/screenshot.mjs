@@ -60,7 +60,7 @@ async function acquireLock(timeoutMs) {
       if (head === myTicket) {
         try { mkdirSync(LOCK_DIR); lockHeld = true; return; } catch (_) { /* held */ }
         try {
-          if (Date.now() - statSync(LOCK_DIR).mtimeMs > LOCK_STALE_MS) { rmdirSync(LOCK_DIR); continue; }
+          if (Date.now() - statSync(LOCK_DIR).mtimeMs > LOCK_STALE_MS) { try { rmdirSync(LOCK_DIR); } catch (e) { if (e.code === 'ENOTDIR') unlinkSync(LOCK_DIR); else throw e; } continue; }
         } catch (_) { continue; } // vanished between calls — retry immediately
       }
       if (Date.now() - t0 > timeoutMs) throw new Error('cot-shots lock timeout');
@@ -218,15 +218,27 @@ try {
       if (!heroOk) throw new Error('garage view captured with an EMPTY pedestal (no visible hero tank)');
     }
     // tank_models r3: guard against a future dead-flank/stand-in restage.
+    // camo r3 amendment: the from-scratch rebuild program (owner mandate)
+    // re-registers vehicles as procedural while their curve-true builds land
+    // — m1a2 flipped to {source:'procedural'} on 2026-08-04. Require the GLB
+    // swap ONLY while a GLB source is registered; a procedural registration
+    // gets the garage view's visible-hero check instead (real model, not a
+    // stub or an empty flank).
     if (view === 'tank_closeup_modern') {
-      const glbOk = await page.evaluate(() => {
+      const closeupOk = await page.evaluate(async () => {
         const t = window.__DEBUG.game.tankById.get('m1a2');
         if (!t || !t.visual) return false;
-        let ok = false;
-        t.visual.root.traverse((o) => { if (o.userData && o.userData.__glbSwapped) ok = true; });
-        return ok;
+        const S = await import('/src/vehicles/specs.js');
+        const src = (S.MODEL_SOURCE || {}).m1a2;
+        const wantsGlb = !!(src && src.source && src.source !== 'procedural');
+        let swapped = false, vis = 0;
+        t.visual.root.traverse((o) => {
+          if (o.userData && o.userData.__glbSwapped) swapped = true;
+          if (o.isMesh && o.visible) vis++;
+        });
+        return wantsGlb ? swapped : vis > 10;
       });
-      if (!glbOk) throw new Error('tank_closeup_modern captured the procedural stand-in, not the sourced GLB');
+      if (!closeupOk) throw new Error('tank_closeup_modern captured a stand-in (GLB unswapped or stub model)');
     }
     console.log(`[shots] captured ${file}`);
   }
