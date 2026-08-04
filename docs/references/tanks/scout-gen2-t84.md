@@ -156,3 +156,150 @@ band reads shallower than the ref's full-depth side mass (wheel row
 exposed dark — pt91m rubberBotH/material-split candidate); the mantlet
 gun-slot notch (print-faithful, deck-backed, holes 0) may read dark from
 hero angles.
+
+## r32 ORDER ROUND (2026-08-04, russia agent): critic r31 FAIL 7.8/8.01 ->
+## all four §B2 void families closed + gray-primer family re-slotted; gate
+## 90.2 min ×2 (hull 92.0 / whole 92.3 / turret 90.2 / stations 95.3 /
+## dims 99.1 / floaters 100) — hull +1.1 over the r31 record, audit 4/0,
+## holes 0, mg1+6d
+
+Work order: docs/critique/shaded-parity-t84-r31.md (verdict on 2c262e52).
+Landing hash **531fe4f0** (47 meshes / 84292 verts); graduates verified
+byte-frozen at every batch (pt91m e6994e54, t72b3m c19ec9f0). Evidence:
+shots/critic-t84/ + shots/russia-r32/ + shots/visual-eval-t84/.
+
+ORDER 0 (§B2, mandatory) — border-flood enclosed-sky scan (mask-method
+|px−0x151b20| maxch <=13, 8-conn background flood, >=12px clusters,
+label-text excluded; tools/tmp-t84-r32-measure.py):
+- Baseline 18112 px across 13 proc views -> **2182 px across 4 views**;
+  10/14 views scan ZERO. Every ordered TRUE-SKY window is closed and
+  raycast-verified solid (tools/tmp-t84-r32-probe.{html,mjs} — DoubleSide
+  re-test finds no culled-face holes):
+  - 0a V1 slot lane (304/307px side orthos): flank walls x ±0.795..0.855,
+    z W −0.50..−0.14, y 1.64..2.06, inboard of the ±0.86 cheek planes —
+    dead-front occluded, side columns were EMPTY where the ref is solid.
+    Turret rows took it as fill (turret 91.4 -> 91.5 at that batch).
+  - 0b V2 under-skirt tunnel (1794/1463px): TWO-COURSE DEEP SKIRT — upper
+    course keeps the certified 1.72 face, hem 0.72 -> 0.64 (the gate's
+    ±1.74 front bins want 0.63; the stern rows follow the ref's rising
+    belly rake 0.33->0.64 — a first flat-0.26 full-face hem read err
+    0.191 ×2 front + 0.135 ×1 side and cost 2.8 hull pts, reverted);
+    lower course insets to x 1.6825 (face 1.66..1.705, inside the 1.7213
+    bin), hem 0.26, wheelbase z −3.55..0.86 only. 0.26 overlaps the
+    bottom-run chain-rail tops (0.271) so no side slit survives. BOTH
+    sides (the left ortho's "backed" read was drainage, not backing —
+    probe showed 37% through-sky there too).
+  - 0c V3 slat ladders (418/404px front + ~10 rows/face): NOT holes —
+    the fixed near-black pad/chain clones (0x171614/0x27251f) rendered
+    INSIDE the ±13 bg tolerance. pt91m r27 gear recipe: padHex 0x343a29,
+    chainHex 0x2b3122, gearFloor:true. Front track faces now read as lit
+    link ladders; rear rows gone.
+  - 0d V4 pod-flank columns (1212/1202/170px): deep fender boxes at the
+    strips' own certified x-planes (xi 1.52 — a first 1.53 edge left a
+    1-2px hairline against the 1.5165 pad-boss print), tops FOLLOW the
+    deck line 4mm under, z 0.87..1.93 + nose cap at 2.00 (the §B2
+    top-down scan caught a 1-cell pocket ring after the flap re-seat —
+    capped). Plus TRENCH CLOSE-OUT: the skirt-to-track corridor ran open
+    the whole hull and exited at the stern (120px pairs threading over
+    the V4 slabs at y0 1.24..1.28) — floored at the bay-cover plane
+    (z −3.50..0.86, clear of both wrap zones) and capped at the stern
+    (z −4.36..−4.30 behind the skirt rear edge, mask-identical).
+- Residual 2182 px, ALL probe-verified SOLID shade-class (grazing-angle
+  camo on the glacis/stern deck, proxy-turret shadow on the roof plates,
+  shaded gear bay through the fender gap): view-front 93px, view-top
+  14px, hero-rearright 159px (r31-identical pre-existing family),
+  hero-toptilt 813px, close-roof 1103px (was 2651). The evaluator's
+  hero-rearright "enclosed-void 1.697 m²" is the same LUMA detector that
+  fired in r31 — §B2 cross-check on the zone: 0 sky px, bg census 1,
+  and the tone is now camo-class (see group 1).
+
+GROUP 1 (raw-gray family) — the flat-gray primer was the turretDark RING
+CARRIER stack (0x36342f) showing its bare faces at z W −0.16 (front
+letterbox) and −1.74 (rear collar) + the canyon walls/floor; re-slotted
+to the camo bucket (geometry byte-identical). Done-gates (official pair
+renders, ITU-601):
+- 1a letterbox (855..1065, 258..285): sd 2.5 -> **11.3** (gate >=8),
+  g−r −1 -> **+8** (gate >=+5), med 67.8 vs ref 66.8.
+- 1a collar (855..1065, 275..340): med 56.0 -> **62.2** (gate 66.2 ±5),
+  sd 5.2 -> **11.2** (gate >=9).
+- hero-rearright canyon zone: bg 1, med 56.5 with sd 14.5 / g−r +4 /
+  p75 72.6 vs ref 72.9 — a walled camo recess in shadow now, not the
+  gray trench (r31: sd~5 gray, g−r −1).
+- 1b: two gunDark seam rings at gun-z 0.45/0.66 r 0.088 dress the bare
+  root stage (inside the ±0.1015 plan bins and the 1.94..1.73 band).
+
+GROUP 2 (side-mass depth + gear shade):
+- 2a left lower band sub-30: 2405 -> **0** (ref 0); track rows
+  y372..379 med 6.8 -> **51.4** (gate >=35, ref 55.4); wheel-row p5
+  18.0 -> 51.4 (ref 51.5).
+- 2b delivered as the deep two-course skirt (see 0b) — the ref's ONE
+  camo mass to near ground. Honest misses: pale>=95 in the lower band
+  1/0 vs targets 60/150 and R skirt-band p75 60.7 vs ref 73.0 — the
+  family camo canvas + bakeDirt dust gradient cap pale reach at hem
+  depth (fleet materials, not addressable from the profile); med/p5/
+  sub-30/sd all land in ref class.
+- 2c spike comb: no per-tank horn params exist in the shared shoe
+  geometry — the tone lift + deep skirt kill the against-sky comb read
+  (ground line now reads as link texture); carried as partially
+  delivered.
+- 2d stern bullseye: dark cover discs outboard of both sprocket drum
+  faces (x 1.547.., r 0.23 inside the 0.27 drum silhouette).
+BANKED LAW (r32): fixed near-black GEAR reads as §B2 SKY under the
+mask-method — pad/chain hexes must clear bg+13 in shade or the scan
+counts venetian-blind holes through every wrap face.
+
+GROUP 3 (roof furniture, budget lane):
+- 3a cupola: raised drum (wall 2.14..2.238 — top AT the heightM grace
+  ceiling; the ref's own side line here is 2.05..2.19 so silhouette
+  height is razor) + recessed dark hatch + SEVEN vision blocks flush to
+  the rim; reads as a drum at close-roof. Zone sub-45 4403 -> 3758
+  (ref 478 — the rest is proxy-turret shadow + dark camo patches, not
+  the cupola).
+- 3b Kord: scale 0.50 -> 0.62, mount 0.735 (nsvt receiver top = mount
+  +0.192: at 0.705 it hid 1.3cm UNDER the 2.205 plate line — measured,
+  the "1px rod" root cause), barrel yaw −2.2 -> −1.75 (the z-spread put
+  the 2.31 crest on THREE side columns at +0.05). 3x close-roof crop
+  reads gun-with-receiver+cradle+ammo; skyline break preserved.
+- 3c: FITTINGS census mg1+**6d** (rack over the right-flank bins at
+  outer face 1.08 — the print's stowage plan steps to −1.87 at x
+  1.10..1.20 and a 1.17 seat printed +0.176 into the 1.15 plan column;
+  spareTrackLinks ×2 + towCable(eyes:false) recessed flush on the
+  engine deck; roof-plate seam lines). Edge census (|∇L|>12, same-method
+  ref): turret roof 2584 vs ref 2644 (**0.98 — was 0.60-class**),
+  engine deck 1734 vs 2559 (0.68, was 0.49), glacis 2326 vs 2961 (0.79).
+- 3d Kontakt-5: four low-relief wedge rows + dark seam gaps on the
+  upper glacis following the deck fall (<=18mm proud at row edges).
+GROUP 4: bow pegs re-slotted to the rubber/flap class and tucked
+(hookX/hookY/hookZ/hookBucket opt-ins on ruGlacisKit — the default
+w*0.30 hook seat was ALSO the r31 audit's "unnamed 18-voxel sliver";
+explicit hookX 0.86 clears the wrap dilation, audit 18 -> 4 front, the
+4 = the flap kissing the dilated wrap, no real contact); wide center
+flap ±0.95 at z 1.925 under the nose (front-mask interior: bins keep
+the 0.225 pan minimum). 4b done-gate: close-front under-pod bg census
++1052 -> **−422** (gate: within +300). Residual: the outboard
+flap+bracket pair still reads as two dark sticks at close-front 3x
+(now rubber/gunmetal, attached at the stub face — wide/short flap
+variants that would fully occlude them re-seated the side registration
+and cost 1.3-3.1 hull pts (§C stray-column law) and were reverted;
+carried at quarter-point class).
+
+Gate cost ledger vs the r31 90.9 record: hull 90.9 -> **92.0** (+1.1,
+the V4/flap/skirt front-bin work), whole 92.2 -> 92.3, dims/floaters
+equal, stations 96.3 -> 95.3 (deck kit, i2 1.41-class) and turret
+91.4 -> 90.2 — the priced cupola/Kord/rack furniture tax (side rows at
+'at' 1.15/1.26/1.37 now +0.036 ×3, BETTER than r31's own +0.046-0.051
+×3 there; the mean carries the distributed 2-4cm roof adds). Official
+rigs at landing: geometry-gate **90.2 PASS ×2 bit-identical**
+(gatePassed:true re-read from JSON both runs); track-clip-audit --exact
+**4/0**; tank-standard-check PASS (clip ✓ holes 0 ✓ mg1+6d ✓);
+visual-evaluator exit 0, RIG PARITY OK (max dYawProxy 1.8° @close-roof,
+max |dCentroid| 0.03 m); critic pairs zero console errors.
+
+Self-read floors (builder, not a verdict): the four ordered void
+families no longer exist at any angle; the flanks are one deep camo
+mass with lit gear; the turret face/collar/canyon are scheme camo; the
+cupola is a drum and the Kord a gun. Worst remaining reads: the
+proxy-shadow dark band across the roof plates at close-roof (solid,
+269px bg-tolerance), the hero-toptilt grazing strips, and the
+close-front flap sticks. Self-read ~8.8-9.0 floor on the side/rear
+ring, close-front/close-roof the risk views.

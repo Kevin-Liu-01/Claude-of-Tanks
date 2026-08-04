@@ -276,7 +276,12 @@ function ruGlacisKit(P, o) {
   const yG = o.y, zG = o.z;                       // glacis mid reference
   for (const s of [-1, 1]) {
     P.add('hullDetail', box(o.w * 0.30, 0.045, 0.05), s * o.w * 0.16, yG + 0.04, zG, -0.35, s * 0.25, 0);
-    P.add('hullDark', box(0.10, 0.12, 0.14), s * o.w * 0.30, o.hookY ?? yG - 0.42, o.hookZ ?? zG + 0.42, -0.3, 0, 0);
+    // hookBucket/hookX (t84 r32, opt-in): the t84 critic ordered the bow
+    // hooks into the dark-rubber flap class (raw-gray pegs read), and the
+    // default w*0.30 seat turned out to be the r31 audit's "unnamed
+    // proxy-class sliver" — an explicit hookX clears the wrap-zone
+    // dilation. Defaults byte-identical for every other caller.
+    P.add(o.hookBucket ?? 'hullDark', box(0.10, 0.12, 0.14), s * (o.hookX ?? o.w * 0.30), o.hookY ?? yG - 0.42, o.hookZ ?? zG + 0.42, -0.3, 0, 0);
     // eyeX/eyeY (t72b3m visual r1, opt-in): the default w*0.36 seat put the
     // tow-eye tori INSIDE the bow track x-band where they poked through the
     // idler wrap and read as floating ring outlines over the front tracks
@@ -2601,15 +2606,22 @@ function buildT84(P) {
   for (const s of [-1, 1]) {
     P.add('hull', box(0.42, 0.37, 0.12), s * 1.07, 0.805, 2.10);           // prong body 2.04..2.16 (idler wrap runs to 2.02)
     P.add('hull', box(0.84, 0.07, 0.13), s * 1.28, 0.955, 2.165);          // nose lip 2.10..2.23
-    P.add('hullDark', box(0.10, 0.12, 0.14), s * 0.55, 0.68, 1.93, -0.3, 0, 0);  // bow hooks (plan center 2.00)
+    P.add('hullRubber', box(0.10, 0.12, 0.14), s * 0.55, 0.68, 1.93, -0.3, 0, 0);  // bow hooks (plan center 2.00; r32 GROUP 4a: dark-rubber flap class, joined by the center flap below)
     P.add('hull', box(0.42, 0.38, 0.06), s * 1.51, 0.79, 2.12);            // fender splash stubs (front ±1.55 bottom 0.60)
   }
   // low front flaps BEHIND the wrap (front cols ±1.59..1.71 bottom 0.30) —
   // outboard of the track band, clip-free; the side col 1.91 bottom 0.21 is
-  // a separate inboard bracket the tracks hide in front view
+  // a separate inboard bracket the tracks hide in front view.
+  // r32 GROUP 4a-bis: these two members WERE the critic's "four pegs
+  // dangling in free air" (probe-identified: rubber flap x 1.59..1.70 +
+  // dark bracket x 1.36..1.44 silhouetted at close-front). The flap slides
+  // aft onto the splash-stub face (z 2.055, same front columns) and the
+  // bracket grows a neck to the stub underside (0.60) — interior fill, the
+  // 1.91 side col keeps its 0.21 bottom and the wrap still hides the neck
+  // dead-front (wrap front z 2.0 > 1.94).
   for (const s of [-1, 1]) {
-    P.add('hullRubber', box(0.13, 0.45, 0.06), s * 1.655, 0.525, 1.89);
-    P.add('hullDark', box(0.08, 0.20, 0.06), s * 1.40, 0.30, 1.91);
+    P.add('hullRubber', box(0.13, 0.45, 0.06), s * 1.655, 0.525, 2.055);  // flap on the stub face (measured optimum: wide/short variants re-seated the side registration and cost 1.3-3 hull pts — §C stray-column law)
+    P.add('hullDark', box(0.08, 0.42, 0.06), s * 1.40, 0.40, 1.91);
   }
   // fender strip rows FOLLOW the deck taper (ref side tops: 1.33 rear /
   // 1.30 mid / falling glacis line forward — r30's flat 1.315 row owned
@@ -2620,6 +2632,31 @@ function buildT84(P) {
     for (let i = 0; i < 2; i++) P.add('hull', box(0.44, 0.026, 0.44), s * 1.53, 1.215, -0.06 + (i + 0.5) * 0.46);
   }
   ruDeck(P, { deckY: 1.31, hatchX: 0.45, hatchY: 1.245, hatchZ: 0.62, periY: 1.14, gz: -2.56, grilles: 3, gw: 1.10 });
+  // r32 GROUP 3d (critic r31 driver F, identity read): Kontakt-5 wedge
+  // banding on the upper glacis — four low-relief rows following the deck
+  // fall (<=18 mm proud at row edges, faces well under a half-pixel in the
+  // side columns) + dark seam gaps between. Structure read at close-front
+  // 3x; also feeds the glacis-deck edge census (1191-class ref).
+  for (const [zr, yr] of [[1.10, 1.192], [1.31, 1.180], [1.52, 1.168], [1.70, 1.158]]) {
+    P.add('hull', box(2.00, 0.018, 0.16), 0, yr, zr);
+    P.add('hullDark', box(1.96, 0.008, 0.03), 0, yr + 0.002, zr + 0.095);
+  }
+  // r32 GROUP 3c: engine-deck dressing (flat lane — the rear-deck side tops
+  // are the 1.365 hump line, so everything here stays <=1.39): spare link
+  // run + tow cable draped across the plateau + low tool boxes.
+  {
+    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.48, seed: 7 });
+    links.position.set(-0.62, 1.295, -3.42);   // recessed flush: top 1.345 on the 1.333 deck (station i2 reads the deck line)
+    P.hullG.add(links);
+    const links2 = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.48, seed: 9 });
+    links2.position.set(0.72, 1.295, -3.60);
+    P.hullG.add(links2);
+    // eyes:false + ends inside stations i2/i3 — the first draped run's end
+    // eyes printed 1.394 into the stern slice (station i1 topPct 0.26->3.26)
+    const cable = FITTINGS.towCable({ mats: P.mats, eyes: false, pts: [[-0.95, 1.326, -2.72], [0.2, 1.324, -3.25], [0.95, 1.326, -3.78]], seed: 5 });
+    P.hullG.add(cable);
+  }
+  P.add('hullDetail', box(0.52, 0.024, 0.16), -0.80, 1.333, -3.62);   // left tool tray (right side carries the second link run)
   // fender-bay covers between the strip row end and the nose (top-down
   // hole law: 48-cell enclosed pockets at x ±1.65, z 0.9..1.9). They sit
   // at y 0.805 BETWEEN the track runs (bottom run <=0.11, top run >=0.99)
@@ -2627,7 +2664,56 @@ function buildT84(P) {
   for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
     P.add('hull', box(0.28, 0.02, 0.34), s * 1.60, 0.805, 1.03 + i * 0.345);
   }
-  ruGlacisKit(P, { w: 3.1, y: 1.10, z: 1.55, eyes: false, hookY: 0.62, hookZ: 2.02, hlY: 1.08 });
+  // r32 ORDER 0d (§B2, critic r31 V4): pod-flank fill. Dead-front the
+  // corridor x 1.53..1.70 / y 0.83..1.14 read 1212/1202px of ENCLOSED SKY
+  // (rays clear the splash stubs, duck the fender strips, run inboard of the
+  // skirt and out the stern; close-front kept a 170px window of the same
+  // family). Deep fender-side boxes at the strips' own certified x-planes
+  // (1.53/1.74) block every such ray. Tops FOLLOW THE DECK LINE 4mm under
+  // (side-view top columns unchanged); bottoms ride the 0.805 bay covers;
+  // x >= 1.53 clears the track band + pin bosses (<=1.5165) at every y, so
+  // the clip audit cannot move. Front mask: fills bins the REF renders SOLID.
+  for (const s of [-1, 1]) {
+    // xi 1.52: the first 1.53 edge left a 1-2px sky hairline against the
+    // 1.5165 pad-boss print (52/43px clusters). 1.52 stays clear of every
+    // dilated track box in 3D (slab y >= 0.80 vs climb-pad tops <= 0.60).
+    const xi = Math.min(s * 1.52, s * 1.74), xo = Math.max(s * 1.52, s * 1.74);
+    P.add('hull', slab(                                        // z 0.87..1.31
+      [xi, 0.80, 1.31], [xo, 0.80, 1.31], [xo, 0.80, 0.87], [xi, 0.80, 0.87],
+      [xi, 1.175, 1.31], [xo, 1.175, 1.31], [xo, 1.209, 0.87], [xi, 1.209, 0.87]));
+    P.add('hull', slab(                                        // z 1.35..1.79
+      [xi, 0.80, 1.79], [xo, 0.80, 1.79], [xo, 0.80, 1.35], [xi, 0.80, 1.35],
+      [xi, 1.150, 1.79], [xo, 1.150, 1.79], [xo, 1.176, 1.35], [xi, 1.176, 1.35]));
+    P.add('hull', slab(                                        // z 1.83..1.93
+      [xi, 0.80, 1.93], [xo, 0.80, 1.93], [xo, 0.80, 1.83], [xi, 0.80, 1.83],
+      [xi, 1.122, 1.93], [xo, 1.122, 1.93], [xo, 1.148, 1.83], [xi, 1.148, 1.83]));
+    // nose cap: the r32 flap re-seat (z 2.055) closed a ring around the
+    // 1.93..2.09 fender pocket — §B2 top-down scan flagged 1 cell/side.
+    // Cap the pocket under the lip line (top 1.04 <= the 1.06 deck end).
+    P.add('hull', box(0.22, 0.24, 0.14), s * 1.63, 0.92, 2.00);
+    // r32 trench close-out: the fender TRENCH between skirt inner face
+    // (1.695) and track outer print (1.5165) ran open the whole hull and
+    // exited at the STERN — tilted front-view rays threaded it over the
+    // V4 slabs/skirt tops (120px pairs @ y0 1.24..1.28) and along the
+    // 1.508..1.53 sliver (52/43px). FLOOR the trench at the bay-cover
+    // plane (clear of both wrap zones) and CAP its stern end behind the
+    // skirt rear edge (mask-identical: the z −4.38 skirt face already
+    // paints those rear bins to 0.64).
+    for (let i = 0; i < 10; i++) {
+      P.add('hull', box(0.17, 0.02, 0.442), s * 1.605, 0.805, -3.50 + (i + 0.5) * 0.436);
+    }
+    P.add('hull', box(0.20, 0.62, 0.06), s * 1.62, 0.95, -4.33);
+  }
+  // r32 GROUP 4a (critic r31 driver E): the four bow pegs dangled in free
+  // air under the pods (raw-gray, 3x-decisive). Kit hooks re-slot to the
+  // rubber class + tuck up/back against the prong bottoms (y 0.72, z 1.99 —
+  // contact read); one WIDE center flap joins the peg pairs under the bow
+  // like the ref's. Flap face z 1.95 paints the center front bins only at
+  // y 0.42..0.50 — BELOW the nose face (0.50), TOWARD the ref's 0.35 pan
+  // line (current bins bottom out 0.50 there); pan face at 0.225 keeps the
+  // per-column minimum, so front bottom rows cannot move.
+  ruGlacisKit(P, { w: 3.1, y: 1.10, z: 1.55, eyes: false, hookX: 0.86, hookY: 0.72, hookZ: 1.99, hookBucket: 'hullRubber', hlY: 1.08 });
+  P.add('hullRubber', box(1.90, 0.28, 0.05), 0, 0.56, 1.925);
   KIT.towCable(P, [[-1.00, 1.31, 0.40], [0, 1.305, -0.30], [1.00, 1.31, 0.40]]);
   buildRunningGear(P, {
     // ref gear (r31b measured): the drawn climb starts ~0.2 past contactZ*
@@ -2646,12 +2732,43 @@ function buildT84(P) {
     rollers: [-2.30, -0.70, 0.90].map((z) => ({ z, y: 0.80, r: 0.08 })),
     trackW: 0.50, topY: 0.82, botY: 0.05, paintedEnds: true, coveredTop: true, arms: false,
     contactZF: 0.63, contactZR: -3.10,
+    // r32 ORDER 0c + GROUP 2a (critic r31 V3/driver B): the fixed near-black
+    // pad/chain clones (0x171614/0x27251f) rendered INSIDE the ±13 bg
+    // tolerance — the dead-front/rear wrap faces scanned as venetian-blind
+    // SKY rows (418/404px + ~10 rows/face) and the side track rows read med
+    // 6.8 vs ref 55.4. pt91m r27 recipe (measured into the ref's 45-62L
+    // window there): family olive-brown hexes + the ambient-floor rehook
+    // (Material.clone drops onBeforeCompile — gearFloor restores it).
+    padHex: 0x343a29, chainHex: 0x2b3122, gearFloor: true,
   });
+  // r32 GROUP 2d (merkava 1b lesson): the rear sprocket faces read as pale
+  // concentric bolt-ring bullseyes where the ref keeps dark occluded gear —
+  // dark cover discs outboard of the drum faces (x 1.547.., clear of the
+  // 1.5165 pad-boss print), r 0.23 inside the r 0.27 drum silhouette so no
+  // side-mask column moves and the toothed rim stays visible.
+  for (const s of [-1, 1]) P.add('hullDark', cylX(0.23, 0.015, 16), s * 1.5545, 0.74, -3.88);
   // skirts follow the deck line (three bands — the ref side top IS the
   // fender line; a flat 1.33 skirt owned every glacis col forward of 0.4)
-  ruSkirtBand(P, { x: 1.72, th: 0.05, z0: -4.38, z1: -2.20, yTop: 1.32, yBot: 0.72, panels: 5, lipX: 1.737, lipY: 0.95 });
-  ruSkirtBand(P, { x: 1.72, th: 0.05, z0: -2.20, z1: -0.10, yTop: 1.30, yBot: 0.72, panels: 5, lipX: 1.737, lipY: 0.95 });
-  ruSkirtBand(P, { x: 1.72, th: 0.05, z0: -0.10, z1: 0.86, yTop: 1.24, yBot: 0.70, panels: 3, lipX: 1.737, lipY: 0.95 });
+  // r32 ORDER 0b + GROUP 2b (§B2 V2 / critic r31 driver B): the DEEP skirt,
+  // as a TWO-COURSE stack. The r31 read exposed a wheel row over sky
+  // (right-ortho 1794px enclosed tunnel through the under-skirt band; left
+  // lower band sub-30 2405 vs REF 0) where the ref is ONE camo mass to near
+  // ground with pale streaks reaching the bottom edge.
+  // - UPPER course keeps the certified 1.72 face but hems at 0.64: the
+  //   gate's ±1.74 front bins want 0.63 (a first flat-0.26 hem read err
+  //   0.191 ×2 there) and the stern rows at z −4.0..−4.32 follow the ref's
+  //   RISING belly rake (0.33->0.64) — 0.64 also beats r31's 0.72 at −4.32.
+  // - LOWER course insets to x 1.6825 (face 1.66..1.705, inside the 1.7213
+  //   bin boundary) and hems at 0.26, wheelbase only (z −3.55..0.86 — the
+  //   sprocket-wrap zone keeps its certified r31 bottoms). 0.26 overlaps
+  //   the inner-chain rail tops (0.271) so no side slit survives; side-mask
+  //   bottoms stay the 0.05..0.11 track band; x clears pads/bosses (1.5165).
+  ruSkirtBand(P, { x: 1.72, th: 0.05, z0: -4.38, z1: -2.20, yTop: 1.32, yBot: 0.64, panels: 5, lipX: 1.737, lipY: 0.95 });
+  ruSkirtBand(P, { x: 1.72, th: 0.05, z0: -2.20, z1: -0.10, yTop: 1.30, yBot: 0.64, panels: 5, lipX: 1.737, lipY: 0.95 });
+  ruSkirtBand(P, { x: 1.72, th: 0.05, z0: -0.10, z1: 0.86, yTop: 1.24, yBot: 0.64, panels: 3, lipX: 1.737, lipY: 0.95 });
+  for (const s of [-1, 1]) for (let i = 0; i < 10; i++) {
+    P.add('hull', box(0.045, 0.40, 0.426), s * 1.6825, 0.46, -3.55 + (i + 0.5) * 0.441);
+  }
   // continuous lip rail at EXACTLY ±1.78 (widthM anchor; plan front 2.21 /
   // rear −4.36 at the outermost columns ride here, y 0.93..0.97 per the
   // front-view ±1.78 thin band)
@@ -2694,7 +2811,23 @@ function buildT84(P) {
   P.add('turretGlass', box(0.22, 0.06, 0.02), -0.35, 0.83, 0.60);
   P.add('turret', box(0.17, 0.14, 0.35), -0.945, 0.85, 0.225);    // left shoulder block 2.24 (ref front 2.243 to x −1.02)
   P.add('turret', box(0.26, 0.175, 0.12), 0.35, 0.8075, 0.51);    // commander sight 2.215
-  for (let i = 0; i < 4; i++) P.add('turretDark', box(1.60, 0.66, 0.395), 0, -0.05, 0.79 - (i + 0.5) * 0.395);  // ring carrier / apron 0.94 -> −1.74 (the −1.7583 bin boundary belongs to the bustle bottoms)
+  // r32 ORDER 0a (§B2, critic r31 V1): slot-lane flank walls. The lane
+  // between the sight housings (z W −0.50..−0.36), apex step and the cheek
+  // rears (−0.14) read OPEN SKY through the turret from both side orthos
+  // (304/307px enclosed) and as close-roof notches. Walls at x ±0.795..0.855
+  // sit INBOARD of the ±0.86 cheek planes (dead-front occluded), rise from
+  // the 1.66 collar top to the 2.06 roof-plate underside and span the whole
+  // z-gap — every side/oblique through-ray now lands on camo plate. The
+  // side-mask columns here painted NOTHING where the ref is SOLID
+  // (fill is gate-positive-or-neutral per the verdict; verified in-gate).
+  for (const s of [-1, 1]) P.add('turret', box(0.06, 0.42, 0.36), s * 0.825, 0.53, 0.63);
+  // r32 GROUP 1 (critic r31 driver C): the carrier stack re-slots to the CAMO
+  // bucket — its raw flat-gray 0x36342f faces WERE the front letterbox
+  // (p25=med=p75 63.1, sd 2.5, g−r −1 @ z −0.16), the rear collar slab
+  // (uniform 56.0 @ z −1.74) and the hero-canyon walls/floor. Geometry
+  // byte-identical, material-only (the ref paints these zones in scheme camo:
+  // letterbox sd 14.4 g−r +6).
+  for (let i = 0; i < 4; i++) P.add('turret', box(1.60, 0.66, 0.395), 0, -0.05, 0.79 - (i + 0.5) * 0.395);  // ring carrier / apron 0.94 -> −1.74 (the −1.7583 bin boundary belongs to the bustle bottoms)
   // bustle: core ±0.86 to −3.05 (bottom staircase 1.66/1.72/1.79/1.85 per
   // the ref side line), tail chamfer ±0.80
   P.add('turret', box(1.72, 0.46, 0.30), 0, 0.57, -1.00);
@@ -2714,17 +2847,38 @@ function buildT84(P) {
   for (let i = 0; i < 2; i++) P.add('turretDetail', box(0.22, 0.34, 0.23), 0.98, 0.59, -0.85 - (i + 0.5) * 0.23);
   P.add('turretDetail', box(0.105, 0.32, 0.07), 1.1475, 0.50, -0.885);
   P.add('turretDetail', box(0.19, 0.36, 0.06), -0.965, 0.52, -0.88);
-  P.add('turret', cylY(0.24, 0.26, 0.07, 14), 0.42, 0.875, -0.35);     // commander cupola (top 2.23)
-  P.add('turretDark', cylY(0.245, 0.245, 0.012, 14), 0.42, 0.909, -0.35);
+  // r32 GROUP 3a (critic r31: "flat dark ellipse painted on the roof",
+  // cupola sub-45 census 4403 vs ref 478): raised commander drum in the
+  // t80-line vocabulary. Height budget is razor here — the ref's own side
+  // tops at this lane read 2.05..2.19 and heightM rides the 2.24 grace — so
+  // the drum wall tops AT the grace ceiling (2.238) and the cupola READ
+  // comes from the proud wall + a ring of seven vision blocks + recessed
+  // dark hatch, not from silhouette height (blocks 2.254 over ~2 columns,
+  // the currently-certified 2.245..2.281 Kord/sight lane class).
+  P.add('turret', cylY(0.235, 0.265, 0.098, 14), 0.42, 0.869, -0.35);   // drum wall 2.14..2.238
+  P.add('turretDark', cylY(0.20, 0.20, 0.014, 14), 0.42, 0.905, -0.35); // recessed hatch disc (top 2.232, inside grace)
+  for (let k = 0; k < 7; k++) {
+    const a = (k / 7) * Math.PI * 2 + 0.35;
+    P.add('turretDark', box(0.055, 0.032, 0.045), 0.42 + Math.cos(a) * 0.195, 0.897, -0.35 + Math.sin(a) * 0.195, 0, -a, 0);
+  }
   {
     // Kord on the commander ring — DARK crown-riding lines (pale-deck MG
     // physics), crest ~2.30 over <=2 side cols (heightM p95 budget: the
     // sight tops 2.235 stay inside the 1% grace at published 2.22)
+    // r32 GROUP 3b (MG PHYSICS, critic r31: "1px ANGLED ROD — no receiver
+    // mass"): scale 0.50 -> 0.62 with the mount dropped 5 cm — the bigger
+    // receiver/cradle clear the 2.205 plate line as ~7 cm of dark
+    // crown-riding mass (pale-deck inversion) while the crest returns to
+    // the ref's own 2.28 furniture line (the first 0.755 seat printed
+    // +0.08 x4 turret columns and popped heightM's p95 to 2.26).
     const kord = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'nsvt', scale: 0.50, tone: 'dark', ammo: true, elev: 0,
-      rotation: [0, -2.2, 0], seed: 6,   // barrel swung rear-left over the roof plates (the +1.25 swing crossed the ref's 2.17 center-front cols)
+      mats: P.mats, cls: 'nsvt', scale: 0.62, tone: 'dark', ammo: true, elev: 0,
+      rotation: [0, -1.75, 0], seed: 6,  // barrel swung left over the roof plates (−2.2's z-spread put the 2.31 crest on THREE side columns at +0.05; −1.75 concentrates it on ~1 while staying clear of the ref's 2.17 center-front cols)
     });
-    kord.position.set(-0.35, 0.755, -0.10);
+    // y 0.735: nsvt receiver top = mount + 0.192 — at 0.705 it hid 1.3 cm
+    // UNDER the 2.205 plate line (still a rod); 0.735 stands 4.2 cm of
+    // receiver proud with the crest ~2.31 (the certified furniture class).
+    kord.position.set(-0.35, 0.735, -0.10);
     P.turretG.add(kord);
   }
   for (const s of [-1, 1]) {
@@ -2733,6 +2887,18 @@ function buildT84(P) {
     const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 5, splay: s * 1.12, slot: 'dark', seed: 3 + s });
     smoke.position.set(s * 0.60, 0.52, 1.55);  // tube tips stay behind the 0.87 cheek plan face and under the 1.94 mantlet-band line
     P.turretG.add(smoke);
+  }
+  {
+    // r32 GROUP 3c (§I KIT fittings; critic r31 driver D "bare rack rail on
+    // the right flank"): mesh-filled stowage rack over the right-flank bin
+    // row — outer face at x 1.17 inside the 1.20 print stowage line, z-span
+    // inside the −2.26 plan tell, top 2.00 under the 2.08 bin lids.
+    const rack = FITTINGS.stowageRack({ mats: P.mats, w: 0.70, d: 0.30, h: 0.26, rails: 2, seed: 11, rotation: [0, -Math.PI / 2, 0] });
+    rack.position.set(0.93, 0.42, -0.96);  // outer face 1.08: the print's stowage plan steps to −1.87 at x 1.10..1.20 — the first 1.17 seat printed +0.176 into the 1.15 plan column
+    P.turretG.add(rack);
+    // roof-plate seam lines (5 mm — side-invisible, top-view edge density
+    // toward the ref's 1363 edge-px class)
+    for (const zr of [0.16, -0.23, -0.62]) P.add('turretDark', box(1.52, 0.006, 0.02), 0, 0.888, zr);
   }
   // ---- KBA-3 (2A46M class): axis 1.835 (band 1.94..1.73), tube r 0.100
   // (plan bin law: edge inside the ±0.1015 column boundary — the warped
@@ -2745,7 +2911,11 @@ function buildT84(P) {
     [0.27, 0.85, 0.082, 0.082, 0, 0.026],                      // root stage: ref band 1.942..1.778 here (thinner than the free tube)
     [0.85, 1.45, 0.104], [1.45, 1.79, 0.100],
     [2.52, 3.10, 0.101], [3.10, 3.70, 0.100], [3.70, 4.26, 0.099],
-  ], { rings: [[0.85, 0.101], [1.66, 0.113, 0, 0.026], [2.52, 0.101], [3.49, 0.094, 0, 0.014], [3.61, 0.094, 0, 0.014]], muzzle: 4.26 });
+  ], { rings: [[0.45, 0.088], [0.66, 0.088], [0.85, 0.101], [1.66, 0.113, 0, 0.026], [2.52, 0.101], [3.49, 0.094, 0, 0.014], [3.61, 0.094, 0, 0.014]], muzzle: 4.26 });
+  // ^ r32 GROUP 1b: two thermal-sleeve seam rings on the bare root stage
+  // (close-front read "RAW mantlet slot with bare cylinder root" — the ref
+  // carries a ringed sleeve). r 0.088 stays inside the ±0.1015 plan bins and
+  // the 1.94..1.73 side band; zero silhouette-column movement.
   P.addGunExtra(box(0.40, 0.235, 0.71), 0, 0.018, 2.15);       // evac box: band 1.735..1.97 @ world 2.40..3.11, plan halfW 0.20 (ref plan bins ±0.15/0.18 read 3.10)
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [1.215, 0.50, 0.20], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [-1.215, 0.50, 0.20], -Math.PI / 2);
