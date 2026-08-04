@@ -83,13 +83,26 @@
 <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png">
 <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
-<link rel="preload" href="/fonts/inter/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Medium.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/media/featured/f6_studio_strv_steinburg_duel.webp" as="image">
 <style>
+  /* ABC Monument Grotesk (Dinamo — owner cut, fonts r4): weight ranges map
+     the existing hierarchy; keep in sync with index.html + src/ui/fonts.js */
   @font-face {
-    font-family: 'Inter';
-    src: url('/fonts/inter/InterVariable.woff2') format('woff2');
-    font-weight: 100 900; font-style: normal; font-display: swap;
+    font-family: 'ABC Monument Grotesk';
+    src: url('/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Regular.woff2') format('woff2');
+    font-weight: 100 400; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: 'ABC Monument Grotesk';
+    src: url('/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Medium.woff2') format('woff2');
+    font-weight: 500 600; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: 'ABC Monument Grotesk';
+    src: url('/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2') format('woff2');
+    font-weight: 700 900; font-style: normal; font-display: swap;
   }
   :root {
     /* the game's own palette (index.html boot / garage / studio panel) */
@@ -104,7 +117,7 @@
   html { scroll-behavior: smooth; }
   body {
     background: var(--bg); color: var(--ink);
-    font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'ABC Monument Grotesk', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     font-weight: 500; font-size: 15px; line-height: 1.6;
     -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility; font-optical-sizing: auto; font-synthesis: none;
@@ -925,7 +938,7 @@
   <div class="wrap">
     <div class="shead rv">
       <h2><span class="sic"><svg class="ic"><use href="#i-shield"/></svg></span><span class="no">06</span>Media kit</h2>
-      <span class="ann">the shield, three ways · click to download</span>
+      <span class="ann">shields &amp; lockups · click to download</span>
     </div>
     <div class="kit rv">
       <div class="item"><div class="stage grid2"><img src="/brand/logo-mark.svg" alt="colored shield"></div>
@@ -936,8 +949,10 @@
         <div class="meta"><span><b>Shield — metal</b><div class="p">public/brand/logo-mark-metal.svg</div></span><a href="/brand/logo-mark-metal.svg" download><svg class="ic"><use href="#i-dl"/></svg>Download</a></div></div>
       <div class="item"><div class="stage paper"><img src="/brand/logo-full.svg" alt="full lockup"></div>
         <div class="meta"><span><b>Full lockup</b><div class="p">public/brand/logo-full.svg</div></span><a href="/brand/logo-full.svg" download><svg class="ic"><use href="#i-dl"/></svg>Download</a></div></div>
-      <div class="item"><div class="stage grid2"><img src="/brand/logo-mark-simple.svg" alt="simple mark"></div>
-        <div class="meta"><span><b>Simple mark</b><div class="p">public/brand/logo-mark-simple.svg</div></span><a href="/brand/logo-mark-simple.svg" download><svg class="ic"><use href="#i-dl"/></svg>Download</a></div></div>
+      <!-- brand r2 (owner): simple mark retired — replaced by the metal
+           full lockup (metal crest + brushed-steel wordmark) -->
+      <div class="item"><div class="stage"><img src="/brand/logo-full-metal.svg" alt="full lockup, metal"></div>
+        <div class="meta"><span><b>Full lockup — metal</b><div class="p">public/brand/logo-full-metal.svg</div></span><a href="/brand/logo-full-metal.svg" download><svg class="ic"><use href="#i-dl"/></svg>Download</a></div></div>
       <div class="item"><div class="stage"><img src="/brand/og-image.png" alt="opengraph image" style="max-height:128px"></div>
         <div class="meta"><span><b>OpenGraph card</b><div class="p">public/brand/og-image.png</div></span><a href="/brand/og-image.png" download><svg class="ic"><use href="#i-dl"/></svg>Download</a></div></div>
     </div>
