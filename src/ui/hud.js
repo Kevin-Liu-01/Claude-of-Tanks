@@ -478,6 +478,24 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#f0b04a;
   text-shadow:0 1px 3px rgba(0,0,0,.9);opacity:0;transition:opacity .25s ease;}
 .cot-alert.red{color:#f05a5a;}
+/* battle_countdown r1: WoT-style pre-battle freeze — kicker + big numeral,
+   center-upper so it never fights the reticle. The numeral pops on each
+   second via a keyed scale animation; the release swaps to ROLL OUT! and
+   fades. Pure overlay: pointer-events none, no layout impact. */
+.cot-prebattle{position:absolute;left:50%;top:24%;transform:translateX(-50%);
+  text-align:center;pointer-events:none;opacity:0;transition:opacity .3s ease;}
+.cot-prebattle.on{opacity:1;}
+.cot-prebattle .k{font-family:${FONT_COND};font-size:13px;font-weight:800;
+  letter-spacing:.34em;text-indent:.34em;text-transform:uppercase;color:#cfd9e2;
+  text-shadow:0 1px 6px rgba(0,0,0,.9);}
+.cot-prebattle .n{margin-top:4px;font-family:${FONT_STACK};font-size:88px;
+  font-weight:800;line-height:1;color:#ffd27a;font-variant-numeric:tabular-nums;
+  text-shadow:0 2px 10px rgba(0,0,0,.85),0 0 34px rgba(240,160,48,.35);}
+.cot-prebattle .n.tick{animation:cot-pb-pop .5s cubic-bezier(.2,.7,.3,1);}
+.cot-prebattle .n.go{font-size:64px;letter-spacing:.12em;text-indent:.12em;color:#ffe4b0;}
+@keyframes cot-pb-pop{from{transform:scale(1.28);opacity:.4;}to{transform:scale(1);opacity:1;}}
+.cot-prebattle .s{margin-top:6px;font-family:${FONT_COND};font-size:11px;font-weight:700;
+  letter-spacing:.22em;text-transform:uppercase;color:#8a97a3;text-shadow:0 1px 4px rgba(0,0,0,.9);}
 .cot-alert.show{opacity:1;}
 .cot-bounce{position:absolute;left:50%;top:37%;transform:translateX(-50%);font-size:15px;
   font-weight:700;letter-spacing:.06em;color:#c8d2dc;white-space:nowrap;
@@ -864,6 +882,16 @@ export function initHud(bus) {
   const shotInfo = createShotInfo(bus);
   root.appendChild(shotInfo.root);
   // ======================= END SHOT-INFO SECTION ============================
+  // battle_countdown r1: pre-battle freeze overlay (kicker + numeral + hint)
+  const preBattleEl = el('div', 'cot-prebattle', root);
+  const pbKick = el('div', 'k', preBattleEl);
+  pbKick.textContent = 'BATTLE BEGINS IN';
+  const pbNum = el('div', 'n', preBattleEl);
+  const pbHint = el('div', 's', preBattleEl);
+  pbHint.textContent = 'ALL VEHICLES HOLD · LOOK AROUND FREELY';
+  let pbShownSec = -1;
+  let pbHideTimer = 0;
+
   const alertEl = el('div', 'cot-alert', root);
   const bounceEl = el('div', 'cot-bounce', root); // WoT-style "Ricochet!" line
 
@@ -3326,6 +3354,45 @@ export function initHud(bus) {
      * while the battle loading screen holds the frame (shotInfo owns the
      * cache; see warmSchematics there). @param {string[]} specIds */
     warmShotCards(specIds) { shotInfo.warmSchematics(specIds); },
+
+    /**
+     * battle_countdown r1: drive the pre-battle freeze overlay. Called every
+     * held frame with the remaining seconds; the crossing call (0) flashes
+     * ROLL OUT! and fades the overlay. Repeated calls are cheap — the DOM
+     * only updates when the displayed second changes.
+     * @param {number} secondsLeft remaining hold (0 = released)
+     */
+    preBattleCountdown(secondsLeft) {
+      if (secondsLeft > 0) {
+        const sec = Math.ceil(secondsLeft);
+        clearTimeout(pbHideTimer);
+        preBattleEl.classList.add('on');
+        if (sec !== pbShownSec) {
+          pbShownSec = sec;
+          pbNum.classList.remove('go', 'tick');
+          pbNum.textContent = String(sec);
+          void pbNum.offsetWidth; // restart the pop animation per second
+          pbNum.classList.add('tick');
+        }
+      } else if (pbShownSec !== 0) {
+        pbShownSec = 0;
+        pbKick.textContent = '';
+        pbHint.textContent = '';
+        pbNum.classList.remove('tick');
+        pbNum.textContent = 'ROLL OUT!';
+        void pbNum.offsetWidth;
+        pbNum.classList.add('tick', 'go');
+        clearTimeout(pbHideTimer);
+        pbHideTimer = setTimeout(() => {
+          preBattleEl.classList.remove('on');
+          // reset for the next battle
+          pbKick.textContent = 'BATTLE BEGINS IN';
+          pbHint.textContent = 'ALL VEHICLES HOLD · LOOK AROUND FREELY';
+          pbNum.classList.remove('go');
+          pbShownSec = -1;
+        }, 1100);
+      }
+    },
 
     /**
      * Switch overall HUD mode.

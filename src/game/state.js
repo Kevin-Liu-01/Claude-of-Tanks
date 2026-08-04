@@ -112,6 +112,13 @@ export function createBus() {
 export function createGameState() {
   return {
     phase: 'garage',            // 'garage' | 'battle' | 'ended' | 'shot'
+    // battle_countdown r1: pre-battle hold (seconds). While > 0 the fixed-step
+    // sim never runs — every tank (player included) is frozen and cannot fire
+    // or move. Armed to Infinity by the player battle-entry path the moment
+    // the roster spawns (so nothing can fire under the loading screen), reset
+    // to the visible 5 s countdown when the loading screen drops (openBattle),
+    // and 0 on every debug/probe entry path (unchanged behavior there).
+    preBattleS: 0,
     mapId: 'verdant',           // MAP-CONFIG WIRING: active battlefield id (main.js startBattle)
     tanks: [],                  // TankEntity[] — THIS battle's participants (player included)
     allTanks: [],               // COMMUNITY TANKS: full entity pool (core + community)

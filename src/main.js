@@ -1679,7 +1679,7 @@ async function startBattleLoading(specId, mapId = null) {
   //    chunk-by-chunk (55 → 88%) so the bar moves through the texture bakes.
   battleLoad.progress(0.56, 'Assembling rosters');
   await nextFrame();
-  startBattle(specId, resolved, { deferVisuals: true });
+  startBattle(specId, resolved, { deferVisuals: true, preBattleHold: true });
   bltStage('roster');
   battleLoad.rosters(rosterRows('player'), rosterRows('enemy'));
   // PERF (perf-r2): bake the shot-card schematics for this exact roster now,
@@ -1748,6 +1748,18 @@ async function startBattleLoading(specId, mapId = null) {
     }
   }
   bltStage('swapDrain');
+  // EVENT-SPIKE WARM part 3 (perf-r2b): the wreck dance in warmCombatPipeline
+  // ran on PRE-SWAP visuals — a swapped GLB tank's first kill still baked its
+  // wreck-share canvases on the event frame. The swaps just drained above, so
+  // dance every fielded visual once more (per-family bakes are cached — only
+  // families the swaps introduced pay anything) while the screen still owns
+  // the frame.
+  for (const e of game.tanks) {
+    if (e.visual && e.visual.setDestroyed && e.visual.resetDestroyed) {
+      try { e.visual.setDestroyed({}); e.visual.resetDestroyed(); } catch (_) { /* warm only */ }
+    }
+  }
+  bltStage('wreckWarm');
   battleLoad.progress(1, 'Ready');
 
   // Cached maps can finish in only a few frames. Give the page enough dwell
@@ -1755,13 +1767,11 @@ async function startBattleLoading(specId, mapId = null) {
   const readyHoldMs = 900 - (performance.now() - shownAt);
   if (readyHoldMs > 0) await new Promise((r) => setTimeout(r, readyHoldMs));
 
-  // 4. countdown, then hand the screen over to the battle-open flyby.
-  for (let n = 2; n >= 1; n--) {
-    battleLoad.countdown(n);
-    await new Promise((r) => setTimeout(r, battleCountdownMs));
-  }
-  battleLoad.countdown(0);
-  await new Promise((r) => setTimeout(r, Math.min(360, battleCountdownMs)));
+  // 4. battle_countdown r1: no more counting down ON the loading screen —
+  // the world opens as soon as it is ready, and the visible WoT-style
+  // 5 s countdown runs IN the battle (openBattle resolves the sim hold armed
+  // at roster spawn). The hold also absorbs the first-seconds jank (straggler
+  // GLB swaps, first-use compiles) behind a frame where nothing can move yet.
   bltStage('holdCountdown');
   blt.totalMs = Math.round(performance.now() - shownAt);
   if (typeof window !== 'undefined') window.__BATTLE_LOAD = blt;
@@ -1769,8 +1779,8 @@ async function startBattleLoading(specId, mapId = null) {
   openBattle();
 }
 // Headless probes drive the battle entry through __DEBUG.startBattle (which is
-// synchronous); the countdown only exists for the player-facing flow.
-let battleCountdownMs = 780;
+// synchronous) and skip the in-battle countdown (startBattle arms it only on
+// the player path — see opts.preBattleHold).
 let battleEntryPending = false;
 
 async function beginBattleEntry(specId, mapId = null) {
@@ -1801,6 +1811,14 @@ function rosterRows(team) {
 }
 
 function startBattle(specId, mapId = null, opts = {}) {
+  // battle_countdown r1: the PLAYER entry path arms an indefinite sim hold
+  // the moment the roster exists — the sim used to run live UNDER the
+  // loading screen (pointer lock is grabbed by the BATTLE click), so a
+  // click while the rosters were still up fired the gun. openBattle()
+  // resolves the hold to the visible 5 s countdown when the screen drops.
+  // Debug/probe entries (opts.preBattleHold unset) keep preBattleS = 0 and
+  // are driveable immediately, exactly as before.
+  game.preBattleS = opts.preBattleHold ? Infinity : 0;
   // PERF (performance_budget r1): first-combat fallback for the post-ready
   // idle warm — no-op when the idle callback already ran (the common case).
   // The loading-screen path warms explicitly AFTER the roster is picked, so it
@@ -1885,11 +1903,19 @@ function openBattle() {
     rig.release();
     rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
   }
+  // battle_countdown r1: the loading screen is down and the world is live —
+  // resolve the entry hold armed at roster spawn into the visible countdown.
+  // Camera look stays free; hulls, turrets and triggers release at zero.
+  if (game.preBattleS === Infinity) game.preBattleS = PRE_BATTLE_HOLD_S;
   audio.resume(); // the entry-gate keypress already unlocked the context
   audio.ambientOn(true);
 }
+// battle_countdown r1: WoT-style pre-battle freeze length (player path only).
+const PRE_BATTLE_HOLD_S = 5;
 
 function enterGarage() {
+  // battle_countdown r1: leaving mid-countdown (Esc -> garage) clears the hold.
+  game.preBattleS = 0;
   // SHOT-MODE RESET: see startBattle — the garage is a live-mode entry too.
   shotMode = false;
   fx.setFrozen(false);
@@ -2466,10 +2492,26 @@ function tick(nowMs) {
 
   // 2. fixed-step simulation (held while the settings panel is open)
   if (inBattle && !paused && !kcActive) {
-    simAcc = Math.min(simAcc + dtR, SIM_DT * MAX_SIM_STEPS);
-    while (simAcc >= SIM_DT) {
-      simStep(game, bus, world, rig, collider);
-      simAcc -= SIM_DT;
+    // battle_countdown r1: pre-battle hold — the sim does not step AT ALL
+    // while preBattleS > 0 (no movement, no AI, no fire, no battle clock;
+    // spawn poses were support-solved at roster build). The camera rig runs
+    // outside the sim, so looking around stays free, exactly like WoT's
+    // pre-battle freeze. simAcc stays drained so release cannot replay a
+    // catch-up burst of queued sim steps. The rest of the frame (rig,
+    // visuals, fx, render) runs normally — that is the whole point: the
+    // first-seconds jank lands while nothing can move or shoot.
+    if (game.preBattleS > 0) {
+      if (game.preBattleS !== Infinity) { // Infinity = still under the loading screen
+        game.preBattleS = Math.max(0, game.preBattleS - dtR);
+        hud.preBattleCountdown(game.preBattleS); // 0 on the crossing frame = release flash
+      }
+      simAcc = 0;
+    } else {
+      simAcc = Math.min(simAcc + dtR, SIM_DT * MAX_SIM_STEPS);
+      while (simAcc >= SIM_DT) {
+        simStep(game, bus, world, rig, collider);
+        simAcc -= SIM_DT;
+      }
     }
     if (game.result && !endShown) {
       endShown = true;
@@ -3403,6 +3445,44 @@ function warmCombatPipeline() {
   // treatment inside the swap pipeline's compile phase.)
   for (const e of game.tanks) {
     if (e.visual && e.visual.prewarmBurn) e.visual.prewarmBurn();
+  }
+  // EVENT-SPIKE WARM part 1 (perf-r2b, measured by tmp-eventspike-probe):
+  // the shared WRECK canvases (heightToNormal / roughness patch bakes via
+  // getImageData in materials.js) bake per FAMILY on the first setDestroyed —
+  // the probe still measured a 215 ms first-kill frame with everything else
+  // warm. Run the destroyed/restore dance for EVERY fielded visual, not just
+  // one: per-family bakes are cached, so repeats are free and each family's
+  // one-time cost lands here behind the loading screen instead of on its
+  // first kill.
+  for (const e of game.tanks) {
+    if (e.visual && e.visual.setDestroyed && e.visual.resetDestroyed) {
+      try { e.visual.setDestroyed({}); e.visual.resetDestroyed(); } catch (_) { /* warm only */ }
+    }
+  }
+  // EVENT-SPIKE WARM part 2: fire one silent instance of every combat effect
+  // family at a far map corner while the loading screen owns the frame — the
+  // lazy sprite-atlas bakes (flash/fbm getImageData work inside particles.js)
+  // and the per-effect-class program variants used to land on the FIRST real
+  // impact/explosion/kill (441 / 609 ms worst frames measured). resetAll()
+  // clears pools, decals, scorches, lights and timers, so nothing of the
+  // volley survives; the scene compile below then owns the new programs.
+  {
+    const wp = new THREE.Vector3(-460, 0, -460);
+    const wn = new THREE.Vector3(0, 1, 0);
+    const wd = new THREE.Vector3(0, 0, 1);
+    try {
+      fx.muzzleFlash(wp, wd, 120);
+      for (const kind of ['pen', 'nonpen', 'ricochet', 'he_pen', 'he_splash', 'era', 'spaced_absorb', 'terrain']) {
+        fx.impact(kind, wp, wn, 120);
+      }
+      fx.dust(wp, wd, 1);
+      fx.exhaust(wp, 1, true);
+      fx.destruction(wp, null, 'shot');
+      fx.destruction(wp, null, 'ammorack');
+    } catch (err) {
+      console.warn('[warm] fx volley failed (continuing):', err);
+    }
+    fx.resetAll();
   }
   warmWreckTextures(renderer);
   fx.group.traverse((o) => {
