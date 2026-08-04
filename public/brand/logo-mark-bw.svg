@@ -49,11 +49,25 @@
       <circle cx="52" cy="122" r="3.2"/><circle cx="76.4" cy="122" r="3.2"/><circle cx="100.8" cy="122" r="3.2"/>
       <circle cx="125.2" cy="122" r="3.2"/><circle cx="149.6" cy="122" r="3.2"/><circle cx="174" cy="122" r="3.2"/>
     </g>
+    <!-- gear detail (v4.6): dished rims, rear drive sprocket teeth, front
+         idler ring, track-shoe ticks along the bottom run -->
+    <g fill="none" stroke="#0b0f12" stroke-width="1.8">
+      <circle cx="52" cy="122" r="6.4"/><circle cx="76.4" cy="122" r="6.4"/><circle cx="100.8" cy="122" r="6.4"/>
+      <circle cx="125.2" cy="122" r="6.4"/><circle cx="149.6" cy="122" r="6.4"/><circle cx="174" cy="122" r="6.4"/>
+    </g>
+    <g fill="#f2f6f9"><rect x="50.4" y="109.8" width="3.2" height="3.4" transform="rotate(0 52 122)"/><rect x="50.4" y="109.8" width="3.2" height="3.4" transform="rotate(45 52 122)"/><rect x="50.4" y="109.8" width="3.2" height="3.4" transform="rotate(90 52 122)"/><rect x="50.4" y="109.8" width="3.2" height="3.4" transform="rotate(135 52 122)"/><rect x="50.4" y="109.8" width="3.2" height="3.4" transform="rotate(180 52 122)"/><rect x="50.4" y="109.8" width="3.2" height="3.4" transform="rotate(225 52 122)"/><rect x="50.4" y="109.8" width="3.2" height="3.4" transform="rotate(270 52 122)"/><rect x="50.4" y="109.8" width="3.2" height="3.4" transform="rotate(315 52 122)"/></g>
+    <circle cx="174" cy="122" r="8.4" fill="none" stroke="#0b0f12" stroke-width="1.6"/>
+    <g fill="#f2f6f9"><rect x="60.0" y="130.6" width="2.6" height="4.6"/><rect x="72.2" y="130.6" width="2.6" height="4.6"/><rect x="84.4" y="130.6" width="2.6" height="4.6"/><rect x="96.6" y="130.6" width="2.6" height="4.6"/><rect x="108.8" y="130.6" width="2.6" height="4.6"/><rect x="121.0" y="130.6" width="2.6" height="4.6"/><rect x="133.2" y="130.6" width="2.6" height="4.6"/><rect x="145.4" y="130.6" width="2.6" height="4.6"/><rect x="157.6" y="130.6" width="2.6" height="4.6"/></g>
 
     <!-- hull: low profile, long wedge glacis (ink mass, white edge seams) -->
     <path d="M34 116 40 94h108l52 18-3 6Z" fill="#0b0f12"/>
     <path d="M148 94l52 18-1.9 3.8-51.6-17.6Z" fill="#f2f6f9"/>
     <rect x="40" y="94" width="108" height="2.4" fill="#f2f6f9"/>
+    <!-- hull kit (v4.6): rear exhaust louvre, bow headlight, tow hook -->
+    <rect x="45" y="97.5" width="11" height="6.5" rx="1" fill="#f2f6f9"/>
+    <path d="M47 99.7h7M47 101.9h7" stroke="#0b0f12" stroke-width="1.3"/>
+    <rect x="185.5" y="107" width="4.6" height="3.4" rx="0.8" fill="#f2f6f9"/>
+    <rect x="194.5" y="112.6" width="4.6" height="3.4" rx="1" fill="#f2f6f9"/>
 
     <!-- side skirt: white panel; seams sit exactly midway between wheel
          centers so panels and wheels share one rhythm -->
@@ -68,6 +82,12 @@
     <path d="M61 83.7h14M61 88.3h14" stroke="#f2f6f9" stroke-width="1.8"/>
     <path d="M72 96 82 74l58 3.5L154 96Z" fill="#0b0f12"/>
     <path d="M82 74 140 77.5 138.8 80.8 81 77.2Z" fill="#f2f6f9"/>
+    <!-- turret kit (v4.6): ring shadow, CITV periscope, side seam strip -->
+    <rect x="76" y="93.8" width="72" height="2.6" fill="#f2f6f9"/>
+    <rect x="128" y="69.5" width="7.5" height="7.4" rx="1" fill="#f2f6f9"/>
+    <rect x="129.4" y="71.2" width="4.7" height="1.8" fill="#0b0f12"/>
+    <rect x="84" y="87.6" width="36" height="4" rx="0.8" fill="#f2f6f9"/>
+    <path d="M92 87.6v4M100 87.6v4M108 87.6v4" stroke="#0b0f12" stroke-width="1.2"/>
     <path d="M124 80l7 .5 6 15.5h-7Z" fill="#f2f6f9"/>
 
     <!-- the commander: Claude Code mascot, faithful source path (white cutout,
