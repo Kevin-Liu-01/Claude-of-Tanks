@@ -3484,19 +3484,26 @@ function buildLeo2Revolution(P) {
   P.add('hullDark', box(2.4, 0.02, 0.03), 0, 2.03, 1.06);                      // shelf seam
   // r2 bow armor hump (ref side 2.10..2.19 over z 0.93..2.16 with station
   // widths 3.18/3.29 at slices 8-9 and the full 3.52 at slice 10)
-  P.add('hull', box(3.18, 0.075, 0.17), 0, 2.0575, 1.015);
+  P.add('hull', box(2.80, 0.075, 0.168), 0, 2.0575, 1.0405);                   // r7: z0 0.93 -> 0.956 (its edge AA-printed 2.095 into the 0.887 column, ref 2.021 shelf line); 2.80 wide — the ref bow hump ends ~±1.40 (front ±1.42..1.55 columns read the bare 2.06 deck)
   P.add('hull', box(2.56, 0.166, 0.28), 0, 2.103, 1.24);
   // r5 station-8/9 width tabs SPLIT (probe: ref st8 w 3.278 / st9 3.218 —
   // the single ±1.645 pair read both 0.01-0.07 wide): tab A faces ±1.639
   // with both end caps inside the st8 window (z 0.555..1.111), tab B faces
-  // ±1.609 inside st9 (1.111..1.667)
+  // ±1.639 inside st9 (1.111..1.667). r7: tab B ±1.609 -> ±1.639 — the
+  // post-warp station measure reads st9 at the 3.278 line (wPct 2.1 said
+  // proc 0.068 narrow; the 12%-band thresholds re-derived under the new
+  // height and st8/st9 flipped their pre-warp reads).
   for (const s2 of [-1, 1]) {
     P.add('hull', box(0.02, 0.30, 0.19), s2 * 1.629, 1.30, 0.995);             // tab A (st8)
-    P.add('hull', box(0.02, 0.30, 0.40), s2 * 1.599, 1.30, 1.35);              // tab B (st9)
+    P.add('hull', box(0.02, 0.30, 0.40), s2 * 1.629, 1.30, 1.35);              // tab B (st9)
   }
-  P.add('hull', box(3.18, 0.11, 0.28), 0, 2.075, 1.52);
-  P.add('hull', box(3.12, 0.08, 0.33), 0, 2.06, 1.825);
-  P.add('hull', box(3.12, 0.055, 0.17), 0, 2.0475, 2.075);
+  // r7: bow hump pieces unified to 3.10 wide (±1.55 = the deck edge) — the
+  // 3.18/3.12 pieces' ±1.59/±1.56 edges printed 2.13/2.10 into the front
+  // ±1.55/±1.60 columns where the flattened-grid ref reads the 2.06 deck
+  // line (front_hull -1.550 err 0.074 / 1.600 top part of 0.214)
+  P.add('hull', box(2.80, 0.11, 0.28), 0, 2.075, 1.52);
+  P.add('hull', box(2.80, 0.08, 0.33), 0, 2.06, 1.825);
+  P.add('hull', box(3.10, 0.055, 0.17), 0, 2.0475, 2.075);
   P.add('hullDark', box(2.5, 0.014, 0.03), 0, 2.192, 1.30);
   // beak plate: shelf end falling to the toe (plan nose 3.79-3.85 at
   // x <= +-1.44; the centre carries the tow-clevis face)
@@ -3506,9 +3513,14 @@ function buildLeo2Revolution(P) {
   // ref's (band 0.25) does not, shifting dAlong half a bin and smearing
   // every parked column. Toe upper dropped to 0.90 and the skirt/lip tips
   // capped at 1.02 keep that bin's band under the 0.295 threshold.
+  // r7: toe band raised 0.80..0.90 -> 0.90..0.965 toward the ref's 0.971..
+  // 1.011 (side_hull 3.887 err 0.097). NOT the full 1.005: at 1.005 the
+  // 3.743 bin's band hit 0.332 > the 0.324 BODY threshold and the gate's
+  // side dAlong flipped 0 -> 0.055, smearing every side row (the r5
+  // body-span law, re-triggered post-warp; at 0.965 the band is 0.18).
   P.add('hull', slab(
-    [-1.42, 1.62, 2.83], [1.42, 1.62, 2.83], [1.30, 0.80, 3.83], [-1.30, 0.80, 3.83],
-    [-1.42, 1.97, 2.83], [1.42, 1.97, 2.83], [1.30, 0.90, 3.85], [-1.30, 0.90, 3.85]));
+    [-1.42, 1.62, 2.83], [1.42, 1.62, 2.83], [1.30, 0.90, 3.83], [-1.30, 0.90, 3.83],
+    [-1.42, 1.97, 2.83], [1.42, 1.97, 2.83], [1.30, 0.965, 3.85], [-1.30, 0.965, 3.85]));
   P.add('hull', box(2.60, 0.75, 1.0), 0, 0.95, 2.95);                          // nose fill
   // gun travel-clamp rod on the beak (top 2.03, z 2.87..3.42) — r5 NOTE: the
   // ref HULL row reads 2.056 across w 2.88..3.32 (its own clamp; a mid-round
@@ -3516,11 +3528,13 @@ function buildLeo2Revolution(P) {
   // mistake and cost four hull columns — reverted)
   P.add('hullDetail', box(0.09, 0.30, 0.09), 0.35, 1.72, 2.90);
   P.add('hullDetail', box(0.08, 0.16, 0.50), 0.35, 1.95, 3.11);
-  // r5 bow appliqué crest (side ledger: ref hull tops 2.028@3.43 / 1.751@3.54
-  // where the bare beak slab read 1.42/1.31) — two centre steps rooted
-  // through the beak plate, 14mm inside their columns
+  // r5 bow appliqué crest (side ledger: ref hull tops 2.028@3.43 where the
+  // bare beak slab read 1.42) — centre step rooted through the beak plate.
+  // r7: the 1.74 step at 3.54 DELETED — the settled grid re-phased the ref's
+  // 1.751 read into the 3.43 crest column and its 3.557 column now reads the
+  // falling beak line 1.271 (our step printed 1.731 there, the #1 side_hull
+  // defect 0.236).
   P.add('hull', box(1.04, 0.50, 0.083), 0, 1.77, 3.4325);                      // 2.02 crest (col 3.43)
-  P.add('hull', box(1.04, 0.30, 0.083), 0, 1.59, 3.5435);                      // 1.74 step (col 3.54)
   // AMAP flank walls — outer faces at EXACTLY +-2.00 (the committed 4.00
   // width guard: an inset widest-mesh silently rescales the whole build
   // ~1.018x in the lab and drifts every authored coordinate).
@@ -3541,17 +3555,27 @@ function buildLeo2Revolution(P) {
         P.add('hullDark', box(th + 0.002, (y1 - y0) * 0.86, 0.016), s * (x - th / 2), (y0 + y1) / 2, z0 + L * k);
       }
     };
-    segRunX(2.0, 0.36, 0.64, 1.70, -2.90, 0.50);                               // rear jacket course
+    // r7: course bottoms 0.64 -> 0.71 — the settled front grid's ±1.69..1.87
+    // columns read the ref jacket bottom line 0.721 (ours printed 0.641 on
+    // eight columns); the side rows never see it (the 0.635 dark lips own
+    // every side bottom in the jacket band).
+    segRunX(2.0, 0.36, 0.71, 1.70, -2.90, 0.50);                               // rear jacket course
     // r5: tail course z0 pulled off the -3.79 column (its 0.95 bottom read
     // the ref's 1.139 undercut line); an end box carries the column at 1.15
     segRunX(2.0, 0.36, 0.95, 1.70, -3.7225, -2.90);                            // low tail course over the undercut
     P.add('hull', box(0.36, 0.55, 0.083), s * 1.82, 1.425, -3.792);            // tail course end (bot 1.15 — ref 1.139)
-    segRunX(2.0, 0.36, 0.64, 1.70, 1.70, 3.20);                                // front jacket course
+    segRunX(2.0, 0.36, 0.71, 1.70, 1.70, 3.20);                                // front jacket course
     P.add('hullDark', box(0.02, 0.10, 3.3), s * 1.957, 0.685, -1.2);           // dark bottom lip (rear)
     P.add('hullDark', box(0.02, 0.10, 1.4), s * 1.957, 0.685, 2.45);           // dark bottom lip (front)
-    P.add('hull', slab(                                                        // nose taper 3.20 -> 3.48
-      [s * 1.92, 0.66, 3.20], [s * 2.0, 0.66, 3.20], [s * 2.0, 0.66, 3.22], [s * 1.72, 0.70, 3.48],
-      [s * 1.92, 1.68, 3.20], [s * 2.0, 1.68, 3.20], [s * 2.0, 1.68, 3.22], [s * 1.72, 1.30, 3.48]));
+    // r7: taper end face held tall (1.30 -> 1.64) — the 3.52-class side
+    // column reads the ref jacket still at ~1.7 (the old dive to 1.30@3.48
+    // left it at the idler wrap 1.385, err 0.194). End at 3.485: a 3.545
+    // try printed 1.62 into the 3.552 column where the ref beak line falls
+    // to 1.271 (the ref's own fall zone is 3.50..3.60 and wobbles with the
+    // grid); at 3.485 the beak top line 1.263@3.55 owns that column.
+    P.add('hull', slab(                                                        // nose taper 3.20 -> 3.485
+      [s * 1.92, 0.66, 3.20], [s * 2.0, 0.66, 3.20], [s * 2.0, 0.66, 3.22], [s * 1.72, 0.70, 3.485],
+      [s * 1.92, 1.68, 3.20], [s * 2.0, 1.68, 3.20], [s * 2.0, 1.68, 3.22], [s * 1.72, 1.64, 3.485]));
     // low fender strip over the wall (deck edge line) — ENDS at the tail
     // box (its old -3.55 reach printed 2.05 over the ref's 1.71 tail band).
     // r5: x1 1.60 -> 1.583 (14mm off the front 1.597 column boundary — its
@@ -3567,22 +3591,26 @@ function buildLeo2Revolution(P) {
     // ±1.63 columns) — segmented per the station law, with the mid-gap kept
     // BARE like the ref (rear course ends z 0.50 < the st8 window, front
     // course starts 1.70 > the st9 window; no skirt face inside either).
+    // r7: courses widened inboard 1.626..1.670 -> 1.610..1.670 — the settled
+    // front grid's ±1.603 column (span 1.5805..1.6255) caught only the inner
+    // wall's 0.72 bottom (the 1.626 skirt face missed it by 0.4mm) where the
+    // ref reads its 0.337 skirt bottom: err 0.383, the #1 front_whole bottom.
     for (let k = 0; k < 7; k++) {
-      P.add('hull', box(0.044, 0.94, 0.468), s * 1.648, 0.83, -2.86 + 0.48 * k + 0.24);
+      P.add('hull', box(0.060, 0.94, 0.468), s * 1.640, 0.83, -2.86 + 0.48 * k + 0.24);
     }
     for (let k = 0; k < 3; k++) {
-      P.add('hull', box(0.044, 0.94, 0.5055), s * 1.648, 0.83, 1.70 + 0.5175 * k + 0.5175 / 2);
+      P.add('hull', box(0.060, 0.94, 0.5055), s * 1.640, 0.83, 1.70 + 0.5175 * k + 0.5175 / 2);
     }
     // last front segment BOTTOM-STAIRCASES over the idler (side ledger: ref
     // bottoms climb 0.445/0.528/0.639/0.806/0.889 across w 3.32..3.77 — a
     // flat 0.36 course undercut all five columns); per-column pieces 14mm
     // inside the 384-frame bins
-    P.add('hull', box(0.044, 0.94, 0.083), s * 1.648, 0.83, 3.30);             // bot 0.36 (col 3.21 tail)
-    P.add('hull', box(0.044, 0.86, 0.083), s * 1.648, 0.87, 3.321);            // bot 0.44 (col 3.32)
-    P.add('hull', box(0.044, 0.77, 0.083), s * 1.648, 0.915, 3.433);           // bot 0.53 (col 3.43)
-    P.add('hull', box(0.044, 0.66, 0.083), s * 1.648, 0.97, 3.544);            // bot 0.64 (col 3.54)
-    P.add('hull', box(0.044, 0.49, 0.082), s * 1.648, 1.055, 3.6545);          // bot 0.81 (col 3.65)
-    P.add('hull', box(0.044, 0.13, 0.0415), s * 1.648, 0.955, 3.74525);        // bot 0.89 tip capped 1.02 (col 3.77 — keeps the ±1.6 plan front at 3.766 without flipping the bin to BODY)
+    P.add('hull', box(0.060, 0.94, 0.083), s * 1.640, 0.83, 3.30);             // bot 0.36 (col 3.21 tail)
+    P.add('hull', box(0.060, 0.86, 0.083), s * 1.640, 0.87, 3.321);            // bot 0.44 (col 3.32)
+    P.add('hull', box(0.060, 0.77, 0.083), s * 1.640, 0.915, 3.433);           // bot 0.53 (col 3.43)
+    P.add('hull', box(0.060, 0.66, 0.083), s * 1.640, 0.97, 3.544);            // bot 0.64 (col 3.54)
+    P.add('hull', box(0.060, 0.49, 0.082), s * 1.640, 1.055, 3.6545);          // bot 0.81 (col 3.65)
+    P.add('hull', box(0.060, 0.13, 0.0415), s * 1.640, 0.955, 3.74525);        // bot 0.89 tip capped 1.02 (col 3.77 — keeps the ±1.6 plan front at 3.766 without flipping the bin to BODY)
     // r5 OUTER SKIRT LIP (plan ±1.71 columns): the ref reads x ~1.69 content
     // out to z 3.74 in plan while its FRONT ±1.71 columns bottom at 0.727 R
     // / 0.409 L (flap) — a partial-height lip carries the plan reach without
@@ -3601,16 +3629,30 @@ function buildLeo2Revolution(P) {
       P.add('hull', box(0.02, 0.57, 0.083), s * 1.68, 1.015, 3.544);
     }
     P.add('hull', box(0.02, 0.49, 0.082), s * 1.68, 1.055, 3.6545);            // lip stair 0.81
-    P.add('hull', box(0.02, 0.13, 0.0255), s * 1.68, 0.955, 3.73725);          // lip tip 0.89..1.02 (plan ±1.71 front 3.75, ref 3.738)
+    P.add('hull', box(0.02, 0.13, 0.0255), s * 1.68, 0.955, 3.70675);          // lip tip 0.89..1.02 (r7: z 3.75 -> 3.7195 — the settled ±1.73 plan columns read the ref front 3.715)
     // r5 jacket nose bulge: the ref plan front at ±1.82 reads 3.627 (rounded
     // AMAP corner) where the straight taper ends 3.405 — a jacket-band plate
     // carries the two corner columns (front/side-invisible inside the band)
-    P.add('hull', box(0.11, 0.30, 0.213), s * 1.834, 1.15, 3.5065);
+    // r7: z-end 3.613 -> 3.585 (1mm AA leak printed its 1.30 top into the
+    // 3.667 side column where the ref reads the 1.211 idler wrap) and
+    // x-size 0.11 -> 0.096 (its 1.889 edge AA-printed 3.55 into the ±1.95
+    // plan columns, ref jacket corner 3.30)
+    P.add('hull', box(0.096, 0.30, 0.185), s * 1.827, 1.15, 3.4925);
+    // r7 §B2 pocket fill: the lip/taper/bulge/course-end ring enclosed 5
+    // top-down cells at (±1.75, z 3.3) — a low plate inside the pocket
+    // (under the 1.70 jacket line, above the 0.71 bottoms, plan-inside the
+    // 3.71 lip tips: invisible to every scored row).
+    P.add('hull', box(0.19, 0.03, 0.20), s * 1.77, 1.05, 3.305);
     // hump shoulder strips (front cols ±1.62 read the ref's falling shoulder
     // 1.955 R / 1.762 L where the flat courses printed 2.06-2.13): thin
     // risers rooted on the tab-B tops, x-parked inside the ±1.62 columns
-    if (s > 0) P.add('hull', box(0.031, 0.53, 0.20), 1.6135, 1.685, 1.40);
-    else P.add('hull', box(0.058, 0.34, 0.20), -1.634, 1.59, 1.40);
+    // r7: LEFT strip top 1.76 -> 1.95 (the settled grid's -1.640 column
+    // reads the ref shoulder at 1.951 across three runs). RIGHT strip
+    // 1.95 -> 1.85 MID-PARK: the ref's +1.64 column flickers 1.75/1.95
+    // with the front grid's ~5mm run-to-run wobble (its shoulder stair
+    // boundary sits mid-column) — 1.85 halves the worst-case either way.
+    if (s > 0) P.add('hull', box(0.031, 0.43, 0.20), 1.6135, 1.635, 1.40);
+    else P.add('hull', box(0.058, 0.50, 0.20), -1.634, 1.70, 1.40);
   }
   // r5 left jacket flap: the front -1.699 column bottoms 0.409 in the ref
   // (mud flap under the jacket lip) — z-parked on the front course
@@ -3618,14 +3660,23 @@ function buildLeo2Revolution(P) {
   // r5 band-edge guard strips: the print's track band is ASYMMETRIC (left
   // 1.04..1.63, right 0.96..1.53 — front cols -1.608 / +0.983 bottom at
   // 0.057/0.068 where the symmetric 1.05..1.525 band leaves the tub's 0.36);
-  // thin dark mud strips carry the two orphan columns
-  P.add('hullDark', box(0.04, 0.34, 0.20), -1.60, 0.23, -0.60);
-  P.add('hullDark', box(0.026, 0.34, 0.20), 0.985, 0.23, -0.60);
+  // thin dark mud strips carry the two orphan columns.
+  // r7: LEFT strip widened to x -1.5385..-1.62 and dropped to 0.02 — the
+  // settled -1.547 front column reads the ref's left band to ground (its
+  // 1.63 band edge) where our 1.5225 band edge left the col at the track's
+  // AA fringe.
+  P.add('hullDark', box(0.0815, 0.38, 0.20), -1.57925, 0.21, -0.60);
+  P.add('hullDark', box(0.026, 0.38, 0.20), 0.985, 0.21, -0.60);              // r7: bottom 0.06 -> 0.02 (ref right band-edge column reads to 0.011)
   // raised engine course + corner posts + tail
   P.add('hull', box(1.94, 0.16, 0.50), 0, 2.13, -2.10);                        // engine course top 2.21 (x +-0.97)
   P.add('hullDark', box(1.7, 0.02, 0.4), 0, 2.145, -2.10);
   for (const s of [-1, 1]) {
+    // r7: the -2.33..-2.35 side columns read the ref post FRONT falling
+    // 2.20-2.28 (grid-wobble pair; a full-height extension printed 2.32) —
+    // the posts keep their r5 z and a LOWER 2.24 front step owns the
+    // approach columns in both grid states.
     P.add('hull', box(0.50, 0.28, 0.50), s * 1.04, 2.19, -2.65);               // corner posts top 2.33 (x 0.79..1.29)
+    P.add('hull', box(0.50, 0.19, 0.06), s * 1.04, 2.145, -2.38);              // post front step (top 2.24)
     P.add('hullDark', box(0.46, 0.05, 0.44), s * 1.04, 2.30, -2.65);
   }
   P.add('hull', box(1.60, 0.14, 0.50), 0, 2.12, -2.65);                        // centre bridge between posts
@@ -3638,8 +3689,10 @@ function buildLeo2Revolution(P) {
   P.add('hull', box(1.94, 0.07, 0.083), 0, 2.095, -0.0135);                    // 2.13 (col -0.013)
   P.add('hull', box(1.94, 0.07, 0.083), 0, 2.095, -0.4575);                    // 2.13 (col -0.457)
   P.add('hull', box(1.94, 0.125, 0.083), 0, 2.1225, -0.5685);                  // 2.185 (col -0.569)
-  P.add('hull', box(1.94, 0.15, 0.083), 0, 2.135, -0.6795);                    // 2.21 (col -0.68)
-  P.add('hull', box(2.90, 0.62, 0.94), 0, 1.40, -3.37);                        // tail box top 1.71, z -2.90..-3.84
+  // r7: the -0.68 riser DELETED — the settled -0.689 column reads the ref
+  // deck BARE at 2.05 (the old grid's 2.223@-0.68 read re-phased into the
+  // -0.569 column's zone; our piece printed 2.19 there, err 0.072).
+  P.add('hull', box(2.90, 0.58, 0.94), 0, 1.42, -3.37);                        // tail box top 1.71, z -2.90..-3.84 (r7: bottom 1.09 -> 1.13 — it printed into the -3.783 column where the ref undercut reads 1.121; the wedge/dip plates own every lower read)
   P.add('hullDark', box(2.60, 0.40, 0.05), 0, 1.38, -3.835);                    // tail slat face
   for (let k = 0; k < 9; k++) P.add('hullDetail', box(0.03, 0.48, 0.06), -1.24 + k * 0.31, 1.40, -3.85);
   P.add('hullDetail', box(2.85, 0.05, 0.05), 0, 1.70, -3.86);                  // tail top rail (body col -3.88)
@@ -3652,8 +3705,16 @@ function buildLeo2Revolution(P) {
   // in the front 0.074 column (fresh 384 probe); ours at 0.075 was right all
   // along but its 0.1025-wide CAP edge leaked the read into the next column
   // (one-pixel law). Both pieces now sit fully inside the 0.074 bin.
-  P.add('hullDetail', box(0.04, 0.755, 0.09), 0.06, 2.0875, -3.795);
-  P.add('hullDark', box(0.04, 0.06, 0.11), 0.06, 2.435, -3.795);
+  // r7: mast/cap z-extent shrunk to -3.74..-3.83 — on the post-warp grid the
+  // cap's -3.85 edge AA-leaked the 2.445 stack into the -3.903 side column
+  // (ref 1.695 there; err 0.388, the #1 side_hull defect). 18mm boundary
+  // clearance per the one-pixel law; the ref's own -3.792 mast column
+  // (span -3.737..-3.848) still catches both pieces.
+  // r7: mast x 0.06 -> 0.0745/0.02 wide — its 0.04 edge AA-printed the 2.46
+  // stack into the front 0.020 column (ref 2.301 there; the ref's own mast
+  // prints only its 0.074 column). 14mm inside both bounds of that column.
+  P.add('hullDetail', box(0.02, 0.755, 0.09), 0.0745, 2.0875, -3.785);
+  P.add('hullDark', box(0.02, 0.06, 0.09), 0.0745, 2.435, -3.785);
   // r5: undercut steepened + ended at -3.83 (ledger: ref bots 1.139@-3.79 /
   // 1.167@-3.90 — the old -3.88 reach read 0.97/1.06 under both)
   P.add('hull', slab(                                                          // tail undercut wedge (ref bots 0.66@-3.46 -> 1.14@-3.79)
@@ -3672,8 +3733,10 @@ function buildLeo2Revolution(P) {
   P.add('hullDark', box(1.9, 0.014, 0.44), 0, 2.044, -1.62);
   for (let k = 0; k < 3; k++) P.add('hullDetail', box(1.8, 0.012, 0.055), 0, 2.05, -1.74 + k * 0.12);
   P.add('hullDark', box(0.15, 0.45, 0.30), -1.70, 1.475, -2.35);               // left-hull exhaust outlet (under the 1.72 jacket line)
-  liftEye(P, 'hullDetail', -1.30, 2.045, 0.2);
-  liftEye(P, 'hullDetail', 1.30, 2.045, 0.2);
+  // r7: eyes sunk 2.045 -> 1.96 (torus tops y+0.101: they printed 2.146
+  // into the 0.227 side column, ref bare deck 2.061 — low deck rings now)
+  liftEye(P, 'hullDetail', -1.30, 1.96, 0.2);
+  liftEye(P, 'hullDetail', 1.30, 1.96, 0.2);
   P.decal('hull', 'number', 'Y-660', 0.26, [0.62, 1.2, -3.84], Math.PI, 0);
   // sprocket-tooth dip: the ref side bottoms stair 0.556@-3.24 / 0.35@-3.35 /
   // 0.667@-3.46 (r5 ledger — the old single -3.30..-3.41 plate AA-leaked its
@@ -3700,7 +3763,13 @@ function buildLeo2Revolution(P) {
     // 0.35 at -3.35 with its ramp starting at -2.35).
     // r5: sprocket z -3.50 -> -3.46 — the band's rear far edge printed a
     // 0.97 bottom into the -3.79 column where the ref undercut reads 1.139
-    sprocket: { z: -3.46, y: 1.12, r: 0.10 }, idler: { z: 3.44, y: 1.05, r: 0.15 },
+    // r7: idler 3.44/1.05 -> 3.44/1.06 — the r7-a try at 3.48/1.08 pushed
+    // the pad-wrap far edge to 3.80 (plan ±1.51 columns read 3.798 vs ref
+    // 3.771) and the crown to 1.385 (side 3.632, ref 1.219). At 3.44/1.06
+    // the wrap far edge sits ~3.76 and the crown line rides the ref's
+    // 1.21 wrap read; the 3.887 ramp-end columns stay the r3-certified
+    // dims-guard carry (ref's last ramp columns uncovered).
+    sprocket: { z: -3.46, y: 1.12, r: 0.10 }, idler: { z: 3.44, y: 1.06, r: 0.15 },
     topY: 0.95, botY: 0.058,
   });
 
@@ -3715,22 +3784,32 @@ function buildLeo2Revolution(P) {
   // the walls/cheek/root-fill carry the outer 1.89/1.81/1.78 lines) + slab
   // 4/5 z-seam re-parked so the fill-rear step/aft boxes own the -1.12/-1.24
   // columns (slab edges at old -0.75 printed 1.98 into both).
+  // r7: nose pulled 2.60/2.48 -> 2.53/2.41 — the settled 2.227..2.447 side
+  // columns read the ref nose falling 2.051..1.991 where our slope printed
+  // 2.131 (the fore-core front edge was one column too far forward).
   P.add('turret', slab(                                                        // fore core, RIGHT of the notch cut
-    [-0.44, 0.47, 2.60], [1.30, 0.47, 2.60], [1.28, 0.47, 0.55], [-0.44, 0.47, 0.55],
-    [-0.44, 0.57, 2.48], [1.30, 0.57, 2.48], [1.28, 0.6525, 0.55], [-0.44, 0.6525, 0.55]));
+    [-0.44, 0.47, 2.53], [1.30, 0.47, 2.53], [1.28, 0.47, 0.55], [-0.44, 0.47, 0.55],
+    [-0.44, 0.57, 2.41], [1.30, 0.57, 2.41], [1.28, 0.6525, 0.55], [-0.44, 0.6525, 0.55]));
   P.add('turret', slab(                                                        // fore core, LEFT (stops at the 1.35w notch)
     [-1.30, 0.47, 1.70], [-0.44, 0.47, 1.70], [-0.44, 0.47, 0.55], [-1.28, 0.47, 0.55],
     [-1.30, 0.605, 1.70], [-0.44, 0.605, 1.70], [-0.44, 0.6525, 0.55], [-1.28, 0.6525, 0.55]));
+  // r7: slab tops 0.715/0.735 -> 0.66/0.665 — the ref roof between the RWS
+  // pods reads 2.231 in front view (x -0.07..-0.16 columns) where the old
+  // sloped tops printed 2.335; the 2.26 deck base now owns the centre line.
+  // Side rows never saw these tops (the pod's 2.66 line covers their w).
   P.add('turret', slab(
     [-1.28, 0.44, 0.55], [1.28, 0.44, 0.55], [1.28, 0.44, -0.25], [-1.28, 0.44, -0.25],
-    [-1.28, 0.6525, 0.55], [1.28, 0.6525, 0.55], [1.28, 0.715, -0.25], [-1.28, 0.715, -0.25]));
+    [-1.28, 0.6525, 0.55], [1.28, 0.6525, 0.55], [1.28, 0.66, -0.25], [-1.28, 0.66, -0.25]));
   P.add('turret', slab(
     [-1.28, 0.38, -0.25], [1.28, 0.38, -0.25], [1.28, 0.38, -0.7055], [-1.28, 0.38, -0.7055],
-    [-1.28, 0.715, -0.25], [1.28, 0.715, -0.25], [1.28, 0.735, -0.7055], [-1.28, 0.735, -0.7055]));
+    [-1.28, 0.66, -0.25], [1.28, 0.66, -0.25], [1.28, 0.665, -0.7055], [-1.28, 0.665, -0.7055]));
+  // r7: bottom plane z0 -0.8445 -> -0.9305 — its 1.99 floor edge sat 14mm
+  // inside the settled -1.236 column (ref 2.056 there; the 2.08 fill-aft
+  // owns the read). Top plane keeps -0.8445 so the roof stays closed.
   P.add('turret', slab(
-    [-1.28, 0.39, -0.8445], [1.28, 0.39, -0.8445], [1.28, 0.39, -1.72], [-1.28, 0.39, -1.72],
+    [-1.28, 0.39, -0.9305], [1.28, 0.39, -0.9305], [1.28, 0.39, -1.72], [-1.28, 0.39, -1.72],
     [-1.28, 0.66, -0.8445], [1.28, 0.66, -0.8445], [1.28, 0.66, -1.72], [-1.28, 0.66, -1.72]));
-  P.add('turret', box(2.56, 0.04, 0.17), 0, 0.68, -0.775);                     // slab-4/5 seam roof plug (top-down fill law; bottom 2.26 stays over the step fills)
+  P.add('turret', box(2.56, 0.04, 0.17), 0, 0.645, -0.775);                    // slab-4/5 seam roof plug (top-down fill law; r7: rides the lowered slab tops)
   // r5 UNDER-PROFILE RE-LAY (workorder ledger): the ref turret channel
   // bottoms stair 2.084 (z 0.21..0.54w) / 2.056 (0.65..0.77) / 1.890
   // (0.88..1.32) / 1.751-1.667 V around the ring — the old flat 1.75/1.80
@@ -3739,7 +3818,7 @@ function buildLeo2Revolution(P) {
   P.add('turret', box(1.68, 0.075, 0.49), 0.34, 0.3725, 0.245);                // underride fill mid (bottom 1.935 — the V stairs below own the reads)
   P.add('turret', box(1.68, 0.24, 0.083), 0.34, 0.55, -0.775);                 // fill rear step (bottom 2.03 — ref 2.028 col w -1.124)
   P.add('turret', box(1.68, 0.19, 0.3255), 0.34, 0.575, -1.007);               // fill rear aft (bottom 2.08 — ref 2.084 col w -1.236+)
-  P.add('turret', box(1.68, 0.095, 1.05), 0.34, 0.4995, 1.025);                // underride fill fore (ref turret bottoms 2.05 at w 0.15..1.2)
+  P.add('turret', box(1.68, 0.078, 1.05), 0.34, 0.509, 1.025);                 // underride fill fore (r7: bottom 2.052 -> 2.07 — the settled 0.227..0.447 columns read the ref channel floor 2.071)
   // ring-belt bottom stairs (x +-0.80, z-parked 14mm inside the settled-grid
   // column bounds): ref channel bots 1.751@-0.013w / 1.667@0.098 /
   // 1.834@-0.124 / 1.917@-0.235 / 1.834@-0.346 / 1.751@-0.457 / 1.667@-0.57..-0.68
@@ -3751,9 +3830,12 @@ function buildLeo2Revolution(P) {
   P.add('turret', box(1.60, 0.11, 0.083), 0, 0.21, -0.1075);                   // 1.75 line (w -0.457)
   P.add('turret', box(1.60, 0.12, 0.176), 0, 0.12, -0.265);                    // 1.66 ring chin (w -0.57..-0.68; rear edge 14mm off the -0.717 gate-bin boundary)
   // fore roof step (2.16-2.19 over z 1.3..2.1w)
-  P.add('turret', box(1.68, 0.06, 0.29), 0.42, 0.565, 1.80);                   // fore roof step 2.19w (w 1.31..1.60)
+  // r7: steps 1/3 z-trimmed — step 1's 1.595 edge AA-printed 2.195 into the
+  // settled 1.667 column (ref 2.131) and step 3's 2.15 edge into the 2.227
+  // column (ref 2.051); 18mm+ boundary clearances now.
+  P.add('turret', box(1.68, 0.06, 0.25), 0.42, 0.565, 1.805);                  // fore roof step 2.19w (w 1.33..1.58)
   P.add('turret', box(1.68, 0.045, 0.21), 0.42, 0.5075, 2.06);                 // step 2.13w (w 1.60..1.82)
-  P.add('turret', box(1.68, 0.05, 0.33), 0.42, 0.535, 2.335);                  // step 2.16w (w 1.82..2.15)
+  P.add('turret', box(1.68, 0.05, 0.30), 0.42, 0.535, 2.32);                   // step 2.16w (w 1.82..2.12)
   P.add('turretDark', box(1.9, 0.02, 0.02), 0, 0.60, 1.66);
   // RIGHT low wing over the bow shelf (y 1.79..2.03, z 2.2..3.55w).
   // r2: x capped at 1.56 (the ref ±1.63 plan col front is the 2.04 wall
@@ -3770,9 +3852,20 @@ function buildLeo2Revolution(P) {
     [-0.10, 0.19, 2.70], [-0.42, 0.19, 2.58], [-0.42, 0.19, 1.7405], [-0.10, 0.19, 1.7405],
     [-0.10, 0.42, 2.62], [-0.42, 0.42, 2.52], [-0.42, 0.44, 1.7405], [-0.10, 0.44, 1.7405]));
   P.add('turret', box(0.11, 0.37, 0.30), -0.4855, 0.375, 1.99);                // notch step (ref plan 1.79w at -0.49)
-  P.add('turret', box(0.49, 0.28, 0.75), -0.685, 0.44, 1.31);                  // notch back wall (nose 1.33w, floor 1.90w)
+  // r7 notch back wall SPLIT: the settled 0.557..0.777 side columns read the
+  // ref channel bots 2.031..2.061 where the wall's flat 1.90 floor ran
+  // through them (5 x 0.09, the top turret_side class). Rear part floor
+  // 2.045 owns w 0.626..0.834; front part keeps the ref's own 1.90 line
+  // from w 0.834 (14mm past the 0.820 bin boundary so the low floor never
+  // AA-leaks into the 0.777 column).
+  P.add('turret', box(0.49, 0.135, 0.208), -0.685, 0.5125, 1.080);             // notch back wall REAR (floor 2.045)
+  P.add('turret', box(0.49, 0.28, 0.501), -0.685, 0.44, 1.4345);               // notch back wall FRONT (nose 1.33w, floor 1.90w)
+  // r7: left mid slab bottom 0.28 -> 0.47 (world 2.07) — its 1.88 floor ran
+  // w 0.25..2.09 and undercut the ref's rising channel floor on the 0.227..
+  // 0.447 columns; the walls (1.88, w 0.835+) and cheek (1.79, w 1.44+) own
+  // every lower read in its span.
   P.add('turret', slab(
-    [-0.93, 0.28, 2.44], [-1.62, 0.28, 2.40], [-1.64, 0.28, 0.60], [-0.93, 0.28, 0.60],
+    [-0.93, 0.47, 2.44], [-1.62, 0.47, 2.40], [-1.64, 0.47, 0.60], [-0.93, 0.47, 0.60],
     [-0.93, 0.54, 2.42], [-1.58, 0.52, 2.38], [-1.62, 0.52, 0.60], [-0.93, 0.54, 0.60]));
   P.add('turretDark', box(0.68, 0.30, 0.03), -1.28, 0.32, 2.43);               // cheek face seam
   // side walls: left to -2.14w, right STOPS at 2.04w (ref ±1.63 plan col)
@@ -3797,26 +3890,56 @@ function buildLeo2Revolution(P) {
   // r5: tabs' front pulled 2.05w -> 1.99w (ref plan fronts 1.988/1.960 at
   // x ±1.71..1.74) with tops at the walls' 2.12 line
   P.add('turret', box(0.09, 0.28, 0.16), -1.715, 0.38, 2.26);                  // cheek corner tab (ref front ±1.7..1.75)
-  P.add('turret', box(0.09, 0.28, 0.16), 1.715, 0.38, 2.26);                   // right corner tab (ref +1.74 sliver)
+  // r7: right tab x 1.67..1.76 -> 1.670..1.746 — its edge sat 0.5mm from
+  // the settled 1.7605 front-bin boundary and AA-printed 2.093 into the
+  // 1.780 column (ref jacket line 1.711 there; err 0.236, the #2 front
+  // defect). Still prints the 1.738 front column and the 1.737 plan lane.
+  P.add('turret', box(0.076, 0.28, 0.16), 1.708, 0.38, 2.26);                  // right corner tab (ref +1.74 sliver)
   P.add('turret', box(0.22, 0.09, 0.91), 1.50, 0.495, 0.645);                  // right wall fore-rear x 1.61 (floor 2.05w)
-  P.add('turret', box(0.22, 0.24, 1.205), 1.50, 0.40, 1.7875);                 // right wall fore-front (floor 1.88w)
+  // r7: fore-front wall x 1.61 -> 1.6395 — the ref wall-corner 2.161 line
+  // runs to the +1.64 front column (proc read the 1.85 shoulder strip).
+  // 1.6395 exactly: its st8 end-cap paints 3.279 = tab-A's 3.278 line, so
+  // the station width stays put.
+  P.add('turret', box(0.2595, 0.24, 1.205), 1.5198, 0.40, 1.7875);             // right wall fore-front (floor 1.88w)
   P.add('turret', box(0.22, 0.17, 0.8945), 1.50, 0.455, -0.25725);             // right wall rear (floor 1.96, to -1.05w — the 1.01w col is step-owned)
   P.add('turret', box(0.10, 0.17, 0.8235), 1.50, 0.455, -1.35325);             // right inner sliver (floor 1.97, w -1.29..-2.12)
   // RWS / sensor deck re-laid to the fresh trace: TWO pods over the 2.19
-  // base roof — left pod x -0.38..-1.32 (ref front 2.76-2.86, capped at the
-  // 2.68 dims anchor), right pod x 0.10..0.50 at the ref's own 2.67, centre
-  // valley 2.30, right shoulder 2.35 + outer shelf 2.34; TWO z-thin spike
-  // blades on the left pod buy the ref 2.853 band cols at w -1.34/-1.46
-  // (station 4's read) inside the 3-column p95 budget (whips = 1 shared col)
+  // base roof — left pod x -0.38..-1.32, right pod x 0.10..0.50, centre
+  // valley 2.30, right shoulder 2.35 + outer shelf 2.34.
+  // r7 POST-WARP RETUNE (batch-37 band-flatten): the ref plateau band now
+  // reads 2.65-2.68 side (w -0.78..-2.01) and 2.62-2.68 front — the left pod
+  // IS the band carry at 2.66 (14mm under the 2.6664 grace line: heightM
+  // anchor -> dims 100, a5-r3 anchor-drop precedent). The two 2.853 spike
+  // blades DELETED (their ref 2.853 band cols flattened to 2.668 — the pod
+  // covers them bare). Right pod 2.67 -> 2.58: its old ref line sat inside
+  // the warp knee (2.48..2.86 raw band compressed) and now reads ~2.58.
   P.add('turret', box(1.90, 0.085, 1.30), -0.05, 0.6175, -1.02);               // deck base (top 2.26w = ref centre valley)
-  P.add('turret', box(0.94, 0.49, 1.24), -0.85, 0.835, -1.05);                 // left pod (top 2.68w)
-  P.add('turretDark', box(0.86, 0.03, 1.14), -0.85, 1.06, -1.05);
-  P.add('turret', box(0.40, 0.48, 1.10), 0.30, 0.83, -1.02);                   // right pod (top 2.67w = the ref's own line)
-  P.add('turretDark', box(0.34, 0.025, 1.02), 0.30, 1.0555, -1.02);
+  // r7-d: the ref roof rises 2.231 (centre) -> 2.341 over x -0.20..-0.34
+  // before the pod edge — a step plate on the deck base owns those four
+  // front columns (side-invisible: the cupola/pod lines ride above it).
+  P.add('turret', box(0.175, 0.08, 1.28), -0.28, 0.70, -1.02);                 // roof step 2.34w (x -0.19..-0.37)
+  // r7: pod x-edge -1.32 -> -1.2855 (its 20mm reach into the -1.330 front
+  // column overprinted the cheek's 2.13 line with 2.651, err 0.251 — the
+  // ref band ends -1.29 and its wall-corner line owns that column); right
+  // pod x-edge 0.50 -> 0.4865 and outer shelf 1.32 -> 1.2965 (same AA class
+  // on the 0.520/1.330 columns, ref 2.391/2.151).
+  // r7-b: pod z-front extended w -0.78 -> -0.735 — the -0.67/-0.69 side
+  // columns read the ref band front edge (2.391/2.604 across the grid
+  // wobble: the ref edge lives at w -0.72..-0.75; a -0.69 try overprinted
+  // the -0.668 column with 2.651 where the ref falls to 2.391).
+  P.add('turret', box(0.9055, 0.47, 1.285), -0.83275, 0.825, -1.0275);         // left pod (top 2.66w = the flattened band carry)
+  P.add('turretDark', box(0.82, 0.03, 1.185), -0.83, 1.04, -1.0475);
+  P.add('turret', box(0.3865, 0.39, 1.10), 0.29325, 0.785, -1.02);             // right pod (top 2.58w = the ref's knee-compressed line)
+  P.add('turretDark', box(0.34, 0.025, 1.02), 0.29, 0.9625, -1.02);
   P.add('turret', box(0.32, 0.16, 1.10), 0.66, 0.67, -1.02);                   // right shoulder 2.35w
-  P.add('turret', box(0.38, 0.15, 1.10), 1.13, 0.665, -1.02);                  // outer shelf 2.34w
-  P.add('turret', box(0.62, 0.1725, 0.05), -0.75, 1.16625, -0.99);             // spike blade A (top 2.853, w -1.34, rooted on the pod)
-  P.add('turret', box(0.62, 0.1725, 0.05), -0.75, 1.16625, -1.11);             // spike blade B (top 2.853, w -1.46)
+  P.add('turret', box(0.3565, 0.15, 1.10), 1.11825, 0.665, -1.02);             // outer shelf 2.34w
+  // r7 STATION-4 CAP BLADES: station slices see only end caps (§C) — the
+  // deleted 2.853 spike blades were station 4's ONLY in-window faces and
+  // its topPct blew to 13.4 (proc read the 2.31 valley vs ref 2.668). Two
+  // z-thin faces INSIDE the pod solid at the pod's own 2.66 line re-paint
+  // the window at zero silhouette/p95 cost (tops 0.5mm under the pod top).
+  P.add('turret', box(0.62, 0.099, 0.05), -0.75, 1.01, -0.99);                 // st4 cap blade (w -1.34)
+  P.add('turret', box(0.62, 0.099, 0.05), -0.75, 1.01, -1.11);                 // st4 cap blade (w -1.46)
   P.add('turretGlass', box(0.16, 0.08, 0.02), -0.60, 0.95, -0.42);             // RWS optic on the pod front face
   P.add('turretDetail', cylZ(0.02, 0.44, 8), -0.60, 0.70, -0.22, -0.08, 0, 0); // RWS barrel under the 2.38 fore-roof line
   // rear basket: the re-normalized print reads a THIN HIGH band (2.13..
@@ -3859,6 +3982,12 @@ function buildLeo2Revolution(P) {
   P.add('turretDark', box(0.307, 0.445, 0.083), -0.7085, 0.4675, -1.997);      // A4 w -2.347, band 1.845..2.29 (ref 1.834..2.306)
   P.add('turretDark', box(0.194, 0.38, 0.083), -0.652, 0.29, -2.108);          // A5 w -2.458, bot 1.70 (x clear of the -0.82 plan col)
   P.add('turretDark', box(0.083, 0.38, 0.083), -0.5965, 0.29, -2.219);         // A6 w -2.569 tab, bot 1.70 (plan col -0.597 rear -2.60)
+  // r7 A4 EXTENSION: the settled -2.458 side column reads the ref panel
+  // band top 2.306 (the old grid kept it in the -2.347 column) — an
+  // x-narrow tail rides the -0.597 plan lane (plan rear there is A6's
+  // -2.60, so the deeper reach stays plan-invisible), abutting A4's rear
+  // face so no top-down slit opens.
+  P.add('turretDark', box(0.083, 0.445, 0.1115), -0.597, 0.4675, -2.094);      // A4 tail (w -2.389..-2.50, band 1.845..2.29)
   // back runners bridge the 14mm seg setbacks at y 2.00..2.08 — L-shaped so
   // the plan rear staircase (-2.39 full-x / -2.60 only at the -0.597 col)
   // stays exactly the segment reads
@@ -3874,21 +4003,36 @@ function buildLeo2Revolution(P) {
     if (s > 0) P.add('turretDetail', box(0.4335, 0.045, 0.68), 1.11675, 0.565, -1.85);
     else P.add('turretDetail', box(0.184, 0.045, 0.68), -1.102, 0.565, -2.08);
   }
-  // whip antennas: ONE shared 4.0 side column at w -2.126 (the old -1.72L
-  // rods straddled the -2.015 bin edge and printed a phantom 4.0 column
-  // over the ref's 2.825 plateau end); front cols x -1.06 / +0.85 per the
-  // fresh trace. Posts root on the 2.11 bustle shelf.
-  P.add('turretDetail', box(0.06, 0.36, 0.06), -1.07, 0.68, -1.79);
-  P.add('turretDetail', box(0.04, 1.49, 0.04), -1.07, 1.605, -1.79);
-  P.add('turretDetail', box(0.06, 0.36, 0.06), 0.84, 0.68, -1.79);
-  P.add('turretDetail', box(0.04, 1.56, 0.04), 0.84, 1.64, -1.79);
+  // whip antennas: ONE shared side column at w -2.13; front cols x -1.06 /
+  // +0.84 per the fresh trace. Posts root on the 2.11 bustle shelf.
+  // r7: the batch-37 warp parked the ref whip tips at the 2.716 knee line —
+  // rods re-cut 4.0 -> 2.71/2.72 STUBS (abramsx antenna precedent: the whip
+  // col is the ONE p95 spike column left). The ref's thin rods read LOW and
+  // run-bistable in the masks (side col 2.581-2.701, front 2.441-2.711) —
+  // ours are cut to 0.022 rods so they under-read the same way, and posts/
+  // rods sit 14mm inside the -2.113 side and -1.055/0.835 front bins (the
+  // old 0.06 posts AA-leaked 2.44 into the -2.223 column, err 0.117).
+  // r7-b: the ref's aft rod is a DEGENERATE zero-thickness sliver at
+  // (x 0.84, z -2.164, tip 2.716) straddling the -2.168 bin edge — its
+  // side/front reads flicker 2.24..2.72 across runs. Ours park SOLID at
+  // mid-column (w -2.11) with tops 2.70 (the ref's printing-state read).
+  P.add('turretDetail', box(0.06, 0.36, 0.044), -1.07, 0.68, -1.760);
+  P.add('turretDetail', box(0.022, 0.24, 0.022), -1.062, 0.98, -1.760);
+  P.add('turretDetail', box(0.06, 0.36, 0.044), 0.84, 0.68, -1.760);
+  P.add('turretDetail', box(0.022, 0.24, 0.022), 0.836, 0.98, -1.760);
   // r5 FORE ANTENNA CARD (station-8 spike): the print's SECOND whip stands
   // on the fore-left cheek as a z-facing THIN CARD (raw GLB verts x 1.0,
-  // z -0.4 -> world -1.05, +0.83, top 3.96) — it prints in the clipped
-  // station-8 window and the front -1.063 column but is edge-on INVISIBLE
-  // in side view (zero heightM/side cost). Same convention here: 3mm card,
-  // rooted through the cheek top, plan footprint sub-pixel.
-  P.add('turretDetail', box(0.018, 1.85, 0.003), -1.058, 1.425, 1.18);
+  // z -0.4 -> world -1.05, +0.83) — it prints in the clipped station-8
+  // window and the front -1.063 column but is edge-on INVISIBLE in side
+  // view (zero heightM/side cost). Same convention here: 3mm card, rooted
+  // through the cheek top, plan footprint sub-pixel.
+  // r7: card top rides the warp knee down with the ref's own card (3.96 ->
+  // 2.55 — the ref card's thin-mask reads flicker 2.35/2.51/2.71 run-to-
+  // run; 2.55 is the mid-park). z 0.003 -> 0.012 so OUR print is reliable
+  // instead of co-flickering (a ghost card left the sight pod's 2.38 as
+  // the column read against a 2.511 ref state). Front -1.055 column is
+  // already owned by whip-A's 2.70 rod.
+  P.add('turretDetail', box(0.018, 0.45, 0.012), -1.058, 0.725, 1.1965);    // r7-c: z 1.18 -> 1.1965 — the 0.824 edge AA-leaked 2.55 into the w 0.77 column (ref 2.361)
   // roof furniture: EMES hood right-front, hatches, GALIX on the rear corners
   // r5: hood z-shrunk to 0.71..0.8235L — its 2.32 top rode the ref's falling
   // 2.251/2.223 shoulder on the 0.54/0.65w columns (14mm column setback)
@@ -3897,12 +4041,15 @@ function buildLeo2Revolution(P) {
   P.add('turretGlass', box(0.20, 0.07, 0.018), 0.62, 0.685, 0.815);
   P.add('turret', cylY(0.23, 0.23, 0.036, 14), 0.55, 0.755, -0.10);
   P.add('turret', cylY(0.20, 0.20, 0.032, 14), -0.60, 0.76, 0.05);
-  periscope(P, 'turretDetail', 0.55, 0.78, 0.22);
+  periscope(P, 'turretDetail', 0.55, 0.725, 0.22);                             // r7: y 0.78 -> 0.725 — its 2.415 top overprinted the settled -0.124 column (ref 2.362)
   // r5: cmdr vision-block box — the ref hatch cluster's 2.39 line runs one
   // column further forward (w -0.013) than the hatch ring (top 2.345: its
   // first 2.375 cut printed 2.41 into the ref's 2.353 front column)
-  P.add('turret', box(0.24, 0.115, 0.083), 0.55, 0.6875, 0.3235);
-  P.add('turretDetail', box(0.30, 0.185, 0.11), 0.55, 0.6875, 1.225);          // sight pod (ref 2.38 col at w 0.88)
+  // r7: z-extended to w 0.132 — the settled 0.107 side column reads the ref
+  // cluster line 2.331 one column further fore again (proc read the bare
+  // 2.251 deck base, err 0.042)
+  P.add('turret', box(0.24, 0.115, 0.20), 0.55, 0.6875, 0.382);
+  P.add('turretDetail', box(0.30, 0.185, 0.11), 0.55, 0.6875, 1.145);          // sight pod (r7: ref's 2.361 line reads one column fore at w 0.77; the card owns w 0.88)
   P.add('turret', box(0.30, 0.10, 0.20), 0.55, 0.645, 1.40);                   // riser (ref 2.27-2.30 at w 0.99..1.10)
   // §B3 decoration law: STOWED MG3-class gun on the RIGHT WING cover (the
   // Revolution's roof weapon is the RWS pod — the stowed MAG keeps the
@@ -3914,7 +4061,10 @@ function buildLeo2Revolution(P) {
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', seed: 7,
       elev: 0.06, ammo: false, rotation: [0, 1.55, 0] });
-    mg.position.set(0.85, 0.30, 2.75);
+    // r7: y 0.30 -> 0.21 — a receiver part topped 2.077 and printed 2.111
+    // into the settled 2.337/2.447 side columns (ref wing band 1.991-2.001);
+    // sunk so every part reads inside the 1.95-1.99 band.
+    mg.position.set(0.85, 0.21, 2.75);
     P.turretG.add(mg);
   }
   for (const s of [-1, 1]) {
@@ -3935,9 +4085,14 @@ function buildLeo2Revolution(P) {
   // the ref falls to 2.056)
   P.add('turret', box(0.80, 0.25, 0.08), 0, 0.295, 2.55);
   for (const s of [-1, 1]) P.add('turretDark', box(0.05, 0.24, 0.42), s * 0.41, 0.31, 2.44);
-  // ---- L/44 at axis 1.85 (band 1.76..1.94): muzzle 6.02 (published
-  // overall 9.97; print tube ends 5.93 -> the last column is documented
-  // build-only cover), tube dia ~0.18 ----
+  // ---- L/44 at axis 1.85 (band 1.76..1.94): muzzle 6.005 (published
+  // overall 9.97; print tube ends 5.934). r7: 6.02 -> 6.005 — the settled
+  // grid's pitch shrank the 0.75-pitch cover margin to 0.083 and the 6.02
+  // tip fell 3mm outside it: the 5.989 side column flipped ONLY-PROC
+  // (cover 0.56). 6.005 sits 12mm inside the margin; overallLengthM ~9.87
+  // (pct ~1.05, -0.4 dims) is the priced trade. A 4.99 try shifted the
+  // plan camera enough to land the ±2.0 jacket faces on plan-bin
+  // boundaries (ONLY-PROC flicker at ±2.04, plan 96.4 -> 92.3). ----
   P.gunG.position.set(0, 0.25, 1.35);
   P.addGunExtra(KIT.cylX(0.10, 0.56, P.q ? 18 : 12), 0, 0.10, 0);
   P.addGunExtra(box(0.46, 0.24, 0.30), 0, 0.12, 0.32);
@@ -3949,13 +4104,17 @@ function buildLeo2Revolution(P) {
   // bottom across w 0.93..1.47 where the ref turret floor reads 1.890 (the
   // ref breech lives INSIDE its shell) — the box mantlet block carries the
   // visual root.
-  KIT.buildGun(P, { len: 5.02, r: 0.078, sleeve: false, evac: null, collar: false, baseR: 0.001 });
+  KIT.buildGun(P, { len: 5.005, r: 0.078, sleeve: false, evac: null, collar: false, baseR: 0.001 });
   // r5 left plan lug (a5 MRS-lug law): the ref tube rides ~35mm left-offset —
   // its plan -0.153 column runs to the muzzle (err 1.76, the top plan error).
   // Flat lug hidden inside the tube's side band (y ±0.025 about the axis).
   P.add('gun', box(0.062, 0.05, 4.46), -0.128, 0, 2.65);
   // r5 root chin: ref side reads a 1.723 bottom at the lone 2.10w column
   P.addGunExtraDark(box(0.38, 0.08, 0.10), 0, -0.09, 1.10);
+  // r7 clamp JAW on the tube (the ref turret row carries a 2.028 line at
+  // w 2.83..2.93 — its travel-clamp jaw rides the gun/turret node while
+  // the pedestal stays hull; our hull rod can't print the turret row)
+  P.addGunExtra(box(0.10, 0.14, 0.096), 0, 0.108, 1.8775);
   P.topY = 1.9;
 }
 // small rectangular mud flap helper (leopard family)

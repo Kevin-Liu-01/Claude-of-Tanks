@@ -341,3 +341,115 @@ becomes the 2.68 pod line) and turret-side's 7+10 uncovered columns
 are released — the >=90 unlock this warp bought.
 - VERIFY IN THE GATE against this build (stable at 87.0 x3, hash
   cd61999c) before commit.
+
+## Vertex round r7 (2026-08-04) — POST-WARP RETUNE: min 69.4 -> **90.7 PASS** (identical x3, + x2 pre-§B2-fill)
+
+| component | post-warp unretuned | after r7 |
+|---|---|---|
+| hull | 84.1 | 91.7 |
+| whole | 69.4 | **90.7** (binder; front_whole 90.7 / side 91.8 / plan 96.4) |
+| turret | 79.1 | 91.7 (side 91.7 / plan 92.6) |
+| stations | 80.1 | 90.8 |
+| dims | 96.5 | 99.4 (overallLengthM 1.07 — the priced muzzle trade below) |
+| floaters | 100 | 100 |
+
+The a5-r3 recipe applied to the batch-37 band-flatten debt. Hash cd61999c
+-> **c5d9e131** (39 meshes / 96020 verts). Graduates frozen-verified:
+leo2a6 80b76338, kf51 77020c58; buildLeo2A5 byte-identical (section
+sha256 5e70343c… unchanged, all 22 diff hunks inside buildLeo2Revolution).
+Evaluator digest: parity yawProxy <=0.8 deg on all 14 views (no RIG
+MISMATCH), shots/visual-eval-leo2_revolution/. Standard-check: holes 0
+(§B2 pocket fill below), mg1+0d, clip carry noted in residuals. npm test
+166 checks pass. Shots: shots/leopard-r7/leo2_revolution-{topdown,tilt55,
+rearq}.png — filled decks, whip stubs read, AMAP mass closed.
+
+Orders -> deliveries:
+1. SPIKES TO THE BAND: the two 2.853 blades deleted (their ref columns
+   flattened to 2.668 — the pod carries them bare); whips 4.0 -> 2.70
+   solid stubs at mid-column w -2.11 (one spike column, abramsx budget);
+   the fore card follows its ref card to 2.55. Left pod = the band carry
+   at 2.66 authored (top face 14mm under the 2.6664 grace line).
+2. RE-PHASED ROWS CHASED on the settled grid (center y 2.001 -> 1.351,
+   the a5 GRID RE-PHASE law): ~40 column fixes across five edit batches —
+   biggest classes: notch-wall/left-mid-slab floors raised to the ref
+   channel stair 2.03..2.07 (5 x 0.09, the #1 turret_side class), fore-
+   core nose pulled one column back (2.53/2.41), pod z-front to the ref
+   band edge w -0.735, roof-step/hump/tab/mast/post/riser one-pixel
+   re-parks, jacket bottoms 0.64 -> 0.71, skirt courses widened inboard
+   to x 1.610 (the 0.383 front bottom), taper end face held tall (1.64)
+   with the beak line owning the fall zone, slab-3/4 roof tops dropped to
+   the 2.26 deck line (ref centre roof 2.231), tail-box bottom 1.13,
+   idler 3.44/1.06 (wrap far edge 3.76 = ref plan 3.771, dims guard 3.88
+   respected), A4 panel tail into the -0.597 plan lane, clamp jaw on the
+   gun node (the ref turret row's 2.028 line — its hull-row clamp can't
+   print there), MG sunk to the 1.95-1.99 band, right fore-front wall
+   x 1.6395 (= tab-A's 3.278 station line, st8-neutral).
+3. DIMS 96.5 -> 99.4: heightM anchor = the 2.66 pod line (reads 2.65,
+   pct 0.5) with the whip column the only content above it; hullLengthM
+   0.68 / widthM 0.12. overallLengthM: muzzle 6.02 -> 6.005 (pct 1.07,
+   -0.4) — see law 2 below; the r5 "free cover" state is unreachable on
+   the settled grid (margin shrank to 0.083 and 6.02 sits 3mm outside).
+4. MIN >=90 x2: 90.7 identical across three final runs (and two runs of
+   the pre-fill bytes) — the warp's turret-side unlock delivered.
+
+LAW DISCOVERIES (fleet-visible):
+1. **STATION CAP-BLADE LAW**: station slices render only end caps (§C) —
+   deleting a z-thin blade whose FACE was a station window's only tall
+   painter re-breaks that station even when the silhouette is perfect
+   (st4 blew 0.04 -> 13.4 when the 2.853 blades died). Fix: z-thin cap
+   faces INSIDE the parent solid at the parent's own top line (0.5mm
+   under its top face) — zero silhouette, zero p95, station repainted
+   (st4 -> 0.3).
+2. **MUZZLE LENGTH IS A PLAN-GRID PHASE KNOB**: the overall z-span sets
+   the plan camera frame — a 4.99 muzzle try landed the ±2.00 width-
+   guard faces ON plan bin boundaries: ONLY-PROC flicker at ±2.04, plan
+   96.4 -> 92.3, widthM read 4.01. Changing tube length re-rolls every
+   x-boundary; verify plan rows after ANY length change. (The width
+   guard itself held: no mesh past ±2.001, root scale 0.9995.)
+3. **BODY-SPAN dALONG RE-TRIGGER (r5 law, exact numbers)**: raising the
+   beak toe band to 0.965..1.005 pushed the 3.743 bin's band to 0.332 >
+   the 0.324 threshold (0.12 x row max) — the GATE's side dAlong flipped
+   0 -> 0.055 and smeared every side row ~6 pts. At a 0.90..0.965 toe
+   the bin band is 0.18. The workorder's own dAlong re-derivation can
+   disagree with the gate's near the threshold (half-bin bistability) —
+   the gate JSON is the arbiter, per the r5 law.
+4. **THIN-FEATURE BISTABILITY (ref side)**: the print's aft whip is a
+   DEGENERATE zero-thickness sliver (x 0.84, z -2.164, tip 2.716,
+   straddling a bin edge) — its reads flicker 2.24/2.58/2.70 side and
+   2.44/2.71 front across runs; the fore card (z-facing, ~0 thick)
+   flickers 2.35/2.51/2.71. Parking OUR rods thin (0.022) just co-
+   flickers unsynchronized; park SOLID at the printing-state read
+   (2.70) mid-column, and give the proc card a reliable 0.012 thickness
+   at the flicker mid (2.55). Front-grid origin also wobbles ~5mm
+   run-to-run: features whose ref column flips between stair values
+   (jacket shoulder 1.75/1.95) get MID-PARKED (1.85).
+5. **WARP-KNEE COMPRESSION IS BAND-WIDE**: the batch-37 knee maps raw
+   2.48..2.86 -> 2.48..2.68 — every proc top calibrated inside that band
+   re-derives, not just the plateau (right pod 2.67 -> 2.58, roof-step
+   tops, hatch lines; the old 'ref's own 2.67 line' comments were
+   pre-warp reads).
+
+Residuals (certified, measured):
+- SPROCKET-DIP §B4 CARRY (queued round, per the containment note): the
+  tucked-wrap's own shoes (rotated frames at z -3.16..-3.46, y 0.10..
+  0.21, AABBs reaching x -0.82) print a 0.091 bottom into the front
+  -1.010 column where the ref belly reads 0.341 — err 0.131 front_whole
+  / 0.133 front_hull, present since before this round (b1 gate showed
+  it at 69.4 too). Clip audit front 98 / rear 429 (documented 98/427;
+  rear +2 = voxel jitter on the same tucked-wrap class — no r7 member
+  intersects a hit box; offenders rig_hull + unnamed gear mesh). The
+  §B4 round owns both symptoms — do not re-price separately.
+- Muzzle tip column: side_whole cover 0.56 (tip 6.005 vs ref end 5.934,
+  12mm inside the 0.75-pitch margin — the flagged cover is the tip
+  column, stable x3; pulling further costs dims linearly).
+- st11/12 wPct 2.6 x2 (front jacket ±2.00 width-guard faces vs ref
+  ±1.946 — sovereign: the guard law forbids insetting the widest mesh).
+- st5 topPct 2.14 (ref band 2.72-line vs the 2.66 pod anchor) + pod-line
+  carry ~0.03-0.05 on the 2.668-2.72 ref band columns — the dims-
+  sovereign pair (dims 99.4 > raising the pod; a5-r3 precedent).
+- st8/st9 width flicker: the ref 3.278 skirt line's window assignment
+  flips run-to-run (12%-band threshold on the station masks post-warp);
+  both tabs now sit at ±1.639 — worst observed state 2.9 wPct on one of
+  the pair, stations 90.6-90.8 in all states.
+- Front ±1.73 columns 2.121 vs ref 2.161 (2 x 0.034 — the wall-top
+  class; +1.64's shoulder mid-park costs 0.05 in its low state).

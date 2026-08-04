@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-08-04T16:10:54.776Z",
+ "generatedAt": "2026-08-04T18:25:35.373Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 18,
+ "passed": 19,
  "total": 86,
  "rows": [
   {
@@ -634,19 +634,6 @@
    }
   },
   {
-   "id": "leo2_revolution",
-   "geoMin": 69.4,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 84.1,
-    "wholeCurves": 69.4,
-    "turretCurves": 79.1,
-    "stations": 80.1,
-    "dims": 96.5,
-    "floaters": 100
-   }
-  },
-  {
    "id": "challenger1",
    "geoMin": 69.9,
    "gatePassed": false,
@@ -933,6 +920,19 @@
    }
   },
   {
+   "id": "t84",
+   "geoMin": 90.2,
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 92,
+    "wholeCurves": 92.3,
+    "turretCurves": 90.2,
+    "stations": 95.3,
+    "dims": 99.1,
+    "floaters": 100
+   }
+  },
+  {
    "id": "isu152",
    "geoMin": 90.2,
    "gatePassed": true,
@@ -960,13 +960,13 @@
   },
   {
    "id": "m47_patton",
-   "geoMin": 90.3,
+   "geoMin": 90.4,
    "gatePassed": true,
    "components": {
-    "hullCurves": 90.3,
-    "wholeCurves": 92.4,
-    "turretCurves": 92.9,
-    "stations": 95.4,
+    "hullCurves": 90.4,
+    "wholeCurves": 91.1,
+    "turretCurves": 91.6,
+    "stations": 93.4,
     "dims": 100,
     "floaters": 100
    }
@@ -1011,6 +1011,19 @@
    }
   },
   {
+   "id": "leo2_revolution",
+   "geoMin": 90.7,
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 91.7,
+    "wholeCurves": 90.7,
+    "turretCurves": 91.7,
+    "stations": 90.8,
+    "dims": 99.4,
+    "floaters": 100
+   }
+  },
+  {
    "id": "m60a1",
    "geoMin": 90.7,
    "gatePassed": true,
@@ -1037,19 +1050,6 @@
    }
   },
   {
-   "id": "t84",
-   "geoMin": 90.9,
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 90.9,
-    "wholeCurves": 92.2,
-    "turretCurves": 91.4,
-    "stations": 96.3,
-    "dims": 99.1,
-    "floaters": 100
-   }
-  },
-  {
    "id": "leo2a6",
    "geoMin": 90.9,
    "gatePassed": true,
@@ -1067,10 +1067,10 @@
    "geoMin": 91.2,
    "gatePassed": true,
    "components": {
-    "hullCurves": 91.7,
-    "wholeCurves": 91.2,
-    "turretCurves": 94.1,
-    "stations": 92.9,
+    "hullCurves": 91.2,
+    "wholeCurves": 91.3,
+    "turretCurves": 92.8,
+    "stations": 92.7,
     "dims": 100,
     "floaters": 100
    }
