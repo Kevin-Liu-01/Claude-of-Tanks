@@ -189,13 +189,17 @@ MODEL_SOURCE.vickers_mk1 = glb('vickers_mk1_jack.glb');
 
 // quarantine class (NC-SA) — local builds only; public builds keep these ids
 // on their procedural family fallbacks and strip-nc-assets deletes the files
+// t84 GRADUATED 2026-08-04 (dual gate: 90.2 x2 f27feef + critic PASS 9.14
+// floor 9.0, 346c758; hash frozen 531fe4f0) — registration retired per
+// GEOMETRY-GATE §10; the reference lives on only in the three local
+// measurement override maps.
 if (ALLOW_LOCAL_RECOVERED_MODELS) {
-  for (const id of ['t54', 't80', 't80b', 't80bv', 't84']) {
+  for (const id of ['t54', 't80', 't80b', 't80bv']) {
     MODEL_SOURCE[id] = glb(`recovered/${id}.glb`);
   }
 }
 
 export const USERDROP7_TANK_IDS = SPECS.map((s) => s.id);
 // every wave-8 row is sourced-from-online (era bucketing intent, cf.
-// USERDROP5_SOURCED_IDS) — no dual-gate graduates here yet
-export const USERDROP7_SOURCED_IDS = USERDROP7_TANK_IDS.slice();
+// USERDROP5_SOURCED_IDS) — t84 graduated out (dual gate, §10)
+export const USERDROP7_SOURCED_IDS = USERDROP7_TANK_IDS.filter((id) => id !== 't84');

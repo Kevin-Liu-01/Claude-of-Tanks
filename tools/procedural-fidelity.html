@@ -149,7 +149,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
     glb:{ path:'/models/tanks/community/recovered/m1a2_sepv2.glb',
       turretNode:'^Turret$', gunNode:'^misc_b$', autoPivot:true,
       yawOffset:Math.PI,
-      turretFollowers:'^(?:ammo_(?:5|box)|armor_turret|ex_armoc|ex_armor(?!_body)|ex_era_turret|ex_decor_04|glsaa_[6-8]|hatch_0[34]|mg_aamount_h|misc_a|optic_commander)$',
+      turretFollowers:'^(?:ammo_(?:5|box)|armor_turret|ex_armoc|ex_armor(?:_turret2?|_0[124]|_04_2|_[lr])?(?!_body)|ex_era_turret(?:_[23])?|ex_decor_04|glsaa_[6-8]|hatch_0[34]|mg_aamount_h|misc_a|optic_commander)$',
       paintUntextured:true },
   },
   // merkava1b (graduated 2026-08-04, the 16th): retired userdrops5
@@ -179,6 +179,14 @@ const LOCAL_REFERENCE_OVERRIDES = {
     glb:{ path:'/models/tanks/community/recovered/pt91m.glb',
       turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true,
       paintUntextured:true },
+  },
+  // t84 (graduated 2026-08-04, the 19th): retired userdrops7 recovered
+  // registration — measurement-only. No harness offsets (RIG PARITY OK
+  // 0.8-1.8deg across all r31/r32 runs on this same shape).
+  t84: {
+    source:'glb',
+    glb:{ path:'/models/tanks/community/recovered/t84.glb',
+      turretNode:'^Turret$', autoPivot:true, paintUntextured:true },
   },
   // merkava3d (graduated 2026-08-03, the 13th): retired userdrops5
   // registration — measurement-only.

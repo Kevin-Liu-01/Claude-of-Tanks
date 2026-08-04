@@ -303,3 +303,16 @@ proxy-shadow dark band across the roof plates at close-roof (solid,
 269px bg-tolerance), the hero-toptilt grazing strips, and the
 close-front flap sticks. Self-read ~8.8-9.0 floor on the side/rear
 ring, close-front/close-roof the risk views.
+
+## GRADUATION FREEZE (2026-08-04) — the program's 19th graduate
+Dual gate: geometry 90.2 PASS x2 bit-identical (f27feef: hull 92.0 /
+whole 92.3 / turret 90.2 / stations 95.3 / dims 99.1 grace / floaters
+100) + independent critic PASS floor 9.0 mean 9.14, every view >=9.0
+(346c758). HASH FROZEN: **531fe4f0** (47 meshes / 84292 verts) — any
+change to buildT84 or its shared helpers is a graduate-change and takes
+the §10 re-cert flow. userdrops7 recovered registration RETIRED (t84
+removed from the ALLOW_LOCAL_RECOVERED_MODELS loop + USERDROP7_SOURCED_IDS);
+reference mirrored into the three measurement override maps
+(procedural-fidelity / tmp-tank-critic [gitignored] / visual-evaluator-page)
+with no harness offsets. variants.js backfill: clean (no t84 row). Icons
+regenerated from the procedural build (5 by exact name, rest restored).

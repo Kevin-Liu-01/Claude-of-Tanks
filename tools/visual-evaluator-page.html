@@ -76,7 +76,7 @@ const CRITIC_REFERENCE_OVERRIDES = {
     pitchOffset:-Math.PI/2, paintUntextured:true } },
   m1a2: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m1a2_sepv2.glb',
     turretNode:'^Turret$', gunNode:'^misc_b$', autoPivot:true, yawOffset:Math.PI,
-    turretFollowers:'^(?:ammo_(?:5|box)|armor_turret|ex_armoc|ex_armor(?!_body)|ex_era_turret|ex_decor_04|glsaa_[6-8]|hatch_0[34]|mg_aamount_h|misc_a|optic_commander)$',
+    turretFollowers:'^(?:ammo_(?:5|box)|armor_turret|ex_armoc|ex_armor(?:_turret2?|_0[124]|_04_2|_[lr])?(?!_body)|ex_era_turret(?:_[23])?|ex_decor_04|glsaa_[6-8]|hatch_0[34]|mg_aamount_h|misc_a|optic_commander)$',
     paintUntextured:true } },
   merkava1b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava1b.glb',
     turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, paintUntextured:true,
@@ -88,6 +88,10 @@ const CRITIC_REFERENCE_OVERRIDES = {
   pt91m: { source:'glb', glb:{ path:'/models/tanks/community/recovered/pt91m.glb',
     turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true, paintUntextured:true,
     yawOffset:Math.PI } },
+  // t84 (graduated 2026-08-04, the 19th; no harness offsets — RIG PARITY OK
+  // on this shape through r31/r32).
+  t84: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t84.glb',
+    turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   // merkava3d (graduated 2026-08-03, the 13th): retired userdrops5
   // registration — measurement-only.
   merkava3d: {
