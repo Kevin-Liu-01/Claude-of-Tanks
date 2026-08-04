@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-04T13:57:37.215Z",
+ "generatedAt": "2026-08-04T13:58:43.915Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 16,
  "total": 86,
@@ -699,6 +699,19 @@
    }
   },
   {
+   "id": "m47_patton",
+   "geoMin": 75,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 83.1,
+    "wholeCurves": 77.5,
+    "turretCurves": 75,
+    "stations": 94.4,
+    "dims": 96.5,
+    "floaters": 100
+   }
+  },
+  {
    "id": "t80u",
    "geoMin": 75.4,
    "gatePassed": false,
@@ -837,19 +850,6 @@
     "wholeCurves": 86.7,
     "turretCurves": 85.5,
     "stations": 87.8,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "m47_patton",
-   "geoMin": 86.7,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 92.9,
-    "wholeCurves": 90.3,
-    "turretCurves": 86.7,
-    "stations": 95,
     "dims": 100,
     "floaters": 100
    }

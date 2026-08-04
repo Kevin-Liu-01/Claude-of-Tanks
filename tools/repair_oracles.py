@@ -3162,5 +3162,22 @@ REPAIRS['t80b'] = [
 ]
 
 
+# =============================================================== batch 34 ===
+# M47_PATTON TUBE STRETCH (patton r2: the >=90 ceiling measured at 89.9
+# pure tube tax — proc deflector at the published 4.38-4.41 muzzle vs the
+# oracle's 4.10 face). LAW v2: fresh .bak from committed HEAD bytes (the
+# Jul-29 bak archived as *.pre-batch34-history; the batch-8 re-seat output
+# is IN the committed bytes, so its recipe demotes to history — this
+# recipe is the warp ALONE). Plan literals from patton r1 (vertex-
+# normalize PLANS m47_patton). Gate-in-loop vs the stable 86.7 profile:
+# expect the tube-tax turret_plan columns to release; hull/dims hold.
+REPAIRS['m47_patton'] = [
+    ('py2', _axis_warp('m47_patton', long_axis='z',
+                       y_map=[(0, 0), (34.8001, 34.8001)],
+                       long_map=[(0.0677, -0.2605), (64.3345, 64.6628), (84.232, 87.0218)],
+                       y_top_max=35.077, expect=(2, 54964, 109997))),
+]
+
+
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
