@@ -163,6 +163,54 @@ re-seated +1.37 z / +0.42 y to the ring frame.
 State at handoff: hull 77.5 / whole 66.1 / turret 74.0 / stations 79.7 /
 dims 100 / floaters 100.
 
+## Vertex round r2 (2026-08-04) — patton-family builder
+82.5 -> 86.7 (hull 89.2->92.9 / whole 83.3->90.3 / turret 82.5->86.7 /
+stations 95.1->95.0 / dims 100 / floaters 100), gate x2 stable. Track clip
+234/76 -> 0/0; contiguity 0; mg census 1 (stowed FITTINGS 'mag' tucked
+under the M2/pedestal band at (0.30, 2.96, -0.62) — the measured m2Station
+remains the gate-driven roof gun, packet-justified per §I).
+ROUND FINDINGS (workorder-verified, all world coords):
+- GATE-JSON 'at' DECODE (bank): side/plan rows are MIRRORED vs world
+  (z = center.z - at); front rows are direct x. The workorder tool already
+  prints world - author from it only (one wasted cycle re-learned this).
+- Fender law extended: the continuous plate is 1.677 HW in curveHull too
+  (new opt-in H.fenderHW) — the r1 full-hw plates over-read five width
+  slices; bumps re-seated clear of slab boundaries ([-3.34,-3.27],
+  [-0.31,-0.14]) + a rear tip pair [-4.02,-4.095].
+- Deck cross-section: band narrowed to 1.40 with a deckShoulder roll
+  (1.40->1.545, drop 0.16) + 1.668 hanger rail + low 1.575 flap shelf at
+  x 1.60-1.71 (station i2's 3.426 width) + centre 1.774 spine (deckCaps
+  hw 0.19) over the 1.735 plateau — the ref front rolls at 1.42, reads
+  1.728-1.747 outboard of x 0.2, and holds 1.774 only on a centre strip.
+- Turret re-derive: dome narrowed to hw 0.95 (the plan +-1.0-1.2 band is
+  the RANGEFINDER SHELF, not the dome) with pods at 2.76/2.63/2.47/2.29
+  and left roll wedges 2.815->2.43; cupola r 0.18 top 2.98 + 2.905 collar;
+  M2 corridor tip 0.80 (phase-robust vs the 0.802/0.815 col jitter),
+  cover re-seated to the ref's own -0.18..-0.40 band; pedestal cap 3.38
+  (heightM p95 3.375-3.38, inside the 3.35+1% grace).
+- Gear refit vs ref lines: idler (1.47, 0.94, 0.27), sprocket (-3.50,
+  0.96, 0.30); glacis split (H.glacisWingY0) + aft sponson lift
+  (H.sponsonAftY 1.44 z<=-2.90) + belly 1.025 HW for containment 0/0.
+- Single LEFT tow casting (right eye never printed — same as m46): plan
+  cols +0.539..0.731 read the bare glacis; eye box edges parked >=15 mm
+  clear of the -0.563/-0.755 trace columns.
+- Mufflers: r1's band was degenerate (0.26 span - 0.26 trim = 0-length
+  body) with strap rings parked 0.4 m outside it; opt-in straps/legY0
+  added, band -2.26..-2.62 top 1.784.
+RESIDUAL / CAP CANDIDATE (pre-warp ceiling, measured): turret_plan 86.7 is
+pure tube tax — 8 centre columns carry the PUBLISHED muzzle (proc deflector
+4.38-4.41) vs the oracle's 4.10 face: 2x0.230 + 4x0.167 + 2x0.154 err-m,
+p95 2.8. Zero-free-error ceiling = 100 - 12x0.70 - 0.6x2.8 = 89.9 < 90:
+m47 CANNOT pass pre-warp; the banked tube-stretch warp (frozen, orchestrator
+lane) or a turretCurves-plan cap in the m46 form is required for the last
+3.3 pts. side_whole carries the matching 3 ONLY-PROC cols (cover 1.69,
+~2.5 pts) — the r1 'tax ~2.5-3' estimate covered side only.
+Worst remaining free columns: side_hull -1.77-frame bow-wrap arc (~0.07,
+the kit wrap arcs past the ref's chord-ended track), plan_hull centre-rear
+tail shape (ref -3.94..-4.08 vs proc -4.10 band, ~0.5 pt).
+Shots: shots/patton-r2/m47_patton-*.png; §D evaluator clean (yawProxy 0-0.6°,
+no RIG MISMATCH), report at shots/visual-eval-m47_patton/report.json.
+
 ## Vertex round r1 (2026-08-03) — ORCHESTRATOR LANDING NOTE
 (Builder finished without a section; from its verified report.) 66.1 ->
 82.5 (hull 89.2 / whole 83.3 / turret 82.5 / stations 95.1 / dims 100).

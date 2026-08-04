@@ -170,6 +170,44 @@ satisfiable against this oracle.
 State at handoff: hull 74.9 / whole 66.1 / turret 63.2 / stations 69.3 /
 dims 91 / floaters 100.
 
+## Vertex round r2 (2026-08-04) — patton-family builder
+72.6 -> 82.0 (hull 86.9->87.4 / whole 77.3->83.0 / turret 72.6->82.0 /
+stations 90.4->91.3 / dims 100 / floaters 100), gate x2 stable; still under
+the certified long-tube cap (4 ONLY-REF side columns at z +3.9..+4.2, the
+oracle's fused m26 tube vs our published 4.02 muzzle — turret_side cover
+3.0 / side_whole cover 2.29 caps those rows ~87). Track clip 166/99 -> 22/0
+(m47 containment recipe: bellyHW 1.025, glacisWingY0 1.30 with the new
+glacisWingDrop 0.04, sponsonAftY 1.35 z<=-2.60). mg census 1 (stowed
+FITTINGS 'mag' inside the casting at (0.30, 2.30, -0.60); the measured
+m2Station stays the roof gun — §I packet justification).
+ROUND DELIVERIES (the r1 'free rows'):
+- turret_plan LEFT FLANK: the ONLY-REF col at x -1.035 was a left shelf
+  (z -0.25..-0.93) + the left tail runs 0.79 wide to -1.85 — pod pair
+  added ((-1.065..-0.925, y 1.72..2.00) + (-0.79..-0.62, y 2.00..2.42,
+  z -1.05..-1.87)); right flank rebuilt as ledge 2.49 (x 0.90..1.132) +
+  step 2.26 (..1.175) + 2.05 (..1.205) + low bracket (plan sliver at
+  x 1.19..1.265, z -0.41..-0.47). turret_plan 72.6 -> 84.3.
+- STEPPED MANTLET (new G.shield.wings): the ref rotor face is plan-narrow
+  (+-0.25 to z 0.92) with cheek wings stopping at 0.69 — the r1 1.30-wide
+  slab read +0.28 on six plan columns. m46 shield w 0.52 zF 0.92 + wings
+  1.02x0.42 zF 0.70.
+- front roof asymmetry: cupola r 0.175 @ -0.715 (ref rolls 2.53 by
+  x -0.93), loader 2.605, second M2 ammo can at x -0.025 (ref centre 2.95
+  band), deck shoulder + 1.66 hanger rail (x 1.57..1.62, z -1.6..-2.6),
+  bump stops at x 1.015 (ref 0.31-0.43 floors at |x|~1.0).
+- shackles off the bare tube corridor (1.60 -> 1.30: side col 1.614 read
+  bot 1.097 vs the ref's 1.92 tube underside); bow eye trimmed to the
+  ref's 1.755 plan front; rack rails to -2.56 with centre floor at -2.36
+  (side wants the long rails, plan wants the short centre — both true).
+- stations: [1.22,1.34] bump REMOVED (i12's ref width is the bare 3.35
+  lip) + [0.58,0.70] added (i11's ref IS wide) + fenderHW 1.677 + a bow
+  bump [1.42,1.53] — i12 wPct 4.64 -> 0.2 (i11 4.02 residual trims out).
+Worst remaining: the two 0.2-0.4 side cols at z ~1.05 (unidentified proc
+turret mass ~2.60 — probe next round with a mask dump) and z -2.45..-2.54
+rack tops; front centre-can bands; the certified tube columns.
+Shots: shots/patton-r2/m46_patton-*.png; §D evaluator clean (yawProxy
+0.1-1.4°, no RIG MISMATCH).
+
 ## Vertex round r1 (2026-08-03) — ORCHESTRATOR LANDING NOTE
 (Builder finished without a section; from its verified report.) 63.2 ->
 72.6 (hull 86.9 / whole 77.3 / turret 72.6 / stations 90.4 / dims 100).
