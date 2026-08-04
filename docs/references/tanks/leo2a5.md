@@ -742,3 +742,178 @@ rowmean-sd 6.58 (≤4.5 gate) + p95 +1.3; louvre med +5.5 hot; 2c sub45
 shade tail — hue 40.9 unchanged from the r5 read, still the 1c
 family). Prior certified classes (2.695 crown pair, jerry-can bottom,
 fender-nose/wedge-crest flags, evaluator top Δbot) stand.
+
+## VISUAL r8 — SECOND CRITIC LADDER ROUND / FINISH TIER (2026-08-04, verdict ac48aa0: FAIL floor 8.4 hero-rr + close-front, mean ~8.55)
+
+Work order: docs/critique/shaded-parity-leo2a5-r6.md — ONE coherent
+driver (de-CAD the clean-CAD kit against the weathered print). Gate
+after round: **min 90.8 PASS x2 bit-identical** (hull 90.8 / whole 91.1
+/ turret 91.5 / stations 94.3 / dims 100 / floaters 100 — whole gave
+back 0.1 on the r8 overlay AA, min unchanged); containment `--exact`
+**0/0**; `turret-parent-audit` stranded 0 / abutting 0 / dangling 0;
+`tank-standard-check` gate ✓ clip ✓ contig 0 ✓ decor **mg0+4d** (the
+standing §I mg-census packet carry; the 4d = the r8 fender fittings —
+first KIT.fittings instances on the build); §D evaluator exit 0, **RIG
+PARITY OK** (max yawProxy 1.5° @close-front, no skew flip; the wedge
+crest Δ+12.5/-13.8 and rack-line Δ+10.6/+12.2 flags are the r5/r6
+cite-only carriers, unchanged; top Δbot 1.66 m vertical-cliff class
+carried); `npm test` 166 ✓. Hash **8066a678 -> 50c34724** (122 meshes /
+136672 verts). Graduates frozen: leo2a6 **80b76338**, kf51 **77020c58**;
+revolution **c5d9e131** (the r7 landing) + a7v e28fc316 / proto 5647ef3e
+byte-stable — every diff hunk lives in buildLeo2A5 (13 hunks, section
+diff audited). Shots: shots/leopard-r8/ (14 official pairs, zero console
+errors); measurements re-derived per cycle on tools/tmp-critic-a5r5-
+measure.py + tmp-a5r6crit-extra.py (11 render cycles this round).
+
+Per-order done-gates (critic windows, final render):
+- **1a STERN BOXES DE-CAD — DONE-GATE MET**: rear window
+  [100..540]x[312..372] med 91.9 -> **82.5** (gate 82..88, ref 86.4);
+  boxes carry 4 tones at 2x (canvas-skin 86-90 + camo-red ~56 + deep
+  olive ~50 + dark straps + spare-steel base piping); rowmean-sd 5.93
+  >= 4.5 held (ref 6.41), vgrad 3.68 ~ ref 3.56. Mechanism: WEATHERED-
+  CANVAS SKIN CLASS — see law 2 below; bind bands use the centered
+  full-depth trick (stowage rng-yaw-proof); pile lid tops untouched
+  (the certified 1.857/1.836 front-top law).
+- **1b PANEL TINT DECK — turret gate MET, hull inside window**:
+  view-left turret-side p95 81.5 -> **83.5** (gate >=83, ref 84.4) via
+  same-material vertex-tint panels (law 1): wedge-cheek sub-quads
+  (1.135/0.96/1.10), wall-face plates (1.12/0.97/1.09), bustle-roof
+  panels; hull-side med 71.1 -> **71.4** (ref 73.0, ±2 window held) via
+  the 10-panel rear-skirt quilt at 1.7285 (under the 1.737/1.7385
+  station lines). GLACIS CALM: med **65.8 <= 66 held** (was 63.3, ref
+  61.8), hue 39.5 -> **67.8** (ref 72.0 family) via the X-strap
+  re-bucket hullDetail->hull + the antiSlip split; rowmean-sd 7.89 ->
+  **7.73 partial — mechanism-bound** (the bright rows are the gun-root
+  chin faces (law: gun dressing barred by the r6 dims trap) and the
+  dark rows the plate-edge shade; the anti-slip fields now sit on their
+  own antiSlip clone 0x333428, decoupled from the tires after the
+  shared-hex bistable flip pushed med to 68.9 in r8-d).
+- **1c COMB RIM QUIET — hue + corners MET, sub45 banked**: gear window
+  hue 40.9 -> **59.3** (gate >=50, ref 62.1) via the pad re-balance
+  0x453f2f -> 0x474734 (R=G olive, then +5L for the floor); rear-corner
+  rowmean-sd 4.52/4.55 -> **3.96/4.00** (gate <=4.0) with vgrad 3.03 ->
+  1.16/1.12 — the rung/gap convergence needed the SYSTEM pairing (pads
+  0x474734 + chain 0x393524 + nz 0.33 + chain's own lighter ny 0.22);
+  front-face rowmean-sd 6.58 -> **5.75/5.79** (order "toward <=5.5" —
+  partial; 5.46 was reachable at nz 0.27 but the corner <=4.0 hard gate
+  owns the term). Corner med 62.2 -> 69.4 (+6.6 vs ref — honest
+  residual: the bright-chain pairing warmed the corner; the ladder gate
+  took priority). sub45 2763 -> **2358 (gate <=1500 NOT met — banked)**:
+  the residual band (rows y 0.10..0.24, medL 44.6-46.8) is the deep-
+  shade floor on chain/tire/pad surfaces + bakeDirt-shaded skirt-bottom
+  camo; the floor's sub-0.09 vehLuma rolloff scales with albedo and the
+  corner-ladder pairing caps how far the chain can lift (0x34311f
+  inverted the ladder at 4.88/4.91). Strip law HELD through every step:
+  med 63.4 (ratio 1.048 in 0.92-1.16), hue 74.8, sat 27.1 —
+  byte-stable across 11 cycles.
+- **1d DISC RIM CRESCENT — DONE-GATE MET**: disc window p95 89.8 ->
+  **76.5** (gate <=80, ref 79.5) with med 53.2 <= 65 ✓, p5 51.0 >= 45 ✓,
+  hue 74.8 >= 55 ✓ all held. Three-layer fix after three failed cover
+  attempts (laws 3-4): matte discFace (no roughnessMap, env 0.05), mud
+  rim tori + 275-deg partial rings (gap down, arc ends y 0.835/0.808
+  hold the 0.77/0.795 bottom reads), FLAT washers over the grazing-glow
+  annulus, and the whole assembly's albedo at L<=56 so the SUNLIT arc
+  reads <=80 (sunlit ~ albedo x1.42).
+- **2a LOUVRE CAMO BLEED — DONE-GATE MET**: 4 patches crossing the band
+  at 2x (2 inboard rz-tilted + 1 per outboard facade, camo-red/deep-
+  olive fixed-tone clones per the a6 r4 #2 mip-average law — tones
+  pinned to the scheme's own rendered patch reads (66,55,42)/(46,52,40));
+  rear med in-gate (see 1a), rowmean-sd >= 4.5 held via the skin crease
+  rows.
+- **2b CABLE X SWEEP — DELIVERED**: roll 0.21 -> 0.31, len 2.09, ends
+  (±0.985, 1.648)/(±0.985, 1.042) — the low ends land AT the guard
+  rings and pass in front like the print's own; corridor law |x|<=1.02
+  held; no new gate columns (gate x2 ✓). The cables render via a
+  NON-CASTING overlay (law 5).
+- **3a MG READ HARDENING — DELIVERED**: pale receiver/grip mass mid-rod
+  on the diagonal stowed MG3 (box 0.055x0.030x0.115 + pale top cover +
+  under-grip, tops 0.7695/0.774 under the 0.77L mount-top law) + the
+  loader-MG ammo-box pale outer face. Top 2x: the diagonal rod now
+  carries a distinct receiver lump; rear 2x: rod-over-frame with mass.
+  dims 100 held ✓.
+- **3b LAUNCHER BRISTLE — DELIVERED**: pale end ring per tube (between
+  muzzle cap and collar) + caps pushed +0.009 along the tube axis
+  (reach ~1.388 < the 1.41 col limit); the tube rows silhouette against
+  the camo cheeks at the front quarters.
+- **3c ROOF-STACK SHROUDS — DONE-GATE MET (mask-method)**: the verified
+  bg-colored slit at the plateau tail plate's right end (proc px at
+  (900-915, 218-225), EXACT 0x151b20) is CLOSED by the under-plate
+  shroud (top 0.7765 under the plate) + the dip-zone fill (top 2.435w
+  under the ref's 2.47 EMES-dip line, bottom sunk into the apex tier).
+  Final close-front enclosed-air census: proc 126 px vs REF'S OWN 140 —
+  the remaining pockets are the thin-rod class (whip/mast/rail) the ref
+  itself carries more of.
+- **4a FENDER CHAIN SPECKLE — DELIVERED (§I library)**: 4x
+  KIT.fittings.spareTrackLinks strips half-sunk on the aft fender tops
+  (links 4+3 per side, tops 1.728 under the 1.765/1.825 deck lines,
+  x 1.6295..1.7295 inside the 1.737 fender station line; the body wall
+  carries the side silhouette). First KIT.fittings census entries on
+  the build (decor mg0+4d). Deck window NO WORSE: med 54.9 = baseline,
+  sub45 1431 < 1465 ✓; AABB unchanged.
+- **2c p75 HOLD — MISSED BY 0.8, banked with the mechanism**: hero-rr
+  p75 69.8 (r6) -> **68.2** vs the >=69 HELD gate. The 1a dressing
+  necessarily traded canvas-plateau population; the boundary pixels are
+  now SCHEME-CAMO surfaces at quarter lighting (mean rgb (66,68,53) —
+  the same per-tank-untunable camo-bound class the r6 verdict banked
+  for 4a/4c). Restoration steps that landed: canvas hex +1.5 (0x4b5340
+  -> 0x4c5441, the plateau law's own lever), skins to 0x4a5241/0x4f5745,
+  lid strips deepened + 6 lit crowns (p95 108.7 -> 100.0, closer to ref
+  89.3), pile2 kept single-strap/narrow-patch. med 56.5 vs ref 60.5;
+  sub45 572 -> 554 (banked class, ref 363).
+
+LAW DISCOVERIES (fleet bank):
+1. **PANEL-TINT = SAME-MATERIAL OVERLAY**: the factory boxUV is LOCAL-
+   POSITION planar (u,v = pos * camoScale), so an overlay plate baked in
+   the same frame samples the SAME camo pixels — replicate bakeDirt
+   (dust/ao/hash-jitter) times a per-plate constant into the color
+   attribute and reuse P.mats.hull itself: per-plate ±2-12% "cast
+   mottle" with zero clones, zero new programs, CSM inherited.
+2. **BISTABLE-WINDOW LAW**: a median gate BETWEEN two tone plateaus
+   (canvas 92 / dressing 55-70) cannot be hit by coverage ratio — the
+   med teleports across the gap. It needs a THIRD population class AT
+   the target (the weathered-canvas skins at 85-90) big enough to carry
+   the median rank.
+3. **NON-CASTING DRESSING LAW** (bisect-proven, the round's big
+   mechanism): thin tone dressing added via P.add merges into CASTING
+   bucket meshes — the CSM penumbras of creases/straps/crowns striped
+   the surfaces below and held the rear med at 67 while the dressed
+   surfaces themselves measured 86+; re-issued as overlay meshes
+   (castShadow=false) the med recovered +12. Tone geometry that exists
+   to RE-TONE a surface must not shadow it.
+4. **GRAZING-COVER GLOW / SUNLIT-ARC LAW**: every curved cover band
+   catches (a) the key on its crown and (b) the fleet shader's deep-
+   shade RIM BOOST (0.45*rim*shade) on its grazing silhouette — three
+   successive "cover the bright ring" attempts each BECAME the ring.
+   Fixes that work: flat camera-facing washers (no grazing band) and
+   assembly albedo <= L56 so even the sunlit arc stays under an 80
+   p95 gate (sunlit ~ albedo x1.42 on this rig).
+5. **DEEP-SHADE FLOOR IS ALBEDO-KEYED**: the sub-45 census tail lives
+   on the vehicleAmbientFloorHook floor, which scales with vehLuma
+   through the sub-0.09 rolloff — light terms (ny/nz grime, env) cannot
+   move it; only the hex walks it. Paired knobs (chain hue/luma vs
+   corner-ladder convergence vs sub45) solve as a SYSTEM or invert.
+6. **STOWAGE-JITTER DRESSING**: stowage() yaws piles ±0.06 rad per
+   seed — dressing that must survive any camoSeed uses CENTERED
+   full-depth bands (the stowage() cinch-strap trick generalized);
+   face-hugging plates need ~20 mm poke budget.
+
+Residuals carried to r9 (with numbers): gear sub45 2358 (<=1500 gate;
+floor/bakeDirt-bound, see 1c); 2c p75 68.2 (-0.8, camo-bound boundary);
+front-face rowmean-sd 5.75/5.79 (banked pad-shadow floor + the nz
+corner coupling); corner med +6.6 warm (the ladder pairing's price);
+glacis rowmean-sd 7.73 (gun-chin + plate-edge physics); hero-rr crown
+p95 100.0 (ref 89.3, improved from 108.7); 4a/4c/4d camo-bound classes
+unchanged; whole 91.2 -> 91.1 (overlay AA, min unaffected). Prior
+certified classes (2.695 crown pair, jerry-can bottom, fender-nose/
+wedge-crest flags, evaluator top Δbot 1.66 cliff class, hero-rr
+1.116 m² + toptilt 6.323 m² projection-air voids) stand — toptilt air
+census re-verified cell-for-cell vs ref this round.
+
+Self-scores after round (/10, builder read): rear 8.8, rearleft/
+rearright 8.7, left/right 8.8, front 8.7, frontleft/frontright 8.7,
+top 8.7, hero-frontleft 8.7, hero-rearright 8.6, hero-toptilt 8.7,
+close-front 8.7, close-roof 8.8 — **floor ~8.6 self-read** (the r6
+floor drivers: hero-rr pale-kit/disc/comb all delivered; close-front
+slit closed + glacis calmer + front ladder down). The two honest
+misses (gear sub45, 2c p75 -0.8) are banked with mechanisms; next
+critic adjudicates graduation-track.

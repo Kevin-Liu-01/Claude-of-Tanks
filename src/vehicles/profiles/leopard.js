@@ -2685,8 +2685,12 @@ function buildLeo2A5(P) {
     }
     // lit tarp-lid edge strips (merkava-3c lit-kit class: the under-bustle
     // p75 wants LIT crowns under the rack overhang, not pockets)
-    P.add('hullDetail', box(1.10, 0.005, 0.14), -0.85, 1.8575, -3.44);
-    P.add('hullDetail', box(1.00, 0.005, 0.14), 0.55, 1.8365, -3.44);
+    // r8-d: strips deepened 0.14 -> 0.20 — the 2c p75 plateau lost canvas
+    // population to the 1a dressing; the lit lid edges buy it back.
+    // r8-g: rendered via the non-casting overlay pass in the r8 block (the
+    // strips' own CSM penumbra striped the skins/piles below — bisect).
+    // Geometry unchanged: 1.10/1.00 x 0.005 x 0.20 at (+-0.85/0.55,
+    // 1.8575/1.8365, -3.47).
     for (const [zc, top] of [[-3.41, 2.000], [-3.5175, 1.972], [-3.6325, 1.944], [-3.765, 1.920]]) {
       P.add('hullDetail', box(0.046, 0.004, 0.085), -0.075, top + 0.002, zc); // roll crown glints
     }
@@ -2759,9 +2763,15 @@ function buildLeo2A5(P) {
     // cables + eyes stay in the band-free inter-track corridor (|x| <= 1.02
     // — the r4 lane-corridor routing law; a ±1.3 first cut put the low ends
     // inside the sprocket-wrap swept band, 22 exact-voxels)
-    P.add('hullDark', box(2.02, 0.022, 0.018), 0, 1.26, -3.472, 0, 0, s * 0.21);
-    P.add('hullDetail', box(0.07, 0.07, 0.02), s * 0.985, 1.475, -3.474);    // cable end eyes
-    P.add('hullDetail', box(0.07, 0.07, 0.02), s * 0.985, 1.045, -3.474);
+    // r8 2b X SWEEP DEEPENED (critic order: the r6 X was shallower than the
+    // ref's upper-corner-to-ring geometry): roll 0.21 -> 0.31, run ends at
+    // (±0.985, 1.648) up / (±0.985, 1.042) down — the low ends land AT the
+    // guard rings (1.06) and pass in front of them like the print's own.
+    // Corridor law held: cable tips |x| = 1.0; tops 1.675 under the deck.
+    // (r8-e: the cables render via a non-casting overlay mesh below — their
+    // CSM penumbra swept the whole louvre band ~-15..-20 and owned the med)
+    P.add('hullDetail', box(0.07, 0.07, 0.02), s * 0.985, 1.648, -3.474);    // cable end eyes
+    P.add('hullDetail', box(0.07, 0.07, 0.02), s * 0.985, 1.042, -3.474);
     P.add('hullGlass', box(0.045, 0.045, 0.012), s * 1.345, 1.685, -3.449);  // taillight lenses on the kit clusters
     P.add('hullGlass', box(0.03, 0.03, 0.012), s * 1.27, 1.685, -3.449);
   }
@@ -2781,15 +2791,24 @@ function buildLeo2A5(P) {
   // a6-r2 yawed-furniture law: constant-y runs bury on a falling plate);
   // armored backing plates + 3-bar brush guards cluster the headlight pods
   // (tops <= the pods' own 1.45 line; plan stays wing/pad-owned).
+  const antiSlipGeos = [];
   {
+    // r8 1b GLACIS DECOUPLE: the anti-slip fields leave the shared rubber
+    // bucket (tires needed a big sub45 lift that pushed the glacis med
+    // over its 66 gate) — collected here, meshed on the antiSlip clone in
+    // the r8 tone block. Same certified geometry/transforms.
     const gY = (z) => (z <= 2.95
       ? 1.56 - 0.293 * (z - 2.66)
       : 1.475 - 0.0746 * (z - 2.95));
     for (const s of [-1, 1]) {
-      P.add('hullRubber', box(0.70, 0.008, 0.27), s * 0.51, gY(2.80) + 0.004, 2.80, -0.285, 0, 0);
-      P.add('hullRubber', box(0.88, 0.008, 0.62), s * 0.57, gY(3.30) + 0.004, 3.30, -0.0745, 0, 0);
+      antiSlipGeos.push(KIT.xform(box(0.70, 0.008, 0.27), s * 0.51, gY(2.80) + 0.004, 2.80, -0.285, 0, 0));
+      antiSlipGeos.push(KIT.xform(box(0.88, 0.008, 0.62), s * 0.57, gY(3.30) + 0.004, 3.30, -0.0745, 0, 0));
+      // r8 1b GLACIS CALM: X-straps re-bucketed hullDetail -> hull — the
+      // pale-detail straps fired 85-91 rows against the ref's uniform 61.8
+      // print (glacis rowmean-sd 7.89 vs ref 1.53, tex-sd 11.6 vs 6.3);
+      // scheme-camo straps keep the X read at ~plate tone.
       for (const [ox, oz, ry] of [[-0.17, -0.10, -0.532], [0.17, 0.10, -0.532], [-0.17, 0.10, 0.532], [0.17, -0.10, 0.532]]) {
-        P.add('hullDetail', box(0.40, 0.006, 0.032), s * (0.55 + ox), gY(3.30 + oz) + 0.0075, 3.30 + oz, -0.0745, s * ry, 0);
+        P.add('hull', box(0.40, 0.006, 0.032), s * (0.55 + ox), gY(3.30 + oz) + 0.0075, 3.30 + oz, -0.0745, s * ry, 0);
       }
       // headlight cluster: backing plate embedded in the plate + brush bars
       P.add('hullDark', box(0.26, 0.06, 0.014), s * 0.90, 1.425, 3.582);
@@ -2800,9 +2819,9 @@ function buildLeo2A5(P) {
         P.add('hullDetail', box(0.010, 0.010, 0.095), s * (0.90 + sx), 1.402, 3.620, -0.30, 0, 0);
       }
     }
-    P.add('hullRubber', box(0.46, 0.008, 0.32), 0, gY(3.40) + 0.004, 3.40, -0.0745, 0, 0);
+    antiSlipGeos.push(KIT.xform(box(0.46, 0.008, 0.32), 0, gY(3.40) + 0.004, 3.40, -0.0745, 0, 0));
     for (const s2 of [-1, 1]) {
-      P.add('hullRubber', box(0.50, 0.008, 0.22), s2 * 0.35, 1.352, 3.73, -0.59, 0, 0);
+      antiSlipGeos.push(KIT.xform(box(0.50, 0.008, 0.22), s2 * 0.35, 1.352, 3.73, -0.59, 0, 0));
     }
   }
   // bow tow-clevis bumps: the ref plan beak SCALLOPS (3.945 at ±0.60..0.74
@@ -2976,10 +2995,18 @@ function buildLeo2A5(P) {
           const cz = rz - Math.sin(s * 0.95) * f * 0.095;
           const dir = [0.878 * Math.sin(a), 0.479, 0.878 * Math.cos(a)];
           const at = (t) => [cx + dir[0] * t, ry + dir[1] * t, cz + dir[2] * t];
-          const [mx, my, mz] = at(0.113);
+          // r8 3b LAUNCHER BRISTLE (critic order: tubes read as dressed
+          // slabs from the quarters): muzzle caps push +0.009 along the
+          // tube axis (reach 1.380 -> ~1.388, inside the 1.41 col limit)
+          // and a PALE end ring rides between cap and collar so each tube
+          // silhouettes as a tube against the camo cheek at frontleft/
+          // frontright 2x.
+          const [mx, my, mz] = at(0.122);
+          const [px2, py2, pz2] = at(0.090);
           const [lx, ly, lz] = at(0.042);
           const [bx, by, bz] = at(-0.110);
           P.add('turretDark', KIT.cylZ(0.0405, 0.016, 10), mx, my, mz, -0.5, a, 0);   // muzzle cap
+          P.add('turretDetail', KIT.cylZ(0.0413, 0.008, 10), px2, py2, pz2, -0.5, a, 0); // pale end ring
           P.add('turretDark', KIT.cylZ(0.0398, 0.018, 10), lx, ly, lz, -0.5, a, 0);   // collar ring
           P.add('turretDetail', KIT.cylZ(0.0405, 0.012, 10), bx, by, bz, -0.5, a, 0); // breech cap
         }
@@ -3022,6 +3049,13 @@ function buildLeo2A5(P) {
     P.add('turretDark', box(0.05, 0.042, 0.042), -0.10, 0.751, -1.145, 0, -0.6, 0);  // flash hider at the diagonal tip
     P.add('turretDetail', box(0.024, 0.012, 0.05), -0.038, 0.762, -1.222, 0, -0.6, 0); // front sight + gas block
     P.add('turretDark', box(0.16, 0.036, 0.03), 0.315, 0.742, -1.505, 0, -0.25, 0);  // grip frame under
+    // r8 3a MG READ HARDENING (critic order — make the delivered read
+    // unambiguous): receiver/grip MASS mid-rod on the diagonal stowed MG3
+    // (the top/rear 2x reads want a lump, not a bare rod). Below the anchor
+    // line (top 0.7695 < the 0.77L mount-top law); pale cover rides via the
+    // mgPale overlay block. Dark grip hangs under the receiver.
+    P.add('turretDark', box(0.055, 0.030, 0.115), 0.023, 0.7545, -1.313, 0, -0.6, 0); // receiver mass mid-rod
+    P.add('turretDark', box(0.020, 0.026, 0.045), 0.055, 0.732, -1.360, 0, -0.6, 0);  // pistol grip under
   }
   // hatch/PERI cluster at the POST-WARP 2.653 line (see peri note): left
   // block spans the loader zone (warped ref side band 2.639-2.695, front
@@ -3100,6 +3134,20 @@ function buildLeo2A5(P) {
   // 2.145w (col 2.089) where the crest corner AA-read 2.44 — thin plate on
   // the crest, under every front column's 2.62+ line
   P.add('turret', box(0.70, 0.025, 0.11), 0.55, 0.7895, 1.785);
+  // r8 3c ROOF-STACK SHROUDS (critic order: daylight slits at close-front —
+  // bg-colored pixels confirmed by mask-method inside the stack at the tail
+  // plate's right end). Two interior fills, both under every certified
+  // front-column line:
+  // - under-plate shroud: closes the see-through lane between the tail
+  //   plate's underside (0.777) and the falling crest surface (top 0.7765,
+  //   0.5 mm shy — sub-pixel; front cols 0.20..0.90 read the 0.775-0.82
+  //   crest line above it).
+  // - dip-zone fill at x 0.90..1.02: the slit past the plate's right edge
+  //   where the cheek folds to the EMES dip; top 0.655L = 2.435w stays
+  //   under the ref's 2.47 dip line (the r3 dip-crossing law); bottom sinks
+  //   0.015 into the apex tier (attached).
+  P.add('turret', box(0.70, 0.038, 0.10), 0.55, 0.7575, 1.785);
+  P.add('turret', box(0.12, 0.36, 0.26), 0.96, 0.475, 1.72);
   // turret-mask floor: the ref side bottoms 1.628..1.656 over w −0.40..
   // +1.59 (shell fused low) — thin apron under the ring. r3: z1 pulled
   // 1.80w → 1.59w (the ref 1.645/1.758 columns bottom at 1.684 — the
@@ -3186,16 +3234,29 @@ function buildLeo2A5(P) {
     // jack re-bucketed dark via jackDark, so wood dresses ONLY the slats;
     // the ref band's lit slat class needs the pale side to carry the
     // separator delta per the a6 slat/gap law)
-    P.mats.wood.color.setHex(0x5c6047);
+    // r8 2a: slat tone walked down (0x575b43, then 0x5a5e46) and finally
+    // BACK to a hair under the r6 value — with the canvas skins owning the
+    // 85-86 class and the camo patches crossing the band, the +5.5-hot
+    // window med is settled by POPULATION now, not by the slat hex; dim
+    // slats just sank the med into the dressing mass (66.9/70.2 read).
+    P.mats.wood.color.setHex(0x5b5f47);
     P.mats.wood.roughness = 0.85;
     P.mats.wood.envMapIntensity = 0.35;
     // OD canvas (rear bedroll pile + roll staircase — the big rear-view mass)
-    P.mats.canvasCloth.color.setHex(0x4b5340);  // r6 2c: lifted — the under-bustle p75 sits ON the canvas plateau (67.6 across cuts); 0x515a3e overshot the louvre med, 0x484f37 undershot p75
+    P.mats.canvasCloth.color.setHex(0x4c5441);  // r6 2c: lifted — the p75 sits ON the canvas plateau; r8-i: +1.5 restores the plateau after the 1a dressing traded plateau population (67.9 vs the 69 HOLD; raising the hex is the plateau law's own lever)
     // r6 1a: spareTrack darkened 0x48423a -> 0x3d382f — the flap plates/
     // boards (hullTrack bucket) fired ~82 under the bow key vs the ref's
     // 63.5 flap read; teeth/recess rings ride darker with it (fine).
     P.mats.spareTrack.color.setHex(0x3d382f);            // sprocket teeth/recess rings + flap boards
-    P.mats.rubber.color.setHex(0x2c2a26);                // tires/flap boards: weathered dark grey
+    // r8 1c: tire lift 0x2c2a26 -> 0x373830 — the gear-window sub45 band
+    // (rows world y 0.10..0.24, ~1790 of 2984 px) is tire-bottom/chain
+    // shade floor-clamped at medL 41-43 vs the ref's continuous 55+ band;
+    // the deep-shade floor scales with albedo vehLuma (sub-0.09 rolloff),
+    // so the lift must come from the hex. GLACIS DECOUPLED: the anti-slip
+    // fields moved off this bucket to their own antiSlip clone (r8 block)
+    // — the r8-a rubber lift pushed the glacis med over its 66 gate while
+    // the gear band needed MORE; one hex could not serve both windows.
+    P.mats.rubber.color.setHex(0x3a3b33);                // tires: weathered olive-grey (r8-d: one more rolloff step for the sub45 band)
     // track band: a6 3-dim law re-solved ON THIS PRINT's pair (view-left
     // strip rects): the a6 multiplier read ratio 1.01-1.06 (in law) and hue
     // 40 (family ✓) but sat 11 vs the ref strip's 26.7 — R/B spread widened
@@ -3237,15 +3298,43 @@ function buildLeo2A5(P) {
     // onto the gap tone with ZERO mask cost (the side-strip law rides
     // normal.x faces — byte-identical; mud on tread faces is also simply
     // true). Coefficient measured against the front/rear face windows.
+    // r8 1c: an nz 0.33 cut was tried and REVERTED (overshoot law, third
+    // confirmed incident: gear sub45 2763 -> 2984 and both corner ladders
+    // +0.13 — the z-face rungs are already AT the gap tone; the sub45 tail
+    // is the floor-clamped chain/tire shade band, an ALBEDO lift job).
+    // r8-c: the up-grime term becomes |ny| so the WRAP's downward-facing
+    // treads (the disc-window ring's bottom arc, all >80) take the same mud
+    // as the crowns. r8-d: nz lands at 0.33 — with the FINAL bright
+    // chain/pad pairing the corner window wanted the rungs pulled DOWN to
+    // the gap tone (med had run 62.2 -> 71.8 on the pad lift), and the
+    // same term walks the front-face med back onto the ref's 63.5 line;
+    // the r8-a nz-0.33 failure was a dark-chain artifact, not the term.
     const regrime = (m) => {
       m.onBeforeCompile = (shader) => {
         vehicleAmbientFloorHook(shader);
         shader.fragmentShader = shader.fragmentShader.replace(
           '#include <opaque_fragment>',
-          'outgoingLight *= ( 1.0 - 0.34 * saturate( normal.y ) ) * ( 1.0 - 0.30 * abs( normal.z ) );\n\t#include <opaque_fragment>',
+          'outgoingLight *= ( 1.0 - 0.34 * abs( normal.y ) ) * ( 1.0 - 0.33 * abs( normal.z ) );\n\t#include <opaque_fragment>',
         );
       };
-      m.customProgramCacheKey = () => 'leo-a5-shoe-topgrime-v3';
+      m.customProgramCacheKey = () => 'leo-a5-shoe-topgrime-v7';
+      return m;
+    };
+    // r8-e CHAIN GRIME SPLIT: the last ~1600 gear-window sub45 pixels are
+    // the ground-run chain TOPS straddling luma 44.6-46.8 — the shared ny
+    // 0.34 mud was the very term pinning them under 45 (the ref band never
+    // reads below ~51 anywhere). The chain keeps the full nz (the corner
+    // ladder lives on z-faces, 3.95/3.99 at the <=4.0 gate) but takes a
+    // lighter crown term; pads keep the full pairing.
+    const chainGrime = (m) => {
+      m.onBeforeCompile = (shader) => {
+        vehicleAmbientFloorHook(shader);
+        shader.fragmentShader = shader.fragmentShader.replace(
+          '#include <opaque_fragment>',
+          'outgoingLight *= ( 1.0 - 0.22 * abs( normal.y ) ) * ( 1.0 - 0.33 * abs( normal.z ) );\n\t#include <opaque_fragment>',
+        );
+      };
+      m.customProgramCacheKey = () => 'leo-a5-chain-topgrime-v1';
       return m;
     };
     P.hullG.traverse((ob) => {
@@ -3255,8 +3344,17 @@ function buildLeo2A5(P) {
       if (ob.isInstancedMesh && m.color.getHex() === 0x171614) {
         // link pads: the strip MEDIAN is a pad pixel (70% coverage) — this
         // print's strip reads sat 26.7 warm vs the a6 print's 21, so the a6
-        // 0x403c39 sampled sat 11 here; warmed to the measured target
-        regrime(m).color.setHex(0x453f2f);
+        // 0x403c39 sampled sat 11 here; warmed to the measured target.
+        // r8 1c HUE ORDER: the gear window read hue 40.9 vs the ref's olive
+        // 62.1 (done-gate >=50) — the r6 0x453f2f pads (albedo hue ~44) were
+        // the median population; re-balanced R=G at the same luma/sat
+        // (0x424230, albedo hue ~60 — landed window hue 59.3), then LIFTED
+        // to 0x474734: the sub45 tail (rows world y 0.10..0.24, medL 43) is
+        // the ground-run pad x-faces on the deep-shade floor, whose sub-0.09
+        // vehLuma rolloff scales with the albedo — the lift walks the floor
+        // 43 -> ~48-50. Strip-law budget spent deliberately: med 63.4 ->
+        // ~67 keeps ratio ~1.10 inside the 0.92-1.16 law.
+        regrime(m).color.setHex(0x474734);
         m.envMapIntensity = 0.05;
         m.roughness = 1.0;
         m.metalness = 0.04;
@@ -3264,8 +3362,15 @@ function buildLeo2A5(P) {
         // inner chain / guide horns: the under-skirt strip pixels ride the
         // deep-shade floor whose tint is NORMALIZED albedo — the strip's
         // sat-11 read was this layer's near-neutral hex (the ref strip
-        // reads sat 26.7 warm); warmed at constant floor luma
-        regrime(m).color.setHex(0x2b241b);
+        // reads sat 26.7 warm); warmed at constant floor luma.
+        // r8 1c chain walk (4 measured steps): 0x2b241b (r6) -> 0x2f2d1f ->
+        // 0x34311f (corner gaps OVER rungs, ladder inverted) -> 0x312e1e ->
+        // FINAL 0x393524. The end state pairs the bright chain with nz 0.33
+        // + lifted pads so rung ~ gap at the corners (|delta| ~2-4) WHILE
+        // the floor-clamped sub45 band (medL 43, rolloff-scaled by albedo
+        // vehLuma) crosses the 45 line: one hex serves both windows only
+        // at this pairing.
+        chainGrime(m).color.setHex(0x393524);
         m.envMapIntensity = 0.08;
       } else if (m === P.mats.wheels) {
         ob.material = ob.isInstancedMesh ? wornDish : wornDrum;
@@ -3288,6 +3393,13 @@ function buildLeo2A5(P) {
       KIT.xform(KIT.box(0.078, 0.012, 0.34), -0.50, 0.861, 0.02),
       KIT.xform(KIT.box(0.022, 0.004, 0.40), 0.023, 0.7715, -1.313, 0, -0.6, 0),
       KIT.xform(KIT.box(0.28, 0.005, 0.048), 0.30, 0.7725, -1.55, 0, -0.25, 0),
+      // r8 3a: pale top cover ON the new mid-rod receiver mass (top 0.7735
+      // rides between the rod crown 0.7715 and the 0.77L law line at the
+      // box top +0.004 — sub-row) + the loader-MG ammo box PALE outer face
+      // (the ordered "ammo-box pale face"; the box top 0.867 line is the
+      // r6-certified read).
+      KIT.xform(KIT.box(0.058, 0.004, 0.118), 0.023, 0.772, -1.313, 0, -0.6, 0),
+      KIT.xform(KIT.box(0.005, 0.062, 0.115), -0.6735, 0.825, -0.02),
     ]) {
       const mesh = new THREE.Mesh(g, mgPale);
       mesh.receiveShadow = true;
@@ -3303,11 +3415,20 @@ function buildLeo2A5(P) {
     // inner-course filler so nothing floats). Station width moves 1.725 ->
     // 1.7385 — TOWARD the ref's own +-1.737 station read (r6 fender law).
     const discFace = rehook(P.mats.wheels.clone());
-    discFace.color.setHex(0x4b5138);
-    discFace.envMapIntensity = 0.20;
+    discFace.color.setHex(0x3d422e);                 // r8-j: sunlit-arc law — the un-shadowed disc/washer ring reads albedo x~1.42; L55 keeps the lit arc under the p95 80 gate
+    // r8 1d RIM CRESCENT: the disc-window p95 89.8 (gate <=80) is the face
+    // disc's own 12 mm rim band — a thin cylinder wall seen all-grazing, so
+    // the wheels-clone roughnessMap dips (~0.23 effective GGX) + env 0.20
+    // fresnel it into a bright ring at every bearing. Matte it out: no
+    // roughnessMap, env pinned low. Same body tone (med/hue/p5 gates held).
+    discFace.envMapIntensity = 0.05;
+    discFace.roughnessMap = null;
+    discFace.roughness = 0.97;
     const discDark = rehook(P.mats.wheels.clone());
     discDark.color.setHex(0x2b2f20);
-    discDark.envMapIntensity = 0.15;
+    discDark.envMapIntensity = 0.05;
+    discDark.roughnessMap = null;
+    discDark.roughness = 0.97;
     P.disposables.push(discFace, discDark);
     for (const s of [-1, 1]) {
       for (const [g, mat] of [
@@ -3325,6 +3446,302 @@ function buildLeo2A5(P) {
         mesh.castShadow = false;
         P.hullG.add(mesh);
         P.disposables.push(g);
+      }
+    }
+    // ---- VISUAL r8 FINISH TIER (shaded-parity r6 verdict, orders 1a/1b/2a/
+    // 4a) — de-CAD the pale kit, panel-tint the big fields, bleed camo over
+    // the louvre band, speckle the fenders. Mechanisms:
+    // - PANEL TINT: overlay plates re-using P.mats.hull itself — the factory
+    //   boxUV is LOCAL-POSITION planar (u,v = pos*camoScale), so a coplanar
+    //   overlay baked in the same frame samples the SAME camo pixels; only
+    //   the baked vertex-color multiplier differs (the factory bakes ±0.045
+    //   corner jitter — this stamps a per-plate constant, the "cast-mottle"
+    //   read). No clone, no new program: same material instance.
+    // - CAMO BIND: two fixed-tone camo-family clones (the a6 r4 #2 law —
+    //   small camo-mapped boxes mip-average to grey-mauve, so patch tones
+    //   are pinned to the scheme's own rendered patch reads: red-brown
+    //   (66,55,42) / deep olive (46,52,40) sampled off the r6 pairs).
+    // - Stowage-pile dressing uses CENTERED full-depth bands (the stowage()
+    //   yaw jitter is ±0.06 rad — centered boxes poke through the faces at
+    //   any seed, the same trick as stowage()'s own cinch straps).
+    {
+      const camoScale = (P.spec.visual && P.spec.visual.camoScale) || 0.34;
+      const panelPrep = (geo, yOff, strength, tint) => {
+        const pos = geo.attributes.position, nor = geo.attributes.normal;
+        const uv = new Float32Array(pos.count * 2);
+        const col = new Float32Array(pos.count * 3);
+        for (let i = 0; i < pos.count; i++) {
+          const nx = Math.abs(nor.getX(i)), ny = Math.abs(nor.getY(i)), nz = Math.abs(nor.getZ(i));
+          let u, v;
+          if (ny >= nx && ny >= nz) { u = pos.getX(i); v = pos.getZ(i); }
+          else if (nx >= nz) { u = pos.getZ(i); v = pos.getY(i); }
+          else { u = pos.getX(i); v = pos.getY(i); }
+          uv[i * 2] = u * camoScale; uv[i * 2 + 1] = v * camoScale;
+          const wy = pos.getY(i) + yOff;
+          const t = Math.min(1, Math.max(0, (1.45 - wy) / 1.45));
+          const d = Math.min(0.85, Math.pow(t, 1.7) * 1.12 * strength);
+          const nyv = nor.getY(i);
+          const ao = (1 - Math.max(0, -nyv) * 0.28) * (1 - Math.max(0, nyv) * 0.16);
+          const hsh = Math.sin(pos.getX(i) * 12.9898 + pos.getZ(i) * 78.233 + wy * 37.719) * 43758.5453;
+          const nj = ((hsh - Math.floor(hsh)) - 0.5) * 0.09;
+          col[i * 3] = ((1 - d) + d * 0.68 + nj) * ao * tint;
+          col[i * 3 + 1] = ((1 - d) + d * 0.6 + nj) * ao * tint;
+          col[i * 3 + 2] = ((1 - d) + d * 0.46 + nj) * ao * tint;
+        }
+        geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+        geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+        return geo;
+      };
+      const hullPanels = [];
+      const turretPanels = [];
+      const hPanel = (geo, tint) => hullPanels.push(panelPrep(geo, 0, 1, tint));
+      const tPanel = (geo, tint) => turretPanels.push(panelPrep(geo, 1.78, 0.5, tint));
+      const camoRed = rehook(P.mats.shadow.clone());     // scheme red-brown (rendered target ~(66,55,42))
+      camoRed.color.setHex(0x453428);
+      camoRed.envMapIntensity = 0.12;
+      const camoOlv = rehook(P.mats.shadow.clone());     // scheme deep olive (rendered target ~(46,52,40))
+      camoOlv.color.setHex(0x2f3526);
+      camoOlv.envMapIntensity = 0.12;
+      P.disposables.push(camoRed, camoOlv);
+      const blob = (mat, parent, geo) => {
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.receiveShadow = true;
+        parent.add(mesh);
+        P.disposables.push(geo);
+      };
+      // -- 2a CAMO BLEED over the louvre band (slat mat retoned above; the
+      // canvas hex untouched per the 2c plateau law). Two inboard patches
+      // crossing the full band + one per outboard facade, all z-thin plates
+      // overlapping the slat faces (attached), rz-tilted so they read as
+      // scheme blobs, not CAD rectangles. The r8 cables (deepened above)
+      // pass IN FRONT like the print's own.
+      for (const s2 of [-1, 1]) {
+        blob(P.mats.dark, P.hullG, KIT.xform(KIT.box(2.09, 0.022, 0.018), 0, 1.345, -3.472, 0, 0, s2 * 0.31));
+      }
+      blob(camoRed, P.hullG, KIT.xform(KIT.box(0.19, 0.42, 0.012), -0.42, 1.47, -3.469, 0, 0, 0.42));
+      blob(camoOlv, P.hullG, KIT.xform(KIT.box(0.16, 0.40, 0.012), 0.72, 1.47, -3.469, 0, 0, -0.48));
+      blob(camoRed, P.hullG, KIT.xform(KIT.box(0.24, 0.42, 0.010), -1.33, 1.48, -3.617, 0, 0, -0.30));
+      blob(camoOlv, P.hullG, KIT.xform(KIT.box(0.22, 0.40, 0.010), 1.42, 1.46, -3.617, 0, 0, 0.35));
+      // -- 1a STERN PILE DE-CAD (hull piles at -0.85/0.55, certified lid
+      // tops untouched — bands stop under the tarp lids): camo bind bands +
+      // bold wrap straps + a spare-steel base edge PIPING per pile (an
+      // 0.085-tall first cut ran a dark bar across the louvre window's mid
+      // rows and sank its med to 66.9 — the "edge detail" is a 26 mm line).
+      // The r8-b window rebalance also trims the hero-rr-facing pile (x
+      // +0.55) to one strap + a narrower patch: the 2c p75 plateau (>=69
+      // HELD gate) reads that pile's faces.
+      blob(camoRed, P.hullG, KIT.xform(KIT.box(0.15, 0.390, 0.430), -1.05, 1.642, -3.58));
+      blob(camoOlv, P.hullG, KIT.xform(KIT.box(0.12, 0.390, 0.430), -0.58, 1.642, -3.58));
+      blob(P.mats.dark, P.hullG, KIT.xform(KIT.box(0.055, 0.396, 0.435), -1.17, 1.6436, -3.58));
+      P.add('hullTrack', box(1.17, 0.012, 0.395), -0.85, 1.4566, -3.58);
+      blob(camoOlv, P.hullG, KIT.xform(KIT.box(0.13, 0.370, 0.410), 0.30, 1.632, -3.58));
+      blob(camoRed, P.hullG, KIT.xform(KIT.box(0.10, 0.370, 0.410), 0.84, 1.632, -3.58));
+
+      P.add('hullTrack', box(1.07, 0.012, 0.375), 0.55, 1.4568, -3.58);
+      // r8-c CANVAS SKIN CLASS (the louvre-med mechanism): the rear window
+      // is ~69% pile faces, and its tone population is BISTABLE — raw
+      // canvas rear faces render 91.9 and the dressing 50-70, so no
+      // coverage ratio can SETTLE the med into the ordered 82..88; the
+      // med needs a THIRD class AT the target. Weathered-canvas skins
+      // (canvas hex x0.94 — a clone, the shared plateau hex untouched)
+      // hug the REAR faces only: the hero-rr 2c plateau reads side/top
+      // faces, which stay raw canvas.
+      const skinCloth = rehook(P.mats.canvasCloth.clone());
+      skinCloth.color.setHex(0x4a5241);
+      const skinCloth2 = rehook(P.mats.canvasCloth.clone());
+      skinCloth2.color.setHex(0x4f5745);                 // r8-f/j/k: the 2c p75 plateau reads the SKINS at hero-rr (not the shared canvas — the skins pinned those pixels below 69); the hero-facing pile takes the last step alone, decoupled from the rear med
+      P.disposables.push(skinCloth, skinCloth2);
+      blob(skinCloth, P.hullG, KIT.xform(KIT.box(1.155, 0.400, 0.020), -0.85, 1.6516, -3.779));
+      blob(skinCloth2, P.hullG, KIT.xform(KIT.box(1.055, 0.395, 0.020), 0.55, 1.6490, -3.769));
+      // canvas CREASE rows on the skins (r8-d): the skins flattened the
+      // window's row structure (louvre-tex rowmean-sd 4.59 -> 2.99 vs the
+      // >=4.5 HELD gate) — cinch-line creases restore the row signal and
+      // read as strapped-bundle folds at 2x.
+      // r8-g NON-CASTING DRESSING LAW (bisect-proven): every P.add of this
+      // block's thin dressing merged into a CASTING bucket mesh — the CSM
+      // penumbras of creases/straps/crowns striped the skins below and
+      // held the window med at 67 while the surfaces themselves measured
+      // 86+; as overlay meshes (castShadow=false) the med recovered +12.
+      for (const cy of [1.51, 1.60, 1.70]) {
+        blob(P.mats.dark, P.hullG, KIT.xform(KIT.box(1.10, 0.011, 0.012), -0.85, cy, -3.786));
+        blob(P.mats.dark, P.hullG, KIT.xform(KIT.box(1.00, 0.011, 0.012), 0.55, cy - 0.004, -3.776));
+      }
+      // 2c lit-kit crowns (merkava-3c class, the established +2..3 mm pile
+      // crown family): pale strips on the hero-rr-visible lids/kit
+      blob(P.mats.detail, P.hullG, KIT.xform(KIT.box(0.50, 0.004, 0.10), 0.42, 1.8385, -3.50));
+      blob(P.mats.detail, P.hullG, KIT.xform(KIT.box(0.30, 0.004, 0.08), 0.88, 1.8385, -3.62));
+      blob(P.mats.detail, P.hullG, KIT.xform(KIT.box(0.90, 0.005, 0.05), -0.85, 1.8595, -3.72));
+      blob(P.mats.detail, P.hullG, KIT.xform(KIT.box(0.80, 0.005, 0.05), 0.55, 1.8390, -3.71));
+      blob(P.mats.detail, P.hullG, KIT.xform(KIT.box(1.10, 0.005, 0.20), -0.85, 1.8575, -3.47));
+      blob(P.mats.detail, P.hullG, KIT.xform(KIT.box(1.00, 0.005, 0.20), 0.55, 1.8365, -3.47));
+      // roll staircase: two wrap straps + a camo wrap (tops stay under the
+      // certified 2.005/2.000 front spike and each segment's own side top)
+      blob(P.mats.dark, P.hullG, KIT.xform(KIT.box(0.048, 0.150, 0.048), -0.075, 1.892, -3.50));
+      blob(P.mats.dark, P.hullG, KIT.xform(KIT.box(0.048, 0.130, 0.048), -0.075, 1.875, -3.76));
+      blob(camoRed, P.hullG, KIT.xform(KIT.box(0.047, 0.115, 0.050), -0.075, 1.878, -3.615));
+      // -- 1a RACK BOXES (turret bustle): the "pale wall" read is the slice-8
+      // rear face + the turretCloth kit slivers behind the fence — camo
+      // patches on the wall face (behind the fence verticals, like the ref's
+      // own bleed), pile bind bands + straps, jerry-can half-wrap, tarp-roll
+      // wrap band. Everything inside the rack rails / body silhouette.
+      blob(camoRed, P.turretG, KIT.xform(KIT.box(0.44, 0.30, 0.020), -0.55, 0.42, -3.020, 0, 0, 0.35));
+      blob(camoOlv, P.turretG, KIT.xform(KIT.box(0.36, 0.34, 0.020), 0.35, 0.35, -3.020, 0, 0, -0.30));
+      blob(camoRed, P.turretG, KIT.xform(KIT.box(0.28, 0.24, 0.020), 1.00, 0.32, -3.020, 0, 0, 0.20));
+      tPanel(KIT.xform(KIT.box(0.80, 0.40, 0.008), -0.20, 0.40, -3.017), 1.12);
+      blob(camoRed, P.turretG, KIT.xform(KIT.box(0.24, 0.400, 0.450), -0.80, 0.39, -2.825));
+      blob(P.mats.dark, P.turretG, KIT.xform(KIT.box(0.050, 0.410, 0.460), -0.57, 0.39, -2.825));
+      blob(camoOlv, P.turretG, KIT.xform(KIT.box(0.22, 0.355, 0.430), 0.24, 0.37, -2.845));
+      blob(P.mats.dark, P.turretG, KIT.xform(KIT.box(0.050, 0.365, 0.440), 0.43, 0.37, -2.845));
+      blob(camoRed, P.turretG, KIT.xform(KIT.box(0.12, 0.335, 0.410), 1.00, 0.35, -2.825));
+      blob(camoOlv, P.turretG, KIT.xform(KIT.box(0.18, 0.20, 0.370), -1.134, 0.26, -2.825, 0, 0.15, 0));
+      blob(camoRed, P.turretG, KIT.xform(KIT.box(0.12, 0.185, 0.185), 0.40, 0.52, -2.825));
+      // 2c lit-kit crowns on the rack kit (in the hero-rr window;
+      // non-casting per the r8-g bisect law)
+      blob(P.mats.detail, P.turretG, KIT.xform(KIT.box(0.34, 0.004, 0.28), 0.99, 0.517, -2.825));
+      blob(P.mats.detail, P.turretG, KIT.xform(KIT.box(0.55, 0.004, 0.09), 0.63, 0.607, -2.825));
+      // bustle roof de-slab (hero-rr "slab-with-highlight-edge"): panel
+      // tints + one olive blob on the flat 2.46w roof, clear of the r3 step
+      // plate at z -2.745..-2.645 (the r8-a 0.94 down-tint pulled the 2c
+      // p75 plateau under its 69 gate — the roof panels stay >= 1.0)
+      tPanel(KIT.xform(KIT.box(1.60, 0.006, 0.22), 0, 0.683, -2.85), 1.03);
+      tPanel(KIT.xform(KIT.box(1.30, 0.006, 0.30), -0.10, 0.683, -2.35), 1.08);
+      blob(camoOlv, P.turretG, KIT.xform(KIT.box(0.46, 0.008, 0.30), 0.70, 0.684, -2.40, 0, 0.4, 0));
+      // -- 1b PANEL TINT DECK (the cast-mottle class): turret wall face
+      // (±1.38 vertical run, panels 2.5 mm proud, tops 0.59L = 2.37w under
+      // the ±1.36..1.41 shoulder line), wedge cheek sub-quads (coplanar
+      // offsets along the slab's own bilinear surface), rear-skirt quilt
+      // (outer faces 1.7285 — under the 1.737 fender / 1.7385 disc station
+      // lines), and the glacis crease calm-down strip.
+      // (r8-b: tint mix raised — the r8-a set moved p95 81.5 -> 82.6 vs the
+      // >=83 gate; the +panels carry the ref's bright quilting class)
+      for (const s of [-1, 1]) {
+        tPanel(KIT.xform(KIT.box(0.005, 0.31, 0.42), s * 1.3825, 0.435, -0.57), 1.12);
+        tPanel(KIT.xform(KIT.box(0.005, 0.31, 0.40), s * 1.3825, 0.435, -0.11), 0.97);
+        tPanel(KIT.xform(KIT.box(0.005, 0.31, 0.42), s * 1.3825, 0.435, 0.35), 1.09);
+      }
+      const cheek = (s, xa, xb, ta, tb, tint, A, B) => {
+        const cyf = (x) => A[1] + (B[1] - A[1]) * ((x - A[0]) / (B[0] - A[0]));
+        const czf = (x) => A[2] + (B[2] - A[2]) * ((x - A[0]) / (B[0] - A[0]));
+        const nzf = (x) => 2.05 + 0.05 * ((x - 0.30) / 0.99);
+        const Pt = (x, t) => [s * x, 0.29 + t * (cyf(x) - 0.29), nzf(x) + t * (czf(x) - nzf(x))];
+        const q = [Pt(xa, ta), Pt(xb, ta), Pt(xb, tb), Pt(xa, tb)];
+        const u = [q[1][0] - q[0][0], q[1][1] - q[0][1], q[1][2] - q[0][2]];
+        const v = [q[3][0] - q[0][0], q[3][1] - q[0][1], q[3][2] - q[0][2]];
+        let n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+        const nl = Math.hypot(n[0], n[1], n[2]);
+        n = n.map((c) => c / nl);
+        if (n[1] < 0) n = n.map((c) => -c);
+        const off = (p) => [p[0] + n[0] * 0.0035, p[1] + n[1] * 0.0035, p[2] + n[2] * 0.0035];
+        const ord = (r) => (s < 0 ? [r[1], r[0], r[3], r[2]] : r);
+        const bot = ord(q), top = ord(q.map(off));
+        tPanel(KIT.slab(...bot, ...top), tint);
+      };
+      for (const s of [-1, 1]) {
+        cheek(s, 0.30, 0.62, 0.30, 0.62, 1.135, [0.20, 0.82, 1.75], [0.95, 0.775, 1.70]);
+        cheek(s, 0.68, 0.92, 0.36, 0.68, 0.96, [0.20, 0.82, 1.75], [0.95, 0.775, 1.70]);
+        cheek(s, 1.03, 1.27, 0.35, 0.75, 1.10, [1.00, 0.67, 0.72], [1.30, 0.66, 0.28]);
+      }
+      // (r8-b: mix shifted up — hull-side med sat at -2.0 of ref, the exact
+      // gate edge; the down-tints move toward 1.0)
+      const skT = [1.09, 0.98, 1.07, 0.96, 1.08, 0.99, 1.07, 0.97, 1.09, 0.98];
+      for (const s of [-1, 1]) {
+        for (let k = 0; k < 10; k++) {
+          hPanel(KIT.xform(KIT.box(0.0035, 0.44, 0.44), s * 1.72675, 1.12, -3.28 + k * 0.50), skT[k]);
+        }
+      }
+      // r8-i: wall-lip lift — the strip behind/between the piles (window
+      // rows 312..322) is the last big mid-tone mass under the med gate
+      hPanel(KIT.xform(KIT.box(2.0, 0.12, 0.005), 0, 1.755, -3.5665), 1.22);
+      // (r8-a glacis 0.93 calm panel DROPPED: its rows were the gun-root
+      // chin faces, not the crease — it only taxed the top-view deck med)
+      for (const [list, parent] of [[hullPanels, P.hullG], [turretPanels, P.turretG]]) {
+        if (!list.length) continue;
+        const merged = KIT.mergeAll(list);
+        const mesh = new THREE.Mesh(merged, P.mats.hull);
+        mesh.receiveShadow = true;
+        mesh.castShadow = false;
+        parent.add(mesh);
+        P.disposables.push(merged);
+      }
+      // -- 1b GLACIS anti-slip fields on their own clone (decoupled from the
+      // tire hex — see the rubber note): between the r6 0x2c2a26 read (rows
+      // 52-56, min 34 — the glacis-tex dark stripes) and the r8-a 0x34352b
+      // overshoot (window med 66.4 > the 66 gate).
+      const antiSlip = rehook(P.mats.rubber.clone());
+      antiSlip.color.setHex(0x333428);                   // r8-e: settled — the 0x363729 step flipped the bistable glacis med OVER the 66 gate (68.9); the dark-row sd driver turned out to be the plate-edge/gun-chin rows, not the fields
+      P.disposables.push(antiSlip);
+      {
+        const merged = KIT.mergeAll(antiSlipGeos);
+        const mesh = new THREE.Mesh(merged, antiSlip);
+        mesh.receiveShadow = true;
+        mesh.castShadow = true;
+        P.hullG.add(mesh);
+        P.disposables.push(merged);
+      }
+      // -- 1d RIM COVER TORI: the disc-window p95 89.8 ring survived the
+      // matte pass — the >80 pixels sit at r ~0.31 on the face-disc rim at
+      // EVERY bearing (rgb ~(85,92,67)); a mid-tone wornDish ring covers it
+      // without touching the p5>=45 / med<=65 gates (ring renders ~55).
+      // Outer radii hold the certified 0.320/0.315 disc lines and the 0.77
+      // bottom read; x-extents inside the 1.7385 station line.
+      // The residual >80 ring (p95 83.5 after the rim tori) sits at radial
+      // 0.30..0.35 — the SHOE-WRAP ANNULUS peeking around the 0.32 disc
+      // (the same "band's lit side-face ring" class the r6 discs covered
+      // inboard of 0.32; a bigger disc is barred — the r6 0.355 cut cost 4
+      // front columns). PARTIAL mud-guard rings (275 deg, gap DOWN) cover
+      // the annulus while the arc ends stop at y ~0.835, holding the
+      // certified 0.77 disc-bottom side read. x 1.690..1.717 touches the
+      // band's 1.69 side face (attached), inside the 1.725 skirt line.
+      // r8-d: the rim tori themselves go MUD — the round-3 probe read the
+      // surviving 83.6 ring at exactly the wornDish tori radius with a
+      // sunlit-wornDish rgb (84,90,66): ANY curved band catches the key on
+      // its crown (the a6 wrap-crown law) — the tori take the shoe-grime
+      // shader + a darker hex so their crowns sit ~55, not ~85.
+      const rimMud = regrime(P.mats.wheels.clone());
+      rimMud.color.setHex(0x2e3125);
+      rimMud.envMapIntensity = 0.05;
+      rimMud.roughnessMap = null;
+      rimMud.roughness = 0.98;
+      P.disposables.push(rimMud);
+      for (const s of [-1, 1]) {
+        // KIT.torus is pre-rotated FLAT (y-axis ring) — stand it up facing
+        // x with an rz quarter-turn (an ry turn is a no-op on a y-axis ring
+        // and left 0.63 m horizontal hoops blowing dims/stations to 0).
+        // The partial rings use THREE.TorusGeometry directly for its arc
+        // parameter (RAW torus axis is +z, unlike KIT.torus's pre-rotated
+        // +y): Euler XYZ applies rz->ry->rx to vectors, so ry PI/2 stands
+        // the ring to face x, then rx -0.824 spins the 85-deg gap (arc
+        // 4.80, gap centre theta = PI + 2.40) to point straight DOWN.
+        for (const [g2, mt] of [
+          [KIT.xform(KIT.torus(0.316, 0.0075, P.q ? 30 : 20), s * 1.7305, 1.09, -3.19, 0, 0, Math.PI / 2), rimMud],
+          [KIT.xform(KIT.torus(0.311, 0.0075, P.q ? 30 : 20), s * 1.7305, 1.11, 3.48, 0, 0, Math.PI / 2), rimMud],
+          // r8-i FLAT WASHERS: the persistent thin >80 ring is the fleet
+          // shader's deep-shade RIM BOOST (gameplay_feel r1: 0.45*rim*shade)
+          // lighting the tori's grazing inner-edge circle — a camera-facing
+          // flat annulus has no grazing band, so it reads face-tone ~53.
+          [KIT.xform(new THREE.RingGeometry(0.283, 0.3185, P.q ? 40 : 28), s * 1.7383, 1.09, -3.19, 0, s * Math.PI / 2, 0), discFace],
+          [KIT.xform(new THREE.RingGeometry(0.278, 0.3135, P.q ? 40 : 28), s * 1.7381, 1.11, 3.48, 0, s * Math.PI / 2, 0), discFace],
+          [KIT.xform(new THREE.TorusGeometry(0.332, 0.014, 8, P.q ? 30 : 22, 5.40), s * 1.7035, 1.09, -3.19, -1.124, Math.PI / 2, 0), rimMud],
+          [KIT.xform(new THREE.TorusGeometry(0.322, 0.013, 8, P.q ? 30 : 22, 5.40), s * 1.7045, 1.11, 3.48, -1.124, Math.PI / 2, 0), rimMud],
+        ]) {
+          const mesh = new THREE.Mesh(g2, mt);
+          mesh.receiveShadow = true;
+          mesh.castShadow = false;
+          P.hullG.add(mesh);
+          P.disposables.push(g2);
+        }
+      }
+      // -- 4a FENDER CHAIN SPECKLE (§I library class): KIT.fittings spare
+      // track-link strips half-sunk on the aft fender tops (tops 1.728 stay
+      // under the local 1.765/1.825 deck lines; x 1.6295..1.7295 inside the
+      // 1.737 fender station line; the body wall behind carries the side
+      // silhouette). Two strips per side, per the ref's top-view speckle.
+      for (const s of [-1, 1]) {
+        for (const [zc, links, seed] of [[-2.58, 4, 11], [-1.72, 3, 5]]) {
+          const st = FITTINGS.spareTrackLinks({ mats: P.mats, links, width: 0.10, pitch: 0.165, seed });
+          st.position.set(s * 1.6795, 1.678, zc);
+          P.hullG.add(st);
+        }
       }
     }
   }
