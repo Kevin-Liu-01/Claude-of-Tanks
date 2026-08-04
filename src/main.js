@@ -1751,14 +1751,24 @@ async function startBattleLoading(specId, mapId = null) {
   // EVENT-SPIKE WARM part 3 (perf-r2b): the wreck dance in warmCombatPipeline
   // ran on PRE-SWAP visuals — a swapped GLB tank's first kill still baked its
   // wreck-share canvases on the event frame. The swaps just drained above, so
-  // dance every fielded visual once more (per-family bakes are cached — only
-  // families the swaps introduced pay anything) while the screen still owns
-  // the frame.
+  // RE-ARM the disarmed burn hooks first (the swap replaced the materials —
+  // installing the hook later changes the program cacheKey, which is exactly
+  // the mid-battle compile we are killing), then dance every fielded visual
+  // once more (per-family bakes are cached — only families the swaps
+  // introduced pay anything) while the screen still owns the frame.
+  for (const e of game.tanks) {
+    if (e.visual && e.visual.prewarmBurn) {
+      try { e.visual.prewarmBurn(); } catch (_) { /* warm only */ }
+    }
+  }
   for (const e of game.tanks) {
     if (e.visual && e.visual.setDestroyed && e.visual.resetDestroyed) {
       try { e.visual.setDestroyed({}); e.visual.resetDestroyed(); } catch (_) { /* warm only */ }
     }
   }
+  // ...and the reveal-compile pass on the POST-SWAP hierarchies (see
+  // compileHiddenVariants — swapped GLBs carry their own hidden addon nodes).
+  compileHiddenVariants();
   bltStage('wreckWarm');
   battleLoad.progress(1, 'Ready');
 
@@ -3498,6 +3508,38 @@ function warmCombatPipeline() {
   if (spotsWereOn) setGarageSpots(false);
   try { renderer.compile(scene, camera); } catch (_) { /* fine */ }
   if (spotsWereOn) setGarageSpots(true);
+  compileHiddenVariants();
+}
+
+/**
+ * EVENT-SPIKE WARM part 4 (perf-r2c): shader programs cache by cacheKey, not
+ * by material INSTANCE — and setDestroyed() creates fresh cloned materials
+ * (char/burn variants, addon keeps) every kill. The old wreck dance created
+ * and discarded those clones BEFORE any compile pass saw them, so the first
+ * kill of each variant still linked its programs on the event frame (+6/7
+ * programs, 200-600 ms worst frames measured: AddOnTuskCamo/Rail, addon_keep
+ * burn variants). Compile each tank's subtree twice — once IN the destroyed
+ * state (the clones' programs enter the cache and outlive the clones) and
+ * once live — using the object-form compile, which traverses regardless of
+ * visibility (unspotted enemies included). Called from warmCombatPipeline
+ * and again after the GLB swap drain (swapped hierarchies carry their own
+ * materials and addon nodes).
+ */
+function compileHiddenVariants() {
+  for (const e of game.tanks) {
+    if (!e.visual || !e.visual.root) continue;
+    try {
+      if (e.visual.setDestroyed && e.visual.resetDestroyed) {
+        // pop:true — the REAL kill path's variant set (flying-turret clone,
+        // popped-state addon keeps); a {} dance warmed a different clone
+        // family and the pop set still linked on the first rack kill.
+        e.visual.setDestroyed({ pop: true, ageS: 0 });
+        renderer.compile(e.visual.root, camera, scene); // destroyed-state clones
+        e.visual.resetDestroyed();
+      }
+      renderer.compile(e.visual.root, camera, scene);   // live-state materials
+    } catch (_) { /* warm only */ }
+  }
 }
 // PERF (performance_budget r3): stream the 7 deferred staged-battle visuals
 // in one-per-idle-slice chunks (~150-350 ms each at the 'ai' bake tier) so
