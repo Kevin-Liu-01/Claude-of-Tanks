@@ -1,0 +1,139 @@
+<!doctype html>
+<!-- Turret-furniture parenting audit (owner law 2026-08-04, BUILD-STANDARD
+     §B5): bustle racks/duffels/chains seated in rig_hull do NOT yaw with the
+     turret ("stuff in the back of the turret just stays there"). Detects:
+       STRANDED — a hull-side mesh whose AABB meaningfully overlaps the
+         turret CASTING envelope (turret subtree minus the gun/recoil
+         subtree, shrunk by margin): it reads as turret furniture but will
+         not rotate.
+       DANGLING — a turret-descendant mesh sitting fully below the ring
+         plane (the m1a1 tow-cable class): it will sweep mid-air on yaw.
+     Skips instanced meshes (wheels), track buckets, and shadow-only
+     materials. mode=list emits procedural ids. -->
+<meta charset="utf-8">
+<title>tmp-turret-parent</title>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
+
+const params = new URLSearchParams(location.search);
+const mode = params.get('mode') || 'audit';
+
+if (mode === 'list') {
+  const ids = Object.keys(TANK_SPECS).filter((id) => {
+    const src = MODEL_SOURCE[id];
+    return !src || src.source !== 'glb';
+  });
+  window.__TP_RESULT = { ids };
+  window.__TP_READY = true;
+} else {
+  const id = params.get('id') || 'm1a2';
+  const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
+  const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+  tank.root.updateMatrixWorld(true);
+
+  const turretG = tank.root.getObjectByName('rig_turret');
+  const gunG = tank.root.getObjectByName('rig_gun');
+  const out = { id, stranded: [], abutting: [], dangling: [], anomaly: null };
+  if (!turretG) {
+    out.anomaly = 'no rig_turret group';
+    window.__TP_RESULT = out; window.__TP_READY = true;
+  } else {
+    const ringY = new THREE.Vector3().setFromMatrixPosition(turretG.matrixWorld).y;
+
+    const inSubtree = (o, root) => {
+      for (let p = o; p; p = p.parent) if (p === root) return true;
+      return false;
+    };
+    const auditable = (o) =>
+      o.isMesh && !o.isInstancedMesh && o.geometry && o.visible &&
+      (!o.material || o.material.colorWrite !== false) &&
+      !(o.userData && o.userData.trackBucket);
+
+    // turret CASTING envelope: turret subtree minus the gun/recoil subtree
+    // (the barrel would smear the envelope across the hull deck forward).
+    const casting = new THREE.Box3();
+    const bb = new THREE.Box3();
+    let castingMeshes = 0;
+    turretG.traverse((o) => {
+      if (!auditable(o)) return;
+      if (gunG && inSubtree(o, gunG)) return;
+      bb.setFromObject(o);
+      casting.union(bb);
+      castingMeshes++;
+    });
+    if (!castingMeshes) {
+      out.anomaly = 'turret casting empty';
+      window.__TP_RESULT = out; window.__TP_READY = true;
+    } else {
+      const M = 0.03; // shrink margin: grazing contact is not furniture
+      const shrunk = casting.clone();
+      shrunk.min.addScalar(M); shrunk.max.addScalar(-M);
+      out.castingBox = [
+        [+casting.min.x.toFixed(3), +casting.min.y.toFixed(3), +casting.min.z.toFixed(3)],
+        [+casting.max.x.toFixed(3), +casting.max.y.toFixed(3), +casting.max.z.toFixed(3)],
+      ];
+      out.ringY = +ringY.toFixed(3);
+
+      const inter = new THREE.Box3();
+      tank.root.traverse((o) => {
+        if (!auditable(o)) return;
+        const isTurret = inSubtree(o, turretG);
+        bb.setFromObject(o);
+        const vol = Math.max(1e-9,
+          (bb.max.x - bb.min.x) * (bb.max.y - bb.min.y) * (bb.max.z - bb.min.z));
+        if (!isTurret) {
+          // STRANDED check: meaningful overlap with the casting envelope,
+          // and not a below-ring deck/hull structure the bustle merely
+          // overhangs — the mesh must reach above the ring plane.
+          if (bb.max.y <= ringY + 0.02) return;
+          inter.copy(bb);
+          inter.min.max(shrunk.min); inter.max.min(shrunk.max);
+          const hasOverlap = inter.min.x < inter.max.x && inter.min.y < inter.max.y && inter.min.z < inter.max.z;
+          const frac = hasOverlap
+            ? ((inter.max.x - inter.min.x) * (inter.max.y - inter.min.y) * (inter.max.z - inter.min.z)) / vol
+            : 0;
+          if (frac >= 0.25) {
+            out.stranded.push({
+              mesh: o.name || o.parent?.name || '(unnamed)',
+              overlap: +frac.toFixed(2),
+              box: [[+bb.min.x.toFixed(2), +bb.min.y.toFixed(2), +bb.min.z.toFixed(2)],
+                    [+bb.max.x.toFixed(2), +bb.max.y.toFixed(2), +bb.max.z.toFixed(2)]],
+            });
+            return;
+          }
+          // ABUTTING check (t72b3m rear-rack class): furniture ATTACHED to a
+          // casting face has little or no AABB overlap. Flag hull meshes
+          // riding the casting's y-band that come within GAP of the casting
+          // in plan AND sit clear of the deck (bottom above ring - 0.10 —
+          // deck stowage the bustle merely overhangs stays hull gear).
+          // Review tier: the fix agent adjudicates each hit on the render.
+          const GAP = 0.12;
+          if (bb.min.y > ringY - 0.10 && bb.min.y < casting.max.y &&
+              bb.max.y > casting.min.y + M &&
+              bb.max.x > casting.min.x - GAP && bb.min.x < casting.max.x + GAP &&
+              bb.max.z > casting.min.z - GAP && bb.min.z < casting.max.z + GAP) {
+            out.abutting.push({
+              mesh: o.name || o.parent?.name || '(unnamed)',
+              box: [[+bb.min.x.toFixed(2), +bb.min.y.toFixed(2), +bb.min.z.toFixed(2)],
+                    [+bb.max.x.toFixed(2), +bb.max.y.toFixed(2), +bb.max.z.toFixed(2)]],
+            });
+          }
+        } else {
+          // DANGLING check (m1a1 cable class): turret-parented but entirely
+          // below the ring plane — sweeps mid-air on yaw.
+          if (bb.max.y < ringY - 0.03) {
+            out.dangling.push({
+              mesh: o.name || o.parent?.name || '(unnamed)',
+              topY: +bb.max.y.toFixed(2), ringY: +ringY.toFixed(2),
+            });
+          }
+        }
+      });
+      out.stranded.sort((a, b) => b.overlap - a.overlap);
+      window.__TP_RESULT = out; window.__TP_READY = true;
+    }
+  }
+}
+</script>

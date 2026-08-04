@@ -18,7 +18,7 @@ wins and this file needs a patch.
 - heightM p95 budget: ≤4 side columns above published height, aligned with
   the ref's own spikes.
 
-## B. Silhouette identity (owner laws — all four are gate-blocking)
+## B. Silhouette identity (owner laws — all six are gate-blocking)
 1. FRONT SLOPES: follow the reference's slopes — no flat fronts where the
    real vehicle rakes (M1 glacis is the canonical example).
 2. NO EMPTY AREAS / CONTIGUITY: no hollow pockets, no see-through voids, no
@@ -39,6 +39,38 @@ wins and this file needs a patch.
    wheels; no clipping, no floating bands.
    Check: `node tools/track-clip-audit.mjs --exact --ids=<id>` ≤ ~60 voxels
    per zone (kv2-graduate band); 0 is the target for new builds.
+5. TURRET FURNITURE PARENTING (owner law 2026-08-04: "stuff in the back of
+   the turrets … just stays there and isn't rotating with the turret").
+   Everything that visually belongs to the turret — bustle racks, duffels,
+   chain curtains, boxes on/against casting walls, casting antennas — MUST
+   live under `rig_turret` so it yaws with it. Hull deck furniture the
+   bustle merely overhangs stays in `rig_hull`. Both failure directions
+   violate this law: STRANDED (turret furniture in hullG — static while
+   the turret turns; the sepv3/merkava report) and DANGLING (hull
+   furniture in turretG — sweeps mid-air on yaw; the m1a1 tow-cable
+   incident). Fix by RE-PARENTING with world pose preserved at rest
+   (turret-local = world − turretPivot), never by re-modelling: rest-pose
+   masks, the gate, and rest renders must hold byte/pixel-identical.
+   Check: `node tools/turret-parent-audit.mjs --ids=<id>` — stranded and
+   dangling must be 0; `abutting` is a REVIEW tier (adjudicate on the
+   render: attached-to-casting ⇒ re-parent; deck gear ⇒ leave). Note the
+   audit is AABB-coarse: raised-deck hulls (kf51) false-flag deck plates
+   as stranded — adjudicate, don't blind-move. Instanced meshes are not
+   audited; check them by eye at yaw. Graduates take the §10
+   graduate-change flow, with the re-cert satisfied by rest-pixel-diff
+   proof (14 views identical) + floaters 100 ×2 + a yaw-90° turntable
+   pair showing the furniture rotating.
+6. TRACK RUN SILHOUETTE (owner law 2026-08-04: "tracks are the shape
+   \\________/ not /_____/"). Side view: the ground run is the SHORT base
+   of a trapezoid — approach/departure ramps rise to RAISED end wheels at
+   BOTH ends. Never a parallelogram, never a flat/curl-to-ground front.
+   Author both end wheels raised per the real vehicle (idler AND
+   sprocket); `buildRunningGear`'s contact tangents then form the ramps
+   (contactZF/contactZR pin the patch when needed). A low-authored end
+   wheel (chieftain5's idler at wheel height) violates the law EVEN WHEN
+   the oracle print carries the same defect — owner law outranks oracle
+   matching (M1-slope precedent): build the real ramp, measure the
+   oracle delta, certify the residual in the packet.
 
 ## C. Craft laws (mask economy + render truth)
 - PALE-REFUND by default on every new thin member; paired refunds at razor
