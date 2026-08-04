@@ -6,6 +6,15 @@ regresses them. This file supersedes scattered per-packet law restatements —
 packets cite it. If this file and GEOMETRY-GATE.md disagree, GEOMETRY-GATE.md
 wins and this file needs a patch.
 
+LIVING RULEBOOK (owner directive 2026-08-04: "consistently be editing our
+generating rules and procedures as were going through this"): this file is
+edited CONTINUOUSLY, not at milestones. Every owner report becomes a law
+here the same turn it arrives; every round's banked law discoveries that
+generalize beyond one tank get folded in at landing (the per-packet law
+bank stays the raw record). Builders and critics re-read this file at
+round start — briefs cite section numbers, and a brief that predates a law
+never excuses missing it.
+
 ## A. Geometry (the measured gate)
 - `node tools/geometry-gate.mjs --ids=<id>` — every component ≥90
   (hullCurves, wholeCurves, turretCurves, stations, dims, floaters). Min is
@@ -20,7 +29,12 @@ wins and this file needs a patch.
 
 ## B. Silhouette identity (owner laws — all six are gate-blocking)
 1. FRONT SLOPES: follow the reference's slopes — no flat fronts where the
-   real vehicle rakes (M1 glacis is the canonical example).
+   real vehicle rakes (M1 glacis is the canonical example). THIS INCLUDES
+   TURRETS (owner directive 2026-08-04, with photo: "all abrams have
+   sloped fronts of turrets"): the M1-family turret cheek faces rake back
+   steeply — a vertical/slab turret front on any Abrams is a failing
+   read. Critics: check the turret leading-edge angle in side/3-4 views
+   against the reference photo class, not just the mask score.
 2. NO EMPTY AREAS / CONTIGUITY: no hollow pockets, no see-through voids, no
    gaps between masses, at ALL angles including top-down. Turrets are
    contiguous volumes; every standoff mass reads attached (mounts,
