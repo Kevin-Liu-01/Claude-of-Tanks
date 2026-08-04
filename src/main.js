@@ -1384,7 +1384,7 @@ const endOverlay = document.createElement('div');
 endOverlay.style.cssText =
   'position:fixed;inset:0;display:none;z-index:70;align-items:center;justify-content:center;' +
   'flex-direction:column;gap:22px;background:rgba(4,7,10,0.55);' +
-  "font-family:'Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#eef4f9;";
+  "font-family:'ABC Monument Grotesk','Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#eef4f9;";
 endOverlay.className = 'cot-end';
 const endTitle = document.createElement('div');
 endTitle.style.cssText = 'font-size:52px;font-weight:800;letter-spacing:0.3em;text-shadow:0 2px 18px rgba(0,0,0,0.8);';
@@ -1398,7 +1398,7 @@ endBtn.textContent = 'RETURN TO GARAGE';
 endBtn.style.cssText =
   'font-size:16px;font-weight:700;letter-spacing:0.2em;padding:14px 44px;cursor:pointer;' +
   'color:#fff7ea;border:1px solid #ffc169;background:linear-gradient(180deg,#ffa02e,#d95f00);' +
-  "font-family:'Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
+  "font-family:'ABC Monument Grotesk','Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
 endOverlay.append(endTitle, endEarn, endBtn);
 document.body.appendChild(endOverlay);
 endBtn.addEventListener('click', () => { bus.emit('ui:click', {}); leaveBattleToGarage(); });
@@ -1507,7 +1507,7 @@ function showLockToast() {
     'position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:66;' +
     'padding:9px 22px;pointer-events:none;background:rgba(9,13,17,.88);' +
     'border:1px solid rgba(240,176,74,.55);color:#ffd27a;' +
-    "font-family:'Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;" +
+    "font-family:'ABC Monument Grotesk','Segoe UI',Roboto,Helvetica,Arial,sans-serif;" +
     'font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;' +
     'box-shadow:0 4px 18px rgba(0,0,0,.5);opacity:1;transition:opacity 1.2s ease;';
   document.body.appendChild(t);

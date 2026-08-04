@@ -62,7 +62,8 @@
   <!-- BOOT SCREEN: the wordmark weights are on the critical paint path, so they
        are preloaded ahead of the module graph (the splash markup below is inline
        for exactly the same reason — first paint must not wait on /src/main.js). -->
-  <link rel="preload" href="/fonts/inter/InterVariable.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Medium.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2" as="font" type="font/woff2" crossorigin />
   <style>
     :root {
       /* One raster-quality contract for every DOM HUD mounted by the game.
@@ -73,8 +74,8 @@
       text-rendering: optimizeLegibility;
       font-kerning: normal;
       font-synthesis: none;
-      /* InterVariable carries an opsz axis (14-32): auto lets the display
-         sizes (boot wordmark, garage title) take the tighter optical cut. */
+      /* Monument Grotesk ships static cuts (no opsz axis) — kept as a no-op
+         so any future variable face picks up optical sizing automatically. */
       font-optical-sizing: auto;
     }
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #05080b;
@@ -108,18 +109,25 @@
        a single module is fetched, and the bar below is driven by real load
        stages (see bootScreen.js / main.js BOOT STAGES).
        --------------------------------------------------------------------- */
-    /* Inter variable (rsms/inter v4.1, wght 100-900 x opsz 14-32, OFL — see
-       docs/ATTRIBUTION.md for provenance). Owner-directed swap replacing the
-       previous face. Inter has no width axis, so the old condensed layer is
-       now Inter + tightened tracking at the rules that used it (usage weight
-       floor: 500). */
-    @font-face { font-family: 'Inter'; src: url('/fonts/inter/InterVariable.woff2') format('woff2');
-      font-weight: 100 900; font-style: normal; font-display: swap; }
+    /* ABC Monument Grotesk (Dinamo Typefaces — owner-provided cut, fonts r4
+       owner-directed swap replacing Inter; see docs/ATTRIBUTION.md). Three
+       static faces with weight RANGES so the existing hierarchy maps: 100-400
+       Regular, 500-600 Medium, 700-900 Bold (usage weight floor: 500). Keep
+       these three blocks in sync with src/ui/fonts.js FONT_CSS. */
+    @font-face { font-family: 'ABC Monument Grotesk';
+      src: url('/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Regular.woff2') format('woff2');
+      font-weight: 100 400; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'ABC Monument Grotesk';
+      src: url('/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Medium.woff2') format('woff2');
+      font-weight: 500 600; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'ABC Monument Grotesk';
+      src: url('/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2') format('woff2');
+      font-weight: 700 900; font-style: normal; font-display: swap; }
 
     #cot-boot {
       position: fixed; inset: 0; z-index: 200; overflow: hidden;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'ABC Monument Grotesk', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       color: #e6edf3; -webkit-user-select: none; user-select: none; cursor: default;
       background:
         radial-gradient(118% 82% at 50% 22%, #16202b 0%, #0b1117 42%, #05080b 78%),
@@ -176,7 +184,7 @@
     }
     .cot-boot-word .l2 {
       display: flex; align-items: center; justify-content: center; gap: 14px;
-      margin-top: 12px; font-family: 'Inter', 'Arial Narrow', Arial, sans-serif;
+      margin-top: 12px; font-family: 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif;
       font-weight: 700; letter-spacing: .42em; text-indent: .42em;
       font-size: clamp(14px, 2.05vw, 21px); color: #f0a030;
       animation: cot-boot-rise .5s ease-out .18s backwards;
@@ -185,7 +193,7 @@
       background: linear-gradient(90deg, rgba(240,160,48,0), #f0a030); }
     .cot-boot-word .l2 i + span + i { background: linear-gradient(270deg, rgba(240,160,48,0), #f0a030); }
     .cot-boot-tag {
-      margin-top: 20px; font-family: 'Inter', 'Arial Narrow', Arial, sans-serif;
+      margin-top: 20px; font-family: 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif;
       font-weight: 600; font-size: 10.5px; letter-spacing: .34em; text-indent: .34em;
       color: #6e7d8a; text-transform: uppercase;
       animation: cot-boot-rise .5s ease-out .26s backwards;
@@ -203,7 +211,7 @@
     .cot-boot-meta {
       display: flex; align-items: flex-end; justify-content: space-between; gap: 18px;
       margin-bottom: 9px;
-      font-family: 'Inter', 'Arial Narrow', Arial, sans-serif;
+      font-family: 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif;
       font-variant-numeric: tabular-nums;
     }
     .cot-boot-stage {
@@ -247,13 +255,13 @@
     .cot-boot-tip.fade { opacity: 0; }
     .cot-boot-tip b {
       display: block; margin-bottom: 5px;
-      font-family: 'Inter', 'Arial Narrow', Arial, sans-serif;
+      font-family: 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif;
       font-size: 9.5px; font-weight: 700; letter-spacing: .3em; color: #f0a030;
       text-transform: uppercase;
     }
     .cot-boot-gate {
       margin-top: 26px; height: 22px;
-      font-family: 'Inter', 'Arial Narrow', Arial, sans-serif;
+      font-family: 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif;
       font-size: 12.5px; font-weight: 700; letter-spacing: .34em; text-indent: .34em;
       color: #ffe4b0; text-transform: uppercase; opacity: 0;
       transition: opacity .4s ease;
@@ -262,7 +270,7 @@
     @keyframes cot-gate { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
     .cot-boot-foot {
       position: absolute; left: 0; right: 0; bottom: 20px; z-index: 2;
-      font-family: 'Inter', 'Arial Narrow', Arial, sans-serif;
+      font-family: 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif;
       font-size: 9px; font-weight: 600; letter-spacing: .26em; color: #4b5865;
       text-transform: uppercase; text-align: center;
       animation: cot-boot-fade .6s ease-out .55s backwards;

@@ -2011,7 +2011,7 @@ function addGlbTurretNumber(turret, text, spots, size = 0.6) {
   const c2 = cnv.getContext('2d');
   const draw = () => {
     c2.clearRect(0, 0, 256, 256);
-    c2.font = `bold ${Math.min(150, Math.floor(430 / Math.max(1, text.length)))}px 'Inter', sans-serif`;
+    c2.font = `bold ${Math.min(150, Math.floor(430 / Math.max(1, text.length)))}px 'ABC Monument Grotesk', sans-serif`;
     c2.textAlign = 'center';
     c2.textBaseline = 'middle';
     c2.lineWidth = 12;
@@ -2024,7 +2024,7 @@ function addGlbTurretNumber(turret, text, spots, size = 0.6) {
   const tex = new THREE.CanvasTexture(cnv);
   // font mandate: tactical numbers bake in Inter — GLBs usually land after
   // the webfont, but if this raced it, redraw + re-upload on fonts.ready.
-  if (document.fonts && !document.fonts.check("bold 16px 'Inter'")) {
+  if (document.fonts && !document.fonts.check("bold 16px 'ABC Monument Grotesk'")) {
     document.fonts.ready.then(() => { draw(); tex.needsUpdate = true; }).catch(() => {});
   }
   tex.colorSpace = THREE.SRGBColorSpace;
