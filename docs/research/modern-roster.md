@@ -708,6 +708,14 @@ ring + GPMG) and a long stowage tail: full-width rear bin plus bustle basket.
 bogie blocks per side, external coil springs visible between wheel pairs — key
 detail), 3 return rollers, sprocket rear; top run covered by shallow fenders with
 stowage bins; NO side skirts on most — leave running gear exposed (reads great).
+§B6 (owner law 2026-08-04, uk b6 round): the FRONT IDLER is RAISED — idler y 0.60
+(was 0.50 = road-wheel height, a parallelogram front) giving a ~24° approach ramp
++ the ~18° rear departure = the \________/ trapezoid; with it the bow plates
+(glacis wedge + nose plate) narrowed to the inter-track span ±1.15 (§B4: the old
+±1.55/±1.42 solids ran through the track channel and buried the wrap — clip audit
+measured front 75 → **0** exact; rear 7 vox is a pre-existing sponson-bottom/
+sprocket-wrap graze at y 1.04..1.12 z −3.42..−3.14, inside the kv2 band, left for
+the modern3 owner), headlights + glacis cable moved inboard off the band span.
 **Details**: infra-red searchlight box on turret left cheek (big rectangular housing
 with barn door), 120 mm with full thermal sleeve + fume extractor, splash board
 ridge across glacis.

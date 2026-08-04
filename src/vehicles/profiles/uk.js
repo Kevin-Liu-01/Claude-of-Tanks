@@ -247,7 +247,23 @@ const CHIEFTAIN_HULL = {
   // HIGH rear drive sprocket (the real Chieftain layout; the warped print's
   // hull-mask rear bottom line is the climb from the last wheel to this
   // wrap: 0.03@-2.47 rising ~0.53/m to 0.66@-3.57, wrap ending ~-3.60).
-  sprocket: { z: -3.10, y: 0.875, r: 0.30 }, idler: { z: 2.58, y: 0.42, r: 0.3 },
+  // §B6 TRACK-RUN SILHOUETTE (owner law 2026-08-04, graduate-change round):
+  // the r4 idler sat at ROAD-WHEEL height (y 0.42 vs wheelY 0.38) so the
+  // band curled to ground at the bow — the parallelogram read the owner
+  // flagged ("tracks are the shape \________/ not /_____/"). RAISED to
+  // y 0.62: the idler top wrap (0.965) meets the return-run roller line
+  // (0.955) so the top run flows level into the idler like the real
+  // Chieftain, the band top face (1.01) stays a §B4-clean 10 mm under the
+  // belt loft bottom (beltTop 1.02 — y 0.635 clipped it by 5 mm, audit 24
+  // vox), and the contact tangent builds a real ~42° approach ramp from
+  // the first road wheel (ramp 2.465,0.055 -> 2.81,0.36, wrap bottom
+  // 0.275; z kept 2.58: wrap face stays ~3.02, clear of the corner flaps
+  // at 3.08). The ORACLE PRINT carries the low-idler defect (its
+  // whole-mask bow bottoms: 0 @ z 2.51, 0.091 @ 2.88, 0.183 @ 3.00 — the
+  // print's own band grounds to ~2.9); owner law outranks oracle matching
+  // (M1-slope precedent) — the residual on side cols z 2.55..3.02 is
+  // measured and certified in the packet §B6 section.
+  sprocket: { z: -3.10, y: 0.875, r: 0.30 }, idler: { z: 2.58, y: 0.62, r: 0.3 },
   rollers: [{ z: 1.45, y: 0.82, r: 0.09 }, { z: 0.1, y: 0.82, r: 0.09 }, { z: -1.25, y: 0.82, r: 0.09 }],
   trackTop: 0.98, arms: true,
   // Decal quads are mask geometry: pin the side numbers onto real planes

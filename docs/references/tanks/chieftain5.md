@@ -672,3 +672,119 @@ Certified carries: the sag coin (left gun line -8.7 — the ref carries it
 only as an AA coin), tier-end -12.3 (+-4 band), protected W3/wing-shelf
 classes, priced gate classes (bustle racks, MG receiver, tail). Laws
 #1-16 in the packet body are this tank's instrument legacy.
+
+## §B6 TRACK-RUN SILHOUETTE round (2026-08-04, uk agent — graduate-change flow)
+OWNER REPORT (garage screenshot): "for the cheiftain front, the tracks are
+wrong. remember tracks are the shape \\________/ not /_____/". Diagnosis
+confirmed on the official side pair (shots/uk-b6/before-right-bow-crop.png):
+the r4 idler was authored at ROAD-WHEEL height ({ z 2.58, y 0.42, r 0.30 }
+vs wheelY 0.38) so the band curled to ground at the bow — no approach ramp,
+the parallelogram read. The rear was already correct (sprocket y 0.875,
+~27° departure ramp).
+
+**THE CHANGE (uk.js CHIEFTAIN_HULL, one value + §B6 comment):** idler y
+0.42 → **0.62** (z 2.58 / r 0.30 kept). Reasoning: top wrap 0.62 + 0.345
+(r + wrap clear) = 0.965 meets the return-run roller line (rollers y 0.82
++ r 0.09 + half band = 0.955) so the top run flows level into the idler —
+the real Chieftain proportion; the band top face (1.01) holds a §B4-clean
+10 mm under the belt loft bottom (beltTop 1.02). y 0.635 was probed first
+and CLIPPED the belt by 5 mm (track-clip 24 vox front, box y≈1.02 z
+2.48..2.54) — 0.62 audits **0/0 exact**. buildRunningGear's contact
+tangent now builds the approach ramp from the first road wheel: ground
+patch ends z 2.465 (default contact, byte-identical), ramp (2.465, 0.055)
+→ (2.81, 0.36) ≈ **42°**, wrap bottom 0.275, wrap face ~3.02 still clear
+of the corner flaps at 3.08 (§B4 containment unchanged). Probe render
+measures the built ramp at ~45° ground-to-wrap (shots/uk-b6/
+chieftain5-side-*-after.png + rampcalc): front reads \\ , rear reads / —
+trapezoid at BOTH ends.
+
+**ORACLE DELTA MEASURED + CERTIFIED (owner law outranks oracle matching —
+M1-slope precedent).** The print itself carries the LOW-idler defect: its
+whole-mask bow bottoms ground to z 2.51 then rise only 0.091 @ z 2.88 /
+0.183 @ z 3.00 (its own band curls at the bow exactly like the old proc).
+The raised-ramp residual lands on FOUR side columns (workorder absolute-z,
+gate-JSON at-values −1.03..−1.4): z 2.65 errM 0.023 / z 2.77 0.034 /
+z 2.90 0.063 / z 3.02 0.051-0.059 (bottom-only errors, tops untouched) in
+BOTH side rows. This §B6 residual is the certified owner-law class: do
+not "fix" these columns back to the print's parallelogram.
+
+**GATE HELD — dual proof ×2 identical decimals on final bytes:**
+min **91.2 PASS ×2** (hull 91.2 / whole 91.3 / turret 92.8 / stations
+92.7 / dims 100 / floaters 100). vs the graduation record 91.2 (91.7 /
+91.2 / 94.1 / 92.9 / 100 / 100): headline UNCHANGED at 91.2; side_hull
+91.75 → 91.17 (the four §B6 columns, mean 0.57 → 0.63, p95 2.33 → 2.14);
+side_whole 94.03 (mean 0.45 p95 0.97); turret 94.1 → 92.8 and stations
+92.9 → 92.7 are registration-shift side effects (the whole-mask centroid
+moved with the raised band; dAlong 0.000 / dy −0.004 both runs), stable
+×2, both ≥ 90. track-clip **0/0 exact** (target 0 held); standard-check
+FULL (clip 0/0, holes 0, contig 0, mg1+0d); §D evaluator re-run on final
+bytes — RIG PARITY clean (yawProxy ≤ 2.6°, no view above the 10° abort),
+r6 finding classes unchanged (close-roof W3 class still prints — the
+protected no-order class; left-view worst Δ−9.3° same sag-coin family).
+Floaters 100 — the raised band+idler blob stays silhouette-connected
+(top run 0.935..1.01 overlaps the belt band 0.56..1.02 in side
+projection).
+
+**14-view pairs re-rendered (official rig, final bytes)** to
+shots/critic-chieftain5/; r6 pairs archived at shots/uk-b6/before-critic/
++ r6 evaluator evidence at shots/uk-b6/before-visual-eval/. ALL 14 proc
+panels changed at pixel level (reference panels byte-still): the
+geometry reads are the bow-ramp views (view-left/right, frontleft/
+frontright, hero-frontleft, close-front — the raised wrap + 42° climb),
+view-rear/rearleft/rearright (the raised far wrap now visible through
+the track channel — real-vehicle read), view-front (raised wrap arc lit
+above the corner flaps; front-row MASKS unchanged — the flat ground run
+still projects the same bottoms), view-top 28 px (AA only — plan
+footprint invariant: the wrap's +z extremity is at center height either
+way). Turntable proof shots/uk-b6/proc-yaw0/ + proc-yaw90/ (14 views
+each): front ramp reads \\________/ at rest and with the casting yawed
+90°.
+
+**§B5 abutting sliver ADJUDICATED (audit: 1 abutting, x≈1.66 y 1.84..2.18
+z −0.79..−0.45).** The flagged member is the right engine-bay bin's OUTER
+CHAMFER + width-nub cluster (uk.js x 1.62..1.75, y 1.84..2.21, z
+−0.9..−0.35) — hull fender furniture the print itself fuses into its HULL
+mask (r2 cert: "the RIGHT engine-bay bin run... its face is the right
+width plane at 1.75"), which the bustle merely overhangs. Yaw-90 render
+(shots/uk-b6/proc-yaw90/hero-rearright.png): the casting swings away and
+the bin run stays seated on the fender — deck gear, NOT casting-attached.
+Per §B5 REVIEW tier: **stays in rig_hull**; the audit will keep counting
+1 abutting by design (stranded 0 / dangling 0).
+
+**RE-FREEZE: hash e8919e36 → 5117b9a8 (43 meshes / 101168 verts).** All
+eight uk.js siblings byte-identical before/after (challenger1 7ed08078,
+vickers_mk1 1389d11c, centurion3 1adc2314, centurion5 976a8289, comet
+8c9a2098, challenger_cruiser d19f7994, charioteer c6fc76a8, fv510
+8566edc4). Graduate-change flow: this §B6 fix + gate hold + §D parity are
+in place; the graduation critic re-cert on the changed views completes
+the §10 re-freeze in the landing commit.
+
+**§B6 family sweep (authored-geometry audit, uk.js + the modern3 mk10):**
+- chieftain5 — FIXED this round (above).
+- chieftain_mk10 (modern3.js, NOT a graduate, no gate ref) — SHARED the
+  defect: idler y 0.50 ≈ wheelY 0.46, front ramp ~14° curling at the bow
+  vs the raised rear (y 0.70). Fixed in the same round: idler y → 0.60
+  (~24° front ramp, top wrap 0.935 meeting the stepped roller line, rear
+  ~18° — trapezoid both ends). Its §B4 interaction fixed with it: both
+  bow plates (glacis wedge + nose plate) were authored ±1.55/±1.42 FULL
+  WIDTH through the track channel and buried the front wrap (pre-existing
+  track-clip 75 front / 7 rear, over the kv2 band) — narrowed to the
+  inter-track span ±1.15 (chieftain5 rakeHalfW precedent), headlights +
+  glacis cable pulled inboard off the band span. Post-fix audit: front
+  75 → 0 exact; rear 7 unchanged (pre-existing sponson-bottom graze at
+  y 1.04..1.12 z −3.42..−3.14, inside the kv2 band — modern3-owner note).
+  Before/after renders shots/uk-b6/mk10-before/ + mk10-after/.
+- challenger1 idler y 0.60/r 0.28 (wrap bottom 0.275, both ends raised) —
+  probe-measured (shots/uk-b6/challenger1-side-*-sweep.png): proc front
+  bottom line climbs steadily from its ground-run end (sawtooth pad line,
+  ~27° effective; tangent segment ~15°) with the ~28° rear — trapezoid,
+  no parallelogram: §B6 PASS. Note for its own build rounds: the REF
+  print carries a steeper 39° front / 35° rear climb — the softness is
+  ordinary oracle gap (challenger1 sits at gate 69.9, far from freeze),
+  not a §B6 violation.
+- vickers_mk1 y 1.03/1.06 both ends high: PASS. centurion3/5 idler 0.80 /
+  sprocket 0.92 (~24° front): PASS. comet / challenger_cruiser /
+  charioteer symmetric hornY 0.62 Christie ends (wrap bottoms 0.26 vs
+  ground 0.13): PASS. fv510 front-drive sprocket 0.58 / idler 0.55 (wrap
+  bottoms ~0.19 vs wheel bottom 0.05): PASS — soft but present ramps
+  both ends, period-correct for the Warrior's low round idlers.
