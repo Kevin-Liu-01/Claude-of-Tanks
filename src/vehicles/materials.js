@@ -173,10 +173,14 @@ function camoPatchPath2D(rng, x, y, r, ang, lobeNIn) {
 }
 
 // Fill a Path2D 9 times (3x3 tile offsets) so the pattern wraps seamlessly.
-function fillWrapped(ctx, S, path, style) {
+function fillWrapped(ctx, S, path, style, fillRule) {
   ctx.fillStyle = style;
   for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) {
-    ctx.save(); ctx.translate(dx, dy); ctx.fill(path); ctx.restore();
+    ctx.save(); ctx.translate(dx, dy);
+    // fillRule 'evenodd' lets brand marks keep punched-out counters (the
+    // Claude Code glyph's eyes) — same-winding subpaths fill solid otherwise
+    if (fillRule) ctx.fill(path, fillRule); else ctx.fill(path);
+    ctx.restore();
   }
 }
 function strokeWrapped(ctx, S, path, style, width) {
@@ -188,6 +192,14 @@ function strokeWrapped(ctx, S, path, style, width) {
     ctx.save(); ctx.translate(dx, dy); ctx.stroke(path); ctx.restore();
   }
 }
+
+// Official Claude Code pixel mark (24x24 viewBox, verbatim from the published
+// icon) — the 'claude' house camo stamps it as a monogram. Two trailing
+// subpaths are the punched-out eyes: fill with 'evenodd' or they close up.
+export const CLAUDE_CODE_MARK =
+  'M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9' +
+  'V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949z' +
+  'M6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z';
 
 // PERF (performance_budget r5): the per-pixel LCG grain pass was the single
 // largest boot cost — bootprobe self-time 2.5 s across the staged vehicle
@@ -1374,6 +1386,75 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       }
     }
     // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'claude' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // The HOUSE SCHEME (camo r3, owner ask): terracotta + slate disruptive
+    // masses over weathered ivory, monogrammed with the tank-Claude crest
+    // mascot and the Claude spark on a jittered grid — a fashion-house print
+    // that still breaks the silhouette at range. patches = [terracotta,
+    // slate]. Glyph ink alternates slate/ivory at print alpha so it reads on
+    // both the field and the masses without per-pixel sampling.
+    const terra = patches[0];
+    const slate = patches[1] || '#3d3b37';
+    for (const [tone, n, rBase] of [[terra, 3, 0.105], [slate, 3, 0.072]]) {
+      for (let i = 0; i < Math.max(2, Math.round(n * nK)); i++) {
+        const x = rng() * S, y = rng() * S;
+        const r = S * wk * (rBase + rng() * 0.05);
+        const p = blobPath2D(rng, x, y, r, 9, 0.38);
+        const a2 = rng() * Math.PI * 2;
+        p.addPath(blobPath2D(rng, x + Math.cos(a2) * r * 0.85,
+          y + Math.sin(a2) * r * 0.65, r * (0.55 + rng() * 0.35), 9, 0.4));
+        ctx.filter = `blur(${Math.max(1.2, S * 0.001).toFixed(1)}px)`;
+        fillWrapped(ctx, S, p, rgb(tone, 0.9));
+        ctx.filter = 'none';
+      }
+    }
+    // monogram pass — crest tank (hull/tracks/turret/gun/pennant, chunky
+    // enough to read at ~20 px) alternating with the official Claude Code
+    // pixel mark (owner ask: the real icon, not a generic spark). Path is
+    // the published 24x24 glyph verbatim; evenodd fill keeps the eyes open.
+    const glyphTank = (x, y, s, rot) => {
+      const p = new Path2D();
+      const m = new DOMMatrix().translate(x, y).rotate((rot * 180) / Math.PI).scale(s, s);
+      const q = new Path2D();
+      q.rect(-0.62, 0.10, 1.24, 0.30);   // track run
+      q.rect(-0.52, -0.14, 1.04, 0.26);  // hull
+      q.rect(-0.20, -0.38, 0.42, 0.26);  // turret
+      q.rect(0.20, -0.30, 0.46, 0.09);   // gun
+      q.rect(-0.06, -0.62, 0.05, 0.26);  // pennant mast
+      q.moveTo(-0.01, -0.62); q.lineTo(0.24, -0.545); q.lineTo(-0.01, -0.47); q.closePath();
+      p.addPath(q, m);
+      return p;
+    };
+    const codeSrc = new Path2D(CLAUDE_CODE_MARK);
+    const glyphCode = (x, y, s, rot) => {
+      const p = new Path2D();
+      // 24x24 source box, visual mass centered near (12, 12.5); s/16 makes
+      // the mark span 1.5 units — the crest tank's footprint plus enough
+      // extra that the punched eyes survive small stamps.
+      const m = new DOMMatrix().translate(x, y).rotate((rot * 180) / Math.PI)
+        .scale(s / 16, s / 16).translate(-12, -12.5);
+      p.addPath(codeSrc, m);
+      return p;
+    };
+    const cell = S / 8;
+    const inks = [[slate, 0.58], ['#e9e3d5', 0.52]];
+    let gi = 0;
+    for (let gy = 0; gy < 8; gy++) {
+      for (let gx = 0; gx < 8; gx++) {
+        gi++;
+        if (rng() < 0.26) continue;
+        const x = (gx + 0.5 + (rng() - 0.5) * 0.5) * cell;
+        const y = (gy + 0.5 + (rng() - 0.5) * 0.5) * cell;
+        const s = cell * (0.30 + rng() * 0.10);
+        const rot = (rng() - 0.5) * 0.7;
+        const [ink, a] = inks[(gi + ((rng() * 2) | 0)) % 2];
+        const isTank = (gx + gy) % 2 === 0;
+        const path = isTank ? glyphTank(x, y, s, rot) : glyphCode(x, y, s, rot);
+        fillWrapped(ctx, S, path, rgb(ink, a), isTank ? undefined : 'evenodd');
+      }
+    }
+    // ===================== END CAMO PATTERN SECTION =================
   } else if (scheme === 'amoeba' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // Soviet WW2 amoeba/kumovka (camo r2 expansion): FEW very large rounded
@@ -2050,7 +2131,7 @@ function paintDecal(kind, text) {
     // baked before the webfont resolved (decal() flips needsUpdate).
     const drawText = () => {
       ctx.clearRect(0, 0, 256, 256);
-      ctx.font = `bold ${Math.min(120, Math.floor(380 / len))}px 'Inter', sans-serif`;
+      ctx.font = `bold ${Math.min(120, Math.floor(380 / len))}px 'ABC Monument Grotesk', sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.lineWidth = 10;
@@ -2062,7 +2143,7 @@ function paintDecal(kind, text) {
       ctx.fillText(text || '', 128, 128);
     };
     drawText();
-    if (document.fonts && !document.fonts.check("bold 16px 'Inter'")) {
+    if (document.fonts && !document.fonts.check("bold 16px 'ABC Monument Grotesk'")) {
       document.fonts.ready.then(drawText).catch(() => {});
     }
   }
@@ -2402,6 +2483,9 @@ export const CAMO_PATTERN_IDS = [
   'merdcwinter', 'winterbands',
   'berlin', 'oakleaf',
   'hexfield', 'midnight',
+  // camo r3 (owner ask 2026-08-04): the house scheme — style-only, appended
+  // last per the append-only contract.
+  'claude',
 ];
 export const CAMO_PATTERN_LABEL = {
   auto: 'Auto (map)', factory: 'Factory', summer: 'Summer',
@@ -2415,6 +2499,7 @@ export const CAMO_PATTERN_LABEL = {
   merdcwinter: 'MERDC Winter', winterbands: 'Winter Bands',
   berlin: 'Berlin Bde', oakleaf: 'Oak Leaf',
   hexfield: 'Hex Mesh', midnight: 'Night Ops',
+  claude: 'Claude',
 };
 
 const CAMO_LS_PREFIX = 'cot.camo.';
@@ -2893,6 +2978,16 @@ function patternVisual(spec, patternId) {
     // style-only, no biome bonus.
     o = { scheme: 'nato', base: '#33373a', weather: '#3a3e41',
       patches: ['#26292c', '#41464a'] };
+  } else if (patternId === 'claude') {
+    // camo r3 (owner ask): the HOUSE SCHEME — Anthropic ivory field with
+    // muted terracotta + slate disruptive masses, monogrammed with the
+    // tank-Claude crest mascot and the Claude spark. Tones are weathered
+    // military versions of the brand palette: ivory held at dirty-whitewash
+    // luma (the winter near-white blowout lesson), terracotta desaturated a
+    // step so the warm garage key can't flare it orange (the summer-brown
+    // lesson). Style-only — no biome bonus, like dazzle/midnight.
+    o = { scheme: 'claude', base: '#d3ccbc', weather: '#c2b9a7',
+      patches: ['#b25a3d', '#3d3b37'] };
   }
   return o ? { ...v, ...o } : v;
 }
@@ -4278,7 +4373,7 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
       const t = track(canvasTex(paintDecal(kind, text), { aniso }));
       // number decals re-bake on fonts.ready (paintDecal registered first, so
       // its redraw runs before this) — push the fresh canvas to the GPU.
-      if (document.fonts && !document.fonts.check("bold 16px 'Inter'")) {
+      if (document.fonts && !document.fonts.check("bold 16px 'ABC Monument Grotesk'")) {
         document.fonts.ready.then(() => { t.needsUpdate = true; }).catch(() => {});
       }
       const m = track(setup(new THREE.MeshStandardMaterial({

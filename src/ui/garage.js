@@ -10,7 +10,7 @@ import { createTechTree } from './techtree.js';
 import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } from './tankThumbs.js';
 // CAMO PICKER SECTION: swatches preview the REAL resolved pattern (scheme +
 // palette from materials.js) instead of hand-approximated CSS gradients.
-import { resolveCamoVisual } from '../vehicles/materials.js';
+import { resolveCamoVisual, CLAUDE_CODE_MARK } from '../vehicles/materials.js';
 import { MODEL_SOURCE } from '../vehicles/specs.js';
 // PROVENANCE-INTENT era bucketing (see groupOf below): public builds strip
 // the quarantined GLB registrations AND delete spec.community, so neither is
@@ -951,6 +951,40 @@ function paintCamoSwatch(canvas, spec, pid) {
         c.fill();
       }
     }
+  } else if (scheme === 'claude' && patches.length) {
+    // claude camo r1: house pattern — terra/slate masses on ivory with the
+    // tank-Claude crest + Claude spark monogram. Swatch shows one bold glyph
+    // of each so the card sells the motif that reads small on the hull.
+    const terra = patches[0], slate = patches[1] || patches[0];
+    for (let i = 0; i < 2; i++) {
+      swBlob(c, rng, rng() * W, rng() * H, S * (0.05 + rng() * 0.03));
+      c.fillStyle = swRgb(terra, 0.9);
+      c.fill();
+    }
+    swBlob(c, rng, rng() * W, rng() * H, S * 0.045);
+    c.fillStyle = swRgb(slate, 0.88);
+    c.fill();
+    const glyph = (x, y, s, kind) => {
+      c.save();
+      c.translate(x, y);
+      c.scale(s, s);
+      c.fillStyle = swRgb(slate, 0.95);
+      if (kind === 'tank') {
+        c.fillRect(-0.62, 0.10, 1.24, 0.30); // track run
+        c.fillRect(-0.52, -0.14, 1.04, 0.26); // hull
+        c.fillRect(-0.20, -0.38, 0.42, 0.26); // turret
+        c.fillRect(0.20, -0.30, 0.46, 0.09); // gun
+      } else {
+        // official Claude Code pixel mark — same 24x24 path the hull painter
+        // stamps (materials.js CLAUDE_CODE_MARK); evenodd keeps the eyes open
+        c.scale(1 / 16, 1 / 16);
+        c.translate(-12, -12.5);
+        c.fill(new Path2D(CLAUDE_CODE_MARK), 'evenodd');
+      }
+      c.restore();
+    };
+    glyph(W * 0.30, H * 0.52, H * 0.62, 'tank');
+    glyph(W * 0.74, H * 0.48, H * 0.42, 'spark');
   }
   // faint top-light so the tile reads as painted steel, not a flat chip
   const g = c.createLinearGradient(0, 0, 0, H);
