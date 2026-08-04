@@ -170,6 +170,26 @@ satisfiable against this oracle.
 State at handoff: hull 74.9 / whole 66.1 / turret 63.2 / stations 69.3 /
 dims 91 / floaters 100.
 
+## Batch-36 oracle warp (2026-08-04, repair_oracles.py) — LONG-TUBE CAP RETIRED
+Body+tube-compress executed under warp law v2 (orchestrator lane; the r1
+plan literals from vertex-normalize PLANS): print body 6.149 -> 6.33
+(published hull), LONG m26-reuse tube pulled 8.786 -> 8.48 overall (tube
+zone slope 0.815, muzzle world +4.393 -> +3.9965). Fresh .bak from
+committed HEAD bytes (Jul-29 pre-seat bak archived *.pre-batch36-history;
+batch-8 seat_turret demoted to history — recipe is the warp alone).
+Byte-idempotent ccbab7c7 x2; census 2/54964/109998 exact; extract verify
+height -1.1% hullMask -0.1% overall 0% width 0% OK (the ORIENTATION
+MISMATCH warning is the certified r1 descent-vote false alarm).
+Gate-in-loop vs the stable r3 82.0 baseline: **min 82.0 -> 83.0 x2**
+(hull 87.4->86.5 / whole 83.0 / turret 82.0->**86.7** / stations
+91.3->87.3 / dims 100 / floaters 100). The certified long-tube ONLY-REF
+block (z +3.9..+4.2, "caps side rows ~87") is RETIRED — the turret release
+is exactly the cap's priced 4-6 pts. Hull -0.9 / stations -4.0 are
+batch-34-class re-phase debt (KEEP per the anchor-class law): the r3
+banked front-roof deltas ("land only with a post-warp re-anchor") are now
+unlocked — queue the patton r5 re-anchor round to harvest stations + the
+front-roof rows toward >=90.
+
 ## Vertex round r3 (2026-08-04) — probe round: r2 baseline RESTORED, deltas banked
 Budget remainder after the m47 pass. Attempted the r1/r2 'free rows'
 (front centre-can band, right-roof line, bow eye, rack floor); closing

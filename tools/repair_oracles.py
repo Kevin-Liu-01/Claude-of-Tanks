@@ -3196,5 +3196,29 @@ REPAIRS['t84'] = [
 ]
 
 
+# =============================================================== batch 36 ===
+# M46_PATTON BODY+TUBE-COMPRESS (patton r1 plan, execution unfrozen; r3
+# measured the dims equilibrium as FULLY PINNED — no free-row fix exists,
+# this warp is the only unlock, and it RETIRES the certified long-tube cap
+# in m46_patton.md: the print reuses the LONG m26 90 mm tube, overall
+# 8.786 vs published 8.48, while the print hull body reads 6.149 vs the
+# published 6.33). LAW v2: fresh .bak from committed HEAD bytes (the
+# Jul-29 pre-seat bak archived as *.pre-batch36-history; the batch-8
+# re-seat output is IN the committed bytes, so seat_turret demotes to
+# history — this recipe is the warp ALONE). Plan literals from patton r1
+# (vertex-normalize PLANS m46_patton: body 6.149 -> 6.33, tube slope
+# 0.815, muzzle world +4.393 -> +3.9965). Gate-in-loop vs the stable r3
+# baseline 82.0 (87.4/83/82/91.3/100/100): expect the certified tube
+# columns (z +3.9..+4.2 ONLY-REF) to release; dims must hold 100; a
+# side dAlong re-phase is re-anchor debt per the m47 batch-34 precedent
+# (healthy plan/front/stations = keep warp, queue the patton re-anchor).
+REPAIRS['m46_patton'] = [
+    ('py2', _axis_warp('m46_patton', long_axis='z',
+                       y_map=[(0, 0), (32.5027, 32.5027)],
+                       long_map=[(0.0636, -0.8646), (63.1304, 64.0587), (90.1767, 86.11)],
+                       y_top_max=32.8206, expect=(2, 54964, 109998))),
+]
+
+
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
