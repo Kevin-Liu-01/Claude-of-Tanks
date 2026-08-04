@@ -1693,23 +1693,18 @@ export const MODEL_SOURCE = {
   t34_85: { source: 'procedural' },
   is2: { source: 'procedural' },
   panther_g: { source: 'procedural' },
-  // ORACLE SWITCH (owner, 2026-08-03): the dannzjs "SEPv3" print is a
-  // MISLABELED LEOPARD 2A5 (odd dims + wrong front/side plating — owner
-  // id'd it after five visual rounds converged toward the wrong shape
-  // language). m1a2 now measures against the recovered SEPv2 drop the
-  // owner attached as the actual Abrams exemplar (LOCAL-ONLY QUARANTINE,
-  // batch-21 normalized to published dims). The old file stays on disk;
-  // its provenance note is corrected in the m1a2 packet.
-  m1a2: {
-    source: 'glb',
-    glb: {
-      path: '/models/tanks/community/recovered/m1a2_sepv2.glb',
-      turretNode: '^Turret$', gunNode: '^misc_b$', autoPivot: true,
-      yawOffset: Math.PI,
-      turretFollowers: '^(?:ammo_(?:5|box)|armor_turret|ex_armoc|ex_armor(?!_body)|ex_era_turret|ex_decor_04|glsaa_[6-8]|hatch_0[34]|mg_aamount_h|misc_a|optic_commander)$',
-      paintUntextured: true,
-    },
-  },
+  // m1a2: DUAL-GATE GRADUATE (2026-08-04) — the program's 17th. Geometry
+  // min 91.5 gatePassed x2 + graduation critic 9.0 on ALL FOURTEEN views
+  // (floor 8.0 -> 8.6 -> 8.8 -> 9.0 across the SEPv2 realign + six visual
+  // rounds; mean 9.08). ARC: the original dannzjs "SEPv3" oracle was a
+  // MISLABELED LEOPARD 2A5 (owner-identified 2026-08-03) — honest reset to
+  // 0, full realign vs the recovered SEPv2 exemplar, the shared-track-rig
+  // owner directive, wheel anatomy rebuilt to the print. NO MODEL_SOURCE —
+  // freeze hash bc225318 via tmp-hashgeo; the SEPv2 oracle stays on disk
+  // (LOCAL-ONLY QUARANTINE) as the measurement reference in all three
+  // override maps. The public-build gate below is now vacuous (kept as
+  // documentation of the quarantine polarity).
+  m1a2: { source: 'procedural' },
   t90m: { source: 'procedural' },
   leo2a7: { source: 'procedural' },
 };
@@ -1721,10 +1716,12 @@ export const MODEL_SOURCE = {
 // gates: only an explicit local/dev vite env keeps the GLB; public builds and
 // bare-node imports (the strip guard itself) fall back to the procedural
 // m1a2, which ships everywhere.
+// (graduation 2026-08-04: m1a2 is procedural everywhere — the gate below
+// is retained as a no-op safety for any future recovered-path registration.)
 {
   const allowLocalRecovered = typeof import.meta !== 'undefined'
     && import.meta.env && !import.meta.env.VITE_PUBLIC_BUILD;
-  if (!allowLocalRecovered) delete MODEL_SOURCE.m1a2;
+  if (!allowLocalRecovered && MODEL_SOURCE.m1a2 && MODEL_SOURCE.m1a2.source === 'glb') delete MODEL_SOURCE.m1a2;
 }
 
 // COMMUNITY TANKS: all sourced GLBs (public/models/tanks/community/*.glb).
