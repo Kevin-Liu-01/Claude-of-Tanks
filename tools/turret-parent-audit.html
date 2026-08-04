@@ -68,6 +68,11 @@ if (mode === 'list') {
       window.__TP_RESULT = out; window.__TP_READY = true;
     } else {
       const M = 0.03; // shrink margin: grazing contact is not furniture
+      // merkava-b5 law: below-deck ring tubs (turret-bucket geometry that
+      // legitimately drops through the ring) smear the envelope floor to
+      // ~0.58 and make whole-hull buckets overlap regardless of parenting
+      // truth. Clamp the casting floor to just under the ring plane.
+      casting.min.y = Math.max(casting.min.y, ringY - 0.10);
       const shrunk = casting.clone();
       shrunk.min.addScalar(M); shrunk.max.addScalar(-M);
       out.castingBox = [

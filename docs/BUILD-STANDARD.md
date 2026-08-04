@@ -69,11 +69,22 @@ never excuses missing it.
    dangling must be 0; `abutting` is a REVIEW tier (adjudicate on the
    render: attached-to-casting ⇒ re-parent; deck gear ⇒ leave). Note the
    audit is AABB-coarse: raised-deck hulls (kf51) false-flag deck plates
-   as stranded — adjudicate, don't blind-move. Instanced meshes are not
-   audited; check them by eye at yaw. Graduates take the §10
-   graduate-change flow, with the re-cert satisfied by rest-pixel-diff
-   proof (14 views identical) + floaters 100 ×2 + a yaw-90° turntable
-   pair showing the furniture rotating.
+   as stranded, whole-bucket merged lofts flag on partial content, and
+   below-deck ring tubs smear the casting envelope (the tool clamps the
+   envelope floor to ringY−0.10) — adjudicate against source + renders,
+   never blind-move. Instanced meshes are not audited; check them by eye
+   at yaw. Two adjudicated classes: ORACLE-REGISTRATION-PINNED (the REF
+   keeps the furniture hull-side — m1a2 works field, merkava3b/3c tail
+   packs; fix is COUPLED: followers extension in the three maps + proc
+   re-parent + full re-gate in one landing) and audit-artifact (document
+   the negative). Graduates take the §10 graduate-change flow. RE-CERT
+   BAR (merkava-b5 correction): rest-pixel-diff proof only certifies
+   NON-camo-bucket moves — camo buckets bake bakeDirt mottle in the
+   merged bucket's LOCAL frame, so any re-parent on a pivotZ≠0 rig
+   reseeds the jitter and pixel-identity is unreachable; those take a
+   full independent critic re-cert on the changed views instead.
+   Floaters 100 ×2 + the yaw-90° rotating-furniture pair are required
+   in every variant.
 6. TRACK RUN SILHOUETTE (owner law 2026-08-04: "tracks are the shape
    \\________/ not /_____/"). Side view: the ground run is the SHORT base
    of a trapezoid — approach/departure ramps rise to RAISED end wheels at
