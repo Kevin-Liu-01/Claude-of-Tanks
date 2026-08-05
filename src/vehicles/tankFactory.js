@@ -1022,6 +1022,33 @@ function buildRunningGear(P, cfg) {
       // 7.2 cm pad plus the raised grouser needs a slightly higher centre
       // than the old paper-thin shoe to keep its tread face on the terrain.
       if (_v.y < 0.078) _v.y = 0.078;
+      // cfg.padCornerFloor opt-in (uk 90-push, centurion r6): on the approach/
+      // departure RAMPS the tilted pads' lower corners dip below the ground
+      // plane (probe: -0.008..-0.016 m at 30-40 deg tilt) — the gate's front
+      // rows read procBottom -0.03 vs the ref's 0.0 ground line on ~35
+      // columns AND visibleBox.min.y biases EVERY station-top error ~+0.55%.
+      // Clamp so the rotated pad's lowest corner stays at/above the floor:
+      // corner drop = halfLen*|sin| + halfH*cos of the segment tilt.
+      // Default undefined -> byte-identical for every other tank.
+      if (cfg.padCornerFloor !== undefined) {
+        const ty = Math.abs(sg.ty);
+        const drop = 0.0825 * ty + 0.036 * Math.sqrt(Math.max(0, 1 - ty * ty));
+        const need = cfg.padCornerFloor + drop;
+        if (_v.y < need) _v.y = need;
+        // RAMP-HUG: on tilted segments the outward rOut offset hangs the pad
+        // corners ~0.07 below the band's ramp line — the whole approach/
+        // departure ramp read 0.05-0.08 low vs the ref line. Keep tilted
+        // pads' corners within 15 mm of the band bottom face.
+        // cfg.padHugZ0: z-gated hug extension — FRONT wrap shoulders hug the
+        // band (idler runs tight) while the rear sprocket zone keeps the
+        // natural shoe hang (drive teeth). Without the cfg the hug stays
+        // below the wheel line only.
+        const hugTop = (cfg.padHugZ0 !== undefined && z >= cfg.padHugZ0) ? wheelY + 0.17 : wheelY;
+        if (ty > 0.03 && y < hugTop) {
+          const bandBot = y - trackTh / 2 - 0.015;
+          if (_v.y - drop < bandBot) _v.y = bandBot + drop;
+        }
+      }
       _s.set(1, 1, 1);
       _m.compose(_v, _q, _s);
       for(const mesh of linkMeshes) mesh.setMatrixAt(i,_m);

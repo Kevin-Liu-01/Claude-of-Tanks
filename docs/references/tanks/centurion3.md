@@ -188,3 +188,40 @@ CERTIFIED RESIDUALS: the shared vane anchor tax (see c5 packet); one
 unresolved single column zb -0.82 dB -0.186 (probe hits the loft side
 face at x -0.95 y 1.67 — AA-class, ~0.5 pt); gun-run ±0.03 wobbles;
 station-0 width (trim-dropped, see c5).
+
+## r6 (2026-08-05, uk agent — the 90 push): 84.9 -> 87.7 (hull 90.2, whole 90.3)
+Shares every shared-hull/kit delivery from the centurion5 r6 section (read
+it first: ramp-pad ground-dip fix, strip-with-bosses station widths, deck
+narrowing, tracks/contact retune, drum n/a, ridge/riser, packet-level
+cover-ceiling finding). Row trajectory (r5 -> r6): side_hull 87.6->90.2,
+front_hull 89.2->94.1, front_whole 85.3->91.2, turret_plan 84.9->95.8,
+stations 86.5->95.2, turret_side 85.2->87.7, side_whole 85.3->90.3.
+Mk.3-specific r6 truth:
+- THE r5 LOFT-BOTTOM BUG (r6 worst c3 side column): loftBand takes its
+  z-knots from the TOP table only — the c3 bustle loft's -1.01..-1.31
+  slab interpolated its bottom straight across the bottom-table's
+  -1.02..-1.09 rise and CUT THE CORNER (turret bottom read 1.615 vs the
+  ref 1.807 at build -0.82). Fixed with explicit extraZ knots on ALL
+  centurion loft calls (LAW: pass the bottom table's knots as extraZ
+  whenever top/bottom tables share a loftBand).
+- c3 bustle plan rear re-fit LEFT-LEANING (live: rear -0.93 build at
+  |x| 0.82..0.94 RIGHT but -1.16, -1.30, -1.38 LEFT at -0.93/-0.80/-0.68)
+  — four width-stepped lofts (0.95 to -1.34, 0.66 to -1.49, 0.52 to
+  -1.60, 0.44 to -1.75) + three left-lean rear boxes + a -1.45 center
+  tail stub; loft1 inset 0.19 (its ±0.91 top face carried 2.49-2.51 into
+  the ±0.86 front columns where the ref reads 2.44).
+- c3 bank: triple-discharger cap x 0.92..1.015 (ref front 2.29 at ±1.05)
+  with the shared rake to the 1.71/1.67 plan front; duffels trimmed
+  x 0.99..1.35 (the 1.45 edge painted the ±1.46 front columns +0.09);
+  A1 shelf rear -1.23 local with the 1.785-floor tab; roof knots to the
+  live 2.55/2.49 line ([-1.01, 0.78] + [-1.06, 0.708]).
+- Wall boxes z-trim to local -1.22 (build -0.87 = the live ±1.05 plan
+  column) with the right wall widened x 0.92..1.05 (its 2 mm sliver
+  never lit the column).
+NUMBERS (r5 -> r6, gate x2 BYTE-STABLE — two identical runs): min
+84.9 -> **87.7** (hull 87.6 -> 90.2, whole 85.3 -> 90.3 [side 90.3/plan
+94.7/front 91.2], turret 84.9 -> 87.7 [side 87.7/plan 95.8], stations
+86.5 -> 95.2, dims 100, floaters 100). Track-clip --exact 0/20 vox
+(shared sprocket note, see c5); turret-parent 0/0/0; standard-check
+contig 0 + mg1 (MAG fitting). The turret_side cover ceiling is the c5
+packet's structural finding (2.08 here). Hash 1ef2f50c -> caa2e91c.

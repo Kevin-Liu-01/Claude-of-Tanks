@@ -253,3 +253,96 @@ CERTIFIED RESIDUALS: the vane anchor tax (4 side cols +0.07..+0.19 vs the
 discharger shoulder vs bin edge; extending the bin re-prices the bump
 zone, net-negative); station-0 width 5.57 (trim-dropped; ref tail reads
 3.13-3.2 wide vs our 3.27 flaps+shelf); gun-run ±0.02-0.06 wobbles.
+
+## r6 (2026-08-05, uk agent — the 90 push): 85.4 -> 87.2 (hull 91.4, whole 89.4)
+WORST-ROWS-FIRST from fresh gate worst-12s + a 384px gate-replica dumper
+(tools/tmp-uk90-dump.mjs, §D-compliant: camera-matrix world decode, no
+center guessing) + tmp-ukr4-probe raycasts. Six edit batches, all verified
+against the official gate between batches. Row trajectory (r5 -> r6):
+side_hull 89.1->91.4, plan 93.7->94.7+, front_hull 88.2->93.6+,
+front_whole 85.4->90.6, turret_plan 88.2->96.9, stations 86.9->95.5,
+turret_side 85.9->87.2, side_whole 88.0->89.4. DELIVERED:
+1. RAMP-PAD GROUND DIP (the stations key): tilted approach/departure pads'
+   corners dipped to -0.016 (probe: LOD pad instances at [1.24, -0.008,
+   2.544]) — visibleBox.min.y biased EVERY station top +0.55% and the
+   front rows' procBottom read -0.03 vs the ref ground. New buildRunningGear
+   opt-ins (byte-identical defaults, selftest green): padCornerFloor
+   (rotated-corner clamp), ramp-hug (tilted pads track the band bottom
+   within 15 mm; z-gated by padHugZ0 — front idler shoulders hug, rear
+   sprocket keeps the shoe hang the ref shows). Stations 86.9 -> 95.5/96+
+   with station tops now 0.1-0.7% (s6/s7 = the vane pair, trimmed).
+2. STATION WIDTHS DECODED: the ref's 14 station widths ALTERNATE
+   3.318/3.375 — its outer strip is a CONTINUOUS 1.659 plate with 1.6875
+   mounting BOSSES; the r5 9-panel 1.6895 run read +1.7% on every gap
+   station. Rebuilt: 12x0.4675 panels at 1.649..1.659 (§C end-cap law) +
+   six 0.25 m bosses at the proc station centers (width-guard carriers).
+   Station-0 width residual DISSOLVED (5.57 -> 0.89: flaps rebuilt at x
+   1.548..1.605, rear face -3.065, tops 1.475 = the ref's skirt-top line).
+3. FRONT DECK NARROWING: ref front-view tops read 1.638-1.657 outboard of
+   |x| 1.0 — the full-width 1.75 rear-deck loft face paid +0.09 on ~20
+   front columns each mark. ukHull deckSplit opt-in (rear band top face
+   pulled to ±1.005) + segmented 1.656 engine-deck side plates; tow-cable
+   ends/cleats pulled inside the 1.002 column boundary (§C AA law).
+   front_hull 88.2 -> 93.6 (c5) / 94.1+ (c3).
+4. TURRET PLAN RETABLE (turret_plan 88.2 -> 96.9): live paired columns put
+   the ref's discharger banks raking DOWN-FORWARD to a 1.71/1.67 plan
+   front at |x| 1.05/1.16 (probe: TurretMesh) with side tops falling
+   2.52@1.16 -> 2.39@1.28 — rebuilt as inner cap (x 0.92..1.10, 2.515
+   flat to build 1.15) + raked slab to (2.02, 1.60) + low outer slab
+   (1.10..1.185, under the ref's 2.26 front line) + tip plate to 1.71.
+   Bustle plan-rear ROUNDED to the live columns (rear -1.49 build at |x|
+   0.91..0.95, -1.62 at 0.78..0.88, -1.75 at 0.66..0.72 via loft-end
+   -1.90 + width-stepped strips; tail box to -1.84 center). Shelf split
+   A1/A2/B with side-split rear TABS (bottom 1.785 — full-depth rears
+   hung 1.70 into the -0.79 side columns; left tab -1.10/right -1.03,
+   the print leans left). Walls re-seated x -1.238..-0.905 / 0.90..1.185
+   (ref left crest reaches the -1.24 column at 2.52; right ends by 1.19);
+   posts kept at the r5 -1.695 (the ±1.05 plan column wants -1.42 — the
+   r6-early single-ray -1.30 trim was a column-vs-ray misread, reverted).
+   Nose/chin plan-tapered (ref fronts 1.82@0.56, 1.65@0.68 — bottom quad
+   to ±0.40/±0.50, chin front 1.47). Crown ridge x -0.90..-0.055 + 2.60
+   step-tab to +0.005 + the RIGHT-REAR SIGHT RISER (0.45, top 2.69, build
+   -0.44..-0.55 — the ref front's 2.69 at x 0.37..0.52, probe-pinned,
+   side-invisible under the 2.732 ridge plateau).
+5. TRACKS: contact patch pinned contactZF 2.50 / contactZR -2.32 (ref ramp
+   feet from column-min fits: 0.5/m front, 0.57/m rear — the r5 defaults
+   read the ramp bottoms -0.06..-0.13 on 7 side columns); sprocket r 0.37
+   (cert col -3.48 bottoms 0.84 EXACT, crown clears the shelf 15 mm);
+   idler untouched. Driver-step rake to [2.49, 1.512] (live 1.532@2.48
+   column) with the mk5 periscope hump clear of the 2.60 boundary; nose
+   tip 3.458 (ref plan 3.454); tail C-course to -3.64 (ref center rear
+   -3.62..-3.64) + flank exhaust-corner stubs to -3.69 (ref -3.69 at
+   |x| 1.47..1.575); tail lip rail inside the C-course.
+6. L7 DRUM: live band 2.115..1.776 from build 3.13..3.80 — offset drum
+   (y +0.0405, r 0.170) with tightened tapers; the r5 0.36-long drum left
+   the 3.5-3.75 columns -0.04 on both edges. Hood tilt -0.42 (ref falls
+   2.115 -> 2.05 across its run); basket floor 0.666; gunner sight 2.545;
+   right periscope hood 2.51@build 1.03..1.15 (live re-read of the r5
+   2.445 seat).
+MEASURED CEILING (documented, unresolved): turret_side cover 1.96/2.08 =
+~2 interp-null gate columns where the REF GUN's last kept columns (its
+hull-span+0.6 trim window) pair 1-4 mm past the PROC turret trim window —
+the dAlong 1.237 = 10.03 column pitches, so the last ref column always
+lands a fraction past the last proc column (interp needs BOTH neighbours;
+registration-grid phase, not geometry). Two sliver-extension attempts
+(hull span end 3.905 -> 3.945) did not clear it at the 1024 grid; a
+half-pitch dAlong shift is the §C poisoning class, so this is priced as
+the round's structural residual (~2.9 pts on turret_side, the 90-blocker)
+pending an orchestrator-level look at the trim/interp boundary. The VANE
+tax re-measured: 2 cols +0.17 + 2 cols +0.06-0.07 (placement re-verified
+optimal for the 4-column p95 anchor; heightM 2.91-2.92 inside grace after
+the vane +0.015 raise that paid the pad-floor bottom lift back to dims
+100).
+NUMBERS (r5 -> r6, gate x2 BYTE-STABLE — two identical runs): min
+85.4 -> **87.2** (hull 88.2 -> 91.4, whole 85.4 -> 89.4 [side 89.4/plan
+94.7/front 90.6], turret 85.9 -> 87.2 [side 87.2/plan 96.9], stations
+86.9 -> 95.5, dims 100 [heightM 2.91, hull 7.52, overall 9.80, width
+3.38], floaters 100). Track-clip --exact 0 front / 20 rear vox (the r 0.37
+sprocket grazes the tail-rake loft AABB — inside the kv2-graduate <=60
+band; r5 was 0/0, priced against the -3.26..-3.51 wrap-bottom gains).
+Turret-parent 0/0/0; standard-check contig 0 + mg1 (M2 fitting). npm test
+green (166 equipment checks + track-geometry selftest — the tankFactory
+opt-ins are byte-identical by default: graduate hashes chieftain5
+5117b9a8 and challenger1 a18d91a8 re-verified EXACT post-edit; fv510
+a55c85cc, vickers_mk1 1389d11c, comet 8c9a2098, challenger_cruiser
+d19f7994, charioteer c6fc76a8 recorded). Hash 9e61f688 -> bbcf7d80.
