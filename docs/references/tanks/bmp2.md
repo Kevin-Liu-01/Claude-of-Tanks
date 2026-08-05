@@ -385,3 +385,79 @@ lumps my plank line undershoots by ~0.02-0.05 x-per-side). The r2
 the faceted-dome build + the ±1.04 find; >=90 additionally needs the
 tail/nose trade columns released, which dims sovereignty forbids
 against this print.
+
+## AFV r4 — the ±1.04 find + dome envelope re-cut (2026-08-05)
+
+### Trajectory (gate x2 identical at close) — r3 CEILING BROKEN
+82.8 -> **84.0** | hull 85.2 held / whole 82.8 -> 84.0 (front_whole
+binds) / turret 84.5 -> 84.8 / stations 88.4 -> 87.3 (one certified
+trade, below) / dims 100 held (close x2: heightM 0.6% / hullLength
+0.8% / overall 0.22% / width 0.12%) / floaters 100. Geometry hash
+a16de748 -> c1ba6f70 (54 meshes / 67124 verts). Oracle bytes sha1-8
+396cb021 untouched (re-verified). npm test 265 ok. Evaluator digests
+shots/visual-eval-bmp2/ (yawProxy <=1.1 deg, no RIG MISMATCH).
+
+### ORDER 1 — the ±1.04 pair NAMED (instrument run, both defects)
+[TMPCOL] front cols ±0.94..1.14: (a) my plan-widest HANDLE STUBS sat
+at x -> 1.055, y 1.70..1.73 — the print's own ±1.01-col islands read
+x <= 1.015 at y 1.775..1.808 (stubs re-cut to x 0.965..1.015,
+y 1.78..1.81: the ±1.045 cols the print keeps CLEAR are released);
+(b) the r3 lathe wall (max 1.0149 at world 1.72) lit the ±1.01 cols
+where the print's faceted dome is CLEAR until y 1.735, and read only
+1.898 at ±0.973 where the print wall rises 1.735..2.004.
+
+### ORDER 2 — the dome facet-vs-lathe adjudication: ENVELOPE re-cut
+The §B1-lawful smoothing EXISTS: match the print's chord ENVELOPE
+with a smooth 30-seg lathe (no visible facets authored — NO-STAIRCASE
+holds; the print's faceted read is matched in envelope, not
+reproduced). New barrel profile [[0.93,0],[0.948,.06],[0.955,.16],
+[0.948,.25],[0.93,.35],crown...] x [1.02,1,1.031]: max x 0.9741 at
+world 1.82 (18 mm clear of the ±1.01 window), wall ~1.71..1.96 at
+±0.973 (ref 1.735..2.004 — 0.045 top residual), and the z-extreme
+-0.9746 back inside the r3 three-instrument legal window
+[-0.975,-0.972] (z-scale 1.019 -> 1.031 because the max radius moved
+from the r3 profile's low rim to 0.955@0.16 — the first re-cut left
+the rear at -0.963 and st4's 1.86-top painter went dark: topPct 12.3).
+RESIDUAL (certified): st4 topPct 12.3 persists even inside the legal
+window — the re-cut dome's rear sliver paints less slab-4 area than
+the r3 fat rim did; it is trim-class (stations 88.4 -> 87.3 is this
+plus small re-phases) and stations are NOT the binder. Front_whole
++1.2 outranks it (front_whole is the binder — the r3 packet's own
+trade rule).
+
+### turret_plan 84.5 -> 87.3-class (the same instrument sweep)
+- Dome shoulder handrails x ±0.65 -> ±0.58: their z-1.03 tips printed
+  the plan ±0.64 cols 0.2 past the ref's 0.80 front line (they still
+  paint the side 2.065-2.095 band — side sees any x).
+- OU-3GA2 spotlight z 0.87 -> 0.78 (lens 0.895): the 0.985 lens
+  overran the fresh ref plan front 0.83 on the 0.49-0.65 cols (the r2
+  "lobe to z 0.98" read was the plan-mirror-bug class).
+- Smoke banks z 0.80 -> 0.72, len 0.26 -> 0.22 (tips ~0.90 vs the old
+  1.03-1.07 against the ref's 0.80-0.83 line).
+
+### BANK — basket re-span NEGATIVE (two craters, do not repeat)
+The fresh turret-side cols suggested the r3d basket span was wrong at
+both ends; TWO re-spans (front-trim 0.79-scale; symmetric 1.0536)
+cratered turret_side 84.9 -> 69.9 / 79.2 — the print's basket read is
+LUMPY (hangs 0.91 at z -0.61..+0.53, stops by +0.60, with per-column
+junk the r3d §C boundary-law seat already optimized against). The r3d
+span [-0.445..+0.671] is the measured optimum; the two ~0.2 residual
+cols at ±0.6 are its certified price. Restored byte-exact.
+
+### §B table at close
+§B2 holes 0; §B3 census mg1+6d; §B4 clip 0/0; §B5 0/0/0; §B6
+trapezoid both ends raised (sprocket y 0.80 @ 2.256, idler y 0.60 @
+-2.44) — all unchanged from r3.
+
+### Worst remaining (honest) — the new state
+front_whole 84.0 binds with a FLAT error field: mean 1.24, p95 2.02,
+worst single column 0.056 — no named element remains; this is the
+print-noise floor and the honest post-r4 ceiling without a new
+instrument class. side rows 85.2/84.8: the 3.37 nose-tip dims-trade
+col (0.133, certified — dims sovereignty), the ±1.02/1.10 dome-window
+cover cols (0.10/0.095, the r3-certified class, unchanged). turret
+84.8: the ±0.6 basket-lump pair (certified above), plan 0.57 col
+(0.155). stations 87.3: st4 12.3-top (certified above, trimmed).
+The r3 ">=90 needs the tail/nose dims-trade columns" law still
+stands; 85 needs roughly +1.0 of flat front-field mean, which no
+single named element carries.

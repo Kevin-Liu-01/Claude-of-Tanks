@@ -396,3 +396,122 @@ turret_plan 81.5: x 1.37 ref island (0.59, §B5-blocked, certified),
 x 0.85 (0.19). stations 83.3 (see residuals above). NOTE hullLengthM
 margin is now 0.72% of the 1% grace — stern/bow edits must re-verify
 dims every landing.
+
+## AFV r4 — the pre-staged front/plan orders + station instrument war (2026-08-05)
+
+### Trajectory (gate x2 identical at close)
+79.9 -> **84.7** | hull 80.4 -> 85.3 / whole 79.9 -> 85.0 / turret 81.5
+-> 84.7 (binder at close) / stations 83.3 -> 84.8 / dims 100 held at
+EVERY landing point (close x2: heightM 0.54% / hullLengthM 0.72% —
+the protected margin, unchanged / overall 0.2% / width 0.08%) /
+floaters 100. Rows at close: side_hull 85.7, side_whole 85.0, plan
+88.3-86.7 class, front_hull 85.3, front_whole 87.4, turret_side 84.7,
+turret_plan 85.8. Geometry hash 44e1808c -> dc8c1f23 (63 meshes /
+75092 verts). Oracle bytes sha1-8 e699c868 untouched (re-verified).
+npm test 265 ok. Evaluator digests shots/visual-eval-m2a2_bradley/
+(yawProxy <=2.7 deg, no RIG MISMATCH).
+
+### THE ±1.35 ELEMENT NAMED (the r3 order — instrument + source read)
+The [TMPCOL] run + trackShoeGeometries source: the shoe PIN CAPS
+(cylX half-len 0.029 at ±trackW*0.49) span xc±0.1956 = 0.954..1.346 —
+26 mm OUTSIDE the band BOTH sides. They ground-lit the ±1.35 front
+cols (err 0.391: the ref left tread STOPS at 1.30, flank floor 0.876)
+AND the x 0.94 col (ref right-inner tread edge clean at 0.96; its
+0.46-bottom is its own TUB line, which my ±0.95 tub serves). FIX is a
+§F.2 SHARED-HELPER OPT-IN: `cfg.pinCapOuter` on buildRunningGear ->
+trackShoeGeometries(trackW, pitch, pinCapOuter) clamps the cap outer
+extent; DEFAULT BYTE-IDENTICAL (graduate hashes m1a1/leo2a5/
+m47_patton/m60a1/kv2 verified unchanged). Bradley: pinCapOuter 0.1625
+with xc 1.1475 / trackW 0.335 (band 0.98..1.315, caps 5 mm inside).
+
+### Front rows 79.9/80.4 -> 87.4/85.3 (all instrument-named)
+- Lower bow flanks narrowed 1.34/1.40/1.44 -> 1.29/1.31/1.36: the ref
+  bow NEVER reaches |x| 1.33 below y 0.876 (its ±1.35-1.46 flank
+  floor); corner slabs carry the shelf width above y 1.24.
+- Mud flaps 0.71..1.01 -> 0.88..1.03 (the ref's 0.876 flank floor).
+- RIGHT appliqué mid band widened INBOARD to 1.4525..1.5725 (the ref
+  keeps a 1.78-top band from x 1.44 out; caps/outer face unchanged).
+- RIGHT hanger brackets deepened y 0.87..1.19 (ref 1.495/1.534 col
+  bottoms 0.876); left row unchanged (skirt plate already at 0.64).
+- Mast tall step west face -1.10 -> -1.125 (ref cluster to -1.12; the
+  -1.13 col read 2.89-top vs my bags' 2.53 — half-col AA class).
+- Left bags stair re-read: fresh ref front tops 2.18-2.22 at x -1.16..
+  -1.27 (the r3 "2.53@-1.11..-1.19" read overhung): step1 narrowed to
+  -1.06..-1.125 (mast line), step2 east edge -1.145, wing duffels to
+  -0.83..-1.13.
+- Roof-step line: the ref's 2.72 riser is x +0.03..0.695 (its 2.46-47
+  reads at x -0.06..0.02 AND 0.72); riser re-seated, tower fill split
+  A/B with east edge 1.30 (stowage() dark straps bulge ~0.02 past
+  nominal — probe-named at x 1.34) + corner post x 1.325..1.355
+  carrying the ref tower's own front-right corner (see below).
+- Track pads trimmed to the contact patch (k 2..21, z ±2.11): the r2
+  full-length rows GROUNDED the ramp zones where the ref reads a clear
+  climbing band 0.13..0.45 (also a §B6 read improvement); sprocket
+  y 0.56 -> 0.60 (ref band bottoms 0.23@2.55 / 0.29@2.69).
+- Spare track links glacis seat (top ~1.96 vs ref 1.56 crest band on
+  the side z 2.36-2.47 cols) -> right foredeck inside the engine-raise
+  1.98 envelope. §B5 audit flags it stranded — AABB-coarse artifact
+  (gun overhang над the foredeck); it is hull deck cargo, adjudicated.
+
+### The turret_plan 1.37 "island" was NOT §B5-blocked (order closed)
+Fresh cols + probe: the r3-certified "ref island x 1.37 (0.59)" is the
+ref TOWER'S OWN front-right corner — 2.76-tall with a z-footprint of
+only 0.10..0.19 world (the r1 "bin front to world 0.19" read). My
+bin's flat 1.36 east face lit the whole -1.05..0.64 z-band into that
+plan col. Re-cut: bin east 1.325 + full-height corner post at
+x 1.325..1.355, z 0.10..0.175 — the col now reads the island shape
+(0.589 -> ~0.03) AND the front 1.35 col keeps its 2.80-tower top.
+Also: cradle/gun-bar re-centred -0.105..-0.005 (its 0.08 edge crossed
+the plan 0.04 col with a z-0.98 read; the ref's fused tube band stops
+at x 0), rotor housing narrowed to -0.20..-0.03 (ref rotor x -0.15..0),
+core frustum base 0.82 -> 0.80 (its rectangular corner crossed the
+0.85 col with the full -1.45..0.21 z-band; ref cone rear there -1.12).
+
+### Plan -1.51 col 0.98 -> retired (the r3 partial order, probe-named)
+Three payers: the left st12 cap tab's z 2.94 at x -1.50 (face ->
+-1.47), the left stern corner cap's -1.54 face (x -> -1.41 — also the
+-1.44 col's z -3.2 payer), and the GLACIS SEAM CORNERS at ±1.50
+(y 1.52, z 2.42-2.55 — both glacis frustums narrowed to 1.46). Left
+flare top-rear pulled -3.24 -> -2.94 and the left bumperette extended
+z -2.90..-3.25 at x <= 1.41 (fresh read: the ref's -1.364 plan col
+runs to z -3.258; the r3b "left ends -3.14" was the x>=1.42 zone).
+Left appliqué face to -1.5005 (a full pixel inside the col window)
+with z -2.97..1.29 (the ref flank band [-2.95..+1.28]).
+
+### Station war (83.3 -> 84.8) — slice-vote law extended (BANK)
+The stations are won by placing WIDTH VOTES (z-caps / 6-seg cyl walls
+/ decal planes) in slabs whose ref width carries them, and starving
+slabs whose ref is narrow. Named voters this round: appliqué JOINT
+SEAMS (z-caps at ±1.60/±1.53 — moved 0.65 -> -0.24: st8 3.12->3.065
+vs ref 3.067, st6 fed its missing 3.12), BOLT HEADS (cylX walls paint;
+row re-seated to explicit width-safe slabs st9/st7/st6/st4/st3 — the
+0.38 bolt proved LOAD-BEARING for st7: removing it cratered st7 to
+6.2 wPct), the SOOT DECAL plane (§C decals-are-geometry: its x 1.612
+was st10's 3.05-vs-2.99 payer — moved to st9's z), hanger-bracket caps
+(st5's last 3.10 payer at zc -0.9 — row moved to -1.10/-0.70: the
+-0.70 pair votes 3.065 in st5, ref 3.046). Honest residuals: st5-top
+2.46 (the tower fill's cylinder lumps paint 2.78 across st5-7 where
+the ref prints 2.63/2.63/2.54 — trim-class), st8-top 1.88, st12-W 2.2
+(tab at max lawful width), st10-W 2.0 (unnamed ~+0.06 reader).
+
+### §B table at close
+§B2 holes 0; §B3 census mg1+9d; §B4 clip 0 front / 45 rear (kv2-band
+pass, better than r3's 4/49; sprocket raise verified); §B5 0 real
+(1 stranded = the spare-links deck fitting, AABB-coarse artifact,
+adjudicated above); §B6 trapezoid both ends raised (front sprocket
+0.60, rear idler 0.74), pads no longer flatten the ramp read.
+
+### Worst remaining (honest) — next arc's orders
+turret_side 84.7 binds: four sub-0.09 cols (1.59 rack-rear zone,
+-0.26, -0.78, 0.92) — print-noise class, no single fix. side_whole
+85.0: the -2.4-at col (0.253) is the r3 gun-tip class — NOTE the r4
+finding: the gate reads procTop 0.46 there while the in-page
+instrument reads 0.100 for the same column (page-vs-gate divergence,
+pose code verified identical; unresolved instrument question, the col
+is certified residual either way). plan -1.66 (0.17) is the widthM
+bag anchor (certified — dims sovereignty). front_whole -1.2/-1.24
+(0.13): an unnamed 2.42-2.47-top element at x 1.19-1.26 (probe next
+arc). stations: the fill-lump paint class above. The 84.7 landing is
+0.3 under the >=85 target; every remaining row is 84.7-85.7 with flat
+sub-0.1 worst columns — the next instrument-grade find (the -2.4
+divergence or the -1.2 element) is the 85 unlock.
