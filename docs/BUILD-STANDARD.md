@@ -35,6 +35,17 @@ never excuses missing it.
    steeply — a vertical/slab turret front on any Abrams is a failing
    read. Critics: check the turret leading-edge angle in side/3-4 views
    against the reference photo class, not just the mask score.
+   NO STAIRCASES (owner directive 2026-08-04, with screenshot: "prevent
+   this little staircase effect in our tanks. we should have smoother
+   slopes"): a slope is ONE raked surface — a slab, wedge, or loft —
+   never a stack of boxes approximating it. Stepped quantization reading
+   at 1× is a failing read even where the mask score tolerates it. Where
+   the REAL vehicle carries plate courses (armor tiers, appliqué rows),
+   author the actual course lines with co-planar or chamfered joints —
+   not equal-height quantization steps. Mechanism: the smoothLoft /
+   chord-limited-facet machinery (m47 r8 smoothBustle lineage) + slope
+   caps co-planar onto the facet (FLAT-CAP-BEHIND-A-RAKE law). Critics:
+   stair-step reads on any slope are an order, on every tank.
 2. NO EMPTY AREAS / CONTIGUITY: no hollow pockets, no see-through voids, no
    gaps between masses, at ALL angles including top-down. Turrets are
    contiguous volumes; every standoff mass reads attached (mounts,
