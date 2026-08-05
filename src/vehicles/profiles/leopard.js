@@ -4209,7 +4209,18 @@ function buildLeo2Revolution(P) {
   const r9jacket = [];                                                         // [geo, tint]
   const r9jkT = [0.875, 0.905, 0.885, 0.910, 0.880, 0.900];                    // F2 per-plate jitter (±2-3 L about the -8 target)
   let r9jkN = 0;
-  const r9gear = [];                                                           // B1 near-black band trim -> olive-dark clone
+  // r13 §B4: the B1 gear-trim accumulator splits PER SIDE (t72b3m
+  // hullTrackTrimL/R recipe, e3918e6): merged into ONE center-spanning mesh
+  // its AABB read reach 0 and defeated track-clip-audit's designed
+  // lane-local skip (294 of the rear 429). Split, each merged mesh keeps an
+  // honest one-sided AABB (reach 1.27 L / 0.972 R > laneInnerX-0.15 =
+  // 0.903) and the audit classifies it as the in-lane gear trim it is —
+  // the dip plates stay deliberately bedded in the tucked wrap (they paint
+  // the ref's 0.556/0.35/0.667 stair bottoms the band cannot own; the
+  // t72b3m "strips must stay bedded" class). ZERO transforms touched:
+  // same triangles, same gearOlv instance, +1 draw call.
+  const r9gearL = [];                                                          // B1 near-black band trim -> olive-dark clone (left lane)
+  const r9gearR = [];                                                          // (right lane)
   // ---- hull ----
   P.add('hull', box(2.40, 1.00, 5.80), 0, 0.86, 0.0);                          // tub y 0.36..1.36, z -2.9..2.9
   P.add('hull', box(3.10, 0.05, 2.85), 0, 2.035, -0.375);                      // main deck plate z -1.80..1.05
@@ -4256,10 +4267,48 @@ function buildLeo2Revolution(P) {
   // 3.743 bin's band hit 0.332 > the 0.324 BODY threshold and the gate's
   // side dAlong flipped 0 -> 0.055, smearing every side row (the r5
   // body-span law, re-triggered post-warp; at 0.965 the band is 0.18).
+  // r13 §B4 IDLER-WRAP CONTAINMENT (clip front 98 -> 0, the r2-era carry):
+  // the full-width slab ran THROUGH the idler wrap + shoe envelope (pads
+  // ride the ribbon +0.13: crown ~1.385, far edge ~3.765; the audit ribbon
+  // reads 1.309/3.677). Split per the a5/a6 recipe: CENTER slab keeps the
+  // FULL certified profile at inter-track width ±1.02 (side rows unchanged
+  // by projection — toe band 0.90..0.965 intact = the dAlong body-span
+  // guard); per-side mudguard PLANKS carry the bow-corner mass with
+  // undersides re-planed to clear the pad envelope (end z 3.32 — past it
+  // the falling top plane leaves no legal plane over the crown; the a6
+  // diving-mudguard class); TOE CAPS keep the ±1.05..1.30 plan columns'
+  // 3.83-3.85 nose IN FRONT of the pad far edge (z0 3.785 = 3.765 + 0.02).
+  // Front cols keep deck tops / band-skirt bottoms; every new station face
+  // is a subset of the old cross-section (st13 width is bulge/skirt-owned).
+  // (center width 1.044, not 1.02: at 1.02 a 3 cm plan sliver opened between
+  // the slab face, the ribbon inner face 1.0525 and the cap start — two
+  // 10 px top-view sky holes at x ±1.05, z 3.69..3.79. 1.044 rides voxel 52
+  // vs the ribbon's 53 — audit-clear — and the residual 8.5 mm gap is
+  // sub-pixel at every scored scale.)
   P.add('hull', slab(
-    [-1.42, 1.62, 2.83], [1.42, 1.62, 2.83], [1.30, 0.90, 3.83], [-1.30, 0.90, 3.83],
-    [-1.42, 1.97, 2.83], [1.42, 1.97, 2.83], [1.30, 0.965, 3.85], [-1.30, 0.965, 3.85]));
-  P.add('hull', box(2.60, 0.75, 1.0), 0, 0.95, 2.95);                          // nose fill
+    [-1.044, 1.62, 2.83], [1.044, 1.62, 2.83], [1.044, 0.90, 3.83], [-1.044, 0.90, 3.83],
+    [-1.044, 1.97, 2.83], [1.044, 1.97, 2.83], [1.044, 0.965, 3.85], [-1.044, 0.965, 3.85]));
+  for (const s2 of [-1, 1]) {
+    P.add('hull', slab(                                                        // over-track mudguard plank (bottom 1.385@3.32 >= pad arc 1.362 + 0.02)
+      [s2 * 1.02, 1.62, 2.83], [s2 * 1.42, 1.62, 2.83], [s2 * 1.3444, 1.385, 3.32], [s2 * 1.02, 1.385, 3.32],
+      [s2 * 1.02, 1.97, 2.83], [s2 * 1.42, 1.97, 2.83], [s2 * 1.3444, 1.487, 3.32], [s2 * 1.02, 1.487, 3.32]));
+    P.add('hull', slab(                                                        // toe cap: the original slab's own z 3.785..3.85 slice, outboard run
+      [s2 * 1.02, 0.9324, 3.785], [s2 * 1.30, 0.9324, 3.785], [s2 * 1.30, 0.90, 3.83], [s2 * 1.02, 0.90, 3.83],
+      [s2 * 1.02, 1.029, 3.785], [s2 * 1.30, 1.029, 3.785], [s2 * 1.30, 0.965, 3.85], [s2 * 1.02, 0.965, 3.85]));
+    // corner tongue: the toe-cap/pad/slab junction left an x 1.044..1.06,
+    // z 3.68..3.785 plan slot (two 3 px top-view sky pixels survived the
+    // 1.044 widen). Past the ribbon's far edge (3.677) the band has no
+    // voxels, so a filler here shares none: beak planes inset 2 mm (no
+    // z-fight with cap/slab), x to 1.056 = 3.5 mm off the pad inner face
+    // (1.0595), z0 3.694 = one voxel clear of the ribbon far edge.
+    P.add('hull', slab(
+      [s2 * 1.02, 1.000, 3.694], [s2 * 1.056, 1.000, 3.694], [s2 * 1.056, 0.9272, 3.795], [s2 * 1.02, 0.9272, 3.795],
+      [s2 * 1.02, 1.1167, 3.694], [s2 * 1.056, 1.1167, 3.694], [s2 * 1.056, 1.0172, 3.795], [s2 * 1.02, 1.0172, 3.795]));
+  }
+  // r13 §B4: nose fill narrowed to the inter-track body (2.60 -> 2.00) —
+  // its ±1.30 side faces + 0.575 bottom crossed the wrap/ramp ribbons (60
+  // vox); interior fill, tub owns the ±1.02..1.20 front bottoms at 0.36.
+  P.add('hull', box(2.00, 0.75, 1.0), 0, 0.95, 2.95);                          // nose fill
   // gun travel-clamp rod on the beak (top 2.03, z 2.87..3.42) — r5 NOTE: the
   // ref HULL row reads 2.056 across w 2.88..3.32 (its own clamp; a mid-round
   // drop to 1.90 was calibrated off the ref's TURRET-row tube line by
@@ -4408,8 +4457,8 @@ function buildLeo2Revolution(P) {
   // r9 B1: the two band-edge guard strips leave hullDark for the olive-dark
   // gear-trim clone (geometry byte-identical — they own the -1.547/+0.983
   // front ground columns; §C material splits are gate-free).
-  r9gear.push(KIT.xform(box(0.0815, 0.38, 0.20), -1.57925, 0.21, -0.60));
-  r9gear.push(KIT.xform(box(0.026, 0.38, 0.20), 0.985, 0.21, -0.60));         // r7: bottom 0.06 -> 0.02 (ref right band-edge column reads to 0.011)
+  r9gearL.push(KIT.xform(box(0.0815, 0.38, 0.20), -1.57925, 0.21, -0.60));
+  r9gearR.push(KIT.xform(box(0.026, 0.38, 0.20), 0.985, 0.21, -0.60));        // r7: bottom 0.06 -> 0.02 (ref right band-edge column reads to 0.011)
   // r9 D3 §B2 CHANNEL END-CAPS (r7 critic mandatory order): the 6 cm
   // corridor between the deck edge (x ±1.55) and the skirt/jacket faces
   // (x ±1.61..1.64) is open LENGTHWISE — px-calibrated on the critic pairs
@@ -4463,7 +4512,17 @@ function buildLeo2Revolution(P) {
   // r7: the -0.68 riser DELETED — the settled -0.689 column reads the ref
   // deck BARE at 2.05 (the old grid's 2.223@-0.68 read re-phased into the
   // -0.569 column's zone; our piece printed 2.19 there, err 0.072).
-  P.add('hull', box(2.90, 0.58, 0.94), 0, 1.42, -3.37);                        // tail box top 1.71, z -2.90..-3.84 (r7: bottom 1.09 -> 1.13 — it printed into the -3.783 column where the ref undercut reads 1.121; the wedge/dip plates own every lower read)
+  // r13 §B4 SPROCKET-WRAP CONTAINMENT (part of rear 429 -> 0): the full-
+  // width box's 1.13 bottom + ±1.45 side faces crossed the wrap tangent/
+  // upper arc (56 vox). CENTER box keeps the full certified profile at the
+  // inter-track width (side view unchanged by projection — its (z,y) span
+  // is identical); outboard shoulders keep the ±1.45 station/plan footprint
+  // with bottoms at 1.42, clear of the sprocket PAD crown 1.395 (ribbon
+  // 1.31 + shoe stack; return-run pads are covered/hidden z >= -3.41).
+  P.add('hull', box(2.00, 0.58, 0.94), 0, 1.42, -3.37);                        // tail box CENTER, top 1.71, z -2.90..-3.84 (r7: bottom 1.09 -> 1.13 — it printed into the -3.783 column where the ref undercut reads 1.121; the wedge/dip plates own every lower read)
+  for (const s2 of [-1, 1]) {
+    P.add('hull', box(0.45, 0.29, 0.94), s2 * 1.225, 1.565, -3.37);            // outboard shoulder (bottom 1.42, top 1.71, x 1.00..1.45)
+  }
   P.add('hullDark', box(2.60, 0.50, 0.05), 0, 1.40, -3.835);                    // tail slat face (r9: grown to 1.15..1.65 so every lattice hole reads the dark backdrop, not the camo wall)
   // r9 D1: the 9 sparse grey ribs (med 56.0 flat vs ref lattice 78.6/sd
   // 13.65) are replaced by the pale open-frame lattice in the finish block
@@ -4491,9 +4550,14 @@ function buildLeo2Revolution(P) {
   P.add('hullDark', box(0.02, 0.06, 0.09), 0.0745, 2.435, -3.785);
   // r5: undercut steepened + ended at -3.83 (ledger: ref bots 1.139@-3.79 /
   // 1.167@-3.90 — the old -3.88 reach read 0.97/1.06 under both)
+  // r13 §B4: wedge narrowed ±1.40 -> ±1.00 (79 vox — its raked + side faces
+  // carried the whole sprocket-wrap upper arc through the lane). Side rows
+  // read the identical (z,y) profile by projection; stations/plan are
+  // jacket/box-owned at its bands; the rear undercut corridor now shows the
+  // wrap + dip plates (the real over-track config) instead of camo wedge.
   P.add('hull', slab(                                                          // tail undercut wedge (ref bots 0.66@-3.46 -> 1.14@-3.79)
-    [-1.40, 0.60, -3.40], [1.40, 0.60, -3.40], [1.40, 1.185, -3.83], [-1.40, 1.185, -3.83],
-    [-1.40, 1.36, -3.08], [1.40, 1.36, -3.08], [1.40, 1.30, -3.83], [-1.40, 1.30, -3.83]));
+    [-1.00, 0.60, -3.40], [1.00, 0.60, -3.40], [1.00, 1.185, -3.83], [-1.00, 1.185, -3.83],
+    [-1.00, 1.36, -3.08], [1.00, 1.36, -3.08], [1.00, 1.30, -3.83], [-1.00, 1.30, -3.83]));
   // deck furniture: driver hatch fore-left on the shelf, flush fans, louvres
   P.add('hull', cylY(0.25, 0.25, 0.024, 14), -0.62, 2.00, 1.45);
   P.add('hullDark', torus(0.25, 0.011, 14), -0.62, 2.01, 1.45);
@@ -4571,9 +4635,10 @@ function buildLeo2Revolution(P) {
   // three per-column plates hang from the tail box, 14mm inside the bins
   for (const s of [-1, 1]) {
     // r9 B1: dip plates -> olive-dark gear-trim clone (geometry identical)
-    r9gear.push(KIT.xform(box(0.30, 0.94, 0.103), s * 1.42, 1.02, -3.2365));   // 0.55 bottom (col -3.24)
-    r9gear.push(KIT.xform(box(0.30, 1.14, 0.086), s * 1.42, 0.92, -3.345));    // 0.35 bottom (col -3.35)
-    r9gear.push(KIT.xform(box(0.30, 0.83, 0.084), s * 1.42, 1.075, -3.458));   // 0.66 bottom (col -3.46)
+    const r9g = s < 0 ? r9gearL : r9gearR;                                     // r13 §B4 per-side buckets (identical transforms)
+    r9g.push(KIT.xform(box(0.30, 0.94, 0.103), s * 1.42, 1.02, -3.2365));      // 0.55 bottom (col -3.24)
+    r9g.push(KIT.xform(box(0.30, 1.14, 0.086), s * 1.42, 0.92, -3.345));       // 0.35 bottom (col -3.35)
+    r9g.push(KIT.xform(box(0.30, 0.83, 0.084), s * 1.42, 1.075, -3.458));      // 0.66 bottom (col -3.46)
   }
   // gear: HIGH raised end wheels, kit-native tangent ramps (fresh probe:
   // flat ends 2.60/-2.42, front ramp 0.13@2.77 -> 0.96@3.88 far edge 3.94,
@@ -5116,7 +5181,10 @@ function buildLeo2Revolution(P) {
     gearOlv.metalness = 0.05;
     gearOlv.envMapIntensity = 0.06;
     P.disposables.push(gearOlv);
-    meshUp(KIT.mergeAll(r9gear), gearOlv, P.hullG, true);
+    // r13 §B4: two per-side meshes (honest one-sided AABBs for the audit's
+    // lane-local gear rule) — same gearOlv instance, same triangles.
+    meshUp(KIT.mergeAll(r9gearL), gearOlv, P.hullG, true).name = 'leoGearTrimL';
+    meshUp(KIT.mergeAll(r9gearR), gearOlv, P.hullG, true).name = 'leoGearTrimR';
     // -- B1 rubber: the tires + left jacket flap out of near-black into the
     // a5-family weathered olive-grey (per-tank material instance).
     P.mats.rubber.color.setHex(0x35362c);

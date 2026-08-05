@@ -763,3 +763,135 @@ Residuals (certified/measured, no new orders):
   convention — all carried unchanged.
 - hull 91.5→91.4: the D2b proud plane + E1b third course — priced
   against the mandatory visibility order (whole binder unmoved 90.7).
+
+## §B4 round r13 (2026-08-04) — SPROCKET-DIP CONTAINMENT: clip front 98 / rear 429 -> **0 / 0** (target was <=60), gate 90.7 HELD ×2 bit-identical
+
+The queued r2-era carry closed. Gate at landing: **min 90.7 PASS ×2
+BIT-IDENTICAL** (hull 91.4 / whole 90.7 / turret 91.8 / stations 90.8 /
+dims 99.5 / floaters 100 — every component the r12 line to the decimal;
+side dAlong 0 / dy 0.002 both runs — the body-span guard held through
+every toe-adjacent edit). Hash 9249c794 → **eb04115c** (63→64 meshes =
+the per-side gear-trim split; 112169→113033 verts = the beak/box
+splits). Frozen siblings verified at the same sitting: leo2a5
+**bc9bad30**, leo2a6 **80b76338**, kf51 **3ae9b70c** — all byte-frozen.
+standard-check: gateMin 90.7 | clip **0/0 ✓ PASS** | contig 0 ✓ | decor
+mg1+4d ✓. Official `track-clip-audit --exact` 0/0 read three times at
+the landing bytes (standalone ×2 + standard-check). §B2 flood ALL TEN
+VIEWS at the r12 digits exactly (front 92, rear 101, rl/rr/fl/fr 92,
+left 119, right 125, **top 122**, toptilt 94). Evaluator FULL digest:
+RIG PARITY OK, max yawProxy 0.8° (front / close-front — the r9/r12
+line), hero-rr 0.742 border-clip chain unchanged, toptilt 3.528 +
+**0.294** (the sprocket-zone void SHRANK from the certified 0.311 —
+the rear re-planes reduced the enclosure). npm test 166 checks pass.
+Evidence: shots/leopard-r13/ (before/after full views + 1× zone crops
+per wrap zone), shots/visual-eval-leo2_revolution/, shots/track-clip.json.
+
+Baseline decode (tools/tmp-leo-r13-census.{html,mjs} — a per-PIECE add()
+census in the tmp-b5-t72b3m-pieces pattern: instrumented P records
+bucket + leopard.js line + transformed AABB, keeps zone-near geometries,
+and crosses each piece's surface voxels against the real band sets with
+the audit's exact math). The official 98/429 decomposed EXACTLY:
+- front 98 = nose fill L4262 (60 vox: ±1.30 side faces + 0.575 bottom
+  crossing the idler wrap/ramp ribbons) + beak slab L4259 (38 vox: the
+  full-width slab's planes passing THROUGH the wrap — its top plane
+  dives under the arc crown past z≈3.52);
+- rear 429 = the merged r9gear olive mesh (294 vox: dip plates
+  deliberately bedded in the tucked wrap — the t72b3m "strips must stay
+  bedded" class — but merged center-spanning, AABB reach 0, defeating
+  the audit's lane-local skip) + undercut wedge L4494 (79 vox: ±1.40
+  raked/side faces carrying the whole sprocket upper arc through the
+  lane) + tail box L4466 (56 vox: 1.13 bottom + ±1.45 sides crossing
+  the wrap tangent/upper arc);
+- the per-side idler/sprocket spinner meshes (182/58/47 vox each side)
+  are in-lane gear the reach rule already skips — by design, not debt.
+
+Fixes (hull re-planes + the t72b3m per-side recipe; certified
+idler/ramp geometry and §B6 trapezoid untouched — zero gear params
+moved):
+1. BEAK split (a5/a6 diving-mudguard class): CENTER slab at ±1.044
+   keeps the FULL certified profile (side rows unchanged by projection;
+   toe band 0.90..0.965 intact = dAlong guard); per-side mudguard
+   PLANKS (x to ±1.42 taper, z 2.83..3.32) carry the bow-corner mass
+   with undersides re-planed to 1.385@3.32 — clear of the SHOE
+   ENVELOPE, not just the ribbon (pads ride centerline +0.13: crown
+   ~1.385, far edge ~3.765 vs ribbon 1.309/3.677; past z≈3.36 no legal
+   plane exists over the crown, so the plank ENDS and the wrap crests
+   into the open like the real fender line); per-side TOE CAPS
+   (z 3.785..3.85 = the slab's own slice) keep the ±1.05..1.30 plan
+   columns' 3.83-3.85 nose IN FRONT of the pad far edge; per-side
+   corner TONGUES (x to 1.056, z 3.694..3.795, beak planes inset 2 mm)
+   close the toe-cap/pad/slab plan slot — past the ribbon far edge the
+   band has no voxels, so they share none.
+2. NOSE FILL narrowed 2.60 → 2.00 (interior mass; tub owns the
+   ±1.02..1.20 front bottoms at 0.36).
+3. TAIL BOX split: center 2.00 wide keeps the certified (z,y) profile
+   (bottom 1.13, top 1.71); outboard shoulders x 1.00..1.45 keep the
+   station/plan footprint with bottoms 1.42, clear of the sprocket pad
+   crown 1.395 (return-run pads are covered/hidden z ≥ −3.41, so the
+   tangent zone needs only ribbon clearance).
+4. UNDERCUT WEDGE narrowed ±1.40 → ±1.00: side rows identical by
+   projection; the rear undercut corridor now shows wrap + dip plates
+   (the real over-track config) instead of camo wedge — the close-rear
+   containment read.
+5. r9gear → r9gearL/r9gearR (t72b3m hullTrackTrimL/R recipe, e3918e6
+   class): the dip plates + band-edge strips stay at BYTE-IDENTICAL
+   transforms and the same gearOlv instance (+1 draw call, meshes named
+   leoGearTrimL/R); each merged mesh keeps an honest one-sided AABB
+   (reach 1.27 L / 0.972 R > laneInnerX−0.15 = 0.903) and the audit
+   classifies them as the in-lane gear trim they are. The B1 tone cert
+   (band strip p5 51.4) rides the same material instance unchanged.
+
+Close-view floors (mission order 2, self-read): close-front 1× — the
+camo beak no longer dips into the shoe band; pads wrap the idler with
+the plank step above them (before/after crop-idler-close-front). Rear
+quarter 1× — the undercut shows the track corridor + center wedge
+instead of a camo solid crossed by shoes (crop-sprocket-hero-rearright).
+Side profile byte-stable (crop-*-view-left pairs) — the certified
+silhouette carried the round. The r12 self-read's close-front cap on
+this class is released for the round-3 critic to re-price.
+
+LAW DISCOVERIES (bank):
+1. **THE SHOE ENVELOPE IS THE VISUAL CONTAINMENT SURFACE**: the audit
+   voxels the band RIBBON (outer r = wheel r + 0.045 + trackTh/2), but
+   the SHOES ride +0.13 above the centerline (pad far edge 3.765 vs
+   ribbon 3.677 on the idler) — §B4 re-planes that clear only the
+   ribbon still read as clipping at close view. Plan hull faces against
+   the PAD arc (+0.02), not the ribbon. Corollary: coveredTop hides
+   return-run pads (z −3.41..3.366 here), so tangent-zone clearances
+   only need the ribbon.
+2. **PLAN-SLOT AT THE RIBBON FAR EDGE**: past the band's far edge the
+   audit has no voxels — hull fillers there are containment-free even
+   inside the lane x-window (the corner tongue at x 1.056 vs pads
+   1.0595). The top-view flood is the instrument that prices these
+   slots (two 10 px sky holes at x ±1.05, z 3.69..3.79 appeared when
+   the beak narrowed; closed by the 1.044 widen + tongues at the r12
+   digit 122 exactly).
+3. **PER-SIDE SPLIT PRICES ZERO**: partitioning a manual mergeAll
+   accumulator per side (same material instance, same piece transforms)
+   is render-neutral to the gate (90.7 ×2 bit-identical) and to every
+   flood digit — the t72b3m BUCKET_DEF recipe works identically for
+   finish-block meshUp meshes; the audit only needs the honest AABB.
+4. **STASH-ROUNDTRIP A/B**: `git stash push -- <file>` + official rig +
+   `git stash pop` is a clean before-state reconstruction when a
+   baseline render was overwritten (used for view-top-before and the
+   §B5 A/B; verify the diffstat returns after pop).
+
+Residuals (certified/measured):
+- FRONT −1.010 COLUMN (the r7 carry's second symptom): err 0.131
+  front_whole / 0.133 front_hull, THE DOCUMENTED DIGITS, dAlong 0 —
+  adjudicated THIS round as a SHOE-SYSTEM read, not hull containment:
+  the kit shoes' inner pin caps (trackShoeGeometries cylX at
+  ±trackW·0.49, reaching x 1.028) print a 0.091 bottom on the tucked
+  wrap where the ref band tucks bare (refBot 0.341). With hull-vs-band
+  interpenetration at 0/0, moving it means kit shoe surgery
+  (fleet-frozen; §B4.2 requires the two-layer pin detail) or a
+  per-tank cap-suppression opt-in — beyond this round's brief; priced
+  inside the passing 90.7 since r7 at the same digits.
+- §B5 stranded reads 6 (deck-furniture + whole-bucket AABB classes):
+  byte-identical A/B — HEAD bytes read the SAME 6 on today's audit, so
+  the r12 note's "3" is instrument drift, not a regression; nothing in
+  this round re-parented (gear trims y ≤1.49, below the clamped
+  envelope floor).
+- hero-rr 0.742 border-clip chain / whip-stub bistability / muzzle tip
+  cover 0.56-class / st11/12 wPct / pod-line carries — all r12
+  residuals carried unchanged (gate row equality ×2 is the proof).
