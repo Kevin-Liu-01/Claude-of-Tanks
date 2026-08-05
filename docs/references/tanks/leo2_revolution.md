@@ -1218,3 +1218,16 @@ all gates held ×2 — hero-fl self-reads ≥9.0 on the r14 calibration (the
 low band no longer dominates; every residual named with a certified
 owner). The tank is READY FOR THE GRADUATION CRITIC per the r14
 disposition (13 views at 9.0 + the floor holder killed).
+
+## GRADUATION FREEZE (2026-08-05) — the program's 22nd graduate
+Dual gate: geometry 90.7 PASS x2 bit-identical (717f9c8: hull 90.8 /
+whole 90.7 / turret 92.1 / stations 91.4 / dims 99.5 / floaters 100) +
+graduation critic PASS all fourteen views at 9.0 (ladder 6.6 -> 7.7 ->
+8.1 -> 8.8 -> 9.0 across nine builder rounds + five adjudications,
+incl. the batch-37 RWS band-flatten warp, the §B4 sprocket kill, the
+NO-STAIRCASES bow re-plane, and the R5 ramp flatten). HASH FROZEN:
+**7175fbf0** (79 meshes / 110905 verts) — any change is a
+graduate-change per §10. Registration state: already retired + mirrored
++ procedural icons at the FLEET FLIP (c487188); userdrops5 SOURCED_IDS
+already excludes it; variants backfill clean. The recovered print stays
+the measurement oracle via the three maps.
