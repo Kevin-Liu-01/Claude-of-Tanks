@@ -4345,7 +4345,13 @@ export function createTank(specId, engineCtx, opts = {}) {
     prewarmBurn() {
       if (destroyed) return;
       root.traverse((o) => {
-        if (!o.isMesh || !o.visible) return;
+        // perf-r2d: NODE-HIDDEN meshes are hooked too — conditional GLB
+        // addon parts (TUSK rails/camo variants, addon_keep hardware) are
+        // visibility-toggled and used to miss the hook here, so their
+        // '|burn-r6' cacheKey variants linked on the kill frame instead of
+        // behind the loading screen. A disarmed hook is exact-identity
+        // output, so hooking a hidden mesh has no visual effect ever.
+        if (!o.isMesh) return;
         const mm = Array.isArray(o.material) ? o.material : [o.material];
         if (!mm[0] || mm[0].colorWrite === false) return;
         for (const sm of mm) applyBurnHook(sm, burnU);

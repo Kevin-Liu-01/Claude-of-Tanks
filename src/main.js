@@ -3540,6 +3540,26 @@ function compileHiddenVariants() {
       renderer.compile(e.visual.root, camera, scene);   // live-state materials
     } catch (_) { /* warm only */ }
   }
+  // perf-r2d: renderer.compile() never builds SHADOW-PASS depth programs —
+  // they link the first time a mesh's material class actually renders into a
+  // cascade (the ±1-flag program pairs the spike probe kept catching on
+  // reveals). One REAL render with every tank root + node-hidden addon mesh
+  // forced visible and all cascades marked dirty links them here, behind the
+  // loading screen, in a single hidden frame.
+  {
+    const flips = [];
+    for (const e of game.tanks) {
+      if (!e.visual || !e.visual.root) continue;
+      e.visual.root.traverse((o) => {
+        if (o.visible === false) { flips.push(o); o.visible = true; }
+      });
+    }
+    try {
+      if (lighting && lighting.updateFrustums) lighting.updateFrustums();
+      renderer.render(scene, camera);
+    } catch (_) { /* warm only */ }
+    for (const o of flips) o.visible = false;
+  }
 }
 // PERF (performance_budget r3): stream the 7 deferred staged-battle visuals
 // in one-per-idle-slice chunks (~150-350 ms each at the 'ai' bake tier) so
