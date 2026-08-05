@@ -346,3 +346,59 @@ opt-ins are byte-identical by default: graduate hashes chieftain5
 5117b9a8 and challenger1 a18d91a8 re-verified EXACT post-edit; fv510
 a55c85cc, vickers_mk1 1389d11c, comet 8c9a2098, challenger_cruiser
 d19f7994, charioteer c6fc76a8 recorded). Hash 9e61f688 -> bbcf7d80.
+
+## r7 — COMBINED UK TONE ROUND (2026-08-05, uk agent; answers shaded-parity r6 f04beee)
+Shared family recipes (ukToneKit + ukGearAirBackers in uk.js, §F.2
+opt-in — chieftain5 untouched) with three measured dial cycles. Gate:
+**90.5 -> 90.5 PASS x2 bit-identical** (hull 92.6 / whole 90.7 / turret
+90.5 / stations 95.5 / dims 100 / floaters 100 — the a20e801 floor line
+held EXACTLY with all deliveries in). Hash bbcf7d80 -> **2395a924**
+(48 meshes, 73 004 verts). ORDERS:
+- O1 EXPOSE THE GEAR (the 5.5-floor setter): ukHull gains the
+  skirtHemSplit opt-in (default byte-identical — chieftain5/c3/fv510
+  proven by hash) — the Mk.5 raises panels 0..4 to the ref's own 0.84
+  exposed-disc hem (outer-strip bottoms 0.81 per the r2 tables; wheel
+  tops 0.85) while panel 5 keeps the 0.60 hem that owns the front/rear
+  row minima (interval-mask law — the chieftain5 LEFT-HEM-PARITY
+  silhouette-neutral recipe; side bottoms are ground-run-owned).
+  Wheels re-toned 0x3e4531 + rehook, drums 0x373d2c (O2b pale-bullseye
+  kill), tires emissive-floored, /shadow/ bay backers behind the wheels.
+  MEASURED: left band med 54.5-with-p5-6.8 -> 56.7 vs ref 51.8, sd 18.3
+  -> 8.1; six full disc faces read under the raised hem (crop banked at
+  shots/uk-tone-combined/c5-gear-after.png).
+- O2 TRACK/WRAP TONE: pads 0x272b20/.18 + chain 0x2f3427/.22 + band mul
+  [.92,.98,.82] + gearFloor rehook. Horn/pad row p5 6.8 -> 53 (no black
+  teeth); ground strip p95 68.2 -> 66.9 med 53.7 (ref 51.4); front wrap
+  faces med 28.6 -> 53.6 vs ref 55.5 (sky check unchanged 0 px — the
+  columns were always geometry).
+- O4: (a) hood retone via canvasCloth 0x353c2b/env .05 — rgb (64,65,47)
+  p95 89.7 -> (54,57,43) p95 72.4 (target <=73; the feature kept);
+  (b) glass smoked dark-olive — all three chips b-r +7 -> -4..-6;
+  (c) muzzle: collar shortened 8 mm + dark bore disc (r 0.118) seated
+  with its face AT the original gunLen plane (a 3 mm-proud first cut
+  moved dAlong 1.237 -> 1.238 and smeared every side column — withdrawn;
+  mask tip byte-exact now).
+- O5 REAR DRESSING: tow cable draped across the tail plate in the ref's
+  double-U (KIT.towCable riding the stepped course faces, max rear z
+  -3.632 inside the -3.64 C-course line) + end cleats + one spare-link
+  plate per shoulder flat on the B face; flank basket outer walls
+  rebucketed 'turret' -> 'turretDark' on the Mk.5 (the plain-pale-slab
+  read; mask-identical — thin slat strips at x 1.469 partial-pixel-lit
+  the 1.4625 stub-column boundary and were withdrawn per §C).
+- O6a M2 READ: the r6 mask-proven foot kept EXACTLY; rotation-only
+  re-pose (yaw pi+0.95, elev 0.05) sweeps the barrel across the pale
+  bustle dip under the left-biased 2.7475 crown-ridge front columns (a
+  raised-foot pose put the receiver +0.10..0.14 over six x 0.13..0.32
+  front columns — front_whole 90.7 -> 89.0 — and was withdrawn).
+  O6b drum tell: evacuator BODY -> gunDark (§C material split at the
+  gate-priced geometry; taper rings keep scheme paint) — the Mk.5/2's
+  canonical band reads vs the Mk.3 at garage distance.
+CHECKS at close: standard-check PASS (clip 0/20 documented class,
+contig 0, mg1); turret-parent 0/0/0; npm 166 green; gate x2
+bit-identical. Frozen proofs as challenger1 r8 section. Evidence:
+shots/uk-tone-combined/ + shots/critic-centurion5/ (fresh pairs).
+HONEST RESIDUALS: O3 (cast-turret §B1 slab grammar) NOT taken this
+round — 0.5 turret headroom mid-critic makes it the orchestrator-
+scheduled follow-up; the O2 horn/pad row med 65.9 sits +14 over the
+ref's 52 (the wheels' lit lower arcs dominate the row — in-family, sd
+9.6 vs ref 5.1); hood med 54 is 2L under its (56,62,47) target.

@@ -347,3 +347,80 @@ st0 wPct ~7.6 trimmed (law 3). turret:plan 89.97 -> 90.2 came from the
 §C fixes — the 0.861/0.601 columns hold ~0.08 of ref-side basket kit our
 shell reads clean. Dual gate: geometry side PASSED — independent critic
 >= 9.0 every view is the remaining graduation leg.
+
+## r8 — COMBINED UK TONE ROUND (2026-08-05, uk agent; answers shaded-parity r7 0b4c6d0)
+Shared family recipes built ONCE (ukToneKit + ukGearAirBackers, §F.2
+opt-in per build fn — chieftain5 does NOT call them) and applied with
+per-mark params; three tone dial cycles on the official critic pairs.
+Gate: **90.1 -> 90.2 PASS x2 bit-identical** (hull 91.9 / whole 90.2 /
+turret 90.3 / stations 90.6 / dims 95 / floaters 100 — whole+turret both
++0.1 over the r7 floor). Hash 8ef58c18 -> **e686ddb6** (59 meshes,
+92 256 verts). ORDERS:
+- O1a/O1b EXPOSE THE GEAR (the 5.5-floor setter): the eight 0.42-long
+  outer boards (a visually continuous wall, hem 0.515) slatted into an
+  upper course row (bottom 0.88 ~ wheel-top) + five 0.14-wide hanger
+  STRAPS to the 0.515 hem at the wheel-gap stations, z-extremes 0.894/
+  -2.543 reproduced exactly — mask-neutral by construction (front ±1.6
+  cols read min-bottom via straps + same 1.525 top; side bottoms ground-
+  run-owned; plan bracketed by fender/rear panel; every station window
+  keeps 1.613-face content). Wheels re-toned pale-olive (0x3e4531 clone
+  + ambient rehook, drums 0x373d2c), tires emissive-floored, dark-olive
+  render-only /shadow/ bay backers at z 3.06/0.30/-2.36. MEASURED: left
+  gear window med 6.8 -> 54.1 vs ref 54.8 (PARITY, was "zero of six
+  discs"); slit 6.8 -> 53.0. Six disc faces read between straps (flat-
+  topped by the 0.615 skirt hem like the ref's own read).
+- O2 WRAP TONE: pads 0x272b20/env .18, chain 0x2f3427/.22, band mul
+  [.92,.98,.82], spareTrack 0x2c3f24-class, gearFloor rehook (the clones
+  were ambient-dead). Front corner rects 30.0/31.1 -> 50.0/48.4 (in the
+  ref 26..64 band); rear corner 5.9 -> 55.0 vs ref flap 63.5.
+- O3 MUD FLAPS x4: pale-buff panels (0x4a453a clone) hung INSIDE the
+  wrap silhouette (law-5: no free z outside the sweep) — panels at
+  z 3.90/-2.965 threaded between the shoe annulus bands, stems outboard
+  of the shoe x-band bonded to wing belly/rear panel (§B2 chains), every
+  part y-interior of its columns' existing intervals. Clip 0/0 exact x2.
+  The panel reads through the comb gaps and around the arc (the ref's
+  own corner read); a dead-front full-flap read is geometrically
+  unreachable behind our wrap (honest residual: corner med 50 vs ref 64).
+- O4 PALETTE: TOGS body+head/sight cap/NBC rebucketed 'turret' ->
+  'turretDetail' (the camo box-UV had landed them on one sand blotch —
+  61,61,47 r=g -> 47-49 g-dominant); gun-root/collar masses ->
+  gunMountDark + mats.dark olive swap 0x36342f -> 0x282c22 (travel-lock
+  rect 61,60,52 -> 55,58,47 g-dominant; luma residual +11 is lit-face
+  physics); canvasCloth 0x262b1d (plank hue fixed, top-lit luma residual
+  documented); glass smoked dark-olive (patton C1) — ALL 8 blue chips
+  b-r +12..+22 -> -3..-5.3.
+- O5 WEAPON/BUSTLE: MAG re-posed from the buried stow to the left rear
+  roof, barrel swept FORWARD under the 0.878-plateau cover (two aft
+  poses priced -0.8..-1.7 gate pts on side rows and were withdrawn —
+  the pintle allowance is 0.4; the landed pose is mask-interior).
+  Smoke banks: 20 dark tube-face caps (cluster-transform math) — tube
+  rows resolve, crate read dead. Bustle: hump-face straps + cloth
+  straps (a rail pair at ±0.746 re-topped the world -1.603 column +0.16
+  and was withdrawn — side rows read max-over-x). Ring fitting (O5d):
+  base pad bridges the right lift eye to the cheek.
+- O6 REAR-QUARTER PLAN: cover strips x 0.96..1.21 + 1.415..1.53 at the
+  1.703 deck line over z -2.28..-3.10 (plan-neutral: the wrap paints
+  below; front cols carried by deck plateau/guard stubs). The z < -3.10
+  lane is NOT track-painted in plan and stays open (mask-positive there
+  — reported, not chased).
+- SHOULD: plinth-wall dead-front highlight calmed with a flush olive
+  course strip along the split-face line (top end 0.87 under the 0.878
+  plateau line, interior).
+CHECKS at close: standard-check PASS (clip 0/0 exact, contig 0, mg1);
+turret-parent 0/0/0; npm 166 + track-geometry green. FROZEN PROOFS:
+chieftain5 5117b9a8, fv510 a55c85cc, vickers_mk1 1389d11c, comet
+8c9a2098, charioteer c6fc76a8 — all byte-identical (skirtHemSplit/tone
+opt-ins default byte-identical). Evidence: shots/uk-tone-combined/
+(gate finals x2-verified, tone-measure-final.txt, gear crops),
+shots/critic-challenger1/ (fresh 14 pairs).
+LAW BANK: (1) side rows read the MAX top over ALL x at a z-column — a
+"bins cover it" interiority argument must check every x, not the
+outermost body (the rail-pair lesson). (2) A muzzle-tip face must not
+extend the mask tip even 3 mm: dAlong quantizes at ~1 mm and smears
+mean pct across every side column (shorten the collar, seat the dark
+disc face AT the original plane). (3) MG poses: the protective cover
+mass (plateau/ridge) must span the WHOLE barrel run in the priced
+view's projection; aft-facing barrels over falling rooflines are the
+expensive class. (4) /shadow/-named render-only meshes are the zero-
+price lane for bay-interior tone fills (gate/evaluator masks + critic
+framing exclude them; clip audit does NOT — thread the envelopes).

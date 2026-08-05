@@ -225,3 +225,67 @@ NUMBERS (r5 -> r6, gate x2 BYTE-STABLE — two identical runs): min
 (shared sprocket note, see c5); turret-parent 0/0/0; standard-check
 contig 0 + mg1 (MAG fitting). The turret_side cover ceiling is the c5
 packet's structural finding (2.08 here). Hash 1ef2f50c -> caa2e91c.
+
+## r7 — COMBINED UK TONE ROUND (2026-08-05, uk agent; answers shaded-parity r6 8df280f Groups 1-3)
+Shares the family recipes (ukToneKit/ukGearAirBackers — see the c5 r7
+and challenger1 r8 sections). Gate: **91.1 -> 91.1 PASS x2
+bit-identical** (hull 92.4 / whole 91.2 / turret 91.1 / stations 95.2 /
+dims 100 / floaters 100 — the razor floor held exactly WITH the Group-3a
+geometry in). Hash caa2e91c -> **ac63e6d8** (47 meshes, 70 340 verts).
+DELIVERED (per-order done-gates, measured on fresh official pairs —
+tools/tmp-uk-tone-measure.py, banked at shots/uk-tone-combined/):
+- 1a chain/void near-blacks: rear cols med 13.1 -> 57.3 (gate >=40, ref
+  58.8-60.1 parity) with sub-30 10 406/10 421 -> **0** (gate <=500);
+  close-front band sub-30 8 695 -> **0** (<=800); left band sub-30
+  3 695 -> **0** (<=400). Driver: pads/chain clones were ambient-DEAD
+  (clone() drops the family hook) — gearFloor rehook + olive hexes.
+- 1b two-way overshoot: front cols med 30.4/31.1 -> 52.1/51.7 (gate
+  >=48) at p5 42.6 (>=30 — no re-blackening). Three dial cycles: the
+  first olive set overshot BRIGHT (+15 side band) — ordered-class law.
+- 1c disc bullseyes: road wheels 0x3e4531 clone + drums 0x373d2c +
+  spareTrack teeth/rings 0x2c2f24 — the pale drawn discs join the
+  dark-gear class (see the left-band sd 21.5 -> 9.6).
+- 1d comb-gap air: /shadow/-named catch plates (idler/mid/sprocket
+  bays) + the skirt-slot recess plate (the MEASURED air is a real
+  background slot between the skirt face x 1.61 and the outer strip's
+  0.81 bottom, plus the Group-4a flap-zone columns — NOT wrap comb
+  gaps). Air 9.3/9.7% -> 8.3/8.6% vs the <=7% gate (ref 5.5/7.6):
+  PARTIAL — the residual is the 4a mud-flap width class (out of this
+  round's Groups 1-3 scope; the flap columns are front/rear
+  mask-POSITIVE and belong with 4a's own gate pricing).
+- 2a ink/camo overshoot: TWO levers — (i) spec-level bakeDirtDeckEq
+  (the documented m47-B3 up-face equalization; print refs bake the
+  shared canvas with NO up-face term = parity by construction), set
+  from the c3 build fn; (ii) a map-domain DARK-TEXEL LIFT chained
+  after the material's existing hook stack (CSM path composes via
+  onBeforeCompile per engine/lighting.js — the wrapper is the
+  documented chain; cache keys 'veh-ambient-floor-v2+c3ink[-b]') —
+  lifts only linear albedo < ~0.04 (the ink stamps) toward the print's
+  soft dark-olive; parity side tables untouched by construction.
+  MEASURED: view-top sub-38 front 4 792 -> **10** (<=1500), turret
+  3 171 -> **136** (<=1000), rear 5 327 -> **161** (<=1600); medians
+  49.9/50.8/50.5 vs ref 51.3/51.9/50.6 (within the +3..5L target);
+  close-roof sub-38 14 302 -> **3 228** (<=11000).
+- 2b blue glass: 177 blue-signature px -> **0** (smoked-glass family
+  fix, patton C1 lineage).
+- 2c bin-row relief: sub-45 2 455 -> **100** (<=400); med 50.4 -> 52.7
+  vs the >=55 gate — PARTIAL (-2.3; the remaining spread is the
+  duffel/box lighting, and the c3 duffels are verdict-verified at ref
+  parity — not retoned on purpose).
+- 2d front face: med 47.2 -> 50.8 (>=50) at sub-45 11 023 -> 5 548
+  (<=7000) — the ink lift's vertical-face share.
+- 3a TURRET PLAN FRONT de-step (the one mask-neutral-by-construction
+  §B1 item, batch-verified): four chord-limited corner-fill facets
+  round the notch between the nose slab's plan diagonal and the
+  discharger-bank front, authored to the live paired columns (ref
+  fronts build 1.68@|x|0.69 / 1.649@0.82 — proc was -0.09 at 0.82).
+  Facet tops ride local 0.34-0.40 (a first cut at the slab-edge heights
+  0.46-0.50 re-topped the build 1.40..1.53 side columns +0.03..0.05 —
+  turret_side 91.1 -> 90.8 — and was re-derived; the plan fill lives in
+  the bottom quads). turret_plan 95.37 -> 95.47; gate x2 at 91.1 held.
+  3b (hood/crown-ridge chamfers) + 3c (cupola ring relief) BANKED per
+  the round scope (not mask-neutral by construction).
+CHECKS at close: standard-check PASS (clip 0/20 documented, contig 0,
+mg1 MAG — pose untouched, §H4 tell protected); turret-parent 0/0/0;
+npm 166 green. Frozen proofs as challenger1 r8. Evidence:
+shots/uk-tone-combined/ + shots/critic-centurion3/ (fresh pairs).
