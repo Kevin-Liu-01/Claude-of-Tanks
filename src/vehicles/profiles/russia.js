@@ -296,7 +296,14 @@ function ruGlacisKit(P, o) {
     // eyes:false (t72b3m r18 item 8): the pale detail tori rendered as two
     // CHALK RINGS on the dark lower bow (one broke the hem silhouette) —
     // the shaded critic wants dark shackle fittings, authored by the caller.
-    if (o.eyes !== false) P.add('hullDetail', torus(0.085, 0.016, 10), s * (o.eyeX ?? o.w * 0.36), o.eyeY ?? 0.50, o.eyeZ ?? zG + 0.30, Math.PI / 2, 0, 0);
+    // eyeSplit (russia §B4 pt91m/t90m round, opt-in): tori that seat INSIDE
+    // the track x-band are per-side in-lane fittings — merged into the
+    // center-spanning hullDetail bucket they defeat track-clip-audit's
+    // lane-local reach skip (merged AABB reach 0). Route them into the
+    // per-side hullTrackDetailL/R buckets (t72b3m hullTrackTrimL/R recipe:
+    // same material slot + LOD path, renders byte-identical) so each merged
+    // mesh keeps an honest one-sided AABB. Default byte-identical.
+    if (o.eyes !== false) P.add(o.eyeSplit ? (s < 0 ? 'hullTrackDetailL' : 'hullTrackDetailR') : 'hullDetail', torus(0.085, 0.016, 10), s * (o.eyeX ?? o.w * 0.36), o.eyeY ?? 0.50, o.eyeZ ?? zG + 0.30, Math.PI / 2, 0, 0);
   }
   headlight(P, -o.w * 0.44, o.hlY ?? (yG + 0.10), zG + 0.14, -0.30, 0.05);
   headlight(P, o.w * 0.44, o.hlY ?? (yG + 0.10), zG + 0.14, -0.30, 0.05);
@@ -1466,7 +1473,12 @@ function buildPT91M(P) {
   // only (front +0.18 col); ±0.02..0.14 cols read the 1.50 plate line
   P.add('hull', box(0.04, 0.27, 0.08), 0.183, 1.525, -2.90);
   ruDeck(P, { deckY: 1.455, hatchZ: 1.72, gz: -1.03, grilles: 4, gw: 1.5, periY: 1.42 });
-  ruGlacisKit(P, { w: 3.45, y: 1.20, z: 2.60, eyeZ: 2.88, hookY: 0.94, hookZ: 3.01, hlY: 1.26 });
+  // §B4 containment round (graduate-change, split-only): the tow-eye tori
+  // (default eyeX = w*0.36 = ±1.242) seat in-lane against the idler wrap
+  // front (12 vox/side = the audit's whole front-24 flag, merged-AABB
+  // false-flag class). eyeSplit moves them to hullTrackDetailL/R at
+  // byte-identical transforms — renders byte-identical, masks untouched.
+  ruGlacisKit(P, { w: 3.45, y: 1.20, z: 2.60, eyeZ: 2.88, eyeSplit: true, hookY: 0.94, hookZ: 3.01, hlY: 1.26 });
   // splash ridge: ref side carries a 1.368 brow across z 2.53..2.69
   // (r25: +12 mm — the 1.358 top printed 1.341 vs the ref's 1.368 line)
   P.add('hull', box(2.3, 0.045, 0.16), 0, 1.348, 2.61);
@@ -3101,7 +3113,20 @@ function buildT90MProryv(P) {
     belly: [[-2.90, 0.89], [-2.72, 0.78], [-2.60, 0.45], [-2.30, 0.365], [2.45, 0.365], [3.00, 0.50], [3.06, 0.62]],
     wUp: [[-2.90, 1.20], [-2.77, 1.60], [2.95, 1.60], [3.06, 1.52]],
     wLo: [[-2.90, 1.00], [3.06, 1.08]],
-    sponsonY: 0.81,
+    // §B4 containment round (t72b3m sponson-window recipe): the flat 0.81
+    // track-bay roof buried both wrap crowns in the slab — the full-width
+    // upper slab's side walls (±1.60, inside the 1.185..1.685 band window)
+    // and its 0.81 floor crossed the wrap arcs (audit rig_hull 145 front /
+    // 84 rear). Roof lifts to crown+0.03 over the wrap windows ONLY:
+    // sprocket (c -2.10, y 0.78, outer r 0.37 -> crown 1.15, arc-above-
+    // floor z -2.469..-1.731) window at 1.18; idler (c 2.65, 0.78, r 0.31
+    // -> crown 1.09, arc z 2.342..2.958) window at 1.12. Knee knots seated
+    // OUTSIDE the arc z-ranges (knot-cut-face law); 0.81 kept elsewhere.
+    // Interior everywhere: front-view fills are max-over-z (bow face keeps
+    // its 0.81 floor from z 3.02; band/prongs own the window cols), side
+    // rows never saw the roof (deck 1.35-1.39 above), tub top rises to the
+    // window roof at wLo <=1.08 — inboard of the 1.185 band window.
+    sponsonY: [[-2.90, 0.81], [-2.54, 0.81], [-2.50, 1.18], [-1.72, 1.18], [-1.66, 0.81], [2.26, 0.81], [2.32, 1.12], [2.99, 1.12], [3.02, 0.81], [3.06, 0.81]],
   });
   // glacis corner prongs carry the ref's 3.27 plan corners over the 3.05
   // center line (V-bow), mud flaps behind them; a slim CENTER bow probe
@@ -3172,7 +3197,9 @@ function buildT90MProryv(P) {
   // t72b3m periY class) and headlights re-seated 7 cm lower (ref tops
   // 1.24-1.27 over z 2.60..2.74 vs the 1.35 lamp line).
   ruDeck(P, { deckY: 1.38, hatchY: 1.27, hatchZ: 2.05, gz: -1.70, grilles: 5, gw: 1.5, periY: 1.24 });
-  ruGlacisKit(P, { w: 3.5, y: 1.16, z: 2.60, eyeZ: 2.86, hookY: 0.68, hookZ: 2.97, hlY: 1.19 });
+  // §B4: eyeSplit — tori at ±1.26 are in-lane (16/17 vox vs the idler wrap);
+  // per-side buckets give the audit honest one-sided AABBs (t72b3m recipe).
+  ruGlacisKit(P, { w: 3.5, y: 1.16, z: 2.60, eyeZ: 2.86, eyeSplit: true, hookY: 0.68, hookZ: 2.97, hlY: 1.19 });
   // Relikt glacis wedge rows (t90sm pattern) — r30: seated 6 cm lower (tops
   // ~1.30/1.25); the registered ref glacis-top line is 1.29@2.25 -> 1.23@2.62
   for (let row = 0; row < 2; row++) for (const s of [-1, 1]) {
@@ -3216,13 +3243,19 @@ function buildT90MProryv(P) {
   });
   // gear-fade strips on the ref's rendered ramp lines (rear 0.12@-1.68 ->
   // 0.52@-2.68 then the 0.86 plate line; front 0.52@3.16)
+  // §B4 containment round: strips are in-lane running-gear trim (x
+  // 1.145..1.725 vs laneInnerX 1.185) deliberately bedded in the band (the
+  // t72b3m "strips must stay bedded" class). Merged into center-spanning
+  // hullDark they defeated the audit's lane-local skip (44 front / 104 rear
+  // vox); per-side hullTrackTrimL/R buckets keep byte-identical transforms
+  // and the same 'dark' material instance — renders byte-identical.
   for (const [sz2, sy] of [
     [-1.55, 0.06], [-1.67, 0.12], [-1.79, 0.18], [-1.91, 0.235], [-2.03, 0.285],
     [-2.15, 0.325], [-2.27, 0.335], [-2.39, 0.375], [-2.51, 0.52], [-2.63, 0.67], [-2.72, 0.78],
     [-2.81, 0.79],
     [2.60, 0.10], [2.72, 0.21], [2.84, 0.315], [2.96, 0.42], [3.06, 0.50], [3.16, 0.68],
   ]) {
-    for (const s of [-1, 1]) P.add('hullDark', box(0.58, 0.05, 0.08), s * 1.435, sy + 0.025, sz2);
+    for (const s of [-1, 1]) P.add(s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR', box(0.58, 0.05, 0.08), s * 1.435, sy + 0.025, sz2);
   }
   // skirts: soft band (thick panels) + the heavy Relikt course OUTBOARD at
   // the ref's ±1.89 plan faces spanning z 2.46..-2.66 (render truth: the

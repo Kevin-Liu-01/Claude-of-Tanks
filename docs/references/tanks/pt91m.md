@@ -683,3 +683,66 @@ Certified carries: crown-air column cert, heightM-trade col, muzzle-band
 bottoms, row2 corners, camo-split-final glacis rows. Non-blocking wishlist
 in the verdict (dome seam decals, drum ribs, tube-end grid, rear-stack
 decode).
+
+## §B4 GRADUATE-CHANGE round (2026-08-05, russia agent) — containment
+## front 24 -> 0/0, SPLIT-ONLY (renders BYTE-IDENTICAL 14/14, gate row
+## identical x2) — HASH e6994e54 -> a37a0d24 (needs orchestrator re-freeze,
+## NO re-cert required)
+
+The queued t72-line containment carry closed. The work-order's 178/220
+baseline was stale: the r25-r28 gear re-authoring (corner-pad recipe,
+strip fade) had already cleared everything but ONE flag — official
+`track-clip-audit --exact` read front 24 / rear 0 at round start
+(pre-round A/B on the same instrument, same day).
+
+Decomposition (tools/tmp-ru-b4-census.{html,mjs} — the tmp-leo-r13-census
+per-add pattern adapted for russia.js): front 24 = the ruGlacisKit
+TOW-EYE TORI (russia.js L306, 12 vox/side, aabb x ±1.141..1.343,
+y 0.404..0.596, z 2.864..2.896) — per-side in-lane fittings (lane x
+window 1.12..1.62) whose merged center-spanning hullDetail AABB (reach 0)
+defeated the audit's lane-local skip: the t72b3m/leo r13 false-flag class
+EXACTLY, with a 'detail'-material twist. The rear-zone direct hits
+(idler/sprocket spinner bodies, 206/58 vox per side) are in-lane gear the
+reach rule already skips by design — not debt.
+
+FIX (split-only, zero transforms): ruGlacisKit gains opt-in `eyeSplit`
+(default byte-identical — t72b3m/t84 frozen proofs below) routing the
+tori into per-side hullTrackDetailL/R buckets; BUCKET_DEF gains
+hullTrackDetailL/R: ['hullG','detail'] (tankFactory.js, the e3918e6
+rider class: same 'detail' material slot + LOD path as hullDetail, no
+other caller — NEEDS ORCHESTRATOR LANDING with the russia.js change in
+one commit). Each merged mesh keeps an honest one-sided AABB (reach
+1.141 > laneInnerX−0.15 = 0.97) and the audit classifies the eyes as the
+in-lane bow fittings they are.
+
+GRADUATE-CHANGE VERIFY (all on final bytes):
+- track-clip-audit --exact: front 0 / rear 0 (official instrument;
+  standard-check agrees 0/0). Baseline 24/0 same instrument same day.
+- gate x2: min 91.3 PASS both runs, components 93.0/91.3/95.0/92.8/100/
+  100 — IDENTICAL to the graduation ledger row to the decimal, twice;
+  floaters 100 x2 (all five poses).
+- 14-view rest pixel-diff (official critic rig, tools/tmp-b5-t72b3m-
+  diff.py): **BYTE-IDENTICAL 14/14** — cleaner than the t72b3m donor
+  round (zero coplanar-seam reshuffles; the tori are the only moved
+  pieces and they merge into fresh buckets appended after the existing
+  scene children). Render determinism proven first: two before-runs on
+  identical bytes read byte-identical 14/14 (shots/russia-b4-pt91m/
+  before vs before2), so the diff is attributable.
+- evaluator digest spot: RIG PARITY OK (11 ortho views, max dYawProxy
+  0.5° @close-front, max |dCentroid| 0.091m).
+- standard-check: gateMin 91.3 | clip 0/0 PASS | contig 0 | mg1+4d.
+- §B6 trapezoid: zero gear params touched (buildRunningGear cfg
+  byte-identical; side profiles byte-identical by the 14/14 proof).
+- hashes: pt91m e6994e54 (52/100624) -> **a37a0d24 (54/100624)** — +2
+  meshes = the per-side eye buckets, verts UNCHANGED (pure re-bucketing).
+  Frozen siblings in the same run: t72b3m **3d92bb98** and t84
+  **fd0bca6c** byte-frozen (both are ruGlacisKit callers, eyes:false —
+  the eyeSplit default + BUCKET_DEF addition are byte-inert for every
+  non-caller).
+- RE-CERT DECISION: NOT REQUIRED — no geometry moved, no mask moved, no
+  render byte moved; per the §B5/§10 graduate-change flow this is the
+  split-only lane (rest-pixel-diff proof, non-camo buckets). Re-freeze
+  a37a0d24 in the landing commit.
+
+Evidence: shots/russia-b4-pt91m/{before,before2,after}/ (14 views x3),
+shots/russia-b4-census-baseline.json + -after.json, shots/track-clip.json.

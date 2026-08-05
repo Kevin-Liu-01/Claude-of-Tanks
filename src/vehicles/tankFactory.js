@@ -637,7 +637,7 @@ function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165, ri
 // Running gear: instanced road wheels + rollers, per-side sprocket/idler meshes,
 // and the two scrolling track bands.
 // ---------------------------------------------------------------------------
-function trackShoeGeometries(trackW, pitch) {
+function trackShoeGeometries(trackW, pitch, pinCapOuter = null) {
   // Two physically distinct layers, as seen on real live tracks:
   //   1. the broad outer road-contact shoe with twin grousers;
   //   2. a recessed inner chain/connector layer carrying the pins and guide
@@ -665,8 +665,14 @@ function trackShoeGeometries(trackW, pitch) {
     xform(box(0.040, 0.090, pitch * 0.20), 0, -0.325, 0),
     // Proper transverse pin caps. cylX faces the side camera; the previous
     // cylZ bosses appeared as skinny bars and disappeared into the pad.
+    // cfg.pinCapOuter opt-in (AFV r4 bradley front-row find): the default
+    // caps span to trackW*0.49 + 0.029 half-length = ~0.52*trackW OUTSIDE
+    // the band each side — on a rig whose gate ref keeps the tread edge
+    // clean (bradley ±1.35/0.94 ground-read cols) the caps AA-light whole
+    // trace columns past the band. pinCapOuter clamps the cap OUTER extent
+    // (world m from band center); default byte-identical.
     ...[-1,1].flatMap((side)=>[-1,1].map((end)=>
-      xform(cylX(0.047,0.058,10),side*trackW*0.49,-0.100,end*pitch*0.30))),
+      xform(cylX(0.047,0.058,10),side*(pinCapOuter!=null?pinCapOuter-0.029:trackW*0.49),-0.100,end*pitch*0.30))),
   ]);
   return { pad, inner };
 }
@@ -914,7 +920,7 @@ function buildRunningGear(P, cfg) {
   // instancing byte-identical.
   const nLinks = Math.max(24, Math.round(loopLen / (cfg.linkPitchM ?? 0.165)));
   const lp = loopLen / nLinks;
-  const shoe = trackShoeGeometries(trackW,lp);
+  const shoe = trackShoeGeometries(trackW,lp,cfg.pinCapOuter ?? null);
   P.disposables.push(shoe.pad,shoe.inner);
   // Fixed neutral iron tones prevent the garage key light from turning the
   // now-thicker faces into a tan/white necklace.  The inner chain is only a
@@ -3318,6 +3324,13 @@ const BUCKET_DEF = {
   // LOD path as hullDark — renders byte-identical. The /track/i name also
   // carries the §B4 trackBucket tag (hand-rolled audit mode + §B5 skip).
   hullTrackTrimL: ['hullG', 'dark'], hullTrackTrimR: ['hullG', 'dark'],
+  // Per-SIDE in-lane detail fittings (russia §B4 pt91m/t90m round, opt-in —
+  // no other caller): ruGlacisKit's tow-eye tori seat INSIDE the track
+  // x-band on some bows (eyeSplit callers); merged into the center-spanning
+  // hullDetail bucket they defeat the same lane-local skip as the trim
+  // class above. Same material slot + LOD path as hullDetail — renders
+  // byte-identical; /track/i name carries the §B4 trackBucket tag.
+  hullTrackDetailL: ['hullG', 'detail'], hullTrackDetailR: ['hullG', 'detail'],
 };
 const CAMO_BUCKETS = new Set(['hull', 'turret', 'gun', 'gunMount']);
 // Buckets that survive past LOD1 — everything else is greeble-class and
