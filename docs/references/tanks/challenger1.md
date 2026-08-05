@@ -179,3 +179,79 @@ STOP note: challenger1 fell short of the 75 target (69.9 at lock); the
 remaining levers are all sub-0.15-per-column trades against the ref's own
 edge jitter. Recommend an oracle-lane look at the basket band and the
 x 0.21 gun column before the next builder round.
+
+## NO-STAIRCASES round (2026-08-04, uk agent — owner screenshot directive, §B1 law 5f4cfae)
+IDENTIFICATION: the screenshot tank IS challenger1 (rear-3/4 pair match:
+big slab turret + stacked bustle + segmented thermal-sleeve L11 + twin rear
+mudflaps; freshly flipped c487188, owner browsing it in the garage).
+Verified against the before-critic pairs at the same angle.
+
+STAIRCASE KILLS (each course now ONE raked face or the ref's real lines):
+- BOW (the worst read): fender plane (1.5575, ended 3.30) -> transition
+  plate (1.43->1.32) -> bow wing (1.44->1.185) stacked THREE terraces with
+  two ~0.10 equal risers. Now ONE guard rake y = 1.5575 - 0.245(z-2.95)
+  from the fender end to the 4.165 nose tip, emitted as three nested
+  CO-PLANAR strips (plan taper kept: 1.745 plate 3.28..3.60, 1.70 edge to
+  3.30, 1.65 wing run; underside/flap mask lines unchanged). Authored to
+  the workorder's own ref line (1.537@3.07 .. 1.278@4.11, one rake).
+  Headlamp pods re-seated ON the rake at the ref's own 3.593 bump column
+  (top 1.475); the ±1.71 side band (flat 1.55 top) trimmed to 2.95 so it
+  can't re-paint the terrace; splash board to the ref's 1.60; front flaps
+  flapDrop 0.17 under the rake; ukHull gains OPT-IN g.fenderPlaneZ1
+  (default = fenderZ1, byte-identical — hash-proof below).
+- GLACIS: the 8-knot convex deck run (1.19@4.16..1.60@2.90) flat-shaded as
+  stacked chord bands; the real CR1 glacis is ONE plate — deck re-knotted
+  to the single 4.16->2.90 line (real knee at the splash board kept).
+- TURRET side courses: bin fronts were flat overhung box-ends (proc 2.273
+  vs ref's RISING 2.11@2.42->2.24@2.03 line) — both inner bins end in
+  RAKED nose wedges at the ref plan fronts (R 2.30, L 2.26); flat tops to
+  the ref's 2.24 course (0.635 loc); dark lid strips FLUSH (rode 0.02
+  proud as a micro-step); right outer tier re-cut to the ref's 0.0..2.01
+  with its notched -0.36 inner tail; tier end posts at the ref's 2.28
+  front-view tops. Crown: ±0.93 flat plateau narrowed to the ref's ±0.70
+  with 2.28 cheek-top shelves (plan unchanged); crown->rear-roof 5 cm
+  ledge now a §B1 CHAMFERED joint; rear-roof top corners follow (±0.74).
+- BUSTLE: the ref basket IS stepped (2.165/2.415/2.24 real course lines,
+  kept) but re-cut to its true plan: hump/mid boxes ±0.90-0.92 (were
+  ±1.16 overrunning the 0.99/1.12 plan cols by 0.23-0.46), tail |x|<=0.53,
+  ±0.575 step shoulders, left wall pulled to the -1.61/-1.72 rear line,
+  floors raised to the ref's 1.82-1.85 underside band (hung 0.15 deep).
+MEASURED EXTRAS (workorder-authored, same round): face chin 1.55->1.67
+(ref 1.656..1.689) + raked nose-wedge chin + 1.42..1.66 mantlet-recess
+underside; rear-roof slab belly 1.67->1.75 (dead mass painting the turret
+mask); antenna pots shortened (hung to 1.585 INSIDE the hull body, four
+cols at -0.15..-0.19); THE r3 "stubborn x 0.21 plan column" FOUND = the
+0.36-wide MRS band at gun z 4.38 (corner painted plan to 4.83 vs ref
+3.76) -> 0.24 wide (§C 15 mm clearance) + a 15 mm-LEFT sleeve-end shroud
+matching the print's own asymmetric x<=-0.146 coverage to z 5.10; sleeve
+junction ring (ref 2.06-2.08 band); smoke banks lowered 0.18 (ref 2.15-
+2.19 front tops); skirt hem 0.53->0.615 (ref 0.634) and the skirt split
+at the ref's own front-panel course (main 1.74 run ends z 0.90, lower
+1.625 panels forward — side cols 0.99..2.45 read 1.624); deck rear knots
+-0.01; rear bin/deep boxes/tail lip/fender strips re-cut to ref plan
+(asymmetric tail-guard stubs L -3.51 / R -3.705, sealed against the skirt
+and vented inboard after a first cut enclosed 20 top-down cells — §B2
+back to 0); NBC pack (ref 2.57 roof step); left roof block to the warped
+print's 2.79 (r3's "2.87" is the OLD extract); commander sight widened
+to -0.565 (its column under-covered and dropped to the NBC top).
+GATE: 69.9 -> 77.9 min x2 (hull 71.9->79.7, whole 78.5->77.9, turret
+69.9->82.9, stations 86.6->90.2, dims 95, floaters 100 — every component
+except whole up; whole -0.6 traded inside the round, min +8.0).
+CHECKS: §B2 holes 0, §B4 clip 0/0 exact, §B5 parent 0/0/0, npm 166 green.
+EVALUATOR (official rig, final geometry): RIG PARITY OK; the stair-
+flicker chains on the bow (159.1/94.4/87.0/29.4 connected slope-riser
+alternation, mirrored rearright) are GONE — remaining bow-band proc-only
+edges are discrete fixture faces <=0.41 m (pods/flaps/nose end), the
+class the ref itself carries; profile p95 dTop: rearright 0.585->0.247,
+frontright 0.502->0.408, frontleft 0.453->0.273, rear 0.370->0.261,
+close-roof 0.394->0.309.
+HASHES: challenger1 7ed08078 -> a18d91a8; chieftain5 FROZEN 5117b9a8
+byte-identical (stash round-trip), and centurion3/5, fv510, vickers_mk1,
+comet, charioteer all byte-identical pre/post (opt-in default proof).
+Shots: shots/uk-challenger1-stairs/{before,after,crops}/.
+HONEST RESIDUALS: whole 77.9 is the min — the 3.33..3.85 side BOTTOMS
+(ref's idler-wrap climb 0.325->0.974 vs our lower wrap, ~4 cols x 0.13,
+running-gear lane, r3 carried it too); plan rear lip cols ±0.31..0.73
+(-4.16 vs ref -4.06, the published-tail anchor, dims-priced); front
+parity yawProxy 4° (ref's own skew, under the 10° abort); nose-top AA
+flip-flop band 2.55..2.81 (~0.07x3, r3 plateau class).
