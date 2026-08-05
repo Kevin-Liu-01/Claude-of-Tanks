@@ -953,6 +953,15 @@ if (params.get('geo')) {
         if (p[0] <= a && (!lo || p[0] > lo[0])) lo = p;
         if (p[0] >= a && (!hi || p[0] < hi[0])) hi = p;
       }
+      // TRIM-BOUNDARY CLAMP (centurion push-2 find, 2026-08-05): the span
+      // check above deliberately admits a ±0.02 band past the end columns,
+      // but with no column beyond the edge the lo/hi lookup nulled every
+      // sample in that band — sub-2cm edge overhangs (dAlong half-pitch
+      // pairings at the turret trim window) read as fake cover (~2.9 pts
+      // on the centurion turret_side rows). Clamp to the edge column
+      // inside the already-declared tolerance; beyond it stays null.
+      if (!hi && lo && a - lo[0] <= 0.02) return [a, lo[1], lo[2]];
+      if (!lo && hi && hi[0] - a <= 0.02) return [a, hi[1], hi[2]];
       if (!lo || !hi) return null;
       if (hi[0] === lo[0]) return lo;
       const t = (a - lo[0]) / (hi[0] - lo[0]);
