@@ -151,3 +151,40 @@ to r 0.125 (thin-tube plan columns aliased out at r 0.12).
 Numbers: min 60.8 -> **78.7** (hull 84.8 -> 81.5, whole 69.4 -> 78.7,
 turret 60.8 -> 80.6, stations 76.2 -> 78.9, dims 98.3 -> 100, floaters
 100). Track-clip --exact 0/0. Boards: shots/uk-r2/centurion3.
+
+## r5 (2026-08-05, uk agent — centurion5's written order extended): 78.7 -> 84.9
+Shares every shared-hull delivery from the centurion5 r5 section (read it
+first: frame pinning, glacis/idler retable, tail overhang shelf + sprocket
+circle refit, horn-tip two-threshold sliver, muzzle axis 1.905 — the c3
+print raycasts the same 1.907-1.910 axis; the registration and p95-anchor
+laws live there). Mk.3-specific r5 truth from ITS extract/probes:
+- FACE ZONE (the r4 "0.10-0.13-lower face" order): measured — the CASTING
+  slabs were already true (c3 extract face line 2.39@1.00 -> 2.28@1.30 vs
+  authored ±0.02); the offender was the shared periscope hood at 2.525
+  (ref c3 2.37-2.39): mk ternary y 0.565 (c5 keeps 0.63). The r4 estimate
+  conflated the hood with the casting.
+- 20-pdr: this print's extractor reads SLIM (tube band 2.005..1.758
+  constant — no fat drum): evacR 1.4 -> 1.12 (the 1.4x drum sat +0.075
+  over six columns). Muzzle raycast: band 2.030..1.790 r 0.120@build 5.4.
+- LEFT-BIASED crown asymmetries (the print casting leans left everywhere):
+  the r2 loft's full-width [-0.92, 0.83] front knot minted 2.61 columns on
+  the RIGHT front (ref 2.44) — knot dropped to 0.755 (the left-biased
+  ridge box carries the tall side to x -0.95); bustle WALLS split
+  asymmetric: LEFT box top 2.46 at x -1.04 (ref front 2.49), RIGHT 2.33 at
+  x 1.015 (ref 2.30) — the r1-r4 symmetric walls paid both directions.
+- Shelf stowage: taller/wider duffels (top 2.29, x 1.07..1.45) carry the
+  ref's 2.29 front line over |x| 1.07..1.30 (c5's tall wall segs own that
+  band on its print instead — variant tell preserved: c3 = low triple
+  smoke + big duffels + MAG fitting; c5 = 2x6 bin banks + M2).
+- Antenna pots to 2.48 (ref rear-roof line; 0.75 read +0.07).
+NUMBERS (r4 -> r5, gate x2 byte-stable + third identical run post
+MG-fitting migration): min 78.7 -> **84.9** (hull 81.5 -> 87.6, whole
+78.7 -> 85.3, turret 80.6 -> 84.9, stations 78.9 -> 86.5, dims 100
+[heightM 2.91/0.87% grace, hullLengthM 7.52], floaters 100). Track-clip
+--exact 0/0; turret-parent 0/0/0; standard-check contig 0 + mg1
+(FITTINGS.pintleMG MAG); hash 1adc2314 -> 1ef2f50c. Evaluator rig-parity
+clean (yawProxy <=1.3°), boards shots/visual-eval-centurion3/.
+CERTIFIED RESIDUALS: the shared vane anchor tax (see c5 packet); one
+unresolved single column zb -0.82 dB -0.186 (probe hits the loft side
+face at x -0.95 y 1.67 — AA-class, ~0.5 pt); gun-run ±0.03 wobbles;
+station-0 width (trim-dropped, see c5).

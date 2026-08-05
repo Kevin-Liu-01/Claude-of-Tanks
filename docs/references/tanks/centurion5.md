@@ -184,3 +184,72 @@ Estimated +3.5-5 pts from the glacis/idler + dome + tail set; stations
 82.6/78.9 should ride the same fixes. Start by pinning each model's world
 offset with tools/tmp-ukr4-probe.mjs root boxes (kept for r5), THEN author
 from paired columns only.
+
+## r5 (2026-08-05, uk agent — the written order executed): 80.8 -> 85.4
+FRAMES PINNED FIRST (per the r4 instruction): probe root boxes put PROC at
+build coords exactly (box -3.691..6.102); REF sits in its extract frame —
+**build z = extract z + 1.233** (the gate dAlong), and the workorder's
+printed frame = build + 0.586 (shared-box-center offset; the r4 note's
+"proc-frame" values are printed-frame). The vertex extract curves are the
+authoring source; the raycast probe is the proc-truth check.
+ALL FIVE r4 ORDERS DELIVERED (per-order done-gates):
+1. GLACIS/IDLER: deck retabled to the extract — flat 1.658 (0.35..2.05),
+   1.70 cable-pad zone, driver step ONE RAKE 1.693->1.512 over 2.44..2.56
+   (NO-STAIRCASES: replaced the old 3-knot quantized fall), glacis
+   1.483->1.462; driver hatch lids moved ONTO the glacis (they stood at
+   1.70 over the fallen plate = the +0.15..+0.20 columns); mk5 periscope
+   hump 1.557 at 2.60 (ref 1.564); headlights/links/splash rail under the
+   1.48 line; idler y 1.03->0.96 r 0.38->0.345 (wrap crown 1.60->1.50, ref
+   1.47-1.51); falling horn-tip courses 1.40@3.68 -> 1.24@3.80 -> thin
+   1.19..1.13 sliver at 3.87 (ref 1.364/1.242/1.188). Band cols now ±0.03.
+2. DOME/CUPOLA: round stack dropped to the ref's 2.85 dome class (base
+   ring 2.695, body 2.795, lid ring 2.85); the published-height p95 anchor
+   moved to a NARROW COMMANDER-SIGHT VANE (0.06 x-wide, 0.40 z-long at
+   2.92, z-aligned with the ref's 2.837-2.848 spike zone) — heightM 2.91
+   (0.87% grace, dims 100). MG re-seated as a stowed KIT fitting; gunner
+   sight 2.57 / periscope hoods 2.445 & 2.65 (ref 2.558/2.429/2.649);
+   crown ridge widened to x -0.95..-0.03 and z-extended to local -0.92.
+3. FACE ZONE: measured split — the shared periscope hood was the offender
+   (mk ternary y 0.63 c5 / 0.565 c3), casting slabs were already true.
+4. TAIL: r4's rear overhang authored — full-width (±1.575) shelf in THREE
+   monotone raked courses (tops 1.664@-3.40 -> 1.618@-3.51 -> 1.575@-3.585
+   -> 1.372@-3.675; bottoms 1.34/1.20/1.25 — course A clears the wrap
+   crown by 30 mm, containment); sprocket refit to the ref circle
+   (z -2.95, y 0.99, r 0.36: wrap bottoms 0.843@-3.48 EXACT, tip -3.50);
+   tail deck courses 1.75@-3.16 -> 1.664@-3.40. Tail bottoms ±0.05 (were
+   -0.10..-0.34).
+5. MUZZLE: gun axis 1.935 -> 1.905 (print raycast 1.907-1.910 BOTH marks;
+   the r4 "fatten the tube 0.03" was mask AA — raycast r ~0.14 matched our
+   collar already; chieftain law vindicated). The L7 extractor drum is
+   TOP-BIASED in the print (band 2.097..1.758 = drum axis +0.022 over the
+   bore): authored as an OFFSET drum (r 0.171) replacing buildGun's
+   axis-centered evac.
+LAW DISCOVERIES (bank):
+- TWO-THRESHOLD END-WINDOW LAW: the hull-anchored REGISTRATION span drops
+  columns under ~12% of the HULL-mask height (0.21 here) while hullLengthM
+  uses 12% of the WHOLE-mask height (0.353): end-window content BETWEEN
+  the thresholds serves dims without touching dAlong. Content above both
+  flipped one reg column and shifted EVERY side row +0.5 pitch (dAlong
+  1.237->1.298, §C stray-column class — cost turret rows ~4 pts until the
+  horn tip was thinned back to the ref's own sliver). Fixed at 1.237.
+- P95-ANCHOR X-COST: a height anchor pays in EVERY view it silhouettes —
+  the old x-wide cupola ring paid ELEVEN front columns (+0.17); a z-long
+  x-narrow vane pays two (front_whole 78 -> 85 with the rest of the round).
+- FLOATER SEAT LAW: raised fitting rows must overlap their shelf tops
+  (a +0.06 smoke-row raise floated both banks and failed the pose gate).
+- WALL Z-SPLIT: side-dip vs front-crest conflicts split flank walls in z
+  (dip-low front seg local -0.92..-1.16 at 2.48, crest-tall rear seg
+  -1.16..-1.57 at 2.60 = the ref's front 2.58-2.61 at |x| 1.05..1.25).
+NUMBERS (r4 -> r5, gate x2 byte-stable, third run after the MG fitting
+migration identical): min 80.8 -> **85.4** (hull 82.3 -> 88.2, whole
+80.8 -> 85.4, turret 81.8 -> 85.9, stations 82.6 -> 86.9, dims 100
+[heightM 2.91/0.87% grace, hullLengthM 7.52, overall 9.80, width 3.38],
+floaters 100). Track-clip --exact 0/0; turret-parent 0/0/0; standard-check
+contig 0 + mg1 (FITTINGS.pintleMG M2, §H4 tell vs the Mk.3's MAG); hash
+976a8289 -> 9e61f688. Evaluator rig-parity clean (yawProxy <=1.6°),
+boards shots/visual-eval-centurion5/.
+CERTIFIED RESIDUALS: the vane anchor tax (4 side cols +0.07..+0.19 vs the
+2.71-2.85 plateau/spike — dims sovereign); c5 zb 1.28 col -0.087 (ref
+discharger shoulder vs bin edge; extending the bin re-prices the bump
+zone, net-negative); station-0 width 5.57 (trim-dropped; ref tail reads
+3.13-3.2 wide vs our 3.27 flaps+shelf); gun-run ±0.02-0.06 wobbles.
