@@ -302,3 +302,18 @@ Graduation retires the registration into THREE override maps, not two:
 the §D evaluator aborts on graduates without it). Also: evaluator evidence
 dirs are per-run — archive shots/visual-eval-<id>/ before re-runs when the
 prior round's evidence matters.
+
+## Amendment (2026-08-05): trim-boundary interp clamp
+The curve scorer's resampler declared a ±0.02 in-span tolerance past the
+end columns but could not extrapolate there — every sample in that band
+nulled into fake cover (the centurion push-2 find: dAlong at half-pitch
+parity paired the ref gun's last trim-window columns 1-4mm past the last
+proc column; ~2.9 pts of phantom turret_side cover). interp() now clamps
+to the edge column INSIDE the already-declared tolerance; beyond it
+stays null. Fleet A/B at the change: centurion5 87.2 -> 90.5 PASS,
+centurion3 87.7 -> 91.1 PASS (the priced artifact released exactly);
+graduates m47 90.5 -> 91.0, merkava3d 90.2 -> 90.4, t84/leo2a5
+bit-identical — held-or-up across the board, no regression possible by
+construction (lenient only where the span check already said in-span).
+Frozen graduate rows that drift UP from this amendment refresh in the
+ledger without re-certification (scores changed, builds did not).
