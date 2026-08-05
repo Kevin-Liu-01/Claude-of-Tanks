@@ -2398,6 +2398,19 @@ function buildLeo2A6(P) {
 // ---------------------------------------------------------------------------
 function buildLeo2A5(P) {
   const { box, slab } = KIT;
+  // r9 1a CROWN-TONE COLLECTOR: every r6/r8 pale lit-kit crown (strap
+  // crowns, rail crowns, roll glints, folded tarps) moves off the fleet
+  // hullDetail bucket onto the a5 litKit clone in the r9 tone block —
+  // part of the hero-rr crown-window toning. (Final r10 diagnosis: the
+  // window's stubborn >92 tail is the fleet rim-floor on the SKIN class,
+  // not these crowns — see the norim note — but the litKit family keeps
+  // the crowns inside the ref's own lit-kit cap regardless.) Same
+  // certified transforms, non-casting overlay (r8 law 3).
+  const litCrownGeos = [];
+  // (a r9-b stern-frame litKit conversion was tried and REVERTED: the
+  // frame rails are the rear-window med's bright population — toning them
+  // slid the louvre med 82.4 -> 80.6 under its 82 floor)
+
   leoHullV3(P, {
     bodyHW: 1.638, sponsonY: 1.32, trackW: 0.64, xc: 1.37,
     // deck staircase re-laid to the fresh 96-col trace (1.684 mid, the
@@ -2687,7 +2700,7 @@ function buildLeo2A5(P) {
     // deep pockets between the kit — the frame zone read sd 8.6 vs ref 13.3
     // and the under-bustle p75 sat -5.6 with nothing lit under the overhang.
     for (const [sx, sy, sz] of [[-1.05, 1.859, -3.58], [-0.65, 1.859, -3.58], [-0.28, 1.859, -3.58], [0.35, 1.838, -3.58], [0.75, 1.838, -3.58], [1.02, 1.838, -3.58]]) {
-      P.add('hullDetail', box(0.12, 0.005, 0.40), sx, sy, sz);                // pile cinch-strap crowns
+      litCrownGeos.push(KIT.xform(box(0.12, 0.005, 0.40), sx, sy, sz));       // pile cinch-strap crowns (r9: litKit tone)
     }
     // lit tarp-lid edge strips (merkava-3c lit-kit class: the under-bustle
     // p75 wants LIT crowns under the rack overhang, not pockets)
@@ -2698,16 +2711,16 @@ function buildLeo2A5(P) {
     // Geometry unchanged: 1.10/1.00 x 0.005 x 0.20 at (+-0.85/0.55,
     // 1.8575/1.8365, -3.47).
     for (const [zc, top] of [[-3.41, 2.000], [-3.5175, 1.972], [-3.6325, 1.944], [-3.765, 1.920]]) {
-      P.add('hullDetail', box(0.046, 0.004, 0.085), -0.075, top + 0.002, zc); // roll crown glints
+      litCrownGeos.push(KIT.xform(box(0.046, 0.004, 0.085), -0.075, top + 0.002, zc)); // roll crown glints
     }
-    P.add('hullDetail', box(3.28, 0.006, 0.058), 0, 1.448, -3.75, 0.12, 0, 0); // low-rail crown (tilted to the sky)
-    P.add('hullDetail', box(2.02, 0.006, 0.058), 0, 1.408, -3.44, 0.12, 0, 0); // fwd-rail crown
+    litCrownGeos.push(KIT.xform(box(3.28, 0.006, 0.058), 0, 1.448, -3.75, 0.12, 0, 0)); // low-rail crown (tilted to the sky)
+    litCrownGeos.push(KIT.xform(box(2.02, 0.006, 0.058), 0, 1.408, -3.44, 0.12, 0, 0)); // fwd-rail crown
     for (const s of [-1, 1]) {
-      P.add('hullDetail', box(0.24, 0.004, 0.046), s * 1.295, 1.517, -3.917); // corner-rail crowns
-      P.add('hullDetail', box(0.052, 0.004, 0.052), s * 1.2, 1.757, -3.90);   // upright caps
+      litCrownGeos.push(KIT.xform(box(0.24, 0.004, 0.046), s * 1.295, 1.517, -3.917)); // corner-rail crowns
+      litCrownGeos.push(KIT.xform(box(0.052, 0.004, 0.052), s * 1.2, 1.757, -3.90));   // upright caps
     }
-    P.add('hullDetail', box(0.50, 0.018, 0.26), 0.30, 1.836, -3.08);         // folded tarp on the aft deck (2c p75 kit)
-    P.add('hullDetail', box(0.42, 0.016, 0.22), -0.55, 1.835, -3.04);
+    litCrownGeos.push(KIT.xform(box(0.50, 0.018, 0.26), 0.30, 1.836, -3.08)); // folded tarp on the aft deck (2c p75 kit)
+    litCrownGeos.push(KIT.xform(box(0.42, 0.016, 0.22), -0.55, 1.835, -3.04));
     // (a first cut added hullShadow pockets + under-shadows here — they
     // pushed the hero-rr sub45 count AWAY from the 2c target and were cut)
   }
@@ -2734,11 +2747,18 @@ function buildLeo2A5(P) {
   //   z -3.610..-3.598 — 0.023 BEHIND the sprocket band's -3.575 rear
   //   extreme, under the certified -3.94 plan corners, y 1.26..1.70
   //   stays under the ref's own 1.944 roll side-tops at those columns.
+  // r9 2b SLAT DE-CAD: deterministic per-slat tilt/offset jitter (the
+  // panel-tint law at slat scale, geometry-side — a slat's lit-face luma
+  // rides its sky tilt, so ±0.05 rad of rx is ±2-3 luma with zero material
+  // plumbing and zero mask cost on 0.04-tall members). Fixed table, no rng.
+  const slatJ = [0.043, -0.038, 0.012, -0.052, 0.031, -0.012, 0.050, -0.027, 0.006];
+  const slatY = [0.0015, -0.002, 0.001, 0.0025, -0.0015, 0.002, -0.001, 0.0005, -0.0025];
   for (const s of [-1, 1]) {
-    for (const [cx, w] of [[0.28, 0.44], [0.78, 0.44]]) {
+    for (const [ci, [cx, w]] of [[0.28, 0.44], [0.78, 0.44]].entries()) {
       P.add('hullShadow', box(w, 0.44, 0.014), s * cx, 1.48, -3.448);         // near-black field
       for (let k = 0; k < 9; k++) {
-        P.add('hullWood', box(w - 0.03, 0.040, 0.012), s * cx, 1.28 + k * 0.048, -3.458, 0.35, 0, 0);
+        const j = (k + ci * 3 + (s < 0 ? 4 : 0)) % 9;
+        P.add('hullWood', box(w - 0.03, 0.040, 0.012), s * cx, 1.28 + k * 0.048 + slatY[j], -3.458, 0.35 + slatJ[j], 0, 0);
       }
     }
     P.add('hullDark', box(0.035, 0.44, 0.018), s * 0.53, 1.48, -3.452);       // frame verticals
@@ -2747,7 +2767,8 @@ function buildLeo2A5(P) {
     // outboard facade (over-track rear plate span)
     P.add('hullDark', box(0.65, 0.44, 0.006), s * 1.375, 1.48, -3.601);
     for (let k = 0; k < 9; k++) {
-      P.add('hullWood', box(0.59, 0.040, 0.010), s * 1.375, 1.28 + k * 0.048, -3.607, 0.35, 0, 0);
+      const j = (k + (s < 0 ? 6 : 2)) % 9;
+      P.add('hullWood', box(0.59, 0.040, 0.010), s * 1.375, 1.28 + k * 0.048 + slatY[j], -3.607, 0.35 + slatJ[j], 0, 0);
     }
     P.add('hullDark', box(0.035, 0.44, 0.014), s * 1.075, 1.48, -3.604);
     P.add('hullDark', box(0.035, 0.44, 0.014), s * 1.675, 1.48, -3.604);
@@ -2826,6 +2847,11 @@ function buildLeo2A5(P) {
       }
     }
     antiSlipGeos.push(KIT.xform(box(0.46, 0.008, 0.32), 0, gY(3.40) + 0.004, 3.40, -0.0745, 0, 0));
+    // (r9-c: a beak-field lighter clone AND a steep-field darker clone were
+    // both tried and REVERTED — the round's window-row anchor was off by a
+    // scale factor and both retones chased mis-attributed rows; the beak
+    // pair at 0x333428 renders (66,68,54) = the certified med-pivot family,
+    // and lightening it +7L was the whole "med 71.5" regression.)
     for (const s2 of [-1, 1]) {
       antiSlipGeos.push(KIT.xform(box(0.50, 0.008, 0.22), s2 * 0.35, 1.352, 3.73, -0.59, 0, 0));
     }
@@ -3007,14 +3033,29 @@ function buildLeo2A5(P) {
           // and a PALE end ring rides between cap and collar so each tube
           // silhouettes as a tube against the camo cheek at frontleft/
           // frontright 2x.
+          // r9 2d HARDEN FROM BOTH QUARTERS (r8 delivered frontleft only):
+          // caps push one more +0.010 (reach ~1.396 — 14 mm AA margin under
+          // the 1.41 col limit per the one-pixel-leak law), the pale end
+          // ring widens/thickens (r 0.0420 th 0.013 — the 2x tube-end cue
+          // on the shaded quarter), and a 1-px TOP-LIT TUBE CROWN strip
+          // rides each tube's world-up tangent (§C pale-refund class; top
+          // 2.175w stays inside the certified 2.1805 tube-top envelope) so
+          // the rows read as CYLINDERS even where cap-vs-cheek contrast
+          // dies on the shaded side.
+          // (cap push 0.122 -> 0.132 REVERTED: the gate's turret-plan x1.41
+          // column read the pushed caps at +0.016 errM on the carried 0.321
+          // — the REAL AA boundary bites at ~1.396, not the verdict's 1.41
+          // nominal; the ring/crown arm carries 2d instead)
           const [mx, my, mz] = at(0.122);
-          const [px2, py2, pz2] = at(0.090);
+          const [px2, py2, pz2] = at(0.098);
           const [lx, ly, lz] = at(0.042);
           const [bx, by, bz] = at(-0.110);
+          const [tx, ty2, tz] = at(-0.015);
           P.add('turretDark', KIT.cylZ(0.0405, 0.016, 10), mx, my, mz, -0.5, a, 0);   // muzzle cap
-          P.add('turretDetail', KIT.cylZ(0.0413, 0.008, 10), px2, py2, pz2, -0.5, a, 0); // pale end ring
+          P.add('turretDetail', KIT.cylZ(0.0420, 0.013, 10), px2, py2, pz2, -0.5, a, 0); // pale end ring
           P.add('turretDark', KIT.cylZ(0.0398, 0.018, 10), lx, ly, lz, -0.5, a, 0);   // collar ring
           P.add('turretDetail', KIT.cylZ(0.0405, 0.012, 10), bx, by, bz, -0.5, a, 0); // breech cap
+          P.add('turretDetail', KIT.box(0.013, 0.0028, 0.15), tx, ty2 + 0.0395, tz, -0.5, a, 0); // top-lit tube crown
         }
       }
     }
@@ -3249,7 +3290,15 @@ function buildLeo2A5(P) {
     P.mats.wood.roughness = 0.85;
     P.mats.wood.envMapIntensity = 0.35;
     // OD canvas (rear bedroll pile + roll staircase — the big rear-view mass)
-    P.mats.canvasCloth.color.setHex(0x4c5441);  // r6 2c: lifted — the p75 sits ON the canvas plateau; r8-i: +1.5 restores the plateau after the 1a dressing traded plateau population (67.9 vs the 69 HOLD; raising the hex is the plateau law's own lever)
+    P.mats.canvasCloth.color.setHex(0x4e5643);  // r6 2c lifted / r8-i +1.5 / r9-c +2: the plateau law's own lever recovers the hero-rr p75 >=68 hold after the r9 tier-edge rim bands traded ~200 bright px out of the window (the k0.85 sledge proved the canvas class never crosses 100, so the lever is crown-p95-safe)
+    // (r9-c: a canvas "lid grime" shader was built, proven COMPILING AND
+    // RUNNING via beacon+asserts, and then DELETED — a k=0.85 sledge test
+    // moved ZERO over-100 pixels, i.e. the hero-rr >100 blob has NO
+    // canvas-bucket pixels at all: the (107,117,95) class is the r8 SKIN
+    // clones' exposed sun-facing TOP EDGES (fixed geometrically below)
+    // plus fleet-detail fence verticals. Banked as a diagnosis law: match
+    // a tone class to its MESH by kill-test before building shader-side
+    // mechanisms for it.)
     // r6 1a: spareTrack darkened 0x48423a -> 0x3d382f — the flap plates/
     // boards (hullTrack bucket) fired ~82 under the bow key vs the ref's
     // 63.5 flap read; teeth/recess rings ride darker with it (fine).
@@ -3508,7 +3557,49 @@ function buildLeo2A5(P) {
       const camoOlv = rehook(P.mats.shadow.clone());     // scheme deep olive (rendered target ~(46,52,40))
       camoOlv.color.setHex(0x2f3526);
       camoOlv.envMapIntensity = 0.12;
-      P.disposables.push(camoRed, camoOlv);
+      // r9 1a LIT-KIT TONE (crown p95 driver): the fleet detail bucket
+      // renders 105-117 on sky-facing crowns at hero-rr where the ref's own
+      // lit-kit class caps ~93 — litKit is the same hue at 0.76x, rendering
+      // ~82-88 sunlit (still LIT over the 67-70 canvas plateau, so the 2c
+      // p75 population is untouched: every toned pixel stays >=75).
+      // r9-c NORIM HOOK (the crown-p95 root mechanism, marker-proven):
+      // the fleet deep-shade floor's rim term (0.45*rim*shade, r8 law 4's
+      // "rim boost") floors EVERY grazing shaded surface to ~0.15-0.18
+      // linear (~107-118 sRGB) INDEPENDENT of albedo above L~0.09 — the
+      // hero-rr >92/>100 tail was this floor on the skin rear faces and
+      // the lit-kit strips at the quarter angle, which is why five albedo
+      // knobs in a row could not move it (the r8 law-5 "albedo-keyed
+      // floor" flattens above 0.09). The print's flat-lit canvas carries
+      // no rim glow: these a5 clones zero the rim term; the fleet
+      // material and every casting bucket keep the fleet look.
+      const norim = (m) => {
+        m.onBeforeCompile = (shader) => {
+          vehicleAmbientFloorHook(shader);
+          shader.fragmentShader = shader.fragmentShader.replace(
+            '0.45 * vehRim * vehShade', '0.0 * vehRim * vehShade');
+        };
+        m.customProgramCacheKey = () => 'leo-a5-norim-v1';
+        return m;
+      };
+      const litKit = norim(P.mats.detail.clone());
+      // ABSOLUTE hex (r9-c magenta-marker finding): P.mats.detail's color at
+      // BUILD time is the pre-repaint placeholder — a multiplyScalar(0.76)
+      // clone rendered ~0.76-GREY (107,117,95 sunlit), BRIGHTER than fleet
+      // detail, so five cycles of "toned" crowns/covers were glowing. The
+      // repaint-pass detail renders (106,116,92) => albedo ~(75,82,65);
+      // x0.76 target = 0x3a3e31 (~82 sunlit, the ref's own lit-kit family).
+      // (second calibration: the sunlit factor on UP-facing strips at this
+      // rig is x1.88 (measured (107,117,95) at albedo 0x3a3e31), not the
+      // hull-side x1.42 law — target <=88 rendered puts the hex at L~46)
+      litKit.color.setHex(0x3a3e31);
+      // r9 1a RIM BAND (the tier-edge quiet tone): albedo L~45 (<= the L56
+      // law cap) renders ~58-66 sunlit — a shade seam, not a black line;
+      // non-casting overlays only (r8 law 3).
+      const rimBand = rehook(P.mats.shadow.clone());
+      rimBand.color.setHex(0x2c2f22);
+      rimBand.envMapIntensity = 0.10;
+      rimBand.roughness = 0.95;
+      P.disposables.push(camoRed, camoOlv, litKit, rimBand);
       const blob = (mat, parent, geo) => {
         const mesh = new THREE.Mesh(geo, mat);
         mesh.receiveShadow = true;
@@ -3552,13 +3643,21 @@ function buildLeo2A5(P) {
       // (canvas hex x0.94 — a clone, the shared plateau hex untouched)
       // hug the REAR faces only: the hero-rr 2c plateau reads side/top
       // faces, which stay raw canvas.
-      const skinCloth = rehook(P.mats.canvasCloth.clone());
+      const skinCloth = norim(P.mats.canvasCloth.clone());
       skinCloth.color.setHex(0x4a5241);
-      const skinCloth2 = rehook(P.mats.canvasCloth.clone());
+      const skinCloth2 = norim(P.mats.canvasCloth.clone());
       skinCloth2.color.setHex(0x4f5745);                 // r8-f/j/k: the 2c p75 plateau reads the SKINS at hero-rr (not the shared canvas — the skins pinned those pixels below 69); the hero-facing pile takes the last step alone, decoupled from the rear med
       P.disposables.push(skinCloth, skinCloth2);
+      // r9-c: the skins' exposed sun-facing TOP-EDGE strips were part of
+      // the hero-rr crown >100 blob — but a slim cut (0.400 -> 0.360)
+      // slid the REAR med 82.4 -> 78.4: the skins ARE the window's median
+      // carrier class (r8 law 2), so their rear-face AREA is untouchable.
+      // Full-size skins return; litKit COVER STRIPS lie on the top faces
+      // instead (face-split by overlay, not by shrinking the carrier).
       blob(skinCloth, P.hullG, KIT.xform(KIT.box(1.155, 0.400, 0.020), -0.85, 1.6516, -3.779));
       blob(skinCloth2, P.hullG, KIT.xform(KIT.box(1.055, 0.395, 0.020), 0.55, 1.6490, -3.769));
+      blob(litKit, P.hullG, KIT.xform(KIT.box(1.16, 0.0018, 0.024), -0.85, 1.8528, -3.779));
+      blob(litKit, P.hullG, KIT.xform(KIT.box(1.06, 0.0018, 0.024), 0.55, 1.8478, -3.769));
       // canvas CREASE rows on the skins (r8-d): the skins flattened the
       // window's row structure (louvre-tex rowmean-sd 4.59 -> 2.99 vs the
       // >=4.5 HELD gate) — cinch-line creases restore the row signal and
@@ -3574,12 +3673,14 @@ function buildLeo2A5(P) {
       }
       // 2c lit-kit crowns (merkava-3c class, the established +2..3 mm pile
       // crown family): pale strips on the hero-rr-visible lids/kit
-      blob(P.mats.detail, P.hullG, KIT.xform(KIT.box(0.50, 0.004, 0.10), 0.42, 1.8385, -3.50));
-      blob(P.mats.detail, P.hullG, KIT.xform(KIT.box(0.30, 0.004, 0.08), 0.88, 1.8385, -3.62));
-      blob(P.mats.detail, P.hullG, KIT.xform(KIT.box(0.90, 0.005, 0.05), -0.85, 1.8595, -3.72));
-      blob(P.mats.detail, P.hullG, KIT.xform(KIT.box(0.80, 0.005, 0.05), 0.55, 1.8390, -3.71));
-      blob(P.mats.detail, P.hullG, KIT.xform(KIT.box(1.10, 0.005, 0.20), -0.85, 1.8575, -3.47));
-      blob(P.mats.detail, P.hullG, KIT.xform(KIT.box(1.00, 0.005, 0.20), 0.55, 1.8365, -3.47));
+      // r9 1a: all six move detail -> litKit (the crown-p95 toning; they
+      // stay the window's lit class at ~85 rendered, above every p75 rank)
+      blob(litKit, P.hullG, KIT.xform(KIT.box(0.50, 0.004, 0.10), 0.42, 1.8385, -3.50));
+      blob(litKit, P.hullG, KIT.xform(KIT.box(0.30, 0.004, 0.08), 0.88, 1.8385, -3.62));
+      blob(litKit, P.hullG, KIT.xform(KIT.box(0.90, 0.005, 0.05), -0.85, 1.8595, -3.72));
+      blob(litKit, P.hullG, KIT.xform(KIT.box(0.80, 0.005, 0.05), 0.55, 1.8390, -3.71));
+      blob(litKit, P.hullG, KIT.xform(KIT.box(1.10, 0.005, 0.20), -0.85, 1.8575, -3.47));
+      blob(litKit, P.hullG, KIT.xform(KIT.box(1.00, 0.005, 0.20), 0.55, 1.8365, -3.47));
       // roll staircase: two wrap straps + a camo wrap (tops stay under the
       // certified 2.005/2.000 front spike and each segment's own side top)
       blob(P.mats.dark, P.hullG, KIT.xform(KIT.box(0.048, 0.150, 0.048), -0.075, 1.892, -3.50));
@@ -3602,9 +3703,9 @@ function buildLeo2A5(P) {
       blob(camoOlv, P.turretG, KIT.xform(KIT.box(0.18, 0.20, 0.370), -1.134, 0.26, -2.825, 0, 0.15, 0));
       blob(camoRed, P.turretG, KIT.xform(KIT.box(0.12, 0.185, 0.185), 0.40, 0.52, -2.825));
       // 2c lit-kit crowns on the rack kit (in the hero-rr window;
-      // non-casting per the r8-g bisect law)
-      blob(P.mats.detail, P.turretG, KIT.xform(KIT.box(0.34, 0.004, 0.28), 0.99, 0.517, -2.825));
-      blob(P.mats.detail, P.turretG, KIT.xform(KIT.box(0.55, 0.004, 0.09), 0.63, 0.607, -2.825));
+      // non-casting per the r8-g bisect law) — r9: litKit tone
+      blob(litKit, P.turretG, KIT.xform(KIT.box(0.34, 0.004, 0.28), 0.99, 0.517, -2.825));
+      blob(litKit, P.turretG, KIT.xform(KIT.box(0.55, 0.004, 0.09), 0.63, 0.607, -2.825));
       // bustle roof de-slab (hero-rr "slab-with-highlight-edge"): panel
       // tints + one olive blob on the flat 2.46w roof, clear of the r3 step
       // plate at z -2.745..-2.645 (the r8-a 0.94 down-tint pulled the 2c
@@ -3620,10 +3721,17 @@ function buildLeo2A5(P) {
       // lines), and the glacis crease calm-down strip.
       // (r8-b: tint mix raised — the r8-a set moved p95 81.5 -> 82.6 vs the
       // >=83 gate; the +panels carry the ref's bright quilting class)
+      // (r9-b: quilts DE-BANDED — the three full-height plates at one
+      // y-centre read as a horizontal bright band in the layer cake; each
+      // splits into two offset sub-quads at split tints, riding PROUD of
+      // the r9 wall-lift panel. The >83 p95 population holds by area.)
       for (const s of [-1, 1]) {
-        tPanel(KIT.xform(KIT.box(0.005, 0.31, 0.42), s * 1.3825, 0.435, -0.57), 1.12);
-        tPanel(KIT.xform(KIT.box(0.005, 0.31, 0.40), s * 1.3825, 0.435, -0.11), 0.97);
-        tPanel(KIT.xform(KIT.box(0.005, 0.31, 0.42), s * 1.3825, 0.435, 0.35), 1.09);
+        tPanel(KIT.xform(KIT.box(0.005, 0.17, 0.42), s * 1.3830, 0.505, -0.57), 1.13);
+        tPanel(KIT.xform(KIT.box(0.005, 0.15, 0.38), s * 1.3830, 0.360, -0.53), 1.10);
+        tPanel(KIT.xform(KIT.box(0.005, 0.16, 0.40), s * 1.3830, 0.375, -0.11), 0.97);
+        tPanel(KIT.xform(KIT.box(0.005, 0.13, 0.36), s * 1.3830, 0.525, -0.07), 0.99);
+        tPanel(KIT.xform(KIT.box(0.005, 0.18, 0.42), s * 1.3830, 0.480, 0.35), 1.12);
+        tPanel(KIT.xform(KIT.box(0.005, 0.14, 0.38), s * 1.3830, 0.340, 0.31), 1.09);
       }
       const cheek = (s, xa, xb, ta, tb, tint, A, B) => {
         const cyf = (x) => A[1] + (B[1] - A[1]) * ((x - A[0]) / (B[0] - A[0]));
@@ -3660,6 +3768,204 @@ function buildLeo2A5(P) {
       hPanel(KIT.xform(KIT.box(2.0, 0.12, 0.005), 0, 1.755, -3.5665), 1.22);
       // (r8-a glacis 0.93 calm panel DROPPED: its rows were the gun-root
       // chin faces, not the crease — it only taxed the top-view deck med)
+
+      // ================= VISUAL r9 (shaded-parity r8 verdict) =============
+      // ORDER 1a TIER-EDGE RIM QUIET — the floor driver. The proc turret
+      // renders as stacked slab tiers: each tier's sunlit top face reads a
+      // 3-8px pale band at 1x (chamfer ~ny0.92, plateau, cluster tops,
+      // bustle steps) separated by shade seams, where the ref carries ONE
+      // bright crown line over a uniform 73-87 wall. Mechanisms: panel-tint
+      // DOWN-TINTS pull the mid-tier sunlit faces into the wall-tone family
+      // (law 1 — relative to the underlying bake, so 0.91 = 86 -> ~78);
+      // non-casting RIM BANDS (L~45 albedo, renders ~58-66 sunlit) kill the
+      // lit edge lines at every tier boundary (r8 laws 3+4: flat overlays,
+      // no covers that become the ring). The topmost cluster crown stays in
+      // the ref's own bright-roofline family — only its EDGES band.
+      const rimT = [];                                   // rimBand geos (turret)
+      const litT = [];                                   // litKit geos (turret)
+      // crest-slab top surface parameterization (the roof plateau): x along
+      // the crest table 0.20..0.95 (y 0.82->0.775, z 1.75->1.70), d back
+      // over the 0.79 crestTail (y -0.005). Quads ride +1.5mm off the slab.
+      const crestSurf = (s, xa, xb, d0, d1, mat, tint) => {
+        const cy = (x) => 0.82 - 0.045 * ((x - 0.20) / 0.75);
+        const cz = (x) => 1.75 - 0.05 * ((x - 0.20) / 0.75);
+        const q = (x, d) => [s * x, cy(x) - 0.005 * d + 0.0015, cz(x) - 0.79 * d];
+        const bot = [q(xa, d0), q(xb, d0), q(xb, d1), q(xa, d1)];
+        const top = bot.map((p) => [p[0], p[1] + 0.0018, p[2]]);
+        const ord = (r) => (s < 0 ? [r[1], r[0], r[3], r[2]] : r);
+        const g = KIT.slab(...ord(bot), ...ord(top));
+        if (mat) rimT.push(g); else tPanel(g, tint);
+      };
+      // chamfer face (wall shoulder -> roof edge) down-tint quad
+      const chamQuad = (s, z0, z1, xw, yw, xt, yt, tint) => {
+        const bot = [[s * xw, yw, z1], [s * xw, yw, z0], [s * xt, yt, z0 + 0.028], [s * xt, yt, z1 - 0.028]];
+        const top = bot.map((p) => [p[0] + s * 0.0014, p[1] + 0.0022, p[2]]);
+        const ord = (r) => (s < 0 ? [r[1], r[0], r[3], r[2]] : r);
+        tPanel(KIT.slab(...ord(bot), ...ord(top)), tint);
+      };
+      // r9-b REBALANCE (cycle-1 profile read): the REF roofline/side is
+      // BRIGHT-UNIFORM (78-87 med 77.8) — the cycle-1 down-tints (0.91/0.92)
+      // killed the pale lines by INVERTING them into dark bands. The bar
+      // dies by UNIFYING BRIGHT instead: mild plateau trim (0.96 keeps the
+      // sunlit tops inside the ref's own 82-87 roofline family), the dark
+      // SEAMS between tiers lift (tail->roof APRON quad covers the exposed
+      // turretDark shadow-wall strip + the step shade like the ref's fused
+      // shell), and the WALL takes a same-material +8-9% lift panel (law 1
+      // scaled up — the r6-4c "camo-bound med" mass moves for free via the
+      // overlay mechanism; med 73.1 -> ~76 toward ref 77.8) so quilts stop
+      // reading as a bright band on a dark wall. Edge bands stay ONLY on
+      // real step edges (bustle tiers, tail plate, nose stack).
+      for (const s of [-1, 1]) {
+        // plateau: mild trim, ref-bright family
+        crestSurf(s, 0.21, 0.94, 0.03, 0.925, null, 0.97);
+        // tail->roof apron: bridges the crest-tail step (covers the shadow
+        // wall's dark top strip + the step's CSM seam; reads as the ref's
+        // one smooth crown falling to the roof)
+        {
+          const cy = (x) => 0.82 - 0.045 * ((x - 0.20) / 0.75);
+          const cz = (x) => 1.75 - 0.05 * ((x - 0.20) / 0.75);
+          const q1 = (x) => [s * x, cy(x) - 0.003 + 0.0016, cz(x) - 0.785];
+          const q2 = (x) => [s * x, 0.7625, cz(x) - 0.868];
+          const bot = [q1(0.21), q1(0.94), q2(0.94), q2(0.21)];
+          const top = bot.map((p) => [p[0], p[1] + 0.0018, p[2]]);
+          const ord = (r) => (s < 0 ? [r[1], r[0], r[3], r[2]] : r);
+          tPanel(KIT.slab(...ord(bot), ...ord(top)), 1.0);
+        }
+        // bustle chamfer stays mild (hero-rr tier bar); fore chamfers left
+        // at their factory read (they ARE the ref's bright-roofline family)
+        chamQuad(s, -3.00, -2.06, 1.31, 0.522, 1.082, 0.678, 0.97);
+        rimT.push(KIT.xform(KIT.box(0.024, 0.0018, 0.92), s * 1.078, 0.681, -2.53));
+        // fore-roof outboard strip: ref-family trim only
+        tPanel(KIT.xform(KIT.box(0.105, 0.0016, 1.77), s * 1.0055, 0.7615, -0.295), 0.97);
+        // WALL LIFT panels (edge-on to stations/side — mask-neutral): fore
+        // wall + bustle wall, under the proud quilt plates
+        tPanel(KIT.xform(KIT.box(0.0038, 0.30, 1.78), s * 1.3820, 0.435, -0.295), 1.09);
+        tPanel(KIT.xform(KIT.box(0.0038, 0.26, 1.70), s * 1.3138, 0.42, -2.15), 1.08);
+        // apex-tier front edge bands along the nose line (close-front rims)
+        rimT.push(KIT.xform(KIT.box(0.022, 0.0022, 1.24), s * 0.795, 0.312, 2.49, 0, s * 2.245, 0));
+        rimT.push(KIT.xform(KIT.box(0.022, 0.0022, 0.35), s * 1.365, 0.312, 1.925, 0, s * 2.737, 0));
+      }
+      // bustle roof step-edge bands (full width, sub-row)
+      rimT.push(KIT.xform(KIT.box(2.06, 0.0018, 0.024), 0, 0.7612, -1.632)); // 0.76 -> 0.735 tier
+      rimT.push(KIT.xform(KIT.box(2.06, 0.0018, 0.024), 0, 0.7362, -2.012)); // 0.735 -> 0.68 tier
+      // (r9-c: the step-plate front/rear rim bands are DROPPED — the p75
+      // >=68 hold takes priority over the smallest tier's edge quiet: the
+      // two bands traded ~100 in-window px below the p75 boundary, and the
+      // three big z-step bands + chamfer band carry the hero-rr bar kill)
+      rimT.push(KIT.xform(KIT.box(2.14, 0.0018, 0.022), 0, 0.6812, -2.988));  // bustle rear top edge
+      // (r9-b: the 8 cluster-edge dark bands of cycle 1 are REMOVED — the
+      // cluster crown is the ref's own bright-roofline analog; darkening
+      // its edges inverted the read at view-left, x300 profile evidence)
+      // plateau tail plate: ref-family trim + front step-edge band
+      tPanel(KIT.xform(KIT.box(0.69, 0.0016, 0.106), 0.55, 0.8031, 1.785), 0.97);
+      rimT.push(KIT.xform(KIT.box(0.69, 0.002, 0.016), 0.55, 0.8042, 1.8315));
+      // close-front nose-stack rims (each tier's top-front edge fires a
+      // >2px lit line at 2x — the "staircase with lit rims" read)
+      rimT.push(KIT.xform(KIT.box(1.06, 0.0025, 0.02), 0, 0.503, 2.437, -0.161, 0, 0)); // nose cap front edge
+      rimT.push(KIT.xform(KIT.box(1.10, 0.0022, 0.018), 0, 0.5762, 2.062));   // nose saddle front edge
+      rimT.push(KIT.xform(KIT.box(0.50, 0.0022, 0.016), 0, 0.5712, 2.282));   // mantlet-root bump front edge
+      rimT.push(KIT.xform(KIT.box(0.50, 0.0022, 0.016), 0.68, 0.6912, 0.842)); // EMES lip front edge
+      rimT.push(KIT.xform(KIT.box(0.12, 0.0022, 0.014), 0.96, 0.6572, 1.842)); // dip-fill top front edge
+      // hero-rr rack-fence covers: the fleet-detail rail/posts render
+      // 105-117 at the quarter (the crown-p95 >100 tail's other half) —
+      // litKit cover strips on the top rail + the 11 post rear faces bring
+      // them to the ref's own ~85-93 lit-kit family. a5-scoped overlays on
+      // the shared wedgeTurretV3 members (no shared-path edit).
+      litT.push(KIT.xform(KIT.box(2.52, 0.0018, 0.047), 0, 0.6434, -3.045));
+      for (let k = 0; k <= 10; k++) {
+        litT.push(KIT.xform(KIT.box(0.032, 0.474, 0.0022), -1.245 + k * 0.2517, 0.385, -3.0762));
+        // +x faces too — hero-rr reads the posts' right faces, not the rears
+        litT.push(KIT.xform(KIT.box(0.0022, 0.474, 0.032), -1.245 + k * 0.2517 + 0.0172, 0.385, -3.06));
+      }
+      // ORDER 1b SHROUD-FACE TINT (panel-tint law 1): the flat-grey faces —
+      // EMES hood, launcher backdrops, dip-zone fill, under-plate shroud —
+      // take same-material camo overlays (position-planar boxUV samples the
+      // scheme at their own coordinates + the baked mottle), so they read
+      // as painted steel at 4x instead of untextured grey plate.
+      tPanel(KIT.xform(KIT.box(0.50, 0.17, 0.0035), 0.68, 0.757, 0.5025), 0.98);  // EMES hood front
+      tPanel(KIT.xform(KIT.box(0.0035, 0.17, 0.37), 0.9525, 0.757, 0.30), 0.98);  // EMES hood outboard
+      tPanel(KIT.xform(KIT.box(0.0035, 0.17, 0.37), 0.4075, 0.757, 0.30), 0.98);  // EMES hood inboard
+      tPanel(KIT.xform(KIT.box(0.50, 0.17, 0.0035), 0.68, 0.757, 0.098), 0.98);   // EMES hood rear
+      tPanel(KIT.xform(KIT.box(0.46, 0.0022, 0.375), 0.68, 0.8741, 0.27), 1.0);   // EMES lid (pale bucket -> scheme)
+      for (const s of [-1, 1]) {
+        tPanel(KIT.xform(KIT.box(0.0045, 0.25, 0.55), s * 1.1598, 0.27, 0.098, 0, s * 0.20, 0), 0.88); // launcher backdrop
+      }
+      tPanel(KIT.xform(KIT.box(0.115, 0.34, 0.0035), 0.96, 0.475, 1.8525), 0.95); // dip fill front
+      tPanel(KIT.xform(KIT.box(0.0035, 0.34, 0.25), 1.0225, 0.475, 1.72), 0.95);  // dip fill outboard
+      tPanel(KIT.xform(KIT.box(0.69, 0.034, 0.003), 0.55, 0.7575, 1.8367), 0.92); // under-plate shroud front
+      // ORDER 2a GLACIS GRAIN PULLBACK (rowmean-sd 7.73 -> <=6.0, med hold):
+      // every move stays on its own side of the 65.8 median (bistable law).
+      // (r9-b: the cycle-1 beak LIFT panel is REMOVED — the factory hull
+      // loft bakes a low-zone dirt term panelPrep does NOT replicate, so
+      // the 1.14 overlay rendered the beak camo at 76-87 over rows that
+      // read 52-56 underneath: the window med teleported to 69.4. The
+      // beak-band fix is albedo-side instead: the pitched fields return
+      // on a LIGHTER dedicated clone at the antiSlip mesh site.)
+      // ORDER 2b PATCH DE-CAD NOTCHES (a6 r4 #2 fixed-tone clones): 1-2
+      // same-tone notches bite each capsule's straight edge; the pile
+      // patches pair patch-extends with skin-tone bites so the rear-window
+      // med balance is ~net-zero (the 82..88 gate sits 0.5 over its floor).
+      blob(camoRed, P.hullG, KIT.xform(KIT.box(0.07, 0.15, 0.012), -0.545, 1.59, -3.4695, 0, 0, 0.30));
+      blob(camoRed, P.hullG, KIT.xform(KIT.box(0.06, 0.12, 0.012), -0.315, 1.345, -3.4695, 0, 0, -0.35));
+      blob(camoOlv, P.hullG, KIT.xform(KIT.box(0.065, 0.13, 0.012), 0.825, 1.565, -3.4695, 0, 0, -0.30));
+      blob(camoOlv, P.hullG, KIT.xform(KIT.box(0.05, 0.11, 0.012), 0.625, 1.335, -3.4695, 0, 0, 0.40));
+      blob(camoRed, P.hullG, KIT.xform(KIT.box(0.08, 0.14, 0.010), -1.20, 1.40, -3.6185, 0, 0, 0.25));
+      blob(camoOlv, P.hullG, KIT.xform(KIT.box(0.07, 0.13, 0.010), 1.30, 1.55, -3.6185, 0, 0, -0.30));
+      // (notch z-depths CAP at the host patch's certified 0.430/0.410 rear
+      // planes +1 mm — a 0.442 first cut reached z -3.801 and promoted the
+      // gate's -3.81 stern column to BODY: dAlong slid 0.058 and every
+      // curve row smeared, the r6 registration trap verbatim)
+      blob(camoRed, P.hullG, KIT.xform(KIT.box(0.06, 0.13, 0.431), -1.13, 1.72, -3.58));
+      blob(camoOlv, P.hullG, KIT.xform(KIT.box(0.05, 0.12, 0.431), -0.515, 1.50, -3.58));
+      blob(camoOlv, P.hullG, KIT.xform(KIT.box(0.055, 0.14, 0.411), 0.375, 1.71, -3.5905));
+      blob(camoRed, P.hullG, KIT.xform(KIT.box(0.05, 0.12, 0.411), 0.895, 1.52, -3.5905));
+      blob(skinCloth, P.hullG, KIT.xform(KIT.box(0.045, 0.10, 0.432), -1.015, 1.55, -3.58));
+      blob(skinCloth2, P.hullG, KIT.xform(KIT.box(0.04, 0.09, 0.412), 0.325, 1.50, -3.5905));
+      // ORDER 2c WHEEL-FACE RINGS (flat camera-facing washers per the r8-i
+      // law — no grazing band; non-casting; L<=56 dark ring + a mid rim
+      // ring, both in the R~G olive family so the gear-window hue/sub45/
+      // corner-ladder system holds — r8 law 5 paired knobs).
+      // (r9-b: tire ring 0x34352c -> 0x393a30 — the L51 first cut fed the
+      // deep-shade sub45 floor +222 behind the comb, the exact paired-knob
+      // trap law 5 warns about; L~55.6 rides above the 45 line while the
+      // rim ring lifts a step for the two-tone delta)
+      const tireRing = rehook(P.mats.wheels.clone());
+      tireRing.color.setHex(0x393a30);
+      tireRing.envMapIntensity = 0.05;
+      tireRing.roughnessMap = null;
+      tireRing.roughness = 0.97;
+      const rimRing = rehook(P.mats.wheels.clone());
+      rimRing.color.setHex(0x454435);
+      rimRing.envMapIntensity = 0.06;
+      rimRing.roughnessMap = null;
+      rimRing.roughness = 0.95;
+      P.disposables.push(tireRing, rimRing);
+      const tireGeos = [];
+      const rimGeos = [];
+      for (const s of [-1, 1]) {
+        for (let k = 0; k < 7; k++) {
+          const wz = 2.70 - k * 0.84;
+          tireGeos.push(KIT.xform(new THREE.RingGeometry(0.292, 0.363, P.q ? 30 : 22), s * 1.5035, 0.395, wz, 0, s * Math.PI / 2, 0));
+          rimGeos.push(KIT.xform(new THREE.RingGeometry(0.212, 0.286, P.q ? 28 : 20), s * 1.5042, 0.395, wz, 0, s * Math.PI / 2, 0));
+        }
+      }
+      // merged single-material meshes (draw-call economy); the stern frame
+      // KEEPS casting (structural members, not tone dressing)
+      for (const [geos, mat, parent, cast] of [
+        [rimT, rimBand, P.turretG, false], [litT, litKit, P.turretG, false],
+        [litCrownGeos, litKit, P.hullG, false],
+
+        [tireGeos, tireRing, P.hullG, false], [rimGeos, rimRing, P.hullG, false],
+      ]) {
+        if (!geos.length) continue;
+        const merged = KIT.mergeAll(geos);
+        const mesh = new THREE.Mesh(merged, mat);
+        mesh.receiveShadow = true;
+        mesh.castShadow = cast;
+        parent.add(mesh);
+        P.disposables.push(merged);
+      }
+      // ================= end VISUAL r9 =================
       for (const [list, parent] of [[hullPanels, P.hullG], [turretPanels, P.turretG]]) {
         if (!list.length) continue;
         const merged = KIT.mergeAll(list);
@@ -3674,7 +3980,7 @@ function buildLeo2A5(P) {
       // 52-56, min 34 — the glacis-tex dark stripes) and the r8-a 0x34352b
       // overshoot (window med 66.4 > the 66 gate).
       const antiSlip = rehook(P.mats.rubber.clone());
-      antiSlip.color.setHex(0x333428);                   // r8-e: settled — the 0x363729 step flipped the bistable glacis med OVER the 66 gate (68.9); the dark-row sd driver turned out to be the plate-edge/gun-chin rows, not the fields
+      antiSlip.color.setHex(0x333428);                   // r9-c: REVERTED to the r8 value — the shallow fields' shadowed 66 read IS the window's median pivot (bistable law); the +10 "brightening" was the guard-shadow loss, not the hex
       P.disposables.push(antiSlip);
       {
         const merged = KIT.mergeAll(antiSlipGeos);

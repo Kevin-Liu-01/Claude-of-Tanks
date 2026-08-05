@@ -917,3 +917,169 @@ floor drivers: hero-rr pale-kit/disc/comb all delivered; close-front
 slit closed + glacis calmer + front ladder down). The two honest
 misses (gear sub45, 2c p75 -0.8) are banked with mechanisms; next
 critic adjudicates graduation-track.
+
+## VISUAL r10 — TIER-EDGE FINAL ROUND (2026-08-04, work order docs/critique/shaded-parity-leo2a5-r8.md)
+
+Round 4 of the critic ladder (the r8 verdict's projected graduation
+round). Gate after round: **min 90.8 PASS ×2 bit-identical** (hull 90.8 /
+whole 91.0 / turret **91.6 (+0.1)** / stations 94.3 / dims 100 /
+floaters 100); containment `--exact` **0/0**; `turret-parent-audit`
+0/0/0; `tank-standard-check` gate ✓ clip ✓ contig 0 ✓ decor **mg0+4d**
+(the standing §I census carry, unchanged); §D evaluator exit 0, **RIG
+PARITY OK** (max yawProxy 1.5° @close-front; wedge-crest/rack-line Δ
+carrier family unchanged, top Δbot 1.66 cliff carried); `npm test` 166
+✓. Hash **50c34724 → bc9bad30** (141 meshes / 145168 verts). Graduates
+frozen: leo2a6 **80b76338**, kf51 **77020c58**; revolution **f6a1d3c0**
+(the r9 freeze) + a7v e28fc316 / proto 5647ef3e byte-stable — every
+diff hunk lives in buildLeo2A5. Shots: shots/leopard-r10/pairs-final
+(14 official pairs, zero console errors) + crops/.
+
+**FLEET-LANDING INTERACTION (mid-round)**: the bakeDirt lane landed
+(f243966) DURING this round — a stash-render HEAD re-baseline was taken
+per protocol. It moved the gear-window sub45 census 2358 → **2576 with
+ZERO leopard-side change** (the +218 is fleet-side; the window stays
+adjudicated-non-blocking per the orchestrator) and left every other a5
+window within noise. All r10 claims below are measured against the
+POST-f243966 baseline. The per-tank `spec.visual.bakeDirtDeckEq` knob
+was A/B'd at the final state: **ON reads deck med 54.6 → 56.6 (ref
+59.9), deck sub45 1729 → 1222, hero-rr sub45 620 → 313, gear/rear/
+glacis windows identical** — the r10 tier-edge work does NOT worsen the
+top view with the knob; one caution number: deck over92 72 → 154 (ref
+29). Knob-on recommended from this side; orchestrator flips at landing.
+
+Per-order status (official pairs, tools/tmp-a5r9-measure.py):
+- **1a TIER-EDGE RIM QUIET — the visual driver DELIVERED, the crown
+  window PART-MET (banked with the round's biggest law find)**. The
+  layer-cake grammar is dead at 1×: roofline 9-band alternation (view-
+  left, 3-row bands, ≥8Δ) reads **2.29 vs ref 2.63** (proc now calmer
+  than ref; the r8 state alternated above it); the pale plateau band,
+  the crest-tail step seam and the chamfer rim line are unified into
+  the ref's bright-crown family. Mechanisms: mild plateau/tail trims
+  (0.97 — cycle-1 proved 0.91-0.92 INVERTS the read: the ref roofline
+  itself is bright 78-87), a tail→roof APRON quad covering the exposed
+  turretDark shadow-wall strip + step seam (the ref's fused-shell
+  read), same-material WALL-LIFT panels (+8-9%, the law-1 overlay at
+  face scale; the r6-4c camo-bound med mass moves free via the overlay
+  mechanism), de-banded quilting (six offset sub-quads replace the
+  three one-height plates that read as a bright stripe), rim bands on
+  the three big bustle z-steps + chamfer top edge + nose-stack tier
+  edges (nose cap / saddle / root bump / EMES lip / dip fill / apex
+  lines), and lit-kit re-tones. hero-rr: crown p95 100.0 → **94.9**
+  (target ≤92, ref 89.3) with over100 521 → ~30 verified-real classes;
+  rear med **82.4** (82..88 ✓ held), 2c p75 **67.9 vs the ≥68 hold —
+  -0.2, banked** (see the trade log). THE LAW (fleet bank, the miss's
+  mechanism): **the deep-shade floor's rim term (0.45·rim·shade,
+  materials.js vehFloorL) floors EVERY grazing shaded surface to
+  ~0.15-0.18 linear (~107-118 sRGB) INDEPENDENT of albedo above
+  L≈0.09** — the crown window's >92 tail is this floor on the r8
+  weathered-canvas SKIN class (marker-proven: 467 of the window's
+  >92 blob px are the skins) and it is immune to every albedo knob
+  (five knob families were swept: canvas hex ±4, litKit ×0.76→L46,
+  skin slim, cover strips, frame re-buckets — each moved <±15 px).
+  An a5-scoped `norim` clone hook (zeroes the rim term on the skins +
+  litKit overlays; the fleet material and all casting buckets keep
+  the fleet look) recovers ~12 px; the residual >92 population is
+  structural to the skins-in-window geometry. THE PAIRED-KNOB WALL:
+  the same skins CARRY the rear-window med (a slim cut 0.400→0.360
+  teleported rear med 82.4 → 78.4 — the r8 law-2 median-carrier in
+  action, reverted). Banked exactly like the two r8 adjudicated
+  windows: p95 94.9 (from 99.8), mechanism dossier above.
+- **1b SHROUD-FACE TINT — DELIVERED**: EMES hood (front/outboard/
+  inboard/rear faces + the pale detail lid), both launcher backdrops
+  (0.88), dip-zone fill (front + outboard) and the under-plate shroud
+  take position-planar same-material camo overlays (law 1) — no
+  untextured grey plate run at close-roof/close-front; roof windows
+  no worse (deck med unchanged at the final state; the ordered 1a
+  plateau trims own the -0.3).
+- **2a GLACIS GRAIN — NOT DELIVERED (honest miss, wrong-row forensics
+  documented)**: rowmean-sd 7.72 vs the ≤6.0 order (baseline 7.73);
+  med 65.8 ✓ / hue 67.8 ✓ / front-face ladder 5.75 ✓ all at their
+  certified values. Two mechanism cuts were built and REVERTED on
+  measurement: (i) a beak lift panel — the factory hull loft bakes a
+  low-zone dirt term panelPrep does NOT replicate, so the overlay
+  rendered the beak camo at 76-87 over a 52-56 zone and teleported
+  the med to 69.4-71.5 (LAW, fleet bank: **panel-tint overlays are
+  dirt-biased at hem heights — below y≈1.45 an overlay renders the
+  camo BRIGHTER than the baked surface it covers**); (ii) per-slope
+  field-clone retones — built on a mis-anchored row map (the window's
+  dark band is under-wing furniture shade, its bright band the
+  beak-top/wing sky-facing tops + certified gun-chin rows; the
+  anti-slip fields render 66-flat AT the med pivot and any lightening
+  flips the bistable med). The window's sd is carried by two
+  physics-bound row families the r8 verdict already certified as the
+  ~5.5-6.0 residual split; at this print's lighting the reachable
+  floor without inverting the overshoot law measured 7.7. Banked with
+  both laws + the corrected row anchor (the "glacis" window rows map
+  to world y 1.05..1.33 — beak/wing band, NOT the mid-glacis).
+- **2b SLAT + PATCH DE-CAD — DELIVERED**: deterministic per-slat tilt
+  jitter (±0.05 rad rx + ±2.5 mm y, fixed tables, all four spans +
+  outboard facades — the geometry-side per-slat luma jitter) + 10
+  fixed-tone notch/bite blobs irregularize the capsule edges (notch
+  z-depths CAP at the host patch plane +1 mm — a 0.442 first cut
+  reached z -3.801 and slid the gate registration dAlong 0.058, the
+  r6 stern-column trap verbatim, caught and reverted same cycle).
+  Done-gates: rear med 82.4 (82..88 ✓), rowmean-sd 5.89 ≥4.5 ✓,
+  patches still cross at 2× (crops), boxes keep ≥3 tones + skins.
+- **2c WHEEL-FACE RINGS — DELIVERED**: 7 wheels/side take flat
+  camera-facing two-tone washers (tire ring 0x393a30 r 0.292..0.363 +
+  rim ring 0x454435 r 0.212..0.286, non-casting, r8-i washer law; the
+  hub drum/bolt ring pokes through = the ribbed read). Done-gates:
+  wheels read ringed at 2× (crops); gear hue 59.3 ≥50 ✓; corner
+  ladders 3.96/4.00 ≤4.0 ✓; sub45 2576 = the post-f243966 fleet
+  baseline EXACTLY (ring cost measured 0 — a first cut at L51 fed the
+  floor +222 and was lifted per law 5); strip-law med ratio 1.11
+  (0.92..1.16 ✓, the rim rings' upper arcs ride the strip window).
+- **2d LAUNCHER BRISTLE — DELIVERED (geometry-certified)**: pale end
+  rings widened th 0.008 → 0.013 / r 0.0420 (+62% ring area at the
+  quarters), NEW 1-px top-lit tube crowns on all 16 tubes (§C
+  pale-refund class; tops 2.175w inside the certified 2.1805 tube
+  envelope), caps held at the r8 reach — the ordered +0.010 push to
+  ~1.396 was TRIED and REVERTED: the gate's turret-plan x1.41 column
+  read it +0.016 errM over the carried 0.321 (the REAL AA boundary
+  bites at ~1.396, not the 1.41 nominal — the verdict's "~0.02 m
+  headroom" is ~8 mm on the gate grid). dims 100 held ✓, no new
+  columns ✓.
+
+LAW DISCOVERIES (fleet bank, beyond the three above):
+1. **RIM-FLOOR ALBEDO IMMUNITY** (the round's headline): grazing +
+   shaded surfaces are floored by 0.45·rim·shade to ~107-118 sRGB
+   regardless of albedo above L≈0.09 — tone work on any such read is
+   wasted; the levers are geometry (kill the grazing angle), the
+   norim clone hook, or acceptance. Extends r8 laws 4/5 with the
+   exact term + numbers.
+2. **MARKER-KILL DISCIPLINE**: match a tone class to its mesh by
+   magenta-marker or kill-test BEFORE building mechanisms — five
+   rgb-arithmetic attributions in this round were wrong (canvas,
+   wood, fittings, frame, litKit-placeholder) and each cost a cycle;
+   the two marker renders settled it in two.
+3. **CLONE-TIME COLOR TRAP**: P.mats.* colors at BUILD time can be
+   pre-repaint placeholders — `clone().multiplyScalar()` inherited a
+   near-white detail placeholder and rendered ~0.76-grey for five
+   cycles. Derived clones must use ABSOLUTE hexes.
+4. **STOP-CONDITION honesty**: the r6 registration trap (dAlong
+   0.058) re-fired from a 7 mm notch overreach and was caught by the
+   same-cycle gate run — the "gate ×2 at every landing point" rule is
+   what kept every cut reversible.
+
+Residuals carried (with numbers): crown p95 94.9 (≤92 ordered, ref
+89.3 — the rim-floor × skin-carrier pair, dossier above); 2c p75 67.9
+(-0.2 of the hold; the canvas lever is exhausted — 2 steps moved +0.3,
+further steps 0, the boundary left the canvas class); glacis
+rowmean-sd 7.72 (physics split, laws above); deck sub45 1729 vs fleet
+1513 (+216 = the ordered 1a plateau trims; the deckEq knob more than
+recovers it, -507); gear sub45 2576 (fleet baseline, adjudicated);
+strip ratio 1.11; corner +6.6 warm; 4c/4d classes; prior certified
+classes all stand (2.695 crown pair, jerry bottom, carrier Δ family,
+projection-air voids).
+
+Self-scores after round (/10, builder read): left/right **8.9**, front
+8.8, rear 8.8, frontleft/frontright 8.8, rearleft/rearright 8.8, top
+8.7, close-front 8.8, close-roof 8.8, hero-frontleft 8.8,
+hero-rearright **8.7**, hero-toptilt 8.8 — floor ~8.7 self-read. The
+1×-visible tier-bar driver is dead (alternation at/below ref on the
+left/right/hero reads; close-front stack rims banded); the projection's
+"floor ≥9.0" hinged on the crown p95 window also closing, which walled
+at a fleet-shader floor × the rear-med carrier — the two banked
+windows' family. Graduation-track: the critic adjudicates whether the
+delivered visual read + the mechanism dossier clears the bar the same
+way the r8 verdict adjudicated gear-sub45/2c-p75.

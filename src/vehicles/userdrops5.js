@@ -52,7 +52,11 @@ const SPECS = [
       dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 4.00, heightM: 2.64 } }),
   make('leo2a6', 'leo2a5', 'Leopard 2A5', 'Germany',
     { hp: 2350, weightTons: 59.5, gun: { reloadS: 6.4 },
-      dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 3.75, heightM: 2.64 } }),
+      dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 3.75, heightM: 2.64 },
+      // bakeDirt deck equalizer (f243966; r10 A/B: deck med -> 56.6 toward
+      // ref 59.9, deck sub45 -507, hero-rr -307, gear/rear/glacis identical;
+      // caution logged: deck over92 72 -> 154 vs ref 29 — critic adjudicates).
+      visual: { bakeDirtDeckEq: true } }),
   make('leo2a7', 'leo2a7v', 'Leopard 2A7V', 'Germany',
     { hp: 2650, weightTons: 66.5, topSpeedKmh: 63,
       dims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 4.00, heightM: 2.64 } }),
